@@ -20,7 +20,6 @@ import { getSession } from "../../../lib/supabase";
 import { apiFetch } from "../../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { statPlateStyle } from "../../../lib/statColor";
 import { useScoutCountdown, scoutReadyClock } from "../../../lib/scoutCountdown";
-import { useBestRoleDisplay } from "../../../lib/useBestRoleDisplay.js";
 import { potentialFromReport, potentialRowFromReport } from "../../../lib/potentialDisplay6853";
 import PotentialRoleBox from "../PotentialRoleBox";
 
@@ -79,27 +78,7 @@ const barPct = (v) => `${(Math.max(0, Math.min(BAR_SCALE_MAX, v)) / BAR_SCALE_MA
 // Én ryttertype-række: navn · bar (nu-fyld + skraveret prognose-bånd) · nu / prognose-tal.
 // #3746: progLo/progHi er prognose-båndets navn; ceilLo/ceilHi er en alias
 // (samme tal) for ældre klient-cache — se backend/routes/api.js.
-// Overgangs-designet (ejer 18/8): loft-mærket (lodret streg) markerer rollens
-// loft på samme lineære akse som nu-fyldet og prognose-båndet — det gamle tal
-// er bevaret i fladen, prognosen er det nye ved siden af. `loft` kan mangle i
-// ældre payloads → intet mærke (graceful).
-// #4039: `title` (forbi-peak-dæmpet forklaring, når rytteren er forbi peak)
-// videresendes som HTML-tooltip på selve mærket — samme dæmpning som hero'ens
-// loft-underlinje og Ceiling-kolonnen på holdsiden, bare i tooltip-form her
-// (den tætte tabel har ikke plads til synlig suffiks-tekst).
-function LoftTick({ loft, title }) {
-  if (!Number.isFinite(loft)) return null;
-  return (
-    <div
-      className="absolute inset-y-0 w-[2px] bg-cz-2"
-      style={{ left: `calc(${barPct(loft)} - 1px)` }}
-      data-loft-tick={loft}
-      title={title}
-    />
-  );
-}
-
-function TypeRow({ typeKey, now, progLo, progHi, loft, loftTitle, label }) {
+function TypeRow({ typeKey, now, progLo, progHi, label }) {
   return (
     <div className="flex items-center gap-3" data-type={typeKey}>
       <span className="w-[110px] shrink-0 text-[12px] text-cz-2 truncate">{label}</span>
@@ -109,7 +88,6 @@ function TypeRow({ typeKey, now, progLo, progHi, loft, loftTitle, label }) {
           className="absolute inset-y-0 bg-cz-accent/25 border-x border-cz-accent/50"
           style={{ left: barPct(progLo), width: `calc(${barPct(progHi)} - ${barPct(progLo)})` }}
         />
-        <LoftTick loft={loft} title={loftTitle} />
       </div>
       <span className="w-[86px] shrink-0 text-right font-mono tabular-nums text-2xs">
         <span className="text-cz-1 font-bold">{now}</span>
@@ -124,8 +102,8 @@ function TypeRow({ typeKey, now, progLo, progHi, loft, loftTitle, label }) {
 // DELTE statPlateStyle, så tallet her og tallet i heroen er samme plade — de er
 // samme tal, og må ikke kunne se forskellige ud.
 // #3746: progLo/progHi + progressionLabel — se TypeRow.
-// #5435: `extra` = anlæggets anden rolle, vist inde i samme sektion (kun ny visning).
-function PrimaryTypeRow({ typeKey, now, progLo, progHi, loft, label, roleLabel, progressionLabel, loftLabel, loftTitle, extra = null }) {
+// #5435: `extra` = anlæggets anden rolle, vist inde i samme sektion.
+function PrimaryTypeRow({ typeKey, now, progLo, progHi, label, roleLabel, progressionLabel, extra = null }) {
   return (
     <div data-type={typeKey} className="border-b border-cz-border pb-3.5 mb-3.5">
       <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3">
@@ -147,9 +125,6 @@ function PrimaryTypeRow({ typeKey, now, progLo, progHi, loft, label, roleLabel, 
           </span>
           <span className="block font-mono tabular-nums text-[15px] text-cz-1 mt-0.5">
             {progLo}–{progHi}
-            {Number.isFinite(loft) && (
-              <span className="text-cz-3 text-2xs" data-testid="scouting-primary-loft" title={loftTitle}> · {loftLabel}</span>
-            )}
           </span>
         </span>
       </div>
@@ -159,7 +134,6 @@ function PrimaryTypeRow({ typeKey, now, progLo, progHi, loft, label, roleLabel, 
           className="absolute inset-y-0 bg-cz-accent/25 border-x border-cz-accent/50"
           style={{ left: barPct(progLo), width: `calc(${barPct(progHi)} - ${barPct(progLo)})` }}
         />
-        <LoftTick loft={loft} title={loftTitle} />
       </div>
       {extra}
     </div>
@@ -201,7 +175,6 @@ function PrecisionNote({ precision, t, lang }) {
 export default function RiderScoutingTab({ rider, scouting }) {
   const { t, i18n } = useTranslation("rider");
   const { t: tTypes } = useTranslation("riderTypes");
-  const bestRoleOn = useBestRoleDisplay();
   const [report, setReport] = useState(/** @type {any} */ (null));   // null = loader, ellers payload
   const [failed, setFailed] = useState(false);
   // #2465: scout() returnerer eksplicit {ok, error} — handlingen koster CZ$, så en
@@ -375,7 +348,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
     );
   }
 
-  const { verdict, types, stars, own, scout: scoutMeta, precision, primaryKey, pastPeak } = report;
+  const { verdict, types, stars, own, scout: scoutMeta, precision, primaryKey } = report;
   const orderedTypes = TYPE_ORDER
     .map((key) => types?.find((x) => x.key === key))
     .filter(Boolean);
@@ -385,22 +358,20 @@ export default function RiderScoutingTab({ rider, scouting }) {
   // et estimat bevægede sig. Mangler den (ældre payload), falder kortet tilbage
   // til den flade liste af otte, som før.
   const primaryRow = primaryKey ? orderedTypes.find((r) => r.key === primaryKey) : null;
-  // #6853: det store potentiale-tal står på serverens valgte rolle (bedste rolle
-  // med flaget tændt, ellers den naturlige) — samme tal som Mit hold og akademiet.
+  // #6853: det store potentiale-tal står på serverens valgte rolle (bedste
+  // rolle) — samme tal som Mit hold og akademiet.
   const potentialRow = potentialRowFromReport(report) ?? primaryRow;
   const potentialShown = potentialFromReport(report);
-  // #5435 (D-049, spec §2): med kontakten tændt deles listen i anlæggets to
-  // roller ("His natural roles") og de seks andre, og loft-tallene er ude
-  // (ejer 21/9). Den naturlige sekundærrolle er rytterens persisterede
+  // #5435 (D-049, spec §2): listen deles i anlæggets to roller ("His natural
+  // roles") og de seks andre, og loft-tallene er ude (ejer 21/9). Den
+  // naturlige sekundærrolle er rytterens persisterede
   // secondary_type — samme kilde som badget, så de to aldrig er uenige.
-  const naturalSecondaryRow = bestRoleOn && primaryRow && rider?.secondary_type && rider.secondary_type !== primaryRow.key
+  const naturalSecondaryRow = primaryRow && rider?.secondary_type && rider.secondary_type !== primaryRow.key
     ? orderedTypes.find((r) => r.key === rider.secondary_type) ?? null
     : null;
   const secondaryRows = primaryRow
     ? orderedTypes.filter((r) => r.key !== primaryRow.key && r.key !== naturalSecondaryRow?.key)
     : orderedTypes;
-  // Loft-tal vises kun i den gamle visning.
-  const loftOf = (row) => (bestRoleOn ? null : row.loft);
   // Ukendt/manglende scout-provenance (fx ældre klient-cache) degraderer sikkert
   // til "default"-linjen frem for at interpolere undefined navn/tier.
   const isDefaultScout = scoutMeta?.isDefault !== false;
@@ -486,17 +457,15 @@ export default function RiderScoutingTab({ rider, scouting }) {
         )}
         {/* #4039 (ejer-godkendt mockup): verdiktet skal stå SOM TEKST, ikke kun
             som det skraverede bånd nedenfor — samme tal som båndet (progLo/
-            progHi/loft), ingen ny information, ingen #1162-lækage. */}
+            progHi), ingen ny information, ingen #1162-lækage. */}
         {verdict && potentialRow
           && Number.isFinite(potentialRow.progLo ?? potentialRow.ceilLo)
-          && Number.isFinite(potentialRow.progHi ?? potentialRow.ceilHi)
-          && (bestRoleOn || Number.isFinite(potentialRow.loft)) && (
+          && Number.isFinite(potentialRow.progHi ?? potentialRow.ceilHi) && (
           <p className="text-cz-2 text-[12.5px] leading-[1.55] mt-3 mb-0 max-w-prose">
-            {/* #5435: uden loft-tal i den nye visning. #6853: samme rolle som tallet. */}
-            {t(bestRoleOn ? "profile.scouting.verdictTextNoLoft" : "profile.scouting.verdictText", {
+            {/* #5435: uden loft-tal. #6853: samme rolle som tallet. */}
+            {t("profile.scouting.verdictTextNoLoft", {
               progLo: potentialRow.progLo ?? potentialRow.ceilLo,
               progHi: potentialRow.progHi ?? potentialRow.ceilHi,
-              loft: potentialRow.loft,
             })}
           </p>
         )}
@@ -531,7 +500,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
               {t("profile.scouting.typesTitle")}
             </h3>
             <span className="text-3xs text-cz-3">
-              {t(bestRoleOn ? "profile.scouting.typesSubtitleNoLoft" : "profile.scouting.typesSubtitle")}
+              {t("profile.scouting.typesSubtitleNoLoft")}
             </span>
           </div>
           {primaryRow && (
@@ -540,46 +509,36 @@ export default function RiderScoutingTab({ rider, scouting }) {
               now={primaryRow.now}
               progLo={primaryRow.progLo ?? primaryRow.ceilLo}
               progHi={primaryRow.progHi ?? primaryRow.ceilHi}
-              loft={loftOf(primaryRow)}
               label={tTypes(`types.${primaryRow.key}`)}
-              roleLabel={t(bestRoleOn ? "profile.scouting.naturalRolesLabel" : "profile.scouting.primaryRoleLabel")}
+              roleLabel={t("profile.scouting.naturalRolesLabel")}
               extra={naturalSecondaryRow && (
                 <div className="mt-3" data-testid="scouting-natural-secondary">
                   <TypeRow typeKey={naturalSecondaryRow.key} now={naturalSecondaryRow.now}
                     progLo={naturalSecondaryRow.progLo ?? naturalSecondaryRow.ceilLo}
                     progHi={naturalSecondaryRow.progHi ?? naturalSecondaryRow.ceilHi}
-                    loft={null} label={tTypes(`types.${naturalSecondaryRow.key}`)} />
+                    label={tTypes(`types.${naturalSecondaryRow.key}`)} />
                 </div>
               )}
               progressionLabel={t("profile.scouting.primaryProgressionLabel")}
-              loftLabel={pastPeak
-                ? t("scouting.loftPastPeakShort", { value: primaryRow.loft })
-                : t("scouting.loftShort", { value: primaryRow.loft })}
-              loftTitle={pastPeak
-                ? t("scouting.loftPastPeakTitle", { value: primaryRow.loft })
-                : t("scouting.loftTitle", { role: tTypes(`types.${primaryRow.key}`), value: primaryRow.loft })}
             />
           )}
           {primaryRow && secondaryRows.length > 0 && (
             <span className="block font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3 mb-2">
-              {t(bestRoleOn ? "profile.scouting.otherRolesNaturalLabel" : "profile.scouting.otherRolesLabel")}
+              {t("profile.scouting.otherRolesNaturalLabel")}
             </span>
           )}
-          {bestRoleOn && primaryRow && secondaryRows.length > 0 && (
+          {primaryRow && secondaryRows.length > 0 && (
             <p className="text-cz-3 text-3xs mt-0 mb-2">{t("profile.scouting.otherRolesNote")}</p>
           )}
           <div className="space-y-2">
             {secondaryRows.map((row) => (
               <TypeRow key={row.key} typeKey={row.key} now={row.now}
                 progLo={row.progLo ?? row.ceilLo} progHi={row.progHi ?? row.ceilHi}
-                loft={loftOf(row)} label={tTypes(`types.${row.key}`)}
-                loftTitle={pastPeak
-                  ? t("scouting.loftPastPeakTitle", { value: row.loft })
-                  : t("scouting.loftTitle", { role: tTypes(`types.${row.key}`), value: row.loft })} />
+                label={tTypes(`types.${row.key}`)} />
             ))}
           </div>
           <p className="text-cz-3 text-3xs mt-3 mb-0">
-            {t(bestRoleOn ? "profile.scouting.typesLegendNoLoft" : "profile.scouting.typesLegend")}
+            {t("profile.scouting.typesLegendNoLoft")}
           </p>
           {/* #3334: den forklaring der var savnet i nosyaras sag — hvorfor
               båndet kan se anderledes ud fra én visning til den næste, og at

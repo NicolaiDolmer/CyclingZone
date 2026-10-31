@@ -56,7 +56,7 @@ import { resolveApiError } from "../lib/apiError";
 import { computeBidValueDelta, getRiderSalary, getRiderMarketValue } from "../lib/marketValues.js";
 import { parseAmountInput } from "../lib/amountInput.js";
 import { riderOverallRating } from "../lib/riderRating";
-import { useBestRoleDisplay, useTypeColumnLabel } from "../lib/useBestRoleDisplay.js";
+import { useTypeColumnLabel } from "../lib/useTypeColumnLabel.ts";
 import BestRoleTag, { WithBestRole } from "../components/rider/BestRoleTag.jsx";
 import { ageBadgeKey, retirementRiskBadgeKey, ageForSeason } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
@@ -584,7 +584,6 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
 
 function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academySquadCounts, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, isRecommended, visibleStats, scouting, seasonYear, reputationOn, onHide = null }) {
   const { t } = useTranslation(["auctions", "common", "riderTypes"]);
-  const bestRoleOn = useBestRoleDisplay(); // #5435
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
   const isSeller = isManagerSeller(auction, myTeamId);
@@ -655,20 +654,14 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                   {ovr}
                 </span>
               )}
-              {/* #5435 (D-049): kontakten tændt → "54 Climber" = bedste rolle nu,
-                  og anlægget står bagefter med sin egen etiket, så de to roller
-                  aldrig kan forveksles. Slukket: uændret. */}
-              {bestRoleOn ? (
-                <>
-                  {Number.isFinite(ovr) && <BestRoleTag rider={r} variant="full" />}
-                  {r?.primary_type && (
-                    <span className="text-cz-3 text-xs" data-testid="auction-card-natural-role">
-                      {t("riderTypes:natural.label")}: {t(`riderTypes:types.${r.primary_type}`)}
-                    </span>
-                  )}
-                </>
-              ) : r?.primary_type && (
-                <span className="text-cz-3 text-xs">{t(`riderTypes:types.${r.primary_type}`)}</span>
+              {/* #5435 (D-049): "54 Climber" = bedste rolle nu, og anlægget står
+                  bagefter med sin egen etiket, så de to roller aldrig kan
+                  forveksles. */}
+              {Number.isFinite(ovr) && <BestRoleTag rider={r} variant="full" />}
+              {r?.primary_type && (
+                <span className="text-cz-3 text-xs" data-testid="auction-card-natural-role">
+                  {t("riderTypes:natural.label")}: {t(`riderTypes:types.${r.primary_type}`)}
+                </span>
               )}
               {isRecommended && !imWinning && <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded-cz-pill font-bold">{t("auctions:badge.firstBidPick")}</span>}
               {imWinning && <span className="text-3xs uppercase bg-cz-accent/20 text-cz-accent-t px-1.5 py-0.5 rounded-cz-pill">{t("auctions:badge.winning")}</span>}
@@ -1937,7 +1930,7 @@ const TH_BASE = "font-data text-2xs font-semibold uppercase tracking-[.06em]";
 
 function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort, riderFiltersSort, auctionSort, reputationOn }) {
   const { t } = useTranslation("auctions");
-  const typeLabel = useTypeColumnLabel(t("table.type")); // #5435
+  const typeLabel = useTypeColumnLabel(); // #5435
   const visibleStatsArr = STATS.filter(k => visibleStats?.has(k));
   return (
     // Thead's shadow-sm er fjernet — hairline-rulen på tr'en herunder (border-b)
@@ -2031,7 +2024,7 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
 // efter navn, jf. issue-rapportens konkrete ønske ("sort for time").
 function AuctionMobileSortControl({ visibleStats, activeSortDir, handleSort, riderFiltersSort, auctionSort, reputationOn }) {
   const { t } = useTranslation("auctions");
-  const typeLabel = useTypeColumnLabel(t("table.type")); // #5435
+  const typeLabel = useTypeColumnLabel(); // #5435
   const visibleStatsArr = STATS.filter(k => visibleStats?.has(k));
   const options = [
     { key: "firstname", label: t("table.rider") },

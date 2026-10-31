@@ -8,7 +8,6 @@ import { apiFetch } from "../lib/apiFetch.ts"; // #5089: Retry-After-respekt for
 import { formatCz, getRiderMarketValue, getRiderSalary, detectStartPriceTypo, computeBidValueDelta } from "../lib/marketValues.js";
 import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS } from "../lib/sharedRequestCache.js";
 import { riderBestRole, riderOverallRating } from "../lib/riderRating";
-import { isBestRoleDisplayOn } from "../lib/riderRatingMode.js";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys.js";
 import { chartColor } from "../lib/chartPalette.js";
 import { formatNumber } from "../lib/intl";
@@ -1828,9 +1827,9 @@ export default function RiderStatsPage() {
   const overallRating = rider.abilities
     ? riderOverallRating({ ...rider.abilities, primary_type: rider.primary_type })
     : 0;
-  // #5435: rollen bag tallet når kontakten er tændt ("54 Climber"). Samme
-  // evne-objekt som overallRating, så rolle og tal ikke kan komme fra hver sin kilde.
-  const bestRoleKey = isBestRoleDisplayOn() && rider.abilities
+  // #5435: rollen bag tallet ("54 Climber"). Samme evne-objekt som
+  // overallRating, så rolle og tal ikke kan komme fra hver sin kilde.
+  const bestRoleKey = rider.abilities
     ? riderBestRole(rider.abilities).role
     : null;
   // ── #2000 redesign — afledte hero-felter (ren visning, ingen ny data) ────────

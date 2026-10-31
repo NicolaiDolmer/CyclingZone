@@ -21,7 +21,7 @@ import { useAuctionEndTimeSelector } from "../lib/useAuctionEndTimeSelector.js";
 import { StartPriceTypoGuardModal } from "../components/StartPriceTypoGuardModal";
 import { getCountryCode3 } from "../lib/countryUtils";
 import { riderOverallRating } from "../lib/riderRating";
-import { useTypeColumnLabel } from "../lib/useBestRoleDisplay.js";
+import { useTypeColumnLabel } from "../lib/useTypeColumnLabel.ts";
 import { WithBestRole } from "../components/rider/BestRoleTag.jsx";
 import { getSquadLimits } from "../lib/dashboardSquadStats.js";
 import { formatNumber } from "../lib/intl";
@@ -598,7 +598,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   const { t } = useTranslation("team");
   // #1131: fulde stat-navne som native tooltip på de forkortede kolonne-headers.
   const { t: tRider } = useTranslation("rider");
-  const typeColumnLabel = useTypeColumnLabel(t("squad.headers.type")); // #5435
+  const typeColumnLabel = useTypeColumnLabel(); // #5435
   // #1796: hele rytter-rækken navigerer til rytter-profilen (flest dead clicks på
   // /team var klik på værdi-/potentiale-cellen). Samme row-as-link-mønster som
   // /riders (RiderRow). Navn-linket + Handling-knappen stopper propagation.

@@ -29,7 +29,6 @@ function parsedFilterAmount(raw) {
 import { labelClass } from "./ui/fieldStyles.js";
 import { formatNumber } from "../lib/intl";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys";
-import { useBestRoleDisplay } from "../lib/useBestRoleDisplay.js";
 // Kanonisk nøgleliste bor i lib/riderRating.js (ren .js → node --test-venlig),
 // som nu re-eksporterer de 15 CZ-evne-keys fra lib/abilities.js (#1529).
 // Re-eksporteres her for bagudkompatibilitet med eksisterende imports.
@@ -267,7 +266,6 @@ export default function RiderFilters({
 }) {
   const { t, i18n } = useTranslation("riderFilters");
   const { t: tTypes } = useTranslation("riderTypes");
-  const bestRoleOn = useBestRoleDisplay(); // #5435
   const [statsOpen, setStatsOpen] = useState(false);
   // #2464: på mobil fyldte panelet ~40% af skærmen før første rytter — kollapset
   // som default bag en disclosure (samme mønster som evne-sliderne, statsOpen).
@@ -303,14 +301,14 @@ export default function RiderFilters({
     { value: "", label: t("fields.countryAll") },
     ...sortedNationalities.map(code => ({ value: code, label: getCountryName(code, countryLocale) })),
   ];
-  // #5435 (spec §2): med kontakten tændt er typefiltret anlægget ("Natural
-  // role"), og "Best role now" er sit eget felt ved siden af. Baren har ingen
+  // #5435 (spec §2): typefiltret er anlægget ("Natural role"), og "Best role
+  // now" er sit eget felt ved siden af. Baren har ingen
   // synlige labels, så "alle"-valget siger selv hvilket af de to felter det er.
   const typeOptions = [
-    { value: "", label: bestRoleOn ? tTypes("natural.filterAll") : tTypes("filter.all") },
+    { value: "", label: tTypes("natural.filterAll") },
     ...RIDER_TYPE_KEYS.map(key => ({ value: key, label: tTypes(`types.${key}`) })),
   ];
-  const typeFilterLabel = bestRoleOn ? tTypes("natural.roleLabel") : tTypes("filter.label");
+  const typeFilterLabel = tTypes("natural.roleLabel");
   const bestRoleOptions = [
     { value: "", label: tTypes("bestRole.filterAll") },
     ...RIDER_TYPE_KEYS.map(key => ({ value: key, label: tTypes(`types.${key}`) })),
@@ -333,14 +331,14 @@ export default function RiderFilters({
       ariaLabel: typeFilterLabel,
       options: typeOptions,
     },
-    // #5435: tredje (og sidste tilladte) select i baren, kun med kontakten tændt.
-    ...(bestRoleOn ? [{
+    // #5435: tredje (og sidste tilladte) select i baren.
+    {
       key: "best_role",
       value: filters.best_role ?? "",
       onChange: e => onChange("best_role", e.target.value),
       ariaLabel: tTypes("bestRole.label"),
       options: bestRoleOptions,
-    }] : []),
+    },
   ];
 
   // #2238: "Vis AI-ryttere" er en boolean og hoerer i FilterBar's checkbox-slot,
@@ -370,12 +368,12 @@ export default function RiderFilters({
     </Select>
   );
 
-  const bestRoleSelect = bestRoleOn ? (
+  const bestRoleSelect = (
     <Select value={filters.best_role ?? ""} onChange={e => onChange("best_role", e.target.value)}
       aria-label={tTypes("bestRole.label")} data-testid="filter-best-role">
       {optionNodes(bestRoleOptions)}
     </Select>
-  ) : null;
+  );
 
   const contractBase = typeof contractSeasonNumber === "number" && Number.isFinite(contractSeasonNumber) ? contractSeasonNumber : null;
   const contractSelect = contractBase !== null ? (
@@ -506,7 +504,7 @@ export default function RiderFilters({
         />
       )}
       {filters.rider_type && <Chip t={t} label={tTypes(`types.${filters.rider_type}`)} onRemove={() => onChange("rider_type", "")} />}
-      {bestRoleOn && filters.best_role && (
+      {filters.best_role && (
         <Chip t={t} label={`${tTypes("bestRole.label")}: ${tTypes(`types.${filters.best_role}`)}`} onRemove={() => onChange("best_role", "")} />
       )}
       {filters.min_value && <Chip t={t} label={t("chips.value.min", { amount: formatNumber(parseInt(filters.min_value)) })} onRemove={() => onChange("min_value", "")} />}
@@ -637,19 +635,17 @@ export default function RiderFilters({
             {countrySelect}
           </div>
 
-          {/* Rider type (#49) — "Natural role" med #5435-kontakten tændt */}
+          {/* Rider type (#49) — "Natural role" (#5435) */}
           <div>
             <label className={labelClass()}>{typeFilterLabel}</label>
             {typeSelect}
           </div>
 
           {/* #5435: Best role now */}
-          {bestRoleSelect && (
-            <div>
-              <label className={labelClass()}>{tTypes("bestRole.label")}</label>
-              {bestRoleSelect}
-            </div>
-          )}
+          <div>
+            <label className={labelClass()}>{tTypes("bestRole.label")}</label>
+            {bestRoleSelect}
+          </div>
 
           {/* Vaerdi / loen / alder (+ bud, salgspris, vaerdi-afvigelse pr. side) */}
           {rangeFieldNodes}

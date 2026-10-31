@@ -1,12 +1,4 @@
 {
-  "filter": {
-    "label": "Ryttertype",
-    "all": "Alle typer"
-  },
-  "badge": {
-    "ariaLabel": "Ryttertype: {primary} / {secondary}",
-    "ariaLabelSingle": "Ryttertype: {primary}"
-  },
   "natural": {
     "label": "Naturlig",
     "roleLabel": "Naturlig rolle",

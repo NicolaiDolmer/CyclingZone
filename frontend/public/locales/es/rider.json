@@ -191,7 +191,6 @@
       "hint": "Las teclas de flecha cambian de ciclista"
     },
     "hero": {
-      "ratingEyebrow": "Valoración",
       "bestRoleEyebrow": "Mejor rol ahora",
       "divisionChip": "DIV {division}",
       "photoFallback": "Foto",
@@ -376,7 +375,6 @@
       "confidenceTitle_medium": "Tu ojeador ha informado más de una vez, pero no de todo lo que puede. Vuelve a ojearlo para completar la lectura.",
       "confidenceTitle_low": "Solo una primera lectura. Vuelve a ojearlo antes de actuar con ella.",
       "verdictIsRead": "Esta es la lectura de tu ojeador, no un hecho. Se basa en su nivel proyectado, así que el ojeador de otro mánager puede llegar a una conclusión distinta sobre el mismo ciclista.",
-      "verdictText": "Con el entrenamiento adecuado lo veo llegando a {progLo}-{progHi} - el techo del rol es {loft}, pero exige un enfoque dedicado todo el camino.",
       "verdictTextNoLoft": "Con el entrenamiento adecuado lo veo llegando a {progLo}-{progHi}, pero exige un enfoque dedicado todo el camino.",
       "factor_age_upside": "Lo bastante joven como para tener temporadas de crecimiento por delante",
       "factor_ceiling_gap": "Diferencia clara entre el nivel de hoy y el que se proyecta que alcance",
@@ -387,10 +385,7 @@
       "factor_watch_races": "Los resultados de las carreras confirmarán o pondrán en duda esta lectura",
       "rescoutHint": "Vuelve a ojearlo para afinar la estimación. Un ojeador de baja valoración alcanza su propio límite de precisión antes del último nivel.",
       "typesTitle": "Proyección por tipo de ciclista",
-      "typesSubtitle": "el techo es el del rol, el potencial marca el ritmo",
-      "primaryRoleLabel": "Su rol",
       "primaryProgressionLabel": "Proyectado",
-      "otherRolesLabel": "Los demás roles",
       "typesSubtitleNoLoft": "el potencial marca el ritmo",
       "naturalRolesLabel": "Sus roles naturales",
       "otherRolesNaturalLabel": "Otros roles",
@@ -399,7 +394,6 @@
       "precisionNext": "El siguiente nivel de ojeo estrecha la banda de ±{half} a ±{next} puntos.",
       "precisionUseless": "Otro nivel no estrecharía visiblemente la banda con tu jefe de ojeadores actual (±{half} puntos). Un jefe de ojeadores mejor sí lo haría.",
       "precisionAtMax": "Más estrecho no se puede ojear. La anchura de la banda depende ahora de la valoración de tu jefe de ojeadores (±{half} puntos).",
-      "typesLegend": "Barra sólida = nivel de hoy. Banda sombreada = hacia dónde se encamina de forma realista con tu entrenamiento: el extremo inferior es un trabajo constante pero sin enfoque, el superior es un enfoque dedicado cada día. Marca oscura = el techo del rol, igual para todos los de ese rol; el potencial decide con qué rapidez sube hacia él. Es una estimación, no una garantía, y ningún ojeador conoce a un ciclista con exactitud. Las valoraciones son comparables entre roles: el mismo número significa el mismo nivel en todas partes.",
       "capsMissingTitle": "Informe incompleto",
       "capsMissingBody": "Todavía no hay datos de proyección para este ciclista, así que no se puede mostrar la perspectiva por tipo.",
       "scoutFailed": "No se pudo enviar al ojeador. Inténtalo de nuevo en un momento.",
@@ -457,8 +451,6 @@
         "subtitle": "valoración por tipo",
         "legendNow": "Ahora",
         "allTypes": "Todos los tipos",
-        "role": "Su rol",
-        "readsHighest": "Puntúa más alto ahora",
         "notARanking": "Los roles se construyen con habilidades distintas, así que estos números no son un ranking de lo que debería ser."
       },
       "physio": {

@@ -1363,12 +1363,10 @@ export function apiResponse(pathname, search = "") {
     };
   }
   if (pathname.endsWith("/api/online-count")) return { count: 1 };
-  // #5435: rating-kontakten. OFF her (Playwright deler denne fil, og den kører
-  // i Node — eksisterende snapshots skal vise dagens visning). En spec tænder
-  // den ved at registrere sin egen route på /api/display-flags (se
-  // rider-best-role-display.spec.js); preview-deployet overstyrer i
-  // installPreviewMock.js, så ejeren ser den nye visning.
-  if (pathname.endsWith("/api/display-flags")) return { rider_best_role_display: false };
+  // Visnings-kontakterne: alle off her (Playwright deler denne fil). En spec
+  // tænder en kontakt med sin egen route på /api/display-flags; preview-deployet
+  // overstyrer i installPreviewMock.js. #6853: rating-kontakten er fjernet.
+  if (pathname.endsWith("/api/display-flags")) return {};
   if (pathname.endsWith("/api/notifications")) return [];
   // #2884: skal ligge FØR /api/auctions — endsWith("/api/auctions") ville ellers
   // ikke fange den, men rækkefølgen holder de to adskilte hvis stien ændrer sig.

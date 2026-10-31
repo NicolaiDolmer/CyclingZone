@@ -95,7 +95,6 @@
       "popularityTitle": "Populariteit bij de fans (0-100). Gebruikt door het sterrenrenner-doel van het 5-jarenplan van het bestuur.",
       "reputationLabel": "Reputatie",
       "reputationTitle": "Verdiende reputatie in de koers. Dit is het getal dat het bestuur leest voor profielrenners.",
-      "type": "Type",
       "contract": "Contract",
       "contractUntil": "Tot seizoen {season}",
       "contractExpired": "Verlopen",
@@ -212,7 +211,6 @@
     "thRider": "Renner",
     "thBadges": "Status",
     "thAge": "Leeftijd",
-    "thType": "Type",
     "thValue": "Waarde",
     "palmares": {
       "totalsTitle": "Totalen over de carrière",

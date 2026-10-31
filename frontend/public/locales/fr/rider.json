@@ -191,7 +191,6 @@
       "hint": "Les flèches changent de coureur"
     },
     "hero": {
-      "ratingEyebrow": "Note",
       "bestRoleEyebrow": "Meilleur rôle actuel",
       "divisionChip": "DIV {division}",
       "photoFallback": "Photo",
@@ -376,7 +375,6 @@
       "confidenceTitle_medium": "Ton recruteur a fait plusieurs rapports, mais pas tout ce qu'il peut. Relance une détection pour compléter la lecture.",
       "confidenceTitle_low": "Une première lecture seulement. Relance une détection avant d'agir dessus.",
       "verdictIsRead": "C'est la lecture de ton recruteur, pas un fait. Elle repose sur son niveau projeté, donc le recruteur d'un autre manager peut arriver à une conclusion différente sur le même coureur.",
-      "verdictText": "Avec le bon entraînement, je le vois atteindre {progLo}-{progHi} - le plafond du rôle est {loft}, mais il faut un travail ciblé jusqu'au bout.",
       "verdictTextNoLoft": "Avec le bon entraînement, je le vois atteindre {progLo}-{progHi}, mais il faut un travail ciblé jusqu'au bout.",
       "factor_age_upside": "Assez jeune pour avoir encore des saisons de progression devant lui",
       "factor_ceiling_gap": "Écart net entre le niveau d'aujourd'hui et celui où il est projeté",
@@ -387,10 +385,7 @@
       "factor_watch_races": "Les résultats de course confirmeront ou contesteront cette lecture",
       "rescoutHint": "Relance une détection pour affiner l'estimation. Un recruteur peu noté atteint sa propre limite de précision avant le dernier niveau.",
       "typesTitle": "Projection par type de coureur",
-      "typesSubtitle": "le plafond est celui du rôle, le potentiel fixe le rythme",
-      "primaryRoleLabel": "Son rôle",
       "primaryProgressionLabel": "Projeté",
-      "otherRolesLabel": "Les autres rôles",
       "typesSubtitleNoLoft": "le potentiel fixe le rythme",
       "naturalRolesLabel": "Ses rôles naturels",
       "otherRolesNaturalLabel": "Autres rôles",
@@ -399,7 +394,6 @@
       "precisionNext": "Le prochain niveau de détection resserre la fourchette de ±{half} à ±{next} points.",
       "precisionUseless": "Un niveau de plus ne resserrerait pas visiblement la fourchette avec ton chef recruteur actuel (±{half} points). Un meilleur chef recruteur le ferait.",
       "precisionAtMax": "C'est aussi étroit que la détection peut le rendre. La largeur de la fourchette repose maintenant sur la note de ton chef recruteur (±{half} points).",
-      "typesLegend": "Barre pleine = niveau d'aujourd'hui. Bande ombrée = où il se dirige de façon réaliste avec ton entraînement : le bas correspond à un travail régulier mais peu ciblé, le haut à un travail ciblé chaque jour. Repère sombre = le plafond du rôle, le même pour tous ceux de ce rôle ; le potentiel décide de la vitesse à laquelle il s'en approche. C'est une estimation, pas une garantie, et aucun recruteur ne connaît un coureur exactement. Les notes sont comparables d'un rôle à l'autre : le même chiffre correspond partout au même niveau.",
       "capsMissingTitle": "Rapport incomplet",
       "capsMissingBody": "Les données de projection ne sont pas encore disponibles pour ce coureur, les perspectives par type ne peuvent donc pas être affichées.",
       "scoutFailed": "Impossible d'envoyer le recruteur. Réessaie dans un instant.",
@@ -457,8 +451,6 @@
         "subtitle": "note par type",
         "legendNow": "Maintenant",
         "allTypes": "Tous les types",
-        "role": "Son rôle",
-        "readsHighest": "Lit le plus haut maintenant",
         "notARanking": "Les rôles reposent sur des aptitudes différentes, ces chiffres ne constituent donc pas un classement de ce qu'il devrait être."
       },
       "physio": {
