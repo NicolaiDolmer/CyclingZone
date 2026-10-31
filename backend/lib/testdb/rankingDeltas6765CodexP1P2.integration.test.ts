@@ -36,7 +36,10 @@ async function fixture(){
     'CREATE INDEX idx_race_results ON race_results(race_id);',
     "CREATE FUNCTION fid(int) RETURNS uuid LANGUAGE SQL IMMUTABLE AS 'SELECT md5($1::text)::uuid';",
     'CREATE TABLE ranking_refresh_work_state(matview_group text,lease_token uuid,leased_version bigint,lease_expires_at timestamptz,requested_version bigint,completed_version bigint);',
-    "INSERT INTO ranking_refresh_work_state VALUES('ranking',fid(900),8,now()+interval '1 hour',8,7);",
+    // A live lease without any wall-clock read (AGENTS.md rule 16): the SQL
+    // fence compares against clock_timestamp(), and 'infinity' is later than
+    // every instant. Lease expiry itself is covered by the M1/M1.5 suites.
+    "INSERT INTO ranking_refresh_work_state VALUES('ranking',fid(900),8,'infinity',8,7);",
     'INSERT INTO riders SELECT fid(i),CASE WHEN i%9=0 THEN NULL ELSE fid(100+i%4) END FROM generate_series(1,24) i;',
     // Three seasons plus the NULL season (every 50th race), three squads.
     `INSERT INTO races SELECT fid(1000+i),CASE WHEN i%50=0 THEN NULL ELSE fid(2000+i%3) END,(ARRAY['senior','senior','u23','junior'])[1+i%4],CASE WHEN i%2=0 THEN 'single' ELSE 'stage_race' END,'race '||i FROM generate_series(1,${RACES}) i;`,
