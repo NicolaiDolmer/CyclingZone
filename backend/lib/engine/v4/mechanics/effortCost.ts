@@ -193,6 +193,63 @@ export function allOutTimeTrialBonus7280(effort: EffortLevel | undefined, timeTr
   return allOut7280Tuning().timeTrialGain * level;
 }
 
+// #7332 (SLUKKET, ejer-go kraeves foer taend; ejer-beslutning 31/10 valg A): 'Spar' paa en
+// ENKELTSTART (itt, itt_hilly; ikke ttt) koster tid og sparer traethed, som i virkeligheden.
+// 'Beskyt' og 'grupetto' koerer som 'spar' mod uret (der er intet hold at beskytte og ingen
+// grupetto). Normal og Alt ud er uaendrede. Kun under s5_profiles_v3 (isSaveItt7332On).
+//   Tid:      kapaciteten faar saveTimeTrialLoss x (evne/99) trukket fra (spejl af
+//             allOutTimeTrialBonus7280), og kravet regnes som 'spar' (individualTimeTrial.ts).
+//   Traethed: belastningen faar spar-rabatten fra en FLAD etape (conditionModelV2.stageLoadV2).
+// Slukket er motor og traethed bit-identiske med main. Taend = ejerens ordrette go i en egen PR.
+export const SAVE_ITT_7332_ACTIVE: boolean = false;
+
+/** Knappen bag pakken (balance, hard rule 17: maalinger kun i balance-internals/). */
+export type SaveItt7332Tuning = {
+  saveTimeTrialLoss: number; // enkeltstart: fradrag i kapaciteten (evne-enheder, som dagsformen) ved evne 99
+};
+
+export const SAVE_ITT_7332_TUNING: Readonly<SaveItt7332Tuning> = Object.freeze({
+  saveTimeTrialLoss: 0.15,
+});
+
+/** Trinnene der koerer som 'spar' paa en enkeltstart, naar pakken er i kraft. */
+export const SAVE_ITT_7332_EFFORTS: ReadonlySet<EffortLevel> = new Set<EffortLevel>(["save", "protect", "grupetto"]);
+
+// Kun tests og dev-benches maaler med kontakten taendt og med kandidat-knapper.
+// Produktionskode kalder aldrig setteren.
+let benchOverride7332: { active: boolean; tuning: Readonly<SaveItt7332Tuning> } | null = null;
+/** KUN tests/dev-benches: taend/sluk #7332 og saet kandidat-knapper. `null` nulstiller. */
+export function setSaveItt7332ForBench(override: { active: boolean; tuning?: Partial<SaveItt7332Tuning> } | null): void {
+  benchOverride7332 = override ? { active: override.active === true, tuning: Object.freeze({ ...SAVE_ITT_7332_TUNING, ...(override.tuning ?? {}) }) } : null;
+}
+/** Er #7332 taendt (kontakten, eller en dev-bench)? Gaelder kun under s5_profiles_v3. */
+export function saveItt7332Active(): boolean {
+  return benchOverride7332 ? benchOverride7332.active : SAVE_ITT_7332_ACTIVE;
+}
+/** Knappen der gaelder lige nu. */
+export function saveItt7332Tuning(): Readonly<SaveItt7332Tuning> {
+  return benchOverride7332?.tuning ?? SAVE_ITT_7332_TUNING;
+}
+/** Er #7332 i kraft for et loeb paa `revision`? */
+export function isSaveItt7332On(revision: unknown): boolean {
+  return saveItt7332Active() && isS5ProfilesV3OrLater(revision);
+}
+/** Koerer `effort` som 'spar' paa en enkeltstart, naar pakken er i kraft (`on`)? */
+export function isSaveItt7332Effort(effort: EffortLevel | undefined, on: boolean): boolean {
+  return on && effort !== undefined && SAVE_ITT_7332_EFFORTS.has(effort);
+}
+
+/**
+ * #7332 (slukket): enkeltstartens pris for 'spar' (og 'beskyt'/'grupetto'). Kapaciteten
+ * faar saveTimeTrialLoss x (evne/99) trukket fra, samme enheder som alt ud's gevinst.
+ * 0 for normal og alt ud, og naar pakken ikke er i kraft (bit-identisk).
+ */
+export function saveTimeTrialPenalty7332(effort: EffortLevel | undefined, timeTrialAbility: number, on: boolean): number {
+  if (!isSaveItt7332Effort(effort, on)) return 0;
+  const level = Number.isFinite(timeTrialAbility) ? Math.max(0, Math.min(99, timeTrialAbility)) / 99 : 0;
+  return saveItt7332Tuning().saveTimeTrialLoss * level;
+}
+
 /** #6641: revisionen der baerer kalibreringen (s5_profiles_v3 og senere, slukket). */
 export function isEffortCalibration6641Revision(revision: unknown): boolean {
   return isS5ProfilesV3OrLater(revision);
