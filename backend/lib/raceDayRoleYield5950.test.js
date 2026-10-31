@@ -428,6 +428,21 @@ test("#5950: rolle pr. rytter - etape-raekken vinder over basisrollen, andre loe
   assert.equal(map.has("c"), false);
 });
 
+test("#5950: to kaptajner paa samme hold - etape-raekken vinder, den anden koerer som hjaelper (som motoren)", () => {
+  const stageByRider = new Map([
+    ["a", { raceId: "R1", stageNumber: 3 }],
+    ["b", { raceId: "R1", stageNumber: 3 }],
+  ]);
+  const entries = [
+    { race_id: "R1", rider_id: "a", team_id: "T", race_role: "captain" },
+    { race_id: "R1", rider_id: "b", team_id: "T", race_role: "helper" },
+  ];
+  const stageRoles = [{ race_id: "R1", stage_number: 3, rider_id: "b", race_role: "captain" }];
+  const map = raceDayRoleByRider(stageByRider, entries, stageRoles);
+  assert.equal(map.get("b"), "captain");
+  assert.equal(map.get("a"), "helper");
+});
+
 test("#5950: rolle-opslaget er fail-safe (fejl = tomt kort = fri rolle)", async () => {
   const stageByRider = new Map([["a", { raceId: "R1", stageNumber: 1 }]]);
   const failing = { from: () => ({ select: () => ({ in: () => ({ in: async () => ({ data: null, error: { message: "boom" } }) }) }) }) };

@@ -23,9 +23,13 @@ test("#5950 harness: populationen er deterministisk og daekker alle aldersgruppe
 test("#5950 harness: loebsdagen giver aldrig mindre end en haard dag, og intet tillaeg = praecis en haard dag", () => {
   const rider = syntheticPopulation().find((r) => r.age === 24);
   for (const role of ROLES) {
-    assert.ok(yieldRatio(rider, "flat", role, PARAMS) >= 1, role);
-    assert.ok(Math.abs(yieldRatio(rider, "flat", role, { stageBonus: 0, leadShare: 0.6 }) - 1) < 1e-12, role);
+    const r = yieldRatio(rider, "flat", role, PARAMS);
+    assert.ok(r.stage >= 1 && r.role >= 1, role);
+    const none = yieldRatio(rider, "flat", role, { stageBonus: 0, leadShare: 0.6 });
+    assert.ok(Math.abs(none.stage - 1) < 1e-12 && Math.abs(none.role - 1) < 1e-12, role);
   }
+  // Kaptajnens tillaeg lander mest i etapens evner, hjaelperens mest uden for dem.
+  assert.ok(yieldRatio(rider, "flat", "captain", PARAMS).stage > yieldRatio(rider, "flat", "helper", PARAMS).stage);
 });
 
 test("#5950 harness: dommen er inside/outside pr. aldersgruppe og rolle, uden tal i markdown", () => {

@@ -34,6 +34,7 @@ import { abilityMult, RACE_PROFILE_ABILITY_MAP } from "./dailyTraining.js";
 import { TRAINING_CONFIG } from "./training.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { raceDayFocusAbilities, RACE_DAY_FALLBACK_PROFILE, RACE_DAY_FOCUS } from "./raceDayYield.js";
+import { resolveStageEntrants } from "./raceStageRoles.js";
 
 export const RACE_DAY_ROLE_YIELD_FLAG_KEY = "race_day_role_yield_enabled";
 export const RACE_DAY_ROLE_YIELD_PARAMS_KEY = "race_day_role_yield_params";
@@ -251,24 +252,42 @@ export function withRaceDayRoleYield(extraTickArgs, { params = null, profileType
 }
 
 /**
- * Ren sammenkobling: rytter -> hans rolle paa dagens etape. Etape-raekken
- * (race_stage_roles.race_role) vinder over basisrollen (race_entries.race_role),
- * samme fallback-kaede som loebsmotoren (raceStageRoles.resolveStageEntrant).
+ * Ren sammenkobling: rytter -> hans rolle paa dagens etape, afgjort PRAECIS som
+ * loebsmotoren goer (raceStageRoles.resolveStageEntrants): etape-raekken
+ * (race_stage_roles.race_role) vinder over basisrollen (race_entries.race_role), og
+ * har to ryttere paa samme hold samme eksklusive rolle, beholder én den og resten
+ * koerer som hjaelper. Grupperet pr. (loeb, etape), saa hver etape afgoeres for sig.
  * @param {Map<string, {raceId: string, stageNumber: number}>} stageByRider
  * @returns {Map<string, string>}
  */
 export function raceDayRoleByRider(stageByRider, entryRows = [], stageRoleRows = []) {
-  const out = new Map();
+  const stageKey = (raceId, stageNumber) => `${raceId}:${Number(stageNumber)}`;
+  const entrantsByStage = new Map();
   for (const row of entryRows ?? []) {
     const stage = stageByRider?.get(row?.rider_id);
-    if (!stage || !row.race_role || stage.raceId !== row.race_id) continue;
-    out.set(row.rider_id, row.race_role);
+    if (!stage || stage.raceId !== row.race_id) continue;
+    const key = stageKey(stage.raceId, stage.stageNumber);
+    if (!entrantsByStage.has(key)) entrantsByStage.set(key, []);
+    entrantsByStage.get(key).push({ rider_id: row.rider_id, team_id: row.team_id ?? null, race_role: row.race_role ?? null });
   }
+  const overridesByStage = new Map();
   for (const row of stageRoleRows ?? []) {
     const stage = stageByRider?.get(row?.rider_id);
     if (!stage || !row.race_role) continue;
     if (stage.raceId !== row.race_id || Number(stage.stageNumber) !== Number(row.stage_number)) continue;
-    out.set(row.rider_id, row.race_role);
+    const key = stageKey(stage.raceId, stage.stageNumber);
+    if (!overridesByStage.has(key)) overridesByStage.set(key, new Map());
+    overridesByStage.get(key).set(row.rider_id, { race_role: row.race_role, effort: "normal" });
+    // En override uden basis-raekke (bør ikke ske) taeller stadig som etapens rolle.
+    if (!entrantsByStage.get(key)?.some((e) => e.rider_id === row.rider_id)) {
+      if (!entrantsByStage.has(key)) entrantsByStage.set(key, []);
+      entrantsByStage.get(key).push({ rider_id: row.rider_id, team_id: null, race_role: null });
+    }
+  }
+  const out = new Map();
+  for (const [key, entrants] of entrantsByStage) {
+    const { entrants: resolved } = resolveStageEntrants(entrants, overridesByStage.get(key));
+    for (const e of resolved) if (e.race_role) out.set(e.rider_id, e.race_role);
   }
   return out;
 }
@@ -285,7 +304,7 @@ export async function loadRaceDayRoleByRider({ supabase, stageByRider, log = con
   // pagination-safe: ét holds koerte ryttere x dagens loeb, UNIQUE (race_id, rider_id) - langt under 1000 raekker
   const entries = await supabase
     .from("race_entries")
-    .select("race_id, rider_id, race_role")
+    .select("race_id, rider_id, team_id, race_role")
     .in("race_id", raceIds)
     .in("rider_id", riderIds);
   if (entries.error) {

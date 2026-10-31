@@ -9,9 +9,10 @@
 // og skriver aldrig til en.
 //
 // MAALET pr. rytter, profil og rolle (samme rytter, samme dag, samme stoej):
-//   andel = loebsdagens samlede udbytte / en haard traeningsdags samlede udbytte paa
-//           etapens profil-evner (loebsdagens basis uden tillaeg)
-// Tillaegget lander kun i etapens og rollens evner, saa "samlet" = "i etapens evner".
+//   andel = loebsdagens udbytte / en haard traeningsdags udbytte (loebsdagens basis
+//           uden tillaeg, haard dag paa etapens profil-evner), begge summeret over
+//   · "etapens evner" (DOMMEN): etapens profil-evner, som baandet er defineret
+//   · "rollens evner" (info): profil-evnerne plus de evner rollens tillaeg lander i
 //
 // TALLENE ER PRIVATE (hard rule 17). Stdout viser KUN dommen (inside/outside) pr.
 // aldersgruppe og rolle. Baandet laeses fra motor-testport-thresholds.json
@@ -37,7 +38,7 @@ import { riderLevelBand } from "../../lib/staffAbilityConstants.js";
 import { raceDayBudgetDivisor } from "../../lib/trainingRaceDayTick.js";
 import { validateDevelopmentCurveBParams } from "../../lib/developmentCurveB.ts";
 import {
-  raceDayRoleBaseProgram, validateRaceDayRoleYieldParams, withRaceDayRoleYield,
+  raceDayRoleBaseProgram, raceDayRoleBonusWeights, validateRaceDayRoleYieldParams, withRaceDayRoleYield,
 } from "../../lib/raceDayRoleYield5950.js";
 
 export const AGE_GROUPS = Object.freeze([
@@ -74,19 +75,30 @@ export function syntheticPopulation() {
   return out;
 }
 
-function yieldOf(result) {
+function yieldOf(result, abilities) {
   let sum = 0;
-  for (const k of VISIBLE_ABILITIES) sum += (result.gains[k] ?? 0) + Number(result.progress[k] ?? 0);
+  for (const k of abilities) sum += (result.gains[k] ?? 0) + Number(result.progress[k] ?? 0);
   return sum;
 }
 
-/** Andelen loebsdag / haard dag for én rytter, profil og rolle (snit over DAYS dage). */
+/** Evnerne rollens tillaeg kan lande i, plus etapens profil-evner. */
+export function roleAbilities(profile, role, params) {
+  const out = new Set(RACE_PROFILE_ABILITY_MAP[profile] ?? []);
+  for (const [k, w] of Object.entries(raceDayRoleBonusWeights(profile, role, params.leadShare))) if (w > 0) out.add(k);
+  return [...out];
+}
+
+/**
+ * Andelen loebsdag / haard dag for én rytter, profil og rolle (snit over DAYS dage).
+ * @returns {{ stage: number|null, role: number|null }}
+ */
 export function yieldRatio(rider, profile, role, params, { curveB = null, budgetDivisor = raceDayBudgetDivisor() } = {}) {
   const caps = buildCapsForRider(rider.abilities, { potentiale: rider.potentiale, age: rider.age }, rider.primary_type, rider.secondary_type);
   const program = raceDayRoleBaseProgram(profile);
   const extra = withRaceDayRoleYield({}, { params, profileType: profile, role });
-  let hard = 0;
-  let race = 0;
+  const stageSet = RACE_PROFILE_ABILITY_MAP[profile] ?? [];
+  const roleSet = roleAbilities(profile, role, params);
+  const sums = { hardStage: 0, raceStage: 0, hardRole: 0, raceRole: 0 };
   for (let day = 0; day < DAYS; day += 1) {
     const args = {
       riderId: rider.id, dateStr: "2026-10-31", tickSeedKey: `sim5950#gd${day + 1}`, age: rider.age,
@@ -95,10 +107,17 @@ export function yieldRatio(rider, profile, role, params, { curveB = null, budget
       riderLevel: riderLevelBand({ is_academy: rider.is_academy, age: rider.age }),
       budgetDivisor, hardDailyCap: Infinity, curveB,
     };
-    hard += yieldOf(applyDailyTick(args));
-    race += yieldOf(applyDailyTick({ ...args, ...extra }));
+    const hard = applyDailyTick(args);
+    const race = applyDailyTick({ ...args, ...extra });
+    sums.hardStage += yieldOf(hard, stageSet);
+    sums.raceStage += yieldOf(race, stageSet);
+    sums.hardRole += yieldOf(hard, roleSet);
+    sums.raceRole += yieldOf(race, roleSet);
   }
-  return hard > 0 ? race / hard : null;
+  return {
+    stage: sums.hardStage > 0 ? sums.raceStage / sums.hardStage : null,
+    role: sums.hardRole > 0 ? sums.raceRole / sums.hardRole : null,
+  };
 }
 
 function quantile(sorted, q) {
@@ -107,20 +126,7 @@ function quantile(sorted, q) {
   return sorted[i];
 }
 
-/** Hele harnessen. Returnerer de fulde tal (private) og dommen (offentlig). */
-export function runHarness({ params, band, curveB = null, population = syntheticPopulation() }) {
-  const cells = {};
-  for (const rider of population) {
-    const group = ageGroupFor(rider.age);
-    for (const role of ROLES) {
-      const key = `${group}/${role}`;
-      cells[key] ??= [];
-      for (const profile of PROFILES) {
-        const r = yieldRatio(rider, profile, role, params, { curveB });
-        if (Number.isFinite(r)) cells[key].push(r);
-      }
-    }
-  }
+function summarize(cells, band) {
   const full = {};
   const verdict = {};
   for (const [key, list] of Object.entries(cells)) {
@@ -130,17 +136,46 @@ export function runHarness({ params, band, curveB = null, population = synthetic
     // Inside = hele midterfeltet (p10-p90) ligger i baandet.
     verdict[key] = stats.p10 >= band.min && stats.p90 <= band.max ? "inside" : "outside";
   }
-  const allInside = Object.values(verdict).every((v) => v === "inside");
-  return { full, verdict, allInside };
+  return { full, verdict, allInside: Object.values(verdict).every((v) => v === "inside") };
 }
 
-export function toVerdictMarkdown({ verdict, allInside }) {
+/** Hele harnessen. Returnerer de fulde tal (private) og dommen (offentlig). */
+export function runHarness({ params, band, curveB = null, population = syntheticPopulation() }) {
+  const stageCells = {};
+  const roleCells = {};
+  for (const rider of population) {
+    const group = ageGroupFor(rider.age);
+    for (const role of ROLES) {
+      const key = `${group}/${role}`;
+      stageCells[key] ??= [];
+      roleCells[key] ??= [];
+      for (const profile of PROFILES) {
+        const r = yieldRatio(rider, profile, role, params, { curveB });
+        if (Number.isFinite(r.stage)) stageCells[key].push(r.stage);
+        if (Number.isFinite(r.role)) roleCells[key].push(r.role);
+      }
+    }
+  }
+  const stage = summarize(stageCells, band);
+  const roleInfo = summarize(roleCells, band);
+  return { ...stage, roleInfo };
+}
+
+function verdictTable(verdict) {
   const lines = [
     "| Aldersgruppe | " + ROLES.join(" | ") + " |",
     "|---|" + ROLES.map(() => "---").join("|") + "|",
   ];
   for (const g of AGE_GROUPS) lines.push(`| ${g.key} | ${ROLES.map((r) => verdict[`${g.key}/${r}`] ?? "-").join(" | ")} |`);
+  return lines;
+}
+
+export function toVerdictMarkdown({ verdict, allInside, roleInfo }) {
+  const lines = ["Dom - etapens evner:", ...verdictTable(verdict)];
   lines.push("", `Samlet dom: ${allInside ? "inside" : "outside"} (alle profiler, ${DAYS} dage pr. rytter, p10-p90 i baandet).`);
+  if (roleInfo) {
+    lines.push("", "Info - rollens evner (etapens evner + hvor rollens tillaeg lander):", ...verdictTable(roleInfo.verdict));
+  }
   return lines.join("\n");
 }
 
