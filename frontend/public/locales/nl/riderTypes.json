@@ -1,12 +1,4 @@
 {
-  "filter": {
-    "label": "Renner-type",
-    "all": "Alle types"
-  },
-  "badge": {
-    "ariaLabel": "Renner-type: {primary} / {secondary}",
-    "ariaLabelSingle": "Renner-type: {primary}"
-  },
   "natural": {
     "label": "Natuurlijk",
     "roleLabel": "Natuurlijke rol",

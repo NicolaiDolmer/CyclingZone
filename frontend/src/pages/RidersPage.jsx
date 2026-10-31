@@ -12,7 +12,7 @@ import {
 import { supabase } from "../lib/supabase";
 import { statStyle, statPlateStyle } from "../lib/statColor";
 import { riderOverallRating } from "../lib/riderRating";
-import { useTypeColumnLabel } from "../lib/useBestRoleDisplay.js";
+import { useTypeColumnLabel } from "../lib/useTypeColumnLabel.ts";
 import { WithBestRole } from "../components/rider/BestRoleTag.jsx";
 import { useNavigate, Link, useSearchParams, useLocation, useNavigationType } from "react-router";
 import NationCell from "../components/rider/NationCell";
@@ -206,7 +206,7 @@ export default function RidersPage() {
   const { t: tRider } = useTranslation("rider"); // #1592: fulde evne-navne til tooltips + legende
   const { t: tTypes } = useTranslation("riderTypes"); // #2849 bølge 2: mobil-fold-tekst for ryttertype
   const reputationOn = useRiderReputation();
-  const typeColumnLabel = useTypeColumnLabel(t("table.type")); // #5435
+  const typeColumnLabel = useTypeColumnLabel(); // #5435
   const navigate = useNavigate();
   // #3071: sæson-referenceår til alders-visning/badges/filtre (se riderAge.js).
   const seasonYear = useActiveSeasonYear();

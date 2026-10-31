@@ -1,12 +1,4 @@
 {
-  "filter": {
-    "label": "Tipo de ciclista",
-    "all": "Todos los tipos"
-  },
-  "badge": {
-    "ariaLabel": "Tipo de ciclista: {primary} / {secondary}",
-    "ariaLabelSingle": "Tipo de ciclista: {primary}"
-  },
   "natural": {
     "label": "Natural",
     "roleLabel": "Rol natural",

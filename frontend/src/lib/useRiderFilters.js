@@ -26,7 +26,6 @@ import {
 import { fetchAllRows } from "./supabasePagination.js";
 import { riderBestRole } from "./riderRating.js";
 import { mergeReputationSortedIds } from "./reputationSort.ts";
-import { isBestRoleDisplayOn } from "./riderRatingMode.js";
 import { RIDER_TYPE_KEYS } from "./riderTypeKeys.js";
 
 export { compareRidersByFilter, mergeSalarySortedIds, mergeRatingSortedIds, applyRiderColumnSort };
@@ -107,8 +106,7 @@ export function useClientRiderFilters(riders = [], seasonYear = null, initialFil
     }
     // #5435: "Best role now" — samme beregning som tallet i rating-kolonnen
     // (riderBestRole), så filtret og det viste rollenavn aldrig er uenige.
-    // Kun virksomt med rating-kontakten tændt.
-    if (filters.best_role && isBestRoleDisplayOn()) {
+    if (filters.best_role) {
       result = result.filter(r => riderBestRole(r).role === filters.best_role);
     }
 
@@ -206,9 +204,9 @@ function applyRiderColumnFilters(query, filters, { prefix = "", ref = null } = {
   // #5435: "Best role now" på server-stien (Rytterdatabasen, tusindvis af
   // rækker) bruger den cachede riders.best_role (#5487, samme tie-regel som
   // klienten). Cachen følger værdi-refreshens kadence, så en rytter der lige
-  // har skiftet bedste rolle efter træning kan halte en refresh. Kun med
-  // rating-kontakten tændt; nøglen valideres mod den lukkede rolleliste.
-  if (filters.best_role && isBestRoleDisplayOn() && RIDER_TYPE_KEYS.includes(filters.best_role)) {
+  // har skiftet bedste rolle efter træning kan halte en refresh. Nøglen
+  // valideres mod den lukkede rolleliste.
+  if (filters.best_role && RIDER_TYPE_KEYS.includes(filters.best_role)) {
     query = query.eq(col("best_role"), filters.best_role);
   }
 

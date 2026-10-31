@@ -41,8 +41,8 @@ test("Ryttertype har sin egen sortérbare kolonne (#1537)", () => {
   );
   assert.match(
     src,
-    /t\("table\.type"\)/,
-    "Type-headeren skal bruge riders:table.type-nøglen",
+    /useTypeColumnLabel\(\)/,
+    "Type-headeren skal bruge den fælles kolonne-etiket (riderTypes:natural.roleLabel, #5435)",
   );
 });
 

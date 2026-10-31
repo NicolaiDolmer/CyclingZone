@@ -6,7 +6,7 @@ import RiderLink from "./RiderLink";
 import RiderTypeBadge from "./rider/RiderTypeBadge";
 import { statPlateStyle } from "../lib/statColor";
 import { riderOverallRating } from "../lib/riderRating";
-import { useTypeColumnLabel } from "../lib/useBestRoleDisplay.js";
+import { useTypeColumnLabel } from "../lib/useTypeColumnLabel.ts";
 import { WithBestRole } from "./rider/BestRoleTag.jsx";
 import PotentialRoleBox from "./rider/PotentialRoleBox";
 import { potentialFromEstimate } from "../lib/potentialDisplay6853";
@@ -34,7 +34,7 @@ import { DataTable, EmptyState, BikeIcon } from "./ui";
 // `currentRiders`, samme array SquadTab/TeamStatsTab allerede får).
 export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
   const { t } = useTranslation("team");
-  const typeColumnLabel = useTypeColumnLabel(t("squad.headers.type")); // #5435
+  const typeColumnLabel = useTypeColumnLabel(); // #5435
   const navigate = useNavigate();
   const [sort, setSort] = useState("_progHi");
   const [sortDir, setSortDir] = useState("desc");

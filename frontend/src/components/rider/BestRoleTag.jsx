@@ -1,20 +1,16 @@
 import { useTranslation } from "react-i18next";
 import { riderBestRole } from "../../lib/riderRating.js";
-import { useBestRoleDisplay } from "../../lib/useBestRoleDisplay.js";
 
 // #5435 (D-049, spec §2): rollenavnet ved rating-tallet — "54 Climb" i en
 // tabel, "54 Climber" på et kort. Tallet ER hans rating i den rolle, så de to
 // hører sammen og står altid lige ved siden af hinanden.
-//
-// Renderer INTET når rating-kontakten er slukket (dagens visning), så den kan
-// sættes ind ved siden af enhver rating-plade uden at flytte noget i dag.
 //
 // Props:
 //   rider   rytter-objekt med fladede evner (samme som riderOverallRating får)
 //   role    rolle-nøgle, hvis kaldet allerede kender den (springer beregningen over)
 //   variant "short" (tabel-rækker, riderTypes.short.*) | "full" (kort, riderTypes.types.*)
 //
-// #5435 opfølgning 3 (ejer 22/9, screenshot af Mit hold): kontakten tændt gav
+// #5435 opfølgning 3 (ejer 22/9, screenshot af Mit hold): den nye visning gav
 // forskudte rating-plader fra række til række, fordi plade+chip lå i én
 // inline-flex boks hvis TOTALBREDDE varierede med chip-tekstens længde
 // ("Punch" vs. "Klatrer" vs. "ITT") — og den boks stod flush mod cellens
@@ -27,16 +23,13 @@ import { useBestRoleDisplay } from "../../lib/useBestRoleDisplay.js";
 // tegn — "Cobbles specialist"(EN)), plus chippens egen polstring, så selv den
 // bredeste label ikke presser rummet ud. Bredden er dermed KONSTANT for alle
 // rækker → totalbredden af plade+plads bliver konstant → pladen lander samme
-// sted, uanset hvilken rolle rækken viser. Kontakten slukket → ingen wrapper
-// overhovedet, dagens snapshots er uændrede.
+// sted, uanset hvilken rolle rækken viser.
 const CHIP_SLOT_WIDTH = {
   short: "calc(7ch + 0.75rem)", // riderTypes.json short.* (px-1.5 = 0.75rem polstring)
   full: "calc(19ch + 1rem)", // riderTypes.json types.* (px-2 = 1rem polstring)
 };
 
 export function WithBestRole({ children, rider = null, role = null, variant = "short", className = "" }) {
-  const on = useBestRoleDisplay();
-  if (!on) return children;
   return (
     <span className={`inline-flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 ${className}`}>
       {children}
@@ -57,8 +50,6 @@ export function WithBestRole({ children, rider = null, role = null, variant = "s
 // rationeret til RiderTypeBadge alene.
 export default function BestRoleTag({ rider = null, role = null, variant = "short", className = "", testId = null }) {
   const { t } = useTranslation("riderTypes");
-  const on = useBestRoleDisplay();
-  if (!on) return null;
   const key = role ?? riderBestRole(rider ?? {}).role;
   if (!key) return null;
   const full = t(`types.${key}`);
