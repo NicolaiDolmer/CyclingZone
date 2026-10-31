@@ -261,7 +261,7 @@ test("#7369: lederens grund siger at angrebet er spillerens valg", () => {
 
 test("#7369: boardet viser maerket ved forslaget, ogsaa i editoren naar felterne viser forslaget", () => {
   const board = readFileSync(new URL("./StagePlanBoard.tsx", import.meta.url), "utf8");
-  assert.match(board, /<SuggestionBadge t=\{t\} \/>\s*<PlanChain t=\{t\} legs=\{suggestion\}/);
+  assert.match(board, /<SuggestionBadge t=\{t\} \/>[\s\S]{0,200}<PlanChain t=\{t\} legs=\{suggestion\}/);
   assert.match(board, /showsSuggestion=\{!saved\}/);
   assert.doesNotMatch(board, /<span className="sr-only">\{t\("stagePlan\.suggestion"\)\}<\/span>/, "mobil: maerket er synligt, ikke kun for skaermlaesere");
 });

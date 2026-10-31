@@ -421,9 +421,12 @@ export default function StagePlanBoard({
     return (
       <>
         {suggestion && (
-          <span className={`flex items-center gap-1.5 ${compact ? "min-w-0" : "flex-wrap"}`}>
+          // Mobil: maerket paa sin egen linje, saa kaeden beholder hele bredden.
+          <span className={compact ? "flex min-w-0 flex-col items-start gap-1" : "flex flex-wrap items-center gap-1.5"}>
             <SuggestionBadge t={t} />
-            <PlanChain t={t} legs={suggestion} route={route} dashed compact={compact} />
+            <span className={compact ? "flex w-full min-w-0" : "contents"}>
+              <PlanChain t={t} legs={suggestion} route={route} dashed compact={compact} />
+            </span>
           </span>
         )}
         {suggestion && reasonKey && <p className="mt-1 text-3xs text-cz-2">{t(reasonKey)}</p>}
