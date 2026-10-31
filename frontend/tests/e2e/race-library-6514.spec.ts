@@ -310,7 +310,7 @@ test.describe("race_library_v2 TIL", () => {
     await expect(page.getByRole("tab", { name: "Arkiv", exact: true })).toHaveCount(0);
     const library = page.getByTestId("race-history-library");
     await expect(library).toBeVisible();
-    await expect(library.getByText("7 løb")).toBeVisible();
+    await expect(library.getByText("6 løb")).toBeVisible();
 
     // Navnet fører til loebets egen side, en udgave til sit resultat.
     await expect(library.getByRole("link", { name: "Vuelta a Burgos" }).first())
@@ -338,7 +338,7 @@ test.describe("race_library_v2 TIL", () => {
     await search.fill("findes ikke");
     await expect(page.getByText("Prøv en anden søgning")).toBeVisible();
     await page.getByRole("button", { name: "Ryd søgning" }).click();
-    await expect(library.getByText("7 løb")).toBeVisible();
+    await expect(library.getByText("6 løb")).toBeVisible();
   });
 });
 
@@ -370,6 +370,8 @@ test.describe("race_library_v2 FRA", () => {
     await expect(page.getByRole("tab", { name: "Løbshistorik" })).toHaveCount(0);
     await expect(page.getByTestId("race-history-library")).toHaveCount(0);
     await expect(page.getByPlaceholder("Søg efter løb")).toHaveCount(0);
+    // Det gamle arkiv: løbsfilter med sæson/klasse/status.
+    await expect(page.getByText("Søg løb", { exact: true })).toBeVisible();
   });
 });
 
@@ -455,7 +457,7 @@ test("billeder: flag on/off, desktop + mobil, og ET samlet foer/efter", async ({
   await gotoCalendar(page);
   const beforeCal = await snap(page, "desktop-calendar-flag-off");
   await gotoArchive(page);
-  await expect(page.getByText(/Viser|Ingen/).first()).toBeVisible();
+  await expect(page.getByText("Søg løb", { exact: true })).toBeVisible();
   await page.waitForLoadState("networkidle");
   const beforeArchive = await snap(page, "desktop-archive-flag-off");
   await page.setViewportSize(MOBILE);
@@ -483,7 +485,7 @@ test("billeder: flag on/off, desktop + mobil, og ET samlet foer/efter", async ({
   await expect(page.getByTestId("calendar-table")).toBeVisible();
   const afterTable = await snap(page, "desktop-calendar-table-flag-on", [[4, '[data-testid="calendar-table-search"]']]);
   await gotoArchive(page);
-  await expect(page.getByTestId("race-history-library").getByText("7 løb")).toBeVisible();
+  await expect(page.getByTestId("race-history-library").getByText("6 løb")).toBeVisible();
   await page.waitForLoadState("networkidle");
   const afterHistory = await snap(page, "desktop-race-history-flag-on", [
     [5, '[role="tab"]:has-text("Løbshistorik")'],
@@ -501,7 +503,7 @@ test("billeder: flag on/off, desktop + mobil, og ET samlet foer/efter", async ({
   await expect(page.getByTestId("calendar-table")).toBeVisible();
   await snap(page, "mobile-calendar-table-flag-on", [], false);
   await gotoArchive(page);
-  await expect(page.getByTestId("race-history-library").getByText("7 løb")).toBeVisible();
+  await expect(page.getByTestId("race-history-library").getByText("6 løb")).toBeVisible();
   await page.waitForLoadState("networkidle");
   const afterHistoryMobile = await snap(page, "mobile-race-history-flag-on", [], false);
 
