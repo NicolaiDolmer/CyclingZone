@@ -151,8 +151,8 @@ function noteRoute(raw: { distance_km: number; finale_type?: string; climbs?: un
 const ATTACK_LAST_10: StagePlanLeg[] = [{ task: "stay_sheltered" }, { task: "attack", from: { at: "final_km" } }];
 const TEMPO_LAST_10: StagePlanLeg[] = [{ task: "shelter_leader" }, { task: "tempo", from: { at: "final_km" } }];
 
-test("#7383: kontakten er slukket (samme kopi som motoren)", () => {
-  assert.equal(FINAL_KM_BOUNDARY_7383_ACTIVE, false);
+test("#7383: kontakten er taendt (ejer-go 31/10, samme kopi som motoren)", () => {
+  assert.equal(FINAL_KM_BOUNDARY_7383_ACTIVE, true);
 });
 
 test("#7383: de sidste 10 km paa aaben vej giver ingen note", () => {
@@ -163,21 +163,21 @@ test("#7383: de sidste 10 km paa aaben vej giver ingen note", () => {
 
 test("#7383: de sidste 10 km inde i slutstigningen: foden for holdarbejde, finalen for angrebet (anden halvdel)", () => {
   const { route, features } = noteRoute({ distance_km: 140, climbs: [{ name: "Top", crest_km: 140, length_km: 25, category: "1", summit_finish: true }] });
-  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, route, features), [{ kind: "feature", leg: 1, feature: "climb", place: "finale" }]);
-  assert.deepEqual(stagePlanSwitchNotes(TEMPO_LAST_10, route, features), [{ kind: "feature", leg: 1, feature: "climb", place: "start" }]);
+  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, route, features, false), [{ kind: "feature", leg: 1, feature: "climb", place: "finale" }]);
+  assert.deepEqual(stagePlanSwitchNotes(TEMPO_LAST_10, route, features, false), [{ kind: "feature", leg: 1, feature: "climb", place: "start" }]);
   assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, route, features, true), [], "kontakten deler stigningen");
 });
 
 test("#7383: en stigning foer maal: naermeste ende (foden eller toppen)", () => {
   const foot = noteRoute({ distance_km: 150, climbs: [{ name: "A", crest_km: 146, length_km: 10, category: "2" }] });
-  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, foot.route, foot.features).map((n) => n.kind === "feature" && n.place), ["start"]);
+  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, foot.route, foot.features, false).map((n) => n.kind === "feature" && n.place), ["start"]);
   const top = noteRoute({ distance_km: 150, climbs: [{ name: "A", crest_km: 144, length_km: 10, category: "2" }] });
-  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, top.route, top.features).map((n) => n.kind === "feature" && n.place), ["end"]);
+  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, top.route, top.features, false).map((n) => n.kind === "feature" && n.place), ["end"]);
 });
 
 test("#7383: en sektor taeller som eet stykke", () => {
   const { route, features } = noteRoute({ distance_km: 150, profile_type: "cobbles", sectors: [{ name: "S", kind: "cobbles", start_km: 138, length_km: 4 }] });
-  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, route, features), [{ kind: "feature", leg: 1, feature: "sector", place: "start" }]);
+  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, route, features, false), [{ kind: "feature", leg: 1, feature: "sector", place: "start" }]);
   assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, route, features, true), []);
 });
 
@@ -193,7 +193,7 @@ test("#7383: nedkoerselsfinalen: to skift paa samme sted, og noten bliver staaen
 test("#7383 (Codex-review): overlappende stigning og sektor loeses som rutegeneratoren", () => {
   const { route, features } = noteRoute({ distance_km: 150, climbs: [{ name: "A", crest_km: 139, length_km: 9, category: "3" }], sectors: [{ name: "S", start_km: 134, length_km: 11 }] });
   assert.deepEqual(features.map((f) => [f.kind, f.from_km, f.to_km]), [["climb", 130, 139], ["sector", 139, 145]]);
-  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, route, features), [{ kind: "feature", leg: 1, feature: "sector", place: "start" }], "starter ved 139 som motoren");
+  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, route, features, false), [{ kind: "feature", leg: 1, feature: "sector", place: "start" }], "starter ved 139 som motoren");
 });
 
 test("#7383: notens tekst findes paa alle sprog", () => {

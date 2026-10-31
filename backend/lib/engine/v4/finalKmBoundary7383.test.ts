@@ -83,10 +83,10 @@ const seg = {
   cobbles: (from_km: number, to_km: number): Segment => ({ kind: "cobbles", from_km, to_km, sector_name: "S", stars: 3 }),
 };
 
-test("#7383: kontakten er slukket, og frontendens kopi er den samme", () => {
-  assert.equal(FINAL_KM_BOUNDARY_7383_ACTIVE, false);
-  assert.equal(finalKmBoundary7383Active(), false);
-  for (const revision of REVISIONS) assert.equal(isFinalKmBoundary7383On(revision), false, String(revision));
+test("#7383: kontakten er taendt (ejer-go 31/10), og frontendens kopi er den samme", () => {
+  assert.equal(FINAL_KM_BOUNDARY_7383_ACTIVE, true);
+  assert.equal(finalKmBoundary7383Active(), true);
+  for (const revision of REVISIONS) assert.equal(isFinalKmBoundary7383On(revision), revision === "s5_profiles_v3", String(revision));
   const model = readFileSync(path.join(here, "..", "..", "..", "..", "frontend", "src", "components", "race", "StagePlanModel.ts"), "utf8");
   const match = model.match(/export const FINAL_KM_BOUNDARY_7383_ACTIVE\s*=\s*(true|false)\s*;/);
   assert.ok(match, "StagePlanModel.ts skal have sin kopi af kontakten");
