@@ -158,6 +158,51 @@ test("condition_model_v2: default off, kræver dato-modellen, fejl kaster", asyn
   await assert.rejects(isConditionModelV2Enabled(flagClient({}, { message: "offline" })), /ownership/);
 });
 
+// #7332 (ejer 31/10 valg A, SLUKKET): spar mod uret sparer traethed som spar paa en flad etape.
+test('#7332: spar/beskyt/grupetto paa enkeltstart faar flad-etapens spar-rabat; slukket = uaendret', async () => {
+  const { saveIttLoadMultiplier7332 } = await import('./conditionModelV2.js');
+  const { effortFatigueMultiplier } = await import('./raceRoles.js');
+  const { setSaveItt7332ForBench, SAVE_ITT_7332_ACTIVE } = await import('./engine/v4/mechanics/effortCost.ts');
+  const V3 = 's5_profiles_v3';
+  const load = (effort, profileType, rulesRevision = V3) => stageLoadV2({ profileType, distanceKm: 30, effort, rulesRevision });
+  assert.equal(SAVE_ITT_7332_ACTIVE, false, 'taend kraever ejerens ordrette go i en egen PR');
+  // Slukket: som main, hvor enkeltstarter ignorerer indsatsen (spar = normal).
+  for (const profileType of ['itt', 'itt_hilly', 'ttt']) {
+    for (const effort of ['save', 'protect', 'grupetto']) {
+      assert.equal(load(effort, profileType), load('normal', profileType), `${profileType}/${effort}: slukket = normal`);
+      assert.equal(saveIttLoadMultiplier7332(effort, profileType, V3), null);
+    }
+  }
+  const offAllOut = { itt: load('all_out', 'itt'), itt_hilly: load('all_out', 'itt_hilly') };
+  const offMountainSave = load('save', 'mountain');
+  try {
+    setSaveItt7332ForBench({ active: true });
+    const flatSave = effortFatigueMultiplier('save', { profileType: 'flat', rulesRevision: V3 });
+    assert.ok(flatSave < 1, 'flad-etapens spar-rabat er en rabat');
+    for (const profileType of ['itt', 'itt_hilly']) {
+      const normal = load('normal', profileType);
+      const save = load('save', profileType);
+      assert.ok(save < normal, `${profileType}: spar er lavere belastning end normal`);
+      assert.ok(Math.abs(save - normal * flatSave) < 1e-9, `${profileType}: praecis flad-etapens spar-rabat`);
+      assert.equal(load('protect', profileType), save, `${profileType}: beskyt = spar`);
+      assert.equal(load('grupetto', profileType), save, `${profileType}: grupetto = spar`);
+      assert.equal(load('all_out', profileType), offAllOut[profileType], `${profileType}: alt ud uaendret`);
+    }
+    for (const effort of ['save', 'protect', 'grupetto']) {
+      assert.equal(saveIttLoadMultiplier7332(effort, 'ttt', V3), null, `ttt/${effort}: holdtidskoerslen uroert`);
+      assert.equal(load(effort, 'ttt'), load('normal', 'ttt'), `ttt/${effort}: som foer`);
+    }
+    for (const effort of ['normal', 'all_out']) assert.equal(saveIttLoadMultiplier7332(effort, 'itt', V3), null, `itt/${effort}: ikke omfattet`);
+    assert.equal(load('save', 'mountain'), offMountainSave, 'vejetaper uroerte');
+    for (const rev of ['s5_profiles_v2', 's5_profiles_v1', 'legacy', null]) {
+      assert.equal(load('save', 'itt', rev), load('normal', 'itt', rev), `${String(rev)}: aeldre revisioner uroerte`);
+    }
+  } finally {
+    setSaveItt7332ForBench(null);
+  }
+  assert.equal(load('save', 'itt'), load('normal', 'itt'), 'nulstillet = slukket');
+});
+
 // #6641/#7280: Alt ud-pakkens traethedspris (slukket kontakt; dev-bench-setteren taender den).
 test('#7280: alt ud koster mere traethed under pakken, ogsaa i enkeltstart; slukket = uaendret', async () => {
   const { allOutLoadMultiplier7280, stageLoadV2 } = await import('./conditionModelV2.js');
