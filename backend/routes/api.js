@@ -268,7 +268,6 @@ import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.j
 import { TRAINING_BULK_DAY_FLAG_KEY } from "../lib/trainingBulkDayFlag.js";
 import { TRAINING_DECISION_FLAG_KEY } from "../lib/trainingDecisionFlag.js"; // #6110 S26
 import { loadFatigueStreaks } from "../lib/trainingFatigueStreak.js"; // #6110 S26
-import { isRiderBestRoleDisplayEnabled } from "../lib/riderBestRoleDisplayFlag.js";
 import { displayPotentialBand, bestPotentialBand, isPotentialBestRoleEnabled } from "../lib/potentialDisplayBand.js"; // #6853
 import { readReputationStage, isReputationReadEnabled } from "../lib/reputationFlag.js";
 import { isYouthSquadPagesEnabled } from "../lib/youthSquadPagesFlag.js"; // #5519
@@ -1342,7 +1341,6 @@ router.get("/deadline-day/status", requireAuth, async (req, res) => {
 // GET /api/display-flags — visnings-kontakter klienten skal kende på ALLE sider
 // (hentes én gang af Layout, ikke pr. side). Bare booleans, evalueret server-side
 // mod viewerens beta-status; klienten læser aldrig app_config selv.
-//   rider_best_role_display (#5435): rating = bedste rolle nu + "Natural role"-badge.
 //   youth_squad_pages (#5519): U23 team- og Junior team-siderne + menupunkterne.
 //   rider_reputation_enabled (#4956): earned rider reputation is visible/readable
 //     only when the custom off|shadow|on flag is on; shadow stays false here.
@@ -1350,20 +1348,18 @@ router.get("/deadline-day/status", requireAuth, async (req, res) => {
 router.get("/display-flags", requireAuth, presencePulseLimiter, async (req, res) => {
   try {
     const isBetaTester = await isViewerBetaTester(req);
-    const [riderBestRoleDisplay, youthSquadPages, reputationStage] = await Promise.all([
-      isRiderBestRoleDisplayEnabled(supabase, { isBetaTester }),
+    const [youthSquadPages, reputationStage] = await Promise.all([
       isYouthSquadPagesEnabled(supabase, { isBetaTester }),
       readReputationStage(supabase),
     ]);
     res.json({
-      rider_best_role_display: riderBestRoleDisplay,
       youth_squad_pages: youthSquadPages,
       rider_reputation_enabled: isReputationReadEnabled(reputationStage),
     });
   } catch (err) {
     captureException(err);
     // Visnings-kontakt: en fejl må aldrig vælte siden — svar med fail-safe.
-    res.json({ rider_best_role_display: false, youth_squad_pages: false, rider_reputation_enabled: false });
+    res.json({ youth_squad_pages: false, rider_reputation_enabled: false });
   }
 });
 

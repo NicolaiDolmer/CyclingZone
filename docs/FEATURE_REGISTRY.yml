@@ -490,11 +490,10 @@ features:
     title_en: Rating shows best role now
     title_da: Rating viser bedste rolle nu
     state: live
-    flag: rider_best_role_display
     ssot: docs/superpowers/specs/2026-09-11-ryttertype-visning-og-punch-loft-design.md
     epic: 5435
-    verified: 2026-09-27
-    note: 'Beta 24/9 kl. 19:05; on for alle 26/9 kl. 22:27 sammen med vaerdiskiftet #5443 (ejer "koer").'
+    verified: 2026-10-31
+    note: 'On for alle siden 26/9; flaget rider_best_role_display pensioneret 31/10 (#6853), visningen er permanent.'
 
   - id: youth-squad-pages
     area: squad

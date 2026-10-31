@@ -46,7 +46,9 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 ## squad
 
-**arkiv:** `contracts` · `rider-compare-and-watchlist` · `rider-rating-best-role-display` · `squad-management` · `youth-squad-pages`
+**live:** Rating shows best role now (`rider-rating-best-role-display`) 2026-10-31
+
+**arkiv:** `contracts` · `rider-compare-and-watchlist` · `squad-management` · `youth-squad-pages`
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|

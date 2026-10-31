@@ -129,25 +129,10 @@ function jsonResponse(data, status = 200, extraHeaders = {}) {
   });
 }
 
-// #5435: rating-visningen "bedste rolle nu" er ON på preview-deployet (ejeren
-// skal kunne se den før flaget flippes), men kan slås fra med ?bestRole=off for
-// et før/efter-par — også på en telefon uden devtools. Valget huskes i
-// localStorage (cz_mock_best_role), så det overlever navigation.
-function previewBestRoleEnabled() {
-  try {
-    const param = new URLSearchParams(window.location.search).get("bestRole");
-    if (param === "on") localStorage.setItem("cz_mock_best_role", "1");
-    if (param === "off") localStorage.setItem("cz_mock_best_role", "0");
-    return localStorage.getItem("cz_mock_best_role") !== "0";
-  } catch {
-    return true;
-  }
-}
-
 // #5519: U23 team- og Junior team-siderne er ON på preview-deployet (ejeren
 // skal kunne se dem før flaget flippes), men kan slås fra med ?youthSquads=off
-// for et før/efter-par af menuen og Akademiets Coming soon-kort. Samme mønster
-// og samme localStorage-huske som previewBestRoleEnabled ovenfor.
+// for et før/efter-par af menuen og Akademiets Coming soon-kort. Valget huskes i
+// localStorage (cz_mock_youth_squads), så det overlever navigation.
 function previewYouthSquadsEnabled() {
   try {
     const param = new URLSearchParams(window.location.search).get("youthSquads");
@@ -426,11 +411,10 @@ export function installPreviewMock() {
       // fail-safe off-default (season_signup_enabled i app_config er 'off' i
       // prod), så ejeren kan se og gennemklikke kortet på preview FØR flaget
       // nogensinde flippes (docs' "ejeren skal kunne teste på preview"-regel).
-      // #5435: se previewBestRoleEnabled ovenfor. Kun her (ikke i
+      // #5519: se previewYouthSquadsEnabled ovenfor. Kun her (ikke i
       // mockHandlers.js), så Playwright-snapshots beholder dagens visning.
       if (method === "GET" && /\/api\/display-flags$/.test(url)) {
         return jsonResponse({
-          rider_best_role_display: previewBestRoleEnabled(),
           youth_squad_pages: previewYouthSquadsEnabled(), // #5519
         });
       }

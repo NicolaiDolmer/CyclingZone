@@ -61,7 +61,7 @@ export const STAGE_FLAGS = Object.freeze([
   // #5319: træningskatalog v3 (5 nye hårde sessioner), seedet off. Flip er ejer-only.
   { key: "training_catalog_v3", area: "training", label: "Træningskatalog v3 (nye hårde sessioner)" },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlægger" },
-  // #5435: kun visning. Flippes i samme deploy som værdiskiftet (#5443/#5497).
+  // #5435: pensioneret (#6853), koden læser den ikke. Rækken bliver kun for patch notes-mærket.
   { key: "rider_best_role_display", area: "squad", label: "Rating = bedste rolle nu (visning)" },
   // #5519: kun visning + ét laese-endpoint. Ejeren flipper efter visuelt go.
   { key: "youth_squad_pages", area: "squad", label: "U23 team- og Junior team-sider" },

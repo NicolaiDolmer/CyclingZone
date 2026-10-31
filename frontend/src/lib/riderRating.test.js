@@ -6,7 +6,6 @@ import {
   riderBestRole, riderOverallRating, riderTypeRating,
 } from "./riderRating.js";
 import { DISPLAY_RECIPE_KEYS, ratingForRole } from "./generated/displayRecipes.js";
-import { isBestRoleDisplayOn, setBestRoleDisplay } from "./riderRatingMode.js";
 import { DISPLAY_RECIPE_KEYS as BACKEND_RECIPE_KEYS } from "../../../backend/lib/weights/displayRecipes.js";
 
 // #5321 — forward-guard. Rod-årsagen bag "samme rytter, to forskellige ratings"
@@ -113,15 +112,8 @@ test("alle 8 roller giver et gyldigt tal i [0,99] for en rytter med evner", () =
 });
 
 // ============================================================================
-// #5435 (D-049) — bedste rolle nu (model A), bag kontakten
+// #5435 (D-049) — bedste rolle nu (model A). #6853: kontakten er fjernet.
 // ============================================================================
-
-// Kører en test med kontakten i en bestemt stilling og sætter den tilbage.
-function withMode(on, fn) {
-  const before = isBestRoleDisplayOn();
-  setBestRoleDisplay(on);
-  try { fn(); } finally { setBestRoleDisplay(before); }
-}
 
 function climberProfile() {
   const r = {};
@@ -166,21 +158,11 @@ test("#5435: live evner vinder over en halende cache", () => {
   assert.deepEqual(riderBestRole(rider), live);
 });
 
-test("#5435: kontakt OFF → riderOverallRating er uændret egen rolle", () => {
-  withMode(false, () => {
-    const rider = { ...climberProfile(), primary_type: "sprinter" };
-    assert.equal(riderOverallRating(rider), ratingForRole(rider, "sprinter"));
-    assert.equal(riderOverallRating({ ...climberProfile() }), null, "ingen primary_type → null");
-  });
-});
-
-test("#5435: kontakt ON → riderOverallRating = bedste rolle nu, og kan kun hæve tallet", () => {
-  withMode(true, () => {
-    const rider = { ...climberProfile(), primary_type: "sprinter" };
-    const best = riderBestRole(rider);
-    assert.equal(riderOverallRating(rider), best.rating);
-    assert.ok(best.rating >= ratingForRole(rider, "sprinter"), "ejer-regel 17/9: aldrig lavere end egen rolle");
-    // primary_type er ikke længere nødvendig for at vise et tal.
-    assert.equal(riderOverallRating(climberProfile()), best.rating);
-  });
+test("#5435: riderOverallRating = bedste rolle nu, og kan kun hæve tallet", () => {
+  const rider = { ...climberProfile(), primary_type: "sprinter" };
+  const best = riderBestRole(rider);
+  assert.equal(riderOverallRating(rider), best.rating);
+  assert.ok(best.rating >= ratingForRole(rider, "sprinter"), "ejer-regel 17/9: aldrig lavere end egen rolle");
+  // primary_type er ikke længere nødvendig for at vise et tal.
+  assert.equal(riderOverallRating(climberProfile()), best.rating);
 });
