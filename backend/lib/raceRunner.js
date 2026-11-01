@@ -123,6 +123,7 @@ import { applyStageResultAtomic } from "./stageResultRpc.js";
 import { POOL_TARGET_SIZE } from "./economyConstants.js";
 import { loadWithdrawnTeamIds, releaseTeamsThatDidNotStart, reconcileDidNotStartReleases } from "./raceWithdrawal.js";
 import { loadClearedTeamIds } from "./raceEntryClears.js";
+import { floorAwareRescueCap, loadSameDaySiblingNeeds } from "./raceDayFloorPlan.js"; // #7339
 import { loadRaceTrainNowLock } from "./trainNowLock.js"; // #6006/#6139
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
 import { captureException } from "./sentry.js";
@@ -1453,6 +1454,8 @@ export async function fillMissingTeamEntries({
   const spentRows=race.season_id && thisWindow
     ? await loadSpentRaceDays({supabase,raceId:race.id,riderIds:[...byTeam.values()].flat().map(row=>row.rider_id)}) : [];
   const spentRiderIds=new Set(spentRows.map(row=>row.rider_id));
+  // #7339: et hold uden entries fyldes kun så dybt, at holdets andre løb samme dag kan nå gulvet.
+  const siblingNeeds = await loadSameDaySiblingNeeds({ supabase, race, thisWindow, teamIds: [...byTeam.keys()].filter((id) => !entryCountByTeam.get(id) && !injuryShortTeamIds.has(id)) });
   for (const [teamId, teamRiders] of byTeam) {
     const available = excludeBoundRiders({
       riders: teamRiders.filter(row=>!spentRiderIds.has(row.rider_id)), thisWindow, otherRaces: otherRacesByTeam.get(teamId) || [],
@@ -1470,7 +1473,7 @@ export async function fillMissingTeamEntries({
     const isRescue = existingCount > 0 || injuryShortTeamIds.has(teamId);
     const rule = isRescue
       ? { min: MIN_RACE_ENTRIES - existingCount, max: MIN_RACE_ENTRIES - existingCount }
-      : sizeRule;
+      : { ...sizeRule, max: floorAwareRescueCap({ max: sizeRule.max, supply: available.length, siblings: siblingNeeds.get(teamId) }) }; // #7339
     const picks = autopickTeamSelection({ riders: available, stages, sizeRule: rule });
     // Rækker kun hvis holdet FAKTISK når gulvet. Kan det ikke (for få frie ryttere),
     // stiller det ikke op alligevel — og så skal der ikke skrives auto-entries der

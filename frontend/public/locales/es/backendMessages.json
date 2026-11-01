@@ -294,6 +294,10 @@
       "message24h": "El día de carrera {gameDay} empieza en menos de 24 horas. Tienes {count, plural, one {1 ciclista sénior} other {# ciclistas sénior}} y necesitas {missing, plural, one {1 más} other {# más}} para sacar un equipo. Busca un ciclista en el mercado.",
       "message3h": "El día de carrera {gameDay} empieza en menos de 3 horas. Todavía necesitas {missing, plural, one {1 ciclista sénior} other {# ciclistas sénior}} para sacar un equipo. Busca un ciclista en el mercado."
     },
+    "raceDayCoverage": {
+      "title": "No tienes ciclistas para todas las carreras",
+      "message": "Día de carrera {gameDay}: solo puedes sacar equipo en {fieldable} de {total} carreras. Cada carrera necesita {min} ciclistas. Elige tus carreras o busca más ciclistas en el mercado."
+    },
     "selectionWarning": {
       "title": "Hace falta la selección de la plantilla",
       "message": "{race} empieza en menos de 36 horas y aún no has elegido tu plantilla. Selecciona a tus ciclistas o deja que el asistente seleccione por ti."

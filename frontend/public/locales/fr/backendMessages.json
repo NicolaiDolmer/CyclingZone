@@ -294,6 +294,10 @@
       "message24h": "Le jour de course {gameDay} démarre dans les 24 heures. Tu as {count, plural, one {# coureur senior} other {# coureurs seniors}} et il t'en faut {missing, plural, one {# de plus} other {# de plus}} pour aligner une équipe. Trouve un coureur sur le marché.",
       "message3h": "Le jour de course {gameDay} démarre dans les 3 heures. Il te manque encore {missing, plural, one {# coureur senior} other {# coureurs seniors}} pour aligner une équipe. Trouve un coureur sur le marché."
     },
+    "raceDayCoverage": {
+      "title": "Pas assez de coureurs pour toutes les courses",
+      "message": "Jour de course {gameDay} : tu ne peux aligner une équipe que dans {fieldable} des {total} courses. Chaque course demande {min} coureurs. Choisis tes courses, ou trouve d'autres coureurs sur le marché."
+    },
     "selectionWarning": {
       "title": "Sélection de l'effectif nécessaire",
       "message": "{race} démarre dans les 36 heures et tu n'as pas encore choisi ton effectif. Sélectionne tes coureurs, ou laisse l'assistant le faire pour toi."

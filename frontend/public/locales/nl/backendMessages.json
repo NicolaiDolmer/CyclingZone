@@ -294,6 +294,10 @@
       "message24h": "Koersdag {gameDay} begint binnen 24 uur. Je hebt {count, plural, one {1 seniorenrenner} other {# seniorenrenners}} en hebt er {missing, plural, one {nog 1} other {nog #}} nodig om een team op te stellen. Zoek een renner op de markt.",
       "message3h": "Koersdag {gameDay} begint binnen 3 uur. Je hebt nog {missing, plural, one {1 seniorenrenner} other {# seniorenrenners}} nodig om een team op te stellen. Zoek een renner op de markt."
     },
+    "raceDayCoverage": {
+      "title": "Niet genoeg renners voor elke koers",
+      "message": "Koersdag {gameDay}: je kunt maar in {fieldable} van de {total} koersen een team opstellen. Elke koers vraagt {min} renners. Kies je koersen, of zoek extra renners op de markt."
+    },
     "selectionWarning": {
       "title": "Selectie nodig",
       "message": "{race} begint binnen 36 uur en je hebt je selectie nog niet gekozen. Kies je renners, of laat de assistent automatisch voor je kiezen."
