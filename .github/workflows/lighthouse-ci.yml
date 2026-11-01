@@ -132,7 +132,7 @@ jobs:
               const manifest = JSON.parse(fs.readFileSync('.lighthouseci/manifest.json', 'utf8'));
               const rep = manifest.find(m => m.isRepresentativeRun) || manifest[0];
               const s = rep.summary;
-              measured = true;
+              measured = thresholds.every(([key]) => typeof s[key] === 'number');
               breaches = thresholds
                 .filter(([key, , min]) => s[key] != null && s[key] < min)
                 .map(([key, label, min]) => ({ label, score: Math.round(s[key] * 100), min: Math.round(min * 100) }));

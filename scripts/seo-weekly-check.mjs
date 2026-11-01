@@ -72,7 +72,9 @@ function main() {
       prev = {};
     }
   }
-  fs.writeFileSync(scoresOut, JSON.stringify(curr, null, 2));
+  // Bevar forrige scores for sider der ikke blev maalt, saa en delvis/fejlet maaling
+  // ikke sletter baseline (en genoprettet regression skal stadig opdages).
+  fs.writeFileSync(scoresOut, JSON.stringify({ ...prev, ...curr }, null, 2));
   if (fs.existsSync(dropOut)) fs.rmSync(dropOut);
   const drops = findDrops(prev, curr);
   if (drops.length > 0) fs.writeFileSync(dropOut, renderDropReport(drops));

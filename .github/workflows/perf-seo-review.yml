@@ -44,6 +44,7 @@ jobs:
         continue-on-error: true
         uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18 # v12
         with:
+          configPath: ./lighthouserc.prod.json
           # Kun offentlige sider (forside + marketing, jf. marketing/app/sitemap.ts).
           # App'en bag login males ikke for SEO (#7440).
           urls: |
@@ -79,8 +80,8 @@ jobs:
           if [ -f seo-drop-report.md ]; then
             echo "" >> seo-drop-report.md
             echo "Run: $RUN_URL" >> seo-drop-report.md
-            gh label create perf-seo-inbox -c "0E8A16" -d "Ugentlig perf/SEO-review inbox (bot)" --force
-            gh issue create --title "[bot] SEO-fald paa offentlige sider $(date -u +%F)" --label "perf-seo-inbox,claude:todo,priority:med" --body-file seo-drop-report.md
+            gh label create perf-seo-drop -c "D93F0B" -d "Markant SEO-fald paa offentlige sider (bot)" --force
+            gh issue create --title "[bot] SEO-fald paa offentlige sider $(date -u +%F)" --label "perf-seo-drop,claude:todo,priority:med" --body-file seo-drop-report.md
           else
             echo "Intet markant SEO-fald - ingen issue."
           fi
