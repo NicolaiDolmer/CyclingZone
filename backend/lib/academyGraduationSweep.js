@@ -75,7 +75,7 @@ async function runSweepOnce({
     } catch (err) {
       // #7474: rækken blev afgjort efter listen blev læst (manageren selv, eller
       // en anden proces). Det er ikke en fejl, bare ikke længere vores opgave.
-      if (err?.message === "not_pending") { alreadyResolved++; continue; }
+      if (err instanceof Error && err.message === "not_pending") { alreadyResolved++; continue; }
       failed++;
       errors.push({ riderId: g.rider_id, teamId: g.team_id, message: err?.message || String(err) });
       console.error(`graduation sweep failed (${g.rider_id}):`, err.message);
