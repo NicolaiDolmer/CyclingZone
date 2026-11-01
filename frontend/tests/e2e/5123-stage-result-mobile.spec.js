@@ -99,7 +99,7 @@ test("during a race, Overblik links straight to the latest stage's OWN result, n
   // synlig. Ingen omvej via kalenderen.
   await expect(page).toHaveURL(/tab=results/);
   await expect(page).toHaveURL(/stage=2/);
-  await expect(page.getByRole("tab", { name: "Resultater", selected: true })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Stillinger", selected: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Etape 2" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByText("Etape 2 · målrækkefølge")).toBeVisible();
 
