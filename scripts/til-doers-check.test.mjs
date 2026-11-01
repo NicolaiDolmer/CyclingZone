@@ -440,3 +440,10 @@ test('Codex P2 #7428: titlens scope giver mål ved PR-merge', () => {
   const notMain = () => JSON.stringify({ number: 9, title: 'fix(4242): noget', body: 'Refs #4242', merged_at: '2026-10-30T00:00:00Z', base: { ref: 'feat/x' } });
   assert.deepEqual(targetsFromPr(notMain, 'o/r', 9), []);
 });
+
+test('cell escaper backslash foer pipe, saa tabellen ikke brydes (CodeQL #385)', async () => {
+  const { cell } = await import('./lib/til-doers.mjs');
+  assert.equal(cell('a|b'), 'a\\|b');
+  assert.equal(cell('a\\|b'), 'a\\\\\\|b');
+  assert.equal(cell('sti\\til\nfil'), 'sti\\\\til fil');
+});

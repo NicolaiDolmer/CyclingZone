@@ -275,8 +275,10 @@ export function decideClose({ issue, door, brandList = [], reopened = null, last
 
 // ---------------------------------------------------------------- rendering
 
-function cell(s) {
-  return String(s || '').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ').trim();
+// Backslash escapes foer pipe (CodeQL #385): ellers bliver et "\" foran et "|"
+// i evidensen til "\\|", og tabellen brydes alligevel.
+export function cell(s) {
+  return String(s || '').replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ').trim();
 }
 
 export function renderComment(door) {
