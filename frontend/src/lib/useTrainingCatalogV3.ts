@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import { fetchPlayerFeatureFlags } from "./playerFeatureFlags.js";
 import { setDisplayCatalogV3, isDisplayCatalogV3 } from "./training.js";
 import { supabase } from "./supabase";
-import { isViewerChangeEvent } from "./viewerChange.ts";
+import { onViewerChange } from "./viewerChange.ts";
 import { createFreshFlagLoader } from "./freshFlagLoader.ts";
 
 export const TRAINING_CATALOG_V3_FLAG_KEY = "training_catalog_v3";
@@ -31,13 +31,12 @@ let authListenerInstalled = false;
 // Codex-fund: svaret afhænger af viewerens beta-status, og modulet overlever
 // logout i samme SPA-fane. Ved viewer-skift glemmes svaret, og visningen falder
 // tilbage til dagens katalog, indtil den nye viewers svar er hentet.
+// #7439: kun et reelt skift af bruger-id nulstiller. SIGNED_IN for samme bruger
+// (Supabase sender det, når fanen bliver synlig igen) beholder svaret.
 function installAuthListener(): void {
   if (authListenerInstalled) return;
   authListenerInstalled = true;
-  supabase.auth.onAuthStateChange((event) => {
-    if (!isViewerChangeEvent(event)) return;
-    loader.reset();
-  });
+  onViewerChange(supabase.auth, () => loader.reset());
 }
 
 export function loadTrainingCatalogV3(): Promise<boolean> {

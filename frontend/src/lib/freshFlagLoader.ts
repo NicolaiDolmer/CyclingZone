@@ -52,6 +52,8 @@ export function createFreshFlagLoader(
     return request;
   }
 
+  // Kun ved reelt viewer-skift (onViewerChange, #7439): reset publicerer false,
+  // så et kald ved faneskift for samme bruger ville slukke flaget i visningen.
   function reset(): void {
     generation += 1;
     cached = null;
