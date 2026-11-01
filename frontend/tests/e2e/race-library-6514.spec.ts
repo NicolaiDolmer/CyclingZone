@@ -245,7 +245,7 @@ test.describe("race_library_v2 TIL", () => {
     await expect(dialog.getByText("Endagsløb")).toBeVisible();
     await expect(dialog.getByTestId("race-peek-terrain")).toBeVisible();
     await expect(dialog.getByText("Mangler udtagelse")).toBeVisible();
-    await expect(dialog.getByText("Passer til holdet")).toBeVisible();
+    await expect(dialog.getByText("Holdets rutematch")).toBeVisible();
     await expect(dialog.getByText(/Bedste bud: Lei Wu/)).toBeVisible();
     // Den ene guld-knap til udtagelsen + "Aabn loebet" til loebssiden.
     await expect(dialog.getByRole("link", { name: "Åbn løbet" })).toHaveAttribute("href", "/races/lib-namur");

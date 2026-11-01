@@ -79,7 +79,7 @@
     "oneDay": "Course d'un jour",
     "terrain": "Terrain",
     "noProfile": "Parcours pas encore publié",
-    "teamFit": "Adéquation de l'équipe",
+    "teamFit": "Adéquation de l'équipe au parcours",
     "bestBet": "Meilleur choix : {name} ({score})",
     "fitUnavailable": "Indisponible pour cette course",
     "status": {
