@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · send Discord-svar (`discord-svar-2026-11-01.md` + `discord-svar-rettelser-2026-11-01.md` i OneDrive `dolmerpc-lokale-filer-2026-11-01/docs-drafts`) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsiden #6665 tager ejeren selv mandag 3/11.
 >
-> **🎯 Next action (PC1, efter 1/11):** følg [briefen på #7336](https://github.com/NicolaiDolmer/CyclingZone/issues/7336) (ejer-designet 1/11). 1) **Tænd #5950 til dørs** (patch note + Hjælp først, tændingskort med tal, ejerens "kør", prod-verifikation). 2) **Beslutningskort #6950/#6110** før 8/11. 3) **Baggrundsbølge 2 laner:** krav 5-oprydning #7380/#7383/#7332/#6975/#6570. 4) **Opfølgning:** #7444 (e2e-genkørsel), #7445 (DB-vagt race_entries). Afslut med til-dørs-tjek pr. issue.
+> **🎯 Next action (PC1, efter 1/11):** følg [briefen på #7336](https://github.com/NicolaiDolmer/CyclingZone/issues/7336#issuecomment-6558152104) (ejer-designet 1/11). 1) **Tænd #5950 til dørs** (patch note + Hjælp først, tændingskort med tal, ejerens "kør", prod-verifikation). 2) **Beslutningskort #6950/#6110** før 8/11. 3) **Baggrundsbølge 2 laner:** krav 5-oprydning #7380/#7383/#7332/#6975/#6570. 4) **Opfølgning:** #7444 (e2e-genkørsel), #7445 (DB-vagt race_entries), **#7446 (lokale mapper via OneDrive-junctions, gør det FØRST på PC1)**. Afslut med til-dørs-tjek pr. issue.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, flag off): ejeren har ikke besluttet om det skal i spillet; kurve "6 kombineret" (#3564) indgår i den samlede måling.
 >
 > **🤖 Working agent:** Ingen aktiv session.

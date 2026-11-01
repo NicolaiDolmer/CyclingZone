@@ -242,6 +242,10 @@
   ],
   "cleanupList": [
     {
+      "issue": 7446,
+      "why": "Cross-PC: lokale arbejdsmapper via OneDrive-junctions (ejer-go 1/11)"
+    },
+    {
       "issue": 7444,
       "why": "CI: frontend-smoke tager gammel shard-måling efter genkørsel (ejer-go 1/11)"
     },
