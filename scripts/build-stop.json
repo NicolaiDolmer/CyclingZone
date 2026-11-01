@@ -492,6 +492,11 @@
       "issue": 7461,
       "reason": "Kalender: én Vis-vælger i stedet for faner + dobbelt division-valg (bag race_library_v2, til beta i dag), ejer-go Discord 1/11",
       "since": "2026-11-01"
+    },
+    {
+      "issue": 7474,
+      "reason": "Graduerings-sweep: to samtidige ticks afgjorde 7 ryttere to gange (dobbeltbesked), ejer-go 1/11",
+      "since": "2026-11-01"
     }
   ]
 }

@@ -122,7 +122,19 @@ function makeSupabase(cfg = {}) {
           },
           insert(row) { rec.gradInserts.push(row); return Promise.resolve({ error: cfg.gradInsertError ?? null }); },
           update(payload) {
-            return { eq(col, val) { rec.gradUpdates.push({ ...payload, __eq: [col, val] }); return Promise.resolve({ error: null }); } };
+            // #7474: finishGraduation kæder .eq(id).eq(status,'pending').select("id")
+            // (compare-and-set). cfg.gradAlreadyResolved = en anden afgørelse kom først.
+            const rowsFor = () => ({ data: cfg.gradAlreadyResolved ? [] : [{ id: "g" }], error: null });
+            return { eq(col, val) {
+              const entry = { ...payload, __eq: [col, val] };
+              rec.gradUpdates.push(entry);
+              const b = {
+                eq(c2, v2) { entry.__eq2 = [c2, v2]; return b; },
+                select() { return Promise.resolve(rowsFor()); },
+                then(resolve, reject) { return Promise.resolve({ error: null }).then(resolve, reject); },
+              };
+              return b;
+            } };
           },
         };
       }
@@ -328,6 +340,15 @@ test("resolveGraduation promote: is_academy=false + ufuldstændig kontrakt heale
   assert.ok(rec.riderUpdates[0].salary !== RIDER.salary, "healer den ufuldstændige pakke (#2902-gate)");
   assert.equal(rec.gradUpdates[0].status, "promoted");
   assert.equal(notify.calls[0].type, "academy_graduated");
+});
+
+test("#7474: en samtidig afgørelse af samme række sender ikke en ekstra besked (compare-and-set)", async () => {
+  const { supabase, rec } = makeSupabase({ gradRow: PENDING_GRAD, rider: RIDER, gradAlreadyResolved: true });
+  const notify = spyNotify();
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 });
+  await resolveGraduation(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r1", action: "promote", seasonNumber: 1, getMarketState, notify });
+  assert.deepEqual(rec.gradUpdates[0].__eq2, ["status", "pending"], "opdateringen kræver status=pending");
+  assert.equal(notify.calls.filter((c) => c.type === "academy_graduated").length, 0);
 });
 
 // #2881 regression: resolveGraduation(promote) overskrev UBETINGET
