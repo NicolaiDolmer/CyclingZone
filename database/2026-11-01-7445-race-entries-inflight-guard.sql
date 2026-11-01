@@ -78,9 +78,17 @@ BEGIN
   RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
 END;
 $$;
+BEGIN;
 REVOKE ALL ON FUNCTION public.guard_race_entries_inflight() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.guard_race_entries_inflight() TO service_role;
+COMMIT;
 
+-- Lock safety (#6342): trigger-DDL tager en ShareRowExclusive-laas paa race_entries; giv op
+-- efter 3 s i stedet for at staa i koe foran spillerlaesninger (auto-migrate kan genkoeres).
+-- DROP + CREATE i een transaktion, saa der aldrig er et oejeblik uden vagt.
+SET lock_timeout = '3s';
+BEGIN;
 DROP TRIGGER IF EXISTS race_entries_a_inflight_guard ON public.race_entries;
 CREATE TRIGGER race_entries_a_inflight_guard BEFORE INSERT OR UPDATE OR DELETE
   ON public.race_entries FOR EACH ROW EXECUTE FUNCTION public.guard_race_entries_inflight();
+COMMIT;
