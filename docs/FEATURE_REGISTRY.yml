@@ -261,8 +261,8 @@ features:
     state: live
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7380
-    verified: 2026-10-31
-    note: Kodekontakt DESCENT_TASK_7380_ACTIVE tændt 31/10 efter ejer-go, kun v3.
+    verified: 2026-11-01
+    note: Live 31/10 efter ejer-go; kodekontakten DESCENT_TASK_7380_ACTIVE fjernet 1/11 (krav 5), reglen gælder altid under s5_profiles_v3.
 
   - id: race-final-km-boundary-7383
     area: race-engine
