@@ -579,5 +579,13 @@ if ($DryRun) {
   }
   Write-Host "Dry-run faerdig - ingen konflikter. Koer uden -DryRun for at anvende aendringer." -ForegroundColor Green
 } else {
+  if ($Script:Conflicts.Count -gt 0) {
+    # Alt andet er koert; konflikter (fx #7446 lokale mapper) giver en fejlende exit.
+    Write-Host ("STOP-MESSAGE: {0} konflikt(er) kraever manuel loesning:" -f $Script:Conflicts.Count)
+    foreach ($c in $Script:Conflicts) {
+      Write-Host ("  - [{0}] {1}" -f $c.Category, $c.Details) -ForegroundColor Red
+    }
+    exit 1
+  }
   Write-Host "Faerdig. Memory + codex-local AI-context synces via OneDrive. Produktionssecrets: brug Infisical." -ForegroundColor Green
 }

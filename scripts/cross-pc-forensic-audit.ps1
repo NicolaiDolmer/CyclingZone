@@ -180,10 +180,12 @@ if (Test-Path $codexLocalDir) {
 $localFolders = @("docs/drafts", "pr-screens", "docs/snapshots")
 foreach ($folder in $(if ($env:OneDrive) { $localFolders } else { @() })) {
   $junction = Join-Path $RepoRoot (Join-Path $folder "local")
+  $expected = [System.IO.Path]::GetFullPath((Join-Path $env:OneDrive (Join-Path "CyclingZone-context\repo-local" ($folder -replace '/','-')))).TrimEnd([char]92)
   $jItem = Get-Item -LiteralPath $junction -Force -ErrorAction SilentlyContinue
-  if (-not $jItem -or $jItem.LinkType -ne "Junction") {
+  $actual = if ($jItem -and $jItem.LinkType -eq "Junction" -and $jItem.Target) { [System.IO.Path]::GetFullPath(($jItem.Target -join '')).TrimEnd([char]92) } else { "" }
+  if ($actual -ine $expected) {
     Add-Finding -Severity "warn" -Category "local-folder-not-linked" -Path "$folder/local" `
-      -Message "$folder/local er ikke en junction til OneDrive" `
+      -Message "$folder/local er ikke en junction til $expected" `
       -Fix "Koer: pwsh -File scripts/link-onedrive-context.ps1"
   }
 }
