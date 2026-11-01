@@ -60,7 +60,7 @@ test("stage tab shows split times at each climb and where own riders lost time",
     overrides: [{ stage_number: 1, rider_id: "r141", race_role: "helper", effort: "normal" }],
     teamOrders: [{ stage_number: 1, riders: [{ rider_id: "r141", effort: "save" }] }],
   });
-  await page.goto("/races/race-6080?stage=1");
+  await page.goto("/races/race-6080?stage=1&tab=results");
 
   const section = page.getByTestId("stage-split-times");
   await expect(section).toBeVisible();
@@ -84,7 +84,7 @@ test("stage tab shows split times at each climb and where own riders lost time",
 
 test("race film shows split times only up to the scrubber", async ({ page }) => {
   await mockRace(page);
-  await page.goto("/races/race-6080?stage=1");
+  await page.goto("/races/race-6080?stage=1&tab=results");
   await page.getByRole("button", { name: "Se løbsfilmen" }).click();
   const dialog = page.getByRole("dialog");
   const scrubber = dialog.getByRole("slider", { name: "Scrub gennem etapen" });
@@ -106,7 +106,7 @@ test("older timeline without group gaps shows no split times", async ({ page }) 
     events: SPLIT_TIMELINE.events.map((e) => (e.type === "gap_update" ? { ...e, params: { gap_seconds: e.params.gap_seconds } } : e)),
   };
   await mockRace(page, { timeline: v3 });
-  await page.goto("/races/race-6080?stage=1");
+  await page.goto("/races/race-6080?stage=1&tab=results");
   await expect(page.getByText("Etapens historie")).toBeVisible();
   await expect(page.getByTestId("stage-split-times")).toHaveCount(0);
 });
@@ -125,7 +125,7 @@ test("before/after image", async ({ browser }, testInfo) => {
     const ctx = await browser.newContext({ viewport: { width, height: 900 }, deviceScaleFactor: 1 });
     const p = await ctx.newPage();
     await mockRace(p);
-    await p.goto("/races/race-6080?stage=1");
+    await p.goto("/races/race-6080?stage=1&tab=results");
     const section = p.getByTestId("stage-split-times");
     await expect(section).toBeVisible();
 

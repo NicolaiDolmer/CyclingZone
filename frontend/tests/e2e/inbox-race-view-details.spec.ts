@@ -157,8 +157,8 @@ test("'Vis detaljer' på en samlet løbslinje åbner løbets resultat med eget h
     });
   }
 
-  // Resultatet: "Sådan endte det" med spillerens egen rytter markeret som sin.
-  await expect(page.getByRole("heading", { name: /^(Sådan endte det|How it ended)$/ })).toBeVisible();
+  // Resultatet: spillerens egen rytter er markeret som sin i Stillinger.
+  await page.getByRole("tab", { name: /^(Stillinger|Standings)$/ }).click();
   const ownRow = page.locator("tr.cz-me", { hasText: `${OWN_RIDER.firstname} ${OWN_RIDER.lastname}` });
   await ownRow.scrollIntoViewIfNeeded();
   await expect(ownRow).toBeVisible();

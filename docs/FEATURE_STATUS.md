@@ -13,7 +13,7 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 ## race-engine
 
-**live:** All out on the decisive climb (`race-all-out-7280`) 2026-10-27 · Day form with causes (`race-day-form-6649`) 2026-10-30 · Descent attacks respect the rider's task (`race-descent-task-7380`) 2026-10-31 · Profile hills in the race engine (`race-engine-profile-hills`) 2026-10-28 · S5 engine rules (s5_profiles_v3) (`race-engine-s5-profiles`) 2026-10-26 · Race engine v3 (`race-engine-v3`) 2026-10-04 · v3 scoring components (`race-engine-v3-scoring`) 2026-10-04 · Race engine v4 (`race-engine-v4`) 2026-10-04 · Stage plan switches exactly 10 km from the finish (`race-final-km-boundary-7383`) 2026-10-31 · Form peaks in races (`race-form-peaks`) 2026-10-27 · Stage intention choice (`race-intention-choice`) 2026-10-27 · Saving effort in individual time trials (`race-itt-save-7332`) 2026-10-31 · Time trial terrain weight (`race-itt-terrain-6595`) 2026-10-31
+**live:** All out on the decisive climb (`race-all-out-7280`) 2026-10-27 · Day form with causes (`race-day-form-6649`) 2026-10-30 · Descent attacks respect the rider's task (`race-descent-task-7380`) 2026-11-01 · Profile hills in the race engine (`race-engine-profile-hills`) 2026-10-28 · S5 engine rules (s5_profiles_v3) (`race-engine-s5-profiles`) 2026-10-26 · Race engine v3 (`race-engine-v3`) 2026-10-04 · v3 scoring components (`race-engine-v3-scoring`) 2026-10-04 · Race engine v4 (`race-engine-v4`) 2026-10-04 · Stage plan switches exactly 10 km from the finish (`race-final-km-boundary-7383`) 2026-10-31 · Form peaks in races (`race-form-peaks`) 2026-10-27 · Stage intention choice (`race-intention-choice`) 2026-10-27 · Saving effort in individual time trials (`race-itt-save-7332`) 2026-11-01 · Time trial terrain weight (`race-itt-terrain-6595`) 2026-10-31
 
 **arkiv:** `form-and-fatigue` · `race-finalize-resumable` · `race-notify-outbox` · `team-selection-and-roles`
 
@@ -24,7 +24,7 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 ## race-day
 
-**live:** Role picker scope (stage N to the end / stage N only) (`role-scope-choice`) 2026-10-06 · Stage page 2.0 (stage tabs, real elevation profile, your day) (`stage-page-v2`) 2026-10-24 · Stage plan along the route (`stage-plan-v1`) 2026-10-27
+**live:** Role picker scope (stage N to the end / stage N only) (`role-scope-choice`) 2026-10-06 · Stage page 2.0 (stage tabs, real elevation profile, your day) (`stage-page-v2`) 2026-11-01 · Stage plan along the route (`stage-plan-v1`) 2026-10-27
 
 **arkiv:** `auto-entry-generator` · `race-day-development` · `race-day-engine` · `race-detail-page` · `race-page-tabs-v2` · `race-replay` · `stage-scheduler`
 

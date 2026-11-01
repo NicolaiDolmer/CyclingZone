@@ -76,7 +76,7 @@ import { computeFinaleAbilityScore } from "../finale.ts";
 import { riderWeatherCpMultiplier } from "../segmentLoop.ts";
 import { STRENGTH_SPEED_EXTRA_TUNING } from "../tuning.ts";
 import { applyDistanceFatigueToCp } from "./distanceFatigue.ts";
-import { allOutTimeTrialBonus7280, applyEffortToDemand, effortCostTuning7280, isAllOut7280On, isSaveItt7332Effort, isSaveItt7332On, saveTimeTrialPenalty7332 } from "./effortCost.ts"; // #7280: alt ud-gevinst; #7332: spar-pris (slukket)
+import { allOutTimeTrialBonus7280, applyEffortToDemand, effortCostTuning7280, isAllOut7280On, isSaveItt7332Effort, saveTimeTrialPenalty7332 } from "./effortCost.ts"; // #7280: alt ud-gevinst; #7332: spar-pris
 import { isOfficialTimesV3OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater, isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
 import { summitFinishSingleFor } from "./komJersey6937.ts";
 import {
@@ -391,7 +391,7 @@ function tickSoloRider(
   terrainWeight: Readonly<Record<SegmentKind, number>> = STRENGTH_SPEED_EXTRA_TUNING.terrainWeight,
   saveItt7332 = false,
 ): void {
-  // #7332 (slukket): spar/beskyt/grupetto mod uret koster kapacitet; 0 naar pakken ikke er i kraft.
+  // #7332: spar/beskyt/grupetto mod uret koster kapacitet; 0 paa aeldre revisioner.
   const capacity = ittCapacityForSegment(entrant, rider, segment, tuning, route.weather, stageNoise, climbShare) + allOutTimeTrialBonus7280(entrant.effort, entrant.abilities.time_trial, allOut7280) - saveTimeTrialPenalty7332(entrant.effort, entrant.abilities.time_trial, saveItt7332);
   const distanceKm = Math.max(0, segment.to_km - segment.from_km);
   const speedKmh = ittSpeedKmh(capacity, referenceCapacity, segment.kind, tuning, ittTuning, terrainWeight);
@@ -402,7 +402,7 @@ function tickSoloRider(
   const cp = Math.max(0, capacity);
   const baseDemand = cp * tuning.terrain.baseDemand[segment.kind] * tuning.work.frontWorkFactor[segment.kind];
   // #5580 (M1 punkt 4): all_out-prisen foelger segmentets terraen, som paa vejetapen.
-  // #7332 (slukket): beskyt og grupetto koerer som spar mod uret, ogsaa i kravet.
+  // #7332: beskyt og grupetto koerer som spar mod uret, ogsaa i kravet.
   const effort = isSaveItt7332Effort(entrant.effort, saveItt7332) ? "save" : entrant.effort;
   const demand = applyEffortToDemand(baseDemand, effort, allOut7280 ? effortCostTuning7280() : undefined, segment.kind);
   const tick = tickPhysiologyOverSegment({
@@ -502,8 +502,8 @@ export function simulateIndividualTimeTrialStage(
       ...(options.dayForm6649 && isS5ProfilesV3OrLater(options.rulesRevision) ? { dayForm6649: true as const } : {}), // #6649
     },
     // #6595 (slukket): kun s5_profiles_v3 med kontakten taendt faar enkeltstartens egen terraen-vaegt; ellers vejetapens (samme objekt).
-    // #7332 (slukket): kun s5_profiles_v3 med kontakten taendt faar spar-prisen mod uret.
-    individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning, climbShare, isAllOut7280On(options.rulesRevision), options.ittTerrainWeight ?? ittTerrainWeight(options.rulesRevision), isSaveItt7332On(options.rulesRevision)),
+    // #7332: s5_profiles_v3 og senere faar spar-prisen mod uret.
+    individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning, climbShare, isAllOut7280On(options.rulesRevision), options.ittTerrainWeight ?? ittTerrainWeight(options.rulesRevision), isS5ProfilesV3OrLater(options.rulesRevision)),
   );
   return output;
 }

@@ -43,7 +43,7 @@ const UP_RIDERS = [
   { id: "u6", name: "Tom Tempo", primaryType: "time_trialist", secondaryType: null, suitability: 53, stageSuitability: [51, 48], form: 59, fatigue: 9, injured: false },
 ];
 
-test("upcoming race detail: stage stripe + terrain DNA + per-stage route match", async ({ page }) => {
+test("upcoming race detail: stage selector + per-stage route match", async ({ page }) => {
   await stabilizePage(page);
   await installNetworkMocks(page);
 
@@ -73,23 +73,14 @@ test("upcoming race detail: stage stripe + terrain DNA + per-stage route match",
   // #4613: loebssiden er T3 (hero + faner). Etape-striben og holdudtagelsen
   // ligger ikke laengere paa samme scroll-flade — striben bor i Etaper-fanen,
   // udtagelsen i Hold-fanen. Testen foelger derfor fanerne.
-  await page.getByRole("tab", { name: "Etaper" }).click();
+  await page.getByRole("tab", { name: "Etape", exact: true }).click();
 
-  // Race-DNA-gestalt + etape-stribe (2 etaper).
-  await expect(page.getByText("Dette løb:")).toBeVisible();
-  // #4632: `name` matcher som SUBSTRING pr. default, og Taktik-fanens
-  // etape-vaelger har knapper der hedder "Intentioner for etape 1".
-  // `exact: true` binder opslaget til stribens egen aria-label.
+  // Etape-vaelgeren (2 etaper) i etapeside 2.0.
   await expect(page.getByRole("button", { name: "Etape 1", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Etape 2", exact: true })).toBeVisible();
 
-  // Valgt-etape-panel (default etape 1 = flad): terrain-DNA-bar + massespurt-finale.
-  await expect(page.getByText(/Terræn-DNA/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Massespurt" })).toBeVisible();
-
-  // Skift til etape 2 (høj bjerg) → profil + finale opdateres.
+  // Skift til etape 2 (hoej bjerg).
   await page.getByRole("button", { name: "Etape 2", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Bjergfinale" })).toBeVisible();
 
   // Opstilling med per-etape rute-match: label skifter fra "Egnethed" til
   // "Rute-match". Den valgte etape foelger med over i Hold-fanen (?stage=

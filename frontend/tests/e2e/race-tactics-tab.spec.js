@@ -134,58 +134,6 @@ async function mockTacticsRace(page, {
   return () => capturedBody;
 }
 
-// Fane-striben er sidens egen navigation; ?tab= er dyb-linket den sætter.
-const tab = (page, name) => page.getByRole("tab", { name });
-
-test("faner: stribens indhold følger løbets tilstand (før → under → efter)", async ({ page }) => {
-  await stabilizePage(page);
-  await installNetworkMocks(page);
-
-  // FØR start: ingen resultater, ingen kørte etaper.
-  await mockTacticsRace(page, {
-    race: raceFixture({ stages: 3, stagesCompleted: 0, raceType: "stage_race" }),
-    validEfforts: FIVE_STEPS,
-  });
-  await login(page);
-  await page.goto(`/races/${RACE_ID}`);
-
-  await expect(tab(page, "Overblik")).toBeVisible();
-  await expect(tab(page, "Hold")).toBeVisible();
-  await expect(tab(page, "Taktik")).toBeVisible();
-  await expect(tab(page, "Etaper")).toBeVisible();
-  // Et løb der ikke er kørt har intet resultat at vise — fanen ville være tom.
-  await expect(tab(page, "Resultater")).toHaveCount(0);
-
-  // UNDER afvikling: etape 1 kørt. Resultater kommer til, Taktik BLIVER
-  // (etape 2-3 er stadig åbne at sætte).
-  await page.unrouteAll({ behavior: "ignoreErrors" });
-  await installNetworkMocks(page);
-  await mockTacticsRace(page, {
-    race: raceFixture({ stages: 3, stagesCompleted: 1, raceType: "stage_race" }),
-    validEfforts: FIVE_STEPS,
-    results: LIVE_RESULTS,
-  });
-  await page.goto(`/races/${RACE_ID}`);
-
-  await expect(tab(page, "Taktik")).toBeVisible();
-  await expect(tab(page, "Resultater")).toBeVisible();
-
-  // EFTER: løbet er færdigt. Taktik forsvinder — der er intet tilbage at sætte,
-  // og en fane der ikke kan bruges er værre end ingen fane.
-  await page.unrouteAll({ behavior: "ignoreErrors" });
-  await installNetworkMocks(page);
-  await mockTacticsRace(page, {
-    race: raceFixture({ stages: 3, stagesCompleted: 3, raceType: "stage_race", status: "completed" }),
-    validEfforts: FIVE_STEPS,
-    results: LIVE_RESULTS,
-  });
-  await page.goto(`/races/${RACE_ID}`);
-
-  await expect(tab(page, "Resultater")).toBeVisible();
-  await expect(tab(page, "Hold")).toBeVisible();
-  await expect(tab(page, "Taktik")).toHaveCount(0);
-});
-
 test("taktik: etape-vælger, femtrins-vælger og et gem der ikke taber andre etaper", async ({ page }, testInfo) => {
   await stabilizePage(page);
   await installNetworkMocks(page);
@@ -417,7 +365,7 @@ test("taktik: flaget OFF giver TRE trin på fanen", async ({ page }) => {
   await expect(panel.getByRole("button", { name: /^Alt ud/ })).toHaveCount(0);
 });
 
-test("taktik: endagsløb har ingen etape-vælger, og fanen forsvinder ved start", async ({ page }, testInfo) => {
+test("taktik: endagsløb har ingen etape-vælger", async ({ page }, testInfo) => {
   await stabilizePage(page);
   await installNetworkMocks(page);
   await mockTacticsRace(page, {
@@ -440,20 +388,6 @@ test("taktik: endagsløb har ingen etape-vælger, og fanen forsvinder ved start"
   await expect(panel.getByRole("button", { name: /^Kopiér til etape/ })).toHaveCount(0);
 
   await panel.screenshot({ path: evidenceShotPath(`pr-screens/4613-tactics-one-day-${testInfo.project.name}.png`) });
-
-  // Endagsloebet har KUN den ene dag, og den laaser naar flaget falder. Naar
-  // loebet er kørt, findes Taktik-fanen ikke laengere.
-  await page.unrouteAll({ behavior: "ignoreErrors" });
-  await installNetworkMocks(page);
-  await mockTacticsRace(page, {
-    race: raceFixture({ stages: 1, stagesCompleted: 1, raceType: "single", status: "completed" }),
-    validEfforts: FIVE_STEPS,
-    results: LIVE_RESULTS,
-  });
-  await page.goto(`/races/${RACE_ID}`);
-
-  await expect(tab(page, "Resultater")).toBeVisible();
-  await expect(tab(page, "Taktik")).toHaveCount(0);
 });
 
 // #5290: the reported screenshot is this toolbar, not Planning or Dashboard.

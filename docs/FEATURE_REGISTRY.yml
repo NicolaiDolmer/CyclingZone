@@ -251,8 +251,8 @@ features:
     state: live
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7332
-    verified: 2026-10-31
-    note: Kodekontakt SAVE_ITT_7332_ACTIVE tændt 31/10 efter ejer-go; vælgeren viser kun tre trin på enkeltstart.
+    verified: 2026-11-01
+    note: Live 31/10 efter ejer-go; kodekontakten SAVE_ITT_7332_ACTIVE fjernet 1/11 (krav 5). Vælgeren viser kun tre trin på enkeltstart.
 
   - id: race-descent-task-7380
     area: race-engine
@@ -261,8 +261,8 @@ features:
     state: live
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7380
-    verified: 2026-10-31
-    note: Kodekontakt DESCENT_TASK_7380_ACTIVE tændt 31/10 efter ejer-go, kun v3.
+    verified: 2026-11-01
+    note: Live 31/10 efter ejer-go; kodekontakten DESCENT_TASK_7380_ACTIVE fjernet 1/11 (krav 5), reglen gælder altid under s5_profiles_v3.
 
   - id: race-final-km-boundary-7383
     area: race-engine
@@ -272,7 +272,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7383
     verified: 2026-10-31
-    note: Kodekontakt FINAL_KM_BOUNDARY_7383_ACTIVE tændt 31/10 efter ejer-go (motor og taktikside), kun v3.
+    note: Live 31/10 efter ejer-go; kodekontakten FINAL_KM_BOUNDARY_7383_ACTIVE (motor og taktikside) fjernet 1/11 (krav 5), reglen gælder altid under s5_profiles_v3.
 
   - id: luxury-helper-role
     area: race-engine
@@ -354,10 +354,9 @@ features:
     title_en: Stage page 2.0 (stage tabs, real elevation profile, your day)
     title_da: Etapeside 2.0 (etapefaner, rigtig højdeprofil, din dag)
     state: live
-    flag: stage_page_v2
     epic: 6570
-    verified: 2026-10-24
-    note: PR #6633; beta 15/10; on for alle 24/10 19:48 UTC efter ejerens gennemgang (#7153, læst i prod). Rettelser #7168.
+    verified: 2026-11-01
+    note: PR #6633; beta 15/10; on for alle 24/10 19:48 UTC efter ejerens gennemgang (#7153, læst i prod). Rettelser #7168. Den gamle etapeside og flaget stage_page_v2 fjernet fra koden 1/11 (krav 5, #6570); app_config-rækken slettes efter merge.
 
   - id: stage-plan-v1
     area: race-day

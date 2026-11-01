@@ -16,7 +16,8 @@ import { DAILY_TRAINING_CONFIG } from "./dailyTraining.js";
 import { CONDITION_CONFIG, RACE_DAY_ENGINE_RECOVERY_CONFIG, injuryRisk, rollInjury } from "./riderCondition.js";
 import { effortFatigueMultiplier } from "./raceRoles.js";
 import { medicalRecoveryMultiplier, medicalTrainingInjuryRisk, medicalInjuryDays } from "./medicalEffects.js";
-import { allOut7280Tuning, isAllOut7280On, isSaveItt7332Effort, isSaveItt7332On } from "./engine/v4/mechanics/effortCost.ts";
+import { allOut7280Tuning, isAllOut7280On, isSaveItt7332Effort } from "./engine/v4/mechanics/effortCost.ts";
+import { isS5ProfilesV3OrLater } from "./raceEngineRulesRevision.ts";
 
 export const CONDITION_V2_CONFIG = Object.freeze({
   // §5.2: profil-belastning (spillernes rækkefølge, større spænd end v1). Niveauet er
@@ -102,15 +103,15 @@ export function allOutLoadMultiplier7280(effort, rulesRevision) {
 }
 
 /**
- * #7332 (slukket, KUN s5_profiles_v3; ejer 31/10 valg A): spar mod uret sparer træthed.
+ * #7332 (s5_profiles_v3 og senere; ejer 31/10 valg A): spar mod uret sparer træthed.
  * På en enkeltstart (itt, itt_hilly; ikke ttt) får spar, beskyt og grupetto samme
  * trætheds-rabat som spar på en FLAD etape, i stedet for 1. Motoren tager prisen i tid
- * (individualTimeTrial.ts). `null` = pakken er ikke i kraft eller trinnet/profilen er
+ * (individualTimeTrial.ts). `null` = aeldre revision, eller trinnet/profilen er
  * ikke omfattet (bit-identisk).
  */
 export function saveIttLoadMultiplier7332(effort, profileType, rulesRevision) {
   if (!INDIVIDUAL_TIME_TRIAL_PROFILES.has(profileType)) return null;
-  if (!isSaveItt7332Effort(effort, isSaveItt7332On(rulesRevision))) return null;
+  if (!isSaveItt7332Effort(effort, isS5ProfilesV3OrLater(rulesRevision))) return null;
   return effortFatigueMultiplier("save", { profileType: "flat", rulesRevision });
 }
 

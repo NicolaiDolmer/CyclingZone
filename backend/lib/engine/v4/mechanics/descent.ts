@@ -25,7 +25,7 @@
 // groups.ts) — der findes ingen individuel tidsforskel INDEN FOR en gruppe at
 // invertere, saa garantien holder ogsaa naar angribernes indbyrdes evne varierer.
 //
-// #7380 (SLUKKET, ejer-beslutning 30/10): med kontakten taendt angriber en rytter
+// #7380 (ejer-beslutning 30/10, kun s5_profiles_v3 og senere): en rytter angriber
 // ikke, naar hans ordre for segmentet siger noget andet (Spar, Grupetto, Beskyt
 // lederen, eller en laee-/hjaelperopgave i etapeplanen). Monotonien holder stadig,
 // fordi den er et krav til EVNE-sammenligningen, ikke til ordrer: blandt de
@@ -35,7 +35,7 @@
 // delmaengde. At en bedre nedkoerer med en laee-ordre bliver i gruppen mens en
 // daarligere med fri rolle angriber, er ordren, ikke evnen - samme princip som
 // effort-trinnene (M12), hvor en rytter paa Spar ogsaa kan tabe tid til en
-// svagere paa normal. Kontakten kan kun FJERNE angreb (aldrig tilfoeje et):
+// svagere paa normal. Ordren kan kun FJERNE angreb (aldrig tilfoeje et):
 // taerskel og vindue er de samme, spaerrede ryttere filtreres bort bagefter.
 //
 // RISIKO (beslutning 7 + #4934): styrt-risikoen var REN INFORMATION i F2 — den
@@ -101,32 +101,18 @@ import {
   TIME_MODEL_V3_TUNING,
   timeModelTuningFor,
 } from "./timeModel.ts";
-import type { StagePlanTask } from "../../../stagePlan.ts"; // #7380 (slukket): kun typen
+import type { StagePlanTask } from "../../../stagePlan.ts"; // #7380: kun typen
 
-// ── #7380: nedkoerselsangrebet respekterer rytterens opgave (TAENDT 31/10) ────────
+// ── #7380: nedkoerselsangrebet respekterer rytterens opgave ─────────────────────
 // Ejer-beslutning 30/10 (#7380): ingen rytter paa Spar, Grupetto, Beskyt lederen
 // eller en laee-/hjaelperopgave angriber i en nedkoersel. Gaelder ALLE ryttere,
 // ogsaa AI-hold, ud fra den indsats motoren faktisk koerer segmentet med
 // (entrants efter stagePlanEntrants) og etapeplanens opgave, hvor der er en.
-// s5_profiles_v3 er den AKTUELLE revision (#7237), saa rettelsen kan ikke ligge
-// bag revisionen alene (samme moenster som #7280's ALL_OUT_7280_ACTIVE). Slukket
-// er nedkoerslen bit-identisk med main.
-// TAENDT 31/10 paa ejerens go (taendingskort #7380, "Taend").
-export const DESCENT_TASK_7380_ACTIVE: boolean = true; // ejer-go 31/10, #7380
-
-// Kun tests og dev-benches maaler med kontakten taendt. Produktionskode kalder aldrig setteren.
-let benchOverride7380: boolean | null = null;
-/** KUN tests/dev-benches: taend/sluk #7380. `null` nulstiller til kontakten. */
-export function setDescentTask7380ForBench(active: boolean | null): void {
-  benchOverride7380 = active === null ? null : active === true;
-}
-/** Er #7380 taendt (kontakten, eller en dev-bench)? */
-export function descentTask7380Active(): boolean {
-  return benchOverride7380 ?? DESCENT_TASK_7380_ACTIVE;
-}
+// Taendt 31/10, kodekontakten fjernet (krav 5): reglen gaelder altid under
+// s5_profiles_v3 og senere; aeldre revisioner er uroert.
 /** Er #7380 i kraft paa dette segment? Kun under s5_profiles_v3 (og senere). */
 export function isDescentTask7380On(ctx: Pick<SegmentHookContext, "s5ProfilesV3">): boolean {
-  return descentTask7380Active() && ctx.s5ProfilesV3 === true;
+  return ctx.s5ProfilesV3 === true;
 }
 
 /** Etapeplanens opgaver der aldrig angriber i en nedkoersel (laee, hjaelper, grupetto, koer i maal). */
@@ -501,7 +487,7 @@ function findAttackers(
   entrants: SegmentHookContext["entrants"],
   minAbilityGapForAttack: number,
   attackAbilityWindowPoints: number = DESCENT_EXTRA_TUNING.attackAbilityWindowPoints,
-  // #7380 (kun med kontakten taendt): rytterens ordre spaerrer angrebet. Udeladt = som foer.
+  // #7380 (kun s5_profiles_v3+): rytterens ordre spaerrer angrebet. Udeladt = aeldre revision.
   barredByTask?: (riderId: string) => boolean,
 ): AttackerSelection {
   const candidates: AttackCandidate[] = [];
@@ -529,7 +515,7 @@ function findAttackers(
     .filter((c) => c.descending >= attackFloor)
     .sort((a, b) => b.descending - a.descending || a.riderId.localeCompare(b.riderId));
   // #7380: taerskel og vindue er maalt over HELE gruppen (ovenfor); ordren fjerner
-  // kun ryttere fra angrebet bagefter, saa kontakten aldrig skaber et nyt angreb.
+  // kun ryttere fra angrebet bagefter, saa ordren aldrig skaber et nyt angreb.
   if (barredByTask) return { attackers: attackers.filter((a) => !barredByTask(a.riderId)), groupMinDescending };
   return { attackers, groupMinDescending };
 }
@@ -630,7 +616,7 @@ export const descentHook: DescentHook = (
   // over den regrupperede struktur som den saa ud FOER foerste split (samme
   // moenster som den oprindelige `for (const group of state.groups)`).
   const groupsToScan = groups;
-  // #7380 (SLUKKET): ordren laeses som runtimen koerer segmentet (ctx.entrants'
+  // #7380 (kun s5_profiles_v3+): ordren laeses som runtimen koerer segmentet (ctx.entrants'
   // indsats + ctx.stagePlanTasks' opgave), aldrig genberegnet her.
   const taskOn7380 = isDescentTask7380On(ctx);
   for (const group of groupsToScan) {

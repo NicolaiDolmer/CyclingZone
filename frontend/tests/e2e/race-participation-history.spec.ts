@@ -32,7 +32,7 @@ async function prepareRace(page: Page, raceType: "stage_race" | "single" = "stag
   await page.route("**/rest/v1/race_stage_passages**", route => json(route, []));
   await page.route("**/api/races/*/timeline**", route => json(route, timeline));
   await login(page);
-  await page.goto("/races/history-race?stage=1");
+  await page.goto("/races/history-race?stage=1&tab=results");
 }
 
 test("recorded stage history replaces twenty legacy flags with eight morning flags and twelve attack markers", async ({ page }, testInfo) => {
@@ -55,7 +55,7 @@ test("recorded stage history replaces twenty legacy flags with eight morning fla
 
 test("one-day results use the same complete native participation history", async ({ page }) => {
   await prepareRace(page, "single");
-  await page.getByRole("tab", { name: "Resultater", exact: true }).click();
+  await page.getByRole("tab", { name: "Stillinger", exact: true }).click();
   await page.getByRole("button", { name: "Vis alle 20" }).click();
   await expect(page.locator('[aria-label^="Morgenudbrud:"]')).toHaveCount(8);
   await expect(page.locator('[aria-label="Senere angreb"]')).toHaveCount(12);

@@ -5,9 +5,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   racePhase,
-  raceTabsFor,
-  resolveRaceTab,
-  defaultRaceTab,
   isStageLockedForTactics,
   hasScheduledStartPassed,
   firstOpenStage,
@@ -37,34 +34,6 @@ test("racePhase: et importeret løb uden stages_completed men MED resultater er 
   // Gamle PCM-importer har ingen stages_completed — de har aldrig haft en
   // "under løbet"-tilstand i denne app og må ikke vise en Taktik-fane.
   assert.equal(racePhase({ status: "imported", stagesCompleted: 0, stages: 3, hasResults: true, now: T_FIXED }), "after");
-});
-
-test("faner: etapeløb får Resultater først når der ER noget at vise", () => {
-  assert.deepEqual(raceTabsFor({ phase: "before", isStageRace: true }),
-    ["overview", "team", "tactics", "stages"]);
-  assert.deepEqual(raceTabsFor({ phase: "during", isStageRace: true }),
-    ["overview", "team", "tactics", "stages", "results"]);
-  assert.deepEqual(raceTabsFor({ phase: "after", isStageRace: true }),
-    ["overview", "results", "stages", "team"]);
-});
-
-test("faner: et endagsløb mister Taktik i det øjeblik det starter", () => {
-  // Én dag, én taktik — den låser ved start, så fanen ville stå tom.
-  assert.ok(raceTabsFor({ phase: "before", isStageRace: false }).includes("tactics"));
-  assert.ok(!raceTabsFor({ phase: "during", isStageRace: false }).includes("tactics"));
-  assert.ok(!raceTabsFor({ phase: "after", isStageRace: false }).includes("tactics"));
-});
-
-test("faner: etapeløb BEHOLDER Taktik under løbet (de kommende etaper er stadig åbne)", () => {
-  assert.ok(raceTabsFor({ phase: "during", isStageRace: true }).includes("tactics"));
-});
-
-test("resolveRaceTab: en fane fra en tidligere fase falder tilbage til fasens første", () => {
-  const after = raceTabsFor({ phase: "after", isStageRace: true });
-  assert.equal(resolveRaceTab("tactics", after), "overview");
-  assert.equal(resolveRaceTab("results", after), "results");
-  assert.equal(defaultRaceTab(after), "overview");
-  assert.equal(defaultRaceTab([]), "overview");
 });
 
 test("isStageLockedForTactics: kørt etape, passeret start eller afsluttet løb er låst", () => {

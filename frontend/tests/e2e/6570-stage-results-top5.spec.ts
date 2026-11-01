@@ -3,8 +3,7 @@
 // (DAY_TOP_COUNT i stagePageV2Model.ts); resten skjules med CSS, ikke med et
 // viewport-gaet i JS, saa der ikke kan opstaa flimmer ved resize.
 //
-// Netvaerket er mocket. Flaget stage_page_v2 afgoeres server-side, saa det
-// svares her med enabled:true.
+// Netvaerket er mocket.
 //
 // Foer/efter-billederne tages med CZ_WRITE_COMMITTED_SHOTS=1 (ellers lander de i
 // frontend/test-results/evidence): desktop 1440 og mobil 390.
@@ -60,10 +59,6 @@ const STAGE_PROFILES = [
 async function mockPage(page: Page) {
   await stabilizePage(page);
   await installNetworkMocks(page);
-  await page.route("**/api/races/stage-page-v2**", (route: Route) => {
-    if (route.request().method() === "OPTIONS") return route.fallback();
-    return json(route, { enabled: true });
-  });
   await page.route("**/rest/v1/races**", (route: Route) => {
     const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
     return json(route, wantsObject ? RACE : [RACE]);
