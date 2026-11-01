@@ -9,7 +9,7 @@ import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
 import { isAiTeamRetireEnabled } from './aiTeamRetireFlag.js';
 import {
   windowsOverlap, raceBindingWindow,
-  isRiderDayInvariantViolation, isConstraintNotDeferrable, isDrainingAiObligation, isRaceLineupFrozen,
+  isRiderDayInvariantViolation, isConstraintNotDeferrable, isDrainingAiObligation,
 } from "./raceBinding.js";
 import {
   ASSISTANT_MODES, DEFAULT_ASSISTANT_MODE, DEFAULT_LATE_FILL_HOURS,
@@ -1353,11 +1353,15 @@ export async function runRaceEntryGenerator({
         `⚠️  Entry-generator ${team_id}: batch-RPC afvist (${batchErr.message}) — falder tilbage til per-enheds-skrivning (#3934)`
       );
     }
-    // #7389: afvisningen siger at mindst ét af holdets løb er startet SIDEN tick-
-    // start. Genlæs løbene og fjern de frosne enheder, før fallbacken skriver —
-    // ellers skriver per-enheds-vejen direkte forbi DB-guarden. Kan genlæsningen
-    // ikke gennemføres, springes hele holdet over i dette tick (næste tick prøver igen).
-    if (isRaceLineupFrozen(batchErr)) {
+    // #7389: per-enheds-fallbacken skriver direkte i race_entries uden RPC'ens
+    // frysnings-guard, og startedRaceIds er læst ved tick-start. Et løb kan være gået
+    // i gang siden (Volta Algarvia 30/10: batchen afvist med sweep_race_lineup_frozen,
+    // fallbacken udskiftede 102 ryttere). Genlæs derfor ALTID løbene ved en afvist
+    // batch, uanset årsagen, og fjern de frosne enheder før nogen fallback-skrivning.
+    // Reglen spejler RPC'ens guard: stages_completed > 0 eller status <> 'scheduled'
+    // (NULL-status = ikke frosset, som i SQL). Kan genlæsningen ikke gennemføres,
+    // springes hele holdet over i dette tick (næste tick prøver igen).
+    {
       let frozenErr = null;
       let frozenRows = null;
       try {
@@ -1371,11 +1375,11 @@ export async function runRaceEntryGenerator({
       }
       if (frozenErr || !Array.isArray(frozenRows)) {
         failedUnits += changed.length;
-        if (errors.length < 5) errors.push(`${team_id}: race_lineup_frozen, kunne ikke genlaese loebene - holdet springes over (#7389)`);
+        if (errors.length < 5) errors.push(`${team_id}: kunne ikke genlaese loebene efter afvist batch - holdet springes over (#7389)`);
         continue;
       }
       const nowFrozen = new Set(
-        frozenRows.filter((r) => (r.stages_completed ?? 0) > 0 || r.status !== "scheduled").map((r) => r.id)
+        frozenRows.filter((r) => (r.stages_completed ?? 0) > 0 || (r.status ?? "scheduled") !== "scheduled").map((r) => r.id)
       );
       for (let i = changed.length - 1; i >= 0; i--) {
         const raceId = changed[i].unit.race_id;

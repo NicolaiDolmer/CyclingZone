@@ -2721,6 +2721,7 @@ test("#6680 (Codex P2): a live run clears the calendar cache, a dry run does not
 test("#7389: løb der starter midt i tick'et røres ikke af per-enheds-fallbacken", async () => {
   const { desiredA, desiredB, crossed } = await crossedSeedFromDesired();
   const { state, seasonId } = seedSwapScenario();
+  for (const r of state.races) Object.assign(r, { status: "scheduled", stages_completed: 0 });
   state.race_entries = crossed.map((r) => ({ ...r }));
   const before = (raceId) => crossed.filter((e) => e.race_id === raceId).map((e) => e.rider_id).sort();
   const supabase = makeSupabase(state, { batchRpc: true });
@@ -2735,7 +2736,6 @@ test("#7389: løb der starter midt i tick'et røres ikke af per-enheds-fallbacke
   const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
   const ids = (raceId) => state.race_entries.filter((e) => e.race_id === raceId).map((e) => e.rider_id).sort();
   assert.deepEqual(ids("A"), before("A"), "det startede løbs felt er uændret");
-  assert.ok(res.failed_units >= 1, "den frosne enhed tælles som afvist");
-  assert.ok(res.errors.some((e) => /race_lineup_frozen/.test(e)), "afvisningen er synlig i errors");
+  assert.equal(res.failed_units, 1, "kun den frosne enhed (A) tælles som afvist");  assert.ok(res.errors.some((e) => /race_lineup_frozen/.test(e)), "afvisningen er synlig i errors");
   assert.ok(desiredA.length && desiredB.length);
 });
