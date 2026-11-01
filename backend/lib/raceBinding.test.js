@@ -818,6 +818,15 @@ test("isRaceEntriesInflightRejection matcher migrationens RAISE-tekster (#7445)"
   }
 });
 
+test("#7445-vagten undtager binding_span-only UPDATE (ellers ruller hver loebsafslutning tilbage)", () => {
+  // races_status_resync_binding (#4173) opdaterer race_entries.binding_span naar raceRunner
+  // saetter status='completed'; uden undtagelsen ville vagten afvise den UPDATE.
+  const sql = readFileSync(new URL("../../database/2026-11-01-7445-race-entries-inflight-guard.sql", import.meta.url), "utf8");
+  const exemption = sql.indexOf("(to_jsonb(NEW) - 'binding_span') = (to_jsonb(OLD) - 'binding_span')");
+  assert.ok(exemption > 0, "binding_span-undtagelsen mangler");
+  assert.ok(exemption < sql.indexOf("FROM public.races WHERE id = ANY(v_race_ids)"), "undtagelsen skal staa foer loebsopslaget");
+});
+
 // #4959 reviewer-fund: isDrainingAiObligation matcher guardens RAISE-tekster som en
 // hardkodet regex - en fremtidig omformulering af SQL'en ville ellers fejle TAVST
 // (aegte drains ville lige pludselig se ud som fejlede enheder). Testen laeser den

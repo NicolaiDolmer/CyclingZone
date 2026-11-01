@@ -15,6 +15,9 @@
 --   * Afsluttet = status = 'completed' -> INSERT/UPDATE afvises; DELETE tilladt
 --                 (hold-/kalender-oprydning af gamle loeb via kaskade).
 --   * Loebet findes ikke (kaskade fra sletning af selve loebet) -> tilladt.
+--   * UPDATE der kun aendrer binding_span (binding-resync-triggerne, fx naar raceRunner
+--     saetter status='completed') -> altid tilladt.
+--   * Sletning af et hold midt i et loeb afvises (som clearAllAiTeams' udskydelse, #4753).
 --   * Undtagelse til admin-genopretning: set_config('cz.race_entries_inflight_override','on',true)
 --     i samme transaktion -> tilladt (NOTICE). Ingen kode bruger den i dag.
 -- Fejltekst starter med 'race_entries_inflight' (raceEntryGenerator.js springer enheden over).
@@ -36,6 +39,14 @@ BEGIN
   IF coalesce(current_setting('cz.race_entries_inflight_override', true), '') = 'on' THEN
     RAISE NOTICE 'race_entries_inflight: override aktiv (% paa race_entries)', TG_OP;
     RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+  END IF;
+
+  -- Binding-resync (trg_races_status_resync_binding, race_stage_schedule_ og
+  -- race_withdrawals_resync_binding, #3934/#4173) skriver KUN binding_span - ogsaa naar et
+  -- loeb saettes til 'completed' eller genaabnes. Det er afledt data, ikke en ny udtagelse,
+  -- og maa aldrig blokeres (ellers ruller hver loebsafslutning tilbage).
+  IF TG_OP = 'UPDATE' AND (to_jsonb(NEW) - 'binding_span') = (to_jsonb(OLD) - 'binding_span') THEN
+    RETURN NEW;
   END IF;
 
   v_race_ids := CASE TG_OP
