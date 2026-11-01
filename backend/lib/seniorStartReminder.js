@@ -188,7 +188,7 @@ export async function runSeniorStartReminderSweep({
   }
   // #7339: samme hold, løb og vindue; beskeden når truppen ikke kan dække alle dagens løb.
   try {
-    stats.coverage = await sendCoverage({ supabase, now, season, teams, races, scheduleByRace, withdrawnByRace, notify });
+    stats.coverage = await sendCoverage({ supabase, now, season, teams, races, scheduleByRace, withdrawnByRace, seniorCountsByTeam, notify });
   } catch (error) {
     console.error("race-day coverage reminders failed:", error?.message || error);
     captureException(error, { tags: { flow: "notifications", stage: "race-day-coverage" } });

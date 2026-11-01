@@ -53,6 +53,7 @@ function makeSupabase(state, { failTable = null } = {}) {
         is(col, v) { filters.push((r) => (r[col] ?? null) === v); return q; },
         in(col, vs) { filters.push((r) => vs.includes(r[col])); return q; },
         order() { return q; },
+        range() { return q; },
         then(resolve) {
           if (table === failTable) return resolve({ data: null, error: { message: `${table} down` } });
           return resolve({ data: (state[table] || []).filter((r) => filters.every((f) => f(r))), error: null });

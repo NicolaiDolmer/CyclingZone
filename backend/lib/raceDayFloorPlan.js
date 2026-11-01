@@ -12,6 +12,7 @@ import { MIN_RACE_ENTRIES } from "./raceAutopick.js";
 import { raceSquadOf } from "./riderEligibility.js";
 import { DEFAULT_SQUAD } from "./squads.js";
 import { captureException } from "./sentry.js";
+import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 
 function windowPoints(w) {
   if (Array.isArray(w?.days) && w.days.length) return w.days;
@@ -80,20 +81,20 @@ export async function loadSameDaySiblingNeeds({ supabase, race, thisWindow, team
   const out = new Map();
   if (!teamIds.length || !thisWindow || !race?.season_id || raceSquadOf(race) !== DEFAULT_SQUAD) return out;
   try {
-    let racesQuery = supabase.from("races").select("id, squad, stages_completed, league_division_id")
-      .eq("season_id", race.season_id).neq("id", race.id);
-    racesQuery = race.league_division_id == null
-      ? racesQuery.is("league_division_id", null)
-      : racesQuery.eq("league_division_id", race.league_division_id);
-    const { data: raceRows, error: raceErr } = await racesQuery.order("id");
-    if (raceErr) throw new Error(`races (same-day siblings): ${raceErr.message}`);
-    const candidates = (raceRows || []).filter((r) => raceSquadOf(r) === DEFAULT_SQUAD && !(Number(r.stages_completed) > 0));
+    // Paginerede læsninger (PostgREST-loftet på 1000 rækker må ikke afkorte vinduer/tællinger).
+    const raceRows = await fetchAllRows(() => {
+      const q = supabase.from("races").select("id, squad, stages_completed, league_division_id")
+        .eq("season_id", race.season_id).neq("id", race.id);
+      return (race.league_division_id == null
+        ? q.is("league_division_id", null)
+        : q.eq("league_division_id", race.league_division_id)).order("id");
+    });
+    const candidates = raceRows.filter((r) => raceSquadOf(r) === DEFAULT_SQUAD && !(Number(r.stages_completed) > 0));
     if (!candidates.length) return out;
     const candidateIds = candidates.map((r) => r.id);
-    const { data: schedRows, error: schedErr } = await supabase.from("race_stage_schedule")
-      .select("race_id, scheduled_at, game_day").in("race_id", candidateIds)
-      .order("race_id").order("stage_number");
-    if (schedErr) throw new Error(`race_stage_schedule (same-day siblings): ${schedErr.message}`);
+    const schedRows = await fetchAllRowsChunkedIn(candidateIds, (chunk) => supabase.from("race_stage_schedule")
+      .select("race_id, scheduled_at, game_day").in("race_id", chunk)
+      .order("race_id").order("stage_number"));
     const schedByRace = new Map();
     for (const row of schedRows || []) {
       if (!schedByRace.has(row.race_id)) schedByRace.set(row.race_id, []);
@@ -104,23 +105,19 @@ export async function loadSameDaySiblingNeeds({ supabase, race, thisWindow, team
       .filter((s) => s.window && windowsOverlap(thisWindow, s.window));
     if (!siblings.length) return out;
     const siblingIds = siblings.map((s) => s.raceId);
+    const byTeams = (table, columns, order) => fetchAllRowsChunkedIn(teamIds, (chunk) =>
+      supabase.from(table).select(columns).in("race_id", siblingIds).in("team_id", chunk).order("race_id").order(order));
     const [entries, withdrawals, clears] = await Promise.all([
-      supabase.from("race_entries").select("race_id, team_id, rider_id").in("race_id", siblingIds).in("team_id", teamIds)
-        .order("race_id").order("rider_id"),
-      supabase.from("race_withdrawals").select("race_id, team_id").in("race_id", siblingIds).in("team_id", teamIds)
-        .order("race_id").order("team_id"),
-      supabase.from("race_entry_clears").select("race_id, team_id").in("race_id", siblingIds).in("team_id", teamIds)
-        .order("race_id").order("team_id"),
+      byTeams("race_entries", "race_id, team_id, rider_id", "rider_id"),
+      byTeams("race_withdrawals", "race_id, team_id", "team_id"),
+      byTeams("race_entry_clears", "race_id, team_id", "team_id"),
     ]);
-    for (const res of [entries, withdrawals, clears]) {
-      if (res.error) throw new Error(`same-day siblings: ${res.error.message}`);
-    }
     const countByUnit = new Map();
-    for (const e of entries.data || []) {
+    for (const e of entries) {
       const key = `${e.race_id}|${e.team_id}`;
       countByUnit.set(key, (countByUnit.get(key) || 0) + 1);
     }
-    const skipped = new Set([...(withdrawals.data || []), ...(clears.data || [])].map((r) => `${r.race_id}|${r.team_id}`));
+    const skipped = new Set([...withdrawals, ...clears].map((r) => `${r.race_id}|${r.team_id}`));
     for (const teamId of teamIds) {
       const needs = [];
       for (const s of siblings) {

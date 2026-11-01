@@ -2874,3 +2874,15 @@ test("#7339 (generator): igangværende løb springes over og låser sine ryttere
   const startedSet = new Set(inRace("S"));
   for (const id of [...inRace("A"), ...inRace("B")]) assert.ok(!startedSet.has(id), `${id} kører allerede S`);
 });
+
+test("#7339 (Codex): et senere løb der kun kan bruge nogle ryttere får netop dem reserveret", () => {
+  // B kan kun bruge de 6 bedste (de 6 svageste er låst til B, fx Train now). Uden
+  // reservation tog A de 6 bedste, og B stod tomt.
+  const riders = ridersN(12);
+  const excluded = new Set(riders.slice(6).map((r) => r.rider_id));
+  const out = assignTeamAcrossRaces({ riders, races: [dayRace("A", 6), dayRace("B", 6, { excludedRiderIds: excluded })] });
+  assert.deepEqual(sizes(out, ["A", "B"]), [6, 6]);
+  for (const p of out.B) assert.ok(!excluded.has(p.rider_id));
+  const aIds = new Set(out.A.map((p) => p.rider_id));
+  for (const p of out.B) assert.ok(!aIds.has(p.rider_id), "ingen dobbeltbooking");
+});

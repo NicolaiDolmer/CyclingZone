@@ -11,6 +11,7 @@ const NOW = new Date("2026-11-01T12:00:00.000Z");
 const team = (id, extra = {}) => ({ id, user_id: `u-${id}`, league_division_id: 3, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, ...extra });
 const race = (id, extra = {}) => ({ id, status: "scheduled", stages_completed: 0, league_division_id: 3, squad: "senior", ...extra });
 const sched = (raceId, at, gameDay) => [raceId, [{ race_id: raceId, scheduled_at: at, game_day: gameDay }]];
+const roster = (n, injuredUntil = []) => [...injuredUntil, ...Array(Math.max(0, n - injuredUntil.length)).fill(null)];
 const threeSameDay = () => ({
   races: [race("a"), race("b"), race("c")],
   scheduleByRace: new Map([
@@ -43,7 +44,7 @@ test("#7339 groupTeamRaceDays: afmeldte løb, anden pulje, ungdom, AI-hold og l�
 test("#7339 plan: 16 raske over 3 løb → 2 af 3; 18 → ingen besked; under gulvet → senior-påmindelsen ejer det", () => {
   const { races, scheduleByRace } = threeSameDay();
   const groups = groupTeamRaceDays({ teams: [team("t16"), team("t18"), team("t5")], races, scheduleByRace, now: NOW });
-  const planned = planRaceDayCoverageReminders({ groups, fitCountsByTeam: new Map([["t16", 16], ["t18", 18], ["t5", 5]]) });
+  const planned = planRaceDayCoverageReminders({ groups, rosterByTeam: new Map([["t16", roster(16)], ["t18", roster(18)], ["t5", roster(5)]]) });
   assert.deepEqual(planned.map((p) => [p.teamId, p.fieldable, p.total]), [["t16", 2, 3]]);
 });
 
@@ -85,7 +86,7 @@ test("#7339 dedup: én besked pr. hold pr. løbsdag på tværs af gentagne ticks
   let fit = 16;
   const run = () => sendRaceDayCoverageReminders({
     supabase: {}, now: NOW, season: { id: "s5", number: 5 }, teams: [team("t1")], races, scheduleByRace, notify,
-    fetchFitCounts: async ({ teamIds }) => new Map(teamIds.map((id) => [id, fit])),
+    fetchRoster: async ({ teamIds }) => new Map(teamIds.map((id) => [id, roster(fit)])),
   });
   const r1 = await run();
   fit = 13; // en rytter skadet mellem to ticks: stadig 2 af 3, stadig samme besked
@@ -99,7 +100,7 @@ test("#7339 sweep: henter ikke trup-tal når ingen hold har flere løb samme dag
   const result = await sendRaceDayCoverageReminders({
     supabase: {}, now: NOW, season: { number: 5 }, teams: [team("t1")], races: [race("a")],
     scheduleByRace: new Map([sched("a", "2026-11-02T08:00:00.000Z", 12)]), notify: async () => { throw new Error("no notify"); },
-    fetchFitCounts: async () => { throw new Error("should not fetch"); },
+    fetchRoster: async () => { throw new Error("should not fetch"); },
   });
   assert.equal(result.planned, 0);
 });
@@ -119,7 +120,7 @@ test("#7339 senior-sweepen sender løbsdags-beskeden, og en fejl i den vælter i
   const ok = await runSeniorStartReminderSweep({
     ...common,
     notify: async (args) => { delivered.push(args); return { delivered: true }; },
-    sendCoverage: (args) => sendRaceDayCoverageReminders({ ...args, fetchFitCounts: async () => new Map([["t1", 16], ["short", 5]]) }),
+    sendCoverage: (args) => sendRaceDayCoverageReminders({ ...args, fetchRoster: async () => new Map([["t1", roster(16)], ["short", roster(5)]]) }),
   });
   assert.equal(ok.sent, 1, "senior-påmindelsen til holdet under gulvet");
   assert.equal(ok.coverage.sent, 1, "løbsdags-beskeden til holdet med 16");
@@ -132,4 +133,23 @@ test("#7339 senior-sweepen sender løbsdags-beskeden, og en fejl i den vælter i
   });
   assert.equal(failing.sent, 1);
   assert.equal(failing.coverage, undefined);
+});
+
+test("#7339 (Codex): skader vurderes mod løbsdagen, ikke mod i dag", () => {
+  const { races, scheduleByRace } = threeSameDay(); // løbsdag 2/11 (dansk dato)
+  const groups = groupTeamRaceDays({ teams: [team("t1")], races, scheduleByRace, now: NOW });
+  const plan = (injured) => planRaceDayCoverageReminders({ groups, rosterByTeam: new Map([["t1", roster(18, injured)]]) });
+  assert.equal(plan(["2026-11-01"]).length, 0, "skadet til og med i dag: rask på løbsdagen, 18 dækker 3 løb");
+  assert.deepEqual(plan(["2026-11-02"]).map((p) => p.fieldable), [2], "skadet på løbsdagen: 17 raske dækker 2 af 3");
+});
+
+test("#7339 (Codex): nok aktive seniorer men for få raske får beskeden (ingen falder mellem to påmindelser)", () => {
+  const { races, scheduleByRace } = threeSameDay();
+  const groups = groupTeamRaceDays({ teams: [team("t6"), team("t5")], races, scheduleByRace, now: NOW });
+  const planned = planRaceDayCoverageReminders({
+    groups,
+    rosterByTeam: new Map([["t6", roster(6, ["2026-11-05"])], ["t5", roster(5)]]),
+    seniorCountsByTeam: new Map([["t6", 6], ["t5", 5]]),
+  });
+  assert.deepEqual(planned.map((p) => [p.teamId, p.fieldable, p.total]), [["t6", 0, 3]], "t5 ejes af senior-påmindelsen");
 });

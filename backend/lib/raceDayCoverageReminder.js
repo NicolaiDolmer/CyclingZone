@@ -5,8 +5,8 @@
 // løb samme dag giver kun 2 løb. Auto-fyldet fordeler nu gulv-bevidst (raceDayFloorPlan),
 // og beskeden fortæller manageren det i forvejen, så han selv kan vælge løb eller købe.
 //
-// Søster til seniorStartReminder.js (#5867), der dækker hold under gulvet i ALT; denne
-// dækker hold der har nok til mindst ét løb, men ikke til dem alle. Kører i samme sweep
+// Søster til seniorStartReminder.js (#5867), der dækker hold under gulvet i aktive seniorer;
+// denne dækker resten, når de raske ikke rækker til alle dagens løb. Kører i samme sweep
 // (hvert 5. min, første etape inden for 24 timer) og genbruger dens løb og hold.
 //
 // Type `selection_warning` (eksisterende, ingen migration; samme valg som
@@ -75,14 +75,22 @@ export function groupTeamRaceDays({
 }
 
 /**
- * PURE: de (hold, løbsdag) hvor truppen ikke kan stille op i alle dagens løb. Hold under
- * gulvet i alt springes over (seniorStartReminder ejer dem).
+ * PURE: de (hold, løbsdag) hvor truppen ikke kan stille op i alle dagens løb.
+ * `rosterByTeam` = Map<team_id, Array<injured_until|null>> (én post pr. egnet seniorrytter);
+ * skaden vurderes mod løbsdagens danske dato, ikke mod i dag. Hold som seniorStartReminder
+ * dækker (under gulvet i aktive seniorer, `seniorCountsByTeam`) springes over; et hold med
+ * nok aktive men for få raske får beskeden her, også med 0 løb.
  */
-export function planRaceDayCoverageReminders({ groups = [], fitCountsByTeam = new Map(), floor = MIN_RACE_ENTRIES } = {}) {
+export function planRaceDayCoverageReminders({
+  groups = [], rosterByTeam = new Map(), seniorCountsByTeam = null, floor = MIN_RACE_ENTRIES,
+} = {}) {
   const out = [];
   for (const group of groups) {
-    const fit = Number(fitCountsByTeam.get(group.teamId) ?? 0);
-    if (!Number.isFinite(fit) || fit < floor) continue;
+    const roster = rosterByTeam.get(group.teamId) ?? [];
+    const active = seniorCountsByTeam ? Number(seniorCountsByTeam.get(group.teamId) ?? 0) : roster.length;
+    if (!Number.isFinite(active) || active < floor) continue;
+    const raceDate = copenhagenDateString(new Date(group.scheduledAt));
+    const fit = roster.filter((injuredUntil) => !injuredUntil || injuredUntil < raceDate).length;
     const total = group.raceIds.length;
     const fieldable = countFieldableRaces({ supply: fit, races: total, floor });
     if (fieldable < total) out.push({ ...group, fieldable, total });
@@ -110,20 +118,21 @@ export function buildRaceDayCoverageNotification({ candidate, seasonNumber }) {
   };
 }
 
-// Raske seniorryttere pr. hold: samme egnethedsfilter som auto-fyldet, minus skadede i dag.
-export async function defaultFetchFitSeniorCounts({ supabase, teamIds, today }) {
+// Egnede seniorryttere pr. hold (samme filter som auto-fyldet) med deres skadedato.
+// Kun skader der rækker til i dag eller senere hentes; planen vurderer dem mod løbsdagen.
+export async function defaultFetchSeniorRoster({ supabase, teamIds, today }) {
   if (!teamIds.length) return new Map();
   const riders = await fetchAllRowsChunkedIn(teamIds, (chunk) =>
     applyRiderEligibilityFilter(supabase.from("riders").select("id, team_id").in("team_id", chunk)).order("id"));
   const injured = await fetchAllRowsChunkedIn(riders.map((r) => r.id), (chunk) =>
-    applyInjuredFilter(supabase.from("rider_condition").select("rider_id").in("rider_id", chunk), today).order("rider_id"));
-  const injuredIds = new Set(injured.map((r) => r.rider_id));
-  const counts = new Map();
+    applyInjuredFilter(supabase.from("rider_condition").select("rider_id, injured_until").in("rider_id", chunk), today).order("rider_id"));
+  const injuredUntil = new Map(injured.map((r) => [r.rider_id, r.injured_until]));
+  const roster = new Map();
   for (const r of riders) {
-    if (injuredIds.has(r.id)) continue;
-    counts.set(r.team_id, (counts.get(r.team_id) || 0) + 1);
+    if (!roster.has(r.team_id)) roster.set(r.team_id, []);
+    roster.get(r.team_id).push(injuredUntil.get(r.id) ?? null);
   }
-  return counts;
+  return roster;
 }
 
 /**
@@ -132,15 +141,15 @@ export async function defaultFetchFitSeniorCounts({ supabase, teamIds, today }) 
  */
 export async function sendRaceDayCoverageReminders({
   supabase, now, season, teams = [], races = [], scheduleByRace = new Map(), withdrawnByRace = new Map(),
-  notify, fetchFitCounts = defaultFetchFitSeniorCounts,
+  seniorCountsByTeam = null, notify, fetchRoster = defaultFetchSeniorRoster,
 }) {
   const stats = { planned: 0, sent: 0, deduped: 0, failed: 0 };
   const groups = groupTeamRaceDays({ teams, races, scheduleByRace, withdrawnByRace, now });
   if (!groups.length) return stats;
-  const fitCountsByTeam = await fetchFitCounts({
+  const rosterByTeam = await fetchRoster({
     supabase, teamIds: [...new Set(groups.map((g) => g.teamId))], today: copenhagenDateString(now),
   });
-  const planned = planRaceDayCoverageReminders({ groups, fitCountsByTeam });
+  const planned = planRaceDayCoverageReminders({ groups, rosterByTeam, seniorCountsByTeam });
   stats.planned = planned.length;
   for (const candidate of planned) {
     try {

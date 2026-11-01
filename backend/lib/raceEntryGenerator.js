@@ -74,7 +74,8 @@ function floorAwareCap({ race, available, later, availableFor, strategy }) {
     const floor = raceEntryFloor(l);
     if (avail.length < floor) return; // kan alligevel ikke nå gulvet: reservér intet til det
     const ownOnly = avail.filter((r) => !ownIds.has(r.rider_id)).length; // ryttere kun det kan bruge
-    others.push({ race: l, need: Math.max(0, floor - ownOnly), window: l.window, order: idx + 1 });
+    const shared = avail.filter((r) => ownIds.has(r.rider_id)).map((r) => r.rider_id);
+    others.push({ race: l, need: Math.max(0, floor - ownOnly), window: l.window, order: idx + 1, shared, restricted: shared.length < supply });
   });
   const ranked = [self, ...others].sort((a, b) => isTarget(b.race) - isTarget(a.race) || a.order - b.order);
   const kept = [];
@@ -87,9 +88,17 @@ function floorAwareCap({ race, available, later, availableFor, strategy }) {
     else kept.push(item);
   }
   const room = supply - peakConcurrentNeed(kept);
-  if (selfKept) return Math.max(0, Math.min(max, room));
+  // Codex-review: kan et medtaget senere løb kun bruge NOGLE af dette løbs ryttere (fx en
+  // Train now-lås), reserveres netop de ryttere, så dette løb ikke tager dem.
+  const reserved = new Set();
+  for (const item of kept) {
+    if (!item.restricted) continue;
+    const pool = item.shared.filter((id) => !reserved.has(id));
+    for (const id of pool.slice(Math.max(0, pool.length - item.need))) reserved.add(id);
+  }
+  if (selfKept) return { cap: Math.max(0, Math.min(max, room)), reserved };
   const viable = viableMinimum(race);
-  return viable > 0 && room >= viable ? Math.min(max, room) : 0;
+  return { cap: viable > 0 && room >= viable ? Math.min(max, room) : 0, reserved };
 }
 
 /**
@@ -162,13 +171,15 @@ export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows =
     // gulvet først (cap ≤ sizeRule.max). cap 0 = løbet kan ikke stilles op uden at tage
     // ryttere fra et løb der kan; det står tomt i stedet for at binde 1-5 ryttere.
     let sizeRule = race.sizeRule;
+    let pool = available;
     if (hasCompetitor[i]) {
-      const cap = floorAwareCap({ race, available, later: laterCompetitors[i], availableFor, strategy });
+      const { cap, reserved } = floorAwareCap({ race, available, later: laterCompetitors[i], availableFor, strategy });
       sizeRule = { ...(race.sizeRule || SELECTION_SIZE.default), max: cap };
+      if (reserved.size) pool = available.filter((r) => !reserved.has(r.rider_id));
     }
     const picks = sizeRule?.max === 0
       ? []
-      : autopickTeamSelection({ riders: available, stages: race.stages, sizeRule, preference });
+      : autopickTeamSelection({ riders: pool, stages: race.stages, sizeRule, preference });
     out[race.race_id] = picks;
     for (const p of picks) {
       if (!busy.has(p.rider_id)) busy.set(p.rider_id, []);
