@@ -29,6 +29,8 @@
 --   -- 2) et eksisterende billede svarer stadig 200 via public-URL'en
 --   --    (/storage/v1/object/public/forum-images/<path>)
 
+SET lock_timeout = '3s';
+
 DROP POLICY IF EXISTS "forum_images_read" ON storage.objects;
 
 DROP POLICY IF EXISTS "forum_images_read_own_or_admin" ON storage.objects;
