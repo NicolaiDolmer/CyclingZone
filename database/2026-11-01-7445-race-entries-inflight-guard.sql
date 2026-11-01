@@ -55,9 +55,15 @@ BEGIN
     ELSE ARRAY[OLD.race_id, NEW.race_id]
   END;
 
+  -- FOR SHARE (Codex P1): et almindeligt SELECT kunne laese stages_completed = 0, mens
+  -- apply_stage_result er ved at committe etape 1, og lade skrivningen committe bagefter.
+  -- Delt raekkelaas venter paa en igangvaerende etape-UPDATE og blokerer en ny, til
+  -- entry-transaktionen er faerdig. Delte laase er indbyrdes forenelige (sweepet skriver
+  -- mange raekker for samme loeb); ORDER BY id giver fast laaserakkefoelge mod deadlock.
   FOR v_race IN
     SELECT id, status, coalesce(stages_completed, 0) AS done
       FROM public.races WHERE id = ANY(v_race_ids)
+      ORDER BY id FOR SHARE
   LOOP
     IF v_race.done > 0 AND v_race.status IS DISTINCT FROM 'completed' THEN
       RAISE EXCEPTION 'race_entries_inflight: race % is in progress (% blocked)', v_race.id, TG_OP
