@@ -164,6 +164,15 @@ export function isDrainingAiObligation(error) {
     .test(String(error.message || ""));
 }
 
+// #7445: DB-vagten race_entries_a_inflight_guard afviser enhver skrivning i et loeb der
+// er i gang (og INSERT/UPDATE i et afsluttet loeb). Kalderne springer enheden over: det er
+// frysningen der virker, ikke en fejl. Matcher kun vagtens egen beskedpraefiks; fejlen kan
+// komme direkte eller indpakket af applyUnitDiff ("race_entries upsert: race_entries_inflight: ...").
+export function isRaceEntriesInflightRejection(error) {
+  if (!error) return false;
+  return /race_entries_inflight: race [0-9a-f-]+ is (in progress|completed)/.test(String(error.message || ""));
+}
+
 // #5146: isDrainingAiObligation ovenfor matcher BEGGE guard-grene sammen — rigtigt for
 // kaldesteder der blot skal springe enheden stille over uanset hvilken gren der ramte
 // (raceEntryGenerator.js). raceRunner.js's TOCTOU-genskriv (dropDrainingTeamRows/
