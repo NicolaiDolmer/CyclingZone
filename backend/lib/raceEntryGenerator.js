@@ -5,7 +5,9 @@
 // stabilt på vindue-start, så race_id). Pure — ingen DB.
 
 import { runWithRetry } from "./dbChunk.js";
-import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
+import { autopickTeamSelection, selectionSizeForRace, SELECTION_SIZE, MIN_RACE_ENTRIES } from "./raceAutopick.js";
+import { OVERLAP_MIN_START } from "./raceFieldIntegrity.js";
+import { peakConcurrentNeed } from "./raceDayFloorPlan.js";
 import { isAiTeamRetireEnabled } from './aiTeamRetireFlag.js';
 import {
   windowsOverlap, raceBindingWindow,
@@ -32,8 +34,67 @@ import { loadTrainNowLockedRidersByDate, lockedRidersOnDates, raceStageDates } f
 import { indexGeneratorBindings, generatorBindingLocks } from "./raceEntryGeneratorBindings.ts";
 
 /**
+ * #7339: hvor mange ryttere skal ÉT løb have, før holdet stiller op? Kalderen sender
+ * `floor` når løbet allerede har manuelle ryttere (gulvet minus dem). Ellers gulvet,
+ * dog aldrig over løbets max.
+ */
+export function raceEntryFloor(race) {
+  if (Number.isFinite(race?.floor)) return Math.max(0, race.floor);
+  const max = race?.sizeRule?.max;
+  return Math.max(0, Math.min(MIN_RACE_ENTRIES, Number.isFinite(max) ? max : MIN_RACE_ENTRIES));
+}
+
+// #6739 regel A: et etapeløb kan starte med OVERLAP_MIN_START ryttere når resten kører
+// et andet løb samme løbsdag. Et etapeløb med så mange ryttere tømmes derfor ikke.
+function viableMinimum(race) {
+  const floor = raceEntryFloor(race);
+  if (!(Array.isArray(race?.stages) && race.stages.length > 1)) return floor;
+  return Math.max(0, floor - (MIN_RACE_ENTRIES - OVERLAP_MIN_START));
+}
+
+const scorableRiders = (list) => list.filter((r) => r?.rider_id && r.abilities);
+
+/**
+ * #7339: max-cap for `race` når holdet har andre løb samme løbsdag (`later` = de senere
+ * løb i tildelingen der overlapper). Løbene rangeres (mål-løb fra strategien først, så
+ * kronologisk), og løb tages med så længe ALLE medtagne kan nå gulvet. Dette løb får så
+ * resten op til sit max, efter at de medtagne senere løb har fået reserveret deres gulv.
+ * 0 = løbet kan ikke stilles op (eller kun ved at tage ryttere fra et højere rangeret
+ * løb) og står tomt. Når alle løb kan fyldes helt, er cap = max (uændret adfærd).
+ */
+function floorAwareCap({ race, available, later, availableFor, strategy }) {
+  const max = Number.isFinite(race.sizeRule?.max) ? race.sizeRule.max : SELECTION_SIZE.default.max;
+  const supply = scorableRiders(available).length;
+  const ownIds = new Set(available.map((r) => r.rider_id));
+  const isTarget = (r) => (strategy?.targetRaceIds?.has(r.race_id) ? 1 : 0);
+  const self = { race, need: raceEntryFloor(race), window: race.window, self: true, order: 0 };
+  const others = [];
+  later.forEach((l, idx) => {
+    const avail = scorableRiders(availableFor(l));
+    const floor = raceEntryFloor(l);
+    if (avail.length < floor) return; // kan alligevel ikke nå gulvet: reservér intet til det
+    const ownOnly = avail.filter((r) => !ownIds.has(r.rider_id)).length; // ryttere kun det kan bruge
+    others.push({ race: l, need: Math.max(0, floor - ownOnly), window: l.window, order: idx + 1 });
+  });
+  const ranked = [self, ...others].sort((a, b) => isTarget(b.race) - isTarget(a.race) || a.order - b.order);
+  const kept = [];
+  let selfKept = false;
+  for (const item of ranked) {
+    const trial = item.self ? kept : [...kept, item];
+    const selfNeed = selfKept || item.self ? self.need : 0;
+    if (selfNeed + peakConcurrentNeed(trial) > supply) continue;
+    if (item.self) selfKept = true;
+    else kept.push(item);
+  }
+  const room = supply - peakConcurrentNeed(kept);
+  if (selfKept) return Math.max(0, Math.min(max, room));
+  const viable = viableMinimum(race);
+  return viable > 0 && room >= viable ? Math.min(max, room) : 0;
+}
+
+/**
  * @param {{ riders: Array<{rider_id, abilities, fatigue?}>,
- *           races: Array<{race_id, window:{start,end}, stages, sizeRule}>,
+ *           races: Array<{race_id, window:{start,end}, stages, sizeRule, floor?}>,
  *           lockedWindows?: Array<{window:{start,end}, riderIds:Array<string>}> }} args
  * @returns {Record<string, Array<{rider_id, race_role}>>} entries pr. race_id
  *
@@ -48,6 +109,24 @@ export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows =
   const ordered = [...races].sort(
     (a, b) => (a.window?.start ?? 0) - (b.window?.start ?? 0) || String(a.race_id).localeCompare(String(b.race_id))
   );
+  // #7339: hvilke af holdets løb i DENNE tildeling konkurrerer om de samme ryttere
+  // (overlappende binding-vindue)? Kun dem får gulv-bevidst fordeling; et løb uden
+  // konkurrent fyldes præcis som før.
+  const laterCompetitors = ordered.map(() => []);
+  const hasCompetitor = ordered.map(() => false);
+  for (let i = 0; i < ordered.length; i += 1) {
+    const w = ordered[i].window;
+    if (!w) continue;
+    for (let j = i + 1; j < ordered.length; j += 1) {
+      const lw = ordered[j].window;
+      if (!lw) continue;
+      if (Number.isFinite(lw.start) && Number.isFinite(w.end) && lw.start > w.end) break; // sorteret på start
+      if (!windowsOverlap(w, lw)) continue;
+      laterCompetitors[i].push(ordered[j]);
+      hasCompetitor[i] = true;
+      hasCompetitor[j] = true;
+    }
+  }
   // Optaget-liste pr. rytter: array af vinduer rytteren allerede er bundet i.
   const busy = new Map(); // rider_id → [{start,end}]
   // Seed med låste vinduer (manuelle entries): rytteren er optaget i det vindue.
@@ -59,14 +138,16 @@ export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows =
     }
   }
   const out = {};
+  const availableFor = (race) => riders.filter((r) => {
+    // #6139: en rytter der traenede (Train now) paa en af loebets datoer kan ikke udtages hertil.
+    if (race.excludedRiderIds?.has(r.rider_id)) return false;
+    const windows = busy.get(r.rider_id) || [];
+    return !windows.some((w) => windowsOverlap(w, race.window));
+  });
 
-  for (const race of ordered) {
-    const available = riders.filter((r) => {
-      // #6139: en rytter der traenede (Train now) paa en af loebets datoer kan ikke udtages hertil.
-      if (race.excludedRiderIds?.has(r.rider_id)) return false;
-      const windows = busy.get(r.rider_id) || [];
-      return !windows.some((w) => windowsOverlap(w, race.window));
-    });
+  for (let i = 0; i < ordered.length; i += 1) {
+    const race = ordered[i];
+    const available = availableFor(race);
     // S3: udled per-race preference fra team-niveau strategi. null → uændret autopick
     // (idempotens: strategy=null ≡ bit-for-bit gammel adfærd).
     const preference = strategy
@@ -77,7 +158,17 @@ export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows =
           isTargetRace: !!strategy.targetRaceIds?.has(race.race_id),
         }
       : null;
-    const picks = autopickTeamSelection({ riders: available, stages: race.stages, sizeRule: race.sizeRule, preference });
+    // #7339: konkurrerer løbet med holdets andre løb samme løbsdag, fyldes hele løb til
+    // gulvet først (cap ≤ sizeRule.max). cap 0 = løbet kan ikke stilles op uden at tage
+    // ryttere fra et løb der kan; det står tomt i stedet for at binde 1-5 ryttere.
+    let sizeRule = race.sizeRule;
+    if (hasCompetitor[i]) {
+      const cap = floorAwareCap({ race, available, later: laterCompetitors[i], availableFor, strategy });
+      sizeRule = { ...(race.sizeRule || SELECTION_SIZE.default), max: cap };
+    }
+    const picks = sizeRule?.max === 0
+      ? []
+      : autopickTeamSelection({ riders: available, stages: race.stages, sizeRule, preference });
     out[race.race_id] = picks;
     for (const p of picks) {
       if (!busy.has(p.rider_id)) busy.set(p.rider_id, []);
@@ -794,6 +885,7 @@ export async function runRaceEntryGenerator({
           race_id: race.id, window,
           stages: stagesByRace.get(race.id) || [],
           sizeRule: { min: Math.max(0, sizeRule.min - manualRiders.length), max: sizeRule.max - manualRiders.length },
+          floor: Math.max(0, MIN_RACE_ENTRIES - manualRiders.length), // #7339: manuelle ryttere tæller mod gulvet
           excludedRiderIds: trainNowLockedByRace.get(race.id), // #6139
         });
       }
