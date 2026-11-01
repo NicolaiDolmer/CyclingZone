@@ -4,6 +4,8 @@ name: Perf & SEO review
 # Måler prod (Lighthouse) + statisk repo-audit, og lader Claude skrive en
 # prioriteret perf+SEO-forbedringsliste i ÉT idempotent inbox-issue. Mønster:
 # quality-inbox.yml (scheduled idempotent issue) + claude.yml (claude-code-action).
+# SEO males kun her, ugentligt mod prod paa de offentlige sider; markant fald fra
+# sidste uge giver et issue (scripts/seo-weekly-check.mjs, #7440).
 # SCOPE: teknisk perf + on-page SEO. Ranking/keywords er UDEN for scope (ejes af
 # GSC/Ahrefs/Morningscore, jf. docs/seo/2026-06-21-seo-ownership.md).
 
@@ -15,6 +17,7 @@ on:
 permissions:
   contents: read
   issues: write
+  actions: read # hent sidste uges seo-scores artifact (#7440)
 
 jobs:
   review:
@@ -41,9 +44,52 @@ jobs:
         continue-on-error: true
         uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18 # v12
         with:
-          urls: https://cyclingzone.org/
+          # Kun offentlige sider (forside + marketing, jf. marketing/app/sitemap.ts).
+          # App'en bag login males ikke for SEO (#7440).
+          urls: |
+            https://cyclingzone.org/
+            https://cyclingzone.org/how-it-works
+            https://cyclingzone.org/pro-cycling-manager-alternative
+            https://cyclingzone.org/da
+            https://cyclingzone.org/da/saadan-fungerer-det
+            https://cyclingzone.org/da/pro-cycling-manager-alternativ
           uploadArtifacts: true
           temporaryPublicStorage: true
+
+      # SEO-vagt (#7440): sammenlign med sidste uges scores (artifact fra seneste
+      # vellykkede run). Issue oprettes KUN ved markant fald, ellers intet.
+      - name: Hent sidste uges SEO-scores
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PREV_RUN=$(gh run list --workflow perf-seo-review.yml --status success --limit 1 --json databaseId -q '.[0].databaseId')
+          if [ -n "$PREV_RUN" ]; then
+            gh run download "$PREV_RUN" -n seo-scores -D prev-seo || echo "Ingen seo-scores artifact fra forrige run"
+          fi
+
+      - name: SEO-vagt (fald fra sidste uge)
+        run: node scripts/seo-weekly-check.mjs .lighthouseci prev-seo/seo-scores.json seo-scores.json seo-drop-report.md
+
+      - name: Opret issue ved markant SEO-fald
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -f seo-drop-report.md ]; then
+            echo "" >> seo-drop-report.md
+            echo "Run: $RUN_URL" >> seo-drop-report.md
+            gh label create perf-seo-inbox -c "0E8A16" -d "Ugentlig perf/SEO-review inbox (bot)" --force
+            gh issue create --title "[bot] SEO-fald paa offentlige sider $(date -u +%F)" --label "perf-seo-inbox,claude:todo,priority:med" --body-file seo-drop-report.md
+          else
+            echo "Intet markant SEO-fald - ingen issue."
+          fi
+
+      - name: Upload SEO-scores (til naeste uge)
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: seo-scores
+          path: seo-scores.json
 
       - name: Byg audit-rapport
         run: |
