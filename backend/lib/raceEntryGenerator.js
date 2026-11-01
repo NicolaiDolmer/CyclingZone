@@ -5,7 +5,7 @@
 // stabilt på vindue-start, så race_id). Pure — ingen DB.
 
 import { runWithRetry } from "./dbChunk.js";
-import { autopickTeamSelection, selectionSizeForRace, SELECTION_SIZE, MIN_RACE_ENTRIES } from "./raceAutopick.js";
+import { autopickTeamSelection, selectionSizeForRace, suitabilityScore, SELECTION_SIZE, MIN_RACE_ENTRIES } from "./raceAutopick.js";
 import { OVERLAP_MIN_START } from "./raceFieldIntegrity.js";
 import { peakConcurrentNeed } from "./raceDayFloorPlan.js";
 import { isAiTeamRetireEnabled } from './aiTeamRetireFlag.js';
@@ -88,17 +88,28 @@ function floorAwareCap({ race, available, later, availableFor, strategy }) {
     else kept.push(item);
   }
   const room = supply - peakConcurrentNeed(kept);
-  // Codex-review: kan et medtaget senere løb kun bruge NOGLE af dette løbs ryttere (fx en
-  // Train now-lås), reserveres netop de ryttere, så dette løb ikke tager dem.
-  const reserved = new Set();
-  for (const item of kept) {
-    if (!item.restricted) continue;
-    const pool = item.shared.filter((id) => !reserved.has(id));
-    for (const id of pool.slice(Math.max(0, pool.length - item.need))) reserved.add(id);
-  }
-  if (selfKept) return { cap: Math.max(0, Math.min(max, room)), reserved };
   const viable = viableMinimum(race);
-  return { cap: viable > 0 && room >= viable ? Math.min(max, room) : 0, reserved };
+  const cap = selfKept
+    ? Math.max(0, Math.min(max, room))
+    : (viable > 0 && room >= viable ? Math.min(max, room) : 0);
+  // Codex-review: kan et medtaget senere løb kun bruge NOGLE af dette løbs ryttere (fx en
+  // Train now-lås), reserveres ryttere til det. Review 1/11: kun underskuddet, dvs. hvad
+  // det mangler hvis dette løb i værste fald tog `cap` af de fælles ryttere, og så de
+  // ryttere der passer DÅRLIGST til dette løb. Er der ryttere nok, reserveres intet, og
+  // udtagelsen er den samme som før #7339.
+  const reserved = new Set();
+  if (cap > 0) {
+    const fitForSelf = new Map(scorableRiders(available).map((r) => [r.rider_id, suitabilityScore(r.abilities, race.stages)]));
+    for (const item of kept) {
+      if (!item.restricted) continue;
+      const pool = item.shared.filter((id) => !reserved.has(id));
+      const deficit = item.need - (pool.length - cap);
+      if (deficit <= 0) continue;
+      const weakest = [...pool].sort((a, b) => (fitForSelf.get(a) ?? 0) - (fitForSelf.get(b) ?? 0) || String(a).localeCompare(String(b)));
+      for (const id of weakest.slice(0, deficit)) reserved.add(id);
+    }
+  }
+  return { cap, reserved };
 }
 
 /**

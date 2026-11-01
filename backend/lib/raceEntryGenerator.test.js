@@ -2775,6 +2775,25 @@ test("#7339: rigeligt med ryttere → bit-identisk med den grådige fordeling", 
   assert.deepEqual(out.A.map((p) => p.rider_id), ridersN(8).map((r) => r.rider_id), "A får stadig de 8 bedste");
 });
 
+test("#7339 review: én Train now-lås i et senere løb tager ikke det første løbs bedste ryttere", () => {
+  // 30 ryttere, bedste SIDST i listen (som prod's id-orden kan give). B kan ikke bruge én af A's.
+  const riders = ridersN(30).reverse();
+  const plain = assignTeamAcrossRaces({ riders, races: [dayRace("A", 8), dayRace("B", 8)] });
+  const locked = assignTeamAcrossRaces({ riders, races: [dayRace("A", 8), dayRace("B", 8, { excludedRiderIds: new Set(["f29"]) })] });
+  assert.deepEqual(locked.A.map((p) => p.rider_id), plain.A.map((p) => p.rider_id), "A beholder sine bedste ryttere");
+  assert.equal(locked.B.length, 8);
+});
+
+test("#7339 review: ved reelt underskud reserveres de ryttere der passer dårligst til det første løb", () => {
+  // 14 ryttere, max 7 i begge. B kan ikke bruge f00 (Train now). A må ikke tage så mange
+  // af de fælles, at B ikke kan nå 7; det reserverede skal være A's svageste, ikke tilfældige.
+  const riders = ridersN(14);
+  const out = assignTeamAcrossRaces({ riders, races: [dayRace("A", 7), dayRace("B", 7, { excludedRiderIds: new Set(["f00"]) })] });
+  assert.deepEqual(sizes(out, ["A", "B"]), [7, 7]);
+  assert.ok(out.A.some((p) => p.rider_id === "f00"), "A tager f00, som B ikke kan bruge");
+  assert.ok(out.A.some((p) => p.rider_id === "f01"), "A beholder sin næstbedste");
+});
+
 test("#7339: et løb uden konkurrent fyldes som før, også under gulvet", () => {
   const out = assignTeamAcrossRaces({ riders: ridersN(4), races: [dayRace("A", 6)] });
   assert.equal(out.A.length, 4);
