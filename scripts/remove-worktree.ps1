@@ -91,7 +91,14 @@ if (Test-Path $claudeProj) {
   }
 }
 
-# git worktree remove
+# git worktree remove - foerst links ud (#6687/#7446): '--force' foelger en junction og
+# toemmer maalet (node_modules-cachen, OneDrive repo-local).
+. (Join-Path $PSScriptRoot 'close-out-cleanup-junctions.ps1')
+$linkResult = Remove-WorktreeJunctions -WorktreePath $wt -DryRun:$DryRun
+if (-not $linkResult.Ok) {
+  Write-Host "[STOP] Links i $wt kunne ikke fjernes - worktreet roeres ikke: $($linkResult.Errors -join '; ')" -ForegroundColor Red
+  exit 1
+}
 if ($DryRun) {
   Write-Host "[would-run] git -C $RepoRoot worktree remove $wt" -ForegroundColor Cyan
 } else {
