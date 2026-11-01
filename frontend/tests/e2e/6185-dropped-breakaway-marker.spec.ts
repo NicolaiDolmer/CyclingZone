@@ -31,7 +31,7 @@ async function prepareRace(page: Page, { withTimeline, rows = results }: { withT
   await page.route("**/rest/v1/race_stage_passages**", route => json(route, []));
   await page.route("**/api/races/*/timeline**", route => withTimeline ? json(route, timeline) : route.fulfill({ status: 404, body: "{}" }));
   await login(page);
-  await page.goto("/races/race-6185?stage=1");
+  await page.goto("/races/race-6185?stage=1&tab=results");
   await expect(page.getByRole("heading", { name: "Etape 1 · målrækkefølge", exact: true })).toBeVisible();
   const showAll = page.getByRole("button", { name: /^Vis alle/ });
   if (await showAll.count()) await showAll.click();
