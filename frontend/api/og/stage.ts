@@ -13,7 +13,8 @@ import { DEMO_STAGES } from "./_lib/demo.ts";
 import { loadFonts } from "./_lib/fonts.ts";
 import { DEFAULT_API_ORIGIN, fetchStageRoute, normalizeStageRoute, type StageRoute } from "./_lib/stageRoute.ts";
 
-export const config = { runtime: "edge" };
+// Node-runtime (Fluid compute), ikke edge: @vercel/og 1.0.2+ importerer 'module', som edge-buildet
+// afviser (#6626). 1.0.3 bringer satori 0.33.5 med rettet SVG-escaping (Dependabot #79, #7431).
 
 // En etapes rute ændrer sig sjældent (kun ved en regenerering før løbet), så CDN'et må holde
 // billedet et døgn og servere det gamle mens det fornyes. En fejl caches aldrig.
@@ -29,8 +30,7 @@ function apiOrigin(): string {
   return fromEnv && /^https:\/\//.test(fromEnv) ? fromEnv : DEFAULT_API_ORIGIN;
 }
 
-export default async function handler(request: Request): Promise<Response> {
-  if (request.method !== "GET" && request.method !== "HEAD") return plain(405, "Method not allowed");
+export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url);
   const lang: Lang = searchParams.get("lang") === "da" ? "da" : "en";
 
@@ -65,3 +65,5 @@ export default async function handler(request: Request): Promise<Response> {
     return plain(500, "Could not render image");
   }
 }
+
+export const HEAD = GET;
