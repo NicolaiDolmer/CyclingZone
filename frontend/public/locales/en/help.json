@@ -145,7 +145,7 @@
       },
       "confidence": {
         "title": "Confidence replaces the three satisfaction numbers",
-        "text": "Confidence is a single score from 0 to 100 for how the board sees your work. Four areas feed it: results, economy, identity and ranking. The confidence card shows the score, the movement since last week, a meter per area and a plain line naming any limit the board currently has on you. Confidence also drives your sponsor modifier, so one number now explains both what the board thinks and what the sponsor pays. Every target you meet or miss moves confidence, never your balance directly."
+        "text": "Confidence is a single score from 0 to 100 for how the board sees your work. Four areas feed it: results, economy, identity and ranking. The confidence card shows the score, a meter per area and a plain line naming any limit the board currently has on you. Confidence also drives your sponsor modifier, so one number now explains both what the board thinks and what the sponsor pays. Every target you meet or miss moves confidence, never your balance directly."
       },
       "annualMeeting": {
         "title": "The annual meeting",
@@ -601,6 +601,14 @@
             "A short, steep kick near the line rewards a late attack over a pure sprint."
           ],
           [
+            "Uphill sprint",
+            "The last kilometre rises gently, so the sprint rewards riders who can hold their power uphill."
+          ],
+          [
+            "Wall finish",
+            "The finish line sits on a short, very steep wall, where explosive power decides the stage."
+          ],
+          [
             "Summit finish",
             "The climb itself is the finish line, opening the biggest time gaps of the day."
           ],
@@ -1039,7 +1047,7 @@
           "New seasons start with a little base fatigue for every rider. Before the first race, rest lowers form, normal training holds it and hard training raises it.",
           "Injuries are NOT reset. They carry over unchanged.",
           "Peak plans are unaffected by the changeover.",
-          "Season wages are paid during the changeover. Rider values do not move during the changeover itself: they update next time, at the normal Sunday update.",
+          "Season wages are paid during the changeover. Rider values update once, right after the changeover has finished, and then at the normal Sunday update.",
           "Training continues every day between seasons and counts toward the new season. Your chosen program still applies, missed training is picked up automatically, and Train now also works before the first race. Check the calendar for the first race."
         ]
       }
@@ -1644,7 +1652,7 @@
       },
       "graduationDayAt23": {
         "title": "What happens when a rider ages out of his squad?",
-        "text": "At the season turn, riders who have outgrown their squad move on: junior to U23 team at season age 19, U23 to senior at season age 23. You get first choice on Graduation Day; if you do nothing before the deadline the club moves him up when there is room and you can afford it. If the squad is full, he waits under Awaiting promotion until you free a spot. If there is room but the club cannot afford him, he is sold, and if nobody buys him he is released as a free agent."
+        "text": "At the season turn, riders who have outgrown their squad move on: junior to U23 team at season age 19, U23 to senior at season age 23. You get first choice on Graduation Day; if you do nothing before the deadline the club moves him up when there is room and you can afford it. If the squad is full, he waits under Awaiting promotion until you free a spot. If there is room but the club cannot afford him, he is sold, and if nobody buys him he is released as a free agent. Expiring contracts run out first at the season turn, so only riders who still have a contract can move up. Extend a youth rider's contract before the season ends if you want him to move up."
       },
       "youthRacesFromS4": {
         "title": "Do U23 team and Junior team actually race?",
@@ -1705,8 +1713,8 @@
         ]
       },
       "liveTracksStatus": {
-        "title": "Only Training and Scouting are active right now",
-        "text": "Of the 5 tracks, only the Training Center and Scouting Network are wired into the game today. The other 3 show what they will do so you can plan ahead, but building or upgrading them has no in-game effect yet. Their Coming soon tag will change automatically to Active the moment their engine goes live, no action needed from you."
+        "title": "Training, Scouting and Medical are active right now",
+        "text": "Of the 5 tracks, the Training Center, Scouting Network and Medical Department are wired into the game today. The Academy Expansion opens with the weekly intake. The Commercial Department shows what it will do so you can plan ahead, but building or upgrading it has no in-game effect yet. Its Coming soon tag changes automatically to Active the moment it goes live, no action needed from you."
       },
       "staffSynergy": {
         "title": "How a chief and the facility work together",
@@ -1718,7 +1726,7 @@
       },
       "coachingGroups": {
         "title": "Coaching groups: U23 vs Senior",
-        "text": "A Sports Director's coaching group focus shows which age group they train best. U23 covers Academy riders and young pros up to 25; Senior covers riders 26 and up. This is a chief's own specialisation, separate from the club squad structure (Junior team and U23 team are coming soon): a coaching group is about which riders a chief trains best, not which squad a rider belongs to."
+        "text": "A Sports Director's coaching group focus shows which age group they train best. U23 covers Academy riders and young pros up to 25; Senior covers riders 26 and up. This is a chief's own specialisation, separate from the club squad structure: a coaching group is about which riders a chief trains best, not which squad a rider belongs to."
       },
       "costs": {
         "title": "Costs: a one-time build price",
@@ -1737,7 +1745,7 @@
       "label": "Team selection",
       "what": {
         "title": "Picking your race squad",
-        "text": "Each race has a field size set by its class: 6 in most races, 7 in the bigger World Tour races and Monuments, 8 in Grand Tours. Open the race page and use the Team selection panel. You can save fewer riders than the field holds, and saving is never blocked. But your team needs at least 6 riders in the line-up to start the race, in every race, whatever the field size. Fewer than 6 and your team does not start, so no result and no race day earnings from it. One exception: if you had 6 riders selected and some got injured after you picked them, your team still starts with the fit riders it has left, after the assistant has added any free riders. If you leave a race empty or below 6, your assistant fills it up to 6 at race time from the riders you have free, and it skips races you have withdrawn from or cleared on purpose. The panel tells you before you leave the page whether your team will start. To sit a race out, withdraw from it; if you want more riders to choose from, sign free agents."
+        "text": "Each race has a field size set by its class: 6 in most races, 7 in the bigger World Tour races and Monuments, 8 in Grand Tours. Open the race page and use the Team selection panel. You can save fewer riders than the field holds, and saving is never blocked. But your team needs at least 6 riders in the line-up to start the race, in every race, whatever the field size. Fewer than 6 and your team does not start, so no result and no race day earnings from it. One exception: if you had 6 riders selected and some got injured after you picked them, your team still starts with the fit riders it has left, after the assistant has added any free riders. Another exception, in stage races only: if some of your riders are still busy in another race on the first day, your team starts with the free riders it has, as long as there are at least 4. If you leave a race empty or below 6, your assistant fills it up to 6 at race time from the riders you have free, and it skips races you have withdrawn from or cleared on purpose. The panel tells you before you leave the page whether your team will start. To sit a race out, withdraw from it; if you want more riders to choose from, sign free agents."
       },
       "seasonOverview": {
         "title": "Season view on the planning board",
@@ -1804,7 +1812,7 @@
       },
       "timeLimitAndGrupetto": {
         "title": "The time limit and the grupetto",
-        "text": "Arrive too far behind the stage winner and your race is over, out of the whole event on a stage race, a DNF on a one-day race. A big group that comes in together is saved as one instead, that is the grupetto, and it exists so a whole tired peloton is not sent home on a brutal day. How much room you get depends on the stage: flat days are the strictest, the high mountains the most forgiving. In youth races the limit is looser and a smaller group can be saved. It is a rule, never a roll of the dice, and it treats an AI team exactly the same way it treats you. All you ever see is the plain result: out of the time limit, or the grupetto saved."
+        "text": "Arrive too far behind the stage winner and your race is over, out of the whole event on a stage race, a DNF on a one-day race. A big group that comes in together is saved as one instead, that is the grupetto, and it exists so a whole tired peloton is not sent home on a brutal day. How much room you get depends on the stage: flat days are the strictest, the high mountains the most forgiving. In youth races the limit is looser and a smaller group can be saved. It is a rule, never a roll of the dice, and it treats an AI team exactly the same way it treats you. All you ever see is the plain result: out of the time limit, or the grupetto saved. In a stage race, a worn-out helper who finished far behind can also climb off after the stage. He shows as DNF with the reason \"Climbed off, exhausted\" and is out of the rest of the race."
       },
       "teamwork": {
         "title": "Teamwork on the road",

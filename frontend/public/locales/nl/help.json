@@ -145,7 +145,7 @@
       },
       "confidence": {
         "title": "Vertrouwen vervangt de drie tevredenheidsgetallen",
-        "text": "Vertrouwen is één score van 0 tot 100 voor hoe het bestuur je werk ziet. Vier gebieden voeden het: resultaten, economie, identiteit en ranglijst. De vertrouwenskaart toont de score, de beweging sinds vorige week, een meter per gebied en een duidelijke regel die een eventuele beperking noemt die het bestuur je op dit moment oplegt. Vertrouwen bepaalt ook je sponsormodifier, dus één getal verklaart nu zowel wat het bestuur denkt als wat de sponsor betaalt. Elk doel dat je haalt of mist, beweegt het vertrouwen, nooit rechtstreeks je saldo."
+        "text": "Vertrouwen is één score van 0 tot 100 voor hoe het bestuur je werk ziet. Vier gebieden voeden het: resultaten, economie, identiteit en ranglijst. De vertrouwenskaart toont de score, een meter per gebied en een duidelijke regel die een eventuele beperking noemt die het bestuur je op dit moment oplegt. Vertrouwen bepaalt ook je sponsormodifier, dus één getal verklaart nu zowel wat het bestuur denkt als wat de sponsor betaalt. Elk doel dat je haalt of mist, beweegt het vertrouwen, nooit rechtstreeks je saldo."
       },
       "annualMeeting": {
         "title": "De jaarvergadering",
@@ -601,6 +601,14 @@
             "Een korte, steile uitsloper vlak voor de streep beloont een late aanval boven een zuivere sprint."
           ],
           [
+            "Bergop sprint",
+            "De laatste kilometer loopt licht op, dus de sprint beloont renners die hun vermogen bergop kunnen vasthouden."
+          ],
+          [
+            "Finish op een muur",
+            "De finishlijn ligt op een korte, zeer steile muur, waar explosief vermogen de etappe beslist."
+          ],
+          [
             "Bergaankomst",
             "De klim zelf is de finishlijn, wat de grootste tijdsverschillen van de dag oplevert."
           ],
@@ -1039,7 +1047,7 @@
           "Vermoeidheid gaat voor elke renner terug naar 0.",
           "Blessures worden NIET gereset. Ze gaan ongewijzigd mee.",
           "Piekplannen worden niet geraakt door de wissel.",
-          "Seizoenslonen worden tijdens de wissel betaald. Rennerswaarden bewegen niet tijdens de wissel zelf: ze worden de volgende keer bijgewerkt, bij de normale zondagse update.",
+          "Seizoenslonen worden tijdens de wissel betaald. Rennerswaarden worden één keer bijgewerkt, direct nadat de wissel klaar is, en daarna bij de normale zondagse update.",
           "Het nieuwe seizoen begint na een korte pauze tussen de seizoenen, waarover de managers hebben gestemd. De datum van de eerste etappe staat op de koerskalender, dus je hebt tijd om je selecties te kiezen."
         ]
       }
@@ -1644,7 +1652,7 @@
       },
       "graduationDayAt23": {
         "title": "Wat gebeurt er als een renner uit zijn selectie groeit?",
-        "text": "Bij de seizoenswissel gaan renners die aan hun selectie zijn ontgroeid verder: junioren naar het U23-team op seizoensleeftijd 19, U23 naar senioren op seizoensleeftijd 23. Op Graduation Day heb je de eerste keuze; als je voor de deadline niets doet, schuift de club hem door als er ruimte is en je het kunt betalen. Is de selectie vol, dan wacht hij onder Wacht op promotie tot je een plek vrijmaakt. Is er ruimte maar kan de club hem niet betalen, dan verkoopt ze hem, en als niemand hem koopt, geeft ze hem vrij als transfervrije renner."
+        "text": "Bij de seizoenswissel gaan renners die aan hun selectie zijn ontgroeid verder: junioren naar het U23-team op seizoensleeftijd 19, U23 naar senioren op seizoensleeftijd 23. Op Graduation Day heb je de eerste keuze; als je voor de deadline niets doet, schuift de club hem door als er ruimte is en je het kunt betalen. Is de selectie vol, dan wacht hij onder Wacht op promotie tot je een plek vrijmaakt. Is er ruimte maar kan de club hem niet betalen, dan verkoopt ze hem, en als niemand hem koopt, geeft ze hem vrij als transfervrije renner. Bij de seizoenswissel lopen aflopende contracten eerst af, dus alleen renners die nog een contract hebben kunnen doorschuiven. Verleng het contract van een jeugdrenner voor het einde van het seizoen als je wilt dat hij doorschuift."
       },
       "youthRacesFromS4": {
         "title": "Koersen het U23-team en het Juniorenteam echt?",
@@ -1705,8 +1713,8 @@
         ]
       },
       "liveTracksStatus": {
-        "title": "Alleen Training en Scouting zijn nu actief",
-        "text": "Van de 5 sporen zijn vandaag alleen het Trainingscentrum en het Scoutingnetwerk in het spel aangesloten. De andere 3 tonen wat ze gaan doen zodat je vooruit kunt plannen, maar ze bouwen of opwaarderen heeft nog geen effect in het spel. Hun label Binnenkort verandert automatisch naar Actief zodra hun motor live gaat, zonder dat jij iets hoeft te doen."
+        "title": "Training, Scouting en Medisch zijn nu actief",
+        "text": "Van de 5 sporen zijn vandaag het Trainingscentrum, het Scoutingnetwerk en de Medische afdeling in het spel aangesloten. De Academie-uitbreiding opent met de wekelijkse instroom. De Commerciële afdeling toont wat ze gaat doen zodat je vooruit kunt plannen, maar haar bouwen of opwaarderen heeft nog geen effect in het spel. Haar label Binnenkort verandert automatisch naar Actief zodra ze live gaat, zonder dat jij iets hoeft te doen."
       },
       "staffSynergy": {
         "title": "Hoe een hoofd en de faciliteit samenwerken",
@@ -1718,7 +1726,7 @@
       },
       "coachingGroups": {
         "title": "Coachinggroepen: U23 tegenover Senioren",
-        "text": "De focus van de coachinggroep van een Sportdirecteur laat zien welke leeftijdsgroep hij of zij het best traint. U23 omvat Academy-renners en jonge profs tot 25 jaar; Senioren omvat renners van 26 jaar en ouder. Dit is de eigen specialisatie van een hoofd, los van de selectiestructuur van de club (Juniorenteam en U23-team komen binnenkort): een coachinggroep gaat over welke renners een hoofd het best traint, niet over bij welke selectie een renner hoort."
+        "text": "De focus van de coachinggroep van een Sportdirecteur laat zien welke leeftijdsgroep hij of zij het best traint. U23 omvat Academy-renners en jonge profs tot 25 jaar; Senioren omvat renners van 26 jaar en ouder. Dit is de eigen specialisatie van een hoofd, los van de selectiestructuur van de club: een coachinggroep gaat over welke renners een hoofd het best traint, niet over bij welke selectie een renner hoort."
       },
       "costs": {
         "title": "Kosten: een eenmalige bouwprijs",
@@ -1737,7 +1745,7 @@
       "label": "Teamselectie",
       "what": {
         "title": "Je koersselectie kiezen",
-        "text": "Elke koers heeft een veldgrootte die door zijn klasse wordt bepaald: 6 in de meeste koersen, 7 in de grotere WorldTour-koersen en Monuments, 8 in Grand Tours. Open de koerspagina en gebruik het paneel Teamselectie. Je kunt minder renners opslaan dan het veld bevat, en opslaan wordt nooit geblokkeerd. Maar je team heeft minstens 6 renners in de opstelling nodig om de koers te starten, in elke koers, wat de veldgrootte ook is. Bij minder dan 6 start je team niet, dus geen uitslag en geen koersdaginkomsten daaruit. Een uitzondering: als je 6 renners had geselecteerd en sommigen geblesseerd raakten nadat je ze koos, start je team nog steeds met de fitte renners die het over heeft, nadat de assistent eventuele vrije renners heeft toegevoegd. Als je een koers leeg laat of onder 6, vult je assistent hem op het moment van de koers aan tot 6 uit de renners die je vrij hebt, en slaat hij koersen over waaruit je je hebt teruggetrokken of die je bewust hebt gewist. Het paneel vertelt je voordat je de pagina verlaat of je team zal starten. Om een koers over te slaan, trek je je terug; als je meer renners wilt om uit te kiezen, contracteer dan transfervrije renners."
+        "text": "Elke koers heeft een veldgrootte die door zijn klasse wordt bepaald: 6 in de meeste koersen, 7 in de grotere WorldTour-koersen en Monuments, 8 in Grand Tours. Open de koerspagina en gebruik het paneel Teamselectie. Je kunt minder renners opslaan dan het veld bevat, en opslaan wordt nooit geblokkeerd. Maar je team heeft minstens 6 renners in de opstelling nodig om de koers te starten, in elke koers, wat de veldgrootte ook is. Bij minder dan 6 start je team niet, dus geen uitslag en geen koersdaginkomsten daaruit. Een uitzondering: als je 6 renners had geselecteerd en sommigen geblesseerd raakten nadat je ze koos, start je team nog steeds met de fitte renners die het over heeft, nadat de assistent eventuele vrije renners heeft toegevoegd. Nog een uitzondering, alleen in etappekoersen: als een deel van je renners op de eerste dag nog in een andere koers rijdt, start je team met de vrije renners die het heeft, zolang dat er minstens 4 zijn. Als je een koers leeg laat of onder 6, vult je assistent hem op het moment van de koers aan tot 6 uit de renners die je vrij hebt, en slaat hij koersen over waaruit je je hebt teruggetrokken of die je bewust hebt gewist. Het paneel vertelt je voordat je de pagina verlaat of je team zal starten. Om een koers over te slaan, trek je je terug; als je meer renners wilt om uit te kiezen, contracteer dan transfervrije renners."
       },
       "seasonOverview": {
         "title": "Seizoensweergave op het planningsbord",
@@ -1804,7 +1812,7 @@
       },
       "timeLimitAndGrupetto": {
         "title": "De tijdslimiet en de grupetto",
-        "text": "Kom je te ver achter de etappewinnaar binnen, dan is je koers voorbij, uit de hele koers in een etappekoers, een DNF in een eendagskoers. Een grote groep die samen binnenkomt, wordt in plaats daarvan als één gered, dat is de grupetto, en die bestaat zodat een heel vermoeid peloton op een brute dag niet naar huis wordt gestuurd. Hoeveel ruimte je krijgt, hangt van de etappe af: vlakke dagen zijn het strengst, het hooggebergte het mildst. In jeugdkoersen is de limiet losser en kan een kleinere groep worden gered. Het is een regel, nooit een worp van de dobbelsteen, en het behandelt een AI-team precies zoals het jou behandelt. Alles wat je ooit ziet, is de gewone uitslag: buiten de tijdslimiet, of de grupetto gered."
+        "text": "Kom je te ver achter de etappewinnaar binnen, dan is je koers voorbij, uit de hele koers in een etappekoers, een DNF in een eendagskoers. Een grote groep die samen binnenkomt, wordt in plaats daarvan als één gered, dat is de grupetto, en die bestaat zodat een heel vermoeid peloton op een brute dag niet naar huis wordt gestuurd. Hoeveel ruimte je krijgt, hangt van de etappe af: vlakke dagen zijn het strengst, het hooggebergte het mildst. In jeugdkoersen is de limiet losser en kan een kleinere groep worden gered. Het is een regel, nooit een worp van de dobbelsteen, en het behandelt een AI-team precies zoals het jou behandelt. Alles wat je ooit ziet, is de gewone uitslag: buiten de tijdslimiet, of de grupetto gered. In een etappekoers kan een uitgeputte knecht die ver achter binnenkwam ook na de etappe afstappen. Hij staat als DNF met de reden \"Afgestapt, uitgeput\" en is uit de rest van de koers."
       },
       "teamwork": {
         "title": "Teamwerk onderweg",
