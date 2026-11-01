@@ -178,7 +178,7 @@ if (Test-Path $codexLocalDir) {
 # docs/drafts, pr-screens og docs/snapshots er tracked; ucommittede filer derinde er
 # PC-lokale. De hoerer til i `<mappe>/local/` (junction til OneDrive) eller i en commit.
 $localFolders = @("docs/drafts", "pr-screens", "docs/snapshots")
-foreach ($folder in $localFolders) {
+foreach ($folder in $(if ($env:OneDrive) { $localFolders } else { @() })) {
   $junction = Join-Path $RepoRoot (Join-Path $folder "local")
   $jItem = Get-Item -LiteralPath $junction -Force -ErrorAction SilentlyContinue
   if (-not $jItem -or $jItem.LinkType -ne "Junction") {
@@ -187,13 +187,16 @@ foreach ($folder in $localFolders) {
       -Fix "Koer: pwsh -File scripts/link-onedrive-context.ps1"
   }
 }
-$untracked = @(& git -C $RepoRoot ls-files --others --exclude-standard -- @localFolders 2>$null)
+# Kun filer der har ligget over et doegn: nye specs/billeder midt i en PR er normale.
+$untracked = @(& git -C $RepoRoot -c core.quotepath=off ls-files --others --exclude-standard -- @localFolders 2>$null)
 foreach ($u in $untracked) {
   if (-not $u) { continue }
-  $home7446 = $localFolders | Where-Object { $u -like "$_/*" } | Select-Object -First 1
+  $full = Join-Path $RepoRoot $u
+  if ((Test-Path -LiteralPath $full) -and (Get-Item -LiteralPath $full).LastWriteTime -gt (Get-Date).AddHours(-24)) { continue }
+  $ownerFolder = $localFolders | Where-Object { $u -like "$_/*" } | Select-Object -First 1
   Add-Finding -Severity "warn" -Category "local-only-workfile" -Path $u `
     -Message "Ucommittet arbejdsfil i en tracked mappe er usynlig for anden PC" `
-    -Fix "Commit den, eller flyt den til $home7446/local/"
+    -Fix "Commit den, eller flyt den til $ownerFolder/local/"
 }
 
 # --- 2. ~/.codex/AGENTS.md ---

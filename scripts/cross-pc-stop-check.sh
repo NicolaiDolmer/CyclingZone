@@ -129,7 +129,8 @@ fi
 # season-cutover-preflight.json, night-wave-preflight.json (samme liste som cross-pc-forensic-audit.ps1)
 # + ephemeral patterns: commit-msg*.txt, commit-N.txt, commitmsg-*.txt, pr*-body.md, pr-body-*.md
 if [ -d ".codex.local" ]; then
-  local_only=$(find .codex.local -type f \
+  # .codex.local/shared/ er en junction til OneDrive (#7446) og dermed ikke lokal-only.
+  local_only=$(find .codex.local -path ".codex.local/shared" -prune -o -type f \
     ! -name "SESSION_CONTEXT.md" \
     ! -name "SUPABASE_CONTEXT.md" \
     ! -name "supabase-readonly.env" \
@@ -139,7 +140,7 @@ if [ -d ".codex.local" ]; then
     ! -name "commitmsg-*.txt" \
     ! -name "pr*-body.md" \
     ! -name "pr-body-*.md" \
-    2>/dev/null)
+    -print 2>/dev/null)
   if [ -n "$local_only" ]; then
     count=$(echo "$local_only" | wc -l)
     issues+=("$count fil(er) i .codex.local/ udenfor whitelist (kør 'pwsh -File scripts/cross-pc-forensic-audit.ps1' for detaljer)")

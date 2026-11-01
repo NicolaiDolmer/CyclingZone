@@ -382,9 +382,14 @@ function Get-FileHashOrNull($path) {
   return (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
 }
 
-foreach ($pair in $localFolderPairs) {
-  $target = Join-Path $RepoRoot $pair.Path
-  $source = Join-Path $repoLocalRoot $pair.Source
+function ConvertTo-NormalPath([string]$path) {
+  return [System.IO.Path]::GetFullPath($path).TrimEnd([char]92)
+}
+
+# Konflikter og fejl skrives med STOP-MESSAGE-praefiks, saa SessionStart-hookens filter viser dem.
+function Sync-LocalFolder($pair) {
+  $target = ConvertTo-NormalPath (Join-Path $RepoRoot $pair.Path)
+  $source = ConvertTo-NormalPath (Join-Path $repoLocalRoot $pair.Source)
   $label = $pair.Path -replace '\\','/'
 
   if (-not (Test-Path -LiteralPath $source)) {
@@ -397,13 +402,14 @@ foreach ($pair in $localFolderPairs) {
 
   $item = Get-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue
   if ($item -and $item.LinkType -eq "Junction") {
-    if (($item.Target -join '') -eq $source) {
+    $current = if ($item.Target) { ConvertTo-NormalPath ($item.Target -join '') } else { "" }
+    if ($current -ieq $source) {
       Write-Host "  [skip] $label -> OneDrive allerede paa plads"
-      continue
+      return
     }
     if ($DryRun) {
-      Write-Host ("  [would-relink] {0} peger paa {1}" -f $label, ($item.Target -join ', ')) -ForegroundColor Cyan
-      continue
+      Write-Host ("  [would-relink] {0} peger paa {1}" -f $label, $current) -ForegroundColor Cyan
+      return
     }
     Remove-Junction $target
     $item = $null
@@ -411,23 +417,29 @@ foreach ($pair in $localFolderPairs) {
 
   if ($item) {
     # Rigtig mappe: flyt filerne ind i OneDrive, ingen overskrivning.
+    $nested = @(Get-ChildItem -LiteralPath $target -Recurse -Directory -Force -ErrorAction SilentlyContinue |
+      Where-Object { $_.Attributes -band [System.IO.FileAttributes]::ReparsePoint })
+    if ($nested.Count -gt 0) {
+      Add-Conflict "local-folder" "$label indeholder links ($($nested[0].FullName))"
+      Write-Host "STOP-MESSAGE: $label indeholder link-mapper; flyt dem manuelt, mappen er ikke roert (#7446)"
+      return
+    }
     $files = @(Get-ChildItem -LiteralPath $target -Recurse -File -Force -ErrorAction SilentlyContinue)
     $conflicts = @()
     foreach ($f in $files) {
       $rel = $f.FullName.Substring($target.Length + 1)
-      $dest = Join-Path $source $rel
-      $destHash = Get-FileHashOrNull $dest
+      $destHash = Get-FileHashOrNull (Join-Path $source $rel)
       if ($destHash -and $destHash -ne (Get-FileHashOrNull $f.FullName)) { $conflicts += $rel }
     }
     if ($conflicts.Count -gt 0) {
       $sample = ($conflicts | Select-Object -First 3) -join ', '
       Add-Conflict "local-folder" ("{0}: {1} fil(er) findes i OneDrive med andet indhold ({2})" -f $label, $conflicts.Count, $sample)
-      Write-Host "  [warn] $label har konflikter; mappen er ikke roert" -ForegroundColor Yellow
-      continue
+      Write-Host ("STOP-MESSAGE: {0} har {1} fil(er) med andet indhold end OneDrive ({2}); mappen er ikke roert (#7446)" -f $label, $conflicts.Count, $sample)
+      return
     }
     if ($DryRun) {
       Write-Host ("  [would-move] {0}: {1} fil(er) -> {2}, derefter junction" -f $label, $files.Count, $source) -ForegroundColor Cyan
-      continue
+      return
     }
     foreach ($f in $files) {
       $rel = $f.FullName.Substring($target.Length + 1)
@@ -444,11 +456,21 @@ foreach ($pair in $localFolderPairs) {
 
   if ($DryRun) {
     Write-Host "  [would-link] Junction: $label -> $source" -ForegroundColor Cyan
-    continue
+    return
   }
   New-Item -ItemType Directory -Path (Split-Path $target -Parent) -Force | Out-Null
   New-Item -ItemType Junction -Path $target -Target $source | Out-Null
   Write-Host "  [ok] Junction: $label -> $source"
+}
+
+foreach ($pair in $localFolderPairs) {
+  try {
+    Sync-LocalFolder $pair
+  } catch {
+    # En fejl her (fx OneDrive-laas) maa ikke stoppe resten af SessionStart.
+    Add-Conflict "local-folder" ("{0}: {1}" -f $pair.Path, $_.Exception.Message)
+    Write-Host ("STOP-MESSAGE: lokal arbejdsmappe {0} fejlede: {1} (#7446)" -f $pair.Path, $_.Exception.Message)
+  }
 }
 
 # --- 3. Codex-local hardlinks ---
