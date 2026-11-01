@@ -57,17 +57,25 @@ jobs:
           uploadArtifacts: true
           temporaryPublicStorage: true
 
-      # SEO-vagt (#7440): sammenlign med sidste uges scores (artifact fra seneste
-      # vellykkede run). Issue oprettes KUN ved markant fald, ellers intet.
+      # SEO-vagt (#7440): sammenlign med den seneste MÅLING, dvs. det nyeste
+      # tidligere run der har et seo-scores-artifact - uanset om runnets senere
+      # trin (Claude-analysen, issue-posting) fejlede. Et filter på hele runnets
+      # status ville springe en gyldig måling over og sammenligne med en ældre
+      # (Codex-fund på #7442). Issue oprettes KUN ved markant fald, ellers intet.
       - name: Hent sidste uges SEO-scores
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURRENT_RUN: ${{ github.run_id }}
         run: |
-          PREV_RUN=$(gh run list --workflow perf-seo-review.yml --status success --limit 1 --json databaseId -q '.[0].databaseId')
-          if [ -n "$PREV_RUN" ]; then
-            gh run download "$PREV_RUN" -n seo-scores -D prev-seo || echo "Ingen seo-scores artifact fra forrige run"
-          fi
+          for RUN in $(gh run list --workflow perf-seo-review.yml --limit 20 --json databaseId -q '.[].databaseId'); do
+            [ "$RUN" = "$CURRENT_RUN" ] && continue
+            if gh run download "$RUN" -n seo-scores -D prev-seo 2>/dev/null; then
+              echo "Sammenligner med seo-scores fra run $RUN"
+              break
+            fi
+          done
+          [ -f prev-seo/seo-scores.json ] || echo "Ingen tidligere seo-scores fundet - ingen sammenligning denne uge"
 
       - name: SEO-vagt (fald fra sidste uge)
         run: node scripts/seo-weekly-check.mjs .lighthouseci prev-seo/seo-scores.json seo-scores.json seo-drop-report.md
