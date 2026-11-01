@@ -10,6 +10,7 @@ import { isAiTeamRetireEnabled } from './aiTeamRetireFlag.js';
 import {
   windowsOverlap, raceBindingWindow,
   isRiderDayInvariantViolation, isConstraintNotDeferrable, isDrainingAiObligation,
+  isRaceEntriesInflightRejection,
 } from "./raceBinding.js";
 import {
   ASSISTANT_MODES, DEFAULT_ASSISTANT_MODE, DEFAULT_LATE_FILL_HOURS,
@@ -1172,6 +1173,13 @@ export async function runRaceEntryGenerator({
         console.warn(
           `⚠️  Entry-generator ${race_id}/${team_id}: holdet blev markeret til nedlæggelse under kørslen — enheden springes over (#4959)`
         );
+        return false;
+      }
+      // #7445: DB-vagten (race_entries_a_inflight_guard) afviste, fordi løbet gik i gang
+      // efter genlæsningen (#7436-vinduet). Det er den ønskede frysning, ikke en fejl.
+      if (isRaceEntriesInflightRejection(err)) {
+        skipped += 1;
+        console.warn(`⚠️  Entry-generator ${race_id}/${team_id}: løbet er gået i gang — DB-vagten afviste skrivningen, enheden springes over (#7445)`);
         return false;
       }
       // #2436: manual-scannet (trin 6) blev forældet af en manager-gem der landede
