@@ -42,12 +42,16 @@ function Get-WorktreeLinkChildren {
 }
 
 function Get-WorktreeLinks {
-  # Alle links i worktreets rod, frontend/backend/marketing og (ved ECHT
+  # Alle links i worktreets rod, frontend/backend/marketing, de lokale OneDrive-
+  # mapper (#7446) og (ved ECHT
   # node_modules) node_modules' boern + @scope-boern. Ingen rekursion ind i links.
   param([Parameter(Mandatory)][string]$WorktreePath)
   $links = @()
   $dirs = @($WorktreePath)
   foreach ($sub in 'frontend', 'backend', 'marketing') { $dirs += (Join-Path $WorktreePath $sub) }
+  # #7446: de gitignorerede OneDrive-junctions (`<mappe>/local`, `.codex.local/shared`) ligger
+  # dybere end roden; uden disse forældre ville 'git worktree remove --force' tømme OneDrive.
+  foreach ($sub in 'docs\drafts', 'pr-screens', 'docs\snapshots', '.codex.local') { $dirs += (Join-Path $WorktreePath $sub) }
   foreach ($d in $dirs) {
     # Er selve $d et link (fx frontend -> andet sted), fanges det af forælderens scan,
     # og vi maa IKKE kigge ind i det: dets boern ligger uden for worktreet og ville
