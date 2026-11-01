@@ -105,3 +105,13 @@ test('CLI: den rigtige scripts/build-stop.json laeses og afviser et ukendt issue
   });
   assert.match(ok, /OK \(listed\)/);
 });
+
+test('issuesFromBody: indlejrede og uafsluttede HTML-kommentarer fjernes helt (CodeQL #384)', () => {
+  assert.deepEqual(issuesFromBody('<!<!-- x -->-- Refs #111 -->Refs #222'), [222]);
+  assert.deepEqual(issuesFromBody('Refs #333 <!-- Refs #444'), [333]);
+});
+
+test('issuesFromBody: "<!--" i kode sluger ikke referencerne (review #7432)', () => {
+  assert.deepEqual(issuesFromBody('Fjern `<!--` i parser\n\nRefs #7431'), [7431]);
+  assert.deepEqual(issuesFromBody('```\n<!--\n```\nRefs #7431'), [7431]);
+});
