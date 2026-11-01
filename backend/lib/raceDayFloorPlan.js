@@ -133,7 +133,7 @@ export async function loadSameDaySiblingNeeds({ supabase, race, thisWindow, team
     }
     return out;
   } catch (err) {
-    console.warn(`  ⚠️  løbsstart-redning ${race.id}: søsterløb samme dag kunne ikke læses, fylder uden gulv-reservation (#7339):`, err?.message || err);
+    console.warn(`  ⚠️  race-start rescue ${race.id}: same-day sibling races unreadable, filling without floor reservation (#7339):`, err?.message || err);
     captureException(err, { tags: { flow: "race-start-autofill", stage: "same-day-siblings" }, raceId: race.id });
     return new Map();
   }
