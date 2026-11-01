@@ -251,8 +251,8 @@ features:
     state: live
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7332
-    verified: 2026-10-31
-    note: Kodekontakt SAVE_ITT_7332_ACTIVE tændt 31/10 efter ejer-go; vælgeren viser kun tre trin på enkeltstart.
+    verified: 2026-11-01
+    note: Live 31/10 efter ejer-go; kodekontakten SAVE_ITT_7332_ACTIVE fjernet 1/11 (krav 5). Vælgeren viser kun tre trin på enkeltstart.
 
   - id: race-descent-task-7380
     area: race-engine
