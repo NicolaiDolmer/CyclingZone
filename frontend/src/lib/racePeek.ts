@@ -170,10 +170,10 @@ export function myRaceStatus(
   return gt ? "gtBound" : "missing";
 }
 
-// ── Passer til holdet ─────────────────────────────────────────────────────────
+// ── Holdets rutematch (tidl. "Passer til holdet", #7461) ─────────────────────────────────────────────────────────
 
 /**
- * "Passer til holdet" 0-100 + bedste bud.
+ * "Holdets rutematch" 0-100 + bedste bud.
  *
  * Beregningen (ejer 15/10: "holdets bedste ryttere mod løbets terrænvægt"):
  * hver rask, ikke-solgt rytter får sin rute-match mod løbets demand-vektor med

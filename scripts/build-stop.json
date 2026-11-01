@@ -487,6 +487,11 @@
       "issue": 7389,
       "reason": "Løbsdag: holdudtagelsen skiftede 102 ryttere ud midt i Volta Algarvia (fallback forbi line-up-frysningen), ejer-go 1/11",
       "since": "2026-11-01"
+    },
+    {
+      "issue": 7461,
+      "reason": "Kalender: én Vis-vælger i stedet for faner + dobbelt division-valg (bag race_library_v2, til beta i dag), ejer-go Discord 1/11",
+      "since": "2026-11-01"
     }
   ]
 }

@@ -25,6 +25,9 @@
     "all": "All teams",
     "divisions": "Divisions"
   },
+  "scope": {
+    "label": "Show"
+  },
   "division": "Division {n}",
   "divisionMenu": {
     "label": "Division",
@@ -76,7 +79,7 @@
     "oneDay": "One-day race",
     "terrain": "Terrain",
     "noProfile": "Route not published yet",
-    "teamFit": "Team fit",
+    "teamFit": "Team route fit",
     "bestBet": "Best bet: {name} ({score})",
     "fitUnavailable": "Not available for this race",
     "status": {

@@ -25,6 +25,9 @@
     "all": "Alle teams",
     "divisions": "Divisies"
   },
+  "scope": {
+    "label": "Toon"
+  },
   "division": "Divisie {n}",
   "divisionMenu": {
     "label": "Divisie",
@@ -76,7 +79,7 @@
     "oneDay": "Eendagskoers",
     "terrain": "Terrein",
     "noProfile": "Parcours nog niet gepubliceerd",
-    "teamFit": "Teamfit",
+    "teamFit": "Parcoursmatch van het team",
     "bestBet": "Beste gok: {name} ({score})",
     "fitUnavailable": "Niet beschikbaar voor deze koers",
     "status": {

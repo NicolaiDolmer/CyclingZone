@@ -99,8 +99,6 @@ interface CalendarTableProps {
   division?: number | null;
   poolId?: number | null;
   mineOnly?: boolean;
-  showMineToggle?: boolean;
-  onMineOnlyChange?: (next: boolean) => void;
   divisionPending?: boolean;
   onShowAll?: (() => void) | null;
 }
@@ -114,9 +112,9 @@ interface CalendarTableProps {
 // Terræn (ikon, + ord for endagsløb) og Hold (Klar/Mangler-pille). Ingen
 // brede kolonner, så navne aldrig knækker.
 //
-// Kanoniske T2-dele (docs/design/PAGE_TEMPLATES.md): FilterBar (søg + 3 selects
+// Kanoniske T2-dele (docs/design/PAGE_TEMPLATES.md): FilterBar (søg + 2 selects
 // + "Flere filtre"), DataTable dense, StatusBadge, TerrainTypeGlyph. Ingen ny
-// radius, padding eller sidehoved. Siden ejer fanerne, sæsonvælgeren og
+// radius, padding eller sidehoved. Siden ejer Vis-vælgeren, sæsonvælgeren og
 // skifteren; her bor kun filterlinjen og tabellen.
 //
 // Holdstatus = racePeek.myRaceStatus, samme regel som kalenderens status-prik
@@ -132,8 +130,6 @@ export default function CalendarTable({
   division = null,
   poolId = null,
   mineOnly = false,
-  showMineToggle = false,
-  onMineOnlyChange,
   divisionPending = false,
   onShowAll = null,
 }: CalendarTableProps) {
@@ -203,15 +199,17 @@ export default function CalendarTable({
   };
 
   // Mobil: type + klasse i linjen, terræn bag "Flere filtre" (begge mockups).
-  const filters = mobile ? [typeFilter, classFilter] : [typeFilter, classFilter, terrainFilter];
+  // #7461 (ejer 1/11): desktop har type + terræn i linjen og klasse bag "Flere filtre".
+  const filters = mobile ? [typeFilter, classFilter] : [typeFilter, terrainFilter];
+  const moreSelect = (f: typeof terrainFilter) => (
+    <Select key={f.key} size="sm" value={f.value} onChange={f.onChange} aria-label={f.ariaLabel}>
+      {f.options.map((o) => (
+        <option key={o.value} value={o.value}>{o.label}</option>
+      ))}
+    </Select>
+  );
   const more = [
-    mobile && (
-      <Select key="terrain" size="sm" value={terrain} onChange={terrainFilter.onChange} aria-label={terrainFilter.ariaLabel}>
-        {terrainFilter.options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </Select>
-    ),
+    moreSelect(mobile ? terrainFilter : classFilter),
     showSquad && (
       <Checkbox
         key="needs"
@@ -219,16 +217,6 @@ export default function CalendarTable({
         checked={needsSquad}
         onChange={(e: ChangeEvent<HTMLInputElement>) => setNeedsSquad(e.target.checked)}
         label={t("table.needsSquadOnly")}
-        className="text-cz-2"
-      />
-    ),
-    showMineToggle && (
-      <Checkbox
-        key="mine"
-        id="cal-table-mine-only"
-        checked={mineOnly}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => onMineOnlyChange?.(e.target.checked)}
-        label={t("filter.mine")}
         className="text-cz-2"
       />
     ),

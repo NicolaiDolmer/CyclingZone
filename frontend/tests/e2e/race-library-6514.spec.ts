@@ -245,7 +245,7 @@ test.describe("race_library_v2 TIL", () => {
     await expect(dialog.getByText("Endagsløb")).toBeVisible();
     await expect(dialog.getByTestId("race-peek-terrain")).toBeVisible();
     await expect(dialog.getByText("Mangler udtagelse")).toBeVisible();
-    await expect(dialog.getByText("Passer til holdet")).toBeVisible();
+    await expect(dialog.getByText("Holdets rutematch")).toBeVisible();
     await expect(dialog.getByText(/Bedste bud: Lei Wu/)).toBeVisible();
     // Den ene guld-knap til udtagelsen + "Aabn loebet" til loebssiden.
     await expect(dialog.getByRole("link", { name: "Åbn løbet" })).toHaveAttribute("href", "/races/lib-namur");
@@ -298,6 +298,28 @@ test.describe("race_library_v2 TIL", () => {
     await expect(page).not.toHaveURL(/view=table/);
     await expect(page.getByTestId("calendar-table")).toHaveCount(0);
     await expect(page.getByTestId("calendar-race-chip").first()).toBeVisible();
+  });
+
+  test("#7461: Vis-vaelgeren erstatter fanerne og division-dropdownen", async ({ page }) => {
+    await setup(page, true);
+    await gotoCalendar(page);
+
+    await expect(page.getByTestId("calendar-toolbar")).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Mit hold" })).toHaveCount(0);
+    await expect(page.getByRole("tab", { name: "Divisioner" })).toHaveCount(0);
+    const scope = page.getByTestId("calendar-scope");
+    await expect(scope).toHaveValue("mine");
+    await expect(page.getByLabel("Division", { exact: true })).toHaveCount(0);
+
+    await visibleSwitch(page).getByRole("button", { name: "Tabel" }).click();
+    const table = page.getByTestId("calendar-table");
+    await expect(table.getByText("Tour de l'Ain")).toHaveCount(0);
+    await scope.selectOption("d:2");
+    await expect(table.getByText("Tour de l'Ain").first()).toBeVisible();
+    // Division 2 har to puljer, saa pulje-vaelgeren dukker op.
+    await expect(page.getByLabel("Pulje")).toBeVisible();
+    await scope.selectOption("mine");
+    await expect(table.getByText("Tour de l'Ain")).toHaveCount(0);
   });
 
   test("Resultater: Arkiv hedder Loebshistorik, viser vindere og soeger paa 'Tour de l' og 'Vuelta'", async ({ page }) => {

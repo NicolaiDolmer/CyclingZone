@@ -25,6 +25,9 @@
     "all": "Todos los equipos",
     "divisions": "Divisiones"
   },
+  "scope": {
+    "label": "Mostrar"
+  },
   "division": "División {n}",
   "divisionMenu": {
     "label": "División",
@@ -76,7 +79,7 @@
     "oneDay": "Carrera de un día",
     "terrain": "Terreno",
     "noProfile": "Recorrido aún no publicado",
-    "teamFit": "Encaje del equipo",
+    "teamFit": "Encaje del equipo con el recorrido",
     "bestBet": "Mejor apuesta: {name} ({score})",
     "fitUnavailable": "No disponible para esta carrera",
     "status": {
