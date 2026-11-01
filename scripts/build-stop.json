@@ -453,6 +453,11 @@
       "since": "2026-11-01"
     },
     {
+      "issue": 7330,
+      "reason": "Etapeside: udgået rytter forsvinder fra Your riders-kortet i stedet for at stå med DNF, ejer-go 1/11",
+      "since": "2026-11-01"
+    },
+    {
       "issue": 6104,
       "reason": "Sikkerhed: forum-images kan listes af alle (Supabase-advisor), ejer-go 1/11",
       "since": "2026-11-01"
