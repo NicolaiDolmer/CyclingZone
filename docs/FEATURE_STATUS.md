@@ -24,7 +24,7 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 ## race-day
 
-**live:** Role picker scope (stage N to the end / stage N only) (`role-scope-choice`) 2026-10-06 · Stage page 2.0 (stage tabs, real elevation profile, your day) (`stage-page-v2`) 2026-10-24 · Stage plan along the route (`stage-plan-v1`) 2026-10-27
+**live:** Role picker scope (stage N to the end / stage N only) (`role-scope-choice`) 2026-10-06 · Stage page 2.0 (stage tabs, real elevation profile, your day) (`stage-page-v2`) 2026-11-01 · Stage plan along the route (`stage-plan-v1`) 2026-10-27
 
 **arkiv:** `auto-entry-generator` · `race-day-development` · `race-day-engine` · `race-detail-page` · `race-page-tabs-v2` · `race-replay` · `stage-scheduler`
 
