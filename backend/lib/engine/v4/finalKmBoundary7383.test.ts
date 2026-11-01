@@ -1,14 +1,14 @@
-// #7383 (SLUKKET motorkontakt, KUN s5_profiles_v3): 10 km fra maal er altid en segmentgraense.
+// #7383 (KUN s5_profiles_v3): 10 km fra maal er altid en segmentgraense.
 // Kontrakter, ingen balance-tal (hard rule 17):
-//   - slukket (default) og under aeldre revisioner er ruten det SAMME objekt, og motoren
-//     er bit-identisk (relationelt bevist her; mod main er det maalt lokalt i PR'en),
+//   - under aeldre revisioner er ruten det SAMME objekt og ingen stykker er delt, saa de
+//     revisioner koerer uroert,
 //   - delingen: fladt/rullende deles, stigning/sektor deles men er EEN selektion (ved
 //     halen, hele stykket, indsatsen fra den laengste del), en nedkoersel deles ikke, en
 //     eksisterende graense genbruges,
 //   - etapeplanens skift ved "de sidste 10 km" sker praecis paa graensen for alle opgaver
-//     (holdarbejde og angreb), uden #7333-finaleundtagelsen,
-//   - en delt stigning giver stadig een top: samme klatre-selektioner og kom_passage-events,
-//   - frontendens kopi af kontakten er den samme som motorens.
+//     (holdarbejde og angreb), uden #7333-finaleundtagelsen; paa en nedkoersel gaelder
+//     #7333-reglen uaendret,
+//   - en delt stigning giver stadig een top: samme klatre-selektioner og kom_passage-events.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
@@ -19,15 +19,7 @@ import { simulateStageV4, LIVE_MECHANIC_HOOKS } from "./index.ts";
 import { runSegmentLoop } from "./segmentLoop.ts";
 import { priorCategorizedClimbs, stageInputForRulesRevision } from "./s5Profiles.ts";
 import { validateTimelineEvents } from "./timeline.ts";
-import {
-  FINAL_KM_BOUNDARY_7383_ACTIVE,
-  finalKmBoundary7383Active,
-  finalKmTerrainPiece7383,
-  isFinalKmBoundary7383On,
-  routeWithFinalKmBoundary7383,
-  setFinalKmBoundary7383ForBench,
-  splitAtFinalKm7383,
-} from "./adapters/routeAdapter.ts";
+import { finalKmTerrainPiece7383, routeWithFinalKmBoundary7383, splitAtFinalKm7383 } from "./adapters/routeAdapter.ts";
 import { finalKmUndivided7383 } from "./adapters/finalKmBoundary7383.ts";
 import { lateAttackSegmentIndex } from "./mechanics/lateAttack.ts";
 import { STAGE_PLAN_LEG_EVENT, STAGE_PLAN_ORDER_KIND } from "../../stagePlanEngine.ts";
@@ -46,15 +38,6 @@ function fixture(name: string, revision: string | null, orders: TeamOrder[] = []
   if (revision) rec.rules_revision = revision;
   else delete rec.rules_revision;
   return input;
-}
-
-function withSwitch<T>(active: boolean, fn: () => T): T {
-  setFinalKmBoundary7383ForBench(active);
-  try {
-    return fn();
-  } finally {
-    setFinalKmBoundary7383ForBench(null);
-  }
 }
 
 function planOrder(teamId: string, riders: Array<{ rider_id: string; legs: StagePlanLeg[] }>): TeamOrder {
@@ -83,45 +66,22 @@ const seg = {
   cobbles: (from_km: number, to_km: number): Segment => ({ kind: "cobbles", from_km, to_km, sector_name: "S", stars: 3 }),
 };
 
-test("#7383: kontakten er taendt (ejer-go 31/10), og frontendens kopi er den samme", () => {
-  assert.equal(FINAL_KM_BOUNDARY_7383_ACTIVE, true);
-  assert.equal(finalKmBoundary7383Active(), true);
-  for (const revision of REVISIONS) assert.equal(isFinalKmBoundary7383On(revision), revision === "s5_profiles_v3", String(revision));
-  const model = readFileSync(path.join(here, "..", "..", "..", "..", "frontend", "src", "components", "race", "StagePlanModel.ts"), "utf8");
-  const match = model.match(/export const FINAL_KM_BOUNDARY_7383_ACTIVE\s*=\s*(true|false)\s*;/);
-  assert.ok(match, "StagePlanModel.ts skal have sin kopi af kontakten");
-  assert.equal(match![1] === "true", FINAL_KM_BOUNDARY_7383_ACTIVE);
+test("#7383: kun s5_profiles_v3 deler ruten", () => {
+  const route = stageInputForRulesRevision(fixture("flat-massespurt", "s5_profiles_v3")).route;
+  assert.notEqual(routeWithFinalKmBoundary7383(route, "s5_profiles_v3"), route, "fixturen: punktet ligger midt i et segment");
+  for (const revision of [null, "legacy", "s5_profiles_v1", "s5_profiles_v2", "official_times_v3"]) {
+    assert.equal(routeWithFinalKmBoundary7383(route, revision), route, String(revision));
+  }
 });
 
-test("#7383: kun s5_profiles_v3 og kun med kontakten taendt", () => {
-  withSwitch(true, () => {
-    assert.equal(isFinalKmBoundary7383On("s5_profiles_v3"), true);
-    for (const revision of [null, "legacy", "s5_profiles_v1", "s5_profiles_v2", "official_times_v3"]) {
-      assert.equal(isFinalKmBoundary7383On(revision), false, String(revision));
-    }
-  });
-});
-
-test("#7383: slukket er ruten det samme objekt og ingen deling (alle fixtures x revisioner)", () => withSwitch(false, () => {
+test("#7383: aeldre revisioner: ruten er det samme objekt og intet stykke er delt (alle fixtures)", () => {
   for (const name of readdirSync(FIXTURES).sort()) {
-    for (const revision of REVISIONS) {
+    for (const revision of REVISIONS.filter((r) => r !== "s5_profiles_v3")) {
       const route = stageInputForRulesRevision(fixture(name, revision)).route;
       const looped = routeWithFinalKmBoundary7383(route, revision);
       assert.equal(looped, route, `${name} ${revision}`);
       assert.equal(looped.segments, route.segments);
       for (const s of looped.segments) assert.equal(finalKmTerrainPiece7383(s), undefined);
-    }
-  }
-}));
-
-test("#7383: med kontakten taendt er aeldre revisioner bit-identiske med slukket", () => {
-  for (const name of ["flat-massespurt", "bjerg-selektion", "mellembjerg"]) {
-    for (const revision of [null, "s5_profiles_v1", "s5_profiles_v2"]) {
-      const input = fixture(name, revision);
-      input.orders = [finalKmPlan(input)];
-      const off = simulateStageV4(input);
-      const on = withSwitch(true, () => simulateStageV4(input));
-      assert.deepEqual(on, off, `${name} ${revision}`);
     }
   }
 });
@@ -174,7 +134,7 @@ test("#7383: etapeplanens skift ved de sidste 10 km sker praecis paa graensen fo
     const input = fixture(name, "s5_profiles_v3");
     input.orders = [finalKmPlan(input)];
     const finalKm = Math.round((input.route.distance_km - STAGE_PLAN_FINAL_KM) * 100) / 100;
-    const out = withSwitch(true, () => simulateStageV4(input));
+    const out = simulateStageV4(input);
     const events = legEvents(out.timeline.events);
     const finished = new Set(out.results.filter((r) => r.status === "finished").map((r) => r.rider_id));
     const planned = input.startlist.filter((e) => e.team_id === "T0" && finished.has(e.rider_id));
@@ -190,15 +150,18 @@ test("#7383: etapeplanens skift ved de sidste 10 km sker praecis paa graensen fo
   }
 });
 
-test("#7383: slukket gaelder #7333-reglen uaendret (naermeste eksisterende graense, ikke punktet)", () => {
-  const input = fixture("flat-massespurt", "s5_profiles_v3");
+test("#7383: paa en nedkoersel gaelder #7333-reglen uaendret (naermeste eksisterende graense, ikke punktet)", () => {
+  const input = fixture("nedkoerselsfinale", "s5_profiles_v3");
   input.orders = [finalKmPlan(input)];
-  const finalKm = input.route.distance_km - STAGE_PLAN_FINAL_KM;
-  const events = legEvents(withSwitch(false, () => simulateStageV4(input)).timeline.events);
+  const route = stageInputForRulesRevision(input).route;
+  const finalKm = route.distance_km - STAGE_PLAN_FINAL_KM;
+  assert.ok(route.segments.some((s) => s.kind === "descent" && s.from_km < finalKm && finalKm < s.to_km), "fixturen: punktet inde i nedkoerslen");
+  assert.equal(routeWithFinalKmBoundary7383(route, "s5_profiles_v3"), route, "nedkoerslen deles ikke");
+  const events = legEvents(simulateStageV4(input).timeline.events);
   assert.ok(events.length > 0);
-  const boundaries = new Set(input.route.segments.map((s) => s.from_km));
+  const boundaries = new Set(route.segments.map((s) => s.from_km));
   for (const e of events) {
-    assert.notEqual(e.km, finalKm, "punktet ligger midt i et segment");
+    assert.notEqual(e.km, finalKm, "punktet ligger midt i nedkoerslen");
     assert.ok(boundaries.has(e.km) || e.params.at_finish === true, "skiftet sker ved en eksisterende graense eller i finalen");
   }
 });
@@ -213,23 +176,23 @@ test("#7383: en delt slutstigning er een selektion paa hele stigningen med indsa
   assert.equal(finalClimb.kind, "climb");
   assert.ok(finalKm - finalClimb.from_km > finalClimb.to_km - finalKm, "fixturen: 10 km-punktet paa stigningens anden halvdel");
 
-  const run = (active: boolean) => {
-    const seen: Array<{ index: number; from: number; to: number; effort: string | undefined }> = [];
-    const spy: ClimbSelectionHook = (state, ctx) => {
-      seen.push({ index: ctx.segmentIndex, from: ctx.segment.from_km, to: ctx.segment.to_km, effort: ctx.entrants[captain.rider_id]?.effort });
-      return LIVE_MECHANIC_HOOKS.climbSelection(state, ctx);
-    };
-    const hooks: MechanicHooks = { ...LIVE_MECHANIC_HOOKS, climbSelection: spy };
-    const result = withSwitch(active, () => runSegmentLoop(stageInputForRulesRevision(input), hooks));
-    return { seen, result, komPassages: result.timeline.filter((e) => e.type === "kom_passage").map((e) => [e.km, e.params.name]) };
+  const seen: Array<{ index: number; from: number; to: number; effort: string | undefined }> = [];
+  const spy: ClimbSelectionHook = (state, ctx) => {
+    seen.push({ index: ctx.segmentIndex, from: ctx.segment.from_km, to: ctx.segment.to_km, effort: ctx.entrants[captain.rider_id]?.effort });
+    return LIVE_MECHANIC_HOOKS.climbSelection(state, ctx);
   };
-  const off = run(false);
-  const on = run(true);
-  assert.deepEqual(on.seen.map((s) => [s.from, s.to]), off.seen.map((s) => [s.from, s.to]), "samme stigninger, hver een gang, hele laengden");
-  assert.equal(on.seen[on.seen.length - 1].index, off.seen[off.seen.length - 1].index + 1, "selektionen sker ved halen (toppen)");
-  assert.deepEqual(on.komPassages, off.komPassages, "samme bjergtoppe og bjergpoint");
-  assert.equal(on.seen[on.seen.length - 1].effort, "save", "Codex-review: angrebet paa de sidste 10 km giver ikke angrebets indsats paa hele stigningen");
-  const leg = on.result.timeline.find((e) => e.type === STAGE_PLAN_LEG_EVENT && e.params.rider_id === captain.rider_id);
+  const hooks: MechanicHooks = { ...LIVE_MECHANIC_HOOKS, climbSelection: spy };
+  const result = runSegmentLoop(stageInputForRulesRevision(input), hooks);
+  const ranges = seen.map((s) => `${s.from}-${s.to}`);
+  const climbs = route.segments.filter((s) => s.kind === "climb").map((s) => `${s.from_km}-${s.to_km}`);
+  assert.equal(new Set(ranges).size, ranges.length, "hver stigning een gang");
+  for (const r of ranges) assert.ok(climbs.includes(r), `${r}: hele laengden af en udelt stigning`);
+  assert.equal(ranges[ranges.length - 1], `${finalClimb.from_km}-${finalClimb.to_km}`, "slutstigningen selekteres paa hele laengden");
+  assert.equal(seen[seen.length - 1].index, route.segments.length, "selektionen sker ved halen (toppen)");
+  assert.equal(seen[seen.length - 1].effort, "save", "Codex-review: angrebet paa de sidste 10 km giver ikke angrebets indsats paa hele stigningen");
+  const kom = result.timeline.filter((e) => e.type === "kom_passage").map((e) => e.km);
+  assert.equal(new Set(kom).size, kom.length, "hver bjergtop een gang");
+  const leg = result.timeline.find((e) => e.type === STAGE_PLAN_LEG_EVENT && e.params.rider_id === captain.rider_id);
   assert.equal(leg?.km, Math.round(finalKm * 100) / 100, "men tempoet skifter praecis ved 10 km");
 });
 
@@ -258,7 +221,7 @@ test("#7383: det sene angreb ser de to stykker som eet og vaelger segment som pa
     { name: "angrebs-segmentet ligger efter det delte stykke", segments: [seg.flat(0, 138), seg.climb(138, 142), seg.flat(142, 144), seg.flat(144, 150)] },
   ];
   for (const { name, segments } of cases) {
-    assert.equal(finalKmUndivided7383(segments), null, `${name}: udelt (og slukket) er intet delt stykke`);
+    assert.equal(finalKmUndivided7383(segments), null, `${name}: udelt er intet delt stykke`);
     const undividedIndex = lateAttackSegmentIndex({ distance_km: D, segments });
     const split = splitAtFinalKm7383(segments, D) as Segment[];
     assert.notEqual(split, segments, `${name}: ruten deles`);
@@ -289,17 +252,17 @@ test("#7383: tidligere stigninger taelles paa den udelte stigning (Codex-review)
   }
 });
 
-test("#7383: med kontakten taendt giver 10 km-graensen intet nyt sent angreb og flytter det ikke", () => {
+test("#7383: 10 km-graensen giver intet nyt sent angreb og flytter det ikke", () => {
   const lateAttackKms = (input: StageInput): number[] => simulateStageV4(input).timeline.events
     .filter((e) => e.type === "finale_attack" && e.params.kind === "late_attack").map((e) => e.km);
   let attacksOnSector = 0;
   for (let k = 0; k < 12; k++) {
+    // Udelt giver sektoren intet angrebsvindue (lateAttackSegmentIndex = -1, testen ovenfor).
     const noWindow = routeInput([seg.flat(0, 130), seg.cobbles(130, 147), seg.flat(147, 150)], `p2-${k}`, true);
-    assert.deepEqual(lateAttackKms(noWindow), [], `slukket ${k}`);
-    assert.deepEqual(withSwitch(true, () => lateAttackKms(noWindow)), [], `taendt ${k}: intet angreb midt i sektoren`);
+    assert.deepEqual(lateAttackKms(noWindow), [], `${k}: intet angreb midt i sektoren`);
     const sector = routeInput([seg.flat(0, 136), seg.cobbles(136, 144), seg.flat(144, 150)], `tail-${k}`, true);
-    for (const km of withSwitch(true, () => lateAttackKms(sector))) {
-      assert.equal(km, 144, `taendt ${k}: angrebet ved sektorens slutning som udelt`);
+    for (const km of lateAttackKms(sector)) {
+      assert.equal(km, 144, `${k}: angrebet ved sektorens slutning som udelt`);
       attacksOnSector++;
     }
   }
@@ -315,22 +278,19 @@ test("#7383: en delt brostenssektor er een selektion ved halen paa hele sektoren
     const input = routeInput(segments);
     const rider = input.startlist.find((e) => e.team_id === "T0" && e.role === "sprint_captain")!;
     input.orders = [planOrder("T0", [{ rider_id: rider.rider_id, legs: [{ task: "stay_sheltered" }, { task: "attack", from: { at: "final_km" } }] }])];
-    const split = splitAtFinalKm7383(stageInputForRulesRevision(input).route.segments, 150);
+    const undivided = stageInputForRulesRevision(input).route.segments;
+    const sectorIndex = undivided.findIndex((s) => s.kind === "cobbles");
+    const split = splitAtFinalKm7383(undivided, 150);
     assert.equal(split.map((s) => finalKmTerrainPiece7383(s)).find(Boolean)?.headLonger, headLonger, `${name}: fixturen`);
-    const run = (active: boolean) => {
-      const seen: Array<{ index: number; from: number; to: number; effort: string | undefined }> = [];
-      const spy: CobblesHook = (state, ctx) => {
-        seen.push({ index: ctx.segmentIndex, from: ctx.segment.from_km, to: ctx.segment.to_km, effort: ctx.entrants[rider.rider_id]?.effort });
-        return LIVE_MECHANIC_HOOKS.cobbles!(state, ctx);
-      };
-      withSwitch(active, () => runSegmentLoop(stageInputForRulesRevision(input), { ...LIVE_MECHANIC_HOOKS, cobbles: spy }));
-      return seen;
+    const seen: Array<{ index: number; from: number; to: number; effort: string | undefined }> = [];
+    const spy: CobblesHook = (state, ctx) => {
+      seen.push({ index: ctx.segmentIndex, from: ctx.segment.from_km, to: ctx.segment.to_km, effort: ctx.entrants[rider.rider_id]?.effort });
+      return LIVE_MECHANIC_HOOKS.cobbles!(state, ctx);
     };
-    const off = run(false);
-    const on = run(true);
-    assert.equal(off.length, 1, `${name}: udelt een selektion`);
-    assert.deepEqual(on.map((s) => [s.from, s.to]), off.map((s) => [s.from, s.to]), `${name}: een selektion paa hele sektoren`);
-    assert.equal(on[0].index, off[0].index + 1, `${name}: ved halen (sektorens slutning)`);
-    assert.equal(on[0].effort, headLonger ? TASK_EFFORT.stay_sheltered : TASK_EFFORT.attack, `${name}: indsatsen fra den laengste del`);
+    runSegmentLoop(stageInputForRulesRevision(input), { ...LIVE_MECHANIC_HOOKS, cobbles: spy });
+    assert.equal(seen.length, 1, `${name}: een selektion`);
+    assert.deepEqual([seen[0].from, seen[0].to], [undivided[sectorIndex].from_km, undivided[sectorIndex].to_km], `${name}: paa hele sektoren`);
+    assert.equal(seen[0].index, sectorIndex + 1, `${name}: ved halen (sektorens slutning)`);
+    assert.equal(seen[0].effort, headLonger ? TASK_EFFORT.stay_sheltered : TASK_EFFORT.attack, `${name}: indsatsen fra den laengste del`);
   }
 });
