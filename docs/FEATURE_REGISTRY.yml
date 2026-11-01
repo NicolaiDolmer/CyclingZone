@@ -991,14 +991,12 @@ features:
     area: training
     title_en: Race day = hard day plus a role-weighted extra in the stage abilities
     title_da: Løbsdag = hård dag + tillæg i etapens evner efter rolle
-    state: dormant
+    state: live
     flag: race_day_role_yield_enabled
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: Ejer, via tændingskort med måling (#5950).
-    verified: 2026-10-31
-    decision: ejer-beslutning
-    decide_by: 2026-11-08
+    note: Tændt 1/11 på ejerens "kør" (tændingskort #5950); prod-verifikation 2/11.
+    verified: 2026-11-01
 
   - id: promotion-pending
     area: academy
