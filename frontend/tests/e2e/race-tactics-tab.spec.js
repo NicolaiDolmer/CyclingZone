@@ -76,6 +76,10 @@ async function mockTacticsRace(page, {
   roleScopeChoice = false, putResponse = null, riders = RIDERS,
 }) {
   let capturedBody = null;
+  // #7327: som den rigtige server. En lykket PUT erstatter raekkerne for `stages`,
+  // og naeste GET (kvitteringen) viser dem; klienten sammenligner kvitteringen med
+  // det sendte, saa en statisk GET ville ligne en fremmed aendring.
+  let served = overrides;
   await page.route("**/rest/v1/races**", (route) => {
     const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
     return json(route, wantsObject ? race : [race]);
@@ -95,8 +99,16 @@ async function mockTacticsRace(page, {
       } catch {
         capturedBody = {};
       }
+      const status = putResponse?.status ?? 200;
+      if (status < 300 && Array.isArray(capturedBody.stages)) {
+        const written = capturedBody.stages;
+        served = [
+          ...served.filter((o) => !written.includes(o.stage_number)),
+          ...(capturedBody.overrides ?? []).filter((o) => written.includes(o.stage_number)),
+        ];
+      }
       return route.fulfill({
-        status: putResponse?.status ?? 200,
+        status,
         contentType: "application/json",
         headers: corsHeaders(request),
         body: JSON.stringify(putResponse?.body ?? { ok: true }),
@@ -113,7 +125,7 @@ async function mockTacticsRace(page, {
         stages_completed: race.stages_completed,
         stage_count: race.stages,
         riders,
-        overrides,
+        overrides: served,
         role_scope_choice: roleScopeChoice,
       }),
     });
@@ -239,8 +251,9 @@ test("taktik: etape-vælger, femtrins-vælger og et gem der ikke taber andre eta
 });
 
 // #6095: en anden fane/enhed har ændret etapen siden indlæsning. Gemmet må ikke
-// overskrive; fanen henter den nyeste udgave og siger det i én sætning.
-test("taktik (#6095): konflikt fra en anden fane overskriver intet og forklarer hvorfor", async ({ page }) => {
+// overskrive. #7327 (design A): kladden kasseres heller ikke af sig selv; boksen
+// tilbyder [Hent den nye] / [Behold mine], og guldknappen venter på valget.
+test("taktik (#6095/#7327): konflikt fra en anden fane overskriver intet og bevarer kladden", async ({ page }, testInfo) => {
   await stabilizePage(page);
   await installNetworkMocks(page);
   await mockTacticsRace(page, {
@@ -255,9 +268,71 @@ test("taktik (#6095): konflikt fra en anden fane overskriver intet og forklarer 
   await visible(panel.getByRole("button", { name: "Sæt intention" })).click();
   await visible(panel.getByRole("button", { name: /^Alt ud/ })).click();
   await visible(panel.getByRole("button", { name: "Gem etape 2" })).click();
-  await expect(visible(panel.getByText("Taktikken er ændret i et andet vindue. Den nyeste udgave er hentet. Tjek den og gem igen."))).toBeVisible();
-  // Kladden er kasseret: fanen viser serverens udgave igen.
+  const box = panel.getByTestId("tactics-save-status");
+  await expect(box.getByText("Taktikken er ændret i et andet vindue")).toBeVisible();
+  await expect(box.getByTestId("tactics-save-part-roles")).toHaveAttribute("data-saved", "false");
+  // Kladden er bevaret, og guldknappen kan ikke overskrive før et valg.
+  await expect(visible(panel.getByText("Standard: kaptajn. I dag: alt ud."))).toBeVisible();
+  await expect(visible(panel.getByRole("button", { name: "Gem etape 2" }))).toBeDisabled();
+  await panel.screenshot({ path: evidenceShotPath(`pr-screens/7327/conflict-${testInfo.project.name}.png`) });
+  // "Hent den nye": kladden kasseres først nu, efter et eksplicit valg.
+  await box.getByRole("button", { name: "Hent den nye" }).click();
   await expect(visible(panel.getByText("Standard: kaptajn. I dag: alt ud."))).toHaveCount(0);
+  await expect(box).toHaveCount(0);
+});
+
+// #7327 (design A): ordren fejler efter at intentionen er gemt. Boksen viser
+// flueben/kryds pr. del, kladden bevares, og "Gem resten" sender kun ordren.
+test("taktik (#7327): delvis gemning bevarer kladden og gemmer kun resten", async ({ page }, testInfo) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  await mockTacticsRace(page, {
+    race: raceFixture({ stages: 3, stagesCompleted: 1, raceType: "stage_race" }),
+    validEfforts: FIVE_STEPS,
+    results: LIVE_RESULTS,
+  });
+  let rolePuts = 0;
+  await page.route(`**/api/races/${RACE_ID}/stage-roles`, (route) => {
+    if (route.request().method() === "PUT") rolePuts += 1;
+    return route.fallback();
+  });
+  const orderPuts = [];
+  await page.route(`**/api/races/${RACE_ID}/team-orders**`, (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    if (request.method() === "PUT") {
+      orderPuts.push(request.postData());
+      if (orderPuts.length === 1) {
+        return route.fulfill({ status: 500, contentType: "application/json", headers: corsHeaders(request), body: JSON.stringify({ error: "team_orders_save_failed" }) });
+      }
+      return json(route, { ok: true });
+    }
+    return json(route, {
+      stage_count: 3, stages_completed: 1, riders: RIDERS,
+      stages: [1, 2, 3].map((n) => ({ stage_number: n, locked: n <= 1, scheduled_at: null })),
+      orders: [],
+    });
+  });
+  await login(page);
+  await page.goto(`/races/${RACE_ID}?tab=tactics`);
+  const panel = page.getByTestId("race-tactics-tab");
+  await visible(panel.getByRole("button", { name: "Sæt intention" })).click();
+  await visible(panel.getByRole("button", { name: /^Alt ud/ })).click();
+  await visible(panel.getByRole("button", { name: "Gem etape 2" })).click();
+
+  const box = panel.getByTestId("tactics-save-status");
+  await expect(box.getByText("Kun en del af planen blev gemt")).toBeVisible();
+  await expect(box.getByTestId("tactics-save-part-roles")).toHaveAttribute("data-saved", "true");
+  await expect(box.getByTestId("tactics-save-part-orders")).toHaveAttribute("data-saved", "false");
+  await expect(visible(panel.getByText("Standard: kaptajn. I dag: alt ud."))).toBeVisible();
+  const pageOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(pageOverflow, "siden må ikke overflowe vandret").toBeLessThanOrEqual(1);
+  await panel.screenshot({ path: evidenceShotPath(`pr-screens/7327/partial-${testInfo.project.name}.png`) });
+
+  await visible(panel.getByRole("button", { name: "Gem resten" })).click();
+  await expect(visible(panel.getByText("Intentionerne er gemt."))).toBeVisible();
+  expect(rolePuts, "intentionen sendes ikke igen").toBe(1);
+  expect(orderPuts).toHaveLength(2);
 });
 
 // #6095 (beta): "etape N og løbet ud" er forvalgt; "kun etape N" ændrer kun den
