@@ -145,7 +145,7 @@
       },
       "confidence": {
         "title": "La confianza sustituye a los tres números de satisfacción",
-        "text": "La confianza es una sola puntuación de 0 a 100 sobre cómo ve la directiva tu trabajo. La alimentan cuatro áreas: resultados, economía, identidad y clasificación. La tarjeta de confianza muestra la puntuación, el movimiento desde la semana pasada, un medidor por área y una línea clara que nombra cualquier límite que la directiva te imponga en ese momento. La confianza también mueve tu modificador de patrocinio, así que un solo número explica ahora tanto lo que piensa la directiva como lo que paga el patrocinador. Cada objetivo que cumples o fallas mueve la confianza, nunca directamente tu saldo."
+        "text": "La confianza es una sola puntuación de 0 a 100 sobre cómo ve la directiva tu trabajo. La alimentan cuatro áreas: resultados, economía, identidad y clasificación. La tarjeta de confianza muestra la puntuación, un medidor por área y una línea clara que nombra cualquier límite que la directiva te imponga en ese momento. La confianza también mueve tu modificador de patrocinio, así que un solo número explica ahora tanto lo que piensa la directiva como lo que paga el patrocinador. Cada objetivo que cumples o fallas mueve la confianza, nunca directamente tu saldo."
       },
       "annualMeeting": {
         "title": "La junta anual",
@@ -601,6 +601,14 @@
             "Un repecho corto y empinado cerca de la meta premia un ataque tardío por encima de un sprint puro."
           ],
           [
+            "Sprint en cuesta arriba",
+            "El último kilómetro sube suavemente, así que el sprint premia a los ciclistas que sostienen su potencia en cuesta arriba."
+          ],
+          [
+            "Final en un muro",
+            "La línea de meta está en un muro corto y muy empinado, donde decide la potencia explosiva."
+          ],
+          [
             "Final en alto",
             "La propia subida es la meta, y abre las mayores diferencias del día."
           ],
@@ -1039,7 +1047,7 @@
           "La fatiga se restablece a 0 para todos los ciclistas.",
           "Las lesiones NO se restablecen. Pasan sin cambios.",
           "Los planes de pico de forma no se ven afectados por el cambio.",
-          "Los salarios de la temporada se pagan durante el cambio. Los valores de los ciclistas no se mueven durante el cambio en sí: se actualizan la próxima vez, en la actualización normal del domingo.",
+          "Los salarios de la temporada se pagan durante el cambio. Los valores de los ciclistas se actualizan una vez, justo después de que termine el cambio, y luego en la actualización normal del domingo.",
           "La nueva temporada empieza tras una breve pausa entre temporadas, que los mánagers votaron. La fecha de la primera etapa está en el calendario de carreras, así que tienes tiempo para elegir tus equipos."
         ]
       }
@@ -1644,7 +1652,7 @@
       },
       "graduationDayAt23": {
         "title": "¿Qué pasa cuando un ciclista supera la edad de su plantilla?",
-        "text": "En el cambio de temporada, los ciclistas que han quedado pequeños para su plantilla pasan de nivel: de júnior al equipo sub-23 con 19 años de edad de temporada, de sub-23 a sénior con 23. Tienes la primera elección en el Día de graduación; si no haces nada antes del plazo, el club lo sube cuando hay sitio y puedes permitírtelo, si no lo vende y, si no, lo libera como agente libre."
+        "text": "En el cambio de temporada, los ciclistas que han quedado pequeños para su plantilla pasan de nivel: de júnior al equipo sub-23 con 19 años de edad de temporada, de sub-23 a sénior con 23. Tienes la primera elección en el Día de graduación; si no haces nada antes del plazo, el club lo sube cuando hay sitio y puedes permitírtelo, si no lo vende y, si no, lo libera como agente libre. En el cambio de temporada, los contratos que vencen terminan primero, así que solo pueden subir los ciclistas que siguen teniendo contrato. Renueva el contrato de un ciclista joven antes de que acabe la temporada si quieres que suba."
       },
       "youthRacesFromS4": {
         "title": "¿Corren de verdad el equipo sub-23 y el equipo júnior?",
@@ -1705,8 +1713,8 @@
         ]
       },
       "liveTracksStatus": {
-        "title": "Ahora mismo solo están activos Entrenamiento y Ojeo",
-        "text": "De las 5 líneas, hoy solo el Centro de entrenamiento y la Red de ojeo están conectados al juego. Las otras 3 muestran lo que harán para que puedas planificar con antelación, pero construirlas o mejorarlas aún no tiene ningún efecto en el juego. Su etiqueta Próximamente pasará automáticamente a Activo en cuanto su motor entre en funcionamiento, sin que tengas que hacer nada."
+        "title": "Ahora están activos Entrenamiento, Ojeo y Departamento médico",
+        "text": "De las 5 líneas, hoy el Centro de entrenamiento, la Red de ojeo y el Departamento médico están conectados al juego. La Ampliación de la academia se abre con la cantera semanal. El Departamento comercial muestra lo que hará para que puedas planificar con antelación, pero construirlo o mejorarlo aún no tiene ningún efecto en el juego. Su etiqueta Próximamente pasará automáticamente a Activo en cuanto entre en funcionamiento, sin que tengas que hacer nada."
       },
       "staffSynergy": {
         "title": "Cómo trabajan juntos un responsable y la instalación",
@@ -1718,7 +1726,7 @@
       },
       "coachingGroups": {
         "title": "Grupos de entrenamiento: sub-23 frente a sénior",
-        "text": "El grupo de entrenamiento preferente de un Director deportivo muestra con qué grupo de edad trabaja mejor. Sub-23 abarca a los ciclistas de la academia y a los jóvenes profesionales hasta los 25; Sénior abarca a los ciclistas de 26 en adelante. Es una especialización propia del responsable, independiente de la estructura de plantillas del club (el equipo júnior y el equipo sub-23 llegan pronto): un grupo de entrenamiento trata de con qué ciclistas trabaja mejor un responsable, no de a qué plantilla pertenece un ciclista."
+        "text": "El grupo de entrenamiento preferente de un Director deportivo muestra con qué grupo de edad trabaja mejor. Sub-23 abarca a los ciclistas de la academia y a los jóvenes profesionales hasta los 25; Sénior abarca a los ciclistas de 26 en adelante. Es una especialización propia del responsable, independiente de la estructura de plantillas del club: un grupo de entrenamiento trata de con qué ciclistas trabaja mejor un responsable, no de a qué plantilla pertenece un ciclista."
       },
       "costs": {
         "title": "Costes: un precio único de construcción",
@@ -1737,7 +1745,7 @@
       "label": "Selección del equipo",
       "what": {
         "title": "Elegir la plantilla de tu carrera",
-        "text": "Cada carrera tiene un tamaño de pelotón fijado por su categoría: 6 en la mayoría de las carreras, 7 en las grandes carreras World Tour y los Monuments, 8 en los Grand Tours. Abre la página de la carrera y usa el panel de Selección del equipo. Puedes guardar menos ciclistas de los que caben en el pelotón, y guardar nunca está bloqueado. Pero tu equipo necesita al menos 6 ciclistas en la alineación para tomar la salida en la carrera, en todas las carreras, sea cual sea el tamaño del pelotón. Con menos de 6 tu equipo no sale, así que no hay resultado ni ingresos de día de carrera. Una excepción: si tenías 6 ciclistas seleccionados y algunos se lesionaron después de que los eligieras, tu equipo sigue saliendo con los ciclistas en forma que le quedan, después de que el asistente haya añadido a los ciclistas libres. Si dejas una carrera vacía o por debajo de 6, tu asistente la rellena hasta 6 en el momento de la carrera con los ciclistas que tengas libres, y se salta las carreras de las que te has retirado o que has vaciado a propósito. El panel te dice antes de salir de la página si tu equipo saldrá. Para no correr una carrera, retírate de ella; si quieres más ciclistas entre los que elegir, ficha agentes libres."
+        "text": "Cada carrera tiene un tamaño de pelotón fijado por su categoría: 6 en la mayoría de las carreras, 7 en las grandes carreras World Tour y los Monuments, 8 en los Grand Tours. Abre la página de la carrera y usa el panel de Selección del equipo. Puedes guardar menos ciclistas de los que caben en el pelotón, y guardar nunca está bloqueado. Pero tu equipo necesita al menos 6 ciclistas en la alineación para tomar la salida en la carrera, en todas las carreras, sea cual sea el tamaño del pelotón. Con menos de 6 tu equipo no sale, así que no hay resultado ni ingresos de día de carrera. Una excepción: si tenías 6 ciclistas seleccionados y algunos se lesionaron después de que los eligieras, tu equipo sigue saliendo con los ciclistas en forma que le quedan, después de que el asistente haya añadido a los ciclistas libres. Otra excepción, solo en carreras por etapas: si algunos de tus ciclistas siguen ocupados en otra carrera el primer día, tu equipo sale con los ciclistas libres que tenga, siempre que haya al menos 4. Si dejas una carrera vacía o por debajo de 6, tu asistente la rellena hasta 6 en el momento de la carrera con los ciclistas que tengas libres, y se salta las carreras de las que te has retirado o que has vaciado a propósito. El panel te dice antes de salir de la página si tu equipo saldrá. Para no correr una carrera, retírate de ella; si quieres más ciclistas entre los que elegir, ficha agentes libres."
       },
       "seasonOverview": {
         "title": "Vista de temporada en el tablero de planificación",
@@ -1804,7 +1812,7 @@
       },
       "timeLimitAndGrupetto": {
         "title": "El control de tiempo y el grupeto",
-        "text": "Llega demasiado por detrás del ganador de la etapa y tu carrera ha terminado: fuera de todo el evento en una carrera por etapas, un abandono en una carrera de un día. Un grupo grande que llega junto se salva en bloque; es el grupeto, y existe para que un pelotón entero cansado no sea mandado a casa en un día brutal. Cuánto margen tienes depende de la etapa: los días llanos son los más estrictos, la alta montaña la más indulgente. En las carreras juveniles el límite es más laxo y se puede salvar a un grupo más pequeño. Es una regla, nunca una tirada de dados, y trata a un equipo IA exactamente igual que a ti. Lo único que ves es el resultado llano: fuera de control, o grupeto salvado."
+        "text": "Llega demasiado por detrás del ganador de la etapa y tu carrera ha terminado: fuera de todo el evento en una carrera por etapas, un abandono en una carrera de un día. Un grupo grande que llega junto se salva en bloque; es el grupeto, y existe para que un pelotón entero cansado no sea mandado a casa en un día brutal. Cuánto margen tienes depende de la etapa: los días llanos son los más estrictos, la alta montaña la más indulgente. En las carreras juveniles el límite es más laxo y se puede salvar a un grupo más pequeño. Es una regla, nunca una tirada de dados, y trata a un equipo IA exactamente igual que a ti. Lo único que ves es el resultado llano: fuera de control, o grupeto salvado. En una carrera por etapas, un gregario agotado que llegó muy por detrás también puede bajarse de la bici después de la etapa. Aparece como DNF con el motivo \"Se bajó de la bici, agotado\" y queda fuera del resto de la carrera."
       },
       "teamwork": {
         "title": "Trabajo en equipo en la carretera",

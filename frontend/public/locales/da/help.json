@@ -145,7 +145,7 @@
       },
       "confidence": {
         "title": "Tillid erstatter de tre tilfredshedstal",
-        "text": "Tillid er ét tal fra 0 til 100 for, hvordan bestyrelsen ser dit arbejde. Fire områder fodrer det: resultater, økonomi, identitet og rangliste. Tillidskortet viser tallet, bevægelsen siden sidste uge, en måler pr. område og en klar linje, der nævner de begrænsninger bestyrelsen har lagt på dig lige nu. Tillid driver også din sponsor-modifier, så ét tal nu forklarer både hvad bestyrelsen mener, og hvad sponsoren betaler. Hvert mål du når eller misser flytter tilliden, aldrig din saldo direkte."
+        "text": "Tillid er ét tal fra 0 til 100 for, hvordan bestyrelsen ser dit arbejde. Fire områder fodrer det: resultater, økonomi, identitet og rangliste. Tillidskortet viser tallet, en måler pr. område og en klar linje, der nævner de begrænsninger bestyrelsen har lagt på dig lige nu. Tillid driver også din sponsor-modifier, så ét tal nu forklarer både hvad bestyrelsen mener, og hvad sponsoren betaler. Hvert mål du når eller misser flytter tilliden, aldrig din saldo direkte."
       },
       "annualMeeting": {
         "title": "Årsmødet",
@@ -601,6 +601,14 @@
             "Et kort, stejlt ryk tæt på mål belønner et sent angreb frem for en ren spurt."
           ],
           [
+            "Stigende spurt",
+            "Den sidste kilometer stiger let, så spurten belønner ryttere der kan holde kraften op ad bakke."
+          ],
+          [
+            "Murfinale",
+            "Målstregen ligger på en kort, meget stejl mur, hvor eksplosiv kraft afgør etapen."
+          ],
+          [
             "Bjergfinale",
             "Selve stigningen er målstregen, hvor dagens største tidsforskelle opstår."
           ],
@@ -1039,7 +1047,7 @@
           "Nye sæsoner starter med lidt grundtræthed hos alle ryttere. Før det første løb sænker hvile formen, normal træning holder den, og hård træning hæver den.",
           "Skader nulstilles IKKE. De følger med uændret.",
           "Peak-planer påvirkes ikke af sæsonskiftet.",
-          "Sæsonens løn betales under sæsonskiftet. Rytterværdierne flytter sig ikke under selve skiftet: de opdateres næste gang, ved den normale søndagsopdatering.",
+          "Sæsonens løn betales under sæsonskiftet. Rytterværdierne opdateres én gang, lige efter at skiftet er færdigt, og derefter ved den normale søndagsopdatering.",
           "Træningen fortsætter hver dag mellem sæsonerne og tæller i den nye sæson. Dit valgte program gælder stadig, manglende træning indhentes automatisk, og Træn nu virker også før det første løb. Se det første løb i kalenderen."
         ]
       }
@@ -1644,7 +1652,7 @@
       },
       "graduationDayAt23": {
         "title": "Hvad sker der, når en rytter vokser ud af sin trup?",
-        "text": "Ved sæsonskiftet rykker ryttere, der er vokset ud af deres trup, videre: junior til U23-holdet ved sæsonalder 19, U23 til seniorholdet ved sæsonalder 23. Du får første valg på Graduation Day; gør du ingenting inden fristen, flytter klubben ham op, hvis der er plads og råd. Er truppen fuld, venter han under Afventer oprykning, til du har gjort plads. Er der plads, men ikke råd, sælges han, og bliver han ikke solgt, slippes han som free agent."
+        "text": "Ved sæsonskiftet rykker ryttere, der er vokset ud af deres trup, videre: junior til U23-holdet ved sæsonalder 19, U23 til seniorholdet ved sæsonalder 23. Du får første valg på Graduation Day; gør du ingenting inden fristen, flytter klubben ham op, hvis der er plads og råd. Er truppen fuld, venter han under Afventer oprykning, til du har gjort plads. Er der plads, men ikke råd, sælges han, og bliver han ikke solgt, slippes han som free agent. Ved sæsonskiftet udløber kontrakterne først, så kun ryttere med kontrakt kan rykke op. Forlæng en ungdomsrytters kontrakt, inden sæsonen slutter, hvis han skal rykke op."
       },
       "youthRacesFromS4": {
         "title": "Kører U23-holdet og Juniorholdet faktisk løb?",
@@ -1705,8 +1713,8 @@
         ]
       },
       "liveTracksStatus": {
-        "title": "Kun Træning og Scouting er aktive lige nu",
-        "text": "Af de 5 spor er det kun Træningscenteret og Scouting-netværket der er koblet ind i spillet i dag. De øvrige 3 viser hvad de vil gøre, så du kan planlægge fremad, men at bygge eller opgradere dem har endnu ingen spil-effekt. Deres \"Kommer snart\"-mærke skifter automatisk til aktiv i det øjeblik deres motor går live, uden at du behøver gøre noget."
+        "title": "Træning, Scouting og Medicinsk afdeling er aktive lige nu",
+        "text": "Af de 5 spor er Træningscenteret, Scouting-netværket og Medicinsk afdeling koblet ind i spillet i dag. Akademi-udvidelsen åbner med ugens optag. Kommerciel afdeling viser, hvad den vil gøre, så du kan planlægge fremad, men at bygge eller opgradere den har endnu ingen spil-effekt. Dens \"Kommer snart\"-mærke skifter automatisk til aktiv i det øjeblik, den går live, uden at du behøver gøre noget."
       },
       "staffSynergy": {
         "title": "Sådan spiller en chef og faciliteten sammen",
@@ -1718,7 +1726,7 @@
       },
       "coachingGroups": {
         "title": "Trænings-grupper: U23 vs. Senior",
-        "text": "En sportsdirektørs trænings-gruppe-fokus viser hvilken aldersgruppe han træner bedst. U23 dækker akademi-ryttere og unge profs op til 25 år; Senior dækker ryttere fra 26 år og op. Det er chefens egen specialisering, adskilt fra klubbens holdstruktur (Juniorhold og U23-hold kommer snart): en trænings-gruppe handler om hvilke ryttere en chef træner bedst, ikke hvilket hold en rytter hører til."
+        "text": "En sportsdirektørs trænings-gruppe-fokus viser hvilken aldersgruppe han træner bedst. U23 dækker akademi-ryttere og unge profs op til 25 år; Senior dækker ryttere fra 26 år og op. Det er chefens egen specialisering, adskilt fra klubbens holdstruktur: en trænings-gruppe handler om hvilke ryttere en chef træner bedst, ikke hvilket hold en rytter hører til."
       },
       "costs": {
         "title": "Udgifter: en engangspris for at bygge",
@@ -1737,7 +1745,7 @@
       "label": "Holdudtagelse",
       "what": {
         "title": "Udtag din løbstrup",
-        "text": "Hvert løb har en feltstørrelse bestemt af sin klasse: 6 i de fleste løb, 7 i de større World Tour-løb og Monumenter, 8 i Grand Tours. Gå til løbssiden og brug panelet Holdudtagelse. Du kan gemme færre ryttere end feltet rummer, og Gem bliver aldrig blokeret. Men dit hold skal have mindst 6 ryttere i opstillingen for at stille op, i alle løb, uanset feltstørrelsen. Er I færre end 6, stiller holdet ikke op, og så får I hverken resultat eller løbsdags-indtægt fra det. Én undtagelse: havde du 6 ryttere udtaget, og bliver nogle af dem skadet efter udtagelsen, starter holdet alligevel med de raske ryttere det har tilbage, efter at assistenten har sat eventuelle frie ryttere ind. Lader du et løb stå tomt eller under 6, fylder din assistent op til 6 ved løbstid med de ryttere du har frie, og den springer løb over som du har afmeldt dig fra eller ryddet med vilje. Panelet fortæller dig, før du forlader siden, om dit hold stiller op. Vil du stå over et løb, så afmeld dig det; vil du have flere ryttere at vælge imellem, så hent fri-agenter."
+        "text": "Hvert løb har en feltstørrelse bestemt af sin klasse: 6 i de fleste løb, 7 i de større World Tour-løb og Monumenter, 8 i Grand Tours. Gå til løbssiden og brug panelet Holdudtagelse. Du kan gemme færre ryttere end feltet rummer, og Gem bliver aldrig blokeret. Men dit hold skal have mindst 6 ryttere i opstillingen for at stille op, i alle løb, uanset feltstørrelsen. Er I færre end 6, stiller holdet ikke op, og så får I hverken resultat eller løbsdags-indtægt fra det. Én undtagelse: havde du 6 ryttere udtaget, og bliver nogle af dem skadet efter udtagelsen, starter holdet alligevel med de raske ryttere det har tilbage, efter at assistenten har sat eventuelle frie ryttere ind. En anden undtagelse, kun i etapeløb: kører nogle af dine ryttere stadig et andet løb på første dag, starter holdet med de frie ryttere det har, så længe der er mindst 4. Lader du et løb stå tomt eller under 6, fylder din assistent op til 6 ved løbstid med de ryttere du har frie, og den springer løb over som du har afmeldt dig fra eller ryddet med vilje. Panelet fortæller dig, før du forlader siden, om dit hold stiller op. Vil du stå over et løb, så afmeld dig det; vil du have flere ryttere at vælge imellem, så hent fri-agenter."
       },
       "seasonOverview": {
         "title": "Sæson-visningen på planlægnings-boardet",
@@ -1804,7 +1812,7 @@
       },
       "timeLimitAndGrupetto": {
         "title": "Tidsgrænsen og grupettoen",
-        "text": "Kommer du for langt bagud i forhold til etapevinderen, er dit løb slut: ude af hele løbet på et etapeløb, DNF på et endagsløb. En stor gruppe, der kommer samlet i mål, reddes i stedet som én, det er grupettoen, og den findes, så et helt udkørt felt ikke sendes hjem på en hård dag. Hvor meget plads du får, afhænger af etapen: flade dage er strengest, højbjerget mest overbærende. I ungdomsløb er grænsen blødere, og en mindre gruppe kan reddes. Det er en regel, aldrig en lodtrækning, og den behandler et AI-hold præcis som dig. Du ser kun det rene resultat: uden for tidsgrænsen, eller grupettoen reddet."
+        "text": "Kommer du for langt bagud i forhold til etapevinderen, er dit løb slut: ude af hele løbet på et etapeløb, DNF på et endagsløb. En stor gruppe, der kommer samlet i mål, reddes i stedet som én, det er grupettoen, og den findes, så et helt udkørt felt ikke sendes hjem på en hård dag. Hvor meget plads du får, afhænger af etapen: flade dage er strengest, højbjerget mest overbærende. I ungdomsløb er grænsen blødere, og en mindre gruppe kan reddes. Det er en regel, aldrig en lodtrækning, og den behandler et AI-hold præcis som dig. Du ser kun det rene resultat: uden for tidsgrænsen, eller grupettoen reddet. I et etapeløb kan en udkørt hjælper, der kom langt efter i mål, også stige af efter etapen. Han står som DNF med årsagen \"Steg af, udkørt\" og er ude af resten af løbet."
       },
       "teamwork": {
         "title": "Holdspil på vejen",

@@ -145,7 +145,7 @@
       },
       "confidence": {
         "title": "La confiance remplace les trois chiffres de satisfaction",
-        "text": "La confiance est un score unique de 0 à 100 pour la façon dont la direction voit ton travail. Quatre domaines l'alimentent : résultats, économie, identité et classement. La carte de confiance montre le score, l'évolution depuis la semaine dernière, une jauge par domaine et une ligne claire nommant toute limite que la direction t'impose actuellement. La confiance pilote aussi ton modificateur de sponsor : un seul chiffre explique donc à la fois ce que pense la direction et ce que paie le sponsor. Chaque objectif atteint ou manqué fait bouger la confiance, jamais ton solde directement."
+        "text": "La confiance est un score unique de 0 à 100 pour la façon dont la direction voit ton travail. Quatre domaines l'alimentent : résultats, économie, identité et classement. La carte de confiance montre le score, une jauge par domaine et une ligne claire nommant toute limite que la direction t'impose actuellement. La confiance pilote aussi ton modificateur de sponsor : un seul chiffre explique donc à la fois ce que pense la direction et ce que paie le sponsor. Chaque objectif atteint ou manqué fait bouger la confiance, jamais ton solde directement."
       },
       "annualMeeting": {
         "title": "L'assemblée annuelle",
@@ -601,6 +601,14 @@
             "Une courte bosse raide près de la ligne récompense une attaque tardive plutôt qu'un pur sprint."
           ],
           [
+            "Sprint en côte",
+            "Le dernier kilomètre monte doucement, le sprint récompense donc les coureurs qui tiennent leur puissance en côte."
+          ],
+          [
+            "Arrivée sur un mur",
+            "La ligne d'arrivée est sur un mur court et très raide, où la puissance explosive décide de l'étape."
+          ],
+          [
             "Arrivée au sommet",
             "L'ascension elle-même est la ligne d'arrivée, ce qui crée les plus gros écarts de la journée."
           ],
@@ -1039,7 +1047,7 @@
           "La fatigue repasse à 0 pour chaque coureur.",
           "Les blessures ne sont PAS remises à zéro. Elles sont reportées telles quelles.",
           "Les plans de pic ne sont pas touchés par le changement.",
-          "Les salaires de la saison sont payés pendant le changement. Les valeurs des coureurs ne bougent pas pendant le changement lui-même : elles se mettent à jour la prochaine fois, lors de la mise à jour normale du dimanche.",
+          "Les salaires de la saison sont payés pendant le changement. Les valeurs des coureurs se mettent à jour une fois, juste après la fin du changement, puis lors de la mise à jour normale du dimanche.",
           "La nouvelle saison commence après une courte pause entre les saisons, votée par les managers. La date de la première étape figure au calendrier des courses, tu as donc le temps de choisir tes équipes."
         ]
       }
@@ -1644,7 +1652,7 @@
       },
       "graduationDayAt23": {
         "title": "Que se passe-t-il quand un coureur dépasse l'âge de son effectif ?",
-        "text": "Au changement de saison, les coureurs qui ont dépassé leur effectif passent à l'étape suivante : de juniors à l'équipe U23 à l'âge de saison 19 ans, de U23 à senior à l'âge de saison 23 ans. Tu as le premier choix au Jour de la remise des diplômes ; si tu ne fais rien avant la date limite, le club le fait monter quand il y a de la place et que tu en as les moyens, sinon le vend, sinon le libère comme agent libre."
+        "text": "Au changement de saison, les coureurs qui ont dépassé leur effectif passent à l'étape suivante : de juniors à l'équipe U23 à l'âge de saison 19 ans, de U23 à senior à l'âge de saison 23 ans. Tu as le premier choix au Jour de la remise des diplômes ; si tu ne fais rien avant la date limite, le club le fait monter quand il y a de la place et que tu en as les moyens, sinon le vend, sinon le libère comme agent libre. Au changement de saison, les contrats qui expirent prennent fin d'abord : seuls les coureurs encore sous contrat peuvent monter. Prolonge le contrat d'un jeune coureur avant la fin de la saison si tu veux qu'il monte."
       },
       "youthRacesFromS4": {
         "title": "L'équipe U23 et l'équipe juniors courent-elles vraiment ?",
@@ -1705,8 +1713,8 @@
         ]
       },
       "liveTracksStatus": {
-        "title": "Seuls l'entraînement et la détection sont actifs pour l'instant",
-        "text": "Sur les 5 pistes, seuls le Centre d'entraînement et le Réseau de détection sont branchés dans le jeu aujourd'hui. Les 3 autres montrent ce qu'elles feront pour que tu puisses anticiper, mais les construire ou les améliorer n'a pas encore d'effet dans le jeu. Leur étiquette Bientôt passera automatiquement à Actif dès que leur moteur sera en ligne, sans rien à faire de ta part."
+        "title": "L'entraînement, la détection et le médical sont actifs pour l'instant",
+        "text": "Sur les 5 pistes, le Centre d'entraînement, le Réseau de détection et le Département médical sont branchés dans le jeu aujourd'hui. L'Extension de l'académie s'ouvre avec le recrutement hebdomadaire. Le Département commercial montre ce qu'il fera pour que tu puisses anticiper, mais le construire ou l'améliorer n'a pas encore d'effet dans le jeu. Son étiquette Bientôt passera automatiquement à Actif dès qu'il sera en ligne, sans rien à faire de ta part."
       },
       "staffSynergy": {
         "title": "Comment un responsable et l'installation fonctionnent ensemble",
@@ -1718,7 +1726,7 @@
       },
       "coachingGroups": {
         "title": "Groupes d'encadrement : U23 contre Senior",
-        "text": "L'axe de groupe d'encadrement d'un directeur sportif montre la tranche d'âge qu'il entraîne le mieux. U23 couvre les coureurs de l'académie et les jeunes pros jusqu'à 25 ans ; Senior couvre les coureurs de 26 ans et plus. C'est la spécialisation propre d'un responsable, séparée de la structure d'effectif du club (équipe juniors et équipe U23 arrivent bientôt) : un groupe d'encadrement concerne les coureurs qu'un responsable entraîne le mieux, pas l'effectif auquel appartient un coureur."
+        "text": "L'axe de groupe d'encadrement d'un directeur sportif montre la tranche d'âge qu'il entraîne le mieux. U23 couvre les coureurs de l'académie et les jeunes pros jusqu'à 25 ans ; Senior couvre les coureurs de 26 ans et plus. C'est la spécialisation propre d'un responsable, séparée de la structure d'effectif du club : un groupe d'encadrement concerne les coureurs qu'un responsable entraîne le mieux, pas l'effectif auquel appartient un coureur."
       },
       "costs": {
         "title": "Coûts : un prix de construction unique",
@@ -1737,7 +1745,7 @@
       "label": "Sélection de l'équipe",
       "what": {
         "title": "Choisir ton effectif de course",
-        "text": "Chaque course a une taille de peloton fixée par sa classe : 6 dans la plupart des courses, 7 dans les plus grandes courses du World Tour et les Monuments, 8 dans les Grands Tours. Ouvre la page de la course et utilise le panneau Sélection de l'équipe. Tu peux enregistrer moins de coureurs que le peloton n'en contient, et l'enregistrement n'est jamais bloqué. Mais ton équipe a besoin d'au moins 6 coureurs dans la composition pour prendre le départ de la course, dans toutes les courses, quelle que soit la taille du peloton. Moins de 6 et ton équipe ne prend pas le départ, donc aucun résultat et aucun gain de jour de course. Une exception : si tu avais 6 coureurs sélectionnés et que certains se sont blessés après ton choix, ton équipe prend quand même le départ avec les coureurs aptes qui lui restent, après que l'assistant a ajouté d'éventuels coureurs libres. Si tu laisses une course vide ou sous 6, ton assistant la complète jusqu'à 6 au moment de la course avec les coureurs que tu as de libres, et il saute les courses dont tu t'es retiré ou que tu as vidées exprès. Le panneau te dit avant que tu quittes la page si ton équipe prendra le départ. Pour faire l'impasse sur une course, retire-toi ; si tu veux plus de coureurs au choix, signe des agents libres."
+        "text": "Chaque course a une taille de peloton fixée par sa classe : 6 dans la plupart des courses, 7 dans les plus grandes courses du World Tour et les Monuments, 8 dans les Grands Tours. Ouvre la page de la course et utilise le panneau Sélection de l'équipe. Tu peux enregistrer moins de coureurs que le peloton n'en contient, et l'enregistrement n'est jamais bloqué. Mais ton équipe a besoin d'au moins 6 coureurs dans la composition pour prendre le départ de la course, dans toutes les courses, quelle que soit la taille du peloton. Moins de 6 et ton équipe ne prend pas le départ, donc aucun résultat et aucun gain de jour de course. Une exception : si tu avais 6 coureurs sélectionnés et que certains se sont blessés après ton choix, ton équipe prend quand même le départ avec les coureurs aptes qui lui restent, après que l'assistant a ajouté d'éventuels coureurs libres. Autre exception, sur les courses par étapes uniquement : si certains de tes coureurs sont encore pris par une autre course le premier jour, ton équipe prend le départ avec les coureurs libres qu'elle a, à condition d'en avoir au moins 4. Si tu laisses une course vide ou sous 6, ton assistant la complète jusqu'à 6 au moment de la course avec les coureurs que tu as de libres, et il saute les courses dont tu t'es retiré ou que tu as vidées exprès. Le panneau te dit avant que tu quittes la page si ton équipe prendra le départ. Pour faire l'impasse sur une course, retire-toi ; si tu veux plus de coureurs au choix, signe des agents libres."
       },
       "seasonOverview": {
         "title": "Vue de la saison sur le tableau de planification",
@@ -1804,7 +1812,7 @@
       },
       "timeLimitAndGrupetto": {
         "title": "Le délai et l'autobus",
-        "text": "Arrive trop loin derrière le vainqueur de l'étape et ta course est terminée, éliminé de toute l'épreuve sur une course par étapes, un abandon sur une course d'un jour. Un gros groupe qui arrive ensemble est sauvé d'un bloc, c'est l'autobus, et il existe pour qu'un peloton entier fatigué ne soit pas renvoyé chez lui lors d'une journée brutale. La marge dont tu disposes dépend de l'étape : les jours de plat sont les plus stricts, la haute montagne la plus indulgente. Dans les courses de jeunes, le délai est plus large et un groupe plus petit peut être sauvé. C'est une règle, jamais un jet de dés, et elle traite une équipe IA exactement comme elle te traite. Tout ce que tu vois, c'est le résultat brut : hors délai, ou autobus sauvé."
+        "text": "Arrive trop loin derrière le vainqueur de l'étape et ta course est terminée, éliminé de toute l'épreuve sur une course par étapes, un abandon sur une course d'un jour. Un gros groupe qui arrive ensemble est sauvé d'un bloc, c'est l'autobus, et il existe pour qu'un peloton entier fatigué ne soit pas renvoyé chez lui lors d'une journée brutale. La marge dont tu disposes dépend de l'étape : les jours de plat sont les plus stricts, la haute montagne la plus indulgente. Dans les courses de jeunes, le délai est plus large et un groupe plus petit peut être sauvé. C'est une règle, jamais un jet de dés, et elle traite une équipe IA exactement comme elle te traite. Tout ce que tu vois, c'est le résultat brut : hors délai, ou autobus sauvé. Sur une course par étapes, un équipier épuisé arrivé loin derrière peut aussi mettre pied à terre après l'étape. Il apparaît comme DNF avec le motif \"Pied à terre, épuisé\" et ne court pas le reste de l'épreuve."
       },
       "teamwork": {
         "title": "Le travail d'équipe sur la route",
