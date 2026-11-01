@@ -9,7 +9,7 @@ import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
 import { isAiTeamRetireEnabled } from './aiTeamRetireFlag.js';
 import {
   windowsOverlap, raceBindingWindow,
-  isRiderDayInvariantViolation, isConstraintNotDeferrable, isDrainingAiObligation,
+  isRiderDayInvariantViolation, isConstraintNotDeferrable, isDrainingAiObligation, isRaceLineupFrozen,
 } from "./raceBinding.js";
 import {
   ASSISTANT_MODES, DEFAULT_ASSISTANT_MODE, DEFAULT_LATE_FILL_HOURS,
@@ -1352,6 +1352,40 @@ export async function runRaceEntryGenerator({
       console.warn(
         `⚠️  Entry-generator ${team_id}: batch-RPC afvist (${batchErr.message}) — falder tilbage til per-enheds-skrivning (#3934)`
       );
+    }
+    // #7389: afvisningen siger at mindst ét af holdets løb er startet SIDEN tick-
+    // start. Genlæs løbene og fjern de frosne enheder, før fallbacken skriver —
+    // ellers skriver per-enheds-vejen direkte forbi DB-guarden. Kan genlæsningen
+    // ikke gennemføres, springes hele holdet over i dette tick (næste tick prøver igen).
+    if (isRaceLineupFrozen(batchErr)) {
+      let frozenErr = null;
+      let frozenRows = null;
+      try {
+        const res = await supabase
+          .from("races").select("id, stages_completed, status")
+          .in("id", changed.map(({ unit }) => unit.race_id));
+        frozenErr = res?.error ?? null;
+        frozenRows = res?.data ?? null;
+      } catch (thrown) {
+        frozenErr = thrown;
+      }
+      if (frozenErr || !Array.isArray(frozenRows)) {
+        failedUnits += changed.length;
+        if (errors.length < 5) errors.push(`${team_id}: race_lineup_frozen, kunne ikke genlaese loebene - holdet springes over (#7389)`);
+        continue;
+      }
+      const nowFrozen = new Set(
+        frozenRows.filter((r) => (r.stages_completed ?? 0) > 0 || r.status !== "scheduled").map((r) => r.id)
+      );
+      for (let i = changed.length - 1; i >= 0; i--) {
+        const raceId = changed[i].unit.race_id;
+        if (!nowFrozen.has(raceId)) continue;
+        startedRaceIds.add(raceId);
+        changed.splice(i, 1);
+        failedUnits += 1;
+        if (errors.length < 5) errors.push(`${raceId}/${team_id}: race_lineup_frozen (refused to touch in-flight race)`);
+      }
+      if (!changed.length) continue;
     }
     // #5693 (CYCLINGZONE-32, Sentry-regression 24/9): fallback-loopet nedenfor
     // skriver ÉN enhed ad gangen med insert-FØR-delete (#3934's "aldrig-tommere"-

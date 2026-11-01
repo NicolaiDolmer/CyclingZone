@@ -150,6 +150,17 @@ export function isConstraintNotDeferrable(error) {
   return /is not deferrable/i.test(String(error.message || ""));
 }
 
+// #7389: apply_race_entry_unit_batch afviser hele holdets batch med
+// 'sweep_race_lineup_frozen', naar et af loebene er gaaet i gang (stages_completed > 0
+// eller status <> 'scheduled'). Det er TOCTOU mod generatorens egen startedRaceIds,
+// som laeses ved tick-start: loebet kan starte midt i tick'et. Kalderen SKAL da
+// genlaese loebene og udelade de frosne fra per-enheds-fallbacken, ellers skriver
+// fallbacken direkte forbi frysningen (Volta Algarvia 30/10: 102 ryttere skiftet ud).
+export function isRaceLineupFrozen(error) {
+  if (!error) return false;
+  return /sweep_race_lineup_frozen/.test(String(error.message || ""));
+}
+
 // #4959: DB-guarden guard_draining_ai_obligation (trg_ai_drain_entries, #4753) afviser
 // en NY entry-raekke for et AI-hold der er markeret til nedlaeggelse eller allerede
 // nedlagt, med SQLSTATE 23514. App-laget filtrerer selv de hold fra (raceEntryGenerator

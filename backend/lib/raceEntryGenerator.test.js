@@ -2712,3 +2712,30 @@ test("#6680 (Codex P2): a live run clears the calendar cache, a dry run does not
   await runRaceEntryGenerator({ supabase: makeSupabase(transferredRiderScenario({ spent: false })), seasonId: "season1", dryRun: false, now: new Date("2026-10-02T06:00:00Z") });
   assert.equal(getCacheStats().invalidations, before + 1, "live run invalidates the calendar namespace");
 });
+
+// #7389 (Volta Algarvia 30/10, CYCLINGZONE-55): løbet startede MIDT i tick'et — efter
+// generatorens startedRaceIds var læst. Batch-RPC'en afviste korrekt med
+// sweep_race_lineup_frozen, men per-enheds-fallbacken skrev alligevel og udskiftede
+// 102 ryttere i et igangværende etapeløb. Fallbacken skal genlæse løbene og lade
+// de frosne enheder være.
+test("#7389: løb der starter midt i tick'et røres ikke af per-enheds-fallbacken", async () => {
+  const { desiredA, desiredB, crossed } = await crossedSeedFromDesired();
+  const { state, seasonId } = seedSwapScenario();
+  state.race_entries = crossed.map((r) => ({ ...r }));
+  const before = (raceId) => crossed.filter((e) => e.race_id === raceId).map((e) => e.rider_id).sort();
+  const supabase = makeSupabase(state, { batchRpc: true });
+  const realRpc = supabase.rpc.bind(supabase);
+  supabase.rpc = (name, params) => {
+    // Løb A går i gang lige før batchen skrives (TOCTOU mod tick-starten).
+    const raceA = state.races.find((r) => r.id === "A");
+    raceA.stages_completed = 1;
+    raceA.status = "active";
+    return realRpc(name, params);
+  };
+  const res = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+  const ids = (raceId) => state.race_entries.filter((e) => e.race_id === raceId).map((e) => e.rider_id).sort();
+  assert.deepEqual(ids("A"), before("A"), "det startede løbs felt er uændret");
+  assert.ok(res.failed_units >= 1, "den frosne enhed tælles som afvist");
+  assert.ok(res.errors.some((e) => /race_lineup_frozen/.test(e)), "afvisningen er synlig i errors");
+  assert.ok(desiredA.length && desiredB.length);
+});

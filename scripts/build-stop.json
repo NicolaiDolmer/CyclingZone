@@ -446,6 +446,11 @@
       "issue": 7431,
       "reason": "Sikkerhed: åbne CodeQL- og Dependabot-alarmer på main (ejer-go 1/11)",
       "since": "2026-11-01"
+    },
+    {
+      "issue": 7389,
+      "reason": "Løbsdag: holdudtagelsen skiftede 102 ryttere ud midt i Volta Algarvia (fallback forbi line-up-frysningen), ejer-go 1/11",
+      "since": "2026-11-01"
     }
   ]
 }
