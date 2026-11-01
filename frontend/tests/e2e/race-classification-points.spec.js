@@ -171,7 +171,7 @@ test("#3519 waypoint-point synlige på etape-resultatsiden", async ({ page }, te
   // Resultater-fanen, og holdudtagelsens egen etape-vælger bor i Hold-fanen —
   // de to "Etape 2"-knapper deler ikke længere flade, så nth(1)-hacket (som
   // pegede på resultat-striben på den gamle scroll-side) er ikke længere nødvendigt.
-  await page.getByRole("tab", { name: "Resultater" }).click();
+  await page.getByRole("tab", { name: "Stillinger" }).click();
   await page.getByRole("button", { name: "Etape 2", exact: true }).click();
 
   const passageHeading = page.getByText("Mellemresultater", { exact: true });
@@ -199,7 +199,9 @@ test("#3519 løbende bjerg-/pointkonkurrence synlig mens etapeløbet er i gang",
   await page.goto("/races/race-e2e-3519");
 
   // #4613: klassementerne bor i Resultater-fanen; siden åbner på Overblik.
-  await page.getByRole("tab", { name: "Resultater" }).click();
+  await page.getByRole("tab", { name: "Stillinger" }).click();
+  // v2 aabner Stillinger paa den valgte etape; Samlet er et eksplicit valg.
+  await page.getByRole("button", { name: "Samlet", exact: true }).click();
 
   // "Samlet"-fanen er default i resultat-striben — LiveOverallTab (ingen
   // gc-slutrækker endnu).

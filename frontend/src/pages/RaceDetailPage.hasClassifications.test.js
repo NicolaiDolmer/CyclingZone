@@ -10,7 +10,7 @@
 //
 // Repoet kører node --test uden DOM-renderer, så kæden dækkes som
 // kildekode-struktur-guards (samme mønster som RaceSelectionPanel.*.test.js):
-// RaceDetailPage → StageDetailPanel/StageProfileSlot → StageProfileCard →
+// RaceDetailPage → StageProfileSlot → StageProfileCard →
 // StageProfileGraph + StageWaypointReadout. Den fulde visuelle adfærd
 // verificeres i preview (VITE_PREVIEW_MOCK=1, race-done-1) og i
 // docs/... PR-body-screenshots.
@@ -22,38 +22,9 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const raceDetailPage = readFileSync(join(__dirname, "RaceDetailPage.jsx"), "utf8");
-const stageDetailPanel = readFileSync(join(__dirname, "..", "components", "race", "StageDetailPanel.jsx"), "utf8");
 const stageProfileCard = readFileSync(join(__dirname, "..", "components", "race", "StageProfileCard.jsx"), "utf8");
 const stageProfileGraph = readFileSync(join(__dirname, "..", "components", "race", "StageProfileGraph.jsx"), "utf8");
 const stageWaypointReadout = readFileSync(join(__dirname, "..", "components", "race", "StageWaypointReadout.jsx"), "utf8");
-const raceOverviewTab = readFileSync(join(__dirname, "..", "components", "race", "RaceOverviewTab.jsx"), "utf8");
-
-test("#2818 hvert StageDetailPanel-kaldested afleder hasClassifications af race_type, aldrig hardcoded true", () => {
-  // #4613 flyttede de to gamle kaldesteder (kommende-etape-panelet + den foldede
-  // udtagelses-sektion) ind i faner: Etaper-fanen ejer nu det ene, Overblik-fanen
-  // det andet. Kontrakten er den SAMME — ingen af dem må antage stage_race,
-  // fordi StageDetailPanel/StageProfileSlot bruges af begge race-typer.
-  assert.match(
-    raceDetailPage,
-    /hasClassifications=\{race\.race_type === "stage_race"\}/,
-    "Etaper-fanens panel skal aflede hasClassifications af race.race_type",
-  );
-  // Overblik-fanen får race-typen som prop og afleder derfra — den ser aldrig
-  // `race` selv.
-  assert.match(
-    raceDetailPage,
-    /<RaceOverviewTab[\s\S]{0,400}isStageRace=\{race\.race_type === "stage_race"\}/,
-    "Overblik-fanen skal have race-typen som prop, afledt af race.race_type",
-  );
-  const overviewUses = [...raceOverviewTab.matchAll(/hasClassifications=\{isStageRace\}/g)];
-  assert.ok(
-    overviewUses.length >= 1,
-    "Overblik-fanens StageDetailPanel skal aflede hasClassifications af isStageRace, ikke hardcode true",
-  );
-  // Ingen af de to filer må hardcode true på et panel.
-  assert.doesNotMatch(raceDetailPage, /<StageDetailPanel[^>]*hasClassifications=\{true\}/);
-  assert.doesNotMatch(raceOverviewTab, /<StageDetailPanel[^>]*hasClassifications=\{true\}/);
-});
 
 test("#2818 det afsluttede endagsløbs-resultat sætter hasClassifications={false} eksplicit (aldrig default-true)", () => {
   // Efter et endagsløb er kørt renders StageProfileSlot i grenen
@@ -67,10 +38,7 @@ test("#2818 det afsluttede endagsløbs-resultat sætter hasClassifications={fals
   );
 });
 
-test("#2818 hasClassifications-prop'en tråder helt igennem StageDetailPanel → StageProfileCard → graf + readout", () => {
-  assert.match(stageDetailPanel, /hasClassifications = true,/, "StageDetailPanel skal acceptere prop'en (default true = etapeløbs-adfærd uændret)");
-  assert.match(stageDetailPanel, /hasClassifications=\{hasClassifications\}/, "StageDetailPanel skal videresende prop'en til StageProfileCard");
-
+test("#2818 hasClassifications-prop'en tråder helt igennem StageProfileCard → graf + readout", () => {
   assert.match(
     stageProfileCard,
     /export default function StageProfileCard\(\{[^}]*hasClassifications = true[^}]*\}\)/,
