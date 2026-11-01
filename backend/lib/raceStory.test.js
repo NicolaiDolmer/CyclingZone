@@ -571,3 +571,64 @@ test("review-runde 4 (3): en hændelse på et snapshots km, stemplet først sene
     assert.equal(total(f), 10, `km ${f.km}`);
   }
 });
+
+// ── #7388: gruppetal summerer, og "resten" bliver hvor den er ─────────────────
+// Fixtures: fire rigtige etaper (read-only udtræk, anonymiseret, se _source).
+const FILM_7388 = JSON.parse(readFileSync(new URL("./__fixtures__/raceFilm7388.json", import.meta.url), "utf8"));
+const story7388 = (key) => buildRaceStory({ events: FILM_7388[key].events, timelineVersion: FILM_7388[key].timeline_version });
+const groupSum = (groups) => groups.reduce((sum, g) => sum + (g.size ?? 0), 0);
+const sizesAt = (story, km, kind) => story.checkpoints.find((c) => c.km === km && c.kind === kind).groups.map((g) => [g.group_id, g.size, g.includes_rest]);
+
+test("#7388 Soleil e3: målet splittes i 4/11/3/134, resten (feltet) er 134-gruppen, og tallene summerer til feltet", () => {
+  const story = story7388("soleil_e3");
+  const finish = story.checkpoints.find((c) => c.kind === "finish");
+  assert.deepEqual(finish.groups.map((g) => [g.group_id, g.size, g.includes_rest]), [
+    ["finale-winner-0", 4, false], ["finale-tier-1", 11, false], ["finale-tier-2", 3, false], ["finale-tier-3", 134, true], ["gruppetto-10000", 2, false],
+  ]);
+  for (const c of story.checkpoints) assert.equal(groupSum(c.groups) + c.out_rider_ids.length, story.field_count, `km ${c.km}`);
+  // Resten lever videre til den sidste sammenlægning: kildens levetid lukker ind i 134-gruppen.
+  const rest = story.group_spans.find((s) => s.group_id === "solo-m10-0-0" && s.into_group_id);
+  assert.equal(rest.into_group_id, "finale-tier-3");
+  for (const id of ["finale-winner-0", "finale-tier-1", "finale-tier-2"]) {
+    assert.equal(story.group_spans.find((s) => s.group_id === id).source_group_id, "solo-m10-0-0", id);
+  }
+  for (const f of replayFrames(story)) assert.equal(groupSum(f.groups), story.field_count, `replay km ${f.km}`);
+});
+
+test("#7388 Soleil e4: feltet (peloton-0 gået op i breakaway-0) bærer resten: 153 på spurten, 98 på toppen", () => {
+  const story = story7388("soleil_e4");
+  assert.deepEqual(sizesAt(story, 79, "sprint"), [["breakaway-0", 153, true], ["solo-m10-2-0", 1, false]]);
+  assert.deepEqual(sizesAt(story, 118, "climb").find(([id]) => id === "breakaway-0"), ["breakaway-0", 98, true]);
+  for (const c of story.checkpoints) assert.equal(groupSum(c.groups) + c.out_rider_ids.length, story.field_count, `km ${c.km}`);
+});
+
+test("#7388 Volcans e1+e2: tallene summerer til feltet på hvert tjekpunkt", () => {
+  for (const key of ["volcans_e1", "volcans_e2"]) {
+    const story = story7388(key);
+    for (const c of story.checkpoints) assert.equal(groupSum(c.groups) + c.out_rider_ids.length, story.field_count, `${key} km ${c.km}`);
+  }
+  assert.deepEqual(sizesAt(story7388("volcans_e1"), 90, "sprint"), [["breakaway-1500", 8, false], ["breakaway-0", 157, true], ["solo-m10-2-0", 1, false]]);
+});
+
+test("#7388 mergeGroups: en delvis sammenlægning ud af resten flytter kun de navngivne; den sidste tager resten med", () => {
+  const events = [
+    ev(0, "stage_start", { field_count: 10, distance_km: 100, profile_type: "flat" }),
+    ev(50, "gap_update", { group_id: "peloton-0", gap_seconds: 0 }),
+    ev(100, "group_merged", { group_id: "peloton-0", into_group_id: "finale-winner-0", rider_ids: ["a", "b"] }),
+    ev(100, "group_merged", { group_id: "peloton-0", into_group_id: "finale-tier-1", rider_ids: ["c"] }),
+    ev(100, "gap_update", { group_id: "finale-tier-1", gap_seconds: 3 }),
+    ev(100, "finish", {}),
+  ];
+  const story = buildRaceStory({ events, timelineVersion: 2 });
+  const finish = story.checkpoints.find((c) => c.kind === "finish");
+  assert.deepEqual(finish.groups.map((g) => [g.group_id, g.size, g.includes_rest]), [
+    ["peloton-0", 7, true], ["finale-winner-0", 2, false], ["finale-tier-1", 1, false],
+  ]);
+  // Navngiver sammenlægningen alle i resten, følger resten med (som før).
+  const all = buildRaceStory({ events: [
+    ev(0, "stage_start", { field_count: 3, distance_km: 100, profile_type: "flat" }),
+    ev(100, "group_merged", { group_id: "peloton-0", into_group_id: "finale-bunch-0", rider_ids: ["a", "b", "c"] }),
+    ev(100, "finish", {}),
+  ], timelineVersion: 2 });
+  assert.deepEqual(all.checkpoints.find((c) => c.kind === "finish").groups.map((g) => [g.group_id, g.size, g.includes_rest]), [["finale-bunch-0", 3, true]]);
+});
