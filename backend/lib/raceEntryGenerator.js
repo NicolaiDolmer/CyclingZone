@@ -1371,6 +1371,8 @@ export async function runRaceEntryGenerator({
         frozenErr = res?.error ?? null;
         frozenRows = res?.data ?? null;
       } catch (thrown) {
+        // best-effort: en kastet transportfejl behandles som en {error}-afvisning;
+        // grenen nedenfor springer holdet over og registrerer det i errors.
         frozenErr = thrown;
       }
       if (frozenErr || !Array.isArray(frozenRows)) {
