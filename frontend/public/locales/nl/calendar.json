@@ -25,6 +25,9 @@
     "all": "Alle teams",
     "divisions": "Divisies"
   },
+  "scope": {
+    "label": "Toon"
+  },
   "division": "Divisie {n}",
   "divisionMenu": {
     "label": "Divisie",

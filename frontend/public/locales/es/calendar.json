@@ -25,6 +25,9 @@
     "all": "Todos los equipos",
     "divisions": "Divisiones"
   },
+  "scope": {
+    "label": "Mostrar"
+  },
   "division": "División {n}",
   "divisionMenu": {
     "label": "División",

@@ -25,6 +25,9 @@
     "all": "All teams",
     "divisions": "Divisions"
   },
+  "scope": {
+    "label": "Show"
+  },
   "division": "Division {n}",
   "divisionMenu": {
     "label": "Division",

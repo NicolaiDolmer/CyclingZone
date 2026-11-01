@@ -25,6 +25,9 @@
     "all": "Alle hold",
     "divisions": "Divisioner"
   },
+  "scope": {
+    "label": "Vis"
+  },
   "division": "Division {n}",
   "divisionMenu": {
     "label": "Division",
