@@ -4,6 +4,10 @@
   "areaCap": 3,
   "finishList": [
     {
+      "issue": 7445,
+      "area": "race-engine"
+    },
+    {
       "issue": 6110,
       "area": "udvikling-2"
     },
@@ -237,6 +241,10 @@
     }
   ],
   "cleanupList": [
+    {
+      "issue": 7444,
+      "why": "CI: frontend-smoke tager gammel shard-måling efter genkørsel (ejer-go 1/11)"
+    },
     {
       "issue": 7440,
       "why": "Lighthouse: tavs vagt med tærskler, SEO kun ugentligt på offentlige sider (ejer-go 1/11)"

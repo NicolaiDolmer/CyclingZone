@@ -4,12 +4,12 @@
 
 ## Aktiv styring
 
-> **⏰ Påmind ejeren:** Alunta-faktura 7534 (61,25 kr.) afskrives af ejeren · `INDEXNOW_KEY` (#6558) · Discord: post `docs/drafts/discord-update-2026-10-20.md` + svarudkast (`discord-svar-2026-10-20.md`, tjek #5 først) · **forsiden #6665:** ejeren siger selv hvornår.
+> **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · send Discord-svar (`discord-svar-2026-11-01.md` + `discord-svar-rettelser-2026-11-01.md` i OneDrive `dolmerpc-lokale-filer-2026-11-01/docs-drafts`) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsiden #6665 tager ejeren selv mandag 3/11.
 >
-> **🎯 Next action (DolmerPC, efter 31/10):** følg [briefet på #7336](https://github.com/NicolaiDolmer/CyclingZone/issues/7336#issuecomment-6547577229). 1) **Taktik færdig:** #7369, #7317, #7239 (design A), #7327 (design A), #7335. 2) **Til-dørs-opfølgning:** tjekliste med 8 krav, auto-lukning, mandagsrapport. 3) **Udvikling 2.0:** mål kurve B, tændingskort #5950 (flyt `RACE_DAY_ROLE_YIELD_PARAMS` til `private_config` først), beslutningskort #6950/#6110 før 8/11. 4) **Live:** tændingskort `race_library_v2` (så luk #6634/#6636), `race_breakaway_outlook` mandag. 5) **Merge:** #7403, #7415, #7405. 6) **Oprydning** i to trin, batch 2 af lukninger, Discord-svar, dashboard. Mandag 3/11: forsiden #6665 til dørs (3 ejervalg, status på #1369); nøglerotation #7029 + Railway-kilde #7034, ét go pr. skridt.
+> **🎯 Next action (PC1, efter 1/11):** følg [briefen på #7336](https://github.com/NicolaiDolmer/CyclingZone/issues/7336) (ejer-designet 1/11). 1) **Tænd #5950 til dørs** (patch note + Hjælp først, tændingskort med tal, ejerens "kør", prod-verifikation). 2) **Beslutningskort #6950/#6110** før 8/11. 3) **Baggrundsbølge 2 laner:** krav 5-oprydning #7380/#7383/#7332/#6975/#6570. 4) **Opfølgning:** #7444 (e2e-genkørsel), #7445 (DB-vagt race_entries). Afslut med til-dørs-tjek pr. issue.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, flag off): ejeren har ikke besluttet om det skal i spillet; kurve "6 kombineret" (#3564) indgår i den samlede måling.
 >
-> **🤖 Working agent:** Claude Code DolmerPC (31/10 aften), brief på #7336.
+> **🤖 Working agent:** Ingen aktiv session.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
