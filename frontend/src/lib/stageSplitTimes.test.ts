@@ -302,13 +302,16 @@ test("#7388 Soleil e3 + Volcans e2: uændret (feltet i en solo-gruppes id; den s
 
 test("#7388 gammel og ny visning er enige på samme km: samme grupper, samme tal, samme felt", () => {
   for (const key of ["soleil_e3", "soleil_e4", "volcans_e1", "volcans_e2"]) {
-    const story = buildRaceStory({ events: FILM_7388[key].events, timelineVersion: FILM_7388[key].timeline_version });
+    type StoryGroup = { group_id: string; size: number; includes_rest: boolean };
+    const story = buildRaceStory({ events: FILM_7388[key].events, timelineVersion: FILM_7388[key].timeline_version }) as unknown as {
+      checkpoints: Array<{ km: number; kind: string; groups: StoryGroup[] }>;
+    };
     for (const point of splits7388(key)) {
-      const cp = story.checkpoints.find((c: { km: number; kind: string }) => c.km === point.km && c.kind === (point.kind === "kom" ? "climb" : "sprint"));
+      const cp = story.checkpoints.find((c) => c.km === point.km && c.kind === (point.kind === "kom" ? "climb" : "sprint"));
       assert.ok(cp, `${key} km ${point.km}: tjekpunkt`);
-      const sizes = new Map(cp.groups.filter((g: { size: number }) => g.size > 0).map((g: { group_id: string; size: number }) => [g.group_id, g.size]));
+      const sizes = new Map(cp.groups.filter((g) => g.size > 0).map((g) => [g.group_id, g.size]));
       assert.deepEqual(new Map(point.groups.map((g) => [g.groupId, g.riderCount])), sizes, `${key} km ${point.km}: grupper`);
-      const rest = cp.groups.find((g: { includes_rest: boolean }) => g.includes_rest);
+      const rest = cp.groups.find((g) => g.includes_rest);
       if (rest && rest.size >= 10) assert.equal(point.groups.find((g) => g.kind === "peloton")?.groupId, rest.group_id, `${key} km ${point.km}: feltet`);
     }
   }
