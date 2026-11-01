@@ -272,7 +272,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7383
     verified: 2026-10-31
-    note: Kodekontakt FINAL_KM_BOUNDARY_7383_ACTIVE tændt 31/10 efter ejer-go (motor og taktikside), kun v3.
+    note: Live 31/10 efter ejer-go; kodekontakten FINAL_KM_BOUNDARY_7383_ACTIVE (motor og taktikside) fjernet 1/11 (krav 5), reglen gælder altid under s5_profiles_v3.
 
   - id: luxury-helper-role
     area: race-engine
