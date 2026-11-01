@@ -149,6 +149,8 @@ if (Test-Path $codexLocalDir) {
     $rel = $item.FullName.Substring($codexLocalDir.Length + 1) -replace '\\','/'
     $name = $item.Name
 
+    # shared/ er en junction til OneDrive (#7446) og dermed synlig paa alle PC'er.
+    if ($rel -like 'shared/*') { continue }
     if ($codexLocalWhitelist -contains $name) { continue }
 
     $isEphemeral = $false
@@ -170,6 +172,28 @@ if (Test-Path $codexLocalDir) {
       -Message "Persistent indhold i .codex.local/ er usynligt for anden PC" `
       -Fix "Promovér til GitHub (gh issue/pr create --body-file) eller OneDrive-context, derefter slet"
   }
+}
+
+# --- 1b. Lokale arbejdsmapper (#7446) ---
+# docs/drafts, pr-screens og docs/snapshots er tracked; ucommittede filer derinde er
+# PC-lokale. De hoerer til i `<mappe>/local/` (junction til OneDrive) eller i en commit.
+$localFolders = @("docs/drafts", "pr-screens", "docs/snapshots")
+foreach ($folder in $localFolders) {
+  $junction = Join-Path $RepoRoot (Join-Path $folder "local")
+  $jItem = Get-Item -LiteralPath $junction -Force -ErrorAction SilentlyContinue
+  if (-not $jItem -or $jItem.LinkType -ne "Junction") {
+    Add-Finding -Severity "warn" -Category "local-folder-not-linked" -Path "$folder/local" `
+      -Message "$folder/local er ikke en junction til OneDrive" `
+      -Fix "Koer: pwsh -File scripts/link-onedrive-context.ps1"
+  }
+}
+$untracked = @(& git -C $RepoRoot ls-files --others --exclude-standard -- @localFolders 2>$null)
+foreach ($u in $untracked) {
+  if (-not $u) { continue }
+  $home7446 = $localFolders | Where-Object { $u -like "$_/*" } | Select-Object -First 1
+  Add-Finding -Severity "warn" -Category "local-only-workfile" -Path $u `
+    -Message "Ucommittet arbejdsfil i en tracked mappe er usynlig for anden PC" `
+    -Fix "Commit den, eller flyt den til $home7446/local/"
 }
 
 # --- 2. ~/.codex/AGENTS.md ---

@@ -1,7 +1,8 @@
 # link-onedrive-context.ps1
 #
 # Skaber junction + hardlinks fra repo + Claude memory til OneDrive-context.
-# SCOPE (efter #327 Infisical-migration): kun memory-junction og AI-context filer.
+# SCOPE (efter #327 Infisical-migration): kun memory-junction og AI-context filer,
+# plus de lokale arbejdsmapper (`<mappe>/local/`, #7446).
 # Produktionskritiske secrets (.env, .mcp.json) styres nu via Infisical - se docs/decisions/secret-management-adr.md.
 # Idempotent: skip hvis allerede linkede; advarer hvis OneDrive-context mangler filer.
 #
@@ -359,6 +360,97 @@ if (Test-Path $codexMemSource) {
   Write-Host "  [skip] codex-memories ikke i OneDrive endnu (forventet ved foerste setup)"
 }
 
+# --- 2c. Lokale arbejdsmapper (#7446) ---
+# docs/drafts, pr-screens og docs/snapshots er TRACKED (specs + PR-billeder er delt i git).
+# Det der aldrig committes (kladder, raa screenshots, dry-run-rapporter) bor i en
+# gitignoreret `local/`-undermappe, der er en junction til OneDrive - ens paa alle PC'er.
+# .codex.local/ er per-PC state; delte noter ligger i .codex.local/shared/.
+# Findes der allerede en rigtig mappe, flyttes dens filer ind i OneDrive uden at
+# overskrive noget (samme navn + andet indhold = konflikt, mappen roeres ikke).
+Write-Section "Lokale arbejdsmapper via OneDrive (#7446)"
+
+$repoLocalRoot = Join-Path $contextRoot "repo-local"
+$localFolderPairs = @(
+  @{ Path = "docs\drafts\local";    Source = "docs-drafts" },
+  @{ Path = "pr-screens\local";     Source = "pr-screens" },
+  @{ Path = "docs\snapshots\local"; Source = "docs-snapshots" },
+  @{ Path = ".codex.local\shared";  Source = "codex-local" }
+)
+
+function Get-FileHashOrNull($path) {
+  if (-not (Test-Path -LiteralPath $path)) { return $null }
+  return (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+}
+
+foreach ($pair in $localFolderPairs) {
+  $target = Join-Path $RepoRoot $pair.Path
+  $source = Join-Path $repoLocalRoot $pair.Source
+  $label = $pair.Path -replace '\\','/'
+
+  if (-not (Test-Path -LiteralPath $source)) {
+    if ($DryRun) {
+      Write-Host "  [would-mkdir] $source" -ForegroundColor Cyan
+    } else {
+      New-Item -ItemType Directory -Path $source -Force | Out-Null
+    }
+  }
+
+  $item = Get-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue
+  if ($item -and $item.LinkType -eq "Junction") {
+    if (($item.Target -join '') -eq $source) {
+      Write-Host "  [skip] $label -> OneDrive allerede paa plads"
+      continue
+    }
+    if ($DryRun) {
+      Write-Host ("  [would-relink] {0} peger paa {1}" -f $label, ($item.Target -join ', ')) -ForegroundColor Cyan
+      continue
+    }
+    Remove-Junction $target
+    $item = $null
+  }
+
+  if ($item) {
+    # Rigtig mappe: flyt filerne ind i OneDrive, ingen overskrivning.
+    $files = @(Get-ChildItem -LiteralPath $target -Recurse -File -Force -ErrorAction SilentlyContinue)
+    $conflicts = @()
+    foreach ($f in $files) {
+      $rel = $f.FullName.Substring($target.Length + 1)
+      $dest = Join-Path $source $rel
+      $destHash = Get-FileHashOrNull $dest
+      if ($destHash -and $destHash -ne (Get-FileHashOrNull $f.FullName)) { $conflicts += $rel }
+    }
+    if ($conflicts.Count -gt 0) {
+      $sample = ($conflicts | Select-Object -First 3) -join ', '
+      Add-Conflict "local-folder" ("{0}: {1} fil(er) findes i OneDrive med andet indhold ({2})" -f $label, $conflicts.Count, $sample)
+      Write-Host "  [warn] $label har konflikter; mappen er ikke roert" -ForegroundColor Yellow
+      continue
+    }
+    if ($DryRun) {
+      Write-Host ("  [would-move] {0}: {1} fil(er) -> {2}, derefter junction" -f $label, $files.Count, $source) -ForegroundColor Cyan
+      continue
+    }
+    foreach ($f in $files) {
+      $rel = $f.FullName.Substring($target.Length + 1)
+      $dest = Join-Path $source $rel
+      if (Test-Path -LiteralPath $dest) { Remove-Item -LiteralPath $f.FullName -Force; continue }
+      New-Item -ItemType Directory -Path (Split-Path $dest -Parent) -Force | Out-Null
+      Move-Item -LiteralPath $f.FullName -Destination $dest
+    }
+    $left = @(Get-ChildItem -LiteralPath $target -Recurse -File -Force -ErrorAction SilentlyContinue).Count
+    if ($left -gt 0) { throw "$label har stadig $left fil(er) efter flytning - stopper foer sletning" }
+    Remove-Item -LiteralPath $target -Recurse -Force
+    Write-Host ("  [ok] {0}: {1} fil(er) flyttet til OneDrive" -f $label, $files.Count)
+  }
+
+  if ($DryRun) {
+    Write-Host "  [would-link] Junction: $label -> $source" -ForegroundColor Cyan
+    continue
+  }
+  New-Item -ItemType Directory -Path (Split-Path $target -Parent) -Force | Out-Null
+  New-Item -ItemType Junction -Path $target -Target $source | Out-Null
+  Write-Host "  [ok] Junction: $label -> $source"
+}
+
 # --- 3. Codex-local hardlinks ---
 Write-Section "Codex-local hardlinks"
 
@@ -394,7 +486,7 @@ if (Test-Path $claudeSettingsSource) {
 # Idempotent: attrib +P -U paa allerede pinnede filer er en no-op.
 Write-Section "Pin kritiske OneDrive-mapper lokalt (#6602)"
 
-foreach ($pinName in @("memory", "codex-memories", "codex-local", "tools", "claude-settings")) {
+foreach ($pinName in @("memory", "codex-memories", "codex-local", "tools", "claude-settings", "repo-local\docs-drafts", "repo-local\codex-local")) {
   $pinDir = Join-Path $contextRoot $pinName
   if (-not (Test-Path -LiteralPath $pinDir)) {
     Write-Host "  [skip] $pinName findes ikke i OneDrive-context"
