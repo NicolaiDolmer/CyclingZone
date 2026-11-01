@@ -689,7 +689,12 @@ export default function RaceDetailPage() {
           setFailedStages((prev) => new Set(prev).add(n));
           return;
         }
-        if (outcome.rows.length) setResults((prev) => [...prev, ...withFinishSafetyNet(outcome.rows)]); // #6185
+        // #6185. Dedupe paa id: en dobbelt hentning af samme etape maa aldrig give dobbelte raekker.
+        if (outcome.rows.length) setResults((prev) => {
+          const seen = new Set(prev.map((r) => r.id).filter((id) => id != null));
+          const fresh = withFinishSafetyNet(outcome.rows).filter((r) => r.id == null || !seen.has(r.id));
+          return fresh.length ? [...prev, ...fresh] : prev;
+        });
         setLoadedStages((prev) => new Set(prev).add(n));
       })
       .finally(() => {

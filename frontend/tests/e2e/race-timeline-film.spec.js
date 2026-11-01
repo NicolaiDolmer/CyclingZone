@@ -92,7 +92,7 @@ async function mockRace(page, { withTimeline = true, withProfile = true, race = 
 
 test("story of the stage renders curated events + gold watch-film button", async ({ page }) => {
   await mockRace(page);
-  await page.goto("/races/race-timeline-1?stage=1");
+  await page.goto("/races/race-timeline-1?stage=1&tab=results");
 
   await expect(page.getByRole("heading", { name: "Etape 1" })).toBeVisible();
   await expect(page.getByText("Etapens historie")).toBeVisible();
@@ -109,7 +109,7 @@ test("story of the stage renders curated events + gold watch-film button", async
 
 test("race film opens and the event feed follows the scrubber", async ({ page }) => {
   await mockRace(page);
-  await page.goto("/races/race-timeline-1?stage=1");
+  await page.goto("/races/race-timeline-1?stage=1&tab=results");
 
   await page.getByRole("button", { name: "Se løbsfilmen" }).click();
   const dialog = page.getByRole("dialog");
@@ -143,7 +143,7 @@ test("race film opens and the event feed follows the scrubber", async ({ page })
 // filhoved-kommentar for den fulde begrundelse.
 test("race without timeline data drops the story list + film button, but keeps Final Kilometre (own data source)", async ({ page }) => {
   await mockRace(page, { withTimeline: false });
-  await page.goto("/races/race-timeline-1?stage=1");
+  await page.goto("/races/race-timeline-1?stage=1&tab=results");
 
   await expect(page.getByRole("heading", { name: "Etape 1" })).toBeVisible();
   // Ingen tidslinje-data → ingen kuraterede events, ingen "Se løbsfilmen"-knap.
@@ -157,7 +157,7 @@ test("race without timeline data drops the story list + film button, but keeps F
 // race_stage_profiles), ikke en flad skema-linje.
 test("race film draws the real route silhouette with climb chips anchored on it", async ({ page }) => {
   await mockRace(page);
-  await page.goto("/races/race-timeline-1?stage=1");
+  await page.goto("/races/race-timeline-1?stage=1&tab=results");
 
   await page.getByRole("button", { name: "Se løbsfilmen" }).click();
   const dialog = page.getByRole("dialog");
@@ -175,7 +175,7 @@ test("race film draws the real route silhouette with climb chips anchored on it"
 // simple km-akse — fallback, ikke standard, men skal stadig virke.
 test("stage without route data falls back to the simple km axis, feed still works", async ({ page }) => {
   await mockRace(page, { withProfile: false });
-  await page.goto("/races/race-timeline-1?stage=1");
+  await page.goto("/races/race-timeline-1?stage=1&tab=results");
 
   await page.getByRole("button", { name: "Se løbsfilmen" }).click();
   const dialog = page.getByRole("dialog");
