@@ -159,7 +159,6 @@ const WEAK = 20;
 
 test("#7380: gaelder altid under s5_profiles_v3, aldrig paa aeldre revisioner", () => {
   assert.equal(isDescentTask7380On({ s5ProfilesV3: true }), true);
-  assert.equal(isDescentTask7380On({ s5ProfilesV3: false }), false);
   assert.equal(isDescentTask7380On({}), false, "kun s5_profiles_v3 og senere");
 });
 
@@ -320,7 +319,7 @@ function runRuntime(rt: StagePlanRuntime, route: RouteV2, upTo: number, stateAt:
 function descentAttackersFromRuntime(rt: StagePlanRuntime, route: RouteV2, index: number, state: EngineState, v3 = true): string[] {
   const ctx: SegmentHookContext = {
     ...makeHookCtx({ segment: route.segments[index], segmentIndex: index, route, entrants: stagePlanEntrants(rt, RT_ENTRANTS), tuning: RACE_V4_TUNING, seed: "descent-7380-rt" }),
-    s5ProfilesV3: v3,
+    ...(v3 ? { s5ProfilesV3: true as const } : {}),
     stagePlanTasks: stagePlanCurrentTasks(rt),
   };
   return attackerIds(descentHook(state, ctx).events);
