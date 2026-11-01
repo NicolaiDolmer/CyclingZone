@@ -587,7 +587,7 @@
     },
     "careerMilestone": {
       "maidenWin": {
-        "title": "Première victoire",
+        "title": "Première victoire du coureur",
         "message": "{rider} a remporté sa première course professionnelle : {race}."
       },
       "firstPodium": {
