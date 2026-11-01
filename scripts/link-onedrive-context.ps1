@@ -463,6 +463,14 @@ function Sync-LocalFolder($pair) {
   Write-Host "  [ok] Junction: $label -> $source"
 }
 
+# Kun i hovedcheckoutet: i et linked worktree er .git en fil, og en junction derinde
+# ville blive fulgt af 'git worktree remove --force' og tømme OneDrive (postmortem 1/11).
+$isLinkedWorktree = Test-Path -LiteralPath (Join-Path $RepoRoot '.git') -PathType Leaf
+if ($isLinkedWorktree) {
+  Write-Host "  [skip] $RepoRoot er et worktree - lokale mapper kobles kun i hovedcheckoutet"
+  $localFolderPairs = @()
+}
+
 foreach ($pair in $localFolderPairs) {
   try {
     Sync-LocalFolder $pair

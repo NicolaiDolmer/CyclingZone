@@ -42,13 +42,27 @@ function Get-WorktreeLinkChildren {
 }
 
 function Get-WorktreeLinks {
-  # Alle links i worktreets rod, frontend/backend/marketing og (ved ECHT
-  # node_modules) node_modules' boern + @scope-boern. Ingen rekursion ind i links.
+  # Alle links i worktreets rod, frontend/backend/marketing, de lokale OneDrive-mapper
+  # (#7446) og (ved ECHT node_modules) node_modules' boern + @scope-boern.
+  # Ingen rekursion ind i links.
   param([Parameter(Mandatory)][string]$WorktreePath)
   $links = @()
   $dirs = @($WorktreePath)
   foreach ($sub in 'frontend', 'backend', 'marketing') { $dirs += (Join-Path $WorktreePath $sub) }
+  # #7446: de gitignorerede OneDrive-junctions (`<mappe>/local`, `.codex.local/shared`) ligger
+  # dybere end roden; uden disse forældre ville 'git worktree remove --force' tømme OneDrive.
+  foreach ($sub in 'docs\drafts', 'pr-screens', 'docs\snapshots', '.codex.local') { $dirs += (Join-Path $WorktreePath $sub) }
   foreach ($d in $dirs) {
+    # #7446: er et MELLEMLED mellem worktree-roden og $d et link (fx docs -> andet sted),
+    # ligger $d uden for worktreet; mellemleddet fanges af forælderens scan.
+    $rel = $d.Substring($WorktreePath.TrimEnd([char]92).Length).Trim([char]92)
+    $parts = @($rel -split '\\' | Where-Object { $_ })
+    $viaLink = $false
+    for ($k = 1; $k -lt $parts.Count; $k++) {
+      $mid = Join-Path $WorktreePath ($parts[0..($k - 1)] -join [char]92)
+      if ([IO.Directory]::Exists($mid) -and ((New-Object IO.DirectoryInfo $mid).Attributes -band [IO.FileAttributes]::ReparsePoint)) { $viaLink = $true; break }
+    }
+    if ($viaLink) { continue }
     # Er selve $d et link (fx frontend -> andet sted), fanges det af forælderens scan,
     # og vi maa IKKE kigge ind i det: dets boern ligger uden for worktreet og ville
     # blive utilgængelige naar linket er fjernet.
