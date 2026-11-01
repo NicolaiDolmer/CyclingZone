@@ -11,7 +11,7 @@
 // tages på samme preview. Parameteren virker KUN i preview-bygget.
 import { useEffect, useState } from "react";
 import { apiFetch } from "./apiFetch.ts";
-import { isViewerChangeEvent } from "./viewerChange.ts";
+import { onViewerChange } from "./viewerChange.ts";
 import { authHeaders, supabase } from "./supabase.ts";
 
 // requestRaceLibraryV2 kaster aldrig; kun et haengende kald skal give false efter timeout.
@@ -35,12 +35,12 @@ async function requestRaceLibraryV2(): Promise<boolean> {
 let cached: Promise<boolean> | null = null;
 let authListenerInstalled = false;
 // Codex-fund: svaret er viewer-bundet. Modulet overlever logout i samme SPA-fane,
-// så cachen tømmes når viewer skifter (samme mønster som logEvent.js).
+// så cachen tømmes når viewer skifter. #7439: skift = nyt bruger-id, ikke event-navn.
 function installAuthListener(): void {
   if (authListenerInstalled) return;
   authListenerInstalled = true;
-  supabase.auth.onAuthStateChange((event) => {
-    if (isViewerChangeEvent(event)) cached = null;
+  onViewerChange(supabase.auth, () => {
+    cached = null;
   });
 }
 function fetchRaceLibraryV2Enabled(): Promise<boolean> {
