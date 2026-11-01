@@ -255,9 +255,12 @@ test("frontend/vercel.json's marketing-rewrites matcher marketing/app 1:1 (#4067
   const vercelConfig = JSON.parse(
     readFileSync(join(repoRoot, "frontend", "vercel.json"), "utf8"),
   );
+  // Statiske asset-mapper (Next-chunks og forsidens billeder i marketing/public/landing,
+  // #1369) er ikke sider og har derfor ingen page.tsx at matche.
+  const STATIC_ASSET_SOURCES = new Set(["/_next/:path(.*)", "/landing/:path(.*)"]);
   const rewrittenPaths = new Set(
     vercelConfig.rewrites
-      .filter((r) => isMarketingDestination(r.destination) && r.source !== "/_next/:path(.*)")
+      .filter((r) => isMarketingDestination(r.destination) && !STATIC_ASSET_SOURCES.has(r.source))
       .map((r) => r.source),
   );
 
