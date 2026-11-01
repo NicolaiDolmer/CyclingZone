@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   activeRiders, myBestByStage, resolveV2Tab, scheduleFor, STAGE_PAGE_V2_TABS, stagePhase, tacticsProgress,
-  type ResultRow, type RoleOverride, type RoleRider, type ScheduleRow, type StagePageV2Tab, type StageProfile,
+  type DnfRowInput, type ResultRow, type RoleOverride, type RoleRider, type ScheduleRow, type StagePageV2Tab, type StageProfile,
 } from "./stagePageV2Model.ts";
 import StageStripV2, { type StripStage } from "./StageStripV2.tsx";
 import StageTabV2 from "./StageTabV2.tsx";
@@ -46,6 +46,8 @@ export interface StagePageV2Props {
   myTeamId: string | null;
   stageRoles: null | false | { riders?: RoleRider[]; overrides?: RoleOverride[] };
   careerEvents: CareerEvent[];
+  /** #7330: etapens udgaaede (dnfRowsForStage) til "Your riders". */
+  dnfRows?: DnfRowInput[];
   standingsSlot: ReactNode;
   teamSlot: ReactNode;
   tacticsSlot: ReactNode;
@@ -60,7 +62,7 @@ export default function StagePageV2(props: StagePageV2Props) {
   const {
     isStageRace, totalStages, stagesCompleted, raceFinished, selectedStage, todayStage, onSelectStage,
     activeTab, onChangeTab, onOpenTactics, profileByStage, schedule, timeLabelFor, results, stagePointRows, stageLoaded, stageErrorSlot,
-    myTeamId, stageRoles, careerEvents, standingsSlot, teamSlot, tacticsSlot, emptyStageSlot, nowMs, raceId = null,
+    myTeamId, stageRoles, careerEvents, dnfRows = [], standingsSlot, teamSlot, tacticsSlot, emptyStageSlot, nowMs, raceId = null,
   } = props;
   const { t } = useTranslation("races");
 
@@ -170,6 +172,7 @@ export default function StagePageV2(props: StagePageV2Props) {
           myTeamId={myTeamId}
           stageRoles={stageRoles}
           careerEvents={careerEvents}
+          dnfRows={dnfRows}
           tacticsAction={tacticsAction}
           onOpenStandings={() => onChangeTab("standings")}
           emptyState={emptyStageSlot}

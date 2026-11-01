@@ -368,7 +368,16 @@ export function myBestByStage(rows: ResultRow[], myTeamId: string | null, nameBy
 
 // ── Your day ───────────────────────────────────────────────────────────────
 
-export interface DayRow { key: string; rank: number | null; riderId: string | null; name: string; nation: string | null; gap: string | null; mine: boolean }
+export interface DayRow {
+  key: string; rank: number | null; riderId: string | null; name: string; nation: string | null; gap: string | null; mine: boolean;
+  /** #7330: udgaaet (dnf) eller ikke startet (dns) rytter; ingen placering. */
+  status?: "dnf" | "dns";
+  /** Noegle under detail.incidents.* (samme som resultattabellens DNF-raekker, #7411). */
+  reasonKey?: string;
+}
+
+/** Etapens udgaaede som raceRecap.dnfRowsForStage leverer dem. */
+export interface DnfRowInput { id?: string | number | null; rider_id?: string | null; rider?: { nationality_code?: string | null } | null; team_id?: string | number | null; reasonKey?: string; status?: string; name?: string | null }
 
 function toDayRow(r: ResultRow, myTeamId: string | null): DayRow {
   return {
@@ -401,11 +410,25 @@ export interface YourDay {
  * "Your day"-kortet for etape N: top DAY_TOP_COUNT og dine ryttere med placering uanset
  * plads, for etapen eller det samlede efter etapen.
  */
-export function yourDay(results: ResultRow[], stageNumber: number, myTeamId: string | null, cls: "stage" | "gc"): YourDay {
+export function yourDay(results: ResultRow[], stageNumber: number, myTeamId: string | null, cls: "stage" | "gc", dnfRows: DnfRowInput[] = []): YourDay {
   const rows = classificationRowsForStage(results, stageNumber, cls) as ResultRow[];
   const gcRows = classificationRowsForStage(results, stageNumber, "gc") as ResultRow[];
   const top = rows.slice(0, DAY_TOP_COUNT).map((r) => toDayRow(r, myTeamId));
-  const mine = rows.filter((r) => isMine(r, myTeamId)).map((r) => toDayRow(r, myTeamId));
+  // #7330: egne udgaaede staar sidst med DNF/DNS og aarsag i stedet for at forsvinde.
+  const myDnf: DayRow[] = (dnfRows || [])
+    .filter((d) => myTeamId != null && d.team_id != null && String(d.team_id) === String(myTeamId) && d.name)
+    .map((d) => ({
+      key: String(d.id ?? `dnf-${d.rider_id}`),
+      rank: null,
+      riderId: d.rider_id ?? null,
+      name: d.name ?? "",
+      nation: d.rider?.nationality_code ?? null,
+      gap: null,
+      mine: true,
+      status: d.status === "dns" ? "dns" as const : "dnf" as const,
+      reasonKey: d.reasonKey,
+    }));
+  const mine = [...rows.filter((r) => isMine(r, myTeamId)).map((r) => toDayRow(r, myTeamId)), ...myDnf];
   const myGc = gcRows.filter((r) => isMine(r, myTeamId) && Number.isFinite(Number(r.rank)));
   const leader = gcRows[0];
   let bestOverall: YourDay["bestOverall"] = null;

@@ -188,6 +188,25 @@ test("yourDay: top 5, dine ryttere uanset plads, din bedste i samlet + hul", () 
   assert.equal(winningMargin(RESULTS, 2), 0);
 });
 
+test("yourDay (#7330): egne udgaaede staar sidst med DNF/DNS og aarsag, andres vises ikke", () => {
+  const dnf = [
+    { id: "dnf-1", rider_id: "r-out", team_id: MINE, name: "Out Rider", status: "dnf", reasonKey: "crash", rider: { nationality_code: "DK" } },
+    { id: "dnf-2", rider_id: "r-ill", team_id: MINE, name: "Ill Rider", status: "dns", reasonKey: "illness" },
+    { id: "dnf-3", rider_id: "r-x", team_id: OTHER, name: "Other Out", status: "dnf", reasonKey: "crash" },
+  ];
+  const d = yourDay(RESULTS, 2, MINE, "stage", dnf);
+  assert.deepEqual(d.mine.map((r) => r.name), ["Ana Ibarra", "Mads Holm", "Out Rider", "Ill Rider"]);
+  const out = d.mine[2];
+  assert.equal(out.rank, null);
+  assert.equal(out.status, "dnf");
+  assert.equal(out.reasonKey, "crash");
+  assert.equal(d.mine[3].status, "dns");
+  assert.deepEqual(d.top.map((r) => r.rank), [1, 2, 3, 4, 5]);
+  // Uden udgaaede og uden eget hold aendres intet.
+  assert.deepEqual(yourDay(RESULTS, 2, MINE, "stage").mine.map((r) => r.name), ["Ana Ibarra", "Mads Holm"]);
+  assert.deepEqual(yourDay(RESULTS, 2, null, "stage", dnf).mine, []);
+});
+
 test("myBestByStage: bedste egne placering pr. etape, navn fra egne ryttere", () => {
   const names = new Map([["rid-Ana", "Ana Ibarra"]]);
   const rows: ResultRow[] = [
