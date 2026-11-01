@@ -1353,6 +1353,46 @@ export async function runRaceEntryGenerator({
         `⚠️  Entry-generator ${team_id}: batch-RPC afvist (${batchErr.message}) — falder tilbage til per-enheds-skrivning (#3934)`
       );
     }
+    // #7389: per-enheds-fallbacken skriver direkte i race_entries uden RPC'ens
+    // frysnings-guard, og startedRaceIds er læst ved tick-start. Et løb kan være gået
+    // i gang siden (Volta Algarvia 30/10: batchen afvist med sweep_race_lineup_frozen,
+    // fallbacken udskiftede 102 ryttere). Genlæs derfor ALTID løbene ved en afvist
+    // batch, uanset årsagen, og fjern de frosne enheder før nogen fallback-skrivning.
+    // Reglen spejler RPC'ens guard: stages_completed > 0 eller status <> 'scheduled'
+    // (NULL-status = ikke frosset, som i SQL). Kan genlæsningen ikke gennemføres,
+    // springes hele holdet over i dette tick (næste tick prøver igen).
+    {
+      let frozenErr = null;
+      let frozenRows = null;
+      try {
+        const res = await supabase
+          .from("races").select("id, stages_completed, status")
+          .in("id", changed.map(({ unit }) => unit.race_id));
+        frozenErr = res?.error ?? null;
+        frozenRows = res?.data ?? null;
+      } catch (thrown) {
+        // best-effort: en kastet transportfejl behandles som en {error}-afvisning;
+        // grenen nedenfor springer holdet over og registrerer det i errors.
+        frozenErr = thrown;
+      }
+      if (frozenErr || !Array.isArray(frozenRows)) {
+        failedUnits += changed.length;
+        if (errors.length < 5) errors.push(`${team_id}: kunne ikke genlaese loebene efter afvist batch - holdet springes over (#7389)`);
+        continue;
+      }
+      const nowFrozen = new Set(
+        frozenRows.filter((r) => (r.stages_completed ?? 0) > 0 || (r.status ?? "scheduled") !== "scheduled").map((r) => r.id)
+      );
+      for (let i = changed.length - 1; i >= 0; i--) {
+        const raceId = changed[i].unit.race_id;
+        if (!nowFrozen.has(raceId)) continue;
+        startedRaceIds.add(raceId);
+        changed.splice(i, 1);
+        failedUnits += 1;
+        if (errors.length < 5) errors.push(`${raceId}/${team_id}: race_lineup_frozen (refused to touch in-flight race)`);
+      }
+      if (!changed.length) continue;
+    }
     // #5693 (CYCLINGZONE-32, Sentry-regression 24/9): fallback-loopet nedenfor
     // skriver ÉN enhed ad gangen med insert-FØR-delete (#3934's "aldrig-tommere"-
     // garanti). En rytter der skal FLYTTES mellem to af DETTE holds enheder i

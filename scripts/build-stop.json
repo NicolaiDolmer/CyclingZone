@@ -470,6 +470,11 @@
       "issue": 6104,
       "reason": "Sikkerhed: forum-images kan listes af alle (Supabase-advisor), ejer-go 1/11",
       "since": "2026-11-01"
+    },
+    {
+      "issue": 7389,
+      "reason": "Løbsdag: holdudtagelsen skiftede 102 ryttere ud midt i Volta Algarvia (fallback forbi line-up-frysningen), ejer-go 1/11",
+      "since": "2026-11-01"
     }
   ]
 }
