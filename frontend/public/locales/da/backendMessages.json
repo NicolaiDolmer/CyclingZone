@@ -294,6 +294,10 @@
       "message24h": "Løbsdag {gameDay} starter inden for 24 timer. Du har {count, plural, one {1 seniorrytter} other {# seniorryttere}} og mangler {missing, plural, one {1 mere} other {# mere}} for at stille et hold. Find en rytter på markedet.",
       "message3h": "Løbsdag {gameDay} starter inden for 3 timer. Du mangler stadig {missing, plural, one {1 seniorrytter} other {# seniorryttere}} for at stille et hold. Find en rytter på markedet."
     },
+    "raceDayCoverage": {
+      "title": "Ikke ryttere nok til alle løb",
+      "message": "Løbsdag {gameDay}: du kan kun stille hold i {fieldable} af {total} løb. Hvert løb kræver {min} ryttere. Vælg dine løb, eller find flere ryttere på markedet."
+    },
     "selectionWarning": {
       "title": "Holdudtagelse mangler",
       "message": "{race} starter om under 36 timer, og du har endnu ikke sat dit hold. Vælg dine ryttere, eller lad assistenten auto-udtage for dig."

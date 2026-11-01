@@ -43,7 +43,9 @@ test("assignTeamAcrossRaces: for få ledige ryttere → mindre felt (ingen crash
   ];
   const out = assignTeamAcrossRaces({ riders: fewRiders, races });
   assert.equal(out.A.length, 6);          // A får sine 6 først (tidligst vindue)
-  assert.equal(out.B.length, 2);          // kun 2 tilbage til B
+  // #7339: de 2 tilbageværende kan ikke få B over gulvet, så B står tomt i stedet for at
+  // binde 2 ryttere i et løb der alligevel ikke starter.
+  assert.equal(out.B.length, 0);
 });
 
 test("assignTeamAcrossRaces: hvert pick har en kaptajn-rolle", () => {
@@ -435,7 +437,7 @@ test("runRaceEntryGenerator: idempotent — manuelle entries bevares, auto-fille
     { race_id: "B", ...flatProfile(1) }, { race_id: "B", ...flatProfile(2) },
   ];
   state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
-  seedTeamRiders(state, "t1", 8);
+  seedTeamRiders(state, "t1", 12); // #7339: 2 manuelle + 4 top-up i A, 6 i B (begge over gulvet)
   const manualA = [
     { race_id: "A", rider_id: "t1-r0", team_id: "t1", race_role: "captain", is_auto_filled: false },
     { race_id: "A", rider_id: "t1-r1", team_id: "t1", race_role: "helper", is_auto_filled: false },
@@ -1656,7 +1658,7 @@ test("#3906: Koben-scenario — retry på det SENERE overlappende løb ekskluder
     { race_id: "B", ...flatProfile(1) }, { race_id: "B", ...flatProfile(2) }, { race_id: "B", ...flatProfile(3) },
   ];
   state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 5 }];
-  seedTeamRiders(state, "t1", 8); // kun 8 ryttere → 2 Class2-hold (6+6) kan IKKE begge fyldes helt
+  seedTeamRiders(state, "t1", 10); // kun 10 ryttere → 2 Class2-hold (6+6) kan IKKE begge fyldes helt
 
   // Simulér en konkurrerende uq_race_entries_captain-kollision PRÆCIS på løb B's
   // FØRSTE insert-forsøg (mirror #2436's TOCTOU-mønster) — udløser
@@ -1682,8 +1684,9 @@ test("#3906: Koben-scenario — retry på det SENERE overlappende løb ekskluder
   assert.equal(aRiders.length, 6, "A (tidligst i vindue) fik sin fulde trup");
   const aSet = new Set(aRiders);
   for (const r of bRiders) assert.ok(!aSet.has(r), `${r} står i BEGGE overlappende løb efter retry (dobbeltbooking)`);
-  // Kun 2 ryttere tilbage (8 - 6) → B fyldes PARTIELT, ikke crasher, ikke tomt.
-  assert.equal(bRiders.length, 2, "B splittes til de resterende 2 ledige ryttere (partiel fyldning)");
+  // Kun 4 ryttere tilbage (10 - 6) → B fyldes PARTIELT, ikke crasher, ikke tomt. #7339: B er et
+  // etapeløb, og 4 er nok til at starte efter regel A (#6739), så de 4 bindes stadig.
+  assert.equal(bRiders.length, 4, "B splittes til de resterende 4 ledige ryttere (partiel fyldning)");
   assert.equal(bAttempts, 2, "sanity: uq-injektionen udløste rent faktisk retry'en (2 forsøg for B)");
 });
 
@@ -1766,7 +1769,7 @@ function seedSwapScenario() {
     { race_id: "B", ...flatProfile(1) }, { race_id: "B", ...flatProfile(2) },
   ];
   state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
-  seedTeamRiders(state, "t1", 8);
+  seedTeamRiders(state, "t1", 12); // #7339: 6+6, saa begge loeb stilles op og swappen er reel
   return { state, seasonId };
 }
 
@@ -2738,4 +2741,210 @@ test("#7389: løb der starter midt i tick'et røres ikke af per-enheds-fallbacke
   assert.deepEqual(ids("A"), before("A"), "det startede løbs felt er uændret");
   assert.equal(res.failed_units, 1, "kun den frosne enhed (A) tælles som afvist");  assert.ok(res.errors.some((e) => /race_lineup_frozen/.test(e)), "afvisningen er synlig i errors");
   assert.ok(desiredA.length && desiredB.length);
+});
+
+// ── #7339: gulv-bevidst fordeling over løb samme løbsdag ─────────────────────
+// Ejer-beslutning 1/11: hele løb fyldes til gulvet først. En rytter kan kun køre ét
+// løb pr. løbsdag, og et løb under gulvet starter ikke; de tal i testene er fixtures.
+const sameDay = { start: 10, end: 10, days: [10] };
+const ridersN = (n, prefix = "f") => Array.from({ length: n }, (_, i) => ({ rider_id: `${prefix}${String(i).padStart(2, "0")}`, abilities: ab(90 - i), fatigue: 0 }));
+const dayRace = (id, max, extra = {}) => ({ race_id: id, window: sameDay, stages: [flat], sizeRule: { min: max, max }, ...extra });
+const sizes = (out, ids) => ids.map((id) => out[id].length);
+
+test("#7339: 16 ryttere over 3 løb samme dag (max 8) → 8+8+0, ikke spredt", () => {
+  const out = assignTeamAcrossRaces({ riders: ridersN(16), races: [dayRace("A", 8), dayRace("B", 8), dayRace("C", 8)] });
+  assert.deepEqual(sizes(out, ["A", "B", "C"]), [8, 8, 0]);
+});
+
+test("#7339: 21 ryttere over 3 løb samme dag (max 7) → 7+7+7", () => {
+  const out = assignTeamAcrossRaces({ riders: ridersN(21), races: [dayRace("A", 7), dayRace("B", 7), dayRace("C", 7)] });
+  assert.deepEqual(sizes(out, ["A", "B", "C"]), [7, 7, 7]);
+});
+
+test("#7339: 18 ryttere over 3 løb (max 8) → 6+6+6 i stedet for 8+8+2", () => {
+  const out = assignTeamAcrossRaces({ riders: ridersN(18), races: [dayRace("A", 8), dayRace("B", 8), dayRace("C", 8)] });
+  assert.deepEqual(sizes(out, ["A", "B", "C"]), [6, 6, 6]);
+  const all = Object.values(out).flat().map((p) => p.rider_id);
+  assert.equal(new Set(all).size, all.length, "ingen rytter i to løb samme dag");
+});
+
+test("#7339: rigeligt med ryttere → bit-identisk med den grådige fordeling", () => {
+  const races = [dayRace("A", 8), dayRace("B", 8), dayRace("C", 8)];
+  const out = assignTeamAcrossRaces({ riders: ridersN(30), races });
+  assert.deepEqual(sizes(out, ["A", "B", "C"]), [8, 8, 8]);
+  assert.deepEqual(out.A.map((p) => p.rider_id), ridersN(8).map((r) => r.rider_id), "A får stadig de 8 bedste");
+});
+
+test("#7339 review: én Train now-lås i et senere løb tager ikke det første løbs bedste ryttere", () => {
+  // 30 ryttere, bedste SIDST i listen (som prod's id-orden kan give). B kan ikke bruge én af A's.
+  const riders = ridersN(30).reverse();
+  const plain = assignTeamAcrossRaces({ riders, races: [dayRace("A", 8), dayRace("B", 8)] });
+  const locked = assignTeamAcrossRaces({ riders, races: [dayRace("A", 8), dayRace("B", 8, { excludedRiderIds: new Set(["f29"]) })] });
+  assert.deepEqual(locked.A.map((p) => p.rider_id), plain.A.map((p) => p.rider_id), "A beholder sine bedste ryttere");
+  assert.equal(locked.B.length, 8);
+});
+
+test("#7339 review: ved reelt underskud reserveres de ryttere der passer dårligst til det første løb", () => {
+  // 14 ryttere, max 7 i begge. B kan ikke bruge f00 (Train now). A må ikke tage så mange
+  // af de fælles, at B ikke kan nå 7; det reserverede skal være A's svageste, ikke tilfældige.
+  const riders = ridersN(14);
+  const out = assignTeamAcrossRaces({ riders, races: [dayRace("A", 7), dayRace("B", 7, { excludedRiderIds: new Set(["f00"]) })] });
+  assert.deepEqual(sizes(out, ["A", "B"]), [7, 7]);
+  assert.ok(out.A.some((p) => p.rider_id === "f00"), "A tager f00, som B ikke kan bruge");
+  assert.ok(out.A.some((p) => p.rider_id === "f01"), "A beholder sin næstbedste");
+});
+
+test("#7339 Codex: et begrænset senere løb får hele sit gulv reserveret, ikke kun underskuddet", () => {
+  // 14 ryttere, A og B samme dag (max 8); B kan ikke bruge de 4 svageste. 8/6 er muligt.
+  const riders = ridersN(14);
+  const out = assignTeamAcrossRaces({ riders, races: [dayRace("A", 8), dayRace("B", 8, { excludedRiderIds: new Set(["f10", "f11", "f12", "f13"]) })] });
+  assert.deepEqual(sizes(out, ["A", "B"]), [8, 6]);
+});
+
+test("#7339 Codex: ryttere uden for det første løbs pulje tælles kun én gang på tværs af senere løb", () => {
+  // 18 ryttere. A (dag 1-2) kan ikke bruge 6 ryttere; B og C (dag 2) kan bruge alle. 6/6/6 er muligt.
+  const riders = ridersN(18);
+  const excl = new Set(riders.slice(12).map((r) => r.rider_id));
+  const A = { race_id: "A", window: { start: 1, end: 2, days: [1, 2] }, stages: [flat, flat], sizeRule: { min: 8, max: 8 }, excludedRiderIds: excl };
+  const d2 = { start: 2, end: 2, days: [2] };
+  const B = { race_id: "B", window: d2, stages: [flat], sizeRule: { min: 8, max: 8 } };
+  const C = { race_id: "C", window: d2, stages: [flat], sizeRule: { min: 8, max: 8 } };
+  const out = assignTeamAcrossRaces({ riders, races: [A, B, C] });
+  assert.ok(sizes(out, ["A", "B", "C"]).every((n) => n >= 6), JSON.stringify(sizes(out, ["A", "B", "C"])));
+});
+
+test("#7339 Codex: reservationer til løb på hver sin dag presser ikke det første løb under gulvet", () => {
+  // 16 ryttere. A dag 1/3/5; B dag 3-4 kun ryttere 0-5; C dag 5-6 kun ryttere 6-11.
+  const riders = ridersN(16);
+  const ids = riders.map((r) => r.rider_id);
+  const only = (keep) => new Set(ids.filter((id) => !keep.includes(id)));
+  const A = { race_id: "A", window: { start: 1, end: 5, days: [1, 3, 5] }, stages: [flat, flat, flat], sizeRule: { min: 8, max: 8 } };
+  const B = { race_id: "B", window: { start: 3, end: 4, days: [3, 4] }, stages: [flat, flat], sizeRule: { min: 8, max: 8 }, excludedRiderIds: only(ids.slice(0, 6)) };
+  const C = { race_id: "C", window: { start: 5, end: 6, days: [5, 6] }, stages: [flat, flat], sizeRule: { min: 8, max: 8 }, excludedRiderIds: only(ids.slice(6, 12)) };
+  const out = assignTeamAcrossRaces({ riders, races: [A, B, C] });
+  assert.ok(out.A.length >= 6, `A fik ${out.A.length}`);
+});
+
+test("#7339 Codex: to mål-løb ofres ikke for et lavere rangeret løb", () => {
+  const riders = ridersN(16);
+  const ids = riders.map((r) => r.rider_id);
+  const only = (keep) => new Set(ids.filter((id) => !keep.includes(id)));
+  const A = { race_id: "A", window: { start: 1, end: 5, days: [1, 3, 5] }, stages: [flat, flat, flat], sizeRule: { min: 8, max: 8 } };
+  const B = { race_id: "B", window: { start: 3, end: 4, days: [3, 4] }, stages: [flat, flat], sizeRule: { min: 8, max: 8 }, excludedRiderIds: only(ids.slice(0, 6)) };
+  const C = { race_id: "C", window: { start: 5, end: 6, days: [5, 6] }, stages: [flat, flat], sizeRule: { min: 8, max: 8 }, excludedRiderIds: only(ids.slice(6, 12)) };
+  const strategy = { aChain: [], captainPriorities: {}, roleRules: {}, targetRaceIds: new Set(["B", "C"]) };
+  const out = assignTeamAcrossRaces({ riders, races: [A, B, C], strategy });
+  assert.ok(out.B.length >= 6 && out.C.length >= 6, JSON.stringify(sizes(out, ["A", "B", "C"])));
+});
+
+test("#7339: et løb uden konkurrent fyldes som før, også under gulvet", () => {
+  const out = assignTeamAcrossRaces({ riders: ridersN(4), races: [dayRace("A", 6)] });
+  assert.equal(out.A.length, 4);
+});
+
+test("#7339: mål-løb fra strategien vinder pladsen når ikke alle kan stilles op", () => {
+  const strategy = { aChain: [], captainPriorities: {}, roleRules: {}, targetRaceIds: new Set(["C"]) };
+  const out = assignTeamAcrossRaces({ riders: ridersN(16), races: [dayRace("A", 8), dayRace("B", 8), dayRace("C", 8)], strategy });
+  assert.deepEqual(sizes(out, ["A", "B", "C"]), [8, 0, 8]);
+});
+
+test("#7339: løb på hver sin dag reserverer ikke for hinanden (etapeløb + to endagsløb)", () => {
+  const stage = { race_id: "S", window: { start: 1, end: 5, days: [1, 2, 3, 4, 5] }, stages: [flat, flat, flat], sizeRule: { min: 8, max: 8 } };
+  const d2 = { race_id: "D2", window: { start: 2, end: 2, days: [2] }, stages: [flat], sizeRule: { min: 6, max: 6 } };
+  const d4 = { race_id: "D4", window: { start: 4, end: 4, days: [4] }, stages: [flat], sizeRule: { min: 6, max: 6 } };
+  // 14 ryttere: etapeløbet tager 8, og de samme 6 andre kan køre BEGGE endagsløb.
+  const out = assignTeamAcrossRaces({ riders: ridersN(14), races: [stage, d2, d4] });
+  assert.deepEqual(sizes(out, ["S", "D2", "D4"]), [8, 6, 6]);
+});
+
+test("#7339: delvis manuel trup (floor) tæller mod gulvet; top-up tager kun resten", () => {
+  // B har 3 manuelle ryttere (låst i vinduet) → B's auto-gulv er 3, max 3.
+  const riders = ridersN(14);
+  const manual = riders.slice(0, 3).map((r) => r.rider_id);
+  const out = assignTeamAcrossRaces({
+    riders,
+    races: [dayRace("A", 6), dayRace("B", 6, { sizeRule: { min: 3, max: 3 }, floor: 3 }), dayRace("C", 6)],
+    lockedWindows: [{ window: sameDay, riderIds: manual }],
+  });
+  assert.deepEqual(sizes(out, ["A", "B", "C"]), [6, 3, 0]);
+  for (const p of Object.values(out).flat()) assert.ok(!manual.includes(p.rider_id), `${p.rider_id} er manuel og må ikke auto-udtages`);
+});
+
+test("#7339: låst løb (igangværende) er ikke med i fordelingen; dets ryttere er optaget", () => {
+  const riders = ridersN(16);
+  const locked = riders.slice(0, 4).map((r) => r.rider_id);
+  const out = assignTeamAcrossRaces({
+    riders, races: [dayRace("A", 6), dayRace("B", 6)],
+    lockedWindows: [{ window: sameDay, riderIds: locked }],
+  });
+  assert.deepEqual(Object.keys(out).sort(), ["A", "B"]);
+  assert.deepEqual(sizes(out, ["A", "B"]), [6, 6]);
+  for (const p of Object.values(out).flat()) assert.ok(!locked.includes(p.rider_id), `${p.rider_id} kører allerede det låste løb`);
+});
+
+test("#7339: etapeløb med ryttere nok til regel A (#6739) tømmes ikke", () => {
+  const stageRace = { race_id: "B", window: { start: 10, end: 12, days: [10, 11, 12] }, stages: [flat, flat, flat], sizeRule: { min: 6, max: 6 } };
+  const out = assignTeamAcrossRaces({ riders: ridersN(10), races: [dayRace("A", 6), stageRace] });
+  assert.deepEqual(sizes(out, ["A", "B"]), [6, 4]);
+});
+
+function sameDayGeneratorState({ riders = 14, started = false } = {}) {
+  const state = emptyState();
+  const seasonId = "season1";
+  const ids = started ? ["S", "A", "B"] : ["A", "B", "C"];
+  state.races = ids.map((id) => ({
+    id, season_id: seasonId, race_class: "Class2", league_division_id: 5, stages_completed: started && id === "S" ? 1 : 0,
+  }));
+  state.race_stage_schedule = ids.map((id) => ({ race_id: id, stage_number: 1, scheduled_at: "2026-11-02T10:00:00Z", game_day: 40 }));
+  state.race_stage_profiles = ids.map((id) => ({ race_id: id, ...flatProfile(1) }));
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 5 }];
+  seedTeamRiders(state, "t1", riders);
+  return { state, seasonId };
+}
+
+test("#7339 (generator): manuelle rækker urørte, top-up til gulvet, tredje løb står tomt", async () => {
+  const { state, seasonId } = sameDayGeneratorState({ riders: 14 });
+  const manualB = ["t1-r0", "t1-r1", "t1-r2"].map((rider_id, i) => ({
+    race_id: "B", rider_id, team_id: "t1", race_role: i === 0 ? "captain" : "helper", is_auto_filled: false,
+  }));
+  state.race_entries = manualB.map((r) => ({ ...r }));
+  const res = await runRaceEntryGenerator({ supabase: makeSupabase(state), seasonId, dryRun: false });
+  assert.equal(res.failed_units ?? 0, 0);
+  const inRace = (id) => state.race_entries.filter((e) => e.race_id === id);
+  assert.equal(inRace("A").length, 6, "A stilles op med 6");
+  assert.equal(inRace("B").length, 6, "B: 3 manuelle + 3 auto = gulvet");
+  assert.equal(inRace("C").length, 0, "C kan ikke nå gulvet og står tomt");
+  for (const m of manualB) {
+    const row = state.race_entries.find((e) => e.race_id === "B" && e.rider_id === m.rider_id);
+    assert.ok(row && row.is_auto_filled === false && row.race_role === m.race_role, `manuel ${m.rider_id} urørt`);
+  }
+  const all = state.race_entries.map((e) => e.rider_id);
+  assert.equal(new Set(all).size, all.length, "ingen dobbeltbooking samme dag");
+});
+
+test("#7339 (generator): igangværende løb springes over og låser sine ryttere", async () => {
+  const { state, seasonId } = sameDayGeneratorState({ riders: 16, started: true });
+  const startedRows = Array.from({ length: 8 }, (_, i) => ({
+    race_id: "S", rider_id: `t1-r${i}`, team_id: "t1", race_role: i === 0 ? "captain" : "helper", is_auto_filled: true,
+  }));
+  state.race_entries = startedRows.map((r) => ({ ...r }));
+  await runRaceEntryGenerator({ supabase: makeSupabase(state), seasonId, dryRun: false });
+  const inRace = (id) => state.race_entries.filter((e) => e.race_id === id).map((e) => e.rider_id).sort();
+  assert.deepEqual(inRace("S"), startedRows.map((r) => r.rider_id).sort(), "det startede løbs felt er uændret");
+  assert.equal(inRace("A").length, 6, "A får 6 af de 8 frie");
+  assert.equal(inRace("B").length, 0, "B kan ikke nå gulvet med 2 og står tomt");
+  const startedSet = new Set(inRace("S"));
+  for (const id of [...inRace("A"), ...inRace("B")]) assert.ok(!startedSet.has(id), `${id} kører allerede S`);
+});
+
+test("#7339 (Codex): et senere løb der kun kan bruge nogle ryttere får netop dem reserveret", () => {
+  // B kan kun bruge de 6 bedste (de 6 svageste er låst til B, fx Train now). Uden
+  // reservation tog A de 6 bedste, og B stod tomt.
+  const riders = ridersN(12);
+  const excluded = new Set(riders.slice(6).map((r) => r.rider_id));
+  const out = assignTeamAcrossRaces({ riders, races: [dayRace("A", 6), dayRace("B", 6, { excludedRiderIds: excluded })] });
+  assert.deepEqual(sizes(out, ["A", "B"]), [6, 6]);
+  for (const p of out.B) assert.ok(!excluded.has(p.rider_id));
+  const aIds = new Set(out.A.map((p) => p.rider_id));
+  for (const p of out.B) assert.ok(!aIds.has(p.rider_id), "ingen dobbeltbooking");
 });

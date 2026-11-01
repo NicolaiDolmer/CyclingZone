@@ -6,6 +6,7 @@ import { defaultFetchActiveRiderCounts, SQUAD_BELOW_MINIMUM_TYPE } from "./squad
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { notifyTeamOwner as defaultNotify } from "./notificationService.js";
 import { captureException } from "./sentry.js";
+import { sendRaceDayCoverageReminders } from "./raceDayCoverageReminder.js"; // #7339
 
 const MS_PER_HOUR = 60 * 60 * 1000;
 
@@ -152,6 +153,7 @@ export async function runSeniorStartReminderSweep({
   fetchScheduleByRace = defaultFetchScheduleByRace,
   fetchSeniorCounts = defaultFetchActiveRiderCounts,
   fetchWithdrawals = defaultFetchWithdrawals,
+  sendCoverage = sendRaceDayCoverageReminders, // #7339
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!(now instanceof Date) || !Number.isFinite(now.getTime())) throw new Error("Explicit valid now is required");
@@ -183,6 +185,13 @@ export async function runSeniorStartReminderSweep({
       console.error(`senior-start reminder failed for team ${candidate.teamId}:`, error?.message || error);
       captureException(error, { tags: { flow: "notifications", stage: "senior-start-reminder" }, extra: { teamId: candidate.teamId } });
     }
+  }
+  // #7339: samme hold, løb og vindue; beskeden når truppen ikke kan dække alle dagens løb.
+  try {
+    stats.coverage = await sendCoverage({ supabase, now, season, teams, races, scheduleByRace, withdrawnByRace, seniorCountsByTeam, notify });
+  } catch (error) {
+    console.error("race-day coverage reminders failed:", error?.message || error);
+    captureException(error, { tags: { flow: "notifications", stage: "race-day-coverage" } });
   }
   return stats;
 }

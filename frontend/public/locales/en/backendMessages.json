@@ -294,6 +294,10 @@
       "message24h": "Race day {gameDay} starts within 24 hours. You have {count, plural, one {1 senior rider} other {# senior riders}} and need {missing, plural, one {1 more} other {# more}} to field a team. Find a rider in the market.",
       "message3h": "Race day {gameDay} starts within 3 hours. You still need {missing, plural, one {1 senior rider} other {# senior riders}} to field a team. Find a rider in the market."
     },
+    "raceDayCoverage": {
+      "title": "Not enough riders for every race",
+      "message": "Race day {gameDay}: you can only field riders in {fieldable} of {total} races. Each race needs {min} riders. Pick your races, or find more riders in the market."
+    },
     "selectionWarning": {
       "title": "Squad selection needed",
       "message": "{race} starts within 36 hours and you haven't picked your squad yet. Select your riders, or let the assistant auto-select for you."
