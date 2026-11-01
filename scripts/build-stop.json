@@ -446,6 +446,11 @@
       "issue": 7431,
       "reason": "Sikkerhed: åbne CodeQL- og Dependabot-alarmer på main (ejer-go 1/11)",
       "since": "2026-11-01"
+    },
+    {
+      "issue": 6104,
+      "reason": "Sikkerhed: forum-images kan listes af alle (Supabase-advisor), ejer-go 1/11",
+      "since": "2026-11-01"
     }
   ]
 }
