@@ -69,13 +69,19 @@ function floorAwareCap({ race, available, later, availableFor, strategy }) {
   const isTarget = (r) => (strategy?.targetRaceIds?.has(r.race_id) ? 1 : 0);
   const self = { race, need: raceEntryFloor(race), window: race.window, self: true, order: 0 };
   const others = [];
+  // Codex P2: en rytter uden for dette løbs pulje kan kun dække ÉT af de senere løb,
+  // der overlapper hinanden. Han tælles derfor kun med i det første af dem.
+  const outsideClaims = []; // { window, ids }
   later.forEach((l, idx) => {
     const avail = scorableRiders(availableFor(l));
     const floor = raceEntryFloor(l);
     if (avail.length < floor) return; // kan alligevel ikke nå gulvet: reservér intet til det
-    const ownOnly = avail.filter((r) => !ownIds.has(r.rider_id)).length; // ryttere kun det kan bruge
+    const claimedNearby = new Set(outsideClaims.filter((c) => windowsOverlap(c.window, l.window)).flatMap((c) => c.ids));
+    const ownOnly = avail.filter((r) => !ownIds.has(r.rider_id) && !claimedNearby.has(r.rider_id))
+      .slice(0, floor).map((r) => r.rider_id); // ryttere kun det kan bruge
+    outsideClaims.push({ window: l.window, ids: ownOnly });
     const shared = avail.filter((r) => ownIds.has(r.rider_id)).map((r) => r.rider_id);
-    others.push({ race: l, need: Math.max(0, floor - ownOnly), window: l.window, order: idx + 1, shared, restricted: shared.length < supply });
+    others.push({ race: l, need: Math.max(0, floor - ownOnly.length), window: l.window, order: idx + 1, shared, restricted: shared.length < supply });
   });
   const ranked = [self, ...others].sort((a, b) => isTarget(b.race) - isTarget(a.race) || a.order - b.order);
   const kept = [];
@@ -92,21 +98,34 @@ function floorAwareCap({ race, available, later, availableFor, strategy }) {
   const cap = selfKept
     ? Math.max(0, Math.min(max, room))
     : (viable > 0 && room >= viable ? Math.min(max, room) : 0);
-  // Codex-review: kan et medtaget senere løb kun bruge NOGLE af dette løbs ryttere (fx en
-  // Train now-lås), reserveres ryttere til det. Review 1/11: kun underskuddet, dvs. hvad
-  // det mangler hvis dette løb i værste fald tog `cap` af de fælles ryttere, og så de
-  // ryttere der passer DÅRLIGST til dette løb. Er der ryttere nok, reserveres intet, og
-  // udtagelsen er den samme som før #7339.
+  // Kan et medtaget senere løb kun bruge NOGLE af dette løbs ryttere (fx en Train now-lås),
+  // reserveres ryttere til det. Dette løb kan i værste fald tage `cap` af de fælles: er der
+  // stadig `need` tilbage, reserveres intet (udtagelsen er som før #7339, review 1/11);
+  // ellers reserveres hele `need` (Codex P1: et underskud alene sikrer ikke gulvet), og
+  // det er de ryttere der passer DÅRLIGST til dette løb.
+  const reservations = []; // [{ item, ids }] i rangorden
   const reserved = new Set();
   if (cap > 0) {
     const fitForSelf = new Map(scorableRiders(available).map((r) => [r.rider_id, suitabilityScore(r.abilities, race.stages)]));
     for (const item of kept) {
       if (!item.restricted) continue;
       const pool = item.shared.filter((id) => !reserved.has(id));
-      const deficit = item.need - (pool.length - cap);
-      if (deficit <= 0) continue;
+      if (pool.length - cap >= item.need) continue;
       const weakest = [...pool].sort((a, b) => (fitForSelf.get(a) ?? 0) - (fitForSelf.get(b) ?? 0) || String(a).localeCompare(String(b)));
-      for (const id of weakest.slice(0, deficit)) reserved.add(id);
+      const ids = weakest.slice(0, item.need);
+      ids.forEach((id) => reserved.add(id));
+      reservations.push({ item, ids });
+    }
+    // Codex P1: reservationer til senere løb på HVER SIN dag kan tilsammen tage så mange,
+    // at dette løb falder under sit gulv. Så slippes det lavest rangerede løbs
+    // reservation, indtil dette løb kan stilles op (det løb kan så stå tomt i stedet).
+    if (selfKept) {
+      const rank = new Map(ranked.map((it, i) => [it, i]));
+      reservations.sort((a, b) => rank.get(a.item) - rank.get(b.item));
+      while (reservations.length && supply - reserved.size < self.need) {
+        const dropped = reservations.pop();
+        dropped.ids.forEach((id) => reserved.delete(id));
+      }
     }
   }
   return { cap, reserved };

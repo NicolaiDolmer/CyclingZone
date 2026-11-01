@@ -2794,6 +2794,37 @@ test("#7339 review: ved reelt underskud reserveres de ryttere der passer dårlig
   assert.ok(out.A.some((p) => p.rider_id === "f01"), "A beholder sin næstbedste");
 });
 
+test("#7339 Codex: et begrænset senere løb får hele sit gulv reserveret, ikke kun underskuddet", () => {
+  // 14 ryttere, A og B samme dag (max 8); B kan ikke bruge de 4 svageste. 8/6 er muligt.
+  const riders = ridersN(14);
+  const out = assignTeamAcrossRaces({ riders, races: [dayRace("A", 8), dayRace("B", 8, { excludedRiderIds: new Set(["f10", "f11", "f12", "f13"]) })] });
+  assert.deepEqual(sizes(out, ["A", "B"]), [8, 6]);
+});
+
+test("#7339 Codex: ryttere uden for det første løbs pulje tælles kun én gang på tværs af senere løb", () => {
+  // 18 ryttere. A (dag 1-2) kan ikke bruge 6 ryttere; B og C (dag 2) kan bruge alle. 6/6/6 er muligt.
+  const riders = ridersN(18);
+  const excl = new Set(riders.slice(12).map((r) => r.rider_id));
+  const A = { race_id: "A", window: { start: 1, end: 2, days: [1, 2] }, stages: [flat, flat], sizeRule: { min: 8, max: 8 }, excludedRiderIds: excl };
+  const d2 = { start: 2, end: 2, days: [2] };
+  const B = { race_id: "B", window: d2, stages: [flat], sizeRule: { min: 8, max: 8 } };
+  const C = { race_id: "C", window: d2, stages: [flat], sizeRule: { min: 8, max: 8 } };
+  const out = assignTeamAcrossRaces({ riders, races: [A, B, C] });
+  assert.ok(sizes(out, ["A", "B", "C"]).every((n) => n >= 6), JSON.stringify(sizes(out, ["A", "B", "C"])));
+});
+
+test("#7339 Codex: reservationer til løb på hver sin dag presser ikke det første løb under gulvet", () => {
+  // 16 ryttere. A dag 1/3/5; B dag 3-4 kun ryttere 0-5; C dag 5-6 kun ryttere 6-11.
+  const riders = ridersN(16);
+  const ids = riders.map((r) => r.rider_id);
+  const only = (keep) => new Set(ids.filter((id) => !keep.includes(id)));
+  const A = { race_id: "A", window: { start: 1, end: 5, days: [1, 3, 5] }, stages: [flat, flat, flat], sizeRule: { min: 8, max: 8 } };
+  const B = { race_id: "B", window: { start: 3, end: 4, days: [3, 4] }, stages: [flat, flat], sizeRule: { min: 8, max: 8 }, excludedRiderIds: only(ids.slice(0, 6)) };
+  const C = { race_id: "C", window: { start: 5, end: 6, days: [5, 6] }, stages: [flat, flat], sizeRule: { min: 8, max: 8 }, excludedRiderIds: only(ids.slice(6, 12)) };
+  const out = assignTeamAcrossRaces({ riders, races: [A, B, C] });
+  assert.ok(out.A.length >= 6, `A fik ${out.A.length}`);
+});
+
 test("#7339: et løb uden konkurrent fyldes som før, også under gulvet", () => {
   const out = assignTeamAcrossRaces({ riders: ridersN(4), races: [dayRace("A", 6)] });
   assert.equal(out.A.length, 4);
