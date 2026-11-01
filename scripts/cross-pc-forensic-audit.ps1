@@ -149,6 +149,8 @@ if (Test-Path $codexLocalDir) {
     $rel = $item.FullName.Substring($codexLocalDir.Length + 1) -replace '\\','/'
     $name = $item.Name
 
+    # shared/ er en junction til OneDrive (#7446) og dermed synlig paa alle PC'er.
+    if ($rel -like 'shared/*') { continue }
     if ($codexLocalWhitelist -contains $name) { continue }
 
     $isEphemeral = $false
@@ -170,6 +172,33 @@ if (Test-Path $codexLocalDir) {
       -Message "Persistent indhold i .codex.local/ er usynligt for anden PC" `
       -Fix "Promovér til GitHub (gh issue/pr create --body-file) eller OneDrive-context, derefter slet"
   }
+}
+
+# --- 1b. Lokale arbejdsmapper (#7446) ---
+# docs/drafts, pr-screens og docs/snapshots er tracked; ucommittede filer derinde er
+# PC-lokale. De hoerer til i `<mappe>/local/` (junction til OneDrive) eller i en commit.
+$localFolders = @("docs/drafts", "pr-screens", "docs/snapshots")
+foreach ($folder in $(if ($env:OneDrive) { $localFolders } else { @() })) {
+  $junction = Join-Path $RepoRoot (Join-Path $folder "local")
+  $expected = [System.IO.Path]::GetFullPath((Join-Path $env:OneDrive (Join-Path "CyclingZone-context\repo-local" ($folder -replace '/','-')))).TrimEnd([char]92)
+  $jItem = Get-Item -LiteralPath $junction -Force -ErrorAction SilentlyContinue
+  $actual = if ($jItem -and $jItem.LinkType -eq "Junction" -and $jItem.Target) { [System.IO.Path]::GetFullPath(($jItem.Target -join '')).TrimEnd([char]92) } else { "" }
+  if ($actual -ine $expected) {
+    Add-Finding -Severity "warn" -Category "local-folder-not-linked" -Path "$folder/local" `
+      -Message "$folder/local er ikke en junction til $expected" `
+      -Fix "Koer: pwsh -File scripts/link-onedrive-context.ps1"
+  }
+}
+# Kun filer der har ligget over et doegn: nye specs/billeder midt i en PR er normale.
+$untracked = @(& git -C $RepoRoot -c core.quotepath=off ls-files --others --exclude-standard -- @localFolders 2>$null)
+foreach ($u in $untracked) {
+  if (-not $u) { continue }
+  $full = Join-Path $RepoRoot $u
+  if ((Test-Path -LiteralPath $full) -and (Get-Item -LiteralPath $full).LastWriteTime -gt (Get-Date).AddHours(-24)) { continue }
+  $ownerFolder = $localFolders | Where-Object { $u -like "$_/*" } | Select-Object -First 1
+  Add-Finding -Severity "warn" -Category "local-only-workfile" -Path $u `
+    -Message "Ucommittet arbejdsfil i en tracked mappe er usynlig for anden PC" `
+    -Fix "Commit den, eller flyt den til $ownerFolder/local/"
 }
 
 # --- 2. ~/.codex/AGENTS.md ---

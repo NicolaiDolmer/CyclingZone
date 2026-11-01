@@ -35,7 +35,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useModalA11y } from "../../hooks/useModalA11y.js";
 import { riderSuitability } from "../../lib/suitability.js";
-import { ROLE_LETTER, ROLE_ORDER, roleBadgeClass, raceLockLabel } from "../../lib/seasonMatrix.js";
+import { ROLE_LETTER, rolesForRace, roleBadgeClass, raceLockLabel } from "../../lib/seasonMatrix.js";
 import { LockIcon, CheckIcon, XIcon } from "../ui";
 import FitBar from "./FitBar.jsx";
 
@@ -43,7 +43,7 @@ const GAP = 6;
 const PANEL_WIDTH = 240;
 
 export default function SeasonMatrixCellPopover({
-  anchorEl, onClose, rider, race, fixed, currentRole, lockedReasonText, conflict, onSelectRole, onRemove,
+  anchorEl, onClose, rider, race, fixed, currentRole, lockedReasonText, conflict, onSelectRole, onRemove, coCaptainNeedsCaptain = false,
 }) {
   const { t } = useTranslation("races");
   const [coords, setCoords] = useState(null);
@@ -144,24 +144,33 @@ export default function SeasonMatrixCellPopover({
             /* De fem roller, fulde navne (kontrakt 2b) — genbruger de eksisterende
                tacticsOrders.roleLabel-i18n-nøgler, ikke nye ord. */
             <div role="listbox" aria-label={t("matrix.cellPopover.roleChoice")} className="flex flex-col gap-1">
-              {ROLE_ORDER.map((role) => (
-                <button
-                  key={role}
-                  type="button"
-                  role="option"
-                  aria-selected={role === currentRole}
-                  onClick={() => onSelectRole(role)}
-                  className={`flex w-full items-center gap-2 rounded-cz border px-2 py-1.5 text-left transition-colors ${
-                    role === currentRole ? "border-cz-accent bg-cz-accent/10" : "border-transparent hover:bg-cz-subtle"
-                  }`}
-                >
-                  <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-3xs font-semibold ${roleBadgeClass(role)}`}>
-                    {ROLE_LETTER[role]}
-                  </span>
-                  <span className="flex-1 text-xs text-cz-1">{t(`tacticsOrders.roleLabel.${role}`)}</span>
-                  {role === currentRole && <CheckIcon size={13} className="shrink-0 text-cz-accent-t" aria-hidden="true" />}
-                </button>
-              ))}
+              {rolesForRace(race).map((role) => {
+                // #7239: en delt kaptajn kræver en anden rytter som kaptajn i løbet.
+                const disabled = role === "co_captain" && coCaptainNeedsCaptain && role !== currentRole;
+                return (
+                  <button
+                    key={role}
+                    type="button"
+                    role="option"
+                    aria-selected={role === currentRole}
+                    aria-disabled={disabled || undefined}
+                    disabled={disabled}
+                    onClick={() => onSelectRole(role)}
+                    className={`flex w-full items-center gap-2 rounded-cz border px-2 py-1.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                      role === currentRole ? "border-cz-accent bg-cz-accent/10" : "border-transparent hover:bg-cz-subtle"
+                    }`}
+                  >
+                    <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-3xs font-semibold ${roleBadgeClass(role)}`}>
+                      {ROLE_LETTER[role]}
+                    </span>
+                    <span className="flex-1 text-xs text-cz-1">
+                      {t(`tacticsOrders.roleLabel.${role}`)}
+                      {disabled && <span className="block text-3xs font-normal text-cz-3">{t("selection.errors.selection_co_captain_requires_captain")}</span>}
+                    </span>
+                    {role === currentRole && <CheckIcon size={13} className="shrink-0 text-cz-accent-t" aria-hidden="true" />}
+                  </button>
+                );
+              })}
             </div>
           )}
 

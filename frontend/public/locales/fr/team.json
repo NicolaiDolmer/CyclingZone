@@ -95,7 +95,6 @@
       "popularityTitle": "Popularité auprès des fans (0-100). Utilisée par l'objectif de coureur star du plan quinquennal de la direction.",
       "reputationLabel": "Réputation",
       "reputationTitle": "Réputation de course acquise. C'est le chiffre que la direction lit pour les coureurs à profil.",
-      "type": "Type",
       "contract": "Contrat",
       "contractUntil": "Jusqu'à la saison {season}",
       "contractExpired": "Expiré",
@@ -212,7 +211,6 @@
     "thRider": "Coureur",
     "thBadges": "Statut",
     "thAge": "Âge",
-    "thType": "Type",
     "thValue": "Valeur",
     "palmares": {
       "totalsTitle": "Totaux de carrière",

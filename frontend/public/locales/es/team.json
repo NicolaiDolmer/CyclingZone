@@ -95,7 +95,6 @@
       "popularityTitle": "Popularidad entre los aficionados (0-100). La usa el objetivo de ciclista estrella del plan a 5 años de la directiva.",
       "reputationLabel": "Reputación",
       "reputationTitle": "Reputación en carrera ganada. Es el número que lee la directiva para los ciclistas con perfil.",
-      "type": "Tipo",
       "contract": "Contrato",
       "contractUntil": "Hasta la temporada {season}",
       "contractExpired": "Caducado",
@@ -212,7 +211,6 @@
     "thRider": "Ciclista",
     "thBadges": "Estado",
     "thAge": "Edad",
-    "thType": "Tipo",
     "thValue": "Valor",
     "palmares": {
       "totalsTitle": "Totales de la carrera",

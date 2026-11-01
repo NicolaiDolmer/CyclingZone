@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-122 poster: live 100 · dormant 6 · building 7 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+123 poster: live 102 · dormant 5 · building 7 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -13,7 +13,7 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 ## race-engine
 
-**live:** All out on the decisive climb (`race-all-out-7280`) 2026-10-27 · Day form with causes (`race-day-form-6649`) 2026-10-30 · Descent attacks respect the rider's task (`race-descent-task-7380`) 2026-10-31 · Profile hills in the race engine (`race-engine-profile-hills`) 2026-10-28 · S5 engine rules (s5_profiles_v3) (`race-engine-s5-profiles`) 2026-10-26 · Race engine v3 (`race-engine-v3`) 2026-10-04 · v3 scoring components (`race-engine-v3-scoring`) 2026-10-04 · Race engine v4 (`race-engine-v4`) 2026-10-04 · Stage plan switches exactly 10 km from the finish (`race-final-km-boundary-7383`) 2026-10-31 · Form peaks in races (`race-form-peaks`) 2026-10-27 · Stage intention choice (`race-intention-choice`) 2026-10-27 · Saving effort in individual time trials (`race-itt-save-7332`) 2026-10-31
+**live:** All out on the decisive climb (`race-all-out-7280`) 2026-10-27 · Day form with causes (`race-day-form-6649`) 2026-10-30 · Descent attacks respect the rider's task (`race-descent-task-7380`) 2026-10-31 · Profile hills in the race engine (`race-engine-profile-hills`) 2026-10-28 · S5 engine rules (s5_profiles_v3) (`race-engine-s5-profiles`) 2026-10-26 · Race engine v3 (`race-engine-v3`) 2026-10-04 · v3 scoring components (`race-engine-v3-scoring`) 2026-10-04 · Race engine v4 (`race-engine-v4`) 2026-10-04 · Stage plan switches exactly 10 km from the finish (`race-final-km-boundary-7383`) 2026-10-31 · Form peaks in races (`race-form-peaks`) 2026-10-27 · Stage intention choice (`race-intention-choice`) 2026-10-27 · Saving effort in individual time trials (`race-itt-save-7332`) 2026-10-31 · Time trial terrain weight (`race-itt-terrain-6595`) 2026-10-31
 
 **arkiv:** `form-and-fatigue` · `race-finalize-resumable` · `race-notify-outbox` · `team-selection-and-roles`
 
@@ -24,7 +24,7 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 ## race-day
 
-**live:** Role picker scope (stage N to the end / stage N only) (`role-scope-choice`) 2026-10-06 · Stage page 2.0 (stage tabs, real elevation profile, your day) (`stage-page-v2`) 2026-10-24 · Stage plan along the route (`stage-plan-v1`) 2026-10-27
+**live:** Role picker scope (stage N to the end / stage N only) (`role-scope-choice`) 2026-10-06 · Stage page 2.0 (stage tabs, real elevation profile, your day) (`stage-page-v2`) 2026-11-01 · Stage plan along the route (`stage-plan-v1`) 2026-10-27
 
 **arkiv:** `auto-entry-generator` · `race-day-development` · `race-day-engine` · `race-detail-page` · `race-page-tabs-v2` · `race-replay` · `stage-scheduler`
 
@@ -46,7 +46,9 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 ## squad
 
-**arkiv:** `contracts` · `rider-compare-and-watchlist` · `rider-rating-best-role-display` · `squad-management` · `youth-squad-pages`
+**live:** Rating shows best role now (`rider-rating-best-role-display`) 2026-10-31
+
+**arkiv:** `contracts` · `rider-compare-and-watchlist` · `squad-management` · `youth-squad-pages`
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
@@ -55,7 +57,7 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 ## training
 
-**live:** Max +1 per ability per date (`ability-cap-per-date`) 2026-10-26 · Form and fatigue 2.0 (`condition-model-v2`) 2026-10-26 · Daily training (`daily-training`) 2026-10-27 · Development curve B (level and potential drive development, not age) (`development-curve-b`) 2026-10-30 · Peak planner (`peak-planner`) 2026-10-17 · Potential as one estimated number (`potential-single-number`) 2026-10-26 · Season fatigue and form reset (`season-fatigue-reset`) 2026-10-27 · Train now B (the click settles the rider's whole known date) (`train-now-whole-day`) 2026-10-30 · Set the training day for several riders at once (`training-bulk-day`) 2026-10-24 · Training catalog v3 (`training-catalog-v3`) 2026-10-30 · Training condition settled per date (`training-condition-per-date`) 2026-10-26 · Daily rider training receipt (`training-daily-receipt`) 2026-10-04 · Today's decision card on the Training page (`training-decision-card`) 2026-10-26 · Fatigue limit (player-set rules) (`training-fatigue-rules`) 2026-10-04 · Training groups (`training-groups`) 2026-10-14 · Training cells per race day (35 cells) (`training-program-cells`) 2026-10-04 · Training programs per race day (`training-programs`) 2026-10-14 · Training tick system (`training-tick-system`) 2026-10-16 · Train now (no bonus) (`training-train-now`) 2026-10-14
+**live:** Max +1 per ability per date (`ability-cap-per-date`) 2026-10-26 · Form and fatigue 2.0 (`condition-model-v2`) 2026-10-26 · Daily training (`daily-training`) 2026-10-27 · Development curve B (level and potential drive development, not age) (`development-curve-b`) 2026-10-30 · Peak planner (`peak-planner`) 2026-10-17 · Potential as one estimated number (`potential-single-number`) 2026-10-31 · Race day = hard day plus a role-weighted extra in the stage abilities (`race-day-role-yield`) 2026-11-01 · Season fatigue and form reset (`season-fatigue-reset`) 2026-10-27 · Train now B (the click settles the rider's whole known date) (`train-now-whole-day`) 2026-10-30 · Set the training day for several riders at once (`training-bulk-day`) 2026-10-24 · Training catalog v3 (`training-catalog-v3`) 2026-10-30 · Training condition settled per date (`training-condition-per-date`) 2026-10-26 · Daily rider training receipt (`training-daily-receipt`) 2026-10-04 · Today's decision card on the Training page (`training-decision-card`) 2026-10-26 · Fatigue limit (player-set rules) (`training-fatigue-rules`) 2026-10-04 · Training groups (`training-groups`) 2026-10-14 · Training cells per race day (35 cells) (`training-program-cells`) 2026-10-04 · Training programs per race day (`training-programs`) 2026-10-14 · Training tick system (`training-tick-system`) 2026-10-16 · Train now (no bonus) (`training-train-now`) 2026-10-14
 
 **arkiv:** `training-hard-sessions-cobbles-echelon-attack` · `training-mobile-table` · `training-score` · `training-tick-per-race-day`
 
@@ -63,7 +65,6 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 |-|-|-|-|-|-|-|
 | Development Score B in the engine (`development-score-b-engine`) | dormant | `development_score_v2` | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-10-25 | Ejer, med Udvikling 2.0. |
 | Catch-up via racing (`race-day-catchup`) | dormant | `race_day_catchup_enabled` | [TRAINING_RULES](TRAINING_RULES.md) | #6950 | 2026-10-25 | Ejer, med Udvikling 2.0. |
-| Race day = hard day plus a role-weighted extra in the stage abilities (`race-day-role-yield`) | dormant | `race_day_role_yield_enabled` | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-10-31 | Ejer, via tændingskort med måling (#5950). |
 
 ## academy
 

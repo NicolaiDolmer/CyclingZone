@@ -32,7 +32,6 @@ for (const order of ["all_out", "save", "failed"] as const) {
     await installNetworkMocks(page);
     if (testInfo.project.name === "desktop-chromium") await page.setViewportSize({ width: 1440, height: 1000 });
     let orderReads = 0;
-    await page.route("**/api/races/stage-page-v2**", route => json(route, { enabled: true }));
     await page.route("**/rest/v1/races**", route => json(route, (route.request().headers().accept || "").includes("vnd.pgrst.object") ? RACE : [RACE]));
     await page.route("**/rest/v1/race_results**", raceResultsRoute(RESULTS));
     await page.route("**/rest/v1/race_stage_profiles**", route => json(route, [{ stage_number: 1, profile_type: "hilly", distance_km: 100, elevation_gain_m: 300, elevation_profile: { v: 1, step_km: 50, h: [20, 150, 30] }, climbs: [] }]));
@@ -79,12 +78,11 @@ const ITT_STORY = buildRaceStory({ events: ITT_OUTPUT.timeline.events, timelineV
 const LEGACY_ITT_EVENTS = ITT_OUTPUT.timeline.events.map(event => event.type === "stage_start" ? { ...event, params: { ...event.params, profile_type: undefined } } : event.type === "finish" ? { ...event, params: { ...event.params, win_type: undefined } } : event);
 const TT_COPY = JSON.parse(readFileSync(new URL("../../public/locales/da/races.json", import.meta.url), "utf8")).stagePageV2.story.timeTrial;
 
-for (const scenario of ["native", "legacy-story-flag", "classic"] as const) {
+for (const scenario of ["native", "legacy-story-flag"] as const) {
   test("#6469 actual time trial profile has no breakaway story: " + scenario, async ({ page }, info) => {
     await stabilizePage(page);
     await installNetworkMocks(page);
     if (info.project.name === "desktop-chromium") await page.setViewportSize({ width: 1440, height: 1000 });
-    await page.route("**/api/races/stage-page-v2**", route => json(route, { enabled: scenario !== "classic" }));
     await page.route("**/rest/v1/races**", route => json(route, (route.request().headers().accept || "").includes("vnd.pgrst.object") ? { ...RACE, name: "ITT context fixture" } : [{ ...RACE, name: "ITT context fixture" }]));
     await page.route("**/rest/v1/race_results**", raceResultsRoute(ITT_RESULTS));
     await page.route("**/rest/v1/race_stage_profiles**", route => json(route, [{ stage_number: 1, profile_type: "itt", distance_km: ITT_INPUT.route.distance_km, elevation_gain_m: 0, climbs: [] }]));
@@ -94,18 +92,7 @@ for (const scenario of ["native", "legacy-story-flag", "classic"] as const) {
     await page.route("**/api/races/*/stage-roles**", route => json(route, { riders: [{ rider_id: own.rider_id, name: own.rider_name, race_role: "captain" }], overrides: [{ stage_number: 1, rider_id: own.rider_id, effort: "all_out" }] }));
     await page.route("**/api/races/*/team-orders**", route => json(route, { stages: [1], riders: [{ rider_id: own.rider_id, race_role: "captain" }], orders: [{ stage_number: 1, locked_at: "2026-10-26T09:00:00Z", riders: [{ rider_id: own.rider_id, effort: "all_out" }] }] }));
     await login(page);
-    await page.goto(scenario === "classic" ? "/races/race-6469-v2?stage=1&v2=off" : "/races/race-6469-v2?stage=1&tab=stage");
-    if (scenario === "classic") {
-      await page.getByRole("button", { name: "Se løbsfilmen", exact: true }).click();
-      const dialog = page.getByRole("dialog");
-      await expect(dialog).toBeVisible();
-      await dialog.getByRole("slider", { name: "Scrub gennem etapen" }).press("End");
-      await expect(dialog).toContainText(/én ad gangen/i);
-      if (process.env.CZ_ITT_SHOT_BEFORE === "1") await expect(dialog).toContainText(/forreste gruppe/i);
-      else await expect(dialog).not.toContainText(/udbrud|forreste gruppe|holdt hjul/i);
-      if (info.project.name !== "mobile-webkit") await dialog.screenshot({ path: info.outputPath("7275-itt-film-" + (process.env.CZ_ITT_SHOT_BEFORE === "1" ? "before-" : "after-") + info.project.name + ".png") });
-      return;
-    }
+    await page.goto("/races/race-6469-v2?stage=1&tab=stage");
     const card = page.locator('[aria-label="Sådan blev etape 1 kørt"]');
     await expect(page.getByText(RACES_DA.detail.profileType.itt, { exact: true }).first()).toBeVisible();
     await expect(card.getByText(TT_COPY, { exact: true })).toBeVisible();

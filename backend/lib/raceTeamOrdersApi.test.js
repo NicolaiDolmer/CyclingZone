@@ -173,3 +173,35 @@ test("#6462 sprintTrainFlatOnlyForRace: gemt revision, ellers den aktuelle for e
   assert.equal(sprintTrainFlatOnlyForRace({ engine_rules_revision: "official_times_v9", stages_completed: 0 }), false);
   assert.equal(sprintTrainFlatOnlyForRace(null), isOfficialTimesV5OrLater(CURRENT_RACE_RULES_REVISION));
 });
+
+test("#7317: vej-ordrer (udbrud, tog, holdholdning) afvises paa itt, itt_hilly og ttt", () => {
+  for (const profileType of ["itt", "itt_hilly", "ttt"]) {
+    const r = validateTeamOrder({ ...baseArgs, order: validOrder, profileType });
+    assert.equal(r.ok, false, profileType);
+    assert.equal(r.errors[0], "team_orders_road_orders_on_time_trial", profileType);
+  }
+  const onlyBreak = { breakaway_stance: "neutral", riders: [{ rider_id: "r1", effort: "normal", try_break: true }] };
+  assert.equal(validateTeamOrder({ ...baseArgs, order: onlyBreak, profileType: "itt" }).errors[0], "team_orders_road_orders_on_time_trial");
+  const onlyTrain = { breakaway_stance: "neutral", riders: [{ rider_id: "r1", effort: "normal", leadout: true }] };
+  assert.equal(validateTeamOrder({ ...baseArgs, order: onlyTrain, profileType: "ttt" }).errors[0], "team_orders_road_orders_on_time_trial");
+});
+
+test("#7317: indsats gemmes stadig paa tidskoersel; neutral ordre uden vej-felter passerer", () => {
+  const order = {
+    breakaway_stance: "neutral",
+    riders: [
+      { rider_id: "r1", effort: "save", try_break: false, leadout: false },
+      { rider_id: "r2", effort: "all_out", try_break: false },
+    ],
+  };
+  for (const profileType of ["itt", "itt_hilly", "ttt"]) {
+    assert.deepEqual(validateTeamOrder({ ...baseArgs, order, profileType, intentionEnabled: true }), { ok: true, errors: [] }, profileType);
+  }
+  assert.deepEqual(normalizeTeamOrder(order).riders.map((r) => r.effort), ["save", "all_out"]);
+});
+
+test("#7317: vej-etaper og ukendt profil er uberoerte (ingen profilgate)", () => {
+  for (const profileType of ["flat", "hilly", "mountain", "cobbled", null, undefined]) {
+    assert.deepEqual(validateTeamOrder({ ...baseArgs, order: validOrder, profileType }), { ok: true, errors: [] }, String(profileType));
+  }
+});

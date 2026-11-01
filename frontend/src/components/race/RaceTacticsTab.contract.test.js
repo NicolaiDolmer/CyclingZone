@@ -93,12 +93,15 @@ test("etapeprofilen ligger over kortet og følger den åbne etape", () => {
 
 test("ét gem rammer begge endpoints for den åbne etape", () => {
   // #7332: kladden normaliseres (grupetto/protect -> save paa en enkeltstart) foer diffen.
-  assert.match(source, /diffToOverrides\(\{ matrix: withIndividualTimeTrialEfforts\(\{ matrix: draftMatrix, profileByStage \}\), riders \}\)/);
+  // #7327: snapshottet (det der sendes) normaliseres; flowet bor i tacticsSaveFlow.ts.
+  // asStoredBySave: kvitteringen sammenlignes med det sendte (Codex P1), saa begge sider normaliseres ens.
+  assert.match(source, /const normalize = \(m, rs = riders\) => asStoredBySave\(\{ matrix: withIndividualTimeTrialEfforts\(\{ matrix: m, profileByStage \}\), riders: rs \}\);/);
+  assert.match(source, /diffToOverrides\(\{ matrix: normalize\(draftSnapshot\), riders \}\)/);
   assert.match(source, /\/api\/races\/\$\{raceId\}\/stage-roles/);
   // #6647: ordren gemmes med intentionens indsats, ikke rollens "normal".
-  assert.match(source, /saveTacticsCard\(\{ raceId, stage: activeStage, order: withIntentionEfforts\(order, /);
-  // Ordrerne gemmes EFTER intentionen, så en afvist intention (400) ikke
-  // efterlader en halvt gemt dag.
+  assert.match(source, /saveTacticsCard\(\{ raceId, stage, order: withoutRoadOrders\(withIntentionEfforts\(orderSnapshot, /); // #7317
+  // Ordrerne gemmes EFTER intentionen (runTacticsSave: putRoles foer putOrders), saa
+  // en afvist intention (400) ikke efterlader en halvt gemt dag.
   const rolesAt = source.indexOf("/stage-roles`");
   const ordersAt = source.indexOf("saveTacticsCard({ raceId");
   assert.ok(rolesAt > 0 && ordersAt > rolesAt, "intentionen skal gemmes før ordrerne");
@@ -165,10 +168,16 @@ test("fog of war: ingen tal, procenter eller loft-signaler i fladens tekst", () 
 // henter den nyeste udgave i stedet for at overskrive den.
 test("#6095 gem skriver kun ændrede etaper og respekterer konflikter", () => {
   assert.match(source, /const stages = changedStages\(draftMatrix, initialMatrix\)\.filter\(\(sn\) => editableStages\.includes\(sn\)\);/);
-  assert.match(source, /body: JSON\.stringify\(\{ overrides, stages, base_versions: baseVersions \}\)/);
-  assert.match(source, /if \(body\.error === "stage_roles_conflict"\) await load\(\);/);
-  // Et ordre-gem uden intentions-ændringer må ikke røre intentionen.
-  assert.match(source, /if \(stages\.length\) \{/);
+  assert.match(source, /stages: sts, base_versions: base \}\)/);
+  // #7327: en konflikt kasserer ALDRIG kladden af sig selv. Versionerne flyttes
+  // foerst ved "Behold mine"; "Hent den nye" er det eneste der genindlaeser.
+  assert.doesNotMatch(source, /stage_roles_conflict"\) await load\(\)/);
+  assert.match(source, /if \(outcome\.status !== "conflict"\) \{/);
+  assert.match(source, /async function loadNewAfterConflict\(\)/);
+  assert.match(source, /keepMineAfterConflict\(\{ draft: draftMatrix, baseline: initialMatrix, server \}\)/);
+  // Et ordre-gem uden intentions-ændringer må ikke røre intentionen (flowet springer
+  // stage-roles over naar `stages` er tom, se tacticsSaveFlow.test.ts).
+  assert.match(source, /runTacticsSave\(\{\s*stages,/);
 });
 
 test("#6095 etape-valget i rollevælgeren findes kun bag serverens flag", () => {
@@ -237,5 +246,5 @@ test("#7332 enkeltstart: tre trin, gamle valg vises som save, kopi og gem skrive
   assert.match(source, /: effortForStage\(intentionFor\(\{ matrix: draftMatrix, stageNumber: activeStage, riderId: rider\.rider_id \}\), stageProfileType\)\);/);
   // Kopi kender maal-etapens profil; ordren gemmes med den normaliserede indsats.
   assert.match(source, /copyStageIntentions\(\{ matrix: m, fromStage: activeStage, toStage: nextStage, riders, fromProfileType: profileTypeOfStage\(activeStage\), toProfileType: profileTypeOfStage\(nextStage\) \}\)/);
-  assert.match(source, /withIntentionEfforts\(order, \(riderId\) => effortForStage\(intentionFor\(/);
+  assert.match(source, /withIntentionEfforts\(orderSnapshot, \(riderId\) => effortForStage\(intentionFor\(/);
 });

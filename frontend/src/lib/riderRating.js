@@ -14,7 +14,6 @@
 // etiket — ikke ordet "rating".
 import { ABILITY_KEYS } from "./abilities.js";
 import { DISPLAY_RECIPE_KEYS, ratingForRole } from "./generated/displayRecipes.js";
-import { isBestRoleDisplayOn } from "./riderRatingMode.js";
 
 export const STAT_KEYS = ABILITY_KEYS;
 
@@ -83,13 +82,12 @@ export function riderBestRole(rider = {}) {
   return { rating: null, role: null };
 }
 
-// Det tal der står på kortet. Kontakten (riderRatingMode.js) vælger model:
-//   off — rytterens EGEN rolle (primary_type), som før #5435.
-//   on  — bedste rolle nu (riderBestRole). Kan kun hæve tallet: egen rolle er
-//         én af de otte, så max over dem er ≥ (ejer-regel 17/9).
+// Det tal der står på kortet: bedste rolle nu (riderBestRole, #5435). Kan kun
+// hæve tallet i forhold til egen rolle: egen rolle er én af de otte, så max
+// over dem er ≥ (ejer-regel 17/9). #6853: den gamle visning (egen rolle) bag
+// app_config-kontakten er fjernet.
 // Rytter-objektet skal have evnerne fladet op (rider.climbing osv.) via
 // flattenAbilities().
 export function riderOverallRating(rider = {}) {
-  if (isBestRoleDisplayOn()) return riderBestRole(rider).rating;
-  return ratingForRole(rider, rider?.primary_type ?? null);
+  return riderBestRole(rider).rating;
 }

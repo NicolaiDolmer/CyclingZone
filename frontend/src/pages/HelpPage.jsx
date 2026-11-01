@@ -349,11 +349,11 @@ const SECTION_DEFS = [
       { id: "riderType", kind: "text" },
       { id: "typeOverview", kind: "textRows" },
       { id: "development", kind: "text" },
-      { id: "agingAndDecline", kind: "text" },
-      // #6110 Udvikling 2.0 del 1 (HELP_BLOCK_FLAGS.riders): ny aldring + AI/frie ryttere.
+      // #6499: den nye aldring er eneste regel (ugatet); AI/frie ryttere følger
+      // stadig development_v2_aging_enabled (HELP_BLOCK_FLAGS.riders).
       { id: "agingV2", kind: "text" },
       { id: "aiRidersV2", kind: "text" },
-      { id: "potentialBestRole", kind: "text", flag: "potential_single_number" },
+      { id: "potentialBestRole", kind: "text" },
       { id: "trainingFocus", kind: "text" },
       { id: "scouting", kind: "text" },
       { id: "u25u23", kind: "text" },

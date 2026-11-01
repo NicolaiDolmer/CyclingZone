@@ -4,6 +4,10 @@
   "areaCap": 3,
   "finishList": [
     {
+      "issue": 7445,
+      "area": "race-engine"
+    },
+    {
       "issue": 6110,
       "area": "udvikling-2"
     },
@@ -214,9 +218,41 @@
     {
       "issue": 5950,
       "area": "udvikling-2"
+    },
+    {
+      "issue": 7369,
+      "area": "taktik"
+    },
+    {
+      "issue": 7317,
+      "area": "taktik"
+    },
+    {
+      "issue": 7335,
+      "area": "taktik"
+    },
+    {
+      "issue": 6975,
+      "area": "udvikling-2"
+    },
+    {
+      "issue": 6570,
+      "area": "race-engine"
     }
   ],
   "cleanupList": [
+    {
+      "issue": 7446,
+      "why": "Cross-PC: lokale arbejdsmapper via OneDrive-junctions (ejer-go 1/11)"
+    },
+    {
+      "issue": 7444,
+      "why": "CI: frontend-smoke tager gammel shard-måling efter genkørsel (ejer-go 1/11)"
+    },
+    {
+      "issue": 7440,
+      "why": "Lighthouse: tavs vagt med tærskler, SEO kun ugentligt på offentlige sider (ejer-go 1/11)"
+    },
     {
       "issue": 6514,
       "why": "åben PR #6634/#6636 (løbsbibliotek)"
@@ -247,6 +283,11 @@
     }
   ],
   "brandList": [
+    {
+      "issue": 7439,
+      "reason": "Træning: nye træningstyper forsvinder ved faneskift (egomadsen 1/11), ejer-go 1/11",
+      "since": "2026-11-01"
+    },
     {
       "issue": 7316,
       "reason": "Træning: programmets hovedevne giver ingen fremgang (flere spillere 27-28/10)",
@@ -421,6 +462,31 @@
       "issue": 7296,
       "reason": "Forside: Næste løb peger på holdets næste løb (Discord, ejer-go 30/10)",
       "since": "2026-10-30"
+    },
+    {
+      "issue": 7431,
+      "reason": "Sikkerhed: åbne CodeQL- og Dependabot-alarmer på main (ejer-go 1/11)",
+      "since": "2026-11-01"
+    },
+    {
+      "issue": 7388,
+      "reason": "Løbsfilm: feltet mærkes som udbrud på nogle etaper, gruppetal summerer ikke (staff 30/10), ejer-go 1/11",
+      "since": "2026-11-01"
+    },
+    {
+      "issue": 7330,
+      "reason": "Etapeside: udgået rytter forsvinder fra Your riders-kortet i stedet for at stå med DNF, ejer-go 1/11",
+      "since": "2026-11-01"
+    },
+    {
+      "issue": 6104,
+      "reason": "Sikkerhed: forum-images kan listes af alle (Supabase-advisor), ejer-go 1/11",
+      "since": "2026-11-01"
+    },
+    {
+      "issue": 7389,
+      "reason": "Løbsdag: holdudtagelsen skiftede 102 ryttere ud midt i Volta Algarvia (fallback forbi line-up-frysningen), ejer-go 1/11",
+      "since": "2026-11-01"
     }
   ]
 }

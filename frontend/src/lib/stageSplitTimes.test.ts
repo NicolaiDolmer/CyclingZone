@@ -1,5 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { buildRaceStory } from "../../../backend/lib/raceStory.js";
 import {
   buildSplitTimes, buildOwnTimeLoss, effortByRiderForStage, effectiveEffortByRider, EFFORT_NORMAL_NOT_A_CHOICE_FROM, stageUsesEffortFix6647, formatSplitGap, hasGroupGaps,
   stagePlanTaskAt,
@@ -260,4 +262,79 @@ test("formatSplitGap", () => {
   assert.equal(formatSplitGap(65), "+1:05");
   assert.equal(formatSplitGap(454.73), "+7:35");
   assert.equal(formatSplitGap(3723), "+1:02:03");
+});
+
+// ── #7388: feltet er peloton-0's alias, "udbrud" kun foran feltet med udbrydere ──
+// Fixtures: fire rigtige etaper (read-only udtræk, anonymiseret, se _source).
+const FILM_7388 = JSON.parse(readFileSync(new URL("../../../backend/lib/__fixtures__/raceFilm7388.json", import.meta.url), "utf8"));
+const splits7388 = (key: string) => buildSplitTimes(FILM_7388[key].events, { maxGroups: 50 });
+const shape = (p: { groups: Array<{ groupId: string; kind: string; riderCount: number | null }> }) => p.groups.map((g) => [g.groupId, g.kind, g.riderCount]);
+
+test("#7388 Soleil e4: feltet hedder feltet, også efter det har arvet udbruddets id (153 på spurten, 98 på toppen)", () => {
+  const points = splits7388("soleil_e4");
+  const sprint = points.find((p) => p.km === 79);
+  assert.deepEqual(shape(sprint!), [["breakaway-0", "peloton", 153], ["solo-m10-2-0", "solo", 1]]);
+  const top = points.find((p) => p.km === 118);
+  assert.deepEqual(shape(top!), [
+    ["breakaway-0", "peloton", 98], ["gruppetto-12000", "group", 15], ["solo-m10-2-0", "solo", 1], ["gruppetto-12001", "group", 18], ["gruppetto-12002", "group", 22],
+  ]);
+  // De der faldt af på stigningen faldt af feltet, ikke "udbruddet".
+  const loss = buildOwnTimeLoss(FILM_7388.soleil_e4.events, { ownRiderIds: ["r021"] });
+  assert.deepEqual(loss.map((l) => (l.type === "drop" ? [l.km, l.from] : [l.km, l.type])), [[118, "peloton"]]);
+});
+
+test("#7388 Volcans e1: morgenudbruddet foran er udbrud, feltet bag det er feltet", () => {
+  const sprint = splits7388("volcans_e1").find((p) => p.km === 90);
+  assert.deepEqual(shape(sprint!), [["breakaway-1500", "breakaway", 8], ["breakaway-0", "peloton", 157], ["solo-m10-2-0", "solo", 1]]);
+});
+
+test("#7388 Soleil e3 + Volcans e2: uændret (feltet i en solo-gruppes id; den største gruppe er feltet)", () => {
+  assert.deepEqual(splits7388("soleil_e3").map((p) => [p.km, shape(p)]), [[154, [["solo-m10-0-0", "peloton", 152], ["gruppetto-10000", "group", 2]]]]);
+  const e2 = splits7388("volcans_e2");
+  assert.deepEqual(shape(e2.find((p) => p.km === 88)!), [
+    ["breakaway-0", "breakaway", 7], ["peloton-0", "peloton", 135], ["solo-m10-3-0", "solo", 1], ["gruppetto-5000", "group", 2], ["gruppetto-5001", "group", 3], ["gruppetto-5002", "group", 18],
+  ]);
+  const top = e2.find((p) => p.km === 155)!;
+  assert.equal(top.groups.find((g) => g.kind === "peloton")?.groupId, "gruppetto-10008");
+  assert.equal(top.groups.find((g) => g.groupId === "peloton-0")?.kind, "group");
+  assert.ok(!top.groups.some((g) => g.kind === "breakaway"));
+});
+
+test("#7388 gammel og ny visning er enige på samme km: samme grupper, samme tal, samme felt", () => {
+  for (const key of ["soleil_e3", "soleil_e4", "volcans_e1", "volcans_e2"]) {
+    type StoryGroup = { group_id: string; size: number; includes_rest: boolean };
+    const story = buildRaceStory({ events: FILM_7388[key].events, timelineVersion: FILM_7388[key].timeline_version }) as unknown as {
+      checkpoints: Array<{ km: number; kind: string; groups: StoryGroup[] }>;
+    };
+    for (const point of splits7388(key)) {
+      const cp = story.checkpoints.find((c) => c.km === point.km && c.kind === (point.kind === "kom" ? "climb" : "sprint"));
+      assert.ok(cp, `${key} km ${point.km}: tjekpunkt`);
+      const sizes = new Map(cp.groups.filter((g) => g.size > 0).map((g) => [g.group_id, g.size]));
+      assert.deepEqual(new Map(point.groups.map((g) => [g.groupId, g.riderCount])), sizes, `${key} km ${point.km}: grupper`);
+      const rest = cp.groups.find((g) => g.includes_rest);
+      if (rest && rest.size >= 10) assert.equal(point.groups.find((g) => g.kind === "peloton")?.groupId, rest.group_id, `${key} km ${point.km}: feltet`);
+    }
+  }
+});
+
+test("#7388 finale_attack med rider_id (ental): angriberen står i sin egen gruppe", () => {
+  const events = [
+    { km: 0, type: "stage_start", params: { field_count: 5, distance_km: 100 } },
+    { km: 80, type: "finale_attack", params: { kind: "late_attack", group_id: "solo-900", rider_id: "a", source_group_id: "peloton-0" } },
+    { km: 80, type: "gap_update", params: { group_id: "peloton-0", gap_seconds: 12 } },
+    { km: 80, type: "kom_passage", params: { name: "Top", category: "4", top: [] } },
+  ];
+  assert.deepEqual(shape(buildSplitTimes(events)[0]), [["solo-900", "solo", 1], ["peloton-0", "peloton", 4]]);
+});
+
+test("#7388 et udbrud uden morgenudbryderne er en gruppe foran feltet, ikke 'udbrud'", () => {
+  const events = [
+    { km: 0, type: "stage_start", params: { field_count: 6, distance_km: 100 } },
+    { km: 10, type: "breakaway_formed", params: { group_id: "breakaway-0", rider_ids: ["b1"] } },
+    { km: 20, type: "group_merged", params: { group_id: "breakaway-0", into_group_id: "peloton-0", rider_ids: ["b1"] } },
+    { km: 50, type: "peloton_splits", params: { group_id: "breakaway-7000", source_group_id: "peloton-0", rider_ids: ["x1", "x2"], cause: "mixed" } },
+    { km: 50, type: "gap_update", params: { group_id: "peloton-0", gap_seconds: 20 } },
+    { km: 50, type: "kom_passage", params: { name: "Top", category: "3", top: [] } },
+  ];
+  assert.deepEqual(shape(buildSplitTimes(events)[0]), [["breakaway-7000", "group", 2], ["peloton-0", "peloton", 4]]);
 });

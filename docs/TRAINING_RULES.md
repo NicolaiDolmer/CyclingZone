@@ -838,15 +838,15 @@ Tallene står aldrig i repoet (hard rule 17).
 - **D6:** med et af flagene tændt udvikler AI-hold, bank, testkonti og hold uden manager sig ikke, også
   uden `development_v2_aging_enabled`. Frie ryttere har intet hold og trænes ikke.
 
-### 6.4 Løbsdag = hård dag + tillæg efter rolle (#5950, bag et slukket flag)
+### 6.4 Løbsdag = hård dag + tillæg efter rolle (#5950, tændt 1/11)
 
-**Status: SLUKKET.** Flaget `race_day_role_yield_enabled` er oprettet `off`; kun `on` tænder, og
-`beta` læses som slukket i motoren (en live balance-ændring uden skyggedata). Ejer-only flip via
-tændingskort med måling. Tallene og den præcise model står aldrig i repoet (hard rule 17).
+**Status: TÆNDT 1/11** (ejerens "kør" på tændingskortet). Flaget `race_day_role_yield_enabled` er `on`;
+kun `on` tænder, og `beta` læses som slukket i motoren. Slå fra = sæt flaget `off` (gælder fra næste
+træningskørsel). Tallene og den præcise model står aldrig i repoet (hard rule 17).
 
 - **Forudsætning:** `race_day_development_enabled` skal være on (løbsdagen udvikler overhovedet), og
-  gyldige params skal ligge i den lukkede tabel `private_config` (nøgle `race_day_role_yield_params`;
-  reserve: serverens miljø). Gælder både løbsdags-stien og kalenderdags-faldet.
+  gyldige params skal ligge i den lukkede tabel `private_config` (nøgle `race_day_role_yield_params`,
+  kun dér; miljø-reserven er fjernet i #7423). Gælder både løbsdags-stien og kalenderdags-faldet.
 - **Når tændt:** basis er en hård dag på etapens profil-evner, gennem samme `applyDailyTick`. Oven i
   kommer et tillæg, som er ens i alt for alle roller (D3 variant A). Rollen på etapen afgør kun, hvor
   tillægget lander: kaptajner og jæger mest i etapens afgørende evne, hjælpere mest i de bærende

@@ -57,5 +57,11 @@
     "title": "En pausa.",
     "newStart": "Nuevo inicio {time}.",
     "newStartUnknown": "Se anunciará la nueva hora de inicio."
+  },
+  "racePauseInfoBar": {
+    "regionAriaLabel": "Race status",
+    "title": "Las carreras están en pausa.",
+    "newStart": "Nuevo inicio {time}.",
+    "newStartUnknown": "Anunciaré aquí la nueva hora de inicio."
   }
 }

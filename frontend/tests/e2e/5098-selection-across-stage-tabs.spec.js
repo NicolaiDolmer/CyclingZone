@@ -123,7 +123,7 @@ async function installRaceMocks(page) {
  * @param {import("@playwright/test").Page} page
  */
 async function detourViaStage2(page) {
-  await page.getByRole("tab", { name: "Etaper" }).click();
+  await page.getByRole("tab", { name: "Etape", exact: true }).click();
   await page.getByRole("button", { name: "Etape 2" }).click();
   await expect(page).toHaveURL(/stage=2/);
   await page.getByRole("tab", { name: "Hold" }).click();

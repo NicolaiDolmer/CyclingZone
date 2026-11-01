@@ -1,8 +1,8 @@
 // #5519: ÉN hentning af GET /api/display-flags pr. sideload, delt af alle
 // visnings-kontakter.
 //
-// Endpointet leverer flere kontakter i samme svar (rating-visningen #5435 og
-// U23/Junior-siderne #5519). Hentede hver kontakt selv, ville én sideload give
+// Endpointet leverer flere kontakter i samme svar (U23/Junior-siderne #5519 og
+// rytter-omdømmet). Hentede hver kontakt selv, ville én sideload give
 // ét kald pr. kontakt mod samme URL og samme rate-limiter. Her deles ét løfte:
 // den første kalder starter kaldet, de samtidige får samme svar.
 //
@@ -13,7 +13,6 @@ import { authHeaders } from "./supabase";
 import { apiFetch } from "./apiFetch.ts";
 
 export interface DisplayFlags {
-  rider_best_role_display?: boolean;
   youth_squad_pages?: boolean;
   rider_reputation_enabled?: boolean;
 }

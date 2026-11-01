@@ -392,15 +392,31 @@ jobs:
       # mistet sin evne til at blive rødt.
       - name: Unit-test the gate scripts
         if: steps.stale.outputs.stale != 'true'
-        run: node --test scripts/check-e2e-shard-budget.test.mjs scripts/extract-e2e-flakes.test.mjs
+        run: node --test scripts/check-e2e-shard-budget.test.mjs scripts/extract-e2e-flakes.test.mjs scripts/lib/pickNewestArtifacts.test.mjs
 
-      - name: Download shard metrics
+      # #7444: genkøres en shard, findes to artefakter med samme navn, og
+      # download-artifact med pattern + merge-multiple kan tage det gamle (så
+      # dømmer gaten på en forældet måling). Derfor listes artefakterne via API'et,
+      # den nyeste udgave pr. navn vælges (scripts/lib/pickNewestArtifacts.mjs),
+      # og den hentes på id.
+      - name: Download shard metrics (newest per lane)
         if: steps.stale.outputs.stale != 'true' && needs.e2e-shard.result != 'skipped'
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          pattern: e2e-shard-metrics-*
-          merge-multiple: true
-          path: e2e-shard-metrics
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p e2e-shard-metrics
+          gh api --paginate "repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[]' \
+            | node scripts/lib/pickNewestArtifacts.mjs --prefix e2e-shard-metrics- > newest-artifacts.tsv
+          while IFS=$'\t' read -r id name; do
+            echo "Henter $name (id $id)"
+            gh api "repos/$REPO/actions/artifacts/$id/zip" > "artifact-$id.zip"
+            unzip -o -q "artifact-$id.zip" -d e2e-shard-metrics
+            rm -f "artifact-$id.zip"
+          done < newest-artifacts.tsv
 
       - name: Merge flake reports
         if: steps.stale.outputs.stale != 'true' && needs.e2e-shard.result != 'skipped'

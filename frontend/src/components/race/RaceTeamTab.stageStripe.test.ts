@@ -54,20 +54,13 @@ test("#5419 de nye stribe-props har trygge defaults (renderer intet stribe-relat
   );
 });
 
-test("#5419 RaceDetailPage forbinder Hold-fanens stribe til DEN SAMME ?stage=/changeStage som Etaper-fanen", () => {
-  // Etaper-fanens egen StageStripe-kaldested bruger `changeStage` som onSelect —
-  // uændret af denne PR (regressions-vagt: samme kaldested skal stadig findes).
-  assert.match(
-    raceDetailPage,
-    /<StageStripe stages=\{stageProfiles\} activeStage=\{stagesTabStage\} onSelect=\{changeStage\} times=\{stripeTimes\} \/>/,
-    "Etaper-fanens StageStripe-kaldested skal stå uændret (samme changeStage-callback som Hold-fanen nu også bruger)",
-  );
+test("#5419 RaceDetailPage forbinder Hold-fanens stribe til ?stage=/changeStage", () => {
   // Hold-fanens RaceTeamTab-kaldested sender PRÆCIS samme changeStage videre som
   // onSelectStage — intet nyt etape-koncept, samme delte URL-state.
   assert.match(
     raceDetailPage,
     /<RaceTeamTab[\s\S]{0,1600}onSelectStage=\{changeStage\}/,
-    "RaceTeamTab skal modtage changeStage som onSelectStage — samme funktion som Etaper-fanens StageStripe kalder",
+    "RaceTeamTab skal modtage changeStage som onSelectStage — samme delte ?stage=-state",
   );
   assert.match(
     raceDetailPage,

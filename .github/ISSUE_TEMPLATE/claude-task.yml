@@ -35,6 +35,20 @@ body:
     validations:
       required: true
   - type: textarea
+    id: til_doers
+    attributes:
+      label: Til dørs (8 krav)
+      description: "Færdig betyder at spilleren har det. Status står i til-dørs-kommentaren, som scriptet opdaterer. Markér et krav i en kommentar med `Til dørs: <nr> ok|na <evidens eller begrundelse>` (na kræver en begrundelse). Se docs/GITHUB_WORKFLOW.md."
+      value: |
+        1. Bygget
+        2. Merget
+        3. Tændt i prod
+        4. Synligt for spilleren
+        5. Gammelt væk
+        6. Hjælp opdateret
+        7. Patch note
+        8. Verificeret i prod
+  - type: textarea
     id: out_of_scope
     attributes:
       label: Out of scope

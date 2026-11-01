@@ -1,7 +1,8 @@
 # link-onedrive-context.ps1
 #
 # Skaber junction + hardlinks fra repo + Claude memory til OneDrive-context.
-# SCOPE (efter #327 Infisical-migration): kun memory-junction og AI-context filer.
+# SCOPE (efter #327 Infisical-migration): kun memory-junction og AI-context filer,
+# plus de lokale arbejdsmapper (`<mappe>/local/`, #7446).
 # Produktionskritiske secrets (.env, .mcp.json) styres nu via Infisical - se docs/decisions/secret-management-adr.md.
 # Idempotent: skip hvis allerede linkede; advarer hvis OneDrive-context mangler filer.
 #
@@ -359,6 +360,127 @@ if (Test-Path $codexMemSource) {
   Write-Host "  [skip] codex-memories ikke i OneDrive endnu (forventet ved foerste setup)"
 }
 
+# --- 2c. Lokale arbejdsmapper (#7446) ---
+# docs/drafts, pr-screens og docs/snapshots er TRACKED (specs + PR-billeder er delt i git).
+# Det der aldrig committes (kladder, raa screenshots, dry-run-rapporter) bor i en
+# gitignoreret `local/`-undermappe, der er en junction til OneDrive - ens paa alle PC'er.
+# .codex.local/ er per-PC state; delte noter ligger i .codex.local/shared/.
+# Findes der allerede en rigtig mappe, flyttes dens filer ind i OneDrive uden at
+# overskrive noget (samme navn + andet indhold = konflikt, mappen roeres ikke).
+Write-Section "Lokale arbejdsmapper via OneDrive (#7446)"
+
+$repoLocalRoot = Join-Path $contextRoot "repo-local"
+$localFolderPairs = @(
+  @{ Path = "docs\drafts\local";    Source = "docs-drafts" },
+  @{ Path = "pr-screens\local";     Source = "pr-screens" },
+  @{ Path = "docs\snapshots\local"; Source = "docs-snapshots" },
+  @{ Path = ".codex.local\shared";  Source = "codex-local" }
+)
+
+function Get-FileHashOrNull($path) {
+  if (-not (Test-Path -LiteralPath $path)) { return $null }
+  return (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+}
+
+function ConvertTo-NormalPath([string]$path) {
+  return [System.IO.Path]::GetFullPath($path).TrimEnd([char]92)
+}
+
+# Konflikter og fejl skrives med STOP-MESSAGE-praefiks, saa SessionStart-hookens filter viser dem.
+function Sync-LocalFolder($pair) {
+  $target = ConvertTo-NormalPath (Join-Path $RepoRoot $pair.Path)
+  $source = ConvertTo-NormalPath (Join-Path $repoLocalRoot $pair.Source)
+  $label = $pair.Path -replace '\\','/'
+
+  if (-not (Test-Path -LiteralPath $source)) {
+    if ($DryRun) {
+      Write-Host "  [would-mkdir] $source" -ForegroundColor Cyan
+    } else {
+      New-Item -ItemType Directory -Path $source -Force | Out-Null
+    }
+  }
+
+  $item = Get-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue
+  if ($item -and $item.LinkType -eq "Junction") {
+    $current = if ($item.Target) { ConvertTo-NormalPath ($item.Target -join '') } else { "" }
+    if ($current -ieq $source) {
+      Write-Host "  [skip] $label -> OneDrive allerede paa plads"
+      return
+    }
+    if ($DryRun) {
+      Write-Host ("  [would-relink] {0} peger paa {1}" -f $label, $current) -ForegroundColor Cyan
+      return
+    }
+    Remove-Junction $target
+    $item = $null
+  }
+
+  if ($item) {
+    # Rigtig mappe: flyt filerne ind i OneDrive, ingen overskrivning.
+    $nested = @(Get-ChildItem -LiteralPath $target -Recurse -Directory -Force -ErrorAction SilentlyContinue |
+      Where-Object { $_.Attributes -band [System.IO.FileAttributes]::ReparsePoint })
+    if ($nested.Count -gt 0) {
+      Add-Conflict "local-folder" "$label indeholder links ($($nested[0].FullName))"
+      Write-Host "STOP-MESSAGE: $label indeholder link-mapper; flyt dem manuelt, mappen er ikke roert (#7446)"
+      return
+    }
+    $files = @(Get-ChildItem -LiteralPath $target -Recurse -File -Force -ErrorAction SilentlyContinue)
+    $conflicts = @()
+    foreach ($f in $files) {
+      $rel = $f.FullName.Substring($target.Length + 1)
+      $destHash = Get-FileHashOrNull (Join-Path $source $rel)
+      if ($destHash -and $destHash -ne (Get-FileHashOrNull $f.FullName)) { $conflicts += $rel }
+    }
+    if ($conflicts.Count -gt 0) {
+      $sample = ($conflicts | Select-Object -First 3) -join ', '
+      Add-Conflict "local-folder" ("{0}: {1} fil(er) findes i OneDrive med andet indhold ({2})" -f $label, $conflicts.Count, $sample)
+      Write-Host ("STOP-MESSAGE: {0} har {1} fil(er) med andet indhold end OneDrive ({2}); mappen er ikke roert (#7446)" -f $label, $conflicts.Count, $sample)
+      return
+    }
+    if ($DryRun) {
+      Write-Host ("  [would-move] {0}: {1} fil(er) -> {2}, derefter junction" -f $label, $files.Count, $source) -ForegroundColor Cyan
+      return
+    }
+    foreach ($f in $files) {
+      $rel = $f.FullName.Substring($target.Length + 1)
+      $dest = Join-Path $source $rel
+      if (Test-Path -LiteralPath $dest) { Remove-Item -LiteralPath $f.FullName -Force; continue }
+      New-Item -ItemType Directory -Path (Split-Path $dest -Parent) -Force | Out-Null
+      Move-Item -LiteralPath $f.FullName -Destination $dest
+    }
+    $left = @(Get-ChildItem -LiteralPath $target -Recurse -File -Force -ErrorAction SilentlyContinue).Count
+    if ($left -gt 0) { throw "$label har stadig $left fil(er) efter flytning - stopper foer sletning" }
+    Remove-Item -LiteralPath $target -Recurse -Force
+    Write-Host ("  [ok] {0}: {1} fil(er) flyttet til OneDrive" -f $label, $files.Count)
+  }
+
+  if ($DryRun) {
+    Write-Host "  [would-link] Junction: $label -> $source" -ForegroundColor Cyan
+    return
+  }
+  New-Item -ItemType Directory -Path (Split-Path $target -Parent) -Force | Out-Null
+  New-Item -ItemType Junction -Path $target -Target $source | Out-Null
+  Write-Host "  [ok] Junction: $label -> $source"
+}
+
+# Kun i hovedcheckoutet: i et linked worktree er .git en fil, og en junction derinde
+# ville blive fulgt af 'git worktree remove --force' og tømme OneDrive (postmortem 1/11).
+$isLinkedWorktree = Test-Path -LiteralPath (Join-Path $RepoRoot '.git') -PathType Leaf
+if ($isLinkedWorktree) {
+  Write-Host "  [skip] $RepoRoot er et worktree - lokale mapper kobles kun i hovedcheckoutet"
+  $localFolderPairs = @()
+}
+
+foreach ($pair in $localFolderPairs) {
+  try {
+    Sync-LocalFolder $pair
+  } catch {
+    # En fejl her (fx OneDrive-laas) maa ikke stoppe resten af SessionStart.
+    Add-Conflict "local-folder" ("{0}: {1}" -f $pair.Path, $_.Exception.Message)
+    Write-Host ("STOP-MESSAGE: lokal arbejdsmappe {0} fejlede: {1} (#7446)" -f $pair.Path, $_.Exception.Message)
+  }
+}
+
 # --- 3. Codex-local hardlinks ---
 Write-Section "Codex-local hardlinks"
 
@@ -394,7 +516,7 @@ if (Test-Path $claudeSettingsSource) {
 # Idempotent: attrib +P -U paa allerede pinnede filer er en no-op.
 Write-Section "Pin kritiske OneDrive-mapper lokalt (#6602)"
 
-foreach ($pinName in @("memory", "codex-memories", "codex-local", "tools", "claude-settings")) {
+foreach ($pinName in @("memory", "codex-memories", "codex-local", "tools", "claude-settings", "repo-local\docs-drafts", "repo-local\codex-local")) {
   $pinDir = Join-Path $contextRoot $pinName
   if (-not (Test-Path -LiteralPath $pinDir)) {
     Write-Host "  [skip] $pinName findes ikke i OneDrive-context"
@@ -465,5 +587,13 @@ if ($DryRun) {
   }
   Write-Host "Dry-run faerdig - ingen konflikter. Koer uden -DryRun for at anvende aendringer." -ForegroundColor Green
 } else {
+  if ($Script:Conflicts.Count -gt 0) {
+    # Alt andet er koert; konflikter (fx #7446 lokale mapper) giver en fejlende exit.
+    Write-Host ("STOP-MESSAGE: {0} konflikt(er) kraever manuel loesning:" -f $Script:Conflicts.Count)
+    foreach ($c in $Script:Conflicts) {
+      Write-Host ("  - [{0}] {1}" -f $c.Category, $c.Details) -ForegroundColor Red
+    }
+    exit 1
+  }
   Write-Host "Faerdig. Memory + codex-local AI-context synces via OneDrive. Produktionssecrets: brug Infisical." -ForegroundColor Green
 }

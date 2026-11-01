@@ -61,7 +61,7 @@ export const STAGE_FLAGS = Object.freeze([
   // #5319: træningskatalog v3 (5 nye hårde sessioner), seedet off. Flip er ejer-only.
   { key: "training_catalog_v3", area: "training", label: "Træningskatalog v3 (nye hårde sessioner)" },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlægger" },
-  // #5435: kun visning. Flippes i samme deploy som værdiskiftet (#5443/#5497).
+  // #5435: pensioneret (#6853), koden læser den ikke. Rækken bliver kun for patch notes-mærket.
   { key: "rider_best_role_display", area: "squad", label: "Rating = bedste rolle nu (visning)" },
   // #5519: kun visning + ét laese-endpoint. Ejeren flipper efter visuelt go.
   { key: "youth_squad_pages", area: "squad", label: "U23 team- og Junior team-sider" },
@@ -79,7 +79,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "season_matrix_mobile", area: "season", label: "Sæsonmatrix på mobil — ny visning" },
   // #6590: web push, seedet off. Kræver VAPID_* på backend. Flip er ejer-only.
   { key: "push_enabled", area: "notifications", label: "Push-notifikationer" },
-  // #6570: etapeside 2.0, seedet off. Beta foerst (ejer 14/10).
+  // #6570: etapeside 2.0 er nu den eneste etapeside; noeglen staar kun tilbage fordi patch notes
+  // peger paa den (maerket "Now for everyone"). Raekken i app_config fjernes af orkestratoren.
   { key: "stage_page_v2", area: "race-day", label: "Etapeside 2.0" },
   // #6514: løbskort i kalenderen, status-prik og Løbshistorik. Seedet off (ejer 15/10).
   { key: "race_library_v2", area: "race-day", label: "Kalender-løbskort + Løbshistorik" },
@@ -117,18 +118,17 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "season_end_pool_reseed", area: "season", label: "Sæsonslut — genfyld rytterpulje" },
   { key: "season_end_skip_division_movement", area: "season", label: "Sæsonslut — spring op/nedrykning over" },
   { key: "season_fatigue_reset_enabled", area: "season", label: "Sæsonslut — nulstil træthed" },
-  // #6499 + #6500: Udvikling 2.0 del 1 under ét flag: tilbagegang ved sæsonskiftet
-  // (developmentV2Flag.js) og ingen daglig udvikling uden for managerhold
-  // (dailyTrainingEngine.js). Fail-safe OFF; "beta" læses som off. Ejer-only flip.
+  // #6500: ingen daglig udvikling uden for managerhold (dailyTrainingEngine.js).
+  // Sæsonskiftets aldring (#6499) læser ikke længere flaget; den kører altid.
+  // Fail-safe OFF; "beta" læses som off. Ejer-only flip.
   { key: "development_v2_aging_enabled", area: "season", label: "Udvikling 2.0 del 1 — tilbagegang + kun managerhold udvikler sig" },
   // #6210: maks +1 pr. evne pr. rytter pr. dato (dailyTrainingEngine.js). Fail-safe
   // OFF; tændes med Udvikling 2.0. Ejer-only flip.
   { key: "ability_cap_per_date_enabled", area: "training", label: "Udvikling 2.0 — maks +1 pr. evne pr. dato" },
   // #3564: kurve B (D-058, developmentCurveBFlag.ts). Fail-safe OFF; "beta" læses som off. Ejer-only flip.
   { key: "development_curve_b", area: "training", label: "Udvikling 2.0 — kurve B (niveau og potentiale styrer, ikke alder)" },
-  // #6853/#5764 (spec 6110 §8): paraply-flaget for potentiale-visningen i
-  // Udvikling 2.0. Første del: potentialet vises for rollen med højest potentiale
-  // + typeboks (potentialDisplayBand.js). Fail-safe OFF; tændes samlet med 2.0.
+  // #6853/#5764: pensioneret, koden læser den ikke (visningen er permanent). Rækken
+  // bliver kun for patch notes-mærket.
   { key: "potential_single_number", area: "squad", label: "Udvikling 2.0 — potentiale: bedste rolle + typeboks (visning)" },
   // #6950 (Udvikling 2.0): Udviklingsscore B i motoren (developmentScoreWiring.js) og
   // catch-up via løb (raceCatchUpWiring.js). Fail-safe OFF; "beta" læses som off; tal i

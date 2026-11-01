@@ -7,7 +7,7 @@
 // kontrakt (#6350), indtil da staar den nuvaerende film under Standings.
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { DAY_TOP_COUNT, DAY_TOP_COUNT_MOBILE, formatGap, yourDay, type DayRow, type ResultRow } from "./stagePageV2Model.ts";
+import { DAY_TOP_COUNT, DAY_TOP_COUNT_MOBILE, formatGap, yourDay, type DayRow, type DnfRowInput, type ResultRow } from "./stagePageV2Model.ts";
 import { parseGapSeconds } from "../../../lib/raceLiveStandings.js";
 import { Button, Flag, RiderLink, Section, Segmented, SkeletonLines } from "./ui.ts";
 
@@ -21,15 +21,26 @@ const EVENT_LABEL_KEY: Record<string, string> = {
 };
 
 function Rows({ rows, emptyText, mobileLimit }: { rows: DayRow[]; emptyText?: string; mobileLimit?: number }) {
+  const { t } = useTranslation("races");
   if (!rows.length) return emptyText ? <p className="border-t border-cz-border py-2.5 text-sm text-cz-3">{emptyText}</p> : null;
   return (
     <ul>
       {rows.map((r, i) => (
         <li key={r.key} className={`min-h-11 items-center gap-2.5 border-t border-cz-border px-1 ${mobileLimit != null && i >= mobileLimit ? "hidden md:flex" : "flex"} ${r.mine ? "bg-cz-subtle" : ""}`}>
-          <span className="w-9 flex-none text-right font-data text-sm font-semibold tabular-nums text-cz-1">{r.rank ?? "-"}</span>
+          <span className={`w-9 flex-none text-right font-data font-semibold tabular-nums ${r.status ? "text-2xs text-cz-3" : "text-sm text-cz-1"}`}
+            title={r.status === "dns" ? t("detail.incidents.dnsTitle") : undefined}>
+            {r.status === "dnf" ? t("detail.incidents.dnf") : r.status === "dns" ? t("detail.incidents.dns") : (r.rank ?? "-")}
+          </span>
           {r.nation && <Flag code={r.nation} className="flex-none" />}
-          <RiderLink id={r.riderId} className="min-w-0 flex-1 truncate text-sm font-semibold text-cz-1 hover:text-cz-accent-t">{r.name}</RiderLink>
-          <span className="w-16 flex-none text-right font-data text-xs tabular-nums text-cz-2">{r.gap ?? ""}</span>
+          {r.status ? (
+            <span className="min-w-0 flex-1 py-1.5">
+              <RiderLink id={r.riderId} className="block truncate text-sm font-semibold text-cz-1 hover:text-cz-accent-t">{r.name}</RiderLink>
+              {r.reasonKey && <span className="block truncate text-xs text-cz-3">{t(`detail.incidents.${r.reasonKey}`)}</span>}
+            </span>
+          ) : (
+            <RiderLink id={r.riderId} className="min-w-0 flex-1 truncate text-sm font-semibold text-cz-1 hover:text-cz-accent-t">{r.name}</RiderLink>
+          )}
+          {!r.status && <span className="w-16 flex-none text-right font-data text-xs tabular-nums text-cz-2">{r.gap ?? ""}</span>}
         </li>
       ))}
     </ul>
@@ -37,6 +48,8 @@ function Rows({ rows, emptyText, mobileLimit }: { rows: DayRow[]; emptyText?: st
 }
 
 export interface YourDayCardProps {
+  /** #7330: etapens udgaaede (dnfRowsForStage); egne vises nederst i "Your riders". */
+  dnfRows?: DnfRowInput[];
   results: ResultRow[];
   stageNumber: number;
   isStageRace: boolean;
@@ -47,13 +60,13 @@ export interface YourDayCardProps {
   onOpenStandings: () => void;
 }
 
-export default function YourDayCard({ results, stageNumber, isStageRace, loaded, myTeamId, careerEvents, primaryAction, onOpenStandings }: YourDayCardProps) {
+export default function YourDayCard({ results, stageNumber, isStageRace, loaded, myTeamId, careerEvents, primaryAction, onOpenStandings, dnfRows = [] }: YourDayCardProps) {
   const { t } = useTranslation(["races", "dashboard"]);
   const [cls, setCls] = useState<"stage" | "gc">("stage");
-  const stageDay = yourDay(results, stageNumber, myTeamId, "stage");
+  const stageDay = yourDay(results, stageNumber, myTeamId, "stage", dnfRows);
   // Endagsloeb kan have resultatet som gc-raekker alene.
   const effectiveCls = !isStageRace && !stageDay.top.length ? "gc" : cls;
-  const day = effectiveCls === "stage" ? stageDay : yourDay(results, stageNumber, myTeamId, "gc");
+  const day = effectiveCls === "stage" ? stageDay : yourDay(results, stageNumber, myTeamId, "gc", dnfRows);
   const winner = stageDay.winner ?? day.top[0] ?? null;
   const second = (stageDay.top.length ? stageDay.top : day.top)[1] ?? null;
 

@@ -263,3 +263,16 @@ test("#6095 rollevalg 'etape N og løbet ud' rører aldrig tidligere etaper; 'ku
   const only = applyRole6095({ matrix: initial, riderId: "b", role: "hunter", stages: [3] });
   assert.deepEqual(changedStages6095(only, initial), [3]);
 });
+
+import { asStoredBySave, diffToOverrides as diff7327, buildDraftMatrix as build7327 } from "./stageRoleMatrixLogic.js";
+
+test("#7327 asStoredBySave: en udgaaet rytters gamle override staar som basis efter et gem", () => {
+  const riders = [{ rider_id: "a", race_role: "captain" }, { rider_id: "x", race_role: "helper", abandoned: true }];
+  const draft = { 2: { a: { race_role: "captain", effort: "all_out" }, x: { race_role: "hunter", effort: "normal" } } };
+  // Det serveren har efter gemmet: kun de sendte overrides (diffToOverrides springer x over).
+  const server = build7327({ riders, overrides: diff7327({ matrix: draft, riders }), stageNumbers: [2], stagesCompleted: 0 });
+  assert.deepEqual(asStoredBySave({ matrix: draft, riders }), asStoredBySave({ matrix: server, riders }));
+  assert.deepEqual(asStoredBySave({ matrix: draft, riders })[2].x, { race_role: "helper", effort: "normal" });
+  // Ingen udgaaede ryttere: samme objekt tilbage.
+  assert.equal(asStoredBySave({ matrix: draft, riders: [riders[0]] }), draft);
+});

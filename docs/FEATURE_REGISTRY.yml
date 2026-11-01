@@ -234,6 +234,16 @@ features:
     verified: 2026-10-27
     note: Kodekontakt ALL_OUT_7280_ACTIVE tændt 27/10 efter ejer-go (#7311), kun v3.
 
+  - id: race-itt-terrain-6595
+    area: race-engine
+    title_en: Time trial terrain weight
+    title_da: Enkeltstartens egen terrænvægt
+    state: live
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 6595
+    verified: 2026-10-31
+    note: Kodekontakt ITT_TERRAIN_6595_ACTIVE tændt 31/10 efter ejer-go, kun v3.
+
   - id: race-itt-save-7332
     area: race-engine
     title_en: Saving effort in individual time trials
@@ -344,10 +354,9 @@ features:
     title_en: Stage page 2.0 (stage tabs, real elevation profile, your day)
     title_da: Etapeside 2.0 (etapefaner, rigtig højdeprofil, din dag)
     state: live
-    flag: stage_page_v2
     epic: 6570
-    verified: 2026-10-24
-    note: PR #6633; beta 15/10; on for alle 24/10 19:48 UTC efter ejerens gennemgang (#7153, læst i prod). Rettelser #7168.
+    verified: 2026-11-01
+    note: PR #6633; beta 15/10; on for alle 24/10 19:48 UTC efter ejerens gennemgang (#7153, læst i prod). Rettelser #7168. Den gamle etapeside og flaget stage_page_v2 fjernet fra koden 1/11 (krav 5, #6570); app_config-rækken slettes efter merge.
 
   - id: stage-plan-v1
     area: race-day
@@ -490,11 +499,10 @@ features:
     title_en: Rating shows best role now
     title_da: Rating viser bedste rolle nu
     state: live
-    flag: rider_best_role_display
     ssot: docs/superpowers/specs/2026-09-11-ryttertype-visning-og-punch-loft-design.md
     epic: 5435
-    verified: 2026-09-27
-    note: 'Beta 24/9 kl. 19:05; on for alle 26/9 kl. 22:27 sammen med vaerdiskiftet #5443 (ejer "koer").'
+    verified: 2026-10-31
+    note: 'On for alle siden 26/9; flaget rider_best_role_display pensioneret 31/10 (#6853), visningen er permanent.'
 
   - id: youth-squad-pages
     area: squad
@@ -887,7 +895,7 @@ features:
     flag: development_v2_aging_enabled
     epic: 6499
     verified: 2026-10-26
-    note: On ved S5-skiftet 25/10 (ejer-go, #7153), læst i prod 26/10.
+    note: On ved S5-skiftet 25/10 (ejer-go, #7153), læst i prod 26/10. Sæsonskiftets aldring er ugatet siden #6499 (altid ny aldring); flaget styrer kun, at AI- og frie ryttere ikke udvikler sig dagligt (#6500).
 
   - id: ability-cap-per-date
     area: training
@@ -936,11 +944,10 @@ features:
     title_en: Potential as one estimated number
     title_da: Potentiale som ét skønnet tal
     state: live
-    flag: potential_single_number
     ssot: docs/PROGRESSION_RULES.md
     epic: 6110
-    verified: 2026-10-26
-    note: PR #7166 (#6853); on i prod (læst 26/10).
+    verified: 2026-10-31
+    note: 'PR #7166 (#6853); on i prod (læst 31/10). Gaten potential_single_number er fjernet fra koden, visningen er permanent.'
 
   - id: train-now-whole-day
     area: training
@@ -983,14 +990,12 @@ features:
     area: training
     title_en: Race day = hard day plus a role-weighted extra in the stage abilities
     title_da: Løbsdag = hård dag + tillæg i etapens evner efter rolle
-    state: dormant
+    state: live
     flag: race_day_role_yield_enabled
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: Ejer, via tændingskort med måling (#5950).
-    verified: 2026-10-31
-    decision: ejer-beslutning
-    decide_by: 2026-11-08
+    note: Tændt 1/11 på ejerens "kør" (tændingskort #5950); prod-verifikation 2/11.
+    verified: 2026-11-01
 
   - id: promotion-pending
     area: academy

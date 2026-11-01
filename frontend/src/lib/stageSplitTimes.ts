@@ -16,6 +16,13 @@
 //
 // v3-tidslinjer (gap_update uden group_id) har ingen grupper at vise; alt
 // returnerer tomt, og fladen viser det samme som foer.
+//
+// #7388: "feltet" er den gruppe peloton-0 er gaaet op i (group_merged-aliasser),
+// ikke id-praefikset: motoren skriver `group_merged peloton-0 -> breakaway-0`
+// naar feltet henter udbruddet, saa feltet arver udbruddets id. En gruppe hedder
+// kun "udbrud" naar den ligger foran feltet og rummer morgenudbruddets ryttere
+// (samme udbrud som resultat-maerkerne, morningBreakawayRiderIds).
+import { morningBreakawayRiderIds } from "./breakawayLabels6299.ts";
 
 export type TimelineEvent = { km?: number; type?: string; params?: Record<string, unknown> | null } | null | undefined;
 
@@ -58,6 +65,8 @@ export type TimeLossEntry =
 
 const INITIAL_GROUP = "peloton-0";
 const MEMBERSHIP_TYPES = new Set(["breakaway_formed", "peloton_splits", "finale_attack"]);
+// Bogfoering i motoren (raceStory.js), ingen rytter skifter gruppe.
+const BOOKKEEPING_ATTACK_KINDS = new Set(["stage_decided", "placement_gap", "gap_survived"]);
 const KNOWN_CAUSES = new Set(["climb_deficit", "wprime_depleted", "mixed", "grupetto", "cobbles_sector"]);
 export const DEFAULT_MAX_GROUPS = 5;
 
@@ -83,11 +92,37 @@ export function hasGroupGaps(events: readonly TimelineEvent[] | null | undefined
   return (events || []).some((e) => e?.type === "gap_update" && typeof e.params?.group_id === "string");
 }
 
-function groupKind(groupId: string): SplitGroup["kind"] {
-  if (groupId.startsWith("breakaway")) return "breakaway";
-  if (groupId === INITIAL_GROUP) return "peloton";
+/** Rytterne et event navngiver: `rider_ids` og/eller `rider_id` (lateAttack.ts skriver kun ental). */
+function namedRiders(p: Record<string, unknown>): string[] {
+  const out = idsOf(p.rider_ids);
+  const single = str(p.rider_id);
+  if (single && !out.includes(single)) out.push(single);
+  return out;
+}
+
+/** Gruppen feltet koerer i nu: peloton-0 fulgt gennem sine sammenlaegninger. */
+function fieldGroupOf(state: ReplayState): string {
+  return resolveAlias(state, INITIAL_GROUP);
+}
+
+/**
+ * Gruppens art ud fra tilstanden. Feltet er peloton-0's alias; et udbrud er en
+ * gruppe der ikke ligger bag feltet og rummer morgenudbruddets ryttere (`extra`:
+ * ryttere der lige har forladt gruppen). Ukendt udbrud (aeldre tidslinjer uden
+ * rytterliste): id-praefikset, som foer.
+ */
+function groupKind(state: ReplayState, groupId: string, extra: readonly string[] = []): SplitGroup["kind"] {
+  const field = fieldGroupOf(state);
+  if (groupId === field) return "peloton";
   if (groupId.startsWith("solo")) return "solo";
-  return "group";
+  let candidate = groupId.startsWith("breakaway");
+  if (state.morning) {
+    candidate = extra.some((id) => state.morning?.has(id));
+    if (!candidate) for (const [rider, g] of state.groupOf) if (g === groupId && state.morning.has(rider)) { candidate = true; break; }
+  }
+  if (!candidate) return "group";
+  const fieldGap = state.gaps.get(field) ?? 0;
+  return (state.gaps.get(groupId) ?? 0) > fieldGap ? "group" : "breakaway";
 }
 
 /**
@@ -107,6 +142,7 @@ function replay(
     known: new Set([INITIAL_GROUP]),
     aliases: new Map(),
     fieldCount: Number.isFinite(fieldCount) && fieldCount > 0 ? fieldCount : null,
+    morning: morningBreakawayRiderIds(events as Parameters<typeof morningBreakawayRiderIds>[0]),
   };
   let pendingIncidentRider: string | null = null;
 
@@ -122,7 +158,8 @@ function replay(
 
     if (MEMBERSHIP_TYPES.has(event.type as string)) {
       const groupId = str(p.group_id);
-      if (groupId) for (const id of idsOf(p.rider_ids)) move(id, groupId);
+      const bookkeeping = event.type === "finale_attack" && BOOKKEEPING_ATTACK_KINDS.has(String(p.kind));
+      if (groupId && !bookkeeping) for (const id of namedRiders(p)) move(id, groupId);
     } else if (event.type === "group_merged") {
       const absorbed = str(p.group_id);
       const into = str(p.into_group_id);
@@ -167,10 +204,13 @@ type ReplayState = {
   known: Set<string>;
   aliases: Map<string, string>;
   fieldCount: number | null;
+  /** Morgenudbruddets ryttere (#7388), null = ukendt. */
+  morning: Set<string> | null;
 };
 
+/** Ryttere uden eksplicit gruppe koerer i feltet (peloton-0 eller dets alias). */
 function groupOfRider(state: ReplayState, riderId: string): string {
-  return state.groupOf.get(riderId) ?? INITIAL_GROUP;
+  return state.groupOf.get(riderId) ?? fieldGroupOf(state);
 }
 
 function resolveAlias(state: ReplayState, groupId: string): string {
@@ -185,7 +225,9 @@ function snapshotGroups(state: ReplayState, ownRiderIds: readonly string[]): Spl
     if (!members.has(g)) members.set(g, []);
     (members.get(g) as string[]).push(rider);
   }
-  const explicitOutsidePeloton = [...state.groupOf.values()].filter((g) => g !== INITIAL_GROUP).length;
+  // Feltet (peloton-0 eller gruppen det er gaaet op i) baerer de unavngivne ryttere.
+  const field = fieldGroupOf(state);
+  const explicitOutsidePeloton = [...state.groupOf.values()].filter((g) => g !== field).length;
   const implicitPeloton = state.fieldCount == null
     ? null
     : state.fieldCount - explicitOutsidePeloton - [...state.removed].filter((id) => !state.groupOf.has(id)).length;
@@ -193,7 +235,7 @@ function snapshotGroups(state: ReplayState, ownRiderIds: readonly string[]): Spl
   const alive: string[] = [];
   for (const g of state.known) {
     if (state.aliases.has(g)) continue;
-    const isAlive = g === INITIAL_GROUP
+    const isAlive = g === field
       ? (implicitPeloton == null || implicitPeloton > 0)
       : (members.get(g)?.length ?? 0) > 0;
     if (isAlive) alive.push(g);
@@ -202,19 +244,17 @@ function snapshotGroups(state: ReplayState, ownRiderIds: readonly string[]): Spl
   const rawGap = (g: string) => state.gaps.get(g) ?? 0;
   const minGap = Math.min(...alive.map(rawGap));
   const own = new Set(ownRiderIds);
-  // Et "udbrud" bag feltet er ikke laengere et udbrud (fx hentet nedkoersels-
-  // angreb): det vises som en almindelig gruppe.
-  const pelotonGap = alive.includes(INITIAL_GROUP) ? rawGap(INITIAL_GROUP) : null;
   const groups = alive
     .map((g): SplitGroup => {
       const ids = members.get(g) ?? [];
-      const ownIds = g === INITIAL_GROUP
+      const ownIds = g === field
         ? ownRiderIds.filter((id) => !state.groupOf.has(id) && !state.removed.has(id)).concat(ids.filter((id) => own.has(id)))
         : ids.filter((id) => own.has(id));
-      const count = g === INITIAL_GROUP ? implicitPeloton : ids.length;
-      const soloRiderId = g !== INITIAL_GROUP && ids.length === 1 ? ids[0] : null;
-      const kindOf = groupKind(g);
-      const base = kindOf === "breakaway" && pelotonGap != null && rawGap(g) > pelotonGap ? "group" : kindOf;
+      const count = g === field ? implicitPeloton : ids.length;
+      const soloRiderId = g !== field && ids.length === 1 ? ids[0] : null;
+      // Et "udbrud" bag feltet er ikke laengere et udbrud (fx hentet nedkoersels-
+      // angreb): det vises som en almindelig gruppe (groupKind).
+      const base = groupKind(state, g);
       return {
         groupId: g,
         kind: soloRiderId ? "solo" : (base === "solo" ? "group" : base),
@@ -287,8 +327,8 @@ export function buildSplitTimes(
   return out;
 }
 
-function fromKind(groupId: string): "breakaway" | "peloton" | "group" {
-  const kind = groupKind(groupId);
+function fromKind(state: ReplayState, groupId: string, leaving: readonly string[]): "breakaway" | "peloton" | "group" {
+  const kind = groupKind(state, groupId, leaving);
   return kind === "breakaway" || kind === "peloton" ? kind : "group";
 }
 
@@ -330,7 +370,7 @@ export function buildOwnTimeLoss(
           km: event.km ?? 0,
           riderId,
           riderIds: [riderId],
-          from: fromKind(resolveAlias(state, source)),
+          from: fromKind(state, resolveAlias(state, source), idsOf(p.rider_ids)),
           reason: cause && KNOWN_CAUSES.has(cause) ? (cause as DropReason) : "unknown",
           climbName: cause === "cobbles_sector" ? null : (komKms.get(event.km ?? 0) ?? null),
           sectorName: cause === "cobbles_sector" ? str(p.sector_name) : null,

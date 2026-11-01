@@ -224,6 +224,10 @@ Advarslen er **ikke-blokerende** — den minder dig blot om at den anden PC ikke
 
 Før du skifter PC, telefon eller agent: sørg for at alle beslutninger, næste skridt og status står i GitHub (`docs/NOW.md`, GitHub issue-kommentarer eller slice-docs) eller i OneDrive-context. `.codex.local/SESSION_CONTEXT.md`, Claude transcripts og Codex memories er lokale caches og tæller ikke som handoff.
 
+### Lokale arbejdsfiler (#7446)
+
+`docs/drafts/`, `pr-screens/` og `docs/snapshots/` er tracked: specs og PR-billeder deles via git. Det der aldrig skal committes (kladder, rå screenshots, dry-run-rapporter med prod-tal) lægges i `<mappe>/local/`. De tre `local/`-mapper og `.codex.local/shared/` er junctions til `OneDrive/CyclingZone-context/repo-local/` og gitignoreret, så de er ens på alle PC'er. `scripts/link-onedrive-context.ps1` opretter dem (flytter en eksisterende rigtig mappe ind uden at overskrive), og `scripts/cross-pc-forensic-audit.ps1` advarer om ucommittede filer uden for `local/`. Resten af `.codex.local/` er per-PC state. **Git følger junctions:** fjern aldrig et worktree med rå `git worktree remove --force` (brug `scripts/remove-worktree.ps1`), og kør aldrig `git clean -x` i hovedcheckoutet, ellers slettes OneDrive-indholdet (postmortem `.claude/learnings/2026-11-01-7446-worktree-remove-foelger-junction.md`).
+
 ### Auto-push efter commit
 
 Allerede etableret regel (`AGENTS.md` punkt 6 + `feedback_push_after_commit.md`): commit → push uden at spørge.

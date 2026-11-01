@@ -86,8 +86,9 @@ test("#3667 loftet vises som tal og ALTID som et interval, aldrig ét loft-tal",
     expect(hi, `prognose-båndet kollapsede til ét tal (${lo}), hvilket gør det inverterbart`).toBeGreaterThan(lo);
   }
 
-  // Overgangs-designet: primær-rollen viser loftet ved siden af prognosen.
-  await expect(page.locator('[data-testid="scouting-primary-loft"]')).toHaveText(/loft\s+\d+|ceiling\s+\d+/i);
+  // #5435/#6853: med bedste rolle nu som eneste visning står loft-tallet ikke
+  // længere på scouting-fanen (ejer 21/9).
+  await expect(page.locator('[data-testid="scouting-primary-loft"]')).toHaveCount(0);
 });
 
 // Denne test navigerer til en RIGTIG rival-rytter. Det kunne den ikke før:

@@ -191,7 +191,6 @@
       "hint": "Met de pijltoetsen wissel je van renner"
     },
     "hero": {
-      "ratingEyebrow": "Rating",
       "bestRoleEyebrow": "Beste rol nu",
       "divisionChip": "DIV {division}",
       "photoFallback": "Foto",
@@ -376,7 +375,6 @@
       "confidenceTitle_medium": "Je scout heeft meer dan eens gerapporteerd, maar niet alles wat hij kan. Scout opnieuw om de inschatting compleet te maken.",
       "confidenceTitle_low": "Alleen een eerste inschatting. Scout opnieuw voordat je erop handelt.",
       "verdictIsRead": "Dit is de inschatting van je scout, geen feit. Ze is gebouwd op zijn verwachte niveau, dus de scout van een andere manager kan over dezelfde renner tot een andere conclusie komen.",
-      "verdictText": "Met de juiste training zie ik hem uitkomen op {progLo}-{progHi} - het plafond van de rol is {loft}, maar dat vraagt de hele weg gerichte focus.",
       "verdictTextNoLoft": "Met de juiste training zie ik hem uitkomen op {progLo}-{progHi}, maar dat vraagt de hele weg gerichte focus.",
       "factor_age_upside": "Jong genoeg om nog seizoenen van groei voor zich te hebben",
       "factor_ceiling_gap": "Duidelijk verschil tussen het niveau van vandaag en waar hij naar verwachting uitkomt",
@@ -387,10 +385,7 @@
       "factor_watch_races": "Koersuitslagen bevestigen of bevragen deze inschatting",
       "rescoutHint": "Scout hem opnieuw om de schatting te verscherpen. Een scout met een lage rating bereikt zijn eigen nauwkeurigheidsgrens voor het laatste niveau.",
       "typesTitle": "Verwachting per rennerstype",
-      "typesSubtitle": "het plafond is dat van de rol, potentieel bepaalt het tempo",
-      "primaryRoleLabel": "Zijn rol",
       "primaryProgressionLabel": "Verwacht",
-      "otherRolesLabel": "De andere rollen",
       "typesSubtitleNoLoft": "potentieel bepaalt het tempo",
       "naturalRolesLabel": "Zijn natuurlijke rollen",
       "otherRolesNaturalLabel": "Andere rollen",
@@ -399,7 +394,6 @@
       "precisionNext": "Het volgende scoutniveau maakt de band smaller, van ±{half} naar ±{next} punten.",
       "precisionUseless": "Nog een niveau zou de band voor je huidige hoofdscout (±{half} punten) niet zichtbaar smaller maken. Een betere hoofdscout wel.",
       "precisionAtMax": "Smaller wordt de band door scouting niet. De breedte van de band hangt nu af van de rating van je hoofdscout (±{half} punten).",
-      "typesLegend": "Volle balk = niveau van vandaag. Gearceerde band = waar hij met jouw training realistisch naartoe gaat: de onderkant is gestaag maar ongericht werk, de bovenkant is elke dag gerichte focus. Donker streepje = het plafond van de rol, voor iedereen in die rol hetzelfde. Potentieel bepaalt hoe snel hij ernaartoe klimt. Het is een schatting, geen garantie, en geen scout kent een renner exact. Ratings zijn vergelijkbaar tussen rollen - hetzelfde getal betekent overal hetzelfde niveau.",
       "capsMissingTitle": "Rapport onvolledig",
       "capsMissingBody": "Voor deze renner zijn nog geen verwachtingsgegevens beschikbaar, dus de vooruitblik per type kan niet worden getoond.",
       "scoutFailed": "De scout kon niet worden gestuurd. Probeer het over een moment opnieuw.",
@@ -457,8 +451,6 @@
         "subtitle": "rating per type",
         "legendNow": "Nu",
         "allTypes": "Alle types",
-        "role": "Zijn rol",
-        "readsHighest": "Scoort nu het hoogst",
         "notARanking": "Rollen worden opgebouwd uit verschillende vaardigheden, dus deze getallen zijn geen rangorde van wat hij zou moeten zijn."
       },
       "physio": {

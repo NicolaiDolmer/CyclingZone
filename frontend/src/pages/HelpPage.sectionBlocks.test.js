@@ -16,7 +16,10 @@ const source = readFileSync(join(__dirname, "HelpPage.jsx"), "utf8");
 // De 16 forældreløse entries fra #4064-sweepet er nu alle registreret (#4066),
 // så allowlisten er tom og guarden er ren fremadrettet. Ny copy må ALDRIG
 // tilføjes hertil: skriv den i help.json OG registrér den i blocks-arrayet.
-const KNOWN_ORPHANS = {};
+// Midlertidig undtagelse (#6499): den gamle aldringstekst er taget af siden,
+// men nøglen slettes i help.json af en separat PR. Når den er væk, fejler
+// stale-tjekket nedenfor, og linjen skal fjernes.
+const KNOWN_ORPHANS = { riders: ["agingAndDecline"] };
 
 function extractSectionDefs(src) {
   const match = src.match(/const SECTION_DEFS = \[([\s\S]*?)\n\];/);

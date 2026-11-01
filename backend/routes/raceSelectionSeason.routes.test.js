@@ -71,8 +71,13 @@ test("#6207: rute-matchen kommer fra motoren (routeMatch.js), samme vektor som p
   assert.match(board, /demandVector: routeVectorByRace\.get\(e\.id\) \|\| null/);
 });
 
-test("entries returnerer rider_id + race_role pr. løb (fetchTeamRaceEntriesWithRider)", () => {
+test("#7239: loebene bærer rolesAllowed fra samme v3-gate som udtagelsespanelet", () => {
   const block = routeBlock('router.get("/races/selection/season"', 8000);
+  assert.match(block, /rolesAllowed: raceAllowsCoCaptain\(race\)/);
+});
+
+test("entries returnerer rider_id + race_role pr. løb (fetchTeamRaceEntriesWithRider)", () => {
+  const block = routeBlock('router.get("/races/selection/season"', 9000);
   assert.match(block, /fetchTeamRaceEntriesWithRider\(supabase, req\.team\.id, ownRaceIds\)/);
 });
 

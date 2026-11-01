@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails, classifyBindingConflicts, resolveBindingConflictDetails, isRiderDayInvariantViolation, isConstraintNotDeferrable, isDrainingAiObligation, isRetiredAiRiderRejection, teamInRaceSquadPool, teamPoolIdForSquad } from "./raceBinding.js";
+import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails, classifyBindingConflicts, resolveBindingConflictDetails, isRiderDayInvariantViolation, isConstraintNotDeferrable, isDrainingAiObligation, isRaceEntriesInflightRejection, isRetiredAiRiderRejection, teamInRaceSquadPool, teamPoolIdForSquad } from "./raceBinding.js";
 const TEST_NOW_6959 = new Date("2026-10-23T00:00:00Z"); // #6959: injiceret ur (hard rule 16)
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -799,6 +799,32 @@ test("isDrainingAiObligation: kun guardens egne beskeder, aldrig 23514 generelt"
   assert.equal(isDrainingAiObligation({ code: "23514", message: 'new row violates check constraint "riders_age_check"' }), false);
   assert.equal(isDrainingAiObligation({ message: "race_entries_rider_id_fkey" }), false);
   assert.equal(isDrainingAiObligation(null), false);
+});
+
+test("isRaceEntriesInflightRejection: kun vagtens egne beskeder (#7445), ogsaa indpakket", () => {
+  const id = "170aaa4f-2111-4433-8d08-05ae017cda19";
+  assert.equal(isRaceEntriesInflightRejection({ code: "P0001", message: `race_entries_inflight: race ${id} is in progress (INSERT blocked)` }), true);
+  assert.equal(isRaceEntriesInflightRejection({ message: `race_entries upsert: race_entries_inflight: race ${id} is completed (UPDATE blocked)` }), true);
+  assert.equal(isRaceEntriesInflightRejection({ code: "P0001", message: "sweep_race_lineup_frozen" }), false);
+  assert.equal(isRaceEntriesInflightRejection({ message: "race_entries_rider_id_fkey" }), false);
+  assert.equal(isRaceEntriesInflightRejection(null), false);
+});
+
+test("isRaceEntriesInflightRejection matcher migrationens RAISE-tekster (#7445)", () => {
+  const sql = readFileSync(new URL("../../database/2026-11-01-7445-race-entries-inflight-guard.sql", import.meta.url), "utf8");
+  for (const state of ["in progress", "completed"]) {
+    assert.ok(sql.includes(`'race_entries_inflight: race % is ${state} (% blocked)'`), `RAISE-tekst for '${state}' mangler i migrationen`);
+    assert.equal(isRaceEntriesInflightRejection({ message: `race_entries_inflight: race 00000000-0000-0000-0000-000000000000 is ${state} (DELETE blocked)` }), true);
+  }
+});
+
+test("#7445-vagten undtager binding_span-only UPDATE (ellers ruller hver loebsafslutning tilbage)", () => {
+  // races_status_resync_binding (#4173) opdaterer race_entries.binding_span naar raceRunner
+  // saetter status='completed'; uden undtagelsen ville vagten afvise den UPDATE.
+  const sql = readFileSync(new URL("../../database/2026-11-01-7445-race-entries-inflight-guard.sql", import.meta.url), "utf8");
+  const exemption = sql.indexOf("(to_jsonb(NEW) - 'binding_span') = (to_jsonb(OLD) - 'binding_span')");
+  assert.ok(exemption > 0, "binding_span-undtagelsen mangler");
+  assert.ok(exemption < sql.indexOf("FROM public.races WHERE id = ANY(v_race_ids)"), "undtagelsen skal staa foer loebsopslaget");
 });
 
 // #4959 reviewer-fund: isDrainingAiObligation matcher guardens RAISE-tekster som en

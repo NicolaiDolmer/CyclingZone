@@ -111,6 +111,37 @@ test('fjerner node_modules-junctions uden at toemme maalet', { skip }, () => {
   assert.ok(fs.existsSync(path.join(wt, 'marketing', 'node_modules', '@scope')));
 });
 
+test('fjerner de lokale OneDrive-junctions (#7446) uden at toemme maalet', { skip }, () => {
+  const { nm, marker } = makeFakeMain('main-7446');
+  const wt = path.join(sandbox, 'wt-7446');
+  const rel = ['docs/drafts/local', 'pr-screens/local', 'docs/snapshots/local', '.codex.local/shared'];
+  for (const l of rel) makeJunction(path.join(wt, l), nm);
+
+  const res = runRemove(wt);
+
+  assert.equal(res.Ok, true, JSON.stringify(res));
+  assert.equal(res.Found, 4);
+  assert.equal(res.Removed, 4);
+  for (const l of rel) assert.equal(fs.existsSync(path.join(wt, l)), false, `${l} skulle vaere fjernet`);
+  assert.equal(fs.readFileSync(marker, 'utf8'), 'main-node_modules-skal-overleve\n');
+});
+
+test('docs/ som junction: kun mellemleddet fjernes, intet scannes ind i maalet (#7446)', { skip }, () => {
+  const { nm, marker } = makeFakeMain('main-7446-mid');
+  const outside = path.join(sandbox, 'outside-docs');
+  makeJunction(path.join(outside, 'drafts', 'local'), nm);
+  const wt = path.join(sandbox, 'wt-7446-mid');
+  makeJunction(path.join(wt, 'docs'), outside);
+
+  const res = runRemove(wt);
+
+  assert.equal(res.Ok, true, JSON.stringify(res));
+  assert.equal(res.Found, 1);
+  assert.equal(fs.existsSync(path.join(wt, 'docs')), false);
+  assert.ok(fs.existsSync(path.join(outside, 'drafts', 'local')), 'linket uden for worktreet maa ikke roeres');
+  assert.equal(fs.readFileSync(marker, 'utf8'), 'main-node_modules-skal-overleve\n');
+});
+
 test('dry-run fjerner ingenting men melder linkene', { skip }, () => {
   const { nm, marker } = makeFakeMain('main-b');
   const wt = path.join(sandbox, 'wt-b');

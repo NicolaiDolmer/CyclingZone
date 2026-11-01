@@ -37,7 +37,6 @@ import { contractOfferEligibility, CONTRACT_STATE } from "../../../../../backend
 import { useRiderReputation } from "../../../lib/useRiderReputation.ts";
 import { riderReputationBand, riderReputationProgress, riderReputationValue } from "../../../lib/riderReputationView.ts";
 import { formatNumber } from "../../../lib/intl.js";
-import { useBestRoleDisplay } from "../../../lib/useBestRoleDisplay.js";
 import { squadBadgeKey } from "../../../lib/squadBadge.ts";
 import { AlertTriangleIcon, CategoryTag, StarIcon, ChevronRightIcon, Portal } from "../../ui";
 
@@ -51,7 +50,10 @@ const DIVISION_CHIP = "rgb(96 165 250)";
 // ville kunne skubbe den testede VALUE-blok uden for viewport på mobil
 // (core-smoke.spec.js måler dens bounding-rect). Grid'en giver samme label/
 // value-anatomi men wrapper sikkert i stedet for at skuble bredde ud af syne.
-function HeroStat({ label, value, sub, popover, valueClassName = "text-[20px] font-[650]", valueProps = {}, interactive = false }) {
+/**
+ * @param {{ label: import("react").ReactNode, value: import("react").ReactNode, sub?: import("react").ReactNode, popover?: import("react").ReactNode, valueClassName?: string, valueProps?: Record<string, unknown>, interactive?: boolean }} props
+ */
+function HeroStat({ label, value, sub = null, popover = null, valueClassName = "text-[20px] font-[650]", valueProps = {}, interactive = false }) {
   return (
     <div className={`min-w-0 ${interactive ? "relative" : ""}`}>
       <p className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3 mb-1">{label}</p>
@@ -190,7 +192,7 @@ export default function RiderProfileHero({
   viewer = "own",                 // "own" | "scouting"
   showTeam = true,                // false når switcher-baren allerede viser holdnavnet (ejer-runde 3: aldrig dobbelt)
   overallRating,
-  bestRoleKey = null,             // #5435: rollen bag overallRating når kontakten er tændt
+  bestRoleKey = null,             // #5435: rollen bag overallRating
   age,
   seasonYear = null,        // #3071: sæson-referenceår (useActiveSeasonYear) — retirementRiskBadgeKey
   typeLabel,
@@ -276,7 +278,6 @@ export default function RiderProfileHero({
       ? current
       : { ...current, top, maxHeight });
   }, [reputationOpen, reputationPosition]);
-  const bestRoleOn = useBestRoleDisplay();
   const reputationOn = useRiderReputation();
 
   const teamName = rider.team?.name ?? t("header.freeAgent");
@@ -295,18 +296,6 @@ export default function RiderProfileHero({
       {overallRating}
     </span>
   ) : null;
-  // Overgangs-designet (ejer 18/8): rollens loft står som under-linje på
-  // prognose-statten, så det gamle loft-tal er bevaret lige dér spilleren
-  // plejede at kigge. Kommer fra estimates-payloaden (roleCeilRating — rolle+
-  // alder-bestemt, intet rytter-hemmeligt).
-  const potEstimate = scouting?.estimateFor?.(rider.id);
-  const potLoft = Number.isFinite(potEstimate?.loft) ? potEstimate.loft : null;
-  const potLoftRole = potEstimate?.role ? t(`riderTypes:types.${potEstimate.role}`) : null;
-  // #4039 (ejer-beslutning 20/8): forbi peak dæmper loft-VISNINGEN, ikke tallet
-  // — loftet er stadig ABSOLUT (rollens faste tag). Rytteren udvikler sig ikke
-  // længere mod det, så suffikset og forklaringen siger det, i stedet for at
-  // stå ukommenteret ved siden af prognosen.
-  const potPastPeak = potEstimate?.pastPeak === true;
   // #6638: "Season 3" midt i saeson 4 lignede en fri rytter. En udloebet kontrakt
   // paa et hold siges nu ud (frigives ved skiftet), og en fri agent viser aldrig et
   // efterladt saesonnummer.
@@ -462,19 +451,19 @@ export default function RiderProfileHero({
           jf. statColor.js's fire-skala-advarsel). */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-6 gap-y-4 mt-5 pt-4 border-t border-cz-border">
         <HeroStat
-          label={bestRoleOn ? t("profile.hero.bestRoleEyebrow") : t("profile.hero.ratingEyebrow")}
+          label={t("profile.hero.bestRoleEyebrow")}
           value={hasRating ? (
             /* Farveplade (ejer-feedback): samme statColor-skala som ability-tallene
                — genindfører det gamle designs instant-signal i systemets sprog.
                #2888/#2906: selve style-udtrykket er nu den delte statPlateStyle,
                så heroen, personale-heroen og trup-tabellen ikke kan drifte fra
                hinanden (samme 16%-alpha-plade var kopieret tre steder).
-               #5435 (D-049): med kontakten tændt står rollenavnet ved tallet
-               ("54 Climber") — tallet er hans rating i DEN rolle.
+               #5435 (D-049): rollenavnet står ved tallet ("54 Climber") —
+               tallet er hans rating i DEN rolle.
                #5435 opfølgning 2 (ejer 22/9): rollenavnet er samme neutrale
                chip-badge som i tabellerne (BestRoleTag, variant "full") —
                ikke sin egen løse span, så anatomien er ens overalt. */
-            bestRoleOn && bestRoleKey ? (
+            bestRoleKey ? (
               <span className="inline-flex items-center gap-2 min-w-0 max-w-full">
                 {ratingPlate}
                 <BestRoleTag role={bestRoleKey} variant="full" className="truncate" testId="rider-hero-best-role" />
@@ -488,19 +477,8 @@ export default function RiderProfileHero({
             ? <ScoutablePotentiale rider={rider} scouting={scouting} showScout={viewer === "scouting"} labelAsTitle hideLevel />
             : "—"}
           valueClassName="text-[15px] font-semibold"
-          /* #5435 (ejer 21/9): loft-tallet er ude af den nye visning — taget er
-             ens for alle med samme anlæg, og badget viser allerede anlægget. */
-          sub={!bestRoleOn && potLoft != null && (
-            <p
-              className="font-data text-2xs text-cz-3 tabular-nums mt-1"
-              title={potPastPeak
-                ? t("scouting.loftPastPeakTitle", { value: potLoft })
-                : potLoftRole ? t("scouting.loftTitle", { role: potLoftRole, value: potLoft }) : undefined}
-              data-testid="rider-hero-loft"
-            >
-              {potPastPeak ? t("scouting.loftPastPeakShort", { value: potLoft }) : t("scouting.loftShort", { value: potLoft })}
-            </p>
-          )}
+          /* #5435 (ejer 21/9): intet loft-tal under prognosen — taget er ens
+             for alle med samme anlæg, og badget viser allerede anlægget. */
         />
         <HeroStat
           label={t("profile.hero.valueEyebrow")}

@@ -427,12 +427,9 @@
     "TS2339": 5
   },
   "../backend/lib/riderProgressionEngine.js": {
-    "TS1127": 6,
+    "TS1127": 3,
     "TS18046": 1,
-    "TS18047": 1,
-    "TS2322": 2,
-    "TS2339": 11,
-    "TS2345": 1
+    "TS2339": 11
   },
   "../backend/lib/riderSeasonAge.js": {
     "TS18049": 5
@@ -1059,10 +1056,6 @@
     "TS2339": 11,
     "TS2741": 1
   },
-  "src/components/race/RaceOverviewTab.jsx": {
-    "TS2322": 2,
-    "TS2741": 1
-  },
   "src/components/race/RaceSelectionPanel.jsx": {
     "TS18047": 3,
     "TS2322": 5,
@@ -1073,8 +1066,8 @@
   "src/components/race/RaceTacticsTab.jsx": {
     "TS18047": 6,
     "TS2322": 8,
-    "TS2339": 29,
-    "TS2345": 5,
+    "TS2339": 14,
+    "TS2345": 1,
     "TS2464": 1,
     "TS2538": 3
   },
@@ -1082,10 +1075,6 @@
     "TS18047": 1,
     "TS2322": 3,
     "TS2339": 8
-  },
-  "src/components/race/StageDetailPanel.jsx": {
-    "TS2322": 1,
-    "TS2741": 1
   },
   "src/components/race/StageFilmScrubber.jsx": {
     "TS2339": 3
@@ -1231,8 +1220,7 @@
     "TS2339": 12,
     "TS2353": 1,
     "TS2698": 1,
-    "TS2739": 3,
-    "TS2741": 5
+    "TS2741": 3
   },
   "src/components/rider/profile/RiderResultsTab.jsx": {
     "TS2345": 1,
@@ -1240,8 +1228,7 @@
     "TS2741": 2
   },
   "src/components/rider/profile/RiderScoutingTab.jsx": {
-    "TS2739": 2,
-    "TS2741": 1
+    "TS2739": 2
   },
   "src/components/rider/profile/RiderSwitcherBar.jsx": {
     "TS2339": 1,
@@ -1252,7 +1239,6 @@
     "TS2741": 4
   },
   "src/components/rider/profile/RiderTypeRadar.jsx": {
-    "TS18047": 2,
     "TS2322": 1,
     "TS2345": 1
   },
@@ -1778,12 +1764,6 @@
   },
   "src/lib/raceLiveStandings.test.js": {
     "TS18047": 6
-  },
-  "src/lib/raceOverviewLogic.js": {
-    "TS2339": 3
-  },
-  "src/lib/raceOverviewLogic.test.js": {
-    "TS2339": 2
   },
   "src/lib/racePageTabs.js": {
     "TS8024": 1
@@ -2531,12 +2511,12 @@
     "TS2769": 1
   },
   "src/pages/RaceDetailPage.jsx": {
-    "TS2322": 14,
+    "TS2322": 12,
     "TS2339": 16,
     "TS2345": 16,
     "TS2353": 2,
     "TS2739": 1,
-    "TS2741": 11
+    "TS2741": 10
   },
   "src/pages/RaceHistoryPage.jsx": {
     "TS2322": 1,

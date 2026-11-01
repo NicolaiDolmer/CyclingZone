@@ -15,7 +15,7 @@ import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { useIsMobileViewport } from "../hooks/useMediaQuery";
 import { statStyle, statPlateStyle } from "../lib/statColor";
 import { riderOverallRating } from "../lib/riderRating";
-import { useTypeColumnLabel } from "../lib/useBestRoleDisplay.js";
+import { useTypeColumnLabel } from "../lib/useTypeColumnLabel.ts";
 import { WithBestRole } from "../components/rider/BestRoleTag.jsx";
 import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import { formatNumber } from "../lib/intl";
@@ -47,7 +47,7 @@ export default function WatchlistPage() {
   const { t } = useTranslation("watchlist");
   // #3045: mobil-fold-tekst for ryttertype (samme namespace som /riders' #2849 bølge 2).
   const { t: tTypes } = useTranslation("riderTypes");
-  const typeColumnLabel = useTypeColumnLabel(t("thType")); // #5435
+  const typeColumnLabel = useTypeColumnLabel(); // #5435
   // #4036: mobil-fold-tekst for markeds-status (RiderBadges' korte labels — se nedenfor).
   const { t: tRider } = useTranslation("rider");
   const scouting = useScouting();

@@ -1,5 +1,333 @@
 export const PATCHES = [
   {
+    "version": "7.391",
+    "date": "2026-11-01",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The assistant no longer sets an attack by default",
+          "body": "The tactics assistant no longer adds a captain attack on the last climb by itself. When it suggests something, you see the suggestion and a short reason, and you decide."
+        },
+        "da": {
+          "title": "Assistenten sætter ikke længere selv et angreb",
+          "body": "Taktik-assistenten sætter ikke længere selv et kaptajn-angreb på sidste stigning. Når den foreslår noget, ser du forslaget og en kort grund, og du bestemmer."
+        },
+        "refs": [
+          7369
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Time trials only show orders that make sense",
+          "body": "On a time trial, road orders like working for the captain or following attacks are gone from the Tactics tab. Each rider rides his own race."
+        },
+        "da": {
+          "title": "Enkeltstart viser kun ordrer der giver mening",
+          "body": "På en enkeltstart er vej-ordrer som at arbejde for kaptajnen eller følge angreb væk fra Taktik-fanen. Hver rytter kører sit eget løb."
+        },
+        "refs": [
+          7317
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Shared captain and luxury helper in the season planner",
+          "body": "In races that allow them, you can now pick a shared captain and a luxury helper directly in the season planner. One of each per team."
+        },
+        "da": {
+          "title": "Delt kaptajn og luksushjælper i sæsonplanen",
+          "body": "I løb der tillader det, kan du nu vælge en delt kaptajn og en luksushjælper direkte i sæsonplanen. Én af hver pr. hold."
+        },
+        "refs": [
+          7239
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Tactics drafts survive a partial save",
+          "body": "If only part of your tactics could be saved, the rest stays as a draft, and the next save only sends what is missing."
+        },
+        "da": {
+          "title": "Taktik-kladder overlever en delvis gemning",
+          "body": "Hvis kun en del af din taktik kunne gemmes, bliver resten stående som kladde, og næste gem sender kun det, der mangler."
+        },
+        "refs": [
+          7327
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The race film labels the peloton correctly",
+          "body": "The race film no longer calls the peloton a breakaway after it has caught the break, and the group sizes at the finish now add up to the whole field."
+        },
+        "da": {
+          "title": "Løbsfilmen kalder feltet det rigtige",
+          "body": "Løbsfilmen kalder ikke længere feltet for et udbrud, efter det har hentet udbruddet, og gruppernes størrelse ved mål passer nu med hele feltet."
+        },
+        "refs": [
+          7388
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Your riders shows riders who dropped out",
+          "body": "The Your riders card on the stage page now also lists your riders who did not finish, with DNF and the reason."
+        },
+        "da": {
+          "title": "Your riders viser ryttere der udgik",
+          "body": "Kortet Your riders på etapesiden viser nu også dine ryttere, der udgik, med DNF og årsagen."
+        },
+        "refs": [
+          7330
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Team selections no longer change in a running stage race",
+          "body": "Fixed a rare case where the automatic team selection could replace riders in a stage race that had just started."
+        },
+        "da": {
+          "title": "Holdudtagelsen ændrer sig ikke i et kørende etapeløb",
+          "body": "Rettet et sjældent tilfælde, hvor den automatiske holdudtagelse kunne skifte ryttere ud i et etapeløb, der lige var startet."
+        },
+        "refs": [
+          7389
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "A notice when races are paused",
+          "body": "When races are paused, a bar at the top of the game tells you, and it disappears by itself when racing resumes."
+        },
+        "da": {
+          "title": "Besked når løbene er sat på pause",
+          "body": "Når løbene er sat på pause, fortæller en bjælke øverst i spillet det, og den forsvinder af sig selv, når løbene kører igen."
+        },
+        "refs": [
+          7335
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "New training types stay visible",
+          "body": "The new training types no longer disappear after you switch to another browser tab and come back."
+        },
+        "da": {
+          "title": "De nye træningstyper bliver synlige",
+          "body": "De nye træningstyper forsvinder ikke længere, når du skifter til en anden fane i browseren og kommer tilbage."
+        },
+        "refs": [
+          7439
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.390",
+    "date": "2026-10-31",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "Descent attacks follow your orders",
+          "body": "In races on the newest rules, a rider only attacks on a descent when his orders allow it. On Grupetto, Ride easy or the fourth step he stays in the group. With a stage plan, his task decides, and Stay sheltered never attacks on a descent."
+        },
+        "da": {
+          "title": "Angreb på nedkørsler følger din ordre",
+          "body": "I løb på de nyeste regler angriber en rytter kun på en nedkørsel, når hans ordre tillader det. På Grupetto, Kør roligt eller det fjerde trin bliver han i gruppen. Med en etapeplan afgør opgaven det, og Bliv i læ angriber aldrig på en nedkørsel."
+        },
+        "refs": [
+          7380
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "The last 10 km switch happens on the spot",
+          "body": "A stage plan switch at the last 10 km now happens exactly 10 km from the line, also on a climb or a cobbled sector. If that point is on a descent, the switch happens at the top or the bottom of it. The orange note on the Tactics tab is gone for those plans."
+        },
+        "da": {
+          "title": "Skiftet ved de sidste 10 km sker præcist",
+          "body": "Et skift i etapeplanen ved de sidste 10 km sker nu præcis 10 km fra mål, også på en stigning eller en brostenssektor. Ligger punktet på en nedkørsel, sker skiftet på toppen eller i bunden af den. Den orange note på Taktik-fanen er væk for de planer."
+        },
+        "refs": [
+          7383
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "Ride easy in a time trial saves legs",
+          "body": "On an individual time trial, Ride easy now costs time and saves fatigue, like in real racing. On an individual time trial the Tactics tab now only offers Ride easy, Normal and All out. An older Grupetto or fourth-step order there counts as Ride easy."
+        },
+        "da": {
+          "title": "Kør roligt på enkeltstart sparer benene",
+          "body": "På en enkeltstart koster Kør roligt nu tid og sparer træthed, som i virkeligheden. På en enkeltstart viser Taktik-fanen nu kun Kør roligt, Normal og Alt ud. Et ældre Grupetto eller fjerde trin dér tæller som Kør roligt."
+        },
+        "refs": [
+          7332
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Route match is back on the Tactics tab",
+          "body": "With the stage plan on, the Tactics tab shows Route match again, on desktop and mobile, and you can sort by it."
+        },
+        "da": {
+          "title": "Rute-match er tilbage på Taktik-fanen",
+          "body": "Med etapeplanen slået til viser Taktik-fanen igen Rute-match, både på computer og mobil, og du kan sortere efter den."
+        },
+        "refs": [
+          7334
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Your attacker gets his story with a stage plan too",
+          "body": "If a rider with a stage plan was attacking in a breakaway that held, the stage page now tells that story, like it already did for riders on All out."
+        },
+        "da": {
+          "title": "Din angriber får sin historie, også med etapeplan",
+          "body": "Angreb en rytter med etapeplan i et udbrud, der holdt, fortæller etapesiden nu den historie, som den allerede gjorde for ryttere på Alt ud."
+        },
+        "refs": [
+          7381
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Help",
+        "en": {
+          "title": "Help covers the newest race rules",
+          "body": "Help now explains the gruppetto, attacks on descents, mountain breakaways in stage races, the shared captain, late solo attacks, the last 10 km switch, hills from the stage profile and Train now."
+        },
+        "da": {
+          "title": "Hjælp dækker de nyeste løbsregler",
+          "body": "Hjælp forklarer nu grupettoen, angreb på nedkørsler, bjergudbrud i etapeløb, den delte kaptajn, sene soloangreb, skiftet ved de sidste 10 km, bakker fra højdeprofilen og Træn nu."
+        },
+        "refs": [
+          7406,
+          6940,
+          7160,
+          7003,
+          6368,
+          7290,
+          6461
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Riders who drop out stay on the stage",
+          "body": "Riders who drop out of a stage race are now listed at the bottom of the stage result as DNF, with the reason: climbed off, outside the time limit or crash. Injured or ill riders who did not start show as DNS. When several riders climb off, the recap sums it up in one line with a link to the list. Your team card tells you who is out and how many riders you have left."
+        },
+        "da": {
+          "title": "Udgåede ryttere bliver på etapen",
+          "body": "Ryttere, der udgår af et etapeløb, står nu nederst i etaperesultatet som DNF med årsagen: steg af, uden for tidsgrænsen eller styrt. Skadede eller syge ryttere, der ikke startede, står som DNS. Når flere stiger af, samler referatet det i én linje med et link til listen. Dit holdkort fortæller, hvem der er ude, og hvor mange ryttere du har tilbage."
+        },
+        "refs": [
+          7411,
+          6938,
+          7330
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The shared captain shows as his own role",
+          "body": "The Team tab and Your orders on a stage now show the shared captain as his own role, not as a helper."
+        },
+        "da": {
+          "title": "Den delte kaptajn vises med sin egen rolle",
+          "body": "Hold-fanen og Dine ordrer på en etape viser nu den delte kaptajn med hans egen rolle, ikke som hjælper."
+        },
+        "refs": [
+          7326
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "Injuries explained",
+          "body": "An injured rider's profile now shows what happened, where, and the day he is fit again. The injury message says when he is fit again and names every race he misses, not only the ones he was entered in. New injuries in season 5 now count in race days. Injuries from before this fix run out on calendar days."
+        },
+        "da": {
+          "title": "Skader forklaret",
+          "body": "En skadet rytters profil viser nu, hvad der skete, hvor, og hvilken dag han er klar igen. Skadebeskeden siger, hvornår han er klar igen, og nævner alle løb, han misser, ikke kun dem, han var tilmeldt. Nye skader i sæson 5 tæller nu i løbsdage. Skader fra før rettelsen løber ud på kalenderdage."
+        },
+        "refs": [
+          7412,
+          5462,
+          5314
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.389",
     "date": "2026-10-30",
     "changes": [

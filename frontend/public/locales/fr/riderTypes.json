@@ -1,12 +1,4 @@
 {
-  "filter": {
-    "label": "Type de coureur",
-    "all": "Tous les types"
-  },
-  "badge": {
-    "ariaLabel": "Type de coureur : {primary} / {secondary}",
-    "ariaLabelSingle": "Type de coureur : {primary}"
-  },
   "natural": {
     "label": "Naturel",
     "roleLabel": "Rôle naturel",

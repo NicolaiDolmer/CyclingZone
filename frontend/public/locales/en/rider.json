@@ -191,7 +191,6 @@
       "hint": "Arrow keys switch rider"
     },
     "hero": {
-      "ratingEyebrow": "Rating",
       "bestRoleEyebrow": "Best role now",
       "divisionChip": "DIV {division}",
       "photoFallback": "Photo",
@@ -376,7 +375,6 @@
       "confidenceTitle_medium": "Your scout has reported more than once, but not everything he can. Scout again to complete the read.",
       "confidenceTitle_low": "A first read only. Scout again before you act on it.",
       "verdictIsRead": "This is your scout's read, not a fact. It is built on his projected level, so another manager's scout can reach a different conclusion about the same rider.",
-      "verdictText": "With the right training I see him landing at {progLo}-{progHi} - the role's ceiling is {loft}, but it takes dedicated focus all the way.",
       "verdictTextNoLoft": "With the right training I see him landing at {progLo}-{progHi}, but it takes dedicated focus all the way.",
       "factor_age_upside": "Young enough to have seasons of growth ahead",
       "factor_ceiling_gap": "Clear gap between today's level and where he's projected to land",
@@ -387,10 +385,7 @@
       "factor_watch_races": "Race results will confirm or challenge this read",
       "rescoutHint": "Scout him again to sharpen the estimate. A low-rated scout reaches his own precision limit before the last level.",
       "typesTitle": "Projection per rider type",
-      "typesSubtitle": "the ceiling is the role's, potential sets the pace",
-      "primaryRoleLabel": "His role",
       "primaryProgressionLabel": "Projected",
-      "otherRolesLabel": "The other roles",
       "typesSubtitleNoLoft": "potential sets the pace",
       "naturalRolesLabel": "His natural roles",
       "otherRolesNaturalLabel": "Other roles",
@@ -399,7 +394,6 @@
       "precisionNext": "The next scout level narrows the band from ±{half} to ±{next} points.",
       "precisionUseless": "Another level would not visibly narrow the band for your current chief scout (±{half} points). A better chief scout would.",
       "precisionAtMax": "This is as narrow as scouting gets him. The band's width now rests on your chief scout's rating (±{half} points).",
-      "typesLegend": "Solid bar = level today. Shaded band = where he's realistically heading with your training: the bottom is steady but unfocused work, the top is dedicated focus every day. Dark mark = the role's ceiling, the same for everyone in that role; potential decides how fast he climbs toward it. It is an estimate, not a guarantee, and no scout knows a rider exactly. Ratings are comparable across roles - the same number means the same level everywhere.",
       "capsMissingTitle": "Report incomplete",
       "capsMissingBody": "Projection data is not available for this rider yet, so the per-type outlook can't be shown.",
       "scoutFailed": "Could not send the scout. Try again in a moment.",
@@ -457,8 +451,6 @@
         "subtitle": "rating per type",
         "legendNow": "Now",
         "allTypes": "All types",
-        "role": "His role",
-        "readsHighest": "Reads highest now",
         "notARanking": "Roles are built from different abilities, so these numbers are not a ranking of what he should be."
       },
       "physio": {

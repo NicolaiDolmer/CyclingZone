@@ -212,7 +212,10 @@ function suggestionFor({ role, route, teamHasSprintCaptain, luxuryHelper = false
   const lastClimbFrom: StagePlanTrigger | null = route.summit_finish
     ? (climbs.length >= 1 ? { at: "kom", kom_index: climbs[climbs.length - 1].index } : null)
     : (climbs.length >= 2 ? { at: "kom", kom_index: climbs[climbs.length - 2].index } : null);
-  const attackFrom: StagePlanTrigger = lastClimbFrom ?? { at: "final_km" };
+  // #7369: assistenten foreslaar aldrig et angreb (lederen foelger med paa dagens sidste stigning).
+  const leaderFinale: StagePlanLeg = lastClimbFrom
+    ? { task: "follow_moves", from: lastClimbFrom }
+    : { task: "ride_for_result", from: { at: "final_km" } };
   const flatFinale = bucket === "flat";
   const sprintStage = flatFinale && teamHasSprintCaptain;
 
@@ -226,7 +229,7 @@ function suggestionFor({ role, route, teamHasSprintCaptain, luxuryHelper = false
     case "captain":
     case "co_captain": // #7239: samme plan som kaptajnen
       if (flatFinale) return [{ task: "stay_sheltered" }, { task: "ride_for_result", from: { at: "final_km" } }];
-      return [{ task: "stay_sheltered" }, { task: "attack", from: attackFrom }];
+      return [{ task: "stay_sheltered" }, leaderFinale];
     case "sprint_captain":
       if (bucket === "high") return [{ task: "stay_sheltered" }, { task: "grupetto", from: { at: "dropped" } }];
       return [{ task: "stay_sheltered" }, { task: "ride_for_result", from: { at: "final_km" } }];
@@ -246,7 +249,7 @@ function suggestionFor({ role, route, teamHasSprintCaptain, luxuryHelper = false
       return [{ task: "breakaway" }, { task: "ride_for_result", from: { at: "dropped" } }];
     case "free_role":
     default:
-      if (bucket === "high" && lastClimbFrom) return [{ task: "stay_sheltered" }, { task: "attack", from: attackFrom }];
+      if (bucket === "high" && lastClimbFrom) return [{ task: "stay_sheltered" }, leaderFinale];
       if (bucket === "hilly" || bucket === "mountain") return [{ task: "breakaway" }, { task: "ride_for_result", from: { at: "dropped" } }];
       return [{ task: "ride_for_result" }];
   }
@@ -263,6 +266,27 @@ export function planRole(role: unknown): StagePlanRole {
 /** #5982: er rollen luksushjaelper? (forslaget er da hans standardplan). */
 export function isLuxuryHelperRole(role: unknown): boolean {
   return role === "luxury_helper";
+}
+
+/**
+ * #7369: den korte grund under assistentens forslag (i18n-noegle, races-namespace),
+ * laest af selve kaeden, saa grunden altid passer til det forslaget siger. null naar
+ * der ikke er noget forslag (enkeltstart) eller ingen grund passer (fx sikkerhedsnettets
+ * "bliv i laeet" alene).
+ */
+export function suggestionReasonKey(legs: readonly StagePlanLeg[] | null | undefined, role: StagePlanRole, luxuryHelper = false): string | null {
+  if (!legs || !legs.length) return null;
+  const tasks = legs.map((l) => l.task);
+  const key = (name: string) => `stagePlan.suggestionReason.${name}`;
+  if (luxuryHelper && tasks.includes("tempo")) return key("luxuryHelper");
+  if (tasks.includes("sprint_train")) return key("sprintTrain");
+  if (tasks[0] === "breakaway") return key("breakaway");
+  if (tasks.includes("follow_moves")) return key("followLastClimb");
+  if (role === "sprint_captain") return key(tasks.includes("grupetto") ? "sprinterMountain" : "sprinter");
+  if (tasks.includes("tempo")) return key("helperClimb");
+  if (tasks[0] === "shelter_leader") return key("helper");
+  if (tasks.includes("ride_for_result")) return key(tasks[0] === "stay_sheltered" ? "leaderFinal" : "ownResult");
+  return null;
 }
 
 /** Laengste gyldige praefiks (mindst foerste led). Bruges efter hvert valg. */

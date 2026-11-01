@@ -13,7 +13,7 @@ import { applyDailyTick, RACE_PROFILE_ABILITY_MAP } from "./dailyTraining.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { raceDayProgram } from "./raceDayYield.js";
 import {
-  RACE_DAY_ROLE_YIELD_FLAG_KEY, RACE_DAY_ROLE_YIELD_PARAMS_ENV, RACE_DAY_ROLE_YIELD_PARAMS_KEY,
+  RACE_DAY_ROLE_YIELD_FLAG_KEY, RACE_DAY_ROLE_YIELD_PARAMS_KEY,
   DECISIVE_ABILITY_BY_PROFILE, HELPER_ABILITIES_BY_PROFILE,
   isRaceDayRoleYieldEnabled, loadRaceDayRoleYield, raceDayRoleBaseProgram, raceDayRoleBonusWeights,
   raceDayRoleByRider, raceDayRoleGroup, raceDayRoleYieldMultipliers, raceDayRoleAbilityGroups,
@@ -181,11 +181,9 @@ function seed({ flags = {}, raced = false, profile = "mountain" } = {}) {
   return state;
 }
 
-async function run(state, { env = {}, calls } = {}) {
-  const key = RACE_DAY_ROLE_YIELD_PARAMS_ENV;
-  const prev = process.env[key];
-  if (env[key] === undefined) delete process.env[key];
-  else process.env[key] = env[key];
+// `params: true` seeder private_config med PARAMS (eneste kilde, ingen miljoe-reserve).
+async function run(state, { params = false, calls } = {}) {
+  if (params) state.private_config = [{ key: RACE_DAY_ROLE_YIELD_PARAMS_KEY, value: PARAMS }];
   const warn = console.warn;
   const warnings = [];
   console.warn = (...args) => warnings.push(args.join(" "));
@@ -198,8 +196,6 @@ async function run(state, { env = {}, calls } = {}) {
     return { result, warnings };
   } finally {
     console.warn = warn;
-    if (prev === undefined) delete process.env[key];
-    else process.env[key] = prev;
   }
 }
 
@@ -213,10 +209,9 @@ function gameState(state) {
   });
 }
 
-const PARAMS_ENV = { [RACE_DAY_ROLE_YIELD_PARAMS_ENV]: JSON.stringify(PARAMS) };
 const progressed = (row, k) => Number(row[k]) + Number(row.ability_progress?.[k] ?? 0);
 
-// ── Golden: slukket = bit-identisk, ogsaa med params i miljoeet ───────────────
+// ── Golden: slukket = bit-identisk, ogsaa med params i private_config ───────────────
 for (const raced of [false, true]) {
   for (const value of [null, "off", "beta"]) {
     test(`#5950 golden (${raced ? "loebsdag" : "traeningsdag"}, flag ${JSON.stringify(value)}): bit-identisk med i dag, ingen rolle- eller params-opslag`, async () => {
@@ -225,7 +220,7 @@ for (const raced of [false, true]) {
       const flags = value == null ? {} : { [RACE_DAY_ROLE_YIELD_FLAG_KEY]: value };
       const gated = seed({ flags, raced });
       const calls = [];
-      await run(gated, { env: PARAMS_ENV, calls });
+      await run(gated, { params: true, calls });
       assert.deepEqual(gameState(gated), gameState(today));
       assert.ok(!calls.includes("private_config"), "ingen params-opslag naar flaget er slukket");
       assert.ok(!calls.includes("race_entries"), "ingen rolle-opslag naar flaget er slukket");
@@ -249,13 +244,13 @@ test("#5950: flag on + params: traeningsdagen er uroert, loebsdagen giver mere i
   const trainToday = seed();
   await run(trainToday);
   const trainOn = seed({ flags: { [RACE_DAY_ROLE_YIELD_FLAG_KEY]: "on" } });
-  await run(trainOn, { env: PARAMS_ENV });
+  await run(trainOn, { params: true });
   assert.deepEqual(gameState(trainOn), gameState(trainToday), "traeningsdag: bit-identisk");
 
   const raceToday = seed({ raced: true });
   await run(raceToday);
   const raceOn = seed({ flags: { [RACE_DAY_ROLE_YIELD_FLAG_KEY]: "on" }, raced: true });
-  const { warnings } = await run(raceOn, { env: PARAMS_ENV });
+  const { warnings } = await run(raceOn, { params: true });
   const p0 = raceToday.rider_derived_abilities[0];
   const p1 = raceOn.rider_derived_abilities[0];
   assert.ok(progressed(p1, "climbing") > progressed(p0, "climbing"), "bjergetapens klatring faar mere");
@@ -263,13 +258,20 @@ test("#5950: flag on + params: traeningsdagen er uroert, loebsdagen giver mere i
   assert.ok(!warnings.some((w) => w.includes("[race-day-role-yield]")), "ingen advarsel med gyldige params");
 });
 
-test("#5950: params fra private_config bruges foer reserven i miljoeet", async () => {
-  const fromTable = seed({ flags: { [RACE_DAY_ROLE_YIELD_FLAG_KEY]: "on" }, raced: true });
-  fromTable.private_config = [{ key: RACE_DAY_ROLE_YIELD_PARAMS_KEY, value: PARAMS }];
-  await run(fromTable);
-  const fromEnv = seed({ flags: { [RACE_DAY_ROLE_YIELD_FLAG_KEY]: "on" }, raced: true });
-  await run(fromEnv, { env: PARAMS_ENV });
-  assert.deepEqual(gameState(fromTable), gameState(fromEnv));
+test("#5950: miljoe-variablen laeses ikke laengere; uden private_config-raekke = dagens model", async () => {
+  const prev = process.env.RACE_DAY_ROLE_YIELD_PARAMS;
+  process.env.RACE_DAY_ROLE_YIELD_PARAMS = JSON.stringify(PARAMS);
+  try {
+    const today = seed({ raced: true });
+    await run(today);
+    const envOnly = seed({ flags: { [RACE_DAY_ROLE_YIELD_FLAG_KEY]: "on" }, raced: true });
+    const { warnings } = await run(envOnly);
+    assert.deepEqual(gameState(envOnly), gameState(today), "env alene taender intet");
+    assert.ok(warnings.some((w) => w.includes("[race-day-role-yield]")));
+  } finally {
+    if (prev === undefined) delete process.env.RACE_DAY_ROLE_YIELD_PARAMS;
+    else process.env.RACE_DAY_ROLE_YIELD_PARAMS = prev;
+  }
 });
 
 // ── Rene funktioner ───────────────────────────────────────────────────────────
@@ -463,7 +465,7 @@ test("#5950: flag-laesning - beta er off, strict kaster ved databasefejl", async
   await assert.rejects(() => isRaceDayRoleYieldEnabled(broken, { strict: true }));
 });
 
-test("#5950: ugyldig raekke i private_config bruger ALDRIG reserven", async () => {
+test("#5950: ugyldig raekke i private_config = dagens model + advarsel", async () => {
   clearPrivateConfigCache();
   const state = {
     app_config: [{ key: RACE_DAY_ROLE_YIELD_FLAG_KEY, value: "on" }],
@@ -471,7 +473,7 @@ test("#5950: ugyldig raekke i private_config bruger ALDRIG reserven", async () =
   };
   const warnings = [];
   const params = await loadRaceDayRoleYield({
-    supabase: createMockSupabase(state), env: PARAMS_ENV, log: { warn: (m) => warnings.push(m) },
+    supabase: createMockSupabase(state), log: { warn: (m) => warnings.push(m) },
   });
   assert.equal(params, null);
   assert.ok(warnings.length > 0);
@@ -485,7 +487,7 @@ test("#5950: strict + ugyldig params-raekke = advarsel og dagens model, kaster i
   };
   const warnings = [];
   const params = await loadRaceDayRoleYield({
-    supabase: createMockSupabase(state), env: PARAMS_ENV, strict: true, log: { warn: (m) => warnings.push(m) },
+    supabase: createMockSupabase(state), strict: true, log: { warn: (m) => warnings.push(m) },
   });
   assert.equal(params, null);
   assert.ok(warnings.some((w) => w.includes("[race-day-role-yield]")));
@@ -505,9 +507,9 @@ test("#5950: strict + fejlet databaselaesning af params kaster; uden strict = da
     };
   };
   clearPrivateConfigCache();
-  await assert.rejects(() => loadRaceDayRoleYield({ supabase: brokenParams(), env: {}, strict: true, log: { warn() {} } }));
+  await assert.rejects(() => loadRaceDayRoleYield({ supabase: brokenParams(), strict: true, log: { warn() {} } }));
   clearPrivateConfigCache();
-  assert.equal(await loadRaceDayRoleYield({ supabase: brokenParams(), env: {}, log: { warn() {} } }), null);
+  assert.equal(await loadRaceDayRoleYield({ supabase: brokenParams(), log: { warn() {} } }), null);
 });
 
 test("#5950: kalenderdags-stien (training_tick_per_race_day off) indlaeser rollen fra dagens racede raekker", async () => {
@@ -518,10 +520,10 @@ test("#5950: kalenderdags-stien (training_tick_per_race_day off) indlaeser rolle
   };
   const captain = withRole("captain");
   const calls = [];
-  await run(captain, { env: PARAMS_ENV, calls });
+  await run(captain, { params: true, calls });
   assert.ok(calls.includes("race_entries"), "rolle-opslaget koerer paa kalenderdags-stien");
   const helper = withRole("helper");
-  await run(helper, { env: PARAMS_ENV });
+  await run(helper, { params: true });
   const c = captain.rider_derived_abilities[0];
   const h = helper.rider_derived_abilities[0];
   assert.ok(progressed(c, "climbing") > progressed(h, "climbing"), "kaptajnen faar mere klatring end hjaelperen");

@@ -32,7 +32,7 @@ import { supabase } from "../../lib/supabase";
 import NationCell from "../rider/NationCell.jsx";
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import ScoutablePotentiale from "../rider/ScoutablePotentiale.jsx";
-import { useTypeColumnLabel } from "../../lib/useBestRoleDisplay.js";
+import { useTypeColumnLabel } from "../../lib/useTypeColumnLabel.ts";
 import { useTableSort } from "../../lib/useTableSort.js";
 import { riderNameSortKey } from "../../lib/riderColumnSort.js";
 import { riderOverallRating } from "../../lib/riderRating.js";
@@ -123,7 +123,7 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
   const { t: tAcademy } = useTranslation("academy");
   const listedIds = useListedRiderIds(useMemo(() => riders.map((r) => r.id), [riders]));
   const reputationOn = useRiderReputation();
-  const typeColumnLabel = useTypeColumnLabel(t("squad.headers.type")); // #5435
+  const typeColumnLabel = useTypeColumnLabel(); // #5435
   const navigate = useNavigate();
   const [tableMode, setTableMode] = useState<TableMode>("overview");
   const abilityColumns = useAbilityColumns<Row>();

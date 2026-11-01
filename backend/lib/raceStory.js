@@ -210,9 +210,33 @@ function resolveIncidentGroup(m, groupId, km) {
   m.inferred.add(groupId);
 }
 
+/**
+ * #7388: navngiver en sammenlægning ud af resten kun en del af dens ryttere?
+ * Ved målet splitter motoren hovedgruppen med én group_merged pr. tidsgruppe
+ * (4/11/3/134); kun den sidste tømmer resten. Resten bliver i kildegruppen så
+ * længe der er ryttere tilbage (eksplicitte eller unavngivne), så gruppernes
+ * størrelser summerer til feltet. Uden field_count: kun eksplicitte medlemmer.
+ */
+function isPartialRestMerge(m, fromId, namedIds) {
+  if (!fromId || fromId !== m.restId || !namedIds.length) return false;
+  const named = new Set(namedIds);
+  const left = [...(m.groups.get(fromId) ?? [])].filter((id) => !named.has(id)).length;
+  if (left > 0) return true;
+  if (m.fieldCount == null) return false;
+  // Unavngivne i resten der nu navngives (ikke placeret, ikke udgået, ikke ventende uheldsoffer).
+  const leaving = new Set(namedIds.filter((id) => !m.abandoned.has(id) && !m.placed.has(id) && !m.pendingSolo.includes(id)));
+  const { size } = groupView(m, fromId);
+  return (size ?? 0) - (m.groups.get(fromId)?.size ?? 0) - leaving.size > 0;
+}
+
 function mergeGroups(m, fromId, intoId, namedIds) {
   if (!fromId || !intoId || fromId === intoId) return;
   ensureGroup(m, intoId);
+  if (isPartialRestMerge(m, fromId, namedIds)) {
+    // Kun de navngivne skifter gruppe; resten (og kildegruppen) består.
+    placeRiders(m, intoId, namedIds);
+    return;
+  }
   const moving = new Set([...(m.groups.get(fromId) ?? []), ...namedIds]);
   if (fromId === m.restId) {
     // Resten (de unavngivne) følger med ind i den nye gruppe.
@@ -502,6 +526,9 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
       const into = str(p.into_group_id);
       const span = openSpans.get(groupId);
       if (!span || !into || into === groupId) return [];
+      // #7388: en delvis sammenlægning ud af resten er en ny gruppe der danner sig
+      // af de navngivne; kildegruppen (resten) lever videre.
+      if (isPartialRestMerge(m, groupId, ids(p.rider_ids))) return [openSpan(into, placeKm(event), groupId)].filter(Boolean);
       const opened = openSpan(into, placeKm(event), null);
       // Motoren kan placere et split og en sammenlægning i samme segment med
       // kontaktpunktet før separationspunktet (to skøn fra samme endepunkter).
