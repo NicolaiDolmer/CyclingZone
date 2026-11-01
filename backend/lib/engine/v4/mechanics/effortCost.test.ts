@@ -13,7 +13,7 @@ import assert from "node:assert/strict";
 import fc from "fast-check";
 
 import { ALL_OUT_7280_ACTIVE, ALL_OUT_7280_TUNING, allOut7280Active, allOut7280Tuning, allOutDemandMultiplier, allOutTimeTrialBonus7280, applyEffortToDemand, climbGapEffortFactor, EFFORT_COST_TUNING, EFFORT_COST_TUNING_6641, effortCostTuningFor, effortDemandMultiplier, isAllOut7280On, isEffortCalibration6641Revision, setAllOut7280ForBench } from "./effortCost.ts";
-import { isSaveItt7332Effort, isSaveItt7332On, SAVE_ITT_7332_ACTIVE, SAVE_ITT_7332_TUNING, saveItt7332Active, saveItt7332Tuning, saveTimeTrialPenalty7332, setSaveItt7332ForBench } from "./effortCost.ts";
+import { isSaveItt7332Effort, SAVE_ITT_7332_TUNING, saveTimeTrialPenalty7332 } from "./effortCost.ts";
 import { decidingClimbSelectionsOnTheDay, effortClimbScoreFactor } from "./climbSelection.ts";
 import { isS5ProfilesV3OrLater, RACE_RULES_REVISIONS } from "../../../raceEngineRulesRevision.ts";
 import type { EffortLevel } from "../types.ts";
@@ -282,54 +282,26 @@ test("#6641: gevinsten overlever nedkoerselsfinalens genberegnede underskud (dag
   assert.equal(old.find((s) => s.riderId === "a")!.deficit01, b);
 });
 
-// #7332 (ejer 31/10 valg A, SLUKKET): spar mod uret koster tid. Knappen og kontakten.
-test("#7332: kontakten er TAENDT (ejer-go 31/10); slukket er spar-prisen 0 for alle trin og revisioner", () => {
-  assert.equal(SAVE_ITT_7332_ACTIVE, true, "ejer-go 31/10");
-  assert.equal(saveItt7332Active(), true);
+// #7332 (ejer 31/10 valg A; kodekontakten fjernet, krav 5): spar mod uret koster tid.
+// `on` er revisions-gaten (s5_profiles_v3 og senere), sat af kalderne.
+test("#7332: knappen er frosset; uden reglen i kraft (aeldre revisioner) er spar-prisen 0 for alle trin", () => {
   assert.ok(Object.isFrozen(SAVE_ITT_7332_TUNING));
-  setSaveItt7332ForBench({ active: false });
-  try {
-    for (const revision of [...RACE_RULES_REVISIONS, null, undefined]) {
-      assert.equal(isSaveItt7332On(revision), false, String(revision));
-    }
-  } finally {
-    setSaveItt7332ForBench(null);
-  }
   for (const effort of ["grupetto", "save", "normal", "protect", "all_out"] as EffortLevel[]) {
     assert.equal(saveTimeTrialPenalty7332(effort, 99, false), 0, effort);
     assert.equal(isSaveItt7332Effort(effort, false), false, effort);
   }
 });
 
-test("#7332 (taendt): spar, beskyt og grupetto betaler samme pris; normal og alt ud betaler intet", () => {
-  try {
-    setSaveItt7332ForBench({ active: true });
-    assert.equal(isSaveItt7332On("s5_profiles_v3"), true);
-    for (const revision of [...RACE_RULES_REVISIONS.filter((r) => !isS5ProfilesV3OrLater(r)), null, undefined]) {
-      assert.equal(isSaveItt7332On(revision), false, `${String(revision)}: aeldre revisioner uroert`);
-    }
-    const save = saveTimeTrialPenalty7332("save", 80, true);
-    assert.ok(save > 0, "spar koster kapacitet");
-    assert.equal(saveTimeTrialPenalty7332("protect", 80, true), save, "beskyt = spar");
-    assert.equal(saveTimeTrialPenalty7332("grupetto", 80, true), save, "grupetto = spar");
-    assert.equal(saveTimeTrialPenalty7332("normal", 80, true), 0);
-    assert.equal(saveTimeTrialPenalty7332("all_out", 80, true), 0);
-    assert.equal(saveTimeTrialPenalty7332(undefined, 80, true), 0);
-    assert.ok(Math.abs(saveTimeTrialPenalty7332("save", 99, true) - SAVE_ITT_7332_TUNING.saveTimeTrialLoss) < 1e-12, "fuld knap ved evne 99");
-    assert.equal(saveTimeTrialPenalty7332("save", Number.NaN, true), 0, "ukendt evne = ingen pris");
-  } finally {
-    setSaveItt7332ForBench(null);
-  }
-});
-
-test("#7332: bench-setteren saetter kandidat-knappen og nulstiller til kontakten", () => {
-  try {
-    setSaveItt7332ForBench({ active: true, tuning: { saveTimeTrialLoss: 0.02 } });
-    assert.equal(saveItt7332Tuning().saveTimeTrialLoss, 0.02);
-    assert.ok(Math.abs(saveTimeTrialPenalty7332("save", 99, true) - 0.02) < 1e-12);
-  } finally {
-    setSaveItt7332ForBench(null);
-  }
-  assert.equal(saveItt7332Active(), SAVE_ITT_7332_ACTIVE);
-  assert.equal(saveItt7332Tuning(), SAVE_ITT_7332_TUNING);
+test("#7332: spar, beskyt og grupetto betaler samme pris; normal og alt ud betaler intet", () => {
+  for (const effort of ["save", "protect", "grupetto"] as EffortLevel[]) assert.equal(isSaveItt7332Effort(effort, true), true, effort);
+  for (const effort of ["normal", "all_out", undefined] as (EffortLevel | undefined)[]) assert.equal(isSaveItt7332Effort(effort, true), false, String(effort));
+  const save = saveTimeTrialPenalty7332("save", 80, true);
+  assert.ok(save > 0, "spar koster kapacitet");
+  assert.equal(saveTimeTrialPenalty7332("protect", 80, true), save, "beskyt = spar");
+  assert.equal(saveTimeTrialPenalty7332("grupetto", 80, true), save, "grupetto = spar");
+  assert.equal(saveTimeTrialPenalty7332("normal", 80, true), 0);
+  assert.equal(saveTimeTrialPenalty7332("all_out", 80, true), 0);
+  assert.equal(saveTimeTrialPenalty7332(undefined, 80, true), 0);
+  assert.ok(Math.abs(saveTimeTrialPenalty7332("save", 99, true) - SAVE_ITT_7332_TUNING.saveTimeTrialLoss) < 1e-12, "fuld knap ved evne 99");
+  assert.equal(saveTimeTrialPenalty7332("save", Number.NaN, true), 0, "ukendt evne = ingen pris");
 });
