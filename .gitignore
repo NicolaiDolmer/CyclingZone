@@ -151,3 +151,9 @@ balance-internals/
 
 # #5844: privat dry-run/apply-rapport for bestyrelsens gave (prod-tal + hold-id; committes aldrig)
 docs/snapshots/5844/
+
+# #7446: lokale arbejdsfiler (kladder, raa screenshots, dry-run-rapporter) bor i
+# `<mappe>/local/`, en junction til OneDrive-context/repo-local (link-onedrive-context.ps1).
+docs/drafts/local
+pr-screens/local
+docs/snapshots/local
