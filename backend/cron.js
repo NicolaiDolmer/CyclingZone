@@ -809,6 +809,10 @@ async function runGraduationSweepCron() {
   if (result.resolved) {
     console.log(`🎓 Graduerings-sweep: ${result.resolved} akademiryttere auto-resolveret`);
   }
+  if (result.alreadyResolved) {
+    // #7474: afgjort efter listen blev læst (manageren eller en anden proces); ingen fejl.
+    console.log(`🎓 Graduerings-sweep: ${result.alreadyResolved} var allerede afgjort`);
+  }
   if (result.failed) {
     console.error(`❌ Graduerings-sweep: ${result.failed} fejlede (per-rytter try/catch isolerede)`);
     // #2389 A2: aggregeret capture pr. tick (mirror entry-generator-mønstret).

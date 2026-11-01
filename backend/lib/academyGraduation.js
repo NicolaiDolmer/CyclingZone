@@ -992,9 +992,13 @@ export async function restampSoldGraduation(supabase, { teamId, riderId, now, st
 
 
 async function finishGraduation(supabase, { gradId, status, teamId, rider, now, action, notify = notifyTeamOwner }) {
-  const { error } = await supabase.from("academy_graduation")
-    .update({ status, resolved_at: now.toISOString() }).eq("id", gradId);
+  // #7474: compare-and-set. Kun den afgørelse der flytter rækken fra 'pending'
+  // sender beskeden; en samtidig afgørelse af samme række får 0 rækker og stopper.
+  const { data, error } = await supabase.from("academy_graduation")
+    .update({ status, resolved_at: now.toISOString() }).eq("id", gradId).eq("status", "pending")
+    .select("id");
   if (error) throw new Error(`finishGraduation update: ${error.message}`);
+  if (Array.isArray(data) && data.length === 0) return;
   const verb = action === "promote" ? "promoted to your senior squad"
     : action === "sell" ? "listed for transfer" : "released";
   const name = `${rider.firstname} ${rider.lastname}`;

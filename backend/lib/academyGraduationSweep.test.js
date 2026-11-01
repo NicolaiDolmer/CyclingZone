@@ -166,3 +166,33 @@ test("#5133 sweep: ingen missede ryttere → backfillen er en no-op", async () =
   assert.equal(res.backfill.created, 0);
   assert.equal(supabase.rec.gradInserts.length, 0);
 });
+
+test("#7474: not_pending tælles som allerede afgjort, ikke som fejl", async () => {
+  const pending = [
+    { team_id: "t1", rider_id: "done", deadline: "2026-06-19T10:00:00Z" },
+    { team_id: "t2", rider_id: "ok", deadline: "2026-06-19T10:00:00Z" },
+  ];
+  const resolveFn = async (_s, { riderId }) => { if (riderId === "done") throw new Error("not_pending"); return { riderId }; };
+  const res = await runAcademyGraduationSweep({ supabase: makeSupabase(pending), now: AFTER_WINDOW, isEnabled: async () => true, resolveFn });
+  assert.equal(res.failed, 0);
+  assert.equal(res.alreadyResolved, 1);
+  assert.equal(res.resolved, 1);
+});
+
+test("#7474: et sweep starter ikke, mens det forrige stadig kører", async () => {
+  const pending = [{ team_id: "t1", rider_id: "slow", deadline: "2026-06-19T10:00:00Z" }];
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  const calls = [];
+  const resolveFn = async (_s, { riderId }) => { calls.push(riderId); await gate; return { riderId }; };
+  const first = runAcademyGraduationSweep({ supabase: makeSupabase(pending), now: AFTER_WINDOW, isEnabled: async () => true, resolveFn });
+  await new Promise((r) => setTimeout(r, 10));
+  const second = await runAcademyGraduationSweep({ supabase: makeSupabase(pending), now: AFTER_WINDOW, isEnabled: async () => true, resolveFn });
+  assert.equal(second.skipped, "already_running");
+  release();
+  const res = await first;
+  assert.equal(res.resolved, 1);
+  assert.deepEqual(calls, ["slow"]);
+  const third = await runAcademyGraduationSweep({ supabase: makeSupabase([]), now: AFTER_WINDOW, isEnabled: async () => true, resolveFn });
+  assert.notEqual(third.skipped, "already_running", "låsen slippes efter kørslen");
+});
