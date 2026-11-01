@@ -372,14 +372,12 @@ features:
     area: stats
     title_en: Calendar race card and race history library
     title_da: Kalender-løbskort og løbshistorik
-    state: building
+    state: beta
     ssot: docs/CALENDAR_RULES.md
     epic: 6514
     flag: race_library_v2
-    verified: 2026-10-26
-    note: #6680 + #7217 merget; off i prod; PR #6636 åben.
-    decision: ejer-beslutning
-    decide_by: 2026-10-25
+    verified: 2026-11-01
+    note: Beta for beta-testere 1/11 (ejer-go, efter #7463 Vis-vælger). PR #6636 åben.
 
   - id: race-day-development
     area: race-day
