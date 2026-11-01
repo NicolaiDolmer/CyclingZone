@@ -1388,6 +1388,8 @@ export default function RaceDetailPage() {
     changeV2Tab("tactics");
     setV2TacticsStage(stageNumber);
   };
+  // #7330: valgte etapes udgaaede, saa egne ikke forsvinder fra "Your riders".
+  const v2DnfRows = dnfRowsForStage(incidents, v2SelectedStage, teamIdByRiderFromRows(stagePointsRows));
   const stagePageV2El = stagePageV2 === true ? (
     <StagePageV2
       isStageRace={v2IsStageRace}
@@ -1410,6 +1412,7 @@ export default function RaceDetailPage() {
       myTeamId={myTeamId}
       stageRoles={stageRoles}
       careerEvents={careerEvents}
+      dnfRows={v2DnfRows}
       standingsSlot={renderTabContent("results")}
       teamSlot={renderTabContent("team")}
       tacticsSlot={renderTabContent("tactics", { tacticsStage: v2TacticsStage })}

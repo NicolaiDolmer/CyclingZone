@@ -9,7 +9,7 @@ import { formatNumber } from "../../../lib/intl.js";
 import { profileLabelKey, finaleLabelKey } from "../../../lib/stageProfileConfig.js";
 import {
   dayDemands, elevationSeries, favouritesFor, lineupFor, sortedClimbs, surfaceOf,
-  type ResultRow, type RoleOverride, type RoleRider, type StageProfile,
+  type DnfRowInput, type ResultRow, type RoleOverride, type RoleRider, type StageProfile,
 } from "./stagePageV2Model.ts";
 import StageProfileV2, { GradientLegend } from "./StageProfileV2.tsx";
 import ClimbCard from "./ClimbCard.tsx";
@@ -104,6 +104,8 @@ export interface StageTabV2Props {
   myTeamId: string | null;
   stageRoles: null | false | { riders?: RoleRider[]; overrides?: RoleOverride[] };
   careerEvents: CareerEvent[];
+  /** #7330: etapens udgaaede (dnfRowsForStage) til "Your riders". */
+  dnfRows?: DnfRowInput[];
   tacticsAction: { label: string; onClick: () => void } | null;
   onOpenStandings: () => void;
   emptyState: ReactNode;
@@ -114,7 +116,7 @@ export interface StageTabV2Props {
 
 export default function StageTabV2({
   stageNumber, stagesCompleted, isStageRace, phase, profile, results, stagePointRows, profileByStage = {}, stageLoaded, stageErrorSlot, myTeamId,
-  stageRoles, careerEvents, tacticsAction, onOpenStandings, emptyState, story = null, narrative = null,
+  stageRoles, careerEvents, dnfRows = [], tacticsAction, onOpenStandings, emptyState, story = null, narrative = null,
 }: StageTabV2Props) {
   const { t } = useTranslation("races");
   const [selectedClimb, setSelectedClimb] = useState<number>(() => Math.max(0, sortedClimbs(profile).length - 1));
@@ -142,6 +144,7 @@ export default function StageTabV2({
             loaded={stageLoaded}
             myTeamId={myTeamId}
             careerEvents={careerEvents}
+            dnfRows={dnfRows}
             primaryAction={tacticsAction}
             onOpenStandings={onOpenStandings}
           />
