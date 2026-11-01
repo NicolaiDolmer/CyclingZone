@@ -2825,6 +2825,18 @@ test("#7339 Codex: reservationer til løb på hver sin dag presser ikke det før
   assert.ok(out.A.length >= 6, `A fik ${out.A.length}`);
 });
 
+test("#7339 Codex: to mål-løb ofres ikke for et lavere rangeret løb", () => {
+  const riders = ridersN(16);
+  const ids = riders.map((r) => r.rider_id);
+  const only = (keep) => new Set(ids.filter((id) => !keep.includes(id)));
+  const A = { race_id: "A", window: { start: 1, end: 5, days: [1, 3, 5] }, stages: [flat, flat, flat], sizeRule: { min: 8, max: 8 } };
+  const B = { race_id: "B", window: { start: 3, end: 4, days: [3, 4] }, stages: [flat, flat], sizeRule: { min: 8, max: 8 }, excludedRiderIds: only(ids.slice(0, 6)) };
+  const C = { race_id: "C", window: { start: 5, end: 6, days: [5, 6] }, stages: [flat, flat], sizeRule: { min: 8, max: 8 }, excludedRiderIds: only(ids.slice(6, 12)) };
+  const strategy = { aChain: [], captainPriorities: {}, roleRules: {}, targetRaceIds: new Set(["B", "C"]) };
+  const out = assignTeamAcrossRaces({ riders, races: [A, B, C], strategy });
+  assert.ok(out.B.length >= 6 && out.C.length >= 6, JSON.stringify(sizes(out, ["A", "B", "C"])));
+});
+
 test("#7339: et løb uden konkurrent fyldes som før, også under gulvet", () => {
   const out = assignTeamAcrossRaces({ riders: ridersN(4), races: [dayRace("A", 6)] });
   assert.equal(out.A.length, 4);

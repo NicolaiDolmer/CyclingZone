@@ -119,13 +119,17 @@ function floorAwareCap({ race, available, later, availableFor, strategy }) {
     // Codex P1: reservationer til senere løb på HVER SIN dag kan tilsammen tage så mange,
     // at dette løb falder under sit gulv. Så slippes det lavest rangerede løbs
     // reservation, indtil dette løb kan stilles op (det løb kan så stå tomt i stedet).
+    // Kun løb rangeret UNDER dette løb kan miste reservationen (Codex P1: et mål-løb
+    // ofres ikke for et lavere rangeret løb); er det ikke nok, står dette løb tomt.
     if (selfKept) {
       const rank = new Map(ranked.map((it, i) => [it, i]));
+      const selfRank = rank.get(self);
       reservations.sort((a, b) => rank.get(a.item) - rank.get(b.item));
-      while (reservations.length && supply - reserved.size < self.need) {
+      while (supply - reserved.size < self.need && reservations.length && rank.get(reservations[reservations.length - 1].item) > selfRank) {
         const dropped = reservations.pop();
         dropped.ids.forEach((id) => reserved.delete(id));
       }
+      if (supply - reserved.size < self.need) return { cap: 0, reserved };
     }
   }
   return { cap, reserved };
