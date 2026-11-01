@@ -1,6 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseRacePause, isRacePauseActive, withoutPausedUpcoming } from "./racePause.ts";
+import {
+  parseRacePause,
+  isRacePauseActive,
+  withoutPausedUpcoming,
+  isSchedulerSwitchedOff,
+  resolveRacePause,
+  shouldAnnounceRacePause,
+} from "./racePause.ts";
 
 test("parseRacePause: objekt og JSON-streng med ny start", () => {
   const iso = "2026-10-23T14:00:00Z";
@@ -45,4 +52,74 @@ test("withoutPausedUpcoming: forfalden etape uden resultat (LIVE) skjules, kørt
     { state: "finished", stageNumber: 1, stagesCompleted: 1 },
   ] };
   assert.deepEqual(withoutPausedUpcoming(stages, true).cards.map((c) => c.stageNumber + c.state), ["2live", "1finished"]);
+});
+
+// ── #7335: pausen udledes automatisk af kontakten ────────────────────────────
+const NOW = Date.parse("2026-10-28T12:00:00Z");
+const base = { notice: undefined, scheduler: "on", seasonInPlay: true, seasonChange: false };
+
+test("isSchedulerSwitchedOff: kun eksplicit off/false er pausebevis", () => {
+  assert.equal(isSchedulerSwitchedOff("off"), true);
+  assert.equal(isSchedulerSwitchedOff(" OFF "), true);
+  assert.equal(isSchedulerSwitchedOff("\"off\""), true);
+  assert.equal(isSchedulerSwitchedOff(false), true);
+  assert.equal(isSchedulerSwitchedOff("false"), true);
+  for (const v of ["on", "beta", true, undefined, null, "", 0, "noget andet"]) {
+    assert.equal(isSchedulerSwitchedOff(v), false, `${String(v)} maa ikke give en pause`);
+  }
+});
+
+test("resolveRacePause: pauset via kontakten = bjaelke uden starttid (ingen notice noedvendig)", () => {
+  const p = resolveRacePause({ ...base, scheduler: "off" }, NOW);
+  assert.deepEqual(p, { paused: true, newStartMs: null });
+  assert.equal(shouldAnnounceRacePause(p), true);
+  assert.deepEqual(resolveRacePause({ ...base, scheduler: false }, NOW), { paused: true, newStartMs: null });
+});
+
+test("resolveRacePause: pauset via notice = bjaelke med ny starttid, ogsaa naar kontakten er taendt", () => {
+  const iso = "2026-10-28T14:00:00Z";
+  assert.deepEqual(
+    resolveRacePause({ ...base, notice: { paused: true, new_start: iso } }, NOW),
+    { paused: true, newStartMs: Date.parse(iso) },
+  );
+  // Kontakten slukket + notice: noticens starttid vinder.
+  assert.deepEqual(
+    resolveRacePause({ ...base, scheduler: "off", notice: { paused: true, new_start: iso } }, NOW),
+    { paused: true, newStartMs: Date.parse(iso) },
+  );
+});
+
+test("resolveRacePause: udloebet notice + kontakten stadig slukket = pausen staar videre uden tid", () => {
+  const past = { paused: true, new_start: "2026-10-28T11:00:00Z" };
+  assert.deepEqual(resolveRacePause({ ...base, scheduler: "off", notice: past }, NOW), { paused: true, newStartMs: null });
+  assert.equal(resolveRacePause({ ...base, scheduler: "on", notice: past }, NOW), null);
+});
+
+test("resolveRacePause: saesonskifte = ingen pause-besked (egen blaa bjaelke), men pausen gaelder stadig", () => {
+  for (const inputs of [
+    { ...base, scheduler: "off", seasonChange: true },
+    { ...base, notice: { paused: true }, seasonChange: true },
+  ]) {
+    const p = resolveRacePause(inputs, NOW);
+    // Dashboardet skjuler fortsat de gamle starttider (Boolean(pause))...
+    assert.ok(p);
+    assert.equal(p.silent, true);
+    // ...men ingen bjaelke/banner: samme besked maa ikke staa to gange.
+    assert.equal(shouldAnnounceRacePause(p), false);
+  }
+});
+
+test("resolveRacePause: kontakten slukket uden en saeson med uafsluttede loeb = ingen pause", () => {
+  assert.equal(resolveRacePause({ ...base, scheduler: "off", seasonInPlay: false }, NOW), null);
+  // En eksplicit notice gaelder uanset saesonen.
+  assert.ok(resolveRacePause({ ...base, notice: { paused: true }, seasonInPlay: false }, NOW));
+});
+
+test("resolveRacePause: ingen pause = ingen bjaelke", () => {
+  assert.equal(resolveRacePause(base, NOW), null);
+  assert.equal(resolveRacePause({ ...base, scheduler: undefined }, NOW), null);
+  assert.equal(resolveRacePause({ ...base, scheduler: "beta" }, NOW), null);
+  assert.equal(resolveRacePause({ ...base, notice: { paused: false } }, NOW), null);
+  assert.equal(resolveRacePause(null, NOW), null);
+  assert.equal(shouldAnnounceRacePause(null), false);
 });
