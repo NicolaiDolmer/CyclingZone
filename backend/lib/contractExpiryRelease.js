@@ -205,6 +205,8 @@ export async function releaseExpiredContractRiders({
     try {
       // Concurrency-guard: kun frigør hvis rytteren stadig er på det hold vi læste
       // (en parallel handel kan i teorien have flyttet ham imellem).
+      // #7246: trg_record_rider_team_exit snapshots OLD contract fields into event.meta
+      // in this same UPDATE. Do not insert a second ownership event here (#6504).
       const patch = buildContractReleasePatch(rider);
       const { data: released, error } = await supabase
         .from("riders")
