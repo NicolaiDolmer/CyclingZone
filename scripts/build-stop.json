@@ -448,6 +448,11 @@
       "since": "2026-11-01"
     },
     {
+      "issue": 7388,
+      "reason": "Løbsfilm: feltet mærkes som udbrud på nogle etaper, gruppetal summerer ikke (staff 30/10), ejer-go 1/11",
+      "since": "2026-11-01"
+    },
+    {
       "issue": 6104,
       "reason": "Sikkerhed: forum-images kan listes af alle (Supabase-advisor), ejer-go 1/11",
       "since": "2026-11-01"

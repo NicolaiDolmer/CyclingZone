@@ -57,5 +57,11 @@
     "title": "Paused.",
     "newStart": "New start {time}.",
     "newStartUnknown": "New start time will be announced."
+  },
+  "racePauseInfoBar": {
+    "regionAriaLabel": "Race status",
+    "title": "Races are paused.",
+    "newStart": "New start {time}.",
+    "newStartUnknown": "I will announce the new start time here."
   }
 }

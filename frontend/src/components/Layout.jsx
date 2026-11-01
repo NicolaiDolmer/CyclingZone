@@ -17,6 +17,7 @@ import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 const FeedbackModal = lazyWithRetry(() => import("./FeedbackModal.jsx"));
 import MobileQuickNav from "./MobileQuickNav";
 import RaceControlBanner from "./RaceControlBanner";
+import RacePauseInfoBar from "./RacePauseInfoBar.tsx";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { Wordmark } from "./Brand";
 import DiscordJoinLink from "./DiscordJoinLink";
@@ -967,6 +968,7 @@ export default function Layout() {
             den (mobile) top-nav og over den paddede indholds-wrapper. Renderer
             intet når der ingen aktive ops_notices er (fetch fejler stille). */}
         <RaceControlBanner />
+        <RacePauseInfoBar />{/* #7335 */}
 
         {/* Mobile topbar — bevidst IKKE sticky: den skal scrolle med indholdet
             og ikke "følge med op" og stjæle plads på små skærme (#1007). */}

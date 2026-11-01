@@ -57,5 +57,11 @@
     "title": "Gepauzeerd.",
     "newStart": "Nieuwe start {time}.",
     "newStartUnknown": "De nieuwe starttijd volgt."
+  },
+  "racePauseInfoBar": {
+    "regionAriaLabel": "Race status",
+    "title": "De wedstrijden zijn gepauzeerd.",
+    "newStart": "Nieuwe start {time}.",
+    "newStartUnknown": "Ik meld de nieuwe starttijd hier."
   }
 }
