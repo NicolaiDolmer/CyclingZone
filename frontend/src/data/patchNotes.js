@@ -1,5 +1,164 @@
 export const PATCHES = [
   {
+    "version": "7.391",
+    "date": "2026-11-01",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The assistant no longer sets an attack by default",
+          "body": "The tactics assistant no longer adds a captain attack on the last climb by itself. When it suggests something, you see the suggestion and a short reason, and you decide."
+        },
+        "da": {
+          "title": "Assistenten sætter ikke længere selv et angreb",
+          "body": "Taktik-assistenten sætter ikke længere selv et kaptajn-angreb på sidste stigning. Når den foreslår noget, ser du forslaget og en kort grund, og du bestemmer."
+        },
+        "refs": [
+          7369
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Time trials only show orders that make sense",
+          "body": "On a time trial, road orders like working for the captain or following attacks are gone from the Tactics tab. Each rider rides his own race."
+        },
+        "da": {
+          "title": "Enkeltstart viser kun ordrer der giver mening",
+          "body": "På en enkeltstart er vej-ordrer som at arbejde for kaptajnen eller følge angreb væk fra Taktik-fanen. Hver rytter kører sit eget løb."
+        },
+        "refs": [
+          7317
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Shared captain and luxury helper in the season planner",
+          "body": "In races that allow them, you can now pick a shared captain and a luxury helper directly in the season planner. One of each per team."
+        },
+        "da": {
+          "title": "Delt kaptajn og luksushjælper i sæsonplanen",
+          "body": "I løb der tillader det, kan du nu vælge en delt kaptajn og en luksushjælper direkte i sæsonplanen. Én af hver pr. hold."
+        },
+        "refs": [
+          7239
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Tactics drafts survive a partial save",
+          "body": "If only part of your tactics could be saved, the rest stays as a draft, and the next save only sends what is missing."
+        },
+        "da": {
+          "title": "Taktik-kladder overlever en delvis gemning",
+          "body": "Hvis kun en del af din taktik kunne gemmes, bliver resten stående som kladde, og næste gem sender kun det, der mangler."
+        },
+        "refs": [
+          7327
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The race film labels the peloton correctly",
+          "body": "The race film no longer calls the peloton a breakaway after it has caught the break, and the group sizes at the finish now add up to the whole field."
+        },
+        "da": {
+          "title": "Løbsfilmen kalder feltet det rigtige",
+          "body": "Løbsfilmen kalder ikke længere feltet for et udbrud, efter det har hentet udbruddet, og gruppernes størrelse ved mål passer nu med hele feltet."
+        },
+        "refs": [
+          7388
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Your riders shows riders who dropped out",
+          "body": "The Your riders card on the stage page now also lists your riders who did not finish, with DNF and the reason."
+        },
+        "da": {
+          "title": "Your riders viser ryttere der udgik",
+          "body": "Kortet Your riders på etapesiden viser nu også dine ryttere, der udgik, med DNF og årsagen."
+        },
+        "refs": [
+          7330
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Team selections no longer change in a running stage race",
+          "body": "Fixed a rare case where the automatic team selection could replace riders in a stage race that had just started."
+        },
+        "da": {
+          "title": "Holdudtagelsen ændrer sig ikke i et kørende etapeløb",
+          "body": "Rettet et sjældent tilfælde, hvor den automatiske holdudtagelse kunne skifte ryttere ud i et etapeløb, der lige var startet."
+        },
+        "refs": [
+          7389
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "A notice when races are paused",
+          "body": "When races are paused, a bar at the top of the game tells you, and it disappears by itself when racing resumes."
+        },
+        "da": {
+          "title": "Besked når løbene er sat på pause",
+          "body": "Når løbene er sat på pause, fortæller en bjælke øverst i spillet det, og den forsvinder af sig selv, når løbene kører igen."
+        },
+        "refs": [
+          7335
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "New training types stay visible",
+          "body": "The new training types no longer disappear after you switch to another browser tab and come back."
+        },
+        "da": {
+          "title": "De nye træningstyper bliver synlige",
+          "body": "De nye træningstyper forsvinder ikke længere, når du skifter til en anden fane i browseren og kommer tilbage."
+        },
+        "refs": [
+          7439
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.390",
     "date": "2026-10-31",
     "changes": [
