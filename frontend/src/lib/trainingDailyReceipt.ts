@@ -79,6 +79,10 @@ type Evidence = {
   settled: boolean; expected: number[] | null; season: string;
 };
 const finite = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
+// Stored progress maps are sparse: the engine starts an absent ability at zero.
+// An absent snapshot or an invalid explicit value is still unknown evidence.
+const progressValue = (snapshot: Numbers | null | undefined, ability: string) =>
+  snapshot && !Object.hasOwn(snapshot, ability) ? 0 : snapshot?.[ability];
 const dayOf = (run: TrainingRun) => run.game_day ?? run.report?.game_day ?? null;
 const order = (a: TrainingRun, b: TrainingRun) =>
   (dayOf(a) ?? -1) - (dayOf(b) ?? -1)
@@ -171,7 +175,7 @@ function activityContributions(rows: TrainingActivity[]): Record<string, number 
   for (const ability of keys) {
     let sum = 0;
     for (const row of rows) {
-      const before = row.progress_before?.[ability], after = row.progress_after?.[ability];
+      const before = progressValue(row.progress_before, ability), after = progressValue(row.progress_after, ability);
       const whole = row.gains?.[ability];
       if (!finite(before) || !finite(after)) { sum = NaN; break; }
       sum += (finite(whole) && whole > 0 ? whole : 0) + after - before;
@@ -278,7 +282,7 @@ export function aggregateTrainingRuns(input: TrainingRun[] | null | undefined): 
       const progressAfter = stored ?? derived;
       const keys = new Set([...Object.keys(progressBefore), ...Object.keys(progressAfter ?? {}), ...Object.keys(gains)]);
       for (const ability of keys) {
-        const before = progressBefore[ability], after = progressAfter?.[ability];
+        const before = progressValue(first.row.progress_before, ability), after = progressValue(progressAfter, ability);
         const raw = finite(before) && finite(after) ? (gains[ability] ?? 0) + after - before : null;
         // A derived end point that would mean negative progress is inconsistent
         // evidence (something other than training moved it): say unknown, not 0.
