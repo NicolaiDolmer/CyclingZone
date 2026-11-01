@@ -3,10 +3,11 @@ name: Lighthouse CI
 # Perf/SEO-loop Del 2 — regressions-gate pr. PR + drift-vagt på main.
 #   - HARD gate: bundle-size (gzipped JS) via scripts/check-bundle-budget.mjs.
 #     Deterministisk → blokerer merge ved regression over budget+margin.
-#   - ADVISORY: Lighthouse-scores (perf/a11y/best-practices/SEO) på den byggede
-#     frontend, postet som idempotent PR-comment. Scores svinger på CI-hardware
-#     → blokerer ALDRIG. Den autoritative perf-måling er den ugentlige prod-run
-#     (perf-seo-review.yml) + field-CWV i GA4 (web-vitals).
+#   - TAVS VAGT (#7440): Lighthouse perf/a11y/best-practices på den byggede
+#     frontend med tærskler (perf 0.90, a11y 0.95, best-practices 0.95; warn i
+#     lighthouserc.json). Kommenterer KUN ved brud og sletter kommentaren igen
+#     når alt er grønt. Blokerer ALDRIG. SEO måles ikke her (appen ligger bag
+#     login) men ugentligt mod prod på de offentlige sider (perf-seo-review.yml).
 # Mønster genbrugt fra feature-liveness-audit.yml (Node 24, checkout@v7,
 # setup-node@v6, github-script@v9, Dependabot-skip).
 #
@@ -95,7 +96,7 @@ jobs:
         if: env.IS_DEPENDABOT_PR != 'true'
         run: node scripts/check-bundle-budget.mjs
 
-      # ADVISORY — må aldrig blokere; continue-on-error så et flaky Lighthouse-run
+      # TAVS VAGT, ikke-blokerende — må aldrig blokere; continue-on-error så et flaky Lighthouse-run
       # ikke fejler jobbet. Springes over på push til main: scoren kan alligevel
       # ikke postes nogen steder dér (kommentar-steppet er PR-only), og det er kun
       # bundle-målingen main-vagten er til for (#2511).
@@ -109,8 +110,10 @@ jobs:
           uploadArtifacts: true
           temporaryPublicStorage: true
 
-      # PR-only: der er ingen issue-tråd at kommentere i på et push til main.
-      - name: Comment Lighthouse scores (advisory, idempotent)
+      # PR-only. TAVS VAGT (#7440): kommenterer KUN når en tærskel brydes, og
+      # sletter sin egen kommentar igen når alt er grønt. Blokerer aldrig.
+      # Tærsklerne spejler lighthouserc.json (perf 0.90, a11y 0.95, best-practices 0.95).
+      - name: Comment on Lighthouse threshold breach (silent otherwise)
         if: github.event_name == 'pull_request' && env.IS_DEPENDABOT_PR != 'true'
         continue-on-error: true
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
@@ -118,37 +121,52 @@ jobs:
           script: |
             const fs = require('fs');
             const marker = '<!-- lighthouse-ci -->';
-            let scoresTable = '_Lighthouse-run producerede intet manifest (se job-loggen). Bundle-gaten er upåvirket._';
-            let reportLink = '';
+            const thresholds = [
+              ['performance', 'Performance', 0.90],
+              ['accessibility', 'Accessibility', 0.95],
+              ['best-practices', 'Best Practices', 0.95],
+            ];
+            let breaches = [];
+            let measured = false;
             try {
               const manifest = JSON.parse(fs.readFileSync('.lighthouseci/manifest.json', 'utf8'));
               const rep = manifest.find(m => m.isRepresentativeRun) || manifest[0];
               const s = rep.summary;
-              const pct = v => (v == null ? 'n/a' : `${Math.round(v * 100)}`);
-              scoresTable = [
-                '| Kategori | Score |',
-                '|---|---:|',
-                `| Performance | ${pct(s.performance)} |`,
-                `| Accessibility | ${pct(s.accessibility)} |`,
-                `| Best Practices | ${pct(s['best-practices'])} |`,
-                `| SEO | ${pct(s.seo)} |`,
-              ].join('\n');
-              if (rep.url) reportLink = `\n\nFuld rapport-URL i job-artifact \`lighthouse-results\`.`;
+              measured = thresholds.every(([key]) => typeof s[key] === 'number');
+              breaches = thresholds
+                .filter(([key, , min]) => s[key] != null && s[key] < min)
+                .map(([key, label, min]) => ({ label, score: Math.round(s[key] * 100), min: Math.round(min * 100) }));
             } catch (e) {
               core.warning(`Kunne ikke læse Lighthouse-manifest: ${e.message}`);
             }
-            const body = [
-              marker,
-              '## 🟡 Lighthouse (advisory — blokerer ikke)',
-              '',
-              'Lab-måling af den byggede frontend (`frontend/dist`, desktop-preset, median af 3 runs). Scores svinger ±et par point på CI-hardware og uden prod-env — brug dem til at fange STORE fald, ikke som facit. Bundle-size er den hard gate (separat step). Autoritativ perf-måling: ugentlig prod-run + field-CWV i GA4.',
-              '',
-              scoresTable + reportLink,
-            ].join('\n');
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, per_page: 100,
             });
             const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (breaches.length === 0) {
+              // Alt fint (eller ingen måling): ingen kommentar. Ryd en gammel væk.
+              if (measured && existing) {
+                await github.rest.issues.deleteComment({
+                  owner: context.repo.owner, repo: context.repo.repo, comment_id: existing.id,
+                });
+              }
+              return;
+            }
+            for (const b of breaches) {
+              core.warning(`Lighthouse ${b.label} ${b.score} er under tærsklen ${b.min}`);
+            }
+            const body = [
+              marker,
+              '## Lighthouse: tærskel brudt (blokerer ikke)',
+              '',
+              'Lab-måling af den byggede frontend (desktop, median af 3 runs). Scores svinger lidt på CI-hardware, så tjek om faldet er reelt. Bundle-size er den hårde gate (separat step).',
+              '',
+              '| Kategori | Score | Tærskel |',
+              '|---|---:|---:|',
+              ...breaches.map(b => `| ${b.label} | ${b.score} | ${b.min} |`),
+              '',
+              'Fuld rapport i job-artifact `lighthouse-results`.',
+            ].join('\n');
             if (existing) {
               await github.rest.issues.updateComment({
                 owner: context.repo.owner, repo: context.repo.repo, comment_id: existing.id, body,

@@ -4,7 +4,15 @@
       "staticDistDir": "frontend/dist",
       "numberOfRuns": 3,
       "settings": {
-        "preset": "desktop"
+        "preset": "desktop",
+        "onlyCategories": ["performance", "accessibility", "best-practices"]
+      }
+    },
+    "assert": {
+      "assertions": {
+        "categories:performance": ["warn", { "minScore": 0.9, "aggregationMethod": "median" }],
+        "categories:accessibility": ["warn", { "minScore": 0.95, "aggregationMethod": "median" }],
+        "categories:best-practices": ["warn", { "minScore": 0.95, "aggregationMethod": "median" }]
       }
     },
     "upload": {
