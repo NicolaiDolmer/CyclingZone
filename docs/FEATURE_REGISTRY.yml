@@ -378,6 +378,8 @@ features:
     flag: race_library_v2
     verified: 2026-11-01
     note: Beta for beta-testere 1/11 (ejer-go, efter #7463 Vis-vælger). PR #6636 åben.
+    roadmap_en: "A race card in the calendar: tap a race to see terrain, how well it suits your team and your status. Switch between Calendar and Table, and browse every edition in Race history."
+    roadmap_da: "Et løbskort i kalenderen: tryk på et løb og se terræn, hvor godt det passer dit hold og din status. Skift mellem Kalender og Tabel, og bladr i alle udgaver under Løbshistorik."
 
   - id: race-day-development
     area: race-day
