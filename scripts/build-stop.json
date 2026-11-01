@@ -238,6 +238,10 @@
   ],
   "cleanupList": [
     {
+      "issue": 7440,
+      "why": "Lighthouse: tavs vagt med tærskler, SEO kun ugentligt på offentlige sider (ejer-go 1/11)"
+    },
+    {
       "issue": 6514,
       "why": "åben PR #6634/#6636 (løbsbibliotek)"
     },
@@ -267,6 +271,11 @@
     }
   ],
   "brandList": [
+    {
+      "issue": 7439,
+      "reason": "Træning: nye træningstyper forsvinder ved faneskift (egomadsen 1/11), ejer-go 1/11",
+      "since": "2026-11-01"
+    },
     {
       "issue": 7316,
       "reason": "Træning: programmets hovedevne giver ingen fremgang (flere spillere 27-28/10)",
@@ -450,6 +459,16 @@
     {
       "issue": 7388,
       "reason": "Løbsfilm: feltet mærkes som udbrud på nogle etaper, gruppetal summerer ikke (staff 30/10), ejer-go 1/11",
+      "since": "2026-11-01"
+    },
+    {
+      "issue": 7330,
+      "reason": "Etapeside: udgået rytter forsvinder fra Your riders-kortet i stedet for at stå med DNF, ejer-go 1/11",
+      "since": "2026-11-01"
+    },
+    {
+      "issue": 6104,
+      "reason": "Sikkerhed: forum-images kan listes af alle (Supabase-advisor), ejer-go 1/11",
       "since": "2026-11-01"
     },
     {
