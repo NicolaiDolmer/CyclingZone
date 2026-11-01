@@ -354,10 +354,9 @@ features:
     title_en: Stage page 2.0 (stage tabs, real elevation profile, your day)
     title_da: Etapeside 2.0 (etapefaner, rigtig højdeprofil, din dag)
     state: live
-    flag: stage_page_v2
     epic: 6570
     verified: 2026-11-01
-    note: PR #6633; beta 15/10; on for alle 24/10 19:48 UTC efter ejerens gennemgang (#7153, læst i prod). Rettelser #7168. Den gamle etapeside og koden bag flaget fjernet 1/11 (krav 5, #6570); flaget står on, indtil det slettes efter merge.
+    note: PR #6633; beta 15/10; on for alle 24/10 19:48 UTC efter ejerens gennemgang (#7153, læst i prod). Rettelser #7168. Den gamle etapeside og flaget stage_page_v2 fjernet fra koden 1/11 (krav 5, #6570); app_config-rækken slettes efter merge.
 
   - id: stage-plan-v1
     area: race-day
