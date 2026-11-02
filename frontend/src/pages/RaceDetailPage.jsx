@@ -1174,8 +1174,9 @@ export default function RaceDetailPage() {
 
           {/* #7541: et løb der ikke er kørt endnu mangler ikke resultater; den
               gamle "ikke importeret"-tekst gælder kun et løb med kørte etaper. isStageRace
-              kræver kørte etaper, så løbstypen læses direkte her. */}
-          {tab === "results" && !hasAnyResults && (race.stages_completed ?? 0) === 0 && race.status !== "completed" && (
+              kræver kørte etaper, så løbstypen læses direkte her. Fasen (racePhase) skiller et
+              løb hvis etape 1 er gået i gang uden gemte resultater fra et der ikke er startet. */}
+          {tab === "results" && !hasAnyResults && phase === "before" && (
             <EmptyState
               icon={<FlagIcon size={26} aria-hidden="true" />}
               title={t("empty.notStartedRace")}
@@ -1184,7 +1185,7 @@ export default function RaceDetailPage() {
             />
           )}
 
-          {tab === "results" && !hasAnyResults && ((race.stages_completed ?? 0) > 0 || race.status === "completed") && (
+          {tab === "results" && !hasAnyResults && phase !== "before" && (
             <EmptyState
               icon={<FlagIcon size={26} aria-hidden="true" />}
               title={t("empty.noResultsImportedRace")}
