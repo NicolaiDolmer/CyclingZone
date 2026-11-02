@@ -241,6 +241,8 @@
     }
   ],
   "cleanupList": [
+    { "issue": 6679, "why": "Interne Windows-procesbeviser, ejer-go 2/11 i #7495" },
+    { "issue": 6337, "why": "Interne CIM-bootopslag og fejlrapportering, ejer-go 2/11 i #7495" },
     {
       "issue": 7363,
       "why": "CI: secret-frit bundlebudget på Dependabot-PRer (ejer-go 2/11, #7495)"

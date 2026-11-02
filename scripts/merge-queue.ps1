@@ -140,8 +140,21 @@ if ($CodeRabbitNight -and ($Repo -ne 'NicolaiDolmer/CyclingZone' -or @($PrNumber
 # filer overlapper boelgens aktive ownership (se assert-merge-allowed i
 # wave-policy.mjs). En legacy/ulaeselig markoer eller en uden ownership
 # blokerer stadig her, foer noget GitHub-kald.
-& node (Join-Path $PSScriptRoot 'wave-policy.mjs') assert-merge-allowed --repo $Repo
-if ($LASTEXITCODE -ne 0) { throw 'Aktiv boelgemarkoer: merge-koeen er blokeret.' }
+function Get-WaveEvidenceFailure([object[]]$Output) {
+  if (($Output -join "`n") -match 'WAVE_BOOT_IDENTITY_UNAVAILABLE') {
+    return 'Windows boot-identitet kunne ikke laeses; merge-koeen er blokeret (ikke en afvist boelgelaas).'
+  }
+  if (($Output -join "`n") -match 'WAVE_PROCESS_SNAPSHOT_UNAVAILABLE') {
+    return 'Windows procesbevis kunne ikke laeses; merge-koeen er blokeret.'
+  }
+  return $null
+}
+$wavePolicyOutput = @(& node (Join-Path $PSScriptRoot 'wave-policy.mjs') assert-merge-allowed --repo $Repo 2>&1)
+$wavePolicyExit = $LASTEXITCODE
+$waveEvidenceFailure = Get-WaveEvidenceFailure $wavePolicyOutput
+if ($waveEvidenceFailure) { throw $waveEvidenceFailure }
+$wavePolicyOutput | ForEach-Object { Write-Host $_ }
+if ($wavePolicyExit -ne 0) { throw 'Aktiv boelgemarkoer: merge-koeen er blokeret.' }
 
 function Get-PrPlanEntry([int]$number) {
   # Read-only: PR-metadata + required-checks-status. Sikkert at koere i -DryRun.
@@ -1050,8 +1063,11 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
       if (-not $recheck.reviewDeadlineUtc) { throw 'CodeRabbit review deadline missing' }
       $env:CZ_MERGE_REVIEW_DEADLINE_UTC = $recheck.reviewDeadlineUtc
     }
-    & node (Join-Path $PSScriptRoot 'wave-policy.mjs') guarded-merge --pr "$n" --repo $Repo --head $recheck.headSha
+    $wavePolicyOutput = @(& node (Join-Path $PSScriptRoot 'wave-policy.mjs') guarded-merge --pr "$n" --repo $Repo --head $recheck.headSha 2>&1)
     $guardedMergeExit = $LASTEXITCODE
+    $waveEvidenceFailure = Get-WaveEvidenceFailure $wavePolicyOutput
+    if ($waveEvidenceFailure) { throw $waveEvidenceFailure }
+    $wavePolicyOutput | ForEach-Object { Write-Host $_ }
   } finally {
     $env:CZ_MERGE_REVIEW_DEADLINE_UTC = $previousReviewDeadline
   }
