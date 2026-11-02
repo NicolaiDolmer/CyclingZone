@@ -7,8 +7,9 @@
 import { seedPreviewSession } from "./previewSession.ts";
 
 if (import.meta.env.VITE_PREVIEW_MOCK) {
-  seedPreviewSession(
-    typeof localStorage === "undefined" ? undefined : localStorage,
-    import.meta.env.VITE_SUPABASE_URL,
-  );
+  try {
+    seedPreviewSession(localStorage, import.meta.env.VITE_SUPABASE_URL);
+  } catch {
+    // Blokeret storage (privat vindue): spring seedet over, preview starter stadig.
+  }
 }
