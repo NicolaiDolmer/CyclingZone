@@ -534,6 +534,16 @@
       "issue": 6138,
       "reason": "Scouting: mailen lover 5 ryttere, rapporten viser 1-4 (flere spillere) - forhåndsgo #7495 beslutning 3",
       "since": "2026-11-02"
+    },
+    {
+      "issue": 7502,
+      "reason": "Dashboard: Dit første løb viser forkert løb og siger udtagelse gemt uden ryttere (live-fund testkonto) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-02"
+    },
+    {
+      "issue": 7500,
+      "reason": "Offentlige sider: anonyme ser Log ud i sidemenuen (39 døde klik på /roadmap) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-02"
     }
   ]
 }
