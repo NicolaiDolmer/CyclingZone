@@ -62,21 +62,14 @@ export function describeMoment(ms, nowMs, opts = {}) {
  * kan handle paa), ellers et loeb der allerede er i gang. Intet → null (pause).
  * @param {any[]} nextRaces
  * @param {Set<string>|null} [enteredRaceIds]
- * @param {Record<string, number>} [nextStageByRace]
  * @returns {{race: any, kind: "upcoming"|"started"}|null}
  */
-export function pickFirstRaceCardRace(nextRaces, enteredRaceIds = null, nextStageByRace = {}) {
-  // #7502: holdets tilmeldte loeb foerst, derefter kalenderen; inden for hver gruppe
-  // efter rigtig starttid (nextStageByRace). Mangler tiden, bevares PCM-raekkefoelgen.
+export function pickFirstRaceCardRace(nextRaces, enteredRaceIds = null) {
+  // #7502: holdets tilmeldte loeb foerst, derefter kalenderen, begge efter rigtig
+  // starttid (orderedSelectableRaces). Samme raekkefoelge som udtagelses-nudgen i
+  // DashboardPage, saa kortet og squadSelectionMissingRace altid taler om samme loeb.
   const entered = enteredRaceIds instanceof Set ? enteredRaceIds : new Set();
-  const byStart = (list) => {
-    const known = list.filter((r) => Number.isFinite(nextStageByRace?.[r.id]))
-      .sort((a, b) => nextStageByRace[a.id] - nextStageByRace[b.id]);
-    return [...known, ...list.filter((r) => !Number.isFinite(nextStageByRace?.[r.id]))];
-  };
-  const ordered = orderedTeamNextRaces(nextRaces, entered);
-  const own = ordered.filter((r) => entered.has(r.id));
-  const selectable = [...byStart(own), ...byStart(ordered.filter((r) => !entered.has(r.id)))][0];
+  const selectable = orderedTeamNextRaces(nextRaces, entered)[0];
   if (selectable) return { race: selectable, kind: "upcoming" };
   // Et loeb i gang er kun holdets hvis holdet ER tilmeldt det (#3751: et nyt hold
   // der kommer midt i et etapeloeb er ikke med, trup laast). Ukendt = ikke vist.
@@ -102,7 +95,7 @@ export function buildFirstRaceCardModel({
   nextRaces, nextStageByRace = {}, squadSelectionMissingRace = null, enteredRaceIds = null, card = {}, nowMs, timeZone, locale,
 }) {
   const opts = { timeZone, locale };
-  const picked = pickFirstRaceCardRace(nextRaces, enteredRaceIds, nextStageByRace);
+  const picked = pickFirstRaceCardRace(nextRaces, enteredRaceIds);
 
   if (!picked) {
     const seasonMs = card.next_season_start ? Date.parse(card.next_season_start) : NaN;

@@ -17,15 +17,27 @@ export function selectableRaces(races) {
   return races.filter((r) => deriveRaceStatus(r?.status, r?.stages_completed, r?.stages) === "scheduled");
 }
 
-// Scheduled-løb i kalenderorden, tidligste først. Muterer ikke input.
+// #7502: løbets rigtige starttid (races.scheduled_for). Den statiske PCM-dato
+// (pool_race.date_text) følger ikke sæsonens faktiske kalender: et løb der ligger
+// tidligt i PCM-året kan køre om ni dage, mens dagens løb ligger senere.
+function scheduledMs(race) {
+  const ms = Date.parse(race?.scheduled_for ?? "");
+  return Number.isFinite(ms) ? ms : null;
+}
+
+// Scheduled-løb efter rigtig starttid, tidligste først; uden starttid bagerst i
+// PCM-kalenderorden. Muterer ikke input.
 // #5301: Dashboard-nudgen har brug for RÆKKEFØLGEN, ikke kun det første løb —
 // se nextSelectableRaces' kaldested i DashboardPage.
 export function orderedSelectableRaces(races) {
-  return [...selectableRaces(races)].sort(
-    (a, b) =>
-      dateTextToDayOfYear(a.pool_race?.date_text) -
-      dateTextToDayOfYear(b.pool_race?.date_text)
-  );
+  return [...selectableRaces(races)].sort((a, b) => {
+    const am = scheduledMs(a);
+    const bm = scheduledMs(b);
+    if (am !== null && bm !== null && am !== bm) return am - bm;
+    if (am !== null && bm === null) return -1;
+    if (am === null && bm !== null) return 1;
+    return dateTextToDayOfYear(a.pool_race?.date_text) - dateTextToDayOfYear(b.pool_race?.date_text);
+  });
 }
 
 // Det tidligste scheduled-løb (efter kalenderdato), eller null hvis intet findes.

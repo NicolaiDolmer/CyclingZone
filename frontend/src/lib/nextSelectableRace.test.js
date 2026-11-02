@@ -118,3 +118,13 @@ test("orderedSelectableRaces: tom/ugyldig input giver tom liste", () => {
   assert.deepEqual(orderedSelectableRaces(null), []);
   assert.equal(pickNextSelectableRace(null), null);
 });
+
+// #7502: rigtig starttid (scheduled_for) slår den statiske PCM-dato.
+test("#7502: orderedSelectableRaces sorterer efter scheduled_for, PCM-dato kun som fallback", () => {
+  const races = [
+    { id: "LATE", status: "scheduled", stages: 4, stages_completed: 0, scheduled_for: "2026-11-11T14:00:00Z", pool_race: { date_text: "01.02" } },
+    { id: "NOSTART", status: "scheduled", stages: 1, stages_completed: 0, scheduled_for: null, pool_race: { date_text: "01.01" } },
+    { id: "TODAY", status: "scheduled", stages: 1, stages_completed: 0, scheduled_for: "2026-11-02T14:00:00Z", pool_race: { date_text: "20.05" } },
+  ];
+  assert.deepEqual(orderedSelectableRaces(races).map((r) => r.id), ["TODAY", "LATE", "NOSTART"]);
+});

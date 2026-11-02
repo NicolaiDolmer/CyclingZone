@@ -151,9 +151,10 @@ test("endagsloeb: isStageRace er false", () => {
 // #7502: testkontoens scenarie. Single-loeb i dag (tilmeldt), etapeloeb i morgen (ikke tilmeldt),
 // etapeloeb om 9 dage som ligger tidligst i den statiske PCM-kalender.
 const scenario = () => {
-  const today = scheduled("TODAY", { stages: 1, pool_race: { date_text: "20.05" } });
-  const tomorrow = scheduled("TOMORROW", { pool_race: { date_text: "10.04" } });
-  const late = scheduled("LATE", { pool_race: { date_text: "01.02" } });
+  const at = (h) => new Date(NOW + hours(h)).toISOString();
+  const today = scheduled("TODAY", { stages: 1, scheduled_for: at(5), pool_race: { date_text: "20.05" } });
+  const tomorrow = scheduled("TOMORROW", { scheduled_for: at(29), pool_race: { date_text: "10.04" } });
+  const late = scheduled("LATE", { scheduled_for: at(9 * 24), pool_race: { date_text: "01.02" } });
   return {
     nextRaces: [late, tomorrow, today],
     nextStageByRace: { TODAY: NOW + hours(5), TOMORROW: NOW + hours(29), LATE: NOW + hours(9 * 24) },
@@ -161,20 +162,20 @@ const scenario = () => {
 };
 
 test("#7502: tilmeldt loeb vinder over PCM-raekkefoelgen og over kalenderens naeste", () => {
-  const { nextRaces, nextStageByRace } = scenario();
-  const picked = pickFirstRaceCardRace(nextRaces, new Set(["TODAY"]), nextStageByRace);
+  const { nextRaces } = scenario();
+  const picked = pickFirstRaceCardRace(nextRaces, new Set(["TODAY"]));
   assert.equal(picked?.race.id, "TODAY");
 });
 
 test("#7502: uden tilmelding vaelges kalenderens naeste efter rigtig starttid, ikke PCM-dato", () => {
-  const { nextRaces, nextStageByRace } = scenario();
-  assert.equal(pickFirstRaceCardRace(nextRaces, new Set(), nextStageByRace)?.race.id, "TODAY");
-  assert.equal(pickFirstRaceCardRace(nextRaces, null, nextStageByRace)?.race.id, "TODAY");
+  const { nextRaces } = scenario();
+  assert.equal(pickFirstRaceCardRace(nextRaces, new Set())?.race.id, "TODAY");
+  assert.equal(pickFirstRaceCardRace(nextRaces, null)?.race.id, "TODAY");
 });
 
 test("#7502: mangler starttiden, bevares PCM-raekkefoelgen", () => {
-  const { nextRaces } = scenario();
-  assert.equal(pickFirstRaceCardRace(nextRaces, new Set(), {})?.race.id, "LATE");
+  const noStart = scenario().nextRaces.map((r) => ({ ...r, scheduled_for: null }));
+  assert.equal(pickFirstRaceCardRace(noStart, new Set())?.race.id, "LATE");
 });
 
 test("#7502: 'udtagelse gemt' kun naar holdet har ryttere i loebet", () => {
