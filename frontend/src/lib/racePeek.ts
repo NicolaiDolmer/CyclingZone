@@ -21,6 +21,8 @@ export interface CalendarEntryLike {
   id: string;
   isMine?: boolean;
   entered?: boolean;
+  /** #7533: gemt udtagelse under startgulvet (for få ryttere). Sendes kun når true. */
+  lineupShort?: boolean;
   /** Udtagelsen er låst (løbet er afviklet eller i gang). Sendes kun når true. */
   lineupFrozen?: boolean;
   withdrawn?: boolean;
@@ -152,9 +154,9 @@ export function isGrandTour(raceClass: string | null | undefined): boolean {
 /**
  * Holdets status for ét løb i kalenderen. null = ingen status at vise (ikke
  * holdets løb, eller løbet er begyndt/kørt, hvor udtagelsen er låst).
- *   "selected" — holdet har en gemt udtagelse
+ *   "selected" — holdet har en gemt udtagelse med nok ryttere til at starte
  *   "gtBound"  — ingen udtagelse, men holdets Grand Tour kører samtidig
- *   "missing"  — ingen udtagelse endnu (status-prikken)
+ *   "missing"  — ingen udtagelse endnu, eller for få ryttere (#7533: lineupShort)
  */
 export function myRaceStatus(
   entry: CalendarEntryLike | null | undefined,
@@ -164,7 +166,7 @@ export function myRaceStatus(
   if (!entry?.isMine || entry.lineupFrozen || entry.withdrawn) return null;
   const range = raceDateRange(entry);
   if (!range || (todayIso && range.start < todayIso)) return null;
-  if (entry.entered) return "selected";
+  if (entry.entered) return entry.lineupShort ? "missing" : "selected";
   const gt = (entries || []).find((e) => e && e.id !== entry.id && e.isMine && e.entered && !e.withdrawn
     && isGrandTour(e.raceClass) && bindsOverlap(entry, e));
   return gt ? "gtBound" : "missing";

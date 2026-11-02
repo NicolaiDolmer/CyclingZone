@@ -126,8 +126,7 @@
       "stages": "Étapes",
       "class": "Classe",
       "squad": "Ton effectif",
-      "squadShort": "Effectif",
-      "open": "Ouvrir"
+      "squadShort": "Effectif"
     },
     "openRace": "Ouvrir {name}",
     "squad": {

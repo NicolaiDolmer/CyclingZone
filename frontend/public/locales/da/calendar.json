@@ -126,8 +126,7 @@
       "stages": "Etaper",
       "class": "Klasse",
       "squad": "Dit hold",
-      "squadShort": "Hold",
-      "open": "Åbn"
+      "squadShort": "Hold"
     },
     "openRace": "Åbn {name}",
     "squad": {

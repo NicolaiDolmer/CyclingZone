@@ -862,7 +862,7 @@ export default function StandingsPage() {
           title={search ? t("noMatch") : t("noData", { n: divTab })}
         />
       ) : (
-        <DataTable
+        <DataTable data-sort-exempt="stilling: placeringen er selve indholdet"
           label={t("title")}
           columns={columns}
           rows={divStandings}

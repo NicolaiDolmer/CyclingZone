@@ -578,6 +578,11 @@
       "issue": 7519,
       "reason": "Mit hold Udvikling viser prognose 15–15 mens Trup viser 15 (live-fund) - forhåndsgo #7495 beslutning 3",
       "since": "2026-11-02"
+    },
+    {
+      "issue": 7533,
+      "reason": "Kalendertabel + Løbshistorik (beta): forkert Klar-status, klik på navn, ikoner én gang, sortering overalt, ejer-go Discord 2/11",
+      "since": "2026-11-02"
     }
   ]
 }

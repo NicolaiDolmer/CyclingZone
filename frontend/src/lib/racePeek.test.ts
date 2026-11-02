@@ -76,6 +76,11 @@ test("#6514 myRaceStatus: udtaget, bundet af GT, mangler udtagelse", () => {
   assert.equal(myRaceStatus({ id: "d", isMine: true, entered: false, date: TODAY }, [], TODAY), "missing");
 });
 
+test("#7533 myRaceStatus: en gemt udtagelse under startgulvet er ikke Klar", () => {
+  assert.equal(myRaceStatus({ id: "s", isMine: true, entered: true, lineupShort: true, date: "2026-10-20" }, [], TODAY), "missing");
+  assert.equal(myRaceStatus({ id: "s", isMine: true, entered: true, lineupShort: false, date: "2026-10-20" }, [], TODAY), "selected");
+});
+
 test("#6514 myRaceStatus: afmeldt loeb har ingen status og binder ikke som Grand Tour", () => {
   assert.equal(myRaceStatus({ id: "w", isMine: true, entered: true, date: "2026-10-20", withdrawn: true }, [], TODAY), null);
   const gt = { id: "gt", isMine: true, entered: true, withdrawn: true, raceClass: "TourFrance", date: "2026-10-20" };

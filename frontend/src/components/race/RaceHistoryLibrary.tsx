@@ -14,7 +14,8 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { supabase } from "../../lib/supabase.ts";
 import { fetchAllRows } from "../../lib/supabasePagination.js";
-import { raceArchiveHref } from "../../lib/racePeek.ts";
+import { raceArchiveHref, TERRAIN_KINDS } from "../../lib/racePeek.ts";
+import { useSortState, sortRows } from "../../lib/useTableSort.js";
 import { applySeniorSquadFilter } from "../../lib/seniorScope.ts";
 import {
   buildRaceHistory, matchesSearch, paginate, HISTORY_PAGE_SIZE,
@@ -37,6 +38,7 @@ interface Column {
   header: string;
   sticky?: boolean;
   numeric?: boolean;
+  sortKey?: string;
   mobileHeader?: string;
   render: (row: HistoryRow) => ReactNode;
   subline?: (row: HistoryRow) => ReactNode;
@@ -55,6 +57,9 @@ interface DataTableProps {
   mobileDefaults?: string[];
   dense?: boolean;
   empty?: ReactNode;
+  sort?: string | null;
+  sortDir?: string;
+  onSort?: (key: string) => void;
 }
 interface StateProps { icon?: ReactNode; title?: string; description?: string; action?: ReactNode }
 interface ButtonProps {
@@ -181,6 +186,16 @@ async function loadHistory({ poolId, teamId }: { poolId: number; teamId: string 
 }
 
 
+// #7533: værdi pr. sorterbar kolonne (null = sidst i begge retninger, jf. sortRows).
+// Terræn = løbets hårdeste kategori; vindere = antal udgaver.
+const HISTORY_SORT: Record<string, (r: HistoryRow) => unknown> = {
+  name: (r) => r.name,
+  champion: (r) => r.champion?.name ?? null,
+  best: (r) => r.myBest?.rank ?? null,
+  terrain: (r) => (r.terrain.length ? TERRAIN_KINDS.indexOf(r.terrain[0].kind) : null),
+  winners: (r) => r.editions.length,
+};
+
 // Løbets historikside, med løbstypen så et endagsløb og et etapeløb med samme navn holdes ude fra hinanden.
 
 export default function RaceHistoryLibrary() {
@@ -236,8 +251,15 @@ export default function RaceHistoryLibrary() {
 
   const retry = useCallback(() => setRetryTick((n) => n + 1), []);
 
+  // #7533 (ejer 2/11): alle kolonner sorterer; sorteringen sker før sideopdelingen.
+  const { sort, sortDir, handleSort } = useSortState({ initialSort: null });
   const filtered = useMemo(() => (rows || []).filter((r) => matchesSearch(r.name, search)), [rows, search]);
-  const pg = paginate(filtered, page, HISTORY_PAGE_SIZE);
+  const sorted = useMemo(
+    () => sortRows(filtered, sort ? HISTORY_SORT[sort] : null, sortDir) as HistoryRow[],
+    [filtered, sort, sortDir],
+  );
+  const pg = paginate(sorted, page, HISTORY_PAGE_SIZE);
+  const onSort = (key: string) => { handleSort(key); setPage(0); };
 
   const seasonTag = (n: number | null | undefined) => (n != null ? t("raceHistory.seasonShort", { number: n }) : "");
   const classLabel = (r: HistoryRow) => (r.raceClass ? t(`races:classOption.${r.raceClass}`, { defaultValue: r.raceClass }) : null);
@@ -248,6 +270,7 @@ export default function RaceHistoryLibrary() {
       key: "name",
       header: t("raceHistory.th.race"),
       sticky: true,
+      sortKey: "name",
       render: (r) => (
         <Link to={raceArchiveHref(r.name, r.raceType, poolId)} className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t">
           {r.name}
@@ -259,6 +282,7 @@ export default function RaceHistoryLibrary() {
       key: "champion",
       header: t("raceHistory.th.champion"),
       mobileHeader: t("raceHistory.th.championShort"),
+      sortKey: "champion",
       render: (r) => (r.champion ? (
         <span className="block">
           <Link to={`/races/${r.champion.raceId}`} className="text-cz-1 hover:text-cz-accent-t">{r.champion.name}</Link>
@@ -271,6 +295,7 @@ export default function RaceHistoryLibrary() {
       header: t("raceHistory.th.best"),
       mobileHeader: t("raceHistory.th.bestShort"),
       numeric: true,
+      sortKey: "best",
       render: (r) => (r.myBest ? (
         <Link to={`/races/${r.myBest.raceId}`} className="block text-cz-1 hover:text-cz-accent-t">
           <span className="font-data tabular-nums">{t("raceHistory.place", { rank: r.myBest.rank })}</span>
@@ -282,6 +307,7 @@ export default function RaceHistoryLibrary() {
       // Samme terrænsprog som kalenderens løbskort (calendar:terrain.*).
       key: "terrain",
       header: t("raceHistory.th.terrain"),
+      sortKey: "terrain",
       render: (r) => (r.terrain.length ? (
         <RaceTerrainGlyphs
           terrain={r.terrain}
@@ -294,6 +320,7 @@ export default function RaceHistoryLibrary() {
       // mester, så her står de tidligere (intet navn to gange i samme række).
       key: "winners",
       header: t("raceHistory.th.winners"),
+      sortKey: "winners",
       render: (r) => {
         const earlier = r.editions.slice(1);
         if (!earlier.length) return <span className="text-cz-3">{t("raceHistory.firstEdition")}</span>;
@@ -379,6 +406,9 @@ export default function RaceHistoryLibrary() {
             mobileDefaults={["champion", "best", "terrain"]}
             dense
             empty={emptyNode}
+            sort={sort}
+            sortDir={sortDir}
+            onSort={onSort}
           />
           {pg.total > 0 && (
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
