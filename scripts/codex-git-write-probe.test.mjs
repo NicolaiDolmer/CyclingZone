@@ -211,8 +211,13 @@ test('same-content replacement has no ownership even when the stale journal is v
   const folder=path.join(common,'objects');
   const marker=path.join(folder,fs.readdirSync(folder).find(n=>n.includes('write-probe')));
   const content=fs.readFileSync(marker,'utf8');
-  fs.unlinkSync(marker);
+  // Keep the old inode allocated: unlink/recreate may reuse it on Linux.
+  const held=path.join(f.root,'original-probe-marker');
+  fs.renameSync(marker,held);
+  const originalIdentity=fs.statSync(held,{bigint:true});
   fs.writeFileSync(marker,content,{flag:'wx'});
+  const replacementIdentity=fs.statSync(marker,{bigint:true});
+  assert.notDeepEqual([replacementIdentity.dev,replacementIdentity.ino],[originalIdentity.dev,originalIdentity.ino]);
   assert.throws(()=>probeGitWrites(f.worktree,'codex/fixture',f.out),/cleanup incomplete/);
   assert.equal(fs.readFileSync(marker,'utf8'),content);
   assert.equal(fs.existsSync(f.out),false);
