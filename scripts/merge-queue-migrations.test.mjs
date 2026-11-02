@@ -5,12 +5,119 @@ import { spawnSync } from 'node:child_process';
 
 const queue = readFileSync(new URL('./merge-queue.ps1', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
-test('train closure waits for each migration SHA before clearing the train', () => {
-  const close = queue.slice(queue.indexOf('function Close-OpenTrain'));
-  assert.ok(close.indexOf('Wait-BatchMigrations') >= 0);
-  assert.ok(close.indexOf('Wait-BatchMigrations') < close.indexOf('$script:batchMerged = @()'));
-  assert.match(queue, /needsMigration\s*=\s*\[bool\]/);
-  assert.match(queue, /database\/2026-\[\^\/\]\*\\\.sql/);
+const psQuote = value => "'" + value.replaceAll("'", "''") + "'";
+function runQueueFunctions(names, body, source = queue) {
+  const prelude = `$ErrorActionPreference='Stop'
+$ast=[Management.Automation.Language.Parser]::ParseInput(${psQuote(source)},[ref]$null,[ref]$null)
+foreach($name in @(${names.map(psQuote).join(',')})){
+ $fn=$ast.Find({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name},$true)
+ if(-not $fn){throw "Missing queue function: $name"}
+ Invoke-Expression $fn.Extent.Text
+}
+`;
+  const result = spawnSync('pwsh', ['-NoProfile', '-NonInteractive', '-Command', '& ([scriptblock]::Create([Console]::In.ReadToEnd()))'], {
+    input: prelude + body, encoding: 'utf8', timeout: 60_000,
+  });
+  assert.ifError(result.error);
+  const line = result.stdout.split(/\r?\n/).find(line => line.startsWith('RESULT='));
+  assert.ok(line, `queue fixture produced no result: ${result.stderr.slice(-1200)}`);
+  return { status: result.status, data: JSON.parse(line.slice(7)) };
+}
+function closeTrain(proofs, needsMigration = [true, false, true], source = queue) {
+  const entries = needsMigration.map((need, index) => ({
+    number: index + 1, sha: String(index + 1).repeat(40), needsMigration: need,
+  }));
+  return runQueueFunctions(['Wait-BatchMigrations', 'Close-OpenTrain'], `
+$script:trainEntries=ConvertFrom-Json ${psQuote(JSON.stringify(entries))}
+$script:proofs=ConvertFrom-Json ${psQuote(JSON.stringify(proofs))}
+$script:batchMerged=@(1,2,3); $script:batchShas=@('first','last')
+$script:lastMergedSha='last'; $script:batchBackend=$false; $script:batchRailway=$false; $script:batchVercel=$false
+$script:trainDeploys=1; $script:trainNeedsRailway=$true; $script:queueStall=$false
+$script:calls=@(); $script:nextMerge=0; $script:unexpected=$null; $CiTimeoutMinutes=1; $StallMinutes=0; $MinWaitMinutesNoBackend=0
+function Wait-BatchCi { return $true }
+function Wait-ForWorkflowRun {
+ param($WorkflowFile,$Sha,$TimeoutMinutes,$Label,$StallMinutes)
+ if($WorkflowFile -ne 'auto-migrate.yml'){throw 'Wrong migration workflow'}
+ $script:calls+= $Sha
+ $index=$script:calls.Count-1
+ return ($index -lt $script:proofs.Count -and [bool]$script:proofs[$index])
+}
+function Start-Sleep { param($Seconds) }
+try { Close-OpenTrain; $script:nextMerge++ }
+catch { $script:unexpected=$_.Exception.GetType().Name; exit 2 }
+finally {
+ $result=@{calls=@($script:calls);batchCount=$script:batchMerged.Count;entryCount=$script:trainEntries.Count;nextMerge=$script:nextMerge;unexpected=$script:unexpected}
+ Write-Output ('RESULT='+($result|ConvertTo-Json -Compress))
+}
+`, source);
+}
+function assertTrainBlocked(result, expectedCalls) {
+  assert.equal(result.status, 1, 'failed migration proof must exit 1');
+  assert.equal(result.data.unexpected, null);
+  assert.deepEqual(result.data.calls, expectedCalls);
+  assert.equal(result.data.batchCount, 3, 'failed proof must retain the train');
+  assert.equal(result.data.entryCount, 3, 'failed proof must retain migration entries');
+  assert.equal(result.data.nextMerge, 0, 'failed proof must stop before another merge');
+}
+test('real train closure stops before clearing or continuing on failed or missing migration evidence', () => {
+  assertTrainBlocked(closeTrain([false]), ['1'.repeat(40)]);
+  assertTrainBlocked(closeTrain([true, false]), ['1'.repeat(40), '3'.repeat(40)]);
+  assertTrainBlocked(closeTrain([]), ['1'.repeat(40)]);
+});
+test('real train closure checks every migration and allows non-migration trains without a workflow', () => {
+  const success = closeTrain([true, true]);
+  assert.equal(success.status, 0);
+  assert.equal(success.data.unexpected, null);
+  assert.deepEqual(success.data.calls, ['1'.repeat(40), '3'.repeat(40)]);
+  assert.equal(success.data.batchCount, 0);
+  assert.equal(success.data.entryCount, 0);
+  assert.equal(success.data.nextMerge, 1);
+  const noSql = closeTrain([], [false, false, false]);
+  assert.equal(noSql.status, 0);
+  assert.deepEqual(noSql.data.calls, []);
+  assert.equal(noSql.data.nextMerge, 1);
+});
+test('negative control detects a disabled real train-closure migration gate', () => {
+  const disabled = queue.replace('if (-not (Wait-BatchMigrations)) {', 'if ($false -and -not (Wait-BatchMigrations)) {');
+  assert.notEqual(disabled, queue, 'negative control must mutate the actual closure');
+  const mutated = closeTrain([false], undefined, disabled);
+  assert.throws(() => assertTrainBlocked(mutated, ['1'.repeat(40)]), /failed migration proof must exit 1/);
+});
+test('real PR planning classifies SQL, renames and unknown or incomplete file lists', () => {
+  for (const [rows, changedFiles, expected] of [
+    [['database/2026-11-02-seed.sql'], 1, true],
+    [['docs/internal.md'], 1, false],
+    [['database/manual/2026-11-02-private.sql'], 1, false],
+    [['docs/moved.sql\tdatabase/2026-11-02-old.sql'], 1, true],
+    [['docs/internal.md'], 2, true],
+    [[], 0, true],
+  ]) {
+    const meta = { title: 'fixture', mergeable: 'MERGEABLE', isDraft: false, headRefOid: 'a'.repeat(40), mergeStateStatus: 'CLEAN', changedFiles };
+    const result = runQueueFunctions(['Get-PrPlanEntry'], `
+$Repo='fixture'; $CodeRabbitNight=$false
+$script:meta=${psQuote(JSON.stringify(meta))}
+$script:rows=ConvertFrom-Json ${psQuote(JSON.stringify(rows))}
+function gh { $global:LASTEXITCODE=1 }
+function Invoke-GhWithRetry {
+ param($GhArgs,[switch]$TolerateFailure)
+ if($GhArgs -contains 'files,changedFiles,title,mergeable,isDraft,headRefOid,mergeStateStatus'){return $script:meta}
+ if($GhArgs -contains 'api'){return $script:rows}
+ if($GhArgs -contains 'headRefOid'){return '${'a'.repeat(40)}'}
+ throw 'Unexpected external query'
+}
+function Join-Path { param($Path,$ChildPath) return $ChildPath }
+function node {
+ param($Classifier,$Paths)
+ if($Classifier -ne 'merge-queue-files.mjs'){throw 'Wrong classifier'}
+ $global:LASTEXITCODE=0
+ return '{"touchesBackend":false,"touchesRailway":false,"touchesVercel":false,"solo":false,"needRailway":false}'
+}
+$entry=Get-PrPlanEntry 1
+Write-Output ('RESULT='+(@{needsMigration=$entry.needsMigration}|ConvertTo-Json -Compress))
+`);
+    assert.equal(result.status, 0);
+    assert.equal(result.data.needsMigration, expected, `${JSON.stringify(rows)} / changed=${changedFiles}`);
+  }
 });
 
 test('train checks every migration entry and stops on the first missing proof', () => {
