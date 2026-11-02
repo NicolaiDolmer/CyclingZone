@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  planWholeDayPress, settleWholeDayPress, isTrainNowWholeDayEnabled, TRAIN_NOW_WHOLE_DAY_FLAG_KEY,
+  planWholeDayPress, settleWholeDayPress,
 } from "./trainNowWholeDay.js";
 import { runTrainNow, TRAIN_NOW_FLAG_KEY } from "./trainNow.js";
 import { TRAINING_RESERVATION_HELD } from "./dailyTrainingEngine.js";
@@ -164,12 +164,11 @@ function fakeSupabase(state) {
   return { from: query, rpc: async () => ({ data: [], error: null }) };
 }
 
-function pressState(wholeDay) {
+function pressState() {
   return {
     app_config: [
       { key: TRAIN_NOW_FLAG_KEY, value: "on" }, { key: "training_condition_per_date", value: "on" },
       { key: "training_tick_per_race_day", value: "on" },
-      ...(wholeDay ? [{ key: TRAIN_NOW_WHOLE_DAY_FLAG_KEY, value: wholeDay }] : []),
     ],
     training_date_work: [], training_train_now_locks: [],
   };
@@ -202,31 +201,19 @@ async function press(state, {
   return { result, calls };
 }
 
-test("runTrainNow: flag off is bit-identical to the old press (four race days, no B argument)", async () => {
-  for (const value of [null, "off", "beta"]) {
-    const { result, calls } = await press(pressState(value));
-    assert.equal(result.status, 200);
-    assert.deepEqual(calls.map((c) => c.gameDay), [11, 12, 13, 14], `flag ${value}`);
-    assert.ok(calls.every((c) => c.b === undefined));
-    assert.equal(result.body.wholeDay, undefined);
-  }
-});
-
-test("runTrainNow: flag on (or beta for a beta tester) settles all five race days", async () => {
-  for (const [value, beta] of [["on", false], ["beta", true]]) {
-    const { result, calls } = await press(pressState(value), { isBetaTester: beta });
-    assert.equal(result.status, 200);
-    assert.deepEqual(calls.map((c) => c.gameDay), DAYS);
-    assert.ok(calls.every((c) => c.ids.join() === "r1,r2"));
-    assert.equal(result.body.wholeDay, true);
-  }
+test("runTrainNow: the press always settles all five race days", async () => {
+  const { result, calls } = await press(pressState());
+  assert.equal(result.status, 200);
+  assert.deepEqual(calls.map((c) => c.gameDay), DAYS);
+  assert.ok(calls.every((c) => c.ids.join() === "r1,r2"));
+  assert.equal(result.body.wholeDay, true);
 });
 
 // ── Loopholes (#6461 brief) through runTrainNow with B on ───────────────────────
 const marksIn = (state) => (state.__updates ?? []).filter((u) => u.table === "training_train_now_locks" && u.patch.whole_day_at != null);
 
 test("loophole rider bought mid-day: a rider the seller's open date claims is never settled or marked by the buyer", async () => {
-  const state = pressState("on");
+  const state = pressState();
   const { result, calls } = await press(state, {
     riders: [{ id: "r1", team_id: "team-a" }, { id: "bought", team_id: "team-a", acquired_at: "2026-10-26T06:30:00Z" }],
     claimedElsewhere: ["bought"],
@@ -238,7 +225,7 @@ test("loophole rider bought mid-day: a rider the seller's open date claims is ne
 });
 
 test("loophole rider bought after the buyer pressed: the frozen roster never widens on a second press", async () => {
-  const state = pressState("on");
+  const state = pressState();
   await press(state);
   const { result, calls } = await press(state, {
     riders: [{ id: "r1", team_id: "team-a" }, { id: "r2", team_id: "team-a" }, { id: "late-buy", team_id: "team-a", acquired_at: "2026-10-26T12:00:00Z" }],
@@ -249,13 +236,9 @@ test("loophole rider bought after the buyer pressed: the frozen roster never wid
 });
 
 test("loophole double development: a second B press repeats the same days for the same riders (the engine answers alreadyRan)", async () => {
-  const state = pressState("on");
+  const state = pressState();
   const first = await press(state);
   const second = await press(state);
   assert.deepEqual(second.calls.map((c) => [c.gameDay, c.ids.join()]), first.calls.map((c) => [c.gameDay, c.ids.join()]));
   assert.ok(second.calls.every((c) => c.ids.join() === "r1,r2"));
-});
-
-test("flag reader: absent key is off", async () => {
-  assert.equal(await isTrainNowWholeDayEnabled(fakeSupabase({ app_config: [] })), false);
 });

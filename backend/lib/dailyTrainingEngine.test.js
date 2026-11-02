@@ -3301,7 +3301,7 @@ for (const heldAt of ['heldRegistration', 'heldCommit', null, 'missingWrapper'])
     assert.equal(status,held ? 409 : 200,JSON.stringify(body));
     assert.equal(captured,0);
     if(held){assert.equal(body.error,'training_in_progress');assert.deepEqual(body.settledGameDays,[]);assert.equal(state.training_day_runs.length,0);}
-    else {assert.deepEqual(body.settledGameDays,[1,2,3,4]);assert.equal(state.training_day_runs.length,4);}
+    else {assert.deepEqual(body.settledGameDays,[1,2,3,4,5]);assert.equal(state.training_day_runs.length,5);}
   });
 }
 
