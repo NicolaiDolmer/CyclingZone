@@ -101,8 +101,10 @@ export function formatLocalTime(date) {
 
 export function formatNumber(n, options = {}) {
   if (n == null || Number.isNaN(n)) return "";
+  // #7542: Intl skriver -0 som "-0" (fx "-0 CZ$" når en udgift på 0 vendes).
+  const value = Object.is(n, -0) ? 0 : n;
   try {
-    return new Intl.NumberFormat(currentLocale(), options).format(n);
+    return new Intl.NumberFormat(currentLocale(), options).format(value);
   } catch {
     return String(n);
   }

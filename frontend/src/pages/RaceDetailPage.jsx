@@ -1172,7 +1172,18 @@ export default function RaceDetailPage() {
             />
           )}
 
-          {tab === "results" && !hasAnyResults && (
+          {/* #7541: et løb der ikke er kørt endnu mangler ikke resultater; den
+              gamle "ikke importeret"-tekst gælder kun et løb med kørte etaper. */}
+          {tab === "results" && !hasAnyResults && (race.stages_completed ?? 0) === 0 && race.status !== "completed" && (
+            <EmptyState
+              icon={<FlagIcon size={26} aria-hidden="true" />}
+              title={t("empty.notStartedRace")}
+              description={t(isStageRace ? "empty.notStartedStageRaceHint" : "empty.notStartedOneDayHint")}
+              action={null}
+            />
+          )}
+
+          {tab === "results" && !hasAnyResults && ((race.stages_completed ?? 0) > 0 || race.status === "completed") && (
             <EmptyState
               icon={<FlagIcon size={26} aria-hidden="true" />}
               title={t("empty.noResultsImportedRace")}

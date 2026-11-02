@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { currencyForLocale, formatCurrency, formatDate, formatLocalTime } from "./intl.js";
+import { currencyForLocale, formatCurrency, formatDate, formatLocalTime, formatNumber } from "./intl.js";
 
 // i18n er IKKE initialiseret i node:test → currentLocale() falder tilbage
 // til "en", så default-stien kan testes deterministisk.
@@ -82,4 +82,10 @@ test("formatLocalTime — ugyldig/manglende dato giver tom streng", () => {
   assert.equal(formatLocalTime(null), "");
   assert.equal(formatLocalTime(undefined), "");
   assert.equal(formatLocalTime("not-a-date"), "");
+});
+
+test("formatNumber — -0 skrives uden minus (#7542)", () => {
+  assert.equal(formatNumber(-0), formatNumber(0));
+  assert.doesNotMatch(formatNumber(-0), /[-−]/);
+  assert.match(formatNumber(-5), /[-−]/);
 });

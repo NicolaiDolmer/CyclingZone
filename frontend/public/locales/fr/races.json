@@ -668,7 +668,10 @@
     "noHistory": "Aucune donnée trouvée pour “{name}”",
     "raceNotFoundHint": "Le lien est peut-être ancien, ou la course a été supprimée. Ouvre la bibliothèque des courses pour en trouver une autre.",
     "noResultsImportedRaceHint": "Cette course n'a pas encore de lignes de résultats. D'autres courses de la bibliothèque ont déjà les leurs.",
-    "noResultsImportedRaceCta": "Ouvrir la bibliothèque des courses"
+    "noResultsImportedRaceCta": "Ouvrir la bibliothèque des courses",
+    "notStartedRace": "La course n’a pas encore commencé",
+    "notStartedStageRaceHint": "Le classement apparaîtra une fois la 1re étape courue.",
+    "notStartedOneDayHint": "Les résultats apparaîtront une fois la course courue."
   },
   "calendar": {
     "upcoming": "À venir",
