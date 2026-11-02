@@ -73,9 +73,8 @@ test("dags-tællere bruger i18n-flertal i alle 5 sprog (#7543)", () => {
   for (const l of ["da", "en", "es", "fr", "nl"]) {
     const j = JSON.parse(readFileSync(join(__dirname, `../../public/locales/${l}/patchNotes.json`), "utf8"));
     for (const c of ["new", "improved", "fixed"]) {
-      assert.ok(j.summary[`${c}_one`] && j.summary[`${c}_other`], `${l}.${c}`);
+      assert.match(j.summary[c], /^{count, plural, one {.*} other {.*}}$/, `${l}.${c}`);
     }
-    assert.match(j.summary.fixed_one, /\{\{count\}\}/);
   }
 });
 

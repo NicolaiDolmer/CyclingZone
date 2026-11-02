@@ -26,12 +26,9 @@
     "fixed": "Opgelost"
   },
   "summary": {
-    "new_one": "{{count}} nieuw",
-    "new_other": "{{count}} nieuw",
-    "improved_one": "{{count}} verbetering",
-    "improved_other": "{{count}} verbeteringen",
-    "fixed_one": "{{count}} oplossing",
-    "fixed_other": "{{count}} oplossingen"
+    "new": "{count, plural, one {# nieuw} other {# nieuw}}",
+    "improved": "{count, plural, one {# verbetering} other {# verbeteringen}}",
+    "fixed": "{count, plural, one {# oplossing} other {# oplossingen}}"
   },
   "newBadge": "Nieuw",
   "rollout": {

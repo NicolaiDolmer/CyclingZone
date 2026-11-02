@@ -26,12 +26,9 @@
     "fixed": "Fejlrettelser"
   },
   "summary": {
-    "new_one": "{{count}} nyt",
-    "new_other": "{{count}} nyt",
-    "improved_one": "{{count}} forbedring",
-    "improved_other": "{{count}} forbedringer",
-    "fixed_one": "{{count}} fejlrettelse",
-    "fixed_other": "{{count}} fejlrettelser"
+    "new": "{count, plural, one {# nyt} other {# nyt}}",
+    "improved": "{count, plural, one {# forbedring} other {# forbedringer}}",
+    "fixed": "{count, plural, one {# fejlrettelse} other {# fejlrettelser}}"
   },
   "newBadge": "Ny",
   "rollout": {

@@ -26,12 +26,9 @@
     "fixed": "Corrigé"
   },
   "summary": {
-    "new_one": "{{count}} nouveauté",
-    "new_other": "{{count}} nouveautés",
-    "improved_one": "{{count}} amélioration",
-    "improved_other": "{{count}} améliorations",
-    "fixed_one": "{{count}} correction",
-    "fixed_other": "{{count}} corrections"
+    "new": "{count, plural, one {# nouveauté} other {# nouveautés}}",
+    "improved": "{count, plural, one {# amélioration} other {# améliorations}}",
+    "fixed": "{count, plural, one {# correction} other {# corrections}}"
   },
   "newBadge": "Nouveau",
   "rollout": {
