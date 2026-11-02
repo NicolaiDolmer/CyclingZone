@@ -216,7 +216,7 @@
   "dna": {
     "sectionLabel": "ADN du club",
     "selectHeading": "Choisis l'identité de ton club",
-    "selectIntro": "La direction a observé la saison 1 et propose trois directions. L'ADN façonne la pondération des objectifs, les objectifs de tradition du club et les membres de la direction que tu auras dès le premier plan.",
+    "selectIntro": "La direction propose trois directions pour le club. L'ADN façonne la pondération des objectifs, les objectifs de tradition du club et les membres de la direction que tu auras dès le premier plan.",
     "slot": {
       "national_match": "Correspondance nationale",
       "specialization_match": "Correspondance de spécialisation",

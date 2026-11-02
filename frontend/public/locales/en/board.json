@@ -216,7 +216,7 @@
   "dna": {
     "sectionLabel": "Club DNA",
     "selectHeading": "Choose your club identity",
-    "selectIntro": "The board has observed season 1 and suggests three directions. DNA shapes target weighting, club tradition targets and which board members you get from the first plan.",
+    "selectIntro": "The board suggests three directions for the club. DNA shapes target weighting, club tradition targets and which board members you get from the first plan.",
     "slot": {
       "national_match": "National match",
       "specialization_match": "Specialisation match",
