@@ -25,60 +25,80 @@ export function probeGitWrites(worktree, branch, output, {
   const uuid = '[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}';
   const journalPattern = new RegExp(`^\\.codex-write-probe-owner-(${uuid})\\.json$`);
   const readRegular = file => {
-    const stat=io.lstatSync(file);
+    const stat=io.lstatSync(file,{bigint:true});
     if(!stat.isFile() || stat.isSymbolicLink()) throw Error('Unowned probe file');
     return {stat,content:io.readFileSync(file,'utf8')};
   };
-  const remove = (file, content, identity) => {
+  const sameIdentity = (stat, identity) => identity && String(stat.ino)===identity.ino && String(stat.dev)===identity.dev;
+  const remove = (file, content, identity, prefix=false) => {
     let found;
     try { found=readRegular(file); } catch(error) { if(error.code==='ENOENT') return; throw error; }
-    if(found.content!==content || (identity && (found.stat.ino!==identity.ino || found.stat.dev!==identity.dev))) throw Error('Probe identity changed');
+    if(!sameIdentity(found.stat,identity) || (prefix ? !content.startsWith(found.content) : found.content!==content)) throw Error('Probe identity changed or unavailable');
     io.unlinkSync(file);
   };
-  const cleanup = (journal, content, targets) => {
+  const cleanup = (journal, journalContent, journalIdentity, targets, markerContent) => {
     const errors=[];
     for(const target of targets) {
-      try { remove(target.file, target.content, target.identity); } catch(error) { errors.push(error); }
+      try { remove(target.file,markerContent,target.identity,true); } catch(error) { errors.push(error); }
     }
     if(!errors.length) {
-      try { remove(journal,content); } catch(error) { errors.push(error); }
+      try { remove(journal,journalContent,journalIdentity); } catch(error) { errors.push(error); }
     }
     if(errors.length) throw new AggregateError(errors,'Probe cleanup incomplete');
   };
+  const identityOf = stat => ({ino:String(stat.ino),dev:String(stat.dev)});
+  const markerContentFor = owner => JSON.stringify({format:owner.format,id:owner.id,branch:owner.branch,worktree:owner.worktree,pid:owner.pid});
   // A dead PID is positive stale evidence. An alive/reused/inaccessible PID is never reclaimed.
   for(const name of io.readdirSync(privateDir)) {
     const match=journalPattern.exec(name);
     if(!match) continue;
-    const journal=journalFor(match[1]), {content}=readRegular(journal);
+    const journal=journalFor(match[1]), {content,stat}=readRegular(journal);
     const owner=JSON.parse(content);
-    if(owner.format!=='codex-write-probe-v1' || owner.id!==match[1] || owner.branch!==branch || owner.worktree!==path.resolve(worktree) || !Number.isSafeInteger(owner.pid) || owner.pid<=0) throw Error('Unowned probe journal');
+    if(owner.format!=='codex-write-probe-v2' || owner.id!==match[1] || owner.branch!==branch || owner.worktree!==path.resolve(worktree) || !Number.isSafeInteger(owner.pid) || owner.pid<=0 || !Array.isArray(owner.identities) || owner.identities.length!==3 || owner.ready!==true || owner.identities.some(identity=>identity!==null && (!/^\d+$/.test(identity.ino) || !/^\d+$/.test(identity.dev)))) throw Error('Unowned probe journal');
     if(isAlive(owner.pid)) throw Error('Owned branch has an active probe');
-    cleanup(journal,content,targetsFor(owner.id).map(file=>({file,content})));
+    cleanup(journal,content,identityOf(stat),targetsFor(owner.id).map((file,index)=>({file,identity:owner.identities[index]})),markerContentFor(owner));
   }
   // Legacy/unknown files have no trustworthy stale evidence: preserve them and fail closed.
   const leftovers=[...io.readdirSync(privateDir).filter(name=>name.startsWith('.codex-write-probe-')),
     ...io.readdirSync(path.dirname(targetsFor('check')[2])).filter(name=>name.startsWith(path.basename(branch)+'.codex-write-probe-'))];
   if(leftovers.length) throw Error('Unowned probe markers require manual inspection');
   const id=randomUUID(), journal=journalFor(id);
-  const content=JSON.stringify({format:'codex-write-probe-v1',id,branch,worktree:path.resolve(worktree),pid:process.pid});
-  const created=[];
-  // Persist ownership before touching shared objects/refs. Never prune a directory or a ref namespace.
+  const owner={format:'codex-write-probe-v2',id,branch,worktree:path.resolve(worktree),pid:process.pid,ready:false,identities:[null,null,null]};
+  const markerContent=markerContentFor(owner), created=[];
+  let journalContent='', journalIdentity;
   const journalFd=io.openSync(journal,'wx');
-  let journalContent='';
   try {
-    try { io.writeFileSync(journalFd,content); } finally {
+    try {
+      try { io.writeFileSync(journalFd,JSON.stringify(owner)); } finally {
+        journalIdentity=identityOf(io.fstatSync(journalFd,{bigint:true}));
+      }
+      const persist = () => {
+        const content=JSON.stringify(owner);
+        if(io.writeSync(journalFd,content,0,'utf8')!==Buffer.byteLength(content)) throw Error('Incomplete ownership journal write');
+        io.ftruncateSync(journalFd,Buffer.byteLength(content));
+        io.fsyncSync(journalFd);
+      };
+      owner.ready=true;
+      persist();
+      for(const [index,file] of targetsFor(id).entries()) {
+        const fd=io.openSync(file,'wx');
+        // Register immediately. An unavailable identity must preserve the journal
+        // and marker, never disappear from the next invocation's recovery checks.
+        const target={file,identity:null};
+        created.push(target);
+        try {
+          target.identity=identityOf(io.fstatSync(fd,{bigint:true}));
+          owner.identities[index]=target.identity;
+          persist();
+          io.writeFileSync(fd,markerContent);
+        } finally { io.closeSync(fd); }
+      }
+    } finally {
       try { journalContent=io.readFileSync(journal,'utf8'); } finally { io.closeSync(journalFd); }
     }
-    for(const file of targetsFor(id)) {
-      const fd=io.openSync(file,'wx');
-      const target={file,content:'',identity:io.fstatSync(fd)};
-      created.push(target);
-      try { io.writeFileSync(fd,content); } finally {
-        // Also clean a partial write, but only while this invocation owns the exact inode.
-        try { target.content=io.readFileSync(file,'utf8'); } finally { io.closeSync(fd); }
-      }
-    }
-  } finally { cleanup(journal,journalContent,created); }
+  } finally {
+    if(journalIdentity) cleanup(journal,journalContent,journalIdentity,created,markerContent);
+  }
   io.writeFileSync(output,JSON.stringify({ok:true,branch,worktree:path.resolve(worktree)})+'\n',{flag:'wx'});
 }
 
