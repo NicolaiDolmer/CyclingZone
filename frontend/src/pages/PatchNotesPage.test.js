@@ -66,3 +66,26 @@ test("én segment-række + 'Kun beta'-kontakt; 'Nu for alle' er fjernet (#6717)"
     assert.equal(j.filter?.rollout, undefined, `${lang}: filter.rollout skal vaere fjernet`);
   }
 });
+
+// #7543: bøjede dags-tællere, kun første ord med stort, ingen dobbelt "Små rettelser".
+test("dags-tællere bruger i18n-flertal i alle 5 sprog (#7543)", () => {
+  assert.match(src, /t\(`summary\.\$\{cat\}`, \{ count:/);
+  for (const l of ["da", "en", "es", "fr", "nl"]) {
+    const j = JSON.parse(readFileSync(join(__dirname, `../../public/locales/${l}/patchNotes.json`), "utf8"));
+    for (const c of ["new", "improved", "fixed"]) {
+      assert.ok(j.summary[`${c}_one`] && j.summary[`${c}_other`], `${l}.${c}`);
+    }
+    assert.match(j.summary.fixed_one, /\{\{count\}\}/);
+  }
+});
+
+test("datoen får kun stort begyndelsesbogstav, ikke capitalize på hvert ord (#7543)", () => {
+  assert.doesNotMatch(src, /text-cz-1 capitalize/);
+  assert.match(src, /charAt\(0\)\.toLocaleUpperCase/);
+});
+
+test("2/11 har kun ét \"Små rettelser\"-punkt (#7543)", async () => {
+  const { PATCHES: notes } = await import("../data/patchNotes.js");
+  const titles = notes.filter((v) => v.date === "2026-11-02").flatMap((v) => v.changes).map((c) => c.da.title);
+  assert.equal(titles.filter((x) => x === "Små rettelser").length, 1);
+});

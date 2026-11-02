@@ -25,6 +25,14 @@
     "improved": "Forbedringer",
     "fixed": "Fejlrettelser"
   },
+  "summary": {
+    "new_one": "{{count}} nyt",
+    "new_other": "{{count}} nyt",
+    "improved_one": "{{count}} forbedring",
+    "improved_other": "{{count}} forbedringer",
+    "fixed_one": "{{count}} fejlrettelse",
+    "fixed_other": "{{count}} fejlrettelser"
+  },
   "newBadge": "Ny",
   "rollout": {
     "beta": "Beta",
