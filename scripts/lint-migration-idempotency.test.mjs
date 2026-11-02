@@ -29,6 +29,23 @@ import {
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 const DB_DIR = join(HERE, '..', 'database');
 
+test('auto-migrate manual-only markers are rejected even inside comments and strings', () => {
+  for (const marker of ['MANUAL-ONLY', 'manual only', 'KØRES IKKE AUTOMATISK', 'KOERES IKKE AUTOMATISK']) {
+    for (const source of [`-- rollback: ${marker}\nSELECT 1;`, `SELECT '${marker}';`]) {
+      assert.ok(scanMigration(source, '2026-test.sql').some(f => f.kind === 'MANUAL-ONLY'));
+    }
+  }
+  assert.equal(scanMigration('-- manual review\nSELECT 1;', '2026-test.sql').length, 0);
+});
+
+test('historical manual marker exception expires on any content edit', () => {
+  const filename = '2026-08-18-3817-race-entries-team-fk-cascade.sql';
+  const source = readFileSync(join(DB_DIR, filename), 'utf8');
+  assert.equal(scanMigration(source, filename).filter(f => f.kind === 'MANUAL-ONLY').length, 0);
+  assert.ok(scanMigration(`${source}\n-- edited`, filename).some(f => f.kind === 'MANUAL-ONLY'));
+  assert.ok(scanMigration(source, '2026-new.sql').some(f => f.kind === 'MANUAL-ONLY'));
+});
+
 // --- CREATE TABLE -----------------------------------------------------------
 
 test('flags bare CREATE TABLE', () => {
