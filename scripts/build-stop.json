@@ -624,6 +624,11 @@
       "issue": 7543,
       "reason": "Patch notes: tællere bøjes ikke, November med stort, dobbelt punkt (live-fund) - forhåndsgo #7495 beslutning 3",
       "since": "2026-11-03"
+    },
+    {
+      "issue": 7551,
+      "reason": "Træning: programnavne Bakkerytter/Puncheur byttet om ift. rollerne (live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-03"
     }
   ]
 }
