@@ -14,14 +14,14 @@
 //     A rider without a lock row (bought or moved after the press) is free. The press
 //     itself never writes race_entries/race_entry_days (I3).
 //
+// #6461 B (always on since the switch was removed 2/11): a rider without an open
+// race slot gets the WHOLE known date, all race days including the date's one
+// condition write (fatigue/form), still written once per rider per date.
 // What the press deliberately does NOT settle:
-//   - the final race day of the date. That commit owns the one condition write per
-//     date (fatigue/form), and decision 4 + I4 keep that write with the evening
-//     settlement. The evening sweep finds the earlier receipts and settles the rest.
 //   - riders with an unresolved race slot (entered, or an autopick candidate). Their
-//     race result is not known yet; they settle after their stage, as before.
-// Both still use today's locked plan, so the evening result is the one the player
-// locked in the morning.
+//     race result is not known yet; they settle after their stage, as before, with
+//     today's locked plan, so the evening result is the one the player locked in
+//     the morning.
 //
 // Idempotency (I2): the lock is keyed per rider + date (training_train_now_locks),
 // and every settled race day is keyed per rider + race day (training_rider_ticks).
