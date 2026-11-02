@@ -296,6 +296,22 @@
     {
       "issue": 7251,
       "why": "Krav 5: tilbagekøbskoden fjernes fra 2/11, snapshot på ejerens kør (ejer 1/11, #7476)"
+    },
+    {
+      "issue": 7366,
+      "why": "Flaky dagsform-test, kun testen ændres (ejer-go 2/11 aften, #7495)"
+    },
+    {
+      "issue": 3430,
+      "why": "Preview-mock: login-session (ejer-go 2/11 aften, #7495)"
+    },
+    {
+      "issue": 4226,
+      "why": "Preview-mock: ingen aktiv sæson (ejer-go 2/11 aften, #7495)"
+    },
+    {
+      "issue": 7337,
+      "why": "Preview/notifikation (ejer-go 2/11 aften, #7495)"
     }
   ],
   "brandList": [
@@ -583,6 +599,46 @@
       "issue": 7533,
       "reason": "Kalendertabel + Løbshistorik (beta): forkert Klar-status, klik på navn, ikoner én gang, sortering overalt, ejer-go Discord 2/11",
       "since": "2026-11-02"
+    },
+    {
+      "issue": 7538,
+      "reason": "Forsiden: auktioner lukker kl. 20 er forkert (vindue 08-24, live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7539,
+      "reason": "Forsiden: Kommende løb tomt for hold uden gemt udtagelse, 195 af 299 hold (live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7540,
+      "reason": "Bestyrelsen: Intet mandat-tekst mens årsmødet indlæses (live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7541,
+      "reason": "Løbssiden: Stillinger siger resultater ikke importeret for løb der ikke er startet (live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7542,
+      "reason": "Akademi: regnskabet viser -0 CZ$ (live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7543,
+      "reason": "Patch notes: tællere bøjes ikke, November med stort, dobbelt punkt (live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7551,
+      "reason": "Træning: programnavne Bakkerytter/Puncheur byttet om ift. rollerne (live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7553,
+      "reason": "Planlægning Dag: løb holdet ikke er med i vises som låst trup med Afmeld (live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-03"
     }
   ]
 }
