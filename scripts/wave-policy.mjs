@@ -13,7 +13,7 @@ import { loadBuildStop, assertBuildStop, logBrandAdmissions, brandLogPath } from
 
 export const REPO = 'NicolaiDolmer/CyclingZone';
 const reserved = ['docs/now.md', '.claude/run', '.claude/launch.json'];
-const normalize = p => p.replaceAll('\\', '/').replace(/\/$/, '').toLowerCase();
+const normalize = p => p.replaceAll('\\', '/').replace(/\/+$/, '').toLowerCase();
 const slugOf = branch => branch.replaceAll('/', '-').toLowerCase();
 // #5562: rullende optag - maks saa mange spor kan staa i koe til en koerende boelge.
 export const MAX_PENDING_TRACKS = 12;
@@ -42,6 +42,38 @@ export function ownershipOverlaps(a, b) {
   const x = typeof a === 'string' ? ownershipPrefix(a) : a;
   const y = typeof b === 'string' ? ownershipPrefix(b) : b;
   return covers(x, y) || covers(y, x);
+}
+
+// #6335: declaration policy only. Keep overlap semantics conservative for
+// existing markers, PR filenames and model-risk classification.
+export const BROAD_SHARED_DIRECTORIES = [
+  'backend/lib', 'backend/routes', 'frontend/src/pages',
+  'frontend/src/components', 'frontend/src/hooks', 'frontend/src/lib', 'frontend/src/utils',
+];
+export function broadSharedDirectory(raw) {
+  const own = ownershipPrefix(raw);
+  return BROAD_SHARED_DIRECTORIES.find(prefix => covers(own, { prefix, open: false }));
+}
+
+function readOwnershipDiff(branch) {
+  const root = fileURLToPath(new URL('../', import.meta.url));
+  return execFileSync('git', ['-C', root, '--no-pager', 'diff', '--name-only', '-z', '--no-renames', `origin/main...${branch}`, '--'],
+    { encoding: 'utf8', timeout: 10000, maxBuffer: 4 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] }).split('\0').filter(Boolean);
+}
+
+export function assertNarrowOwnership(t, raw, field, readDiff = readOwnershipDiff) {
+  if (!broadSharedDirectory(raw)) return;
+  let hint;
+  try {
+    const files = readDiff(t.branch);
+    if (!Array.isArray(files) || files.some(f => typeof f !== 'string')) throw Error('Invalid diff file list');
+    const narrower = [...new Set(files.filter(f => covers(ownershipPrefix(raw), ownershipPrefix(f)) && !broadSharedDirectory(f)))].sort();
+    hint = narrower.length ? `Use concrete ${field} from branch diff: ${JSON.stringify(narrower)}.`
+      : 'No matching files in branch diff; declare concrete files or a small subdirectory.';
+  } catch {
+    hint = 'Branch diff unavailable; declaration remains rejected. Check the branch and origin/main, then declare concrete files or a small subdirectory.';
+  }
+  throw Error(`${field} too broad for #${t.issue}: ${raw}. ${hint}`);
 }
 
 // #5997: `touches` = shared files a track may touch with a minimal coupling.
@@ -83,7 +115,7 @@ export function sharedTouchPlan(tracks) {
   return { shared, mergeOrder };
 }
 
-export function validateTracks(tracks) {
+export function validateTracks(tracks, { readDiff = readOwnershipDiff } = {}) {
   if (!Array.isArray(tracks) || !tracks.length || tracks.length > 12) throw Error('Expected 1-12 tracks');
   const issues = new Set(), branches = new Set(), slugs = new Set(), files = [];
   for (const t of tracks) {
@@ -97,6 +129,7 @@ export function validateTracks(tracks) {
       // Directory/glob prefixes conservatively conflict with descendants.
       const own = ownershipPrefix(raw);
       if (reserved.some(r => ownershipOverlaps(own, { prefix: r, open: false }))) throw Error(`reserved ownership: ${raw}`);
+      assertNarrowOwnership(t, raw, 'ownership', readDiff);
       for (const f of files) {
         if (f.issue !== t.issue && ownershipOverlaps(own, f.own)) throw Error(`ownership overlap: ${raw}`);
       }
@@ -110,6 +143,7 @@ export function validateTracks(tracks) {
     for (const raw of trackTouches(t)) {
       const touch = ownershipPrefix(raw);
       if (reserved.some(r => ownershipOverlaps(touch, { prefix: r, open: false }))) throw Error(`reserved touches: ${raw}`);
+      assertNarrowOwnership(t, raw, 'touches', readDiff);
       touchEntries.push({ issue: t.issue, raw, own: touch });
     }
   }

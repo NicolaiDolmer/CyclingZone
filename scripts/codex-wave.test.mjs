@@ -67,6 +67,18 @@ function fixture(t) {
   return root;
 }
 const tracks = [1, 2].map(issue => ({ issue, branch: `codex/${issue}-fixture`, title: 'Fixture', ownership: [`fixtures/${issue}`], tier: 'TARGETED', verifyCommands: ['node --test fixture.test.mjs'] }));
+
+test('#6335: Codex plans reject broad ownership and touches while keeping independent files', () => {
+  for (const field of ['ownership', 'touches']) {
+    for (const raw of ['backend/lib', 'backend/routes/**', 'FRONTEND\\SRC\\PAGES\\']) {
+      assert.throws(() => runner.executionPlan({ tracks: [{ ...tracks[0], [field]: [raw] }] }), /too broad/);
+    }
+  }
+  assert.doesNotThrow(() => runner.executionPlan({ tracks: [
+    { ...tracks[0], ownership: ['backend/lib/engine/v4/', 'backend/routes/raceFixture.ts'] },
+    { ...tracks[1], ownership: ['backend/lib/trainingRunResponse.ts'] },
+  ] }));
+});
 test('reviewer model and effort do not change worker, fixer or permission-probe selection', () => {
   const track = { worktree: '/fixture', scratch: '/scratch', model: 'gpt-6.1-sol', effort: 'medium', reviewerModel: 'gpt-6-astra', reviewerEffort: 'high' };
   for (const role of ['worker', 'fixer', 'permission-probe', 'reviewer']) {
