@@ -924,7 +924,7 @@ Invariant 3 er den dyre. Den er hele grunden til at støj må skaleres, men aldr
 - **Ordre-kæden er lukket** (PR #4894, ejer-beslutning 27/8+2/9 om #4246): `ai/teamOrderContract.ts` er nu DEN ene kontrakt (ikke længere fire uenige kopier), rollen er standardordren (`defaultOrderForRole()`), sprint-toget kan sættes via `leadout`-feltet, og `race_role` afvises med 400 i stedet for at blive gemt (`raceTeamOrdersApi.js:8-10,38`, `ai/teamOrderContract.ts:103`). `TeamOrder` er stadig den åbne `{team_id, kind, params}`-konvolut, men det er nu et bevidst designvalg, ikke en uenighed mellem fire kopier.
 - **Taktik-kortet ER bygget** (PR #4913, 6/9): løbssiden som hero + faner, egen Tactics-fane med etape-vælger, intention og ordrer pr. rytter, ejer-godkendt på preview (screenshots i PR-beskrivelsen).
 
-**v3 er låst fallback indtil flip.** Flippet er ejer-only og sker aldrig som sidegevinst ved en anden opgave. Kill-switchen (§0, PR #4879) gør en tilbagerulning billig: broen oversætter v4's output til v3's `ranked`-form, så alt nedstrøms er uændret.
+**v3 er bevidst nødbremse (ejer 2/11, #3855).** `race_engine_v4` er `on` og v4 kører alle officielle etaper. v3-stien bag flaget beholdes som nødbremse: slås flaget fra, afvikler v3 igen, og broen oversætter v4's output til v3's `ranked`-form, så alt nedstrøms er uændret (kill-switch §0, PR #4879). At slå flaget fra er ejer-only. v3 fjernes tidligst efter en hel sæson uden brug af nødbremsen og kun på ejerens go.
 
 ---
 
