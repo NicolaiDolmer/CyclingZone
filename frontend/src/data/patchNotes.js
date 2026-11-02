@@ -1,5 +1,62 @@
 export const PATCHES = [
   {
+    "version": "7.393",
+    "date": "2026-11-02",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Your first race shows the right race",
+          "body": "The Your first race card on the dashboard now shows the race your team is actually in next, and only says your selection is saved when you have riders in it."
+        },
+        "da": {
+          "title": "Dit første løb viser det rigtige løb",
+          "body": "Kortet Dit første løb på forsiden viser nu det løb, dit hold faktisk skal køre næste gang, og siger kun, at udtagelsen er gemt, når du har ryttere med."
+        },
+        "refs": [
+          7502
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Scouting",
+        "en": {
+          "title": "Scout messages count the right riders",
+          "body": "When a scout mission finishes, the message now counts only the riders you can actually see in the report."
+        },
+        "da": {
+          "title": "Scoutbeskeden tæller de rigtige ryttere",
+          "body": "Når en scoutmission er færdig, tæller beskeden nu kun de ryttere, du faktisk kan se i rapporten."
+        },
+        "refs": [
+          6138
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Menu",
+        "en": {
+          "title": "Log in, not Log out",
+          "body": "Visitors who are not logged in now see Log in at the bottom of the menu instead of Log out."
+        },
+        "da": {
+          "title": "Log ind, ikke Log ud",
+          "body": "Besøgende, der ikke er logget ind, ser nu Log ind nederst i menuen i stedet for Log ud."
+        },
+        "refs": [
+          7500
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.392",
     "date": "2026-11-02",
     "changes": [
