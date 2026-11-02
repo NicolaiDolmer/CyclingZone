@@ -554,6 +554,11 @@
       "issue": 7507,
       "reason": "Dashboard: nyt hold får Planen er udløbet og mål overgået 100 % uden plan (live-fund testkonto) - forhåndsgo #7495 beslutning 3",
       "since": "2026-11-02"
+    },
+    {
+      "issue": 7508,
+      "reason": "Indbakke: Holdudtagelse mangler står ulæst efter holdet er udtaget (388/749 på en uge) - ejer-go 2/11 i #7495",
+      "since": "2026-11-02"
     }
   ]
 }
