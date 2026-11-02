@@ -280,6 +280,18 @@
     {
       "issue": 7336,
       "why": "byggestoppet selv og dets værn (følg til dørs, fase 0+2)"
+    },
+    {
+      "issue": 6523,
+      "why": "Krav 5: fjern kontakten training_bulk_day (ejer 1/11, #7476)"
+    },
+    {
+      "issue": 5059,
+      "why": "Krav 5: fjern TACTICS_V4_PREVIEW + forældet kommentar (ejer 1/11, #7476)"
+    },
+    {
+      "issue": 7251,
+      "why": "Krav 5: tilbagekøbskoden fjernes fra 2/11, snapshot på ejerens kør (ejer 1/11, #7476)"
     }
   ],
   "brandList": [
@@ -496,6 +508,11 @@
     {
       "issue": 7474,
       "reason": "Graduerings-sweep: to samtidige ticks afgjorde 7 ryttere to gange (dobbeltbesked), ejer-go 1/11",
+      "since": "2026-11-01"
+    },
+    {
+      "issue": 7473,
+      "reason": "Motor: Spar giver mere træthed end Normal på bjergetaper (S5), ejer-go 1/11",
       "since": "2026-11-01"
     }
   ]
