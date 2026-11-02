@@ -564,6 +564,16 @@
       "issue": 7513,
       "reason": "Nye hold: forkert tekst (sæson 1, din første rytter); ejer-go 2/11 på ordlyd og ordret merge (PR #7510)",
       "since": "2026-11-02"
+    },
+    {
+      "issue": 7518,
+      "reason": "Planlægning: nyt hold får stillede ikke op for løb startet før holdet fandtes (live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-02"
+    },
+    {
+      "issue": 7519,
+      "reason": "Mit hold Udvikling viser prognose 15–15 mens Trup viser 15 (live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-02"
     }
   ]
 }
