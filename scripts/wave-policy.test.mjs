@@ -54,16 +54,20 @@ test('#6335: workflow declaration mirror rejects the same broad paths', () => {
   const src = readFileSync(new URL('../.claude/workflows/wave.js', import.meta.url), 'utf8');
   const start = src.indexOf('const BROAD_SHARED_DIRECTORIES =');
   const end = src.indexOf('// End #6335 declaration mirror.');
-  const mirror = new Function(`${src.slice(start, end)}; return { broadSharedDirectory, assertNarrowDeclarations };`)();
+  const normalizeStart = src.indexOf('function normalizeTrack(');
+  const normalizeEnd = src.indexOf('// #6344: planlinjen');
+  const mirror = new Function(`${src.slice(start, end)}; ${src.slice(normalizeStart, normalizeEnd)}; return { broadSharedDirectory, assertNarrowDeclarations, normalizeTrack };`)();
   for (const raw of ['backend/lib', 'BACKEND\\ROUTES\\', 'frontend/src/pages/**', 'backend/li*', 'frontend/src/*', 'backend/lib/engine/v4/', 'backend/lib/trainingRunResponse.ts', 'frontend/src/pages/Feature/', 'scripts/wave-*.mjs']) {
     assert.equal(mirror.broadSharedDirectory(raw), broadSharedDirectory(raw), raw);
     for (const field of ['ownership', 'touches']) {
       const run = () => mirror.assertNarrowDeclarations({ ...track(1), [field]: [raw] });
-      if (broadSharedDirectory(raw)) assert.throws(run, /too broad/);
+      if (broadSharedDirectory(raw)) {
+        assert.throws(run, /too broad/);
+        assert.throws(() => mirror.normalizeTrack({ ...track(1), [field]: [raw] }, 0), /too broad/);
+      }
       else assert.doesNotThrow(run);
     }
   }
-  assert.match(src, /assertNarrowDeclarations\(raw\)/);
 });
 const request = (runtime = 'codex') => ({ runtime, owner: 'fixture-owner', pid: process.pid, now, tracks: [track(1)] });
 function fixture(t) {
@@ -427,6 +431,9 @@ test('#6335: narrow engine scope permits independent admission, enqueue and rece
   assert.throws(() => assertMergeAllowed(dir, 42, () => prFiles('backend/lib/engine/v4/fixture.ts')), /overlaps/);
   enqueueTracks(dir, 'rolling-wave', [receipt], ownSnapshot);
   assert.throws(() => assertMergeAllowed(dir, 42, () => prFiles('backend/lib/trainingRunResponse.ts')), /overlaps/);
+  const legacy = runningWave(t, { tracks: [trackWith(1, ['backend/lib'])] });
+  assert.throws(() => assertMergeAllowed(legacy.dir, 42, () => prFiles('backend/lib/trainingRunResponse.ts')), /overlaps/,
+    'a pre-existing broad marker must keep its lock until explicitly corrected');
 });
 const HEAD = 'a'.repeat(40);
 function mergeIo(overrides = {}) {
@@ -915,6 +922,7 @@ test('#5997: wave.js mirror of sharedTouchPlan gives the same plan as wave-polic
     [trackWith(1, ['a/x.mjs']), trackWith(2, ['b/x.mjs'])],
     [withTouches(3, ['a/1.mjs', 'a/2.mjs'], [shared]), withTouches(7, ['b/1.mjs'], [shared]), withTouches(9, ['c/1.mjs'], ['c/only.mjs']), withTouches(5, ['d/1.mjs'], ['Frontend\\src\\pages'])],
     [withTouches(1, ['a/x'], ['scripts/wave-*.mjs']), withTouches(2, ['b/x'], ['scripts/wave-policy.mjs']), withTouches(4, ['c/x'], ['scripts/wavx.mjs'])],
+    [withTouches(1, ['a/x'], ['fixtures/shared///']), withTouches(2, ['b/x'], ['fixtures/shared/file.mjs'])],
   ];
   for (const set of sets) assert.deepEqual(mirror(set), sharedTouchPlan(set));
 });

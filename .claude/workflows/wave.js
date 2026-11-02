@@ -379,7 +379,7 @@ function slugOf(branch) {
 // Samme prefix-semantik som ownershipPrefix(): lukket prefix daekker sig selv
 // og understi, en glob midt i et led er aaben.
 function touchPrefix(raw) {
-  const p = String(raw).replace(/\\/g, '/').replace(/\/$/, '').toLowerCase()
+  const p = String(raw).replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase()
   const head = p.split('*')[0]
   return { prefix: head.replace(/\/$/, ''), open: p.includes('*') && !head.endsWith('/') }
 }
