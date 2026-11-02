@@ -32,7 +32,7 @@ test('full Claude hook requires registered admission and permits only its owner 
   await acquireWave(runDir, { runtime: 'claude', owner: payload.session_id, pid: process.pid,
     now: 1790000000000, workflowRunId: 'fixture-run', tracks: payload.tool_input.args.tracks,
     // Issue #1 is synthetic: admission must not query live GitHub from this test.
-    readIssue: () => ({ labels: [], body: '' }) }, async () => []);
+  }, async () => [], () => ({ labels: [], body: '' }));
   const original = fs.readFileSync(path.join(runDir, 'wave-active.json'), 'utf8');
   assert.equal(JSON.parse(original).runtime, 'claude');
   const resume = { tool_name: 'Workflow', session_id: payload.session_id, tool_input: { resumeFromRunId: 'fixture-run' } };
