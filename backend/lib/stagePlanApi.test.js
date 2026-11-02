@@ -27,7 +27,6 @@ const BASE = {
   stagesCompleted: 0,
   scheduledAt: null,
   teamRiderIds: new Set(["h1", "c1"]),
-  intentionEnabled: true,
   now: new Date("2026-10-25T12:00:00Z"),
 };
 const HELPER_PLAN = [

@@ -1,5 +1,5 @@
 // backend/lib/engine/v4/mechanics/allOutCrack6641.ts
-// #6641/#7280 (SLUKKET bag effortCost.ALL_OUT_7280_ACTIVE, KUN s5_profiles_v3): Alt ud
+// #6641/#7280 (taendt 27/10, KUN s5_profiles_v3 og senere): Alt ud
 // paa den afgoerende stigning efter ejerens design 27/10.
 // Spec: docs/superpowers/specs/2026-10-27-6641-alt-ud-design.md.
 //

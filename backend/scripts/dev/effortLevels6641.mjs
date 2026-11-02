@@ -579,10 +579,10 @@ export function renderMarkdown(res, label) {
 const isMain = process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;
 if (isMain) {
   const arg = (name, fallback) => { const hit = process.argv.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
-  // #7280: --all-out-7280 maaler den slukkede alt ud-pakke taendt; --all-out-7280='{"gainLoss":0.04}' med kandidat-knapper.
+  // #7280: --all-out-7280='{"gainLoss":0.04}' maaler alt ud-pakken med kandidat-knapper (pakken gaelder altid under s5_profiles_v3).
   if (process.argv.some((a) => a === "--all-out-7280" || a.startsWith("--all-out-7280="))) {
-    const { setAllOut7280ForBench } = await import("../../lib/engine/v4/mechanics/effortCost.ts");
-    setAllOut7280ForBench({ active: true, tuning: JSON.parse(arg("all-out-7280", "{}")) });
+    const { setAllOut7280TuningForBench } = await import("../../lib/engine/v4/mechanics/effortCost.ts");
+    setAllOut7280TuningForBench(JSON.parse(arg("all-out-7280", "{}")));
   }
   const res = await runEffortLevels({
     genSeeds: Number(arg("gen-seeds", "1")),

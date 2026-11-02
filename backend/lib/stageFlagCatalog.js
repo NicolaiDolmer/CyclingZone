@@ -72,7 +72,6 @@ export const STAGE_FLAGS = Object.freeze([
   // hvilket er praecis den udrulning A4b-moenstret beskriver med admin-preview.
   { key: "scout_system_enabled", area: "scouting", label: "Scouting — job-modellen" },
   { key: "season_signup_enabled", area: "season", label: "Tilmelding til næste sæson" },
-  { key: "race_day_intention_enabled", area: "race-day", label: "Løbsdags-intention" },
   { key: "race_stage_timeline", area: "race-day", label: "Etape-tidslinje" },
   { key: "race_day_development_enabled", area: "race-day", label: "Udvikling på løbsdage" },
   // #5124: kun visning (frontend). Beta foerst, ejer 1/10.
@@ -222,9 +221,6 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "potential_single_number",
   "ability_cap_per_date_enabled",
   "training_decision_card",
-  // #6746: HelpPage viser indsatstrin-afsnittet (fem trin / tre trin) paa dette flag.
-  // Binaert som stage-roles-API'et (isRaceDayIntentionEnabled uden viewer): "beta" er off.
-  "race_day_intention_enabled",
   // #5319: sessionsvaelgerne og Hjaelp viser v3-kataloget paa dette flag.
   "training_catalog_v3",
 ]);
@@ -232,4 +228,4 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,
 // "beta" = off). Endpointet svarer derfor false for ALLE viewers paa "beta", saa
 // en flade aldrig beskriver en model motoren ikke koerer for beta-gruppen.
-export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "race_day_intention_enabled"]);
+export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b"]);
