@@ -322,6 +322,10 @@
       "issue": 7536,
       "reason": "Træthed på lette løbsdage: kun design og måling, intet byg uden ejer-go, ejer-go 3/11 #7495",
       "since": "2026-11-03"
+    },
+    {
+      "issue": 7348,
+      "why": "Intern CI: registry-flags efter migrationer (ejer-go 2/11, #7495)"
     }
   ],
   "brandList": [
