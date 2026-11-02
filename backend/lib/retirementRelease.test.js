@@ -94,7 +94,7 @@ const RETIRED = [
 test("frigiver trup-pladsen: team_id + kontraktfelter nulstilles for hver kandidat", async () => {
   const { supabase, riderUpdates } = makeMockSupabase();
 
-  const stats = await releaseRetiredRiders({
+  const stats = await releaseRetiredRiders({ now: new Date("2026-11-02T12:00:00Z"),
     supabase,
     fetchRetiredOwnedRiders: async () => RETIRED,
   });
@@ -116,7 +116,7 @@ test("frigiver trup-pladsen: team_id + kontraktfelter nulstilles for hver kandid
 test("concurrency-guard: opdateringen filtrerer på det team_id vi læste", async () => {
   const { supabase, riderUpdates } = makeMockSupabase();
 
-  await releaseRetiredRiders({ supabase, fetchRetiredOwnedRiders: async () => RETIRED });
+  await releaseRetiredRiders({ now: new Date("2026-11-02T12:00:00Z"), supabase, fetchRetiredOwnedRiders: async () => RETIRED });
 
   assert.equal(riderUpdates[0].filters.id, "r1");
   assert.equal(riderUpdates[0].filters.team_id, "t1");
@@ -126,7 +126,7 @@ test("concurrency-guard: opdateringen filtrerer på det team_id vi læste", asyn
 test("rytter der nåede at skifte hold imellem tælles IKKE som frigivet og udløser ingen markeds-oprydning", async () => {
   const { supabase, listingUpdates, offerUpdates } = makeMockSupabase({ unreleasableRiderIds: ["r1"] });
 
-  const stats = await releaseRetiredRiders({
+  const stats = await releaseRetiredRiders({ now: new Date("2026-11-02T12:00:00Z"),
     supabase,
     fetchRetiredOwnedRiders: async () => RETIRED,
   });
@@ -144,7 +144,7 @@ test("rytter der nåede at skifte hold imellem tælles IKKE som frigivet og udl�
 test("markeds-oprydning: listings lukkes som withdrawn OG åbne transfer-/swap-tilbud trækkes tilbage", async () => {
   const { supabase, listingUpdates, offerUpdates, swapUpdates } = makeMockSupabase();
 
-  await releaseRetiredRiders({
+  await releaseRetiredRiders({ now: new Date("2026-11-02T12:00:00Z"),
     supabase,
     fetchRetiredOwnedRiders: async () => [RETIRED[0]],
   });
@@ -167,7 +167,7 @@ test("markeds-oprydning: listings lukkes som withdrawn OG åbne transfer-/swap-t
 test("én rytters DB-fejl stopper ikke resten af loopet", async () => {
   const { supabase, riderUpdates } = makeMockSupabase({ erroringRiderIds: ["r1"] });
 
-  const stats = await releaseRetiredRiders({
+  const stats = await releaseRetiredRiders({ now: new Date("2026-11-02T12:00:00Z"),
     supabase,
     fetchRetiredOwnedRiders: async () => RETIRED,
   });
@@ -182,7 +182,7 @@ test("fejler fetch, hænges de indtil da akkumulerede stats på err.partialStats
   const { supabase } = makeMockSupabase();
 
   await assert.rejects(
-    () => releaseRetiredRiders({
+    () => releaseRetiredRiders({ now: new Date("2026-11-02T12:00:00Z"),
       supabase,
       fetchRetiredOwnedRiders: async () => { throw new Error("boom"); },
     }),
@@ -197,7 +197,7 @@ test("fejler fetch, hænges de indtil da akkumulerede stats på err.partialStats
 test("ingen kandidater → ingen mutationer, rene nul-stats", async () => {
   const { supabase, riderUpdates, listingUpdates } = makeMockSupabase();
 
-  const stats = await releaseRetiredRiders({ supabase, fetchRetiredOwnedRiders: async () => [] });
+  const stats = await releaseRetiredRiders({ now: new Date("2026-11-02T12:00:00Z"), supabase, fetchRetiredOwnedRiders: async () => [] });
 
   assert.deepEqual(stats, { candidates: 0, released: 0, failed: 0 });
   assert.equal(riderUpdates.length, 0);
@@ -205,7 +205,7 @@ test("ingen kandidater → ingen mutationer, rene nul-stats", async () => {
 });
 
 test("manglende supabase-klient kaster", async () => {
-  await assert.rejects(() => releaseRetiredRiders({ supabase: null }), /Supabase client required/);
+  await assert.rejects(() => releaseRetiredRiders({ now: new Date("2026-11-02T12:00:00Z"), supabase: null }), /Supabase client required/);
 });
 
 // ─── Query-formen (idempotens-kontrakten) ─────────────────────────────────────
@@ -216,7 +216,7 @@ test("default-forespørgslen er tilstands-baseret: is_retired=true OG team_id IS
   // team_id = null og findes derfor aldrig igen, uanset hvilken sæson vi er i.
   const { supabase, selectFilters } = makeMockSupabase({ fetchRows: [] });
 
-  const stats = await releaseRetiredRiders({ supabase });
+  const stats = await releaseRetiredRiders({ now: new Date("2026-11-02T12:00:00Z"), supabase });
 
   assert.deepEqual(stats, { candidates: 0, released: 0, failed: 0 });
   assert.equal(selectFilters.length, 1);

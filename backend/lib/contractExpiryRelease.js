@@ -43,6 +43,7 @@ import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 import { notifyUser as defaultNotifyUser } from "./notificationService.js";
 import { captureException } from "./sentry.js";
+import { closePendingGraduationOnRelease } from "./academyGraduationRelease.ts";
 import { buildContractRosterNotification } from "./contractNoticeRoster.js";
 
 export const CONTRACT_EXPIRED_RELEASE_TYPE = "contract_expired_release";
@@ -175,6 +176,7 @@ export async function releaseExpiredContractRiders({
   seasonNumber,
   notify = defaultNotifyUser,
   fetchExpiredContractRiders = defaultFetchExpiredContractRiders,
+  now = new Date(),
 }) {
   const stats = { candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0, failed: 0, youthNormalized: 0 };
   if (!supabase?.from) throw new Error("Supabase client required");
@@ -223,6 +225,7 @@ export async function releaseExpiredContractRiders({
       // #1906/#776/#822 forward-guards — samme mønster som squadEnforcement.executeAutoSale.
       await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "contract_expiry_release" });
       await closeTransferListingsForRiders(supabase, [rider.id], "withdrawn");
+      await closePendingGraduationOnRelease(supabase, { teamId: rider.team_id, riderId: rider.id, now }); // #7488
       stats.released += 1;
       if (patch.is_academy === false) stats.youthNormalized += 1;
 
