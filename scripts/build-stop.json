@@ -629,6 +629,11 @@
       "issue": 7551,
       "reason": "Træning: programnavne Bakkerytter/Puncheur byttet om ift. rollerne (live-fund) - forhåndsgo #7495 beslutning 3",
       "since": "2026-11-03"
+    },
+    {
+      "issue": 7553,
+      "reason": "Planlægning Dag: løb holdet ikke er med i vises som låst trup med Afmeld (live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-03"
     }
   ]
 }
