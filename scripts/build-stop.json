@@ -549,6 +549,11 @@
       "issue": 7505,
       "reason": "Træning: Sæt dag siger den låser udtagelsen til løb holdet ikke er med i (live-fund testkonto) - forhåndsgo #7495 beslutning 3",
       "since": "2026-11-02"
+    },
+    {
+      "issue": 7507,
+      "reason": "Dashboard: nyt hold får Planen er udløbet og mål overgået 100 % uden plan (live-fund testkonto) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-02"
     }
   ]
 }
