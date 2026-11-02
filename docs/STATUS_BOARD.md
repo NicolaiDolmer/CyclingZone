@@ -9,8 +9,9 @@
 ## 1) Lige nu (merge-koe)
 Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fejlet check. "DIRTY" er en aegte merge-konflikt (`mergeStateStatus`). GitHubs `mergeStateStatus: BLOCKED` (manglende review) taeller IKKE alene som roed (se slutrapport).
 
-- #6636 feat(race-library): upcoming races and scoped edition history (4d) — groen
+- #6636 feat(race-library): upcoming races and scoped edition history (4d) — DIRTY
 - #6665 feat(marketing): ny forside med godkendt tekst og ægte produktbilleder (#1369) (0d) — groen
+- #7496 docs(close-out): NOW + STATUS_BOARD + MASTERPLAN 2/11 middag (0d) — roed
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
@@ -24,7 +25,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #1173 Vækst/viralitets-loop: referral (del spillet med en ven) (145d)
 - #1177 Holddynamik-dybde: vejkaptajner + mentor + erfaring (145d)
 - #1239 [Design] Board-DNA og holdfokus v2: sportslige fokus-typer, nationalitet, egen avl (144d)
-- #1461 security(email): DMARC enforcement — p=none → quarantine → reject (136d)
+- #1461 security(email): DMARC enforcement — p=none → quarantine → reject (137d)
 - #2236 Organic community outreach — Reddit + Discord posting (118d)
 - #2423 [infra/sikkerhed] Vercel-opsætning til verdensklasse: håndhæv CSP, skew-protection, Speed… (111d)
 - #2511 [perf/ci] Bundle-drift: gaten måler kun PR-diffs — main kan summe forbi loftet ubevogtet… (108d)
@@ -44,7 +45,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 
 **Ikke-draft med roed tilstand:**
 
-- ingen
+- #7496 docs(close-out): NOW + STATUS_BOARD + MASTERPLAN 2/11 middag (0d) — roed
 
 ## 4) Ikke bygget
 `claude:todo`, ingen aaben PR endnu. Sorteret efter priority-label, saa alder.
@@ -56,32 +57,32 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #2682 AI-audit 19/7: NOW.md 2x over token-budget + CLAUDE.md-trim; gør token-WARN til FAIL (106d)
 - #2770 [build] Sub-2: Dybe konkurrencer — passage-ordener (KOM/point) + bonussekunder (104d)
 - #2822 [fable] Verdensklasse-benchmark: hvor staar Cycling Zone mod de bedste managerspil (102d)
-- #2840 Løn skal være dagsbaseret (rigtige dage) — engangstræk ved sæsonstart gør sent købte rytt… (101d)
+- #2840 Løn skal være dagsbaseret (rigtige dage) — engangstræk ved sæsonstart gør sent købte rytt… (102d)
 - #2884 [feature] Auktioner: længere varighed + anti-snipe-forlængelse ved sene bud (1-times-vind… (100d)
 - #3154 [ops] Ejer-direktiv 26/7: backlog ned til ~200 åbne issues på 7-14 dage + fuld prioriteri… (95d)
 - #3426 [balance] Nedkørsel vejer for tungt: 30-50 sek tabt på korte nedkørsler + for mange bjerg… (88d)
 - #3511 [perf] Bestyrelsens resultatqueries: gentagne opslag og dyr query-plan på dashboard og må… (87d)
 - #3564 [design] Progressionskæden samlet: potentiale 1-99, lofter pr. ryttertype, træningsscore,… (85d)
 - #3855 [design] Race engine v4: intra-etape-motoren — etapen beregnes undervejs (ejer-retning 17… (76d)
-- #4010 Supabase-hærdning: realtime-MalformedJWT, sponsor-sweep, offset-paginering og getUser() p… (73d)
-- …og 836 mere
+- #4010 Supabase-hærdning: realtime-MalformedJWT, sponsor-sweep, offset-paginering og getUser() p… (74d)
+- …og 832 mere
 
 ## 5) Faerdigt
 `claude:done` men stadig aabne — skal lukkes.
 
-- #6207 [bug/planlægning] Rutematch viser 56 i sæsonmatrix og 51 i Planlæg dag for samme rytter o… (27d)
-- #6471 [motor/planlægning] Rutematch skal følge motorens regler og opdateres når reglerne ændres (22d)
-- #6975 [resultater] Løbssejr registreret før sæson 4 startede (13d)
-- #7232 [bug] Omdømme vises med forskelligt tal på Mit Hold og rytterprofilen tæt på en grænse (c… (7d)
-- #7235 [bug] Pensionsvisningen skifter kortvarigt under sæsonskiftet - rytter der stopper ser ud… (7d)
-- #7474 [bug] Graduerings-sweep: to samtidige ticks afgjorde 7 ryttere to gange (dobbeltbesked) 1… (0d)
-- #6461 [bug] Train now: ryttere uden løb fik kun 4 træningssessioner (magwag1 10/10) (22d)
-- #6739 [bug/design] Small squads lose whole stage races: overlap day + spent-day rule + 6-rider… (16d)
 - #3461 [bug/balance] Restitutionens timing: 'Træn i dag' om morgenen brænder dagens eneste resti… (87d)
 - #6299 [investigation] 'Work'-ordren ser ud til at angribe uden 'try the break' + 27 mand i udbr… (26d)
 - #6363 [S5-profiler] Ny finale: mur-finale (wall_finish) (24d)
-- #6649 [motor/design] Dagsform og dominans: de bedste vinder op til 57 % (virkelighed ~30 %) (18d)
-- #6156 [bug] Formtoppe og rytterform har ingen virkning i loeb siden v4-flippet 28/9 - spillerne… (28d)
+- #6156 [bug] Formtoppe og rytterform har ingen virkning i loeb siden v4-flippet 28/9 - spillerne… (29d)
 - #6668 [S5] AI-ungdom løftes til menneskeholdenes niveau + menneskehold samles i færre grupper (… (17d)
 - #6683 Terræn-ikoner: ét farvet streg-ikon pr. etapetype overalt (17d)
-- …og 28 mere
+- #6710 [youth] Afventer oprykning i stedet for automatisk salg ved fuld trup (#5833 plan-PR 1, f… (17d)
+- #7085 [feature] Ejer-direktiv 22/10: optimér og forbedr indbakkebeskeder efter endagsløb (10d)
+- #7160 [motor v3] Udbrud vinder for sjældent på store bjergetaper: mål mod GT 2023-24 og ret i v3 (8d)
+- #7134 [bot] Playwright Smoke rød på main (nightly) (9d)
+- #1857 [enhancement] Race-sim reproducerbarhed: snapshot rytter-betingelser (form/træthed/abilit… (129d)
+- #6456 [motor] Tidsgab nr. 10 på bjergetaper uden topankomst og uden nedkørselsfinale har intet… (22d)
+- #6469 [løbsfilm] Store huller uden forklaring: et hul på flere minutter opstår på få km uden at… (22d)
+- #6472 [motor] Rullende etaper føles forkerte: bedste rutematch ender ikke forrest (friisisch 11… (22d)
+- #6486 [motor] D3: bjergetape uden topankomst (to lange stigninger, top ca. 15 km fra mål) stadi… (21d)
+- …og 29 mere
