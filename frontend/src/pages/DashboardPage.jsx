@@ -66,6 +66,7 @@ import {
   resolveBoardFeedbackHeadline,
   resolveBoardFeedbackSummary,
   resolveCategoryLabel,
+  isBoardPlanSigned,
 } from "../lib/boardCopy";
 import DashboardCustomizeMenu from "../components/DashboardCustomizeMenu";
 import AnnualMeetingNudgeCard from "../components/AnnualMeetingNudgeCard"; // #4557 S-M2d
@@ -2101,7 +2102,13 @@ export default function DashboardPage() {
                   </p>
                 </div>
               </div>
-              {boardOutlook?.feedback && boardCopyReady && (
+              {/* #7507: uden underskrevet plan er der intet at evaluere — vis "ingen plan endnu". */}
+              {!isBoardPlanSigned(board) && (
+                <div className="mt-4 pt-4 border-t border-cz-border">
+                  <p className="text-cz-2 text-xs">{t("dashboard:nextActions.boardPlanMissing")}</p>
+                </div>
+              )}
+              {isBoardPlanSigned(board) && boardOutlook?.feedback && boardCopyReady && (
                 <div className="mt-4 pt-4 border-t border-cz-border">
                   <p className="text-cz-1 text-sm font-medium">{resolveBoardFeedbackHeadline(t, boardOutlook.feedback)}</p>
                   <p className="text-cz-2 text-xs mt-1">{resolveBoardFeedbackSummary(t, boardOutlook.feedback)}</p>

@@ -15,7 +15,23 @@ import {
   resolveReactionQuote,
   resolveMemberLabel,
   resolveCategoryLabel,
+  isBoardPlanSigned,
 } from "./boardCopy.js";
+
+// #7507 · nyt hold: board_profiles-raekke i 'pending' (mandatet er kun
+// 'proposed', 0 snapshots) maa ikke give udloebet-feedback eller maalbjaelker.
+test("isBoardPlanSigned: nyt hold uden underskrevet plan er ikke signed", () => {
+  assert.equal(isBoardPlanSigned({ plan_type: "1yr", negotiation_status: "pending", seasons_completed: 0 }), false);
+  assert.equal(isBoardPlanSigned(null), false);
+  assert.equal(isBoardPlanSigned(undefined), false);
+  assert.equal(isBoardPlanSigned({ negotiation_status: "completed" }), true);
+});
+
+test("DashboardPage gater bestyrelsens evaluering paa isBoardPlanSigned og viser eksisterende ingen-plan-noegle (#7507)", () => {
+  const src = readFileSync(fileURLToPath(new URL("../pages/DashboardPage.jsx", import.meta.url)), "utf8");
+  assert.match(src, /isBoardPlanSigned\(board\) && boardOutlook\?\.feedback/);
+  assert.match(src, /!isBoardPlanSigned\(board\)[\s\S]{0,200}dashboard:nextActions\.boardPlanMissing/);
+});
 
 // Loader den ÆGTE board.json gennem en ægte i18next-icu-instans, så testen
 // fanger ICU-parse-fejl (fx apostroffer), manglende nøgler og param-mismatch
