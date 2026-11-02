@@ -1,5 +1,130 @@
 export const PATCHES = [
   {
+    "version": "7.394",
+    "date": "2026-11-02",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Academy",
+        "en": {
+          "title": "Released riders stay free agents",
+          "body": "A rider released while his graduation was still open no longer ends up as an academy rider without a team."
+        },
+        "da": {
+          "title": "Frigivne ryttere forbliver frie",
+          "body": "En rytter, der blev frigivet, mens hans graduering stadig var åben, ender ikke længere som akademirytter uden hold."
+        },
+        "refs": [
+          7488
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Set day names only your races",
+          "body": "The Set day button now only lists today's races your team can actually ride."
+        },
+        "da": {
+          "title": "Sæt dag nævner kun dine løb",
+          "body": "Knappen Sæt dag nævner nu kun de løb i dag, dit hold faktisk kan køre."
+        },
+        "refs": [
+          7505
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Inbox",
+        "en": {
+          "title": "Selection reminders clear themselves",
+          "body": "Once your team has riders in a race, the Squad selection needed reminder for that race is marked as read."
+        },
+        "da": {
+          "title": "Påmindelser om udtagelse rydder sig selv",
+          "body": "Når dit hold har ryttere i et løb, bliver Holdudtagelse mangler for det løb markeret som læst."
+        },
+        "refs": [
+          7508
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "New teams",
+        "en": {
+          "title": "Clearer texts for new teams",
+          "body": "The club identity choice and the welcome message no longer mention season 1 or your first rider."
+        },
+        "da": {
+          "title": "Klarere tekster til nye hold",
+          "body": "Valget af klubbens identitet og velkomstbeskeden nævner ikke længere sæson 1 eller din første rytter."
+        },
+        "refs": [
+          7513
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Board",
+        "en": {
+          "title": "No expired plan before your first plan",
+          "body": "A new team without a signed board plan now sees that no plan is negotiated yet."
+        },
+        "da": {
+          "title": "Ingen udløbet plan før den første",
+          "body": "Et nyt hold uden en underskrevet plan ser nu, at der ikke er forhandlet en plan endnu."
+        },
+        "refs": [
+          7507
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Planning",
+        "en": {
+          "title": "No Did not start before you existed",
+          "body": "A race that began before your team was created no longer shows as Did not start."
+        },
+        "da": {
+          "title": "Ingen 'Stillede ikke op' før holdet fandtes",
+          "body": "Et løb, der startede, før dit hold blev oprettet, vises ikke længere som Stillede ikke op."
+        },
+        "refs": [
+          7518
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "My team",
+        "en": {
+          "title": "One forecast number when it is certain",
+          "body": "Development shows a single number when the low and high forecast are the same, like the Squad tab."
+        },
+        "da": {
+          "title": "Ét prognosetal, når det er sikkert",
+          "body": "Udvikling viser ét tal, når laveste og højeste prognose er ens, som i Trup-fanen."
+        },
+        "refs": [
+          7519
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.393",
     "date": "2026-11-02",
     "changes": [
