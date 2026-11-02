@@ -195,7 +195,7 @@ test("#7317: indsats gemmes stadig paa tidskoersel; neutral ordre uden vej-felte
     ],
   };
   for (const profileType of ["itt", "itt_hilly", "ttt"]) {
-    assert.deepEqual(validateTeamOrder({ ...baseArgs, order, profileType, intentionEnabled: true }), { ok: true, errors: [] }, profileType);
+    assert.deepEqual(validateTeamOrder({ ...baseArgs, order, profileType }), { ok: true, errors: [] }, profileType);
   }
   assert.deepEqual(normalizeTeamOrder(order).riders.map((r) => r.effort), ["save", "all_out"]);
 });

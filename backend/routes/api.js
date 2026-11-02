@@ -293,12 +293,11 @@ import { youthSquadRoom, youthSquadRooms } from "../lib/youthSquadRoom.js"; // #
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, raceDaysByRace, seasonLoadByRider, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
-import { isRaceDayIntentionEnabled } from "../lib/raceIntentionFlag.js"; // #4632 loebsdagens intention (femtrins-effort), default off
 import { buildCalendarModel, toCalendarWireEntry, toCopenhagenISODate, buildGameDayDateMap } from "../lib/raceCalendar.js";
 import { snapPeakWindow, lastStageDate, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
 import { dateStringToOrdinal, loadTargetRaceDemands, loadPeakPlans, resolvePeakTrainingQualities, aggregateDemandVector } from "../lib/racePeakPlans.js";
 import { buildRouteMatch, raceRouteVector, routeMatchRevisionFor, ROUTE_MATCH_STAGE_COLUMNS } from "../lib/routeMatch.js"; // #6207
-import { RACE_V3_TUNING, validEffortsFor } from "../lib/raceRoles.js";
+import { RACE_V3_TUNING, VALID_EFFORTS_FIVE_STEP } from "../lib/raceRoles.js";
 import { peakStatus, stageProfileStrip, raceProfileSummary, countRivalPeaks, teamDivisionKnownForSeason, peakValueFormPoints, findPaybackCollisions, raceCardPeakOverlay } from "../lib/plannerBoard.js";
 import { suggestPeaksForRider, shouldRecommendNoPeak, buildNoPeakSuggestion } from "../lib/peakSuggestions.js";
 import { peakTargetRaceStarted, plannerSquadFor } from "../lib/peakTargetScope.js"; // #5992
@@ -6395,11 +6394,7 @@ const RACE_ROLE_SCOPE_CHOICE_FLAG_KEY = "race_role_scope_choice";
 router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
-    // #4632: de to flag laeses parallelt — uafhaengige app_config-opslag.
-    const [enabled, intentionEnabled] = await Promise.all([
-      isRaceEngineV3ScoringEnabled(supabase),
-      isRaceDayIntentionEnabled(supabase),
-    ]);
+    const enabled = await isRaceEngineV3ScoringEnabled(supabase);
     const { data: race, error } = await supabase
       .from("races")
       .select("id, status, stages, stages_completed, squad, scheduled_for, engine_rules_revision")
@@ -6421,8 +6416,7 @@ router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
       stage_versions: ctx.stage_versions,
       // #4632: fladen skal kunne rendre de rigtige trin uden at kende
       // multiplikatorerne. FOG OF WAR: kun enum-vaerdier ud, aldrig tal.
-      intention_enabled: intentionEnabled,
-      valid_efforts: validEffortsFor(intentionEnabled),
+      valid_efforts: VALID_EFFORTS_FIVE_STEP,
       stages_completed: ctx.stages_completed,
       // #5945: stiller holdet op? starts:false = under startgulvet (min) og kan ikke fyldes op.
       start_outlook: ctx.start_outlook,
@@ -6464,10 +6458,8 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
       const status = scope.error === "stage_roles_conflict" ? 409 : 400;
       return res.status(status).json({ error: scope.error, errors: [scope.error] });
     }
-    const intentionEnabled = await isRaceDayIntentionEnabled(supabase); // #4632
     const result = validateStageRoleOverrides({
       overrides: scope.overrides,
-      intentionEnabled,
       coCaptainAllowed: raceAllowsCoCaptain(race), // #5981
       raceCompleted: race.status === "completed",
       stageCount: ctx.stage_count,
@@ -6514,7 +6506,6 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
     if (!race) return res.status(404).json({ error: "race_not_found" });
 
     const ctx = await getTeamOrdersContext({ supabase, race, teamId: req.team.id });
-    const intentionEnabled = await isRaceDayIntentionEnabled(supabase); // #4632
     const now = new Date();
     const stages = [];
     for (let sn = 1; sn <= ctx.stage_count; sn++) {
@@ -6530,8 +6521,7 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
       stages_completed: ctx.stages_completed,
       race_completed: ctx.race_completed,
       // #4632: samme kontrakt som stage-roles-endpointet — enum-vaerdier, ingen tal.
-      intention_enabled: intentionEnabled,
-      valid_efforts: validEffortsFor(intentionEnabled),
+      valid_efforts: VALID_EFFORTS_FIVE_STEP,
       stages,
       // T4 på læsesiden: fraværende etaper i `orders` betyder neutral default —
       // frontend rendrer selv neutralTeamOrder()-formen for dem.
@@ -6543,8 +6533,8 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
       // #6462: toget er kun standard paa flade etaper under loebets revision
       // (gemt, ellers den motoren binder ved foerste claim). Fladen spejler det.
       sprint_train_flat_only: sprintTrainFlatOnlyForRace(race),
-      // #7003: etapeplanen langs ruten (flag + femtrins-indsats + s5_profiles_v3). Kun en boolean.
-      stage_plan_enabled: intentionEnabled && stagePlanRevisionOk(race)
+      // #7003: etapeplanen langs ruten (flag + s5_profiles_v3). Kun en boolean.
+      stage_plan_enabled: stagePlanRevisionOk(race)
         && await isStagePlanEnabled(supabase, { isBetaTester: (await isViewerBetaTester(req)) === true }),
     });
   } catch (err) {
@@ -6567,9 +6557,8 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
     if (!race) return res.status(404).json({ error: "race_not_found" });
 
     const ctx = await getTeamOrdersContext({ supabase, race, teamId: req.team.id });
-    const intentionEnabled = await isRaceDayIntentionEnabled(supabase); // #4632
-    // #7003: planen tages kun imod naar flag, femtrins-indsats og revision tillader den.
-    const stagePlan = orderHasStagePlan(req.body) && intentionEnabled && stagePlanRevisionOk(race)
+    // #7003: planen tages kun imod naar flag og revision tillader den.
+    const stagePlan = orderHasStagePlan(req.body) && stagePlanRevisionOk(race)
       && Number.isInteger(stageNumber) && stageNumber >= 1 && stageNumber <= ctx.stage_count
       && await isStagePlanEnabled(supabase, { isBetaTester: (await isViewerBetaTester(req)) === true })
       ? await loadStagePlanContext({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider })
@@ -6577,7 +6566,6 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
     const roleByRider = await loadStageRoleByRider({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider }); // #7003
     const result = validateTeamOrder({
       order: req.body || {},
-      intentionEnabled,
       stagePlan,
       roleByRider,
       raceCompleted: ctx.race_completed,

@@ -6,9 +6,9 @@
 // intention for netop den etape ovenpaa: grupetto giver mindst, all_out mest
 // (raceRoles.DEV_MULTIPLIER_BY_EFFORT, samme trappe som traethedsprisen).
 //
-// GATE: kun naar race_day_intention_enabled er on (kaldstedet laeser flaget).
-// Flag off, en rytter uden valgt intention, et AI-hold og enhver opslagsfejl
-// giver 1,0, altsaa praecis variant A (bit-identisk med i dag).
+// Altid aktiv (kontakten race_day_intention_enabled er fjernet, krav 5). En
+// rytter uden valgt intention, et AI-hold og enhver opslagsfejl giver 1,0,
+// altsaa praecis variant A.
 //
 // KILDEN er den SAMME som motoren koerte paa (raceRunner, #5580): holdordren
 // (race_team_orders.riders[].effort) vinder, og managerens etape-raekke

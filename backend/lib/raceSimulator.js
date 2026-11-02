@@ -505,9 +505,7 @@ function selectBreakawayBonuses({ ordered, terrainById, profileType, finaleType,
   // dagens intention slår rollens standard for netop denne etape). Det er den
   // ene resultat-side grupetto har: ingen egen chance, mod den største trætheds-
   // besparelse. Ingen NY mekanik — kun en indsnævring af den eksisterende
-  // kandidatliste, og feltet kan kun være 'grupetto' når
-  // race_day_intention_enabled er on (API'et er eneste skrivevej), så flag-off
-  // er bit-identisk.
+  // kandidatliste.
   const candidates = byTerrain.filter(
     (e, i) => (i >= cut || e.race_role === "hunter") && e.effort !== "grupetto"
   );
