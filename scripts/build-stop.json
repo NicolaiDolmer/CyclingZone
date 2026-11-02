@@ -242,6 +242,10 @@
   ],
   "cleanupList": [
     {
+      "issue": 7363,
+      "why": "CI: secret-frit bundlebudget på Dependabot-PRer (ejer-go 2/11, #7495)"
+    },
+    {
       "issue": 7446,
       "why": "Cross-PC: lokale arbejdsmapper via OneDrive-junctions (ejer-go 1/11)"
     },
