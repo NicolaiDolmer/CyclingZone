@@ -279,13 +279,14 @@ test("seasons respekterer status-filteret (#4226)", () => {
 
 test("ingen-aktiv-saeson-flag tømmer seasons (#4226)", () => {
   const store = new Map([["cz_mock_no_active_season", "1"]]);
-  globalThis.localStorage = { getItem: (k) => store.get(k) ?? null, setItem() {}, removeItem() {} };
+  const fakeStorage = { getItem: (k) => store.get(k) ?? null, setItem() {}, removeItem() {}, clear() {}, key: () => null, length: store.size };
+  Object.defineProperty(globalThis, "localStorage", { value: fakeStorage, configurable: true, writable: true });
   try {
     assert.equal(mockNoActiveSeason(), true);
     assert.deepEqual(restRows("seasons", "https://x/rest/v1/seasons?status=eq.active"), []);
     assert.equal(restObject("seasons", "https://x/rest/v1/seasons?status=eq.active"), null);
   } finally {
-    delete globalThis.localStorage;
+    Reflect.deleteProperty(globalThis, "localStorage");
   }
   assert.equal(mockNoActiveSeason(), false);
   assert.equal(restRows("seasons", "https://x/rest/v1/seasons?status=eq.active").length, 1);
