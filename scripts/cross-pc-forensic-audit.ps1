@@ -131,12 +131,14 @@ if (Test-Path $allowFile) {
   $codexLocalAllow = Get-Content $allowFile | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith('#') }
 }
 # Kortlivede buffers (commit-beskeder, PR-bodies): tilladt, men advar når de er glemt.
+# Samme glob-mønstre som buffer-afsnittet i allow-filen (Codex #7497), så alt, der
+# er tilladt som buffer, også får stale-tjekket og -AutoFix-oprydningen.
 $codexLocalEphemeralPatterns = @(
-  '^commit-msg.*\.txt$',
-  '^commit-\d+\.txt$',
-  '^commitmsg-.*\.txt$',
-  '^pr\d+-body\.md$',
-  '^pr-body-.*\.md$'
+  'commit-msg*.txt',
+  'commit-*.txt',
+  'commitmsg-*.txt',
+  'pr*-body.md',
+  'pr-body-*.md'
 )
 
 $codexLocalDir = Join-Path $RepoRoot ".codex.local"
@@ -151,7 +153,7 @@ if (Test-Path $codexLocalDir) {
 
     $isEphemeral = $false
     foreach ($pat in $codexLocalEphemeralPatterns) {
-      if ($name -match $pat) { $isEphemeral = $true; break }
+      if ($name -like $pat) { $isEphemeral = $true; break }
     }
     if ($isEphemeral) {
       # Buffer over 1 time gammel? Sandsynligvis glemt.
