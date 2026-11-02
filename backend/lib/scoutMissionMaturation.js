@@ -33,6 +33,8 @@ import { getScoutState } from "./scoutAssignmentService.js";
 import { notifyScoutReportReady } from "./notificationService.js"; // #2945
 import { ageForSeason } from "./riderSeasonAge.js"; // #4058
 import { fetchAllRows } from "./supabasePagination.js"; // #6551
+import { captureException } from "./sentry.js"; // #6138
+import { hydrateCompletedVisibility } from "./scoutReportVisibility.js"; // #6138
 
 // Standard kandidat-loader for missioner: alle ikke-pensionerede ryttere med
 // kendt potentiale, mappet til scoutMission's forventede rider-form. Scope
@@ -175,7 +177,7 @@ async function defaultLoadAlreadyScoutedRiderIds(supabase, teamId) {
 // rent faktisk rammer rækken — taber et kapløb (0 rækker ramt), skrives intet,
 // og notify() kaldes ikke. En mission kan derfor ALDRIG give to rapporter
 // (#3997 punkt 3), uanset hvor mange samtidige ticks/processer der rammer den.
-async function claimAndCompleteMission({ supabase, assignment, loadCandidates, getScout, loadAlreadyScoutedRiderIds, now, notify }) {
+async function claimAndCompleteMission({ supabase, assignment, loadCandidates, getScout, loadAlreadyScoutedRiderIds, now, notify, hydrateVisibility }) {
   // #2644 del 2: sweepen læser targetPool fra selve assignmentens mission_criteria
   // (sat ved start, scoutAssignmentService.startMission) — bagudkompatibel
   // default "free_agents" for assignments der blev startet FØR denne feature.
@@ -221,7 +223,20 @@ async function claimAndCompleteMission({ supabase, assignment, loadCandidates, g
   // #2945: notify() kaldes EFTER claimet + scout_actions er bekræftet —
   // notifyScoutReportReady isolerer selv sine fejl (kaster aldrig), `notify`
   // injicérbar for test.
-  await notify({ supabase, assignment: { ...assignment, status: "completed", result }, now });
+  // #6138: antallet i beskeden skal være det antal rapporten faktisk viser —
+  // rapporten filtrerer ved visning (scoutReportVisibility), så tæl med SAMME
+  // filter her. Kun notifikationen får den filtrerede kopi; det gemte result
+  // (og scout_actions ovenfor) er uændret. Fejl i opslaget må aldrig vælte en
+  // allerede claimet mission: så falder beskeden tilbage til shortlistens længde.
+  let notifyResult = result;
+  try {
+    const [visible] = await hydrateVisibility(supabase, [{ ...assignment, status: "completed", result }]);
+    notifyResult = visible.result;
+  } catch (err) {
+    console.error(`  scout-mission ${assignment.id}: visibility lookup for notification failed, using shortlist length:`, err.message);
+    captureException(err, { tags: { flow: "scouting", stage: "mission-notify-visibility" }, assignmentId: assignment.id });
+  }
+  await notify({ supabase, assignment: { ...assignment, status: "completed", result: notifyResult }, now });
   return { completed: true };
 }
 
@@ -242,6 +257,7 @@ export async function completeDueMissionAssignments({
   getScout = defaultGetScout,
   loadAlreadyScoutedRiderIds = defaultLoadAlreadyScoutedRiderIds, // #4058, injicérbar for test
   notify = notifyScoutReportReady, // #2945, injicérbar for test
+  hydrateVisibility = hydrateCompletedVisibility, // #6138, injicérbar for test
 }) {
   const dueBefore = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
   const { data: due, error } = await supabase
@@ -256,7 +272,7 @@ export async function completeDueMissionAssignments({
   let failed = 0;
   for (const assignment of due ?? []) {
     try {
-      const outcome = await claimAndCompleteMission({ supabase, assignment, loadCandidates, getScout, loadAlreadyScoutedRiderIds, now, notify });
+      const outcome = await claimAndCompleteMission({ supabase, assignment, loadCandidates, getScout, loadAlreadyScoutedRiderIds, now, notify, hydrateVisibility });
       if (outcome.completed) completed += 1;
     } catch (err) {
       // best-effort: per-mission try/catch isolerer én fejlende assignment fra
