@@ -104,23 +104,6 @@ export const PATCHES = [
         "refs": [
           7518
         ]
-      },
-      {
-        "category": "fixed",
-        "audience": "player",
-        "rollout": "live",
-        "topic": "My team",
-        "en": {
-          "title": "One forecast number when it is certain",
-          "body": "Development shows a single number when the low and high forecast are the same, like the Squad tab."
-        },
-        "da": {
-          "title": "Ét prognosetal, når det er sikkert",
-          "body": "Udvikling viser ét tal, når laveste og højeste prognose er ens, som i Trup-fanen."
-        },
-        "refs": [
-          7519
-        ]
       }
     ]
   },
