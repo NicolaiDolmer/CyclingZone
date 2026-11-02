@@ -11,20 +11,29 @@
 //
 // Et ulaast loeb vises altid, saa holdet stadig kan udtage til det.
 
-type ColumnRace = { id: string; lineup_locked?: boolean | null };
+type ColumnRace = { id: string; lineup_locked?: boolean | null; stages_completed?: number | null };
+
+// Codex-review (#7555): lineup_locked er sand allerede naar etape 1s starttid er passeret,
+// ogsaa hvis motoren er pauset eller forsinket. Indtil en etape faktisk er koert, kan
+// raceRunner.fillMissingTeamEntries stadig give holdet en trup, saa kun et loeb med en
+// koert etape kan holdet ikke laengere komme med i (samme regel som trainNow.js).
+function hasRunStage(race: ColumnRace): boolean {
+  return (Number(race.stages_completed) || 0) > 0;
+}
 type IdSet = ReadonlySet<string>;
 
 /**
  * PURE: behold de kolonne-loeb holdet hoerer til.
  * - ulaast loeb: altid med,
- * - laast loeb: kun med naar holdet har entries i det ELLER en afmelding (begge slags).
+ * - loeb med en koert etape: kun med naar holdet har entries i det ELLER en afmelding.
+ * - laast men ikke koert (forsinket/pauset start): med, assistenten kan stadig fylde op.
  */
 export function keepTeamDistributionColumns<T extends ColumnRace>({ columns, enteredRaceIds, withdrawnIds }: {
   columns: readonly T[] | null | undefined;
   enteredRaceIds: IdSet;
   withdrawnIds: IdSet;
 }): T[] {
-  return (columns ?? []).filter((race) => race.lineup_locked !== true
+  return (columns ?? []).filter((race) => !hasRunStage(race)
     || enteredRaceIds.has(race.id) || withdrawnIds.has(race.id));
 }
 
@@ -49,7 +58,7 @@ export async function teamDistributionColumns<T extends ColumnRace>({ supabase, 
   withdrawnIds: IdSet;
 }): Promise<T[]> {
   const lockedIds = (columns ?? [])
-    .filter((race) => race.lineup_locked === true && !withdrawnIds.has(race.id))
+    .filter((race) => hasRunStage(race) && !withdrawnIds.has(race.id))
     .map((race) => race.id);
   const enteredRaceIds = new Set<string>();
   if (lockedIds.length) {

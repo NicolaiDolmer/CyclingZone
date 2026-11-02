@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { keepTeamDistributionColumns, teamDistributionColumns } from "./raceDistributionColumns.ts";
 
 const NONE: ReadonlySet<string> = new Set();
-const lockedStage = { id: "stage-race", lineup_locked: true };
+const lockedStage = { id: "stage-race", lineup_locked: true, stages_completed: 2 };
 const openRace = { id: "one-day", lineup_locked: false };
 
 test("new team in the middle of a stage race: the locked race is not its column (#7553)", () => {
@@ -62,9 +62,9 @@ function fakeSupabase(rows: Array<{ race_id: string }>, error: { message: string
 test("loader reads entries only for locked, non-withdrawn columns and filters", async () => {
   const { supabase, calls } = fakeSupabase([{ race_id: "entered-locked" }]);
   const columns = [
-    { id: "entered-locked", lineup_locked: true },
-    { id: "foreign-locked", lineup_locked: true },
-    { id: "withdrawn-locked", lineup_locked: true },
+    { id: "entered-locked", lineup_locked: true, stages_completed: 1 },
+    { id: "foreign-locked", lineup_locked: true, stages_completed: 1 },
+    { id: "withdrawn-locked", lineup_locked: true, stages_completed: 1 },
     { id: "open", lineup_locked: false },
   ];
   const cols = await teamDistributionColumns({ supabase, teamId: "team-a", columns, withdrawnIds: new Set(["withdrawn-locked"]) });
@@ -85,4 +85,10 @@ test("loader throws on a read error instead of showing a wrong column list", asy
     teamDistributionColumns({ supabase, teamId: "team-a", columns: [lockedStage], withdrawnIds: NONE }),
     /race_entries \(distribution columns\): boom/,
   );
+});
+
+test("start passed but no stage run yet (paused/delayed engine): column stays, autofill can still add the team (Codex #7555)", () => {
+  const pending = { id: "pending-start", lineup_locked: true, stages_completed: 0 };
+  const cols = keepTeamDistributionColumns({ columns: [pending], enteredRaceIds: NONE, withdrawnIds: NONE });
+  assert.deepEqual(cols.map((c) => c.id), ["pending-start"]);
 });
