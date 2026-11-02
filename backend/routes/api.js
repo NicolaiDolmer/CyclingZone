@@ -6167,6 +6167,7 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
         const { error: clearErr } = await supabase.from("race_entry_clears")
           .delete().eq("race_id", change.raceId).eq("team_id", req.team.id);
         if (clearErr) captureException(new Error(`race_entry_clears cleanup (bulk save, ${change.raceId}): ${clearErr.message}`));
+        await resolveSelectionWarnings({ supabase, userId: req.user.id, raceId: change.raceId }); // #7508 (best-effort, kaster aldrig)
       }
     }
 
@@ -6360,6 +6361,7 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
       return res.status(500).json({ error: insErr.message });
     }
 
+    await resolveSelectionWarnings({ supabase, userId: req.user.id, raceId: race.id }); // #7508: holdet er udtaget (best-effort, kaster aldrig)
     invalidateNamespace("calendar"); // #6514
     res.json({
       ok: true,

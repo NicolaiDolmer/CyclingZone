@@ -16,6 +16,10 @@
 import { captureException } from "./sentry.js";
 
 export const SELECTION_WARNING_NOTIFICATION_TYPE = "selection_warning";
+// Typen deles med skade-/syg-/aflyst-/daekningsbeskeder (raceAvailabilityNotifications,
+// raceDayCoverageReminder), som ogsaa kan pege paa et loeb. Kun "Holdudtagelse mangler"
+// (selectionWarningSweep.buildSelectionWarningNotification) er forældet af en udtagelse.
+export const SELECTION_MISSING_TITLE_CODE = "notif.selectionWarning.title";
 
 type Db = any; // Supabase-klienten er utypet i kernen; `any` ved graensen.
 
@@ -34,6 +38,7 @@ export async function resolveSelectionWarnings(
       .from("notifications")
       .update({ is_read: true })
       .eq("type", SELECTION_WARNING_NOTIFICATION_TYPE)
+      .eq("metadata->>titleCode", SELECTION_MISSING_TITLE_CODE)
       .eq("user_id", userId)
       .eq("related_id", raceId)
       .eq("is_read", false);

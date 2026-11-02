@@ -52,6 +52,7 @@ test("resolveSelectionWarnings: sætter is_read=true KUN paa ulaeste selection_w
   assert.deepEqual(u.patch, { is_read: true });
   assert.deepEqual(u.filters, [
     ["type", SELECTION_WARNING_NOTIFICATION_TYPE],
+    ["metadata->>titleCode", "notif.selectionWarning.title"],
     ["user_id", "u1"],
     ["related_id", "r1"],
     ["is_read", false],
@@ -84,7 +85,7 @@ test("resolveSelectionWarningsForTeam: slaar ejeren op og markerer deres advarse
   assert.deepEqual(log.teamLookups[0].filters, [["id", "t1"]]);
   assert.equal(log.updates.length, 1);
   assert.deepEqual(log.updates[0].filters, [
-    ["type", "selection_warning"], ["user_id", "owner-9"], ["related_id", "r7"], ["is_read", false],
+    ["type", "selection_warning"], ["metadata->>titleCode", "notif.selectionWarning.title"], ["user_id", "owner-9"], ["related_id", "r7"], ["is_read", false],
   ]);
 });
 
@@ -162,4 +163,25 @@ test("PUT /races/:raceId/selection: resolveSelectionWarnings efter gem, kun med 
   assert.ok(okIdx > callIdx, "resolve kaldes foer svaret");
   assert.match(block, /riderIds\.length > 0\) await resolveSelectionWarnings\(\{ supabase, userId: req\.user\.id, raceId: race\.id \}\)/);
   assert.match(apiSource, /import \{ resolveSelectionWarnings \} from "\.\.\/lib\/selectionWarningResolve\.ts"/);
+});
+
+test("PUT /races/selection/bulk: resolveSelectionWarnings pr. loeb med >=1 rytter", () => {
+  const block = routeBlock('router.put("/races/selection/bulk"');
+  assert.match(block, /riderIds\.length > 0\) \{[\s\S]*?await resolveSelectionWarnings\(\{ supabase, userId: req\.user\.id, raceId: change\.raceId \}\)/);
+});
+
+test("POST /races/:raceId/selection/auto: resolveSelectionWarnings efter vellykket indsaettelse, foer svaret", () => {
+  const block = routeBlock('router.post("/races/:raceId/selection/auto"');
+  const insIdx = block.indexOf("writeRaceEntriesWithSource(");
+  const callIdx = block.indexOf("await resolveSelectionWarnings({ supabase, userId: req.user.id, raceId: race.id })");
+  const okIdx = block.search(/res\.json\(\{\s+ok: true,/);
+  assert.ok(insIdx >= 0 && callIdx > insIdx && okIdx > callIdx);
+});
+
+test("resolveSelectionWarnings: roerer kun 'Holdudtagelse mangler' (titleCode), ikke skade-/daekningsbeskeder paa samme type", () => {
+  // Skade-/syg-/aflyst-beskeder bruger ogsaa type=selection_warning med related_id=loeb.
+  const injured = "notif.riderInjured.title";
+  assert.notEqual(injured, "notif.selectionWarning.title");
+  const src = readFileSync(resolve(__dirname, "selectionWarningResolve.ts"), "utf8");
+  assert.match(src, /\.eq\("metadata->>titleCode", SELECTION_MISSING_TITLE_CODE\)/);
 });
