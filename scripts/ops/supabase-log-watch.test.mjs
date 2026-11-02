@@ -7,6 +7,50 @@ import { computeFindings } from "./supabase-log-watch.mjs";
 import * as logWatch from "./supabase-log-watch.mjs";
 
 const START = '2026-10-05T06:00:00Z', END = '2026-10-06T06:00:00Z';
+const TIMEOUT = 'Warp server error: Thread killed by timeout manager';
+const timeoutRow = (suffix, cnt) => ({ source: 'postgrest_logs', bucket: TIMEOUT + suffix, cnt });
+
+test('dated PostgREST timeout buckets match the previous canonical class', () => {
+  const result = computeFindings([timeoutRow('02/Nov/20', 30)], [timeoutRow('', 1)]);
+  assert.deepEqual(result.newClasses, []);
+  assert.equal(result.hasFindings, false);
+});
+
+test('canonical timeout counts are summed before both thresholds without mutating inputs', () => {
+  const current = [timeoutRow('', 80), timeoutRow('01/Nov/20', 70), timeoutRow('02/Nov/20', 60)];
+  const snapshot = structuredClone(current);
+  const result = computeFindings(current, []);
+  assert.deepEqual(result.spikes, [timeoutRow('', 210)]);
+  assert.deepEqual(result.newClasses, [timeoutRow('', 210)]);
+  assert.deepEqual(current, snapshot);
+  assert.deepEqual(computeFindings([timeoutRow('01/Nov/20', 12), timeoutRow('02/Nov/20', 9)], []).newClasses, [timeoutRow('', 21)]);
+});
+
+test('normalization is identical in both windows including canonical and dated-only previous rows', () => {
+  for (const currentSuffix of ['', '02/Nov/20']) {
+    for (const previousSuffix of ['', '31/Oct/20']) {
+      const result = computeFindings([timeoutRow(currentSuffix, 250)], [timeoutRow(previousSuffix, 1)]);
+      assert.deepEqual(result.newClasses, []);
+      assert.deepEqual(result.spikes, [timeoutRow('', 250)]);
+    }
+  }
+});
+
+test('other server errors, sources and meaningful suffixes stay separate and alert', () => {
+  const buckets = [
+    'Warp server error: connection reset02/Nov/20',
+    TIMEOUT + ' while reading request02/Nov/20',
+    TIMEOUT + '02/Nov/20 fatal error',
+    TIMEOUT + '02/Bad/20',
+    TIMEOUT + '2026-11-02',
+    '2026-11-02 ' + TIMEOUT,
+  ];
+  const current = buckets.map(bucket => ({ source: 'postgrest_logs', bucket, cnt: 250 }));
+  current.push({ source: 'postgres_logs', bucket: TIMEOUT + '02/Nov/20', cnt: 250 });
+  const result = computeFindings(current, [timeoutRow('', 1)]);
+  assert.deepEqual(result.spikes, current);
+  assert.deepEqual(result.newClasses, current);
+});
 
 test('log query uses the replacement endpoint and an explicit bounded window', async () => {
   const rows = await logWatch.queryLogs('synthetic-token', 'a'.repeat(20), START, END, async (url, options) => {
