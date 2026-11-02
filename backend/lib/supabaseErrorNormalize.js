@@ -75,52 +75,6 @@ function extractMessage(error) {
 // Dokument-start-tags er utvetydige — en ægte PostgREST-besked indeholder dem ikke.
 const HTML_DOC_START_RE = /<!doctype html|<html[\s>]/i;
 
-const CF_PROBLEM_LABELS = new Map([
-  [521, "Web server is down"],
-  [522, "Connection timed out"],
-  [525, "SSL handshake failed"],
-]);
-const CF_PROBLEM_TYPE =
-  "https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-";
-
-// Only a complete Cloudflare Problem Details object, optionally following a
-// static call-site label. Never classify arbitrary application JSON by status.
-function parseCloudflareProblem(message) {
-  if (typeof message !== "string") return null;
-  const start = message.indexOf("{");
-  if (start < 0) return null;
-  const prefix = message.slice(0, start).trim();
-  if (prefix && !/^[a-z][a-z0-9_. -]{0,79}:$/i.test(prefix)) return null;
-  let problem;
-  try {
-    problem = JSON.parse(message.slice(start));
-  } catch {
-    // best-effort: malformed/non-JSON bodies are expected; preserve their message unchanged.
-    return null;
-  }
-  if (
-    !problem ||
-    Array.isArray(problem) ||
-    !CF_PROBLEM_LABELS.has(problem.status) ||
-    problem.type !== `${CF_PROBLEM_TYPE}${problem.status}/` ||
-    problem.cloudflare_error !== true ||
-    problem.error_code !== problem.status ||
-    typeof problem.title !== "string" ||
-    !problem.title ||
-    typeof problem.detail !== "string" ||
-    !problem.detail ||
-    typeof problem.instance !== "string" ||
-    !problem.instance
-  )
-    return null;
-  return { problem, prefix };
-}
-
-function summarizeCloudflareProblem({ problem, prefix }) {
-  const summary = `Supabase unavailable (${problem.status} ${CF_PROBLEM_LABELS.get(problem.status)})`;
-  return prefix ? `${prefix} ${summary}` : summary;
-}
-
 function looksLikeHtmlErrorPage(message) {
   if (typeof message !== "string") return false;
   return (
@@ -151,11 +105,6 @@ function summarizeHtmlErrorPage(html) {
 // "stall-watchdog seasons: Supabase unavailable (522 Connection timed out)".
 export function normalizeSupabaseErrorMessage(message) {
   if (typeof message !== "string") return message;
-  const problem = parseCloudflareProblem(message);
-  if (problem) return summarizeCloudflareProblem(problem);
-  // JSON bodies must not fall through to HTML heuristics when a field quotes HTML.
-  if (/^\s*[[{"]/.test(message) || /^[a-z][a-z0-9_. -]{0,79}:\s*[[{"]/i.test(message))
-    return message;
   if (!looksLikeHtmlErrorPage(message)) return message;
 
   const docStart = message.search(HTML_DOC_START_RE);
@@ -243,41 +192,15 @@ function copyDbFields(error, err) {
 // Bevarer rå besked + code; bruges til ikke-transiente fejl hvor vi ikke vil
 // omskrive beskeden men stadig vil garantere en rigtig Error med stacktrace.
 function asError(error) {
-  if (parseCloudflareProblem(extractMessage(error))) return toSupabaseError(error);
   if (error instanceof Error) return error;
   return copyDbFields(error, new Error(extractMessage(error) || "Supabase error"));
 }
 
-// Preserve stack frames without retaining the raw provider message or cause.
-// Diagnostics use a small validated allowlist; URLs and provider prose can carry secrets.
+// Pakker et Supabase-fejlobjekt ind i et Error med normaliseret besked. Bevarer
+// den oprindelige code/details så debugging stadig kan se PostgREST-koden.
 export function toSupabaseError(error) {
-  const message = extractMessage(error);
-  const normalized = normalizeSupabaseErrorMessage(message);
-  const err = copyDbFields(error, new Error(normalized || "Supabase error"));
-  if (error instanceof Error && typeof error.stack === "string") {
-    const header = `${error.name}: ${message}`;
-    if (error.stack.startsWith(header))
-      err.stack = `Error: ${err.message}${error.stack.slice(header.length)}`;
-  }
-  const parsed = parseCloudflareProblem(message);
-  if (parsed) {
-    const { problem } = parsed;
-    // The JSON provider class, rather than an untrusted wrapper code, is authoritative.
-    delete err.code;
-    err.cloudflare = { status: problem.status };
-    for (const field of ["ray_id", "instance"]) {
-      if (typeof problem[field] === "string" && /^[a-f0-9]{16,32}$/i.test(problem[field])) {
-        err.cloudflare[field] = problem[field];
-      }
-    }
-    if (
-      typeof problem.timestamp === "string" &&
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(problem.timestamp)
-    ) {
-      err.cloudflare.timestamp = problem.timestamp;
-    }
-  }
-  return err;
+  const normalized = normalizeSupabaseErrorMessage(extractMessage(error));
+  return copyDbFields(error, new Error(normalized || "Supabase error"));
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -298,4 +221,57 @@ export async function withSupabaseRetry(fn, { retries = 2, delayMs = 250, sleepF
     }
   }
   throw toSupabaseError(lastError);
+}
+
+// #6105: telemetry-only helper. General application error/retry APIs above stay unchanged.
+const CF_PROBLEM_LABELS = new Map([
+  [521, "Web server is down"],
+  [522, "Connection timed out"],
+  [525, "SSL handshake failed"],
+]);
+const CF_PROBLEM_TYPE =
+  "https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-";
+
+// Only a complete Cloudflare Problem Details object, optionally following a
+// static call-site label. Never classify arbitrary application JSON by status.
+function parseCloudflareProblem(message) {
+  if (typeof message !== "string") return null;
+  const start = message.indexOf("{");
+  if (start < 0) return null;
+  const prefix = message.slice(0, start).trim();
+  if (prefix && !/^[a-z][a-z0-9_. -]{0,79}:$/i.test(prefix)) return null;
+  let problem;
+  try {
+    problem = JSON.parse(message.slice(start));
+  } catch {
+    // best-effort: malformed/non-JSON bodies are expected; preserve their message unchanged.
+    return null;
+  }
+  if (
+    !problem ||
+    Array.isArray(problem) ||
+    !CF_PROBLEM_LABELS.has(problem.status) ||
+    problem.type !== `${CF_PROBLEM_TYPE}${problem.status}/` ||
+    problem.cloudflare_error !== true ||
+    problem.error_code !== problem.status ||
+    typeof problem.title !== "string" ||
+    !problem.title ||
+    typeof problem.detail !== "string" ||
+    !problem.detail ||
+    typeof problem.instance !== "string" ||
+    !problem.instance
+  )
+    return null;
+  return { problem, prefix };
+}
+
+function summarizeCloudflareProblem({ problem, prefix }) {
+  const summary = `Supabase unavailable (${problem.status} ${CF_PROBLEM_LABELS.get(problem.status)})`;
+  return prefix ? `${prefix} ${summary}` : summary;
+}
+
+
+export function normalizeSentrySupabaseErrorMessage(message) {
+  const parsed = parseCloudflareProblem(message);
+  return parsed ? summarizeCloudflareProblem(parsed) : normalizeSupabaseErrorMessage(message);
 }
