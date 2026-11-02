@@ -11,7 +11,7 @@
 //   upcoming  loebet er ikke startet; truppen kan udtages (eller er gemt)
 //   started   loebet er i gang; truppen er laast, naeste etape + tidspunkt
 //   pause     intet kommende udtageligt loeb: hvornaar starter naeste saeson/loeb
-import { orderedSelectableRaces } from "./nextSelectableRace.js";
+import { orderedTeamNextRaces } from "./dashboardNextRace.ts";
 import { dateTextToDayOfYear } from "./raceCalendar.js";
 import { deriveRaceStatus } from "./raceHubLogic.js";
 
@@ -60,8 +60,18 @@ export function describeMoment(ms, nowMs, opts = {}) {
  * kan handle paa), ellers et loeb der allerede er i gang. Intet → null (pause).
  * @returns {{race: object, kind: "upcoming"|"started"}|null}
  */
-export function pickFirstRaceCardRace(nextRaces, enteredRaceIds = null) {
-  const selectable = orderedSelectableRaces(nextRaces)[0];
+export function pickFirstRaceCardRace(nextRaces, enteredRaceIds = null, nextStageByRace = {}) {
+  // #7502: holdets tilmeldte loeb foerst, derefter kalenderen; inden for hver gruppe
+  // efter rigtig starttid (nextStageByRace). Mangler tiden, bevares PCM-raekkefoelgen.
+  const entered = enteredRaceIds instanceof Set ? enteredRaceIds : new Set();
+  const byStart = (list) => {
+    const known = list.filter((r) => Number.isFinite(nextStageByRace?.[r.id]))
+      .sort((a, b) => nextStageByRace[a.id] - nextStageByRace[b.id]);
+    return [...known, ...list.filter((r) => !Number.isFinite(nextStageByRace?.[r.id]))];
+  };
+  const ordered = orderedTeamNextRaces(nextRaces, entered);
+  const own = ordered.filter((r) => entered.has(r.id));
+  const selectable = [...byStart(own), ...byStart(ordered.filter((r) => !entered.has(r.id)))][0];
   if (selectable) return { race: selectable, kind: "upcoming" };
   // Et loeb i gang er kun holdets hvis holdet ER tilmeldt det (#3751: et nyt hold
   // der kommer midt i et etapeloeb er ikke med, trup laast). Ukendt = ikke vist.
@@ -87,7 +97,7 @@ export function buildFirstRaceCardModel({
   nextRaces, nextStageByRace = {}, squadSelectionMissingRace = null, enteredRaceIds = null, card = {}, nowMs, timeZone, locale,
 }) {
   const opts = { timeZone, locale };
-  const picked = pickFirstRaceCardRace(nextRaces, enteredRaceIds);
+  const picked = pickFirstRaceCardRace(nextRaces, enteredRaceIds, nextStageByRace);
 
   if (!picked) {
     const seasonMs = card.next_season_start ? Date.parse(card.next_season_start) : NaN;
@@ -104,7 +114,10 @@ export function buildFirstRaceCardModel({
   const hasStart = Number.isFinite(startMs);
   const stages = Number.isFinite(race.stages) && race.stages > 0 ? race.stages : 1;
   const stageNumber = (race.stages_completed ?? 0) + 1;
-  const selectionMissing = Boolean(squadSelectionMissingRace && squadSelectionMissingRace.id === race.id);
+  // #7502: "gemt" kun naar holdet faktisk har ryttere i loebet (ukendt tilmelding = serverens signal alene).
+  const hasRiders = enteredRaceIds instanceof Set && enteredRaceIds.has(race.id);
+  const selectionMissing = Boolean(squadSelectionMissingRace && squadSelectionMissingRace.id === race.id)
+    || (enteredRaceIds instanceof Set && !hasRiders);
   const upcoming = kind === "upcoming";
 
   return {

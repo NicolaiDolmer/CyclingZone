@@ -147,3 +147,46 @@ test("endagsloeb: isStageRace er false", () => {
   assert.equal(m.isStageRace, false);
   assert.equal(m.stages, 1);
 });
+
+// #7502: testkontoens scenarie. Single-loeb i dag (tilmeldt), etapeloeb i morgen (ikke tilmeldt),
+// etapeloeb om 9 dage som ligger tidligst i den statiske PCM-kalender.
+const scenario = () => {
+  const today = scheduled("TODAY", { stages: 1, pool_race: { date_text: "20.05" } });
+  const tomorrow = scheduled("TOMORROW", { pool_race: { date_text: "10.04" } });
+  const late = scheduled("LATE", { pool_race: { date_text: "01.02" } });
+  return {
+    nextRaces: [late, tomorrow, today],
+    nextStageByRace: { TODAY: NOW + hours(5), TOMORROW: NOW + hours(29), LATE: NOW + hours(9 * 24) },
+  };
+};
+
+test("#7502: tilmeldt loeb vinder over PCM-raekkefoelgen og over kalenderens naeste", () => {
+  const { nextRaces, nextStageByRace } = scenario();
+  const picked = pickFirstRaceCardRace(nextRaces, new Set(["TODAY"]), nextStageByRace);
+  assert.equal(picked.race.id, "TODAY");
+});
+
+test("#7502: uden tilmelding vaelges kalenderens naeste efter rigtig starttid, ikke PCM-dato", () => {
+  const { nextRaces, nextStageByRace } = scenario();
+  assert.equal(pickFirstRaceCardRace(nextRaces, new Set(), nextStageByRace).race.id, "TODAY");
+  assert.equal(pickFirstRaceCardRace(nextRaces, null, nextStageByRace).race.id, "TODAY");
+});
+
+test("#7502: mangler starttiden, bevares PCM-raekkefoelgen", () => {
+  const { nextRaces } = scenario();
+  assert.equal(pickFirstRaceCardRace(nextRaces, new Set(), {}).race.id, "LATE");
+});
+
+test("#7502: 'udtagelse gemt' kun naar holdet har ryttere i loebet", () => {
+  const { nextRaces, nextStageByRace } = scenario();
+  const base = { nextRaces, nextStageByRace, card: { assistant_picks: true }, nowMs: NOW, timeZone: "UTC" };
+  const saved = buildFirstRaceCardModel({ ...base, enteredRaceIds: new Set(["TODAY"]), squadSelectionMissingRace: null });
+  assert.equal(saved.race.id, "TODAY");
+  assert.equal(saved.selectionMissing, false);
+  assert.equal(saved.showCta, false);
+  // Ingen tilmeldte ryttere: aldrig "gemt", selv om serverens signal peger paa et andet loeb.
+  const none = buildFirstRaceCardModel({ ...base, enteredRaceIds: new Set(), squadSelectionMissingRace: scheduled("TOMORROW") });
+  assert.equal(none.race.id, "TODAY");
+  assert.equal(none.selectionMissing, true);
+  assert.equal(none.showCta, true);
+});
