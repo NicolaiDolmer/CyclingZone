@@ -69,6 +69,44 @@ function arrayItems(node, ancestors, seen = new Set()) {
   }
   return result;
 }
+// Resolve own literal properties in JavaScript override order; retain original binding scopes.
+function objectMembers(node, ancestors = [], seen = new Set(), requestedKeys = null) {
+  const target = dereference(node, ancestors, seen);
+  const unknown = () => new Map((requestedKeys ?? [UNKNOWN]).map(key => [key, {
+    candidates: [{node: null, ancestors: target.ancestors}], definite: false,
+  }]));
+  if (!target.node || seen.has(target.node)) return unknown();
+  const next = new Set([...seen, target.node]);
+  if (['TSAsExpression', 'TSSatisfiesExpression', 'TSNonNullExpression', 'ParenthesizedExpression'].includes(target.node.type)) {
+    return objectMembers(target.node.expression, target.ancestors, next, requestedKeys);
+  }
+  if (target.node.type !== 'ObjectExpression') return unknown();
+  const result = new Map();
+  const merge = (key, entry) => {
+    const previous = result.get(key);
+    const candidates = entry.definite || !previous ? entry.candidates : [...previous.candidates, ...entry.candidates];
+    result.set(key, {
+      candidates: bounded([...new Map(candidates.map(candidate => [candidate.node, candidate])).values()]),
+      definite: entry.definite || Boolean(previous?.definite),
+    });
+  };
+  for (const property of target.node.properties) {
+    if (property.type === 'SpreadElement') {
+      for (const [key, entry] of objectMembers(property.argument, target.ancestors, next, requestedKeys)) merge(key, entry);
+      continue;
+    }
+    if (!['ObjectProperty', 'ObjectMethod'].includes(property.type)) continue;
+    const keys = property.computed ? values(property.key, target.ancestors, next)
+      : [property.key.type === 'NumericLiteral' ? String(property.key.value) : memberName(property.key)];
+    const unknownKey = keys.some(key => key.includes(UNKNOWN));
+    const selected = requestedKeys ? (unknownKey ? requestedKeys : keys.filter(key => requestedKeys.includes(key))) : keys;
+    for (const key of selected) merge(key, {
+      candidates: [{node: property.type === 'ObjectProperty' ? property.value : null, ancestors: target.ancestors}],
+      definite: !unknownKey && keys.length === 1,
+    });
+  }
+  return result;
+}
 export function values(node, ancestors = [], seen = new Set()) {
   if (!node || seen.has(node)) return [UNKNOWN];
   const next = new Set([...seen, node]);
@@ -100,12 +138,17 @@ export function values(node, ancestors = [], seen = new Set()) {
       return [UNKNOWN];
     }
     case 'MemberExpression': case 'OptionalMemberExpression': {
-      const target = dereference(node.object, ancestors);
-      if (target.node?.type === 'ObjectExpression') {
-        const keys = node.computed ? read(node.property) : [memberName(node.property)];
-        return bounded(target.node.properties.flatMap(p => p.type === 'ObjectProperty' && (p.computed ? values(p.key, target.ancestors, next) : [memberName(p.key)]).some(key => keys.includes(key)) ? values(p.value, target.ancestors, next) : []));
+      const keys = node.computed ? read(node.property) : [memberName(node.property)];
+      const members = objectMembers(node.object, ancestors, next, keys);
+      const result = [];
+      for (const key of keys) {
+        const candidates = members.get(key)?.candidates ?? [{node: null, ancestors}];
+        for (const candidate of candidates) {
+          result.push(...values(candidate.node, candidate.ancestors, next));
+          bounded(result);
+        }
       }
-      return [UNKNOWN];
+      return result;
     }
     case 'Identifier': {
       const binding = bindingFor(node.name, ancestors);
@@ -131,10 +174,10 @@ function classValues(node, ancestors = [], seen = new Set()) {
     const binding = bindingFor(node.name, ancestors);
     return binding ? classValues(binding.node, binding.ancestors, next) : [UNKNOWN];
   }
-  if (node.type === 'ObjectExpression') return bounded(node.properties.flatMap(p => {
-    if (p.type === 'SpreadElement') return read(p.argument);
-    return p.type === 'ObjectProperty' && canBeTruthy(p.value, ancestors) ? (p.computed ? values(p.key, ancestors, next) : [memberName(p.key)]) : [];
-  }));
+  if (node.type === 'ObjectExpression') {
+    return bounded([...objectMembers(node, ancestors, seen)].filter(([, entry]) =>
+      entry.candidates.some(candidate => canBeTruthy(candidate.node, candidate.ancestors))).map(([key]) => key));
+  }
   if (node.type === 'ArrayExpression') return bounded(node.elements.flatMap(read));
   if (node.type === 'SpreadElement') return read(node.argument);
   if (['JSXExpressionContainer', 'TSAsExpression', 'TSSatisfiesExpression', 'TSNonNullExpression', 'ParenthesizedExpression'].includes(node.type)) return read(node.expression);

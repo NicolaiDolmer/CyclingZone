@@ -69,3 +69,18 @@ test('finite expansion stays bounded and cyclic bindings terminate', () => {
   assert.deepEqual(lintClasses('const tokens=[...tokens]; clsx(...tokens); const x=<div className={tokens.join("")} />'), []);
   assert.ok(lintClasses('const first=["ri"]; const second=[...first,"ng"]; const sep=""; const x=<div className={second.join(sep)} />').length);
 });
+
+test('finite object spreads preserve member values, lexical scope and override order', () => {
+  for (const source of [
+    'const base={soft:"ring"}; const styles={...base}; const view=<div className={styles.soft}/>',
+    'const base={soft:"ring"}; const middle={...base}; const styles={...middle}; const key="soft"; const view=<div className={styles[key]}/>',
+    'const base={soft:"ring"}; const styles={soft:"block",...base}; const view=<div className={styles.soft}/>',
+    'const token="ring"; const base={soft:token}; function View(){const token="block"; const styles={...base}; return <div className={styles.soft}/>}',
+    'const base={0:"ring"}; const styles={...base}; const view=<div className={styles[0]}/>',
+    'const key=flag?"soft":"other"; const base={[key]:"block"}; const styles={soft:"ring",...base}; const view=<div className={styles.soft}/>',
+  ]) assert.ok(lintClasses(source).some(f=>f.token==='ring'), source);
+  assert.deepEqual(lintClasses('const base={soft:"ring"}; const styles={...base,soft:"block"}; const view=<div className={styles.soft}/>'), []);
+  assert.deepEqual(lintClasses('const base={ring:true}; clsx({...base,ring:false})'), []);
+  assert.ok(lintClasses('const base={ring:true}; clsx({ring:false,...base})').some(f=>f.token==='ring'));
+  assert.doesNotThrow(()=>lintClasses('const cycle={...cycle}; const view=<div className={cycle.soft}/>'));
+});

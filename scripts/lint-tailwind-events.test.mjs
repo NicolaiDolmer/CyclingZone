@@ -20,3 +20,11 @@ test('finite joined and optional event calls are inspected', () => {
   ]) assert.ok(lintEvents(source).length, source);
   assert.deepEqual(lintEvents('window?.addEventListener("blur", h)'), []);
 });
+
+test('finite spread-backed event maps preserve property override order', () => {
+  for(const source of [
+    'const base={event:"blur-sm"}; const names={...base}; window.addEventListener(names.event,h)',
+    'const base={event:"blur-sm"}; const names={event:"blur",...base}; window.addEventListener(names.event,h)',
+  ]) assert.ok(lintEvents(source).length,source);
+  assert.deepEqual(lintEvents('const base={event:"blur-sm"}; const names={...base,event:"blur"}; window.addEventListener(names.event,h)'), []);
+});
