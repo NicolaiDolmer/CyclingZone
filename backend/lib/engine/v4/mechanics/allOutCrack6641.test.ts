@@ -79,7 +79,7 @@ function field(effort: Entrant["effort"], condition = 1): Entrant[] {
   return riders;
 }
 
-function run(effort: Entrant["effort"], seed: string, condition = 1, rules_revision = "s5_profiles_v3"): StageOutput {
+function run(effort: Entrant["effort"], seed: string, condition = 1, rules_revision: StageInput["rules_revision"] = "s5_profiles_v3"): StageOutput {
   const input: StageInput = { route: ROUTE, startlist: field(effort, condition), orders: [], seed, tuning: RACE_V4_TUNING, rules_revision };
   return simulateStageV4(input);
 }

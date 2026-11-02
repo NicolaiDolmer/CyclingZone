@@ -194,5 +194,5 @@ test("#6641: fem indsatstrin og alt ud-holdspil er altid synlige, tre-trins-teks
     assert.equal(isHelpBlockVisible("raceDay", "teamworkAllOut", flags), true);
   }
   assert.doesNotMatch(source, /id: "effortStepsThree"/, "tre-trins-teksten er tilbage paa siden");
-  assert.ok(!helpGateFlagKeys().includes("race_day_intention_enabled"));
+  assert.ok(!helpGateFlagKeys().map(String).includes("race_day_intention_enabled"));
 });
