@@ -15,6 +15,9 @@ import {
 } from "./selectionWarningResolve.ts";
 import { notifyAssistantFilledSquad } from "./assistantFilledSquadNotification.js";
 
+// AGENTS regel 16: faste tidsstempler, aldrig vaeguret.
+const FIXED_NOW = new Date("2026-11-02T12:00:00Z");
+
 // Opfoerer sig som supabase-js: kaedebar builder, thenable ved update(), single
 // opslag via maybeSingle() paa teams.
 function makeSupabase({ updateError = null, throwOnUpdate = false, teamRow = { user_id: "u1" }, teamError = null } = {}) {
@@ -107,6 +110,7 @@ test("notifyAssistantFilledSquad: markerer advarslen laest for holdet+loebet og 
   const resolve = async (args) => { order.push("resolve"); resolveCalls.push(args); return { ok: true }; };
   const notify = async (args) => { order.push("notify"); notifyCalls.push(args); return { delivered: true }; };
   const res = await notifyAssistantFilledSquad({
+    now: FIXED_NOW,
     supabase: "SB", teamId: "t1", raceId: "r1", raceName: "Tour de Test", notify, resolve,
   });
   assert.equal(res.delivered, true);
@@ -119,7 +123,7 @@ test("notifyAssistantFilledSquad: ogsaa naar beskeden er dedupet markeres advars
   const resolveCalls = [];
   const resolve = async (args) => { resolveCalls.push(args); return { ok: true }; };
   const notify = async () => ({ delivered: false, deduped: true });
-  await notifyAssistantFilledSquad({ supabase: "SB", teamId: "t1", raceId: "r1", notify, resolve });
+  await notifyAssistantFilledSquad({ now: FIXED_NOW, supabase: "SB", teamId: "t1", raceId: "r1", notify, resolve });
   assert.equal(resolveCalls.length, 1);
 });
 
@@ -127,8 +131,8 @@ test("notifyAssistantFilledSquad: uden hold eller loeb -> hverken resolve eller 
   const calls = [];
   const resolve = async () => { calls.push("resolve"); };
   const notify = async () => { calls.push("notify"); };
-  await notifyAssistantFilledSquad({ supabase: "SB", teamId: null, raceId: "r1", notify, resolve });
-  await notifyAssistantFilledSquad({ supabase: "SB", teamId: "t1", raceId: null, notify, resolve });
+  await notifyAssistantFilledSquad({ now: FIXED_NOW, supabase: "SB", teamId: null, raceId: "r1", notify, resolve });
+  await notifyAssistantFilledSquad({ now: FIXED_NOW, supabase: "SB", teamId: "t1", raceId: null, notify, resolve });
   assert.deepEqual(calls, []);
 });
 
@@ -136,6 +140,7 @@ test("notifyAssistantFilledSquad: default-resolve mod mock-supabase opdaterer ri
   const { supabase, log } = makeSupabase({ teamRow: { user_id: "owner-1" } });
   const notifyCalls = [];
   await notifyAssistantFilledSquad({
+    now: FIXED_NOW,
     supabase, teamId: "t1", raceId: "r1", notify: async (a) => { notifyCalls.push(a); return { delivered: true }; },
   });
   assert.equal(log.updates.length, 1);
