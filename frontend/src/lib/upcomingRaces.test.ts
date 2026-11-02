@@ -1,9 +1,26 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { pickUpcomingRaces, filterTeamEnteredRaces } from "./upcomingRaces.js";
+import { pickUpcomingRaces, filterTeamUpcomingRaces } from "./upcomingRaces.ts";
 
-function race(id, dateText) {
+type TestRace = {
+  id: string;
+  status?: string;
+  stages?: number;
+  stages_completed?: number;
+  pool_race: { date_text: string } | null;
+};
+
+function race(id: string, dateText?: string | null): TestRace {
   return { id, pool_race: dateText == null ? null : { date_text: dateText } };
+}
+
+// Løbsstatus som DashboardPage henter den (races-rækken): ikke startet = status
+// scheduled med 0 etaper kørt; i gang = scheduled med 1+ etaper kørt.
+function notStarted(id: string, stages = 3): TestRace {
+  return { ...race(id), status: "scheduled", stages, stages_completed: 0 };
+}
+function inProgress(id: string, stages = 5, done = 2): TestRace {
+  return { ...race(id), status: "scheduled", stages, stages_completed: done };
 }
 
 test("sorterer på ægte næste-etape-tid, ikke PCM-dato", () => {
@@ -56,64 +73,85 @@ test("tom / ugyldig liste giver tom liste", () => {
   assert.deepEqual(pickUpcomingRaces(null, {}), []);
 });
 
-// #3751 — filterTeamEnteredRaces + pickUpcomingRaces sammen reproducerer det
-// målte prod-scenarie (nyt hold "Jean-Luc", 14/8): tilmeldt i et igangværende
-// etapeløb den ikke er en del af, men allerede tilmeldt hvert løb derefter.
-// FØR fixet ville det igangværende løbs snarlige næste-etape-tid vinde
-// sorteringen og vises øverst; kortet skal i stedet vise holdets EGET
-// nærmeste løb.
-test("nyt hold midt i et etapeløb: kortet viser holdets EGET nærmeste løb, ikke puljens igangværende løb (#3751)", () => {
-  const races = [
-    race("tour-du-jura"), // igangværende — holdet er IKKE tilmeldt (kom til midt i løbet)
-    race("coppa-appenninica"),
-    race("kempen"),
-    race("cevennes"),
-  ];
-  const nextStageMsById = {
-    "tour-du-jura": 1000, // næste etape om 1 time — vandt FØR fixet
-    "coppa-appenninica": 90000,
-    kempen: 96000,
-    cevennes: 150000,
-  };
-  const enteredRaceIds = new Set(["coppa-appenninica", "kempen", "cevennes"]);
+// #7539 — nyt hold uden gemt udtagelse (0 race_entries). Assistenten stiller
+// hold i divisionens løb, når de køres, så kortet skal vise de næste løb i
+// stedet for "Ingen planlagte løb".
+test("nyt hold uden entries: kortet viser divisionens ikke-startede løb (#7539)", () => {
+  const races = [notStarted("a"), notStarted("b"), notStarted("c"), notStarted("d")];
+  const nextStageMsById = { a: 3000, b: 1000, c: 2000, d: 4000 };
 
-  const filtered = filterTeamEnteredRaces(races, enteredRaceIds);
+  const filtered = filterTeamUpcomingRaces(races, new Set());
   const ids = pickUpcomingRaces(filtered, nextStageMsById, 3).map((r) => r.id);
 
-  assert.deepEqual(ids, ["coppa-appenninica", "kempen", "cevennes"]);
+  assert.deepEqual(ids, ["b", "c", "a"]);
 });
 
-// Etableret hold — filteret er en no-op fordi holdet ER tilmeldt det
-// igangværende løb (accept-kriterie: "et etableret hold ser præcis det
-// samme som i dag").
-test("etableret hold: filteret ændrer intet (holdet ER tilmeldt det igangværende løb)", () => {
-  const races = [race("live-race"), race("next-race")];
-  const nextStageMsById = { "live-race": 1000, "next-race": 90000 };
+// Etableret hold: tilmeldt det igangværende løb og de næste. Ingenting fjernes.
+test("etableret hold: ser sit igangværende løb og de næste løb uændret", () => {
+  const races = [inProgress("live-race"), notStarted("next-race"), notStarted("later-race")];
+  const nextStageMsById = { "live-race": 1000, "next-race": 90000, "later-race": 150000 };
   const enteredRaceIds = new Set(["live-race", "next-race"]);
 
-  const filtered = filterTeamEnteredRaces(races, enteredRaceIds);
+  const filtered = filterTeamUpcomingRaces(races, enteredRaceIds);
   const ids = pickUpcomingRaces(filtered, nextStageMsById, 3).map((r) => r.id);
 
-  assert.deepEqual(ids, ["live-race", "next-race"]);
+  assert.deepEqual(ids, ["live-race", "next-race", "later-race"]);
 });
 
-test("filterTeamEnteredRaces: accepterer både Set og almindeligt array", () => {
-  const races = [race("a"), race("b")];
-  assert.deepEqual(filterTeamEnteredRaces(races, ["a"]).map((r) => r.id), ["a"]);
-  assert.deepEqual(filterTeamEnteredRaces(races, new Set(["a"])).map((r) => r.id), ["a"]);
+// #3751 bevares — et løb i gang som holdet ikke deltager i, vises ikke, selvom
+// dets næste etape kører før holdets eget næste løb.
+test("løb i gang uden holdet vises ikke (#3751)", () => {
+  const races = [inProgress("live-without-team"), notStarted("own-next"), notStarted("after")];
+  const nextStageMsById = { "live-without-team": 1000, "own-next": 90000, after: 96000 };
+  const enteredRaceIds = new Set(["own-next"]);
+
+  const filtered = filterTeamUpcomingRaces(races, enteredRaceIds);
+  const ids = pickUpcomingRaces(filtered, nextStageMsById, 3).map((r) => r.id);
+
+  assert.deepEqual(ids, ["own-next", "after"]);
 });
 
-test("filterTeamEnteredRaces: tom/ugyldig liste giver tom liste", () => {
-  assert.deepEqual(filterTeamEnteredRaces([], new Set(["a"])), []);
-  assert.deepEqual(filterTeamEnteredRaces(undefined, new Set(["a"])), []);
-  assert.deepEqual(filterTeamEnteredRaces(null, new Set(["a"])), []);
-  assert.deepEqual(filterTeamEnteredRaces([race("a")], undefined), []);
+// #3751 bevares — et hold oprettet midt i et etapeløb har ingen entries i det
+// løb (trup låst). Løbet var allerede startet, så det er ikke "ikke startet".
+test("løb der startede før holdet fandtes vises ikke, heller ikke for et hold uden entries (#3751)", () => {
+  const races = [inProgress("started-before-team", 7, 1), notStarted("next")];
+  const nextStageMsById = { "started-before-team": 500, next: 80000 };
+
+  const filtered = filterTeamUpcomingRaces(races, []);
+  const ids = pickUpcomingRaces(filtered, nextStageMsById, 3).map((r) => r.id);
+
+  assert.deepEqual(ids, ["next"]);
 });
 
-test("filterTeamEnteredRaces: muterer ikke input-arrayet", () => {
-  const races = [race("a"), race("b")];
+// Afsluttede løb filtreres fra i Dashboard-forespørgslen (status completed). Et
+// løb med alle etaper kørt tæller heller ikke som "ikke startet".
+test("afsluttede løb uden holdet tæller ikke som ikke-startede", () => {
+  const races = [
+    { ...race("done"), status: "completed", stages: 1, stages_completed: 1 },
+    { ...race("all-stages-run"), status: "scheduled", stages: 3, stages_completed: 3 },
+    notStarted("next"),
+  ];
+  const ids = filterTeamUpcomingRaces(races, new Set(["next"])).map((r) => r.id);
+  assert.deepEqual(ids, ["next"]);
+});
+
+test("filterTeamUpcomingRaces: accepterer både Set og almindeligt array", () => {
+  const races = [inProgress("a"), inProgress("b")];
+  assert.deepEqual(filterTeamUpcomingRaces(races, ["a"]).map((r) => r.id), ["a"]);
+  assert.deepEqual(filterTeamUpcomingRaces(races, new Set(["a"])).map((r) => r.id), ["a"]);
+});
+
+test("filterTeamUpcomingRaces: tom/ugyldig liste giver tom liste", () => {
+  assert.deepEqual(filterTeamUpcomingRaces([], new Set(["a"])), []);
+  assert.deepEqual(filterTeamUpcomingRaces(undefined, new Set(["a"])), []);
+  assert.deepEqual(filterTeamUpcomingRaces(null, new Set(["a"])), []);
+  assert.deepEqual(filterTeamUpcomingRaces([inProgress("a")], undefined), []);
+});
+
+test("filterTeamUpcomingRaces: muterer ikke input-arrayet", () => {
+  const races = [inProgress("a"), notStarted("b")];
   const snapshot = races.map((r) => r.id);
-  const filtered = filterTeamEnteredRaces(races, new Set(["a"]));
+  const filtered = filterTeamUpcomingRaces(races, new Set(["a"]));
   assert.deepEqual(races.map((r) => r.id), snapshot);
   assert.notEqual(filtered, races);
 });
