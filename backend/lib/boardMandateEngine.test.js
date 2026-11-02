@@ -10,6 +10,9 @@ import {
   buildGoalStatesFromEvaluation,
   buildMandateOpeningNotice,
   closeEndedSeasonMandates,
+  closeEndedSeasonMandatesForAllTeams,
+  countStaleActiveMandates,
+  ensureMandateForReturningTeam,
   completeActiveMandate,
   computeRelationUpdateFromEvaluation,
   daysUntilAutoAccept,
@@ -1416,6 +1419,105 @@ test("#6773 closeEndedSeasonMandates: en underskrift midt i oprydningen efterlad
   const row = supabase._state.mandates.find((m) => m.id === "m-s4-prop");
   assert.notEqual(row.status, "active", "et mandat for en afsluttet sæson må ikke overleve som active");
 });
+
+test("#6773 closeEndedSeasonMandatesForAllTeams: lukker afsluttede sæsoner for alle hold (også parkerede/frosne); næste sæson urørt; idempotent", async () => {
+  const supabase = makeMandateLifecycleSupabase({
+    seasons: [{ id: "s4", number: 4, status: "completed" }, { id: "s5", number: 5, status: "active" }],
+    mandates: [
+      { id: "m-active-team", team_id: "t1", season_id: "s4", season_number: 4, status: "active" },
+      { id: "m-parked", team_id: "t-parked", season_id: "s4", season_number: 4, status: "active" },
+      { id: "m-frozen-s3", team_id: "t-frozen", season_id: "s3", season_number: 3, status: "active" },
+      { id: "m-prop-s4", team_id: "t2", season_id: "s4", season_number: 4, status: "proposed" },
+      { id: "m-s5", team_id: "t1", season_id: "s5", season_number: 5, status: "proposed" },
+      { id: "m-legacy", team_id: "t3", season_id: "s2", season_number: null, status: "active" },
+    ],
+  });
+  const now = new Date("2026-11-02T10:00:00Z");
+  const first = await closeEndedSeasonMandatesForAllTeams(supabase, { endedSeasonNumber: 4, now });
+  assert.deepEqual(first, { completed: 3, lapsed: 1 });
+  const byId = Object.fromEntries(supabase._state.mandates.map((m) => [m.id, m]));
+  assert.equal(byId["m-parked"].status, "completed", "parkeret hold lukkes også");
+  assert.equal(byId["m-frozen-s3"].status, "completed", "frosset hold lukkes også");
+  assert.equal(byId["m-prop-s4"].status, "lapsed");
+  assert.equal(byId["m-s5"].status, "proposed", "næste sæsons forslag røres aldrig");
+  assert.equal(byId["m-legacy"].status, "active", "rækker uden season_number røres ikke");
+  assert.deepEqual(await closeEndedSeasonMandatesForAllTeams(supabase, { endedSeasonNumber: 4, now }), { completed: 0, lapsed: 0 });
+});
+
+test("#6773 closeEndedSeasonMandatesForAllTeams: findes næste sæson ikke, røres intet (#4838)", async () => {
+  const supabase = makeMandateLifecycleSupabase({
+    seasons: [{ id: "s4", number: 4, status: "active" }],
+    mandates: [{ id: "m-s4", team_id: "t1", season_id: "s4", season_number: 4, status: "active" }],
+  });
+  const now = new Date("2026-11-02T10:00:00Z");
+  const result = await closeEndedSeasonMandatesForAllTeams(supabase, { endedSeasonNumber: 4, now });
+  assert.equal(result.skipped, "target_season_not_found");
+  assert.equal(supabase._state.mandates[0].status, "active");
+  assert.equal((await closeEndedSeasonMandatesForAllTeams(supabase, { endedSeasonNumber: null, now })).skipped, "invalid_season_number");
+});
+
+test("#6773 ensureMandateForReturningTeam: lukker holdets gamle mandat og foreslår et for sæsonen; andre hold urørt", async () => {
+  const supabase = makeMandateLifecycleSupabase({
+    seasons: [{ id: "s4", number: 4, status: "completed" }, { id: "s5", number: 5, status: "active" }],
+    mandates: [
+      { id: "m-old", team_id: "t1", season_id: "s4", season_number: 4, status: "active" },
+      { id: "m-other", team_id: "t2", season_id: "s4", season_number: 4, status: "active" },
+    ],
+    teams: [{ id: "t1", name: "Hold", division: 3, team_dna_key: null }],
+  });
+  const result = await ensureMandateForReturningTeam(supabase, { teamId: "t1", seasonNumber: 5, now: new Date("2026-11-02T10:00:00Z"), captureExceptionFn: () => {} });
+  assert.deepEqual(result.closed, { completed: 1, lapsed: 0 });
+  const byId = Object.fromEntries(supabase._state.mandates.map((m) => [m.id, m]));
+  assert.equal(byId["m-old"].status, "completed");
+  assert.equal(byId["m-other"].status, "active", "kun det hold der vender tilbage");
+  const fresh = supabase._state.mandates.find((m) => m.team_id === "t1" && m.season_number === 5);
+  assert.ok(fresh, "et mandat for sæson 5 er foreslået");
+  assert.equal(fresh.status, "proposed");
+});
+
+test("#6773 ensureMandateForReturningTeam: kaster aldrig, fejlen rapporteres", async () => {
+  const captured = [];
+  const supabase = { from() { throw new Error("db nede"); } };
+  const now = new Date("2026-11-02T10:00:00Z");
+  const result = await ensureMandateForReturningTeam(supabase, { teamId: "t1", seasonNumber: 5, now, captureExceptionFn: (e) => captured.push(e.message) });
+  assert.equal(result.skipped, "error");
+  assert.deepEqual(captured, ["db nede"]);
+  assert.deepEqual(await ensureMandateForReturningTeam(supabase, { now }), { skipped: "missing_team_id" });
+});
+
+test("#6773 ensureMandateForReturningTeam: findes målsæsonen ikke endnu, lukkes intet (#4838, Codex #7494)", async () => {
+  const supabase = makeMandateLifecycleSupabase({
+    seasons: [{ id: "s5", number: 5, status: "active" }],
+    mandates: [{ id: "m-s5", team_id: "t1", season_id: "s5", season_number: 5, status: "active" }],
+  });
+  const result = await ensureMandateForReturningTeam(supabase, { teamId: "t1", seasonNumber: 6, now: new Date("2026-11-02T10:00:00Z"), captureExceptionFn: () => {} });
+  assert.deepEqual(result, { skipped: "target_season_not_found", season_number: 6 });
+  assert.equal(supabase._state.mandates[0].status, "active", "holdets mandat står, til næste sæson findes");
+  assert.equal(supabase._state.mandates.length, 1);
+});
+
+test("#6773 countStaleActiveMandates: tæller aktive mandater fra før den aktive sæson", async () => {
+  const calls = [];
+  const supabase = {
+    from(table) {
+      if (table === "seasons") {
+        const chain = { eq: () => chain, order: () => chain, limit: () => chain, maybeSingle: async () => ({ data: { id: "s5", number: 5 }, error: null }) };
+        return { select: (_c, opts) => (opts?.head ? { eq: async () => ({ count: 1, error: null }) } : chain) };
+      }
+      if (table === "board_mandates") {
+        const chain = {
+          eq(col, v) { calls.push(["eq", col, v]); return chain; },
+          lt: async (col, v) => { calls.push(["lt", col, v]); return { count: 149, error: null }; },
+        };
+        return { select: () => chain };
+      }
+      throw new Error(`uventet tabel: ${table}`);
+    },
+  };
+  assert.deepEqual(await countStaleActiveMandates(supabase), { seasonNumber: 5, stale: 149 });
+  assert.deepEqual(calls, [["eq", "status", "active"], ["lt", "season_number", 5]]);
+});
+
 
 test("#6773 advanceMandateAtSeasonEnd: mandat underskrevet EFTER sit eget sæsonslut afsluttes ved næste skifte", async () => {
   // S4 slutter. Holdet har sit rigtige S4-mandat + det gamle S3-mandat der blev
