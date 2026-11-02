@@ -46,7 +46,6 @@ import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { getRidersInActiveStageRace, shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
 import { fetchLiveAcademyOffers, filterOutPromisedAcademyRiders } from "./academyOfferProtection.js";
 import { applySeniorSquadFilter } from "./squads.js";
-import { notifyIfContractExpiresThisSeason } from "./notificationService.js";
 
 // #1309: aktiv sæson-number til contract_end_season-beregning.
 // Spejler transferExecution.fetchActiveSeasonNumber — default 1 som edge-case.
@@ -252,6 +251,9 @@ async function executeAutoPurchase({
       .eq("id", rider.id)
   );
 
+  // Dynamisk med vilje (#7337): frontend-tests importerer moduler der loader denne fil, og en
+  // statisk import trækker notificationService -> sentry.js -> @sentry/node ind i frontend-testkørslen.
+  const { notifyIfContractExpiresThisSeason } = await import("./notificationService.js");
   await notifyIfContractExpiresThisSeason({
     supabase, teamId: team.id, seasonNumber: activeSeasonNumber, now,
     rider: { ...rider, ...contractPatch },
