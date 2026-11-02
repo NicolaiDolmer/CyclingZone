@@ -37,10 +37,12 @@ export function dayKeyFor(targetMs, nowMs, timeZone) {
   return target === next ? "tomorrow" : "date";
 }
 
+/** @param {number} ms @param {{ timeZone?: string, locale?: string }} [opts] */
 export function formatClock(ms, { timeZone, locale } = {}) {
   return new Intl.DateTimeFormat(locale, { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(ms));
 }
 
+/** @param {number} ms @param {{ timeZone?: string, locale?: string }} [opts] */
 export function formatDayLabel(ms, { timeZone, locale } = {}) {
   return new Intl.DateTimeFormat(locale, { timeZone, weekday: "short", day: "numeric", month: "short" }).format(new Date(ms));
 }
@@ -58,7 +60,10 @@ export function describeMoment(ms, nowMs, opts = {}) {
 /**
  * Hvilket loeb handler kortet om? Det tidligste udtagelige loeb (det spilleren
  * kan handle paa), ellers et loeb der allerede er i gang. Intet → null (pause).
- * @returns {{race: object, kind: "upcoming"|"started"}|null}
+ * @param {any[]} nextRaces
+ * @param {Set<string>|null} [enteredRaceIds]
+ * @param {Record<string, number>} [nextStageByRace]
+ * @returns {{race: any, kind: "upcoming"|"started"}|null}
  */
 export function pickFirstRaceCardRace(nextRaces, enteredRaceIds = null, nextStageByRace = {}) {
   // #7502: holdets tilmeldte loeb foerst, derefter kalenderen; inden for hver gruppe

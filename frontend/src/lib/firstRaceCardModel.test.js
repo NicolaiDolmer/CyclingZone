@@ -44,14 +44,14 @@ test("pickFirstRaceCardRace: udtageligt foer i gang; tomt = null", () => {
   assert.equal(pickFirstRaceCardRace([]), null);
   assert.equal(pickFirstRaceCardRace(null), null);
   const picked = pickFirstRaceCardRace([live("L"), scheduled("S")], new Set(["L"]));
-  assert.equal(picked.race.id, "S");
-  assert.equal(picked.kind, "upcoming");
+  assert.equal(picked?.race.id, "S");
+  assert.equal(picked?.kind, "upcoming");
   const onlyLive = pickFirstRaceCardRace([live("L")], new Set(["L"]));
   // Et loeb i gang som holdet ikke er tilmeldt (eller ukendt tilmelding) er ikke holdets foerste loeb.
   assert.equal(pickFirstRaceCardRace([live("L")], new Set()), null);
   assert.equal(pickFirstRaceCardRace([live("L")]), null);
-  assert.equal(onlyLive.race.id, "L");
-  assert.equal(onlyLive.kind, "started");
+  assert.equal(onlyLive?.race.id, "L");
+  assert.equal(onlyLive?.kind, "started");
 });
 
 test("upcoming: tider, etaper, resultattid og guld-knap naar udtagelse mangler", () => {
@@ -64,10 +64,10 @@ test("upcoming: tider, etaper, resultattid og guld-knap naar udtagelse mangler",
   assert.equal(m.kind, "upcoming");
   assert.equal(m.stages, 4);
   assert.equal(m.isStageRace, true);
-  assert.equal(m.start.clock, "03:00");
-  assert.equal(m.start.dayKey, "tomorrow");
-  assert.equal(m.resultAt.ms, startMs + RESULT_DELAY_MS);
-  assert.equal(m.resultAt.clock, "04:00");
+  assert.equal(m.start?.clock, "03:00");
+  assert.equal(m.start?.dayKey, "tomorrow");
+  assert.equal(m.resultAt?.ms, startMs + RESULT_DELAY_MS);
+  assert.equal(m.resultAt?.clock, "04:00");
   assert.equal(m.showCta, true);
   assert.equal(m.showAssistant, true);
   assert.equal(m.mentionMail, true);
@@ -124,8 +124,8 @@ test("saertilfaelde: loebet er allerede startet (naeste etape + tidspunkt, ingen
   assert.equal(m.showNow, false);
   assert.equal(m.showCta, false);
   assert.equal(m.showAssistant, false);
-  assert.equal(m.start.clock, "13:00");
-  assert.equal(m.resultAt.clock, "14:00");
+  assert.equal(m.start?.clock, "13:00");
+  assert.equal(m.resultAt?.clock, "14:00");
 });
 
 test("saertilfaelde: saesonpause uden loeb (naeste saesonstart, ingen guld-knap)", () => {
@@ -134,8 +134,8 @@ test("saertilfaelde: saesonpause uden loeb (naeste saesonstart, ingen guld-knap)
   });
   assert.equal(m.kind, "pause");
   assert.equal(m.showCta, false);
-  assert.equal(m.nextSeasonStart.dayKey, "date");
-  assert.match(m.nextSeasonStart.dayLabel, /2/);
+  assert.equal(m.nextSeasonStart?.dayKey, "date");
+  assert.match(m.nextSeasonStart?.dayLabel ?? "", /2/);
   const unknown = buildFirstRaceCardModel({ nextRaces: [], card: {}, nowMs: NOW, timeZone: "UTC" });
   assert.equal(unknown.kind, "pause");
   assert.equal(unknown.nextSeasonStart, null);
@@ -163,18 +163,18 @@ const scenario = () => {
 test("#7502: tilmeldt loeb vinder over PCM-raekkefoelgen og over kalenderens naeste", () => {
   const { nextRaces, nextStageByRace } = scenario();
   const picked = pickFirstRaceCardRace(nextRaces, new Set(["TODAY"]), nextStageByRace);
-  assert.equal(picked.race.id, "TODAY");
+  assert.equal(picked?.race.id, "TODAY");
 });
 
 test("#7502: uden tilmelding vaelges kalenderens naeste efter rigtig starttid, ikke PCM-dato", () => {
   const { nextRaces, nextStageByRace } = scenario();
-  assert.equal(pickFirstRaceCardRace(nextRaces, new Set(), nextStageByRace).race.id, "TODAY");
-  assert.equal(pickFirstRaceCardRace(nextRaces, null, nextStageByRace).race.id, "TODAY");
+  assert.equal(pickFirstRaceCardRace(nextRaces, new Set(), nextStageByRace)?.race.id, "TODAY");
+  assert.equal(pickFirstRaceCardRace(nextRaces, null, nextStageByRace)?.race.id, "TODAY");
 });
 
 test("#7502: mangler starttiden, bevares PCM-raekkefoelgen", () => {
   const { nextRaces } = scenario();
-  assert.equal(pickFirstRaceCardRace(nextRaces, new Set(), {}).race.id, "LATE");
+  assert.equal(pickFirstRaceCardRace(nextRaces, new Set(), {})?.race.id, "LATE");
 });
 
 test("#7502: 'udtagelse gemt' kun naar holdet har ryttere i loebet", () => {
