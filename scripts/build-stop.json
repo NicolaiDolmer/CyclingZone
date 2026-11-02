@@ -519,6 +519,11 @@
       "issue": 6773,
       "reason": "Bestyrelsesmandater følger sæsonen for alle hold, også parkerede/frosne og hold der vender tilbage (ejer-go 2/11)",
       "since": "2026-11-02"
+    },
+    {
+      "issue": 7498,
+      "reason": "Ops: cross-PC Stop-advarslen kommer igen ved hver ny state-fil i .codex.local (ejer 2/11: kommer for tit)",
+      "since": "2026-11-02"
     }
   ]
 }
