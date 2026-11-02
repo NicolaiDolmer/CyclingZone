@@ -43,6 +43,7 @@ import { spawnSync } from "node:child_process";
 import { readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { testArgumentBatches } from "./run-tests-args.mjs";
 
 const backendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ISOLATED_RELATIVE = path.join("lib", "economyEngine.test.js");
@@ -69,13 +70,18 @@ function findTestFiles(dir, out) {
 }
 
 function runNodeTest(extraArgs, files, isolationArgs = []) {
-  const result = spawnSync(
+  const batches = testArgumentBatches(
     process.execPath,
-    ["--test", "--import", "./test-setup.js", ...isolationArgs, ...extraArgs, ...files],
-    { stdio: "inherit", cwd: backendRoot },
+    ["--test", "--import", "./test-setup.js", ...isolationArgs, ...extraArgs],
+    files
   );
-  if (result.error) throw result.error;
-  return result.status ?? 1;
+  for (const args of batches) {
+    const result = spawnSync(process.execPath, args, { stdio: "inherit", cwd: backendRoot });
+    if (result.error) throw result.error;
+    const status = result.status ?? 1;
+    if (status !== 0) return status;
+  }
+  return 0;
 }
 
 const extraArgs = process.argv.slice(2);
@@ -87,23 +93,20 @@ if (!allTestFilesAbsolute.includes(isolatedAbsolute)) {
   // if the file moves/renames, this script must be updated with it.
   console.error(
     `run-tests.js: expected isolated file not found at ${ISOLATED_RELATIVE} (#3172 guard). ` +
-      "Update backend/scripts/run-tests.js if the file moved or was renamed.",
+      "Update backend/scripts/run-tests.js if the file moved or was renamed."
   );
   process.exit(1);
 }
 
-// Relative paths, not absolute: with ~340 files, an absolute-path argv (this
-// worktree's path alone is ~65 chars) blows past Windows's ~32K CreateProcess
-// command-line limit and spawnSync fails with ENAMETOOLONG. Relative paths
-// (cwd is already backendRoot) cut the argv to a third of that, with plenty
-// of headroom as the suite grows.
+// Relative paths reduce argv size; bounded batches also keep a growing suite
+// below Windows's CreateProcess limit, including flags and quoting (#6737).
 const restFilesRelative = allTestFilesAbsolute
   .filter((file) => file !== isolatedAbsolute)
   .map((file) => path.relative(backendRoot, file));
 
 console.log(
   `\n[run-tests] Pass 1/2: ${ISOLATED_RELATIVE} with --test-isolation=none ` +
-    "(#3172 worker-IPC deserialize-bug guard — no child worker, no IPC, bug class cannot trigger)\n",
+    "(#3172 worker-IPC deserialize-bug guard — no child worker, no IPC, bug class cannot trigger)\n"
 );
 const isolatedStatus = runNodeTest(extraArgs, [ISOLATED_RELATIVE], ["--test-isolation=none"]);
 if (isolatedStatus !== 0) {
