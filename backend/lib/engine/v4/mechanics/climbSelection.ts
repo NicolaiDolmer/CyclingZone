@@ -43,7 +43,7 @@ import { mountainSelectionKnobsFor, phaseSplitThreshold, phaseWprimeForcedMinSev
 import { TIME_MODEL_V3_TUNING, climbGapFieldScale, climbSplitGapSeconds, climbTimeSeconds, clusterSplitRiders, descentFinishDecidingClimbTuning, fieldScaledClimbTuning, finishDescentIndexFor, isDescentFinaleFor, timeModelTuningFor, wprimeForcedCategoryAllowed } from "./timeModel.ts";
 import type { TimeModelTuning } from "./timeModel.ts";
 import { isS5ExplosiveFinaleClimb } from "../s5Profiles.ts";
-import { allOut7280Active, allOut7280Tuning, climbGapEffortFactor } from "./effortCost.ts"; // #6641, #7280
+import { allOut7280Tuning, climbGapEffortFactor } from "./effortCost.ts"; // #6641, #7280
 import { allOutCrackProbability, allOutGainLoss, allOutReserve01, climbBlockOf, segmentCrackProbability } from "./allOutCrack6641.ts";
 
 // #6464: feltets faktor regnes én gang pr. startliste (entrants-objektet er
@@ -192,7 +192,7 @@ type RiderSelection = {
   deficit01: number; // #6199: klatre-underskud mod gruppens bedste klatrer (0-1)
   energyDeficit01: number; // #6199: energi-underskud (0-1, tom reserve = 1)
   gapEffortFactor?: number; // #6641 (KUN s5_profiles_v3): indsatsens faktor paa hullet; udeladt = 1
-  gapShiftSeconds?: number; // #7280 (slukket alt ud-pakke): sekunder lagt til (+) / taget af (-) eget hul; udeladt = 0
+  gapShiftSeconds?: number; // #7280 (alt ud-pakken): sekunder lagt til (+) / taget af (-) eget hul; udeladt = 0
   allOutCracked?: true; // #7280: knaekket paa den afgoerende stigning (saettes af)
 };
 
@@ -325,14 +325,14 @@ function computeSelections(
     // effortClimbScorePenalty). Normal => faktor 1 og straf 0, dvs. bit-uaendret.
     // #6079: under orders_gc_v1 bruger save sine egne stignings-tal (tuning.ts).
     const gain = ctx.rulesRevision === "orders_gc_v1" ? ORDERS_GC_V1_CLIMB_GAIN_TUNING : EFFORT_GAIN_EXTRA_TUNING;
-    // #7280 (slukket pakke): alt ud holder ikke hjul for enhver pris paa de tidlige stigninger
+    // #7280: alt ud holder ikke hjul for enhver pris paa de tidlige stigninger
     // (det toemte ham foer den afgoerende); dér klatrer han som normal.
-    const allOut7280 = entrant.effort === "all_out" && ctx.s5ProfilesV3 === true && allOut7280Active();
+    const allOut7280 = entrant.effort === "all_out" && ctx.s5ProfilesV3 === true;
     const effortFactor = allOut7280 ? 1 : effortClimbScoreFactor(entrant.effort, 1 - energyDeficit, gain.climbScoreRelief);
     const effortPenalty = effortClimbScorePenalty(entrant.effort, severity, deficit01, gain.climbScorePenalty);
     const baseScore = (deficitWeight * deficitScaled + energyDeficitWeight * energyScaled) * effortFactor + effortPenalty;
     // #6641: indsatsens gevinst paa hullet (1 uden for s5_profiles_v3, effortCost.ts; hook-ctx baerer flaget, ikke revisionen).
-    // #7280 (slukket pakke): all_out faar sin gevinst i sekunder paa den afgoerende stigning (allOutSelections7280), ikke her.
+    // #7280: all_out faar sin gevinst i sekunder paa den afgoerende stigning (allOutSelections7280), ikke her.
     const gapScoreFactor = allOut7280 ? 1 : effortFactor;
     const gapFactor = climbGapEffortFactor(ctx.s5ProfilesV3 === true, gapScoreFactor);
 
@@ -611,8 +611,8 @@ export const climbSelectionHook: ClimbSelectionHook = (
 
   for (const group of groupsSorted) {
     if (group.rider_ids.length < 2) {
-      // #7280 (slukket pakke): ogsaa en alt ud-rytter alene paa den sidste stigning kan knaekke.
-      if (group.rider_ids.length === 1 && ctx.s5ProfilesV3 === true && allOut7280Active()) {
+      // #7280: ogsaa en alt ud-rytter alene paa den sidste stigning kan knaekke.
+      if (group.rider_ids.length === 1 && ctx.s5ProfilesV3 === true) {
         const solo = allOutSoloCrack7280(group, nextState, ctx, gradientPct, lengthKm);
         nextState = solo.state;
         events.push(...solo.events);
@@ -658,8 +658,8 @@ export const climbSelectionHook: ClimbSelectionHook = (
         (id) => nextState.riders[id]?.dayform ?? 0,
         (deficit, energy) => climbSplitGapSeconds(gradientPct, lengthKm, deficit, energy, climbModel), climbModel)
       : baseSelections;
-    // #7280 (slukket pakke, KUN s5_profiles_v3): alt ud paa den afgoerende (sidste) stigning.
-    const allOutOn = ctx.s5ProfilesV3 === true && allOut7280Active() && !cohesive && group.kind !== "gruppetto"
+    // #7280 (KUN s5_profiles_v3): alt ud paa den afgoerende (sidste) stigning.
+    const allOutOn = ctx.s5ProfilesV3 === true && !cohesive && group.kind !== "gruppetto"
       && group.origin !== "breakaway" && (summitRace || isLastClimbBlock7280(ctx));
     const beforeAllOut = selections;
     let allOutIds: ReadonlySet<string> = new Set();
@@ -748,13 +748,13 @@ export const climbSelectionHook: ClimbSelectionHook = (
 
   // #7280: én linje pr. rytter, naar den afgoerende stigning er slut (ogsaa for en
   // rytter der koerte alene paa de sidste segmenter og derfor ikke blev udvalgt dér).
-  if (ctx.s5ProfilesV3 === true && allOut7280Active()) events.push(...allOutGainEvents7280(nextState, ctx, segment.to_km));
+  if (ctx.s5ProfilesV3 === true) events.push(...allOutGainEvents7280(nextState, ctx, segment.to_km));
 
   return { state: nextState, events };
 };
 
 /**
- * #7280 (slukket pakke, KUN s5_profiles_v3): er segmentet en del af etapens SIDSTE
+ * #7280 (KUN s5_profiles_v3): er segmentet en del af etapens SIDSTE
  * stigning? Paa en topankomst eller foer en nedkoerselsfinale er det den afgoerende
  * (summitRace); ellers er det finalens sidste bakke/stigning.
  */
@@ -767,7 +767,7 @@ export function isLastClimbBlock7280(ctx: Pick<SegmentHookContext, "route" | "se
 }
 
 /**
- * #7280 (slukket pakke, KUN s5_profiles_v3): alt ud paa et segment af den afgoerende
+ * #7280 (KUN s5_profiles_v3): alt ud paa et segment af den afgoerende
  * stigning (spec 2026-10-27-6641-alt-ud-design.md). For hver alt ud-rytter i gruppen:
  * enten knaekker han (seedet, risikoen vokser under reserve-taersklen) og faar et
  * ekstra tab, eller ogsaa tages en evne- og reserve-vaegtet del af hans eget hul.
@@ -804,7 +804,7 @@ function allOutSelections7280(
 }
 
 /**
- * #7280 (slukket pakke): en alt ud-rytter ALENE paa etapens sidste stigning (ingen gruppe at
+ * #7280: en alt ud-rytter ALENE paa etapens sidste stigning (ingen gruppe at
  * blive sat af) kan ogsaa knaekke. Samme risiko og samme rng-stroem som i gruppen; knaekker
  * han, faar hans egen gruppe tabet lagt til sit hul. REN.
  */

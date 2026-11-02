@@ -12,7 +12,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
 
-import { ALL_OUT_7280_ACTIVE, ALL_OUT_7280_TUNING, allOut7280Active, allOut7280Tuning, allOutDemandMultiplier, allOutTimeTrialBonus7280, applyEffortToDemand, climbGapEffortFactor, EFFORT_COST_TUNING, EFFORT_COST_TUNING_6641, effortCostTuningFor, effortDemandMultiplier, isAllOut7280On, isEffortCalibration6641Revision, setAllOut7280ForBench } from "./effortCost.ts";
+import { ALL_OUT_7280_TUNING, allOut7280Tuning, allOutDemandMultiplier, allOutTimeTrialBonus7280, applyEffortToDemand, climbGapEffortFactor, EFFORT_COST_TUNING, EFFORT_STEPS_6641, effortCostTuning7280, effortCostTuningFor, effortDemandMultiplier, isEffortCalibration6641Revision, setAllOut7280TuningForBench } from "./effortCost.ts";
 import { isSaveItt7332Effort, SAVE_ITT_7332_TUNING, saveTimeTrialPenalty7332 } from "./effortCost.ts";
 import { decidingClimbSelectionsOnTheDay, effortClimbScoreFactor } from "./climbSelection.ts";
 import { isS5ProfilesV3OrLater, RACE_RULES_REVISIONS } from "../../../raceEngineRulesRevision.ts";
@@ -159,7 +159,7 @@ test("#4632: applyEffortToDemand aendrer aldrig fortegn paa nogen af de fem trin
   }
 });
 
-// ── #6641: kalibreringen bag s5_profiles_v3 (slukket) ──────────────────────────
+// ── #6641: kalibreringen bag s5_profiles_v3 ────────────────────────────────────
 test("#6641: alle revisioner foer s5_profiles_v3 faar den uaendrede tuning (samme objekt = bit-identisk)", () => {
   for (const revision of [...RACE_RULES_REVISIONS.filter((r) => !isS5ProfilesV3OrLater(r)), null, undefined]) {
     assert.equal(effortCostTuningFor(revision), EFFORT_COST_TUNING, String(revision));
@@ -167,18 +167,19 @@ test("#6641: alle revisioner foer s5_profiles_v3 faar den uaendrede tuning (samm
   }
 });
 
-test("#6641: s5_profiles_v3 faar den kalibrerede tuning", () => {
+test("#6641: s5_profiles_v3 faar den kalibrerede tuning (#7280-prisen for all_out)", () => {
   assert.equal(isEffortCalibration6641Revision("s5_profiles_v3"), true);
-  assert.equal(effortCostTuningFor("s5_profiles_v3", false), EFFORT_COST_TUNING_6641);
+  assert.deepEqual(effortCostTuningFor("s5_profiles_v3"), effortCostTuning7280(ALL_OUT_7280_TUNING));
 });
 
-test("#6641: femtrins-ordenen holder i den kalibrerede tuning paa ALLE segment-terraener", () => {
-  const scale: EffortLevel[] = ["grupetto", "save", "normal", "protect", "all_out"];
+test("#6641: grupetto < save < normal < protect i den kalibrerede tuning paa ALLE segment-terraener", () => {
+  const scale: EffortLevel[] = ["grupetto", "save", "normal", "protect"];
+  const cal = effortCostTuningFor("s5_profiles_v3");
   for (const kind of ["flat", "rolling", "climb", "descent", "cobbles", null] as const) {
-    const values = scale.map((level) => effortDemandMultiplier(level, EFFORT_COST_TUNING_6641, kind));
+    const values = scale.map((level) => effortDemandMultiplier(level, cal, kind));
     for (let i = 1; i < values.length; i++) assert.ok(values[i]! > values[i - 1]!, `${kind}: ${scale[i]} <= ${scale[i - 1]}`);
   }
-  assert.equal(effortDemandMultiplier("normal", EFFORT_COST_TUNING_6641), 1, "normal er stadig neutral");
+  assert.equal(effortDemandMultiplier("normal", cal), 1, "normal er stadig neutral");
 });
 
 test("#6641: gevinsten paa hullet er 1 uden for s5_profiles_v3 (aeldre revisioner bit-identiske)", () => {
@@ -202,49 +203,33 @@ test("#6641 (ejer 25/10, som i virkeligheden): all_out graver dybere, save giver
   assert.ok(gap("all_out", 1) < gap("all_out", 0.5), "jo mere i tanken, jo dybere kan han grave");
 });
 
-test("#6641: retningen af kalibreringen — all_out og protect billigere, save taettere paa normal, grupetto uroert", () => {
+test("#6641: retningen af kalibreringen — protect billigere, save taettere paa normal, grupetto uroert", () => {
   const old = EFFORT_COST_TUNING;
-  const cal = EFFORT_COST_TUNING_6641;
-  assert.ok(cal.demandMultiplierAllOut < old.demandMultiplierAllOut, "all_out op ad stigningen var en faelde");
+  const cal = effortCostTuningFor("s5_profiles_v3");
   assert.ok(cal.demandMultiplierProtect < old.demandMultiplierProtect);
   assert.ok(cal.demandMultiplierSave > old.demandMultiplierSave && cal.demandMultiplierSave < 1, "save sparer stadig, men mindre");
   assert.equal(cal.demandMultiplierGrupetto, old.demandMultiplierGrupetto);
-  assert.ok(allOutDemandMultiplier("climb", cal) > 1, "all_out koster stadig mere end normal (ingen gratis all-out)");
+  assert.ok(Object.isFrozen(EFFORT_STEPS_6641));
 });
 
-test("#6641: all_out-tabellen pr. segment-terraen foelger samme regel (flad/rullende dyrere end stigningen)", () => {
-  const cal = EFFORT_COST_TUNING_6641;
-  assert.deepEqual(Object.keys(cal.demandMultiplierAllOutBySegmentKind ?? {}).sort(), ["flat", "rolling"]);
-  assert.ok(allOutDemandMultiplier("flat", cal) > cal.demandMultiplierAllOut);
-  assert.ok(allOutDemandMultiplier("rolling", cal) > cal.demandMultiplierAllOut);
-  // Samme andel af gruppens tempo som i den gamle tuning: forholdet flad/stigning er uaendret.
-  const ratioOld = allOutDemandMultiplier("flat", EFFORT_COST_TUNING) / EFFORT_COST_TUNING.demandMultiplierAllOut;
-  const ratioNew = allOutDemandMultiplier("flat", cal) / cal.demandMultiplierAllOut;
-  assert.ok(Math.abs(ratioOld - ratioNew) < 1e-12);
-  assert.ok(Object.isFrozen(cal) && Object.isFrozen(cal.demandMultiplierAllOutBySegmentKind));
-});
-
-// ── #7280: Alt ud efter ejerens design 27/10, bag en SLUKKET kontakt ──────────
-test("#7280: kontakten er taendt efter ejerens ordrette go 27/10 (kun s5_profiles_v3)", () => {
-  assert.equal(ALL_OUT_7280_ACTIVE, true, "ejer-go 27/10: Ja, taend foer 11");
-  assert.equal(allOut7280Active(), true);
-  assert.notEqual(effortCostTuningFor("s5_profiles_v3"), EFFORT_COST_TUNING_6641);
-  assert.equal(isAllOut7280On("s5_profiles_v3"), true);
-  assert.equal(isAllOut7280On("s5_profiles_v2"), false, "aeldre revisioner uroert");
+// ── #7280: Alt ud efter ejerens design 27/10 (kodekontakten fjernet, krav 5) ──
+test("#7280: gaelder under s5_profiles_v3 og senere; aeldre revisioner uroerte", () => {
+  assert.notDeepEqual(effortCostTuningFor("s5_profiles_v3"), EFFORT_COST_TUNING);
   for (const revision of [...RACE_RULES_REVISIONS.filter((r) => !isS5ProfilesV3OrLater(r)), null, undefined]) {
-    assert.equal(effortCostTuningFor(revision, true), EFFORT_COST_TUNING, `${String(revision)}: aeldre revisioner uroert ogsaa med kontakten taendt`);
+    assert.equal(effortCostTuningFor(revision), EFFORT_COST_TUNING, `${String(revision)}: aeldre revisioner uroert`);
   }
 });
 
-test("#7280 (taendt): alt ud koerer som normal paa transport-terraenet, de fire andre trin er #6641's", () => {
-  const cal = effortCostTuningFor("s5_profiles_v3", true);
+test("#7280: alt ud koerer som normal paa transport-terraenet, de fire andre trin er #6641's", () => {
+  const cal = effortCostTuningFor("s5_profiles_v3");
   for (const kind of ["flat", "rolling", "descent"] as const) {
     assert.equal(effortDemandMultiplier("all_out", cal, kind), effortDemandMultiplier("normal", cal, kind), `${kind}: ingen pris, ingen gevinst`);
   }
   assert.ok(effortDemandMultiplier("all_out", cal, "climb") >= effortDemandMultiplier("normal", cal, "climb"));
+  const steps: Record<string, number> = { grupetto: EFFORT_STEPS_6641.demandMultiplierGrupetto, save: EFFORT_STEPS_6641.demandMultiplierSave, normal: EFFORT_STEPS_6641.demandMultiplierNormal, protect: EFFORT_STEPS_6641.demandMultiplierProtect };
   for (const level of ["grupetto", "save", "normal", "protect"] as EffortLevel[]) {
     for (const kind of ["flat", "rolling", "climb", "descent", "cobbles", null] as const) {
-      assert.equal(effortDemandMultiplier(level, cal, kind), effortDemandMultiplier(level, EFFORT_COST_TUNING_6641, kind), `${level}/${kind}: uaendret`);
+      assert.equal(effortDemandMultiplier(level, cal, kind), steps[level], `${level}/${kind}: uaendret`);
     }
   }
   // Gulvet: en tabel-vaerdi under normal ignoreres stadig (falder tilbage paa faelles-vaerdien).
@@ -252,19 +237,18 @@ test("#7280 (taendt): alt ud koerer som normal paa transport-terraenet, de fire 
   assert.equal(allOutDemandMultiplier("flat", broken), cal.demandMultiplierAllOut);
 });
 
-test("#7280: bench-setteren taender og nulstiller (kun dev-benches)", () => {
+test("#7280: enkeltstartens gevinst og test-setteren for kandidat-knapper (nulstilles)", () => {
   try {
-    setAllOut7280ForBench({ active: true, tuning: { timeTrialGain: 0.02 } });
-    assert.equal(isAllOut7280On("s5_profiles_v3"), true);
-    assert.equal(isAllOut7280On("s5_profiles_v2"), false, "kun s5_profiles_v3 og senere");
+    setAllOut7280TuningForBench({ timeTrialGain: 0.02 });
     assert.ok(Math.abs(allOutTimeTrialBonus7280("all_out", 99, true) - 0.02) < 1e-12);
     assert.ok(allOutTimeTrialBonus7280("all_out", 50, true) < allOutTimeTrialBonus7280("all_out", 90, true), "mest de staerke");
     assert.equal(allOutTimeTrialBonus7280("normal", 99, true), 0);
+    assert.equal(allOutTimeTrialBonus7280("all_out", 99, false), 0, "aeldre revisioner: ingen gevinst");
     assert.equal(allOut7280Tuning().fatigueLoad, ALL_OUT_7280_TUNING.fatigueLoad);
   } finally {
-    setAllOut7280ForBench(null);
+    setAllOut7280TuningForBench(null);
   }
-  assert.equal(allOut7280Active(), ALL_OUT_7280_ACTIVE, "nulstilling = kontaktens vaerdi");
+  assert.equal(allOut7280Tuning(), ALL_OUT_7280_TUNING, "nulstilling = de rigtige knapper");
   assert.ok(Object.isFrozen(ALL_OUT_7280_TUNING));
 });
 
