@@ -453,6 +453,7 @@ import {
 } from "../lib/boardConsequences.js";
 // #3514/#4557 S-M2b · Mandatets Boardroom-endpoint (GET /board/room).
 import { isBoardMandateModelEnabled } from "../lib/boardMandateFlag.js";
+import { ensureMandateForReturningTeam } from "../lib/boardMandateEngine.js"; // #6773
 import { buildBoardRoomPayload, loadMandateOnboardingSignal } from "../lib/boardRoom.js";
 // #4557 S-M2c · Årsmødet (GET/POST /board/meeting/*).
 import {
@@ -15579,6 +15580,8 @@ router.post("/admin/teams/:teamId/unfreeze", requireAdmin, adminWriteLimiter, as
     const { error: updateErr } = await supabase
       .from("teams").update({ is_frozen: false }).eq("id", teamId);
     if (updateErr) throw updateErr;
+    // #6773: et optøet hold får et mandat for den aktive sæson (kaster aldrig).
+    await ensureMandateForReturningTeam(supabase, { teamId });
 
     await supabase.from("admin_log").insert({
       admin_user_id: req.user.id,

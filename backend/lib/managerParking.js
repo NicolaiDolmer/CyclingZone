@@ -40,6 +40,7 @@ import { captureException } from "./sentry.js";
 import { computeIsPro } from "./entitlement.js";
 import { pickDivisionForNewTeam } from "./teamProfileEngine.js";
 import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
+import { ensureMandateForReturningTeam } from "./boardMandateEngine.js";
 
 // Holdfelterne sweepen, CLI'en og dry-run'et læser. Samlet ét sted, så de tre
 // indgange altid ser det samme grundlag.
@@ -285,7 +286,8 @@ export async function parkDormantTeams({ supabase, teams, users, subscriptions, 
  * genindplaceret, flyttes ikke igen.
  *
  * @param {{ supabase: object, teamId: string, pickDivision?: Function,
- *           reconcileAiTeams?: Function }} args
+ *           reconcileAiTeams?: Function, mandateSeasonNumber?: number|null,
+ *           ensureReturningMandate?: Function }} args
  * @returns {Promise<{ unparked: boolean, division: number, leagueDivisionId: any }>}
  */
 export async function unparkTeam({
@@ -293,6 +295,8 @@ export async function unparkTeam({
   teamId,
   pickDivision = pickDivisionForNewTeam,
   reconcileAiTeams = reconcileAiTeamsForPool,
+  mandateSeasonNumber = null,
+  ensureReturningMandate = ensureMandateForReturningTeam,
 }) {
   if (!supabase?.from) throw new Error("Supabase client required");
   const { division, leagueDivisionId } = await pickDivision(supabase);
@@ -313,6 +317,9 @@ export async function unparkTeam({
       captureException(err, { tags: { flow: "manager_parking", stage: "unpark_reconcile" }, extra: { teamId, poolId: leagueDivisionId } });
     }
   }
+  // #6773: holdet får et mandat for den sæson det nu spiller (næste sæson ved
+  // skiftet, ellers den aktive). Kaster aldrig, så genindplaceringen står.
+  if (unparked) await ensureReturningMandate(supabase, { teamId, seasonNumber: mandateSeasonNumber });
   return { unparked, division, leagueDivisionId };
 }
 
@@ -323,19 +330,20 @@ export async function unparkTeam({
  * plads.
  *
  * @param {{ supabase: object, teams: object[], pickDivision?: Function,
- *           reconcileAiTeams?: Function }} args
+ *           reconcileAiTeams?: Function, mandateSeasonNumber?: number|null,
+ *           ensureReturningMandate?: Function }} args
  * @returns {Promise<{ candidates: number, unparked: number, skipped: number,
  *           failedTeamIds: string[], placements: Array<{ teamId: string,
  *           division: number, leagueDivisionId: any }> }>}
  */
-export async function unparkSignedUpTeams({ supabase, teams, pickDivision, reconcileAiTeams }) {
+export async function unparkSignedUpTeams({ supabase, teams, pickDivision, reconcileAiTeams, mandateSeasonNumber = null, ensureReturningMandate }) {
   const candidates = selectTeamsToUnpark({ teams });
   const placements = [];
   const failedTeamIds = [];
   let skipped = 0;
   for (const team of candidates) {
     try {
-      const result = await unparkTeam({ supabase, teamId: team.id, pickDivision, reconcileAiTeams });
+      const result = await unparkTeam({ supabase, teamId: team.id, pickDivision, reconcileAiTeams, mandateSeasonNumber, ensureReturningMandate });
       if (result.unparked) {
         placements.push({ teamId: team.id, division: result.division, leagueDivisionId: result.leagueDivisionId });
       } else {
@@ -437,7 +445,8 @@ async function writeSweepMarker(supabase, seasonId, now) {
  *
  * @param {{ supabase: object, seasonId: string, now?: Date, days?: number,
  *           teams?: object[], users?: object[], subscriptions?: object[],
- *           pickDivision?: Function, reconcileAiTeams?: Function }} args
+ *           pickDivision?: Function, reconcileAiTeams?: Function,
+ *           mandateSeasonNumber?: number|null, ensureReturningMandate?: Function }} args
  */
 export async function runParkingSweep({
   supabase,
@@ -449,6 +458,8 @@ export async function runParkingSweep({
   subscriptions,
   pickDivision,
   reconcileAiTeams,
+  mandateSeasonNumber = null,
+  ensureReturningMandate,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (seasonId == null) throw new Error("runParkingSweep: seasonId required (idempotency per season)");
@@ -464,7 +475,7 @@ export async function runParkingSweep({
     : await loadParkingInputs({ supabase });
 
   const park = await parkDormantTeams({ supabase, ...inputs, now, days });
-  const unpark = await unparkSignedUpTeams({ supabase, teams: inputs.teams, pickDivision, reconcileAiTeams });
+  const unpark = await unparkSignedUpTeams({ supabase, teams: inputs.teams, pickDivision, reconcileAiTeams, mandateSeasonNumber, ensureReturningMandate });
 
   let signupsReset = null;
   let signupsResetError = null;

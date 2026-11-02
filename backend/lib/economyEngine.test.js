@@ -6453,6 +6453,44 @@ test("[epic #4592] processSeasonEnd kalder parkerings-sweepen når season_signup
   assert.equal(supabase.state.season.status, "completed", "sæson-slut skal fuldføre normalt efter parkeringen");
 });
 
+test("#6773 processSeasonEnd: lukker afsluttede sæsoners mandater for alle hold og giver sweepen næste sæsons nummer", async () => {
+  const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
+  let closeArgs = null;
+  let sweepArgs = null;
+
+  await processSeasonEnd("season-1", {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
+    isSeasonEndDivisionMovementSkipped: async () => true,
+    isSeasonSignupEnabled: async () => true,
+    closeEndedSeasonMandatesForAllTeams: async (client, args) => { assert.equal(client, supabase); closeArgs = args; return { completed: 0, lapsed: 0 }; },
+    runParkingSweep: async (args) => { sweepArgs = args; return fakeSweepResult(); },
+  });
+
+  assert.ok(closeArgs, "den samlede lukning skal kaldes");
+  assert.equal(closeArgs.now, FIXED_SEASON_END_NOW);
+  assert.equal(sweepArgs.mandateSeasonNumber, closeArgs.endedSeasonNumber + 1, "genindplacerede hold får næste sæsons mandat");
+  assert.equal(supabase.state.season.status, "completed");
+});
+
+test("#6773 processSeasonEnd: en fejlende samlet lukning vælter ikke sæsonskiftet", async () => {
+  const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
+  await processSeasonEnd("season-1", {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
+    isSeasonEndDivisionMovementSkipped: async () => true,
+    isSeasonSignupEnabled: async () => false,
+    closeEndedSeasonMandatesForAllTeams: async () => { throw new Error("close boom"); },
+  });
+  assert.equal(supabase.state.season.status, "completed");
+});
+
 test("[epic #4592] processSeasonEnd: en sweep der allerede har kørt for sæsonen, fuldfører stille", async () => {
   const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
 

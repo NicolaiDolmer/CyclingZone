@@ -388,6 +388,21 @@ test("#5676 comeback: ingen ungdomsgrupper seedet endnu → ikke-fatal, comeback
   assert.equal(team.junior_league_division_id, undefined);
 });
 
+test("#6773 comeback: holdet får et mandat for den aktive sæson, også i genoptagelses-grenen", async () => {
+  const supabase = fakeDb(baseState({ rank: 30 }));
+  const mandateCalls = [];
+  const { deps } = makeDeps(supabase, {
+    ensureReturningMandateFn: async (client, args) => { assert.equal(client, supabase); mandateCalls.push(args.teamId + ":" + args.seasonNumber); return {}; },
+  });
+
+  const first = await returnParkedTeam({ supabase, teamId: TEAM, deps });
+  const second = await returnParkedTeam({ supabase, teamId: TEAM, deps });
+
+  assert.equal(first.returned, true);
+  assert.equal(second.alreadyReturned, true);
+  assert.deepEqual(mandateCalls, [`${TEAM}:${first.seasonNumber}`, `${TEAM}:${first.seasonNumber}`]);
+});
+
 test("#5676 assignYouthGroupsForComebackTeam: fejl er ikke-fatal for selve comebacket", async () => {
   const { state } = withYouthGroups(baseState({ rank: 30 }));
   const supabase = fakeDb(state);

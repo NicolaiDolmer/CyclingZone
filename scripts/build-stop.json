@@ -514,6 +514,11 @@
       "issue": 7473,
       "reason": "Motor: Spar giver mere træthed end Normal på bjergetaper (S5), ejer-go 1/11",
       "since": "2026-11-01"
+    },
+    {
+      "issue": 6773,
+      "reason": "Bestyrelsesmandater følger sæsonen for alle hold, også parkerede/frosne og hold der vender tilbage (ejer-go 2/11)",
+      "since": "2026-11-02"
     }
   ]
 }
