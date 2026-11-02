@@ -32,6 +32,140 @@ const CF_525 = `<!DOCTYPE html>
 const HTML_NO_CODE = `<!DOCTYPE html>
 <html><head><title>Service Unavailable</title></head><body>nginx</body></html>`;
 
+// Documentation-derived fixtures, not captured Sentry events (read access unavailable).
+// https://developers.cloudflare.com/fundamentals/reference/error-responses/
+function cloudflareProblem(status = 521, overrides = {}) {
+  return {
+    type: `https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-${status}/`,
+    title: `Error ${status}: provider summary`,
+    status,
+    detail: "Provider explanation",
+    instance: "aaaaaaaaaaaaaaaa",
+    error_code: status,
+    ray_id: "aaaaaaaaaaaaaaaa",
+    timestamp: "2026-10-02T19:26:25Z",
+    cloudflare_error: true,
+    ...overrides,
+  };
+}
+
+test("Cloudflare problem-JSON has stable code and call-site across occurrences", () => {
+  for (const [status, label] of [
+    [521, "Web server is down"],
+    [522, "Connection timed out"],
+    [525, "SSL handshake failed"],
+  ]) {
+    for (const overrides of [
+      {},
+      {
+        ray_id: "bbbbbbbbbbbbbbbb",
+        instance: "bbbbbbbbbbbbbbbb",
+        timestamp: "2026-10-02T19:27:25Z",
+      },
+    ]) {
+      const body = JSON.stringify(cloudflareProblem(status, overrides));
+      assert.equal(
+        normalizeSupabaseErrorMessage(body),
+        `Supabase unavailable (${status} ${label})`
+      );
+      assert.equal(
+        normalizeSupabaseErrorMessage(`updateStandings: ${body}`),
+        `updateStandings: Supabase unavailable (${status} ${label})`
+      );
+    }
+  }
+});
+
+test("problem-JSON recognition rejects malformed, application and unsupported shapes", () => {
+  const valid = cloudflareProblem();
+  for (const message of [
+    "",
+    "{}",
+    "null",
+    "[]",
+    '{"status":521',
+    JSON.stringify({ message: "Application failure", status: 521 }),
+    JSON.stringify({ message: CF_522 }),
+    JSON.stringify(CF_522),
+    JSON.stringify([{ message: CF_522 }]),
+    '{"message":"<!DOCTYPE html>",',
+    `updateStandings: ${JSON.stringify({ message: CF_522 })}`,
+    JSON.stringify([valid]),
+    JSON.stringify({ ...valid, type: "https://example.com/error-521/" }),
+    JSON.stringify({ ...valid, type: `${valid.type}?token=private` }),
+    JSON.stringify({ ...valid, status: "521" }),
+    JSON.stringify({ ...valid, error_code: 522 }),
+    JSON.stringify({ ...valid, cloudflare_error: false }),
+    JSON.stringify({ ...valid, title: null }),
+    JSON.stringify({ ...valid, detail: null }),
+    JSON.stringify({ ...valid, instance: null }),
+    JSON.stringify(cloudflareProblem(500)),
+    JSON.stringify(cloudflareProblem(523)),
+    `${JSON.stringify(valid)} trailing text`,
+  ])
+    assert.equal(normalizeSupabaseErrorMessage(message), message);
+});
+
+test("problem-JSON wrapper keeps original frames and only allowlisted diagnostics", () => {
+  const body = JSON.stringify(
+    cloudflareProblem(521, {
+      title: "private provider title",
+      detail: "private provider detail",
+      zone: "private.invalid",
+      what_you_should_do: "private instructions",
+    }),
+    null,
+    2
+  );
+  const original = new Error(`stall-watchdog seasons: ${body}`);
+  const frames = original.stack.slice(`${original.name}: ${original.message}`.length);
+  const wrapped = toSupabaseError(original);
+  assert.equal(
+    wrapped.message,
+    "stall-watchdog seasons: Supabase unavailable (521 Web server is down)"
+  );
+  assert.equal(wrapped.stack, `Error: ${wrapped.message}${frames}`);
+  assert.deepEqual(wrapped.cloudflare, {
+    status: 521,
+    ray_id: "aaaaaaaaaaaaaaaa",
+    instance: "aaaaaaaaaaaaaaaa",
+    timestamp: "2026-10-02T19:26:25Z",
+  });
+  assert.doesNotMatch(JSON.stringify(wrapped), /private/);
+  assert.equal(original.message, `stall-watchdog seasons: ${body}`);
+  const unsafe = toSupabaseError({
+    message: JSON.stringify(
+      cloudflareProblem(521, {
+        ray_id: "secret",
+        instance: "https://private.invalid/?token=secret",
+        timestamp: "secret",
+      })
+    ),
+    code: "private wrapper code",
+    details: "private details",
+    hint: "private hint",
+  });
+  assert.deepEqual(unsafe.cloudflare, { status: 521 });
+  assert.doesNotMatch(JSON.stringify(unsafe), /private|secret/);
+});
+
+test("problem-JSON normalization leaves retry decisions and budgets unchanged", async () => {
+  const message = JSON.stringify(cloudflareProblem());
+  assert.equal(isTransientSupabaseError({ message }), false);
+  for (const error of [new Error(message), { message }]) {
+    let attempts = 0;
+    await assert.rejects(
+      () =>
+        withSupabaseRetry(async () => {
+          attempts++;
+          throw error;
+        }),
+      { message: "Supabase unavailable (521 Web server is down)" }
+    );
+    assert.equal(attempts, 1);
+  }
+});
+
 // ── normalizeSupabaseErrorMessage ────────────────────────────────────────────
 
 test("normaliserer Cloudflare 522 til kort, grupperbar besked", () => {
