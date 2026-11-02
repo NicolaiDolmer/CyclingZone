@@ -80,12 +80,24 @@ test("#6649: tiredness, low form and hard weather each make a bad day more likel
     const deopt = new Function("f", "%DeoptimizeFunction(f); %NeverOptimizeFunction(f);") as (f: unknown) => void;
     const status = { dayForm6649For: st(dayForm6649For), sample: st(sample), rider: st(rider), abilities: st(abilities) };
     const sameAsHigh = lowForm.bad === highForm.bad && lowForm.mean === highForm.mean;
-    const probe = rider("r0", { form: 15 });
-    const before = dayForm6649For(probe, route("overcast"), "s6649");
-    for (const f of [dayForm6649For, sample, rider, abilities]) deopt(f);
-    const again = sample((id) => rider(id, { form: 15 }));
-    const after = dayForm6649For(probe, route("overcast"), "s6649");
-    console.log(`DIAG7366 FAIL sameAsHigh=${sameAsHigh} recomputedOk=${again.bad > fresh.bad && again.mean < fresh.mean} probeForm=${probe.form} probeStable=${JSON.stringify(before) === JSON.stringify(after)} status=${JSON.stringify(status)}`);
+    const ok = (s: { bad: number; mean: number }) => s.bad > fresh.bad && s.mean < fresh.mean;
+    const again0 = sample((id) => rider(id, { form: 15 }));
+    const ents = ids.map((id) => rider(id, { form: 15 }));
+    const wrongForm = ents.filter((e) => e.form !== 15).length;
+    let dBad = 0;
+    let dSum = 0;
+    for (const e of ents) {
+      const d = dayForm6649For(e, route("overcast"), "s6649");
+      dSum += d.delta;
+      if (d.reason) dBad += 1;
+    }
+    const direct = { bad: dBad / ids.length, mean: dSum / ids.length };
+    for (const f of [sample, rider, abilities]) deopt(f);
+    const r1 = sample((id) => rider(id, { form: 15 }));
+    const status1 = st(dayForm6649For);
+    deopt(dayForm6649For);
+    const r2 = sample((id) => rider(id, { form: 15 }));
+    console.log(`DIAG7366 FAIL sameAsHigh=${sameAsHigh} again0Ok=${ok(again0)} wrongForm=${wrongForm} directOk=${ok(direct)} testCodeDeoptOk=${ok(r1)} (motorStatus=${status1}) allDeoptOk=${ok(r2)} status=${JSON.stringify(status)}`);
   }
   assert.ok(tired.bad > fresh.bad && tired.mean < fresh.mean, `tired: ${show(tired)} vs fresh ${show(fresh)}`);
   assert.ok(lowForm.bad > fresh.bad && lowForm.mean < fresh.mean, `low form: ${show(lowForm)} vs fresh ${show(fresh)}`);
@@ -97,7 +109,7 @@ if (!process.env.DIAG7366) {
   test("TEMP #7366 diagnose: koer filen mange gange i egne processer", async () => {
     const { spawn } = await import("node:child_process");
     const self = fileURLToPath(import.meta.url);
-    const runs = Number(process.env.DIAG7366_RUNS ?? 300);
+    const runs = Number(process.env.DIAG7366_RUNS ?? 400);
     let done = 0;
     let fails = 0;
     const lines: string[] = [];
