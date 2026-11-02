@@ -1591,11 +1591,12 @@ export async function processSeasonEnd(seasonId, deps = {}) {
   // først har fået deres årsmøde. Ikke-fatal: et fejlende trin logges, og
   // vagthunden fanger rester.
   try {
-    const closeAllFn = deps.closeEndedSeasonMandatesForAllTeams ?? closeEndedSeasonMandatesForAllTeams;
+    const closeSeam = /** @type {{ closeEndedSeasonMandatesForAllTeams?: typeof closeEndedSeasonMandatesForAllTeams }} */ (deps);
+    const closeAllFn = closeSeam.closeEndedSeasonMandatesForAllTeams ?? closeEndedSeasonMandatesForAllTeams;
     const closedAll = await closeAllFn(supabaseClient, { endedSeasonNumber: currentSeasonNumber, now: notificationNow });
     console.log(`  📜 Mandater for afsluttede sæsoner (#6773): ${closedAll.completed} afsluttet, ${closedAll.lapsed} bortfaldet${closedAll.skipped ? ` (${closedAll.skipped})` : ""}.`);
   } catch (closeErr) {
-    console.error("  ❌ Samlet mandat-lukning fejlede (#6773):", closeErr?.message || closeErr);
+    console.error("  ❌ Samlet mandat-lukning fejlede (#6773):", closeErr instanceof Error ? closeErr.message : closeErr);
     captureException(closeErr, { tags: { flow: "season_end", stage: "close_ended_mandates_all" }, extra: { seasonId } });
   }
 

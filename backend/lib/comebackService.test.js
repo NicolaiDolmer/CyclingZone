@@ -395,8 +395,9 @@ test("#6773 comeback: holdet får et mandat for den aktive sæson, også i genop
     ensureReturningMandateFn: async (client, args) => { assert.equal(client, supabase); mandateCalls.push(args.teamId + ":" + args.seasonNumber); return {}; },
   });
 
-  const first = await returnParkedTeam({ supabase, teamId: TEAM, deps });
-  const second = await returnParkedTeam({ supabase, teamId: TEAM, deps });
+  const now = new Date("2026-11-02T10:00:00Z");
+  const first = await returnParkedTeam({ supabase, teamId: TEAM, now, deps });
+  const second = await returnParkedTeam({ supabase, teamId: TEAM, now, deps });
 
   assert.equal(first.returned, true);
   assert.equal(second.alreadyReturned, true);

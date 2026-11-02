@@ -1449,10 +1449,11 @@ test("#6773 closeEndedSeasonMandatesForAllTeams: findes næste sæson ikke, rør
     seasons: [{ id: "s4", number: 4, status: "active" }],
     mandates: [{ id: "m-s4", team_id: "t1", season_id: "s4", season_number: 4, status: "active" }],
   });
-  const result = await closeEndedSeasonMandatesForAllTeams(supabase, { endedSeasonNumber: 4 });
+  const now = new Date("2026-11-02T10:00:00Z");
+  const result = await closeEndedSeasonMandatesForAllTeams(supabase, { endedSeasonNumber: 4, now });
   assert.equal(result.skipped, "target_season_not_found");
   assert.equal(supabase._state.mandates[0].status, "active");
-  assert.equal((await closeEndedSeasonMandatesForAllTeams(supabase, { endedSeasonNumber: null })).skipped, "invalid_season_number");
+  assert.equal((await closeEndedSeasonMandatesForAllTeams(supabase, { endedSeasonNumber: null, now })).skipped, "invalid_season_number");
 });
 
 test("#6773 ensureMandateForReturningTeam: lukker holdets gamle mandat og foreslår et for sæsonen; andre hold urørt", async () => {
@@ -1477,10 +1478,22 @@ test("#6773 ensureMandateForReturningTeam: lukker holdets gamle mandat og foresl
 test("#6773 ensureMandateForReturningTeam: kaster aldrig, fejlen rapporteres", async () => {
   const captured = [];
   const supabase = { from() { throw new Error("db nede"); } };
-  const result = await ensureMandateForReturningTeam(supabase, { teamId: "t1", seasonNumber: 5, captureExceptionFn: (e) => captured.push(e.message) });
+  const now = new Date("2026-11-02T10:00:00Z");
+  const result = await ensureMandateForReturningTeam(supabase, { teamId: "t1", seasonNumber: 5, now, captureExceptionFn: (e) => captured.push(e.message) });
   assert.equal(result.skipped, "error");
   assert.deepEqual(captured, ["db nede"]);
-  assert.deepEqual(await ensureMandateForReturningTeam(supabase, {}), { skipped: "missing_team_id" });
+  assert.deepEqual(await ensureMandateForReturningTeam(supabase, { now }), { skipped: "missing_team_id" });
+});
+
+test("#6773 ensureMandateForReturningTeam: findes målsæsonen ikke endnu, lukkes intet (#4838, Codex #7494)", async () => {
+  const supabase = makeMandateLifecycleSupabase({
+    seasons: [{ id: "s5", number: 5, status: "active" }],
+    mandates: [{ id: "m-s5", team_id: "t1", season_id: "s5", season_number: 5, status: "active" }],
+  });
+  const result = await ensureMandateForReturningTeam(supabase, { teamId: "t1", seasonNumber: 6, now: new Date("2026-11-02T10:00:00Z"), captureExceptionFn: () => {} });
+  assert.deepEqual(result, { skipped: "target_season_not_found", season_number: 6 });
+  assert.equal(supabase._state.mandates[0].status, "active", "holdets mandat står, til næste sæson findes");
+  assert.equal(supabase._state.mandates.length, 1);
 });
 
 test("#6773 countStaleActiveMandates: tæller aktive mandater fra før den aktive sæson", async () => {

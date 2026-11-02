@@ -872,6 +872,9 @@ export async function closeEndedSeasonMandates(supabase, { teamId, endedSeasonNu
  * sæt-baserede opdateringer (uafhængigt af antal hold). Fanger de parkerede og
  * frosne hold, som sæsonskiftets hold-løkke springer over. Samme vagt som
  * `advanceMandateAtSeasonEnd` (#4838): findes næste sæson ikke, røres intet.
+ *
+ * @param {any} supabase
+ * @param {any} [args] { endedSeasonNumber, now }
  */
 export async function closeEndedSeasonMandatesForAllTeams(supabase, { endedSeasonNumber, now = new Date() } = {}) {
   ensureSupabase(supabase);
@@ -881,6 +884,7 @@ export async function closeEndedSeasonMandatesForAllTeams(supabase, { endedSeaso
   if (!nextSeason.found) return { skipped: "target_season_not_found", completed: 0, lapsed: 0 };
   const nowIso = now.toISOString();
 
+  /** @param {string} fromStatus @param {string} toStatus */
   const closeStatus = async (fromStatus, toStatus) => {
     const { data, error } = await supabase
       .from("board_mandates")
@@ -902,11 +906,13 @@ export async function closeEndedSeasonMandatesForAllTeams(supabase, { endedSeaso
  * #6773 · Vagt (READ-ONLY): antal aktive mandater for en sæson før den aktive.
  * Skal altid være 0 efter et skifte; alt andet betyder at en lukkevej er
  * sprunget over. Reparerer intet, kalderen alarmerer.
+ *
+ * @param {any} supabase
  */
 export async function countStaleActiveMandates(supabase) {
   ensureSupabase(supabase);
   const active = await loadSingleActiveSeason(supabase, { select: "id, number", tag: "board-mandate-stale-watch" });
-  const number = Number(active?.number);
+  const number = Number(/** @type {any} */ (active)?.number);
   if (!(Number.isFinite(number) && number > 0)) return { skipped: "no_active_season", stale: 0 };
   const { count, error } = await supabase
     .from("board_mandates")
@@ -923,6 +929,9 @@ export async function countStaleActiveMandates(supabase) {
  * lukkes, og et nyt foreslås via samme vej som et nyt hold (idempotent pr. hold
  * og sæson). Uden `seasonNumber` bruges den aktive sæson. Kaster aldrig: et
  * fejlende mandat må ikke vælte tilbagevenden.
+ *
+ * @param {any} supabase
+ * @param {any} [args] { teamId, seasonNumber, now, captureExceptionFn }
  */
 export async function ensureMandateForReturningTeam(supabase, {
   teamId,
@@ -939,22 +948,27 @@ export async function ensureMandateForReturningTeam(supabase, {
         select: "id, number",
         tag: "board-mandate-returning-team",
       });
-      number = Number(active?.number);
+      number = Number(/** @type {any} */ (active)?.number);
     }
     if (!(Number.isFinite(number) && number > 0)) return { skipped: "no_active_season" };
+    // Samme vagt som #4838 (Codex #7494): findes sæsonen ikke endnu, lukkes intet,
+    // så holdet aldrig står uden mandat.
+    const target = await findNextSeason({ supabase, currentNumber: number - 1 });
+    if (!target.found) return { skipped: "target_season_not_found", season_number: number };
 
-    const closed = await closeEndedSeasonMandates(supabase, { teamId, endedSeasonNumber: number - 1, now });
-    const proposal = await ensureMandateForTeamFormation(supabase, { teamId, seasonNumber: number, now, captureExceptionFn });
+    const closed = await closeEndedSeasonMandates(supabase, /** @type {any} */ ({ teamId, endedSeasonNumber: number - 1, now }));
+    const proposal = await ensureMandateForTeamFormation(supabase, /** @type {any} */ ({ teamId, seasonNumber: number, now, captureExceptionFn }));
     return { closed, proposal };
   } catch (error) {
-    console.warn(`⚠️  [mandate] mandat ved tilbagevenden fejlede for team ${teamId}: ${error.message}`);
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`⚠️  [mandate] mandat ved tilbagevenden fejlede for team ${teamId}: ${message}`);
     try {
       captureExceptionFn(error, {
         tags: { flow: "board-returning-team", stage: "mandate" },
         extra: { teamId },
       });
     } catch { /* best-effort */ }
-    return { skipped: "error", reason: error.message };
+    return { skipped: "error", reason: message };
   }
 }
 
