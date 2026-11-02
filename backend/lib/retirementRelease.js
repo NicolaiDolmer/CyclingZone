@@ -52,6 +52,7 @@ import {
 } from "./marketUtils.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { captureException } from "./sentry.js";
+import { closePendingGraduationOnRelease } from "./academyGraduation.js";
 
 async function defaultFetchRetiredOwnedRiders({ supabase }) {
   // Bemærk: INGEN is_academy-filtrering her (modsat contractExpiryRelease, hvor den
@@ -135,6 +136,7 @@ export async function releaseRetiredRiders({
       await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "retirement_release" });
       await closeTransferListingsForRiders(supabase, [rider.id], "withdrawn");
       await withdrawOpenTransferDealsForRiders(supabase, [rider.id]);
+      await closePendingGraduationOnRelease(supabase, { teamId: rider.team_id, riderId: rider.id }); // #7488
       stats.released += 1;
     } catch (err) {
       stats.failed += 1;

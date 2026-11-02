@@ -8,6 +8,7 @@ import {
   detectGraduates,
   resolveGraduation,
   defaultResolveGraduate,
+  closePendingGraduationOnRelease,
   releaseUnsoldGraduate,
   resolveUnsoldGraduate,
   completeStuckPromotion,
@@ -604,6 +605,23 @@ test("defaultResolveGraduate: #7488 — rytter uden hold kaster ikke (sweepet ka
   });
   assert.equal(res.action, "skipped");
   assert.equal(rec.riderUpdates.length, 0);
+});
+
+test("closePendingGraduationOnRelease: #7488 — lukker kun pending for (hold, rytter) lydløst; fejl kaster ikke", async () => {
+  const calls = [];
+  const mk = (error) => ({ from(table) {
+    assert.equal(table, "academy_graduation");
+    return { update(patch) { const eqs = []; const b = {
+      eq(c, v) { eqs.push([c, v]); return b; },
+      then(resolve, reject) { calls.push({ patch, eqs }); return Promise.resolve({ error }).then(resolve, reject); },
+    }; return b; } };
+  } });
+  await closePendingGraduationOnRelease(mk(null), { teamId: "t1", riderId: "r1", now: CONTRACT_NOTICE_NOW });
+  assert.equal(calls[0].patch.status, "released");
+  assert.deepEqual(calls[0].eqs, [["team_id", "t1"], ["rider_id", "r1"], ["status", "pending"]]);
+  await closePendingGraduationOnRelease(mk({ message: "boom" }), { teamId: "t1", riderId: "r1" });
+  await closePendingGraduationOnRelease(mk(null), { teamId: null, riderId: "r1" });
+  assert.equal(calls.length, 2, "ingen hold = intet kald");
 });
 
 // #2881-følgefund: release efterlod tidligere en fri agent med en IKKE-null

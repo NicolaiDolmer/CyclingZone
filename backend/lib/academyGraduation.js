@@ -1009,6 +1009,24 @@ async function closeGraduationNotOnTeam(supabase, { gradId, now }) {
   if (error) throw new Error(`closeGraduationNotOnTeam update: ${error.message}`);
 }
 
+/**
+ * #7488: en automatisk frigivelse (kontraktudløb, pension) fjerner rytteren fra holdet
+ * uden at røre graduerings-rækken. Luk en evt. 'pending' række lydløst (best-effort:
+ * frigivelsen er allerede gennemført, så en fejl her må aldrig vælte den).
+ */
+export async function closePendingGraduationOnRelease(supabase, { teamId, riderId, now = new Date() } = {}) {
+  if (!supabase?.from || !teamId || !riderId) return;
+  try {
+    const { error } = await supabase.from("academy_graduation")
+      .update({ status: "released", resolved_at: now.toISOString() })
+      .eq("team_id", teamId).eq("rider_id", riderId).eq("status", "pending");
+    if (error) throw new Error(error.message);
+  } catch (err) {
+    // best-effort: resolveGraduation har selv not_on_team-vagten, så en tilbageblevet række er ufarlig.
+    console.error("closePendingGraduationOnRelease failed (%s):", riderId, err.message);
+  }
+}
+
 async function finishGraduation(supabase, { gradId, status, teamId, rider, now, action, notify = notifyTeamOwner }) {
   // #7474: compare-and-set. Kun den afgørelse der flytter rækken fra 'pending'
   // sender beskeden; en samtidig afgørelse af samme række får 0 rækker og stopper.
