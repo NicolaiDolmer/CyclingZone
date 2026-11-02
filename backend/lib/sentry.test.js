@@ -421,3 +421,40 @@ test("Sentry-only problem-JSON rejects malformed, unsupported and ordinary appli
     assert.equal(event.exception.values[0].value, raw);
   }
 });
+
+test("Sentry-only JSON handles existing colon-separated call-site labels", () => {
+  for (const prefix of [
+    "resolveAuctionConfig: could not read auction_timing_config: ",
+    "contractBatchExtension: could not load active season: ",
+  ]) {
+    const events = [];
+    for (const ray_id of ["aaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbb"]) {
+      const raw = prefix + JSON.stringify(cloudflareProblem(521, { ray_id, instance: ray_id }));
+      const frames = [{ filename: "original.js", function: "caller", lineno: 17 }];
+      const stacktrace = { frames };
+      const event = { message: raw, exception: { values: [{ type: "Error", value: raw, stacktrace }] } };
+      normalizeEventMessages(event);
+      const expected = prefix + "Supabase unavailable (521 Web server is down)";
+      assert.equal(event.message, expected);
+      assert.equal(event.exception.values[0].value, expected);
+      assert.equal(event.exception.values[0].stacktrace, stacktrace);
+      assert.equal(event.exception.values[0].stacktrace.frames, frames);
+      events.push(event);
+    }
+    assert.equal(getEventGroupKey(events[0]), getEventGroupKey(events[1]));
+  }
+  for (const prefix of [
+    "https://private.example/token: ",
+    "resolveAuctionConfig: token=private: ",
+    "resolveAuctionConfig:\ncould not read config: ",
+    "resolveAuctionConfig:\tcould not read config: ",
+    "a".repeat(81) + ": ",
+    "resolveAuctionConfig:: ",
+  ]) {
+    const raw = prefix + JSON.stringify(cloudflareProblem());
+    const event = { message: raw, exception: { values: [{ value: raw }] } };
+    normalizeEventMessages(event);
+    assert.equal(event.message, raw);
+    assert.equal(event.exception.values[0].value, raw);
+  }
+});

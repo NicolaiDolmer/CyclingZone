@@ -239,7 +239,11 @@ function parseCloudflareProblem(message) {
   const start = message.indexOf("{");
   if (start < 0) return null;
   const prefix = message.slice(0, start).trim();
-  if (prefix && !/^[a-z][a-z0-9_. -]{0,79}:$/i.test(prefix)) return null;
+  if (prefix && (
+    prefix.length > 81 ||
+    !prefix.endsWith(":") ||
+    !prefix.slice(0, -1).split(":").every((label) => /^ *[a-z][a-z0-9_. -]*$/i.test(label))
+  )) return null;
   let problem;
   try {
     problem = JSON.parse(message.slice(start));
