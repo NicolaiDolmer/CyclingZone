@@ -41,6 +41,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_mobile_table", area: "training", label: "Træningssiden på mobil — ny tabel" },
   // #1140: "Your first race"-kort for nye hold paa dashboardet. Seedet off.
   { key: "first_race_card", area: "onboarding", label: "Dit første løb — kort på dashboardet (nye hold)" },
+  // #6523: ingen kode laeser den laengere; raekken bliver kun for patch-noten (se PLAYER_VISIBLE_FLAG_KEYS).
+  { key: "training_bulk_day", area: "training", label: "Træning — sæt dagen for flere ryttere" },
   // #6110 S26: "Dagens beslutning"-kortet oeverst paa Today-fanen. Seedet off.
   { key: "training_decision_card", area: "training", label: "Træning — Dagens beslutning (kort øverst)" },
   { key: "training_tick_per_race_day", area: "training", label: "Træning pr. løbsdag" },
