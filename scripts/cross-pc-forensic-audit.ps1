@@ -122,18 +122,15 @@ function Test-GitHubRefExists {
 }
 
 # --- 1. .codex.local whitelist enforcement ---
-# Ephemerals der maa vaere lokale. Alt andet skal til GitHub eller OneDrive.
-$codexLocalWhitelist = @(
-  "SESSION_CONTEXT.md",
-  "SUPABASE_CONTEXT.md",
-  "supabase-readonly.env",
-  "preflight-state.json",
-  # preflight-season-cutover.ps1 skriver sin rapport her; den genereres paa ny ved hver koersel.
-  "season-cutover-preflight.json",
-  # preflight-night-wave.ps1 skriver sin summary her; den genereres paa ny ved hver koersel.
-  "night-wave-preflight.json"
-)
-# Pattern-baserede ephemerals (kortlivede buffers)
+# Hvad der MÅ være lokalt står i scripts/cross-pc-codex-local-allow.txt, som
+# cross-pc-stop-check.sh også læser. Før havde de to scripts hver sin liste, og
+# advarslen kom igen, hver gang et nyt script lagde en state-fil her.
+$allowFile = Join-Path $PSScriptRoot "cross-pc-codex-local-allow.txt"
+$codexLocalAllow = @()
+if (Test-Path $allowFile) {
+  $codexLocalAllow = Get-Content $allowFile | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith('#') }
+}
+# Kortlivede buffers (commit-beskeder, PR-bodies): tilladt, men advar når de er glemt.
 $codexLocalEphemeralPatterns = @(
   '^commit-msg.*\.txt$',
   '^commit-\d+\.txt$',
@@ -151,7 +148,6 @@ if (Test-Path $codexLocalDir) {
 
     # shared/ er en junction til OneDrive (#7446) og dermed synlig paa alle PC'er.
     if ($rel -like 'shared/*') { continue }
-    if ($codexLocalWhitelist -contains $name) { continue }
 
     $isEphemeral = $false
     foreach ($pat in $codexLocalEphemeralPatterns) {
@@ -166,6 +162,12 @@ if (Test-Path $codexLocalDir) {
       }
       continue
     }
+
+    $isAllowed = $false
+    foreach ($glob in $codexLocalAllow) {
+      if ($name -like $glob) { $isAllowed = $true; break }
+    }
+    if ($isAllowed) { continue }
 
     # Ikke-whitelistet, ikke ephemeral = persistent indhold der er stuck lokalt.
     Add-Finding -Severity "error" -Category "local-only-content" -Path ".codex.local/$rel" `

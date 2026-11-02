@@ -124,23 +124,24 @@ if [ "$stash_count" -gt 0 ]; then
   issues+=("$stash_count stash-entry/-ies eksisterer (ikke synced)")
 fi
 
-# 4. Lokal-only AI-state i .codex.local/ (whitelist match — alt andet er lokal-only persistent)
-# Whitelist: SESSION_CONTEXT.md, SUPABASE_CONTEXT.md, supabase-readonly.env, preflight-state.json,
-# season-cutover-preflight.json, night-wave-preflight.json (samme liste som cross-pc-forensic-audit.ps1)
-# + ephemeral patterns: commit-msg*.txt, commit-N.txt, commitmsg-*.txt, pr*-body.md, pr-body-*.md
+# 4. Lokal-only AI-state i .codex.local/ (alt udenfor allow-listen er lokal-only persistent)
+# Allow-listen står i scripts/cross-pc-codex-local-allow.txt, som cross-pc-forensic-audit.ps1
+# også læser, så de to tjek aldrig glider fra hinanden.
 if [ -d ".codex.local" ]; then
+  allow_file="scripts/cross-pc-codex-local-allow.txt"
   # .codex.local/shared/ er en junction til OneDrive (#7446) og dermed ikke lokal-only.
-  local_only=$(find .codex.local -path ".codex.local/shared" -prune -o -type f \
-    ! -name "SESSION_CONTEXT.md" \
-    ! -name "SUPABASE_CONTEXT.md" \
-    ! -name "supabase-readonly.env" \
-    ! -name "preflight-state.json"     ! -name "season-cutover-preflight.json"     ! -name "night-wave-preflight.json" \
-    ! -name "commit-msg*.txt" \
-    ! -name "commit-*.txt" \
-    ! -name "commitmsg-*.txt" \
-    ! -name "pr*-body.md" \
-    ! -name "pr-body-*.md" \
-    -print 2>/dev/null)
+  find_args=(.codex.local -path ".codex.local/shared" -prune -o -type f)
+  if [ -f "$allow_file" ]; then
+    while IFS= read -r glob || [ -n "$glob" ]; do
+      glob="${glob%$'\r'}"
+      glob="${glob#"${glob%%[![:space:]]*}"}"
+      [ -z "$glob" ] && continue
+      [ "${glob:0:1}" = "#" ] && continue
+      find_args+=(! -name "$glob")
+    done < "$allow_file"
+  fi
+  find_args+=(-print)
+  local_only=$(find "${find_args[@]}" 2>/dev/null)
   if [ -n "$local_only" ]; then
     count=$(echo "$local_only" | wc -l)
     issues+=("$count fil(er) i .codex.local/ udenfor whitelist (kør 'pwsh -File scripts/cross-pc-forensic-audit.ps1' for detaljer)")
