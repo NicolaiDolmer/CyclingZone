@@ -76,7 +76,7 @@ import { computeFinaleAbilityScore } from "../finale.ts";
 import { riderWeatherCpMultiplier } from "../segmentLoop.ts";
 import { STRENGTH_SPEED_EXTRA_TUNING } from "../tuning.ts";
 import { applyDistanceFatigueToCp } from "./distanceFatigue.ts";
-import { allOutTimeTrialBonus7280, applyEffortToDemand, effortCostTuning7280, isAllOut7280On, isSaveItt7332Effort, saveTimeTrialPenalty7332 } from "./effortCost.ts"; // #7280: alt ud-gevinst; #7332: spar-pris
+import { allOutTimeTrialBonus7280, applyEffortToDemand, effortCostTuning7280, isSaveItt7332Effort, saveTimeTrialPenalty7332 } from "./effortCost.ts"; // #7280: alt ud-gevinst; #7332: spar-pris
 import { isOfficialTimesV3OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater, isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
 import { summitFinishSingleFor } from "./komJersey6937.ts";
 import {
@@ -192,7 +192,7 @@ export const S5_V3_ITT_TERRAIN_WEIGHT: Readonly<Record<SegmentKind, number>> = O
 
 // #6595 (TAENDT 31/10 paa ejerens go, genmaalt vaegt): s5_profiles_v3 er den AKTUELLE
 // revision (#7237), saa rettelsen kan ikke ligge bag revisionen alene (samme
-// moenster som #7280's ALL_OUT_7280_ACTIVE). Slukket er enkeltstarten
+// moenster som #7280's tidligere ALL_OUT_7280_ACTIVE). Slukket er enkeltstarten
 // bit-identisk med main foer #6595.
 export const ITT_TERRAIN_6595_ACTIVE: boolean = true; // ejer-go 31/10, #6595
 
@@ -502,8 +502,9 @@ export function simulateIndividualTimeTrialStage(
       ...(options.dayForm6649 && isS5ProfilesV3OrLater(options.rulesRevision) ? { dayForm6649: true as const } : {}), // #6649
     },
     // #6595 (slukket): kun s5_profiles_v3 med kontakten taendt faar enkeltstartens egen terraen-vaegt; ellers vejetapens (samme objekt).
+    // #7280: s5_profiles_v3 og senere faar alt ud's gevinst og pris mod uret.
     // #7332: s5_profiles_v3 og senere faar spar-prisen mod uret.
-    individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning, climbShare, isAllOut7280On(options.rulesRevision), options.ittTerrainWeight ?? ittTerrainWeight(options.rulesRevision), isS5ProfilesV3OrLater(options.rulesRevision)),
+    individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning, climbShare, isS5ProfilesV3OrLater(options.rulesRevision), options.ittTerrainWeight ?? ittTerrainWeight(options.rulesRevision), isS5ProfilesV3OrLater(options.rulesRevision)),
   );
   return output;
 }

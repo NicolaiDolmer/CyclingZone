@@ -14,7 +14,7 @@
 //   (c) work-cost bliver ALDRIG en bonus for nogen kombination af rolle ×
 //       profil × de fem efforts — loftet er 0 (spec §4 "loftet til maks 0").
 //
-// Plus: vokabular-forward-guard, flag-adfærden på begge API-skrivestier,
+// Plus: vokabular-forward-guard, vokabularet på begge API-skrivestier,
 // grupetto's udelukkelse fra udbrud og D2-formudbytte-kroken.
 
 import { test } from "node:test";
@@ -24,10 +24,7 @@ import {
   workCost,
   effortFatigueMultiplier,
   effortDevelopmentMultiplier,
-  validEffortsFor,
-  VALID_EFFORTS,
   VALID_EFFORTS_FIVE_STEP,
-  INTENTION_EFFORTS,
   RACE_V3_TUNING,
   VALID_RACE_ROLES,
   GC_RELEVANT_PROFILES,
@@ -39,7 +36,6 @@ import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
 import { validateStageRoleOverrides } from "./raceStageRolesApi.js";
 import { validateTeamOrder } from "./raceTeamOrdersApi.js";
 import { applyRaceDevelopmentTick } from "./dailyTraining.js";
-import { RACE_DAY_INTENTION_FLAG_KEY } from "./raceIntentionFlag.js";
 import { extractStageMoments } from "./raceNarrative.js";
 
 const FIVE = ["grupetto", "save", "normal", "protect", "all_out"];
@@ -58,14 +54,12 @@ test("#4632: VALID_EFFORTS_FIVE_STEP er præcis de fem kanoniske trin i skala-r�
 });
 
 test("#4632: de tre gamle værdier er UÆNDREDE og stadig med i femtrins-skalaen", () => {
-  assert.deepEqual([...VALID_EFFORTS], ["protect", "normal", "save"]);
-  for (const legacy of VALID_EFFORTS) {
+  for (const legacy of ["protect", "normal", "save"]) {
     assert.ok(VALID_EFFORTS_FIVE_STEP.includes(legacy), legacy);
   }
 });
 
-test("#4632: kun 'grupetto' og 'all_out' er nye (ingen omdøbning af save/protect)", () => {
-  assert.deepEqual([...INTENTION_EFFORTS].sort(), ["all_out", "grupetto"]);
+test("#4632: ingen omdøbning af save/protect", () => {
   for (const renamed of ["conserve", "committed"]) {
     assert.ok(!VALID_EFFORTS_FIVE_STEP.includes(renamed), `${renamed} blev IKKE valgt (ejer 5-6/9)`);
   }
@@ -75,21 +69,6 @@ test("#4632: skalaen afviser et sjette/ukendt ord", () => {
   for (const bogus of ["all-out", "allout", "Grupetto", "grupetto ", "", "hard", "easy"]) {
     assert.ok(!VALID_EFFORTS_FIVE_STEP.includes(bogus), bogus);
   }
-});
-
-test("#4632: flag-nøglen er race_day_intention_enabled (samme mønster som race_day_development_enabled)", () => {
-  assert.equal(RACE_DAY_INTENTION_FLAG_KEY, "race_day_intention_enabled");
-});
-
-// ── validEffortsFor: flaget er vokabular-switchen ────────────────────────────
-
-test("#4632: validEffortsFor(false) = dagens tre værdier; default-argumentet er OFF", () => {
-  assert.deepEqual([...validEffortsFor(false)], ["protect", "normal", "save"]);
-  assert.deepEqual([...validEffortsFor()], ["protect", "normal", "save"]);
-});
-
-test("#4632: validEffortsFor(true) = alle fem", () => {
-  assert.deepEqual([...validEffortsFor(true)], FIVE);
 });
 
 // ── INVARIANT (a): all_out koster ALTID strengt mere træthed end normal ───────
@@ -298,39 +277,18 @@ test("#4632: uden grupetto får feltet stadig udbrud (sanity: udelukkelsen er ik
   assert.ok(anyBreakaway, "mindst ét seed skal producere et udbrud når ingen kører grupetto");
 });
 
-// ── API-flag: skrivestierne afviser de to nye værdier indtil flaget flippes ──
+// ── API: skrivestierne tager alle fem trin (kontakten fjernet, krav 5) ──
 
 const STAGE_BASE = { stageCount: 5, stagesCompleted: 2, teamRiderIds: new Set(["r1"]) };
 
-test("#4632: PUT /stage-roles AFVISER grupetto/all_out når flaget er off", () => {
-  for (const effort of INTENTION_EFFORTS) {
-    const res = validateStageRoleOverrides({
-      ...STAGE_BASE,
-      overrides: [{ stage_number: 3, rider_id: "r1", race_role: "helper", effort }],
-      intentionEnabled: false,
-    });
-    assert.equal(res.ok, false, effort);
-    assert.equal(res.errors[0], "stage_roles_invalid_effort", effort);
-  }
-});
-
-test("#4632: PUT /stage-roles ACCEPTERER alle fem når flaget er on", () => {
+test("#4632: PUT /stage-roles ACCEPTERER alle fem", () => {
   for (const effort of FIVE) {
     const res = validateStageRoleOverrides({
       ...STAGE_BASE,
       overrides: [{ stage_number: 3, rider_id: "r1", race_role: "helper", effort }],
-      intentionEnabled: true,
     });
     assert.deepEqual(res, { ok: true, errors: [] }, effort);
   }
-});
-
-test("#4632: PUT /stage-roles — glemt flag-argument = OFF (fail-safe default)", () => {
-  const res = validateStageRoleOverrides({
-    ...STAGE_BASE,
-    overrides: [{ stage_number: 3, rider_id: "r1", race_role: "helper", effort: "all_out" }],
-  });
-  assert.equal(res.errors[0], "stage_roles_invalid_effort");
 });
 
 const ORDER_BASE = {
@@ -338,24 +296,11 @@ const ORDER_BASE = {
   scheduledAt: null, teamRiderIds: new Set(["r1"]),
 };
 
-test("#4632: PUT /team-orders AFVISER grupetto/all_out når flaget er off", () => {
-  for (const effort of INTENTION_EFFORTS) {
-    const res = validateTeamOrder({
-      ...ORDER_BASE,
-      order: { breakaway_stance: "neutral", riders: [{ rider_id: "r1", effort, try_break: false }] },
-      intentionEnabled: false,
-    });
-    assert.equal(res.ok, false, effort);
-    assert.equal(res.errors[0], "team_orders_invalid_effort", effort);
-  }
-});
-
-test("#4632: PUT /team-orders ACCEPTERER alle fem når flaget er on", () => {
+test("#4632: PUT /team-orders ACCEPTERER alle fem", () => {
   for (const effort of FIVE) {
     const res = validateTeamOrder({
       ...ORDER_BASE,
       order: { breakaway_stance: "neutral", riders: [{ rider_id: "r1", effort, try_break: false }] },
-      intentionEnabled: true,
     });
     assert.deepEqual(res, { ok: true, errors: [] }, effort);
   }
@@ -363,20 +308,18 @@ test("#4632: PUT /team-orders ACCEPTERER alle fem når flaget er on", () => {
 
 test("#4632: begge skrivestier deler ÉT vokabular (ingen divergens mellem stage-roles og team-orders)", () => {
   for (const effort of ["conserve", "committed", "all-out", "MAX"]) {
-    for (const on of [false, true]) {
-      const a = validateStageRoleOverrides({
-        ...STAGE_BASE,
-        overrides: [{ stage_number: 3, rider_id: "r1", race_role: "helper", effort }],
-        intentionEnabled: on,
-      });
-      const b = validateTeamOrder({
-        ...ORDER_BASE,
-        order: { breakaway_stance: "neutral", riders: [{ rider_id: "r1", effort, try_break: false }] },
-        intentionEnabled: on,
-      });
-      assert.equal(a.ok, false, `${effort}/${on}`);
-      assert.equal(b.ok, false, `${effort}/${on}`);
-    }
+    const a = validateStageRoleOverrides({
+      ...STAGE_BASE,
+      overrides: [{ stage_number: 3, rider_id: "r1", race_role: "helper", effort }],
+    });
+    const b = validateTeamOrder({
+      ...ORDER_BASE,
+      order: { breakaway_stance: "neutral", riders: [{ rider_id: "r1", effort, try_break: false }] },
+    });
+    assert.equal(a.ok, false, effort);
+    assert.equal(b.ok, false, effort);
+    assert.equal(a.errors[0], "stage_roles_invalid_effort", effort);
+    assert.equal(b.errors[0], "team_orders_invalid_effort", effort);
   }
 });
 

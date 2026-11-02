@@ -182,7 +182,7 @@ export function effectStats(dOn, dCtrl, sign) {
  */
 export function apiContradictionChecks() {
   const ids = new Set(["h1", "h2", "s1", "c1"]);
-  const base = { raceCompleted: false, stageNumber: 1, stageCount: 3, stagesCompleted: 0, scheduledAt: null, teamRiderIds: ids, intentionEnabled: true, now: API_CHECK_NOW };
+  const base = { raceCompleted: false, stageNumber: 1, stageCount: 3, stagesCompleted: 0, scheduledAt: null, teamRiderIds: ids, now: API_CHECK_NOW };
   const classic = (id, rider) => {
     const res = validateTeamOrder({ ...base, order: { breakaway_stance: "neutral", riders: [{ rider_id: "h1", effort: "normal", try_break: false, leadout: false, ...rider }] } });
     return { id, path: "classic", expectReject: true, rejected: !res.ok, error: res.errors[0] ?? null };

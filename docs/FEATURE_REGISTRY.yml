@@ -218,11 +218,10 @@ features:
     title_en: Stage intention choice
     title_da: Indsatsvalg pr. etape
     state: live
-    flag: race_day_intention_enabled
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6641
-    verified: 2026-10-27
-    note: On 27/10 13:48 efter ejer-go (#7281), læst tilbage i prod.
+    verified: 2026-11-02
+    note: Live 27/10 efter ejer-go (#7281); kontakten race_day_intention_enabled fjernet 2/11 (krav 5), alle fem trin gælder altid.
 
   - id: race-all-out-7280
     area: race-engine
@@ -231,8 +230,8 @@ features:
     state: live
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6641
-    verified: 2026-10-27
-    note: Kodekontakt ALL_OUT_7280_ACTIVE tændt 27/10 efter ejer-go (#7311), kun v3.
+    verified: 2026-11-02
+    note: Live 27/10 efter ejer-go (#7311); kodekontakten ALL_OUT_7280_ACTIVE fjernet 2/11 (krav 5), reglen gælder altid under s5_profiles_v3.
 
   - id: race-itt-terrain-6595
     area: race-engine

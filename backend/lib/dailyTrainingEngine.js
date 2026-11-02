@@ -71,7 +71,6 @@ import {
   loadTeamDivisionId,
 } from "./injuryRaceDays.js";
 import { notifyTrainingInjuries } from "./raceAvailabilityNotifications.js"; // #7086
-import { isRaceDayIntentionEnabled } from "./raceIntentionFlag.js"; // #6641 variant B
 import { loadDevelopmentCurveB } from "./developmentCurveBFlag.ts"; // #3564 kurve B
 import { ensureCurveBIgnition, curveBTransitionForDate, loadCurveBTransitionRoster } from "./developmentCurveBTransition7382.ts"; // #7382 blød overgang
 import { loadRaceDayEffortByRider, raceDayIntentionYieldMultiplier } from "./raceDayIntentionYield.js"; // #6641 variant B
@@ -878,8 +877,8 @@ export async function runTeamTrainingDay({
       racedRiderIds.add(riderId);
       racedRiderProfileByRider.set(riderId, stage.profileType ?? RACE_DAY_FALLBACK_PROFILE);
     }
-    // #6641 variant B: managerens intention for etapen skalerer loebsdagens udbytte (flag off = tomt kort = 1,0).
-    if (raceDayDevelopmentOn && racedRiderIds.size > 0 && await isRaceDayIntentionEnabled(supabase)) {
+    // #6641 variant B: managerens intention for etapen skalerer loebsdagens udbytte (ingen intention = 1,0).
+    if (raceDayDevelopmentOn && racedRiderIds.size > 0) {
       raceDayEffortByRider = await loadRaceDayEffortByRider({ supabase, stageByRider: raceDayResult.data });
     }
     if (raceDayDevelopmentOn && raceRoleYield && racedRiderIds.size > 0) raceDayRoleByRiderMap = await loadRaceDayRoleByRider({ supabase, stageByRider: raceDayResult.data }); // #5950
@@ -1249,7 +1248,7 @@ export async function runTeamTrainingDay({
         //
         // #6641 (variant B, ejer 24/9): dagens intention ganges sidst i kaeden via
         // applyDailyTick's ekstra multiplikator-led (default 1,0). Kun paa loebsdags-
-        // aksen og kun med race_day_intention_enabled on; ellers 1,0 = variant A.
+        // aksen; ingen intention giver 1,0 = variant A.
         tickResult = applyDailyTick({
           ...sharedTickArgs,
           program: raceDayProgram(racedRiderProfileByRider.get(rider.id) ?? RACE_DAY_FALLBACK_PROFILE),
