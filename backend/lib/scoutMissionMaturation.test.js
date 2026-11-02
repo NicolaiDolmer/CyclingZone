@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { defaultLoadCandidates, completeDueMissionAssignments } from "./scoutMissionMaturation.js";
 import { missionReadyAt } from "./scoutEngine.js";
 import { buildScoutReportReadyNotification } from "./notificationService.js"; // #6551
+import { hydrateCompletedVisibility } from "./scoutReportVisibility.js"; // #6138
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -400,6 +401,51 @@ describe("completeDueMissionAssignments (#3997)", () => {
     assert.equal(calls[0].assignment.id, "m1");
     assert.equal(calls[0].assignment.status, "completed");
     assert.ok(calls[0].assignment.result.shortlist.length >= 3);
+  });
+
+  // #6138: beskeden lovede N ryttere, rapporten viste færre. Tallet i beskeden
+  // skal være det rapporten viser (samme synlighedsfilter), mens det gemte
+  // result og scout_actions er uændrede.
+  it("#6138: antallet i notifikationen == antallet rapporten viser (skjulte ryttere tælles ikke med)", async () => {
+    const now = new Date("2026-08-02T09:00:00.000Z");
+    const supabase = makeMockSupabase({ assignments: [missionAssignment()], candidates: CANDIDATES });
+    let hiddenId = null;
+    const fakeVisibilityClient = (ids) => ({
+      from(table) {
+        const rows = table === "riders"
+          ? ids.map((id) => ({ id, team_id: null, pending_team_id: id === hiddenId ? "team-9" : null, is_academy: false, owner_is_ai: false, team: null }))
+          : [];
+        const b = { select: () => b, eq: () => b, in: () => Promise.resolve({ data: rows, error: null }) };
+        return b;
+      },
+    });
+    const hydrateVisibility = async (_client, completed) => {
+      hiddenId = completed[0].result.shortlist[0]; // en rytter bliver skjult efter generering
+      return hydrateCompletedVisibility(fakeVisibilityClient(completed[0].result.shortlist), completed);
+    };
+    const calls = [];
+    const notify = async ({ assignment }) => { calls.push(buildScoutReportReadyNotification({ assignment })); return { delivered: true }; };
+    await complete({ supabase, now, loadCandidates: async () => CANDIDATES, notify, hydrateVisibility });
+    const stored = supabase.state.assignments[0].result.shortlist;
+    const [report] = await hydrateCompletedVisibility(fakeVisibilityClient(stored), [supabase.state.assignments[0]]);
+    assert.equal(calls[0].metadata.shortlistCount, report.result.shortlist.length);
+    assert.equal(calls[0].metadata.shortlistCount, stored.length - 1);
+    assert.equal(supabase.state.inserts.scout_actions.length, stored.length); // gemt data uændret
+  });
+
+  it("#6138: fejl i synligheds-opslaget vælter ikke missionen — beskeden bruger shortlistens længde", async () => {
+    const now = new Date("2026-08-02T09:00:00.000Z");
+    const supabase = makeMockSupabase({ assignments: [missionAssignment()], candidates: CANDIDATES });
+    const calls = [];
+    const notify = async ({ assignment }) => { calls.push(assignment.result.shortlist.length); return { delivered: true }; };
+    const hydrateVisibility = async () => { throw new Error("db nede"); };
+    const origError = console.error;
+    console.error = () => {};
+    try {
+      const result = await complete({ supabase, now, loadCandidates: async () => CANDIDATES, notify, hydrateVisibility });
+      assert.deepEqual(result, { completed: 1 });
+    } finally { console.error = origError; }
+    assert.equal(calls[0], supabase.state.assignments[0].result.shortlist.length);
   });
 
   it("en fejlende notify isoleres af per-assignment try/catch (kaster ikke videre) — status er allerede sat", async () => {
