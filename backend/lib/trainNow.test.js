@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import {
   runTrainNow, loadTrainNowStatus,
   createTrainNowPlanLock, sameWeekdayCell, TRAIN_NOW_FLAG_KEY, trainNowShortRaces, loadTrainNowShortRaces,
+  loadTodayRacesForTeam,
 } from "./trainNow.js";
 import {
   TRAIN_NOW_LOCK_TABLE, loadRaceTrainNowLock, loadTrainNowLockedRidersByDate, lockedRidersOnDates, raceStageDates,
@@ -285,8 +286,73 @@ test("#6139 status names today's races in the team's pools (the button says what
     { id: "race-tomorrow", name: "Tour C", squad: "senior", league_division_id: TEAM.league_division_id },
   ];
   state.race_stage_schedule.push({ race_id: "race-other-pool", scheduled_at: "2026-10-01T12:00:00Z" });
+  state.riders = [{ id: "r1", team_id: TEAM.id, squad: "senior", is_academy: false }];
   const status = await loadTrainNowStatus({ supabase: fakeSupabase(state), team: TEAM, seasonId: SEASON.id, now: MORNING });
   assert.deepEqual(status.todayRaces, [{ id: "race-today", name: "Tour A" }]);
+});
+
+// #7505: a new team with senior riders only. One single-day race it is entered in, one
+// stage race that started before the team existed (0 entries), one U23 race (0 U23 riders).
+// The team has a U23 pool (it is in the U23 league) but, in the base scenario, no U23 riders.
+const TEAM_7505 = { ...TEAM, u23_league_division_id: "div-u23" };
+function scenario7505() {
+  const state = lockedState();
+  const pool = TEAM.league_division_id;
+  state.races = [
+    { id: "single", name: "Trofeo", squad: "senior", league_division_id: pool, stages_completed: 0, status: "active" },
+    { id: "started", name: "Ronde", squad: "senior", league_division_id: pool, stages_completed: 3, status: "active" },
+    { id: "u23", name: "Espoirs", squad: "u23", league_division_id: "div-u23", stages_completed: 0, status: "active" },
+  ];
+  state.race_stage_schedule.push(
+    { race_id: "single", scheduled_at: "2026-10-01T12:00:00Z" },
+    { race_id: "started", scheduled_at: "2026-10-01T12:00:00Z" },
+    { race_id: "u23", scheduled_at: "2026-10-01T12:00:00Z" },
+  );
+  state.riders = [
+    { id: "r1", team_id: TEAM.id, squad: "senior", is_academy: false },
+    { id: "r2", team_id: TEAM.id, squad: "senior", is_academy: false },
+  ];
+  state.race_entries = [{ race_id: "single", rider_id: "r1", team_id: TEAM.id }];
+  return state;
+}
+
+test("#7505 status names only the race the team is in (not a started stage race it is not in, not a U23 race without U23 riders)", async () => {
+  const status = await loadTrainNowStatus({ supabase: fakeSupabase(scenario7505()), team: TEAM_7505, seasonId: SEASON.id, now: MORNING });
+  assert.deepEqual(status.todayRaces, [{ id: "single", name: "Trofeo" }]);
+});
+
+test("#7505 a started stage race the team has entries in, and a U23 race with a U23 rider, are still named", async () => {
+  const state = scenario7505();
+  state.race_entries.push({ race_id: "started", rider_id: "r2", team_id: TEAM.id });
+  state.riders.push({ id: "u1", team_id: TEAM.id, squad: "u23", is_academy: false });
+  const status = await loadTrainNowStatus({ supabase: fakeSupabase(state), team: TEAM_7505, seasonId: SEASON.id, now: MORNING });
+  // sorted by name: Espoirs, Ronde, Trofeo
+  assert.deepEqual(status.todayRaces.map((race) => race.id), ["u23", "started", "single"]);
+});
+
+test("#7505 another team's entries in a started race do not make it reachable", async () => {
+  const state = scenario7505();
+  state.race_entries.push({ race_id: "started", rider_id: "x9", team_id: "team-b" });
+  const status = await loadTrainNowStatus({ supabase: fakeSupabase(state), team: TEAM_7505, seasonId: SEASON.id, now: MORNING });
+  assert.deepEqual(status.todayRaces.map((race) => race.id), ["single"]);
+});
+
+test("#7505 the short-race warning keeps an entered, not yet started race (strict re-check too)", async () => {
+  const state = scenario7505();
+  const supabase = fakeSupabase(state);
+  const todayRaces = await loadTodayRacesForTeam({ supabase, team: TEAM_7505, tickDate: TODAY, strict: true });
+  assert.deepEqual(todayRaces, [{ id: "single", name: "Trofeo" }]);
+  const short = await loadTrainNowShortRaces({ supabase, team: TEAM_7505, todayRaces, tickDate: TODAY, strict: true });
+  assert.deepEqual(short.map((race) => [race.id, race.entered]), [["single", 1]]);
+});
+
+test("#7505 strict fails closed on a read error, the GET stays best-effort", async () => {
+  const state = scenario7505();
+  const broken = { ...fakeSupabase(state), from: (table) => (table === "riders"
+    ? { select: () => ({ eq: () => ({ eq: () => ({ eq: () => ({ or: () => ({ limit: async () => ({ data: null, error: { message: "boom" } }) }) }) }) }) }) }
+    : fakeSupabase(state).from(table)) };
+  await assert.rejects(loadTodayRacesForTeam({ supabase: broken, team: TEAM_7505, tickDate: TODAY, strict: true }), /squad riders: boom/);
+  assert.deepEqual(await loadTodayRacesForTeam({ supabase: broken, team: TEAM_7505, tickDate: TODAY }), []);
 });
 
 test("I3 lock fails open while the lock table is not migrated", async () => {
