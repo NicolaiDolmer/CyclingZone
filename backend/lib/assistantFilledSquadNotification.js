@@ -21,6 +21,7 @@
 // en race-tids-retry — den primaere idempotens er at kaldestedet naturligt
 // ikke naar hertil igen, naar enheden foerst har faaet sine entries.
 import { notifyTeamOwner } from "./notificationService.js";
+import { resolveSelectionWarningsForTeam } from "./selectionWarningResolve.ts";
 
 export const ASSISTANT_FILLED_SQUAD_TYPE = "assistant_filled_squad";
 
@@ -57,15 +58,23 @@ export function buildAssistantFilledSquadNotification({ raceId, raceName }) {
  * captureException), som resten af de fire-and-forget notifikations-kald i
  * raceRunner.js (#1995/#4423-mønstret).
  *
- * `notify` injicérbar for test.
+ * #7508: holdet er nu udtaget, så managerens gamle "Holdudtagelse mangler"
+ * (selection_warning) for NETOP dette løb markeres læst før beskeden sendes
+ * (best-effort, kaster aldrig; en fejlet notifikation efterlader ikke en
+ * stående advarsel).
+ *
+ * `notify`/`resolve` injicérbare for test.
  *
  * @param {{ supabase: object, teamId: string, raceId: string,
- *           raceName?: string|null, notify?: typeof notifyTeamOwner, now?: Date }} args
+ *           raceName?: string|null, notify?: typeof notifyTeamOwner,
+ *           resolve?: typeof resolveSelectionWarningsForTeam, now?: Date }} args
  */
 export async function notifyAssistantFilledSquad({
-  supabase, teamId, raceId, raceName, notify = notifyTeamOwner, now = new Date(),
+  supabase, teamId, raceId, raceName, notify = notifyTeamOwner,
+  resolve = resolveSelectionWarningsForTeam, now = new Date(),
 }) {
   if (!teamId || !raceId) return { delivered: false, deduped: false, reason: "missing_target" };
+  await resolve({ supabase, teamId, raceId });
   const payload = buildAssistantFilledSquadNotification({ raceId, raceName });
   return notify({ supabase, teamId, now, ...payload });
 }
