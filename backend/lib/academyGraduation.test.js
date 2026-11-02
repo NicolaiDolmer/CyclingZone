@@ -619,8 +619,8 @@ test("closePendingGraduationOnRelease: #7488 — lukker kun pending for (hold, r
   await closePendingGraduationOnRelease(mk(null), { teamId: "t1", riderId: "r1", now: CONTRACT_NOTICE_NOW });
   assert.equal(calls[0].patch.status, "released");
   assert.deepEqual(calls[0].eqs, [["team_id", "t1"], ["rider_id", "r1"], ["status", "pending"]]);
-  await closePendingGraduationOnRelease(mk({ message: "boom" }), { teamId: "t1", riderId: "r1" });
-  await closePendingGraduationOnRelease(mk(null), { teamId: null, riderId: "r1" });
+  await closePendingGraduationOnRelease(mk({ message: "boom" }), { teamId: "t1", riderId: "r1", now: CONTRACT_NOTICE_NOW });
+  await closePendingGraduationOnRelease(mk(null), { teamId: null, riderId: "r1", now: CONTRACT_NOTICE_NOW });
   assert.equal(calls.length, 2, "ingen hold = intet kald");
 });
 
