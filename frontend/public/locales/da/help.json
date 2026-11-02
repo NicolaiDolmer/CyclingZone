@@ -2259,7 +2259,7 @@
     },
     "dayFormFaq": {
       "q": "Hvorfor svinger løbsresultaterne fra dag til dag?",
-      "a": "Hver rytter får en dagsform for hver løbsdag, så den samme rytter kan flyve den ene dag og hænge den næste. På sjældne dage knækker en rytter helt og taber stort, og favoritter er ikke fredet. Ryttere i god form knækker sjældnere, og form tæller også mere i selve resultatet, så formstyring betaler sig dobbelt. Løbene bruger hver rytters form, men endnu ikke formtoppe. Over et langt etapeløb udligner de gode og dårlige dage sig stort set, men ét enkelt kollaps på en bjergetape kan afgøre en GC, præcis som i virkelighedens cykelsport. Dine egne ryttere fortæller dig nu hvordan dagen gik med egne ord, en kort linje under deres navn i etaperesultatet, men du ser det aldrig for andre holds ryttere."
+      "a": "Hver rytter får en dagsform for hver løbsdag, så den samme rytter kan flyve den ene dag og hænge den næste. På sjældne dage knækker en rytter helt og taber stort, og favoritter er ikke fredet. Ryttere i god form knækker sjældnere, og form tæller også mere i selve resultatet, så formstyring betaler sig dobbelt. Løbene bruger hver rytters form. Over et langt etapeløb udligner de gode og dårlige dage sig stort set, men ét enkelt kollaps på en bjergetape kan afgøre en GC, præcis som i virkelighedens cykelsport. Dine egne ryttere fortæller dig nu hvordan dagen gik med egne ord, en kort linje under deres navn i etaperesultatet, men du ser det aldrig for andre holds ryttere."
     },
     "crashesFaq": {
       "q": "Hvad er styrt og opgivelser?",
