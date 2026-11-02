@@ -17277,6 +17277,12 @@ router.get("/board/status", requireAuth, async (req, res) => {
       const seasonsRemaining = Math.max(0, planDuration - seasonsCompleted);
       const planProgressPct = planDuration > 0 ? Math.round((seasonsCompleted / planDuration) * 100) : 0;
       const isExpired = board.negotiation_status === "pending";
+      // #7507: "pending" er baade en udloebet plan OG en plan der aldrig er underskrevet
+      // (nyt hold, aarsmoedet aabent). Kun bestyrelsens FEEDBACK skelner: en plan med mindst
+      // eet evalueret saesonsnapshot har vaeret i kraft og kan vaere "udloebet"; ellers faar et
+      // nyt hold "Planen er udloebet". is_expired og request-options beholder den gamle
+      // betydning (den gamle BoardPage bruger den til "Forhandl"-knappen).
+      const planLapsed = isExpired && allSnapshots.some((s) => s.board_id === board.id);
 
       const boardSnapshots = allSnapshots
         .filter(s => s.board_id === board.id && s.season_number >= (board.plan_start_season_number || 0));
@@ -17334,7 +17340,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
         goalContext,
         seasonNumber: activeSeason?.number ?? null,
         extra: {
-          isExpired,
+          isExpired: planLapsed,
           // S-02c · Lad outlook vælge dominant_member + pr-mål reactions
           assignedMembers: teamBoardMembers,
           // #4556 S-M2b addendum · navne-afledning (samme kontrakt som

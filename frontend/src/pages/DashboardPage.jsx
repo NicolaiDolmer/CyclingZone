@@ -66,6 +66,7 @@ import {
   resolveBoardFeedbackHeadline,
   resolveBoardFeedbackSummary,
   resolveCategoryLabel,
+  hasSignedBoardPlan,
 } from "../lib/boardCopy";
 import DashboardCustomizeMenu from "../components/DashboardCustomizeMenu";
 import AnnualMeetingNudgeCard from "../components/AnnualMeetingNudgeCard"; // #4557 S-M2d
@@ -566,9 +567,7 @@ export default function DashboardPage() {
     // viste Dashboard 65% mens Bestyrelse viste 67%.
     setBoardSatisfaction(computeOverallBoardSatisfaction(boardStatus?.plans));
     setBoardOutlook(activePlan?.outlook || null);
-    const hasNegotiatedPlan = ["1yr", "3yr", "5yr"].some(
-      (pt) => boardStatus?.plans?.[pt]?.board?.negotiation_status === "completed"
-    );
+    const hasNegotiatedPlan = hasSignedBoardPlan(boardStatus?.plans);
     setBoardPlanMissing(Boolean(boardStatus) && !boardStatus.is_baseline_phase && !hasNegotiatedPlan);
     setBoardStatusLoaded(Boolean(boardStatus));
     setActiveOffers([
@@ -1178,6 +1177,8 @@ export default function DashboardPage() {
       card: firstRaceCard, nowMs, locale: i18n.language,
     })
     : null;
+  // #7507: backend saetter feedback.expired kun for en plan der har vaeret i kraft.
+  const boardPlanExpired = /** @type {any} */ (boardOutlook)?.feedback?.headline_key === "feedback.expired.headline";
   // "Pick your race squad" skjules MENS kortet vises (ingen to guldknapper); "Next move" er uroert.
   const showTeamSelectionCta = Boolean(squadSelectionMissingRace) && !firstRaceCardModel;
   // #1140: det TOMME "How your team did" (race: null) skjules mens "Your first race" vises,
@@ -2101,7 +2102,14 @@ export default function DashboardPage() {
                   </p>
                 </div>
               </div>
-              {boardOutlook?.feedback && boardCopyReady && (
+              {/* #7507: en plan der aldrig er underskrevet (nyt hold) har intet at evaluere — vis
+                  "ingen plan endnu". En UDLOEBET plan (backend: feedback.expired) beholder sin evaluering. */}
+              {boardPlanMissing && !boardPlanExpired && (
+                <div className="mt-4 pt-4 border-t border-cz-border">
+                  <p className="text-cz-2 text-xs">{t("dashboard:nextActions.boardPlanMissing")}</p>
+                </div>
+              )}
+              {(!boardPlanMissing || boardPlanExpired) && boardOutlook?.feedback && boardCopyReady && (
                 <div className="mt-4 pt-4 border-t border-cz-border">
                   <p className="text-cz-1 text-sm font-medium">{resolveBoardFeedbackHeadline(t, boardOutlook.feedback)}</p>
                   <p className="text-cz-2 text-xs mt-1">{resolveBoardFeedbackSummary(t, boardOutlook.feedback)}</p>
