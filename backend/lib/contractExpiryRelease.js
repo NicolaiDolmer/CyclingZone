@@ -43,7 +43,7 @@ import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 import { notifyUser as defaultNotifyUser } from "./notificationService.js";
 import { captureException } from "./sentry.js";
-import { closePendingGraduationOnRelease } from "./academyGraduationRelease.js";
+import { closePendingGraduationOnRelease } from "./academyGraduationRelease.ts";
 import { buildContractRosterNotification } from "./contractNoticeRoster.js";
 
 export const CONTRACT_EXPIRED_RELEASE_TYPE = "contract_expired_release";

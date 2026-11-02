@@ -6,10 +6,11 @@
  * #7488: en automatisk frigivelse (kontraktudløb, pension) fjerner rytteren fra holdet
  * uden at røre graduerings-rækken. Luk en evt. 'pending' række lydløst (best-effort:
  * frigivelsen er allerede gennemført, så en fejl her må aldrig vælte den).
- * @param {any} supabase
- * @param {{ teamId?: string | null, riderId?: string | null, now?: Date }} [opts]
  */
-export async function closePendingGraduationOnRelease(supabase, { teamId, riderId, now = new Date() } = {}) {
+export async function closePendingGraduationOnRelease(
+  supabase: any,
+  { teamId, riderId, now = new Date() }: { teamId?: string | null; riderId?: string | null; now?: Date } = {},
+): Promise<void> {
   if (!supabase?.from || !teamId || !riderId) return;
   try {
     const { error } = await supabase.from("academy_graduation")

@@ -52,7 +52,7 @@ import {
 } from "./marketUtils.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { captureException } from "./sentry.js";
-import { closePendingGraduationOnRelease } from "./academyGraduationRelease.js";
+import { closePendingGraduationOnRelease } from "./academyGraduationRelease.ts";
 
 async function defaultFetchRetiredOwnedRiders({ supabase }) {
   // Bemærk: INGEN is_academy-filtrering her (modsat contractExpiryRelease, hvor den

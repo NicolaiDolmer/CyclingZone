@@ -1009,7 +1009,7 @@ async function closeGraduationNotOnTeam(supabase, { gradId, now }) {
   if (error) throw new Error(`closeGraduationNotOnTeam update: ${error.message}`);
 }
 
-export { closePendingGraduationOnRelease } from "./academyGraduationRelease.js";
+export { closePendingGraduationOnRelease } from "./academyGraduationRelease.ts";
 
 async function finishGraduation(supabase, { gradId, status, teamId, rider, now, action, notify = notifyTeamOwner }) {
   // #7474: compare-and-set. Kun den afgørelse der flytter rækken fra 'pending'
