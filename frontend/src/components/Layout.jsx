@@ -370,7 +370,7 @@ function NavItem({ to, label, badge, beta, dot, dotLabel, dotLabelUrgent, onClic
   );
 }
 
-function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags, dotTones, logoutLabel, onOpenFeedback, contactLabel }) {
+function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags, dotTones, logoutLabel, loginLabel, isAnonymous, onOpenFeedback, contactLabel }) {
   const { t } = useTranslation("common");
   const { isPro, isFounder } = useSubscription(team?.id);
   return (
@@ -485,11 +485,21 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
 
       {/* Footer */}
       <div className="border-t border-cz-sidebar-border px-4 py-3 flex items-center justify-between gap-2">
-        <button
-          onClick={signOut}
-          className="inline-flex items-center gap-1 text-2xs text-cz-sidebar-3 hover:text-cz-sidebar-2 transition-colors">
-          <ChevronLeftIcon aria-hidden="true" className="w-3 h-3" /> {logoutLabel}
-        </button>
+        {/* #7500: anonyme besøgende på offentlige sider ser et login-link i stedet for "Log ud". */}
+        {isAnonymous ? (
+          <Link
+            to="/login"
+            onClick={onNav}
+            className="inline-flex items-center gap-1 text-2xs text-cz-sidebar-3 hover:text-cz-sidebar-2 transition-colors">
+            <ChevronLeftIcon aria-hidden="true" className="w-3 h-3" /> {loginLabel}
+          </Link>
+        ) : (
+          <button
+            onClick={signOut}
+            className="inline-flex items-center gap-1 text-2xs text-cz-sidebar-3 hover:text-cz-sidebar-2 transition-colors">
+            <ChevronLeftIcon aria-hidden="true" className="w-3 h-3" /> {logoutLabel}
+          </button>
+        )}
         <div className="flex items-center gap-1">
           {/* #427/#5130: ikon-only Discord-link i footer-raekken — den mobile
               topbar (nedenfor) baerer KUN wordmarket, saa CTA'en lever her og
@@ -927,6 +937,8 @@ export default function Layout() {
   const sidebarProps = {
     navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, badgeCounts, dotFlags, dotTones,
     logoutLabel: t("nav.item.logout"),
+    loginLabel: t("landing:nav.login"),
+    isAnonymous: !session,
     onOpenFeedback: () => setFeedbackOpen(true),
     contactLabel: t("nav.item.contact"),
   };
