@@ -17266,7 +17266,11 @@ router.get("/board/status", requireAuth, async (req, res) => {
       const seasonsCompleted = board.seasons_completed || 0;
       const seasonsRemaining = Math.max(0, planDuration - seasonsCompleted);
       const planProgressPct = planDuration > 0 ? Math.round((seasonsCompleted / planDuration) * 100) : 0;
-      const isExpired = board.negotiation_status === "pending";
+      // #7507: "pending" er baade en udloebet plan OG en plan der aldrig er underskrevet
+      // (nyt hold, aarsmoedet aabent). Kun en plan med mindst eet evalueret saesonsnapshot
+      // har vaeret i kraft og kan vaere udloebet; ellers faar et nyt hold "Planen er udloebet".
+      const isExpired = board.negotiation_status === "pending"
+        && allSnapshots.some((s) => s.board_id === board.id);
 
       const boardSnapshots = allSnapshots
         .filter(s => s.board_id === board.id && s.season_number >= (board.plan_start_season_number || 0));
