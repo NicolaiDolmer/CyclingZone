@@ -167,7 +167,7 @@ export function myRaceStatus(
   const range = raceDateRange(entry);
   if (!range || (todayIso && range.start < todayIso)) return null;
   if (entry.entered) return entry.lineupShort ? "missing" : "selected";
-  const gt = (entries || []).find((e) => e && e.id !== entry.id && e.isMine && e.entered && !e.withdrawn
+  const gt = (entries || []).find((e) => e && e.id !== entry.id && e.isMine && e.entered && !e.lineupShort && !e.withdrawn
     && isGrandTour(e.raceClass) && bindsOverlap(entry, e));
   return gt ? "gtBound" : "missing";
 }

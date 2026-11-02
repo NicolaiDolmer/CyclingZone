@@ -7,41 +7,6 @@ export const PATCHES = [
         "category": "fixed",
         "audience": "player",
         "rollout": "live",
-        "topic": "Calendar",
-        "en": {
-          "title": "Ready means enough riders",
-          "body": "The calendar only shows a race as Ready once you have picked enough riders to start it. With fewer, it says Missing."
-        },
-        "da": {
-          "title": "Klar betyder nok ryttere",
-          "body": "Kalenderen viser kun et løb som Klar, når du har udtaget nok ryttere til at starte. Med færre står der Mangler."
-        },
-        "refs": [
-          7533
-        ]
-      },
-      {
-        "category": "improved",
-        "audience": "player",
-        "rollout": "beta",
-        "flag": "race_library_v2",
-        "topic": "Calendar",
-        "en": {
-          "title": "Calendar table and race history sort on every column",
-          "body": "Click any column header to sort. The race name opens the race, and each terrain icon is shown once per race."
-        },
-        "da": {
-          "title": "Kalendertabel og løbshistorik sorterer på alle kolonner",
-          "body": "Klik på en kolonneoverskrift for at sortere. Løbets navn åbner løbet, og hvert terrænikon vises én gang pr. løb."
-        },
-        "refs": [
-          7533
-        ]
-      },
-      {
-        "category": "fixed",
-        "audience": "player",
-        "rollout": "live",
         "topic": "Academy",
         "en": {
           "title": "Released riders stay free agents",

@@ -163,3 +163,9 @@ test("#6514 myRaceStatus: Grand Tour-konflikt regnes i game_days, ikke kun datoe
   const inside = { id: "x2", isMine: true, entered: false, date: "2026-10-21", gameDayStart: 101, gameDayEnd: 101 };
   assert.equal(myRaceStatus(inside, [tour, inside], TODAY), "gtBound");
 });
+
+test("#7533 myRaceStatus: en GT med udtagelse under gulvet binder ikke samtidige løb", () => {
+  const shortGt = { ...gt, lineupShort: true };
+  const clash = { id: "b", isMine: true, entered: false, date: "2026-10-18" };
+  assert.equal(myRaceStatus(clash, [shortGt, clash], TODAY), "missing");
+});

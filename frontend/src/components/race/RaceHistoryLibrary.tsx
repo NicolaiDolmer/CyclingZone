@@ -195,6 +195,7 @@ const HISTORY_SORT: Record<string, (r: HistoryRow) => unknown> = {
   terrain: (r) => (r.terrain.length ? TERRAIN_KINDS.indexOf(r.terrain[0].kind) : null),
   winners: (r) => r.editions.length,
 };
+const HISTORY_DESC_FIRST = new Set(["winners"]);
 
 // Løbets historikside, med løbstypen så et endagsløb og et etapeløb med samme navn holdes ude fra hinanden.
 
@@ -252,7 +253,8 @@ export default function RaceHistoryLibrary() {
   const retry = useCallback(() => setRetryTick((n) => n + 1), []);
 
   // #7533 (ejer 2/11): alle kolonner sorterer; sorteringen sker før sideopdelingen.
-  const { sort, sortDir, handleSort } = useSortState({ initialSort: null });
+  // Første klik er stigende (A→Å, bedste placering øverst), som kalendertabellen; kun antal udgaver starter faldende.
+  const { sort, sortDir, handleSort } = useSortState({ initialSort: null, descFirstKeys: HISTORY_DESC_FIRST });
   const filtered = useMemo(() => (rows || []).filter((r) => matchesSearch(r.name, search)), [rows, search]);
   const sorted = useMemo(
     () => sortRows(filtered, sort ? HISTORY_SORT[sort] : null, sortDir) as HistoryRow[],
