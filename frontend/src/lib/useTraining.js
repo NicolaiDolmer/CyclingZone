@@ -41,8 +41,6 @@ export function useTraining() {
   // beder aldrig om en bestemt visning. Default false = fail-safe gammel visning.
   const [mobileTable, setMobileTable] = useState(false);
   const [dailyReceiptEnabled, setDailyReceiptEnabled] = useState(false);
-  // #6523: true = Today-fanen faar "saet dagen for flere"-linjen. Default false.
-  const [bulkDay, setBulkDay] = useState(false);
   // #6110 S26: true = Today-fanen faar "Dagens beslutning"-kortet. Default false.
   const [decisionCard, setDecisionCard] = useState(false);
   // #6110 S26: { <rider_id>: dage i traek >= 70 } | null (kun med flaget on; null = vis streg).
@@ -90,7 +88,6 @@ export function useTraining() {
         // feltet, eller en vaerdi der ikke er en boolean, skal give den GAMLE
         // visning, ikke en halv ny flade.
         setMobileTable(data.mobileTable === true);
-        setBulkDay(data.bulkDay === true);
         setDecisionCard(/** @type {{ decisionCard?: boolean }} */ (data).decisionCard === true);
         setFatigueDays70(/** @type {{ fatigueDays70?: Record<string, number> }} */ (data).fatigueDays70 ?? null);
       }
@@ -311,7 +308,7 @@ export function useTraining() {
   return {
     slots, plans, teamId, enabled, todayRun, condition, progress, capped, trainability, smartDefaultFocus, trainingScore,
     weekPlan, savingWeekPlan, loading, savingId, running, bulkApplying,
-    riderWeekPlans, savingRiderWeekPlanId, racingToday, dayClose, mobileTable, bulkDay, decisionCard, fatigueDays70, dailyReceiptEnabled,
+    riderWeekPlans, savingRiderWeekPlanId, racingToday, dayClose, mobileTable, decisionCard, fatigueDays70, dailyReceiptEnabled,
     setPlan, setPlanBulk, clearPlan, planFor, runToday, refresh, setWeekPlan, clearWeekPlan,
     setRiderWeekPlan, clearRiderWeekPlan,
   };

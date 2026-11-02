@@ -41,6 +41,7 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_mobile_table", area: "training", label: "Træningssiden på mobil — ny tabel" },
   // #1140: "Your first race"-kort for nye hold paa dashboardet. Seedet off.
   { key: "first_race_card", area: "onboarding", label: "Dit første løb — kort på dashboardet (nye hold)" },
+  // #6523: ingen kode laeser den laengere; raekken bliver kun for patch-noten (se PLAYER_VISIBLE_FLAG_KEYS).
   { key: "training_bulk_day", area: "training", label: "Træning — sæt dagen for flere ryttere" },
   // #6110 S26: "Dagens beslutning"-kortet oeverst paa Today-fanen. Seedet off.
   { key: "training_decision_card", area: "training", label: "Træning — Dagens beslutning (kort øverst)" },
@@ -213,6 +214,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "development_curve_b",
   // 7.361: beta-noterne for etapeside 2.0 og bulk-dag skifter til
   // "Now for everyone", naar kontakterne er on for alle.
+  // training_bulk_day: kun patch-noten laeser den (kodekontakten er fjernet,
+  // #6523 krav 5); raekken i app_config bliver staaende for noten.
   "stage_page_v2",
   "training_bulk_day",
   // #6110 Udvikling 2.0 del 1: HelpPage gater de nye blokke paa disse flag, saa
