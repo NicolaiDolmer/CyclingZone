@@ -13,7 +13,7 @@ import { potentialFromEstimate } from "../lib/potentialDisplay6853";
 import { getRiderAge } from "../lib/riderAge";
 import { cycleSortState } from "../lib/riderSort";
 import { compareDevRows } from "../lib/teamDevelopmentSort.js";
-import { formatProjectedBand } from "../lib/formatProjectedBand.js";
+import { formatProjectedBand } from "../lib/formatProjectedBand.ts";
 import { DataTable, EmptyState, BikeIcon } from "./ui";
 
 // #3979/#3721 (ejer-beslutning 19/8, "Begge, A foerst" superseded samme

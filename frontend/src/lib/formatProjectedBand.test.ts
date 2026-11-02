@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatProjectedBand } from "./formatProjectedBand.js";
+import { formatProjectedBand } from "./formatProjectedBand.ts";
 
 test("formatProjectedBand: lo === hi giver ét tal", () => {
   assert.equal(formatProjectedBand(15, 15), "15");
