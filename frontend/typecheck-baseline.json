@@ -1584,14 +1584,10 @@
     "TS2339": 1
   },
   "src/lib/firstRaceCardModel.js": {
-    "TS2339": 14,
-    "TS2345": 1,
-    "TS2358": 1
+    "TS2339": 1
   },
   "src/lib/firstRaceCardModel.test.js": {
-    "TS18047": 12,
-    "TS2339": 2,
-    "TS2345": 3,
+    "TS2345": 1,
     "TS2739": 2,
     "TS2741": 6
   },
