@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const workflow = readFileSync(new URL('../.github/workflows/lighthouse-ci.yml', import.meta.url), 'utf8');
 const stub = readFileSync(new URL('../.github/workflows/lighthouse-ci-skip-stub.yml', import.meta.url), 'utf8');
-const coreNames = ['Check out repository', 'Set up Node.js', 'Install frontend dependencies', 'Build frontend', 'Bundle-size budget (hard gate)'];
+const coreNames = ['Check out repository', 'Set up Node.js', 'Install frontend dependencies', 'Build frontend', 'Bundle-size budget (hard gate)', 'Run bundle gate regression tests'];
 
 function steps(source) {
   return [...source.matchAll(/^      - name: (.+)\r?\n([\s\S]*?)(?=^      - name:|$(?![\s\S]))/gm)]
@@ -32,6 +32,7 @@ function assertCoreRuns(source, event, author) {
     assert.doesNotMatch(step.body, /continue-on-error:\s*true|\|\|\s*true/);
   }
   assert.match(parsed.find(s => s.name === coreNames[4]).body, /run: node scripts\/check-bundle-budget\.mjs/);
+  assert.match(parsed.find(s => s.name === 'Run bundle gate regression tests').body, /run: node --test scripts\/dependabot-perf-gate\.test\.mjs/);
   assert.match(parsed.find(s => s.name === coreNames[2]).body, /run: npm ci/);
   assert.match(parsed.find(s => s.name === coreNames[3]).body, /run: npm run build/);
   assert.match(parsed.find(s => s.name === coreNames[0]).body, /persist-credentials: false/);

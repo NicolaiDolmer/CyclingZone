@@ -34,6 +34,7 @@ on:
     paths:
       - 'frontend/**'
       - 'scripts/check-bundle-budget.mjs'
+      - 'scripts/dependabot-perf-gate.test.mjs'
       - 'lighthouserc.json'
       - '.github/workflows/lighthouse-ci.yml'
   push:
@@ -42,6 +43,7 @@ on:
     paths:
       - 'frontend/**'
       - 'scripts/check-bundle-budget.mjs'
+      - 'scripts/dependabot-perf-gate.test.mjs'
       - 'lighthouserc.json'
       - '.github/workflows/lighthouse-ci.yml'
   workflow_dispatch:
@@ -77,6 +79,9 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+
+      - name: Run bundle gate regression tests
+        run: node --test scripts/dependabot-perf-gate.test.mjs
 
       - name: Install frontend dependencies
         run: npm ci
