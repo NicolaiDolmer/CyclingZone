@@ -1,5 +1,5 @@
-// #6461 "Train now" variant B, phase 1 (owner choice 23/10 + 24/10), behind the
-// stage flag `training_train_now_whole_day` (seeded off). Design:
+// #6461 "Train now" variant B, phase 1 (owner choice 23/10 + 24/10). The stage flag
+// `training_train_now_whole_day` is removed (krav 5, 1/11): this is the only press path. Design:
 // docs/superpowers/specs/2026-10-23-6461-train-now-design.md + PR body (#6461).
 //
 // The press settles every rider whose date is KNOWN at the press for the whole date:
@@ -19,15 +19,9 @@
 // the mark. The database (migration 2026-10-25-6461) serialises the mark and every
 // race_entries insert on the same advisory key per rider + date, and skips an insert
 // for a marked rider into a race with a stage still to run on that date.
-import { evaluateFlagStage, readFlagStage } from "./featureStage.js";
 import { TRAIN_NOW_LOCK_TABLE } from "./trainNowLock.js";
 import { isTrainingReservationHeldError } from "./dailyTrainingEngine.js";
 
-export const TRAIN_NOW_WHOLE_DAY_FLAG_KEY = "training_train_now_whole_day";
-
-export async function isTrainNowWholeDayEnabled(supabase, { isBetaTester = false } = {}) {
-  return evaluateFlagStage(await readFlagStage(supabase, TRAIN_NOW_WHOLE_DAY_FLAG_KEY), { isBetaTester });
-}
 
 const sortedDays = (gameDays) => [...new Set(gameDays ?? [])].filter(Number.isInteger).sort((a, b) => a - b);
 const slotsOf = (map, id) => (map instanceof Map ? map.get(id) : map?.[id]) ?? [];

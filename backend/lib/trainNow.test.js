@@ -5,7 +5,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  runTrainNow, loadTrainNowStatus, trainNowGameDays, splitTrainNowRiders,
+  runTrainNow, loadTrainNowStatus,
   createTrainNowPlanLock, sameWeekdayCell, TRAIN_NOW_FLAG_KEY, trainNowShortRaces, loadTrainNowShortRaces,
 } from "./trainNow.js";
 import {
@@ -122,16 +122,6 @@ function harness(state) {
   return { supabase, calls, deps };
 }
 
-test("pure: the press settles every race day of the date except the final one (I4)", () => {
-  assert.deepEqual(trainNowGameDays([35, 31, 33, 32, 34]), [31, 32, 33, 34]);
-  assert.deepEqual(trainNowGameDays([]), []);
-});
-
-test("pure: riders with an unresolved race slot wait for their stage", () => {
-  const split = splitTrainNowRiders({ riderIds: ["r1", "r2"], unresolvedSlotsByRider: { r2: [{ gameDay: 33 }] } });
-  assert.deepEqual(split, { settleNow: ["r1"], afterRace: ["r2"] });
-});
-
 test("flag off: the press does not exist for the player (404), nothing written", async () => {
   const state = baseState("off");
   const { deps, calls, supabase } = harness(state);
@@ -150,14 +140,14 @@ test("requires the per-date settlement (decision 4): otherwise 409, nothing writ
   assert.equal(calls.length + supabase.writes.length, 0);
 });
 
-test("press: free rider settles days 1-4 with the sweep's engine; entered rider waits; final day left to the evening", async () => {
+test("press: free rider settles all five race days (whole date); entered rider waits for his race", async () => {
   const state = baseState();
   const { deps, calls } = harness(state);
   const result = await runTrainNow(deps);
   assert.equal(result.status, 200);
   assert.deepEqual(result.body.settledRiderIds, ["r1"]);
   assert.deepEqual(result.body.afterRaceRiderIds, ["r2"]);
-  assert.deepEqual(calls.map((c) => c.gameDay), [31, 32, 33, 34], "final race day 35 is the evening's");
+  assert.deepEqual(calls.map((c) => c.gameDay), [31, 32, 33, 34, 35], "the press settles the whole known date");
   for (const call of calls) {
     assert.equal(call.tickDateOverride, TODAY);
     assert.deepEqual(call.dateGameDays, [31, 32, 33, 34, 35]);
@@ -210,7 +200,7 @@ test("entries are re-read after the lock: a rider entered mid-press is not settl
       return ctx;
     },
   });
-  assert.equal(reads, 2);
+  assert.equal(reads, 3, "entries re-read after the lock, and once more by the whole-day press");
   assert.deepEqual(result.body.settledRiderIds, []);
   assert.deepEqual(result.body.afterRaceRiderIds.sort(), ["r1", "r2"]);
   assert.equal(calls.length, 0, "nobody free, nothing settled");
@@ -423,8 +413,8 @@ test("#6006: autopick team with 45 riders, 10 entered: 35 settle now, the 10 ent
   assert.equal(result.status, 200);
   assert.equal(result.body.settledRiderIds.length, 35);
   assert.deepEqual(result.body.afterRaceRiderIds, state.race_entries.map((e) => e.rider_id));
-  assert.deepEqual(result.body.settledGameDays, [31, 32, 33, 34], "final race day stays with the evening (I4)");
-  assert.equal(calls.length, 4);
+  assert.deepEqual(result.body.settledGameDays, [31, 32, 33, 34, 35], "the press settles the whole known date");
+  assert.equal(calls.length, 5);
   for (const call of calls) assert.equal(call.eligibleRiderIds.length, 35);
 });
 
@@ -670,7 +660,7 @@ test("#7282: with the earlier bridge date registered, the bridge date can be pre
   const { deps, calls } = bridgeHarness(state, true);
   const result = await runTrainNow(deps);
   assert.equal(result.status, 200);
-  assert.deepEqual(calls.map((c) => c.gameDay), [-5, -4, -3, -2]);
+  assert.deepEqual(calls.map((c) => c.gameDay), [-5, -4, -3, -2, -1]);
 });
 
 test("#7282: the first race date is also blocked while a bridge date is unregistered", async () => {
