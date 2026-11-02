@@ -42,7 +42,7 @@ import { stripProgramFromWeekDays } from "./trainingPrograms.js";
 import { teamPoolIdForSquad } from "./raceBinding.js";
 import { TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks } from "./trainNowLock.js";
 import { MIN_RACE_ENTRIES } from "./raceAutopick.js"; // #6740
-import { isRiderInjured, raceSquadOf } from "./riderEligibility.js"; // #6740
+import { isRiderInjured, raceSquadOf, applyRosterVisibilityFilter } from "./riderEligibility.js"; // #6740, #7505
 import { loadEligibleEntries } from "./raceEntriesLoader.js"; // #6740
 import { loadSpentRaceDays } from "./raceSpentDays.js"; // #6740
 import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
@@ -107,10 +107,44 @@ async function hasOpenEarlierDate({ supabase, teamId, seasonId, tickDate }) {
   return (rows ?? []).length > 0;
 }
 
+// #7505: drop the races the team cannot be in. Throws on a read error (the caller
+// decides between best-effort and fail closed).
+async function filterRacesTeamCanJoin({ supabase, team, races }) {
+  if (!races.length) return [];
+  const started = races.filter((race) => (Number(race.stages_completed) || 0) > 0);
+  const enteredStartedIds = new Set();
+  if (started.length) {
+    // pagination-safe: one team's entries in today's started races (a few squads of <= 9).
+    const entries = await checked(supabase.from("race_entries").select("race_id")
+      .eq("team_id", team.id).in("race_id", started.map((race) => race.id)), "today's started race entries");
+    for (const row of entries ?? []) enteredStartedIds.add(row.race_id);
+  }
+  // One existence read per squad that still matters (no roster scan).
+  const squadHasRiders = new Map();
+  for (const race of races) {
+    if (enteredStartedIds.has(race.id) || started.includes(race)) continue;
+    const squad = raceSquadOf(race);
+    if (squadHasRiders.has(squad)) continue;
+    const riders = await checked(applyRosterVisibilityFilter(
+      supabase.from("riders").select("id").eq("team_id", team.id), { squad },
+    ).limit(1), "squad riders");
+    squadHasRiders.set(squad, (riders ?? []).length > 0);
+  }
+  return races.filter((race) => {
+    if (started.includes(race)) return enteredStartedIds.has(race.id);
+    return squadHasRiders.get(raceSquadOf(race)) === true;
+  });
+}
+
 /**
  * #6139: the team's races with a stage today (any of its squads' pools), so the
  * button can name the race selection a press locks. Decoration only: a failed read
  * gives an empty list, never a failed status.
+ * #7505: only races the team can actually be in. A race that has already started
+ * where the team has no entries cannot be joined any more, and a race for a squad
+ * where the team has no riders cannot be filled. A race not yet started that the
+ * team is entered in, or can still enter, is always kept (the short-race warning
+ * below depends on that).
  */
 export async function loadTodayRacesForTeam({ supabase, team, tickDate, strict = false }) {
   try {
@@ -120,11 +154,12 @@ export async function loadTodayRacesForTeam({ supabase, team, tickDate, strict =
       .gte("scheduled_at", start.toISOString()).lt("scheduled_at", end.toISOString()), "today's stages");
     const raceIds = [...new Set((stages ?? []).map((row) => row.race_id).filter(Boolean))];
     if (!raceIds.length) return [];
-    const races = await checked(supabase.from("races").select("id, name, squad, league_division_id")
+    const races = await checked(supabase.from("races").select("id, name, squad, league_division_id, stages_completed")
       .in("id", raceIds), "today's races");
-    return (races ?? [])
-      .filter((race) => race.league_division_id != null
-        && race.league_division_id === teamPoolIdForSquad(team, race.squad ?? "senior"))
+    const inPool = (races ?? []).filter((race) => race.league_division_id != null
+      && race.league_division_id === teamPoolIdForSquad(team, race.squad ?? "senior"));
+    const reachable = await filterRacesTeamCanJoin({ supabase, team, races: inPool });
+    return reachable
       .map((race) => ({ id: race.id, name: race.name ?? null }))
       .sort((a, b) => String(a.name).localeCompare(String(b.name)));
   } catch (err) {
