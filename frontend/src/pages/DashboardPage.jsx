@@ -66,7 +66,7 @@ import {
   resolveBoardFeedbackHeadline,
   resolveBoardFeedbackSummary,
   resolveCategoryLabel,
-  isBoardPlanSigned,
+  hasSignedBoardPlan,
 } from "../lib/boardCopy";
 import DashboardCustomizeMenu from "../components/DashboardCustomizeMenu";
 import AnnualMeetingNudgeCard from "../components/AnnualMeetingNudgeCard"; // #4557 S-M2d
@@ -567,9 +567,7 @@ export default function DashboardPage() {
     // viste Dashboard 65% mens Bestyrelse viste 67%.
     setBoardSatisfaction(computeOverallBoardSatisfaction(boardStatus?.plans));
     setBoardOutlook(activePlan?.outlook || null);
-    const hasNegotiatedPlan = ["1yr", "3yr", "5yr"].some(
-      (pt) => boardStatus?.plans?.[pt]?.board?.negotiation_status === "completed"
-    );
+    const hasNegotiatedPlan = hasSignedBoardPlan(boardStatus?.plans);
     setBoardPlanMissing(Boolean(boardStatus) && !boardStatus.is_baseline_phase && !hasNegotiatedPlan);
     setBoardStatusLoaded(Boolean(boardStatus));
     setActiveOffers([
@@ -2103,12 +2101,12 @@ export default function DashboardPage() {
                 </div>
               </div>
               {/* #7507: uden underskrevet plan er der intet at evaluere — vis "ingen plan endnu". */}
-              {!isBoardPlanSigned(board) && (
+              {boardPlanMissing && (
                 <div className="mt-4 pt-4 border-t border-cz-border">
                   <p className="text-cz-2 text-xs">{t("dashboard:nextActions.boardPlanMissing")}</p>
                 </div>
               )}
-              {isBoardPlanSigned(board) && boardOutlook?.feedback && boardCopyReady && (
+              {!boardPlanMissing && boardOutlook?.feedback && boardCopyReady && (
                 <div className="mt-4 pt-4 border-t border-cz-border">
                   <p className="text-cz-1 text-sm font-medium">{resolveBoardFeedbackHeadline(t, boardOutlook.feedback)}</p>
                   <p className="text-cz-2 text-xs mt-1">{resolveBoardFeedbackSummary(t, boardOutlook.feedback)}</p>

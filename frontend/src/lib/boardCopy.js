@@ -101,13 +101,15 @@ export function resolveReactionQuote(t, reaction) {
   return resolveBoardCopy(t, reaction?.quote_key, reaction?.quote);
 }
 
-// #7507 · Dashboardets bestyrelseskort viser kun evaluering (udloebet-overskrift,
-// maalbjaelker med procent/"overgaaet") for en UNDERSKREVET plan. Et hold der
-// kun har en foreslaaet/ikke-forhandlet plan (nyt hold, aarsmoedet aabent) har
-// intet at evaluere, saa kortet viser i stedet "ingen plan endnu". Samme
-// signal som dashboardets boardPlanMissing (negotiation_status === "completed").
-export function isBoardPlanSigned(board) {
-  return board?.negotiation_status === "completed";
+// #7507 · Har holdet overhovedet en underskrevet plan (1yr/3yr/5yr)? Dashboardets
+// bestyrelseskort viser kun evaluering (udloebet-overskrift, maalbjaelker med
+// procent/"overgaaet") naar svaret er ja; et nyt hold med kun en ikke-forhandlet
+// plan (aarsmoedet aabent) har intet at evaluere. Samme signal som dashboardets
+// boardPlanMissing (negotiation_status === "completed" paa mindst een plan).
+export function hasSignedBoardPlan(plans) {
+  return ["1yr", "3yr", "5yr"].some(
+    (planType) => plans?.[planType]?.board?.negotiation_status === "completed"
+  );
 }
 
 export function resolveCategoryLabel(t, category) {
