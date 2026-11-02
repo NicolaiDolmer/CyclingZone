@@ -64,7 +64,7 @@
 // Refs #401 #639.
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { basename, resolve } from 'node:path';
+import { basename, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 
@@ -370,7 +370,7 @@ export function countDropIfExists(statements) {
  * @param {string} filename - basename for diagnostics
  * @returns {Array<{file:string, line:number, kind:string, fix:string, snippet:string}>}
  */
-export function scanMigration(source, filename = '<source>') {
+export function scanMigration(source, filename = '<source>', { autoMigrateInput = true } = {}) {
   const statements = splitStatements(source);
   const drops = countDropIfExists(statements);
   // Tally CREATE counts per file-level-drop kind so we only require N drops for
@@ -384,7 +384,7 @@ export function scanMigration(source, filename = '<source>') {
       === '78d13dd12b076b78b3c9406d8a1890d55acb553e1fd1c47411b00e3ad2ef5c3c';
   // Match auto-migrate.yml's raw, case-insensitive grep, including comments.
   const findings = source.split('\n').flatMap((line, index) =>
-    !historicalMarker && /K(Ø|OE)RES IKKE AUTOMATISK|MANUAL[- ]ONLY/i.test(line)
+    autoMigrateInput && !historicalMarker && /K(Ø|OE)RES IKKE AUTOMATISK|MANUAL[- ]ONLY/i.test(line)
       ? [{ file: filename, line: index + 1, kind: 'MANUAL-ONLY', fix: 'Move manual-only SQL outside database/2026-*.sql.', snippet: 'Manual-only marker in auto-migrate input' }]
       : []);
 
@@ -483,7 +483,8 @@ function main() {
       continue; // lint-staged only passes existing files
     }
     scanned++;
-    const findings = scanMigration(src, base).filter(finding =>
+    const migrationPath = relative(fileURLToPath(new URL('../database/', import.meta.url)), resolve(f)).replaceAll('\\', '/');
+    const findings = scanMigration(src, base, { autoMigrateInput: /^2026-[^/]*\.sql$/.test(migrationPath) }).filter(finding =>
       !WHITELIST[base] || finding.kind === 'MANUAL-ONLY');
     for (const fnd of findings) {
       total++;

@@ -257,3 +257,47 @@ test('every whitelisted file still exists in database/ (no stale entries)', () =
     assert.equal(basename(p), name);
   }
 });
+
+test('CLI rejects manual markers only in actual top-level auto-migrate inputs', async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { spawnSync } = await import('node:child_process');
+  const { relative, resolve } = await import('node:path');
+  const root = mkdtempSync(join(tmpdir(), 'cz-migration-marker-'));
+  try {
+    mkdirSync(join(root, 'scripts'));
+    mkdirSync(join(root, 'database', 'manual'), { recursive: true });
+    mkdirSync(join(root, 'database', 'proposals'));
+    const cli = join(root, 'scripts', 'lint-migration-idempotency.mjs');
+    writeFileSync(cli, readFileSync(new URL('./lint-migration-idempotency.mjs', import.meta.url), 'utf8'));
+    const files = [
+      ['database/2026-fixture.sql', true],
+      ['database/manual/2026-fixture.sql', false],
+      ['database/proposals/2026-fixture.sql', false],
+      ['2026-fixture.sql', false],
+    ];
+    for (const [name, automatic] of files) {
+      const file = join(root, ...name.split('/'));
+      writeFileSync(file, '-- MANUAL-ONLY\nSELECT 1;\n');
+      for (const [cwd, arg] of [[root, relative(root, file)], [join(root, 'scripts'), file]]) {
+        const result = spawnSync(process.execPath, [cli, arg], { cwd, encoding: 'utf8' });
+        assert.ifError(result.error);
+        assert.equal(result.status, automatic ? 1 : 0, `${name}: ${result.stdout} ${result.stderr}`);
+        if (automatic) assert.match(result.stderr, /MANUAL-ONLY/);
+        else {
+          assert.doesNotMatch(result.stderr, /MANUAL-ONLY/);
+          assert.match(result.stdout, /1 migration\(s\) scanned/);
+        }
+      }
+    }
+  } finally {
+    assert.ok(resolve(root).startsWith(resolve(tmpdir()) + (await import('node:path')).sep + 'cz-migration-marker-'));
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+
+test('manual marker exemption does not bypass ordinary DDL idempotency checks', () => {
+  const findings = scanMigration('-- MANUAL-ONLY\nCREATE TABLE sample (id int);', '2026-manual.sql', { autoMigrateInput: false });
+  assert.deepEqual(findings.map(f => f.kind), ['CREATE TABLE']);
+});
