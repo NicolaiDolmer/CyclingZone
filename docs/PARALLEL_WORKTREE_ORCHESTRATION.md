@@ -7,6 +7,14 @@ Claude Code bruger `.claude/workflows/wave.js`; Codex bruger `scripts/codex-wave
 
 ## Codex-boelger (#5467)
 
+**Player-report (#5509):** Begge runtimes bruger den fælles evidence-gate i
+`wave-policy.mjs` før reservation/spawn samt ved enqueue/intake. GitHub-issue-body
+skal følge [evidenskontrakten](GITHUB_WORKFLOW.md#spillerklager-måling-før-build-5509).
+Ingen måling eller allerede grøn førstatus betyder stop, ikke build. Investigation
+kan fremskaffe manglende evidens, men bygger intet. Briefen kræver målt førstatus
+før kode; admission er strukturel validering, ikke selvstændig prod-verifikation.
+Mandat, SSOT, design og byggestop gælder uændret.
+
 SSOT for roller og claims: [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md#runtime-synlighed-og-boelger-4016-5467). Ejerens valg af issues, design-go og filansvar skal vaere afklaret foer en plan koeres.
 
 ```powershell
