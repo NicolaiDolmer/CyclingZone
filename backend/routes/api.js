@@ -110,6 +110,7 @@ import {
 // forveksles med "stiller op" (race_entries bevares bevidst ved afmelding, #4306).
 import { findRejoinConflicts, loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey, splitWithdrawals, DID_NOT_START_REASON } from "../lib/raceWithdrawal.js";
 import { loadTeamsInStartedField } from "../lib/raceStartOutlook.js"; // #6740
+import { planningDidNotStart } from "../lib/planningDidNotStart.ts"; // #7518
 import { isOwnerUser } from "../lib/ownerGate.js"; // #3750 ejer-gate
 import { AUTH_FAILURE_RESPONSES, verifyBearerToken } from "../lib/authTokenVerification.js"; // #4369
 import { normalizeSupabaseErrorMessage, withSupabaseRetry } from "../lib/supabaseErrorNormalize.js";
@@ -5534,8 +5535,12 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
         // begge slags afmelding; kolonnens tekst læser did_not_start først.
         withdrawn: withdrawnSet.has(race.id),
         lineup_locked: lockedHere,
-        did_not_start: startedHere && !voluntaryWithdrawnSet.has(race.id)
-          && (didNotStartSet.has(race.id) || inFieldByRace.get(race.id) === false),
+        // #7518: "ikke i feltet" taeller kun hvis holdet fandtes foer loebets foerste etape.
+        did_not_start: planningDidNotStart({
+          started: startedHere, voluntaryWithdrawn: voluntaryWithdrawnSet.has(race.id),
+          explicitDidNotStart: didNotStartSet.has(race.id), inField: inFieldByRace.get(race.id),
+          teamCreatedAt: req.team.created_at, raceStart: race.window?.start,
+        }),
         counts: { selected: ctx.selection?.rider_ids?.length ?? 0, target: ctx.size.max },
         bindingRiderIds,
         // #3102 PR 2: peaks/payback-overlay til løbskortet (rytter-navne slås op
