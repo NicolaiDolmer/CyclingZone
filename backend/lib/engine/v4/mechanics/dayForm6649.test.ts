@@ -74,11 +74,52 @@ test("#6649: tiredness, low form and hard weather each make a bad day more likel
   const highForm = sample((id) => rider(id, { form: 90 }));
   const rain = sample((id) => rider(id, { abilities: abilities(20) }), route("rain"));
   const dry = sample((id) => rider(id, { abilities: abilities(20) }), route("overcast"));
+  if (process.env.DIAG7366 && !(lowForm.bad > fresh.bad && lowForm.mean < fresh.mean)) {
+    // TEMP #7366-diagnose: er det JIT'en? Deoptimér og genberegn.
+    const st = new Function("f", "return %GetOptimizationStatus(f)") as (f: unknown) => number;
+    const deopt = new Function("f", "%DeoptimizeFunction(f); %NeverOptimizeFunction(f);") as (f: unknown) => void;
+    const status = { dayForm6649For: st(dayForm6649For), sample: st(sample), rider: st(rider), abilities: st(abilities) };
+    const sameAsHigh = lowForm.bad === highForm.bad && lowForm.mean === highForm.mean;
+    const probe = rider("r0", { form: 15 });
+    const before = dayForm6649For(probe, route("overcast"), "s6649");
+    for (const f of [dayForm6649For, sample, rider, abilities]) deopt(f);
+    const again = sample((id) => rider(id, { form: 15 }));
+    const after = dayForm6649For(probe, route("overcast"), "s6649");
+    console.log(`DIAG7366 FAIL sameAsHigh=${sameAsHigh} recomputedOk=${again.bad > fresh.bad && again.mean < fresh.mean} probeForm=${probe.form} probeStable=${JSON.stringify(before) === JSON.stringify(after)} status=${JSON.stringify(status)}`);
+  }
   assert.ok(tired.bad > fresh.bad && tired.mean < fresh.mean, `tired: ${show(tired)} vs fresh ${show(fresh)}`);
   assert.ok(lowForm.bad > fresh.bad && lowForm.mean < fresh.mean, `low form: ${show(lowForm)} vs fresh ${show(fresh)}`);
   assert.ok(highForm.bad < fresh.bad, `good form protects: ${show(highForm)} vs fresh ${show(fresh)}`);
   assert.ok(rain.bad > dry.bad && rain.mean < dry.mean, `rain: ${show(rain)} vs dry ${show(dry)}`);
 });
+
+if (!process.env.DIAG7366) {
+  test("TEMP #7366 diagnose: koer filen mange gange i egne processer", async () => {
+    const { spawn } = await import("node:child_process");
+    const self = fileURLToPath(import.meta.url);
+    const runs = Number(process.env.DIAG7366_RUNS ?? 300);
+    let done = 0;
+    let fails = 0;
+    const lines: string[] = [];
+    const one = () => new Promise<void>((resolve) => {
+      const child = spawn(process.execPath, ["--allow-natives-syntax", self], { env: { ...process.env, DIAG7366: "1" }, stdio: ["ignore", "pipe", "pipe"] });
+      let out = "";
+      child.stdout.on("data", (b) => { out += b; });
+      child.stderr.on("data", (b) => { out += b; });
+      child.on("close", (code) => {
+        done += 1;
+        if (code !== 0) fails += 1;
+        for (const l of out.split("\n")) if (l.includes("DIAG7366")) lines.push(l.trim());
+        resolve();
+      });
+    });
+    let next = 0;
+    const worker = async () => { while (next < runs) { next += 1; await one(); } };
+    await Promise.all([worker(), worker()]);
+    console.log(`DIAG7366 SUMMARY node=${process.version} runs=${done} failedRuns=${fails}`);
+    for (const l of lines) console.log(l);
+  });
+}
 
 test("#6649: weather technique protects: in the rain a skilled rider has fewer bad days than an unskilled one", () => {
   const skilled = sample((id) => rider(id, { abilities: abilities(95) }), route("rain"));
