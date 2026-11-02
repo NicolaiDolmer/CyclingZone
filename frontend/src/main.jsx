@@ -7,6 +7,7 @@
 // præcis de requests der ellers rammer en 404 efter et deploy.
 // Se lib/skewProtection.js for mekanikken.
 import { installSkewProtection, SKEW_PROTECTION_ENABLED } from "./lib/skewProtection.js";
+import "./preview/previewSessionBoot.ts"; // #3430: seed mock-session FØR supabase-js initialiseres (no-op uden VITE_PREVIEW_MOCK)
 import React from "react";
 import { hydrateRoot, createRoot } from "react-dom/client";
 import * as Sentry from "@sentry/react";
