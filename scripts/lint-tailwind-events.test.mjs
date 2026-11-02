@@ -10,3 +10,13 @@ test('renamed Tailwind utilities cannot become DOM event names', () => {
 test('real DOM events, custom events, class strings, comments and prose remain valid', () => {
   assert.deepEqual(lintEvents('window.addEventListener("blur", h); new Event("resize"); new CustomEvent("app:ready"); const className = "blur-sm ring-3"; const prose = "blur-sm"; // new Event("ring-3")'), []);
 });
+
+test('finite joined and optional event calls are inspected', () => {
+  for (const source of [
+    'window.addEventListener(["blur-","sm"].join(""), h)',
+    'window?.addEventListener("blur-sm", h)',
+    'window.addEventListener?.("blur-sm", h)',
+    'window?.["addEventListener"]?.("blur-sm", h)',
+  ]) assert.ok(lintEvents(source).length, source);
+  assert.deepEqual(lintEvents('window?.addEventListener("blur", h)'), []);
+});

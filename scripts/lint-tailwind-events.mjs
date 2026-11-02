@@ -9,8 +9,8 @@ export function lintEvents(source, filename) {
   const findings = [];
   walk(parseSource(source, filename), (node, ancestors) => {
     let argument;
-    if (node.type === 'CallExpression' && node.callee.type === 'MemberExpression' && /^(addEventListener|removeEventListener|dispatchEvent)$/.test(memberName(node.callee.property))) argument = node.arguments[0];
-    if ((node.type === 'NewExpression' || node.type === 'CallExpression') && /^(Event|CustomEvent)$/.test(memberName(node.callee.type === 'MemberExpression' ? node.callee.property : node.callee))) argument = node.arguments[0];
+    if (['CallExpression', 'OptionalCallExpression'].includes(node.type) && ['MemberExpression', 'OptionalMemberExpression'].includes(node.callee.type) && /^(addEventListener|removeEventListener|dispatchEvent)$/.test(memberName(node.callee.property))) argument = node.arguments[0];
+    if ((node.type === 'NewExpression' || ['CallExpression', 'OptionalCallExpression'].includes(node.type)) && /^(Event|CustomEvent)$/.test(memberName(['MemberExpression', 'OptionalMemberExpression'].includes(node.callee.type) ? node.callee.property : node.callee))) argument = node.arguments[0];
     if (!argument) return;
     // dispatchEvent(new Event(...)) is checked at the constructor itself.
     if (argument.type === 'NewExpression') return;

@@ -242,12 +242,12 @@
   ],
   "cleanupList": [
     {
-      "issue": 7363,
-      "why": "CI: secret-frit bundlebudget på Dependabot-PRer (ejer-go 2/11, #7495)"
-    },
-    {
       "issue": 6290,
       "why": "Interne codemod-/historikvagter, ejer-go 2/11 i #7495 (cleanupList i samme PR)"
+    },
+    {
+      "issue": 7363,
+      "why": "CI: secret-frit bundlebudget pÃ¥ Dependabot-PRer (ejer-go 2/11, #7495)"
     },
     {
       "issue": 7446,

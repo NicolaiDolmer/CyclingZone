@@ -32,3 +32,14 @@ test('never execute patch note source; malformed/dynamic data fails closed', () 
   assert.throws(() => checkHistory(source([entry('1.0')]), 'export const PATCHES = getNotes();'));
   assert.throws(() => checkHistory('broken syntax !', source([])));
 });
+
+test('executable mutations and alternate exports cannot evade static history', () => {
+  const before = source([entry('1.0')]);
+  for (const tail of [
+    'PATCHES[0].changes[0].en.body="Changed";',
+    'PATCHES.push({version:"2.0"});',
+    'export default [];',
+    'export { PATCHES as default };',
+    'export const other = [];',
+  ]) assert.throws(() => checkHistory(before, before + tail), /static|literal|PATCHES/);
+});

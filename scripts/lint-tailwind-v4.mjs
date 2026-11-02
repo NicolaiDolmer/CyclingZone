@@ -35,16 +35,44 @@ function bindingFor(name, ancestors) {
   }
   return null;
 }
-// Resolve only immutable local bindings, nearest lexical scope first. Unknown
-// expressions stay symbolic, preserving prefixes such as bg-opacity-${value}.
+// Only immutable local syntax is resolved. No source is imported or evaluated.
+const UNKNOWN = '${?}';
+const LIMIT = 256;
+const bounded = result => {
+  if (result.length > LIMIT) throw new Error('Class expression exceeds static expansion budget; use complete class literals');
+  return result;
+};
+const combine = (left, right) => {
+  if (left.length * right.length > LIMIT) throw new Error('Class expression exceeds static expansion budget; use complete class literals');
+  return left.flatMap(a => right.map(b => a + b));
+};
+function dereference(node, ancestors, seen = new Set()) {
+  if (!node || seen.has(node)) return { node: null, ancestors };
+  if (node.type === 'Identifier') {
+    const binding = bindingFor(node.name, ancestors);
+    return binding ? dereference(binding.node, binding.ancestors, new Set([...seen, node])) : {node, ancestors};
+  }
+  return {node, ancestors};
+}
+function arrayItems(node, ancestors, seen = new Set()) {
+  const target = dereference(node, ancestors, seen);
+  if (target.node?.type !== 'ArrayExpression' || seen.has(target.node)) return null;
+  const next = new Set([...seen, target.node]);
+  const result = [];
+  for (const item of target.node.elements) {
+    if (item?.type === 'SpreadElement') {
+      const spread = arrayItems(item.argument, target.ancestors, next);
+      if (!spread) return null;
+      result.push(...spread);
+    } else result.push({node: item, ancestors: target.ancestors});
+    bounded(result);
+  }
+  return result;
+}
 export function values(node, ancestors = [], seen = new Set()) {
-  if (!node || seen.has(node)) return ['${?}'];
+  if (!node || seen.has(node)) return [UNKNOWN];
   const next = new Set([...seen, node]);
   const read = child => values(child, [...ancestors, node], next);
-  const combine = (left, right) => {
-    if (left.length * right.length > 256) throw new Error('Class expression exceeds static expansion budget; use complete class literals');
-    return left.flatMap(a => right.map(b => a + b));
-  };
   switch (node.type) {
     case 'StringLiteral': return [node.value];
     case 'NumericLiteral': return [String(node.value)];
@@ -54,33 +82,99 @@ export function values(node, ancestors = [], seen = new Set()) {
       node.expressions.forEach((expr, index) => { result = combine(combine(result, read(expr)), [node.quasis[index + 1].value.cooked ?? node.quasis[index + 1].value.raw]); });
       return result;
     }
-    case 'BinaryExpression': return node.operator === '+' ? combine(read(node.left), read(node.right)) : ['${?}'];
-    case 'ConditionalExpression': return [...read(node.consequent), ...read(node.alternate)];
-    case 'LogicalExpression': return [...read(node.left), ...read(node.right)];
-    case 'ArrayExpression': return node.elements.flatMap(read);
-    case 'ObjectExpression': return node.properties.flatMap(p => p.type === 'ObjectProperty' ? [...(p.computed ? read(p.key) : [memberName(p.key)]), ...read(p.value)] : []);
+    case 'BinaryExpression': return node.operator === '+' ? combine(read(node.left), read(node.right)) : [UNKNOWN];
+    case 'ConditionalExpression': return bounded([...read(node.consequent), ...read(node.alternate)]);
+    case 'LogicalExpression': return bounded([...read(node.left), ...read(node.right)]);
+    case 'ArrayExpression': return bounded(node.elements.flatMap(read));
+    case 'SpreadElement': return read(node.argument);
+    case 'ObjectExpression': return bounded(node.properties.flatMap(p => p.type === 'ObjectProperty' ? read(p.value) : []));
     case 'TSAsExpression': case 'TSSatisfiesExpression': case 'TSNonNullExpression': case 'ParenthesizedExpression': case 'JSXExpressionContainer': return read(node.expression);
-    case 'CallExpression': {
-      if (/^(cn|clsx|classnames|classNames|cva|twMerge)$/.test(memberName(node.callee))) return node.arguments.flatMap(read);
-      if (node.callee.type === 'MemberExpression' && memberName(node.callee.property) === 'join') return read(node.callee.object);
-      return ['${?}'];
-    }
-    case 'MemberExpression': {
-      const binding = node.object.type === 'Identifier' ? bindingFor(node.object.name, ancestors) : { node: node.object, ancestors };
-      if (binding?.node?.type === 'ObjectExpression') {
-        const property = binding.node.properties.find(p => p.type === 'ObjectProperty' && memberName(p.key) === memberName(node.property));
-        if (property) return values(property.value, binding.ancestors, next);
+    case 'CallExpression': case 'OptionalCallExpression': {
+      if (/^(cn|clsx|classnames|classNames|cva|twMerge)$/.test(memberName(node.callee))) return classValues(node, ancestors, seen);
+      if (['MemberExpression', 'OptionalMemberExpression'].includes(node.callee.type) && memberName(node.callee.property) === 'join') {
+        const items = arrayItems(node.callee.object, ancestors);
+        if (!items) return [UNKNOWN];
+        const separators = node.arguments.length ? read(node.arguments[0]) : [','];
+        return bounded(separators.flatMap(separator => items.reduce((result, item, index) => combine(combine(result, [index ? separator : '']), item.node ? values(item.node, item.ancestors, next) : ['']), [''])));
       }
-      return ['${?}'];
+      return [UNKNOWN];
+    }
+    case 'MemberExpression': case 'OptionalMemberExpression': {
+      const target = dereference(node.object, ancestors);
+      if (target.node?.type === 'ObjectExpression') {
+        const keys = node.computed ? read(node.property) : [memberName(node.property)];
+        return bounded(target.node.properties.flatMap(p => p.type === 'ObjectProperty' && (p.computed ? values(p.key, target.ancestors, next) : [memberName(p.key)]).some(key => keys.includes(key)) ? values(p.value, target.ancestors, next) : []));
+      }
+      return [UNKNOWN];
     }
     case 'Identifier': {
       const binding = bindingFor(node.name, ancestors);
-      return binding ? values(binding.node, binding.ancestors, next) : ['${?}'];
+      return binding ? values(binding.node, binding.ancestors, next) : [UNKNOWN];
     }
-    default: return ['${?}'];
+    default: return [UNKNOWN];
   }
 }
-export function legacyUtility(token) {
+function canBeTruthy(node, ancestors) {
+  const target = dereference(node, ancestors);
+  if (!target.node) return true;
+  if (target.node.type === 'NullLiteral') return false;
+  if (['StringLiteral', 'NumericLiteral', 'BooleanLiteral'].includes(target.node.type)) return Boolean(target.node.value);
+  return true;
+}
+// clsx/cn emit truthy object KEYS; cva emits base, variant classes and
+// compound class/className fields, never variant selectors/default selections.
+function classValues(node, ancestors = [], seen = new Set()) {
+  if (!node || seen.has(node)) return [UNKNOWN];
+  const next = new Set([...seen, node]);
+  const read = child => classValues(child, [...ancestors, node], next);
+  if (node.type === 'Identifier') {
+    const binding = bindingFor(node.name, ancestors);
+    return binding ? classValues(binding.node, binding.ancestors, next) : [UNKNOWN];
+  }
+  if (node.type === 'ObjectExpression') return bounded(node.properties.flatMap(p => {
+    if (p.type === 'SpreadElement') return read(p.argument);
+    return p.type === 'ObjectProperty' && canBeTruthy(p.value, ancestors) ? (p.computed ? values(p.key, ancestors, next) : [memberName(p.key)]) : [];
+  }));
+  if (node.type === 'ArrayExpression') return bounded(node.elements.flatMap(read));
+  if (node.type === 'SpreadElement') return read(node.argument);
+  if (['JSXExpressionContainer', 'TSAsExpression', 'TSSatisfiesExpression', 'TSNonNullExpression', 'ParenthesizedExpression'].includes(node.type)) return read(node.expression);
+  if (node.type === 'ConditionalExpression') return bounded([...read(node.consequent), ...read(node.alternate)]);
+  if (node.type === 'LogicalExpression') return bounded([...read(node.left), ...read(node.right)]);
+  if (['CallExpression', 'OptionalCallExpression'].includes(node.type)) {
+    const helper = memberName(node.callee);
+    if (/^(cn|clsx|classnames|classNames|twMerge)$/.test(helper)) return bounded(node.arguments.flatMap(read));
+    if (helper === 'cva') {
+      const result = read(node.arguments[0]);
+      const config = dereference(node.arguments[1], ancestors);
+      const properties = value => value?.type === 'ObjectExpression' ? value.properties.filter(p => p.type === 'ObjectProperty') : [];
+      for (const field of properties(config.node)) {
+        const target = dereference(field.value, config.ancestors);
+        if (memberName(field.key) === 'variants') {
+          for (const variant of properties(target.node)) {
+            const choices = dereference(variant.value, target.ancestors);
+            for (const choice of properties(choices.node)) result.push(...classValues(choice.value, choices.ancestors, next));
+          }
+        }
+        if (memberName(field.key) === 'compoundVariants') {
+          for (const item of arrayItems(target.node, target.ancestors) ?? []) {
+            const compound = dereference(item.node, item.ancestors);
+            for (const property of properties(compound.node)) if (/^(class|className)$/.test(memberName(property.key))) result.push(...classValues(property.value, compound.ancestors, next));
+          }
+        }
+      }
+      return bounded(result);
+    }
+  }
+  return values(node, ancestors, seen);
+}
+const projectCss = readFileSync(new URL('../frontend/src/index.css', import.meta.url), 'utf8');
+function compatibleRadius(css) {
+  const clean = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  // Only the explicit inline v3 compatibility theme preserves bare rounded.
+  // Root variables cannot substitute for this: they may have different values.
+  return [...clean.matchAll(/@theme\s+inline\s*\{([^}]*)\}/g)].some(match => /--radius\s*:\s*0?\.25rem\s*;/.test(match[1]));
+}
+export function legacyUtility(token, radiusCompatible = compatibleRadius(projectCss)) {
   // Split variants outside arbitrary brackets (e.g. supports-[display:grid]).
   let depth = 0, start = 0;
   for (let i = 0; i < token.length; i++) {
@@ -89,15 +183,17 @@ export function legacyUtility(token) {
     if (token[i] === ':' && depth === 0) start = i + 1;
   }
   const utility = token.slice(start).replace(/^!|!$/g, '');
-  return /^(?:shadow|rounded|blur|backdrop-blur|drop-shadow|ring|outline-none|overflow-ellipsis|decoration-(?:slice|clone)|flex-(?:shrink|grow)(?:-.+)?|(?:bg|text|border|divide|ring|placeholder)-opacity-.+)$/.test(utility);
+  if (utility === 'rounded') return !radiusCompatible;
+  return /^(?:shadow|blur|backdrop-blur|drop-shadow|ring|outline-none|overflow-ellipsis|decoration-(?:slice|clone)|flex-(?:shrink|grow)(?:-.+)?|(?:bg|text|border|divide|ring|placeholder)-opacity-.+)$/.test(utility);
 }
-export function lintClasses(source, filename) {
+export function lintClasses(source, filename, {css = projectCss} = {}) {
   const findings = [];
+  const radiusCompatible = compatibleRadius(css);
   const tree = parseSource(source, filename);
   const inspect = (node, ancestors) => {
-    for (const value of values(node, ancestors)) {
+    for (const value of classValues(node, ancestors)) {
       for (const token of value.split(/\s+/)) {
-        if (legacyUtility(token)) findings.push({ line: node.loc.start.line, token });
+        if (legacyUtility(token, radiusCompatible)) findings.push({ line: node.loc.start.line, token });
       }
     }
   };
@@ -111,7 +207,8 @@ export function lintClasses(source, filename) {
       if (callee.type === 'MemberExpression' && memberName(callee.property) === 'setAttribute' && values(node.arguments[0], ancestors).includes('class')) inspect(node.arguments[1], ancestors);
       if (/^(cn|clsx|classnames|classNames|cva|twMerge)$/.test(memberName(callee)) ||
           (callee.type === 'MemberExpression' && memberName(callee.object?.property) === 'classList' && /^(add|remove|toggle|replace)$/.test(memberName(callee.property)))) {
-        node.arguments.forEach(arg => inspect(arg, ancestors));
+        if (/^(cn|clsx|classnames|classNames|cva|twMerge)$/.test(memberName(callee))) inspect(node, ancestors);
+        else node.arguments.forEach(arg => inspect(arg, ancestors));
       }
     }
   });

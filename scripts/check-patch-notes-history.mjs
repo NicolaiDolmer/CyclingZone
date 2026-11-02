@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
-import { parseSource, walk, memberName } from './lint-tailwind-v4.mjs';
+import { parseSource, memberName } from './lint-tailwind-v4.mjs';
 
 const patchFile = 'frontend/src/data/patchNotes.js';
 function literal(node) {
@@ -23,12 +23,14 @@ function literal(node) {
   throw new Error('Patch history must be literal data');
 }
 function entries(source) {
-  const declarations = [];
-  walk(parseSource(source, patchFile), node => {
-    if (node.type === 'VariableDeclarator' && node.id.name === 'PATCHES') declarations.push(node.init);
-  });
-  if (declarations.length !== 1) throw new Error('Expected one PATCHES declaration');
-  const result = literal(declarations[0]);
+  const tree = parseSource(source, patchFile);
+  // The publishing plugin imports this module. Permit exactly its literal
+  // named export; executable statements or alternate exports can change output.
+  if (tree.program.directives.length || tree.program.body.length !== 1) throw new Error('Patch history must be a static PATCHES data module');
+  const statement = tree.program.body[0];
+  const declaration = statement.type === 'ExportNamedDeclaration' && !statement.source && statement.specifiers.length === 0 ? statement.declaration : null;
+  if (declaration?.type !== 'VariableDeclaration' || declaration.kind !== 'const' || declaration.declarations.length !== 1 || declaration.declarations[0].id.type !== 'Identifier' || declaration.declarations[0].id.name !== 'PATCHES') throw new Error('Expected only a static PATCHES literal export');
+  const result = literal(declaration.declarations[0].init);
   if (!Array.isArray(result) || result.some(entry => typeof entry.version !== 'string')) throw new Error('Invalid patch history');
   return result;
 }

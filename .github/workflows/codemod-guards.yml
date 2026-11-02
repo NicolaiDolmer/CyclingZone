@@ -32,5 +32,5 @@ jobs:
         run: node scripts/check-patch-notes-history.mjs "$PR_BASE_SHA"
       - name: Event names remain outside class codemods
         run: node scripts/lint-tailwind-events.mjs
-      - name: Legacy class names (existing findings require owner resolution)
+      - name: Unsafe legacy class meanings (configured compatibility preserved)
         run: node scripts/lint-tailwind-v4.mjs
