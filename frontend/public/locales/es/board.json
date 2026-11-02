@@ -216,7 +216,7 @@
   "dna": {
     "sectionLabel": "ADN del club",
     "selectHeading": "Elige la identidad de tu club",
-    "selectIntro": "La directiva ha observado la temporada 1 y sugiere tres direcciones. El ADN da forma a la ponderación de los objetivos, a los objetivos de tradición del club y a los miembros de la directiva que recibes desde el primer plan.",
+    "selectIntro": "La directiva sugiere tres direcciones para el club. El ADN da forma a la ponderación de los objetivos, a los objetivos de tradición del club y a los miembros de la directiva que recibes desde el primer plan.",
     "slot": {
       "national_match": "Encaje nacional",
       "specialization_match": "Encaje de especialización",

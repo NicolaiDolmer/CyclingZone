@@ -216,7 +216,7 @@
   "dna": {
     "sectionLabel": "Klub-DNA",
     "selectHeading": "Vælg klubbens identitet",
-    "selectIntro": "Bestyrelsen har observeret sæson 1 og foreslår tre retninger. DNA påvirker målvægtning, klub-tradition-mål og hvilke bestyrelsesmedlemmer du får fra første plan.",
+    "selectIntro": "Bestyrelsen foreslår tre retninger for klubben. DNA påvirker målvægtning, klub-tradition-mål og hvilke bestyrelsesmedlemmer du får fra første plan.",
     "slot": {
       "national_match": "National-match",
       "specialization_match": "Specialiserings-match",
