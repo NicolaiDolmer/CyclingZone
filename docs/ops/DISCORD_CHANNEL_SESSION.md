@@ -47,6 +47,10 @@ Læsning af andre kanaler skete med Discord MCP (`discord_read_messages`), som k
 5. "Bygger intet": byggestop (#7336) gælder. Wireframes er designforslag til diskussion; ingen produktionskode, ingen PR ud fra kanalen.
 6. Ingen balance-tal i offentlige tekster. Fjern personfølsomme ting fra skærmbilleder, før de deles.
 7. Beslutninger stilles én ad gangen.
+8. **Aldrig GitHub-links** (issues, PR'er, repo) i kanalen. Skriv "gemt som issue" i ord (ejer 2/11).
+9. Wireframes er **på engelsk** og følger designsystemet: 5px radius, firkantede badges, ingen runde piller (ejer 2/11).
+10. Spillertekst følger ejerens stemme: jeg-form ("I", aldrig "we"), korte linjer, "Hep!" som åbning i opslag (se roadbook-udkastene i `docs/drafts/`).
+11. Når ejeren sender et Codex-spørgsmål: giv svaret som en kodeblok, der kan kopieres direkte. Svaret gives i Claude-sessionen, ikke i Discord, og der henvises aldrig til et tidligere svar.
 
 Reglerne ligger også i Claudes memory (`reference_owner_discord_channel.md`), men den er kun en cache. Denne fil er kilden.
 
@@ -76,3 +80,9 @@ Side-sessionen "Discord-kanal: 2 wireframes med rigtig holddata (JeppeK)" (1/11 
 ## Status 2/11
 
 Ingen lytter kører på NICOLAIPC (ingen `dolmer-channel`- eller `--channels`-proces), og ingen af de to sessioner har en aktiv tur. Botten svarer derfor ikke i kanalen, før en session starter `watch` igen.
+
+## DolmerPC 2/11 (aften)
+
+Kørte samme poll-script uden Infisical: User env var `DISCORD_TOKEN` (sat af `scripts/setup-discord-mcp.ps1`) er nok, `node dolmer-channel.mjs …` direkte. Lytteren kørt som baggrunds-Bash og startet igen fra `lastId` efter hvert svar. Kendt: `node` kan afslutte med exit 127 (`UV_HANDLE_CLOSING`-assertion) efter `process.exit`; outputtet er korrekt, bare start igen. Discord-pluginet (`--channels`) blev ikke brugt; Bun er installeret på DolmerPC, men pluginet står fortsat slået fra.
+
+Resultater: #7533 (PR #7534), design #7535 (spec `docs/superpowers/specs/2026-11-02-planning-workbench-design.md`, prototype https://claude.ai/artifact/4tEvfHZmh3r2NM2iX1p2SY), #7536, #7537. Billeder og prototype i OneDrive `CyclingZone-context/design/2026-11-02-planning-workbench/`. Lytteren stoppet ved sessionens afslutning.
