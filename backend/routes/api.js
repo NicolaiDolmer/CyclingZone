@@ -5265,13 +5265,11 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
       if (!profByRace.has(row.race_id)) profByRace.set(row.race_id, []);
       profByRace.get(row.race_id).push(row);
     }
-    // #6207: ét rute-match-tal fra motoren (routeMatch.js). Tallet pr. rytter x løb
-    // sendes færdigt (rider.routeMatch); vektoren kun til forklaringen i popoveren.
+    // #6207: løbets rutevektor fra motoren (routeMatch.js) sendes som race.demandVector;
+    // frontendens matrix beregner selv rytter x løb-tallet ud fra den.
     const ownRaceRowById = new Map(ownRaceRows.map((r) => [r.id, r]));
-    const routeMatchByRace = new Map();
     for (const race of races) {
       const rm = buildRouteMatch({ race: ownRaceRowById.get(race.id), stages: profByRace.get(race.id) || [] });
-      routeMatchByRace.set(race.id, rm);
       race.demandVector = rm.raceVector;
     }
 
@@ -5283,8 +5281,6 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
         primaryType: r.primary_type ?? null,
         secondaryType: r.secondary_type ?? null,
         abilities: ab ? Object.fromEntries(RACE_SIM_ABILITY_KEYS.map((k) => [k, ab[k] ?? null])) : null,
-        // #6207: { [raceId]: 0-100 } — samme tal som holdudtagelsen og Taktik.
-        routeMatch: ab ? Object.fromEntries(races.map((race) => [race.id, routeMatchByRace.get(race.id)?.race(ab) ?? null])) : null,
         injured: isRiderInjured(conditionByRider.get(r.id)?.injured_until ?? null, todayStr),
         // #4119: solgt, men kører løbet færdigt for dette hold. Vises, kan ikke udtages.
         outgoing: Boolean(r.pending_team_id),
