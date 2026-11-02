@@ -37,7 +37,7 @@ import {
   loadTrainingDateContext, resolveTrainingDateReadiness, trainingDateBounds, loadSeasonBridgeBounds, nextCivilDate, isTrainingDateTeam,
 } from "./trainingDateReadiness.js";
 import { registerTrainingDateWork } from "./trainingDateClose.js";
-import { runTeamTrainingDay, isTrainingReservationHeldError } from "./dailyTrainingEngine.js";
+import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
 import { stripProgramFromWeekDays } from "./trainingPrograms.js";
 import { teamPoolIdForSquad } from "./raceBinding.js";
 import { TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks } from "./trainNowLock.js";
@@ -46,7 +46,7 @@ import { isRiderInjured, raceSquadOf } from "./riderEligibility.js"; // #6740
 import { loadEligibleEntries } from "./raceEntriesLoader.js"; // #6740
 import { loadSpentRaceDays } from "./raceSpentDays.js"; // #6740
 import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
-import { isTrainNowWholeDayEnabled, settleWholeDayPress } from "./trainNowWholeDay.js"; // #6461 B
+import { settleWholeDayPress } from "./trainNowWholeDay.js"; // #6461 B
 
 export const TRAIN_NOW_FLAG_KEY = "training_train_now";
 export { TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks };
@@ -61,23 +61,6 @@ async function checked(query, label) {
   const { data, error } = await query;
   if (error) throw new Error(`${label}: ${error.message ?? error}`);
   return data;
-}
-
-/** PURE: which race days may a press settle? All but the date's final race day (I4). */
-export function trainNowGameDays(gameDays) {
-  const days = [...new Set(gameDays ?? [])].filter(Number.isInteger).sort((a, b) => a - b);
-  return days.slice(0, -1);
-}
-
-/** PURE: riders that settle now vs. riders that wait for their race slot. */
-export function splitTrainNowRiders({ riderIds, unresolvedSlotsByRider = {} }) {
-  const settleNow = [];
-  const afterRace = [];
-  for (const id of riderIds) {
-    if (unresolvedSlotsByRider[id]?.length) afterRace.push(id);
-    else settleNow.push(id);
-  }
-  return { settleNow, afterRace };
 }
 
 
@@ -283,7 +266,6 @@ export async function runTrainNow({
   // races it showed: a race that fell below the floor since then is asked about again.
   confirmedShortRaceIds = [],
   loadShortRaces = defaultLoadShortRaces,
-  isWholeDayEnabled = isTrainNowWholeDayEnabled, // #6461 B
 }) {
   if (!team?.id) return { status: 400, body: { error: "no_team" } };
   if (!await isTrainNowEnabled(supabase, { isBetaTester })) return { status: 404, body: { error: "not_found" } };
@@ -367,49 +349,9 @@ export async function runTrainNow({
     && currentIds.includes(id) && lockedIds.has(id)
     && (work.opening_conditions === undefined || work.opening_conditions?.[id]));
   const readiness = resolveTrainingDateReadiness({ ...locked, tickDate, now, riderIds: available });
-  const { settleNow, afterRace } = splitTrainNowRiders({
-    riderIds: available, unresolvedSlotsByRider: readiness.unresolvedSlotsByRider,
-  });
-  // #6461 B (flag training_train_now_whole_day, seeded off): the whole known date per rider.
-  if (await isWholeDayEnabled(supabase, { isBetaTester })) {
-    return settleWholeDayPress({ supabase, team, season, now, tickDate, work, available, readiness, pressedAt, runDay,
-      readReadiness: async () => resolveTrainingDateReadiness({ ...await loadContext({ supabase, season, tickDate, loadDaySpans, registeredTeamIds: [team.id] }), tickDate, now, riderIds: available }) });
-  }
-
-  // 4) Settle the date's race days, final day excluded (I4), in order.
-  const settledDays = [];
-  if (settleNow.length) {
-    for (const gameDay of trainNowGameDays(work.game_days)) {
-      try {
-        await runDay({
-          supabase, teamId: team.id, seasonId: season.id, seasonNumber: season.number,
-          now, tickDateOverride: tickDate, gameDay, dateGameDays: work.game_days, executedBy: "manager",
-          eligibleRiderIds: settleNow, unresolvedSlotsByRider: readiness.unresolvedSlotsByRider,
-          deadlineAt: readiness.deadlineAt.toISOString(), deadlineReached: false,
-        });
-      } catch (err) {
-        // #6839 (ejer-valg A 19/10): aftenkoerslen holder netop denne loebsdag. Ingen
-        // fejl for spilleren: siden viser "Koerer..." og opdaterer selv, naar datoen
-        // er afregnet. Senere loebsdage koeres ikke (koerslen tager dem).
-        if (isTrainingReservationHeldError(err)) {
-          // locked: this press already locked the date, so the page keeps waiting for
-          // the evening run instead of treating its own lock as "done" (#6839).
-          return { status: 409, body: { error: "training_in_progress", tickDate, settledGameDays: settledDays, locked: true } };
-        }
-        throw err;
-      }
-      settledDays.push(gameDay);
-    }
-  }
-
-  return {
-    status: 200,
-    body: {
-      ok: true, tickDate, lockedAt: pressedAt,
-      settledRiderIds: settleNow, afterRaceRiderIds: afterRace,
-      settledGameDays: settledDays, gameDays: work.game_days,
-    },
-  };
+  // #6461 B: the press always settles the whole known date per rider.
+  return settleWholeDayPress({ supabase, team, season, now, tickDate, work, available, readiness, pressedAt, runDay,
+    readReadiness: async () => resolveTrainingDateReadiness({ ...await loadContext({ supabase, season, tickDate, loadDaySpans, registeredTeamIds: [team.id] }), tickDate, now, riderIds: available }) });
 }
 
 // Stable comparison of one weekday cell (key order independent).
