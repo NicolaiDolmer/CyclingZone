@@ -179,6 +179,19 @@ test("#7474: not_pending tælles som allerede afgjort, ikke som fejl", async () 
   assert.equal(res.resolved, 1);
 });
 
+test("#7488: en 'skipped/not_on_team'-afgørelse er ikke en fejl i sweepet", async () => {
+  const pending = [
+    { team_id: "t1", rider_id: "gone", deadline: "2026-06-19T10:00:00Z" },
+    { team_id: "t2", rider_id: "ok", deadline: "2026-06-19T10:00:00Z" },
+  ];
+  const resolveFn = async (_s, { riderId }) =>
+    riderId === "gone" ? { riderId, action: "skipped", reason: "not_on_team" } : { riderId };
+  const res = await runAcademyGraduationSweep({ supabase: makeSupabase(pending), now: AFTER_WINDOW, isEnabled: async () => true, resolveFn });
+  assert.equal(res.failed, 0);
+  assert.deepEqual(res.errors, []);
+  assert.equal(res.resolved, 2);
+});
+
 test("#7474: et sweep starter ikke, mens det forrige stadig kører", async () => {
   const pending = [{ team_id: "t1", rider_id: "slow", deadline: "2026-06-19T10:00:00Z" }];
   let release;

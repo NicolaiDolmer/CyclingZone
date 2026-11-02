@@ -564,6 +564,48 @@ test("resolveGraduation release: free agent (team_id=NULL, is_academy=false); gr
   assert.equal(rec.gradUpdates[0].status, "released");
 });
 
+// #7488: rytteren er frigivet (eller flyttet) uden at grad-rækken blev lukket.
+// Ingen af de tre grene må røre rytteren eller sende besked; rækken lukkes lydløst.
+for (const action of ["promote", "sell", "release"]) {
+  test(`resolveGraduation ${action}: #7488 — rytter ikke længere på holdet springes over, grad lukkes lydløst`, async () => {
+    const offTeam = { ...RIDER, team_id: null };
+    const { supabase, rec } = makeSupabase({ gradRow: PENDING_GRAD, rider: offTeam });
+    const notify = spyNotify();
+    const res = await resolveGraduation(supabase, {
+      now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r1", action, seasonNumber: 1,
+      auctionConfig: DEFAULT_AUCTION_CONFIG, notify,
+    });
+    assert.deepEqual(res, { riderId: "r1", action: "skipped", reason: "not_on_team" });
+    assert.equal(rec.riderUpdates.length, 0, "rytteren røres ikke");
+    assert.equal(rec.auctionInserts.length, 0, "ingen auktion");
+    assert.equal(rec.listingUpdates.length, 0, "ingen listing-ændringer");
+    assert.equal(notify.calls.length, 0, "ingen besked til manageren");
+    assert.equal(rec.gradUpdates.length, 1);
+    assert.equal(rec.gradUpdates[0].status, "released");
+    assert.deepEqual(rec.gradUpdates[0].__eq, ["id", "g1"]);
+    assert.deepEqual(rec.gradUpdates[0].__eq2, ["status", "pending"]);
+  });
+}
+
+test("resolveGraduation: #7488 — rytter på et andet hold springes også over", async () => {
+  const { supabase, rec } = makeSupabase({ gradRow: PENDING_GRAD, rider: { ...RIDER, team_id: "t2" } });
+  const res = await resolveGraduation(supabase, {
+    now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r1", action: "release", seasonNumber: 1, notify: spyNotify(),
+  });
+  assert.equal(res.reason, "not_on_team");
+  assert.equal(rec.riderUpdates.length, 0);
+});
+
+test("defaultResolveGraduate: #7488 — rytter uden hold kaster ikke (sweepet kan ikke gå i stå)", async () => {
+  const { supabase, rec } = makeSupabase({ gradRow: PENDING_GRAD, rider: { ...RIDER, team_id: null } });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 5, balance: 5000 });
+  const res = await defaultResolveGraduate(supabase, {
+    now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify(),
+  });
+  assert.equal(res.action, "skipped");
+  assert.equal(rec.riderUpdates.length, 0);
+});
+
 // #2881-følgefund: release efterlod tidligere en fri agent med en IKKE-null
 // akademi-kontrakt — brød "kontrakter kun på ejede ryttere"-invarianten
 // (#1309) og ville få et senere contractOnAcquirePatch-kald (auktion/
