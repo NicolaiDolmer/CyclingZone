@@ -559,6 +559,11 @@
       "issue": 7508,
       "reason": "Indbakke: Holdudtagelse mangler står ulæst efter holdet er udtaget (388/749 på en uge) - ejer-go 2/11 i #7495",
       "since": "2026-11-02"
+    },
+    {
+      "issue": 7513,
+      "reason": "Nye hold: forkert tekst (sæson 1, din første rytter); ejer-go 2/11 på ordlyd og ordret merge (PR #7510)",
+      "since": "2026-11-02"
     }
   ]
 }
