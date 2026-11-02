@@ -524,6 +524,16 @@
       "issue": 7498,
       "reason": "Ops: cross-PC Stop-advarslen kommer igen ved hver ny state-fil i .codex.local (ejer 2/11: kommer for tit)",
       "since": "2026-11-02"
+    },
+    {
+      "issue": 7488,
+      "reason": "Ungdom: graduering gør frigivne ryttere til akademiryttere uden hold (2 strandet i prod, Sentry AW aktiv) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-02"
+    },
+    {
+      "issue": 6138,
+      "reason": "Scouting: mailen lover 5 ryttere, rapporten viser 1-4 (flere spillere) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-02"
     }
   ]
 }
