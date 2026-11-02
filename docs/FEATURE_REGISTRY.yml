@@ -692,11 +692,10 @@ features:
     title_en: Set the training day for several riders at once
     title_da: Sæt træningsdagen for flere ryttere på én gang
     state: live
-    flag: training_bulk_day
     ssot: docs/TRAINING_RULES.md
     epic: 6523
-    verified: 2026-10-24
-    note: PR #6533 (12/10); beta 15/10; on for alle 24/10 17:30 UTC efter ejer-ja (#7153, læst tilbage i prod).
+    verified: 2026-11-02
+    note: Live for alle 24/10 efter ejer-ja (#7153); kodekontakten training_bulk_day fjernet 2/11 (krav 5), linjen vises altid.
 
   - id: training-decision-card
     area: training

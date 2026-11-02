@@ -104,7 +104,7 @@ export default function TrainingPlanCard({
   planForExtra?: ReactNode;
   // #6139: "Train now" er trykket i dag, saa dagens felter er laast (i morgen er aaben).
   todayLocked?: boolean;
-  // #6523 (flag training_bulk_day): noterne laeses som almindelig graa tekst, ikke som links.
+  // #6523: noterne laeses som almindelig graa tekst, ikke som links.
   plainNotes?: boolean;
 }) {
   const { t, i18n } = useTranslation("training");

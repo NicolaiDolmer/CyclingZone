@@ -264,7 +264,6 @@ import { createBreakawayOutlookRouter } from "./breakawayOutlook.js"; // #6912 B
 import { createRaceLibraryV2Router } from "../lib/raceLibraryV2Flag.js"; // #6514
 import { createPushRouter } from "./pushRoutes.ts"; // #6590
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
-import { TRAINING_BULK_DAY_FLAG_KEY } from "../lib/trainingBulkDayFlag.js";
 import { TRAINING_DECISION_FLAG_KEY } from "../lib/trainingDecisionFlag.js"; // #6110 S26
 import { loadFatigueStreaks } from "../lib/trainingFatigueStreak.js"; // #6110 S26
 import { displayPotentialBand, bestPotentialBand } from "../lib/potentialDisplayBand.js"; // #6853
@@ -2999,7 +2998,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const teamId = req.team.id;
     const [
       { activeSeasonId, state }, isBetaTester, stage, raceDayDevelopmentStage, trainingScoreStage,
-      mobileTableStage, dailyReceiptStage, bulkDayStage, decisionCardStage,
+      mobileTableStage, dailyReceiptStage, decisionCardStage,
     ] = await Promise.all([
       loadTrainingState(teamId),
       isViewerBetaTester(req),
@@ -3012,7 +3011,6 @@ router.get("/training/me", requireAuth, async (req, res) => {
       // testere ser den nye tabel, alle andre den gamle. Desktop er uberoert.
       readFlagStage(supabase, TRAINING_MOBILE_TABLE_FLAG_KEY),
       readFlagStage(supabase, TRAINING_DAILY_RECEIPT_FLAG_KEY),
-      readFlagStage(supabase, TRAINING_BULK_DAY_FLAG_KEY), // #6523
       readFlagStage(supabase, TRAINING_DECISION_FLAG_KEY), // #6110 S26
     ]);
     // #6811 P2: et parkeret hold traener ikke (POST svarer 409 team_parked), saa
@@ -3034,7 +3032,6 @@ router.get("/training/me", requireAuth, async (req, res) => {
     // og det er med vilje: fail-safe er den visning der står i prod i dag.
     const mobileTable = evaluateFlagStage(mobileTableStage, { isBetaTester });
     const dailyReceiptEnabled = evaluateFlagStage(dailyReceiptStage, { isBetaTester });
-    const bulkDay = evaluateFlagStage(bulkDayStage, { isBetaTester }); // #6523: bar boolean
     const decisionCard = evaluateFlagStage(decisionCardStage, { isBetaTester }); // #6110 S26: bar boolean
 
     // Hent ryttere for holdet (ikke-pensionerede) for at bygge condition/progress maps.
@@ -3231,7 +3228,6 @@ router.get("/training/me", requireAuth, async (req, res) => {
       // #3643: true ⇒ telefonen tegner den nye løbsdags-tabel; false ⇒ den
       // mobil-visning der står i prod i dag. Se trainingMobileTableFlag.js.
       mobileTable,
-      bulkDay,
       decisionCard,
       ...(fatigueStreaks ? { fatigueDays70: fatigueStreaks } : {}),
       dailyReceiptEnabled,

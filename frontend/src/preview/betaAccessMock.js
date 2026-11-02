@@ -71,7 +71,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "training_programs", // #6154
   "development_curve_b", // #3564 Hjaelp
   "stage_page_v2", // 7.361
-  "training_bulk_day", // 7.361
+  "training_bulk_day", // 7.361 (kun patch-noten)
   "academy_intake_pull_enabled", // #6666
   "development_v2_aging_enabled", // #6110 Hjaelp
   "potential_single_number", // #6110 Hjaelp
