@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11.
 >
-> **🎯 Next action (2/11):** læs natsessionens morgen-kort på #7476 og [overleveringen på #7336](https://github.com/NicolaiDolmer/CyclingZone/issues/7336). 1) **#5950 prod-verifikation** (tændt 1/11 15:48; sammenlign training_rider_ticks før/efter, forventet ~+20 %, uden for +10..+35 % → sluk og spørg). 2) **Spørg ejeren igen om #6950** (frist 8/11). 3) **#6665 forside:** nye billeder fra ejeren → før/efter → "merge". 4) **#7462** (træningsrapport): review + før/efter til ejeren. 5) Godkend natsessionens drafts (Hjælp, patch note 7.392, #6156). 6) Træningsplanlægning #7456: design venter på staff-feedback (intet bygges før enighed). 7) Verificér #7339 og #7474 ved næste store løbsdag/graduering.
+> **🎯 Next action (2/11 middag):** ny PC1-session "hjemmesiden viser det rigtige" med prompten på [#7495](https://github.com/NicolaiDolmer/CyclingZone/issues/7495) (ejerens 10 beslutninger; ejeren logger ind på en ny testkonto ved start). Codex-backlog-sweep kører 4 lanes på DolmerPC: [#7492](https://github.com/NicolaiDolmer/CyclingZone/issues/7492). Ellers: 1) **#5950 prod-verifikation** (training_rider_ticks før/efter, forventet ~+20 %, uden for +10..+35 % → sluk og spørg). 2) **#6950** (frist 8/11). 3) **#6665 forside:** billeder → før/efter → "merge". 4) **#7462**: review + før/efter. 5) #7456 venter på staff-feedback. 6) Verificér #7339 og #7474 ved næste store løbsdag/graduering. 7) Beslut beta → live for løbskortet senest 5/11 (`race-library-v2`).
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, flag off): ejeren har ikke besluttet om det skal i spillet; kurve "6 kombineret" (#3564) indgår i den samlede måling.
 >
-> **🤖 Working agent:** Natsession 1-2/11 (startes af ejeren med prompten på #7476); ellers ingen aktiv session.
+> **🤖 Working agent:** Ingen aktiv session.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
