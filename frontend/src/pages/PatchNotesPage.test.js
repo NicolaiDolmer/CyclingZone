@@ -71,7 +71,7 @@ test("én segment-række + 'Kun beta'-kontakt; 'Nu for alle' er fjernet (#6717)"
 test("dags-tællere bruger i18n-flertal i alle 5 sprog (#7543)", () => {
   assert.match(src, /t\(`summary\.\$\{cat\}`, \{ count:/);
   for (const l of ["da", "en", "es", "fr", "nl"]) {
-    const j = JSON.parse(readFileSync(join(__dirname, `../../public/locales/${l}/patchNotes.json`), "utf8"));
+    const j = JSON.parse(readFileSync(join(__dirname, `../../public/locales/${l}/patchnotes.json`), "utf8"));
     for (const c of ["new", "improved", "fixed"]) {
       assert.match(j.summary[c], /^{count, plural, one {.*} other {.*}}$/, `${l}.${c}`);
     }
