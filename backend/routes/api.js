@@ -277,6 +277,7 @@ import { saveSelection, getSelectionContext, prepareSelectionChange, saveSelecti
 import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
+import { resolveSelectionWarnings } from "../lib/selectionWarningResolve.ts"; // #7508
 import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked, sprintTrainFlatOnlyForRace, loadStageRoleByRider } from "../lib/raceTeamOrdersApi.js";
 import { isStagePlanEnabled, loadStagePlanContext, orderHasStagePlan, stagePlanRevisionOk } from "../lib/stagePlanApi.js"; // #7003
 import { isRaceLineupLocked, isRaceLineupLockedNow, firstStageStartsFromSchedule, loadLockedRaceIds } from "../lib/raceStartLock.js";
@@ -5935,6 +5936,8 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
         .delete().eq("race_id", race.id).eq("team_id", req.team.id);
       if (clearCleanupErr) captureException(new Error(`race_entry_clears cleanup (manual save): ${clearCleanupErr.message}`));
     }
+    // #7508: holdet har nu ryttere i løbet → den gamle "Holdudtagelse mangler" for netop dette løb er forældet (best-effort, kaster aldrig).
+    if (riderIds.length > 0) await resolveSelectionWarnings({ supabase, userId: req.user.id, raceId: race.id });
     invalidateNamespace("calendar"); // #6514: kalenderens entered-status følger udtagelsen
     res.json({ ok: true });
   } catch (err) {
@@ -6164,6 +6167,7 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
         const { error: clearErr } = await supabase.from("race_entry_clears")
           .delete().eq("race_id", change.raceId).eq("team_id", req.team.id);
         if (clearErr) captureException(new Error(`race_entry_clears cleanup (bulk save, ${change.raceId}): ${clearErr.message}`));
+        await resolveSelectionWarnings({ supabase, userId: req.user.id, raceId: change.raceId }); // #7508 (best-effort, kaster aldrig)
       }
     }
 
@@ -6357,6 +6361,7 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
       return res.status(500).json({ error: insErr.message });
     }
 
+    await resolveSelectionWarnings({ supabase, userId: req.user.id, raceId: race.id }); // #7508: holdet er udtaget (best-effort, kaster aldrig)
     invalidateNamespace("calendar"); // #6514
     res.json({
       ok: true,
