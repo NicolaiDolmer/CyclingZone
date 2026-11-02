@@ -79,3 +79,14 @@ Keyboard shortcuts (arrows to move, space to pick, left/right for stages) go int
 - Remember last choice for week board, race list and profile; the player controls both panels.
 - Sort default route match; Copy stage yes; peak target is a race; mobile columns route match / form / fatigue; no Tired badge.
 - Approved additions: expected fatigue after the race, unsaved warning, x/6 on the timeline; keyboard later.
+
+## Tester feedback 2 Nov evening (JeppeK, cybersimon) and changes made
+- Every column in all three views must sort (cybersimon). Done in the prototype.
+- Copy squad from opens a list of races with a squad to choose from; riders busy in an overlapping race are skipped (JeppeK).
+- Race list scope "Next 7 days" / "Whole season"; week board steps between weeks (JeppeK: set the whole season at once must be possible).
+- Route profile uses real elevation and graded, categorised climbs, matching the race page (JeppeK).
+- **Tactics corrected:** it is the race page's stage plan along the route (`StagePlanBoard`, spec 2026-10-25-taktik-roller-design §11): a chain of tasks per rider that switch at a categorised climb, the last km, or "when he's dropped"; assistant plan button. The earlier role+effort grid was wrong (JeppeK 21:15).
+- Roles are chosen in Squad while picking (JeppeK); validation as on the race page.
+- Peak form targets the race you are on (JeppeK).
+- Injured riders greyed out like an overlap; tired riders are not sorted away (JeppeK).
+- Open owner decisions where testers differ: default sort (JeppeK: first stage / first column; owner chose route match for the whole race), whether tactics belong here at all (JeppeK: race page only), rail default scope.
