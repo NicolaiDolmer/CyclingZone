@@ -60,6 +60,38 @@ test("#7339 A: bindinger i dagens egne løb og på andre løbsdage gør ikke ryt
   assert.deepEqual(planned, [], "12 ledige dækker begge løb");
 });
 
+test("#7339 A (Codex): et etapeløb der må starte kort efter regel A (#6739) giver ingen besked", () => {
+  const { races, scheduleByRace } = day33(["stage"]);
+  const groups = groupTeamRaceDays({ teams: [team("t1")], races, scheduleByRace, now: NOW });
+  const roster = (free) => [
+    ...Array.from({ length: free }, () => ({ injuredUntil: null, bindings: [] })),
+    ...Array.from({ length: 2 }, () => ({ injuredUntil: null, bindings: [bound("other", 33, 33)] })),
+  ];
+  const plan = (free, stageRaceIds) => planRaceDayCoverageReminders({
+    groups, rosterByTeam: new Map([["t1", roster(free)]]), seniorCountsByTeam: new Map([["t1", 10]]), stageRaceIds,
+  }).length;
+  assert.equal(plan(4, new Set(["stage"])), 0, "4 ledige + 2 i et andet løb på startdagen: etapeløbet starter");
+  assert.equal(plan(4, new Set()), 1, "et endagsløb følger gulvet");
+  assert.equal(plan(3, new Set(["stage"])), 1, "under regel A's minimum: besked");
+});
+
+test("#7339 A (Codex): sweepen slår løbsformen op for dagens eneste løb", async () => {
+  const { races, scheduleByRace } = day33(["stage"]);
+  const roster = [
+    ...Array.from({ length: 4 }, () => ({ injuredUntil: null, bindings: [] })),
+    ...Array.from({ length: 2 }, () => ({ injuredUntil: null, bindings: [bound("other", 33, 33)] })),
+  ];
+  let asked = null;
+  const result = await sendRaceDayCoverageReminders({
+    supabase: {}, now: NOW, season: { id: "s5", number: 5 }, teams: [team("t1")], races, scheduleByRace,
+    seniorCountsByTeam: new Map([["t1", 6]]), notify: async () => { throw new Error("no notify"); },
+    fetchRoster: async () => new Map([["t1", roster]]),
+    fetchStageRaceIds: async ({ raceIds }) => { asked = raceIds; return new Set(["stage"]); },
+  });
+  assert.deepEqual(asked, ["stage"]);
+  assert.equal(result.planned, 0);
+});
+
 test("#7339 A: et hold med nok ledige til sit ene løb får ingen besked", () => {
   const { races, scheduleByRace } = day33(["solo"]);
   const groups = groupTeamRaceDays({ teams: [team("t1")], races, scheduleByRace, now: NOW });
@@ -75,6 +107,7 @@ test("#7339 A: sweepen sender beskeden med sæson og løbsdage til trup-opslaget
     supabase: {}, now: NOW, season: { id: "s5", number: 5 }, teams: [team("t1")], races, scheduleByRace, notify,
     seniorCountsByTeam: new Map([["t1", 16]]),
     fetchRoster: async (args) => { asked = args; return new Map([["t1", liveRoster()]]); },
+    fetchStageRaceIds: async () => new Set(), // endagsløb
   });
   assert.deepEqual([asked.seasonId, asked.gameDays, asked.teamIds], ["s5", [33], ["t1"]]);
   assert.equal(result.sent, 1);

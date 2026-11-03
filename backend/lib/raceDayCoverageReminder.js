@@ -25,6 +25,7 @@ import { copenhagenDateString } from "./copenhagenTime.js";
 import { countFieldableRaces } from "./raceDayFloorPlan.js";
 import { captureException } from "./sentry.js";
 import { indexGeneratorBindings } from "./raceEntryGeneratorBindings.ts";
+import { overlapRuleApplies, overlapStartsShort } from "./raceFieldIntegrity.js";
 
 export const RACE_DAY_COVERAGE_TYPE = "selection_warning";
 export const RACE_DAY_COVERAGE_HOURS = 24;
@@ -96,9 +97,12 @@ function boundElsewhere(rider, group) {
  * bundet i et andet løb på løbsdagen er ikke ledig (#7339 A). Hold som seniorStartReminder
  * dækker (under gulvet i aktive seniorer, `seniorCountsByTeam`) springes over; et hold med
  * nok aktive men for få ledige raske får beskeden her, også med 0 løb.
+ * `stageRaceIds` (Codex P2): er dagens eneste løb et etapeløb, og er holdet kun kort fordi
+ * ryttere kører et andet løb på startdagen, må det starte kort (#6739 regel A,
+ * overlapStartsShort). Så er der ingen grund til en besked.
  */
 export function planRaceDayCoverageReminders({
-  groups = [], rosterByTeam = new Map(), seniorCountsByTeam = null, floor = MIN_RACE_ENTRIES,
+  groups = [], rosterByTeam = new Map(), seniorCountsByTeam = null, floor = MIN_RACE_ENTRIES, stageRaceIds = new Set(),
 } = {}) {
   const out = [];
   for (const group of groups) {
@@ -106,12 +110,28 @@ export function planRaceDayCoverageReminders({
     const active = seniorCountsByTeam ? Number(seniorCountsByTeam.get(group.teamId) ?? 0) : roster.length;
     if (!Number.isFinite(active) || active < floor) continue;
     const raceDate = copenhagenDateString(new Date(group.scheduledAt));
-    const fit = roster.filter((r) => (!r.injuredUntil || r.injuredUntil < raceDate) && !boundElsewhere(r, group)).length;
+    let fit = 0; let overlap = 0; let injured = 0;
+    for (const r of roster) {
+      if (boundElsewhere(r, group)) overlap += 1;
+      else if (r.injuredUntil && r.injuredUntil >= raceDate) injured += 1;
+      else fit += 1;
+    }
     const total = group.raceIds.length;
     const fieldable = countFieldableRaces({ supply: fit, races: total, floor });
-    if (fieldable < total) out.push({ ...group, fieldable, total });
+    if (fieldable >= total) continue;
+    if (total === 1 && stageRaceIds.has(group.raceIds[0])
+      && overlapStartsShort({ starters: fit, overlap, injured, minEntries: floor })) continue;
+    out.push({ ...group, fieldable, total });
   }
   return out;
+}
+
+// #6739-reglens løbsform (overlapRuleApplies) for de løb der er dagens eneste start.
+export async function defaultFetchStageRaceIds({ supabase, raceIds }) {
+  if (!raceIds.length) return new Set();
+  const rows = await fetchAllRowsChunkedIn(raceIds, (chunk) =>
+    supabase.from("races").select("id, race_type, stages").in("id", chunk).order("id"));
+  return new Set(rows.filter(overlapRuleApplies).map((r) => r.id));
 }
 
 export function buildRaceDayCoverageNotification({ candidate, seasonNumber }) {
@@ -186,7 +206,7 @@ export async function defaultFetchSeniorRoster({ supabase, teamIds, today, seaso
  */
 export async function sendRaceDayCoverageReminders({
   supabase, now, season, teams = [], races = [], scheduleByRace = new Map(), withdrawnByRace = new Map(),
-  seniorCountsByTeam = null, notify, fetchRoster = defaultFetchSeniorRoster,
+  seniorCountsByTeam = null, notify, fetchRoster = defaultFetchSeniorRoster, fetchStageRaceIds = defaultFetchStageRaceIds,
 }) {
   const stats = { planned: 0, sent: 0, deduped: 0, failed: 0 };
   const groups = groupTeamRaceDays({ teams, races, scheduleByRace, withdrawnByRace, now });
@@ -195,7 +215,13 @@ export async function sendRaceDayCoverageReminders({
     supabase, teamIds: [...new Set(groups.map((g) => g.teamId))], today: copenhagenDateString(now),
     seasonId: season?.id ?? null, gameDays: [...new Set(groups.map((g) => g.gameDay))],
   });
-  const planned = planRaceDayCoverageReminders({ groups, rosterByTeam, seniorCountsByTeam });
+  let planned = planRaceDayCoverageReminders({ groups, rosterByTeam, seniorCountsByTeam });
+  // Codex P2: kun kandidater med ét løb kan falde ind under regel A; deres løbsform hentes.
+  const soloRaceIds = [...new Set(planned.filter((p) => p.total === 1).map((p) => p.raceIds[0]))];
+  if (soloRaceIds.length) {
+    const stageRaceIds = await fetchStageRaceIds({ supabase, raceIds: soloRaceIds });
+    planned = planRaceDayCoverageReminders({ groups, rosterByTeam, seniorCountsByTeam, stageRaceIds });
+  }
   stats.planned = planned.length;
   for (const candidate of planned) {
     try {
