@@ -14,6 +14,7 @@
 //     saelgerens hold, uden ventende overgang og ikke pensioneret, gaar
 //     listingen tilbage til 'open'. Ellers (solgt, flyttet, pensioneret)
 //     saettes den til 'withdrawn': den kan aldrig handles igen.
+//   - Auktions-cronen afgoer forladte pauser (reconcileOrphanPausedListings).
 //   - Ny listing mens auktionen koerer afvises i POST /transfers
 //     (errorCode rider_on_auction_listing).
 //
@@ -32,23 +33,57 @@
 import { captureException } from "./sentry.js";
 
 export const PAUSED_LISTING_STATUS = "paused";
-export const PAUSABLE_LISTING_STATUSES = Object.freeze(["open", "negotiating"]);
+export const PAUSABLE_LISTING_STATUSES: readonly string[] = Object.freeze(["open", "negotiating"]);
 const ACTIVE_AUCTION_STATUSES = ["active", "extended"];
 // 23505 = unique_violation (uniq_transfer_listings_one_active_per_rider): der
 // findes allerede en aktiv listing paa rytteren, saa den pausede kan ikke
 // genaabnes ved siden af.
 const UNIQUE_VIOLATION = "23505";
 
-function uniqueIds(ids) {
-  return [...new Set((ids || []).filter(Boolean))];
+// Supabase-klienten er utypet i backend (samme konvention som resten af kernen).
+type Db = any;
+
+export type PausedListingDecision = "keep_paused" | "resume" | "withdraw";
+
+export interface ListingRow {
+  id: string;
+  rider_id: string;
+  seller_team_id: string | null;
+  status: string;
 }
 
-/**
- * PURE: hvad sker der med en pauset listing, naar rytterens auktion er slut?
- * @param {{ listing: { seller_team_id: string|null }, rider: { team_id?: string|null, pending_team_id?: string|null, is_retired?: boolean }|null|undefined, riderOnActiveAuction: boolean }} args
- * @returns {"keep_paused"|"resume"|"withdraw"}
- */
-export function getPausedListingDecision({ listing, rider, riderOnActiveAuction }) {
+export interface RiderState {
+  id?: string;
+  team_id?: string | null;
+  pending_team_id?: string | null;
+  is_retired?: boolean | null;
+}
+
+export interface ResumeResult {
+  resumed: string[];
+  withdrawn: string[];
+  kept: string[];
+  error?: string;
+}
+
+function uniqueIds(ids: ReadonlyArray<string | null | undefined> | null | undefined): string[] {
+  return [...new Set((ids || []).filter((id): id is string => Boolean(id)))];
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/** PURE: hvad sker der med en pauset listing, naar rytterens auktion er slut? */
+export function getPausedListingDecision({
+  listing,
+  rider,
+  riderOnActiveAuction,
+}: {
+  listing: { seller_team_id: string | null } | null | undefined;
+  rider: RiderState | null | undefined;
+  riderOnActiveAuction: boolean;
+}): PausedListingDecision {
   if (riderOnActiveAuction) return "keep_paused";
   if (!rider) return "withdraw";
   if (rider.is_retired) return "withdraw";
@@ -58,25 +93,25 @@ export function getPausedListingDecision({ listing, rider, riderOnActiveAuction 
   return "resume";
 }
 
-/**
- * PURE: POST /transfers-guarden. En rytter paa aktiv auktion kan ikke listes.
- * @param {{ riderId: string, activeAuctionRiderIds: string[] }} args
- * @returns {{ code: "rider_on_auction_listing" }|null}
- */
-export function getListingOnAuctionIssue({ riderId, activeAuctionRiderIds }) {
+/** PURE: POST /transfers-guarden. En rytter paa aktiv auktion kan ikke listes. */
+export function getListingOnAuctionIssue({
+  riderId,
+  activeAuctionRiderIds,
+}: {
+  riderId: string | null | undefined;
+  activeAuctionRiderIds: readonly string[] | null | undefined;
+}): { code: "rider_on_auction_listing" } | null {
   if (!riderId) return null;
   return (activeAuctionRiderIds || []).includes(riderId)
     ? { code: "rider_on_auction_listing" }
     : null;
 }
 
-/**
- * Saet rytterens aktive transfer_listings paa pause. Idempotent.
- * @param {any} supabase
- * @param {{ riderId: string }} args
- * @returns {Promise<{ paused: number }>}
- */
-export async function pauseTransferListingsForAuction(supabase, { riderId }) {
+/** Saet rytterens aktive transfer_listings paa pause. Idempotent. */
+export async function pauseTransferListingsForAuction(
+  supabase: Db,
+  { riderId }: { riderId: string | null | undefined },
+): Promise<{ paused: number }> {
   if (!riderId) return { paused: 0 };
   const { data, error } = await supabase
     .from("transfer_listings")
@@ -88,54 +123,63 @@ export async function pauseTransferListingsForAuction(supabase, { riderId }) {
   return { paused: (data || []).length };
 }
 
-async function setPausedListingStatus(supabase, listingId, status) {
+async function setPausedListingStatus(
+  supabase: Db,
+  listingId: string,
+  status: string,
+): Promise<{ changed: number; error: { code?: string; message: string } | null }> {
   const { data, error } = await supabase
     .from("transfer_listings")
     .update({ status })
     .eq("id", listingId)
     .eq("status", PAUSED_LISTING_STATUS)
     .select("id");
-  return { changed: (data || []).length, error };
+  return { changed: (data || []).length, error: error ?? null };
+}
+
+async function fetchActiveAuctionRiderIds(supabase: Db, riderIds: string[]): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("auctions")
+    .select("rider_id")
+    .in("rider_id", riderIds)
+    .in("status", ACTIVE_AUCTION_STATUSES);
+  if (error) throw new Error(`read active auctions: ${error.message}`);
+  return new Set(((data || []) as Array<{ rider_id: string }>).map((a) => a.rider_id));
 }
 
 /**
  * Afgoer pausede listings for ryttere hvis auktion er slut. Idempotent: roerer
  * kun raekker der stadig er 'paused', og lader dem staa saa laenge rytteren
  * har en aktiv auktion.
- * @param {any} supabase
- * @param {{ riderIds: string[] }} args
- * @returns {Promise<{ resumed: string[], withdrawn: string[], kept: string[] }>}
  */
-export async function resumePausedTransferListings(supabase, { riderIds }) {
-  const result = { resumed: [], withdrawn: [], kept: [] };
+export async function resumePausedTransferListings(
+  supabase: Db,
+  { riderIds }: { riderIds: ReadonlyArray<string | null | undefined> },
+): Promise<ResumeResult> {
+  const result: ResumeResult = { resumed: [], withdrawn: [], kept: [] };
   const ids = uniqueIds(riderIds);
   if (ids.length === 0) return result;
 
-  const { data: paused, error: pausedError } = await supabase
+  const { data: pausedData, error: pausedError } = await supabase
     .from("transfer_listings")
     .select("id, rider_id, seller_team_id, status")
     .in("rider_id", ids)
     .eq("status", PAUSED_LISTING_STATUS);
   if (pausedError) throw new Error(`read paused transfer_listings: ${pausedError.message}`);
-  if (!paused || paused.length === 0) return result;
+  const paused = (pausedData || []) as ListingRow[];
+  if (paused.length === 0) return result;
 
   const pausedRiderIds = uniqueIds(paused.map((l) => l.rider_id));
-  const [{ data: auctions, error: auctionError }, { data: riders, error: riderError }] = await Promise.all([
-    supabase
-      .from("auctions")
-      .select("rider_id")
-      .in("rider_id", pausedRiderIds)
-      .in("status", ACTIVE_AUCTION_STATUSES),
+  const [onAuction, { data: riders, error: riderError }] = await Promise.all([
+    fetchActiveAuctionRiderIds(supabase, pausedRiderIds),
     supabase
       .from("riders")
       .select("id, team_id, pending_team_id, is_retired")
-      .in("id", pausedRiderIds),
+      .in("id", pausedRiderIds), // pagination-safe: bundet af de pausede listings' rytter-id'er
   ]);
-  if (auctionError) throw new Error(`read active auctions: ${auctionError.message}`);
   if (riderError) throw new Error(`read riders: ${riderError.message}`);
 
-  const onAuction = new Set((auctions || []).map((a) => a.rider_id));
-  const riderById = new Map((riders || []).map((r) => [r.id, r]));
+  const riderById = new Map(((riders || []) as RiderState[]).map((r) => [r.id, r]));
 
   for (const listing of paused) {
     const decision = getPausedListingDecision({
@@ -168,14 +212,11 @@ export async function resumePausedTransferListings(supabase, { riderIds }) {
   // intet, saa listingen pauses igen her. POST /auctions indsaetter auktionen
   // FOER pausen, saa enten ser dette tjek auktionen, eller pausen ser 'open'.
   if (result.resumed.length > 0) {
-    const resumedRiderIds = uniqueIds(paused.filter((l) => result.resumed.includes(l.id)).map((l) => l.rider_id));
-    const { data: lateAuctions, error: lateError } = await supabase
-      .from("auctions")
-      .select("rider_id")
-      .in("rider_id", resumedRiderIds)
-      .in("status", ACTIVE_AUCTION_STATUSES);
-    if (lateError) throw new Error(`re-check active auctions: ${lateError.message}`);
-    for (const riderId of uniqueIds((lateAuctions || []).map((a) => a.rider_id))) {
+    const resumedRiderIds = uniqueIds(
+      paused.filter((l) => result.resumed.includes(l.id)).map((l) => l.rider_id),
+    );
+    const lateAuctions = await fetchActiveAuctionRiderIds(supabase, resumedRiderIds);
+    for (const riderId of lateAuctions) {
       await pauseTransferListingsForAuction(supabase, { riderId });
       const repaused = paused.filter((l) => l.rider_id === riderId).map((l) => l.id);
       result.resumed = result.resumed.filter((id) => !repaused.includes(id));
@@ -190,39 +231,30 @@ export async function resumePausedTransferListings(supabase, { riderIds }) {
  * en aktiv auktion (fx en finalisering hvor genoptag-trinnet fejlede). Koeres af
  * auktions-cronen efter finaliseringen (Codex P2). Partial index
  * idx_transfer_listings_paused holder opslaget billigt.
- * @param {any} supabase
- * @param {{ limit?: number }} [opts]
  */
-export async function reconcileOrphanPausedListings(supabase, { limit = 200 } = {}) {
+export async function reconcileOrphanPausedListings(
+  supabase: Db,
+  { limit = 200 }: { limit?: number } = {},
+): Promise<ResumeResult> {
   const { data, error } = await supabase
     .from("transfer_listings")
     .select("rider_id")
     .eq("status", PAUSED_LISTING_STATUS)
     .limit(limit);
   if (error) throw new Error(`read paused transfer_listings: ${error.message}`);
-  return resumePausedTransferListings(supabase, { riderIds: (data || []).map((l) => l.rider_id) });
-}
-
-/**
- * Best-effort-variant til auktions-cronen.
- * @param {any} supabase
- */
-export async function safeReconcileOrphanPausedListings(supabase) {
-  try {
-    return await reconcileOrphanPausedListings(supabase);
-  } catch (err) {
-    captureException(err, { tags: { area: "auction_transfer_list_pause", step: "reconcile" } });
-    return { resumed: [], withdrawn: [], kept: [], error: err.message };
-  }
+  return resumePausedTransferListings(supabase, {
+    riderIds: ((data || []) as Array<{ rider_id: string }>).map((l) => l.rider_id),
+  });
 }
 
 /**
  * Best-effort: afgoer pausede listings for rytteren bag en given auktion
  * (admin-annullering, hvor kalderen kun kender auktions-id'et).
- * @param {any} supabase
- * @param {string} auctionId
  */
-export async function safeResumePausedListingsForAuctionId(supabase, auctionId) {
+export async function safeResumePausedListingsForAuctionId(
+  supabase: Db,
+  auctionId: string | null | undefined,
+): Promise<ResumeResult> {
   try {
     if (!auctionId) return { resumed: [], withdrawn: [], kept: [] };
     const { data, error } = await supabase
@@ -234,34 +266,42 @@ export async function safeResumePausedListingsForAuctionId(supabase, auctionId) 
     return await resumePausedTransferListings(supabase, { riderIds: [data?.rider_id] });
   } catch (err) {
     captureException(err, { tags: { area: "auction_transfer_list_pause", step: "resume_by_auction" } });
-    return { resumed: [], withdrawn: [], kept: [], error: err.message };
+    return { resumed: [], withdrawn: [], kept: [], error: errorMessage(err) };
   }
 }
 
-/**
- * Best-effort-variant til POST /auctions: auktionen er allerede oprettet.
- * @param {any} supabase
- * @param {{ riderId: string }} args
- */
-export async function safePauseTransferListingsForAuction(supabase, { riderId }) {
+/** Best-effort-variant til POST /auctions: auktionen er allerede oprettet. */
+export async function safePauseTransferListingsForAuction(
+  supabase: Db,
+  { riderId }: { riderId: string | null | undefined },
+): Promise<{ paused: number; error?: string }> {
   try {
     return await pauseTransferListingsForAuction(supabase, { riderId });
   } catch (err) {
     captureException(err, { tags: { area: "auction_transfer_list_pause", step: "pause" } });
-    return { paused: 0, error: err.message };
+    return { paused: 0, error: errorMessage(err) };
   }
 }
 
-/**
- * Best-effort-variant til finalisering/annullering: auktionen er allerede lukket.
- * @param {any} supabase
- * @param {{ riderIds: string[] }} args
- */
-export async function safeResumePausedTransferListings(supabase, { riderIds }) {
+/** Best-effort-variant til finalisering/annullering: auktionen er allerede lukket. */
+export async function safeResumePausedTransferListings(
+  supabase: Db,
+  { riderIds }: { riderIds: ReadonlyArray<string | null | undefined> },
+): Promise<ResumeResult> {
   try {
     return await resumePausedTransferListings(supabase, { riderIds });
   } catch (err) {
     captureException(err, { tags: { area: "auction_transfer_list_pause", step: "resume" } });
-    return { resumed: [], withdrawn: [], kept: [], error: err.message };
+    return { resumed: [], withdrawn: [], kept: [], error: errorMessage(err) };
+  }
+}
+
+/** Best-effort-variant til auktions-cronen. */
+export async function safeReconcileOrphanPausedListings(supabase: Db): Promise<ResumeResult> {
+  try {
+    return await reconcileOrphanPausedListings(supabase);
+  } catch (err) {
+    captureException(err, { tags: { area: "auction_transfer_list_pause", step: "reconcile" } });
+    return { resumed: [], withdrawn: [], kept: [], error: errorMessage(err) };
   }
 }

@@ -438,7 +438,7 @@ admin-annullering) går den tilbage til `open`, hvis rytteren stadig står hos s
 ventende overgang og ikke er pensioneret; ellers `withdrawn`. Mens auktionen kører,
 afviser `POST /api/transfers` en ny listing (`rider_on_auction_listing`). Auktions-cronen
 afgør forladte pauser (ingen aktiv auktion). Gælder `POST /api/auctions`; graduerings-
-og ungdomsauktioner pauser ikke. Kode: `backend/lib/auctionTransferListPause.js`,
+og ungdomsauktioner pauser ikke. Kode: `backend/lib/auctionTransferListPause.ts`,
 migration `database/2026-11-03-4211-auction-transfer-list-pause.sql`.
 
 **Ejerskifte-loggen dækker alle udgange fra et hold (#6504).** Overgangen hold → intet hold

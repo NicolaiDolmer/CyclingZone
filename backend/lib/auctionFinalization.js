@@ -21,7 +21,7 @@ import { resolvePendingGraduationOnSale, resolveUnsoldGraduate } from "./academy
 import { applySeniorSquadFilter, seniorSquadPatch, academyPlacementSquad, squadCapRpcArgs, isYouthSquad } from "./squads.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
 import { buildRiderValueSnapshot, updateDealWithValueSnapshot } from "./dealValueSnapshot.js";
-import { safeReconcileOrphanPausedListings, safeResumePausedTransferListings } from "./auctionTransferListPause.js";
+import { safeReconcileOrphanPausedListings, safeResumePausedTransferListings } from "./auctionTransferListPause.ts";
 import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,

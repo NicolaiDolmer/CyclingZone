@@ -2,7 +2,7 @@
 // #4211 datareparation: ryttere der staar baade paa aktiv auktion og paa
 // transferlisten (invariant no_double_market_listing).
 //
-// Kodefixet (backend/lib/auctionTransferListPause.js) saetter fremover
+// Kodefixet (backend/lib/auctionTransferListPause.ts) saetter fremover
 // transferlisten paa pause ved auktionsstart og afgoer den ved auktionsslut.
 // Dette script rydder de raekker der opstod foer fixet:
 //
@@ -32,7 +32,7 @@ import {
   PAUSED_LISTING_STATUS,
   pauseTransferListingsForAuction,
   resumePausedTransferListings,
-} from "../backend/lib/auctionTransferListPause.js";
+} from "../backend/lib/auctionTransferListPause.ts";
 
 const ACTIVE_AUCTION_STATUSES = ["active", "extended"];
 

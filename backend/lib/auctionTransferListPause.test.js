@@ -12,7 +12,7 @@ import {
   safeReconcileOrphanPausedListings,
   safeResumePausedListingsForAuctionId,
   safeResumePausedTransferListings,
-} from "./auctionTransferListPause.js";
+} from "./auctionTransferListPause.ts";
 
 // Minimal in-memory supabase-fake: eq/in-filtre, update(...).select(), select().
 // Valgfri unik-regel paa transfer_listings (open/negotiating pr. rytter) som

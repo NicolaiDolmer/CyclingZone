@@ -73,7 +73,7 @@ import {
   finalizeAuctionById,
   finalizeExpiredAuctions as finalizeExpiredAuctionsShared,
 } from "../lib/auctionFinalization.js";
-import { getListingOnAuctionIssue, safePauseTransferListingsForAuction, safeResumePausedListingsForAuctionId } from "../lib/auctionTransferListPause.js";
+import { getListingOnAuctionIssue, safePauseTransferListingsForAuction, safeResumePausedListingsForAuctionId } from "../lib/auctionTransferListPause.ts";
 import {
   buildTransitionPlan,
   closePrevTransferWindow,

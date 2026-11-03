@@ -2,7 +2,7 @@
 --
 -- Ejer-regel 3/11: saettes en rytter paa auktion, fjernes den automatisk fra
 -- transferlisten imens; ender auktionen uden salg, er rytteren tilbage paa
--- transferlisten. Backend (backend/lib/auctionTransferListPause.js) saetter
+-- transferlisten. Backend (backend/lib/auctionTransferListPause.ts) saetter
 -- rytterens open/negotiating-listing til 'paused' ved auktionsstart og afgoer
 -- den ved auktionsslut ('open' igen, eller 'withdrawn' hvis rytteren er solgt).
 --
@@ -57,7 +57,7 @@ ALTER TABLE public.transfer_listings
   CHECK (status IN ('open', 'negotiating', 'sold', 'withdrawn', 'paused'));
 
 COMMENT ON COLUMN public.transfer_listings.status IS
-  '#4211: open | negotiating | sold | withdrawn | paused. paused = rytteren er paa aktiv auktion; listingen kommer tilbage (open) hvis auktionen ender uden salg. Kontrakt: backend/lib/auctionTransferListPause.js';
+  '#4211: open | negotiating | sold | withdrawn | paused. paused = rytteren er paa aktiv auktion; listingen kommer tilbage (open) hvis auktionen ender uden salg. Kontrakt: backend/lib/auctionTransferListPause.ts';
 
 COMMIT;
 
