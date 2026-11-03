@@ -141,11 +141,11 @@ test("#6912: uden kontakten er motoren bit-identisk; med kontakten deterministis
   for (const name of ["bjerg-selektion", "flat-massespurt", "mur-finale", "mellembjerg"]) {
     const input = fixture(name);
     for (const rules_revision of ["s5_profiles_v2", "s5_profiles_v3", "orders_gc_v3"] as const) {
-      const base = JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision }));
-      const nullFlag = JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision, breakaway_curve_6912: null }));
+      const base: string = JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision }));
+      const nullFlag: string = JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision, breakaway_curve_6912: null }));
       assert.equal(nullFlag, base, `${name} ${rules_revision}: null = udeladt`);
       if (rules_revision !== "s5_profiles_v3") {
-        const flagged = JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision, breakaway_curve_6912: true }));
+        const flagged: string = JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision, breakaway_curve_6912: true }));
         assert.equal(flagged, base, `${name} ${rules_revision}: kontakten virker kun under v3`);
       }
     }
