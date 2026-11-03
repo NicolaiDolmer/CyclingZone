@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { Section, SectionHeader, SectionAction, EmptyState, ClipboardIcon, ProgressMeter } from "../../components/ui";
+import { Section, SectionHeader, SectionAction, EmptyState, ClipboardIcon, ProgressMeter, SkeletonLines } from "../../components/ui";
+import { resolveMandateCardState } from "./mandateCardState.ts";
 import { endSentence, formatGoalValue, formatShortDate, resolveGoalTitle } from "./boardroomFormat.js";
 import { goalProgressPct } from "../../components/board/goalProgress.js";
 import { BonusOfferStripe, BonusAcceptedLine } from "./BonusOffer.jsx";
@@ -72,8 +73,19 @@ function GoalSummary({ goal, t }) {
   );
 }
 
-export default function MandateSummaryCard({ mandate, bonusOffer = null, proposedMeeting = null, onOpenMandate, onReload }) {
+export default function MandateSummaryCard({ mandate, bonusOffer = null, proposedMeeting = null, meetingLoaded = true, onOpenMandate, onReload }) {
   const { t } = useTranslation("board");
+  const cardState = resolveMandateCardState({ mandate, proposedMeeting, meetingLoaded });
+
+  // #7540 · Aarsmoedet indlaeses: vis kortets indlaesning, ikke tom-tilstanden.
+  if (cardState === "loading") {
+    return (
+      <Section>
+        <SectionHeader title={t("boardroom.mandate.cardTitleGeneric")} />
+        <SkeletonLines lines={2} />
+      </Section>
+    );
+  }
 
   // #5754 · Samme forslag som Mandat-fanens fulde kort (GET /board/meeting,
   // gemt af BoardroomPage som `proposedMeeting`) — resumeet paa overblikket
@@ -82,7 +94,7 @@ export default function MandateSummaryCard({ mandate, bonusOffer = null, propose
   // vilje: samme SectionHeader+action-anatomi som det underskrevne resumé
   // herunder, kun ét linje-skift i kroppen — det fulde forslag (maalene, "Enter
   // annual meeting") staar i Mandat-fanen, ét klik herfra.
-  if (!mandate && proposedMeeting?.available) {
+  if (cardState === "proposed") {
     return (
       <Section>
         <SectionHeader

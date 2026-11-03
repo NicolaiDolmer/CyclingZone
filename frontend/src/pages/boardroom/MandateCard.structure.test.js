@@ -106,7 +106,7 @@ test("#4557 mandate: bonustilbuddet i fuld laengde bor i Mandat-fanen, koblet ti
   assert.match(source, /import \{ BonusOfferBlock, BonusAcceptedLine \} from "\.\/BonusOffer\.jsx"/);
   assert.match(source, /<BonusOfferBlock offer=\{bonusOffer\}/);
   assert.match(source, /<BonusAcceptedLine offer=\{bonusOffer\}/);
-  assert.match(source, /export default function MandateCard\(\{ mandate, bonusOffer = null, bonusOfferProgress = null, passiveModifier = null, proposedMeeting = null, onReload \}\)/);
+  assert.match(source, /export default function MandateCard\(\{ mandate, bonusOffer = null, bonusOfferProgress = null, passiveModifier = null, proposedMeeting = null, meetingLoaded = true, onReload \}\)/);
 });
 
 test("#4557 mandate: 'Discuss target' er eksplicit disabled (no-op, årsmødet er S-M2c)", () => {

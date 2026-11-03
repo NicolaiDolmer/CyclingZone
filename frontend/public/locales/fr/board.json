@@ -1826,8 +1826,8 @@
         "weightedByPrefix": "Pondéré par {name}."
       },
       "empty": {
-        "title": "Aucun mandat signé pour l'instant",
-        "description": "La direction n'a pas signé le mandat de cette saison. Repasse après l'assemblée annuelle."
+        "title": "Pas encore de mandat",
+        "description": "Le mandat de la saison est présenté à l'assemblée annuelle."
       },
       "proposed": {
         "cardTitle": "Mandat proposé · S{season}",

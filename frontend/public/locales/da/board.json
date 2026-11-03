@@ -1826,8 +1826,8 @@
         "weightedByPrefix": "Vægtet af {name}."
       },
       "empty": {
-        "title": "Intet mandat underskrevet endnu",
-        "description": "Bestyrelsen har endnu ikke underskrevet denne sæsons mandat. Kig igen efter årsmødet."
+        "title": "Intet mandat endnu",
+        "description": "Mandatet for sæsonen bliver lagt frem på årsmødet."
       },
       "proposed": {
         "cardTitle": "Foreslået mandat · S{season}",

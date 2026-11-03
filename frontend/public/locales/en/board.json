@@ -1826,8 +1826,8 @@
         "weightedByPrefix": "Weighted by {name}."
       },
       "empty": {
-        "title": "No mandate signed yet",
-        "description": "The board has not signed this season's mandate. Check back after the annual meeting."
+        "title": "No mandate yet",
+        "description": "This season's mandate is presented at the annual meeting."
       },
       "proposed": {
         "cardTitle": "Proposed mandate · S{season}",

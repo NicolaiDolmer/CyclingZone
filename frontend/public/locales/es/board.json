@@ -1826,8 +1826,8 @@
         "weightedByPrefix": "Ponderado por {name}."
       },
       "empty": {
-        "title": "Aún no hay mandato firmado",
-        "description": "La directiva no ha firmado el mandato de esta temporada. Vuelve a mirar después de la junta anual."
+        "title": "Aún no hay mandato",
+        "description": "El mandato de la temporada se presenta en la junta anual."
       },
       "proposed": {
         "cardTitle": "Mandato propuesto · T{season}",
