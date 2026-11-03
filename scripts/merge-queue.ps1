@@ -820,8 +820,17 @@ function Test-MergeCommitMigration {
   param([string]$Sha)
   if ($Sha -notmatch '^[0-9a-f]{40}$') { return 'unknown' }
   try {
-    & git fetch --quiet origin main 2>$null | Out-Null
     & git cat-file -e "$Sha^{commit}" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+      # Hent kun netop dette commit, aldrig interaktivt og aldrig uden loft (en prompt eller
+      # en haengende forbindelse maa ikke haenge koeen). GCM's GUI-prompt stoppes ogsaa.
+      $oldPrompt = $env:GIT_TERMINAL_PROMPT
+      $env:GIT_TERMINAL_PROMPT = '0'
+      try {
+        & git -c credential.interactive=never -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=30 fetch --quiet --no-tags origin $Sha 2>$null | Out-Null
+      } finally { $env:GIT_TERMINAL_PROMPT = $oldPrompt }
+      & git cat-file -e "$Sha^{commit}" 2>$null
+    }
     if ($LASTEXITCODE -ne 0) { return 'unknown' }
     $paths = @(& git diff-tree --no-commit-id --name-only --no-renames -r --root $Sha 2>$null)
     if ($LASTEXITCODE -ne 0) { return 'unknown' }
