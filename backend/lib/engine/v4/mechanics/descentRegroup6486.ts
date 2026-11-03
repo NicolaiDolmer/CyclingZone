@@ -29,6 +29,7 @@
 //
 // REN: ingen IO, ingen rng. Returnerer samme Map naar intet aendres.
 import type { ProfileType, RaceGroup, Segment, SegmentKind } from "../types.ts";
+import { QUEEN_STAGE_GAP_7236_TUNING } from "../tuning.ts"; // #7236
 
 const deepFreeze = <T>(value: T): T => {
   if (value && typeof value === "object") {
@@ -68,6 +69,36 @@ export const DESCENT_REGROUP_6486_TUNING: DescentRegroup6486Tuning = deepFreeze(
   stepKm: 1,
   maxSpeedGainShare: 0.15,
 });
+
+/**
+ * #7236 (KUN kontakten queen_stage_gap_7236, SLUKKET): paa en bjergetape med kort vej fra
+ * sidste top til maal lukker grupperne lidt hurtigere og fra lidt laengere bag, saa
+ * favoritterne der kom over toppen under loftet (climbSelection.queenStageTopCap7236) kan
+ * samles paa nedkoerslen. Resten af reglen er #6486's. Kalibreret privat (balance-internals/7236/).
+ */
+export const DESCENT_REGROUP_7236_TUNING: DescentRegroup6486Tuning = deepFreeze({
+  ...DESCENT_REGROUP_6486_TUNING,
+  reachSeconds: 160,
+  secondsPerKmByKind: { descent: 4, flat: 5, rolling: 4 },
+});
+
+/**
+ * #7236: regrupperingens tuning paa ruten. Kontakten slukket, eller lang vej fra sidste
+ * top til maal: #6486's egen (samme objekt, bit-identisk). Ellers DESCENT_REGROUP_7236_TUNING.
+ */
+export function descentRegroupTuning7236(
+  on: boolean,
+  route: { distance_km?: number; segments: readonly (Pick<Segment, "kind"> & Partial<Pick<Segment, "to_km">>)[] },
+  maxTopToFinishKm: number = QUEEN_STAGE_GAP_7236_TUNING.maxTopToFinishKm,
+): DescentRegroup6486Tuning {
+  if (!on) return DESCENT_REGROUP_6486_TUNING;
+  const segs = route.segments ?? [];
+  const last = lastClimbIndex(segs);
+  const topKm = last >= 0 ? segs[last].to_km : undefined;
+  const finishKm = Number.isFinite(route.distance_km) ? route.distance_km : segs[segs.length - 1]?.to_km;
+  if (!Number.isFinite(topKm) || !Number.isFinite(finishKm)) return DESCENT_REGROUP_6486_TUNING;
+  return (finishKm as number) - (topKm as number) < maxTopToFinishKm ? DESCENT_REGROUP_7236_TUNING : DESCENT_REGROUP_6486_TUNING;
+}
 
 /** Indekset for etapens sidste stigning, eller -1. */
 function lastClimbIndex(segments: readonly Pick<Segment, "kind">[]): number {
