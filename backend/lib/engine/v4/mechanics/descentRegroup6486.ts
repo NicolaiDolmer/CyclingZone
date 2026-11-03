@@ -1,5 +1,5 @@
 // backend/lib/engine/v4/mechanics/descentRegroup6486.ts
-// #6486 D3 (afgjort D1, motor; KUN s5_profiles_v3, SLUKKET): paa en bjergetape
+// #6486 D3 (afgjort D1, motor; KUN s5_profiles_v3, live under den aktuelle revision): paa en bjergetape
 // uden topankomst kan grupperne samle sig paa vejen fra sidste top til maal.
 //
 // Problemet: under official_times_v3/v4 staar hullet ved sidste top naesten

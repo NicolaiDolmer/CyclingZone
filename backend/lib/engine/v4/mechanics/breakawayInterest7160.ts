@@ -1,5 +1,5 @@
 // backend/lib/engine/v4/mechanics/breakawayInterest7160.ts
-// #7160 (KUN s5_profiles_v3, SLUKKET): favoritholdene lader et ufarligt udbrud gaa paa bjerg.
+// #7160 (KUN s5_profiles_v3, live under den aktuelle revision): favoritholdene lader et ufarligt udbrud gaa paa bjerg.
 //
 // Virkeligheden (Touren og Giroen 2023-2024): udbruddet vinder klart flere bjergetaper end i
 // spillet (maalingen er privat, balance-internals/6804-tilvalg/). Retning (ejer 25/10): i et

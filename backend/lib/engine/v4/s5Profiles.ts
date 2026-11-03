@@ -1,6 +1,6 @@
 // backend/lib/engine/v4/s5Profiles.ts
 // #6363 (Spor 2, epic #6369): S5-etapeprofilernes motor bag regel-revisionen
-// s5_profiles_v1 (SLUKKET, taendes kun paa ejerens ordrette go).
+// s5_profiles_v1 og senere (live: den aktuelle revision s5_profiles_v3 bygger paa den).
 // Spec: docs/superpowers/specs/2026-10-12-s5-etapeprofiler-design.md §1-§5.
 //
 // Ét sted bestemmer hvordan S5-ordforraadet (medium_mountain, flat_sprint,
@@ -152,7 +152,7 @@ export function isS5ExplosiveFinaleClimb(route: Pick<RouteV2, "finale_type" | "s
  * waypoints kan mangle.
  */
 export function priorCategorizedClimbs(route: Pick<RouteV2, "distance_km" | "segments">): number {
-  const segs = finalKmUndivided7383(route.segments)?.segments ?? route.segments; // #7383 (slukket): den udelte stigning afgoer
+  const segs = finalKmUndivided7383(route.segments)?.segments ?? route.segments; // #7383 (KUN s5_profiles_v3): den udelte stigning afgoer
   const finishKm = Number.isFinite(route.distance_km) && route.distance_km > 0
     ? route.distance_km
     : segs[segs.length - 1]?.to_km ?? 0;
