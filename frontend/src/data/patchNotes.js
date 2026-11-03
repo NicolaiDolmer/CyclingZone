@@ -195,6 +195,23 @@ export const PATCHES = [
         "category": "fixed",
         "audience": "player",
         "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "First progress shows on the receipt",
+          "body": "Training receipts now show a rider's first progress in an ability, instead of saying the details are unavailable."
+        },
+        "da": {
+          "title": "Første fremgang vises på kvitteringen",
+          "body": "Træningskvitteringen viser nu en rytters første fremgang i en evne i stedet for at sige, at detaljerne mangler."
+        },
+        "refs": [
+          6971
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
         "topic": "Interface",
         "en": {
           "title": "Patch notes counts and dates",
