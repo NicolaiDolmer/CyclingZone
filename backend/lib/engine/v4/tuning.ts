@@ -1723,13 +1723,19 @@ export const S5_V3_GC_LEASH_7258_TUNING = deepFreeze({
 // hard rule 17); ingen tal i kommentarer. Loftet er uaendret og staar som noedgraense.
 export const BREAKAWAY_CURVE_6912_TUNING = deepFreeze({
   profileTypes: ["flat", "mountain", "high_mountain"] as readonly ProfileType[],
+  // Kun her har styringen en overgraense (fangsten flyttes til finalen). Paa bjerg lukker holdene selv.
+  upperBoundProfiles: ["flat", "rolling"] as readonly ProfileType[],
+  // Under styringen loeftes daempningen af jagten foer finalestigningen til (mindst) denne skala
+  // pr. profil (mountainSelection.ts). Udeladt = ingen loeftning.
+  liftedPreFinalChaseClosingScaleByProfile: { mountain: 0.8, high_mountain: 0.35 } as Partial<Record<ProfileType, number>>,
   // Toppen = denne andel af loftet pr. profil (udeladt = loftet).
   peakShareOfCeilingByProfile: { flat: 0.85, mountain: 0.9, high_mountain: 1 } as Partial<Record<ProfileType, number>>,
-  growthKnee: 0.7, // kurvens knae: lavere = hurtigere mod toppen
+  growthKnee: 0.5, // kurvens knae: lavere = hurtigere mod toppen
   topShare: 0.9, // lad-gaa-fasen slutter, naar kurven har naaet denne andel af toppen
+  topShareByProfile: { mountain: 0.97, high_mountain: 0.97 } as Partial<Record<ProfileType, number>>, // profilens egen andel (udeladt = topShare)
   declineShape: 1, // maalets fald fra toppen mod finalen (1 = jaevnt med resterende km)
-  finishTargetSecondsByProfile: { flat: 0, mountain: 120, high_mountain: 120 } as Partial<Record<ProfileType, number>>,
+  finishTargetSecondsByProfile: { flat: 0, mountain: 180, high_mountain: 240 } as Partial<Record<ProfileType, number>>,
   catchKmBeforeFinishByProfile: { flat: 10 } as Partial<Record<ProfileType, number>>, // maalet naas saa langt foer stregen
-  climbLossSecondsPerGradientKm: 4, // forventet tab pr. stignings-km pr. procent
+  climbLossSecondsPerGradientKm: 2, // forventet tab pr. stignings-km pr. procent paa finalestigningen
   maxControlClosingSecondsPerKm: 25, // hoejeste lukning pr. km under styringen
 });

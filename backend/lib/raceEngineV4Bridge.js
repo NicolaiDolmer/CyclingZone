@@ -557,6 +557,20 @@ export function withS5ThreatModel(gcContext, startlist) {
 }
 
 /**
+ * #6912 (KUN med forspringskurven): marker team_tactics-ordren for hold hvis manager selv har
+ * gemt stancen "chase" for etapen (samme raekke som ordre-adapteren laegger ovenpaa: sidste
+ * raekke pr. hold for etapen). Ny liste; input muteres ikke. Parameternavnet er
+ * breakawayCurve6912.ts's MANAGER_CHASE_6912_PARAM.
+ */
+export function withManagerChase6912(orders, teamOrderRows, stageNumber) {
+  const rowByTeam = new Map();
+  for (const row of teamOrderRows ?? []) if (row && row.stage_number === stageNumber) rowByTeam.set(String(row.team_id), row);
+  const teams = new Set([...rowByTeam].filter(([, row]) => row.breakaway_stance === "chase").map(([teamId]) => teamId));
+  if (teams.size === 0) return orders;
+  return orders.map((o) => (o.kind === "team_tactics" && teams.has(String(o.team_id)) ? { ...o, params: { ...(o.params ?? {}), manager_chase_6912: true } } : o));
+}
+
+/**
  * Byg v4's StageInput af PRÆCIS de data raceRunner allerede har i hånden.
  * REN: ingen DB-kald (kaldstedet henter etape-rækken og ordre-rækkerne).
  *
@@ -637,7 +651,11 @@ export function buildV4StageInput({
     peakDay: isS5ProfilesV2OrLater(rulesRevision) && formPeaks ? (stageProfile?.peakDay ?? null) : null,
     roleOverrideByRider: plan.aiRoleByRider ?? null,
   });
-  const input = { route, startlist, orders: plan.orders, seed: seedString, tuning: modules.tuning.RACE_V4_TUNING };
+  // #6912 (KUN s5_profiles_v3 + kontakten, SLUKKET): en spillers gemte jag-ordre markeres, saa
+  // forspringskurven kun begraenser den automatiske jagt (breakawayCurve6912.ts MANAGER_CHASE_6912_PARAM).
+  const curve6912 = breakawayCurve6912 === true && isOrdersGcRulesRevision(rulesRevision) && isS5ProfilesV3OrLater(rulesRevision);
+  const orders = curve6912 ? withManagerChase6912(plan.orders, teamOrderRows, stageNumber) : plan.orders;
+  const input = { route, startlist, orders, seed: seedString, tuning: modules.tuning.RACE_V4_TUNING };
   // Ejer 28/9: kun ungdomsloeb baerer truppen; seniorens input er uaendret.
   if (squad === "u23" || squad === "junior") input.squad = squad;
   // #5914: kun naar der ER en foerer — et input uden foerere er uaendret.
@@ -654,7 +672,7 @@ export function buildV4StageInput({
     // (dayForm6649Flag.js); vaerdien er med i run-identiteten og #1857-genafspilningen.
     if (dayForm6649 === true && isS5ProfilesV3OrLater(rulesRevision)) input.day_form_6649 = true;
     // #6912 (KUN s5_profiles_v3, SLUKKET): forspringskurven; kun naar kalderen eksplicit sender breakawayCurve6912=true (testporten).
-    if (breakawayCurve6912 === true && isS5ProfilesV3OrLater(rulesRevision)) input.breakaway_curve_6912 = true;
+    if (curve6912) input.breakaway_curve_6912 = true;
     // #5978: GC-konteksten bæres KUN under orders_gc_v1 (legacy-input uændret).
     input.gc_context = buildGcContext({
       isStageRace,

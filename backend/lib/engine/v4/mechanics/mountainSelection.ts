@@ -145,10 +145,11 @@ export function phaseLetGoMaxGapScale(
 
 /**
  * #6912 (KUN kontakten breakawayCurve6912): under forspringskurvens styring lukker de
- * interesserede hold selv, saa daempningen foer finalestigningen loeftes. Ellers uaendret.
+ * interesserede hold selv, saa daempningen foer finalestigningen loeftes til `lifted`
+ * (aldrig lavere end foer). Ellers uaendret.
  */
-export function preFinalChaseClosingScale6912(preFinal: number, curveControl: boolean): number {
-  return curveControl ? Math.max(preFinal, 1) : preFinal;
+export function preFinalChaseClosingScale6912(preFinal: number, curveControl: boolean, lifted: number = 1): number {
+  return curveControl ? Math.max(preFinal, lifted) : preFinal;
 }
 
 /**
