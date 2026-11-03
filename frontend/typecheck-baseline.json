@@ -2133,9 +2133,6 @@
     "TS2345": 2,
     "TS2740": 7
   },
-  "src/lib/upcomingRaces.test.js": {
-    "TS2345": 5
-  },
   "src/lib/useAcademy.js": {
     "TS2339": 24,
     "TS2345": 2
