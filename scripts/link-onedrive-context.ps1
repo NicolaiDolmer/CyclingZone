@@ -374,7 +374,11 @@ $localFolderPairs = @(
   @{ Path = "docs\drafts\local";    Source = "docs-drafts" },
   @{ Path = "pr-screens\local";     Source = "pr-screens" },
   @{ Path = "docs\snapshots\local"; Source = "docs-snapshots" },
-  @{ Path = ".codex.local\shared";  Source = "codex-local" }
+  @{ Path = ".codex.local\shared";  Source = "codex-local" },
+  # Private balance-tal/designs (hard rule 17, gitignoreret). Ligger i
+  # CyclingZone-context\balance-internals (ikke repo-local), saa begge PC'er
+  # deler samme mappe (ejer-go 3/11).
+  @{ Path = "balance-internals";    Source = "..\balance-internals" }
 )
 
 function Get-FileHashOrNull($path) {
