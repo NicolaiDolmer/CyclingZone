@@ -28,3 +28,8 @@ test('finite spread-backed event maps preserve property override order', () => {
   ]) assert.ok(lintEvents(source).length,source);
   assert.deepEqual(lintEvents('const base={event:"blur-sm"}; const names={...base,event:"blur"}; window.addEventListener(names.event,h)'), []);
 });
+
+test('unknown computed event-map keys inspect reachable values', () => {
+  assert.ok(lintEvents('const base={event:"blur-sm"}; const names={...base}; window.addEventListener(names[k],h)').length);
+  assert.deepEqual(lintEvents('const base={event:"blur-sm"}; const names={...base,event:"blur"}; window.addEventListener(names[k],h)'), []);
+});

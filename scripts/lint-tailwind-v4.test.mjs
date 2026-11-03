@@ -84,3 +84,22 @@ test('finite object spreads preserve member values, lexical scope and override o
   assert.ok(lintClasses('const base={ring:true}; clsx({ring:false,...base})').some(f=>f.token==='ring'));
   assert.doesNotThrow(()=>lintClasses('const cycle={...cycle}; const view=<div className={cycle.soft}/>'));
 });
+
+test('unknown computed class-map keys inspect every reachable property value', () => {
+  for (const source of [
+    'const variantClasses={primary:"shadow ring"}; const view=<div className={variantClasses[v]}/>',
+    'const styles={primary:"ring",safe:"block"}; const view=<div className={styles[v]}/>',
+    'const m={primary:"ring"}; cn(m[v])',
+    'const m={primary:"ring"}; const alias=m; const view=<div className={alias?.[v]}/>',
+    'const base={primary:"ring"}; const styles={...base}; const view=<div className={styles[v]}/>',
+    'const token="ring"; const base={primary:token}; function View(){const token="block";const styles={...base};return <div className={styles[v]}/>}',
+    'const styles={primary:"ring",safe:"block"}; const view=<div className={styles[flag?"safe":v]}/>',
+    'const styles={[v]:"ring"}; const view=<div className={styles[k]}/>',
+  ]) assert.ok(lintClasses(source).some(f=>f.token==='ring'), source);
+  for (const source of [
+    'const base={primary:"ring"}; const styles={...base,primary:"block"}; const view=<div className={styles[v]}/>',
+    'const styles={primary:"block",secondary:"ring-2"}; const view=<div className={styles[v]}/>',
+    'const styles={primary:"ring"}; function View(styles){return <div className={styles[v]}/>}',
+    'const flags={block:"ring",ring:false}; cn(flags)',
+  ]) assert.deepEqual(lintClasses(source), [], source);
+});

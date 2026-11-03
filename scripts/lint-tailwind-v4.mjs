@@ -139,9 +139,12 @@ export function values(node, ancestors = [], seen = new Set()) {
     }
     case 'MemberExpression': case 'OptionalMemberExpression': {
       const keys = node.computed ? read(node.property) : [memberName(node.property)];
-      const members = objectMembers(node.object, ancestors, next, keys);
+      // An unknown computed key may select any own property. Resolve the
+      // complete finite map instead of projecting the UNKNOWN placeholder.
+      const unknownKey = keys.some(key => key.includes(UNKNOWN));
+      const members = objectMembers(node.object, ancestors, next, unknownKey ? null : keys);
       const result = [];
-      for (const key of keys) {
+      for (const key of unknownKey ? members.keys() : keys) {
         const candidates = members.get(key)?.candidates ?? [{node: null, ancestors}];
         for (const candidate of candidates) {
           result.push(...values(candidate.node, candidate.ancestors, next));
