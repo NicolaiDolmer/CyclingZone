@@ -1,5 +1,45 @@
 export const PATCHES = [
   {
+    "version": "7.397",
+    "date": "2026-11-03",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "No half teams on race day",
+          "body": "When your riders are tied up in a stage race, the assistant no longer puts 1 to 5 riders into a race that cannot start. The race day warning now counts those riders as busy, so you get it in time."
+        },
+        "da": {
+          "title": "Ingen halve hold på løbsdagen",
+          "body": "Når dine ryttere er bundet i et etapeløb, sætter assistenten ikke længere 1 til 5 ryttere på et løb, der ikke kan starte. Advarslen før løbsdagen tæller nu de ryttere som optaget, så du får den i tide."
+        },
+        "refs": [
+          7339
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Auctions",
+        "en": {
+          "title": "Auction pauses the transfer list",
+          "body": "When you put a rider up for auction, he leaves the transfer list while the auction runs. If he does not sell, he is back on the list at the same price. While he is on auction, you cannot list him."
+        },
+        "da": {
+          "title": "Auktion sætter transferlisten på pause",
+          "body": "Sætter du en rytter på auktion, forlader han transferlisten, mens auktionen kører. Bliver han ikke solgt, er han tilbage på listen til samme pris. Mens han er på auktion, kan du ikke sætte ham til salg."
+        },
+        "refs": [
+          4211
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.396",
     "date": "2026-11-03",
     "changes": [
