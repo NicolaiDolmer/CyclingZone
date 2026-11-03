@@ -36,6 +36,23 @@ export const PATCHES = [
         "refs": [
           4211
         ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "Better starter riders for new teams",
+          "body": "New teams no longer get starter riders with one strong skill and the rest stuck at 1. Their skills keep their shape, and the team is just as strong at the start. When two roles score the same, a rider's best role now follows his natural type, also for riders you already have. No rating changes."
+        },
+        "da": {
+          "title": "Bedre startryttere til nye hold",
+          "body": "Nye hold får ikke længere startryttere med én stærk evne og resten på 1. Evnerne beholder deres form, og holdet er lige så stærkt fra start. Når to roller står lige, følger rytterens bedste rolle nu hans naturlige type, også for ryttere du allerede har. Ingen rating ændres."
+        },
+        "refs": [
+          7560
+        ]
       }
     ]
   },
