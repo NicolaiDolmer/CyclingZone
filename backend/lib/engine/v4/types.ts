@@ -228,6 +228,8 @@ export type StageInput = {
   // (mechanics/gcThreat.ts); legacy ignorerer feltet helt. Udeladt under
   // orders_gc_v1 = "missing" (aerlig diagnose, aldrig et opdigtet nul-hul).
   gc_context?: GcContext | null;
+  // #7236 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): loft paa favoritgabet over sidste top paa bjerg med kort nedkoersel. Udeladt = som foer.
+  queen_stage_gap_7236?: true | null;
   // #6649 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + app_config day_form_6649): dagsformen med forklaring
   // (mechanics/dayForm6649.ts). Broen saetter feltet kun naar kalderen eksplicit sender
   // dayForm6649=true (raceRunner: kun ved app_config day_form_6649 = "on"). Udeladt = den gamle dagsform.
@@ -654,6 +656,8 @@ export type RiderState = {
 };
 
 export type EngineState = {
+  /** #7236 (KUN kontakten queen_stage_gap_7236): topgabets loft greb paa denne etape. Udeladt = som foer. */
+  queen_cap_7236?: true;
   /** Cohort lineage is internal; it does not rename film groups. */
   shared_grupetto_groups?: Readonly<Record<string, true>>;
   km: number; // cursor, km allerede tilbagelagt
@@ -796,6 +800,8 @@ export type SegmentHookContext = {
   s5ProfilesV1?: true;
   // #6748 (ADDITIVT og VALGFRIT, s5_profiles_v2 og senere): udbrudsopfoelgningen. Udeladt = v1.
   s5ProfilesV2?: true;
+  // #7236 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + StageInput.queen_stage_gap_7236, SLUKKET): topgabets loft. Udeladt = som foer.
+  queenStageGap7236?: true;
   // s5_profiles_v3 er den aktuelle revision, saa de tre v3-tilvalg herunder er live.
   // #6804 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3): udbrudspakken trin 2 (breakawayV3_6804.ts). Udeladt = v2.
   // #6938 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3): v3-tilvalgene (styrt-udgang pr. terraen). Udeladt = v2.

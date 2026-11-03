@@ -614,6 +614,8 @@ function simulate({ v4, data, stages, profile, entrants, revision, gcStandings, 
     entrants, stageProfile: profile, seedString: `${data.race.id}:${profile.stage_number}:${seedTag}`, stageNumber: profile.stage_number,
     teamOrderRows: orders ?? data.orders, isStageRace: stages.length > 1, raceStages: stages, squad: data.race.squad ?? null,
     rulesRevision: revision, gcStandings, jerseyLeaders, // #5914/#6937: troejefoererne som i raceRunner
+    // #7236: topgabets loft er slukket i spillet; kun maalingen taender det (CZ_QUEEN_STAGE_GAP_7236=1).
+    ...(process.env.CZ_QUEEN_STAGE_GAP_7236 === "1" ? { queenStageGap7236: true } : {}),
     // #6649: dagsformen er slukket i spillet; kun maalingen taender den (CZ_DAY_FORM_6649=1).
     ...(process.env.CZ_DAY_FORM_6649 === "1" ? { dayForm6649: true } : {}),
   });
