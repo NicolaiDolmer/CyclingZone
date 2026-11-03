@@ -68,7 +68,7 @@ import {
   getSwapAuctionConflict,
   getTransferAuctionConflict,
   isExpectedPriceStale,
-} from "../lib/auctionRules.js";
+} from "../lib/auctionRules.ts";
 import {
   finalizeAuctionById,
   finalizeExpiredAuctions as finalizeExpiredAuctionsShared,

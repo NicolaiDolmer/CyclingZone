@@ -1,5 +1,38 @@
 import { SQUAD_FINE_AMOUNT, SQUAD_PENALTY_POINTS } from "./squadEnforcement.js";
 
+type NumericInput = number | string | null | undefined;
+type OptionalId = string | null | undefined;
+
+type AuctionRider = {
+  is_retired?: boolean | null;
+  is_academy?: boolean | null;
+  team_id?: OptionalId;
+  pending_team_id?: OptionalId;
+};
+
+type TeamSquadState = {
+  squad_limits?: { max?: number | null } | null;
+  future_count?: number | null;
+  total_count?: number | null;
+};
+
+type SquadBidOptions = {
+  teamState?: TeamSquadState | null;
+  activeLeadingCount?: number;
+  alreadyLeadingThisAuction?: boolean;
+};
+
+type LeadingAuction = { id: string; current_price?: NumericInput };
+type AuctionProxy = { auction_id?: OptionalId; max_amount?: NumericInput };
+type SquadBidWarning = {
+  code: "squad_capacity_exceeded";
+  totalAfter: number;
+  maxRiders: number;
+  exceedBy: number;
+  finePerRider: number;
+  penaltyPointsPerRider: number;
+};
+
 // Hard block: ny auktion på rytter der har vundet en tidligere auktion og
 // afventer overførsel (pending_team_id sat). Uden denne gate kunne enhver
 // re-auktionere en rytter der allerede er på vej til et andet hold —
@@ -9,7 +42,10 @@ import { SQUAD_FINE_AMOUNT, SQUAD_PENALTY_POINTS } from "./squadEnforcement.js";
 //
 // Rammer alle managers (også winneren selv) — rytteren er ikke fysisk på noget
 // hold endnu og kan ikke sælges videre før transfervinduet flusher pending → team_id.
-export function getAuctionStartIssue({ rider, requestingTeamId } = {}) {
+export function getAuctionStartIssue({
+  rider,
+  requestingTeamId,
+}: { rider?: AuctionRider | null; requestingTeamId?: OptionalId } = {}) {
   if (rider?.is_retired) {
     return { code: "rider_retired" };
   }
@@ -50,6 +86,10 @@ export function getSwapAuctionConflict({
   offeredRiderId,
   requestedRiderId,
   activeAuctionRiderIds = [],
+}: {
+  offeredRiderId?: OptionalId;
+  requestedRiderId?: OptionalId;
+  activeAuctionRiderIds?: readonly string[];
 } = {}) {
   const active = new Set(activeAuctionRiderIds);
   if (offeredRiderId && active.has(offeredRiderId)) {
@@ -71,7 +111,7 @@ export function getSwapAuctionConflict({
 export function getTransferAuctionConflict({
   riderId,
   activeAuctionRiderIds = [],
-} = {}) {
+}: { riderId?: OptionalId; activeAuctionRiderIds?: readonly string[] } = {}) {
   if (riderId && new Set(activeAuctionRiderIds).has(riderId)) {
     return { code: "rider_on_auction" };
   }
@@ -90,7 +130,7 @@ export function getTransferAuctionConflict({
 export function getReleaseAuctionConflict({
   riderId,
   activeAuctionRiderIds = [],
-} = {}) {
+}: { riderId?: OptionalId; activeAuctionRiderIds?: readonly string[] } = {}) {
   if (riderId && new Set(activeAuctionRiderIds).has(riderId)) {
     return { code: "rider_on_auction" };
   }
@@ -105,7 +145,7 @@ export function getReleaseAuctionConflict({
 export function getAuctionStartSwapIssue({
   riderId,
   openSwapOfferedRiderIds = [],
-} = {}) {
+}: { riderId?: OptionalId; openSwapOfferedRiderIds?: readonly string[] } = {}) {
   if (riderId && new Set(openSwapOfferedRiderIds).has(riderId)) {
     return { code: "rider_in_open_swap" };
   }
@@ -117,7 +157,11 @@ export function getAuctionStartSwapIssue({
 //   ingen kunstig inflation over rytterens Værdi).
 // - AI/fri rytter: pris skal mindst matche Værdi (markedsgulv mod low-balling).
 // Tom/udeladt pris = intet issue (route defaulter til Værdi).
-export function getAuctionStartPriceIssue({ startingPrice, riderValue, isOwnRider = false } = {}) {
+export function getAuctionStartPriceIssue({
+  startingPrice,
+  riderValue,
+  isOwnRider = false,
+}: { startingPrice?: NumericInput; riderValue?: NumericInput; isOwnRider?: boolean } = {}) {
   if (startingPrice === null || startingPrice === undefined || startingPrice === "") {
     return null;
   }
@@ -138,7 +182,10 @@ export function getAuctionStartPriceIssue({ startingPrice, riderValue, isOwnRide
 
 // Min-step = +1 CZ$ over current price når der allerede er bud.
 // Hvis ingen har budt endnu (asking-price på egen-rytter-salg), tillad match-bud.
-export function getMinimumAuctionBid(currentPrice, { hasActiveBid = true } = {}) {
+export function getMinimumAuctionBid(
+  currentPrice: NumericInput,
+  { hasActiveBid = true }: { hasActiveBid?: boolean } = {}
+) {
   const price = Number(currentPrice) || 0;
   return hasActiveBid ? price + 1 : price;
 }
@@ -146,7 +193,7 @@ export function getMinimumAuctionBid(currentPrice, { hasActiveBid = true } = {})
 export function getAuctionInitialBidderId({
   riderTeamId,
   managerTeamId,
-} = {}) {
+}: { riderTeamId?: OptionalId; managerTeamId?: OptionalId } = {}) {
   if (!managerTeamId || riderTeamId === managerTeamId) {
     return null;
   }
@@ -170,6 +217,13 @@ export function getAuctionBidIssue({
   currentBidderId = null,
   teamBalance,
   reservedBalance = 0,
+}: {
+  amount?: NumericInput;
+  proxyMax?: NumericInput;
+  currentPrice?: NumericInput;
+  currentBidderId?: OptionalId;
+  teamBalance?: NumericInput;
+  reservedBalance?: number;
 } = {}) {
   const numericAmount = Number(amount);
   const minimumBid = getMinimumAuctionBid(currentPrice, {
@@ -200,6 +254,12 @@ export function getProxyMaxIssue({
   isLeading = false,
   teamBalance,
   otherCommitment = 0,
+}: {
+  proxyMax?: NumericInput;
+  currentPrice?: NumericInput;
+  isLeading?: boolean;
+  teamBalance?: NumericInput;
+  otherCommitment?: NumericInput;
 } = {}) {
   const numericMax = Number(proxyMax);
   if (!Number.isFinite(numericMax) || numericMax <= 0) {
@@ -231,6 +291,11 @@ export function getProxyOpeningBidAmount({
   currentPrice,
   currentBidderId = null,
   isLeading = false,
+}: {
+  proxyMax?: NumericInput;
+  currentPrice?: NumericInput;
+  currentBidderId?: OptionalId;
+  isLeading?: boolean;
 } = {}) {
   if (isLeading) return null;
 
@@ -250,6 +315,11 @@ export function getProxyOpeningBidAmount({
 export function computeReservedBalance({
   leadingAuctions = [],
   proxiesByAuctionId = {},
+}: {
+  leadingAuctions?: readonly LeadingAuction[];
+  proxiesByAuctionId?: Readonly<
+    Record<string, Pick<AuctionProxy, "max_amount"> | null | undefined>
+  >;
 } = {}) {
   return leadingAuctions.reduce((sum, row) => {
     const currentPrice = Number(row.current_price) || 0;
@@ -271,15 +341,18 @@ export function computeReservedBalance({
 export function computeWorstCaseCommitment({
   leadingAuctions = [],
   allMyProxies = [],
+}: {
+  leadingAuctions?: readonly (Partial<LeadingAuction> | null | undefined)[];
+  allMyProxies?: readonly (AuctionProxy | null | undefined)[];
 } = {}) {
-  const proxyByAuctionId = new Map();
+  const proxyByAuctionId = new Map<string, number>();
   for (const proxy of allMyProxies) {
     if (proxy?.auction_id != null) {
       proxyByAuctionId.set(proxy.auction_id, Number(proxy.max_amount) || 0);
     }
   }
 
-  const seenAuctionIds = new Set();
+  const seenAuctionIds = new Set<string>();
   let total = 0;
 
   for (const auction of leadingAuctions) {
@@ -302,7 +375,13 @@ export function computeWorstCaseCommitment({
 // Available balance = balance - worst-case commitment, klampet til 0.
 // "Hvor mange penge kan jeg bruge på en ny ting uden at bryde mine eksisterende
 // auktions-forpligtelser?"
-export function computeAvailableBalance({ teamBalance, commitment }) {
+export function computeAvailableBalance({
+  teamBalance,
+  commitment,
+}: {
+  teamBalance?: NumericInput;
+  commitment?: NumericInput;
+}) {
   const balance = Number(teamBalance) || 0;
   const reserved = Number(commitment) || 0;
   return Math.max(0, balance - reserved);
@@ -315,7 +394,7 @@ export function getSpendIssue({
   teamBalance,
   commitment,
   attemptedSpend,
-} = {}) {
+}: { teamBalance?: NumericInput; commitment?: NumericInput; attemptedSpend?: NumericInput } = {}) {
   const available = computeAvailableBalance({ teamBalance, commitment });
   const spend = Number(attemptedSpend) || 0;
   if (spend > available) {
@@ -327,7 +406,7 @@ export function getSpendIssue({
 // #194 race-confirm: returner true hvis frontend's expected_current_price ikke
 // matcher det server lige har læst. Undefined/null/non-numeric = ingen check
 // (bagudkompat med ældre clients der ikke sender feltet — first-commit-wins som før).
-export function isExpectedPriceStale(expectedPrice, currentPrice) {
+export function isExpectedPriceStale(expectedPrice: NumericInput, currentPrice: NumericInput) {
   if (expectedPrice === undefined || expectedPrice === null) return false;
   const expected = Number(expectedPrice);
   if (!Number.isFinite(expected)) return false;
@@ -359,14 +438,12 @@ export function getAuctionBidSquadBlock({
   teamState,
   activeLeadingCount = 0,
   alreadyLeadingThisAuction = false,
-} = {}) {
+}: SquadBidOptions = {}) {
   const maxRiders = teamState?.squad_limits?.max;
   if (!maxRiders) return null;
 
   const baseCount = teamState?.future_count ?? teamState?.total_count ?? 0;
-  const reservedWins = alreadyLeadingThisAuction
-    ? activeLeadingCount
-    : activeLeadingCount + 1;
+  const reservedWins = alreadyLeadingThisAuction ? activeLeadingCount : activeLeadingCount + 1;
   const projected = baseCount + reservedWins;
 
   if (projected > maxRiders) {
@@ -391,6 +468,10 @@ export function getAuctionBidRoomBlock({
   academySlots,
   activeLeadingCount = 0,
   alreadyLeadingThisAuction = false,
+}: SquadBidOptions & {
+  isYouth?: boolean;
+  academyCount?: number;
+  academySlots?: number | null;
 } = {}) {
   const seniorBlock = getAuctionBidSquadBlock({
     teamState,
@@ -403,7 +484,7 @@ export function getAuctionBidRoomBlock({
   }
 
   // Youth: en fuld senior-trup blokerer kun hvis akademiet OGSÅ er fuldt.
-  const academyFull = Number.isFinite(academySlots) && academyCount >= academySlots;
+  const academyFull = Number.isFinite(academySlots) && academyCount >= (academySlots as number);
   if (seniorBlock && academyFull) {
     return {
       code: "no_eligible_room_bid",
@@ -419,15 +500,13 @@ export function getAuctionBidWarnings({
   teamState,
   activeLeadingCount = 0,
   alreadyLeadingThisAuction = false,
-} = {}) {
-  const warnings = [];
+}: SquadBidOptions = {}) {
+  const warnings: SquadBidWarning[] = [];
   const maxRiders = teamState?.squad_limits?.max;
   if (!maxRiders) return warnings;
 
-  const reservedWins = alreadyLeadingThisAuction
-    ? activeLeadingCount
-    : activeLeadingCount + 1;
-  const totalAfter = (teamState.total_count || 0) + reservedWins;
+  const reservedWins = alreadyLeadingThisAuction ? activeLeadingCount : activeLeadingCount + 1;
+  const totalAfter = (teamState!.total_count || 0) + reservedWins;
   if (totalAfter > maxRiders) {
     const exceedBy = totalAfter - maxRiders;
     warnings.push({
