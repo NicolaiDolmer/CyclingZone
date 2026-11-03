@@ -25,6 +25,7 @@
 --   SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
 --    WHERE conrelid = 'public.transfer_listings'::regclass AND contype = 'c';
 --   SELECT status, count(*) FROM public.transfer_listings GROUP BY 1;
+--   SELECT indexdef FROM pg_indexes WHERE indexname = 'idx_transfer_listings_paused';
 
 SET lock_timeout = '5s';
 
@@ -59,3 +60,11 @@ COMMENT ON COLUMN public.transfer_listings.status IS
   '#4211: open | negotiating | sold | withdrawn | paused. paused = rytteren er paa aktiv auktion; listingen kommer tilbage (open) hvis auktionen ender uden salg. Kontrakt: backend/lib/auctionTransferListPause.js';
 
 COMMIT;
+
+-- Auktions-cronen leder hvert minut efter forladte pauser (status = 'paused' uden
+-- aktiv auktion, reconcileOrphanPausedListings). Partial index: kun de faa
+-- pausede raekker, saa opslaget aldrig scanner hele tabellen. CONCURRENTLY kan
+-- ikke staa i en transaktion og ligger derfor efter COMMIT.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_transfer_listings_paused
+  ON public.transfer_listings (rider_id)
+  WHERE status = 'paused';

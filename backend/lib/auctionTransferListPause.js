@@ -162,7 +162,58 @@ export async function resumePausedTransferListings(supabase, { riderIds }) {
     if (error) throw new Error(`withdraw paused transfer_listing ${listing.id}: ${error.message}`);
     if (changed) result.withdrawn.push(listing.id);
   }
+
+  // Efter-tjek (Codex P2): en ny auktion kan vaere startet mellem opslaget
+  // ovenfor og genaabningen. Dens pause saa en allerede pauset listing og gjorde
+  // intet, saa listingen pauses igen her. POST /auctions indsaetter auktionen
+  // FOER pausen, saa enten ser dette tjek auktionen, eller pausen ser 'open'.
+  if (result.resumed.length > 0) {
+    const resumedRiderIds = uniqueIds(paused.filter((l) => result.resumed.includes(l.id)).map((l) => l.rider_id));
+    const { data: lateAuctions, error: lateError } = await supabase
+      .from("auctions")
+      .select("rider_id")
+      .in("rider_id", resumedRiderIds)
+      .in("status", ACTIVE_AUCTION_STATUSES);
+    if (lateError) throw new Error(`re-check active auctions: ${lateError.message}`);
+    for (const riderId of uniqueIds((lateAuctions || []).map((a) => a.rider_id))) {
+      await pauseTransferListingsForAuction(supabase, { riderId });
+      const repaused = paused.filter((l) => l.rider_id === riderId).map((l) => l.id);
+      result.resumed = result.resumed.filter((id) => !repaused.includes(id));
+      result.kept.push(...repaused);
+    }
+  }
   return result;
+}
+
+/**
+ * Oprydning af forladte pauser: 'paused' listings hvis rytter ikke laengere har
+ * en aktiv auktion (fx en finalisering hvor genoptag-trinnet fejlede). Koeres af
+ * auktions-cronen efter finaliseringen (Codex P2). Partial index
+ * idx_transfer_listings_paused holder opslaget billigt.
+ * @param {any} supabase
+ * @param {{ limit?: number }} [opts]
+ */
+export async function reconcileOrphanPausedListings(supabase, { limit = 200 } = {}) {
+  const { data, error } = await supabase
+    .from("transfer_listings")
+    .select("rider_id")
+    .eq("status", PAUSED_LISTING_STATUS)
+    .limit(limit);
+  if (error) throw new Error(`read paused transfer_listings: ${error.message}`);
+  return resumePausedTransferListings(supabase, { riderIds: (data || []).map((l) => l.rider_id) });
+}
+
+/**
+ * Best-effort-variant til auktions-cronen.
+ * @param {any} supabase
+ */
+export async function safeReconcileOrphanPausedListings(supabase) {
+  try {
+    return await reconcileOrphanPausedListings(supabase);
+  } catch (err) {
+    captureException(err, { tags: { area: "auction_transfer_list_pause", step: "reconcile" } });
+    return { resumed: [], withdrawn: [], kept: [], error: err.message };
+  }
 }
 
 /**

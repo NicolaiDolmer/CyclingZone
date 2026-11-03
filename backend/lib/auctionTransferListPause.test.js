@@ -6,8 +6,10 @@ import {
   getListingOnAuctionIssue,
   getPausedListingDecision,
   pauseTransferListingsForAuction,
+  reconcileOrphanPausedListings,
   resumePausedTransferListings,
   safePauseTransferListingsForAuction,
+  safeReconcileOrphanPausedListings,
   safeResumePausedListingsForAuctionId,
   safeResumePausedTransferListings,
 } from "./auctionTransferListPause.js";
@@ -20,6 +22,7 @@ function makeFake(tables, { uniqueActiveListing = true, failOn = null } = {}) {
     Object.entries(tables).map(([name, rows]) => [name, rows.map((r) => ({ ...r }))])
   );
   const calls = [];
+  const hooks = {};
 
   function query(table) {
     const filters = [];
@@ -30,6 +33,7 @@ function makeFake(tables, { uniqueActiveListing = true, failOn = null } = {}) {
       update(p) { op = "update"; patch = p; return builder; },
       eq(col, val) { filters.push((r) => r[col] === val); return builder; },
       in(col, vals) { filters.push((r) => vals.includes(r[col])); return builder; },
+      limit() { return builder; },
       maybeSingle() {
         return Promise.resolve().then(() => run()).then((res) => ({ data: res.data?.[0] ?? null, error: res.error }));
       },
@@ -39,6 +43,7 @@ function makeFake(tables, { uniqueActiveListing = true, failOn = null } = {}) {
     };
     function run() {
       calls.push({ table, op, patch });
+      if (hooks.beforeRun) hooks.beforeRun({ table, op, patch, state });
       if (failOn && failOn.table === table && failOn.op === op) {
         return { data: null, error: { message: "boom", code: failOn.code } };
       }
@@ -57,7 +62,7 @@ function makeFake(tables, { uniqueActiveListing = true, failOn = null } = {}) {
     return builder;
   }
 
-  return { from: query, state, calls };
+  return { from: query, state, calls, hooks };
 }
 
 const SELLER = "team-a";
@@ -213,6 +218,48 @@ test("safeResumePausedListingsForAuctionId: admin-annullering slaar rytteren op 
   const res = await safeResumePausedListingsForAuctionId(fake, "a1");
   assert.deepEqual(res.resumed, ["l1"]);
   assert.deepEqual(await safeResumePausedListingsForAuctionId(fake, null), { resumed: [], withdrawn: [], kept: [] });
+});
+
+test("resumePausedTransferListings: ny auktion startet midt i genaabningen -> listingen pauses igen", async () => {
+  const fake = makeFake({
+    transfer_listings: [{ id: "l1", rider_id: "r1", seller_team_id: SELLER, status: "paused" }],
+    auctions: [],
+    riders: [{ id: "r1", team_id: SELLER }],
+  });
+  // Saelgeren starter en ny auktion lige efter genaabningen: dens pause saa en
+  // pauset listing og gjorde intet.
+  fake.hooks.beforeRun = ({ table, op, patch, state }) => {
+    if (table === "transfer_listings" && op === "update" && patch.status === "open") {
+      state.auctions.push({ rider_id: "r1", status: "active" });
+    }
+  };
+  const res = await resumePausedTransferListings(fake, { riderIds: ["r1"] });
+  assert.deepEqual(res, { resumed: [], withdrawn: [], kept: ["l1"] });
+  assert.equal(fake.state.transfer_listings[0].status, PAUSED_LISTING_STATUS);
+});
+
+test("reconcileOrphanPausedListings: forladt pause afgoeres, pause under aktiv auktion bliver", async () => {
+  const fake = makeFake({
+    transfer_listings: [
+      { id: "l1", rider_id: "r1", seller_team_id: SELLER, status: "paused" },
+      { id: "l2", rider_id: "r2", seller_team_id: SELLER, status: "paused" },
+      { id: "l3", rider_id: "r3", seller_team_id: SELLER, status: "paused" },
+    ],
+    auctions: [{ rider_id: "r2", status: "active" }],
+    riders: [
+      { id: "r1", team_id: SELLER },
+      { id: "r2", team_id: SELLER },
+      { id: "r3", team_id: BUYER },
+    ],
+  });
+  const res = await reconcileOrphanPausedListings(fake);
+  assert.deepEqual(res, { resumed: ["l1"], withdrawn: ["l3"], kept: ["l2"] });
+});
+
+test("safeReconcileOrphanPausedListings: fejl sluges", async () => {
+  const fake = makeFake({ transfer_listings: [] }, { failOn: { table: "transfer_listings", op: "select" } });
+  const res = await safeReconcileOrphanPausedListings(fake);
+  assert.match(res.error, /boom/);
 });
 
 test("pause -> usolgt -> tilbage: hele forloebet", async () => {
