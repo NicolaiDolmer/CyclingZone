@@ -331,6 +331,54 @@
       "issue": 7563,
       "reason": "Billedstationen: læse-POST + udfoldede tabeller (ops), ejer-go 3/11 #7495",
       "since": "2026-11-03"
+    },
+    {
+      "issue": 6737,
+      "why": "Interne fejl til dørs: begræns Windows backend-test argv (ejer-go 2/11, #7495)"
+    },
+    {
+      "issue": 7348,
+      "why": "Intern CI: registry-flags efter migrationer (ejer-go 2/11, #7495)"
+    },
+    {
+      "issue": 6172,
+      "why": "Interne migrations- og merge-koe-vagter, ejer-go 2/11 i #7495 kommentar 6579459364"
+    },
+    {
+      "issue": 6290,
+      "why": "Interne codemod-/historikvagter, ejer-go 2/11 i #7495 (cleanupList i samme PR)"
+    },
+    {
+      "issue": 6679,
+      "why": "Interne Windows-procesbeviser, ejer-go 2/11 i #7495"
+    },
+    {
+      "issue": 6337,
+      "why": "Interne CIM-bootopslag og fejlrapportering, ejer-go 2/11 i #7495"
+    },
+    {
+      "issue": 6335,
+      "why": "Intern ops-fejl: afvis brede delte ownership-mapper (ejer-go 2/11, #7495)"
+    },
+    {
+      "issue": 5509,
+      "why": "Intern ops: prod-evidens før player-report build (ejer-go 2/11, #7495)"
+    },
+    {
+      "issue": 6295,
+      "why": "Ops: ejerskabssikker git-probe-oprydning (ejer-go 2/11, #7495)"
+    },
+    {
+      "issue": 6105,
+      "why": "Ops: Sentry-only Cloudflare problem-JSON titles; application errors unchanged (ejer-go 2/11, #7495)"
+    },
+    {
+      "issue": 6881,
+      "why": "Ops: TOML-kommentargrænse i Codex-setup (ejer-go 2/11, #7495)"
+    },
+    {
+      "issue": 2635,
+      "why": "Intern harness-schema-drift; ejer-go 2/11 i #7495 kommentar 6579459364"
     }
   ],
   "brandList": [
