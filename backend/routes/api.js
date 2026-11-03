@@ -332,7 +332,7 @@ import { computeFrozenSalary } from "../lib/contractSeed.js";
 import {
   computeDebtRatio,
   computeSustainabilityTier,
-} from "../lib/economyAdminDashboard.js";
+} from "../lib/economyAdminDashboard.ts";
 import { computeFinanceForecast, computeMultiSeasonForecast } from "../lib/financeForecast.js";
 import { isUpkeepPerRaceDayEnabled } from "../lib/upkeepPerRaceDayFlag.ts";
 import { isEconomyNoUpkeepEnabled } from "../lib/economyNoUpkeepFlag.ts";
