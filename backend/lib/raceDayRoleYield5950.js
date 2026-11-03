@@ -188,10 +188,11 @@ export async function loadRaceDayRoleYield({ supabase, log = console, strict = f
  *
  * roleDrivesBaseDay (#5950 A, underkontakt): rollen styrer basis-dagens evner.
  * Kaptajn/jaeger = uaendret; hjaelper = hjaelpe-evnerne; fri rolle = en blanding.
- * Vaegtene (focusWeights) summer til profil-evnernes antal, saa basis-dagen i alt er
- * lige stor for alle roller.
+ * Vaegtene (focusWeights) skaleres, saa basis-dagen i alt (fokus + off-fokus over
+ * alle evner) er lige stor for alle roller, ogsaa naar antallet af fokus-evner er
+ * et andet end profilens.
  */
-export function raceDayRoleBaseProgram(profileType, { role = null, roleDrivesBaseDay = false } = {}) {
+export function raceDayRoleBaseProgram(profileType, { role = null, roleDrivesBaseDay = false, trainingCfg = TRAINING_CONFIG } = {}) {
   const profile = knownProfile(profileType);
   const profileAbilities = raceDayFocusAbilities(profile);
   const group = raceDayRoleGroup(role);
@@ -212,6 +213,16 @@ export function raceDayRoleBaseProgram(profileType, { role = null, roleDrivesBas
     for (const a of new Set([...profileAbilities, ...helper])) {
       weights[a] = ((profileAbilities.includes(a) ? 1 : 0) + (helperWeights[a] ?? 0)) / 2;
     }
+  }
+  // En fokus-evne faar haard-vaeksten I STEDET FOR off-fokus-vaeksten. Har rollen
+  // flere (faerre) fokus-evner end profilen, mister (vinder) den derfor off-fokus-
+  // vaekst; skaleringen giver den tilbage, saa totalen er kaptajnens.
+  const hard = Number(trainingCfg.focusGrowthMult?.[RACE_DAY_ROLE_BASE_INTENSITY]);
+  const off = Number(trainingCfg.offFocusMult);
+  const nFocus = Object.keys(weights).length;
+  if (Number.isFinite(hard) && hard > 0 && Number.isFinite(off) && off >= 0 && nFocus !== budget) {
+    const scale = (budget + (off / hard) * (nFocus - budget)) / budget;
+    weights = Object.fromEntries(Object.entries(weights).map(([a, w]) => [a, w * scale]));
   }
   return Object.freeze({
     focus: RACE_DAY_FOCUS,
@@ -254,8 +265,8 @@ export function raceDayRoleBonusWeights(profileType, role, leadShare, { roleDriv
  */
 export function raceDayRoleYieldMultipliers({
   params, profileType, role,
-  program = raceDayRoleBaseProgram(profileType, { role, roleDrivesBaseDay: params?.roleDrivesBaseDay === true }),
   trainingCfg = TRAINING_CONFIG,
+  program = raceDayRoleBaseProgram(profileType, { role, roleDrivesBaseDay: params?.roleDrivesBaseDay === true, trainingCfg }),
 }) {
   if (!params) return {};
   const hardFocus = Number(trainingCfg.focusGrowthMult?.[RACE_DAY_ROLE_BASE_INTENSITY]);

@@ -9,7 +9,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
-import { applyDailyTick, RACE_PROFILE_ABILITY_MAP } from "./dailyTraining.js";
+import { abilityMult, applyDailyTick, RACE_PROFILE_ABILITY_MAP } from "./dailyTraining.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { raceDayProgram } from "./raceDayYield.js";
 import {
@@ -18,6 +18,7 @@ import {
   isRaceDayRoleYieldEnabled, loadRaceDayRoleYield, raceDayRoleBaseProgram, raceDayRoleBonusWeights,
   raceDayRoleByRider, raceDayRoleGroup, raceDayRoleYieldMultipliers, raceDayRoleAbilityGroups,
   validateRaceDayRoleYieldParams, withRaceDayRoleYield, loadRaceDayRoleByRider,
+  RACE_DAY_ROLE_BASE_DAY_FLAG_KEY, isRaceDayRoleBaseDayEnabled,
 } from "./raceDayRoleYield5950.js";
 import { VALID_RACE_ROLES } from "./raceRoles.js";
 import { clearPrivateConfigCache } from "./privateConfig.ts";
@@ -528,4 +529,207 @@ test("#5950: kalenderdags-stien (training_tick_per_race_day off) indlaeser rolle
   const h = helper.rider_derived_abilities[0];
   assert.ok(progressed(c, "climbing") > progressed(h, "climbing"), "kaptajnen faar mere klatring end hjaelperen");
   assert.ok(progressed(h, "teamwork") > progressed(c, "teamwork"), "hjaelperen faar mere holdarbejde end kaptajnen");
+});
+
+// ── #5950 loesning A: rollen styrer ogsaa basis-dagen (underkontakt, default off) ──
+const PARAMS_A = Object.freeze({ ...PARAMS, roleDrivesBaseDay: true });
+const MAIN_ON = Object.freeze({ [RACE_DAY_ROLE_YIELD_FLAG_KEY]: "on" });
+
+// Optager hvilke app_config-noegler der blev laest (flag-opslag).
+function recordingFlagReads(supabase, asked) {
+  return {
+    ...supabase,
+    from(table) {
+      const b = supabase.from(table);
+      if (table !== "app_config") return b;
+      return {
+        ...b,
+        select(...a) {
+          const s = b.select(...a);
+          return { ...s, eq(col, val) { asked.push(val); return s.eq(col, val); } };
+        },
+      };
+    },
+  };
+}
+
+function seedWithRole({ flags, role, profile }) {
+  const s = seed({ flags, raced: true, profile });
+  s.race_entries = [{ race_id: "race-1", rider_id: "r1", team_id: TEAM_ID, race_role: role }];
+  return s;
+}
+
+for (const value of [null, "off", "beta"]) {
+  test(`#5950 A golden (underkontakt ${JSON.stringify(value)}): bit-identisk med hovedflagets model for alle rollegrupper`, async () => {
+    for (const role of ["captain", "hunter", "helper", "free_role"]) {
+      const main = seedWithRole({ flags: MAIN_ON, role, profile: "flat" });
+      await run(main, { params: true });
+      const flags = value == null ? MAIN_ON : { ...MAIN_ON, [RACE_DAY_ROLE_BASE_DAY_FLAG_KEY]: value };
+      const gated = seedWithRole({ flags, role, profile: "flat" });
+      await run(gated, { params: true });
+      assert.deepEqual(gameState(gated), gameState(main), role);
+    }
+  });
+}
+
+test("#5950 A: underkontakt off = samme params-objekt; on = roleDrivesBaseDay; laeses kun med hovedflag on + gyldige params", async () => {
+  const load = async (flags, { params = PARAMS } = {}) => {
+    clearPrivateConfigCache();
+    const asked = [];
+    const state = {
+      app_config: Object.entries(flags).map(([key, value]) => ({ key, value })),
+      private_config: params ? [{ key: RACE_DAY_ROLE_YIELD_PARAMS_KEY, value: params }] : [],
+    };
+    const out = await loadRaceDayRoleYield({ supabase: recordingFlagReads(createMockSupabase(state), asked), log: { warn() {} } });
+    return { out, asked };
+  };
+  const off = await load(MAIN_ON);
+  assert.deepEqual(off.out, PARAMS);
+  assert.equal(off.out.roleDrivesBaseDay, undefined);
+  assert.ok(off.asked.includes(RACE_DAY_ROLE_BASE_DAY_FLAG_KEY), "underkontakten laeses med hovedflag on");
+  const on = await load({ ...MAIN_ON, [RACE_DAY_ROLE_BASE_DAY_FLAG_KEY]: "on" });
+  assert.equal(on.out.roleDrivesBaseDay, true);
+  assert.equal(on.out.stageBonus, PARAMS.stageBonus);
+  assert.ok(Object.isFrozen(on.out));
+  const beta = await load({ ...MAIN_ON, [RACE_DAY_ROLE_BASE_DAY_FLAG_KEY]: "beta" });
+  assert.equal(beta.out.roleDrivesBaseDay, undefined, "beta = off");
+  const mainOff = await load({ [RACE_DAY_ROLE_BASE_DAY_FLAG_KEY]: "on" });
+  assert.equal(mainOff.out, null, "underkontakten alene taender intet");
+  assert.ok(!mainOff.asked.includes(RACE_DAY_ROLE_BASE_DAY_FLAG_KEY), "intet opslag naar hovedflaget er off");
+  const noParams = await load({ ...MAIN_ON, [RACE_DAY_ROLE_BASE_DAY_FLAG_KEY]: "on" }, { params: null });
+  assert.equal(noParams.out, null);
+  assert.ok(!noParams.asked.includes(RACE_DAY_ROLE_BASE_DAY_FLAG_KEY), "intet opslag uden gyldige params");
+});
+
+test("#5950 A: underkontaktens laesning - beta er off, strict kaster ved databasefejl, ikke-strict = off", async () => {
+  const state = { app_config: [{ key: RACE_DAY_ROLE_BASE_DAY_FLAG_KEY, value: "beta" }] };
+  assert.equal(await isRaceDayRoleBaseDayEnabled(createMockSupabase(state)), false);
+  state.app_config[0].value = "on";
+  assert.equal(await isRaceDayRoleBaseDayEnabled(createMockSupabase(state)), true);
+  assert.equal(await isRaceDayRoleBaseDayEnabled(createMockSupabase(state), { strict: true }), true);
+  // Hovedflag + params laeses fint, kun underkontakten fejler.
+  const mainState = {
+    app_config: [{ key: RACE_DAY_ROLE_YIELD_FLAG_KEY, value: "on" }],
+    private_config: [{ key: RACE_DAY_ROLE_YIELD_PARAMS_KEY, value: PARAMS }],
+  };
+  const brokenSub = () => {
+    const base = createMockSupabase(mainState);
+    return {
+      ...base,
+      from(table) {
+        if (table !== "app_config") return base.from(table);
+        return { select: () => ({ eq: (_c, key) => (key === RACE_DAY_ROLE_BASE_DAY_FLAG_KEY
+          ? { maybeSingle: async () => ({ data: null, error: { message: "down" } }) }
+          : base.from(table).select("value").eq("key", key)) }) };
+      },
+    };
+  };
+  clearPrivateConfigCache();
+  await assert.rejects(() => loadRaceDayRoleYield({ supabase: brokenSub(), strict: true, log: { warn() {} } }));
+  clearPrivateConfigCache();
+  assert.deepEqual(await loadRaceDayRoleYield({ supabase: brokenSub(), log: { warn() {} } }), PARAMS, "ikke-strict: fejl = underkontakt off");
+});
+
+test("#5950 A: kaptajn og jaeger er uroert af underkontakten (samme program og samme tillaeg)", () => {
+  for (const profile of [...PROFILES, null, "nonsense"]) {
+    for (const role of ["captain", "sprint_captain", "co_captain", "hunter"]) {
+      assert.deepEqual(raceDayRoleBaseProgram(profile, { role, roleDrivesBaseDay: true }), raceDayRoleBaseProgram(profile), `${profile}/${role}`);
+      assert.deepEqual(
+        raceDayRoleYieldMultipliers({ params: PARAMS_A, profileType: profile, role }),
+        raceDayRoleYieldMultipliers({ params: PARAMS, profileType: profile, role }),
+        `${profile}/${role}`,
+      );
+    }
+  }
+});
+
+test("#5950 A: basis-dagen i alt (fokus + off-fokus) og tillaeggets samlede vaegt er ens for alle roller", () => {
+  const dayTotal = (program) => VISIBLE_ABILITIES.reduce((s, a) => s + abilityMult(a, program), 0);
+  for (const profile of PROFILES) {
+    const budget = RACE_PROFILE_ABILITY_MAP[profile].length;
+    const captainTotal = dayTotal(raceDayRoleBaseProgram(profile));
+    for (const role of ROLES) {
+      const program = raceDayRoleBaseProgram(profile, { role, roleDrivesBaseDay: true });
+      assert.equal(program.intensity, "hard");
+      assert.ok(Math.abs(dayTotal(program) - captainTotal) < 1e-9, `${profile}/${role} basis: ${dayTotal(program)} vs ${captainTotal}`);
+      for (const a of program.focusAbilities) assert.ok(VISIBLE_ABILITIES.includes(a) && (program.focusWeights?.[a] ?? 1) > 0, `${profile}/${role}: ${a}`);
+      const bonus = raceDayRoleBonusWeights(profile, role, PARAMS.leadShare, { roleDrivesBaseDay: true });
+      const bonusSum = Object.values(bonus).reduce((s, w) => s + w, 0);
+      assert.ok(Math.abs(bonusSum - budget) < 1e-9, `${profile}/${role} tillaeg: ${bonusSum}`);
+    }
+  }
+});
+
+test("#5950 A: rolle x etapetype - hjaelperen udvikler ikke etapens afgoerende evne, kaptajnen faar mest i den", () => {
+  const tick = (profile, role, params) => yielded(applyDailyTick(tickArgs(
+    raceDayRoleBaseProgram(profile, { role, roleDrivesBaseDay: params?.roleDrivesBaseDay === true }),
+    withRaceDayRoleYield({}, { params, profileType: profile, role }),
+  )));
+  // En evne ingen rolle eller profil traener: off-fokus-niveauet (samme gab og rate for alle evner i fixturen).
+  const offFocus = (y) => y.aggression;
+  for (const profile of PROFILES) {
+    const decisive = DECISIVE_ABILITY_BY_PROFILE[profile];
+    const helperLead = HELPER_ABILITIES_BY_PROFILE[profile];
+    const captain = tick(profile, "captain", PARAMS_A);
+    const helper = tick(profile, "helper", PARAMS_A);
+    const lux = tick(profile, "luxury_helper", PARAMS_A);
+    const free = tick(profile, "free_role", PARAMS_A);
+    const helperToday = tick(profile, "helper", PARAMS);
+    assert.deepEqual(captain, tick(profile, "captain", PARAMS), `${profile}: kaptajnen er uroert`);
+    assert.deepEqual(lux, helper, `${profile}: luksushjaelper = hjaelper`);
+    if (helperLead.includes(decisive)) {
+      // Holdtempo: den afgoerende evne ER en hjaelpe-evne, saa hjaelperen beholder den.
+      assert.ok(helper[decisive] > offFocus(helper), `${profile}: ${decisive} er en hjaelpe-evne`);
+    } else {
+      assert.ok(Math.abs(helper[decisive] - offFocus(helper)) < 1e-12, `${profile}: hjaelperen faar kun off-fokus i ${decisive}`);
+      assert.ok(helper[decisive] < helperToday[decisive], `${profile}: hjaelperen faar mindre ${decisive} end i dag`);
+    }
+    assert.ok(captain[decisive] > helper[decisive], `${profile}: kaptajn > hjaelper i ${decisive}`);
+    assert.ok(free[decisive] < captain[decisive] && free[decisive] >= helper[decisive], `${profile}: fri rolle i midten`);
+    for (const a of helperLead) assert.ok(helper[a] > offFocus(helper), `${profile}: hjaelperen udvikler ${a}`);
+    assert.ok(helper.teamwork > captain.teamwork, `${profile}: hjaelperen faar mere holdarbejde end kaptajnen`);
+    // Samme samlede udbytte for alle roller (ingen straf for at hjaelpe holdet).
+    const total = (y) => VISIBLE_ABILITIES.reduce((s, k) => s + y[k], 0);
+    for (const [name, y] of [["helper", helper], ["free", free]]) {
+      assert.ok(Math.abs(total(y) - total(captain)) < 1e-9, `${profile}/${name}: ${total(y)} vs ${total(captain)}`);
+    }
+  }
+});
+
+test("#5950 A: flad etape - hjaelperen udvikler ikke spurt (hverken basis eller tillaeg)", () => {
+  const program = raceDayRoleBaseProgram("flat", { role: "helper", roleDrivesBaseDay: true });
+  assert.ok(!program.focusAbilities.includes("sprint"));
+  assert.equal(raceDayRoleBonusWeights("flat", "helper", PARAMS.leadShare, { roleDrivesBaseDay: true }).sprint, undefined);
+  assert.equal(raceDayRoleYieldMultipliers({ params: PARAMS_A, profileType: "flat", role: "helper" }).sprint, undefined);
+  assert.ok(raceDayRoleBonusWeights("flat", "helper", PARAMS.leadShare).sprint > 0, "kontakt off: dagens fordeling uaendret");
+});
+
+test("#5950 A: maks +1 pr. evne pr. loebsdag holder, ogsaa med et stort tillaeg", () => {
+  const big = { stageBonus: 5, leadShare: 1, roleDrivesBaseDay: true };
+  for (const profile of PROFILES) {
+    for (const role of ["captain", "helper", "free_role"]) {
+      const extra = withRaceDayRoleYield({}, { params: big, profileType: profile, role });
+      const r = applyDailyTick(tickArgs(raceDayRoleBaseProgram(profile), { ...extra, hardDailyCap: 1, progress: { sprint: 0.99, teamwork: 0.99, tempo: 0.99 } }));
+      for (const k of VISIBLE_ABILITIES) assert.ok((r.gains[k] ?? 0) <= 1, `${profile}/${role}: ${k}`);
+    }
+  }
+});
+
+test("#5950 A motor: hjaelper paa flad etape faar mindre spurt med underkontakten on; kaptajnen er bit-identisk", async () => {
+  const withSub = { ...MAIN_ON, [RACE_DAY_ROLE_BASE_DAY_FLAG_KEY]: "on" };
+  const helperOff = seedWithRole({ flags: MAIN_ON, role: "helper", profile: "flat" });
+  await run(helperOff, { params: true });
+  const helperOn = seedWithRole({ flags: withSub, role: "helper", profile: "flat" });
+  await run(helperOn, { params: true });
+  const hOff = helperOff.rider_derived_abilities[0];
+  const hOn = helperOn.rider_derived_abilities[0];
+  assert.ok(progressed(hOn, "sprint") < progressed(hOff, "sprint"), "hjaelperen udvikler mindre spurt");
+  assert.ok(progressed(hOn, "teamwork") > progressed(hOff, "teamwork"), "mere i hjaelpe-evnerne");
+  for (const k of VISIBLE_ABILITIES) assert.ok(hOn[k] - 50 <= 1, `${k}: hoejst +1 pr. loebsdag`);
+
+  const captainOff = seedWithRole({ flags: MAIN_ON, role: "captain", profile: "flat" });
+  await run(captainOff, { params: true });
+  const captainOn = seedWithRole({ flags: withSub, role: "captain", profile: "flat" });
+  await run(captainOn, { params: true });
+  assert.deepEqual(gameState(captainOn), gameState(captainOff), "kaptajnen: bit-identisk");
 });
