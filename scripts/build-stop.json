@@ -659,6 +659,11 @@
       "issue": 6524,
       "reason": "Døde klik på 'Læg på' i Træning > Program (40/3 dage), ejer-go 3/11 #7495",
       "since": "2026-11-03"
+    },
+    {
+      "issue": 7566,
+      "reason": "Endagsløb: dobbelt ENKELTDAG + 'Etape 1' under Udgåede (forkert info), ejer-go 3/11 #7495",
+      "since": "2026-11-03"
     }
   ]
 }
