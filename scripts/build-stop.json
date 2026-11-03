@@ -322,10 +322,6 @@
       "issue": 7536,
       "reason": "Træthed på lette løbsdage: kun design og måling, intet byg uden ejer-go, ejer-go 3/11 #7495",
       "since": "2026-11-03"
-    },
-    {
-      "issue": 6172,
-      "why": "Interne migrations- og merge-koe-vagter, ejer-go 2/11 i #7495 kommentar 6579459364"
     }
   ],
   "brandList": [
