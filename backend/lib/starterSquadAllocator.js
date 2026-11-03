@@ -33,7 +33,7 @@ import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
 import {
   deriveAbilities, FILL_TAIL_GENERATION_TAG, FILL_TAIL_MAX_POTENTIALE, FILL_CAP_MODE_SCALED, withScaledFillCap,
 } from "./abilityDerivation.js";
-import { writeBestRoleCacheForRiders } from "./riderValueRefresh.js";
+import { writeBestRoleCacheForRiders } from "./riderBestRoleCache.js";
 import { computeRiderTypes, resolveRiderTypes, NEUTRAL_BASELINE } from "./riderTypes.js";
 import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { buildCapsForRider } from "./riderProgression.js";

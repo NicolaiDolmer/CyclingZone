@@ -7,7 +7,6 @@ import {
 } from "./riderRating.js";
 import { DISPLAY_RECIPE_KEYS, ratingForRole } from "./generated/displayRecipes.js";
 import { DISPLAY_RECIPE_KEYS as BACKEND_RECIPE_KEYS } from "../../../backend/lib/weights/displayRecipes.js";
-import { bestRoleForAbilities } from "../../../backend/lib/riderValueRefresh.js";
 
 // #5321 — forward-guard. Rod-årsagen bag "samme rytter, to forskellige ratings"
 // var at SSOT-filen eksporterede TO måder at regne en rating på: den vægtede
@@ -191,15 +190,5 @@ test("#7560: en naturlig rolle UDEN for ligheden vinder aldrig, og tallet flytte
   }
 });
 
-test("#7560: frontend og backend vælger samme rolle for samme rytter (paritet)", () => {
-  let seed = 75600;
-  const rng = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 4294967296);
-  for (let n = 0; n < 300; n++) {
-    const ab = Object.fromEntries(STAT_KEYS.map((k) => [k, 1 + Math.floor(rng() * 4)]));
-    const primaryType = DISPLAY_RECIPE_KEYS[Math.floor(rng() * DISPLAY_RECIPE_KEYS.length)];
-    const secondaryType = DISPLAY_RECIPE_KEYS[Math.floor(rng() * DISPLAY_RECIPE_KEYS.length)];
-    const back = bestRoleForAbilities(ab, { primaryType, secondaryType });
-    const front = riderBestRole({ ...ab, primary_type: primaryType, secondary_type: secondaryType });
-    assert.deepEqual(front, { rating: back.best_role_rating, role: back.best_role });
-  }
-});
+// Paritet frontend↔backend testes fra backend-siden (backend/lib/riderBestRole.test.js),
+// så frontendens test- og typecheck-graf ikke trækker backendens afhængigheder ind.

@@ -146,6 +146,7 @@ export function withScaledFillCap(archetypeDraw) {
 
 // Bedste viste rolle-rating for et evne-sæt (samme opskrifter som bedste rolle nu).
 function bestDisplayedRating(abilities) {
+  /** @type {number | null} */
   let best = null;
   for (const role of DISPLAY_RECIPE_KEYS) {
     const r = ratingForRole(abilities, role);
@@ -181,7 +182,8 @@ function scaledProfile(out, profileKeys, cap) {
     }
     return next;
   };
-  const strongEnough = (k) => bestDisplayedRating({ ...out, ...at(k) }) >= target;
+  // Number(null) = 0, præcis som JS' egen >=-koercering (kun for typecheck).
+  const strongEnough = (k) => Number(bestDisplayedRating({ ...out, ...at(k) })) >= target;
   if (strongEnough(1)) return at(1);
   let lo = 0; // k = 0 (alt på loftet) er altid stærkt nok
   let hi = 1;
@@ -199,6 +201,11 @@ function scaledProfile(out, profileKeys, cap) {
 //                  scaledProfile. Ingen evne ≥ 1 ender under 1, ingen over cap.
 //                  Skjulte evner (hidden_potential) er ikke en del af profilen
 //                  og min-klemmes som før.
+/**
+ * @param {any} out
+ * @param {number} cap
+ * @param {{ keys?: readonly string[], mode?: string }} [opts]
+ */
 export function applyAbilityCap(out, cap, { keys = Object.keys(out), mode = "min" } = {}) {
   if (!out || !Number.isFinite(cap)) return out;
   const finiteKeys = keys.filter((k) => Number.isFinite(out[k]));
