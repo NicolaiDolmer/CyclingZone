@@ -668,6 +668,11 @@
       "issue": 7566,
       "reason": "Endagsløb: dobbelt ENKELTDAG + 'Etape 1' under Udgåede (forkert info), ejer-go 3/11 #7495",
       "since": "2026-11-03"
+    },
+    {
+      "issue": 7568,
+      "reason": "Kalendertabel: Grand Tour i stedet for Mangler + klippet mærke (forkert info), ejer-go 3/11 #7495",
+      "since": "2026-11-03"
     }
   ]
 }
