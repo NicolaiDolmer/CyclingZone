@@ -7,6 +7,7 @@ import {
 import { settleTrainingDateCondition } from "./trainingDateCondition.js";
 import { CONDITION_CONFIG } from "./riderCondition.js";
 import { isConditionModelV2Enabled } from "./conditionModelV2Flag.js";
+import { DAILY_TRAINING_CONFIG } from "./dailyTraining.js";
 
 const NEUTRAL_REC = 49.5; // andelen er præcis den gamle 0,15 her
 
@@ -265,4 +266,221 @@ test('#7332: alt ud paa enkeltstart er hurtigere og koster mere traethed, gennem
       assert.ok(save.seconds >= normal.seconds, `${kind}/${seed}: spar er ikke hurtigere end normal`);
     }
   }
+});
+
+// ── #7536 (ejer-valg 3/11, løsning A): træning på frie pladser på en løbsdato vejer
+// et helt træningsdøgn bag flaget condition_v2_race_date_training_day (default off).
+// Kalibreringstal ligger i balance-internals/7536/ (hard rule 17); her kun regnestykket
+// og de egenskaber ejeren valgte.
+const ALL_INTENSITIES = ["rest", "recovery", "easy", "normal", "hard"];
+const TRAINING_LOAD = (intensity) => DAILY_TRAINING_CONFIG.fatigueLoad[intensity];
+function everyFreeMix(raceSlots) {
+  // Alle kombinationer af de frie pladsers intensitet (med gentagelse) efter `raceSlots` etaper.
+  const free = 5 - raceSlots;
+  const out = [];
+  const walk = (prefix) => {
+    if (prefix.length === free) { out.push(prefix); return; }
+    for (const i of ALL_INTENSITIES) walk([...prefix, i]);
+  };
+  walk([]);
+  return out;
+}
+
+// Frosset kopi af settleDateFatigueV2 fra før #7536 (merge-base 7f5c828d), så
+// golden-testen sammenligner mod den gamle regel og ikke mod den nye kode selv.
+// Ret den ALDRIG: ændres "dagens regel"-grenen ved et uheld, skal testen fejle.
+function settleDateFatigueV2Before7536({ fatigue, intensities, raceLoads, recoveryAbility = 50, medicalBonus = 0, cfg = CONDITION_V2_CONFIG }) {
+  const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+  const finiteOr = (x, fallback) => (Number.isFinite(Number(x)) ? Number(x) : fallback);
+  let f = clamp(finiteOr(fatigue, 0), 0, 100);
+  let trainingLoad = 0;
+  let trainingSlots = 0;
+  intensities.forEach((intensity, index) => {
+    if (intensity === "race") {
+      f = clamp(f + raceLoads[index] - recoveryV2({ fatigue: f, recoveryAbility, medicalBonus, cfg }), 0, 100);
+    } else {
+      trainingLoad += DAILY_TRAINING_CONFIG.fatigueLoad[intensity] ?? 0;
+      trainingSlots += 1;
+    }
+  });
+  if (trainingSlots > 0) {
+    const share = trainingSlots / intensities.length;
+    f = clamp(f + trainingLoad / intensities.length - recoveryV2({ fatigue: f, recoveryAbility, share, medicalBonus, cfg }), 0, 100);
+  }
+  return Math.round(f);
+}
+
+test("#7536: golden - flag off er bit-identisk med reglen fra før #7536 på alle datoer", () => {
+  for (let raceSlots = 0; raceSlots <= 5; raceSlots++) {
+    for (const free of everyFreeMix(raceSlots)) {
+      const intensities = [...Array(raceSlots).fill("race"), ...free];
+      const raceLoads = intensities.map((x, i) => (x === "race" ? 6 + 2 * i : 0));
+      for (const fatigue of [0, 24, 49, 77, 100]) {
+        for (const recoveryAbility of [10, NEUTRAL_REC, 90]) {
+          for (const medicalBonus of [0, 0.5]) {
+            const args = { fatigue, intensities, raceLoads, recoveryAbility, medicalBonus };
+            assert.equal(settleDateFatigueV2({ ...args, raceDateTrainingDay: false }), settleDateFatigueV2Before7536(args), `${intensities} @${fatigue}/${recoveryAbility}/${medicalBonus}`);
+          }
+        }
+      }
+    }
+  }
+});
+
+test("#7536: golden - flag off er bit-identisk med dagens v2 på alle datoer", () => {
+  for (let raceSlots = 0; raceSlots <= 5; raceSlots++) {
+    for (const free of everyFreeMix(raceSlots)) {
+      const intensities = [...Array(raceSlots).fill("race"), ...free];
+      const raceLoads = intensities.map((x, i) => (x === "race" ? 6 + 2 * i : 0));
+      for (const fatigue of [0, 24, 49, 77, 100]) {
+        for (const recoveryAbility of [10, NEUTRAL_REC, 90]) {
+          const args = { fatigue, intensities, raceLoads, recoveryAbility };
+          assert.equal(settleDateFatigueV2({ ...args, raceDateTrainingDay: false }), settleDateFatigueV2(args), `${intensities} @${fatigue}/${recoveryAbility}`);
+        }
+      }
+    }
+  }
+});
+
+test("#7536: golden - flag on rører ikke rene træningsdatoer, datoer uden træningspas eller rene etapedatoer", () => {
+  for (let raceSlots = 0; raceSlots <= 5; raceSlots++) {
+    for (const free of everyFreeMix(raceSlots)) {
+      const trains = free.some((i) => TRAINING_LOAD(i) > 0);
+      if (raceSlots > 0 && trains) continue; // den eneste ændrede klasse, testet nedenfor
+      const intensities = [...Array(raceSlots).fill("race"), ...free];
+      const raceLoads = intensities.map((x) => (x === "race" ? 11 : 0));
+      for (const fatigue of [0, 31, 58, 100]) {
+        for (const medicalBonus of [0, 0.3]) {
+          const args = { fatigue, intensities, raceLoads, recoveryAbility: 63, medicalBonus };
+          assert.equal(settleDateFatigueV2({ ...args, raceDateTrainingDay: true }), settleDateFatigueV2(args), `${intensities} @${fatigue}`);
+        }
+      }
+    }
+  }
+});
+
+test("#7536: flag on - træningen på de frie pladser vejer et helt træningsdøgn (regnestykket)", () => {
+  for (let raceSlots = 1; raceSlots <= 4; raceSlots++) {
+    for (const free of everyFreeMix(raceSlots)) {
+      if (!free.some((i) => TRAINING_LOAD(i) > 0)) continue;
+      const intensities = [...Array(raceSlots).fill("race"), ...free];
+      const raceLoads = intensities.map((x) => (x === "race" ? 9 : 0));
+      for (const fatigue of [0, 30, 66, 100]) {
+        for (const recoveryAbility of [20, NEUTRAL_REC, 85]) {
+          // Etaperne først, hver et helt døgn (B1, uændret).
+          let afterStages = fatigue;
+          for (let i = 0; i < raceSlots; i++) afterStages = Math.max(0, Math.min(100, afterStages + 9 - recoveryV2({ fatigue: afterStages, recoveryAbility })));
+          const clampF = (x) => Math.max(0, Math.min(100, x));
+          // Dagens regel: summen/5 og (antal/5) restitution.
+          const today = (mix) => clampF(afterStages + mix.reduce((s, i) => s + TRAINING_LOAD(i), 0) / 5 - recoveryV2({ fatigue: afterStages, recoveryAbility, share: mix.length / 5 }));
+          // Et helt træningsdøgn: passene i gennemsnit over de frie pladser; hvile som før (summen/5).
+          const fullDay = (mix) => {
+            const work = mix.filter((i) => TRAINING_LOAD(i) > 0);
+            if (!work.length) return today(mix);
+            const rest = mix.filter((i) => TRAINING_LOAD(i) <= 0);
+            const load = work.reduce((s, i) => s + TRAINING_LOAD(i), 0) / mix.length + rest.reduce((s, i) => s + TRAINING_LOAD(i), 0) / 5;
+            return clampF(afterStages + load - recoveryV2({ fatigue: afterStages, recoveryAbility, share: Math.max(mix.length / 5, work.length / mix.length) }));
+          };
+          // Værnene: aldrig under dagens regel, og max over alle roligere udgaver af de frie pladser.
+          let expected = today(free);
+          const calmer = (i) => ALL_INTENSITIES.filter((x) => TRAINING_LOAD(x) <= TRAINING_LOAD(i));
+          const walk = (k, mix) => { if (k === free.length) { expected = Math.max(expected, fullDay(mix)); return; } for (const x of calmer(free[k])) walk(k + 1, [...mix, x]); };
+          walk(0, []);
+          assert.equal(settleDateFatigueV2({ fatigue, intensities, raceLoads, recoveryAbility, raceDateTrainingDay: true }), Math.round(expected), `${intensities} @${fatigue}/${recoveryAbility}`);
+        }
+      }
+    }
+  }
+});
+
+test("#7536: flag on - alle frie pladser trænet hårdt = etaperne + præcis ét træningsdøgn med de samme pas", () => {
+  // Roligere pas kan løftes af værnene (aldrig under dagens regel); de testes nedenfor.
+  for (const pass of ["hard"]) {
+    for (const raceLoads of [[7], [8, 8], [13, 13, 13, 13]]) {
+      for (const fatigue of [10, 30, 49, 70]) {
+        const intensities = [...raceLoads.map(() => "race"), ...Array(5 - raceLoads.length).fill(pass)];
+        const afterStages = raceLoads.reduce((f, l) => Math.max(0, Math.min(100, f + l - recoveryV2({ fatigue: f, recoveryAbility: NEUTRAL_REC }))), fatigue);
+        // Et rent træningsdøgn med samme pas (uden afrunding mellem trinene).
+        const trainingDay = Math.max(0, Math.min(100, afterStages + TRAINING_LOAD(pass) - recoveryV2({ fatigue: afterStages, recoveryAbility: NEUTRAL_REC })));
+        assert.equal(
+          settleDateFatigueV2({ fatigue, intensities, raceLoads: [...raceLoads, ...Array(5 - raceLoads.length).fill(0)], recoveryAbility: NEUTRAL_REC, raceDateTrainingDay: true }),
+          Math.round(trainingDay), `${intensities} @${fatigue}`,
+        );
+      }
+    }
+  }
+});
+
+test("#7536: værn (Codex P1) - et hårdere pas giver aldrig mindre træthed, og flaget giver aldrig mindre end i dag", () => {
+  for (let raceSlots = 1; raceSlots <= 4; raceSlots++) {
+    for (const free of everyFreeMix(raceSlots)) {
+      const intensities = [...Array(raceSlots).fill("race"), ...free];
+      for (const stageLoad of [6, 9, 13]) {
+        const raceLoads = intensities.map((x) => (x === "race" ? stageLoad : 0));
+        for (let fatigue = 0; fatigue <= 100; fatigue += 10) {
+          for (const recoveryAbility of [10, NEUTRAL_REC, 90]) {
+            const args = { fatigue, intensities, raceLoads, recoveryAbility, raceDateTrainingDay: true };
+            const value = settleDateFatigueV2(args);
+            assert.ok(value >= settleDateFatigueV2({ ...args, raceDateTrainingDay: false }), `aldrig under dagens regel: ${intensities} @${fatigue}`);
+            for (let k = 0; k < free.length; k++) {
+              const next = ALL_INTENSITIES[ALL_INTENSITIES.indexOf(free[k]) + 1];
+              if (!next) continue;
+              const harder = [...intensities];
+              harder[raceSlots + k] = next;
+              assert.ok(settleDateFatigueV2({ ...args, intensities: harder }) >= value, `${harder} >= ${intensities} @${fatigue}/${recoveryAbility}`);
+            }
+          }
+        }
+      }
+    }
+  }
+  // Codex' eksempel: tunge GT-etaper, og et let pas restituerer ikke mere end hvile.
+  const gt = { fatigue: 60, raceLoads: [13, 13, 13, 13, 0], recoveryAbility: NEUTRAL_REC, raceDateTrainingDay: true };
+  assert.ok(settleDateFatigueV2({ ...gt, intensities: ["race", "race", "race", "race", "easy"] }) >= settleDateFatigueV2({ ...gt, intensities: ["race", "race", "race", "race", "rest"] }));
+});
+
+test("#7536: spillerens tilfælde - lette etaper + hårde pas giver ikke længere mindre træthed end hård træning ville", () => {
+  // Retning, ikke kalibrering: med flaget giver datoen mere træthed end i dag, og hård
+  // træning tæller mere end let træning på samme dato.
+  const intensities = ["race", "race", "hard", "hard", "hard"];
+  const raceLoads = [8, 8, 0, 0, 0];
+  for (const fatigue of [20, 30, 40]) {
+    const today = settleDateFatigueV2({ fatigue, intensities, raceLoads, recoveryAbility: NEUTRAL_REC });
+    const fixed = settleDateFatigueV2({ fatigue, intensities, raceLoads, recoveryAbility: NEUTRAL_REC, raceDateTrainingDay: true });
+    const easyFixed = settleDateFatigueV2({ fatigue, intensities: ["race", "race", "easy", "easy", "easy"], raceLoads, recoveryAbility: NEUTRAL_REC, raceDateTrainingDay: true });
+    assert.ok(fixed > today, `@${fatigue}: ${fixed} > ${today}`);
+    assert.ok(fixed > easyFixed, `@${fatigue}: hård ${fixed} > let ${easyFixed}`);
+  }
+  // Hvile på de frie pladser i en GT er uændret med flaget.
+  const gtRest = { fatigue: 50, intensities: ["race", "race", "race", "race", "rest"], raceLoads: [13, 13, 13, 13, 0], recoveryAbility: NEUTRAL_REC };
+  assert.equal(settleDateFatigueV2({ ...gtRest, raceDateTrainingDay: true }), settleDateFatigueV2(gtRest));
+});
+
+test("#7536: aftenens opgørelse og ugeprognosen sender flaget videre til samme funktion", async () => {
+  const { forecastRiderFatigue } = await import("./trainingWeekPlanForecast.js");
+  const intensities = ["race", "race", "hard", "hard", "normal"];
+  const raceLoads = [8, 7, 0, 0, 0];
+  const base = { riderId: "r", dateStr: "2026-11-03", condition: { fatigue: 30, form: 60 }, intensities, raceLoads, recoveryAbility: 55, modelV2: true };
+  const on = settleTrainingDateCondition({ ...base, raceDateTrainingDay: true });
+  const off = settleTrainingDateCondition(base);
+  assert.equal(on.fatigue, settleDateFatigueV2({ fatigue: 30, intensities, raceLoads, recoveryAbility: 55, raceDateTrainingDay: true }));
+  assert.notEqual(on.fatigue, off.fatigue);
+  assert.equal(on.risk, off.risk, "skaderisikoen er uændret");
+  // v1 ignorerer flaget.
+  const v1 = { ...base, modelV2: false };
+  assert.deepEqual(settleTrainingDateCondition({ ...v1, raceDateTrainingDay: true }), settleTrainingDateCondition(v1));
+  const slots = intensities.map((intensity, i) => ({ intensity, raceLoad: raceLoads[i] }));
+  const forecast = (raceDateTrainingDay) => forecastRiderFatigue({ riderId: "r", dateStr: "2026-11-03", opening: { fatigue: 30, form: 60 }, slots, recoveryAbility: 55, conditionModelV2: true, raceDateTrainingDay });
+  assert.equal(forecast(true), on.fatigue);
+  assert.equal(forecast(false), off.fatigue);
+});
+
+test("condition_v2_race_date_training_day: default off, kun 'on' tænder, fejl kaster", async () => {
+  const { isRaceDateTrainingDayEnabled, RACE_DATE_TRAINING_DAY_FLAG_KEY } = await import("./conditionModelV2Flag.js");
+  assert.equal(RACE_DATE_TRAINING_DAY_FLAG_KEY, "condition_v2_race_date_training_day");
+  assert.equal(await isRaceDateTrainingDayEnabled(flagClient({})), false);
+  assert.equal(await isRaceDateTrainingDayEnabled(flagClient({ condition_v2_race_date_training_day: "off" })), false);
+  assert.equal(await isRaceDateTrainingDayEnabled(flagClient({ condition_v2_race_date_training_day: "beta" })), false);
+  assert.equal(await isRaceDateTrainingDayEnabled(flagClient({ condition_v2_race_date_training_day: "on" })), true);
+  await assert.rejects(isRaceDateTrainingDayEnabled(flagClient({}, { message: "offline" })), /ownership/);
 });

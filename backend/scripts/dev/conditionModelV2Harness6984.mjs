@@ -43,7 +43,7 @@ export function v1NormalLoad({ profileType, stageNumber, rulesRevision }) {
  * hvor stage = { recordedLoad, profileType, distanceKm, stageNumber, rulesRevision }.
  * Returnerer pr. dato { tickDate, v1: {fatigue, form, risk}, v2: {...} }.
  */
-export function replayRider({ riderId, opening, dates, cfg = CONDITION_V2_CONFIG }) {
+export function replayRider({ riderId, opening, dates, cfg = CONDITION_V2_CONFIG, raceDateTrainingDay = false }) {
   let s1 = { fatigue: Number(opening?.fatigue ?? 0), form: Number(opening?.form ?? 50) };
   let s2 = { ...s1 };
   let seasonDays = 0;
@@ -63,7 +63,7 @@ export function replayRider({ riderId, opening, dates, cfg = CONDITION_V2_CONFIG
     const args = { riderId, dateStr: date.tickDate, intensities, recoveryAbility: date.recovery ?? 50, recoveryConfig: RACE_DAY_ENGINE_RECOVERY_CONFIG };
     const r1 = settleTrainingDateCondition({ ...args, condition: s1, raceLoads: v1Loads });
     // Samme funktion som settleTrainingDateCondition({ modelV2: true }) delegerer til, med cfg til kalibrering.
-    const r2 = settleTrainingDateConditionV2({ riderId, dateStr: date.tickDate, intensities, recoveryAbility: date.recovery ?? 50, condition: s2, raceLoads: v2Loads, cfg });
+    const r2 = settleTrainingDateConditionV2({ riderId, dateStr: date.tickDate, intensities, recoveryAbility: date.recovery ?? 50, condition: s2, raceLoads: v2Loads, raceDateTrainingDay, cfg });
     s1 = { fatigue: r1.fatigue, form: r1.form };
     s2 = { fatigue: r2.fatigue, form: r2.form };
     out.push({ tickDate: date.tickDate, v1: { ...s1, risk: r1.risk }, v2: { ...s2, risk: r2.risk }, raced: v2Loads.some((l) => l > 0) });
@@ -210,12 +210,14 @@ async function main() {
     mkdirSync(outDir, { recursive: true });
     writeFileSync(fixturePath, JSON.stringify({ built, grandTourDates: { grandTours: grandTours.map((gt) => ({ ...gt, riderIds: [...gt.riderIds] })) } }));
   }
-  const riders = built.map((r) => ({ riderId: r.riderId, ai: r.ai, trace: replayRider({ ...r, cfg }) }));
+  // #7536: --race-date-training-day afspiller V2 med flaget condition_v2_race_date_training_day on.
+  const raceDateTrainingDay = argv.includes("--race-date-training-day");
+  const riders = built.map((r) => ({ riderId: r.riderId, ai: r.ai, trace: replayRider({ ...r, cfg, raceDateTrainingDay }) }));
   const summary = summarize({ riders, grandTours: data.grandTours });
   mkdirSync(outDir, { recursive: true });
   const stamp = new Date().toISOString().slice(0, 10);
   const outFile = join(outDir, `harness-${stamp}-${label}.json`);
-  writeFileSync(outFile, JSON.stringify({ seasonId, label, cfg, riders: riders.length, ...summary }, null, 1));
+  writeFileSync(outFile, JSON.stringify({ seasonId, label, cfg, raceDateTrainingDay, riders: riders.length, ...summary }, null, 1));
   console.log(`Skrevet: ${outFile}`);
 }
 
