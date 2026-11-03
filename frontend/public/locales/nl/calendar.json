@@ -128,6 +128,7 @@
       "squadShort": "Selectie"
     },
     "openRace": "{name} openen",
+    "squadFill": "{count} van {field} renners geselecteerd",
     "squadShort": {
       "selected": "Klaar",
       "missing": "Nodig"
