@@ -677,9 +677,6 @@ async function insertWeakSquadForTeam(supabase, teamId, {
   // #2894/#2902: kontrakt-felter (salary/contract_length/contract_end_season) —
   // KRÆVER current_production_value, som først findes efter derive ovenfor.
   await applyContractFieldsForRiders(supabase, insertedIds, { startSeason, rng: contractRng });
-  // #7560 sidefund: bedste-rolle-cachen skrives ved fødslen, ikke først ved
-  // næste søndags værdi-sweep (samme regel som sweepen, så den er en no-op).
-  await writeBestRoleCacheForRiders(supabase, insertedIds);
   return insertedIds;
 }
 
@@ -742,16 +739,19 @@ export async function allocateStarterSquadForTeam(supabase, teamId, {
 
   let assigned;
   let recovered = null;
+  let squadIds = [];
   if (n === 0) {
     const ids = await insertWeakSquadForTeam(supabase, teamId, {
       seed, referenceYear: poolReferenceYear, generate, derive, startSeason, contractRng, primaryTypeMode,
     });
     assigned = ids.length;
+    squadIds = ids;
   } else if (n === SIZE) {
     // Insert lykkedes sidst, men derive/markør fejlede → re-derive (idempotent) + markér.
     await derive(supabase, existingIds, { dryRun: false });
     await applyContractFieldsForRiders(supabase, existingIds, { startSeason, rng: contractRng });
     assigned = n;
+    squadIds = existingIds;
     recovered = "re-derived";
   } else if (n > SIZE) {
     // n>SIZE kan IKKE være et halvt signup-forsøg — bootstrappen indsætter præcis
@@ -769,9 +769,15 @@ export async function allocateStarterSquadForTeam(supabase, teamId, {
       seed, referenceYear: poolReferenceYear, generate, derive, startSeason, contractRng, primaryTypeMode,
     });
     assigned = ids.length;
+    squadIds = ids;
     recovered = "cleaned-partial";
   }
 
+  // #7560 sidefund: bedste-rolle-cachen skrives ved fødslen, ikke først ved
+  // næste søndags værdi-sweep (samme regel som sweepen, så den er en no-op).
+  // Efter grenene og FØR markøren: fejler skridtet, står markøren NULL, og
+  // næste forsøg (re-derive-grenen) skriver cachen igen.
+  await writeBestRoleCacheForRiders(supabase, squadIds);
   await setSquadMarker(supabase, teamId, now().toISOString());
   return { teamId, assigned, ...(recovered ? { recovered } : {}) };
 }

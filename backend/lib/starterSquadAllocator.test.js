@@ -988,7 +988,7 @@ test("#5327 runStarterSquadAllocation: kontakten slukket → tier", async () => 
 
 test("#7560 allocateStarterSquadForTeam: every new starter carries the scaled-cap marker", async () => {
   const { supabase, store, fakeDerive } = createRidersMock();
-  await allocateStarterSquadForTeam(supabase, "scaled-team", { seed: 2026, generate: generateFictionalRiders, derive: fakeDerive });
+  await allocateStarterSquadForTeam(supabase, "scaled-team", { seed: 2026, generate: generateFictionalRiders, derive: fakeDerive, now: () => new Date("2026-11-03T12:00:00Z") });
   const rows = [...store.values()];
   assert.equal(rows.length, STARTER_SQUAD.TOTAL_SIZE);
   for (const r of rows) {
@@ -1003,11 +1003,25 @@ test("#7560 side finding: the best-role cache is written at birth, tie-break by 
   const { supabase, store, fakeDerive } = createRidersMock({
     derivedAbilities: (_row, i) => ({ ...flat, primary_type: i % 2 === 0 ? "climber" : "gc", secondary_type: "tt" }),
   });
-  await allocateStarterSquadForTeam(supabase, "cache-team", { seed: 2026, generate: makeFakeGenerate(), derive: fakeDerive });
+  await allocateStarterSquadForTeam(supabase, "cache-team", { seed: 2026, generate: makeFakeGenerate(), derive: fakeDerive, now: () => new Date("2026-11-03T12:00:00Z") });
   const rows = [...store.values()];
   assert.equal(rows.length, STARTER_SQUAD.TOTAL_SIZE);
   for (const r of rows) {
     assert.equal(r.best_role, r.primary_type, "cache follows the natural role on a tie");
     assert.equal(r.best_role_rating, 9);
   }
+});
+
+test("#7560 side finding: a recovery run (squad inserted, marker NULL) still writes the cache", async () => {
+  const flat = Object.fromEntries(DISPLAY_RECIPE_ABILITIES.map((k) => [k, 9]));
+  const seedRiders = Array.from({ length: STARTER_SQUAD.TOTAL_SIZE }, (_, i) => ({ id: "rec-" + String(i).padStart(2, "0"), team_id: "recover-team" }));
+  const { supabase, store, fakeDerive } = createRidersMock({
+    seedRiders,
+    derivedAbilities: () => ({ ...flat, primary_type: "puncheur", secondary_type: "climber" }),
+  });
+  const res = await allocateStarterSquadForTeam(supabase, "recover-team", {
+    seed: 2026, generate: makeFakeGenerate(), derive: fakeDerive, now: () => new Date("2026-11-03T12:00:00Z"),
+  });
+  assert.equal(res.recovered, "re-derived");
+  for (const r of store.values()) assert.equal(r.best_role, "puncheur");
 });
