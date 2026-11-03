@@ -160,7 +160,9 @@ export function breakawayTrajectory(events, distanceKm) {
     while (i < samples.length && (samples[i].km < end || last)) { inDecile.push(samples[i]); i += 1; }
     const exists = formedKm < end && (caughtKm === null || caughtKm > start);
     if (!exists) { leadByDecile.push(null); if (inDecile.length) carry = inDecile[inDecile.length - 1].lead; continue; }
-    const values = [...(carry === null ? [] : [carry]), ...inDecile.map((s) => s.lead)];
+    // Forspringet ved stykkets start tæller kun, når stykkets første punkt ligger efter starten.
+    const carryIn = carry !== null && (!inDecile.length || inDecile[0].km > start) ? [carry] : [];
+    const values = [...carryIn, ...inDecile.map((s) => s.lead)];
     leadByDecile.push(values.length ? Math.max(...values) : null);
     if (inDecile.length) carry = inDecile[inDecile.length - 1].lead;
   }
