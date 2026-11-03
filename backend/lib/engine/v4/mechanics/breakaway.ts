@@ -2410,9 +2410,11 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // De jagende hold betaler den lukning de selv baerer (som klatre-jagten ovenfor).
     const bookCurveWork = (chasers: Map<string, string[]>, extra: number, km: number) => {
       const intensity = s5V3ClimbChaseIntensity({ extraClosingSeconds: extra, chaseKm: km, closingSecondsPerKmPerUnit: BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit, fullOrderForce: BREAKAWAY_CHASE_V3_TUNING.teamSignalWeight * TEAM_CHASE.maxTeamSignal, teams: chasers.size });
-      const curveWork = new Map<string, number>();
-      for (const ids of chasers.values()) for (const id of ids) curveWork.set(id, helperCostMultiplier(ctx.entrants[id].effort) * intensity);
       const entry = workByChaseGroup.get(chaseGroup.id);
+      // Prisen betales over planens bogfoerte km; arbejdet gaelder kun intervallet `km` (Codex P2).
+      const share = entry && entry.km > km ? km / entry.km : 1;
+      const curveWork = new Map<string, number>();
+      for (const ids of chasers.values()) for (const id of ids) curveWork.set(id, helperCostMultiplier(ctx.entrants[id].effort) * intensity * share);
       if (entry) workByChaseGroup.set(chaseGroup.id, { ...entry, plan: { ...entry.plan, chaserWork: mergeWork(entry.plan.chaserWork, curveWork) } });
       const own = planByBreakaway.get(pursuitKey(breakaway.id, chaseGroup.id));
       if (own) planByBreakaway.set(pursuitKey(breakaway.id, chaseGroup.id), { ...own, chaserWork: mergeWork(own.chaserWork, curveWork) });
