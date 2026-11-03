@@ -23,18 +23,49 @@
 // samme is_youth=false-default som enhver anden senior-auktion (POST
 // /auctions sætter den ikke eksplicit). Se academyPnl.test.js.
 
+type NumericInput = number | string | null | undefined;
+type RosterRow = { salary?: NumericInput };
+type FinanceRow = { type?: string | null; amount?: NumericInput };
+type RiderName = { firstname?: string | null; lastname?: string | null };
+type AuctionSaleInput = {
+  rider_id: string;
+  current_bidder_id?: string | null;
+  is_guaranteed_sale?: boolean | null;
+  current_price?: NumericInput;
+  starting_price?: NumericInput;
+  actual_end?: string | null;
+};
+type TransferSaleInput = {
+  rider_id: string;
+  counter_amount?: NumericInput;
+  offer_amount?: NumericInput;
+  updated_at?: string | null;
+};
+type AcademySale = {
+  riderId: string;
+  riderName: string | null;
+  soldAt: string | null;
+  price: number;
+  listedValue: number | null;
+  premium: number | null;
+  source: "auction" | "transfer";
+};
+
 /**
  * Nuværende akademi-trup: run-rate løn + pladser brugt. Et øjebliksbillede,
  * IKKE kumulativt betalt-til-dato — løn opkræves som ét samlet 'salary'-beløb
  * pr. hold pr. sæson og kan ikke splittes akademi/senior i finance_transactions.
  */
-export function computeAcademyCurrent(rosterRows = [], { slotsMax } = {}) {
+export function computeAcademyCurrent(
+  rosterRows: readonly RosterRow[] = [],
+  { slotsMax }: { slotsMax?: number | null } = {}
+) {
   const payroll = rosterRows.reduce((sum, r) => sum + (Number(r.salary) || 0), 0);
   return { slotsUsed: rosterRows.length, slotsMax, payroll };
 }
 
 /** Kumulative akademi-specifikke pengebevægelser (drift + signing-fees), hele holdets historik. */
-export function computeAcademyCumulative(financeRows = []) {
+export function computeAcademyCumulative(financeRows: readonly FinanceRow[] = []) {
   let driftPaid = 0;
   let signingFeesPaid = 0;
   for (const row of financeRows) {
@@ -50,11 +81,13 @@ export function computeAcademyCumulative(financeRows = []) {
  * salg — current_price er den umødte startpris og må ikke tælle som pengestrøm.
  * Samme regel som teamTransferHistory.js.
  */
-export function isRealizedSale(auction) {
+export function isRealizedSale(
+  auction: Pick<AuctionSaleInput, "current_bidder_id" | "is_guaranteed_sale"> | null | undefined
+) {
   return Boolean(auction?.current_bidder_id) || Boolean(auction?.is_guaranteed_sale);
 }
 
-function nameOf(rider) {
+function nameOf(rider: RiderName | null | undefined) {
   const name = `${rider?.firstname ?? ""} ${rider?.lastname ?? ""}`.trim();
   return name || null;
 }
@@ -84,8 +117,12 @@ function nameOf(rider) {
  * sælger) — premium er derfor `null` for transfer-salg, og tælles ikke med i
  * valueCreation (kun i salesProceeds, som er en ægte pengestrøm uanset kilde).
  */
-export function buildAcademySales(auctionRows = [], transferRows = [], riderById = new Map()) {
-  const sales = [];
+export function buildAcademySales(
+  auctionRows: readonly AuctionSaleInput[] = [],
+  transferRows: readonly TransferSaleInput[] = [],
+  riderById: ReadonlyMap<string, RiderName | null | undefined> = new Map()
+) {
+  const sales: AcademySale[] = [];
   for (const a of auctionRows) {
     if (!isRealizedSale(a)) continue;
     const price = Number(a.current_price) || 0;
@@ -113,12 +150,30 @@ export function buildAcademySales(auctionRows = [], transferRows = [], riderById
       source: "transfer",
     });
   }
-  sales.sort((a, b) => new Date(b.soldAt || 0) - new Date(a.soldAt || 0));
+  // Preserve JavaScript Date subtraction coercion; these assertions erase at runtime.
+  sales.sort(
+    (a, b) =>
+      (new Date(b.soldAt || 0) as unknown as number) -
+      (new Date(a.soldAt || 0) as unknown as number)
+  );
   return sales;
 }
 
 /** Saml det fulde P&L-payload. Kappet til de 20 seneste salg i UI-listen (drill-down, ikke krævet for summerne). */
-export function summarizeAcademyPnl({ current, driftPaid, signingFeesPaid, sales }) {
+export function summarizeAcademyPnl<
+  TCurrent,
+  TSale extends { price: number; premium?: number | null },
+>({
+  current,
+  driftPaid,
+  signingFeesPaid,
+  sales,
+}: {
+  current: TCurrent;
+  driftPaid: number;
+  signingFeesPaid: number;
+  sales: readonly TSale[];
+}) {
   const salesProceeds = sales.reduce((sum, s) => sum + s.price, 0);
   // premium er null for transfer-salg (ingen markedsværdi-baseline) — tæller 0
   // i valueCreation, men prisen indgår stadig fuldt i salesProceeds ovenfor.

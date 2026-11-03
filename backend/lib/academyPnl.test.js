@@ -7,7 +7,7 @@ import {
   isRealizedSale,
   buildAcademySales,
   summarizeAcademyPnl,
-} from "./academyPnl.js";
+} from "./academyPnl.ts";
 
 // ─── computeAcademyCurrent ──────────────────────────────────────────────────
 
