@@ -28,3 +28,16 @@ test("read failure aborts rather than reporting an empty plan", async () => {
   const db = createFakeSupabase({}, { errors: { riders: { select: "permission denied" } } });
   await assert.rejects(planBestRoleBackfill(db), /permission denied/);
 });
+
+test("#7560: a tie is labelled by the natural role, and compare-stored sees the relabel", async () => {
+  const flat = { sprint: 13, acceleration: 13, positioning: 13, flat: 13, durability: 13, time_trial: 13, tempo: 13, endurance: 13, climbing: 13, recovery: 13, descending: 13, punch: 13, cobblestone: 13, aggression: 13, tactics: 13 };
+  const state = {
+    riders: [{ id: "a", primary_type: "gc", secondary_type: "tt", best_role: "sprinter", best_role_rating: 13 }],
+    rider_derived_abilities: [{ rider_id: "a", ...flat }],
+  };
+  const db = createFakeSupabase(state);
+  const plan = await planBestRoleBackfill(db, { compareStored: true });
+  assert.equal(plan.written, 0);
+  assert.deepEqual(plan.updates, [{ id: "a", best_role: "gc", best_role_rating: 13 }]);
+  assert.equal(state.riders[0].best_role, "sprinter", "dry run never writes");
+});

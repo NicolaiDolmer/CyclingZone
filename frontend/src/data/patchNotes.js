@@ -1,5 +1,62 @@
 export const PATCHES = [
   {
+    "version": "7.397",
+    "date": "2026-11-03",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "No half teams on race day",
+          "body": "When your riders are tied up in a stage race, the assistant no longer puts 1 to 5 riders into a race that cannot start. The race day warning now counts those riders as busy, so you get it in time."
+        },
+        "da": {
+          "title": "Ingen halve hold på løbsdagen",
+          "body": "Når dine ryttere er bundet i et etapeløb, sætter assistenten ikke længere 1 til 5 ryttere på et løb, der ikke kan starte. Advarslen før løbsdagen tæller nu de ryttere som optaget, så du får den i tide."
+        },
+        "refs": [
+          7339
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Auctions",
+        "en": {
+          "title": "Auction pauses the transfer list",
+          "body": "When you put a rider up for auction, he leaves the transfer list while the auction runs. If he does not sell, he is back on the list at the same price. While he is on auction, you cannot list him."
+        },
+        "da": {
+          "title": "Auktion sætter transferlisten på pause",
+          "body": "Sætter du en rytter på auktion, forlader han transferlisten, mens auktionen kører. Bliver han ikke solgt, er han tilbage på listen til samme pris. Mens han er på auktion, kan du ikke sætte ham til salg."
+        },
+        "refs": [
+          4211
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "Better starter riders for new teams",
+          "body": "New teams no longer get starter riders with one strong skill and the rest stuck at 1. Their skills keep their shape, and the team is just as strong at the start. When two roles score the same, a rider's best role now follows his natural type, also for riders you already have. No rating changes."
+        },
+        "da": {
+          "title": "Bedre startryttere til nye hold",
+          "body": "Nye hold får ikke længere startryttere med én stærk evne og resten på 1. Evnerne beholder deres form, og holdet er lige så stærkt fra start. Når to roller står lige, følger rytterens bedste rolle nu hans naturlige type, også for ryttere du allerede har. Ingen rating ændres."
+        },
+        "refs": [
+          7560
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.396",
     "date": "2026-11-03",
     "changes": [

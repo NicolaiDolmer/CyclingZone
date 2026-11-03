@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (3/11 aften):** færdiggør bølge + kø → close-out → næste session: #7587 bølge-kvalitet først, så A (Til dørs + motor #6912/#7236 "kør", kontakter frist 8/11), B (realisme-gate #7588, løsning B), #7578, #7585; Codex: Til dørs, så #7582/#7583. Ejer-valg venter: #6950 (8/11), #7339 C/D.
+> **🎯 Next action (3/11 aften):** næste PC1-session følger prompten på [#7495](https://github.com/NicolaiDolmer/CyclingZone/issues/7495#issuecomment-6614682479) (natsession til 09:00, kun regel 35-merges): #7587 bølge-kvalitet først → A (#7586/#6912 + #7590/#7236 ret/review/merge slukket, tal + "kør"; kontakter frist 8/11; #7579 billede; #4211 dry-run) → B #7588 realisme-gate → #7578, #7585. #7592 kræver uafhængigt review. Codex: #7583 kører, #7582 del 2 (prompt på #7495). Ejer-valg venter: #6950 (8/11), #7339 C/D.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** PC1-eftermiddagssession 3/11 (ejer merge-kø + NOW.md, overdraget 14:45 på #7495). Merget: #7522, #7572 (#7489), #7574 (#7536 off), #7573 (#7339 A+B), #7580 (#7260-oprydning), #7577 (#4211, prod-verificeret), #7576 (#5950 off, prod-verificeret). Kø: #7511/#7515/#7516, så #7589 + #7575 + #7591 (patch 7.397, ejer "merge"). Bølge: #7586 (#6912) review, #7236 + #7582 del 1 i kø, #7575 + #7579 til mig; Codex' #7511/#7515/#7516 venter Codex-review.
+> **🤖 Working agent:** PC1-natsession 3/11 → 4/11 kl. 09:00 (bølge 1 kører: A #6912/#7236/#6172/#7588 + C prod-bevis #7439/#6971/#7388/#7330; kun regel 35-merges; prompt på #7495).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 

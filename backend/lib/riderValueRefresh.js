@@ -24,29 +24,17 @@ import {
   loadValuationModelStrict,
 } from "./riderValuationModelSelect.js";
 import { isTypefreeModel, valueTypefree } from "./valuationTypefree/typefreeValuation.js";
-import { DISPLAY_RECIPE_KEYS, ratingForRole } from "./weights/displayRecipes.js";
-
-// Data-only preparation for #5435/#5443. Ties use the stable recipe order.
-// Neither natural identity nor the active valuation model reads these fields yet.
-export function bestRoleForAbilities(abilities) {
-  let best_role = null;
-  let best_role_rating = null;
-  for (const role of DISPLAY_RECIPE_KEYS) {
-    const rating = ratingForRole(abilities, role);
-    if (rating !== null && (best_role_rating === null || rating > best_role_rating)) {
-      best_role = role;
-      best_role_rating = rating;
-    }
-  }
-  return { best_role, best_role_rating };
-}
+// #7560: bedste-rolle-reglen og fødsels-cachen bor i riderBestRoleCache.js, så
+// starter-squad-allokeringen kan skrive cachen uden at trække hele værdi-kæden med.
+// Re-eksporteret her, så eksisterende importører er uændrede.
+import { bestRoleForAbilities, writeBestRoleCacheForRiders, writeRiderPatches } from "./riderBestRoleCache.js";
+export { bestRoleForAbilities, writeBestRoleCacheForRiders };
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TYPES_BASELINE_PATH = join(__dirname, "./riderTypesBaseline.json");
 // #3570: unge (< 22 år) klassificeres mod DENNE baseline — se riderTypesBaselineSelect.js.
 const TYPES_BASELINE_YOUTH_PATH = join(__dirname, "./riderTypesBaselineYouth.json");
 const noop = () => {};
-const WRITE_CONCURRENCY = 25;
 
 // riderRow skal bære age + potentiale (v4-krav); mangler age → begge værdier null
 // (rytteren springes over i sweepen — samme kontrakt som manglende abilities).
@@ -143,7 +131,13 @@ export function selectChangedValueUpdates(riders, abilityByRider, baseline, mode
     if (!ab) continue; // ingen abilities → spring over (kan ikke værdisættes)
     const next = recomputeRiderValue(r, ab, baseline, model, { typeAbilities: capsByRider.get(r.id), youthBaseline, productionModel, phaseStep });
     if (freezeProductionValue) next.current_production_value = r.current_production_value ?? null;
-    const best = bestRoleForAbilities(ab);
+    // #7560: the tie-break reads the types that will be ON THE ROW after this
+    // run (what the frontend mirror reads back): the fresh classification when
+    // the value is written below, the stored types when it is not.
+    const typesAfter = next.base_value == null
+      ? { primaryType: r.primary_type ?? null, secondaryType: r.secondary_type ?? null }
+      : { primaryType: next.primary_type, secondaryType: next.secondary_type };
+    const best = bestRoleForAbilities(ab, typesAfter);
     const bestChanged = best.best_role !== (r.best_role ?? null)
       || best.best_role_rating !== (r.best_role_rating ?? null);
     if (next.base_value == null) {
@@ -172,21 +166,6 @@ export function selectChangedValueUpdates(riders, abilityByRider, baseline, mode
   return updates;
 }
 
-async function writeUpdates(supabase, updates) {
-  let written = 0;
-  for (let i = 0; i < updates.length; i += WRITE_CONCURRENCY) {
-    const batch = updates.slice(i, i + WRITE_CONCURRENCY);
-    await Promise.all(
-      batch.map(({ id, ...patch }) =>
-        supabase.from("riders").update(patch).eq("id", id).then(({ error }) => {
-          if (error) throw new Error(`riders update ${id}: ${error.message}`);
-        })
-      )
-    );
-    written += batch.length;
-  }
-  return written;
-}
 
 // Genberegn type+base_value+current_production_value for (evt. ét holds) ryttere;
 // skriv kun de ændrede. baseline/model defaulter fra de committede JSON-filer
@@ -285,7 +264,7 @@ export async function refreshChangedRiderValues(supabase, { baseline, youthBasel
     // hele populationen tilbage til kalderen ved hver søndag.
     return { scanned: riders.length, changed: updates.length, written: 0, dryRun: true, ...meta, updates, before: riders };
   }
-  const written = await writeUpdates(supabase, updates);
+  const written = await writeRiderPatches(supabase, updates);
   return { scanned: riders.length, changed: updates.length, written, ...meta };
 }
 
