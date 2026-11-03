@@ -118,13 +118,13 @@ test("#7236: uden kontakten er motoren bit-identisk; kontakten virker kun under 
   for (const name of ["nedkoerselsfinale", "bjerg-selektion", "mellembjerg", "flat-massespurt"]) {
     const input = fixture(name);
     for (const rules_revision of ["official_times_v4", "s5_profiles_v1", "s5_profiles_v2", "s5_profiles_v3"] as const) {
-      const base = JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision }));
+      const base: string = JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision }));
       assert.equal(JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision, queen_stage_gap_7236: null })), base, `${name} ${rules_revision}: null = udeladt`);
       if (rules_revision !== "s5_profiles_v3") {
         assert.equal(JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision, queen_stage_gap_7236: true })), base, `${name} ${rules_revision}: kun v3`);
       }
     }
-    const on = JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision: "s5_profiles_v3", queen_stage_gap_7236: true }));
+    const on: string = JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision: "s5_profiles_v3", queen_stage_gap_7236: true }));
     assert.equal(on, JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision: "s5_profiles_v3", queen_stage_gap_7236: true })), `${name}: deterministisk`);
   }
 });
