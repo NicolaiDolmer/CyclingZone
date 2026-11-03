@@ -553,8 +553,9 @@ function recordingFlagReads(supabase, asked) {
   };
 }
 
-function seedWithRole({ flags, role, profile }) {
+function seedWithRole({ flags, role, profile, primaryType = null }) {
   const s = seed({ flags, raced: true, profile });
+  if (primaryType) s.riders[0].primary_type = primaryType;
   s.race_entries = [{ race_id: "race-1", rider_id: "r1", team_id: TEAM_ID, race_role: role }];
   return s;
 }
@@ -717,9 +718,10 @@ test("#5950 A: maks +1 pr. evne pr. loebsdag holder, ogsaa med et stort tillaeg"
 
 test("#5950 A motor: hjaelper paa flad etape faar mindre spurt med underkontakten on; kaptajnen er bit-identisk", async () => {
   const withSub = { ...MAIN_ON, [RACE_DAY_ROLE_BASE_DAY_FLAG_KEY]: "on" };
-  const helperOff = seedWithRole({ flags: MAIN_ON, role: "helper", profile: "flat" });
+  // En spurter, saa spurt overhovedet kan udvikle sig (fixturens klatrer udvikler ikke spurt).
+  const helperOff = seedWithRole({ flags: MAIN_ON, role: "helper", profile: "flat", primaryType: "sprinter" });
   await run(helperOff, { params: true });
-  const helperOn = seedWithRole({ flags: withSub, role: "helper", profile: "flat" });
+  const helperOn = seedWithRole({ flags: withSub, role: "helper", profile: "flat", primaryType: "sprinter" });
   await run(helperOn, { params: true });
   const hOff = helperOff.rider_derived_abilities[0];
   const hOn = helperOn.rider_derived_abilities[0];
