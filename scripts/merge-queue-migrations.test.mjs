@@ -190,6 +190,27 @@ Write-Output ('RESULT='+(@{ok=$ok;calls=@($script:calls)}|ConvertTo-Json -Compre
   }
 });
 
+test('commit missing locally is fetched by SHA, non-interactively, then read', () => {
+  const sha = 'd'.repeat(40);
+  const result = runQueueFunctions(['Test-MergeCommitMigration'], `
+$script:n=0; $script:fetchArgs=$null; $script:prompt=$null; $env:GIT_TERMINAL_PROMPT='keep'
+function git {
+ $script:n++
+ if ($args -contains 'fetch') { $script:fetchArgs=@($args); $script:prompt=$env:GIT_TERMINAL_PROMPT; $global:LASTEXITCODE=0; return }
+ if ($args -contains 'diff-tree') { $global:LASTEXITCODE=0; return @('docs/x.md') }
+ $global:LASTEXITCODE = $(if ($script:n -eq 1) { 1 } else { 0 })
+}
+$verdict=Test-MergeCommitMigration -Sha '${sha}'
+Write-Output ('RESULT='+(@{verdict=$verdict;fetchArgs=$script:fetchArgs;prompt=$script:prompt;after=$env:GIT_TERMINAL_PROMPT}|ConvertTo-Json -Compress))
+`);
+  assert.equal(result.data.verdict, 'no', 'fetched commit without SQL skips the wait');
+  assert.ok(result.data.fetchArgs.includes(sha), 'fetches exactly the merge commit');
+  assert.ok(!result.data.fetchArgs.includes('main'), 'never fetches origin main again');
+  assert.ok(result.data.fetchArgs.includes('credential.interactive=never'), 'no credential GUI prompt');
+  assert.equal(result.data.prompt, '0', 'terminal prompt disabled during fetch');
+  assert.equal(result.data.after, 'keep', 'caller environment restored');
+});
+
 test('unreadable merge commit keeps the fail-closed Auto-migrate wait', () => {
   const sha = 'e'.repeat(40);
   const result = runQueueFunctions(['Wait-BatchMigrations', 'Test-MergeCommitMigration'], `
