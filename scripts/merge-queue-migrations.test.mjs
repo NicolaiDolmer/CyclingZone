@@ -43,6 +43,8 @@ function Wait-ForWorkflowRun {
  return ($index -lt $script:proofs.Count -and [bool]$script:proofs[$index])
 }
 function Start-Sleep { param($Seconds) }
+# Fixture-SHA'erne findes ikke i repoet: git svarer ukendt, saa ventetiden er fail-closed som foer.
+function git { $global:LASTEXITCODE=1 }
 try { Close-OpenTrain; $script:nextMerge++ }
 catch { $script:unexpected=$_.Exception.GetType().Name; exit 2 }
 finally {
