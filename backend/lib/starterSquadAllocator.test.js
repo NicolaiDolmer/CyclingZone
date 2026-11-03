@@ -20,7 +20,8 @@ import { STAT_KEYS, generateFictionalRiders } from "./fictionalRiderGenerator.js
 import { ageForSeason, seasonReferenceYear } from "./riderSeasonAge.js";
 import { PROGRESSION_CONFIG } from "./riderProgression.js";
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
-import { deriveAbilities, VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { deriveAbilities, VISIBLE_ABILITIES, FILL_CAP_MODE_SCALED } from "./abilityDerivation.js";
+import { DISPLAY_RECIPE_ABILITIES } from "./weights/displayRecipes.js";
 import { ABILITY_REGISTRY } from "./abilityRegistry.js";
 import { computeFrozenSalary } from "./contractSeed.js";
 import { isBornFromPriors, deriveBirthAbilities, statLevelToAbility } from "./riderBirthPriors.js";
@@ -981,4 +982,32 @@ test("#5327 runStarterSquadAllocation: kontakten slukket → tier", async () => 
   });
   assert.deepEqual(seen, ["tier", "tier"]);
   assert.equal(result.primaryTypeMode, "tier");
+});
+
+// ── #7560: new starter squads are born under the scaled cap + carry a cache ──
+
+test("#7560 allocateStarterSquadForTeam: every new starter carries the scaled-cap marker", async () => {
+  const { supabase, store, fakeDerive } = createRidersMock();
+  await allocateStarterSquadForTeam(supabase, "scaled-team", { seed: 2026, generate: generateFictionalRiders, derive: fakeDerive });
+  const rows = [...store.values()];
+  assert.equal(rows.length, STARTER_SQUAD.TOTAL_SIZE);
+  for (const r of rows) {
+    assert.equal(r.archetype_draw?.fill_cap, FILL_CAP_MODE_SCALED, "marker on " + r.id);
+    assert.ok(isBornFromPriors(r), "own-priors birth (the default path)");
+  }
+});
+
+test("#7560 side finding: the best-role cache is written at birth, tie-break by natural role", async () => {
+  // Flat abilities tie every role, so the label can only come from the type.
+  const flat = Object.fromEntries(DISPLAY_RECIPE_ABILITIES.map((k) => [k, 9]));
+  const { supabase, store, fakeDerive } = createRidersMock({
+    derivedAbilities: (_row, i) => ({ ...flat, primary_type: i % 2 === 0 ? "climber" : "gc", secondary_type: "tt" }),
+  });
+  await allocateStarterSquadForTeam(supabase, "cache-team", { seed: 2026, generate: makeFakeGenerate(), derive: fakeDerive });
+  const rows = [...store.values()];
+  assert.equal(rows.length, STARTER_SQUAD.TOTAL_SIZE);
+  for (const r of rows) {
+    assert.equal(r.best_role, r.primary_type, "cache follows the natural role on a tie");
+    assert.equal(r.best_role_rating, 9);
+  }
 });

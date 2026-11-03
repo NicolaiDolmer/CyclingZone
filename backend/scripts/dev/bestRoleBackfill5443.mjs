@@ -11,7 +11,8 @@ import { fetchAllRows } from "../../lib/supabasePagination.js";
 
 export async function planBestRoleBackfill(supabase, { compareStored = false } = {}) {
   // schema-columns-ok: optional fields require 2026-09-22-5443-best-role-data.sql.
-  const columns = compareStored ? "id, best_role, best_role_rating" : "id";
+  // #7560: the tie-break reads the rider's own types, same as the weekly sweep.
+  const columns = compareStored ? "id, primary_type, secondary_type, best_role, best_role_rating" : "id, primary_type, secondary_type";
   const riders = await fetchAllRows(() => supabase.from("riders").select(columns).order("id"));
   const rows = await fetchAllRows(() => supabase.from("rider_derived_abilities")
     .select(`rider_id, ${DISPLAY_RECIPE_ABILITIES.join(", ")}`).order("rider_id"));
@@ -19,7 +20,9 @@ export async function planBestRoleBackfill(supabase, { compareStored = false } =
   const updates = [];
   let missing = 0;
   for (const rider of riders) {
-    const next = bestRoleForAbilities(byId.get(rider.id));
+    const next = bestRoleForAbilities(byId.get(rider.id), {
+      primaryType: rider.primary_type ?? null, secondaryType: rider.secondary_type ?? null,
+    });
     if (next.best_role === null) missing += 1;
     if (compareStored && next.best_role === (rider.best_role ?? null)
       && next.best_role_rating === (rider.best_role_rating ?? null)) continue;
