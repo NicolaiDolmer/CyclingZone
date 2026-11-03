@@ -286,6 +286,47 @@ function everyFreeMix(raceSlots) {
   return out;
 }
 
+// Frosset kopi af settleDateFatigueV2 fra før #7536 (merge-base 7f5c828d), så
+// golden-testen sammenligner mod den gamle regel og ikke mod den nye kode selv.
+// Ret den ALDRIG: ændres "dagens regel"-grenen ved et uheld, skal testen fejle.
+function settleDateFatigueV2Before7536({ fatigue, intensities, raceLoads, recoveryAbility = 50, medicalBonus = 0, cfg = CONDITION_V2_CONFIG }) {
+  const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+  const finiteOr = (x, fallback) => (Number.isFinite(Number(x)) ? Number(x) : fallback);
+  let f = clamp(finiteOr(fatigue, 0), 0, 100);
+  let trainingLoad = 0;
+  let trainingSlots = 0;
+  intensities.forEach((intensity, index) => {
+    if (intensity === "race") {
+      f = clamp(f + raceLoads[index] - recoveryV2({ fatigue: f, recoveryAbility, medicalBonus, cfg }), 0, 100);
+    } else {
+      trainingLoad += DAILY_TRAINING_CONFIG.fatigueLoad[intensity] ?? 0;
+      trainingSlots += 1;
+    }
+  });
+  if (trainingSlots > 0) {
+    const share = trainingSlots / intensities.length;
+    f = clamp(f + trainingLoad / intensities.length - recoveryV2({ fatigue: f, recoveryAbility, share, medicalBonus, cfg }), 0, 100);
+  }
+  return Math.round(f);
+}
+
+test("#7536: golden - flag off er bit-identisk med reglen fra før #7536 på alle datoer", () => {
+  for (let raceSlots = 0; raceSlots <= 5; raceSlots++) {
+    for (const free of everyFreeMix(raceSlots)) {
+      const intensities = [...Array(raceSlots).fill("race"), ...free];
+      const raceLoads = intensities.map((x, i) => (x === "race" ? 6 + 2 * i : 0));
+      for (const fatigue of [0, 24, 49, 77, 100]) {
+        for (const recoveryAbility of [10, NEUTRAL_REC, 90]) {
+          for (const medicalBonus of [0, 0.5]) {
+            const args = { fatigue, intensities, raceLoads, recoveryAbility, medicalBonus };
+            assert.equal(settleDateFatigueV2({ ...args, raceDateTrainingDay: false }), settleDateFatigueV2Before7536(args), `${intensities} @${fatigue}/${recoveryAbility}/${medicalBonus}`);
+          }
+        }
+      }
+    }
+  }
+});
+
 test("#7536: golden - flag off er bit-identisk med dagens v2 på alle datoer", () => {
   for (let raceSlots = 0; raceSlots <= 5; raceSlots++) {
     for (const free of everyFreeMix(raceSlots)) {
