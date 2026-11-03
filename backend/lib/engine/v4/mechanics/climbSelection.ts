@@ -751,7 +751,8 @@ export const climbSelectionHook: ClimbSelectionHook = (
   if (ctx.queenStageGap7236 === true && queenStageTopCap7236Applies(ctx, timeModelTuningFor(ctx))) {
     const capped = queenStageTopCap7236(nextState.groups);
     if (capped !== nextState.groups) {
-      nextState = { ...nextState, groups: capped };
+      // Loftet greb: nedkoerslens regruppering maa samle dem (segmentLoop, descentRegroupTuning7236).
+      nextState = { ...nextState, groups: capped, queen_cap_7236: true };
       rewriteSplitGaps7236(events, capped);
     }
   }

@@ -1052,8 +1052,8 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     if (runInAfterFinishDescent) tempoByGroup = runInOpenOnlyTempo(state.groups, tempoByGroup, state.incident_chasers);
     else if (ordersGcV3) tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers, loopTimeModel);
     // #6486 (KUN s5_profiles_v3, slukket): grupper samler sig efter sidste top paa bjerg uden topankomst.
-    // #7236 (KUN kontakten): kort vej fra sidste top til maal giver en lidt staerkere regruppering.
-    if (isS5ProfilesV3OrLater(rulesRevision)) tempoByGroup = descentRegroupTempo6486(state.groups, tempoByGroup, route, segmentIndex, state.incident_chasers, descentRegroupTuning7236(queenStageGap7236On(input), route));
+    // #7236 (KUN kontakten): greb topgabets loft (kort vej fra sidste top til maal), regrupperer de lidt staerkere.
+    if (isS5ProfilesV3OrLater(rulesRevision)) tempoByGroup = descentRegroupTempo6486(state.groups, tempoByGroup, route, segmentIndex, state.incident_chasers, descentRegroupTuning7236(state.queen_cap_7236 === true && queenStageGap7236On(input), route));
 
     // 4a. Gap-bogfoering: fronten (mindste gap_seconds) er referencen; andre
     // gruppers gap opdateres med (dtGruppe - dtFront), floor 0.

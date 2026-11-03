@@ -656,6 +656,8 @@ export type RiderState = {
 };
 
 export type EngineState = {
+  /** #7236 (KUN kontakten queen_stage_gap_7236): topgabets loft greb paa denne etape. Udeladt = som foer. */
+  queen_cap_7236?: true;
   /** Cohort lineage is internal; it does not rename film groups. */
   shared_grupetto_groups?: Readonly<Record<string, true>>;
   km: number; // cursor, km allerede tilbagelagt

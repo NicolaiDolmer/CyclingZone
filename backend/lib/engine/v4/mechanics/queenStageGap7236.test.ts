@@ -126,6 +126,8 @@ test("#7236: uden kontakten er motoren bit-identisk; kontakten virker kun under 
     }
     const on: string = JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision: "s5_profiles_v3", queen_stage_gap_7236: true }));
     assert.equal(on, JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision: "s5_profiles_v3", queen_stage_gap_7236: true })), `${name}: deterministisk`);
+    // Ingen af fixturene har favoritter over loftet: saa griber hverken loftet eller regrupperingen.
+    assert.equal(on, JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision: "s5_profiles_v3" })), `${name}: uroert naar loftet ikke griber`);
   }
 });
 
