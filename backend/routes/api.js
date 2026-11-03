@@ -5119,6 +5119,7 @@ router.get("/races/calendar", requireAuth, cached({
       teamDivisionId: ownPoolId,
       teamEntryRaceIds,
       teamShortRaceIds,
+      teamEntryCounts: entryCounts, // #7561
       teamLeaderRaceIds,
       teamWithdrawnRaceIds,
     });
