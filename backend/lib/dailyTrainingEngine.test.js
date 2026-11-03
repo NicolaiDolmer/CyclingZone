@@ -220,6 +220,7 @@ function createMockSupabase(state, opts = {}) {
         return {data:work,error:null};
       }
       if(name==='depart_training_date_riders') {
+        if(opts.departMissing) return {data:null,error:{code:'PGRST202',message:'Could not find the function public.depart_training_date_riders'}};
         // Mirrors the RPC's server-side check: only riders with team_id null now.
         const work=state.training_date_work.find(row=>row.team_id===args.p_team_id&&row.season_id===args.p_season_id&&row.tick_date===args.p_tick_date);
         const ids=args.p_rider_ids.filter(id=>!work.quarantined_rider_ids.includes(id)&&state.riders.some(row=>row.id===id&&row.team_id==null));
@@ -3785,5 +3786,15 @@ test("#7489: afviser RPC'en frigivelsen (server-side tjek), karantænesættes ry
   const { calls } = await runDate7489(state, 2, { departRefuses: true });
   assert.deepEqual(calls.find((c) => c.name === "depart_training_date_riders")?.args.p_rider_ids, ["r2"]);
   assert.deepEqual(calls.find((c) => c.name === "quarantine_training_date_riders")?.args.p_rider_ids, ["r2"]);
+  assert.deepEqual(ticksOf7489(state, "r2"), [1]);
+});
+
+test("#7489: mangler depart-RPC'en (deploy-vindue), karantænesættes som før og holdkammeraten træner", async () => {
+  const state = seedReleaseDate7489();
+  await runDate7489(state, 1);
+  release7489(state, "r2");
+  const { calls } = await runDate7489(state, 2, { departMissing: true });
+  assert.deepEqual(calls.find((c) => c.name === "quarantine_training_date_riders")?.args.p_rider_ids, ["r2"]);
+  assert.deepEqual(ticksOf7489(state, "r1"), [1, 2]);
   assert.deepEqual(ticksOf7489(state, "r2"), [1]);
 });

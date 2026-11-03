@@ -666,8 +666,11 @@ export async function runTeamTrainingDay({
       const team = teamRows?.[0];
       if (team && !team.is_bank && !team.is_frozen && !team.is_test_account) {
         const {data:departure,error:departError}=await supabase.rpc('depart_training_date_riders',{p_team_id:teamId,p_season_id:seasonId,p_tick_date:tickDate,p_rider_ids:leftTeam,p_now:now.toISOString()});
-        if (departError) throw new Error(`depart released riders from training date: ${departError.message}`);
-        departed = departure?.departed_rider_ids ?? [];
+        // Same fallback as trainingDateClose.js (TRAINING_RULES #6504): without the
+        // function nobody is departed and the rider is quarantined as before.
+        const missingRpc = departError?.code === 'PGRST202' || departError?.code === '42883';
+        if (departError && !missingRpc) throw new Error(`depart released riders from training date: ${departError.message}`);
+        departed = missingRpc ? [] : (departure?.departed_rider_ids ?? []);
         if (departed.length) dateWork = departure.work;
       }
     }
