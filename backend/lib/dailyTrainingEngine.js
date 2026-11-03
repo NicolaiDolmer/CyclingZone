@@ -56,7 +56,7 @@ import { isRaceDayDevelopmentEnabled } from "./raceDayDevelopmentFlag.js";
 import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { isTrainingConditionPerDateEnabled, readConditionWriterFlag } from './trainingDateConditionFlag.js';
-import { isConditionModelV2Enabled } from './conditionModelV2Flag.js';
+import { isConditionModelV2Enabled, isRaceDateTrainingDayEnabled } from './conditionModelV2Flag.js';
 import { loadTeamMedicalBonus } from './medicalEffects.js';
 import { settleTrainingDateCondition, canonicalRaceLoads } from './trainingDateCondition.js';
 import {
@@ -518,6 +518,7 @@ export async function runTeamTrainingDay({
   const conditionPerDate = useRaceDayKey && conditionDateFlagOn;
   // #6984: v2 laeses kun naar dato-modellen ejer tilstanden (ellers ingen ekstra read).
   const conditionModelV2On = conditionPerDate ? await isConditionModelV2Enabled(supabase) : false;
+  const raceDateTrainingDayOn = conditionModelV2On ? await isRaceDateTrainingDayEnabled(supabase) : false; // #7536
   if(conditionPerDate && eligibleRiderIds==null) throw new Error('Normalized training requires an explicit ready-rider list');
   let dateReceipts = [];
   let dateWork = null;
@@ -1337,6 +1338,7 @@ export async function runTeamTrainingDay({
       recoveryConfig: raceDayEngineOn ? RACE_DAY_ENGINE_RECOVERY_CONFIG : {},
       modelV2: conditionModelV2On,
       medicalBonus: teamMedicalBonus,
+      raceDateTrainingDay: raceDateTrainingDayOn,
     }) : null;
     const newFatigue = conditionPerDate ? (dailyCondition?.fatigue ?? preFatigue) : nextFatigue({
       fatigue: preFatigue,

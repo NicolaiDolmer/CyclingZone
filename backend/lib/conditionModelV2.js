@@ -147,20 +147,38 @@ export function nextFormV2({ form, fatigue, cfg = CONDITION_V2_CONFIG }) {
  * rækkefølge; de frie pladser bagefter med summen/5 og (antal/5) restitution.
  * En dato uden etaper er derfor samme formel som v1 (gennemsnit + én restitution),
  * kun med §5.4's evne-afhængige andel.
+ *
+ * #7536 (ejer-valg 3/11, løsning A; flaget condition_v2_race_date_training_day,
+ * `raceDateTrainingDay`): på en dato MED etaper vejer træningen på de frie pladser
+ * et helt træningsdøgn (ejerens regel 29/9). Træningspassene (positiv belastning)
+ * fordeles over de frie pladser i stedet for over alle datoens pladser, og
+ * restitutionen følger andelen af trænede frie pladser (alle frie trænet = et helt
+ * døgns restitution). Hvile/restitution på frie pladser regnes som før. Uændret:
+ * datoer uden etaper, datoer hvor ingen fri plads trænes, og etapebelastningerne.
  */
-export function settleDateFatigueV2({ fatigue, intensities, raceLoads, recoveryAbility = 50, medicalBonus = 0, cfg = CONDITION_V2_CONFIG }) {
+export function settleDateFatigueV2({ fatigue, intensities, raceLoads, recoveryAbility = 50, medicalBonus = 0, raceDateTrainingDay = false, cfg = CONDITION_V2_CONFIG }) {
   let f = clamp(finiteOr(fatigue, 0), 0, 100);
   let trainingLoad = 0;
   let trainingSlots = 0;
+  let workLoad = 0; // #7536: kun træningspas med positiv belastning
+  let workSlots = 0;
+  let raced = false;
   intensities.forEach((intensity, index) => {
     if (intensity === "race") {
+      raced = true;
       f = clamp(f + raceLoads[index] - recoveryV2({ fatigue: f, recoveryAbility, medicalBonus, cfg }), 0, 100);
     } else {
-      trainingLoad += DAILY_TRAINING_CONFIG.fatigueLoad[intensity] ?? 0;
+      const load = DAILY_TRAINING_CONFIG.fatigueLoad[intensity] ?? 0;
+      trainingLoad += load;
       trainingSlots += 1;
+      if (load > 0) { workLoad += load; workSlots += 1; }
     }
   });
-  if (trainingSlots > 0) {
+  if (trainingSlots > 0 && raceDateTrainingDay && raced && workSlots > 0) {
+    const restLoad = trainingLoad - workLoad;
+    const share = Math.max(trainingSlots / intensities.length, workSlots / trainingSlots);
+    f = clamp(f + workLoad / trainingSlots + restLoad / intensities.length - recoveryV2({ fatigue: f, recoveryAbility, share, medicalBonus, cfg }), 0, 100);
+  } else if (trainingSlots > 0) {
     const share = trainingSlots / intensities.length;
     f = clamp(f + trainingLoad / intensities.length - recoveryV2({ fatigue: f, recoveryAbility, share, medicalBonus, cfg }), 0, 100);
   }
@@ -168,9 +186,9 @@ export function settleDateFatigueV2({ fatigue, intensities, raceLoads, recoveryA
 }
 
 /** v2-udgaven af trainingDateCondition.settleTrainingDateCondition (samme signatur og retur). */
-export function settleTrainingDateConditionV2({ riderId, dateStr, condition, intensities, raceLoads, recoveryAbility = 50, medicalBonus = 0, cfg = CONDITION_V2_CONFIG }) {
+export function settleTrainingDateConditionV2({ riderId, dateStr, condition, intensities, raceLoads, recoveryAbility = 50, medicalBonus = 0, raceDateTrainingDay = false, cfg = CONDITION_V2_CONFIG }) {
   const preFatigue = Number(condition.fatigue ?? 0);
-  const fatigue = settleDateFatigueV2({ fatigue: preFatigue, intensities, raceLoads, recoveryAbility, medicalBonus, cfg });
+  const fatigue = settleDateFatigueV2({ fatigue: preFatigue, intensities, raceLoads, recoveryAbility, medicalBonus, raceDateTrainingDay, cfg });
   const form = nextFormV2({ form: Number(condition.form ?? 50), fatigue, cfg });
   // Skaderisiko som i v1 (kun hård træning over skadegrænsen, på åbningstrætheden);
   // M2 sænker risikoen, M3 forkorter en skade.
