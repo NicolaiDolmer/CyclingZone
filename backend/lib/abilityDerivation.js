@@ -157,14 +157,11 @@ function bestDisplayedRating(abilities) {
 
 // #7560: den skalerede profil, eller null når der intet er at klemme.
 //
-// Profilen komprimeres lineært ned mod toppen: f(v) = loft − (max − v)·k, så
-// topevnen lander på loftet og rækkefølgen + de indbyrdes afstande bevares.
-// k = 1 er den rene forskydning (alt flyttes lige meget ned), k → 0 lægger alt
-// op under loftet. SAMME STARTSTYRKE: k vælges som den STØRSTE komprimering
-// hvor rytterens bedste viste rolle-rating stadig er mindst den min-reglen gav
-// (bisektion; ratingen falder monotont med k). Startstyrken (den rating holdet
-// ser) er derfor uændret, mens profilen ikke længere er flad i toppen og 1-tal
-// i bunden. Kan ratingen ikke regnes (ingen opskrifts-evner), bruges min-reglen.
+// Profilen komprimeres mod loftet, så topevnen lander på loftet og evnernes
+// rækkefølge bevares. Komprimeringen vælges, så rytterens startstyrke (den
+// rating holdet ser) er den samme som med min-reglen; profilen bliver blot
+// ikke flad i toppen med 1-tal i bunden. Kan ratingen ikke regnes, bruges
+// min-reglen. Præcis metode og begrundelse: balance-internals/7560/ (hard rule 17).
 function scaledProfile(out, profileKeys, cap) {
   if (profileKeys.length === 0) return null;
   const max = profileKeys.reduce((m, k) => Math.max(m, out[k]), -Infinity);
