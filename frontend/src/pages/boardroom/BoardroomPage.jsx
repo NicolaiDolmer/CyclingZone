@@ -83,6 +83,9 @@ export default function BoardroomPage({ data, onReload, dnaPreview = null, meeti
   // MandateCard/MandateSummaryCard som prop — ingen ekstra fetch, samme kald.
   const [meetingAvailable, setMeetingAvailable] = useState(Boolean(meetingPreview?.available));
   const [proposedMeeting, setProposedMeeting] = useState(meetingPreview);
+  // #7540 · null i proposedMeeting betyder "ikke svaret endnu", ikke "intet
+  // forslag": kortene viser indlaesning indtil kaldet er faerdigt.
+  const [meetingLoaded, setMeetingLoaded] = useState(Boolean(meetingPreview));
   useEffect(() => {
     // #5754 (CodeRabbit-runde) · DEV-preview: seed direkte fra fixturen i
     // stedet for et netvaerkskald. Skrevet som en SYNC (ikke kun en tidlig
@@ -92,12 +95,14 @@ export default function BoardroomPage({ data, onReload, dnaPreview = null, meeti
     if (meetingPreview) {
       setProposedMeeting(meetingPreview);
       setMeetingAvailable(Boolean(meetingPreview.available));
+      setMeetingLoaded(true);
       return;
     }
     let cancelled = false;
     fetchBoardMeeting().then((res) => {
       if (cancelled) return;
       setProposedMeeting(res);
+      setMeetingLoaded(true);
       if (res?.available) setMeetingAvailable(true);
     });
     return () => { cancelled = true; };
@@ -178,6 +183,7 @@ export default function BoardroomPage({ data, onReload, dnaPreview = null, meeti
               mandate={data.mandate}
               bonusOffer={data.bonusOffer}
               proposedMeeting={proposedMeeting}
+              meetingLoaded={meetingLoaded}
               onOpenMandate={() => setTab("mandate")}
               onReload={onReload}
             />
@@ -197,6 +203,7 @@ export default function BoardroomPage({ data, onReload, dnaPreview = null, meeti
             bonusOfferProgress={data.bonusOfferProgress}
             passiveModifier={data.passiveModifier}
             proposedMeeting={proposedMeeting}
+            meetingLoaded={meetingLoaded}
             onReload={onReload}
           />
         </TabPanel>

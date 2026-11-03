@@ -596,6 +596,11 @@
       "since": "2026-11-02"
     },
     {
+      "issue": 7533,
+      "reason": "Kalendertabel + Løbshistorik (beta): forkert Klar-status, klik på navn, ikoner én gang, sortering overalt, ejer-go Discord 2/11",
+      "since": "2026-11-02"
+    },
+    {
       "issue": 7538,
       "reason": "Forsiden: auktioner lukker kl. 20 er forkert (vindue 08-24, live-fund) - forhåndsgo #7495 beslutning 3",
       "since": "2026-11-03"

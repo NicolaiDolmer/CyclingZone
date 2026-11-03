@@ -126,8 +126,7 @@
       "stages": "Stages",
       "class": "Class",
       "squad": "Your squad",
-      "squadShort": "Squad",
-      "open": "Open"
+      "squadShort": "Squad"
     },
     "openRace": "Open {name}",
     "squad": {

@@ -222,7 +222,7 @@ export default function GlobalRankPage() {
             />
           ) : (
             <>
-              <DataTable
+              <DataTable data-sort-exempt="rangliste: placeringen er selve indholdet"
                 label={t("title")}
                 columns={columns}
                 rows={pageRows}

@@ -111,6 +111,7 @@ import {
 import { findRejoinConflicts, loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey, splitWithdrawals, DID_NOT_START_REASON } from "../lib/raceWithdrawal.js";
 import { loadTeamsInStartedField } from "../lib/raceStartOutlook.js"; // #6740
 import { planningDidNotStart } from "../lib/planningDidNotStart.ts"; // #7518
+import { teamDistributionColumns } from "../lib/raceDistributionColumns.ts"; // #7553
 import { isOwnerUser } from "../lib/ownerGate.js"; // #3750 ejer-gate
 import { AUTH_FAILURE_RESPONSES, verifyBearerToken } from "../lib/authTokenVerification.js"; // #4369
 import { normalizeSupabaseErrorMessage, withSupabaseRetry } from "../lib/supabaseErrorNormalize.js";
@@ -563,7 +564,7 @@ import {
   SELECTION_REMINDER_TONES,
   isSelectionReminderMigrationPending,
 } from "../lib/selectionDeadlineReminder.js";
-import { selectionSizeForRace } from "../lib/raceAutopick.js";
+import { selectionSizeForRace, MIN_RACE_ENTRIES } from "../lib/raceAutopick.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
 import { REGISTRY_ABILITY_KEYS } from "../lib/abilityRegistry.js";
 import { selectInChunks } from "../lib/dbChunk.js";
@@ -5098,10 +5099,15 @@ router.get("/races/calendar", requireAuth, cached({
     // kaptajn/sprint-kaptajn-entry i løbet.
     const teamEntryRaceIds = new Set();
     const teamLeaderRaceIds = new Set();
+    const entryCounts = new Map();
     for (const e of teamEntryRows) {
       teamEntryRaceIds.add(e.race_id);
+      entryCounts.set(e.race_id, (entryCounts.get(e.race_id) || 0) + 1);
       if (e.race_role === "captain" || e.race_role === "sprint_captain") teamLeaderRaceIds.add(e.race_id);
     }
+    // #7533: én gemt rytter er ikke "Klar". Under startgulvet (MIN_RACE_ENTRIES) stiller
+    // holdet ikke op, så kalenderen skal sige "Mangler".
+    const teamShortRaceIds = new Set([...entryCounts].filter(([, n]) => n < MIN_RACE_ENTRIES).map(([id]) => id));
 
     const model = buildCalendarModel({
       now: new Date(), // #6959: request-grænsen injicerer uret (lineupFrozen)
@@ -5112,6 +5118,7 @@ router.get("/races/calendar", requireAuth, cached({
       // #5405: null → buildCalendarModel sætter isMine=false på HVERT løb.
       teamDivisionId: ownPoolId,
       teamEntryRaceIds,
+      teamShortRaceIds,
       teamLeaderRaceIds,
       teamWithdrawnRaceIds,
     });
@@ -5418,7 +5425,7 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
 
     const { dayWindow, currentDay, focusDay, totalDays, firstOrdinal } = resolveSeasonDay({ season, schedRows, dayParam, myRaceDays });
 
-    const cols = buildColumnSet({ races: withWindow, teamDivisionId: req.team.league_division_id, dayWindow });
+    const dayCols = buildColumnSet({ races: withWindow, teamDivisionId: req.team.league_division_id, dayWindow });
 
     const { data: withdrawals } = await supabase
       .from("race_withdrawals").select("race_id, withdrawn_reason").eq("team_id", req.team.id);
@@ -5426,6 +5433,8 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
     // som enhver afmelding (bindingMap nedenfor), men kolonnen viser "Did not start".
     const { withdrawn: voluntaryWithdrawnSet, didNotStart: didNotStartSet } = splitWithdrawals(withdrawals);
     const withdrawnSet = new Set([...voluntaryWithdrawnSet, ...didNotStartSet]);
+    // #7553: et laast loeb uden holdets entries og uden afmelding er ikke holdets kolonne.
+    const cols = await teamDistributionColumns({ supabase, teamId: req.team.id, columns: dayCols, withdrawnIds: withdrawnSet });
 
     // S5 (Lag 3): dominerende terræn pr. kolonne-løb → profil-bevidste rolle-hints
     // (RoleCard). Kun dagens overlap-løb (cols) — lille sæt, genbruger timeline-profilernes
