@@ -576,6 +576,7 @@
     "stageLockedTitle": "Vergrendeld door de koers",
     "listNote": "Tik op een programma om de week te zien. Het wordt in Plan gekopieerd, dus je kunt daarna elke cel wijzigen.",
     "pickTarget": "Kies eerst een renner of groep",
+    "pickTargetToPutOn": "Kies voor wie het programma is",
     "fitsType": "Past bij {type}",
     "otherPrograms": "Andere programma's",
     "current": "Huidig",

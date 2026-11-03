@@ -576,6 +576,7 @@
     "stageLockedTitle": "Locked by the race",
     "listNote": "Tap a program to see its week. It is copied into Plan, so you can change any cell after.",
     "pickTarget": "Pick a rider or group first",
+    "pickTargetToPutOn": "Choose who the program is for",
     "fitsType": "Fits {type}",
     "otherPrograms": "Other programs",
     "current": "Current",

@@ -110,9 +110,14 @@ test("desktop 1440: rytter foerst, saa programmet", async ({ page }) => {
   }
   const target = page.getByTestId("training-program-target");
   const putOn = page.getByTestId("training-program-put-on");
-  // (1) Intet valgt: alle "Put on" er slaaet fra.
+  // (1) Intet valgt: "Put on" kan trykkes (#6524: ingen død knap), men lægger
+  // intet på; den peger på vælgeren i stedet.
   await expect(target).toHaveValue("");
-  await expect(putOn.first()).toBeDisabled();
+  await expect(putOn.first()).toBeEnabled();
+  await putOn.first().click();
+  await expect(page.getByTestId("training-program-need-target")).toHaveText("Choose who the program is for");
+  await expect(target).toBeFocused();
+  expect(applied.length).toBe(0);
   await page.screenshot({ path: evidenceShotPath("pr-screens/6035/after-1440-start.png") });
 
   // (2) Klatreren: hans programmer oeverst, nuvaerende markeret.
