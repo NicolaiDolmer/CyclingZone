@@ -126,8 +126,7 @@
       "stages": "Etapas",
       "class": "Clase",
       "squad": "Tu plantilla",
-      "squadShort": "Plantilla",
-      "open": "Abrir"
+      "squadShort": "Plantilla"
     },
     "openRace": "Abrir {name}",
     "squad": {

@@ -224,6 +224,9 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "training_decision_card",
   // #5319: sessionsvaelgerne og Hjaelp viser v3-kataloget paa dette flag.
   "training_catalog_v3",
+  // #7533: beta-noten for kalendertabellen og Loebshistorik skifter til
+  // "Now for everyone", naar kontakten er on for alle.
+  "race_library_v2",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,

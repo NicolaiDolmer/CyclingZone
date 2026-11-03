@@ -58,7 +58,8 @@ export interface CalendarTableRow {
 }
 
 export type RaceTypeFilter = "all" | "single" | "stage_race";
-export type SortKey = "date" | "name" | "stages";
+// #7533 (ejer 2/11): hver kolonne kan sorteres.
+export type SortKey = "date" | "name" | "stages" | "start" | "terrain" | "class" | "squad";
 export type SortDir = "asc" | "desc";
 
 export interface CalendarTableQuery {
@@ -188,9 +189,32 @@ export function sortCalendarTableRows(
     }
     if (key === "stages") return sign * (a.stages - b.stages) || byDate(a, b) || tieBreak(a, b);
     if (key === "name") return sign * a.name.localeCompare(b.name) || byDate(a, b) || String(a.id).localeCompare(String(b.id));
+    const rank = SORT_RANK[key];
+    if (rank) {
+      // Rækker uden værdi (ingen starttid, klasse eller holdstatus) sidst, uanset retning.
+      const ra = rank(a);
+      const rb = rank(b);
+      if ((ra == null) !== (rb == null)) return ra == null ? 1 : -1;
+      if (ra != null && rb != null && ra !== rb) return sign * (ra < rb ? -1 : 1);
+      return byDate(a, b) || tieBreak(a, b);
+    }
     return byDate(a, b) || tieBreak(a, b);
   });
 }
+
+const SQUAD_ORDER: Record<RaceStatus, number> = { missing: 0, gtBound: 1, selected: 2 };
+const classRank = (c: string | null): number | null => {
+  if (!c) return null;
+  const i = CLASS_ORDER.indexOf(c);
+  return i === -1 ? CLASS_ORDER.length : i;
+};
+// Terræn: løbets hårdeste terrænkategori (kinds følger TERRAIN_KINDS, hårdeste først).
+const SORT_RANK: Record<string, (r: CalendarTableRow) => number | string | null> = {
+  start: (r) => r.startTime,
+  terrain: (r) => (r.kinds.length ? TERRAIN_KINDS.indexOf(r.kinds[0]) : null),
+  class: (r) => classRank(r.raceClass),
+  squad: (r) => (r.status ? SQUAD_ORDER[r.status] : null),
+};
 
 /** Klik på en kolonneoverskrift: samme kolonne vender retningen, en ny starter stigende. */
 export function nextSort(current: { key: string; dir: string }, key: string): { key: string; dir: SortDir } {

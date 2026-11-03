@@ -179,6 +179,7 @@ Bruges i slice 2 på hver af de 63 sider, i lys, mørk og mobil. **Hvert "nej" e
 5. Bruger siden mindst ét ægte cykel-data-element som billede, hvor det giver mening (profil, tidsgab, trøje, kurve)? (P2)
 6. Er alle tal tabulære, højrestillede i tabeller, med enhed, og vises intet tal to gange? (P5, P11)
 7. Er alt indhold bakket af data der findes nu (ingen mock, ingen løfter, ingen "Coming soon" som fallback)? (P11)
+7a. Kan hver datatabel sorteres på alle kolonner fra første dag, med navnet som link i stedet for en "Åbn"-knap? Undtaget er kun tabeller hvor rækkefølgen er selve indholdet (rangliste, stilling, rute), og de bærer `data-sort-exempt="<grund>"`. Håndhævet af `frontend/src/tableSortIntent.test.js`. (P5; ejer 2/11, #7533)
 
 **Chrome**
 8. Er der præcis ét guld-primært element (plus ledermarkører) på skærmen? (P3)

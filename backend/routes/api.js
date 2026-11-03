@@ -563,7 +563,7 @@ import {
   SELECTION_REMINDER_TONES,
   isSelectionReminderMigrationPending,
 } from "../lib/selectionDeadlineReminder.js";
-import { selectionSizeForRace } from "../lib/raceAutopick.js";
+import { selectionSizeForRace, MIN_RACE_ENTRIES } from "../lib/raceAutopick.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
 import { REGISTRY_ABILITY_KEYS } from "../lib/abilityRegistry.js";
 import { selectInChunks } from "../lib/dbChunk.js";
@@ -5098,10 +5098,15 @@ router.get("/races/calendar", requireAuth, cached({
     // kaptajn/sprint-kaptajn-entry i løbet.
     const teamEntryRaceIds = new Set();
     const teamLeaderRaceIds = new Set();
+    const entryCounts = new Map();
     for (const e of teamEntryRows) {
       teamEntryRaceIds.add(e.race_id);
+      entryCounts.set(e.race_id, (entryCounts.get(e.race_id) || 0) + 1);
       if (e.race_role === "captain" || e.race_role === "sprint_captain") teamLeaderRaceIds.add(e.race_id);
     }
+    // #7533: én gemt rytter er ikke "Klar". Under startgulvet (MIN_RACE_ENTRIES) stiller
+    // holdet ikke op, så kalenderen skal sige "Mangler".
+    const teamShortRaceIds = new Set([...entryCounts].filter(([, n]) => n < MIN_RACE_ENTRIES).map(([id]) => id));
 
     const model = buildCalendarModel({
       now: new Date(), // #6959: request-grænsen injicerer uret (lineupFrozen)
@@ -5112,6 +5117,7 @@ router.get("/races/calendar", requireAuth, cached({
       // #5405: null → buildCalendarModel sætter isMine=false på HVERT løb.
       teamDivisionId: ownPoolId,
       teamEntryRaceIds,
+      teamShortRaceIds,
       teamLeaderRaceIds,
       teamWithdrawnRaceIds,
     });

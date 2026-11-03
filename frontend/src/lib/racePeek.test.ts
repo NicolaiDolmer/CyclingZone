@@ -76,6 +76,11 @@ test("#6514 myRaceStatus: udtaget, bundet af GT, mangler udtagelse", () => {
   assert.equal(myRaceStatus({ id: "d", isMine: true, entered: false, date: TODAY }, [], TODAY), "missing");
 });
 
+test("#7533 myRaceStatus: en gemt udtagelse under startgulvet er ikke Klar", () => {
+  assert.equal(myRaceStatus({ id: "s", isMine: true, entered: true, lineupShort: true, date: "2026-10-20" }, [], TODAY), "missing");
+  assert.equal(myRaceStatus({ id: "s", isMine: true, entered: true, lineupShort: false, date: "2026-10-20" }, [], TODAY), "selected");
+});
+
 test("#6514 myRaceStatus: afmeldt loeb har ingen status og binder ikke som Grand Tour", () => {
   assert.equal(myRaceStatus({ id: "w", isMine: true, entered: true, date: "2026-10-20", withdrawn: true }, [], TODAY), null);
   const gt = { id: "gt", isMine: true, entered: true, withdrawn: true, raceClass: "TourFrance", date: "2026-10-20" };
@@ -157,4 +162,10 @@ test("#6514 myRaceStatus: Grand Tour-konflikt regnes i game_days, ikke kun datoe
   assert.equal(myRaceStatus(after, [tour, after], TODAY), "missing");
   const inside = { id: "x2", isMine: true, entered: false, date: "2026-10-21", gameDayStart: 101, gameDayEnd: 101 };
   assert.equal(myRaceStatus(inside, [tour, inside], TODAY), "gtBound");
+});
+
+test("#7533 myRaceStatus: en GT med udtagelse under gulvet binder ikke samtidige løb", () => {
+  const shortGt = { ...gt, lineupShort: true };
+  const clash = { id: "b", isMine: true, entered: false, date: "2026-10-18" };
+  assert.equal(myRaceStatus(clash, [shortGt, clash], TODAY), "missing");
 });

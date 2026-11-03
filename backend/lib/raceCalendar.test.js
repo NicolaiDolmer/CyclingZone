@@ -307,6 +307,15 @@ test("toCalendarWireEntry dropper de felter ingen kalender-klient læser (#2861)
   }
 });
 
+test("#7533 lineupShort: udtagelse under startgulvet markeres, kun sendt paa wire naar true", () => {
+  const { entries } = buildCalendarModel(sampleInput({ teamShortRaceIds: new Set(["r-single"]) }));
+  const single = entries.find((e) => e.id === "r-single");
+  const stage = entries.find((e) => e.id === "r-stage");
+  assert.equal(single.lineupShort, true);
+  assert.equal(toCalendarWireEntry(single).lineupShort, true);
+  assert.ok(!("lineupShort" in toCalendarWireEntry(stage)));
+});
+
 test("#6514 withdrawn: afmeldt loeb markeres, kun sendt paa wire naar true", () => {
   const { entries } = buildCalendarModel(sampleInput({ teamWithdrawnRaceIds: new Set(["r-single"]) }));
   const single = entries.find((e) => e.id === "r-single");

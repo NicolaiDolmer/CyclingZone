@@ -606,7 +606,7 @@ export default function ContractsTab({ riders, scouting, seasonYear, onChanged }
         )}
         {summaryData && (
           <div className="space-y-4">
-            <table className="w-full border-collapse text-sm" data-testid="contracts-summary-table">
+            <table data-sort-exempt="bekræftelse af de valgte ryttere, få rækker" className="w-full border-collapse text-sm" data-testid="contracts-summary-table">
               <thead>
                 <tr className="text-2xs uppercase tracking-[.06em] text-cz-3">
                   <th className="py-2 pe-3 text-start font-medium">{t("squad.headers.rider")}</th>
