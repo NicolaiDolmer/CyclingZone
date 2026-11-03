@@ -251,6 +251,8 @@ async function executeAutoPurchase({
       .eq("id", rider.id)
   );
 
+  // Dynamisk med vilje (#7337): frontend-tests importerer moduler der loader denne fil, og en
+  // statisk import trækker notificationService -> sentry.js -> @sentry/node ind i frontend-testkørslen.
   const { notifyIfContractExpiresThisSeason } = await import("./notificationService.js");
   await notifyIfContractExpiresThisSeason({
     supabase, teamId: team.id, seasonNumber: activeSeasonNumber, now,
