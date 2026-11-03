@@ -21,6 +21,7 @@ import { rankByCumTimeAsc } from "../../../lib/raceClassifications.js";
 import { createJerseyTally } from "./jerseyTally.mjs"; // #6804 v3 G16/G18
 import { breakawayKomPointsOfStage, createJerseyLeaderTracker } from "./komGcOverlap6937.mjs"; // #6937 G16
 import { gcStageTimes, gcWinnerBreakFacts } from "./gcFromBreakaway7258.mjs"; // #7258
+import { breakawayTrajectoryRowFacts } from "./realismMetrics.mjs"; // #7588 realisme-gate
 import { buildGcContext, raceGcStagesFor, withS5ThreatModel } from "../../../lib/raceEngineV4Bridge.js"; // #7258 faelles fremskrivning
 import { routeFromStageProfileRow } from "../../../lib/engine/v4/adapters/routeAdapter.ts";
 import { abilitiesFromRow } from "../../../lib/engine/v4/adapters/entrantAdapter.ts";
@@ -910,6 +911,7 @@ export function stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRide
     labelContradictions: labelContradictions(ranked, out, { stepModel: !isS5ProfilesV2OrLater(revision) }).length,
     winType: ranked?.[0]?.win_type ?? null,
     ...(tt ? {} : breakawayLeadFacts(out)), // #6804 G2
+    ...(tt ? {} : breakawayTrajectoryRowFacts(out?.timeline?.events, km)), // #7588: forløb pr. tiendedel, top, fangst
     // #6804 G3; #7258: i etapeloeb maales klassementets favoritter med den faelles fremskrivning.
     ...(tt ? {} : breakawayCompositionFacts({ out, profile, gcBefore, abilitiesById, teamByRider, riderIds, projectedGc: projectedGcFavouritesForStage({ profile, raceStages, gcBefore, entrants }) })),
     ...(tt ? { winnerId: testportStageFacts(out, profile, roleByRider).winnerId } : testportStageFacts(out, profile, roleByRider)), // #6750
