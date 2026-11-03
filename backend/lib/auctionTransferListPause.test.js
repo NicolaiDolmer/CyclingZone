@@ -28,12 +28,16 @@ function makeFake(tables, { uniqueActiveListing = true, failOn = null } = {}) {
     const filters = [];
     let op = "select";
     let patch = null;
+    let orderBy = null;
+    let window = null;
     const builder = {
       select() { return builder; },
       update(p) { op = "update"; patch = p; return builder; },
       eq(col, val) { filters.push((r) => r[col] === val); return builder; },
       in(col, vals) { filters.push((r) => vals.includes(r[col])); return builder; },
       limit() { return builder; },
+      order(col) { orderBy = col; return builder; },
+      range(from, to) { window = [from, to]; return builder; },
       maybeSingle() {
         return Promise.resolve().then(() => run()).then((res) => ({ data: res.data?.[0] ?? null, error: res.error }));
       },
@@ -49,7 +53,12 @@ function makeFake(tables, { uniqueActiveListing = true, failOn = null } = {}) {
       }
       const rows = state[table] || [];
       const hit = rows.filter((r) => filters.every((f) => f(r)));
-      if (op === "select") return { data: hit.map((r) => ({ ...r })), error: null };
+      if (op === "select") {
+        let out = hit.map((r) => ({ ...r }));
+        if (orderBy) out.sort((a, b) => String(a[orderBy]).localeCompare(String(b[orderBy])));
+        if (window) out = out.slice(window[0], window[1] + 1);
+        return { data: out, error: null };
+      }
       if (table === "transfer_listings" && uniqueActiveListing && ["open", "negotiating"].includes(patch.status)) {
         for (const r of hit) {
           const clash = rows.some((o) => o.id !== r.id && o.rider_id === r.rider_id && ["open", "negotiating"].includes(o.status));
@@ -253,7 +262,29 @@ test("reconcileOrphanPausedListings: forladt pause afgoeres, pause under aktiv a
     ],
   });
   const res = await reconcileOrphanPausedListings(fake);
-  assert.deepEqual(res, { resumed: ["l1"], withdrawn: ["l3"], kept: ["l2"] });
+  // Pausen under den aktive auktion (l2) roeres slet ikke.
+  assert.deepEqual(res, { resumed: ["l1"], withdrawn: ["l3"], kept: [] });
+  assert.equal(fake.state.transfer_listings.find((l) => l.id === "l2").status, PAUSED_LISTING_STATUS);
+});
+
+test("reconcileOrphanPausedListings: bladrer forbi et fuldt vindue af aktive auktioner (Codex P2)", async () => {
+  const fake = makeFake({
+    transfer_listings: [
+      { id: "l1", rider_id: "r1", seller_team_id: SELLER, status: "paused" },
+      { id: "l2", rider_id: "r2", seller_team_id: SELLER, status: "paused" },
+      { id: "l3", rider_id: "r3", seller_team_id: SELLER, status: "paused" },
+    ],
+    auctions: [{ rider_id: "r1", status: "active" }, { rider_id: "r2", status: "active" }],
+    riders: [
+      { id: "r1", team_id: SELLER },
+      { id: "r2", team_id: SELLER },
+      { id: "r3", team_id: SELLER },
+    ],
+  });
+  // Vinduet (limit 2) er fyldt af aktive auktioner; den foraeldreloese l3 ligger bagved.
+  const res = await reconcileOrphanPausedListings(fake, { limit: 2 });
+  assert.deepEqual(res.resumed, ["l3"]);
+  assert.equal(fake.state.transfer_listings.find((l) => l.id === "l1").status, PAUSED_LISTING_STATUS);
 });
 
 test("safeReconcileOrphanPausedListings: fejl sluges", async () => {

@@ -236,15 +236,29 @@ export async function reconcileOrphanPausedListings(
   supabase: Db,
   { limit = 200 }: { limit?: number } = {},
 ): Promise<ResumeResult> {
-  const { data, error } = await supabase
-    .from("transfer_listings")
-    .select("rider_id")
-    .eq("status", PAUSED_LISTING_STATUS)
-    .limit(limit);
-  if (error) throw new Error(`read paused transfer_listings: ${error.message}`);
-  return resumePausedTransferListings(supabase, {
-    riderIds: ((data || []) as Array<{ rider_id: string }>).map((l) => l.rider_id),
-  });
+  // Codex P2: pausede listings for stadig aktive auktioner bliver staaende, saa et
+  // fast vindue paa de foerste `limit` raekker kunne skygge for en foraeldreloes
+  // pause bag dem for evigt. Bladr derfor (stabil id-orden) forbi aktive
+  // auktioner, til `limit` foraeldreloese ryttere er fundet eller listen er slut.
+  const orphans: string[] = [];
+  for (let from = 0; orphans.length < limit; from += limit) {
+    const { data, error } = await supabase
+      .from("transfer_listings")
+      .select("id, rider_id")
+      .eq("status", PAUSED_LISTING_STATUS)
+      .order("id", { ascending: true })
+      .range(from, from + limit - 1);
+    if (error) throw new Error(`read paused transfer_listings: ${error.message}`);
+    const rows = (data || []) as Array<{ id: string; rider_id: string }>;
+    const riderIds = uniqueIds(rows.map((l) => l.rider_id));
+    if (riderIds.length === 0) break;
+    const active = await fetchActiveAuctionRiderIds(supabase, riderIds);
+    for (const riderId of riderIds) {
+      if (!active.has(riderId) && !orphans.includes(riderId)) orphans.push(riderId);
+    }
+    if (rows.length < limit) break;
+  }
+  return resumePausedTransferListings(supabase, { riderIds: orphans.slice(0, limit) });
 }
 
 /**
