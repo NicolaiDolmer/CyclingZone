@@ -199,7 +199,7 @@
       "unknownRider": "Je renner",
       "viewRace": "Koers bekijken",
       "headline": {
-        "maidenWin": "Eerste zege",
+        "maidenWin": "Eerste zege van de renner",
         "firstPodium": "Eerste podium",
         "firstJersey": "Eerste trui",
         "clubMilestoneWin": "Mijlpaal voor de club"
@@ -260,7 +260,7 @@
       "linkAll": "Alles bekijken",
       "empty": "Geen actieve veilingen",
       "emptyCta": "De veilingmarkt bekijken",
-      "emptyHint": "Veilingen sluiten elke avond om 20:00.",
+      "emptyHint": "Veilingen lopen elke dag van 08:00 tot 24:00.",
       "expired": "Verlopen",
       "winning": "Winnend",
       "selling": "Verkopend",
@@ -284,7 +284,7 @@
       "linkAll": "Kalender",
       "empty": "Geen geplande koersen",
       "emptyCta": "De koerskalender openen",
-      "emptyHint": "Schrijf je team in voor een komende koers vanuit de kalender.",
+      "emptyHint": "De volgende koersen van je divisie verschijnen hier.",
       "stages": "{count, plural, one {1 etappe} other {# etappes}}",
       "oneDay": "Eendagskoers",
       "scheduled": "Gepland",

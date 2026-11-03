@@ -19,7 +19,9 @@ const source = readFileSync(join(__dirname, "HelpPage.jsx"), "utf8");
 // Midlertidig undtagelse (#6499): den gamle aldringstekst er taget af siden,
 // men nøglen slettes i help.json af en separat PR. Når den er væk, fejler
 // stale-tjekket nedenfor, og linjen skal fjernes.
-const KNOWN_ORPHANS = { riders: ["agingAndDecline"] };
+// Samme slags undtagelse (#6641): tre-trins-teksten hoerte til den fjernede kontakt
+// race_day_intention_enabled; noeglen slettes i help.json af en separat PR.
+const KNOWN_ORPHANS = { riders: ["agingAndDecline"], raceSelection: ["effortStepsThree"] };
 
 function extractSectionDefs(src) {
   const match = src.match(/const SECTION_DEFS = \[([\s\S]*?)\n\];/);

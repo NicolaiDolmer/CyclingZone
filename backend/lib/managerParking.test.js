@@ -394,6 +394,17 @@ test("unparkTeam: idempotent — et hold der ikke er parkeret, flyttes ikke og r
   assert.equal(reconciled, false);
 });
 
+test("#6773 unparkTeam: et genindplaceret hold får sit mandat for den angivne sæson; et ikke-parkeret hold gør ikke", async () => {
+  const db = makeFakeDb({ teams: [team({ id: "t1", parked_at: daysAgo(90), league_division_id: null }), team({ id: "t2", parked_at: null, league_division_id: "pool-x" })] });
+  const calls = [];
+  const ensureReturningMandate = async (client, args) => { assert.equal(client, db); calls.push(args); return { closed: null, proposal: null }; };
+  const pickDivision = async () => ({ division: 3, leagueDivisionId: "pool-d3a" });
+  const reconcileAiTeams = async () => {};
+  await unparkTeam({ supabase: db, teamId: "t1", pickDivision, reconcileAiTeams, mandateSeasonNumber: 6, ensureReturningMandate });
+  await unparkTeam({ supabase: db, teamId: "t2", pickDivision, reconcileAiTeams, mandateSeasonNumber: 6, ensureReturningMandate });
+  assert.deepEqual(calls, [{ teamId: "t1", seasonNumber: 6 }]);
+});
+
 test("unparkTeam: en fejlende AI-reconcile vælter ikke genindplaceringen", async () => {
   const db = makeFakeDb({ teams: [team({ id: "t1", parked_at: daysAgo(90), league_division_id: null })] });
   const result = await unparkTeam({

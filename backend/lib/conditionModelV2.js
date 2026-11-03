@@ -16,7 +16,8 @@ import { DAILY_TRAINING_CONFIG } from "./dailyTraining.js";
 import { CONDITION_CONFIG, RACE_DAY_ENGINE_RECOVERY_CONFIG, injuryRisk, rollInjury } from "./riderCondition.js";
 import { effortFatigueMultiplier } from "./raceRoles.js";
 import { medicalRecoveryMultiplier, medicalTrainingInjuryRisk, medicalInjuryDays } from "./medicalEffects.js";
-import { allOut7280Tuning, isAllOut7280On, isSaveItt7332Effort, isSaveItt7332On } from "./engine/v4/mechanics/effortCost.ts";
+import { allOut7280Tuning, isSaveItt7332Effort } from "./engine/v4/mechanics/effortCost.ts";
+import { isS5ProfilesV3OrLater } from "./raceEngineRulesRevision.ts";
 
 export const CONDITION_V2_CONFIG = Object.freeze({
   // §5.2: profil-belastning (spillernes rækkefølge, større spænd end v1). Niveauet er
@@ -91,26 +92,26 @@ export function workMultiplierV2(exposure, { profileType = null, cfg = CONDITION
 }
 
 /**
- * #6641/#7280 (slukket alt ud-pakke, KUN s5_profiles_v3; spec 2026-10-27-6641-alt-ud-design.md):
+ * #6641/#7280 (alt ud-pakken, s5_profiles_v3 og senere; spec 2026-10-27-6641-alt-ud-design.md):
  * ejer 27/10 punkt 3, prisen for Alt ud er træthed der hober sig op. Pakkens faktor
  * erstatter alt ud's indsats-faktor, også i enkeltstarter (dér vinder alt ud nu tid).
- * `null` = pakken er ikke i kraft eller trinnet er ikke alt ud (bit-identisk).
+ * `null` = aeldre revision, eller trinnet er ikke alt ud (bit-identisk).
  */
 export function allOutLoadMultiplier7280(effort, rulesRevision) {
-  if (effort !== "all_out" || !isAllOut7280On(rulesRevision)) return null;
+  if (effort !== "all_out" || !isS5ProfilesV3OrLater(rulesRevision)) return null;
   return allOut7280Tuning().fatigueLoad;
 }
 
 /**
- * #7332 (slukket, KUN s5_profiles_v3; ejer 31/10 valg A): spar mod uret sparer træthed.
+ * #7332 (s5_profiles_v3 og senere; ejer 31/10 valg A): spar mod uret sparer træthed.
  * På en enkeltstart (itt, itt_hilly; ikke ttt) får spar, beskyt og grupetto samme
  * trætheds-rabat som spar på en FLAD etape, i stedet for 1. Motoren tager prisen i tid
- * (individualTimeTrial.ts). `null` = pakken er ikke i kraft eller trinnet/profilen er
+ * (individualTimeTrial.ts). `null` = aeldre revision, eller trinnet/profilen er
  * ikke omfattet (bit-identisk).
  */
 export function saveIttLoadMultiplier7332(effort, profileType, rulesRevision) {
   if (!INDIVIDUAL_TIME_TRIAL_PROFILES.has(profileType)) return null;
-  if (!isSaveItt7332Effort(effort, isSaveItt7332On(rulesRevision))) return null;
+  if (!isSaveItt7332Effort(effort, isS5ProfilesV3OrLater(rulesRevision))) return null;
   return effortFatigueMultiplier("save", { profileType: "flat", rulesRevision });
 }
 

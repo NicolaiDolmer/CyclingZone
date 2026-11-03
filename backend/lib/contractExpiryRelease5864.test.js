@@ -189,7 +189,7 @@ const RELEASED = (r) => r.team_id === null && r.contract_end_season === null && 
 test("#5864: U23, junior og akademi med udløbet kontrakt frigives ved sæsonskiftet (default-forespørgslen)", async () => {
   const db = makeDb(seed());
   const { notify, calls } = notifyRecorder();
-  const stats = await releaseExpiredContractRiders({ supabase: db.supabase, seasonNumber: 4, notify });
+  const stats = await releaseExpiredContractRiders({ now: new Date("2026-11-02T12:00:00Z"), supabase: db.supabase, seasonNumber: 4, notify });
 
   for (const id of ["h-u23-exp", "h-jun-exp", "h-acad-senior-squad", "h-u23-plain-exp"]) {
     assert.ok(RELEASED(db.rider(id)), `${id} skal være fri agent`);
@@ -225,7 +225,7 @@ test("#5864: U23, junior og akademi med udløbet kontrakt frigives ved sæsonski
 
 test("#5864: race-entry-oprydning og opslags-lukning gælder også ungdom; historik bevares", async () => {
   const db = makeDb(seed());
-  await releaseExpiredContractRiders({ supabase: db.supabase, seasonNumber: 4, notify: notifyRecorder().notify });
+  await releaseExpiredContractRiders({ now: new Date("2026-11-02T12:00:00Z"), supabase: db.supabase, seasonNumber: 4, notify: notifyRecorder().notify });
 
   const entries = db.tables.race_entries.filter((e) => e.rider_id === "h-u23-exp").map((e) => e.race_id);
   assert.deepEqual(entries, ["race-done"], "fremtidig tilmelding fjernet, afviklet løb (brugt i sæsonen) bevaret");
@@ -235,7 +235,7 @@ test("#5864: race-entry-oprydning og opslags-lukning gælder også ungdom; histo
 
 test("#5864: seniorvejen er uændret (alle gameplay-hold, også AI)", async () => {
   const db = makeDb(seed());
-  await releaseExpiredContractRiders({ supabase: db.supabase, seasonNumber: 4, notify: notifyRecorder().notify });
+  await releaseExpiredContractRiders({ now: new Date("2026-11-02T12:00:00Z"), supabase: db.supabase, seasonNumber: 4, notify: notifyRecorder().notify });
 
   assert.ok(RELEASED(db.rider("h-sen-exp")));
   assert.equal(db.rider("h-sen-exp").is_academy, false);
@@ -257,7 +257,7 @@ test("#5864: senior-patchen er bit-identisk med før; kun akademiryttere får is
 
 test("#5864: etapeløbs-udskydelsen gælder også ungdom", async () => {
   const db = makeDb(seed());
-  const stats = await releaseExpiredContractRiders({ supabase: db.supabase, seasonNumber: 4, notify: notifyRecorder().notify });
+  const stats = await releaseExpiredContractRiders({ now: new Date("2026-11-02T12:00:00Z"), supabase: db.supabase, seasonNumber: 4, notify: notifyRecorder().notify });
 
   const r = db.rider("h-u23-racing");
   assert.equal(r.team_id, "H");
@@ -270,7 +270,7 @@ test("#5864: etapeløbs-udskydelsen gælder også ungdom", async () => {
 test("#5864: frosne hold, testkonti, bank og AI-ungdom røres ikke", async () => {
   const db = makeDb(seed());
   const { notify, calls } = notifyRecorder();
-  await releaseExpiredContractRiders({ supabase: db.supabase, seasonNumber: 4, notify });
+  await releaseExpiredContractRiders({ now: new Date("2026-11-02T12:00:00Z"), supabase: db.supabase, seasonNumber: 4, notify });
 
   for (const [id, teamId] of [["f-u23-exp", "F"], ["f-sen-exp", "F"], ["t-jun-exp", "T"], ["bank-u23-exp", "BANK"], ["ai-u23-exp", "AI"]]) {
     const r = db.rider(id);
@@ -293,7 +293,7 @@ test("#5864 (CodeRabbit): rytter hvis akademiflag ændrede sig efter læsningen 
   // Læst som senior (is_academy=false), men degraderet til akademiet imellem.
   const stale = { ...db.rider("h-sen-exp"), team: db.tables.teams.find((t) => t.id === "H") };
   db.rider("h-sen-exp").is_academy = true;
-  const stats = await releaseExpiredContractRiders({
+  const stats = await releaseExpiredContractRiders({ now: new Date("2026-11-02T12:00:00Z"),
     supabase: db.supabase, seasonNumber: 4, notify: notifyRecorder().notify,
     fetchExpiredContractRiders: async () => [stale],
   });
@@ -303,11 +303,11 @@ test("#5864 (CodeRabbit): rytter hvis akademiflag ændrede sig efter læsningen 
 
 test("#5864: idempotent; en ny kørsel samme sæson frigiver intet nyt (udskudt rytter stadig udskudt)", async () => {
   const db = makeDb(seed());
-  const first = await releaseExpiredContractRiders({ supabase: db.supabase, seasonNumber: 4, notify: notifyRecorder().notify });
+  const first = await releaseExpiredContractRiders({ now: new Date("2026-11-02T12:00:00Z"), supabase: db.supabase, seasonNumber: 4, notify: notifyRecorder().notify });
   assert.equal(first.candidates, 7);
   assert.equal(first.released, 6);
   const { notify, calls } = notifyRecorder();
-  const second = await releaseExpiredContractRiders({ supabase: db.supabase, seasonNumber: 4, notify });
+  const second = await releaseExpiredContractRiders({ now: new Date("2026-11-02T12:00:00Z"), supabase: db.supabase, seasonNumber: 4, notify });
   assert.deepEqual(
     { candidates: second.candidates, released: second.released, deferredByRacing: second.deferredByRacing },
     { candidates: 1, released: 0, deferredByRacing: 1 },

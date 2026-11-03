@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { restRows, restObject, apiResponse, parseRpc, rpcResponse } from "./mockHandlers.js";
+import { restRows, restObject, apiResponse, parseRpc, rpcResponse, mockNoActiveSeason } from "./mockHandlers.js";
 import { DISPLAY_RECIPE_KEYS, ratingForRole } from "../lib/generated/displayRecipes.js";
 import { TEST_TEAM, RIVAL_TEAM } from "./seedData.js";
 import { normalizeHonours, topOf } from "../lib/seasonHonours.js";
@@ -263,4 +263,31 @@ test("preview-seedets ratings kan produceres af den nye model", () => {
         `${row.rider_id} som ${role} gav ${r}`);
     }
   }
+});
+
+test("seasons respekterer status-filteret (#4226)", () => {
+  const base = "https://x/rest/v1/seasons?select=*";
+  assert.equal(restRows("seasons", base).length, 1);
+  assert.equal(restRows("seasons", base + "&status=eq.active").length, 1);
+  assert.equal(restRows("seasons", base + "&status=eq.completed").length, 0);
+  assert.equal(restRows("seasons", base + "&status=neq.active").length, 0);
+  assert.equal(restRows("seasons", base + "&status=in.(active,completed)").length, 1);
+  assert.equal(restObject("seasons", base + "&status=eq.completed"), null);
+  assert.equal(restObject("seasons", base + "&status=eq.active").status, "active");
+  assert.equal(restObject("seasons").status, "active");
+});
+
+test("ingen-aktiv-saeson-flag tømmer seasons (#4226)", () => {
+  const store = new Map([["cz_mock_no_active_season", "1"]]);
+  const fakeStorage = { getItem: (k) => store.get(k) ?? null, setItem() {}, removeItem() {}, clear() {}, key: () => null, length: store.size };
+  Object.defineProperty(globalThis, "localStorage", { value: fakeStorage, configurable: true, writable: true });
+  try {
+    assert.equal(mockNoActiveSeason(), true);
+    assert.deepEqual(restRows("seasons", "https://x/rest/v1/seasons?status=eq.active"), []);
+    assert.equal(restObject("seasons", "https://x/rest/v1/seasons?status=eq.active"), null);
+  } finally {
+    Reflect.deleteProperty(globalThis, "localStorage");
+  }
+  assert.equal(mockNoActiveSeason(), false);
+  assert.equal(restRows("seasons", "https://x/rest/v1/seasons?status=eq.active").length, 1);
 });

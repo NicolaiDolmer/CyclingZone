@@ -218,11 +218,10 @@ features:
     title_en: Stage intention choice
     title_da: Indsatsvalg pr. etape
     state: live
-    flag: race_day_intention_enabled
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6641
-    verified: 2026-10-27
-    note: On 27/10 13:48 efter ejer-go (#7281), læst tilbage i prod.
+    verified: 2026-11-02
+    note: Live 27/10 efter ejer-go (#7281); kontakten race_day_intention_enabled fjernet 2/11 (krav 5), alle fem trin gælder altid.
 
   - id: race-all-out-7280
     area: race-engine
@@ -231,8 +230,8 @@ features:
     state: live
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6641
-    verified: 2026-10-27
-    note: Kodekontakt ALL_OUT_7280_ACTIVE tændt 27/10 efter ejer-go (#7311), kun v3.
+    verified: 2026-11-02
+    note: Live 27/10 efter ejer-go (#7311); kodekontakten ALL_OUT_7280_ACTIVE fjernet 2/11 (krav 5), reglen gælder altid under s5_profiles_v3.
 
   - id: race-itt-terrain-6595
     area: race-engine
@@ -251,8 +250,8 @@ features:
     state: live
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7332
-    verified: 2026-10-31
-    note: Kodekontakt SAVE_ITT_7332_ACTIVE tændt 31/10 efter ejer-go; vælgeren viser kun tre trin på enkeltstart.
+    verified: 2026-11-01
+    note: Live 31/10 efter ejer-go; kodekontakten SAVE_ITT_7332_ACTIVE fjernet 1/11 (krav 5). Vælgeren viser kun tre trin på enkeltstart.
 
   - id: race-descent-task-7380
     area: race-engine
@@ -272,17 +271,16 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7383
     verified: 2026-10-31
-    note: Kodekontakt FINAL_KM_BOUNDARY_7383_ACTIVE tændt 31/10 efter ejer-go (motor og taktikside), kun v3.
+    note: Live 31/10 efter ejer-go; kodekontakten FINAL_KM_BOUNDARY_7383_ACTIVE (motor og taktikside) fjernet 1/11 (krav 5), reglen gælder altid under s5_profiles_v3.
 
   - id: luxury-helper-role
     area: race-engine
     title_en: Luxury helper
     title_da: Luksushjælper
-    state: building
+    state: live
     epic: 5982
-    verified: 2026-10-27
-    decision: goer-faerdigt
-    decide_by: 2026-11-15
+    verified: 2026-11-02
+    note: Live uden flag siden PR #7276 (v3-motoren + etapeplanens genvej i RaceTacticsTab/StagePlanBoard); effektmåling og forbedring følges i #7418.
 
   # --- race-day ------------------------------------------------------------
   - id: race-day-engine
@@ -372,14 +370,16 @@ features:
     area: stats
     title_en: Calendar race card and race history library
     title_da: Kalender-løbskort og løbshistorik
-    state: building
+    state: beta
     ssot: docs/CALENDAR_RULES.md
     epic: 6514
     flag: race_library_v2
-    verified: 2026-10-26
-    note: #6680 + #7217 merget; off i prod; PR #6636 åben.
+    verified: 2026-11-01
     decision: ejer-beslutning
-    decide_by: 2026-10-25
+    decide_by: 2026-11-05
+    note: Beta for beta-testere 1/11 (ejer-go, efter #7463 Vis-vælger). PR #6636 åben.
+    roadmap_en: "A race card in the calendar: tap a race to see terrain, how well it suits your team and your status. Switch between Calendar and Table, and browse every edition in Race history."
+    roadmap_da: "Et løbskort i kalenderen: tryk på et løb og se terræn, hvor godt det passer dit hold og din status. Skift mellem Kalender og Tabel, og bladr i alle udgaver under Løbshistorik."
 
   - id: race-day-development
     area: race-day
@@ -692,11 +692,10 @@ features:
     title_en: Set the training day for several riders at once
     title_da: Sæt træningsdagen for flere ryttere på én gang
     state: live
-    flag: training_bulk_day
     ssot: docs/TRAINING_RULES.md
     epic: 6523
-    verified: 2026-10-24
-    note: PR #6533 (12/10); beta 15/10; on for alle 24/10 17:30 UTC efter ejer-ja (#7153, læst tilbage i prod).
+    verified: 2026-11-02
+    note: Live for alle 24/10 efter ejer-ja (#7153); kodekontakten training_bulk_day fjernet 2/11 (krav 5), linjen vises altid.
 
   - id: training-decision-card
     area: training
@@ -954,11 +953,10 @@ features:
     title_en: Train now B (the click settles the rider's whole known date)
     title_da: Træn nu B (klikket afregner rytterens hele kendte dato)
     state: live
-    flag: training_train_now_whole_day
     ssot: docs/TRAINING_RULES.md
     epic: 6461
-    verified: 2026-10-30
-    note: "training_train_now_whole_day on siden 27/10; læst i prod 30/10."
+    verified: 2026-11-02
+    note: "Live siden 27/10; kodekontakten training_train_now_whole_day fjernet 2/11 (krav 5), klikket afregner altid hele den kendte dato."
 
   - id: development-score-b-engine
     area: training

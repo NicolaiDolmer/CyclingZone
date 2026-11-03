@@ -31,7 +31,7 @@ import {
   REJECTED_TEAM_ORDER_RIDER_FIELDS,
   defaultTeamOrderForRoster,
 } from "./engine/v4/ai/teamOrderContract.ts";
-import { validEffortsFor } from "./raceRoles.js";
+import { VALID_EFFORTS_FIVE_STEP } from "./raceRoles.js";
 import { isStageLocked } from "./raceStartLock.js";
 import { isOfficialTimesV5OrLater, surfaceRulesRevision } from "./raceEngineRulesRevision.ts";
 import { validateRiderPlans, withStagePlan } from "./stagePlanApi.js"; // #7003
@@ -143,7 +143,6 @@ export { isStageLocked };
  *   scheduledAt: string|null,
  *   teamRiderIds: Set<string>,
  *   now?: Date,
- *   intentionEnabled?: boolean,
  * }} args
  * @returns {{ok: boolean, errors: string[]}}
  */
@@ -156,10 +155,6 @@ export function validateTeamOrder({
   scheduledAt = null,
   teamRiderIds = new Set(),
   now = new Date(),
-  // #4632: race_day_intention_enabled. Default FALSE (samme kontrakt som
-  // raceStageRolesApi.validateStageRoleOverrides) — glemt flag = dagens
-  // tre-vaerdi-vokabular, aldrig det udvidede.
-  intentionEnabled = false,
   // #7003: etapeplanens kontekst (stagePlanApi.loadStagePlanContext). null = `plan` er et ukendt felt.
   stagePlan = null,
   // #7003: rytterens rolle paa etapen (loadStageRoleByRider). Mangler den, er "Arbejd + udbrud" ikke spaerret.
@@ -204,11 +199,10 @@ export function validateTeamOrder({
   }
   const planError = stagePlan ? validateRiderPlans(riders, stagePlan) : null; // #7003
   if (planError) errors.push(planError);
-  // #4632: femtrins-intentionen bag flag — se raceStageRolesApi.js. Begge
-  // skrivestier deler ET vokabular (validEffortsFor) saa de aldrig kan diverge.
-  const validEfforts = validEffortsFor(intentionEnabled);
+  // #4632: femtrins-intentionen — se raceStageRolesApi.js. Begge skrivestier
+  // deler ET vokabular (VALID_EFFORTS_FIVE_STEP) saa de aldrig kan diverge.
   for (const r of riders) {
-    if (!validEfforts.includes(r?.effort)) { errors.push("team_orders_invalid_effort"); break; }
+    if (!VALID_EFFORTS_FIVE_STEP.includes(r?.effort)) { errors.push("team_orders_invalid_effort"); break; }
   }
   // #4246 (b): sprint-toget. Valgfrit felt — men er det sat, skal det være en
   // boolean (en streng "false" ville ellers blive til et tog-medlem).

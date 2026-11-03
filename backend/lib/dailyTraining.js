@@ -395,9 +395,9 @@ export function applyRaceDevelopmentTick({
   tickSeedKey = null, budgetDivisor = null,
   // #4632 (loebsdagens intention, Model C punkt 3): dagens intention for netop
   // denne rytter paa netop denne etape (race_stage_roles.effort / race_team_
-  // orders.riders[].effort). DORMANT SEAM: kald-stedet i dailyTrainingEngine.js
-  // sender kun et effort naar BAADE race_day_development_enabled (D2) OG
-  // race_day_intention_enabled er on. Udeladt/null/ukendt vaerdi =>
+  // orders.riders[].effort). Kald-stedet i dailyTrainingEngine.js
+  // sender kun et effort naar race_day_development_enabled (D2) er on.
+  // Udeladt/null/ukendt vaerdi =>
   // effortDevelopmentMultiplier() giver 1.0 => BIT-IDENTISK med foer #4632.
   effort = null,
   curveB = null, // #3564: samme kontrakt som applyDailyTick

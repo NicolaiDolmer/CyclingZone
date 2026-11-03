@@ -323,7 +323,7 @@ function TogglePill({ label, ariaLabel, active, disabled, onClick, title }) {
 
 // #6570: initialStage = etapen etapeside 2.0's guld-knap naevner ("Set tactics
 // for stage N"). Aaben etape → fanen aabner paa den; ellers dagens regel.
-export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders: showOrdersProp = true, initialStage = null }) {
+export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders: showOrdersProp = false, initialStage = null }) {
   const { t } = useTranslation("races");
   // #6067: løbets regel-revision, bundet til DET løb den er læst for. Et skift
   // af raceId kan derfor aldrig arve et andet løbs revision, og en fejlet
@@ -1020,8 +1020,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       </div>
 
       {/* Holdplanen for den åbne etape: hvem kører der ledes for, hvad gør
-          holdet med udbruddet, og hvor mange kører sprint-tog. Preview-gated
-          sammen med ordre-kolonnen — se TACTICS_V4_PREVIEW i RaceDetailPage. */}
+          holdet med udbruddet, og hvor mange kører sprint-tog. Vises
+          sammen med ordre-kolonnen (regel-revisionen afgør, se ordersVisible). */}
       {showOrders && !roadOrdersAvailable(stageProfileType) && (
         <p data-testid="time-trial-no-road-orders" className="px-4 py-3 border-b border-cz-border text-xs text-cz-2">{t("tacticsOrders.timeTrialNoRoadOrders")}</p>
       )}

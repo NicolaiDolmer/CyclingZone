@@ -2,12 +2,12 @@
 // #6641/#7280: Alt ud efter ejerens design 27/10 (spec 2026-10-27-6641-alt-ud-design.md).
 // Laaser retningerne (ikke tallene): gevinsten vokser med evne og reserve, tom reserve
 // giver ingen gevinst, risikoen for at knaekke er 0 over taersklen og vokser under den,
-// og hele pakken er bit-identisk slukket. Ingen balance-tal i asserts (hard rule 17).
+// og aeldre revisioner er uroerte (kodekontakten er fjernet, krav 5). Ingen balance-tal i asserts (hard rule 17).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { allOutCrackProbability, allOutGainLoss, allOutLevel01, allOutReserve01, climbBlockOf, segmentCrackProbability } from "./allOutCrack6641.ts";
-import { ALL_OUT_7280_TUNING, setAllOut7280ForBench } from "./effortCost.ts";
+import { ALL_OUT_7280_TUNING, setAllOut7280TuningForBench } from "./effortCost.ts";
 import { simulateStageV4 } from "../index.ts";
 import { validateTimelineEvents } from "../timeline.ts";
 import { RACE_V4_TUNING } from "../tuning.ts";
@@ -79,26 +79,20 @@ function field(effort: Entrant["effort"], condition = 1): Entrant[] {
   return riders;
 }
 
-function run(effort: Entrant["effort"], seed: string, condition = 1): StageOutput {
-  const input: StageInput = { route: ROUTE, startlist: field(effort, condition), orders: [], seed, tuning: RACE_V4_TUNING, rules_revision: "s5_profiles_v3" };
+function run(effort: Entrant["effort"], seed: string, condition = 1, rules_revision: StageInput["rules_revision"] = "s5_profiles_v3"): StageOutput {
+  const input: StageInput = { route: ROUTE, startlist: field(effort, condition), orders: [], seed, tuning: RACE_V4_TUNING, rules_revision };
   return simulateStageV4(input);
 }
 
 const SEEDS = Array.from({ length: 8 }, (_, i) => `ao7280-${i}`);
 const aoEvents = (out: StageOutput) => out.timeline.events.filter((e) => e.type === "all_out_gain" || e.type === "all_out_cracked");
 
-test("slukket (kontakten): ingen alt ud-events, og alt ud koerer som foer", () => {
-  try {
-    setAllOut7280ForBench({ active: false });
-    for (const seed of SEEDS.slice(0, 3)) assert.equal(aoEvents(run("all_out", seed)).length, 0);
-  } finally {
-    setAllOut7280ForBench(null);
-  }
+test("aeldre revision: ingen alt ud-events, og alt ud koerer som foer", () => {
+  for (const seed of SEEDS.slice(0, 3)) assert.equal(aoEvents(run("all_out", seed, 1, "s5_profiles_v2")).length, 0);
 });
 
-test("taendt: alt ud vinder paa den afgoerende stigning, deterministisk og med gyldig tidslinje", () => {
+test("s5_profiles_v3: alt ud vinder paa den afgoerende stigning, deterministisk og med gyldig tidslinje", () => {
   try {
-    setAllOut7280ForBench({ active: true });
     let gains = 0;
     let saved = 0;
     for (const seed of SEEDS) {
@@ -112,32 +106,27 @@ test("taendt: alt ud vinder paa den afgoerende stigning, deterministisk og med g
         if (e.type === "all_out_gain") { gains++; assert.equal("seconds" in e.params, false, "ingen sekunder i linjen"); }
       }
       // Samme felt og seed uden gevinst og knaek (kontrafaktisk): alt ud-rytterne er hurtigere.
-      setAllOut7280ForBench({ active: true, tuning: { gainLoss: 0, crackMaxProbability: 0 } });
+      setAllOut7280TuningForBench({ gainLoss: 0, crackMaxProbability: 0 });
       const without = run("all_out", seed);
-      setAllOut7280ForBench({ active: true });
+      setAllOut7280TuningForBench(null);
       const t = (o: StageOutput) => o.results.filter((r) => String(r.rider_id).startsWith("ao") && r.status === "finished").reduce((s, r) => s + Number(r.time_seconds), 0);
       saved += t(without) - t(out);
     }
     assert.ok(gains > 0, "mindst én alt ud-linje over froeene");
     assert.ok(saved > 0, "alt ud vinder samlet tid paa topankomsten");
   } finally {
-    setAllOut7280ForBench(null);
+    setAllOut7280TuningForBench(null);
   }
 });
 
-test("taendt: en traet rytter knaekker oftere end en frisk (traethed der hober sig op)", () => {
-  try {
-    setAllOut7280ForBench({ active: true });
-    const cracks = (condition: number) => SEEDS.reduce((n, seed) => n + run("all_out", seed, condition).timeline.events.filter((e) => e.type === "all_out_cracked").length, 0);
-    assert.ok(cracks(0.3) > cracks(1), "lav reserve = flere knaek");
-  } finally {
-    setAllOut7280ForBench(null);
-  }
+test("s5_profiles_v3: en traet rytter knaekker oftere end en frisk (traethed der hober sig op)", () => {
+  const cracks = (condition: number) => SEEDS.reduce((n, seed) => n + run("all_out", seed, condition).timeline.events.filter((e) => e.type === "all_out_cracked").length, 0);
+  assert.ok(cracks(0.3) > cracks(1), "lav reserve = flere knaek");
 });
 
-test('taendt: ogsaa en alt ud-rytter ALENE paa den sidste stigning kan knaekke og taber tid (Codex-fund)', () => {
+test('s5_profiles_v3: ogsaa en alt ud-rytter ALENE paa den sidste stigning kan knaekke og taber tid (Codex-fund)', () => {
   const solo = (seed: string, tuning = {}) => {
-    setAllOut7280ForBench({ active: true, tuning });
+    setAllOut7280TuningForBench(tuning);
     const input: StageInput = { route: ROUTE, startlist: [{ rider_id: 'solo', abilities: ab(50, 70), role: 'free_role', effort: 'all_out', condition: 0.2 }], orders: [], seed, tuning: RACE_V4_TUNING, rules_revision: 's5_profiles_v3' };
     return simulateStageV4(input);
   };
@@ -154,6 +143,6 @@ test('taendt: ogsaa en alt ud-rytter ALENE paa den sidste stigning kan knaekke o
     }
     assert.ok(cracked > 0, 'lav reserve alene giver knaek over froeene');
   } finally {
-    setAllOut7280ForBench(null);
+    setAllOut7280TuningForBench(null);
   }
 });

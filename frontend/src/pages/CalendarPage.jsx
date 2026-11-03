@@ -179,6 +179,19 @@ export default function CalendarPage() {
     setTab("divisions");
   }
 
+  // #7461: "Vis"-vælgerens værdi samler fane + division i ét felt. "Alle hold" og
+  // "Divisioner + Alle divisioner" viser det samme, så begge er "all" her.
+  const scopeValue = effectiveTab === "mine" ? "mine"
+    : effectiveTab === "divisions" && division != null ? `d:${division}`
+    : "all";
+  // Pulje-vælgeren og måned-pilene findes både i "Vis"-linjen og i fanerækken (flag off).
+  const changePool = (e) => setPool(e.target.value === "" ? null : Number(e.target.value));
+  const stepCursor = (dir) => setCursor((c) => stepMonth(c, dir));
+  function changeScope(value) {
+    if (value === "mine" || value === "all") setTab(value);
+    else changeDivision(value.slice(2));
+  }
+
   // "Mit hold"-tab is the strongest filter: only the player's own races. The legend
   // checkbox ("Mit holds løb") provides the same filter on the other tabs.
   // #5405: med en ventende division er der ingen egne løb at filtrere på — et
@@ -295,16 +308,18 @@ export default function CalendarPage() {
     <div>
       {/* Header-divisionsvælgeren skifter til Divisioner-tabben, så valget altid har en effekt
           (ellers var den virkningsløs på Mit hold / Alle hold — CodeRabbit #14). */}
-      <CalendarControls
-        t={t}
-        eyebrow={eyebrow}
-        division={division}
-        onDivision={changeDivision}
-        data={data}
-        availableSeasons={availableSeasons}
-        seasonNumber={displaySeasonNumber}
-        onSeasonChange={onSeasonChange}
-      />
+      {!libraryV2 && (
+        <CalendarControls
+          t={t}
+          eyebrow={eyebrow}
+          division={division}
+          onDivision={changeDivision}
+          data={data}
+          availableSeasons={availableSeasons}
+          seasonNumber={displaySeasonNumber}
+          onSeasonChange={onSeasonChange}
+        />
+      )}
 
       {/* #5405: ÉN linje kontekst (TASTE P9) i sidens egen 13px/--text-2-stil —
           ingen ny komponent, intet kort, ingen accent-bjælke. Den forklarer
@@ -317,8 +332,56 @@ export default function CalendarPage() {
         </p>
       )}
 
-      {libraryV2 && <CalendarViewSwitch t={t} view={view} onChange={setView} className="mt-4 sm:hidden" full />}
-
+      {libraryV2 ? (
+        // #7461 (ejer 1/11, forslag A): ÉN "Vis"-vælger erstatter fanerne Mit hold /
+        // Alle hold / Divisioner + division-dropdownen, der stillede samme spørgsmål
+        // to steder ("Alle hold" = Divisioner + Alle divisioner). Visning, måned og
+        // sæson står i samme linje, så der er tre lag kontroller i stedet for fem.
+        <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-cz-border pb-3" data-testid="calendar-toolbar">
+          <div className="flex items-center gap-2">
+            <span className="text-xs uppercase tracking-[0.12em] text-cz-3">{t("scope.label")}</span>
+            <Select
+              size="sm"
+              value={scopeValue}
+              onChange={(e) => changeScope(e.target.value)}
+              aria-label={t("scope.label")}
+              className="w-44"
+              data-testid="calendar-scope"
+            >
+              {visibleTabs.includes("mine") && <option value="mine">{t("tabs.mine")}</option>}
+              <option value="all">{t("divisionMenu.all")}</option>
+              {divisionTree.map((d) => (
+                <option key={d.division} value={`d:${d.division}`}>{t("division", { n: d.division })}</option>
+              ))}
+            </Select>
+          </div>
+          {/* #2756: pulje-vælgeren, samme regel som under Divisioner-fanen. */}
+          {effectiveTab === "divisions" && tierPools.length > 1 && (
+            <Select
+              size="sm"
+              aria-label={t("poolMenu.label")}
+              value={pool ?? ""}
+              onChange={changePool}
+              className="w-44"
+            >
+              <option value="">{t("poolMenu.all")}</option>
+              {tierPools.map((p) => (
+                <option key={p.id} value={p.id}>{p.label}</option>
+              ))}
+            </Select>
+          )}
+          <CalendarViewSwitch t={t} view={view} onChange={setView} />
+          <div className="ms-auto flex flex-wrap items-center gap-x-3 gap-y-2">
+            {view === "calendar" && (
+              <MonthNav t={t} label={monthLabel} onStep={stepCursor} />
+            )}
+            {availableSeasons.length > 1 && (
+              <SeasonSelect t={t} availableSeasons={availableSeasons} seasonNumber={displaySeasonNumber} onSeasonChange={onSeasonChange} />
+            )}
+            {eyebrow && <span className="text-[13px] text-cz-2">{eyebrow}</span>}
+          </div>
+        </div>
+      ) : (<>
       {/* Tab group + month navigation */}
       <div className="mt-5 mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-cz-border pb-3">
         <div className="flex items-center gap-1" role="tablist" aria-label={t("title")}>
@@ -338,31 +401,7 @@ export default function CalendarPage() {
           ))}
         </div>
 
-        <div className="flex items-center gap-1">
-          {view === "calendar" && (<>
-          <button
-            type="button"
-            onClick={() => setCursor((c) => stepMonth(c, -1))}
-            aria-label={t("prevMonth")}
-            className="rounded-cz p-1.5 text-cz-2 hover:bg-cz-subtle hover:text-cz-1 transition-colors"
-          >
-            <ChevronLeftIcon size={18} aria-hidden="true" />
-          </button>
-          <span className="font-display text-lg uppercase tracking-wide text-cz-1 tabular-nums min-w-34 text-center">
-            {monthLabel}
-          </span>
-          <button
-            type="button"
-            onClick={() => setCursor((c) => stepMonth(c, 1))}
-            aria-label={t("nextMonth")}
-            className="rounded-cz p-1.5 text-cz-2 hover:bg-cz-subtle hover:text-cz-1 transition-colors"
-          >
-            <ChevronRightIcon size={18} aria-hidden="true" />
-          </button>
-          </>)}
-          {/* #6683: skifteren i kalenderens egen kontrolraekke (desktop); paa mobil som segment oeverst. */}
-          {libraryV2 && <CalendarViewSwitch t={t} view={view} onChange={setView} className="ms-2 hidden sm:block" />}
-        </div>
+        <MonthNav t={t} label={monthLabel} onStep={stepCursor} />
       </div>
 
       {/* Division dropdown only matters on the "divisions" tab */}
@@ -389,7 +428,7 @@ export default function CalendarPage() {
               size="sm"
               aria-label={t("poolMenu.label")}
               value={pool ?? ""}
-              onChange={(e) => setPool(e.target.value === "" ? null : Number(e.target.value))}
+              onChange={changePool}
               className="w-44"
             >
               <option value="">{t("poolMenu.all")}</option>
@@ -400,6 +439,7 @@ export default function CalendarPage() {
           )}
         </div>
       )}
+      </>)}
 
       {/* Wide grid content scrolls inside its own container — the page body must
           never scroll horizontally on mobile (7 columns need a real minimum width
@@ -408,7 +448,7 @@ export default function CalendarPage() {
         <Suspense fallback={<PageLoader label={t("loadingAria")} />}>
         <CalendarTable
           entries={/** @type {any} */ (data).entries} todayIso={todayISO} division={activeDivision} poolId={activePool}
-          mineOnly={effectiveMineOnly} showMineToggle={!divisionPending && effectiveTab !== "mine"} onMineOnlyChange={setMineOnly}
+          mineOnly={effectiveMineOnly}
           divisionPending={divisionPending} onShowAll={effectiveTab !== "all" ? () => setTab("all") : null}
         />
         </Suspense>
@@ -489,8 +529,9 @@ export default function CalendarPage() {
           ))}
         </div>
         {/* The "mine only" filter is redundant on the "mine" tab (already filtered).
-            #5405: og meningsløst når divisionen for sæsonen ikke er afgjort. */}
-        {!divisionPending && effectiveTab !== "mine" && view === "calendar" && (
+            #5405: og meningsløst når divisionen for sæsonen ikke er afgjort.
+            #7461: bag race_library_v2 er "Vis: Mit hold" samme filter, så den udgår. */}
+        {!libraryV2 && !divisionPending && effectiveTab !== "mine" && (
           <Checkbox
             id="cal-mine-only"
             checked={mineOnly}
@@ -521,17 +562,7 @@ function CalendarControls({ t, eyebrow = null, division, onDivision, data, avail
         {/* #2449: sæson-vælger — kun vist når der findes mere end én oprettet sæson
             (S1/S2/...), så managers kan planlægge mod næste sæsons program FØR den starter. */}
         {availableSeasons.length > 1 && (
-          <Select
-            size="sm"
-            value={seasonNumber ?? ""}
-            onChange={(e) => onSeasonChange?.(e.target.value === "" ? null : Number(e.target.value))}
-            className="w-24"
-            aria-label={t("seasonMenu.label")}
-          >
-            {availableSeasons.map((s) => (
-              <option key={s.id} value={s.number}>{t("seasonMenu.option", { number: s.number })}</option>
-            ))}
-          </Select>
+          <SeasonSelect t={t} availableSeasons={availableSeasons} seasonNumber={seasonNumber} onSeasonChange={onSeasonChange} />
         )}
         {/* Top-right division selector (mirrors the wireframe's "Division 1 ▾"). */}
         {divisionTree.length > 0 && (
@@ -549,6 +580,49 @@ function CalendarControls({ t, eyebrow = null, division, onDivision, data, avail
           </Select>
         )}
       </div>
+    </div>
+  );
+}
+
+function SeasonSelect({ t, availableSeasons, seasonNumber, onSeasonChange }) {
+  return (
+    <Select
+      size="sm"
+      value={seasonNumber ?? ""}
+      onChange={(e) => onSeasonChange?.(e.target.value === "" ? null : Number(e.target.value))}
+      className="w-24"
+      aria-label={t("seasonMenu.label")}
+    >
+      {availableSeasons.map((s) => (
+        <option key={s.id} value={s.number}>{t("seasonMenu.option", { number: s.number })}</option>
+      ))}
+    </Select>
+  );
+}
+
+// #7461: måned-pilene deles af fanerækken (flag off) og "Vis"-linjen (race_library_v2).
+function MonthNav({ t, label, onStep }) {
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        type="button"
+        onClick={() => onStep(-1)}
+        aria-label={t("prevMonth")}
+        className="rounded-cz p-1.5 text-cz-2 hover:bg-cz-subtle hover:text-cz-1 transition-colors"
+      >
+        <ChevronLeftIcon size={18} aria-hidden="true" />
+      </button>
+      <span className="font-display text-lg uppercase tracking-wide text-cz-1 tabular-nums min-w-34 text-center">
+        {label}
+      </span>
+      <button
+        type="button"
+        onClick={() => onStep(1)}
+        aria-label={t("nextMonth")}
+        className="rounded-cz p-1.5 text-cz-2 hover:bg-cz-subtle hover:text-cz-1 transition-colors"
+      >
+        <ChevronRightIcon size={18} aria-hidden="true" />
+      </button>
     </div>
   );
 }

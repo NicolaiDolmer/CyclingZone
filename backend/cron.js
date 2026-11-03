@@ -48,6 +48,7 @@ import { runSeniorStartReminderSweep } from "./lib/seniorStartReminder.js"; // #
 import { createEmergencyLoan } from "./lib/loanEngine.js";
 import { processBoardAutoAcceptCron } from "./lib/boardAutoAccept.js";
 import { processMandateAutoAcceptCron } from "./lib/boardMandateAutoAccept.js";
+import { countStaleActiveMandates } from "./lib/boardMandateEngine.js"; // #6773
 import { processMidSeasonReviewCron } from "./lib/boardMidSeason.js";
 import { processDailySeasonCountCheck } from "./lib/dailySeasonCountCheck.js";
 import { checkSeasonTransitionKeyDrift } from "./lib/seasonTransitionKeyGuard.js"; // #4129
@@ -387,6 +388,15 @@ async function runBoardMandateAutoAcceptCron() {
       );
     } else {
       console.log(`📋 Mandate auto-accept: ${result.mandates_checked} mandater tjekket — intet at gøre`);
+    }
+    // #6773 · Vagt: aktive mandater fra en afsluttet sæson skal altid være 0.
+    const watch = await countStaleActiveMandates(supabase);
+    if (watch.stale > 0) {
+      console.warn(`⚠️  [mandate] ${watch.stale} aktive mandater fra før sæson ${watch.seasonNumber} (#6773)`);
+      sentryCapture(new Error("board_mandates: aktive mandater fra en afsluttet sæson (#6773)"), {
+        tags: { cron: "board-mandate-auto-accept", invariant: "stale_active_mandate" },
+        extra: { stale: watch.stale, seasonNumber: watch.seasonNumber },
+      });
     }
   } catch (err) {
     console.error("Cron error (board mandate auto-accept):", err.message);
@@ -808,6 +818,10 @@ async function runGraduationSweepCron() {
   }
   if (result.resolved) {
     console.log(`🎓 Graduerings-sweep: ${result.resolved} akademiryttere auto-resolveret`);
+  }
+  if (result.alreadyResolved) {
+    // #7474: afgjort efter listen blev læst (manageren eller en anden proces); ingen fejl.
+    console.log(`🎓 Graduerings-sweep: ${result.alreadyResolved} var allerede afgjort`);
   }
   if (result.failed) {
     console.error(`❌ Graduerings-sweep: ${result.failed} fejlede (per-rytter try/catch isolerede)`);

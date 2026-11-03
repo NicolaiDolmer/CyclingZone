@@ -471,6 +471,15 @@ export async function resolveGraduation(supabase, {
   if (riderError) throw new Error(`resolveGraduation rider lookup: ${riderError.message}`);
   if (!rider) throw new Error("rider_not_found");
 
+  // #7488: rytteren er forlængst væk fra holdet (frigivet ved kontraktudløb,
+  // pensionering osv.), men grad-rækken stod stadig 'pending'. Uden denne vagt
+  // satte release/promote/sell is_academy=true bag på en rytter uden hold.
+  // Samme not_on_team-vagt som søsterfunktionerne; rækken lukkes lydløst.
+  if (rider.team_id !== teamId) {
+    await closeGraduationNotOnTeam(supabase, { gradId: grad.id, now });
+    return { riderId, action: "skipped", reason: "not_on_team" };
+  }
+
   if (action === "promote") {
     // #4619: loftet er MÅL-truppens, ikke altid seniortruppens — se
     // hasRoomInTargetSquad for hvorfor den gamle enkelt-gate var forkert begge
@@ -991,10 +1000,25 @@ export async function restampSoldGraduation(supabase, { teamId, riderId, now, st
 }
 
 
-async function finishGraduation(supabase, { gradId, status, teamId, rider, now, action, notify = notifyTeamOwner }) {
+// #7488: luk en 'pending' grad-række for en rytter der ikke længere ligger på holdet.
+// Compare-and-set som finishGraduation, men UDEN besked til manageren og UDEN at røre rytteren.
+async function closeGraduationNotOnTeam(supabase, { gradId, now }) {
   const { error } = await supabase.from("academy_graduation")
-    .update({ status, resolved_at: now.toISOString() }).eq("id", gradId);
+    .update({ status: "released", resolved_at: now.toISOString() }).eq("id", gradId).eq("status", "pending")
+    .select("id");
+  if (error) throw new Error(`closeGraduationNotOnTeam update: ${error.message}`);
+}
+
+export { closePendingGraduationOnRelease } from "./academyGraduationRelease.ts";
+
+async function finishGraduation(supabase, { gradId, status, teamId, rider, now, action, notify = notifyTeamOwner }) {
+  // #7474: compare-and-set. Kun den afgørelse der flytter rækken fra 'pending'
+  // sender beskeden; en samtidig afgørelse af samme række får 0 rækker og stopper.
+  const { data, error } = await supabase.from("academy_graduation")
+    .update({ status, resolved_at: now.toISOString() }).eq("id", gradId).eq("status", "pending")
+    .select("id");
   if (error) throw new Error(`finishGraduation update: ${error.message}`);
+  if (Array.isArray(data) && data.length === 0) return;
   const verb = action === "promote" ? "promoted to your senior squad"
     : action === "sell" ? "listed for transfer" : "released";
   const name = `${rider.firstname} ${rider.lastname}`;

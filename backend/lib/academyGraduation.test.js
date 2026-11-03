@@ -8,6 +8,7 @@ import {
   detectGraduates,
   resolveGraduation,
   defaultResolveGraduate,
+  closePendingGraduationOnRelease,
   releaseUnsoldGraduate,
   resolveUnsoldGraduate,
   completeStuckPromotion,
@@ -122,7 +123,19 @@ function makeSupabase(cfg = {}) {
           },
           insert(row) { rec.gradInserts.push(row); return Promise.resolve({ error: cfg.gradInsertError ?? null }); },
           update(payload) {
-            return { eq(col, val) { rec.gradUpdates.push({ ...payload, __eq: [col, val] }); return Promise.resolve({ error: null }); } };
+            // #7474: finishGraduation kæder .eq(id).eq(status,'pending').select("id")
+            // (compare-and-set). cfg.gradAlreadyResolved = en anden afgørelse kom først.
+            const rowsFor = () => ({ data: cfg.gradAlreadyResolved ? [] : [{ id: "g" }], error: null });
+            return { eq(col, val) {
+              const entry = { ...payload, __eq: [col, val] };
+              rec.gradUpdates.push(entry);
+              const b = {
+                eq(c2, v2) { entry.__eq2 = [c2, v2]; return b; },
+                select() { return Promise.resolve(rowsFor()); },
+                then(resolve, reject) { return Promise.resolve({ error: null }).then(resolve, reject); },
+              };
+              return b;
+            } };
           },
         };
       }
@@ -328,6 +341,15 @@ test("resolveGraduation promote: is_academy=false + ufuldstændig kontrakt heale
   assert.ok(rec.riderUpdates[0].salary !== RIDER.salary, "healer den ufuldstændige pakke (#2902-gate)");
   assert.equal(rec.gradUpdates[0].status, "promoted");
   assert.equal(notify.calls[0].type, "academy_graduated");
+});
+
+test("#7474: en samtidig afgørelse af samme række sender ikke en ekstra besked (compare-and-set)", async () => {
+  const { supabase, rec } = makeSupabase({ gradRow: PENDING_GRAD, rider: RIDER, gradAlreadyResolved: true });
+  const notify = spyNotify();
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 });
+  await resolveGraduation(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r1", action: "promote", seasonNumber: 1, getMarketState, notify });
+  assert.deepEqual(rec.gradUpdates[0].__eq2, ["status", "pending"], "opdateringen kræver status=pending");
+  assert.equal(notify.calls.filter((c) => c.type === "academy_graduated").length, 0);
 });
 
 // #2881 regression: resolveGraduation(promote) overskrev UBETINGET
@@ -541,6 +563,65 @@ test("resolveGraduation release: free agent (team_id=NULL, is_academy=false); gr
   assert.equal(rec.riderUpdates[0].team_id, null);
   assert.equal(rec.riderUpdates[0].is_academy, false);
   assert.equal(rec.gradUpdates[0].status, "released");
+});
+
+// #7488: rytteren er frigivet (eller flyttet) uden at grad-rækken blev lukket.
+// Ingen af de tre grene må røre rytteren eller sende besked; rækken lukkes lydløst.
+for (const action of ["promote", "sell", "release"]) {
+  test(`resolveGraduation ${action}: #7488 — rytter ikke længere på holdet springes over, grad lukkes lydløst`, async () => {
+    const offTeam = { ...RIDER, team_id: null };
+    const { supabase, rec } = makeSupabase({ gradRow: PENDING_GRAD, rider: offTeam });
+    const notify = spyNotify();
+    const res = await resolveGraduation(supabase, {
+      now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r1", action, seasonNumber: 1,
+      auctionConfig: DEFAULT_AUCTION_CONFIG, notify,
+    });
+    assert.deepEqual(res, { riderId: "r1", action: "skipped", reason: "not_on_team" });
+    assert.equal(rec.riderUpdates.length, 0, "rytteren røres ikke");
+    assert.equal(rec.auctionInserts.length, 0, "ingen auktion");
+    assert.equal(rec.listingUpdates.length, 0, "ingen listing-ændringer");
+    assert.equal(notify.calls.length, 0, "ingen besked til manageren");
+    assert.equal(rec.gradUpdates.length, 1);
+    assert.equal(rec.gradUpdates[0].status, "released");
+    assert.deepEqual(rec.gradUpdates[0].__eq, ["id", "g1"]);
+    assert.deepEqual(rec.gradUpdates[0].__eq2, ["status", "pending"]);
+  });
+}
+
+test("resolveGraduation: #7488 — rytter på et andet hold springes også over", async () => {
+  const { supabase, rec } = makeSupabase({ gradRow: PENDING_GRAD, rider: { ...RIDER, team_id: "t2" } });
+  const res = await resolveGraduation(supabase, {
+    now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r1", action: "release", seasonNumber: 1, notify: spyNotify(),
+  });
+  assert.equal(res.reason, "not_on_team");
+  assert.equal(rec.riderUpdates.length, 0);
+});
+
+test("defaultResolveGraduate: #7488 — rytter uden hold kaster ikke (sweepet kan ikke gå i stå)", async () => {
+  const { supabase, rec } = makeSupabase({ gradRow: PENDING_GRAD, rider: { ...RIDER, team_id: null } });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 5, balance: 5000 });
+  const res = await defaultResolveGraduate(supabase, {
+    now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify(),
+  });
+  assert.equal(res.action, "skipped");
+  assert.equal(rec.riderUpdates.length, 0);
+});
+
+test("closePendingGraduationOnRelease: #7488 — lukker kun pending for (hold, rytter) lydløst; fejl kaster ikke", async () => {
+  const calls = [];
+  const mk = (error) => ({ from(table) {
+    assert.equal(table, "academy_graduation");
+    return { update(patch) { const eqs = []; const b = {
+      eq(c, v) { eqs.push([c, v]); return b; },
+      then(resolve, reject) { calls.push({ patch, eqs }); return Promise.resolve({ error }).then(resolve, reject); },
+    }; return b; } };
+  } });
+  await closePendingGraduationOnRelease(mk(null), { teamId: "t1", riderId: "r1", now: CONTRACT_NOTICE_NOW });
+  assert.equal(calls[0].patch.status, "released");
+  assert.deepEqual(calls[0].eqs, [["team_id", "t1"], ["rider_id", "r1"], ["status", "pending"]]);
+  await closePendingGraduationOnRelease(mk({ message: "boom" }), { teamId: "t1", riderId: "r1", now: CONTRACT_NOTICE_NOW });
+  await closePendingGraduationOnRelease(mk(null), { teamId: null, riderId: "r1", now: CONTRACT_NOTICE_NOW });
+  assert.equal(calls.length, 2, "ingen hold = intet kald");
 });
 
 // #2881-følgefund: release efterlod tidligere en fri agent med en IKKE-null

@@ -345,7 +345,7 @@ function SplitTable({ rows, cast, me, precise }: { rows: SplitRow[]; cast: Cast;
   };
   if (!precise) {
     return (
-      <table className="w-full table-fixed border-collapse font-data text-xs tabular-nums sm:text-[13px]">
+      <table data-sort-exempt="mellemtider i rutens rækkefølge" className="w-full table-fixed border-collapse font-data text-xs tabular-nums sm:text-[13px]">
         <thead>
           <tr className="text-left font-data text-3xs font-semibold uppercase tracking-[.12em] text-cz-3">
             <th scope="col" className="w-[55%] border-b border-cz-border py-1.5 pr-2 font-semibold">{t("stagePageV2.story.splits.point")}</th>
@@ -364,7 +364,7 @@ function SplitTable({ rows, cast, me, precise }: { rows: SplitRow[]; cast: Cast;
     );
   }
   return (
-    <table className="w-full table-fixed border-collapse font-data text-xs tabular-nums sm:text-[13px]">
+    <table data-sort-exempt="mellemtider i rutens rækkefølge" className="w-full table-fixed border-collapse font-data text-xs tabular-nums sm:text-[13px]">
       <thead>
         <tr className="text-left font-data text-3xs font-semibold uppercase tracking-[.12em] text-cz-3">
           <th scope="col" className="w-[38%] border-b border-cz-border py-1.5 pr-2 font-semibold">{t("stagePageV2.story.splits.point")}</th>

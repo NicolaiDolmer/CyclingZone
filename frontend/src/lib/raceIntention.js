@@ -29,9 +29,9 @@ export const EFFORT_SCALE = Object.freeze([
 
 /**
  * Trinnene fladen skal vise, i skala-rækkefølge. Input er serverens
- * `valid_efforts` (tre værdier når race_day_intention_enabled er OFF, fem når
- * ON) — fladen hardkoder ALDRIG listen, så et flag-flip alene ændrer hvad
- * spilleren kan vælge. Ukendte værdier (et fremtidigt trin serveren kender og
+ * `valid_efforts` (fem værdier; kontakten race_day_intention_enabled er
+ * fjernet, #6641) — fladen hardkoder ALDRIG listen, så serveren alene afgør
+ * hvad spilleren kan vælge. Ukendte værdier (et fremtidigt trin serveren kender og
  * denne build ikke) beholdes bagest frem for at blive tabt lydløst.
  *
  * @param {readonly string[]|null|undefined} validEfforts

@@ -9,7 +9,7 @@ name: Lighthouse CI
 #     når alt er grønt. Blokerer ALDRIG. SEO måles ikke her (appen ligger bag
 #     login) men ugentligt mod prod på de offentlige sider (perf-seo-review.yml).
 # Mønster genbrugt fra feature-liveness-audit.yml (Node 24, checkout@v7,
-# setup-node@v6, github-script@v9, Dependabot-skip).
+# setup-node@v6, github-script@v9).
 #
 # Refs #2511 — hvorfor der OGSÅ er en push-trigger på main:
 #   pull_request-runnet måler PR-branchen ISOLERET. Når flere PR'er hver
@@ -34,6 +34,7 @@ on:
     paths:
       - 'frontend/**'
       - 'scripts/check-bundle-budget.mjs'
+      - 'scripts/dependabot-perf-gate.test.mjs'
       - 'lighthouserc.json'
       - '.github/workflows/lighthouse-ci.yml'
   push:
@@ -42,6 +43,7 @@ on:
     paths:
       - 'frontend/**'
       - 'scripts/check-bundle-budget.mjs'
+      - 'scripts/dependabot-perf-gate.test.mjs'
       - 'lighthouserc.json'
       - '.github/workflows/lighthouse-ci.yml'
   workflow_dispatch:
@@ -54,7 +56,8 @@ jobs:
   perf-gate:
     runs-on: ubuntu-latest
     env:
-      # Dependabot-PR'er har ikke adgang til secrets → hele kæden springes over.
+      # Kun advisory/kommentar-trin springes over for Dependabot.
+      # Checkout, install, build og bundlebudget bruger ingen secrets (#7363).
       # Skrevet EKSPLICIT med github.event_name, fordi `github.event.pull_request`
       # slet ikke findes på push/workflow_dispatch; den gamle form
       # (`github.event.pull_request.user.login != 'dependabot[bot]'`) var kun
@@ -63,29 +66,28 @@ jobs:
     steps:
       - name: Skip secret-backed steps for Dependabot PRs
         if: env.IS_DEPENDABOT_PR == 'true'
-        run: echo "Skipping Lighthouse CI for Dependabot PR (secrets unavailable to Dependabot-triggered workflows)."
+        run: echo "Skipping advisory Lighthouse and comments for Dependabot; bundle budget remains enforced."
 
       - name: Check out repository
-        if: env.IS_DEPENDABOT_PR != 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        if: env.IS_DEPENDABOT_PR != 'true'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      - name: Run bundle gate regression tests
+        run: node --test scripts/dependabot-perf-gate.test.mjs
+
       - name: Install frontend dependencies
-        if: env.IS_DEPENDABOT_PR != 'true'
         run: npm ci
         working-directory: frontend
 
       - name: Build frontend
-        if: env.IS_DEPENDABOT_PR != 'true'
         run: npm run build
         working-directory: frontend
 
@@ -93,7 +95,6 @@ jobs:
       # det merge; på push til main markerer det main-commit'en rød, så additiv
       # drift ses ved kilden (#2511).
       - name: Bundle-size budget (hard gate)
-        if: env.IS_DEPENDABOT_PR != 'true'
         run: node scripts/check-bundle-budget.mjs
 
       # TAVS VAGT, ikke-blokerende — må aldrig blokere; continue-on-error så et flaky Lighthouse-run

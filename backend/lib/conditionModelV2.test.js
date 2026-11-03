@@ -158,73 +158,52 @@ test("condition_model_v2: default off, kræver dato-modellen, fejl kaster", asyn
   await assert.rejects(isConditionModelV2Enabled(flagClient({}, { message: "offline" })), /ownership/);
 });
 
-// #7332 (ejer 31/10 valg A, SLUKKET): spar mod uret sparer traethed som spar paa en flad etape.
-test('#7332: spar/beskyt/grupetto paa enkeltstart faar flad-etapens spar-rabat; slukket = uaendret', async () => {
+// #7332 (ejer 31/10 valg A; kodekontakten fjernet, krav 5): spar mod uret sparer traethed
+// som spar paa en flad etape. Gaelder under s5_profiles_v3 og senere; aeldre revisioner uroerte.
+test('#7332: spar/beskyt/grupetto paa enkeltstart faar flad-etapens spar-rabat; aeldre revisioner uroerte', async () => {
   const { saveIttLoadMultiplier7332 } = await import('./conditionModelV2.js');
   const { effortFatigueMultiplier } = await import('./raceRoles.js');
-  const { setSaveItt7332ForBench, SAVE_ITT_7332_ACTIVE } = await import('./engine/v4/mechanics/effortCost.ts');
   const V3 = 's5_profiles_v3';
   const load = (effort, profileType, rulesRevision = V3) => stageLoadV2({ profileType, distanceKm: 30, effort, rulesRevision });
-  assert.equal(SAVE_ITT_7332_ACTIVE, true, 'ejer-go 31/10');
-  setSaveItt7332ForBench({ active: false });
-  // Slukket: som main, hvor enkeltstarter ignorerer indsatsen (spar = normal).
-  for (const profileType of ['itt', 'itt_hilly', 'ttt']) {
-    for (const effort of ['save', 'protect', 'grupetto']) {
-      assert.equal(load(effort, profileType), load('normal', profileType), `${profileType}/${effort}: slukket = normal`);
-      assert.equal(saveIttLoadMultiplier7332(effort, profileType, V3), null);
-    }
+  const flatSave = effortFatigueMultiplier('save', { profileType: 'flat', rulesRevision: V3 });
+  assert.ok(flatSave < 1, 'flad-etapens spar-rabat er en rabat');
+  for (const profileType of ['itt', 'itt_hilly']) {
+    const normal = load('normal', profileType);
+    const save = load('save', profileType);
+    assert.ok(save < normal, `${profileType}: spar er lavere belastning end normal`);
+    assert.ok(Math.abs(save - normal * flatSave) < 1e-9, `${profileType}: praecis flad-etapens spar-rabat`);
+    assert.equal(load('protect', profileType), save, `${profileType}: beskyt = spar`);
+    assert.equal(load('grupetto', profileType), save, `${profileType}: grupetto = spar`);
+    assert.equal(saveIttLoadMultiplier7332('all_out', profileType, V3), null, `${profileType}: alt ud ikke omfattet`);
   }
-  const offAllOut = { itt: load('all_out', 'itt'), itt_hilly: load('all_out', 'itt_hilly') };
-  const offMountainSave = load('save', 'mountain');
-  try {
-    setSaveItt7332ForBench({ active: true });
-    const flatSave = effortFatigueMultiplier('save', { profileType: 'flat', rulesRevision: V3 });
-    assert.ok(flatSave < 1, 'flad-etapens spar-rabat er en rabat');
+  for (const effort of ['save', 'protect', 'grupetto']) {
+    assert.equal(saveIttLoadMultiplier7332(effort, 'ttt', V3), null, `ttt/${effort}: holdtidskoerslen uroert`);
+    assert.equal(load(effort, 'ttt'), load('normal', 'ttt'), `ttt/${effort}: som foer`);
+    assert.equal(saveIttLoadMultiplier7332(effort, 'mountain', V3), null, `mountain/${effort}: vejetaper uroerte`);
+  }
+  for (const effort of ['normal', 'all_out']) assert.equal(saveIttLoadMultiplier7332(effort, 'itt', V3), null, `itt/${effort}: ikke omfattet`);
+  // Aeldre revisioner: som foer #7332, hvor enkeltstarter ignorerer indsatsen (spar = normal).
+  for (const rev of ['s5_profiles_v2', 's5_profiles_v1', 'legacy', null]) {
     for (const profileType of ['itt', 'itt_hilly']) {
-      const normal = load('normal', profileType);
-      const save = load('save', profileType);
-      assert.ok(save < normal, `${profileType}: spar er lavere belastning end normal`);
-      assert.ok(Math.abs(save - normal * flatSave) < 1e-9, `${profileType}: praecis flad-etapens spar-rabat`);
-      assert.equal(load('protect', profileType), save, `${profileType}: beskyt = spar`);
-      assert.equal(load('grupetto', profileType), save, `${profileType}: grupetto = spar`);
-      assert.equal(load('all_out', profileType), offAllOut[profileType], `${profileType}: alt ud uaendret`);
+      for (const effort of ['save', 'protect', 'grupetto']) {
+        assert.equal(saveIttLoadMultiplier7332(effort, profileType, rev), null, `${profileType}/${effort}/${String(rev)}`);
+        assert.equal(load(effort, profileType, rev), load('normal', profileType, rev), `${profileType}/${effort}/${String(rev)}: aeldre revisioner uroerte`);
+      }
     }
-    for (const effort of ['save', 'protect', 'grupetto']) {
-      assert.equal(saveIttLoadMultiplier7332(effort, 'ttt', V3), null, `ttt/${effort}: holdtidskoerslen uroert`);
-      assert.equal(load(effort, 'ttt'), load('normal', 'ttt'), `ttt/${effort}: som foer`);
-    }
-    for (const effort of ['normal', 'all_out']) assert.equal(saveIttLoadMultiplier7332(effort, 'itt', V3), null, `itt/${effort}: ikke omfattet`);
-    assert.equal(load('save', 'mountain'), offMountainSave, 'vejetaper uroerte');
-    for (const rev of ['s5_profiles_v2', 's5_profiles_v1', 'legacy', null]) {
-      assert.equal(load('save', 'itt', rev), load('normal', 'itt', rev), `${String(rev)}: aeldre revisioner uroerte`);
-    }
-  } finally {
-    setSaveItt7332ForBench(null);
   }
-  assert.ok(load('save', 'itt') < load('normal', 'itt'), 'nulstillet = kontakten (taendt 31/10)');
 });
 
-// #6641/#7280: Alt ud-pakkens traethedspris (slukket kontakt; dev-bench-setteren taender den).
-test('#7280: alt ud koster mere traethed under pakken, ogsaa i enkeltstart; slukket = uaendret', async () => {
+// #6641/#7280: Alt ud-pakkens traethedspris (kodekontakten fjernet, krav 5: gaelder altid under s5_profiles_v3).
+test('#7280: alt ud koster mere traethed under s5_profiles_v3, ogsaa i enkeltstart; aeldre revisioner uroerte', async () => {
   const { allOutLoadMultiplier7280, stageLoadV2 } = await import('./conditionModelV2.js');
-  const { setAllOut7280ForBench } = await import('./engine/v4/mechanics/effortCost.ts');
+  const { ALL_OUT_7280_TUNING } = await import('./engine/v4/mechanics/effortCost.ts');
   const load = (effort, profileType, rulesRevision = 's5_profiles_v3') => stageLoadV2({ profileType, distanceKm: 180, effort, rulesRevision });
-  setAllOut7280ForBench({ active: false }); // kontakten er taendt (#7311); slukket-stien maales via bench-setteren
-  const offMountain = load('all_out', 'mountain');
-  const offItt = load('all_out', 'itt');
-  assert.equal(allOutLoadMultiplier7280('all_out', 's5_profiles_v3'), null);
-  try {
-    setAllOut7280ForBench({ active: true });
-    assert.ok(load('all_out', 'mountain') > offMountain, 'mere traethed paa en vejetape');
-    assert.ok(load('all_out', 'itt') > offItt, 'og i enkeltstarten, hvor alt ud nu vinder tid');
-    assert.equal(load('normal', 'mountain'), stageLoadV2({ profileType: 'mountain', distanceKm: 180, effort: 'normal', rulesRevision: 's5_profiles_v3' }));
-    assert.equal(load('all_out', 'mountain', 's5_profiles_v2'), stageLoadV2({ profileType: 'mountain', distanceKm: 180, effort: 'all_out', rulesRevision: 's5_profiles_v2' }));
-    assert.equal(allOutLoadMultiplier7280('protect', 's5_profiles_v3'), null);
-    setAllOut7280ForBench({ active: false });
-    assert.equal(load('all_out', 'mountain'), offMountain);
-  } finally {
-    setAllOut7280ForBench(null);
-  }
+  assert.equal(allOutLoadMultiplier7280('all_out', 's5_profiles_v3'), ALL_OUT_7280_TUNING.fatigueLoad);
+  assert.ok(load('all_out', 'mountain') > load('normal', 'mountain'), 'mere traethed paa en vejetape');
+  assert.ok(load('all_out', 'itt') > load('normal', 'itt'), 'og i enkeltstarten, hvor alt ud nu vinder tid');
+  assert.equal(allOutLoadMultiplier7280('all_out', 's5_profiles_v2'), null, 'aeldre revisioner uroerte');
+  assert.equal(load('all_out', 'itt', 's5_profiles_v2'), load('normal', 'itt', 's5_profiles_v2'), 'aeldre revisioner: enkeltstart uden indsats-faktor som foer');
+  assert.equal(allOutLoadMultiplier7280('protect', 's5_profiles_v3'), null);
 });
 
 // #7332 (spillerrapport 28/10, ejer: "alt ud skal give bedre praestation, men ogsaa mere

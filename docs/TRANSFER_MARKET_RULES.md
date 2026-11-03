@@ -435,6 +435,10 @@ sket - netop formen på Seojun Choi-hændelsen 9/8.
 (frigivelse, akademi-frigivelse, kontraktudløb, pension, graduering, beta-reset) logges af
 DB-triggeren `trg_record_rider_team_exit` (`database/2026-10-19-6504-release-ownership-trigger.sql`)
 med `reason = retirement` for en pensioneret rytter, ellers `release`, og `actor_type = system`.
+Efter #7246-migrationen gemmer samme trigger kontrakten fra rækken **før** holdskiftet
+i `rider_ownership_events.meta.contract_end_season` og `.contract_length`, også når
+`contractExpiryRelease.js` nulstiller felterne i samme UPDATE. Manglende kontraktfelter
+gemmes som JSON-null. Ældre events får tom `meta`; allerede slettede kontrakter rekonstrueres ikke.
 Kode, der flytter en rytter til intet hold, må **ikke** skrive sin egen række (dublet),
 heller ikke admin-flytningen: en admin-frigivelse logges derfor som `release`/`system`
 (bevidst: tilskrivning efter UPDATE'en gav race-dubletter, Codex-review #6891). Hold → hold

@@ -15,7 +15,31 @@ import {
   resolveReactionQuote,
   resolveMemberLabel,
   resolveCategoryLabel,
+  hasSignedBoardPlan,
 } from "./boardCopy.js";
+
+// #7507 · nyt hold: board_profiles-raekke i 'pending' (mandatet er kun
+// 'proposed', 0 snapshots) maa ikke give udloebet-feedback eller maalbjaelker.
+test("hasSignedBoardPlan: nyt hold uden underskrevet plan har ingen signed plan", () => {
+  assert.equal(hasSignedBoardPlan({ "1yr": { board: { plan_type: "1yr", negotiation_status: "pending", seasons_completed: 0 } }, "3yr": null, "5yr": null }), false);
+  assert.equal(hasSignedBoardPlan(null), false);
+  assert.equal(hasSignedBoardPlan(undefined), false);
+  assert.equal(hasSignedBoardPlan({}), false);
+});
+
+test("hasSignedBoardPlan: en underskrevet 3yr/5yr tæller selvom 1yr er pending", () => {
+  assert.equal(hasSignedBoardPlan({ "1yr": { board: { negotiation_status: "pending" } }, "3yr": { board: { negotiation_status: "completed" } }, "5yr": null }), true);
+  assert.equal(hasSignedBoardPlan({ "1yr": { board: { negotiation_status: "completed" } } }), true);
+});
+
+test("DashboardPage gater bestyrelsens evaluering paa boardPlanMissing og viser eksisterende ingen-plan-noegle (#7507)", () => {
+  const src = readFileSync(fileURLToPath(new URL("../pages/DashboardPage.jsx", import.meta.url)), "utf8");
+  assert.match(src, /\(!boardPlanMissing \|\| boardPlanExpired\) && boardOutlook\?\.feedback/);
+  assert.match(src, /\{boardPlanMissing && !boardPlanExpired && \([\s\S]{0,200}dashboard:nextActions\.boardPlanMissing/);
+  // Codex P2: en UDLOEBET plan (feedback.expired fra backend) beholder sin evaluering.
+  assert.match(src, /boardPlanExpired = [^\n]*feedback\.expired\.headline/);
+  assert.match(src, /hasSignedBoardPlan\(boardStatus\?\.plans\)/);
+});
 
 // Loader den ÆGTE board.json gennem en ægte i18next-icu-instans, så testen
 // fanger ICU-parse-fejl (fx apostroffer), manglende nøgler og param-mismatch

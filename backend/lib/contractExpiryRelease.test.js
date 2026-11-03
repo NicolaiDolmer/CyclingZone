@@ -123,7 +123,7 @@ test("frigiver PRÆCIS de kandidater fetchExpiredContractRiders returnerer — t
       team: { user_id: null, is_ai: true, is_frozen: false } },
   ];
 
-  const stats = await releaseExpiredContractRiders({
+  const stats = await releaseExpiredContractRiders({ now: new Date("2026-11-02T12:00:00Z"),
     supabase, seasonNumber: 1, notify,
     fetchExpiredContractRiders: async () => candidates,
   });
@@ -153,7 +153,7 @@ test("ryttere midt i et AKTIVT fleretape-løb udskydes (kan ikke parkeres, samme
       team: { user_id: "u2", is_ai: false, is_frozen: false } },
   ];
 
-  const stats = await releaseExpiredContractRiders({
+  const stats = await releaseExpiredContractRiders({ now: new Date("2026-11-02T12:00:00Z"),
     supabase, seasonNumber: 1, notify,
     fetchExpiredContractRiders: async () => candidates,
   });
@@ -178,7 +178,7 @@ test("#5636: rytter hvis hold har afmeldt løbet frigives ALLIGEVEL (afmeldt ≠
       team: { user_id: "u1", is_ai: false, is_frozen: false } },
   ];
 
-  const stats = await releaseExpiredContractRiders({
+  const stats = await releaseExpiredContractRiders({ now: new Date("2026-11-02T12:00:00Z"),
     supabase, seasonNumber: 1, notify,
     fetchExpiredContractRiders: async () => candidates,
   });
@@ -194,7 +194,7 @@ test("concurrency-guard: rytter der skiftede hold sideløbende (0 rows fra updat
   const { supabase } = makeMockSupabase({ unreleasableRiderIds: ["r-moved"] });
   const { notify, calls } = makeNotifyRecorder();
 
-  const stats = await releaseExpiredContractRiders({
+  const stats = await releaseExpiredContractRiders({ now: new Date("2026-11-02T12:00:00Z"),
     supabase, seasonNumber: 1, notify,
     fetchExpiredContractRiders: async () => [
       { id: "r-moved", firstname: "M", lastname: "M", team_id: "t1", contract_end_season: 1,
@@ -210,7 +210,7 @@ test("AI-ejede/fri agenter (intet user_id) frigives stadig, men notificeres ikke
   const { supabase, riderUpdates } = makeMockSupabase();
   const { notify, calls } = makeNotifyRecorder();
 
-  const stats = await releaseExpiredContractRiders({
+  const stats = await releaseExpiredContractRiders({ now: new Date("2026-11-02T12:00:00Z"),
     supabase, seasonNumber: 1, notify,
     fetchExpiredContractRiders: async () => [
       { id: "r1", firstname: "AI", lastname: "Rider", team_id: "ai-team", contract_end_season: 1,
@@ -227,7 +227,7 @@ test("frosne hold notificeres ikke (samme diskriminator som resten af motoren)",
   const { supabase } = makeMockSupabase();
   const { notify, calls } = makeNotifyRecorder();
 
-  const stats = await releaseExpiredContractRiders({
+  const stats = await releaseExpiredContractRiders({ now: new Date("2026-11-02T12:00:00Z"),
     supabase, seasonNumber: 1, notify,
     fetchExpiredContractRiders: async () => [
       { id: "r1", firstname: "Frozen", lastname: "Owner", team_id: "frozen-team", contract_end_season: 1,
@@ -243,7 +243,7 @@ test("ingen kandidater → nul-stats, ingen writes", async () => {
   const { supabase, riderUpdates } = makeMockSupabase();
   const { notify, calls } = makeNotifyRecorder();
 
-  const stats = await releaseExpiredContractRiders({
+  const stats = await releaseExpiredContractRiders({ now: new Date("2026-11-02T12:00:00Z"),
     supabase, seasonNumber: 1, notify,
     fetchExpiredContractRiders: async () => [],
   });
@@ -256,7 +256,7 @@ test("ingen kandidater → nul-stats, ingen writes", async () => {
 test("ugyldigt seasonNumber → nul-stats uden at røre DB'en", async () => {
   const { supabase } = makeMockSupabase();
   let fetchCalled = false;
-  const stats = await releaseExpiredContractRiders({
+  const stats = await releaseExpiredContractRiders({ now: new Date("2026-11-02T12:00:00Z"),
     supabase, seasonNumber: NaN,
     fetchExpiredContractRiders: async () => { fetchCalled = true; return []; },
   });
@@ -271,7 +271,7 @@ test("en fejlende notifikation isoleres og tælles separat (resten af releasen f
     return { delivered: true };
   });
 
-  const stats = await releaseExpiredContractRiders({
+  const stats = await releaseExpiredContractRiders({ now: new Date("2026-11-02T12:00:00Z"),
     supabase, seasonNumber: 1, notify,
     fetchExpiredContractRiders: async () => [
       { id: "r1", firstname: "A", lastname: "A", team_id: "t1", contract_end_season: 1,
@@ -296,7 +296,7 @@ test("release summary lists all released squads for one team, excluding a racing
     team: { user_id: "owner-a", is_ai: false, is_frozen: false },
   }));
   candidates.push({ ...candidates[0], id: "r-racing", firstname: "Racing" });
-  const stats = await releaseExpiredContractRiders({
+  const stats = await releaseExpiredContractRiders({ now: new Date("2026-11-02T12:00:00Z"),
     supabase, seasonNumber: 5, notify, fetchExpiredContractRiders: async () => candidates,
   });
   assert.equal(stats.released, 4);
@@ -318,7 +318,7 @@ test("én rytters DB-fejl midt i loopet isoleres — resten frigives stadig, fej
   const { supabase, riderUpdates } = makeMockSupabase({ erroringRiderIds: ["r2"] });
   const { notify, calls } = makeNotifyRecorder();
 
-  const stats = await releaseExpiredContractRiders({
+  const stats = await releaseExpiredContractRiders({ now: new Date("2026-11-02T12:00:00Z"),
     supabase, seasonNumber: 1, notify,
     fetchExpiredContractRiders: async () => [
       { id: "r1", firstname: "A", lastname: "A", team_id: "t1", contract_end_season: 1,
@@ -339,7 +339,7 @@ test("én rytters DB-fejl midt i loopet isoleres — resten frigives stadig, fej
 
 test("fetchExpiredContractRiders-fejl hænger tomme partialStats på errors (intet nået endnu)", async () => {
   const { supabase } = makeMockSupabase();
-  const err = await releaseExpiredContractRiders({
+  const err = await releaseExpiredContractRiders({ now: new Date("2026-11-02T12:00:00Z"),
     supabase, seasonNumber: 1,
     fetchExpiredContractRiders: async () => { throw new Error("season lookup boom"); },
   }).then(
@@ -362,7 +362,7 @@ test("getRidersInActiveStageRace-fejl hænger partialStats med kendt candidates-
     },
   };
 
-  const err = await releaseExpiredContractRiders({
+  const err = await releaseExpiredContractRiders({ now: new Date("2026-11-02T12:00:00Z"),
     supabase, seasonNumber: 1,
     fetchExpiredContractRiders: async () => [
       { id: "r1", firstname: "A", lastname: "A", team_id: "t1", contract_end_season: 1,

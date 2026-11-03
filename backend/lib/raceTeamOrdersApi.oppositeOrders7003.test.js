@@ -26,7 +26,6 @@ const args = (riders, roleByRider = new Map()) => ({
   scheduledAt: "2026-10-26T12:00:00Z",
   teamRiderIds: new Set(riders.map((r) => r.rider_id)),
   now: NOW,
-  intentionEnabled: true,
   roleByRider,
 });
 const rider = (effort, try_break, leadout) => ({ rider_id: "r1", effort, try_break, leadout });

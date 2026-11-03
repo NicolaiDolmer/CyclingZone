@@ -38,6 +38,7 @@ import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { withSeniorSquadScope } from "./squads.js";
 import { captureException } from "./sentry.js";
+import { ensureMandateForReturningTeam } from "./boardMandateEngine.js";
 import { YOUTH_POOL_SQUADS, YOUTH_GROUP_TIER, YOUTH_GROUP_SIZE, pickYouthGroupForNewTeam } from "./youthPoolAssignment.js";
 
 // Fejl med en HTTP-status, så route-filen kan oversætte uden at kende detaljerne.
@@ -345,6 +346,7 @@ export async function returnParkedTeam({ supabase, teamId, now = new Date(), dep
     reconcilePoolCalendarFn = reconcilePoolCalendarOnActivation,
     captureExceptionFn = captureException,
     assignYouthGroupsFn = assignYouthGroupsForComebackTeam,
+    ensureReturningMandateFn = ensureMandateForReturningTeam,
     ...sponsorDeps
   } = deps;
 
@@ -367,6 +369,8 @@ export async function returnParkedTeam({ supabase, teamId, now = new Date(), dep
     if (team.comeback_season_id != null && String(team.comeback_season_id) === String(season.id)) {
       const sponsor = await paySponsorSafely({ supabase, team, season, deps: sponsorDeps, captureExceptionFn });
       await assignYouthGroupsSafely({ supabase, team, assignYouthGroupsFn, captureExceptionFn });
+      // #6773: idempotent, så en genoptagelse retter et mandat der fejlede første gang.
+      await ensureReturningMandateFn(supabase, { teamId: team.id, seasonNumber: season.number, now, captureExceptionFn });
       return {
         returned: true,
         alreadyReturned: true,
@@ -435,6 +439,8 @@ export async function returnParkedTeam({ supabase, teamId, now = new Date(), dep
   // #5676: holdet overtager en AI-plads' ungdomsgrupper igen (samme sted i flowet
   // som AI-fyld/kalender-opfølgningen ovenfor — ikke-fatal, idempotent).
   await assignYouthGroupsSafely({ supabase, team: placedTeam, assignYouthGroupsFn, captureExceptionFn });
+  // #6773: holdet får et mandat for denne sæson med det samme (kaster aldrig).
+  await ensureReturningMandateFn(supabase, { teamId: team.id, seasonNumber: season.number, now, captureExceptionFn });
 
   console.log(
     `[comeback] hold ${team.id} tilbage i division ${placement.tier} (pulje ${placement.poolId}, ${placement.reason}) ${now.toISOString()}`,

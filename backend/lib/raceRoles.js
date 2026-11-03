@@ -124,8 +124,8 @@ export const RACE_V3_TUNING = Object.freeze({
   EFFORT_COST_MULTIPLIER_ALL_OUT: 0,
 
   // Formudbytte-siden (effortDevelopmentMultiplier → dailyTraining.
-  // applyRaceDevelopmentTick's devTotal, D2). DORMANT indtil BÅDE
-  // race_day_development_enabled OG race_day_intention_enabled er on: kald-
+  // applyRaceDevelopmentTick's devTotal, D2). Kun når
+  // race_day_development_enabled er on: kald-
   // stedet sender intet effort før da, og uden effort er multiplikatoren 1.0
   // (bit-identisk med i dag). Rækkefølgen grupetto < save < normal < protect <
   // all_out er selve pointen — uden den er intentionen ligegyldig for
@@ -278,33 +278,15 @@ export const VALID_RACE_ROLES = Object.freeze([
   // ham som en hjaelper (+ markoer); gammel motor: en hjaelper med hjaelperens pris.
   "luxury_helper",
 ]);
-// De TRE oprindelige effort-værdier (S1/S3). Uændret liste — den er stadig det
-// gyldige vokabular når `race_day_intention_enabled` er OFF, så et UI der er
-// deployet før flag-flippet ikke kan gemme et femtrins-valg der endnu ikke må
-// virke. Ordnet som i dag (ingen skala-betydning).
-export const VALID_EFFORTS = Object.freeze(["protect", "normal", "save"]);
-
-// #4632: de to NYE yderpunkter. Kun gyldige når intentions-flaget er on.
-export const INTENTION_EFFORTS = Object.freeze(["grupetto", "all_out"]);
-
-// #4632: hele femtrins-skalaen i SKALA-RÆKKEFØLGE (letteste → hårdeste). UI'et
-// må gerne læse rækkefølgen herfra (den er ikke hemmelig — kun multiplikatorerne
-// er, jf. fog-of-war-kravet: API'et returnerer enum-værdier, aldrig tal).
+// #4632: hele femtrins-skalaen i SKALA-RÆKKEFØLGE (letteste → hårdeste) og det
+// ENESTE gyldige effort-vokabular (kontakten race_day_intention_enabled er
+// fjernet, krav 5). Begge API-stier (raceStageRolesApi + raceTeamOrdersApi)
+// læser det herfra, så de aldrig kan diverge. UI'et må gerne læse rækkefølgen
+// herfra (den er ikke hemmelig — kun multiplikatorerne er, jf. fog-of-war-
+// kravet: API'et returnerer enum-værdier, aldrig tal).
 export const VALID_EFFORTS_FIVE_STEP = Object.freeze([
   "grupetto", "save", "normal", "protect", "all_out",
 ]);
-
-/**
- * Det gyldige effort-vokabular givet flag-tilstanden (#4632). ÉT sted, så
- * begge API-stier (raceStageRolesApi + raceTeamOrdersApi) og eventuelle
- * fremtidige indgange ikke kan diverge.
- *
- * @param {boolean} [intentionEnabled=false] race_day_intention_enabled
- * @returns {readonly string[]}
- */
-export function validEffortsFor(intentionEnabled = false) {
-  return intentionEnabled ? VALID_EFFORTS_FIVE_STEP : VALID_EFFORTS;
-}
 
 /**
  * Basis-prisen (før effort-skalering) for en rolle på en given etapeprofil.
@@ -464,8 +446,7 @@ function grupettoFatigueMultiplier(profileType, rulesRevision) {
  * (dailyTraining.applyRaceDevelopmentTick's devTotal, D2). Grupetto lavest,
  * all_out højest — ellers er intentionen ligegyldig for progression.
  *
- * DORMANT SEAM: kald-stedet sender kun et effort når BÅDE
- * race_day_development_enabled (D2) OG race_day_intention_enabled er on.
+ * Kald-stedet sender kun et effort når race_day_development_enabled (D2) er on.
  * Manglende/ukendt effort → 1.0 = BIT-IDENTISK med i dag.
  *
  * @param {'grupetto'|'save'|'normal'|'protect'|'all_out'|null|undefined} [effort]

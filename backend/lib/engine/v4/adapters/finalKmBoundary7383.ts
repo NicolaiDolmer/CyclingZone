@@ -1,11 +1,11 @@
 // backend/lib/engine/v4/adapters/finalKmBoundary7383.ts
-// #7383 (SLUKKET motorkontakt, KUN s5_profiles_v3): 10 km fra maal er altid en
-// segmentgraense, saa etapeplanens skift ved "de sidste 10 km" sker praecist.
+// #7383 (KUN s5_profiles_v3): 10 km fra maal er altid en segmentgraense, saa
+// etapeplanens skift ved "de sidste 10 km" sker praecist.
 //
 // Etapeplanen (backend/lib/stagePlanEngine.ts) skifter opgave ved en segmentgraense.
 // Taktiksiden tilbyder to slags skiftepunkter: toppen af en stigning (allerede en
 // graense) og "de sidste 10 km" (STAGE_PLAN_FINAL_KM), der ofte ligger midt i et
-// segment, oftest etapens sidste. Med kontakten taendt deler motoren det segment der
+// segment, oftest etapens sidste. Under s5_profiles_v3 deler motoren det segment der
 // krydser punktet, saa hvert led skifter praecis dér, ogsaa to taette skift og
 // holdarbejde paa sidste stykke.
 //   - Fladt/rullende: segmentet deles i to almindelige stykker (samme moenster som
@@ -21,11 +21,11 @@
 //     punktet. Selektionen ser den indsats rytteren koerte paa den LAENGSTE del af
 //     stykket (Codex-review: et angreb fra de sidste 10 km paa en lang stigning faar
 //     ikke angrebets indsats paa hele stigningen). For de fleste opgaver er det samme
-//     indsats som etapeplanens naermeste-graense-regel gav den udelte stigning foer
-//     kontakten. Undtagelse: holdarbejde (tempo, hold lederen fremme) paa en delt
-//     SLUTstigning. Slukket skifter det ved sidste segments start (stagePlanEngine
-//     SEGMENT_WORK_TASKS), saa hele stigningens selektion ser holdarbejdets indsats;
-//     taendt ser selektionen hovedets indsats, naar hovedet er den laengste del.
+//     indsats som etapeplanens naermeste-graense-regel gav den udelte stigning. Undtagelse:
+//     holdarbejde (tempo, hold lederen fremme) paa en delt SLUTstigning: udelt skiftede det
+//     ved sidste segments start (stagePlanEngine SEGMENT_WORK_TASKS), saa hele stigningens
+//     selektion saa holdarbejdets indsats; delt ser selektionen hovedets indsats, naar
+//     hovedet er den laengste del.
 //   - Nedkoersel: deles IKKE. Nedkoerselsfinalens tidsmodel (#6200: finishDescentIndexFor,
 //     "kun aabne, aldrig lukke" paa sidste segment, finalens loft fra nedkoerslens start)
 //     er bygget paa at nedkoerslen er eet segment. Her gaelder etapeplanens #7333-regel
@@ -35,10 +35,9 @@
 //     udelte rute (finalKmUndivided7383): graensen ved 10 km giver aldrig et angreb paa
 //     en etape der ikke havde et, og flytter det aldrig ind midt i en stigning/sektor.
 //     Er det delte stykke selv angrebs-segmentet, sker angrebet paa halen (samme slut-km).
-// Slukket (eller under en aeldre revision) er ruten det SAMME objekt: motoren er
-// bit-identisk med main. TAENDT 31/10 paa ejerens go; frontendens kopi
-// (StagePlanModel.ts FINAL_KM_BOUNDARY_7383_ACTIVE) flippes i samme PR
-// (finalKmBoundary7383.test.ts kraever at de to er ens).
+// Under en aeldre revision er ruten det SAMME objekt, saa de revisioner koerer uroert.
+// Taendt 31/10 paa ejerens go; kodekontakten er fjernet (krav 5), og taktiksiden
+// (StagePlanModel.ts stagePlanSwitchNotes) regner med graensen uden egen kopi.
 //
 // REN og inden for motorens renheds-graense: kun typer, etapeplanens konstant og
 // regel-revisionen. routeAdapter.ts re-eksporterer den, segmentLoop.ts importerer den.
@@ -46,22 +45,6 @@
 import { STAGE_PLAN_FINAL_KM } from "../../../stagePlan.ts";
 import { isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
 import type { RouteV2, Segment } from "../types.ts";
-
-export const FINAL_KM_BOUNDARY_7383_ACTIVE: boolean = true; // ejer-go 31/10, #7383
-
-let benchOverride7383: boolean | null = null;
-/** KUN tests og dev-benches: taend/sluk kontakten. `null` nulstiller. Produktionskode kalder aldrig setteren. */
-export function setFinalKmBoundary7383ForBench(active: boolean | null): void {
-  benchOverride7383 = active === null ? null : active === true;
-}
-/** Er kontakten taendt (eller taendt af en bench)? */
-export function finalKmBoundary7383Active(): boolean {
-  return benchOverride7383 ?? FINAL_KM_BOUNDARY_7383_ACTIVE;
-}
-/** Er graensen i kraft for et loeb paa `revision`? */
-export function isFinalKmBoundary7383On(revision: unknown): boolean {
-  return finalKmBoundary7383Active() && isS5ProfilesV3OrLater(revision);
-}
 
 /** Under denne afstand ligger en eksisterende graense "paa" punktet (ingen ny deling). */
 const BOUNDARY_EPS_KM = 0.01;
@@ -111,8 +94,8 @@ export function splitAtFinalKm7383(segments: readonly Segment[], distanceKm: num
 
 /**
  * Den udelte segmentliste bag en liste delt af splitAtFinalKm7383, og hovedets plads
- * (`headIndex`; halen ligger paa `headIndex + 1`). `null` naar intet er delt (hele
- * motoren naar kontakten er slukket). Det sene angreb vaelger sit segment paa den
+ * (`headIndex`; halen ligger paa `headIndex + 1`). `null` naar intet er delt (ogsaa
+ * hele motoren under en aeldre revision). Det sene angreb vaelger sit segment paa den
  * udelte liste, saa 10 km-graensen aldrig flytter eller skaber angrebet.
  */
 export function finalKmUndivided7383(segments: readonly Segment[]): { segments: readonly Segment[]; headIndex: number } | null {
@@ -125,16 +108,16 @@ export function finalKmUndivided7383(segments: readonly Segment[]): { segments: 
 
 /**
  * Stykket af en delt stigning/sektor som `segment` er, eller `undefined` (alle andre
- * segmenter, og hele motoren naar kontakten er slukket). segmentLoop.ts springer
+ * segmenter, og hele motoren under en aeldre revision). segmentLoop.ts springer
  * terraen-selektionen over paa hovedet og koerer den paa halen med hele stykket.
  */
 export function finalKmTerrainPiece7383(segment: Segment): FinalKmTerrainPiece7383 | undefined {
   return TERRAIN_PIECES.get(segment);
 }
 
-/** Ruten som segment-loopet koerer den paa `revision`. Samme objekt naar kontakten er slukket. */
+/** Ruten som segment-loopet koerer den paa `revision`. Samme objekt under en aeldre revision. */
 export function routeWithFinalKmBoundary7383(route: RouteV2, revision: unknown): RouteV2 {
-  if (!isFinalKmBoundary7383On(revision)) return route;
+  if (!isS5ProfilesV3OrLater(revision)) return route;
   const segments = splitAtFinalKm7383(route.segments, route.distance_km);
   return segments === route.segments ? route : { ...route, segments: segments as Segment[] };
 }

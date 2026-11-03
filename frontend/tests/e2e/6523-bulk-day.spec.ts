@@ -1,13 +1,12 @@
-// #6523 — Today-fanen: saet dagen for flere ryttere paa een gang, bag flaget
-// training_bulk_day (serveren leverer `bulkDay` som en bar boolean).
+// #6523 — Today-fanen: saet dagen for flere ryttere paa een gang. Linjen er
+// altid synlig (kontakten training_bulk_day er fjernet, krav 5).
 //
 // Guarden holder paa det rettelsen LOVER:
-//   1) Flag ON: linjen "Set today's day for ..." er ALTID synlig. Intet markeret
+//   1) Linjen "Set today's day for ..." er ALTID synlig. Intet markeret
 //      = "All N riders"; markering = "N selected". Apply bruger samme bulk-sti
 //      (POST /api/training/bulk) med de rigtige ryttere.
-//   2) Flag ON + Group by type: "Set for group" paa hver gruppe-overskrift.
-//   3) Flag ON: Today-overskriften har en kort forklaring; kolonnen BLIVER.
-//   4) Flag OFF: ingen linje, ingen gruppe-knap, ingen forklaring (gammel visning).
+//   2) Group by type: "Set for group" paa hver gruppe-overskrift.
+//   3) Today-overskriften har en kort forklaring; kolonnen BLIVER.
 // Testene saetter selv viewport, saa alle tre Playwright-projekter koerer dem.
 import type { Page, Route } from "@playwright/test";
 import { expect, test } from "./e2e-base.js";
@@ -28,7 +27,7 @@ const SQUAD = FIRST.map((firstname, i) => ({
   is_academy: false,
 }));
 
-function trainingMe(bulkDay: boolean) {
+function trainingMe() {
   const plans: Record<string, { focus: string; intensity: string }> = {};
   const condition: Record<string, { form: number; fatigue: number; injured_until: null; risk: number }> = {};
   for (const [i, rider] of SQUAD.entries()) {
@@ -39,7 +38,6 @@ function trainingMe(bulkDay: boolean) {
     enabled: true,
     betaTester: true,
     mobileTable: true,
-    bulkDay,
     teamId: TEST_TEAM.id,
     slots: { total: null, used: SQUAD.length, remaining: null },
     focuses: ["tempo", "endurance"],
@@ -67,9 +65,9 @@ function preflight(route: Route) {
 
 type BulkBody = { riderIds: string[]; dayType: string; session: string | null };
 
-async function openTraining(page: Page, { bulkDay, width = 1440, height = 900 }: { bulkDay: boolean; width?: number; height?: number }) {
+async function openTraining(page: Page, { width = 1440, height = 900 }: { width?: number; height?: number } = {}) {
   const bulkPosts: BulkBody[] = [];
-  const me = trainingMe(bulkDay);
+  const me = trainingMe();
   await page.setViewportSize({ width, height });
   await stabilizePage(page);
   await installNetworkMocks(page);
@@ -97,8 +95,8 @@ async function openTraining(page: Page, { bulkDay, width = 1440, height = 900 }:
 
 const todayRows = (page: Page) => page.getByTestId("training-today-row");
 
-test("flag ON: linjen er altid synlig, 'All N riders' som standard, og Apply rammer alle", async ({ page }) => {
-  const posts = await openTraining(page, { bulkDay: true });
+test("linjen er altid synlig, 'All N riders' som standard, og Apply rammer alle", async ({ page }) => {
+  const posts = await openTraining(page, {});
   await expect(todayRows(page)).toHaveCount(SQUAD.length);
   const bar = page.getByTestId("training-bulk-bar");
   await expect(bar).toBeVisible();
@@ -119,8 +117,8 @@ test("flag ON: linjen er altid synlig, 'All N riders' som standard, og Apply ram
   expect([...posts[0].riderIds].sort()).toEqual(SQUAD.map((r) => r.id).sort());
 });
 
-test("flag ON: markering skifter scope til 'N selected' og Apply rammer kun dem", async ({ page }) => {
-  const posts = await openTraining(page, { bulkDay: true });
+test("markering skifter scope til 'N selected' og Apply rammer kun dem", async ({ page }) => {
+  const posts = await openTraining(page, {});
   const bar = page.getByTestId("training-bulk-bar");
   await todayRows(page).nth(0).getByRole("checkbox").check();
   await todayRows(page).nth(2).getByRole("checkbox").check();
@@ -133,8 +131,8 @@ test("flag ON: markering skifter scope til 'N selected' og Apply rammer kun dem"
   expect([...posts[0].riderIds].sort()).toEqual([SQUAD[0].id, SQUAD[2].id].sort());
 });
 
-test("flag ON: Group by type giver 'Set for group', og Today-overskriften har en forklaring", async ({ page }) => {
-  const posts = await openTraining(page, { bulkDay: true });
+test("Group by type giver 'Set for group', og Today-overskriften har en forklaring", async ({ page }) => {
+  const posts = await openTraining(page, {});
   const head = page.getByTestId("training-race-day-head").first();
   await expect(head).toBeVisible();
   await expect(head).toHaveText("Today");
@@ -153,24 +151,8 @@ test("flag ON: Group by type giver 'Set for group', og Today-overskriften har en
   await page.screenshot({ path: evidenceShotPath("pr-screens/6523/after-1440-group.png") });
 });
 
-test("flag OFF: den gamle visning, ingen linje, ingen gruppe-knap, ingen forklaring", async ({ page }) => {
-  await openTraining(page, { bulkDay: false });
-  await expect(todayRows(page)).toHaveCount(SQUAD.length);
-  await page.screenshot({ path: evidenceShotPath("pr-screens/6523/before-1440-off.png") });
-  await expect(page.getByTestId("training-bulk-bar")).toHaveCount(0);
-  await expect(page.getByTestId("training-race-day-head")).toHaveCount(0);
-  await page.getByLabel("Group by type").check();
-  await expect(page.getByTestId("training-set-for-group")).toHaveCount(0);
-  // Today-kolonnen findes stadig.
-  await expect(page.getByRole("columnheader", { name: "Today", exact: true })).toBeVisible();
-  // Uden flag staar den gamle markerings-linje: intet markeret = ingen vaelger.
-  await expect(page.getByRole("combobox", { name: "Set day" })).toHaveCount(0);
-  await todayRows(page).nth(0).getByRole("checkbox").check();
-  await expect(page.getByRole("combobox", { name: "Set day" })).toBeVisible();
-});
-
-test("mobil 390 med flag ON: telefonen er uroert (linjen er kun paa desktop-fanen)", async ({ page }) => {
-  await openTraining(page, { bulkDay: true, width: 390, height: 844 });
+test("mobil 390: telefonen er uroert (linjen er kun paa desktop-fanen)", async ({ page }) => {
+  await openTraining(page, { width: 390, height: 844 });
   await expect(page.getByTestId("training-bulk-bar")).toHaveCount(0);
   await expect(page.getByTestId("training-set-for-group")).toHaveCount(0);
   await page.screenshot({ path: evidenceShotPath("pr-screens/6523/after-390-on.png") });

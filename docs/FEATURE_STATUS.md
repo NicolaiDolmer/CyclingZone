@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-123 poster: live 102 · dormant 5 · building 7 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+123 poster: live 103 · beta 1 · dormant 5 · building 5 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -13,13 +13,12 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 ## race-engine
 
-**live:** All out on the decisive climb (`race-all-out-7280`) 2026-10-27 · Day form with causes (`race-day-form-6649`) 2026-10-30 · Descent attacks respect the rider's task (`race-descent-task-7380`) 2026-11-01 · Profile hills in the race engine (`race-engine-profile-hills`) 2026-10-28 · S5 engine rules (s5_profiles_v3) (`race-engine-s5-profiles`) 2026-10-26 · Race engine v3 (`race-engine-v3`) 2026-10-04 · v3 scoring components (`race-engine-v3-scoring`) 2026-10-04 · Race engine v4 (`race-engine-v4`) 2026-10-04 · Stage plan switches exactly 10 km from the finish (`race-final-km-boundary-7383`) 2026-10-31 · Form peaks in races (`race-form-peaks`) 2026-10-27 · Stage intention choice (`race-intention-choice`) 2026-10-27 · Saving effort in individual time trials (`race-itt-save-7332`) 2026-10-31 · Time trial terrain weight (`race-itt-terrain-6595`) 2026-10-31
+**live:** Luxury helper (`luxury-helper-role`) 2026-11-02 · All out on the decisive climb (`race-all-out-7280`) 2026-11-02 · Day form with causes (`race-day-form-6649`) 2026-10-30 · Descent attacks respect the rider's task (`race-descent-task-7380`) 2026-11-01 · Profile hills in the race engine (`race-engine-profile-hills`) 2026-10-28 · S5 engine rules (s5_profiles_v3) (`race-engine-s5-profiles`) 2026-10-26 · Race engine v3 (`race-engine-v3`) 2026-10-04 · v3 scoring components (`race-engine-v3-scoring`) 2026-10-04 · Race engine v4 (`race-engine-v4`) 2026-10-04 · Stage plan switches exactly 10 km from the finish (`race-final-km-boundary-7383`) 2026-10-31 · Form peaks in races (`race-form-peaks`) 2026-10-27 · Stage intention choice (`race-intention-choice`) 2026-11-02 · Saving effort in individual time trials (`race-itt-save-7332`) 2026-11-01 · Time trial terrain weight (`race-itt-terrain-6595`) 2026-10-31
 
 **arkiv:** `form-and-fatigue` · `race-finalize-resumable` · `race-notify-outbox` · `team-selection-and-roles`
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
-| Luxury helper (`luxury-helper-role`) | building | - | - | #5982 | 2026-10-27 | - |
 | Official time persistence revision (`race-official-times-v1`) | retired | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6284 | 2026-10-16 | Frosset prototype. |
 
 ## race-day
@@ -57,7 +56,7 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 ## training
 
-**live:** Max +1 per ability per date (`ability-cap-per-date`) 2026-10-26 · Form and fatigue 2.0 (`condition-model-v2`) 2026-10-26 · Daily training (`daily-training`) 2026-10-27 · Development curve B (level and potential drive development, not age) (`development-curve-b`) 2026-10-30 · Peak planner (`peak-planner`) 2026-10-17 · Potential as one estimated number (`potential-single-number`) 2026-10-31 · Race day = hard day plus a role-weighted extra in the stage abilities (`race-day-role-yield`) 2026-11-01 · Season fatigue and form reset (`season-fatigue-reset`) 2026-10-27 · Train now B (the click settles the rider's whole known date) (`train-now-whole-day`) 2026-10-30 · Set the training day for several riders at once (`training-bulk-day`) 2026-10-24 · Training catalog v3 (`training-catalog-v3`) 2026-10-30 · Training condition settled per date (`training-condition-per-date`) 2026-10-26 · Daily rider training receipt (`training-daily-receipt`) 2026-10-04 · Today's decision card on the Training page (`training-decision-card`) 2026-10-26 · Fatigue limit (player-set rules) (`training-fatigue-rules`) 2026-10-04 · Training groups (`training-groups`) 2026-10-14 · Training cells per race day (35 cells) (`training-program-cells`) 2026-10-04 · Training programs per race day (`training-programs`) 2026-10-14 · Training tick system (`training-tick-system`) 2026-10-16 · Train now (no bonus) (`training-train-now`) 2026-10-14
+**live:** Max +1 per ability per date (`ability-cap-per-date`) 2026-10-26 · Form and fatigue 2.0 (`condition-model-v2`) 2026-10-26 · Daily training (`daily-training`) 2026-10-27 · Development curve B (level and potential drive development, not age) (`development-curve-b`) 2026-10-30 · Peak planner (`peak-planner`) 2026-10-17 · Potential as one estimated number (`potential-single-number`) 2026-10-31 · Race day = hard day plus a role-weighted extra in the stage abilities (`race-day-role-yield`) 2026-11-01 · Season fatigue and form reset (`season-fatigue-reset`) 2026-10-27 · Train now B (the click settles the rider's whole known date) (`train-now-whole-day`) 2026-11-02 · Set the training day for several riders at once (`training-bulk-day`) 2026-11-02 · Training catalog v3 (`training-catalog-v3`) 2026-10-30 · Training condition settled per date (`training-condition-per-date`) 2026-10-26 · Daily rider training receipt (`training-daily-receipt`) 2026-10-04 · Today's decision card on the Training page (`training-decision-card`) 2026-10-26 · Fatigue limit (player-set rules) (`training-fatigue-rules`) 2026-10-04 · Training groups (`training-groups`) 2026-10-14 · Training cells per race day (35 cells) (`training-program-cells`) 2026-10-04 · Training programs per race day (`training-programs`) 2026-10-14 · Training tick system (`training-tick-system`) 2026-10-16 · Train now (no bonus) (`training-train-now`) 2026-10-14
 
 **arkiv:** `training-hard-sessions-cobbles-echelon-attack` · `training-mobile-table` · `training-score` · `training-tick-per-race-day`
 
@@ -122,7 +121,7 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
-| Calendar race card and race history library (`race-library-v2`) | building | `race_library_v2` | [CALENDAR_RULES](CALENDAR_RULES.md) | #6514 | 2026-10-26 | #6680 + #7217 merget; off i prod; PR #6636 åben. |
+| Calendar race card and race history library (`race-library-v2`) | beta | `race_library_v2` | [CALENDAR_RULES](CALENDAR_RULES.md) | #6514 | 2026-11-01 | Beta for beta-testere 1/11 (ejer-go, efter #7463 Vis-vælger). PR #6636 åben. |
 | Hall of Fame (`hall-of-fame`) | retired | - | - | #2359 | 2026-09-06 | Redirecter til /standings. |
 
 ## onboarding

@@ -356,13 +356,6 @@ function HeroStatBlock({ label, value, sub, last = false }) {
   );
 }
 
-// #4030/#4246: ORDRE-halvdelen af Taktik-fanen (holdplan, udbrud, sprint-tog,
-// "forsøg udbrud"/"sprint-tog" pr. rytter) er stadig preview-gated. Kæden er ægte
-// siden #4246 — kortet taler med det live team-orders-endpoint — men v4-flippet er
-// ikke taget, så ordrerne ændrer endnu ingenting i motoren for en almindelig
-// spiller. Gaten er UÆNDRET fra #4030; #4613 flytter kun fladen ind i fanen.
-// Intentions-halvdelen (#4632) er ikke gated og vises altid.
-const TACTICS_V4_PREVIEW = import.meta.env.DEV || import.meta.env.VITE_PREVIEW_MOCK;
 
 /**
  * #7095: races-raekken som loadRace() selecter den (smal projektion + joinet season).
@@ -1175,7 +1168,6 @@ export default function RaceDetailPage() {
               key={tacticsStage ?? "default"}
               raceId={race.id}
               profileByStage={profileByStage}
-              showOrders={TACTICS_V4_PREVIEW}
               initialStage={tacticsStage}
             />
           )}

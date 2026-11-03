@@ -183,19 +183,11 @@ export function splitLongOpenRoadSegments(segments: readonly Segment[]): Segment
   return out;
 }
 
-// #7383 (SLUKKET motorkontakt, KUN s5_profiles_v3): 10 km fra maal bliver altid en
-// segmentgraense. Selve delingen bor i den rene finalKmBoundary7383.ts (motorens
-// renheds-graense: segmentLoop.ts maa ikke importere denne fils backend-moduler) og
-// anvendes paa segment-loopets rute, ikke her, fordi kun revisionen afgoer den.
-export {
-  FINAL_KM_BOUNDARY_7383_ACTIVE,
-  finalKmBoundary7383Active,
-  finalKmTerrainPiece7383,
-  isFinalKmBoundary7383On,
-  routeWithFinalKmBoundary7383,
-  setFinalKmBoundary7383ForBench,
-  splitAtFinalKm7383,
-} from "./finalKmBoundary7383.ts";
+// #7383 (KUN s5_profiles_v3): 10 km fra maal bliver altid en segmentgraense. Selve
+// delingen bor i den rene finalKmBoundary7383.ts (motorens renheds-graense:
+// segmentLoop.ts maa ikke importere denne fils backend-moduler) og anvendes paa
+// segment-loopets rute, ikke her, fordi kun revisionen afgoer den.
+export { finalKmTerrainPiece7383, routeWithFinalKmBoundary7383, splitAtFinalKm7383 } from "./finalKmBoundary7383.ts";
 
 function resolveSegments(row: StageProfileRow, profileType: ProfileType, finaleType: FinaleType | null, profileHills: boolean): Segment[] {
   const raw = resolveRawSegments(row, profileType, finaleType);

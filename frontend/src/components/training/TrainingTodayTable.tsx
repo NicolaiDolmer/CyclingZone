@@ -146,9 +146,9 @@ export default function TrainingTodayTable({
   toolbar: ReactNode;
   empty?: ReactNode;
   forecastSettled?: boolean;
-  // #6523 (flag training_bulk_day): altid synlig "Set today's day for ..."-linje
+  // #6523: altid synlig "Set today's day for ..."-linje
   // under vaerktoejslinjen, "Set for group" paa gruppe-overskrifter og en kort
-  // forklaring paa loebsdags-overskrifterne. Alle fire er udeladt = uaendret.
+  // forklaring paa loebsdags-overskrifterne. Udelades de, er tabellen uaendret.
   bulkBar?: ReactNode;
   onSetGroup?: (riderIds: string[]) => void;
   setForGroupLabel?: string;

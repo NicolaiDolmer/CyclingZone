@@ -67,7 +67,8 @@ export function entriesToBands(entries, ownPoolId) {
         multiDay: (e.stages ?? 1) > 1,
         gt: isGrandTour(e),
         monument: isMonument(e),
-        hasSelection: !!e.entered,
+        // Samme betydning som kalenderens "Klar": en udtagelse under gulvet er ikke gemt (#7533).
+        hasSelection: !!e.entered && !e.lineupShort,
       };
     })
     .filter(Boolean);
