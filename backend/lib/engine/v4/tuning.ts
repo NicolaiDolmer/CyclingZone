@@ -1717,3 +1717,18 @@ export const S5_V3_GC_LEASH_7258_TUNING = deepFreeze({
   // morgenudbrud (samme antal som stillingens top, S5_MORNING_GC_EXCLUSION).
   projectedExcludeTopN: 10,
 });
+
+// #6912 (KUN s5_profiles_v3 + kontakten breakaway_curve_6912, SLUKKET): forspringskurven
+// (mechanics/breakawayCurve6912.ts). Kalibreret privat i testporten (balance-internals/6912/,
+// hard rule 17); ingen tal i kommentarer. Loftet er uaendret og staar som noedgraense.
+export const BREAKAWAY_CURVE_6912_TUNING = deepFreeze({
+  profileTypes: ["flat", "mountain", "high_mountain"] as readonly ProfileType[],
+  // Toppen = denne andel af loftet pr. profil (udeladt = loftet).
+  peakShareOfCeilingByProfile: { flat: 0.85, mountain: 0.6, high_mountain: 0.65 } as Partial<Record<ProfileType, number>>,
+  growthKnee: 0.7, // kurvens knae: lavere = hurtigere mod toppen
+  topShare: 0.9, // lad-gaa-fasen slutter, naar kurven har naaet denne andel af toppen
+  declineShape: 1, // maalets fald fra toppen mod finalen (1 = jaevnt med resterende km)
+  finishTargetSecondsByProfile: { flat: 60, mountain: 0, high_mountain: 0 } as Partial<Record<ProfileType, number>>,
+  climbLossSecondsPerGradientKm: 2, // forventet tab pr. stignings-km pr. procent
+  maxControlClosingSecondsPerKm: 25, // hoejeste lukning pr. km under styringen
+});

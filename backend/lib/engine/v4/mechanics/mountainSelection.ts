@@ -144,6 +144,14 @@ export function phaseLetGoMaxGapScale(
 }
 
 /**
+ * #6912 (KUN kontakten breakawayCurve6912): under forspringskurvens styring lukker de
+ * interesserede hold selv, saa daempningen foer finalestigningen loeftes. Ellers uaendret.
+ */
+export function preFinalChaseClosingScale6912(preFinal: number, curveControl: boolean): number {
+  return curveControl ? Math.max(preFinal, 1) : preFinal;
+}
+
+/**
  * M5: jagtens lukning i fasen. Foer finalestigningen er jagten kontrolleret (lukker
  * langsommere); paa og efter finalestigningen jager favoritternes hold for alvor.
  * 1 uden fase.

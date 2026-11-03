@@ -121,7 +121,8 @@ import {
   type TeamReactionPlan,
 } from "./teamChaseReaction.ts";
 import type { EngineTuning, GcContext, RouteV2, TeamReactionState } from "../types.ts";
-import { mountainSelectionKnobsFor, phaseChaseClosingScale, phaseLetGoMaxGapScale } from "./mountainSelection.ts";
+import { mountainSelectionKnobsFor, phaseChaseClosingScale, phaseLetGoMaxGapScale, preFinalChaseClosingScale6912 } from "./mountainSelection.ts";
+import { breakawayCurve6912Applies, curveClosingCapSeconds, curveControlledClosing, curveGrowthSeconds, curveLetGoSplitKm, curvePeakSeconds, curveTargetSeconds, curveTopKm } from "./breakawayCurve6912.ts"; // #6912
 import { rollingLetGoBalance } from "./rollingBreakaway.ts";
 import { lateAttack } from "./lateAttack.ts";
 import { s5V3AutoChaseIntensity, s5V3ClimbChaseApplies, s5V3ClimbChaseClosing, s5V3ClimbChaseIntensity, s5V3ClimbChaseLeashSeconds, s5V3ControlledClosing, s5V3ControlTargetSeconds, s5V3FinaleWeightScale, s5V3HillyChaseApplies, s5V3InControlFinale, s5V3InterestedTeamIds, s5V3LetGoMaxGapScale, s5V3PreFinalChaseClosingScale, s5V3RealisticLeadApplies, s5V3RealisticLeadCeilingSeconds } from "./breakawayV3_6804.ts";
@@ -2176,6 +2177,10 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       : segmentLengthKm;
     let maxGapSeconds = 0;
     let oneDayScale = 1; // #6428 (KUN official_times_v3), se nedenfor
+    // #6912 (KUN kontakten breakawayCurve6912, interesserede hold): forspringskurven (breakawayCurve6912.ts).
+    const curveOn = breakaway.origin === "breakaway" && breakawayCurve6912Applies(ctx.breakawayCurve6912, ctx.route.profile_type) && (p2Interest?.teamIds.length ?? 0) > 0;
+    let curvePeak = 0;
+    let curveTop = formationKm;
     // #5578: official_times_v2's kalibrerede lad-gaa-knapper (timeModel.ts); neutrale ellers.
     if (allowLetGo && breakaway.origin === "breakaway" && isLetGoChaseGroup(chaseGroup.rider_ids.length, letGoTuning.letGoMinChaseRiders ?? undefined)) {
       const finaleFactor = ctx.route.finale_type ? letGoTuning.letGoFinaleFactorByFinale[ctx.route.finale_type] : undefined;
@@ -2219,7 +2224,13 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       // hjem eller ej) er det samme; kun forspringet er realistisk.
       const oneDayCap = gcContext?.status === "one_day" ? letGoTuning.letGoOneDayMaxGapSecondsByProfile[ctx.route.profile_type] : undefined;
       if (oneDayCap !== undefined && maxGapSeconds > oneDayCap) oneDayScale = Math.max(INITIAL_GAP_SECONDS, oneDayCap) / maxGapSeconds;
-      ({ letGoKm, chaseKm } = letGoSplitKm({
+      if (curveOn) {
+        // #6912: vaeksten flader ud mod toppen, og lad-gaa-fasen slutter dér; loftet er uaendret.
+        curvePeak = curvePeakSeconds({ ceilingSeconds: maxGapSeconds, profileType: ctx.route.profile_type, initialGapSeconds: INITIAL_GAP_SECONDS });
+        const curveInput = { formationKm, peakSeconds: curvePeak, secondsPerKm: letGoRate, initialGapSeconds: INITIAL_GAP_SECONDS };
+        curveTop = curveTopKm(curveInput);
+        ({ letGoKm, chaseKm } = curveLetGoSplitKm({ ...curveInput, fromKm: ctx.segment.from_km, toKm: ctx.segment.to_km }));
+      } else ({ letGoKm, chaseKm } = letGoSplitKm({
         formationKm,
         maxGapSeconds,
         fromKm: ctx.segment.from_km,
@@ -2245,7 +2256,11 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     if (ordersGcV3) planByBreakaway.set(pursuitKey(breakaway.id, chaseGroup.id), workPlan); // #6187: filmens "hvem hentede" pr. udbrud
     // #5955 (ejer-valg B, KUN orders_gc_v1 via gcSetup): GC-bremsen i lad-gaa-fasen.
     const brake = gcSetup && letGoKm > 0 ? letGoBrake({ chaserWork: chasePlan.chaserWork, braking: letGoBrakingTeams(letGoDecisions, chaseGroup.id, ordersGcV3), entrants: ctx.entrants, riders: state.riders, ...(ordersGcV3 ? { maxBrake: LET_GO_BRAKE_TUNING.leashMaxBrake } : {}) }) : null;
-    const braked = brake ? brakedLetGoGrowth({ separationSeconds: chaseGroup.gap_seconds - breakaway.gap_seconds, growthSeconds: letGoKm * letGoRate, fraction: brake.fraction, toleratedSeconds: brake.toleratedSeconds, ceilingSeconds: maxGapSeconds }) : null;
+    // #6912: under kurven flader vaeksten ud mod toppen (i endagsloebets skala, regnet tilbage).
+    const rawLetGoGrowth = curvePeak > 0 && oneDayScale > 0
+      ? curveGrowthSeconds({ separationSeconds: chaseGroup.gap_seconds - breakaway.gap_seconds, peakSeconds: curvePeak * oneDayScale, secondsPerKm: letGoRate * oneDayScale, km: letGoKm }) / oneDayScale
+      : letGoKm * letGoRate;
+    const braked = brake ? brakedLetGoGrowth({ separationSeconds: chaseGroup.gap_seconds - breakaway.gap_seconds, growthSeconds: rawLetGoGrowth, fraction: brake.fraction, toleratedSeconds: brake.toleratedSeconds, ceilingSeconds: maxGapSeconds }) : null;
     if (brake && braked && braked.brakedShare > 0) {
       const priorBrake = brakeByChaseGroup.get(chaseGroup.id);
       const work = ordersGcV3 && priorBrake ? mergeWork(priorBrake.work, brake.work) : brake.work; // #5978: som jagt-arbejdet
@@ -2287,7 +2302,9 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // #6441 (KUN official_times_v3): kuperet jager uden daempning foer finalen (bjerg uaendret).
     const phaseKnobs = mountainSelectionKnobsFor(ctx.route.profile_type, chaseV3);
     // #6804 P1.2 (KUN s5_profiles_v3, kuperet etapeloeb): daempet jagt foer finalestigningen.
-    const preFinalClosingScale = s5V3PreFinalChaseClosingScale(p1Hilly) ?? phaseKnobs.preFinalChaseClosingScale;
+    // #6912 (KUN kontakten): under kurvens styring loeftes daempningen (ikke ved klassementskontrollen P6).
+    const curveControl = curvePeak > 0 && !(p6Control && reactions !== undefined && reactions.size > 0);
+    const preFinalClosingScale = preFinalChaseClosingScale6912(s5V3PreFinalChaseClosingScale(p1Hilly) ?? phaseKnobs.preFinalChaseClosingScale, curveControl);
     const closingOf = (advantage: number, reacting: boolean) => {
       const raw = Math.max(
         0,
@@ -2297,7 +2314,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     };
     const netClosingSeconds = closingOf(netAdvantage, Boolean(reactions && reactions.size > 0));
     if (smallPace) smallBreakWork.set(breakaway.id, { riderIds: smallBreakPullers, pace: smallPace, km: Math.max(smallBreakWork.get(breakaway.id)?.km ?? 0, letGoKm + chaseKm) });
-    const letGoGrowth = (braked ? braked.growthSeconds : letGoKm * letGoRate) * oneDayScale;
+    const letGoGrowth = (braked ? braked.growthSeconds : rawLetGoGrowth) * oneDayScale;
     const letGoCeiling = maxGapSeconds * oneDayScale;
 
     // Jagten maales paa SEPARATIONEN mellem de to grupper, ikke paa jagt-
@@ -2376,6 +2393,30 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
         }
       } else if (p2Interest.teamIds.length > 0 && entrySeparation(chaseGroup.id) <= leash && grown - chaseClosingSeconds > leash) {
         events.push({ km: round2(ctx.segment.to_km), type: "breakaway_unchased", params: { group_id: breakaway.id, reason: "no_riders" } });
+      }
+    }
+    // #6912 (KUN kontakten): efter toppen sigter de interesserede hold mod kurvens maal.
+    if (curveControl && p2Interest && p6Target === null && chaseKm - floorKm > 0) {
+      const controlKm = chaseKm - floorKm;
+      const target = curveTargetSeconds({ route: ctx.route, km: ctx.segment.to_km, topKm: curveTop, peakSeconds: curvePeak }) * oneDayScale;
+      const chasers = climbChaseClimbers({ teamIds: p2Interest.teamIds, chaseGroupRiderIds: chaseGroup.rider_ids, entrants: ctx.entrants, riders: state.riders, ...(ctx.segment.kind === "climb" ? {} : { demandKeys: CHASE_ENGINE_KEYS }) });
+      const controlled = curveControlledClosing({
+        existingSeconds: chaseClosingSeconds,
+        grownSeconds: grown,
+        targetSeconds: target,
+        capSeconds: curveClosingCapSeconds(controlKm),
+        hasChasers: chasers.size > 0,
+        upperBounded: !(reactions && reactions.size > 0) && ctx.mountainSelectionPhase !== "final",
+      });
+      chaseClosingSeconds = controlled.closing;
+      if (controlled.extra > 0) {
+        const intensity = s5V3ClimbChaseIntensity({ extraClosingSeconds: controlled.extra, chaseKm: controlKm, closingSecondsPerKmPerUnit: BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit, fullOrderForce: BREAKAWAY_CHASE_V3_TUNING.teamSignalWeight * TEAM_CHASE.maxTeamSignal, teams: chasers.size });
+        const curveWork = new Map<string, number>();
+        for (const ids of chasers.values()) for (const id of ids) curveWork.set(id, helperCostMultiplier(ctx.entrants[id].effort) * intensity);
+        const entry = workByChaseGroup.get(chaseGroup.id);
+        if (entry) workByChaseGroup.set(chaseGroup.id, { ...entry, plan: { ...entry.plan, chaserWork: mergeWork(entry.plan.chaserWork, curveWork) } });
+        const own = planByBreakaway.get(pursuitKey(breakaway.id, chaseGroup.id));
+        if (own) planByBreakaway.set(pursuitKey(breakaway.id, chaseGroup.id), { ...own, chaserWork: mergeWork(own.chaserWork, curveWork) });
       }
     }
     const beforeFloor = Math.max(0, grown - chaseClosingSeconds);

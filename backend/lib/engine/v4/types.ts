@@ -232,6 +232,8 @@ export type StageInput = {
   // (mechanics/dayForm6649.ts). Broen saetter feltet kun naar kalderen eksplicit sender
   // dayForm6649=true (raceRunner: kun ved app_config day_form_6649 = "on"). Udeladt = den gamle dagsform.
   day_form_6649?: true | null;
+  // #6912 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): forspringskurven (mechanics/breakawayCurve6912.ts). Udeladt = som foer.
+  breakaway_curve_6912?: true | null;
 };
 
 /** #5955: taktisk regel-revision. Kun "orders_gc_v1" aktiverer ordrestyret morgenudbrud. */
@@ -803,6 +805,8 @@ export type SegmentHookContext = {
   s5ProfilesV3?: true;
   // #6649 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + StageInput.day_form_6649): dagsformen med forklaring. Udeladt = som foer.
   dayForm6649?: true;
+  // #6912 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + StageInput.breakaway_curve_6912): forspringskurven. Udeladt = som foer.
+  breakawayCurve6912?: true;
   // #7380 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 med en etapeplan): etapeplanens aktuelle opgave pr. rytter med plan,
   // som runtimen satte den ved segmentets start (stagePlanEngine.stagePlanCurrentTasks). Udeladt = ingen plan.
   stagePlanTasks?: Readonly<Record<string, import("../../stagePlan.ts").StagePlanTask>>;
