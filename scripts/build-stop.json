@@ -726,6 +726,21 @@
       "issue": 7489,
       "reason": "Træning: falsk træningsalarm + karantæne når en manager frigiver ryttere under aftentræningen (CYCLINGZONE-A6), ejer-go 3/11 i #7495",
       "since": "2026-11-03"
+    },
+    {
+      "issue": 7560,
+      "reason": "Startryttere fra fyld-op-puljen har klemte evner og vilkårlig bedste rolle, ejer-valg A+B 3/11 i #7495",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 4211,
+      "reason": "Marked: ryttere står både på auktion og transferliste (4 ryttere 3/11), ejer-regel 3/11 i #7495",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7561,
+      "reason": "Kalender: Klar-status viser ikke at feltet har plads til flere end gulvet, ejer-valg 3/11 i #7495",
+      "since": "2026-11-03"
     }
   ]
 }
