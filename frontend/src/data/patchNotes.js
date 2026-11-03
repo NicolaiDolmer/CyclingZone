@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.396",
+    "date": "2026-11-03",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Calendar",
+        "en": {
+          "title": "Race library for everyone",
+          "body": "Tap a race in the calendar to see its terrain, how well it suits your team and your status. Switch between Calendar and Table, and browse every edition under Race history."
+        },
+        "da": {
+          "title": "Løbsbiblioteket for alle",
+          "body": "Tryk på et løb i kalenderen og se terræn, hvor godt det passer dit hold og din status. Skift mellem Kalender og Tabel, og bladr i alle udgaver under Løbshistorik."
+        },
+        "refs": [
+          6514
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.395",
     "date": "2026-11-03",
     "changes": [
