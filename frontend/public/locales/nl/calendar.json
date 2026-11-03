@@ -85,8 +85,7 @@
     "status": {
       "label": "Jouw status",
       "missing": "Selectie nodig",
-      "selected": "Geselecteerd",
-      "gtBound": "Vastgelegd door je Grand Tour"
+      "selected": "Geselecteerd"
     },
     "pick": "Selectie kiezen",
     "editSquad": "Selectie aanpassen",
@@ -129,15 +128,9 @@
       "squadShort": "Selectie"
     },
     "openRace": "{name} openen",
-    "squad": {
-      "selected": "Selectie klaar",
-      "missing": "Selectie nodig",
-      "gtBound": "Grand Tour"
-    },
     "squadShort": {
       "selected": "Klaar",
-      "missing": "Nodig",
-      "gtBound": "GT"
+      "missing": "Nodig"
     },
     "empty": {
       "title": "Wis de filters om meer koersen te zien",

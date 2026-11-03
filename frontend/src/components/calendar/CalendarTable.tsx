@@ -119,7 +119,7 @@ interface CalendarTableProps {
 // Holdstatus = racePeek.myRaceStatus, samme regel som kalenderens status-prik
 // og løbskortet.
 
-const SQUAD_BADGE: Record<RaceStatus, string> = { selected: "won", missing: "closing", gtBound: "info" };
+const SQUAD_BADGE: Record<RaceStatus, string> = { selected: "won", missing: "closing" };
 
 export default function CalendarTable({
   entries,
@@ -280,7 +280,7 @@ export default function CalendarTable({
           key: "squad",
           header: t("table.cols.squad"),
           sortKey: "squad",
-          render: (r: CalendarTableRow) => <SquadPill status={r.status} t={t} />,
+          render: (r: CalendarTableRow) => <SquadPill status={r.status} t={t} />, // #7568: kort mærke, klippes ikke
         }]
       : []),
   ];
@@ -306,7 +306,7 @@ export default function CalendarTable({
           key: "squad",
           header: t("table.cols.squadShort"),
           sortKey: "squad",
-          render: (r: CalendarTableRow) => <SquadPill status={r.status} t={t} short />,
+          render: (r: CalendarTableRow) => <SquadPill status={r.status} t={t} />,
         }]
       : []),
   ];
@@ -395,11 +395,11 @@ function CompactTerrain({ row }: { row: CalendarTableRow }) {
   );
 }
 
-function SquadPill({ status, t, short = false }: { status: RaceStatus | null; t: Translate; short?: boolean }) {
+function SquadPill({ status, t }: { status: RaceStatus | null; t: Translate }) {
   if (!status) return <Dash />;
   return (
     <StatusBadge state={SQUAD_BADGE[status]} emphasis className="whitespace-nowrap">
-      {t(`table.${short ? "squadShort" : "squad"}.${status}`)}
+      {t(`table.squadShort.${status}`)}
     </StatusBadge>
   );
 }

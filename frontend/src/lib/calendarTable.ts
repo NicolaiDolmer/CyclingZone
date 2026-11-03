@@ -111,7 +111,7 @@ export function buildCalendarTableRows(
       poolId: e.poolId ?? null,
       poolLabel: e.poolLabel ?? null,
       isMine: Boolean(e.isMine),
-      status: myRaceStatus(e, list, todayIso),
+      status: myRaceStatus(e, todayIso),
     };
   });
 }
@@ -202,7 +202,7 @@ export function sortCalendarTableRows(
   });
 }
 
-const SQUAD_ORDER: Record<RaceStatus, number> = { missing: 0, gtBound: 1, selected: 2 };
+const SQUAD_ORDER: Record<RaceStatus, number> = { missing: 0, selected: 1 };
 const classRank = (c: string | null): number | null => {
   if (!c) return null;
   const i = CLASS_ORDER.indexOf(c);
