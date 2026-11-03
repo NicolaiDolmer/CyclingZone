@@ -14,6 +14,10 @@
 //   non-pr-cancel      workflowet har en ikke-PR-trigger, og en concurrency-blok
 //                      (top-level eller job) har cancel-in-progress der kan
 //                      blive true for den trigger.
+//   non-pr-group-shared workflowet kører på push/merge_group, og en
+//                      concurrency-gruppe er ikke unik pr. kørsel eller SHA
+//                      (run_id/sha). GitHub erstatter en ventende kørsel i samme
+//                      gruppe, også når cancel-in-progress er false.
 //
 // Sikker form (bruges af de workflows #7582 har rettet):
 //   concurrency:
@@ -44,8 +48,16 @@ export const KNOWN_EXCEPTIONS = {
     reason: 'labeled-trigger: hver label-hændelse skal køre færdigt (bevidst cancel-in-progress: false)',
   },
   'roadmap-sync.yml': {
-    rules: ['pr-cancel-missing'],
-    reason: 'uden for #7582-sporets fil-ejerskab; opfølgning',
+    rules: ['pr-cancel-missing', 'non-pr-group-shared'],
+    reason: 'PR-cancel mangler (uden for sporets fil-ejerskab, opfølgning); sync-jobbets faste gruppe er bevidst serialisering af prod-skrivning',
+  },
+  'auto-migrate.yml': {
+    rules: ['non-pr-group-shared'],
+    reason: 'fast gruppe er bevidst serialisering af prod-migrationer (to må aldrig køre samtidig)',
+  },
+  'backend-image.yml': {
+    rules: ['non-pr-group-shared'],
+    reason: 'gruppe pr. github.ref serialiserer main-push; uden for sporets fil-ejerskab, opfølgning',
   },
   'til-doers.yml': {
     rules: ['pr-cancel-missing'],
@@ -56,8 +68,8 @@ export const KNOWN_EXCEPTIONS = {
     reason: 'cancel-in-progress: true gælder også workflow_dispatch; uden for sporets fil-ejerskab, opfølgning',
   },
   'ts-core-ratchet.yml': {
-    rules: ['non-pr-cancel'],
-    reason: 'cancel-in-progress: true gælder også push til main; uden for sporets fil-ejerskab, opfølgning',
+    rules: ['non-pr-cancel', 'non-pr-group-shared'],
+    reason: 'cancel-in-progress: true og gruppe pr. github.ref gælder også push til main/merge_group; uden for sporets fil-ejerskab, opfølgning',
   },
   'security-grants-audit.yml': {
     rules: ['non-pr-cancel'],
@@ -68,7 +80,7 @@ export const KNOWN_EXCEPTIONS = {
     reason: 'fast gruppe med cancel-in-progress: true på schedule/dispatch; uden for sporets fil-ejerskab, opfølgning',
   },
   'prod-dependency-audit.yml': {
-    rules: ['non-pr-cancel'],
+    rules: ['non-pr-cancel', 'non-pr-group-shared'],
     reason: 'fast gruppe med cancel-in-progress: true på push/schedule/dispatch; uden for sporets fil-ejerskab, opfølgning',
   },
   'deploy-verify.yml': {
@@ -79,6 +91,10 @@ export const KNOWN_EXCEPTIONS = {
 
 const PR_GATED_RE = /^\$\{\{\s*github\.event_name\s*==\s*(['"])pull_request\1\s*\}\}$/;
 const PR_SCOPE_RE = /github\.event\.pull_request\.number|github\.head_ref|github\.ref\b/;
+// Events som merge-køen venter på: deres kørsler må ikke dele en gruppe på
+// tværs af commits (en ventende kørsel erstattes, også uden cancel-in-progress).
+export const QUEUE_SENSITIVE_EVENTS = new Set(['push', 'merge_group']);
+const RUN_UNIQUE_RE = /github\.run_id|github\.sha\b|github\.event\.workflow_run\.head_sha/;
 
 export function getTriggers(doc) {
   // YAML 1.1-parsere kan læse `on:` som boolean true.
@@ -136,8 +152,15 @@ export function analyzeWorkflow(fileName, text) {
     for (const [jobId, job] of Object.entries(doc.jobs ?? {})) {
       blocks.push([`job ${jobId}`, normalizeConcurrency(job?.concurrency)]);
     }
+    const queueTriggers = nonPrTriggers.filter((t) => QUEUE_SENSITIVE_EVENTS.has(t));
     for (const [where, conc] of blocks) {
       if (!conc) continue;
+      if (queueTriggers.length > 0 && !RUN_UNIQUE_RE.test(String(conc.group ?? ''))) {
+        findings.push({
+          rule: 'non-pr-group-shared',
+          message: `${where}: concurrency.group (${conc.group}) er ikke unik pr. kørsel/SHA for ${queueTriggers.join(', ')}; en ventende kørsel kan blive erstattet`,
+        });
+      }
       if (classifyCancel(conc.cancel) === 'always') {
         findings.push({
           rule: 'non-pr-cancel',

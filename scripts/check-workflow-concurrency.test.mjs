@@ -71,7 +71,7 @@ test('sikker blok består for PR + push + schedule + dispatch + merge_group', ()
 });
 
 test('cancel-in-progress: true på et workflow med push fejler', () => {
-  const text = `on:\n  pull_request:\n  push:\n    branches: [main]\nconcurrency:\n  group: g-\${{ github.ref }}\n  cancel-in-progress: true\n${JOBS}`;
+  const text = `on:\n  pull_request:\n  push:\n    branches: [main]\nconcurrency:\n  group: g-\${{ github.sha }}\n  cancel-in-progress: true\n${JOBS}`;
   assert.deepEqual(rules(text), ['non-pr-cancel']);
 });
 
@@ -81,13 +81,33 @@ test('cancel-in-progress: true på et workflow med schedule fejler', () => {
 });
 
 test('job-level cancel der kan ramme push fejler', () => {
-  const text = `on:\n  pull_request:\n  push:\n${SAFE_BLOCK}\njobs:\n  a:\n    runs-on: ubuntu-latest\n    concurrency:\n      group: j\n      cancel-in-progress: true\n    steps:\n      - run: echo hi\n`;
+  const text = `on:\n  pull_request:\n  push:\n${SAFE_BLOCK}\njobs:\n  a:\n    runs-on: ubuntu-latest\n    concurrency:\n      group: j-\${{ github.run_id }}\n      cancel-in-progress: true\n    steps:\n      - run: echo hi\n`;
   assert.deepEqual(rules(text), ['non-pr-cancel']);
 });
 
 test('ukendt cancel-udtryk på push-workflow fejler', () => {
-  const text = `on:\n  pull_request:\n  push:\nconcurrency:\n  group: g-\${{ github.ref }}\n  cancel-in-progress: \${{ github.ref != 'refs/heads/main' }}\n${JOBS}`;
+  const text = `on:\n  pull_request:\n  push:\nconcurrency:\n  group: g-\${{ github.sha }}\n  cancel-in-progress: \${{ github.ref != 'refs/heads/main' }}\n${JOBS}`;
   assert.deepEqual(rules(text), ['non-pr-cancel']);
+});
+
+test('push-workflow med gruppe pr. github.ref fejler (ventende main-kørsel kan erstattes)', () => {
+  const text = `on:\n  pull_request:\n  push:\n    branches: [main]\nconcurrency:\n  group: g-\${{ github.ref }}\n  cancel-in-progress: \${{ github.event_name == 'pull_request' }}\n${JOBS}`;
+  assert.deepEqual(rules(text), ['non-pr-group-shared']);
+});
+
+test('merge_group-workflow med fast gruppe fejler, også uden cancel', () => {
+  const text = `on:\n  merge_group:\nconcurrency:\n  group: fast\n  cancel-in-progress: false\n${JOBS}`;
+  assert.deepEqual(rules(text), ['non-pr-group-shared']);
+});
+
+test('push-workflow med gruppe pr. SHA består', () => {
+  const text = `on:\n  pull_request:\n  push:\nconcurrency:\n  group: \${{ github.workflow }}-\${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}\n  cancel-in-progress: \${{ github.event_name == 'pull_request' }}\n${JOBS}`;
+  assert.deepEqual(rules(text), []);
+});
+
+test('schedule-only workflow må serialisere med fast gruppe uden cancel', () => {
+  const text = `on:\n  schedule:\n    - cron: '0 3 * * 1'\n  workflow_dispatch:\nconcurrency:\n  group: fast\n  cancel-in-progress: false\n${JOBS}`;
+  assert.deepEqual(rules(text), []);
 });
 
 test('ren PR-workflow må bruge cancel-in-progress: true', () => {
