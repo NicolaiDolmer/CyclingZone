@@ -1058,6 +1058,7 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   # #6861 (Codex P1): merge laast til det hoved, der netop er genvalideret.
   $previousReviewDeadline = $env:CZ_MERGE_REVIEW_DEADLINE_UTC
   $guardedMergeExit = 1
+  $waveEvidenceFailure = $null
   try {
     if ($CodeRabbitNight) {
       if (-not $recheck.reviewDeadlineUtc) { throw 'CodeRabbit review deadline missing' }
@@ -1068,6 +1069,12 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
     $waveEvidenceFailure = Get-WaveEvidenceFailure $wavePolicyOutput
     if ($waveEvidenceFailure) { throw $waveEvidenceFailure }
     $wavePolicyOutput | ForEach-Object { Write-Host $_ }
+  } catch {
+    # Keep every failure on the common Exit-Queue path so already merged
+    # entries still receive CI/deploy verification. Never echo native errors.
+    $guardedMergeExit = 1
+    if ($waveEvidenceFailure) { Write-Host $waveEvidenceFailure -ForegroundColor Red }
+    else { Write-Host 'STOP: Guarded merge blev afbrudt; lukker eventuelt aabent tog foer exit.' -ForegroundColor Red }
   } finally {
     $env:CZ_MERGE_REVIEW_DEADLINE_UTC = $previousReviewDeadline
   }
