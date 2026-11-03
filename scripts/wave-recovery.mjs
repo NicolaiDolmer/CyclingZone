@@ -7,6 +7,7 @@ import { readWave, requireModernWave, withWaveStateLock, stopWaveWatch } from '.
 import { isClockDerivedBootId, normalizeBootId, sameBoot } from './wave-boot-identity.mjs';
 
 import { processSnapshot } from './wave-process-snapshot.mjs';
+import { allChildrenObservedStopped, registeredChildProcesses } from './wave-child-lifecycle.mjs';
 export { processSnapshot } from './wave-process-snapshot.mjs';
 
 const isoStart = value => (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value) ? Date.parse(value) : NaN);
@@ -37,25 +38,17 @@ export function recoverWave(dir, expected, snapshot = processSnapshot) {
   const rebooted = restartProven(wave, observed, observedBootId);
   if (!rebooted && (!Number.isSafeInteger(wave.pid) || wave.pid < 1)) throw Error('Unknown owner PID; marker retained');
   const children = wave.children || [];
-  if (!rebooted && (!Array.isArray(children) || children.some(c => !Number.isSafeInteger(c.pid) || c.pid < 1 || !['running', 'stopped'].includes(c.state)))) {
+  const observedStops = allChildrenObservedStopped(wave);
+  if (!rebooted && (!Array.isArray(children) || children.some(c => (!(Number.isSafeInteger(c.pid) && c.pid > 0) && !(observedStops && c.pid === null && c.spawnFailed === true)) || !['running', 'stopped'].includes(c.state)))) {
     throw Error('Spawn history incomplete; marker retained');
   }
-  // A snapshot cannot prove a historical tree stopped when an intermediate
-  // process already exited. Only a changed OS boot proves all such descendants
-  // are gone. Same-boot recovery is limited to admission before ANY dispatch.
-  if (!rebooted && wave.dispatchStarted !== false) throw Error('Same-boot descendants cannot be proven stopped; restart Windows and rerun recovery');
-  const roots = new Set([wave.pid, ...(Array.isArray(children) ? children : []).map(c => c.pid)].filter(Number.isSafeInteger));
-  const processes = observed.processes;
-  if (!Array.isArray(processes) || processes.some(p => !Number.isSafeInteger(p.pid) || !Number.isSafeInteger(p.ppid))) throw Error('Process snapshot invalid');
-  const related = new Set(roots);
-  // Windows retains ParentProcessId after the parent has exited. This finds
-  // surviving descendants even when their registered wrapper is already gone.
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const p of processes) if (related.has(p.ppid) && !related.has(p.pid)) { related.add(p.pid); changed = true; }
-  }
-  const alive = rebooted ? [] : processes.filter(p => related.has(p.pid) && p.pid !== wave.watchPid);
+  // A snapshot alone cannot prove a historical tree stopped. The new registered
+  // runtime additionally persists each close and seals registration; legacy
+  // waves still require reboot after dispatch.
+  if (!rebooted && !observedStops && wave.dispatchStarted !== false) throw Error('Same-boot descendants cannot be proven stopped; restart Windows and rerun recovery');
+  const roots = new Set([wave.pid, wave.watchPid, ...(Array.isArray(children) ? children : []).map(c => c.pid)].filter(Number.isSafeInteger));
+  const related = registeredChildProcesses(wave, observed, true);
+  const alive = rebooted ? [] : related.filter(p => p.pid !== wave.watchPid);
   if (alive.length) throw Error(`Wave process still alive (${alive.map(p => p.pid).join(', ')}); marker retained`);
   // Serialize competing recovery commands. Admission remains blocked by the
   // original marker until owned release, including throughout the snapshot.
@@ -70,11 +63,18 @@ export function recoverWave(dir, expected, snapshot = processSnapshot) {
     const evidenceDir = path.join(dir, 'waves', wave.waveId);
     fs.mkdirSync(evidenceDir, { recursive: true });
     const evidence = path.join(evidenceDir, 'recovery.json');
-    fs.writeFileSync(evidence, JSON.stringify({ waveId: wave.waveId, owner: wave.owner, checkedAt: expected.now, checkedPids: [...roots], proof: rebooted ? 'host-restarted' : 'dead-owner-before-dispatch', observedBootId }, null, 2));
     withWaveStateLock(dir, () => {
       if (JSON.stringify(readWave(dir)) !== JSON.stringify(wave)) throw Error('Wave changed during recovery; marker retained');
       // Unless a restart is proven, the watch belongs to this boot and must stop.
       stopWaveWatch(wave, rebooted ? observedBootId : undefined);
+      if (observedStops && !rebooted) {
+        const fresh = snapshot();
+        if (!sameBoot(observedBootId, fresh?.bootId)) throw Error('Boot changed during recovery; marker retained');
+        if (registeredChildProcesses(wave, fresh, true).length) throw Error('Wave process still alive during final validation; marker retained');
+      }
+      if (JSON.stringify(readWave(dir)) !== JSON.stringify(wave)) throw Error('Wave changed during recovery; marker retained');
+      fs.writeFileSync(evidence, JSON.stringify({ waveId: wave.waveId, owner: wave.owner, checkedAt: expected.now,
+        checkedPids: [...roots], proof: rebooted ? 'host-restarted' : observedStops ? 'registered-children-closed' : 'dead-owner-before-dispatch', observedBootId }, null, 2));
       fs.unlinkSync(path.join(dir, 'wave-active.json'));
     });
     return { released: true, waveId: wave.waveId, evidence };
