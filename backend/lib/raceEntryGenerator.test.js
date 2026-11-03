@@ -336,7 +336,7 @@ function transferredRiderScenario({ spent = false, targetDay = 29 } = {}) {
   ];
   state.race_stage_profiles = [{ race_id: "NEW", ...flatProfile(1) }];
   state.teams = [{ id: "buyer", user_id: null, is_test_account: false, is_frozen: false, league_division_id: 2 }];
-  seedTeamRiders(state, "buyer", 6);
+  seedTeamRiders(state, "buyer", 7); // #7339 B: 6 ledige, så løbet når gulvet
   const riderId = "buyer-r0";
   if (spent) {
     state.race_day_participation = [{ season_id: "season1", race_id: "OLD", rider_id: riderId, game_day: 29 }];
@@ -354,7 +354,7 @@ for (const batchRpc of [false, true]) {
       const result = await runRaceEntryGenerator({ supabase, seasonId: "season1", dryRun: false, now: new Date("2026-10-02T06:00:00Z") });
       assert.equal(result.failed_units, 0, result.errors.join("; "));
       const entries = state.race_entries.filter((e) => e.race_id === "NEW");
-      assert.equal(entries.length, 5, "only the five free riders can be selected");
+      assert.equal(entries.length, 6, "only the six free riders can be selected");
       assert.ok(entries.every((e) => e.rider_id !== "buyer-r0"), "the rider remains bound by identity, independent of owner");
     });
   }
@@ -741,7 +741,7 @@ test("runRaceEntryGenerator: igangværende løb med DELVIS manuel trup låser OG
   ];
   state.race_stage_profiles = [{ race_id: "L", ...flatProfile(1) }, { race_id: "B", ...flatProfile(1) }];
   state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
-  seedTeamRiders(state, "t1", 8);
+  seedTeamRiders(state, "t1", 10); // #7339 B: B skal kunne nå gulvet uden L's ryttere
   state.race_entries = [
     // Manageren har selv udtaget r0 (manuel) — det er DENNE række der fik hasManual-grenen
     // til at vinde og efterlade r1/r2 ulåste.
@@ -883,7 +883,7 @@ test("runRaceEntryGenerator: en rytter der traenede (Train now) udtages ALDRIG p
     { id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 },
     { id: "t2", is_test_account: false, is_frozen: false, league_division_id: 1 },
   ];
-  seedTeamRiders(state, "t1", 8);
+  seedTeamRiders(state, "t1", 10); // #7339 B: B skal kunne nå gulvet uden de trænede
   seedTeamRiders(state, "t2", 8);
   state.race_entries = [
     { race_id: "A", rider_id: "t1-r0", team_id: "t1", race_role: "captain", is_auto_filled: true },
@@ -2837,9 +2837,67 @@ test("#7339 Codex: to mål-løb ofres ikke for et lavere rangeret løb", () => {
   assert.ok(out.B.length >= 6 && out.C.length >= 6, JSON.stringify(sizes(out, ["A", "B", "C"])));
 });
 
-test("#7339: et løb uden konkurrent fyldes som før, også under gulvet", () => {
+test("#7339: et løb uden konkurrent fyldes som før under gulvet, når kalderen ikke beder om andet", () => {
   const out = assignTeamAcrossRaces({ riders: ridersN(4), races: [dayRace("A", 6)] });
-  assert.equal(out.A.length, 4);
+  assert.equal(out.A.length, 4, "managerens knapper (Race Hub, indbakken) er uændrede");
+});
+
+// #7339 B (3/11): sweepen skrev 1-5 ryttere ind i et løb der aldrig kunne nå gulvet.
+// Live-formen: 16 seniorer, 8 bundet i et igangværende etapeløb og 7 i et andet, så 1 er
+// ledig til dagens endagsløb. Det løb skal stå med 0, ikke med 1.
+test("#7339 B: 16 seniorer, 8 + 7 bundet i to etapeløb → endagsløbet får 0, ikke 1", () => {
+  const riders = ridersN(16);
+  const ids = riders.map((r) => r.rider_id);
+  const lockedWindows = [
+    { window: { start: 22, end: 49 }, riderIds: ids.slice(0, 8) },
+    { window: { start: 30, end: 36 }, riderIds: ids.slice(8, 15) },
+  ];
+  const oneDay = { race_id: "O", window: { start: 33, end: 33 }, stages: [flat], sizeRule: { min: 6, max: 8 } };
+  const sweep = assignTeamAcrossRaces({ riders, races: [oneDay], lockedWindows, dropBelowFloor: true });
+  assert.deepEqual(sweep.O, []);
+  const manual = assignTeamAcrossRaces({ riders, races: [oneDay], lockedWindows });
+  assert.equal(manual.O.length, 1, "uden dropBelowFloor: uændret adfærd");
+});
+
+test("#7339 B: gulvet tæller manuelle ryttere med; et etapeløb følger regel A (4)", () => {
+  // 3 manuelle (floor 3): 3 ledige rækker, 2 gør ikke.
+  const topUp = (n) => assignTeamAcrossRaces({
+    riders: ridersN(n), races: [dayRace("A", 5, { floor: 3 })], dropBelowFloor: true,
+  }).A.length;
+  assert.equal(topUp(3), 3);
+  assert.equal(topUp(2), 0);
+  // Etapeløb: 4 ledige må stå (#6739 regel A), 3 må ikke.
+  const stage = (n) => assignTeamAcrossRaces({
+    riders: ridersN(n), dropBelowFloor: true,
+    races: [{ race_id: "S", window: { start: 1, end: 3 }, stages: [flat, flat, flat], sizeRule: { min: 8, max: 8 } }],
+  }).S.length;
+  assert.equal(stage(4), 4);
+  assert.equal(stage(3), 0);
+});
+
+test("#7339 B: sweepen (runRaceEntryGenerator) skriver ingen 1-5 ryttere ind i et løb under gulvet", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [
+    { id: "GT", season_id: seasonId, race_class: "Class2", league_division_id: 1, status: "running", stages_completed: 3 },
+    { id: "O", season_id: seasonId, race_class: "Class2", league_division_id: 1, stages_completed: 0 },
+  ];
+  state.race_stage_schedule = [
+    { race_id: "GT", stage_number: 1, game_day: 30, scheduled_at: "2026-10-01T08:00:00Z" },
+    { race_id: "GT", stage_number: 2, game_day: 36, scheduled_at: "2026-10-03T08:00:00Z" },
+    { race_id: "O", stage_number: 1, game_day: 33, scheduled_at: "2026-10-02T08:00:00Z" },
+  ];
+  state.race_stage_profiles = [{ race_id: "GT", ...flatProfile(1) }, { race_id: "O", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", user_id: null, is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8);
+  // 5 af 8 kører det igangværende etapeløb: 3 ledige til endagsløbet.
+  state.race_entries = [0, 1, 2, 3, 4].map((i) => ({
+    race_id: "GT", rider_id: `t1-r${i}`, team_id: "t1", race_role: i ? "helper" : "captain", is_auto_filled: true, binding_span: "[30,37)",
+  }));
+  const result = await runRaceEntryGenerator({ supabase: makeSupabase(state), seasonId, dryRun: false, now: new Date("2026-10-02T06:00:00Z") });
+  assert.equal(result.failed_units, 0, result.errors.join("; "));
+  assert.deepEqual(state.race_entries.filter((e) => e.race_id === "O"), []);
+  assert.equal(state.race_entries.filter((e) => e.race_id === "GT").length, 5, "etapeløbet er urørt");
 });
 
 test("#7339: mål-løb fra strategien vinder pladsen når ikke alle kan stilles op", () => {
