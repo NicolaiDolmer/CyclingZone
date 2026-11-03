@@ -241,8 +241,14 @@
     }
   ],
   "cleanupList": [
-    { "issue": 6679, "why": "Interne Windows-procesbeviser, ejer-go 2/11 i #7495" },
-    { "issue": 6337, "why": "Interne CIM-bootopslag og fejlrapportering, ejer-go 2/11 i #7495" },
+    {
+      "issue": 6679,
+      "why": "Interne Windows-procesbeviser, ejer-go 2/11 i #7495"
+    },
+    {
+      "issue": 6337,
+      "why": "Interne CIM-bootopslag og fejlrapportering, ejer-go 2/11 i #7495"
+    },
     {
       "issue": 7099,
       "why": "Ops: normaliser dokumenteret PostgREST-logklasse (ejer-go 2/11, #7495)"
@@ -349,14 +355,6 @@
     {
       "issue": 6290,
       "why": "Interne codemod-/historikvagter, ejer-go 2/11 i #7495 (cleanupList i samme PR)"
-    },
-    {
-      "issue": 6679,
-      "why": "Interne Windows-procesbeviser, ejer-go 2/11 i #7495"
-    },
-    {
-      "issue": 6337,
-      "why": "Interne CIM-bootopslag og fejlrapportering, ejer-go 2/11 i #7495"
     },
     {
       "issue": 6335,
