@@ -1830,7 +1830,10 @@ export default function RiderStatsPage() {
   // #5435: rollen bag tallet ("54 Climber"). Samme evne-objekt som
   // overallRating, så rolle og tal ikke kan komme fra hver sin kilde.
   const bestRoleKey = rider.abilities
-    ? riderBestRole(rider.abilities).role
+    ? riderBestRole(rider.abilities, {
+      primaryType: rider.primary_type ?? null,
+      secondaryType: rider.secondary_type ?? null,
+    }).role
     : null;
   // ── #2000 redesign — afledte hero-felter (ren visning, ingen ny data) ────────
   const divisionLabel = rider.team?.division != null

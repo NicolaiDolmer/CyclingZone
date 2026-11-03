@@ -114,6 +114,57 @@ export const FILL_TAIL_GENERATION_TAG = "fill_tail";
 // derivation; evne-loftet ovenfor er det UAFHAENGIGE sikkerhedsnet EFTER derivation.
 export const FILL_TAIL_MAX_POTENTIALE = 2.5;
 
+// #7560 (ejer-valg B, 3/11): SKALERET klemme ved fødslen. Den gamle klemme er
+// min(evne, loft): den skærer toppen af profilen og lader bunden stå, så en
+// startrytter kunne læse som "loft/loft/1" og have flere evner lige højt på
+// toppen (= vilkårlig bedste rolle). Den skalerede klemme ganger rytterens
+// synlige profil med loft/max, så FORHOLDENE mellem evnerne bevares og
+// specialiteten stadig stikker op. Loftet er det samme; kun formen ændres.
+//
+// KUN NYE ryttere: tilstanden er PERSISTERET på rytteren (archetype_draw.fill_cap)
+// og sættes kun af starter-squad-allokeringen ved fødslen. Ryttere uden
+// markøren klemmes præcis som før (min), så enhver re-derive af en eksisterende
+// fyld-rytter er bit-identisk. Den skalerede klemme er selv idempotent: efter
+// skaleringen er profilens max = loftet, og en ny skalering er så identiteten,
+// og re-derive genberegner alligevel fra de samme rå input (seed/stats).
+export const FILL_CAP_MODE_SCALED = "scaled";
+
+/** "scaled" hvis rytteren er født under #7560-reglen, ellers "min". */
+export function fillCapModeOf(riderRow) {
+  return riderRow?.archetype_draw?.fill_cap === FILL_CAP_MODE_SCALED ? FILL_CAP_MODE_SCALED : "min";
+}
+
+/** Sæt #7560-markøren på et draw-objekt (ren funktion, muterer ikke input). */
+export function withScaledFillCap(archetypeDraw) {
+  if (!archetypeDraw || typeof archetypeDraw !== "object") return archetypeDraw;
+  return { ...archetypeDraw, fill_cap: FILL_CAP_MODE_SCALED };
+}
+
+// Klem evne-objektet IN-PLACE til `cap` over nøglerne `keys`.
+//   mode "min":    out[k] = min(out[k], cap) — den historiske regel, uændret.
+//   mode "scaled": de synlige evner ganges med cap/max (max over de synlige
+//                  evner), så forholdene bevares; ingen evne under 1 bliver
+//                  lavere end den var, og ingen evne ≥ 1 rundes ned til 0.
+//                  Skjulte evner (hidden_potential) er ikke en del af profilen
+//                  og min-klemmes som før.
+export function applyAbilityCap(out, cap, { keys = Object.keys(out), mode = "min" } = {}) {
+  if (!out || !Number.isFinite(cap)) return out;
+  const finiteKeys = keys.filter((k) => Number.isFinite(out[k]));
+  if (mode === FILL_CAP_MODE_SCALED) {
+    const profileKeys = finiteKeys.filter((k) => !HIDDEN_ABILITIES.includes(k));
+    const max = profileKeys.reduce((m, k) => Math.max(m, out[k]), -Infinity);
+    if (max > cap) {
+      const factor = cap / max;
+      for (const k of profileKeys) {
+        const v = out[k];
+        out[k] = Math.min(cap, Math.max(Math.min(v, 1), Math.round(v * factor)));
+      }
+    }
+  }
+  for (const k of finiteKeys) out[k] = Math.min(out[k], cap);
+  return out;
+}
+
 // Disciplin-evne → primær PCM-stat (§3 "Kilde"). Bruges kun i FALLBACK-stien
 // (ingen fysiologi). prolog FJERNET. Ren 50-85 → 1-99-mapping.
 // #3665: udledt af registrets `derivation: { source: "pcm", stat }`. De tre evner
@@ -357,10 +408,9 @@ export function deriveAbilities(physiology = {}, riderRow = {}, { asOfYear = CAL
 
   // #4311: evne-loft EFTER afledning for fyld-ryttere. Ligger sidst saa den fanger
   // ALLE seksten evner uanset kilde (fysiologi/PCM-fallback/skill-stat/alder/potentiale).
+  // #7560: en rytter født under den skalerede regel bevarer profilens form.
   if (riderRow.generation_tag === FILL_TAIL_GENERATION_TAG) {
-    for (const k of ALL_ABILITY_KEYS) {
-      if (Number.isFinite(out[k])) out[k] = Math.min(out[k], FILL_TAIL_ABILITY_CAP);
-    }
+    applyAbilityCap(out, FILL_TAIL_ABILITY_CAP, { keys: ALL_ABILITY_KEYS, mode: fillCapModeOf(riderRow) });
   }
 
   return out;
