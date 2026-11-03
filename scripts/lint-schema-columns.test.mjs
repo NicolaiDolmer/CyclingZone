@@ -23,6 +23,7 @@ import {
   stripCommentsKeepStrings,
   isTestFile,
   KNOWN_FINDINGS,
+  verifySnapshotRegression,
 } from './lint-schema-columns.mjs';
 
 const SNAPSHOT = {
@@ -457,4 +458,16 @@ test('every allow-listed finding carries a reason', () => {
     assert.match(key, /^[^:]+:[a-z_0-9]+\.[a-z_0-9]+$/, `allow-list key ${key} is not file:relation.column`);
     assert.ok(typeof reason === 'string' && reason.length > 40, `allow-list entry ${key} needs a real reason`);
   }
+});
+
+test('snapshot refresh requires a successful calendar regression', () => {
+  verifySnapshotRegression((exe, args) => {
+    assert.equal(exe, process.execPath);
+    assert.deepEqual(args, ['--test', 'backend/lib/seasonCalendarGate.test.js']);
+    return { status: 0 };
+  });
+  for (const status of [1, null]) {
+    assert.throws(() => verifySnapshotRegression(() => ({ status })), /regression failed/);
+  }
+  assert.throws(() => verifySnapshotRegression(() => ({ error: new Error('spawn failed') })), /spawn failed/);
 });

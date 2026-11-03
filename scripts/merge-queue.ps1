@@ -224,6 +224,7 @@ function Get-PrPlanEntry([int]$number) {
   # #6859: kun til at pege den skyldige PR i et merge-tog ud.
   $touchesVercel = $true
   $filesKnown = $false
+  $needsMigration = $true
   $title = "(ukendt)"
   $mergeable = "UNKNOWN"
   $isDraft = $false
@@ -259,6 +260,7 @@ function Get-PrPlanEntry([int]$number) {
       $changed = 0
       if ($parsed.PSObject.Properties['changedFiles']) { $changed = [int]$parsed.changedFiles }
       $listComplete = ($changed -gt 0) -and ($fileCount -ge $changed)
+      $needsMigration = (-not $listComplete) -or (@($paths | Where-Object { $_ -cmatch '^database/2026-[^/]*\.sql$' }).Count -gt 0)
       $pathsJson = ConvertTo-Json -InputObject $paths -Compress
       $classJson = & node (Join-Path $PSScriptRoot 'merge-queue-files.mjs') $pathsJson
       if ($LASTEXITCODE -eq 0 -and $classJson) {
@@ -288,6 +290,7 @@ function Get-PrPlanEntry([int]$number) {
     touchesBackend = $touchesBackend
     touchesRailway = $touchesRailway
     touchesVercel  = $touchesVercel
+    needsMigration = [bool]$needsMigration
     mergeable      = $mergeable
     isDraft        = $isDraft
     headSha        = $headSha
@@ -439,9 +442,14 @@ function Wait-ForWorkflowRun {
   $stallSig = $null
   $stallSince = & $Now
   while ((& $Now) -lt $deadline) {
-    $viewJson = Invoke-GhWithRetry @('run', 'view', "$runId", '--repo', $Repo, '--json', 'status,conclusion,jobs') -TolerateFailure
+    $viewJson = Invoke-GhWithRetry @('run', 'view', "$runId", '--repo', $Repo, '--json', 'headSha,status,conclusion,jobs') -TolerateFailure
     $run = $null
     if ($viewJson) { try { $run = ($viewJson -join "") | ConvertFrom-Json } catch {} }
+    if ($WorkflowFile -eq 'auto-migrate.yml' -and $run -and $run.headSha -ne $Sha) {
+      $script:workflowRunState = 'blocked'
+      Write-Host "  [STOP] '$Label': workflow SHA matcher ikke $Sha." -ForegroundColor Red
+      return $false
+    }
     if ($run -and $run.status -eq 'completed') {
       $ok = ($run.conclusion -eq 'success')
       $script:workflowRunState = if ($ok) { 'success' } elseif ($run.conclusion -eq 'failure') { 'failure' } else { 'blocked' }
@@ -790,6 +798,38 @@ function Write-TrainCulprit([string]$Failure) {
 # SIDSTE merge-SHA, kan en tidligere PR i raekken have roed CI uden at koeen ser
 # det. Vent derfor paa ci.yml for HVER merge-SHA i raekken (push-koersler paa
 # main annulleres ikke, saa det koster stort set ingen ekstra tid).
+function Wait-BatchMigrations {
+  foreach ($entry in @($script:trainEntries)) {
+    if (-not $entry.needsMigration) { continue }
+    # Opus-review #7516: et forbigaaende fejlet fil-opslag foer merge saetter
+    # needsMigration fail-closed. Merge-commitets egne filer er det auto-migrate's
+    # push-filter ser; viser de beviseligt ingen migration, startes workflowet
+    # aldrig, og ventetid ville ende i en falsk STALL. Ukendt = vent som foer.
+    if ((Test-MergeCommitMigration -Sha $entry.sha) -eq 'no') {
+      Write-Host "  PR #$($entry.number): merge-commit $($entry.sha.Substring(0, [Math]::Min(8, $entry.sha.Length))) har ingen database/2026-*.sql - ingen Auto-migrate at vente paa." -ForegroundColor DarkGray
+      continue
+    }
+    $ok = Wait-ForWorkflowRun -WorkflowFile 'auto-migrate.yml' -Sha $entry.sha -TimeoutMinutes $CiTimeoutMinutes -Label "Auto-migrate PR #$($entry.number)" -StallMinutes $StallMinutes
+    if (-not $ok) { return $false }
+  }
+  return $true
+}
+
+# 'yes' | 'no' | 'unknown'. Kun et komplet, lokalt laest merge-commit kan give 'no'.
+function Test-MergeCommitMigration {
+  param([string]$Sha)
+  if ($Sha -notmatch '^[0-9a-f]{40}$') { return 'unknown' }
+  try {
+    & git fetch --quiet origin main 2>$null | Out-Null
+    & git cat-file -e "$Sha^{commit}" 2>$null
+    if ($LASTEXITCODE -ne 0) { return 'unknown' }
+    $paths = @(& git diff-tree --no-commit-id --name-only --no-renames -r --root $Sha 2>$null)
+    if ($LASTEXITCODE -ne 0) { return 'unknown' }
+  } catch { return 'unknown' }
+  if (@($paths | Where-Object { $_ -cmatch '^database/2026-[^/]*\.sql$' }).Count -gt 0) { return 'yes' }
+  return 'no'
+}
+
 function Wait-BatchCi {
   $allOk = $true
   $script:ciUnverified = $false
@@ -881,6 +921,11 @@ function Close-OpenTrain {
     }
     Write-Host "STOP: main-CI er ROED efter $batchLabel. Fix main FOER naeste merge i koeen (rod main = stop-alt-fix-foerst)." -ForegroundColor Red
     Write-TrainCulprit 'ci'
+    exit 1
+  }
+  if (-not (Wait-BatchMigrations)) {
+    if ($script:queueStall) { Stop-QueueStall }
+    Write-Host "STOP: auto-migrate er ikke verificeret for $batchLabel. Ingen naeste merge." -ForegroundColor Red
     exit 1
   }
   $script:batchMerged = @()
@@ -1105,7 +1150,7 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   $script:batchMerged += $n
   $script:lastMergedSha = $sha
   $script:batchShas += $sha
-  $script:trainEntries += [pscustomobject]@{ number = $n; sha = $sha; touchesBackend = [bool]$entryBackend; touchesRailway = [bool]$entryRailway; touchesVercel = [bool]($entry.touchesVercel -or $fresh.touchesVercel) }
+  $script:trainEntries += [pscustomobject]@{ number = $n; sha = $sha; needsMigration = [bool]($entry.needsMigration -or $fresh.needsMigration); touchesBackend = [bool]$entryBackend; touchesRailway = [bool]$entryRailway; touchesVercel = [bool]($entry.touchesVercel -or $fresh.touchesVercel) }
   if ($entryRailway) { $script:batchRailway = $true }
   if ($entryBackend) { $script:batchBackend = $true }
   if ($entryVercel) { $script:batchVercel = $true }

@@ -1000,6 +1000,9 @@ jobs:
       - name: Test idempotency guard
         run: node --test scripts/lint-migration-idempotency.test.mjs
 
+      - name: Test merge queue migration gate
+        run: node --test scripts/merge-queue-migrations.test.mjs
+
       - name: Run idempotency guard
         run: node scripts/lint-migration-idempotency.mjs
 
