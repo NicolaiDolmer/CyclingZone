@@ -23,6 +23,8 @@ import {
   isSignOutRequest,
   isStaleProfileCopy,
   isWriteRequest,
+  READ_ONLY_POST_PATHS,
+  UNFOLD_SCROLLERS_CSS,
   lookupPreviewUrl,
   masterProfileDir,
   mockFor,
@@ -319,6 +321,23 @@ test("isWriteRequest: alle skrivninger blokeres, ogsaa telemetri; kun /auth/v1/t
   assert.equal(isWriteRequest("GET", "https://x.supabase.co/rest/v1/riders"), false);
   assert.equal(isWriteRequest("get", "https://api.cyclingzone.org/api/me"), false);
   assert.equal(isWriteRequest("OPTIONS", "https://api.cyclingzone.org/api/me"), false);
+});
+
+test("#7563: kun allowlistede laese-POST slipper igennem, og kun som POST paa den eksakte sti", () => {
+  assert.deepEqual([...READ_ONLY_POST_PATHS], ["/api/scouting/estimates"]);
+  assert.equal(isWriteRequest("POST", "https://cyclingzone-production.up.railway.app/api/scouting/estimates"), false);
+  assert.equal(isWriteRequest("POST", "https://api.cyclingzone.org/api/scouting/estimates?x=1"), false);
+  assert.equal(isWriteRequest("PUT", "https://api.cyclingzone.org/api/scouting/estimates"), true, "kun POST");
+  assert.equal(isWriteRequest("POST", "https://api.cyclingzone.org/api/scouting/estimates/extra"), true, "eksakt sti");
+  assert.equal(isWriteRequest("POST", "https://api.cyclingzone.org/api/scouting/rider-1"), true, "scout-ordren er en skrivning");
+});
+
+test("#7563: billederne slaar tabellernes lodrette graense fra og matcher SCROLLER-klassen", () => {
+  const styles = readFileSync(join(REPO_ROOT, "frontend", "src", "components", "ui", "dataTableStyles.js"), "utf8");
+  assert.match(styles, /max-h-\[calc\(100dvh/, "SCROLLER bruger stadig max-h-[calc(100dvh…)]");
+  assert.match(UNFOLD_SCROLLERS_CSS, /max-height:none!important/);
+  const cli = readFileSync(join(REPO_ROOT, "scripts", "pr-shots.mjs"), "utf8");
+  assert.ok(cli.indexOf("addStyleTag({ content: UNFOLD_SCROLLERS_CSS })") < cli.indexOf("await page.screenshot({ path: shot.file"), "graensen slaas fra foer billedet");
 });
 
 test("isSignOutRequest, isLoginPath, isAuthFailure og describeRequest", () => {
