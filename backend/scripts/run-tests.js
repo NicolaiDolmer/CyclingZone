@@ -75,13 +75,17 @@ function runNodeTest(extraArgs, files, isolationArgs = []) {
     ["--test", "--import", "./test-setup.js", ...isolationArgs, ...extraArgs],
     files
   );
+  // Every batch runs even after a failure, so CI reports all failing tests as the
+  // single invocation did before batching. The first non-zero status wins; a spawn
+  // error still aborts at once.
+  let firstFailure = 0;
   for (const args of batches) {
     const result = spawnSync(process.execPath, args, { stdio: "inherit", cwd: backendRoot });
     if (result.error) throw result.error;
     const status = result.status ?? 1;
-    if (status !== 0) return status;
+    if (status !== 0 && firstFailure === 0) firstFailure = status;
   }
-  return 0;
+  return firstFailure;
 }
 
 const extraArgs = process.argv.slice(2);

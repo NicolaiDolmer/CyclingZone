@@ -75,15 +75,28 @@ for (const [name, outcome, status, error] of [
   ["spawn failure", { error: "EACCES" }, undefined, "EACCES"],
 ]) {
   for (const pass of [0, 1, 2])
-    test(`${name} stops at invocation ${pass + 1}`, () => {
+    test(`${name} at invocation ${pass + 1}`, () => {
+      const total = runFixture().calls.length;
       const results = Array.from({ length: pass }, () => ({ status: 0 }));
       results.push(outcome);
       const result = runFixture({ results });
       assert.equal(result.status, status);
       assert.equal(result.error, error);
-      assert.equal(result.calls.length, pass + 1);
+      // A spawn error aborts at once. A failing isolated pass (invocation 1) skips
+      // pass 2 as before; a failing batch in pass 2 still runs the remaining batches.
+      const expectedCalls = error !== undefined || pass === 0 ? pass + 1 : total;
+      assert.equal(result.calls.length, expectedCalls);
     });
 }
+
+test("first failing batch status wins even if a later batch fails too", () => {
+  const total = runFixture().calls.length;
+  assert.ok(total >= 3, "fixture splits pass 2 into at least two batches");
+  const results = [{ status: 0 }, { status: 3 }, ...Array.from({ length: total - 2 }, () => ({ status: 9 }))];
+  const result = runFixture({ results });
+  assert.equal(result.status, 3);
+  assert.equal(result.calls.length, total);
+});
 
 test("no remaining files never invokes implicit Node discovery", () => {
   const result = runFixture({ count: 0, flags: [] });
