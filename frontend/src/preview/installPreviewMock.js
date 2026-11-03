@@ -144,7 +144,20 @@ function previewYouthSquadsEnabled() {
   }
 }
 
+// #4226: ?noActiveSeason=on|off husker "ingen aktiv sæson"-varianten (se
+// mockNoActiveSeason i mockHandlers.js) i localStorage, så den overlever navigation.
+function applyNoActiveSeasonParam() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("noActiveSeason");
+    if (param === "on") localStorage.setItem("cz_mock_no_active_season", "1");
+    if (param === "off") localStorage.removeItem("cz_mock_no_active_season");
+  } catch {
+    // localStorage utilgængelig — flaget forbliver ikke sat.
+  }
+}
+
 export function installPreviewMock() {
+  applyNoActiveSeasonParam();
   const realFetch = window.fetch.bind(window);
 
   window.fetch = async (input, init = {}) => {

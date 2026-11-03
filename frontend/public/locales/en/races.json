@@ -651,7 +651,10 @@
     "noHistory": "No data found for \"{name}\"",
     "raceNotFoundHint": "The link may be old, or the race was removed. Open the race library to find another one.",
     "noResultsImportedRaceHint": "This race has no result rows yet. Other races in the library already have theirs.",
-    "noResultsImportedRaceCta": "Open the race library"
+    "noResultsImportedRaceCta": "Open the race library",
+    "notStartedRace": "The race has not started yet",
+    "notStartedStageRaceHint": "Standings appear once stage 1 has been ridden.",
+    "notStartedOneDayHint": "Results appear once the race has been ridden."
   },
   "calendar": {
     "upcoming": "Upcoming",

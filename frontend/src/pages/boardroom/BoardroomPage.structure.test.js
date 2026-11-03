@@ -129,5 +129,5 @@ test("#5754 DEV-preview kan seede proposedMeeting UDEN netvaerkskald (samme moen
 });
 
 test("#5754 (CodeRabbit-runde) DEV-preview SYNKRONISERER tilstanden ved et variant-skift, ingen tidlig return uden at saette state", () => {
-  assert.match(source, /if \(meetingPreview\) \{\s*setProposedMeeting\(meetingPreview\);\s*setMeetingAvailable\(Boolean\(meetingPreview\.available\)\);\s*return;\s*\}/);
+  assert.match(source, /if \(meetingPreview\) \{\s*setProposedMeeting\(meetingPreview\);\s*setMeetingAvailable\(Boolean\(meetingPreview\.available\)\);\s*setMeetingLoaded\(true\);\s*return;\s*\}/);
 });

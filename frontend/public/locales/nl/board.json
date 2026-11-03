@@ -1826,8 +1826,8 @@
         "weightedByPrefix": "Gewogen door {name}."
       },
       "empty": {
-        "title": "Nog geen mandaat getekend",
-        "description": "Het bestuur heeft het mandaat van dit seizoen nog niet getekend. Kijk na de jaarvergadering terug."
+        "title": "Nog geen mandaat",
+        "description": "Het mandaat voor het seizoen wordt voorgelegd op de jaarvergadering."
       },
       "proposed": {
         "cardTitle": "Voorgesteld mandaat · S{season}",

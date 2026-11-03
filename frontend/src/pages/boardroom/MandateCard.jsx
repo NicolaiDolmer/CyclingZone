@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
-import { Section, SectionHeader, EmptyState, ClipboardIcon, ChevronDownIcon, ChevronUpIcon, Button } from "../../components/ui";
+import { Section, SectionHeader, EmptyState, ClipboardIcon, ChevronDownIcon, ChevronUpIcon, Button, SkeletonLines } from "../../components/ui";
+import { resolveMandateCardState } from "./mandateCardState.ts";
 import { appendDate, formatGoalValue, formatShortDate, formatWeekdayShortDate, resolveGoalTitle } from "./boardroomFormat.js";
 import MonogramAvatar from "../../components/MonogramAvatar";
 import { logEvent } from "../../lib/logEvent";
@@ -191,8 +192,9 @@ function ProposedGoalRow({ goal, t }) {
   );
 }
 
-export default function MandateCard({ mandate, bonusOffer = null, bonusOfferProgress = null, passiveModifier = null, proposedMeeting = null, onReload }) {
+export default function MandateCard({ mandate, bonusOffer = null, bonusOfferProgress = null, passiveModifier = null, proposedMeeting = null, meetingLoaded = true, onReload }) {
   const { t } = useTranslation("board");
+  const cardState = resolveMandateCardState({ mandate, proposedMeeting, meetingLoaded });
   const navigate = useNavigate();
   // #5633 · Var et enkelt `expandedId` (kun ÉT maal ad gangen). Spillerønske:
   // fold flere ud, eller alle/ingen ad gangen — se Set-baseret expandedIds +
@@ -217,6 +219,15 @@ export default function MandateCard({ mandate, bonusOffer = null, bonusOfferProg
   // intet forslag heller (proposedMeeting.available er false/mangler),
   // uaendret fallback til den kanoniske EmptyState.
   const proposedMandate = proposedMeeting?.available ? proposedMeeting.mandate : null;
+  // #7540 · Aarsmoedet indlaeses: kortets indlaesning, ikke tom-tilstanden.
+  if (cardState === "loading") {
+    return (
+      <Section>
+        <SectionHeader title={t("boardroom.mandate.cardTitleGeneric")} />
+        <SkeletonLines lines={3} />
+      </Section>
+    );
+  }
   if (!mandate && proposedMandate) {
     const proposedGoals = proposedMandate.goals || [];
     return (

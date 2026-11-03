@@ -55,7 +55,7 @@ import MaidenWinMomentCard from "../components/MaidenWinMomentCard";
 import { isFirstRaceMoment } from "../lib/firstRaceMoment.js";
 import { teamNudgeCandidates } from "../lib/dashboardNextRace.ts";
 import { isSquadSelectionMissing } from "../lib/raceSquadSelectionStatus";
-import { pickUpcomingRaces, filterTeamEnteredRaces } from "../lib/upcomingRaces";
+import { pickUpcomingRaces, filterTeamUpcomingRaces } from "../lib/upcomingRaces.ts";
 import RiderLink from "../components/RiderLink";
 import RaceLink from "../components/RaceLink";
 import { recentResultStage } from "../lib/recentResultLink.js";
@@ -1111,7 +1111,7 @@ export default function DashboardPage() {
   // midt i et etapeløb er ikke med i det løb (trup låst), og skal ikke se en
   // nedtælling til det. No-op for etablerede hold (de ER tilmeldt).
   const displayedRaces = pickUpcomingRaces(
-    filterTeamEnteredRaces(nextRaces, teamRaceIds),
+    filterTeamUpcomingRaces(nextRaces, teamRaceIds), // #7539: + ikke-startede løb
     nextStageByRace,
     3
   );

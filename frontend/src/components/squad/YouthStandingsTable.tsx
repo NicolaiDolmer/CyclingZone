@@ -74,7 +74,7 @@ export default function YouthStandingsTable({ squad, rows, myTeamId, label, tool
   ];
 
   return (
-    <DataTable
+    <DataTable data-sort-exempt="stilling: placeringen er selve indholdet"
       label={label}
       columns={columns}
       rows={rows}

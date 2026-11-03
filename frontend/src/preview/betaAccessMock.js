@@ -78,6 +78,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "ability_cap_per_date_enabled", // #6110 Hjaelp
   "training_decision_card", // #6110 Hjaelp
   "training_catalog_v3", // #5319 vaelgere + Hjaelp
+  "race_library_v2", // #7533 (kun patch-noten)
 ];
 
 // #5319: træningskatalog v3 er OFF på preview (som i prod), men kan tændes med
