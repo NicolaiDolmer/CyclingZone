@@ -9,7 +9,7 @@
 > **🎯 Next action (3/11 aften):** færdiggør bølge + kø → close-out → næste session: #7587 bølge-kvalitet først, så A (Til dørs + motor #6912/#7236 "kør", kontakter frist 8/11), B (realisme-gate #7588, løsning B), #7578, #7585; Codex: Til dørs, så #7582/#7583. Ejer-valg venter: #6950 (8/11), #7339 C/D.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, flag off): ejeren har ikke besluttet om det skal i spillet; kurve "6 kombineret" (#3564) indgår i den samlede måling.
 >
-> **🤖 Working agent:** PC1-eftermiddagssession 3/11 (ejer merge-kø + NOW.md, overdraget 14:45 på #7495). Merget: #7522, #7572 (#7489), #7574 (#7536 off), #7573 (#7339 A+B), #7580 (#7260-oprydning). Kø: #7577 (#4211, ejer "merge") + #7576 (#5950 off), så #7511/#7515/#7516. Bølge: #7586 (#6912) review, #7236 + #7582 del 1 i kø, #7575 + #7579 til mig; Codex' #7511/#7515/#7516 venter Codex-review.
+> **🤖 Working agent:** PC1-eftermiddagssession 3/11 (ejer merge-kø + NOW.md, overdraget 14:45 på #7495). Merget: #7522, #7572 (#7489), #7574 (#7536 off), #7573 (#7339 A+B), #7580 (#7260-oprydning), #7577 (#4211, prod-verificeret), #7576 (#5950 off, prod-verificeret). Kø: #7511/#7515/#7516, så #7589 + #7575 + #7591 (patch 7.397, ejer "merge"). Bølge: #7586 (#6912) review, #7236 + #7582 del 1 i kø, #7575 + #7579 til mig; Codex' #7511/#7515/#7516 venter Codex-review.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
