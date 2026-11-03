@@ -788,10 +788,33 @@ function Write-TrainCulprit([string]$Failure) {
 function Wait-BatchMigrations {
   foreach ($entry in @($script:trainEntries)) {
     if (-not $entry.needsMigration) { continue }
+    # Opus-review #7516: et forbigaaende fejlet fil-opslag foer merge saetter
+    # needsMigration fail-closed. Merge-commitets egne filer er det auto-migrate's
+    # push-filter ser; viser de beviseligt ingen migration, startes workflowet
+    # aldrig, og ventetid ville ende i en falsk STALL. Ukendt = vent som foer.
+    if ((Test-MergeCommitMigration -Sha $entry.sha) -eq 'no') {
+      Write-Host "  PR #$($entry.number): merge-commit $($entry.sha.Substring(0, [Math]::Min(8, $entry.sha.Length))) har ingen database/2026-*.sql - ingen Auto-migrate at vente paa." -ForegroundColor DarkGray
+      continue
+    }
     $ok = Wait-ForWorkflowRun -WorkflowFile 'auto-migrate.yml' -Sha $entry.sha -TimeoutMinutes $CiTimeoutMinutes -Label "Auto-migrate PR #$($entry.number)" -StallMinutes $StallMinutes
     if (-not $ok) { return $false }
   }
   return $true
+}
+
+# 'yes' | 'no' | 'unknown'. Kun et komplet, lokalt laest merge-commit kan give 'no'.
+function Test-MergeCommitMigration {
+  param([string]$Sha)
+  if ($Sha -notmatch '^[0-9a-f]{40}$') { return 'unknown' }
+  try {
+    & git fetch --quiet origin main 2>$null | Out-Null
+    & git cat-file -e "$Sha^{commit}" 2>$null
+    if ($LASTEXITCODE -ne 0) { return 'unknown' }
+    $paths = @(& git diff-tree --no-commit-id --name-only --no-renames -r --root $Sha 2>$null)
+    if ($LASTEXITCODE -ne 0) { return 'unknown' }
+  } catch { return 'unknown' }
+  if (@($paths | Where-Object { $_ -cmatch '^database/2026-[^/]*\.sql$' }).Count -gt 0) { return 'yes' }
+  return 'no'
 }
 
 function Wait-BatchCi {

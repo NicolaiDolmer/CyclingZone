@@ -27,7 +27,7 @@ function closeTrain(proofs, needsMigration = [true, false, true], source = queue
   const entries = needsMigration.map((need, index) => ({
     number: index + 1, sha: String(index + 1).repeat(40), needsMigration: need,
   }));
-  return runQueueFunctions(['Wait-BatchMigrations', 'Close-OpenTrain'], `
+  return runQueueFunctions(['Wait-BatchMigrations', 'Test-MergeCommitMigration', 'Close-OpenTrain'], `
 $script:trainEntries=ConvertFrom-Json ${psQuote(JSON.stringify(entries))}
 $script:proofs=ConvertFrom-Json ${psQuote(JSON.stringify(proofs))}
 $script:batchMerged=@(1,2,3); $script:batchShas=@('first','last')
@@ -169,4 +169,35 @@ if ($ok -ne $${expected}) { exit 9 }
     const result = spawnSync('pwsh', ['-NoProfile', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')], { encoding: 'utf8', timeout: 60_000 });
     assert.equal(result.status, 0, `${status}/${conclusion}/${sha}: ${result.stdout} ${result.stderr}`);
   }
+});
+
+test('merge commit without SQL skips the Auto-migrate wait even when the pre-merge file list was unknown', () => {
+  const sha = 'f'.repeat(40);
+  for (const [paths, expectWait] of [[['docs/internal.md', 'scripts/x.mjs'], false], [['database/2026-11-03-seed.sql'], true]]) {
+    const result = runQueueFunctions(['Wait-BatchMigrations', 'Test-MergeCommitMigration'], `
+$script:trainEntries=@(@{number=1;sha='${sha}';needsMigration=$true})
+$script:calls=@(); $CiTimeoutMinutes=1; $StallMinutes=0
+$script:paths=ConvertFrom-Json ${psQuote(JSON.stringify(paths))}
+function git { $global:LASTEXITCODE=0; if ($args -contains 'diff-tree') { return $script:paths } }
+function Wait-ForWorkflowRun { param($WorkflowFile,$Sha,$TimeoutMinutes,$Label,$StallMinutes) $script:calls+= $Sha; return $true }
+$ok=Wait-BatchMigrations
+Write-Output ('RESULT='+(@{ok=$ok;calls=@($script:calls)}|ConvertTo-Json -Compress))
+`);
+    assert.equal(result.data.ok, true);
+    assert.deepEqual(result.data.calls, expectWait ? [sha] : [], JSON.stringify(paths));
+  }
+});
+
+test('unreadable merge commit keeps the fail-closed Auto-migrate wait', () => {
+  const sha = 'e'.repeat(40);
+  const result = runQueueFunctions(['Wait-BatchMigrations', 'Test-MergeCommitMigration'], `
+$script:trainEntries=@(@{number=1;sha='${sha}';needsMigration=$true})
+$script:calls=@(); $CiTimeoutMinutes=1; $StallMinutes=0
+function git { $global:LASTEXITCODE=1 }
+function Wait-ForWorkflowRun { param($WorkflowFile,$Sha,$TimeoutMinutes,$Label,$StallMinutes) $script:calls+= $Sha; return $false }
+$ok=Wait-BatchMigrations
+Write-Output ('RESULT='+(@{ok=$ok;calls=@($script:calls)}|ConvertTo-Json -Compress))
+`);
+  assert.equal(result.data.ok, false);
+  assert.deepEqual(result.data.calls, [sha]);
 });
