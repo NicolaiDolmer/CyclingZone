@@ -228,7 +228,7 @@ export default function CalendarPage() {
   const statusByRace = useMemo(() => {
     if (!libraryV2) return null;
     const list = data?.entries || [];
-    return new Map(list.map((e) => [e.id, myRaceStatus(e, list, todayISO)]));
+    return new Map(list.map((e) => [e.id, myRaceStatus(e, todayISO)]));
   }, [libraryV2, data, todayISO]);
   const openPeek = libraryV2 ? (raceId, stage = null) => { setExpandedDayIso(null); setPeekRaceId(raceId); setPeekStage(stage); } : null;
   // #6683: "Kalender | Tabel" bag race_library_v2. `?view=table` er fanens indre tilstand

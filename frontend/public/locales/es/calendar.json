@@ -85,8 +85,7 @@
     "status": {
       "label": "Tu estado",
       "missing": "Falta elegir plantilla",
-      "selected": "Plantilla elegida",
-      "gtBound": "Ocupado por tu Grand Tour"
+      "selected": "Plantilla elegida"
     },
     "pick": "Elegir plantilla",
     "editSquad": "Editar plantilla",
@@ -129,15 +128,9 @@
       "squadShort": "Plantilla"
     },
     "openRace": "Abrir {name}",
-    "squad": {
-      "selected": "Plantilla lista",
-      "missing": "Falta plantilla",
-      "gtBound": "Grand Tour"
-    },
     "squadShort": {
       "selected": "Lista",
-      "missing": "Falta",
-      "gtBound": "GT"
+      "missing": "Falta"
     },
     "empty": {
       "title": "Quita los filtros para ver más carreras",

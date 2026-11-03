@@ -82,7 +82,7 @@ function loadSeasonFit(seasonNumber: number | null | undefined): Promise<SeasonF
   return p;
 }
 
-const STATUS_BADGE: Record<RaceStatus, string> = { missing: "closing", selected: "won", gtBound: "info" };
+const STATUS_BADGE: Record<RaceStatus, string> = { missing: "closing", selected: "won" };
 
 interface RacePeekCardProps {
   entry: PeekEntry | null;
@@ -149,7 +149,7 @@ export default function RacePeekCard({ entry, status, days, seasonNumber, t, loc
   ].filter(Boolean).join(" · ");
 
   const raceHref = raceDetailHref(entry.id, isStageRace ? stage : null);
-  const canPick = mine && (status === "missing" || status === "selected" || status === "gtBound");
+  const canPick = mine && (status === "missing" || status === "selected");
 
   return (
     <Modal

@@ -85,8 +85,7 @@
     "status": {
       "label": "Ton statut",
       "missing": "Effectif à choisir",
-      "selected": "Effectif choisi",
-      "gtBound": "Mobilisé par ton Grand Tour"
+      "selected": "Effectif choisi"
     },
     "pick": "Choisir l'effectif",
     "editSquad": "Modifier l'effectif",
@@ -129,15 +128,9 @@
       "squadShort": "Effectif"
     },
     "openRace": "Ouvrir {name}",
-    "squad": {
-      "selected": "Effectif prêt",
-      "missing": "Effectif à choisir",
-      "gtBound": "Grand Tour"
-    },
     "squadShort": {
       "selected": "Prêt",
-      "missing": "À choisir",
-      "gtBound": "GT"
+      "missing": "À choisir"
     },
     "empty": {
       "title": "Efface les filtres pour voir plus de courses",

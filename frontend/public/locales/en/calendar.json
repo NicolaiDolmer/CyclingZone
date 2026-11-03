@@ -85,8 +85,7 @@
     "status": {
       "label": "Your status",
       "missing": "Needs selection",
-      "selected": "Selected",
-      "gtBound": "Tied up by your Grand Tour"
+      "selected": "Selected"
     },
     "pick": "Pick squad",
     "editSquad": "Edit squad",
@@ -129,15 +128,9 @@
       "squadShort": "Squad"
     },
     "openRace": "Open {name}",
-    "squad": {
-      "selected": "Squad ready",
-      "missing": "Needs squad",
-      "gtBound": "Grand Tour"
-    },
     "squadShort": {
       "selected": "Ready",
-      "missing": "Needed",
-      "gtBound": "GT"
+      "missing": "Needed"
     },
     "empty": {
       "title": "Clear the filters to see more races",
