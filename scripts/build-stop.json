@@ -312,6 +312,16 @@
     {
       "issue": 7337,
       "why": "Preview/notifikation (ejer-go 2/11 aften, #7495)"
+    },
+    {
+      "issue": 7554,
+      "reason": "Bølger frigiver ikke sig selv (ops), Codex på DolmerPC, ejer-go 3/11 #7495",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7536,
+      "reason": "Træthed på lette løbsdage: kun design og måling, intet byg uden ejer-go, ejer-go 3/11 #7495",
+      "since": "2026-11-03"
     }
   ],
   "brandList": [
@@ -638,6 +648,11 @@
     {
       "issue": 7553,
       "reason": "Planlægning Dag: løb holdet ikke er med i vises som låst trup med Afmeld (live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 6524,
+      "reason": "Døde klik på 'Læg på' i Træning > Program (40/3 dage), ejer-go 3/11 #7495",
       "since": "2026-11-03"
     }
   ]
