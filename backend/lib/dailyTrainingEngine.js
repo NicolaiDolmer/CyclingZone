@@ -645,6 +645,7 @@ export async function runTeamTrainingDay({
     // this once per race day of the date with the sweep's start time as `now`, so a
     // release minutes into the sweep shows up here as team_id null, stamped with
     // the earlier start time.
+    // pagination-safe: én række pr. id i datoens frosne trup (ét holds trup, bounded af rostergrænsen)
     riders = await loadRiders(supabase.from("riders").select(riderColumns).in('id',dateWork.expected_rider_ids));
     const unsafe=dateWork.expected_rider_ids.filter(id=>{
       const rider=riders.find(row=>row.id===id);
