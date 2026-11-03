@@ -190,7 +190,7 @@ export function breakawayTrajectoryRowFacts(events, distanceKm) {
 function newCell(key) {
   return {
     key, observations: 0, routes: new Set(),
-    gapTo10: [], ittGapTo10PerKm: [], breakawayWin: { hits: 0, n: 0, missing: 0 },
+    gapTo10: [], gapMissing: 0, ittGapTo10PerKm: [], breakawayWin: { hits: 0, n: 0, missing: 0 },
     maxLead: [], leadMissing: 0, peakFrac: [], plateau: [], caughtKmToGo: [], deciles: Array.from({ length: DECILES }, () => []),
     favourite: { hits: 0, best: 0, n: 0, missing: 0 },
   };
@@ -204,7 +204,9 @@ function addRow(cell, row, routeId, favourites) {
     const perKm = num(row.ittGapTo10Per40Km);
     if (perKm !== null) cell.ittGapTo10PerKm.push(perKm / 40);
   } else {
-    if (row.breakawayWon !== true && num(row.gapTo10) !== null) cell.gapTo10.push(Number(row.gapTo10));
+    // M1 kræver et kendt nej til udbrudssejr; ukendt udfald eller manglende gab er manglende evidens.
+    if (row.breakawayWon === false && num(row.gapTo10) !== null) cell.gapTo10.push(Number(row.gapTo10));
+    else if (row.breakawayWon !== true) cell.gapMissing += 1;
     if (typeof row.breakawayWon === "boolean") {
       cell.breakawayWin.n += 1;
       if (row.breakawayWon) cell.breakawayWin.hits += 1;
@@ -252,7 +254,7 @@ function finishCell(c, params) {
   return {
     key: c.key, observations: c.observations, routes,
     metrics: {
-      gapTo10: dist(c.gapTo10),
+      gapTo10: { ...dist(c.gapTo10), missing: c.gapMissing },
       ittGapTo10PerKm: dist(c.ittGapTo10PerKm),
       breakawayWinShare: { n: c.breakawayWin.n, missing: c.breakawayWin.missing, share: shareOf(c.breakawayWin.hits, c.breakawayWin.n) },
       breakawayMaxLead: { ...dist(c.maxLead), missing: c.leadMissing },

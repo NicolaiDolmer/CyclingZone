@@ -168,6 +168,18 @@ test("#7588 M1-M8 pr. celle; effektiv n = distinkte ruter", () => {
   assert.deepEqual(c.leadByDecile[PLATEAU_DECILE], { n: 2, median: 300 }, "kun etaper hvor udbruddet stadig findes");
 });
 
+test("#7588 M1: ukendt udbrudsudfald tæller som manglende, ikke i gabet", () => {
+  const out = computeRealismMetrics({ races: [{ raceId: "race-U", stageCount: 1, perSeed: [{ rows: [
+    row({ stage: 1, profile_type: "flat", finale_type: "flat_sprint", gapTo10: 5 }),
+    row({ stage: 2, profile_type: "flat", finale_type: "flat_sprint", gapTo10: 400, breakawayWon: null }),
+    row({ stage: 3, profile_type: "flat", finale_type: "flat_sprint", gapTo10: 300, breakawayWon: undefined }),
+    row({ stage: 4, profile_type: "flat", finale_type: "flat_sprint", gapTo10: null }),
+    row({ stage: 5, profile_type: "flat", finale_type: "flat_sprint", gapTo10: 900, breakawayWon: true }),
+  ] }] }] });
+  const m = Object.values(out.cells).find((c) => c.key.includes("flat")).metrics;
+  assert.deepEqual([m.gapTo10.n, m.gapTo10.median, m.gapTo10.missing], [1, 5, 3], "kun kendt nej i M1; sejren er hverken med eller manglende");
+});
+
 test("#7588 enkeltstart: M1 pr. km, ude af udbrudsmålene", () => {
   const out = computeRealismMetrics({ races: corpus() });
   const m = out.cells["stage_race|itt|tt"].metrics;
