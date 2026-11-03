@@ -161,6 +161,23 @@ export const PATCHES = [
         "category": "fixed",
         "audience": "player",
         "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Put on points you to the picker",
+          "body": "Clicking Put on before choosing who the program is for now points you to the picker, instead of doing nothing."
+        },
+        "da": {
+          "title": "Læg på viser vælgeren",
+          "body": "Trykker du Læg på, før du har valgt hvem programmet skal på, viser knappen nu vælgeren i stedet for ingenting."
+        },
+        "refs": [
+          6524
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
         "topic": "Interface",
         "en": {
           "title": "Patch notes counts and dates",
