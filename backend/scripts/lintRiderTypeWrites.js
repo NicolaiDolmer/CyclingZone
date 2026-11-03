@@ -81,9 +81,9 @@ export const TYPE_WRITE_FILES = Object.freeze({
   "lib/backfillCores.js":
     "runRiderTypesBackfill (global type-backfill, hele peletonen) + deriveForRiderIds " +
     "(akademi-intake/re-derive). Begge persisterer typen og SKAL bruge resolveRiderTypes.",
-  "lib/riderValueRefresh.js":
-    "recomputeRiderValue/selectChangedValueUpdates — nattens type+værdi-sweep " +
-    "(trainingSweep). Persisterer typen og bruger resolveRiderTypes.",
+  // #7560: lib/riderValueRefresh.js skriver ikke længere selv (writeRiderPatches i
+  // riderBestRoleCache.js gør). Typen udledes stadig i recomputeRiderValue, som
+  // IDENTITY_ANCHORS nedenfor låser til resolveRiderTypes.
   "lib/starterSquadAllocator.js":
     "Accept-gate før insert (tier-loft) — spejler deriveForRiderIds' kæde. Typen " +
     "skrives IKKE herfra (deriveForRiderIds gør det), men gaten skal følge samme " +

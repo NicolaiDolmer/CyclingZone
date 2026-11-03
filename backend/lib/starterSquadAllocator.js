@@ -30,7 +30,10 @@ import { LAUNCH_POPULATION } from "./fictionalLaunchPopulation.js";
 import { foldNameNordic } from "./pcmRiderMatcher.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
-import { deriveAbilities, FILL_TAIL_GENERATION_TAG, FILL_TAIL_MAX_POTENTIALE } from "./abilityDerivation.js";
+import {
+  deriveAbilities, FILL_TAIL_GENERATION_TAG, FILL_TAIL_MAX_POTENTIALE, FILL_CAP_MODE_SCALED, withScaledFillCap,
+} from "./abilityDerivation.js";
+import { writeBestRoleCacheForRiders } from "./riderBestRoleCache.js";
 import { computeRiderTypes, resolveRiderTypes, NEUTRAL_BASELINE } from "./riderTypes.js";
 import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { buildCapsForRider } from "./riderProgression.js";
@@ -444,6 +447,9 @@ const INSERT_BATCH = 500;
 // vinduet før derivation → lave afledte styrke-evner. Returnerer ren INSERT-payload
 // (pcm_id null, intet id/base_value — DB/derive ejer dem).
 // #5327: `primaryTypeMode` sendes uændret til generatoren (default "tier").
+// #7560: `fillCapMode` = "scaled" persisterer den skalerede fødselsklemme på
+// rytteren (archetype_draw.fill_cap, se abilityDerivation.applyAbilityCap).
+// Default "min" = den historiske klemme, bit-identisk payload som før.
 export function buildWeakStarterPool({
   count,
   seed,
@@ -452,6 +458,7 @@ export function buildWeakStarterPool({
   window = STARTER_POOL_STAT_WINDOW,
   generate = generateFictionalRiders,
   primaryTypeMode = DEFAULT_PRIMARY_TYPE_MODE,
+  fillCapMode = "min",
 }) {
   const { riders } = generate({ seed, count, referenceYear, existingFoldedNames, primaryTypeMode });
   // #5269: stat-vinduet oversat til et EVNE-loft. Den gamle sti klemte
@@ -483,7 +490,12 @@ export function buildWeakStarterPool({
   // #4311: generation_tag markoerer fyld-ryttere saa deriveAbilities (abilityDerivation.js)
   // kan klemme de evner der IKKE er stat-drevne (tactics = alder, hidden_potential =
   // potentiale). toInsertPayload kender ikke feltet (kun archetype_draw) — saet EFTER.
-  return payload.map((r) => ({ ...r, generation_tag: FILL_TAIL_GENERATION_TAG }));
+  const scaled = fillCapMode === FILL_CAP_MODE_SCALED;
+  return payload.map((r) => ({
+    ...r,
+    ...(scaled && r.archetype_draw ? { archetype_draw: withScaledFillCap(r.archetype_draw) } : {}),
+    generation_tag: FILL_TAIL_GENERATION_TAG,
+  }));
 }
 
 // Navne-unikhed mod ALLE eksisterende ryttere (den svage pulje genereres separat
@@ -644,11 +656,11 @@ async function insertWeakSquadForTeam(supabase, teamId, {
   const tailSeed = deriveTeamSeed((seed + 1487 + 7) >>> 0, teamId);
   const corePayload = buildWeakStarterPool({
     count: STARTER_SQUAD.CORE_SIZE, seed: coreSeed, referenceYear, existingFoldedNames,
-    window: STARTER_POOL_STAT_WINDOW, generate, primaryTypeMode,
+    window: STARTER_POOL_STAT_WINDOW, generate, primaryTypeMode, fillCapMode: FILL_CAP_MODE_SCALED,
   }).map((r) => ({ ...r, team_id: teamId }));
   const tailPayload = buildWeakStarterPool({
     count: STARTER_SQUAD.TAIL_SIZE, seed: tailSeed, referenceYear, existingFoldedNames,
-    window: STARTER_TAIL_STAT_WINDOW, generate, primaryTypeMode,
+    window: STARTER_TAIL_STAT_WINDOW, generate, primaryTypeMode, fillCapMode: FILL_CAP_MODE_SCALED,
   }).map((r) => ({ ...r, team_id: teamId }));
   const poolPayload = [...corePayload, ...tailPayload];
 
@@ -727,16 +739,19 @@ export async function allocateStarterSquadForTeam(supabase, teamId, {
 
   let assigned;
   let recovered = null;
+  let squadIds = [];
   if (n === 0) {
     const ids = await insertWeakSquadForTeam(supabase, teamId, {
       seed, referenceYear: poolReferenceYear, generate, derive, startSeason, contractRng, primaryTypeMode,
     });
     assigned = ids.length;
+    squadIds = ids;
   } else if (n === SIZE) {
     // Insert lykkedes sidst, men derive/markør fejlede → re-derive (idempotent) + markér.
     await derive(supabase, existingIds, { dryRun: false });
     await applyContractFieldsForRiders(supabase, existingIds, { startSeason, rng: contractRng });
     assigned = n;
+    squadIds = existingIds;
     recovered = "re-derived";
   } else if (n > SIZE) {
     // n>SIZE kan IKKE være et halvt signup-forsøg — bootstrappen indsætter præcis
@@ -754,9 +769,15 @@ export async function allocateStarterSquadForTeam(supabase, teamId, {
       seed, referenceYear: poolReferenceYear, generate, derive, startSeason, contractRng, primaryTypeMode,
     });
     assigned = ids.length;
+    squadIds = ids;
     recovered = "cleaned-partial";
   }
 
+  // #7560 sidefund: bedste-rolle-cachen skrives ved fødslen, ikke først ved
+  // næste søndags værdi-sweep (samme regel som sweepen, så den er en no-op).
+  // Efter grenene og FØR markøren: fejler skridtet, står markøren NULL, og
+  // næste forsøg (re-derive-grenen) skriver cachen igen.
+  await writeBestRoleCacheForRiders(supabase, squadIds);
   await setSquadMarker(supabase, teamId, now().toISOString());
   return { teamId, assigned, ...(recovered ? { recovered } : {}) };
 }

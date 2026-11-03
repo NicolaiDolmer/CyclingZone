@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { bestRoleForAbilities, recomputeRiderValue, refreshChangedRiderValues, selectChangedValueUpdates } from "./riderValueRefresh.js";
+import { bestRoleForAbilities, recomputeRiderValue, refreshChangedRiderValues, selectChangedValueUpdates, writeBestRoleCacheForRiders } from "./riderValueRefresh.js";
+import { DISPLAY_RECIPE_ABILITIES, DISPLAY_RECIPE_KEYS, ratingForRole } from "./weights/displayRecipes.js";
+import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { loadValuationModelById, withMarketFit } from "./riderValuationModelSelect.js";
 import { ageForSeason } from "./riderSeasonAge.js";
@@ -49,7 +51,8 @@ test("#3345: recomputeRiderValue bruger riderRow.valuation_type (frossen) til ba
 test("selectChangedValueUpdates: skriver KUN ryttere hvor værdi/type ændrede sig", () => {
   const fresh = recomputeRiderValue({ id: "r1" }, ABIL, baseline, model);
   const riders = [
-    { id: "r1", ...bestRoleForAbilities(ABIL), primary_type: fresh.primary_type, secondary_type: fresh.secondary_type, base_value: fresh.base_value },
+    // #7560: the cache carries the tie-break by the row's own types.
+    { id: "r1", ...bestRoleForAbilities(ABIL, { primaryType: fresh.primary_type, secondaryType: fresh.secondary_type }), primary_type: fresh.primary_type, secondary_type: fresh.secondary_type, base_value: fresh.base_value },
     { id: "r2", primary_type: fresh.primary_type, secondary_type: fresh.secondary_type, base_value: fresh.base_value + 50_000 },
     { id: "r3", primary_type: "gc", secondary_type: "rouleur", base_value: 100 },
   ];
@@ -293,7 +296,8 @@ test("#5443 v6: pris (m. marked, trin 0), typer og bedste rolle skrives i SAMME 
   assert.equal(w.primary_type, expected.primary_type);
   assert.equal(w.secondary_type, expected.secondary_type);
   assert.notEqual(w.primary_type, "stale_primary");
-  const best = bestRoleForAbilities(ABIL);
+  // #7560: tie-break by the types written in the SAME patch.
+  const best = bestRoleForAbilities(ABIL, { primaryType: w.primary_type, secondaryType: w.secondary_type });
   assert.equal(w.best_role, best.best_role);
   assert.equal(w.best_role_rating, best.best_role_rating);
   assert.ok(w.best_role, "bedste rolle skal vaere udfyldt");
@@ -319,11 +323,95 @@ test("#5443 v6: freezeProductionValue lader current_production_value URØRT, ogs
   assert.equal(Object.hasOwn(frozen.writes[0], "current_production_value"), false);
   assert.equal(frozen.writes[0].base_value, expected.base_value);
   assert.equal(frozen.writes[0].primary_type, expected.primary_type);
-  assert.equal(frozen.writes[0].best_role, bestRoleForAbilities(ABIL).best_role);
+  assert.equal(frozen.writes[0].best_role, bestRoleForAbilities(ABIL, {
+    primaryType: frozen.writes[0].primary_type, secondaryType: frozen.writes[0].secondary_type,
+  }).best_role);
 
   // Tørkørslen regner det samme og skriver intet.
   const dry = refreshSupabase(staleRider({ current_production_value: drifted }));
   const resDry = await refreshChangedRiderValues(dry, { phaseStep: 0, freezeProductionValue: true, dryRun: true });
   assert.equal(dry.writes.length, 0);
   assert.deepEqual(resDry.updates, [frozen.writes[0]]);
+});
+
+// ── #7560 A: tie-break by natural role (label only, never the rating) ────────
+
+const FLAT = Object.fromEntries(DISPLAY_RECIPE_ABILITIES.map((k) => [k, 13]));
+
+test("#7560: tie → primary type wins, then secondary, then recipe order", () => {
+  // A flat profile ties all eight roles (same rating everywhere).
+  for (const role of DISPLAY_RECIPE_KEYS) assert.equal(ratingForRole(FLAT, role), 13);
+  assert.deepEqual(bestRoleForAbilities(FLAT), { best_role: DISPLAY_RECIPE_KEYS[0], best_role_rating: 13 });
+  assert.deepEqual(bestRoleForAbilities(FLAT, { primaryType: "gc" }), { best_role: "gc", best_role_rating: 13 });
+  assert.deepEqual(bestRoleForAbilities(FLAT, { primaryType: "not-a-role", secondaryType: "climber" }),
+    { best_role: "climber", best_role_rating: 13 });
+  assert.deepEqual(bestRoleForAbilities(FLAT, { primaryType: "nope", secondaryType: "nope2" }),
+    { best_role: DISPLAY_RECIPE_KEYS[0], best_role_rating: 13 });
+});
+
+test("#7560: a natural role OUTSIDE the tie never wins, and no type ever moves the rating", () => {
+  const ab = { ...FLAT, climbing: 80, recovery: 70, endurance: 65 };
+  const untyped = bestRoleForAbilities(ab);
+  for (const primaryType of DISPLAY_RECIPE_KEYS) {
+    for (const secondaryType of DISPLAY_RECIPE_KEYS) {
+      const typed = bestRoleForAbilities(ab, { primaryType, secondaryType });
+      assert.equal(typed.best_role_rating, untyped.best_role_rating, "rating is independent of the tie-break");
+      assert.equal(ratingForRole(ab, typed.best_role), untyped.best_role_rating, "label is always an argmax role");
+    }
+  }
+});
+
+test("#7560: seeded property: typed label is an argmax role, primary wins whenever it ties", () => {
+  let seed = 7560;
+  const rng = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 4294967296);
+  for (let n = 0; n < 300; n++) {
+    // Low integer abilities make ties common, like a starter profile.
+    const ab = Object.fromEntries(DISPLAY_RECIPE_ABILITIES.map((k) => [k, 1 + Math.floor(rng() * 4)]));
+    const ratings = Object.fromEntries(DISPLAY_RECIPE_KEYS.map((k) => [k, ratingForRole(ab, k)]));
+    const max = Math.max(...Object.values(ratings));
+    const primaryType = DISPLAY_RECIPE_KEYS[Math.floor(rng() * DISPLAY_RECIPE_KEYS.length)];
+    const secondaryType = DISPLAY_RECIPE_KEYS[Math.floor(rng() * DISPLAY_RECIPE_KEYS.length)];
+    const best = bestRoleForAbilities(ab, { primaryType, secondaryType });
+    assert.equal(best.best_role_rating, max);
+    assert.equal(ratings[best.best_role], max);
+    if (ratings[primaryType] === max) assert.equal(best.best_role, primaryType);
+    else if (ratings[secondaryType] === max) assert.equal(best.best_role, secondaryType);
+  }
+});
+
+test("#7560: sweep tie-breaks by the types that end up on the row", () => {
+  // Value written → fresh classification; no value (missing age) → stored types.
+  const withValue = recomputeRiderValue({ id: "r1" }, FLAT, baseline, model);
+  const [written] = selectChangedValueUpdates([{ id: "r1", primary_type: "stale", secondary_type: "stale" }],
+    new Map([["r1", FLAT]]), baseline, model);
+  assert.equal(written.primary_type, withValue.primary_type);
+  assert.equal(written.best_role, bestRoleForAbilities(FLAT, { primaryType: withValue.primary_type, secondaryType: withValue.secondary_type }).best_role);
+
+  const [cacheOnly] = selectChangedValueUpdates([{ id: "r2", primary_type: "gc", secondary_type: "tt" }],
+    new Map([["r2", FLAT]]), baseline, { version: 4 });
+  assert.deepEqual(cacheOnly, { id: "r2", best_role: "gc", best_role_rating: 13 });
+});
+
+test("#7560 side finding: writeBestRoleCacheForRiders fills an empty cache once, then is a no-op", async () => {
+  const state = {
+    riders: [
+      { id: "a", primary_type: "climber", secondary_type: "gc", best_role: null, best_role_rating: null },
+      { id: "b", primary_type: "tt", secondary_type: null, best_role: null, best_role_rating: null },
+      { id: "c", primary_type: "gc", secondary_type: null, best_role: null, best_role_rating: null },
+    ],
+    rider_derived_abilities: [
+      { rider_id: "a", ...FLAT },
+      { rider_id: "b", ...FLAT },
+      // c has no abilities yet → stays untouched, never a guessed role.
+    ],
+  };
+  const db = createFakeSupabase(state);
+  assert.equal(await writeBestRoleCacheForRiders(db, ["a", "b", "c"]), 2);
+  const byId = Object.fromEntries(state.riders.map((r) => [r.id, r]));
+  assert.equal(byId.a.best_role, "climber");
+  assert.equal(byId.b.best_role, "tt");
+  assert.equal(byId.a.best_role_rating, 13);
+  assert.equal(byId.c.best_role, null);
+  assert.equal(await writeBestRoleCacheForRiders(db, ["a", "b", "c"]), 0, "second run writes nothing");
+  assert.equal(await writeBestRoleCacheForRiders(db, []), 0);
 });

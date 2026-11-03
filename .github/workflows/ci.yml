@@ -976,6 +976,13 @@ jobs:
       - name: Test merge-queue category classifier (#5508)
         run: node --test scripts/merge-queue-classify.test.mjs
 
+      # #7582: alle pull_request-workflows (undtagen review-gate) skal annullere
+      # foraeldede PR-koersler og aldrig annullere push/schedule. Guard + test.
+      - name: Workflow concurrency guard (#7582)
+        run: |
+          node scripts/check-workflow-concurrency.mjs
+          node --test scripts/check-workflow-concurrency.test.mjs
+
   migration-idempotency:
     runs-on: ubuntu-latest
     permissions:

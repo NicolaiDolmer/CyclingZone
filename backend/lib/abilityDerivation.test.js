@@ -5,7 +5,17 @@ import {
   deriveAbilities, FORMULA_VERSION, CALIBRATION, CONTRAST,
   VISIBLE_ABILITIES, ALL_ABILITY_KEYS, PRIMARY_STAT,
 } from "./abilityDerivation.js";
+import {
+  applyAbilityCap, fillCapModeOf, withScaledFillCap, FILL_CAP_MODE_SCALED,
+  FILL_TAIL_ABILITY_CAP, FILL_TAIL_GENERATION_TAG,
+} from "./abilityDerivation.js";
 import { seedArchetypePhysiology } from "./archetypePhysiology.js";
+import { DISPLAY_RECIPE_KEYS, ratingForRole } from "./weights/displayRecipes.js";
+import { deriveBirthAbilities, isBornFromPriors } from "./riderBirthPriors.js";
+import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
+import {
+  buildWeakStarterPool, STARTER_POOL_STAT_WINDOW, STARTER_TAIL_STAT_WINDOW,
+} from "./starterSquadAllocator.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
 
 const physFor = (archetype, tierLevel = 0.7) =>
@@ -299,4 +309,106 @@ test("#5268: teamwork følger sine tre kilde-evner (positioning/tactics/durabili
     `teamwork: high ${high.teamwork} ikke > low ${low.teamwork}`);
   assert.ok(high.leadership > low.leadership,
     `leadership: high ${high.leadership} ikke > low ${low.leadership}`);
+});
+
+// ── #7560 B: scaled birth cap (same start strength, profile keeps its form) ──
+
+const bestRating = (ab) => Math.max(...DISPLAY_RECIPE_KEYS.map((k) => ratingForRole(ab, k) ?? -1));
+const minClampOf = (ab, cap) => Object.fromEntries(Object.entries(ab).map(([k, v]) => [k, Number.isFinite(v) ? Math.min(v, cap) : v]));
+const PROFILE = {
+  sprint: 34, acceleration: 30, punch: 22, tempo: 18, climbing: 6, time_trial: 12, flat: 26,
+  endurance: 16, recovery: 9, durability: 14, descending: 1, cobblestone: 1, positioning: 11,
+  aggression: 8, tactics: 5, teamwork: 7, leadership: 3, hidden_potential: 40,
+};
+
+test("#7560: min mode is the historical min(ability, cap), key by key", () => {
+  const out = applyAbilityCap({ ...PROFILE }, 15);
+  assert.deepEqual(out, minClampOf(PROFILE, 15));
+});
+
+test("#7560: scaled mode keeps the top on the cap, the order, and the displayed strength", () => {
+  const out = applyAbilityCap({ ...PROFILE }, 15, { mode: FILL_CAP_MODE_SCALED });
+  const keys = Object.keys(PROFILE).filter((k) => k !== "hidden_potential");
+  assert.equal(Math.max(...keys.map((k) => out[k])), 15, "top ability lands on the cap");
+  for (const a of keys) {
+    assert.ok(out[a] >= 1 && out[a] <= 15, a + "=" + out[a]);
+    for (const b of keys) if (PROFILE[a] > PROFILE[b]) assert.ok(out[a] >= out[b], a + " >= " + b + " (order kept)");
+  }
+  assert.equal(bestRating(out), bestRating(minClampOf(PROFILE, 15)), "same start strength as the min rule");
+  // The flat top of the min rule is gone: fewer abilities share the cap.
+  const atCap = (ab) => keys.filter((k) => ab[k] === 15).length;
+  assert.ok(atCap(out) < atCap(minClampOf(PROFILE, 15)));
+  // ...and the bottom is no longer left at 1.
+  assert.ok(out.descending > 1 && out.cobblestone > 1);
+  // Hidden potential is not part of the visible profile: plain min.
+  assert.equal(out.hidden_potential, 15);
+});
+
+test("#7560: scaled mode is idempotent and a no-op when nothing exceeds the cap", () => {
+  const once = applyAbilityCap({ ...PROFILE }, 15, { mode: FILL_CAP_MODE_SCALED });
+  const twice = applyAbilityCap({ ...once }, 15, { mode: FILL_CAP_MODE_SCALED });
+  assert.deepEqual(twice, once);
+  const low = { sprint: 9, climbing: 4, flat: 1, tactics: 2 };
+  assert.deepEqual(applyAbilityCap({ ...low }, 15, { mode: FILL_CAP_MODE_SCALED }), low);
+});
+
+test("#7560: the marker is persisted on the draw, read back, and absent by default", () => {
+  assert.equal(fillCapModeOf({}), "min");
+  assert.equal(fillCapModeOf({ archetype_draw: { primary: "gc" } }), "min");
+  const draw = withScaledFillCap({ primary: "gc", secondary: "tt" });
+  assert.deepEqual(draw, { primary: "gc", secondary: "tt", fill_cap: FILL_CAP_MODE_SCALED });
+  assert.equal(fillCapModeOf({ archetype_draw: draw }), FILL_CAP_MODE_SCALED);
+  assert.equal(withScaledFillCap(null), null);
+});
+
+test("#7560: deriveAbilities (PCM path) is unchanged without the marker, scaled with it", () => {
+  const base = rider(60, { generation_tag: FILL_TAIL_GENERATION_TAG, stat_sp: 85, stat_acc: 80, stat_bro: 50, stat_ned: 50 });
+  const phys = seedPhysiologyFromLegacy(base);
+  const untagged = deriveAbilities(phys, { ...base, generation_tag: null });
+  const old = deriveAbilities(phys, base);
+  for (const k of ALL_ABILITY_KEYS) assert.equal(old[k], Math.min(untagged[k], FILL_TAIL_ABILITY_CAP), k + " (historical rule)");
+  const marked = { ...base, archetype_draw: withScaledFillCap({ primary: "sprinter" }) };
+  const scaled = deriveAbilities(phys, marked);
+  assert.equal(bestRating(scaled), bestRating(old), "same start strength");
+  assert.deepEqual(deriveAbilities(phys, marked), scaled, "re-derive gives the same rider");
+});
+
+// The real starter chain (own-priors births, core + tail windows).
+function starterCohort(fillCapMode, window, seed) {
+  return buildWeakStarterPool({ count: 60, seed, referenceYear: 2026, window, fillCapMode })
+    .map((row, i) => {
+      const r = { ...row, id: "sim-" + seed + "-" + i };
+      const ab = isBornFromPriors(r) ? deriveBirthAbilities(r, { age: 25 }) : deriveAbilities(seedPhysiologyFromLegacy(r), r);
+      return { r, ab };
+    });
+}
+
+test("#7560: new starters keep the same strength per rider, lose the 1s and the flat top", () => {
+  const PHYS = ["sprint", "acceleration", "punch", "tempo", "climbing", "time_trial", "flat", "endurance", "recovery", "durability"];
+  for (const [window, seed] of [[STARTER_POOL_STAT_WINDOW, 75601], [STARTER_TAIL_STAT_WINDOW, 75602]]) {
+    const before = starterCohort("min", window, seed);
+    const after = starterCohort(FILL_CAP_MODE_SCALED, window, seed);
+    let onesBefore = 0; let onesAfter = 0; let tiesBefore = 0; let tiesAfter = 0;
+    const ties = (ab) => { const rs = DISPLAY_RECIPE_KEYS.map((k) => ratingForRole(ab, k)); const m = Math.max(...rs); return rs.filter((x) => x === m).length > 1; };
+    after.forEach(({ r, ab }, i) => {
+      assert.equal(r.archetype_draw?.fill_cap, FILL_CAP_MODE_SCALED, "marker persisted at birth");
+      assert.equal(before[i].r.archetype_draw?.fill_cap, undefined, "min mode adds nothing");
+      assert.equal(bestRating(ab), bestRating(before[i].ab), "same start strength, rider " + i);
+      // Idempotent re-derive from the persisted row.
+      assert.deepEqual(deriveBirthAbilities(r, { age: 25 }) ?? deriveAbilities(seedPhysiologyFromLegacy(r), r), ab);
+      onesBefore += PHYS.filter((k) => before[i].ab[k] <= 1).length;
+      onesAfter += PHYS.filter((k) => ab[k] <= 1).length;
+      if (ties(before[i].ab)) tiesBefore++;
+      if (ties(ab)) tiesAfter++;
+    });
+    assert.ok(onesAfter < onesBefore, "fewer abilities left at 1");
+    assert.ok(tiesAfter < tiesBefore, "fewer tied best roles");
+  }
+});
+
+test("#7560: buildWeakStarterPool default payload is unchanged (no marker)", () => {
+  const a = buildWeakStarterPool({ count: 6, seed: 9, referenceYear: 2026 });
+  const b = buildWeakStarterPool({ count: 6, seed: 9, referenceYear: 2026, fillCapMode: "min" });
+  assert.deepEqual(a, b);
+  for (const r of a) assert.equal(r.archetype_draw?.fill_cap, undefined);
 });

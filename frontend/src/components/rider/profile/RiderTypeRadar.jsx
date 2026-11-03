@@ -130,7 +130,12 @@ export default function RiderTypeRadar({ rider, onGoScouting }) {
   // at fortælle.
   // #5435: "højest nu" ER bedste rolle nu — samme funktion (og samme tie-regel)
   // som tallet i heroen, så de to aldrig peger på hver sin rolle ved lighed.
-  const highestKey = riderBestRole(abilities).role;
+  // #7560: same tie-break as the hero (natural role first), so the two never
+  // name different roles for one rider.
+  const highestKey = riderBestRole(abilities, {
+    primaryType: rider?.primary_type ?? null,
+    secondaryType: rider?.secondary_type ?? null,
+  }).role;
   const goldKey = ownKey ?? highestKey;
   const showHighest = ownKey && highestKey && highestKey !== ownKey;
 
