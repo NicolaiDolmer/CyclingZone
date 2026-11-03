@@ -68,6 +68,7 @@ import {
   isSignOutRequest,
   isStaleProfileCopy,
   isWriteRequest,
+  UNFOLD_SCROLLERS_CSS,
   lookupPreviewUrl,
   masterProfileDir,
   mockFor,
@@ -476,6 +477,7 @@ async function runShoot(opts) {
         log(`  [vent fejlede] ${selector} paa ${shot.route} @ ${shot.width}`);
       }
     }
+    await page.addStyleTag({ content: UNFOLD_SCROLLERS_CSS });
     await page.screenshot({ path: shot.file, fullPage: true });
     shots.push({ route: shot.route, width: shot.width, file: shot.file, finalUrl: page.url() });
     log(`  ${shot.file}  (${page.url()})`);

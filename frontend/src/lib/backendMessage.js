@@ -54,6 +54,17 @@ const RAW_KEYS = new Set([
 ]);
 
 /**
+ * #7337: translator-løs fallback for en kontraktrække. Uden t() kender vi hverken
+ * sprog, hold-label eller valuta-suffiks, så vi viser hverken den rå squad-kode
+ * eller en hardkodet valuta. Ukendt værdi (null) udelader tallet helt (samme
+ * forgrening som entryUnknown med translator).
+ * @param {{ rider: string, value?: number|null }} row
+ */
+function contractRiderFallback(row) {
+  return row.value == null ? `${row.rider}` : `${row.rider}, ${formatNumber(row.value)}`;
+}
+
+/**
  * Konverter raw backend-params til locale-formaterede strings klar til t().
  * - Numbers ud over RAW_KEYS gennemgår formatNumber() (tusind-separator).
  * - TWO_DECIMAL_KEYS forced til 2 decimaler.
@@ -74,7 +85,7 @@ export function formatBackendParams(params, t = null) {
         rider: row.rider,
         squad: t(`notif.contractSquad.${row.squad}`),
         value: formatNumber(row.value),
-      }) : `${row.rider} (${row.squad}), ${formatNumber(row.value)} CZ$`).join("\n");
+      }) : contractRiderFallback(row)).join("\n");
     } else if (v == null) {
       out[k] = v;
     } else if (k.endsWith("Key") && k.length > 3 && typeof v === "string") {

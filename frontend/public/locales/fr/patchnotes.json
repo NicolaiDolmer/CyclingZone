@@ -25,6 +25,11 @@
     "improved": "Amélioré",
     "fixed": "Corrigé"
   },
+  "summary": {
+    "new": "{count, plural, one {# nouveauté} other {# nouveautés}}",
+    "improved": "{count, plural, one {# amélioration} other {# améliorations}}",
+    "fixed": "{count, plural, one {# correction} other {# corrections}}"
+  },
   "newBadge": "Nouveau",
   "rollout": {
     "beta": "Bêta",

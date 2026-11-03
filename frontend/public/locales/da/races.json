@@ -651,7 +651,10 @@
     "noHistory": "Ingen data fundet for \"{name}\"",
     "raceNotFoundHint": "Linket kan være gammelt, eller løbet er fjernet. Åbn løbsbiblioteket og find et andet.",
     "noResultsImportedRaceHint": "Dette løb har ingen resultatrækker endnu. Andre løb i biblioteket har deres.",
-    "noResultsImportedRaceCta": "Åbn løbsbiblioteket"
+    "noResultsImportedRaceCta": "Åbn løbsbiblioteket",
+    "notStartedRace": "Løbet er ikke startet endnu",
+    "notStartedStageRaceHint": "Stillingen vises, når etape 1 er kørt.",
+    "notStartedOneDayHint": "Resultatet vises, når løbet er kørt."
   },
   "calendar": {
     "upcoming": "Kommende",

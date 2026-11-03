@@ -64,13 +64,35 @@ export function bootLockKey(bootId, kernelStart) {
 const WINDOWS_BOOT_PROBE = '$ErrorActionPreference="Stop"; $kernel = Get-CimInstance Win32_Process -Filter "ProcessId = 4"; '
   + `@{ bootId=${WINDOWS_BOOT_TICKS_EXPRESSION}; kernelStart=$(if ($kernel -and $kernel.CreationDate) { $kernel.CreationDate.ToUniversalTime().Ticks.ToString() } else { "" }) } | ConvertTo-Json -Compress`;
 
-export function measureBootIdentity() {
-  if (process.platform === 'linux') {
+// Mark only CIM exceptions, so syntax and programming errors are never retried.
+const CIM_CATCH = ' catch [Microsoft.Management.Infrastructure.CimException] { [Console]::Error.WriteLine("WAVE_CIM_TRANSIENT"); exit 74 }';
+const sleep = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+export function windowsEvidenceProbe(script, { probe = command => execFileSync('pwsh', ['-NoProfile', '-Command', command], { encoding: 'utf8', timeout: 15000, stdio: ['ignore', 'pipe', 'pipe'] }), wait = sleep, code = 'WAVE_BOOT_IDENTITY_UNAVAILABLE' } = {}) {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return probe(`try { ${script} }${CIM_CATCH}`);
+    } catch (error) {
+      if (error?.status !== 74 || String(error.stderr).trim() !== 'WAVE_CIM_TRANSIENT') throw error;
+      if (attempt === 3) throw Object.assign(new Error(`${code}: Windows CIM probe failed after 3 attempts; wave state retained`), { code });
+      wait(attempt * 250);
+    }
+  }
+}
+
+export function measureBootIdentity({ platform = process.platform, probe, wait } = {}) {
+  if (platform === 'linux') {
     const bootId = normalizeBootId(fs.readFileSync('/proc/sys/kernel/random/boot_id', 'utf8'));
     return { bootId, lockKey: bootId };
   }
-  if (process.platform === 'win32') {
-    const raw = JSON.parse(execFileSync('pwsh', ['-NoProfile', '-Command', WINDOWS_BOOT_PROBE], { encoding: 'utf8', timeout: 15000 }));
+  if (platform === 'win32') {
+    const text = windowsEvidenceProbe(WINDOWS_BOOT_PROBE, { probe, wait });
+    let raw;
+    try { raw = JSON.parse(text); }
+    catch (error) {
+      if (!(error instanceof SyntaxError)) throw error;
+      throw Object.assign(new Error('WAVE_BOOT_IDENTITY_UNAVAILABLE: invalid Windows boot evidence; wave state retained'), { code: 'WAVE_BOOT_IDENTITY_UNAVAILABLE' });
+    }
+    if (!raw || typeof raw !== 'object' || !normalizeBootId(raw.bootId)) throw Object.assign(new Error('WAVE_BOOT_IDENTITY_UNAVAILABLE: missing Windows boot evidence; wave state retained'), { code: 'WAVE_BOOT_IDENTITY_UNAVAILABLE' });
     const bootId = normalizeBootId(raw.bootId);
     return { bootId, lockKey: bootId && bootLockKey(bootId, raw.kernelStart) };
   }

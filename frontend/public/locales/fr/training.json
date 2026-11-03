@@ -576,6 +576,7 @@
     "stageLockedTitle": "Verrouillé par la course",
     "listNote": "Touche un programme pour voir sa semaine. Il est copié dans Plan, tu peux donc modifier n'importe quelle case ensuite.",
     "pickTarget": "Choisis d'abord un coureur ou un groupe",
+    "pickTargetToPutOn": "Choisis pour qui est le programme",
     "fitsType": "Convient à {type}",
     "otherPrograms": "Autres programmes",
     "current": "Actuel",

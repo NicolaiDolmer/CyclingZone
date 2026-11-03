@@ -85,8 +85,7 @@
     "status": {
       "label": "Din status",
       "missing": "Mangler udtagelse",
-      "selected": "Udtaget",
-      "gtBound": "Bundet af din Grand Tour"
+      "selected": "Udtaget"
     },
     "pick": "Udtag hold",
     "editSquad": "Ret udtagelse",
@@ -129,15 +128,9 @@
       "squadShort": "Hold"
     },
     "openRace": "Åbn {name}",
-    "squad": {
-      "selected": "Hold klar",
-      "missing": "Mangler hold",
-      "gtBound": "Grand Tour"
-    },
     "squadShort": {
       "selected": "Klar",
-      "missing": "Mangler",
-      "gtBound": "GT"
+      "missing": "Mangler"
     },
     "empty": {
       "title": "Ryd filtrene for at se flere løb",

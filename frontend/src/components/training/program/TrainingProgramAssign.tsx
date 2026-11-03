@@ -47,6 +47,10 @@ export default function TrainingProgramAssign({
   // #5825: kun telefonen foelder kataloget; fra sm og op er listen altid fremme.
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
+  // #6524: "Læg på" uden modtager var en død knap (40 klik/3 dage). Nu kan den
+  // trykkes og peger på vælgeren i stedet; intet lægges på, før der er valgt.
+  const [needTarget, setNeedTarget] = useState(false);
+  const targetSelect = useRef<HTMLSelectElement | null>(null);
 
   const target = useMemo(() => resolveTarget(targetValue, riders, groups), [targetValue, riders, groups]);
   const { fits, others } = useMemo(() => sectionsForTarget(catalog, target), [catalog, target]);
@@ -70,8 +74,18 @@ export default function TrainingProgramAssign({
   // Taeller valg af modtager: et svar der kommer efter et nyt valg, kasseres.
   const targetGeneration = useRef(0);
 
+  function pointToTarget() {
+    setMessage(null);
+    setNeedTarget(true);
+    const select = targetSelect.current;
+    if (!select) return;
+    select.focus();
+    try { select.showPicker?.(); } catch { /* showPicker kræver et brugertryk; fokus er nok */ }
+  }
+
   async function apply(program: CatalogProgram) {
-    if (target.kind === "none" || inFlight.current) return;
+    if (target.kind === "none") { pointToTarget(); return; }
+    if (inFlight.current) return;
     const generation = targetGeneration.current;
     inFlight.current = true;
     setMessage(null);
@@ -95,6 +109,7 @@ export default function TrainingProgramAssign({
     targetGeneration.current += 1;
     setTargetValue(value);
     setMessage(null);
+    setNeedTarget(false);
     setOpenKey(null);
     setCatalogOpen(false);
   }
@@ -128,7 +143,7 @@ export default function TrainingProgramAssign({
           <Button
             variant="secondary"
             size="sm"
-            disabled={busy || target.kind === "none"}
+            disabled={busy}
             onClick={() => apply(program)}
             aria-label={`${t("programs.putOn")} · ${programName(program, lang)}${targetName ? ` · ${targetName}` : ""}`}
             className="min-h-11 flex-none sm:min-h-0"
@@ -167,6 +182,7 @@ export default function TrainingProgramAssign({
       {/* ── Trin 1: hvem (Plan-fanens "Plan for"-vaelger) ──────────────── */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-cz-border px-4 py-2.5 sm:px-5">
         <select
+          ref={targetSelect}
           value={targetValue}
           onChange={(event) => chooseTarget(event.target.value)}
           disabled={riders.length === 0}
@@ -189,6 +205,11 @@ export default function TrainingProgramAssign({
             ))}
           </optgroup>
         </select>
+        {needTarget && target.kind === "none" && (
+          <p role="status" className="text-xs text-cz-1" data-testid="training-program-need-target">
+            {t("programs.pickTargetToPutOn")}
+          </p>
+        )}
         {/* Hele truppen erstatter alles ugeplan: sig det, foer der trykkes. */}
         {target.kind === "squad" && (
           <p className="text-xs text-cz-warning" data-testid="training-program-target-hint">
