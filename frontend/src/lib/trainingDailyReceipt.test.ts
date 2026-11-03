@@ -51,6 +51,37 @@ test("repeated response rows cannot duplicate gains or activities", () => {
   assert.equal(day.report.riders[0].activities.length, 5);
 });
 
+test("#6971: a newly trained ability starts at zero in a stored sparse progress map", () => {
+  const rows = [0, 1, 2, 3, 4].map(day => run(day, {
+    gains: day === 0 ? { tempo: 1 } : {}, gains_detail: {},
+    progress_before: day === 0 ? {} : { tempo: 0.2 },
+    progress_after: { tempo: 0.2 },
+  }));
+  const before = structuredClone(rows);
+  const settled = aggregateTrainingRuns(rows)[0].report.riders[0];
+  assert.equal(settled.gain_percent.tempo, 120);
+  const pending = aggregateTrainingRuns(rows.slice(0, 4))[0].report.riders[0];
+  assert.equal(pending.trained_now?.gain_percent.tempo, 120);
+  assert.deepEqual(rows, before);
+});
+
+test("#6971: a stored empty opening map exposes fractional gains before a whole point", () => {
+  const first = run(0, { gains: {}, gains_detail: {}, progress_before: {}, progress_after: { tempo: 0.25 } });
+  assert.equal(aggregateTrainingRuns([first])[0].report.riders[0].trained_now?.gain_percent.tempo, 25);
+});
+
+test("#6971: missing snapshots and invalid explicit values remain unknown", () => {
+  for (const progress_before of [undefined, null, { tempo: null }, { tempo: NaN }]) {
+    const rows = [0, 1, 2, 3, 4].map(day => run(day, {
+      gains: {}, gains_detail: {},
+      progress_before: day === 0 ? progress_before as never : { tempo: 0.25 },
+      progress_after: { tempo: 0.25 },
+    }));
+    assert.equal(aggregateTrainingRuns(rows)[0].report.riders[0].gain_percent.tempo, null);
+    assert.equal(aggregateTrainingRuns(rows.slice(0, 4))[0].report.riders[0].trained_now?.gain_percent.tempo, null);
+  }
+});
+
 test("a missing middle slot is pending even with a final settlement marker", () => {
   const day = aggregateTrainingRuns([run(0), run(1), run(3), run(4)])[0];
   assert.equal(day.receipt_status, "pending");

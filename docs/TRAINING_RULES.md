@@ -126,6 +126,9 @@ løbsdags aktivitet tælles én gang, og de oprindelige aktiviteter kan foldes u
 under rytteren. Hele gevinstpoint summeres; brøkfremgang vises kun med dokumenteret
 start- og slutfremdrift. Tilstanden kommer fra datoens afsluttende afregning,
 aldrig fra summen af flere normaliserede tilstandsændringer.
+Gemte fremdriftsmaps er sparsomme: en manglende evnenøgle betyder nul, som i
+motoren. Et helt manglende snapshot eller en ugyldig eksplicit værdi er ukendt.
+Det gælder både foreløbige og afregnede kvitteringer (#6971).
 
 Alle forventede slots skal have kompatibel datokadence, før kvitteringen er
 afregnet. Manglende slots er afventende; karantæne, modstridende dubletter og
