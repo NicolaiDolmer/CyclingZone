@@ -127,6 +127,23 @@ export const PATCHES = [
         "category": "fixed",
         "audience": "player",
         "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "One-day races read right",
+          "body": "One-day races no longer repeat their type in the header or show \"Stage 1\" for riders who abandoned."
+        },
+        "da": {
+          "title": "Endagsløb læses rigtigt",
+          "body": "Endagsløb viser ikke længere typen to gange i toppen eller \"Etape 1\" ved udgåede ryttere."
+        },
+        "refs": [
+          7566
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
         "topic": "Planning",
         "en": {
           "title": "Only your races in the day plan",
