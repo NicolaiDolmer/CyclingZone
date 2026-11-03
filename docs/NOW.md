@@ -7,7 +7,7 @@
 > **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
 > **🎯 Next action (3/11 aften):** færdiggør bølge + kø → close-out → næste session: #7587 bølge-kvalitet først, så A (Til dørs + motor #6912/#7236 "kør", kontakter frist 8/11), B (realisme-gate #7588, løsning B), #7578, #7585; Codex: Til dørs, så #7582/#7583. Ejer-valg venter: #6950 (8/11), #7339 C/D.
-> **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, flag off): ejeren har ikke besluttet om det skal i spillet; kurve "6 kombineret" (#3564) indgår i den samlede måling.
+> **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
 > **🤖 Working agent:** PC1-eftermiddagssession 3/11 (ejer merge-kø + NOW.md, overdraget 14:45 på #7495). Merget: #7522, #7572 (#7489), #7574 (#7536 off), #7573 (#7339 A+B), #7580 (#7260-oprydning), #7577 (#4211, prod-verificeret), #7576 (#5950 off, prod-verificeret). Kø: #7511/#7515/#7516, så #7589 + #7575 + #7591 (patch 7.397, ejer "merge"). Bølge: #7586 (#6912) review, #7236 + #7582 del 1 i kø, #7575 + #7579 til mig; Codex' #7511/#7515/#7516 venter Codex-review.
 
