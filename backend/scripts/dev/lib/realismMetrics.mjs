@@ -217,23 +217,23 @@ function addRow(cell, row, routeId, favourites) {
       const peak = num(row.breakawayPeakFrac);
       if (peak !== null) cell.peakFrac.push(peak);
       const max = values.length ? Math.max(...values) : 0;
-      const caught = num(row.breakawayCaughtKmToGo);
       if (max > 0) {
         const pv = num(deciles[PLATEAU_DECILE]);
         if (pv !== null) cell.plateau.push(pv / max);
-        else if (deciles.slice(PLATEAU_DECILE).every((v) => num(v) === null) && caught !== null) cell.plateau.push(0); // hentet før plateauet
+        else if (deciles.slice(PLATEAU_DECILE).every((v) => num(v) === null) && num(row.breakawayCaughtKmToGo) !== null) cell.plateau.push(0); // hentet før plateauet
       }
-      if (caught !== null) cell.caughtKmToGo.push(caught);
     } else if (num(row.breakawaySize) > 0) cell.leadMissing += 1; // dannet, men forløbet er ikke målt
+    // Fangsten er motorens eget event og måles også uden forspringspunkter.
+    const caught = num(row.breakawayCaughtKmToGo);
+    if (caught !== null) cell.caughtKmToGo.push(caught);
   }
-  if (favourites) {
-    const favs = favourites.get?.(row.stage) ?? null;
-    if (Array.isArray(favs) && favs.length && row.winnerId) {
-      cell.favourite.n += 1;
-      if (favs.includes(row.winnerId)) cell.favourite.hits += 1;
-      if (favs[0] === row.winnerId) cell.favourite.best += 1;
-    } else cell.favourite.missing += 1;
-  }
+  // M9: en etape uden kendte favoritter tælles som manglende, også når hele løbet mangler dem.
+  const favs = favourites?.get?.(row.stage) ?? null;
+  if (Array.isArray(favs) && favs.length && row.winnerId) {
+    cell.favourite.n += 1;
+    if (favs.includes(row.winnerId)) cell.favourite.hits += 1;
+    if (favs[0] === row.winnerId) cell.favourite.best += 1;
+  } else cell.favourite.missing += 1;
 }
 
 const shareOf = (hits, n) => (n > 0 ? hits / n : null);

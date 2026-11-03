@@ -60,6 +60,10 @@ test("#7588 bånd: ukendte navne, forkerte statistikker og forkert slags celle a
   assert.throws(() => parseRealismGateBands({ ...BANDS(), extra: 1 }), /ukendt nøgle på øverste niveau/);
   assert.throws(() => parseRealismGateBands({ ...BANDS(), cells: {} }), /cells er tom/);
   assert.throws(() => parseRealismGateBands(withCell({ gapTo10: {} })), /intet bånd/);
+  // Codex: en celle uden et eneste bånd er ikke en kontrol.
+  assert.throws(() => parseRealismGateBands(withCell({})), /ingen metrik med bånd/);
+  assert.throws(() => parseRealismGateBands(withCell({ minRoutes: 2 })), /ingen metrik med bånd/);
+  assert.throws(() => parseRealismGateBands({ ...BANDS(), gcGroups: { gt: {} } }), /ingen metrik med bånd/);
 });
 
 test("#7588 bånd: grænserne skal være tal, mindst én grænse, og min <= max", () => {

@@ -197,6 +197,17 @@ test("#7588 M9: favoritandel kræver favoritterne pr. rute; ellers manglende", (
   assert.equal(m.bestRiderWinShare.share, 0.5);
   const none = computeRealismMetrics({ races: corpus() }).cells["stage_race|mountain|summit"].metrics;
   assert.equal(none.favouriteWinShare.share, null);
+  assert.equal(none.favouriteWinShare.missing, 4);
+  // Codex: et løb uden favoritter tæller som manglende, ikke tabt af nævneren.
+  const partial = computeRealismMetrics({ races: corpus(), favourites }).cells["*|*|*"].metrics.favouriteWinShare;
+  assert.equal(partial.missing, 3, "race-A's to enkeltstarter + race-B's etape mangler favoritter");
+});
+
+test("#7588 M8: fangsten måles også når forspringspunkterne mangler (Codex)", () => {
+  const races = [{ raceId: "r", stageCount: 1, perSeed: [{ rows: [row({ profile_type: "flat", finale_type: "flat_sprint", breakawayLeadByDecile: null, breakawayCaughtKmToGo: 40 })] }] }];
+  const m = computeRealismMetrics({ races }).cells["one_day|flat|sprint"].metrics;
+  assert.deepEqual([m.breakawayCaughtKmToGo.n, m.breakawayCaughtKmToGo.median], [1, 40]);
+  assert.equal(m.breakawayMaxLead.missing, 1);
 });
 
 test("#7588 M10/M11: klassementet pr. gruppe, pr. løb", () => {

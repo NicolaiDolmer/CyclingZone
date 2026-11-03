@@ -158,6 +158,7 @@ function parseCellBands(raw: unknown, where: string, scope: "stage" | "gc"): Rea
     if (!Object.keys(stats).length) throw new Error(`realismGate: ${where}.${metric} har intet bånd`);
     out.metrics[metric as RealismMetricKey] = stats;
   }
+  if (!Object.keys(out.metrics).length) throw new Error(`realismGate: ${where} har ingen metrik med bånd`);
   return out;
 }
 
