@@ -242,6 +242,10 @@
   ],
   "cleanupList": [
     {
+      "issue": 7099,
+      "why": "Ops: normaliser dokumenteret PostgREST-logklasse (ejer-go 2/11, #7495)"
+    },
+    {
       "issue": 7363,
       "why": "CI: secret-frit bundlebudget på Dependabot-PRer (ejer-go 2/11, #7495)"
     },

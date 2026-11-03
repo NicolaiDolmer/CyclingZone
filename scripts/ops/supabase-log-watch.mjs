@@ -70,6 +70,27 @@ function toKey(row) {
   return `${row.source}::${row.bucket}`;
 }
 
+const POSTGREST_TIMEOUT = 'Warp server error: Thread killed by timeout manager';
+// LOG_SQL truncates messages at 60 characters, leaving DD/Mon/YY of the
+// concatenated access-log timestamp. Match only that measured suffix.
+const TIMEOUT_DATE_TAIL = /^(?:0[1-9]|[12][0-9]|3[01])\/(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\/[0-9]{2}$/;
+
+function aggregateClasses(rows) {
+  const classes = new Map();
+  for (const row of rows) {
+    const bucket = row.source === 'postgrest_logs'
+      && row.bucket.startsWith(POSTGREST_TIMEOUT)
+      && TIMEOUT_DATE_TAIL.test(row.bucket.slice(POSTGREST_TIMEOUT.length))
+      ? POSTGREST_TIMEOUT : row.bucket;
+    const canonical = { ...row, bucket };
+    const key = toKey(canonical);
+    const existing = classes.get(key);
+    if (existing) existing.cnt += row.cnt;
+    else classes.set(key, canonical);
+  }
+  return [...classes.values()];
+}
+
 /**
  * Ren klassifikationslogik — ingen netvaerk. Sammenligner "current" (seneste
  * 24t) mod "previous" (24-48t siden) for at finde hoej-volumen-fund og fund
@@ -81,13 +102,14 @@ function toKey(row) {
 export function computeFindings(current, previous, opts = {}) {
   const errorThreshold = opts.errorThreshold ?? 200;
   const newClassThreshold = opts.newClassThreshold ?? 20;
-  const previousKeys = new Set(previous.map(toKey));
+  const previousKeys = new Set(aggregateClasses(previous).map(toKey));
+  const currentClasses = aggregateClasses(current);
 
-  const spikes = current
+  const spikes = currentClasses
     .filter((r) => r.cnt >= errorThreshold)
     .sort((a, b) => b.cnt - a.cnt);
 
-  const newClasses = current
+  const newClasses = currentClasses
     .filter((r) => !previousKeys.has(toKey(r)) && r.cnt >= newClassThreshold)
     .sort((a, b) => b.cnt - a.cnt);
 
