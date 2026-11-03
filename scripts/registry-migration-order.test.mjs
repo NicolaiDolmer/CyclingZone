@@ -39,10 +39,30 @@ test('only exact SHA main push success releases the gate', () => {
   assert.equal(migrationVerdict([run({ status: 'queued' })], sha), 'pending');
   assert.equal(migrationVerdict([run({ status: 'in_progress' })], sha), 'pending');
   assert.equal(migrationVerdict([run()], sha), 'success');
-  for (const conclusion of ['failure', 'cancelled', 'skipped', 'timed_out', null]) {
+  for (const conclusion of ['failure', 'skipped', 'timed_out', null]) {
     assert.throws(() => migrationVerdict([run({ conclusion })], sha), /did not succeed/);
   }
+  // Cancelled waits for a successor (see the next test) and times out without one.
+  assert.equal(migrationVerdict([run({ conclusion: 'cancelled' })], sha), 'pending');
   assert.equal(migrationVerdict([run(), run({ id: 2, status: 'queued' })], sha), 'pending');
+});
+
+test('a cancelled run is released only by a later main push run that contains the SHA', () => {
+  const later = 'c'.repeat(40);
+  const unrelated = 'd'.repeat(40);
+  const contains = (ancestor, descendant) => ancestor === sha && descendant === later;
+  const cancelled = run({ id: 5, conclusion: 'cancelled' });
+  // No successor yet, or only an unrelated/older/non-push run: keep waiting.
+  assert.equal(migrationVerdict([cancelled], sha, contains), 'pending');
+  assert.equal(migrationVerdict([cancelled, run({ id: 6, head_sha: unrelated })], sha, contains), 'pending');
+  assert.equal(migrationVerdict([cancelled, run({ id: 4, head_sha: later })], sha, contains), 'pending');
+  assert.equal(migrationVerdict([cancelled, run({ id: 6, head_sha: later, event: 'workflow_dispatch' })], sha, contains), 'pending');
+  assert.equal(migrationVerdict([cancelled, run({ id: 6, head_sha: later, status: 'in_progress' })], sha, contains), 'pending');
+  // Successor decides: success releases, failure stops.
+  assert.equal(migrationVerdict([cancelled, run({ id: 6, head_sha: later })], sha, contains), 'success');
+  assert.throws(() => migrationVerdict([cancelled, run({ id: 6, head_sha: later, conclusion: 'failure' })], sha, contains), /did not succeed/);
+  // Without ancestry evidence a cancelled run never releases the gate.
+  assert.equal(migrationVerdict([cancelled, run({ id: 6, head_sha: later })], sha), 'pending');
 });
 
 test('pending migration completes before strict flags are read', async () => {

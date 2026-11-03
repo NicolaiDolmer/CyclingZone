@@ -9,22 +9,36 @@ export function hasMigrationChanges(paths) {
   return paths.some((path) => /^database\/2026-[^/]*\.sql$/.test(path));
 }
 
-export function migrationVerdict(runs, sha) {
-  const matching = runs.filter((run) => run.head_sha === sha
-    && run.head_branch === 'main' && run.event === 'push');
-  // Prefer a newer run when a workflow was re-triggered for this SHA.
-  const run = matching.sort((a, b) => b.id - a.id)[0];
+const mainPush = (run) => run.head_branch === 'main' && run.event === 'push';
+
+function settled(run, label) {
   if (!run || run.status !== 'completed') return 'pending';
-  if (run.conclusion !== 'success') throw new Error(`Auto-migrate did not succeed for ${sha}: ${run.conclusion}`);
+  if (run.conclusion !== 'success') throw new Error(`Auto-migrate did not succeed for ${label}: ${run.conclusion}`);
   return 'success';
 }
 
-export async function waitForMigration({ sha, listRuns, sleep, attempts = 80 }) {
+export function migrationVerdict(runs, sha, isAncestor = () => false) {
+  const matching = runs.filter((run) => run.head_sha === sha && mainPush(run));
+  // Prefer a newer run when a workflow was re-triggered for this SHA.
+  const run = matching.sort((a, b) => b.id - a.id)[0];
+  if (run?.status === 'completed' && run.conclusion === 'cancelled') {
+    // auto-migrate.yml's concurrency group cancels a pending run when another
+    // queues behind it; that successor applies every pending file, ours included.
+    // Only the first later main push run that contains this SHA may release us.
+    const successor = runs
+      .filter((other) => mainPush(other) && other.id > run.id && other.head_sha !== sha && isAncestor(sha, other.head_sha))
+      .sort((a, b) => a.id - b.id)[0];
+    return settled(successor, `${sha} (cancelled; successor ${successor?.head_sha ?? 'not started'})`);
+  }
+  return settled(run, sha);
+}
+
+export async function waitForMigration({ sha, listRuns, sleep, isAncestor, attempts = 80 }) {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
-    if (migrationVerdict(await listRuns(), sha) === 'success') return;
+    if (migrationVerdict(await listRuns(), sha, isAncestor) === 'success') return;
     if (attempt + 1 < attempts) await sleep();
   }
-  throw new Error(`Timed out waiting for successful Auto-migrate for ${sha}`);
+  throw new Error(`Timed out waiting for successful Auto-migrate for ${sha} (Auto-migrate may still be queued behind earlier migration merges)`);
 }
 
 export async function verifyMigrationOrder(paths, options) {
@@ -52,9 +66,18 @@ export async function main(env = process.env) {
   }
   if (!env.GH_TOKEN) throw new Error('GH_TOKEN is required to observe Auto-migrate');
   if (!/^[\w.-]+\/[\w.-]+$/.test(env.GITHUB_REPOSITORY ?? '')) throw new Error('Invalid repository');
-  const url = `https://api.github.com/repos/${env.GITHUB_REPOSITORY}/actions/workflows/auto-migrate.yml/runs?head_sha=${sha}&branch=main&event=push&per_page=100`;
+  // No head_sha filter: a cancelled run is released by a later run on another SHA.
+  const url = `https://api.github.com/repos/${env.GITHUB_REPOSITORY}/actions/workflows/auto-migrate.yml/runs?branch=main&event=push&per_page=100`;
   await verifyMigrationOrder(paths, {
     sha,
+    isAncestor: (ancestor, descendant) => {
+      try {
+        execFileSync('git', ['merge-base', '--is-ancestor', ancestor, descendant], { stdio: 'ignore' });
+        return true;
+      } catch {
+        return false;
+      }
+    },
     listRuns: async () => {
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${env.GH_TOKEN}`, Accept: 'application/vnd.github+json' },
