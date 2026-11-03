@@ -1,5 +1,5 @@
-// #6570 · Etapeside 2.0 (ejer-design-go 14/10 paa artifact v7), bag stadie-
-// flaget stage_page_v2. Alle uden flaget ser den nuvaerende side uaendret.
+// #6570 · Etapeside 2.0 (ejer-design-go 14/10 paa artifact v7). Den eneste
+// etapeside for alle; flaget stage_page_v2 laeses ikke laengere af koden.
 //
 // Faner: Stage / Standings / Team / Tactics. Overview er foldet ind i toppen
 // (heroen + "Your day"). Standings, Team og Tactics genbruger det nuvaerende

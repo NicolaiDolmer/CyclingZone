@@ -29,11 +29,8 @@ import {
   ittReferenceByKind,
   ittSpeedKmh,
   ittStageNoise,
-  ITT_TERRAIN_6595_ACTIVE,
-  ittTerrain6595Active,
   ittTerrainWeight,
   S5_V3_ITT_TERRAIN_WEIGHT,
-  setIttTerrain6595ForBench,
   simulateIndividualTimeTrialStage,
 } from "./individualTimeTrial.ts";
 import { STRENGTH_SPEED_EXTRA_TUNING } from "../tuning.ts";
@@ -553,75 +550,46 @@ test("#6349: aeldre revisioner er uaendrede (v2, v1, orders_gc og legacy = ingen
   }
 });
 
-// ── 8. #6595 (KUN s5_profiles_v3, SLUKKET): enkeltstartens egen terraen-vaegt ─
+// ── 8. #6595 (KUN s5_profiles_v3, live siden 31/10): enkeltstartens egen terraen-vaegt ─
 //
 // Fejlen (staff 13/10 + 14/10; maaling privat i balance-internals/6595/): en flad
 // enkeltstart i en Grand Tour spredte feltet for lidt,
 // fordi fart-formlen brugte vejetapens terraen-vaegt, der daemper styrke paa
 // fladt terraen for at afspejle laeet i en gruppe. Mod uret er der intet laee.
-// Med kontakten taendt faar fladt og rullende terraen mere vaegt under
-// s5_profiles_v3; alt andet er som foer. Slukket (default) er alt bit-identisk.
+// Under s5_profiles_v3 faar fladt og rullende terraen mere vaegt; alt andet er
+// som foer. Aeldre revisioner er bit-identiske (#7260 fjernede kodekontakten).
 
 const V3 = "s5_profiles_v3";
 const NOISELESS = { ittTuning: NO_NOISE, incidentsTuning: NO_INCIDENTS };
 // Etape-testene isolerer DENNE rettelse: samme revision med og uden v3's
-// terraen-vaegt (eksplicit option), saa de ikke afhaenger af kontakten eller
-// af de andre v3-tilvalg.
+// terraen-vaegt (eksplicit option), saa de ikke afhaenger af de andre v3-tilvalg.
 const ROAD_WEIGHT = { rulesRevision: "s5_profiles_v2" };
 const V3_WEIGHT = { rulesRevision: "s5_profiles_v2", ittTerrainWeight: S5_V3_ITT_TERRAIN_WEIGHT };
 
 const ALL_REVISIONS = [undefined, null, "legacy", "official_times_v3", "official_times_v4", "official_times_v5", "s5_profiles_v1", "s5_profiles_v2", V3];
 
-/** Koer `fn` med #6595-kontakten sat via bench-setteren; nulstil altid bagefter. */
-function withIttTerrain6595<T>(active: boolean, fn: () => T): T {
-  setIttTerrain6595ForBench(active);
-  try {
-    return fn();
-  } finally {
-    setIttTerrain6595ForBench(null);
-  }
-}
-
-test("#6595: kontakten er TAENDT (ejer-go 31/10); slukket bruger alle revisioner (ogsaa den aktuelle v3) vejetapens vaegt", () => {
-  assert.equal(ITT_TERRAIN_6595_ACTIVE, true, "ejer-go 31/10");
-  assert.equal(ittTerrain6595Active(), true);
+test("#6595: KUN s5_profiles_v3 faar enkeltstartens vaegt; aeldre revisioner har vejetapens (samme objekt)", () => {
   assert.equal(ittTerrainWeight(V3), S5_V3_ITT_TERRAIN_WEIGHT);
-  withIttTerrain6595(false, () => {
-    for (const rev of ALL_REVISIONS) {
-      assert.equal(ittTerrainWeight(rev), STRENGTH_SPEED_EXTRA_TUNING.terrainWeight, String(rev));
-    }
-  });
+  for (const rev of ALL_REVISIONS.filter((r) => r !== V3)) {
+    assert.equal(ittTerrainWeight(rev), STRENGTH_SPEED_EXTRA_TUNING.terrainWeight, String(rev));
+  }
   // Default-parameteren er vejetapens vaegt: kald uden vaegt = kald med den.
   for (const kind of ["flat", "rolling", "climb", "descent", "cobbles"] as const) {
     assert.equal(ittSpeedKmh(0.62, 0.55, kind, RACE_V4_TUNING), ittSpeedKmh(0.62, 0.55, kind, RACE_V4_TUNING, INDIVIDUAL_TIME_TRIAL_TUNING, STRENGTH_SPEED_EXTRA_TUNING.terrainWeight));
   }
 });
 
-test("#6595: taendt faar KUN s5_profiles_v3 enkeltstartens vaegt; aeldre revisioner er uroerte", () => {
-  withIttTerrain6595(true, () => {
-    assert.equal(ittTerrain6595Active(), true);
-    for (const rev of ALL_REVISIONS.filter((r) => r !== V3)) {
-      assert.equal(ittTerrainWeight(rev), STRENGTH_SPEED_EXTRA_TUNING.terrainWeight, String(rev));
-    }
-    assert.equal(ittTerrainWeight(V3), S5_V3_ITT_TERRAIN_WEIGHT);
-  });
-  assert.equal(ittTerrain6595Active(), ITT_TERRAIN_6595_ACTIVE, "setteren nulstiller til kontakten");
-});
-
-test("#6595: slukket er v3-enkeltstarten bit-identisk med vejetapens vaegt; taendt aendrer den (flad og kuperet)", () => {
+test("#6595: v3-enkeltstarten bruger enkeltstartens vaegt og afviger fra vejetapens; v2 er bit-identisk med vejetapens (flad og kuperet)", () => {
   for (const [profileType, segs] of [["itt", undefined], ["itt_hilly", HILLY_SEGMENTS]] as const) {
     const r = route(profileType, segs);
     const run = (opts: Parameters<typeof simulateIndividualTimeTrialStage>[4]) =>
       simulateIndividualTimeTrialStage(r, field(30), "v6595", RACE_V4_TUNING, opts).results.map((x) => x.time_seconds);
-    const off = withIttTerrain6595(false, () => run({ rulesRevision: V3 }));
-    const road = run({ rulesRevision: V3, ittTerrainWeight: STRENGTH_SPEED_EXTRA_TUNING.terrainWeight });
-    assert.deepEqual(off, road, `${profileType}: slukket = main`);
-    const on = withIttTerrain6595(true, () => run({ rulesRevision: V3 }));
-    assert.notDeepEqual(on, off, `${profileType}: taendt skal aendre tiderne`);
-    // s5_profiles_v2 og aeldre er uroerte, ogsaa med kontakten taendt.
-    const v2Off = withIttTerrain6595(false, () => run({ rulesRevision: "s5_profiles_v2" }));
-    const v2On = withIttTerrain6595(true, () => run({ rulesRevision: "s5_profiles_v2" }));
-    assert.deepEqual(v2On, v2Off, `${profileType}: v2 uroert`);
+    const v3 = run({ rulesRevision: V3 });
+    assert.deepEqual(v3, run({ rulesRevision: V3, ittTerrainWeight: S5_V3_ITT_TERRAIN_WEIGHT }), `${profileType}: v3 = enkeltstartens vaegt`);
+    assert.notDeepEqual(v3, run({ rulesRevision: V3, ittTerrainWeight: STRENGTH_SPEED_EXTRA_TUNING.terrainWeight }), `${profileType}: v3 skal afvige fra vejetapens vaegt`);
+    // s5_profiles_v2 og aeldre er uroerte.
+    const v2 = run({ rulesRevision: "s5_profiles_v2" });
+    assert.deepEqual(v2, run({ rulesRevision: "s5_profiles_v2", ittTerrainWeight: STRENGTH_SPEED_EXTRA_TUNING.terrainWeight }), `${profileType}: v2 uroert`);
   }
 });
 
