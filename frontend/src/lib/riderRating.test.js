@@ -167,3 +167,28 @@ test("#5435: riderOverallRating = bedste rolle nu, og kan kun hæve tallet", () 
   // primary_type er ikke længere nødvendig for at vise et tal.
   assert.equal(riderOverallRating(climberProfile()), best.rating);
 });
+
+// ── #7560: lighed afgøres af rytterens naturlige rolle (kun etiketten) ─────────
+
+const flat13 = () => Object.fromEntries(STAT_KEYS.map((k) => [k, 13]));
+
+test("#7560: lighed → primary_type, så secondary_type, så opskrifternes rækkefølge", () => {
+  assert.deepEqual(riderBestRole({ ...flat13(), primary_type: "gc" }), { rating: 13, role: "gc" });
+  assert.deepEqual(riderBestRole({ ...flat13(), primary_type: "ukendt", secondary_type: "climber" }), { rating: 13, role: "climber" });
+  assert.deepEqual(riderBestRole(flat13()), { rating: 13, role: DISPLAY_RECIPE_KEYS[0] });
+  // Kaldere med kun evne-objektet (radaren, profil-heroen) sender typerne med.
+  assert.deepEqual(riderBestRole(flat13(), { primaryType: "tt" }), { rating: 13, role: "tt" });
+});
+
+test("#7560: en naturlig rolle UDEN for ligheden vinder aldrig, og tallet flytter sig aldrig", () => {
+  const rider = climberProfile();
+  const plain = riderBestRole(rider);
+  for (const primaryType of DISPLAY_RECIPE_KEYS) {
+    const typed = riderBestRole({ ...rider, primary_type: primaryType });
+    assert.equal(typed.rating, plain.rating);
+    assert.equal(ratingForRole(rider, typed.role), plain.rating);
+  }
+});
+
+// Paritet frontend↔backend testes fra backend-siden (backend/lib/riderBestRole.test.js),
+// så frontendens test- og typecheck-graf ikke trækker backendens afhængigheder ind.

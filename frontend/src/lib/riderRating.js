@@ -55,23 +55,42 @@ export function riderTypeRating(rider = {}, typeKey = null) {
 // #5435 (D-049) — "Best role now / Bedste rolle nu": den rolle rytteren rates
 // højest som LIGE NU, og det tal. Samme regel som backendens cache
 // (riderValueRefresh.bestRoleForAbilities, ECONOMY_RULES "Datakontrakt 1a"):
-// maksimum af de AFRUNDEDE rolle-ratings; ved lighed vinder første rolle i
-// opskrifternes faste rækkefølge (strengt `>`); ingen brugbare evner → null.
+// maksimum af de AFRUNDEDE rolle-ratings; ingen brugbare evner → null.
+//
+// #7560 lighed: tallet afhænger aldrig af lighedsreglen, kun etiketten. Deler
+// flere roller maksimum, vinder rytterens naturlige rolle (primary_type), så
+// hans sekundære type, og først derefter opskrifternes faste rækkefølge. Før
+// #7560 afgjorde rækkefølgen alene, så en flad startprofil altid læste som
+// sprinter. Typerne læses fra rytter-objektet (primary_type/secondary_type);
+// en kalder der kun har evne-objektet sender dem som andet argument.
 //
 // Kilde: beregnes fra rækkens live evner når de findes, så tallet altid er det
 // samme som radaren og scouting-fanens nu-tal på samme side. Den cachede
 // riders.best_role/best_role_rating bruges kun når rækken ikke bærer evner
 // (fx lette lister); cachen følger værdi-refreshens kadence og kan halte en
 // træningsdag efter de live evner.
-export function riderBestRole(rider = {}) {
+export function riderBestRole(rider = {}, {
+  primaryType = rider?.primary_type ?? null,
+  secondaryType = rider?.secondary_type ?? null,
+} = {}) {
   let role = null;
   let rating = null;
+  const tied = [];
   for (const key of DISPLAY_RECIPE_KEYS) {
     const r = ratingForRole(rider, key);
-    if (r !== null && (rating === null || r > rating)) {
+    if (r === null) continue;
+    if (rating === null || r > rating) {
       role = key;
       rating = r;
+      tied.length = 0;
+      tied.push(key);
+    } else if (r === rating) {
+      tied.push(key);
     }
+  }
+  if (tied.length > 1) {
+    if (tied.includes(primaryType)) role = primaryType;
+    else if (tied.includes(secondaryType)) role = secondaryType;
   }
   if (rating !== null) return { rating, role };
   const cachedRating = rider?.best_role_rating;

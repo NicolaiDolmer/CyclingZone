@@ -20,7 +20,8 @@ import { STAT_KEYS, generateFictionalRiders } from "./fictionalRiderGenerator.js
 import { ageForSeason, seasonReferenceYear } from "./riderSeasonAge.js";
 import { PROGRESSION_CONFIG } from "./riderProgression.js";
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
-import { deriveAbilities, VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { deriveAbilities, VISIBLE_ABILITIES, FILL_CAP_MODE_SCALED } from "./abilityDerivation.js";
+import { DISPLAY_RECIPE_ABILITIES } from "./weights/displayRecipes.js";
 import { ABILITY_REGISTRY } from "./abilityRegistry.js";
 import { computeFrozenSalary } from "./contractSeed.js";
 import { isBornFromPriors, deriveBirthAbilities, statLevelToAbility } from "./riderBirthPriors.js";
@@ -38,8 +39,11 @@ import { PRIMARY_TYPE_MODE_FLAG_KEY } from "./primaryTypeModeFlag.js";
 // #5327: app_config (select(value).eq(key).maybeSingle()) for primær-type-kontakten.
 // `appConfig` er nøgle → værdi; en udeladt nøgle = rækken findes ikke. Hver læsning
 // logges i `appConfigReads`, så "læses ÉN gang pr. allokering" kan måles.
-function createRidersMock({ seedRiders = [], teamMarkers = {}, activeSeasonNumber = 1, appConfig = {} } = {}) {
+function createRidersMock({ seedRiders = [], teamMarkers = {}, activeSeasonNumber = 1, appConfig = {}, derivedAbilities = null } = {}) {
   const store = new Map();
+  // #7560: rider_derived_abilities, så bedste-rolle-cachen ved fødslen kan
+  // læse evnerne. Tom medmindre testen sender en evne-fabrik (derivedAbilities).
+  const abilityStore = new Map();
   const appConfigReads = [];
   for (const r of seedRiders) store.set(r.id, { ...r });
   const teams = new Map(Object.entries(teamMarkers));
@@ -59,6 +63,12 @@ function createRidersMock({ seedRiders = [], teamMarkers = {}, activeSeasonNumbe
       if (row) {
         row.base_value = 100_000 - i * 1000;
         row.current_production_value = 80_000 - i * 800;
+        if (derivedAbilities) {
+          const { primary_type = null, secondary_type = null, ...abilities } = derivedAbilities(row, i);
+          row.primary_type = primary_type;
+          row.secondary_type = secondary_type;
+          abilityStore.set(id, { rider_id: id, ...abilities });
+        }
       }
     });
   };
@@ -97,7 +107,20 @@ function createRidersMock({ seedRiders = [], teamMarkers = {}, activeSeasonNumbe
         };
         return tb;
       }
-      assert.equal(table, "riders", "single-team-allokering rører kun riders + teams + seasons + app_config");
+      if (table === "rider_derived_abilities") {
+        let inIds = null;
+        const ab = {
+          select() { return ab; },
+          in(_c, ids) { inIds = ids; return ab; },
+          order() { return ab; },
+          range() {
+            const rows = [...abilityStore.values()].filter((r) => !inIds || inIds.includes(r.rider_id));
+            return Promise.resolve({ data: rows.map((r) => ({ ...r })), error: null });
+          },
+        };
+        return ab;
+      }
+      assert.equal(table, "riders", "single-team-allokering rører kun riders + rider_derived_abilities + teams + seasons + app_config");
       let teamFilter = undefined;
       let inIds = null;
       const builder = {
@@ -959,4 +982,46 @@ test("#5327 runStarterSquadAllocation: kontakten slukket → tier", async () => 
   });
   assert.deepEqual(seen, ["tier", "tier"]);
   assert.equal(result.primaryTypeMode, "tier");
+});
+
+// ── #7560: new starter squads are born under the scaled cap + carry a cache ──
+
+test("#7560 allocateStarterSquadForTeam: every new starter carries the scaled-cap marker", async () => {
+  const { supabase, store, fakeDerive } = createRidersMock();
+  await allocateStarterSquadForTeam(supabase, "scaled-team", { seed: 2026, generate: generateFictionalRiders, derive: fakeDerive, now: () => new Date("2026-11-03T12:00:00Z") });
+  const rows = [...store.values()];
+  assert.equal(rows.length, STARTER_SQUAD.TOTAL_SIZE);
+  for (const r of rows) {
+    assert.equal(r.archetype_draw?.fill_cap, FILL_CAP_MODE_SCALED, "marker on " + r.id);
+    assert.ok(isBornFromPriors(r), "own-priors birth (the default path)");
+  }
+});
+
+test("#7560 side finding: the best-role cache is written at birth, tie-break by natural role", async () => {
+  // Flat abilities tie every role, so the label can only come from the type.
+  const flat = Object.fromEntries(DISPLAY_RECIPE_ABILITIES.map((k) => [k, 9]));
+  const { supabase, store, fakeDerive } = createRidersMock({
+    derivedAbilities: (_row, i) => ({ ...flat, primary_type: i % 2 === 0 ? "climber" : "gc", secondary_type: "tt" }),
+  });
+  await allocateStarterSquadForTeam(supabase, "cache-team", { seed: 2026, generate: makeFakeGenerate(), derive: fakeDerive, now: () => new Date("2026-11-03T12:00:00Z") });
+  const rows = [...store.values()];
+  assert.equal(rows.length, STARTER_SQUAD.TOTAL_SIZE);
+  for (const r of rows) {
+    assert.equal(r.best_role, r.primary_type, "cache follows the natural role on a tie");
+    assert.equal(r.best_role_rating, 9);
+  }
+});
+
+test("#7560 side finding: a recovery run (squad inserted, marker NULL) still writes the cache", async () => {
+  const flat = Object.fromEntries(DISPLAY_RECIPE_ABILITIES.map((k) => [k, 9]));
+  const seedRiders = Array.from({ length: STARTER_SQUAD.TOTAL_SIZE }, (_, i) => ({ id: "rec-" + String(i).padStart(2, "0"), team_id: "recover-team" }));
+  const { supabase, store, fakeDerive } = createRidersMock({
+    seedRiders,
+    derivedAbilities: () => ({ ...flat, primary_type: "puncheur", secondary_type: "climber" }),
+  });
+  const res = await allocateStarterSquadForTeam(supabase, "recover-team", {
+    seed: 2026, generate: makeFakeGenerate(), derive: fakeDerive, now: () => new Date("2026-11-03T12:00:00Z"),
+  });
+  assert.equal(res.recovered, "re-derived");
+  for (const r of store.values()) assert.equal(r.best_role, "puncheur");
 });

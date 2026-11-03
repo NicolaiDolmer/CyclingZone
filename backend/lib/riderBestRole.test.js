@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import * as refresh from "./riderValueRefresh.js";
 import { DISPLAY_RECIPES, DISPLAY_RECIPE_ABILITIES, DISPLAY_RECIPE_KEYS, ratingForRole } from "./weights/displayRecipes.js";
 import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
+import { STAT_KEYS, riderBestRole } from "../../frontend/src/lib/riderRating.js";
 
 const read = (name) => JSON.parse(readFileSync(new URL(name, import.meta.url), "utf8"));
 const baseline = read("./riderTypesBaseline.json");
@@ -114,5 +115,21 @@ test("alle 8 roller kan blive best_role", () => {
     }
 
     assert.deepEqual(refresh.bestRoleForAbilities(ab), { best_role: recipe.key, best_role_rating: targetRating });
+  }
+});
+
+// #7560: paritet testes fra backend-siden. Frontendens riderRating.js er
+// afhængighedsfri; den modsatte import ville trække backendens graf (sentry)
+// ind i frontendens test og typecheck.
+test("#7560: frontend og backend vælger samme rolle for samme rytter (paritet)", () => {
+  let seed = 75600;
+  const rng = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 4294967296);
+  for (let n = 0; n < 300; n++) {
+    const ab = Object.fromEntries(STAT_KEYS.map((k) => [k, 1 + Math.floor(rng() * 4)]));
+    const primaryType = DISPLAY_RECIPE_KEYS[Math.floor(rng() * DISPLAY_RECIPE_KEYS.length)];
+    const secondaryType = DISPLAY_RECIPE_KEYS[Math.floor(rng() * DISPLAY_RECIPE_KEYS.length)];
+    const back = refresh.bestRoleForAbilities(ab, { primaryType, secondaryType });
+    const front = riderBestRole({ ...ab, primary_type: primaryType, secondary_type: secondaryType });
+    assert.deepEqual(front, { rating: back.best_role_rating, role: back.best_role });
   }
 });
