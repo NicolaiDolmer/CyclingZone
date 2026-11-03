@@ -705,6 +705,71 @@ test("#5950 A: rolle x etapetype - hjaelperen udvikler ikke etapens afgoerende e
   }
 });
 
+// Codex P2 (PR #7576): applyDailyTick normaliserer fokus-evner under Udviklingsscore B,
+// men ikke off-fokus. Basis-dagens vaegte skal udledes af de koefficienter tick'et
+// faktisk bruger, ellers taber hjaelper og fri rolle basis-budget, naar begge er on.
+// Syntetiske Score B-objekter (ingen kalibrering): neutralt og med off-fokus under fokus.
+const SCORE_B_NEUTRAL = Object.freeze({ score: 50, devMult: 1, kind: "race", offFocusDevMult: 1 });
+const SCORE_B_SPLIT = Object.freeze({ score: 50, devMult: 1.3, kind: "race", offFocusDevMult: 0.8 });
+const NO_BONUS = Object.freeze({ stageBonus: 0, leadShare: PARAMS.leadShare });
+const NO_BONUS_A = Object.freeze({ ...NO_BONUS, roleDrivesBaseDay: true });
+
+function baseDayTick(profile, role, params, developmentScore) {
+  const extra = withRaceDayRoleYield(developmentScore ? { developmentScore } : {}, { params, profileType: profile, role });
+  return yielded(applyDailyTick(tickArgs(raceDayProgram(profile), extra)));
+}
+const dayYield = (y) => VISIBLE_ABILITIES.reduce((s, k) => s + y[k], 0);
+
+test("#5950 A / Codex P2: ITT, lige gab, 0 tillaeg - basis-dagen i alt er ens for alle roller i alle fire flag-kombinationer", () => {
+  const combos = [
+    ["Score B off, underkontakt off", NO_BONUS, null],
+    ["Score B off, underkontakt on", NO_BONUS_A, null],
+    ["Score B on, underkontakt off", NO_BONUS, SCORE_B_NEUTRAL],
+    ["Score B on, underkontakt on", NO_BONUS_A, SCORE_B_NEUTRAL],
+    ["Score B on (delt devMult), underkontakt off", NO_BONUS, SCORE_B_SPLIT],
+    ["Score B on (delt devMult), underkontakt on", NO_BONUS_A, SCORE_B_SPLIT],
+  ];
+  for (const profile of ["itt", ...PROFILES]) {
+    for (const [name, params, score] of combos) {
+      const captain = dayYield(baseDayTick(profile, "captain", params, score));
+      assert.ok(captain > 0, `${profile} ${name}: kaptajnen udvikler sig`);
+      for (const role of ROLES) {
+        const total = dayYield(baseDayTick(profile, role, params, score));
+        assert.ok(Math.abs(total - captain) < 1e-9 * Math.max(1, captain), `${profile} ${name} ${role}: ${total} vs ${captain}`);
+      }
+    }
+  }
+});
+
+test("#5950 A / Codex P2: fri rolle = gennemsnit af kaptajn og hjaelper evne for evne, med og uden Score B", () => {
+  for (const score of [null, SCORE_B_NEUTRAL, SCORE_B_SPLIT]) {
+    for (const profile of PROFILES) {
+      const cap = baseDayTick(profile, "captain", NO_BONUS_A, score);
+      const hlp = baseDayTick(profile, "helper", NO_BONUS_A, score);
+      const free = baseDayTick(profile, "free_role", NO_BONUS_A, score);
+      for (const a of VISIBLE_ABILITIES) {
+        const avg = (cap[a] + hlp[a]) / 2;
+        assert.ok(Math.abs(free[a] - avg) < 1e-12, `${profile} ${score ? "Score B" : "uden"}: ${a} ${free[a]} vs ${avg}`);
+      }
+    }
+  }
+});
+
+test("#5950 A / Codex P2: underkontakt off er uroert af Score B; Score B off + underkontakt on er som foer", () => {
+  for (const profile of [...PROFILES, null]) {
+    for (const role of ROLES) {
+      for (const score of [SCORE_B_NEUTRAL, SCORE_B_SPLIT]) {
+        // Underkontakt off: programmet er haard-dagen, uanset Score B.
+        assert.deepEqual(withRaceDayRoleYield({ developmentScore: score }, { params: PARAMS, profileType: profile, role }).program,
+          raceDayRoleBaseProgram(profile), `${profile}/${role}`);
+      }
+      // Score B off: samme vaegte som uden developmentScore-argumentet.
+      assert.deepEqual(withRaceDayRoleYield({}, { params: PARAMS_A, profileType: profile, role }).program,
+        raceDayRoleBaseProgram(profile, { role, roleDrivesBaseDay: true }), `${profile}/${role}`);
+    }
+  }
+});
+
 test("#5950 A: flad etape - hjaelperen udvikler ikke spurt (hverken basis eller tillaeg)", () => {
   const program = raceDayRoleBaseProgram("flat", { role: "helper", roleDrivesBaseDay: true });
   assert.ok(!program.focusAbilities.includes("sprint"));

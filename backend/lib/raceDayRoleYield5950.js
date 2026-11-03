@@ -184,6 +184,29 @@ export async function loadRaceDayRoleYield({ supabase, log = console, strict = f
 }
 
 /**
+ * Off-fokus-vaekst i enheder af en fokus-evnes vaekst (vaegt 1), PRAECIS som
+ * applyDailyTick regner i den aktive tilstand:
+ *   · Score B off: fokus = haard-multiplikatoren, off-fokus = offFocusMult.
+ *   · Score B on: fokus-evner normaliseres (haard-multiplikatoren gaar ud) og ganges
+ *     med devMult; off-fokus beholder offFocusMult og ganges med offFocusDevMult
+ *     (eller devMult, naar den mangler).
+ * Samme betingelse for "Score B on" som applyDailyTick (devMult endelig og >= 0).
+ */
+export function raceDayBaseOffRatio(trainingCfg = TRAINING_CONFIG, developmentScore = null) {
+  const off = Number(trainingCfg.offFocusMult);
+  if (!(Number.isFinite(off) && off >= 0)) return 0;
+  const devMult = developmentScore?.devMult;
+  if (Number.isFinite(devMult) && devMult >= 0) {
+    const offDev = Number.isFinite(developmentScore.offFocusDevMult) && developmentScore.offFocusDevMult >= 0
+      ? developmentScore.offFocusDevMult : devMult;
+    // devMult 0: fokus giver intet, vaegtene kan ikke flytte noget (bevar ratio 0).
+    return devMult > 0 ? (off * offDev) / devMult : 0;
+  }
+  const hard = Number(trainingCfg.focusGrowthMult?.[RACE_DAY_ROLE_BASE_INTENSITY]);
+  return Number.isFinite(hard) && hard > 0 ? off / hard : 0;
+}
+
+/**
  * Loebsdagens basis-program: en haard dag paa etapens profil-evner.
  *
  * roleDrivesBaseDay (#5950 A, underkontakt): rollen styrer basis-dagens evner.
@@ -191,8 +214,14 @@ export async function loadRaceDayRoleYield({ supabase, log = console, strict = f
  * af de to, evne for evne. Hjaelperens vaegte (focusWeights) skaleres, saa basis-
  * dagen i alt (fokus + off-fokus over alle evner) er kaptajnens, ogsaa naar antallet
  * af fokus-evner er et andet end profilens; fri rolle arver det af gennemsnittet.
+ *
+ * developmentScore: tick'ets Udviklingsscore B (samme objekt som applyDailyTick faar).
+ * Under Score B vaegtes fokus og off-fokus anderledes (se raceDayBaseOffRatio), og
+ * vaegtene skal udledes af de koefficienter tick'et faktisk bruger.
  */
-export function raceDayRoleBaseProgram(profileType, { role = null, roleDrivesBaseDay = false, trainingCfg = TRAINING_CONFIG } = {}) {
+export function raceDayRoleBaseProgram(profileType, {
+  role = null, roleDrivesBaseDay = false, trainingCfg = TRAINING_CONFIG, developmentScore = null,
+} = {}) {
   const profile = knownProfile(profileType);
   const profileAbilities = raceDayFocusAbilities(profile);
   const group = raceDayRoleGroup(role);
@@ -209,9 +238,7 @@ export function raceDayRoleBaseProgram(profileType, { role = null, roleDrivesBas
   // enheder af haard-vaeksten). Har hjaelperen flere (faerre) fokus-evner end
   // profilen, mister (vinder) han derfor off-fokus-vaekst; vaegten giver den tilbage,
   // saa totalen er kaptajnens.
-  const hard = Number(trainingCfg.focusGrowthMult?.[RACE_DAY_ROLE_BASE_INTENSITY]);
-  const off = Number(trainingCfg.offFocusMult);
-  const offRatio = Number.isFinite(hard) && hard > 0 && Number.isFinite(off) && off >= 0 ? off / hard : 0;
+  const offRatio = raceDayBaseOffRatio(trainingCfg, developmentScore);
   const helperWeight = (budget + offRatio * (helper.length - budget)) / helper.length;
   let weights = Object.fromEntries(helper.map((a) => [a, helperWeight]));
   if (group === "free") {
@@ -263,8 +290,8 @@ export function raceDayRoleBonusWeights(profileType, role, leadShare, { roleDriv
  */
 export function raceDayRoleYieldMultipliers({
   params, profileType, role,
-  trainingCfg = TRAINING_CONFIG,
-  program = raceDayRoleBaseProgram(profileType, { role, roleDrivesBaseDay: params?.roleDrivesBaseDay === true, trainingCfg }),
+  trainingCfg = TRAINING_CONFIG, developmentScore = null,
+  program = raceDayRoleBaseProgram(profileType, { role, roleDrivesBaseDay: params?.roleDrivesBaseDay === true, trainingCfg, developmentScore }),
 }) {
   if (!params) return {};
   const hardFocus = Number(trainingCfg.focusGrowthMult?.[RACE_DAY_ROLE_BASE_INTENSITY]);
@@ -288,7 +315,9 @@ export function raceDayRoleYieldMultipliers({
  */
 export function withRaceDayRoleYield(extraTickArgs, { params = null, profileType = null, role = null } = {}) {
   if (!params) return extraTickArgs;
-  const program = raceDayRoleBaseProgram(profileType, { role, roleDrivesBaseDay: params.roleDrivesBaseDay === true });
+  const program = raceDayRoleBaseProgram(profileType, {
+    role, roleDrivesBaseDay: params.roleDrivesBaseDay === true, developmentScore: extraTickArgs?.developmentScore ?? null,
+  });
   const roleMult = raceDayRoleYieldMultipliers({ params, profileType, role, program });
   const prior = extraTickArgs?.abilityYieldMult ?? null;
   const abilityYieldMult = { ...roleMult };
