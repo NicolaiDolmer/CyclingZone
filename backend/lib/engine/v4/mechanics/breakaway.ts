@@ -2401,28 +2401,33 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       }
     }
     // #6912 (KUN kontakten): efter toppen sigter de interesserede hold mod kurvens maal.
-    if (curveControl && p2Interest && p6Target === null && chaseKm - floorKm > 0) {
-      const controlKm = chaseKm - floorKm;
-      const target = curveTargetSeconds({ route: ctx.route, km: ctx.segment.to_km, topKm: curveTop, peakSeconds: curvePeak }) * oneDayScale;
-      const chasers = climbChaseClimbers({ teamIds: p2Interest.teamIds, chaseGroupRiderIds: chaseGroup.rider_ids, entrants: ctx.entrants, riders: state.riders, ...(ctx.segment.kind === "climb" ? {} : { demandKeys: CHASE_ENGINE_KEYS }) });
+    const curveSteer = curveControl && p2Interest && p6Target === null && chaseKm > 0
+      ? {
+          target: curveTargetSeconds({ route: ctx.route, km: ctx.segment.to_km, topKm: curveTop, peakSeconds: curvePeak }) * oneDayScale,
+          chasers: climbChaseClimbers({ teamIds: p2Interest.teamIds, chaseGroupRiderIds: chaseGroup.rider_ids, entrants: ctx.entrants, riders: state.riders, ...(ctx.segment.kind === "climb" ? {} : { demandKeys: CHASE_ENGINE_KEYS }) }),
+        }
+      : null;
+    // De jagende hold betaler den lukning de selv baerer (som klatre-jagten ovenfor).
+    const bookCurveWork = (chasers: Map<string, string[]>, extra: number, km: number) => {
+      const intensity = s5V3ClimbChaseIntensity({ extraClosingSeconds: extra, chaseKm: km, closingSecondsPerKmPerUnit: BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit, fullOrderForce: BREAKAWAY_CHASE_V3_TUNING.teamSignalWeight * TEAM_CHASE.maxTeamSignal, teams: chasers.size });
+      const curveWork = new Map<string, number>();
+      for (const ids of chasers.values()) for (const id of ids) curveWork.set(id, helperCostMultiplier(ctx.entrants[id].effort) * intensity);
+      const entry = workByChaseGroup.get(chaseGroup.id);
+      if (entry) workByChaseGroup.set(chaseGroup.id, { ...entry, plan: { ...entry.plan, chaserWork: mergeWork(entry.plan.chaserWork, curveWork) } });
+      const own = planByBreakaway.get(pursuitKey(breakaway.id, chaseGroup.id));
+      if (own) planByBreakaway.set(pursuitKey(breakaway.id, chaseGroup.id), { ...own, chaserWork: mergeWork(own.chaserWork, curveWork) });
+    };
+    if (curveSteer && chaseKm - floorKm > 0) {
       const controlled = curveControlledClosing({
         existingSeconds: chaseClosingSeconds,
         grownSeconds: grown,
-        targetSeconds: target,
-        capSeconds: curveClosingCapSeconds(controlKm),
-        hasChasers: chasers.size > 0,
+        targetSeconds: curveSteer.target,
+        capSeconds: curveClosingCapSeconds(chaseKm - floorKm),
+        hasChasers: curveSteer.chasers.size > 0,
         upperBounded: !(reactions && reactions.size > 0) && ctx.mountainSelectionPhase !== "final",
       });
       chaseClosingSeconds = controlled.closing;
-      if (controlled.extra > 0) {
-        const intensity = s5V3ClimbChaseIntensity({ extraClosingSeconds: controlled.extra, chaseKm: controlKm, closingSecondsPerKmPerUnit: BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit, fullOrderForce: BREAKAWAY_CHASE_V3_TUNING.teamSignalWeight * TEAM_CHASE.maxTeamSignal, teams: chasers.size });
-        const curveWork = new Map<string, number>();
-        for (const ids of chasers.values()) for (const id of ids) curveWork.set(id, helperCostMultiplier(ctx.entrants[id].effort) * intensity);
-        const entry = workByChaseGroup.get(chaseGroup.id);
-        if (entry) workByChaseGroup.set(chaseGroup.id, { ...entry, plan: { ...entry.plan, chaserWork: mergeWork(entry.plan.chaserWork, curveWork) } });
-        const own = planByBreakaway.get(pursuitKey(breakaway.id, chaseGroup.id));
-        if (own) planByBreakaway.set(pursuitKey(breakaway.id, chaseGroup.id), { ...own, chaserWork: mergeWork(own.chaserWork, curveWork) });
-      }
+      if (controlled.extra > 0) bookCurveWork(curveSteer.chasers, controlled.extra, chaseKm - floorKm);
     }
     const beforeFloor = Math.max(0, grown - chaseClosingSeconds);
     // Jagt-gulvet: dagens maal er én lodtraekning pr. ETAPE (rngForStage, ikke
@@ -2438,6 +2443,12 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
           targetGapSeconds: chaseFloorTargetGapSeconds(ctx.route, ctx.rngForStage("breakaway_chase_floor")(), chaseV3),
         })
       : 0;
+    // #6912 (KUN kontakten): i jagt-gulvets vindue lukker de jagende hold selv ned mod kurvens maal,
+    // saa fangsten sker i finalen og ikke foerst paa stregen. Aldrig mindre end gulvet.
+    const curveFloorExtra = curveSteer && floorKm > 0 && curveSteer.chasers.size > 0
+      ? Math.min(curveClosingCapSeconds(floorKm), Math.max(0, beforeFloor - floorClosingSeconds - curveSteer.target))
+      : 0;
+    if (curveSteer && curveFloorExtra > 0) bookCurveWork(curveSteer.chasers, curveFloorExtra, floorKm);
 
     // Let-go growth advances the escape; active closing advances the pursuer.
     // Multiple targets share one pursuing group's movement instead of stacking it.
@@ -2450,7 +2461,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // stregen, ogsaa paa nedkoerslen selv og paa stykket bagefter.
     const v3DescentBook = (((ordersGcV3 || ctx.sharedGroupTime !== undefined) && isLastSegment && ctx.segment.kind === "descent") || finishDescentCapKm !== null)
       ? (state.finish_descent_regroup ?? {}) : null;
-    const closingSeconds = Math.min(v3DescentBook ? finishDescentRemainingCapSeconds(separation, finishDescentCapKm ?? segmentLengthKm, v3DescentBook[chaseGroup.id]) : Infinity, chaseClosingSeconds + floorClosingSeconds);
+    const closingSeconds = Math.min(v3DescentBook ? finishDescentRemainingCapSeconds(separation, finishDescentCapKm ?? segmentLengthKm, v3DescentBook[chaseGroup.id]) : Infinity, chaseClosingSeconds + floorClosingSeconds + curveFloorExtra);
     const newChaseGap = Math.min(currentChase.gap_seconds, Math.max(newBreakawayGap, chaseGroup.gap_seconds - closingSeconds));
     const v3Booked = v3DescentBook ? bookFinishDescentClosure(state.finish_descent_regroup, chaseGroup.id, chaseGroup.gap_seconds, currentChase.gap_seconds - newChaseGap) : undefined;
     if (v3Booked && v3Booked !== state.finish_descent_regroup) state = { ...state, finish_descent_regroup: v3Booked };
@@ -2487,7 +2498,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     }
     // #6199 (KUN official_times_v2): where this chase meets the break (exactPlace.ts).
     if (ctx.sharedGroupTime !== undefined && ordersGcV3) {
-      const contactKm = pursuitContactKm({ toKm: ctx.segment.to_km, chaseKm, floorKm, netClosingSeconds: chaseClosingSeconds, floorClosingSeconds, closingSeconds, separationSeconds: grown });
+      const contactKm = pursuitContactKm({ toKm: ctx.segment.to_km, chaseKm, floorKm, netClosingSeconds: chaseClosingSeconds, floorClosingSeconds: floorClosingSeconds + curveFloorExtra, closingSeconds, separationSeconds: grown });
       if (contactKm !== null) contactKmByBreakaway.set(pursuitKey(breakaway.id, chaseGroup.id), Math.max(ctx.segment.from_km, contactKm));
     }
   }

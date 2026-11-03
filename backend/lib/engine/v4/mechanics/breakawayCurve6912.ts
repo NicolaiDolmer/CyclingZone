@@ -109,10 +109,11 @@ export function remainingClimbLossSeconds(route: Pick<RouteV2, "segments">, from
  * stigninger laegges oveni. Aldrig over toppen.
  */
 export function curveTargetSeconds(input: { route: Pick<RouteV2, "distance_km" | "segments" | "profile_type">; km: number; topKm: number; peakSeconds: number }, t: CurveTuning = BREAKAWAY_CURVE_6912_TUNING): number {
-  const distance = input.route.distance_km;
   const finish = Math.min(input.peakSeconds, Math.max(0, t.finishTargetSecondsByProfile[input.route.profile_type] ?? 0));
-  const afterTop = distance - input.topKm;
-  const share = afterTop > 0 ? clamp((distance - input.km) / afterTop, 0, 1) : 0;
+  // Maalet er naaet `catchKmBeforeFinish` foer stregen (flad: fangsten i finalen, ikke paa stregen).
+  const end = Math.max(input.topKm, input.route.distance_km - Math.max(0, t.catchKmBeforeFinishByProfile[input.route.profile_type] ?? 0));
+  const afterTop = end - input.topKm;
+  const share = afterTop > 0 ? clamp((end - input.km) / afterTop, 0, 1) : 0;
   const decline = Math.pow(share, Math.max(0.05, t.declineShape));
   const climbs = remainingClimbLossSeconds(input.route, input.km, t);
   return Math.min(input.peakSeconds, finish + climbs + (input.peakSeconds - finish) * decline);

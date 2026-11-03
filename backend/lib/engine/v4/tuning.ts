@@ -1724,11 +1724,12 @@ export const S5_V3_GC_LEASH_7258_TUNING = deepFreeze({
 export const BREAKAWAY_CURVE_6912_TUNING = deepFreeze({
   profileTypes: ["flat", "mountain", "high_mountain"] as readonly ProfileType[],
   // Toppen = denne andel af loftet pr. profil (udeladt = loftet).
-  peakShareOfCeilingByProfile: { flat: 0.85, mountain: 0.6, high_mountain: 0.65 } as Partial<Record<ProfileType, number>>,
+  peakShareOfCeilingByProfile: { flat: 0.85, mountain: 0.75, high_mountain: 0.85 } as Partial<Record<ProfileType, number>>,
   growthKnee: 0.7, // kurvens knae: lavere = hurtigere mod toppen
   topShare: 0.9, // lad-gaa-fasen slutter, naar kurven har naaet denne andel af toppen
   declineShape: 1, // maalets fald fra toppen mod finalen (1 = jaevnt med resterende km)
-  finishTargetSecondsByProfile: { flat: 60, mountain: 0, high_mountain: 0 } as Partial<Record<ProfileType, number>>,
-  climbLossSecondsPerGradientKm: 2, // forventet tab pr. stignings-km pr. procent
+  finishTargetSecondsByProfile: { flat: 0, mountain: 60, high_mountain: 60 } as Partial<Record<ProfileType, number>>,
+  catchKmBeforeFinishByProfile: { flat: 10 } as Partial<Record<ProfileType, number>>, // maalet naas saa langt foer stregen
+  climbLossSecondsPerGradientKm: 3, // forventet tab pr. stignings-km pr. procent
   maxControlClosingSecondsPerKm: 25, // hoejeste lukning pr. km under styringen
 });
