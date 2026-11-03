@@ -24,6 +24,8 @@ import { fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { countFieldableRaces } from "./raceDayFloorPlan.js";
 import { captureException } from "./sentry.js";
+import { indexGeneratorBindings } from "./raceEntryGeneratorBindings.ts";
+import { overlapRuleApplies, overlapStartsShort } from "./raceFieldIntegrity.js";
 
 export const RACE_DAY_COVERAGE_TYPE = "selection_warning";
 export const RACE_DAY_COVERAGE_HOURS = 24;
@@ -37,8 +39,10 @@ function firstStage(rows = []) {
 }
 
 /**
- * PURE: (hold, løbsdag) med mindst to seniorløb der starter inden for vinduet. Kun
- * menneskehold i løbets pulje; afmeldte løb tæller ikke.
+ * PURE: (hold, løbsdag) med seniorløb der starter inden for vinduet. Kun menneskehold i
+ * løbets pulje; afmeldte løb tæller ikke. #7339 A (3/11): også dage med ét løb, for et
+ * langt etapeløb kan binde så mange ryttere, at selv det ene løb ikke kan nå gulvet.
+ * Planen afgør, om der er grund til en besked.
  * @returns {Array<{ teamId, userId, gameDay, raceIds: string[], scheduledAt: string }>}
  */
 export function groupTeamRaceDays({
@@ -69,33 +73,65 @@ export function groupTeamRaceDays({
     }
   }
   return [...groups.values()]
-    .filter((g) => g.raceIds.length >= 2)
     .map(({ startMs, ...g }) => ({ ...g, raceIds: [...g.raceIds].sort(), scheduledAt: new Date(startMs).toISOString() }))
     .sort((a, b) => Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt) || a.teamId.localeCompare(b.teamId));
 }
 
+// En rosterpost er enten bare skadedatoen (injured_until|null) eller
+// { injuredUntil, bindings: [{ race_id, window: { start, end } }] }.
+const asRosterRider = (entry) => (entry && typeof entry === "object"
+  ? { injuredUntil: entry.injuredUntil ?? null, bindings: entry.bindings ?? [] }
+  : { injuredUntil: entry ?? null, bindings: [] });
+
+// #7339 A: rytteren er bundet på løbsdagen i et løb uden for gruppen (fx et igangværende
+// etapeløb). Bindinger i gruppens egne løb tæller ikke: dem kan fordelingen flytte rundt på.
+function boundElsewhere(rider, group) {
+  return rider.bindings.some((b) => !group.raceIds.includes(b.race_id)
+    && Number(b.window?.start) <= group.gameDay && group.gameDay <= Number(b.window?.end));
+}
+
 /**
  * PURE: de (hold, løbsdag) hvor truppen ikke kan stille op i alle dagens løb.
- * `rosterByTeam` = Map<team_id, Array<injured_until|null>> (én post pr. egnet seniorrytter);
- * skaden vurderes mod løbsdagens danske dato, ikke mod i dag. Hold som seniorStartReminder
+ * `rosterByTeam` = Map<team_id, Array<post>> (én post pr. egnet seniorrytter, se
+ * asRosterRider); skaden vurderes mod løbsdagens danske dato, ikke mod i dag, og en rytter
+ * bundet i et andet løb på løbsdagen er ikke ledig (#7339 A). Hold som seniorStartReminder
  * dækker (under gulvet i aktive seniorer, `seniorCountsByTeam`) springes over; et hold med
- * nok aktive men for få raske får beskeden her, også med 0 løb.
+ * nok aktive men for få ledige raske får beskeden her, også med 0 løb.
+ * `stageRaceIds` (Codex P2): er dagens eneste løb et etapeløb, og er holdet kun kort fordi
+ * ryttere kører et andet løb på startdagen, må det starte kort (#6739 regel A,
+ * overlapStartsShort). Så er der ingen grund til en besked.
  */
 export function planRaceDayCoverageReminders({
-  groups = [], rosterByTeam = new Map(), seniorCountsByTeam = null, floor = MIN_RACE_ENTRIES,
+  groups = [], rosterByTeam = new Map(), seniorCountsByTeam = null, floor = MIN_RACE_ENTRIES, stageRaceIds = new Set(),
 } = {}) {
   const out = [];
   for (const group of groups) {
-    const roster = rosterByTeam.get(group.teamId) ?? [];
+    const roster = (rosterByTeam.get(group.teamId) ?? []).map(asRosterRider);
     const active = seniorCountsByTeam ? Number(seniorCountsByTeam.get(group.teamId) ?? 0) : roster.length;
     if (!Number.isFinite(active) || active < floor) continue;
     const raceDate = copenhagenDateString(new Date(group.scheduledAt));
-    const fit = roster.filter((injuredUntil) => !injuredUntil || injuredUntil < raceDate).length;
+    let fit = 0; let overlap = 0; let injured = 0;
+    for (const r of roster) {
+      if (boundElsewhere(r, group)) overlap += 1;
+      else if (r.injuredUntil && r.injuredUntil >= raceDate) injured += 1;
+      else fit += 1;
+    }
     const total = group.raceIds.length;
     const fieldable = countFieldableRaces({ supply: fit, races: total, floor });
-    if (fieldable < total) out.push({ ...group, fieldable, total });
+    if (fieldable >= total) continue;
+    if (total === 1 && stageRaceIds.has(group.raceIds[0])
+      && overlapStartsShort({ starters: fit, overlap, injured, minEntries: floor })) continue;
+    out.push({ ...group, fieldable, total });
   }
   return out;
+}
+
+// #6739-reglens løbsform (overlapRuleApplies) for de løb der er dagens eneste start.
+export async function defaultFetchStageRaceIds({ supabase, raceIds }) {
+  if (!raceIds.length) return new Set();
+  const rows = await fetchAllRowsChunkedIn(raceIds, (chunk) =>
+    supabase.from("races").select("id, race_type, stages").in("id", chunk).order("id"));
+  return new Set(rows.filter(overlapRuleApplies).map((r) => r.id));
 }
 
 export function buildRaceDayCoverageNotification({ candidate, seasonNumber }) {
@@ -118,19 +154,48 @@ export function buildRaceDayCoverageNotification({ candidate, seasonNumber }) {
   };
 }
 
-// Egnede seniorryttere pr. hold (samme filter som auto-fyldet) med deres skadedato.
-// Kun skader der rækker til i dag eller senere hentes; planen vurderer dem mod løbsdagen.
-export async function defaultFetchSeniorRoster({ supabase, teamIds, today }) {
+// #7339 A: rytternes bindinger på de berørte løbsdage, fra samme kilde som entry-
+// generatoren (race_entries.binding_span + race_day_participation, sæson-scopet, samlet i
+// raceEntryGeneratorBindings). Kun bindinger der rører [firstDay, lastDay] hentes.
+async function fetchRiderBindings({ supabase, riderIds, seasonId, firstDay, lastDay }) {
+  if (!riderIds.length || !seasonId || !Number.isInteger(firstDay) || !Number.isInteger(lastDay)) return new Map();
+  const spans = await fetchAllRowsChunkedIn(riderIds, (chunk) => supabase.from("race_entries")
+    .select("race_id, rider_id, team_id, binding_span, races!inner(season_id)")
+    .eq("races.season_id", seasonId).not("binding_span", "is", null)
+    .overlaps("binding_span", `[${firstDay},${lastDay}]`)
+    .in("rider_id", chunk).order("race_id").order("rider_id"));
+  const participation = await fetchAllRowsChunkedIn(riderIds, (chunk) => supabase.from("race_day_participation")
+    .select("race_id, rider_id, game_day")
+    .eq("season_id", seasonId).gte("game_day", firstDay).lte("game_day", lastDay)
+    .in("rider_id", chunk).order("rider_id").order("game_day").order("race_id"));
+  return indexGeneratorBindings(
+    spans.map(({ race_id, rider_id, team_id, binding_span }) => ({ race_id, rider_id, team_id, binding_span })),
+    participation.map(({ race_id, rider_id, game_day }) => ({ race_id, rider_id, game_day })),
+  );
+}
+
+// Egnede seniorryttere pr. hold (samme filter som auto-fyldet) med deres skadedato og
+// bindinger på løbsdagene. Kun skader der rækker til i dag eller senere hentes; planen
+// vurderer dem mod løbsdagen.
+export async function defaultFetchSeniorRoster({ supabase, teamIds, today, seasonId = null, gameDays = [] }) {
   if (!teamIds.length) return new Map();
   const riders = await fetchAllRowsChunkedIn(teamIds, (chunk) =>
     applyRiderEligibilityFilter(supabase.from("riders").select("id, team_id").in("team_id", chunk)).order("id"));
-  const injured = await fetchAllRowsChunkedIn(riders.map((r) => r.id), (chunk) =>
+  const riderIds = riders.map((r) => r.id);
+  const injured = await fetchAllRowsChunkedIn(riderIds, (chunk) =>
     applyInjuredFilter(supabase.from("rider_condition").select("rider_id, injured_until").in("rider_id", chunk), today).order("rider_id"));
   const injuredUntil = new Map(injured.map((r) => [r.rider_id, r.injured_until]));
+  const days = gameDays.filter(Number.isInteger);
+  const bindings = await fetchRiderBindings({
+    supabase, riderIds, seasonId, firstDay: days.length ? Math.min(...days) : null, lastDay: days.length ? Math.max(...days) : null,
+  });
   const roster = new Map();
   for (const r of riders) {
     if (!roster.has(r.team_id)) roster.set(r.team_id, []);
-    roster.get(r.team_id).push(injuredUntil.get(r.id) ?? null);
+    roster.get(r.team_id).push({
+      injuredUntil: injuredUntil.get(r.id) ?? null,
+      bindings: (bindings.get(r.id) ?? []).map(({ race_id, window }) => ({ race_id, window })),
+    });
   }
   return roster;
 }
@@ -141,15 +206,22 @@ export async function defaultFetchSeniorRoster({ supabase, teamIds, today }) {
  */
 export async function sendRaceDayCoverageReminders({
   supabase, now, season, teams = [], races = [], scheduleByRace = new Map(), withdrawnByRace = new Map(),
-  seniorCountsByTeam = null, notify, fetchRoster = defaultFetchSeniorRoster,
+  seniorCountsByTeam = null, notify, fetchRoster = defaultFetchSeniorRoster, fetchStageRaceIds = defaultFetchStageRaceIds,
 }) {
   const stats = { planned: 0, sent: 0, deduped: 0, failed: 0 };
   const groups = groupTeamRaceDays({ teams, races, scheduleByRace, withdrawnByRace, now });
   if (!groups.length) return stats;
   const rosterByTeam = await fetchRoster({
     supabase, teamIds: [...new Set(groups.map((g) => g.teamId))], today: copenhagenDateString(now),
+    seasonId: season?.id ?? null, gameDays: [...new Set(groups.map((g) => g.gameDay))],
   });
-  const planned = planRaceDayCoverageReminders({ groups, rosterByTeam, seniorCountsByTeam });
+  let planned = planRaceDayCoverageReminders({ groups, rosterByTeam, seniorCountsByTeam });
+  // Codex P2: kun kandidater med ét løb kan falde ind under regel A; deres løbsform hentes.
+  const soloRaceIds = [...new Set(planned.filter((p) => p.total === 1).map((p) => p.raceIds[0]))];
+  if (soloRaceIds.length) {
+    const stageRaceIds = await fetchStageRaceIds({ supabase, raceIds: soloRaceIds });
+    planned = planRaceDayCoverageReminders({ groups, rosterByTeam, seniorCountsByTeam, stageRaceIds });
+  }
   stats.planned = planned.length;
   for (const candidate of planned) {
     try {

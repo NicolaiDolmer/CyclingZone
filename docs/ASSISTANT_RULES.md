@@ -159,7 +159,7 @@ en løgn om hvad spilleren styrer.
 
 **Separat startgulvs-påmindelse (#5867, ejer-go 28/9):** Hvis et aktivt managerhold har færre end `MIN_RACE_ENTRIES` seniorryttere (hverken akademi eller pensionerede), vises dashboardets vedvarende advarsel. Indbakken får højst én besked pr. sæson, løbsdag og vindue, når første relevante seniorstart er inden for 24 timer, og igen inden for 3 timer, hvis manglen består. Flere løb samme løbsdag samles. Frosne, parkerede, AI- og testhold samt afmeldte løb udelukkes. Beskeden leder til markedet. Den eksisterende holdudtagelses-påmindelse undertrykkes for disse hold i cron, så assistenten ikke lover at kunne skaffe ryttere; når truppen når gulvet, kan udtagelses-påmindelsen virke normalt igen. Markedets særskilte risikobuffer ændres ikke. Implementering: `seniorStartReminder.js`, `selectionWarningSweep.js`, `DashboardPage.jsx`.
 
-**Løbsdags-dækning (#7339, ejer 1/11):** Har et managerhold flere seniorløb samme løbsdag, end de raske seniorer kan fylde til gulvet (fx 16 raske over 3 løb = 2 løb), får det én besked pr. sæson og løbsdag, når første start er inden for 24 timer: "du kan kun stille hold i X af Y løb". Skader vurderes mod løbsdagens dato. Hold under gulvet i aktive seniorer ejes af påmindelsen ovenfor; et hold med nok aktive men for få raske får denne besked (også med 0 løb). Samme sweep, filtre og vindue som #5867, type `selection_warning` med link til kalenderen. Implementering: `raceDayCoverageReminder.js` (kaldt fra `seniorStartReminder.js`).
+**Løbsdags-dækning (#7339, ejer 1/11):** Har et managerhold flere seniorløb samme løbsdag, end de raske seniorer kan fylde til gulvet (fx 16 raske over 3 løb = 2 løb), får det én besked pr. sæson og løbsdag, når første start er inden for 24 timer: "du kan kun stille hold i X af Y løb". Skader vurderes mod løbsdagens dato. **3/11:** ryttere bundet i et andet løb på løbsdagen (fx et igangværende etapeløb; samme bindinger som entry-generatoren) tæller ikke som ledige, og også en dag med ét løb giver besked, når det ikke kan nå gulvet. Et etapeløb der må starte kort efter §6's regel A giver ingen besked. Hold under gulvet i aktive seniorer ejes af påmindelsen ovenfor; et hold med nok aktive men for få raske får denne besked (også med 0 løb). Samme sweep, filtre og vindue som #5867, type `selection_warning` med link til kalenderen. Implementering: `raceDayCoverageReminder.js` (kaldt fra `seniorStartReminder.js`).
 
 D-034's synlige halvdel: **før** assistenten må gøre noget, får manageren at vide at truppen
 mangler. Ren UI-tilstand - den skriver intet, sender ingen notifikation og læser ikke
@@ -325,8 +325,11 @@ Den viste `flat`-vektor er Københavns Klassikers egen (`OtherWorldTourC`, `fina
    kronologisk) og tages med, så længe alle medtagne kan nå gulvet; et løb får resten op til sit
    max, efter at de senere løb har fået reserveret deres gulv. Et løb der ikke kan nå gulvet står
    tomt i stedet for at binde 1-5 ryttere (16 ryttere over 3 løb à max 8 giver 8+8+0, 18 giver
-   6+6+6). Et etapeløb med ryttere nok til §6's regel A beholder dem. Løb uden konkurrent og hold
-   med ryttere nok fyldes uændret.
+   6+6+6). Et etapeløb med ryttere nok til §6's regel A beholder dem. Hold med ryttere nok fyldes
+   uændret. **Sweepen (3/11):** også et løb uden konkurrent står tomt i stedet for at få 1-5
+   ryttere, når resten af truppen er bundet andetsteds (fx i et igangværende etapeløb); samme
+   adfærd som redningen ved start (`dropBelowFloor` i `runRaceEntryGenerator`). Managerens egne
+   knapper (Race Hub, indbakken) fylder som før.
 
 ---
 
