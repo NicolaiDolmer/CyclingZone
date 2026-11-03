@@ -466,6 +466,18 @@ export function resolveStaticFile(distDir, urlPath, isFile) {
 
 const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
+// #7563: POST-kald der KUN laeser. Hver sti er gennemgaaet i backend (ingen
+// insert/update/upsert/delete/rpc i ruten), ellers hoerer den ikke til her.
+// Blokeres de, viser billederne "Henter…"/"—" og giver falske fund.
+//   /api/scouting/estimates: backend/routes/api.js (viewer-maskerede estimater)
+export const READ_ONLY_POST_PATHS = Object.freeze(["/api/scouting/estimates"]);
+
+// #7563: desktop-tabeller har egen lodret scroll (SCROLLER i
+// frontend/src/components/ui/dataTableStyles.js, #4747). Et helsidebillede ser
+// kun det synlige vindue, saa graensen slaas fra i billedstationens browser.
+export const UNFOLD_SCROLLERS_CSS =
+  '[class*="max-h-[calc(100dvh"]{max-height:none!important;overflow-y:visible!important}';
+
 function pathnameOf(url) {
   try { return new URL(String(url)).pathname; } catch { return String(url); }
 }
@@ -478,10 +490,14 @@ function pathnameOf(url) {
  * den, doer sessionen efter en time, og "eet login" holder ikke.
  * En `--mock-rpc` er IKKE en undtagelse her: POST /rest/v1/rpc/<fn> er stadig
  * en skrivning for vagten; mocken svarer bare foer vagten ser kaldet (mockFor).
+ * #7563: POST til en sti i READ_ONLY_POST_PATHS er en laesning.
  */
 export function isWriteRequest(method, url) {
-  if (READ_METHODS.has(String(method).toUpperCase())) return false;
-  return !/\/auth\/v1\/token$/.test(pathnameOf(url));
+  const verb = String(method).toUpperCase();
+  if (READ_METHODS.has(verb)) return false;
+  const path = pathnameOf(url);
+  if (verb === "POST" && READ_ONLY_POST_PATHS.includes(path)) return false;
+  return !/\/auth\/v1\/token$/.test(path);
 }
 
 /** `POST /auth/v1/logout` (supabase-js signOut). Besvares 204 OG logges. */
