@@ -146,8 +146,11 @@ function floorAwareCap({ race, available, later, availableFor, strategy }) {
  * forbruger rytterens tid, så et overlappende auto-løb ikke dobbeltbooker rytteren,
  * men der skrives ingen picks for selve det låste løb. Tom default → uændret adfærd
  * for eksisterende kald.
+ *
+ * `dropBelowFloor` (#7339 B, valgfri): et løb der ikke kan nå sit gulv får 0 picks i
+ * stedet for 1-5. Sweepen (runRaceEntryGenerator) sætter den; default = uændret adfærd.
  */
-export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows = [], strategy = null }) {
+export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows = [], strategy = null, dropBelowFloor = false }) {
   // Kronologisk, stabil rækkefølge: tidligste vindue først, så race_id.
   const ordered = [...races].sort(
     (a, b) => (a.window?.start ?? 0) - (b.window?.start ?? 0) || String(a.race_id).localeCompare(String(b.race_id))
@@ -211,9 +214,16 @@ export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows =
       sizeRule = { ...(race.sizeRule || SELECTION_SIZE.default), max: cap };
       if (reserved.size) pool = available.filter((r) => !reserved.has(r.rider_id));
     }
-    const picks = sizeRule?.max === 0
+    let picks = sizeRule?.max === 0
       ? []
       : autopickTeamSelection({ riders: pool, stages: race.stages, sizeRule, preference });
+    // #7339 B (3/11): sweepen (dropBelowFloor) skriver 0 i stedet for 1-5 ryttere, når
+    // løbet ikke kan nå gulvet (fx fordi et igangværende etapeløb binder resten af truppen):
+    // de ville alligevel blive taget ud ved start. Samme adfærd som redningen ved start
+    // (raceRunner.fillMissingTeamEntries), og rytterne står frie til et andet løb. Gulvet er
+    // raceEntryFloor (manuelle ryttere tæller med); et etapeløb følger #6739 regel A via
+    // viableMinimum. Managerens egne knapper (Race Hub, indbakken) er uændrede.
+    if (dropBelowFloor && picks.length && picks.length < viableMinimum(race)) picks = [];
     out[race.race_id] = picks;
     for (const p of picks) {
       if (!busy.has(p.rider_id)) busy.set(p.rider_id, []);
@@ -940,7 +950,7 @@ export async function runRaceEntryGenerator({
       }));
       const assignment = assignTeamAcrossRaces({
         riders: ridersFor(team.id, poolSquad), races: teamRaces, lockedWindows,
-        strategy: strategyByTeam.get(team.id) ?? null,
+        strategy: strategyByTeam.get(team.id) ?? null, dropBelowFloor: true, // #7339 B
       });
       for (const [race_id, picks] of Object.entries(assignment)) {
         // #3113: en enhed med NUL picks skal STADIG stages. Tidligere sprang vi den over,
@@ -1255,11 +1265,12 @@ export async function runRaceEntryGenerator({
     lockedWindows.push(...(await siblingLockedWindows({ raceId, teamId, window })));
     const teamRaces = [{
       race_id: raceId, window, stages: stagesByRace.get(raceId) || [], sizeRule: adjSizeRule,
+      floor: Math.max(0, MIN_RACE_ENTRIES - manualRiders.length), // #7339 B: manuelle ryttere tæller mod gulvet
       excludedRiderIds: trainNowLockedByRace.get(raceId), // #6139
     }];
     const assignment = assignTeamAcrossRaces({
       riders: ridersFor(teamId, raceSquadOf(race)), races: teamRaces, lockedWindows,
-      strategy: strategyByTeam.get(teamId) ?? null,
+      strategy: strategyByTeam.get(teamId) ?? null, dropBelowFloor: true, // #7339 B
     });
     let picks = assignment[raceId] || [];
     // Top-up (delvis manuel trup): den manuelle trup ejer special-rollerne → auto-picks

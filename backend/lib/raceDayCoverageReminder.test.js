@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   groupTeamRaceDays, planRaceDayCoverageReminders, buildRaceDayCoverageNotification, sendRaceDayCoverageReminders,
-  RACE_DAY_COVERAGE_TYPE,
+  defaultFetchSeniorRoster, RACE_DAY_COVERAGE_TYPE,
 } from "./raceDayCoverageReminder.js";
 import { runSeniorStartReminderSweep } from "./seniorStartReminder.js";
 import { isKnownNotificationType } from "./notificationTypes.js";
@@ -19,13 +19,99 @@ const threeSameDay = () => ({
   ]),
 });
 
-test("#7339 groupTeamRaceDays: én gruppe pr. hold og løbsdag, kun dage med 2+ løb", () => {
+test("#7339 groupTeamRaceDays: én gruppe pr. hold og løbsdag, også dage med ét løb (A, 3/11)", () => {
   const { races, scheduleByRace } = threeSameDay();
   races.push(race("solo"));
   scheduleByRace.set("solo", [{ race_id: "solo", scheduled_at: "2026-11-01T20:00:00.000Z", game_day: 11 }]);
   const groups = groupTeamRaceDays({ teams: [team("t1")], races, scheduleByRace, now: NOW });
-  assert.equal(groups.length, 1);
-  assert.deepEqual([groups[0].teamId, groups[0].gameDay, groups[0].raceIds], ["t1", 12, ["a", "b", "c"]]);
+  assert.deepEqual(groups.map((g) => [g.teamId, g.gameDay, g.raceIds]), [["t1", 11, ["solo"]], ["t1", 12, ["a", "b", "c"]]]);
+});
+
+// #7339 A (3/11): live-formen. 16 seniorer; et igangværende etapeløb (løbsdag 22-49) binder
+// 8 og et andet (30-36) binder 7, så der er 1 ledig senior på løbsdag 33.
+const bound = (raceId, start, end) => ({ race_id: raceId, window: { start, end } });
+const liveRoster = () => [
+  ...Array.from({ length: 8 }, () => ({ injuredUntil: null, bindings: [bound("gt", 22, 49)] })),
+  ...Array.from({ length: 7 }, () => ({ injuredUntil: null, bindings: [bound("tour", 30, 36)] })),
+  { injuredUntil: null, bindings: [] },
+];
+const day33 = (ids) => ({
+  races: ids.map((id) => race(id)),
+  scheduleByRace: new Map(ids.map((id, i) => sched(id, `2026-11-02T0${8 + i}:00:00.000Z`, 33))),
+});
+
+test("#7339 A: ryttere bundet i igangværende etapeløb trækkes fra; ét løb under gulvet giver besked", () => {
+  const { races, scheduleByRace } = day33(["oostende"]);
+  const groups = groupTeamRaceDays({ teams: [team("t1")], races, scheduleByRace, now: NOW });
+  const planned = planRaceDayCoverageReminders({
+    groups, rosterByTeam: new Map([["t1", liveRoster()]]), seniorCountsByTeam: new Map([["t1", 16]]),
+  });
+  assert.deepEqual(planned.map((p) => [p.teamId, p.gameDay, p.fieldable, p.total]), [["t1", 33, 0, 1]]);
+});
+
+test("#7339 A: bindinger i dagens egne løb og på andre løbsdage gør ikke rytteren optaget", () => {
+  const { races, scheduleByRace } = day33(["a", "b"]);
+  const groups = groupTeamRaceDays({ teams: [team("t1")], races, scheduleByRace, now: NOW });
+  const roster = [
+    ...Array.from({ length: 6 }, () => ({ injuredUntil: null, bindings: [bound("a", 33, 33)] })), // auto-fyldt i dagens løb
+    ...Array.from({ length: 6 }, () => ({ injuredUntil: null, bindings: [bound("gt", 20, 32)] })), // etapeløb slutter dagen før
+  ];
+  const planned = planRaceDayCoverageReminders({ groups, rosterByTeam: new Map([["t1", roster]]) });
+  assert.deepEqual(planned, [], "12 ledige dækker begge løb");
+});
+
+test("#7339 A (Codex): et etapeløb der må starte kort efter regel A (#6739) giver ingen besked", () => {
+  const { races, scheduleByRace } = day33(["stage"]);
+  const groups = groupTeamRaceDays({ teams: [team("t1")], races, scheduleByRace, now: NOW });
+  const roster = (free) => [
+    ...Array.from({ length: free }, () => ({ injuredUntil: null, bindings: [] })),
+    ...Array.from({ length: 2 }, () => ({ injuredUntil: null, bindings: [bound("other", 33, 33)] })),
+  ];
+  const plan = (free, stageRaceIds) => planRaceDayCoverageReminders({
+    groups, rosterByTeam: new Map([["t1", roster(free)]]), seniorCountsByTeam: new Map([["t1", 10]]), stageRaceIds,
+  }).length;
+  assert.equal(plan(4, new Set(["stage"])), 0, "4 ledige + 2 i et andet løb på startdagen: etapeløbet starter");
+  assert.equal(plan(4, new Set()), 1, "et endagsløb følger gulvet");
+  assert.equal(plan(3, new Set(["stage"])), 1, "under regel A's minimum: besked");
+});
+
+test("#7339 A (Codex): sweepen slår løbsformen op for dagens eneste løb", async () => {
+  const { races, scheduleByRace } = day33(["stage"]);
+  const roster = [
+    ...Array.from({ length: 4 }, () => ({ injuredUntil: null, bindings: [] })),
+    ...Array.from({ length: 2 }, () => ({ injuredUntil: null, bindings: [bound("other", 33, 33)] })),
+  ];
+  let asked = null;
+  const result = await sendRaceDayCoverageReminders({
+    supabase: {}, now: NOW, season: { id: "s5", number: 5 }, teams: [team("t1")], races, scheduleByRace,
+    seniorCountsByTeam: new Map([["t1", 6]]), notify: async () => { throw new Error("no notify"); },
+    fetchRoster: async () => new Map([["t1", roster]]),
+    fetchStageRaceIds: async ({ raceIds }) => { asked = raceIds; return new Set(["stage"]); },
+  });
+  assert.deepEqual(asked, ["stage"]);
+  assert.equal(result.planned, 0);
+});
+
+test("#7339 A: et hold med nok ledige til sit ene løb får ingen besked", () => {
+  const { races, scheduleByRace } = day33(["solo"]);
+  const groups = groupTeamRaceDays({ teams: [team("t1")], races, scheduleByRace, now: NOW });
+  const planned = planRaceDayCoverageReminders({ groups, rosterByTeam: new Map([["t1", roster(6)]]) });
+  assert.deepEqual(planned, []);
+});
+
+test("#7339 A: sweepen sender beskeden med sæson og løbsdage til trup-opslaget", async () => {
+  const { races, scheduleByRace } = day33(["oostende"]);
+  const { sent, notify } = dedupingNotify();
+  let asked = null;
+  const result = await sendRaceDayCoverageReminders({
+    supabase: {}, now: NOW, season: { id: "s5", number: 5 }, teams: [team("t1")], races, scheduleByRace, notify,
+    seniorCountsByTeam: new Map([["t1", 16]]),
+    fetchRoster: async (args) => { asked = args; return new Map([["t1", liveRoster()]]); },
+    fetchStageRaceIds: async () => new Set(), // endagsløb
+  });
+  assert.deepEqual([asked.seasonId, asked.gameDays, asked.teamIds], ["s5", [33], ["t1"]]);
+  assert.equal(result.sent, 1);
+  assert.deepEqual(sent[0].args.metadata.messageParams, { gameDay: 33, fieldable: 0, total: 1, min: 6 });
 });
 
 test("#7339 groupTeamRaceDays: afmeldte løb, anden pulje, ungdom, AI-hold og løb uden for 24t tæller ikke", () => {
@@ -96,10 +182,53 @@ test("#7339 dedup: én besked pr. hold pr. løbsdag på tværs af gentagne ticks
   assert.equal(sent[0].args.metadata.messageParams.fieldable, 2);
 });
 
-test("#7339 sweep: henter ikke trup-tal når ingen hold har flere løb samme dag", async () => {
+// Minimal PostgREST-fake: hver tabel giver sine rækker; filtrene logges så forespørgslen kan tjekkes.
+function fakeSupabase(tables) {
+  const log = [];
+  const from = (table) => {
+    const calls = [];
+    log.push({ table, calls });
+    const q = new Proxy({}, {
+      get(_, prop) {
+        if (prop === "then") return (resolve) => resolve({ data: tables[table] ?? [], error: null });
+        return (...args) => { calls.push([prop, ...args]); return q; };
+      },
+    });
+    return q;
+  };
+  return { supabase: { from }, log };
+}
+
+test("#7339 A: defaultFetchSeniorRoster henter bindinger fra generatorens kilde og knytter dem til rytteren", async () => {
+  const { supabase, log } = fakeSupabase({
+    riders: [{ id: "r1", team_id: "t1" }, { id: "r2", team_id: "t1" }],
+    rider_condition: [{ rider_id: "r2", injured_until: "2026-11-05" }],
+    race_entries: [{ race_id: "gt", rider_id: "r1", team_id: "t1", binding_span: "[22,50)" }],
+    race_day_participation: [{ race_id: "x", rider_id: "r2", game_day: 33 }],
+  });
+  const roster = await defaultFetchSeniorRoster({ supabase, teamIds: ["t1"], today: "2026-11-01", seasonId: "s5", gameDays: [33, 34] });
+  assert.deepEqual(roster.get("t1"), [
+    { injuredUntil: null, bindings: [{ race_id: "gt", window: { start: 22, end: 49 } }] },
+    { injuredUntil: "2026-11-05", bindings: [{ race_id: "x", window: { start: 33, end: 33 } }] },
+  ]);
+  const entries = log.find((l) => l.table === "race_entries").calls;
+  assert.ok(entries.some(([op, col, v]) => op === "eq" && col === "races.season_id" && v === "s5"), "sæson-scopet");
+  assert.ok(entries.some(([op, col, v]) => op === "overlaps" && col === "binding_span" && v === "[33,34]"), "kun løbsdagene");
+  const part = log.find((l) => l.table === "race_day_participation").calls;
+  assert.ok(part.some(([op, col, v]) => op === "eq" && col === "season_id" && v === "s5"));
+});
+
+test("#7339 A: uden sæson-id hentes ingen bindinger (ingen sæson-blanding)", async () => {
+  const { supabase, log } = fakeSupabase({ riders: [{ id: "r1", team_id: "t1" }] });
+  const roster = await defaultFetchSeniorRoster({ supabase, teamIds: ["t1"], today: "2026-11-01", gameDays: [33] });
+  assert.deepEqual(roster.get("t1"), [{ injuredUntil: null, bindings: [] }]);
+  assert.ok(!log.some((l) => l.table === "race_entries"));
+});
+
+test("#7339 sweep: henter ikke trup-tal når intet løb starter inden for vinduet", async () => {
   const result = await sendRaceDayCoverageReminders({
     supabase: {}, now: NOW, season: { number: 5 }, teams: [team("t1")], races: [race("a")],
-    scheduleByRace: new Map([sched("a", "2026-11-02T08:00:00.000Z", 12)]), notify: async () => { throw new Error("no notify"); },
+    scheduleByRace: new Map([sched("a", "2026-11-03T13:00:00.000Z", 13)]), notify: async () => { throw new Error("no notify"); },
     fetchRoster: async () => { throw new Error("should not fetch"); },
   });
   assert.equal(result.planned, 0);

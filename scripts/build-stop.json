@@ -383,6 +383,18 @@
     {
       "issue": 7578,
       "why": "Regel- og kontekstfiler: samlet oprydning efter gennemsyn, ejer-go 3/11 i chat"
+    },
+    {
+      "issue": 7582,
+      "why": "CI-hastighed uden svagere gates, ejer-go 3/11 i chat"
+    },
+    {
+      "issue": 7583,
+      "why": "TypeScript-retning: spejderregel + omskrivning en fil ad gangen, ejer-go 3/11 i chat"
+    },
+    {
+      "issue": 7585,
+      "why": "Til dørs auto-bevis efter merge, ejer-go 3/11 i chat"
     }
   ],
   "brandList": [
