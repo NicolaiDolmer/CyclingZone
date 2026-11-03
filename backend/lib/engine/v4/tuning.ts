@@ -481,7 +481,7 @@ export const CLIMB_SELECTION_EXTRA_TUNING = deepFreeze(climbSelectionExtra);
 export const QUEEN_STAGE_GAP_7236_TUNING = deepFreeze({
   profiles: ["mountain", "high_mountain"] as readonly ProfileType[],
   capRank: 10, // loftet maales paa denne favorit (udbruddet regnes fra)
-  capSeconds: 150, // samme loft som topankomstens baand for nr. 10
+  capSeconds: 150, // loftet for favorit nr. capRank over toppen (kalibrering privat)
   maxTopToFinishKm: 13, // kun naar resten fra toppen til maal er kortere end dette (lange nedkoersler uroerte)
 });
 

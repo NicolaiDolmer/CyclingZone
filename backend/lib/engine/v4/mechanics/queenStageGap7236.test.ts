@@ -66,6 +66,23 @@ test("#7236: over loftet ligger favorit nr. capRank paa loftet; raekkefoelge og 
   for (const x of out) assert.ok(x.gap_seconds <= (groups.find((y) => y.id === x.id) as RaceGroup).gap_seconds, `${x.id}: et hul vokser aldrig`);
 });
 
+test("#7236: et stykke af udbruddet bag favoritterne foelger loftet, saa ingen favorit springer forbi det", () => {
+  const over = Q.capSeconds * 2;
+  const groups = [
+    g("brk", 0, 3, { kind: "breakaway", origin: "breakaway" }),
+    g("front", 60, 2, { kind: "peloton" }),
+    g("dropped", 60 + over * 0.5, 1, { kind: "breakaway", origin: "breakaway" }), // sat af udbruddet, nu bag favoritterne
+    g("b", 60 + over * 0.6, 3),
+    g("d", 60 + over, Q.capRank - 5),
+  ];
+  const out = queenStageTopCap7236(groups);
+  const by = new Map(out.map((x) => [x.id, x.gap_seconds]));
+  assert.equal(by.get("brk"), 0, "udbruddet foran favoritterne flyttes aldrig");
+  assert.equal((by.get("d") as number) - 60, Q.capSeconds, "stykket af udbruddet taeller ikke med i nr. capRank");
+  assert.ok((by.get("dropped") as number) < (by.get("b") as number), "raekkefoelgen er uaendret: b springer ikke forbi");
+  assert.ok((by.get("dropped") as number) < 60 + over * 0.5, "stykket bag favoritterne foelger loftet");
+});
+
 test("#7236: udbruddet taeller ikke med i favoritternes nr. capRank", () => {
   const groups = [g("brk", 0, 20, { kind: "breakaway", origin: "breakaway" }), g("front", 300, 2, { kind: "peloton" }), g("b", 330, 3)];
   assert.equal(queenStageTopCap7236(groups), groups, "kun fem favoritter: intet nr. capRank, intet loft");

@@ -953,7 +953,10 @@ export function queenStageTopCap7236Applies(
  * favoritgruppe, presses hullerne op til ham ind under loftet i samme forhold, og alle
  * bag ham rykker det samme stykke frem. Under loftet: uroert (samme array). Raekkefoelgen
  * og de indbyrdes forhold foran ham bevares, saa en staerkere klatrer aldrig mister sin
- * plads eller sin fordel. Dagens udbrud og den forreste favoritgruppe flyttes aldrig. REN.
+ * plads eller sin fordel. Dagens udbrud foran favoritterne og den forreste favoritgruppe
+ * flyttes aldrig. Et stykke af udbruddet der er sat bag den forreste favoritgruppe, taeller
+ * ikke med i nr. `capRank`, men foelger samme loft, saa ingen favoritgruppe springer forbi
+ * det (raekkefoelgen er uaendret for alle grupper). REN.
  */
 export function queenStageTopCap7236(
   groups: readonly RaceGroup[],
@@ -974,7 +977,7 @@ export function queenStageTopCap7236(
   const scale = q.capSeconds / rankGap;
   const shift = rankGap - q.capSeconds;
   return groups.map((g) => {
-    if (g.origin === "breakaway" || g.rider_ids.length === 0) return g;
+    if (g.rider_ids.length === 0) return g;
     const rel = g.gap_seconds - front;
     if (!(rel > 0)) return g;
     const capped = rel <= rankGap ? rel * scale : rel - shift;
