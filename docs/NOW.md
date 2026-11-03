@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (3/11 eftermiddag):** næste PC1-session følger prompten på [#7495](https://github.com/NicolaiDolmer/CyclingZone/issues/7495#issuecomment-6603794435): merge det klare → Til dørs-sweep → brand-fejl (#7473, #6912, #7236, #7339 A+B, #7489) → race engine/løbsdag først, så udvikling/taktik/træning → betaer og klare kontakter (race-breakaway-outlook/score B/auto-calendar frist 8/11) kun med ejerens "kør". Codex: egne PR'er (#7530-#7532 konflikt) + Til dørs-beviser. Ejer-valg venter: #6950 (8/11), #7339 C/D. Løbsbiblioteket live 3/11. Ellers: #6950 · #6665 forside · #7462.
+> **🎯 Next action (3/11 eftermiddag):** prompten på [#7495](https://github.com/NicolaiDolmer/CyclingZone/issues/7495#issuecomment-6603794435): review/merge bølgens PR'er (#7572-#7577 m.fl.) → #6912 kurve (ejer-go) efter #7260-oprydning → #7236 → betaer/kontakter (frist 8/11) kun med "kør". Codex: egne PR'er + Til dørs-beviser. Ejer-valg venter: #6950 (8/11), #7339 C/D, luk #7473.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, flag off): ejeren har ikke besluttet om det skal i spillet; kurve "6 kombineret" (#3564) indgår i den samlede måling.
 >
 > **🤖 Working agent:** PC1-eftermiddagssession 3/11 (ejer merge-kø + NOW.md, overdraget 14:45 på #7495). Bølge kører: #7339 A+B, #7489 (byg) + #7473/#7236/#6912/#7260 (undersøgelse).
