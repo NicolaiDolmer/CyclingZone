@@ -2177,8 +2177,9 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       : segmentLengthKm;
     let maxGapSeconds = 0;
     let oneDayScale = 1; // #6428 (KUN official_times_v3), se nedenfor
-    // #6912 (KUN kontakten breakawayCurve6912, interesserede hold): forspringskurven (breakawayCurve6912.ts).
-    const curveOn = breakaway.origin === "breakaway" && breakawayCurve6912Applies(ctx.breakawayCurve6912, ctx.route.profile_type) && (p2Interest?.teamIds.length ?? 0) > 0;
+    // #6912 (KUN kontakten breakawayCurve6912, interesserede hold, ikke-farligt udbrud): forspringskurven
+    // (breakawayCurve6912.ts). Et farligt udbrud jages som foer (GC-bremsen og snoren ejer det).
+    const curveOn = breakaway.origin === "breakaway" && !dangerous && breakawayCurve6912Applies(ctx.breakawayCurve6912, ctx.route.profile_type) && (p2Interest?.teamIds.length ?? 0) > 0;
     let curvePeak = 0;
     let curveTop = formationKm;
     // #5578: official_times_v2's kalibrerede lad-gaa-knapper (timeModel.ts); neutrale ellers.
@@ -2226,7 +2227,11 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       if (oneDayCap !== undefined && maxGapSeconds > oneDayCap) oneDayScale = Math.max(INITIAL_GAP_SECONDS, oneDayCap) / maxGapSeconds;
       if (curveOn) {
         // #6912: vaeksten flader ud mod toppen, og lad-gaa-fasen slutter dér; loftet er uaendret.
-        curvePeak = curvePeakSeconds({ ceilingSeconds: maxGapSeconds, profileType: ctx.route.profile_type, initialGapSeconds: INITIAL_GAP_SECONDS });
+        // Tolererer feltet intet forspring (toppen = hovedstarten), er der ingen kurve: lad-gaa-fasen som foer.
+        const peak = curvePeakSeconds({ ceilingSeconds: maxGapSeconds, profileType: ctx.route.profile_type, initialGapSeconds: INITIAL_GAP_SECONDS });
+        curvePeak = peak > INITIAL_GAP_SECONDS ? peak : 0;
+      }
+      if (curvePeak > 0) {
         const curveInput = { formationKm, peakSeconds: curvePeak, secondsPerKm: letGoRate, initialGapSeconds: INITIAL_GAP_SECONDS };
         curveTop = curveTopKm(curveInput);
         ({ letGoKm, chaseKm } = curveLetGoSplitKm({ ...curveInput, fromKm: ctx.segment.from_km, toKm: ctx.segment.to_km }));

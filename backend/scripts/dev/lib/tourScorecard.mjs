@@ -615,6 +615,8 @@ function simulate({ v4, data, stages, profile, entrants, revision, gcStandings, 
     rulesRevision: revision, gcStandings, jerseyLeaders, // #5914/#6937: troejefoererne som i raceRunner
     // #6649: dagsformen er slukket i spillet; kun maalingen taender den (CZ_DAY_FORM_6649=1).
     ...(process.env.CZ_DAY_FORM_6649 === "1" ? { dayForm6649: true } : {}),
+    // #6912: forspringskurven er slukket i spillet; kun maalingen taender den (CZ_BREAKAWAY_CURVE_6912=1).
+    ...(process.env.CZ_BREAKAWAY_CURVE_6912 === "1" ? { breakawayCurve6912: true } : {}),
   });
 }
 
