@@ -56,13 +56,15 @@ function Get-BalanceInternalsState {
 function Get-BalanceInternalsUniqueFiles {
   # Filer i en RIGTIG mappe $Dir der IKKE findes med samme indhold i $Shared.
   # Returnerer { Files (alle relative stier); Unique; Conflicts (findes med andet
-  # indhold); Links (reparse points inde i mappen - kan ikke verificeres) }.
+  # indhold); Links (reparse points inde i mappen - kan ikke verificeres); Errors (scanning
+  # eller hash fejlede - ufuldstaendigt resultat, maa aldrig godkende sletning) }.
   # Get-ChildItem -Recurse foelger ikke junctions uden -FollowSymlink (PS 7).
   param([Parameter(Mandatory)][string]$Dir, [string]$Shared)
   $root = [IO.Path]::GetFullPath($Dir).TrimEnd([char]92)
-  $links = @(Get-ChildItem -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue |
+  $scanErrors = @()
+  $links = @(Get-ChildItem -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue -ErrorVariable +scanErrors |
     Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint } | ForEach-Object { $_.FullName })
-  $files = @(Get-ChildItem -LiteralPath $root -Recurse -File -Force -ErrorAction SilentlyContinue |
+  $files = @(Get-ChildItem -LiteralPath $root -Recurse -File -Force -ErrorAction SilentlyContinue -ErrorVariable +scanErrors |
     Where-Object { -not ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) })
   $all = @(); $unique = @(); $conflicts = @()
   foreach ($f in $files) {
@@ -70,11 +72,14 @@ function Get-BalanceInternalsUniqueFiles {
     $all += $rel
     $dest = if ($Shared) { Join-Path $Shared $rel } else { $null }
     if (-not $dest -or -not [IO.File]::Exists($dest)) { $unique += $rel; continue }
-    $a = (Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256).Hash
-    $b = (Get-FileHash -LiteralPath $dest -Algorithm SHA256).Hash
+    try {
+      $a = (Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256 -ErrorAction Stop).Hash
+      $b = (Get-FileHash -LiteralPath $dest -Algorithm SHA256 -ErrorAction Stop).Hash
+    } catch { $scanErrors += $_; $unique += $rel; continue }
     if ($a -ne $b) { $unique += $rel; $conflicts += $rel }
   }
-  return [pscustomobject]@{ Files = $all; Unique = $unique; Conflicts = $conflicts; Links = $links }
+  $errors = @($scanErrors | ForEach-Object { "$($_.TargetObject): $($_.Exception.Message)" })
+  return [pscustomobject]@{ Files = $all; Unique = $unique; Conflicts = $conflicts; Links = $links; Errors = $errors }
 }
 
 function Test-BalanceInternalsRemovable {
@@ -87,6 +92,9 @@ function Test-BalanceInternalsRemovable {
   if ($state.Kind -ne 'dir') { return [pscustomobject]@{ Ok = $true; Reason = $state.Kind; Unique = @() } }
   $shared = Get-SharedBalanceInternalsPath -SharedRoot $SharedRoot
   $scan = Get-BalanceInternalsUniqueFiles -Dir $state.Path -Shared $shared
+  if ($scan.Errors.Count -gt 0) {
+    return [pscustomobject]@{ Ok = $false; Reason = "balance-internals kunne ikke scannes fuldt ($($scan.Errors[0])) - kan ikke verificeres"; Unique = @() }
+  }
   if ($scan.Links.Count -gt 0) {
     return [pscustomobject]@{ Ok = $false; Reason = "balance-internals indeholder links ($($scan.Links[0])) - kan ikke verificeres"; Unique = @() }
   }
@@ -129,6 +137,7 @@ function Set-BalanceInternalsLink {
 
   if ($state.Kind -eq 'dir') {
     $scan = Get-BalanceInternalsUniqueFiles -Dir $state.Path -Shared $shared
+    if ($scan.Errors.Count -gt 0) { return [pscustomobject]@{ Ok = $false; Action = 'conflict'; Message = "$label kunne ikke scannes fuldt ($($scan.Errors[0])) - mappen er ikke roert" } }
     if ($scan.Links.Count -gt 0) { return [pscustomobject]@{ Ok = $false; Action = 'conflict'; Message = "$label indeholder links ($($scan.Links[0])) - mappen er ikke roert" } }
     if ($scan.Conflicts.Count -gt 0) {
       $sample = ($scan.Conflicts | Select-Object -First 3) -join ', '
@@ -149,7 +158,7 @@ function Set-BalanceInternalsLink {
     }
     # Bevis foer sletning: nu skal HVER fil findes med samme indhold i den delte mappe.
     $after = Get-BalanceInternalsUniqueFiles -Dir $state.Path -Shared $shared
-    if ($after.Unique.Count -gt 0 -or $after.Links.Count -gt 0) { return [pscustomobject]@{ Ok = $false; Action = 'error'; Message = "$label har stadig $($after.Unique.Count) fil(er) der ikke findes i den delte mappe - mappen er ikke slettet" } }
+    if ($after.Unique.Count -gt 0 -or $after.Links.Count -gt 0 -or $after.Errors.Count -gt 0) { return [pscustomobject]@{ Ok = $false; Action = 'error'; Message = "$label har stadig $($after.Unique.Count) fil(er) der ikke findes i den delte mappe - mappen er ikke slettet" } }
     # Ingen links inde i mappen (tjekket ovenfor), saa en rekursiv sletning foelger intet.
     Remove-Item -LiteralPath $state.Path -Recurse -Force
   }

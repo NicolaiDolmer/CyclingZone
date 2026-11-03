@@ -93,6 +93,28 @@ test("en lokal mappe flyttes ind uden overskrivning og erstattes af junctionen",
   assert.equal(fs.readFileSync(path.join(f.shared, "same.md"), "utf8"), "samme\n");
 });
 
+test("ufuldstaendig scanning (adgang naegtet) godkender aldrig flytning eller oprydning (Codex)", { skip }, () => {
+  const f = fixture();
+  const locked = path.join(f.bi, "laast");
+  fs.mkdirSync(locked, { recursive: true });
+  fs.writeFileSync(path.join(locked, "privat.md"), "privat\n");
+  const user = process.env.USERNAME;
+  const deny = spawnSync("icacls", [locked, "/deny", `${user}:(OI)(CI)(RX)`], { encoding: "utf8" });
+  assert.equal(deny.status, 0, deny.stdout + deny.stderr);
+  try {
+    const r = runCli(f.wt, f.shared);
+    assert.equal(r.code, 1, r.out);
+    assert.match(r.out, /kunne ikke scannes fuldt/);
+    assert.ok(!fs.lstatSync(f.bi).isSymbolicLink(), "mappen skal stadig vaere en rigtig mappe");
+    const ps = `. '${lib}'; $r = Test-BalanceInternalsRemovable -WorktreePath '${f.wt}' -SharedRoot '${f.shared}'; Write-Output ("OK=" + $r.Ok + " " + $r.Reason)`;
+    const t2 = spawnSync("pwsh", ["-NoProfile", "-NonInteractive", "-Command", ps], { encoding: "utf8" });
+    assert.match(t2.stdout, /OK=False .*kunne ikke scannes fuldt/, t2.stdout + t2.stderr);
+  } finally {
+    spawnSync("icacls", [locked, "/remove:d", user], { encoding: "utf8" });
+  }
+  assert.equal(fs.readFileSync(path.join(locked, "privat.md"), "utf8"), "privat\n", "den private fil er urort");
+});
+
 test("konflikt (samme navn, andet indhold): intet flyttes, intet slettes, exit 1", { skip }, () => {
   const f = fixture();
   fs.writeFileSync(path.join(f.shared, "x.md"), "delt version\n");
