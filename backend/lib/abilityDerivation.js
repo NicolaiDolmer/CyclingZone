@@ -4,6 +4,8 @@ import {
 // SSOT for launch-referenceåret + fødselsår-udtrækket. riderSeasonAge.js er bevidst
 // dependency-fri, så denne rene derivations-fil ikke trækker I/O med sig (#4455).
 import { LAUNCH_REFERENCE_YEAR, birthYearFrom } from "./riderSeasonAge.js";
+// #7560: den skalerede fyld-klemme holder startstyrken fast målt i den viste rating.
+import { DISPLAY_RECIPE_KEYS, ratingForRole } from "./weights/displayRecipes.js";
 
 // Evne-system v3 (#1122 / #1101-kæden) — fysiske evner afledes nu fra fysiologi-profiler
 // (rider_physiology_profiles); tekniske/mentale forbliver skill-stat-drevne.
@@ -117,9 +119,11 @@ export const FILL_TAIL_MAX_POTENTIALE = 2.5;
 // #7560 (ejer-valg B, 3/11): SKALERET klemme ved fødslen. Den gamle klemme er
 // min(evne, loft): den skærer toppen af profilen og lader bunden stå, så en
 // startrytter kunne læse som "loft/loft/1" og have flere evner lige højt på
-// toppen (= vilkårlig bedste rolle). Den skalerede klemme ganger rytterens
-// synlige profil med loft/max, så FORHOLDENE mellem evnerne bevares og
-// specialiteten stadig stikker op. Loftet er det samme; kun formen ændres.
+// toppen (= vilkårlig bedste rolle). Den skalerede klemme komprimerer rytterens
+// synlige profil lineært ned under loftet (topevnen = loftet), så rækkefølgen og
+// de indbyrdes afstande bevares og specialiteten stadig stikker op. Loftet og
+// den viste bedste rating (= startstyrken) er de samme som under min-reglen;
+// kun formen ændres.
 //
 // KUN NYE ryttere: tilstanden er PERSISTERET på rytteren (archetype_draw.fill_cap)
 // og sættes kun af starter-squad-allokeringen ved fødslen. Ryttere uden
@@ -140,11 +144,59 @@ export function withScaledFillCap(archetypeDraw) {
   return { ...archetypeDraw, fill_cap: FILL_CAP_MODE_SCALED };
 }
 
+// Bedste viste rolle-rating for et evne-sæt (samme opskrifter som bedste rolle nu).
+function bestDisplayedRating(abilities) {
+  let best = null;
+  for (const role of DISPLAY_RECIPE_KEYS) {
+    const r = ratingForRole(abilities, role);
+    if (r !== null && (best === null || r > best)) best = r;
+  }
+  return best;
+}
+
+// #7560: den skalerede profil, eller null når der intet er at klemme.
+//
+// Profilen komprimeres lineært ned mod toppen: f(v) = loft − (max − v)·k, så
+// topevnen lander på loftet og rækkefølgen + de indbyrdes afstande bevares.
+// k = 1 er den rene forskydning (alt flyttes lige meget ned), k → 0 lægger alt
+// op under loftet. SAMME STARTSTYRKE: k vælges som den STØRSTE komprimering
+// hvor rytterens bedste viste rolle-rating stadig er mindst den min-reglen gav
+// (bisektion; ratingen falder monotont med k). Startstyrken (den rating holdet
+// ser) er derfor uændret, mens profilen ikke længere er flad i toppen og 1-tal
+// i bunden. Kan ratingen ikke regnes (ingen opskrifts-evner), bruges min-reglen.
+function scaledProfile(out, profileKeys, cap) {
+  if (profileKeys.length === 0) return null;
+  const max = profileKeys.reduce((m, k) => Math.max(m, out[k]), -Infinity);
+  if (!(max > cap)) return null;
+  const minClamped = { ...out };
+  for (const k of profileKeys) minClamped[k] = Math.min(out[k], cap);
+  const target = bestDisplayedRating(minClamped);
+  if (target === null) return null;
+  const at = (k) => {
+    const next = {};
+    for (const key of profileKeys) {
+      const v = out[key];
+      // Ingen evne ≥ 1 under 1, ingen over loftet.
+      next[key] = Math.min(cap, Math.max(Math.min(v, 1), Math.round(cap - (max - v) * k)));
+    }
+    return next;
+  };
+  const strongEnough = (k) => bestDisplayedRating({ ...out, ...at(k) }) >= target;
+  if (strongEnough(1)) return at(1);
+  let lo = 0; // k = 0 (alt på loftet) er altid stærkt nok
+  let hi = 1;
+  for (let i = 0; i < 30; i++) {
+    const mid = (lo + hi) / 2;
+    if (strongEnough(mid)) lo = mid; else hi = mid;
+  }
+  return at(lo);
+}
+
 // Klem evne-objektet IN-PLACE til `cap` over nøglerne `keys`.
 //   mode "min":    out[k] = min(out[k], cap) — den historiske regel, uændret.
-//   mode "scaled": de synlige evner ganges med cap/max (max over de synlige
-//                  evner), så forholdene bevares; ingen evne under 1 bliver
-//                  lavere end den var, og ingen evne ≥ 1 rundes ned til 0.
+//   mode "scaled": de synlige evner komprimeres lineært mod toppen (max = cap)
+//                  med samme bedste viste rating som min-reglen; se
+//                  scaledProfile. Ingen evne ≥ 1 ender under 1, ingen over cap.
 //                  Skjulte evner (hidden_potential) er ikke en del af profilen
 //                  og min-klemmes som før.
 export function applyAbilityCap(out, cap, { keys = Object.keys(out), mode = "min" } = {}) {
@@ -152,14 +204,8 @@ export function applyAbilityCap(out, cap, { keys = Object.keys(out), mode = "min
   const finiteKeys = keys.filter((k) => Number.isFinite(out[k]));
   if (mode === FILL_CAP_MODE_SCALED) {
     const profileKeys = finiteKeys.filter((k) => !HIDDEN_ABILITIES.includes(k));
-    const max = profileKeys.reduce((m, k) => Math.max(m, out[k]), -Infinity);
-    if (max > cap) {
-      const factor = cap / max;
-      for (const k of profileKeys) {
-        const v = out[k];
-        out[k] = Math.min(cap, Math.max(Math.min(v, 1), Math.round(v * factor)));
-      }
-    }
+    const scaled = scaledProfile(out, profileKeys, cap);
+    if (scaled) Object.assign(out, scaled);
   }
   for (const k of finiteKeys) out[k] = Math.min(out[k], cap);
   return out;

@@ -38,8 +38,11 @@ import { PRIMARY_TYPE_MODE_FLAG_KEY } from "./primaryTypeModeFlag.js";
 // #5327: app_config (select(value).eq(key).maybeSingle()) for primær-type-kontakten.
 // `appConfig` er nøgle → værdi; en udeladt nøgle = rækken findes ikke. Hver læsning
 // logges i `appConfigReads`, så "læses ÉN gang pr. allokering" kan måles.
-function createRidersMock({ seedRiders = [], teamMarkers = {}, activeSeasonNumber = 1, appConfig = {} } = {}) {
+function createRidersMock({ seedRiders = [], teamMarkers = {}, activeSeasonNumber = 1, appConfig = {}, derivedAbilities = null } = {}) {
   const store = new Map();
+  // #7560: rider_derived_abilities, så bedste-rolle-cachen ved fødslen kan
+  // læse evnerne. Tom medmindre testen sender en evne-fabrik (derivedAbilities).
+  const abilityStore = new Map();
   const appConfigReads = [];
   for (const r of seedRiders) store.set(r.id, { ...r });
   const teams = new Map(Object.entries(teamMarkers));
@@ -59,6 +62,12 @@ function createRidersMock({ seedRiders = [], teamMarkers = {}, activeSeasonNumbe
       if (row) {
         row.base_value = 100_000 - i * 1000;
         row.current_production_value = 80_000 - i * 800;
+        if (derivedAbilities) {
+          const { primary_type = null, secondary_type = null, ...abilities } = derivedAbilities(row, i);
+          row.primary_type = primary_type;
+          row.secondary_type = secondary_type;
+          abilityStore.set(id, { rider_id: id, ...abilities });
+        }
       }
     });
   };
@@ -97,7 +106,20 @@ function createRidersMock({ seedRiders = [], teamMarkers = {}, activeSeasonNumbe
         };
         return tb;
       }
-      assert.equal(table, "riders", "single-team-allokering rører kun riders + teams + seasons + app_config");
+      if (table === "rider_derived_abilities") {
+        let inIds = null;
+        const ab = {
+          select() { return ab; },
+          in(_c, ids) { inIds = ids; return ab; },
+          order() { return ab; },
+          range() {
+            const rows = [...abilityStore.values()].filter((r) => !inIds || inIds.includes(r.rider_id));
+            return Promise.resolve({ data: rows.map((r) => ({ ...r })), error: null });
+          },
+        };
+        return ab;
+      }
+      assert.equal(table, "riders", "single-team-allokering rører kun riders + rider_derived_abilities + teams + seasons + app_config");
       let teamFilter = undefined;
       let inIds = null;
       const builder = {
