@@ -171,7 +171,7 @@ export function ittAbilityTuning(tuning: EngineTuning, rulesRevision: unknown): 
 }
 
 /**
- * #6595 (KUN s5_profiles_v3, TAENDT 31/10): enkeltstartens egen terraen-vaegt i fart-formlen.
+ * #6595 (s5_profiles_v3 og senere, live siden 31/10): enkeltstartens egen terraen-vaegt i fart-formlen.
  *
  * Vejetapens STRENGTH_SPEED_EXTRA_TUNING.terrainWeight daemper styrke-forskelle
  * paa fladt og rullende terraen, fordi aerodynamik og LAE dominerer dér: i en
@@ -190,29 +190,13 @@ export const S5_V3_ITT_TERRAIN_WEIGHT: Readonly<Record<SegmentKind, number>> = O
   rolling: 0.54,
 });
 
-// #6595 (TAENDT 31/10 paa ejerens go, genmaalt vaegt): s5_profiles_v3 er den AKTUELLE
-// revision (#7237), saa rettelsen kan ikke ligge bag revisionen alene (samme
-// moenster som #7280's tidligere ALL_OUT_7280_ACTIVE). Slukket er enkeltstarten
-// bit-identisk med main foer #6595.
-export const ITT_TERRAIN_6595_ACTIVE: boolean = true; // ejer-go 31/10, #6595
-
-// Kun tests og dev-benches maaler med kontakten taendt. Produktionskode kalder aldrig setteren.
-let benchOverride6595: boolean | null = null;
-/** KUN tests/dev-benches: taend/sluk #6595. `null` nulstiller til kontakten. */
-export function setIttTerrain6595ForBench(active: boolean | null): void {
-  benchOverride6595 = active === null ? null : active === true;
-}
-/** Er #6595 taendt (kontakten, eller en dev-bench)? Gaelder kun under s5_profiles_v3. */
-export function ittTerrain6595Active(): boolean {
-  return benchOverride6595 ?? ITT_TERRAIN_6595_ACTIVE;
-}
-
 /**
- * #6595: terraen-vaegten enkeltstarten regner fart med. Kun s5_profiles_v3 med
- * kontakten taendt faar enkeltstartens egen; ellers vejetapens (samme objekt).
+ * #6595 (live 31/10 paa ejerens go, #7260 fjernede kodekontakten): terraen-vaegten
+ * enkeltstarten regner fart med. s5_profiles_v3 og senere faar enkeltstartens
+ * egen; aeldre revisioner vejetapens (samme objekt, bit-identisk med foer #6595).
  */
 export function ittTerrainWeight(rulesRevision: unknown): Readonly<Record<SegmentKind, number>> {
-  return ittTerrain6595Active() && isS5ProfilesV3OrLater(rulesRevision) ? S5_V3_ITT_TERRAIN_WEIGHT : STRENGTH_SPEED_EXTRA_TUNING.terrainWeight;
+  return isS5ProfilesV3OrLater(rulesRevision) ? S5_V3_ITT_TERRAIN_WEIGHT : STRENGTH_SPEED_EXTRA_TUNING.terrainWeight;
 }
 
 // ── Evne og fart ─────────────────────────────────────────────────────────────
@@ -501,7 +485,7 @@ export function simulateIndividualTimeTrialStage(
       ...summitFinishSingleFor(options.rulesRevision),
       ...(options.dayForm6649 && isS5ProfilesV3OrLater(options.rulesRevision) ? { dayForm6649: true as const } : {}), // #6649
     },
-    // #6595 (slukket): kun s5_profiles_v3 med kontakten taendt faar enkeltstartens egen terraen-vaegt; ellers vejetapens (samme objekt).
+    // #6595: s5_profiles_v3 og senere faar enkeltstartens egen terraen-vaegt; ellers vejetapens (samme objekt).
     // #7280: s5_profiles_v3 og senere faar alt ud's gevinst og pris mod uret.
     // #7332: s5_profiles_v3 og senere faar spar-prisen mod uret.
     individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning, climbShare, isS5ProfilesV3OrLater(options.rulesRevision), options.ittTerrainWeight ?? ittTerrainWeight(options.rulesRevision), isS5ProfilesV3OrLater(options.rulesRevision)),

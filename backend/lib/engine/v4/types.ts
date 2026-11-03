@@ -32,7 +32,7 @@ export type AbilityKey =
   | "tactics";
 
 // ── Rytterrolle (kopi af raceRoles.js VALID_RACE_ROLES) ───────────────────────
-// #5981 (KUN s5_profiles_v3, slukket): "co_captain" = delt kaptajn (mechanics/sharedCaptain.ts).
+// #5981 (KUN s5_profiles_v3, live): "co_captain" = delt kaptajn (mechanics/sharedCaptain.ts).
 export type RiderRole = "captain" | "sprint_captain" | "helper" | "hunter" | "free_role" | "co_captain";
 
 // M12 (effort-styring, ejer-valg 20/8 §4). WIRET 6/9 (#4632, model C):
@@ -228,7 +228,7 @@ export type StageInput = {
   // (mechanics/gcThreat.ts); legacy ignorerer feltet helt. Udeladt under
   // orders_gc_v1 = "missing" (aerlig diagnose, aldrig et opdigtet nul-hul).
   gc_context?: GcContext | null;
-  // #6649 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): dagsformen med forklaring
+  // #6649 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + app_config day_form_6649): dagsformen med forklaring
   // (mechanics/dayForm6649.ts). Broen saetter feltet kun naar kalderen eksplicit sender
   // dayForm6649=true (raceRunner: kun ved app_config day_form_6649 = "on"). Udeladt = den gamle dagsform.
   day_form_6649?: true | null;
@@ -316,7 +316,7 @@ export type KnownTimelineEventType =
   // #6804 P2 (ADDITIV, KUN s5_profiles_v3): forspringet vokser forbi det feltet tolererer,
   // fordi intet hold vil jage (mechanics/breakawayV3_6804.ts). params: { group_id }.
   | "breakaway_unchased"
-  // #6641/#7280 (ADDITIV, slukket alt ud-pakke): params { rider_id }.
+  // #6641/#7280 (ADDITIV, alt ud-pakken, KUN s5_profiles_v3): params { rider_id }.
   | "all_out_gain"
   | "all_out_cracked";
 
@@ -791,14 +791,15 @@ export type SegmentHookContext = {
   // #6187 (ADDITIVT og VALGFRIT): kun sat under orders_gc_v3 (og senere).
   // Udeladt = holdene jagter som under orders_gc_v2 (mechanics/breakaway.ts).
   ordersGcV3?: true;
-  // #6363 (ADDITIVT og VALGFRIT, KUN s5_profiles_v1, slukket): S5-etapeprofilernes
+  // #6363 (ADDITIVT og VALGFRIT, s5_profiles_v1 og senere): S5-etapeprofilernes
   // motor (s5Profiles.ts). Udeladt = alle aeldre revisioner, byte-identiske.
   s5ProfilesV1?: true;
-  // #6748 (ADDITIVT og VALGFRIT, KUN s5_profiles_v2, slukket): udbrudsopfoelgningen. Udeladt = v1.
+  // #6748 (ADDITIVT og VALGFRIT, s5_profiles_v2 og senere): udbrudsopfoelgningen. Udeladt = v1.
   s5ProfilesV2?: true;
-  // #6804 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, slukket): udbrudspakken trin 2 (breakawayV3_6804.ts). Udeladt = v2.
-  // #6938 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, slukket): v3-tilvalgene (styrt-udgang pr. terraen). Udeladt = v2.
-  // #6937 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, slukket): bjergpoint i favoritgruppen og lead-outens pris. Udeladt = v2.
+  // s5_profiles_v3 er den aktuelle revision, saa de tre v3-tilvalg herunder er live.
+  // #6804 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3): udbrudspakken trin 2 (breakawayV3_6804.ts). Udeladt = v2.
+  // #6938 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3): v3-tilvalgene (styrt-udgang pr. terraen). Udeladt = v2.
+  // #6937 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3): bjergpoint i favoritgruppen og lead-outens pris. Udeladt = v2.
   s5ProfilesV3?: true;
   // #6649 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + StageInput.day_form_6649): dagsformen med forklaring. Udeladt = som foer.
   dayForm6649?: true;

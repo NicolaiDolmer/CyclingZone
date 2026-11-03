@@ -1047,7 +1047,7 @@ const breakawayChaseV3 = {
 /** #6441 official_times_v3-jagten (deep-frosset). Se kommentaren ovenfor. */
 export const BREAKAWAY_CHASE_V3_TUNING = deepFreeze(breakawayChaseV3);
 
-// ── #6363 (KUN s5_profiles_v1, SLUKKET): S5-etapeprofilernes motor ────────────
+// ── #6363 (s5_profiles_v1 og senere, live): S5-etapeprofilernes motor ─────────
 // Spec docs/superpowers/specs/2026-10-12-s5-etapeprofiler-design.md §4. Ingen
 // aeldre revision laeser noget herfra (s5Profiles.ts mapper de nye ord til de
 // gamle under dem), saa alle eksisterende loeb er byte-identiske.
@@ -1596,7 +1596,7 @@ export type MountainSelectionV2Knobs = {
 /** #6084 orders_gc_v2-bjergselektion (deep-frosset). Se kommentaren ovenfor. */
 export const MOUNTAIN_SELECTION_V2_TUNING = deepFreeze(mountainSelectionV2);
 
-// ── #6804 (KUN s5_profiles_v3, SLUKKET): udbrudspakken trin 2 ────────────────
+// ── #6804 (KUN s5_profiles_v3, live): udbrudspakken trin 2 ───────────────────
 // Spec docs/superpowers/specs/2026-10-21-6804-udbrud-pr-loebsgruppe-design.md (oven paa
 // 2026-10-17-6804-hilly-breakaway-design.md P1-P5). Ét trin pr. commit; ingen aeldre
 // revision laeser noget herfra (mechanics/breakawayV3_6804.ts, gcThreat.ts). Tallene er kalibreret
@@ -1675,7 +1675,7 @@ const s5V3Breakaway = {
 /** #6804 s5_profiles_v3-udbrudspakken (deep-frosset). Se kommentaren ovenfor. */
 export const S5_V3_BREAKAWAY_TUNING = deepFreeze(s5V3Breakaway);
 
-// #7160 (KUN s5_profiles_v3, SLUKKET): favoritholdene lader et ufarligt udbrud gaa paa bjerg
+// #7160 (KUN s5_profiles_v3, live): favoritholdene lader et ufarligt udbrud gaa paa bjerg
 // (mechanics/breakawayInterest7160.ts). START-KANDIDATER: kalibreres bagefter i testporten med
 // prod-startlister (balance-internals/7160/, hard rule 17); ingen tal i kommentarer.
 export const S5_V3_MOUNTAIN_LET_GO_7160_TUNING = deepFreeze({

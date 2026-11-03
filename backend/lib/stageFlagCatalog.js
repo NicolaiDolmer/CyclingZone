@@ -77,8 +77,10 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "season_matrix_mobile", area: "season", label: "Sæsonmatrix på mobil — ny visning" },
   // #6590: web push, seedet off. Kræver VAPID_* på backend. Flip er ejer-only.
   { key: "push_enabled", area: "notifications", label: "Push-notifikationer" },
-  // #6570: etapeside 2.0 er nu den eneste etapeside; noeglen staar kun tilbage fordi patch notes
-  // peger paa den (maerket "Now for everyone"). Raekken i app_config fjernes af orkestratoren.
+  // #6570: etapeside 2.0 er nu den eneste etapeside; ingen kode laeser noeglen. Den staar kun
+  // tilbage fordi tre beta-noter i patch notes peger paa den (maerket "Now for everyone", se
+  // PLAYER_VISIBLE_FLAG_KEYS). Fjernes noeglen eller raekken i app_config, falder de noter
+  // tilbage til "beta" (#7260): ret noterne foerst, samme moenster som training_bulk_day.
   { key: "stage_page_v2", area: "race-day", label: "Etapeside 2.0" },
   // #6514: løbskort i kalenderen, status-prik og Løbshistorik. Seedet off (ejer 15/10).
   { key: "race_library_v2", area: "race-day", label: "Kalender-løbskort + Løbshistorik" },

@@ -1,5 +1,5 @@
 // backend/lib/engine/v4/mechanics/breakawayInterest7160P2.ts
-// #7160 valg A2 (ejer 25/10 runde 2, KUN s5_profiles_v3, SLUKKET): P2's snor gaelder ikke paa
+// #7160 valg A2 (ejer 25/10 runde 2, KUN s5_profiles_v3, live under den aktuelle revision): P2's snor gaelder ikke paa
 // bjerg, naar udbruddet er ufarligt for klassementet.
 //
 // #6804 P2 (breakawayV3_6804.ts) lofter lad-gaa-fasen ved det feltet tolererer (mellemzonen med

@@ -241,7 +241,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6595
     verified: 2026-10-31
-    note: Kodekontakt ITT_TERRAIN_6595_ACTIVE tændt 31/10 efter ejer-go, kun v3.
+    note: Tændt 31/10 efter ejer-go, kun v3. Kodekontakten ITT_TERRAIN_6595_ACTIVE er fjernet (#7260); reglen er nu kun bundet til revisionen.
 
   - id: race-itt-save-7332
     area: race-engine
