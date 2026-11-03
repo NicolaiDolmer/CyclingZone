@@ -576,6 +576,7 @@
     "stageLockedTitle": "Låst af løbet",
     "listNote": "Tryk på et program for at se ugen. Det kopieres ind i Plan, så du kan rette hvert felt bagefter.",
     "pickTarget": "Vælg først en rytter eller gruppe",
+    "pickTargetToPutOn": "Vælg hvem programmet skal på",
     "fitsType": "Passer til {type}",
     "otherPrograms": "Andre programmer",
     "current": "Nuværende",
