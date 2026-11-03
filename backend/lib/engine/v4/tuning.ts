@@ -475,6 +475,16 @@ const climbSelectionExtra = {
 /** M2 additiv selektions-tuning (deep-frosset). Se climbSelectionExtra-kommentaren ovenfor. */
 export const CLIMB_SELECTION_EXTRA_TUNING = deepFreeze(climbSelectionExtra);
 
+// #7236 (KUN s5_profiles_v3 + kontakten queen_stage_gap_7236, SLUKKET): loftet paa favoritternes
+// hul over sidste top paa en bjergetape med kort nedkoersel (mechanics/climbSelection.ts,
+// queenStageTopCap7236). Kalibreret privat (balance-internals/7236/, hard rule 17).
+export const QUEEN_STAGE_GAP_7236_TUNING = deepFreeze({
+  profiles: ["mountain", "high_mountain"] as readonly ProfileType[],
+  capRank: 10, // loftet maales paa denne favorit (udbruddet regnes fra)
+  capSeconds: 150, // samme loft som topankomstens baand for nr. 10
+  maxTopToFinishKm: 13, // kun naar resten fra toppen til maal er kortere end dette (lange nedkoersler uroerte)
+});
+
 // ── M1 (groups.mergeTailGroupsDetailed, #5813) — ADDITIV grupetto-samling ────
 // SS2's frosne GroupsTuning har kun den almindelige merge-taerskel. Se
 // groups.mergeTailGroupsDetailed for reglen og segmentLoop for hvornaar den

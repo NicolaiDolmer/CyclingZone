@@ -602,10 +602,13 @@ export async function main(argv = process.argv.slice(2), { now, clock, monotonic
     if (prev && existsSync(idsPath)) assertSameRaceSelection(parseIdsText(readFileSync(idsPath, "utf8")), raceIds, outDir);
     writeFileSync(idsPath, `${raceIds.join("\n")}\n`);
   }
+  // #7236: topgabets loft er en kontakt, ikke en revision; samme --out maa ikke blande med og uden.
+  if (prev && (prev.queenStageGap7236 === true) !== (process.env.CZ_QUEEN_STAGE_GAP_7236 === "1")) throw new Error(`${outDir} er koert ${prev.queenStageGap7236 ? "med" : "uden"} topgabets loft (CZ_QUEEN_STAGE_GAP_7236). Brug en ny --out.`);
   const thresholds = prev ? resolveReportThresholds(prev, opts) : loadThresholds(abs(opts.thresholds));
   const meta = {
     candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, parallel: opts.parallel, source, limit: opts.limit ?? prev?.limit ?? null, benchScope: opts.benchScope, thresholdsFile: resolveThresholdsFile(prev, opts), thresholds,
     syntheticField: opts.syntheticField, breakawayIntent: breakawayIntentMeta ?? { mode: opts.breakawayIntent ?? "none" }, routesFrom: opts.routesFrom, routesSignature: opts.routesSignature ?? null, season: opts.season, trackFatigue: opts.trackFatigue === true, field: inputs.field, routes: inputs.routes,
+    ...(process.env.CZ_QUEEN_STAGE_GAP_7236 === "1" ? { queenStageGap7236: true } : {}), // #7236: kortet viser om loftet var taendt
     // #6804/#2757: eksportens mappe, saa kortet (ogsaa --report-only) finder loebenes cache.json.
     cacheDir: fromDir ?? prev?.cacheDir ?? null,
   };
