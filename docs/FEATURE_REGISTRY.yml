@@ -370,14 +370,12 @@ features:
     area: stats
     title_en: Calendar race card and race history library
     title_da: Kalender-løbskort og løbshistorik
-    state: beta
+    state: live
     ssot: docs/CALENDAR_RULES.md
     epic: 6514
     flag: race_library_v2
-    verified: 2026-11-01
-    decision: ejer-beslutning
-    decide_by: 2026-11-05
-    note: Beta for beta-testere 1/11 (ejer-go, efter #7463 Vis-vælger). PR #6636 åben.
+    verified: 2026-11-03
+    note: Live for alle 3/11 (ejer-go #7495) efter #7534 og #7569; patch note 7.396.
     roadmap_en: "A race card in the calendar: tap a race to see terrain, how well it suits your team and your status. Switch between Calendar and Table, and browse every edition in Race history."
     roadmap_da: "Et løbskort i kalenderen: tryk på et løb og se terræn, hvor godt det passer dit hold og din status. Skift mellem Kalender og Tabel, og bladr i alle udgaver under Løbshistorik."
 
