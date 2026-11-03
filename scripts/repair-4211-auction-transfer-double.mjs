@@ -55,7 +55,8 @@ export function classifyListings({ activeAuctions, listings }) {
 async function fetchAll(supabase, table, select, apply) {
   const rows = [];
   for (let from = 0; ; from += 1000) {
-    let q = supabase.from(table).select(select).range(from, from + 999);
+    // Stabil orden, ellers kan range() springe raekker over eller tage dem to gange.
+    let q = supabase.from(table).select(select).order("id", { ascending: true }).range(from, from + 999);
     if (apply) q = apply(q);
     const { data, error } = await q;
     if (error) throw new Error(`${table}: ${error.message}`);

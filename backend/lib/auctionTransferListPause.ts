@@ -191,20 +191,27 @@ export async function resumePausedTransferListings(
       result.kept.push(listing.id);
       continue;
     }
-    if (decision === "resume") {
-      const { changed, error } = await setPausedListingStatus(supabase, listing.id, "open");
-      if (!error) {
-        if (changed) result.resumed.push(listing.id);
-        continue;
+    // Opus-review P3: en enkelt raekke der fejler (fx en trigger) maa ikke
+    // blokere alle pauser bag den, ellers rammer cronen samme raekke hvert minut.
+    try {
+      if (decision === "resume") {
+        const { changed, error } = await setPausedListingStatus(supabase, listing.id, "open");
+        if (!error) {
+          if (changed) result.resumed.push(listing.id);
+          continue;
+        }
+        if (error.code !== UNIQUE_VIOLATION) {
+          throw new Error(`resume transfer_listing ${listing.id}: ${error.message}`);
+        }
+        // En anden aktiv listing staar allerede paa rytteren: den pausede lukkes.
       }
-      if (error.code !== UNIQUE_VIOLATION) {
-        throw new Error(`resume transfer_listing ${listing.id}: ${error.message}`);
-      }
-      // En anden aktiv listing staar allerede paa rytteren: den pausede lukkes.
+      const { changed, error } = await setPausedListingStatus(supabase, listing.id, "withdrawn");
+      if (error) throw new Error(`withdraw paused transfer_listing ${listing.id}: ${error.message}`);
+      if (changed) result.withdrawn.push(listing.id);
+    } catch (err) {
+      captureException(err, { tags: { area: "auction_transfer_list_pause", step: "resume_listing" } });
+      result.error = result.error ?? errorMessage(err);
     }
-    const { changed, error } = await setPausedListingStatus(supabase, listing.id, "withdrawn");
-    if (error) throw new Error(`withdraw paused transfer_listing ${listing.id}: ${error.message}`);
-    if (changed) result.withdrawn.push(listing.id);
   }
 
   // Efter-tjek (Codex P2): en ny auktion kan vaere startet mellem opslaget

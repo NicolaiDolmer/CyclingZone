@@ -28,6 +28,7 @@ function makeReadOnlyFake(tables) {
       const b = {
         select() { return b; },
         range() { return b; },
+        order() { return b; },
         in(col, vals) { filters.push((r) => vals.includes(r[col])); return b; },
         eq(col, val) { filters.push((r) => r[col] === val); return b; },
         update() { writes += 1; return b; },
