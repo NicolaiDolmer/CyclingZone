@@ -5,8 +5,8 @@
 --
 -- ADDITIV OG IDEMPOTENT. Ingen eksisterende raekke aendres, intet slettes.
 --
--- Oprettes 'off'. Kun 'on' taender (beta taeller som slukket, samme laesning som
--- condition_model_v2). Virker kun naar condition_model_v2 er on; laeses af
+-- Oprettes 'off'. Kun 'on' taender (beta taeller som slukket: traetheden er en
+-- faelles tilstand for alle hold). Virker kun naar condition_model_v2 er on; laeses af
 -- backend/lib/conditionModelV2Flag.js (isRaceDateTrainingDayEnabled) i aftenens
 -- opgoerelse (dailyTrainingEngine.js) og i ugeprognosen (trainingWeekPlanForecast.js).
 -- Tallene ligger IKKE her (hard rule 17). Taendes af ejeren efter at have set

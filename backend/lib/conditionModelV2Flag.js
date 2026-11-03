@@ -15,9 +15,10 @@ export async function isConditionModelV2Enabled(supabase) {
 
 // #7536 (ejer-valg 3/11, løsning A): træning på frie pladser på en løbsdato vejer et
 // helt træningsdøgn. Kun meningsfuld under v2; off (eller manglende række) = dagens
-// v2-afregning. Strict som ovenfor. Kaldes kun når condition_model_v2 er on.
+// v2-afregning (beta tæller som off: én fælles tilstand for alle hold). Strict som
+// ovenfor. Kaldes kun når condition_model_v2 er on.
 export const RACE_DATE_TRAINING_DAY_FLAG_KEY = 'condition_v2_race_date_training_day';
 
 export async function isRaceDateTrainingDayEnabled(supabase) {
-  return readConditionWriterFlag(supabase, RACE_DATE_TRAINING_DAY_FLAG_KEY, { engineWrite: true });
+  return readConditionWriterFlag(supabase, RACE_DATE_TRAINING_DAY_FLAG_KEY); // kun 'on' tænder; beta = off
 }
