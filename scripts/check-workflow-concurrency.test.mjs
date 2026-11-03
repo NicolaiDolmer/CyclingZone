@@ -71,7 +71,7 @@ test('sikker blok består for PR + push + schedule + dispatch + merge_group', ()
 });
 
 test('cancel-in-progress: true på et workflow med push fejler', () => {
-  const text = `on:\n  pull_request:\n  push:\n    branches: [main]\nconcurrency:\n  group: g-\${{ github.sha }}\n  cancel-in-progress: true\n${JOBS}`;
+  const text = `on:\n  pull_request:\n  push:\n    branches: [main]\nconcurrency:\n  group: g-\${{ github.event.pull_request.number || github.sha }}\n  cancel-in-progress: true\n${JOBS}`;
   assert.deepEqual(rules(text), ['non-pr-cancel']);
 });
 
@@ -86,7 +86,7 @@ test('job-level cancel der kan ramme push fejler', () => {
 });
 
 test('ukendt cancel-udtryk på push-workflow fejler', () => {
-  const text = `on:\n  pull_request:\n  push:\nconcurrency:\n  group: g-\${{ github.sha }}\n  cancel-in-progress: \${{ github.ref != 'refs/heads/main' }}\n${JOBS}`;
+  const text = `on:\n  pull_request:\n  push:\nconcurrency:\n  group: g-\${{ github.event.pull_request.number || github.sha }}\n  cancel-in-progress: \${{ github.ref != 'refs/heads/main' }}\n${JOBS}`;
   assert.deepEqual(rules(text), ['non-pr-cancel']);
 });
 
