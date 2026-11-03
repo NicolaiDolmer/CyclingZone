@@ -379,6 +379,10 @@
     {
       "issue": 2635,
       "why": "Intern harness-schema-drift; ejer-go 2/11 i #7495 kommentar 6579459364"
+    },
+    {
+      "issue": 7578,
+      "why": "Regel- og kontekstfiler: samlet oprydning efter gennemsyn, ejer-go 3/11 i chat"
     }
   ],
   "brandList": [
