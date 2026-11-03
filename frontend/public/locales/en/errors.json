@@ -89,6 +89,7 @@
     "promotion_pending_failed": "Something went wrong with promotion from the waiting list. Try again in a moment",
     "rider_retired_listing": "This rider has retired and can't be listed for sale",
     "rider_already_listed": "This rider is already listed on the transfer market",
+    "rider_on_auction_listing": "This rider is on auction right now. You can list the rider once the auction has ended",
     "listing_not_found": "Listing not found",
     "listing_not_owner": "This isn't your listing",
     "listing_already_closed": "This listing is already closed",
