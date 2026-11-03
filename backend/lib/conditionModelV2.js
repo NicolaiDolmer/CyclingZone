@@ -155,34 +155,46 @@ export function nextFormV2({ form, fatigue, cfg = CONDITION_V2_CONFIG }) {
  * restitutionen følger andelen af trænede frie pladser (alle frie trænet = et helt
  * døgns restitution). Hvile/restitution på frie pladser regnes som før. Uændret:
  * datoer uden etaper, datoer hvor ingen fri plads trænes, og etapebelastningerne.
+ *
+ * To værn, så den ekstra restitution aldrig kan udnyttes: datoen giver aldrig mindre
+ * træthed end dagens regel, og et hårdere pas på en fri plads giver aldrig mindre
+ * træthed end et roligere (fx et let pas efter tunge etaper restituerer ikke mere
+ * end hvile). Regnet som det højeste udfald over alle roligere udgaver af de frie
+ * pladser, så reglen er monoton i hver plads.
  */
 export function settleDateFatigueV2({ fatigue, intensities, raceLoads, recoveryAbility = 50, medicalBonus = 0, raceDateTrainingDay = false, cfg = CONDITION_V2_CONFIG }) {
   let f = clamp(finiteOr(fatigue, 0), 0, 100);
-  let trainingLoad = 0;
-  let trainingSlots = 0;
-  let workLoad = 0; // #7536: kun træningspas med positiv belastning
-  let workSlots = 0;
-  let raced = false;
+  const freeLoads = [];
   intensities.forEach((intensity, index) => {
     if (intensity === "race") {
-      raced = true;
       f = clamp(f + raceLoads[index] - recoveryV2({ fatigue: f, recoveryAbility, medicalBonus, cfg }), 0, 100);
     } else {
-      const load = DAILY_TRAINING_CONFIG.fatigueLoad[intensity] ?? 0;
-      trainingLoad += load;
-      trainingSlots += 1;
-      if (load > 0) { workLoad += load; workSlots += 1; }
+      freeLoads.push(DAILY_TRAINING_CONFIG.fatigueLoad[intensity] ?? 0);
     }
   });
-  if (trainingSlots > 0 && raceDateTrainingDay && raced && workSlots > 0) {
-    const restLoad = trainingLoad - workLoad;
-    const share = Math.max(trainingSlots / intensities.length, workSlots / trainingSlots);
-    f = clamp(f + workLoad / trainingSlots + restLoad / intensities.length - recoveryV2({ fatigue: f, recoveryAbility, share, medicalBonus, cfg }), 0, 100);
-  } else if (trainingSlots > 0) {
-    const share = trainingSlots / intensities.length;
-    f = clamp(f + trainingLoad / intensities.length - recoveryV2({ fatigue: f, recoveryAbility, share, medicalBonus, cfg }), 0, 100);
-  }
-  return Math.round(f);
+  if (freeLoads.length === 0) return Math.round(f);
+  const recovery = (share) => recoveryV2({ fatigue: f, recoveryAbility, share, medicalBonus, cfg });
+  const todayRule = (loads) => clamp(f + loads.reduce((s, l) => s + l, 0) / intensities.length - recovery(loads.length / intensities.length), 0, 100);
+  const raced = freeLoads.length < intensities.length;
+  if (!raceDateTrainingDay || !raced || !freeLoads.some((l) => l > 0)) return Math.round(todayRule(freeLoads));
+  // #7536: et helt træningsdøgn for passene; hvile som i dag.
+  const fullDayRule = (loads) => {
+    const work = loads.filter((l) => l > 0);
+    if (work.length === 0) return todayRule(loads);
+    const restLoad = loads.reduce((s, l) => s + (l > 0 ? 0 : l), 0);
+    const share = Math.max(loads.length / intensities.length, work.length / loads.length);
+    return clamp(f + work.reduce((s, l) => s + l, 0) / loads.length + restLoad / intensities.length - recovery(share), 0, 100);
+  };
+  // Værnene: max over dagens regel og alle roligere udgaver af de frie pladser.
+  const levels = [...new Set(Object.values(DAILY_TRAINING_CONFIG.fatigueLoad))].sort((a, b) => a - b);
+  let best = todayRule(freeLoads);
+  const walk = (i, picked) => {
+    if (i === freeLoads.length) { best = Math.max(best, fullDayRule(picked)); return; }
+    const options = levels.filter((l) => l < freeLoads[i]);
+    for (const l of [...options, freeLoads[i]]) walk(i + 1, [...picked, l]);
+  };
+  walk(0, []);
+  return Math.round(best);
 }
 
 /** v2-udgaven af trainingDateCondition.settleTrainingDateCondition (samme signatur og retur). */
