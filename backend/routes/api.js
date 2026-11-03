@@ -73,6 +73,7 @@ import {
   finalizeAuctionById,
   finalizeExpiredAuctions as finalizeExpiredAuctionsShared,
 } from "../lib/auctionFinalization.js";
+import { getListingOnAuctionIssue, safePauseTransferListingsForAuction, safeResumePausedListingsForAuctionId } from "../lib/auctionTransferListPause.ts";
 import {
   buildTransitionPlan,
   closePrevTransferWindow,
@@ -7639,6 +7640,8 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
     }
     return res.status(500).json({ error: error.message });
   }
+  // #4211: rytterens transferliste staar paa pause, mens auktionen koerer.
+  await safePauseTransferListingsForAuction(supabase, { riderId: rider_id });
 
   if (initialBidderId) {
     await supabase.from("auction_bids").insert({
@@ -8411,6 +8414,10 @@ router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
     .maybeSingle();
   if (existingListing) {
     return res.status(409).json({ error: "This rider is already listed on the transfer market", errorCode: "rider_already_listed" });
+  }
+  // #4211: en rytter paa aktiv auktion kan ikke saettes paa transferlisten.
+  if (getListingOnAuctionIssue({ riderId: rider_id, activeAuctionRiderIds: await getActiveAuctionRiderIds(supabase, [rider_id]) })) {
+    return res.status(409).json({ error: "This rider is on auction right now. You can list it once the auction has ended.", errorCode: "rider_on_auction_listing" });
   }
 
   const { data, error } = await supabase
@@ -11848,6 +11855,7 @@ router.post("/admin/auctions/:id/cancel", requireAdmin, adminWriteLimiter, async
     }
     return res.status(500).json({ error: "Cancel fejlede" });
   }
+  await safeResumePausedListingsForAuctionId(supabase, req.params.id); // #4211
 
   res.json({
     success: true,

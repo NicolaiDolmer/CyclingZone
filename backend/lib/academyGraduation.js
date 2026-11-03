@@ -19,6 +19,7 @@ import { fetchSeasonTransitionBoundary } from "./seasonTransitionBoundary.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { clearOffSquadEntriesSafe } from "./squadEntryCleanup.js";
 import { captureException } from "./sentry.js";
+import { safePauseTransferListingsForAuction } from "./auctionTransferListPause.ts";
 
 // Notifikationstypen for "manageren har et graduerings-valg at træffe". Den er
 // eksporteret fordi den nu bruges TO steder: når vinduet åbnes, og når det
@@ -1081,6 +1082,9 @@ export async function createGraduateAuction(supabase, { teamId, rider, now = new
     is_youth: false,
   });
   if (error) throw new Error(`createGraduateAuction: ${error.message}`);
+  // #4211: akademiryttere maa listes direkte (#3650); en listing pauses mens
+  // rytteren er paa auktion. Best-effort som POST /auctions: auktionen staar.
+  await safePauseTransferListingsForAuction(supabase, { riderId: rider.id });
   return true;
 }
 

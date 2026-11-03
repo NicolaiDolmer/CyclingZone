@@ -137,6 +137,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_day_catchup_enabled", area: "training", label: "Udvikling 2.0 — catch-up via løb (løbsdagens ekstra ens for alle hold)" },
   // #5950: løbsdag = hård dag + rolle-vægtet tillæg (raceDayRoleYield5950.js). Fail-safe OFF; tal i private_config. Ejer-only flip.
   { key: "race_day_role_yield_enabled", area: "race-day", label: "Udvikling 2.0 — løbsdag = hård dag + tillæg efter rolle" },
+  // #5950 A: underkontakt (kræver race_day_role_yield_enabled). Fail-safe OFF. Ejer-only flip.
+  { key: "race_day_role_base_day_enabled", area: "race-day", label: "Udvikling 2.0 — løbsdag: rollen styrer også basis-dagen" },
   { key: "season_documentary_llm_enabled", area: "season", label: "Sæson-dokumentar (LLM)" },
   { key: "ai_team_retire_enabled", area: "ops", label: "AI-hold — pensionering" },
   { key: "ai_pool_retirement_v2_enabled", area: "ops", label: "AI-pulje — pensionering v2" },

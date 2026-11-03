@@ -25,6 +25,17 @@
 //
 // Tillaegget laegges oven paa haard-dagen som en multiplikator pr. evne
 // (abilityYieldMult), saa basis-programmet og traeningsscoren er praecis en haard dags.
+//
+// #5950 loesning A (ejer 3/11), bag sin EGEN underkontakt race_day_role_base_day_enabled
+// (default off, laeses kun naar hovedflaget er on og params er gyldige): rollen styrer
+// ogsaa BASIS-dagen, ikke kun tillaegget.
+//   · kaptajn/jaeger: uaendret (haard dag paa etapens profil-evner)
+//   · hjaelper: haard dag paa de baerende hjaelpe-evner (HELPER_ABILITIES_BY_PROFILE);
+//     etapens afgoerende evne faar hverken basis eller tillaeg (en hjaelper paa en
+//     sprintetape udvikler ikke spurt), medmindre den selv er en hjaelpe-evne (holdtempo)
+//   · fri rolle: en blanding af de to basis-dage
+// Basis-dagens samlede vaegt er den samme for alle roller (ingen straf for at hjaelpe).
+// Underkontakt off = ingen aendring overhovedet, bit-identisk med hovedflagets model.
 
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { readConditionWriterFlag } from "./trainingDateConditionFlag.js";
@@ -38,6 +49,8 @@ import { resolveStageEntrants } from "./raceStageRoles.js";
 
 export const RACE_DAY_ROLE_YIELD_FLAG_KEY = "race_day_role_yield_enabled";
 export const RACE_DAY_ROLE_YIELD_PARAMS_KEY = "race_day_role_yield_params";
+// #5950 A: underkontakten "rollen styrer ogsaa basis-dagen".
+export const RACE_DAY_ROLE_BASE_DAY_FLAG_KEY = "race_day_role_base_day_enabled";
 const LOG_TAG = "[race-day-role-yield]";
 
 // Basis-intensiteten (ejer 3/10: "hård dag").
@@ -98,16 +111,24 @@ function uniq(list) {
   return [...new Set(list)].filter((a) => VISIBLE_ABILITIES.includes(a));
 }
 
+function helperAbilities(profile) {
+  return uniq(HELPER_ABILITIES_BY_PROFILE[profile] ?? HELPER_ABILITIES_BY_PROFILE[RACE_DAY_FALLBACK_PROFILE]);
+}
+
 /**
  * Hvor rollens tillaeg lander: `lead` (mest) og `support` (resten), disjunkte.
+ * roleDrivesBaseDay (#5950 A): hjaelperens support mister etapens afgoerende evne
+ * (medmindre den er en hjaelpe-evne), saa hjaelperen ikke udvikler den.
  * @returns {{ lead: string[], support: string[] }}
  */
-export function raceDayRoleAbilityGroups(profileType, group) {
+export function raceDayRoleAbilityGroups(profileType, group, { roleDrivesBaseDay = false } = {}) {
   const profile = knownProfile(profileType);
   const profileAbilities = [...raceDayFocusAbilities(profile)];
   if (group === "helper") {
-    const lead = uniq(HELPER_ABILITIES_BY_PROFILE[profile] ?? HELPER_ABILITIES_BY_PROFILE[RACE_DAY_FALLBACK_PROFILE]);
-    return { lead, support: uniq(profileAbilities.filter((a) => !lead.includes(a))) };
+    const lead = helperAbilities(profile);
+    const decisive = DECISIVE_ABILITY_BY_PROFILE[profile];
+    const support = profileAbilities.filter((a) => !lead.includes(a) && !(roleDrivesBaseDay && a === decisive));
+    return { lead, support: uniq(support) };
   }
   const decisive = DECISIVE_ABILITY_BY_PROFILE[profile] ?? profileAbilities[0];
   const lead = uniq([decisive]);
@@ -123,6 +144,15 @@ export function raceDayRoleAbilityGroups(profileType, group) {
 export async function isRaceDayRoleYieldEnabled(supabase, { strict = false } = {}) {
   if (strict) return readConditionWriterFlag(supabase, RACE_DAY_ROLE_YIELD_FLAG_KEY);
   return evaluateFlagStage(await readFlagStage(supabase, RACE_DAY_ROLE_YIELD_FLAG_KEY));
+}
+
+/**
+ * #5950 A: underkontakten "rollen styrer ogsaa basis-dagen". Samme regler som
+ * hovedflaget: kun "on" taender, beta = off, strict kaster ved en fejlet laesning.
+ */
+export async function isRaceDayRoleBaseDayEnabled(supabase, { strict = false } = {}) {
+  if (strict) return readConditionWriterFlag(supabase, RACE_DAY_ROLE_BASE_DAY_FLAG_KEY);
+  return evaluateFlagStage(await readFlagStage(supabase, RACE_DAY_ROLE_BASE_DAY_FLAG_KEY));
 }
 
 /**
@@ -145,16 +175,85 @@ export async function loadRaceDayRoleYield({ supabase, log = console, strict = f
   const params = entry.status === "ok" ? entry.value : null;
   if (!params) {
     log?.warn?.(`${LOG_TAG} ${RACE_DAY_ROLE_YIELD_FLAG_KEY} is on, but ${RACE_DAY_ROLE_YIELD_PARAMS_KEY} is missing or invalid - running today's model`);
+    return null;
   }
-  return params;
+  // #5950 A: underkontakten laeses kun her (hovedflag on + gyldige params). Off =
+  // params uaendret (samme objekt), saa alt nedstroems er bit-identisk.
+  if (!(await isRaceDayRoleBaseDayEnabled(supabase, { strict }))) return params;
+  return Object.freeze({ ...params, roleDrivesBaseDay: true });
 }
 
-/** Loebsdagens basis-program: en haard dag paa etapens profil-evner. */
-export function raceDayRoleBaseProgram(profileType) {
+/**
+ * Off-fokus-vaekst i enheder af en fokus-evnes vaekst (vaegt 1), PRAECIS som
+ * applyDailyTick regner i den aktive tilstand:
+ *   · Score B off: fokus = haard-multiplikatoren, off-fokus = offFocusMult.
+ *   · Score B on: fokus-evner normaliseres (haard-multiplikatoren gaar ud) og ganges
+ *     med devMult; off-fokus beholder offFocusMult og ganges med offFocusDevMult
+ *     (eller devMult, naar den mangler).
+ * Samme betingelse for "Score B on" som applyDailyTick (devMult endelig og >= 0).
+ */
+export function raceDayBaseOffRatio(trainingCfg = TRAINING_CONFIG, developmentScore = null) {
+  const off = Number(trainingCfg.offFocusMult);
+  if (!(Number.isFinite(off) && off >= 0)) return 0;
+  const devMult = developmentScore?.devMult;
+  if (Number.isFinite(devMult) && devMult >= 0) {
+    const offDev = Number.isFinite(developmentScore.offFocusDevMult) && developmentScore.offFocusDevMult >= 0
+      ? developmentScore.offFocusDevMult : devMult;
+    // devMult 0: fokus giver intet, vaegtene kan ikke flytte noget (bevar ratio 0).
+    return devMult > 0 ? (off * offDev) / devMult : 0;
+  }
+  const hard = Number(trainingCfg.focusGrowthMult?.[RACE_DAY_ROLE_BASE_INTENSITY]);
+  return Number.isFinite(hard) && hard > 0 ? off / hard : 0;
+}
+
+/**
+ * Loebsdagens basis-program: en haard dag paa etapens profil-evner.
+ *
+ * roleDrivesBaseDay (#5950 A, underkontakt): rollen styrer basis-dagens evner.
+ * Kaptajn/jaeger = uaendret; hjaelper = hjaelpe-evnerne; fri rolle = gennemsnittet
+ * af de to, evne for evne. Hjaelperens vaegte (focusWeights) skaleres, saa basis-
+ * dagen i alt (fokus + off-fokus over alle evner) er kaptajnens, ogsaa naar antallet
+ * af fokus-evner er et andet end profilens; fri rolle arver det af gennemsnittet.
+ *
+ * developmentScore: tick'ets Udviklingsscore B (samme objekt som applyDailyTick faar).
+ * Under Score B vaegtes fokus og off-fokus anderledes (se raceDayBaseOffRatio), og
+ * vaegtene skal udledes af de koefficienter tick'et faktisk bruger.
+ */
+export function raceDayRoleBaseProgram(profileType, {
+  role = null, roleDrivesBaseDay = false, trainingCfg = TRAINING_CONFIG, developmentScore = null,
+} = {}) {
+  const profile = knownProfile(profileType);
+  const profileAbilities = raceDayFocusAbilities(profile);
+  const group = raceDayRoleGroup(role);
+  if (!roleDrivesBaseDay || group === "leader" || group === "hunter") {
+    return Object.freeze({
+      focus: RACE_DAY_FOCUS,
+      intensity: RACE_DAY_ROLE_BASE_INTENSITY,
+      focusAbilities: profileAbilities,
+    });
+  }
+  const budget = profileAbilities.length;
+  const helper = helperAbilities(profile);
+  // En fokus-evne faar haard-vaeksten I STEDET FOR off-fokus-vaeksten (vaegten er i
+  // enheder af haard-vaeksten). Har hjaelperen flere (faerre) fokus-evner end
+  // profilen, mister (vinder) han derfor off-fokus-vaekst; vaegten giver den tilbage,
+  // saa totalen er kaptajnens.
+  const offRatio = raceDayBaseOffRatio(trainingCfg, developmentScore);
+  const helperWeight = (budget + offRatio * (helper.length - budget)) / helper.length;
+  let weights = Object.fromEntries(helper.map((a) => [a, helperWeight]));
+  if (group === "free") {
+    // S17: fri rolle = gennemsnittet af kaptajnens og hjaelperens HELE basis-dag,
+    // evne for evne (en evne kun den ene traener, faar off-fokus fra den anden).
+    const captainUnit = (a) => (profileAbilities.includes(a) ? 1 : offRatio);
+    const helperUnit = (a) => (helper.includes(a) ? helperWeight : offRatio);
+    weights = {};
+    for (const a of new Set([...profileAbilities, ...helper])) weights[a] = (captainUnit(a) + helperUnit(a)) / 2;
+  }
   return Object.freeze({
     focus: RACE_DAY_FOCUS,
     intensity: RACE_DAY_ROLE_BASE_INTENSITY,
-    focusAbilities: raceDayFocusAbilities(knownProfile(profileType)),
+    focusAbilities: Object.freeze(Object.keys(weights)),
+    focusWeights: Object.freeze(weights),
   });
 }
 
@@ -163,11 +262,11 @@ export function raceDayRoleBaseProgram(profileType) {
  * saa alle roller faar samme tillaeg i alt (D3 variant A).
  * @returns {Record<string, number>}
  */
-export function raceDayRoleBonusWeights(profileType, role, leadShare) {
+export function raceDayRoleBonusWeights(profileType, role, leadShare, { roleDrivesBaseDay = false } = {}) {
   const profile = knownProfile(profileType);
   const budget = raceDayFocusAbilities(profile).length;
   const groupWeights = (group) => {
-    const { lead, support } = raceDayRoleAbilityGroups(profile, group);
+    const { lead, support } = raceDayRoleAbilityGroups(profile, group, { roleDrivesBaseDay });
     const out = {};
     const leadPart = support.length ? leadShare : 1;
     for (const a of lead) out[a] = (out[a] ?? 0) + (budget * leadPart) / lead.length;
@@ -189,11 +288,15 @@ export function raceDayRoleBonusWeights(profileType, role, leadShare) {
  * paa haard-dagen. Den praecise model: balance-internals/5950 (privat).
  * @returns {Record<string, number>}
  */
-export function raceDayRoleYieldMultipliers({ params, profileType, role, program = raceDayRoleBaseProgram(profileType), trainingCfg = TRAINING_CONFIG }) {
+export function raceDayRoleYieldMultipliers({
+  params, profileType, role,
+  trainingCfg = TRAINING_CONFIG, developmentScore = null,
+  program = raceDayRoleBaseProgram(profileType, { role, roleDrivesBaseDay: params?.roleDrivesBaseDay === true, trainingCfg, developmentScore }),
+}) {
   if (!params) return {};
   const hardFocus = Number(trainingCfg.focusGrowthMult?.[RACE_DAY_ROLE_BASE_INTENSITY]);
   if (!Number.isFinite(hardFocus) || hardFocus <= 0) return {};
-  const weights = raceDayRoleBonusWeights(profileType, role, params.leadShare);
+  const weights = raceDayRoleBonusWeights(profileType, role, params.leadShare, { roleDrivesBaseDay: params.roleDrivesBaseDay === true });
   const out = {};
   for (const [ability, w] of Object.entries(weights)) {
     const baseMult = abilityMult(ability, program, trainingCfg);
@@ -212,7 +315,9 @@ export function raceDayRoleYieldMultipliers({ params, profileType, role, program
  */
 export function withRaceDayRoleYield(extraTickArgs, { params = null, profileType = null, role = null } = {}) {
   if (!params) return extraTickArgs;
-  const program = raceDayRoleBaseProgram(profileType);
+  const program = raceDayRoleBaseProgram(profileType, {
+    role, roleDrivesBaseDay: params.roleDrivesBaseDay === true, developmentScore: extraTickArgs?.developmentScore ?? null,
+  });
   const roleMult = raceDayRoleYieldMultipliers({ params, profileType, role, program });
   const prior = extraTickArgs?.abilityYieldMult ?? null;
   const abilityYieldMult = { ...roleMult };
