@@ -111,15 +111,24 @@ function Remove-WorktreeJunctions {
   #   -WorktreePath : worktree-roden
   #   -DryRun       : rapporter, roer intet
   #   -LinkRemover  : scriptblock($item) der fjerner et link (kun til test; default Remove-LinkOnly)
+  #   -BalanceSharedRoot : den delte balance-internals-mappe (kun til test; default OneDrive, #7587)
   # Returnerer [pscustomobject] { Ok; Found; Removed; Errors }.
   # Ok=$false => kalderen SKAL nægte at fjerne worktreet.
   [CmdletBinding()]
   param(
     [Parameter(Mandatory)][string]$WorktreePath,
     [switch]$DryRun,
-    [scriptblock]$LinkRemover = $null
+    [scriptblock]$LinkRemover = $null,
+    [string]$BalanceSharedRoot = $null
   )
   $removed = @(); $errors = @()
+  # #7587: en RIGTIG balance-internals/ med filer der ikke findes i den delte
+  # mappe, maa ikke forsvinde med worktreet. Tjekket foer et eneste link roeres.
+  . (Join-Path $PSScriptRoot 'lib\balance-internals.ps1')
+  $bi = Test-BalanceInternalsRemovable -WorktreePath $WorktreePath -SharedRoot $BalanceSharedRoot
+  if (-not $bi.Ok) {
+    return [pscustomobject]@{ Ok = $false; Found = 0; Removed = @(); Errors = @("worktree BEHOLDT: $($bi.Reason) (#7587) - flyt filerne til den delte mappe, eller koer scripts/link-balance-internals.ps1 -WorktreeRoot $WorktreePath") }
+  }
   $links = @(Get-WorktreeLinks -WorktreePath $WorktreePath)
 
   foreach ($item in $links) {

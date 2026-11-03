@@ -9,6 +9,9 @@
 #      (%LOCALAPPDATA%\CyclingZone\node-modules-cache\<pkg>-<hash>\node_modules)
 #   2. .env-hardlinks (backend/.env, frontend/.env, frontend/.env.production,
 #      .mcp.json) fra OneDrive-context\secrets, med main-checkoutet som fallback
+#   3. balance-internals/ som junction til OneDrive-context\balance-internals
+#      (#7587, scripts/lib/balance-internals.ps1) - advarsel, ikke fejl, hvis
+#      det ikke kan lade sig goere
 #
 # ISOLATION (#3367, afloeser #2967-junction-til-main):
 # Tidligere pegede junctionen paa MAIN-checkoutets node_modules. `npm ci` sletter
@@ -380,8 +383,25 @@ function Set-EnvHardlinks {
   }
 }
 
+# --- 3. balance-internals/ (junction til den delte OneDrive-mappe, #7587) ---
+# 3/11 havde 9 worktrees egne lokale kopier af private maalinger, som ville
+# vaere gaaet tabt ved oprydning. Et link der ikke kan laves, er en advarsel,
+# ikke et problem: worktreet virker stadig, og intet flyttes ved konflikt.
+function Set-BalanceInternals {
+  Write-Section "balance-internals (delt OneDrive-mappe)"
+  . (Join-Path $PSScriptRoot 'lib\balance-internals.ps1')
+  try {
+    $r = Set-BalanceInternalsLink -WorktreeRoot $WorktreeRoot -DryRun:$DryRun
+  } catch {
+    Write-Warn "  [warn] balance-internals: $($_.Exception.Message) - intet slettet"
+    return
+  }
+  if ($r.Ok) { Write-Info "  [ok] $($r.Message)" } else { Write-Warn "  [warn] $($r.Message)" }
+}
+
 Set-NodeModulesLinks
 Set-EnvHardlinks
+Set-BalanceInternals
 
 Write-Info ""
 if ($DryRun) {
