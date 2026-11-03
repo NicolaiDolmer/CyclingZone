@@ -649,6 +649,14 @@ test("#5950 A: basis-dagen i alt (fokus + off-fokus) og tillaeggets samlede vaeg
   for (const profile of PROFILES) {
     const budget = RACE_PROFILE_ABILITY_MAP[profile].length;
     const captainTotal = dayTotal(raceDayRoleBaseProgram(profile));
+    // S17: fri rolle = gennemsnittet af kaptajnens og hjaelperens basis-dag, evne for evne.
+    const cap = raceDayRoleBaseProgram(profile, { role: "captain", roleDrivesBaseDay: true });
+    const hlp = raceDayRoleBaseProgram(profile, { role: "helper", roleDrivesBaseDay: true });
+    const free = raceDayRoleBaseProgram(profile, { role: "free_role", roleDrivesBaseDay: true });
+    for (const a of VISIBLE_ABILITIES) {
+      const avg = (abilityMult(a, cap) + abilityMult(a, hlp)) / 2;
+      assert.ok(Math.abs(abilityMult(a, free) - avg) < 1e-12, `${profile}: fri rolle ${a} = gennemsnit`);
+    }
     for (const role of ROLES) {
       const program = raceDayRoleBaseProgram(profile, { role, roleDrivesBaseDay: true });
       assert.equal(program.intensity, "hard");

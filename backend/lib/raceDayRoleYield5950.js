@@ -187,10 +187,10 @@ export async function loadRaceDayRoleYield({ supabase, log = console, strict = f
  * Loebsdagens basis-program: en haard dag paa etapens profil-evner.
  *
  * roleDrivesBaseDay (#5950 A, underkontakt): rollen styrer basis-dagens evner.
- * Kaptajn/jaeger = uaendret; hjaelper = hjaelpe-evnerne; fri rolle = en blanding.
- * Vaegtene (focusWeights) skaleres, saa basis-dagen i alt (fokus + off-fokus over
- * alle evner) er lige stor for alle roller, ogsaa naar antallet af fokus-evner er
- * et andet end profilens.
+ * Kaptajn/jaeger = uaendret; hjaelper = hjaelpe-evnerne; fri rolle = gennemsnittet
+ * af de to, evne for evne. Hjaelperens vaegte (focusWeights) skaleres, saa basis-
+ * dagen i alt (fokus + off-fokus over alle evner) er kaptajnens, ogsaa naar antallet
+ * af fokus-evner er et andet end profilens; fri rolle arver det af gennemsnittet.
  */
 export function raceDayRoleBaseProgram(profileType, { role = null, roleDrivesBaseDay = false, trainingCfg = TRAINING_CONFIG } = {}) {
   const profile = knownProfile(profileType);
@@ -205,24 +205,22 @@ export function raceDayRoleBaseProgram(profileType, { role = null, roleDrivesBas
   }
   const budget = profileAbilities.length;
   const helper = helperAbilities(profile);
-  const helperWeights = Object.fromEntries(helper.map((a) => [a, budget / helper.length]));
-  let weights = helperWeights;
-  if (group === "free") {
-    // S17: fri rolle = gennemsnittet af kaptajnens og hjaelperens basis-dag.
-    weights = {};
-    for (const a of new Set([...profileAbilities, ...helper])) {
-      weights[a] = ((profileAbilities.includes(a) ? 1 : 0) + (helperWeights[a] ?? 0)) / 2;
-    }
-  }
-  // En fokus-evne faar haard-vaeksten I STEDET FOR off-fokus-vaeksten. Har rollen
-  // flere (faerre) fokus-evner end profilen, mister (vinder) den derfor off-fokus-
-  // vaekst; skaleringen giver den tilbage, saa totalen er kaptajnens.
+  // En fokus-evne faar haard-vaeksten I STEDET FOR off-fokus-vaeksten (vaegten er i
+  // enheder af haard-vaeksten). Har hjaelperen flere (faerre) fokus-evner end
+  // profilen, mister (vinder) han derfor off-fokus-vaekst; vaegten giver den tilbage,
+  // saa totalen er kaptajnens.
   const hard = Number(trainingCfg.focusGrowthMult?.[RACE_DAY_ROLE_BASE_INTENSITY]);
   const off = Number(trainingCfg.offFocusMult);
-  const nFocus = Object.keys(weights).length;
-  if (Number.isFinite(hard) && hard > 0 && Number.isFinite(off) && off >= 0 && nFocus !== budget) {
-    const scale = (budget + (off / hard) * (nFocus - budget)) / budget;
-    weights = Object.fromEntries(Object.entries(weights).map(([a, w]) => [a, w * scale]));
+  const offRatio = Number.isFinite(hard) && hard > 0 && Number.isFinite(off) && off >= 0 ? off / hard : 0;
+  const helperWeight = (budget + offRatio * (helper.length - budget)) / helper.length;
+  let weights = Object.fromEntries(helper.map((a) => [a, helperWeight]));
+  if (group === "free") {
+    // S17: fri rolle = gennemsnittet af kaptajnens og hjaelperens HELE basis-dag,
+    // evne for evne (en evne kun den ene traener, faar off-fokus fra den anden).
+    const captainUnit = (a) => (profileAbilities.includes(a) ? 1 : offRatio);
+    const helperUnit = (a) => (helper.includes(a) ? helperWeight : offRatio);
+    weights = {};
+    for (const a of new Set([...profileAbilities, ...helper])) weights[a] = (captainUnit(a) + helperUnit(a)) / 2;
   }
   return Object.freeze({
     focus: RACE_DAY_FOCUS,

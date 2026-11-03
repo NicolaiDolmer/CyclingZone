@@ -859,6 +859,13 @@ træningskørsel). Tallene og den præcise model står aldrig i repoet (hard rul
 - **Fallback:** flag off = intet opslag, bit-identisk med §6.2. Flag on uden gyldige params = dagens
   model + en værdi-fri advarsel, også på dato-afregningens strikte sti; kun en fejlet læsning af flag
   eller params stopper afregningen til næste sweep. Et fejlet rolle-opslag giver fri rolle for alle.
+- **Underkontakt: rollen styrer også basis-dagen** (løsning A, ejer-valg 3/11, flag
+  `race_day_role_base_day_enabled`, **off**; kun `on` tænder, `beta` = off). Læses kun når
+  hovedflaget er on og params er gyldige. Når tændt: kaptajner og jæger uændret; hjælpere får basis-dagen
+  i de bærende hjælpe-evner, og etapens afgørende evne får hverken basis eller tillæg (undtagen
+  holdtempo, hvor den selv er en hjælpe-evne); fri eller ukendt rolle får gennemsnittet af de to
+  basis-dage, evne for evne. Det samlede udbytte er det samme for alle roller. Off = modellen ovenfor,
+  bit-identisk. En fejlet læsning af underkontakten kaster på dato-afregningens strikte sti, ellers off.
 - **Kode:** `raceDayRoleYield5950.js`, kaldt fra `dailyTrainingEngine.js` (`withRaceDayRoleYield`).
 
 ---
