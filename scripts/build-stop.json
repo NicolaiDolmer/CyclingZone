@@ -721,6 +721,11 @@
       "issue": 7568,
       "reason": "Kalendertabel: Grand Tour i stedet for Mangler + klippet mærke (forkert info), ejer-go 3/11 #7495",
       "since": "2026-11-03"
+    },
+    {
+      "issue": 7489,
+      "reason": "Træning: falsk træningsalarm + karantæne når en manager frigiver ryttere under aftentræningen (CYCLINGZONE-A6), ejer-go 3/11 i #7495",
+      "since": "2026-11-03"
     }
   ]
 }
