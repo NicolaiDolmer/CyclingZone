@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (3/11 eftermiddag):** næste PC1-session følger prompten på [#7495](https://github.com/NicolaiDolmer/CyclingZone/issues/7495#issuecomment-6603794435): merge det klare → Til dørs-sweep → brand-fejl (#7473, #6912, #7236, #7339 A+B, #7489) → race engine/løbsdag først, så udvikling/taktik/træning → betaer og klare kontakter (race_library_v2 frist 5/11, flere 8/11) kun med ejerens "kør". Codex: egne PR'er (#7530-#7532 konflikt) + Til dørs-beviser. Ejer-valg venter: #6950 (8/11), #7339 C/D, roadmap-liste. Ellers: #6950 · #6665 forside · #7462.
+> **🎯 Next action (3/11 eftermiddag):** næste PC1-session følger prompten på [#7495](https://github.com/NicolaiDolmer/CyclingZone/issues/7495#issuecomment-6603794435): merge det klare → Til dørs-sweep → brand-fejl (#7473, #6912, #7236, #7339 A+B, #7489) → race engine/løbsdag først, så udvikling/taktik/træning → betaer og klare kontakter (race-breakaway-outlook/score B/auto-calendar frist 8/11) kun med ejerens "kør". Codex: egne PR'er (#7530-#7532 konflikt) + Til dørs-beviser. Ejer-valg venter: #6950 (8/11), #7339 C/D. Løbsbiblioteket live 3/11. Ellers: #6950 · #6665 forside · #7462.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, flag off): ejeren har ikke besluttet om det skal i spillet; kurve "6 kombineret" (#3564) indgår i den samlede måling.
 >
-> **🤖 Working agent:** PC1 (Claude, dagsession 3/11: merge-kø, #7533, #6524, #7536-design) + DolmerPC (Codex: egne PR'er + #7554, prompt på [#7495](https://github.com/NicolaiDolmer/CyclingZone/issues/7495#issuecomment-6600430431)). PC1 ejer merge-køen og NOW.md.
+> **🤖 Working agent:** Ingen aktiv session (PC1-dagsessionen 3/11 afsluttet; næste session overtager merge-køen efter overdragelsen på #7495).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
