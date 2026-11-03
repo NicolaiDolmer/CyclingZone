@@ -280,7 +280,7 @@ export default function CalendarTable({
           key: "squad",
           header: t("table.cols.squad"),
           sortKey: "squad",
-          render: (r: CalendarTableRow) => <SquadPill status={r.status} t={t} />, // #7568: kort mærke, klippes ikke
+          render: (r: CalendarTableRow) => <SquadPill status={r.status} fill={r.fill} t={t} />, // #7568: kort mærke, klippes ikke
         }]
       : []),
   ];
@@ -306,7 +306,7 @@ export default function CalendarTable({
           key: "squad",
           header: t("table.cols.squadShort"),
           sortKey: "squad",
-          render: (r: CalendarTableRow) => <SquadPill status={r.status} t={t} />,
+          render: (r: CalendarTableRow) => <SquadPill status={r.status} fill={r.fill} t={t} />,
         }]
       : []),
   ];
@@ -395,11 +395,16 @@ function CompactTerrain({ row }: { row: CalendarTableRow }) {
   );
 }
 
-function SquadPill({ status, t }: { status: RaceStatus | null; t: Translate }) {
+function SquadPill({ status, fill, t }: { status: RaceStatus | null; fill?: CalendarTableRow["fill"]; t: Translate }) {
   if (!status) return <Dash />;
   return (
     <StatusBadge state={SQUAD_BADGE[status]} emphasis className="whitespace-nowrap">
       {t(`table.squadShort.${status}`)}
+      {fill ? (
+        <span className="tabular-nums" title={t("table.squadFill", { count: fill.count, field: fill.field })}>
+          {" · "}{fill.count}/{fill.field}
+        </span>
+      ) : null}
     </StatusBadge>
   );
 }
