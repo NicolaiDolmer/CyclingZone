@@ -9,7 +9,7 @@
 > **🎯 Next action (3/11 eftermiddag):** prompten på [#7495](https://github.com/NicolaiDolmer/CyclingZone/issues/7495#issuecomment-6603794435): review/merge bølgens PR'er (#7572-#7577 m.fl.) → #6912 kurve (ejer-go) efter #7260-oprydning → #7236 → betaer/kontakter (frist 8/11) kun med "kør". Codex: egne PR'er + Til dørs-beviser. Ejer-valg venter: #6950 (8/11), #7339 C/D, luk #7473.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, flag off): ejeren har ikke besluttet om det skal i spillet; kurve "6 kombineret" (#3564) indgår i den samlede måling.
 >
-> **🤖 Working agent:** PC1-eftermiddagssession 3/11 (ejer merge-kø + NOW.md, overdraget 14:45 på #7495). #7522 + #7572 (#7489) merget+verificeret. Bølge bygger #7573-#7577, #7579, #7580; Codex' #7511/#7515/#7516 rettet, venter Codex-review; derefter #6912, #7236 (ejer-go), så regel-oprydning #7578 (ejer-go).
+> **🤖 Working agent:** PC1-eftermiddagssession 3/11 (ejer merge-kø + NOW.md, overdraget 14:45 på #7495). #7522 + #7572 (#7489) merget+verificeret. Bølge bygger #7573-#7577, #7579, #7580; Codex' #7511/#7515/#7516 rettet, venter Codex-review; derefter #6912, #7236 (ejer-go), så regel-oprydning #7578 + CI-hastighed #7582 (ejer-go).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 

@@ -383,6 +383,10 @@
     {
       "issue": 7578,
       "why": "Regel- og kontekstfiler: samlet oprydning efter gennemsyn, ejer-go 3/11 i chat"
+    },
+    {
+      "issue": 7582,
+      "why": "CI-hastighed uden svagere gates, ejer-go 3/11 i chat"
     }
   ],
   "brandList": [
