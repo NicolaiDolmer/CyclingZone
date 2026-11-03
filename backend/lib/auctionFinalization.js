@@ -21,6 +21,7 @@ import { resolvePendingGraduationOnSale, resolveUnsoldGraduate } from "./academy
 import { applySeniorSquadFilter, seniorSquadPatch, academyPlacementSquad, squadCapRpcArgs, isYouthSquad } from "./squads.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
 import { buildRiderValueSnapshot, updateDealWithValueSnapshot } from "./dealValueSnapshot.js";
+import { safeResumePausedTransferListings } from "./auctionTransferListPause.js";
 import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
@@ -1814,7 +1815,7 @@ export async function finalizeAuctionById({
     };
   }
 
-  return finalizeAuctionRecord({
+  const result = await finalizeAuctionRecord({
     supabase,
     auction,
     notifyTeamOwner,
@@ -1824,6 +1825,9 @@ export async function finalizeAuctionById({
     squadLimits,
     now,
   });
+  // #4211: usolgt -> transferlisten er tilbage; solgt -> den pausede listing lukkes.
+  await safeResumePausedTransferListings(supabase, { riderIds: [auction.rider_id] });
+  return result;
 }
 
 export async function finalizeExpiredAuctions({

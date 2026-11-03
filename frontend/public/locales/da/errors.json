@@ -89,6 +89,7 @@
     "promotion_pending_failed": "Noget gik galt med oprykning fra ventelisten. Prøv igen om lidt",
     "rider_retired_listing": "Rytteren er pensioneret og kan ikke sættes til salg",
     "rider_already_listed": "Rytteren er allerede til salg på transfermarkedet",
+    "rider_on_auction_listing": "Rytteren ligger på auktion lige nu. Du kan sætte rytteren til salg, når auktionen er slut",
     "listing_not_found": "Listing findes ikke",
     "listing_not_owner": "Ikke din liste",
     "listing_already_closed": "Listingen er allerede lukket",
