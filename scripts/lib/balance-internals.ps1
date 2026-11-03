@@ -136,12 +136,16 @@ function Set-BalanceInternalsLink {
     }
     if ($DryRun) { return [pscustomobject]@{ Ok = $true; Action = 'would-move'; Message = "$label`: $($scan.Unique.Count) fil(er) ville blive flyttet til $shared, derefter junction" } }
     foreach ($rel in $scan.Unique) {
+      $src = Join-Path $state.Path $rel
       $dest = Join-Path $shared $rel
       New-Item -ItemType Directory -Path (Split-Path $dest -Parent) -Force | Out-Null
-      Copy-Item -LiteralPath (Join-Path $state.Path $rel) -Destination $dest
-      $a = (Get-FileHash -LiteralPath (Join-Path $state.Path $rel) -Algorithm SHA256).Hash
+      # Atomisk opret-uden-overskrivning (Codex-review): to setups der flytter
+      # samme relative navn samtidig, maa aldrig overskrive hinandens fil. Findes
+      # maalet allerede nu, afgoer hash-sammenligningen herunder om det er os.
+      try { [IO.File]::Copy($src, $dest, $false) } catch [IO.IOException] { if (-not [IO.File]::Exists($dest)) { throw } }
+      $a = (Get-FileHash -LiteralPath $src -Algorithm SHA256).Hash
       $b = (Get-FileHash -LiteralPath $dest -Algorithm SHA256).Hash
-      if ($a -ne $b) { return [pscustomobject]@{ Ok = $false; Action = 'error'; Message = "kopien af $rel blev ikke identisk - mappen er ikke slettet" } }
+      if ($a -ne $b) { return [pscustomobject]@{ Ok = $false; Action = 'conflict'; Message = "$rel findes nu i den delte mappe med andet indhold - mappen er ikke slettet" } }
     }
     # Bevis foer sletning: nu skal HVER fil findes med samme indhold i den delte mappe.
     $after = Get-BalanceInternalsUniqueFiles -Dir $state.Path -Shared $shared

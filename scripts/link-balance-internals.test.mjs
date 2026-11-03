@@ -198,6 +198,9 @@ test("koblingen: setup-worktree.ps1 linker, oprydningen tjekker foer et link roe
   const libSrc = fs.readFileSync(lib, "utf8");
   assert.doesNotMatch(libSrc, /^param\(/m,"lib'en dot-sources og maa ikke have en top-level param-blok (overskriver kalderens $DryRun)");
   assert.doesNotMatch(libSrc, /Remove-Item[^\n]*-Recurse[^\n]*\$state\.Target/, "maalet for et link maa aldrig slettes rekursivt");
+  // Codex-review: to samtidige setups maa ikke overskrive hinandens fil i den delte mappe.
+  assert.ok(libSrc.includes("[IO.File]::Copy($src, $dest, $false)"), "flytningen skal oprette uden overskrivning");
+  assert.doesNotMatch(libSrc, /Copy-Item/, "Copy-Item overskriver et eksisterende maal");
   const wave = fs.readFileSync(path.join(here, "..", ".claude", "workflows", "wave.js"), "utf8");
   assert.ok(wave.includes("scripts\\\\link-balance-internals.ps1 -WorktreeRoot <sporets worktree>"));
 });
