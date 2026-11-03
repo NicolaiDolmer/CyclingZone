@@ -211,9 +211,15 @@ export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows =
       sizeRule = { ...(race.sizeRule || SELECTION_SIZE.default), max: cap };
       if (reserved.size) pool = available.filter((r) => !reserved.has(r.rider_id));
     }
-    const picks = sizeRule?.max === 0
+    let picks = sizeRule?.max === 0
       ? []
       : autopickTeamSelection({ riders: pool, stages: race.stages, sizeRule, preference });
+    // #7339 B (3/11): når løbet ikke kan nå gulvet (fx fordi et igangværende etapeløb
+    // binder resten af truppen), skrives 0 i stedet for 1-5 ryttere, der alligevel tages ud
+    // ved start. Samme adfærd som redningen ved start (raceRunner.fillMissingTeamEntries),
+    // og rytterne står frie til et andet løb. Gulvet er raceEntryFloor (manuelle ryttere
+    // tæller med); et etapeløb følger #6739 regel A via viableMinimum.
+    if (picks.length && picks.length < viableMinimum(race)) picks = [];
     out[race.race_id] = picks;
     for (const p of picks) {
       if (!busy.has(p.rider_id)) busy.set(p.rider_id, []);
@@ -1255,6 +1261,7 @@ export async function runRaceEntryGenerator({
     lockedWindows.push(...(await siblingLockedWindows({ raceId, teamId, window })));
     const teamRaces = [{
       race_id: raceId, window, stages: stagesByRace.get(raceId) || [], sizeRule: adjSizeRule,
+      floor: Math.max(0, MIN_RACE_ENTRIES - manualRiders.length), // #7339 B: manuelle ryttere tæller mod gulvet
       excludedRiderIds: trainNowLockedByRace.get(raceId), // #6139
     }];
     const assignment = assignTeamAcrossRaces({
