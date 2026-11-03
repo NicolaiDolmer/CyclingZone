@@ -36,9 +36,12 @@ function rolloutOf(change, liveFlags) {
 // en/da-fallbacken gælder kun valget af patch-note-prosa (pickLang).
 function formatDate(iso, language) {
   const d = new Date(`${iso}T00:00:00`);
-  return d.toLocaleDateString(intlLocale(language), {
+  const locale = intlLocale(language);
+  const text = d.toLocaleDateString(locale, {
     weekday: "long", day: "numeric", month: "long",
   });
+  // #7543: kun første bogstav med stort (da: "Mandag 2. november"), ikke hvert ord.
+  return text.charAt(0).toLocaleUpperCase(locale) + text.slice(1);
 }
 
 // #2849 bølge 4 — migreret til T1 (standard content, max-w-4xl). Kanonisk
@@ -229,7 +232,7 @@ export default function PatchNotesPage() {
             const isNew = newDays.has(day.date);
             const summary = ["new", "improved", "fixed"]
               .filter((cat) => day.categories[cat]?.length)
-              .map((cat) => `${day.categories[cat].length} ${t(`category.${cat}`).toLowerCase()}`)
+              .map((cat) => t(`summary.${cat}`, { count: day.categories[cat].length }))
               .join(" · ");
             return (
               <Card
@@ -242,7 +245,7 @@ export default function PatchNotesPage() {
                   className="w-full flex items-center justify-between gap-3 text-left"
                 >
                   <span className="flex items-center gap-2 min-w-0">
-                    <span className="font-data text-[15px] font-semibold tabular-nums text-cz-1 capitalize truncate">
+                    <span className="font-data text-[15px] font-semibold tabular-nums text-cz-1 truncate">
                       {formatDate(day.date, i18n.language)}
                     </span>
                     {isNew && (

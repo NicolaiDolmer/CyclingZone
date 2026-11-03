@@ -25,6 +25,11 @@
     "improved": "Verbeterd",
     "fixed": "Opgelost"
   },
+  "summary": {
+    "new": "{count, plural, one {# nieuw} other {# nieuw}}",
+    "improved": "{count, plural, one {# verbetering} other {# verbeteringen}}",
+    "fixed": "{count, plural, one {# oplossing} other {# oplossingen}}"
+  },
   "newBadge": "Nieuw",
   "rollout": {
     "beta": "Beta",

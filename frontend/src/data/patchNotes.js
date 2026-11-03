@@ -261,33 +261,17 @@ export const PATCHES = [
         "topic": "Races",
         "en": {
           "title": "Smaller fixes",
-          "body": "What changed: After a stage, the stage plan shows your orders as you planned them. The Work and Follow attacks orders now describe what each role does. A sprint captain can lead the team without a captain. The Team tab shows the same stage profiles as the Stages tab.\n\nWhat it means for you: What you plan is what you see."
+          "body": "What changed: After a stage, the stage plan shows your orders as you planned them. The Work and Follow attacks orders now describe what each role does. A sprint captain can lead the team without a captain. The Team tab shows the same stage profiles as the Stages tab. The Long time trials session trains time trial properly. Reputation shows the same number on My team and the rider profile. The academy text is clearer about when the first full evaluation comes. A rider who retires no longer looks like he races one more season during the season change. A rider's first-win title shows correctly in French, Spanish and Dutch. Fixed a rare duplicate academy message.\n\nWhat it means for you: What you plan is what you see, and the numbers and texts around your riders match."
         },
         "da": {
           "title": "Små rettelser",
-          "body": "Hvad er ændret: Efter en etape viser etapeplanen dine ordrer, som du planlagde dem. Ordrerne Arbejd og Følg angrebene beskriver nu, hvad hver rolle gør. En spurtkaptajn kan lede holdet uden en kaptajn. Hold-fanen viser de samme etapeprofiler som Etaper-fanen.\n\nHvad betyder det for dig: Det, du planlægger, er det, du ser."
+          "body": "Hvad er ændret: Efter en etape viser etapeplanen dine ordrer, som du planlagde dem. Ordrerne Arbejd og Følg angrebene beskriver nu, hvad hver rolle gør. En spurtkaptajn kan lede holdet uden en kaptajn. Hold-fanen viser de samme etapeprofiler som Etaper-fanen. Sessionen Lange enkeltstarter træner enkeltstart ordentligt. Omdømme viser det samme tal på Mit hold og rytterprofilen. Akademiteksten er tydeligere om, hvornår den første fulde vurdering kommer. En rytter, der stopper, ser ikke længere ud til at køre en sæson mere under sæsonskiftet. Rytterens første-sejr-titel vises nu korrekt på fransk, spansk og hollandsk. Rettet en sjælden dobbeltbesked om akademiryttere.\n\nHvad betyder det for dig: Det, du planlægger, er det, du ser, og tal og tekster om dine ryttere passer sammen."
         },
         "refs": [
           7333,
           6746,
           6321,
-          7289
-        ]
-      },
-      {
-        "category": "fixed",
-        "audience": "player",
-        "rollout": "live",
-        "topic": "Riders",
-        "en": {
-          "title": "Smaller fixes",
-          "body": "What changed: The Long time trials session trains time trial properly. Reputation shows the same number on My team and the rider profile. The academy text is clearer about when the first full evaluation comes. A rider who retires no longer looks like he races one more season during the season change. A rider's first-win title shows correctly in French, Spanish and Dutch. Fixed a rare duplicate academy message.\n\nWhat it means for you: The numbers and texts around your riders match."
-        },
-        "da": {
-          "title": "Små rettelser",
-          "body": "Hvad er ændret: Sessionen Lange enkeltstarter træner enkeltstart ordentligt. Omdømme viser det samme tal på Mit hold og rytterprofilen. Akademiteksten er tydeligere om, hvornår den første fulde vurdering kommer. En rytter, der stopper, ser ikke længere ud til at køre en sæson mere under sæsonskiftet. Rytterens første-sejr-titel vises nu korrekt på fransk, spansk og hollandsk. Rettet en sjælden dobbeltbesked om akademiryttere.\n\nHvad betyder det for dig: Tal og tekster om dine ryttere passer sammen."
-        },
-        "refs": [
+          7289,
           7103,
           7232,
           7219,
