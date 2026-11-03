@@ -1172,7 +1172,20 @@ export default function RaceDetailPage() {
             />
           )}
 
-          {tab === "results" && !hasAnyResults && (
+          {/* #7541: et løb der ikke er kørt endnu mangler ikke resultater; den
+              gamle "ikke importeret"-tekst gælder kun et løb med kørte etaper. isStageRace
+              kræver kørte etaper, så løbstypen læses direkte her. Fasen (racePhase) skiller et
+              løb hvis etape 1 er gået i gang uden gemte resultater fra et der ikke er startet. */}
+          {tab === "results" && !hasAnyResults && phase === "before" && (
+            <EmptyState
+              icon={<FlagIcon size={26} aria-hidden="true" />}
+              title={t("empty.notStartedRace")}
+              description={t(race.race_type === "stage_race" ? "empty.notStartedStageRaceHint" : "empty.notStartedOneDayHint")}
+              action={null}
+            />
+          )}
+
+          {tab === "results" && !hasAnyResults && phase !== "before" && (
             <EmptyState
               icon={<FlagIcon size={26} aria-hidden="true" />}
               title={t("empty.noResultsImportedRace")}
