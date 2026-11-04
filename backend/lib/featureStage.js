@@ -47,6 +47,7 @@ export const FRESH_FLAG_KEYS = Object.freeze(new Set([
   "queen_stage_gap_7236",
   "stage_plan_dropped_front_7635",
   "descent_regroup_cap_7644",
+  "split_attack_cause_7640",
   "route_profile_hills",
   "ai_team_retire_enabled",
   "ai_pool_retirement_v2_enabled",
