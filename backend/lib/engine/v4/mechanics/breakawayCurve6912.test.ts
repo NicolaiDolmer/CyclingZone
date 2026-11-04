@@ -102,7 +102,7 @@ test("#6912: lad-gaa-fasen slutter ved kurvens top; segmentet deles uden tab", (
 
 test("#6912: maalet falder fra toppen mod finalen, og resterende stigninger laegges oveni", () => {
   const flatRoute = route([flat(0, 180)], "flat");
-  const peak = 300;
+  const peak = 600; // over bjergets finalemaal, ellers klemmer toppen maalet og stigningen kan ikke ses
   let prev = Infinity;
   for (let km = 60; km <= 180; km += 10) {
     const t = curveTargetSeconds({ route: flatRoute, km, topKm: 60, peakSeconds: peak });
