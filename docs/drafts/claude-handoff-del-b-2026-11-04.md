@@ -1,14 +1,14 @@
-# Til Claude og ejeren: del B, 4. november 2026
+# PC1-handoff: brugbare leverancer fra DolmerPC, 4. november 2026
 
-- **Status:** ejeren har valgt sammenhængen fra rapport til næste gemte opgave til konkretisering; endelig udformning og build er ikke godkendt. Refs #7495.
-- **Start:** [forslag og konkret A/B-forløb](spec-durable-motivation-2026-11-04.md), derefter [evidens](audit-durable-motivation-2026-11-04.md) og [primærkilder](manager-game-sources-2026-11-04.md).
-- **Tre hypoteser:** rapport til næste gemte opgave; samlet ugebyrde; synlig fremgang på klubbens langsigtede vej. Den sidste har svagest direkte spillerbevis.
-- **Valgt retning:** konkretisér den lille forbindelse fra løbsrapport til næste eksisterende plan. Sammenlign nytten med det færdige eksisterende forløb; en eventuel svag effekt forelægges ejeren.
-- **Vigtigt genbrug:** Træningskortet har allerede kvittering, tilstand, prognose, dagsændring og adgang til samme rytters ugeplan. Det er ikke ny scope.
-- **Konkret eksempel:** den første tomme/fiktive skitse er underkendt som beslutningsgrundlag. Nyt privat eksempel viser eget holds rigtige resultat under løbssiden → Etape → Din dag → Dine ryttere. Placering og rytterfokus er stadig forslag; den eksisterende knap til næste etapes taktik vises også.
-- **Ejerens valg 4/11:** efter et konkret eksempel: "Nyttig sammenhæng — konkretisér den". Det vælger del B's retning, ikke del A's wireframes eller #5101's layout. Skitsens tomme tilstand er stadig et åbent valg.
-- **Afgrænsning:** #7652 stabil; Claude beholder #5101/#7638/#5950/#6110 og korrekthedsarbejdet. #7535 i bero og #6950s samtale senere i ugen består.
-- **Privat:** `balance-internals/growth/del-b-2026-11-04/` rummer SELECT/issue-beviser, foreslåede måltal, arbejdsestimat og begrænsninger. Ingen tal derfra må i offentlige kommentarer.
-- **Verifikation:** kildebaseret gennemgang, aktuelle SELECTs og uafhængigt review. Ingen browser-/spillerafprøvning; live-Discord-adgang manglede. PR'en bærer den endelige lokale/CI-status.
-- **Næste:** ejer og Claude gennemgår eksempel, alternativer og testplan; afstemmer wireframes; indhenter spillerfeedback efter kommunikations-go; vælger derefter eventuelt build-scope.
-- **Ingen nye issues:** behovene har allerede ejere. Ingen ny mekanik, nye løbende udgifter, produktændringer, flag, prod-skrivninger, udsendelser eller ændring af NOW/MASTERPLAN.
+- **Start:** læs CLAUDE/AGENTS, aktuel NOW/MASTERPLAN og de aktuelle PR-HEADs. Ejeren videresender den private handoff; dette er ikke et nyt merge- eller build-go.
+- **Teknisk leverance:** Codex klargjorde eksisterende PR'er, ikke nye features: main-integration/rebase, konflikter, genmålte baselines, målrettede tests, uafhængigt integrationsreview og push.
+- **TS:** #7612 → #7619 blev forberedt i rækkefølge og markeret klar. Kontrollér nuværende tilstand; allerede merged arbejde springes over, og nyere PC1-commits må ikke overskrives af lokale DolmerPC-HEADs.
+- **Ops:** #7524 er kun en review-/markøropgave. Derefter #7531, #7532, #7529, #7530, #7528 og #7571; den daterede status og testproveniens står på hver PR.
+- **Gates:** Claude afstemmer aktuelle reviewmarkører/CI. #7530 og #7571 kræver ejerens særskilte go før merge. #7571s reelle command-only child-tool-prøve er stadig åben til første rigtige PC1-bølge.
+- **Tests:** integrationsrunderne var målrettede. Historiske fulde suiter er ikke nye fulde grønne kørsler; Windows-fixtures erstatter ikke den reelle prøve eller manglende Linux-bevis.
+- **Bevar fra #7661:** [kilde- og overlap-audit](audit-durable-motivation-2026-11-04.md), [officielle spilkilder](manager-game-sources-2026-11-04.md) og privat SELECT-grundlag med kildeforbehold.
+- **Før ikke videre som hovedløsning:** navigationsmockuppen. Den endte som en lille genvej; eksisterende træningskort og næste-etape-taktikknap dækker allerede meget. [Spec'en](spec-durable-motivation-2026-11-04.md) bevares som undersøgelsesnoter, ikke produktkontrakt.
+- **Ufærdig hovedopgave:** et stærkt forslag til varig motivation mangler stadig. Genbrug researchen, afgræns et dokumenteret spillerbehov med ejeren, og undgå at genopfinde eksisterende løsninger.
+- **Afgrænsning:** #7652 holdes stabil. Claude beholder #5101/#7638/#5950/#6110 og korrekthedsarbejdet; #7535s bero og #6950s ejerbeslutning genåbnes ikke af denne handoff.
+- **Privat:** målinger, SQL, eksempler og skitser er afleveret privat. Spillerdata, økonomi og balance må ikke kopieres til det offentlige repo; brug ejerens private handoff til placeringerne.
+- **Mandat:** ingen produktbyg, merge til main, deploy, flagændringer, prod-skrivninger eller spillerudsendelser er udført af Codex. NOW/MASTERPLAN og afslutning efter eventuelle merges ejes af Claude.

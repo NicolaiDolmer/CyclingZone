@@ -1,6 +1,8 @@
-# Del B: samspil og varig motivation
+# Del B: research om samspil og varig motivation
 
 4. november 2026 · Refs #7495 · **Forslag til ejerens og Claudes gennemgang. Intet build-go.**
+
+> **Seneste vurdering og handoff 4/11:** Bevar kilde-/overlap-auditten, primærkilderne og de private målinger. Den konkrete navigationsskitse er for lille og utilstrækkeligt underbygget som hovedforslag til varig motivation. Den er et undersøgt forsøgsudkast, ikke en anbefalet produktplan. Hovedopgaven med et stærkt produktforslag er ikke afsluttet. Tidligere ejer-valg om at konkretisere sammenhængen er historik, ikke godkendelse af placering, udformning eller byg. Start med [PC1-handoff](claude-handoff-del-b-2026-11-04.md).
 
 ## Valgt retning til konkretisering
 
@@ -170,7 +172,7 @@ De vigtigste risici er forkert årsagsforklaring, ekstra administration, genopfi
 
 Skønnet indsats er lille til mellemstor for A med eksisterende kilder og navigation, større hvis historisk provenance mangler. Skønnet er ikke en leveringsdato og omfatter design, implementering, verifikation og testerfeedback; forudsætninger og interval står privat. C er et større tværgående produktprojekt og anbefales ikke nu. Ingen nye løbende udgifter er en forudsætning.
 
-**Næste skridt:** gennemgå skitsens konkrete tilstande, tag ét åbent adfærdsvalg ad gangen og afstem med Claude. Retningen er valgt, men placering, ordlyd, spillerfeedback og den endelige kontrakt er stadig åbne. Build-go er et senere særskilt valg. Ingen nye issues oprettes: de tre behov har allerede ejere. Claude og ejeren afstemmer en eventuel konkret rest under de eksisterende issues; NOW, MASTERPLAN og roadmap ændres ikke af denne leverance.
+**Næste skridt efter handoff:** genbrug researchen, men begynd ikke med flere detaljer i navigationsmockuppen. Afgræns først et dokumenteret spillerbehov med ejeren og de eksisterende produktspor. Den tidligere sammenhæng er et undersøgt eksempel, ikke hovedsvaret på varig motivation. Produktvalg, testplan og build-go skal fortsat gives særskilt. Ingen nye issues oprettes af denne handoff; NOW, MASTERPLAN og roadmap ejes fortsat af Claude.
 
 ## SSOT og drift
 
