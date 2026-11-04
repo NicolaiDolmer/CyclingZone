@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.398",
+    "date": "2026-11-04",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Selection fullness in the calendar",
+          "body": "The calendar's Team column now shows how full your selection is, e.g. Ready · 6/8, when the race has room for more riders."
+        },
+        "da": {
+          "title": "Udtagelsens fylde i kalenderen",
+          "body": "Kalenderens Hold-kolonne viser nu, hvor fuld din udtagelse er, fx Klar · 6/8, når løbet har plads til flere ryttere."
+        },
+        "refs": [
+          7561
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.397",
     "date": "2026-11-03",
     "changes": [
