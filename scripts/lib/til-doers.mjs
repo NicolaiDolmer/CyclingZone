@@ -167,7 +167,11 @@ export function parseProofMarker(body) {
  * @returns {Map<number, {status, tekst, af, dato, commentId, auto, menneske}>}
  */
 export function parseMarkers(comments, { issue = null } = {}) {
-  const sorted = [...(comments || [])].sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')));
+  // En auto-bevis-kommentar redigeres paa stedet, naar samme tog koeres igen.
+  // Dens tidspunkt er derfor updated_at, saa et nyere bevis vinder over en
+  // menneskelig markering skrevet mellem foerste og seneste koersel.
+  const at = (c) => String((isProofComment(c.body) && c.updated_at) || c.created_at || '');
+  const sorted = [...(comments || [])].sort((a, b) => at(a).localeCompare(at(b)));
   const latest = new Map();
   const latestHuman = new Map();
   for (const c of sorted) {
@@ -184,7 +188,7 @@ export function parseMarkers(comments, { issue = null } = {}) {
       const status = raw === 'n/a' ? 'na' : raw;
       const tekst = m[3].trim();
       if (status === 'na' && !tekst) continue; // na uden begrundelse taeller ikke
-      const entry = { status, tekst, af: c.user?.login || '', dato: c.created_at || '', commentId: c.id, auto };
+      const entry = { status, tekst, af: c.user?.login || '', dato: at(c), commentId: c.id, auto };
       latest.set(krav, entry);
       if (!auto) latestHuman.set(krav, entry);
     }

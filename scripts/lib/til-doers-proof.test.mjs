@@ -136,6 +136,18 @@ test('blok uden issue, ukendte linjer, tom blok og ulukket blok giver fejl', () 
   assert.match(two.errors[0], /kun ét issue/);
 });
 
+test('Codex P2: en ulukket eller issue-løs blok gør alle deklarationer til udkast', () => {
+  const unclosed = `${goodBlock}\n\n\`\`\`til-doers-proof\nissue: ${N}\nprod: GET /api/ekstra -> 200\n`;
+  const parsed = parseProofDeclarations(unclosed);
+  assert.match(parsed.errors[0], /ikke lukket/);
+  const d = declarationFor(parsed, N);
+  assert.match(d.errors.join('\n'), /ugyldig til-doers-proof-blok/);
+  assert.equal(evaluateProdProof({ declaration: d, sha: SHA, prod: goodProd() }).udfald, 'udkast');
+  assert.equal(evaluateSideProof({ declaration: d, sha: SHA, side: goodSide() }).udfald, 'udkast');
+  const noIssue = declarationFor(parseProofDeclarations(`${goodBlock}\n${fence(['prod: GET /api/x -> 200'])}`), N);
+  assert.equal(evaluateProdProof({ declaration: noIssue, sha: SHA, prod: goodProd() }).udfald, 'udkast');
+});
+
 test('andre kodeblokke ignoreres, og flere blokke for samme issue slås sammen', () => {
   const body = [fence(['issue: 1', 'side: /x | tekst y'], 'js'), fence([`issue: ${N}`, 'side: /a | tekst x']), fence([`issue: ${N}`, 'prod: GET /api/h -> 200']), fence(['issue: 9', 'side: /b | tekst z'])].join('\n\n');
   const { declarations } = parseProofDeclarations(body);

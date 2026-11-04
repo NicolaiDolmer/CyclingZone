@@ -194,6 +194,10 @@ export function parseProofDeclarations(body, { refIssues = null } = {}) {
     }
   }
   const declarations = [...byIssue.values()].sort((a, b) => a.issue - b.issue);
+  // En blok der ikke kan knyttes til et issue (ulukket eller uden issue) kan
+  // have vaeret ment for hvilket som helst af dem. Saa giver ingen af PR'ens
+  // deklarationer ok, kun udkast, til body'en er rettet.
+  if (errors.length) for (const d of declarations) d.errors.push(`PR-body har en ugyldig til-doers-proof-blok (${errors.join('; ')})`);
   return { declarations, errors };
 }
 

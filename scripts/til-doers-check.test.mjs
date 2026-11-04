@@ -489,6 +489,19 @@ test('auto-bevis: udkast-linjer markerer aldrig noget', () => {
   assert.equal(door.find((d) => d.krav === 8).kilde, 'manuelt');
 });
 
+test('Codex P2: et redigeret (nyere) auto-bevis vinder over en menneskelig markering imellem', () => {
+  const refreshed = { ...proofBy('OWNER', 'ejer', ['Til dørs: 8 mangler auto-bevis: GET /api/h gav 500, forventet 200'], {}, '2026-11-02T00:00:00Z'), updated_at: '2026-11-04T00:00:00Z' };
+  const human = owner('Til dørs: 8 ok tjekket', '2026-11-03T00:00:00Z');
+  const k8 = evaluateDoor({ issue: { number: N }, comments: [refreshed, human] }).find((d) => d.krav === 8);
+  assert.equal(k8.status, 'mangler');
+  assert.equal(k8.kilde, 'auto-bevis');
+  // en redigeret menneskelig kommentar flytter sig ikke (uaendret adfaerd)
+  const editedHuman = { ...owner('Til dørs: 8 mangler gammel', '2026-11-01T00:00:00Z'), updated_at: '2026-11-05T00:00:00Z' };
+  assert.equal(evaluateDoor({ issue: { number: N }, comments: [editedHuman, human] }).find((d) => d.krav === 8).status, 'ok');
+  // og auto-beviset rykker ikke grænsen for genlukning
+  assert.equal(lastMarkerAt([refreshed, human]), '2026-11-03T00:00:00Z');
+});
+
 test('auto-bevis: et fejlet tjek (mangler) overtrumfer en ældre menneskelig ok', () => {
   const door = evaluateDoor({
     issue: { number: N },
