@@ -339,6 +339,7 @@ describe('run (IO injiceret)', () => {
     assert.deepEqual(calls, [{ train: [51], expectHead: selected[0].headSha }]);
     const ps = readFileSync(new URL('./merge-queue.ps1', import.meta.url), 'utf8');
     assert.ok(ps.includes('[string] $ExpectHead') && ps.includes('$fresh.headSha -ne $ExpectHead'), 'merge-queue.ps1 stopper ved et andet hoved end det godkendte');
+    assert.ok(ps.includes('$recheck.headSha -ne $ExpectHead'), 'og igen lige foer merge (efter ventetid/baseline-loesning)');
   });
 
   it('Codex P1 #7657: exit != 0 stopper toget og laaser, til main er verificeret', async () => {

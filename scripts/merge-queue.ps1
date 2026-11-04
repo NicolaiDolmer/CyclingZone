@@ -1168,6 +1168,12 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
     Write-Host "STOP: PR #$n har aendret sig under ventetiden (hoved $($fresh.headSha) -> $($recheck.headSha), checks: $($recheck.checksSummary)). Koer koeen igen, naar det nye hoved er groent." -ForegroundColor Red
     Exit-Queue 1
   }
+  # Codex P1 (#7657): sidste vagt lige foer merge - et push under Wait-PrGreen eller en
+  # baseline-loesning maa aldrig merge et andet hoved end det, kalderen godkendte.
+  if ($ExpectHead -and $recheck.headSha -ne $ExpectHead) {
+    Write-Host "STOP: PR #$n har hoved $($recheck.headSha) lige foer merge - ikke det godkendte $ExpectHead. Intet merges." -ForegroundColor Red
+    Exit-Queue 1
+  }
   Write-Host "  Merger: gh pr merge $n --squash --delete-branch --admin"
   & node (Join-Path $PSScriptRoot 'wave-policy.mjs') assert-merge-allowed --pr "$n" --repo $Repo
   if ($LASTEXITCODE -ne 0) {
