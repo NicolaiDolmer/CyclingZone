@@ -76,7 +76,13 @@ Illustrativt strukturudkast med **Rytter A**, **afsluttet løb X** og **kommende
 
 ### Skitse af den valgte sammenhæng
 
-Den interaktive arbejdsskitse i det private designmateriale viser kun tilføjelsen og en skematisk destination. Alle data er fiktive; de grå felter er plads til Claudes indsatskort. Arbejdsetiketter er ikke ny spillertekst, og skitsen fastlægger ikke #5101's endelige layout.
+**Korrektion efter ejerens gennemgang 4/11:** Den første fiktive skitse var ikke forståelig nok til at vælge placering eller indhold. Den er ikke et godkendelsesgrundlag. Ejeren har bedt om rigtige data og en tydelig side/fane. Det nye private eksempel bruger eget holds faktiske resultat og gemte næste deltagelse, uden tomme pladsholdere.
+
+**Konkret placeringsforslag, endnu ikke valgt:** løbssiden `/races/:raceId?tab=stage&stage=N`, i `YourDayCard` under "Dine ryttere". Nuværende navne, placeringer og tidsgab vises før den foreslåede rytterreference. Dette bruger en eksisterende flade og foregiver ikke, at #5101's indsatskort er bygget. Det er en genoptegning fra kode med SELECT-data, ikke et observeret skærmbillede.
+
+Kildekontrollen viste også, at `StagePageV2` allerede giver `YourDayCard` en primær knap til næste åbne etapes taktik via `openV2Tactics(stageNumber)`. Den er med i sammenligningen. For samme etapeløb er den mulige nye værdi derfor kun en rytterbestemt reference/fokus, ikke en ny adgang til næste etape. Rytter-deep-link findes ikke dokumenteret og skal ikke fremstilles som eksisterende. Merværdien og placeringen er stadig åbne; ingen ny mekanik eller dubletknap er bestilt.
+
+Den oprindelige interaktive arbejdsskitse viste kun tilføjelsen og en skematisk destination med fiktive data. Den nyere sammenligning med rigtige data er nu gennemgangsgrundlaget. Annotationer er ikke godkendt spillertekst, og ingen skitse fastlægger #5101's endelige layout.
 
 | Situation | Reference og destination i skitsen | Beslutningsstatus |
 |---|---|---|
