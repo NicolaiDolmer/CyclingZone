@@ -302,14 +302,20 @@ export function planEstimateWrite(input, params) {
 // Skønnet vises aldrig under rytterens nuværende rating (§3.2).
 export function publicEstimateView(row, { currentRating } = {}) {
   if (!row || row.value == null || !CERTAINTY_WORDS.includes(row.certainty)) return { hidden: true };
-  const value = Math.max(ratingFloor(currentRating), Number(row.value));
-  const previousValue = row.previous_value == null ? null : Number(row.previous_value);
+  const floor = ratingFloor(currentRating);
+  const value = Math.max(floor, Number(row.value));
+  // Codex P2: "ændret siden sidst" skal sammenligne de VISTE tal. Skjuler gulvet
+  // ændringen (fx 60 → 61 under en rating på 64), har spilleren set det samme tal
+  // begge gange, og der må ikke opfindes en ændring.
+  const previousShown = row.previous_value == null ? null : Math.max(floor, Number(row.previous_value));
+  const certaintyChanged = row.previous_certainty != null && row.previous_certainty !== row.certainty;
+  const visibleChange = previousShown != null && (previousShown !== value || certaintyChanged);
   return {
     hidden: false,
     value,
     certainty: row.certainty,
-    previousValue,
-    previousCertainty: row.previous_certainty ?? null,
-    changedAt: row.changed_at ?? null,
+    previousValue: visibleChange ? previousShown : null,
+    previousCertainty: visibleChange ? (row.previous_certainty ?? null) : null,
+    changedAt: visibleChange ? (row.changed_at ?? null) : null,
   };
 }

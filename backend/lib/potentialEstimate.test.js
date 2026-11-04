@@ -321,6 +321,23 @@ test("visningen lægger gulvet ved nuværende rating uden at skrive rækken om",
   assert.equal(row.value, 60);
 });
 
+test("ændret-siden-sidst sammenligner de viste tal, ikke de gemte (Codex P2)", () => {
+  const base = { ...plan({}).row, certainty: "fair", previous_certainty: "fair", changed_at: NOW };
+  // Gulvet skjuler 60 → 61 under rating 64: spilleren så 64 begge gange, ingen ændring.
+  const masked = publicEstimateView({ ...base, value: 61, previous_value: 60 }, { currentRating: 64 });
+  assert.equal(masked.value, 64);
+  assert.equal(masked.previousValue, null);
+  assert.equal(masked.changedAt, null);
+  // En synlig stigning over gulvet vises som før, med det tidligere VISTE tal.
+  const visible = publicEstimateView({ ...base, value: 70, previous_value: 60 }, { currentRating: 64 });
+  assert.equal(visible.previousValue, 64);
+  assert.equal(visible.changedAt, NOW);
+  // Et nyt sikkerheds-ord er en synlig ændring, selv når tallet er det samme.
+  const word = publicEstimateView({ ...base, value: 61, previous_value: 60, previous_certainty: "unsure" }, { currentRating: 64 });
+  assert.equal(word.previousCertainty, "unsure");
+  assert.equal(word.changedAt, NOW);
+});
+
 test("stripHiddenTalent fjerner de skjulte talent-kolonner og lader resten stå", () => {
   const row = { id: "r1", firstname: "A", base_talent: 71, talent_ceiling: 74, potentiale: 4 };
   const safe = stripHiddenTalent(row);
