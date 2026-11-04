@@ -810,6 +810,16 @@
       "issue": 7645,
       "reason": "For lidt selektion på kuperet/mellembjerg, designspor, ejer-go valg A 4/11 i #7495",
       "since": "2026-11-04"
+    },
+    {
+      "issue": 7639,
+      "reason": "Løbsfilm: udgået rytter lever videre som gruppe (Giro etape 6), ejer-go valg A 4/11 i #7495",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 7640,
+      "reason": "Vinderens angreb står som tabt tid (Giro etape 8), ejer-go valg A 4/11 i #7495",
+      "since": "2026-11-04"
     }
   ]
 }
