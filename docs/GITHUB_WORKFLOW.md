@@ -2,6 +2,43 @@
 
 > Verdens bedste Claude+GitHub-opsætning. Ambition: agent-loop hvor Nicolai åbner et issue, Claude implementerer, GitHub merger, alt logges automatisk.
 
+## Spillerklager: måling før build (#5509)
+
+Bugformen starter i `player-report` + `needs-repro`, aldrig automatisk `claude:todo`.
+En klage om adfærd, balance eller hastighed forbliver `needs-repro`, indtil en maintainer
+har læst en prod-måling, der viser klagen mod det ejer-godkendte mål. Først da må
+`needs-repro` erstattes af `claude:todo`. Er førstatus allerede grøn: stop, rapportér
+beviset og byg intet. Investigation (`kind: investigate`) er undtaget, fordi det bygger intet.
+
+Issue-body skal have præcis én fenced `player-report-evidence` JSON-sektion:
+
+```player-report-evidence
+{
+  "environment": "prod",
+  "measuredAt": "2026-11-02T12:00:00Z",
+  "source": { "kind": "endpoint", "query": "GET /health" },
+  "result": { "status": "reproduces", "summary": "Den observerede tilstand afviger fra det godkendte mål; se privat evidens." },
+  "evidence": { "privatePointer": "balance-internals/report-evidence.md" }
+}
+```
+
+Eksemplet er syntetisk, ikke en prod-måling. `source.kind` er `sql` eller `endpoint`;
+`source.query` indeholder en læsende `SELECT`/`WITH` eller `GET /sti`. Alternativt
+kan `source.privatePointer` pege på den private forespørgsel. `measuredAt` er et UTC-tidspunkt.
+`result.summary` beskriver det målte resultat; `result.status` er `reproduces` eller
+`already-green` (sidstnævnte afvises til build). `evidence.aggregate` er et objekt med
+`metric` (navn), `value` (endeligt tal) og `unit` (enhed) for et anonymiseret,
+ufølsomt måleresultat, eller `evidence.privatePointer` peger på resultatet.
+Private pointere har formen `balance-internals/filnavn.md`, aldrig credentials eller offentlige links til private data.
+Publicér aldrig PII, identifikatorer, hemmeligheder eller private balance-tal; sådanne
+forespørgsler og resultater ligger privat og refereres kun med filnavn.
+
+Fælles admission læser labels og body fra GitHub før reservation/spawn og ved
+rullende optag. Manglende indhold, ugyldig JSON, placeholders og nøgleord alene
+afvises. Dette validerer struktur, ikke målingens sandhed: maintaineren skal læse
+evidensen, og workeren måler førstatus før kode. Øvrige mandat-, design-, SSOT- og
+byggestop-gates gælder stadig. Ikke-`player-report` følger den eksisterende admission.
+
 ## PR klar til review
 
 `check-verification` springer drafts over og lytter derfor paa `ready_for_review`, saa markering som klar genstarter valideringen af PR-body uden et nyt push. `review-gate` lytter allerede paa samme event for baade `pull_request_target` (gaten fra main) og `pull_request` (unit-tests).
@@ -170,7 +207,7 @@ Den anbefalede arbejdsgang er nu beskrevet i [`docs/AGENT_DISPATCH.md`](AGENT_DI
 
 1. Åbn https://github.com/NicolaiDolmer/CyclingZone/issues/new/choose
 2. Vælg template: **Claude task**, **Claude investigation**, eller **Bug report**
-3. Udfyld required-felter — issuet får automatisk `claude:todo` + `priority:*`
+3. Udfyld required-felter. Bugformen giver `player-report` + `needs-repro`; prod-evidens kræves før `claude:todo` (se kontrakten ovenfor). Øvrige skabeloner følger deres labels.
 4. Næste session: bare sig "tjek mine issues" (eller jeg gør det selv ved start). **ELLER** når Lag 1 er live: skriv `@claude` direkte i issue-body, så starter Claude med det samme i cloud.
 
 ### Claude → Dig (jeg åbner issue)
@@ -181,7 +218,8 @@ Den anbefalede arbejdsgang er nu beskrevet i [`docs/AGENT_DISPATCH.md`](AGENT_DI
 
 | Label | Hvem sætter | Betydning |
 |---|---|---|
-| `claude:todo` | Bruger (auto via template) eller Claude | Klar til Claude pick-up |
+| `needs-repro` | Bugform eller maintainer | Spillerklage uden bekræftende prod-evidens; investigation tilladt, intet build |
+| `claude:todo` | Bruger eller Claude efter triage | Klar til pick-up; player-report kræver bekræftende prod-evidens |
 | `claude:in-progress` | Claude | Aktiv arbejdssession |
 | `claude:blocked` | Claude | Venter på input fra bruger (se nyeste comment) |
 | `priority:high\|med\|low` | Bruger | Pick-rækkefølge |

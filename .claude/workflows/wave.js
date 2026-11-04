@@ -1144,6 +1144,7 @@ function setupPrompt(tracks, lanes, expiresInMinutes) {
     '## 1. Faelles admission (#5467)',
     `Koer node ${MAIN_CHECKOUT}/scripts/wave-policy.mjs inspect. Hooken skal allerede have reserveret boelgen atomisk.`,
     'Kraev runtime=claude, state=running og et waveId. Mangler det, returner ok=false og STOP foer setup.',
+    'Player-report (#5509): hookens faelles admission laeser issue-body og labels foer spawn. Manglende prod-evidens eller already-green stopper build; brug kun kind: investigate til at samle evidens uden byg. Omgaar aldrig gaten med en haandskrevet lane.',
     'Returner waveId fra markoeren. Skriv eller overskriv ALDRIG wave-active.json selv. En udloebet markoer er ikke et ledigt slot.',
     '',
     ...trackSetupSteps(),

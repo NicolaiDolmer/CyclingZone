@@ -68,6 +68,17 @@ function fixture(t) {
 }
 const tracks = [1, 2].map(issue => ({ issue, branch: `codex/${issue}-fixture`, title: 'Fixture', ownership: [`fixtures/${issue}`], tier: 'TARGETED', verifyCommands: ['node --test fixture.test.mjs'] }));
 
+test('#5509: Codex reads issue content before setup or any spawn', async t => {
+  const root = fixture(t);
+  let reads = 0;
+  await assert.rejects(runWave({ root, runDir: root, tracks, owner: 'fixture' }, deps({
+    readIssue: () => { reads++; return { labels: ['player-report'], body: 'SQL endpoint verified' }; },
+    prepare: async () => assert.fail('unmeasured complaint reached setup'),
+    runAgent: async () => assert.fail('unmeasured complaint reached spawn'),
+  })), /Player-report evidence/);
+  assert.equal(reads, 1);
+  assert.equal(existsSync(path.join(root, 'wave-active.json')), false);
+});
 test('#6335: Codex plans reject broad ownership and touches while keeping independent files', () => {
   for (const field of ['ownership', 'touches']) {
     for (const raw of ['backend/lib', 'backend/routes/**', 'FRONTEND\\SRC\\PAGES\\']) {
@@ -199,7 +210,7 @@ test('omitted capacity remains two lanes and is visible as a default', async t =
 const unknownHost = () => hostLaneCap('FIXTURE-UNKNOWN-HOST');
 
 function deps(overrides = {}) {
-  return { now: () => now, bootId: () => 'fixture-boot', readPrs: async () => [], prefilter: async () => {}, laneLimit: unknownHost,
+  return { now: () => now, bootId: () => 'fixture-boot', readPrs: async () => [], readIssue: () => ({ labels: [], body: '' }), prefilter: async () => {}, laneLimit: unknownHost,
     prepare: async t => ({ ...t, worktree: `/fixture/${t.issue}` }),
     runAgent: async (role, t) => role === 'reviewer' ? { verdict: 'approved', findings: [] } : { status: 'ready', summary: 'fixture', tests: ['pass'] },
     verifyPermissions: async () => {}, validateResult: async () => {}, ...overrides };
