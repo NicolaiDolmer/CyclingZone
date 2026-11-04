@@ -24,7 +24,7 @@ const { installNetworkMocks, login, stabilizePage, json, corsHeaders, TEST_TEAM 
   pathToFileURL(resolve(__dirname, "fixtures.js")).href
 );
 const backendLib = resolve(__dirname, "..", "..", "..", "backend", "lib");
-const { computeMultiSeasonForecast } = await import(pathToFileURL(join(backendLib, "financeForecast.js")).href);
+const { computeMultiSeasonForecast } = await import(pathToFileURL(join(backendLib, "financeForecast.ts")).href);
 const { buildSeasonSwitchPreview } = await import(pathToFileURL(join(backendLib, "seasonSwitchPreview.js")).href);
 
 const OUT = resolve(process.argv[2] || resolve(__dirname, "../../../pr-screens/6936/raw"));

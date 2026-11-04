@@ -13,7 +13,7 @@ import {
   chargeFacilityCosts,
   buildSeasonEndPreviewRows,
 } from "./economyEngine.js";
-import { computeFinanceForecast, computeMultiSeasonForecast } from "./financeForecast.js";
+import { computeFinanceForecast, computeMultiSeasonForecast } from "./financeForecast.ts";
 import { buildSeasonSwitchPreview } from "./seasonSwitchPreview.js";
 import {
   ECONOMY_NO_UPKEEP_FLAG_KEY,

@@ -333,7 +333,7 @@ import {
   computeDebtRatio,
   computeSustainabilityTier,
 } from "../lib/economyAdminDashboard.ts";
-import { computeFinanceForecast, computeMultiSeasonForecast } from "../lib/financeForecast.js";
+import { computeFinanceForecast, computeMultiSeasonForecast } from "../lib/financeForecast.ts";
 import { isUpkeepPerRaceDayEnabled } from "../lib/upkeepPerRaceDayFlag.ts";
 import { isEconomyNoUpkeepEnabled } from "../lib/economyNoUpkeepFlag.ts";
 import { buildSeasonFinanceReport, summarizePrizes } from "../lib/seasonFinanceReport.js";
