@@ -378,6 +378,7 @@ export async function run({
     log(`  Kunne ikke liste PR'er (${err?.message ?? err}); proever igen naeste koersel.`);
     return { action: 'error', train: [], alerts: [] };
   }
+  log(`  ${evaluations.length} aabne PR'er vurderet, ${evaluations.filter((x) => x.ready).length} klar.`);
   for (const e of evaluations.filter((x) => x.ready)) log(`  #${e.number} klar: ${e.reason}${e.classification ? ` [${e.classification}]` : ''}`);
   const train = selectTrain(evaluations);
   const decision = decideAction({ activeMarker: null, train });
