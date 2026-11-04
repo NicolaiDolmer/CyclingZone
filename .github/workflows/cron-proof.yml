@@ -1,0 +1,200 @@
+name: Cron proof
+run-name: Cron proof for ${{ inputs.sha }}
+
+# #7582 del 2 (ejer-go 3/11): cron-beviset er flyttet ud af deploy-verify.yml i
+# sit eget workflow. Det var et job i Deploy verify (#6859), som holdt hele
+# Deploy verify-koerslen i gang i op til ca. 80 min, mens merge-koeen kun
+# venter paa release-jobbet. Nu slutter Deploy verify, naar release + release
+# checks er faerdige, og beviset koerer for sig.
+#
+# Start: Deploy verify's release-job dispatcher dette workflow lige efter en
+# groen smoke (trinnet "Start cron proof"), med target-SHA, PR-nummer, de
+# beroerte cron-jobs og READY-graensen som inputs. Den foerste heartbeat-
+# laesning er aldrig bevis, saa beviset skal naa sin foerste laesning kort
+# efter graensen: jobbet har kun et shallow checkout og Node foer laesningen.
+# Ingen beroerte cron-jobs = intet dispatch (samme som "verified" uden jobs).
+#
+# Merge-koeen (scripts/merge-queue.ps1) venter ALDRIG paa dette workflow. Et
+# roedt bevis er en alarm (PR-kommentar + Discord-ops), aldrig et stop (ejer
+# 18/10, #6859). Hver dispatch er sin egen koersel uden faelles concurrency-
+# gruppe: en genkoerslen af Deploy verify giver en ny READY-graense og dermed
+# et nyt bevis, der ikke maa vente bag det gamle.
+#
+# Sikkerhed: inputs gives kun som env-variabler og valideres foer brug, aldrig
+# interpoleret ind i shell-teksten.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: 'Target-SHA (main-commit der blev deployet)'
+        required: true
+        type: string
+      pr_number:
+        description: 'PR der faar kommentaren (tom = ingen kommentar)'
+        required: false
+        type: string
+        default: ''
+      affected_slugs:
+        description: 'JSON-liste over beroerte cron-jobs (fra cron-deploy-verification.mjs --impact)'
+        required: true
+        type: string
+      cron_since:
+        description: 'READY-graensen (ISO-tid) fra Deploy verify'
+        required: true
+        type: string
+      deploy_run_url:
+        description: 'Deploy verify-koerslen der startede beviset'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  cron-proof:
+    # Navnet er uaendret fra jobbet i deploy-verify.yml (scripts/ci/deploy-verification-state.mjs).
+    name: Cron proof (non-blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    outputs:
+      state: ${{ steps.crons.outputs.state }}
+    steps:
+      - name: Validate inputs
+        env:
+          SHA: ${{ inputs.sha }}
+          PR: ${{ inputs.pr_number }}
+          AFFECTED_SLUGS: ${{ inputs.affected_slugs }}
+          CRON_SINCE: ${{ inputs.cron_since }}
+        run: |
+          set -euo pipefail
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::sha er ikke en fuld commit-SHA."; exit 1; }
+          [[ -z "$PR" || "$PR" =~ ^[0-9]+$ ]] || { echo "::error::pr_number er ikke et tal."; exit 1; }
+          jq -e 'type == "array" and length > 0 and all(.[]; type == "string" and test("^[a-z0-9][a-z0-9_-]*$"))' <<<"$AFFECTED_SLUGS" >/dev/null \
+            || { echo "::error::affected_slugs er ikke en ikke-tom JSON-liste af cron-slugs."; exit 1; }
+          date -u -d "$CRON_SINCE" +%s >/dev/null 2>&1 || { echo "::error::cron_since er ikke en gyldig tid."; exit 1; }
+
+      - name: Checkout target SHA (shallow)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.sha }}
+          persist-credentials: false
+
+      - name: Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+
+      # Diagnostics only: a proof that starts long after READY can miss the
+      # post-boundary tick of a 1-minute job and turn red without a broken
+      # cron. Never changes the verdict.
+      - name: Cron proof start latency
+        env:
+          CRON_SINCE: ${{ inputs.cron_since }}
+        run: |
+          SINCE=$(date -u -d "$CRON_SINCE" +%s 2>/dev/null || true)
+          if [[ -n "$SINCE" ]]; then
+            DELAY=$(( $(date -u +%s) - SINCE ))
+            echo "Cron proof starts ${DELAY}s after the READY observation."
+            echo "Cron-bevis startede ${DELAY} s efter READY-observationen." >> "$GITHUB_STEP_SUMMARY"
+            if (( DELAY > 300 )); then
+              echo "::warning::Cron proof started ${DELAY}s after READY; a red short-cadence result may come from the late start, not from a broken cron."
+            fi
+          fi
+
+      - name: Verify affected cron check-ins
+        id: crons
+        # #6487: seneste deadline for et kort job (<= 30 min) er Railway-drain
+        # + kadence + margin, plus en boot-kohorte efter boundary (#6799,
+        # MAX_COHORT_SHIFT_SECONDS); scriptet melder selv failed derefter.
+        # Timeouten er kun et vaern mod et haengende kald (testet i
+        # scripts/ci/cron-deploy-verification.test.mjs).
+        timeout-minutes: 80
+        env:
+          AFFECTED_SLUGS: ${{ inputs.affected_slugs }}
+          CRON_SINCE: ${{ inputs.cron_since }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          set -o pipefail
+          node scripts/ci/cron-deploy-verification.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # Explicit markers make verified and deferred proofs distinguishable
+      # through the attempt-specific Jobs API (#6318).
+      - name: Cron check-ins verified
+        if: steps.crons.outputs.state == 'verified'
+        run: echo "Affected cron check-ins verified."
+
+      - name: Cron check-ins deferred
+        if: steps.crons.outputs.state == 'deferred'
+        run: echo "::notice::AFVENTER CHECK-IN for long cadences (> 30 min); short cadences verified. Non-blocking for the merge queue; see jobs and deadlines in summary."
+
+      # Egen markoer (ikke deploy-verify:$SHA): Deploy verify's report-job
+      # skriver sin egen kommentar, og to skrivere paa samme kommentar ville
+      # overskrive hinanden.
+      - name: Comment cron proof verdict on merged PR
+        if: ${{ !cancelled() && inputs.pr_number != '' }}
+        # A failed comment must not suppress the alarm below.
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ inputs.pr_number }}
+          SHA: ${{ inputs.sha }}
+          CRON_SINCE: ${{ inputs.cron_since }}
+          CRON_OUTCOME: ${{ steps.crons.outcome }}
+          CRON_STATE: ${{ steps.crons.outputs.state }}
+          DEPLOY_RUN_URL: ${{ inputs.deploy_run_url }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [[ "$CRON_OUTCOME" == "success" && "$CRON_STATE" == "verified" ]]; then
+            BODY="<!-- cron-proof:$SHA -->
+          ✅ **Cron-bevis groent** — \`${SHA:0:7}\`: alle beroerte cron-jobs har tikket efter deployet. [Koersel]($RUN_URL)"
+          elif [[ "$CRON_OUTCOME" == "success" && "$CRON_STATE" == "deferred" ]]; then
+            BODY="<!-- cron-proof:$SHA -->
+          ## AFVENTER CHECK-IN (${SHA:0:7})
+
+          Alle beroerte jobs med kort kadence (<= 30 min) har tikket efter deployet.
+          Jobs med lang kadence (> 30 min) **afventer check-in** og er ikke bevist endnu.
+          Boundary: $CRON_SINCE (+ Railway drain). [Jobs, sidste check-in og deadline]($RUN_URL).
+          Merge-koeen fortsaetter; cron-heartbeat-vagten alarmerer hvis et langt job misser sin deadline."
+          else
+            BODY="<!-- cron-proof:$SHA -->
+          ⚠️ **Cron-bevis roedt** — \`${SHA:0:7}\` — [se log]($RUN_URL)
+          - Cron-bevis: \`${CRON_OUTCOME:-unknown}\` (state: \`${CRON_STATE:-none}\`)
+          - Deploy verify: ${DEPLOY_RUN_URL:-ukendt koersel}
+
+          Discord-ops er alarmeret. Et roedt cron-bevis stopper ikke merge-koeen."
+          fi
+          COMMENT_ID=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate --jq ".[] | select(.body | contains(\"<!-- cron-proof:$SHA -->\")) | .id" | tail -n 1)
+          if [ -n "$COMMENT_ID" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$COMMENT_ID" -f body="$BODY"
+          else
+            gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body "$BODY"
+          fi
+
+      - name: Alarm Discord ops on red cron proof
+        # !cancelled(): a failed PR comment above must never suppress the alarm.
+        # A skipped proof (failed validation or checkout) is red as well.
+        if: ${{ !cancelled() && steps.crons.outcome != 'success' }}
+        env:
+          DISCORD_OPS_WEBHOOK_URL: ${{ secrets.DISCORD_OPS_WEBHOOK_URL }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          PR: ${{ inputs.pr_number }}
+          SHA: ${{ inputs.sha }}
+          CRON_OUTCOME: ${{ steps.crons.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          WEBHOOK="${DISCORD_OPS_WEBHOOK_URL:-$DISCORD_WEBHOOK}"
+          if [ -z "$WEBHOOK" ]; then
+            echo "::warning::Hverken DISCORD_OPS_WEBHOOK_URL eller DISCORD_WEBHOOK er sat; alarmen blev ikke sendt."
+            exit 0
+          fi
+          REF="${SHA:0:7}"
+          [ -n "$PR" ] && REF="$REF (PR #$PR)"
+          MSG="⚠️ **Cron-bevis rødt** for $REF. Deploy + smoke var grønne. Cron-bevis: $CRON_OUTCOME. Et rødt cron-bevis stopper ikke merge-køen. $RUN_URL"
+          CODE=$(jq -n --arg content "$MSG" '{content: $content}' | curl -sS -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" --data @- "$WEBHOOK" || echo "000")
+          echo "Discord-alarm: HTTP $CODE"
+          [[ "$CODE" == 2* ]] || echo "::warning::Discord-alarmen kunne ikke sendes (HTTP $CODE)."
