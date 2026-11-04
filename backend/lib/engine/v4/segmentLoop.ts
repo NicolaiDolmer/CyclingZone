@@ -94,6 +94,7 @@ import { annotateExactPlaces } from "./exactPlace.ts";
 import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
 import { finishDescentIndexFor, runInOpenOnlyTempo, timeModelTuningFor, valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
 import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
+import { compareIds } from "../../compareIds.ts";
 import { queenStageGap7236On } from "./mechanics/queenStageGap7236.ts"; // #7236
 import { descentRegroupTempo6486, descentRegroupTuning7236 } from "./mechanics/descentRegroup6486.ts"; // #6486, #7236
 import { advanceStagePlan, advanceStagePlanAtFinish, createStagePlanRuntime, stagePlanCurrentTasks, stagePlanEntrants, stagePlanFinalEfforts, stagePlanLoadEfforts } from "../../stagePlanEngine.ts"; // #7003, #7380
@@ -400,7 +401,7 @@ export function groupEffortTempo(
   });
   // Sorteringen er identisk med den gamle (CP faldende, rider_id som
   // tie-break) naar alle faktorer er 1 — det er bit-identitets-garantien.
-  weighted.sort((a, b) => b.tempoCp - a.tempoCp || a.id.localeCompare(b.id));
+  weighted.sort((a, b) => b.tempoCp - a.tempoCp || compareIds(a.id, b.id));
   const frontCount = Math.max(1, Math.ceil(weighted.length * frontFraction));
   // En grupetto-rytter saetter ALDRIG tempoet i en gruppe hvor andre koerer
   // (CodeRabbit-fund: en faktor alene garanterer det ikke — en staerk
@@ -544,7 +545,7 @@ export function applyGrupettoPaceFloor(input: GrupettoPaceFloorInput): Map<strin
     // som groupEffortTempo, saa en ren gruppe faar praecis sin egen front).
     const grupettoRiders = [...tempo.cpByRider.entries()]
       .filter(([id]) => input.effortByRider(id) === "grupetto")
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+      .sort((a, b) => b[1] - a[1] || compareIds(a[0], b[0]));
     if (grupettoRiders.length === 0) continue;
     const allowedDtSeconds = grupettoAllowedDtSeconds({
       dtFrontSeconds: frontTempo.dtSeconds,

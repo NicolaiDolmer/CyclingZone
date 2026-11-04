@@ -19,6 +19,7 @@ import type {
   TimelineEvent,
 } from "./types.ts";
 import { FORM_CP_TUNING, deriveWprimeMax, dayformComponent, formCpModifier, formPeakCpModifier, jourSansComponent } from "./physiology.ts";
+import { compareIds } from "../../compareIds.ts";
 
 export const INITIAL_GROUP_ID = "peloton-0";
 
@@ -245,7 +246,7 @@ export function mergeGroupsDetailed(
   if (groups.length <= 1) {
     return { groups: groups.map((g) => ({ ...g, rider_ids: [...g.rider_ids] })), merges: [] };
   }
-  const sorted = [...groups].sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+  const sorted = [...groups].sort((a, b) => a.gap_seconds - b.gap_seconds || compareIds(a.id, b.id));
   const merged: RaceGroup[] = [];
   const merges: GroupMerge[] = [];
   for (const group of sorted) {
@@ -309,7 +310,7 @@ export function mergeTailGroupsDetailed(
   if (groups.length <= 1 || !(windowSeconds > 0)) {
     return { groups: groups.map((g) => ({ ...g, rider_ids: [...g.rider_ids] })), merges: [] };
   }
-  const sorted = [...groups].sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+  const sorted = [...groups].sort((a, b) => a.gap_seconds - b.gap_seconds || compareIds(a.id, b.id));
   const merged: RaceGroup[] = [];
   const merges: GroupMerge[] = [];
   let ridersAhead = 0;

@@ -79,7 +79,11 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "training_decision_card", // #6110 Hjaelp
   "training_catalog_v3", // #5319 vaelgere + Hjaelp
   "race_library_v2", // #7533 (kun patch-noten)
+  "condition_v2_race_date_training_day", // #7536 Hjaelp
 ];
+
+// Spejler PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden: "beta" er off.
+const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day"];
 
 // #5319: træningskatalog v3 er OFF på preview (som i prod), men kan tændes med
 // ?catalogV3=on for at se de nye sessioner i vælgerne. Huskes i localStorage
@@ -100,7 +104,7 @@ function playerFlags() {
     if (key === "training_catalog_v3") return [key, previewCatalogV3Enabled()];
     const stage = flags.find((f) => f.key === key)?.stage;
     // #3564: binaere flag (PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden): beta = off.
-    return [key, stage === "on" || (stage === "beta" && key !== "development_curve_b")];
+    return [key, stage === "on" || (stage === "beta" && !BINARY_FLAG_KEYS.includes(key))];
   }));
 }
 

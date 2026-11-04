@@ -1,5 +1,6 @@
 import type { Entrant, RaceGroup } from '../types.ts';
 import { regroupOnDescentV3 } from './descent.ts';
+import { compareIds } from "../../../compareIds.ts";
 
 type DescentTravelInput = {
   groups: readonly RaceGroup[];
@@ -18,7 +19,7 @@ export function planSharedDescentTravel(input: DescentTravelInput): Map<string, 
   const incident = (group: RaceGroup) => group.rider_ids.length > 0
     && group.rider_ids.every(id => input.incidentChasers?.[id] !== undefined);
   const eligible = input.groups.filter(group => !incident(group))
-    .sort((a,b) => a.gap_seconds-b.gap_seconds || a.id.localeCompare(b.id));
+    .sort((a,b) => a.gap_seconds-b.gap_seconds || compareIds(a.id, b.id));
   if (eligible.length < 2) return out;
   const desired = new Map(regroupOnDescentV3(eligible, input.entrants,
     input.lengthKm, input.technicality, input.isFinish).map(group => [group.id,group]));

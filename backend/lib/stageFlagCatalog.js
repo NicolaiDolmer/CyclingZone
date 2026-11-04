@@ -60,6 +60,8 @@ export const STAGE_FLAGS = Object.freeze([
   // #5319: træningskatalog v3 (5 nye hårde sessioner), seedet off. Flip er ejer-only.
   { key: "training_catalog_v3", area: "training", label: "Træningskatalog v3 (nye hårde sessioner)" },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlægger" },
+  // #7536: motoren laeser kun "on" (beta = off); Hjaelp-blokken foelger samme svar.
+  { key: "condition_v2_race_date_training_day", area: "training", label: "Træning på løbsdato vejer et helt døgn" },
   // #5435: pensioneret (#6853), koden læser den ikke. Rækken bliver kun for patch notes-mærket.
   { key: "rider_best_role_display", area: "squad", label: "Rating = bedste rolle nu (visning)" },
   // #5519: kun visning + ét laese-endpoint. Ejeren flipper efter visuelt go.
@@ -231,9 +233,13 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   // #7533: beta-noten for kalendertabellen og Loebshistorik skifter til
   // "Now for everyone", naar kontakten er on for alle.
   "race_library_v2",
+  // #7536: HelpPage gater blokken om traening paa en dato med loeb paa dette flag.
+  "condition_v2_race_date_training_day",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,
 // "beta" = off). Endpointet svarer derfor false for ALLE viewers paa "beta", saa
 // en flade aldrig beskriver en model motoren ikke koerer for beta-gruppen.
-export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b"]);
+// #7536: condition_v2_race_date_training_day laeses ogsaa kun som "on" af motoren
+// (conditionModelV2Flag.isRaceDateTrainingDayEnabled).
+export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day"]);
