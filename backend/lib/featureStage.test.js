@@ -203,14 +203,16 @@ test("#7663 clearFlagStageCache kan rydde én nøgle på én klient", async () =
 // indtil nøglen er sat på listen.
 
 const LIB_DIR = path.dirname(fileURLToPath(import.meta.url));
+// Uden filendelse: modulerne flyttes løbende fra .js til .ts (#7582), og
+// rødderne findes under begge.
 const ENGINE_ROOTS = [
-  "trainingDayCloseTrigger.js",
-  "trainingSweep.js",
-  "raceRunner.js",
-  "raceSimulator.js",
-  "dailyTrainingEngine.js",
-  "stageSchedulerFlag.js",
-  "autoPrizeFlag.js",
+  "trainingDayCloseTrigger",
+  "trainingSweep",
+  "raceRunner",
+  "raceSimulator",
+  "dailyTrainingEngine",
+  "stageSchedulerFlag",
+  "autoPrizeFlag",
 ];
 
 function readIfExists(file) {
@@ -228,9 +230,9 @@ function resolveImport(fromFile, spec) {
 function engineFiles() {
   const files = new Set();
   for (const root of ENGINE_ROOTS) {
-    const rootFile = path.join(LIB_DIR, root);
-    const src = readIfExists(rootFile);
-    assert.ok(src !== null, `motor-roden ${root} findes ikke længere; opdatér ENGINE_ROOTS`);
+    const rootFile = resolveImport(path.join(LIB_DIR, "x"), `./${root}.js`);
+    assert.ok(rootFile !== null, `motor-roden ${root} findes ikke længere; opdatér ENGINE_ROOTS`);
+    const src = fs.readFileSync(rootFile, "utf8");
     files.add(rootFile);
     const importRe = /(?:import|export)[^'"]*?from\s*["'](\.{1,2}\/[^"']+)["']|import\(\s*["'](\.{1,2}\/[^"']+)["']\s*\)/g;
     let m;
