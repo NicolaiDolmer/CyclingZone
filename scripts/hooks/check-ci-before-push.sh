@@ -44,6 +44,15 @@ case "$CMD" in
   *) exit 0 ;;
 esac
 
+# Ejer 4/11: `cd <dir> && git push` / `git -C <dir> push` pusher fra et andet worktree
+# end sessionens cwd; tjek den branch, der faktisk pushes.
+TARGET_DIR=$(printf '%s' "$CMD" | sed -nE 's/.*git -C "?([^" ]+)"? push.*/\1/p' | head -1)
+[ -z "$TARGET_DIR" ] && TARGET_DIR=$(printf '%s' "$CMD" | sed -nE 's/^[[:space:]]*cd "?([^" &;]+)"?[[:space:]]*&&.*/\1/p' | head -1)
+if [ -n "$TARGET_DIR" ]; then cd "$TARGET_DIR" 2>/dev/null || exit 0; fi
+
+# Eksplicit kvittering: CI_FAIL_ACK="<hvad er koert lokalt>" i kommandoen.
+case "$CMD" in *CI_FAIL_ACK=*) exit 0 ;; esac
+
 # Skip hvis ikke i et git-repo
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   exit 0
@@ -64,7 +73,8 @@ esac
 # Tjek seneste CI-run på denne branch. Hvis sidste run var failure/cancelled
 # → emit warning. Vi bruger --json conclusion,headSha for at filtrere på
 # faktisk afsluttede runs.
-LATEST=$(gh run list --branch "$CURRENT_BRANCH" --limit 1 --json conclusion,headSha,status 2>/dev/null)
+# Ejer 4/11: kun CI (ci.yml); review-gate og andre workflows er ikke testfejl.
+LATEST=$(gh run list --branch "$CURRENT_BRANCH" --workflow ci.yml --limit 1 --json conclusion,headSha,status 2>/dev/null)
 [ -z "$LATEST" ] && exit 0
 
 # Parse conclusion uden jq (best-effort substring match)
@@ -75,13 +85,17 @@ SHA=$(printf '%s' "$LATEST" | sed -n 's/.*"headSha"[[:space:]]*:[[:space:]]*"\([
 # Kun warn hvis run er afsluttet OG var failure
 [ "$STATUS" = "completed" ] || exit 0
 case "$CONCLUSION" in
-  failure|cancelled|timed_out) ;;
+  # Ejer 4/11: cancelled = afloest af et nyere push (cancel-in-progress paa PR'er), ikke en fejl.
+  failure|timed_out) ;;
   *) exit 0 ;;
 esac
 
 SHORT_SHA=$(printf '%s' "$SHA" | head -c 7)
 
 # Emit warning
-printf '{"systemMessage": "⚠️  CI-FAIL-LOOP-GUARD: Seneste push (%s) på branch %s havde CI-conclusion=%s. Inden du pusher endnu en fix:\\n  1. Har du kørt den fejlende test LOKALT? Specifikt for Playwright: npx playwright test <spec> --project=desktop-chromium\\n  2. Hvis det er 2+ runder på samme symptom → STOP, find rod-årsag, spørg brugeren før push.\\nSe postmortem: .claude/learnings/2026-05-17-symptom-patching-loop-vs-root-cause.md"}\n' "$SHORT_SHA" "$CURRENT_BRANCH" "$CONCLUSION"
+# Ejer 4/11: systemMessage ses kun af ejeren. Pushet afvises nu med en begrundelse, Claude
+# ser; efter lokal koersel kvitteres med CI_FAIL_ACK="<hvad er koert>" foran git push.
+MSG=$(printf '⚠️  CI-FAIL-LOOP-GUARD: Seneste push (%s) på branch %s havde CI-conclusion=%s. Inden du pusher endnu en fix:\\n  1. Har du kørt den fejlende test LOKALT? Specifikt for Playwright: npx playwright test <spec> --project=desktop-chromium\\n  2. Hvis det er 2+ runder på samme symptom → STOP, find rod-årsag, spørg brugeren før push.\\nSe postmortem: .claude/learnings/2026-05-17-symptom-patching-loop-vs-root-cause.md' "$SHORT_SHA" "$CURRENT_BRANCH" "$CONCLUSION")
+printf '{"systemMessage": "%s", "hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "%s\\nKvittering efter lokal koersel: CI_FAIL_ACK=\\"<hvad er koert>\\" foran git push."}}\n' "$MSG" "$MSG"
 
 exit 0

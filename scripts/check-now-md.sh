@@ -16,10 +16,13 @@
 
 WARNINGS=()
 KEYS=()
+STOP_ACTIVE=""
 
 SESSION_ID=""
 if [ ! -t 0 ]; then
   HOOK_INPUT=$(cat 2>/dev/null || true)
+  # Ejer 4/11: Claude fortsatte allerede pga. denne hook -> blokér ikke igen.
+  if printf '%s' "$HOOK_INPUT" | grep -Eq '"stop_hook_active"[[:space:]]*:[[:space:]]*true'; then STOP_ACTIVE=1; fi
   SESSION_ID=$(printf '%s' "$HOOK_INPUT" | grep -Eo '"session_id"[[:space:]]*:[[:space:]]*"[^"]+"' | head -1 | sed -E 's/.*"([^"]+)"$/\1/' | tr -cd 'A-Za-z0-9_-')
 fi
 SEEN_FILE=""
@@ -118,8 +121,14 @@ if [ "${#WARNINGS[@]}" -gt 0 ]; then
 ' "${KEYS[@]}" >> "$SEEN_FILE" 2>/dev/null || true; fi
   # Warning text can contain quotes/backslashes (e.g. gh --body "...").
   # Serialize it rather than interpolating it into JSON; policy stays advisory.
-  printf '%s\0' "${WARNINGS[@]}" | node -e '
+  # Ejer 4/11: "decision: block" + reason sender advarslen til Claude (systemMessage ses kun
+  # af ejeren), som retter den foer turen slutter. Hver noegle vises kun een gang pr.
+  # session, og ved stop_hook_active blokeres ikke igen, saa det kan ikke loope.
+  printf '%s\0' "${WARNINGS[@]}" | STOP_ACTIVE="$STOP_ACTIVE" node -e '
     const warnings = require("fs").readFileSync(0, "utf8").split("\0").filter(Boolean);
-    console.log(JSON.stringify({systemMessage: "CLOSE-OUT REMINDER:\n" + warnings.map(w => "- " + w).join("\n")}));
+    const text = "CLOSE-OUT REMINDER:\n" + warnings.map(w => "- " + w).join("\n");
+    const out = { systemMessage: text };
+    if (!process.env.STOP_ACTIVE) { out.decision = "block"; out.reason = text + "\nRet punkterne nu (eller skriv kort hvorfor et punkt ikke gaelder), foer turen slutter."; }
+    console.log(JSON.stringify(out));
   '
 fi
