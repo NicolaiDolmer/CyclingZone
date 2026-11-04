@@ -244,9 +244,12 @@ export default function RoadmapPage() {
   const decidedTotal = parts.planGroups.reduce((n, g) => n + g.items.length, 0);
   const plannedTotal = parts.planGroups.reduce((n, g) => n + g.items.filter((it) => it.status === "planned").length, 0);
 
-  function openFromSearch(next) {
+  // Et hit skal kunne findes på fanen: et punkt spilleren allerede har bedømt,
+  // holdes synligt trods "kun ubedømte" (samme greb som et punkt bedømt i dette besøg).
+  function openFromSearch(hit) {
+    if (hit.where === "planned" || hit.where === "idea") markRated(hit.id);
     setQuery("");
-    setTab(next);
+    setTab(hit.tab);
   }
   const isNew = (item) => isRoadmapItemNew(item.created_at, lastSeenBeforeVisit);
 

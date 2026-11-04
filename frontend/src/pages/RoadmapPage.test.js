@@ -109,4 +109,6 @@ test("RoadmapPage henter patch notes først når Done åbnes (#7666)", () => {
 test("RoadmapPage søger på tværs af faner og gemmer fanerne mens der søges (#6203)", () => {
   assert.match(source, /searchRoadmap\(query, items, issues\)/);
   assert.match(source, /<div className=\{searching \? "hidden" : undefined\}>/);
+  // Codex-fund: et bedømt punkt må ikke være filtreret væk, når et hit åbnes.
+  assert.match(source, /if \(hit\.where === "planned" \|\| hit\.where === "idea"\) markRated\(hit\.id\);/);
 });

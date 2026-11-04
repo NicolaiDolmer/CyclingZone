@@ -66,8 +66,12 @@ BEGIN
   ELSIF NEW.status = 'fixing' THEN
     NEW.fixing_at := COALESCE(NEW.fixing_at, NOW());
   END IF;
+  -- Lukket faar en dato; en genaabnet fejl mister sin gamle, saa en ny lukning
+  -- ikke arver den.
   IF NEW.status IN ('fixed', 'dismissed') THEN
     NEW.closed_at := COALESCE(NEW.closed_at, NOW());
+  ELSE
+    NEW.closed_at := NULL;
   END IF;
   RETURN NEW;
 END;

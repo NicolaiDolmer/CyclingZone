@@ -2,7 +2,7 @@
 // Plan, Beta, Vote, Known issues og Done; mærket siger hvor punktet står, og
 // et tryk åbner den fane. Søgningen rammer både EN- og DA-titlen.
 import { useTranslation } from "react-i18next";
-import type { RoadmapTab, SearchHit } from "../../lib/roadmapModel.ts";
+import type { SearchHit } from "../../lib/roadmapModel.ts";
 import { Button, CategoryTag, EmptyState, Section, SectionHeader } from "./roadmapUi.ts";
 import { RowMeta, TitleCount, ROW, ROW_LIST } from "./RoadmapRows.tsx";
 import { areaTitle, localTitle } from "./roadmapFormat.ts";
@@ -11,7 +11,7 @@ import { ChevronRightIcon, SearchIcon } from "../ui/index.js";
 export interface SearchResultsProps {
   query: string;
   hits: SearchHit[];
-  onOpen: (tab: RoadmapTab) => void;
+  onOpen: (hit: SearchHit) => void;
   onClear: () => void;
 }
 
@@ -37,7 +37,7 @@ export default function SearchResults({ query, hits, onOpen, onClear }: SearchRe
           <li key={`${hit.where}-${hit.id}`}>
             <button
               type="button"
-              onClick={() => onOpen(hit.tab)}
+              onClick={() => onOpen(hit)}
               className={`${ROW} w-full flex items-start gap-3 text-start group`}
             >
               <span className="flex-1 min-w-0">
