@@ -105,6 +105,9 @@ export const STAGE_FLAGS = Object.freeze([
   // #7635/#7636: etapeplanens "sat" kun ved en rigtig opdeling + resuméet krydstjekker filmen
   // (kun s5_profiles_v3). Seedet off; kun "on" tænder (stagePlanDroppedFront7635Flag.js). Ejer-only flip.
   { key: "stage_plan_dropped_front_7635", area: "race-engine", label: "Etapeplan — sat kun ved en rigtig opdeling af feltet" },
+  // #7644: loft på samlingens gevinst pr. km på lange nedkørsler (kun s5_profiles_v3). Seedet off; kun "on"
+  // tænder, "beta" læses som off (descentRegroupCap7644Flag.js). Ejer-only flip.
+  { key: "descent_regroup_cap_7644", area: "race-engine", label: "Lange nedkørsler — loft på samlingen" },
   { key: "race_day_engine_enabled", area: "race-engine", label: "Løbsdags-motor" },
   { key: "race_finalize_resumable_enabled", area: "race-engine", label: "Genoptagelig finalisering" },
   { key: "race_notify_outbox_enabled", area: "race-engine", label: "Notify-kø — asynkron udsendelse" },

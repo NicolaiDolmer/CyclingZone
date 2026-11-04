@@ -12,9 +12,10 @@
 //   2. Styring efter toppen: de interesserede hold sigter mod et forspring der falder
 //      gradvist mod finalen. Maalet afhaenger af de resterende km og af det udbruddet
 //      forventes at tabe paa finalestigningen (kun den; mellemstigningerne er terraen).
-//   3. Jagende hold lukker selv: under styringen loeftes daempningen foer finalen
-//      (mountainSelection.ts), og har de interesserede hold ryttere at jage med, lukker
-//      de ned til maalet, ogsaa paa stigninger. De betaler arbejdet oven i deres jagt.
+//   3. Jagende hold lukker selv: paa high mountain loeftes daempningen foer finalen under
+//      styringen (mountainSelection.ts; paa mountain ikke, ellers hentes udbruddet foer
+//      finalestigningens bjergpoint), og har de interesserede hold ryttere at jage med,
+//      lukker de ned til maalet, ogsaa paa stigninger. De betaler arbejdet oven i deres jagt.
 //   4. Kun flad/rullende-klassen (upperBoundProfiles): foer finalen henter den automatiske
 //      jagt ikke under maalet (fangsten flyttes til finalen, hvor jagt-gulvet tager over).
 //      Paa bjerg er der ingen overgraense: holdene lukker selv. En klassementsreaktion og

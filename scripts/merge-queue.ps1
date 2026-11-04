@@ -1068,6 +1068,12 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   }
 
   $fresh = Get-PrPlanEntry $n
+  # #7628: konflikt KUN i TS-baseline-filerne loeses af modulet (exit 0); alt andet = uaendret adfaerd.
+  # Loest = vent paa netop denne PR nu (ikke bagerst), saa naeste konflikt loeses mod den nye main.
+  if ($fresh.mergeable -eq 'CONFLICTING' -and -not $script:updated.ContainsKey("$n")) {
+    & node (Join-Path $PSScriptRoot 'merge-queue-baseline-resolve.mjs') --pr "$n" --repo $Repo @(if ($DryRun) { '--dry-run' }) | ForEach-Object { Write-Host "      $_" }
+    if ($LASTEXITCODE -eq 0 -and -not $DryRun) { $script:updated["$n"] = $true; $script:deferred["$n"] = $true; $fresh = Get-PrPlanEntry $n }
+  }
   if ($fresh.checksExit -ne 0 -and -not $StopOnRedPr -and -not $DryRun) {
     # 23/10 klar-foerst: ikke groen endnu -> bagerst i koeen een gang, saa klare PR'er
     # merges imens. Andet besoeg: vent (og opdater kun denne PR hvis den er bagud og roed).
