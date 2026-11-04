@@ -2,11 +2,11 @@
 
 4. november 2026 · Refs #7495 · **Forslag til ejerens og Claudes gennemgang. Intet build-go.**
 
-## Anbefaling
+## Valgt retning til konkretisering
 
 Gør det lettere at bruge et afsluttet løb og en udviklingsrapport til næste valg i en eksisterende plan. Færdiggør først det sandfærdige grundlag i motor, taktik og Udvikling 2.0. Afprøv derefter en lille forbindelse mellem rapport og plan, før der bygges en ny mekanik eller en ny oversigt.
 
-Det er en anbefaling, ikke en konstateret årsag til frafald. Spillet har allerede resultater, næste handling, ugeplaner, udviklingsrapporter, sæsonafslutning og bestyrelsesmål. Undersøgelsen peger på forbindelser mellem dem. [Evidens og spillerforløb](audit-durable-motivation-2026-11-04.md) skelner mellem observeret kode, aktuelle SELECT-data, daterede spillerudsagn og hypoteser. [Spilsammenligningen](manager-game-sources-2026-11-04.md) bruger officielle kilder, ikke påståede retentioneffekter.
+Ejeren har valgt sammenhængen til konkretisering, men dens effekt er endnu ikke påvist. Spillet har allerede resultater, næste handling, ugeplaner, udviklingsrapporter, sæsonafslutning og bestyrelsesmål. Undersøgelsen peger på forbindelser mellem dem. [Evidens og spillerforløb](audit-durable-motivation-2026-11-04.md) skelner mellem observeret kode, aktuelle SELECT-data, daterede spillerudsagn og hypoteser. [Spilsammenligningen](manager-game-sources-2026-11-04.md) bruger officielle kilder, ikke påståede retentioneffekter.
 
 ## Hvad er valgt, og hvad er åbent?
 
@@ -15,11 +15,11 @@ Det er en anbefaling, ikke en konstateret årsag til frafald. Spillet har allere
 | Ejer-valgt | Fastholdelse først: nye managers skal forstå deres første løb. Permanent værdi for både nye og erfarne managers. Flere besøgende parallelt; Pro bagefter. |
 | Ejer-valgt | Motor og løbsfilm sande, taktik synlig og forståelig, Udvikling 2.0 er de tre loft-områder. #7535 er i bero. #6950 drøftes med ejeren og Claude senere i ugen. |
 | Ejer-valgt | God planlægning skal kunne bære en konkurrencedygtig klub med få ugentlige besøg. Talentfabrik og købeklub er legitime veje. Styrke straffes ikke. |
-| Codex anbefaler | A nedenfor: en lille, valgfri forbindelse fra dokumenteret forløb til den relevante eksisterende plan. Ingen ny daglig belønning, pligt eller økonomi. |
-| Stadig åbent | A eller B, konkret placering og afgrænsning, afstemte wireframes, spillerfeedback, succesgrænser, prioritet og indsats. Ejeren fandt det første spørgsmål for abstrakt; der er ikke valgt A. Det konkrete forløb skal vurderes først. |
+| Ejer-valgt 4/11 efter konkret eksempel | Sammenhængen i A er nyttig og skal konkretiseres: fra en rytters løbsrapport til den allerede gemte næste opgave og den eksisterende plan. Ejerens svar: "Nyttig sammenhæng — konkretisér den". Dette er retning til skitse, ikke godkendelse af hele specifikationen. |
+| Stadig åbent | Konkret placering og afgrænsning, tilstande uden en kommende opgave, afstemte wireframes, spillerfeedback, succesgrænser, prioritet og indsats. Det første spørgsmål var for abstrakt; valget blev taget efter et konkret spillerforløb. |
 | Særskilt gate | Endeligt design, testplan og eksplicit build-go. Derefter normal preview-, release- og mergegodkendelse. Denne PR giver ingen af disse. |
 
-Mandat: [ejerens opgave 4/11](https://github.com/NicolaiDolmer/CyclingZone/issues/7495#issuecomment-6633690957). Del A i #7652 er uændret. Dens eksperiment- og Pro-valg vurderes særskilt; dette forslag vælger ikke dens A/B-wireframes.
+Mandat: [ejerens opgave 4/11](https://github.com/NicolaiDolmer/CyclingZone/issues/7495#issuecomment-6633690957). Del A i #7652 er uændret. Dens eksperiment- og Pro-valg vurderes særskilt; valget af del B's sammenhæng vælger ikke del A's A/B-wireframes eller det endelige udseende af Claudes indsatskort.
 
 ## De tre vigtigste huller at afprøve
 
@@ -53,11 +53,11 @@ Ejerretningen findes i BOARD_RULES §0.4, YOUTH_RULES og SOCIAL_RULES. Spillerud
 
 | Retning | Hvad manageren får | Fordel | Ulempe og stopgrund |
 |---|---|---|---|
-| **A: forbindelse i de eksisterende rapporter, anbefalet** | Ved en egen rytters dokumenterede forløb kan manageren se den relevante kommende opgave og åbne den eksisterende plan med den samme rytter i fokus. | Lille omfang; både nye og erfarne kan bruge det. Kæden kan undersøges uden ny spiløkonomi. | Kan være overflødig navigation. Stop, hvis spillerne allerede kan gøre det lige så let, eller hvis forbindelsen kræver gættet historik. |
+| **A: valgt retning til konkretisering** | Ved en egen rytters dokumenterede forløb kan manageren se den relevante kommende opgave og åbne den eksisterende plan med den samme rytter i fokus. | Lille omfang; både nye og erfarne kan bruge det. Kæden kan undersøges uden ny spiløkonomi. | Kan være overflødig navigation. Stop, hvis spillerne allerede kan gøre det lige så let, eller hvis forbindelsen kræver gættet historik. |
 | **B: færdiggør grundlaget og mål uden ny visning** | Claudes indsatskort og kerneforbedringer fungerer sammen med den eksisterende integrerede træningsvisning: kvittering, tilstand, prognose, dagsændring og rytterens ugeplan. | Mindst ekstra overflade og arbejde. Kan vise, at det eksisterende scope er nok. | Overgangen fra løbsrapport til kommende opgave kan stadig kræve rekonstruktion. Vælg B, hvis de færdige visninger allerede løser opgaven let. |
 | **C: vedvarende klubprojekt som ny mekanik** | Et selvvalgt flerårigt projekt forbinder udvikling, rekruttering og sæsonmål med egne milepæle. | Kunne give tydelig retning uafhængigt af ligaplacering. | Overlap med bestyrelse, vision, #1148 og #5180. Kræver nye regler, mere vedligehold og stærkere bevis. Fravælges nu; ingen opgave eller byggebestilling oprettes. |
 
-A og B er reelle alternativer. A skal slå B i den samme opgave, ellers beholdes B. Mere brug eller flere ændringer er ikke i sig selv et bedre spil.
+A er valgt som designretning til konkretisering. B bevares som sammenligningsgrundlag i afprøvningen: A skal give klar nytte i den samme opgave. Ellers forelægges det konkrete resultat for ejeren; valget ændres ikke stiltiende. Mere brug eller flere ændringer er ikke i sig selv et bedre spil.
 
 **Et konkret, tænkt eksempel:** Manageren læser om en hjælper, som blev træt under løbet. I A kan manageren ved samme rytter se den allerede gemte næste løbsopgave og gå til den eksisterende plan. I B forklarer rapporten det afsluttede løb, og manageren finder selv næste udtagelse via den nuværende navigation. Ingen af retningerne siger, at rytteren skal tages ud. Historisk træthed må ikke fremstilles som den aktuelle tilstand; den aktuelle tilstand skal hentes og tidsmærkes særskilt.
 
@@ -72,7 +72,19 @@ Illustrativt strukturudkast med **Rytter A**, **afsluttet løb X** og **kommende
 | 3. Manageren kontrollerer tilstand og træning | Det eksisterende træningskort viser aktuel tilstand, kvittering, prognose og genvej til Rytter A's ugeplan. | Genbruger samme kort og samme ugeplan. Ingen ekstra rapport, prognose eller gemmeknap. |
 | 4. Manageren vælger | Beholder eller ændrer planen med de eksisterende kontroller. | Samme valg. Et klik på referencen ændrer aldrig planen, og en uændret plan udløser ingen påmindelse. |
 
-**Det ejeren skal kunne vurdere:** Er det værdifuldt at se den allerede gemte næste opgave direkte ved løbsrapporten, eller er den eksisterende vej til planlægning tilstrækkelig? Før et nyt ejer-spørgsmål skal Claude kunne vise denne forskel med afstemte skitser. Hvis testen ikke viser en klar fordel, vælges B uden tilføjelsen.
+**Ejerens vurdering:** Sammenhængen er nyttig og skal konkretiseres. Den næste skitse viser referencefeltet og dets destination, mens indsatskortets indhold fortsat ejes af Claude. En svag effekt i testen skal forelægges ejeren med bevis, ikke føre til en automatisk ændring af retningen.
+
+### Skitse af den valgte sammenhæng
+
+Den interaktive arbejdsskitse i det private designmateriale viser kun tilføjelsen og en skematisk destination. Alle data er fiktive; de grå felter er plads til Claudes indsatskort. Arbejdsetiketter er ikke ny spillertekst, og skitsen fastlægger ikke #5101's endelige layout.
+
+| Situation | Reference og destination i skitsen | Beslutningsstatus |
+|---|---|---|
+| Et andet løb er allerede planlagt | Rytter A i rapporten for løb X forbindes med den gemte opgave i løb Y. Genvejen åbner eksisterende planlægning med samme rytter i fokus. | Konkretisering af den valgte retning; præcis placering og deep link afstemmes stadig. |
+| Senere etape i samme etapeløb | Referencen peger på den gemte senere etape; genvejen viser den eksisterende taktiske plan. Bindingen til løbet ændres ikke. | Forslag til korrekt afgrænsning, ikke et nyt frit udtagelsesvalg. |
+| Ingen kommende gemt løbsopgave | Skitsen skjuler tilføjelsen og opretter ingen opgave. Det betyder ikke, at rytteren er uden træningsplan. | **Åbent ejer-valg:** skjult felt som anbefalet, eller en rolig genvej til eksisterende planlægning. Ingen ny deadline eller nudge. |
+
+Skitsens klik ændrer kun selve demonstrationen; ingen udtagelse, taktik eller træning gemmes. Manglende data og mistet ejerskab er fortsat særskilte testtilfælde i datakontrakten, ikke lig med bekræftet fravær af en kommende opgave.
 
 ## A: afgrænset designforslag
 
@@ -128,7 +140,7 @@ En skrivebordsgennemgang af kildekoden og datakontrakterne har afprøvet følgen
 
 ### Testplan før et eventuelt build-go
 
-**Først forståelse:** Claude og ejeren gennemgår det konkrete Rytter A-forløb ovenfor og afstemmer skitser, før ejeren igen bliver bedt om at vælge retning. De valgte skitser kan efter kommunikations-go vises til både nye og erfarne managers. Brug samme konkrete opgave i begge retninger: forklar det dokumenterede forløb, find næste relevante valg, og begrund at beholde eller ændre planen. Medtag talentfabrik, købeklub og fravær; spørg også hvad der er overflødigt. Ingen spillere er kontaktet i denne session.
+**Først forståelse:** Retning A er valgt til konkretisering. Claude og ejeren gennemgår skitsens tilstande og afstemmer den med indsatskortet. Skitserne kan efter kommunikations-go vises til både nye og erfarne managers. Brug samme konkrete opgave i A og sammenligningsgrundlaget B: forklar det dokumenterede forløb, find næste relevante valg, og begrund at beholde eller ændre planen. Medtag talentfabrik, købeklub og fravær; spørg også hvad der er overflødigt. Ingen spillere er kontaktet i denne session.
 
 **Dernæst teknisk afgrænsning:** verificér historisk provenance, rytterfokus/deep links, aktuelle rettigheder og fallback med små syntetiske fixtures. Nye frontend-filer skal være TypeScript. Test ure injiceres eksplicit. Områdets SSOT ændres i samme fremtidige produkt-PR, hvis dens kontrakt ændres.
 
@@ -152,7 +164,7 @@ De vigtigste risici er forkert årsagsforklaring, ekstra administration, genopfi
 
 Skønnet indsats er lille til mellemstor for A med eksisterende kilder og navigation, større hvis historisk provenance mangler. Skønnet er ikke en leveringsdato og omfatter design, implementering, verifikation og testerfeedback; forudsætninger og interval står privat. C er et større tværgående produktprojekt og anbefales ikke nu. Ingen nye løbende udgifter er en forudsætning.
 
-**Næste skridt:** gennemgå det konkrete eksempel og afstem skitser med Claude. Først derefter A eller B og eventuel spillerfeedback; A er en anbefaling til afprøvning, ikke et valgt design. Build-go er et senere særskilt valg. Ingen nye issues oprettes: de tre behov har allerede ejere. Claude og ejeren afstemmer en eventuel konkret rest under de eksisterende issues; NOW, MASTERPLAN og roadmap ændres ikke af denne leverance.
+**Næste skridt:** gennemgå skitsens konkrete tilstande, tag ét åbent adfærdsvalg ad gangen og afstem med Claude. Retningen er valgt, men placering, ordlyd, spillerfeedback og den endelige kontrakt er stadig åbne. Build-go er et senere særskilt valg. Ingen nye issues oprettes: de tre behov har allerede ejere. Claude og ejeren afstemmer en eventuel konkret rest under de eksisterende issues; NOW, MASTERPLAN og roadmap ændres ikke af denne leverance.
 
 ## SSOT og drift
 

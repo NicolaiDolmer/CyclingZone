@@ -66,4 +66,4 @@ Ingen nye emner er oprettet. At et issue står åbent er ikke i sig selv bevis f
 
 Hvis spillere efter Claudes kerneforbedringer allerede forbinder rapport og plan uden besvær, bortfalder A. Hvis en observeret uge viser, at byrden skyldes nødvendige frister eller regler snarere end navigation, hører løsningen under de eksisterende domæneissues. Hvis talentfabrikker allerede oplever deres historie som tydelig og værdifuld, skal der ikke bygges mere historik for at opfylde en antagelse.
 
-Den samlede anbefaling og testplan står i [specifikationen](spec-durable-motivation-2026-11-04.md). Aktuelle målinger er bevis for datatilstand; de foreslåede forbedringers effekt er fortsat en hypotese.
+Den samlede anbefaling og testplan står i [specifikationen](spec-durable-motivation-2026-11-04.md). Ejeren valgte senere 4/11 sammenhængen mellem rapport og næste gemte opgave til konkretisering. Det ændrer ikke bevisstyrken: aktuelle målinger er bevis for datatilstand; forbedringens effekt er fortsat en hypotese.
