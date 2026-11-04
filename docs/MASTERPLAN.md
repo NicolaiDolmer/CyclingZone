@@ -8,6 +8,8 @@
 
 ## Tidsplan (ejer 4/11 aften, 20 planlagte + 22 påbegyndte punkter gennemgået enkeltvist)
 
+**Ejer 4/11 sent: når dagens aftaler er ordnet, er der kun ét fokus: merges og til dørs, indtil de åbne PR'er er nede.** Auto-toget (#7657) kører hvert 20. min på PC1; lavrisiko = Codex + grøn CI.
+
 Fuld liste med datoer: [#7632](https://github.com/NicolaiDolmer/CyclingZone/issues/7632). "Done" først ved alle 8 krav; fredagskort til ejeren (nået, skredet, hvorfor). Kategorier 4/11: markedsføring (rytme torsdag/fredag + 10x-plan med automatisering starter denne uge); moms #4511 + bogføring næste uge; taktikfejl #7557/#7625/#7624 og træning #7637/#7559/#7558/#7584 denne uge; #7565 + #7581 næste uge; dashboard #7626 mockup fredag, byg næste uge; sortering #7537 næste uge; indstillinger #3984 resten af S5; sandhedsvagt #7643, realisme-gate #7588 og #7260-gennemgang denne uge; ops-listen (Codex) senest tirsdag 10/11. Ekstra denne uge: motor-kontakterne #6912/#7644/#7635/#7640 i ét "kør", motor-pakkens krav 8, Form og træthed 2.0 #6984, rutematch + assistent, secrets #7029.
 
 - **Denne uge (senest 8/11):** Udvikling 2.0 trin 2-6 #6110 **fuldt som designet, intet skæres, topprioritet** + gevinst pr. aktivitet #7627/#4850; opgavetabel #5950 (gennemgang + byg); træthed pr. indstilling #7638; tidsstempler i løbsfilmen #6350/#6941 (spillerne tror, den virker sådan); delt kaptajn: verificér krav 8 + #7326; forside #6665; Supabase #7659 alarm + kontakt-cache (ranglisten senest 14/11).
@@ -54,6 +56,8 @@ Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden f
 - **Spillerkommunikation:** én samlet patch note og ét Discord-opslag (EN) pr. dag med spillervendte ændringer; udkast ca. kl. 17, ejeren godkender.
 - Bogføring, moms EU-privat #4511, billing #4514/#4512/#6062, måling #5305, SEO #5249/#5250.
 - **Torsdag 5/11 (forretningsdag):** gennemgang af Codex' vækstpakke PR #7652 med ejeren (ingen A/B valgt; retning afstemmes, så wireframes til spillerne før byg). Catch-up #6950 besluttes ca. 15-18/11 (ejer 4/11), ikke torsdag.
+- **Del B, varig motivation (#7661, docs-only draft, Codex 4/11):** researchen bevares (audit + manager-game-kilder). Navigationsmockuppen er kun et forsøg, ikke hovedforslaget; et stærkt produktforslag mangler. Torsdag: find et dokumenteret spillerbehov med ejeren ud fra researchen; intet build-go. Privat grundlag i OneDrive `balance-internals/growth/del-b-2026-11-04/` (START-HER.md først).
+- **Codex' ops-PR'er:** #7529/#7531/#7532 i merge-køen nu; #7524/#7528 efter den aktive bølge (rører wave-policy); #7530 og #7571 kræver ejerens go, og #7571's child-tool-prøve køres i første rigtige PC1-bølge.
 
 ## Faste rutiner
 
