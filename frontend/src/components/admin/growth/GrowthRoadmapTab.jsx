@@ -167,7 +167,8 @@ export default function GrowthRoadmapTab() {
   // Fanen og sorteringen er pr. fane; filtrene nulstilles ved fanevalg, fordi
   // en status eller horisont fra en anden fane kan give en tom tabel.
   const [searchParams, setSearchParams] = useSearchParams();
-  const tab = isAdminTab(searchParams.get("view")) ? searchParams.get("view") : DEFAULT_ADMIN_TAB;
+  const view = searchParams.get("view");
+  const tab = isAdminTab(view) ? view : DEFAULT_ADMIN_TAB;
   const [sorts, setSorts] = useState({});
   const [filters, setFilters] = useState({ area: "", status: "", horizon: "", issue: "" });
   const sort = sorts[tab] ?? DEFAULT_SORT[tab];
