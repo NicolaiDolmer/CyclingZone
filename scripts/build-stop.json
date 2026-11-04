@@ -785,6 +785,8 @@
       "issue": 7561,
       "reason": "Kalender: Klar-status viser ikke at feltet har plads til flere end gulvet, ejer-valg 3/11 i #7495",
       "since": "2026-11-03"
-    }
+    },
+    7635,
+    7636
   ]
 }
