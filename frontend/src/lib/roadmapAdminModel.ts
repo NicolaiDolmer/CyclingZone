@@ -331,7 +331,7 @@ export function sortRows<T extends object>(rows: T[], sort: SortState): T[] {
   return rows
     .map((row, index) => ({ row, index, value: acc(row as Record<string, unknown>) }))
     .sort((a, b) => {
-      if (a.value === null && b.value === null) return a.index - b.index;
+      if (a.value === null && b.value === null) return tieBreak(a.row, b.row) || a.index - b.index;
       if (a.value === null) return 1;
       if (b.value === null) return -1;
       const cmp = typeof a.value === "number" && typeof b.value === "number"

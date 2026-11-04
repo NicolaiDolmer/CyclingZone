@@ -156,6 +156,12 @@ test("sortRows: tal begge veje, tomme værdier altid sidst", () => {
   assert.deepEqual(ids(sortRows(rs, { key: "votes", dir: "desc" })), ["c", "a", "b"]);
   assert.deepEqual(ids(sortRows(rs, { key: "votes", dir: "asc" })), ["a", "c", "b"]);
 });
+test("sortRows: tomme værdier følger ejerens rækkefølge indbyrdes, efter de bedømte (Codex P2)", () => {
+  const rs = [row({ item_id: "u2", avg_importance: null, sort_order: 2 }), row({ item_id: "r", avg_importance: 4, sort_order: 9 }),
+    row({ item_id: "u1", avg_importance: null, sort_order: 1 })];
+  assert.deepEqual(ids(sortRows(rs, { key: "importance", dir: "desc" })), ["r", "u1", "u2"]);
+  assert.deepEqual(ids(sortRows(rs, { key: "importance", dir: "asc" })), ["r", "u1", "u2"]);
+});
 test("sortRows: tekst efter dansk rækkefølge og stabil ved lighed", () => {
   const rs = [row({ item_id: "a", title_da: "Zebra" }), row({ item_id: "b", title_da: "Ægir" }),
     row({ item_id: "c", title_da: "Bue" }), row({ item_id: "d", title_da: "Bue" })];
