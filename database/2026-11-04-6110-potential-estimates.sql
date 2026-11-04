@@ -35,7 +35,9 @@ SET LOCAL lock_timeout = '3s';
 -- ---------------------------------------------------------------------------
 -- 1) Skjult grundtalent + reelt loft paa riders
 -- ---------------------------------------------------------------------------
+-- riders-column-grant-ok: skjult med vilje (#6110 spec §1/S20: grundtalentet vises kun som skøn + ord, aldrig som råt tal til klienten)
 ALTER TABLE public.riders ADD COLUMN IF NOT EXISTS base_talent smallint;
+-- riders-column-grant-ok: skjult med vilje (#6110 spec §1/S20: grundtalentet vises kun som skøn + ord, aldrig som råt tal til klienten)
 ALTER TABLE public.riders ADD COLUMN IF NOT EXISTS talent_ceiling smallint;
 
 DO $$
