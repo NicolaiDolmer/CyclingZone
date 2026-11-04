@@ -530,6 +530,17 @@ export type StagePlanRecapItem = {
   fromKm: number | null;
   /** #7368: det led der faktisk afloeste dette (kan springe et led over); null = ingen. */
   endLeg: number | null;
+  /** #7636: leddets eget skift-punkt ("naar han er sat") vises ikke, fordi filmen ikke viser det. */
+  fromHidden?: true;
+};
+
+export type StagePlanRecapOptions = {
+  /**
+   * #7636 (kontakten stage_plan_dropped_front_7635): sad rytteren forrest eller i feltet
+   * ved km? true = ja, false = nej, null = ukendt. Med kontakten giver fladen
+   * stageSplitTimes.riderInFrontOrFieldAt; uden den krydstjekkes intet (som foer).
+   */
+  inFrontOrFieldAt?: (km: number) => boolean | null;
 };
 
 type TimelineEventLike = { type?: unknown; km?: unknown; params?: Rec | null };
@@ -538,7 +549,26 @@ type TimelineEventLike = { type?: unknown; km?: unknown; params?: Rec | null };
  * Hvad rytteren faktisk gjorde i hvert led, ud fra tidslinjens stage_plan_leg-
  * events (motoren skriver et pr. skift) og et evt. udgaaet-uheld.
  */
-export function stagePlanRecap(legs: readonly StagePlanLeg[], events: readonly TimelineEventLike[] | null | undefined, riderId: string): StagePlanRecapItem[] {
+export function stagePlanRecap(
+  legs: readonly StagePlanLeg[],
+  events: readonly TimelineEventLike[] | null | undefined,
+  riderId: string,
+  opts: StagePlanRecapOptions = {},
+): StagePlanRecapItem[] {
+  const items = stagePlanRecapFromEvents(legs, events, riderId);
+  const check = opts.inFrontOrFieldAt;
+  // #7636: resumeet paastaar aldrig noget filmen ikke viser. Siger motoren "sat", men sad
+  // rytteren forrest eller i feltet paa stedet, skrives hverken "sat" eller "sprunget
+  // over, han var sat": leddet faar ingen slutgrund, de oversprungne led staar som ikke
+  // naaet, og sat-leddets eget skift-punkt vises ikke. Sat-leddet er altid kaedens sidste,
+  // saa der er hoejst ét saadant skift.
+  const d = check ? items.findIndex((it) => it.endReason === "dropped" && check(it.endKm as number) === true) : -1;
+  if (d < 0) return items;
+  const to = items[d].endLeg as number;
+  return items.map((it, i) => (i === d ? { ...it, endReason: null } : i === to ? { ...it, fromHidden: true } : i < to && it.status === "skipped" ? { ...it, status: "not_reached" } : it));
+}
+
+function stagePlanRecapFromEvents(legs: readonly StagePlanLeg[], events: readonly TimelineEventLike[] | null | undefined, riderId: string): StagePlanRecapItem[] {
   const list = events ?? [];
   const switches = list
     .filter((e) => e?.type === "stage_plan_leg" && e.params?.rider_id === riderId)

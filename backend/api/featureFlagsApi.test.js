@@ -139,6 +139,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
 
     race_library_v2: false,
     condition_v2_race_date_training_day: false,
+    stage_plan_dropped_front_7635: false,
   });
   assert.equal(f.betaLookups(), 0, "en anonym forespoergsel maa ikke slaa en bruger op");
 });
@@ -199,6 +200,7 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
 
     race_library_v2: false,
     condition_v2_race_date_training_day: false,
+    stage_plan_dropped_front_7635: false,
   });
 });
 
@@ -267,6 +269,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
 
     race_library_v2: false,
     condition_v2_race_date_training_day: false,
+    stage_plan_dropped_front_7635: false,
   });
   assert.deepEqual(await readPlayerFeatureFlags(supabase, { isBetaTester: true }), {
     race_engine_v4: true,
@@ -296,6 +299,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
 
     race_library_v2: false,
     condition_v2_race_date_training_day: false,
+    stage_plan_dropped_front_7635: false,
   });
 });
 
