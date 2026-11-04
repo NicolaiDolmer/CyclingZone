@@ -141,6 +141,19 @@ features:
     verified: 2026-10-30
     note: "day_form_6649 on siden 27/10; læst i prod 30/10."
 
+  - id: race-descent-regroup-cap-7644
+    area: race-engine
+    title_en: Long descents - cap on how much a regrouping chase can gain
+    title_da: Lange nedkørsler - loft på samlingens gevinst
+    state: dormant
+    flag: descent_regroup_cap_7644
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 7644
+    verified: 2026-11-04
+    note: "#7644 ejer-valg B 4/11. Bygget, off; tændes af ejeren efter før/efter-billedet."
+    decision: ejer-beslutning
+    decide_by: 2026-11-18
+
   - id: race-official-times-v1
     area: race-engine
     title_en: Official time persistence revision

@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-125 poster: live 105 · dormant 6 · building 5 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+126 poster: live 105 · dormant 7 · building 5 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -19,6 +19,7 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
+| Long descents - cap on how much a regrouping chase can gain (`race-descent-regroup-cap-7644`) | dormant | `descent_regroup_cap_7644` | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #7644 | 2026-11-04 | #7644 ejer-valg B 4/11. Bygget, off; tændes af ejeren efter før/efter-billedet. |
 | Official time persistence revision (`race-official-times-v1`) | retired | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6284 | 2026-10-16 | Frosset prototype. |
 
 ## race-day
