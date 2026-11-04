@@ -119,6 +119,15 @@ test("R5: et resultat-hul filmen ikke viser giver et fund", () => {
   assert.equal(found.R5.codes.finish_gap_mismatch, 1);
 });
 
+test("R5: en byttet vinder i filmens målrækkefølge giver et fund, også med samme hul", () => {
+  const stage = clone(stage2);
+  const finish = stage.events.find((e) => e.type === "finish");
+  const [first, second] = finish.params.top;
+  [first.rider_id, second.rider_id] = [second.rider_id, first.rider_id];
+  const found = codes(ruleFilmMatchesResult(prepared(stage)));
+  assert.equal(found.R5.codes.film_top_rank_mismatch, 2);
+});
+
 test("R6 (#6350): etape 8, 'sat' stemples ved segmentgrænsen km 161, ikke ved splittet km 147,31", () => {
   const findings = ruleClaimsMatchGroup(prepared(stage8)).filter((f) => f.code === "dropped_stamped_after_split");
   const late = findings.find((f) => f.km === 161 && f.split_index === 229);
@@ -162,6 +171,15 @@ test("R7: et GC-hul eller en bonus der ikke er summen giver et fund", () => {
   const found = codes(ruleStandingsAddUp(prepared(stage)));
   assert.ok(found.R7.codes.gc_gap_not_sum_of_stages >= 1);
   assert.equal(found.R7.codes.stage_bonus_not_passages, 1);
+});
+
+test("R7: slut-etapens gc/points/mountain tjekkes som mellem-etapernes klassementer", () => {
+  const final = clone(stage8);
+  const rename = { leader: "gc", points_day: "points", mountain_day: "mountain" };
+  for (const row of final.raceRows) if (row.stage_number === 8 && rename[row.result_type]) row.result_type = rename[row.result_type];
+  assert.deepEqual(ruleStandingsAddUp(prepared(final)), []);
+  final.raceRows.find((r) => r.result_type === "gc" && r.rank === 2).finish_time = "+0:01";
+  assert.ok(codes(ruleStandingsAddUp(prepared(final))).R7.codes.gc_gap_not_sum_of_stages >= 1);
 });
 
 test("checkStage samler kendte fejl på etape 6 og 8 og vælter aldrig", () => {

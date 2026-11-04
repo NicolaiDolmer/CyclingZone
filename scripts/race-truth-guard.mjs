@@ -41,8 +41,9 @@ export const HTTP_TIMEOUT_MS = 15_000;
 export const PAGE_SIZE = 1000;
 export const DISCORD_DETAIL_LINES = 12;
 export const STATE_KEEP_DAYS = 7;
-// `gc` er et endagsløbs resultat (etape 1 uden etape-rækker).
-export const RESULT_TYPES = ["stage", "gc", "leader", "points_day", "mountain_day"];
+// `gc` er et endagsløbs resultat (etape 1 uden etape-rækker) og slut-GC'en i et
+// etapeløb; `points`/`mountain` er slut-etapens trøjer (raceRunner.js).
+export const RESULT_TYPES = ["stage", "gc", "leader", "points_day", "mountain_day", "points", "mountain"];
 
 function isMain() {
   try {
@@ -266,12 +267,15 @@ export async function run({
 
   const findings = [];
   const raceRowsCache = new Map();
+  const withFindings = [];
   let checked = 0;
   for (const row of pending) {
     try {
       const stage = await loadStage(select, row, raceRowsCache);
-      findings.push(...checkStage(stage));
+      const stageFindings = checkStage(stage);
+      findings.push(...stageFindings);
       state.checked[stageKey(row)] = nowIso;
+      if (stageFindings.length) withFindings.push(stageKey(row));
       checked += 1;
     } catch (err) {
       // Ikke markeret som tjekket: næste kørsel prøver igen (inden for lookback).
@@ -309,6 +313,10 @@ export async function run({
       if (!ok) warn("Sandhedsvagten kunne ikke sende til #ops.");
       reported = reported || ok;
     }
+    // Nåede ingen af modtagerne frem, er alarmen ikke afleveret: etaperne med
+    // fund kvitteres ikke, så næste kørsel tjekker og melder dem igen.
+    const configured = (issueNumber > 0 && env.GITHUB_TOKEN && env.GITHUB_REPOSITORY) || webhook;
+    if (configured && !reported) for (const key of withFindings) delete state.checked[key];
   }
 
   if (!dryRun) writeState(stateFile, state);

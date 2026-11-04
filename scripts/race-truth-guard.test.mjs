@@ -29,7 +29,7 @@ function rowsOf(table) {
 }
 
 /** Falsk fetch: PostgREST-tabeller fra en fixture + optagelse af POST'er. */
-function fakeFetch(fixtureName, { failTable = null } = {}) {
+function fakeFetch(fixtureName, { failTable = null, postOk = true } = {}) {
   const data = loadFixture(fixtureName);
   const tables = {
     race_stage_timelines: [{ race_id: RACE, stage_number: data.stage_number, timeline_version: data.timeline_version, created_at: CREATED, events: data.events }],
@@ -43,7 +43,7 @@ function fakeFetch(fixtureName, { failTable = null } = {}) {
   const fetchFn = async (url, init = {}) => {
     if (init.method === "POST") {
       posts.push({ url, body: JSON.parse(init.body), headers: init.headers });
-      return { ok: true, json: async () => ({}) };
+      return { ok: postOk, json: async () => ({}) };
     }
     gets.push({ url, headers: init.headers });
     const table = new URL(url).pathname.split("/").pop();
@@ -98,6 +98,18 @@ test("en etape tjekkes kun én gang (tilstand i cache-filen)", async () => {
   const again = await run({ env: { ...ENV, RACE_TRUTH_STATE: state }, fetchFn: second.fetchFn, now: () => NOW, log: () => {}, warn: () => {} });
   assert.equal(again.checked, 0);
   assert.equal(second.posts.length, 0);
+});
+
+test("når hverken kommentar eller besked når frem, meldes etapen igen næste kørsel", async () => {
+  const state = tmpState();
+  const down = fakeFetch("giro-stage-8.json", { postOk: false });
+  const first = await run({ env: { ...ENV, RACE_TRUTH_STATE: state }, fetchFn: down.fetchFn, now: () => NOW, log: () => {}, warn: () => {} });
+  assert.equal(first.reported, false);
+  assert.equal(down.posts.length, 2);
+  const up = fakeFetch("giro-stage-8.json");
+  const second = await run({ env: { ...ENV, RACE_TRUTH_STATE: state }, fetchFn: up.fetchFn, now: () => NOW, log: () => {}, warn: () => {} });
+  assert.equal(second.checked, 1);
+  assert.equal(up.posts.length, 2);
 });
 
 test("dry-run skriver hverken kommentar, besked eller tilstand", async () => {

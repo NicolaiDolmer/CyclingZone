@@ -412,6 +412,26 @@ export function ruleFilmMatchesResult(input, film = buildFilm(input)) {
     return findings;
   }
   const rows = [...(input.stageRows ?? [])].filter((row) => typeof row.rank === "number").sort((a, b) => a.rank - b.rank);
+  // Filmens egen top ved målstregen (motorens rækkefølge): samme rytter på samme
+  // plads og med samme hul som i resultatet. Fanger en byttet vinder, også når
+  // hele gruppen har samme hul.
+  const byRider = new Map(rows.map((row) => [row.rider_id, row]));
+  for (const entry of Array.isArray(finish.top) ? finish.top : []) {
+    const riderId = str(entry?.rider_id);
+    const rank = finite(entry?.rank);
+    if (!riderId || rank == null) continue;
+    const row = byRider.get(riderId);
+    if (!row) {
+      findings.push(finding("R5", "film_top_rider_without_result", { rider_id: riderId, rank }));
+      continue;
+    }
+    if (row.rank !== rank) findings.push(finding("R5", "film_top_rank_mismatch", { rider_id: riderId, rank: row.rank, film_rank: rank }));
+    const gap = finite(entry?.gap);
+    const resultGap = parseGapSeconds(row.finish_time);
+    if (gap != null && resultGap != null && Math.abs(gap - resultGap) > TIME_TOLERANCE_S) {
+      findings.push(finding("R5", "film_top_gap_mismatch", { rider_id: riderId, rank: row.rank }));
+    }
+  }
   let previous = null;
   for (const row of rows) {
     const resultGap = parseGapSeconds(row.finish_time);
@@ -529,7 +549,16 @@ export function ruleStandingsAddUp(input) {
     }
   }
 
-  const gcRows = allRows.filter((row) => row.result_type === "leader" && row.stage_number === stage);
+  // Mellem-etaper skriver leader/points_day/mountain_day; slut-etapen skriver
+  // gc/points/mountain (raceRunner.js). Et endagsløb (ingen etape-rækker) har
+  // kun dagens resultat i gc-rækkerne, og der er ingen sum at tjekke.
+  const hasStageRows = stageRows.length > 0;
+  const finalOr = (dayType, finalType) => {
+    const day = allRows.filter((row) => row.result_type === dayType && row.stage_number === stage);
+    if (day.length || !hasStageRows) return day;
+    return allRows.filter((row) => row.result_type === finalType && row.stage_number === stage);
+  };
+  const gcRows = finalOr("leader", "gc");
   if (gcRows.length) {
     const totals = new Map(); // rider -> { secs, stages }
     const cumulative = new Map(); // rider -> { sprint, kom }
@@ -559,9 +588,9 @@ export function ruleStandingsAddUp(input) {
       for (const row of gcRows) {
         if (!totals.has(row.rider_id)) findings.push(finding("R7", "gc_rider_without_stage_rows", { rider_id: row.rider_id, rank: row.rank }));
       }
-      const jerseys = [["points_day", "sprint", "points_order_not_sum"], ["mountain_day", "kom", "mountain_order_not_sum"]];
-      for (const [type, field, code] of jerseys) {
-        const ranked = allRows.filter((row) => row.result_type === type && row.stage_number === stage && typeof row.rank === "number").sort((a, b) => a.rank - b.rank);
+      const jerseys = [[finalOr("points_day", "points"), "sprint", "points_order_not_sum"], [finalOr("mountain_day", "mountain"), "kom", "mountain_order_not_sum"]];
+      for (const [jerseyRows, field, code] of jerseys) {
+        const ranked = jerseyRows.filter((row) => typeof row.rank === "number").sort((a, b) => a.rank - b.rank);
         for (let i = 1; i < ranked.length; i += 1) {
           const above = cumulative.get(ranked[i - 1].rider_id)?.[field];
           const below = cumulative.get(ranked[i].rider_id)?.[field];
