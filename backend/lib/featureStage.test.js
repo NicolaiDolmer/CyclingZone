@@ -58,6 +58,10 @@ test("evaluateFlagStage: beta uden engineWrite → læse-gaten er uændret", () 
 
 // ── #7663: kort cache på opslaget ────────────────────────────────────────────
 
+// AGENTS.md regel 16: testene læser aldrig vægur-tiden. Alle opslag får et
+// fast ur; testene der rykker tiden har deres eget.
+const fixedNow = () => 1_000;
+
 /**
  * Fake klient der tæller opslag. `values` kan ændres undervejs (et flip), og
  * `fail` får næste opslag til at fejle (som supabase-js: { error }) eller kaste.
@@ -86,9 +90,9 @@ function countingClient(values) {
 test("#7663 et vellykket opslag genbruges inden for TTL'en", async () => {
   clearFlagStageCache();
   const { client, state } = countingClient({ ui_flag: "on" });
-  assert.equal(await readFlagStage(client, "ui_flag"), "on");
-  assert.equal(await readFlagStage(client, "ui_flag"), "on");
-  assert.equal(await readFlagStage(client, "ui_flag"), "on");
+  assert.equal(await readFlagStage(client, "ui_flag", { now: fixedNow }), "on");
+  assert.equal(await readFlagStage(client, "ui_flag", { now: fixedNow }), "on");
+  assert.equal(await readFlagStage(client, "ui_flag", { now: fixedNow }), "on");
   assert.equal(state.reads, 1, "tre visninger må koste ét DB-opslag");
 });
 
@@ -113,7 +117,7 @@ test("#7663 cachen udløber, så et flip slår igennem af sig selv", async () =>
 test("#7663 samtidige opslag af samme nøgle deler ét DB-kald", async () => {
   clearFlagStageCache();
   const { client, state } = countingClient({ ui_flag: "beta" });
-  const values = await Promise.all(Array.from({ length: 20 }, () => readFlagStage(client, "ui_flag")));
+  const values = await Promise.all(Array.from({ length: 20 }, () => readFlagStage(client, "ui_flag", { now: fixedNow })));
   assert.equal(state.reads, 1, "20 samtidige requests må give ét opslag");
   for (const v of values) assert.equal(v, "beta");
 });
@@ -121,8 +125,8 @@ test("#7663 samtidige opslag af samme nøgle deler ét DB-kald", async () => {
 test("#7663 en manglende række caches som null (= off) ligesom en rigtig værdi", async () => {
   clearFlagStageCache();
   const { client, state } = countingClient({});
-  assert.equal(await readFlagStage(client, "absent"), null);
-  assert.equal(await readFlagStage(client, "absent"), null);
+  assert.equal(await readFlagStage(client, "absent", { now: fixedNow }), null);
+  assert.equal(await readFlagStage(client, "absent", { now: fixedNow }), null);
   assert.equal(state.reads, 1);
 });
 
@@ -144,9 +148,9 @@ for (const mode of ["error", "throw"]) {
     clearFlagStageCache();
     const { client, state } = countingClient({ ui_flag: "on" });
     state.fail = mode;
-    assert.equal(await readFlagStage(client, "ui_flag"), null);
+    assert.equal(await readFlagStage(client, "ui_flag", { now: fixedNow }), null);
     state.fail = null;
-    assert.equal(await readFlagStage(client, "ui_flag"), "on", "fejlen hang ikke ved");
+    assert.equal(await readFlagStage(client, "ui_flag", { now: fixedNow }), "on", "fejlen hang ikke ved");
     assert.equal(state.reads, 2);
   });
 }
@@ -154,20 +158,20 @@ for (const mode of ["error", "throw"]) {
 test("#7663 motor-kontakter læses friskt hver gang (én gang pr. afvikling, som før)", async () => {
   clearFlagStageCache();
   const { client, state } = countingClient({ race_engine_v4: "on", stage_scheduler_enabled: "on" });
-  assert.equal(await readFlagStage(client, "race_engine_v4"), "on");
+  assert.equal(await readFlagStage(client, "race_engine_v4", { now: fixedNow }), "on");
   state.values.race_engine_v4 = "off"; // ejeren slukker motoren
-  assert.equal(await readFlagStage(client, "race_engine_v4"), "off", "nødstoppet virker straks");
+  assert.equal(await readFlagStage(client, "race_engine_v4", { now: fixedNow }), "off", "nødstoppet virker straks");
   state.values.stage_scheduler_enabled = "off";
-  assert.equal(await readFlagStage(client, "stage_scheduler_enabled"), "off");
+  assert.equal(await readFlagStage(client, "stage_scheduler_enabled", { now: fixedNow }), "off");
   assert.equal(state.reads, 3, "ingen af motor-opslagene kom fra cachen");
 });
 
-test("#7663 { fresh: true } springer cachen over for ét opslag", async () => {
+test("#7663 { fresh: true, now: fixedNow } springer cachen over for ét opslag", async () => {
   clearFlagStageCache();
   const { client, state } = countingClient({ ui_flag: "on" });
-  await readFlagStage(client, "ui_flag");
+  await readFlagStage(client, "ui_flag", { now: fixedNow });
   state.values.ui_flag = "off";
-  assert.equal(await readFlagStage(client, "ui_flag", { fresh: true }), "off");
+  assert.equal(await readFlagStage(client, "ui_flag", { fresh: true, now: fixedNow }), "off");
   assert.equal(state.reads, 2);
 });
 
@@ -175,20 +179,20 @@ test("#7663 cachen er pr. klient: to klienter deler aldrig værdier", async () =
   clearFlagStageCache();
   const a = countingClient({ ui_flag: "on" });
   const b = countingClient({ ui_flag: "off" });
-  assert.equal(await readFlagStage(a.client, "ui_flag"), "on");
-  assert.equal(await readFlagStage(b.client, "ui_flag"), "off");
+  assert.equal(await readFlagStage(a.client, "ui_flag", { now: fixedNow }), "on");
+  assert.equal(await readFlagStage(b.client, "ui_flag", { now: fixedNow }), "off");
 });
 
 test("#7663 clearFlagStageCache kan rydde én nøgle på én klient", async () => {
   clearFlagStageCache();
   const { client, state } = countingClient({ ui_flag: "on", other: "on" });
-  await readFlagStage(client, "ui_flag");
-  await readFlagStage(client, "other");
+  await readFlagStage(client, "ui_flag", { now: fixedNow });
+  await readFlagStage(client, "other", { now: fixedNow });
   state.values.ui_flag = "off";
   state.values.other = "off";
   clearFlagStageCache({ client, key: "ui_flag" });
-  assert.equal(await readFlagStage(client, "ui_flag"), "off", "den ryddede nøgle læses igen");
-  assert.equal(await readFlagStage(client, "other"), "on", "den anden er stadig cachet");
+  assert.equal(await readFlagStage(client, "ui_flag", { now: fixedNow }), "off", "den ryddede nøgle læses igen");
+  assert.equal(await readFlagStage(client, "other", { now: fixedNow }), "on", "den anden er stadig cachet");
 });
 
 // ── Forward-guard: en ny motor-kontakt kan ikke glide ind i cachen ───────────
@@ -200,6 +204,8 @@ test("#7663 clearFlagStageCache kan rydde én nøgle på én klient", async () =
 
 const LIB_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ENGINE_ROOTS = [
+  "trainingDayCloseTrigger.js",
+  "trainingSweep.js",
   "raceRunner.js",
   "raceSimulator.js",
   "dailyTrainingEngine.js",

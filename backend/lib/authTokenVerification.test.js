@@ -199,15 +199,21 @@ function signJwt(key, claims, { kid = key.kid } = {}) {
   return `${header}.${payload}.${base64url(signature)}`;
 }
 
+// AGENTS.md regel 16: testene læser aldrig vægur-tiden. supabase-js sammenligner
+// `exp` med sit eget ur, som ikke kan injiceres, så tokenernes tider er faste
+// og ligger årtier fra enhver realistisk (også forskudt) testmaskine-dato.
+const FIXED_ISSUED_AT = Date.UTC(2020, 0, 1) / 1000;
+const FIXED_VALID_UNTIL = Date.UTC(2099, 0, 1) / 1000; // gyldigt token
+const FIXED_EXPIRED_AT = Date.UTC(2000, 0, 1) / 1000; // udløbet token
+
 function userClaims(overrides = {}) {
-  const now = Math.floor(Date.now() / 1000);
   return {
     sub: "00000000-0000-4000-8000-000000000001",
     email: "player@example.test",
     role: "authenticated",
     aud: "authenticated",
-    iat: now - 60,
-    exp: now + 3600,
+    iat: FIXED_ISSUED_AT,
+    exp: FIXED_VALID_UNTIL,
     app_metadata: { provider: "email" },
     user_metadata: {},
     ...overrides,
@@ -273,8 +279,10 @@ test("#7663 nøglesættet hentes én gang og genbruges på tværs af requests", 
 test("#7663 udløbet token afvises lokalt (401), uden kald til /auth/v1/user", async () => {
   const key = makeSigningKey("kid-exp");
   const { client, calls } = realClient({ jwks: [key.jwk] });
-  const now = Math.floor(Date.now() / 1000);
-  const verdict = await verifyBearerToken(client, signJwt(key, userClaims({ iat: now - 7200, exp: now - 3600 })));
+  const verdict = await verifyBearerToken(
+    client,
+    signJwt(key, userClaims({ iat: FIXED_EXPIRED_AT - 3600, exp: FIXED_EXPIRED_AT })),
+  );
   assert.equal(verdict.outcome, "rejected");
   assert.equal(verdict.user, null);
   assert.equal(calls.user, 0);

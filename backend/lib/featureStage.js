@@ -50,7 +50,9 @@ export const FRESH_FLAG_KEYS = Object.freeze(new Set([
   "route_profile_hills",
   "ai_team_retire_enabled",
   "ai_pool_retirement_v2_enabled",
-  // Træningsmotoren (dailyTrainingEngine og dens direkte flag-moduler)
+  // Træningsmotoren (dailyTrainingEngine, aftenopgørelsen og deres direkte
+  // flag-moduler). daily_training_enabled er træningens hovedafbryder.
+  "daily_training_enabled",
   "training_tick_per_race_day",
   "ability_cap_per_date_enabled",
   "development_v2_aging_enabled",
