@@ -3,7 +3,8 @@
 // Loader den ÆGTE committede DDL (database/*.sql) mod en éngangs-PGlite-instans,
 // saneret via sanitizeForPglite (stripper Supabase-isms PGlite ikke kan køre).
 // Formålet: contract-tests kan køre et endpoints reelle kolonne-projektion mod det
-// reelle skema, så en ikke-eksisterende kolonne (riders.overall, #1840) fejler i CI.
+// afgrænsede skema, så en ikke-eksisterende kolonne (riders.overall, #1840) fejler i CI.
+// Dette er IKKE et fuldt prod-skema; #2635-overlayet dækker kun navngivne felter.
 //
 // Ingen Docker/cost — samme mønster som countriesSeed.integration.test.js (#669/#844).
 
@@ -17,6 +18,11 @@ import { sanitizeForPglite } from "./sanitizeForPglite.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // backend/lib/testdb -> repo-root/database
 const DATABASE_DIR = join(__dirname, "..", "..", "..", "database");
+
+export const HARNESS_SCHEMA_DRIFT_2635 = {
+  label: "harness-only: bounded catalog drift #2635",
+  sql: readFileSync(join(__dirname, "harnessSchemaDrift2635.sql"), "utf8"),
+};
 
 // Ordnet liste over de committede DDL-filer der tilsammen skaber Race-Hub-/
 // strategi-fladens tabeller. Rækkefølgen er load-rækkefølge (FK-afhængigheder):
@@ -67,6 +73,7 @@ export const RACE_HUB_SCHEMA_FILES = [
   // bevise at migrationen faktisk kan køres (idempotent, to gange) oven på base-
   // skemaets inline UNIQUE (tier, pool_index).
   "2026-09-24-5517-squad-leagues-races-teams.sql",
+  HARNESS_SCHEMA_DRIFT_2635,
 ];
 
 // #5535 (spor S1) · Kolonner som senior-resultat-aggregaterne læser, og som prod

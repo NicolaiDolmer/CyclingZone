@@ -43,6 +43,17 @@ test('admin stats and writes call only their fixed service RPCs', async () => {
   });
 });
 
+test('split accepts every player-facing horizon, including the legacy next (#7666)', async () => {
+  const horizons = ['this_week', 'next_week', 'next', 'this_season', 'next_season', 'y2027', 'later'];
+  await withApp(async (base, calls) => {
+    for (const horizon of horizons) {
+      const res = await fetch(base + '/split', { method: 'POST', headers: { authorization: 'admin', 'Content-Type': 'application/json' }, body: JSON.stringify({ ...split, horizon }) });
+      assert.equal(res.status, 200, horizon);
+    }
+    assert.deepEqual(calls.map(([, args]) => args.p_horizon), horizons);
+  });
+});
+
 test('invalid split input is rejected before calling the writer', async () => {
   await withApp(async (base, calls) => {
     for (const body of [[], {}, { ...split, source: 'invalid' }, { ...split, title_da: '' }, { ...split, status: 'invalid' }, { ...split, horizon: 'invalid' }, { ...split, issue_ref: -1 }]) {

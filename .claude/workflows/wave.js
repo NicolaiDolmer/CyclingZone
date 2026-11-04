@@ -404,7 +404,7 @@ function slugOf(branch) {
 // Samme prefix-semantik som ownershipPrefix(): lukket prefix daekker sig selv
 // og understi, en glob midt i et led er aaben.
 function touchPrefix(raw) {
-  const p = String(raw).replace(/\\/g, '/').replace(/\/$/, '').toLowerCase()
+  const p = String(raw).replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase()
   const head = p.split('*')[0]
   return { prefix: head.replace(/\/$/, ''), open: p.includes('*') && !head.endsWith('/') }
 }
@@ -494,12 +494,34 @@ function designGateHits(t) {
 }
 // Slut paa #6344-spejlingen.
 
+// #6335: declaration-only mirror of broadSharedDirectory. No filesystem access
+// in Workflow; admission supplies branch-diff suggestions in wave-policy.mjs.
+const BROAD_SHARED_DIRECTORIES = [
+  'backend/lib', 'backend/routes', 'frontend/src/pages',
+  'frontend/src/components', 'frontend/src/hooks', 'frontend/src/lib', 'frontend/src/utils',
+]
+function broadSharedDirectory(raw) {
+  const p = raw.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase()
+  const head = p.split('*')[0]
+  const own = { prefix: head.replace(/\/$/, ''), open: p.includes('*') && !head.endsWith('/') }
+  return BROAD_SHARED_DIRECTORIES.find(prefix => own.open ? prefix.startsWith(own.prefix) : (prefix === own.prefix || prefix.startsWith(own.prefix + '/')))
+}
+function assertNarrowDeclarations(raw) {
+  for (const field of ['ownership', 'touches']) {
+    for (const entry of (Array.isArray(raw[field]) ? raw[field] : [])) {
+      if (broadSharedDirectory(entry)) throw new Error(`${field} too broad for #${raw.issue}: ${entry}. Declare concrete files or a small subdirectory; wave-policy admission reports branch-diff suggestions.`)
+    }
+  }
+}
+// End #6335 declaration mirror.
+
 function normalizeTrack(raw, index) {
   if (!raw || typeof raw !== 'object') throw new Error(`wave: spor ${index} er ikke et objekt`)
   const issue = raw.issue
   const branch = raw.branch
   if (!issue) throw new Error(`wave: spor ${index} mangler "issue"`)
   if (!branch) throw new Error(`wave: spor ${index} (#${issue}) mangler "branch"`)
+  assertNarrowDeclarations(raw)
   const askedModel = raw.model || 'sonnet'
   if (askedModel !== 'opus' && askedModel !== 'sonnet') {
     throw new Error(`wave: spor #${issue} har ugyldig model "${askedModel}" (brug 'opus' eller 'sonnet')`)
@@ -1122,6 +1144,7 @@ function setupPrompt(tracks, lanes, expiresInMinutes) {
     '## 1. Faelles admission (#5467)',
     `Koer node ${MAIN_CHECKOUT}/scripts/wave-policy.mjs inspect. Hooken skal allerede have reserveret boelgen atomisk.`,
     'Kraev runtime=claude, state=running og et waveId. Mangler det, returner ok=false og STOP foer setup.',
+    'Player-report (#5509): hookens faelles admission laeser issue-body og labels foer spawn. Manglende prod-evidens eller already-green stopper build; brug kun kind: investigate til at samle evidens uden byg. Omgaar aldrig gaten med en haandskrevet lane.',
     'Returner waveId fra markoeren. Skriv eller overskriv ALDRIG wave-active.json selv. En udloebet markoer er ikke et ledigt slot.',
     '',
     ...trackSetupSteps(),

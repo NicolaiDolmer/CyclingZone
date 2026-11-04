@@ -1,0 +1,62 @@
+{
+  "sourceCommit": "d17cb966ef2bf8397ef0a1fe531b0869ed8e7649",
+  "note": "#7640: raceRunner med den rigtige v4-motor og ingen kontakt taendt, skrevet fra merge-basen foer tænd-ledningen. Kun hashes. Genereres ALDRIG med den nye kode.",
+  "wholeRace:s5_profiles_v3": {
+    "inputChecksums": [
+      2417326707,
+      224789872,
+      662758193
+    ],
+    "inputSha256": [
+      "0a19231e98e10ffa9c16cb4dd7e1684791d16b1c4b0e245ee67da810a048a216",
+      "46d18aa77290abde56a82583c33260154fe4d5b0f73439876bd9e677ce11f9ef",
+      "01a184f4f84f25ec319bf3310d04f5dfb5224fc284a01214a8b202202db43e72"
+    ],
+    "outputSha256": [
+      "e36cf0714bca301d7905985ea44bb4e84e566971105217d902d381a60ad17d13",
+      "c071d19b1e1e816329cb10ac067044fb25775d2d1aa07296a87ee8e7dff88073",
+      "d215cb96a8c42564c19c6840e8316da8e25ec926efaf2eb2d23a4a5ee920dc58"
+    ],
+    "withoutCausesSha256": [
+      "455ab87c9a1c76388ed52487b0a466f5ed98224c6a3c004dbb4509770c5b5d7f",
+      "6e0487362a227497422d0483f62b8feef9125be7561a1d6211ab1bf48cf57dcf",
+      "d215cb96a8c42564c19c6840e8316da8e25ec926efaf2eb2d23a4a5ee920dc58"
+    ]
+  },
+  "wholeRace:s5_profiles_v2": {
+    "inputChecksums": [
+      2417326707,
+      2774897998,
+      242101074
+    ],
+    "inputSha256": [
+      "9bba215bff72323a7506257cd361e931e064025f4e5e6741c7fa7a584a6c38fc",
+      "b5028ea28147141d96b5a406287a173a1291e4960d363754aec008fdaacefc40",
+      "3cc6c9c6083eba1efd1dd34c235e0732b3cd6c91d08703708caa1a03a126a2ec"
+    ],
+    "outputSha256": [
+      "50236e16d72fc36364a5f8ff5ef36bcce4956e4953c9e5058ada5c069a645611",
+      "0af1ec99248109ae63b7c448404bd8c0201870cea19fd9c34114da5541a7008c",
+      "c9404c08ee3b29a4115fffcb38234417d4ccc65263b977c43221052a972099fb"
+    ],
+    "withoutCausesSha256": [
+      "50236e16d72fc36364a5f8ff5ef36bcce4956e4953c9e5058ada5c069a645611",
+      "ff8a47b9b48ff6807d438bbe5cded9aaad596be10131f91e52d37dc4cd75aa64",
+      "c9404c08ee3b29a4115fffcb38234417d4ccc65263b977c43221052a972099fb"
+    ]
+  },
+  "stageByStage:s5_profiles_v3:stage2": {
+    "inputChecksums": [
+      3404357607
+    ],
+    "inputSha256": [
+      "76db2e62d3e8d1f85be0aa64bda2d3cd407018b59c604632065d500841fadc1c"
+    ],
+    "outputSha256": [
+      "74d56e895590a8b3431a24ea713410a43ea710337a080ba164170fac8a3192c6"
+    ],
+    "withoutCausesSha256": [
+      "3aacd2467ed3cee2aa2fa14a44975053aeddbd724afc78b9d00444b562802ff7"
+    ]
+  }
+}

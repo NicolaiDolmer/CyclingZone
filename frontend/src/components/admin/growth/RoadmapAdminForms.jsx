@@ -17,7 +17,7 @@ import { apiFetch } from "../../../lib/apiFetch.ts";
 import { useAdminAuth } from "../shared/useAdminAuth";
 import { ENGINE_ORDER } from "../../../lib/roadmapVoting.js";
 import {
-  ISSUE_AREAS, ISSUE_STATUSES, ROADMAP_STATUSES, issueStatusPatch, nextSortOrder, statusPatch, validateTitles,
+  HORIZONS, HORIZON_LABELS, ISSUE_AREAS, ISSUE_STATUSES, ROADMAP_STATUSES, issueStatusPatch, nextSortOrder, statusPatch, validateTitles,
 } from "../../../lib/roadmapAdminModel.ts";
 import { Button, Checkbox, Field, Input, Modal, Select, Textarea } from "../../ui";
 
@@ -30,7 +30,6 @@ export const STATUS_LABELS = {
 export const ISSUE_STATUS_LABELS = {
   checking: "Tjekkes", confirmed: "Bekræftet", fixing: "Rettes", fixed: "Rettet", dismissed: "Lukket uden fund",
 };
-export const HORIZON_LABELS = { next: "Next", later: "Later" };
 export const FLAG_STAGE_LABELS = { off: "Fra", beta: "Beta", on: "Til" };
 
 function parseIssueRef(value) {
@@ -144,10 +143,9 @@ export function ItemFormModal({ open, item, flags, planned, onClose, onSaved }) 
               {ROADMAP_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
             </Select>
           </Field>
-          <Field label="Next/Later" htmlFor={`${uid}-horizon`}>
+          <Field label="Horisont" htmlFor={`${uid}-horizon`}>
             <Select id={`${uid}-horizon`} size="sm" value={form.horizon} onChange={(e) => set("horizon", e.target.value)}>
-              <option value="next">Next</option>
-              <option value="later">Later</option>
+              {HORIZONS.map((h) => <option key={h} value={h}>{HORIZON_LABELS[h]}</option>)}
             </Select>
           </Field>
         </div>
@@ -253,10 +251,9 @@ export function SplitItemModal({ open, item, onClose, onSaved }) {
               {["planned", "in_progress", "active"].map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
             </Select>
           </Field>
-          <Field label="Next/Later" htmlFor={`${uid}-horizon`}>
+          <Field label="Horisont" htmlFor={`${uid}-horizon`}>
             <Select id={`${uid}-horizon`} size="sm" value={form.horizon} onChange={(e) => set("horizon", e.target.value)}>
-              <option value="next">Next</option>
-              <option value="later">Later</option>
+              {HORIZONS.map((h) => <option key={h} value={h}>{HORIZON_LABELS[h]}</option>)}
             </Select>
           </Field>
           <Field label="GitHub-issue" htmlFor={`${uid}-ref`}>

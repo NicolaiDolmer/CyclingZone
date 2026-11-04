@@ -1,16 +1,24 @@
 name: DB Watchdog
 
 # Databasevagt (#5878, variant A: probe + alarm, ingen automatisk genstart).
-# 6/10-2026 frøs databasen i 21 min og ejeren opdagede det selv. Hvert 5. minut
+# 6/10-2026 frøs databasen i 21 min og ejeren opdagede det selv. Ved hver kørsel
 # probes backend-readiness, PostgREST og pg_postmaster_start_time(); to fejl i
 # træk giver én Discord-ops-alarm, grøn igen giver én "oppe igen"-besked, og en
-# ændret postmaster-starttid registreres som genstart.
+# ændret postmaster-starttid registreres som genstart. #7662: derudover alarm ved
+# stigende 5xx på Supabase-API'et og ved gentagne langsomme forespørgsler.
+#
+# Tidsplan (#7662): GitHub dropper og forsinker planlagte kørsler kraftigt på
+# runde minutter (*/5 gav ca. 5 kørsler i døgnet). Derfor et fast kvartersmønster
+# på ulige minutter, hvor køen er kortere. Sentry Cron Monitor (se nedenfor) melder,
+# hvis kørsler alligevel udebliver.
 # Spec: docs/drafts/spec-5878-db-watchdog-2026-10-11.md
 # Logik og alarmregel: scripts/ops/db-watchdog.mjs (+ .test.mjs).
 #
 # Kører i GitHub Actions med vilje: uden for Railway og Supabase, så en død
 # backend eller en frossen database ikke tager vagten med sig. Tilstand (fejl i
-# træk, alarm aktiv, sidste starttid) ligger i Actions-cache, ALDRIG i prod-DB.
+# træk, alarm aktiv, sidste starttid, 5xx-niveau, query-snapshot) ligger i
+# Actions-cache med en artefakt som sikkerhedsnet (cachen mistede tilstanden i 13
+# af 30 kørsler), ALDRIG i prod-DB.
 #
 # GitHub-secrets (sæt med `gh secret set <NAVN>`):
 #   findes allerede:   SUPABASE_URL, SUPABASE_DB_URL
@@ -18,15 +26,16 @@ name: DB Watchdog
 #                      SUPABASE_PUBLISHABLE_KEY  (publishable/anon-nøglen, fra Infisical)
 #   valgfri:           DISCORD_OPS_MENTION       (fx <@123456789012345678>)
 #                      SENTRY_DSN                (aktiverer Sentry Cron Monitor check-in)
+#                      SUPABASE_ACCESS_TOKEN     (findes allerede til supabase-log-watch; aktiverer 5xx-reglen)
 # Mangler en påkrævet secret, fejler jobbet tydeligt UDEN at sende en alarm.
 #
-# Sentry Cron Monitor (ejer opretter): slug `db-watchdog`, schedule `*/5 * * * *`,
-# check-in margin 10 min, max runtime 3 min, failure threshold 1. Så melder Sentry
+# Sentry Cron Monitor (ejer opretter): slug `db-watchdog`, schedule `7,22,37,52 * * * *`,
+# check-in margin 30 min, max runtime 3 min, failure threshold 1. Så melder Sentry
 # selv, hvis GitHub dropper kørsler eller vagten er død.
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
     inputs:
       backend_url:
@@ -66,6 +75,34 @@ jobs:
           restore-keys: |
             db-watchdog-state-
 
+      # Sikkerhedsnet (#7662): er cachen tabt, hentes den nyeste artefakt. Kun artefakter
+      # fra en planlagt eller manuel kørsel af DETTE workflow på main stoles på (en PR kan
+      # ellers uploade en artefakt med samme navn og lægge vagten i dvale). Fejl her må
+      # aldrig fælde vagten; uden tilstand starter vagten blot forfra og logger det.
+      - name: Restore watchdog state from artifact (fallback)
+        if: hashFiles('.db-watchdog-state/state.json') == ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          candidates=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=db-watchdog-state&per_page=20" \
+            --jq '[.artifacts[] | select(.expired == false and .workflow_run.head_branch == "main")] | sort_by(.created_at) | reverse | .[] | "\(.id) \(.workflow_run.id)"')
+          found=''
+          while read -r art_id run_id; do
+            [ -z "$art_id" ] && continue
+            trusted=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" \
+              --jq '(.path == ".github/workflows/db-watchdog.yml") and (.event == "schedule" or .event == "workflow_dispatch") and (.head_branch == "main")')
+            if [ "$trusted" = "true" ]; then found="$art_id"; break; fi
+          done <<< "$candidates"
+          if [ -n "$found" ]; then
+            mkdir -p .db-watchdog-state
+            gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${found}/zip" > "$RUNNER_TEMP/state.zip"
+            unzip -o -q "$RUNNER_TEMP/state.zip" -d .db-watchdog-state
+            echo "Tilstand gendannet fra artefakt $found"
+          else
+            echo "Ingen betroet artefakt at gendanne fra"
+          fi
+
       - name: Run watchdog
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -74,6 +111,7 @@ jobs:
           DISCORD_OPS_WEBHOOK_URL: ${{ secrets.DISCORD_OPS_WEBHOOK_URL }}
           DISCORD_OPS_MENTION: ${{ secrets.DISCORD_OPS_MENTION }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           DB_WATCHDOG_BACKEND_URL: ${{ github.event.inputs.backend_url }}
         run: node scripts/ops/db-watchdog.mjs
 
@@ -83,6 +121,15 @@ jobs:
         with:
           path: .db-watchdog-state
           key: db-watchdog-state-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Save watchdog state (artifact)
+        if: always() && hashFiles('.db-watchdog-state/state.json') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: db-watchdog-state
+          path: .db-watchdog-state/state.json
+          include-hidden-files: true
+          retention-days: 2
 
       # Best effort: behold de 3 nyeste tilstands-cacher så listen ikke vokser
       # med 288 poster i døgnet. Fejl her må aldrig fælde vagten.
