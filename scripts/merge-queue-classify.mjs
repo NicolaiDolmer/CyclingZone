@@ -19,9 +19,9 @@
 // fra 4/10 release-tjek/deploy/overvaagning). Ejer-go er klaebende pr. PR
 // (OWNER_GO_MARKER).
 //
-// Input er labels + filstier + titel + body (+ author) + migrationernes SQL
-// (`migrationSql: { [sti]: tekst }`). Alt herunder er rent; gh-kaldene ligger
-// kun i fetchPrFromGh/fetchMigrationSql og main() nederst.
+// Input er labels + filstier + titel + body (+ author) + migrations-fakta
+// (migrationSql/migrationIsNew/flagKeyInCode, se migrationVerdict). Alt herunder
+// er rent; gh/git-kaldene ligger kun i fetchPrFromGh/fetchMigrationFacts og main().
 //
 //   node scripts/merge-queue-classify.mjs --pr 5654 [--repo owner/name] [--json]
 //   node scripts/merge-queue-classify.mjs --input pr.json [--json]   # uden gh
@@ -272,6 +272,7 @@ const FLAG_SEED_RE = new RegExp(
   "i",
 );
 const FLAG_OFF_VALUE_RE = /^\s*("off"|false)\s*$/i;
+const FLAG_FIELD_RE = /^'§(\d+)'(?:::(?:jsonb|text))?$/i;
 
 function checkFlagSeed(stmt) {
   const m = FLAG_SEED_RE.exec(stmt.code);
@@ -282,24 +283,40 @@ function checkFlagSeed(stmt) {
     return "INSERT uden for en flag-seed i app_config (data kan vaere spillervendt)";
   }
   const cols = m[1].split(",").map((c) => c.trim().replace(/"/g, "").toLowerCase());
+  const keyIdx = cols.indexOf("key");
   const valueIdx = cols.indexOf("value");
-  if (valueIdx < 0) return "flag-seed uden value-kolonne";
+  if (keyIdx < 0 || valueIdx < 0) return "flag-seed uden key- eller value-kolonne";
   const tuples = splitTopLevel(m[2]);
   for (const tuple of tuples) {
     const inner = /^\((.*)\)$/.exec(tuple);
     if (!inner) return "flag-seed med ukendt VALUES-form";
     const items = splitTopLevel(inner[1]);
     if (items.length !== cols.length) return "flag-seed med ukendt VALUES-form";
-    const lit = /^'§(\d+)'(?:::jsonb)?$/i.exec(items[valueIdx]);
-    if (!lit || !FLAG_OFF_VALUE_RE.test(stmt.literals[Number(lit[1])] ?? "")) {
-      return "flag-seed med en vaerdi der ikke er off (flag-flip)";
-    }
+    // Hvert felt skal vaere en ren literal: et udtryk (fx nextval) evalueres
+    // ogsaa naar raekken konflikter, og er saa ikke idempotent.
+    const lits = items.map((item) => FLAG_FIELD_RE.exec(item));
+    if (lits.some((l) => !l)) return "flag-seed med et udtryk i stedet for en literal";
+    const literal = (idx) => stmt.literals[Number(lits[idx][1])] ?? "";
+    if (!FLAG_OFF_VALUE_RE.test(literal(valueIdx))) return "flag-seed med en vaerdi der ikke er off (flag-flip)";
+    if (!literal(keyIdx).trim()) return "flag-seed uden noegle";
+    stmt.flagKeys = [...(stmt.flagKeys ?? []), literal(keyIdx).trim()];
   }
   return null;
 }
 
 const ADD_COLUMN_RE = new RegExp(`^ADD COLUMN IF NOT EXISTS ${IDENT} (.+)$`, "i");
-const COLUMN_FORBIDDEN_RE = /\bNOT NULL\b|\bREFERENCES\b|\bCHECK\b|\bUNIQUE\b|\bPRIMARY KEY\b|\bGENERATED\b|\bCONSTRAINT\b/i;
+// Kun indbyggede typer hvor kolonnen beviseligt er nullable: ingen serial
+// (skjult NOT NULL + sekvens), ingen domaener (kan baere NOT NULL/CHECK).
+const NULLABLE_COLUMN_RE = new RegExp(
+  "^(?:smallint|integer|int|int2|int4|int8|bigint|real|double precision|boolean|bool|text|uuid|date|jsonb|json|bytea|interval|timestamptz" +
+    String.raw`|(?:numeric|decimal)(?: ?\(\d+(?: ?, ?\d+)?\))?` +
+    String.raw`|(?:character varying|varchar|character|char)(?: ?\(\d+\))?` +
+    String.raw`|(?:timestamp|time)(?: ?\(\d\))?(?: with(?:out)? time zone)?)(?: ?\[\])?` +
+    // DEFAULT kun som konstant: et flygtigt udtryk omskriver tabellen eller har sideeffekter.
+    String.raw`(?: DEFAULT (?:'§\d+'(?:::[a-z ]+)?|-?\d+(?:\.\d+)?|true|false|null|now\(\)|current_timestamp|current_date))?` +
+    "(?: NULL)?$",
+  "i",
+);
 
 function checkAlterTable(stmt) {
   const m = new RegExp(`^ALTER TABLE (?:IF EXISTS )?(?:ONLY )?${QUALIFIED} (.+)$`, "i").exec(stmt.code);
@@ -310,7 +327,9 @@ function checkAlterTable(stmt) {
     }
     const col = ADD_COLUMN_RE.exec(action);
     if (!col) return "ALTER der aendrer eksisterende";
-    if (COLUMN_FORBIDDEN_RE.test(col[1])) return "ny kolonne med NOT NULL/constraint (kun nullable er additiv)";
+    if (!NULLABLE_COLUMN_RE.test(col[1])) {
+      return "ny kolonne der ikke beviseligt er nullable (NOT NULL, constraint, serial, domaene eller udtryk som DEFAULT)";
+    }
   }
   return null;
 }
@@ -340,30 +359,53 @@ function checkStatement(stmt) {
 /**
  * Er migrationen additiv, idempotent og ikke-destruktiv (hard rule 35 (d), #7578)?
  * Fail-closed: tom, ulaeselig eller ukendt SQL er ikke additiv.
+ * `flagKeys` er de noegler en flag-seed opretter; om de allerede laeses af kode
+ * afgoer classifyPr (en laeser der tolker en manglende noegle som on, ville
+ * skifte adfaerd naar seeden lander).
  * @param {string} sql
- * @returns {{additive: boolean, reason: string}}
+ * @returns {{additive: boolean, reason: string, flagKeys: string[]}}
  */
 export function analyzeMigrationSql(sql) {
+  const no = (reason) => ({ additive: false, reason, flagKeys: [] });
   const statements = splitSqlStatements(sql);
-  if (!statements) return { additive: false, reason: "ulaeselig SQL (uafsluttet kommentar/streng)" };
-  if (!statements.length) return { additive: false, reason: "tom SQL" };
+  if (!statements) return no("ulaeselig SQL (uafsluttet kommentar/streng)");
+  if (!statements.length) return no("tom SQL");
   const allCode = statements.map((s) => s.code).join(" ; ");
   for (const [re, reason] of DESTRUCTIVE_SQL) {
-    if (re.test(allCode)) return { additive: false, reason };
+    if (re.test(allCode)) return no(reason);
   }
   for (const stmt of statements) {
     const reason = checkStatement(stmt);
-    if (reason) return { additive: false, reason };
+    if (reason) return no(reason);
   }
-  return { additive: true, reason: `additiv og idempotent (${statements.length} saetninger)` };
+  const flagKeys = statements.flatMap((s) => s.flagKeys ?? []);
+  return { additive: true, reason: `additiv og idempotent (${statements.length} saetninger)`, flagKeys };
 }
 
+/**
+ * Fakta classifyPr kraever pr. migration (alle fail-closed naar de mangler):
+ *   pr.migrationSql[sti]      SQL paa head
+ *   pr.migrationIsNew[sti]    true kun naar filen ikke fandtes paa base: auto-migrate
+ *                             springer en allerede koert fil over, saa en tilfoejelse
+ *                             til en eksisterende migration naar aldrig prod
+ *   pr.flagKeyInCode[noegle]  false kun naar ingen kode paa base naevner noeglen
+ */
 function migrationVerdict(path, pr) {
   const entry = (pr?.files ?? []).find((f) => typeof f === "object" && (f?.path ?? f?.filename) === path);
-  if (Number(entry?.deletions) > 0) return { additive: false, reason: "eksisterende migration aendret" };
+  if (Number(entry?.deletions) > 0 || pr?.migrationIsNew?.[path] === false) {
+    return { additive: false, reason: "eksisterende migration aendret" };
+  }
+  if (pr?.migrationIsNew?.[path] !== true) return { additive: false, reason: "ukendt om migrationen er ny" };
   const sql = pr?.migrationSql?.[path];
   if (typeof sql !== "string") return { additive: false, reason: "SQL ikke hentet" };
-  return analyzeMigrationSql(sql);
+  const verdict = analyzeMigrationSql(sql);
+  if (!verdict.additive) return verdict;
+  for (const key of verdict.flagKeys) {
+    const inCode = pr?.flagKeyInCode?.[key];
+    if (inCode === true) return { additive: false, reason: `flag-seed ${key} laeses allerede af kode (en manglende noegle kan betyde on)` };
+    if (inCode !== false) return { additive: false, reason: `ukendt om kode laeser flaget ${key}` };
+  }
+  return verdict;
 }
 
 // ── Klassifikationen ───────────────────────────────────────────────────────
@@ -377,6 +419,8 @@ function migrationVerdict(path, pr) {
  * @param {string|{login:string}} [pr.author]
  * @param {number} [pr.number]
  * @param {Record<string, string>} [pr.migrationSql] database/*.sql -> indhold paa head
+ * @param {Record<string, boolean>} [pr.migrationIsNew] database/*.sql -> fandtes ikke paa base
+ * @param {Record<string, boolean>} [pr.flagKeyInCode] seedet flag-noegle -> naevnt af kode paa base
  * @returns {{category: 'a'|'b'|'c'|'d'|'ejer-go', label: string, reason: string, ownerGo: boolean}}
  */
 export function classifyPr(pr) {
@@ -490,38 +534,68 @@ export function parseCliArgs(argv) {
 }
 
 export function fetchPrFromGh(pr, repo, runGh = defaultRunGh) {
-  const json = runGh(["pr", "view", String(pr), "--repo", repo, "--json", "number,title,body,labels,files,author,comments,headRefOid"]);
+  const json = runGh(["pr", "view", String(pr), "--repo", repo, "--json", "number,title,body,labels,files,author,comments,headRefOid,baseRefOid"]);
   return JSON.parse(json);
 }
 
+const SHA_RE = /^[0-9a-f]{7,40}$/i;
+const is404 = (err) => /\b404\b/.test(`${err?.stderr ?? ""} ${err?.message ?? ""}`);
+
 /**
- * Henter migrationernes SQL paa PR'ens head-commit (#7578). En fil der ikke kan
- * hentes (slettet, net, rettigheder) udelades, og classifyPr goer den til ejer-go.
- * @returns {Record<string, string>}
+ * Samler fakta om PR'ens migrationer (#7578): SQL paa head, om filen er ny i
+ * forhold til base, og om en seedet flag-noegle allerede naevnes af kode paa
+ * base (lokal `git grep` mod base-commit'en). Alt der ikke kan afgoeres,
+ * udelades, og classifyPr goer det til ejer-go (fail-closed).
+ * @returns {{migrationSql: Record<string,string>, migrationIsNew: Record<string,boolean>, flagKeyInCode: Record<string,boolean>}}
  */
-export function fetchMigrationSql(pr, repo, runGh = defaultRunGh) {
-  const out = {};
-  const ref = String(pr?.headRefOid ?? "");
-  if (!/^[0-9a-f]{7,40}$/i.test(ref)) return out;
+export function fetchMigrationFacts(pr, repo, { runGh = defaultRunGh, runGit = defaultRunGit } = {}) {
+  const facts = { migrationSql: {}, migrationIsNew: {}, flagKeyInCode: {} };
+  const head = String(pr?.headRefOid ?? "");
+  const base = String(pr?.baseRefOid ?? "");
+  if (!SHA_RE.test(head)) return facts;
+  const raw = (path, ref) => runGh(["api", "-H", "Accept: application/vnd.github.raw", `repos/${repo}/contents/${path.split("/").map(encodeURIComponent).join("/")}?ref=${ref}`]);
   for (const path of filePaths(pr?.files).filter(isMigrationFile)) {
-    const encoded = path.split("/").map(encodeURIComponent).join("/");
     try {
-      out[path] = runGh(["api", "-H", "Accept: application/vnd.github.raw", `repos/${repo}/contents/${encoded}?ref=${ref}`]);
+      facts.migrationSql[path] = raw(path, head);
     } catch {
-      // Udeladt = "SQL ikke hentet" = ejer-go (fail-closed).
+      continue;
+    }
+    if (!SHA_RE.test(base)) continue;
+    try {
+      raw(path, base);
+      facts.migrationIsNew[path] = false;
+    } catch (err) {
+      if (is404(err)) facts.migrationIsNew[path] = true;
     }
   }
-  return out;
+  if (!SHA_RE.test(base)) return facts;
+  const keys = Object.values(facts.migrationSql).flatMap((sql) => analyzeMigrationSql(sql).flagKeys);
+  for (const key of new Set(keys)) {
+    try {
+      runGit(["grep", "-q", "-F", "-e", key, base, "--", ".", ":(exclude)database", ":(exclude)docs", ":(exclude)*.md"]);
+      facts.flagKeyInCode[key] = true;
+    } catch (err) {
+      // git grep: exit 1 = intet fund. Alt andet (ukendt commit lokalt) = ukendt.
+      if (err?.status === 1) facts.flagKeyInCode[key] = false;
+    }
+  }
+  return facts;
 }
 
 function defaultRunGh(args) {
   return execFileSync("gh", args, { encoding: "utf8", timeout: 60_000, stdio: ["ignore", "pipe", "pipe"] });
 }
 
+const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
+
+function defaultRunGit(args) {
+  return execFileSync("git", ["-C", REPO_ROOT, ...args], { encoding: "utf8", timeout: 60_000, stdio: ["ignore", "pipe", "pipe"] });
+}
+
 export function main(argv = process.argv.slice(2)) {
   const cli = parseCliArgs(argv);
   const pr = cli.input ? JSON.parse(readFileSync(cli.input, "utf8")) : fetchPrFromGh(cli.pr, cli.repo);
-  if (!cli.input) pr.migrationSql = fetchMigrationSql(pr, cli.repo);
+  if (!cli.input) Object.assign(pr, fetchMigrationFacts(pr, cli.repo));
   const result = classifyPr(pr);
   process.stdout.write(cli.json ? `${JSON.stringify({ number: pr.number ?? cli.pr, ...result })}\n` : `${formatClassification(result)}\n`);
   return 0;

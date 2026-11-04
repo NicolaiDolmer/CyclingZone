@@ -11,7 +11,7 @@ import {
   analyzeMigrationSql,
   CATEGORY,
   classifyPr,
-  fetchMigrationSql,
+  fetchMigrationFacts,
   fetchPrFromGh,
   formatClassification,
   hasProdMeasurement,
@@ -202,7 +202,7 @@ test("kode uden for kategorierne og tom filliste er ejer-go med grund", () => {
 
 test("formatClassification: én linje, kategori eller EJER-GO foerst", () => {
   assert.equal(formatClassification(classifyPr(pr({ files: ["docs/x.md"] }))), "KATEGORI c: (c) Dependabot/docs/CI-hooks-test [docs uden spillertekst]");
-  assert.match(formatClassification(classifyPr(pr({ files: ["database/x.sql"] }))), /^EJER-GO: kraever ejer-go \[migration: database\/x\.sql \(SQL ikke hentet\)\]$/);
+  assert.match(formatClassification(classifyPr(pr({ files: ["database/x.sql"] }))), /^EJER-GO: kraever ejer-go \[migration: database\/x\.sql \(ukendt om migrationen er ny\)\]$/);
 });
 
 // ── (d) additive, idempotente migrationer (ejer-valg B 4/11, #7578) ────────
@@ -225,6 +225,9 @@ NOTIFY pgrst, 'reload schema';`;
 test("analyzeMigrationSql: additive, idempotente former", () => {
   assert.equal(analyzeMigrationSql(FLAG_SEED_OFF).additive, true);
   assert.equal(analyzeMigrationSql(ADD_COLUMN_INDEX).additive, true);
+  assert.deepEqual(analyzeMigrationSql(FLAG_SEED_OFF).flagKeys, ["x_enabled"]);
+  assert.deepEqual(analyzeMigrationSql(ADD_COLUMN_INDEX).flagKeys, []);
+  assert.equal(analyzeMigrationSql("ALTER TABLE x ADD COLUMN IF NOT EXISTS a numeric(10, 2), ADD COLUMN IF NOT EXISTS b timestamp with time zone DEFAULT now(), ADD COLUMN IF NOT EXISTS c text[] NULL;").additive, true);
   // Flere flag i én saetning, false i stedet for "off", citeret tabelnavn.
   assert.equal(analyzeMigrationSql(`INSERT INTO "app_config" (key, value) VALUES ('a', '"off"'::jsonb), ('b', 'false') ON CONFLICT DO NOTHING;`).additive, true);
 });
@@ -255,6 +258,11 @@ test("analyzeMigrationSql: destruktivt, RLS, grants og ikke-idempotent er ejer-g
     ["ALTER TABLE public.x ALTER COLUMN c SET DEFAULT 0;", /aendrer eksisterende/],
     ["ALTER TABLE public.x ADD COLUMN IF NOT EXISTS c int NOT NULL DEFAULT 0;", /nullable/],
     ["ALTER TABLE public.x ADD COLUMN IF NOT EXISTS team_id uuid REFERENCES public.teams(id);", /nullable/],
+    ["ALTER TABLE public.riders ADD COLUMN IF NOT EXISTS ordinal serial;", /nullable/],
+    ["ALTER TABLE public.riders ADD COLUMN IF NOT EXISTS ordinal bigserial;", /nullable/],
+    ["ALTER TABLE public.x ADD COLUMN IF NOT EXISTS c my_domain;", /nullable/],
+    ["ALTER TABLE public.x ADD COLUMN IF NOT EXISTS c uuid DEFAULT gen_random_uuid();", /nullable/],
+    [`INSERT INTO public.app_config (key, value, description) VALUES ('x', '"off"'::jsonb, nextval('public.s')::text) ON CONFLICT (key) DO NOTHING;`, /udtryk/],
     ["CREATE UNIQUE INDEX IF NOT EXISTS x_u ON public.x (a);", /UNIQUE/],
     ["CREATE TABLE IF NOT EXISTS public.x (id int);", /ny tabel/],
     ["CREATE OR REPLACE FUNCTION public.f() RETURNS int LANGUAGE sql AS $$ SELECT 1 $$;", /funktion/],
@@ -282,47 +290,92 @@ test("splitSqlStatements: kommentarer og literaler fjernes, semikolon i streng d
   assert.deepEqual(splitSqlStatements("SELECT E'a\\'b'")[0].literals, ["a'b"]);
 });
 
+// Fakta for en ny migration hvis flag-noegler ingen kode paa base naevner.
+const facts = (sqlByPath, keys = ["x_enabled", "a", "b"]) => ({
+  migrationSql: sqlByPath,
+  migrationIsNew: Object.fromEntries(Object.keys(sqlByPath).map((p) => [p, true])),
+  flagKeyInCode: Object.fromEntries(keys.map((k) => [k, false])),
+});
+
 test("(d) PR med kun additive migrationer + docs/test = kategori d; alt andet ejer-go", () => {
   const files = [{ path: "database/2026-11-04-1-x-flag.sql", additions: 5, deletions: 0 }, { path: "docs/x.md" }, { path: "backend/lib/x.test.js" }];
-  const sql = { "database/2026-11-04-1-x-flag.sql": FLAG_SEED_OFF };
-  const ok = classifyPr(pr({ title: "feat(flags): seed x off", files, migrationSql: sql }));
+  const ok = classifyPr(pr({ title: "feat(flags): seed x off", files, ...facts({ "database/2026-11-04-1-x-flag.sql": FLAG_SEED_OFF }) }));
   assert.equal(ok.category, CATEGORY.D_ADDITIVE_MIGRATION);
   assert.equal(ok.ownerGo, false);
   assert.match(ok.reason, /additiv migration: database\/2026-11-04-1-x-flag\.sql \+ docs uden spillertekst \+ test-only/);
   assert.match(formatClassification(ok), /^KATEGORI d: \(d\) additiv, idempotent migration/);
-  assert.equal(classifyPr(pr({ files: ["database/a.sql", "database/b.sql"], migrationSql: { "database/a.sql": FLAG_SEED_OFF, "database/b.sql": ADD_COLUMN_INDEX } })).category, CATEGORY.D_ADDITIVE_MIGRATION);
+  assert.equal(classifyPr(pr({ files: ["database/a.sql", "database/b.sql"], ...facts({ "database/a.sql": FLAG_SEED_OFF, "database/b.sql": ADD_COLUMN_INDEX }) })).category, CATEGORY.D_ADDITIVE_MIGRATION);
 
   // Én destruktiv migration ud af to er nok til ejer-go, og grunden navngiver filen.
-  const mixed = classifyPr(pr({ files: ["database/a.sql", "database/b.sql"], migrationSql: { "database/a.sql": FLAG_SEED_OFF, "database/b.sql": "DROP TABLE x;" } }));
+  const mixed = classifyPr(pr({ files: ["database/a.sql", "database/b.sql"], ...facts({ "database/a.sql": FLAG_SEED_OFF, "database/b.sql": "DROP TABLE x;" }) }));
   assert.equal(mixed.category, CATEGORY.OWNER);
   assert.match(mixed.reason, /migration: database\/b\.sql \(DROP\)/);
-  // Fail-closed: SQL ikke hentet, eller en eksisterende migration aendret.
-  assert.match(classifyPr(pr({ files: ["database/a.sql"] })).reason, /SQL ikke hentet/);
-  const edited = classifyPr(pr({ files: [{ path: "database/a.sql", additions: 1, deletions: 1 }], migrationSql: { "database/a.sql": FLAG_SEED_OFF } }));
-  assert.match(edited.reason, /eksisterende migration aendret/);
   // Additiv migration + kode, UI, spillertekst eller flag-flip-label er stadig ejer-go.
-  const withCode = classifyPr(pr({ files: ["database/a.sql", "backend/lib/x.js"], migrationSql: { "database/a.sql": FLAG_SEED_OFF } }));
-  assert.match(withCode.reason, /additiv migration sammen med kode: backend\/lib\/x\.js/);
-  assert.match(classifyPr(pr({ files: ["database/a.sql", "frontend/src/pages/X.jsx"], migrationSql: { "database/a.sql": FLAG_SEED_OFF } })).reason, /UI/);
-  assert.match(classifyPr(pr({ files: ["database/a.sql", "frontend/public/locales/en/x.json"], migrationSql: { "database/a.sql": FLAG_SEED_OFF } })).reason, /spillertekst/);
-  assert.match(classifyPr(pr({ labels: ["flag-flip"], files: ["database/a.sql"], migrationSql: { "database/a.sql": FLAG_SEED_OFF } })).reason, /flag-flip/);
+  const seed = facts({ "database/a.sql": FLAG_SEED_OFF });
+  assert.match(classifyPr(pr({ files: ["database/a.sql", "backend/lib/x.js"], ...seed })).reason, /additiv migration sammen med kode: backend\/lib\/x\.js/);
+  assert.match(classifyPr(pr({ files: ["database/a.sql", "frontend/src/pages/X.jsx"], ...seed })).reason, /UI/);
+  assert.match(classifyPr(pr({ files: ["database/a.sql", "frontend/public/locales/en/x.json"], ...seed })).reason, /spillertekst/);
+  assert.match(classifyPr(pr({ labels: ["flag-flip"], files: ["database/a.sql"], ...seed })).reason, /flag-flip/);
   // Klaebende ejer-go slaar ogsaa en additiv migration.
-  assert.match(classifyPr(pr({ files: ["database/a.sql"], migrationSql: { "database/a.sql": FLAG_SEED_OFF }, comments: [{ body: OWNER_GO_MARKER }] })).reason, /klaebende/);
+  assert.match(classifyPr(pr({ files: ["database/a.sql"], ...seed, comments: [{ body: OWNER_GO_MARKER }] })).reason, /klaebende/);
 });
 
-test("fetchMigrationSql: henter kun database/*.sql paa head-commit; fejl udelades (fail-closed)", () => {
-  const calls = [];
+test("(d) fail-closed: manglende fakta, eksisterende migration, flag der allerede laeses af kode", () => {
+  const path = "database/a.sql";
+  const seed = facts({ [path]: FLAG_SEED_OFF });
+  // Manglende SQL eller ukendt om filen er ny.
+  assert.match(classifyPr(pr({ files: [path], migrationIsNew: { [path]: true } })).reason, /SQL ikke hentet/);
+  assert.match(classifyPr(pr({ files: [path], migrationSql: { [path]: FLAG_SEED_OFF } })).reason, /ukendt om migrationen er ny/);
+  assert.match(classifyPr(pr({ files: [path] })).reason, /ukendt om migrationen er ny/);
+  // Eksisterende migration: slettede linjer, eller kun tilfoejede (auto-migrate koerer den aldrig igen).
+  assert.match(classifyPr(pr({ files: [{ path, additions: 1, deletions: 1 }], ...seed })).reason, /eksisterende migration aendret/);
+  assert.match(classifyPr(pr({ files: [{ path, additions: 3, deletions: 0 }], ...seed, migrationIsNew: { [path]: false } })).reason, /eksisterende migration aendret/);
+  // En off-seed for et flag som kode allerede laeser kan skifte adfaerd (manglende noegle = on).
+  const read = classifyPr(pr({ files: [path], ...seed, flagKeyInCode: { x_enabled: true } }));
+  assert.equal(read.category, CATEGORY.OWNER);
+  assert.match(read.reason, /flag-seed x_enabled laeses allerede af kode/);
+  assert.match(classifyPr(pr({ files: [path], ...seed, flagKeyInCode: {} })).reason, /ukendt om kode laeser flaget x_enabled/);
+  // Kolonne/indeks uden flag kraever ingen kode-opslag.
+  assert.equal(classifyPr(pr({ files: [path], ...facts({ [path]: ADD_COLUMN_INDEX }, []) })).category, CATEGORY.D_ADDITIVE_MIGRATION);
+});
+
+test("fetchMigrationFacts: SQL paa head, ny-vs-eksisterende paa base, flag-noegler via git grep", () => {
+  const ghCalls = [];
+  const gitCalls = [];
   const runGh = (args) => {
-    calls.push(args);
-    if (args.at(-1).includes("gone.sql")) throw new Error("404");
-    return "SELECT 1;";
+    ghCalls.push(args);
+    const url = args.at(-1);
+    if (url.includes("gone.sql")) throw new Error("HTTP 404");
+    if (url.endsWith("?ref=bbb2222")) {
+      if (url.includes("old.sql")) return "SELECT 1;";
+      if (url.includes("flaky.sql")) throw new Error("HTTP 502");
+      throw Object.assign(new Error("Command failed"), { stderr: "gh: Not Found (HTTP 404)" });
+    }
+    return url.includes("new.sql") ? FLAG_SEED_OFF : "SELECT 1;";
   };
-  const out = fetchMigrationSql({ headRefOid: "abc1234", files: [{ path: "database/2026-x.sql" }, { path: "database/gone.sql" }, { path: "docs/x.md" }] }, "o/r", runGh);
-  assert.deepEqual(out, { "database/2026-x.sql": "SELECT 1;" });
-  assert.deepEqual(calls[0], ["api", "-H", "Accept: application/vnd.github.raw", "repos/o/r/contents/database/2026-x.sql?ref=abc1234"]);
-  assert.equal(calls.length, 2);
-  // Uden gyldig head-SHA hentes intet, og classifyPr giver ejer-go.
-  assert.deepEqual(fetchMigrationSql({ files: [{ path: "database/a.sql" }] }, "o/r", runGh), {});
+  const runGit = (args) => {
+    gitCalls.push(args);
+    throw Object.assign(new Error("exit 1"), { status: 1 });
+  };
+  const files = ["database/new.sql", "database/old.sql", "database/gone.sql", "database/flaky.sql", "docs/x.md"].map((p) => ({ path: p }));
+  const out = fetchMigrationFacts({ headRefOid: "aaa1111", baseRefOid: "bbb2222", files }, "o/r", { runGh, runGit });
+  assert.deepEqual(Object.keys(out.migrationSql).sort(), ["database/flaky.sql", "database/new.sql", "database/old.sql"]);
+  assert.deepEqual(out.migrationIsNew, { "database/new.sql": true, "database/old.sql": false });
+  assert.deepEqual(out.flagKeyInCode, { x_enabled: false });
+  assert.deepEqual(ghCalls[0], ["api", "-H", "Accept: application/vnd.github.raw", "repos/o/r/contents/database/new.sql?ref=aaa1111"]);
+  assert.deepEqual(gitCalls[0], ["grep", "-q", "-F", "-e", "x_enabled", "bbb2222", "--", ".", ":(exclude)database", ":(exclude)docs", ":(exclude)*.md"]);
+  assert.equal(ghCalls.some((a) => a.at(-1).includes("docs/x.md")), false);
+
+  // git grep finder noeglen (exit 0) = true; ukendt commit (exit 128) = udeladt.
+  const found = fetchMigrationFacts({ headRefOid: "aaa1111", baseRefOid: "bbb2222", files: [{ path: "database/new.sql" }] }, "o/r", { runGh, runGit: () => "" });
+  assert.deepEqual(found.flagKeyInCode, { x_enabled: true });
+  const unknown = fetchMigrationFacts({ headRefOid: "aaa1111", baseRefOid: "bbb2222", files: [{ path: "database/new.sql" }] }, "o/r", {
+    runGh,
+    runGit: () => { throw Object.assign(new Error("bad object"), { status: 128 }); },
+  });
+  assert.deepEqual(unknown.flagKeyInCode, {});
+  // Uden gyldige SHA'er hentes intet, og classifyPr giver ejer-go.
+  assert.deepEqual(fetchMigrationFacts({ files: [{ path: "database/a.sql" }] }, "o/r", { runGh, runGit }), { migrationSql: {}, migrationIsNew: {}, flagKeyInCode: {} });
 });
 
 // ── CLI ────────────────────────────────────────────────────────────────────
@@ -336,7 +389,7 @@ test("parseCliArgs og fetchPrFromGh (gh-kaldet er injiceret)", () => {
   const calls = [];
   const out = fetchPrFromGh(7, "o/r", (args) => { calls.push(args); return JSON.stringify({ number: 7, title: "t", files: [] }); });
   assert.equal(out.number, 7);
-  assert.deepEqual(calls[0], ["pr", "view", "7", "--repo", "o/r", "--json", "number,title,body,labels,files,author,comments,headRefOid"]);
+  assert.deepEqual(calls[0], ["pr", "view", "7", "--repo", "o/r", "--json", "number,title,body,labels,files,author,comments,headRefOid,baseRefOid"]);
 });
 
 test("CLI end-to-end med --input (ingen gh): tekst og --json", (t) => {
