@@ -421,10 +421,12 @@ export function applySchemaEvidenceRule(review) {
  * GODKENDT -> clean, BEMAERKNINGER -> notes. BLOKERENDE, en ukendt dom, et
  * blokerende fund under en ikke-blokerende dom, manglende PR-nummer eller en
  * manglende/ufuldstaendig HEAD-SHA giver INGEN markoer (fail-closed). headSha er
- * det commit revieweren laeste; markoer-trinnet skriver kun hvis PR'ens HEAD
- * stadig er netop det commit. Noten bygges kun af kode (ingen reviewer-tekst),
- * saa intet fra LLM-svaret ender i en shell-kommando.
- * @returns {{post: false, reason: string}|{post: true, verdict: 'clean'|'notes', pr: number, headSha: string, note: string, args: string[]}}
+ * det commit revieweren laeste, og body binder markoeren til NETOP det commit
+ * (sha=) i review-gates markoer-format. Er HEAD flyttet, er markoeren foraeldet
+ * og gaten ignorerer den - ingen race mellem HEAD-tjek og skrivning (Codex P1).
+ * Note og body bygges kun af kode (ingen reviewer-tekst, ingen ' ` $ ")), saa
+ * intet fra LLM-svaret ender i en shell-kommando.
+ * @returns {{post: false, reason: string}|{post: true, verdict: 'clean'|'notes', pr: number, headSha: string, note: string, body: string}}
  *
  * SPEJLING i .claude/workflows/wave.js - hold dem identiske.
  */
@@ -442,7 +444,8 @@ export function planClaudeMarker(review) {
   const notes = findings.filter((f) => f && f.severity === 'bemaerkning').length
   const label = verdict === 'clean' ? 'GODKENDT' : `BEMAERKNINGER (${notes})`
   const note = `Boelge-reviewer: ${label}, commit ${headSha.slice(0, 7)}.`
-  return { post: true, verdict, pr, headSha, note, args: ['post-claude-review', '--pr', String(pr), '--verdict', verdict, '--note', note] }
+  const body = `<!-- claude-review: ${verdict} sha=${headSha} --> **Claude-review:** ${note}`
+  return { post: true, verdict, pr, headSha, note, body }
 }
 
 /**

@@ -30,6 +30,7 @@ import {
   trackWeight,
   wipCommitMessage,
 } from "./wave-freeze.mjs";
+import { CLAUDE_MARKER_RE, shaMatchesHead } from "./review-gate.mjs";
 
 const MODULE_PATH = fileURLToPath(new URL("./wave-freeze.mjs", import.meta.url));
 const WAVE_JS_PATH = fileURLToPath(new URL("../.claude/workflows/wave.js", import.meta.url));
@@ -1068,9 +1069,14 @@ test("#7587: GODKENDT -> clean og BEMAERKNINGER -> notes paa det reviewede HEAD"
   assert.equal(clean.verdict, "clean");
   assert.equal(clean.pr, 7690);
   assert.equal(clean.headSha, REVIEWED_SHA, "markoeren bindes til det commit revieweren laeste");
-  assert.deepEqual(clean.args.slice(0, 5), ["post-claude-review", "--pr", "7690", "--verdict", "clean"]);
-  assert.equal(clean.args[5], "--note");
   assert.ok(clean.note.includes(REVIEWED_SHA.slice(0, 7)), "noten naevner det reviewede commit");
+  // Body'en er review-gates eget markoer-format og binder til det REVIEWEDE commit
+  // (Codex P1: aldrig en gen-hentet HEAD).
+  const m = clean.body.match(CLAUDE_MARKER_RE);
+  assert.ok(m, "body'en skal matche review-gates CLAUDE_MARKER_RE");
+  assert.equal(m[1], "clean");
+  assert.equal(m[2], REVIEWED_SHA);
+  assert.ok(shaMatchesHead(m[2], REVIEWED_SHA) && !shaMatchesHead(m[2], "f".repeat(40)), "markoeren gaelder kun det reviewede HEAD; et nyt commit kraever ny markoer");
 
   const notes = planClaudeMarker({
     verdict: "BEMAERKNINGER",
@@ -1083,6 +1089,7 @@ test("#7587: GODKENDT -> clean og BEMAERKNINGER -> notes paa det reviewede HEAD"
   assert.equal(notes.pr, 7691, "PR-URL'en giver PR-nummeret");
   assert.equal(notes.headSha, REVIEWED_SHA, "SHA normaliseres til smaa bogstaver");
   assert.ok(notes.note.includes("BEMAERKNINGER (2)"));
+  assert.deepEqual(notes.body.match(CLAUDE_MARKER_RE).slice(1, 3), ["notes", REVIEWED_SHA]);
   assert.equal(planClaudeMarker({ verdict: "GODKENDT", pr: "#12", headSha: REVIEWED_SHA }).pr, 12);
 });
 
@@ -1106,8 +1113,10 @@ test("#7587: BLOKERENDE og tvivlstilfaelde giver INGEN markoer (fail-closed)", (
 
 test("#7587: noten bygges kun af kode, aldrig af reviewerens tekst", () => {
   const plan = planClaudeMarker({ verdict: "GODKENDT", pr: "7690", headSha: REVIEWED_SHA, summary: "\"; rm -rf / $(x) `y`" });
-  assert.ok(!/["`$;]/.test(plan.note), "noten maa ikke indeholde shell-tegn fra reviewerens svar");
-  assert.ok(!plan.note.includes("rm -rf"));
+  for (const text of [plan.note, plan.body]) {
+    assert.ok(!/["'`$;\\\r\n]/.test(text), "note/body maa ikke indeholde shell-tegn eller linjeskift (body staar i enkelte anfoerselstegn)");
+    assert.ok(!text.includes("rm -rf"));
+  }
 });
 
 test("#7587: wave.js skriver markoeren efter reviewet, paa det reviewede HEAD, aldrig ved BLOKERENDE", () => {
@@ -1126,7 +1135,8 @@ test("#7587: wave.js skriver markoeren efter reviewet, paa det reviewede HEAD, a
   assert.ok(prompt.includes("WAVE-SETUP: Claude-review-markoer"), "WAVE-SETUP-praefikset, saa guard-agent-spawn.sh lader den passere");
   assert.ok(prompt.includes("gh api repos/${REPO}/pulls/${plan.pr} --jq .head.sha"), "trin 1 henter PR'ens aktuelle HEAD");
   assert.ok(prompt.includes("Er outputtet IKKE praecis ${plan.headSha}") && prompt.includes("koer IKKE trin 2"), "markoeren skrives kun hvis HEAD stadig er det reviewede commit");
-  assert.ok(prompt.includes("${main}/scripts/review-gate.mjs\" post-claude-review --repo ${REPO} --pr ${plan.pr} --verdict ${plan.verdict} --note \"${plan.note}\""), "trin 2 er review-gate.mjs post-claude-review fra hoved-checkoutet");
+  assert.ok(prompt.includes("gh pr comment ${plan.pr} --repo ${REPO} --body '${plan.body}'"), "trin 2 skriver den SHA-bundne markoer ordret");
+  assert.ok(!prompt.includes("post-claude-review --repo"), "post-claude-review henter HEAD igen og maa ikke bruges her (Codex P1)");
   const review = extractFunction(src, "reviewPrompt");
   assert.ok(review.includes("--jq .head.sha") && review.includes("headSha"), "revieweren returnerer det reviewede HEAD");
   assert.ok(review.includes("Skriv ALDRIG selv en claude-review-markoer"), "revieweren er stadig read-only");

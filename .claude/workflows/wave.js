@@ -309,7 +309,7 @@ const RELEASE_SCHEMA = {
 }
 
 // #7587: markoer-trinnet efter et ikke-blokerende review. posted=true kun naar
-// HEAD stadig var det reviewede commit og post-claude-review gav exit 0.
+// HEAD stadig var det reviewede commit og markoer-kommentaren gav exit 0.
 const MARKER_SCHEMA = {
   type: 'object',
   properties: {
@@ -710,7 +710,8 @@ function applySchemaEvidenceRule(review) {
 
 // SPEJLING af planClaudeMarker() i scripts/wave-freeze.mjs (#7587). Den
 // endelige dom -> Claude-review-markoer (clean/notes); BLOKERENDE eller
-// manglende PR/HEAD-SHA giver ingen markoer. Noten bygges kun af kode.
+// manglende PR/HEAD-SHA giver ingen markoer. body binder markoeren til det
+// reviewede commit (sha=). Note og body bygges kun af kode.
 function planClaudeMarker(review) {
   const r = review && typeof review === 'object' ? review : {}
   const verdict = r.verdict === 'GODKENDT' ? 'clean' : r.verdict === 'BEMAERKNINGER' ? 'notes' : null
@@ -725,7 +726,8 @@ function planClaudeMarker(review) {
   const notes = findings.filter((f) => f && f.severity === 'bemaerkning').length
   const label = verdict === 'clean' ? 'GODKENDT' : `BEMAERKNINGER (${notes})`
   const note = `Boelge-reviewer: ${label}, commit ${headSha.slice(0, 7)}.`
-  return { post: true, verdict, pr, headSha, note, args: ['post-claude-review', '--pr', String(pr), '--verdict', verdict, '--note', note] }
+  const body = `<!-- claude-review: ${verdict} sha=${headSha} --> **Claude-review:** ${note}`
+  return { post: true, verdict, pr, headSha, note, body }
 }
 
 // SPEJLING af tailIdleLaneMinutes() i scripts/wave-freeze.mjs (#5562).
@@ -1212,11 +1214,13 @@ function releasePrompt(waveId, finishedBranches) {
 
 // #7587: review-gate kraever en Claude-review-markoer for HEAD paa hoejrisiko-
 // PR'er. Revieweren er read-only, saa markoeren skrives af dette lille trin ud
-// fra planClaudeMarker(). Trin 1 binder den til det reviewede commit: er HEAD
-// flyttet (fx et ret-trin eller et sent push), skrives intet. review-gate.mjs
-// koeres fra hoved-checkoutet, aldrig fra PR'ens egen (maaske aendrede) kopi.
+// fra planClaudeMarker(). Kommentaren har review-gates markoer-format med
+// sha=<reviewet commit> - samme som `review-gate.mjs post-claude-review` skriver,
+// men uden dens egen gen-hentning af HEAD (Codex P1: et push mellem tjek og
+// skrivning ville ellers stemple godkendelsen paa et ureviewet commit). Trin 1
+// sparer bare stoej: er HEAD flyttet, skrives intet; en foraeldet markoer
+// ignoreres alligevel af gaten.
 function markerPrompt(plan) {
-  const main = MAIN_CHECKOUT.replace(/\\/g, '/')
   return [
     `WAVE-SETUP: Claude-review-markoer paa PR #${plan.pr} (#7587)`,
     '',
@@ -1225,7 +1229,7 @@ function markerPrompt(plan) {
     'Koer praecis disse to kommandoer i forgrunden, i raekkefoelge, og intet andet - ingen filer laest, intet redigeret:',
     `1. \`gh api repos/${REPO}/pulls/${plan.pr} --jq .head.sha\``,
     `   Er outputtet IKKE praecis ${plan.headSha}, eller fejler kommandoen: koer IKKE trin 2. Returner ok=false, posted=false og i problem "HEAD flyttet <den sha du fik>" eller fejlteksten.`,
-    `2. \`node "${main}/scripts/review-gate.mjs" post-claude-review --repo ${REPO} --pr ${plan.pr} --verdict ${plan.verdict} --note "${plan.note}"\``,
+    `2. \`gh pr comment ${plan.pr} --repo ${REPO} --body '${plan.body}'\` (ordret, med de enkelte anfoerselstegn - virker ens i bash og pwsh)`,
     '   Exit-kode 0: returner ok=true, posted=true. Anden exit-kode: ok=false, posted=false og fejlteksten i problem. Proev ikke igen og fejlsoeg ikke.',
     'Dit svar er kun skemaet.',
   ].join('\n')
