@@ -40,14 +40,14 @@ CMD=$(printf '%s' "$INPUT" | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\(.*
 
 # Kun match git push-kommandoer (inklusive force/lease/upstream-varianter)
 case "$CMD" in
-  *'git push'*) ;;
+  *'git push'*|*'git -C '*' push'*) ;;
   *) exit 0 ;;
 esac
 
 # Ejer 4/11: `cd <dir> && git push` / `git -C <dir> push` pusher fra et andet worktree
 # end sessionens cwd; tjek den branch, der faktisk pushes.
-TARGET_DIR=$(printf '%s' "$CMD" | sed -nE 's/.*git -C "?([^" ]+)"? push.*/\1/p' | head -1)
-[ -z "$TARGET_DIR" ] && TARGET_DIR=$(printf '%s' "$CMD" | sed -nE 's/^[[:space:]]*cd "?([^" &;]+)"?[[:space:]]*&&.*/\1/p' | head -1)
+# Codex P2 (#7660): kommandoen afkodes som JSON, og shell-quoting fjernes (lib/push-target-dir.mjs).
+TARGET_DIR=$(printf '%s' "$INPUT" | node "$(dirname "$0")/lib/push-target-dir.mjs" 2>/dev/null)
 if [ -n "$TARGET_DIR" ]; then cd "$TARGET_DIR" 2>/dev/null || exit 0; fi
 
 # Eksplicit kvittering: CI_FAIL_ACK="<hvad er koert lokalt>" i kommandoen.
