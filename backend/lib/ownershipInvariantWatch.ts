@@ -64,11 +64,36 @@
 // invariant-guard #2407/#2434-mønstret i cron.js) — ét Sentry-issue pr.
 // invariant uanset findings-antal, aldrig ét issue pr. rytter.
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { findStaleOfferedIntake } from "./academyIntakeReconcile.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 import { TEAM_BOARD_MEMBERS_COUNT } from "./boardMembers.js";
 import { findStuckAcademyGraduates } from "./stuckAcademyGraduates.js";
+
+type WatchClient = { from(table: string): { select: unknown } };
+type Query = ReturnType<SupabaseClient["from"]>;
+type AuctionRow = { id: string; rider_id: string; status?: string | null; is_youth?: boolean | null; seller_team_id?: string | null };
+type OwnershipRow = { id: string; team_id?: string | null; pending_team_id?: string | null };
+type NamedRider = { id: string; firstname?: string | null; lastname?: string | null };
+type PendingRow = OwnershipRow & NamedRider & { updated_at?: string | null };
+type StrandedRow = NamedRider & { contract_end_season?: number | null; acquired_at?: string | null };
+type DnaTeam = { id: string; team_dna_key?: string | null };
+type TeamRow = DnaTeam & { name?: string | null; season_1_identity_basis?: unknown };
+type MemberRow = { team_id: string };
+type Split<T> = { breached: T[]; awaitingDnaChoice: T[] };
+type MemberCounts = Pick<ReadonlyMap<string | undefined, number>, "get">;
+type Sleep = (ms: number) => unknown;
+type Capture = (error: Error, context: { tags: Record<string, string>; fingerprint: string[]; extra: Record<string, unknown> }) => unknown;
+type WatchOptions = {
+  supabase?: WatchClient | null;
+  captureExceptionFn?: Capture | null;
+  now?: Date;
+  pendingTransferStaleHours?: number;
+  getRidersInActiveStageRaceFn?: typeof getRidersInActiveStageRace;
+  recheckSettleMs?: number;
+  sleepFn?: Sleep;
+};
 
 const CHUNK = 1000;
 const SAMPLE_LIMIT = 50;
@@ -119,10 +144,10 @@ export const RECHECK_SETTLE_MS = 15_000;
 
 // Alle aktive/extended auktioner — begge invariant A og B læser fra samme
 // bagvedliggende population, så vi henter den én gang.
-async function fetchActiveAuctions(supabase) {
+async function fetchActiveAuctions(supabase: WatchClient): Promise<AuctionRow[]> {
   return fetchAllRows(() =>
-    supabase
-      .from("auctions")
+    (supabase
+      .from("auctions") as Query)
       .select("id, rider_id, is_youth, seller_team_id, status")
       .in("status", ["active", "extended"])
       .order("id"));
@@ -132,13 +157,13 @@ async function fetchActiveAuctions(supabase) {
 // kan se om de imens er lukket (= finaliserings-hale, ikke brud). Chunked af
 // samme grund som fetchRidersOwnership. Bemærk at der IKKE filtreres på status
 // her — vi vil netop kunne SE en status der har ændret sig.
-async function fetchAuctionsByIds(supabase, auctionIds) {
-  const byId = new Map();
+async function fetchAuctionsByIds(supabase: WatchClient, auctionIds: readonly string[]): Promise<Map<string, AuctionRow>> {
+  const byId = new Map<string, AuctionRow>();
   for (let i = 0; i < auctionIds.length; i += CHUNK) {
     const chunk = auctionIds.slice(i, i + CHUNK);
-    const rows = await fetchAllRows(() =>
-      supabase
-        .from("auctions")
+    const rows: AuctionRow[] = await fetchAllRows(() =>
+      (supabase
+        .from("auctions") as Query)
         .select("id, rider_id, is_youth, seller_team_id, status")
         .in("id", chunk)
         .order("id"));
@@ -149,13 +174,13 @@ async function fetchAuctionsByIds(supabase, auctionIds) {
 
 // Rytter-ejerskab for et sæt rytter-id'er, chunked (.in() kan ramme 1000-
 // loftet på en stor population, samme forsvar som academyIntakeReconcile.js).
-async function fetchRidersOwnership(supabase, riderIds) {
-  const byId = new Map();
+async function fetchRidersOwnership(supabase: WatchClient, riderIds: readonly string[]): Promise<Map<string, OwnershipRow>> {
+  const byId = new Map<string, OwnershipRow>();
   for (let i = 0; i < riderIds.length; i += CHUNK) {
     const chunk = riderIds.slice(i, i + CHUNK);
-    const rows = await fetchAllRows(() =>
-      supabase
-        .from("riders")
+    const rows: OwnershipRow[] = await fetchAllRows(() =>
+      (supabase
+        .from("riders") as Query)
         .select("id, team_id, pending_team_id")
         .in("id", chunk)
         .order("id"));
@@ -200,10 +225,10 @@ async function fetchRidersOwnership(supabase, riderIds) {
 // tallet forsvinder ikke, det holder bare op med at være en alarm. Går tildelingen
 // i stykker EFTER DNA-valget (den klasse #4664 handler om — regenerate'ens
 // delete-før-insert), er team_dna_key sat og vagten alarmerer præcis som før.
-async function fetchHumanTeamsMissingBoardMembers(supabase) {
-  const teams = await fetchAllRows(() =>
-    supabase
-      .from("teams")
+async function fetchHumanTeamsMissingBoardMembers(supabase: WatchClient): Promise<Split<TeamRow>> {
+  const teams: TeamRow[] = await fetchAllRows(() =>
+    (supabase
+      .from("teams") as Query)
       .select("id, name, season_1_identity_basis, team_dna_key")
       .eq("is_ai", false)
       .eq("is_bank", false)
@@ -214,12 +239,12 @@ async function fetchHumanTeamsMissingBoardMembers(supabase) {
 
   if (teams.length === 0) return { breached: [], awaitingDnaChoice: [] };
 
-  const memberCounts = new Map();
+  const memberCounts = new Map<string, number>();
   for (let i = 0; i < teams.length; i += CHUNK) {
     const chunk = teams.slice(i, i + CHUNK);
-    const rows = await fetchAllRows(() =>
-      supabase
-        .from("team_board_members")
+    const rows: MemberRow[] = await fetchAllRows(() =>
+      (supabase
+        .from("team_board_members") as Query)
         .select("team_id")
         .in("team_id", chunk.map((t) => t.id))
         .order("team_id"));
@@ -244,9 +269,9 @@ async function fetchHumanTeamsMissingBoardMembers(supabase) {
  * @param {Map<string, number>} memberCounts
  * @returns {{ breached: Array<object>, awaitingDnaChoice: Array<object> }}
  */
-export function splitByDnaChoice(teamsMissingBoard = [], memberCounts = new Map()) {
-  const breached = [];
-  const awaitingDnaChoice = [];
+export function splitByDnaChoice<T extends DnaTeam | null | undefined>(teamsMissingBoard: readonly T[] = [], memberCounts: MemberCounts = new Map()): Split<T> {
+  const breached: T[] = [];
+  const awaitingDnaChoice: T[] = [];
   for (const t of teamsMissingBoard) {
     const count = memberCounts.get(t?.id) || 0;
     if (!t?.team_dna_key && count === 0) awaitingDnaChoice.push(t);
@@ -257,10 +282,10 @@ export function splitByDnaChoice(teamsMissingBoard = [], memberCounts = new Map(
 
 // Invariant D (#2257): strandede akademi-fri-agenter. Server-side filtreret —
 // populationen forventes tom, så queryen er billig hver dag.
-async function fetchStrandedAcademyFreeAgents(supabase) {
+async function fetchStrandedAcademyFreeAgents(supabase: WatchClient): Promise<StrandedRow[]> {
   return fetchAllRows(() =>
-    supabase
-      .from("riders")
+    (supabase
+      .from("riders") as Query)
       .select("id, firstname, lastname, contract_end_season, acquired_at")
       .eq("is_academy", true)
       .eq("is_retired", false)
@@ -276,10 +301,10 @@ async function fetchStrandedAcademyFreeAgents(supabase) {
 // mod et Date-parset updated_at, ikke ved streng-sammenligning — Postgres/
 // PostgREST's timestamp-format ("2026-06-22 13:48:45.599546+00") matcher ikke
 // nødvendigvis en JS toISOString()-cutoff byte-for-byte.
-async function fetchAllPendingTransfers(supabase) {
+async function fetchAllPendingTransfers(supabase: WatchClient): Promise<PendingRow[]> {
   return fetchAllRows(() =>
-    supabase
-      .from("riders")
+    (supabase
+      .from("riders") as Query)
       .select("id, firstname, lastname, team_id, pending_team_id, updated_at")
       .not("pending_team_id", "is", null)
       .order("id"));
@@ -289,13 +314,13 @@ async function fetchAllPendingTransfers(supabase) {
 // legitim frisk parkering — tæller derfor som stale. riders.updated_at er i
 // praksis altid sat (DEFAULT now() ved row-creation), så dette rammer kun en
 // teoretisk NULL/korrupt værdi, men fail-closed er den sikre retning her.
-function pendingTransferAgeMs(rider, now) {
+function pendingTransferAgeMs(rider: Pick<PendingRow, "updated_at">, now: Date): number {
   const setAt = rider.updated_at ? new Date(rider.updated_at).getTime() : NaN;
   if (Number.isNaN(setAt)) return Infinity;
   return now.getTime() - setAt;
 }
 
-function isOwned(ridersById, riderId) {
+function isOwned(ridersById: ReadonlyMap<string, OwnershipRow>, riderId: string): boolean {
   const rider = ridersById.get(riderId);
   if (!rider) return false;
   return rider.team_id != null || rider.pending_team_id != null;
@@ -310,14 +335,14 @@ function isOwned(ridersById, riderId) {
 // Returnerer BÅDE de bekræftede auktioner og et opdateret rytter-map, så
 // Sentry-samplet viser ejerskabet som det ser ud EFTER genlæsningen (ellers
 // ville vi rapportere et team_id der nåede at ændre sig).
-async function confirmAuctionBreaches({ supabase, auctions, sleepFn, settleMs }) {
+async function confirmAuctionBreaches({ supabase, auctions, sleepFn, settleMs }: { supabase: WatchClient; auctions: readonly AuctionRow[]; sleepFn: Sleep; settleMs: number }): Promise<{ confirmed: AuctionRow[]; ridersById: Map<string, OwnershipRow> }> {
   if (auctions.length === 0) return { confirmed: [], ridersById: new Map() };
 
   await sleepFn(settleMs);
 
   const freshAuctions = await fetchAuctionsByIds(supabase, auctions.map((a) => a.id));
   const stillOpen = auctions.filter((a) =>
-    ["active", "extended"].includes(freshAuctions.get(a.id)?.status)
+    (["active", "extended"] as readonly (string | null | undefined)[]).includes(freshAuctions.get(a.id)?.status)
   );
   if (stillOpen.length === 0) return { confirmed: [], ridersById: new Map() };
 
@@ -335,9 +360,9 @@ async function confirmAuctionBreaches({ supabase, auctions, sleepFn, settleMs })
 // en liste af objekter til ["[Object]"], og triagen står så med et tal og ingen
 // id'er — præcis dét kostede CYCLINGZONE-5G og CYCLINGZONE-5M hver sin
 // DB-udgravning. Samme rettelse som #4594/#4902 og invariant F nedenfor.
-function auctionFindingSample(auctions, ridersById) {
+function auctionFindingSample(auctions: readonly AuctionRow[], ridersById: ReadonlyMap<string, OwnershipRow>): string[] {
   return auctions.slice(0, SAMPLE_LIMIT).map((a) => {
-    const rider = ridersById.get(a.rider_id) || {};
+    const rider: Partial<OwnershipRow> = ridersById.get(a.rider_id) || {};
     return (
       `auction=${a.id} rider=${a.rider_id} team=${rider.team_id ?? "null"} ` +
       `pendingTeam=${rider.pending_team_id ?? "null"}`
@@ -371,8 +396,8 @@ export async function runOwnershipInvariantWatch({
   pendingTransferStaleHours = PENDING_TRANSFER_STALE_HOURS,
   getRidersInActiveStageRaceFn = getRidersInActiveStageRace,
   recheckSettleMs = RECHECK_SETTLE_MS,
-  sleepFn = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-} = {}) {
+  sleepFn = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
+}: WatchOptions = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
   const activeAuctions = await fetchActiveAuctions(supabase);

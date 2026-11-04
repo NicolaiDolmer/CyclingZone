@@ -87,7 +87,7 @@ import { runAcademyPullReminderSweep } from "./lib/academyReminder.ts";
 import { runMarketValueLevelCorrectionGateSweep } from "./lib/marketValueLevelCorrectionGate.js"; // #3449
 import { runSundayValueSweep } from "./lib/sundayValueSweep.js"; // #4419
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
-import { runOwnershipInvariantWatch } from "./lib/ownershipInvariantWatch.js";
+import { runOwnershipInvariantWatch } from "./lib/ownershipInvariantWatch.ts";
 import { runRiderDoubleBookingWatch } from "./lib/riderDoubleBookingWatch.js";
 import { runSquadEntryGateWatch } from "./lib/squadEntryGate.js"; // #6489
 import { buildAlertSignature, shouldAlertOnChange } from "./lib/opsAlertDedupe.js";

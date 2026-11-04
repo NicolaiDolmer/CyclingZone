@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { runOwnershipInvariantWatch } from "./ownershipInvariantWatch.js";
+import { runOwnershipInvariantWatch } from "./ownershipInvariantWatch.ts";
 
 // In-memory mock af de tre tabeller modulet rører (alle READ-ONLY):
 //   auctions:       select(...).in("status",[...]).order().range()

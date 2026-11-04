@@ -448,7 +448,7 @@ DNA allerede er sat, så DNA-vælgeren — den eneste sti der (gen)tildeler — 
 `regenerateBoardMembersForTeam` gemmer nu det gamle sæt før delete og gendanner det best-effort hvis
 re-insert fejler (aldrig værre stillet end før kaldet). Backfill: `repairMissingBoardMembers.js`
 (dry-run default, `--apply` skriver via `assignBoardMembersForTeam`). Forward-guard: invariant F i
-`ownershipInvariantWatch.js` (daglig, read-only, Sentry-capture med fast fingerprint
+`ownershipInvariantWatch.ts` (daglig, read-only, Sentry-capture med fast fingerprint
 `human-team-without-board-members`). Postmortem:
 `.claude/learnings/2026-09-03-new-teams-without-board-members.md`.
 
