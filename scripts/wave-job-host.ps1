@@ -1,4 +1,4 @@
-# One short-lived nonce-named Windows Job Object; all termination uses its owned handle.
+# One short-lived unnamed Windows Job Object; only its supervisor owns the job handle.
 param([Parameter(Mandatory)][string]$SpecPath)
 $ErrorActionPreference = 'Stop'
 try {
@@ -71,7 +71,7 @@ public static class CzWaveJobHost {
   static uint Active(IntPtr job) {
     Accounting info; Check(QueryInformationJobObject(job,1,out info,(uint)Marshal.SizeOf(typeof(Accounting)),IntPtr.Zero),"query-job"); return info.active;
   }
-  public static int Run(string application,string[] arguments,string cwd,uint ownerPid,string ownerCreated,string stopFile,string jobName) {
+  public static int Run(string application,string[] arguments,string cwd,uint ownerPid,string ownerCreated,string stopFile) {
     IntPtr job=IntPtr.Zero,owner=IntPtr.Zero,attributes=IntPtr.Zero,jobValue=IntPtr.Zero,handleValues=IntPtr.Zero,limits=IntPtr.Zero;
     IntPtr[] streams=new IntPtr[3]; var child=new ProcessInfo(); bool attributeReady=false;
     try {
@@ -81,8 +81,7 @@ public static class CzWaveJobHost {
       long expected=DateTime.Parse(ownerCreated,CultureInfo.InvariantCulture,DateTimeStyles.RoundtripKind).ToUniversalTime().ToFileTimeUtc();
       // CIM records creation at microsecond precision; this is identity tolerance, not a timeout.
       if(Math.Abs(actual-expected)>9 || WaitForSingleObject(owner,0)==0)throw new InvalidOperationException("Owner identity unavailable");
-      job=CreateJobObjectW(IntPtr.Zero,jobName); int jobError=Marshal.GetLastWin32Error(); Check(job!=IntPtr.Zero,"create-job");
-      if(jobError==183){Operation="existing-job";NativeError=jobError;throw new InvalidOperationException("Job identity already exists");}
+      job=CreateJobObjectW(IntPtr.Zero,null); Check(job!=IntPtr.Zero,"create-job");
       var info=new ExtendedLimits(); info.basic.flags=0x2000; // KILL_ON_JOB_CLOSE, no breakaway.
       limits=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(ExtendedLimits))); Marshal.StructureToPtr(info,limits,false);
       Check(SetInformationJobObject(job,9,limits,(uint)Marshal.SizeOf(typeof(ExtendedLimits))),"job-limits");
@@ -132,7 +131,7 @@ public static class CzWaveJobHost {
   }
 }
 '@
-  $code = [CzWaveJobHost]::Run($application,[string[]]$arguments,$spec.GetProperty('cwd').GetString(),$spec.GetProperty('ownerPid').GetUInt32(),$spec.GetProperty('ownerCreatedAt').GetString(),$spec.GetProperty('stopFile').GetString(),('Local\CyclingZoneWave-'+$spec.GetProperty('token').GetString()))
+  $code = [CzWaveJobHost]::Run($application,[string[]]$arguments,$spec.GetProperty('cwd').GetString(),$spec.GetProperty('ownerPid').GetUInt32(),$spec.GetProperty('ownerCreatedAt').GetString(),$spec.GetProperty('stopFile').GetString())
   $proofFile = $spec.GetProperty('proofFile').GetString()
   $proof = @{version=1;containment='windows-job-v1';activeProcesses=0;token=$spec.GetProperty('token').GetString();waveId=$spec.GetProperty('waveId').GetString();childKey=$spec.GetProperty('childKey').GetString();supervisorPid=$PID}
   $temporary = $proofFile + '.' + [Guid]::NewGuid().ToString('N') + '.tmp'
