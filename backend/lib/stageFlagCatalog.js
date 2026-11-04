@@ -108,6 +108,9 @@ export const STAGE_FLAGS = Object.freeze([
   // #7644: loft på samlingens gevinst pr. km på lange nedkørsler (kun s5_profiles_v3). Seedet off; kun "on"
   // tænder, "beta" læses som off (descentRegroupCap7644Flag.js). Ejer-only flip.
   { key: "descent_regroup_cap_7644", area: "race-engine", label: "Lange nedkørsler — loft på samlingen" },
+  // #7640: et klatre-split der kører frem hedder angreb, ikke underskud (kun s5_profiles_v3). Ikke seedet = off;
+  // kun "on" tænder, "beta" læses som off (splitAttackCause7640Flag.js). Ejer-only flip.
+  { key: "split_attack_cause_7640", area: "race-engine", label: "Klatre-split — angreb frem hedder angreb" },
   { key: "race_day_engine_enabled", area: "race-engine", label: "Løbsdags-motor" },
   { key: "race_finalize_resumable_enabled", area: "race-engine", label: "Genoptagelig finalisering" },
   { key: "race_notify_outbox_enabled", area: "race-engine", label: "Notify-kø — asynkron udsendelse" },
