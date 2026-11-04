@@ -227,6 +227,46 @@ const SKIP_SCAN_NAMES = new Set(["package-lock.json"]);
 const PATH_CHARS = "A-Za-z0-9_.\\-/@";
 
 /**
+ * Fjerner // og /* *\/-kommentarer og bevarer strenge (', ", `) uroert.
+ * Regex-literaler genkendes ikke; en regex med et citationstegn kan i vaerste
+ * fald lade en kommentar staa, hvilket kun goer afgoerelsen mere konservativ.
+ */
+export function stripComments(source) {
+  let out = "";
+  let i = 0;
+  const n = source.length;
+  while (i < n) {
+    const c = source[i];
+    const next = source[i + 1];
+    if (c === "/" && next === "/") {
+      while (i < n && source[i] !== "\n") i += 1;
+      continue;
+    }
+    if (c === "/" && next === "*") {
+      const end = source.indexOf("*/", i + 2);
+      const stop = end === -1 ? n : end + 2;
+      out += source.slice(i, stop).replace(/[^\n]/gu, " ");
+      i = stop;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") {
+      let j = i + 1;
+      while (j < n && source[j] !== c) {
+        if (source[j] === "\\") j += 1;
+        else if (c !== "`" && source[j] === "\n") break;
+        j += 1;
+      }
+      out += source.slice(i, j + 1);
+      i = j + 1;
+      continue;
+    }
+    out += c;
+    i += 1;
+  }
+  return out;
+}
+
+/**
  * Finder repo-stier uden for backend/, som en kildefil naevner.
  * Returnerer {ref, cut}: cut=true betyder at stien blev afbrudt af et
  * dynamisk led (`${...}`, `*` eller en variabel), saa alt under praefikset
@@ -236,8 +276,10 @@ const PATH_CHARS = "A-Za-z0-9_.\\-/@";
  * @param {string} fileRel  filens sti relativt til repo-roden (posix)
  * @param {string[]} topNames top-level navne i repoet (uden backend)
  */
-export function extractRepoReferences(source, fileRel, topNames) {
+export function extractRepoReferences(rawSource, fileRel, topNames, { importsOnly = false } = {}) {
   const refs = [];
+  // Kommentarer naevner postmortems og planer i flaeng; de laeses ikke af koden.
+  const source = fileRel.endsWith(".json") ? rawSource : stripComments(rawSource);
   const fileDir = path.posix.dirname(fileRel);
   const tops = new Set(topNames);
   const add = (ref, cut) => {
@@ -261,6 +303,10 @@ export function extractRepoReferences(source, fileRel, topNames) {
     add(path.posix.normalize(path.posix.join(fileDir, text)), cut);
   }
 
+  // Browser-kode (frontend/) laeser ingen filer fra disk: der taeller kun dens
+  // relative imports, som (a) har taget.
+  if (importsOnly) return refs;
+
   // (b) "top/..."-stier inde i strenge ("frontend/src/x.js", "../../docs/y.json",
   // globs som "docs/**"). Kun i strenge: kommentarer naevner stier i flaeng.
   const topAlt = topNames.map((t) => t.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")).join("|");
@@ -270,9 +316,14 @@ export function extractRepoReferences(source, fileRel, topNames) {
       // "!/docs/**" er et negeret glob (fx Railways watchPatterns): stien er
       // netop IKKE relevant, saa den taeller ikke.
       if (lit[2].startsWith("!")) continue;
+      // En streng med mellemrum er prosa eller en kommando ("node scripts/x.mjs",
+      // en fejltekst der naevner `.claude/learnings/`). Der taeller kun hele
+      // filnavne, ikke mapper, som prosaen naevner.
+      const prose = /\s/u.test(lit[2]);
       for (const m of lit[2].matchAll(re)) {
         const { text, cut } = cutDynamic(m[1]);
-        add(text, cut);
+        if (prose && (cut || !/\/[^/]+\.[A-Za-z0-9]+$/u.test(text.replace(/[.,:;]+$/u, "")))) continue;
+        add(prose ? text.replace(/[.,:;]+$/u, "") : text, cut);
       }
     }
   }
@@ -325,6 +376,27 @@ export function extractRepoReferences(source, fileRel, topNames) {
   return refs;
 }
 
+// Kendte mappe-laesere hvor scanneren ellers ville goere HELE mappen relevant.
+// En indsnaevring gaelder kun, saa laenge kildefilen stadig indeholder sin
+// markoer (den kode der begraenser laesningen). Forsvinder markoeren, falder
+// afgoerelsen tilbage til hele mappen - aldrig den anden vej.
+export const NARROWED_DIRECTORY_READS = Object.freeze([
+  {
+    source: "backend/lib/promisedTestFilesExist.test.js",
+    ref: "docs",
+    marker: '.filter((e) => e.isFile() && e.name.endsWith(".md"))',
+    // Laeser kun docs/*.md paa topniveau (undermapper er bevidst ude).
+    narrowed: { ref: "docs", topLevelExt: ".md" },
+  },
+]);
+
+function narrowRefs(refs, fileRel, source) {
+  return refs.map((r) => {
+    const rule = NARROWED_DIRECTORY_READS.find((n) => n.source === fileRel && n.ref === r.ref);
+    return rule && source.includes(rule.marker) ? { ...rule.narrowed, cut: false } : r;
+  });
+}
+
 function listTopNames(repoRoot) {
   return readdirSync(repoRoot, { withFileTypes: true })
     .map((e) => e.name)
@@ -367,8 +439,9 @@ export function collectBackendRelevantRefs(repoRoot = REPO_ROOT) {
       continue;
     }
     const rel = toPosix(path.relative(repoRoot, abs));
-    for (const r of extractRepoReferences(source, rel, topNames)) {
-      const key = `${r.ref}\0${r.cut}`;
+    const importsOnly = rel.startsWith("frontend/");
+    for (const r of narrowRefs(extractRepoReferences(source, rel, topNames, { importsOnly }), rel, source)) {
+      const key = `${r.ref}\0${r.cut}\0${r.topLevelExt ?? ""}`;
       if (byKey.has(key)) continue;
       byKey.set(key, r);
       // Transitiv lukning: naevnt kode uden for backend/ scannes ogsaa.
@@ -385,7 +458,13 @@ export function collectBackendRelevantRefs(repoRoot = REPO_ROOT) {
 export function relevanceOf(file, refs) {
   if (ALWAYS_RELEVANT_PREFIXES.some((p) => file === p || file.startsWith(p))) return { file, rule: "altid relevant" };
   if (ANY_TEST_FILE_RE.test(file)) return { file, rule: "testfil (promisedTestFilesExist laeser alle testfil-navne)" };
-  for (const { ref, cut } of refs) {
+  for (const { ref, cut, topLevelExt } of refs) {
+    if (topLevelExt) {
+      if (path.posix.dirname(file) === ref && file.endsWith(topLevelExt)) {
+        return { file, rule: `laest af backend-kode: ${ref}/*${topLevelExt} (topniveau)` };
+      }
+      continue;
+    }
     if (file === ref || file.startsWith(`${ref}/`) || (cut && file.startsWith(ref))) {
       return { file, rule: `naevnt af backend-kode: ${ref}${cut ? " (dynamisk, hele praefikset)" : ""}` };
     }
