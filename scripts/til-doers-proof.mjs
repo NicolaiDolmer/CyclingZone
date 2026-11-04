@@ -36,7 +36,7 @@
 // og exit-koden er altid 0. Kommentarer skrives kun paa aabne issues.
 
 import { spawnSync } from 'node:child_process';
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeSync } from 'node:fs';
+import { closeSync, existsSync, linkSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, statSync, writeSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -69,6 +69,7 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 export const TOTAL_TIMEOUT_MS = 20 * 60 * 1000;
 export const LOCK_STALE_MS = 25 * 60 * 1000;
+export const LOCK_UNREADABLE_GRACE_MS = 60 * 1000;
 export const DEFAULT_PROD_BASE = 'https://cyclingzone.org';
 export const DEFAULT_HOURS = 24;
 export const MAX_HOURS = 24 * 7;
@@ -150,41 +151,79 @@ export function parseArgs(argv) {
 // ---------------------------------------------------------------- lockfil
 
 /**
- * Een koersel ad gangen. Lockfilen indeholder pid og starttid. En lock er
- * forladt, naar den er aeldre end LOCK_STALE_MS, eller processen er doed.
+ * Een koersel ad gangen. Lockfilen indeholder pid, et token og starttid. En
+ * lock er forladt, naar den er aeldre end LOCK_STALE_MS, eller processen er
+ * doed. En tom eller ulaeselig lock er en koersel der lige er ved at starte, og
+ * taeller som optaget, til den er aeldre end en kort frist (Codex).
  * @returns {{ok: true, release: Function} | {ok: false, reason: string}}
  */
-export function acquireLock(file, { now = Date.now(), pid = process.pid, isAlive = pidAlive, staleMs = LOCK_STALE_MS } = {}) {
+export function acquireLock(file, { now = Date.now(), pid = process.pid, isAlive = pidAlive, staleMs = LOCK_STALE_MS, graceMs = LOCK_UNREADABLE_GRACE_MS } = {}) {
   mkdirSync(dirname(file), { recursive: true });
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  const token = `${pid}-${now}-${Math.random().toString(36).slice(2)}`;
+  const release = () => {
+    try {
+      if (JSON.parse(readFileSync(file, 'utf8')).token === token) rmSync(file, { force: true });
+    } catch {
+      // best-effort: en lock vi ikke kan laese, er ikke laengere vores
+    }
+  };
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       const fd = openSync(file, 'wx');
-      writeSync(fd, JSON.stringify({ pid, startedAt: new Date(now).toISOString() }));
-      closeSync(fd);
-      return {
-        ok: true,
-        release: () => {
-          try {
-            const held = JSON.parse(readFileSync(file, 'utf8'));
-            if (held.pid === pid) rmSync(file, { force: true });
-          } catch {
-            // best-effort: en lock vi ikke kan laese, er ikke laengere vores
-          }
-        },
-      };
+      try {
+        writeSync(fd, JSON.stringify({ pid, token, startedAt: new Date(now).toISOString() }));
+      } finally {
+        closeSync(fd);
+      }
+      return { ok: true, release };
     } catch (err) {
       if (err.code !== 'EEXIST') return { ok: false, reason: `lockfilen kunne ikke oprettes (${err.code || err.message})` };
     }
+    let raw = null;
+    try {
+      raw = readFileSync(file, 'utf8');
+    } catch (err) {
+      if (err.code === 'ENOENT') continue;
+    }
     let held = null;
     try {
-      held = JSON.parse(readFileSync(file, 'utf8'));
+      held = JSON.parse(raw);
     } catch {
       held = null;
     }
-    const started = Date.parse(held?.startedAt || '') || statMtime(file) || now;
-    const stale = now - started > staleMs || !held || !isAlive(Number(held.pid));
-    if (!stale) return { ok: false, reason: `en anden koersel er i gang (pid ${Number(held.pid)}, startet ${held.startedAt})` };
-    rmSync(file, { force: true });
+    if (!held) {
+      if (now - statMtime(file) <= graceMs) return { ok: false, reason: 'en anden koersel er ved at starte' };
+    } else {
+      const started = Date.parse(held.startedAt || '') || statMtime(file) || now;
+      if (now - started <= staleMs && isAlive(Number(held.pid))) {
+        return { ok: false, reason: `en anden koersel er i gang (pid ${Number(held.pid)}, startet ${oneLine(held.startedAt, 40)})` };
+      }
+    }
+    // Overtag kun, hvis det stadig er den samme forladte lock: flyt den atomisk
+    // vaek, og laeg den tilbage, hvis en anden naaede at skrive en ny imellem.
+    const moved = `${file}.stale-${token}`;
+    try {
+      renameSync(file, moved);
+    } catch (err) {
+      if (err.code === 'ENOENT') continue;
+      return { ok: false, reason: `lockfilen kunne ikke overtages (${err.code || err.message})` };
+    }
+    let movedRaw = null;
+    try {
+      movedRaw = readFileSync(moved, 'utf8');
+    } catch {
+      movedRaw = null;
+    }
+    if (movedRaw !== raw) {
+      try {
+        linkSync(moved, file);
+      } catch {
+        // en tredje koersel har allerede taget lockfilen; den beholder den
+      }
+      rmSync(moved, { force: true });
+      return { ok: false, reason: 'en anden koersel overtog lockfilen samtidig' };
+    }
+    rmSync(moved, { force: true });
   }
   return { ok: false, reason: 'lockfilen kunne ikke overtages' };
 }
@@ -284,9 +323,13 @@ export function deriveRoutesForPr({ files, tree }) {
  * Den Deploy verify-koersel der daekker merge-SHA'en: den foerste groenne
  * koersel paa samme sha eller paa en senere main-commit der indeholder den.
  * Ellers koerslen paa netop den sha (med dens status), eller null.
+ *
+ * Kun push-koersler taeller: ved workflow_dispatch er headSha den ref workflowet
+ * blev startet fra, mens det tjekkede commit er inputs.sha, saa headSha beviser
+ * intet om, hvad der blev verificeret (Codex).
  */
 export function findDeployVerify({ runs, sha, contains }) {
-  const byTime = [...(runs || [])].sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+  const byTime = [...(runs || [])].filter((r) => r.event === 'push').sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
   for (const r of byTime) {
     if (r.status !== 'completed' || r.conclusion !== 'success') continue;
     if (sameSha(r.headSha, sha)) return { conclusion: 'success', sha: r.headSha, containsMerge: false, runId: r.databaseId };
@@ -306,7 +349,7 @@ export function listDeployVerifyRuns(execGh, repo) {
   return JSON.parse(
     execGh([
       'run', 'list', '--repo', repo, '--workflow', DEPLOY_VERIFY_WORKFLOW, '--branch', 'main', '--limit', '50',
-      '--json', 'databaseId,headSha,status,conclusion,createdAt',
+      '--json', 'databaseId,headSha,status,conclusion,createdAt,event',
     ]),
   );
 }
@@ -388,7 +431,7 @@ export function runSideChecks({ pr, sha, checks, derived, station, prepareWorktr
 
   let worktree;
   try {
-    worktree = prepareWorktree(sha);
+    worktree = prepareWorktree(sha, { timeoutMs: deadline - now() });
   } catch (err) {
     return allError(`build-checkoutet kunne ikke gøres klar (${oneLine(err.message, 80)})`);
   }
@@ -449,8 +492,8 @@ export function defaultStateDir(env = process.env) {
  * Det ligger under state-mappen og roeres aldrig af andre; setup-worktree.ps1
  * giver det node_modules og .env som et normalt worktree.
  */
-export function makePrepareWorktree({ git = defaultGit, stateDir, run = spawnSync } = {}) {
-  return (sha) => {
+export function makePrepareWorktree({ git = defaultGit, stateDir, run = spawnSync, env = process.env } = {}) {
+  return (sha, { timeoutMs = 10 * 60 * 1000 } = {}) => {
     const dir = join(stateDir, 'wt');
     if (!existsSync(dir)) {
       git(['worktree', 'prune']);
@@ -459,15 +502,24 @@ export function makePrepareWorktree({ git = defaultGit, stateDir, run = spawnSyn
     const top = git(['rev-parse', '--show-toplevel'], { cwd: dir }).trim();
     if (resolve(top).toLowerCase() !== resolve(dir).toLowerCase()) throw new Error(`${dir} er ikke runnerens eget checkout`);
     git(['checkout', '--detach', '--force', sha], { cwd: dir });
-    const setup = run('pwsh', ['-NoProfile', '-File', join(REPO_ROOT, 'scripts', 'setup-worktree.ps1'), '-WorktreeRoot', dir, '-MainRepoRoot', REPO_ROOT, '-Quiet'], {
-      cwd: REPO_ROOT,
-      stdio: ['ignore', 2, 2],
-      timeout: 10 * 60 * 1000,
-      windowsHide: true,
-    });
+    // setup-worktree kan koere npm ci ved en ny lockfil, saa det gaar gennem
+    // semaforen som et build (Codex).
+    const [cmd, args] = heavyCommand(env, 'pwsh', ['-NoProfile', '-File', join(REPO_ROOT, 'scripts', 'setup-worktree.ps1'), '-WorktreeRoot', dir, '-MainRepoRoot', REPO_ROOT, '-Quiet'], timeoutMs);
+    const setup = run(cmd, args, { cwd: REPO_ROOT, stdio: ['ignore', 2, 2], timeout: timeoutMs, windowsHide: true });
     if (setup.error || setup.status !== 0) throw new Error(`setup-worktree fejlede (exit ${setup.status ?? setup.error?.message})`);
     return dir;
   };
+}
+
+/**
+ * En tung kommando under verify-lock (semafor 2). Holder koerslen allerede et
+ * slot (CZ_VERIFY_LOCK_HELD_SLOT), koeres den direkte: et indlejret slot afvises.
+ * @returns {[string, string[]]}
+ */
+export function heavyCommand(env, exe, args, timeoutMs) {
+  if (env.CZ_VERIFY_LOCK_HELD_SLOT) return [exe, args];
+  const secs = Math.max(60, Math.floor(timeoutMs / 1000));
+  return ['pwsh', ['-NoProfile', '-File', join(REPO_ROOT, 'scripts', 'verify-lock.ps1'), '-Max', '2', '-Timeout', String(secs), '-Label', 'til-doers-proof', '--', exe, ...args]];
 }
 
 /**
@@ -481,10 +533,7 @@ export function makeStation({ run = spawnSync, env = process.env } = {}) {
       join(REPO_ROOT, 'scripts', 'pr-shots.mjs'), 'shoot', label, worktree, path, `--widths=${SHOT_WIDTH}`,
       ...selectors.map((s) => `--wait-for=${s}`), `--out=${outDir}`, ...(build ? [] : ['--no-build']),
     ];
-    const secs = Math.max(60, Math.floor(timeoutMs / 1000));
-    const [cmd, args] = env.CZ_VERIFY_LOCK_HELD_SLOT
-      ? [process.execPath, shootArgs]
-      : ['pwsh', ['-NoProfile', '-File', join(REPO_ROOT, 'scripts', 'verify-lock.ps1'), '-Max', '2', '-Timeout', String(secs), '-Label', 'til-doers-proof', '--', 'node', ...shootArgs]];
+    const [cmd, args] = heavyCommand(env, env.CZ_VERIFY_LOCK_HELD_SLOT ? process.execPath : 'node', shootArgs, timeoutMs);
     const res = run(cmd, args, { cwd: REPO_ROOT, stdio: ['ignore', 2, 2], timeout: timeoutMs, windowsHide: true });
     if (res.error) return { exitCode: null, report: null, error: res.error.code === 'ETIMEDOUT' ? 'tidsgrænsen for kørslen er nået' : oneLine(res.error.message, 80) };
     if (res.status === 75) return { exitCode: 75, report: null, error: 'ingen ledig verifikations-slot' };

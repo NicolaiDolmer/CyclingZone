@@ -15,6 +15,7 @@ import {
   hasProof,
   interpretShot,
   main,
+  makePrepareWorktree,
   makeStation,
   parseArgs,
   parseCatFileBatch,
@@ -86,6 +87,63 @@ test('acquireLock: een koersel ad gangen, forladt lock overtages', () => {
   }
 });
 
+test('acquireLock (Codex): en tom lock er en koersel der starter, til fristen er gaaet', () => {
+  const dir = tmp();
+  try {
+    const file = join(dir, LOCK_FILE);
+    writeFileSync(file, '');
+    const fresh = acquireLock(file, { now: Date.now(), pid: 201, isAlive: () => true });
+    assert.equal(fresh.ok, false);
+    assert.match(fresh.reason, /ved at starte/);
+    const old = acquireLock(file, { now: Date.now() + 2 * 60_000, pid: 202, isAlive: () => true });
+    assert.equal(old.ok, true);
+    assert.equal(JSON.parse(readFileSync(file, 'utf8')).pid, 202);
+    old.release();
+    assert.equal(existsSync(file), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('makePrepareWorktree (Codex): eget checkout, setup-worktree under verify-lock', () => {
+  const dir = tmp();
+  try {
+    const wt = join(dir, 'wt');
+    const gitCalls = [];
+    const git = (args, o = {}) => {
+      gitCalls.push({ args, cwd: o.cwd });
+      if (args[0] === 'worktree' && args[1] === 'add') mkdirSync(wt, { recursive: true });
+      if (args[0] === 'rev-parse') return `${wt}\n`;
+      return '';
+    };
+    const runs = [];
+    const run = (cmd, args, o) => {
+      runs.push({ cmd, args, o });
+      return { status: 0 };
+    };
+    const prepare = makePrepareWorktree({ git, stateDir: dir, run, env: {} });
+    assert.equal(prepare(SHA, { timeoutMs: 300_000 }), wt);
+    assert.deepEqual(gitCalls.map((c) => c.args.slice(0, 2).join(' ')), ['worktree prune', 'worktree add', 'rev-parse --show-toplevel', 'checkout --detach']);
+    assert.equal(runs[0].cmd, 'pwsh');
+    assert.ok(runs[0].args.some((a) => a.endsWith('verify-lock.ps1')));
+    assert.ok(runs[0].args.some((a) => a.endsWith('setup-worktree.ps1')));
+    assert.equal(runs[0].o.timeout, 300_000);
+
+    // Holder koerslen allerede et slot, koeres setup direkte.
+    const nested = makePrepareWorktree({ git, stateDir: dir, run, env: { CZ_VERIFY_LOCK_HELD_SLOT: 'x' } });
+    nested(SHA);
+    assert.ok(!runs[1].args.some((a) => a.endsWith('verify-lock.ps1')));
+
+    // Et checkout der ikke er vores eget, roeres ikke.
+    const foreign = makePrepareWorktree({ git: (args) => (args[0] === 'rev-parse' ? 'C:/Dev/CyclingZone\n' : ''), stateDir: dir, run, env: {} });
+    assert.throws(() => foreign(SHA), /ikke runnerens eget checkout/);
+    const failing = makePrepareWorktree({ git, stateDir: dir, run: () => ({ status: 1 }), env: {} });
+    assert.throws(() => failing(SHA), /setup-worktree fejlede/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 // ---------------------------------------------------------------- git-hjælpere
 
 test('parseCatFileBatch: indhold pr. sti, missing springes over, utf8-bytes tælles rigtigt', () => {
@@ -106,22 +164,25 @@ test('parseCatFileBatch: indhold pr. sti, missing springes over, utf8-bytes tæl
 
 test('findDeployVerify: samme sha, senere sha der indeholder den, ellers status eller null', () => {
   const contains = (a, d) => a === SHA && d === LATER;
-  const exactOk = [{ databaseId: 1, headSha: SHA, status: 'completed', conclusion: 'success', createdAt: '2026-11-04T10:00:00Z' }];
+  const exactOk = [{ databaseId: 1, headSha: SHA, status: 'completed', conclusion: 'success', event: 'push', createdAt: '2026-11-04T10:00:00Z' }];
   assert.deepEqual(findDeployVerify({ runs: exactOk, sha: SHA, contains }), { conclusion: 'success', sha: SHA, containsMerge: false, runId: 1 });
 
   const batched = [
-    { databaseId: 2, headSha: SHA, status: 'completed', conclusion: 'failure', createdAt: '2026-11-04T10:00:00Z' },
-    { databaseId: 3, headSha: LATER, status: 'completed', conclusion: 'success', createdAt: '2026-11-04T10:30:00Z' },
+    { databaseId: 2, headSha: SHA, status: 'completed', conclusion: 'failure', event: 'push', createdAt: '2026-11-04T10:00:00Z' },
+    { databaseId: 3, headSha: LATER, status: 'completed', conclusion: 'success', event: 'push', createdAt: '2026-11-04T10:30:00Z' },
   ];
   assert.deepEqual(findDeployVerify({ runs: batched, sha: SHA, contains }), { conclusion: 'success', sha: LATER, containsMerge: true, runId: 3 });
 
   const failed = [batched[0]];
   assert.equal(findDeployVerify({ runs: failed, sha: SHA, contains }).conclusion, 'failure');
-  const running = [{ databaseId: 4, headSha: SHA, status: 'in_progress', conclusion: '', createdAt: '2026-11-04T10:00:00Z' }];
+  const running = [{ databaseId: 4, headSha: SHA, status: 'in_progress', conclusion: '', event: 'push', createdAt: '2026-11-04T10:00:00Z' }];
   assert.equal(findDeployVerify({ runs: running, sha: SHA, contains }).conclusion, 'in_progress');
   // En groen koersel paa en commit der IKKE indeholder merge-SHA'en taeller ikke.
-  const other = [{ databaseId: 5, headSha: LATER, status: 'completed', conclusion: 'success', createdAt: '2026-11-04T10:00:00Z' }];
+  const other = [{ databaseId: 5, headSha: LATER, status: 'completed', conclusion: 'success', event: 'push', createdAt: '2026-11-04T10:00:00Z' }];
   assert.equal(findDeployVerify({ runs: other, sha: SHA, contains: () => false }), null);
+  // workflow_dispatch: headSha er startref'en, ikke det verificerede commit (Codex).
+  const dispatched = [{ databaseId: 6, headSha: SHA, status: 'completed', conclusion: 'success', event: 'workflow_dispatch', createdAt: '2026-11-04T10:00:00Z' }];
+  assert.equal(findDeployVerify({ runs: dispatched, sha: SHA, contains: () => true }), null);
 });
 
 // ---------------------------------------------------------------- prod-tjek
@@ -383,7 +444,7 @@ function runDeps(world, extra = {}) {
       stationCalls.push(a);
       return { exitCode: 0, report: report({ label: a.label, createdAt: new Date(T0 + 1000).toISOString(), routes: [a.path] }) };
     },
-    deployVerifyRuns: () => [{ databaseId: 1, headSha: SHA, status: 'completed', conclusion: 'success', createdAt: '2026-11-04T09:30:00Z' }],
+    deployVerifyRuns: () => [{ databaseId: 1, headSha: SHA, status: 'completed', conclusion: 'success', event: 'push', createdAt: '2026-11-04T09:30:00Z' }],
     fetch: async (url) => {
       fetchCalls.push(url);
       return { status: 200 };
@@ -452,7 +513,7 @@ test('main: uden deklaration bliver alt udkast, og intet build eller prod-kald k
 test('main: Deploy verify ikke grøn giver udkast for 8 uden prod-kald; fejlet tjek giver mangler', async () => {
   const world = makeWorld({ pulls: { 7621: pull(7621, { body: FULL_BODY }) }, issues: { 7585: { number: 7585, state: 'open' } } });
   const r = runDeps(world, {
-    deployVerifyRuns: () => [{ databaseId: 1, headSha: SHA, status: 'completed', conclusion: 'failure', createdAt: '2026-11-04T09:30:00Z' }],
+    deployVerifyRuns: () => [{ databaseId: 1, headSha: SHA, status: 'completed', conclusion: 'failure', event: 'push', createdAt: '2026-11-04T09:30:00Z' }],
     station: (a) => ({
       exitCode: 3,
       report: report({ label: a.label, createdAt: new Date(T0 + 1000).toISOString(), routes: [a.path], waits: [{ route: a.path, width: 1440, selector: a.selectors[0], error: 'Timeout 30000ms exceeded.' }] }),
