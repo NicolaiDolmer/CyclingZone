@@ -500,6 +500,18 @@ export function intakeTracks(dir, waveId, finished = [], snapshot = ownershipSna
   return { taken, pending, finishedBranches: next.finishedBranches, ignoredFinished, ...(peek ? { peek: true } : {}) };
 }
 
+// #7587 point 4: wave.js releases a track's ownership the moment it is built
+// and reviewed, not at the next intake check. 3/11 the merge queue skipped a
+// finished track because lanes with a full queue never ran an intake, so its
+// branch stayed in the active set. Marks only: nothing moves, nothing is
+// counted, and it needs at least one branch (an empty call is a caller bug).
+export function finishTracks(dir, waveId, finished, snapshot = ownershipSnapshot) {
+  const branches = Array.isArray(finished) ? finished.filter(b => typeof b === 'string' && b.trim()) : [];
+  if (branches.length === 0) throw Error('finish requires at least one --finished branch');
+  const r = intakeTracks(dir, waveId, branches, snapshot, { peek: true });
+  return { finishedBranches: r.finishedBranches, ignoredFinished: r.ignoredFinished };
+}
+
 // ---------------------------------------------------------------- merge gate (#5562)
 // A merge during a running wave is allowed only when NONE of the PR's files
 // overlap the wave's active ownership. Everything unknown blocks (fail-closed).
@@ -821,6 +833,10 @@ async function cli() {
     const finished = (value('--finished') || '').split(',').map(s => s.trim()).filter(Boolean);
     // #5602: --peek counts the queue and marks finished branches, moves nothing.
     console.log(JSON.stringify(intakeTracks(dir, value('--wave-id'), finished, ownershipSnapshot, { peek: args.includes('--peek') })));
+  } else if (command === 'finish') {
+    // #7587: immediate release of built+reviewed tracks; marks only.
+    const finished = (value('--finished') || '').split(',').map(s => s.trim()).filter(Boolean);
+    console.log(JSON.stringify(finishTracks(dir, value('--wave-id'), finished, ownershipSnapshot)));
   } else if (command === 'recover') {
     if (args.includes('--owner-override')) {
       const { ownerOverride } = await import('./wave-owner-override.mjs');
@@ -843,7 +859,7 @@ async function cli() {
     wave.watchStarted = info.started;
     // #5602 fund 1: phase 0 registers the watch while a merge may hold the lock.
     updateWave(dir, wave.waveId, current => ({ ...current, watchPid: pid, watchStarted: info.started }), LONG_LOCK_ATTEMPTS);
-  } else throw Error('Usage: wave-policy.mjs hook|inspect|assert-idle|assert-merge-allowed|guarded-merge|enqueue|intake|release|watch|recover');
+  } else throw Error('Usage: wave-policy.mjs hook|inspect|assert-idle|assert-merge-allowed|guarded-merge|enqueue|intake|finish|release|watch|recover');
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   cli().catch(e => { console.error(`wave-policy: ${e.message}`); process.exitCode = 2; });

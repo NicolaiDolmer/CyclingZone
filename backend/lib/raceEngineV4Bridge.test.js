@@ -24,6 +24,7 @@ import {
   rankedFromV4Output,
   stageHasPassageRouteData,
   buildGcContext,
+  withManagerChase6912,
   __resetRaceEngineV4Cache,
 } from "./raceEngineV4Bridge.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
@@ -863,4 +864,43 @@ test("#6649 buildV4StageInput: day_form_6649 kun ved eksplicit dayForm6649=true 
   assert.equal("day_form_6649" in build("s5_profiles_v3"), false, "default: slukket, ogsaa under v3");
   assert.equal(build("s5_profiles_v3", { dayForm6649: true }).day_form_6649, true);
   assert.equal("day_form_6649" in build("s5_profiles_v2", { dayForm6649: true }), false, "aeldre revisioner: aldrig");
+});
+
+// #6912 (forspringskurven, SLUKKET): en spillers gemte jag-ordre markeres kun med kontakten,
+// saa kurven kun begraenser den automatiske jagt. Slukket = ordrerne er uroerte.
+test("#6912 buildV4StageInput: spillerens gemte jag-ordre markeres kun med kurven taendt under s5_profiles_v3", () => {
+  const ORDERS = [
+    { team_id: "T1", kind: "team_tactics", params: { breakaway_stance: "chase", riders: [] } },
+    { team_id: "T2", kind: "team_tactics", params: { breakaway_stance: "chase", riders: [] } },
+    { team_id: "T1", kind: "leadout", params: {} },
+  ];
+  const modules = { ...PEAK_STUB_MODULES, orders: { buildStageOrderPlan: () => ({ orders: ORDERS, aiEffortByRider: new Map() }) } };
+  const rows = [{ team_id: "T1", stage_number: 1, breakaway_stance: "chase" }, { team_id: "T2", stage_number: 2, breakaway_stance: "chase" }];
+  const build = (rulesRevision, extra = {}) => buildV4StageInput({
+    modules, entrants: PEAK_FIELD, seedString: "race:6912:orders", stageNumber: 1,
+    stageProfile: { stage_number: 1, profile_type: "flat", distance_km: 150 }, teamOrderRows: rows,
+    rulesRevision, ...extra,
+  });
+  const off = build("s5_profiles_v3");
+  assert.equal(off.orders, ORDERS, "slukket: samme liste");
+  assert.equal("breakaway_curve_6912" in off, false);
+  assert.equal(build("s5_profiles_v2", { breakawayCurve6912: true }).orders, ORDERS, "aeldre revisioner: aldrig");
+  const on = build("s5_profiles_v3", { breakawayCurve6912: true });
+  assert.equal(on.breakaway_curve_6912, true);
+  assert.equal(on.orders[0].params.manager_chase_6912, true, "T1 gemte jag-ordren for etapen");
+  assert.equal("manager_chase_6912" in on.orders[1].params, false, "T2s raekke gaelder en anden etape: standard-stance");
+  assert.equal(on.orders[2], ORDERS[2], "kun team_tactics");
+  assert.equal("manager_chase_6912" in ORDERS[0].params, false, "input muteres ikke");
+});
+
+test("#6912 withManagerChase6912: kun en gemt chase-stance for etapen, sidste raekke pr. hold vinder", () => {
+  const orders = [{ team_id: "A", kind: "team_tactics", params: { breakaway_stance: "chase" } }, { team_id: "B", kind: "team_tactics", params: { breakaway_stance: "neutral" } }];
+  assert.equal(withManagerChase6912(orders, [], 3), orders);
+  assert.equal(withManagerChase6912(orders, null, 3), orders);
+  assert.equal(withManagerChase6912(orders, [{ team_id: "A", stage_number: 3, breakaway_stance: "neutral" }], 3), orders, "neutral er ingen jag-ordre");
+  const last = withManagerChase6912(orders, [{ team_id: "A", stage_number: 3, breakaway_stance: "chase" }, { team_id: "A", stage_number: 3, breakaway_stance: "let_go" }], 3);
+  assert.equal(last, orders, "sidste raekke (let_go) vinder, som i ordre-adapteren");
+  const marked = withManagerChase6912(orders, [{ team_id: "B", stage_number: 3, breakaway_stance: "chase" }], 3);
+  assert.equal(marked[1].params.manager_chase_6912, true);
+  assert.equal(marked[0], orders[0]);
 });

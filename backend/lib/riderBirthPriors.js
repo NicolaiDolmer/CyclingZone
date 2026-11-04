@@ -60,6 +60,8 @@ import { ABILITY_REGISTRY, REGISTRY_ABILITY_KEYS, abilityMeta } from "./abilityR
 import {
   FILL_TAIL_ABILITY_CAP,
   FILL_TAIL_GENERATION_TAG,
+  applyAbilityCap,
+  fillCapModeOf,
 } from "./abilityDerivation.js";
 // Truppernes aldersgrænser — U23-fødslens interval udledes af dem, aldrig af en
 // lokal kopi. `squads.js` importerer kun `riderSeasonAge.js`, så der er ingen cyklus.
@@ -841,26 +843,23 @@ export function deriveBirthAbilities(riderRow, { age = null, classifierWeightsBy
     id: riderRow.id,
   });
 
-  // Evne-loftet fra markøren (#1487's stat-vindue, oversat til evne-rummet).
-  // Ligger FØR fill_tail-klemmen, men begge er min() så rækkefølgen er ligegyldig.
+  // Evne-loftet fra markøren (#1487's stat-vindue, oversat til evne-rummet) og
+  // fyld-loftet (#4311, FILL_TAIL_ABILITY_CAP — importeret, ikke kopieret) er
+  // begge lofter over samme evner. Under den historiske min-regel er
+  // min(min(x, a), b) = min(x, min(a, b)), så ét samlet loft er bit-identisk med
+  // de to løkker der stod her før. #7560: en rytter født under den skalerede
+  // regel (archetype_draw.fill_cap) skaleres ÉN gang mod det samlede loft, så
+  // profilens form bevares; uden markøren er alt som før.
   // Samme null-fælde som i makeBirthMarker: Number(null) === 0 er finit, og en
   // ren isFinite-test ville klemme hele rytteren til 0.
-  const cap = draw.birth.cap == null ? NaN : Number(draw.birth.cap);
-  if (Number.isFinite(cap)) {
-    for (const key of Object.keys(abilities)) {
-      if (Number.isFinite(abilities[key])) abilities[key] = Math.min(abilities[key], cap);
-    }
-  }
-
-  // #4311: fyld-ryttere klemmes ved kilden. Loftet ligger i abilityDerivation.js
-  // (FILL_TAIL_ABILITY_CAP) og er IMPORTERET, ikke kopieret — den fil ejes af en
-  // anden lane og må ikke ændres herfra. Uden denne linje ville et fyld-kuld
-  // født på prior-stien slippe uden om klemmen og læse som normale ryttere
-  // (præcis den regression #4311 lukkede).
-  if (riderRow.generation_tag === FILL_TAIL_GENERATION_TAG) {
-    for (const key of Object.keys(abilities)) {
-      if (Number.isFinite(abilities[key])) abilities[key] = Math.min(abilities[key], FILL_TAIL_ABILITY_CAP);
-    }
+  const caps = [];
+  const birthCap = draw.birth.cap == null ? NaN : Number(draw.birth.cap);
+  if (Number.isFinite(birthCap)) caps.push(birthCap);
+  // Uden fyld-loftet ville et fyld-kuld født på prior-stien slippe uden om
+  // klemmen og læse som normale ryttere (præcis den regression #4311 lukkede).
+  if (riderRow.generation_tag === FILL_TAIL_GENERATION_TAG) caps.push(FILL_TAIL_ABILITY_CAP);
+  if (caps.length > 0) {
+    applyAbilityCap(abilities, Math.min(...caps), { mode: fillCapModeOf(riderRow) });
   }
   return abilities;
 }

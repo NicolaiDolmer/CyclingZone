@@ -297,6 +297,17 @@ const INTAKE_CHECK_SCHEMA = {
   required: ['ok', 'pending'],
 }
 
+// #7587 punkt 4: den straks-frigivelse der koeres naar et spor er bygget og
+// reviewet. Kun ok + fejltekst; finishedInWave er stadig sikkerhedsnettet.
+const RELEASE_SCHEMA = {
+  type: 'object',
+  properties: {
+    ok: { type: 'boolean', description: 'false hvis kommandoen fejlede (exit-kode forskellig fra 0)' },
+    problem: { type: 'string', description: 'fejlteksten hvis ok=false, ellers tom' },
+  },
+  required: ['ok'],
+}
+
 const REVIEW_SCHEMA = {
   type: 'object',
   properties: {
@@ -955,9 +966,18 @@ function reviewPrompt(track, attempt) {
     '    Staar hullet aabent erklaeret under "Ikke daekket", er det en bemaerkning.',
     '12. MAALEPUNKT (#5507): sammenhold issuets maalepunkt (issue-body + seneste kommentarer, input c) med PR-bodyens foer/efter.',
     '    Flag hvis maalepunktet er uaendret efter PR\'en, hvis "foer" allerede var groent (saa beviser "efter" intet), eller hvis bodyen paastaar en rod-aarsag som ingen maaling i PR\'en viser (#5503).',
+    // #7587 punkt 5: fundene fra boelgen 3/11 (11 spor) som faste punkter.
+    `13. CI-VAGTER (#7587): koer \`gh pr checks <PR-nummer> --repo ${REPO}\` een gang. Er ts-core-ratchet, frontend-typecheck-baseline, feature-registry-check eller et andet check roedt pga. diffen, er det BLOKERENDE (category "verifikation"). Roedt ogsaa paa main eller stadig koerende: skriv det i summary.`,
+    '14. FROSSEN GOLDEN (#7587): indfoerer diffen en kontakt i motor- eller traeningskode, skal "off = bit-identisk" vaere bevist mod en fixture genereret af merge-base-koden (SHA i PR-body), ikke af den nye kodes default eller off-gren.',
+    '    Er facit regenereret med den nye kode, eller mangler beviset, er det BLOKERENDE (category "verifikation").',
+    '15. HARD RULE 17 (#7587): staar der en praecis formel, vaegt, taerskel eller et parametervalg i en forklarende kode-kommentar, i docs eller i PR-body? Det er BLOKERENDE (category "secrets"). Runtime-konstanter i selve koden er undtaget efter AGENTS.md hard rule 17.',
+    '16. PAGINATION (#7587): laeser diffen raekker fra Supabase/PostgREST, der kan blive flere end 1000 (loftet pr. kald)? Saa skal den pagere (.range i loekke til en side er kortere end siden) med stabil orden (.order paa en unik noegle, fx id).',
+    '    Et upageret laes der kan ramme loftet, eller paginering uden stabil orden (raekker springes over/dubleres), er BLOKERENDE naar det roerer spillerdata eller penge, ellers en bemaerkning (category "andet").',
+    '17. FAIL-CLOSED (#7587): ved fejl, timeout, manglende data eller ukendt kontakt-vaerdi skal koden goere det sikre: ingen udbetaling, ingen adgang, ingen skrivning, og en synlig fejl/log. En catch eller default der fortsaetter som om alt er godt ("fail-open") paa penge, adgang eller prod-skrivning er BLOKERENDE (category "andet").',
+    '18. SPILLERTEKST EN/DA (#7587): ny eller aendret spillertekst skal findes paa baade engelsk og dansk (EN foerst). Mangler et af sprogene, er det BLOKERENDE (category "andet").',
     '',
     'Hvert fund har category (data-skema | scope | forbudte-filer | secrets | verifikation | andet) og evidence: hvad fundet bygger paa (fil:linje, kommando + output, opslag).',
-    'Dom: BLOKERENDE kun ved noget der ikke maa merges (forkert scope, forbudte filer, secrets, manglende verifikation af en ny regel; fra 2026-10-01 ogsaa en preview/prod-paastand der kun findes i mock (punkt 10) og en kontakt uden kaldested kaldt faerdig (punkt 11) - foer 2026-10-01 er de to BEMAERKNINGER, advarsel foerst (#5507)). Smagsting er BEMAERKNINGER.',
+    'Dom: BLOKERENDE kun ved noget der ikke maa merges (forkert scope, forbudte filer, secrets, manglende verifikation af en ny regel, og de BLOKERENDE tilfaelde i punkt 13-18; fra 2026-10-01 ogsaa en preview/prod-paastand der kun findes i mock (punkt 10) og en kontakt uden kaldested kaldt faerdig (punkt 11) - foer 2026-10-01 er de to BEMAERKNINGER, advarsel foerst (#5507)). Smagsting er BEMAERKNINGER.',
     'Vaer konkret: fil + hvad der er galt. Ingen ros, ingen opsummering af hvad diffen goer.',
   ].filter(Boolean).join('\n')
 }
@@ -1023,12 +1043,23 @@ function trackConfigRow(t) {
 function trackSetupSteps() {
   return [
     '## 2. Worktree pr. spor',
-    'For hvert spor: findes worktreet allerede, saa lad det staa (recovery skal kunne genbruge det).',
-    `Ellers: \`pwsh -File ${MAIN_CHECKOUT}\\scripts\\new-worktree.ps1 -Branch <branch>\`.`,
+    // #7587 punkt 8: natboelgen 3/11 sprang et spor over, fordi branchen
+    // allerede var checket ud i et worktree med et andet mappenavn end slug.
+    `Koer foerst EEN gang \`git -C ${MAIN_CHECKOUT} worktree list --porcelain\`. Hver blok starter med "worktree <sti>" og kan have linjen "branch refs/heads/<branch>".`,
+    'For hvert spor, i denne raekkefoelge:',
+    '- a. Har en blok "branch refs/heads/<sporets branch>", er DEN blok sporets worktree - ogsaa naar mappenavnet ikke er <slug>. Genbrug den sti. Opret ALDRIG et nyt worktree for en branch der allerede er checket ud (git afviser det, og sporet ville blive sprunget over).',
+    `  Er stien hoved-checkoutet (${MAIN_CHECKOUT}) eller ligger den uden for ${WORKTREES_ROOT}: ready=false med note "branchen er checket ud i <sti>" - flyt intet.`,
+    '- b. Ellers, findes <worktreesRoot>\\<slug> allerede, saa lad det staa (recovery skal kunne genbruge det).',
+    `- c. Ellers: \`pwsh -File ${MAIN_CHECKOUT}\\scripts\\new-worktree.ps1 -Branch <branch>\`.`,
+    'Rapportér ALTID sporets faktiske worktree-sti i lanes[].worktree (den genbrugte sti fra a, ellers <worktreesRoot>\\<slug>).',
+    // #7587 punkt 7: balance-internals/ skal vaere et link til den delte mappe,
+    // ogsaa i et genbrugt worktree (new-worktree.ps1 goer det selv for nye).
+    `For HVERT spor (idempotent, ogsaa nye): \`pwsh -NoProfile -File ${MAIN_CHECKOUT}\\scripts\\link-balance-internals.ps1 -WorktreeRoot <sporets worktree>\`. Exit 0 = linket. Anden exit-kode: skriv outputtets sidste linje i lanens note - sporet er stadig ready; flyt og slet intet selv.`,
     `Opret ogsaa scratch-mappen ${SCRATCH_ROOT}\\<slug>.`,
     '',
     '## 3. Brief pr. spor',
     'Skriv hvert spors config-objekt (se afsnittet "Spor" nederst) som JSON til <scratch>\\brief-<slug>.json og koer:',
+    'Genbruger sporet et worktree med en anden sti end <worktreesRoot>\\<slug> (trin 2a), saa tilfoej feltet "worktreePath": "<den sti>" i config-objektet FOER du koerer kommandoen - ellers peger briefen paa en mappe der ikke findes.',
     `\`node ${MAIN_CHECKOUT}\\scripts\\make-wave-brief.mjs <scratch>\\brief-<slug>.json --out <scratch>\\brief-<slug>.md\``,
     'Verificér bagefter at hver .md-fil findes og ikke er tom. En lane uden brief maa IKKE meldes ready.',
     '',
@@ -1121,6 +1152,24 @@ function intakeCheckPrompt(waveId, finishedBranches) {
     'Exit-kode 0: den skriver JSON med feltet "pending". Returner ok=true og pending = det tal.',
     'Anden exit-kode: returner ok=false, pending=0 og fejlteksten i problem. Proev ikke igen og fejlsoeg ikke.',
     'Dit svar er kun skemaet. pending > 0 betyder IKKE at du skal goere noget - orkestratoren starter selv naeste trin.',
+  ].join('\n')
+}
+
+// #7587 punkt 4: frigiv ejerskab STRAKS et spor er bygget og reviewet. 3/11
+// sprang merge-koeen et faerdigt spor over, fordi frigivelsen ventede paa
+// naeste intake-tjek - og med spor i koen koerer der intet tjek. Samme
+// minimale form som intake-tjekket: EEN kommando, der kun markerer.
+function releasePrompt(waveId, finishedBranches) {
+  const main = MAIN_CHECKOUT.replace(/\\/g, '/')
+  return [
+    'WAVE-SETUP: frigiv ejerskab (#7587)',
+    '',
+    ...subStepScopeLines('koer EEN kommando, der frigiver faerdige spors ejerskab, og returner resultatet', 'setup'),
+    '',
+    'Koer praecis denne ene kommando i forgrunden og intet andet - foer og efter den: ingen andre kommandoer, ingen filer laest, intet redigeret:',
+    `\`node "${main}/scripts/wave-policy.mjs" finish --wave-id ${waveId} --finished ${finishedBranches.join(',')} --run-dir "${main}/.claude/run"\``,
+    'Exit-kode 0: returner ok=true. Anden exit-kode: returner ok=false og fejlteksten i problem. Proev ikke igen og fejlsoeg ikke.',
+    'Dit svar er kun skemaet.',
   ].join('\n')
 }
 
@@ -1260,13 +1309,37 @@ if (!setup || setup.ok !== true || !setup.waveId) throw new Error('wave: fase 0 
 
 // Fase 0 og intake (#5562) deler denne sortering, saa et optaget spor
 // springes over paa praecis samme betingelser som et spor fra starten.
+// #7587 punkt 8: fase 0 kan genbruge branchens eksisterende worktree med et
+// andet mappenavn end slug. Sporet faar saa DEN sti (lane, probe, stop, fix,
+// review). Fail-closed: en sti uden for worktree-roden, i scratch-mappen eller
+// med '..' starter ingen lane.
+function adoptLaneWorktree(track, laneInfo) {
+  const norm = (p) => String(p).trim().replace(/\//g, '\\').replace(/\\+$/, '')
+  const raw = laneInfo && typeof laneInfo.worktree === 'string' ? norm(laneInfo.worktree) : ''
+  if (!raw || raw.toLowerCase() === norm(track.worktree).toLowerCase()) return { track, adopted: null, reason: null }
+  const lower = raw.toLowerCase()
+  const inRoot = lower.startsWith(norm(WORKTREES_ROOT).toLowerCase() + '\\')
+  const inScratch = lower === norm(SCRATCH_ROOT).toLowerCase() || lower.startsWith(norm(SCRATCH_ROOT).toLowerCase() + '\\')
+  if (!inRoot || inScratch || /(^|\\)\.\.(\\|$)/.test(raw)) {
+    return { track, adopted: null, reason: `fase 0 meldte worktree ${raw}, som ikke ligger under ${WORKTREES_ROOT} - sporet startes ikke (fail-closed, #7587)` }
+  }
+  return { track: { ...track, worktree: raw }, adopted: raw, reason: null }
+}
+
 function admitReadyTracks(candidates, setupAnswer) {
   const readyByBranch = new Map()
   for (const lane of (setupAnswer && setupAnswer.lanes) || []) readyByBranch.set(lane.branch, lane)
   const ready = []
   const notReady = []
-  for (const track of candidates) {
-    const laneInfo = readyByBranch.get(track.branch)
+  for (const candidate of candidates) {
+    const laneInfo = readyByBranch.get(candidate.branch)
+    const adoption = adoptLaneWorktree(candidate, laneInfo)
+    if (adoption.reason) {
+      notReady.push({ ...candidate, reason: adoption.reason })
+      continue
+    }
+    const track = adoption.track
+    if (adoption.adopted) log(`#${track.issue} ${track.branch}: genbruger eksisterende worktree ${adoption.adopted} (#7587).`)
     if (!laneInfo || laneInfo.ready !== true) {
       notReady.push({ ...track, reason: (laneInfo && laneInfo.note) || 'worktree eller brief mangler efter opsaetning' })
       continue
@@ -1753,6 +1826,36 @@ async function runIntakeCheck(finished) {
   return { label, answered, pending: answered ? pending : 0 }
 }
 
+// #7587 punkt 4: koeres af lanen lige efter et spor med releasesOwnership().
+// Fejler den eller svarer den ikke, frigives sporet stadig ved naeste
+// intake-tjek (finishedInWave sendes altid med) - den er en genvej, ikke den
+// eneste vej. Uden rullende optag er den den ENESTE frigivelse foer oprydning.
+let releasesRun = 0
+const releasedNow = []
+async function releaseOwnershipNow(branch) {
+  releasesRun += 1
+  const label = `frigiv ${branch}`
+  let answer = null
+  try {
+    answer = await withTimeout(
+      agentWithType(releasePrompt(setup.waveId, finishedInWave.slice()), { label, phase: 'Laner', model: 'sonnet', effort: 'low', agentType: 'wave-release', schema: RELEASE_SCHEMA }),
+      WAVE_FREEZE.INTAKE_CHECK_TIMEOUT_MINUTES * 60 * 1000,
+      label,
+    )
+  } catch (err) {
+    answer = null
+    log(`${label}: ${String((err && err.message) || err)}`)
+  }
+  const ok = Boolean(answer && answer !== TIMED_OUT && answer.ok === true)
+  if (ok) {
+    releasedNow.push(branch)
+    log(`Ejerskab frigivet straks for ${branch} (#7587) - merge-koeen kan tage sporet nu.`)
+  } else {
+    log(`${label}: straks-frigivelsen lykkedes ikke${answer && answer !== TIMED_OUT && answer.problem ? ` (${answer.problem})` : ''} - frigives ved naeste intake-tjek eller oprydningen.`)
+  }
+  return ok
+}
+
 async function runIntake() {
   const finished = finishedInWave.slice()
   const check = await runIntakeCheck(finished)
@@ -1896,7 +1999,11 @@ async function laneWorker(laneIndex) {
       }
       results.push(row)
       // Kun en beviseligt faerdig agent frigiver sporets ejerskab (#5562).
-      if (releasesOwnership(row.status)) finishedInWave.push(track.branch)
+      // #7587: og det sker STRAKS, ikke foerst ved naeste intake-tjek.
+      if (releasesOwnership(row.status)) {
+        finishedInWave.push(track.branch)
+        row.releasedNow = await releaseOwnershipNow(track.branch)
+      }
       // En lane er blevet fri: naeste ledige lane laver et friskt optag.
       // #5602: og pausen/selv-stop-taellingen starter forfra.
       intakeEmpty = false
@@ -2052,6 +2159,9 @@ return {
   intakeRuns,
   intakeChecks,
   selfStoppedLanes,
+  // #7587: spor hvis ejerskab blev frigivet straks efter build + review.
+  releasesRun,
+  releasedNow,
   tailIdle,
   dirtyWorktrees: stillDirty.map((r) => ({ issue: r.issue, branch: r.branch, gracefulStop: r.gracefulStop })),
   skipped: skipped.map((s) => ({ issue: s.issue, branch: s.branch, reason: s.reason })),
