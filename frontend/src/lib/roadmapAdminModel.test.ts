@@ -167,6 +167,13 @@ test("sortRows dækker styringsscore, vigtighed, rækkefølge og dato", () => {
   assert.deepEqual(ids(sortRows(tabRows(mix, "planned").concat(tabRows(mix, "y2027")), { key: "own", dir: "asc" })), ["p2", "p1"]);
   assert.deepEqual(ids(sortRows(tabRows(mix, "shipped"), { key: "date", dir: "desc" })), ["s2", "s1"]);
 });
+test("sortRows: ved lighed gælder ejerens rækkefølge og så titlen", () => {
+  const rs = [row({ item_id: "a", avg_importance: 4, sort_order: 30, title_en: "A" }),
+    row({ item_id: "b", avg_importance: 4, sort_order: 10, title_en: "B" }),
+    row({ item_id: "c", avg_importance: 4, sort_order: 10, title_en: "A2" })];
+  assert.deepEqual(ids(sortRows(rs, { key: "importance", dir: "desc" })), ["c", "b", "a"]);
+  assert.deepEqual(ids(sortRows(rs, { key: "own", dir: "asc" })), ["c", "b", "a"]);
+});
 test("sortRows med ukendt nøgle ændrer ikke rækkefølgen", () => {
   assert.deepEqual(ids(sortRows(mix, { key: "findes-ikke", dir: "asc" })), ids(mix));
 });

@@ -315,6 +315,14 @@ const ACCESSORS: Record<string, Accessor> = {
 
 export const SORT_KEYS = Object.keys(ACCESSORS);
 
+// Ved lighed gælder ejerens rækkefølge og så titlen, som tabellerne altid har
+// gjort, så visningen stemmer med positionsnumrene og flyt-knapperne.
+function tieBreak(a: object, b: object): number {
+  const x = a as Record<string, unknown>, y = b as Record<string, unknown>;
+  return (num(x.sort_order as Num) ?? 0) - (num(y.sort_order as Num) ?? 0)
+    || String(x.title_en ?? "").localeCompare(String(y.title_en ?? ""));
+}
+
 // Stabil sortering; tomme værdier står altid sidst, uanset retning.
 export function sortRows<T extends object>(rows: T[], sort: SortState): T[] {
   const acc = ACCESSORS[sort.key];
@@ -329,7 +337,7 @@ export function sortRows<T extends object>(rows: T[], sort: SortState): T[] {
       const cmp = typeof a.value === "number" && typeof b.value === "number"
         ? a.value - b.value
         : String(a.value).localeCompare(String(b.value), "da");
-      return cmp * sign || a.index - b.index;
+      return cmp * sign || tieBreak(a.row, b.row) || a.index - b.index;
     })
     .map((x) => x.row);
 }
