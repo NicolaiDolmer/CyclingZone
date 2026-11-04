@@ -98,6 +98,7 @@ import { queenStageGap7236On } from "./mechanics/queenStageGap7236.ts"; // #7236
 import { descentRegroupTempo6486, descentRegroupTuning7236 } from "./mechanics/descentRegroup6486.ts"; // #6486, #7236
 import { advanceStagePlan, advanceStagePlanAtFinish, createStagePlanRuntime, stagePlanCurrentTasks, stagePlanEntrants, stagePlanFinalEfforts, stagePlanLoadEfforts } from "../../stagePlanEngine.ts"; // #7003, #7380
 import { applyDayForm6649, dayForm6649Events, dayForm6649On } from "./mechanics/dayForm6649.ts"; // #6649
+import { breakawayCurve6912On } from "./mechanics/breakawayCurve6912.ts"; // #6912
 import { finalKmTerrainPiece7383, routeWithFinalKmBoundary7383 } from "./adapters/finalKmBoundary7383.ts"; // #7383
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -1131,6 +1132,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       // #6937 (KUN s5_profiles_v3, slukket): bjergpoint i favoritgruppen + lead-outens pris.
       ...(isS5ProfilesV3OrLater(rulesRevision) ? { s5ProfilesV3: true as const } : {}),
       ...(dayForm6649On(input) ? { dayForm6649: true as const } : {}), // #6649
+      ...(breakawayCurve6912On(input) ? { breakawayCurve6912: true as const } : {}), // #6912
       ...(stagePlan ? { stagePlanTasks: stagePlanCurrentTasks(stagePlan) } : {}), // #7380: runtimens opgave ved segmentets start
     };
     const acceptMovement = (result: {state: EngineState; events: TimelineEvent[]}) => {

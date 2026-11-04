@@ -611,7 +611,10 @@ export async function main(argv = process.argv.slice(2), { now, clock, monotonic
     ...(process.env.CZ_QUEEN_STAGE_GAP_7236 === "1" ? { queenStageGap7236: true } : {}), // #7236: kortet viser om loftet var taendt
     // #6804/#2757: eksportens mappe, saa kortet (ogsaa --report-only) finder loebenes cache.json.
     cacheDir: fromDir ?? prev?.cacheDir ?? null,
+    // #6912: forspringskurven er en kontakt, ikke en revision; kortet skal vise om den var taendt.
+    ...(process.env.CZ_BREAKAWAY_CURVE_6912 === "1" ? { breakawayCurve6912: true } : {}),
   };
+  if (prev && (prev.breakawayCurve6912 === true) !== (meta.breakawayCurve6912 === true)) throw new Error(`${outDir} er koert ${prev.breakawayCurve6912 ? "med" : "uden"} forspringskurven (CZ_BREAKAWAY_CURVE_6912). Brug en ny --out.`);
   writeFileSync(metaFile, JSON.stringify(meta, null, 2));
 
   const tasks = planTasks({ raceIds, opts, outDir, fromDir, prebuilt: inputs.prebuilt });

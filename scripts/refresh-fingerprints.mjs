@@ -7,8 +7,8 @@
 //   node scripts/refresh-fingerprints.mjs --only=6912,bench,calendar --thresholds=<fil> --json
 //
 // Dele:
-//   frosne    6199/6200/6363-digests og #6912 v1/v2. Altid kun tjek; rød = REGRESSION, intet skrives.
-//   6912      v3-nøglerne i flatChase6912Digests.json (otherTerrain, otherOneDay).
+//   frosne    6199/6200/6363-digests, #6912 v1/v2 og #6912-kurvens slukkede revisioner. Altid kun tjek; rød = REGRESSION, intet skrives.
+//   6912      v3-nøglerne i flatChase6912Digests.json (otherTerrain, otherOneDay, curveOffV3).
 //   bench     s5MotorBench.json: gab-dom, vindertype-dom og winnerDigests. Én bench-kørsel.
 //   calendar  calendarGoldenSnapshot.s3.json, kun med --only=calendar.
 //
@@ -44,6 +44,7 @@ export const NEVER_WRITABLE = Object.freeze([
   "backend/lib/engine/v4/test-data/s5UntouchedDigests6363.json",
   "backend/lib/engine/v4/test-data/officialTimesV2Frozen6200.json",
   "backend/lib/engine/v4/test-data/groupClockLegacy6199.json",
+  "backend/lib/engine/v4/test-data/breakawayCurve6912OffDigests.json",
 ]);
 
 /** Testene der vogter de frosne digests (kører fra backend/). */
@@ -54,6 +55,7 @@ export const FROZEN_TESTS = Object.freeze([
   "lib/officialStageTimesIntegration6284.test.ts",
   "lib/engine/v4/cleanRevisionClimb.test.ts",
   "lib/engine/v4/mountainGaps6440.test.ts",
+  "lib/engine/v4/breakawayCurve6912Off.test.ts",
 ]);
 
 export const PARTS = Object.freeze(["6912", "bench", "calendar"]);
@@ -134,7 +136,7 @@ export function judgeFlatChase({ expected, actual, frozenKeys, recomputableKeys 
     const frozenMoved = frozenKeys.filter((k) => !isDeepStrictEqual(actual[k], expected[k]));
     results.push(r("6912-frozen", "6912 v1/v2 (frosset)", frozenMoved.length ? "regression" : "unchanged"));
   }
-  const labels = { otherTerrain: "6912 v3 bakket/bjerg", otherOneDay: "6912 v3 endagsløb" };
+  const labels = { otherTerrain: "6912 v3 bakket/bjerg", otherOneDay: "6912 v3 endagsløb", curveOffV3: "6912 v3 flad/rullende (kurven slukket)" };
   let next = null;
   for (const k of recomputableKeys) {
     if (!(k in actual)) continue;
