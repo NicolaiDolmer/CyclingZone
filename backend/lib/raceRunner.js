@@ -40,7 +40,7 @@ import {
 // #4148: rene måle-hjælpere (ingen adfærdsændring) — se finalizeInstrumentation.js.
 import { wrapSupabaseWithCallCounter, formatPhaseLogLine } from "./finalizeInstrumentation.js";
 // #4147: trin-markering der gør afslutningen genoptagelig efter en afbrydelse.
-import { isRaceFinalizeResumableEnabled } from "./raceFinalizeResumableFlag.js";
+import { isRaceFinalizeResumableEnabled } from "./raceFinalizeResumableFlag.ts";
 import {
   applicableSteps as finalizeApplicableSteps,
   buildFinalizeState,
