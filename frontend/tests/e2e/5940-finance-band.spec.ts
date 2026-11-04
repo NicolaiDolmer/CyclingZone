@@ -5,7 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 // JS null/[] defaults do not describe its accepted input types. Validate
 // the current runtime response against the fixed historical baseline below.
-const afterFile = fileURLToPath(new URL('../../../backend/lib/financeForecast.js', import.meta.url));
+const afterFile = fileURLToPath(new URL('../../../backend/lib/financeForecast.ts', import.meta.url));
 const { computeMultiSeasonForecast } = await import(pathToFileURL(afterFile).href);
 
 for (const scenario of [{ name: 'strong', division: 1, estimate: 200000, realized: 0 }, { name: 'low-division', division: 4, estimate: 200, realized: 0 }, { name: 'realized-floor', division: 4, estimate: 200, realized: 1000 }] as const) {

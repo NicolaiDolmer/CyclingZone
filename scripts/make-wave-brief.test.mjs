@@ -7,7 +7,10 @@
 // Run: node --test scripts/make-wave-brief.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { generateBrief } from "./make-wave-brief.mjs";
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { CI_GUARDS, generateBrief, needsFrozenGolden, resolveWorktreePath } from "./make-wave-brief.mjs";
 
 const baseConfig = {
   issue: 4918,
@@ -209,6 +212,86 @@ test("ownNodeModules-lanen faar besked om selv at oprette worktree/koere npm ci"
 test("scratchRoot kan overstyres", () => {
   const brief = generateBrief({ ...baseConfig, scratchRoot: "D:\\scratch" });
   assert.match(brief, /D:\\scratch\\chore-4918-wave-ops/);
+});
+
+// ===== Boelge-kvalitet 2.0 (#7587) =====
+
+test("#7587 punkt 1: CI-vagterne (ratchet, typecheck-baseline, registry) koeres lokalt foer push", () => {
+  for (const tier of ["TARGETED", "FULL"]) {
+    const brief = generateBrief({ ...baseConfig, tier });
+    assert.match(brief, /CI-vagterne lokalt FOER push \(bindende, #7587\)/);
+    for (const g of CI_GUARDS) {
+      assert.ok(brief.includes(g.cmd), `briefen mangler CI-vagten ${g.name} (${g.cmd})`);
+      assert.ok(brief.includes(`CI-jobbet ${g.name}`), `briefen skal navngive CI-jobbet ${g.name}`);
+    }
+    // De tunge vagter (tsc) gaar gennem semaforen.
+    assert.match(brief, /verify-lock\.ps1" -Max 2 -Timeout 1800 -- node scripts\/check-ts-core-ratchet\.mjs/);
+    assert.match(brief, /verify-lock\.ps1" -Max 2 -Timeout 1800 -- node scripts\/ci\/typecheck-baseline\.mjs/);
+    assert.match(brief, /haev ALDRIG budgettet/);
+  }
+  assert.deepEqual(CI_GUARDS.map((g) => g.name), ["ts-core-ratchet", "frontend-typecheck-baseline", "feature-registry-check"]);
+});
+
+test("#7587 punkt 1: CI-vagternes kommandoer er de samme som CI-workflowene koerer", () => {
+  const root = fileURLToPath(new URL("../", import.meta.url));
+  const files = { "ts-core-ratchet": "ts-core-ratchet.yml", "frontend-typecheck-baseline": "frontend-typecheck.yml", "feature-registry-check": "feature-registry-check.yml" };
+  for (const g of CI_GUARDS) {
+    const wf = readFileSync(path.join(root, ".github", "workflows", files[g.name]), "utf8");
+    assert.ok(wf.includes(`run: ${g.cmd}`), `${files[g.name]} koerer ikke laengere \`${g.cmd}\` - ret CI_GUARDS i make-wave-brief.mjs`);
+    assert.ok(existsSync(path.join(root, g.cmd.split(" ")[1])), `${g.cmd.split(" ")[1]} findes ikke`);
+  }
+});
+
+test("#7587 punkt 1: lanen laeser CI selv EEN gang efter push og retter roedt foer den melder faerdig", () => {
+  const brief = generateBrief(baseConfig);
+  assert.match(brief, /Laes CI selv efter push \(bindende, #7587\)/);
+  assert.match(brief, /`gh pr checks <N>` EEN gang efter dit sidste push/);
+  assert.match(brief, /gh run view <run-id> --log-failed/);
+  assert.match(brief, /Aldrig `--watch`/);
+  assert.match(brief, /samme roede symptom to gange = STOP/);
+  assert.match(brief, /CI-status fra dit sidste `gh pr checks <N>`/, "slutrapporten skal have CI-status");
+});
+
+test("#7587 punkt 3: hard rule 17 gaelder ogsaa forklarende kode-kommentarer, for alle byggespor", () => {
+  for (const extra of [{}, { ownNodeModules: true }, { tier: "FULL" }]) {
+    const brief = generateBrief({ ...baseConfig, ...extra });
+    assert.match(brief, /Hard rule 17 gaelder OGSAA forklarende kode-kommentarer \(#7587\)/);
+    assert.match(brief, /praecise formel, vaegt, taerskel eller dit parametervalg i en kommentar/);
+  }
+});
+
+test("#7587 punkt 2: motor/traening faar frossen-golden-blokken mod merge-base, andre spor kun reglen", () => {
+  const plain = generateBrief(baseConfig);
+  assert.match(plain, /bevises mod en FROSSET kopi af merge-base-koden/, "reglen staar i alle byggebriefs");
+  assert.doesNotMatch(plain, /# Frossen golden/);
+  for (const extra of [
+    { ownership: ["backend/lib/engine/stageSim.ts"] },
+    { touches: ["backend/lib/trainingEngine.js"] },
+    { scopeText: "Ny kontakt i motoren for sprintere" },
+  ]) {
+    const brief = generateBrief({ ...baseConfig, ...extra });
+    assert.match(brief, /# Frossen golden \(motor\/traening bag kontakt, bindende, #7587\)/, JSON.stringify(extra));
+    assert.match(brief, /merge-base HEAD origin\/main/);
+    assert.match(brief, /worktree add --detach "C:\\Dev\\CyclingZone-worktrees\\\.wave-scratch\\chore-4918-wave-ops\\golden-base"/);
+    assert.match(brief, /genereres ALDRIG igen med den nye kode/);
+    assert.match(brief, /aldrig raa `git worktree remove --force`/);
+  }
+  assert.equal(needsFrozenGolden({ ownership: ["docs/X.md"], scopeText: "doc" }), false);
+  assert.equal(needsFrozenGolden({ ownership: ["backend/lib/engine/"] }), true);
+  // Investigate-spor bygger intet og faar ingen golden-blok.
+  assert.doesNotMatch(generateBrief({ ...baseConfig, kind: "investigate", ownership: ["backend/lib/engine/x.ts"] }), /# Frossen golden/);
+});
+
+test("#7587 punkt 8: worktreePath genbruger et eksisterende worktree med andet mappenavn end slug", () => {
+  const brief = generateBrief({ ...baseConfig, worktreePath: "C:/dev/CyclingZone-worktrees/fix-7516-no-fetch" });
+  assert.match(brief, /ABSOLUT WORKING DIR: C:\\dev\\CyclingZone-worktrees\\fix-7516-no-fetch\n/);
+  assert.match(brief, /guard-commit-branch\.sh" chore\/4918-wave-ops "C:\\dev\\CyclingZone-worktrees\\fix-7516-no-fetch"/);
+  assert.doesNotMatch(brief, /CyclingZone-worktrees\\chore-4918-wave-ops"/, "slug-stien maa ikke snige sig ind som arbejdsmappe");
+  // Scratch-mappen foelger stadig slug (den er boelgens, ikke worktreets).
+  assert.match(brief, /\.wave-scratch\\chore-4918-wave-ops\\msg-chore-4918-wave-ops\.txt/);
+  assert.equal(resolveWorktreePath({}, "D:\\wt", "a-b"), "D:\\wt\\a-b");
+  assert.equal(resolveWorktreePath({ worktreePath: "C:\\x\\y\\" }, "D:\\wt", "a-b"), "C:\\x\\y");
+  assert.throws(() => generateBrief({ ...baseConfig, worktreePath: "relativ/sti" }), /absolut Windows-sti/);
 });
 
 // ===== kind: "investigate" (#5220) =====

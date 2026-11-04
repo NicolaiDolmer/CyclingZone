@@ -1,12 +1,12 @@
 // backend/lib/engine/v4/mechanics/descentRespectsTask7380.test.ts
-// #7380 (SLUKKET, ejer-beslutning 30/10): nedkoerselsangrebet respekterer
-// rytterens ordre. Kontrakten:
-//   1. Kontakten er taendt (31/10); slukket (eller taendt uden s5_profiles_v3) er
-//      nedkoerslen bit-identisk med main: ordrer og indsats aendrer intet.
-//   2. Taendt angriber ingen paa Spar, Grupetto, Beskyt lederen eller en
-//      laee-/hjaelperopgave; fri rolle, leder, angreb, foelg angreb, udbrud og
+// #7380 (ejer-beslutning 30/10, taendt 31/10, kontakten fjernet): nedkoersels-
+// angrebet respekterer rytterens ordre. Kontrakten:
+//   1. Reglen gaelder kun under s5_profiles_v3 og senere; uden den er nedkoerslen
+//      uroert: ordrer og indsats aendrer intet.
+//   2. Under s5_profiles_v3 angriber ingen paa Spar, Grupetto, Beskyt lederen eller
+//      en laee-/hjaelperopgave; fri rolle, leder, angreb, foelg angreb, udbrud og
 //      normal/alt ud maa stadig.
-//   3. Kontakten kan kun FJERNE angreb, aldrig skabe et nyt, og monotonien
+//   3. Ordren kan kun FJERNE angreb, aldrig skabe et nyt, og monotonien
 //      (praefiks-egenskaben) holder blandt de ryttere hvis ordre tillader angreb.
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -17,12 +17,9 @@ import fc from "fast-check";
 
 import {
   DESCENT_ATTACK_BARRED_TASKS_7380,
-  DESCENT_TASK_7380_ACTIVE,
   descentAttackBarredByTask7380,
   descentHook,
-  descentTask7380Active,
   isDescentTask7380On,
-  setDescentTask7380ForBench,
 } from "./descent.ts";
 import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
 import { RACE_V4_TUNING } from "../tuning.ts";
@@ -143,13 +140,10 @@ function attackerIds(events: readonly TimelineEvent[]): string[] {
     .sort();
 }
 
-function withSwitch<T>(active: boolean | null, fn: () => T): T {
-  setDescentTask7380ForBench(active);
-  try {
-    return fn();
-  } finally {
-    setDescentTask7380ForBench(null);
-  }
+/** Angriberne paa nedkoerslen; `s5ProfilesV3: false` = en aeldre revision, hvor #7380 ikke gaelder. */
+function attackersFor(riders: readonly RiderSpec[], opts: Parameters<typeof scenario>[1] = {}): string[] {
+  const s = scenario(riders, opts);
+  return attackerIds(descentHook(s.state, s.ctx).events);
 }
 
 function planOrder(team: string, riders: Array<{ rider_id: string; legs: unknown[] }>): TeamOrder {
@@ -161,20 +155,14 @@ const STRONG_A = 90;
 const STRONG_B = 88;
 const WEAK = 20;
 
-// ── 1. Kontakten er taendt; slukket er bit-identisk ─────────────────────────
+// ── 1. Kun s5_profiles_v3; aeldre revisioner er uroert ──────────────────────
 
-test("#7380: kontakten er TAENDT (ejer-go 31/10)", () => {
-  assert.equal(DESCENT_TASK_7380_ACTIVE, true, "ejer-go 31/10");
-  assert.equal(descentTask7380Active(), true);
+test("#7380: gaelder altid under s5_profiles_v3, aldrig paa aeldre revisioner", () => {
   assert.equal(isDescentTask7380On({ s5ProfilesV3: true }), true);
   assert.equal(isDescentTask7380On({}), false, "kun s5_profiles_v3 og senere");
-  withSwitch(true, () => {
-    assert.equal(isDescentTask7380On({ s5ProfilesV3: true }), true);
-    assert.equal(isDescentTask7380On({}), false, "kun s5_profiles_v3 og senere");
-  });
 });
 
-test("#7380: slukket (og taendt uden s5_profiles_v3) er nedkoerslen bit-identisk: ordrer og indsats aendrer intet", () => {
+test("#7380: uden s5_profiles_v3 er nedkoerslen uroert: ordrer og indsats aendrer intet", () => {
   const specArb = fc.array(
     fc.record({
       descending: fc.integer({ min: 0, max: 99 }),
@@ -184,22 +172,22 @@ test("#7380: slukket (og taendt uden s5_profiles_v3) er nedkoerslen bit-identisk
     { minLength: 2, maxLength: 9 },
   );
   fc.assert(
-    fc.property(specArb, fc.constantFrom<1 | 2 | 3>(1, 2, 3), fc.boolean(), (specs, technicality, onWithoutV3) => {
+    fc.property(specArb, fc.constantFrom<1 | 2 | 3>(1, 2, 3), (specs, technicality) => {
       const riders = specs.map((s, i) => ({ id: `r${i}`, ...s }));
       // Referencen: samme ryttere og roller uden ordre-signal (alle normal, ingen plan).
       const neutral = riders.map((r) => ({ id: r.id, descending: r.descending, role: r.role }));
       const orders = [planOrder("team-a", riders.map((r) => ({ rider_id: r.id, legs: [{ task: "stay_sheltered" }] })))];
       const tasks: Record<string, StagePlanTask> = Object.fromEntries(riders.map((r, i) => [r.id, STAGE_PLAN_TASKS[i % STAGE_PLAN_TASKS.length]]));
       const run = (rs: RiderSpec[], o: TeamOrder[], t?: Record<string, StagePlanTask>) => {
-        const { state, ctx } = scenario(rs, { technicality, orders: o, s5ProfilesV3: !onWithoutV3, stagePlanTasks: t });
+        const { state, ctx } = scenario(rs, { technicality, orders: o, s5ProfilesV3: false, stagePlanTasks: t });
         const result = descentHook(state, ctx);
         return { result, state };
       };
-      const ref = withSwitch(false, () => run(neutral, []));
-      const got = withSwitch(onWithoutV3 ? true : false, () => run(riders, orders));
-      // Ogsaa med runtimens opgaver i ctx (og den indsats de giver): slukket aendrer intet.
-      const gotTasks = withSwitch(onWithoutV3 ? true : false, () => run(neutral, orders, tasks));
-      const refTasks = withSwitch(false, () => run(neutral, [], tasks));
+      const ref = run(neutral, []);
+      const got = run(riders, orders);
+      // Ogsaa med runtimens opgaver i ctx (og den indsats de giver): aeldre revision aendrer intet.
+      const gotTasks = run(neutral, orders, tasks);
+      const refTasks = run(neutral, [], tasks);
       assert.deepEqual(gotTasks.result, refTasks.result);
       assert.deepEqual(got.result.events, ref.result.events);
       assert.deepEqual(got.result.state.groups, ref.result.state.groups);
@@ -210,57 +198,49 @@ test("#7380: slukket (og taendt uden s5_profiles_v3) er nedkoerslen bit-identisk
   );
 });
 
-// ── 2. Taendt: ordren respekteres ───────────────────────────────────────────
+// ── 2. Under s5_profiles_v3: ordren respekteres ─────────────────────────────
 
-test("#7380 taendt, uden etapeplan: Spar, Grupetto og Beskyt lederen angriber ikke; normal og alt ud gaar", () => {
+test("#7380 uden etapeplan: Spar, Grupetto og Beskyt lederen angriber ikke; normal og alt ud gaar", () => {
   for (const effort of EFFORTS) {
     const riders: RiderSpec[] = [
       { id: "a", descending: STRONG_A, effort },
       { id: "b", descending: STRONG_B },
       { id: "w", descending: WEAK },
     ];
-    const off = withSwitch(false, () => { const s = scenario(riders); return attackerIds(descentHook(s.state, s.ctx).events); });
-    const on = withSwitch(true, () => { const s = scenario(riders); return attackerIds(descentHook(s.state, s.ctx).events); });
-    assert.deepEqual(off, ["a", "b"], `slukket angriber begge (${effort})`);
+    const older = attackersFor(riders, { s5ProfilesV3: false });
+    const v3 = attackersFor(riders);
+    assert.deepEqual(older, ["a", "b"], `aeldre revision angriber begge (${effort})`);
     const barred = effort === "save" || effort === "grupetto" || effort === "protect";
-    assert.deepEqual(on, barred ? ["b"] : ["a", "b"], effort);
+    assert.deepEqual(v3, barred ? ["b"] : ["a", "b"], effort);
   }
 });
 
-test("#7380 taendt: er alle i vinduet spaerret, angribes der ikke, og ingen udenfor vinduet rykker ind", () => {
+test("#7380: er alle i vinduet spaerret, angribes der ikke, og ingen udenfor vinduet rykker ind", () => {
   const riders: RiderSpec[] = [
     { id: "a", descending: STRONG_A, effort: "save" },
     { id: "b", descending: STRONG_B, effort: "grupetto" },
     { id: "m", descending: 60 },
     { id: "w", descending: WEAK },
   ];
-  const off = withSwitch(false, () => { const s = scenario(riders); return attackerIds(descentHook(s.state, s.ctx).events); });
-  assert.ok(!off.includes("m"), "m er uden for vinduet ogsaa slukket");
-  withSwitch(true, () => {
-    const { state, ctx } = scenario(riders);
-    const result = descentHook(state, ctx);
-    assert.deepEqual(attackerIds(result.events), []);
-    assert.equal(result.state.groups.length, 1, "ingen split");
-  });
+  assert.ok(!attackersFor(riders, { s5ProfilesV3: false }).includes("m"), "m er uden for vinduet ogsaa uden #7380");
+  const { state, ctx } = scenario(riders);
+  const result = descentHook(state, ctx);
+  assert.deepEqual(attackerIds(result.events), []);
+  assert.equal(result.state.groups.length, 1, "ingen split");
 });
 
-test("#7380 taendt, etapeplan gennem descentHook: runtimens laee-opgave spaerrer, ogsaa paa normal indsats", () => {
+test("#7380 etapeplan gennem descentHook: runtimens laee-opgave spaerrer, ogsaa paa normal indsats", () => {
   // Hjaelperen paa "hold lederen fremme" koerer normal indsats; uden opgaven ville han angribe.
   const riders: RiderSpec[] = [
     { id: "h", descending: STRONG_A, effort: "normal", role: "helper" },
     { id: "f", descending: STRONG_B, effort: "normal", role: "free_role" },
     { id: "w", descending: WEAK, role: "captain" },
   ];
-  withSwitch(true, () => {
-    const withTask = scenario(riders, { stagePlanTasks: { h: "shelter_leader" } });
-    assert.deepEqual(attackerIds(descentHook(withTask.state, withTask.ctx).events), ["f"]);
-    const noPlan = scenario(riders);
-    assert.deepEqual(attackerIds(descentHook(noPlan.state, noPlan.ctx).events), ["f", "h"], "uden plan: normal maa");
-    // Hooket genberegner aldrig planen: en plan-ordre uden runtimens opgave aendrer intet her.
-    const orders = [planOrder("team-a", [{ rider_id: "h", legs: [{ task: "shelter_leader" }] }])];
-    const ordersOnly = scenario(riders, { orders });
-    assert.deepEqual(attackerIds(descentHook(ordersOnly.state, ordersOnly.ctx).events), ["f", "h"]);
-  });
+  assert.deepEqual(attackersFor(riders, { stagePlanTasks: { h: "shelter_leader" } }), ["f"]);
+  assert.deepEqual(attackersFor(riders), ["f", "h"], "uden plan: normal maa");
+  // Hooket genberegner aldrig planen: en plan-ordre uden runtimens opgave aendrer intet her.
+  const orders = [planOrder("team-a", [{ rider_id: "h", legs: [{ task: "shelter_leader" }] }])];
+  assert.deepEqual(attackersFor(riders, { orders }), ["f", "h"]);
 });
 
 // ── descentAttackBarredByTask7380: opgaven afgoer det ───────────────────────
@@ -336,10 +316,10 @@ function runRuntime(rt: StagePlanRuntime, route: RouteV2, upTo: number, stateAt:
 }
 
 /** Nedkoerslen paa segment `index` med runtimens startliste og opgaver (som segmentLoop.ts). */
-function descentAttackersFromRuntime(rt: StagePlanRuntime, route: RouteV2, index: number, state: EngineState): string[] {
+function descentAttackersFromRuntime(rt: StagePlanRuntime, route: RouteV2, index: number, state: EngineState, v3 = true): string[] {
   const ctx: SegmentHookContext = {
     ...makeHookCtx({ segment: route.segments[index], segmentIndex: index, route, entrants: stagePlanEntrants(rt, RT_ENTRANTS), tuning: RACE_V4_TUNING, seed: "descent-7380-rt" }),
-    s5ProfilesV3: true,
+    ...(v3 ? { s5ProfilesV3: true as const } : {}),
     stagePlanTasks: stagePlanCurrentTasks(rt),
   };
   return attackerIds(descentHook(state, ctx).events);
@@ -360,8 +340,8 @@ test("#7380 (review P1): sat-leddet er klaebende: sat, tilbage i gruppen, stadig
   assert.deepEqual(events.map((e) => [e.params.rider_id, e.params.task, e.params.reason]), [["u", "shelter_leader", "dropped"]]);
   assert.equal(isRiderDropped("u", TOGETHER(), RT_ENTRANTS), false, "stillingen nu siger 'ikke sat'");
   assert.equal(stagePlanCurrentTasks(rt)["u"], "shelter_leader", "runtimen bliver paa sat-leddet");
-  withSwitch(true, () => assert.deepEqual(descentAttackersFromRuntime(rt, route, 2, TOGETHER()), ["f"]));
-  withSwitch(false, () => assert.deepEqual(descentAttackersFromRuntime(rt, route, 2, TOGETHER()), ["f", "u"], "slukket: som foer"));
+  assert.deepEqual(descentAttackersFromRuntime(rt, route, 2, TOGETHER()), ["f"]);
+  assert.deepEqual(descentAttackersFromRuntime(rt, route, 2, TOGETHER(), false), ["f", "u"], "aeldre revision: som foer");
 });
 
 test("#7380 (review P2): skiftet ved segmentets midtpunkt: nedkoerslen ser samme led som runtimen", () => {
@@ -378,7 +358,7 @@ test("#7380 (review P2): skiftet ved segmentets midtpunkt: nedkoerslen ser samme
     const rt = createStagePlanRuntime([planOrder(RT_TEAM, [{ rider_id: "u", legs }])], route, RT_ENTRANTS)!;
     runRuntime(rt, route, 1, () => TOGETHER());
     assert.equal(stagePlanCurrentTasks(rt)["u"], task, `punkt ved km ${komKm}`);
-    withSwitch(true, () => assert.deepEqual(descentAttackersFromRuntime(rt, route, 1, TOGETHER()), attackers, `punkt ved km ${komKm}`));
+    assert.deepEqual(descentAttackersFromRuntime(rt, route, 1, TOGETHER()), attackers, `punkt ved km ${komKm}`);
   }
 });
 
@@ -393,11 +373,11 @@ test("#7380 (review P2): paa etapens sidste segment skifter holdarbejde ved star
     const rt = createStagePlanRuntime([planOrder(RT_TEAM, [{ rider_id: "u", legs }])], route, RT_ENTRANTS)!;
     runRuntime(rt, route, 1, () => TOGETHER());
     assert.equal(stagePlanCurrentTasks(rt)["u"], task, next);
-    withSwitch(true, () => assert.deepEqual(descentAttackersFromRuntime(rt, route, 1, TOGETHER()), attackers, next));
+    assert.deepEqual(descentAttackersFromRuntime(rt, route, 1, TOGETHER()), attackers, next);
   }
 });
 
-test("#7380: hele motoren: nedkoerslens opgave og indsats er runtimens, og taendt angriber ingen med en spaerret ordre", () => {
+test("#7380: hele motoren: nedkoerslens opgave og indsats er runtimens, og ingen med en spaerret ordre angriber", () => {
   const input = JSON.parse(readFileSync(path.join(here, "..", "fixtures", "bjerg-selektion", "input.json"), "utf8")) as StageInput;
   input.startlist = input.startlist.map((e, i) => ({ ...e, team_id: `T${Math.floor(i / 3)}` }));
   (input as { rules_revision?: unknown }).rules_revision = "s5_profiles_v3";
@@ -417,7 +397,7 @@ test("#7380: hele motoren: nedkoerslens opgave og indsats er runtimens, og taend
   const plans = new Map(input.orders.flatMap((o) => (o.params as { riders: Array<{ rider_id: string; legs: Array<{ task: StagePlanTask }> }> }).riders.map((r) => [r.rider_id, r.legs] as const)));
 
   type Seen = { from_km: number; tasks: Record<string, StagePlanTask>; efforts: Record<string, EffortLevel>; attackers: string[] };
-  const run = (active: boolean | null) => withSwitch(active, () => {
+  const run = () => {
     const seen: Seen[] = [];
     const hooks = {
       ...LIVE_MECHANIC_HOOKS,
@@ -430,9 +410,9 @@ test("#7380: hele motoren: nedkoerslens opgave og indsats er runtimens, og taend
       },
     };
     return { seen, events: runSegmentLoop(input, hooks).timeline };
-  });
+  };
 
-  const on = run(true);
+  const on = run();
   assert.ok(on.seen.length > 0, "fixturen har en nedkoersel");
   let switchedBefore = false;
   for (const s of on.seen) {
@@ -448,15 +428,11 @@ test("#7380: hele motoren: nedkoerslens opgave og indsats er runtimens, og taend
     for (const id of s.attackers) assert.ok(!DESCENT_ATTACK_BARRED_TASKS_7380.has(s.tasks[id]), `${id} angreb paa ${s.tasks[id]}`);
   }
   assert.ok(switchedBefore, "mindst ét skift foer nedkoerslen (ellers tester testen intet)");
-  // Slukket: foerste nedkoersel ser samme opgaver (intet foer den er aendret), og kontakten fjerner kun angribere.
-  const off = run(false);
-  assert.deepEqual(off.seen[0].tasks, on.seen[0].tasks);
-  for (const id of on.seen[0].attackers) assert.ok(off.seen[0].attackers.includes(id), `${id} angriber kun taendt`);
 });
 
 // ── 3. Kun fjerne, aldrig tilfoeje + monotoni blandt de frie ────────────────
 
-test("#7380 taendt (property): angriberne er en delmaengde af slukket, og monotonien holder blandt de frie", () => {
+test("#7380 (property): angriberne er en delmaengde af den aeldre revisions, og monotonien holder blandt de frie", () => {
   const specArb = fc.array(
     fc.record({ descending: fc.integer({ min: 0, max: 99 }), effort: fc.constantFrom(...EFFORTS) }),
     { minLength: 2, maxLength: 9 },
@@ -464,10 +440,10 @@ test("#7380 taendt (property): angriberne er en delmaengde af slukket, og monoto
   fc.assert(
     fc.property(specArb, fc.constantFrom<2 | 3>(2, 3), (specs, technicality) => {
       const riders = specs.map((s, i) => ({ id: `r${i}`, ...s }));
-      const off = withSwitch(false, () => { const s = scenario(riders, { technicality }); return attackerIds(descentHook(s.state, s.ctx).events); });
-      const on = withSwitch(true, () => { const s = scenario(riders, { technicality }); return attackerIds(descentHook(s.state, s.ctx).events); });
+      const off = attackersFor(riders, { technicality, s5ProfilesV3: false });
+      const on = attackersFor(riders, { technicality });
       const offSet = new Set(off);
-      for (const id of on) assert.ok(offSet.has(id), `${id} angriber kun taendt`);
+      for (const id of on) assert.ok(offSet.has(id), `${id} angriber kun under #7380`);
       const free = riders.filter((r) => !(r.effort === "save" || r.effort === "grupetto" || r.effort === "protect"));
       for (const id of on) assert.ok(free.some((r) => r.id === id), `${id} har en spaerret ordre`);
       // Praefiks: en fri rytter der er bedre end en fri angriber, angriber ogsaa.
@@ -477,7 +453,7 @@ test("#7380 taendt (property): angriberne er en delmaengde af slukket, og monoto
           assert.ok(onSet.has(better.id), `${better.id} (bedre) blev tilbage mens ${attacker.id} angreb`);
         }
       }
-      // Kontakten fjerner kun de spaerrede: de frie angribere er praecis de frie fra slukket.
+      // Ordren fjerner kun de spaerrede: de frie angribere er praecis de frie fra den aeldre revision.
       assert.deepEqual(on, off.filter((id) => free.some((r) => r.id === id)));
     }),
     { numRuns: 200, seed: 73801 },

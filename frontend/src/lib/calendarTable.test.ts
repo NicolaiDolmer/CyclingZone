@@ -119,6 +119,21 @@ test("#6683 sortering: datoer stigende som standard, starttid, så navn", () => 
   assert.deepEqual(sortCalendarTableRows(rows, { key: "stages", dir: "desc" }).map((r) => r.id)[0], "r1");
 });
 
+test("#7533 sortering: start, terræn, klasse og holdstatus kan sorteres", () => {
+  // Starttid: r5 har ingen og står sidst i begge retninger.
+  assert.deepEqual(sortCalendarTableRows(rows, { key: "start" }).map((r) => r.id), ["r1", "r4", "r2", "r3", "r5"]);
+  assert.equal(sortCalendarTableRows(rows, { key: "start", dir: "desc" }).at(-1)!.id, "r5");
+  // Terræn: hårdeste kategori først (bjerg før brosten og bakker).
+  assert.equal(sortCalendarTableRows(rows, { key: "terrain" })[0].kinds[0], "mountain");
+  // Klasse: prestige-rækkefølgen, samme liste som filteret.
+  const classes = sortCalendarTableRows(rows, { key: "class" }).map((r) => r.raceClass);
+  assert.deepEqual(classes, [...classes].sort((a, b) => classOptions(rows).indexOf(a!) - classOptions(rows).indexOf(b!)));
+  // Holdstatus: Mangler før Klar; løb uden status sidst.
+  const squad = sortCalendarTableRows(rows, { key: "squad" }).map((r) => r.status);
+  assert.deepEqual(squad.slice(0, 2), ["missing", "selected"]);
+  assert.equal(sortCalendarTableRows(rows, { key: "squad", dir: "desc" })[0].status, "selected");
+});
+
 test("#6683 sortering: løb uden datoer står sidst i begge retninger", () => {
   const noDate = buildCalendarTableRows([{ id: "x", name: "Aaa", raceType: "single", stages: 1 }], TODAY);
   const all = [...rows, ...noDate];

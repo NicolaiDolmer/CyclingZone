@@ -135,8 +135,10 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
 
     training_decision_card: false,
 
-    race_day_intention_enabled: false,
     training_catalog_v3: false,
+
+    race_library_v2: false,
+    condition_v2_race_date_training_day: false,
   });
   assert.equal(f.betaLookups(), 0, "en anonym forespoergsel maa ikke slaa en bruger op");
 });
@@ -193,8 +195,10 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
 
     training_decision_card: false,
 
-    race_day_intention_enabled: false,
     training_catalog_v3: false,
+
+    race_library_v2: false,
+    condition_v2_race_date_training_day: false,
   });
 });
 
@@ -259,8 +263,10 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
 
     training_decision_card: false,
 
-    race_day_intention_enabled: false,
     training_catalog_v3: false,
+
+    race_library_v2: false,
+    condition_v2_race_date_training_day: false,
   });
   assert.deepEqual(await readPlayerFeatureFlags(supabase, { isBetaTester: true }), {
     race_engine_v4: true,
@@ -286,8 +292,10 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
 
     training_decision_card: false,
 
-    race_day_intention_enabled: false,
     training_catalog_v3: false,
+
+    race_library_v2: false,
+    condition_v2_race_date_training_day: false,
   });
 });
 
@@ -346,6 +354,31 @@ test("#3564: development_curve_b er binaert, beta er off ogsaa for beta-gruppen"
   assert.equal(asTester.race_engine_v4, true, "andre flag beholder beta-evalueringen");
   const on = await readPlayerFeatureFlags(fakeSupabase({ development_curve_b: "on", development_curve_b_params: CURVE_B_TEST_PARAMS }));
   assert.equal(on.development_curve_b, true);
+});
+
+test("#7536: condition_v2_race_date_training_day er binaert som motoren (kun on taender Hjaelp)", async () => {
+  assert.ok(PLAYER_VISIBLE_BINARY_FLAG_KEYS.includes("condition_v2_race_date_training_day"));
+  const beta = await readPlayerFeatureFlags(fakeSupabase({ condition_v2_race_date_training_day: "beta" }), { isBetaTester: true });
+  assert.equal(beta.condition_v2_race_date_training_day, false);
+  const chain = { training_tick_per_race_day: "on", training_condition_per_date: "on", condition_model_v2: "on" };
+  const on = await readPlayerFeatureFlags(fakeSupabase({ ...chain, condition_v2_race_date_training_day: "on" }));
+  assert.equal(on.condition_v2_race_date_training_day, true);
+});
+
+test("#7536: Hjaelp-flaget er off naar condition_model_v2 eller dens forudsaetning er off", async () => {
+  const parentOff = await readPlayerFeatureFlags(fakeSupabase({ condition_v2_race_date_training_day: "on", condition_model_v2: "off" }));
+  assert.equal(parentOff.condition_v2_race_date_training_day, false, "motoren bruger ikke reglen uden v2");
+  const reported = [];
+  const brokenChain = await readPlayerFeatureFlags(
+    fakeSupabase({ condition_v2_race_date_training_day: "on", condition_model_v2: "on", training_condition_per_date: "off" }),
+    { reportError: (error) => reported.push(error) },
+  );
+  assert.equal(brokenChain.condition_v2_race_date_training_day, false, "en ugyldig kaede er off");
+  assert.equal(reported.length, 1);
+  const readFails = await readPlayerFeatureFlags(
+    fakeSupabase({ condition_v2_race_date_training_day: "on" }, { failKeys: ["condition_model_v2"] }),
+  );
+  assert.equal(readFails.condition_v2_race_date_training_day, false, "en DB-fejl giver aldrig adgang");
 });
 
 // Syntetiske testparams (ikke kalibreringen, hard rule 17).

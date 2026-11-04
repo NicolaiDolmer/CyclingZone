@@ -17,7 +17,22 @@ import { fetchAllRows } from "./supabasePagination.js";
 import { defaultResolveGraduate } from "./academyGraduation.js";
 import { runMissedGraduateSweep } from "./missedGraduateSweep.js";
 
-export async function runAcademyGraduationSweep({
+// #7474: ét sweep ad gangen i processen. Et tick med mange udløbne vinduer (701
+// den 1/11) tog over 5 minutter, så næste tick startede oven i det og afgjorde de
+// samme ryttere en gang til (dobbeltbesked til 7 managere).
+let sweepInFlight = false;
+
+export async function runAcademyGraduationSweep(args = {}) {
+  if (sweepInFlight) return { processed: 0, skipped: "already_running" };
+  sweepInFlight = true;
+  try {
+    return await runSweepOnce(args);
+  } finally {
+    sweepInFlight = false;
+  }
+}
+
+async function runSweepOnce({
   supabase, now = new Date(),
   resolveFn = defaultResolveGraduate, isEnabled = isAcademyEnabled,
   backfillFn = runMissedGraduateSweep,
@@ -46,7 +61,7 @@ export async function runAcademyGraduationSweep({
     supabase.from("academy_graduation")
       .select("team_id, rider_id, deadline").eq("status", "pending").order("created_at"));
 
-  let resolved = 0, failed = 0;
+  let resolved = 0, failed = 0, alreadyResolved = 0;
   // #4484: fejlbeskederne SKAL med ud af sweepet. Den aggregerede Sentry-capture
   // i cron.js bar kun tallet "1 ryttere fejlede", så en rytter der låste sweepet
   // fast 23 nætter i træk krævede en DB-udgravning for at identificere. Spejler
@@ -58,10 +73,13 @@ export async function runAcademyGraduationSweep({
       await resolveFn(supabase, { teamId: g.team_id, riderId: g.rider_id, seasonNumber: season.number, now });
       resolved++;
     } catch (err) {
+      // #7474: rækken blev afgjort efter listen blev læst (manageren selv, eller
+      // en anden proces). Det er ikke en fejl, bare ikke længere vores opgave.
+      if (err instanceof Error && err.message === "not_pending") { alreadyResolved++; continue; }
       failed++;
       errors.push({ riderId: g.rider_id, teamId: g.team_id, message: err?.message || String(err) });
       console.error(`graduation sweep failed (${g.rider_id}):`, err.message);
     }
   }
-  return { processed: resolved + failed, resolved, failed, errors, backfill };
+  return { processed: resolved + failed, resolved, failed, alreadyResolved, errors, backfill };
 }

@@ -475,6 +475,16 @@ const climbSelectionExtra = {
 /** M2 additiv selektions-tuning (deep-frosset). Se climbSelectionExtra-kommentaren ovenfor. */
 export const CLIMB_SELECTION_EXTRA_TUNING = deepFreeze(climbSelectionExtra);
 
+// #7236 (KUN s5_profiles_v3 + kontakten queen_stage_gap_7236, SLUKKET): loftet paa favoritternes
+// hul over sidste top paa en bjergetape med kort nedkoersel (mechanics/climbSelection.ts,
+// queenStageTopCap7236). Kalibreret privat (balance-internals/7236/, hard rule 17).
+export const QUEEN_STAGE_GAP_7236_TUNING = deepFreeze({
+  profiles: ["mountain", "high_mountain"] as readonly ProfileType[],
+  capRank: 10, // loftet maales paa denne favorit (udbruddet regnes fra)
+  capSeconds: 150, // loftet for favorit nr. capRank over toppen (kalibrering privat)
+  maxTopToFinishKm: 13, // kun naar resten fra toppen til maal er kortere end dette (lange nedkoersler uroerte)
+});
+
 // ── M1 (groups.mergeTailGroupsDetailed, #5813) — ADDITIV grupetto-samling ────
 // SS2's frosne GroupsTuning har kun den almindelige merge-taerskel. Se
 // groups.mergeTailGroupsDetailed for reglen og segmentLoop for hvornaar den
@@ -1047,7 +1057,7 @@ const breakawayChaseV3 = {
 /** #6441 official_times_v3-jagten (deep-frosset). Se kommentaren ovenfor. */
 export const BREAKAWAY_CHASE_V3_TUNING = deepFreeze(breakawayChaseV3);
 
-// ── #6363 (KUN s5_profiles_v1, SLUKKET): S5-etapeprofilernes motor ────────────
+// ── #6363 (s5_profiles_v1 og senere, live): S5-etapeprofilernes motor ─────────
 // Spec docs/superpowers/specs/2026-10-12-s5-etapeprofiler-design.md §4. Ingen
 // aeldre revision laeser noget herfra (s5Profiles.ts mapper de nye ord til de
 // gamle under dem), saa alle eksisterende loeb er byte-identiske.
@@ -1596,7 +1606,7 @@ export type MountainSelectionV2Knobs = {
 /** #6084 orders_gc_v2-bjergselektion (deep-frosset). Se kommentaren ovenfor. */
 export const MOUNTAIN_SELECTION_V2_TUNING = deepFreeze(mountainSelectionV2);
 
-// ── #6804 (KUN s5_profiles_v3, SLUKKET): udbrudspakken trin 2 ────────────────
+// ── #6804 (KUN s5_profiles_v3, live): udbrudspakken trin 2 ───────────────────
 // Spec docs/superpowers/specs/2026-10-21-6804-udbrud-pr-loebsgruppe-design.md (oven paa
 // 2026-10-17-6804-hilly-breakaway-design.md P1-P5). Ét trin pr. commit; ingen aeldre
 // revision laeser noget herfra (mechanics/breakawayV3_6804.ts, gcThreat.ts). Tallene er kalibreret
@@ -1675,7 +1685,7 @@ const s5V3Breakaway = {
 /** #6804 s5_profiles_v3-udbrudspakken (deep-frosset). Se kommentaren ovenfor. */
 export const S5_V3_BREAKAWAY_TUNING = deepFreeze(s5V3Breakaway);
 
-// #7160 (KUN s5_profiles_v3, SLUKKET): favoritholdene lader et ufarligt udbrud gaa paa bjerg
+// #7160 (KUN s5_profiles_v3, live): favoritholdene lader et ufarligt udbrud gaa paa bjerg
 // (mechanics/breakawayInterest7160.ts). START-KANDIDATER: kalibreres bagefter i testporten med
 // prod-startlister (balance-internals/7160/, hard rule 17); ingen tal i kommentarer.
 export const S5_V3_MOUNTAIN_LET_GO_7160_TUNING = deepFreeze({
@@ -1716,4 +1726,26 @@ export const S5_V3_GC_LEASH_7258_TUNING = deepFreeze({
   // (B) Feltets bedste paa fremskrevet slutklassement (afstand + fremskrevet tab) gaar ikke i
   // morgenudbrud (samme antal som stillingens top, S5_MORNING_GC_EXCLUSION).
   projectedExcludeTopN: 10,
+});
+
+// #6912 (KUN s5_profiles_v3 + kontakten breakaway_curve_6912, SLUKKET): forspringskurven
+// (mechanics/breakawayCurve6912.ts). Kalibreret privat i testporten (balance-internals/6912/,
+// hard rule 17); ingen tal i kommentarer. Loftet er uaendret og staar som noedgraense.
+export const BREAKAWAY_CURVE_6912_TUNING = deepFreeze({
+  profileTypes: ["flat", "mountain", "high_mountain"] as readonly ProfileType[],
+  // Kun her har styringen en overgraense (fangsten flyttes til finalen). Paa bjerg lukker holdene selv.
+  upperBoundProfiles: ["flat", "rolling"] as readonly ProfileType[],
+  // Under styringen loeftes daempningen af jagten foer finalestigningen til (mindst) denne skala
+  // pr. profil (mountainSelection.ts). Udeladt = ingen loeftning.
+  liftedPreFinalChaseClosingScaleByProfile: { high_mountain: 0.35 } as Partial<Record<ProfileType, number>>,
+  // Toppen = denne andel af loftet pr. profil (udeladt = loftet).
+  peakShareOfCeilingByProfile: { flat: 0.85, mountain: 1, high_mountain: 1 } as Partial<Record<ProfileType, number>>,
+  growthKnee: 0.5, // kurvens knae: lavere = hurtigere mod toppen
+  topShare: 0.9, // lad-gaa-fasen slutter, naar kurven har naaet denne andel af toppen
+  topShareByProfile: { mountain: 0.97, high_mountain: 0.97 } as Partial<Record<ProfileType, number>>, // profilens egen andel (udeladt = topShare)
+  declineShape: 1, // maalets fald fra toppen mod finalen (1 = jaevnt med resterende km)
+  finishTargetSecondsByProfile: { flat: 0, mountain: 300, high_mountain: 240 } as Partial<Record<ProfileType, number>>,
+  catchKmBeforeFinishByProfile: { flat: 10 } as Partial<Record<ProfileType, number>>, // maalet naas saa langt foer stregen
+  climbLossSecondsPerGradientKm: 2, // forventet tab pr. stignings-km pr. procent paa finalestigningen
+  maxControlClosingSecondsPerKm: 25, // hoejeste lukning pr. km under styringen
 });

@@ -235,7 +235,7 @@ test("taktik (#7327): delvis gemning bevarer kladden og gemmer kun resten", asyn
   await stabilizePage(page);
   await installNetworkMocks(page);
   await mockTacticsRace(page, {
-    race: raceFixture({ stages: 3, stagesCompleted: 1, raceType: "stage_race" }),
+    race: { ...raceFixture({ stages: 3, stagesCompleted: 1, raceType: "stage_race" }), engine_rules_revision: "orders_gc_v1" },
     validEfforts: FIVE_STEPS,
     results: LIVE_RESULTS,
   });
@@ -473,7 +473,7 @@ test("taktik (#7003): modsatte ordrer spaerres, gamle modsaetninger faar 'Vælg 
     { rider_id: "r3", name: "Rider Three", race_role: "helper", abandoned: false },
   ];
   await mockTacticsRace(page, {
-    race: raceFixture({ stages: 5, stagesCompleted: 1, raceType: "stage_race" }),
+    race: { ...raceFixture({ stages: 5, stagesCompleted: 1, raceType: "stage_race" }), engine_rules_revision: "orders_gc_v1" },
     validEfforts: FIVE_STEPS,
     results: LIVE_RESULTS,
     riders,
@@ -535,7 +535,7 @@ test("taktik (#7332): enkeltstart viser kun Kør roligt, Normal og Alt ud", asyn
   await stabilizePage(page);
   await installNetworkMocks(page);
   const getBody = await mockTacticsRace(page, {
-    race: raceFixture({ stages: 3, stagesCompleted: 1, raceType: "stage_race" }),
+    race: { ...raceFixture({ stages: 3, stagesCompleted: 1, raceType: "stage_race" }), engine_rules_revision: "orders_gc_v1" },
     validEfforts: FIVE_STEPS,
     results: LIVE_RESULTS,
     // Gemt foer #7332: hjaelperen "arbejder" paa enkeltstarten.

@@ -56,7 +56,7 @@ import { isRaceDayDevelopmentEnabled } from "./raceDayDevelopmentFlag.js";
 import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { isTrainingConditionPerDateEnabled, readConditionWriterFlag } from './trainingDateConditionFlag.js';
-import { isConditionModelV2Enabled } from './conditionModelV2Flag.js';
+import { isConditionModelV2Enabled, isRaceDateTrainingDayEnabled } from './conditionModelV2Flag.js';
 import { loadTeamMedicalBonus } from './medicalEffects.js';
 import { settleTrainingDateCondition, canonicalRaceLoads } from './trainingDateCondition.js';
 import {
@@ -71,7 +71,6 @@ import {
   loadTeamDivisionId,
 } from "./injuryRaceDays.js";
 import { notifyTrainingInjuries } from "./raceAvailabilityNotifications.js"; // #7086
-import { isRaceDayIntentionEnabled } from "./raceIntentionFlag.js"; // #6641 variant B
 import { loadDevelopmentCurveB } from "./developmentCurveBFlag.ts"; // #3564 kurve B
 import { ensureCurveBIgnition, curveBTransitionForDate, loadCurveBTransitionRoster } from "./developmentCurveBTransition7382.ts"; // #7382 blød overgang
 import { loadRaceDayEffortByRider, raceDayIntentionYieldMultiplier } from "./raceDayIntentionYield.js"; // #6641 variant B
@@ -519,6 +518,7 @@ export async function runTeamTrainingDay({
   const conditionPerDate = useRaceDayKey && conditionDateFlagOn;
   // #6984: v2 laeses kun naar dato-modellen ejer tilstanden (ellers ingen ekstra read).
   const conditionModelV2On = conditionPerDate ? await isConditionModelV2Enabled(supabase) : false;
+  const raceDateTrainingDayOn = conditionModelV2On ? await isRaceDateTrainingDayEnabled(supabase) : false; // #7536
   if(conditionPerDate && eligibleRiderIds==null) throw new Error('Normalized training requires an explicit ready-rider list');
   let dateReceipts = [];
   let dateWork = null;
@@ -622,14 +622,18 @@ export async function runTeamTrainingDay({
   let canonicalLoadRows = [];
   try {
   // ── 2) Load riders (ikke-pensionerede, dette hold) ──────────────────────────
-  let ridersQuery = supabase
-    .from("riders")
-    .select("id, primary_type, secondary_type, potentiale, birthdate, firstname, lastname, team_id, is_academy, is_retired");
-  ridersQuery=dateWork ? ridersQuery.in('id',dateWork.expected_rider_ids) : ridersQuery.eq('team_id',teamId).eq('is_retired',false);
-  const {data:roster,error:ridersError}=await ridersQuery;
-  if (ridersError) throw new Error(`riders load: ${ridersError.message}`);
-  if(conditionPerDate && roster==null) throw new Error('Frozen training date requires a verified roster');
-  let riders=roster??[];
+  const riderColumns = "id, primary_type, secondary_type, potentiale, birthdate, firstname, lastname, team_id, is_academy, is_retired";
+  const loadRiders = async (query) => {
+    const {data,error}=await query;
+    if (error) throw new Error(`riders load: ${error.message}`);
+    if(conditionPerDate && data==null) throw new Error('Frozen training date requires a verified roster');
+    return data ?? [];
+  };
+  // An opened date is read once, after registration (below). Only the opening
+  // call needs the team's current roster to freeze it.
+  let riders = dateWork
+    ? []
+    : await loadRiders(supabase.from("riders").select(riderColumns).eq('team_id',teamId).eq('is_retired',false));
   if(conditionPerDate) {
     const {data:work,error}=await trainingDateRpc(supabase, 'register_training_date_work',{
       p_team_id:teamId,p_season_id:seasonId,p_tick_date:tickDate,p_game_days:dateDays,
@@ -638,14 +642,43 @@ export async function runTeamTrainingDay({
     if(error) throw new Error(`register training date: ${error.message}`);
     if(work?.held === true) throw reservationHeldError(teamId, tickDate);
     dateWork=work;
+    // #7489: read the frozen roster again right before the check. The sweep calls
+    // this once per race day of the date with the sweep's start time as `now`, so a
+    // release minutes into the sweep shows up here as team_id null, stamped with
+    // the earlier start time.
+    // pagination-safe: én række pr. id i datoens frosne trup (ét holds trup, bounded af rostergrænsen)
+    riders = await loadRiders(supabase.from("riders").select(riderColumns).in('id',dateWork.expected_rider_ids));
     const unsafe=dateWork.expected_rider_ids.filter(id=>{
       const rider=riders.find(row=>row.id===id);
       // #6439: a rider who changed team after the date opened stays in this frozen
       // roster (training follows the rider); only a released rider is unsafe here.
       return !(dateWork.quarantined_rider_ids??[]).includes(id)&&(!rider||rider.team_id==null||rider.is_retired===true||!dateWork.opening_conditions?.[id]);
     });
-    if(unsafe.length){
-      const {data:quarantine,error:quarantineError}=await supabase.rpc('quarantine_training_date_riders',{p_team_id:teamId,p_season_id:seasonId,p_tick_date:tickDate,p_rider_ids:unsafe,p_reason:'unsafe_roster_or_missing_opening',p_now:now.toISOString()});
+    // #7489: a rider released after the date opened has left the team. As in the
+    // evening close (#6504), he is departed: he stays out of training, but he is
+    // no reconciliation finding. The RPC re-checks team_id server-side; anyone it
+    // does not accept, and every other unsafe rider, is quarantined as before.
+    // Bank, frozen and test teams keep the alarm (#6504 contract). The sweep never
+    // calls this with riders for a historical season (it quarantines them first).
+    const leftTeam = unsafe.filter(id => riders.some(row => row.id === id && row.team_id == null));
+    let departed = [];
+    if (leftTeam.length) {
+      const {data:teamRows,error:teamError}=await supabase.from('teams').select('id, is_bank, is_frozen, is_test_account').eq('id',teamId);
+      if (teamError) throw new Error(`training date team load: ${teamError.message}`);
+      const team = teamRows?.[0];
+      if (team && !team.is_bank && !team.is_frozen && !team.is_test_account) {
+        const {data:departure,error:departError}=await supabase.rpc('depart_training_date_riders',{p_team_id:teamId,p_season_id:seasonId,p_tick_date:tickDate,p_rider_ids:leftTeam,p_now:now.toISOString()});
+        // Same fallback as trainingDateClose.js (TRAINING_RULES #6504): without the
+        // function nobody is departed and the rider is quarantined as before.
+        const missingRpc = departError?.code === 'PGRST202' || departError?.code === '42883';
+        if (departError && !missingRpc) throw new Error(`depart released riders from training date: ${departError.message}`);
+        departed = missingRpc ? [] : (departure?.departed_rider_ids ?? []);
+        if (departed.length) dateWork = departure.work;
+      }
+    }
+    const toQuarantine = unsafe.filter(id => !departed.includes(id));
+    if(toQuarantine.length){
+      const {data:quarantine,error:quarantineError}=await supabase.rpc('quarantine_training_date_riders',{p_team_id:teamId,p_season_id:seasonId,p_tick_date:tickDate,p_rider_ids:toQuarantine,p_reason:'unsafe_roster_or_missing_opening',p_now:now.toISOString()});
       if(quarantineError) throw new Error(`training date quarantine: ${quarantineError.message}`);
       dateWork=quarantine.work;
     }
@@ -878,8 +911,8 @@ export async function runTeamTrainingDay({
       racedRiderIds.add(riderId);
       racedRiderProfileByRider.set(riderId, stage.profileType ?? RACE_DAY_FALLBACK_PROFILE);
     }
-    // #6641 variant B: managerens intention for etapen skalerer loebsdagens udbytte (flag off = tomt kort = 1,0).
-    if (raceDayDevelopmentOn && racedRiderIds.size > 0 && await isRaceDayIntentionEnabled(supabase)) {
+    // #6641 variant B: managerens intention for etapen skalerer loebsdagens udbytte (ingen intention = 1,0).
+    if (raceDayDevelopmentOn && racedRiderIds.size > 0) {
       raceDayEffortByRider = await loadRaceDayEffortByRider({ supabase, stageByRider: raceDayResult.data });
     }
     if (raceDayDevelopmentOn && raceRoleYield && racedRiderIds.size > 0) raceDayRoleByRiderMap = await loadRaceDayRoleByRider({ supabase, stageByRider: raceDayResult.data }); // #5950
@@ -1249,7 +1282,7 @@ export async function runTeamTrainingDay({
         //
         // #6641 (variant B, ejer 24/9): dagens intention ganges sidst i kaeden via
         // applyDailyTick's ekstra multiplikator-led (default 1,0). Kun paa loebsdags-
-        // aksen og kun med race_day_intention_enabled on; ellers 1,0 = variant A.
+        // aksen; ingen intention giver 1,0 = variant A.
         tickResult = applyDailyTick({
           ...sharedTickArgs,
           program: raceDayProgram(racedRiderProfileByRider.get(rider.id) ?? RACE_DAY_FALLBACK_PROFILE),
@@ -1305,6 +1338,7 @@ export async function runTeamTrainingDay({
       recoveryConfig: raceDayEngineOn ? RACE_DAY_ENGINE_RECOVERY_CONFIG : {},
       modelV2: conditionModelV2On,
       medicalBonus: teamMedicalBonus,
+      raceDateTrainingDay: raceDateTrainingDayOn,
     }) : null;
     const newFatigue = conditionPerDate ? (dailyCondition?.fatigue ?? preFatigue) : nextFatigue({
       fatigue: preFatigue,

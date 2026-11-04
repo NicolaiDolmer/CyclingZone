@@ -124,22 +124,62 @@ export function registryEntriesFor(registry, n) {
 
 // ---------------------------------------------------------------- markers
 
-const MARKER_LINE = /^\s*[-*>]?\s*til\s+d(?:ø|oe|o)rs\s*:\s*([1-8])\s+(ok|na|n\/a|mangler)\b[\s:.-]*(.*)$/i;
+// Eksporteret saa auto-bevis-kernen (til-doers-proof.mjs) og testene kan
+// bevise, at en udkast-linje aldrig kan laeses som en markering.
+export const MARKER_LINE = /^\s*[-*>]?\s*til\s+d(?:ø|oe|o)rs\s*:\s*([1-8])\s+(ok|na|n\/a|mangler)\b[\s:.-]*(.*)$/i;
+
+// Auto-bevis (#7585): en kommentar med denne markoer er skrevet af auto-bevis-
+// koerslen efter et merge-tog. Den koerer lokalt med ejerens gh-token, saa
+// GitHub giver den author_association OWNER, og dens linjer taeller derfor som
+// markeringer. De vises med kilden 'auto-bevis', taeller ikke som en ny
+// menneskelig markering efter en genaabning, og et brand-issue lukkes aldrig
+// alene paa auto-bevis for krav 8 (se decideClose).
+// github-actions[bot] faar author_association CONTRIBUTOR (verificeret paa
+// #7585 4/11), som ikke er i COLLABORATOR_ASSOCIATIONS: en bot-skrevet
+// auto-bevis-kommentar taeller aldrig.
+export const PROOF_MARKER_PREFIX = '<!-- til-doers-proof:v1';
+const PROOF_MARKER_RE = /<!-- til-doers-proof:v1 pr=(\d+) issue=(\d+) sha=([0-9a-f]{7,40}) -->/;
+
+/** Er kommentaren (eller et forsoeg paa) en auto-bevis-kommentar? */
+export function isProofComment(body) {
+  return String(body || '').includes(PROOF_MARKER_PREFIX);
+}
+
+/** {pr, issue, sha} fra auto-bevis-markoeren, eller null hvis den mangler eller er misdannet. */
+export function parseProofMarker(body) {
+  const m = PROOF_MARKER_RE.exec(String(body || ''));
+  if (!m) return null;
+  return { pr: Number(m[1]), issue: Number(m[2]), sha: m[3] };
+}
 
 /**
- * Manuelle markeringer fra collaborator-kommentarer. Seneste pr. krav vinder.
+ * Markeringer fra collaborator-kommentarer. Seneste pr. krav vinder.
  * Kommentarer der selv er til-doers-tabellen springes over, saa scriptets
  * egen kommentar aldrig kan markere noget.
  *
- * @returns {Map<number, {status, tekst, af, dato, commentId}>}
+ * Linjer fra en auto-bevis-kommentar faar auto: true. Er issue angivet, taeller
+ * en auto-bevis-kommentar kun hvis markoeren er gyldig og peger paa netop det
+ * issue, saa et bevis kopieret over paa et andet issue ikke markerer noget.
+ * menneske er den seneste ikke-automatiske markering for samme krav (eller null).
+ *
+ * @param {Array} comments
+ * @param {{issue?: number}} [opts]
+ * @returns {Map<number, {status, tekst, af, dato, commentId, auto, menneske}>}
  */
-export function parseMarkers(comments) {
-  const sorted = [...(comments || [])].sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')));
+export function parseMarkers(comments, { issue = null } = {}) {
+  // En auto-bevis-kommentar redigeres paa stedet, naar samme tog koeres igen.
+  // Dens tidspunkt er derfor updated_at, saa et nyere bevis vinder over en
+  // menneskelig markering skrevet mellem foerste og seneste koersel.
+  const at = (c) => String((isProofComment(c.body) && c.updated_at) || c.created_at || '');
+  const sorted = [...(comments || [])].sort((a, b) => at(a).localeCompare(at(b)));
   const latest = new Map();
+  const latestHuman = new Map();
   for (const c of sorted) {
     const body = c.body || '';
     if (body.includes(MARKER)) continue;
     if (!COLLABORATOR_ASSOCIATIONS.has(String(c.author_association || '').toUpperCase())) continue;
+    const auto = isProofComment(body);
+    if (auto && issue != null && parseProofMarker(body)?.issue !== Number(issue)) continue;
     for (const line of body.split(/\r?\n/)) {
       const m = line.match(MARKER_LINE);
       if (!m) continue;
@@ -148,9 +188,12 @@ export function parseMarkers(comments) {
       const status = raw === 'n/a' ? 'na' : raw;
       const tekst = m[3].trim();
       if (status === 'na' && !tekst) continue; // na uden begrundelse taeller ikke
-      latest.set(krav, { status, tekst, af: c.user?.login || '', dato: c.created_at || '', commentId: c.id });
+      const entry = { status, tekst, af: c.user?.login || '', dato: at(c), commentId: c.id, auto };
+      latest.set(krav, entry);
+      if (!auto) latestHuman.set(krav, entry);
     }
   }
+  for (const [krav, entry] of latest) latest.set(krav, { ...entry, menneske: latestHuman.get(krav) || null });
   return latest;
 }
 
@@ -179,7 +222,7 @@ function prLabel(pr) {
  */
 export function evaluateDoor({ issue, comments = [], prs = [], commits = [], registry = [], patchNotesText = '', helpChanged = false }) {
   const n = Number(issue.number);
-  const markers = parseMarkers(comments);
+  const markers = parseMarkers(comments, { issue: n });
   const merged = prs.filter((p) => p.merged);
   const open = prs.filter((p) => p.state === 'open' && !p.merged);
   const entries = registryEntriesFor(registry, n);
@@ -229,6 +272,10 @@ export function evaluateDoor({ issue, comments = [], prs = [], commits = [], reg
     const a = autoResults[krav];
     const m = markers.get(krav);
     if (a.status === 'ok' || !m) return { krav, navn, ...a };
+    if (m.auto) {
+      // menneskeStatus: seneste menneskelige markering for samme krav, til brand-reglen i decideClose.
+      return { krav, navn, status: m.status, kilde: 'auto-bevis', hvorfor: m.tekst, autoBevis: true, menneskeStatus: m.menneske?.status || null };
+    }
     const who = m.af ? ` af ${m.af}` : '';
     return { krav, navn, status: m.status, kilde: `markering${who}`, hvorfor: m.tekst };
   });
@@ -238,10 +285,17 @@ export function missingKrav(door) {
   return door.filter((d) => d.status !== 'ok' && d.status !== 'na');
 }
 
-/** Seneste manuelle markering (ISO-tid) eller null. */
+/**
+ * Seneste menneskelige markering (ISO-tid) eller null. Auto-bevis taeller ikke:
+ * har ejeren genaabnet et issue, maa en ny automatisk koersel ikke laase op for
+ * en ny lukning, foer et menneske har markeret igen.
+ */
 export function lastMarkerAt(comments) {
   let at = null;
-  for (const m of parseMarkers(comments).values()) if (m.dato && (!at || m.dato > at)) at = m.dato;
+  for (const m of parseMarkers(comments).values()) {
+    const human = m.auto ? m.menneske : m;
+    if (human?.dato && (!at || human.dato > at)) at = human.dato;
+  }
   return at;
 }
 
@@ -270,6 +324,11 @@ export function decideClose({ issue, door, brandList = [], reopened = null, last
   const isBrand = brandList.some((b) => Number(b?.issue ?? b) === Number(issue.number));
   const k8 = door.find((d) => d.krav === 8);
   if (isBrand && k8?.status !== 'ok') return { close: false, reason: 'brand-issue kræver krav 8 = ok' };
+  // Brand-regel (#7585): auto-bevis alene lukker aldrig et brand-issue. Er det
+  // seneste ord paa krav 8 et auto-bevis, skal et menneske ogsaa have sagt ok.
+  if (isBrand && k8.autoBevis && k8.menneskeStatus !== 'ok') {
+    return { close: false, reason: 'brand-issue kræver en menneskelig markering af krav 8, auto-bevis er ikke nok' };
+  }
   return { close: true, reason: 'alle 8 krav er ok eller na' };
 }
 

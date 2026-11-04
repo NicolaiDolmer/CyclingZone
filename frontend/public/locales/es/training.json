@@ -576,6 +576,7 @@
     "stageLockedTitle": "Bloqueado por la carrera",
     "listNote": "Toca un programa para ver su semana. Se copia a Plan, así que luego puedes cambiar cualquier casilla.",
     "pickTarget": "Elige primero un ciclista o un grupo",
+    "pickTargetToPutOn": "Elige para quién es el programa",
     "fitsType": "Encaja con {type}",
     "otherPrograms": "Otros programas",
     "current": "Actual",

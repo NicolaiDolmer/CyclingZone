@@ -125,6 +125,12 @@ test("dailytraining.trainingScore er registreret i SECTION_DEFS med flag: traini
   assert.equal(entry.flag, "training_score_visible");
 });
 
+test("#7536: dailytraining.raceDateTrainingDay vises kun bag condition_v2_race_date_training_day", () => {
+  const entry = sectionDefsBlockFlags().find((b) => b.id === "raceDateTrainingDay");
+  assert.ok(entry, "raceDateTrainingDay mangler en `flag`-egenskab i SECTION_DEFS");
+  assert.equal(entry.flag, "condition_v2_race_date_training_day");
+});
+
 test("hvert flag Hjaelp-siden gater paa staar i backendens allowlist", () => {
   const extraKeys = sectionDefsBlockFlags().map((b) => b.flag);
   const missing = helpGateFlagKeys(extraKeys).filter((key) => !PLAYER_VISIBLE_FLAG_KEYS.includes(key));
@@ -184,18 +190,15 @@ test("HelpPage bruger ÉN mekanisme: ingen hardkodede gates eller saerkald tilba
   assert.match(source, /isHelpBlockFlagVisible\(/, "#5274: blok-flaget filtreres ikke gennem helpFlagGates");
 });
 
-// #6746: indsatstrin-afsnittet. Fem trin og tre trin staar aldrig side om side, og
-// "alt ud" (findes kun med intentions-flaget) har sit eget holdspil-afsnit, kun naar
-// flaget er on. Mens svaret hentes er de gatede blokke skjult.
-test("#6746: indsatstrin og holdspil foelger race_day_intention_enabled som par", () => {
-  const IDS = { raceSelection: ["effortSteps", "effortStepsThree"], raceDay: ["teamwork", "teamworkAllOut"] };
-  const visible = (section, flags) => IDS[section].filter((id) => isHelpBlockVisible(section, id, flags));
-  const on = { race_day_intention_enabled: true };
-  const off = { race_day_intention_enabled: false };
-  assert.deepEqual(visible("raceSelection", on), ["effortSteps"]);
-  assert.deepEqual(visible("raceSelection", off), ["effortStepsThree"]);
-  assert.deepEqual(visible("raceDay", on), ["teamwork", "teamworkAllOut"]);
-  assert.deepEqual(visible("raceDay", off), ["teamwork"]);
-  assert.deepEqual(visible("raceSelection", null), []);
-  assert.deepEqual(visible("raceDay", null), ["teamwork"]);
+// #6746/#6641: indsatstrin-afsnittet (fem trin) og "alt ud"-holdspillet er altid
+// synlige; kontakten race_day_intention_enabled er fjernet (krav 5), og tre-trins-
+// teksten er taget af siden.
+test("#6641: fem indsatstrin og alt ud-holdspil er altid synlige, tre-trins-teksten er vaek", () => {
+  for (const flags of [null, {}, { race_day_intention_enabled: false }]) {
+    assert.equal(isHelpBlockVisible("raceSelection", "effortSteps", flags), true);
+    assert.equal(isHelpBlockVisible("raceDay", "teamwork", flags), true);
+    assert.equal(isHelpBlockVisible("raceDay", "teamworkAllOut", flags), true);
+  }
+  assert.doesNotMatch(source, /id: "effortStepsThree"/, "tre-trins-teksten er tilbage paa siden");
+  assert.ok(!helpGateFlagKeys().map(String).includes("race_day_intention_enabled"));
 });

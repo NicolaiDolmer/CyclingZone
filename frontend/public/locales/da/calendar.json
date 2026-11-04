@@ -25,6 +25,9 @@
     "all": "Alle hold",
     "divisions": "Divisioner"
   },
+  "scope": {
+    "label": "Vis"
+  },
   "division": "Division {n}",
   "divisionMenu": {
     "label": "Division",
@@ -76,14 +79,13 @@
     "oneDay": "Endagsløb",
     "terrain": "Terræn",
     "noProfile": "Ruten er ikke offentliggjort endnu",
-    "teamFit": "Passer til holdet",
+    "teamFit": "Holdets rutematch",
     "bestBet": "Bedste bud: {name} ({score})",
     "fitUnavailable": "Ikke tilgængeligt for dette løb",
     "status": {
       "label": "Din status",
       "missing": "Mangler udtagelse",
-      "selected": "Udtaget",
-      "gtBound": "Bundet af din Grand Tour"
+      "selected": "Udtaget"
     },
     "pick": "Udtag hold",
     "editSquad": "Ret udtagelse",
@@ -123,19 +125,13 @@
       "stages": "Etaper",
       "class": "Klasse",
       "squad": "Dit hold",
-      "squadShort": "Hold",
-      "open": "Åbn"
+      "squadShort": "Hold"
     },
     "openRace": "Åbn {name}",
-    "squad": {
-      "selected": "Hold klar",
-      "missing": "Mangler hold",
-      "gtBound": "Grand Tour"
-    },
+    "squadFill": "{count} af {field} ryttere udtaget",
     "squadShort": {
       "selected": "Klar",
-      "missing": "Mangler",
-      "gtBound": "GT"
+      "missing": "Mangler"
     },
     "empty": {
       "title": "Ryd filtrene for at se flere løb",

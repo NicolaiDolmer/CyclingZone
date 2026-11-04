@@ -393,6 +393,9 @@ const SECTION_DEFS = [
       // #4849: formFatigue' tvilling (restitution pr. loebsdag, samlet koersel
       // tidligst kl. 20 i stedet for kl. 22). Kun én af de to vises ad gangen.
       { id: "formFatiguePerRaceDay", kind: "text" },
+      // #7536: traening paa frie loebsdage paa en dato med loeb vejer et helt
+      // traeningsdoegn. Vises foerst naar motorens kontakt er taendt.
+      { id: "raceDateTrainingDay", kind: "text", flag: "condition_v2_race_date_training_day" },
       // #4854/#5620: spillerens egen traethedsgraense, kun naar flaget er taendt for viewereren.
       { id: "fatigueLimit", kind: "text", flag: "training_fatigue_rules" },
       // #6000: traeningsgrupper, kun naar flaget er taendt for viewereren.
@@ -515,10 +518,8 @@ const SECTION_DEFS = [
       // translated copy but no reachable docs; it belongs right after
       // roles, since it's the stage-race-specific extension of them.
       { id: "stageTactics", kind: "text" },
-      // #6746: ét sandt afsnit om indsatstrinnene. Fem trin / tre trin er et par
-      // (HELP_BLOCK_FLAGS.raceSelection, race_day_intention_enabled).
+      // #6746: ét sandt afsnit om indsatstrinnene (fem trin; kontakten fjernet, #6641).
       { id: "effortSteps", kind: "text" },
-      { id: "effortStepsThree", kind: "text" },
       { id: "strategy", kind: "text" },
       { id: "breakaway", kind: "text" },
       { id: "ordersGc", kind: "text" }, // #6067: orders_gc_v1
@@ -544,7 +545,7 @@ const SECTION_DEFS = [
       { id: "crashesAndIncidents", kind: "text" },
       { id: "timeLimitAndGrupetto", kind: "text" },
       { id: "teamwork", kind: "text" },
-      { id: "teamworkAllOut", kind: "text" }, // #6746: "alt ud" findes kun med intentions-flaget
+      { id: "teamworkAllOut", kind: "text" }, // #6746: "alt ud"-holdspil (altid synligt, #6641)
       { id: "luxuryHelper", kind: "text" }, // #5982: luksushjaelperen (genvej til etapeplanen)
       { id: "weatherAndCobbles", kind: "text" },
     ],

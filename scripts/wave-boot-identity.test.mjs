@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeBootId, sameBoot, measureBootId, measureBootIdentity, bootLockKey, isClockDerivedBootId, SAME_BOOT_TOLERANCE_SECONDS } from './wave-boot-identity.mjs';
+import { normalizeBootId, sameBoot, measureBootId, measureBootIdentity, bootLockKey, isClockDerivedBootId, SAME_BOOT_TOLERANCE_SECONDS, windowsEvidenceProbe } from './wave-boot-identity.mjs';
 
 // Incident 23/9 (#5533): marker vs measurement in the same Windows boot.
 const markerTicks = '639256957975000000'; // 19:43:17.5000000
@@ -79,4 +79,48 @@ test('host measurement is normalized and stable across calls', { skip: !['win32'
     assert.match(first.bootId, /^\d+0000000$/);
     assert.match(first.lockKey, /^kernel:\d+$/);
   }
+});
+
+const cimFailure = () => Object.assign(new Error('private-command-fixture'), { status: 74, stderr: 'WAVE_CIM_TRANSIENT' });
+test('Windows CIM failure retries with injected wait and probe', () => {
+  let calls = 0;
+  const waits = [];
+  const result = measureBootIdentity({ platform: 'win32', wait: ms => waits.push(ms), probe: () => {
+    if (++calls < 3) throw cimFailure();
+    return JSON.stringify({ bootId: markerTicks, kernelStart: '123456' });
+  } });
+  assert.equal(calls, 3);
+  assert.deepEqual(waits, [250, 500]);
+  assert.equal(result.lockKey, 'kernel:123456');
+});
+
+test('CIM exhaustion is precise, bounded and has no raw error output', () => {
+  let calls = 0;
+  const waits = [];
+  assert.throws(() => measureBootIdentity({ platform: 'win32', wait: ms => waits.push(ms), probe: () => { calls++; throw cimFailure(); } }), error => {
+    assert.equal(error.code, 'WAVE_BOOT_IDENTITY_UNAVAILABLE');
+    assert.match(error.message, /CIM probe failed after 3 attempts/);
+    assert.doesNotMatch(error.stack, /private-command-fixture/);
+    return true;
+  });
+  assert.equal(calls, 3);
+  assert.equal(waits.length, 2);
+});
+
+test('other probe programming failures are propagated without retry', () => {
+  for (const failure of [new TypeError('fixture programming error'), new SyntaxError('fixture syntax error')]) {
+  assert.throws(() => measureBootIdentity({ platform: 'win32', probe: () => { throw failure; }, wait: () => assert.fail('unexpected wait') }), error => error === failure);
+  }
+});
+
+test('malformed boot payloads fail closed without echoing input', () => {
+  for (const text of ['{"private-command-fixture":', 'null', '{}']) {
+    assert.throws(() => measureBootIdentity({ platform: 'win32', probe: () => text }), error => error.code === 'WAVE_BOOT_IDENTITY_UNAVAILABLE' && !error.stack.includes('private-command-fixture'));
+  }
+});
+
+test('actual PowerShell CIM exception is marked and bounded', { skip: process.platform !== 'win32' }, () => {
+  const waits = [];
+  assert.throws(() => windowsEvidenceProbe('$ErrorActionPreference="Stop"; throw [Microsoft.Management.Infrastructure.CimException]::new("private-command-fixture")', { wait: ms => waits.push(ms) }), error => error.code === 'WAVE_BOOT_IDENTITY_UNAVAILABLE' && !error.stack.includes('private-command-fixture'));
+  assert.deepEqual(waits, [250, 500]);
 });

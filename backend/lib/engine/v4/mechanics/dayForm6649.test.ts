@@ -4,6 +4,7 @@
 // fog-gate, bit-identitet for aeldre revisioner), ikke kalibreringen.
 import test from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,8 +36,8 @@ const abilities = (v: number) => ({ climbing: v, time_trial: v, sprint: v, punch
 // CI 27/10 (run 40484685458, Node 24.21.0): "low form" fejlede én gang paa uaendret
 // kode, der var groen i 6 andre CI-koersler og lokalt. Testen er ren og koerer i egen
 // proces, saa delt tilstand er udelukket; mistanken er V8's optimerende compiler ved
-// skiftet fra en form uden `form` (fresh/tired, 4000 kald) til en med. En fast form
-// fjerner skiftet, saa testen maaler reglen og ikke JIT'en.
+// skiftet fra en form uden `form` (fresh/tired, 4000 kald) til en med. Den faste form
+// fjernede IKKE fejlen (CI 29/10 og 30/10, samme tal); se #7366-blokken nedenfor.
 const rider = (id: string, extra: Partial<Entrant> = {}): Entrant => ({ rider_id: id, abilities: abilities(70), role: "free_role", effort: "normal", condition: 1, form: undefined, form_peak_points: undefined, ...extra });
 const show = (s: { bad: number; mean: number }) => `bad=${s.bad} mean=${s.mean}`;
 
@@ -58,6 +59,57 @@ function sample(make: (id: string) => Entrant, r = route("overcast"), seed = "s6
   return { bad: bad / ids.length, mean: sum / ids.length, reasons };
 }
 
+// #7366: retnings-testen fejlede sporadisk i CI (kun Linux, Node 24.21/24.22; aldrig
+// lokalt i 200+ koersler, heller ikke under V8-stressflag) med bit-identiske tal hver
+// gang: "low form" gav PRAECIS samme andel og middel som "good form" (form 90), dvs.
+// rytterne blev regnet som om formen var hoej. Modulet er rent (ingen IO/Date/
+// Math.random, frosne tabeller, ingen cache), seed er fast, og filen koerer i egen
+// proces, saa delt tilstand, testraekkefoelge og seed-deling er udelukket. Tilbage
+// staar V8's optimerende compiler (tier-up-timing er det eneste der varierer mellem
+// koersler). Derfor er testen delt i to, uden at skjule noget:
+//   1. Reglen (retningen) maales i en separat proces der kun koerer V8's fortolker:
+//      deterministisk og isoleret, den oprindelige assertion uaendret.
+//   2. Samme stikproever regnet i denne proces (JIT tilladt) skal give bit-identisk
+//      det samme. Afviger de, fejler den test med en besked der peger paa #7366, saa
+//      en JIT-afvigelse i motorkoden er synlig som det den er og ikke ligner en
+//      regelfejl.
+const DIRECTION_REFERENCE_ENV = "DAYFORM6649_DIRECTION_REFERENCE";
+const INTERPRETER_ONLY = ["--no-opt", "--no-maglev", "--no-sparkplug"];
+
+type Sample = ReturnType<typeof sample>;
+type DirectionSamples = { fresh: Sample; tired: Sample; lowForm: Sample; highForm: Sample; rain: Sample; dry: Sample };
+
+function directionSamples(): DirectionSamples {
+  return {
+    fresh: sample((id) => rider(id)),
+    tired: sample((id) => rider(id, { condition: 0.2 })),
+    lowForm: sample((id) => rider(id, { form: 15 })),
+    highForm: sample((id) => rider(id, { form: 90 })),
+    rain: sample((id) => rider(id, { abilities: abilities(20) }), route("rain")),
+    dry: sample((id) => rider(id, { abilities: abilities(20) }), route("overcast")),
+  };
+}
+
+if (process.env[DIRECTION_REFERENCE_ENV] === "1") {
+  // Referenceprocessen: skriv stikproeverne og stop, foer nogen test registreres.
+  process.stdout.write(`${JSON.stringify(directionSamples())}\n`);
+  process.exit(0);
+}
+
+let referenceCache: DirectionSamples | null = null;
+/** Stikproeverne regnet i en frisk proces med kun V8's fortolker (ingen JIT-tier). */
+function interpreterReference(): DirectionSamples {
+  if (referenceCache) return referenceCache;
+  const env: NodeJS.ProcessEnv = { ...process.env, [DIRECTION_REFERENCE_ENV]: "1" };
+  delete env.NODE_TEST_CONTEXT; // ellers taler barnet node:test's interne protokol
+  delete env.NODE_OPTIONS;
+  const res = spawnSync(process.execPath, [...INTERPRETER_ONLY, fileURLToPath(import.meta.url)], { env, encoding: "utf8", timeout: 60_000 });
+  assert.equal(res.status, 0, `interpreter reference failed: ${res.error?.message ?? ""}\n${res.stderr}`);
+  const line = res.stdout.trim().split("\n").pop() ?? "";
+  referenceCache = JSON.parse(line) as DirectionSamples;
+  return referenceCache;
+}
+
 test("#6649: deterministic per (seed, rider) and independent of who else starts", () => {
   const r = route("rain");
   const a = dayForm6649For(rider("x", { condition: 0.4, form: 30 }), r, "seed-1");
@@ -68,16 +120,24 @@ test("#6649: deterministic per (seed, rider) and independent of who else starts"
 });
 
 test("#6649: tiredness, low form and hard weather each make a bad day more likely and the average day worse", () => {
-  const fresh = sample((id) => rider(id));
-  const tired = sample((id) => rider(id, { condition: 0.2 }));
-  const lowForm = sample((id) => rider(id, { form: 15 }));
-  const highForm = sample((id) => rider(id, { form: 90 }));
-  const rain = sample((id) => rider(id, { abilities: abilities(20) }), route("rain"));
-  const dry = sample((id) => rider(id, { abilities: abilities(20) }), route("overcast"));
+  const { fresh, tired, lowForm, highForm, rain, dry } = interpreterReference();
   assert.ok(tired.bad > fresh.bad && tired.mean < fresh.mean, `tired: ${show(tired)} vs fresh ${show(fresh)}`);
   assert.ok(lowForm.bad > fresh.bad && lowForm.mean < fresh.mean, `low form: ${show(lowForm)} vs fresh ${show(fresh)}`);
   assert.ok(highForm.bad < fresh.bad, `good form protects: ${show(highForm)} vs fresh ${show(fresh)}`);
   assert.ok(rain.bad > dry.bad && rain.mean < dry.mean, `rain: ${show(rain)} vs dry ${show(dry)}`);
+});
+
+test("#6649/#7366: the day form is bit-identical with and without V8's optimizing compiler", () => {
+  const reference = interpreterReference();
+  const inProcess = directionSamples();
+  for (const key of Object.keys(reference) as (keyof DirectionSamples)[]) {
+    assert.deepEqual(
+      inProcess[key],
+      reference[key],
+      `${key}: optimized ${show(inProcess[key])} vs interpreter ${show(reference[key])}. ` +
+        "The module is pure and the seed fixed, so a difference here is the JIT computing the engine differently, not the rule (#7366).",
+    );
+  }
 });
 
 test("#6649: weather technique protects: in the rain a skilled rider has fewer bad days than an unskilled one", () => {

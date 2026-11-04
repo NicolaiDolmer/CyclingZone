@@ -382,7 +382,7 @@ test("(1) guidet tur med dayClose (#4847): turen lover ingen bonus, men siger at
   await expect(tour).not.toContainText("+25%");
 });
 
-test("(2)+(6) markeringen: A får en dag i sin egen vælger → 'Saved' ses, 'Apply to 2', og A overskrives ikke", async ({ page }) => {
+test("(2)+(6) markeringen: A får en dag i sin egen vælger → 'Saved' ses, '2 selected', og A overskrives ikke", async ({ page }) => {
   // Kontroller den korte Saved-periode uden at CI-belastning kan udløse
   // rækkens 2-sekunders timer mellem assertions.
   await page.clock.install({ time: new Date("2026-09-29T10:00:00Z") });
@@ -408,10 +408,10 @@ test("(2)+(6) markeringen: A får en dag i sin egen vælger → 'Saved' ses, 'Ap
   });
   await openTraining(page, 1440, 900);
 
-  // A, B og C markeret via "Set days for 3".
+  // A, B og C markeret via "Set days for 3" (#6523: bulk-linjen viser markeringen).
   await primary(page).click();
   await expect(page.getByTestId("training-today-row")).toHaveCount(3);
-  await expect(page.getByRole("button", { name: "Apply to 3" })).toBeVisible();
+  await expect(page.getByTestId("training-bulk-scope")).toHaveText("3 selected");
   await page.clock.pauseAt(new Date("2026-09-29T10:01:00Z"));
 
   // A (Rafael Duran) får en dag i sin egen vælger.
@@ -421,7 +421,7 @@ test("(2)+(6) markeringen: A får en dag i sin egen vælger → 'Saved' ses, 'Ap
   // (6) Rækken bliver stående med "Saved", så kvitteringen kan ses ...
   await expect(rowA.getByRole("status")).toHaveText("Saved");
   // (2) ... men A er ikke længere med i markeringen.
-  await expect(page.getByRole("button", { name: "Apply to 2" })).toBeVisible();
+  await expect(page.getByTestId("training-bulk-scope")).toHaveText("2 selected");
   await expect(rowA.getByRole("checkbox")).not.toBeChecked();
   // Efter ca. 2 sekunder forsvinder han fra "Needs a day".
   await page.clock.runFor(2000);
@@ -429,7 +429,7 @@ test("(2)+(6) markeringen: A får en dag i sin egen vælger → 'Saved' ses, 'Ap
 
   // Mængde-handlingen rammer kun B og C.
   await page.getByRole("combobox", { name: "Set day", exact: true }).selectOption("rest");
-  await page.getByRole("button", { name: "Apply to 2" }).click();
+  await page.getByTestId("training-bulk-apply").click();
   await expect.poll(() => bulkBody?.riderIds?.slice().sort() ?? null).toEqual(["rider-5485-10", "rider-5485-7"]);
 });
 

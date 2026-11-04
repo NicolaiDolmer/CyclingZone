@@ -4,6 +4,8 @@ import {
 // SSOT for launch-referenceåret + fødselsår-udtrækket. riderSeasonAge.js er bevidst
 // dependency-fri, så denne rene derivations-fil ikke trækker I/O med sig (#4455).
 import { LAUNCH_REFERENCE_YEAR, birthYearFrom } from "./riderSeasonAge.js";
+// #7560: den skalerede fyld-klemme holder startstyrken fast målt i den viste rating.
+import { DISPLAY_RECIPE_KEYS, ratingForRole } from "./weights/displayRecipes.js";
 
 // Evne-system v3 (#1122 / #1101-kæden) — fysiske evner afledes nu fra fysiologi-profiler
 // (rider_physiology_profiles); tekniske/mentale forbliver skill-stat-drevne.
@@ -113,6 +115,105 @@ export const FILL_TAIL_GENERATION_TAG = "fill_tail";
 // evne-loftet. Bruges af buildWeakStarterPool (starterSquadAllocator.js) FOER
 // derivation; evne-loftet ovenfor er det UAFHAENGIGE sikkerhedsnet EFTER derivation.
 export const FILL_TAIL_MAX_POTENTIALE = 2.5;
+
+// #7560 (ejer-valg B, 3/11): SKALERET klemme ved fødslen. Den gamle klemme er
+// min(evne, loft): den skærer toppen af profilen og lader bunden stå, så en
+// startrytter kunne læse som "loft/loft/1" og have flere evner lige højt på
+// toppen (= vilkårlig bedste rolle). Den skalerede klemme komprimerer rytterens
+// synlige profil lineært ned under loftet (topevnen = loftet), så rækkefølgen og
+// de indbyrdes afstande bevares og specialiteten stadig stikker op. Loftet og
+// den viste bedste rating (= startstyrken) er de samme som under min-reglen;
+// kun formen ændres.
+//
+// KUN NYE ryttere: tilstanden er PERSISTERET på rytteren (archetype_draw.fill_cap)
+// og sættes kun af starter-squad-allokeringen ved fødslen. Ryttere uden
+// markøren klemmes præcis som før (min), så enhver re-derive af en eksisterende
+// fyld-rytter er bit-identisk. Den skalerede klemme er selv idempotent: efter
+// skaleringen er profilens max = loftet, og en ny skalering er så identiteten,
+// og re-derive genberegner alligevel fra de samme rå input (seed/stats).
+export const FILL_CAP_MODE_SCALED = "scaled";
+
+/** "scaled" hvis rytteren er født under #7560-reglen, ellers "min". */
+export function fillCapModeOf(riderRow) {
+  return riderRow?.archetype_draw?.fill_cap === FILL_CAP_MODE_SCALED ? FILL_CAP_MODE_SCALED : "min";
+}
+
+/** Sæt #7560-markøren på et draw-objekt (ren funktion, muterer ikke input). */
+export function withScaledFillCap(archetypeDraw) {
+  if (!archetypeDraw || typeof archetypeDraw !== "object") return archetypeDraw;
+  return { ...archetypeDraw, fill_cap: FILL_CAP_MODE_SCALED };
+}
+
+// Bedste viste rolle-rating for et evne-sæt (samme opskrifter som bedste rolle nu).
+function bestDisplayedRating(abilities) {
+  /** @type {number | null} */
+  let best = null;
+  for (const role of DISPLAY_RECIPE_KEYS) {
+    const r = ratingForRole(abilities, role);
+    if (r !== null && (best === null || r > best)) best = r;
+  }
+  return best;
+}
+
+// #7560: den skalerede profil, eller null når der intet er at klemme.
+//
+// Profilen komprimeres mod loftet, så topevnen lander på loftet og evnernes
+// rækkefølge bevares. Komprimeringen vælges, så rytterens startstyrke (den
+// rating holdet ser) er den samme som med min-reglen; profilen bliver blot
+// ikke flad i toppen med 1-tal i bunden. Kan ratingen ikke regnes, bruges
+// min-reglen. Præcis metode og begrundelse: balance-internals/7560/ (hard rule 17).
+function scaledProfile(out, profileKeys, cap) {
+  if (profileKeys.length === 0) return null;
+  const max = profileKeys.reduce((m, k) => Math.max(m, out[k]), -Infinity);
+  if (!(max > cap)) return null;
+  const minClamped = { ...out };
+  for (const k of profileKeys) minClamped[k] = Math.min(out[k], cap);
+  const target = bestDisplayedRating(minClamped);
+  if (target === null) return null;
+  const at = (k) => {
+    const next = {};
+    for (const key of profileKeys) {
+      const v = out[key];
+      // Ingen evne ≥ 1 under 1, ingen over loftet.
+      next[key] = Math.min(cap, Math.max(Math.min(v, 1), Math.round(cap - (max - v) * k)));
+    }
+    return next;
+  };
+  // Number(null) = 0, præcis som JS' egen >=-koercering (kun for typecheck).
+  const strongEnough = (k) => Number(bestDisplayedRating({ ...out, ...at(k) })) >= target;
+  if (strongEnough(1)) return at(1);
+  let lo = 0; // k = 0 (alt på loftet) er altid stærkt nok
+  let hi = 1;
+  for (let i = 0; i < 30; i++) {
+    const mid = (lo + hi) / 2;
+    if (strongEnough(mid)) lo = mid; else hi = mid;
+  }
+  return at(lo);
+}
+
+// Klem evne-objektet IN-PLACE til `cap` over nøglerne `keys`.
+//   mode "min":    out[k] = min(out[k], cap) — den historiske regel, uændret.
+//   mode "scaled": de synlige evner komprimeres lineært mod toppen (max = cap)
+//                  med samme bedste viste rating som min-reglen; se
+//                  scaledProfile. Ingen evne ≥ 1 ender under 1, ingen over cap.
+//                  Skjulte evner (hidden_potential) er ikke en del af profilen
+//                  og min-klemmes som før.
+/**
+ * @param {any} out
+ * @param {number} cap
+ * @param {{ keys?: readonly string[], mode?: string }} [opts]
+ */
+export function applyAbilityCap(out, cap, { keys = Object.keys(out), mode = "min" } = {}) {
+  if (!out || !Number.isFinite(cap)) return out;
+  const finiteKeys = keys.filter((k) => Number.isFinite(out[k]));
+  if (mode === FILL_CAP_MODE_SCALED) {
+    const profileKeys = finiteKeys.filter((k) => !HIDDEN_ABILITIES.includes(k));
+    const scaled = scaledProfile(out, profileKeys, cap);
+    if (scaled) Object.assign(out, scaled);
+  }
+  for (const k of finiteKeys) out[k] = Math.min(out[k], cap);
+  return out;
+}
 
 // Disciplin-evne → primær PCM-stat (§3 "Kilde"). Bruges kun i FALLBACK-stien
 // (ingen fysiologi). prolog FJERNET. Ren 50-85 → 1-99-mapping.
@@ -357,10 +458,9 @@ export function deriveAbilities(physiology = {}, riderRow = {}, { asOfYear = CAL
 
   // #4311: evne-loft EFTER afledning for fyld-ryttere. Ligger sidst saa den fanger
   // ALLE seksten evner uanset kilde (fysiologi/PCM-fallback/skill-stat/alder/potentiale).
+  // #7560: en rytter født under den skalerede regel bevarer profilens form.
   if (riderRow.generation_tag === FILL_TAIL_GENERATION_TAG) {
-    for (const k of ALL_ABILITY_KEYS) {
-      if (Number.isFinite(out[k])) out[k] = Math.min(out[k], FILL_TAIL_ABILITY_CAP);
-    }
+    applyAbilityCap(out, FILL_TAIL_ABILITY_CAP, { keys: ALL_ABILITY_KEYS, mode: fillCapModeOf(riderRow) });
   }
 
   return out;

@@ -6,8 +6,9 @@ import { fileURLToPath } from 'node:url';
 // waits only for the release job (deployment ready + smoke). Its JOB-level
 // conclusion is the signal, so the queue never reads step states of a
 // still-running job (#6487 did, which was fragile). The cron proof runs in its
-// own job and never gates the queue; the release checks stop the queue before
-// its NEXT merge when they are red (handedOffRunVerdict below).
+// own workflow (cron-proof.yml, #7582) and never gates the queue; the release
+// checks stop the queue before its NEXT merge when they are red
+// (handedOffRunVerdict below).
 export const RELEASE_JOB = 'Deploy live + smoke';
 export const RELEASE_CHECKS_JOB = 'Release checks';
 export const CRON_PROOF_JOB = 'Cron proof (non-blocking)';

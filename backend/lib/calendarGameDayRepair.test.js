@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { deriveGameDayAxis } from "./calendarGameDayRepair.js";
 import { checkCalendarOverlapInvariants } from "./calendarOverlapInvariant.js";
 import { packLaneCalendar } from "./raceCalendarLanePacker.js";
-import { buildScheduleRows } from "./raceCalendarScheduling.js";
+import { buildScheduleRows } from "./raceCalendarScheduling.ts";
 import { TIER_DENSITY, TIER_OVERLAP_CAP } from "./calendarTierCaps.js";
 
 const at = (date, hhmm) => `${date}T${hhmm}:00.000Z`;

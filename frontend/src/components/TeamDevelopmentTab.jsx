@@ -13,6 +13,7 @@ import { potentialFromEstimate } from "../lib/potentialDisplay6853";
 import { getRiderAge } from "../lib/riderAge";
 import { cycleSortState } from "../lib/riderSort";
 import { compareDevRows } from "../lib/teamDevelopmentSort.js";
+import { formatProjectedBand } from "../lib/formatProjectedBand.ts";
 import { DataTable, EmptyState, BikeIcon } from "./ui";
 
 // #3979/#3721 (ejer-beslutning 19/8, "Begge, A foerst" superseded samme
@@ -146,7 +147,7 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
       compact: true,
       render: (r) => (r._academyPrognosis ? <AcademyPrognosisCell prognosis={r._academyPrognosis} /> : r._band ? (
         <span className="inline-flex items-center gap-1.5">
-          <span className="font-mono tabular-nums text-cz-1">{r._band.lo}–{r._band.hi}</span>
+          <span className="font-mono tabular-nums text-cz-1">{formatProjectedBand(r._band.lo, r._band.hi)}</span>
           {r._potential?.showRole && <PotentialRoleBox role={r._potential.role} lo={r._potential.lo} hi={r._potential.hi} />}
         </span>
       ) : (

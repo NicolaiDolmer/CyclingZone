@@ -416,18 +416,14 @@ export function clearRiderPlan<T extends Order>(order: T, riderId: string, roleD
 //
 // Motoren skifter opgave ved en segmentgraense (backend/lib/stagePlanEngine.ts, den
 // naermeste graense; i sidste segment er maalstregen den sidste graense, og holdarbejde
-// skifter ved segmentets start). En stigning, en brostenssektor og nedkoerslen mod maal
-// er hver eet segment. Ligger "de sidste 10 km" inde i en af dem, sker skiftet derfor
-// ved dens start eller slutning, eller foerst i finalen, ikke 10 km fra maal. Med
-// motorkontakten (backend/lib/engine/v4/adapters/finalKmBoundary7383.ts) deles en
-// stigning/sektor praecis dér; nedkoerslen deles aldrig.
-//
-// Kopien af kontakten SKAL vaere den samme som motorens (finalKmBoundary7383.test.ts).
-export const FINAL_KM_BOUNDARY_7383_ACTIVE = true; // ejer-go 31/10
+// skifter ved segmentets start). 10 km fra maal er altid en graense
+// (backend/lib/engine/v4/adapters/finalKmBoundary7383.ts): en stigning eller
+// brostenssektor over punktet deles praecis dér. Kun nedkoerslen mod maal deles aldrig;
+// ligger "de sidste 10 km" inde i den, sker skiftet ved dens start eller foerst i finalen.
 
 export type StagePlanFeature = { kind: "climb" | "sector" | "descent"; from_km: number; to_km: number };
 export type StagePlanSwitchNote =
-  | { kind: "feature"; leg: number; feature: StagePlanFeature["kind"]; place: "start" | "end" | "finale" }
+  | { kind: "feature"; leg: number; feature: "descent"; place: "start" | "finale" }
   | { kind: "same_point"; leg: number; next: number };
 
 const NOTE_EPS_KM = 0.01;
@@ -479,35 +475,34 @@ export function stagePlanFeaturesFromRaw(raw: { distance_km?: unknown; finale_ty
 type Resolved = { km: number; finale: boolean };
 
 /** Hvor motoren faktisk skifter til led `i` (kun naar det vides sikkert; ellers punktet selv). */
-function resolvedSwitch(leg: StagePlanLeg, route: StagePlanRoute, features: readonly StagePlanFeature[], boundaryActive: boolean): { at: Resolved; note: StagePlanSwitchNote | null } | null {
+function resolvedSwitch(leg: StagePlanLeg, route: StagePlanRoute, features: readonly StagePlanFeature[]): { at: Resolved; note: StagePlanSwitchNote | null } | null {
   const km = triggerKm(leg.from, route);
   if (km === null) return null;
   if (leg.from?.at !== "final_km") return { at: { km, finale: false }, note: null };
-  const feature = features.find((f) => f.from_km + NOTE_EPS_KM < km && km < f.to_km - NOTE_EPS_KM);
-  if (!feature || (boundaryActive && feature.kind !== "descent")) return { at: { km, finale: false }, note: null };
-  const isLast = Math.abs(feature.to_km - route.distance_km) < NOTE_EPS_KM;
-  const firstHalf = km - feature.from_km <= (feature.to_km - feature.from_km) / 2;
-  const place: "start" | "end" | "finale" = (isLast && SEGMENT_WORK_TASKS.has(leg.task)) || firstHalf ? "start" : isLast ? "finale" : "end";
-  const at: Resolved = place === "start" ? { km: feature.from_km, finale: false } : place === "end" ? { km: feature.to_km, finale: false } : { km: route.distance_km, finale: true };
-  return { at, note: { kind: "feature", leg: -1, feature: feature.kind, place } };
+  // Nedkoerslen mod maal er altid etapens sidste segment (stagePlanFeaturesFromRaw).
+  const descent = features.find((f) => f.kind === "descent" && f.from_km + NOTE_EPS_KM < km && km < f.to_km - NOTE_EPS_KM);
+  if (!descent) return { at: { km, finale: false }, note: null };
+  const firstHalf = km - descent.from_km <= (descent.to_km - descent.from_km) / 2;
+  const place: "start" | "finale" = SEGMENT_WORK_TASKS.has(leg.task) || firstHalf ? "start" : "finale";
+  const at: Resolved = place === "start" ? { km: descent.from_km, finale: false } : { km: route.distance_km, finale: true };
+  return { at, note: { kind: "feature", leg: -1, feature: "descent", place } };
 }
 
 /**
- * #7383: de valgte skift motoren ikke kan ramme som valgt (til kontakten taendes): "de
- * sidste 10 km" inde i en stigning/sektor/nedkoersel, og to skift der falder samme sted
- * (saa det foerste led aldrig koeres). Kun det der vides sikkert ud fra profilen: et skift
- * paa aaben vej giver ingen note. Tom liste = alle skift sker som valgt.
+ * #7383: de valgte skift motoren ikke kan ramme som valgt: "de sidste 10 km" inde i
+ * nedkoerslen mod maal, og to skift der falder samme sted (saa det foerste led aldrig
+ * koeres). Kun det der vides sikkert ud fra profilen: et skift paa aaben vej, en
+ * stigning eller en sektor giver ingen note. Tom liste = alle skift sker som valgt.
  */
 export function stagePlanSwitchNotes(
   legs: readonly StagePlanLeg[],
   route: StagePlanRoute,
   features: readonly StagePlanFeature[],
-  boundaryActive: boolean = FINAL_KM_BOUNDARY_7383_ACTIVE,
 ): StagePlanSwitchNote[] {
   const notes: StagePlanSwitchNote[] = [];
   let previous: { leg: number; at: Resolved } | null = null;
   for (let i = 1; i < legs.length; i++) {
-    const resolved = resolvedSwitch(legs[i], route, features, boundaryActive);
+    const resolved = resolvedSwitch(legs[i], route, features);
     if (!resolved) {
       previous = null;
       continue;

@@ -37,6 +37,7 @@ import { rollIncidents } from "./raceIncidents.js";
 // peakDay → 0, så flag-off (og v3-løb uden peak-plan) er bit-identisk.
 import { peakComponentForStage } from "./racePeaks.js";
 import { settleBreakawayOutcome, breakawayFlagsForOutcome } from "./raceParticipationHistory.ts";
+import { compareIds } from "./compareIds.ts";
 // #4357: kun brugt til at RAPPORTERE en dobbelt-kaptajn-konflikt i buildTeamContext
 // (telemetri, no-op når Sentry ikke er initialiseret) — ændrer intet ved funktionens
 // egen determinisme (samme seed+input → samme output, uanset om kaldet fejler/no-op'er).
@@ -496,7 +497,7 @@ function selectBreakawayBonuses({ ordered, terrainById, profileType, finaleType,
   // Terræn-rang: stærkeste først. Kandidater = under top-cuttet, plus hunters (altid).
   const byTerrain = [...ordered].sort((a, b) =>
     (terrainById.get(b.rider_id) - terrainById.get(a.rider_id)) ||
-    String(a.rider_id).localeCompare(String(b.rider_id))
+    compareIds(String(a.rider_id), String(b.rider_id))
   );
   const cut = Math.floor(byTerrain.length * BREAKAWAY_TOP_EXCLUDED);
   // #4632 (intention, Model C): 'grupetto' = "jeg kører med i dag, jeg går ikke
@@ -505,9 +506,7 @@ function selectBreakawayBonuses({ ordered, terrainById, profileType, finaleType,
   // dagens intention slår rollens standard for netop denne etape). Det er den
   // ene resultat-side grupetto har: ingen egen chance, mod den største trætheds-
   // besparelse. Ingen NY mekanik — kun en indsnævring af den eksisterende
-  // kandidatliste, og feltet kan kun være 'grupetto' når
-  // race_day_intention_enabled er on (API'et er eneste skrivevej), så flag-off
-  // er bit-identisk.
+  // kandidatliste.
   const candidates = byTerrain.filter(
     (e, i) => (i >= cut || e.race_role === "hunter") && e.effort !== "grupetto"
   );
@@ -686,7 +685,7 @@ export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } 
 
   // Stabil scoringsrækkefølge → rng-sekvens uafhængig af input-orden.
   const ordered = [...entrants].sort((a, b) =>
-    String(a.rider_id).localeCompare(String(b.rider_id))
+    compareIds(String(a.rider_id), String(b.rider_id))
   );
   const rng = makeRng(seed >>> 0);
 
@@ -761,7 +760,7 @@ export function simulateStage({ entrants = [], stageProfile, seed, v3 = false } 
   // Rangering: bedste score først; stabil tiebreaker = rider_id.
   scored.sort((a, b) =>
     b.finalScore - a.finalScore ||
-    String(a.rider_id).localeCompare(String(b.rider_id))
+    compareIds(String(a.rider_id), String(b.rider_id))
   );
 
   const winnerScore = scored.length ? scored[0].finalScore : 0;

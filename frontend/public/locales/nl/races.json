@@ -668,7 +668,10 @@
     "noHistory": "Geen gegevens gevonden voor \"{name}\"",
     "raceNotFoundHint": "De link is mogelijk oud, of de koers is verwijderd. Open de koersbibliotheek om een andere te vinden.",
     "noResultsImportedRaceHint": "Deze koers heeft nog geen uitslagrijen. Andere koersen in de bibliotheek hebben ze al.",
-    "noResultsImportedRaceCta": "De koersbibliotheek openen"
+    "noResultsImportedRaceCta": "De koersbibliotheek openen",
+    "notStartedRace": "De koers is nog niet begonnen",
+    "notStartedStageRaceHint": "Het klassement verschijnt zodra rit 1 is verreden.",
+    "notStartedOneDayHint": "De uitslag verschijnt zodra de koers is verreden."
   },
   "calendar": {
     "upcoming": "Komend",

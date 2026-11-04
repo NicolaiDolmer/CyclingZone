@@ -129,6 +129,9 @@ $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot 'lib\gh-retry.ps1')
 . (Join-Path $PSScriptRoot 'lib\league-check.ps1')
+# #7587 punkt 6: close-out-modulet (scriptniveau, saa funktionen kan testes udtrukket).
+$script:CloseOutScript = Join-Path $PSScriptRoot 'merge-queue-closeout.mjs'
+$script:ActiveMarkerScript = Join-Path $PSScriptRoot 'merge-queue-active-marker.mjs'
 
 $PrNumbers = @($Pr -split '[,\s]+' | Where-Object { $_ } | ForEach-Object { [int]$_ })
 if ($PrNumbers.Count -eq 0) { Write-Error "Ingen gyldige PR-numre i -Pr '$Pr'."; exit 1 }
@@ -140,8 +143,21 @@ if ($CodeRabbitNight -and ($Repo -ne 'NicolaiDolmer/CyclingZone' -or @($PrNumber
 # filer overlapper boelgens aktive ownership (se assert-merge-allowed i
 # wave-policy.mjs). En legacy/ulaeselig markoer eller en uden ownership
 # blokerer stadig her, foer noget GitHub-kald.
-& node (Join-Path $PSScriptRoot 'wave-policy.mjs') assert-merge-allowed --repo $Repo
-if ($LASTEXITCODE -ne 0) { throw 'Aktiv boelgemarkoer: merge-koeen er blokeret.' }
+function Get-WaveEvidenceFailure([object[]]$Output) {
+  if (($Output -join "`n") -match 'WAVE_BOOT_IDENTITY_UNAVAILABLE') {
+    return 'Windows boot-identitet kunne ikke laeses; merge-koeen er blokeret (ikke en afvist boelgelaas).'
+  }
+  if (($Output -join "`n") -match 'WAVE_PROCESS_SNAPSHOT_UNAVAILABLE') {
+    return 'Windows procesbevis kunne ikke laeses; merge-koeen er blokeret.'
+  }
+  return $null
+}
+$wavePolicyOutput = @(& node (Join-Path $PSScriptRoot 'wave-policy.mjs') assert-merge-allowed --repo $Repo 2>&1)
+$wavePolicyExit = $LASTEXITCODE
+$waveEvidenceFailure = Get-WaveEvidenceFailure $wavePolicyOutput
+if ($waveEvidenceFailure) { throw $waveEvidenceFailure }
+$wavePolicyOutput | ForEach-Object { Write-Host $_ }
+if ($wavePolicyExit -ne 0) { throw 'Aktiv boelgemarkoer: merge-koeen er blokeret.' }
 
 function Get-PrPlanEntry([int]$number) {
   # Read-only: PR-metadata + required-checks-status. Sikkert at koere i -DryRun.
@@ -211,6 +227,7 @@ function Get-PrPlanEntry([int]$number) {
   # #6859: kun til at pege den skyldige PR i et merge-tog ud.
   $touchesVercel = $true
   $filesKnown = $false
+  $needsMigration = $true
   $title = "(ukendt)"
   $mergeable = "UNKNOWN"
   $isDraft = $false
@@ -246,6 +263,7 @@ function Get-PrPlanEntry([int]$number) {
       $changed = 0
       if ($parsed.PSObject.Properties['changedFiles']) { $changed = [int]$parsed.changedFiles }
       $listComplete = ($changed -gt 0) -and ($fileCount -ge $changed)
+      $needsMigration = (-not $listComplete) -or (@($paths | Where-Object { $_ -cmatch '^database/2026-[^/]*\.sql$' }).Count -gt 0)
       $pathsJson = ConvertTo-Json -InputObject $paths -Compress
       $classJson = & node (Join-Path $PSScriptRoot 'merge-queue-files.mjs') $pathsJson
       if ($LASTEXITCODE -eq 0 -and $classJson) {
@@ -275,6 +293,7 @@ function Get-PrPlanEntry([int]$number) {
     touchesBackend = $touchesBackend
     touchesRailway = $touchesRailway
     touchesVercel  = $touchesVercel
+    needsMigration = [bool]$needsMigration
     mergeable      = $mergeable
     isDraft        = $isDraft
     headSha        = $headSha
@@ -426,9 +445,14 @@ function Wait-ForWorkflowRun {
   $stallSig = $null
   $stallSince = & $Now
   while ((& $Now) -lt $deadline) {
-    $viewJson = Invoke-GhWithRetry @('run', 'view', "$runId", '--repo', $Repo, '--json', 'status,conclusion,jobs') -TolerateFailure
+    $viewJson = Invoke-GhWithRetry @('run', 'view', "$runId", '--repo', $Repo, '--json', 'headSha,status,conclusion,jobs') -TolerateFailure
     $run = $null
     if ($viewJson) { try { $run = ($viewJson -join "") | ConvertFrom-Json } catch {} }
+    if ($WorkflowFile -eq 'auto-migrate.yml' -and $run -and $run.headSha -ne $Sha) {
+      $script:workflowRunState = 'blocked'
+      Write-Host "  [STOP] '$Label': workflow SHA matcher ikke $Sha." -ForegroundColor Red
+      return $false
+    }
     if ($run -and $run.status -eq 'completed') {
       $ok = ($run.conclusion -eq 'success')
       $script:workflowRunState = if ($ok) { 'success' } elseif ($run.conclusion -eq 'failure') { 'failure' } else { 'blocked' }
@@ -609,6 +633,42 @@ function Stop-QueueStall {
   exit 1
 }
 
+# #7587 punkt 6: close-out efter et VERIFICERET tog (scripts/merge-queue-closeout.mjs):
+# SHA-kommentar paa hvert Refs/Closes-issue i PR-body, claude:todo -> claude:done kun
+# ved Closes, og een udskrevet NOW-linje pr. tog (orkestratoren committer den).
+# Idempotent via skjult markoer pr. (PR, issue). Fail-soft: en fejl her aendrer aldrig
+# koeens udfald. -DryRun sender --dry-run: laeser, skriver intet.
+function Invoke-TrainCloseOut {
+  param(
+    [object[]] $Entries,
+    [bool] $DeployVerified = $true,
+    [string] $ScriptPath = $script:CloseOutScript,
+    [string] $Phase = 'run'
+  )
+  try {
+    $items = @($Entries | Where-Object { $null -ne $_ } | ForEach-Object {
+      [ordered]@{ number = [int]$_.number; sha = $(if ($_.sha) { [string]$_.sha } else { $null }) }
+    })
+    if ($items.Count -eq 0) { return }
+    $nodeArgs = @($ScriptPath, $Phase, '--train', (ConvertTo-Json -InputObject $items -Compress), '--repo', $Repo)
+    if ($DryRun) { $nodeArgs += '--dry-run' }
+    if (-not $DeployVerified) { $nodeArgs += '--no-deploy' }
+    $out = @(& node @nodeArgs 2>&1)
+    $code = $LASTEXITCODE
+    foreach ($line in $out) { Write-Host "  $line" -ForegroundColor DarkCyan }
+    if ($code -ne 0) { Write-Host "  (close-out exit ${code}: merge og verifikation er uaendrede; koer scripts/merge-queue-closeout.mjs manuelt)" -ForegroundColor DarkYellow }
+  } catch {
+    Write-Host '  (close-out fejlede; merget er stadig verificeret. Koer scripts/merge-queue-closeout.mjs manuelt.)' -ForegroundColor DarkYellow
+  }
+}
+
+# #7587: tog-markoer (.claude/run/merge-queue-active.json, scripts/merge-queue-active-marker.mjs),
+# som Stop-hooken laeser. -DryRun skriver ingen. Fail-soft: en fejl her stopper aldrig koeen.
+function Invoke-ActiveMarker([string[]]$MarkerArgs) {
+  if ($DryRun) { return }
+  try { & node $script:ActiveMarkerScript @MarkerArgs --pid "$PID" 2>&1 | Out-Null } catch {}
+}
+
 function Get-DeployGateAction([string]$State) {
   if ($State -eq 'verified' -or $State -eq 'deferred' -or $State -eq 'released') { return 'continue' }
   if ($State -eq 'pending') { return 'pending' }
@@ -777,6 +837,47 @@ function Write-TrainCulprit([string]$Failure) {
 # SIDSTE merge-SHA, kan en tidligere PR i raekken have roed CI uden at koeen ser
 # det. Vent derfor paa ci.yml for HVER merge-SHA i raekken (push-koersler paa
 # main annulleres ikke, saa det koster stort set ingen ekstra tid).
+function Wait-BatchMigrations {
+  foreach ($entry in @($script:trainEntries)) {
+    if (-not $entry.needsMigration) { continue }
+    # Opus-review #7516: et forbigaaende fejlet fil-opslag foer merge saetter
+    # needsMigration fail-closed. Merge-commitets egne filer er det auto-migrate's
+    # push-filter ser; viser de beviseligt ingen migration, startes workflowet
+    # aldrig, og ventetid ville ende i en falsk STALL. Ukendt = vent som foer.
+    if ((Test-MergeCommitMigration -Sha $entry.sha) -eq 'no') {
+      Write-Host "  PR #$($entry.number): merge-commit $($entry.sha.Substring(0, [Math]::Min(8, $entry.sha.Length))) har ingen database/2026-*.sql - ingen Auto-migrate at vente paa." -ForegroundColor DarkGray
+      continue
+    }
+    $ok = Wait-ForWorkflowRun -WorkflowFile 'auto-migrate.yml' -Sha $entry.sha -TimeoutMinutes $CiTimeoutMinutes -Label "Auto-migrate PR #$($entry.number)" -StallMinutes $StallMinutes
+    if (-not $ok) { return $false }
+  }
+  return $true
+}
+
+# 'yes' | 'no' | 'unknown'. Kun et komplet, lokalt laest merge-commit kan give 'no'.
+function Test-MergeCommitMigration {
+  param([string]$Sha)
+  if ($Sha -notmatch '^[0-9a-f]{40}$') { return 'unknown' }
+  try {
+    & git cat-file -e "$Sha^{commit}" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+      # Hent kun netop dette commit, aldrig interaktivt og aldrig uden loft (en prompt eller
+      # en haengende forbindelse maa ikke haenge koeen). GCM's GUI-prompt stoppes ogsaa.
+      $oldPrompt = $env:GIT_TERMINAL_PROMPT
+      $env:GIT_TERMINAL_PROMPT = '0'
+      try {
+        & git -c credential.interactive=never -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=30 fetch --quiet --no-tags origin $Sha 2>$null | Out-Null
+      } finally { $env:GIT_TERMINAL_PROMPT = $oldPrompt }
+      & git cat-file -e "$Sha^{commit}" 2>$null
+    }
+    if ($LASTEXITCODE -ne 0) { return 'unknown' }
+    $paths = @(& git diff-tree --no-commit-id --name-only --no-renames -r --root $Sha 2>$null)
+    if ($LASTEXITCODE -ne 0) { return 'unknown' }
+  } catch { return 'unknown' }
+  if (@($paths | Where-Object { $_ -cmatch '^database/2026-[^/]*\.sql$' }).Count -gt 0) { return 'yes' }
+  return 'no'
+}
+
 function Wait-BatchCi {
   $allOk = $true
   $script:ciUnverified = $false
@@ -859,6 +960,9 @@ function Close-OpenTrain {
   $batchLabel = ($script:batchMerged | ForEach-Object { "#$_" }) -join ", "
   $batchSize = $script:batchMerged.Count
   $sha = $script:lastMergedSha
+  # #7587: togets PR'er + om det deployer, gemt foer tilstanden nulstilles nedenfor.
+  $closeOutEntries = @($script:trainEntries)
+  $closeOutDeploys = [bool]($script:batchBackend -or $script:batchRailway -or $script:batchVercel)
   $ciOk = Wait-BatchCi
   if (-not $ciOk) {
     if ($script:queueStall) { Stop-QueueStall }
@@ -868,6 +972,11 @@ function Close-OpenTrain {
     }
     Write-Host "STOP: main-CI er ROED efter $batchLabel. Fix main FOER naeste merge i koeen (rod main = stop-alt-fix-foerst)." -ForegroundColor Red
     Write-TrainCulprit 'ci'
+    exit 1
+  }
+  if (-not (Wait-BatchMigrations)) {
+    if ($script:queueStall) { Stop-QueueStall }
+    Write-Host "STOP: auto-migrate er ikke verificeret for $batchLabel. Ingen naeste merge." -ForegroundColor Red
     exit 1
   }
   $script:batchMerged = @()
@@ -906,8 +1015,14 @@ function Close-OpenTrain {
   $script:trainEntries = @()
 
   Write-Host "  [ok] $batchLabel faerdig - klar til naeste i koeen." -ForegroundColor Green
+  # #7587 punkt 6: foerst nu er toget verificeret. Fail-soft (ogsaa hvis funktionen mangler).
+  try { Invoke-TrainCloseOut -Entries $closeOutEntries -DeployVerified $closeOutDeploys }
+  catch { Write-Host '  (close-out kunne ikke startes; merget er stadig verificeret.)' -ForegroundColor DarkYellow }
 }
 
+# #7587: markoeren lever fra foerste merge-forsoeg til koeen slutter; finally (nederst) fjerner den ogsaa ved STOP/exit.
+Invoke-ActiveMarker @('start', '--prs', ($PrNumbers -join ','))
+try {
 for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   $entry = $plan[$idx]
   $n = $entry.number
@@ -953,6 +1068,12 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   }
 
   $fresh = Get-PrPlanEntry $n
+  # #7628: konflikt KUN i TS-baseline-filerne loeses af modulet (exit 0); alt andet = uaendret adfaerd.
+  # Loest = vent paa netop denne PR nu (ikke bagerst), saa naeste konflikt loeses mod den nye main.
+  if ($fresh.mergeable -eq 'CONFLICTING' -and -not $script:updated.ContainsKey("$n")) {
+    & node (Join-Path $PSScriptRoot 'merge-queue-baseline-resolve.mjs') --pr "$n" --repo $Repo @(if ($DryRun) { '--dry-run' }) | ForEach-Object { Write-Host "      $_" }
+    if ($LASTEXITCODE -eq 0 -and -not $DryRun) { $script:updated["$n"] = $true; $script:deferred["$n"] = $true; $fresh = Get-PrPlanEntry $n }
+  }
   if ($fresh.checksExit -ne 0 -and -not $StopOnRedPr -and -not $DryRun) {
     # 23/10 klar-foerst: ikke groen endnu -> bagerst i koeen een gang, saa klare PR'er
     # merges imens. Andet besoeg: vent (og opdater kun denne PR hvis den er bagud og roed).
@@ -1003,6 +1124,9 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
 
   if ($DryRun) {
     Write-Host "  [dry-run] ville merge nu: gh pr merge $n --squash --delete-branch --admin" -ForegroundColor DarkGray
+    # #7587: forhaandsvisning af close-out efter verifikation (read-only, --dry-run).
+    try { Invoke-TrainCloseOut -Entries @([pscustomobject]@{ number = $n; sha = $null }) }
+    catch { Write-Host '  (close-out-forhaandsvisning kunne ikke startes.)' -ForegroundColor DarkYellow }
     if ($entryRailway) { $script:batchRailway = $true }
     if ($entryBackend) { $script:batchBackend = $true }
     if ($entryVercel) { $script:batchVercel = $true }
@@ -1045,13 +1169,23 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   # #6861 (Codex P1): merge laast til det hoved, der netop er genvalideret.
   $previousReviewDeadline = $env:CZ_MERGE_REVIEW_DEADLINE_UTC
   $guardedMergeExit = 1
+  $waveEvidenceFailure = $null
   try {
     if ($CodeRabbitNight) {
       if (-not $recheck.reviewDeadlineUtc) { throw 'CodeRabbit review deadline missing' }
       $env:CZ_MERGE_REVIEW_DEADLINE_UTC = $recheck.reviewDeadlineUtc
     }
-    & node (Join-Path $PSScriptRoot 'wave-policy.mjs') guarded-merge --pr "$n" --repo $Repo --head $recheck.headSha
+    $wavePolicyOutput = @(& node (Join-Path $PSScriptRoot 'wave-policy.mjs') guarded-merge --pr "$n" --repo $Repo --head $recheck.headSha 2>&1)
     $guardedMergeExit = $LASTEXITCODE
+    $waveEvidenceFailure = Get-WaveEvidenceFailure $wavePolicyOutput
+    if ($waveEvidenceFailure) { throw $waveEvidenceFailure }
+    $wavePolicyOutput | ForEach-Object { Write-Host $_ }
+  } catch {
+    # Keep every failure on the common Exit-Queue path so already merged
+    # entries still receive CI/deploy verification. Never echo native errors.
+    $guardedMergeExit = 1
+    if ($waveEvidenceFailure) { Write-Host $waveEvidenceFailure -ForegroundColor Red }
+    else { Write-Host 'STOP: Guarded merge blev afbrudt; lukker eventuelt aabent tog foer exit.' -ForegroundColor Red }
   } finally {
     $env:CZ_MERGE_REVIEW_DEADLINE_UTC = $previousReviewDeadline
   }
@@ -1082,7 +1216,10 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   $script:batchMerged += $n
   $script:lastMergedSha = $sha
   $script:batchShas += $sha
-  $script:trainEntries += [pscustomobject]@{ number = $n; sha = $sha; touchesBackend = [bool]$entryBackend; touchesRailway = [bool]$entryRailway; touchesVercel = [bool]($entry.touchesVercel -or $fresh.touchesVercel) }
+  # #7587: merge-SHA i markoeren + SHA-kommentar STRAKS (verifikation afventer; Close-OpenTrain opdaterer den).
+  Invoke-ActiveMarker @('merged', '--pr', "$n", '--sha', $sha)
+  try { Invoke-TrainCloseOut -Entries @([pscustomobject]@{ number = $n; sha = $sha }) -Phase 'merged' } catch {}
+  $script:trainEntries += [pscustomobject]@{ number = $n; sha = $sha; needsMigration = [bool]($entry.needsMigration -or $fresh.needsMigration); touchesBackend = [bool]$entryBackend; touchesRailway = [bool]$entryRailway; touchesVercel = [bool]($entry.touchesVercel -or $fresh.touchesVercel) }
   if ($entryRailway) { $script:batchRailway = $true }
   if ($entryBackend) { $script:batchBackend = $true }
   if ($entryVercel) { $script:batchVercel = $true }
@@ -1121,4 +1258,8 @@ if ($DryRun) {
   foreach ($id in @($script:handedOffRuns)) {
     Write-Host "  Cron-bevis koerer videre i https://github.com/$Repo/actions/runs/$id (kommenterer paa PR'en naar det er faerdigt; roedt = Discord-ops-alarm, intet stop)." -ForegroundColor DarkGray
   }
+}
+} finally {
+  # #7587: ogsaa ved STOP/exit/fejl. Fjerner kun denne process' markoer.
+  Invoke-ActiveMarker @('stop')
 }

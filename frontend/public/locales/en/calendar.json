@@ -25,6 +25,9 @@
     "all": "All teams",
     "divisions": "Divisions"
   },
+  "scope": {
+    "label": "Show"
+  },
   "division": "Division {n}",
   "divisionMenu": {
     "label": "Division",
@@ -76,14 +79,13 @@
     "oneDay": "One-day race",
     "terrain": "Terrain",
     "noProfile": "Route not published yet",
-    "teamFit": "Team fit",
+    "teamFit": "Team route fit",
     "bestBet": "Best bet: {name} ({score})",
     "fitUnavailable": "Not available for this race",
     "status": {
       "label": "Your status",
       "missing": "Needs selection",
-      "selected": "Selected",
-      "gtBound": "Tied up by your Grand Tour"
+      "selected": "Selected"
     },
     "pick": "Pick squad",
     "editSquad": "Edit squad",
@@ -123,19 +125,13 @@
       "stages": "Stages",
       "class": "Class",
       "squad": "Your squad",
-      "squadShort": "Squad",
-      "open": "Open"
+      "squadShort": "Squad"
     },
     "openRace": "Open {name}",
-    "squad": {
-      "selected": "Squad ready",
-      "missing": "Needs squad",
-      "gtBound": "Grand Tour"
-    },
+    "squadFill": "{count} of {field} riders selected",
     "squadShort": {
       "selected": "Ready",
-      "missing": "Needed",
-      "gtBound": "GT"
+      "missing": "Needed"
     },
     "empty": {
       "title": "Clear the filters to see more races",

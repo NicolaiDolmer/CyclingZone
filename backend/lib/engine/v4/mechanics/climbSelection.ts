@@ -36,15 +36,16 @@ import type {
 } from "../types.ts";
 import { gaussian } from "../rng.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
-import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, GROUP_TEMPO_EFFORT_EXTRA_TUNING, ORDERS_GC_V1_CLIMB_GAIN_TUNING } from "../tuning.ts";
+import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, GROUP_TEMPO_EFFORT_EXTRA_TUNING, ORDERS_GC_V1_CLIMB_GAIN_TUNING, QUEEN_STAGE_GAP_7236_TUNING } from "../tuning.ts";
 import type { GroupTempoModel } from "../tuning.ts";
 import type { EffortLevel, Entrant } from "../types.ts";
 import { mountainSelectionKnobsFor, phaseSplitThreshold, phaseWprimeForcedMinSeverity, selectionPhaseFor } from "./mountainSelection.ts";
 import { TIME_MODEL_V3_TUNING, climbGapFieldScale, climbSplitGapSeconds, climbTimeSeconds, clusterSplitRiders, descentFinishDecidingClimbTuning, fieldScaledClimbTuning, finishDescentIndexFor, isDescentFinaleFor, timeModelTuningFor, wprimeForcedCategoryAllowed } from "./timeModel.ts";
 import type { TimeModelTuning } from "./timeModel.ts";
 import { isS5ExplosiveFinaleClimb } from "../s5Profiles.ts";
-import { allOut7280Active, allOut7280Tuning, climbGapEffortFactor } from "./effortCost.ts"; // #6641, #7280
+import { allOut7280Tuning, climbGapEffortFactor } from "./effortCost.ts"; // #6641, #7280
 import { allOutCrackProbability, allOutGainLoss, allOutReserve01, climbBlockOf, segmentCrackProbability } from "./allOutCrack6641.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 // #6464: feltets faktor regnes én gang pr. startliste (entrants-objektet er
 // etapens) og tuning; ren funktion af feltets klatre-evner.
@@ -192,7 +193,7 @@ type RiderSelection = {
   deficit01: number; // #6199: klatre-underskud mod gruppens bedste klatrer (0-1)
   energyDeficit01: number; // #6199: energi-underskud (0-1, tom reserve = 1)
   gapEffortFactor?: number; // #6641 (KUN s5_profiles_v3): indsatsens faktor paa hullet; udeladt = 1
-  gapShiftSeconds?: number; // #7280 (slukket alt ud-pakke): sekunder lagt til (+) / taget af (-) eget hul; udeladt = 0
+  gapShiftSeconds?: number; // #7280 (alt ud-pakken): sekunder lagt til (+) / taget af (-) eget hul; udeladt = 0
   allOutCracked?: true; // #7280: knaekket paa den afgoerende stigning (saettes af)
 };
 
@@ -325,14 +326,14 @@ function computeSelections(
     // effortClimbScorePenalty). Normal => faktor 1 og straf 0, dvs. bit-uaendret.
     // #6079: under orders_gc_v1 bruger save sine egne stignings-tal (tuning.ts).
     const gain = ctx.rulesRevision === "orders_gc_v1" ? ORDERS_GC_V1_CLIMB_GAIN_TUNING : EFFORT_GAIN_EXTRA_TUNING;
-    // #7280 (slukket pakke): alt ud holder ikke hjul for enhver pris paa de tidlige stigninger
+    // #7280: alt ud holder ikke hjul for enhver pris paa de tidlige stigninger
     // (det toemte ham foer den afgoerende); dér klatrer han som normal.
-    const allOut7280 = entrant.effort === "all_out" && ctx.s5ProfilesV3 === true && allOut7280Active();
+    const allOut7280 = entrant.effort === "all_out" && ctx.s5ProfilesV3 === true;
     const effortFactor = allOut7280 ? 1 : effortClimbScoreFactor(entrant.effort, 1 - energyDeficit, gain.climbScoreRelief);
     const effortPenalty = effortClimbScorePenalty(entrant.effort, severity, deficit01, gain.climbScorePenalty);
     const baseScore = (deficitWeight * deficitScaled + energyDeficitWeight * energyScaled) * effortFactor + effortPenalty;
     // #6641: indsatsens gevinst paa hullet (1 uden for s5_profiles_v3, effortCost.ts; hook-ctx baerer flaget, ikke revisionen).
-    // #7280 (slukket pakke): all_out faar sin gevinst i sekunder paa den afgoerende stigning (allOutSelections7280), ikke her.
+    // #7280: all_out faar sin gevinst i sekunder paa den afgoerende stigning (allOutSelections7280), ikke her.
     const gapScoreFactor = allOut7280 ? 1 : effortFactor;
     const gapFactor = climbGapEffortFactor(ctx.s5ProfilesV3 === true, gapScoreFactor);
 
@@ -370,7 +371,7 @@ function computeSelections(
  * paavirkes kun af selve energi-tilstanden, ikke af rangeringen.
  */
 function guardedSplitRiderIds(selections: RiderSelection[]): string[] {
-  const sorted = [...selections].sort((a, b) => b.baseScore - a.baseScore || a.riderId.localeCompare(b.riderId));
+  const sorted = [...selections].sort((a, b) => b.baseScore - a.baseScore || compareIds(a.riderId, b.riderId));
   let stillEligible = true;
   const split: string[] = [];
   for (const sel of sorted) {
@@ -545,7 +546,7 @@ export function retainedRiderIdWhenAllSplit(
 ): string {
   const racers = selections.filter((s) => !s.effortForced);
   const candidates = racers.length > 0 ? racers : selections;
-  return [...candidates].sort((a, b) => a.baseScore - b.baseScore || a.riderId.localeCompare(b.riderId))[0].riderId;
+  return [...candidates].sort((a, b) => a.baseScore - b.baseScore || compareIds(a.riderId, b.riderId))[0].riderId;
 }
 
 function gapSecondsDeltaFor(selections: RiderSelection[], splitRiderIds: string[]): number {
@@ -603,7 +604,7 @@ export const climbSelectionHook: ClimbSelectionHook = (
   // Deterministisk behandlingsraekkefolge (id-sorteret) — paavirker ikke
   // resultatet (rngFor er noeglet pr. rytter, ikke pr. kalde-raekkefolge),
   // men holder ny-gruppe-id'ernes taeller stabil pr. run.
-  const groupsSorted = [...state.groups].sort((a, b) => a.id.localeCompare(b.id));
+  const groupsSorted = [...state.groups].sort((a, b) => compareIds(a.id, b.id));
 
   let nextState = state;
   const events: TimelineEvent[] = [];
@@ -611,8 +612,8 @@ export const climbSelectionHook: ClimbSelectionHook = (
 
   for (const group of groupsSorted) {
     if (group.rider_ids.length < 2) {
-      // #7280 (slukket pakke): ogsaa en alt ud-rytter alene paa den sidste stigning kan knaekke.
-      if (group.rider_ids.length === 1 && ctx.s5ProfilesV3 === true && allOut7280Active()) {
+      // #7280: ogsaa en alt ud-rytter alene paa den sidste stigning kan knaekke.
+      if (group.rider_ids.length === 1 && ctx.s5ProfilesV3 === true) {
         const solo = allOutSoloCrack7280(group, nextState, ctx, gradientPct, lengthKm);
         nextState = solo.state;
         events.push(...solo.events);
@@ -658,8 +659,8 @@ export const climbSelectionHook: ClimbSelectionHook = (
         (id) => nextState.riders[id]?.dayform ?? 0,
         (deficit, energy) => climbSplitGapSeconds(gradientPct, lengthKm, deficit, energy, climbModel), climbModel)
       : baseSelections;
-    // #7280 (slukket pakke, KUN s5_profiles_v3): alt ud paa den afgoerende (sidste) stigning.
-    const allOutOn = ctx.s5ProfilesV3 === true && allOut7280Active() && !cohesive && group.kind !== "gruppetto"
+    // #7280 (KUN s5_profiles_v3): alt ud paa den afgoerende (sidste) stigning.
+    const allOutOn = ctx.s5ProfilesV3 === true && !cohesive && group.kind !== "gruppetto"
       && group.origin !== "breakaway" && (summitRace || isLastClimbBlock7280(ctx));
     const beforeAllOut = selections;
     let allOutIds: ReadonlySet<string> = new Set();
@@ -746,15 +747,26 @@ export const climbSelectionHook: ClimbSelectionHook = (
     }
   }
 
+  // #7236 (KUN kontakten queen_stage_gap_7236): loftet paa favoritgabet paa den afgoerende
+  // stigning foer en kort nedkoersel, efter dagens udvaelgelse paa segmentet.
+  if (ctx.queenStageGap7236 === true && queenStageTopCap7236Applies(ctx, timeModelTuningFor(ctx))) {
+    const capped = queenStageTopCap7236(nextState.groups);
+    if (capped !== nextState.groups) {
+      // Loftet greb: nedkoerslens regruppering maa samle dem (segmentLoop, descentRegroupTuning7236).
+      nextState = { ...nextState, groups: capped, queen_cap_7236: true };
+      rewriteSplitGaps7236(events, capped);
+    }
+  }
+
   // #7280: én linje pr. rytter, naar den afgoerende stigning er slut (ogsaa for en
   // rytter der koerte alene paa de sidste segmenter og derfor ikke blev udvalgt dér).
-  if (ctx.s5ProfilesV3 === true && allOut7280Active()) events.push(...allOutGainEvents7280(nextState, ctx, segment.to_km));
+  if (ctx.s5ProfilesV3 === true) events.push(...allOutGainEvents7280(nextState, ctx, segment.to_km));
 
   return { state: nextState, events };
 };
 
 /**
- * #7280 (slukket pakke, KUN s5_profiles_v3): er segmentet en del af etapens SIDSTE
+ * #7280 (KUN s5_profiles_v3): er segmentet en del af etapens SIDSTE
  * stigning? Paa en topankomst eller foer en nedkoerselsfinale er det den afgoerende
  * (summitRace); ellers er det finalens sidste bakke/stigning.
  */
@@ -767,7 +779,7 @@ export function isLastClimbBlock7280(ctx: Pick<SegmentHookContext, "route" | "se
 }
 
 /**
- * #7280 (slukket pakke, KUN s5_profiles_v3): alt ud paa et segment af den afgoerende
+ * #7280 (KUN s5_profiles_v3): alt ud paa et segment af den afgoerende
  * stigning (spec 2026-10-27-6641-alt-ud-design.md). For hver alt ud-rytter i gruppen:
  * enten knaekker han (seedet, risikoen vokser under reserve-taersklen) og faar et
  * ekstra tab, eller ogsaa tages en evne- og reserve-vaegtet del af hans eget hul.
@@ -804,7 +816,7 @@ function allOutSelections7280(
 }
 
 /**
- * #7280 (slukket pakke): en alt ud-rytter ALENE paa etapens sidste stigning (ingen gruppe at
+ * #7280: en alt ud-rytter ALENE paa etapens sidste stigning (ingen gruppe at
  * blive sat af) kan ogsaa knaekke. Samme risiko og samme rng-stroem som i gruppen; knaekker
  * han, faar hans egen gruppe tabet lagt til sit hul. REN.
  */
@@ -914,4 +926,76 @@ function allOutGainEvents7280(state: EngineState, ctx: SegmentHookContext, km: n
     if (ao.gained >= 1) events.push({ km: round2(km), type: "all_out_gain", params: { rider_id: riderId } });
   }
   return events;
+}
+
+/**
+ * #7236 (KUN kontakten queen_stage_gap_7236): gaelder topgabets loft paa dette segment?
+ * Bjerg/hoejfjeld (tuningens profiler), segmentet er en del af den afgoerende stigning foer
+ * en nedkoerselsfinale (aldrig en topankomst), og vejen fra stigningens top til maal er
+ * kortere end tuningens graense (lange nedkoersler samler selv favoritterne). REN.
+ */
+export function queenStageTopCap7236Applies(
+  ctx: Pick<SegmentHookContext, "route" | "segmentIndex">,
+  t: TimeModelTuning,
+  q: typeof QUEEN_STAGE_GAP_7236_TUNING = QUEEN_STAGE_GAP_7236_TUNING,
+): boolean {
+  if (!q.profiles.includes(ctx.route.profile_type)) return false;
+  if (isSummitFinishClimb(ctx) || !isDescentFinishDecidingClimb(ctx, t)) return false;
+  const segs = ctx.route.segments ?? [];
+  const block = climbBlockOf(segs, ctx.segmentIndex);
+  if (!block) return false;
+  const finishKm = Number.isFinite(ctx.route.distance_km) ? ctx.route.distance_km : segs[segs.length - 1].to_km;
+  return finishKm - segs[block.end].to_km < q.maxTopToFinishKm;
+}
+
+/**
+ * #7236: loftet paa favoritgabet. Favoritterne er alle grupper uden for dagens udbrud
+ * (M5 ejer det hul). Ligger favorit nr. `capRank` mere end `capSeconds` bag den forreste
+ * favoritgruppe, presses hullerne op til ham ind under loftet i samme forhold, og alle
+ * bag ham rykker det samme stykke frem. Under loftet: uroert (samme array). Raekkefoelgen
+ * og de indbyrdes forhold foran ham bevares, saa en staerkere klatrer aldrig mister sin
+ * plads eller sin fordel. Dagens udbrud foran favoritterne og den forreste favoritgruppe
+ * flyttes aldrig. Et stykke af udbruddet der er sat bag den forreste favoritgruppe, taeller
+ * ikke med i nr. `capRank`, men foelger samme loft, saa ingen favoritgruppe springer forbi
+ * det (raekkefoelgen er uaendret for alle grupper). REN.
+ */
+export function queenStageTopCap7236(
+  groups: readonly RaceGroup[],
+  q: Pick<typeof QUEEN_STAGE_GAP_7236_TUNING, "capRank" | "capSeconds"> = QUEEN_STAGE_GAP_7236_TUNING,
+): RaceGroup[] {
+  const favourites = groups
+    .filter((g) => g.origin !== "breakaway" && g.rider_ids.length > 0)
+    .sort((a, b) => a.gap_seconds - b.gap_seconds || compareIds(a.id, b.id));
+  if (favourites.length < 2 || !(q.capSeconds > 0)) return groups as RaceGroup[];
+  const front = favourites[0].gap_seconds;
+  let riders = 0;
+  let rankGap: number | null = null;
+  for (const g of favourites) {
+    riders += g.rider_ids.length;
+    if (riders >= q.capRank) { rankGap = g.gap_seconds - front; break; }
+  }
+  if (rankGap === null || !(rankGap > q.capSeconds)) return groups as RaceGroup[];
+  const scale = q.capSeconds / rankGap;
+  const shift = rankGap - q.capSeconds;
+  return groups.map((g) => {
+    if (g.rider_ids.length === 0) return g;
+    const rel = g.gap_seconds - front;
+    if (!(rel > 0)) return g;
+    const capped = rel <= rankGap ? rel * scale : rel - shift;
+    return { ...g, gap_seconds: round2(front + capped) };
+  });
+}
+
+/** #7236: segmentets split-events viser hullet efter loftet (ny gruppe minus kildegruppen). */
+function rewriteSplitGaps7236(events: TimelineEvent[], groups: readonly RaceGroup[]): void {
+  const gapOf = new Map(groups.map((g) => [g.id, g.gap_seconds]));
+  for (let i = 0; i < events.length; i++) {
+    const e = events[i];
+    if (e.type !== "peloton_splits") continue;
+    const own = gapOf.get(String(e.params?.group_id));
+    const source = gapOf.get(String(e.params?.source_group_id));
+    if (own === undefined || source === undefined) continue;
+    const gap = round2(own - source);
+    if (gap !== e.params.gap_seconds) events[i] = { ...e, params: { ...e.params, gap_seconds: gap } };
+  }
 }

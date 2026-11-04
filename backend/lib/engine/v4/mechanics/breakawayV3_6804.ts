@@ -1,5 +1,5 @@
 // backend/lib/engine/v4/mechanics/breakawayV3_6804.ts
-// #6804 (KUN s5_profiles_v3, SLUKKET): udbrudspakken trin 2, ét trin ad gangen.
+// #6804 (KUN s5_profiles_v3, live under den aktuelle revision): udbrudspakken trin 2, ét trin ad gangen.
 // Spec docs/superpowers/specs/2026-10-21-6804-udbrud-pr-loebsgruppe-design.md og
 // 2026-10-17-6804-hilly-breakaway-design.md. Reglerne: docs/RACE_ENGINE_RULES.md.
 //
@@ -20,6 +20,7 @@
 
 import type { FinaleType, GcContext, ProfileType } from "../types.ts";
 import { S5_V3_BREAKAWAY_TUNING } from "../tuning.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 /** Etapeloeb (ikke endagsloeb): klassementet findes eller loebet er paa sin foerste etape. */
 export function isStageRaceGcContext(gcContext: GcContext | null | undefined): boolean {
@@ -141,7 +142,7 @@ export function s5V3InterestedTeamIds(input: {
   const ids = new Set<string>();
   for (const [teamId, interest] of input.interestByTeam) if (interest > 0) ids.add(teamId);
   for (const [teamId, signal] of input.teamSignals ?? []) if (Math.max(0, signal) > 0) ids.add(teamId);
-  return [...ids].filter((id) => !input.excludedTeamIds?.has(id)).sort((a, b) => a.localeCompare(b));
+  return [...ids].filter((id) => !input.excludedTeamIds?.has(id)).sort((a, b) => compareIds(a, b));
 }
 
 /** P2: lad-gaa-loftet feltet tolererer: mellemzonen med interesse, ellers den oevre zone. */

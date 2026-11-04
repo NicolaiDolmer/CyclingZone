@@ -8,12 +8,11 @@ import CheckboxBase from "../ui/Checkbox.jsx";
 import SelectBase from "../ui/Select.jsx";
 import ButtonBase from "../ui/Button.jsx";
 import EmptyStateBase from "../ui/EmptyState.jsx";
-import { ChevronRightIcon, CalendarIcon } from "../ui/icons/index.jsx";
-import { buttonClass } from "../ui/buttonStyles.js";
+import { CalendarIcon } from "../ui/icons/index.jsx";
 import TerrainTypeGlyphBase from "../race/TerrainTypeGlyph.jsx";
 import { useIsMobileViewport } from "../../hooks/useMediaQuery.ts";
 import { intlLocale } from "../../lib/intlLocale.ts";
-import { raceDetailHref, raceTerrain } from "../../lib/racePeek.ts";
+import { raceDetailHref, raceTerrain, TERRAIN_KINDS } from "../../lib/racePeek.ts";
 import type { RaceStatus } from "../../lib/racePeek.ts";
 import {
   buildCalendarTableRows,
@@ -99,32 +98,28 @@ interface CalendarTableProps {
   division?: number | null;
   poolId?: number | null;
   mineOnly?: boolean;
-  showMineToggle?: boolean;
-  onMineOnlyChange?: (next: boolean) => void;
   divisionPending?: boolean;
   onShowAll?: (() => void) | null;
 }
 
 // #6683 · "Kalender | Tabel": sæsontabellen (ejer 25/10, mulighed A + B's mobil).
 //
-// Desktop (A): én række pr. løb for hele sæsonen. Kolonner LØB (navn + type
-// under), DATOER (sorterbar), START, TERRÆN (ét farvet streg-ikon pr. etape;
-// endagsløb ikon + ord), ETAPER, KLASSE, DIT HOLD (pille) og "Åbn". Ingen km.
+// Desktop (A): én række pr. løb for hele sæsonen. Kolonner LØB (navnet er linket,
+// type under), DATOER, START, TERRÆN (hver terræntype én gang; endagsløb ikon +
+// ord), ETAPER, KLASSE og DIT HOLD (pille). Alle kolonner sorterer (#7533). Ingen km.
 // Mobil (B's rækker): løbsnavn med en grå linje under (datoer · klasse),
 // Terræn (ikon, + ord for endagsløb) og Hold (Klar/Mangler-pille). Ingen
 // brede kolonner, så navne aldrig knækker.
 //
-// Kanoniske T2-dele (docs/design/PAGE_TEMPLATES.md): FilterBar (søg + 3 selects
+// Kanoniske T2-dele (docs/design/PAGE_TEMPLATES.md): FilterBar (søg + 2 selects
 // + "Flere filtre"), DataTable dense, StatusBadge, TerrainTypeGlyph. Ingen ny
-// radius, padding eller sidehoved. Siden ejer fanerne, sæsonvælgeren og
+// radius, padding eller sidehoved. Siden ejer Vis-vælgeren, sæsonvælgeren og
 // skifteren; her bor kun filterlinjen og tabellen.
 //
 // Holdstatus = racePeek.myRaceStatus, samme regel som kalenderens status-prik
 // og løbskortet.
 
-const SQUAD_BADGE: Record<RaceStatus, string> = { selected: "won", missing: "closing", gtBound: "info" };
-// Etapeløb med mange etaper (Grand Tours) ombrydes i stedet for at gøre kolonnen bred.
-const STAGE_ICON_WRAP = "flex max-w-[11.5rem] flex-wrap items-center gap-x-0.5 gap-y-1";
+const SQUAD_BADGE: Record<RaceStatus, string> = { selected: "won", missing: "closing" };
 
 export default function CalendarTable({
   entries,
@@ -132,8 +127,6 @@ export default function CalendarTable({
   division = null,
   poolId = null,
   mineOnly = false,
-  showMineToggle = false,
-  onMineOnlyChange,
   divisionPending = false,
   onShowAll = null,
 }: CalendarTableProps) {
@@ -203,15 +196,17 @@ export default function CalendarTable({
   };
 
   // Mobil: type + klasse i linjen, terræn bag "Flere filtre" (begge mockups).
-  const filters = mobile ? [typeFilter, classFilter] : [typeFilter, classFilter, terrainFilter];
+  // #7461 (ejer 1/11): desktop har type + terræn i linjen og klasse bag "Flere filtre".
+  const filters = mobile ? [typeFilter, classFilter] : [typeFilter, terrainFilter];
+  const moreSelect = (f: typeof terrainFilter) => (
+    <Select key={f.key} size="sm" value={f.value} onChange={f.onChange} aria-label={f.ariaLabel}>
+      {f.options.map((o) => (
+        <option key={o.value} value={o.value}>{o.label}</option>
+      ))}
+    </Select>
+  );
   const more = [
-    mobile && (
-      <Select key="terrain" size="sm" value={terrain} onChange={terrainFilter.onChange} aria-label={terrainFilter.ariaLabel}>
-        {terrainFilter.options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </Select>
-    ),
+    moreSelect(mobile ? terrainFilter : classFilter),
     showSquad && (
       <Checkbox
         key="needs"
@@ -222,20 +217,22 @@ export default function CalendarTable({
         className="text-cz-2"
       />
     ),
-    showMineToggle && (
-      <Checkbox
-        key="mine"
-        id="cal-table-mine-only"
-        checked={mineOnly}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => onMineOnlyChange?.(e.target.checked)}
-        label={t("filter.mine")}
-        className="text-cz-2"
-      />
-    ),
   ].filter(Boolean);
 
   const typeLabel = (r: CalendarTableRow) => t(`table.rowType.${r.stageRace ? "stage_race" : "single"}`);
   const dates = (r: CalendarTableRow, withWeekday: boolean) => formatRange(r.start, r.end, locale, withWeekday);
+
+  // #7533 (ejer 2/11): navnet er selve linket til løbet, også på desktop (ingen "Åbn"-kolonne).
+  const raceLink = (r: CalendarTableRow) => (
+    <Link
+      to={raceDetailHref(r.id)}
+      aria-label={t("table.openRace", { name: r.name })}
+      className={`hover:underline ${r.isMine ? "text-cz-1" : "text-cz-2"}`}
+      data-testid="calendar-table-open"
+    >
+      {r.name}
+    </Link>
+  );
 
   const desktopColumns = [
     {
@@ -243,7 +240,7 @@ export default function CalendarTable({
       header: t("table.cols.race"),
       sticky: true,
       sortKey: "name",
-      render: (r: CalendarTableRow) => <span className={r.isMine ? "text-cz-1" : "text-cz-2"}>{r.name}</span>,
+      render: raceLink,
       subline: (r: CalendarTableRow) => typeLabel(r),
     },
     {
@@ -256,11 +253,13 @@ export default function CalendarTable({
       key: "start",
       header: t("table.cols.start"),
       numeric: true,
+      sortKey: "start",
       render: (r: CalendarTableRow) => r.startTime ?? <Dash />,
     },
     {
       key: "terrain",
       header: t("table.cols.terrain"),
+      sortKey: "terrain",
       render: (r: CalendarTableRow) => <StageTerrain row={r} />,
     },
     {
@@ -273,56 +272,41 @@ export default function CalendarTable({
     {
       key: "class",
       header: t("table.cols.class"),
+      sortKey: "class",
       render: (r: CalendarTableRow) => <span className="whitespace-nowrap">{r.raceClass ? classLabel(t, r.raceClass) : <Dash />}</span>,
     },
     ...(showSquad
       ? [{
           key: "squad",
           header: t("table.cols.squad"),
-          render: (r: CalendarTableRow) => <SquadPill status={r.status} t={t} />,
+          sortKey: "squad",
+          render: (r: CalendarTableRow) => <SquadPill status={r.status} fill={r.fill} t={t} />, // #7568: kort mærke, klippes ikke
         }]
       : []),
-    {
-      key: "open",
-      header: <span className="sr-only">{t("table.cols.open")}</span>,
-      render: (r: CalendarTableRow) => (
-        <Link
-          to={raceDetailHref(r.id)}
-          aria-label={t("table.openRace", { name: r.name })}
-          className={`${buttonClass({ variant: "secondary", size: "sm" })} whitespace-nowrap`}
-          data-testid="calendar-table-open"
-        >
-          {t("table.cols.open")}
-          <ChevronRightIcon size={14} aria-hidden="true" />
-        </Link>
-      ),
-    },
   ];
 
-  // B's mobil-rækker: navnet er selve linket til løbet (ingen bred "Åbn"-kolonne).
+  // B's mobil-rækker: navnet er selve linket til løbet.
   const mobileColumns = [
     {
       key: "race",
       header: t("table.cols.race"),
       sticky: true,
       sortKey: "name",
-      render: (r: CalendarTableRow) => (
-        <Link to={raceDetailHref(r.id)} className={`hover:underline ${r.isMine ? "text-cz-1" : "text-cz-2"}`} data-testid="calendar-table-open">
-          {r.name}
-        </Link>
-      ),
+      render: raceLink,
       subline: (r: CalendarTableRow) => [dates(r, false), r.raceClass ? classLabel(t, r.raceClass) : null].filter(Boolean).join(" · "),
     },
     {
       key: "terrain",
       header: t("table.cols.terrain"),
+      sortKey: "terrain",
       render: (r: CalendarTableRow) => <CompactTerrain row={r} />,
     },
     ...(showSquad
       ? [{
           key: "squad",
           header: t("table.cols.squadShort"),
-          render: (r: CalendarTableRow) => <SquadPill status={r.status} t={t} short />,
+          sortKey: "squad",
+          render: (r: CalendarTableRow) => <SquadPill status={r.status} fill={r.fill} t={t} />,
         }]
       : []),
   ];
@@ -381,15 +365,16 @@ function Dash() {
   return <span className="text-cz-3">–</span>;
 }
 
-// Desktop: ét ikon pr. etape (mockup A). Endagsløb: ikon + ord.
+// Desktop: endagsløb ikon + ord. Etapeløb: hver terræntype én gang (#7533, ejer 2/11:
+// samme ikon må ikke gentages), alle typer løbet har, i fast rækkefølge.
 function StageTerrain({ row }: { row: CalendarTableRow }) {
   if (!row.stageRace) {
     return <TerrainTypeGlyph profileType={row.stageTypes[0]} size={16} showLabel className="gap-1.5 whitespace-nowrap text-cz-2" labelClassName="text-xs" />;
   }
   return (
-    <span className={STAGE_ICON_WRAP}>
-      {row.stageTypes.map((pt: string, i: number) => (
-        <TerrainTypeGlyph key={i} profileType={pt} size={16} />
+    <span className="flex items-center gap-0.5">
+      {raceTerrain(row.stageTypes, { max: TERRAIN_KINDS.length }).map((x) => (
+        <TerrainTypeGlyph key={x.kind} profileType={x.profileType} size={16} />
       ))}
     </span>
   );
@@ -410,11 +395,16 @@ function CompactTerrain({ row }: { row: CalendarTableRow }) {
   );
 }
 
-function SquadPill({ status, t, short = false }: { status: RaceStatus | null; t: Translate; short?: boolean }) {
+function SquadPill({ status, fill, t }: { status: RaceStatus | null; fill?: CalendarTableRow["fill"]; t: Translate }) {
   if (!status) return <Dash />;
   return (
     <StatusBadge state={SQUAD_BADGE[status]} emphasis className="whitespace-nowrap">
-      {t(`table.${short ? "squadShort" : "squad"}.${status}`)}
+      {t(`table.squadShort.${status}`)}
+      {fill ? (
+        <span className="tabular-nums" title={t("table.squadFill", { count: fill.count, field: fill.field })}>
+          {" · "}{fill.count}/{fill.field}
+        </span>
+      ) : null}
     </StatusBadge>
   );
 }

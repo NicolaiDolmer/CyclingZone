@@ -25,6 +25,11 @@
     "improved": "Forbedringer",
     "fixed": "Fejlrettelser"
   },
+  "summary": {
+    "new": "{count, plural, one {# nyt} other {# nyt}}",
+    "improved": "{count, plural, one {# forbedring} other {# forbedringer}}",
+    "fixed": "{count, plural, one {# fejlrettelse} other {# fejlrettelser}}"
+  },
   "newBadge": "Ny",
   "rollout": {
     "beta": "Beta",

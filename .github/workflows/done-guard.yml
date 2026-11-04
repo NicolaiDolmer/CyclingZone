@@ -46,9 +46,10 @@ on:
 permissions:
   contents: read
 
+# #7582: kun en forældet PR-kørsel annulleres; en manuel dispatch kører færdig.
 concurrency:
-  group: done-guard-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   done-guard:

@@ -16,7 +16,8 @@ import { DAILY_TRAINING_CONFIG } from "./dailyTraining.js";
 import { CONDITION_CONFIG, RACE_DAY_ENGINE_RECOVERY_CONFIG, injuryRisk, rollInjury } from "./riderCondition.js";
 import { effortFatigueMultiplier } from "./raceRoles.js";
 import { medicalRecoveryMultiplier, medicalTrainingInjuryRisk, medicalInjuryDays } from "./medicalEffects.js";
-import { allOut7280Tuning, isAllOut7280On, isSaveItt7332Effort, isSaveItt7332On } from "./engine/v4/mechanics/effortCost.ts";
+import { allOut7280Tuning, isSaveItt7332Effort } from "./engine/v4/mechanics/effortCost.ts";
+import { isS5ProfilesV3OrLater } from "./raceEngineRulesRevision.ts";
 
 export const CONDITION_V2_CONFIG = Object.freeze({
   // §5.2: profil-belastning (spillernes rækkefølge, større spænd end v1). Niveauet er
@@ -91,26 +92,26 @@ export function workMultiplierV2(exposure, { profileType = null, cfg = CONDITION
 }
 
 /**
- * #6641/#7280 (slukket alt ud-pakke, KUN s5_profiles_v3; spec 2026-10-27-6641-alt-ud-design.md):
+ * #6641/#7280 (alt ud-pakken, s5_profiles_v3 og senere; spec 2026-10-27-6641-alt-ud-design.md):
  * ejer 27/10 punkt 3, prisen for Alt ud er træthed der hober sig op. Pakkens faktor
  * erstatter alt ud's indsats-faktor, også i enkeltstarter (dér vinder alt ud nu tid).
- * `null` = pakken er ikke i kraft eller trinnet er ikke alt ud (bit-identisk).
+ * `null` = aeldre revision, eller trinnet er ikke alt ud (bit-identisk).
  */
 export function allOutLoadMultiplier7280(effort, rulesRevision) {
-  if (effort !== "all_out" || !isAllOut7280On(rulesRevision)) return null;
+  if (effort !== "all_out" || !isS5ProfilesV3OrLater(rulesRevision)) return null;
   return allOut7280Tuning().fatigueLoad;
 }
 
 /**
- * #7332 (slukket, KUN s5_profiles_v3; ejer 31/10 valg A): spar mod uret sparer træthed.
+ * #7332 (s5_profiles_v3 og senere; ejer 31/10 valg A): spar mod uret sparer træthed.
  * På en enkeltstart (itt, itt_hilly; ikke ttt) får spar, beskyt og grupetto samme
  * trætheds-rabat som spar på en FLAD etape, i stedet for 1. Motoren tager prisen i tid
- * (individualTimeTrial.ts). `null` = pakken er ikke i kraft eller trinnet/profilen er
+ * (individualTimeTrial.ts). `null` = aeldre revision, eller trinnet/profilen er
  * ikke omfattet (bit-identisk).
  */
 export function saveIttLoadMultiplier7332(effort, profileType, rulesRevision) {
   if (!INDIVIDUAL_TIME_TRIAL_PROFILES.has(profileType)) return null;
-  if (!isSaveItt7332Effort(effort, isSaveItt7332On(rulesRevision))) return null;
+  if (!isSaveItt7332Effort(effort, isS5ProfilesV3OrLater(rulesRevision))) return null;
   return effortFatigueMultiplier("save", { profileType: "flat", rulesRevision });
 }
 
@@ -146,30 +147,60 @@ export function nextFormV2({ form, fatigue, cfg = CONDITION_V2_CONFIG }) {
  * rækkefølge; de frie pladser bagefter med summen/5 og (antal/5) restitution.
  * En dato uden etaper er derfor samme formel som v1 (gennemsnit + én restitution),
  * kun med §5.4's evne-afhængige andel.
+ *
+ * #7536 (ejer-valg 3/11, løsning A; flaget condition_v2_race_date_training_day,
+ * `raceDateTrainingDay`): på en dato MED etaper vejer træningen på de frie pladser
+ * et helt træningsdøgn (ejerens regel 29/9). Træningspassene (positiv belastning)
+ * fordeles over de frie pladser i stedet for over alle datoens pladser, og
+ * restitutionen følger andelen af trænede frie pladser (alle frie trænet = et helt
+ * døgns restitution). Hvile/restitution på frie pladser regnes som før. Uændret:
+ * datoer uden etaper, datoer hvor ingen fri plads trænes, og etapebelastningerne.
+ *
+ * To værn, så den ekstra restitution aldrig kan udnyttes: datoen giver aldrig mindre
+ * træthed end dagens regel, og et hårdere pas på en fri plads giver aldrig mindre
+ * træthed end et roligere (fx et let pas efter tunge etaper restituerer ikke mere
+ * end hvile). Regnet som det højeste udfald over alle roligere udgaver af de frie
+ * pladser, så reglen er monoton i hver plads.
  */
-export function settleDateFatigueV2({ fatigue, intensities, raceLoads, recoveryAbility = 50, medicalBonus = 0, cfg = CONDITION_V2_CONFIG }) {
+export function settleDateFatigueV2({ fatigue, intensities, raceLoads, recoveryAbility = 50, medicalBonus = 0, raceDateTrainingDay = false, cfg = CONDITION_V2_CONFIG }) {
   let f = clamp(finiteOr(fatigue, 0), 0, 100);
-  let trainingLoad = 0;
-  let trainingSlots = 0;
+  const freeLoads = [];
   intensities.forEach((intensity, index) => {
     if (intensity === "race") {
       f = clamp(f + raceLoads[index] - recoveryV2({ fatigue: f, recoveryAbility, medicalBonus, cfg }), 0, 100);
     } else {
-      trainingLoad += DAILY_TRAINING_CONFIG.fatigueLoad[intensity] ?? 0;
-      trainingSlots += 1;
+      freeLoads.push(DAILY_TRAINING_CONFIG.fatigueLoad[intensity] ?? 0);
     }
   });
-  if (trainingSlots > 0) {
-    const share = trainingSlots / intensities.length;
-    f = clamp(f + trainingLoad / intensities.length - recoveryV2({ fatigue: f, recoveryAbility, share, medicalBonus, cfg }), 0, 100);
-  }
-  return Math.round(f);
+  if (freeLoads.length === 0) return Math.round(f);
+  const recovery = (share) => recoveryV2({ fatigue: f, recoveryAbility, share, medicalBonus, cfg });
+  const todayRule = (loads) => clamp(f + loads.reduce((s, l) => s + l, 0) / intensities.length - recovery(loads.length / intensities.length), 0, 100);
+  const raced = freeLoads.length < intensities.length;
+  if (!raceDateTrainingDay || !raced || !freeLoads.some((l) => l > 0)) return Math.round(todayRule(freeLoads));
+  // #7536: et helt træningsdøgn for passene; hvile som i dag.
+  const fullDayRule = (loads) => {
+    const work = loads.filter((l) => l > 0);
+    if (work.length === 0) return todayRule(loads);
+    const restLoad = loads.reduce((s, l) => s + (l > 0 ? 0 : l), 0);
+    const share = Math.max(loads.length / intensities.length, work.length / loads.length);
+    return clamp(f + work.reduce((s, l) => s + l, 0) / loads.length + restLoad / intensities.length - recovery(share), 0, 100);
+  };
+  // Værnene: max over dagens regel og alle roligere udgaver af de frie pladser.
+  const levels = [...new Set(Object.values(DAILY_TRAINING_CONFIG.fatigueLoad))].sort((a, b) => a - b);
+  let best = todayRule(freeLoads);
+  const walk = (i, picked) => {
+    if (i === freeLoads.length) { best = Math.max(best, fullDayRule(picked)); return; }
+    const options = levels.filter((l) => l < freeLoads[i]);
+    for (const l of [...options, freeLoads[i]]) walk(i + 1, [...picked, l]);
+  };
+  walk(0, []);
+  return Math.round(best);
 }
 
 /** v2-udgaven af trainingDateCondition.settleTrainingDateCondition (samme signatur og retur). */
-export function settleTrainingDateConditionV2({ riderId, dateStr, condition, intensities, raceLoads, recoveryAbility = 50, medicalBonus = 0, cfg = CONDITION_V2_CONFIG }) {
+export function settleTrainingDateConditionV2({ riderId, dateStr, condition, intensities, raceLoads, recoveryAbility = 50, medicalBonus = 0, raceDateTrainingDay = false, cfg = CONDITION_V2_CONFIG }) {
   const preFatigue = Number(condition.fatigue ?? 0);
-  const fatigue = settleDateFatigueV2({ fatigue: preFatigue, intensities, raceLoads, recoveryAbility, medicalBonus, cfg });
+  const fatigue = settleDateFatigueV2({ fatigue: preFatigue, intensities, raceLoads, recoveryAbility, medicalBonus, raceDateTrainingDay, cfg });
   const form = nextFormV2({ form: Number(condition.form ?? 50), fatigue, cfg });
   // Skaderisiko som i v1 (kun hård træning over skadegrænsen, på åbningstrætheden);
   // M2 sænker risikoen, M3 forkorter en skade.

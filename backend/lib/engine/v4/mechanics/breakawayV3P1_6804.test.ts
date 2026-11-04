@@ -12,7 +12,8 @@ import { descentRegroup6486OnRoute } from "./descentRegroup6486.ts";
 import { BREAKAWAY_CHASE_V3_TUNING, MOUNTAIN_SELECTION_V2_TUNING, RACE_V4_TUNING, S5_V3_BREAKAWAY_TUNING } from "../tuning.ts";
 import { simulateStageV4 } from "../index.ts";
 import type { Entrant, GcContext } from "../types.ts";
-import { setFinalKmBoundary7383ForBench } from "../adapters/finalKmBoundary7383.ts"; // #7383 (taendt 31/10): sammenligningen maaler #6804, ikke 10 km-delingen
+import { routeWithFinalKmBoundary7383, splitAtFinalKm7383 } from "../adapters/finalKmBoundary7383.ts"; // #7383: sammenligningen maaler #6804, ikke 10 km-delingen
+import { stageInputForRulesRevision } from "../s5Profiles.ts";
 
 const standings: GcContext = { status: "standings", stage_number: 2, leader_id: null, standings: [] };
 const firstStage: GcContext = { status: "first_stage", stage_number: 1 };
@@ -88,14 +89,17 @@ test("#6804 P1.1: finaleWeightScale skalerer kun etapeinteressen; udeladt = bit-
 // maa afvige (tider og resultater er ens).
 const withoutGapUpdates = (out: ReturnType<typeof simulateStageV4>) => ({ ...out, passages: undefined, passage_totals: undefined, timeline: { ...out.timeline, events: out.timeline.events.filter((e) => e.type !== "gap_update" && e.type !== "kom_passage") } });
 
-test("#6804 P1: v3 bevarer v2-fixtures uden for #6912 flad/rullende endagsjagt (bortset fra #6814's gap_update og #6937's bjergpassager)", (t) => {
-  setFinalKmBoundary7383ForBench(false);
-  t.after(() => setFinalKmBoundary7383ForBench(null));
+test("#6804 P1: v3 bevarer v2-fixtures uden for #6912 flad/rullende endagsjagt (bortset fra #6814's gap_update og #6937's bjergpassager)", () => {
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
   const names = readdirSync(dir).filter((n) => statSync(path.join(dir, n)).isDirectory()).sort();
   assert.ok(names.length > 0);
   for (const name of names) {
     const input = JSON.parse(readFileSync(path.join(dir, name, "input.json"), "utf8"));
+    // #7383 (v3): sammenligningen maaler #6804, ikke 10 km-delingen. Ruten faar graensen paa
+    // forhaand (som almindelige segmenter), saa v2 og v3 koerer de samme segmenter.
+    input.route = { ...input.route, segments: JSON.parse(JSON.stringify(splitAtFinalKm7383(input.route.segments, input.route.distance_km))) };
+    const v3Route = stageInputForRulesRevision({ ...input, rules_revision: "s5_profiles_v3" }).route;
+    assert.equal(routeWithFinalKmBoundary7383(v3Route, "s5_profiles_v3"), v3Route, `${name}: graensen ligger allerede paa ruten`);
     if (descentRegroup6486OnRoute(input.route)) continue; // #6486: v3 samler bjerg uden topankomst (descentRegroup6486.test.ts)
     if (input.route.profile_type === "itt" || input.route.profile_type === "itt_hilly") continue; // #6595 (taendt 31/10): v3-enkeltstarten har sin egen terraen-vaegt (individualTimeTrial.test.ts)
     for (const gc of [undefined, oneDay]) {

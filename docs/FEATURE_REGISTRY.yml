@@ -218,11 +218,10 @@ features:
     title_en: Stage intention choice
     title_da: Indsatsvalg pr. etape
     state: live
-    flag: race_day_intention_enabled
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6641
-    verified: 2026-10-27
-    note: On 27/10 13:48 efter ejer-go (#7281), læst tilbage i prod.
+    verified: 2026-11-02
+    note: Live 27/10 efter ejer-go (#7281); kontakten race_day_intention_enabled fjernet 2/11 (krav 5), alle fem trin gælder altid.
 
   - id: race-all-out-7280
     area: race-engine
@@ -231,8 +230,8 @@ features:
     state: live
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6641
-    verified: 2026-10-27
-    note: Kodekontakt ALL_OUT_7280_ACTIVE tændt 27/10 efter ejer-go (#7311), kun v3.
+    verified: 2026-11-02
+    note: Live 27/10 efter ejer-go (#7311); kodekontakten ALL_OUT_7280_ACTIVE fjernet 2/11 (krav 5), reglen gælder altid under s5_profiles_v3.
 
   - id: race-itt-terrain-6595
     area: race-engine
@@ -242,7 +241,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6595
     verified: 2026-10-31
-    note: Kodekontakt ITT_TERRAIN_6595_ACTIVE tændt 31/10 efter ejer-go, kun v3.
+    note: Tændt 31/10 efter ejer-go, kun v3. Kodekontakten ITT_TERRAIN_6595_ACTIVE er fjernet (#7260); reglen er nu kun bundet til revisionen.
 
   - id: race-itt-save-7332
     area: race-engine
@@ -251,8 +250,8 @@ features:
     state: live
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7332
-    verified: 2026-10-31
-    note: Kodekontakt SAVE_ITT_7332_ACTIVE tændt 31/10 efter ejer-go; vælgeren viser kun tre trin på enkeltstart.
+    verified: 2026-11-01
+    note: Live 31/10 efter ejer-go; kodekontakten SAVE_ITT_7332_ACTIVE fjernet 1/11 (krav 5). Vælgeren viser kun tre trin på enkeltstart.
 
   - id: race-descent-task-7380
     area: race-engine
@@ -261,8 +260,8 @@ features:
     state: live
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7380
-    verified: 2026-10-31
-    note: Kodekontakt DESCENT_TASK_7380_ACTIVE tændt 31/10 efter ejer-go, kun v3.
+    verified: 2026-11-01
+    note: Live 31/10 efter ejer-go; kodekontakten DESCENT_TASK_7380_ACTIVE fjernet 1/11 (krav 5), reglen gælder altid under s5_profiles_v3.
 
   - id: race-final-km-boundary-7383
     area: race-engine
@@ -272,17 +271,16 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7383
     verified: 2026-10-31
-    note: Kodekontakt FINAL_KM_BOUNDARY_7383_ACTIVE tændt 31/10 efter ejer-go (motor og taktikside), kun v3.
+    note: Live 31/10 efter ejer-go; kodekontakten FINAL_KM_BOUNDARY_7383_ACTIVE (motor og taktikside) fjernet 1/11 (krav 5), reglen gælder altid under s5_profiles_v3.
 
   - id: luxury-helper-role
     area: race-engine
     title_en: Luxury helper
     title_da: Luksushjælper
-    state: building
+    state: live
     epic: 5982
-    verified: 2026-10-27
-    decision: goer-faerdigt
-    decide_by: 2026-11-15
+    verified: 2026-11-02
+    note: Live uden flag siden PR #7276 (v3-motoren + etapeplanens genvej i RaceTacticsTab/StagePlanBoard); effektmåling og forbedring følges i #7418.
 
   # --- race-day ------------------------------------------------------------
   - id: race-day-engine
@@ -327,8 +325,8 @@ features:
     title_da: Etape-replay og tidslinjefilm
     state: live
     flag: race_stage_timeline
-    verified: 2026-09-06
-    note: 3 replay-komponenter i UI.
+    verified: 2026-11-04
+    note: 'Live (race_stage_timeline on, læst 4/11). Sandhedsvagten #7643 (PR #7646, merget 4/11) tjekker resultat, film, referat og etapeplan efter hver etape. Åbne sandhedsfejl: #7636, #7639, #7640, #6350.'
 
   - id: race-page-tabs-v2
     area: race-day
@@ -372,14 +370,14 @@ features:
     area: stats
     title_en: Calendar race card and race history library
     title_da: Kalender-løbskort og løbshistorik
-    state: building
+    state: live
     ssot: docs/CALENDAR_RULES.md
     epic: 6514
     flag: race_library_v2
-    verified: 2026-10-26
-    note: #6680 + #7217 merget; off i prod; PR #6636 åben.
-    decision: ejer-beslutning
-    decide_by: 2026-10-25
+    verified: 2026-11-03
+    note: Live for alle 3/11 (ejer-go #7495) efter #7534 og #7569; patch note 7.396.
+    roadmap_en: "A race card in the calendar: tap a race to see terrain, how well it suits your team and your status. Switch between Calendar and Table, and browse every edition in Race history."
+    roadmap_da: "Et løbskort i kalenderen: tryk på et løb og se terræn, hvor godt det passer dit hold og din status. Skift mellem Kalender og Tabel, og bladr i alle udgaver under Løbshistorik."
 
   - id: race-day-development
     area: race-day
@@ -491,8 +489,8 @@ features:
     state: building
     ssot: docs/superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md
     epic: 1177
-    verified: 2026-09-15
-    note: Data-only (#5268), resten senere.
+    verified: 2026-11-04
+    note: 'Kun data er bygget (#5268). Løbsmotoren (#5348) og mentorpar (#5349) er ikke bygget, og arbejdet står stille (statusaudit 4/11).'
 
   - id: rider-rating-best-role-display
     area: squad
@@ -692,11 +690,10 @@ features:
     title_en: Set the training day for several riders at once
     title_da: Sæt træningsdagen for flere ryttere på én gang
     state: live
-    flag: training_bulk_day
     ssot: docs/TRAINING_RULES.md
     epic: 6523
-    verified: 2026-10-24
-    note: PR #6533 (12/10); beta 15/10; on for alle 24/10 17:30 UTC efter ejer-ja (#7153, læst tilbage i prod).
+    verified: 2026-11-02
+    note: Live for alle 24/10 efter ejer-ja (#7153); kodekontakten training_bulk_day fjernet 2/11 (krav 5), linjen vises altid.
 
   - id: training-decision-card
     area: training
@@ -929,6 +926,17 @@ features:
     verified: 2026-10-26
     note: On med vilje siden 25/10 (ejer 26/10, læst i prod); kræver training_condition_per_date.
 
+  - id: condition-v2-race-date-training-day
+    area: training
+    title_en: Training on a race date weighs a full training day
+    title_da: Træning på en løbsdato vejer et helt træningsdøgn
+    state: live
+    flag: condition_v2_race_date_training_day
+    ssot: docs/TRAINING_RULES.md
+    epic: 6984
+    verified: 2026-11-04
+    note: "#7536, ejer-valg 3/11 (løsning A). Tændt 4/11 på ejerens \"Tænd nu\"; prod læst 4/11: condition_model_v2 og condition_v2_race_date_training_day begge on."
+
   - id: training-condition-per-date
     area: training
     title_en: Training condition settled per date
@@ -941,24 +949,23 @@ features:
 
   - id: potential-single-number
     area: training
-    title_en: Potential as one estimated number
-    title_da: Potentiale som ét skønnet tal
+    title_en: Same potential band everywhere
+    title_da: Samme potentialebånd overalt
     state: live
     ssot: docs/PROGRESSION_RULES.md
     epic: 6110
-    verified: 2026-10-31
-    note: 'PR #7166 (#6853); on i prod (læst 31/10). Gaten potential_single_number er fjernet fra koden, visningen er permanent.'
+    verified: 2026-11-04
+    note: 'PR #7166/#7415/#7430 (#6853, til dørs 8/8 4/11): ét fælles bånd for bedste rolle på alle flader. "Ét skønnet tal" fra spec 23/10 (byggetrin 2-6: grundtalent, gemte skøn, søndagsjob) er IKKE bygget; potentialEstimate.js bruges kun af harnessen. Funktionens gate er fjernet fra koden, men prod-rækken potential_single_number MÅ IKKE slettes: HelpPage gater Udvikling 2.0-blokkene på den (stageFlagCatalog.js PLAYER_VISIBLE). Statusaudit 4/11.'
 
   - id: train-now-whole-day
     area: training
     title_en: Train now B (the click settles the rider's whole known date)
     title_da: Træn nu B (klikket afregner rytterens hele kendte dato)
     state: live
-    flag: training_train_now_whole_day
     ssot: docs/TRAINING_RULES.md
     epic: 6461
-    verified: 2026-10-30
-    note: "training_train_now_whole_day on siden 27/10; læst i prod 30/10."
+    verified: 2026-11-02
+    note: "Live siden 27/10; kodekontakten training_train_now_whole_day fjernet 2/11 (krav 5), klikket afregner altid hele den kendte dato."
 
   - id: development-score-b-engine
     area: training
@@ -968,8 +975,8 @@ features:
     flag: development_score_v2
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: Ejer, med Udvikling 2.0.
-    verified: 2026-10-25
+    note: 'Ejer 31/10 (#6110): parkeret, indtil grundtalentet (spec 23/10, byggetrin 2) er bygget; decide_by 8/11 er afløst, ny frist ikke sat. Forudsætning før tænding: #7584. Statusaudit 4/11.'
+    verified: 2026-11-04
     decision: ejer-beslutning
     decide_by: 2026-11-08
 
@@ -996,6 +1003,19 @@ features:
     epic: 6110
     note: Tændt 1/11 på ejerens "kør" (tændingskort #5950); prod-verifikation 2/11.
     verified: 2026-11-01
+
+  - id: race-day-role-base-day
+    area: training
+    title_en: Race day - the rider's role also decides the base day
+    title_da: Løbsdag - rollen styrer også basis-dagen
+    state: dormant
+    flag: race_day_role_base_day_enabled
+    ssot: docs/TRAINING_RULES.md
+    epic: 6110
+    note: "#5950 løsning A (ejer-valg 3/11), underkontakt til race-day-role-yield. Bygget, off; tændes af ejeren."
+    verified: 2026-11-03
+    decision: ejer-beslutning
+    decide_by: 2026-11-17
 
   - id: promotion-pending
     area: academy

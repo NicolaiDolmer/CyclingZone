@@ -12,7 +12,7 @@
 // røres desuden ALDRIG, uanset request-body. #6095: heller ikke etaper hvis start
 // er passeret, og et gem skriver kun de etaper klienten har ændret.
 
-import { VALID_RACE_ROLES, validEffortsFor } from "./raceRoles.js";
+import { VALID_RACE_ROLES, VALID_EFFORTS_FIVE_STEP } from "./raceRoles.js";
 import { loadAbandonedRiderIds } from "./raceIncidents.js";
 import { buildRouteMatch, ROUTE_MATCH_STAGE_COLUMNS } from "./routeMatch.js"; // #6207
 import { ABILITY_KEYS } from "./raceSimulator.js";
@@ -116,7 +116,6 @@ async function loadStartOutlook({ supabase, race, teamId, entryRiderIds, now = n
  *   teamRiderIds: Set<string>,
  *   baseRoleByRider: Map<string, string|null>,
  *   abandonedRiderIds: Set<string>,
- *   intentionEnabled: boolean,
  * }} args
  * @returns {{ok: boolean, errors: string[]}}
  */
@@ -128,9 +127,6 @@ export function validateStageRoleOverrides({
   teamRiderIds = new Set(),
   baseRoleByRider = new Map(),
   abandonedRiderIds = new Set(),
-  // #4632: race_day_intention_enabled. Default FALSE — en kalder der glemmer at
-  // sende flaget får dagens tre-værdi-vokabular, aldrig det udvidede.
-  intentionEnabled = false,
   // #5981: delt kaptajn kun i loeb paa s5_profiles_v3+ (raceSelection.raceAllowsCoCaptain). Default FALSE.
   coCaptainAllowed = false,
 }) {
@@ -164,13 +160,9 @@ export function validateStageRoleOverrides({
     // #5982: luksushjaelper har samme v3-gate (coCaptainAllowed = raceAllowsCoCaptain).
     if (o?.race_role === "luxury_helper" && !coCaptainAllowed) { errors.push("stage_roles_invalid_role"); break; }
   }
-  // #4632: femtrins-intentionen bag flag. Off = PRÆCIS dagens tre værdier, så
-  // et UI der er deployet før flag-flippet ikke kan gemme 'grupetto'/'all_out'
-  // (og motoren derfor aldrig kan møde dem). Samme fejlkode i begge tilstande —
-  // fladen skal ikke afsløre at der findes flere trin end den kender.
-  const validEfforts = validEffortsFor(intentionEnabled);
+  // #4632: femtrins-intentionen (kontakten fjernet, krav 5): alle fem trin.
   for (const o of overrides) {
-    if (!validEfforts.includes(o?.effort)) { errors.push("stage_roles_invalid_effort"); break; }
+    if (!VALID_EFFORTS_FIVE_STEP.includes(o?.effort)) { errors.push("stage_roles_invalid_effort"); break; }
   }
 
   // >1 captain, >1 sprint_captain eller >1 hunter pr. etape for holdet — talt

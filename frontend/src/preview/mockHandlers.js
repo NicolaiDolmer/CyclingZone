@@ -129,6 +129,43 @@ export function mockProEnabled() {
   }
 }
 
+// #4226: "ingen aktiv sæson"-variant. localStorage cz_mock_no_active_season="1"
+// (sættes af e2e via addInitScript, eller preview-URL'en ?noActiveSeason=on) gør
+// at seasons-tabellen svarer tomt. Uden flag er adfærden uændret.
+export function mockNoActiveSeason() {
+  try {
+    if (typeof localStorage === "undefined") return false;
+    return localStorage.getItem("cz_mock_no_active_season") === "1";
+  } catch {
+    return false;
+  }
+}
+
+// #4226: PostgREST-statusfilteret (?status=eq.X / neq.X / in.(a,b)) på seasons.
+// Returnerer true hvis ACTIVE_SEASON-rækken matcher. Uden status-param (eller et
+// ukendt operator-format) matcher den som før, så eksisterende kaldere er uændrede.
+export function seasonMatchesStatusFilter(requestUrl = "", season = ACTIVE_SEASON) {
+  let raw;
+  try {
+    raw = new URL(requestUrl).searchParams.get("status");
+  } catch {
+    return true;
+  }
+  if (raw == null) return true;
+  if (raw.startsWith("eq.")) return season.status === raw.slice(3);
+  if (raw.startsWith("neq.")) return season.status !== raw.slice(4);
+  const inMatch = raw.match(/^in\.\((.*)\)$/);
+  if (inMatch) {
+    return inMatch[1].split(",").map((s) => s.trim().replace(/^"|"$/g, "")).includes(season.status);
+  }
+  return true;
+}
+
+function seasonRowsFor(requestUrl) {
+  if (mockNoActiveSeason()) return [];
+  return seasonMatchesStatusFilter(requestUrl) ? [ACTIVE_SEASON] : [];
+}
+
 export function restRows(table, requestUrl = "") {
   const url = new URL(requestUrl);
   switch (table) {
@@ -524,7 +561,7 @@ export function restRows(table, requestUrl = "") {
     case "known_issue_reports":
       return [];
     case "seasons":
-      return [ACTIVE_SEASON];
+      return seasonRowsFor(requestUrl);
     case "transfer_windows":
       return [{ id: "window-e2e", status: "open" }];
     // #4649: kun tilstedeværende når cz_mock_pro="1" — ellers uændret default
@@ -545,7 +582,7 @@ export function restObject(table, requestUrl = "") {
     case "teams":
       return TEST_TEAM;
     case "seasons":
-      return ACTIVE_SEASON;
+      return seasonRowsFor(requestUrl)[0] ?? null;
     case "transfer_windows":
       return { id: "window-e2e", status: "open" };
     case "subscriptions":

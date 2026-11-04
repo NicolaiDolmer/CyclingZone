@@ -242,6 +242,22 @@
   ],
   "cleanupList": [
     {
+      "issue": 6679,
+      "why": "Interne Windows-procesbeviser, ejer-go 2/11 i #7495"
+    },
+    {
+      "issue": 6337,
+      "why": "Interne CIM-bootopslag og fejlrapportering, ejer-go 2/11 i #7495"
+    },
+    {
+      "issue": 7099,
+      "why": "Ops: normaliser dokumenteret PostgREST-logklasse (ejer-go 2/11, #7495)"
+    },
+    {
+      "issue": 7363,
+      "why": "CI: secret-frit bundlebudget på Dependabot-PRer (ejer-go 2/11, #7495)"
+    },
+    {
       "issue": 7446,
       "why": "Cross-PC: lokale arbejdsmapper via OneDrive-junctions (ejer-go 1/11)"
     },
@@ -280,6 +296,137 @@
     {
       "issue": 7336,
       "why": "byggestoppet selv og dets værn (følg til dørs, fase 0+2)"
+    },
+    {
+      "issue": 6523,
+      "why": "Krav 5: fjern kontakten training_bulk_day (ejer 1/11, #7476)"
+    },
+    {
+      "issue": 5059,
+      "why": "Krav 5: fjern TACTICS_V4_PREVIEW + forældet kommentar (ejer 1/11, #7476)"
+    },
+    {
+      "issue": 7251,
+      "why": "Krav 5: tilbagekøbskoden fjernes fra 2/11, snapshot på ejerens kør (ejer 1/11, #7476)"
+    },
+    {
+      "issue": 7366,
+      "why": "Flaky dagsform-test, kun testen ændres (ejer-go 2/11 aften, #7495)"
+    },
+    {
+      "issue": 3430,
+      "why": "Preview-mock: login-session (ejer-go 2/11 aften, #7495)"
+    },
+    {
+      "issue": 4226,
+      "why": "Preview-mock: ingen aktiv sæson (ejer-go 2/11 aften, #7495)"
+    },
+    {
+      "issue": 7337,
+      "why": "Preview/notifikation (ejer-go 2/11 aften, #7495)"
+    },
+    {
+      "issue": 7554,
+      "reason": "Bølger frigiver ikke sig selv (ops), Codex på DolmerPC, ejer-go 3/11 #7495",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7536,
+      "reason": "Træthed på lette løbsdage: kun design og måling, intet byg uden ejer-go, ejer-go 3/11 #7495",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7563,
+      "reason": "Billedstationen: læse-POST + udfoldede tabeller (ops), ejer-go 3/11 #7495",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 6737,
+      "why": "Interne fejl til dørs: begræns Windows backend-test argv (ejer-go 2/11, #7495)"
+    },
+    {
+      "issue": 7348,
+      "why": "Intern CI: registry-flags efter migrationer (ejer-go 2/11, #7495)"
+    },
+    {
+      "issue": 6172,
+      "why": "Interne migrations- og merge-koe-vagter, ejer-go 2/11 i #7495 kommentar 6579459364"
+    },
+    {
+      "issue": 6290,
+      "why": "Interne codemod-/historikvagter, ejer-go 2/11 i #7495 (cleanupList i samme PR)"
+    },
+    {
+      "issue": 6335,
+      "why": "Intern ops-fejl: afvis brede delte ownership-mapper (ejer-go 2/11, #7495)"
+    },
+    {
+      "issue": 5509,
+      "why": "Intern ops: prod-evidens før player-report build (ejer-go 2/11, #7495)"
+    },
+    {
+      "issue": 6295,
+      "why": "Ops: ejerskabssikker git-probe-oprydning (ejer-go 2/11, #7495)"
+    },
+    {
+      "issue": 6105,
+      "why": "Ops: Sentry-only Cloudflare problem-JSON titles; application errors unchanged (ejer-go 2/11, #7495)"
+    },
+    {
+      "issue": 6881,
+      "why": "Ops: TOML-kommentargrænse i Codex-setup (ejer-go 2/11, #7495)"
+    },
+    {
+      "issue": 2635,
+      "why": "Intern harness-schema-drift; ejer-go 2/11 i #7495 kommentar 6579459364"
+    },
+    {
+      "issue": 7578,
+      "why": "Regel- og kontekstfiler: samlet oprydning efter gennemsyn, ejer-go 3/11 i chat"
+    },
+    {
+      "issue": 7582,
+      "why": "CI-hastighed uden svagere gates, ejer-go 3/11 i chat"
+    },
+    {
+      "issue": 7583,
+      "why": "TypeScript-retning: spejderregel + omskrivning en fil ad gangen, ejer-go 3/11 i chat"
+    },
+    {
+      "issue": 7585,
+      "why": "Til dørs auto-bevis efter merge, ejer-go 3/11 i chat"
+    },
+    {
+      "issue": 7587,
+      "why": "Bølge-kvalitet 2.0 (læringer 3/11), ejer-go 3/11 i chat"
+    },
+    {
+      "issue": 7588,
+      "why": "Realisme-gate for motoren (løsning B), ejer-go 3/11 i chat"
+    },
+    {
+      "issue": 7628,
+      "why": "Merge-kø løser TS-baseline-konflikter selv, ejer-go 4/11 i chat"
+    },
+    {
+      "issue": 7629,
+      "why": "Delingstjek i close-out mellem PC'er, ejer-go 4/11 i chat"
+    },
+    {
+      "issue": 7630,
+      "why": "Roadmap-vagt der flagger forkerte punkter, ejer-go 4/11 i chat"
+    },
+    {
+      "issue": 7631,
+      "why": "Masterplan og artifact fra én kilde, ejer-go 4/11 i chat"
+    },
+    {
+      "issue": 7632,
+      "why": "Til dørs-tavlen som ejerens levende overblik, ejer-go 4/11 i chat"
+    },
+    {
+      "issue": 7654,
+      "why": "Auto-tog + alarm for klare PR-er, ejer-go 4/11 i chat (MASTERPLAN §0)"
     }
   ],
   "brandList": [
@@ -487,6 +634,196 @@
       "issue": 7389,
       "reason": "Løbsdag: holdudtagelsen skiftede 102 ryttere ud midt i Volta Algarvia (fallback forbi line-up-frysningen), ejer-go 1/11",
       "since": "2026-11-01"
+    },
+    {
+      "issue": 7461,
+      "reason": "Kalender: én Vis-vælger i stedet for faner + dobbelt division-valg (bag race_library_v2, til beta i dag), ejer-go Discord 1/11",
+      "since": "2026-11-01"
+    },
+    {
+      "issue": 7474,
+      "reason": "Graduerings-sweep: to samtidige ticks afgjorde 7 ryttere to gange (dobbeltbesked), ejer-go 1/11",
+      "since": "2026-11-01"
+    },
+    {
+      "issue": 7473,
+      "reason": "Motor: Spar giver mere træthed end Normal på bjergetaper (S5), ejer-go 1/11",
+      "since": "2026-11-01"
+    },
+    {
+      "issue": 6773,
+      "reason": "Bestyrelsesmandater følger sæsonen for alle hold, også parkerede/frosne og hold der vender tilbage (ejer-go 2/11)",
+      "since": "2026-11-02"
+    },
+    {
+      "issue": 7498,
+      "reason": "Ops: cross-PC Stop-advarslen kommer igen ved hver ny state-fil i .codex.local (ejer 2/11: kommer for tit)",
+      "since": "2026-11-02"
+    },
+    {
+      "issue": 7488,
+      "reason": "Ungdom: graduering gør frigivne ryttere til akademiryttere uden hold (2 strandet i prod, Sentry AW aktiv) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-02"
+    },
+    {
+      "issue": 6138,
+      "reason": "Scouting: mailen lover 5 ryttere, rapporten viser 1-4 (flere spillere) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-02"
+    },
+    {
+      "issue": 7502,
+      "reason": "Dashboard: Dit første løb viser forkert løb og siger udtagelse gemt uden ryttere (live-fund testkonto) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-02"
+    },
+    {
+      "issue": 7500,
+      "reason": "Offentlige sider: anonyme ser Log ud i sidemenuen (39 døde klik på /roadmap) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-02"
+    },
+    {
+      "issue": 7505,
+      "reason": "Træning: Sæt dag siger den låser udtagelsen til løb holdet ikke er med i (live-fund testkonto) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-02"
+    },
+    {
+      "issue": 7507,
+      "reason": "Dashboard: nyt hold får Planen er udløbet og mål overgået 100 % uden plan (live-fund testkonto) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-02"
+    },
+    {
+      "issue": 7508,
+      "reason": "Indbakke: Holdudtagelse mangler står ulæst efter holdet er udtaget (388/749 på en uge) - ejer-go 2/11 i #7495",
+      "since": "2026-11-02"
+    },
+    {
+      "issue": 7513,
+      "reason": "Nye hold: forkert tekst (sæson 1, din første rytter); ejer-go 2/11 på ordlyd og ordret merge (PR #7510)",
+      "since": "2026-11-02"
+    },
+    {
+      "issue": 7518,
+      "reason": "Planlægning: nyt hold får stillede ikke op for løb startet før holdet fandtes (live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-02"
+    },
+    {
+      "issue": 7519,
+      "reason": "Mit hold Udvikling viser prognose 15–15 mens Trup viser 15 (live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-02"
+    },
+    {
+      "issue": 7533,
+      "reason": "Kalendertabel + Løbshistorik (beta): forkert Klar-status, klik på navn, ikoner én gang, sortering overalt, ejer-go Discord 2/11",
+      "since": "2026-11-02"
+    },
+    {
+      "issue": 7538,
+      "reason": "Forsiden: auktioner lukker kl. 20 er forkert (vindue 08-24, live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7539,
+      "reason": "Forsiden: Kommende løb tomt for hold uden gemt udtagelse, 195 af 299 hold (live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7540,
+      "reason": "Bestyrelsen: Intet mandat-tekst mens årsmødet indlæses (live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7541,
+      "reason": "Løbssiden: Stillinger siger resultater ikke importeret for løb der ikke er startet (live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7542,
+      "reason": "Akademi: regnskabet viser -0 CZ$ (live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7543,
+      "reason": "Patch notes: tællere bøjes ikke, November med stort, dobbelt punkt (live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7551,
+      "reason": "Træning: programnavne Bakkerytter/Puncheur byttet om ift. rollerne (live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7553,
+      "reason": "Planlægning Dag: løb holdet ikke er med i vises som låst trup med Afmeld (live-fund) - forhåndsgo #7495 beslutning 3",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 6524,
+      "reason": "Døde klik på 'Læg på' i Træning > Program (40/3 dage), ejer-go 3/11 #7495",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7566,
+      "reason": "Endagsløb: dobbelt ENKELTDAG + 'Etape 1' under Udgåede (forkert info), ejer-go 3/11 #7495",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7568,
+      "reason": "Kalendertabel: Grand Tour i stedet for Mangler + klippet mærke (forkert info), ejer-go 3/11 #7495",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7489,
+      "reason": "Træning: falsk træningsalarm + karantæne når en manager frigiver ryttere under aftentræningen (CYCLINGZONE-A6), ejer-go 3/11 i #7495",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7560,
+      "reason": "Startryttere fra fyld-op-puljen har klemte evner og vilkårlig bedste rolle, ejer-valg A+B 3/11 i #7495",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 4211,
+      "reason": "Marked: ryttere står både på auktion og transferliste (4 ryttere 3/11), ejer-regel 3/11 i #7495",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7561,
+      "reason": "Kalender: Klar-status viser ikke at feltet har plads til flere end gulvet, ejer-valg 3/11 i #7495",
+      "since": "2026-11-03"
+    },
+    {
+      "issue": 7635,
+      "reason": "Etapeplan: nedkørselsangreb gør hele feltet sat (Giro etape 8), ejer-go løsning A 4/11 i #7495",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 7636,
+      "reason": "Etapeplanens resumé modsiger filmen (Giro etape 8), ejer-go løsning A 4/11 i #7495",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 7643,
+      "reason": "Sandhedsvagt efter hver etape (resultat, film, referat, plan), ejer-go valg A 4/11 i #7495",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 7644,
+      "reason": "Nedkørsler samler for meget, måling før byg, ejer-go valg A 4/11 i #7495",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 7645,
+      "reason": "For lidt selektion på kuperet/mellembjerg, designspor, ejer-go valg A 4/11 i #7495",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 7639,
+      "reason": "Løbsfilm: udgået rytter lever videre som gruppe (Giro etape 6), ejer-go valg A 4/11 i #7495",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 7640,
+      "reason": "Vinderens angreb står som tabt tid (Giro etape 8), ejer-go valg A 4/11 i #7495",
+      "since": "2026-11-04"
     }
   ]
 }

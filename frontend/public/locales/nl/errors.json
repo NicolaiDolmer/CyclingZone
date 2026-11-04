@@ -89,6 +89,7 @@
     "promotion_pending_failed": "Er ging iets mis bij de promotie vanaf de wachtlijst. Probeer het over een moment opnieuw",
     "rider_retired_listing": "Deze renner is gestopt en kan niet te koop worden gezet",
     "rider_already_listed": "Deze renner staat al op de transfermarkt",
+    "rider_on_auction_listing": "Deze renner zit op dit moment in een veiling. Je kunt hem te koop zetten zodra de veiling is afgelopen",
     "listing_not_found": "Aanbieding niet gevonden",
     "listing_not_owner": "Dit is niet jouw aanbieding",
     "listing_already_closed": "Deze aanbieding is al gesloten",

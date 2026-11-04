@@ -250,7 +250,7 @@ export function isRiderInjured(injuredUntil, todayStr) {
 // "er rytteren skadet FOR DETTE LØB" — udtagelses-gaten (raceSelection.js,
 // api.js' auto-udfyld/regenerer-endpoints) skal spørge på LØBETS egen startdato
 // (races.scheduled_for — "løbets første stages scheduled_at", se
-// raceCalendarScheduling.js), ikke "nu". Havde rytteren tidligere KUN "nu" som
+// raceCalendarScheduling.ts), ikke "nu". Havde rytteren tidligere KUN "nu" som
 // reference, blev en fremtidig udtagelse forkert afvist af en skade der udløber
 // FØR løbet overhovedet starter — man skulle vente til han var rask i DAG, selv
 // om løbet lå uger ude. max(i dag, løbsdato): scheduled_for kan mangle (kalender

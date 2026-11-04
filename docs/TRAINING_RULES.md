@@ -126,6 +126,9 @@ løbsdags aktivitet tælles én gang, og de oprindelige aktiviteter kan foldes u
 under rytteren. Hele gevinstpoint summeres; brøkfremgang vises kun med dokumenteret
 start- og slutfremdrift. Tilstanden kommer fra datoens afsluttende afregning,
 aldrig fra summen af flere normaliserede tilstandsændringer.
+Gemte fremdriftsmaps er sparsomme: en manglende evnenøgle betyder nul, som i
+motoren. Et helt manglende snapshot eller en ugyldig eksplicit værdi er ukendt.
+Det gælder både foreløbige og afregnede kvitteringer (#6971).
 
 Alle forventede slots skal have kompatibel datokadence, før kvitteringen er
 afregnet. Manglende slots er afventende; karantæne, modstridende dubletter og
@@ -697,6 +700,7 @@ Ejer-beslutninger 20/10 (B1-B5), spec [`2026-10-20-6984-form-traethed-design.md`
 | Regel | Kode |
 |---|---|
 | B1: hver etape er et helt døgn: belastning lægges til og én restitution trækkes fra pr. etape i rækkefølge; de frie pladser regnes som i dag (sum/5 og en femtedel restitution pr. plads) | `conditionModelV2.settleDateFatigueV2`, kaldt fra `trainingDateCondition.settleTrainingDateCondition` (`modelV2`) |
+| #7536 (ejer-valg 3/11, bag flaget `condition_v2_race_date_training_day`, oprettes **off**, kun `on` tænder, kræver `condition_model_v2`): på en dato med etaper vejer træningspassene på de frie pladser et helt træningsdøgn (gennemsnit over de frie pladser; restitutionen følger andelen af trænede frie pladser). Hvile på frie pladser, rene træningsdatoer og etapebelastninger uændrede. Værn: aldrig mindre træthed end reglen ovenfor, og et hårdere pas giver aldrig mindre træthed end et roligere | `conditionModelV2.settleDateFatigueV2` (`raceDateTrainingDay`), `conditionModelV2Flag.isRaceDateTrainingDayEnabled`, `dailyTrainingEngine.js`, `trainingWeekPlanForecast.js` |
 | §5.4: recovery-evnen styrer også den proportionale andel; en middel-rytter (49,5) restituerer præcis som i dag | `conditionModelV2.recoveryV2` |
 | §5.2 + B3 + §5.5: etapens belastning = profil × længde × indsats × arbejde (inkl. hentet udbrud) × etapens plads × sæsonens løbsdage; frosset ved etapen som i dag | `conditionModelV2.stageLoadV2`, `raceFatigue.raceConditionLoads(..., conditionV2)`, `raceRunner.freezeConditionLoadSnapshots`, `raceFatigue.loadSeasonRaceDaysByRider` |
 | B4: inaktivitet og overbelastning koster form, passende belastning bygger den; de sidste point mod toppen kommer langsommere | `conditionModelV2.nextFormV2` |
@@ -798,7 +802,7 @@ fremdriftsbaren til næste dato (`capTickGainsPerDate`, `dailyTrainingEngine.js`
 | Hvem kørte | `race_results (result_type='stage')` ⋈ `race_stage_schedule` på `(race_id, stage_number)` hvor `game_day` = løbsdagen, scoped hold → division → sæsonens løb. IKKE `race_entry_days`: bindingen slettes når løbet er `completed`, og så fik racere før almindelig træning oven i løbet. Fejlet opslag kaster (som bindingen) | `raceDayStageLookup.js` |
 | Træthed | uændret: `effectiveIntensity = "race"` giver 0 trænings-load; løbets træthed lægges af `raceRunner.applyRaceFatigue`. Ingen skaderisiko fra træning | `dailyTrainingEngine.js`, `raceFatigue.js` |
 | Score og historik | `rider_training_scores`: `score: null, was_race_day: true, session: "race_day"`. `rider_ability_race_day_history.source = "race_development"` | `dailyTrainingEngine.js` |
-| Variant B ([#6641](https://github.com/NicolaiDolmer/CyclingZone/issues/6641), bag flaget) | dagens intention (#4632, grupetto → all-out) ganges sidst på løbsdagens udbytte (`applyDailyTick`s ekstra multiplikator-led, `raceDayIntentionYieldMultiplier` = `effortDevelopmentMultiplier`), KUN når `race_day_intention_enabled` er on. Kilden er den samme som motoren kørte på: holdordren vinder, etape-rækken (`race_stage_roles.effort`) er fallback, en ordre på `normal` er ikke et valg (`raceDayIntentionYield.js`, `raceStageRoles.orderEffortByRiderForStage`). Flag off, ingen intention, AI-hold eller et fejlet opslag giver 1,0 = variant A (bit-identisk) | `dailyTrainingEngine.js`, `raceDayIntentionYield.js`, `raceRoles.js` |
+| Variant B ([#6641](https://github.com/NicolaiDolmer/CyclingZone/issues/6641), live; kontakten fjernet 2/11) | dagens intention (#4632, grupetto → all-out) ganges sidst på løbsdagens udbytte (`applyDailyTick`s ekstra multiplikator-led, `raceDayIntentionYieldMultiplier` = `effortDevelopmentMultiplier`). Kilden er den samme som motoren kørte på: holdordren vinder, etape-rækken (`race_stage_roles.effort`) er fallback, en ordre på `normal` er ikke et valg (`raceDayIntentionYield.js`, `raceStageRoles.orderEffortByRiderForStage`). Ingen intention, AI-hold eller et fejlet opslag giver 1,0 = variant A (bit-identisk) | `dailyTrainingEngine.js`, `raceDayIntentionYield.js`, `raceRoles.js` |
 
 **Flag:** `race_day_development_enabled` flippes direkte off → on 28/9 sammen med
 `training_tick_per_race_day` (ejer-go). Motoren læser flaget uden `engineWrite`, så `beta` er off i
@@ -856,6 +860,13 @@ træningskørsel). Tallene og den præcise model står aldrig i repoet (hard rul
 - **Fallback:** flag off = intet opslag, bit-identisk med §6.2. Flag on uden gyldige params = dagens
   model + en værdi-fri advarsel, også på dato-afregningens strikte sti; kun en fejlet læsning af flag
   eller params stopper afregningen til næste sweep. Et fejlet rolle-opslag giver fri rolle for alle.
+- **Underkontakt: rollen styrer også basis-dagen** (løsning A, ejer-valg 3/11, flag
+  `race_day_role_base_day_enabled`, **off**; kun `on` tænder, `beta` = off). Læses kun når
+  hovedflaget er on og params er gyldige. Når tændt: kaptajner og jæger uændret; hjælpere får basis-dagen
+  i de bærende hjælpe-evner, og etapens afgørende evne får hverken basis eller tillæg (undtagen
+  holdtempo, hvor den selv er en hjælpe-evne); fri eller ukendt rolle får gennemsnittet af de to
+  basis-dage, evne for evne. Det samlede udbytte er det samme for alle roller. Off = modellen ovenfor,
+  bit-identisk. En fejlet læsning af underkontakten kaster på dato-afregningens strikte sti, ellers off.
 - **Kode:** `raceDayRoleYield5950.js`, kaldt fra `dailyTrainingEngine.js` (`withRaceDayRoleYield`).
 
 ---
@@ -1157,7 +1168,7 @@ transaktion som den eksisterende RPC. Begge bevarer cutover → hold-låserække
 RPC'er er uændrede. Statuspolling afbryder timeoutede kald og holder ét kald aktivt ad gangen; stop og
 unmount afbryder også. Under backend-før-migration-vinduet bruges kun ved manglende try-RPC (`PGRST202`) den gamle ventende RPC; held-adfærden kræver anvendt migration og opdateret schema-cache.
 
-**Train now = hele dagen, B fase 1 (#6461, bag `training_train_now_whole_day`, slukket).** Med flaget afregner klikket hele datoen for hver rytter, hvis dato er kendt: en rytter uden åbent løbsslot (intet løb, eller løbet er kørt) får alle 5 løbsdage inkl. datoens ene tilstandsafregning. En løbsrytter med et løb, der ikke er kørt, venter som før: træning før løbet ville give ham evner, som løbet læser (en fordel af klik-tidspunktet, I1). Tilstanden skrives stadig én gang pr. rytter pr. dato, og løbet køres på datoens starttilstand. Fælles lås: klikket mærker låserækken (`whole_day_at`) før afregningen, og databasen dropper en udtagelse af en mærket rytter i et løb med en etape tilbage på datoen (`database/2026-10-25-6461-train-now-whole-day.sql`). Løbsrytternes træning i klikket er fase 2 (kræver RPC og den kronologiske dagsmodel fra #6984). Før tænding: løbsstartens autofyld skal bruge de rækker, databasen faktisk skrev (en droppet række må ikke komme med i feltet). Kode: `backend/lib/trainNowWholeDay.js`.
+**Train now = hele dagen, B fase 1 (#6461, kontakten fjernet 2/11).** Klikket afregner hele datoen for hver rytter, hvis dato er kendt: en rytter uden åbent løbsslot (intet løb, eller løbet er kørt) får alle 5 løbsdage inkl. datoens ene tilstandsafregning. En løbsrytter med et løb, der ikke er kørt, venter som før: træning før løbet ville give ham evner, som løbet læser (en fordel af klik-tidspunktet, I1). Tilstanden skrives stadig én gang pr. rytter pr. dato, og løbet køres på datoens starttilstand. Fælles lås: klikket mærker låserækken (`whole_day_at`) før afregningen, og databasen dropper en udtagelse af en mærket rytter i et løb med en etape tilbage på datoen (`database/2026-10-25-6461-train-now-whole-day.sql`). Løbsrytternes træning i klikket er fase 2 (kræver RPC og den kronologiske dagsmodel fra #6984). Før tænding: løbsstartens autofyld skal bruge de rækker, databasen faktisk skrev (en droppet række må ikke komme med i feltet). Kode: `backend/lib/trainNowWholeDay.js`.
 
 ### 13.3c Fast udbytte pr. dato uanset sæsonens længde (#6711, ejer-go 16/10)
 

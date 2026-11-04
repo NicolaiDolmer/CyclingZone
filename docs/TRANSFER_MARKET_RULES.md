@@ -296,6 +296,10 @@ sluttidspunkt på en holdløs rytter. `CUSTOM_END_MIN_HOURS` er stadig 1 for egn
 
 ## 4. Bud, minimums-step og autobud
 
+**Modulsti (#7583):** Auktionsreglerne ligger nu i `backend/lib/auctionRules.ts`.
+Henvisningerne til `auctionRules.js` og dens linjenumre nedenfor er historiske;
+funktioner og runtime-kontrakter er uændrede.
+
 ### 4.1 Minimumsbud
 
 `getMinimumAuctionBid` (`auctionRules.js:141-144`):
@@ -431,10 +435,25 @@ sket - netop formen på Seojun Choi-hændelsen 9/8.
 (`marketUtils.js:124-143`), fremtidige `race_entries` ryddes (#1906), og
 `rider_ownership_events` skrives (#3582).
 
+**Auktion sætter transferlisten på pause (#4211, ejer-regel 3/11).** Når en manager
+starter en auktion på en listet rytter, sættes listingen til `paused` (usynlig på
+markedet, pris og sælger bevaret). Ved auktionsslut (`finalizeAuctionById`,
+admin-annullering) går den tilbage til `open`, hvis rytteren stadig står hos sælgeren uden
+ventende overgang og ikke er pensioneret; ellers `withdrawn`. Mens auktionen kører,
+afviser `POST /api/transfers` en ny listing (`rider_on_auction_listing`). Auktions-cronen
+afgør forladte pauser (ingen aktiv auktion). Gælder `POST /api/auctions` og
+graduerings-auktioner (`createGraduateAuction`; akademiryttere må listes, #3650).
+Ungdomsauktioner har ingen ejer og kan derfor ikke være listet. Kode: `backend/lib/auctionTransferListPause.ts`,
+migration `database/2026-11-03-4211-auction-transfer-list-pause.sql`.
+
 **Ejerskifte-loggen dækker alle udgange fra et hold (#6504).** Overgangen hold → intet hold
 (frigivelse, akademi-frigivelse, kontraktudløb, pension, graduering, beta-reset) logges af
 DB-triggeren `trg_record_rider_team_exit` (`database/2026-10-19-6504-release-ownership-trigger.sql`)
 med `reason = retirement` for en pensioneret rytter, ellers `release`, og `actor_type = system`.
+Efter #7246-migrationen gemmer samme trigger kontrakten fra rækken **før** holdskiftet
+i `rider_ownership_events.meta.contract_end_season` og `.contract_length`, også når
+`contractExpiryRelease.js` nulstiller felterne i samme UPDATE. Manglende kontraktfelter
+gemmes som JSON-null. Ældre events får tom `meta`; allerede slettede kontrakter rekonstrueres ikke.
 Kode, der flytter en rytter til intet hold, må **ikke** skrive sin egen række (dublet),
 heller ikke admin-flytningen: en admin-frigivelse logges derfor som `release`/`system`
 (bevidst: tilskrivning efter UPDATE'en gav race-dubletter, Codex-review #6891). Hold → hold

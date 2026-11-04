@@ -84,6 +84,7 @@ import type {
 import { splitGroup } from "../groups.ts";
 import { incidentEvent } from "../timeline.ts";
 import { INCIDENTS_EXTRA_TUNING } from "../tuning.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 // Eksporteret (#4915) saa holdtidskoerslen (mechanics/teamTimeTrial.ts), der
 // ruller den SAMME trappe uden for segment-loopet, kan tage en rigget tuning
@@ -577,7 +578,7 @@ export function incidentChaseTargetGroup(
     if (
       !target ||
       g.gap_seconds > target.gap_seconds ||
-      (g.gap_seconds === target.gap_seconds && g.id.localeCompare(target.id) < 0)
+      (g.gap_seconds === target.gap_seconds && compareIds(g.id, target.id) < 0)
     ) {
       target = g;
     }
@@ -727,7 +728,7 @@ export function createIncidentHook(
         candidates.push({ riderId, group });
       }
     }
-    candidates.sort((a, b) => a.riderId.localeCompare(b.riderId));
+    candidates.sort((a, b) => compareIds(a.riderId, b.riderId));
 
     let groups: RaceGroup[] = state.groups;
     let riders: Record<string, RiderState> = state.riders;
@@ -885,7 +886,7 @@ export function applyThreeKmRuleToResults(
     const unprotected = cluster.filter((r) => !protectedIds.has(r.rider_id));
     const protectedInCluster = cluster
       .filter((r) => protectedIds.has(r.rider_id))
-      .sort((a, b) => a.rider_id.localeCompare(b.rider_id));
+      .sort((a, b) => compareIds(a.rider_id, b.rider_id));
     reordered.push(...unprotected, ...protectedInCluster);
   }
 

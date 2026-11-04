@@ -36,6 +36,7 @@ import { WRAP, SCROLLER } from "../components/ui/dataTableStyles.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import { tooltipClass } from "../components/ui/tooltipStyles.js";
 import { formatNumber } from "../lib/intl";
+import { showsDnfStagePrefix, showsStageCount } from "../lib/raceTypeLabels.ts";
 import { resultEntity } from "../lib/raceResultEntity.js";
 import { buildRaceRecap, incidentReasonKey, withdrawalGroupMoment, dnfRowsForStage, ownStageAbandons, teamIdByRiderFromRows } from "../lib/raceRecap.js";
 import { buildRaceReport } from "../lib/raceReport.js";
@@ -356,13 +357,6 @@ function HeroStatBlock({ label, value, sub, last = false }) {
   );
 }
 
-// #4030/#4246: ORDRE-halvdelen af Taktik-fanen (holdplan, udbrud, sprint-tog,
-// "forsøg udbrud"/"sprint-tog" pr. rytter) er stadig preview-gated. Kæden er ægte
-// siden #4246 — kortet taler med det live team-orders-endpoint — men v4-flippet er
-// ikke taget, så ordrerne ændrer endnu ingenting i motoren for en almindelig
-// spiller. Gaten er UÆNDRET fra #4030; #4613 flytter kun fladen ind i fanen.
-// Intentions-halvdelen (#4632) er ikke gated og vises altid.
-const TACTICS_V4_PREVIEW = import.meta.env.DEV || import.meta.env.VITE_PREVIEW_MOCK;
 
 /**
  * #7095: races-raekken som loadRace() selecter den (smal projektion + joinet season).
@@ -1175,12 +1169,24 @@ export default function RaceDetailPage() {
               key={tacticsStage ?? "default"}
               raceId={race.id}
               profileByStage={profileByStage}
-              showOrders={TACTICS_V4_PREVIEW}
               initialStage={tacticsStage}
             />
           )}
 
-          {tab === "results" && !hasAnyResults && (
+          {/* #7541: et løb der ikke er kørt endnu mangler ikke resultater; den
+              gamle "ikke importeret"-tekst gælder kun et løb med kørte etaper. isStageRace
+              kræver kørte etaper, så løbstypen læses direkte her. Fasen (racePhase) skiller et
+              løb hvis etape 1 er gået i gang uden gemte resultater fra et der ikke er startet. */}
+          {tab === "results" && !hasAnyResults && phase === "before" && (
+            <EmptyState
+              icon={<FlagIcon size={26} aria-hidden="true" />}
+              title={t("empty.notStartedRace")}
+              description={t(race.race_type === "stage_race" ? "empty.notStartedStageRaceHint" : "empty.notStartedOneDayHint")}
+              action={null}
+            />
+          )}
+
+          {tab === "results" && !hasAnyResults && phase !== "before" && (
             <EmptyState
               icon={<FlagIcon size={26} aria-hidden="true" />}
               title={t("empty.noResultsImportedRace")}
@@ -1215,7 +1221,7 @@ export default function RaceDetailPage() {
                   <SectionStack>
                     <RaceRecap results={results} scopeType="overall" incidents={incidents} />
                     <WhyPanel moments={moments} stageNumber={stageNumbers[stageNumbers.length - 1]} mode="finalOnly" riderNameById={riderNameById} t={t} />
-                    <DnfSection incidents={incidents} scopeType="overall" t={t} />
+                    <DnfSection incidents={incidents} scopeType="overall" raceType={race.race_type} t={t} />
                   </SectionStack>
                 </div>
               )}
@@ -1275,7 +1281,7 @@ export default function RaceDetailPage() {
                       løbets disciplin — en enkeltstart må ikke omtales som spurt. */}
                   <RaceRecap results={oneDayResults} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} timelineEvents={oneDayTimeline?.events} teamNameById={teamNameById} startlist={oneDayStartlist} />
                   <WhyPanel moments={moments} stageNumber={1} mode="full" riderNameById={riderNameById} t={t} />
-                  <DnfSection incidents={incidents} scopeType="overall" t={t} />
+                  <DnfSection incidents={incidents} scopeType="overall" raceType={race.race_type} t={t} />
                 </SectionStack>
               </div>
             </div>
@@ -1363,8 +1369,11 @@ export default function RaceDetailPage() {
                 {race.race_class && <CategoryTag>{t(`classOption.${race.race_class}`)}</CategoryTag>}
                 <CategoryTag>{race.race_type === "stage_race" ? t("raceType.stageRace") : t("raceType.oneDayShort")}</CategoryTag>
                 <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3">
-                  {race.race_type === "stage_race" ? t("raceType.stages", { count: race.stages }) : t("raceType.oneDayShort")}
-                  {race.season?.number != null && ` · ${t("library.seasonOption", { number: race.season.number })}`}
+                  {/* #7566: et endagsløb gentager ikke typen fra mærket ved siden af. */}
+                  {[
+                    showsStageCount(race.race_type) ? t("raceType.stages", { count: race.stages }) : null,
+                    race.season?.number != null ? t("library.seasonOption", { number: race.season.number }) : null,
+                  ].filter(Boolean).join(" · ")}
                 </span>
               </div>
             </div>
@@ -1703,8 +1712,8 @@ function OwnAbandonLines({ ownAbandons, stageNumber, t }) {
   );
 }
 
-/** @param {{ incidents: any[], scopeType: string, stageNumber?: number | null, t: any }} props */
-function DnfSection({ incidents, scopeType, stageNumber, t }) {
+/** @param {{ incidents: any[], scopeType: string, stageNumber?: number | null, raceType?: string | null, t: any }} props */
+function DnfSection({ incidents, scopeType, stageNumber, raceType, t }) {
   const rows = useMemo(() => {
     const abandons = (incidents || []).filter((inc) => inc.outcome === "abandon");
     const scoped = scopeType === "stage"
@@ -1727,7 +1736,7 @@ function DnfSection({ incidents, scopeType, stageNumber, t }) {
                 {name || "—"}
               </RiderLink>
               <span className="text-cz-3 text-xs shrink-0 font-mono">
-                {scopeType !== "stage" && `${t("detail.tabStage", { number: inc.stage_number ?? 1 })} · `}
+                {showsDnfStagePrefix(scopeType, raceType) && `${t("detail.tabStage", { number: inc.stage_number ?? 1 })} · `}
                 {t(`detail.incidents.${incidentReasonKey(inc.kind)}`)}
               </span>
             </li>

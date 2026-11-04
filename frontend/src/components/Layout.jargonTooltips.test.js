@@ -27,3 +27,10 @@ test("sidebar-divisionen har en ligatrin-tooltip (#1593)", () => {
     "division-linjen i sidebaren skal have title={t(\"sidebar.divisionTooltip\")}",
   );
 });
+
+test("sidebar-footeren viser login-link til anonyme i stedet for Log ud (#7500)", () => {
+  assert.match(src, /isAnonymous \? \(/, "footeren skal forgrene på isAnonymous");
+  assert.match(src, /to="\/login"[\s\S]{0,400}\{loginLabel\}/, "anonym: Link til /login med loginLabel");
+  assert.match(src, /isAnonymous: !session/, "isAnonymous kommer fra manglende session");
+  assert.match(src, /loginLabel: t\("landing:nav\.login"\)/, "eksisterende login-nøgle genbruges");
+});

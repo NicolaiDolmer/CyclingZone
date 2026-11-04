@@ -318,6 +318,13 @@ function renderNotificationTitle(notification, tBackend) {
   return notification.title;
 }
 
+// #7337: kun kontraktvarsler (liste med én rytter pr. linje) har linjeskift i
+// beskeden. Øvrige typer, fx squadEnforced, vises som før uden pre-line.
+const LINE_BREAK_MESSAGE_TYPES = new Set(["contract_expiring", "contract_expired_release"]);
+function messageBreaksLines(notification) {
+  return LINE_BREAK_MESSAGE_TYPES.has(notification?.type);
+}
+
 function renderNotificationMessage(notification, tBackend) {
   const meta = notification?.metadata;
   if (meta?.messageCode) {
@@ -830,7 +837,7 @@ export default function NotificationsPage() {
                         <p className={`text-sm font-medium ${n.is_read ? "text-cz-2" : "text-cz-1"}`}>
                           {renderNotificationTitle(n, tBackend)}
                         </p>
-                        <p className="text-cz-2 text-xs mt-0.5 leading-relaxed whitespace-pre-line">
+                        <p className={`text-cz-2 text-xs mt-0.5 leading-relaxed${messageBreaksLines(n) ? " whitespace-pre-line" : ""}`}>
                           {/* #1486: rytter-notifikationer linker beskeden til rytterprofilen
                               når metadata.riderId findes; RiderLink falder selv tilbage til
                               ren tekst for legacy-rækker uden riderId. */}
@@ -959,7 +966,7 @@ export default function NotificationsPage() {
                           {entry.items.map(item => (
                             <li key={item.id} className="flex items-start gap-2 text-xs">
                               <span className="text-cz-3 whitespace-nowrap min-w-20">{timeAgo(item.created_at)}</span>
-                              <span className="text-cz-2 flex-1 whitespace-pre-line">
+                              <span className={`text-cz-2 flex-1${messageBreaksLines(item) ? " whitespace-pre-line" : ""}`}>
                                 {/* #1486: link til rytterprofil når riderId findes i metadata */}
                                 <RiderLink id={item.metadata?.riderId} stopPropagation
                                   className={item.metadata?.riderId ? "hover:text-cz-accent-t transition-colors" : ""}>

@@ -1,7 +1,7 @@
 import {
   computeWorstCaseCommitment,
   getMinimumAuctionBid,
-} from "./auctionRules.js";
+} from "./auctionRules.ts";
 import { isAuctionExpired, isLateBidTriggerError } from "./auctionEngine.js";
 import { captureException } from "./sentry.js";
 import { buildKeyedNotification } from "./notificationKeys.js";

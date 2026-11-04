@@ -1022,7 +1022,7 @@ export default function TrainingPage() {
   }
 
   function handleBulkApply() {
-    return applyBulkChoice(bulkDay, bulkDayFlag ? bulkScope.ids : undefined);
+    return applyBulkChoice(bulkDay, bulkScope.ids);
   }
 
   // #6523: "Set for group" bruger den session der staar i linjens vaelger.
@@ -1033,7 +1033,7 @@ export default function TrainingPage() {
   // #5620/#5485: telefonens "Rest"-knap er den samme mængde-sti som "Apply to N"
   // med valget "rest" (bulkChoiceToDay → setPlanBulk). Returnerer true når alle
   // valgte fik dagen, så telefonen kan forlade markerings-tilstanden.
-  // #6523: `idsOverride` (kun med flaget training_bulk_day) lader "Set today's day
+  // #6523: `idsOverride` lader "Set today's day
   // for All N riders" og "Set for group" bruge samme sti uden en markering.
   async function applyBulkChoice(choice, idsOverride) {
     setBulkMsg(null);
@@ -1351,9 +1351,7 @@ export default function TrainingPage() {
   const tourTarget = tourRunTarget(primaryAction, runnable);
   const trainingTourSteps = useTrainingTourSteps(t, tourTarget, dayClose != null);
   const selectedCount = pruneSelection(selected, filterIds).size;
-  // #6523 (flag training_bulk_day, serveren afgør beta): linjen "Set today's day
-  // for ..." — intet markeret = alle i visningen.
-  const bulkDayFlag = training.bulkDay === true;
+  // #6523: linjen "Set today's day for ..." — intet markeret = alle i visningen.
   const bulkScope = resolveBulkScope(selected, filterIds, selectableRiders.map((r) => r.id));
   const runTodayLabel = trainNow.running ? t("trainNow.running")
     : running || trainNow.pressing ? t("loading")
@@ -2078,7 +2076,7 @@ export default function TrainingPage() {
       : null;
     return (
       <TrainingPlanCard
-        plainNotes={bulkDayFlag}
+        plainNotes
         weekdays={WEEKDAY_KEYS}
         todayWeekday={todayWeekday}
         todayLocked={trainNow.status.locked && !trainNow.status.settled} // #6139
@@ -2242,28 +2240,7 @@ export default function TrainingPage() {
     const toolbar = (
       <>
         <div className="flex flex-wrap items-center gap-2.5">
-          {selectedCount > 0 && !bulkDayFlag ? (
-            <>
-              <span className="text-[13px] font-semibold text-cz-1">{t("selected", { n: selectedCount })}</span>
-              <div className="w-56">
-                <Select
-                  size="sm"
-                  value={bulkDay}
-                  disabled={bulkApplying}
-                  aria-label={t("dayPanel.bulkSetDay")}
-                  onChange={(e) => setBulkDay(e.target.value)}
-                >
-                  {renderBulkDayOptions()}
-                </Select>
-              </div>
-              <Button type="button" variant="secondary" size="sm" onClick={handleBulkApply} disabled={bulkApplying}>
-                {bulkApplying ? t("bulkApplying") : t("today.applyTo", { n: selectedCount })}
-              </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={clearSelection} disabled={bulkApplying}>
-                {t("today.clear")}
-              </Button>
-            </>
-          ) : segmentsNode && overviewFilter !== "needsDay" ? (
+          {segmentsNode && overviewFilter !== "needsDay" ? (
             segmentsNode
           ) : activeFilterLabel ? (
             <>
@@ -2275,7 +2252,6 @@ export default function TrainingPage() {
           ) : (
             <span className="font-data text-xs text-cz-3">{t("today.count", { n: riders.length })}</span>
           )}
-          {!bulkDayFlag && bulkMsgNode}
         </div>
         <div className="flex flex-wrap items-center gap-4">
           <RosterMobileSortControl
@@ -2311,9 +2287,9 @@ export default function TrainingPage() {
       </>
     );
 
-    // #6523: altid synlig linje (kun med flaget). Scope = alle i visningen
+    // #6523: altid synlig linje. Scope = alle i visningen
     // naar intet er markeret, ellers de markerede.
-    const bulkBar = bulkDayFlag ? (
+    const bulkBar = (
       <div
         className="flex flex-wrap items-center gap-2.5 border-b border-cz-border bg-cz-subtle px-3 py-2"
         data-testid="training-bulk-bar"
@@ -2355,7 +2331,7 @@ export default function TrainingPage() {
         )}
         {bulkMsgNode}
       </div>
-    ) : null;
+    );
 
     return (
       <div className="space-y-3">
@@ -2374,7 +2350,7 @@ export default function TrainingPage() {
             {decisionFlagOn ? (
               <TrainingTeamTableB
                 bulkBar={bulkBar}
-                onSetGroup={bulkDayFlag ? handleSetGroup : undefined}
+                onSetGroup={handleSetGroup}
                 setForGroupLabel={t("today.setForGroup")}
                 rows={groupsForTable ? [] : rowsFor(visibleRiders)}
                 groups={groupsForTable}
@@ -2402,9 +2378,9 @@ export default function TrainingPage() {
             ) : (
             <TrainingTodayTable
               bulkBar={bulkBar}
-              onSetGroup={bulkDayFlag ? handleSetGroup : undefined}
+              onSetGroup={handleSetGroup}
               setForGroupLabel={t("today.setForGroup")}
-              raceDaysHint={bulkDayFlag ? t("today.raceDaysHint") : undefined}
+              raceDaysHint={t("today.raceDaysHint")}
               rows={groupsForTable ? [] : todayRowsFor(visibleRiders)}
               groups={groupsForTable}
               columns={raceDayColumns}

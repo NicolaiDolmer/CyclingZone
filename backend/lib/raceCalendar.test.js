@@ -15,6 +15,7 @@ import {
   buildDivisionTree,
   toCalendarWireEntry,
 } from "./raceCalendar.js";
+import { selectionSizeForRace } from "./raceAutopick.js";
 
 // ── toCopenhagenISODate / game_day → dato ────────────────────────────────────
 
@@ -305,6 +306,35 @@ test("toCalendarWireEntry dropper de felter ingen kalender-klient læser (#2861)
     assert.ok(dead in entry, `${dead} skal stadig findes i den fulde read-model`);
     assert.ok(!(dead in wire), `${dead} må ikke sendes til kalender-klienten`);
   }
+});
+
+test("#7533 lineupShort: udtagelse under startgulvet markeres, kun sendt paa wire naar true", () => {
+  const { entries } = buildCalendarModel(sampleInput({ teamShortRaceIds: new Set(["r-single"]) }));
+  const single = entries.find((e) => e.id === "r-single");
+  const stage = entries.find((e) => e.id === "r-stage");
+  assert.equal(single.lineupShort, true);
+  assert.equal(toCalendarWireEntry(single).lineupShort, true);
+  assert.ok(!("lineupShort" in toCalendarWireEntry(stage)));
+});
+
+test("#7561 lineupCount/fieldSize: feltstørrelsen kommer fra selectionSizeForRace og sendes kun når der er plads til flere", () => {
+  const input = sampleInput({
+    teamEntryRaceIds: new Set(["r-single", "r-stage"]),
+    teamEntryCounts: new Map([["r-single", 6], ["r-stage", 6]]),
+  });
+  const { entries } = buildCalendarModel(input);
+  const single = entries.find((e) => e.id === "r-single"); // ProSeries: felt 6, fuldt
+  const stage = entries.find((e) => e.id === "r-stage"); // WorldTour-klasse uden egen nøgle: default-felt
+  assert.equal(single.fieldSize, selectionSizeForRace({ race_class: "ProSeries" }).max);
+  assert.equal(stage.fieldSize, selectionSizeForRace({ race_class: "WorldTour" }).max);
+  const wireSingle = toCalendarWireEntry(single);
+  assert.ok(!("lineupCount" in wireSingle) && !("fieldSize" in wireSingle), "fuldt felt sender ingen tal");
+  const wireStage = toCalendarWireEntry(stage);
+  assert.equal(wireStage.lineupCount, 6);
+  assert.equal(wireStage.fieldSize, stage.fieldSize);
+  // Uden udtagelse sendes intet.
+  const none = buildCalendarModel(sampleInput()).entries.find((e) => e.id === "r-stage");
+  assert.ok(!("lineupCount" in toCalendarWireEntry(none)));
 });
 
 test("#6514 withdrawn: afmeldt loeb markeres, kun sendt paa wire naar true", () => {

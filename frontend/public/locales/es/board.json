@@ -216,7 +216,7 @@
   "dna": {
     "sectionLabel": "ADN del club",
     "selectHeading": "Elige la identidad de tu club",
-    "selectIntro": "La directiva ha observado la temporada 1 y sugiere tres direcciones. El ADN da forma a la ponderación de los objetivos, a los objetivos de tradición del club y a los miembros de la directiva que recibes desde el primer plan.",
+    "selectIntro": "La directiva sugiere tres direcciones para el club. El ADN da forma a la ponderación de los objetivos, a los objetivos de tradición del club y a los miembros de la directiva que recibes desde el primer plan.",
     "slot": {
       "national_match": "Encaje nacional",
       "specialization_match": "Encaje de especialización",
@@ -1826,8 +1826,8 @@
         "weightedByPrefix": "Ponderado por {name}."
       },
       "empty": {
-        "title": "Aún no hay mandato firmado",
-        "description": "La directiva no ha firmado el mandato de esta temporada. Vuelve a mirar después de la junta anual."
+        "title": "Aún no hay mandato",
+        "description": "El mandato de la temporada se presenta en la junta anual."
       },
       "proposed": {
         "cardTitle": "Mandato propuesto · T{season}",

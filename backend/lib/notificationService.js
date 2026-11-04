@@ -1038,7 +1038,7 @@ export function buildWelcomeNotification() {
   return {
     type: WELCOME_TYPE,
     title: "Welcome to Cycling Zone",
-    message: "Your team is ready. Place a bid in the auction house to sign your first rider.",
+    message: "Your team is ready. Bid in the auction house to strengthen your squad.",
     relatedId: null,
     metadata: {
       titleCode: "notif.welcome.title",

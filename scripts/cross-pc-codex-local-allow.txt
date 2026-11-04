@@ -1,0 +1,25 @@
+# Filer i .codex.local/, der MÅ være lokale (ephemeral eller maskine-specifik state).
+# Én kilde for både scripts/cross-pc-forensic-audit.ps1 og scripts/cross-pc-stop-check.sh.
+# Ét glob-mønster pr. linje (som find -name / PowerShell -like). Linjer med # ignoreres.
+# Alt andet i .codex.local/ er persistent indhold, der skal til GitHub eller OneDrive.
+
+# Kontekst-caches og læse-adgang
+SESSION_CONTEXT.md
+SUPABASE_CONTEXT.md
+supabase-readonly.env
+
+# Rapporter, som et preflight-script skriver på ny ved hver kørsel
+preflight-state.json
+season-cutover-preflight.json
+night-wave-preflight.json
+
+# Kortlivede buffers (commit-beskeder og PR-bodies)
+commit-msg*.txt
+commit-*.txt
+commitmsg-*.txt
+pr*-body.md
+pr-body-*.md
+
+# Kørselsfiler: PID og låse for en proces på DENNE maskine (fx keep-awake fra natte-preflighten)
+*.pid
+*.lock

@@ -1,5 +1,5 @@
 // backend/lib/engine/v4/mechanics/breakawayInterest7160.ts
-// #7160 (KUN s5_profiles_v3, SLUKKET): favoritholdene lader et ufarligt udbrud gaa paa bjerg.
+// #7160 (KUN s5_profiles_v3, live under den aktuelle revision): favoritholdene lader et ufarligt udbrud gaa paa bjerg.
 //
 // Virkeligheden (Touren og Giroen 2023-2024): udbruddet vinder klart flere bjergetaper end i
 // spillet (maalingen er privat, balance-internals/6804-tilvalg/). Retning (ejer 25/10): i et
@@ -19,6 +19,7 @@
 
 import type { Entrant, GcContext, ProfileType } from "../types.ts";
 import { S5_V3_MOUNTAIN_LET_GO_7160_TUNING } from "../tuning.ts";
+import { compareIds } from "../../../compareIds.ts";
 import { raceGcAbilityModel } from "./gcThreat.ts"; // #7258
 import { projectedGainSeconds } from "./gcBreakawayLeash7258.ts"; // #7258
 
@@ -70,7 +71,7 @@ export function gcRiderByTeam(input: {
   const rows = gcRowsById(input.gcContext);
   const maxRank = S5_V3_MOUNTAIN_LET_GO_7160_TUNING.gcRiderMaxRank;
   const best = new Map<string, GcRow & { riderId: string }>();
-  for (const id of [...input.chaseGroupRiderIds].sort((a, b) => a.localeCompare(b))) {
+  for (const id of [...input.chaseGroupRiderIds].sort((a, b) => compareIds(a, b))) {
     const raw = input.entrants[id]?.team_id;
     const teamId = typeof raw === "string" && raw.length > 0 ? raw : null; // samme som breakaway.ts teamIdOf
     const row = rows.get(id);
@@ -79,7 +80,7 @@ export function gcRiderByTeam(input: {
     if (!prior || row.rank < prior.rank) best.set(teamId, { ...row, riderId: id });
   }
   const out = new Map<string, { riderId: string; gap: number }>();
-  for (const [teamId, row] of [...best].sort(([a], [b]) => a.localeCompare(b))) {
+  for (const [teamId, row] of [...best].sort(([a], [b]) => compareIds(a, b))) {
     if (row.rank <= maxRank) out.set(teamId, { riderId: row.riderId, gap: row.gap });
   }
   return out;

@@ -14,14 +14,14 @@
 //     A rider without a lock row (bought or moved after the press) is free. The press
 //     itself never writes race_entries/race_entry_days (I3).
 //
+// #6461 B (always on since the switch was removed 2/11): a rider without an open
+// race slot gets the WHOLE known date, all race days including the date's one
+// condition write (fatigue/form), still written once per rider per date.
 // What the press deliberately does NOT settle:
-//   - the final race day of the date. That commit owns the one condition write per
-//     date (fatigue/form), and decision 4 + I4 keep that write with the evening
-//     settlement. The evening sweep finds the earlier receipts and settles the rest.
 //   - riders with an unresolved race slot (entered, or an autopick candidate). Their
-//     race result is not known yet; they settle after their stage, as before.
-// Both still use today's locked plan, so the evening result is the one the player
-// locked in the morning.
+//     race result is not known yet; they settle after their stage, as before, with
+//     today's locked plan, so the evening result is the one the player locked in
+//     the morning.
 //
 // Idempotency (I2): the lock is keyed per rider + date (training_train_now_locks),
 // and every settled race day is keyed per rider + race day (training_rider_ticks).
@@ -37,16 +37,16 @@ import {
   loadTrainingDateContext, resolveTrainingDateReadiness, trainingDateBounds, loadSeasonBridgeBounds, nextCivilDate, isTrainingDateTeam,
 } from "./trainingDateReadiness.js";
 import { registerTrainingDateWork } from "./trainingDateClose.js";
-import { runTeamTrainingDay, isTrainingReservationHeldError } from "./dailyTrainingEngine.js";
+import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
 import { stripProgramFromWeekDays } from "./trainingPrograms.js";
 import { teamPoolIdForSquad } from "./raceBinding.js";
 import { TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks } from "./trainNowLock.js";
 import { MIN_RACE_ENTRIES } from "./raceAutopick.js"; // #6740
-import { isRiderInjured, raceSquadOf } from "./riderEligibility.js"; // #6740
+import { isRiderInjured, raceSquadOf, applyRosterVisibilityFilter } from "./riderEligibility.js"; // #6740, #7505
 import { loadEligibleEntries } from "./raceEntriesLoader.js"; // #6740
 import { loadSpentRaceDays } from "./raceSpentDays.js"; // #6740
 import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
-import { isTrainNowWholeDayEnabled, settleWholeDayPress } from "./trainNowWholeDay.js"; // #6461 B
+import { settleWholeDayPress } from "./trainNowWholeDay.js"; // #6461 B
 
 export const TRAIN_NOW_FLAG_KEY = "training_train_now";
 export { TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks };
@@ -61,23 +61,6 @@ async function checked(query, label) {
   const { data, error } = await query;
   if (error) throw new Error(`${label}: ${error.message ?? error}`);
   return data;
-}
-
-/** PURE: which race days may a press settle? All but the date's final race day (I4). */
-export function trainNowGameDays(gameDays) {
-  const days = [...new Set(gameDays ?? [])].filter(Number.isInteger).sort((a, b) => a - b);
-  return days.slice(0, -1);
-}
-
-/** PURE: riders that settle now vs. riders that wait for their race slot. */
-export function splitTrainNowRiders({ riderIds, unresolvedSlotsByRider = {} }) {
-  const settleNow = [];
-  const afterRace = [];
-  for (const id of riderIds) {
-    if (unresolvedSlotsByRider[id]?.length) afterRace.push(id);
-    else settleNow.push(id);
-  }
-  return { settleNow, afterRace };
 }
 
 
@@ -124,10 +107,44 @@ async function hasOpenEarlierDate({ supabase, teamId, seasonId, tickDate }) {
   return (rows ?? []).length > 0;
 }
 
+// #7505: drop the races the team cannot be in. Throws on a read error (the caller
+// decides between best-effort and fail closed).
+async function filterRacesTeamCanJoin({ supabase, team, races }) {
+  if (!races.length) return [];
+  const started = races.filter((race) => (Number(race.stages_completed) || 0) > 0);
+  const enteredStartedIds = new Set();
+  if (started.length) {
+    // pagination-safe: one team's entries in today's started races (a few squads of <= 9).
+    const entries = await checked(supabase.from("race_entries").select("race_id")
+      .eq("team_id", team.id).in("race_id", started.map((race) => race.id)), "today's started race entries");
+    for (const row of entries ?? []) enteredStartedIds.add(row.race_id);
+  }
+  // One existence read per squad that still matters (no roster scan).
+  const squadHasRiders = new Map();
+  for (const race of races) {
+    if (enteredStartedIds.has(race.id) || started.includes(race)) continue;
+    const squad = raceSquadOf(race);
+    if (squadHasRiders.has(squad)) continue;
+    const riders = await checked(applyRosterVisibilityFilter(
+      supabase.from("riders").select("id").eq("team_id", team.id), { squad },
+    ).limit(1), "squad riders");
+    squadHasRiders.set(squad, (riders ?? []).length > 0);
+  }
+  return races.filter((race) => {
+    if (started.includes(race)) return enteredStartedIds.has(race.id);
+    return squadHasRiders.get(raceSquadOf(race)) === true;
+  });
+}
+
 /**
  * #6139: the team's races with a stage today (any of its squads' pools), so the
  * button can name the race selection a press locks. Decoration only: a failed read
  * gives an empty list, never a failed status.
+ * #7505: only races the team can actually be in. A race that has already started
+ * where the team has no entries cannot be joined any more, and a race for a squad
+ * where the team has no riders cannot be filled. A race not yet started that the
+ * team is entered in, or can still enter, is always kept (the short-race warning
+ * below depends on that).
  */
 export async function loadTodayRacesForTeam({ supabase, team, tickDate, strict = false }) {
   try {
@@ -137,11 +154,12 @@ export async function loadTodayRacesForTeam({ supabase, team, tickDate, strict =
       .gte("scheduled_at", start.toISOString()).lt("scheduled_at", end.toISOString()), "today's stages");
     const raceIds = [...new Set((stages ?? []).map((row) => row.race_id).filter(Boolean))];
     if (!raceIds.length) return [];
-    const races = await checked(supabase.from("races").select("id, name, squad, league_division_id")
+    const races = await checked(supabase.from("races").select("id, name, squad, league_division_id, stages_completed")
       .in("id", raceIds), "today's races");
-    return (races ?? [])
-      .filter((race) => race.league_division_id != null
-        && race.league_division_id === teamPoolIdForSquad(team, race.squad ?? "senior"))
+    const inPool = (races ?? []).filter((race) => race.league_division_id != null
+      && race.league_division_id === teamPoolIdForSquad(team, race.squad ?? "senior"));
+    const reachable = await filterRacesTeamCanJoin({ supabase, team, races: inPool });
+    return reachable
       .map((race) => ({ id: race.id, name: race.name ?? null }))
       .sort((a, b) => String(a.name).localeCompare(String(b.name)));
   } catch (err) {
@@ -283,7 +301,6 @@ export async function runTrainNow({
   // races it showed: a race that fell below the floor since then is asked about again.
   confirmedShortRaceIds = [],
   loadShortRaces = defaultLoadShortRaces,
-  isWholeDayEnabled = isTrainNowWholeDayEnabled, // #6461 B
 }) {
   if (!team?.id) return { status: 400, body: { error: "no_team" } };
   if (!await isTrainNowEnabled(supabase, { isBetaTester })) return { status: 404, body: { error: "not_found" } };
@@ -367,49 +384,9 @@ export async function runTrainNow({
     && currentIds.includes(id) && lockedIds.has(id)
     && (work.opening_conditions === undefined || work.opening_conditions?.[id]));
   const readiness = resolveTrainingDateReadiness({ ...locked, tickDate, now, riderIds: available });
-  const { settleNow, afterRace } = splitTrainNowRiders({
-    riderIds: available, unresolvedSlotsByRider: readiness.unresolvedSlotsByRider,
-  });
-  // #6461 B (flag training_train_now_whole_day, seeded off): the whole known date per rider.
-  if (await isWholeDayEnabled(supabase, { isBetaTester })) {
-    return settleWholeDayPress({ supabase, team, season, now, tickDate, work, available, readiness, pressedAt, runDay,
-      readReadiness: async () => resolveTrainingDateReadiness({ ...await loadContext({ supabase, season, tickDate, loadDaySpans, registeredTeamIds: [team.id] }), tickDate, now, riderIds: available }) });
-  }
-
-  // 4) Settle the date's race days, final day excluded (I4), in order.
-  const settledDays = [];
-  if (settleNow.length) {
-    for (const gameDay of trainNowGameDays(work.game_days)) {
-      try {
-        await runDay({
-          supabase, teamId: team.id, seasonId: season.id, seasonNumber: season.number,
-          now, tickDateOverride: tickDate, gameDay, dateGameDays: work.game_days, executedBy: "manager",
-          eligibleRiderIds: settleNow, unresolvedSlotsByRider: readiness.unresolvedSlotsByRider,
-          deadlineAt: readiness.deadlineAt.toISOString(), deadlineReached: false,
-        });
-      } catch (err) {
-        // #6839 (ejer-valg A 19/10): aftenkoerslen holder netop denne loebsdag. Ingen
-        // fejl for spilleren: siden viser "Koerer..." og opdaterer selv, naar datoen
-        // er afregnet. Senere loebsdage koeres ikke (koerslen tager dem).
-        if (isTrainingReservationHeldError(err)) {
-          // locked: this press already locked the date, so the page keeps waiting for
-          // the evening run instead of treating its own lock as "done" (#6839).
-          return { status: 409, body: { error: "training_in_progress", tickDate, settledGameDays: settledDays, locked: true } };
-        }
-        throw err;
-      }
-      settledDays.push(gameDay);
-    }
-  }
-
-  return {
-    status: 200,
-    body: {
-      ok: true, tickDate, lockedAt: pressedAt,
-      settledRiderIds: settleNow, afterRaceRiderIds: afterRace,
-      settledGameDays: settledDays, gameDays: work.game_days,
-    },
-  };
+  // #6461 B: the press always settles the whole known date per rider.
+  return settleWholeDayPress({ supabase, team, season, now, tickDate, work, available, readiness, pressedAt, runDay,
+    readReadiness: async () => resolveTrainingDateReadiness({ ...await loadContext({ supabase, season, tickDate, loadDaySpans, registeredTeamIds: [team.id] }), tickDate, now, riderIds: available }) });
 }
 
 // Stable comparison of one weekday cell (key order independent).

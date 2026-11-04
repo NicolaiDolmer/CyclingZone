@@ -68,11 +68,12 @@ import {
   getSwapAuctionConflict,
   getTransferAuctionConflict,
   isExpectedPriceStale,
-} from "../lib/auctionRules.js";
+} from "../lib/auctionRules.ts";
 import {
   finalizeAuctionById,
   finalizeExpiredAuctions as finalizeExpiredAuctionsShared,
 } from "../lib/auctionFinalization.js";
+import { getListingOnAuctionIssue, safePauseTransferListingsForAuction, safeResumePausedListingsForAuctionId } from "../lib/auctionTransferListPause.ts";
 import {
   buildTransitionPlan,
   closePrevTransferWindow,
@@ -110,6 +111,8 @@ import {
 // forveksles med "stiller op" (race_entries bevares bevidst ved afmelding, #4306).
 import { findRejoinConflicts, loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey, splitWithdrawals, DID_NOT_START_REASON } from "../lib/raceWithdrawal.js";
 import { loadTeamsInStartedField } from "../lib/raceStartOutlook.js"; // #6740
+import { planningDidNotStart } from "../lib/planningDidNotStart.ts"; // #7518
+import { teamDistributionColumns } from "../lib/raceDistributionColumns.ts"; // #7553
 import { isOwnerUser } from "../lib/ownerGate.js"; // #3750 ejer-gate
 import { AUTH_FAILURE_RESPONSES, verifyBearerToken } from "../lib/authTokenVerification.js"; // #4369
 import { normalizeSupabaseErrorMessage, withSupabaseRetry } from "../lib/supabaseErrorNormalize.js";
@@ -264,7 +267,6 @@ import { createBreakawayOutlookRouter } from "./breakawayOutlook.js"; // #6912 B
 import { createRaceLibraryV2Router } from "../lib/raceLibraryV2Flag.js"; // #6514
 import { createPushRouter } from "./pushRoutes.ts"; // #6590
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
-import { TRAINING_BULK_DAY_FLAG_KEY } from "../lib/trainingBulkDayFlag.js";
 import { TRAINING_DECISION_FLAG_KEY } from "../lib/trainingDecisionFlag.js"; // #6110 S26
 import { loadFatigueStreaks } from "../lib/trainingFatigueStreak.js"; // #6110 S26
 import { displayPotentialBand, bestPotentialBand } from "../lib/potentialDisplayBand.js"; // #6853
@@ -278,6 +280,7 @@ import { saveSelection, getSelectionContext, prepareSelectionChange, saveSelecti
 import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
+import { resolveSelectionWarnings } from "../lib/selectionWarningResolve.ts"; // #7508
 import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked, sprintTrainFlatOnlyForRace, loadStageRoleByRider } from "../lib/raceTeamOrdersApi.js";
 import { isStagePlanEnabled, loadStagePlanContext, orderHasStagePlan, stagePlanRevisionOk } from "../lib/stagePlanApi.js"; // #7003
 import { isRaceLineupLocked, isRaceLineupLockedNow, firstStageStartsFromSchedule, loadLockedRaceIds } from "../lib/raceStartLock.js";
@@ -293,12 +296,11 @@ import { youthSquadRoom, youthSquadRooms } from "../lib/youthSquadRoom.js"; // #
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, raceDaysByRace, seasonLoadByRider, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
-import { isRaceDayIntentionEnabled } from "../lib/raceIntentionFlag.js"; // #4632 loebsdagens intention (femtrins-effort), default off
 import { buildCalendarModel, toCalendarWireEntry, toCopenhagenISODate, buildGameDayDateMap } from "../lib/raceCalendar.js";
 import { snapPeakWindow, lastStageDate, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
 import { dateStringToOrdinal, loadTargetRaceDemands, loadPeakPlans, resolvePeakTrainingQualities, aggregateDemandVector } from "../lib/racePeakPlans.js";
 import { buildRouteMatch, raceRouteVector, routeMatchRevisionFor, ROUTE_MATCH_STAGE_COLUMNS } from "../lib/routeMatch.js"; // #6207
-import { RACE_V3_TUNING, validEffortsFor } from "../lib/raceRoles.js";
+import { RACE_V3_TUNING, VALID_EFFORTS_FIVE_STEP } from "../lib/raceRoles.js";
 import { peakStatus, stageProfileStrip, raceProfileSummary, countRivalPeaks, teamDivisionKnownForSeason, peakValueFormPoints, findPaybackCollisions, raceCardPeakOverlay } from "../lib/plannerBoard.js";
 import { suggestPeaksForRider, shouldRecommendNoPeak, buildNoPeakSuggestion } from "../lib/peakSuggestions.js";
 import { peakTargetRaceStarted, plannerSquadFor } from "../lib/peakTargetScope.js"; // #5992
@@ -314,7 +316,7 @@ import { resolveGraduation, findPendingGraduation } from "../lib/academyGraduati
 import { handleListPendingRequest, handlePromotePendingRequest } from "../lib/promotionPendingAction.js"; // #6710
 import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary, hasCompleteContract, demoteTargetSquad, handleMoveSquadRequest } from "../lib/academyTransfer.js";
 import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";
-import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.js";
+import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.ts";
 import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
 import {
   getTeamAcademyCount,
@@ -330,8 +332,8 @@ import { computeFrozenSalary } from "../lib/contractSeed.js";
 import {
   computeDebtRatio,
   computeSustainabilityTier,
-} from "../lib/economyAdminDashboard.js";
-import { computeFinanceForecast, computeMultiSeasonForecast } from "../lib/financeForecast.js";
+} from "../lib/economyAdminDashboard.ts";
+import { computeFinanceForecast, computeMultiSeasonForecast } from "../lib/financeForecast.ts";
 import { isUpkeepPerRaceDayEnabled } from "../lib/upkeepPerRaceDayFlag.ts";
 import { isEconomyNoUpkeepEnabled } from "../lib/economyNoUpkeepFlag.ts";
 import { buildSeasonFinanceReport, summarizePrizes } from "../lib/seasonFinanceReport.js";
@@ -455,6 +457,7 @@ import {
 } from "../lib/boardConsequences.js";
 // #3514/#4557 S-M2b · Mandatets Boardroom-endpoint (GET /board/room).
 import { isBoardMandateModelEnabled } from "../lib/boardMandateFlag.js";
+import { ensureMandateForReturningTeam } from "../lib/boardMandateEngine.js"; // #6773
 import { buildBoardRoomPayload, loadMandateOnboardingSignal } from "../lib/boardRoom.js";
 // #4557 S-M2c · Årsmødet (GET/POST /board/meeting/*).
 import {
@@ -562,7 +565,7 @@ import {
   SELECTION_REMINDER_TONES,
   isSelectionReminderMigrationPending,
 } from "../lib/selectionDeadlineReminder.js";
-import { selectionSizeForRace } from "../lib/raceAutopick.js";
+import { selectionSizeForRace, MIN_RACE_ENTRIES } from "../lib/raceAutopick.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
 import { REGISTRY_ABILITY_KEYS } from "../lib/abilityRegistry.js";
 import { selectInChunks } from "../lib/dbChunk.js";
@@ -2999,7 +3002,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const teamId = req.team.id;
     const [
       { activeSeasonId, state }, isBetaTester, stage, raceDayDevelopmentStage, trainingScoreStage,
-      mobileTableStage, dailyReceiptStage, bulkDayStage, decisionCardStage,
+      mobileTableStage, dailyReceiptStage, decisionCardStage,
     ] = await Promise.all([
       loadTrainingState(teamId),
       isViewerBetaTester(req),
@@ -3012,7 +3015,6 @@ router.get("/training/me", requireAuth, async (req, res) => {
       // testere ser den nye tabel, alle andre den gamle. Desktop er uberoert.
       readFlagStage(supabase, TRAINING_MOBILE_TABLE_FLAG_KEY),
       readFlagStage(supabase, TRAINING_DAILY_RECEIPT_FLAG_KEY),
-      readFlagStage(supabase, TRAINING_BULK_DAY_FLAG_KEY), // #6523
       readFlagStage(supabase, TRAINING_DECISION_FLAG_KEY), // #6110 S26
     ]);
     // #6811 P2: et parkeret hold traener ikke (POST svarer 409 team_parked), saa
@@ -3034,7 +3036,6 @@ router.get("/training/me", requireAuth, async (req, res) => {
     // og det er med vilje: fail-safe er den visning der står i prod i dag.
     const mobileTable = evaluateFlagStage(mobileTableStage, { isBetaTester });
     const dailyReceiptEnabled = evaluateFlagStage(dailyReceiptStage, { isBetaTester });
-    const bulkDay = evaluateFlagStage(bulkDayStage, { isBetaTester }); // #6523: bar boolean
     const decisionCard = evaluateFlagStage(decisionCardStage, { isBetaTester }); // #6110 S26: bar boolean
 
     // Hent ryttere for holdet (ikke-pensionerede) for at bygge condition/progress maps.
@@ -3231,7 +3232,6 @@ router.get("/training/me", requireAuth, async (req, res) => {
       // #3643: true ⇒ telefonen tegner den nye løbsdags-tabel; false ⇒ den
       // mobil-visning der står i prod i dag. Se trainingMobileTableFlag.js.
       mobileTable,
-      bulkDay,
       decisionCard,
       ...(fatigueStreaks ? { fatigueDays70: fatigueStreaks } : {}),
       dailyReceiptEnabled,
@@ -5100,10 +5100,15 @@ router.get("/races/calendar", requireAuth, cached({
     // kaptajn/sprint-kaptajn-entry i løbet.
     const teamEntryRaceIds = new Set();
     const teamLeaderRaceIds = new Set();
+    const entryCounts = new Map();
     for (const e of teamEntryRows) {
       teamEntryRaceIds.add(e.race_id);
+      entryCounts.set(e.race_id, (entryCounts.get(e.race_id) || 0) + 1);
       if (e.race_role === "captain" || e.race_role === "sprint_captain") teamLeaderRaceIds.add(e.race_id);
     }
+    // #7533: én gemt rytter er ikke "Klar". Under startgulvet (MIN_RACE_ENTRIES) stiller
+    // holdet ikke op, så kalenderen skal sige "Mangler".
+    const teamShortRaceIds = new Set([...entryCounts].filter(([, n]) => n < MIN_RACE_ENTRIES).map(([id]) => id));
 
     const model = buildCalendarModel({
       now: new Date(), // #6959: request-grænsen injicerer uret (lineupFrozen)
@@ -5114,6 +5119,8 @@ router.get("/races/calendar", requireAuth, cached({
       // #5405: null → buildCalendarModel sætter isMine=false på HVERT løb.
       teamDivisionId: ownPoolId,
       teamEntryRaceIds,
+      teamShortRaceIds,
+      teamEntryCounts: entryCounts, // #7561
       teamLeaderRaceIds,
       teamWithdrawnRaceIds,
     });
@@ -5265,13 +5272,11 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
       if (!profByRace.has(row.race_id)) profByRace.set(row.race_id, []);
       profByRace.get(row.race_id).push(row);
     }
-    // #6207: ét rute-match-tal fra motoren (routeMatch.js). Tallet pr. rytter x løb
-    // sendes færdigt (rider.routeMatch); vektoren kun til forklaringen i popoveren.
+    // #6207: løbets rutevektor fra motoren (routeMatch.js) sendes som race.demandVector;
+    // frontendens matrix beregner selv rytter x løb-tallet ud fra den.
     const ownRaceRowById = new Map(ownRaceRows.map((r) => [r.id, r]));
-    const routeMatchByRace = new Map();
     for (const race of races) {
       const rm = buildRouteMatch({ race: ownRaceRowById.get(race.id), stages: profByRace.get(race.id) || [] });
-      routeMatchByRace.set(race.id, rm);
       race.demandVector = rm.raceVector;
     }
 
@@ -5283,8 +5288,6 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
         primaryType: r.primary_type ?? null,
         secondaryType: r.secondary_type ?? null,
         abilities: ab ? Object.fromEntries(RACE_SIM_ABILITY_KEYS.map((k) => [k, ab[k] ?? null])) : null,
-        // #6207: { [raceId]: 0-100 } — samme tal som holdudtagelsen og Taktik.
-        routeMatch: ab ? Object.fromEntries(races.map((race) => [race.id, routeMatchByRace.get(race.id)?.race(ab) ?? null])) : null,
         injured: isRiderInjured(conditionByRider.get(r.id)?.injured_until ?? null, todayStr),
         // #4119: solgt, men kører løbet færdigt for dette hold. Vises, kan ikke udtages.
         outgoing: Boolean(r.pending_team_id),
@@ -5424,7 +5427,7 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
 
     const { dayWindow, currentDay, focusDay, totalDays, firstOrdinal } = resolveSeasonDay({ season, schedRows, dayParam, myRaceDays });
 
-    const cols = buildColumnSet({ races: withWindow, teamDivisionId: req.team.league_division_id, dayWindow });
+    const dayCols = buildColumnSet({ races: withWindow, teamDivisionId: req.team.league_division_id, dayWindow });
 
     const { data: withdrawals } = await supabase
       .from("race_withdrawals").select("race_id, withdrawn_reason").eq("team_id", req.team.id);
@@ -5432,6 +5435,8 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
     // som enhver afmelding (bindingMap nedenfor), men kolonnen viser "Did not start".
     const { withdrawn: voluntaryWithdrawnSet, didNotStart: didNotStartSet } = splitWithdrawals(withdrawals);
     const withdrawnSet = new Set([...voluntaryWithdrawnSet, ...didNotStartSet]);
+    // #7553: et laast loeb uden holdets entries og uden afmelding er ikke holdets kolonne.
+    const cols = await teamDistributionColumns({ supabase, teamId: req.team.id, columns: dayCols, withdrawnIds: withdrawnSet });
 
     // S5 (Lag 3): dominerende terræn pr. kolonne-løb → profil-bevidste rolle-hints
     // (RoleCard). Kun dagens overlap-løb (cols) — lille sæt, genbruger timeline-profilernes
@@ -5542,8 +5547,12 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
         // begge slags afmelding; kolonnens tekst læser did_not_start først.
         withdrawn: withdrawnSet.has(race.id),
         lineup_locked: lockedHere,
-        did_not_start: startedHere && !voluntaryWithdrawnSet.has(race.id)
-          && (didNotStartSet.has(race.id) || inFieldByRace.get(race.id) === false),
+        // #7518: "ikke i feltet" taeller kun hvis holdet fandtes foer loebets foerste etape.
+        did_not_start: planningDidNotStart({
+          started: startedHere, voluntaryWithdrawn: voluntaryWithdrawnSet.has(race.id),
+          explicitDidNotStart: didNotStartSet.has(race.id), inField: inFieldByRace.get(race.id),
+          teamCreatedAt: req.team.created_at, raceStart: race.window?.start,
+        }),
         counts: { selected: ctx.selection?.rider_ids?.length ?? 0, target: ctx.size.max },
         bindingRiderIds,
         // #3102 PR 2: peaks/payback-overlay til løbskortet (rytter-navne slås op
@@ -5943,6 +5952,8 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
         .delete().eq("race_id", race.id).eq("team_id", req.team.id);
       if (clearCleanupErr) captureException(new Error(`race_entry_clears cleanup (manual save): ${clearCleanupErr.message}`));
     }
+    // #7508: holdet har nu ryttere i løbet → den gamle "Holdudtagelse mangler" for netop dette løb er forældet (best-effort, kaster aldrig).
+    if (riderIds.length > 0) await resolveSelectionWarnings({ supabase, userId: req.user.id, raceId: race.id });
     invalidateNamespace("calendar"); // #6514: kalenderens entered-status følger udtagelsen
     res.json({ ok: true });
   } catch (err) {
@@ -6172,6 +6183,7 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
         const { error: clearErr } = await supabase.from("race_entry_clears")
           .delete().eq("race_id", change.raceId).eq("team_id", req.team.id);
         if (clearErr) captureException(new Error(`race_entry_clears cleanup (bulk save, ${change.raceId}): ${clearErr.message}`));
+        await resolveSelectionWarnings({ supabase, userId: req.user.id, raceId: change.raceId }); // #7508 (best-effort, kaster aldrig)
       }
     }
 
@@ -6365,6 +6377,7 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
       return res.status(500).json({ error: insErr.message });
     }
 
+    await resolveSelectionWarnings({ supabase, userId: req.user.id, raceId: race.id }); // #7508: holdet er udtaget (best-effort, kaster aldrig)
     invalidateNamespace("calendar"); // #6514
     res.json({
       ok: true,
@@ -6395,11 +6408,7 @@ const RACE_ROLE_SCOPE_CHOICE_FLAG_KEY = "race_role_scope_choice";
 router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
-    // #4632: de to flag laeses parallelt — uafhaengige app_config-opslag.
-    const [enabled, intentionEnabled] = await Promise.all([
-      isRaceEngineV3ScoringEnabled(supabase),
-      isRaceDayIntentionEnabled(supabase),
-    ]);
+    const enabled = await isRaceEngineV3ScoringEnabled(supabase);
     const { data: race, error } = await supabase
       .from("races")
       .select("id, status, stages, stages_completed, squad, scheduled_for, engine_rules_revision")
@@ -6421,8 +6430,7 @@ router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
       stage_versions: ctx.stage_versions,
       // #4632: fladen skal kunne rendre de rigtige trin uden at kende
       // multiplikatorerne. FOG OF WAR: kun enum-vaerdier ud, aldrig tal.
-      intention_enabled: intentionEnabled,
-      valid_efforts: validEffortsFor(intentionEnabled),
+      valid_efforts: VALID_EFFORTS_FIVE_STEP,
       stages_completed: ctx.stages_completed,
       // #5945: stiller holdet op? starts:false = under startgulvet (min) og kan ikke fyldes op.
       start_outlook: ctx.start_outlook,
@@ -6464,10 +6472,8 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
       const status = scope.error === "stage_roles_conflict" ? 409 : 400;
       return res.status(status).json({ error: scope.error, errors: [scope.error] });
     }
-    const intentionEnabled = await isRaceDayIntentionEnabled(supabase); // #4632
     const result = validateStageRoleOverrides({
       overrides: scope.overrides,
-      intentionEnabled,
       coCaptainAllowed: raceAllowsCoCaptain(race), // #5981
       raceCompleted: race.status === "completed",
       stageCount: ctx.stage_count,
@@ -6514,7 +6520,6 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
     if (!race) return res.status(404).json({ error: "race_not_found" });
 
     const ctx = await getTeamOrdersContext({ supabase, race, teamId: req.team.id });
-    const intentionEnabled = await isRaceDayIntentionEnabled(supabase); // #4632
     const now = new Date();
     const stages = [];
     for (let sn = 1; sn <= ctx.stage_count; sn++) {
@@ -6530,8 +6535,7 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
       stages_completed: ctx.stages_completed,
       race_completed: ctx.race_completed,
       // #4632: samme kontrakt som stage-roles-endpointet — enum-vaerdier, ingen tal.
-      intention_enabled: intentionEnabled,
-      valid_efforts: validEffortsFor(intentionEnabled),
+      valid_efforts: VALID_EFFORTS_FIVE_STEP,
       stages,
       // T4 på læsesiden: fraværende etaper i `orders` betyder neutral default —
       // frontend rendrer selv neutralTeamOrder()-formen for dem.
@@ -6543,8 +6547,8 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
       // #6462: toget er kun standard paa flade etaper under loebets revision
       // (gemt, ellers den motoren binder ved foerste claim). Fladen spejler det.
       sprint_train_flat_only: sprintTrainFlatOnlyForRace(race),
-      // #7003: etapeplanen langs ruten (flag + femtrins-indsats + s5_profiles_v3). Kun en boolean.
-      stage_plan_enabled: intentionEnabled && stagePlanRevisionOk(race)
+      // #7003: etapeplanen langs ruten (flag + s5_profiles_v3). Kun en boolean.
+      stage_plan_enabled: stagePlanRevisionOk(race)
         && await isStagePlanEnabled(supabase, { isBetaTester: (await isViewerBetaTester(req)) === true }),
     });
   } catch (err) {
@@ -6567,9 +6571,8 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
     if (!race) return res.status(404).json({ error: "race_not_found" });
 
     const ctx = await getTeamOrdersContext({ supabase, race, teamId: req.team.id });
-    const intentionEnabled = await isRaceDayIntentionEnabled(supabase); // #4632
-    // #7003: planen tages kun imod naar flag, femtrins-indsats og revision tillader den.
-    const stagePlan = orderHasStagePlan(req.body) && intentionEnabled && stagePlanRevisionOk(race)
+    // #7003: planen tages kun imod naar flag og revision tillader den.
+    const stagePlan = orderHasStagePlan(req.body) && stagePlanRevisionOk(race)
       && Number.isInteger(stageNumber) && stageNumber >= 1 && stageNumber <= ctx.stage_count
       && await isStagePlanEnabled(supabase, { isBetaTester: (await isViewerBetaTester(req)) === true })
       ? await loadStagePlanContext({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider })
@@ -6577,7 +6580,6 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
     const roleByRider = await loadStageRoleByRider({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider }); // #7003
     const result = validateTeamOrder({
       order: req.body || {},
-      intentionEnabled,
       stagePlan,
       roleByRider,
       raceCompleted: ctx.race_completed,
@@ -7639,6 +7641,8 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
     }
     return res.status(500).json({ error: error.message });
   }
+  // #4211: rytterens transferliste staar paa pause, mens auktionen koerer.
+  await safePauseTransferListingsForAuction(supabase, { riderId: rider_id });
 
   if (initialBidderId) {
     await supabase.from("auction_bids").insert({
@@ -8411,6 +8415,10 @@ router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
     .maybeSingle();
   if (existingListing) {
     return res.status(409).json({ error: "This rider is already listed on the transfer market", errorCode: "rider_already_listed" });
+  }
+  // #4211: en rytter paa aktiv auktion kan ikke saettes paa transferlisten.
+  if (getListingOnAuctionIssue({ riderId: rider_id, activeAuctionRiderIds: await getActiveAuctionRiderIds(supabase, [rider_id]) })) {
+    return res.status(409).json({ error: "This rider is on auction right now. You can list it once the auction has ended.", errorCode: "rider_on_auction_listing" });
   }
 
   const { data, error } = await supabase
@@ -11848,6 +11856,7 @@ router.post("/admin/auctions/:id/cancel", requireAdmin, adminWriteLimiter, async
     }
     return res.status(500).json({ error: "Cancel fejlede" });
   }
+  await safeResumePausedListingsForAuctionId(supabase, req.params.id); // #4211
 
   res.json({
     success: true,
@@ -15599,6 +15608,8 @@ router.post("/admin/teams/:teamId/unfreeze", requireAdmin, adminWriteLimiter, as
     const { error: updateErr } = await supabase
       .from("teams").update({ is_frozen: false }).eq("id", teamId);
     if (updateErr) throw updateErr;
+    // #6773: et optøet hold får et mandat for den aktive sæson (kaster aldrig).
+    await ensureMandateForReturningTeam(supabase, { teamId });
 
     await supabase.from("admin_log").insert({
       admin_user_id: req.user.id,
@@ -17284,6 +17295,12 @@ router.get("/board/status", requireAuth, async (req, res) => {
       const seasonsRemaining = Math.max(0, planDuration - seasonsCompleted);
       const planProgressPct = planDuration > 0 ? Math.round((seasonsCompleted / planDuration) * 100) : 0;
       const isExpired = board.negotiation_status === "pending";
+      // #7507: "pending" er baade en udloebet plan OG en plan der aldrig er underskrevet
+      // (nyt hold, aarsmoedet aabent). Kun bestyrelsens FEEDBACK skelner: en plan med mindst
+      // eet evalueret saesonsnapshot har vaeret i kraft og kan vaere "udloebet"; ellers faar et
+      // nyt hold "Planen er udloebet". is_expired og request-options beholder den gamle
+      // betydning (den gamle BoardPage bruger den til "Forhandl"-knappen).
+      const planLapsed = isExpired && allSnapshots.some((s) => s.board_id === board.id);
 
       const boardSnapshots = allSnapshots
         .filter(s => s.board_id === board.id && s.season_number >= (board.plan_start_season_number || 0));
@@ -17341,7 +17358,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
         goalContext,
         seasonNumber: activeSeason?.number ?? null,
         extra: {
-          isExpired,
+          isExpired: planLapsed,
           // S-02c · Lad outlook vælge dominant_member + pr-mål reactions
           assignedMembers: teamBoardMembers,
           // #4556 S-M2b addendum · navne-afledning (samme kontrakt som

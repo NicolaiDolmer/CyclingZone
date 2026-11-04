@@ -230,7 +230,7 @@ Sporet i #4376. **Design-go: ejer 29/8, korrigeret 4/9** — hard rule 25's desi
 | `backend/lib/divisionAdjustment.js` | Ren kerne: faktor, overgangsregel, modifier-loft, idempotency-nøgle. Ingen I/O |
 | `sponsor_contracts.signed_division` | Den prissatte division. Skrives af `acceptOffer`, `acceptOfferImmediately`, `expireAndRenewContracts` (default-grenen) og `midSeasonSponsor` |
 | `economyEngine.processSeasonStart` | Krediterer tillægget som egen `division_adjustment`-transaktion, efter faldskærmen |
-| `financeForecast.js` | `projected_division_adjustment` — fuldt modellérbart, indgår i `projected_net` |
+| `financeForecast.ts` | `projected_division_adjustment` — fuldt modellérbart, indgår i `projected_net` |
 | `SponsorOfferModal.jsx` | Viser beløbet pr. division **før** underskrift (spillerens forbehold) |
 | `scripts/creditDivisionAdjustment-4376.mjs` | Éngangs-efterbetaling for S3, samme funktioner og samme idempotency-nøgle som motoren |
 

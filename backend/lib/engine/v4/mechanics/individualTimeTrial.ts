@@ -76,7 +76,7 @@ import { computeFinaleAbilityScore } from "../finale.ts";
 import { riderWeatherCpMultiplier } from "../segmentLoop.ts";
 import { STRENGTH_SPEED_EXTRA_TUNING } from "../tuning.ts";
 import { applyDistanceFatigueToCp } from "./distanceFatigue.ts";
-import { allOutTimeTrialBonus7280, applyEffortToDemand, effortCostTuning7280, isAllOut7280On, isSaveItt7332Effort, isSaveItt7332On, saveTimeTrialPenalty7332 } from "./effortCost.ts"; // #7280: alt ud-gevinst; #7332: spar-pris (slukket)
+import { allOutTimeTrialBonus7280, applyEffortToDemand, effortCostTuning7280, isSaveItt7332Effort, saveTimeTrialPenalty7332 } from "./effortCost.ts"; // #7280: alt ud-gevinst; #7332: spar-pris
 import { isOfficialTimesV3OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater, isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
 import { summitFinishSingleFor } from "./komJersey6937.ts";
 import {
@@ -171,7 +171,7 @@ export function ittAbilityTuning(tuning: EngineTuning, rulesRevision: unknown): 
 }
 
 /**
- * #6595 (KUN s5_profiles_v3, TAENDT 31/10): enkeltstartens egen terraen-vaegt i fart-formlen.
+ * #6595 (s5_profiles_v3 og senere, live siden 31/10): enkeltstartens egen terraen-vaegt i fart-formlen.
  *
  * Vejetapens STRENGTH_SPEED_EXTRA_TUNING.terrainWeight daemper styrke-forskelle
  * paa fladt og rullende terraen, fordi aerodynamik og LAE dominerer dér: i en
@@ -190,29 +190,13 @@ export const S5_V3_ITT_TERRAIN_WEIGHT: Readonly<Record<SegmentKind, number>> = O
   rolling: 0.54,
 });
 
-// #6595 (TAENDT 31/10 paa ejerens go, genmaalt vaegt): s5_profiles_v3 er den AKTUELLE
-// revision (#7237), saa rettelsen kan ikke ligge bag revisionen alene (samme
-// moenster som #7280's ALL_OUT_7280_ACTIVE). Slukket er enkeltstarten
-// bit-identisk med main foer #6595.
-export const ITT_TERRAIN_6595_ACTIVE: boolean = true; // ejer-go 31/10, #6595
-
-// Kun tests og dev-benches maaler med kontakten taendt. Produktionskode kalder aldrig setteren.
-let benchOverride6595: boolean | null = null;
-/** KUN tests/dev-benches: taend/sluk #6595. `null` nulstiller til kontakten. */
-export function setIttTerrain6595ForBench(active: boolean | null): void {
-  benchOverride6595 = active === null ? null : active === true;
-}
-/** Er #6595 taendt (kontakten, eller en dev-bench)? Gaelder kun under s5_profiles_v3. */
-export function ittTerrain6595Active(): boolean {
-  return benchOverride6595 ?? ITT_TERRAIN_6595_ACTIVE;
-}
-
 /**
- * #6595: terraen-vaegten enkeltstarten regner fart med. Kun s5_profiles_v3 med
- * kontakten taendt faar enkeltstartens egen; ellers vejetapens (samme objekt).
+ * #6595 (live 31/10 paa ejerens go, #7260 fjernede kodekontakten): terraen-vaegten
+ * enkeltstarten regner fart med. s5_profiles_v3 og senere faar enkeltstartens
+ * egen; aeldre revisioner vejetapens (samme objekt, bit-identisk med foer #6595).
  */
 export function ittTerrainWeight(rulesRevision: unknown): Readonly<Record<SegmentKind, number>> {
-  return ittTerrain6595Active() && isS5ProfilesV3OrLater(rulesRevision) ? S5_V3_ITT_TERRAIN_WEIGHT : STRENGTH_SPEED_EXTRA_TUNING.terrainWeight;
+  return isS5ProfilesV3OrLater(rulesRevision) ? S5_V3_ITT_TERRAIN_WEIGHT : STRENGTH_SPEED_EXTRA_TUNING.terrainWeight;
 }
 
 // ── Evne og fart ─────────────────────────────────────────────────────────────
@@ -391,7 +375,7 @@ function tickSoloRider(
   terrainWeight: Readonly<Record<SegmentKind, number>> = STRENGTH_SPEED_EXTRA_TUNING.terrainWeight,
   saveItt7332 = false,
 ): void {
-  // #7332 (slukket): spar/beskyt/grupetto mod uret koster kapacitet; 0 naar pakken ikke er i kraft.
+  // #7332: spar/beskyt/grupetto mod uret koster kapacitet; 0 paa aeldre revisioner.
   const capacity = ittCapacityForSegment(entrant, rider, segment, tuning, route.weather, stageNoise, climbShare) + allOutTimeTrialBonus7280(entrant.effort, entrant.abilities.time_trial, allOut7280) - saveTimeTrialPenalty7332(entrant.effort, entrant.abilities.time_trial, saveItt7332);
   const distanceKm = Math.max(0, segment.to_km - segment.from_km);
   const speedKmh = ittSpeedKmh(capacity, referenceCapacity, segment.kind, tuning, ittTuning, terrainWeight);
@@ -402,7 +386,7 @@ function tickSoloRider(
   const cp = Math.max(0, capacity);
   const baseDemand = cp * tuning.terrain.baseDemand[segment.kind] * tuning.work.frontWorkFactor[segment.kind];
   // #5580 (M1 punkt 4): all_out-prisen foelger segmentets terraen, som paa vejetapen.
-  // #7332 (slukket): beskyt og grupetto koerer som spar mod uret, ogsaa i kravet.
+  // #7332: beskyt og grupetto koerer som spar mod uret, ogsaa i kravet.
   const effort = isSaveItt7332Effort(entrant.effort, saveItt7332) ? "save" : entrant.effort;
   const demand = applyEffortToDemand(baseDemand, effort, allOut7280 ? effortCostTuning7280() : undefined, segment.kind);
   const tick = tickPhysiologyOverSegment({
@@ -501,9 +485,10 @@ export function simulateIndividualTimeTrialStage(
       ...summitFinishSingleFor(options.rulesRevision),
       ...(options.dayForm6649 && isS5ProfilesV3OrLater(options.rulesRevision) ? { dayForm6649: true as const } : {}), // #6649
     },
-    // #6595 (slukket): kun s5_profiles_v3 med kontakten taendt faar enkeltstartens egen terraen-vaegt; ellers vejetapens (samme objekt).
-    // #7332 (slukket): kun s5_profiles_v3 med kontakten taendt faar spar-prisen mod uret.
-    individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning, climbShare, isAllOut7280On(options.rulesRevision), options.ittTerrainWeight ?? ittTerrainWeight(options.rulesRevision), isSaveItt7332On(options.rulesRevision)),
+    // #6595: s5_profiles_v3 og senere faar enkeltstartens egen terraen-vaegt; ellers vejetapens (samme objekt).
+    // #7280: s5_profiles_v3 og senere faar alt ud's gevinst og pris mod uret.
+    // #7332: s5_profiles_v3 og senere faar spar-prisen mod uret.
+    individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning, climbShare, isS5ProfilesV3OrLater(options.rulesRevision), options.ittTerrainWeight ?? ittTerrainWeight(options.rulesRevision), isS5ProfilesV3OrLater(options.rulesRevision)),
   );
   return output;
 }

@@ -1,0 +1,42 @@
+name: Codemod boundaries
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - 'scripts/check-patch-notes-history*'
+      - 'scripts/lint-tailwind-*'
+      - '.github/workflows/codemod-guards.yml'
+
+permissions:
+  contents: read
+
+# #7582: annullér forældede kørsler på samme PR. Ikke-PR-events (push til main,
+# schedule, dispatch, merge queue) får run_id som gruppe og kører altid færdigt.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  codemod-guards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Install locked frontend tooling
+        run: npm ci --prefix frontend --ignore-scripts
+      - name: Regression fixtures
+        run: node --test scripts/check-patch-notes-history.test.mjs scripts/lint-tailwind-events.test.mjs scripts/lint-tailwind-v4.test.mjs
+      - name: Published patch history against immutable PR base
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/check-patch-notes-history.mjs "$PR_BASE_SHA"
+      - name: Event names remain outside class codemods
+        run: node scripts/lint-tailwind-events.mjs
+      - name: Unsafe legacy class meanings (configured compatibility preserved)
+        run: node scripts/lint-tailwind-v4.mjs

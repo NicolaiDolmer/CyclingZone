@@ -668,7 +668,10 @@
     "noHistory": "No se han encontrado datos de “{name}”",
     "raceNotFoundHint": "Puede que el enlace sea antiguo o que se haya eliminado la carrera. Abre la biblioteca de carreras para encontrar otra.",
     "noResultsImportedRaceHint": "Esta carrera aún no tiene filas de resultados. Otras carreras de la biblioteca ya tienen las suyas.",
-    "noResultsImportedRaceCta": "Abrir la biblioteca de carreras"
+    "noResultsImportedRaceCta": "Abrir la biblioteca de carreras",
+    "notStartedRace": "La carrera aún no ha empezado",
+    "notStartedStageRaceHint": "La clasificación aparecerá cuando se haya disputado la etapa 1.",
+    "notStartedOneDayHint": "Los resultados aparecerán cuando se haya disputado la carrera."
   },
   "calendar": {
     "upcoming": "Próximas",

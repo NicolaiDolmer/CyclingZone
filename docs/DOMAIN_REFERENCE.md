@@ -25,7 +25,7 @@ falske produktions-alarmer på race-motoren samme dag (14/8, [#3730](https://git
 
 | Felt | Betyder | Betyder IKKE |
 |------|---------|---------------|
-| `races.scheduled_for` | Løbets **starttidspunkt** — sat lig løbets FØRSTE etapes `scheduled_at` ved kalender-materialisering (`raceCalendarScheduling.js: buildScheduleRows`) | Hvornår næste etape kører. Feltet opdateres ikke løbende gennem etapeløbet. |
+| `races.scheduled_for` | Løbets **starttidspunkt** — sat lig løbets FØRSTE etapes `scheduled_at` ved kalender-materialisering (`raceCalendarScheduling.ts: buildScheduleRows`) | Hvornår næste etape kører. Feltet opdateres ikke løbende gennem etapeløbet. |
 | `race_stage_schedule.scheduled_at` (pr. `race_id` + `stage_number`, sammen med `game_day`) | Hvornår **den enkelte etape** skal afvikles. Den eneste kilde til om noget er forsinket | — |
 
 `races.status` forbliver `'scheduled'` gennem hele etapeløbets forløb — den flipper først til

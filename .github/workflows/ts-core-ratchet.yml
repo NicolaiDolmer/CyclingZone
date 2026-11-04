@@ -29,9 +29,12 @@ on:
 permissions:
   contents: read
 
+# #7582: en forældet PR-kørsel annulleres; push til main, merge_group og
+# dispatch får hver sin gruppe (run_id), så en main-kørsel aldrig annullerer
+# eller erstatter en anden (gruppen pr. github.ref gjorde det før).
 concurrency:
-  group: ts-core-ratchet-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   ts-core-ratchet:

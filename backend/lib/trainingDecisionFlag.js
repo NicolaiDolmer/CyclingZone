@@ -1,5 +1,5 @@
 // Flag for traeningssidens "Dagens beslutning"-kort oeverst paa Today-fanen
-// (#6110 S26). Moenster kopieret fra trainingBulkDayFlag.js.
+// (#6110 S26). Moenster kopieret fra trainingMobileTableFlag.js.
 //
 // ON  = kortet staar over overblikket med 1-3 forslag og en Use-knap pr. forslag.
 // OFF = siden er PRAECIS som den staar paa main i dag.

@@ -37,6 +37,7 @@ import {
 import {
   applySeasonEndSync as applyMandateSeasonEndSyncShared,
   advanceMandateAtSeasonEnd as advanceMandateAtSeasonEndShared,
+  closeEndedSeasonMandatesForAllTeams,
 } from "./boardMandateEngine.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 import { isBoardTestModeActive } from "./boardTestMode.js";
@@ -1584,6 +1585,21 @@ export async function processSeasonEnd(seasonId, deps = {}) {
     });
   }
 
+  // #6773 · Løkken ovenfor springer frosne hold over (loadHumanSeasonEndTeams) og
+  // parkerede hold over (isParkedTeam), så deres mandater for den afsluttede
+  // sæson lukkes her for alle hold på én gang. Efter løkken, så aktive hold
+  // først har fået deres årsmøde. Ikke-fatal: et fejlende trin logges, og
+  // vagthunden fanger rester.
+  try {
+    const closeSeam = /** @type {{ closeEndedSeasonMandatesForAllTeams?: typeof closeEndedSeasonMandatesForAllTeams }} */ (deps);
+    const closeAllFn = closeSeam.closeEndedSeasonMandatesForAllTeams ?? closeEndedSeasonMandatesForAllTeams;
+    const closedAll = await closeAllFn(supabaseClient, { endedSeasonNumber: currentSeasonNumber, now: notificationNow });
+    console.log(`  📜 Mandater for afsluttede sæsoner (#6773): ${closedAll.completed} afsluttet, ${closedAll.lapsed} bortfaldet${closedAll.skipped ? ` (${closedAll.skipped})` : ""}.`);
+  } catch (closeErr) {
+    console.error("  ❌ Samlet mandat-lukning fejlede (#6773):", closeErr instanceof Error ? closeErr.message : closeErr);
+    captureException(closeErr, { tags: { flow: "season_end", stage: "close_ended_mandates_all" }, extra: { seasonId } });
+  }
+
   // Pay division bonuses based on final standings
   await payDivisionBonuses(standings, seasonId, supabaseClient);
 
@@ -1624,7 +1640,8 @@ export async function processSeasonEnd(seasonId, deps = {}) {
       // (managerParking.loadParkingInputs).
       // seasonId gør sweepen idempotent pr. sæson (se runParkingSweep): en
       // genkørsel af sæson-slut parkerer ikke hold hvis tilmelding er brugt.
-      const sweep = await sweepFn({ supabase: supabaseClient, seasonId, now: notificationNow });
+      // #6773: et genindplaceret hold spiller næste sæson og får sit mandat for den.
+      const sweep = await sweepFn({ supabase: supabaseClient, seasonId, now: notificationNow, mandateSeasonNumber: currentSeasonNumber + 1 });
       if (sweep.alreadySwept) {
         console.log(`  🅿️  Parkering (#4592 del 2): allerede kørt for sæson ${seasonId} — springes over.`);
       } else {

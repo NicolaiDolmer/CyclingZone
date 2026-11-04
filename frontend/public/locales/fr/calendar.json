@@ -25,6 +25,9 @@
     "all": "Toutes les équipes",
     "divisions": "Divisions"
   },
+  "scope": {
+    "label": "Afficher"
+  },
   "division": "Division {n}",
   "divisionMenu": {
     "label": "Division",
@@ -76,14 +79,13 @@
     "oneDay": "Course d'un jour",
     "terrain": "Terrain",
     "noProfile": "Parcours pas encore publié",
-    "teamFit": "Adéquation de l'équipe",
+    "teamFit": "Adéquation de l'équipe au parcours",
     "bestBet": "Meilleur choix : {name} ({score})",
     "fitUnavailable": "Indisponible pour cette course",
     "status": {
       "label": "Ton statut",
       "missing": "Effectif à choisir",
-      "selected": "Effectif choisi",
-      "gtBound": "Mobilisé par ton Grand Tour"
+      "selected": "Effectif choisi"
     },
     "pick": "Choisir l'effectif",
     "editSquad": "Modifier l'effectif",
@@ -123,19 +125,13 @@
       "stages": "Étapes",
       "class": "Classe",
       "squad": "Ton effectif",
-      "squadShort": "Effectif",
-      "open": "Ouvrir"
+      "squadShort": "Effectif"
     },
     "openRace": "Ouvrir {name}",
-    "squad": {
-      "selected": "Effectif prêt",
-      "missing": "Effectif à choisir",
-      "gtBound": "Grand Tour"
-    },
+    "squadFill": "{count} sur {field} coureurs sélectionnés",
     "squadShort": {
       "selected": "Prêt",
-      "missing": "À choisir",
-      "gtBound": "GT"
+      "missing": "À choisir"
     },
     "empty": {
       "title": "Efface les filtres pour voir plus de courses",

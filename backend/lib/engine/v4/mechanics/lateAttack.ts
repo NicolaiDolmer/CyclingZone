@@ -21,16 +21,17 @@
 // maalestok) er stadig den staerkeste ANDEN rytter i gruppen uanset rolle: alle kan
 // svare paa et angreb. Aeldre revisioner (v1/v2) er bit-identiske.
 //
-// #7383 (SLUKKET motorkontakt, KUN s5_profiles_v3): med kontakten taendt er 10 km fra maal
-// altid en segmentgraense. Angrebet ser de to stykker som EET segment og vaelger sit
-// segment som paa den udelte rute (lateAttackSegmentIndex), saa graensen hverken giver
-// et angreb paa en etape der ikke havde et eller lander midt i en stigning/sektor.
-// Slukket er der intet delt stykke, og funktionen er uaendret.
+// #7383 (KUN s5_profiles_v3, live under den aktuelle revision; kodekontakten er fjernet):
+// 10 km fra maal er altid en segmentgraense. Angrebet ser de to stykker som EET segment og
+// vaelger sit segment som paa den udelte rute (lateAttackSegmentIndex), saa graensen hverken
+// giver et angreb paa en etape der ikke havde et eller lander midt i en stigning/sektor.
+// Under aeldre revisioner er der intet delt stykke, og funktionen er uaendret.
 
 import { finalKmUndivided7383 } from "../adapters/finalKmBoundary7383.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
 import { S5_PROFILES_TUNING } from "../tuning.ts";
 import type { AbilityKey, EngineState, Entrant, RaceGroup, RiderRole, RouteV2, SegmentHookContext, SegmentHookResult } from "../types.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 /** #6368 lag 3: rollerne der altid maa angribe sent under s5_profiles_v3. */
 export const LATE_ATTACK_LEADER_ROLES: ReadonlySet<RiderRole> = new Set<RiderRole>(["captain", "co_captain", "sprint_captain", "free_role"]);
@@ -113,7 +114,7 @@ function favouriteGroup(state: EngineState, entrants: Readonly<Record<string, En
   const candidates = state.groups
     .filter((g) => !isEscape(g))
     .filter((g) => g.rider_ids.filter((id) => state.riders[id]?.status === "racing" && entrants[id]).length >= minRiders)
-    .sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+    .sort((a, b) => a.gap_seconds - b.gap_seconds || compareIds(a.id, b.id));
   return candidates[0] ?? null;
 }
 
@@ -160,7 +161,7 @@ export function lateAttack(state: EngineState, ctx: Pick<SegmentHookContext, "ro
       const reserve = rider && rider.wprimeMax > 0 ? rider.wprime / rider.wprimeMax : 0;
       return { id, score: lateAttackScore(entrants[id].abilities, reserve, withSectors) };
     })
-    .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+    .sort((a, b) => b.score - a.score || compareIds(a.id, b.id));
   if (ranked.length < 2) return none;
   // #6368 lag 3 (KUN s5_profiles_v3): angriberen er den staerkeste der MAA angribe;
   // nr. 2 er den staerkeste anden rytter i gruppen (aeldre revisioner: ranked[0]/[1]).

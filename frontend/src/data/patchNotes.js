@@ -1,5 +1,670 @@
 export const PATCHES = [
   {
+    "version": "7.398",
+    "date": "2026-11-04",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Training on a day with a race counts as a full day",
+          "body": "On a day where your rider races some of the race days and trains on the rest, his training now counts as one full training day for Fatigue and recovery. Hard training around a race can cost more Fatigue than before, so plan easier sessions or rest. Rest, the stages themselves and days without a race are unchanged."
+        },
+        "da": {
+          "title": "Træning på en dag med løb tæller som et helt døgn",
+          "body": "På en dag hvor din rytter kører løb på nogle af løbsdagene og træner på resten, tæller træningen nu som ét helt træningsdøgn for Træthed og restitution. Hård træning omkring et løb kan koste mere Træthed end før, så planlæg roligere pas eller hvile. Hvile, selve etaperne og dage uden løb er uændrede."
+        },
+        "refs": [
+          7536
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Selection fullness in the calendar",
+          "body": "The calendar's Team column now shows how full your selection is, e.g. Ready · 6/8, when the race has room for more riders."
+        },
+        "da": {
+          "title": "Udtagelsens fylde i kalenderen",
+          "body": "Kalenderens Hold-kolonne viser nu, hvor fuld din udtagelse er, fx Klar · 6/8, når løbet har plads til flere ryttere."
+        },
+        "refs": [
+          7561
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Help",
+        "en": {
+          "title": "Breakaway markers explained correctly",
+          "body": "Help now explains the race film's breakaway markers correctly: a lightning bolt marks a later attack, the flag's colour shows how the breakaway ended, and a red down arrow means dropped."
+        },
+        "da": {
+          "title": "Udbrudsmarkørerne forklaret rigtigt",
+          "body": "Hjælp forklarer nu løbsfilmens udbrudsmarkører rigtigt: et lyn viser et senere angreb, flagets farve viser hvordan udbruddet endte, og en rød pil nedad betyder sat af."
+        },
+        "refs": [
+          7092
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.397",
+    "date": "2026-11-03",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "No half teams on race day",
+          "body": "When your riders are tied up in a stage race, the assistant no longer puts 1 to 5 riders into a race that cannot start. The race day warning now counts those riders as busy, so you get it in time."
+        },
+        "da": {
+          "title": "Ingen halve hold på løbsdagen",
+          "body": "Når dine ryttere er bundet i et etapeløb, sætter assistenten ikke længere 1 til 5 ryttere på et løb, der ikke kan starte. Advarslen før løbsdagen tæller nu de ryttere som optaget, så du får den i tide."
+        },
+        "refs": [
+          7339
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Auctions",
+        "en": {
+          "title": "Auction pauses the transfer list",
+          "body": "When you put a rider up for auction, he leaves the transfer list while the auction runs. If he does not sell, he is back on the list at the same price. While he is on auction, you cannot list him."
+        },
+        "da": {
+          "title": "Auktion sætter transferlisten på pause",
+          "body": "Sætter du en rytter på auktion, forlader han transferlisten, mens auktionen kører. Bliver han ikke solgt, er han tilbage på listen til samme pris. Mens han er på auktion, kan du ikke sætte ham til salg."
+        },
+        "refs": [
+          4211
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "Better starter riders for new teams",
+          "body": "New teams no longer get starter riders with one strong skill and the rest stuck at 1. Their skills keep their shape, and the team is just as strong at the start. When two roles score the same, a rider's best role now follows his natural type, also for riders you already have. No rating changes."
+        },
+        "da": {
+          "title": "Bedre startryttere til nye hold",
+          "body": "Nye hold får ikke længere startryttere med én stærk evne og resten på 1. Evnerne beholder deres form, og holdet er lige så stærkt fra start. Når to roller står lige, følger rytterens bedste rolle nu hans naturlige type, også for ryttere du allerede har. Ingen rating ændres."
+        },
+        "refs": [
+          7560
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.396",
+    "date": "2026-11-03",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Calendar",
+        "en": {
+          "title": "Race library for everyone",
+          "body": "Tap a race in the calendar to see its terrain, how well it suits your team and your status. Switch between Calendar and Table, and browse every edition under Race history."
+        },
+        "da": {
+          "title": "Løbsbiblioteket for alle",
+          "body": "Tryk på et løb i kalenderen og se terræn, hvor godt det passer dit hold og din status. Skift mellem Kalender og Tabel, og bladr i alle udgaver under Løbshistorik."
+        },
+        "refs": [
+          6514
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.395",
+    "date": "2026-11-03",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Calendar",
+        "en": {
+          "title": "Ready means enough riders",
+          "body": "The calendar only shows a race as Ready once you have picked enough riders to start it. With fewer, it says Missing."
+        },
+        "da": {
+          "title": "Klar betyder nok ryttere",
+          "body": "Kalenderen viser kun et løb som Klar, når du har udtaget nok ryttere til at starte. Med færre står der Mangler."
+        },
+        "refs": [
+          7533
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "beta",
+        "flag": "race_library_v2",
+        "topic": "Calendar",
+        "en": {
+          "title": "Calendar table and race history sort on every column",
+          "body": "Click any column header to sort. The race name opens the race, and each terrain icon is shown once per race."
+        },
+        "da": {
+          "title": "Kalendertabel og løbshistorik sorterer på alle kolonner",
+          "body": "Klik på en kolonneoverskrift for at sortere. Løbets navn åbner løbet, og hvert terrænikon vises én gang pr. løb."
+        },
+        "refs": [
+          7533
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "One forecast number when the range is a single value",
+          "body": "The development forecast shows one number when its low and high end are the same."
+        },
+        "da": {
+          "title": "Ét tal i prognosen, når der ikke er et spænd",
+          "body": "Udviklingsprognosen viser ét tal, når den laveste og højeste værdi er ens."
+        },
+        "refs": [
+          7519
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Upcoming races shows your division's races",
+          "body": "Upcoming races on the dashboard now lists the races your team rides, also before you have saved a selection."
+        },
+        "da": {
+          "title": "Kommende løb viser din divisions løb",
+          "body": "Kommende løb på forsiden viser nu de løb dit hold kører, også før du har gemt en udtagelse."
+        },
+        "refs": [
+          7539
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Auctions",
+        "en": {
+          "title": "Correct auction hours on the dashboard",
+          "body": "The dashboard said auctions close every evening at 20:00. Auctions run every day from 08:00 to 24:00."
+        },
+        "da": {
+          "title": "Rigtige auktionstider på forsiden",
+          "body": "Forsiden sagde, at auktionerne lukker hver aften kl. 20. Auktioner kører hver dag kl. 08 til 24."
+        },
+        "refs": [
+          7538
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Board",
+        "en": {
+          "title": "No false \"no mandate\" message",
+          "body": "The board overview no longer says there is no mandate while the annual meeting is loading."
+        },
+        "da": {
+          "title": "Ingen forkert \"intet mandat\"",
+          "body": "Bestyrelsens overblik siger ikke længere, at der intet mandat er, mens årsmødet indlæses."
+        },
+        "refs": [
+          7540
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Standings before the start",
+          "body": "Standings on a race that has not started now say when they will appear, instead of saying results are missing."
+        },
+        "da": {
+          "title": "Stillingen før start",
+          "body": "Stillingen på et løb, der ikke er startet, siger nu hvornår den kommer, i stedet for at resultater mangler."
+        },
+        "refs": [
+          7541
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "One-day races read right",
+          "body": "One-day races no longer repeat their type in the header or show \"Stage 1\" for riders who abandoned."
+        },
+        "da": {
+          "title": "Endagsløb læses rigtigt",
+          "body": "Endagsløb viser ikke længere typen to gange i toppen eller \"Etape 1\" ved udgåede ryttere."
+        },
+        "refs": [
+          7566
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Planning",
+        "en": {
+          "title": "Only your races in the day plan",
+          "body": "The day plan no longer shows a race your team is not in as a locked lineup you can withdraw from."
+        },
+        "da": {
+          "title": "Kun dine løb i dagsplanen",
+          "body": "Dagsplanen viser ikke længere et løb, dit hold ikke er med i, som en låst trup du kan melde fra."
+        },
+        "refs": [
+          7553
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Training programs match the rider types",
+          "body": "In Danish, the program for climbers was called Bakkerytter and the one for puncheurs Puncheur. They are now named after the rider type they train."
+        },
+        "da": {
+          "title": "Træningsprogrammer passer til ryttertyperne",
+          "body": "Programmet for bjergryttere hed Bakkerytter, og programmet for bakkeryttere hed Puncheur. Nu hedder de det samme som ryttertypen."
+        },
+        "refs": [
+          7551
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Put on points you to the picker",
+          "body": "Clicking Put on before choosing who the program is for now points you to the picker, instead of doing nothing."
+        },
+        "da": {
+          "title": "Læg på viser vælgeren",
+          "body": "Trykker du Læg på, før du har valgt hvem programmet skal på, viser knappen nu vælgeren i stedet for ingenting."
+        },
+        "refs": [
+          6524
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "First progress shows on the receipt",
+          "body": "Training receipts now show a rider's first progress in an ability, instead of saying the details are unavailable."
+        },
+        "da": {
+          "title": "Første fremgang vises på kvitteringen",
+          "body": "Træningskvitteringen viser nu en rytters første fremgang i en evne i stedet for at sige, at detaljerne mangler."
+        },
+        "refs": [
+          6971
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Patch notes counts and dates",
+          "body": "Counts like \"1 improvement\" are now singular, and Danish dates use a lowercase month."
+        },
+        "da": {
+          "title": "Tællere og datoer i patch notes",
+          "body": "Tællere som \"1 forbedring\" står nu i ental, og danske datoer har månedsnavnet med lille."
+        },
+        "refs": [
+          7543
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Academy",
+        "en": {
+          "title": "No more -0 CZ$",
+          "body": "Amounts of zero no longer show a minus sign, for example in the academy accounts."
+        },
+        "da": {
+          "title": "Ikke flere -0 CZ$",
+          "body": "Beløb på nul vises ikke længere med minus, fx i akademiets regnskab."
+        },
+        "refs": [
+          7542
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.394",
+    "date": "2026-11-02",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Academy",
+        "en": {
+          "title": "Released riders stay free agents",
+          "body": "A rider released while his graduation was still open no longer ends up as an academy rider without a team."
+        },
+        "da": {
+          "title": "Frigivne ryttere forbliver frie",
+          "body": "En rytter, der blev frigivet, mens hans graduering stadig var åben, ender ikke længere som akademirytter uden hold."
+        },
+        "refs": [
+          7488
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Set day names only your races",
+          "body": "The Set day button now only lists today's races your team can actually ride."
+        },
+        "da": {
+          "title": "Sæt dag nævner kun dine løb",
+          "body": "Knappen Sæt dag nævner nu kun de løb i dag, dit hold faktisk kan køre."
+        },
+        "refs": [
+          7505
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Inbox",
+        "en": {
+          "title": "Selection reminders clear themselves",
+          "body": "Once your team has riders in a race, the Squad selection needed reminder for that race is marked as read."
+        },
+        "da": {
+          "title": "Påmindelser om udtagelse rydder sig selv",
+          "body": "Når dit hold har ryttere i et løb, bliver Holdudtagelse mangler for det løb markeret som læst."
+        },
+        "refs": [
+          7508
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "New teams",
+        "en": {
+          "title": "Clearer texts for new teams",
+          "body": "The club identity choice and the welcome message no longer mention season 1 or your first rider."
+        },
+        "da": {
+          "title": "Klarere tekster til nye hold",
+          "body": "Valget af klubbens identitet og velkomstbeskeden nævner ikke længere sæson 1 eller din første rytter."
+        },
+        "refs": [
+          7513
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Board",
+        "en": {
+          "title": "No expired plan before your first plan",
+          "body": "A new team without a signed board plan now sees that no plan is negotiated yet."
+        },
+        "da": {
+          "title": "Ingen udløbet plan før den første",
+          "body": "Et nyt hold uden en underskrevet plan ser nu, at der ikke er forhandlet en plan endnu."
+        },
+        "refs": [
+          7507
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Planning",
+        "en": {
+          "title": "No Did not start before you existed",
+          "body": "A race that began before your team was created no longer shows as Did not start."
+        },
+        "da": {
+          "title": "Ingen 'Stillede ikke op' før holdet fandtes",
+          "body": "Et løb, der startede, før dit hold blev oprettet, vises ikke længere som Stillede ikke op."
+        },
+        "refs": [
+          7518
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.393",
+    "date": "2026-11-02",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Your first race shows the right race",
+          "body": "The Your first race card on the dashboard now shows the race your team is actually in next, and only says your selection is saved when you have riders in it."
+        },
+        "da": {
+          "title": "Dit første løb viser det rigtige løb",
+          "body": "Kortet Dit første løb på forsiden viser nu det løb, dit hold faktisk skal køre næste gang, og siger kun, at udtagelsen er gemt, når du har ryttere med."
+        },
+        "refs": [
+          7502
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Scouting",
+        "en": {
+          "title": "Scout messages count the right riders",
+          "body": "When a scout mission finishes, the message now counts only the riders you can actually see in the report."
+        },
+        "da": {
+          "title": "Scoutbeskeden tæller de rigtige ryttere",
+          "body": "Når en scoutmission er færdig, tæller beskeden nu kun de ryttere, du faktisk kan se i rapporten."
+        },
+        "refs": [
+          6138
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Menu",
+        "en": {
+          "title": "Log in, not Log out",
+          "body": "Visitors who are not logged in now see Log in at the bottom of the menu instead of Log out."
+        },
+        "da": {
+          "title": "Log ind, ikke Log ud",
+          "body": "Besøgende, der ikke er logget ind, ser nu Log ind nederst i menuen i stedet for Log ud."
+        },
+        "refs": [
+          7500
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.392",
+    "date": "2026-11-02",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Race days develop your riders more",
+          "body": "A race day now counts as a hard session in the abilities the stage demands, plus a little extra shaped by your rider's role."
+        },
+        "da": {
+          "title": "Løbsdage udvikler rytterne mere",
+          "body": "En løbsdag tæller nu som et hårdt pas i de evner etapen kræver, plus lidt ekstra formet af rytterens rolle."
+        },
+        "refs": [
+          5950
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Race selection",
+        "en": {
+          "title": "Auto-fill covers whole races first",
+          "body": "Auto-fill no longer spreads your squad too thin on busy race days: it fills whole races first, and you get a message the day before if you can't cover every race."
+        },
+        "da": {
+          "title": "Auto-fyld dækker hele løb først",
+          "body": "Auto-fyld spreder ikke længere truppen for tyndt på travle løbsdage: den fylder hele løb først, og du får besked dagen før, hvis du ikke kan dække alle løb."
+        },
+        "refs": [
+          7339
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Planning",
+        "en": {
+          "title": "One route match number everywhere",
+          "body": "Route match now comes from the race engine itself, so the race page, the season planner and Plan day show the same number for the same rider."
+        },
+        "da": {
+          "title": "Ét rutematch-tal overalt",
+          "body": "Rutematch kommer nu fra selve løbsmotoren, så løbssiden, sæsonplanen og Planlæg dag viser det samme tal for den samme rytter."
+        },
+        "refs": [
+          6471,
+          6472
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "A new finale: the uphill sprint",
+          "body": "Some stages now end in an uphill sprint. The last kilometre rises gently, so the sprint rewards riders who can hold their power uphill."
+        },
+        "da": {
+          "title": "En ny finale: den stigende spurt",
+          "body": "Nogle etaper ender nu i en stigende spurt. Den sidste kilometer stiger let, så spurten belønner ryttere, der kan holde kraften op ad bakke."
+        },
+        "refs": [
+          6362
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Dangerous breakaways are kept on a leash",
+          "body": "The peloton now reels in breakaways that threaten the overall lead, so a stage race is decided less often by one big early escape."
+        },
+        "da": {
+          "title": "Farlige udbrud holdes på snor",
+          "body": "Feltet henter nu udbrud, der truer førertrøjen, så et etapeløb oftere afgøres af andet end ét stort, tidligt udbrud."
+        },
+        "refs": [
+          7258
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Smaller fixes",
+          "body": "What changed: After a stage, the stage plan shows your orders as you planned them. The Work and Follow attacks orders now describe what each role does. A sprint captain can lead the team without a captain. The Team tab shows the same stage profiles as the Stages tab. The Long time trials session trains time trial properly. Reputation shows the same number on My team and the rider profile. The academy text is clearer about when the first full evaluation comes. A rider who retires no longer looks like he races one more season during the season change. A rider's first-win title shows correctly in French, Spanish and Dutch. Fixed a rare duplicate academy message.\n\nWhat it means for you: What you plan is what you see, and the numbers and texts around your riders match."
+        },
+        "da": {
+          "title": "Små rettelser",
+          "body": "Hvad er ændret: Efter en etape viser etapeplanen dine ordrer, som du planlagde dem. Ordrerne Arbejd og Følg angrebene beskriver nu, hvad hver rolle gør. En spurtkaptajn kan lede holdet uden en kaptajn. Hold-fanen viser de samme etapeprofiler som Etaper-fanen. Sessionen Lange enkeltstarter træner enkeltstart ordentligt. Omdømme viser det samme tal på Mit hold og rytterprofilen. Akademiteksten er tydeligere om, hvornår den første fulde vurdering kommer. En rytter, der stopper, ser ikke længere ud til at køre en sæson mere under sæsonskiftet. Rytterens første-sejr-titel vises nu korrekt på fransk, spansk og hollandsk. Rettet en sjælden dobbeltbesked om akademiryttere.\n\nHvad betyder det for dig: Det, du planlægger, er det, du ser, og tal og tekster om dine ryttere passer sammen."
+        },
+        "refs": [
+          7333,
+          6746,
+          6321,
+          7289,
+          7103,
+          7232,
+          7219,
+          7235,
+          6975,
+          7474
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.391",
     "date": "2026-11-01",
     "changes": [

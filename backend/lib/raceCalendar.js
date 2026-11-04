@@ -12,6 +12,7 @@
 // faktiske binding (jf. prompt: "key on game_day, not scheduled_at").
 
 import { isRaceLineupLocked, firstStageStartsFromSchedule } from "./raceStartLock.js";
+import { selectionSizeForRace } from "./raceAutopick.js";
 
 // league_divisions.tier → spiller-vendt "Division N"-nummer. tier ER divisionsnummeret
 // i pyramiden (tier1 = Division 1, …). pool_index adskiller puljer inden for en tier.
@@ -151,6 +152,8 @@ export function splitISODate(iso) {
 //   divisions: [{ id, tier, pool_index, label }]
 //   teamDivisionId: number|null (req.team.league_division_id — holdets pulje-id)
 //   teamEntryRaceIds: Set<raceId> løb holdet har en entry i
+//   teamShortRaceIds: Set<raceId> løb med entries, men under startgulvet MIN_RACE_ENTRIES (#7533)
+//   teamEntryCounts: Map<raceId, antal udtagne ryttere> (#7561: "Klar · 6/8")
 //   teamLeaderRaceIds: Set<raceId> løb hvor holdet har sat en leder (captain/sprint_captain)
 //   teamWithdrawnRaceIds: Set<raceId> løb holdet har meldt sig fra (race_withdrawals; entries bevares, #4306)
 //
@@ -168,6 +171,8 @@ export function buildCalendarModel({
   divisions = [],
   teamDivisionId = null,
   teamEntryRaceIds = new Set(),
+  teamShortRaceIds = new Set(),
+  teamEntryCounts = new Map(),
   teamLeaderRaceIds = new Set(),
   teamWithdrawnRaceIds = new Set(),
   now, // #6959: injiceres af kalderen (hard rule 16); bruges til lineupFrozen
@@ -270,6 +275,9 @@ export function buildCalendarModel({
       isMine,
       leaderSet: teamLeaderRaceIds.has(race.id),
       entered: teamEntryRaceIds.has(race.id),
+      lineupShort: teamShortRaceIds.has(race.id),
+      lineupCount: teamEntryCounts.get(race.id) ?? 0, // #7561
+      fieldSize: selectionSizeForRace(race).max, // #7561: feltstørrelsen, samme kilde som udtagelsen
       withdrawn: teamWithdrawnRaceIds.has(race.id),
       // #6514: udtagelsen er låst (afviklet, i gang eller - #6959 - etape 1's start er passeret).
       // Samme regel som taktikken (raceStartLock.js, ren: ingen sentry).
@@ -341,6 +349,10 @@ export function toCalendarWireEntry(entry) {
     gameDayEnd: entry.gameDayEnd,
     ...(entry.lineupFrozen ? { lineupFrozen: true } : {}), // #6514: kun når låst (wire-trimning)
     ...(entry.withdrawn ? { withdrawn: true } : {}), // #6514: kun når holdet har meldt fra
+    ...(entry.lineupShort ? { lineupShort: true } : {}), // #7533: gemt udtagelse under startgulvet
+    // #7561: "Klar · 6/8" - kun når holdet har en udtagelse og der er plads til flere (wire-trimning)
+    ...(entry.entered && entry.lineupCount > 0 && entry.lineupCount < entry.fieldSize
+      ? { lineupCount: entry.lineupCount, fieldSize: entry.fieldSize } : {}),
     ...(entry.restGameDays?.length ? { restGameDays: entry.restGameDays } : {}),
   };
 }

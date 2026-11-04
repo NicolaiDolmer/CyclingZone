@@ -27,6 +27,7 @@ import type { Entrant, RiderState, TeamReactionMode, TeamReactionState, Timeline
 import { TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
 import { helperCostMultiplier } from "./teamPlay.ts";
 import type { GcThreat } from "./gcThreat.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 export type ReactionStance = "chase" | "neutral" | "let_go";
 
@@ -93,7 +94,7 @@ export function availableReactionWorkers(input: {
     if (factor < minFreshness) continue;
     out.push(riderId);
   }
-  return out.sort((a, b) => a.localeCompare(b));
+  return out.sort((a, b) => compareIds(a, b));
 }
 
 export type TeamReactionPlan = {
@@ -261,7 +262,7 @@ export function letGoBrake(input: {
   if (input.braking.size === 0) return none;
   let pull = 0;
   let toleratedSeconds = Infinity;
-  for (const riderId of [...input.chaserWork.keys()].sort((a, b) => a.localeCompare(b))) {
+  for (const riderId of [...input.chaserWork.keys()].sort((a, b) => compareIds(a, b))) {
     const weight = input.chaserWork.get(riderId) ?? 0;
     const teamId = input.entrants[riderId]?.team_id;
     if (!(weight > 0) || typeof teamId !== "string" || !input.braking.has(teamId)) continue;

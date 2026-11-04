@@ -121,10 +121,12 @@ import {
   type TeamReactionPlan,
 } from "./teamChaseReaction.ts";
 import type { EngineTuning, GcContext, RouteV2, TeamReactionState } from "../types.ts";
-import { mountainSelectionKnobsFor, phaseChaseClosingScale, phaseLetGoMaxGapScale } from "./mountainSelection.ts";
+import { mountainSelectionKnobsFor, phaseChaseClosingScale, phaseLetGoMaxGapScale, preFinalChaseClosingScale6912 } from "./mountainSelection.ts";
+import { MANAGER_CHASE_6912_PARAM, addWork, breakawayCurve6912Applies, curveAppliesToBreak, curveChaseWork, curveClosingCapSeconds, curveControlActive, curveControlledClosing, curveFloorExtraSeconds, curveLetGoSplitKm, curvePeakSeconds, curveScaledGrowthSeconds, curveTargetSeconds, curveTopKm, curvePreFinalLift, curveUpperBoundApplies } from "./breakawayCurve6912.ts"; // #6912
 import { rollingLetGoBalance } from "./rollingBreakaway.ts";
 import { lateAttack } from "./lateAttack.ts";
 import { s5V3AutoChaseIntensity, s5V3ClimbChaseApplies, s5V3ClimbChaseClosing, s5V3ClimbChaseIntensity, s5V3ClimbChaseLeashSeconds, s5V3ControlledClosing, s5V3ControlTargetSeconds, s5V3FinaleWeightScale, s5V3HillyChaseApplies, s5V3InControlFinale, s5V3InterestedTeamIds, s5V3LetGoMaxGapScale, s5V3PreFinalChaseClosingScale, s5V3RealisticLeadApplies, s5V3RealisticLeadCeilingSeconds } from "./breakawayV3_6804.ts";
+import { compareIds } from "../../../compareIds.ts";
 import { s5V3MountainLetGoInterestScale } from "./breakawayInterest7160.ts"; // #7160
 import { s5V3P2OffForHarmlessBreak } from "./breakawayInterest7160P2.ts"; // #7160 valg A2
 import { projectedTopRiders, s5V3ProjectedControlTargetSeconds, stageFavourites, stageFavouriteSpontaneousScale } from "./gcBreakawayLeash7258.ts"; // #7258
@@ -150,6 +152,9 @@ export type BreakawayTeamOrder = {
   team_id: string;
   breakaway_stance: BreakawayStance;
   riders: Array<{ rider_id: string; try_break: boolean }>;
+  // #6912 (KUN kontakten breakawayCurve6912): manageren har selv gemt stancen for etapen
+  // (broen saetter MANAGER_CHASE_6912_PARAM). Udeladt = holdets standard (rolle/M14).
+  manager_set?: true;
 };
 
 /** Konvolut-`kind` M5 fortolker (orders/teamOrdersAdapter.ts's toEngineTeamOrder skriver den). */
@@ -180,9 +185,9 @@ export function parseBreakawayOrders(orders: readonly TeamOrder[] | undefined): 
       .filter((r): r is Record<string, unknown> => typeof r === "object" && r !== null)
       .filter((r) => typeof r["rider_id"] === "string")
       .map((r) => ({ rider_id: r["rider_id"] as string, try_break: r["try_break"] === true }));
-    byTeam.set(order.team_id, { team_id: order.team_id, breakaway_stance: stance, riders });
+    byTeam.set(order.team_id, { team_id: order.team_id, breakaway_stance: stance, riders, ...(params[MANAGER_CHASE_6912_PARAM] === true ? { manager_set: true as const } : {}) });
   }
-  return [...byTeam.values()].sort((a, b) => a.team_id.localeCompare(b.team_id));
+  return [...byTeam.values()].sort((a, b) => compareIds(a.team_id, b.team_id));
 }
 
 export type BreakawayHookContext = SegmentHookContext;
@@ -280,7 +285,7 @@ export function selectBreakawayRiders(
   maxSize: number = MAX_BREAKAWAY_SIZE,
 ): string[] {
   const bySeed = candidates.filter((c) => c.wantsToJoin).map((c) => c.riderId);
-  const scoreDesc = [...candidates].sort((a, b) => b.score - a.score || a.riderId.localeCompare(b.riderId));
+  const scoreDesc = [...candidates].sort((a, b) => b.score - a.score || compareIds(a.riderId, b.riderId));
 
   let selected = new Set(bySeed);
   if (selected.size < Math.min(minSize, candidates.length)) {
@@ -310,7 +315,7 @@ function attemptFormation(
   reform?: { excluded: ReadonlySet<string>; km: number },
 ): SegmentHookResult {
   const events: TimelineEvent[] = [];
-  const sourceGroup = [...state.groups].sort((a, b) => b.rider_ids.length - a.rider_ids.length || a.id.localeCompare(b.id))[0];
+  const sourceGroup = [...state.groups].sort((a, b) => b.rider_ids.length - a.rider_ids.length || compareIds(a.id, b.id))[0];
   if (!sourceGroup || sourceGroup.rider_ids.length < MIN_BREAKAWAY_SIZE + 1) return { state, events };
 
   const candidates: JoinCandidate[] = [];
@@ -503,7 +508,7 @@ function officialTimesV3SizeProfile(size: BreakawaySizeProfile, ctx: BreakawayHo
  */
 function attemptOrderedFormation(state: EngineState, ctx: BreakawayHookContext): SegmentHookResult {
   const events: TimelineEvent[] = [];
-  const sourceGroup = [...state.groups].sort((a, b) => b.rider_ids.length - a.rider_ids.length || a.id.localeCompare(b.id))[0];
+  const sourceGroup = [...state.groups].sort((a, b) => b.rider_ids.length - a.rider_ids.length || compareIds(a.id, b.id))[0];
   if (!sourceGroup) return { state, events };
 
   const tryBreakByRider = effectiveTryBreakByRider(ctx.orders);
@@ -577,7 +582,7 @@ function attemptOrderedFormation(state: EngineState, ctx: BreakawayHookContext):
   const ceiling = 1 + TEAM_PLAY_EXTRA_TUNING.captainMaxBonusFraction;
   let riders: Record<string, RiderState> | null = null;
   for (const costs of [formation.attemptCost, formation.reactionCost]) {
-    for (const [riderId, paid] of [...costs.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+    for (const [riderId, paid] of [...costs.entries()].sort((a, b) => compareIds(a[0], b[0]))) {
       const current = (riders ?? state.riders)[riderId];
       if (!current || !(paid > 0)) continue;
       const factor = Number.isFinite(current.team_cp_factor) ? (current.team_cp_factor as number) : 1;
@@ -664,12 +669,12 @@ function withStageFavouriteDanger(
   sourceGroup: RaceGroup,
   entrants: Readonly<Record<string, Entrant>>,
 ): (riderId: string) => readonly string[] {
-  const teamIds = [...new Set(sourceGroup.rider_ids.map((id) => teamIdOf(entrants[id])).filter((id): id is string => !!id))].sort((a, b) => a.localeCompare(b));
+  const teamIds = [...new Set(sourceGroup.rider_ids.map((id) => teamIdOf(entrants[id])).filter((id): id is string => !!id))].sort((a, b) => compareIds(a, b));
   return (riderId: string) => {
     const prior = base ? base(riderId) : [];
     if (!favourites.has(riderId)) return prior;
     const own = teamIdOf(entrants[riderId]);
-    const out = [...new Set([...prior, ...teamIds.filter((t) => t !== own)])].sort((a, b) => a.localeCompare(b)) as string[] & { danger?: ReadonlyMap<string, number> };
+    const out = [...new Set([...prior, ...teamIds.filter((t) => t !== own)])].sort((a, b) => compareIds(a, b)) as string[] & { danger?: ReadonlyMap<string, number> };
     out.danger = new Map(out.map((t) => [t, 1]));
     return out;
   };
@@ -946,7 +951,7 @@ export function catchActorParams(
   return {
     chase_group_id: chase.id,
     chase_group_kind: chase.kind,
-    ...(teamIds.size > 0 ? { chasing_team_ids: [...teamIds].sort((a, b) => a.localeCompare(b)) } : {}),
+    ...(teamIds.size > 0 ? { chasing_team_ids: [...teamIds].sort((a, b) => compareIds(a, b)) } : {}),
   };
 }
 
@@ -1016,7 +1021,7 @@ export function teamChasePlan(input: {
 
   const racing = [...input.chaseGroupRiderIds]
     .filter((id) => input.entrants[id] && input.riders[id]?.status === "racing")
-    .sort((a, b) => a.localeCompare(b));
+    .sort((a, b) => compareIds(a, b));
   if (racing.length === 0) return done(0);
 
   const membersByTeam = new Map<string, string[]>();
@@ -1035,7 +1040,7 @@ export function teamChasePlan(input: {
   const [engineLo, engineHi] = TEAM_CHASE.relativeEngineBounds;
 
   let signal = 0;
-  for (const order of [...input.orders].sort((a, b) => a.team_id.localeCompare(b.team_id))) {
+  for (const order of [...input.orders].sort((a, b) => compareIds(a.team_id, b.team_id))) {
     const members = membersByTeam.get(order.team_id);
     if (!members || members.length === 0) continue;
 
@@ -1086,7 +1091,7 @@ function teamChasePlanWithReactions(
   const done = (signal: number): TeamChasePlan => (teamSignals ? { signal, chaserWork, teamSignals } : { signal, chaserWork });
   const racing = [...input.chaseGroupRiderIds]
     .filter((id) => input.entrants[id] && input.riders[id]?.status === "racing")
-    .sort((a, b) => a.localeCompare(b));
+    .sort((a, b) => compareIds(a, b));
   if (racing.length === 0) return done(0);
 
   const membersByTeam = new Map<string, string[]>();
@@ -1104,7 +1109,7 @@ function teamChasePlanWithReactions(
   const [engineLo, engineHi] = TEAM_CHASE.relativeEngineBounds;
   const stanceByTeam = new Map<string, BreakawayStance>();
   for (const order of input.orders) stanceByTeam.set(order.team_id, order.breakaway_stance);
-  const teamIds = [...new Set([...stanceByTeam.keys(), ...reactions.keys()])].sort((a, b) => a.localeCompare(b));
+  const teamIds = [...new Set([...stanceByTeam.keys(), ...reactions.keys()])].sort((a, b) => compareIds(a, b));
 
   const pullOf = (riderId: string, intensity: number): number => {
     const entrant = input.entrants[riderId];
@@ -1158,7 +1163,7 @@ function teamChasePlanWithReactions(
 /** #5978: arbejdet pr. rytter flettet som max (fast, sorteret raekkefoelge). */
 export function mergeWork(a: ReadonlyMap<string, number>, b: ReadonlyMap<string, number>): Map<string, number> {
   const out = new Map<string, number>();
-  for (const id of [...new Set([...a.keys(), ...b.keys()])].sort((x, y) => x.localeCompare(y))) {
+  for (const id of [...new Set([...a.keys(), ...b.keys()])].sort((x, y) => compareIds(x, y))) {
     out.set(id, Math.max(a.get(id) ?? 0, b.get(id) ?? 0));
   }
   return out;
@@ -1203,7 +1208,7 @@ export function applyChaseCost(
   const ceiling = 1 + TEAM_PLAY_EXTRA_TUNING.captainMaxBonusFraction;
 
   let next: Record<string, RiderState> | null = null;
-  for (const [riderId, work] of [...chaserWork.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+  for (const [riderId, work] of [...chaserWork.entries()].sort((a, b) => compareIds(a[0], b[0]))) {
     const riderState = riders[riderId];
     if (!riderState) continue;
     const paid = Math.max(0, TEAM_CHASE.chaseCostFraction * work * segmentShare * loadShare);
@@ -1298,7 +1303,7 @@ export function stageWinChaseForceV3(input: StageWinChaseV3Input & {
   const ranked = input.chaseGroupRiderIds
     .filter((id) => input.entrants[id]?.abilities)
     .map((id) => ({ id, ability: collectiveAbility([id], input.entrants, keys) }))
-    .sort((a, b) => b.ability - a.ability || a.id.localeCompare(b.id))
+    .sort((a, b) => b.ability - a.ability || compareIds(a.id, b.id))
     .slice(0, Math.max(0, v3.stageWinTopRiders));
   const unit = ranked.length > 0 ? (v3.stageWinInterestWeight * input.abilityScale * finaleWeight) / ranked.length : 0;
   const interestByTeam = new Map<string, number>();
@@ -1309,7 +1314,7 @@ export function stageWinChaseForceV3(input: StageWinChaseV3Input & {
   }
   let interest = 0;
   let orderExcess = 0;
-  const teamIds = [...new Set([...interestByTeam.keys(), ...input.teamSignals.keys()])].sort((a, b) => a.localeCompare(b));
+  const teamIds = [...new Set([...interestByTeam.keys(), ...input.teamSignals.keys()])].sort((a, b) => compareIds(a, b));
   for (const teamId of teamIds) {
     const teamInterest = interestByTeam.get(teamId) ?? 0;
     const order = v3.teamSignalWeight * Math.max(0, input.teamSignals.get(teamId) ?? 0);
@@ -1576,7 +1581,7 @@ function flattenTryBreakRiderIds(orders: readonly BreakawayTeamOrder[] | undefin
 
 /** Finder alle grupper med kind==='breakaway', sorteret for deterministisk behandlingsraekkefolge. */
 function findBreakawayGroups(groups: RaceGroup[]): RaceGroup[] {
-  return groups.filter((g) => g.kind === "breakaway").sort((a, b) => a.id.localeCompare(b.id));
+  return groups.filter((g) => g.kind === "breakaway").sort((a, b) => compareIds(a.id, b.id));
 }
 
 
@@ -1672,7 +1677,7 @@ function gcReactionSetup(state: EngineState, ctx: BreakawayHookContext, gcContex
     ? clamp(Math.max(0, ctx.segment.to_km - ctx.segment.from_km) / ctx.route.distance_km, 0, 1)
     : 0;
 
-  for (const teamId of [...teamIds].sort((a, b) => a.localeCompare(b))) {
+  for (const teamId of [...teamIds].sort((a, b) => compareIds(a, b))) {
     const protectedRiderId = oneDay
       ? oneDayProtectedRider({ teamId, groups: state.groups, entrants: ctx.entrants, routeDemand: dangerModel!.routeDemand!, racingRiderIds })
       : protectedRiderForTeam({ gcContext, teamId, entrants: ctx.entrants });
@@ -1755,7 +1760,7 @@ export function ownRidersOnWheel(input: {
       const teamId = racing.has(riderId) ? teamIdOf(input.entrants[riderId]) : null;
       if (teamId) byTeam.set(teamId, [...(byTeam.get(teamId) ?? []), riderId]);
     }
-    for (const teamId of [...byTeam.keys()].sort((a, b) => a.localeCompare(b))) {
+    for (const teamId of [...byTeam.keys()].sort((a, b) => compareIds(a, b))) {
       const protectedRiderId = oneDay
         ? oneDayProtectedRider({ teamId, groups: input.groups, entrants: input.entrants, routeDemand: model!.routeDemand!, racingRiderIds: racing })
         : protectedRiderForTeam({ gcContext: input.gcContext, teamId, entrants: input.entrants });
@@ -1774,7 +1779,7 @@ export function ownRidersOnWheel(input: {
         ...(model ? { dangerModel: model } : {}),
       });
       if (threat.severity === "none" && threat.leash_hold !== true) continue;
-      out.push({ team_id: teamId, group_id: group.id, rider_ids: [...(byTeam.get(teamId) ?? [])].sort((a, b) => a.localeCompare(b)), protected_rider_id: protectedRiderId });
+      out.push({ team_id: teamId, group_id: group.id, rider_ids: [...(byTeam.get(teamId) ?? [])].sort((a, b) => compareIds(a, b)), protected_rider_id: protectedRiderId });
     }
   }
   return out;
@@ -1803,7 +1808,7 @@ export function ownRidersOnWheelRaw(
 function teamRacingRiderIds(group: RaceGroup, teamId: string, riders: Readonly<Record<string, RiderState>>, entrants: Readonly<Record<string, Entrant>>): string[] {
   return group.rider_ids
     .filter((id) => riders[id]?.status === "racing" && teamIdOf(entrants[id]) === teamId)
-    .sort((a, b) => a.localeCompare(b));
+    .sort((a, b) => compareIds(a, b));
 }
 
 /** #6187: hold med mindst én koerende rytter i gruppen. */
@@ -1857,7 +1862,7 @@ export function climbChaseFieldBehind(groups: readonly RaceGroup[], breakawayId:
   const total = others.reduce((n, g) => n + g.rider_ids.length, 0);
   const field = others
     .filter((g) => g.rider_ids.length >= CLIMB_CHASE_FIELD_MIN_SHARE * total)
-    .sort((a, b) => b.rider_ids.length - a.rider_ids.length || a.id.localeCompare(b.id))[0];
+    .sort((a, b) => b.rider_ids.length - a.rider_ids.length || compareIds(a.id, b.id))[0];
   return field && field.id !== chaseGroupId && field.gap_seconds > chaseGap ? field : null;
 }
 const CLIMB_CHASE_FIELD_MIN_SHARE = 0.25;
@@ -1889,7 +1894,7 @@ export function climbChaseClimbers(input: {
   for (const [teamId, ids] of byTeam) {
     byTeam.set(teamId, ids.sort((a, b) => (input.demandKeys
       ? collectiveAbility([b], input.entrants, [...input.demandKeys]) - collectiveAbility([a], input.entrants, [...input.demandKeys])
-      : (input.entrants[b].abilities.climbing ?? 0) - (input.entrants[a].abilities.climbing ?? 0)) || a.localeCompare(b)).slice(0, n));
+      : (input.entrants[b].abilities.climbing ?? 0) - (input.entrants[a].abilities.climbing ?? 0)) || compareIds(a, b)).slice(0, n));
   }
   return byTeam;
 }
@@ -1915,7 +1920,7 @@ function withAutoChaseWork(input: {
     if (teamId) working.add(teamId);
   }
   const fullOrder = BREAKAWAY_CHASE_V3_TUNING.teamSignalWeight * TEAM_CHASE.maxTeamSignal;
-  for (const riderId of [...input.chaseGroupRiderIds].sort((a, b) => a.localeCompare(b))) {
+  for (const riderId of [...input.chaseGroupRiderIds].sort((a, b) => compareIds(a, b))) {
     const entrant = input.entrants[riderId];
     const teamId = teamIdOf(entrant);
     if (!entrant || !teamId || !interested.has(teamId) || working.has(teamId)) continue;
@@ -2176,6 +2181,11 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       : segmentLengthKm;
     let maxGapSeconds = 0;
     let oneDayScale = 1; // #6428 (KUN official_times_v3), se nedenfor
+    // #6912 (KUN kontakten breakawayCurve6912, interesserede hold, ikke-farligt udbrud): forspringskurven
+    // (breakawayCurve6912.ts). Et farligt udbrud jages som foer (GC-bremsen og snoren ejer det).
+    const curveOn = curveAppliesToBreak({ origin: breakaway.origin, dangerous, profileApplies: breakawayCurve6912Applies(ctx.breakawayCurve6912, ctx.route.profile_type), interestedTeams: p2Interest?.teamIds.length ?? 0 });
+    let curvePeak = 0;
+    let curveTop = formationKm;
     // #5578: official_times_v2's kalibrerede lad-gaa-knapper (timeModel.ts); neutrale ellers.
     if (allowLetGo && breakaway.origin === "breakaway" && isLetGoChaseGroup(chaseGroup.rider_ids.length, letGoTuning.letGoMinChaseRiders ?? undefined)) {
       const finaleFactor = ctx.route.finale_type ? letGoTuning.letGoFinaleFactorByFinale[ctx.route.finale_type] : undefined;
@@ -2219,7 +2229,17 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       // hjem eller ej) er det samme; kun forspringet er realistisk.
       const oneDayCap = gcContext?.status === "one_day" ? letGoTuning.letGoOneDayMaxGapSecondsByProfile[ctx.route.profile_type] : undefined;
       if (oneDayCap !== undefined && maxGapSeconds > oneDayCap) oneDayScale = Math.max(INITIAL_GAP_SECONDS, oneDayCap) / maxGapSeconds;
-      ({ letGoKm, chaseKm } = letGoSplitKm({
+      if (curveOn) {
+        // #6912: vaeksten flader ud mod toppen, og lad-gaa-fasen slutter dér; loftet er uaendret.
+        // Tolererer feltet intet forspring (toppen = hovedstarten), er der ingen kurve: lad-gaa-fasen som foer.
+        const peak = curvePeakSeconds({ ceilingSeconds: maxGapSeconds, profileType: ctx.route.profile_type, initialGapSeconds: INITIAL_GAP_SECONDS });
+        curvePeak = peak > INITIAL_GAP_SECONDS ? peak : 0;
+      }
+      if (curvePeak > 0) {
+        const curveInput = { formationKm, peakSeconds: curvePeak, secondsPerKm: letGoRate, initialGapSeconds: INITIAL_GAP_SECONDS, profileType: ctx.route.profile_type };
+        curveTop = curveTopKm(curveInput);
+        ({ letGoKm, chaseKm } = curveLetGoSplitKm({ ...curveInput, fromKm: ctx.segment.from_km, toKm: ctx.segment.to_km }));
+      } else ({ letGoKm, chaseKm } = letGoSplitKm({
         formationKm,
         maxGapSeconds,
         fromKm: ctx.segment.from_km,
@@ -2245,7 +2265,11 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     if (ordersGcV3) planByBreakaway.set(pursuitKey(breakaway.id, chaseGroup.id), workPlan); // #6187: filmens "hvem hentede" pr. udbrud
     // #5955 (ejer-valg B, KUN orders_gc_v1 via gcSetup): GC-bremsen i lad-gaa-fasen.
     const brake = gcSetup && letGoKm > 0 ? letGoBrake({ chaserWork: chasePlan.chaserWork, braking: letGoBrakingTeams(letGoDecisions, chaseGroup.id, ordersGcV3), entrants: ctx.entrants, riders: state.riders, ...(ordersGcV3 ? { maxBrake: LET_GO_BRAKE_TUNING.leashMaxBrake } : {}) }) : null;
-    const braked = brake ? brakedLetGoGrowth({ separationSeconds: chaseGroup.gap_seconds - breakaway.gap_seconds, growthSeconds: letGoKm * letGoRate, fraction: brake.fraction, toleratedSeconds: brake.toleratedSeconds, ceilingSeconds: maxGapSeconds }) : null;
+    // #6912: under kurven flader vaeksten ud mod toppen (i endagsloebets skala, regnet tilbage).
+    const rawLetGoGrowth = curvePeak > 0
+      ? curveScaledGrowthSeconds({ separationSeconds: chaseGroup.gap_seconds - breakaway.gap_seconds, peakSeconds: curvePeak, secondsPerKm: letGoRate, km: letGoKm, oneDayScale })
+      : letGoKm * letGoRate;
+    const braked = brake ? brakedLetGoGrowth({ separationSeconds: chaseGroup.gap_seconds - breakaway.gap_seconds, growthSeconds: rawLetGoGrowth, fraction: brake.fraction, toleratedSeconds: brake.toleratedSeconds, ceilingSeconds: maxGapSeconds }) : null;
     if (brake && braked && braked.brakedShare > 0) {
       const priorBrake = brakeByChaseGroup.get(chaseGroup.id);
       const work = ordersGcV3 && priorBrake ? mergeWork(priorBrake.work, brake.work) : brake.work; // #5978: som jagt-arbejdet
@@ -2287,7 +2311,9 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // #6441 (KUN official_times_v3): kuperet jager uden daempning foer finalen (bjerg uaendret).
     const phaseKnobs = mountainSelectionKnobsFor(ctx.route.profile_type, chaseV3);
     // #6804 P1.2 (KUN s5_profiles_v3, kuperet etapeloeb): daempet jagt foer finalestigningen.
-    const preFinalClosingScale = s5V3PreFinalChaseClosingScale(p1Hilly) ?? phaseKnobs.preFinalChaseClosingScale;
+    // #6912 (KUN kontakten): under kurvens styring loeftes daempningen (ikke ved klassementskontrollen P6).
+    const curveControl = curveControlActive({ peakSeconds: curvePeak, p6Control, reacting: reactions !== undefined && reactions.size > 0 });
+    const preFinalClosingScale = preFinalChaseClosingScale6912(s5V3PreFinalChaseClosingScale(p1Hilly) ?? phaseKnobs.preFinalChaseClosingScale, curveControl && curvePreFinalLift(ctx.route.profile_type) !== null, curvePreFinalLift(ctx.route.profile_type) ?? 1);
     const closingOf = (advantage: number, reacting: boolean) => {
       const raw = Math.max(
         0,
@@ -2297,7 +2323,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     };
     const netClosingSeconds = closingOf(netAdvantage, Boolean(reactions && reactions.size > 0));
     if (smallPace) smallBreakWork.set(breakaway.id, { riderIds: smallBreakPullers, pace: smallPace, km: Math.max(smallBreakWork.get(breakaway.id)?.km ?? 0, letGoKm + chaseKm) });
-    const letGoGrowth = (braked ? braked.growthSeconds : letGoKm * letGoRate) * oneDayScale;
+    const letGoGrowth = (braked ? braked.growthSeconds : rawLetGoGrowth) * oneDayScale;
     const letGoCeiling = maxGapSeconds * oneDayScale;
 
     // Jagten maales paa SEPARATIONEN mellem de to grupper, ikke paa jagt-
@@ -2378,6 +2404,44 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
         events.push({ km: round2(ctx.segment.to_km), type: "breakaway_unchased", params: { group_id: breakaway.id, reason: "no_riders" } });
       }
     }
+    // #6912 (KUN kontakten): efter toppen sigter de interesserede hold mod kurvens maal.
+    const curveSteer = curveControl && p2Interest && p6Target === null && chaseKm > 0
+      ? {
+          target: curveTargetSeconds({ route: ctx.route, km: ctx.segment.to_km, topKm: curveTop, peakSeconds: curvePeak }) * oneDayScale,
+          chasers: climbChaseClimbers({ teamIds: p2Interest.teamIds, chaseGroupRiderIds: chaseGroup.rider_ids, entrants: ctx.entrants, riders: state.riders, ...(ctx.segment.kind === "climb" ? {} : { demandKeys: CHASE_ENGINE_KEYS }) }),
+        }
+      : null;
+    // De jagende hold betaler den lukning de selv baerer, oven i deres jagt (sum: begge bidrag i segmentet).
+    const bookCurveWork = (chasers: Map<string, string[]>, extra: number, km: number) => {
+      const intensity = s5V3ClimbChaseIntensity({ extraClosingSeconds: extra, chaseKm: km, closingSecondsPerKmPerUnit: BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit, fullOrderForce: BREAKAWAY_CHASE_V3_TUNING.teamSignalWeight * TEAM_CHASE.maxTeamSignal, teams: chasers.size });
+      const entry = workByChaseGroup.get(chaseGroup.id);
+      // Prisen betales over planens bogfoerte km; arbejdet gaelder kun intervallet `km` (Codex P2).
+      const curveWork = curveChaseWork({ chasers, workOf: (id) => helperCostMultiplier(ctx.entrants[id].effort), intensity, km, bookedKm: entry?.km ?? 0 });
+      if (entry) workByChaseGroup.set(chaseGroup.id, { ...entry, plan: { ...entry.plan, chaserWork: addWork(entry.plan.chaserWork, curveWork) } });
+      const own = planByBreakaway.get(pursuitKey(breakaway.id, chaseGroup.id));
+      if (own) planByBreakaway.set(pursuitKey(breakaway.id, chaseGroup.id), { ...own, chaserWork: addWork(own.chaserWork, curveWork) });
+    };
+    if (curveSteer && chaseKm - floorKm > 0) {
+      // Kun flad/rullende-klassen har overgraensen; paa bjerg lukker holdene selv.
+      const upperBounded = curveUpperBoundApplies(ctx.route.profile_type) && !(reactions && reactions.size > 0) && ctx.mountainSelectionPhase !== "final";
+      // En spillers jag-ordre virker altid: kun den automatiske jagt (hold uden ordre: rollens
+      // eller AI'ens standard-stance og P2's interesse) begraenses af kurven.
+      const isPlayerChase = (o: BreakawayTeamOrder) => o.breakaway_stance === "chase" && o.manager_set === true;
+      const orderSeconds = upperBounded && parsedOrders.some(isPlayerChase)
+        ? Math.max(0, netClosingSeconds - closingOf(advantageOf(teamChasePlan({ orders: parsedOrders.map((o) => (isPlayerChase(o) ? { ...o, breakaway_stance: "neutral" as const } : o)), chaseGroupRiderIds: chaseGroup.rider_ids, entrants: ctx.entrants, riders: state.riders, fieldRiderIds, ...(ownAheadTeamIds ? { ownRiderAheadTeamIds: ownAheadTeamIds } : {}), ...(chaseV3 ? { withTeamSignals: true as const } : {}) })), false))
+        : 0;
+      const controlled = curveControlledClosing({
+        existingSeconds: chaseClosingSeconds,
+        grownSeconds: grown,
+        targetSeconds: curveSteer.target,
+        capSeconds: curveClosingCapSeconds(chaseKm - floorKm),
+        hasChasers: curveSteer.chasers.size > 0,
+        upperBounded,
+        orderSeconds,
+      });
+      chaseClosingSeconds = controlled.closing;
+      if (controlled.extra > 0) bookCurveWork(curveSteer.chasers, controlled.extra, chaseKm - floorKm);
+    }
     const beforeFloor = Math.max(0, grown - chaseClosingSeconds);
     // Jagt-gulvet: dagens maal er én lodtraekning pr. ETAPE (rngForStage, ikke
     // den segment-noeglede stream): "kommer sprinterholdene for sent i dag" er
@@ -2392,6 +2456,12 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
           targetGapSeconds: chaseFloorTargetGapSeconds(ctx.route, ctx.rngForStage("breakaway_chase_floor")(), chaseV3),
         })
       : 0;
+    // #6912 (KUN kontakten): i jagt-gulvets vindue lukker de jagende hold selv ned mod kurvens maal,
+    // saa fangsten sker i finalen og ikke foerst paa stregen. Aldrig mindre end gulvet.
+    const curveFloorExtra = curveSteer
+      ? curveFloorExtraSeconds({ beforeFloorSeconds: beforeFloor, floorClosingSeconds, targetSeconds: curveSteer.target, floorKm, hasChasers: curveSteer.chasers.size > 0 })
+      : 0;
+    if (curveSteer && curveFloorExtra > 0) bookCurveWork(curveSteer.chasers, curveFloorExtra, floorKm);
 
     // Let-go growth advances the escape; active closing advances the pursuer.
     // Multiple targets share one pursuing group's movement instead of stacking it.
@@ -2404,7 +2474,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // stregen, ogsaa paa nedkoerslen selv og paa stykket bagefter.
     const v3DescentBook = (((ordersGcV3 || ctx.sharedGroupTime !== undefined) && isLastSegment && ctx.segment.kind === "descent") || finishDescentCapKm !== null)
       ? (state.finish_descent_regroup ?? {}) : null;
-    const closingSeconds = Math.min(v3DescentBook ? finishDescentRemainingCapSeconds(separation, finishDescentCapKm ?? segmentLengthKm, v3DescentBook[chaseGroup.id]) : Infinity, chaseClosingSeconds + floorClosingSeconds);
+    const closingSeconds = Math.min(v3DescentBook ? finishDescentRemainingCapSeconds(separation, finishDescentCapKm ?? segmentLengthKm, v3DescentBook[chaseGroup.id]) : Infinity, chaseClosingSeconds + floorClosingSeconds + curveFloorExtra);
     const newChaseGap = Math.min(currentChase.gap_seconds, Math.max(newBreakawayGap, chaseGroup.gap_seconds - closingSeconds));
     const v3Booked = v3DescentBook ? bookFinishDescentClosure(state.finish_descent_regroup, chaseGroup.id, chaseGroup.gap_seconds, currentChase.gap_seconds - newChaseGap) : undefined;
     if (v3Booked && v3Booked !== state.finish_descent_regroup) state = { ...state, finish_descent_regroup: v3Booked };
@@ -2441,7 +2511,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     }
     // #6199 (KUN official_times_v2): where this chase meets the break (exactPlace.ts).
     if (ctx.sharedGroupTime !== undefined && ordersGcV3) {
-      const contactKm = pursuitContactKm({ toKm: ctx.segment.to_km, chaseKm, floorKm, netClosingSeconds: chaseClosingSeconds, floorClosingSeconds, closingSeconds, separationSeconds: grown });
+      const contactKm = pursuitContactKm({ toKm: ctx.segment.to_km, chaseKm, floorKm, netClosingSeconds: chaseClosingSeconds, floorClosingSeconds: floorClosingSeconds + curveFloorExtra, closingSeconds, separationSeconds: grown });
       if (contactKm !== null) contactKmByBreakaway.set(pursuitKey(breakaway.id, chaseGroup.id), Math.max(ctx.segment.from_km, contactKm));
     }
   }
@@ -2463,7 +2533,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
             - (contactKmByBreakaway.get(pursuitKey(breakawayId, b.id)) ?? ctx.segment.to_km);
           if (contactOrder) return contactOrder;
         }
-        return a.gap_seconds - b.gap_seconds || b.rider_ids.length - a.rider_ids.length || a.id.localeCompare(b.id);
+        return a.gap_seconds - b.gap_seconds || b.rider_ids.length - a.rider_ids.length || compareIds(a.id, b.id);
       })[0];
     if (!breakaway || !chase) continue;
     const chaseId = chase.id;
@@ -2526,7 +2596,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   // #6187: paa-hjul-linjen (efter reaktion/jagt-ordre, saa én grund pr. hold).
   for (const w of onWheel) announce(w.team_id, w.group_id, w.rider_ids, "on_wheel", w.protected_rider_id);
   events.push(...ownAheadEvents);
-  const ownAheadTeams = ownAheadEvents.length > 0 ? [...announcedTeams].sort((a, b) => a.localeCompare(b)) : null;
+  const ownAheadTeams = ownAheadEvents.length > 0 ? [...announcedTeams].sort((a, b) => compareIds(a, b)) : null;
 
   if (!changed && !riders && !teamReactions && !ownAheadTeams) return { state, events };
   const frontGap = Math.min(...groups.map((group) => group.gap_seconds));

@@ -12,7 +12,7 @@ import {
 } from "./calendarPlanningWindow.js";
 import { TIER_STAGE_SLOTS as REEXPORTED_SLOTS } from "./tierCalendarMaterializer.js";
 import { TIER_DENSITY } from "./calendarTierCaps.js";
-import { buildScheduleRows } from "./raceCalendarScheduling.js";
+import { buildScheduleRows } from "./raceCalendarScheduling.ts";
 import { resolveSeasonWindow } from "./calendarStartDate.js";
 import { lastStageAtByTier, formatPlanningWindowReport, datesOffNormalSlots } from "../scripts/buildSeasonCalendar.js";
 

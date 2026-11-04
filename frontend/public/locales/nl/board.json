@@ -216,7 +216,7 @@
   "dna": {
     "sectionLabel": "Club-DNA",
     "selectHeading": "Kies de identiteit van je club",
-    "selectIntro": "Het bestuur heeft seizoen 1 geobserveerd en stelt drie richtingen voor. DNA bepaalt de weging van doelen, de doelen vanuit de clubtraditie en welke bestuursleden je vanaf het eerste plan krijgt.",
+    "selectIntro": "Het bestuur stelt drie richtingen voor de club voor. DNA bepaalt de weging van doelen, de doelen vanuit de clubtraditie en welke bestuursleden je vanaf het eerste plan krijgt.",
     "slot": {
       "national_match": "Nationale match",
       "specialization_match": "Specialisatiematch",
@@ -1826,8 +1826,8 @@
         "weightedByPrefix": "Gewogen door {name}."
       },
       "empty": {
-        "title": "Nog geen mandaat getekend",
-        "description": "Het bestuur heeft het mandaat van dit seizoen nog niet getekend. Kijk na de jaarvergadering terug."
+        "title": "Nog geen mandaat",
+        "description": "Het mandaat voor het seizoen wordt voorgelegd op de jaarvergadering."
       },
       "proposed": {
         "cardTitle": "Voorgesteld mandaat · S{season}",

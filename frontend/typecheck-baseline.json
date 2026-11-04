@@ -51,10 +51,6 @@
     "TS18047": 1,
     "TS2339": 4
   },
-  "../backend/lib/auctionRules.js": {
-    "TS2339": 26,
-    "TS2353": 1
-  },
   "../backend/lib/availableBalance.js": {
     "TS2339": 3
   },
@@ -307,10 +303,6 @@
     "TS2322": 4,
     "TS2339": 15,
     "TS2345": 6
-  },
-  "../backend/lib/raceCalendarScheduling.js": {
-    "TS2322": 1,
-    "TS2741": 1
   },
   "../backend/lib/raceClassifications.js": {
     "TS2339": 2,
@@ -1584,14 +1576,10 @@
     "TS2339": 1
   },
   "src/lib/firstRaceCardModel.js": {
-    "TS2339": 14,
-    "TS2345": 1,
-    "TS2358": 1
+    "TS2339": 1
   },
   "src/lib/firstRaceCardModel.test.js": {
-    "TS18047": 12,
-    "TS2339": 2,
-    "TS2345": 3,
+    "TS2345": 1,
     "TS2739": 2,
     "TS2741": 6
   },
@@ -2137,9 +2125,6 @@
     "TS2345": 2,
     "TS2740": 7
   },
-  "src/lib/upcomingRaces.test.js": {
-    "TS2345": 5
-  },
   "src/lib/useAcademy.js": {
     "TS2339": 24,
     "TS2345": 2
@@ -2215,7 +2200,7 @@
     "TS2339": 4
   },
   "src/lib/useTraining.js": {
-    "TS18046": 20,
+    "TS18046": 19,
     "TS2339": 26,
     "TS2345": 1
   },
@@ -2358,7 +2343,7 @@
   "src/pages/CalendarPage.jsx": {
     "TS2322": 7,
     "TS2339": 24,
-    "TS2345": 7,
+    "TS2345": 5,
     "TS2349": 1,
     "TS2353": 6,
     "TS2739": 1,
@@ -2797,7 +2782,7 @@
   },
   "src/pages/boardroom/MandateSummaryCard.jsx": {
     "TS2322": 2,
-    "TS2339": 6,
+    "TS2339": 5,
     "TS2741": 1
   },
   "src/pages/boardroom/MemberPanel.jsx": {

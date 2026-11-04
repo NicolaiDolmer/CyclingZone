@@ -94,9 +94,12 @@ import { annotateExactPlaces } from "./exactPlace.ts";
 import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
 import { finishDescentIndexFor, runInOpenOnlyTempo, timeModelTuningFor, valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
 import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
-import { descentRegroupTempo6486 } from "./mechanics/descentRegroup6486.ts"; // #6486
+import { compareIds } from "../../compareIds.ts";
+import { queenStageGap7236On } from "./mechanics/queenStageGap7236.ts"; // #7236
+import { descentRegroupTempo6486, descentRegroupTuning7236 } from "./mechanics/descentRegroup6486.ts"; // #6486, #7236
 import { advanceStagePlan, advanceStagePlanAtFinish, createStagePlanRuntime, stagePlanCurrentTasks, stagePlanEntrants, stagePlanFinalEfforts, stagePlanLoadEfforts } from "../../stagePlanEngine.ts"; // #7003, #7380
 import { applyDayForm6649, dayForm6649Events, dayForm6649On } from "./mechanics/dayForm6649.ts"; // #6649
+import { breakawayCurve6912On } from "./mechanics/breakawayCurve6912.ts"; // #6912
 import { finalKmTerrainPiece7383, routeWithFinalKmBoundary7383 } from "./adapters/finalKmBoundary7383.ts"; // #7383
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -398,7 +401,7 @@ export function groupEffortTempo(
   });
   // Sorteringen er identisk med den gamle (CP faldende, rider_id som
   // tie-break) naar alle faktorer er 1 — det er bit-identitets-garantien.
-  weighted.sort((a, b) => b.tempoCp - a.tempoCp || a.id.localeCompare(b.id));
+  weighted.sort((a, b) => b.tempoCp - a.tempoCp || compareIds(a.id, b.id));
   const frontCount = Math.max(1, Math.ceil(weighted.length * frontFraction));
   // En grupetto-rytter saetter ALDRIG tempoet i en gruppe hvor andre koerer
   // (CodeRabbit-fund: en faktor alene garanterer det ikke — en staerk
@@ -542,7 +545,7 @@ export function applyGrupettoPaceFloor(input: GrupettoPaceFloorInput): Map<strin
     // som groupEffortTempo, saa en ren gruppe faar praecis sin egen front).
     const grupettoRiders = [...tempo.cpByRider.entries()]
       .filter(([id]) => input.effortByRider(id) === "grupetto")
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+      .sort((a, b) => b[1] - a[1] || compareIds(a[0], b[0]));
     if (grupettoRiders.length === 0) continue;
     const allowedDtSeconds = grupettoAllowedDtSeconds({
       dtFrontSeconds: frontTempo.dtSeconds,
@@ -1051,7 +1054,8 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     if (runInAfterFinishDescent) tempoByGroup = runInOpenOnlyTempo(state.groups, tempoByGroup, state.incident_chasers);
     else if (ordersGcV3) tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers, loopTimeModel);
     // #6486 (KUN s5_profiles_v3, slukket): grupper samler sig efter sidste top paa bjerg uden topankomst.
-    if (isS5ProfilesV3OrLater(rulesRevision)) tempoByGroup = descentRegroupTempo6486(state.groups, tempoByGroup, route, segmentIndex, state.incident_chasers);
+    // #7236 (KUN kontakten): greb topgabets loft (kort vej fra sidste top til maal), regrupperer de lidt staerkere.
+    if (isS5ProfilesV3OrLater(rulesRevision)) tempoByGroup = descentRegroupTempo6486(state.groups, tempoByGroup, route, segmentIndex, state.incident_chasers, descentRegroupTuning7236(state.queen_cap_7236 === true && queenStageGap7236On(input), route));
 
     // 4a. Gap-bogfoering: fronten (mindste gap_seconds) er referencen; andre
     // gruppers gap opdateres med (dtGruppe - dtFront), floor 0.
@@ -1123,11 +1127,13 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       ...(isS5ProfilesV1OrLater(rulesRevision) ? { s5ProfilesV1: true as const } : {}),
       // #6748 (KUN s5_profiles_v2, slukket): udbrudsopfoelgningen (breakaway.ts).
       ...(isS5ProfilesV2OrLater(rulesRevision) ? { s5ProfilesV2: true as const } : {}),
+      ...(queenStageGap7236On(input) ? { queenStageGap7236: true as const } : {}), // #7236 (slukket)
       // #6804 (KUN s5_profiles_v3, slukket): udbrudspakken trin 2 (breakawayV3_6804.ts).
       // #6938 (KUN s5_profiles_v3, slukket): styrt-udgang pr. terraen (mechanics/incidents.ts).
       // #6937 (KUN s5_profiles_v3, slukket): bjergpoint i favoritgruppen + lead-outens pris.
       ...(isS5ProfilesV3OrLater(rulesRevision) ? { s5ProfilesV3: true as const } : {}),
       ...(dayForm6649On(input) ? { dayForm6649: true as const } : {}), // #6649
+      ...(breakawayCurve6912On(input) ? { breakawayCurve6912: true as const } : {}), // #6912
       ...(stagePlan ? { stagePlanTasks: stagePlanCurrentTasks(stagePlan) } : {}), // #7380: runtimens opgave ved segmentets start
     };
     const acceptMovement = (result: {state: EngineState; events: TimelineEvent[]}) => {

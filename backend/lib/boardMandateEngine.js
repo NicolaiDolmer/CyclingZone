@@ -753,6 +753,12 @@ export async function completeActiveMandate(supabase, { teamId, seasonId } = {})
 //      Det samler også rækker op der blev underskrevet efter et tidligere skifte.
 //   3. Et mandat for en afsluttet sæson kan ikke underskrives
 //      (`isMandateSeasonEnded`, brugt af `signMandate` og auto-accept-cronen).
+//   4. (#6773, 2/11) Livscyklussen følger sæsonen, ikke holdets tilstand: skiftet
+//      lukker afsluttede sæsoners mandater for ALLE hold i ét sæt-baseret trin
+//      (`closeEndedSeasonMandatesForAllTeams`), også parkerede og frosne, som
+//      hold-løkken springer over. Et hold der vender tilbage får sit mandat med
+//      det samme (`ensureMandateForReturningTeam`). Databasen tillader højst ét
+//      aktivt mandat pr. hold (database/2026-11-02-6773-one-active-mandate.sql).
 
 /**
  * Holdets aktive mandat for den aktuelle sæson, som én `{ data, error }`-
@@ -859,6 +865,111 @@ export async function closeEndedSeasonMandates(supabase, { teamId, endedSeasonNu
   const lapsed = await closeStatus("proposed", "lapsed");
   const completed = await closeStatus("active", "completed");
   return { completed, lapsed };
+}
+
+/**
+ * #6773 · Samme lukning som `closeEndedSeasonMandates`, men for ALLE hold i to
+ * sæt-baserede opdateringer (uafhængigt af antal hold). Fanger de parkerede og
+ * frosne hold, som sæsonskiftets hold-løkke springer over. Samme vagt som
+ * `advanceMandateAtSeasonEnd` (#4838): findes næste sæson ikke, røres intet.
+ *
+ * @param {any} supabase
+ * @param {any} [args] { endedSeasonNumber, now }
+ */
+export async function closeEndedSeasonMandatesForAllTeams(supabase, { endedSeasonNumber, now = new Date() } = {}) {
+  ensureSupabase(supabase);
+  const ended = endedSeasonNumber == null ? NaN : Number(endedSeasonNumber);
+  if (!Number.isFinite(ended) || ended <= 0) return { skipped: "invalid_season_number", completed: 0, lapsed: 0 };
+  const nextSeason = await findNextSeason({ supabase, currentNumber: ended });
+  if (!nextSeason.found) return { skipped: "target_season_not_found", completed: 0, lapsed: 0 };
+  const nowIso = now.toISOString();
+
+  /** @param {string} fromStatus @param {string} toStatus */
+  const closeStatus = async (fromStatus, toStatus) => {
+    const { data, error } = await supabase
+      .from("board_mandates")
+      .update({ status: toStatus, updated_at: nowIso })
+      .eq("status", fromStatus)
+      .lte("season_number", ended)
+      .select("id");
+    if (error) throw new Error(`board_mandates close all (${fromStatus}→${toStatus}) failed: ${error.message}`);
+    return Array.isArray(data) ? data.length : 0;
+  };
+
+  // Samme rækkefølge som pr. hold (Codex #6780): forslag før aktive.
+  const lapsed = await closeStatus("proposed", "lapsed");
+  const completed = await closeStatus("active", "completed");
+  return { completed, lapsed };
+}
+
+/**
+ * #6773 · Vagt (READ-ONLY): antal aktive mandater for en sæson før den aktive.
+ * Skal altid være 0 efter et skifte; alt andet betyder at en lukkevej er
+ * sprunget over. Reparerer intet, kalderen alarmerer.
+ *
+ * @param {any} supabase
+ */
+export async function countStaleActiveMandates(supabase) {
+  ensureSupabase(supabase);
+  const active = await loadSingleActiveSeason(supabase, { select: "id, number", tag: "board-mandate-stale-watch" });
+  const number = Number(/** @type {any} */ (active)?.number);
+  if (!(Number.isFinite(number) && number > 0)) return { skipped: "no_active_season", stale: 0 };
+  const { count, error } = await supabase
+    .from("board_mandates")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "active")
+    .lt("season_number", number);
+  if (error) throw new Error(`board_mandates stale-watch failed: ${error.message}`);
+  return { seasonNumber: number, stale: count ?? 0 };
+}
+
+/**
+ * #6773 · Et hold der vender tilbage (genindplacering ved skiftet, comeback,
+ * admin-optøning) får et mandat for den sæson det nu spiller: gamle mandater
+ * lukkes, og et nyt foreslås via samme vej som et nyt hold (idempotent pr. hold
+ * og sæson). Uden `seasonNumber` bruges den aktive sæson. Kaster aldrig: et
+ * fejlende mandat må ikke vælte tilbagevenden.
+ *
+ * @param {any} supabase
+ * @param {any} [args] { teamId, seasonNumber, now, captureExceptionFn }
+ */
+export async function ensureMandateForReturningTeam(supabase, {
+  teamId,
+  seasonNumber = null,
+  now = new Date(),
+  captureExceptionFn = captureException,
+} = {}) {
+  try {
+    ensureSupabase(supabase);
+    if (!teamId) return { skipped: "missing_team_id" };
+    let number = Number(seasonNumber);
+    if (!(Number.isFinite(number) && number > 0)) {
+      const active = await loadSingleActiveSeason(supabase, {
+        select: "id, number",
+        tag: "board-mandate-returning-team",
+      });
+      number = Number(/** @type {any} */ (active)?.number);
+    }
+    if (!(Number.isFinite(number) && number > 0)) return { skipped: "no_active_season" };
+    // Samme vagt som #4838 (Codex #7494): findes sæsonen ikke endnu, lukkes intet,
+    // så holdet aldrig står uden mandat.
+    const target = await findNextSeason({ supabase, currentNumber: number - 1 });
+    if (!target.found) return { skipped: "target_season_not_found", season_number: number };
+
+    const closed = await closeEndedSeasonMandates(supabase, /** @type {any} */ ({ teamId, endedSeasonNumber: number - 1, now }));
+    const proposal = await ensureMandateForTeamFormation(supabase, /** @type {any} */ ({ teamId, seasonNumber: number, now, captureExceptionFn }));
+    return { closed, proposal };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`⚠️  [mandate] mandat ved tilbagevenden fejlede for team ${teamId}: ${message}`);
+    try {
+      captureExceptionFn(error, {
+        tags: { flow: "board-returning-team", stage: "mandate" },
+        extra: { teamId },
+      });
+    } catch { /* best-effort */ }
+    return { skipped: "error", reason: message };
+  }
 }
 
 /**

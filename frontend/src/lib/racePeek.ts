@@ -13,7 +13,7 @@ import { riderSuitability } from "./suitability.js";
 
 export type TerrainKind = "mountain" | "itt" | "ttt" | "cobbles" | "hilly" | "sprint";
 
-export type RaceStatus = "selected" | "gtBound" | "missing";
+export type RaceStatus = "selected" | "missing";
 
 export interface StageScheduleItem { stage: number; date?: string | null; time?: string | null; terrain?: string | null }
 
@@ -21,6 +21,11 @@ export interface CalendarEntryLike {
   id: string;
   isMine?: boolean;
   entered?: boolean;
+  /** #7533: gemt udtagelse under startgulvet (for få ryttere). Sendes kun når true. */
+  lineupShort?: boolean;
+  /** #7561: udtagne ryttere og feltstørrelse. Sendes kun når der er plads til flere end de udtagne. */
+  lineupCount?: number;
+  fieldSize?: number;
   /** Udtagelsen er låst (løbet er afviklet eller i gang). Sendes kun når true. */
   lineupFrozen?: boolean;
   withdrawn?: boolean;
@@ -127,21 +132,6 @@ export function raceDateRange(entry: CalendarEntryLike | null | undefined): Date
   return null;
 }
 
-function rangesOverlap(a: DateRange | null, b: DateRange | null): boolean {
-  return Boolean(a && b) && (a as DateRange).start <= (b as DateRange).end && (b as DateRange).start <= (a as DateRange).end;
-}
-
-/**
- * Binding regnes i in-game-dage (game_day), som backendens raceBindingWindow. Flere game_days kan
- * ligge paa samme kalenderdato, saa datoer alene giver falske konflikter. Mangler game_day-spanet
- * paa et af loebene, falder vi tilbage til datoerne.
- */
-function bindsOverlap(a: CalendarEntryLike, b: CalendarEntryLike): boolean {
-  const ok = [a.gameDayStart, a.gameDayEnd, b.gameDayStart, b.gameDayEnd].every((x) => Number.isFinite(x));
-  if (ok) return (a.gameDayStart as number) <= (b.gameDayEnd as number) && (b.gameDayStart as number) <= (a.gameDayEnd as number);
-  return rangesOverlap(raceDateRange(a), raceDateRange(b));
-}
-
 const GRAND_TOUR_CLASSES = new Set(["TourFrance", "GiroVuelta"]);
 export function isGrandTour(raceClass: string | null | undefined): boolean {
   return Boolean(raceClass) && GRAND_TOUR_CLASSES.has(raceClass as string);
@@ -152,28 +142,41 @@ export function isGrandTour(raceClass: string | null | undefined): boolean {
 /**
  * Holdets status for ét løb i kalenderen. null = ingen status at vise (ikke
  * holdets løb, eller løbet er begyndt/kørt, hvor udtagelsen er låst).
- *   "selected" — holdet har en gemt udtagelse
- *   "gtBound"  — ingen udtagelse, men holdets Grand Tour kører samtidig
- *   "missing"  — ingen udtagelse endnu (status-prikken)
+ *   "selected" — holdet har en gemt udtagelse med nok ryttere til at starte
+ *   "missing"  — ingen udtagelse endnu, eller for få ryttere (#7533: lineupShort)
  */
 export function myRaceStatus(
   entry: CalendarEntryLike | null | undefined,
-  entries: readonly CalendarEntryLike[] = [],
   todayIso = "",
 ): RaceStatus | null {
   if (!entry?.isMine || entry.lineupFrozen || entry.withdrawn) return null;
   const range = raceDateRange(entry);
   if (!range || (todayIso && range.start < todayIso)) return null;
-  if (entry.entered) return "selected";
-  const gt = (entries || []).find((e) => e && e.id !== entry.id && e.isMine && e.entered && !e.withdrawn
-    && isGrandTour(e.raceClass) && bindsOverlap(entry, e));
-  return gt ? "gtBound" : "missing";
+  // #7568: et løb uden (nok) udtagelse er altid "Mangler". En samtidig Grand
+  // Tour fritager ikke holdet: de øvrige ryttere kan stadig køre løbet.
+  return entry.entered && !entry.lineupShort ? "selected" : "missing";
 }
 
-// ── Passer til holdet ─────────────────────────────────────────────────────────
+/**
+ * #7561: "Klar · 6/8". Antal udtagne mod feltstørrelsen (fra API'et, aldrig en
+ * frontend-konstant), kun for en Klar-status og kun når der er plads til flere.
+ * Fuldt felt (6/6, 8/8) giver null, så pillen bare siger "Klar".
+ */
+export function squadFill(
+  entry: CalendarEntryLike | null | undefined,
+  status: RaceStatus | null,
+): { count: number; field: number } | null {
+  if (status !== "selected") return null;
+  const count = Number(entry?.lineupCount);
+  const field = Number(entry?.fieldSize);
+  if (!Number.isFinite(count) || !Number.isFinite(field) || count < 1 || count >= field) return null;
+  return { count, field };
+}
+
+// ── Holdets rutematch (tidl. "Passer til holdet", #7461) ─────────────────────────────────────────────────────────
 
 /**
- * "Passer til holdet" 0-100 + bedste bud.
+ * "Holdets rutematch" 0-100 + bedste bud.
  *
  * Beregningen (ejer 15/10: "holdets bedste ryttere mod løbets terrænvægt"):
  * hver rask, ikke-solgt rytter får sin rute-match mod løbets demand-vektor med

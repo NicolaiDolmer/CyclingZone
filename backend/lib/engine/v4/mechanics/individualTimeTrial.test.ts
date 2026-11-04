@@ -29,15 +29,11 @@ import {
   ittReferenceByKind,
   ittSpeedKmh,
   ittStageNoise,
-  ITT_TERRAIN_6595_ACTIVE,
-  ittTerrain6595Active,
   ittTerrainWeight,
   S5_V3_ITT_TERRAIN_WEIGHT,
-  setIttTerrain6595ForBench,
   simulateIndividualTimeTrialStage,
 } from "./individualTimeTrial.ts";
 import { STRENGTH_SPEED_EXTRA_TUNING } from "../tuning.ts";
-import { SAVE_ITT_7332_ACTIVE, setSaveItt7332ForBench } from "./effortCost.ts";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -554,75 +550,46 @@ test("#6349: aeldre revisioner er uaendrede (v2, v1, orders_gc og legacy = ingen
   }
 });
 
-// ── 8. #6595 (KUN s5_profiles_v3, SLUKKET): enkeltstartens egen terraen-vaegt ─
+// ── 8. #6595 (KUN s5_profiles_v3, live siden 31/10): enkeltstartens egen terraen-vaegt ─
 //
 // Fejlen (staff 13/10 + 14/10; maaling privat i balance-internals/6595/): en flad
 // enkeltstart i en Grand Tour spredte feltet for lidt,
 // fordi fart-formlen brugte vejetapens terraen-vaegt, der daemper styrke paa
 // fladt terraen for at afspejle laeet i en gruppe. Mod uret er der intet laee.
-// Med kontakten taendt faar fladt og rullende terraen mere vaegt under
-// s5_profiles_v3; alt andet er som foer. Slukket (default) er alt bit-identisk.
+// Under s5_profiles_v3 faar fladt og rullende terraen mere vaegt; alt andet er
+// som foer. Aeldre revisioner er bit-identiske (#7260 fjernede kodekontakten).
 
 const V3 = "s5_profiles_v3";
 const NOISELESS = { ittTuning: NO_NOISE, incidentsTuning: NO_INCIDENTS };
 // Etape-testene isolerer DENNE rettelse: samme revision med og uden v3's
-// terraen-vaegt (eksplicit option), saa de ikke afhaenger af kontakten eller
-// af de andre v3-tilvalg.
+// terraen-vaegt (eksplicit option), saa de ikke afhaenger af de andre v3-tilvalg.
 const ROAD_WEIGHT = { rulesRevision: "s5_profiles_v2" };
 const V3_WEIGHT = { rulesRevision: "s5_profiles_v2", ittTerrainWeight: S5_V3_ITT_TERRAIN_WEIGHT };
 
 const ALL_REVISIONS = [undefined, null, "legacy", "official_times_v3", "official_times_v4", "official_times_v5", "s5_profiles_v1", "s5_profiles_v2", V3];
 
-/** Koer `fn` med #6595-kontakten sat via bench-setteren; nulstil altid bagefter. */
-function withIttTerrain6595<T>(active: boolean, fn: () => T): T {
-  setIttTerrain6595ForBench(active);
-  try {
-    return fn();
-  } finally {
-    setIttTerrain6595ForBench(null);
-  }
-}
-
-test("#6595: kontakten er TAENDT (ejer-go 31/10); slukket bruger alle revisioner (ogsaa den aktuelle v3) vejetapens vaegt", () => {
-  assert.equal(ITT_TERRAIN_6595_ACTIVE, true, "ejer-go 31/10");
-  assert.equal(ittTerrain6595Active(), true);
+test("#6595: KUN s5_profiles_v3 faar enkeltstartens vaegt; aeldre revisioner har vejetapens (samme objekt)", () => {
   assert.equal(ittTerrainWeight(V3), S5_V3_ITT_TERRAIN_WEIGHT);
-  withIttTerrain6595(false, () => {
-    for (const rev of ALL_REVISIONS) {
-      assert.equal(ittTerrainWeight(rev), STRENGTH_SPEED_EXTRA_TUNING.terrainWeight, String(rev));
-    }
-  });
+  for (const rev of ALL_REVISIONS.filter((r) => r !== V3)) {
+    assert.equal(ittTerrainWeight(rev), STRENGTH_SPEED_EXTRA_TUNING.terrainWeight, String(rev));
+  }
   // Default-parameteren er vejetapens vaegt: kald uden vaegt = kald med den.
   for (const kind of ["flat", "rolling", "climb", "descent", "cobbles"] as const) {
     assert.equal(ittSpeedKmh(0.62, 0.55, kind, RACE_V4_TUNING), ittSpeedKmh(0.62, 0.55, kind, RACE_V4_TUNING, INDIVIDUAL_TIME_TRIAL_TUNING, STRENGTH_SPEED_EXTRA_TUNING.terrainWeight));
   }
 });
 
-test("#6595: taendt faar KUN s5_profiles_v3 enkeltstartens vaegt; aeldre revisioner er uroerte", () => {
-  withIttTerrain6595(true, () => {
-    assert.equal(ittTerrain6595Active(), true);
-    for (const rev of ALL_REVISIONS.filter((r) => r !== V3)) {
-      assert.equal(ittTerrainWeight(rev), STRENGTH_SPEED_EXTRA_TUNING.terrainWeight, String(rev));
-    }
-    assert.equal(ittTerrainWeight(V3), S5_V3_ITT_TERRAIN_WEIGHT);
-  });
-  assert.equal(ittTerrain6595Active(), ITT_TERRAIN_6595_ACTIVE, "setteren nulstiller til kontakten");
-});
-
-test("#6595: slukket er v3-enkeltstarten bit-identisk med vejetapens vaegt; taendt aendrer den (flad og kuperet)", () => {
+test("#6595: v3-enkeltstarten bruger enkeltstartens vaegt og afviger fra vejetapens; v2 er bit-identisk med vejetapens (flad og kuperet)", () => {
   for (const [profileType, segs] of [["itt", undefined], ["itt_hilly", HILLY_SEGMENTS]] as const) {
     const r = route(profileType, segs);
     const run = (opts: Parameters<typeof simulateIndividualTimeTrialStage>[4]) =>
       simulateIndividualTimeTrialStage(r, field(30), "v6595", RACE_V4_TUNING, opts).results.map((x) => x.time_seconds);
-    const off = withIttTerrain6595(false, () => run({ rulesRevision: V3 }));
-    const road = run({ rulesRevision: V3, ittTerrainWeight: STRENGTH_SPEED_EXTRA_TUNING.terrainWeight });
-    assert.deepEqual(off, road, `${profileType}: slukket = main`);
-    const on = withIttTerrain6595(true, () => run({ rulesRevision: V3 }));
-    assert.notDeepEqual(on, off, `${profileType}: taendt skal aendre tiderne`);
-    // s5_profiles_v2 og aeldre er uroerte, ogsaa med kontakten taendt.
-    const v2Off = withIttTerrain6595(false, () => run({ rulesRevision: "s5_profiles_v2" }));
-    const v2On = withIttTerrain6595(true, () => run({ rulesRevision: "s5_profiles_v2" }));
-    assert.deepEqual(v2On, v2Off, `${profileType}: v2 uroert`);
+    const v3 = run({ rulesRevision: V3 });
+    assert.deepEqual(v3, run({ rulesRevision: V3, ittTerrainWeight: S5_V3_ITT_TERRAIN_WEIGHT }), `${profileType}: v3 = enkeltstartens vaegt`);
+    assert.notDeepEqual(v3, run({ rulesRevision: V3, ittTerrainWeight: STRENGTH_SPEED_EXTRA_TUNING.terrainWeight }), `${profileType}: v3 skal afvige fra vejetapens vaegt`);
+    // s5_profiles_v2 og aeldre er uroerte.
+    const v2 = run({ rulesRevision: "s5_profiles_v2" });
+    assert.deepEqual(v2, run({ rulesRevision: "s5_profiles_v2", ittTerrainWeight: STRENGTH_SPEED_EXTRA_TUNING.terrainWeight }), `${profileType}: v2 uroert`);
   }
 });
 
@@ -690,48 +657,47 @@ test("#7332: alt ud er hurtigere end normal paa enkeltstarten (samme rytter, sam
     }
   }
 });
-
-// ── 9. #7332 (ejer 31/10 valg A, KUN s5_profiles_v3, SLUKKET): spar mod uret koster tid ─
+// ── 9. #7332 (ejer 31/10 valg A, s5_profiles_v3 og senere): spar mod uret koster tid ─
 //
 // Fejlen (maaling privat, hard rule 17): spar, beskyt og grupetto gav ingen tidsforskel
 // paa en enkeltstart, fordi en lavere indsats kun flyttede kravet, og kravet flytter ikke
-// tiden naar rytteren koerer under sin taerskel. Med kontakten taendt trukket spar-trinnene
+// tiden naar rytteren koerer under sin taerskel. Under s5_profiles_v3 trækker spar-trinnene
 // kapacitet fra (spejl af alt ud's gevinst), og beskyt/grupetto koerer som spar.
+// Kodekontakten er fjernet (krav 5): reglen er den eneste vej, aeldre revisioner er uroerte.
 
 const SAVE_LIKE: Entrant["effort"][] = ["save", "protect", "grupetto"];
 const ITT_ROUTES_7332 = [["itt", undefined], ["itt_hilly", HILLY_SEGMENTS]] as const;
 
-/** Koer `fn` med #7332-kontakten sat via bench-setteren; nulstil altid bagefter. */
-function withSaveItt7332<T>(active: boolean, fn: () => T): T {
-  setSaveItt7332ForBench({ active });
-  try {
-    return fn();
-  } finally {
-    setSaveItt7332ForBench(null);
-  }
-}
-
-/** Feltet med blandede indsatser, saa slukket-laasen ser alle fem trin paa én gang. */
+/** Feltet med blandede indsatser, saa laasene ser alle fem trin paa én gang. */
 function mixedEffortField(): Entrant[] {
   const efforts: Entrant["effort"][] = ["normal", "save", "protect", "grupetto", "all_out"];
   return field(40).map((e, i) => ({ ...e, effort: efforts[i % efforts.length] }));
 }
 
-test("#7332: kontakten er TAENDT (ejer-go 31/10); slukket er enkeltstarten uaendret for alle trin (ogsaa paa v3)", () => {
-  assert.equal(SAVE_ITT_7332_ACTIVE, true, "ejer-go 31/10");
+/** Samme felt, men spar-trinnene koerer normal. */
+function saveLikeAsNormal(startlist: Entrant[]): Entrant[] {
+  return startlist.map((e) => (SAVE_LIKE.includes(e.effort) ? { ...e, effort: "normal" as const } : e));
+}
+
+test("#7332: aeldre revisioner er uroerte: spar, beskyt og grupetto koster ingen tid mod uret", () => {
   for (const [profileType, segs] of ITT_ROUTES_7332) {
-    for (const rev of ALL_REVISIONS) {
-      const base = input({ route: route(profileType, segs), startlist: mixedEffortField(), seed: "itt-7332-off", rules_revision: rev as StageInput["rules_revision"] });
-      const off = withSaveItt7332(false, () => simulateStageV4(base));
-      if (rev !== V3) {
-        assert.deepEqual(simulateStageV4(base), off, `${profileType}/${String(rev)}: aeldre revisioner uroert med kontakten taendt`);
-        assert.deepEqual(withSaveItt7332(true, () => simulateStageV4(base)), off, `${profileType}/${String(rev)}: aeldre revisioner uroert ogsaa taendt`);
+    for (const rev of ALL_REVISIONS.filter((r) => r !== V3)) {
+      for (const target of ["r02", "r20"]) {
+        const timeOf = (effort: Entrant["effort"]) => {
+          const startlist = field(40).map((e) => (e.rider_id === target ? { ...e, effort } : e));
+          const out = simulateStageV4(input({ route: route(profileType, segs), startlist, seed: "itt-7332-old", rules_revision: rev as StageInput["rules_revision"] }));
+          return out.results.find((r) => r.rider_id === target)!.time_seconds;
+        };
+        const normal = timeOf("normal");
+        for (const effort of SAVE_LIKE) {
+          assert.equal(timeOf(effort), normal, `${profileType}/${String(rev)}/${target}/${effort}: aeldre revisioner uroerte`);
+        }
       }
     }
   }
 });
 
-test("#7332 (taendt): spar er langsommere end normal paa flad og kuperet enkeltstart, staerk og svag", () => {
+test("#7332: spar er langsommere end normal paa flad og kuperet enkeltstart, staerk og svag", () => {
   for (const [profileType, segs] of ITT_ROUTES_7332) {
     for (const target of ["r02", "r20"]) {
       for (const seed of ["itt-7332-a", "itt-7332-b"]) {
@@ -740,38 +706,32 @@ test("#7332 (taendt): spar er langsommere end normal paa flad og kuperet enkelts
           const out = simulateStageV4(input({ route: route(profileType, segs), startlist, seed, rules_revision: V3 }));
           return out.results.find((r) => r.rider_id === target)!.time_seconds;
         };
-        withSaveItt7332(true, () => {
-          const normal = timeOf("normal");
-          const save = timeOf("save");
-          assert.ok(save > normal, `${profileType}/${target}/${seed}: spar koster tid`);
-          assert.equal(timeOf("protect"), save, `${profileType}/${target}/${seed}: beskyt = spar`);
-          assert.equal(timeOf("grupetto"), save, `${profileType}/${target}/${seed}: grupetto = spar`);
-          assert.ok(timeOf("all_out") < normal, `${profileType}/${target}/${seed}: alt ud er stadig hurtigst`);
-        });
+        const normal = timeOf("normal");
+        const save = timeOf("save");
+        assert.ok(save > normal, `${profileType}/${target}/${seed}: spar koster tid`);
+        assert.equal(timeOf("protect"), save, `${profileType}/${target}/${seed}: beskyt = spar`);
+        assert.equal(timeOf("grupetto"), save, `${profileType}/${target}/${seed}: grupetto = spar`);
+        assert.ok(timeOf("all_out") < normal, `${profileType}/${target}/${seed}: alt ud er stadig hurtigst`);
       }
     }
   }
 });
 
-test("#7332 (taendt): normal og alt ud er uaendrede; spar-ryttere flytter ikke de andres tider", () => {
+test("#7332: spar-ryttere flytter ikke de andres tider", () => {
   for (const [profileType, segs] of ITT_ROUTES_7332) {
-    for (const effort of ["normal", "all_out"] as const) {
-      const startlist = field(40).map((e) => ({ ...e, effort }));
-      const base = input({ route: route(profileType, segs), startlist, seed: "itt-7332-same", rules_revision: V3 });
-      assert.deepEqual(withSaveItt7332(true, () => simulateStageV4(base)), simulateStageV4(base), `${profileType}/${effort}: uaendret`);
-    }
     // Feltets reference regnes paa den friske evne: en spar-rytter flytter ingen andens tid.
-    const mixed = input({ route: route(profileType, segs), startlist: mixedEffortField(), seed: "itt-7332-ref", rules_revision: V3 });
-    const off = new Map(simulateStageV4(mixed).results.map((r) => [r.rider_id, r.time_seconds]));
-    const on = withSaveItt7332(true, () => simulateStageV4(mixed));
-    for (const e of mixedEffortField()) {
+    const mixed = mixedEffortField();
+    const on = simulateStageV4(input({ route: route(profileType, segs), startlist: mixed, seed: "itt-7332-ref", rules_revision: V3 }));
+    const asNormal = new Map(simulateStageV4(input({ route: route(profileType, segs), startlist: saveLikeAsNormal(mixed), seed: "itt-7332-ref", rules_revision: V3 })).results.map((r) => [r.rider_id, r.time_seconds]));
+    for (const e of mixed) {
       if (SAVE_LIKE.includes(e.effort)) continue;
-      assert.equal(on.results.find((r) => r.rider_id === e.rider_id)!.time_seconds, off.get(e.rider_id), `${profileType}/${e.rider_id} (${e.effort})`);
+      assert.equal(on.results.find((r) => r.rider_id === e.rider_id)!.time_seconds, asNormal.get(e.rider_id), `${profileType}/${e.rider_id} (${e.effort})`);
     }
   }
 });
 
-test("#7332 (taendt): holdtidskoerslen er uroert", () => {
-  const base = input({ route: route("ttt"), startlist: mixedEffortField(), seed: "ttt-7332", rules_revision: V3 });
-  assert.deepEqual(withSaveItt7332(true, () => simulateStageV4(base)), simulateStageV4(base));
+test("#7332: holdtidskoerslen er uroert (spar-trinnene koerer som normal, som foer)", () => {
+  const mixed = mixedEffortField();
+  const base = (startlist: Entrant[]) => input({ route: route("ttt"), startlist, seed: "ttt-7332", rules_revision: V3 });
+  assert.deepEqual(simulateStageV4(base(mixed)), simulateStageV4(base(saveLikeAsNormal(mixed))));
 });

@@ -26,10 +26,6 @@
     "peak_planner_enabled": [
       "migration"
     ],
-    "race_day_intention_enabled": [
-      "migration",
-      "test-on"
-    ],
     "race_finalize_resumable_enabled": [
       "migration",
       "test-on"

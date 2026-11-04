@@ -111,7 +111,7 @@ test("assertRiderNotOnActiveAuction bruger den delte getActiveAuctionRiderIds/ge
 
 test("getReleaseAuctionConflict (auctionRules.js) matcher konflikt-koden fra de øvrige 'kun én vej ad gangen'-gates", () => {
   const marker = "export function getReleaseAuctionConflict(";
-  const authSource = readFileSync(resolve(__dirname, "./auctionRules.js"), "utf8");
+  const authSource = readFileSync(resolve(__dirname, "./auctionRules.ts"), "utf8");
   const start = authSource.indexOf(marker);
   assert.notEqual(start, -1, "getReleaseAuctionConflict skal findes i auctionRules.js");
   const block = authSource.slice(start, start + 400);

@@ -215,7 +215,19 @@ function createMockSupabase(state, opts = {}) {
         state.training_date_work??=[];
         let work=state.training_date_work.find(row=>row.team_id===args.p_team_id&&row.season_id===args.p_season_id&&row.tick_date===args.p_tick_date);
         if(!work){work={team_id:args.p_team_id,season_id:args.p_season_id,tick_date:args.p_tick_date,game_days:args.p_game_days,expected_rider_ids:args.p_expected_rider_ids,deadline_at:args.p_deadline_at,status:'pending',quarantined_rider_ids:[],opening_conditions:Object.fromEntries((state.rider_condition??[]).filter(row=>args.p_expected_rider_ids.includes(row.rider_id)).map(row=>[row.rider_id,structuredClone(row)]))};state.training_date_work.push(work);}
+        // #7489: lets a test release a rider right after registration.
+        opts.afterRegister?.(state);
         return {data:work,error:null};
+      }
+      if(name==='depart_training_date_riders') {
+        if(opts.departMissing) return {data:null,error:{code:'PGRST202',message:'Could not find the function public.depart_training_date_riders'}};
+        // Mirrors the RPC's server-side check: only riders with team_id null now.
+        const work=state.training_date_work.find(row=>row.team_id===args.p_team_id&&row.season_id===args.p_season_id&&row.tick_date===args.p_tick_date);
+        const ids=args.p_rider_ids.filter(id=>!work.quarantined_rider_ids.includes(id)&&state.riders.some(row=>row.id===id&&row.team_id==null));
+        if(!ids.length||opts.departRefuses) return {data:{departed_rider_ids:[],work_status:work.status},error:null};
+        work.quarantined_rider_ids=[...work.quarantined_rider_ids,...ids];
+        work.departure_evidence=[...(work.departure_evidence??[]),...ids.map(id=>({rider_id:id,kind:'departed',reason:'left_team',at:args.p_now}))];
+        return {data:{departed_rider_ids:ids,work_status:work.status,work},error:null};
       }
       if(name==='quarantine_training_date_riders') {
         const work=state.training_date_work.find(row=>row.team_id===args.p_team_id&&row.season_id===args.p_season_id&&row.tick_date===args.p_tick_date);
@@ -3301,13 +3313,13 @@ for (const heldAt of ['heldRegistration', 'heldCommit', null, 'missingWrapper'])
     assert.equal(status,held ? 409 : 200,JSON.stringify(body));
     assert.equal(captured,0);
     if(held){assert.equal(body.error,'training_in_progress');assert.deepEqual(body.settledGameDays,[]);assert.equal(state.training_day_runs.length,0);}
-    else {assert.deepEqual(body.settledGameDays,[1,2,3,4]);assert.equal(state.training_day_runs.length,4);}
+    else {assert.deepEqual(body.settledGameDays,[1,2,3,4,5]);assert.equal(state.training_day_runs.length,5);}
   });
 }
 
 // ── #6641 variant B: loebsdagens intention som udbytte-modifikator ──────────────
-test("#6641 variant B: intentionen skalerer loebsdagens udbytte kun naar race_day_intention_enabled er on", async () => {
-  const progressAfter = async ({ intention, effort }) => {
+test("#6641 variant B: intentionen skalerer loebsdagens udbytte (kontakten fjernet, krav 5)", async () => {
+  const progressAfter = async ({ effort }) => {
     const state = seedState({
       conditions: [makeCondition("r1", { fatigue: 30, form: 50 })],
       plans: [REST_PLAN],
@@ -3316,22 +3328,17 @@ test("#6641 variant B: intentionen skalerer loebsdagens udbytte kun naar race_da
     seedRaceDayTick(state, { gameDay: 12 });
     seedFlags(state, { engine: "on", development: "on" });
     state.app_config.push({ key: TRAINING_TICK_PER_RACE_DAY_FLAG_KEY, value: "on" });
-    if (intention) state.app_config.push({ key: "race_day_intention_enabled", value: intention });
     seedRodeStage(state, { gameDay: 12, profile: "mountain" });
     state.race_stage_roles = effort ? [{ race_id: "race-1", stage_number: 1, rider_id: "r1", race_role: "helper", effort }] : [];
     const result = await runDay(state, { gameDay: 12 });
     assert.equal(result.report.riders[0].race_day, true);
     return Number(state.rider_derived_abilities[0].ability_progress?.climbing ?? 0) + Number(result.report.riders[0].gains?.climbing ?? 0);
   };
-  const none = await progressAfter({ intention: null, effort: null });
-  // Flag off: et gemt valg aendrer intet (variant A, bit-identisk).
-  assert.equal(await progressAfter({ intention: null, effort: "all_out" }), none);
-  assert.equal(await progressAfter({ intention: "off", effort: "grupetto" }), none);
-  // Flag on: trappen virker; normal og intet valg er variant A.
-  const allOut = await progressAfter({ intention: "on", effort: "all_out" });
-  const grupetto = await progressAfter({ intention: "on", effort: "grupetto" });
-  assert.equal(await progressAfter({ intention: "on", effort: "normal" }), none);
-  assert.equal(await progressAfter({ intention: "on", effort: null }), none);
+  const none = await progressAfter({ effort: null });
+  // Trappen virker; normal og intet valg er variant A.
+  const allOut = await progressAfter({ effort: "all_out" });
+  const grupetto = await progressAfter({ effort: "grupetto" });
+  assert.equal(await progressAfter({ effort: "normal" }), none);
   assert.ok(allOut > none, `all_out ${allOut} skal give mere end ${none}`);
   assert.ok(grupetto < none, `grupetto ${grupetto} skal give mindre end ${none}`);
 });
@@ -3693,4 +3700,101 @@ test("#7390 kald-sted: flag off med params i private_config = dagens model", asy
   const today = await runCurveBDay();
   const off = await runCurveBDay({ flag: "off", params: CURVE_B_TEST_PARAMS });
   assert.deepEqual(off.row, today.row);
+});
+
+// ── #7489: rytter frigivet mens aftentræningen kører ──────────────────────────
+// Sweepen kalder motoren én gang pr. løbsdag med sweepens start-tid som `now`.
+// En frigivelse midt i sweepen skal ikke give en karantæne-alarm.
+const DATE_DAYS_7489 = [1, 2, 3, 4, 5];
+function seedReleaseDate7489() {
+  const state = seedState({
+    riders: [makeRider({ id: "r1" }), makeRider({ id: "r2" })],
+    abilities: [makeAbilityRow("r1"), makeAbilityRow("r2")],
+    conditions: [makeCondition("r1"), makeCondition("r2")],
+  });
+  seedRaceDayTick(state, { gameDay: 1 });
+  state.app_config.push({ key: "training_condition_per_date", value: "on" });
+  return state;
+}
+async function runDate7489(state, gameDay, opts = {}) {
+  const supabase = createMockSupabase(state, opts);
+  const calls = [];
+  const rpc = supabase.rpc.bind(supabase);
+  supabase.rpc = (name, args) => { calls.push({ name, args }); return rpc(name, args); };
+  const result = await runDay(state, { supabase, gameDay, executedBy: "assistant", dateGameDays: DATE_DAYS_7489 });
+  return { result, calls };
+}
+const ticksOf7489 = (state, riderId) => (state.training_rider_ticks ?? []).filter((row) => row.rider_id === riderId).map((row) => row.game_day);
+const release7489 = (state, riderId) => { state.riders.find((row) => row.id === riderId).team_id = null; };
+
+test("#7489: rytter frigivet mellem dato-åbning og tjek → ingen karantæne, ingen needs_reconciliation", async () => {
+  const state = seedReleaseDate7489();
+  for (const day of [1, 2]) await runDate7489(state, day);
+  release7489(state, "r2");
+  const calls = [];
+  for (const day of [3, 4, 5]) calls.push(...(await runDate7489(state, day)).calls);
+
+  assert.ok(!calls.some((c) => c.name === "quarantine_training_date_riders"), "ingen karantæne-alarm");
+  const departs = calls.filter((c) => c.name === "depart_training_date_riders");
+  assert.equal(departs.length, 1, "frigivet én gang, derefter står han i datoens udtagne liste");
+  assert.deepEqual(departs[0].args.p_rider_ids, ["r2"]);
+  const work = state.training_date_work[0];
+  assert.notEqual(work.status, "needs_reconciliation");
+  assert.deepEqual(work.quarantined_rider_ids, ["r2"], "datoens ejerskabs-semantik er uændret (#6504)");
+  assert.deepEqual(work.departure_evidence.map((e) => e.rider_id), ["r2"]);
+  assert.deepEqual(ticksOf7489(state, "r2"), [1, 2], "den frigivne rytter får ingen træning efter frigivelsen");
+  assert.deepEqual(ticksOf7489(state, "r1"), DATE_DAYS_7489, "holdkammeraten træner hele datoen");
+});
+
+test("#7489: truppen genlæses efter registreringen, så en frigivelse lige før tjekket ses", async () => {
+  const state = seedReleaseDate7489();
+  const { calls } = await runDate7489(state, 1, { afterRegister: (s) => release7489(s, "r2") });
+  assert.deepEqual(state.training_date_work[0].expected_rider_ids, ["r1", "r2"], "datoen åbnede med begge");
+  assert.deepEqual(calls.find((c) => c.name === "depart_training_date_riders")?.args.p_rider_ids, ["r2"]);
+  assert.ok(!calls.some((c) => c.name === "quarantine_training_date_riders"));
+  assert.deepEqual(ticksOf7489(state, "r2"), [], "ingen træning på en forældet trup-læsning");
+  assert.deepEqual(ticksOf7489(state, "r1"), [1]);
+});
+
+test("#7489: reelt usikker rytter (mangler åbnings-tilstand) karantænesættes som før", async () => {
+  const state = seedReleaseDate7489();
+  state.rider_condition = state.rider_condition.filter((row) => row.rider_id !== "r2");
+  const { calls } = await runDate7489(state, 1);
+  const quarantine = calls.filter((c) => c.name === "quarantine_training_date_riders");
+  assert.equal(quarantine.length, 1);
+  assert.deepEqual(quarantine[0].args.p_rider_ids, ["r2"]);
+  assert.equal(quarantine[0].args.p_reason, "unsafe_roster_or_missing_opening");
+  assert.ok(!calls.some((c) => c.name === "depart_training_date_riders"), "en rytter på holdet frigives ikke");
+  assert.equal(state.training_date_work[0].status, "needs_reconciliation", "alarmen bevares");
+});
+
+test("#7489: frigivet rytter på et testhold bevarer alarmen (#6504-kontrakten)", async () => {
+  const state = seedReleaseDate7489();
+  state.teams[0].is_test_account = true;
+  await runDate7489(state, 1);
+  release7489(state, "r2");
+  const { calls } = await runDate7489(state, 2);
+  assert.ok(!calls.some((c) => c.name === "depart_training_date_riders"));
+  assert.deepEqual(calls.find((c) => c.name === "quarantine_training_date_riders")?.args.p_rider_ids, ["r2"]);
+  assert.equal(state.training_date_work[0].status, "needs_reconciliation");
+});
+
+test("#7489: afviser RPC'en frigivelsen (server-side tjek), karantænesættes rytteren som før", async () => {
+  const state = seedReleaseDate7489();
+  await runDate7489(state, 1);
+  release7489(state, "r2");
+  const { calls } = await runDate7489(state, 2, { departRefuses: true });
+  assert.deepEqual(calls.find((c) => c.name === "depart_training_date_riders")?.args.p_rider_ids, ["r2"]);
+  assert.deepEqual(calls.find((c) => c.name === "quarantine_training_date_riders")?.args.p_rider_ids, ["r2"]);
+  assert.deepEqual(ticksOf7489(state, "r2"), [1]);
+});
+
+test("#7489: mangler depart-RPC'en (deploy-vindue), karantænesættes som før og holdkammeraten træner", async () => {
+  const state = seedReleaseDate7489();
+  await runDate7489(state, 1);
+  release7489(state, "r2");
+  const { calls } = await runDate7489(state, 2, { departMissing: true });
+  assert.deepEqual(calls.find((c) => c.name === "quarantine_training_date_riders")?.args.p_rider_ids, ["r2"]);
+  assert.deepEqual(ticksOf7489(state, "r1"), [1, 2]);
+  assert.deepEqual(ticksOf7489(state, "r2"), [1]);
 });
