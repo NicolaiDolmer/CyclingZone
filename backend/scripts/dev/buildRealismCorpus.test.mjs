@@ -347,6 +347,8 @@ test("#7588 build: argumenter og fail-closed", () => {
   assert.equal(a.season, "S6");
   assert.equal(path.basename(a.intentRates), "breakaway-intent-rates.json");
   assert.equal(path.basename(path.dirname(a.intentRates)), "b");
+  // Codex P2: relativ eksport -> satserne findes ved siden af eksporten under repo-roden, uanset cwd.
+  assert.equal(path.resolve(a.intentRates), path.resolve(DEFAULT_OUT, "..", "..", "..", "..", "a", "b", "breakaway-intent-rates.json"));
   assert.throws(() => buildCorpus({ caches: [], sourceLabel: "x" }), /ingen senior-løb/);
   // En rute uden demand_vector kommer ikke med (samme validator som testporten).
   const bad = syntheticExport().filter((c) => c.race.squad === "senior");

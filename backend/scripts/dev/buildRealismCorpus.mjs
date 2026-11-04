@@ -438,7 +438,9 @@ export function parseArgs(argv) {
   return {
     fromDir, perCell, season,
     out: get("out", DEFAULT_OUT),
-    intentRates: get("intent-rates", path.join(path.dirname(path.resolve(fromDir)), "breakaway-intent-rates.json")),
+    // Codex P2: relative stier er relative til repo-roden (som i main), ikke til cwd, så satserne
+    // findes ved siden af eksporten uanset hvorfra scriptet startes.
+    intentRates: get("intent-rates", path.join(path.dirname(path.isAbsolute(fromDir) ? fromDir : path.join(REPO_ROOT, fromDir)), "breakaway-intent-rates.json")),
     privateDir: get("private-dir", DEFAULT_PRIVATE_DIR),
     refreshScenarios: argv.includes("--refresh-scenarios"),
   };
