@@ -410,6 +410,26 @@ Fejler a eller b, skriver revieweren det i summary og tjekker punkt 10-12 i haan
 
 Dom: punkt 10 og 11 er advarsel foerst - BEMAERKNINGER foer 2026-10-01, BLOKERENDE fra 2026-10-01. Samme dato som det planlagte skift af CI-vagten `.github/workflows/done-guard.yml` til blokerende; trinnene til det skift staar i workflowets header.
 
+## Reviewer-tjeklisten: punkt 13-18 (3/11, #7587)
+
+Spejl af punkt 13-18 i `reviewPrompt()`. Samme tekst staar i [`NIGHT_WAVE_RUNBOOK.md`](NIGHT_WAVE_RUNBOOK.md); [`scripts/wave-freeze.test.mjs`](../scripts/wave-freeze.test.mjs) fejler, hvis et punkt mangler i en af de to filer. Baggrund: boelgen 3/11 (11 spor) havde fire PR'er der ventede paa roede CI-vagter lanen selv kunne rette, to golden-tests der beviste "off" mod den nye kode, og en kode-kommentar med den praecise formel.
+
+- **13. CI-VAGTER** - revieweren koerer `gh pr checks <N>` een gang. Roedt pga. diffen (fx ts-core-ratchet, frontend-typecheck-baseline, feature-registry-check) er BLOKERENDE (category `verifikation`); roedt ogsaa paa main, eller stadig koerende, skrives i summary.
+- **14. FROSSEN GOLDEN** - en ny kontakt i motor- eller traeningskode skal bevise "off = bit-identisk" mod en fixture genereret af merge-base-koden (SHA i PR-body), ikke af den nye kodes default eller off-gren. Regenereret facit eller manglende bevis er BLOKERENDE.
+- **15. HARD RULE 17** - en praecis formel, vaegt, taerskel eller et parametervalg i en forklarende kode-kommentar, i docs eller i PR-body er BLOKERENDE (category `secrets`). Runtime-konstanter i selve koden er undtaget efter AGENTS.md hard rule 17.
+- **16. PAGINATION** - laeser diffen raekker fra Supabase/PostgREST, der kan blive flere end 1000 (loftet pr. kald), skal den pagere (`.range` i loekke) med stabil orden (`.order` paa en unik noegle). Mangler det, er det BLOKERENDE naar det roerer spillerdata eller penge, ellers en bemaerkning.
+- **17. FAIL-CLOSED** - ved fejl, timeout, manglende data eller ukendt kontaktvaerdi goer koden det sikre (ingen udbetaling, ingen adgang, ingen skrivning) og fejler synligt. En catch eller default der fortsaetter som om alt er godt (fail-open) paa penge, adgang eller prod-skrivning er BLOKERENDE.
+- **18. SPILLERTEKST EN/DA** - ny eller aendret spillertekst findes paa baade engelsk og dansk (EN foerst). Mangler et sprog, er det BLOKERENDE.
+
+## Boelge-kvalitet 2.0 (3/11, #7587)
+
+- **CI-vagter i briefen:** `make-wave-brief.mjs` (`CI_GUARDS`) kraever ts-core-ratchet, typecheck-baseline og `generate-feature-status.mjs --check` lokalt foer push, efter hvad sporet roerer, og eet `gh pr checks <N>` efter sidste push med rettelse af roedt foer lanen melder faerdig. En test holder kommandoerne lig CI-workflowenes.
+- **Frossen golden:** et spor der roerer motor/traening (sti eller scope) faar blokken "Frossen golden": merge-base tjekkes ud separat i scratch, fixturen genereres dér, og den nye kode med kontakten off sammenlignes mod den. Reglen staar i alle byggebriefs.
+- **Hard rule 17 i kommentarer:** fast linje i alle byggebriefs og punkt 15.
+- **Straks-frigivelse:** `bygget`/`rettet` frigiver ejerskab med det samme via `wave-policy.mjs finish` (agenttype `wave-release`, sonnet/low, kort loft). Fejler den, frigives sporet ved naeste intake-tjek (`finishedInWave`). Rapporten har `releasedNow` og `releasesRun`.
+- **Fase 0 genbruger branchens worktree** (`git worktree list --porcelain`), ogsaa med et andet mappenavn end slug; briefen faar `worktreePath`, og `adoptLaneWorktree()` giver lanen stien. En sti uden for worktree-roden, i scratch eller med `..` starter ingen lane (fail-closed).
+- **balance-internals/ som junction:** `scripts/link-balance-internals.ps1` (fra `setup-worktree.ps1` og fase 0) linker worktreets `balance-internals/` til den delte OneDrive-mappe og flytter en lokal mappe ind uden overskrivning. `close-out-cleanup-junctions.ps1` naegter at fjerne et worktree, hvis dets `balance-internals/` er en rigtig mappe med filer der mangler i den delte mappe. Raa `git worktree remove --force` foelger junctionen og er forbudt; brug repoets scripts.
+
 ## Ejer-regel 14/9: backend-only-merges kan spoerges igennem uden go-kort
 
 Merge-mandat afgoeres af AGENTS.md regel 35. Backend-only er ikke i sig selv et staaende mandat: kun de naevnte kategorier med samtlige beviser maa merges uden nyt ejer-go. Andre backend-fixes forelaegges med problem, loesning, test/review og konkret merge-spoergsmaal; UI beholder de visuelle ejer-gates.

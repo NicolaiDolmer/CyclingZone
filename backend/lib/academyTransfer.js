@@ -44,7 +44,7 @@ import { LAUNCH_REFERENCE_YEAR } from "./riderProgressionEngine.js";
 import { countOngoingRaceEntries } from "./raceEntryCleanup.js";
 import { findPendingGraduation } from "./academyGraduation.js";
 import { ageForSeason } from "./riderSeasonAge.js";
-import { ACTIVE_AUCTION_STATUSES } from "./auctionRules.js";
+import { ACTIVE_AUCTION_STATUSES } from "./auctionRules.ts";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 import { clearOffSquadEntries, clearOffSquadEntriesSafe } from "./squadEntryCleanup.js";
 import {

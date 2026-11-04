@@ -29,6 +29,7 @@
 //   "kind": "build",                 // "build" (default) | "investigate" (#5220)
 //   "verifyCommands": ["node --test scripts/foo.test.mjs"],
 //   "repoWorktreesRoot": "C:\\Dev\\CyclingZone-worktrees", // optional, default vist herunder
+//   "worktreePath": "C:\\Dev\\CyclingZone-worktrees\\andet-navn", // optional (#7587): eksisterende worktree for branchen
 //   "scratchRoot": "...",            // optional, default <worktreesRoot>\.wave-scratch
 //   "ownNodeModules": false          // optional, true = lanen maa selv installere deps
 // }
@@ -48,6 +49,20 @@ import { pathToFileURL } from "node:url";
 import { WAVE_FREEZE } from "./wave-freeze.mjs";
 
 const DEFAULT_WORKTREES_ROOT = "C:\\Dev\\CyclingZone-worktrees";
+
+// #7587 punkt 8: natboelgen 3/11 sprang et spor over, fordi branchen allerede
+// var checket ud i et worktree med et andet mappenavn end slug. Fase 0 finder
+// nu det eksisterende worktree (git worktree list --porcelain) og sender stien
+// her som worktreePath; uden den gaelder <worktreesRoot>\<slug> som foer.
+export function resolveWorktreePath(config, worktreesRoot, slug) {
+  const given = config.worktreePath;
+  if (given === undefined || given === null || given === "") return `${worktreesRoot}\\${slug}`;
+  const p = String(given).replace(/\//g, "\\").replace(/\\+$/, "");
+  if (!/^[A-Za-z]:\\./.test(p)) {
+    throw new Error(`make-wave-brief: worktreePath skal vaere en absolut Windows-sti, fik "${given}"`);
+  }
+  return p;
+}
 
 function requireField(config, name) {
   if (config[name] === undefined || config[name] === null || config[name] === "") {
@@ -75,6 +90,13 @@ function reglerBlok(wd, branch, scratchDir, msgFile, ownNodeModules) {
     // bad selv om rapporten i docs/audits/. Postmortem:
     // .claude/learnings/2026-09-18-wave-briefs-og-hard-rule-17.md
     "- REPOET ER OFFENTLIGT (hard rule 17 + anonymisering). I committede filer, PR-body, issue-kommentarer og commit-beskeder maa der ALDRIG staa: praecise balance-tal (vaegte, formler, konstanter, taerskler, maalte fordelinger fra motor/generator), holdnavne, manager-/Discord-brugernavne, user_id/team_id eller e-mails. Skriv kvalitativt + aliaser (Hold A/B) i repoet; den fulde udgave med tal og navne laegges i `balance-internals/` (gitignoreret) og naevnes kun ved filnavn. Beder din opgavetekst om det modsatte, er det en briefing-fejl: foelg DENNE regel og skriv afvigelsen i slutrapporten.",
+    // #7587 punkt 3 (fund 3/11, #7575): en forklarende kode-kommentar
+    // gentog den praecise formel og parametervalget ved siden af koden.
+    "- Hard rule 17 gaelder OGSAA forklarende kode-kommentarer (#7587): skriv aldrig den praecise formel, vaegt, taerskel eller dit parametervalg i en kommentar (fx \"ganger med X fordi...\", \"kurven er a*b^c\"). Kommentaren forklarer HVORFOR kvalitativt; runtime-konstanter maa staa i koden efter hard rule 17-undtagelsen, men maalinger, kalibrering og begrundelser med tal hoerer i `balance-internals/`.",
+    // #7587 punkt 2 (fund 2x 3/11, #7536 + #5950): "off = bit-identisk" blev
+    // bevist mod den NYE kodes default, saa en aendring af selve off-stien
+    // flyttede facit med og testen stod groen.
+    "- Motor/traening bag en kontakt (#7587): \"off = bit-identisk\" skal bevises mod en FROSSET kopi af merge-base-koden, aldrig mod den nye kodes default. Se blokken \"Frossen golden\" herunder, hvis den er med i denne brief; ellers gaelder samme regel hvis du alligevel ender med at roere motor/traening.",
     "- Start ALDRIG en watcher eller dev-server der overlever dig (`--watch`, `npm run dev`, `vite`, `playwright` i baggrunden). CI-status laeses med enkelte `gh pr checks`-kald, aldrig `--watch`.",
     // 8/9 (bidt 3x): workers der lagde preflight i baggrunden og derefter
     // "ventede paa monitoren" stod reelt stille - der kom aldrig et svar.
@@ -186,17 +208,60 @@ function verifikationsBlok(tier, verifyCommands, wd) {
   // CI. "Mine tests er groenne" er ikke nok - samme kommandoer som CI, pr. pakke.
   lines.push(
     "- **Hele pakkens test + lint + de typiske CI-vagter (bindende foer `gh pr ready`, ejer 8/10):** for HVER pakke du har aendret, koer hele suiten - ikke kun dine egne nye tests. "
-      + `frontend/ roert: \`${lock} npm --prefix frontend test\` + \`npm --prefix frontend run lint\` + \`${lock} npm --prefix frontend run typecheck\`. `
+      + `frontend/ roert: \`${lock} npm --prefix frontend test\` + \`npm --prefix frontend run lint\` + \`${lock} npm --prefix frontend run typecheck\` + \`${lock} node scripts/ci/typecheck-baseline.mjs\` (checkJs-budgettet pr. fil og kode; samme kommando som CI-jobbet frontend-typecheck-baseline). `
       + `backend/ roert: \`${lock} npm --prefix backend test\` + \`npm --prefix backend run lint\` + \`node scripts/lint-swallowed-catches.mjs\` (catch-vagten daekker backend/lib, backend/routes, backend/cron.js) + \`node --test scripts/ops/railway-log-watch.test.mjs\` (nye log-tags opstaar i backend-kode) + naar .ts-filer er roert: i backend/ \`npx tsc -p tsconfig.engine.json && npx tsc -p tsconfig.routes.json\` (gennem semaforen). `
       + "scripts/ eller .github/ roert: `node --test` paa hver `*.test.mjs` i samme mappe som en aendret fil. "
       + "Merge `origin/main` ind og koer det igen lige foer `gh pr ready`, saa testen ser den kode der faktisk merges. CI er stadig den fulde gate; dette fanger de roede vagter foer de koster en CI-runde.",
   );
+  lines.push(...ciVagterLinjer(lock));
   if (verifyCommands && verifyCommands.length > 0) {
     lines.push("- Derudover, specifikt for denne opgave:");
     for (const cmd of verifyCommands) lines.push(`  - \`${cmd}\``);
   }
   lines.push(`- \`${lock} pwsh -File scripts/preflight-pr.ps1\` foer push.`);
   return lines.join("\n");
+}
+
+// #7587 punkt 1: 3/11 ventede fire PR'er (#7574-#7577) paa roede CI-vagter som
+// lanen selv kunne have rettet. De tre vagter herunder er dem der faldt; de
+// koeres LOKALT foer push, og lanen laeser selv CI efter push.
+export const CI_GUARDS = [
+  { name: "ts-core-ratchet", when: "backend/ roert", cmd: "node scripts/check-ts-core-ratchet.mjs", heavy: true },
+  { name: "frontend-typecheck-baseline", when: "frontend/ eller backend/ roert", cmd: "node scripts/ci/typecheck-baseline.mjs", heavy: true },
+  { name: "feature-registry-check", when: "docs/FEATURE_REGISTRY.yml, docs/FEATURE_STATUS.md eller database/2026-*.sql roert", cmd: "node scripts/generate-feature-status.mjs --check", heavy: false },
+];
+
+function ciVagterLinjer(lock) {
+  const guards = CI_GUARDS.map((g) => `${g.when}: \`${g.heavy ? `${lock} ` : ""}${g.cmd}\` (CI-jobbet ${g.name})`);
+  return [
+    `- **CI-vagterne lokalt FOER push (bindende, #7587):** ${guards.join("; ")}. Fejler registry-tjekket: koer \`node scripts/generate-feature-status.mjs\` (uden --check) og commit den genererede docs/FEATURE_STATUS.md. Fejler ratchet eller baseline: ret koden, haev ALDRIG budgettet (--update-baseline saenker kun).`,
+    "- **Laes CI selv efter push (bindende, #7587):** koer `gh pr checks <N>` EEN gang efter dit sidste push - laeg kaldet efter Codex-runden og PR-bodyen, saa CI har haft tid. Aldrig `--watch`, aldrig sleep-loop. Er et check roedt: `gh run view <run-id> --log-failed`, ret, commit + push, og koer `gh pr checks <N>` een gang til. Loop-vagt: samme roede symptom to gange = STOP og rapporter. Lanen melder foerst faerdig naar intet check er roedt af lanens egen aendring; et roedt check der ogsaa er roedt paa main, eller checks der stadig koerer, skrives ordret i slutrapporten (check-navn + status).",
+  ];
+}
+
+// #7587 punkt 2: motor/traening bag en kontakt. Facit for "off" skal komme fra
+// den kode der faktisk koerer i dag (merge-base), ikke fra den nye kode, ellers
+// beviser testen kun at den nye kode er enig med sig selv.
+const GOLDEN_HINT = /(backend\/lib\/engine|race_?engine|raceengine|motor|training|traening|træning|stage_?sim)/i;
+
+export function needsFrozenGolden(config) {
+  const paths = [...(config.ownership || []), ...(config.touches || [])];
+  return paths.some((p) => GOLDEN_HINT.test(String(p))) || GOLDEN_HINT.test(String(config.scopeText || "")) || GOLDEN_HINT.test(String(config.title || ""));
+}
+
+function frossenGoldenBlok(wd, scratchDir) {
+  const base = `${scratchDir}\\golden-base`;
+  return [
+    "# Frossen golden (motor/traening bag kontakt, bindende, #7587)",
+    "",
+    "Indfoerer du en kontakt i motor- eller traeningskode, skal \"kontakten off = bit-identisk med i dag\" bevises mod en FROSSET kopi af merge-base-koden. Et facit genereret af den NYE kode (dens default eller off-gren) beviser intet: aendrer du selv off-stien, flytter facit med, og testen er stadig groen (fund 2x 3/11).",
+    "",
+    `1. \`git -C "${wd}" fetch origin\` og find basen: \`git -C "${wd}" merge-base HEAD origin/main\`.`,
+    `2. Tjek basen ud SEPARAT og read-only i din scratch-mappe: \`git -C "${wd}" worktree add --detach "${base}" <merge-base-sha>\`. Mangler den node_modules, saa lav en junction til dit eget worktree (\`New-Item -ItemType Junction -Path "${base}\\backend\\node_modules" -Target "${wd}\\backend\\node_modules"\`) - aldrig npm install.`,
+    "3. Koer samme golden-/digest-generator med samme seeds og input i basen, og gem resultatet som fixture (kun hashes/digests eller kvalitative udfald - ingen balance-tal i repoet, hard rule 17). Fixturen committes; den genereres ALDRIG igen med den nye kode for at faa en test groen.",
+    "4. Testen koerer den NYE kode med kontakten off og sammenligner bit for bit med fixturen fra basen. Skriv i PR-body hvilken merge-base-SHA fixturen kommer fra.",
+    `5. Ryd op med repoets script, aldrig raa \`git worktree remove --force\` (den foelger junctionen): fjern foerst junctionen med \`[System.IO.Directory]::Delete("${base}\\backend\\node_modules", $false)\`, derefter \`git -C "${wd}" worktree remove "${base}"\`.`,
+  ].join("\n");
 }
 
 // PR'en oprettes som DRAFT og markeres ready foerst som SIDSTE handling.
@@ -226,6 +291,7 @@ function slutrapportBlok() {
     "",
     "- Branch, PR-URL, commit-SHA.",
     "- Hovedaendringer + status paa verifikation.",
+    "- CI-status fra dit sidste `gh pr checks <N>` (#7587): groen, eller hvert roedt/ventende check med navn og hvorfor det ikke er lanens.",
     "- Patch note-tekst (EN+DA) hvis brugerrettet.",
     "- Hvad verifikationen IKKE daekker.",
     "- Eventuelle out-of-scope-fund som forslag - opret IKKE selv issues.",
@@ -244,7 +310,7 @@ export function generateBrief(config) {
   const model = config.model || "sonnet";
   const kind = config.kind === "investigate" ? "investigate" : "build";
   const worktreesRoot = config.repoWorktreesRoot || DEFAULT_WORKTREES_ROOT;
-  const wd = `${worktreesRoot}\\${slug}`;
+  const wd = resolveWorktreePath(config, worktreesRoot, slug);
   const ownNodeModules = config.ownNodeModules === true;
   // Scratch-roden ligger SIDE OM SIDE med worktrees, ikke inde i et af dem:
   // saa er commit-besked-filer uden for worktreet (de maa aldrig kunne blive
@@ -306,6 +372,7 @@ export function generateBrief(config) {
   }
 
   parts.push(reglerBlok(wd, branch, scratchDir, msgFile, ownNodeModules), "");
+  if (needsFrozenGolden(config)) parts.push(frossenGoldenBlok(wd, scratchDir), "");
   parts.push(livstegnBlok(branch), "");
   parts.push(verifikationsBlok(tier, verifyCommands, wd), "");
   parts.push(prSkabelonBlok(issue, wd, branch), "");
