@@ -18,6 +18,7 @@
 
 import type { AbilityKey, Entrant, GcContext, ProfileType } from "../types.ts";
 import { S5_V3_GC_LEASH_7258_TUNING } from "../tuning.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -112,7 +113,7 @@ export function projectedTopRiders(input: {
 }): Set<string> {
   if (input.syntheticFirstStage || !(input.topN > 0)) return new Set();
   const projected = [...projectedFinalGaps(input)].map(([id, t]) => ({ id, t }));
-  projected.sort((a, b) => a.t - b.t || a.id.localeCompare(b.id));
+  projected.sort((a, b) => a.t - b.t || compareIds(a.id, b.id));
   return new Set(projected.slice(0, input.topN).map((p) => p.id));
 }
 
@@ -181,7 +182,7 @@ export function projectedGcFavourites(input: {
   if (!gc || gc.status !== "standings" || !abilityOf || !(topN > 0)) return new Set();
   if (input.syntheticFirstStage) {
     const ids = gc.standings.map((s) => s.rider_id).filter((id) => racingRiderIds.has(id));
-    return new Set(ids.sort((a, b) => abilityOf(entrants[b]) - abilityOf(entrants[a]) || a.localeCompare(b)).slice(0, topN));
+    return new Set(ids.sort((a, b) => abilityOf(entrants[b]) - abilityOf(entrants[a]) || compareIds(a, b)).slice(0, topN));
   }
   return projectedTopRiders({ gc, entrants, racingRiderIds, abilityOf, topN, syntheticFirstStage: false });
 }
@@ -211,7 +212,7 @@ export function stageFavourites(input: {
   const n = S5_V3_GC_LEASH_7258_TUNING.stageFavouriteTopN;
   if (!demand || !(n > 0)) return new Set();
   const scored = input.riderIds.map((id) => ({ id, v: finaleAbility(input.entrants[id], demand) })).filter((x) => x.v > 0);
-  scored.sort((a, b) => b.v - a.v || a.id.localeCompare(b.id));
+  scored.sort((a, b) => b.v - a.v || compareIds(a.id, b.id));
   return new Set(scored.slice(0, n).map((x) => x.id));
 }
 

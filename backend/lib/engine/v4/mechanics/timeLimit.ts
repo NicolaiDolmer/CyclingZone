@@ -71,6 +71,7 @@ import type {
   TimelineEvent,
 } from "../types.ts";
 import { TIME_LIMIT_EXTRA_TUNING } from "../tuning.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 /**
  * Tuning-formen TIME_LIMIT_EXTRA_TUNING (tuning.ts) implementerer. Holdt her
@@ -198,7 +199,7 @@ type ArrivalEntry = { rider_id: string; time_seconds: number };
  */
 export function groupByArrival(entries: readonly ArrivalEntry[], windowSeconds: number): ArrivalEntry[][] {
   const sorted = [...entries].sort(
-    (a, b) => a.time_seconds - b.time_seconds || a.rider_id.localeCompare(b.rider_id),
+    (a, b) => a.time_seconds - b.time_seconds || compareIds(a.rider_id, b.rider_id),
   );
   const groups: ArrivalEntry[][] = [];
   for (const entry of sorted) {

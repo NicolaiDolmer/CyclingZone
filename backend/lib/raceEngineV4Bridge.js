@@ -2,6 +2,7 @@ import { deriveParticipationHistory } from "./raceParticipationHistory.ts";
 import { isKnownRulesRevision, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater, isS5ProfilesV3OrLater, preservesOfficialStageTimes, sharedTimeModelGeneration } from "./raceEngineRulesRevision.ts";
 import { peakComponentForStage } from "./racePeaks.js";
 import { scoreComponentToFormPoints } from "./plannerBoard.js";
+import { compareIds } from "./compareIds.ts";
 // Løbsmotor v4 — flip-infrastruktur, skridt 1 (#3855, #4707).
 //
 // HVAD DEN ER: seamen mellem den UÆNDREDE resultat-pipeline (raceRunner.js →
@@ -275,7 +276,7 @@ export function incidentRowsFromV4Output(output) {
       injury_days: folded?.injuryDays ?? null,
     });
   }
-  return rows.sort((a, b) => String(a.rider_id).localeCompare(String(b.rider_id)));
+  return rows.sort((a, b) => compareIds(String(a.rider_id), String(b.rider_id)));
 }
 
 // ── v4-passager → race_stage_passages/race_results (#2770/#2413) ────────────

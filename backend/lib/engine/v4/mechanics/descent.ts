@@ -101,6 +101,7 @@ import {
   TIME_MODEL_V3_TUNING,
   timeModelTuningFor,
 } from "./timeModel.ts";
+import { compareIds } from "../../../compareIds.ts";
 import type { StagePlanTask } from "../../../stagePlan.ts"; // #7380: kun typen
 
 // ── #7380: nedkoerselsangrebet respekterer rytterens opgave ─────────────────────
@@ -340,7 +341,7 @@ export function regroupOnDescent(
   isFinishDescent: boolean = false,
 ): RaceGroup[] {
   if (groups.length <= 1) return groups.map((g) => ({ ...g }));
-  const sorted = [...groups].sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+  const sorted = [...groups].sort((a, b) => a.gap_seconds - b.gap_seconds || compareIds(a.id, b.id));
 
   const out: RaceGroup[] = [];
   let aheadGap = sorted[0].gap_seconds;
@@ -386,7 +387,7 @@ export function regroupOnDescentV3(
   t: typeof TIME_MODEL_V3_TUNING = TIME_MODEL_V3_TUNING,
 ): RaceGroup[] {
   if (groups.length <= 1) return groups.map((g) => ({ ...g }));
-  const sorted = [...groups].sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+  const sorted = [...groups].sort((a, b) => a.gap_seconds - b.gap_seconds || compareIds(a.id, b.id));
   // DESCENT_EXTRA_TUNING er `as const` (midtvejs-leddene er typet som 0); v3 laegger sine egne vaerdier ind.
   const midExtra = { ...DESCENT_EXTRA_TUNING, regroupSecondsPerKm: t.midDescentSecondsPerKm, regroupGapFractionPerKm: t.midDescentGapFractionPerKm } as unknown as DescentExtra;
   const out: RaceGroup[] = [];
@@ -459,7 +460,7 @@ export function finishDescentTopRefs(
   ahead: { topGapSeconds: number; closedSeconds: number } | null;
   front: { topGapSeconds: number; closedSeconds: number } | null;
 } | null {
-  const sorted = [...topGroups].sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+  const sorted = [...topGroups].sort((a, b) => a.gap_seconds - b.gap_seconds || compareIds(a.id, b.id));
   const idx = sorted.findIndex((g) => g.id === group.id);
   if (idx < 0) return null;
   const sTop = sorted[idx].gap_seconds;
@@ -513,7 +514,7 @@ function findAttackers(
   const attackFloor = groupMaxDescending - Math.max(0, attackAbilityWindowPoints);
   const attackers = candidates
     .filter((c) => c.descending >= attackFloor)
-    .sort((a, b) => b.descending - a.descending || a.riderId.localeCompare(b.riderId));
+    .sort((a, b) => b.descending - a.descending || compareIds(a.riderId, b.riderId));
   // #7380: taerskel og vindue er maalt over HELE gruppen (ovenfor); ordren fjerner
   // kun ryttere fra angrebet bagefter, saa ordren aldrig skaber et nyt angreb.
   if (barredByTask) return { attackers: attackers.filter((a) => !barredByTask(a.riderId)), groupMinDescending };

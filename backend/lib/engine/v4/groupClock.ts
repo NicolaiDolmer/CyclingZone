@@ -1,4 +1,5 @@
 import type { RaceGroup, StageIncident } from './types.ts';
+import { compareIds } from "../../compareIds.ts";
 
 // Floating-point equality only; this is not a sporting catch window.
 export const GROUP_CLOCK_CONTACT_EPSILON = 1e-7;
@@ -79,7 +80,7 @@ export function addPointDelay(clock: GroupClock, groupId: string, delaySeconds: 
 export function projectGroupClock(clock: GroupClock): GroupClockProjection {
   const arrivals = clock.entries.map(entry => ({entry,
     seconds: entry.entrySeconds + entry.traversalSeconds + entry.pointDelaySeconds,
-  })).sort((a,b) => a.seconds - b.seconds || a.entry.group.id.localeCompare(b.entry.group.id));
+  })).sort((a,b) => a.seconds - b.seconds || compareIds(a.entry.group.id, b.entry.group.id));
   const frontTimeSeconds = arrivals[0]?.seconds ?? clock.initialFrontSeconds;
   return {
     frontTimeSeconds,
@@ -93,7 +94,7 @@ export function projectGroupClock(clock: GroupClock): GroupClockProjection {
 /** Commit a mechanism's relative proposal through the same absolute reference. */
 export function projectRelativeArrivals(groups: readonly RaceGroup[], referenceSeconds: number): GroupClockProjection {
   const arrivals = groups.map(group => ({group, seconds: referenceSeconds + group.gap_seconds}))
-    .sort((a,b) => a.seconds-b.seconds || a.group.id.localeCompare(b.group.id));
+    .sort((a,b) => a.seconds-b.seconds || compareIds(a.group.id, b.group.id));
   for (const arrival of arrivals) nonnegative(arrival.seconds, 'absolute arrival');
   const frontTimeSeconds = arrivals[0]?.seconds ?? referenceSeconds;
   return {frontTimeSeconds,

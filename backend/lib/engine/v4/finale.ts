@@ -44,6 +44,7 @@ import { climbTimeSeconds, finishDescentIndexFor, finishDescentRemainingCapSecon
 import { s5FinaleDemandVector } from "./s5Profiles.ts";
 import { dayForm6649FinaleScale } from "./mechanics/dayForm6649.ts"; // #6649
 import { S5_PROFILES_TUNING } from "./tuning.ts";
+import { compareIds } from "../../compareIds.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -466,7 +467,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   const fieldSize = state.groups.reduce((n, g) => n + g.rider_ids.length, 0);
   const sharedNumbersClosing = bunchCatch && ctx.sharedGroupTime !== undefined && ctx.ordersGcV3 === true;
 
-  const sorted = [...state.groups].sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+  const sorted = [...state.groups].sort((a, b) => a.gap_seconds - b.gap_seconds || compareIds(a.id, b.id));
   const frontPool = sorted.filter((g) => g.gap_seconds === 0);
   const chaseCandidates = sorted.filter((g) => g.gap_seconds > 0);
 
@@ -777,7 +778,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   const baselineTieBreak = (a: string, b: string): number =>
     (baselineScores.get(b) ?? -Infinity) - (baselineScores.get(a) ?? -Infinity) ||
     (entrants[b]?.condition ?? 0) - (entrants[a]?.condition ?? 0) ||
-    a.localeCompare(b);
+    compareIds(a, b);
 
   // M6 (#4615): sprint-toget loefter kaptajnens placerings-score BOUNDED, FOER
   // sorteringen — en leadout skal kunne flytte en placering, aldrig
@@ -1065,7 +1066,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   // (tid, denne raekkefolge, rider_id) — saa lige tid stadig giver en stabil,
   // meningsfuld placering i stedet for et alfabetisk opgoer.
   const orderedSurvivors = [...survivingGroups].sort(
-    (a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id),
+    (a, b) => a.gap_seconds - b.gap_seconds || compareIds(a.id, b.id),
   );
   const finishOrder: string[] = [
     ...placementGroups.flatMap((g) => g.rider_ids),
