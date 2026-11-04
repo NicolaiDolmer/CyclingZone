@@ -378,12 +378,15 @@ check-ins fejler stadig rødt. Almindelig deployment `pending` beholder den
 eksisterende bounded rerun-adfærd.
 
 **Eget job, alarm i stedet for stop (#6859, ejer 18/10):** `deploy-verify.yml` er
-delt i jobs. Merge-køen venter kun på `Deploy live + smoke`. Cron-beviset kører i
-`Cron proof (non-blocking)` (`needs: release`, kun et shallow checkout og Node før
-første læsning, så det når grænsen). Et rødt bevis gør koerslen rød, opdaterer
-PR-kommentaren og alarmerer Discord-ops (`report`-jobbet), men stopper **ikke**
-køen. `Release checks` (CDN-headers, asset-miss, carry-forward, Sentry m.fl.)
-kører parallelt; røde release checks stopper køen før næste merge. Starter
+delt i jobs. Merge-køen venter kun på `Deploy live + smoke`. Cron-beviset kører
+siden #7582 i sit eget workflow, `cron-proof.yml` (job `Cron proof (non-blocking)`),
+som release-jobbet starter lige efter smoke, så Deploy verify-koerslen ikke holdes
+åben af beviset. Jobbet har kun inputvalidering, et shallow checkout og Node før
+første læsning, så det når grænsen. Ingen berørte cron-jobs = intet bevis at
+starte. Et rødt bevis skriver sin egen PR-kommentar og alarmerer Discord-ops, men
+stopper **ikke** køen; kan beviset ikke startes, alarmerer `report`-jobbet.
+`Release checks` (CDN-headers, asset-miss, carry-forward, Sentry m.fl.) kører
+efter release; røde release checks stopper køen før næste merge. Starter
 cron-jobbet mere end 5 min efter READY, skriver det en advarsel: et rødt 1-min-job
 kan da skyldes den sene start, ikke en død cron.
 

@@ -376,20 +376,27 @@ test('production workflow checks out target SHA, observes READY boundary and gat
   assert.match(workflow, /name: Checkout target SHA[\s\S]*?ref: \$\{\{ steps\.pr\.outputs\.sha \}\}[\s\S]*?fetch-depth: 0\s+- name: Determine required deployments/);
   // Railway/cron impact from this script; Vercel only from the canonical classifier.
   assert.match(workflow, /cron-deploy-verification\.mjs --impact\s+[\s\S]*?node scripts\/frontend-deployment-needed\.mjs "\$SHA"/);
-  // #6859: the report job writes the final comment (verified / deferred / red).
-  const deferredComment = workflow.slice(workflow.indexOf('"$CRON_STATE" == "deferred"'), workflow.indexOf('- name: Alarm Discord ops'));
-  assert.doesNotMatch(deferredComment, /exit 75/);
-  assert.match(deferredComment, /Merge-koeen fortsaetter/);
   assert.ok(workflow.indexOf('name: Checkout target SHA') < workflow.indexOf('cron-deploy-verification.mjs --impact'));
   assert.match(workflow, /if \$RAILWAY_OK && \[\[ -z "\$CRON_SINCE" \]\]; then\s+CRON_SINCE=\$\(date -u/);
   assert.match(workflow, /while \[\[[\s\S]*?RAILWAY_OK=false\s+(?:#[^\r\n]*(?:\r?\n[ \t]*)+)+CRON_SINCE=""/);
   assert.match(workflow, /echo "cron_since=\$CRON_SINCE" >> "\$GITHUB_OUTPUT"/);
-  const gate = workflow.indexOf('name: Verify affected cron check-ins');
-  const live = workflow.indexOf('name: Comment final verdict on merged PR');
+  // #7582 del 2: the proof runs in cron-proof.yml, started by the release job
+  // with the impact and READY boundary it observed.
+  const start = workflow.slice(workflow.indexOf('- name: Start cron proof'), workflow.indexOf('- name: Comment release verified'));
+  assert.match(start, /AFFECTED_SLUGS: \$\{\{ steps\.required\.outputs\.affected_slugs \}\}/);
+  assert.match(start, /CRON_SINCE: \$\{\{ steps\.deployments\.outputs\.cron_since \}\}/);
+  assert.match(start, /gh workflow run cron-proof\.yml[\s\S]*?-f affected_slugs="\$AFFECTED_SLUGS"[\s\S]*?-f cron_since="\$CRON_SINCE"/);
+  const proof = readFileSync(new URL('../../.github/workflows/cron-proof.yml', import.meta.url), 'utf8');
+  // cron-proof.yml writes its own comment (verified / deferred / red).
+  const deferredComment = proof.slice(proof.indexOf('"$CRON_STATE" == "deferred"'), proof.indexOf('- name: Alarm Discord ops'));
+  assert.doesNotMatch(deferredComment, /exit 75/);
+  assert.match(deferredComment, /Merge-koeen fortsaetter/);
+  const gate = proof.indexOf('name: Verify affected cron check-ins');
+  const live = proof.indexOf('name: Comment cron proof verdict on merged PR');
   assert.ok(gate > 0 && gate < live);
-  assert.match(workflow.slice(gate, live), /SUPABASE_SERVICE_KEY: \$\{\{ secrets\.SUPABASE_SERVICE_KEY \}\}/);
-  assert.match(workflow.slice(live), /CRON_STATE: \$\{\{ needs\.cron-proof\.outputs\.state \}\}[\s\S]*?"\$CRON" == "success" && "\$CRON_STATE" == "verified"/);
-  assert.match(workflow, /name: Cron check-ins deferred/);
+  assert.match(proof.slice(gate, live), /SUPABASE_SERVICE_KEY: \$\{\{ secrets\.SUPABASE_SERVICE_KEY \}\}/);
+  assert.match(proof.slice(live), /CRON_STATE: \$\{\{ steps\.crons\.outputs\.state \}\}[\s\S]*?"\$CRON_OUTCOME" == "success" && "\$CRON_STATE" == "verified"/);
+  assert.match(proof, /name: Cron check-ins deferred/);
   const ci = readFileSync(new URL('../../.github/workflows/ci.yml', import.meta.url), 'utf8');
   assert.match(ci, /node --test scripts\/ci\/cron-deploy-verification\.test\.mjs scripts\/ci\/deploy-verification-state\.test\.mjs/);
 });
@@ -417,27 +424,31 @@ test('polling logs the waiting summary once per change and never changes the ver
 
 test('#6487: cron proof starts right after smoke and its step timeout covers the latest short-cadence deadline', () => {
   const workflow = readFileSync(new URL('../../.github/workflows/deploy-verify.yml', import.meta.url), 'utf8');
-  const names = [...workflow.matchAll(/^ {6}- name: (.+?)\s*$/gm)].map(match => match[1]);
+  const proof = readFileSync(new URL('../../.github/workflows/cron-proof.yml', import.meta.url), 'utf8');
+  const stepNames = text => [...text.matchAll(/^ {6}- name: (.+?)\s*$/gm)].map(match => match[1]);
+  const names = stepNames(workflow);
   // The first heartbeat snapshot is never proof, so the cron step must start
-  // soon after the boundary (READY + drain). #6859: the proof is its own job
-  // (needs: release). Only the bounded smoke (<= 55 s), PR comments, failure
-  // markers and a light job start (shallow checkout, node, a latency note) may
-  // sit between the deployment wait and the cron proof.
+  // soon after the boundary (READY + drain). #7582 del 2: the proof is its own
+  // workflow (cron-proof.yml), dispatched right after the bounded smoke
+  // (<= 55 s), before any PR comment. The proof job itself starts light:
+  // input validation, shallow checkout, node, a latency note.
   const from = names.indexOf('Deployment still pending');
-  const cron = names.indexOf('Verify affected cron check-ins');
-  assert.deepEqual(names.slice(from + 1, cron), ['Smoke-test prod', 'Comment release verified, cron proof running',
-    'Failed target vercel', 'Failed target railway', 'Failed target smoke', 'Comment pending on merged PR', 'Comment failure on merged PR',
-    'Checkout target SHA (shallow)', 'Node 24', 'Cron proof start latency']);
-  const cronJob = workflow.slice(workflow.indexOf('\n  cron-proof:'), workflow.indexOf('\n  release-checks:'));
-  assert.match(cronJob, /\n {4}needs: release\r?\n/);
-  assert.doesNotMatch(cronJob, /fetch-depth|npm (?:ci|install)/);
-  assert.deepEqual(names.slice(cron + 1, cron + 3), ['Cron check-ins verified', 'Cron check-ins deferred']);
+  assert.deepEqual(names.slice(from + 1, from + 3), ['Smoke-test prod', 'Start cron proof']);
+  assert.ok(!names.includes('Verify affected cron check-ins'), 'the cron proof must not run inside Deploy verify');
+  assert.doesNotMatch(workflow, /\n {2}cron-proof:/);
+  const proofNames = stepNames(proof);
+  const cron = proofNames.indexOf('Verify affected cron check-ins');
+  assert.deepEqual(proofNames.slice(0, cron), ['Validate inputs', 'Checkout target SHA (shallow)', 'Node 24', 'Cron proof start latency']);
+  assert.match(proof, /^on:\r?\n {2}workflow_dispatch:/m);
+  assert.doesNotMatch(proof, /fetch-depth|npm (?:ci|install)/);
+  assert.match(proof, /\n {4}name: Cron proof \(non-blocking\)\r?\n/);
+  assert.deepEqual(proofNames.slice(cron + 1, cron + 3), ['Cron check-ins verified', 'Cron check-ins deferred']);
   const units = { minute: 60, hour: 3600, day: 86400 };
   const latest = Math.max(...ALL_CRON_MONITORS.map(([, config]) => config.schedule.value * units[config.schedule.unit])
     .map((cadence, index) => cadence <= SHORT_CADENCE_SECONDS ? cadence + (ALL_CRON_MONITORS[index][1].checkinMargin ?? 0) * 60 : 0));
   const drain = railwayDrainSeconds();
   assert.ok(drain > 55, 'smoke must fit inside the Railway drain window');
-  const step = workflow.slice(workflow.indexOf('- name: Verify affected cron check-ins'), workflow.indexOf('- name: Cron check-ins verified'));
+  const step = proof.slice(proof.indexOf('- name: Verify affected cron check-ins'), proof.indexOf('- name: Cron check-ins verified'));
   const minutes = Number(step.match(/timeout-minutes: (\d+)/)[1]);
   const needed = (drain + latest + MAX_COHORT_SHIFT_SECONDS) / 60;
   assert.ok(minutes >= needed + 1 && minutes <= needed + 5, `cron step timeout ${minutes} min vs latest short deadline ${needed} min`);
