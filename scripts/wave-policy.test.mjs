@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { acquireWave, releaseWave, checkCapacity, validateTracks, handleHook, updateWave, withIdleWaveLock, withWaveStateLock, stopWaveWatch,
   ownershipPrefix, ownershipOverlaps, activeTracks, enqueueTracks, intakeTracks, finishTracks, readTracksFile, assertMergeAllowed, guardedMerge,
   flattenPrFilePages, findOwnershipConflicts, MAX_PENDING_TRACKS, assertCompatibleWithActive, sharedTouchPlan, trackTouches,
-  requiredModel, designGateHits, assertDesignGate } from './wave-policy.mjs';
+  requiredModel, designGateHits, assertDesignGate, broadSharedDirectory } from './wave-policy.mjs';
 import { assertWaveOwnership } from './wave-ownership.mjs';
 import { assertLaneCount, currentHost, hostLaneCap, readWaveCapacity } from './wave-capacity.mjs';
 import { normalizeBootId } from './wave-boot-identity.mjs';
@@ -22,6 +22,53 @@ process.env.CZ_BUILD_STOP_LOG = path.join(path.dirname(BUILD_STOP_OFF), 'brand-l
 
 const now = 1790000000000;
 const track = (n) => ({ issue: n, branch: `codex/${n}-fixture`, ownership: [`fixtures/${n}.txt`], tier: 'TARGETED' });
+
+test('#6335: broad shared directories are rejected in ownership and touches', () => {
+  for (const raw of ['backend/lib', 'backend/routes', 'frontend/src/pages', 'BACKEND\\LIB\\', 'backend/lib///', 'backend/lib/**', 'backend/li*', 'frontend/src/page*', 'backend', 'frontend/src/*']) {
+    for (const field of ['ownership', 'touches']) {
+      assert.throws(() => validateTracks([{ ...track(1), [field]: [raw] }], { readDiff: () => [] }), /too broad/, `${field}: ${raw}`);
+    }
+  }
+});
+
+test('#6335: branch diff suggests only matching concrete paths and git failures stay rejected', () => {
+  for (const field of ['ownership', 'touches']) {
+    const broad = { ...track(1), [field]: ['backend/lib'] };
+    assert.throws(() => validateTracks([broad], { readDiff: branch => {
+      assert.equal(branch, broad.branch);
+      return ['backend/lib/engine/v4/fixture.ts', 'backend/lib/trainingRunResponse.ts', 'scripts/other.mjs'];
+    } }), error => {
+      assert.match(error.message, /too broad/);
+      assert.match(error.message, /branch diff: \["backend\/lib\/engine\/v4\/fixture.ts","backend\/lib\/trainingRunResponse.ts"\]/);
+      assert.doesNotMatch(error.message, /scripts\/other/);
+      return true;
+    });
+    for (const readDiff of [() => { throw Error('git failed'); }, () => null, () => []]) {
+      assert.throws(() => validateTracks([broad], { readDiff }), /too broad/);
+    }
+    assert.throws(() => validateTracks([broad], { readDiff: () => { throw Error('git failed'); } }), /diff unavailable; declaration remains rejected/);
+  }
+});
+
+test('#6335: workflow declaration mirror rejects the same broad paths', () => {
+  const src = readFileSync(new URL('../.claude/workflows/wave.js', import.meta.url), 'utf8');
+  const start = src.indexOf('const BROAD_SHARED_DIRECTORIES =');
+  const end = src.indexOf('// End #6335 declaration mirror.');
+  const normalizeStart = src.indexOf('function normalizeTrack(');
+  const normalizeEnd = src.indexOf('// #6344: planlinjen');
+  const mirror = new Function(`${src.slice(start, end)}; ${src.slice(normalizeStart, normalizeEnd)}; return { broadSharedDirectory, assertNarrowDeclarations, normalizeTrack };`)();
+  for (const raw of ['backend/lib', 'BACKEND\\ROUTES\\', 'frontend/src/pages/**', 'backend/li*', 'frontend/src/*', 'backend/lib/engine/v4/', 'backend/lib/trainingRunResponse.ts', 'frontend/src/pages/Feature/', 'scripts/wave-*.mjs']) {
+    assert.equal(mirror.broadSharedDirectory(raw), broadSharedDirectory(raw), raw);
+    for (const field of ['ownership', 'touches']) {
+      const run = () => mirror.assertNarrowDeclarations({ ...track(1), [field]: [raw] });
+      if (broadSharedDirectory(raw)) {
+        assert.throws(run, /too broad/);
+        assert.throws(() => mirror.normalizeTrack({ ...track(1), [field]: [raw] }, 0), /too broad/);
+      }
+      else assert.doesNotThrow(run);
+    }
+  }
+});
 const request = (runtime = 'codex') => ({ runtime, owner: 'fixture-owner', pid: process.pid, now, tracks: [track(1)] });
 function fixture(t) {
   const dir = mkdtempSync(path.join(tmpdir(), 'cz-wave-policy-'));
@@ -358,6 +405,36 @@ function runningWave(t, extra = {}) {
   return { dir, file };
 }
 const prFiles = (...names) => names.map(filename => ({ filename }));
+
+test('#6335: admission refuses broad declarations before creating a marker in either runtime', async t => {
+  for (const runtime of ['codex', 'claude']) {
+    for (const field of ['ownership', 'touches']) {
+      const dir = fixture(t);
+      await assert.rejects(acquireWave(dir, { ...request(runtime), tracks: [{ ...track(1), [field]: ['backend/lib'] }] },
+        async () => { assert.fail('broad declaration reached PR lookup'); }), /too broad/);
+      assert.equal(existsSync(path.join(dir, 'wave-active.json')), false);
+    }
+  }
+});
+
+test('#6335: narrow engine scope permits independent admission, enqueue and receipt merge', t => {
+  const engine = trackWith(1, ['backend/lib/engine/v4/', 'backend/routes/raceFixture.ts']);
+  const receipt = trackWith(2, ['backend/lib/trainingRunResponse.ts']);
+  assert.doesNotThrow(() => validateTracks([engine, receipt]));
+  const { dir, file } = runningWave(t, { tracks: [engine] });
+  const before = readFileSync(file, 'utf8');
+  for (const field of ['ownership', 'touches']) {
+    assert.throws(() => enqueueTracks(dir, 'rolling-wave', [{ ...receipt, [field]: ['backend/lib'] }], ownSnapshot), /too broad/);
+    assert.equal(readFileSync(file, 'utf8'), before, 'rejection must not narrow the active lock');
+  }
+  assert.equal(assertMergeAllowed(dir, 42, () => prFiles('backend/lib/trainingRunResponse.ts')).allowed, true);
+  assert.throws(() => assertMergeAllowed(dir, 42, () => prFiles('backend/lib/engine/v4/fixture.ts')), /overlaps/);
+  enqueueTracks(dir, 'rolling-wave', [receipt], ownSnapshot);
+  assert.throws(() => assertMergeAllowed(dir, 42, () => prFiles('backend/lib/trainingRunResponse.ts')), /overlaps/);
+  const legacy = runningWave(t, { tracks: [trackWith(1, ['backend/lib'])] });
+  assert.throws(() => assertMergeAllowed(legacy.dir, 42, () => prFiles('backend/lib/trainingRunResponse.ts')), /overlaps/,
+    'a pre-existing broad marker must keep its lock until explicitly corrected');
+});
 const HEAD = 'a'.repeat(40);
 function mergeIo(overrides = {}) {
   const calls = [];
@@ -789,7 +866,7 @@ test('#5997: admission matrix - ownership vs ownership and ownership vs touches 
   // own vs other's touches: blocks in both orders, and for directories/globs
   assert.throws(() => validateTracks([trackWith(1, [shared]), withTouches(2, ['b/x.mjs'], [shared])]), /touches/);
   assert.throws(() => validateTracks([withTouches(2, ['b/x.mjs'], [shared]), trackWith(1, [shared])]), /touches/);
-  assert.throws(() => validateTracks([trackWith(1, ['frontend/src/pages']), withTouches(2, ['b/x.mjs'], [shared])]), /touches/);
+  assert.throws(() => validateTracks([trackWith(1, ['frontend/src/pages']), withTouches(2, ['b/x.mjs'], [shared])]), /too broad/);
   assert.throws(() => validateTracks([trackWith(1, ['frontend/src/pages/Sh*']), withTouches(2, ['b/x.mjs'], [shared])]), /touches/);
   // touches vs touches: allowed
   const a = withTouches(1, ['a/x.mjs'], [shared]), b = withTouches(2, ['b/x.mjs'], [shared]);
@@ -864,6 +941,7 @@ test('#5997: wave.js mirror of sharedTouchPlan gives the same plan as wave-polic
     [trackWith(1, ['a/x.mjs']), trackWith(2, ['b/x.mjs'])],
     [withTouches(3, ['a/1.mjs', 'a/2.mjs'], [shared]), withTouches(7, ['b/1.mjs'], [shared]), withTouches(9, ['c/1.mjs'], ['c/only.mjs']), withTouches(5, ['d/1.mjs'], ['Frontend\\src\\pages'])],
     [withTouches(1, ['a/x'], ['scripts/wave-*.mjs']), withTouches(2, ['b/x'], ['scripts/wave-policy.mjs']), withTouches(4, ['c/x'], ['scripts/wavx.mjs'])],
+    [withTouches(1, ['a/x'], ['fixtures/shared///']), withTouches(2, ['b/x'], ['fixtures/shared/file.mjs'])],
   ];
   for (const set of sets) assert.deepEqual(mirror(set), sharedTouchPlan(set));
 });
