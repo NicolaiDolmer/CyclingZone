@@ -90,6 +90,23 @@ test("RoadmapPage nulstiller lastSeen ved besøg, også med kendte fejl i regnes
   assert.match(source, /writeLastSeenRoadmap\(latestRoadmapCreatedAt\(all\)\)/);
 });
 
-test("RoadmapPage's item-query bruger den delte kolonneliste (#5673)", () => {
-  assert.match(source, /\.select\(ROADMAP_ITEM_COLUMNS\)/);
+test("RoadmapPage's item-query bruger den delte kolonneliste + issue_ref (#5673, #7666)", () => {
+  assert.match(source, /const ITEM_COLUMNS = `\$\{ROADMAP_ITEM_COLUMNS\}, issue_ref`/);
+  assert.match(source, /from\("roadmap_items"\)\.select\(ITEM_COLUMNS\)/);
+});
+
+// #7666: de nye tidslinje-kolonner findes først når migrationen er applied.
+test("RoadmapPage falder tilbage til kendte fejl uden tidslinje-kolonner (#7666)", () => {
+  assert.match(source, /KNOWN_ISSUE_COLUMNS = `\$\{KNOWN_ISSUE_BASE_COLUMNS\}, confirmed_at, fixing_at`/);
+  assert.match(source, /result\.error \? query\(KNOWN_ISSUE_BASE_COLUMNS\) : result/);
+});
+
+test("RoadmapPage henter patch notes først når Done åbnes (#7666)", () => {
+  assert.match(source, /if \(tab !== "done" \|\| patchIndex\) return;/);
+  assert.match(source, /patchNotesByIssue\(data\)/);
+});
+
+test("RoadmapPage søger på tværs af faner og gemmer fanerne mens der søges (#6203)", () => {
+  assert.match(source, /searchRoadmap\(query, items, issues\)/);
+  assert.match(source, /<div className=\{searching \? "hidden" : undefined\}>/);
 });

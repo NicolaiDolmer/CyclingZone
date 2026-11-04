@@ -4,7 +4,8 @@
 // uden egen hentning; al afledt logik bor i lib/roadmapModel.ts.
 //
 // Uændrede beslutninger: spillere ser kun deres egen stemme (11/6, #1599),
-// ingen datoer på planen, EN først og DA under. Admin-kontrollerne (markér
+// EN først og DA under. #7666 (ejer 4/11): planen står nu pr. horisont med
+// datoer på ugerne, og en søgning går på tværs af alle fem faner (#6203). Admin-kontrollerne (markér
 // bygget, opret-formular) er flyttet til /admin/growth?tab=roadmap (spor 3),
 // så den offentlige side ikke bærer admin-kode og ikke kalder is_admin().
 //
@@ -29,22 +30,30 @@ import {
 import {
   parseTab,
   partitionItems,
+  planRanks,
   isRated,
   countUnrated,
   splitIssues,
   buildDoneList,
+  splitRecentDone,
   latestIssueUpdates,
+  patchNotesByIssue,
+  searchRoadmap,
+  normalizeSearch,
+  SEARCH_MIN_CHARS,
 } from "../lib/roadmapModel.ts";
+import { loadPatches } from "../lib/patchNotes.js";
 import {
   isRoadmapItemNew, latestRoadmapCreatedAt, readLastSeenRoadmap, writeLastSeenRoadmap,
 } from "../lib/roadmapUnread.ts"; // #5673: gul prik ved nye punkter
-import { PageHeader, Checkbox, Tabs, TabList, Tab, TabPanel } from "../components/ui";
+import { PageHeader, Checkbox, Input, Tabs, TabList, Tab, TabPanel } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import PlanTab from "../components/roadmap/PlanTab.tsx";
 import BetaTab from "../components/roadmap/BetaTab.tsx";
 import VoteTab from "../components/roadmap/VoteTab.tsx";
 import KnownIssuesTab from "../components/roadmap/KnownIssuesTab.tsx";
 import DoneTab from "../components/roadmap/DoneTab.tsx";
+import SearchResults from "../components/roadmap/SearchResults.tsx";
 
 // Feedback-fladen (samme modal som sidebarens "Kontakt") til Known issues'
 // tomme tilstand. Lazy: de fleste besøg åbner den aldrig.
@@ -52,7 +61,18 @@ const FeedbackModal = lazyWithRetry(() => import("../components/FeedbackModal.js
 
 const API = import.meta.env.VITE_API_URL;
 export const ONLY_UNRATED_KEY = "cz_roadmap_only_unrated";
-const KNOWN_ISSUE_COLUMNS = "id, area, status, title_en, title_da, sort_order, created_at, updated_at, closed_at";
+// #7666: issue_ref kobler et færdigt punkt til sin patch note.
+const ITEM_COLUMNS = `${ROADMAP_ITEM_COLUMNS}, issue_ref`;
+const KNOWN_ISSUE_BASE_COLUMNS = "id, area, status, title_en, title_da, sort_order, created_at, updated_at, closed_at, issue_ref";
+// confirmed_at/fixing_at kommer med #7666-migrationen. Indtil den er applied,
+// fejler querien med dem, og så hentes uden (tidslinjen viser trinnet uden dato).
+const KNOWN_ISSUE_COLUMNS = `${KNOWN_ISSUE_BASE_COLUMNS}, confirmed_at, fixing_at`;
+
+async function fetchKnownIssues() {
+  const query = (columns) => supabase.from("known_issues").select(columns).eq("published", true).order("sort_order");
+  const result = await query(KNOWN_ISSUE_COLUMNS);
+  return result.error ? query(KNOWN_ISSUE_BASE_COLUMNS) : result;
+}
 
 function readOnlyUnrated() {
   try {
@@ -111,6 +131,21 @@ export default function RoadmapPage() {
   const [reports, setReports] = useState(() => new Set());
   const [reportError, setReportError] = useState(() => new Set());
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  // #7666: patch notes pr. GitHub-issue. Hentes først når Done åbnes (filen er
+  // stor og caches af CDN'en); null = ikke hentet, tomt Map = fejlede.
+  const [patchIndex, setPatchIndex] = useState(null);
+
+  useEffect(() => {
+    if (tab !== "done" || patchIndex) return;
+    let cancelled = false;
+    loadPatches()
+      .then((data) => { if (!cancelled) setPatchIndex(patchNotesByIssue(data)); })
+      .catch(() => { if (!cancelled) setPatchIndex(new Map()); });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, patchIndex]);
 
   useEffect(() => {
     let cancelled = false;
@@ -118,10 +153,9 @@ export default function RoadmapPage() {
       // Fejl på known_issues behandles som tom liste, så en manglende tabel
       // aldrig vælter Plan/Vote.
       const [{ data: itemData }, { data: issueData }, { data: updateData }, { data: auth }] = await Promise.all([
-        supabase.from("roadmap_items").select(ROADMAP_ITEM_COLUMNS)
+        supabase.from("roadmap_items").select(ITEM_COLUMNS)
           .eq("approved", true).in("status", ["active", "planned", "in_progress", "shipped"]).order("sort_order"),
-        supabase.from("known_issues").select(KNOWN_ISSUE_COLUMNS)
-          .eq("published", true).order("sort_order"),
+        fetchKnownIssues(),
         supabase.from("known_issue_updates")
           .select("id, issue_id, body_en, body_da, created_at").order("created_at", { ascending: false }),
         supabase.auth.getUser(),
@@ -185,12 +219,29 @@ export default function RoadmapPage() {
   const issueParts = useMemo(() => splitIssues(issues), [issues]);
   const updatesByIssue = useMemo(() => latestIssueUpdates(updates), [updates]);
   const doneEntries = useMemo(() => buildDoneList(parts.shipped, issues, Infinity), [parts.shipped, issues]);
+  const recentDoneCount = useMemo(() => splitRecentDone(doneEntries).recent.length, [doneEntries]);
   const counts = countUnrated(items ?? [], votes);
-  const rankById = useMemo(() => new Map(parts.plannedNext.map((it, i) => [it.id, i + 1])), [parts.plannedNext]);
+  const rankById = useMemo(() => planRanks(parts.planGroups), [parts.planGroups]);
+  const searching = normalizeSearch(query).length >= SEARCH_MIN_CHARS;
+  const hits = useMemo(
+    () => (searching ? searchRoadmap(query, items, issues) : []),
+    [searching, query, items, issues],
+  );
 
   const visible = (list) => (onlyUnrated
     ? list.filter((it) => ratedThisVisit.has(it.id) || !isRated(it, votes.get(it.id)))
     : list);
+  // Filteret rammer kun planlagte punkter; det der er i gang, har ingen skala.
+  const planGroups = parts.planGroups
+    .map((g) => ({ ...g, items: g.items.filter((it) => it.status !== "planned" || visible([it]).length > 0) }))
+    .filter((g) => g.items.length > 0);
+  const decidedTotal = parts.planGroups.reduce((n, g) => n + g.items.length, 0);
+  const plannedTotal = parts.planGroups.reduce((n, g) => n + g.items.filter((it) => it.status === "planned").length, 0);
+
+  function openFromSearch(next) {
+    setQuery("");
+    setTab(next);
+  }
   const isNew = (item) => isRoadmapItemNew(item.created_at, lastSeenBeforeVisit);
 
   function setOnlyUnrated(value) {
@@ -291,22 +342,40 @@ export default function RoadmapPage() {
         </p>
       )}
 
+      {/* #6203: én søgning på tværs af fanerne, som på Patch notes. Fanerne
+          står skjult (ikke afmonteret) mens der søges, så deres tilstand bevares. */}
+      <div className="mb-4">
+        <Input
+          type="search"
+          size="sm"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label={t("search.ariaLabel")}
+          placeholder={t("search.placeholder")}
+          className="w-full sm:max-w-sm"
+        />
+      </div>
+
+      {searching && (
+        <SearchResults query={query} hits={hits} onOpen={openFromSearch} onClear={() => setQuery("")} />
+      )}
+
+      <div className={searching ? "hidden" : undefined}>
       <Tabs value={tab} onChange={setTab}>
         <TabList label={t("tabs.label")} className="mb-4">
           <Tab value="plan"><TabLabel label={t("tabs.plan")} count={canVote ? counts.plan : 0} /></Tab>
           <Tab value="beta"><TabLabel label={t("tabs.beta")} count={parts.inBeta.length} /></Tab>
           <Tab value="vote"><TabLabel label={t("tabs.vote")} count={canVote ? counts.vote : 0} /></Tab>
           <Tab value="issues"><TabLabel label={t("tabs.issues")} count={issueParts.confirmed.length} /></Tab>
-          <Tab value="done"><TabLabel label={t("tabs.done")} count={0} /></Tab>
+          <Tab value="done"><TabLabel label={t("tabs.done")} count={recentDoneCount} /></Tab>
         </TabList>
 
         <TabPanel value="plan">
           <PlanTab
             loading={loading}
-            inProgress={parts.inProgress}
-            plannedNext={visible(parts.plannedNext)}
-            plannedLater={visible(parts.plannedLater)}
-            plannedTotal={parts.plannedNext.length + parts.plannedLater.length}
+            groups={planGroups}
+            decidedTotal={decidedTotal}
+            plannedTotal={plannedTotal}
             rankById={rankById}
             onlyUnrated={onlyUnrated}
             votes={votes}
@@ -359,9 +428,10 @@ export default function RoadmapPage() {
           />
         </TabPanel>
         <TabPanel value="done">
-          <DoneTab loading={loading} entries={doneEntries} onGoPlan={() => setTab("plan")} />
+          <DoneTab loading={loading} entries={doneEntries} patchIndex={patchIndex} onGoPlan={() => setTab("plan")} />
         </TabPanel>
       </Tabs>
+      </div>
 
       {feedbackOpen && (
         <Suspense fallback={null}>
