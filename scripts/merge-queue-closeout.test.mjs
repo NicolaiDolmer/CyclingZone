@@ -8,6 +8,8 @@ import {
 
 const SHA_A = 'a'.repeat(40);
 const SHA_B = 'b'.repeat(40);
+// Fast ur i alle tests (AGENTS.md: deterministiske tests, intet vaeg-ur).
+const NOW = new Date('2026-11-04T12:00:00Z');
 
 // Fake gh med tilstand: kommentarer og labels pr. issue. Logger hvert kald.
 function fakeGh({ prs = {}, comments = {}, labels = {}, fail = {} } = {}) {
@@ -63,6 +65,7 @@ test('parseIssueRefs ignores template help text, code, bare mentions and the PR 
     'Refs #',
     '<!-- Brug `Refs #N` ikke `Closes #N`; fx Closes #999 -->',
     '```\nCloses #998\n```',
+    '~~~text\nCloses #123\n~~~',
     'Se `Closes #997` og #996 (bare mention).',
     'Prefs #995 og xrefs #994',
     'Refs #7601',
@@ -70,6 +73,15 @@ test('parseIssueRefs ignores template help text, code, bare mentions and the PR 
   ].join('\n');
   assert.deepEqual(parseIssueRefs(body, 7601), [{ issue: 7587, kind: 'refs' }]);
   assert.deepEqual(parseIssueRefs(null), []);
+});
+
+test('fenced examples in a PR body never trigger issue mutations', () => {
+  const body = 'Refs #1\n~~~text\nCloses #123\n~~~\n```\nCloses #124\n```';
+  const { gh, calls } = fakeGh({ prs: { 100: { title: 't', body } }, labels: { 123: ['claude:todo'], 124: ['claude:todo'] } });
+  const res = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh, now: NOW });
+  assert.deepEqual(res.comments, [{ issue: 1, pr: 100 }]);
+  assert.deepEqual(res.flips, []);
+  assert.ok(calls.every((a) => !a.includes('123') && !a.includes('124') && !String(a[1]).includes('/123/') && !String(a[1]).includes('/124/')));
 });
 
 test('close-out comments on every referenced issue and flips only Closes issues from claude:todo', () => {
@@ -95,9 +107,9 @@ test('close-out is idempotent: a rerun writes no duplicate comments or labels', 
   const setup = { prs: { 100: { title: 't', body: 'Closes #2\nRefs #1' } }, labels: { 2: ['claude:todo'] } };
   const first = fakeGh(setup);
   const train = [{ number: 100, sha: SHA_A }];
-  runCloseOut({ train, gh: first.gh });
+  runCloseOut({ train, gh: first.gh, now: NOW });
   const second = fakeGh({ ...setup, comments: first.state.comments, labels: first.state.labels });
-  const rerun = runCloseOut({ train, gh: second.gh });
+  const rerun = runCloseOut({ train, gh: second.gh, now: NOW });
   assert.deepEqual(writes(second.calls), []);
   assert.deepEqual(rerun.comments, []);
   assert.deepEqual(rerun.skippedComments, [{ issue: 2, pr: 100 }, { issue: 1, pr: 100 }]);
@@ -108,7 +120,7 @@ test('close-out is idempotent: a rerun writes no duplicate comments or labels', 
 test('dry-run reads but never writes', () => {
   const { gh, calls } = fakeGh({ prs: { 100: { title: 't', body: 'Closes #2\nRefs #1' } }, labels: { 2: ['claude:todo'] } });
   const lines = [];
-  const res = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh, dryRun: true, log: (l) => lines.push(l) });
+  const res = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh, dryRun: true, log: (l) => lines.push(l), now: NOW });
   assert.deepEqual(writes(calls), []);
   assert.deepEqual(res.comments, []);
   assert.deepEqual(res.flips, []);
@@ -119,37 +131,37 @@ test('dry-run reads but never writes', () => {
 
 test('a preview without merge SHA never writes, even outside dry-run, and gives no NOW line', () => {
   const { gh, calls } = fakeGh({ prs: { 100: { title: 't', body: 'Closes #2' } }, labels: { 2: ['claude:todo'] } });
-  const res = runCloseOut({ train: [{ number: 100, sha: null }], gh });
+  const res = runCloseOut({ train: [{ number: 100, sha: null }], gh, now: NOW });
   assert.deepEqual(writes(calls), []);
   assert.equal(res.nowLine, null);
 });
 
 test('close-out is fail-soft: gh failures become warnings and unreadable comments are never written', () => {
   const unreadable = fakeGh({ prs: { 100: { title: 't', body: 'Closes #2' } }, labels: { 2: ['claude:todo'] }, fail: { 'comments 2': true } });
-  const res = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: unreadable.gh });
+  const res = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: unreadable.gh, now: NOW });
   assert.equal(unreadable.calls.filter((a) => a[1] === 'comment').length, 0, 'unknown comments = no write (no duplicate risk)');
   assert.deepEqual(res.flips, [2], 'label flip is independent of the comment read');
   assert.match(res.errors.join('\n'), /kommentarer kunne ikke laeses/);
 
   const noBody = fakeGh({ fail: { 'pr view': true } });
-  const res2 = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: noBody.gh });
+  const res2 = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: noBody.gh, now: NOW });
   assert.deepEqual(writes(noBody.calls), []);
   assert.match(res2.errors.join('\n'), /PR #100: body kunne ikke laeses/);
 
   const writeFails = fakeGh({ prs: { 100: { title: 't', body: 'Closes #2' } }, labels: { 2: ['claude:todo'] }, fail: { 'issue comment': true, 'issue edit': true } });
-  const res3 = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: writeFails.gh });
+  const res3 = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: writeFails.gh, now: NOW });
   assert.equal(res3.errors.length, 2);
   assert.deepEqual(res3.comments, []);
   assert.deepEqual(res3.flips, []);
 
   const labelsFail = fakeGh({ prs: { 100: { title: 't', body: 'Closes #2' } }, fail: { 'labels 2': true } });
-  const res4 = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: labelsFail.gh });
+  const res4 = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: labelsFail.gh, now: NOW });
   assert.equal(labelsFail.calls.filter((a) => a[1] === 'edit').length, 0);
   assert.match(res4.errors.join('\n'), /labels kunne ikke laeses; intet flip/);
 
-  const throwing = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: () => { throw new Error('boom'); } });
+  const throwing = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: () => { throw new Error('boom'); }, now: NOW });
   assert.match(throwing.errors.join('\n'), /boom/);
-  assert.deepEqual(runCloseOut({ train: [{ number: 100, sha: SHA_A }] }).errors, ['ingen gh-runner']);
+  assert.deepEqual(runCloseOut({ train: [{ number: 100, sha: SHA_A }], now: NOW }).errors, ['ingen gh-runner']);
 });
 
 test('comment and NOW line state the verification honestly and use no em-dash', () => {
@@ -169,11 +181,11 @@ test('train validation and CLI exit codes', () => {
   assert.equal(validTrain([{ number: 1, sha: 'nope' }]), false);
   assert.equal(validTrain([]), false);
   const out = [];
-  assert.equal(main(['run', '--train', 'not json'], { gh: () => ({ status: 1, stdout: '' }), out: (l) => out.push(l) }), 1);
-  assert.equal(main(['help'], { out: (l) => out.push(l) }), 1);
+  assert.equal(main(['run', '--train', 'not json'], { gh: () => ({ status: 1, stdout: '' }), out: (l) => out.push(l), now: NOW }), 1);
+  assert.equal(main(['help'], { out: (l) => out.push(l), now: NOW }), 1);
   const ok = [];
   const { gh, calls } = fakeGh({ prs: { 5: { title: 't', body: 'Refs #9' } } });
-  assert.equal(main(['run', '--train', JSON.stringify([{ number: 5, sha: SHA_A }]), '--repo', 'o/r', '--no-deploy'], { gh, out: (l) => ok.push(l) }), 0);
+  assert.equal(main(['run', '--train', JSON.stringify([{ number: 5, sha: SHA_A }]), '--repo', 'o/r', '--no-deploy'], { gh, out: (l) => ok.push(l), now: NOW }), 0);
   assert.ok(calls.every((a) => a[0] === 'api' || a.includes('o/r')), 'every gh call targets --repo');
   assert.ok(ok.some((l) => l.startsWith('NOW-LINJE') && l.includes('toget deployer ikke')));
   assert.ok(ok.at(-1).includes('1 kommentar(er)'));

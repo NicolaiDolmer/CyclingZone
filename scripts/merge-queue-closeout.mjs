@@ -48,6 +48,7 @@ export function stripNonProse(body) {
   return String(body ?? '')
     .replace(/<!--[\s\S]*?-->/g, ' ')
     .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/~~~[\s\S]*?~~~/g, ' ')
     .replace(/`[^`\n]*`/g, ' ');
 }
 
@@ -205,14 +206,14 @@ function argValue(argv, name) {
   return i >= 0 ? argv[i + 1] : undefined;
 }
 
-export function main(argv = process.argv.slice(2), { gh = defaultGh, out = (l) => process.stdout.write(`${l}\n`) } = {}) {
+export function main(argv = process.argv.slice(2), { gh = defaultGh, out = (l) => process.stdout.write(`${l}\n`), now = new Date() } = {}) {
   if (argv[0] !== 'run') { out('Brug: node scripts/merge-queue-closeout.mjs run --train <json> [--repo owner/name] [--dry-run]'); return 1; }
   const train = parseJson(argValue(argv, '--train') ?? '');
   if (!validTrain(train)) { out('close-out: ugyldigt --train (forventer [{number, sha}]).'); return 1; }
   const repo = argValue(argv, '--repo') ?? DEFAULT_REPO;
   const dryRun = argv.includes('--dry-run');
   const deployVerified = !argv.includes('--no-deploy');
-  const result = runCloseOut({ train, repo, dryRun, deployVerified, gh, log: out });
+  const result = runCloseOut({ train, repo, dryRun, deployVerified, gh, now, log: out });
   for (const err of result.errors) out(`close-out ADVARSEL: ${err}`);
   if (result.nowLine) out(`NOW-LINJE (commit selv i docs/NOW.md ved close-out): ${result.nowLine}`);
   out(`close-out ${dryRun ? '[dry-run] ' : ''}faerdig: ${result.comments.length} kommentar(er), ${result.skippedComments.length} fandtes allerede, ${result.flips.length} flip, ${result.errors.length} advarsel(er).`);
