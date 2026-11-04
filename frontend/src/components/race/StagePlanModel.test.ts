@@ -187,6 +187,31 @@ test("#7383: punktet paa nedkoerslens anden halvdel: foden for holdarbejde, fina
   assert.deepEqual(stagePlanSwitchNotes(TEMPO_LAST_10, route, features), [{ kind: "feature", leg: 1, feature: "descent", place: "start" }]);
 });
 
+// #7625: nedkoerselsfinalen er et helt segment, men vejen er ofte flad paa den sidste del.
+function fallingThenFlat(dropEndKm: number) {
+  const h: number[] = [];
+  for (let km = 0; km <= 150; km++) h.push(km <= 135 ? 600 : 600 - Math.min(km, dropEndKm) * 0 - Math.min(km - 135, dropEndKm - 135) * 40);
+  return { v: 1, step_km: 1, h };
+}
+
+test("#7625: flad udkoersel efter en kort nedkoersel giver ingen nedkoerselsnote", () => {
+  const { route, features } = noteRoute({ distance_km: 150, finale_type: "descent", climbs: [{ name: "A", crest_km: 135, length_km: 12, category: "1" }], elevation_profile: fallingThenFlat(139) });
+  assert.equal(features.find((f) => f.kind === "descent")?.down_to_km, 139);
+  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, route, features), []);
+  assert.deepEqual(stagePlanSwitchNotes(TEMPO_LAST_10, route, features), []);
+});
+
+test("#7625: vejen falder stadig 10 km fra maal: noten staar som foer", () => {
+  const { route, features } = noteRoute({ distance_km: 150, finale_type: "descent", climbs: [{ name: "A", crest_km: 135, length_km: 12, category: "1" }], elevation_profile: fallingThenFlat(150) });
+  assert.deepEqual(stagePlanSwitchNotes(TEMPO_LAST_10, route, features), [{ kind: "feature", leg: 1, feature: "descent", place: "start" }]);
+});
+
+test("#7625: uden hoejdeprofil regnes hele finalen som nedkoersel (uaendret)", () => {
+  const { route, features } = noteRoute({ distance_km: 150, finale_type: "descent", climbs: [{ name: "A", crest_km: 135, length_km: 12, category: "1" }] });
+  assert.equal(features.find((f) => f.kind === "descent")?.down_to_km, undefined);
+  assert.equal(stagePlanSwitchNotes(TEMPO_LAST_10, route, features).length, 1);
+});
+
 test("#7383 (Codex-review): overlappende stigning og sektor loeses som rutegeneratoren", () => {
   const { route, features } = noteRoute({ distance_km: 150, climbs: [{ name: "A", crest_km: 139, length_km: 9, category: "3" }], sectors: [{ name: "S", start_km: 134, length_km: 11 }] });
   assert.deepEqual(features.map((f) => [f.kind, f.from_km, f.to_km]), [["climb", 130, 139], ["sector", 139, 145]]);
