@@ -930,14 +930,12 @@ features:
     area: training
     title_en: Training on a race date weighs a full training day
     title_da: Træning på en løbsdato vejer et helt træningsdøgn
-    state: dormant
+    state: live
     flag: condition_v2_race_date_training_day
     ssot: docs/TRAINING_RULES.md
     epic: 6984
-    verified: 2026-11-03
-    decision: ejer-beslutning
-    decide_by: 2026-11-17
-    note: "#7536, ejer-valg 3/11 (løsning A). Oprettes off; kræver condition_model_v2. Ejeren tænder efter harness-tallene."
+    verified: 2026-11-04
+    note: "#7536, ejer-valg 3/11 (løsning A). Tændt 4/11 på ejerens \"Tænd nu\"; prod læst 4/11: condition_model_v2 og condition_v2_race_date_training_day begge on."
 
   - id: training-condition-per-date
     area: training
