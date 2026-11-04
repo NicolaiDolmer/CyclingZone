@@ -265,7 +265,7 @@ Den antagelse denne opgave startede med - "de øvrige ca. 92 er `backup_*`-snaps
 
 #### `rider_ownership_events` - Bevidst default-deny
 - **Grants:** kun `SELECT`.
-- **Skriv/læs:** `backend/lib/riderOwnershipAudit.js:77` (append-only audit-spor for ejerskifte).
+- **Skriv/læs:** `backend/lib/riderOwnershipAudit.ts:117` (append-only audit-spor for ejerskifte).
 - **Frontend:** ingen forekomst.
 
 #### `scout_sweep_runs` - Bevidst default-deny

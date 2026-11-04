@@ -12,7 +12,7 @@ import {
 } from "./marketUtils.js";
 import { fetchAtRiskCount } from "./squadRiskGuard.js";
 import { shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
-import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
+import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.ts";
 import { buildRiderValueSnapshot, updateDealWithValueSnapshot } from "./dealValueSnapshot.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";

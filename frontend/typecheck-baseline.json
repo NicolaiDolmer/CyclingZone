@@ -411,10 +411,6 @@
     "TS2339": 2,
     "TS2353": 1
   },
-  "../backend/lib/riderOwnershipAudit.js": {
-    "TS18046": 1,
-    "TS2339": 2
-  },
   "../backend/lib/riderProgression.js": {
     "TS2339": 5
   },
