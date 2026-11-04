@@ -65,7 +65,7 @@ import {
   mergedSharedCohorts,
 } from "./groups.ts";
 import type { FinaleGroupTrace, GroupMerge } from "./groups.ts";
-import { carrySplitsWithSourceAdvance, segmentSplitsFromEvents } from "./groups.ts"; // #6440
+import { carrySplitsWithSourceAdvance, isRetiredGroup, segmentSplitsFromEvents } from "./groups.ts"; // #6440, #7639
 import {
   GROUP_DRAFT_EXTRA_TUNING,
   GROUP_TEMPO_EFFORT_EXTRA_TUNING,
@@ -830,7 +830,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   for (const entrant of startlist) entrantsById[entrant.rider_id] = entrant;
   // #7003 (KUN s5_profiles_v3, slukket): etapeplanen langs ruten (lib/stagePlanEngine.ts). Uden plan: null, loopet uroert.
   const baseEntrantsById = entrantsById;
-  const stagePlan = isS5ProfilesV3OrLater(rulesRevision) ? createStagePlanRuntime(orders, route, baseEntrantsById) : null;
+  const stagePlan = isS5ProfilesV3OrLater(rulesRevision) ? createStagePlanRuntime(orders, route, baseEntrantsById, input.stage_plan_dropped_front_7635 === true ? { droppedFront7635: true } : {}) : null; // #7635 (slukket)
 
   const rngForFn = boundRngFor(seed);
   // #4885: feltets reference-CP pr. terraen — fart-modellens nulpunkt. Regnet
@@ -854,6 +854,10 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   // saa loebsfilmens gab-kurve har noget at tegne. Kun tidslinje-events.
   const pursuitSamples = isS5ProfilesV3OrLater(rulesRevision);
   const lastEmittedSeparation = new Map<string, { sep: number; chaseId: string }>();
+  // #7639 (KUN s5_profiles_v3): en udgaaet rytter forlader tidslinjen ved
+  // uheldet. Aeldre revisioner er frosne og beholder deres tidslinje uaendret.
+  const retiredLeaveTimeline = isS5ProfilesV3OrLater(rulesRevision);
+  const hiddenFromTimeline = (g: Pick<RaceGroup, "rider_ids">): boolean => retiredLeaveTimeline && isRetiredGroup(g, state.riders);
   let frontElapsedSeconds = 0;
 
   pushEvent(timeline, 0, "stage_start", {
@@ -1128,6 +1132,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       // #6748 (KUN s5_profiles_v2, slukket): udbrudsopfoelgningen (breakaway.ts).
       ...(isS5ProfilesV2OrLater(rulesRevision) ? { s5ProfilesV2: true as const } : {}),
       ...(queenStageGap7236On(input) ? { queenStageGap7236: true as const } : {}), // #7236 (slukket)
+      ...(input.split_attack_cause_7640 === true && isS5ProfilesV3OrLater(rulesRevision) ? { splitAttackCause7640: true as const } : {}), // #7640 (slukket)
       // #6804 (KUN s5_profiles_v3, slukket): udbrudspakken trin 2 (breakawayV3_6804.ts).
       // #6938 (KUN s5_profiles_v3, slukket): styrt-udgang pr. terraen (mechanics/incidents.ts).
       // #6937 (KUN s5_profiles_v3, slukket): bjergpoint i favoritgruppen + lead-outens pris.
@@ -1298,18 +1303,26 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // paa jagt-modellens egne praemisser. `group_merged` er den generelle,
     // state-afledte kvittering: den siger kun HVEM der endte HVOR, uden
     // aarsag — aarsagen ejes af den mekanik der flyttede gappet.
+    //
+    // #7639 (KUN s5_profiles_v3): en udgaaet rytters solo-gruppe (isRetiredGroup) er ude af loebet.
+    // Den bliver i motorens state og snapshots (uaendret resultat), men
+    // tidslinjen naevner ham ikke efter uheldet: intet gap_update, intet merge
+    // og aldrig som jagtgruppe. Kun tidslinje-events; ingen tid eller gruppe
+    // aendres.
     for (const merge of merges) {
+      lastEmittedGap.delete(merge.absorbed_group_id);
+      if (hiddenFromTimeline({ rider_ids: merge.rider_ids })) continue;
       pushEvent(timeline, segment.to_km, "group_merged", {
         group_id: merge.absorbed_group_id,
         into_group_id: merge.into_group_id,
         rider_ids: [...merge.rider_ids],
       });
-      lastEmittedGap.delete(merge.absorbed_group_id);
     }
 
-    for (const g of mergedGroups) {
+    const timelineGroups = mergedGroups.filter((g) => !hiddenFromTimeline(g));
+    for (const g of timelineGroups) {
       if (pursuitSamples && isPursuedEscape(g)) {
-        const chase = findChaseGroup(mergedGroups, g);
+        const chase = findChaseGroup(timelineGroups, g);
         if (chase) {
           const sep = round2(chase.gap_seconds - g.gap_seconds);
           const prev = lastEmittedSeparation.get(g.id);

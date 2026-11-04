@@ -2,6 +2,61 @@
   "active": true,
   "since": "2026-10-29",
   "areaCap": 3,
+  "loft": {
+    "areas": [
+      {
+        "area": "race-engine",
+        "name": "Motor og løbsfilm",
+        "labels": [
+          "cat:race-engine",
+          "slice:race-engine"
+        ],
+        "titleKeywords": [
+          "[motor]",
+          "[race]",
+          "[race-engine]",
+          "[løbsfilm]",
+          "løbsfilm"
+        ],
+        "epics": [
+          7260
+        ]
+      },
+      {
+        "area": "taktik",
+        "name": "Taktik",
+        "labels": [
+          "cat:taktik"
+        ],
+        "titleKeywords": [
+          "[taktik]",
+          "taktik"
+        ],
+        "epics": [
+          7266
+        ]
+      },
+      {
+        "area": "udvikling-2",
+        "name": "Udvikling 2.0",
+        "labels": [
+          "cat:udvikling-2",
+          "epic:progression"
+        ],
+        "titleKeywords": [
+          "[udvikling]",
+          "udvikling 2.0"
+        ],
+        "epics": [
+          6110
+        ]
+      }
+    ],
+    "brandLabels": [
+      "brand",
+      "forkert-info"
+    ]
+  },
   "finishList": [
     {
       "issue": 7445,

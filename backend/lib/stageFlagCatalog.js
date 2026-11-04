@@ -102,6 +102,9 @@ export const STAGE_FLAGS = Object.freeze([
   // #7236: loft på topgabet på dronningeetaper (kun s5_profiles_v3). Ikke seedet = off; kun "on"
   // tænder, "beta" læses som off (queenStageGap7236Flag.js). Ejer-only flip.
   { key: "queen_stage_gap_7236", area: "race-engine", label: "Dronningeetaper — loft på topgabet" },
+  // #7635/#7636: etapeplanens "sat" kun ved en rigtig opdeling + resuméet krydstjekker filmen
+  // (kun s5_profiles_v3). Seedet off; kun "on" tænder (stagePlanDroppedFront7635Flag.js). Ejer-only flip.
+  { key: "stage_plan_dropped_front_7635", area: "race-engine", label: "Etapeplan — sat kun ved en rigtig opdeling af feltet" },
   // #7644: loft på samlingens gevinst pr. km på lange nedkørsler (kun s5_profiles_v3). Seedet off; kun "on"
   // tænder, "beta" læses som off (descentRegroupCap7644Flag.js). Ejer-only flip.
   { key: "descent_regroup_cap_7644", area: "race-engine", label: "Lange nedkørsler — loft på samlingen" },
@@ -241,6 +244,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "race_library_v2",
   // #7536: HelpPage gater blokken om traening paa en dato med loeb paa dette flag.
   "condition_v2_race_date_training_day",
+  // #7636: etapeplanens resumé krydstjekker filmen paa dette flag (binaert, som motoren).
+  "stage_plan_dropped_front_7635",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,
@@ -248,4 +253,4 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
 // en flade aldrig beskriver en model motoren ikke koerer for beta-gruppen.
 // #7536: condition_v2_race_date_training_day laeses ogsaa kun som "on" af motoren
 // (conditionModelV2Flag.isRaceDateTrainingDayEnabled).
-export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day"]);
+export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635"]);

@@ -42,7 +42,7 @@ import { incrementBalanceWithAudit } from "../lib/balanceRpc.js";
 import { updateStandings, updateRiderValues } from "../lib/economyEngine.js";
 import { refreshRankingMatviewsSafe } from "../lib/refreshRankingMatviews.js";
 import { recomputeSeasonRaceDays } from "../lib/seasonRaceDays.js";
-import { STAGE_SCHEDULER_FLAG_KEY } from "../lib/stageSchedulerFlag.js";
+import { STAGE_SCHEDULER_FLAG_KEY } from "../lib/stageSchedulerFlag.ts";
 import { FINANCE_ACTOR_TYPE, FINANCE_REASON, FINANCE_RELATED_ENTITY } from "../lib/economyConstants.js";
 
 const CHILD_TABLES = [

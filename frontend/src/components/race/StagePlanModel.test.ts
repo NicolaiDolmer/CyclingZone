@@ -18,6 +18,7 @@ import {
   withStagePlanFields,
   withoutStagePlans,
 } from "./StagePlanModel.ts";
+import { riderInFrontOrFieldAt } from "../../lib/stageSplitTimes.ts"; // #7636
 import { stagePlanFeaturesFromRaw, stagePlanSwitchNoteText, stagePlanSwitchNotes } from "./StagePlanModel.ts"; // #7383
 import { suggestStagePlan, suggestionReasonKey } from "./StagePlanModel.ts"; // #7369
 import type { StagePlanLeg } from "./StagePlanModel.ts";
@@ -259,4 +260,72 @@ test("#7369: boardet viser maerket ved forslaget, ogsaa i editoren naar felterne
   assert.match(board, /<SuggestionBadge t=\{t\} \/>[\s\S]{0,200}<PlanChain t=\{t\} legs=\{suggestion\}/);
   assert.match(board, /showsSuggestion=\{!saved\}/);
   assert.doesNotMatch(board, /<span className="sr-only">\{t\("stagePlan\.suggestion"\)\}<\/span>/, "mobil: maerket er synligt, ikke kun for skaermlaesere");
+});
+
+// ── #7636 (kontakten stage_plan_dropped_front_7635): resumeet modsiger aldrig filmen ──
+
+const CAPTAIN: StagePlanLeg[] = [
+  { task: "follow_moves" },
+  { task: "attack", from: { at: "kom", kom_index: 1 } },
+  { task: "ride_for_result", from: { at: "dropped" } },
+];
+
+/** Giro-moenstret: et nedkoerselsangreb faa sekunder foran, rytteren "a" i feltet hele dagen. */
+const DESCENT_FILM = [
+  { type: "stage_start", km: 0, params: { field_count: 8 } },
+  { type: "finale_attack", km: 60, params: { kind: "descent_attack", group_id: "breakaway-2000", rider_ids: ["x", "y", "z"], source_group_id: "peloton-0" } },
+  { type: "gap_update", km: 60, params: { group_id: "peloton-0", gap_seconds: 6 } },
+  { type: "stage_plan_leg", km: 60, params: { rider_id: "a", leg: 2, task: "ride_for_result", reason: "dropped" } },
+  { type: "group_merged", km: 64, params: { group_id: "breakaway-2000", into_group_id: "peloton-0", rider_ids: ["x", "y", "z"] } },
+];
+
+/** En rigtig opdeling: "a" falder af og ligger bag feltet paa stedet. */
+const REAL_DROP_FILM = [
+  { type: "stage_start", km: 0, params: { field_count: 6 } },
+  { type: "peloton_splits", km: 60, params: { group_id: "gruppetto-3001", source_group_id: "peloton-0", rider_ids: ["a", "b"], cause: "climb_deficit" } },
+  { type: "gap_update", km: 60, params: { group_id: "gruppetto-3001", gap_seconds: 240 } },
+  { type: "stage_plan_leg", km: 60, params: { rider_id: "a", leg: 2, task: "ride_for_result", reason: "dropped" } },
+];
+
+const crossCheck = (film: Parameters<typeof riderInFrontOrFieldAt>[0]) => ({ inFrontOrFieldAt: (km: number) => riderInFrontOrFieldAt(film, "a", km) });
+
+test("#7636: filmen viser ham i feltet: hverken 'sat' eller 'sprunget over, han var sat'", () => {
+  assert.equal(riderInFrontOrFieldAt(DESCENT_FILM, "a", 60), true, "tidslinjen: rytteren i feltet");
+  const items = stagePlanRecap(CAPTAIN, DESCENT_FILM, "a", crossCheck(DESCENT_FILM));
+  assert.deepEqual(items.map((i) => [i.status, i.endReason, i.fromHidden ?? false]), [
+    ["done", null, false],
+    ["not_reached", null, false],
+    ["to_finish", "finish", true],
+  ]);
+  assert.ok(!items.some((i) => i.endReason === "dropped" || i.status === "skipped"));
+});
+
+test("#7636: uden kontakten er resumeet som foer (ogsaa naar filmen modsiger det)", () => {
+  assert.deepEqual(stagePlanRecap(CAPTAIN, DESCENT_FILM, "a").map((i) => [i.status, i.endReason, i.fromHidden ?? false]), [
+    ["done", "dropped", false],
+    ["skipped", null, false],
+    ["to_finish", "finish", false],
+  ]);
+});
+
+test("#7636: en rigtig opdeling i filmen beholder 'sat'", () => {
+  assert.equal(riderInFrontOrFieldAt(REAL_DROP_FILM, "a", 60), false);
+  assert.deepEqual(stagePlanRecap(CAPTAIN, REAL_DROP_FILM, "a", crossCheck(REAL_DROP_FILM)).map((i) => [i.status, i.endReason, i.fromHidden ?? false]), [
+    ["done", "dropped", false],
+    ["skipped", null, false],
+    ["to_finish", "finish", false],
+  ]);
+});
+
+test("#7636: ukendt gruppe (v3-tidslinje uden gruppe-gab) krydstjekker intet", () => {
+  const v3 = [{ type: "stage_plan_leg", km: 60, params: { rider_id: "a", leg: 2, task: "ride_for_result", reason: "dropped" } }];
+  assert.equal(riderInFrontOrFieldAt(v3, "a", 60), null);
+  assert.deepEqual(stagePlanRecap(CAPTAIN, v3, "a", crossCheck(v3)).map((i) => i.endReason), ["dropped", null, "finish"]);
+});
+
+test("#7636: fladen laeser kontakten og skjuler et tomt slut-led (ingen ny spillertekst)", () => {
+  const board = readFileSync(new URL("./StagePlanBoard.tsx", import.meta.url), "utf8");
+  assert.match(board, /flags\?\.stage_plan_dropped_front_7635 === true/);
+  assert.match(board, /crossCheck=\{crossCheck7636\}/);
+  assert.match(board, /\{line \? <>\{", "\}/);
 });

@@ -26,9 +26,18 @@ CMD=$(printf '%s' "$INPUT" | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\(.*
 [ -z "$CMD" ] && exit 0
 
 case "$CMD" in
-  *'git push'*) ;;
+  *'git push'*|*'git -C '*' push'*) ;;
   *) exit 0 ;;
 esac
+
+# Ejer 4/11: `cd <dir> && git push` eller `git -C <dir> push` pusher fra et andet
+# worktree end sessionens cwd; tjek det worktree (ellers maaltes det forkerte trae).
+# Codex P2 (#7660): kommandoen afkodes som JSON, og shell-quoting fjernes (lib/push-target-dir.mjs).
+TARGET_DIR=$(printf '%s' "$INPUT" | node "$(dirname "$0")/lib/push-target-dir.mjs" 2>/dev/null)
+if [ -n "$TARGET_DIR" ]; then cd "$TARGET_DIR" 2>/dev/null || exit 0; fi
+
+# Eksplicit, begrundet undtagelse: PREFLIGHT_SKIP="<hvorfor>" i kommandoen.
+case "$CMD" in *PREFLIGHT_SKIP=*) exit 0 ;; esac
 
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 
@@ -67,8 +76,10 @@ RELEVANT=$(printf '%s\n' "$CHANGED" | grep -vE '^(docs/|\.claude/learnings/|.*\.
 STAMP=$(git rev-parse --git-path preflight-ok 2>/dev/null)
 [ -z "$STAMP" ] && exit 0
 
+# Ejer 4/11: en advarsel i systemMessage ses kun af ejeren, saa pushet gik igennem
+# uden preflight. Nu afvises pushet med en begrundelse, Claude ser og handler paa.
 emit() {
-  printf '{"systemMessage": "%s"}\n' "$1"
+  printf '{"systemMessage": "%s", "hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "%s\\nUndtagelse: saet PREFLIGHT_SKIP=\\"<hvorfor>\\" foran git push."}}\n' "$1" "$1"
   exit 0
 }
 
