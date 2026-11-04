@@ -21,11 +21,11 @@
 // maalestok) er stadig den staerkeste ANDEN rytter i gruppen uanset rolle: alle kan
 // svare paa et angreb. Aeldre revisioner (v1/v2) er bit-identiske.
 //
-// #7383 (SLUKKET motorkontakt, KUN s5_profiles_v3): med kontakten taendt er 10 km fra maal
-// altid en segmentgraense. Angrebet ser de to stykker som EET segment og vaelger sit
-// segment som paa den udelte rute (lateAttackSegmentIndex), saa graensen hverken giver
-// et angreb paa en etape der ikke havde et eller lander midt i en stigning/sektor.
-// Slukket er der intet delt stykke, og funktionen er uaendret.
+// #7383 (KUN s5_profiles_v3, live under den aktuelle revision; kodekontakten er fjernet):
+// 10 km fra maal er altid en segmentgraense. Angrebet ser de to stykker som EET segment og
+// vaelger sit segment som paa den udelte rute (lateAttackSegmentIndex), saa graensen hverken
+// giver et angreb paa en etape der ikke havde et eller lander midt i en stigning/sektor.
+// Under aeldre revisioner er der intet delt stykke, og funktionen er uaendret.
 
 import { finalKmUndivided7383 } from "../adapters/finalKmBoundary7383.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";

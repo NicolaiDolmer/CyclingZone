@@ -5,6 +5,9 @@
 #   - node_modules junction til delt cache (sparer ~500 MB + install-tid) - MEDMINDRE
 #     -OwnNodeModules er sat, se nedenfor.
 #   - Memory + codex-junctions via link-onedrive-context.ps1 -RepoRoot <worktree>
+#   - balance-internals/ som junction til den delte OneDrive-mappe (#7587, via
+#     setup-worktree.ps1 -> scripts/lib/balance-internals.ps1). Boelgens fase 0
+#     koerer scripts/link-balance-internals.ps1 for genbrugte worktrees.
 #
 # Brug:
 #   pwsh -File scripts/new-worktree.ps1 -Branch feat/min-feature

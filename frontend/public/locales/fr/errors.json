@@ -89,6 +89,7 @@
     "promotion_pending_failed": "Un problème est survenu avec la promotion depuis la liste d'attente. Réessaie dans un instant",
     "rider_retired_listing": "Ce coureur a pris sa retraite et ne peut pas être mis en vente",
     "rider_already_listed": "Ce coureur est déjà sur le marché des transferts",
+    "rider_on_auction_listing": "Ce coureur est aux enchères en ce moment. Tu pourras le mettre en vente à la fin de l'enchère",
     "listing_not_found": "Annonce introuvable",
     "listing_not_owner": "Ce n'est pas ton annonce",
     "listing_already_closed": "Cette annonce est déjà clôturée",

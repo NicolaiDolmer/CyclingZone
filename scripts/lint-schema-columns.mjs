@@ -85,6 +85,7 @@
 import { readFileSync, readdirSync, statSync, writeFileSync, existsSync } from 'node:fs';
 import { join, resolve, dirname, extname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 
 const DEFAULT_DIRS = ['backend'];
 const SCAN_EXTS = new Set(['.js', '.mjs', '.cjs']);
@@ -769,6 +770,12 @@ SELECT DISTINCT cl.relname AS src_table, a.attname AS src_col, fcl.relname AS tg
    AND array_length(c.conkey, 1) = 1
  ORDER BY src_table, src_col`.trim();
 
+export function verifySnapshotRegression(run = spawnSync) {
+  const result = run(process.execPath, ['--test', 'backend/lib/seasonCalendarGate.test.js'], { stdio: 'inherit' });
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error('Schema snapshot calendar regression failed; do not push this snapshot.');
+}
+
 async function updateSnapshot() {
   // Lazy import: the guard itself must never pull in DB plumbing in CI.
   const { requireEnv, pgEnvFromDsn, describeTarget, psqlJson } = await import('./db-lib.mjs');
@@ -778,6 +785,7 @@ async function updateSnapshot() {
   const fkRows = psqlJson(FK_SQL, pgEnv);
   const snapshot = buildSnapshot(relRows, fkRows);
   writeFileSync(SNAPSHOT_PATH, `${JSON.stringify(snapshot, null, 2)}\n`);
+  verifySnapshotRegression();
   console.log(
     `✅ ${SNAPSHOT_PATH} refreshed: ${Object.keys(snapshot.relations).length} relations, `
     + `${Object.keys(snapshot.foreignKeys).length} single-column foreign keys.`,

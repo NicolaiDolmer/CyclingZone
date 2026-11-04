@@ -241,7 +241,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6595
     verified: 2026-10-31
-    note: Kodekontakt ITT_TERRAIN_6595_ACTIVE tændt 31/10 efter ejer-go, kun v3.
+    note: Tændt 31/10 efter ejer-go, kun v3. Kodekontakten ITT_TERRAIN_6595_ACTIVE er fjernet (#7260); reglen er nu kun bundet til revisionen.
 
   - id: race-itt-save-7332
     area: race-engine
@@ -1005,6 +1005,19 @@ features:
     epic: 6110
     note: Tændt 1/11 på ejerens "kør" (tændingskort #5950); prod-verifikation 2/11.
     verified: 2026-11-01
+
+  - id: race-day-role-base-day
+    area: training
+    title_en: Race day - the rider's role also decides the base day
+    title_da: Løbsdag - rollen styrer også basis-dagen
+    state: dormant
+    flag: race_day_role_base_day_enabled
+    ssot: docs/TRAINING_RULES.md
+    epic: 6110
+    note: "#5950 løsning A (ejer-valg 3/11), underkontakt til race-day-role-yield. Bygget, off; tændes af ejeren."
+    verified: 2026-11-03
+    decision: ejer-beslutning
+    decide_by: 2026-11-17
 
   - id: promotion-pending
     area: academy

@@ -77,8 +77,10 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "season_matrix_mobile", area: "season", label: "Sæsonmatrix på mobil — ny visning" },
   // #6590: web push, seedet off. Kræver VAPID_* på backend. Flip er ejer-only.
   { key: "push_enabled", area: "notifications", label: "Push-notifikationer" },
-  // #6570: etapeside 2.0 er nu den eneste etapeside; noeglen staar kun tilbage fordi patch notes
-  // peger paa den (maerket "Now for everyone"). Raekken i app_config fjernes af orkestratoren.
+  // #6570: etapeside 2.0 er nu den eneste etapeside; ingen kode laeser noeglen. Den staar kun
+  // tilbage fordi tre beta-noter i patch notes peger paa den (maerket "Now for everyone", se
+  // PLAYER_VISIBLE_FLAG_KEYS). Fjernes noeglen eller raekken i app_config, falder de noter
+  // tilbage til "beta" (#7260): ret noterne foerst, samme moenster som training_bulk_day.
   { key: "stage_page_v2", area: "race-day", label: "Etapeside 2.0" },
   // #6514: løbskort i kalenderen, status-prik og Løbshistorik. Seedet off (ejer 15/10).
   { key: "race_library_v2", area: "race-day", label: "Kalender-løbskort + Løbshistorik" },
@@ -135,6 +137,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_day_catchup_enabled", area: "training", label: "Udvikling 2.0 — catch-up via løb (løbsdagens ekstra ens for alle hold)" },
   // #5950: løbsdag = hård dag + rolle-vægtet tillæg (raceDayRoleYield5950.js). Fail-safe OFF; tal i private_config. Ejer-only flip.
   { key: "race_day_role_yield_enabled", area: "race-day", label: "Udvikling 2.0 — løbsdag = hård dag + tillæg efter rolle" },
+  // #5950 A: underkontakt (kræver race_day_role_yield_enabled). Fail-safe OFF. Ejer-only flip.
+  { key: "race_day_role_base_day_enabled", area: "race-day", label: "Udvikling 2.0 — løbsdag: rollen styrer også basis-dagen" },
   { key: "season_documentary_llm_enabled", area: "season", label: "Sæson-dokumentar (LLM)" },
   { key: "ai_team_retire_enabled", area: "ops", label: "AI-hold — pensionering" },
   { key: "ai_pool_retirement_v2_enabled", area: "ops", label: "AI-pulje — pensionering v2" },

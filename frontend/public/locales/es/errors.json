@@ -89,6 +89,7 @@
     "promotion_pending_failed": "Algo salió mal con el ascenso desde la lista de espera. Inténtalo de nuevo en un momento",
     "rider_retired_listing": "Este ciclista se ha retirado y no se puede poner en venta",
     "rider_already_listed": "Este ciclista ya está en el mercado de fichajes",
+    "rider_on_auction_listing": "Este ciclista está ahora en subasta. Podrás ponerlo en venta cuando termine la subasta",
     "listing_not_found": "Anuncio no encontrado",
     "listing_not_owner": "Este anuncio no es tuyo",
     "listing_already_closed": "Este anuncio ya está cerrado",

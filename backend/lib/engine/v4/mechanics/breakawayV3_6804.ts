@@ -1,5 +1,5 @@
 // backend/lib/engine/v4/mechanics/breakawayV3_6804.ts
-// #6804 (KUN s5_profiles_v3, SLUKKET): udbrudspakken trin 2, ét trin ad gangen.
+// #6804 (KUN s5_profiles_v3, live under den aktuelle revision): udbrudspakken trin 2, ét trin ad gangen.
 // Spec docs/superpowers/specs/2026-10-21-6804-udbrud-pr-loebsgruppe-design.md og
 // 2026-10-17-6804-hilly-breakaway-design.md. Reglerne: docs/RACE_ENGINE_RULES.md.
 //

@@ -12,9 +12,10 @@ const jobs = (...list) => ({ jobs: list });
 const released = [step('Deployment still pending', 'skipped'), step('Smoke-test prod', 'success')];
 
 test('#6859: the job names the queue reads are exactly the workflow job names', () => {
-  const workflow = readFileSync(new URL('../../.github/workflows/deploy-verify.yml', import.meta.url), 'utf8');
-  for (const name of [RELEASE_JOB, RELEASE_CHECKS_JOB, CRON_PROOF_JOB]) {
-    assert.match(workflow, new RegExp(`^ {4}name: ${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'm'), name);
+  const read = file => readFileSync(new URL(`../../.github/workflows/${file}`, import.meta.url), 'utf8');
+  // #7582 del 2: the cron proof job lives in its own workflow (cron-proof.yml).
+  for (const [file, name] of [['deploy-verify.yml', RELEASE_JOB], ['deploy-verify.yml', RELEASE_CHECKS_JOB], ['cron-proof.yml', CRON_PROOF_JOB]]) {
+    assert.match(read(file), new RegExp(`^ {4}name: ${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'm'), name);
   }
 });
 

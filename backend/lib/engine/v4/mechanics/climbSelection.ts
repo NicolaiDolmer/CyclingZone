@@ -36,7 +36,7 @@ import type {
 } from "../types.ts";
 import { gaussian } from "../rng.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
-import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, GROUP_TEMPO_EFFORT_EXTRA_TUNING, ORDERS_GC_V1_CLIMB_GAIN_TUNING } from "../tuning.ts";
+import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, GROUP_TEMPO_EFFORT_EXTRA_TUNING, ORDERS_GC_V1_CLIMB_GAIN_TUNING, QUEEN_STAGE_GAP_7236_TUNING } from "../tuning.ts";
 import type { GroupTempoModel } from "../tuning.ts";
 import type { EffortLevel, Entrant } from "../types.ts";
 import { mountainSelectionKnobsFor, phaseSplitThreshold, phaseWprimeForcedMinSeverity, selectionPhaseFor } from "./mountainSelection.ts";
@@ -746,6 +746,17 @@ export const climbSelectionHook: ClimbSelectionHook = (
     }
   }
 
+  // #7236 (KUN kontakten queen_stage_gap_7236): loftet paa favoritgabet paa den afgoerende
+  // stigning foer en kort nedkoersel, efter dagens udvaelgelse paa segmentet.
+  if (ctx.queenStageGap7236 === true && queenStageTopCap7236Applies(ctx, timeModelTuningFor(ctx))) {
+    const capped = queenStageTopCap7236(nextState.groups);
+    if (capped !== nextState.groups) {
+      // Loftet greb: nedkoerslens regruppering maa samle dem (segmentLoop, descentRegroupTuning7236).
+      nextState = { ...nextState, groups: capped, queen_cap_7236: true };
+      rewriteSplitGaps7236(events, capped);
+    }
+  }
+
   // #7280: én linje pr. rytter, naar den afgoerende stigning er slut (ogsaa for en
   // rytter der koerte alene paa de sidste segmenter og derfor ikke blev udvalgt dér).
   if (ctx.s5ProfilesV3 === true) events.push(...allOutGainEvents7280(nextState, ctx, segment.to_km));
@@ -914,4 +925,76 @@ function allOutGainEvents7280(state: EngineState, ctx: SegmentHookContext, km: n
     if (ao.gained >= 1) events.push({ km: round2(km), type: "all_out_gain", params: { rider_id: riderId } });
   }
   return events;
+}
+
+/**
+ * #7236 (KUN kontakten queen_stage_gap_7236): gaelder topgabets loft paa dette segment?
+ * Bjerg/hoejfjeld (tuningens profiler), segmentet er en del af den afgoerende stigning foer
+ * en nedkoerselsfinale (aldrig en topankomst), og vejen fra stigningens top til maal er
+ * kortere end tuningens graense (lange nedkoersler samler selv favoritterne). REN.
+ */
+export function queenStageTopCap7236Applies(
+  ctx: Pick<SegmentHookContext, "route" | "segmentIndex">,
+  t: TimeModelTuning,
+  q: typeof QUEEN_STAGE_GAP_7236_TUNING = QUEEN_STAGE_GAP_7236_TUNING,
+): boolean {
+  if (!q.profiles.includes(ctx.route.profile_type)) return false;
+  if (isSummitFinishClimb(ctx) || !isDescentFinishDecidingClimb(ctx, t)) return false;
+  const segs = ctx.route.segments ?? [];
+  const block = climbBlockOf(segs, ctx.segmentIndex);
+  if (!block) return false;
+  const finishKm = Number.isFinite(ctx.route.distance_km) ? ctx.route.distance_km : segs[segs.length - 1].to_km;
+  return finishKm - segs[block.end].to_km < q.maxTopToFinishKm;
+}
+
+/**
+ * #7236: loftet paa favoritgabet. Favoritterne er alle grupper uden for dagens udbrud
+ * (M5 ejer det hul). Ligger favorit nr. `capRank` mere end `capSeconds` bag den forreste
+ * favoritgruppe, presses hullerne op til ham ind under loftet i samme forhold, og alle
+ * bag ham rykker det samme stykke frem. Under loftet: uroert (samme array). Raekkefoelgen
+ * og de indbyrdes forhold foran ham bevares, saa en staerkere klatrer aldrig mister sin
+ * plads eller sin fordel. Dagens udbrud foran favoritterne og den forreste favoritgruppe
+ * flyttes aldrig. Et stykke af udbruddet der er sat bag den forreste favoritgruppe, taeller
+ * ikke med i nr. `capRank`, men foelger samme loft, saa ingen favoritgruppe springer forbi
+ * det (raekkefoelgen er uaendret for alle grupper). REN.
+ */
+export function queenStageTopCap7236(
+  groups: readonly RaceGroup[],
+  q: Pick<typeof QUEEN_STAGE_GAP_7236_TUNING, "capRank" | "capSeconds"> = QUEEN_STAGE_GAP_7236_TUNING,
+): RaceGroup[] {
+  const favourites = groups
+    .filter((g) => g.origin !== "breakaway" && g.rider_ids.length > 0)
+    .sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+  if (favourites.length < 2 || !(q.capSeconds > 0)) return groups as RaceGroup[];
+  const front = favourites[0].gap_seconds;
+  let riders = 0;
+  let rankGap: number | null = null;
+  for (const g of favourites) {
+    riders += g.rider_ids.length;
+    if (riders >= q.capRank) { rankGap = g.gap_seconds - front; break; }
+  }
+  if (rankGap === null || !(rankGap > q.capSeconds)) return groups as RaceGroup[];
+  const scale = q.capSeconds / rankGap;
+  const shift = rankGap - q.capSeconds;
+  return groups.map((g) => {
+    if (g.rider_ids.length === 0) return g;
+    const rel = g.gap_seconds - front;
+    if (!(rel > 0)) return g;
+    const capped = rel <= rankGap ? rel * scale : rel - shift;
+    return { ...g, gap_seconds: round2(front + capped) };
+  });
+}
+
+/** #7236: segmentets split-events viser hullet efter loftet (ny gruppe minus kildegruppen). */
+function rewriteSplitGaps7236(events: TimelineEvent[], groups: readonly RaceGroup[]): void {
+  const gapOf = new Map(groups.map((g) => [g.id, g.gap_seconds]));
+  for (let i = 0; i < events.length; i++) {
+    const e = events[i];
+    if (e.type !== "peloton_splits") continue;
+    const own = gapOf.get(String(e.params?.group_id));
+    const source = gapOf.get(String(e.params?.source_group_id));
+    if (own === undefined || source === undefined) continue;
+    const gap = round2(own - source);
+    if (gap !== e.params.gap_seconds) events[i] = { ...e, params: { ...e.params, gap_seconds: gap } };
+  }
 }

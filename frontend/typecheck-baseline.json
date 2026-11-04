@@ -51,10 +51,6 @@
     "TS18047": 1,
     "TS2339": 4
   },
-  "../backend/lib/auctionRules.js": {
-    "TS2339": 26,
-    "TS2353": 1
-  },
   "../backend/lib/availableBalance.js": {
     "TS2339": 3
   },
@@ -307,10 +303,6 @@
     "TS2322": 4,
     "TS2339": 15,
     "TS2345": 6
-  },
-  "../backend/lib/raceCalendarScheduling.js": {
-    "TS2322": 1,
-    "TS2741": 1
   },
   "../backend/lib/raceClassifications.js": {
     "TS2339": 2,

@@ -199,7 +199,8 @@ const BASELINE = {
   "backend/lib/boardAutoAccept.js": 1,
   "backend/lib/contractSeed.js": 1,
   "backend/lib/prizePayoutEngine.js": 1,
-  "backend/lib/riderValueRefresh.js": 1,
+  // #7560: writeUpdates flyttet hertil som writeRiderPatches (fejlen tjekkes i .then).
+  "backend/lib/riderBestRoleCache.js": 1,
 };
 
 // ── Main ──────────────────────────────────────────────────────────────────────

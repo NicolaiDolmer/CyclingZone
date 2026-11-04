@@ -64,8 +64,9 @@
 // Refs #401 #639.
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { basename, resolve } from 'node:path';
+import { basename, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 
 // ---------------------------------------------------------------------------
 // Whitelist: historical migrations that are legitimately non-idempotent.
@@ -369,14 +370,23 @@ export function countDropIfExists(statements) {
  * @param {string} filename - basename for diagnostics
  * @returns {Array<{file:string, line:number, kind:string, fix:string, snippet:string}>}
  */
-export function scanMigration(source, filename = '<source>') {
+export function scanMigration(source, filename = '<source>', { autoMigrateInput = true } = {}) {
   const statements = splitStatements(source);
   const drops = countDropIfExists(statements);
   // Tally CREATE counts per file-level-drop kind so we only require N drops for
   // N creates (the first create after a single drop is covered; a second
   // un-dropped create is a finding).
   const created = { POLICY: 0, TRIGGER: 0, CONSTRAINT: 0 };
-  const findings = [];
+  // Forward guard: retain only the exact pre-guard historical file (#3817).
+  // Any edit invalidates this exception; do not whitelist new manual markers.
+  const historicalMarker = filename === '2026-08-18-3817-race-entries-team-fk-cascade.sql'
+    && createHash('sha256').update(source.replace(/\r\n/g, '\n')).digest('hex')
+      === '78d13dd12b076b78b3c9406d8a1890d55acb553e1fd1c47411b00e3ad2ef5c3c';
+  // Match auto-migrate.yml's raw, case-insensitive grep, including comments.
+  const findings = source.split('\n').flatMap((line, index) =>
+    autoMigrateInput && !historicalMarker && /K(Ø|OE)RES IKKE AUTOMATISK|MANUAL[- ]ONLY/i.test(line)
+      ? [{ file: filename, line: index + 1, kind: 'MANUAL-ONLY', fix: 'Move manual-only SQL outside database/2026-*.sql.', snippet: 'Manual-only marker in auto-migrate input' }]
+      : []);
 
   for (const stmt of statements) {
     // DDL inside a DO $$ ... $$ block is the author's own idempotency
@@ -465,7 +475,6 @@ function main() {
     const base = basename(f);
     // Only ever guard timestamped migrations; never schema.sql / setup snapshots.
     if (!/^2026-.*\.sql$/.test(base)) continue;
-    if (WHITELIST[base]) continue; // legitimately non-idempotent (historical)
 
     let src;
     try {
@@ -474,7 +483,9 @@ function main() {
       continue; // lint-staged only passes existing files
     }
     scanned++;
-    const findings = scanMigration(src, base);
+    const migrationPath = relative(fileURLToPath(new URL('../database/', import.meta.url)), resolve(f)).replaceAll('\\', '/');
+    const findings = scanMigration(src, base, { autoMigrateInput: /^2026-[^/]*\.sql$/.test(migrationPath) }).filter(finding =>
+      !WHITELIST[base] || finding.kind === 'MANUAL-ONLY');
     for (const fnd of findings) {
       total++;
       process.stderr.write(

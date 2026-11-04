@@ -14,7 +14,7 @@
 import { poolHasCalendar } from "./divisionCalendarGenerator.js";
 import { selectTierRaceSet, GRAND_TOUR_MIN_STAGES, TIER_CLASS_WHITELIST } from "./tierRaceSelection.js";
 import { packLaneCalendar, reshapeCobblesFractionToTwoWindows } from "./raceCalendarLanePacker.js";
-import { buildScheduleRows } from "./raceCalendarScheduling.js";
+import { buildScheduleRows } from "./raceCalendarScheduling.ts";
 import { generateRaceStageProfiles, balanceFinaleQuotas, toStageProfileRow } from "./raceStageProfileGenerator.js";
 import { applyUniformTierTilt } from "./tierUniformFillerTilt.js";
 import { makeS5TierProfileGenerator } from "./s5TierTerrainQuota.js";

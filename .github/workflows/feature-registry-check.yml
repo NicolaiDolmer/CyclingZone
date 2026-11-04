@@ -27,6 +27,9 @@ on:
       - 'docs/FEATURE_STATUS.md'
       - 'scripts/generate-feature-status.mjs'
       - 'scripts/check-feature-registry-flags.mjs'
+      - 'scripts/check-feature-registry-flags.test.mjs'
+      - 'scripts/registry-migration-order*'
+      - 'database/2026-*.sql'
       - 'scripts/feature-registry-flag-expiry*'
       - '.github/workflows/feature-registry-check.yml'
   push:
@@ -36,6 +39,9 @@ on:
       - 'docs/FEATURE_STATUS.md'
       - 'scripts/generate-feature-status.mjs'
       - 'scripts/check-feature-registry-flags.mjs'
+      - 'scripts/check-feature-registry-flags.test.mjs'
+      - 'scripts/registry-migration-order*'
+      - 'database/2026-*.sql'
       - 'scripts/feature-registry-flag-expiry*'
       - '.github/workflows/feature-registry-check.yml'
   # Mandag 04:30 UTC - efter feature-liveness-audit (04:00), saa de to
@@ -46,6 +52,12 @@ on:
 
 permissions:
   contents: read
+
+# #7582: annullér forældede kørsler på samme PR. Ikke-PR-events (push til main,
+# schedule, dispatch, merge queue) får run_id som gruppe og kører altid færdigt.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   registry-freshness:
@@ -67,6 +79,9 @@ jobs:
 
       - name: Flag-gate selftest
         run: node --test scripts/check-feature-registry-flags.test.mjs
+
+      - name: Migration-order selftest
+        run: node --test scripts/registry-migration-order.test.mjs
 
       - name: docs/FEATURE_STATUS.md er i sync med registret
         run: node scripts/generate-feature-status.mjs --check
@@ -90,6 +105,10 @@ jobs:
   registry-flags:
     name: registry-flags
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
     steps:
       - name: Skip secret-backed flag check for Dependabot PRs
         if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
@@ -100,6 +119,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ github.sha }}
 
       - name: Set up Node.js
         if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
@@ -125,6 +146,15 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: node scripts/check-feature-registry-flags.mjs --base-ref origin/main
+
+      # Auto-migrate starts on the same push, with a deliberate deploy delay.
+      # Observe success for this exact SHA before reading the seeded flags.
+      # No migrations in the push: proceed immediately. Failure/timeout: stop.
+      - name: Wait for this main push's migrations
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/registry-migration-order.mjs
 
       - name: Registrets tilstand mod prod app_config
         if: github.event_name != 'pull_request'

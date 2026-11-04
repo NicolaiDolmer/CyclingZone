@@ -21,6 +21,7 @@ import { rankByCumTimeAsc } from "../../../lib/raceClassifications.js";
 import { createJerseyTally } from "./jerseyTally.mjs"; // #6804 v3 G16/G18
 import { breakawayKomPointsOfStage, createJerseyLeaderTracker } from "./komGcOverlap6937.mjs"; // #6937 G16
 import { gcStageTimes, gcWinnerBreakFacts } from "./gcFromBreakaway7258.mjs"; // #7258
+import { breakawayTrajectoryRowFacts } from "./realismMetrics.mjs"; // #7588 realisme-gate
 import { buildGcContext, raceGcStagesFor, withS5ThreatModel } from "../../../lib/raceEngineV4Bridge.js"; // #7258 faelles fremskrivning
 import { routeFromStageProfileRow } from "../../../lib/engine/v4/adapters/routeAdapter.ts";
 import { abilitiesFromRow } from "../../../lib/engine/v4/adapters/entrantAdapter.ts";
@@ -613,8 +614,12 @@ function simulate({ v4, data, stages, profile, entrants, revision, gcStandings, 
     entrants, stageProfile: profile, seedString: `${data.race.id}:${profile.stage_number}:${seedTag}`, stageNumber: profile.stage_number,
     teamOrderRows: orders ?? data.orders, isStageRace: stages.length > 1, raceStages: stages, squad: data.race.squad ?? null,
     rulesRevision: revision, gcStandings, jerseyLeaders, // #5914/#6937: troejefoererne som i raceRunner
+    // #7236: topgabets loft er slukket i spillet; kun maalingen taender det (CZ_QUEEN_STAGE_GAP_7236=1).
+    ...(process.env.CZ_QUEEN_STAGE_GAP_7236 === "1" ? { queenStageGap7236: true } : {}),
     // #6649: dagsformen er slukket i spillet; kun maalingen taender den (CZ_DAY_FORM_6649=1).
     ...(process.env.CZ_DAY_FORM_6649 === "1" ? { dayForm6649: true } : {}),
+    // #6912: forspringskurven er slukket i spillet; kun maalingen taender den (CZ_BREAKAWAY_CURVE_6912=1).
+    ...(process.env.CZ_BREAKAWAY_CURVE_6912 === "1" ? { breakawayCurve6912: true } : {}),
   });
 }
 
@@ -908,6 +913,7 @@ export function stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRide
     labelContradictions: labelContradictions(ranked, out, { stepModel: !isS5ProfilesV2OrLater(revision) }).length,
     winType: ranked?.[0]?.win_type ?? null,
     ...(tt ? {} : breakawayLeadFacts(out)), // #6804 G2
+    ...(tt ? {} : breakawayTrajectoryRowFacts(out?.timeline?.events, km)), // #7588: forløb pr. tiendedel, top, fangst
     // #6804 G3; #7258: i etapeloeb maales klassementets favoritter med den faelles fremskrivning.
     ...(tt ? {} : breakawayCompositionFacts({ out, profile, gcBefore, abilitiesById, teamByRider, riderIds, projectedGc: projectedGcFavouritesForStage({ profile, raceStages, gcBefore, entrants }) })),
     ...(tt ? { winnerId: testportStageFacts(out, profile, roleByRider).winnerId } : testportStageFacts(out, profile, roleByRider)), // #6750

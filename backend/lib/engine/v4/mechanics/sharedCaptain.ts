@@ -1,5 +1,5 @@
 // backend/lib/engine/v4/mechanics/sharedCaptain.ts
-// #5981 (KUN s5_profiles_v3, SLUKKET): DELT KAPTAJN — den sjette rolle.
+// #5981 (KUN s5_profiles_v3, live under den aktuelle revision): DELT KAPTAJN — den sjette rolle.
 //
 // SSOT: docs/superpowers/specs/2026-10-25-taktik-roller-design.md §5 + §11
 // (ejer-beslutninger 25/10) og docs/RACE_ENGINE_RULES.md §1 ("Delt kaptajn").

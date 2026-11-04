@@ -4,7 +4,7 @@ import {
   computeFinanceForecast,
   computeMultiSeasonForecast,
   FORECAST_THRESHOLDS,
-} from "./financeForecast.js";
+} from "./financeForecast.ts";
 import { computeFrozenSalary } from "./contractSeed.js";
 import {
   SALARY_RATE_PRODUCTION,

@@ -805,6 +805,7 @@ test("#6058: ALLE boelgens agent-prompts starter med scope-vaernet", () => {
   const src = readFileSync(WAVE_JS_PATH, "utf8");
   const kinds = {
     setupPrompt: "setup", intakePrompt: "setup", intakeCheckPrompt: "setup", probePrompt: "setup", cleanupPrompt: "setup",
+    releasePrompt: "setup",
     laneBrief: "worker", recoveryBrief: "worker", stopPrompt: "worker", reviewPrompt: "worker", fixPrompt: "worker",
   };
   for (const [name, kind] of Object.entries(kinds)) {
@@ -848,6 +849,7 @@ test("#6058: agent-typerne findes og mangler fil-redigering", () => {
   const agentsDir = path.join(path.dirname(WAVE_JS_PATH), "..", "agents");
   const check = readFileSync(path.join(agentsDir, "wave-intake-check.md"), "utf8");
   const setupAgent = readFileSync(path.join(agentsDir, "wave-setup.md"), "utf8");
+  const releaseAgent = readFileSync(path.join(agentsDir, "wave-release.md"), "utf8");
   const allowed = (src) => (src.match(/^tools:\s*(.+)$/m) || [, ""])[1].split(",").map((t) => t.trim());
   assert.match(check, /^name: wave-intake-check$/m);
   assert.match(setupAgent, /^name: wave-setup$/m);
@@ -855,8 +857,106 @@ test("#6058: agent-typerne findes og mangler fil-redigering", () => {
   assert.doesNotMatch(setupAgent, /^disallowedTools:/m, "tilladt-liste (tools:), ikke forbudsliste (#6539)");
   assert.deepEqual(allowed(check), ["Bash", "PowerShell"]);
   assert.deepEqual(allowed(setupAgent), ["Bash", "PowerShell", "Read", "Write", "Grep", "Glob"]);
+  // #7587: frigivelses-agenten har kun en shell, ligesom intake-tjekket.
+  assert.match(releaseAgent, /^name: wave-release$/m);
+  assert.doesNotMatch(releaseAgent, /^disallowedTools:/m);
+  assert.deepEqual(allowed(releaseAgent), ["Bash", "PowerShell"]);
   for (const tool of ["Edit", "WebFetch", "Agent", "Workflow", "ToolSearch"]) {
-    assert.ok(!allowed(check).includes(tool) && !allowed(setupAgent).includes(tool), `${tool} maa ikke vaere tilladt`);
+    assert.ok(!allowed(check).includes(tool) && !allowed(setupAgent).includes(tool) && !allowed(releaseAgent).includes(tool), `${tool} maa ikke vaere tilladt`);
+  }
+});
+
+// ===== Boelge-kvalitet 2.0 (#7587) =====
+
+test("#7587 punkt 4: et bygget og reviewet spor frigiver ejerskab STRAKS, ikke ved naeste intake-tjek", () => {
+  const src = readFileSync(WAVE_JS_PATH, "utf8");
+  const worker = extractFunction(src, "laneWorker");
+  assert.ok(/if \(releasesOwnership\(row\.status\)\) \{\s*finishedInWave\.push\(track\.branch\)\s*row\.releasedNow = await releaseOwnershipNow\(track\.branch\)/.test(worker),
+    "lanen skal frigive straks efter runTrack (som allerede har koert review + ret-trin), og stadig laegge branchen i finishedInWave som sikkerhedsnet");
+  // Frigivelsen ligger FOER lanen kan traekke et nyt spor (naeste loekke-runde).
+  assert.ok(worker.indexOf("releaseOwnershipNow(") < worker.indexOf("if (row.status === 'frys')"), "frigivelsen skal ske foer frys-/timeout-grenene og naeste spor");
+  const prompt = extractFunction(src, "releasePrompt");
+  assert.ok(prompt.includes("'WAVE-SETUP: frigiv ejerskab (#7587)'"), "WAVE-SETUP-praefikset, saa guard-agent-spawn.sh lader den passere");
+  assert.ok(prompt.includes("finish --wave-id ${waveId} --finished ${finishedBranches.join(',')}"), "frigivelsen bruger wave-policy.mjs finish, der kun markerer");
+  assert.ok(!prompt.includes("intake") && !prompt.includes("brief"), "frigivelsen optager intet og laeser ingen brief");
+  const release = extractFunction(src, "releaseOwnershipNow");
+  assert.ok(/agentWithType\(releasePrompt\(setup\.waveId, finishedInWave\.slice\(\)\), \{ label, phase: 'Laner', model: 'sonnet', effort: 'low', agentType: 'wave-release', schema: RELEASE_SCHEMA \}\)/.test(release),
+    "frigivelsen koerer paa sonnet/low som agentType wave-release og sender ALLE frigivne branches (idempotent)");
+  assert.ok(release.includes("WAVE_FREEZE.INTAKE_CHECK_TIMEOUT_MINUTES * 60 * 1000"), "frigivelsen har det korte loft");
+  assert.ok(/\n\s*releasedNow,\n/.test(src) && /\n\s*releasesRun,\n/.test(src), "rapporten skal vise straks-frigivelserne");
+  // Selve kommandoen findes i modulet.
+  const policy = readFileSync(fileURLToPath(new URL("./wave-policy.mjs", import.meta.url)), "utf8");
+  assert.ok(policy.includes("command === 'finish'") && policy.includes("export function finishTracks("), "wave-policy.mjs skal have finish-kommandoen");
+});
+
+function loadAdopt() {
+  const src = readFileSync(WAVE_JS_PATH, "utf8");
+  const fn = extractFunction(src, "adoptLaneWorktree");
+  assert.ok(fn, "wave.js mangler adoptLaneWorktree()");
+  const consts = ["WORKTREES_ROOT", "SCRATCH_ROOT"].map((n) => src.match(new RegExp(`const ${n} = .*`))[0]).join("\n");
+  return new Function(`${consts}\n${fn}\nreturn adoptLaneWorktree`)();
+}
+
+test("#7587 punkt 8: fase 0 genbruger branchens eksisterende worktree med andet mappenavn end slug", () => {
+  const adopt = loadAdopt();
+  const track = { issue: 6172, branch: "fix/7516-mergecommit-no-fetch", worktree: "C:\\Dev\\CyclingZone-worktrees\\fix-7516-mergecommit-no-fetch" };
+  // Natboelgen 3/11: porcelain-stien med forward slashes og andet mappenavn.
+  const got = adopt(track, { branch: track.branch, ready: true, worktree: "C:/dev/CyclingZone-worktrees/fix-7516-no-fetch" });
+  assert.equal(got.reason, null);
+  assert.equal(got.adopted, "C:\\dev\\CyclingZone-worktrees\\fix-7516-no-fetch");
+  assert.equal(got.track.worktree, "C:\\dev\\CyclingZone-worktrees\\fix-7516-no-fetch");
+  assert.equal(track.worktree, "C:\\Dev\\CyclingZone-worktrees\\fix-7516-mergecommit-no-fetch", "input muteres ikke");
+  // Samme sti (ogsaa med anden case/slash) eller ingen sti = intet skifte.
+  for (const worktree of [undefined, "", track.worktree, "c:/dev/cyclingzone-worktrees/fix-7516-mergecommit-no-fetch/"]) {
+    const same = adopt(track, { branch: track.branch, ready: true, worktree });
+    assert.equal(same.adopted, null);
+    assert.equal(same.track, track);
+  }
+  // Fail-closed: hoved-checkoutet, scratch, uden for roden eller med '..'.
+  for (const worktree of ["C:\\Dev\\CyclingZone", "C:\\Dev\\CyclingZone-worktrees\\.wave-scratch\\x", "D:\\andet\\wt", "C:\\Dev\\CyclingZone-worktrees\\..\\CyclingZone"]) {
+    const bad = adopt(track, { branch: track.branch, ready: true, worktree });
+    assert.match(bad.reason || "", /fail-closed/, worktree);
+    assert.equal(bad.track, track);
+  }
+  const src = readFileSync(WAVE_JS_PATH, "utf8");
+  const admit = extractFunction(src, "admitReadyTracks");
+  assert.ok(admit.includes("adoptLaneWorktree(candidate, laneInfo)") && admit.includes("const track = adoption.track"), "admitReadyTracks skal give lanen den genbrugte sti");
+  const steps = extractFunction(src, "trackSetupSteps");
+  assert.ok(steps.includes("worktree list --porcelain"), "fase 0 skal finde branchens worktree med git worktree list --porcelain");
+  assert.ok(steps.includes('branch refs/heads/<sporets branch>') && steps.includes("Opret ALDRIG et nyt worktree for en branch der allerede er checket ud"), "fase 0 genbruger i stedet for at melde ready=false");
+  assert.ok(steps.includes('"worktreePath": "<den sti>"'), "briefen skal genereres med den rigtige sti (make-wave-brief worktreePath)");
+});
+
+test("#7587 punkt 7: fase 0 og intake linker balance-internals i hvert spors worktree", () => {
+  const steps = extractFunction(readFileSync(WAVE_JS_PATH, "utf8"), "trackSetupSteps");
+  assert.ok(steps.includes("scripts\\\\link-balance-internals.ps1 -WorktreeRoot <sporets worktree>"), "fase 0 skal koere link-balance-internals.ps1 for hvert spor");
+  assert.ok(steps.includes("sporet er stadig ready; flyt og slet intet selv"), "et link der ikke kan laves, maa ikke faa agenten til selv at flytte/slette");
+  assert.ok(existsSync(fileURLToPath(new URL("./link-balance-internals.ps1", import.meta.url))), "scripts/link-balance-internals.ps1 skal findes");
+});
+
+// Punkt 13-18 laeses fra prompten, saa et nyt eller omdoebt punkt ogsaa skal ind i begge docs.
+function reviewLabels7587(prompt) {
+  return [...prompt.matchAll(/(1\d)\. ([A-Z0-9][A-Z0-9 /-]*[A-Z0-9]) \(#7587\)/g)].map((m) => `${m[1]}. ${m[2]}`);
+}
+
+test("#7587 punkt 5: reviewPrompt har punkt 13-18 (CI, frossen golden, hard rule 17, pagination, fail-closed, EN/DA)", () => {
+  const prompt = extractFunction(readFileSync(WAVE_JS_PATH, "utf8"), "reviewPrompt");
+  assert.deepEqual(reviewLabels7587(prompt), ["13. CI-VAGTER", "14. FROSSEN GOLDEN", "15. HARD RULE 17", "16. PAGINATION", "17. FAIL-CLOSED", "18. SPILLERTEKST EN/DA"]);
+  for (const needle of ["gh pr checks <PR-nummer>", "merge-base-koden", "forklarende kode-kommentar", "flere end 1000", "stabil orden", "fail-open", "engelsk og dansk"]) {
+    assert.ok(prompt.includes(needle), `reviewPrompt mangler "${needle}"`);
+  }
+  assert.ok(prompt.includes("de BLOKERENDE tilfaelde i punkt 13-18"), "Dom-linjen skal kende punkt 13-18");
+});
+
+test("#7587 punkt 5: reviewer-punkt 13-18 er spejlet i begge docs", () => {
+  const prompt = extractFunction(readFileSync(WAVE_JS_PATH, "utf8"), "reviewPrompt");
+  const labels = reviewLabels7587(prompt);
+  assert.equal(labels.length, 6);
+  const ascii = (s) => s.replace(/Å/g, "AA").replace(/å/g, "aa").replace(/Æ/g, "AE").replace(/æ/g, "ae").replace(/Ø/g, "OE").replace(/ø/g, "oe");
+  for (const doc of ["docs/NIGHT_WAVE_RUNBOOK.md", "docs/PARALLEL_WORKTREE_ORCHESTRATION.md"]) {
+    const text = ascii(readFileSync(fileURLToPath(new URL(`../${doc}`, import.meta.url)), "utf8"));
+    for (const label of labels) assert.ok(text.includes(`**${label}**`), `${doc} mangler reviewer-punkt "${label}"`);
+    for (const needle of ["1000", "stabil orden", "fail-open", "merge-base"]) assert.ok(text.includes(needle), `${doc} mangler "${needle}"`);
   }
 });
 

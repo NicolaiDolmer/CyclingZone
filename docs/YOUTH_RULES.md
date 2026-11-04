@@ -231,7 +231,7 @@ Indtil tier-modellen findes, må spillet vise strukturen, men aldrig lade som om
 | Flyt op/ned uden for graduering | `backend/lib/academyTransfer.js` `promote()`/`demote()`; RPC `demote_rider_to_academy` i `database/2026-06-25-academy-promote-demote.sql` | ned kræver sæsonalder ≤ 22, ingen aktiv auktion, akademi ikke fuldt |
 | U23/U25-grænser | `backend/lib/riderSeasonAge.js` `isU23ForSeason` (< 23), `isU25ForSeason` (≤ 25, UCI-regel #4587, 2/9) | ét sted for alle kopier |
 | Årgangsmærke | `riders.generation_tag` ('s<sæson>') | sættes på alle ungdoms-genererede ryttere (#2493-fundament) |
-| Akademi-regnskab | `backend/lib/academyPnl.js` (#2485) | P&L pr. akademi, kun realiseret værdi |
+| Akademi-regnskab | `backend/lib/academyPnl.ts` (#2485) | P&L pr. akademi, kun realiseret værdi |
 | AI-holdenes ungdomstrupper (A6, #5518) | `backend/scripts/generateYouthSquadsS4.js` | **Bygget, IKKE kørt.** Engangs-kuld ved S4-cutover, dry-run default, apply ejer-gated. Se afsnittet under tabellen for hvad kuldet rører |
 
 **Hvad A6-kuldet rører på AI-holdene (tjekket 23/9 mod prod-skema og kode, read-only):**
@@ -305,7 +305,7 @@ Hver slice = egen spec der citerer denne fil, egen PR, egen sim hvor markeret. I
 
 **Byggestatus:** `docs/FEATURE_STATUS.md` (Academy-afsnittene) · epic [#2492](https://github.com/NicolaiDolmer/CyclingZone/issues/2492) · [#932](https://github.com/NicolaiDolmer/CyclingZone/issues/932) · [#958](https://github.com/NicolaiDolmer/CyclingZone/issues/958) (lukket, superseded)
 
-**Kode (verificér altid mod denne):** `backend/lib/academyFlag.js` · `academyIntake.js` · `academyGraduation.js` · `academyGraduationSweep.js` · `academyTransfer.js` · `stuckAcademyGraduates.js` · `sundayIntakeTick.js` · `academyIntakeExpirySweep.js` · `academyPnl.js` · `riderSeasonAge.js` · `frontend/src/pages/AcademyPage.jsx` · `database/2026-06-25-academy-promote-demote.sql`
+**Kode (verificér altid mod denne):** `backend/lib/academyFlag.js` · `academyIntake.js` · `academyGraduation.js` · `academyGraduationSweep.js` · `academyTransfer.js` · `stuckAcademyGraduates.js` · `sundayIntakeTick.js` · `academyIntakeExpirySweep.js` · `academyPnl.ts` · `riderSeasonAge.js` · `frontend/src/pages/AcademyPage.jsx` · `database/2026-06-25-academy-promote-demote.sql`
 
 **Design:** `docs/design/PAGE_TEMPLATES.md` (bindende) · `docs/design/youth-tiers/` (wireframes + brief)
 

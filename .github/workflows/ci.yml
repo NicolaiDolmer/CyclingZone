@@ -20,10 +20,83 @@ permissions:
   contents: read
 
 jobs:
-  backend-tests:
+  # #7582 (CI-hastighed del 2, punkt 4+5): backend-tests er delt i tre:
+  #   backend-changes     afgoer om PR'en kan paavirke backend-testene
+  #   backend-test-shard  koerer testene i 3 parallelle dele (--test-shard=i/3)
+  #   backend-tests       samle-jobbet med det PAAKRAEVEDE check-navn
+  # Samle-jobbet er kun groent naar (a) alle 3 dele er groenne OG hver backend-
+  # testfil koerte i praecis een del (talt mod hele listen, se job-summary),
+  # eller (b) backend-changes har afgjort at PR'en ikke kan paavirke testene.
+  # Push til main og merge_group koerer altid fuldt. Afgoerelsen og tallene
+  # bor i scripts/ci/backend-test-shards.mjs (enhedstestet).
+  backend-changes:
+    runs-on: ubuntu-latest
+    permissions:
+      # contents: read til checkout (scanneren laeser backend-koden), og
+      # pull-requests: read til PR'ens filliste. Job-level permissions
+      # erstatter workflow-niveauets, saa begge skal staa her.
+      contents: read
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.detect.outputs.backend }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Test backend shard and change classifier (#7582)
+        run: node --test scripts/ci/backend-test-shards.test.mjs
+
+      - name: Detect backend-relevant changes
+        id: detect
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          record() {
+            echo "backend=$1" >> "$GITHUB_OUTPUT"
+            echo "backend-changes (\`$EVENT_NAME\`): $2 -> \`backend=$1\`" >> "$GITHUB_STEP_SUMMARY"
+          }
+          # Kun pull_request kan springe over. push til main, merge_group og
+          # enhver ukendt event-type koerer altid hele suiten.
+          if [[ "$EVENT_NAME" != "pull_request" ]]; then
+            record "true" "ikke en PR, koerer altid fuldt"
+            exit 0
+          fi
+          # previous_filename med: en omdoebt eller slettet testfil kan goere
+          # backend-testene roede (promisedTestFilesExist).
+          FILES=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" --paginate \
+            --jq '.[] | .filename, (.previous_filename // empty)')
+          FILE_COUNT=$(printf '%s\n' "$FILES" | grep -c . || true)
+          # GitHubs PR-fil-API returnerer hoejst 3000 filer; en afkortet liste er
+          # ikke et bevis for "ingen backend-aendringer".
+          if [[ "$FILE_COUNT" -ge 3000 ]]; then
+            record "true" "$FILE_COUNT filer (API-graensen), koerer for sikkerheds skyld"
+            exit 0
+          fi
+          RESULT=$(printf '%s\n' "$FILES" | node scripts/ci/backend-test-shards.mjs needs-backend)
+          if [[ "$RESULT" != "true" && "$RESULT" != "false" ]]; then
+            echo "Uventet svar fra needs-backend: '$RESULT'" >&2
+            exit 1
+          fi
+          record "$RESULT" "diff mod PR #$PR_NUMBER ($FILE_COUNT filer)"
+
+  backend-test-shard:
+    name: backend-test-shard ${{ matrix.shard }}/3
+    needs: backend-changes
+    if: needs.backend-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    strategy:
+      # Alle dele koerer til ende, saa en roed koersel viser alle fejl.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     env:
       SUPABASE_URL: https://example.supabase.co
       SUPABASE_SERVICE_KEY: test-service-key
@@ -46,28 +119,122 @@ jobs:
       - name: Install backend dependencies
         run: npm ci
 
+      # De oevrige backend-trin fordeles paa delene, saa ingen del bliver den lange.
       - name: Type-check race engine v4 (#4030)
+        if: matrix.shard == 1
         run: npx tsc -p tsconfig.engine.json && npx tsc -p tsconfig.routes.json
 
-      - name: Run backend tests
-        run: npm test -- --test-reporter=spec
+      # node:test deler selv filerne (--test-shard). Den ekstra reporter skriver
+      # hver koert testfil til $BACKEND_TEST_FILE_LOG, som samle-jobbet taeller.
+      - name: Run backend tests (del ${{ matrix.shard }}/3)
+        # runner.temp findes kun paa step-niveau, ikke i job-env.
+        env:
+          BACKEND_TEST_FILE_LOG: ${{ runner.temp }}/backend-test-files/shard-${{ matrix.shard }}.txt
+        run: |
+          mkdir -p "$(dirname "$BACKEND_TEST_FILE_LOG")"
+          : > "$BACKEND_TEST_FILE_LOG"
+          npm test -- --test-reporter=spec --test-reporter-destination=stdout \
+            --test-reporter=../scripts/ci/backend-test-shards.mjs --test-reporter-destination=stdout \
+            --test-shard=${{ matrix.shard }}/3
 
       # #5928: offline recovery replay drives the real training engine; a new
       # engine read without a snapshot table failed unnoticed outside CI (12/10).
       # Lives in scripts/ (npm test only finds backend/) but needs backend deps.
       - name: Test training recovery replay (#5928)
+        if: matrix.shard == 2
         run: node --test --test-reporter=spec ../scripts/trainingRecovery5928.test.mjs
 
       # #6795: preflight-season-cutover.ps1's pulje-SQL koeres mod PGlite og holdes
       # lig resolveCutoverPoolRetirement. Lever i scripts/, kraever backend-deps.
       - name: Test cutover preflight pool SQL (#6795)
+        if: matrix.shard == 2
         run: node --test --test-reporter=spec ../scripts/preflight-season-cutover.test.mjs
 
       - name: Lint backend
+        if: matrix.shard == 2
         run: npm run lint
 
       - name: Race-engine launch-gate (#1102)
+        if: matrix.shard == 3
         run: npm run race:gate
+
+      - name: Upload test file log
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: backend-test-files-${{ matrix.shard }}
+          path: ${{ runner.temp }}/backend-test-files/shard-${{ matrix.shard }}.txt
+          if-no-files-found: error
+          retention-days: 3
+
+  # Det paakraevede check. Navnet SKAL forblive `backend-tests` uden matrix
+  # (scripts/ci-required-checks.json + check-required-ci-jobs.mjs).
+  backend-tests:
+    needs: [backend-changes, backend-test-shard]
+    # always(): jobbet skal rapportere ogsaa naar delene er sprunget over eller
+    # fejlet. Et oversprunget paakraevet job taeller som groent hos GitHub, saa
+    # samle-jobbet maa aldrig selv blive sprunget over.
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Evaluate backend test parts
+        id: gate
+        env:
+          CHANGES_RESULT: ${{ needs.backend-changes.result }}
+          BACKEND: ${{ needs.backend-changes.outputs.backend }}
+          SHARD_RESULT: ${{ needs.backend-test-shard.result }}
+        run: |
+          set -euo pipefail
+          echo "backend-changes=$CHANGES_RESULT (backend=$BACKEND), backend-test-shard=$SHARD_RESULT"
+          if [[ "$CHANGES_RESULT" != "success" ]]; then
+            echo "::error::backend-changes sluttede som '$CHANGES_RESULT' - ingen afgoerelse, ingen groen."
+            exit 1
+          fi
+          case "$BACKEND" in
+            false)
+              if [[ "$SHARD_RESULT" != "skipped" ]]; then
+                echo "::error::Forventede oversprungne dele, fik '$SHARD_RESULT'."
+                exit 1
+              fi
+              echo "verify=false" >> "$GITHUB_OUTPUT"
+              echo "backend-tests: PR'en kan ikke paavirke backend-testene, de er sprunget over (se backend-changes)." >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            true)
+              if [[ "$SHARD_RESULT" != "success" ]]; then
+                echo "::error::En eller flere backend-test-dele sluttede som '$SHARD_RESULT'."
+                exit 1
+              fi
+              echo "verify=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::Ukendt backend-afgoerelse '$BACKEND'."
+              exit 1
+              ;;
+          esac
+
+      - name: Check out repository
+        if: steps.gate.outputs.verify == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            backend
+            scripts/ci
+
+      - name: Download test file logs
+        if: steps.gate.outputs.verify == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          pattern: backend-test-files-*
+          path: ${{ runner.temp }}/backend-test-files
+
+      # Bevis for at delingen koerte ALLE filer: hver backend-testfil (samme
+      # regel som backend/scripts/run-tests.js) skal staa i praecis een del-log.
+      - name: Verify every backend test file ran in exactly one part
+        if: steps.gate.outputs.verify == 'true'
+        run: node scripts/ci/backend-test-shards.mjs verify --logs-dir "$RUNNER_TEMP/backend-test-files"
 
   frontend-build:
     runs-on: ubuntu-latest
@@ -908,7 +1075,7 @@ jobs:
 
       - name: Test affected-cron deploy proof + merge-tog (#6318, #6859)
         if: ${{ !cancelled() }}
-        run: node --test scripts/ci/cron-deploy-verification.test.mjs scripts/ci/deploy-verification-state.test.mjs scripts/merge-queue-deploy-pending.test.mjs scripts/merge-queue-train.test.mjs scripts/merge-queue-files.test.mjs scripts/merge-queue-stall.test.mjs scripts/merge-queue-ready-first.test.mjs scripts/ci/deploy-coverage.test.mjs
+        run: node --test scripts/ci/cron-deploy-verification.test.mjs scripts/ci/deploy-verification-state.test.mjs scripts/merge-queue-deploy-pending.test.mjs scripts/merge-queue-train.test.mjs scripts/merge-queue-files.test.mjs scripts/merge-queue-stall.test.mjs scripts/merge-queue-ready-first.test.mjs scripts/ci/deploy-coverage.test.mjs scripts/merge-queue-boot-errors.test.mjs scripts/merge-queue-closeout.test.mjs
 
       - name: Run workflow-checkout guard (#5441)
         if: ${{ !cancelled() }}
@@ -976,6 +1143,13 @@ jobs:
       - name: Test merge-queue category classifier (#5508)
         run: node --test scripts/merge-queue-classify.test.mjs
 
+      # #7582: alle pull_request-workflows (undtagen review-gate) skal annullere
+      # foraeldede PR-koersler og aldrig annullere push/schedule. Guard + test.
+      - name: Workflow concurrency guard (#7582)
+        run: |
+          node scripts/check-workflow-concurrency.mjs
+          node --test scripts/check-workflow-concurrency.test.mjs
+
   migration-idempotency:
     runs-on: ubuntu-latest
     permissions:
@@ -999,6 +1173,9 @@ jobs:
 
       - name: Test idempotency guard
         run: node --test scripts/lint-migration-idempotency.test.mjs
+
+      - name: Test merge queue migration gate
+        run: node --test scripts/merge-queue-migrations.test.mjs
 
       - name: Run idempotency guard
         run: node scripts/lint-migration-idempotency.mjs

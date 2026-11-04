@@ -14,7 +14,7 @@ import {
   getTransferCancelIssue,
   getTransferExecutionIssue,
 } from "./transferExecution.js";
-import { OPEN_SWAP_STATUSES } from "./auctionRules.js";
+import { OPEN_SWAP_STATUSES } from "./auctionRules.ts";
 import { flushDeferredTransfersForRace } from "./stageRaceTransferDefer.js";
 
 test("getTransferExecutionIssue rejects a buyer that would exceed the squad max", () => {

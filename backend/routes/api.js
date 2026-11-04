@@ -68,11 +68,12 @@ import {
   getSwapAuctionConflict,
   getTransferAuctionConflict,
   isExpectedPriceStale,
-} from "../lib/auctionRules.js";
+} from "../lib/auctionRules.ts";
 import {
   finalizeAuctionById,
   finalizeExpiredAuctions as finalizeExpiredAuctionsShared,
 } from "../lib/auctionFinalization.js";
+import { getListingOnAuctionIssue, safePauseTransferListingsForAuction, safeResumePausedListingsForAuctionId } from "../lib/auctionTransferListPause.ts";
 import {
   buildTransitionPlan,
   closePrevTransferWindow,
@@ -315,7 +316,7 @@ import { resolveGraduation, findPendingGraduation } from "../lib/academyGraduati
 import { handleListPendingRequest, handlePromotePendingRequest } from "../lib/promotionPendingAction.js"; // #6710
 import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary, hasCompleteContract, demoteTargetSquad, handleMoveSquadRequest } from "../lib/academyTransfer.js";
 import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";
-import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.js";
+import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.ts";
 import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
 import {
   getTeamAcademyCount,
@@ -331,8 +332,8 @@ import { computeFrozenSalary } from "../lib/contractSeed.js";
 import {
   computeDebtRatio,
   computeSustainabilityTier,
-} from "../lib/economyAdminDashboard.js";
-import { computeFinanceForecast, computeMultiSeasonForecast } from "../lib/financeForecast.js";
+} from "../lib/economyAdminDashboard.ts";
+import { computeFinanceForecast, computeMultiSeasonForecast } from "../lib/financeForecast.ts";
 import { isUpkeepPerRaceDayEnabled } from "../lib/upkeepPerRaceDayFlag.ts";
 import { isEconomyNoUpkeepEnabled } from "../lib/economyNoUpkeepFlag.ts";
 import { buildSeasonFinanceReport, summarizePrizes } from "../lib/seasonFinanceReport.js";
@@ -7640,6 +7641,8 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
     }
     return res.status(500).json({ error: error.message });
   }
+  // #4211: rytterens transferliste staar paa pause, mens auktionen koerer.
+  await safePauseTransferListingsForAuction(supabase, { riderId: rider_id });
 
   if (initialBidderId) {
     await supabase.from("auction_bids").insert({
@@ -8412,6 +8415,10 @@ router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
     .maybeSingle();
   if (existingListing) {
     return res.status(409).json({ error: "This rider is already listed on the transfer market", errorCode: "rider_already_listed" });
+  }
+  // #4211: en rytter paa aktiv auktion kan ikke saettes paa transferlisten.
+  if (getListingOnAuctionIssue({ riderId: rider_id, activeAuctionRiderIds: await getActiveAuctionRiderIds(supabase, [rider_id]) })) {
+    return res.status(409).json({ error: "This rider is on auction right now. You can list it once the auction has ended.", errorCode: "rider_on_auction_listing" });
   }
 
   const { data, error } = await supabase
@@ -11849,6 +11856,7 @@ router.post("/admin/auctions/:id/cancel", requireAdmin, adminWriteLimiter, async
     }
     return res.status(500).json({ error: "Cancel fejlede" });
   }
+  await safeResumePausedListingsForAuctionId(supabase, req.params.id); // #4211
 
   res.json({
     success: true,

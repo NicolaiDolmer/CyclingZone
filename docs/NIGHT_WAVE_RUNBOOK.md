@@ -117,6 +117,26 @@ Fejler a eller b, skriver revieweren det i summary og tjekker punkt 10-12 i hån
 
 Dom: punkt 10 og 11 er BEMÆRKNINGER før 2026-10-01 og BLOKERENDE fra 2026-10-01 - samme dato som det planlagte skift af `.github/workflows/done-guard.yml` (trinnene står i workflowets header).
 
+## Reviewer-tjeklisten: punkt 13-18 (3/11, #7587)
+
+Spejl af punkt 13-18 i `reviewPrompt()`; `scripts/wave-freeze.test.mjs` fejler, hvis et af dem mangler her eller i `docs/PARALLEL_WORKTREE_ORCHESTRATION.md`. Hvorfor: bølgen 3/11 (11 spor) havde fire PR'er der ventede på røde CI-vagter lanen selv kunne rette, to golden-tests der beviste "off" mod den nye kode, og en kode-kommentar med den præcise formel.
+
+- **13. CI-VAGTER** - revieweren kører `gh pr checks <N>` én gang. Rødt pga. diffen (fx ts-core-ratchet, frontend-typecheck-baseline, feature-registry-check) er BLOKERENDE (category `verifikation`); rødt også på main, eller stadig kørende, skrives i summary.
+- **14. FROSSEN GOLDEN** - en ny kontakt i motor- eller træningskode skal bevise "off = bit-identisk" mod en fixture genereret af merge-base-koden (SHA i PR-body), ikke af den nye kodes default eller off-gren. Regenereret facit eller manglende bevis er BLOKERENDE.
+- **15. HARD RULE 17** - en præcis formel, vægt, tærskel eller et parametervalg i en forklarende kode-kommentar, i docs eller i PR-body er BLOKERENDE (category `secrets`). Runtime-konstanter i selve koden er undtaget efter AGENTS.md hard rule 17.
+- **16. PAGINATION** - læser diffen rækker fra Supabase/PostgREST, der kan blive flere end 1000 (loftet pr. kald), skal den pagere (`.range` i løkke) med stabil orden (`.order` på en unik nøgle). Mangler det, er det BLOKERENDE når det rører spillerdata eller penge, ellers en bemærkning.
+- **17. FAIL-CLOSED** - ved fejl, timeout, manglende data eller ukendt kontaktværdi gør koden det sikre (ingen udbetaling, ingen adgang, ingen skrivning) og fejler synligt. En catch eller default der fortsætter som om alt er godt (fail-open) på penge, adgang eller prod-skrivning er BLOKERENDE.
+- **18. SPILLERTEKST EN/DA** - ny eller ændret spillertekst findes på både engelsk og dansk (EN først). Mangler et sprog, er det BLOKERENDE.
+
+## Bølge-kvalitet 2.0 (3/11, #7587)
+
+- **Briefen kræver CI-vagterne lokalt før push** (`scripts/make-wave-brief.mjs`, `CI_GUARDS`): ts-core-ratchet ved backend/, typecheck-baseline ved frontend/ eller backend/, `generate-feature-status.mjs --check` ved registry/migrationer. Efter sidste push kører lanen selv `gh pr checks <N>` én gang og retter rødt før den melder færdig; CI-status står i slutrapporten.
+- **Frossen golden:** spor der rører motor/træning (sti eller scope) får en blok med opskriften: tjek merge-base ud separat i scratch, generér fixturen dér, sammenlign den nye kode med kontakten off mod den. Reglen står i alle byggebriefs.
+- **Hard rule 17 i kommentarer:** fast linje i alle byggebriefs og punkt 15 ovenfor.
+- **Straks-frigivelse:** et spor der er bygget og reviewet (status `bygget`/`rettet`), frigiver sit ejerskab med det samme via `wave-policy.mjs finish` (agenttype `wave-release`), så merge-køen kan tage det. 3/11 sprang køen et færdigt spor over, fordi frigivelsen ventede på næste intake-tjek. `finishedInWave` sendes stadig med hvert tjek som sikkerhedsnet.
+- **Fase 0 genbruger branchens worktree:** fase 0 slår branchen op i `git worktree list --porcelain` og bruger det eksisterende worktree, også når mappenavnet ikke er slug (3/11 blev et spor sprunget over af den grund). Briefen genereres med `worktreePath`; en sti uden for worktree-roden starter ingen lane.
+- **balance-internals/ er et link:** `scripts/link-balance-internals.ps1` (kaldt af `setup-worktree.ps1`, altså også `new-worktree.ps1`, og af fase 0 for hvert spor) gør worktreets `balance-internals/` til en junction til den delte OneDrive-mappe. En lokal mappe flyttes ind uden overskrivning. Oprydningen (`close-out-cleanup-junctions.ps1`, brugt af `remove-worktree.ps1` og `prune-merged-worktrees.ps1`) nægter at fjerne et worktree, hvis dets `balance-internals/` er en rigtig mappe med filer der ikke findes i den delte mappe. Fjern aldrig et worktree med rå `git worktree remove --force`: den følger junctionen.
+
 ## Læringer 2-3/9 (den store natbølge, 29 spor, 32 PR'er, 31 merget næste formiddag)
 
 - **Lane-pool i stedet for chunk-barrierer:** to Workflow-kald (6 + 2 laner, cap pr. workflow = CPU−2) over én prioriteret kø, hver lane tager næste spor, per-spor `Promise.race`-timeout. Ingen tomme slots; et spor der døde tavst (anti-slop 00:22) kostede kun sin lane i 90 min. Skabelon: memory `project_night_wave_lane_pool_design`. Lette spor: 45-60 min timeout, ikke 90.
