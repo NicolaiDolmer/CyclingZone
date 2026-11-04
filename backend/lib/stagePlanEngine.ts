@@ -17,6 +17,11 @@
 //          lederen / lederen ikke koerer med). For en rytter i udbrudsopgaven er
 //          "sat" at han ikke (laengere) er i udbruddet: hentet eller kom ikke med.
 //          Motoren springer direkte til sat-leddet, uanset hvor langt kaeden er.
+//          #7635 (slukket kontakt stage_plan_dropped_front_7635): kun en rigtig opdeling
+//          af feltet er fronten. En gruppe opstaaet ved et angreb (udbrud, nedkoerselsangreb,
+//          finale- og kontraangreb, observeGroups7635) goer aldrig resten af feltet sat, og
+//          "sat" kraever en reel afstand der holder over flere segmentgraenser i traek
+//          (STAGE_PLAN_DROPPED_7635_TUNING). Slukket er reglen ovenfor uaendret.
 //        - rutepunkt (top af en stigning / de sidste km): ved den segmentgraense der
 //          ligger naermest punktet, dvs. ved segmentets start naar mindst halvdelen
 //          af segmentet ligger efter punktet. Flere punkter kan passeres i samme

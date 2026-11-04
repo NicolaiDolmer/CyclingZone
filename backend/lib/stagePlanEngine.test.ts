@@ -15,8 +15,11 @@ import {
   createStagePlanRuntime,
   stagePlanEntrants,
   stagePlanFinalEfforts,
+  observeGroups7635,
+  type Front7635State,
   type StagePlanRuntime,
 } from "./stagePlanEngine.ts";
+import { STAGE_PLAN_DROPPED_7635_TUNING } from "./engine/v4/tuning.ts"; // #7635
 import { STAGE_PLAN_FINAL_KM, type StagePlanLeg } from "./stagePlan.ts";
 import { splitAtFinalKm7383 } from "./engine/v4/adapters/finalKmBoundary7383.ts"; // #7383
 
@@ -169,4 +172,126 @@ test("#7383 (kontakten): med en graense paa punktet skifter alle opgaver praecis
   const legs: StagePlanLeg[] = [{ task: "stay_sheltered" }, { task: "follow_moves", from: { at: "kom", kom_index: 1 } }, { task: "attack", from: { at: "final_km" } }];
   const rt = createStagePlanRuntime([planOrder("cap", legs)], route, ENTRANTS)!;
   assert.deepEqual(rideRoute(rt, route).events.map((e) => [e.km, e.params.leg]), [[100, 1], [finalKm, 2]]);
+});
+
+// ── #7635 (kontakten stage_plan_dropped_front_7635): "sat" kun bag en rigtig front ──
+// Kontrakter, ingen balance-tal: afstandene i testene regnes fra tuningen.
+
+const E7635: Record<string, Entrant> = {
+  cap: entrant("cap", "A", "captain"),
+  h1: entrant("h1", "A", "helper"),
+  x: entrant("x", "B", "captain"),
+  y: entrant("y", "B", "helper"),
+  z: entrant("z", "C", "captain"),
+};
+const GAP = STAGE_PLAN_DROPPED_7635_TUNING.minGapSeconds;
+
+function state7635(groups: RaceGroup[]): EngineState {
+  const riders: EngineState["riders"] = {};
+  for (const g of groups) {
+    for (const id of g.rider_ids) {
+      riders[id] = { rider_id: id, group_id: g.id, cp: 1, wprimeMax: 1, wprime: 1, dayform: 0, seconds_over_cp: 0, work_norm: 0, incidents: 0, status: "racing", time_seconds: 0 };
+    }
+  }
+  return { km: 0, groups, riders, virtual_gc: {} };
+}
+
+const g7635 = (id: string, rider_ids: string[], gap_seconds: number, extra: Partial<RaceGroup> = {}): RaceGroup =>
+  ({ id, kind: "peloton", rider_ids, gap_seconds, cohesion: 1, ...extra });
+
+/** Lederens plan fra #7635: foelg med, angrib efter Y, koer for resultatet naar han er sat. */
+const CAPTAIN_PLAN: StagePlanLeg[] = [
+  { task: "follow_moves" },
+  { task: "attack", from: { at: "kom", kom_index: 1 } },
+  { task: "ride_for_result", from: { at: "dropped" } },
+];
+
+/** Koer planen over de foerste segmentgraenser med en tilstand pr. graense (index 0 = start). */
+function ride7635(on: boolean, states: EngineState[]): TimelineEvent[] {
+  const route = twoClimbRoute();
+  const rt = createStagePlanRuntime([planOrder("cap", CAPTAIN_PLAN)], route, E7635, on ? { droppedFront7635: true } : {})!;
+  const events: TimelineEvent[] = [];
+  states.forEach((state, segmentIndex) => {
+    events.push(...advanceStagePlan(rt, { state, segment: route.segments[segmentIndex], segmentIndex, entrants: E7635 }));
+  });
+  return events;
+}
+
+const START = state7635([g7635("peloton-0", ["cap", "h1", "x", "y", "z"], 0)]);
+
+test("#7635 slukket: runtime'en har praecis de samme felter som foer kontakten", () => {
+  const rt = createStagePlanRuntime([planOrder("cap", CAPTAIN_PLAN)], twoClimbRoute(), E7635)!;
+  assert.deepEqual(Object.keys(rt).sort(), ["current", "everInEscape", "legs", "ridden", "riderIds"]);
+  assert.equal(createStagePlanRuntime([planOrder("cap", CAPTAIN_PLAN)], twoClimbRoute(), E7635, { droppedFront7635: false })!.front7635, undefined);
+});
+
+test("#7635: et nedkoerselsangreb faa sekunder foran goer aldrig feltet sat (slukket: den gamle fejl)", () => {
+  const descent = state7635([
+    g7635("breakaway-2000", ["x", "y", "z"], 0, { kind: "breakaway", origin: "descent" }),
+    g7635("peloton-0", ["cap", "h1"], GAP / 3),
+  ]);
+  const legacy = ride7635(false, [START, descent]);
+  assert.deepEqual(legacy.map((e) => [e.params.leg, e.params.reason]), [[2, "dropped"]], "slukket: som i #7635");
+  const fixed = ride7635(true, [START, descent, descent, descent]);
+  assert.deepEqual(fixed, [], "taendt: lederen er ikke sat, planen springer ikke");
+});
+
+test("#7635: et angreb uden oprindelse (finaleangreb) med stor afstand goer heller ikke feltet sat", () => {
+  const attack = state7635([
+    g7635("solo-1900", ["x"], 0, { kind: "solo" }),
+    g7635("peloton-0", ["cap", "h1", "y", "z"], GAP * 3),
+  ]);
+  assert.deepEqual(ride7635(true, [START, attack, attack, attack]), []);
+});
+
+test("#7635: en rigtig opdeling med holdbar afstand giver 'sat', ved anden graense i traek", () => {
+  const split = state7635([
+    g7635("peloton-0", ["x", "y", "z"], 0),
+    g7635("chase-2001", ["cap", "h1"], GAP * 3, { kind: "chase" }),
+  ]);
+  const events = ride7635(true, [START, split, split]);
+  assert.deepEqual(events.map((e) => [e.km, e.params.leg, e.params.reason]), [[twoClimbRoute().segments[2].from_km, 2, "dropped"]]);
+  assert.deepEqual(ride7635(true, [START, split]), [], "én graense er ikke nok");
+});
+
+test("#7635: en afstand der ikke holder, eller er for lille, giver ikke 'sat'", () => {
+  const split = state7635([g7635("peloton-0", ["x", "y", "z"], 0), g7635("chase-2001", ["cap", "h1"], GAP * 3, { kind: "chase" })]);
+  const back = state7635([g7635("peloton-0", ["cap", "h1", "x", "y", "z"], 0)]);
+  assert.deepEqual(ride7635(true, [START, split, back, split]), [], "hentet igen: taelleren starter forfra");
+  const small = state7635([g7635("peloton-0", ["x", "y", "z"], 0), g7635("chase-2001", ["cap", "h1"], GAP / 2, { kind: "chase" })]);
+  assert.deepEqual(ride7635(true, [START, small, small, small]), []);
+});
+
+test("#7635: et hentet angreb, der beholder angrebets id, er derefter en rigtig front", () => {
+  const attack = state7635([g7635("solo-1900", ["x"], 0, { kind: "solo" }), g7635("peloton-0", ["cap", "h1", "y", "z"], GAP * 3)]);
+  const caught = state7635([g7635("solo-1900", ["cap", "h1", "x", "y", "z"], 0)]);
+  const split = state7635([g7635("solo-1900", ["x", "y", "z"], 0), g7635("chase-3001", ["cap", "h1"], GAP * 3, { kind: "chase" })]);
+  const events = ride7635(true, [START, attack, caught, split, split]);
+  assert.deepEqual(events.map((e) => [e.params.leg, e.params.reason]), [[2, "dropped"]]);
+});
+
+test("#7635: hjaelperen bag lederens rigtige front er sat; bag lederens angreb er han ikke", () => {
+  const route = twoClimbRoute();
+  const helperPlan: StagePlanLeg[] = [{ task: "shelter_leader" }, { task: "ride_in", from: { at: "dropped" } }];
+  const run = (states: EngineState[]) => {
+    const rt = createStagePlanRuntime([planOrder("h1", helperPlan)], route, E7635, { droppedFront7635: true })!;
+    return states.flatMap((state, segmentIndex) => advanceStagePlan(rt, { state, segment: route.segments[segmentIndex], segmentIndex, entrants: E7635 }));
+  };
+  const selection = state7635([g7635("peloton-0", ["cap", "x"], 0), g7635("chase-2001", ["h1", "y", "z"], GAP * 3, { kind: "chase" })]);
+  assert.deepEqual(run([START, selection, selection]).map((e) => e.params.reason), ["dropped"]);
+  const leaderAttack = state7635([g7635("solo-1900", ["cap"], 0, { kind: "solo" }), g7635("peloton-0", ["h1", "x", "y", "z"], GAP * 3)]);
+  assert.deepEqual(run([START, leaderAttack, leaderAttack, leaderAttack]), []);
+});
+
+test("#7635 observeGroups7635: en rigtig opdeling er aldrig et angreb; et spring frem er", () => {
+  const f: Front7635State = { prevGroupOf: null, seen: new Set(), attackGroups: new Set(), streak: new Map() };
+  observeGroups7635(f, START.groups);
+  observeGroups7635(f, [g7635("peloton-0", ["cap", "x"], 0), g7635("chase-2001", ["h1", "y"], GAP), g7635("solo-2900", ["z"], 0, { kind: "solo" })]);
+  // solo-2900 ligger ikke foran feltet (samme gab): ikke et angreb. chase-2001 ligger bag.
+  assert.deepEqual([...f.attackGroups], []);
+  observeGroups7635(f, [g7635("solo-3900", ["x"], 0, { kind: "solo" }), g7635("peloton-0", ["cap"], GAP), g7635("chase-2001", ["h1", "y"], GAP * 2), g7635("solo-2900", ["z"], GAP * 2)]);
+  assert.deepEqual([...f.attackGroups], ["solo-3900"]);
+  // Splittes en angriber ud af et angreb, er han stadig et angreb.
+  observeGroups7635(f, [g7635("solo-3900", ["x"], 0, { kind: "solo" }), g7635("peloton-0", ["cap", "h1", "y", "z"], GAP)]);
+  assert.deepEqual([...f.attackGroups], ["solo-3900"]);
 });
