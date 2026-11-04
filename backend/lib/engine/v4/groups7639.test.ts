@@ -37,16 +37,19 @@ const riggedIncident = createIncidentHook({
   crashSeverityShares: { hard: 0, serious: 1 },
 });
 
+// v3's terraen-andel for udgaaelse (#6938) ville ellers overstyre riggens trin,
+// saa KUN uheldshooket ser konteksten uden v3-flaget; resten af etapen er v3.
 function hooksCrashingOn(segmentIndex: number): MechanicHooks {
   return {
     ...LIVE_MECHANIC_HOOKS,
-    incidents: (state, ctx) => (ctx.segmentIndex === segmentIndex ? riggedIncident(state, ctx) : { state, events: [] }),
+    incidents: (state, ctx) =>
+      ctx.segmentIndex === segmentIndex ? riggedIncident(state, { ...ctx, s5ProfilesV3: undefined }) : { state, events: [] },
   };
 }
 
-function loadInput(fixture: string): StageInput {
+function loadInput(fixture: string, revision: "s5_profiles_v3" | "s5_profiles_v2" = "s5_profiles_v3"): StageInput {
   const input = JSON.parse(readFileSync(path.join(here, "fixtures", fixture, "input.json"), "utf8")) as StageInput;
-  return { ...input, rulesRevision: "s5_profiles_v3" };
+  return { ...input, rules_revision: revision };
 }
 
 const sha = (value: unknown): string => createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -63,18 +66,24 @@ function ghostRefs(timeline: readonly TimelineEvent[], incidentIndex: number, gh
   });
 }
 
-// Frosset fra merge-base be8ea8a6f (se filhovedet). base_ghost_events = antal
+// Frosset fra merge-base be8ea8a6f (se filhovedet). baseGhostEvents = antal
 // spoegelses-events den gamle kode emitterede (beviser at scenariet rammer fejlen).
+// `timeline` er digesten af base-tidslinjen MINUS spoegelses-events.
+//
+// flat-massespurt: dagens udbryder holdt hele vejen. Den gamle kode lod
+// spoegelset "overleve et hul" i finalen og skjulte dermed finale-eventet om at
+// udbruddet bar forspringet i maal. Det event er nu tilbage (`restored`), og
+// det er den eneste tilfoejelse; alt andet er base minus spoegelset.
 const FROZEN = [
-  { fixture: "mellembjerg", crashSegment: 3, baseGhostEvents: 5,
-    state: "3a89fed860993cbabaaa1f16031ef8995dc9b25ea97f49ccb33873b268c15c7e",
-    timeline: "c7ce35a4fefcd0b675a0b0e9de9b1364b6c35933c2ee836c5231912db18752f9" },
-  { fixture: "flat-massespurt", crashSegment: 1, baseGhostEvents: 3,
-    state: "a3a762c8506d9b64599f3a3e504fd2d362ecf55fd2aeb897fedd116ea4db248e",
-    timeline: "5fb0f844a7bf0c7fc313ca9439c81567d06ef315dfbeda3ea5afef2161604e31" },
-  { fixture: "bjerg-selektion", crashSegment: 3, baseGhostEvents: 1,
-    state: "f909c6d33d67e6f2b364973abe6fc9cff10f80b375762d86076ff4e41a81af94",
-    timeline: "f174735ef1549b2f4d5b601183846a238b0812c909d9082d76a8d9d7861c4176" },
+  { fixture: "mellembjerg", crashSegment: 3, baseGhostEvents: 6, restored: null,
+    state: "2bc69ca2a53eb0bc0349ee92de4639985f1de9c95967b30e9528583e2ef0be53",
+    timeline: "7617d8a29384f766a778117097999fd5540eb0d17968fffcba4f0341ae09aa06" },
+  { fixture: "flat-massespurt", crashSegment: 1, baseGhostEvents: 4, restored: "carried_gap_held",
+    state: "a0ddf30aa3e3b0cac907e6eab345e6e07f08b45f665b0d15b10a58b9be36b5cf",
+    timeline: "17a4bb72c69793129bd25cf67805934ea25cbe63db62f8c34ef8a2d0308f9b74" },
+  { fixture: "bjerg-selektion", crashSegment: 3, baseGhostEvents: 2, restored: null,
+    state: "9429f3518ef3e36ec713bf04204da6eef77ac0cd3ceeb874f3c79d8107fc0209",
+    timeline: "b8d119994a873adf5d57049d7e8d45370a962d05dc177bedb3cc616449a3d8f1" },
 ] as const;
 
 for (const frozen of FROZEN) {
@@ -99,13 +108,19 @@ for (const frozen of FROZEN) {
       frozen.state,
       "state/snapshots skal vaere bit-identiske med merge-base",
     );
-    assert.equal(sha(out.timeline), frozen.timeline, "tidslinjen = base-tidslinjen minus spoegelses-events");
+    const isRestored = (e: TimelineEvent): boolean =>
+      frozen.restored !== null && e.type === "finale_attack" && e.params?.kind === frozen.restored;
+    if (frozen.restored !== null) {
+      const restored = out.timeline.filter(isRestored);
+      assert.equal(restored.length, 1, "finale-eventet om det baarne forspring er tilbage");
+      assert.ok(!(restored[0].params!.rider_ids as string[]).includes(victim));
+    }
+    assert.equal(sha(out.timeline.filter((e) => !isRestored(e))), frozen.timeline, "tidslinjen = base-tidslinjen minus spoegelses-events");
   });
 }
 
 test("#7639: aeldre revisioner er frosne og beholder deres tidslinje (rettelsen gaelder kun s5_profiles_v3)", () => {
-  const input = { ...loadInput("mellembjerg"), rulesRevision: "s5_profiles_v2" as const };
-  const out = runSegmentLoop(input, hooksCrashingOn(3));
+  const out = runSegmentLoop(loadInput("mellembjerg", "s5_profiles_v2"), hooksCrashingOn(3));
   const incidentIndex = out.timeline.findIndex((e) => e.type === "incident" && e.params?.outcome === "abandoned");
   assert.ok(incidentIndex >= 0);
   const victim = out.timeline[incidentIndex].params!.rider_id as string;
