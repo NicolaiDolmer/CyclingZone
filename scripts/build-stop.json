@@ -795,6 +795,21 @@
       "issue": 7636,
       "reason": "Etapeplanens resumé modsiger filmen (Giro etape 8), ejer-go løsning A 4/11 i #7495",
       "since": "2026-11-04"
+    },
+    {
+      "issue": 7643,
+      "reason": "Sandhedsvagt efter hver etape (resultat, film, referat, plan), ejer-go valg A 4/11 i #7495",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 7644,
+      "reason": "Nedkørsler samler for meget, måling før byg, ejer-go valg A 4/11 i #7495",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 7645,
+      "reason": "For lidt selektion på kuperet/mellembjerg, designspor, ejer-go valg A 4/11 i #7495",
+      "since": "2026-11-04"
     }
   ]
 }
