@@ -43,6 +43,102 @@ import { ACADEMY } from "./academyFlag.js";
 // markedsværdi-kurven er slettet sammen med denne ændring.)
 import { computeFrozenSalary } from "./contractSeed.js";
 
+type NumericInput = number | string | null | undefined;
+type ForecastRiskTier = "green" | "yellow" | "red";
+type ForecastTeam = {
+  id?: string | null;
+  division?: number | null;
+  balance?: number | null;
+  sponsor_income?: number | null;
+};
+type ForecastRider = {
+  salary?: number | null;
+  prize_earnings_bonus?: number | null;
+  contract_end_season?: NumericInput;
+  current_production_value?: NumericInput;
+};
+type ForecastLoan = { amount_remaining?: number | null; interest_rate?: number | null };
+type ForecastStanding = {
+  team_id?: string | null;
+  division?: number | null;
+  rank_in_division?: number | null;
+  total_points?: number | null;
+};
+type ForecastContract = {
+  start_season?: number | null;
+  expires_after_season?: number | null;
+  signed_division?: number | null;
+  guaranteed_base?: NumericInput;
+  per_race_day_rate?: NumericInput;
+  sponsor_name?: string | null;
+};
+type ForecastFacility = { track?: string; tier: number };
+type ForecastStaff = { salary?: number | null };
+type ForecastOptions = {
+  team?: ForecastTeam;
+  boardModifier?: number;
+  pulloutFactor?: number;
+  riders?: ForecastRider[];
+  activeLoans?: ForecastLoan[];
+  totalDebt?: number;
+  debtCeiling?: number | null;
+  currentSeasonNumber?: number | null;
+  targetSeasonNumber?: number | null;
+  lastSeasonStanding?: ForecastStanding | null;
+  lastSeasonStandings?: ForecastStanding[];
+  realizedSeasonPrize?: NumericInput;
+  activeContract?: ForecastContract | null;
+  pendingContract?: ForecastContract | null;
+  facilityTracks?: ForecastFacility[];
+  activeStaffSalaries?: ForecastStaff[];
+  academyRiderCount?: NumericInput;
+  facilitiesEnabled?: boolean;
+  upkeepPerRaceDay?: boolean;
+  upkeepRaceDays?: NumericInput;
+  noUpkeep?: boolean;
+};
+// API-kaldere sender fortsat totalDebt; beregningen udleder gaelden fra activeLoans.
+type MultiSeasonOptions = Omit<ForecastOptions, "targetSeasonNumber" | "upkeepRaceDays"> & {
+  seasonsAhead?: NumericInput;
+};
+type RiskTierInput = {
+  projectedNet: number;
+  projectedEndingBalance: number;
+  debtRatio: number;
+  trendBreaches2Seasons: boolean;
+};
+type WarningInput = Pick<RiskTierInput, "projectedNet" | "debtRatio" | "trendBreaches2Seasons"> & {
+  totalDebt: number;
+  debtCeiling: number | null;
+  projectedSalary: number;
+  projectedSponsor: number;
+};
+type ForecastWarning = {
+  severity: "high" | "med";
+  code: "negative_net" | "debt_near_ceiling" | "debt_growing" | "debt_trend" | "salary_exceeds_sponsor";
+  messageKey: "forecast.warning.negativeNet" | "forecast.warning.debtNearCeiling" | "forecast.warning.debtGrowing" | "forecast.warning.debtTrend" | "forecast.warning.salaryExceedsSponsor";
+  params: Record<string, number>;
+};
+// These JavaScript helpers infer null-only parameters from their defaults.
+// Describe the existing read-only input boundary without changing either helper.
+type SponsorForecastInput = {
+  seasonNumber: number | null;
+  team: ForecastTeam;
+  lastSeasonStanding: ForecastStanding | null;
+  divisionStandings: ForecastStanding[];
+  activeContract: ForecastContract | null;
+};
+type SponsorForecastSeason<T> = T extends unknown
+  ? Omit<T, "season_number"> & { season_number: number | null }
+  : never;
+type SponsorForecastResult = SponsorForecastSeason<ReturnType<typeof computeSponsorForSeason>>;
+type DivisionAdjustmentInput = {
+  team: ForecastTeam;
+  contract: ForecastContract | null;
+  seasonNumber: number | null;
+  modifier: number;
+};
+
 const RISK_NET_GREEN_THRESHOLD = 50_000;
 const RISK_NET_RED_THRESHOLD = -50_000;
 const RISK_DEBT_GREEN_RATIO = 0.5;
@@ -55,7 +151,7 @@ export const NEW_WAGE_SYSTEM_SEASON = 3;
 
 // #5940: owner-selected uncertainty band around the club's own estimate.
 // This display choice is not a historically measured confidence interval.
-function computePrizeInterval(projectedPrize) {
+function computePrizeInterval(projectedPrize: number) {
   const band = Math.round(Math.abs(projectedPrize) * CONFIDENCE_BAND_PCT);
   return { low: Math.max(0, projectedPrize - band), high: projectedPrize + band };
 }
@@ -160,11 +256,11 @@ export function computeFinanceForecast({
   // personale), facilitets-upkeep og akademi-drift opkræves ikke længere, så
   // prognosen regner dem som 0. Caller læser flaget (fail-safe false).
   noUpkeep = false,
-} = {}) {
+}: ForecastOptions = {}) {
   const seasonNumber = Number.isInteger(targetSeasonNumber)
-    ? targetSeasonNumber
+    ? targetSeasonNumber!
     : Number.isInteger(currentSeasonNumber)
-      ? currentSeasonNumber + 1
+      ? currentSeasonNumber! + 1
       : null;
   const sponsorContext = buildSponsorStandingsContext(lastSeasonStandings);
   const resolvedLastStanding = lastSeasonStanding
@@ -181,10 +277,10 @@ export function computeFinanceForecast({
   const contractForSeason =
     pendingContract && pendingContract.start_season === seasonNumber
       ? pendingContract
-      : activeContract && activeContract.expires_after_season >= seasonNumber
+      : activeContract && (activeContract.expires_after_season as number) >= (seasonNumber as number)
         ? activeContract
         : null;
-  const sponsorBreakdown = computeSponsorForSeason({
+  const sponsorBreakdown = (computeSponsorForSeason as (input: SponsorForecastInput) => SponsorForecastResult)({
     seasonNumber,
     team,
     lastSeasonStanding: resolvedLastStanding,
@@ -205,7 +301,7 @@ export function computeFinanceForecast({
   // finance_transactions-række. Samme modifier-stak som basen (ejer-valg 4 af 29/8).
   // Bruger SAMME kontrakt-gren som sponsoren ovenfor, så prognosen ikke kan modellere et
   // tillæg fra en aftale der slet ikke er aktiv i target-sæsonen.
-  const projectedDivisionAdjustment = resolveDivisionAdjustment({
+  const projectedDivisionAdjustment = (resolveDivisionAdjustment as unknown as (input: DivisionAdjustmentInput) => ReturnType<typeof resolveDivisionAdjustment>)({
     team,
     contract: contractForSeason,
     seasonNumber,
@@ -234,10 +330,10 @@ export function computeFinanceForecast({
   // kontrakt udløber før target-sæsonen, står med forlængelsens løn
   // (computeFrozenSalary, samme funktion som computeContractExtension), så
   // tallet svarer til at beholde den nuværende trup.
-  const usesNewWageSystem = Number.isInteger(seasonNumber) && seasonNumber >= NEW_WAGE_SYSTEM_SEASON;
-  const riderSalaryForSeason = (r) => {
+  const usesNewWageSystem = Number.isInteger(seasonNumber) && seasonNumber! >= NEW_WAGE_SYSTEM_SEASON;
+  const riderSalaryForSeason = (r: ForecastRider) => {
     const end = Number(r?.contract_end_season);
-    const expiresBefore = Number.isFinite(end) && Number.isInteger(seasonNumber) && end < seasonNumber;
+    const expiresBefore = Number.isFinite(end) && Number.isInteger(seasonNumber) && end < seasonNumber!;
     if (expiresBefore || !Number.isFinite(Number(r?.salary))) {
       return computeFrozenSalary({ current_production_value: r?.current_production_value });
     }
@@ -270,16 +366,14 @@ export function computeFinanceForecast({
   // #1678: udskudt i sæson 1 (før første løb) medmindre flaget slås til —
   // forecastet skal ramme samme 0 som den faktiske sæson-1-opkrævning.
   const upkeepDeferred = !UPKEEP_BEFORE_FIRST_RACE_ENABLED && seasonNumber === 1;
-  const upkeepForDivision = UPKEEP_BY_DIVISION[team?.division] || 0;
+  const upkeepForDivision = (UPKEEP_BY_DIVISION as Readonly<Partial<Record<number, number>>>)[team?.division as number] || 0;
   // #4385: med upkeep_per_race_day on er sæsonens upkeep satsen pr. senior-
   // løbsdag × antal løbsdage (samme sæsonsum spredt ud, ejer-valg 1). Intet af
   // det trækkes ved sæsonstart: projected_upkeep_at_season_start er 0, og
   // sæsonskifte-kvitteringen (seasonSwitchPreview) læser netop det felt.
-  const upkeepDivision = Number(/** @type {{ division?: unknown }} */ (team)?.division);
-  /** @type {Record<number, number>} */
-  const perRaceDayTable = UPKEEP_PER_RACE_DAY_BY_DIVISION;
-  /** @type {Record<number, number>} */
-  const referenceDaysTable = UPKEEP_REFERENCE_RACE_DAYS_BY_DIVISION;
+  const upkeepDivision = Number((team)?.division);
+  const perRaceDayTable: Readonly<Partial<Record<number, number>>> = UPKEEP_PER_RACE_DAY_BY_DIVISION;
+  const referenceDaysTable: Readonly<Partial<Record<number, number>>> = UPKEEP_REFERENCE_RACE_DAYS_BY_DIVISION;
   const upkeepRatePerRaceDay = perRaceDayTable[upkeepDivision] || 0;
   const referenceRaceDays = referenceDaysTable[upkeepDivision] || 0;
   const raceDaysInput = upkeepRaceDays === null || upkeepRaceDays === undefined ? NaN : Number(upkeepRaceDays);
@@ -349,7 +443,7 @@ export function computeFinanceForecast({
   // flows. Et solvent hold med stor kassebeholdning er ikke konkurs-truet af et
   // sæson-underskud det nemt kan absorbere — underskud æder positiv balance FØR
   // det bliver til ny gæld.
-  const startingBalance = Number.isFinite(team?.balance) ? team.balance : 0;
+  const startingBalance = Number.isFinite(team?.balance) ? (team.balance as number) : 0;
   const projectedEndingBalance = startingBalance + projectedNet;
   const deficitAfterBalance2Seasons = Math.max(
     0,
@@ -458,7 +552,7 @@ function computeRiskTier({
   projectedEndingBalance,
   debtRatio,
   trendBreaches2Seasons,
-}) {
+}: RiskTierInput): ForecastRiskTier {
   // Rød: (net < -50K OG projiceret slutbalance < 0) ELLER debt > 80% af ceiling
   // ELLER trend rammer ceiling inden for 2 sæsoner.
   //
@@ -495,8 +589,8 @@ function buildWarnings({
   trendBreaches2Seasons,
   projectedSalary,
   projectedSponsor,
-}) {
-  const warnings = [];
+}: WarningInput) {
+  const warnings: ForecastWarning[] = [];
   if (projectedNet < 0) {
     warnings.push({
       severity: "high",
@@ -607,9 +701,15 @@ export function computeMultiSeasonForecast({
   upkeepPerRaceDay = false,
   // #6936: samme no-upkeep-tilstand over hele horisonten.
   noUpkeep = false,
-} = {}) {
+}: MultiSeasonOptions = {}) {
   const clamped = Math.max(1, Math.min(MAX_SEASONS_AHEAD, Math.round(Number(seasonsAhead) || 1)));
-  const forecasts = [];
+  const forecasts: Array<ReturnType<typeof computeFinanceForecast> & {
+    season_number: number;
+    is_estimate: boolean;
+    estimate_basis: "actual_state" | "rolling_status_quo";
+    starting_balance: number;
+    ending_balance: number;
+  }> = [];
 
   let rollingBalance = team?.balance ?? 0;
   let rollingActiveLoans = (activeLoans || []).map((loan) => ({ ...loan }));
@@ -617,7 +717,7 @@ export function computeMultiSeasonForecast({
   let rollingLastStandings = lastSeasonStandings;
 
   for (let i = 0; i < clamped; i++) {
-    const targetSeasonNumber = (Number.isInteger(currentSeasonNumber) ? currentSeasonNumber : 0) + 1 + i;
+    const targetSeasonNumber = (Number.isInteger(currentSeasonNumber) ? currentSeasonNumber! : 0) + 1 + i;
     const isPrecise = i === 0;
 
     const rollingTotalDebt = rollingActiveLoans.reduce(
@@ -682,7 +782,7 @@ export function computeMultiSeasonForecast({
     ? forecasts[forecasts.length - 1].ending_balance
     : startingBalance;
   const tierOrder = { green: 0, yellow: 1, red: 2 };
-  const worstRiskTier = forecasts.reduce(
+  const worstRiskTier = forecasts.reduce<ForecastRiskTier>(
     (worst, f) => (tierOrder[f.risk_tier] > tierOrder[worst] ? f.risk_tier : worst),
     "green"
   );
@@ -698,8 +798,8 @@ export function computeMultiSeasonForecast({
       ending_balance: endingBalance,
       total_net: totalNet,
       worst_risk_tier: worstRiskTier,
-      from_season: Number.isInteger(currentSeasonNumber) ? currentSeasonNumber + 1 : null,
-      to_season: Number.isInteger(currentSeasonNumber) ? currentSeasonNumber + clamped : null,
+      from_season: Number.isInteger(currentSeasonNumber) ? currentSeasonNumber! + 1 : null,
+      to_season: Number.isInteger(currentSeasonNumber) ? currentSeasonNumber! + clamped : null,
     },
     warnings_all: allWarnings,
   };

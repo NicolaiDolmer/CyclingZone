@@ -1,6 +1,6 @@
 // Forward-guard #3332 (samme mønster som #1464/#2957's financeTypeConstraintGuard.test.js):
 // enhver finance_transactions.type koden RENT FAKTISK skriver skal være eksplicit
-// klassificeret i FINANCE_FORECAST_TYPE_COVERAGE (backend/lib/financeForecast.js) —
+// klassificeret i FINANCE_FORECAST_TYPE_COVERAGE (backend/lib/financeForecast.ts) —
 // enten { modeled: true, field } (indgår i projected_net) eller { modeled: false,
 // reason } (bevidst udeladt, med begrundelse). Testen fejler hvis en NY type dukker
 // op uklassificeret, så en fremtidig 5. udgifts-/indtægtsstrøm ikke kan glide stille
@@ -24,7 +24,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { collectScanFiles, extractCodeWrittenTypes } from "../../scripts/lint-finance-types.mjs";
-import { computeFinanceForecast, FINANCE_FORECAST_TYPE_COVERAGE } from "./financeForecast.js";
+import { computeFinanceForecast, FINANCE_FORECAST_TYPE_COVERAGE } from "./financeForecast.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const backendRoot = join(__dirname, "..");
@@ -54,11 +54,11 @@ test("HVER kode-skrevet finance_transactions.type er eksplicit klassificeret i F
     unclassified.length === 0
       ? ""
       : "Finance-type(r) skrevet i backend-koden UDEN klassifikation i " +
-          "FINANCE_FORECAST_TYPE_COVERAGE (backend/lib/financeForecast.js) — #3332-" +
+          "FINANCE_FORECAST_TYPE_COVERAGE (backend/lib/financeForecast.ts) — #3332-" +
           "bug-klassen (prognosen kan tavst udelade en ny udgifts-/indtægtsstrøm, " +
           "ligesom upkeep/facilitets-/stab-/akademi-strømmene gjorde før #3236).\n" +
           `Manglende: ${unclassified.join(", ")}\n` +
-          "Fix: tilføj hver type til FINANCE_FORECAST_TYPE_COVERAGE i financeForecast.js — " +
+          "Fix: tilføj hver type til FINANCE_FORECAST_TYPE_COVERAGE i financeForecast.ts — " +
           "enten { modeled: true, field } hvis den kan forudsiges deterministisk (fold " +
           "beregningen ind i projected_net + nævn den i help.json's forecastCalculation, " +
           "en+da), eller { modeled: false, reason } hvis den bevidst udelades (og nævn " +
