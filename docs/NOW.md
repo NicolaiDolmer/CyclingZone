@@ -9,7 +9,7 @@
 > **🎯 Next action (5/11 nat):** DolmerPC kører [ejerens nat-mandat på #7495](https://github.com/NicolaiDolmer/CyclingZone/issues/7495#issuecomment-6643542175): 1) TS-kæden #7614-#7619 PR for PR (køens UNKNOWN-fejl #7682); 2) under ca. 5 åbne PR'er: bølge Udvikling 2.0 trin 4-6 + Sentry #7675-#7678 + child-tool-prøve #7571; 3) kl. 9: nøgler #7029, Railway #7034, RAM/CPU #7659, ops-webhook; 4) med ejeren: roadmap-forslag (13 tvivlspunkter, 19 nye punkter, 5 fejl-titler), feedback-svar + rapport 30; 5) torsdag #7652 + del B #7661. Mål #7667 efter næste ranglisteopdatering.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** DolmerPC (Claude), nat 4-5/11, merges + til dørs. Auto-toget kører på DolmerPC. Merget: #7530, #7679, #7681, #7529, #7531, #7532, #7670, #7674, #7671, #7667, #7524, #7669, #7668, #7602, #7680, #7672, #7528. Migrationer #7667, #7669, #7668 verificeret.
+> **🤖 Working agent:** DolmerPC (Claude), nat 4-5/11, merges + til dørs. Auto-toget kører på DolmerPC. 17 PR'er merget 4-5/11 (liste på #7495).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
