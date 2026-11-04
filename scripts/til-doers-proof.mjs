@@ -141,8 +141,9 @@ export function parseArgs(argv) {
   }
   if (base.protocol !== 'https:' || base.username || base.password) throw new Error('--prod-base skal være https:// uden login-oplysninger');
   opts.prodBase = base.origin;
-  // --dry-run vinder altid over --apply.
-  opts.write = opts.apply && !opts.dryRun;
+  // --dry-run vinder altid over --apply, og --plan-only koerer ingen tjek, saa
+  // der er intet bevis at skrive.
+  opts.write = opts.apply && !opts.dryRun && !opts.planOnly;
   return opts;
 }
 
