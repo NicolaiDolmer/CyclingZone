@@ -37,7 +37,7 @@ import { materializeTierCalendars, TIER_DENSITY } from "../lib/tierCalendarMater
 import { TIER_GAME_DAY_QUOTA } from "../lib/tierRaceSelection.js";
 import { updateStandings } from "../lib/economyEngine.js";
 import { refreshRankingMatviewsSafe } from "../lib/refreshRankingMatviews.js";
-import { STAGE_SCHEDULER_FLAG_KEY } from "../lib/stageSchedulerFlag.js";
+import { STAGE_SCHEDULER_FLAG_KEY } from "../lib/stageSchedulerFlag.ts";
 
 const GT_MIN_STAGES = 15;
 const CHILD_TABLES = [

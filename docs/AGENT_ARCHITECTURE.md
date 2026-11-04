@@ -128,9 +128,9 @@ Codex-indgangen er `scripts/codex-wave.mjs`: hovedsessionen er arkitekt, CLI-pro
 
 `active_sessions_engine.py` laeser baade Claudes registry, Codex-sessionclaims i `.claude/run/agent-sessions/` og Codex-boelgemarkoeren. Codex-hooken `codex-session-claim.ps1` registrerer session-id uden at redigere NOW.md. Hook-konfiguration alene beviser ikke at en bestemt klient faktisk udfoerer hooken: tjek claim-filen ved opstart. Boelger registreres direkte af runneren og er derfor ikke afhaengige af SessionStart-hooken.
 
-Et claim er et synlighedssignal, ikke en OS-skrivegraense eller en cross-PC-laas. Stale claims ryddes kun efter observation af ejerens ophoer. Native spawn uden om indgangen, direkte GitHub-PR-oprettelse og kommandoer uden om verify-lock forbliver uden for disse gates. Se [boelgeprotokollen](PARALLEL_WORKTREE_ORCHESTRATION.md#codex-boelger-5467).
+Et claim er et synlighedssignal, ikke en OS-skrivegraense eller en cross-PC-laas. Et sessionclaim uden livstegn (`lastSeenAt`, ellers `startedAt`) i over 48 timer er foraeldet (ejer 4/11, #7660): det taeller ikke i MULTI-AI-gaten, vises paa een linje og arkiveres med `codex-session-claim.ps1 -Mode prune` til `agent-sessions/archive/` (aldrig slettet). Boelgemarkoeren `wave-active.json` er en laas, ikke et sessionclaim, og ryddes fortsat kun efter observation af ejerens ophoer. Native spawn uden om indgangen, direkte GitHub-PR-oprettelse og kommandoer uden om verify-lock forbliver uden for disse gates. Se [boelgeprotokollen](PARALLEL_WORKTREE_ORCHESTRATION.md#codex-boelger-5467).
 
-Et claim lever fra `SessionStart` til `SessionEnd`. `Stop` afslutter en tur og maa ikke rydde det, ellers bliver naeste tur usynlig. Hook-livscyklus: [officiel Codex-dokumentation](https://learn.chatgpt.com/docs/hooks).
+Et claim lever fra `SessionStart` til `SessionEnd`. `Stop` afslutter en tur og maa ikke rydde det, ellers bliver naeste tur usynlig; `Stop` giver i stedet livstegn (`-Mode beat`). `SessionEnd` fyrer ikke altid, derfor udloeber et claim uden livstegn efter 48 timer. Hook-livscyklus: [officiel Codex-dokumentation](https://learn.chatgpt.com/docs/hooks).
 
 ## Failure-mode katalog
 
