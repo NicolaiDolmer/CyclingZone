@@ -327,6 +327,27 @@ export function buildSplitTimes(
   return out;
 }
 
+/**
+ * #7636: sad rytteren forrest i loebet eller i feltet (hovedgruppen, som filmen kalder det) ved
+ * `km` (efter alle events til og med km)? En gruppe mellem fronten og feltet taeller ikke.
+ * null = ukendt (v3-tidslinje, udgaaet rytter, intet gruppe-billede).
+ */
+export function riderInFrontOrFieldAt(events: readonly TimelineEvent[] | null | undefined, riderId: string, km: number): boolean | null {
+  if (!hasGroupGaps(events)) return null;
+  const sorted = sortedEvents(events);
+  const last = sorted.reduce((acc, e, i) => ((e.km ?? 0) <= km ? i : acc), -1);
+  let answer: boolean | null = null;
+  let idx = -1;
+  replay(sorted, (_event, state) => {
+    idx += 1;
+    if (idx !== last) return;
+    const groups = snapshotGroups(state, [riderId]);
+    const own = groups.find((g) => g.ownRiderIds.includes(riderId));
+    answer = own ? own.kind === "peloton" || own.gapSeconds === 0 : null;
+  });
+  return answer;
+}
+
 function fromKind(state: ReplayState, groupId: string, leaving: readonly string[]): "breakaway" | "peloton" | "group" {
   const kind = groupKind(state, groupId, leaving);
   return kind === "breakaway" || kind === "peloton" ? kind : "group";

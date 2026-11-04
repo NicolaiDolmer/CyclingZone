@@ -530,6 +530,17 @@ export type StagePlanRecapItem = {
   fromKm: number | null;
   /** #7368: det led der faktisk afloeste dette (kan springe et led over); null = ingen. */
   endLeg: number | null;
+  /** #7636: leddets eget skift-punkt ("naar han er sat") vises ikke, fordi filmen ikke viser det. */
+  fromHidden?: true;
+};
+
+export type StagePlanRecapOptions = {
+  /**
+   * #7636 (kontakten stage_plan_dropped_front_7635): sad rytteren forrest eller i feltet
+   * ved km? true = ja, false = nej, null = ukendt. Med kontakten giver fladen
+   * stageSplitTimes.riderInFrontOrFieldAt; uden den krydstjekkes intet (som foer).
+   */
+  inFrontOrFieldAt?: (km: number) => boolean | null;
 };
 
 type TimelineEventLike = { type?: unknown; km?: unknown; params?: Rec | null };
@@ -538,7 +549,32 @@ type TimelineEventLike = { type?: unknown; km?: unknown; params?: Rec | null };
  * Hvad rytteren faktisk gjorde i hvert led, ud fra tidslinjens stage_plan_leg-
  * events (motoren skriver et pr. skift) og et evt. udgaaet-uheld.
  */
-export function stagePlanRecap(legs: readonly StagePlanLeg[], events: readonly TimelineEventLike[] | null | undefined, riderId: string): StagePlanRecapItem[] {
+export function stagePlanRecap(
+  legs: readonly StagePlanLeg[],
+  events: readonly TimelineEventLike[] | null | undefined,
+  riderId: string,
+  opts: StagePlanRecapOptions = {},
+): StagePlanRecapItem[] {
+  const items = stagePlanRecapFromEvents(legs, events, riderId);
+  const check = opts.inFrontOrFieldAt;
+  if (!check) return items;
+  // #7636: resumeet paastaar aldrig noget filmen ikke viser. Siger motoren "sat", men sad
+  // rytteren forrest eller i feltet paa stedet, skrives hverken "sat" eller "sprunget
+  // over, han var sat": leddet faar ingen slutgrund, de oversprungne led staar som ikke
+  // naaet, og sat-leddets eget skift-punkt vises ikke.
+  return items.map((item, i, all) => {
+    if (item.endReason === "dropped" && item.endKm !== null && check(item.endKm) === true) {
+      return { ...item, endReason: null };
+    }
+    const cause = all.slice(0, i).reverse().find((prev) => prev.endLeg !== null && prev.endLeg >= i);
+    const contradicted = cause !== undefined && cause.endReason === "dropped" && cause.endKm !== null && check(cause.endKm) === true;
+    if (!contradicted) return item;
+    if (item.status === "skipped") return { ...item, status: "not_reached" };
+    return cause.endLeg === i ? { ...item, fromHidden: true } : item;
+  });
+}
+
+function stagePlanRecapFromEvents(legs: readonly StagePlanLeg[], events: readonly TimelineEventLike[] | null | undefined, riderId: string): StagePlanRecapItem[] {
   const list = events ?? [];
   const switches = list
     .filter((e) => e?.type === "stage_plan_leg" && e.params?.rider_id === riderId)
