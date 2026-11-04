@@ -291,7 +291,11 @@ test("summaryLine og logfilen indeholder aldrig maalte tal", async () => {
     now: NOW,
   });
   assert.equal(code, 1);
-  assert.deepEqual(logs, ["weekly-engine-drift: 2 gates OK / 1 afvigelser, 1 uden nok data"]);
+  // #7588: realisme-linjen er kun en optaelling; uden baand er alle maalte realisme-maal manglende.
+  assert.deepEqual(logs, [
+    "weekly-engine-drift: 2 gates OK / 1 afvigelser, 1 uden nok data",
+    "weekly-engine-drift: realisme 0 OK / 0 afvigelser, 15 manglende (baand ikke sat)",
+  ]);
   assert.ok(sent.length >= 2);
   assert.equal(sent[0].content, "<@123>"); // alarmen foerst, med mention
   assert.match(sent[0].embeds[0].description, /afvigelser/);
