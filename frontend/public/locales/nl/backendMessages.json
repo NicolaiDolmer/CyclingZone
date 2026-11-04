@@ -331,6 +331,7 @@
         "title": "Scoutingmissie klaar",
         "messageSingle": "Je scoutingmissie vond {count} renner. Bekijk de shortlist.",
         "messageMulti": "Je scoutingmissie vond {count} renners. Bekijk de shortlist.",
+        "messageNoCount": "Je scoutingmissie is klaar. Bekijk de shortlist.",
         "titleEmpty": "Scoutingmissie: geen matches",
         "messageEmpty": "Je scout heeft gezocht maar geen renners gevonden die aan je criteria voldoen."
       }
