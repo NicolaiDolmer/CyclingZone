@@ -20,7 +20,7 @@ import {
   DUP_BODY,
 } from './lib/til-doers.mjs';
 import { parseArgs, main, processIssue, targetsFromPr } from './til-doers-check.mjs';
-import { titleScopeIssues, mergedIntoMain } from './lib/til-doers.mjs';
+import { titleScopeIssues, mergedIntoMain, lastMarkerAt } from './lib/til-doers.mjs';
 
 const N = 4242;
 const owner = (body, created_at = '2026-10-31T10:00:00Z', extra = {}) => ({ id: Math.floor(Math.random() * 1e9), body, created_at, author_association: 'OWNER', user: { login: 'ejer' }, ...extra });
@@ -446,4 +446,102 @@ test('cell escaper backslash foer pipe, saa tabellen ikke brydes (CodeQL #385)',
   assert.equal(cell('a|b'), 'a\\|b');
   assert.equal(cell('a\\|b'), 'a\\\\\\|b');
   assert.equal(cell('sti\\til\nfil'), 'sti\\\\til fil');
+});
+
+// ---------------------------------------------------------------- auto-bevis (#7585)
+
+const proofSha = 'abcdef1234567';
+const proofBody = (lines, { issue = N, pr = 9, sha = proofSha } = {}) => `<!-- til-doers-proof:v1 pr=${pr} issue=${issue} sha=${sha} -->\n### Til dørs: auto-bevis\n${lines.join('\n')}`;
+const proofBy = (association, login, lines, opts = {}, created_at = '2026-11-04T10:00:00Z') => ({ id: Math.floor(Math.random() * 1e9), body: proofBody(lines, opts), created_at, author_association: association, user: { login } });
+
+test('auto-bevis: author_association OWNER tæller med kilden auto-bevis, bot (CONTRIBUTOR) og NONE tæller aldrig', () => {
+  const lines = ['Til dørs: 4 ok auto-bevis: /team fundet', 'Til dørs: 8 ok auto-bevis: GET /api/h -> 200'];
+  const owner_ = parseMarkers([proofBy('OWNER', 'ejer', lines)], { issue: N });
+  assert.equal(owner_.get(4).auto, true);
+  assert.equal(owner_.get(8).menneske, null);
+  // github-actions[bot] har author_association CONTRIBUTOR (set paa #7585 4/11)
+  assert.equal(parseMarkers([proofBy('CONTRIBUTOR', 'github-actions[bot]', lines)], { issue: N }).size, 0);
+  assert.equal(parseMarkers([proofBy('NONE', 'fremmed', lines)], { issue: N }).size, 0);
+
+  const door = evaluateDoor({ issue: { number: N }, comments: [proofBy('OWNER', 'ejer', lines)] });
+  const k4 = door.find((d) => d.krav === 4);
+  assert.equal(k4.status, 'ok');
+  assert.equal(k4.kilde, 'auto-bevis');
+  assert.equal(k4.autoBevis, true);
+  assert.match(renderComment(door), /\| 4 \| Synligt \| ok \| auto-bevis \|/);
+  const botDoor = evaluateDoor({ issue: { number: N }, comments: [proofBy('CONTRIBUTOR', 'github-actions[bot]', lines)] });
+  assert.equal(botDoor.find((d) => d.krav === 4).status, 'mangler');
+});
+
+test('auto-bevis: bevis for et andet issue eller med misdannet markør tæller ikke', () => {
+  const lines = ['Til dørs: 4 ok x'];
+  assert.equal(parseMarkers([proofBy('OWNER', 'ejer', lines, { issue: N + 1 })], { issue: N }).size, 0);
+  const broken = { ...proofBy('OWNER', 'ejer', lines), body: `<!-- til-doers-proof:v1 pr=9 -->\n${lines[0]}` };
+  assert.equal(parseMarkers([broken], { issue: N }).size, 0);
+  // uden issue-kontekst er den stadig auto (konservativt: aldrig menneske-ord)
+  assert.equal(parseMarkers([broken]).get(4).auto, true);
+});
+
+test('auto-bevis: udkast-linjer markerer aldrig noget', () => {
+  const door = evaluateDoor({ issue: { number: N }, comments: [proofBy('OWNER', 'ejer', ['Udkast (auto-bevis) 4: ingen deklaration', 'Udkast (auto-bevis) 8: Deploy verify er ikke grøn'])] });
+  assert.equal(status(door, 4), 'mangler');
+  assert.equal(status(door, 8), 'mangler');
+  assert.equal(door.find((d) => d.krav === 8).kilde, 'manuelt');
+});
+
+test('auto-bevis: et fejlet tjek (mangler) overtrumfer en ældre menneskelig ok', () => {
+  const door = evaluateDoor({
+    issue: { number: N },
+    comments: [owner('Til dørs: 8 ok tjekket', '2026-11-03T00:00:00Z'), proofBy('OWNER', 'ejer', ['Til dørs: 8 mangler auto-bevis: GET /api/h gav 500, forventet 200'])],
+  });
+  const k8 = door.find((d) => d.krav === 8);
+  assert.equal(k8.status, 'mangler');
+  assert.equal(k8.kilde, 'auto-bevis');
+  assert.equal(k8.menneskeStatus, 'ok');
+});
+
+const doneExcept8 = () => owner([3, 4, 5, 6, 7].map((k) => `Til dørs: ${k} na ops`).join('\n'), '2026-11-01T00:00:00Z');
+const mergedPr = [{ number: 9, state: 'closed', merged: true }];
+const brandList = [{ issue: N, reason: 'x', since: '2026-10-29' }];
+const openIssue = { number: N, state: 'open', labels: [] };
+
+test('brand-regel: et brand-issue lukkes aldrig alene på auto-bevis for krav 8', () => {
+  const door = evaluateDoor({ issue: { number: N }, prs: mergedPr, comments: [doneExcept8(), proofBy('OWNER', 'ejer', ['Til dørs: 8 ok auto-bevis: GET /api/h -> 200'])] });
+  assert.deepEqual(missingKrav(door), []);
+  const res = decideClose({ issue: openIssue, door, brandList });
+  assert.equal(res.close, false);
+  assert.match(res.reason, /menneskelig markering af krav 8/);
+  // et ikke-brand-issue maa gerne lukke paa auto-bevis (de haarde ok-regler gaelder)
+  assert.equal(decideClose({ issue: openIssue, door, brandList: [] }).close, true);
+});
+
+test('brand-regel: menneskelig 8 ok (før eller efter auto-bevis) lader brand-issuet lukke', () => {
+  const auto8 = proofBy('OWNER', 'ejer', ['Til dørs: 8 ok auto-bevis: GET /api/h -> 200'], {}, '2026-11-04T10:00:00Z');
+  const before = evaluateDoor({ issue: { number: N }, prs: mergedPr, comments: [doneExcept8(), owner('Til dørs: 8 ok set i prod', '2026-11-02T00:00:00Z'), auto8] });
+  assert.equal(decideClose({ issue: openIssue, door: before, brandList }).close, true);
+  const after = evaluateDoor({ issue: { number: N }, prs: mergedPr, comments: [doneExcept8(), auto8, owner('Til dørs: 8 ok set i prod', '2026-11-05T00:00:00Z')] });
+  assert.equal(after.find((d) => d.krav === 8).kilde, 'markering af ejer');
+  assert.equal(decideClose({ issue: openIssue, door: after, brandList }).close, true);
+  // menneskelig 8 mangler foer auto-bevis tæller ikke som ok
+  const human_no = evaluateDoor({ issue: { number: N }, prs: mergedPr, comments: [doneExcept8(), owner('Til dørs: 8 mangler fejler stadig', '2026-11-02T00:00:00Z'), auto8] });
+  assert.equal(decideClose({ issue: openIssue, door: human_no, brandList }).close, false);
+});
+
+test('auto-bevis låser ikke op for genlukning efter en genåbning', () => {
+  const comments = [owner([3, 4, 5, 6, 7].map((k) => `Til dørs: ${k} na ops`).join('\n'), '2026-11-01T00:00:00Z'), proofBy('OWNER', 'ejer', ['Til dørs: 8 ok auto-bevis'], {}, '2026-11-04T10:00:00Z')];
+  assert.equal(lastMarkerAt(comments), '2026-11-01T00:00:00Z');
+  const door = evaluateDoor({ issue: { number: N }, prs: mergedPr, comments });
+  const res = decideClose({ issue: openIssue, door, reopened: '2026-11-03T00:00:00Z', lastMarker: lastMarkerAt(comments) });
+  assert.equal(res.close, false);
+  assert.match(res.reason, /genåbnet/);
+  assert.equal(lastMarkerAt([proofBy('OWNER', 'ejer', ['Til dørs: 8 ok x'])]), null);
+});
+
+test('processIssue: en auto-bevis-kommentar er aldrig til-dørs-tabellen og redigeres ikke', () => {
+  const proof = { ...proofBy('OWNER', 'ejer', ['Til dørs: 4 ok auto-bevis']), id: 55 };
+  const { exec, calls } = fakeGh({ issues: { [N]: { issue: { number: N, state: 'open', title: 't', labels: [] }, comments: [proof], timeline: [] } } });
+  const plan = processIssue({ number: N, repo: 'o/r', apply: true, execGh: exec, execGit: noGit, mainRef: 'main', registry: [], patchNotesText: '', brandList: [] });
+  assert.equal(plan.commentAction, 'create');
+  assert.equal(plan.door.find((d) => d.krav === 4).kilde, 'auto-bevis');
+  assert.equal(calls.filter((c) => c.args.some((a) => a.includes('comments/55'))).length, 0);
 });

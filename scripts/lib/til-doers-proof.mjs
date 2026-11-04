@@ -209,19 +209,41 @@ export function declarationFor(parsed, issue) {
 
 // ---------------------------------------------------------------- regler
 
-/** Én linje, uden HTML-kommentarer og uden at kunne bryde ud af linjen. */
+// Linjeskift inkl. Unicode-linje- og afsnitsseparator. Bygget fra tegnkoder,
+// fordi en raa separator i en regex-literal er en syntaksfejl.
+const LINE_BREAKS = new RegExp(`[\\r\\n${String.fromCharCode(0x2028, 0x2029)}]+`, 'g');
+
+function truncate(s, max) {
+  return s.length > max ? `${s.slice(0, max - 3)}...` : s;
+}
+
+/**
+ * En hel linje: kan ikke bryde ud til en ny linje (og dermed starte en falsk
+ * "Til dørs:"-markering), og kan ikke aabne eller lukke en HTML-kommentar.
+ */
+export function flatLine(s, max = 400) {
+  const flat = String(s ?? '')
+    .replace(LINE_BREAKS, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/<!--/g, '&lt;!--')
+    .replace(/-->/g, '--&gt;')
+    .trim();
+  return truncate(flat, max);
+}
+
+/** En vaerdi fra PR-body eller runneren: som flatLine, og uden < og > overhovedet. */
 export function oneLine(s, max = MAX_VALUE) {
   const flat = String(s ?? '')
-    .replace(/[\r\n  ]+/g, ' ')
+    .replace(LINE_BREAKS, ' ')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/\s+/g, ' ')
     .trim();
-  return flat.length > max ? `${flat.slice(0, max - 3)}...` : flat;
+  return truncate(flat, max);
 }
 
 function sha7(s) {
-  return String(s || '').slice(0, 7);
+  return oneLine(String(s || '').slice(0, 7), 7);
 }
 
 function sideKey(c) {
@@ -237,7 +259,7 @@ function describeProd(c) {
 }
 
 function result(krav, udfald, tekst) {
-  return { krav, udfald, tekst: oneLine(tekst, 400) };
+  return { krav, udfald, tekst: flatLine(tekst) };
 }
 
 function derivedNote(side) {
@@ -319,7 +341,7 @@ export function evaluateProof({ declaration = null, sha, side = null, prod = nul
  */
 export function renderProofLine({ krav, udfald, tekst }) {
   if (!PROOF_KRAV.includes(krav)) throw new Error(`auto-bevis dækker kun krav ${PROOF_KRAV.join(' og ')}`);
-  const t = oneLine(tekst, 400);
+  const t = flatLine(tekst);
   if (udfald === 'ok' || udfald === 'mangler') return `Til dørs: ${krav} ${udfald} ${t}`;
   if (udfald === 'udkast') return `${DRAFT_PREFIX} ${krav}: ${t}`;
   throw new Error(`ukendt udfald: ${udfald}`);
