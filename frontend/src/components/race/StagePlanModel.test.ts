@@ -146,7 +146,7 @@ test("#7003 (spec §3): sprinttoget tilbydes ikke efter et udbrud", () => {
 });
 
 // ── #7383: noten naar et valgt skift ikke kan naas ──────────────────────────
-function noteRoute(raw: { distance_km: number; finale_type?: string; climbs?: unknown[]; sectors?: unknown[]; profile_type?: string }) {
+function noteRoute(raw: { distance_km: number; finale_type?: string; climbs?: unknown[]; sectors?: unknown[]; profile_type?: string; elevation_profile?: unknown }) {
   const full = { profile_type: "mountain", ...raw };
   return { route: stagePlanRouteFromRaw(full), features: stagePlanFeaturesFromRaw(full) };
 }
