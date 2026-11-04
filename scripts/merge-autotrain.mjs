@@ -36,7 +36,7 @@
 // Tests: node --test scripts/merge-autotrain.test.mjs
 
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, closeSync, mkdirSync, openSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, closeSync, mkdirSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -47,6 +47,9 @@ export const READY_ALERT_AFTER_MS = 2 * 60 * 60 * 1000;
 export const ALERT_THROTTLE_MS = 6 * 60 * 60 * 1000;
 export const STATE_RELATIVE = join('.claude', 'run', 'merge-autotrain-state.json');
 export const LOG_RELATIVE = join('.claude', 'run', 'merge-autotrain.log');
+// Codex P1 (#7657): en koe der sluttede uden exit 0 (main-CI/deploy roed eller uverificeret)
+// laaser toget paa tvaers af koersler, til main's HEAD er positivt verificeret.
+export const BLOCK_RELATIVE = join('.claude', 'run', 'merge-autotrain-block.json');
 const LOG_ROTATE_BYTES = 5 * 1024 * 1024;
 const HTTP_TIMEOUT_MS = 15_000;
 
@@ -356,13 +359,54 @@ async function postDiscord(fetchFn, url, payload) {
   }
 }
 
+export function readBlock(file) {
+  try {
+    const parsed = JSON.parse(readFileSync(file, 'utf8'));
+    return parsed && typeof parsed === 'object' && Number.isInteger(parsed.pr) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Codex P1 (#7657): er main's aktuelle HEAD positivt verificeret? CI (main) skal vaere
+ * faerdig og groen, og findes en deploy-verify-koersel for samme SHA, skal den ogsaa
+ * vaere groen. Alt andet (koerer, roed, ukendt, fejl) = ikke verificeret.
+ */
+export function mainVerifiedFromRuns({ headSha, ciRuns = [], deployRuns = [] }) {
+  if (!/^[0-9a-f]{40}$/i.test(String(headSha))) return { ok: false, reason: 'main-HEAD ukendt' };
+  const ci = ciRuns.find((r) => r.headSha === headSha);
+  if (!ci) return { ok: false, reason: `ingen CI (main) for ${headSha.slice(0, 7)} endnu` };
+  if (ci.status !== 'completed' || ci.conclusion !== 'success') return { ok: false, reason: `CI (main) ${headSha.slice(0, 7)}: ${ci.status}/${ci.conclusion || '-'}` };
+  const dep = deployRuns.find((r) => r.headSha === headSha);
+  if (dep && (dep.status !== 'completed' || dep.conclusion !== 'success')) return { ok: false, reason: `deploy-verify ${headSha.slice(0, 7)}: ${dep.status}/${dep.conclusion || '-'}` };
+  return { ok: true, reason: `main ${headSha.slice(0, 7)} groen` };
+}
+
+function defaultCheckMain({ repo }) {
+  const head = runGhRaw(['api', `repos/${repo}/commits/main`, '--jq', '.sha']);
+  if (head.status !== 0) return { ok: false, reason: 'main-HEAD kunne ikke hentes' };
+  const list = (wf) => {
+    const res = runGhRaw(['run', 'list', '--repo', repo, '--workflow', wf, '--branch', 'main', '--limit', '20', '--json', 'headSha,status,conclusion']);
+    if (res.status !== 0) throw new Error(`gh run list ${wf} fejlede`);
+    return JSON.parse(res.stdout || '[]');
+  };
+  try {
+    return mainVerifiedFromRuns({ headSha: head.stdout.trim(), ciRuns: list('ci.yml'), deployRuns: list('deploy-verify.yml') });
+  } catch (err) {
+    return { ok: false, reason: String(err?.message ?? err) };
+  }
+}
+
 const SCRIPT_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
 // Koeen koeres fra samme checkout som dette script (den planlagte opgave peger paa hoved-checkoutet).
-function defaultRunQueue({ train, repo, logFile }) {
+function defaultRunQueue({ train, repo, logFile, expectHead }) {
   const repoRoot = SCRIPT_ROOT;
   const script = join(repoRoot, 'scripts', 'merge-queue.ps1');
   const args = ['-NoProfile', '-NonInteractive', '-File', script, '-Pr', train.join(','), '-Repo', repo];
+  // Codex P1 (#7657): koeen merger kun det hoved, der blev vurderet og godkendt her.
+  if (expectHead) args.push('-ExpectHead', expectHead);
   let fd = null;
   try {
     if (logFile) fd = openSync(logFile, 'a');
@@ -404,6 +448,8 @@ export async function run({
   evaluate = (opts) => collectEvaluations(opts),
   reevaluate = (n, opts) => reevaluatePr(n, opts),
   runQueue = defaultRunQueue,
+  checkMain = defaultCheckMain,
+  blockFile = null,
   fetchFn = globalThis.fetch,
   stateFile = null,
   out = (line) => process.stdout.write(`${line}\n`),
@@ -423,6 +469,18 @@ export async function run({
   if (activeMarker) {
     log(`  Goer intet: ${decideAction({ activeMarker, train: [] }).reason}.`);
     return { action: 'skip-active', train: [], alerts: [] };
+  }
+  const blockPath = blockFile ?? join(repoRoot, BLOCK_RELATIVE);
+  let block = readBlock(blockPath);
+  if (block) {
+    const verified = checkMain({ repo: opts.repo });
+    if (!verified.ok) {
+      log(`  LAAST: #${block.pr} sluttede med exit ${block.exit} (${block.at}); main er ikke verificeret (${verified.reason}). Ingen nye merges.`);
+    } else {
+      log(`  Laasen fra #${block.pr} haeves: ${verified.reason}.`);
+      if (!opts.dryRun) { try { unlinkSync(blockPath); } catch { /* allerede vaek */ } }
+      block = null;
+    }
   }
 
   let evaluations;
@@ -458,6 +516,9 @@ export async function run({
     try { writeState(file, state); } catch (err) { log(`  ADVARSEL: tilstand ikke gemt (${err?.message ?? err}).`); }
   }
 
+  if (block) {
+    return { action: 'blocked', train, alerts };
+  }
   if (!decision.run) {
     log(`  Ingen koe: ${decision.reason}.`);
     return { action: 'none', train, alerts };
@@ -484,10 +545,17 @@ export async function run({
     const confirm = confirmBeforeQueue(byNumber.get(n), fresh);
     if (!confirm.ok) { log(`  #${n}: ${confirm.reason}; springes over.`); continue; }
     log(`  Starter merge-queue.ps1 -Pr "${n}" -Repo ${opts.repo}.`);
-    const code = runQueue({ train: [n], repo: opts.repo, logFile });
+    const code = runQueue({ train: [n], repo: opts.repo, logFile, expectHead: fresh.headSha });
     log(`  merge-queue.ps1 (#${n}) sluttede med exit ${code}.`);
     queued.push(n);
     results.push({ pr: n, exit: code });
+    if (code !== 0) {
+      // Codex P1 (#7657): roed/uverificeret main eller deploy stopper toget, og laasen
+      // holder paa tvaers af koersler, til main er positivt verificeret.
+      try { writeState(blockPath, { pr: n, exit: code, at: now.toISOString() }); } catch (err) { log(`  ADVARSEL: laasen kunne ikke gemmes (${err?.message ?? err}).`); }
+      log(`  Toget stopper efter exit ${code} paa #${n}; laast til main er verificeret.`);
+      break;
+    }
   }
   return { action: 'queue', train, alerts, queued, results };
 }

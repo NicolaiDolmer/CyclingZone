@@ -2,7 +2,7 @@
 // Koer: node --test scripts/merge-autotrain.test.mjs
 
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
@@ -17,6 +17,7 @@ import {
   dueAlerts,
   evaluatePr,
   hasOwnerMergeApproval,
+  mainVerifiedFromRuns,
   markAlerted,
   parseArgs,
   requiredChecksStatus,
@@ -325,6 +326,49 @@ describe('run (IO injiceret)', () => {
       runQueue: ({ train }) => { calls.push(train); return 0; },
     });
     assert.deepEqual(calls, [[41]]);
+  });
+
+  it('Codex P1 #7657: koeen faar det vurderede hoved med (-ExpectHead)', async () => {
+    const selected = [evalWith({ number: 51 })];
+    const calls = [];
+    await run({
+      argv: [], now: NOW, repoRoot: dir, stateFile: join(dir, 's7.json'), blockFile: join(dir, 'b7.json'), out: quiet,
+      readMarker: () => null, evaluate: () => selected, reevaluate: sameAgain(selected),
+      runQueue: ({ train, expectHead }) => { calls.push({ train, expectHead }); return 0; },
+    });
+    assert.deepEqual(calls, [{ train: [51], expectHead: selected[0].headSha }]);
+    const ps = readFileSync(new URL('./merge-queue.ps1', import.meta.url), 'utf8');
+    assert.ok(ps.includes('[string] $ExpectHead') && ps.includes('$fresh.headSha -ne $ExpectHead'), 'merge-queue.ps1 stopper ved et andet hoved end det godkendte');
+  });
+
+  it('Codex P1 #7657: exit != 0 stopper toget og laaser, til main er verificeret', async () => {
+    const blockFile = join(dir, 'b8.json');
+    const selected = [evalWith({ number: 61 }), evalWith({ number: 62 })];
+    const calls = [];
+    const base = {
+      argv: [], now: NOW, repoRoot: dir, stateFile: join(dir, 's8.json'), blockFile, out: quiet,
+      readMarker: () => null, evaluate: () => selected, reevaluate: sameAgain(selected),
+    };
+    const first = await run({ ...base, runQueue: ({ train }) => { calls.push(train); return 75; } });
+    assert.deepEqual(calls, [[61]], 'ingen naeste PR efter en fejlet/uverificeret koe');
+    assert.deepEqual(first.results, [{ pr: 61, exit: 75 }]);
+    assert.equal(JSON.parse(readFileSync(blockFile, 'utf8')).pr, 61);
+    const blocked = await run({ ...base, checkMain: () => ({ ok: false, reason: 'CI koerer' }), runQueue: () => { throw new Error('maa ikke kaldes'); } });
+    assert.equal(blocked.action, 'blocked');
+    assert.ok(existsSync(blockFile), 'laasen holder paa tvaers af koersler');
+    const lifted = await run({ ...base, checkMain: () => ({ ok: true, reason: 'groen' }), runQueue: ({ train }) => { calls.push(train); return 0; } });
+    assert.equal(lifted.action, 'queue');
+    assert.ok(!existsSync(blockFile), 'laasen haeves foerst ved positiv verifikation');
+  });
+
+  it('mainVerifiedFromRuns: kun faerdig og groen CI (og deploy-verify hvis den findes) taeller', () => {
+    const sha = 'a'.repeat(40);
+    assert.equal(mainVerifiedFromRuns({ headSha: sha, ciRuns: [] }).ok, false);
+    assert.equal(mainVerifiedFromRuns({ headSha: sha, ciRuns: [{ headSha: sha, status: 'in_progress', conclusion: '' }] }).ok, false);
+    assert.equal(mainVerifiedFromRuns({ headSha: sha, ciRuns: [{ headSha: sha, status: 'completed', conclusion: 'failure' }] }).ok, false);
+    assert.equal(mainVerifiedFromRuns({ headSha: sha, ciRuns: [{ headSha: sha, status: 'completed', conclusion: 'success' }] }).ok, true);
+    assert.equal(mainVerifiedFromRuns({ headSha: sha, ciRuns: [{ headSha: sha, status: 'completed', conclusion: 'success' }], deployRuns: [{ headSha: sha, status: 'completed', conclusion: 'failure' }] }).ok, false);
+    assert.equal(mainVerifiedFromRuns({ headSha: 'x', ciRuns: [] }).ok, false);
   });
 
   it('fejl i PR-listningen er fail-soft', async () => {
