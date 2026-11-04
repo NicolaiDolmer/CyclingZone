@@ -5,7 +5,7 @@ import {
   fetchLiveAcademyOffers,
   mayTeamAcquireRider,
   filterOutPromisedAcademyRiders,
-} from "./academyOfferProtection.js";
+} from "./academyOfferProtection.ts";
 
 // Mock af den ENE tabel helperen rører: academy_intake, læst gennem fetchAllRows
 // (select → eq → order → range).
