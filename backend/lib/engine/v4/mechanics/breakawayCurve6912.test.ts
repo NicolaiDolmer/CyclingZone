@@ -247,10 +247,9 @@ test("#6912: daempningen foer finalen loeftes kun under styringen", () => {
   assert.equal(preFinalChaseClosingScale6912(0.2, true, 0.5), 0.5, "loeftet til profilens skala");
   assert.equal(preFinalChaseClosingScale6912(0.4, false, 0.9), 0.4);
   assert.equal(curvePreFinalLift("flat"), null, "flad har ingen finalestigningsfase");
-  for (const p of ["mountain", "high_mountain"] as const) {
-    const lift = curvePreFinalLift(p);
-    assert.ok(lift !== null && lift > 0, p);
-  }
+  assert.equal(curvePreFinalLift("mountain"), null, "bjerg: loeftningen hentede udbruddet for tidligt (variant c3)");
+  const lift = curvePreFinalLift("high_mountain");
+  assert.ok(lift !== null && lift > 0, "high_mountain");
 });
 
 const maxBreakSeparation = (events: readonly TimelineEvent[]): number => Math.max(0, ...events
