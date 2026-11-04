@@ -548,9 +548,12 @@ export function evaluateRealism(realism, bandsEntry) {
     if (metrics.length) missing.push({ cell, metrics });
   }
   const missingCount = missing.reduce((a, x) => a + x.metrics.length, 0) + checks.filter((c) => c.status === "MANGLER").length;
+  // Maalekontraktens punkt 8: en dom paa en delmaengde, hvor andre etaper mangler motorens
+  // forloeb, er ikke fuld evidens. Den taelles, saa rapporten ikke bliver groen.
+  const unmeasuredCount = checks.filter((c) => c.unmeasured).length;
   return {
     bandsStatus: bandsEntry?.status ?? "missing",
-    checks, missing, ok, deviations, tooLittle, missingCount,
+    checks, missing, ok, deviations, tooLittle, missingCount, unmeasuredCount,
     deviating: checks.filter((c) => c.status === "DEVIATION"),
   };
 }
@@ -560,6 +563,7 @@ export function realismSummaryLine(r) {
   const parts = [`${r.ok} OK / ${r.deviations} afvigelser`];
   if (r.tooLittle) parts.push(`${r.tooLittle} uden nok data`);
   if (r.missingCount) parts.push(`${r.missingCount} manglende`);
+  if (r.unmeasuredCount) parts.push(`${r.unmeasuredCount} med etaper uden motorens forloeb`);
   const bands = r.bandsStatus === "ok" ? "" : ` (baand ${REALISM_BANDS_STATUS_TEXT[r.bandsStatus] ?? "mangler"})`;
   return `realisme ${parts.join(", ")}${bands}`;
 }
@@ -663,7 +667,8 @@ export function splitReport(text, max = 3800) {
 export function buildPayloads(result, reportText, { mention = getOpsMention() } = {}) {
   // Manglende realisme-maal er aldrig groent (#7588): gul, men ingen alarm.
   const deviating = totalDeviations(result) > 0;
-  const incomplete = result.realism ? result.realism.bandsStatus !== "ok" || result.realism.missingCount > 0 : false;
+  const r = result.realism;
+  const incomplete = r ? r.bandsStatus !== "ok" || r.missingCount > 0 || (r.unmeasuredCount ?? 0) > 0 : false;
   const color = deviating ? 0xe74c3c : incomplete ? 0xf1c40f : 0x2ecc71;
   const parts = splitReport(reportText);
   const payloads = [];

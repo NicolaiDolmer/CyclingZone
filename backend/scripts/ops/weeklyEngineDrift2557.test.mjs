@@ -651,6 +651,25 @@ test("main: manglende realisme-baand stopper ikke andels-maalene, giver ikke exi
   assert.equal(logs.at(-1), `weekly-engine-drift: realisme 0 OK / 0 afvigelser, ${REALISM_DRIFT_METRICS.length} manglende (baand ugyldige)`);
 });
 
+test("evaluateRealism + buildPayloads: en OK-dom hvor andre etaper mangler motorens forloeb, er aldrig groen", () => {
+  const raw = realismRaw();
+  raw.executed.push(sched("sr", 3));
+  raw.profiles.push({ race_id: "sr", stage_number: 3, profile_type: "flat", finale_type: "flat_sprint", distance_km: DIST });
+  // Ingen tidslinje for etape 3, men etapens markering viser et hentet udbrud.
+  raw.results.push(...finishRows("sr", 3, 10, () => 0, (i) => (i === 4 ? { in_breakaway: true, breakaway_caught: true } : {})));
+  const bands = { status: "ok", value: parseRealismGateBands({ ...REALISM_BANDS, cells: { "stage_race|flat|sprint": { breakawayMaxLead: { median: { max: 1000 } } } } }) };
+  const r = evaluateRealism(computeRealismMetrics({ races: buildRealismRaces(raw) }), bands);
+  const check = r.checks.find((c) => c.metric === "breakawayMaxLead");
+  assert.equal(check.status, "OK");
+  assert.equal(check.unmeasured, true);
+  assert.equal(r.unmeasuredCount, 1);
+  assert.match(realismSummaryLine(r), /1 med etaper uden motorens forloeb/);
+  // Selv uden manglende baand er rapporten gul.
+  const result = { ...evaluate(computeGroupMetrics(buildFacts(raw, { observe })), parseThresholds({ minStages: 1, groups: {} })), realism: { ...r, missing: [], missingCount: 0 } };
+  assert.equal(buildPayloads(result, "x", { mention: null })[0].embeds[0].color, 0xf1c40f);
+  assert.match(renderRealismSection(r), /Nogle etaper mangler motorens forløb/);
+});
+
 test("fetchRaw: tidslinjer hentes kun for etaper koert i vinduet", async () => {
   const raw = realismRaw();
   raw.timelines.push({ race_id: "sr", stage_number: 3, timeline_version: 2, events: ENGINE_EVENTS });
