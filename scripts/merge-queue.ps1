@@ -630,6 +630,34 @@ function Stop-QueueStall {
   exit 1
 }
 
+# #7587 punkt 6: close-out efter et VERIFICERET tog (scripts/merge-queue-closeout.mjs):
+# SHA-kommentar paa hvert Refs/Closes-issue i PR-body, claude:todo -> claude:done kun
+# ved Closes, og een udskrevet NOW-linje pr. tog (orkestratoren committer den).
+# Idempotent via skjult markoer pr. (PR, issue). Fail-soft: en fejl her aendrer aldrig
+# koeens udfald. -DryRun sender --dry-run: laeser, skriver intet.
+function Invoke-TrainCloseOut {
+  param(
+    [object[]] $Entries,
+    [bool] $DeployVerified = $true,
+    [string] $ScriptPath = (Join-Path $PSScriptRoot 'merge-queue-closeout.mjs')
+  )
+  try {
+    $items = @($Entries | Where-Object { $null -ne $_ } | ForEach-Object {
+      [ordered]@{ number = [int]$_.number; sha = $(if ($_.sha) { [string]$_.sha } else { $null }) }
+    })
+    if ($items.Count -eq 0) { return }
+    $nodeArgs = @($ScriptPath, 'run', '--train', (ConvertTo-Json -InputObject $items -Compress), '--repo', $Repo)
+    if ($DryRun) { $nodeArgs += '--dry-run' }
+    if (-not $DeployVerified) { $nodeArgs += '--no-deploy' }
+    $out = @(& node @nodeArgs 2>&1)
+    $code = $LASTEXITCODE
+    foreach ($line in $out) { Write-Host "  $line" -ForegroundColor DarkCyan }
+    if ($code -ne 0) { Write-Host "  (close-out exit ${code}: merge og verifikation er uaendrede; koer scripts/merge-queue-closeout.mjs manuelt)" -ForegroundColor DarkYellow }
+  } catch {
+    Write-Host '  (close-out fejlede; merget er stadig verificeret. Koer scripts/merge-queue-closeout.mjs manuelt.)' -ForegroundColor DarkYellow
+  }
+}
+
 function Get-DeployGateAction([string]$State) {
   if ($State -eq 'verified' -or $State -eq 'deferred' -or $State -eq 'released') { return 'continue' }
   if ($State -eq 'pending') { return 'pending' }
@@ -921,6 +949,9 @@ function Close-OpenTrain {
   $batchLabel = ($script:batchMerged | ForEach-Object { "#$_" }) -join ", "
   $batchSize = $script:batchMerged.Count
   $sha = $script:lastMergedSha
+  # #7587: togets PR'er + om det deployer, gemt foer tilstanden nulstilles nedenfor.
+  $closeOutEntries = @($script:trainEntries)
+  $closeOutDeploys = [bool]($script:batchBackend -or $script:batchRailway -or $script:batchVercel)
   $ciOk = Wait-BatchCi
   if (-not $ciOk) {
     if ($script:queueStall) { Stop-QueueStall }
@@ -973,6 +1004,9 @@ function Close-OpenTrain {
   $script:trainEntries = @()
 
   Write-Host "  [ok] $batchLabel faerdig - klar til naeste i koeen." -ForegroundColor Green
+  # #7587 punkt 6: foerst nu er toget verificeret. Fail-soft (ogsaa hvis funktionen mangler).
+  try { Invoke-TrainCloseOut -Entries $closeOutEntries -DeployVerified $closeOutDeploys }
+  catch { Write-Host '  (close-out kunne ikke startes; merget er stadig verificeret.)' -ForegroundColor DarkYellow }
 }
 
 for ($idx = 0; $idx -lt $plan.Count; $idx++) {
@@ -1070,6 +1104,9 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
 
   if ($DryRun) {
     Write-Host "  [dry-run] ville merge nu: gh pr merge $n --squash --delete-branch --admin" -ForegroundColor DarkGray
+    # #7587: forhaandsvisning af close-out efter verifikation (read-only, --dry-run).
+    try { Invoke-TrainCloseOut -Entries @([pscustomobject]@{ number = $n; sha = $null }) }
+    catch { Write-Host '  (close-out-forhaandsvisning kunne ikke startes.)' -ForegroundColor DarkYellow }
     if ($entryRailway) { $script:batchRailway = $true }
     if ($entryBackend) { $script:batchBackend = $true }
     if ($entryVercel) { $script:batchVercel = $true }
