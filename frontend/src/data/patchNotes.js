@@ -1,6 +1,6 @@
 export const PATCHES = [
   {
-    "version": "7.398",
+    "version": "7.399",
     "date": "2026-11-04",
     "changes": [
       {
@@ -53,7 +53,13 @@ export const PATCHES = [
         "refs": [
           7236
         ]
-      },
+      }
+    ]
+  },
+  {
+    "version": "7.398",
+    "date": "2026-11-04",
+    "changes": [
       {
         "category": "improved",
         "audience": "player",
