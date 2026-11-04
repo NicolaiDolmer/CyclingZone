@@ -91,8 +91,10 @@ test("R3 (#6350): etape 8, gruppen hentes før den angriber, og uheldsgrupper ud
   assert.equal(early[0].group_id, "breakaway-7000");
   assert.equal(early[0].km, 97.4);
   assert.equal(early[0].formed_km, 99.2);
-  const nowhere = findings.filter((f) => f.code === "group_without_formation").map((f) => f.group_id);
+  const nowhere = findings.filter((f) => f.code === "incident_group_without_formation").map((f) => f.group_id);
   assert.ok(nowhere.includes("solo-m10-10-0"));
+  // Et nedkørselsangreb der nævnes (holdordre) før selve angrebet står i loggen.
+  assert.ok(findings.some((f) => f.code === "referenced_before_formed" && f.group_id === "breakaway-4000"));
 });
 
 test("R4 (#7640): etape 8, vinderens angreb står som et split med negativt hul", () => {

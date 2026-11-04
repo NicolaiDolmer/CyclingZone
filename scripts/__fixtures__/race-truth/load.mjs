@@ -23,5 +23,6 @@ export function stageInput(name) {
     raceRows: rowsOf(data.results),
     passages: rowsOf(data.passages),
     moments: data.moments,
+    incidents: data.incidents ?? [],
   };
 }

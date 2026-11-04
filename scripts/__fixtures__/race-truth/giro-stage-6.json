@@ -1791,4 +1791,5 @@
 [6,"sprint",0,"rider-168",13,3,0],
 [6,"sprint",0,"rider-121",14,2,0],
 [6,"sprint",0,"rider-038",15,1,0]]},
+"incidents":[{"rider_id":"rider-043","kind":"crash","outcome":"abandon"},{"rider_id":"rider-073","kind":"mechanical","outcome":"time_loss"},{"rider_id":"rider-115","kind":"mechanical","outcome":"time_loss"}],
 "moments":[{"moment_key":"sprint_win","params":{"riderId":"rider-018","gapSeconds":0}},{"moment_key":"breakaway_caught","params":{"count":6}},{"moment_key":"incident_abandon","params":{"kind":"crash","riderId":"rider-043"}},{"moment_key":"incident_time_loss","params":{"kind":"mechanical","riderId":"rider-073","secondsLost":36}},{"moment_key":"incident_time_loss","params":{"kind":"mechanical","riderId":"rider-115","secondsLost":32}}]}

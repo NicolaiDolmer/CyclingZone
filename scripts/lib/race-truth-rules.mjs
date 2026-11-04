@@ -332,7 +332,9 @@ export function ruleAbandonedGone(input) {
     findings.push(finding("R2", "ghost_group_after_abandon", { index: ref.index, km: ref.km, group_id: ref.groupId, rider_id: ref.riderId }));
   }
   const finishers = new Set((input.stageRows ?? []).map((row) => row.rider_id));
-  for (const riderId of replay.out.keys()) {
+  const gone = new Set(replay.out.keys());
+  for (const row of input.incidents ?? []) if (row?.outcome === "abandon" || row?.outcome === "abandoned") if (str(row.rider_id)) gone.add(row.rider_id);
+  for (const riderId of gone) {
     if (finishers.has(riderId)) findings.push(finding("R2", "abandoned_in_result", { rider_id: riderId }));
   }
   return findings;
@@ -361,7 +363,10 @@ export function ruleCatchAfterFormation(input) {
     }));
   });
   for (const [groupId, ref] of replay.unformed) {
-    findings.push(finding("R3", "group_without_formation", { index: ref.index, km: ref.km, group_id: groupId }));
+    // Et uheldsoffers gruppe har heller ingen dannelse i loggen (#6350), men
+    // er en anden fejl end en helt ukendt gruppe; koden skiller dem ad.
+    const code = replay.incidentGroups.has(groupId) ? "incident_group_without_formation" : "group_without_formation";
+    findings.push(finding("R3", code, { index: ref.index, km: ref.km, group_id: groupId }));
   }
   for (const [groupId, ref] of replay.referencedEarly) {
     findings.push(finding("R3", "referenced_before_formed", { index: ref.index, km: ref.km, group_id: groupId, formed_index: ref.formed_index }));
@@ -455,14 +460,19 @@ export function ruleClaimsMatchGroup(input) {
   });
 
   const rows = [...(input.stageRows ?? [])].filter((row) => typeof row.rank === "number").sort((a, b) => a.rank - b.rank);
+  // Udgang og tidstab står i tidslinjen (uheld undervejs) og i race_incidents
+  // (også udtrækning og tidsgrænse, som ikke er en hændelse på vejen).
   const abandoned = new Set();
   const timeLoss = new Set();
-  for (const event of input.events ?? []) {
-    if (event?.type !== "incident") continue;
-    const riderId = str(event.params?.rider_id);
+  const incidentRows = [
+    ...(input.events ?? []).filter((event) => event?.type === "incident").map((event) => event.params ?? {}),
+    ...(input.incidents ?? []),
+  ];
+  for (const row of incidentRows) {
+    const riderId = str(row?.rider_id);
     if (!riderId) continue;
-    if (event.params?.outcome === "abandoned" || event.params?.outcome === "abandon") abandoned.add(riderId);
-    if (event.params?.outcome === "time_loss") timeLoss.add(riderId);
+    if (row.outcome === "abandoned" || row.outcome === "abandon") abandoned.add(riderId);
+    if (row.outcome === "time_loss") timeLoss.add(riderId);
   }
   for (const moment of input.moments ?? []) {
     const key = moment?.moment_key;

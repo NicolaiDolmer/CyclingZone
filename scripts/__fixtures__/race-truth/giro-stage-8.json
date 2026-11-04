@@ -2230,4 +2230,5 @@
 [8,"sprint",0,"rider-070",13,3,0],
 [8,"sprint",0,"rider-031",14,2,0],
 [8,"sprint",0,"rider-054",15,1,0]]},
+"incidents":[{"rider_id":"rider-115","kind":"crash","outcome":"time_loss"},{"rider_id":"rider-156","kind":"crash","outcome":"time_loss"}],
 "moments":[{"moment_key":"solo_win","params":{"riderId":"rider-128","gapSeconds":118}},{"moment_key":"breakaway_caught","params":{"count":3}},{"moment_key":"incident_time_loss","params":{"kind":"crash","riderId":"rider-115","secondsLost":6}},{"moment_key":"incident_time_loss","params":{"kind":"crash","riderId":"rider-156","secondsLost":7}}]}
