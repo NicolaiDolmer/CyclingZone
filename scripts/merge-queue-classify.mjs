@@ -343,8 +343,16 @@ function checkStatement(stmt) {
   if (/^COMMENT ON (TABLE|COLUMN|INDEX) \S+ IS '§\d+'$/i.test(c)) return null;
   if (/^CREATE (UNIQUE )?INDEX\b/i.test(c)) {
     if (/^CREATE UNIQUE\b/i.test(c)) return "UNIQUE-indeks (kan afvise eksisterende/nye raekker)";
-    if (/^CREATE INDEX (CONCURRENTLY )?IF NOT EXISTS\b/i.test(c)) return null;
-    return "CREATE INDEX uden IF NOT EXISTS (ikke idempotent)";
+    if (!/^CREATE INDEX (CONCURRENTLY )?IF NOT EXISTS\b/i.test(c)) return "CREATE INDEX uden IF NOT EXISTS (ikke idempotent)";
+    // Kun rene kolonnelister er beviseligt uden spillereffekt. Udtryk og
+    // praedikater evalueres ved hver skrivning og kan faa nye skrivninger til
+    // at fejle (Codex), saa de forbliver ejer-go.
+    const id = '"?[A-Za-z_][A-Za-z0-9_]*"?';
+    const col = `${id}( (ASC|DESC))?( NULLS (FIRST|LAST))?`;
+    const cols = `\\( ?${col}( ?, ?${col})* ?\\)`;
+    const plain = new RegExp(`^CREATE INDEX (CONCURRENTLY )?IF NOT EXISTS ${id} ON (ONLY )?(${id}\\.)?${id}( USING (btree|hash|gin|gist|brin))? ?${cols}( INCLUDE ?${cols})?$`, "i");
+    if (plain.test(c)) return null;
+    return "CREATE INDEX med udtryk, praedikat eller ukendt form (kan paavirke skrivninger)";
   }
   if (/^ALTER TABLE\b/i.test(c)) return checkAlterTable(stmt);
   if (/^INSERT\b/i.test(c)) return checkFlagSeed(stmt);

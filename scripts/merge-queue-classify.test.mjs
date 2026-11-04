@@ -218,7 +218,7 @@ ALTER TABLE public.auctions
   ADD COLUMN IF NOT EXISTS value_at_close INTEGER,
   ADD COLUMN IF NOT EXISTS note text DEFAULT 'x';
 COMMENT ON COLUMN public.auctions.value_at_close IS 'snapshot; NULL for old rows';
-CREATE INDEX CONCURRENTLY IF NOT EXISTS auctions_close_idx ON public.auctions (value_at_close) WHERE value_at_close IS NOT NULL;
+CREATE INDEX CONCURRENTLY IF NOT EXISTS auctions_close_idx ON public.auctions (value_at_close);
 COMMIT;
 NOTIFY pgrst, 'reload schema';`;
 
@@ -228,6 +228,8 @@ test("analyzeMigrationSql: additive, idempotente former", () => {
   assert.deepEqual(analyzeMigrationSql(FLAG_SEED_OFF).flagKeys, ["x_enabled"]);
   assert.deepEqual(analyzeMigrationSql(ADD_COLUMN_INDEX).flagKeys, []);
   assert.equal(analyzeMigrationSql("ALTER TABLE x ADD COLUMN IF NOT EXISTS a numeric(10, 2), ADD COLUMN IF NOT EXISTS b timestamp with time zone DEFAULT now(), ADD COLUMN IF NOT EXISTS c text[] NULL;").additive, true);
+  // Rene kolonnelister med metode, retning og INCLUDE er stadig additive.
+  assert.equal(analyzeMigrationSql(`CREATE INDEX IF NOT EXISTS r_idx ON ONLY public."riders" USING btree (team_id, birthdate DESC NULLS LAST) INCLUDE (firstname);`).additive, true);
   // Flere flag i én saetning, false i stedet for "off", citeret tabelnavn.
   assert.equal(analyzeMigrationSql(`INSERT INTO "app_config" (key, value) VALUES ('a', '"off"'::jsonb), ('b', 'false') ON CONFLICT DO NOTHING;`).additive, true);
 });
@@ -264,6 +266,10 @@ test("analyzeMigrationSql: destruktivt, RLS, grants og ikke-idempotent er ejer-g
     ["ALTER TABLE public.x ADD COLUMN IF NOT EXISTS c uuid DEFAULT gen_random_uuid();", /nullable/],
     [`INSERT INTO public.app_config (key, value, description) VALUES ('x', '"off"'::jsonb, nextval('public.s')::text) ON CONFLICT (key) DO NOTHING;`, /udtryk/],
     ["CREATE UNIQUE INDEX IF NOT EXISTS x_u ON public.x (a);", /UNIQUE/],
+    // Udtryk og praedikater evalueres ved hver skrivning og kan faa nye skrivninger til at fejle (Codex).
+    ["CREATE INDEX IF NOT EXISTS x ON public.riders ((firstname::integer));", /udtryk/],
+    ["CREATE INDEX IF NOT EXISTS x ON public.riders (lower(lastname));", /udtryk/],
+    ["CREATE INDEX IF NOT EXISTS x ON public.auctions (value_at_close) WHERE value_at_close IS NOT NULL;", /praedikat/],
     ["CREATE TABLE IF NOT EXISTS public.x (id int);", /ny tabel/],
     ["CREATE OR REPLACE FUNCTION public.f() RETURNS int LANGUAGE sql AS $$ SELECT 1 $$;", /funktion/],
     ["DO $$ BEGIN PERFORM 1; END $$;", /ukendt/],
