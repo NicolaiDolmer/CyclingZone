@@ -33,7 +33,7 @@ function guardedMergeFailure(mode, openTrain = true) {
   const input = `
 $ErrorActionPreference='Stop'
 $ast=[Management.Automation.Language.Parser]::ParseFile(${quote(queuePath)},[ref]$null,[ref]$null)
-foreach($name in @('Get-WaveEvidenceFailure','Exit-Queue','Close-OpenTrain')){
+foreach($name in @('Get-WaveEvidenceFailure','Exit-Queue','Close-OpenTrain','Wait-BatchMigrations','Test-MergeCommitMigration')){
  $fn=$ast.Find({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name},$true)
  Invoke-Expression $fn.Extent.Text
 }

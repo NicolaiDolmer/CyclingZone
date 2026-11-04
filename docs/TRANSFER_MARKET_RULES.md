@@ -296,6 +296,10 @@ sluttidspunkt på en holdløs rytter. `CUSTOM_END_MIN_HOURS` er stadig 1 for egn
 
 ## 4. Bud, minimums-step og autobud
 
+**Modulsti (#7583):** Auktionsreglerne ligger nu i `backend/lib/auctionRules.ts`.
+Henvisningerne til `auctionRules.js` og dens linjenumre nedenfor er historiske;
+funktioner og runtime-kontrakter er uændrede.
+
 ### 4.1 Minimumsbud
 
 `getMinimumAuctionBid` (`auctionRules.js:141-144`):

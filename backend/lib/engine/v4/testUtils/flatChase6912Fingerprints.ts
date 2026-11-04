@@ -9,7 +9,7 @@ import { digestOf, frozenDigests } from "./oldRevisionDigests6199.ts";
 
 export const FLAT_CHASE_6912_SEEDS = ["6912-a", "6912-b"] as const;
 export const FLAT_CHASE_6912_FROZEN_KEYS = ["oldRevisions", "oldStageRaces"] as const;
-export const FLAT_CHASE_6912_RECOMPUTABLE_KEYS = ["otherTerrain", "otherOneDay"] as const;
+export const FLAT_CHASE_6912_RECOMPUTABLE_KEYS = ["otherTerrain", "otherOneDay", "curveOffV3"] as const;
 
 export type FlatChase6912Key = (typeof FLAT_CHASE_6912_FROZEN_KEYS)[number] | (typeof FLAT_CHASE_6912_RECOMPUTABLE_KEYS)[number];
 type Digests = Record<string, string>;
@@ -28,6 +28,11 @@ export const FLAT_CHASE_6912_COMPUTE: Readonly<Record<FlatChase6912Key, () => un
   otherTerrain: () => runDigests("s5_profiles_v3", ["hilly", "mountain", "high_mountain"]),
   /** v3 endagsløb. */
   otherOneDay: () => runDigests("s5_profiles_v3", ["hilly", "mountain", "high_mountain", "cobbles", "classic"], { status: "one_day" } as Parameters<typeof stageRaceRuns>[3]),
+  /** #6912 (forspringskurven slukket): v3 flad/rullende/brosten/klassiker i etapeloeb og flad/rullende som endagsloeb. */
+  curveOffV3: () => ({
+    stageRace: runDigests("s5_profiles_v3", ["flat", "rolling", "cobbles", "classic"]),
+    oneDay: runDigests("s5_profiles_v3", ["flat", "rolling"], { status: "one_day" } as Parameters<typeof stageRaceRuns>[3]),
+  }),
 });
 
 export function computeFlatChase6912(key: FlatChase6912Key): unknown {

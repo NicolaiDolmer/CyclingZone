@@ -62,9 +62,11 @@ on:
     - cron: '15 */6 * * *'
   workflow_dispatch:
 
+# #7582: kun en forældet PR-kørsel annulleres; schedule og dispatch (live-
+# tjekket mod prod) kører altid færdigt og annullerer ikke hinanden.
 concurrency:
-  group: security-grants-audit-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read

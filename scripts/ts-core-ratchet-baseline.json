@@ -16,7 +16,7 @@
     "en fil under 'konverter naar du roerer'. Raekkefoelge + opskrift:",
     "docs/TYPESCRIPT_DIRECTION.md."
   ],
-  "generatedAt": "2026-11-03",
+  "generatedAt": "2026-11-04",
   "tsconfig": "backend/tsconfig.core.json",
   "areas": {
     "economy": {
@@ -26,15 +26,15 @@
         "lib/financeForecast*",
         "lib/salaryDecoupling*"
       ],
-      "jsFileCount": 5,
-      "tsErrorCount": 295,
+      "jsFileCount": 4,
+      "tsErrorCount": 268,
       "files": {
         "lib/economyAdminDashboard.js": 4,
         "lib/economyConstants.js": 0,
         "lib/economyEngine.js": 216,
         "lib/economyNoUpkeepFlag.ts": 0,
         "lib/financeForecast.js": 48,
-        "lib/salaryDecoupling.js": 27
+        "lib/salaryDecoupling.ts": 0
       }
     },
     "auction": {
@@ -42,13 +42,13 @@
       "globs": [
         "lib/auction*"
       ],
-      "jsFileCount": 4,
-      "tsErrorCount": 166,
+      "jsFileCount": 3,
+      "tsErrorCount": 124,
       "files": {
         "lib/auctionCancellation.js": 10,
         "lib/auctionEngine.js": 28,
         "lib/auctionFinalization.js": 86,
-        "lib/auctionRules.js": 42,
+        "lib/auctionRules.ts": 0,
         "lib/auctionTransferListPause.ts": 0
       }
     },
@@ -57,8 +57,8 @@
       "globs": [
         "lib/academy*"
       ],
-      "jsFileCount": 15,
-      "tsErrorCount": 256,
+      "jsFileCount": 14,
+      "tsErrorCount": 239,
       "files": {
         "lib/academyBoardGift.ts": 0,
         "lib/academyDisclosure.ts": 0,
@@ -79,7 +79,7 @@
         "lib/academyIntakeReconcile.js": 9,
         "lib/academyIntakeSource.ts": 0,
         "lib/academyOfferProtection.js": 4,
-        "lib/academyPnl.js": 17,
+        "lib/academyPnl.ts": 0,
         "lib/academyProspectKnowledge.ts": 0,
         "lib/academyReminder.ts": 0,
         "lib/academyReminderFlag.ts": 0,
@@ -137,7 +137,7 @@
     }
   },
   "totals": {
-    "jsFileCount": 34,
-    "tsErrorCount": 969
+    "jsFileCount": 31,
+    "tsErrorCount": 883
   }
 }
