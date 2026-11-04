@@ -426,8 +426,7 @@
     },
     {
       "issue": 7654,
-      "reason": "Auto-tog + alarm for klare PR-er (ejer-go 4/11, MASTERPLAN §0)",
-      "since": "2026-11-04"
+      "why": "Auto-tog + alarm for klare PR-er, ejer-go 4/11 i chat (MASTERPLAN §0)"
     }
   ],
   "brandList": [
