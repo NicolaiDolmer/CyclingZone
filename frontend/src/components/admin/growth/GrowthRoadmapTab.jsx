@@ -60,8 +60,10 @@ function IssueStepBadge({ status }) {
   return <Tag>{ISSUE_STATUS_LABELS[status] ?? status}</Tag>;
 }
 
-// Én linje pr. række ved 1440 px: handlingerne ombrydes aldrig (rækkerne blev
-// ellers dobbelt så høje); titel-kolonnen er den, der giver plads.
+// Handlingerne ombrydes aldrig (rækkerne blev ellers dobbelt så høje), så
+// kolonnerne omkring dem skal holde sig smalle: ved 1440 px med sidebar er der
+// ca. 1120 px til hele tabellen. Derfor er horisont og status vælgeren i sin egen
+// kolonne, ikke et mærke plus en vælger, og alle kolonner uden titlen er `compact`.
 function Actions({ children }) {
   return <div className="flex flex-nowrap items-center justify-end gap-1.5 whitespace-nowrap">{children}</div>;
 }
@@ -69,6 +71,13 @@ function Actions({ children }) {
 // Tal og datoer i tal-kolonner ombrydes aldrig ("11 dage" på to linjer).
 function Num({ children }) {
   return <span className="whitespace-nowrap tabular-nums">{children}</span>;
+}
+
+// Kontakt-nøglen er den længste tekst uden mellemrum. Den må bryde efter "_", så
+// kolonnen har en fast bredde i stedet for at tage plads fra titlen.
+function flagKeyParts(key) {
+  const parts = key.split("_");
+  return parts.flatMap((part, i) => (i === parts.length - 1 ? [part] : [`${part}_`, <wbr key={i} />]));
 }
 
 function RowButton({ children, ...rest }) {
@@ -226,8 +235,8 @@ export default function GrowthRoadmapTab() {
     if (!row.flag_key) return <span className="text-cz-3">–</span>;
     const stage = flagByKey.get(row.flag_key)?.stage;
     return (
-      <span className="font-data text-xs text-cz-2">
-        {row.flag_key}{stage ? ` · ${FLAG_STAGE_LABELS[stage] ?? stage}` : ""}
+      <span className="block w-[96px] whitespace-normal font-data text-xs text-cz-2">
+        {flagKeyParts(row.flag_key)}{stage ? ` · ${FLAG_STAGE_LABELS[stage] ?? stage}` : ""}
       </span>
     );
   };
@@ -251,7 +260,7 @@ export default function GrowthRoadmapTab() {
   const col = {
     rank: { key: "rank", header: "", compact: true, render: (_r, i) => <span className="font-data tabular-nums text-cz-3">{i + 1}</span> },
     title: (header, extra) => ({
-      key: "title", header, sortKey: "title", sticky: true,
+      key: "title", header, sortKey: "title", sticky: true, compact: true,
       render: (r) => (
         <TitleCell title={r.title_da || r.title_en}>
           {itemTags(r)}
@@ -259,52 +268,68 @@ export default function GrowthRoadmapTab() {
         </TitleCell>
       ),
     }),
-    status: { key: "status", header: "Status", sortKey: "status", render: (r) => <Tag>{STATUS_LABELS[r.status] ?? r.status}</Tag> },
+    status: { key: "status", header: "Status", sortKey: "status", compact: true, render: (r) => <Tag>{STATUS_LABELS[r.status] ?? r.status}</Tag> },
     horizon: {
-      key: "horizon", header: "Horisont", sortKey: "horizon",
+      key: "horizon", header: "Horisont", sortKey: "horizon", compact: true,
       render: (r) => <Tag>{HORIZON_LABELS[r.horizon] ?? r.horizon ?? "–"}</Tag>,
     },
-    idea: { key: "idea", header: "God idé", sortKey: "idea", numeric: true, render: (r) => <Num>{fmtScore(r.avg_idea)}</Num> },
-    importance: { key: "importance", header: "Vigtighed", sortKey: "importance", numeric: true, render: (r) => <Num>{fmtScore(r.avg_importance)}</Num> },
-    score: { key: "score", header: "Score", sortKey: "score", numeric: true, render: (r) => <Num>{fmtScore(r.steering_score, 1)}</Num> },
-    votes: { key: "votes", header: "Stemmer", sortKey: "votes", numeric: true, render: (r) => <Num>{fmtInt(r.votes)}</Num> },
+    // Samme kolonner som vælgere, på de faner hvor man retter dem. `fold`: en
+    // vælger er for bred til 390 px, så på mobil står værdien i navnecellens
+    // underlinje og titlen beholder pladsen.
+    statusEdit: {
+      key: "status", header: "Status", sortKey: "status", compact: true, fold: true,
+      foldValue: (r) => STATUS_LABELS[r.status] ?? r.status,
+      render: (r) => <div className="w-[104px]">{statusSelect(r)}</div>,
+    },
+    horizonEdit: {
+      key: "horizon", header: "Horisont", sortKey: "horizon", compact: true, fold: true,
+      foldValue: (r) => HORIZON_LABELS[r.horizon] ?? r.horizon ?? "",
+      render: (r) => <div className="w-[128px]">{horizonSelect(r)}</div>,
+    },
+    idea: { key: "idea", header: "God idé", sortKey: "idea", numeric: true, compact: true, render: (r) => <Num>{fmtScore(r.avg_idea)}</Num> },
+    importance: { key: "importance", header: "Vigtighed", mobileHeader: "Vigt.", sortKey: "importance", numeric: true, compact: true, render: (r) => <Num>{fmtScore(r.avg_importance)}</Num> },
+    score: { key: "score", header: "Score", sortKey: "score", numeric: true, compact: true, render: (r) => <Num>{fmtScore(r.steering_score, 1)}</Num> },
+    votes: { key: "votes", header: "Stemmer", sortKey: "votes", numeric: true, compact: true, render: (r) => <Num>{fmtInt(r.votes)}</Num> },
     own: {
-      key: "own", header: "Din rækkefølge", mobileHeader: "Din", sortKey: "own", numeric: true,
+      key: "own", header: "Din rækkefølge", mobileHeader: "Din", sortKey: "own", numeric: true, compact: true,
       render: (r) => {
         const pos = order.get(r.item_id) ?? 0;
         if (r.status !== "planned") return <span className="text-cz-3">–</span>;
         // Pilene står ved nummeret, de flytter: det holder handlingskolonnen
-        // smal nok til, at hele rækken er én linje ved 1440 px.
+        // smal. På mobil står de over hinanden; side om side tog de 116 px af
+        // 326 px og knuste titlen til et par tegn pr. linje.
         return (
           <div className="flex flex-nowrap items-center justify-end gap-1.5">
             <Num>{pos || "–"}</Num>
-            <RowButton aria-label="Flyt op" disabled={busy !== null || pos <= 1} onClick={() => move(r, -1)}>
-              <ArrowUpIcon size={14} aria-hidden="true" />
-            </RowButton>
-            <RowButton aria-label="Flyt ned" disabled={busy !== null || pos >= plannedRows.length} onClick={() => move(r, 1)}>
-              <ArrowDownIcon size={14} aria-hidden="true" />
-            </RowButton>
+            <div className="flex flex-col gap-1 sm:flex-row sm:gap-1.5">
+              <RowButton aria-label="Flyt op" disabled={busy !== null || pos <= 1} onClick={() => move(r, -1)}>
+                <ArrowUpIcon size={14} aria-hidden="true" />
+              </RowButton>
+              <RowButton aria-label="Flyt ned" disabled={busy !== null || pos >= plannedRows.length} onClick={() => move(r, 1)}>
+                <ArrowDownIcon size={14} aria-hidden="true" />
+              </RowButton>
+            </div>
           </div>
         );
       },
     },
-    flag: { key: "flag", header: "Kontakt", sortKey: "flag", fold: true, foldValue: (r) => r.flag_key ?? "", render: flagCell },
+    flag: { key: "flag", header: "Kontakt", sortKey: "flag", compact: true, fold: true, foldValue: (r) => (r.flag_key ? flagKeyParts(r.flag_key) : ""), render: flagCell },
     beta: {
-      key: "beta", header: "I beta siden", sortKey: "beta", numeric: true,
+      key: "beta", header: "I beta siden", sortKey: "beta", numeric: true, compact: true,
       render: (r) => (r.beta_since ? <Num>{fmtDate(r.beta_since)}</Num> : <span className="text-cz-3">–</span>),
     },
     date: {
-      key: "date", header: "Dato", sortKey: "date", numeric: true,
+      key: "date", header: "Dato", sortKey: "date", numeric: true, compact: true,
       render: (r) => {
         const d = r.shipped_at ?? r.updated_at ?? r.created_at;
         return d ? <Num>{fmtDate(d)}</Num> : <span className="text-cz-3">–</span>;
       },
     },
     issue: {
-      key: "issue", header: "Issue", sortKey: "issue", numeric: true,
+      key: "issue", header: "Issue", sortKey: "issue", numeric: true, compact: true,
       render: (r) => (r.issue_ref ? <Num>#{r.issue_ref}</Num> : <span className="text-cz-3">–</span>),
     },
-    actions: (render) => ({ key: "actions", header: "", fold: true, foldValue: () => "", render: (r) => <Actions>{render(r)}</Actions> }),
+    actions: (render) => ({ key: "actions", header: "", compact: true, fold: true, foldValue: () => "", render: (r) => <Actions>{render(r)}</Actions> }),
   };
 
   const editSplit = (r) => (
@@ -334,9 +359,15 @@ export default function GrowthRoadmapTab() {
     </>
   ));
 
-  const statusHorizonActions = col.actions((r) => (
+  const statusActions = col.actions((r) => (
     <>
-      <div className="w-[118px]">{statusSelect(r)}</div>
+      <div className="w-[104px]">{statusSelect(r)}</div>
+      {editSplit(r)}
+    </>
+  ));
+
+  const horizonActions = col.actions((r) => (
+    <>
       <div className="w-[128px]">{horizonSelect(r)}</div>
       {editSplit(r)}
     </>
@@ -344,16 +375,16 @@ export default function GrowthRoadmapTab() {
 
   const itemColumnsByTab = {
     ideas: [col.rank, col.title("Idé"), col.horizon, col.idea, col.importance, col.score, col.votes, col.issue, ideaActions],
-    planned: [col.rank, col.title("Punkt", true), col.horizon, col.importance, col.votes, col.own, col.flag, statusHorizonActions],
-    in_progress: [col.title("Punkt"), col.horizon, col.votes, col.beta, col.flag, statusHorizonActions],
+    planned: [col.rank, col.title("Punkt", true), col.horizonEdit, col.importance, col.votes, col.own, col.flag, statusActions],
+    in_progress: [col.title("Punkt"), col.horizonEdit, col.votes, col.beta, col.flag, statusActions],
     shipped: [col.title("Punkt"), col.date, col.importance, col.votes, col.flag,
       col.actions((r) => (
         <>
-          <div className="w-[118px]">{statusSelect(r)}</div>
+          <div className="w-[104px]">{statusSelect(r)}</div>
           <RowButton onClick={() => setModal({ kind: "item", row: r })}>Ret</RowButton>
         </>
       ))],
-    y2027: [col.rank, col.title("Punkt", true), col.status, col.importance, col.votes, col.own, col.flag, statusHorizonActions],
+    y2027: [col.rank, col.title("Punkt", true), col.statusEdit, col.importance, col.votes, col.own, col.flag, horizonActions],
     votes: [col.rank, col.title("Punkt"), col.status, col.horizon, col.votes, col.idea, col.importance, col.score,
       col.actions((r) => <RowButton onClick={() => setModal({ kind: "item", row: r })}>Ret</RowButton>)],
   };
@@ -361,7 +392,7 @@ export default function GrowthRoadmapTab() {
   const issueColumns = [
     col.rank,
     {
-      key: "title", header: "Fejl", sortKey: "title", sticky: true,
+      key: "title", header: "Fejl", sortKey: "title", sticky: true, compact: true,
       render: (r) => {
         const last = latest.get(r.issue_id);
         return (
@@ -389,7 +420,7 @@ export default function GrowthRoadmapTab() {
   const MOBILE_DEFAULTS = {
     ideas: ["idea", "importance", "score"],
     planned: ["importance", "votes", "own"],
-    in_progress: ["beta", "flag"],
+    in_progress: ["beta", "votes"],
     shipped: ["date", "votes"],
     issues: ["step", "reports", "days"],
     y2027: ["importance", "votes", "own"],
