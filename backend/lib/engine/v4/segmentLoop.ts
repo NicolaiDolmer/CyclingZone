@@ -1128,6 +1128,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       // #6748 (KUN s5_profiles_v2, slukket): udbrudsopfoelgningen (breakaway.ts).
       ...(isS5ProfilesV2OrLater(rulesRevision) ? { s5ProfilesV2: true as const } : {}),
       ...(queenStageGap7236On(input) ? { queenStageGap7236: true as const } : {}), // #7236 (slukket)
+      ...(input.split_attack_cause_7640 === true && isS5ProfilesV3OrLater(rulesRevision) ? { splitAttackCause7640: true as const } : {}), // #7640 (slukket)
       // #6804 (KUN s5_profiles_v3, slukket): udbrudspakken trin 2 (breakawayV3_6804.ts).
       // #6938 (KUN s5_profiles_v3, slukket): styrt-udgang pr. terraen (mechanics/incidents.ts).
       // #6937 (KUN s5_profiles_v3, slukket): bjergpoint i favoritgruppen + lead-outens pris.
