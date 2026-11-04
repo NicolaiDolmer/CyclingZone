@@ -31,6 +31,7 @@ import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { evaluateFlagStage } from "../lib/featureStage.js";
 import { PLAYER_VISIBLE_BINARY_FLAG_KEYS, PLAYER_VISIBLE_FLAG_KEYS } from "../lib/stageFlagCatalog.js";
 import { DEVELOPMENT_CURVE_B_FLAG_KEY, readDevelopmentCurveBParams } from "../lib/developmentCurveBFlag.ts";
+import { isConditionModelV2Enabled, RACE_DATE_TRAINING_DAY_FLAG_KEY } from "../lib/conditionModelV2Flag.js";
 
 /**
  * { <noegle>: boolean } for hver noegle i allowlisten. En fejlet batch lukker
@@ -67,6 +68,16 @@ export async function readPlayerFeatureFlags(supabase, { isBetaTester = false, r
   // kun et ja/nej forlader serveren, aldrig tallene.
   if (flags[DEVELOPMENT_CURVE_B_FLAG_KEY] && !(await readDevelopmentCurveBParams({ supabase }))) {
     flags[DEVELOPMENT_CURVE_B_FLAG_KEY] = false;
+  }
+  // #7536: motoren bruger kun reglen under condition_model_v2 (og dens forudsaetninger),
+  // saa Hjaelp-blokken foelger samme kaede. En fejlet eller ugyldig kaede er off.
+  if (flags[RACE_DATE_TRAINING_DAY_FLAG_KEY]) {
+    try {
+      if (!(await isConditionModelV2Enabled(supabase))) flags[RACE_DATE_TRAINING_DAY_FLAG_KEY] = false;
+    } catch (error) {
+      flags[RACE_DATE_TRAINING_DAY_FLAG_KEY] = false;
+      reportError(error, { tags: { route: "/feature-flags", read: "condition_model_v2" } });
+    }
   }
   return flags;
 }

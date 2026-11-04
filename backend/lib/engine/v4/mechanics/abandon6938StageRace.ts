@@ -25,6 +25,7 @@
 
 import type { Entrant, GcContext, StageIncident, StageResult } from "../types.ts";
 import { rngFor } from "../rng.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 export type StageRaceWithdrawalTuning = Readonly<{
   /** Hul til vinderen (sekunder) hvor risikoen begynder. */
@@ -137,7 +138,7 @@ export function applyStageRaceWithdrawals(
   const out = results.filter((r) => withdrawn.has(r.rider_id)).map((r) => ({ ...r, status: "abandoned" as const }));
   const reordered = [...kept, ...out].map((r, index) => ({ ...r, rank: index + 1 }));
   const km = round2(Math.max(0, Number(options.distanceKm) || 0));
-  const incidents: StageIncident[] = [...withdrawn].sort((a, b) => a.localeCompare(b)).map((riderId) => ({
+  const incidents: StageIncident[] = [...withdrawn].sort((a, b) => compareIds(a, b)).map((riderId) => ({
     rider_id: riderId,
     km,
     kind: "withdrawal" as const,
