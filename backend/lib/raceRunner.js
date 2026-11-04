@@ -37,8 +37,8 @@ import {
   buildRacePointsLookup,
   prizeMoneyForPoints,
 } from "./raceResultsEngine.js";
-// #4148: rene måle-hjælpere (ingen adfærdsændring) — se finalizeInstrumentation.js.
-import { wrapSupabaseWithCallCounter, formatPhaseLogLine } from "./finalizeInstrumentation.js";
+// #4148: rene måle-hjælpere (ingen adfærdsændring) — se finalizeInstrumentation.ts.
+import { wrapSupabaseWithCallCounter, formatPhaseLogLine } from "./finalizeInstrumentation.ts";
 // #4147: trin-markering der gør afslutningen genoptagelig efter en afbrydelse.
 import { isRaceFinalizeResumableEnabled } from "./raceFinalizeResumableFlag.js";
 import {
@@ -3357,7 +3357,7 @@ export async function simulateStageByIndex({
   if (!Number.isInteger(stageIndex) || stageIndex < 0) throw new Error("stageIndex must be a non-negative integer");
 
   // #4148: instrumentér afslutningsstien — måler varighed + Supabase-kald pr. fase
-  // uden at ændre nogen forespørgsels adfærd (se finalizeInstrumentation.js).
+  // uden at ændre nogen forespørgsels adfærd (se finalizeInstrumentation.ts).
   // `supabase` genbindes til den tællende klient, så ALLE nedstrøms hjælpere i
   // resten af funktionen (samme reference) tælles med, uanset hvor mange lag
   // kaldet går igennem (loadEntrantsForRace, persistRuns, applyStageResult, …).
