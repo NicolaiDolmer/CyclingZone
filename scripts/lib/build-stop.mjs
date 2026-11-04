@@ -105,13 +105,13 @@ export function matchBrandLabel(item, loft) {
 
 // Label, titel og forælder fra GitHub (én GraphQL-kald). null ved enhver fejl,
 // så et utilgængeligt GitHub aldrig åbner porten - issuet forbliver 'new'.
-export function ghIssueMeta(issue, { repo = 'NicolaiDolmer/CyclingZone', exec = execFileSync } = {}) {
+export function ghIssueMeta(issue, { repo = 'NicolaiDolmer/CyclingZone', exec = execFileSync, timeout = 20000 } = {}) {
   if (process.env.CZ_BUILD_STOP_NO_GH === '1') return null; // tests: ingen netværk
   const [owner, name] = repo.split('/');
   const query = 'query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){issue(number:$n){title labels(first:50){nodes{name}} parent{number}}}}';
   try {
     const out = exec('gh', ['api', 'graphql', '-f', `query=${query}`, '-F', `o=${owner}`, '-F', `r=${name}`, '-F', `n=${issue}`],
-      { encoding: 'utf8', timeout: 20000, stdio: ['ignore', 'pipe', 'ignore'] });
+      { encoding: 'utf8', timeout, stdio: ['ignore', 'pipe', 'ignore'] });
     const node = JSON.parse(out)?.data?.repository?.issue;
     if (!node) return null;
     return { title: node.title || '', labels: (node.labels?.nodes || []).map(l => l.name), parent: node.parent?.number ?? null };
@@ -121,12 +121,17 @@ export function ghIssueMeta(issue, { repo = 'NicolaiDolmer/CyclingZone', exec = 
 }
 
 // Beriger kun de spor der ellers ville være 'new', og kun når loftet er sat.
-// Spor der allerede har labels, hentes ikke igen.
-export function withIssueMeta(items, cfg, fetchMeta = ghIssueMeta) {
+// Spor der allerede har labels, hentes ikke igen. Alle opslag deler én frist,
+// så et langsomt GitHub aldrig får optaget til at overleve hookens timeout
+// (guard-agent-spawn); efter fristen forbliver resten 'new' (fail closed).
+export const META_BUDGET_MS = 45000;
+export function withIssueMeta(items, cfg, fetchMeta = ghIssueMeta, { budgetMs = META_BUDGET_MS, now = Date.now } = {}) {
   if (!cfg?.loft || !fetchMeta) return items;
+  const deadline = now() + budgetMs;
   return items.map(t => {
     if (!t || Array.isArray(t.labels) || classifyWork(t, cfg).cls !== 'new') return t;
-    const meta = fetchMeta(t.issue);
+    const left = deadline - now();
+    const meta = left > 0 ? fetchMeta(t.issue, { timeout: Math.min(20000, left) }) : null;
     return meta ? { ...t, ...meta } : { ...t, metaUnavailable: true };
   });
 }

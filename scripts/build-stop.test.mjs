@@ -179,3 +179,12 @@ test('ghIssueMeta: læser titel, labels og forælder, og giver null ved fejl', (
     if (prev === undefined) delete process.env.CZ_BUILD_STOP_NO_GH; else process.env.CZ_BUILD_STOP_NO_GH = prev;
   }
 });
+
+test('loft: alle opslag deler én frist, så et langsomt GitHub ikke overlever hookens timeout', () => {
+  let clock = 0;
+  const seen = [];
+  const slow = (n, { timeout }) => { seen.push([n, timeout]); clock += 30000; return null; };
+  const items = withIssueMeta([{ issue: 9401 }, { issue: 9402 }, { issue: 9403 }], loftCfg, slow, { budgetMs: 45000, now: () => clock });
+  assert.deepEqual(seen, [[9401, 20000], [9402, 15000]], 'andet opslag får kun restfristen, tredje springes over');
+  assert.ok(items.every(t => t.metaUnavailable), 'alle forbliver nye (fail closed)');
+});
