@@ -260,8 +260,8 @@ export default function RoadmapPage() {
     setTab(hit.tab);
   }
 
-  const revealId = (panel) => (reveal?.tab === panel ? reveal.id : null);
-  const revealKey = (panel) => (reveal?.tab === panel ? reveal.nonce : panel);
+  const revealId = (panel) => (reveal && reveal.tab === panel ? reveal.id : null);
+  const revealKey = (panel) => (reveal && reveal.tab === panel ? reveal.nonce : panel);
 
   // Fanen skifter via routeren og kan lande en render senere end reveal, så
   // effekten venter, til hit'ets fane er den aktive.
