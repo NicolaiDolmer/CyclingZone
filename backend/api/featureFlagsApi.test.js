@@ -360,8 +360,25 @@ test("#7536: condition_v2_race_date_training_day er binaert som motoren (kun on 
   assert.ok(PLAYER_VISIBLE_BINARY_FLAG_KEYS.includes("condition_v2_race_date_training_day"));
   const beta = await readPlayerFeatureFlags(fakeSupabase({ condition_v2_race_date_training_day: "beta" }), { isBetaTester: true });
   assert.equal(beta.condition_v2_race_date_training_day, false);
-  const on = await readPlayerFeatureFlags(fakeSupabase({ condition_v2_race_date_training_day: "on" }));
+  const chain = { training_tick_per_race_day: "on", training_condition_per_date: "on", condition_model_v2: "on" };
+  const on = await readPlayerFeatureFlags(fakeSupabase({ ...chain, condition_v2_race_date_training_day: "on" }));
   assert.equal(on.condition_v2_race_date_training_day, true);
+});
+
+test("#7536: Hjaelp-flaget er off naar condition_model_v2 eller dens forudsaetning er off", async () => {
+  const parentOff = await readPlayerFeatureFlags(fakeSupabase({ condition_v2_race_date_training_day: "on", condition_model_v2: "off" }));
+  assert.equal(parentOff.condition_v2_race_date_training_day, false, "motoren bruger ikke reglen uden v2");
+  const reported = [];
+  const brokenChain = await readPlayerFeatureFlags(
+    fakeSupabase({ condition_v2_race_date_training_day: "on", condition_model_v2: "on", training_condition_per_date: "off" }),
+    { reportError: (error) => reported.push(error) },
+  );
+  assert.equal(brokenChain.condition_v2_race_date_training_day, false, "en ugyldig kaede er off");
+  assert.equal(reported.length, 1);
+  const readFails = await readPlayerFeatureFlags(
+    fakeSupabase({ condition_v2_race_date_training_day: "on" }, { failKeys: ["condition_model_v2"] }),
+  );
+  assert.equal(readFails.condition_v2_race_date_training_day, false, "en DB-fejl giver aldrig adgang");
 });
 
 // Syntetiske testparams (ikke kalibreringen, hard rule 17).
