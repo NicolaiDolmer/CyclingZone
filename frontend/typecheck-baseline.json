@@ -21,9 +21,6 @@
     "TS2739": 1,
     "TS8032": 1
   },
-  "../backend/lib/academyOfferProtection.js": {
-    "TS2339": 2
-  },
   "../backend/lib/activeSeasonLookup.js": {
     "TS2339": 2,
     "TS2345": 1,

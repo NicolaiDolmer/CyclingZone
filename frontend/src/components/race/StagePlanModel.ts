@@ -421,9 +421,15 @@ export function clearRiderPlan<T extends Order>(order: T, riderId: string, roleD
 // brostenssektor over punktet deles praecis dér. Kun nedkoerslen mod maal deles aldrig;
 // ligger "de sidste 10 km" inde i den, sker skiftet ved dens start eller foerst i finalen.
 
-export type StagePlanFeature = { kind: "climb" | "sector" | "descent"; from_km: number; to_km: number };
+export type StagePlanFeature = {
+  kind: "climb" | "sector" | "descent";
+  from_km: number;
+  to_km: number;
+  /** Nedkoersel: hvor vejen reelt holder op med at falde, naar hoejdeprofilen kendes (#7625). */
+  down_to_km?: number;
+};
 export type StagePlanSwitchNote =
-  | { kind: "feature"; leg: number; feature: "descent"; place: "start" | "finale" }
+  | { kind: "feature"; leg: number; feature: "descent" | "flat"; place: "start" | "finale" }
   | { kind: "same_point"; leg: number; next: number };
 
 const NOTE_EPS_KM = 0.01;
@@ -435,7 +441,7 @@ const SEGMENT_WORK_TASKS: ReadonlySet<StagePlanTask> = new Set<StagePlanTask>(["
  * (crest_km/length_km), sektorer (start_km/length_km) og nedkoerslen mod maal paa en
  * nedkoerselsfinale (fra sidste top til maal, som rutegeneratoren bygger den).
  */
-export function stagePlanFeaturesFromRaw(raw: { distance_km?: unknown; finale_type?: unknown; climbs?: unknown; sectors?: unknown } | null | undefined): StagePlanFeature[] {
+export function stagePlanFeaturesFromRaw(raw: { distance_km?: unknown; finale_type?: unknown; climbs?: unknown; sectors?: unknown; elevation_profile?: unknown } | null | undefined): StagePlanFeature[] {
   const distance = Number(raw?.distance_km);
   if (!Number.isFinite(distance) || !(distance > 0)) return [];
   const out: StagePlanFeature[] = [];
@@ -467,9 +473,31 @@ export function stagePlanFeaturesFromRaw(raw: { distance_km?: unknown; finale_ty
   }
   const last = resolved[resolved.length - 1];
   if (raw?.finale_type === "descent" && last?.kind === "climb" && distance - last.to_km > NOTE_EPS_KM) {
-    resolved.push({ kind: "descent", from_km: last.to_km, to_km: distance });
+    const downTo = roadStopsFallingAtKm(raw?.elevation_profile, last.to_km, distance);
+    resolved.push({ kind: "descent", from_km: last.to_km, to_km: distance, ...(downTo === null ? {} : { down_to_km: downTo }) });
   }
   return resolved;
+}
+
+/** Hoejdeforskel (m) over maal der stadig tæller som fald; under den er vejen flad. */
+const FLAT_TOLERANCE_M = 5;
+
+/**
+ * #7625: nedkoerselsfinalen er et helt segment i motoren (fra sidste top til maal), men vejen
+ * falder ofte kun lidt af det og er derefter flad. Med hoejdeprofilen findes det sted hvor
+ * vejen er faldet til maalets hoejde; foer det er det en nedkoersel, efter det er det flad vej.
+ * Uden en gyldig profil vides det ikke (null), og segmentet regnes helt som nedkoersel.
+ */
+function roadStopsFallingAtKm(profile: unknown, fromKm: number, distance: number): number | null {
+  const ep = profile as { h?: unknown; step_km?: unknown } | null | undefined;
+  if (!ep || !Array.isArray(ep.h) || ep.h.length < 2 || !ep.h.every((v) => Number.isFinite(v))) return null;
+  const h = ep.h as number[];
+  const step = Number(ep.step_km) > 0 ? Number(ep.step_km) : distance / (h.length - 1);
+  const end = h[h.length - 1];
+  for (let i = Math.max(0, Math.ceil(fromKm / step)); i < h.length; i++) {
+    if (h[i] <= end + FLAT_TOLERANCE_M) return Math.min(distance, i * step);
+  }
+  return distance;
 }
 
 type Resolved = { km: number; finale: boolean };
@@ -482,10 +510,13 @@ function resolvedSwitch(leg: StagePlanLeg, route: StagePlanRoute, features: read
   // Nedkoerslen mod maal er altid etapens sidste segment (stagePlanFeaturesFromRaw).
   const descent = features.find((f) => f.kind === "descent" && f.from_km + NOTE_EPS_KM < km && km < f.to_km - NOTE_EPS_KM);
   if (!descent) return { at: { km, finale: false }, note: null };
+  // #7625: motoren skifter stadig ved nedkoerselssegmentet, men teksten siger kun "nedkoersel"
+  // naar vejen reelt stadig falder dér; er den flad, staar der ingen paastand om nedkoersel.
+  const stillFalling = descent.down_to_km === undefined || km < descent.down_to_km - NOTE_EPS_KM;
   const firstHalf = km - descent.from_km <= (descent.to_km - descent.from_km) / 2;
   const place: "start" | "finale" = SEGMENT_WORK_TASKS.has(leg.task) || firstHalf ? "start" : "finale";
   const at: Resolved = place === "start" ? { km: descent.from_km, finale: false } : { km: route.distance_km, finale: true };
-  return { at, note: { kind: "feature", leg: -1, feature: "descent", place } };
+  return { at, note: { kind: "feature", leg: -1, feature: stillFalling ? "descent" : "flat", place } };
 }
 
 /**

@@ -55,6 +55,10 @@
         "end": "Les 10 derniers km commencent dans la descente vers l'arrivée, donc l'étape {number} du plan ne démarre que dans le final.",
         "finale": "Les 10 derniers km commencent dans la descente vers l'arrivée, donc l'étape {number} du plan ne démarre que dans le final."
       },
+      "flat": {
+        "start": "Les 10 derniers km commencent entre la dernière montée et l'arrivée, donc l'étape {number} du plan démarre au sommet.",
+        "finale": "Les 10 derniers km commencent entre la dernière montée et l'arrivée, donc l'étape {number} du plan ne démarre que dans le final."
+      },
       "samePoint": "Les étapes {first} et {second} du plan changent au même endroit, donc l'étape {first} n'est pas courue."
     },
     "timeTrial": "Pas de plan d'étape sur un contre-la-montre.",
