@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (4/11 nat):** natsessionen merget 7 PR'er (ejer-go i chat, logget på [#7495](https://github.com/NicolaiDolmer/CyclingZone/issues/7495)): #7592 `dd64322f`, #7595 `f0104c93` (#7588 PR 1-2), #7590 `307eeda6` (#7236 slukket), #7597 `0a3a1c3c` (#7587), #7586 `15f46084` (#6912 slukket; G16 ikke løst), #7593 `a304ebf1` (#7583). Kører: #7583 sekventielt (#7594 → #7599), bølge 2 (#7582 del 2, #7587 punkt 6, D-beviser + #7092/#6138). Morgenkort 8:30 på #7495. Ejer-valg venter: #7236 tænd-PR (tales 4/11), #4211 dry-run (auto-mode blokerede), #6950 (8/11), #7339 C/D.
+> **🎯 Next action (4/11 nat):** natsessionen merget 12 PR'er med ejer-go (logget på [#7495](https://github.com/NicolaiDolmer/CyclingZone/issues/7495)): #7592 `dd64322f`, #7595 `f0104c93` (#7588 PR 1-2), #7590 `307eeda6` (#7236 slukket), #7597 `0a3a1c3c` + #7601 `2fb4b050` (#7587 færdig), #7586 `15f46084` (#6912 slukket; G16 ikke løst), #7603 `5752e53d` (#7582 del 2 punkt 1-3), #7604 `d6f8e395` (#7092 Hjælp), TS #7593/#7594/#7596 (#7583). Kører: #7598 → #7599. Venter på ejer (morgenkort 8:30): #7602 (billede), #7236 tænd-PR, #7536/#5950 "kør", #7578 A/B, #4211 dry-run, #1857 replay ikke bit-identisk, #7579.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
 > **🤖 Working agent:** PC1-natsession 3/11 → 4/11 kl. 09:00 (merge-køen + bølge 2; prompt og ejer-go på #7495).
