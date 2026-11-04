@@ -282,6 +282,57 @@ try {
   } else {
     Write-Host "  (ingen nye .js/.jsx-filer under frontend/src eller frontend/tests mod origin/main)" -ForegroundColor DarkGray
   }
+
+  # #7582 (punkt 6): tre required/CI-vagter koerte kun i CI, og typecheck-fejl
+  # blev foerst fanget der (en fuld CI-runde pr. miss). Samme relevans-regel som
+  # CI-jobbene: aendrede filer mod origin/main plus uncommitted aendringer. Kan
+  # git ikke svare, koeres vagterne (hellere en ekstra koersel end en falsk groen).
+  $changedForGuards = $null
+  try {
+    $committedOut = & git --no-pager diff --name-only origin/main...HEAD 2>$null
+    if ($LASTEXITCODE -eq 0) {
+      $workingOut = & git --no-pager diff --name-only HEAD 2>$null
+      if ($LASTEXITCODE -eq 0) {
+        $changedForGuards = @(@($committedOut) + @($workingOut) | Where-Object { $_ } | Sort-Object -Unique)
+      }
+    }
+  } catch {
+    $changedForGuards = $null
+  }
+  function Test-ChangedMatch([string]$pattern) {
+    if ($null -eq $changedForGuards) { return $true }
+    return @($changedForGuards | Where-Object { $_ -match $pattern }).Count -gt 0
+  }
+
+  # Spejler .github/workflows/frontend-typecheck.yml's scope-trin (required check).
+  Write-Host "== frontend-typecheck-baseline (checkJs-budget pr. fil og kode, #7148/#7582) ==" -ForegroundColor Cyan
+  if (Test-ChangedMatch '^(frontend/|backend/|package\.json$|package-lock\.json$|scripts/ci/typecheck-baseline|\.github/workflows/frontend-typecheck\.yml$)') {
+    node scripts/ci/typecheck-baseline.mjs
+    if ($LASTEXITCODE -ne 0) { $failed += "frontend-typecheck-baseline" }
+  } else {
+    Write-Host "  (ingen frontend-, backend- eller typecheck-filer aendret mod origin/main - sprunget over)" -ForegroundColor DarkGray
+  }
+
+  # Spejler ts-core-ratchet.yml (required check). Kernen er backend/.
+  Write-Host "== ts-core-ratchet (kernen maa ikke blive mere utjekket, #7582) ==" -ForegroundColor Cyan
+  if (Test-ChangedMatch '^(backend/|scripts/(check-)?ts-core-ratchet)') {
+    node scripts/check-ts-core-ratchet.mjs
+    if ($LASTEXITCODE -ne 0) { $failed += "ts-core-ratchet" }
+  } else {
+    Write-Host "  (ingen backend- eller ratchet-filer aendret mod origin/main - sprunget over)" -ForegroundColor DarkGray
+  }
+
+  # Spejler feature-registry-check.yml's registry-freshness (samme paths-filter).
+  Write-Host "== registry-freshness (docs/FEATURE_STATUS.md i sync med registret, #4921/#7582) ==" -ForegroundColor Cyan
+  if (Test-ChangedMatch '^(docs/FEATURE_REGISTRY\.yml|docs/FEATURE_STATUS\.md|scripts/generate-feature-status\.mjs|scripts/check-feature-registry-flags|scripts/registry-migration-order|database/2026-.*\.sql|scripts/feature-registry-flag-expiry|\.github/workflows/feature-registry-check\.yml)') {
+    node scripts/generate-feature-status.mjs --check
+    if ($LASTEXITCODE -ne 0) {
+      Write-Host "  Ret: koer 'node scripts/generate-feature-status.mjs' og commit docs/FEATURE_STATUS.md." -ForegroundColor Yellow
+      $failed += "registry-freshness"
+    }
+  } else {
+    Write-Host "  (ingen registry-filer aendret mod origin/main - sprunget over)" -ForegroundColor DarkGray
+  }
 }
 finally {
   Pop-Location
