@@ -9,7 +9,7 @@
 > **🎯 Next action (4/11 formiddag, designet med ejeren):** PC1 følger [prompten på #7495](https://github.com/NicolaiDolmer/CyclingZone/issues/7495#issuecomment-6627637501): merge og følg til dørs #7620/#7623/#7621/#7622/#7579, permanent rettelse af Stop-hookens advarsel midt i tog, #7585 PR 2-4, TS-kæden #7611 → #7619 (PC1 overtager), ejerens beslutninger, design af rettelserne for #5950 og #6912 bjerg, og forbedringerne #7628-#7632 (baseline-auto, delingstjek, roadmap-vagt, masterplan fra én kilde, Til dørs-tavlen; byggeliste `4832bac4`); fast tog-afslutning (SHA, roadmap, patch note, Discord-udkast, MASTERPLAN og artifact). Codex (DolmerPC): vækst og penge, derefter spildesign 2.0, kun design.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** PC1-session 4/11 formiddag (Opus, startet 11:20 dansk tid): merge-tog #7620/#7623/#7621/#7622, derefter #7579, TS-kæden og hook-rettelsen.
+> **🤖 Working agent:** PC1-session 4/11 (Opus, fra 11:20). Tog 1 verificeret: #7620 `1dffe60f`, #7623 `22ccb7b7`, #7621 `7a80eb55`, #7622 `c5c66007`. #7536 tændt. I gang: #7579, #7611, bølge, Giro-tjek.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
