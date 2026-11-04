@@ -334,18 +334,10 @@ export function buildSplitTimes(
  */
 export function riderInFrontOrFieldAt(events: readonly TimelineEvent[] | null | undefined, riderId: string, km: number): boolean | null {
   if (!hasGroupGaps(events)) return null;
-  const sorted = sortedEvents(events);
-  const last = sorted.reduce((acc, e, i) => ((e.km ?? 0) <= km ? i : acc), -1);
-  let answer: boolean | null = null;
-  let idx = -1;
-  replay(sorted, (_event, state) => {
-    idx += 1;
-    if (idx !== last) return;
-    const groups = snapshotGroups(state, [riderId]);
-    const own = groups.find((g) => g.ownRiderIds.includes(riderId));
-    answer = own ? own.kind === "peloton" || own.gapSeconds === 0 : null;
-  });
-  return answer;
+  let last = null as ReplayState | null;
+  replay(sortedEvents(events).filter((e) => (e.km ?? 0) <= km), (_e, state) => { last = state; });
+  const own = last ? snapshotGroups(last, [riderId]).find((g) => g.ownRiderIds.includes(riderId)) : undefined;
+  return own ? own.kind === "peloton" || own.gapSeconds === 0 : null;
 }
 
 function fromKind(state: ReplayState, groupId: string, leaving: readonly string[]): "breakaway" | "peloton" | "group" {

@@ -557,21 +557,15 @@ export function stagePlanRecap(
 ): StagePlanRecapItem[] {
   const items = stagePlanRecapFromEvents(legs, events, riderId);
   const check = opts.inFrontOrFieldAt;
-  if (!check) return items;
   // #7636: resumeet paastaar aldrig noget filmen ikke viser. Siger motoren "sat", men sad
   // rytteren forrest eller i feltet paa stedet, skrives hverken "sat" eller "sprunget
   // over, han var sat": leddet faar ingen slutgrund, de oversprungne led staar som ikke
-  // naaet, og sat-leddets eget skift-punkt vises ikke.
-  return items.map((item, i, all) => {
-    if (item.endReason === "dropped" && item.endKm !== null && check(item.endKm) === true) {
-      return { ...item, endReason: null };
-    }
-    const cause = all.slice(0, i).reverse().find((prev) => prev.endLeg !== null && prev.endLeg >= i);
-    const contradicted = cause !== undefined && cause.endReason === "dropped" && cause.endKm !== null && check(cause.endKm) === true;
-    if (!contradicted) return item;
-    if (item.status === "skipped") return { ...item, status: "not_reached" };
-    return cause.endLeg === i ? { ...item, fromHidden: true } : item;
-  });
+  // naaet, og sat-leddets eget skift-punkt vises ikke. Sat-leddet er altid kaedens sidste,
+  // saa der er hoejst ét saadant skift.
+  const d = check ? items.findIndex((it) => it.endReason === "dropped" && check(it.endKm as number) === true) : -1;
+  if (d < 0) return items;
+  const to = items[d].endLeg as number;
+  return items.map((it, i) => (i === d ? { ...it, endReason: null } : i === to ? { ...it, fromHidden: true } : i < to && it.status === "skipped" ? { ...it, status: "not_reached" } : it));
 }
 
 function stagePlanRecapFromEvents(legs: readonly StagePlanLeg[], events: readonly TimelineEventLike[] | null | undefined, riderId: string): StagePlanRecapItem[] {
