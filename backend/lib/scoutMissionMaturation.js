@@ -238,6 +238,8 @@ async function claimAndCompleteMission({ supabase, assignment, loadCandidates, g
       const [visible] = await hydrateVisibility(supabase, [completedAssignment]);
       notifyAssignment = { ...completedAssignment, result: visible.result };
     } catch (err) {
+      // best-effort: fejlen gemmes og rapporteres (log + Sentry) nedenfor, hvis
+      // også andet forsøg fejler; et lykket genforsøg er ikke en fejl.
       lastErr = err;
     }
   }
