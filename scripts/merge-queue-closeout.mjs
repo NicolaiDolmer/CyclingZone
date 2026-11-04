@@ -30,6 +30,14 @@
 // --dry-run laeser PR-body + issue-state, men skriver intet (ingen kommentar, intet label).
 // Genkoersel med samme tog er sikker (fx manuel recovery efter en gh-fejl).
 //
+// STRAKS efter hvert merge (ejer 4/11): `merged` skriver SHA-kommentaren med det
+// samme ("verifikation afventer"), saa Stop-hookens SHA-paamindelse ikke fyrer
+// midt i toget. `run` (efter verifikation) opdaterer SAMME kommentar (fundet via
+// markoeren) til "Verificeret"; findes den ikke, skrives den. Aldrig dubletter.
+// `merged` roerer aldrig labels og giver ingen NOW-linje: det sker kun for et
+// verificeret tog.
+//   node scripts/merge-queue-closeout.mjs merged --train '[{"number":1,"sha":"<40 hex>"}]' [--repo owner/name]
+//
 // Tests: node --test scripts/merge-queue-closeout.test.mjs
 
 import { spawnSync } from 'node:child_process';
@@ -77,11 +85,27 @@ export function verificationText(deployVerified) {
   return deployVerified ? 'main-CI + deploy-verifikation grønne' : 'main-CI grøn, toget deployer ikke';
 }
 
-export function commentBody({ pr, issue, sha, kind, deployVerified = true }) {
+// Tekst der kun staar i en verificeret kommentar (ogsaa i kommentarer fra foer #7587-
+// straks-kommentaren). En kommentar uden den er "afventer" og opdateres af `run`.
+export const VERIFIED_TAG = 'Verificeret:';
+
+export function isVerifiedComment(body) {
+  return String(body ?? '').includes(VERIFIED_TAG);
+}
+
+// phase: 'verified' (efter toget, default) eller 'merged' (straks efter merget).
+export function commentBody({ pr, issue, sha, kind, deployVerified = true, phase = 'verified' }) {
+  const head = `${markerFor(pr, issue)}\nMerget via merge-køen: PR #${pr} som \`${shortSha(sha)}\` (${sha}).`;
+  if (phase === 'merged') {
+    const tail = kind === 'closes'
+      ? 'PR\'en lukker issuet (`Closes`); label flyttes først, når toget er verificeret.'
+      : 'PR\'en refererer issuet (`Refs`); labels er ikke ændret.';
+    return `${head} Verifikation afventer (main-CI + evt. deploy-verifikation); kommentaren opdateres, når toget er verificeret. ${tail}`;
+  }
   const tail = kind === 'closes'
     ? 'PR\'en lukker issuet (`Closes`); label flyttet til `claude:done` hvis det stod på `claude:todo`.'
     : 'PR\'en refererer issuet (`Refs`); labels er ikke ændret.';
-  return `${markerFor(pr, issue)}\nMerget via merge-køen: PR #${pr} som \`${shortSha(sha)}\` (${sha}). Verificeret: ${verificationText(deployVerified)}. ${tail}`;
+  return `${head} ${VERIFIED_TAG} ${verificationText(deployVerified)}. ${tail}`;
 }
 
 // d/M i Europe/Copenhagen (projektets tidszone).
@@ -115,24 +139,26 @@ function parseJson(text) {
   try { return JSON.parse(text); } catch { return undefined; }
 }
 
-// Laes alle kommentar-bodies for et issue. null = kunne ikke laeses (skriv da intet).
-function readCommentBodies(gh, repo, issue) {
+// Laes alle kommentarer ({ id, body }) for et issue. null = kunne ikke laeses (skriv da intet).
+function readComments(gh, repo, issue) {
   const res = gh(['api', `repos/${repo}/issues/${issue}/comments?per_page=100`, '--paginate', '--slurp']);
   if (res.status !== 0) return null;
   const pages = parseJson(res.stdout);
   if (!Array.isArray(pages)) return null;
-  const bodies = [];
+  const comments = [];
   for (const page of pages) {
     if (!Array.isArray(page)) return null;
-    for (const c of page) bodies.push(String(c?.body ?? ''));
+    for (const c of page) comments.push({ id: c?.id ?? null, body: String(c?.body ?? '') });
   }
-  return bodies;
+  return comments;
 }
 
 // gh injiceres: (args: string[]) => { status, stdout }. Kaster aldrig.
-export function runCloseOut({ train, repo = DEFAULT_REPO, dryRun = false, deployVerified = true, gh, now = new Date(), log = () => {} }) {
-  const result = { prs: [], comments: [], skippedComments: [], flips: [], errors: [], nowLine: null, dryRun };
+// phase 'merged' = straks efter et merge: kun SHA-kommentar (afventer), ingen labels, ingen NOW-linje.
+export function runCloseOut({ train, repo = DEFAULT_REPO, dryRun = false, deployVerified = true, phase = 'verified', gh, now = new Date(), log = () => {} }) {
+  const result = { prs: [], comments: [], updatedComments: [], skippedComments: [], flips: [], errors: [], nowLine: null, dryRun, phase };
   if (!validTrain(train)) { result.errors.push('ugyldigt tog'); return result; }
+  if (phase !== 'verified' && phase !== 'merged') { result.errors.push(`ukendt fase: ${phase}`); return result; }
   if (typeof gh !== 'function') { result.errors.push('ingen gh-runner'); return result; }
   const say = (line) => log(dryRun ? `[dry-run] ${line}` : line);
   for (const entry of train) {
@@ -153,34 +179,44 @@ export function runCloseOut({ train, repo = DEFAULT_REPO, dryRun = false, deploy
     result.prs.push({ number: entry.number, sha: entry.sha, title, refs });
     if (!refs.length) say(`close-out PR #${entry.number}: ingen Refs/Closes-issues i PR-body.`);
     for (const ref of refs) {
-      try { closeOutIssue({ entry, ref, repo, dryRun, deployVerified, gh, result, say }); }
+      try { closeOutIssue({ entry, ref, repo, dryRun, deployVerified, phase, gh, result, say }); }
       catch (err) { result.errors.push(`#${ref.issue}: ${err?.message ?? err}`); }
     }
   }
-  if (train.every((e) => e.sha)) result.nowLine = buildNowLine(result.prs, now, deployVerified);
+  if (phase === 'verified' && train.every((e) => e.sha)) result.nowLine = buildNowLine(result.prs, now, deployVerified);
   return result;
 }
 
-function closeOutIssue({ entry, ref, repo, dryRun, deployVerified, gh, result, say }) {
+function closeOutIssue({ entry, ref, repo, dryRun, deployVerified, phase, gh, result, say }) {
   const pr = entry.number;
   const issue = ref.issue;
   const marker = markerFor(pr, issue);
-  const bodies = readCommentBodies(gh, repo, issue);
-  if (bodies === null) {
+  const comments = readComments(gh, repo, issue);
+  const existing = comments?.find((c) => c.body.includes(marker));
+  // Verificeret = sidste tilstand; 'merged' maa heller aldrig skrive oven i en afventende kommentar.
+  const upToDate = existing && (phase === 'merged' || isVerifiedComment(existing.body));
+  const body = entry.sha ? commentBody({ pr, issue, sha: entry.sha, kind: ref.kind, deployVerified, phase }) : null;
+  if (comments === null) {
     result.errors.push(`#${issue}: kommentarer kunne ikke laeses; SHA-kommentar springes over (ingen dublet-risiko)`);
-  } else if (bodies.some((b) => b.includes(marker))) {
+  } else if (upToDate) {
     result.skippedComments.push({ issue, pr });
     say(`close-out #${issue}: SHA-kommentar for PR #${pr} findes allerede.`);
   } else if (!entry.sha) {
     say(`close-out #${issue}: ville skrive SHA-kommentar for PR #${pr} (merge-SHA kendes efter merge).`);
+  } else if (existing && !Number.isSafeInteger(existing.id)) {
+    result.errors.push(`#${issue}: afventende SHA-kommentar for PR #${pr} har intet id; kan ikke opdateres (ingen dublet skrives)`);
   } else if (dryRun) {
-    say(`close-out #${issue}: ville skrive SHA-kommentar for PR #${pr} (${shortSha(entry.sha)}).`);
+    say(`close-out #${issue}: ville ${existing ? 'opdatere SHA-kommentaren til verificeret' : 'skrive SHA-kommentar'} for PR #${pr} (${shortSha(entry.sha)}).`);
+  } else if (existing) {
+    const res = gh(['api', `repos/${repo}/issues/comments/${existing.id}`, '-X', 'PATCH', '-f', `body=${body}`]);
+    if (res.status === 0) { result.updatedComments.push({ issue, pr }); say(`close-out #${issue}: SHA-kommentar opdateret til verificeret (PR #${pr}, ${shortSha(entry.sha)}).`); }
+    else result.errors.push(`#${issue}: opdatering af SHA-kommentar fejlede (gh exit ${res.status})`);
   } else {
-    const res = gh(['issue', 'comment', String(issue), '--repo', repo, '--body', commentBody({ pr, issue, sha: entry.sha, kind: ref.kind, deployVerified })]);
-    if (res.status === 0) { result.comments.push({ issue, pr }); say(`close-out #${issue}: SHA-kommentar skrevet (PR #${pr}, ${shortSha(entry.sha)}).`); }
+    const res = gh(['issue', 'comment', String(issue), '--repo', repo, '--body', body]);
+    if (res.status === 0) { result.comments.push({ issue, pr }); say(`close-out #${issue}: SHA-kommentar skrevet${phase === 'merged' ? ' (verifikation afventer)' : ''} (PR #${pr}, ${shortSha(entry.sha)}).`); }
     else result.errors.push(`#${issue}: SHA-kommentar fejlede (gh exit ${res.status})`);
   }
-  if (ref.kind !== 'closes') return;
+  if (ref.kind !== 'closes' || phase === 'merged') return;
   const view = gh(['issue', 'view', String(issue), '--repo', repo, '--json', 'labels']);
   const parsed = view.status === 0 ? parseJson(view.stdout) : undefined;
   if (!parsed || !Array.isArray(parsed.labels)) { result.errors.push(`#${issue}: labels kunne ikke laeses; intet flip`); return; }
@@ -207,16 +243,17 @@ function argValue(argv, name) {
 }
 
 export function main(argv = process.argv.slice(2), { gh = defaultGh, out = (l) => process.stdout.write(`${l}\n`), now = new Date() } = {}) {
-  if (argv[0] !== 'run') { out('Brug: node scripts/merge-queue-closeout.mjs run --train <json> [--repo owner/name] [--dry-run]'); return 1; }
+  if (argv[0] !== 'run' && argv[0] !== 'merged') { out('Brug: node scripts/merge-queue-closeout.mjs run|merged --train <json> [--repo owner/name] [--dry-run]'); return 1; }
+  const phase = argv[0] === 'merged' ? 'merged' : 'verified';
   const train = parseJson(argValue(argv, '--train') ?? '');
   if (!validTrain(train)) { out('close-out: ugyldigt --train (forventer [{number, sha}]).'); return 1; }
   const repo = argValue(argv, '--repo') ?? DEFAULT_REPO;
   const dryRun = argv.includes('--dry-run');
   const deployVerified = !argv.includes('--no-deploy');
-  const result = runCloseOut({ train, repo, dryRun, deployVerified, gh, now, log: out });
+  const result = runCloseOut({ train, repo, dryRun, deployVerified, phase, gh, now, log: out });
   for (const err of result.errors) out(`close-out ADVARSEL: ${err}`);
   if (result.nowLine) out(`NOW-LINJE (commit selv i docs/NOW.md ved close-out): ${result.nowLine}`);
-  out(`close-out ${dryRun ? '[dry-run] ' : ''}faerdig: ${result.comments.length} kommentar(er), ${result.skippedComments.length} fandtes allerede, ${result.flips.length} flip, ${result.errors.length} advarsel(er).`);
+  out(`close-out ${dryRun ? '[dry-run] ' : ''}${phase === 'merged' ? '(straks efter merge) ' : ''}faerdig: ${result.comments.length} kommentar(er), ${result.updatedComments.length} opdateret, ${result.skippedComments.length} fandtes allerede, ${result.flips.length} flip, ${result.errors.length} advarsel(er).`);
   return 0;
 }
 

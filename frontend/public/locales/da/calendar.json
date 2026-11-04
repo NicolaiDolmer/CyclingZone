@@ -128,6 +128,7 @@
       "squadShort": "Hold"
     },
     "openRace": "Åbn {name}",
+    "squadFill": "{count} af {field} ryttere udtaget",
     "squadShort": {
       "selected": "Klar",
       "missing": "Mangler"

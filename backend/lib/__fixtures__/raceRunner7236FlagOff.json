@@ -1,0 +1,49 @@
+{
+  "sourceCommit": "7cbe28b96bc9d2d862dc4dac1a15dd61a22cb0d3",
+  "note": "#7236: raceRunner med den rigtige v4-motor og ingen kontakt taendt, skrevet fra merge-basen foer tænd-ledningen. Kun hashes. Genereres ALDRIG med den nye kode.",
+  "wholeRace:s5_profiles_v3": {
+    "inputChecksums": [
+      3780912940,
+      612075309,
+      1624302635
+    ],
+    "inputSha256": [
+      "17018279bbb2a5e65ce23dd263b6ea3c993e989e86ae54eda0ea4d438d70e93c",
+      "be4863df137ea54449d38f56e6edc339f8ffb0a94a58d15790e8b23dab4fd604",
+      "0cba3be8b39ba0d2359f9d680bc146ede1380b9bf6b2ded405d532123751fc49"
+    ],
+    "outputSha256": [
+      "0aedd25f720deb41d827e2648b4fa765cc02bd30717e2bf46de4670c6cd01370",
+      "f736c3ba109e384a31619067f49e9b4d1143f0c46059f0bbd8667a1fa9519676",
+      "86b48de72409bda1c0ff492b8e4eaf84f927bc3fd3e1d51ac62a312330ad090f"
+    ]
+  },
+  "wholeRace:s5_profiles_v2": {
+    "inputChecksums": [
+      3780912940,
+      646864055,
+      4120133027
+    ],
+    "inputSha256": [
+      "0bafeaa983bce842bb9acc7913627a50d6b3208bfb6fe5d2e466bf4da152cea6",
+      "e65140fe30a8c4369ae9a8222a648ee46ed31f4a91ca2383c9d5546635aef605",
+      "3e7440a9418ec474d376e5f1cfde38b71c4f68146011b26e4b686620be4833f8"
+    ],
+    "outputSha256": [
+      "17367ff5b2936f97248e4560f1088d9f2a576404d6145a7f16195b4ba9e52780",
+      "3d04a29e46be876a2f835393075d5d0a49b10446e8e9460bd3d89653a2d86679",
+      "86b48de72409bda1c0ff492b8e4eaf84f927bc3fd3e1d51ac62a312330ad090f"
+    ]
+  },
+  "stageByStage:s5_profiles_v3:stage3": {
+    "inputChecksums": [
+      974539384
+    ],
+    "inputSha256": [
+      "9dc2c42a24d7e5c3dd7c05574060bda81585880f037460c4688934159429e95a"
+    ],
+    "outputSha256": [
+      "2a2777ad6413926ebea770bd57c6b94e4d8f41409697b9579841fa2b7824509a"
+    ]
+  }
+}

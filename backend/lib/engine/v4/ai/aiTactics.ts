@@ -49,6 +49,7 @@ import type { BreakawayStance, EffortLevel, TeamOrder, TeamOrderRider } from "./
 import { validateTeamOrder } from "./teamOrderContract.ts";
 import { aiKomHunterForBreak } from "../mechanics/komJersey6937.ts"; // #6937 B1
 import { isOrdersGcV2OrLater, isOrdersGcV3OrLater, isS5ProfilesV3OrLater, sharedTimeModelGeneration } from "../../../raceEngineRulesRevision.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 export type AiRosterEntrant = {
   rider_id: string;
@@ -192,7 +193,7 @@ function v3PointsHunter(args: {
     .filter((r) => !noBreakIds.has(r.rider_id) && !taken.has(r.rider_id))
     .filter((r) => r.role === "hunter" || r.role === "free_role" || r.role === "helper")
     .filter(suitable)
-    .sort((a, b) => breakScore(b.abilities, "sprint") - breakScore(a.abilities, "sprint") || a.rider_id.localeCompare(b.rider_id))[0];
+    .sort((a, b) => breakScore(b.abilities, "sprint") - breakScore(a.abilities, "sprint") || compareIds(a.rider_id, b.rider_id))[0];
   return pick?.rider_id ?? null;
 }
 
@@ -231,7 +232,7 @@ function v3ExtraBreakCandidates(args: {
     .filter((r) => !grupettoIds.has(r.rider_id) && !taken.has(r.rider_id))
     .filter((r) => r.role === "hunter" || r.role === "free_role" || r.role === "helper")
     .filter(suitable)
-    .sort((a, b) => scoreOf(b) - scoreOf(a) || a.rider_id.localeCompare(b.rider_id));
+    .sort((a, b) => scoreOf(b) - scoreOf(a) || compareIds(a.rider_id, b.rider_id));
   for (const r of pool) {
     if (have >= want || out.length >= AI_TACTICS_TUNING.V3_MAX_BREAK_CANDIDATES) break;
     out = [...out, { riderId: r.rider_id, score: breakScore(r.abilities, primaryAbility) }];
@@ -300,7 +301,7 @@ function breakScore(abilities: Record<AbilityKey, number>, primaryAbility: Abili
 
 /** Deterministisk sortering: score faldende, rider_id som taerskel (ingen rng). */
 function sortByScoreDesc(items: BreakScoreEntry[]): BreakScoreEntry[] {
-  return [...items].sort((a, b) => b.score - a.score || a.riderId.localeCompare(b.riderId));
+  return [...items].sort((a, b) => b.score - a.score || compareIds(a.riderId, b.riderId));
 }
 
 /**
@@ -482,7 +483,7 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
         .filter((r) => r.role === "hunter" || r.role === "free_role" || r.role === "helper")
         .map((r) => ({ riderId: r.rider_id, hunter: r.role === "hunter", score: breakScore(r.abilities, primaryAbility) }))
         .filter((c) => c.hunter || fieldRank(c.score, fieldBreakScores) <= v2RankCap)
-        .sort((a, b) => Number(b.hunter) - Number(a.hunter) || b.score - a.score || a.riderId.localeCompare(b.riderId));
+        .sort((a, b) => Number(b.hunter) - Number(a.hunter) || b.score - a.score || compareIds(a.riderId, b.riderId));
       const hunterCount = eligible.filter((c) => c.hunter).length;
       const extra = stance === "let_go" ? AI_TACTICS_TUNING.V2_LET_GO_BREAK_CANDIDATES : 0;
       const slots = Math.min(AI_TACTICS_TUNING.MAX_BREAK_CANDIDATES, Math.max(extra, hunterCount));
@@ -501,7 +502,7 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
         .filter((r) => !noBreakIds.has(r.rider_id) && !taken.has(r.rider_id))
         .filter((r) => r.role === "hunter" || r.role === "free_role" || r.role === "helper")
         .filter((r) => fieldRank(abilityOf(r, "climbing"), fieldPrimary) <= climbCap)
-        .sort((a, b) => abilityOf(b, "climbing") - abilityOf(a, "climbing") || a.rider_id.localeCompare(b.rider_id))[0];
+        .sort((a, b) => abilityOf(b, "climbing") - abilityOf(a, "climbing") || compareIds(a.rider_id, b.rider_id))[0];
       const hasClimber = breakCandidates.some((c) => {
         const r = input.roster.find((x) => x.rider_id === c.riderId);
         return r !== undefined && fieldRank(abilityOf(r, "climbing"), fieldPrimary) <= climbCap;

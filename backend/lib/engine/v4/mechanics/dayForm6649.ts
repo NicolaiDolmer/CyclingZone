@@ -33,6 +33,7 @@ import { isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
 import { deriveCp, formCpModifier, formPeakCpModifier, FORM_CP_TUNING } from "../physiology.ts";
 import { gaussian, rngFor } from "../rng.ts";
 import { makeEvent } from "../timeline.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -261,7 +262,7 @@ export function dayForm6649Events(
 ): TimelineEvent[] {
   const candidates = startlist
     .map((e) => ({ e, v: routeCapacity(e, route, tuning) }))
-    .sort((a, b) => b.v - a.v || a.e.rider_id.localeCompare(b.e.rider_id))
+    .sort((a, b) => b.v - a.v || compareIds(a.e.rider_id, b.e.rider_id))
     .slice(0, Math.max(0, t.eventCandidates));
   const events: TimelineEvent[] = [];
   for (const { e } of candidates) {

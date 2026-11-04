@@ -126,6 +126,7 @@ import {
   passagesToTimelineEvents,
   sortPassages,
 } from "./bonusSeconds.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -446,7 +447,7 @@ function rollSegmentIncidents(args: {
       candidates.push({ riderId: r.rider_id, team });
     }
   }
-  candidates.sort((a, b) => a.riderId.localeCompare(b.riderId));
+  candidates.sort((a, b) => compareIds(a.riderId, b.riderId));
 
   for (const { riderId, team } of candidates) {
     if (budget <= 0) break;
@@ -562,7 +563,7 @@ function timeTrialIntermediatePassages(args: {
         arrivals.push({ riderId: r.rider_id, at: before + (rider.elapsed_seconds - before) * fraction });
       }
     }
-    const order = arrivals.sort((a, b) => a.at - b.at || a.riderId.localeCompare(b.riderId)).map((a) => a.riderId);
+    const order = arrivals.sort((a, b) => a.at - b.at || compareIds(a.riderId, b.riderId)).map((a) => a.riderId);
     const isKom = wp.kind === "kom";
     const category = isKom ? (wp.category ?? null) : null;
     const passage = buildPassage({
@@ -881,7 +882,7 @@ export function runTimeTrialStage(
     const arrived = t.roster.riders
       .filter((r) => t.riders[r.rider_id].status !== "abandoned")
       .map((r) => ({ rider_id: r.rider_id, elapsed: t.riders[r.rider_id].elapsed_seconds }))
-      .sort((a, b) => a.elapsed - b.elapsed || a.rider_id.localeCompare(b.rider_id));
+      .sort((a, b) => a.elapsed - b.elapsed || compareIds(a.rider_id, b.rider_id));
     const rank = clamp(TTT_EXTRA_TUNING.countbackRiderRank, 1, Math.max(1, arrived.length));
     const counted = arrived[rank - 1] ?? arrived[arrived.length - 1];
     // Et hold hvor ALLE udgik har ingen ankomst; tiden er da den seneste
@@ -938,7 +939,7 @@ export function runTimeTrialStage(
   // ellers holdtid -> faktisk ankomst -> rider_id.
   const arrival = (riderId: string): number => arrivalElapsedByRider.get(riderId) ?? Number.MAX_SAFE_INTEGER;
   const byArrival = (a: StageResult, b: StageResult): number =>
-    a.time_seconds - b.time_seconds || arrival(a.rider_id) - arrival(b.rider_id) || a.rider_id.localeCompare(b.rider_id);
+    a.time_seconds - b.time_seconds || arrival(a.rider_id) - arrival(b.rider_id) || compareIds(a.rider_id, b.rider_id);
   const finishedSorted = unsortedResults.filter((r) => r.status !== "abandoned").sort(byArrival);
   const abandonedSorted = unsortedResults.filter((r) => r.status === "abandoned").sort(byArrival);
   // M10's 3 km-regel er en placerings-konsekvens (en no-op paa en ttt i dag,
@@ -947,7 +948,7 @@ export function runTimeTrialStage(
     ...applyThreeKmRuleToResults(finishedSorted, sortTimeline(events)),
     ...abandonedSorted,
   ].map((r, index) => ({ ...r, rank: index + 1 }));
-  loads.sort((a, b) => a.rider_id.localeCompare(b.rider_id));
+  loads.sort((a, b) => compareIds(a.rider_id, b.rider_id));
 
   // M15 som hold-graense (#4915). Enkeltstarten faar juryen per rytter (#5515);
   // holdtidskoerslen er uaendret (se TimeTrialMode.individualJury).
@@ -994,7 +995,7 @@ export function runTimeTrialStage(
     results,
     loads,
     groupSnapshots,
-    incidents: [...stageIncidents].sort((a, b) => a.km - b.km || a.rider_id.localeCompare(b.rider_id)),
+    incidents: [...stageIncidents].sort((a, b) => a.km - b.km || compareIds(a.rider_id, b.rider_id)),
     passages,
     // UCI 2.6.032 (#5582): en genindsat rytter mister etapens point. En
     // holdtidskoersel genindsaetter aldrig nogen, saa den er bit-uaendret.

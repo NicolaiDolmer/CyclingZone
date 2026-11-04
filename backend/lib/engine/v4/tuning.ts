@@ -1737,14 +1737,14 @@ export const BREAKAWAY_CURVE_6912_TUNING = deepFreeze({
   upperBoundProfiles: ["flat", "rolling"] as readonly ProfileType[],
   // Under styringen loeftes daempningen af jagten foer finalestigningen til (mindst) denne skala
   // pr. profil (mountainSelection.ts). Udeladt = ingen loeftning.
-  liftedPreFinalChaseClosingScaleByProfile: { mountain: 0.8, high_mountain: 0.35 } as Partial<Record<ProfileType, number>>,
+  liftedPreFinalChaseClosingScaleByProfile: { high_mountain: 0.35 } as Partial<Record<ProfileType, number>>,
   // Toppen = denne andel af loftet pr. profil (udeladt = loftet).
-  peakShareOfCeilingByProfile: { flat: 0.85, mountain: 0.9, high_mountain: 1 } as Partial<Record<ProfileType, number>>,
+  peakShareOfCeilingByProfile: { flat: 0.85, mountain: 1, high_mountain: 1 } as Partial<Record<ProfileType, number>>,
   growthKnee: 0.5, // kurvens knae: lavere = hurtigere mod toppen
   topShare: 0.9, // lad-gaa-fasen slutter, naar kurven har naaet denne andel af toppen
   topShareByProfile: { mountain: 0.97, high_mountain: 0.97 } as Partial<Record<ProfileType, number>>, // profilens egen andel (udeladt = topShare)
   declineShape: 1, // maalets fald fra toppen mod finalen (1 = jaevnt med resterende km)
-  finishTargetSecondsByProfile: { flat: 0, mountain: 180, high_mountain: 240 } as Partial<Record<ProfileType, number>>,
+  finishTargetSecondsByProfile: { flat: 0, mountain: 300, high_mountain: 240 } as Partial<Record<ProfileType, number>>,
   catchKmBeforeFinishByProfile: { flat: 10 } as Partial<Record<ProfileType, number>>, // maalet naas saa langt foer stregen
   climbLossSecondsPerGradientKm: 2, // forventet tab pr. stignings-km pr. procent paa finalestigningen
   maxControlClosingSecondsPerKm: 25, // hoejeste lukning pr. km under styringen

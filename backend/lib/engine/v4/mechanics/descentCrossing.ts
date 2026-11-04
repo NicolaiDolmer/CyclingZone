@@ -1,6 +1,7 @@
 import type { EngineState, RaceGroup, SegmentHookResult, TimelineEvent } from '../types.ts';
 import { mergedPhysicalGroup, mergedSharedCohorts } from '../groups.ts';
 import { contactFractionInInterval } from '../groupClock.ts';
+import { compareIds } from "../../../compareIds.ts";
 
 /**
  * #6329 (official_times_v2): the movement interval the contact happened in.
@@ -44,7 +45,7 @@ export function reconcileDescentCrossings(before: readonly RaceGroup[], state: E
     knownCatches.set(event.params.group_id, event.params.chase_group_id);
   }
   const targets = before.filter(group => allPhysicalContacts || group.origin === 'descent')
-    .sort((a,b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+    .sort((a,b) => a.gap_seconds - b.gap_seconds || compareIds(a.id, b.id));
   let groups = state.groups;
   let riders = state.riders;
   let cohorts = state.shared_grupetto_groups;
@@ -60,7 +61,7 @@ export function reconcileDescentCrossings(before: readonly RaceGroup[], state: E
       return old && old.kind !== 'breakaway' && !old.origin && Number.isFinite(old.gap_seconds)
         && old.gap_seconds > oldTarget.gap_seconds && group.gap_seconds <= target.gap_seconds;
     }).sort((a,b) => previous.get(a.id)!.gap_seconds - previous.get(b.id)!.gap_seconds
-      || b.gap_seconds - a.gap_seconds || a.id.localeCompare(b.id));
+      || b.gap_seconds - a.gap_seconds || compareIds(a.id, b.id));
     const catcher = knownCatcher ? candidates.find(group => group.id === knownCatcher) : candidates[0];
     if (!catcher) continue;
     const mergedIds = [...new Set([...catcher.rider_ids, ...target.rider_ids])];
@@ -82,6 +83,6 @@ export function reconcileDescentCrossings(before: readonly RaceGroup[], state: E
     events.push({km:checkpoint,type:'group_merged',params:{group_id:target.id,into_group_id:catcher.id,rider_ids:[...target.rider_ids]}});
   }
   if (events.length === 0) return {state,events};
-  return {state:{...state,groups:[...groups].sort((a,b)=>a.gap_seconds-b.gap_seconds||a.id.localeCompare(b.id)),riders,
+  return {state:{...state,groups:[...groups].sort((a,b)=>a.gap_seconds-b.gap_seconds||compareIds(a.id, b.id)),riders,
     ...(cohorts !== state.shared_grupetto_groups ? {shared_grupetto_groups: cohorts} : {})},events};
 }
