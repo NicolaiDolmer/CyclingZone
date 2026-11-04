@@ -4,7 +4,7 @@
 // bekræftet, og teksten lover ingen ændring. Spilleren ser kun sit eget tryk.
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { issueAreaCounts, splitChecking, type KnownIssue, type KnownIssueUpdate } from "../../lib/roadmapModel.ts";
+import { holdsItem, issueAreaCounts, issueTimeline, roadmapRowId, splitChecking, type KnownIssue, type KnownIssueUpdate } from "../../lib/roadmapModel.ts";
 import { Button, CategoryTag, CollapsibleSection, EmptyState, Section, SectionHeader, SectionStack, Segmented, StatusBadge } from "./roadmapUi.ts";
 import { RowMeta, SkeletonRows, TitleCount, ROW, ROW_LIST } from "./RoadmapRows.tsx";
 import { areaTitle, localBody, localTitle, shortDate } from "./roadmapFormat.ts";
@@ -23,6 +23,8 @@ export interface KnownIssuesTabProps {
   onToggleReport: (issue: KnownIssue) => void;
   /** Tom tilstand: åbner feedback-fladen (eller login for udloggede). */
   emptyAction: ReactNode;
+  /** Fejlen et søgehit åbnede; dens fold står åben. */
+  revealId?: string | null;
 }
 
 function IssueBadge({ issue }: { issue: KnownIssue }) {
@@ -32,6 +34,33 @@ function IssueBadge({ issue }: { issue: KnownIssue }) {
   if (issue.status === "fixing") return <StatusBadge state="info">{label}</StatusBadge>;
   if (issue.status === "fixed") return <StatusBadge state="won">{label}</StatusBadge>;
   return <CategoryTag>{label}</CategoryTag>;
+}
+
+// #7666 (#6923 pkt. 2): meldt, bekræftet, rettes, rettet, med dato pr. trin.
+// Nået trin = fyldt prik, nuværende trin = fed tekst, kommende trin = dæmpet.
+function StatusTimeline({ issue }: { issue: KnownIssue }) {
+  const { t, i18n } = useTranslation("roadmap");
+  const steps = issueTimeline(issue);
+  return (
+    <ol aria-label={t("issues.timeline.label")} className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+      {steps.map((s, i) => (
+        <li key={s.key} className="inline-flex items-center gap-2">
+          {i > 0 && <span aria-hidden="true" className={`block h-px w-3 ${s.reached ? "bg-cz-3" : "bg-cz-border"}`} />}
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              aria-hidden="true"
+              className={`block h-1.5 w-1.5 rounded-full ${s.reached ? "bg-cz-1" : "border border-cz-border"}`}
+            />
+            <span className={s.current ? "font-medium text-cz-1" : s.reached ? "text-cz-2" : "text-cz-3"}>
+              {t(`issues.timeline.${s.key}`)}
+            </span>
+            {s.date && <span className="font-data tabular-nums text-cz-3">{shortDate(s.date, i18n.language)}</span>}
+            {!s.reached && <span className="sr-only">{t("issues.timeline.notYet")}</span>}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
 }
 
 function Updates({ updates }: { updates: KnownIssueUpdate[] }) {
@@ -96,11 +125,12 @@ export default function KnownIssuesTab(props: KnownIssuesTabProps) {
   const row = (issue: KnownIssue, buttonLabel: string, meta: string, withButton: boolean) => {
     const reported = props.reports.has(issue.id);
     return (
-      <li key={issue.id} className={`${ROW} flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4`}>
+      <li key={issue.id} id={roadmapRowId(issue.id)} className={`${ROW} flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4`}>
         <div className="flex-1 min-w-0">
           <IssueBadge issue={issue} />
           <div className="mt-1 text-cz-1 text-sm leading-relaxed">{localTitle(issue, lang)}</div>
           <RowMeta>{areaTitle(t, issue.area)} · {meta}</RowMeta>
+          {issue.status !== "checking" && <StatusTimeline issue={issue} />}
           <Updates updates={props.updatesByIssue.get(issue.id) ?? []} />
         </div>
         {withButton && props.canReport && (
@@ -121,7 +151,8 @@ export default function KnownIssuesTab(props: KnownIssuesTabProps) {
   const confirmedShown = inArea(confirmed);
   const checkingShown = inArea(checking);
   const { visible: checkingVisible, folded: checkingFolded } = splitChecking(checkingShown);
-  const checkingRow = (i: KnownIssue) => row(i, t("issues.seeToo"), t("issues.reportedByPlayers"), true);
+  const checkingRow = (i: KnownIssue) =>
+    row(i, t("issues.seeToo"), t("issues.reportedOn", { date: shortDate(i.created_at, lang) }), true);
   const ownFolded = checkingFolded.filter((i) => props.reports.has(i.id)).length;
 
   return (
@@ -155,6 +186,7 @@ export default function KnownIssuesTab(props: KnownIssuesTabProps) {
         {checkingFolded.length > 0 && (
           <CollapsibleSection
             className="mt-3"
+            defaultOpen={holdsItem(checkingFolded, props.revealId)}
             title={ownFolded > 0
               ? t("issues.checkingMoreOwn", { count: checkingFolded.length, own: ownFolded })
               : t("issues.checkingMore", { count: checkingFolded.length })}
