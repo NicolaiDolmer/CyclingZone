@@ -1,0 +1,202 @@
+// #7643: sandhedsvagtens regler mod de kendte fejl fra Giro della Penisola
+// (etape 6 og 8, anonymiseret) og mod en ren etape (etape 2).
+import { test } from "node:test";
+import assert from "node:assert/strict";
+
+import {
+  RULES,
+  checkStage,
+  parseGapSeconds,
+  publicFinding,
+  replayTimeline,
+  ruleAbandonedGone,
+  ruleCatchAfterFormation,
+  ruleClaimsMatchGroup,
+  ruleDroppedInFront,
+  ruleFilmMatchesResult,
+  ruleSplitNeverAhead,
+  ruleStandingsAddUp,
+  startlistFor,
+  summarize,
+} from "./race-truth-rules.mjs";
+import { stageInput } from "../__fixtures__/race-truth/load.mjs";
+
+const clone = (value) => JSON.parse(JSON.stringify(value));
+
+function prepared(stage) {
+  const stageRows = stage.raceRows.filter((row) => row.result_type === "stage" && row.stage_number === stage.stageNumber);
+  return { ...stage, stageRows, startlist: startlistFor(stage.events, stageRows) };
+}
+
+function codes(findings) {
+  return summarize(findings);
+}
+
+const stage2 = stageInput("giro-stage-2-clean.json");
+const stage6 = stageInput("giro-stage-6.json");
+const stage8 = stageInput("giro-stage-8.json");
+
+test("de syv regler er navngivet", () => {
+  assert.deepEqual(Object.keys(RULES), ["R1", "R2", "R3", "R4", "R5", "R6", "R7"]);
+});
+
+test("en ren etape giver 0 fund", () => {
+  assert.deepEqual(checkStage(stage2), []);
+});
+
+test("R1 (#7635): etape 8, tre ryttere 'sat' ved km 61,8 mens de sidder i hovedgruppen", () => {
+  const findings = ruleDroppedInFront(prepared(stage8));
+  assert.equal(findings.length, 3);
+  for (const f of findings) {
+    assert.equal(f.code, "dropped_in_main_group");
+    assert.equal(f.km, 61.8);
+    assert.equal(f.group_id, "peloton-0");
+  }
+  // Nedkørselsangrebet (få sekunder foran) må ikke tælle som fronten.
+  assert.ok(findings.every((f) => f.main_group_id === "peloton-0"));
+});
+
+test("R1: en rytter i et split bag hovedgruppen er ærligt sat (intet fund)", () => {
+  const events = [
+    { km: 0, type: "stage_start", params: { exact_km: 0, exact_time: 0 } },
+    { km: 50, type: "peloton_splits", params: { exact_km: 48, exact_time: 4000, group_id: "gruppetto-1", source_group_id: "peloton-0", rider_ids: ["b"], gap_seconds: 40, cause: "climb_deficit" } },
+    { km: 50, type: "stage_plan_leg", params: { rider_id: "b", leg: 1, task: "ride_in", reason: "dropped", exact_km: 50 } },
+  ];
+  assert.deepEqual(ruleDroppedInFront({ events, startlist: ["a", "b"] }), []);
+});
+
+test("R2 (#7639): etape 6, den udgåede rytter lever videre som spøgelsesgruppe", () => {
+  const findings = ruleAbandonedGone(prepared(stage6));
+  const ghosts = findings.filter((f) => f.code === "ghost_group_after_abandon");
+  assert.equal(ghosts.length, 1);
+  assert.equal(ghosts[0].group_id, "solo-m10-16-0");
+  // Resultatet er rigtigt: den udgåede har ingen etape-række.
+  assert.equal(findings.filter((f) => f.code === "abandoned_in_result").length, 0);
+});
+
+test("R2: en udgået rytter der navngives senere i loggen giver et fund", () => {
+  const events = [
+    { km: 0, type: "stage_start", params: {} },
+    { km: 20, type: "incident", params: { rider_id: "a", outcome: "abandoned", exact_km: 20 } },
+    { km: 30, type: "finale_attack", params: { group_id: "solo-9", rider_ids: ["a"], exact_km: 30, exact_time: 3000 } },
+  ];
+  const findings = ruleAbandonedGone({ events, startlist: ["a", "b"], stageRows: [{ rider_id: "a" }] });
+  assert.deepEqual(findings.map((f) => f.code).sort(), ["abandoned_in_result", "named_after_abandon"]);
+});
+
+test("R3 (#6350): etape 8, gruppen hentes før den angriber, og uheldsgrupper uden dannelse", () => {
+  const findings = ruleCatchAfterFormation(prepared(stage8));
+  const early = findings.filter((f) => f.code === "caught_before_formed");
+  assert.equal(early.length, 1);
+  assert.equal(early[0].group_id, "breakaway-7000");
+  assert.equal(early[0].km, 97.4);
+  assert.equal(early[0].formed_km, 99.2);
+  const nowhere = findings.filter((f) => f.code === "group_without_formation").map((f) => f.group_id);
+  assert.ok(nowhere.includes("solo-m10-10-0"));
+});
+
+test("R4 (#7640): etape 8, vinderens angreb står som et split med negativt hul", () => {
+  const findings = ruleSplitNeverAhead(prepared(stage8));
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].code, "split_ahead_of_source");
+  assert.equal(findings[0].group_id, "solo-11010");
+  assert.equal(findings[0].cause, "climb_deficit");
+});
+
+test("R5: filmens mål svarer til resultatet på etape 6 og 8", () => {
+  assert.deepEqual(ruleFilmMatchesResult(prepared(stage6)), []);
+  assert.deepEqual(ruleFilmMatchesResult(prepared(stage8)), []);
+});
+
+test("R5: et resultat-hul filmen ikke viser giver et fund", () => {
+  const stage = clone(stage8);
+  const row = stage.raceRows.find((r) => r.result_type === "stage" && r.stage_number === 8 && r.rank === 2);
+  row.finish_time = "+0:00";
+  const found = codes(ruleFilmMatchesResult(prepared(stage)));
+  assert.equal(found.R5.codes.finish_gap_mismatch, 1);
+});
+
+test("R6 (#6350): etape 8, 'sat' stemples ved segmentgrænsen km 161, ikke ved splittet km 147,31", () => {
+  const findings = ruleClaimsMatchGroup(prepared(stage8)).filter((f) => f.code === "dropped_stamped_after_split");
+  const late = findings.find((f) => f.km === 161 && f.split_index === 229);
+  assert.ok(late, "rytteren i gruppetto-11008 skal fanges");
+  assert.ok(Math.abs(late.split_km - 147.31) < 0.01);
+});
+
+test("R6: referatets vinder og uheld svarer til resultat og tidslinje", () => {
+  const stage = prepared(stage8);
+  assert.equal(ruleClaimsMatchGroup(stage).filter((f) => f.code !== "dropped_stamped_after_split").length, 0);
+  const wrong = clone(stage8);
+  const win = wrong.moments.find((m) => m.moment_key === "solo_win");
+  const runnerUp = wrong.raceRows.find((r) => r.result_type === "stage" && r.stage_number === 8 && r.rank === 2);
+  win.params.riderId = runnerUp.rider_id;
+  wrong.moments.push({ moment_key: "incident_abandon", params: { riderId: runnerUp.rider_id } });
+  const found = codes(ruleClaimsMatchGroup(prepared(wrong)));
+  assert.equal(found.R6.codes.win_moment_not_stage_winner, 1);
+  assert.equal(found.R6.codes.abandon_moment_without_abandon, 1);
+});
+
+test("R6: 'hentet' mens rytteren stadig sidder i udbruddet giver et fund", () => {
+  const events = [
+    { km: 10, type: "breakaway_formed", params: { group_id: "breakaway-0", rider_ids: ["a"], exact_km: 10, exact_time: 900 } },
+    { km: 20, type: "stage_plan_leg", params: { rider_id: "a", leg: 1, task: "ride_in", reason: "caught" } },
+  ];
+  const found = ruleClaimsMatchGroup({ events, startlist: ["a", "b"], stageRows: [] });
+  assert.deepEqual(found.map((f) => f.code), ["caught_while_in_break"]);
+});
+
+test("R7: GC, bonus og trøjer går op på etape 6 og 8", () => {
+  assert.deepEqual(ruleStandingsAddUp(prepared(stage6)), []);
+  assert.deepEqual(ruleStandingsAddUp(prepared(stage8)), []);
+});
+
+test("R7: et GC-hul eller en bonus der ikke er summen giver et fund", () => {
+  const stage = clone(stage8);
+  const gc = stage.raceRows.find((r) => r.result_type === "leader" && r.rank === 2);
+  gc.finish_time = "+0:01";
+  const winner = stage.raceRows.find((r) => r.result_type === "stage" && r.stage_number === 8 && r.rank === 1);
+  winner.bonus_seconds += 2;
+  const found = codes(ruleStandingsAddUp(prepared(stage)));
+  assert.ok(found.R7.codes.gc_gap_not_sum_of_stages >= 1);
+  assert.equal(found.R7.codes.stage_bonus_not_passages, 1);
+});
+
+test("checkStage samler kendte fejl på etape 6 og 8 og vælter aldrig", () => {
+  const s8 = summarize(checkStage(stage8));
+  assert.equal(s8.R1.total, 3);
+  assert.equal(s8.R4.total, 1);
+  assert.equal(s8.R5, undefined);
+  assert.equal(s8.R7, undefined);
+  const s6 = summarize(checkStage(stage6));
+  assert.equal(s6.R2.total, 1);
+  assert.equal(s6.R1, undefined);
+  // Ødelagt input: et fund om vagten selv, aldrig en exception.
+  const broken = checkStage({ raceId: "x", stageNumber: 1, events: [{ type: "gap_update", get params() { throw new Error("boom"); } }], raceRows: [] });
+  assert.ok(broken.length >= 1 && broken.every((f) => f.code === "guard_error"));
+  assert.deepEqual(checkStage({ raceId: "x", stageNumber: 1 }), []);
+});
+
+test("publicFinding bærer kun race, etape, regel og kode", () => {
+  const [first] = checkStage(stage8);
+  assert.deepEqual(Object.keys(publicFinding(first)).sort(), ["code", "race_id", "rule", "stage_number"]);
+});
+
+test("parseGapSeconds læser viste tider", () => {
+  assert.equal(parseGapSeconds("+0:00"), 0);
+  assert.equal(parseGapSeconds("+1:58"), 118);
+  assert.equal(parseGapSeconds("+1:02:03"), 3723);
+  assert.equal(parseGapSeconds("DNF"), null);
+  assert.equal(parseGapSeconds(null), null);
+});
+
+test("replayTimeline giver uheldsofferet sin M10-gruppe", () => {
+  const events = [
+    { km: 5, type: "incident", params: { rider_id: "a", outcome: "time_loss", exact_km: 5 } },
+    { km: 10, type: "gap_update", params: { group_id: "solo-m10-0-0", gap_seconds: 30, exact_km: 10 } },
+  ];
+  let seen = null;
+  replayTimeline([...events, { km: 11, type: "noop", params: {} }], ["a", "b"], (event, _i, view) => {
+    if (event.type === "noop") seen = view.groupOf("a");
+  });
+  assert.equal(seen, "solo-m10-0-0");
+});

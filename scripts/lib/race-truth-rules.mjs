@@ -583,16 +583,15 @@ export function startlistFor(events = [], stageRows = []) {
  *   events: object[], raceRows: object[], passages?: object[], moments?: object[] }} stage
  */
 export function checkStage(stage) {
-  const events = Array.isArray(stage.events) ? stage.events : [];
-  const raceRows = Array.isArray(stage.raceRows) ? stage.raceRows : [];
-  const stageRows = raceRows.filter((row) => row.result_type === "stage" && row.stage_number === stage.stageNumber);
-  const input = {
-    ...stage,
-    events,
-    raceRows,
-    stageRows,
-    startlist: startlistFor(events, stageRows),
-  };
+  let input;
+  try {
+    const events = (Array.isArray(stage?.events) ? stage.events : []).filter((e) => e && typeof e === "object");
+    const raceRows = (Array.isArray(stage?.raceRows) ? stage.raceRows : []).filter((r) => r && typeof r === "object");
+    const stageRows = raceRows.filter((row) => row.result_type === "stage" && row.stage_number === stage.stageNumber);
+    input = { ...stage, events, raceRows, stageRows, startlist: startlistFor(events, stageRows) };
+  } catch (err) {
+    return [{ race_id: stage?.raceId, stage_number: stage?.stageNumber, rule: "GUARD", code: "guard_error", error: String(err?.name ?? "Error") }];
+  }
   const findings = [];
   const run = (rule, fn) => {
     try {
@@ -612,6 +611,14 @@ export function checkStage(stage) {
   run("R7", () => ruleStandingsAddUp(input));
   return findings.map((f) => ({ race_id: stage.raceId, stage_number: stage.stageNumber, ...f, km: round2(f.km), formed_km: round2(f.formed_km), split_km: round2(f.split_km) }))
     .map((f) => Object.fromEntries(Object.entries(f).filter(([, v]) => v !== null && v !== undefined)));
+}
+
+/**
+ * Den offentlige del af et fund: regel og kode, aldrig id'er på ryttere,
+ * tider eller huller (repoet og Actions-loggen er offentlige).
+ */
+export function publicFinding(f) {
+  return { race_id: f.race_id, stage_number: f.stage_number, rule: f.rule, code: f.code };
 }
 
 /** Tæller fund pr. regel og kode (til ops-beskeden). */
