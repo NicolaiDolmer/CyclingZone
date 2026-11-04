@@ -82,9 +82,11 @@ jobs:
     # aeldre. Den nye laeser hele traaden (seneste markering pr. krav vinder),
     # saa en serie kommentarer giver een koersel uden at miste noget. Jobbets
     # if: holder kommentarer uden "Til dørs:" ude af gruppen. PR-merge, sweep
-    # og dispatch annulleres aldrig.
+    # og dispatch annulleres aldrig: en manuel dispatch paa et issue har sin
+    # egen gruppe (dispatch-N), for cancel-in-progress gaelder for alle
+    # koersler i gruppen, ikke kun dem af samme event.
     concurrency:
-      group: til-doers-${{ github.event.issue.number || (github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number)) || inputs.issue || 'sweep' }}
+      group: til-doers-${{ github.event.issue.number || (github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number)) || (inputs.issue && format('dispatch-{0}', inputs.issue)) || 'sweep' }}
       cancel-in-progress: ${{ github.event_name == 'issue_comment' || github.event_name == 'issues' }}
     steps:
       - name: Check out main

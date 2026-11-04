@@ -397,6 +397,10 @@ test('production workflow checks out target SHA, observes READY boundary and gat
   assert.match(proof.slice(gate, live), /SUPABASE_SERVICE_KEY: \$\{\{ secrets\.SUPABASE_SERVICE_KEY \}\}/);
   assert.match(proof.slice(live), /CRON_STATE: \$\{\{ steps\.crons\.outputs\.state \}\}[\s\S]*?"\$CRON_OUTCOME" == "success" && "\$CRON_STATE" == "verified"/);
   assert.match(proof, /name: Cron check-ins deferred/);
+  // A rerun for the same SHA starts a new proof (new boundary); an older proof
+  // finishing last must never overwrite the newer verdict (Codex review #7582).
+  assert.match(proof, /MARKER="<!-- cron-proof:\$SHA:\$CRON_SINCE -->"/);
+  assert.match(proof, /jq -r --arg marker "\$MARKER"/);
   const ci = readFileSync(new URL('../../.github/workflows/ci.yml', import.meta.url), 'utf8');
   assert.match(ci, /node --test scripts\/ci\/cron-deploy-verification\.test\.mjs scripts\/ci\/deploy-verification-state\.test\.mjs/);
 });
