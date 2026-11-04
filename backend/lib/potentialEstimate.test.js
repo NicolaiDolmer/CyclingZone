@@ -186,6 +186,23 @@ test("monotoneLevel: viden kan kun vokse, så ordet aldrig bliver mindre sikkert
   assert.deepEqual(monotoneLevel(stored, { key: "s3t5", u: 1.8 }), { key: "s3t5", u: 1.8 });
   assert.deepEqual(monotoneLevel(stored, null), { key: "own2", u: 2 });
   assert.deepEqual(monotoneLevel(null, { key: "s1t1", u: 8 }), { key: "s1t1", u: 8 });
+  // Samme usikkerhed fra en anden kilde er ikke ny viden: det gemte niveau bliver.
+  assert.deepEqual(monotoneLevel(stored, { key: "s3t5", u: 2 }), { key: "own2", u: 2 });
+});
+
+test("H2: faldende stab-fart, der skifter til en lige så god kilde, flytter ikke tallet (Codex-fund)", () => {
+  // Egen rytter med både træninger og kig; stab-farten falder bagefter, så egne
+  // træninger alene ville give et dårligere niveau end kiggene med samme usikkerhed.
+  const P = { ...PARAMS, own: { ...PARAMS.own, steps: [{ fromDates: 0, u: 7 }, { fromDates: 12, u: 4.5 }, { fromDates: 20, u: 2 }] } };
+  const tie = uncertaintyFor(scoutKnow(2, 3), P);
+  P.own.steps[1].u = tie; // gør egne træninger (trin 1) præcis lige så sikre som kiggene
+  const before = { own: true, trainingDates: 10, staffSpeed: 1, looks: 2, bestScoutTier: 3 };
+  const after = { ...before, staffSpeed: 0 };
+  const lvBefore = knowledgeLevel(before, P);
+  assert.equal(lvBefore.key, "own1");
+  const first = planEstimateWrite({ stored: null, truePot: 70, riderId: "rx", teamId: "tx", knowledge: before, trigger: "sunday", paramsVersion: "v", now: NOW }, P).row;
+  const next = planEstimateWrite({ stored: first, truePot: 70, riderId: "rx", teamId: "tx", knowledge: after, trigger: "sunday", paramsVersion: "v", now: NOW }, P);
+  assert.equal(next.action, "keep");
 });
 
 const NOW = "2026-11-08T03:00:00.000Z";

@@ -217,12 +217,16 @@ function storedLevel(stored) {
 
 // Monotoni-værnet (H3): holdets viden om en rytter kan kun vokse. Falder den
 // beregnede viden (fx en dårligere facilitet sænker stab-farten), holdes det
-// gemte vidensniveau, så ordet aldrig bliver mindre sikkert.
+// gemte vidensniveau, så ordet aldrig bliver mindre sikkert. Kun et niveau med
+// STRENGT mindre usikkerhed afløser det gemte: et skift mellem to kilder med samme
+// usikkerhed (fx egne træninger falder tilbage til et lige så godt kig, fordi
+// stab-farten faldt) er ikke ny viden og må ikke flytte tallet (H2). Det lukker
+// også for at samle flere aflæsninger på samme sikkerhed op og midle dem (H6).
 export function monotoneLevel(stored, next) {
   const prev = storedLevel(stored);
   if (!prev) return next;
   if (!next) return prev;
-  return next.u > prev.u ? prev : next;
+  return next.u < prev.u ? next : prev;
 }
 
 // Afgør om skønnet for (rytter, hold) skal skrives, og hvilken række der skrives.
