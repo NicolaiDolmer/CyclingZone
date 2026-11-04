@@ -6,6 +6,16 @@
 
 **Arbejdsdeling (ejer 4/11):** Claude (PC1) ejer motor, taktik, udvikling, merge-køen, flag og prod. Codex tager sidesporene, der ikke kolliderer: TS-kæden, ops-værktøj, test-infrastruktur, vækst/penge-analyser og SEO-indhold.
 
+## Tidsplan (ejer 4/11 aften, 20 planlagte + 22 påbegyndte punkter gennemgået enkeltvist)
+
+Fuld liste med datoer: [#7632](https://github.com/NicolaiDolmer/CyclingZone/issues/7632). "Done" først ved alle 8 krav; fredagskort til ejeren (nået, skredet, hvorfor). Kategorier 4/11: markedsføring (rytme torsdag/fredag + 10x-plan med automatisering starter denne uge); moms #4511 + bogføring næste uge; taktikfejl #7557/#7625/#7624 og træning #7637/#7559/#7558/#7584 denne uge; #7565 + #7581 næste uge; dashboard #7626 mockup fredag, byg næste uge; sortering #7537 næste uge; indstillinger #3984 resten af S5; sandhedsvagt #7643, realisme-gate #7588 og #7260-gennemgang denne uge; ops-listen (Codex) senest tirsdag 10/11. Ekstra denne uge: motor-kontakterne #6912/#7644/#7635/#7640 i ét "kør", motor-pakkens krav 8, Form og træthed 2.0 #6984, rutematch + assistent, secrets #7029.
+
+- **Denne uge (senest 8/11):** Udvikling 2.0 trin 2-6 #6110 **fuldt som designet, intet skæres, topprioritet** + gevinst pr. aktivitet #7627/#4850; opgavetabel #5950 (gennemgang + byg); træthed pr. indstilling #7638; tidsstempler i løbsfilmen #6350/#6941 (spillerne tror, den virker sådan); delt kaptajn: verificér krav 8 + #7326; forside #6665; Supabase #7659 alarm + kontakt-cache (ranglisten senest 14/11).
+- **Næste uge (9-15/11):** selektion #7645; indsatskortet #5101; ejeren beslutter etapekortet #6365.
+- **Ca. 15-18/11:** catch-up #6950 besluttes (frist 8/11 udgået); spørg igen om "nye managers forstår første løb" (parkeret).
+- **Før S6-kalenderen:** løbstyper U23/junior #7471. **Før S6-start:** U23 del 2 #4620, junior-pyramiden #4621, Planning Workbench #7535.
+- **S6 (dec):** Pro-værdien + betaling #2806/#4514. **Starten af 2027:** TTT #3463, omdømme #4957/#5106.
+
 ## 0. Merge og til dørs først (ejer 4/11, skarpt)
 
 Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden for 24 timer. Værktøj frem for disciplin:
@@ -18,9 +28,10 @@ Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden f
 ## Brand (løbende, uden for loftet)
 
 - **Løbenes sandhed:** sandhedsvagten #7643 (merget 4/11, første prod-kørsel bekræftes); Giro-rettelserne #7635/#7636 (#7642), #7639 (#7647), #7640 (#7648 + tænd-ledning).
-- **Dronningeetaper #7236:** genmåling af Hexagone 15/17 og "kør" før 8/11.
-- **Kontrakter, transfer, sæsonskifte:** ungdom #6882, graduering/auktion #7323, værdier #5842.
-- **Supabase uden fejl #7659 (ejer 4/11):** genstart 25/10 og 4/11 (#7223). Mindre pres (#7099/#5692, flag-cache, tunge læsninger), alarmer, robusthed; hver fejl får rodårsag og forebyggelse. Designes med ejeren i næste PC1-session. **Stabilitet:** aftenafregningen #6490, ranglisten #6765. **Sikkerhed:** #7029, #7034, CodeQL #386 (#7653).
+- **Dronningeetaper #7236:** tændt 4/11 (ejer "kør"); genmål Hexagone 15/17 ca. 7-8/11 med fuldere startliste.
+- **Kontrakter, transfer, sæsonskifte (næste uge, prøves før S6):** ungdom #6882 (prod-tjek denne uge), graduering/auktion #7323, aftenafregningen #6490, trupstørrelser #7490 (ejervalg). Værdier #5842 er lukket.
+- **Supabase uden fejl #7659 (ejer 4/11):** genstart 25/10 og 4/11 (#7223). Mindre pres (#7099/#5692, flag-cache, tunge læsninger), alarmer, robusthed; hver fejl får rodårsag og forebyggelse. Ejer valgte retning A 4/11 (mål, ret det tunge, alarmer): #7662/#7663/#7664. Ranglisten #6765 (M2) med #7664 senest 14/11. **Sikkerhed (denne uge, ét vindue med ejeren):** #7029 + #7034; CodeQL/Dependabot 0 åbne.
+- **Roadmap og transparens (ejer 4/11, byg i dag):** horisonter for spillerne #7666, #6923, søgning #6203, admin #6204.
 
 ## Loftet (ejer-rangeret 4/11)
 
@@ -42,7 +53,7 @@ Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden f
 - **Forside #6665** gøres klar til merge 4/11 (rebase, CI, før/efter); merges på ejerens go.
 - **Spillerkommunikation:** én samlet patch note og ét Discord-opslag (EN) pr. dag med spillervendte ændringer; udkast ca. kl. 17, ejeren godkender.
 - Bogføring, moms EU-privat #4511, billing #4514/#4512/#6062, måling #5305, SEO #5249/#5250.
-- **Torsdag 5/11 (forretningsdag):** gennemgang af Codex' vækstpakke PR #7652 med ejeren (ingen A/B valgt; retning afstemmes, så wireframes til spillerne før byg) og catch-up #6950 (frist 8/11).
+- **Torsdag 5/11 (forretningsdag):** gennemgang af Codex' vækstpakke PR #7652 med ejeren (ingen A/B valgt; retning afstemmes, så wireframes til spillerne før byg). Catch-up #6950 besluttes ca. 15-18/11 (ejer 4/11), ikke torsdag.
 
 ## Faste rutiner
 
