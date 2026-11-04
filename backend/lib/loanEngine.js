@@ -6,7 +6,7 @@
  * (database/2026-05-09-balance-rpc.sql) — atomic UPDATE+INSERT i én DB-transaktion
  * pr. team. Eliminerer lost-update-races mellem concurrent calls på samme team.
  */
-import { computeWorstCaseCommitment } from "./auctionRules.js";
+import { computeWorstCaseCommitment } from "./auctionRules.ts";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import {

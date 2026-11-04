@@ -23,7 +23,7 @@ import {
   getSwapAuctionConflict,
   getTransferAuctionConflict,
   isExpectedPriceStale,
-} from "./auctionRules.js";
+} from "./auctionRules.ts";
 import {
   SQUAD_FINE_AMOUNT,
   SQUAD_PENALTY_POINTS,

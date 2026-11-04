@@ -7,7 +7,7 @@
 // ikke kunne betale for sin auktionsgevinst. Auktionernes egen regelfunktion
 // (auctionRules.computeWorstCaseCommitment / computeAvailableBalance) genbruges
 // uændret; denne fil tilføjer kun I/O-opslaget og én fælles fejlform.
-import { computeAvailableBalance, computeWorstCaseCommitment } from "./auctionRules.js";
+import { computeAvailableBalance, computeWorstCaseCommitment } from "./auctionRules.ts";
 
 export const INSUFFICIENT_AVAILABLE_BALANCE = "insufficient_available_balance";
 

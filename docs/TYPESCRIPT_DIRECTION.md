@@ -111,7 +111,15 @@ saa tag den med over.** Sammen med "nye filer er altid TS" betyder det, at
 kernen bliver typet dér hvor der faktisk sker noget — og ikke i de filer ingen
 har rørt i et halvt aar.
 
-### Håndhævet (ejer 11/10-2026)
+### Spejderregel (ejer 3/11-2026, #7583)
+
+Et godkendt spor, der alligevel ændrer en eksisterende kerne-`.js`-fil, retter
+dens typer i samme PR. Det gælder også små ændringer; den tidligere
+omfangsgrænse nedenfor er historik. Selvstændige konverteringer tager én fil
+pr. intern PR uden adfærdsændringer og med eksisterende tests før og efter.
+`auctionRules.ts` er det første selvstændige konverteringsspor i denne bølge.
+
+### Tidligere håndhævelse (ejer 11/10-2026)
 
 Reglen ovenfor holdt ikke af sig selv: fra 11/9 til 11/10 faldt kernen kun fra
 1070 til 1031 fejl, og PR'er rørte kerne-filer uden at tage dem med over. Derfor:
