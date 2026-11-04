@@ -134,7 +134,8 @@ export default function RoadmapPage() {
   const [reports, setReports] = useState(() => new Set());
   const [reportError, setReportError] = useState(() => new Set());
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [query, setQuery] = useState("");
+  // ?q= åbner siden med en søgning (et link fra Discord eller Hjælp kan pege på et emne).
+  const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
   // #7666: patch notes pr. GitHub-issue. Hentes først når Done åbnes (filen er
   // stor og caches af CDN'en); null = ikke hentet, tomt Map = fejlede.
   const [patchIndex, setPatchIndex] = useState(
