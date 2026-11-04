@@ -102,7 +102,7 @@ test("#6912: lad-gaa-fasen slutter ved kurvens top; segmentet deles uden tab", (
 
 test("#6912: maalet falder fra toppen mod finalen, og resterende stigninger laegges oveni", () => {
   const flatRoute = route([flat(0, 180)], "flat");
-  const peak = 300;
+  const peak = 600; // over bjergets finalemaal, ellers klemmer toppen maalet og stigningen kan ikke ses
   let prev = Infinity;
   for (let km = 60; km <= 180; km += 10) {
     const t = curveTargetSeconds({ route: flatRoute, km, topKm: 60, peakSeconds: peak });
@@ -247,10 +247,9 @@ test("#6912: daempningen foer finalen loeftes kun under styringen", () => {
   assert.equal(preFinalChaseClosingScale6912(0.2, true, 0.5), 0.5, "loeftet til profilens skala");
   assert.equal(preFinalChaseClosingScale6912(0.4, false, 0.9), 0.4);
   assert.equal(curvePreFinalLift("flat"), null, "flad har ingen finalestigningsfase");
-  for (const p of ["mountain", "high_mountain"] as const) {
-    const lift = curvePreFinalLift(p);
-    assert.ok(lift !== null && lift > 0, p);
-  }
+  assert.equal(curvePreFinalLift("mountain"), null, "bjerg: loeftningen hentede udbruddet for tidligt (variant c3)");
+  const lift = curvePreFinalLift("high_mountain");
+  assert.ok(lift !== null && lift > 0, "high_mountain");
 });
 
 const maxBreakSeparation = (events: readonly TimelineEvent[]): number => Math.max(0, ...events

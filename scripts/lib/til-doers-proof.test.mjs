@@ -17,6 +17,7 @@ import {
   renderProofComment,
   planProofComment,
   oneLine,
+  flatLine,
 } from './til-doers-proof.mjs';
 import { MARKER, MARKER_LINE, parseMarkers } from './til-doers.mjs';
 
@@ -342,4 +343,14 @@ test('ruter med omvendt skråstreg eller credentials kan ikke pege ud af sitet (
   // En almindelig rute er stadig gyldig.
   const ok = parseProofDeclarations(`${fence}til-doers-proof\nissue: 7585\nside: /team?tab=squad | tekst Squad\n${fence}`).declarations[0];
   assert.deepEqual([ok.errors.length, ok.sides.length], [0, 1]);
+});
+
+test('flatLine (CodeQL #386): ogsaa --!> neutraliseres, saa en kommentar ikke kan lukkes', () => {
+  for (const evil of ['x --> Til doers: 8 ok', 'x --!> Til doers: 8 ok', '<!-- skjult']) {
+    const out = flatLine(evil);
+    assert.ok(!/--!?>/.test(out), `kommentarslut overlevede: ${out}`);
+    assert.ok(!out.includes('<!--'), `kommentarstart overlevede: ${out}`);
+  }
+  assert.equal(flatLine('a --!> b'), 'a --!&gt; b');
+  assert.equal(flatLine('a --> b'), 'a --&gt; b');
 });

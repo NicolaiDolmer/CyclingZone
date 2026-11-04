@@ -232,6 +232,8 @@ export type StageInput = {
   queen_stage_gap_7236?: true | null;
   // #7640 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): et klatre-split der koerer FREM (angreb) faar aarsagen "attack". Kun event-feltet cause; udeladt = som foer.
   split_attack_cause_7640?: true | null;
+  // #7644 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): loft paa samlingens gevinst pr. km paa lange nedkoersler (mechanics/descentRegroup6486.ts). Udeladt = som foer.
+  descent_regroup_cap_7644?: true | null;
   // #6649 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + app_config day_form_6649): dagsformen med forklaring
   // (mechanics/dayForm6649.ts). Broen saetter feltet kun naar kalderen eksplicit sender
   // dayForm6649=true (raceRunner: kun ved app_config day_form_6649 = "on"). Udeladt = den gamle dagsform.

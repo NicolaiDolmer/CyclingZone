@@ -96,7 +96,7 @@ import { finishDescentIndexFor, runInOpenOnlyTempo, timeModelTuningFor, valleyRe
 import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
 import { compareIds } from "../../compareIds.ts";
 import { queenStageGap7236On } from "./mechanics/queenStageGap7236.ts"; // #7236
-import { descentRegroupTempo6486, descentRegroupTuning7236 } from "./mechanics/descentRegroup6486.ts"; // #6486, #7236
+import { descentRegroupCap7644On, descentRegroupTempo6486, descentRegroupTuning7236 } from "./mechanics/descentRegroup6486.ts"; // #6486, #7236, #7644
 import { advanceStagePlan, advanceStagePlanAtFinish, createStagePlanRuntime, stagePlanCurrentTasks, stagePlanEntrants, stagePlanFinalEfforts, stagePlanLoadEfforts } from "../../stagePlanEngine.ts"; // #7003, #7380
 import { applyDayForm6649, dayForm6649Events, dayForm6649On } from "./mechanics/dayForm6649.ts"; // #6649
 import { breakawayCurve6912On } from "./mechanics/breakawayCurve6912.ts"; // #6912
@@ -1055,7 +1055,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     else if (ordersGcV3) tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers, loopTimeModel);
     // #6486 (KUN s5_profiles_v3, slukket): grupper samler sig efter sidste top paa bjerg uden topankomst.
     // #7236 (KUN kontakten): greb topgabets loft (kort vej fra sidste top til maal), regrupperer de lidt staerkere.
-    if (isS5ProfilesV3OrLater(rulesRevision)) tempoByGroup = descentRegroupTempo6486(state.groups, tempoByGroup, route, segmentIndex, state.incident_chasers, descentRegroupTuning7236(state.queen_cap_7236 === true && queenStageGap7236On(input), route));
+    if (isS5ProfilesV3OrLater(rulesRevision)) tempoByGroup = descentRegroupTempo6486(state.groups, tempoByGroup, route, segmentIndex, state.incident_chasers, descentRegroupTuning7236(state.queen_cap_7236 === true && queenStageGap7236On(input), route), descentRegroupCap7644On(input)); // #7644 (slukket)
 
     // 4a. Gap-bogfoering: fronten (mindste gap_seconds) er referencen; andre
     // gruppers gap opdateres med (dtGruppe - dtFront), floor 0.
