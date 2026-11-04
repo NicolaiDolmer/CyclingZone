@@ -129,6 +129,8 @@ $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot 'lib\gh-retry.ps1')
 . (Join-Path $PSScriptRoot 'lib\league-check.ps1')
+# #7587 punkt 6: close-out-modulet (scriptniveau, saa funktionen kan testes udtrukket).
+$script:CloseOutScript = Join-Path $PSScriptRoot 'merge-queue-closeout.mjs'
 
 $PrNumbers = @($Pr -split '[,\s]+' | Where-Object { $_ } | ForEach-Object { [int]$_ })
 if ($PrNumbers.Count -eq 0) { Write-Error "Ingen gyldige PR-numre i -Pr '$Pr'."; exit 1 }
@@ -639,7 +641,7 @@ function Invoke-TrainCloseOut {
   param(
     [object[]] $Entries,
     [bool] $DeployVerified = $true,
-    [string] $ScriptPath = (Join-Path $PSScriptRoot 'merge-queue-closeout.mjs')
+    [string] $ScriptPath = $script:CloseOutScript
   )
   try {
     $items = @($Entries | Where-Object { $null -ne $_ } | ForEach-Object {
