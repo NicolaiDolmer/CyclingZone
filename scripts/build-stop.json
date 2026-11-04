@@ -423,6 +423,11 @@
     {
       "issue": 7632,
       "why": "Til dørs-tavlen som ejerens levende overblik, ejer-go 4/11 i chat"
+    },
+    {
+      "issue": 7654,
+      "reason": "Auto-tog + alarm for klare PR-er (ejer-go 4/11, MASTERPLAN §0)",
+      "since": "2026-11-04"
     }
   ],
   "brandList": [
