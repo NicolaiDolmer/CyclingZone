@@ -1,0 +1,23 @@
+# Manager-spil: primærkilder og anvendelige designgreb
+
+Læst 4. november 2026 til del B, Refs #7495. Kilderne beskriver funktioner og udviklerens intentioner, ikke målt fastholdelse. Sammenligningen er research; spillene er ikke gennemspillet i denne session.
+
+| Spil og primærkilde | Designgreb | Læring for Cycling Zone | Hvad overføres ikke? |
+|---|---|---|---|
+| **Football Manager 27:** [officiel gennemgang af verden, navigation og historik](https://www.footballmanager.com/fm27/features/deeper-more-immersive-world) | Klubber og turneringer forbinder fortid, nutid og kommende begivenheder. Spillerens karrierehistorik og sæsonens særlige tidspunkter giver kontekst. Informationsflowet kan tilpasses. | Vis, hvorfor en ny observation er relevant for et eksisterende projekt eller en kommende opgave. Gør det let at følge samme rytter gennem karrieren. | En individuel Continue-knap og mulighed for at styre sit eget tidsforløb kan ikke styre en fælles vedvarende verden. Detaljer om personer og nyheder må ikke blive obligatorisk læsearbejde. |
+| **Pro Cycling Manager 26:** [Nacons officielle beskrivelse af sæsonplanlægning](https://www.nacongaming.com/en/pro-cycling-manager-2026), [Cyanides featureoversigt](https://cyanide-studio.com/en/cyanide-games/pro-cycling-manager-26/) | Holdhierarki, rytterroller, løbsprioritering og sportsprogram forbindes. Uventet sygdom, styrt og præstationer giver anledning til at genoverveje planen. Cyanide beskriver også pensionerede ryttere som muligt personale. | Planen er noget, man vender tilbage til, når forudsætninger ændres. En rytters betydning kan række ud over dagens rating. Cycling Zone har allerede planlægning og rytterudvikling; dette er inspiration til sammenhæng. | Automatisk startplan og nye personale-/karrieremekanikker kopieres ikke. Cycling Zones assistentkontrakt, frister og fælles løbsafvikling består. Intet nyt arbejde med pensionister foreslås her. |
+| **OOTP:** [officiel wiki om scoutingrapporter](https://wiki.ootpdevelopments.com/index.php?title=OOTP_Baseball:Important_Game_Concepts/The_Scouting_Model/Scouting_Reports), [online-ligaernes forløb](https://wiki.ootpdevelopments.com/index.php?title=OOTP_Baseball:OOTP_Online_Leagues/How_Do_Online_Leagues_Work) | Tidligere scoutingrapporter kan sammenlignes med nyere vurderinger. I online-ligaer indsender managers holdvalg før fælles simulerede perioder og modtager derefter ny fælles tilstand. | Skeln mellem en observation fra dengang og det, man ved nu. Plan, afvikling og efterfølgende vurdering passer til asynkron management; Cycling Zone har allerede den fælles rytme. | Ingen filudveksling, commissioner som ny driftsrolle eller påtvungen ligaadministration. Ændret scoutskøn er ikke det samme som faktisk evneudvikling. |
+| **Motorsport Manager, PC:** [udgiverens produktbeskrivelse på Steam](https://store.steampowered.com/app/415200/Motorsport_Manager/) | Rekruttering, biludvikling og forberedelse hænger sammen med taktiske valg under løbet. | Gør forbindelsen mellem forberedelse og udfald konkret. Saml de relevante beslutninger omkring den faktiske konkurrence, frem for at gøre alle undersystemer lige påtrængende hver dag. | Beslutninger på splitsekunder og obligatorisk tilstedeværelse under løbet passer ikke til Cycling Zones tidsaftale. Bil- og fabrikssystemet er ikke et forslag om et tilsvarende udstyrslag. |
+
+## Aktuelle kilder er ikke nødvendigvis aktuelle slutprodukter
+
+- FM27-siden beskriver materiale fra en udviklingsversion. Det er annonceret design, ikke en uafhængig verifikation af den endelige udgave.
+- PCM26 findes på både udgiverens og udviklerens aktuelle sider. De angiver forskellige udgivelsesdatoer; datoen bruges derfor ikke som argument. PCM25-guiden blev også læst, men bruges ikke som bevis for nye PCM26-funktioner.
+- OOTP-wikien angiver godkendte revisioner. Artiklernes detaljer er ikke særskilt verificeret i en installeret OOTP27-klient.
+- Motorsport Manager-kilden er den nu tilgængelige officielle beskrivelse af PC-spillet fra 2016. Mobilspillet MM4 er en anden udgave og blandes ikke ind i denne featureliste.
+
+## Samlet vurdering
+
+Det overførbare er en sammenhæng: et langsigtet ønske fører til en plan; verden giver troværdig feedback; manageren kan forstå, om næste valg bør ændres; historikken gør forløbet værd at huske. Det er en designfortolkning af kilderne, ikke en påstand om deres målte effekt.
+
+Cycling Zone bør ikke kopiere mængden af mekanikker. For den vedvarende multiplayer-verden er fravær, fælles tid, rettigheder til private planer og ærlig usikkerhed centrale. En forbedring skal også være nyttig for den manager, som vender tilbage efter nogle dage. [Del B-forslaget](spec-durable-motivation-2026-11-04.md) bruger disse hensyn som begrænsninger.
