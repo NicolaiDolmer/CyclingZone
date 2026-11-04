@@ -44,7 +44,7 @@ export const ORDER_TOLERANCE_KM = 0.01;
 /** Hvor langt efter rytterens faktiske split et "sat"-skift må stå. */
 export const PLAN_STAMP_TOLERANCE_KM = 1;
 
-const INCIDENT_GROUP_PREFIX = "solo-m10-";
+const INCIDENT_SOLO_ID = /^solo-m10-(\d+)-(\d+)$/;
 const REST_GROUP_ID = "peloton-0";
 const BOOKKEEPING_ATTACK_KINDS = new Set(["stage_decided", "placement_gap", "gap_survived"]);
 const FORMING_TYPES = new Set(["breakaway_formed", "finale_attack", "peloton_splits", "breakaway_dropped"]);
@@ -148,12 +148,36 @@ export function replayTimeline(events = [], startlist = [], visit = () => {}) {
   gaps.set(REST_GROUP_ID, 0);
   formation.set(REST_GROUP_ID, { index: -1, km: 0, time: 0, exact: true, via: "start" });
 
-  // Et uheldsoffer får sin egen gruppe (motorens M10-navn). Loggen har ingen
-  // dannelses-hændelse for den; første ukendte M10-gruppe efter uheldet er hans.
+  // Et uheldsoffer får sin egen gruppe (`solo-m10-<segment>-<seq>`). Loggen har
+  // ingen dannelses-hændelse for den, og motoren tildeler <seq> i rider_id-orden
+  // inden for segmentet, ikke i uheldenes km-orden. Rytteren udledes derfor af
+  // id'et med samme regel som raceStory.js (incidentSegmentRiders), aldrig af
+  // rækkefølgen grupperne nævnes i. Kan id'et ikke føres tilbage, bliver gruppen
+  // ukendt hellere end at få en anden rytters uheld.
+  const m10Segments = new Map(); // segment -> { riders (seq-orden), minKm, maxKm }
+  const segmentRiders = (segment, km) => {
+    const known = m10Segments.get(segment);
+    if (known) return known.riders;
+    let lo = -Infinity;
+    let hi = Infinity;
+    for (const [s, info] of m10Segments) {
+      if (info.minKm == null) continue;
+      if (s < segment) lo = Math.max(lo, info.maxKm);
+      else if (s > segment) hi = Math.min(hi, info.minKm);
+    }
+    const inSegment = pendingIncidents.filter((x) => !x.assigned && x.recordedKm <= km + 1e-9 && x.recordedKm >= lo - 1e-9 && x.recordedKm <= hi + 1e-9);
+    for (const x of inSegment) x.assigned = true;
+    const riders = inSegment.map((x) => x.riderId).sort((a, b) => a.localeCompare(b));
+    const kms = inSegment.map((x) => x.recordedKm);
+    m10Segments.set(segment, { riders, minKm: kms.length ? Math.min(...kms) : null, maxKm: kms.length ? Math.max(...kms) : null });
+    return riders;
+  };
   const touch = (groupId, index, event) => {
     if (!groupId || members.has(groupId) || formation.has(groupId)) return;
-    if (groupId.startsWith(INCIDENT_GROUP_PREFIX) && pendingIncidents.length) {
-      const incident = pendingIncidents.shift();
+    const m10 = INCIDENT_SOLO_ID.exec(groupId);
+    const riderId = m10 ? segmentRiders(Number(m10[1]), finite(event?.km) ?? 0)[Number(m10[2])] : null;
+    const incident = riderId ? pendingIncidents.find((x) => x.riderId === riderId) : null;
+    if (incident) {
       incidentGroups.set(groupId, incident);
       attack.set(groupId, false);
       if (incident.outcome === "abandoned") {
@@ -268,14 +292,17 @@ export function replayTimeline(events = [], startlist = [], visit = () => {}) {
       case "incident": {
         const riderId = str(p.rider_id);
         if (!riderId) break;
+        // Kun M10's egne uheld (uden `cause`) tager et solo-m10-seq (raceStory.js).
+        const m10Seq = p.cause == null;
+        const recordedKm = finite(event.km) ?? 0;
         if (p.outcome === "abandoned" || p.outcome === "abandon") {
           removeRider(riderId);
           out.set(riderId, { index, km: place.km });
-          pendingIncidents.push({ riderId, outcome: "abandoned", index, km: place.km });
+          if (m10Seq) pendingIncidents.push({ riderId, outcome: "abandoned", index, km: place.km, recordedKm, assigned: false });
         } else if (p.outcome === "time_loss") {
           removeRider(riderId);
           joinedAt.set(riderId, { km: place.km, exact: place.exact, index });
-          pendingIncidents.push({ riderId, outcome: "time_loss", index, km: place.km });
+          if (m10Seq) pendingIncidents.push({ riderId, outcome: "time_loss", index, km: place.km, recordedKm, assigned: false });
         }
         break;
       }
@@ -585,8 +612,12 @@ export function ruleStandingsAddUp(input) {
         const shown = parseGapSeconds(row.finish_time);
         if (shown != null && Math.abs(shown - expected) > TIME_TOLERANCE_S) findings.push(finding("R7", "gc_gap_not_sum_of_stages", { rider_id: row.rider_id, rank: row.rank }));
       }
+      // Klassementet tager kun ryttere med tid på ALLE kørte etaper med
+      // (raceRunner.js filterCompletedEntrants); en rytter der mangler én, er forkert.
       for (const row of gcRows) {
-        if (!totals.has(row.rider_id)) findings.push(finding("R7", "gc_rider_without_stage_rows", { rider_id: row.rider_id, rank: row.rank }));
+        const total = totals.get(row.rider_id);
+        if (!total) findings.push(finding("R7", "gc_rider_without_stage_rows", { rider_id: row.rider_id, rank: row.rank }));
+        else if (total.stages < stage) findings.push(finding("R7", "gc_rider_missing_stage", { rider_id: row.rider_id, rank: row.rank }));
       }
       const jerseys = [[finalOr("points_day", "points"), "sprint", "points_order_not_sum"], [finalOr("mountain_day", "mountain"), "kom", "mountain_order_not_sum"]];
       for (const [jerseyRows, field, code] of jerseys) {

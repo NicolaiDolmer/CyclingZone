@@ -237,3 +237,34 @@ test("replayTimeline giver uheldsofferet sin M10-gruppe", () => {
   });
   assert.equal(seen, "solo-m10-0-0");
 });
+
+test("replayTimeline (Codex P2): uheldsgrupper følger motorens seq i rider_id-orden, ikke km-orden", () => {
+  // To M10-uheld i samme segment: "z" udgår først (km 3), "a" taber tid senere (km 6).
+  // Motoren giver seq i rider_id-orden: solo-m10-0-0 = "a", solo-m10-0-1 = "z".
+  const events = [
+    { km: 3, type: "incident", params: { rider_id: "z", outcome: "abandoned", exact_km: 3 } },
+    { km: 6, type: "incident", params: { rider_id: "a", outcome: "time_loss", exact_km: 6 } },
+    { km: 10, type: "gap_update", params: { group_id: "solo-m10-0-0", gap_seconds: 30, exact_km: 10 } },
+  ];
+  let seen = null;
+  const { incidentGroups } = replayTimeline([...events, { km: 11, type: "noop", params: {} }], ["a", "z", "b"], (event, _i, view) => {
+    if (event.type === "noop") seen = view.groupOf("a");
+  });
+  assert.equal(seen, "solo-m10-0-0");
+  assert.equal(incidentGroups.get("solo-m10-0-0").riderId, "a");
+  // Den overlevende rytters gruppe er ikke et spøgelse.
+  assert.deepEqual(ruleAbandonedGone({ events, startlist: ["a", "z", "b"], stageRows: [] }), []);
+});
+
+test("R7 (Codex P2): en rytter i GC der mangler en kørt etape giver et fund", () => {
+  const rows = [
+    { result_type: "stage", stage_number: 1, rider_id: "A", rank: 1, finish_time: "+0:00", bonus_seconds: 0 },
+    { result_type: "stage", stage_number: 1, rider_id: "B", rank: 2, finish_time: "+0:10", bonus_seconds: 0 },
+    { result_type: "stage", stage_number: 2, rider_id: "A", rank: 1, finish_time: "+0:00", bonus_seconds: 0 },
+    { result_type: "leader", stage_number: 2, rider_id: "A", rank: 1, finish_time: "+0:00" },
+    { result_type: "leader", stage_number: 2, rider_id: "B", rank: 2, finish_time: "+0:10" },
+  ];
+  const stageRows = rows.filter((r) => r.result_type === "stage" && r.stage_number === 2);
+  const found = codes(ruleStandingsAddUp({ raceId: "x", stageNumber: 2, raceRows: rows, stageRows, events: [], startlist: ["A", "B"] }));
+  assert.equal(found.R7.codes.gc_rider_missing_stage, 1);
+});
