@@ -24,6 +24,7 @@
 import type { EffortLevel, RiderRole, RiderState, TeamOrder } from "../types.ts";
 import { MORNING_BREAK_FORMATION_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
 import { helperCostMultiplier } from "./teamPlay.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -86,7 +87,7 @@ export function effectiveTryBreakByRider(orders: readonly TeamOrder[] | undefine
     if (order.kind === "team_tactics") lastByTeam.set(order.team_id, order);
   }
   const out = new Map<string, boolean>();
-  for (const teamId of [...lastByTeam.keys()].sort((a, b) => a.localeCompare(b))) {
+  for (const teamId of [...lastByTeam.keys()].sort((a, b) => compareIds(a, b))) {
     const raw = lastByTeam.get(teamId)?.params?.["riders"];
     if (!Array.isArray(raw)) continue;
     for (const r of raw) {
@@ -278,7 +279,7 @@ export function applySmallBreakPullCost(
   const ceiling = 1 + TEAM_PLAY_EXTRA_TUNING.captainMaxBonusFraction;
   const paid = pace.pullCostFraction * clamp(kmShare, 0, 1);
   let next: Record<string, RiderState> | null = null;
-  for (const riderId of [...breakawayRiderIds].sort((a, b) => a.localeCompare(b))) {
+  for (const riderId of [...breakawayRiderIds].sort((a, b) => compareIds(a, b))) {
     const current = riders[riderId];
     if (!current || current.status !== "racing") continue;
     const factor = Number.isFinite(current.team_cp_factor) ? (current.team_cp_factor as number) : 1;
@@ -337,7 +338,7 @@ export function resolveMorningBreakFormation(input: {
   dangerousOutsideRoom?: boolean;
 }): MorningBreakFormation {
   const t = input.tuning ?? MORNING_BREAK_FORMATION_TUNING;
-  const riders = [...input.riders].sort((a, b) => a.rider_id.localeCompare(b.rider_id));
+  const riders = [...input.riders].sort((a, b) => compareIds(a.rider_id, b.rider_id));
   if (riders.length === 0) return emptyFormation();
 
   // 1. Faktiske forsoeg.
@@ -366,7 +367,7 @@ export function resolveMorningBreakFormation(input: {
       const list = input.dangerTeams(rider.rider_id);
       const teams = [...list]
         .filter((teamId) => !represented.has(teamId) && (input.stances.get(teamId) ?? "neutral") !== "let_go")
-        .sort((a, b) => a.localeCompare(b));
+        .sort((a, b) => compareIds(a, b));
       if (teams.length > 0) dangerTo.set(rider.rider_id, teams);
       const level = (list as { danger?: ReadonlyMap<string, number> }).danger;
       if (teams.length > 0 && level) dangerLevel.set(rider.rider_id, level);
@@ -400,7 +401,7 @@ export function resolveMorningBreakFormation(input: {
   const reactingTeamIds: string[] = [];
   const reactionWork = new Map<string, number>();
   const teamPull = new Map<string, number>();
-  for (const teamId of [...workersByTeam.keys()].sort((a, b) => a.localeCompare(b))) {
+  for (const teamId of [...workersByTeam.keys()].sort((a, b) => compareIds(a, b))) {
     const stance = input.stances.get(teamId) ?? "neutral";
     const share = stance === "chase" ? 1 : stance === "neutral" ? clamp(t.neutralReactionShare, 0, 1) : 0;
     if (!(share > 0)) continue;
@@ -433,7 +434,7 @@ export function resolveMorningBreakFormation(input: {
   for (const w of reactionWork.values()) totalWork += w;
   if (totalWork > 0) {
     const loadShare = Math.min(1, (t.referenceWorkers * Math.max(1, reactingTeamIds.length)) / totalWork);
-    for (const [riderId, w] of [...reactionWork.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+    for (const [riderId, w] of [...reactionWork.entries()].sort((a, b) => compareIds(a[0], b[0]))) {
       const paid = Math.max(0, t.oppositionCostFraction * w * loadShare);
       if (paid > 0) reactionCost.set(riderId, paid);
     }
@@ -468,13 +469,13 @@ export function resolveMorningBreakFormation(input: {
   }
   // #6079: ved flere succeser end maxSize beholdes beordrede foer spontane,
   // derefter stoerst margin.
-  successes.sort((a, b) => Number(b.ordered) - Number(a.ordered) || b.margin - a.margin || a.riderId.localeCompare(b.riderId));
-  const escaped = successes.slice(0, maxSize).map((s) => s.riderId).sort((a, b) => a.localeCompare(b));
+  successes.sort((a, b) => Number(b.ordered) - Number(a.ordered) || b.margin - a.margin || compareIds(a.riderId, b.riderId));
+  const escaped = successes.slice(0, maxSize).map((s) => s.riderId).sort((a, b) => compareIds(a, b));
   const escapedSet = new Set(escaped);
-  const failed = [...attemptedIds].filter((id) => !escapedSet.has(id)).sort((a, b) => a.localeCompare(b));
+  const failed = [...attemptedIds].filter((id) => !escapedSet.has(id)).sort((a, b) => compareIds(a, b));
 
   return {
-    attempted: [...attemptedIds].sort((a, b) => a.localeCompare(b)),
+    attempted: [...attemptedIds].sort((a, b) => compareIds(a, b)),
     escaped,
     failed,
     reactingTeamIds,

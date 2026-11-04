@@ -5,7 +5,7 @@
 #  3) Advarer hvis main har commits nyere end NOW.md (close-out glemt)
 #  4) Reminder hvis seneste main-commit har "Refs #N" men issue ikke har comment fra denne session
 #
-# Refs: GitHub issues #75, #76, #750, #1097.
+# Refs: GitHub issues #75, #76, #750, #1097, #7587 (udskydelse under et merge-tog).
 #
 # EN GANG PR. SESSION (ejer 15/10): Stop fyrer efter HVER tur, ikke kun ved
 # session-slut, og systemMessage vises for ejeren. Uden dedupe blev samme
@@ -70,12 +70,25 @@ fi
 if [ -d ".git" ]; then
   LAST_MAIN_TS=$(git log origin/main -1 --format=%ct 2>/dev/null || echo 0)
   LAST_NOW_TS=$(git log -1 --format=%ct -- docs/NOW.md 2>/dev/null || echo 0)
-  NOW_TS=$(date +%s)
+  # Klokken kan injiceres (AGENTS.md regel 16); markoer-laeseren nedenfor arver den.
+  NOW_TS=${CHECK_NOW_MD_NOW_EPOCH:-$(date +%s)}
 
   if [ "$LAST_MAIN_TS" -gt 0 ] && [ "$LAST_NOW_TS" -gt 0 ]; then
     MAIN_AGE=$((NOW_TS - LAST_MAIN_TS))
     GAP=$((LAST_MAIN_TS - LAST_NOW_TS))
-    if [ "$MAIN_AGE" -lt 1800 ] && [ "$GAP" -gt 300 ]; then
+    # #7587 (ejer 4/11): koerer et merge-tog (levende markoer fra merge-queue.ps1) og
+    # hoerer seneste main-commit til toget, udskydes (2) og (3): close-out kan foerst
+    # ske, naar toget er verificeret, og koeen skriver selv SHA-kommentaren straks.
+    # Udskudt = ingen noegle gemt, saa paamindelsen kommer, hvis den stadig gaelder
+    # efter toget. Uden (eller med stale) markoer: uaendret adfaerd.
+    TRAIN_ACTIVE=""
+    MARKER_JS="$(dirname "$0")/merge-queue-active-marker.mjs"
+    if [ "$MAIN_AGE" -lt 1800 ] && [ -f "$MARKER_JS" ] && command -v node >/dev/null 2>&1; then
+      if node "$MARKER_JS" covers --sha "$(git log origin/main -1 --format=%H 2>/dev/null)" --subject "$(git log origin/main -1 --format=%s 2>/dev/null)" >/dev/null 2>&1; then
+        TRAIN_ACTIVE=1
+      fi
+    fi
+    if [ -z "$TRAIN_ACTIVE" ] && [ "$MAIN_AGE" -lt 1800 ] && [ "$GAP" -gt 300 ]; then
       LATEST_MAIN_MSG=$(git log origin/main -1 --format=%s 2>/dev/null | head -c 80)
       LATEST_MAIN_SHA=$(git log origin/main -1 --format=%h 2>/dev/null)
       add "main-closeout:$LATEST_MAIN_SHA" "main blev opdateret \\\"$LATEST_MAIN_MSG\\\" - har du koert close-out? (NOW.md entry, FEATURE_STATUS.md hvis kontrakt-aendring, learnings hvis bugfix, issue-kommentar m. commit-SHA)"
@@ -83,7 +96,7 @@ if [ -d ".git" ]; then
 
     # (3) Refs #N reminder: seneste commit på main har Refs #N men issue mangler en
     # session-comment med matching SHA (heuristik for "AI lukkede ikke loopen").
-    if [ "$MAIN_AGE" -lt 1800 ] && command -v gh >/dev/null 2>&1; then
+    if [ -z "$TRAIN_ACTIVE" ] && [ "$MAIN_AGE" -lt 1800 ] && command -v gh >/dev/null 2>&1; then
       LATEST_MSG=$(git log origin/main -1 --format=%B 2>/dev/null | head -c 2000)
       REFS=$(printf '%s' "$LATEST_MSG" | grep -Eoi 'Refs #[0-9]+' | grep -Eo '[0-9]+' | sort -u)
       LATEST_SHA=$(git log origin/main -1 --format=%H 2>/dev/null | head -c 7)

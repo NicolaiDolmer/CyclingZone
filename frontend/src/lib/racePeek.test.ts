@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   terrainKind, bucketProfileType, raceTerrain, TERRAIN_KINDS, raceDateRange,
   isGrandTour, myRaceStatus, teamFit, selectionDayOrdinal, selectionHref,
-  raceDetailHref, raceArchiveHref,
+  raceDetailHref, raceArchiveHref, squadFill,
 } from "./racePeek.ts";
 
 test("#6514 terrainKind: kalenderens kategorier, ukendt er sprint", () => {
@@ -79,6 +79,22 @@ test("#6514/#7568 myRaceStatus: udtaget eller mangler, også under en Grand Tour
 test("#7533 myRaceStatus: en gemt udtagelse under startgulvet er ikke Klar", () => {
   assert.equal(myRaceStatus({ id: "s", isMine: true, entered: true, lineupShort: true, date: "2026-10-20" }, TODAY), "missing");
   assert.equal(myRaceStatus({ id: "s", isMine: true, entered: true, lineupShort: false, date: "2026-10-20" }, TODAY), "selected");
+});
+
+test("#7561 squadFill: Klar viser antal mod feltstørrelsen kun når der er plads til flere", () => {
+  const base = { id: "f", isMine: true, entered: true, date: "2026-10-20" };
+  const room = { ...base, lineupCount: 6, fieldSize: 8 };
+  assert.equal(myRaceStatus(room, TODAY), "selected"); // status uændret af tallet
+  assert.deepEqual(squadFill(room, myRaceStatus(room, TODAY)), { count: 6, field: 8 });
+  // Backenden udelader tallene ved fuldt felt (6/6, 8/8): bare "Klar".
+  assert.equal(squadFill(base, myRaceStatus(base, TODAY)), null);
+  const full = { ...base, lineupCount: 8, fieldSize: 8 };
+  assert.equal(squadFill(full, myRaceStatus(full, TODAY)), null);
+  // Under startgulvet er status Mangler, og så vises intet tal.
+  const short = { ...base, lineupShort: true, lineupCount: 3, fieldSize: 8 };
+  assert.equal(myRaceStatus(short, TODAY), "missing");
+  assert.equal(squadFill(short, myRaceStatus(short, TODAY)), null);
+  assert.equal(squadFill(null, null), null);
 });
 
 test("#6514 myRaceStatus: afmeldt loeb har ingen status og binder ikke som Grand Tour", () => {

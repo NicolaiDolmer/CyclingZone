@@ -38,6 +38,7 @@
 
 import type { AbilityKey, ClimbCategory, FinaleType, ProfileType, RaceGroup, Segment } from "../types.ts";
 import type { GcDangerTuning } from "./gcThreat.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -436,7 +437,7 @@ export function runInOpenOnlyTempo<T extends { dtSeconds: number }>(
   tempoByGroup: Map<string, T>,
   incidentChasers: Readonly<Record<string, unknown>> | undefined,
 ): Map<string, T> {
-  const sorted = [...groups].sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+  const sorted = [...groups].sort((a, b) => a.gap_seconds - b.gap_seconds || compareIds(a.id, b.id));
   let out: Map<string, T> | null = null;
   let aheadDt: number | null = null;
   for (const group of sorted) {
@@ -503,7 +504,7 @@ export function clusterSplitRiders(
   riders: ReadonlyArray<{ riderId: string; gapSeconds: number }>,
   t: TimeModelTuning = TIME_MODEL_V3_TUNING,
 ): Array<{ riderIds: string[]; gapSeconds: number }> {
-  const sorted = [...riders].sort((a, b) => a.gapSeconds - b.gapSeconds || a.riderId.localeCompare(b.riderId));
+  const sorted = [...riders].sort((a, b) => a.gapSeconds - b.gapSeconds || compareIds(a.riderId, b.riderId));
   const clusters: Array<{ riders: Array<{ riderId: string; gapSeconds: number }> }> = [];
   for (const rider of sorted) {
     const last = clusters[clusters.length - 1];
@@ -630,7 +631,7 @@ export function valleyRegroupTempoV3<T extends { dtSeconds: number }>(
   const lengthKm = seg && Number.isFinite(seg.from_km) && Number.isFinite(seg.to_km) ? Math.max(0, (seg.to_km as number) - (seg.from_km as number)) : 0;
   if (kind !== "flat" && kind !== "rolling") return tempoByGroup;
   if (!segments.slice(0, segmentIndex).some((s) => s.kind === "climb")) return tempoByGroup;
-  const sorted = [...groups].sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+  const sorted = [...groups].sort((a, b) => a.gap_seconds - b.gap_seconds || compareIds(a.id, b.id));
   let out: Map<string, T> | null = null;
   let reference: { gap: number; dtSeconds: number; size: number } | null = null;
   for (const group of sorted) {

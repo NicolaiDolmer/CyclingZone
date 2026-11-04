@@ -77,6 +77,7 @@ import { eligibleKomHunters } from "../mechanics/komJersey6937.ts"; // #6937
 import { LEADOUT_ORDER_KIND, isSprintTrainProfile, sprintTrainLeadoutOrder } from "../mechanics/leadout.ts";
 import { isOfficialTimesV3OrLater, isOfficialTimesV5OrLater, isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
 import { CO_CAPTAIN_ROLE, aiCoCaptainId } from "../mechanics/sharedCaptain.ts";
+import { compareIds } from "../../../compareIds.ts";
 import { stagePlanOrderFromRow } from "../../../stagePlanEngine.ts"; // #7003
 
 export type { BreakawayStance, TeamTacticsOrder };
@@ -220,7 +221,7 @@ export function rosterByTeam(roster: readonly RosterRider[]): Map<string, Roster
     if (!byTeam.has(teamId)) byTeam.set(teamId, []);
     byTeam.get(teamId)!.push({ rider_id: String(rider.rider_id), role: toRole(rider.role) });
   }
-  return new Map([...byTeam.entries()].sort((a, b) => a[0].localeCompare(b[0])));
+  return new Map([...byTeam.entries()].sort((a, b) => compareIds(a[0], b[0])));
 }
 
 /** Evne-raekken som M14 laeser den. M14 clamper selv hver vaerdi (null/streng → tal). */

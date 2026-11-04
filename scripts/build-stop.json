@@ -2,6 +2,61 @@
   "active": true,
   "since": "2026-10-29",
   "areaCap": 3,
+  "loft": {
+    "areas": [
+      {
+        "area": "race-engine",
+        "name": "Motor og løbsfilm",
+        "labels": [
+          "cat:race-engine",
+          "slice:race-engine"
+        ],
+        "titleKeywords": [
+          "[motor]",
+          "[race]",
+          "[race-engine]",
+          "[løbsfilm]",
+          "løbsfilm"
+        ],
+        "epics": [
+          7260
+        ]
+      },
+      {
+        "area": "taktik",
+        "name": "Taktik",
+        "labels": [
+          "cat:taktik"
+        ],
+        "titleKeywords": [
+          "[taktik]",
+          "taktik"
+        ],
+        "epics": [
+          7266
+        ]
+      },
+      {
+        "area": "udvikling-2",
+        "name": "Udvikling 2.0",
+        "labels": [
+          "cat:udvikling-2",
+          "epic:progression"
+        ],
+        "titleKeywords": [
+          "[udvikling]",
+          "udvikling 2.0"
+        ],
+        "epics": [
+          6110
+        ]
+      }
+    ],
+    "brandLabels": [
+      "brand",
+      "forkert-info"
+    ]
+  },
   "finishList": [
     {
       "issue": 7445,
@@ -403,6 +458,30 @@
     {
       "issue": 7588,
       "why": "Realisme-gate for motoren (løsning B), ejer-go 3/11 i chat"
+    },
+    {
+      "issue": 7628,
+      "why": "Merge-kø løser TS-baseline-konflikter selv, ejer-go 4/11 i chat"
+    },
+    {
+      "issue": 7629,
+      "why": "Delingstjek i close-out mellem PC'er, ejer-go 4/11 i chat"
+    },
+    {
+      "issue": 7630,
+      "why": "Roadmap-vagt der flagger forkerte punkter, ejer-go 4/11 i chat"
+    },
+    {
+      "issue": 7631,
+      "why": "Masterplan og artifact fra én kilde, ejer-go 4/11 i chat"
+    },
+    {
+      "issue": 7632,
+      "why": "Til dørs-tavlen som ejerens levende overblik, ejer-go 4/11 i chat"
+    },
+    {
+      "issue": 7654,
+      "why": "Auto-tog + alarm for klare PR-er, ejer-go 4/11 i chat (MASTERPLAN §0)"
     }
   ],
   "brandList": [
@@ -765,6 +844,41 @@
       "issue": 7561,
       "reason": "Kalender: Klar-status viser ikke at feltet har plads til flere end gulvet, ejer-valg 3/11 i #7495",
       "since": "2026-11-03"
+    },
+    {
+      "issue": 7635,
+      "reason": "Etapeplan: nedkørselsangreb gør hele feltet sat (Giro etape 8), ejer-go løsning A 4/11 i #7495",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 7636,
+      "reason": "Etapeplanens resumé modsiger filmen (Giro etape 8), ejer-go løsning A 4/11 i #7495",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 7643,
+      "reason": "Sandhedsvagt efter hver etape (resultat, film, referat, plan), ejer-go valg A 4/11 i #7495",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 7644,
+      "reason": "Nedkørsler samler for meget, måling før byg, ejer-go valg A 4/11 i #7495",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 7645,
+      "reason": "For lidt selektion på kuperet/mellembjerg, designspor, ejer-go valg A 4/11 i #7495",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 7639,
+      "reason": "Løbsfilm: udgået rytter lever videre som gruppe (Giro etape 6), ejer-go valg A 4/11 i #7495",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 7640,
+      "reason": "Vinderens angreb står som tabt tid (Giro etape 8), ejer-go valg A 4/11 i #7495",
+      "since": "2026-11-04"
     }
   ]
 }
