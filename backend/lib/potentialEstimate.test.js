@@ -324,7 +324,7 @@ test("migrationen matcher lib'en: ord, skrive-årsager, skjulte kolonner og serv
   }
   assert.match(sql, /REVOKE SELECT \(base_talent, talent_ceiling\) ON public\.riders FROM PUBLIC, anon, authenticated;/);
   assert.match(sql, /ALTER TABLE public\.rider_potential_estimates ENABLE ROW LEVEL SECURITY;/);
-  assert.match(sql, /REVOKE ALL ON public\.rider_potential_estimates FROM PUBLIC, anon, authenticated;/);
+  assert.match(sql, /REVOKE ALL ON public\.rider_potential_estimates FROM PUBLIC, anon, authenticated, service_role;/);
   assert.doesNotMatch(sql, /CREATE POLICY/, "tabellen er kun for serveren: ingen policies");
   // Kolonnerne i rækken fra planEstimateWrite findes alle i tabellen.
   for (const col of Object.keys(plan({}).row)) assert.match(sql, new RegExp(`\\n  ${col}\\s`), `kolonnen ${col} mangler i migrationen`);
