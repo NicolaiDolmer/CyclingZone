@@ -482,6 +482,10 @@
     {
       "issue": 7654,
       "why": "Auto-tog + alarm for klare PR-er, ejer-go 4/11 i chat (MASTERPLAN §0)"
+    },
+    {
+      "issue": 7664,
+      "why": "Supabase uden fejl trin 3: billigere team_race_points_mv-refresh, ejer valgte retning A 4/11 i #7659"
     }
   ],
   "brandList": [
