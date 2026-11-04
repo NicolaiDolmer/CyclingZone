@@ -609,6 +609,7 @@ export async function main(argv = process.argv.slice(2), { now, clock, monotonic
     candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, parallel: opts.parallel, source, limit: opts.limit ?? prev?.limit ?? null, benchScope: opts.benchScope, thresholdsFile: resolveThresholdsFile(prev, opts), thresholds,
     syntheticField: opts.syntheticField, breakawayIntent: breakawayIntentMeta ?? { mode: opts.breakawayIntent ?? "none" }, routesFrom: opts.routesFrom, routesSignature: opts.routesSignature ?? null, season: opts.season, trackFatigue: opts.trackFatigue === true, field: inputs.field, routes: inputs.routes,
     ...(process.env.CZ_QUEEN_STAGE_GAP_7236 === "1" ? { queenStageGap7236: true } : {}), // #7236: kortet viser om loftet var taendt
+    ...(process.env.CZ_DESCENT_REGROUP_CAP_7644 === "1" ? { descentRegroupCap7644: true } : {}), // #7644: kortet viser om nedkoerslens loft var taendt
     // #6804/#2757: eksportens mappe, saa kortet (ogsaa --report-only) finder loebenes cache.json.
     cacheDir: fromDir ?? prev?.cacheDir ?? null,
     // #6912: forspringskurven er en kontakt, ikke en revision; kortet skal vise om den var taendt.
