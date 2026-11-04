@@ -32,7 +32,7 @@
 // finalizeYouthAuctionRecord) — kompensation for inaktivitet. rejectAcademyCandidate
 // (manager-initieret afvisning, IKKE udløb) kalder samme funktion UDEN denne
 // parameter og udløser derfor aldrig kreditering.
-import { isIntakeOfferExpiryEnabled } from "./academyIntakeExpiryFlag.js";
+import { isIntakeOfferExpiryEnabled } from "./academyIntakeExpiryFlag.ts";
 import { listRejectedAsYouthAuction } from "./youthMarket.js";
 import { applySeniorSquadFilter } from "./squads.js";
 import {

@@ -5,6 +5,8 @@ import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 
 export const INTAKE_OFFER_EXPIRY_FLAG_KEY = "intake_offer_expiry_enabled";
 
-export async function isIntakeOfferExpiryEnabled(supabase, opts = {}) {
+type FlagOptions = NonNullable<Parameters<typeof evaluateFlagStage>[1]> & Record<string, unknown>;
+
+export async function isIntakeOfferExpiryEnabled(supabase: unknown, opts: FlagOptions = {}): Promise<boolean> {
   return evaluateFlagStage(await readFlagStage(supabase, INTAKE_OFFER_EXPIRY_FLAG_KEY), opts);
 }

@@ -22,6 +22,7 @@
 
 import type { AbilityKey, Entrant, GcContext, GcStageDemand, GcStanding, ProfileType, RaceGroup, RouteV2 } from "../types.ts";
 import { s5V3ContenderAbilityRank, s5V3IsShortStageRace, s5V3ProjectionWeight } from "./breakawayV3_6804.ts";
+import { compareIds } from "../../../compareIds.ts";
 import { isProjectedContender, projectedAllowanceSeconds, projectedGapToWinnerSeconds } from "./gcBreakawayLeash7258.ts"; // #7258
 
 export type GcThreatSeverity = "none" | "moderate" | "serious";
@@ -455,7 +456,7 @@ export function normalizeGcContext(raw: unknown): GcContext {
         standings.push({ rider_id: riderId, rank, gap_seconds: gap });
       }
       if (!hasStage || standings.length === 0) return { status: "missing", ...(hasStage ? { stage_number: stageNumber } : {}) };
-      standings.sort((a, b) => a.rank - b.rank || a.rider_id.localeCompare(b.rider_id));
+      standings.sort((a, b) => a.rank - b.rank || compareIds(a.rider_id, b.rider_id));
       // #5978 (ADDITIVT, KUN s5_profiles_v1): S5-trusselsmodellens maerker. Paa
       // foerste etape staar alle lige: ingen foerer (ingen troeje at forsvare).
       const s5 = ctx["threat_model"] === "s5";
@@ -629,7 +630,7 @@ export function assessGcThreat(input: {
 
   const ahead = input.groups
     .filter((g) => g.id !== protectedGroup.id && g.gap_seconds < protectedGroup.gap_seconds)
-    .sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+    .sort((a, b) => a.gap_seconds - b.gap_seconds || compareIds(a.id, b.id));
   if (ahead.length === 0) {
     // Ingen foran: enten er GC-rytterens gruppe selv fronten (fx han sidder i
     // udbruddet), eller der er intet udbrud. Ingen jagt at lave.
@@ -743,7 +744,7 @@ export function assessGcThreat(input: {
   if (!anyClassified) return { ...base, threat_rider_ids: [], tied: false, severity: "none", reason: "no_classified_rider_ahead" };
 
   const bySeverity = (a: Candidate, b: Candidate) =>
-    severityRank[b.severity] - severityRank[a.severity] || a.margin - b.margin || a.riderId.localeCompare(b.riderId);
+    severityRank[b.severity] - severityRank[a.severity] || a.margin - b.margin || compareIds(a.riderId, b.riderId);
   const counted = candidates.filter((c) => !c.own).sort(bySeverity);
   const suppressed = candidates.filter((c) => c.own).sort(bySeverity);
   if (suppressed.length > 0 && (counted.length === 0 || counted[0].severity === "none")) {
@@ -880,7 +881,7 @@ export function s5MorningGcExcludedRiders(
   const inReach = (id: string) => synthetic || (gapOf.get(id) ?? 0) <= potentialMaxGapSeconds;
   const byAbility = [...racingRiderIds]
     .filter((id) => gcAbilityIn(gc, entrants[id]) > 0 && inReach(id))
-    .sort((a, b) => gcAbilityIn(gc, entrants[b]) - gcAbilityIn(gc, entrants[a]) || a.localeCompare(b));
+    .sort((a, b) => gcAbilityIn(gc, entrants[b]) - gcAbilityIn(gc, entrants[a]) || compareIds(a, b));
   for (const id of byAbility.slice(0, rankAtMost)) out.add(id);
   return out;
 }
@@ -925,7 +926,7 @@ function assessOneDayThreat(input: {
   const base = { protected_rider_id: protectedId, chase_group_id: protectedGroup.id, ...oneDay };
   const ahead = input.groups
     .filter((g) => g.id !== protectedGroup.id && g.gap_seconds < protectedGroup.gap_seconds)
-    .sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+    .sort((a, b) => a.gap_seconds - b.gap_seconds || compareIds(a.id, b.id));
   if (ahead.length === 0) {
     const protectedLeads = input.groups.some((g) => g.id !== protectedGroup.id);
     return { ...base, threat_rider_ids: [], tied: false, severity: "none", reason: protectedLeads ? "protected_ahead" : "nothing_ahead" };
@@ -951,7 +952,7 @@ function assessOneDayThreat(input: {
   }
   const severityRank: Record<GcThreatSeverity, number> = { none: 0, moderate: 1, serious: 2 };
   const bySeverity = (a: Candidate, b: Candidate) =>
-    severityRank[b.severity] - severityRank[a.severity] || a.margin - b.margin || a.riderId.localeCompare(b.riderId);
+    severityRank[b.severity] - severityRank[a.severity] || a.margin - b.margin || compareIds(a.riderId, b.riderId);
   const counted = candidates.filter((c) => !c.own).sort(bySeverity);
   const suppressed = candidates.filter((c) => c.own).sort(bySeverity);
   if (counted.length === 0) {
@@ -1003,7 +1004,7 @@ export function formationDangerTeams(input: {
   const groups = [probe, rest];
   const out: FormationDangerTeams = [];
   const dangerByTeam = new Map<string, number>();
-  for (const teamId of [...input.teamIds].sort((a, b) => a.localeCompare(b))) {
+  for (const teamId of [...input.teamIds].sort((a, b) => compareIds(a, b))) {
     if (teamId === riderTeam) continue;
     const protectedRiderId = gcContext.status === "one_day"
       ? oneDayProtectedRider({ teamId, groups, entrants: input.entrants, routeDemand: input.dangerModel.routeDemand!, racingRiderIds: input.racingRiderIds })

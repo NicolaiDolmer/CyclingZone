@@ -190,7 +190,7 @@ export function breakawayTrajectoryRowFacts(events, distanceKm) {
 function newCell(key) {
   return {
     key, observations: 0, routes: new Set(),
-    gapTo10: [], gapMissing: 0, ittGapTo10PerKm: [], breakawayWin: { hits: 0, n: 0, missing: 0 },
+    gapTo10: [], gapMissing: 0, ittGapTo10PerKm: [], ittMissing: 0, breakawayWin: { hits: 0, n: 0, missing: 0 },
     maxLead: [], leadMissing: 0, peakFrac: [], plateau: [], caughtKmToGo: [], deciles: Array.from({ length: DECILES }, () => []),
     favourite: { hits: 0, best: 0, n: 0, missing: 0 },
   };
@@ -202,7 +202,9 @@ function addRow(cell, row, routeId, favourites) {
   const tt = TIME_TRIAL_PROFILES.has(row.profile_type);
   if (tt) {
     const perKm = num(row.ittGapTo10Per40Km);
+    // En enkeltstart uden målbart gab (fx færre end ti i mål) er manglende evidens, aldrig udeladt.
     if (perKm !== null) cell.ittGapTo10PerKm.push(perKm / 40);
+    else cell.ittMissing += 1;
   } else {
     // M1 kræver et kendt nej til udbrudssejr; ukendt udfald eller manglende gab er manglende evidens.
     if (row.breakawayWon === false && num(row.gapTo10) !== null) cell.gapTo10.push(Number(row.gapTo10));
@@ -255,7 +257,7 @@ function finishCell(c, params) {
     key: c.key, observations: c.observations, routes,
     metrics: {
       gapTo10: { ...dist(c.gapTo10), missing: c.gapMissing },
-      ittGapTo10PerKm: dist(c.ittGapTo10PerKm),
+      ittGapTo10PerKm: { ...dist(c.ittGapTo10PerKm), missing: c.ittMissing },
       breakawayWinShare: { n: c.breakawayWin.n, missing: c.breakawayWin.missing, share: shareOf(c.breakawayWin.hits, c.breakawayWin.n) },
       breakawayMaxLead: { ...dist(c.maxLead), missing: c.leadMissing },
       bigLeadShare: { n: leadN, missing: c.leadMissing, share: big === null ? null : shareOf(big, leadN), missingParam: big === null },
