@@ -37,6 +37,13 @@ on:
 permissions:
   contents: read
 
+# #7582: en forældet PR-kørsel annulleres; push og dispatch får hver sin gruppe
+# (run_id). sync-jobbets egen faste gruppe nedenfor serialiserer stadig
+# prod-skrivningen.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   roadmap-text:
     name: roadmap-text
