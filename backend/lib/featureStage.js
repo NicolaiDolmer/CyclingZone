@@ -17,8 +17,9 @@
 //  1. Et opslagsfejl caches ALDRIG og falder ALDRIG tilbage til en gammel
 //     værdi. Fejl giver null (= off) præcis som før, så en fejl aldrig kan
 //     blive til "tændt" — heller ikke via et tidligere "on" i cachen.
-//  2. Kontakter der ændrer løbs- eller træningsresultater, eller som er
-//     nødstop for et live system, læses friskt hver gang (FRESH_FLAG_KEYS).
+//  2. Kontakter der ændrer løbs- eller træningsresultater, som er nødstop for
+//     et live system, eller som har deres egen cache hos kalderen, læses
+//     friskt hver gang (FRESH_FLAG_KEYS).
 //     Motoren læser dem én gang pr. afvikling som i dag, og et nødstop virker
 //     ved næste afvikling uden at vente på cachen. En test vogter listen mod
 //     motorens egne imports, så en ny motor-kontakt ikke kan glide ind i cachen.
@@ -66,6 +67,12 @@ export const FRESH_FLAG_KEYS = Object.freeze(new Set([
   // Nødstop for live systemer
   "stage_scheduler_enabled",
   "auto_prize_enabled",
+  // Rytterværdi-modellen: skrive-stien skal læse friskt, og læse-fladerne har
+  // allerede deres egen cache i riderValuationModelSelect.js (ingen dobbelt-cache).
+  "rider_valuation_model",
+  "rider_production_value_model",
+  "rider_valuation_v6_market",
+  "rider_value_phase_step",
 ]));
 
 /** @type {WeakMap<object, Map<string, { value: any, expiresAt: number }>>} */
