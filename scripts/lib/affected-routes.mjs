@@ -102,12 +102,16 @@ export function deriveAffectedRoutes(changedFiles, deps, opts = {}) {
     }
   }
 
-  if (!relevant.length && !uncertain) {
+  // Filer uden for frontend/src kan alligevel være frontend-afhængigheder
+  // (fx delte backend-moduler). De tages kun med hvis en frontend-fil importerer dem.
+  const outside = changed.filter((f) => !f.startsWith(SRC_PREFIX));
+
+  if (!relevant.length && !outside.length && !uncertain) {
     reasons.push("ingen frontend/src-filer ændret, ingen ruter berørt");
     return { routes: [], reasons, fallback: false };
   }
 
-  if (relevant.length) {
+  if (relevant.length || outside.length) {
     let files;
     try {
       files = listFiles().map(norm);
@@ -118,7 +122,7 @@ export function deriveAffectedRoutes(changedFiles, deps, opts = {}) {
     }
 
     if (files) {
-      const fileSet = new Set(files);
+      const fileSet = new Set([...files, ...outside]);
       const importers = new Map(); // fil -> Set<importerende filer>
       for (const f of files) {
         if (!CODE_EXT_RE.test(f) || TEST_FILE_RE.test(f)) continue;
@@ -137,6 +141,14 @@ export function deriveAffectedRoutes(changedFiles, deps, opts = {}) {
           importers.get(target).add(f);
         }
       }
+
+      for (const f of outside) {
+        if (importers.has(f)) {
+          relevant.push(f);
+          reasons.push(`${f}: importeres af frontend-kode`);
+        }
+      }
+      if (!relevant.length && !uncertain) reasons.push("ingen berørte frontend-afhængigheder, ingen ruter berørt");
 
       const isPage = (f) => routeMap.has(basenameNoExt(f)) && f.includes("/pages/");
 
@@ -184,7 +196,8 @@ export function deriveAffectedRoutes(changedFiles, deps, opts = {}) {
           uncertain = true;
           reasons.push(`${start}: ingen sti til en side`);
         } else if (reachedRoot) {
-          reasons.push(`${start}: nogle importkæder ender uden for en side (ignoreret)`);
+          uncertain = true;
+          reasons.push(`${start}: nogle importkæder ender uden for en side (app-skal/ukendt)`);
         } else {
           reasons.push(`${start}: når side(r) via importgrafen`);
         }

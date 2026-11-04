@@ -151,3 +151,32 @@ test("testfiler alene påvirker ingen sider", () => {
   assert.deepEqual(r.routes, []);
   assert.equal(r.fallback, false);
 });
+
+test("delt komponent der både når en side og app-skallen giver fallback", () => {
+  const deps = makeDeps(
+    {
+      [`${S}components/Switcher.jsx`]: "export default 1;",
+      [`${S}components/Layout.jsx`]: `import S from "./Switcher";`,
+      [`${S}pages/ResetPasswordPage.jsx`]: `import S from "../components/Switcher";`,
+      [`${S}pages/DashboardPage.jsx`]: "export default 1;",
+    },
+    { ResetPasswordPage: "reset-password", DashboardPage: "dashboard" }
+  );
+  const r = deriveAffectedRoutes([`${S}components/Switcher.jsx`], deps);
+  assert.equal(r.fallback, true);
+  assert.ok(r.routes.includes("reset-password"));
+  assert.ok(r.routes.includes("dashboard"));
+});
+
+test("backend-modul importeret af en side giver siden; ren backend-fil giver intet", () => {
+  const deps = makeDeps(
+    { [`${S}pages/TeamPage.jsx`]: `import e from "../../../backend/lib/elig.js";` },
+    { TeamPage: "team" }
+  );
+  const hit = deriveAffectedRoutes(["backend/lib/elig.js"], deps);
+  assert.deepEqual(hit.routes, ["team"]);
+  assert.equal(hit.fallback, false);
+  const miss = deriveAffectedRoutes(["backend/lib/other.js"], deps);
+  assert.deepEqual(miss.routes, []);
+  assert.equal(miss.fallback, false);
+});
