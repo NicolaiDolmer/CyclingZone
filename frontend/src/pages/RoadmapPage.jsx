@@ -68,10 +68,13 @@ const KNOWN_ISSUE_BASE_COLUMNS = "id, area, status, title_en, title_da, sort_ord
 // fejler querien med dem, og så hentes uden (tidslinjen viser trinnet uden dato).
 const KNOWN_ISSUE_COLUMNS = `${KNOWN_ISSUE_BASE_COLUMNS}, confirmed_at, fixing_at`;
 
+/** @returns {Promise<{ data: import("../lib/roadmapModel.ts").KnownIssue[] | null }>} */
 async function fetchKnownIssues() {
+  /** @param {string} columns */
   const query = (columns) => supabase.from("known_issues").select(columns).eq("published", true).order("sort_order");
   const result = await query(KNOWN_ISSUE_COLUMNS);
-  return result.error ? query(KNOWN_ISSUE_BASE_COLUMNS) : result;
+  // Kolonnelisten er en skabelonstreng, så supabase-js kan ikke udlede rækketypen.
+  return /** @type {any} */ (result.error ? await query(KNOWN_ISSUE_BASE_COLUMNS) : result);
 }
 
 function readOnlyUnrated() {
@@ -134,7 +137,9 @@ export default function RoadmapPage() {
   const [query, setQuery] = useState("");
   // #7666: patch notes pr. GitHub-issue. Hentes først når Done åbnes (filen er
   // stor og caches af CDN'en); null = ikke hentet, tomt Map = fejlede.
-  const [patchIndex, setPatchIndex] = useState(null);
+  const [patchIndex, setPatchIndex] = useState(
+    /** @type {Map<number, import("../lib/roadmapModel.ts").PatchNoteRef[]> | null} */ (null),
+  );
 
   useEffect(() => {
     if (tab !== "done" || patchIndex) return;

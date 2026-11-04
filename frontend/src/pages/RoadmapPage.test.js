@@ -98,7 +98,7 @@ test("RoadmapPage's item-query bruger den delte kolonneliste + issue_ref (#5673,
 // #7666: de nye tidslinje-kolonner findes først når migrationen er applied.
 test("RoadmapPage falder tilbage til kendte fejl uden tidslinje-kolonner (#7666)", () => {
   assert.match(source, /KNOWN_ISSUE_COLUMNS = `\$\{KNOWN_ISSUE_BASE_COLUMNS\}, confirmed_at, fixing_at`/);
-  assert.match(source, /result\.error \? query\(KNOWN_ISSUE_BASE_COLUMNS\) : result/);
+  assert.match(source, /result\.error \? await query\(KNOWN_ISSUE_BASE_COLUMNS\) : result/);
 });
 
 test("RoadmapPage henter patch notes først når Done åbnes (#7666)", () => {
