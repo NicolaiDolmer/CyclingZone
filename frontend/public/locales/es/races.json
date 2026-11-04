@@ -55,6 +55,10 @@
         "end": "Los últimos 10 km empiezan en el descenso hacia meta, así que el paso {number} solo arranca en el final de la etapa.",
         "finale": "Los últimos 10 km empiezan en el descenso hacia meta, así que el paso {number} solo arranca en el final de la etapa."
       },
+      "flat": {
+        "start": "Los últimos 10 km empiezan entre la última subida y la meta, así que el paso {number} arranca en la cima.",
+        "finale": "Los últimos 10 km empiezan entre la última subida y la meta, así que el paso {number} solo arranca en el final de la etapa."
+      },
       "samePoint": "Los pasos {first} y {second} cambian en el mismo punto, así que el paso {first} no se corre."
     },
     "timeTrial": "Sin plan de etapa en una contrarreloj.",
