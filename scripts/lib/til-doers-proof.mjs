@@ -88,9 +88,22 @@ const KEY_LINE = /^(issue|side|prod)\s*:\s*(.*)$/i;
 const SIDE_CHECK = /^(selector|tekst|text)\s+(.+)$/i;
 const PROD_CHECK = /^(\S+)\s+(\S+)\s*->\s*(\d{3})$/;
 const ROUTE = /^\/(?!\/)[^\s|]*$/;
+const ROUTE_BASE = 'https://route-check.invalid';
+
+// En rute skal blive på samme origin, også efter URL-parsing: "/\host" og
+// lignende læses som "//host" og må aldrig pege ud af sitet (Codex).
+function isSameOriginRoute(path) {
+  if (!ROUTE.test(path) || /[\\\u0000-\u001f]/.test(path)) return false;
+  try {
+    const u = new URL(path, ROUTE_BASE);
+    return u.origin === ROUTE_BASE && !u.username && !u.password;
+  } catch {
+    return false;
+  }
+}
 
 function validProdUrl(url) {
-  if (ROUTE.test(url)) return true;
+  if (url.startsWith('/')) return isSameOriginRoute(url);
   if (!/^https:\/\//i.test(url)) return false;
   try {
     const u = new URL(url);
@@ -126,7 +139,7 @@ function parseBlock(lines, startLine) {
       const sm = SIDE_CHECK.exec(check);
       if (!sm || !sm[2].trim()) {
         decl.errors.push(`${where}: side-tjek uden selector eller tekst afvises ("${oneLine(val)}")`);
-      } else if (!ROUTE.test(path)) {
+      } else if (!isSameOriginRoute(path)) {
         decl.errors.push(`${where}: siden skal være en rute der starter med / ("${oneLine(path)}")`);
       } else {
         const kind = sm[1].toLowerCase() === 'selector' ? 'selector' : 'tekst';

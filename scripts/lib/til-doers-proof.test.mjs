@@ -324,3 +324,22 @@ test('planProofComment: opret, uændret, rediger og ignorér fremmede kopier', (
   const otherIssue = own(6, renderProofComment({ pr: PR, issue: N + 1, sha: SHA, results }));
   assert.equal(planProofComment({ ...key, comments: [otherTrain, otherIssue] }).action, 'create');
 });
+
+test('ruter med omvendt skråstreg eller credentials kan ikke pege ud af sitet (Codex)', () => {
+  const fence = '`'.repeat(3);
+  const bs = String.fromCharCode(92);
+  for (const line of [
+    `side: /${bs}external.example/proof | tekst Logged in`,
+    `side: /${bs}${bs}external.example/x | selector #a`,
+    `prod: GET /${bs}user:password@external.example/proof -> 200`,
+    `prod: GET /${bs}external.example/health -> 200`,
+  ]) {
+    const body = `${fence}til-doers-proof\nissue: 7585\n${line}\n${fence}`;
+    const d = parseProofDeclarations(body).declarations[0];
+    assert.ok(d.errors.length > 0, `skal afvises: ${line}`);
+    assert.equal(d.sides.length + d.prods.length, 0, `intet tjek må accepteres: ${line}`);
+  }
+  // En almindelig rute er stadig gyldig.
+  const ok = parseProofDeclarations(`${fence}til-doers-proof\nissue: 7585\nside: /team?tab=squad | tekst Squad\n${fence}`).declarations[0];
+  assert.deepEqual([ok.errors.length, ok.sides.length], [0, 1]);
+});
