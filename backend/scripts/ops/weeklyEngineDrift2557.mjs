@@ -541,7 +541,7 @@ export function evaluateRealism(realism, bandsEntry) {
     if (!isConcreteCell(cell) || !(c.observations > 0)) continue;
     const parsed = parseCellKey(cell);
     if (!parsed) continue;
-    const tt = parsed.finish === "tt";
+    const tt = TIME_TRIAL_PROFILES.has(parsed.terrain); // samme skel som maalemodulet: profilen, ikke afslutningen
     const keys = cellKeysOf(parsed);
     const metrics = REALISM_DRIFT_METRICS.filter((metric) => REALISM_TT_METRICS.has(metric) === tt)
       .filter((metric) => !bands || !keys.some((k) => bands.cells[k]?.metrics?.[metric]));
