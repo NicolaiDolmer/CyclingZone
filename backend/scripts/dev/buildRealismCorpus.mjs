@@ -77,7 +77,6 @@ export const CORPUS_SQUAD = "senior";
 
 /** Felter der aldrig må stå i en committet fil (anonymisering; testen låser det). */
 export const FORBIDDEN_KEYS = Object.freeze(["name", "firstname", "lastname", "user_id", "username", "email", "manager", "discord"]);
-const ROUTE_NAME_HOLDERS = new Set(["climbs", "sprints", "sectors"]); // rute-indhold: stigninger/spurter har navne
 
 /**
  * Scenariepakken: de etaper der har givet fejl, så en fundet fejl bliver en permanent vagt.
@@ -230,7 +229,7 @@ export function buildSquads(caches) {
   const teams = new Map(); // prodId -> {is_ai, divs: Map}
   const riders = new Map(); // prodId -> {team, abilities}
   let conflicts = 0;
-  for (const c of caches) {
+  for (const c of [...caches].sort((a, b) => byString(a?.race?.id ?? "", b?.race?.id ?? ""))) {
     if (c?.race?.squad !== CORPUS_SQUAD) continue;
     const div = c.race.league_division_id ?? null;
     const aiOf = new Map((c.teams ?? []).map((t) => [t.id, t.is_ai === true]));
