@@ -485,6 +485,13 @@ export const QUEEN_STAGE_GAP_7236_TUNING = deepFreeze({
   maxTopToFinishKm: 13, // kun naar resten fra toppen til maal er kortere end dette (lange nedkoersler uroerte)
 });
 
+// #7635 (KUN s5_profiles_v3 + kontakten stage_plan_dropped_front_7635, SLUKKET): hvornaar en rytter
+// med etapeplan er "sat" (stagePlanEngine.isRiderDropped7635). Valgt konservativt, begrundelse privat.
+export const STAGE_PLAN_DROPPED_7635_TUNING = deepFreeze({
+  minGapSeconds: 20, // afstanden bag fronten der taeller som sat
+  consecutiveChecks: 2, // segmentgraenser i traek afstanden skal holde
+});
+
 // ── M1 (groups.mergeTailGroupsDetailed, #5813) — ADDITIV grupetto-samling ────
 // SS2's frosne GroupsTuning har kun den almindelige merge-taerskel. Se
 // groups.mergeTailGroupsDetailed for reglen og segmentLoop for hvornaar den

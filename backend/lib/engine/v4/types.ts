@@ -230,6 +230,8 @@ export type StageInput = {
   gc_context?: GcContext | null;
   // #7236 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): loft paa favoritgabet over sidste top paa bjerg med kort nedkoersel. Udeladt = som foer.
   queen_stage_gap_7236?: true | null;
+  // #7635 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): etapeplanens "sat" kun bag en rigtig front (stagePlanEngine.ts). Udeladt = som foer.
+  stage_plan_dropped_front_7635?: true | null;
   // #6649 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + app_config day_form_6649): dagsformen med forklaring
   // (mechanics/dayForm6649.ts). Broen saetter feltet kun naar kalderen eksplicit sender
   // dayForm6649=true (raceRunner: kun ved app_config day_form_6649 = "on"). Udeladt = den gamle dagsform.

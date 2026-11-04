@@ -63,6 +63,7 @@ import {
   type StagePlanTask,
 } from "./stagePlan.ts";
 import { luxuryHelperDefaultPlans } from "./engine/v4/mechanics/luxuryHelper5982.ts"; // #5982
+import { STAGE_PLAN_DROPPED_7635_TUNING } from "./engine/v4/tuning.ts"; // #7635
 
 export const STAGE_PLAN_ORDER_KIND = "stage_plan";
 export const STAGE_PLAN_LEG_EVENT = "stage_plan_leg";
@@ -89,6 +90,21 @@ export type StagePlanRuntime = {
   /** De led hver rytter faktisk har redet (foerste led altid). */
   ridden: Map<string, Set<number>>;
   riderIds: string[];
+  /** #7635 (KUN kontakten stage_plan_dropped_front_7635): "sat"-reglens hukommelse. Udeladt = som foer. */
+  front7635?: Front7635State;
+};
+
+/**
+ * #7635: hvad "sat"-reglen husker mellem segmentgraenserne (kun med kontakten).
+ *  - attackGroups: grupper opstaaet ved et angreb (udbrud, nedkoerselsangreb, finale- og
+ *    kontraangreb), set ud fra hvordan gruppen opstod: den laa foran den gruppe rytterne kom fra.
+ *  - streak: segmentgraenser i traek hvor rytteren laa reelt bag fronten.
+ */
+export type Front7635State = {
+  prevGroupOf: Map<string, string> | null;
+  seen: Set<string>;
+  attackGroups: Set<string>;
+  streak: Map<string, number>;
 };
 
 // #7239: delt kaptajn valideres som leder (stagePlan.ts), ikke som fri rolle.
@@ -132,6 +148,7 @@ export function createStagePlanRuntime(
   orders: readonly TeamOrder[],
   route: RouteV2,
   entrants: Readonly<Record<string, Entrant>>,
+  opts: { droppedFront7635?: boolean } = {},
 ): StagePlanRuntime | null {
   const planRoute = stagePlanRouteFromV4(route);
   const legs = new Map<string, ResolvedLeg[]>();
@@ -159,7 +176,10 @@ export function createStagePlanRuntime(
   }
   if (legs.size === 0) return null;
   const riderIds = [...legs.keys()].sort();
-  return { legs, current: new Map(riderIds.map((id) => [id, 0])), everInEscape: new Set(), ridden: new Map(riderIds.map((id) => [id, new Set([0])])), riderIds };
+  const rt: StagePlanRuntime = { legs, current: new Map(riderIds.map((id) => [id, 0])), everInEscape: new Set(), ridden: new Map(riderIds.map((id) => [id, new Set([0])])), riderIds };
+  // #7635: kun med kontakten; slukket har runtime'en praecis de samme felter som foer.
+  if (opts.droppedFront7635 === true) rt.front7635 = { prevGroupOf: null, seen: new Set(), attackGroups: new Set(), streak: new Map() };
+  return rt;
 }
 
 function isEscape(group: RaceGroup): boolean {
@@ -201,6 +221,87 @@ export function isRiderDropped(riderId: string, state: EngineState, entrants: Re
 }
 
 /**
+ * #7635: noter feltets grupper ved en segmentgraense og afgoer hvilke der er opstaaet ved
+ * et angreb. En rigtig opdeling (stigning, brosten, uheld) saetter altid de afhaengte BAG
+ * den gruppe de kom fra; et angreb saetter angriberne FORAN. Derfor:
+ *  - en ny gruppe er et angreb naar den ligger foran alle de grupper, resten af rytterne fra
+ *    dens kildegrupper nu sidder i, eller naar de fleste af dens ryttere kom fra et angreb;
+ *  - en kendt angrebsgruppe holder op med at vaere det, naar en rigtig gruppe har hentet den
+ *    (de fleste af dens ryttere kom saa ikke fra et angreb). Et merge beholder den forreste
+ *    gruppes id, saa uden den regel ville hele feltet arve angrebets id og maerke.
+ * Ren funktion af tilstanden; ingen rng, deterministisk i gruppe-raekkefoelgen.
+ */
+export function observeGroups7635(f: Front7635State, groups: readonly RaceGroup[]): void {
+  const prev = f.prevGroupOf;
+  const groupOfNow = new Map<string, string>();
+  for (const g of groups) for (const id of g.rider_ids) groupOfNow.set(id, g.id);
+  const gapOf = new Map(groups.map((g) => [g.id, g.gap_seconds]));
+  const next = new Set<string>();
+  if (prev) {
+    const cameFromAttack = (id: string) => {
+      const p = prev.get(id);
+      return p !== undefined && f.attackGroups.has(p);
+    };
+    for (const g of groups) {
+      if (g.rider_ids.length === 0) continue;
+      const fromAttack = g.rider_ids.filter(cameFromAttack).length * 2 >= g.rider_ids.length;
+      if (f.seen.has(g.id)) {
+        if (f.attackGroups.has(g.id) && fromAttack) next.add(g.id);
+        continue;
+      }
+      if (fromAttack) {
+        next.add(g.id);
+        continue;
+      }
+      const members = new Set(g.rider_ids);
+      const sources = new Set(g.rider_ids.map((id) => prev.get(id)).filter((s): s is string => s !== undefined));
+      let restMinGap = Infinity;
+      for (const [id, src] of prev) {
+        if (!sources.has(src) || members.has(id)) continue;
+        const now = groupOfNow.get(id);
+        if (now !== undefined) restMinGap = Math.min(restMinGap, gapOf.get(now) ?? Infinity);
+      }
+      if (Number.isFinite(restMinGap) && g.gap_seconds < restMinGap) next.add(g.id);
+    }
+  }
+  for (const g of groups) f.seen.add(g.id);
+  f.attackGroups = next;
+  f.prevGroupOf = groupOfNow;
+}
+
+function isAttackGroup7635(group: RaceGroup, attackGroups: ReadonlySet<string>): boolean {
+  return group.origin === "breakaway" || group.origin === "descent" || attackGroups.has(group.id);
+}
+
+/**
+ * #7635 (KUN kontakten): ligger rytteren reelt bag fronten ved denne segmentgraense?
+ * Kun en rigtig opdeling af feltet kan vaere fronten: en gruppe opstaaet ved et angreb er
+ * aldrig referencen, og en rytter i en angrebsgruppe er aldrig sat. Afstanden skal vaere
+ * reel (STAGE_PLAN_DROPPED_7635_TUNING). At den holder, afgoer advanceStagePlan.
+ */
+export function isRiderBehindFront7635(
+  riderId: string,
+  state: EngineState,
+  entrants: Readonly<Record<string, Entrant>>,
+  attackGroups: ReadonlySet<string>,
+): boolean {
+  const own = groupOf(state.groups, riderId);
+  if (!own || isAttackGroup7635(own, attackGroups)) return false;
+  let reference: RaceGroup | undefined;
+  const leader = teamLeaderId(riderId, state, entrants);
+  if (leader && leader !== riderId) {
+    const leaderGroup = groupOf(state.groups, leader);
+    if (leaderGroup && !isAttackGroup7635(leaderGroup, attackGroups)) reference = leaderGroup;
+  }
+  if (!reference) {
+    reference = state.groups
+      .filter((g) => !isAttackGroup7635(g, attackGroups) && g.rider_ids.length > 0)
+      .reduce<RaceGroup | undefined>((best, g) => (!best || g.gap_seconds < best.gap_seconds ? g : best), undefined);
+  }
+  return reference !== undefined && reference.id !== own.id && own.gap_seconds - reference.gap_seconds >= STAGE_PLAN_DROPPED_7635_TUNING.minGapSeconds;
+}
+
+/**
  * Skift ved segmentets start (tilstanden er udgangen af det forrige segment).
  * Returnerer skift-events; opdaterer runtime'ens led-pegere.
  */
@@ -210,6 +311,9 @@ export function advanceStagePlan(
 ): TimelineEvent[] {
   const { state, segment, segmentIndex, isLastSegment = false, entrants } = args;
   const events: TimelineEvent[] = [];
+  // #7635 (KUN kontakten): feltets grupper noteres ved hver graense, ogsaa ved start.
+  const front = rt.front7635;
+  if (front) observeGroups7635(front, state.groups);
   // Foerste segment: intet forrige segment at laese tilstanden af. Er det OGSAA etapens
   // eneste segment (en flad etape kan genereres som ét stykke), skifter et rutepunkt i
   // segmentets foerste halvdel ved start; resten tager finalen (advanceStagePlanAtFinish).
@@ -233,7 +337,14 @@ export function advanceStagePlan(
 
     const droppedIdx = legs.findIndex((l) => l.fromDropped);
     const breakawayLeg = legs[cur].task === "breakaway";
-    const dropped = breakawayLeg ? !inEscape : isRiderDropped(riderId, state, entrants);
+    // #7635 (KUN kontakten): "sat" kun bag en rigtig front, og kun naar afstanden har holdt.
+    let behind7635 = false;
+    if (front) {
+      const streak = isRiderBehindFront7635(riderId, state, entrants, front.attackGroups) ? (front.streak.get(riderId) ?? 0) + 1 : 0;
+      front.streak.set(riderId, streak);
+      behind7635 = streak >= STAGE_PLAN_DROPPED_7635_TUNING.consecutiveChecks;
+    }
+    const dropped = breakawayLeg ? !inEscape : (front ? behind7635 : isRiderDropped(riderId, state, entrants));
     let next = cur;
     let reason: StagePlanSwitchReason | null = null;
     if (!atStart && droppedIdx > cur && dropped) {

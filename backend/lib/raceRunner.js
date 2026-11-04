@@ -55,6 +55,7 @@ import { simulateStage, stableSeed, ENGINE_VERSION, ENGINE_VERSION_V3, ABILITY_K
 import { isRaceEngineV3ScoringEnabled, isRaceStageTimelineEnabled, isRaceEngineV4Enabled, isRaceFormPeaksEnabled } from "./raceEngineFlag.js";
 import { isDayForm6649Enabled } from "./dayForm6649Flag.js"; // #6649
 import { isQueenStageGap7236Enabled } from "./queenStageGap7236Flag.js"; // #7236
+import { isStagePlanDroppedFront7635Enabled } from "./stagePlanDroppedFront7635Flag.js"; // #7635
 // #5462: skadens varighed i LOEBSDAGE naar loebsdagen er tick-enheden.
 import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
 import { isTrainingConditionPerDateEnabled } from './trainingDateConditionFlag.js';
@@ -295,11 +296,12 @@ export async function resolveRaceEngineV4({
   checkFormPeaksEnabled = isRaceFormPeaksEnabled,
   checkDayForm6649Enabled = isDayForm6649Enabled,
   checkQueenStageGap7236Enabled = isQueenStageGap7236Enabled,
+  checkStagePlanDroppedFront7635Enabled = isStagePlanDroppedFront7635Enabled,
 }) {
   const enabled = await checkV4Enabled(supabase);
   if (!enabled) return { v4Engine: null, teamOrderRows: [] };
   try {
-    const [engine, teamOrderRows, formPeaks, dayForm6649, queenStageGap7236] = await Promise.all([
+    const [engine, teamOrderRows, formPeaks, dayForm6649, queenStageGap7236, stagePlanDroppedFront7635] = await Promise.all([
       loadEngine(),
       loadOrders({ supabase, raceId: race.id }),
       // #6156 (ejer 19/10): fail closed, en fejl i flag-opslaget = ingen formtoppe.
@@ -308,6 +310,8 @@ export async function resolveRaceEngineV4({
       Promise.resolve().then(() => checkDayForm6649Enabled(supabase)).catch(() => false),
       // #7236 (ejer 4/11): fail closed, kun app_config queen_stage_gap_7236 = "on" taender.
       Promise.resolve().then(() => checkQueenStageGap7236Enabled(supabase)).catch(() => false),
+      // #7635 (ejer 4/11): fail closed, kun app_config stage_plan_dropped_front_7635 = "on" taender.
+      Promise.resolve().then(() => checkStagePlanDroppedFront7635Enabled(supabase)).catch(() => false),
     ]);
     // Flaget laeses een gang pr. afvikling, som motorflaget; adapteren faar vaerdien med.
     const peaksEngine = formPeaks === true ? engine : {
@@ -319,7 +323,9 @@ export async function resolveRaceEngineV4({
     // (saa #1857-genafspilningen genskaber den) og i input_checksum. Slukket = samme objekt som foer.
     const dayFormEngine = dayForm6649 === true ? { ...peaksEngine, dayForm6649: true } : peaksEngine;
     // #7236: samme moenster (v4QueenStageGap7236Arg). Slukket = samme objekt som foer.
-    const v4Engine = queenStageGap7236 === true ? { ...dayFormEngine, queenStageGap7236: true } : dayFormEngine;
+    const queenEngine = queenStageGap7236 === true ? { ...dayFormEngine, queenStageGap7236: true } : dayFormEngine;
+    // #7635: samme moenster (v4StagePlanDroppedFront7635Arg). Slukket = samme objekt som foer.
+    const v4Engine = stagePlanDroppedFront7635 === true ? { ...queenEngine, stagePlanDroppedFront7635: true } : queenEngine;
     return { v4Engine, teamOrderRows };
   } catch (err) {
     console.error(`  ⚠️  race ${race.id}: loebsmotor v4 kunne ikke indlaeses (${err?.message}) - koerer v3 for denne afvikling`);
@@ -353,6 +359,11 @@ export function v4DayForm6649Arg(v4Engine, rulesRevision) {
  */
 export function v4QueenStageGap7236Arg(v4Engine, rulesRevision) {
   return v4Engine?.queenStageGap7236 === true && isS5ProfilesV3OrLater(rulesRevision) ? { queenStageGap7236: true } : {};
+}
+
+/** #7635: etapeplanens "sat"-regel (flag stage_plan_dropped_front_7635), samme betingelser som v4QueenStageGap7236Arg. */
+export function v4StagePlanDroppedFront7635Arg(v4Engine, rulesRevision) {
+  return v4Engine?.stagePlanDroppedFront7635 === true && isS5ProfilesV3OrLater(rulesRevision) ? { stagePlanDroppedFront7635: true } : {};
 }
 
 /**
@@ -650,7 +661,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     const gcStandings = v4Engine && isStageRace && isOrdersGcRulesRevision(rulesRevision) ? (stageNumbersSoFar.size ? rankByCumTimeAsc(filterCompletedEntrants(entrants, stagesByRider, stageNumbersSoFar), cumTime, posSum) : []) : null;
     // #1857: runRecordedEngineCall = præcis call(args) når optageren er null (dryRun/tests).
     const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null, v4Output: v4StageOutput = null, efforts: v4StageEfforts = null } = runRecordedEngineCall(engineInputRecorder, { stageNumber, engine: v4Engine ? "v4" : "v3", engineVersion: v4Engine ? ENGINE_VERSION_V4 : (v3 ? ENGINE_VERSION_V3 : ENGINE_VERSION), rulesRevision, seedInput, formPeaksOff: v4Engine?.formPeaks === false }, v4Engine
-      ? { entrants: stageEntrants, stageProfile: stage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings ? { gcStandings } : {}), ...v4DayForm6649Arg(v4Engine, rulesRevision), ...v4QueenStageGap7236Arg(v4Engine, rulesRevision) }
+      ? { entrants: stageEntrants, stageProfile: stage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings ? { gcStandings } : {}), ...v4DayForm6649Arg(v4Engine, rulesRevision), ...v4QueenStageGap7236Arg(v4Engine, rulesRevision), ...v4StagePlanDroppedFront7635Arg(v4Engine, rulesRevision) }
       : { entrants: stageEntrants, stageProfile: stage, seed, v3 }, v4Engine ? (a) => v4Engine.simulateStage(a) : simulateStage);
     for (const inc of incidents) {
       allIncidents.push({ stage_number: stageNumber, ...inc });
@@ -724,7 +735,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
         // #6649: dagsformen aendrer v4's input under s5_profiles_v3; kun da med (slukket = uaendret checksum).
         ...v4DayForm6649Arg(v4Engine, rulesRevision),
         // #7236: topgab-loftet aendrer v4's input under s5_profiles_v3; kun da med (slukket = uaendret checksum).
-        ...v4QueenStageGap7236Arg(v4Engine, rulesRevision),
+        ...v4QueenStageGap7236Arg(v4Engine, rulesRevision), ...v4StagePlanDroppedFront7635Arg(v4Engine, rulesRevision),
         // #7290: profilens bakker aendrer v4-ruten; kun da med (slukket = uaendret checksum).
         ...(stage.routeProfileHills === true ? { profileHills: true } : {}),
         // #5914: troejefoererne styrer hvem der kaemper om passagerne -> input.
@@ -3011,7 +3022,7 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   // Motorvalget (#3855/#4707) — se buildRaceResults' tilsvarende note.
   // #1857: se buildRaceResults' tilsvarende note.
   const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null, v4Output: v4StageOutput = null, efforts: v4StageEfforts = null } = runRecordedEngineCall(engineInputRecorder, { stageNumber, engine: v4Engine ? "v4" : "v3", engineVersion: v4Engine ? ENGINE_VERSION_V4 : (v3 ? ENGINE_VERSION_V3 : ENGINE_VERSION), rulesRevision, seedInput, formPeaksOff: v4Engine?.formPeaks === false }, v4Engine
-    ? { entrants: simEntrants, stageProfile: thisStage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace: true, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings !== undefined ? { gcStandings } : {}), ...v4DayForm6649Arg(v4Engine, rulesRevision), ...v4QueenStageGap7236Arg(v4Engine, rulesRevision) }
+    ? { entrants: simEntrants, stageProfile: thisStage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace: true, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings !== undefined ? { gcStandings } : {}), ...v4DayForm6649Arg(v4Engine, rulesRevision), ...v4QueenStageGap7236Arg(v4Engine, rulesRevision), ...v4StagePlanDroppedFront7635Arg(v4Engine, rulesRevision) }
     : { entrants: simEntrants, stageProfile: thisStage, seed, v3 }, v4Engine ? (a) => v4Engine.simulateStage(a) : simulateStage);
   // S4 (#1176): stemplet med dagens stage_number — additiv, rører ikke resultRows/runs-formen.
   const stampedIncidents = incidents.map((inc) => ({ stage_number: stageNumber, ...inc }));
@@ -3071,7 +3082,7 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
         // #6649: dagsformen aendrer v4's input under s5_profiles_v3; kun da med (slukket = uaendret checksum).
         ...v4DayForm6649Arg(v4Engine, rulesRevision),
         // #7236: topgab-loftet aendrer v4's input under s5_profiles_v3; kun da med (slukket = uaendret checksum).
-        ...v4QueenStageGap7236Arg(v4Engine, rulesRevision),
+        ...v4QueenStageGap7236Arg(v4Engine, rulesRevision), ...v4StagePlanDroppedFront7635Arg(v4Engine, rulesRevision),
         // #7290: se buildRaceResults' tilsvarende note (bagudkompatibel checksum).
         ...(thisStage.routeProfileHills === true ? { profileHills: true } : {}),
       // #5914: se buildRaceResults' tilsvarende note (bagudkompatibel checksum).

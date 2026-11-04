@@ -830,7 +830,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   for (const entrant of startlist) entrantsById[entrant.rider_id] = entrant;
   // #7003 (KUN s5_profiles_v3, slukket): etapeplanen langs ruten (lib/stagePlanEngine.ts). Uden plan: null, loopet uroert.
   const baseEntrantsById = entrantsById;
-  const stagePlan = isS5ProfilesV3OrLater(rulesRevision) ? createStagePlanRuntime(orders, route, baseEntrantsById) : null;
+  const stagePlan = isS5ProfilesV3OrLater(rulesRevision) ? createStagePlanRuntime(orders, route, baseEntrantsById, input.stage_plan_dropped_front_7635 === true ? { droppedFront7635: true } : {}) : null; // #7635 (slukket)
 
   const rngForFn = boundRngFor(seed);
   // #4885: feltets reference-CP pr. terraen — fart-modellens nulpunkt. Regnet
