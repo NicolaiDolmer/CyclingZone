@@ -2,7 +2,7 @@
 // gh, git, fetch og billedstation. Intet netvaerk, ingen browser, intet build.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -92,10 +92,13 @@ test('acquireLock (Codex): en tom lock er en koersel der starter, til fristen er
   try {
     const file = join(dir, LOCK_FILE);
     writeFileSync(file, '');
-    const fresh = acquireLock(file, { now: Date.now(), pid: 201, isAlive: () => true });
+    // Codex P1: fast ur og fast filtid, aldrig vaeguret.
+    const T = 1_790_000_000_000;
+    utimesSync(file, T / 1000, T / 1000);
+    const fresh = acquireLock(file, { now: T + 1_000, pid: 201, isAlive: () => true });
     assert.equal(fresh.ok, false);
     assert.match(fresh.reason, /ved at starte/);
-    const old = acquireLock(file, { now: Date.now() + 2 * 60_000, pid: 202, isAlive: () => true });
+    const old = acquireLock(file, { now: T + 2 * 60_000 + 1_000, pid: 202, isAlive: () => true });
     assert.equal(old.ok, true);
     assert.equal(JSON.parse(readFileSync(file, 'utf8')).pid, 202);
     old.release();
@@ -310,6 +313,19 @@ test('runSideChecks: uden OneDrive, fejlende checkout og gammel rapport giver fe
   const c = runSideChecks({ pr: 1, sha: SHA, checks: [SIDE_SEL], derived: [], ...stale });
   assert.ok(c.results[0].error);
   assert.equal(c.loggedIn, null);
+});
+
+test('runSideChecks (Codex P2): en gammel rapport fra et fejlet build giver ikke --no-build til naeste side', () => {
+  const d = sideDeps({
+    shots: [
+      () => ({ exitCode: 1, report: report({ label: 'gammel-koersel' }) }),
+      (a) => ({ exitCode: 0, report: report({ label: a.label, routes: ['/riders'] }) }),
+    ],
+  });
+  runSideChecks({ pr: 7621, sha: SHA, checks: [SIDE_SEL, SIDE_OTHER], derived: ['/team'], ...d });
+  assert.equal(d.calls.length, 2);
+  assert.equal(d.calls[0].build, true);
+  assert.equal(d.calls[1].build, true, 'buildet er ikke bevist koert, saa naeste side bygger selv');
 });
 
 test('runSideChecks: snavset checkout, andet build og mocks fanges', () => {

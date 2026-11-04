@@ -461,8 +461,10 @@ export function runSideChecks({ pr, sha, checks, derived, station, prepareWorktr
       outDir: join(outRoot.dir, PROOF_OUT_DIR),
       timeoutMs: deadline - now(),
     });
-    built = built || Boolean(shot.report);
     const fresh = shot.report && shot.report.label === label && String(shot.report.createdAt || '') >= startedAt ? shot.report : null;
+    // Codex P2 (#7655): kun en frisk rapport beviser, at buildet koerte; en gammel
+    // rapport maa ikke give de naeste ruter --no-build mod en foraeldet dist.
+    built = built || Boolean(fresh);
     const r = interpretShot({ checks: pathChecks, report: fresh, exitCode: shot.exitCode, error: shot.error });
     if (r.loggedIn === false) loggedOut = true;
     if (r.report) reports.push(r.report);
