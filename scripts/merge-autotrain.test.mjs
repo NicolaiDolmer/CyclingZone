@@ -362,14 +362,27 @@ describe('run (IO injiceret)', () => {
     assert.ok(!existsSync(blockFile), 'laasen haeves foerst ved positiv verifikation');
   });
 
-  it('mainVerifiedFromRuns: kun faerdig og groen CI (og deploy-verify hvis den findes) taeller', () => {
+  it('mainVerifiedFromRuns: CI skal vaere groen, og en deploy skal vaere released med groenne release checks', () => {
     const sha = 'a'.repeat(40);
+    const green = [{ headSha: sha, status: 'completed', conclusion: 'success' }];
     assert.equal(mainVerifiedFromRuns({ headSha: sha, ciRuns: [] }).ok, false);
     assert.equal(mainVerifiedFromRuns({ headSha: sha, ciRuns: [{ headSha: sha, status: 'in_progress', conclusion: '' }] }).ok, false);
     assert.equal(mainVerifiedFromRuns({ headSha: sha, ciRuns: [{ headSha: sha, status: 'completed', conclusion: 'failure' }] }).ok, false);
-    assert.equal(mainVerifiedFromRuns({ headSha: sha, ciRuns: [{ headSha: sha, status: 'completed', conclusion: 'success' }] }).ok, true);
-    assert.equal(mainVerifiedFromRuns({ headSha: sha, ciRuns: [{ headSha: sha, status: 'completed', conclusion: 'success' }], deployRuns: [{ headSha: sha, status: 'completed', conclusion: 'failure' }] }).ok, false);
+    assert.equal(mainVerifiedFromRuns({ headSha: sha, ciRuns: green }).ok, true, 'ingen deploy-koersel = kun CI');
     assert.equal(mainVerifiedFromRuns({ headSha: 'x', ciRuns: [] }).ok, false);
+    const run = { id: 9, run_attempt: 1, status: 'completed', head_sha: sha };
+    const job = (name, conclusion, steps) => ({ run_id: 9, run_attempt: 1, name, status: 'completed', conclusion, steps });
+    const step = (name, conclusion) => ({ name, status: 'completed', conclusion });
+    const release = (pending, smoke) => job('Deploy live + smoke', 'success', [step('Deployment still pending', pending), step('Smoke-test prod', smoke)]);
+    // Codex P1: "Deployment still pending" slutter groent, men er ikke en verificeret deploy.
+    const stillPending = { run, jobs: { jobs: [release('success', 'skipped'), job('Release checks', 'success', [])] } };
+    const r1 = mainVerifiedFromRuns({ headSha: sha, ciRuns: green, deploy: stillPending });
+    assert.equal(r1.ok, false);
+    assert.match(r1.reason, /pending/);
+    const releasedRedChecks = { run, jobs: { jobs: [release('skipped', 'success'), job('Release checks', 'failure', [])] } };
+    assert.equal(mainVerifiedFromRuns({ headSha: sha, ciRuns: green, deploy: releasedRedChecks }).ok, false);
+    const released = { run, jobs: { jobs: [release('skipped', 'success'), job('Release checks', 'success', [])] } };
+    assert.equal(mainVerifiedFromRuns({ headSha: sha, ciRuns: green, deploy: released }).ok, true);
   });
 
   it('fejl i PR-listningen er fail-soft', async () => {

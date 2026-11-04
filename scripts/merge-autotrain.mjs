@@ -42,6 +42,7 @@ import { fileURLToPath } from 'node:url';
 
 import { CATEGORY, DEFAULT_REPO, classifyPr, fetchMigrationFacts, formatClassification } from './merge-queue-classify.mjs';
 import { gitCommonRoot, markerFilePath, readActiveMarker } from './merge-queue-active-marker.mjs';
+import { deploymentAttemptState, handedOffRunVerdict } from './ci/deploy-verification-state.mjs';
 
 export const READY_ALERT_AFTER_MS = 2 * 60 * 60 * 1000;
 export const ALERT_THROTTLE_MS = 6 * 60 * 60 * 1000;
@@ -370,29 +371,45 @@ export function readBlock(file) {
 
 /**
  * Codex P1 (#7657): er main's aktuelle HEAD positivt verificeret? CI (main) skal vaere
- * faerdig og groen, og findes en deploy-verify-koersel for samme SHA, skal den ogsaa
- * vaere groen. Alt andet (koerer, roed, ukendt, fejl) = ikke verificeret.
+ * faerdig og groen. Findes en deploy-verify-koersel for samme SHA, afgoer koeens egen
+ * klassifikator det (deploy-verification-state.mjs): releasen skal vaere 'released' og
+ * release checks 'ok'. Workflowets samlede conclusion taeller ikke, for "Deployment
+ * still pending" slutter ogsaa groent. Alt andet (koerer, roed, ukendt, fejl) = nej.
  */
-export function mainVerifiedFromRuns({ headSha, ciRuns = [], deployRuns = [] }) {
+export function mainVerifiedFromRuns({ headSha, ciRuns = [], deploy = null }) {
   if (!/^[0-9a-f]{40}$/i.test(String(headSha))) return { ok: false, reason: 'main-HEAD ukendt' };
   const ci = ciRuns.find((r) => r.headSha === headSha);
   if (!ci) return { ok: false, reason: `ingen CI (main) for ${headSha.slice(0, 7)} endnu` };
   if (ci.status !== 'completed' || ci.conclusion !== 'success') return { ok: false, reason: `CI (main) ${headSha.slice(0, 7)}: ${ci.status}/${ci.conclusion || '-'}` };
-  const dep = deployRuns.find((r) => r.headSha === headSha);
-  if (dep && (dep.status !== 'completed' || dep.conclusion !== 'success')) return { ok: false, reason: `deploy-verify ${headSha.slice(0, 7)}: ${dep.status}/${dep.conclusion || '-'}` };
-  return { ok: true, reason: `main ${headSha.slice(0, 7)} groen` };
+  if (deploy) {
+    const state = deploymentAttemptState(deploy.run, deploy.jobs, headSha, 1);
+    if (state !== 'released') return { ok: false, reason: `deploy ${headSha.slice(0, 7)}: ${state}` };
+    const verdict = handedOffRunVerdict(deploy.run, deploy.jobs);
+    if (verdict !== 'ok') return { ok: false, reason: `release checks ${headSha.slice(0, 7)}: ${verdict}` };
+  }
+  return { ok: true, reason: `main ${headSha.slice(0, 7)} groen${deploy ? ' og released' : ''}` };
 }
 
 function defaultCheckMain({ repo }) {
   const head = runGhRaw(['api', `repos/${repo}/commits/main`, '--jq', '.sha']);
   if (head.status !== 0) return { ok: false, reason: 'main-HEAD kunne ikke hentes' };
-  const list = (wf) => {
-    const res = runGhRaw(['run', 'list', '--repo', repo, '--workflow', wf, '--branch', 'main', '--limit', '20', '--json', 'headSha,status,conclusion']);
-    if (res.status !== 0) throw new Error(`gh run list ${wf} fejlede`);
-    return JSON.parse(res.stdout || '[]');
+  const headSha = head.stdout.trim();
+  const json = (args, what) => {
+    const res = runGhRaw(args);
+    if (res.status !== 0) throw new Error(`${what} fejlede`);
+    return JSON.parse(res.stdout || 'null');
   };
   try {
-    return mainVerifiedFromRuns({ headSha: head.stdout.trim(), ciRuns: list('ci.yml'), deployRuns: list('deploy-verify.yml') });
+    const ciRuns = json(['run', 'list', '--repo', repo, '--workflow', 'ci.yml', '--branch', 'main', '--limit', '20', '--json', 'headSha,status,conclusion'], 'gh run list ci.yml');
+    const deployRuns = json(['run', 'list', '--repo', repo, '--workflow', 'deploy-verify.yml', '--branch', 'main', '--limit', '20', '--json', 'databaseId,headSha'], 'gh run list deploy-verify.yml');
+    const match = (deployRuns || []).find((r) => r.headSha === headSha);
+    let deploy = null;
+    if (match) {
+      const run = json(['api', `repos/${repo}/actions/runs/${match.databaseId}`], 'deploy-run');
+      const jobs = json(['api', `repos/${repo}/actions/runs/${match.databaseId}/attempts/${run.run_attempt}/jobs?per_page=100`], 'deploy-jobs');
+      deploy = { run, jobs };
+    }
+    return mainVerifiedFromRuns({ headSha, ciRuns: ciRuns || [], deploy });
   } catch (err) {
     return { ok: false, reason: String(err?.message ?? err) };
   }
