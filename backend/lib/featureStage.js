@@ -105,7 +105,7 @@ async function queryFlagValue(supabase, key) {
 /**
  * Læs app_config-værdien for `key`. Fejl → null (fail-safe = off).
  *
- * @param {object} supabase  supabase-klient (eller fake med `.from`)
+ * @param {any} supabase  supabase-klient (eller fake med `.from`)
  * @param {string} key
  * @param {{ fresh?: boolean, now?: () => number }} [opts]
  *   `fresh: true` springer cachen over for dette ene opslag.
