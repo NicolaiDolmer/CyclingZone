@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (4/11 morgen):** natsessionen merget 15 PR'er; ejerens 11 morgenbeslutninger er logget på [#7495](https://github.com/NicolaiDolmer/CyclingZone/issues/7495). Merge-tog i gang: #7620 (Hjælp til #7536, skjult bag flag), #7608 `ad0bdf3a` (#7588 PR 3), #7610 (#7588 PR 7), #7609 (#1857 sortering). Bølge i gang: #7236 tænd-PR (#7623, merges slukket), #5950- og #6912-målinger, #7578 B (#7622), #7585 PR 1 (#7621), #7579 patch note (+ #7092-linje). Venter på ejer: #7536 "tænd", #7602, #5950/#6912/#7236 "kør" efter målinger, #4211 dry-run. Codex: #7583-drafts reviewes og merges af PC1.
+> **🎯 Next action (4/11 formiddag):** næste PC1-session følger prompten på [#7495](https://github.com/NicolaiDolmer/CyclingZone/issues/7495#issuecomment-6626973961): merge #7620/#7623/#7621/#7622/#7579 (ejer-go, + #7092-linje i 7.398), TS-kæden #7611 → #7619, permanent rettelse af Stop-hookens advarsel midt i tog, derefter ejerens åbne: #7602, #7536 "tænd", #5950 (måling: ikke kør endnu), #6912 (bjerg driver G16), #7236 "kør" før 13/11, #4211 dry-run. Natten: 17 PR'er merget inkl. #7609 `8af96e9d` (#1857) og #7610 `4cbd4b1` (#7588 PR 7).
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** PC1-natsession 3/11 → 4/11 kl. 09:00 (merge-køen + bølge 2; prompt og ejer-go på #7495).
+> **🤖 Working agent:** Ingen aktiv session (PC1-natsession 3/11 → 4/11 afsluttet; overdraget via prompten på #7495).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
