@@ -593,7 +593,8 @@ function splitKindFor(sourceKind: GroupKind, splitCount: number): GroupKind {
  * M2-hook: kaldes paa climb-segmenter (segmentLoop.ts). Behandler hver
  * eksisterende gruppe uafhaengigt (>=2 ryttere), splitter de udvalgte
  * ryttere bagud i en ny gruppe og emitterer ét peloton_splits-event pr.
- * ny gruppe med en kategorisk aarsag (wprime_depleted/climb_deficit/mixed).
+ * ny gruppe med en kategorisk aarsag (wprime_depleted/climb_deficit/mixed;
+ * #7640 bag kontakten: attack for et split der koerer frem).
  * REN: intet input muteres, samme (state, ctx) -> samme output.
  */
 export const climbSelectionHook: ClimbSelectionHook = (
