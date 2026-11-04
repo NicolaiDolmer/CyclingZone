@@ -255,6 +255,7 @@ export function planEstimateWrite(input, params) {
   const { stored = null, truePot, riderId, teamId, knowledge, trigger, paramsVersion, now } = input || {};
   if (!WRITE_REASONS.includes(trigger)) throw new Error(`planEstimateWrite: unknown trigger ${trigger}`);
   if (typeof paramsVersion !== "string" || !paramsVersion) throw new Error("planEstimateWrite: paramsVersion is required");
+  if (typeof now !== "string" || !now) throw new Error("planEstimateWrite: now (ISO timestamp) is required");
   const ceiling = Math.round(Number(truePot));
   if (!Number.isFinite(ceiling) || ceiling < 1 || ceiling > 99) throw new Error("planEstimateWrite: truePot must be 1-99");
 
@@ -286,8 +287,8 @@ export function planEstimateWrite(input, params) {
     write_reason: trigger,
     previous_value: changed ? Number(stored.value) : (stored?.previous_value ?? null),
     previous_certainty: changed ? stored.certainty : (stored?.previous_certainty ?? null),
-    changed_at: changed ? (now ?? null) : (stored?.changed_at ?? null),
-    computed_at: now ?? null,
+    changed_at: changed ? now : (stored?.changed_at ?? null),
+    computed_at: now,
   };
   return { action: "write", row, changed };
 }

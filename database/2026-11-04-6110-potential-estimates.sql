@@ -101,8 +101,9 @@ CREATE INDEX IF NOT EXISTS rider_potential_estimates_team_idx
 COMMENT ON TABLE public.rider_potential_estimates IS
   '#6110: stored potential estimate per (rider, team). Written only on new knowledge, the Sunday run or a team change. Server-only: RLS without policies, no client privileges.';
 
+-- data-api-access: {"table":"public.rider_potential_estimates","roles":{"anon":[],"authenticated":[],"service_role":["SELECT","INSERT","UPDATE","DELETE"]},"reason":"Hidden per-team potential estimates (#6110); only the backend reads and writes them, clients get number + word through the API"}
 ALTER TABLE public.rider_potential_estimates ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON public.rider_potential_estimates FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.rider_potential_estimates FROM PUBLIC, anon, authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.rider_potential_estimates TO service_role;
 
 -- ---------------------------------------------------------------------------

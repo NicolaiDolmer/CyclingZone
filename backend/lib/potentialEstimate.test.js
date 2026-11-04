@@ -282,6 +282,7 @@ test("holdskifte: det nye hold får sit eget skøn (eget seed) med den viden det
 test("planEstimateWrite afviser ukendt trigger, manglende version og loft uden for skalaen", () => {
   assert.throws(() => plan({ trigger: "daily" }), /unknown trigger/);
   assert.throws(() => plan({ paramsVersion: "" }), /paramsVersion/);
+  assert.throws(() => plan({ now: undefined }), /now/);
   assert.throws(() => plan({ truePot: 0 }), /1-99/);
   assert.throws(() => plan({ truePot: Number.NaN }), /1-99/);
 });
