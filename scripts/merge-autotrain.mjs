@@ -9,8 +9,9 @@
 //      (samme regel som scripts/lib/league-check.ps1), MERGEABLE, og en
 //      staaende kategori fra scripts/merge-queue-classify.mjs (hard rule 35).
 //      EJER-GO koerer kun med ejerens eksplicitte merge-markoer (se nedenfor);
-//   3. kalder scripts/merge-queue.ps1 -Pr "<liste>", men kun hvis ingen anden
-//      koe koerer (tog-markoeren fra #7633: levende markoer = goer intet);
+//   3. kalder scripts/merge-queue.ps1 -Pr "<N>" -Repo <repo>, een PR ad gangen
+//      efter en frisk vurdering (hovedet maa ikke have flyttet sig), og kun hvis
+//      ingen anden koe koerer (tog-markoeren fra #7633: levende markoer = goer intet);
 //   4. melder i Discord-ops (DISCORD_OPS_WEBHOOK_URL, fail-soft) naar en PR har
 //      vaeret klar i over READY_ALERT_AFTER_MS uden at blive merget, hoejst een
 //      besked pr. PR pr. ALERT_THROTTLE_MS. Tilstand: .claude/run/ (gitignoreret).
@@ -184,11 +185,10 @@ export function updateReadyState(prev, evaluations, now) {
 }
 
 /** PR'er der har vaeret klar for laenge og ikke er meldt inden for throttle-vinduet. */
-export function dueAlerts(state, evaluations, now, { skip = [] } = {}) {
-  const skipSet = new Set(skip.map(Number));
+export function dueAlerts(state, evaluations, now) {
   const due = [];
   for (const e of evaluations) {
-    if (!e.ready || skipSet.has(e.number)) continue;
+    if (!e.ready) continue;
     const s = state?.prs?.[e.number];
     const since = Date.parse(String(s?.readySince ?? ''));
     if (!Number.isFinite(since) || now.getTime() - since < READY_ALERT_AFTER_MS) continue;
@@ -258,35 +258,88 @@ function ghText(args) {
   return res.stdout;
 }
 
-const PR_FIELDS = 'number,title,body,labels,files,author,comments,isDraft,mergeable,baseRefName,headRefOid,baseRefOid';
+const PR_FIELDS = 'number,title,body,labels,author,comments,isDraft,mergeable,baseRefName,headRefOid,baseRefOid,changedFiles';
 
 // gh pr checks: exit 1 = noget fejler, exit 8 = afventer; JSON-outputtet er det samme.
 const CHECKS_EXIT = [0, 1, 8];
 
-export function collectEvaluations({ repo, ownerLogin, gh = { json: ghJson, text: ghText }, log = () => {} }) {
+/**
+ * Den fulde filliste til klassifikationen (REST, pagineret): GraphQL-listen i
+ * `gh pr list` kan vaere afkortet, og en omdoebning skal ogsaa vurderes paa sin
+ * kildesti (kode flyttet ind under docs/ maa ikke blive "docs"). Kildestien
+ * taeller som slettet, saa en omdoebt migration altid er ejer-go.
+ * null = listen er ufuldstaendig (klassifikationen bliver da ejer-go).
+ */
+export function completeFileList(restFiles, changedFiles) {
+  const list = Array.isArray(restFiles) ? restFiles.flat() : [];
+  if (!list.length || !Number.isSafeInteger(changedFiles) || list.length !== changedFiles) return null;
+  const files = [];
+  for (const f of list) {
+    if (!f?.filename) return null;
+    files.push({ path: f.filename, additions: Number(f.additions) || 0, deletions: Number(f.deletions) || 0 });
+    if (f.previous_filename && f.previous_filename !== f.filename) {
+      files.push({ path: f.previous_filename, additions: 0, deletions: Math.max(1, Number(f.deletions) || 0) });
+    }
+  }
+  return files;
+}
+
+/** Vurderer een PR (checks, review-gate, fuld filliste, klassifikation). */
+export function evaluateOne(pr, { repo, ownerLogin, gh, log = () => {} }) {
+  // Billige afslag foerst: ingen check- eller klassifikationskald for drafts/konflikter.
+  if (precheck(pr)) return evaluatePr(pr, { ownerLogin });
+  const requiredChecks = gh.json(['pr', 'checks', String(pr.number), '--repo', repo, '--required', '--json', 'name,bucket'], { allowExit: CHECKS_EXIT }) ?? [];
+  const allChecks = gh.json(['pr', 'checks', String(pr.number), '--repo', repo, '--json', 'name,bucket,startedAt,event'], { allowExit: CHECKS_EXIT }) ?? [];
+  let classification = null;
+  if (requiredChecksStatus(requiredChecks).green && reviewGateStatus(allChecks).green) {
+    try {
+      const rest = gh.json(['api', '--paginate', '--slurp', `repos/${repo}/pulls/${pr.number}/files?per_page=100`]);
+      const files = completeFileList(rest, pr.changedFiles);
+      if (!files) {
+        log(`  #${pr.number}: fillisten er ufuldstaendig; behandles som ejer-go.`);
+      } else {
+        const full = { ...pr, files };
+        Object.assign(full, fetchMigrationFacts(full, repo, { runGh: gh.text }));
+        classification = classifyPr(full);
+      }
+    } catch (err) {
+      log(`  #${pr.number}: klassifikation fejlede (${err?.message ?? err}); behandles som ejer-go.`);
+    }
+  }
+  return evaluatePr(pr, { requiredChecks, allChecks, classification, ownerLogin });
+}
+
+const DEFAULT_GH = { json: ghJson, text: ghText };
+
+export function collectEvaluations({ repo, ownerLogin, gh = DEFAULT_GH, log = () => {} }) {
   const prs = gh.json(['pr', 'list', '--repo', repo, '--state', 'open', '--limit', '100', '--json', PR_FIELDS]) ?? [];
   const evaluations = [];
   for (const pr of prs) {
     try {
-      // Billige afslag foerst: ingen check- eller klassifikationskald for drafts/konflikter.
-      if (precheck(pr)) { evaluations.push(evaluatePr(pr, { ownerLogin })); continue; }
-      const requiredChecks = gh.json(['pr', 'checks', String(pr.number), '--repo', repo, '--required', '--json', 'name,bucket'], { allowExit: CHECKS_EXIT }) ?? [];
-      const allChecks = gh.json(['pr', 'checks', String(pr.number), '--repo', repo, '--json', 'name,bucket,startedAt,event'], { allowExit: CHECKS_EXIT }) ?? [];
-      let classification = null;
-      if (requiredChecksStatus(requiredChecks).green && reviewGateStatus(allChecks).green) {
-        try {
-          Object.assign(pr, fetchMigrationFacts(pr, repo, { runGh: gh.text }));
-          classification = classifyPr(pr);
-        } catch (err) {
-          log(`  #${pr.number}: klassifikation fejlede (${err?.message ?? err}); behandles som ejer-go.`);
-        }
-      }
-      evaluations.push(evaluatePr(pr, { requiredChecks, allChecks, classification, ownerLogin }));
+      evaluations.push(evaluateOne(pr, { repo, ownerLogin, gh, log }));
     } catch (err) {
       log(`  #${pr.number}: kunne ikke vurderes (${err?.message ?? err}); springes over.`);
     }
   }
   return evaluations;
+}
+
+/** Frisk vurdering af een PR lige foer koeen startes for den. */
+export function reevaluatePr(number, { repo, ownerLogin, gh = DEFAULT_GH, log = () => {} }) {
+  const pr = gh.json(['pr', 'view', String(number), '--repo', repo, '--json', PR_FIELDS]);
+  return evaluateOne(pr, { repo, ownerLogin, gh, log });
+}
+
+/**
+ * Maa koeen startes for PR'en nu? Den skal stadig vaere eligible, og hovedet maa
+ * ikke have flyttet sig siden udvaelgelsen (ejer-go og kategori gaelder et hoved).
+ */
+export function confirmBeforeQueue(selected, fresh) {
+  if (!fresh?.eligible) return { ok: false, reason: `ikke laengere klar (${fresh?.reason ?? 'ukendt'})` };
+  if (!/^[0-9a-f]{40}$/i.test(String(fresh.headSha)) || fresh.headSha !== selected.headSha) {
+    return { ok: false, reason: `hovedet har flyttet sig (${String(selected.headSha).slice(0, 7)} -> ${String(fresh.headSha).slice(0, 7)})` };
+  }
+  return { ok: true, reason: 'uaendret og klar' };
 }
 
 async function postDiscord(fetchFn, url, payload) {
@@ -306,10 +359,10 @@ async function postDiscord(fetchFn, url, payload) {
 const SCRIPT_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
 // Koeen koeres fra samme checkout som dette script (den planlagte opgave peger paa hoved-checkoutet).
-function defaultRunQueue({ train, logFile }) {
+function defaultRunQueue({ train, repo, logFile }) {
   const repoRoot = SCRIPT_ROOT;
   const script = join(repoRoot, 'scripts', 'merge-queue.ps1');
-  const args = ['-NoProfile', '-NonInteractive', '-File', script, '-Pr', train.join(',')];
+  const args = ['-NoProfile', '-NonInteractive', '-File', script, '-Pr', train.join(','), '-Repo', repo];
   let fd = null;
   try {
     if (logFile) fd = openSync(logFile, 'a');
@@ -339,7 +392,7 @@ export function parseArgs(argv) {
 
 /**
  * Een koersel. Alle IO-afhaengigheder kan injiceres (tests).
- * Raekkefoelge: tog-markoer -> vurdering -> alarm (ekskl. PR'er der koeres nu) -> tilstand -> koe.
+ * Raekkefoelge: tog-markoer -> vurdering -> alarm -> tilstand -> koe (een PR ad gangen, frisk tjek foer hver).
  */
 export async function run({
   argv = process.argv.slice(2),
@@ -349,6 +402,7 @@ export async function run({
   repoRoot = gitCommonRoot(SCRIPT_ROOT) ?? SCRIPT_ROOT,
   readMarker = () => readActiveMarker(markerFilePath({ cwd: SCRIPT_ROOT })),
   evaluate = (opts) => collectEvaluations(opts),
+  reevaluate = (n, opts) => reevaluatePr(n, opts),
   runQueue = defaultRunQueue,
   fetchFn = globalThis.fetch,
   stateFile = null,
@@ -385,7 +439,8 @@ export async function run({
 
   const prev = readState(file);
   let state = updateReadyState(prev, evaluations, now);
-  const alerts = dueAlerts(state, evaluations, now, { skip: decision.run ? train : [] });
+  // Ogsaa eligible PR'er meldes: er en PR stadig klar efter 2 timer, har toget fejlet for den.
+  const alerts = dueAlerts(state, evaluations, now);
   if (alerts.length) {
     const payload = buildAlertMessage(alerts, opts.repo);
     if (opts.dryRun) {
@@ -408,13 +463,33 @@ export async function run({
     return { action: 'none', train, alerts };
   }
   if (opts.dryRun) {
-    log(`  DRY-RUN: ville koere merge-queue.ps1 -Pr "${train.join(',')}" (${decision.reason}).`);
+    log(`  DRY-RUN: ville koere merge-queue.ps1 -Repo ${opts.repo} een PR ad gangen: ${train.map((n) => `-Pr "${n}"`).join(', ')} (${decision.reason}).`);
     return { action: 'dry-run', train, alerts };
   }
-  log(`  Starter merge-queue.ps1 -Pr "${train.join(',')}".`);
-  const code = runQueue({ train, logFile });
-  log(`  merge-queue.ps1 sluttede med exit ${code}.`);
-  return { action: 'queue', train, alerts, queueExit: code };
+  // Een PR pr. koe-koersel, og frisk vurdering lige foer: merge-queue.ps1 binder ikke
+  // merget til det hoved der blev vurderet her, saa et push efter udvaelgelsen maa
+  // ikke arve kategori eller ejer-go. Ventetiden mellem tjek og merge er da koeens egen.
+  const byNumber = new Map(evaluations.map((e) => [e.number, e]));
+  const queued = [];
+  const results = [];
+  for (const n of train) {
+    if (readMarker()) { log('  En anden merge-koe er startet; resten venter til naeste koersel.'); break; }
+    let fresh;
+    try {
+      fresh = reevaluate(n, { repo: opts.repo, ownerLogin, log });
+    } catch (err) {
+      log(`  #${n}: frisk vurdering fejlede (${err?.message ?? err}); springes over.`);
+      continue;
+    }
+    const confirm = confirmBeforeQueue(byNumber.get(n), fresh);
+    if (!confirm.ok) { log(`  #${n}: ${confirm.reason}; springes over.`); continue; }
+    log(`  Starter merge-queue.ps1 -Pr "${n}" -Repo ${opts.repo}.`);
+    const code = runQueue({ train: [n], repo: opts.repo, logFile });
+    log(`  merge-queue.ps1 (#${n}) sluttede med exit ${code}.`);
+    queued.push(n);
+    results.push({ pr: n, exit: code });
+  }
+  return { action: 'queue', train, alerts, queued, results };
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {

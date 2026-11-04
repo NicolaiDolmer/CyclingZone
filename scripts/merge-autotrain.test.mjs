@@ -11,6 +11,8 @@ import {
   ALERT_THROTTLE_MS,
   READY_ALERT_AFTER_MS,
   buildAlertMessage,
+  completeFileList,
+  confirmBeforeQueue,
   decideAction,
   dueAlerts,
   evaluatePr,
@@ -124,6 +126,33 @@ describe('evaluatePr (udvaelgelse)', () => {
   });
 });
 
+describe('completeFileList', () => {
+  it('kraever at REST-listen er komplet (ellers null = ejer-go)', () => {
+    const pages = [[{ filename: 'docs/a.md', additions: 1, deletions: 0 }]];
+    assert.deepEqual(completeFileList(pages, 1), [{ path: 'docs/a.md', additions: 1, deletions: 0 }]);
+    assert.equal(completeFileList(pages, 2), null);
+    assert.equal(completeFileList([], 0), null);
+    assert.equal(completeFileList(null, 1), null);
+  });
+  it('omdoebning vurderes ogsaa paa kildestien', () => {
+    const files = completeFileList([[{ filename: 'docs/moved.js', previous_filename: 'backend/lib/economy.js', additions: 0, deletions: 0, status: 'renamed' }]], 1);
+    assert.deepEqual(files.map((f) => f.path), ['docs/moved.js', 'backend/lib/economy.js']);
+    assert.ok(files[1].deletions > 0, 'kildestien taeller som slettet');
+  });
+});
+
+describe('confirmBeforeQueue', () => {
+  const selected = evalWith({ number: 5 });
+  it('ok naar PR\'en stadig er eligible paa samme hoved', () => {
+    assert.equal(confirmBeforeQueue(selected, selected).ok, true);
+  });
+  it('afvist ved nyt hoved eller tabt klarhed', () => {
+    assert.match(confirmBeforeQueue(selected, { ...selected, headSha: 'e'.repeat(40) }).reason, /flyttet/);
+    assert.equal(confirmBeforeQueue(selected, { ...selected, eligible: false, reason: 'checks: roed' }).ok, false);
+    assert.equal(confirmBeforeQueue(selected, null).ok, false);
+  });
+});
+
 describe('decideAction (koe koerer allerede)', () => {
   it('levende markoer = goer intet, selv med klare PRer', () => {
     const d = decideAction({ activeMarker: { pid: 1, startedAt: '2026-11-04T10:00:00Z' }, train: [1, 2] });
@@ -184,9 +213,12 @@ describe('alarm: klar-ur og throttle', () => {
     assert.deepEqual(state.prs, {});
   });
 
-  it('PRer der koeres nu meldes ikke', () => {
-    const state = updateReadyState(null, [ready], t0);
-    assert.equal(dueAlerts(state, [ready], at(READY_ALERT_AFTER_MS + 1), { skip: [7] }).length, 0);
+  it('en eligible PR der stadig er klar efter 2 timer meldes (toget har fejlet for den)', () => {
+    const eligible = evalWith({ number: 8 });
+    const state = updateReadyState(updateReadyState(null, [eligible], t0), [eligible], at(READY_ALERT_AFTER_MS + 1));
+    const due = dueAlerts(state, [eligible], at(READY_ALERT_AFTER_MS + 1));
+    assert.deepEqual(due.map((d) => d.number), [8]);
+    assert.match(buildAlertMessage(due).content, /staaende kategori, men ikke merget/);
   });
 
   it('beskeden naevner PR, ventetid og grund', () => {
@@ -202,12 +234,15 @@ describe('run (IO injiceret)', () => {
   after(() => rmSync(dir, { recursive: true, force: true }));
   const quiet = () => {};
 
+  const NOW = new Date('2026-11-04T12:00:00Z');
+  const sameAgain = (selected) => (n) => selected.find((e) => e.number === n);
+
   it('levende tog-markoer: ingen vurdering, ingen koe', async () => {
     let evaluated = false;
     let queued = false;
     const res = await run({
-      argv: [], now: new Date(), repoRoot: dir, stateFile: join(dir, 's1.json'), out: quiet,
-      readMarker: () => ({ pid: 42, startedAt: new Date().toISOString(), prs: [1], merged: [] }),
+      argv: [], now: NOW, repoRoot: dir, stateFile: join(dir, 's1.json'), out: quiet,
+      readMarker: () => ({ pid: 42, startedAt: '2026-11-04T11:50:00Z', prs: [1], merged: [] }),
       evaluate: () => { evaluated = true; return []; },
       runQueue: () => { queued = true; return 0; },
     });
@@ -221,7 +256,7 @@ describe('run (IO injiceret)', () => {
     let posted = false;
     const stateFile = join(dir, 's2.json');
     const res = await run({
-      argv: ['--dry-run'], env: { DISCORD_OPS_WEBHOOK_URL: 'https://example.invalid/hook' }, now: new Date(), repoRoot: dir, stateFile, out: quiet,
+      argv: ['--dry-run'], env: { DISCORD_OPS_WEBHOOK_URL: 'https://example.invalid/hook' }, now: NOW, repoRoot: dir, stateFile, out: quiet,
       readMarker: () => null,
       evaluate: () => [evalWith({ number: 11 })],
       runQueue: () => { queued = true; return 0; },
@@ -234,18 +269,22 @@ describe('run (IO injiceret)', () => {
     assert.throws(() => readFileSync(stateFile, 'utf8'));
   });
 
-  it('koerer koeen med togets liste og melder ventende ejer-go-PR (fail-soft ved Discord-fejl)', async () => {
+  it('koerer koeen een PR ad gangen med -Repo og melder ventende ejer-go-PR (fail-soft ved Discord-fejl)', async () => {
     const stateFile = join(dir, 's3.json');
     const t0 = new Date('2026-11-04T08:00:00Z');
-    const evals = () => [evalWith({ number: 21 }), evalWith({ number: 22 }, { classification: OWNER_GO })];
+    let current = [evalWith({ number: 21 }), evalWith({ number: 23 }), evalWith({ number: 22 }, { classification: OWNER_GO })];
     const calls = [];
     const base = {
+      argv: ['--repo', 'o/r'],
       env: { DISCORD_OPS_WEBHOOK_URL: 'https://example.invalid/hook' }, repoRoot: dir, stateFile, out: quiet,
-      readMarker: () => null, evaluate: evals,
-      runQueue: ({ train }) => { calls.push(train); return 0; },
+      readMarker: () => null, evaluate: () => current, reevaluate: (n) => current.find((e) => e.number === n),
+      runQueue: ({ train, repo }) => { calls.push({ train, repo }); return 0; },
     };
-    await run({ ...base, now: t0, fetchFn: async () => ({ ok: true }) });
-    assert.deepEqual(calls[0], [21]);
+    const first = await run({ ...base, now: t0, fetchFn: async () => ({ ok: true }) });
+    assert.deepEqual(calls, [{ train: [21], repo: 'o/r' }, { train: [23], repo: 'o/r' }]);
+    assert.deepEqual(first.queued, [21, 23]);
+    // De to er merget; kun ejer-go-PR'en er tilbage.
+    current = [current[2]];
     // Discord fejler: ingen markering, saa naeste koersel proever igen.
     const late = new Date(t0.getTime() + READY_ALERT_AFTER_MS + 1);
     const failed = await run({ ...base, now: late, fetchFn: async () => { throw new Error('net'); } });
@@ -261,9 +300,36 @@ describe('run (IO injiceret)', () => {
     assert.equal(bodies.length, 0, 'throttlet inden for 6 timer');
   });
 
+  it('nyt hoved efter udvaelgelsen: PR\'en springes over (arver ikke kategori eller ejer-go)', async () => {
+    const selected = [evalWith({ number: 31 }), evalWith({ number: 32 })];
+    const calls = [];
+    const res = await run({
+      argv: [], now: NOW, repoRoot: dir, stateFile: join(dir, 's5.json'), out: quiet,
+      readMarker: () => null, evaluate: () => selected,
+      reevaluate: (n) => (n === 31 ? { ...selected[0], headSha: 'd'.repeat(40) } : selected[1]),
+      runQueue: ({ train }) => { calls.push(train); return 0; },
+    });
+    assert.deepEqual(calls, [[32]]);
+    assert.deepEqual(res.queued, [32]);
+  });
+
+  it('en anden koe der starter undervejs stopper resten', async () => {
+    const selected = [evalWith({ number: 41 }), evalWith({ number: 42 })];
+    let markerReads = 0;
+    const calls = [];
+    await run({
+      argv: [], now: NOW, repoRoot: dir, stateFile: join(dir, 's6.json'), out: quiet,
+      // 1. laesning: ingen koe. 2. (foer #41): ingen. 3. (foer #42): en anden koe koerer.
+      readMarker: () => (++markerReads >= 3 ? { pid: 7, startedAt: '2026-11-04T11:59:00Z', prs: [], merged: [] } : null),
+      evaluate: () => selected, reevaluate: sameAgain(selected),
+      runQueue: ({ train }) => { calls.push(train); return 0; },
+    });
+    assert.deepEqual(calls, [[41]]);
+  });
+
   it('fejl i PR-listningen er fail-soft', async () => {
     const res = await run({
-      argv: [], now: new Date(), repoRoot: dir, stateFile: join(dir, 's4.json'), out: quiet,
+      argv: [], now: NOW, repoRoot: dir, stateFile: join(dir, 's4.json'), out: quiet,
       readMarker: () => null, evaluate: () => { throw new Error('gh nede'); }, runQueue: () => { throw new Error('maa ikke kaldes'); },
     });
     assert.equal(res.action, 'error');
