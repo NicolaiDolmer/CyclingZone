@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { computeDebtRatio, computeSustainabilityTier } from "./economyAdminDashboard.js";
+import { computeDebtRatio, computeSustainabilityTier } from "./economyAdminDashboard.ts";
 
 test("sustainability tier — green when no debt", () => {
   assert.equal(computeSustainabilityTier(0, 1200000), "green");

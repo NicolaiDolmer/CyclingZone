@@ -26,10 +26,10 @@
         "lib/financeForecast*",
         "lib/salaryDecoupling*"
       ],
-      "jsFileCount": 4,
-      "tsErrorCount": 268,
+      "jsFileCount": 3,
+      "tsErrorCount": 264,
       "files": {
-        "lib/economyAdminDashboard.js": 4,
+        "lib/economyAdminDashboard.ts": 0,
         "lib/economyConstants.js": 0,
         "lib/economyEngine.js": 216,
         "lib/economyNoUpkeepFlag.ts": 0,
@@ -137,7 +137,7 @@
     }
   },
   "totals": {
-    "jsFileCount": 31,
-    "tsErrorCount": 883
+    "jsFileCount": 30,
+    "tsErrorCount": 879
   }
 }
