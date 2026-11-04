@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (4/11 sent):** Næste session (DolmerPC, PC1 holder pause) følger [prompten på #7495](https://github.com/NicolaiDolmer/CyclingZone/issues/7495#issuecomment-6640382527): 1) **kun merges og til dørs**, indtil de åbne PR'er er nede (TS-kæden #7613-#7619, Codex' ops, bølgens 9 PR'er); 2) kl. 9 med ejeren: nøgler #7029 + Railway #7034 + RAM/CPU-grafer #7659 + ops-webhook; 3) dagens aftaler i MASTERPLAN (Udvikling 2.0 topprioritet, motor-"kør", torsdag #7652 + del B #7661).
+> **🎯 Next action (5/11 nat):** DolmerPC kører [ejerens nat-mandat på #7495](https://github.com/NicolaiDolmer/CyclingZone/issues/7495#issuecomment-6643542175): 1) TS-kæden #7614-#7619 PR for PR (køens UNKNOWN-fejl #7682); 2) under ca. 5 åbne PR'er: bølge Udvikling 2.0 trin 4-6 + Sentry #7675-#7678 + child-tool-prøve #7571; 3) kl. 9: nøgler #7029, Railway #7034, RAM/CPU #7659, ops-webhook; 4) med ejeren: roadmap-forslag (13 tvivlspunkter, 19 nye punkter, 5 fejl-titler), feedback-svar + rapport 30; 5) torsdag #7652 + del B #7661. Mål #7667 efter næste ranglisteopdatering.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Ingen aktiv session. PC1 4/11 aften: tog 1-4 (#7655/#7657/#7660, #7648/#7647/#7642, #7612, #7673/#7665), #7236 tændt, Supabase retning A, tidsplan for 42 punkter, auto-toget flyttes til DolmerPC (afinstalleret på PC1), bølge med 9 spor (alle har PR).
+> **🤖 Working agent:** DolmerPC (Claude), nat 4-5/11, merges + til dørs. Auto-toget kører på DolmerPC. Merget: #7530, #7679, #7681, #7529, #7531, #7532, #7670, #7674, #7671, #7667, #7524, #7669, #7668, #7602, #7680, #7672, #7528. Migrationer #7667, #7669, #7668 verificeret.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
