@@ -325,8 +325,8 @@ features:
     title_da: Etape-replay og tidslinjefilm
     state: live
     flag: race_stage_timeline
-    verified: 2026-09-06
-    note: 3 replay-komponenter i UI.
+    verified: 2026-11-04
+    note: 'Live (race_stage_timeline on, læst 4/11). Sandhedsvagten #7643 (PR #7646, merget 4/11) tjekker resultat, film, referat og etapeplan efter hver etape. Åbne sandhedsfejl: #7636, #7639, #7640, #6350.'
 
   - id: race-page-tabs-v2
     area: race-day
@@ -489,8 +489,8 @@ features:
     state: building
     ssot: docs/superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md
     epic: 1177
-    verified: 2026-09-15
-    note: Data-only (#5268), resten senere.
+    verified: 2026-11-04
+    note: 'Kun data er bygget (#5268). Løbsmotoren (#5348) og mentorpar (#5349) er ikke bygget, og arbejdet står stille (statusaudit 4/11).'
 
   - id: rider-rating-best-role-display
     area: squad
@@ -949,13 +949,13 @@ features:
 
   - id: potential-single-number
     area: training
-    title_en: Potential as one estimated number
-    title_da: Potentiale som ét skønnet tal
+    title_en: Same potential band everywhere
+    title_da: Samme potentialebånd overalt
     state: live
     ssot: docs/PROGRESSION_RULES.md
     epic: 6110
-    verified: 2026-10-31
-    note: 'PR #7166 (#6853); on i prod (læst 31/10). Gaten potential_single_number er fjernet fra koden, visningen er permanent.'
+    verified: 2026-11-04
+    note: 'PR #7166/#7415/#7430 (#6853, til dørs 8/8 4/11): ét fælles bånd for bedste rolle på alle flader. "Ét skønnet tal" fra spec 23/10 (byggetrin 2-6: grundtalent, gemte skøn, søndagsjob) er IKKE bygget; potentialEstimate.js bruges kun af harnessen. Gaten potential_single_number er fjernet fra koden; prod-rækken er død (sletning ejer-gated). Statusaudit 4/11.'
 
   - id: train-now-whole-day
     area: training
@@ -975,8 +975,8 @@ features:
     flag: development_score_v2
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: Ejer, med Udvikling 2.0.
-    verified: 2026-10-25
+    note: 'Ejer 31/10 (#6110): parkeret, indtil grundtalentet (spec 23/10, byggetrin 2) er bygget; decide_by 8/11 er afløst, ny frist ikke sat. Forudsætning før tænding: #7584. Statusaudit 4/11.'
+    verified: 2026-11-04
     decision: ejer-beslutning
     decide_by: 2026-11-08
 

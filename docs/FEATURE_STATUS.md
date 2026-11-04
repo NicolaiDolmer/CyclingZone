@@ -23,9 +23,9 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 ## race-day
 
-**live:** Role picker scope (stage N to the end / stage N only) (`role-scope-choice`) 2026-10-06 · Stage page 2.0 (stage tabs, real elevation profile, your day) (`stage-page-v2`) 2026-11-01 · Stage plan along the route (`stage-plan-v1`) 2026-10-27
+**live:** Stage replay and timeline film (`race-replay`) 2026-11-04 · Role picker scope (stage N to the end / stage N only) (`role-scope-choice`) 2026-10-06 · Stage page 2.0 (stage tabs, real elevation profile, your day) (`stage-page-v2`) 2026-11-01 · Stage plan along the route (`stage-plan-v1`) 2026-10-27
 
-**arkiv:** `auto-entry-generator` · `race-day-development` · `race-day-engine` · `race-detail-page` · `race-page-tabs-v2` · `race-replay` · `stage-scheduler`
+**arkiv:** `auto-entry-generator` · `race-day-development` · `race-day-engine` · `race-detail-page` · `race-page-tabs-v2` · `stage-scheduler`
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
@@ -49,18 +49,18 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
-| Teamwork and Leadership abilities (`mental-abilities-teamwork-leadership`) | building | - | [holdarbejde-og-lederskab-evner-design](superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md) | #1177 | 2026-09-15 | Data-only (#5268), resten senere. |
+| Teamwork and Leadership abilities (`mental-abilities-teamwork-leadership`) | building | - | [holdarbejde-og-lederskab-evner-design](superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md) | #1177 | 2026-11-04 | Kun data er bygget (#5268). Løbsmotoren (#5348) og mentorpar (#5349) er ikke bygget, og arbejdet står stille (statusaudit 4/11). |
 | New riders' primary type from the target distribution (`rider-primary-type-from-distribution`) | building | - | [RIDER_GENERATION](RIDER_GENERATION.md) | #5327 | 2026-09-23 | Kontakt (off); flip er ejer-gated. |
 
 ## training
 
-**live:** Max +1 per ability per date (`ability-cap-per-date`) 2026-10-26 · Form and fatigue 2.0 (`condition-model-v2`) 2026-10-26 · Training on a race date weighs a full training day (`condition-v2-race-date-training-day`) 2026-11-04 · Daily training (`daily-training`) 2026-10-27 · Development curve B (level and potential drive development, not age) (`development-curve-b`) 2026-10-30 · Peak planner (`peak-planner`) 2026-10-17 · Potential as one estimated number (`potential-single-number`) 2026-10-31 · Race day = hard day plus a role-weighted extra in the stage abilities (`race-day-role-yield`) 2026-11-01 · Season fatigue and form reset (`season-fatigue-reset`) 2026-10-27 · Train now B (the click settles the rider's whole known date) (`train-now-whole-day`) 2026-11-02 · Set the training day for several riders at once (`training-bulk-day`) 2026-11-02 · Training catalog v3 (`training-catalog-v3`) 2026-10-30 · Training condition settled per date (`training-condition-per-date`) 2026-10-26 · Today's decision card on the Training page (`training-decision-card`) 2026-10-26 · Training groups (`training-groups`) 2026-10-14 · Training programs per race day (`training-programs`) 2026-10-14 · Training tick system (`training-tick-system`) 2026-10-16 · Train now (no bonus) (`training-train-now`) 2026-10-14
+**live:** Max +1 per ability per date (`ability-cap-per-date`) 2026-10-26 · Form and fatigue 2.0 (`condition-model-v2`) 2026-10-26 · Training on a race date weighs a full training day (`condition-v2-race-date-training-day`) 2026-11-04 · Daily training (`daily-training`) 2026-10-27 · Development curve B (level and potential drive development, not age) (`development-curve-b`) 2026-10-30 · Peak planner (`peak-planner`) 2026-10-17 · Same potential band everywhere (`potential-single-number`) 2026-11-04 · Race day = hard day plus a role-weighted extra in the stage abilities (`race-day-role-yield`) 2026-11-01 · Season fatigue and form reset (`season-fatigue-reset`) 2026-10-27 · Train now B (the click settles the rider's whole known date) (`train-now-whole-day`) 2026-11-02 · Set the training day for several riders at once (`training-bulk-day`) 2026-11-02 · Training catalog v3 (`training-catalog-v3`) 2026-10-30 · Training condition settled per date (`training-condition-per-date`) 2026-10-26 · Today's decision card on the Training page (`training-decision-card`) 2026-10-26 · Training groups (`training-groups`) 2026-10-14 · Training programs per race day (`training-programs`) 2026-10-14 · Training tick system (`training-tick-system`) 2026-10-16 · Train now (no bonus) (`training-train-now`) 2026-10-14
 
 **arkiv:** `training-daily-receipt` · `training-fatigue-rules` · `training-hard-sessions-cobbles-echelon-attack` · `training-mobile-table` · `training-program-cells` · `training-score` · `training-tick-per-race-day`
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
-| Development Score B in the engine (`development-score-b-engine`) | dormant | `development_score_v2` | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-10-25 | Ejer, med Udvikling 2.0. |
+| Development Score B in the engine (`development-score-b-engine`) | dormant | `development_score_v2` | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-11-04 | Ejer 31/10 (#6110): parkeret, indtil grundtalentet (spec 23/10, byggetrin 2) er bygget; decide_by 8/11 er afløst, ny frist ikke sat. Forudsætning før tænding: #7584. Statusaudit 4/11. |
 | Catch-up via racing (`race-day-catchup`) | dormant | `race_day_catchup_enabled` | [TRAINING_RULES](TRAINING_RULES.md) | #6950 | 2026-10-25 | Ejer, med Udvikling 2.0. |
 | Race day - the rider's role also decides the base day (`race-day-role-base-day`) | dormant | `race_day_role_base_day_enabled` | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-11-03 | #5950 løsning A (ejer-valg 3/11), underkontakt til race-day-role-yield. Bygget, off; tændes af ejeren. |
 
