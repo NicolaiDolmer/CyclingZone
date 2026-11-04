@@ -47,7 +47,7 @@ import { SQUAD_CALENDAR, SENIOR_CALENDAR_POOLS_FROM_S4 } from "../lib/calendarTi
 import { YOUTH_GROUP_SIZE } from "../lib/youthPoolAssignment.js";
 import { squadSlotsForDate } from "../lib/squadCalendarPacker.js";
 import { copenhagenHourToUTC, copenhagenMidnightUTC } from "../lib/copenhagenTime.js";
-import { isStageSchedulerEnabled, STAGE_SCHEDULER_FLAG_KEY } from "../lib/stageSchedulerFlag.js";
+import { isStageSchedulerEnabled, STAGE_SCHEDULER_FLAG_KEY } from "../lib/stageSchedulerFlag.ts";
 import { isRaceEngineV2Enabled, RACE_ENGINE_V2_FLAG_KEY } from "../lib/raceEngineFlag.js";
 // Samme kl. 20-gate som prod: startTrainingDayCloseAfterStages og runTrainingDayCloseSweep
 // starter ingen sweep før shouldSweepNow(now) tillader det.
