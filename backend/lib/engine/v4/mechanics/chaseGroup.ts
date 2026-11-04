@@ -1,5 +1,6 @@
 import type { RaceGroup, SegmentHookResult, TimelineEvent } from "../types.ts";
 import type { FinaleGroupTrace } from "../groups.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 /** #6748: gruppen rytteren koerer i, naar den er af dagens udbrud (oprindelse "breakaway", enhver art). */
 function morningOriginGroupOf(groups: readonly RaceGroup[], riderId: string): RaceGroup | null {
@@ -52,7 +53,7 @@ export function withWinnerEscapeOutcome(
 /** A pursuing group must be physically behind the group it is chasing. */
 export function findChaseGroup(groups: readonly RaceGroup[], target: RaceGroup): RaceGroup | null {
   const candidates = groups.filter((group) => group.id !== target.id && group.kind !== "breakaway" && group.rider_ids.length > 0 && group.gap_seconds >= target.gap_seconds);
-  candidates.sort((a, b) => a.gap_seconds - b.gap_seconds || b.rider_ids.length - a.rider_ids.length || a.id.localeCompare(b.id));
+  candidates.sort((a, b) => a.gap_seconds - b.gap_seconds || b.rider_ids.length - a.rider_ids.length || compareIds(a.id, b.id));
   return candidates[0] ?? null;
 }
 
@@ -65,7 +66,7 @@ export function findFieldChaseGroup(groups: readonly RaceGroup[], target: RaceGr
   const total = others.reduce((n, g) => n + g.rider_ids.length, 0);
   const field = others.filter((g) => g.kind !== "gruppetto" && g.rider_ids.length > 0
     && g.rider_ids.length >= minFieldShare * total && g.gap_seconds >= target.gap_seconds);
-  field.sort((a, b) => b.rider_ids.length - a.rider_ids.length || a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+  field.sort((a, b) => b.rider_ids.length - a.rider_ids.length || a.gap_seconds - b.gap_seconds || compareIds(a.id, b.id));
   return field[0] ?? findChaseGroup(groups, target);
 }
 
@@ -153,22 +154,22 @@ export function breakawayDropEvents(
   silent: (riderId: string) => boolean = () => false,
 ): { events: TimelineEvent[]; dropped: string[] } {
   const breaks = groups.filter((group) => group.kind === "breakaway" && group.origin === "breakaway" && group.rider_ids.length > 0)
-    .sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+    .sort((a, b) => a.gap_seconds - b.gap_seconds || compareIds(a.id, b.id));
   const inBreak = new Set(breaks.flatMap((group) => group.rider_ids));
   const dropped = new Set(known.filter((id) => !inBreak.has(id)));
   const events: TimelineEvent[] = [];
   const lead = breaks[0];
   if (lead) {
     const pieces = groups.filter((group) => isBreakawayPiece(group) && group.gap_seconds > lead.gap_seconds)
-      .sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+      .sort((a, b) => a.gap_seconds - b.gap_seconds || compareIds(a.id, b.id));
     for (const piece of pieces) {
       const fresh = piece.rider_ids.filter((id) => !dropped.has(id));
       for (const id of fresh) dropped.add(id);
-      const named = fresh.filter((id) => !silent(id)).sort((a, b) => a.localeCompare(b));
+      const named = fresh.filter((id) => !silent(id)).sort((a, b) => compareIds(a, b));
       if (named.length > 0) events.push({ km, type: "breakaway_dropped", params: { group_id: piece.id, from_group_id: lead.id, rider_ids: named } });
     }
   }
-  return { events, dropped: [...dropped].sort((a, b) => a.localeCompare(b)) };
+  return { events, dropped: [...dropped].sort((a, b) => compareIds(a, b)) };
 }
 
 /**

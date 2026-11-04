@@ -899,6 +899,16 @@ jobs:
         if: ${{ !cancelled() }}
         run: node scripts/check-fetchallrows-order.mjs
 
+      # --- locale-compare-guard --- (#1857) motor- og race*-filer maa ikke
+      # sortere efter processens sprog (localeCompare uden sprog).
+      - name: Test locale-compare guard
+        if: ${{ !cancelled() }}
+        run: node --test scripts/check-locale-compare.test.mjs
+
+      - name: Run locale-compare guard
+        if: ${{ !cancelled() }}
+        run: node scripts/check-locale-compare.mjs
+
       # --- rls-classification-guard ---
       # #4440 forward-guard: en tabel der er NAEVNT i
       # docs/decisions/rls-no-policy-classification.md skal ogsaa vaere

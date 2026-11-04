@@ -45,6 +45,7 @@ import type { TimeModelTuning } from "./timeModel.ts";
 import { isS5ExplosiveFinaleClimb } from "../s5Profiles.ts";
 import { allOut7280Tuning, climbGapEffortFactor } from "./effortCost.ts"; // #6641, #7280
 import { allOutCrackProbability, allOutGainLoss, allOutReserve01, climbBlockOf, segmentCrackProbability } from "./allOutCrack6641.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 // #6464: feltets faktor regnes én gang pr. startliste (entrants-objektet er
 // etapens) og tuning; ren funktion af feltets klatre-evner.
@@ -370,7 +371,7 @@ function computeSelections(
  * paavirkes kun af selve energi-tilstanden, ikke af rangeringen.
  */
 function guardedSplitRiderIds(selections: RiderSelection[]): string[] {
-  const sorted = [...selections].sort((a, b) => b.baseScore - a.baseScore || a.riderId.localeCompare(b.riderId));
+  const sorted = [...selections].sort((a, b) => b.baseScore - a.baseScore || compareIds(a.riderId, b.riderId));
   let stillEligible = true;
   const split: string[] = [];
   for (const sel of sorted) {
@@ -545,7 +546,7 @@ export function retainedRiderIdWhenAllSplit(
 ): string {
   const racers = selections.filter((s) => !s.effortForced);
   const candidates = racers.length > 0 ? racers : selections;
-  return [...candidates].sort((a, b) => a.baseScore - b.baseScore || a.riderId.localeCompare(b.riderId))[0].riderId;
+  return [...candidates].sort((a, b) => a.baseScore - b.baseScore || compareIds(a.riderId, b.riderId))[0].riderId;
 }
 
 function gapSecondsDeltaFor(selections: RiderSelection[], splitRiderIds: string[]): number {
@@ -559,6 +560,14 @@ function gapSecondsDeltaFor(selections: RiderSelection[], splitRiderIds: string[
     SPLIT_GAP_BOUNDS[1],
   );
 }
+
+/**
+ * #7640 (KUN kontakten split_attack_cause_7640, SLUKKET): aarsagen paa et klatre-split
+ * der koerer FREM fra gruppen (alt ud-angrebet, negativt hul). Uden kontakten faar
+ * angrebet den gamle aarsag fra causeFor, saa motoren er bit-identisk. Kun event-feltet
+ * cause aendres; grupper, huller og tider er de samme med og uden.
+ */
+export const SPLIT_ATTACK_CAUSE_7640 = "attack";
 
 function causeFor(selections: RiderSelection[], splitRiderIds: string[]): string {
   const splitSet = new Set(splitRiderIds);
@@ -584,7 +593,8 @@ function splitKindFor(sourceKind: GroupKind, splitCount: number): GroupKind {
  * M2-hook: kaldes paa climb-segmenter (segmentLoop.ts). Behandler hver
  * eksisterende gruppe uafhaengigt (>=2 ryttere), splitter de udvalgte
  * ryttere bagud i en ny gruppe og emitterer ét peloton_splits-event pr.
- * ny gruppe med en kategorisk aarsag (wprime_depleted/climb_deficit/mixed).
+ * ny gruppe med en kategorisk aarsag (wprime_depleted/climb_deficit/mixed;
+ * #7640 bag kontakten: attack for et split der koerer frem).
  * REN: intet input muteres, samme (state, ctx) -> samme output.
  */
 export const climbSelectionHook: ClimbSelectionHook = (
@@ -603,7 +613,7 @@ export const climbSelectionHook: ClimbSelectionHook = (
   // Deterministisk behandlingsraekkefolge (id-sorteret) — paavirker ikke
   // resultatet (rngFor er noeglet pr. rytter, ikke pr. kalde-raekkefolge),
   // men holder ny-gruppe-id'ernes taeller stabil pr. run.
-  const groupsSorted = [...state.groups].sort((a, b) => a.id.localeCompare(b.id));
+  const groupsSorted = [...state.groups].sort((a, b) => compareIds(a.id, b.id));
 
   let nextState = state;
   const events: TimelineEvent[] = [];
@@ -709,6 +719,8 @@ export const climbSelectionHook: ClimbSelectionHook = (
     const parts = splitRiderIds.length > 0 ? partsOf(selections, splitRiderIds) : [];
     // Ejer 27/10: angriberen splitter FREM med forspringet (negativt hul, rebaselines af segment-loopet).
     if (front7280 && splitRiderIds.length + front7280.attackerIds.size < group.rider_ids.length) parts.push(...front7280.parts);
+    // #7640 (KUN kontakten split_attack_cause_7640): angriberens split er et angreb, aldrig et underskud.
+    const attackParts: ReadonlySet<object> = ctx.splitAttackCause7640 === true && front7280 ? new Set(front7280.parts) : new Set();
     // #7280: gevinsten taelles i de grupper motoren faktisk danner (foer/efter alt ud).
     if (allOutOn) {
       const idsBefore = retainFront(beforeAllOut, splitOf(beforeAllOut));
@@ -739,7 +751,7 @@ export const climbSelectionHook: ClimbSelectionHook = (
           group_id: newGroupId,
           source_group_id: group.id,
           rider_ids: [...part.riderIds],
-          cause: causeFor(selections, part.riderIds),
+          cause: attackParts.has(part) ? SPLIT_ATTACK_CAUSE_7640 : causeFor(selections, part.riderIds),
           gap_seconds: round2(gapSecondsDelta),
         },
       });
@@ -964,7 +976,7 @@ export function queenStageTopCap7236(
 ): RaceGroup[] {
   const favourites = groups
     .filter((g) => g.origin !== "breakaway" && g.rider_ids.length > 0)
-    .sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+    .sort((a, b) => a.gap_seconds - b.gap_seconds || compareIds(a.id, b.id));
   if (favourites.length < 2 || !(q.capSeconds > 0)) return groups as RaceGroup[];
   const front = favourites[0].gap_seconds;
   let riders = 0;

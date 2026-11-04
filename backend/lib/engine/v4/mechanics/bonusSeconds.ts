@@ -54,6 +54,7 @@ import { BONUS_SECONDS_EXTRA_TUNING } from "../tuning.ts";
 import { komHunterSet } from "./komJersey6937.ts"; // #6937 B1
 import { intermediateSprintLeaderV3 } from "./pointsJersey2757.ts";
 import type { BonusSecondsTuning } from "../types.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -271,7 +272,7 @@ export function computePassageOrder(
       || Number(b.first) - Number(a.first)
       || Number(a.back) - Number(b.back)
       || b.score - a.score
-      || a.riderId.localeCompare(b.riderId))
+      || compareIds(a.riderId, b.riderId))
     .map((s) => s.riderId);
 }
 
@@ -518,7 +519,7 @@ export function passageTotals(passages: readonly StagePassage[]): RiderPassageTo
       row.bonus_seconds = round2(row.bonus_seconds + r.bonus_seconds);
     }
   }
-  return [...byRider.values()].sort((a, b) => a.rider_id.localeCompare(b.rider_id));
+  return [...byRider.values()].sort((a, b) => compareIds(a.rider_id, b.rider_id));
 }
 
 /**

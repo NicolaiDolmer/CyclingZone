@@ -23,6 +23,9 @@ export interface CalendarEntryLike {
   entered?: boolean;
   /** #7533: gemt udtagelse under startgulvet (for få ryttere). Sendes kun når true. */
   lineupShort?: boolean;
+  /** #7561: udtagne ryttere og feltstørrelse. Sendes kun når der er plads til flere end de udtagne. */
+  lineupCount?: number;
+  fieldSize?: number;
   /** Udtagelsen er låst (løbet er afviklet eller i gang). Sendes kun når true. */
   lineupFrozen?: boolean;
   withdrawn?: boolean;
@@ -152,6 +155,22 @@ export function myRaceStatus(
   // #7568: et løb uden (nok) udtagelse er altid "Mangler". En samtidig Grand
   // Tour fritager ikke holdet: de øvrige ryttere kan stadig køre løbet.
   return entry.entered && !entry.lineupShort ? "selected" : "missing";
+}
+
+/**
+ * #7561: "Klar · 6/8". Antal udtagne mod feltstørrelsen (fra API'et, aldrig en
+ * frontend-konstant), kun for en Klar-status og kun når der er plads til flere.
+ * Fuldt felt (6/6, 8/8) giver null, så pillen bare siger "Klar".
+ */
+export function squadFill(
+  entry: CalendarEntryLike | null | undefined,
+  status: RaceStatus | null,
+): { count: number; field: number } | null {
+  if (status !== "selected") return null;
+  const count = Number(entry?.lineupCount);
+  const field = Number(entry?.fieldSize);
+  if (!Number.isFinite(count) || !Number.isFinite(field) || count < 1 || count >= field) return null;
+  return { count, field };
 }
 
 // ── Holdets rutematch (tidl. "Passer til holdet", #7461) ─────────────────────────────────────────────────────────

@@ -61,6 +61,7 @@ import { applyHelperWithdrawals } from "./mechanics/abandons.ts";
 import { dayForm6649On } from "./mechanics/dayForm6649.ts"; // #6649
 import { withPointPlace } from "./exactPlace.ts";
 import { stageInputForRulesRevision } from "./s5Profiles.ts";
+import { compareIds } from "../../compareIds.ts";
 
 // Fase C-wiring (#4030) + F3-wiring (#4615, #2944, #3855): de rigtige
 // M2/M3/M4/M5/M8/M10-
@@ -130,7 +131,7 @@ function buildResults(state: SegmentLoopResult["state"]): StageResult[] {
       finishedFirst(a.status) - finishedFirst(b.status) ||
       a.time_seconds - b.time_seconds ||
       tieBreak(a.rider_id) - tieBreak(b.rider_id) ||
-      a.rider_id.localeCompare(b.rider_id),
+      compareIds(a.rider_id, b.rider_id),
   );
 
   // #2944: skadedage pr. rytter. KUN styrt kan saette dem (#4520) — det er
@@ -159,7 +160,7 @@ function buildResults(state: SegmentLoopResult["state"]): StageResult[] {
 /** Etapens uheldsprotokol i stabil (km, rider_id)-orden. */
 function buildIncidents(state: SegmentLoopResult["state"]): StageIncident[] {
   return [...(state.stage_incidents ?? [])].sort(
-    (a, b) => a.km - b.km || a.rider_id.localeCompare(b.rider_id),
+    (a, b) => a.km - b.km || compareIds(a.rider_id, b.rider_id),
   );
 }
 
@@ -171,7 +172,7 @@ function buildLoads(state: SegmentLoopResult["state"]): RiderLoad[] {
       seconds_over_cp: round2(rider.seconds_over_cp),
       work_norm: round2(rider.work_norm),
     }))
-    .sort((a, b) => a.rider_id.localeCompare(b.rider_id));
+    .sort((a, b) => compareIds(a.rider_id, b.rider_id));
 }
 
 // #5577 (spec M2): sejrstypen er finalens EGEN afgoerelse (finale.ts

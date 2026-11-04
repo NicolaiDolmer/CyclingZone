@@ -33,6 +33,13 @@
 #
 # Output: systemMessage til Claude Code via JSON paa stdout. Exit altid 0 (non-blocking).
 
+# Ejer 4/11: advarslen skal ogsaa naa Claude (systemMessage ses kun af ejeren). Ved
+# stop_hook_active=true (Claude fortsatte allerede pga. en Stop-hook) blokeres ikke igen.
+STOP_ACTIVE=""
+if [ ! -t 0 ]; then
+  if cat 2>/dev/null | grep -Eq '"stop_hook_active"[[:space:]]*:[[:space:]]*true'; then STOP_ACTIVE=1; fi
+fi
+
 # Vaer tolerant overfor at vaere udenfor et git-repo
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   exit 0
@@ -165,5 +172,9 @@ fi
 
 # Escape til JSON (escape backslash og quote)
 msg_json=$(echo "$msg" | sed 's/\\/\\\\/g; s/"/\\"/g')
-echo "{\"systemMessage\": \"$msg_json\"}"
+if [ -z "$STOP_ACTIVE" ]; then
+  echo "{\"systemMessage\": \"$msg_json\", \"decision\": \"block\", \"reason\": \"$msg_json | Push nu, eller skriv kort hvorfor ikke (fx et merge-tog verificerer main).\"}"
+else
+  echo "{\"systemMessage\": \"$msg_json\"}"
+fi
 exit 0

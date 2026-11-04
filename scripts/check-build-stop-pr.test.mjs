@@ -94,7 +94,7 @@ test('CLI: den rigtige scripts/build-stop.json laeses og afviser et ukendt issue
   assert.equal(loadBuildStop().active, true);
   assert.throws(
     () => execFileSync(process.execPath, ['scripts/check-build-stop-pr.mjs'], {
-      env: { ...process.env, PR_BODY: 'Refs #1', PR_BRANCH: 'feat/ny', PR_AUTHOR: 'a', CHANGED_FILES: 'backend/lib/x.js' },
+      env: { ...process.env, CZ_BUILD_STOP_NO_GH: '1', PR_BODY: 'Refs #1', PR_BRANCH: 'feat/ny', PR_AUTHOR: 'a', CHANGED_FILES: 'backend/lib/x.js' },
       stdio: 'pipe',
     }),
     (err) => err.status === 1 && /AFVIST/.test(String(err.stdout)),
@@ -114,4 +114,18 @@ test('issuesFromBody: indlejrede og uafsluttede HTML-kommentarer fjernes helt (C
 test('issuesFromBody: "<!--" i kode sluger ikke referencerne (review #7432)', () => {
   assert.deepEqual(issuesFromBody('Fjern `<!--` i parser\n\nRefs #7431'), [7431]);
   assert.deepEqual(issuesFromBody('```\n<!--\n```\nRefs #7431'), [7431]);
+});
+
+test('#7336 loft: issue uden for listerne tillades via loft-label eller brand-label', () => {
+  const loftCfg = { ...cfg, loft: { areas: [{ area: 'taktik', labels: ['cat:taktik'], titleKeywords: ['[taktik]'], epics: [7266] }], brandLabels: ['brand'] } };
+  const meta = { 9101: { title: '[taktik] Ordrer', labels: [], parent: null }, 9102: { title: 'x', labels: ['brand'], parent: null }, 9103: { title: 'Ny side', labels: [], parent: null } };
+  const fetchMeta = n => meta[n] || null;
+  const viaLoft = evaluatePr({ body: 'Refs #9101', branch: 'feat/x', author: 'a', files: code, cfg: loftCfg, fetchMeta });
+  assert.equal(viaLoft.ok, true);
+  assert.match(viaLoft.message, /#9101 \(loft\)/);
+  assert.equal(evaluatePr({ body: 'Refs #9102', branch: 'feat/x', author: 'a', files: code, cfg: loftCfg, fetchMeta }).ok, true);
+  const blocked = evaluatePr({ body: 'Refs #9103', branch: 'feat/x', author: 'a', files: code, cfg: loftCfg, fetchMeta });
+  assert.equal(blocked.ok, false);
+  assert.match(blocked.message, /loft-omraade/);
+  assert.equal(evaluatePr({ body: 'Refs #9101', branch: 'feat/x', author: 'a', files: code, cfg: loftCfg }).ok, false, 'uden opslag ingen loft-adgang');
 });

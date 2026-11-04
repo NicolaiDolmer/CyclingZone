@@ -165,6 +165,21 @@ test("buildOwnTimeLoss: ingen egne ryttere eller v3 → tom", () => {
   assert.deepEqual(buildOwnTimeLoss([{ km: 1, type: "gap_update", params: { gap_seconds: 5 } }], { ownRiderIds: ["x"] }), []);
 });
 
+test("#7640 buildOwnTimeLoss: et split der koerer FREM (angreb) er aldrig tabt tid", () => {
+  const events = [
+    { km: 0, type: "stage_start", params: { field_count: 4 } },
+    // Gemte etaper fra foer kontakten: angrebet staar som climb_deficit med negativt hul.
+    { km: 150, type: "peloton_splits", params: { group_id: "solo-1", source_group_id: "peloton-0", rider_ids: ["w"], cause: "climb_deficit", gap_seconds: -121.17 } },
+    // Med kontakten: aarsagen er angreb.
+    { km: 150, type: "peloton_splits", params: { group_id: "solo-2", source_group_id: "peloton-0", rider_ids: ["v"], cause: "attack", gap_seconds: -40 } },
+    { km: 150, type: "peloton_splits", params: { group_id: "chase-3", source_group_id: "peloton-0", rider_ids: ["d"], cause: "climb_deficit", gap_seconds: 30 } },
+    { km: 150, type: "gap_update", params: { group_id: "chase-3", gap_seconds: 30 } },
+    { km: 150, type: "kom_passage", params: { name: "Col", category: "1", top: [] } },
+  ];
+  const loss = buildOwnTimeLoss(events, { ownRiderIds: ["w", "v", "d"] });
+  assert.deepEqual(loss.map((l) => l.type === "drop" && l.riderIds), [["d"]], "kun rytteren der faldt bagud");
+});
+
 test("effortByRiderForStage: kun overrides for etapen", () => {
   const roles = { overrides: [
     { stage_number: 2, rider_id: "a", effort: "save" },
