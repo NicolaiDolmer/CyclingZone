@@ -429,7 +429,7 @@ export type StagePlanFeature = {
   down_to_km?: number;
 };
 export type StagePlanSwitchNote =
-  | { kind: "feature"; leg: number; feature: "descent"; place: "start" | "finale" }
+  | { kind: "feature"; leg: number; feature: "descent" | "flat"; place: "start" | "finale" }
   | { kind: "same_point"; leg: number; next: number };
 
 const NOTE_EPS_KM = 0.01;
@@ -516,7 +516,7 @@ function resolvedSwitch(leg: StagePlanLeg, route: StagePlanRoute, features: read
   const firstHalf = km - descent.from_km <= (descent.to_km - descent.from_km) / 2;
   const place: "start" | "finale" = SEGMENT_WORK_TASKS.has(leg.task) || firstHalf ? "start" : "finale";
   const at: Resolved = place === "start" ? { km: descent.from_km, finale: false } : { km: route.distance_km, finale: true };
-  return { at, note: stillFalling ? { kind: "feature", leg: -1, feature: "descent", place } : null };
+  return { at, note: { kind: "feature", leg: -1, feature: stillFalling ? "descent" : "flat", place } };
 }
 
 /**

@@ -194,11 +194,16 @@ function fallingThenFlat(dropEndKm: number) {
   return { v: 1, step_km: 1, h };
 }
 
-test("#7625: flad udkoersel efter en kort nedkoersel giver ingen nedkoerselsnote", () => {
+test("#7625: flad udkoersel efter en kort nedkoersel giver en note uden nedkoerselspaastand", () => {
   const { route, features } = noteRoute({ distance_km: 150, finale_type: "descent", climbs: [{ name: "A", crest_km: 135, length_km: 12, category: "1" }], elevation_profile: fallingThenFlat(139) });
   assert.equal(features.find((f) => f.kind === "descent")?.down_to_km, 139);
-  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, route, features), []);
-  assert.deepEqual(stagePlanSwitchNotes(TEMPO_LAST_10, route, features), []);
+  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, route, features), [{ kind: "feature", leg: 1, feature: "flat", place: "start" }]);
+  assert.deepEqual(stagePlanSwitchNotes(TEMPO_LAST_10, route, features), [{ kind: "feature", leg: 1, feature: "flat", place: "start" }]);
+});
+
+test("#7625: flad udkoersel, skiftet i nedkoerslens anden halvdel: noten siger at leddet foerst starter i finalen", () => {
+  const { route, features } = noteRoute({ distance_km: 190, finale_type: "descent", climbs: [{ name: "A", crest_km: 169, length_km: 12, category: "1" }], elevation_profile: { v: 1, step_km: 1, h: Array.from({ length: 191 }, (_, km) => (km <= 169 ? 900 : 900 - Math.min(km - 169, 3) * 40)) } });
+  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, route, features), [{ kind: "feature", leg: 1, feature: "flat", place: "finale" }]);
 });
 
 test("#7625: vejen falder stadig 10 km fra maal: noten staar som foer", () => {
@@ -221,6 +226,7 @@ test("#7383 (Codex-review): overlappende stigning og sektor loeses som rutegener
 test("#7383: notens tekst findes paa alle sprog", () => {
   const notes = [
     ...(["start", "finale"] as const).map((place) => ({ kind: "feature" as const, leg: 1, feature: "descent" as const, place })),
+    ...(["start", "finale"] as const).map((place) => ({ kind: "feature" as const, leg: 1, feature: "flat" as const, place })),
     { kind: "same_point" as const, leg: 1, next: 2 },
   ];
   for (const lng of ["en", "da", "es", "fr", "nl"]) {
