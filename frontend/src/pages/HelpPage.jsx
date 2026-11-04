@@ -393,6 +393,9 @@ const SECTION_DEFS = [
       // #4849: formFatigue' tvilling (restitution pr. loebsdag, samlet koersel
       // tidligst kl. 20 i stedet for kl. 22). Kun én af de to vises ad gangen.
       { id: "formFatiguePerRaceDay", kind: "text" },
+      // #7536: traening paa frie loebsdage paa en dato med loeb vejer et helt
+      // traeningsdoegn. Vises foerst naar motorens kontakt er taendt.
+      { id: "raceDateTrainingDay", kind: "text", flag: "condition_v2_race_date_training_day" },
       // #4854/#5620: spillerens egen traethedsgraense, kun naar flaget er taendt for viewereren.
       { id: "fatigueLimit", kind: "text", flag: "training_fatigue_rules" },
       // #6000: traeningsgrupper, kun naar flaget er taendt for viewereren.

@@ -52,8 +52,21 @@
  * Grupper: short_stage_race (2-8 etaper), other_stage_race (9-14), gt (15+), one_day,
  * monument, u23_junior. Et maal uden baand vises som information og dommes ikke.
  *
+ * Realisme-maal (#7588, realisme-gaten PR 7): samme maalemodul som CI-gaten og testporten
+ * (backend/scripts/dev/lib/realismMetrics.mjs), saa simulation og prod maales ens. Paa ugens
+ * senior-etaper beregnes M1 (tidsgab til nr. 10, enkeltstart pr. km) og M3-M8 (udbruddets
+ * stoerste forspring, meget store forspring, den haarde graense, hvor forspringet topper,
+ * plateauet midt paa etapen, hvor langt fra maal feltet henter udbruddet) ud fra motorens
+ * EGEN tidslinje (race_stage_timelines, kun motorens version) og etapens resultatraekker.
+ * Baandene ligger i private_config under realism_gate_bands (schema i
+ * backend/lib/realismGateBands.ts). Mangler raekken, er den ugyldig, eller har en maalt celle
+ * intet baand, staar maalingen som "manglende", aldrig som OK. Realisme-afsnittet i rapporten
+ * er kvalitativt: celle, maal og retning, ingen tal. Andels-maalene ovenfor er uaendrede.
+ *
  * Exit: 0 = alt inden for graenserne (eller for lidt data) · 1 = mindst en afvigelse ·
  *       2 = konfigurationsfejl · 3 = data- eller leveringsfejl.
+ *       Manglende realisme-baand giver ikke exit 1, men rapporten er aldrig groen saa laenge
+ *       en realisme-maaling mangler (gul farve og "manglende" i resumeet).
  */
 
 import { writeFileSync } from "node:fs";
@@ -64,6 +77,10 @@ import { getOpsMention, withOpsMention } from "../../lib/opsWebhook.js";
 import { clampEmbed } from "../../lib/discordEmbedLimits.js";
 import { readPrivateConfigEntry } from "../../lib/privateConfig.ts";
 import { DRIFT_GROUPS } from "../../lib/weeklyEngineDriftThresholds.ts";
+import {
+  CELL_WILDCARD, REALISM_GATE_BANDS_KEY, REALISM_METRICS, parseCellKey, parseRealismGateBands,
+} from "../../lib/realismGateBands.ts";
+import { breakawayTrajectoryRowFacts, cellKeysOf, computeRealismMetrics } from "../dev/lib/realismMetrics.mjs";
 
 const THRESHOLDS_KEY = "weekly_engine_drift_thresholds";
 
@@ -96,6 +113,8 @@ const TIME_TRIAL_PROFILES = new Set(["itt", "itt_hilly", "ttt"]);
 const MONUMENT_CLASSES = new Set(["Monuments"]);
 const GC_RACE_GROUPS = new Set(["short_stage_race", "other_stage_race", "gt", "u23_junior"]);
 const IN_CHUNK = 100;
+const TIMELINE_CHUNK = 10;
+const TIMELINE_PAGE = 100;
 
 /** Loebsgruppen for et loeb: U23/junior foerst, saa monumenter, ellers efter etapeantal. */
 export function raceGroupOfRace(race) {
@@ -357,6 +376,243 @@ export function summaryLine(result) {
   return `${result.ok} gates OK / ${result.deviations} afvigelser${little}`;
 }
 
+// ── Realisme-maal (REN, #7588) ───────────────────────────────────────────────
+
+/**
+ * Drift-vagtens del af realisme-gaten: M1 og M3-M8. M2 (udbrudssejre) og M9
+ * (favoritter) daekkes af andels-maalene ovenfor; M10/M11 (klassementet) kraever
+ * hele etapeloebet og hoerer til natkoerslen.
+ */
+export const REALISM_DRIFT_METRICS = Object.freeze([
+  "gapTo10", "ittGapTo10PerKm", "breakawayMaxLead", "bigLeadShare", "overHardCapCount",
+  "breakawayPeakFrac", "breakawayPlateau", "breakawayCaughtKmToGo",
+]);
+const REALISM_TT_METRICS = new Set(["ittGapTo10PerKm"]);
+
+/** Motorens egen tidslinje (raceTimeline.TIMELINE_VERSION_V4). Version 1 er en illustration, ikke motorens output. */
+export const ENGINE_TIMELINE_VERSION = 2;
+
+// TODO(#7588, PR 3/6): kontrollen "korpus ude af trit" (prod mod natlig simulation i samme
+// celle) kraever realisme-korpusset og natkoerslen. Den er IKKE med her endnu; afsnittet i
+// rapporten siger det, saa ingen tager fravaeret for en groen dom.
+
+/** "+M:SS" -> sekunder; alt andet (null, PCM-import) er ukendt, aldrig 0. */
+export function gapSeconds(finishTime) {
+  if (typeof finishTime !== "string") return null;
+  const m = finishTime.trim().match(/^\+?(\d+):(\d{1,2})$/);
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+
+/**
+ * Realisme-gatens loebsgruppe, naar den ikke foelger etapeantallet: monumenter. null = efter
+ * etapeantal (realismMetrics: endagsloeb, etapeloeb, Grand Tour). U23/junior maales slet ikke.
+ */
+export function realismGroupOfRace(race) {
+  return raceGroupOfRace(race) === "monument" ? "monument" : null;
+}
+
+/** Morgenudbruddets ryttere og de hentede fra motorens events (samme regel som tourScorecard.breakawaySets). */
+function breakawayFromEvents(events) {
+  const formed = new Set(events.filter((e) => e?.type === "breakaway_formed").flatMap((e) => e.params?.rider_ids ?? []));
+  const caught = new Set(events.filter((e) => e?.type === "breakaway_caught").flatMap((e) => e.params?.rider_ids ?? []));
+  return { formed, caught };
+}
+
+/**
+ * Raa raekker -> realismMetrics-input: et "seed" pr. loeb (prod er een virkelighed),
+ * en raekke pr. afviklet etape i vinduet i tourScorecard.stageMetrics-formen. REN.
+ *
+ * Udbruddets udfald og forloeb laeses af motorens egen tidslinje, ligesom i simulationen.
+ * Uden motor-tidslinje bruges etapens afregnede udbruds-markering (in_breakaway /
+ * breakaway_caught) til udfaldet, og forloebet er ikke maalt (taelles som manglende).
+ */
+export function buildRealismRaces(raw) {
+  const raceById = new Map((raw.races ?? []).map((r) => [r.id, r]));
+  const profileByStage = new Map((raw.profiles ?? []).map((p) => [stageKey(p.race_id, p.stage_number), p]));
+  const timelineByStage = new Map();
+  for (const t of raw.timelines ?? []) {
+    if (Number(t?.timeline_version) !== ENGINE_TIMELINE_VERSION || !Array.isArray(t.events) || !t.events.length) continue;
+    timelineByStage.set(stageKey(t.race_id, t.stage_number), t.events);
+  }
+  const rowsByStage = new Map();
+  const gcByStage = new Map();
+  for (const r of raw.results ?? []) {
+    if (r.rider_id == null) continue;
+    const target = r.result_type === "stage" ? rowsByStage : r.result_type === "gc" ? gcByStage : null;
+    if (!target) continue;
+    const key = stageKey(r.race_id, r.stage_number);
+    if (!target.has(key)) target.set(key, []);
+    target.get(key).push(r);
+  }
+  const byRace = new Map();
+  const seen = new Set();
+  for (const s of raw.executed ?? []) {
+    const key = stageKey(s.race_id, s.stage_number);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const race = raceById.get(s.race_id);
+    if (!race || raceGroupOfRace(race) === "u23_junior") continue;
+    const stageCount = Number(race.stages) || 1;
+    // Endagsloeb: gc-raekkerne ER etapens finish-order (raceRunner skriver ingen stage-raekker).
+    const rows = rowsByStage.get(key) ?? (stageCount <= 1 ? gcByStage.get(key) : null) ?? [];
+    const finishers = [...rows].sort((a, b) => a.rank - b.rank);
+    if (!finishers.length) continue;
+    const profile = profileByStage.get(key) ?? null;
+    const tt = TIME_TRIAL_PROFILES.has(profile?.profile_type);
+    const km = Number(profile?.distance_km) || null;
+    const winner = finishers[0];
+    const winnerGap = gapSeconds(winner.finish_time);
+    const tenthGap = finishers.length >= 10 ? gapSeconds(finishers[9].finish_time) : null;
+    const g10 = winnerGap !== null && tenthGap !== null ? Math.max(0, tenthGap - winnerGap) : null;
+    const events = timelineByStage.get(key) ?? null;
+    let breakawayWon = null;
+    let breakawaySize = null;
+    let trajectory = { breakawayLeadByDecile: null, breakawayPeakFrac: null, breakawayCaughtKmToGo: null };
+    if (!tt) {
+      if (events) {
+        const { formed, caught } = breakawayFromEvents(events);
+        breakawayWon = formed.has(winner.rider_id) && !caught.has(winner.rider_id);
+        breakawaySize = formed.size;
+        trajectory = breakawayTrajectoryRowFacts(events, km);
+      } else {
+        breakawayWon = wonFromBreakaway(winner);
+        breakawaySize = finishers.filter((r) => r.in_breakaway === true).length;
+      }
+    }
+    if (!byRace.has(race.id)) byRace.set(race.id, { raceId: race.id, stageCount, raceGroup: realismGroupOfRace(race), perSeed: [{ rows: [] }] });
+    byRace.get(race.id).perSeed[0].rows.push({
+      stage: Number(s.stage_number) || 1,
+      profile_type: profile?.profile_type ?? null,
+      finale_type: profile?.finale_type ?? null,
+      gapTo10: g10,
+      ittGapTo10Per40Km: tt && km && g10 !== null ? (g10 / km) * 40 : null,
+      breakawayWon,
+      breakawaySize,
+      winnerId: winner.rider_id,
+      ...trajectory,
+    });
+  }
+  return [...byRace.values()];
+}
+
+const statValue = (m, stat) => (m ? (stat === "count" ? m.count : stat === "share" ? m.share : m[stat]) : null);
+const isConcreteCell = (key) => !key.split("|").includes(CELL_WILDCARD);
+
+/**
+ * Doemmer realisme-maalene mod de private baand. bandsEntry = readPrivateConfigEntry-resultatet
+ * ({ status, value }). Status pr. tjek: OK, DEVIATION (med retning over/under), FOR_LIDT
+ * (under minRoutes), INGEN_DATA, MANGLER (intet baand / ingen taerskel). REN.
+ *
+ * missing: maalte celler hvor et maal ikke har noget baand (heller ikke via jokertegn).
+ * Uden gyldige baand er ALLE maalte maal manglende; intet er OK.
+ */
+export function evaluateRealism(realism, bandsEntry) {
+  const cells = realism?.cells ?? {};
+  const bands = bandsEntry?.status === "ok" ? bandsEntry.value : null;
+  const checks = [];
+  let ok = 0;
+  let deviations = 0;
+  let tooLittle = 0;
+  if (bands) {
+    for (const [cell, cellBands] of Object.entries(bands.cells)) {
+      const minRoutes = cellBands.minRoutes ?? bands.minRoutes;
+      for (const metric of REALISM_DRIFT_METRICS) {
+        for (const [stat, band] of Object.entries(cellBands.metrics[metric] ?? {})) {
+          const m = cells[cell]?.metrics?.[metric] ?? null;
+          const n = m?.n ?? 0;
+          const value = statValue(m, stat);
+          let status;
+          let direction = null;
+          if (m?.missingParam) status = "MANGLER";
+          else if (n < minRoutes) { status = "FOR_LIDT"; tooLittle += 1; }
+          else if (!finite(value)) { status = "INGEN_DATA"; tooLittle += 1; }
+          else {
+            status = bandStatus(value, band);
+            if (status === "OK") ok += 1;
+            else { deviations += 1; direction = band.max !== undefined && value > band.max ? "above" : "below"; }
+          }
+          checks.push({ cell, metric, stat, status, direction, n, unmeasured: (m?.missing ?? 0) > 0 });
+        }
+      }
+    }
+  }
+  const missing = [];
+  for (const [cell, c] of Object.entries(cells)) {
+    if (!isConcreteCell(cell) || !(c.observations > 0)) continue;
+    const parsed = parseCellKey(cell);
+    if (!parsed) continue;
+    const tt = TIME_TRIAL_PROFILES.has(parsed.terrain); // samme skel som maalemodulet: profilen, ikke afslutningen
+    const keys = cellKeysOf(parsed);
+    const metrics = REALISM_DRIFT_METRICS.filter((metric) => REALISM_TT_METRICS.has(metric) === tt)
+      .filter((metric) => !bands || !keys.some((k) => bands.cells[k]?.metrics?.[metric]));
+    if (metrics.length) missing.push({ cell, metrics });
+  }
+  const missingCount = missing.reduce((a, x) => a + x.metrics.length, 0) + checks.filter((c) => c.status === "MANGLER").length;
+  // Maalekontraktens punkt 8: en dom paa en delmaengde, hvor andre etaper mangler motorens
+  // forloeb, er ikke fuld evidens. Den taelles, saa rapporten ikke bliver groen.
+  const unmeasuredCount = checks.filter((c) => c.unmeasured).length;
+  return {
+    bandsStatus: bandsEntry?.status ?? "missing",
+    checks, missing, ok, deviations, tooLittle, missingCount, unmeasuredCount,
+    deviating: checks.filter((c) => c.status === "DEVIATION"),
+  };
+}
+
+/** Logfilens realisme-linje: kun optaelling, aldrig maalte tal eller graenser. */
+export function realismSummaryLine(r) {
+  const parts = [`${r.ok} OK / ${r.deviations} afvigelser`];
+  if (r.tooLittle) parts.push(`${r.tooLittle} uden nok data`);
+  if (r.missingCount) parts.push(`${r.missingCount} manglende`);
+  if (r.unmeasuredCount) parts.push(`${r.unmeasuredCount} med etaper uden motorens forloeb`);
+  const bands = r.bandsStatus === "ok" ? "" : ` (baand ${REALISM_BANDS_STATUS_TEXT[r.bandsStatus] ?? "mangler"})`;
+  return `realisme ${parts.join(", ")}${bands}`;
+}
+
+const REALISM_BANDS_STATUS_TEXT = { missing: "ikke sat", invalid: "ugyldige", error: "kunne ikke læses" };
+
+const TERRAIN_LABELS = Object.freeze({
+  flat: "Flad", rolling: "Rullende", hilly: "Kuperet", medium_mountain: "Mellembjerg", mountain: "Bjerg",
+  high_mountain: "Højt bjerg", itt: "Enkeltstart", itt_hilly: "Kuperet enkeltstart", ttt: "Holdtidskørsel",
+  cobbles: "Brosten", gravel: "Grus", classic: "Klassiker", [CELL_WILDCARD]: "Alt terræn",
+});
+const REALISM_GROUP_LABELS = Object.freeze({
+  one_day: "endagsløb", monument: "monumenter", stage_race: "etapeløb", gt: "Grand Tours", [CELL_WILDCARD]: "alle løbsgrupper",
+});
+const FINISH_LABELS = Object.freeze({
+  summit: "topmål", descent: "nedkørsel", sprint: "spurt", punch: "kort stigning", tt: "enkeltstart", other: "anden afslutning",
+  [CELL_WILDCARD]: "alle afslutninger",
+});
+const STAT_LABELS = Object.freeze({ median: "typisk", p90: "i halen", share: "andel", count: "antal" });
+
+/** "Bjerg, etapeløb, topmål" for en cellenøgle (gruppe|terræn|afslutning). */
+export function realismCellLabel(cell) {
+  const p = parseCellKey(cell);
+  if (!p) return cell;
+  return `${TERRAIN_LABELS[p.terrain] ?? p.terrain}, ${REALISM_GROUP_LABELS[p.group] ?? p.group}, ${FINISH_LABELS[p.finish] ?? p.finish}`;
+}
+
+const metricLabel = (metric) => REALISM_METRICS[metric]?.label ?? metric;
+const REALISM_STATUS_TEXT = { OK: "OK", FOR_LIDT: "for lidt data", INGEN_DATA: "ingen data", MANGLER: "mangler grænse" };
+
+/** Realisme-afsnittet: kvalitativ dansk tekst, ingen maalte tal, ingen graenser (#7588). */
+export function renderRealismSection(r) {
+  const lines = ["", "## Realisme: tidsgab, forspring og fangst"];
+  lines.push("_Samme målemodul som realisme-gaten, på motorens egen tidslinje. Kun seniorløb._");
+  if (r.bandsStatus !== "ok") {
+    lines.push(`Realisme-grænserne ${REALISM_BANDS_STATUS_TEXT[r.bandsStatus] ?? "mangler"} (private_config ${REALISM_GATE_BANDS_KEY}). Alle målinger står som manglende, ikke som OK.`);
+  }
+  for (const c of r.checks) {
+    const what = `${realismCellLabel(c.cell)}: ${metricLabel(c.metric)} (${STAT_LABELS[c.stat] ?? c.stat})`;
+    const note = c.unmeasured ? " Nogle etaper mangler motorens forløb." : "";
+    if (c.status === "DEVIATION") lines.push(`- **AFVIGELSE** ${what} ligger ${c.direction === "above" ? "over den øvre grænse" : "under den nedre grænse"}.${note}`);
+    else lines.push(`- ${what} [${REALISM_STATUS_TEXT[c.status] ?? c.status}]${note}`);
+  }
+  for (const m of r.missing) lines.push(`- ${realismCellLabel(m.cell)}: mangler grænse for ${m.metrics.map(metricLabel).join("; ")}.`);
+  if (!r.checks.length && !r.missing.length) lines.push("- Ingen målbare seniorløb i perioden.");
+  lines.push("_Kontrollen af om simulationens korpus stadig ligner prod, er ikke med endnu (kræver realisme-korpusset og natkørslen)._");
+  return lines.join("\n");
+}
+
 // ── Rapport (REN) ────────────────────────────────────────────────────────────
 
 const pct = (v) => (finite(v) ? `${(Number(v) * 100).toFixed(1)} %` : "-");
@@ -380,12 +636,20 @@ export function renderReport(result, { since, until } = {}) {
       lines.push(`- ${flag}${r.label}: ${pct(r.value)} (n=${r.n}) graense ${bandText(r.band)} [${STATUS_TEXT[r.status]}]`);
     }
   }
+  if (result.realism) lines.push(renderRealismSection(result.realism));
   return lines.join("\n");
+}
+
+/** Andels-afvigelser plus realisme-afvigelser (#7588). */
+export function totalDeviations(result) {
+  return result.deviations + (result.realism?.deviations ?? 0);
 }
 
 export function alarmText(result) {
   const names = result.deviating.map((d) => `${GROUP_LABELS[d.group]}: ${d.label}`);
-  return `Motor-drift: ${result.deviations} afvigelser fra graenserne (${summaryLine(result)}). ${names.join("; ")}.`;
+  const base = `Motor-drift: ${result.deviations} afvigelser fra graenserne (${summaryLine(result)}).${names.length ? ` ${names.join("; ")}.` : ""}`;
+  const realism = (result.realism?.deviating ?? []).map((c) => `${realismCellLabel(c.cell)}: ${metricLabel(c.metric)}`);
+  return realism.length ? `${base} Realisme: ${realism.join("; ")}.` : base;
 }
 
 /** Splitter en rapport i stykker under Discords embed-grænse (4096 tegn), paa linjegraenser. */
@@ -401,10 +665,14 @@ export function splitReport(text, max = 3800) {
 }
 
 export function buildPayloads(result, reportText, { mention = getOpsMention() } = {}) {
-  const color = result.deviations > 0 ? 0xe74c3c : 0x2ecc71;
+  // Manglende realisme-maal er aldrig groent (#7588): gul, men ingen alarm.
+  const deviating = totalDeviations(result) > 0;
+  const r = result.realism;
+  const incomplete = r ? r.bandsStatus !== "ok" || r.missingCount > 0 || (r.unmeasuredCount ?? 0) > 0 : false;
+  const color = deviating ? 0xe74c3c : incomplete ? 0xf1c40f : 0x2ecc71;
   const parts = splitReport(reportText);
   const payloads = [];
-  if (result.deviations > 0) {
+  if (deviating) {
     payloads.push(withOpsMention({ embeds: [clampEmbed({ title: "Motor-drift: afvigelse", description: alarmText(result), color })] }, mention));
   }
   parts.forEach((description, i) => {
@@ -467,14 +735,14 @@ export async function fetchRaw(db, { since, until, abilityKeys = [] }) {
   });
   const executed = executedStagesInWindow(winnerRows, { since, until });
   const raceIds = [...new Set(executed.map((s) => s.race_id))].sort();
-  if (!raceIds.length) return { executed, races: [], results: [], incidents: [], profiles: [], abilityRows: [] };
+  if (!raceIds.length) return { executed, races: [], results: [], incidents: [], profiles: [], abilityRows: [], timelines: [] };
   const races = await fetchAllRowsChunkedIn(raceIds, (ids) =>
     db.from("races").select("id, stages, race_class, squad, engine_rules_revision").in("id", ids).order("id"), { chunkSize: IN_CHUNK });
   const results = [];
   for (let i = 0; i < raceIds.length; i += IN_CHUNK) {
     const chunk = raceIds.slice(i, i + IN_CHUNK);
     results.push(...await fetchAllRowsKeyset((after) => {
-      let q = db.from("race_results").select("id, race_id, stage_number, result_type, rank, rider_id, team_id, in_breakaway, breakaway_caught").in("race_id", chunk).in("result_type", ["stage", "gc"]).order("id");
+      let q = db.from("race_results").select("id, race_id, stage_number, result_type, rank, rider_id, team_id, in_breakaway, breakaway_caught, finish_time").in("race_id", chunk).in("result_type", ["stage", "gc"]).order("id");
       if (after != null) q = q.gt("id", after);
       return q;
     }));
@@ -482,13 +750,19 @@ export async function fetchRaw(db, { since, until, abilityKeys = [] }) {
   const incidents = await fetchAllRowsChunkedIn(raceIds, (ids) =>
     db.from("race_incidents").select("id, race_id, stage_number, rider_id, kind, outcome").in("race_id", ids).eq("outcome", "abandon").order("id"), { chunkSize: IN_CHUNK });
   const profiles = await fetchAllRowsChunkedIn(raceIds, (ids) =>
-    db.from("race_stage_profiles").select("id, race_id, stage_number, profile_type, finale_type").in("race_id", ids).order("id"), { chunkSize: IN_CHUNK });
+    db.from("race_stage_profiles").select("id, race_id, stage_number, profile_type, finale_type, distance_km").in("race_id", ids).order("id"), { chunkSize: IN_CHUNK });
+  // #7588: motorens tidslinje for ugens etaper (realisme-maalene). Tunge raekker: smaa bidder,
+  // og kun etaper koert i vinduet beholdes.
+  const executedKeys = new Set(executed.map((s) => stageKey(s.race_id, s.stage_number)));
+  const timelines = (await fetchAllRowsChunkedIn(raceIds, (ids) =>
+    db.from("race_stage_timelines").select("race_id, stage_number, timeline_version, events").in("race_id", ids).order("race_id").order("stage_number"),
+  { chunkSize: TIMELINE_CHUNK, pageSize: TIMELINE_PAGE })).filter((t) => executedKeys.has(stageKey(t.race_id, t.stage_number)));
   // Baade stage- og gc-raekker: endagsloeb har kun gc-raekker (se buildFacts).
   const riderIds = [...new Set(results.map((r) => r.rider_id).concat(incidents.map((i) => i.rider_id)).filter(Boolean))].sort();
   const abilityRows = abilityKeys.length
     ? await fetchAllRowsChunkedIn(riderIds, (ids) => db.from("rider_derived_abilities").select(["rider_id", ...abilityKeys].join(", ")).in("rider_id", ids).order("rider_id"), { chunkSize: IN_CHUNK })
     : [];
-  return { executed, races, results, incidents, profiles, abilityRows };
+  return { executed, races, results, incidents, profiles, abilityRows, timelines };
 }
 
 async function postDiscord(fetchFn, url, payload) {
@@ -559,17 +833,23 @@ export async function main({
       return 2;
     }
     const thresholds = entry.value;
+    // #7588: realisme-baandene er fail-soft: mangler/ugyldig/laesefejl = alle realisme-maal
+    // "manglende" (aldrig OK), mens andels-maalene koerer som foer.
+    const realismBands = await readPrivateConfigEntry(db, REALISM_GATE_BANDS_KEY, { schema: parseRealismGateBands, log: { warn() {} }, cacheMs: 0 });
     const modules = await loadModules();
     const raw = await fetchRaw(db, { ...win, abilityKeys: modules.abilityKeys });
     const abilityRowByRider = new Map(raw.abilityRows.map((a) => [a.rider_id, a]));
     const facts = buildFacts(raw, { observe: makeObserve(modules, abilityRowByRider) });
     result = evaluate(computeGroupMetrics(facts), thresholds);
+    const realism = computeRealismMetrics({ races: buildRealismRaces(raw), params: realismBands.status === "ok" ? realismBands.value.params : {} });
+    result.realism = evaluateRealism(realism, realismBands);
     report = renderReport(result, win);
   } catch (err) {
     errorLog(`weekly-engine-drift: datafejl (${err?.name ?? "Error"})`);
     return 3;
   }
   log(`weekly-engine-drift: ${summaryLine(result)}`);
+  log(`weekly-engine-drift: ${realismSummaryLine(result.realism)}`);
 
   if (env.WEEKLY_DRIFT_OUT) {
     const segments = path.resolve(env.WEEKLY_DRIFT_OUT).split(/[\\/]+/);
@@ -589,7 +869,7 @@ export async function main({
       }
     }
   }
-  return result.deviations > 0 ? 1 : 0;
+  return totalDeviations(result) > 0 ? 1 : 0;
 }
 
 if (isMain()) {

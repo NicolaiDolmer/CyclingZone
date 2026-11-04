@@ -83,6 +83,8 @@ param(
   [Parameter(Mandatory)]
   [string] $Pr,
   [switch] $DryRun,
+  # Codex P1 (#7657): auto-toget sender det vurderede/godkendte hoved; et andet hoved = STOP foer merge (kun med een PR).
+  [string] $ExpectHead = "",
   # Owner renewal 28/10: real CodeRabbit instead of Claude for #7313 only.
   [switch] $CodeRabbitNight,
   [int] $MinWaitMinutesNoBackend = 3,
@@ -131,9 +133,11 @@ $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot 'lib\league-check.ps1')
 # #7587 punkt 6: close-out-modulet (scriptniveau, saa funktionen kan testes udtrukket).
 $script:CloseOutScript = Join-Path $PSScriptRoot 'merge-queue-closeout.mjs'
+$script:ActiveMarkerScript = Join-Path $PSScriptRoot 'merge-queue-active-marker.mjs'
 
 $PrNumbers = @($Pr -split '[,\s]+' | Where-Object { $_ } | ForEach-Object { [int]$_ })
 if ($PrNumbers.Count -eq 0) { Write-Error "Ingen gyldige PR-numre i -Pr '$Pr'."; exit 1 }
+if ($ExpectHead -and ($PrNumbers.Count -ne 1 -or $ExpectHead -notmatch '^[0-9a-f]{40}$')) { Write-Error "-ExpectHead kraever praecis een PR og en fuld SHA."; exit 1 }
 
 if ($CodeRabbitNight -and ($Repo -ne 'NicolaiDolmer/CyclingZone' -or @($PrNumbers | Where-Object { $_ -notin @(7313) }).Count -gt 0)) {
   throw 'CodeRabbitNight er kun ejer-godkendt for #7313 i CyclingZone.'
@@ -641,14 +645,15 @@ function Invoke-TrainCloseOut {
   param(
     [object[]] $Entries,
     [bool] $DeployVerified = $true,
-    [string] $ScriptPath = $script:CloseOutScript
+    [string] $ScriptPath = $script:CloseOutScript,
+    [string] $Phase = 'run'
   )
   try {
     $items = @($Entries | Where-Object { $null -ne $_ } | ForEach-Object {
       [ordered]@{ number = [int]$_.number; sha = $(if ($_.sha) { [string]$_.sha } else { $null }) }
     })
     if ($items.Count -eq 0) { return }
-    $nodeArgs = @($ScriptPath, 'run', '--train', (ConvertTo-Json -InputObject $items -Compress), '--repo', $Repo)
+    $nodeArgs = @($ScriptPath, $Phase, '--train', (ConvertTo-Json -InputObject $items -Compress), '--repo', $Repo)
     if ($DryRun) { $nodeArgs += '--dry-run' }
     if (-not $DeployVerified) { $nodeArgs += '--no-deploy' }
     $out = @(& node @nodeArgs 2>&1)
@@ -658,6 +663,13 @@ function Invoke-TrainCloseOut {
   } catch {
     Write-Host '  (close-out fejlede; merget er stadig verificeret. Koer scripts/merge-queue-closeout.mjs manuelt.)' -ForegroundColor DarkYellow
   }
+}
+
+# #7587: tog-markoer (.claude/run/merge-queue-active.json, scripts/merge-queue-active-marker.mjs),
+# som Stop-hooken laeser. -DryRun skriver ingen. Fail-soft: en fejl her stopper aldrig koeen.
+function Invoke-ActiveMarker([string[]]$MarkerArgs) {
+  if ($DryRun) { return }
+  try { & node $script:ActiveMarkerScript @MarkerArgs --pid "$PID" 2>&1 | Out-Null } catch {}
 }
 
 function Get-DeployGateAction([string]$State) {
@@ -1011,6 +1023,9 @@ function Close-OpenTrain {
   catch { Write-Host '  (close-out kunne ikke startes; merget er stadig verificeret.)' -ForegroundColor DarkYellow }
 }
 
+# #7587: markoeren lever fra foerste merge-forsoeg til koeen slutter; finally (nederst) fjerner den ogsaa ved STOP/exit.
+Invoke-ActiveMarker @('start', '--prs', ($PrNumbers -join ','))
+try {
 for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   $entry = $plan[$idx]
   $n = $entry.number
@@ -1056,6 +1071,17 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   }
 
   $fresh = Get-PrPlanEntry $n
+  # Codex P1 (#7657): hovedet skal vaere det, kalderen vurderede; ellers merges et ikke-godkendt commit.
+  if ($ExpectHead -and $fresh.headSha -ne $ExpectHead) {
+    Write-Host "STOP: PR #$n har hoved $($fresh.headSha) - ikke det godkendte $ExpectHead. Intet merges." -ForegroundColor Red
+    Exit-Queue 1
+  }
+  # #7628: konflikt KUN i TS-baseline-filerne loeses af modulet (exit 0); alt andet = uaendret adfaerd.
+  # Loest = vent paa netop denne PR nu (ikke bagerst), saa naeste konflikt loeses mod den nye main.
+  if ($fresh.mergeable -eq 'CONFLICTING' -and -not $script:updated.ContainsKey("$n")) {
+    & node (Join-Path $PSScriptRoot 'merge-queue-baseline-resolve.mjs') --pr "$n" --repo $Repo @(if ($DryRun) { '--dry-run' }) | ForEach-Object { Write-Host "      $_" }
+    if ($LASTEXITCODE -eq 0 -and -not $DryRun) { $script:updated["$n"] = $true; $script:deferred["$n"] = $true; $fresh = Get-PrPlanEntry $n }
+  }
   if ($fresh.checksExit -ne 0 -and -not $StopOnRedPr -and -not $DryRun) {
     # 23/10 klar-foerst: ikke groen endnu -> bagerst i koeen een gang, saa klare PR'er
     # merges imens. Andet besoeg: vent (og opdater kun denne PR hvis den er bagud og roed).
@@ -1142,6 +1168,12 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
     Write-Host "STOP: PR #$n har aendret sig under ventetiden (hoved $($fresh.headSha) -> $($recheck.headSha), checks: $($recheck.checksSummary)). Koer koeen igen, naar det nye hoved er groent." -ForegroundColor Red
     Exit-Queue 1
   }
+  # Codex P1 (#7657): sidste vagt lige foer merge - et push under Wait-PrGreen eller en
+  # baseline-loesning maa aldrig merge et andet hoved end det, kalderen godkendte.
+  if ($ExpectHead -and $recheck.headSha -ne $ExpectHead) {
+    Write-Host "STOP: PR #$n har hoved $($recheck.headSha) lige foer merge - ikke det godkendte $ExpectHead. Intet merges." -ForegroundColor Red
+    Exit-Queue 1
+  }
   Write-Host "  Merger: gh pr merge $n --squash --delete-branch --admin"
   & node (Join-Path $PSScriptRoot 'wave-policy.mjs') assert-merge-allowed --pr "$n" --repo $Repo
   if ($LASTEXITCODE -ne 0) {
@@ -1198,6 +1230,9 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   $script:batchMerged += $n
   $script:lastMergedSha = $sha
   $script:batchShas += $sha
+  # #7587: merge-SHA i markoeren + SHA-kommentar STRAKS (verifikation afventer; Close-OpenTrain opdaterer den).
+  Invoke-ActiveMarker @('merged', '--pr', "$n", '--sha', $sha)
+  try { Invoke-TrainCloseOut -Entries @([pscustomobject]@{ number = $n; sha = $sha }) -Phase 'merged' } catch {}
   $script:trainEntries += [pscustomobject]@{ number = $n; sha = $sha; needsMigration = [bool]($entry.needsMigration -or $fresh.needsMigration); touchesBackend = [bool]$entryBackend; touchesRailway = [bool]$entryRailway; touchesVercel = [bool]($entry.touchesVercel -or $fresh.touchesVercel) }
   if ($entryRailway) { $script:batchRailway = $true }
   if ($entryBackend) { $script:batchBackend = $true }
@@ -1237,4 +1272,8 @@ if ($DryRun) {
   foreach ($id in @($script:handedOffRuns)) {
     Write-Host "  Cron-bevis koerer videre i https://github.com/$Repo/actions/runs/$id (kommenterer paa PR'en naar det er faerdigt; roedt = Discord-ops-alarm, intet stop)." -ForegroundColor DarkGray
   }
+}
+} finally {
+  # #7587: ogsaa ved STOP/exit/fejl. Fjerner kun denne process' markoer.
+  Invoke-ActiveMarker @('stop')
 }

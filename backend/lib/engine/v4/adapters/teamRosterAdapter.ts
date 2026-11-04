@@ -14,6 +14,7 @@
 
 import type { Entrant } from "../types.ts";
 import type { TeamRoster } from "../mechanics/teamTimeTrial.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 /**
  * Praefiks paa den syntetiske hold-noegle en rytter UDEN hold-id faar.
@@ -64,9 +65,9 @@ export function teamRostersFromStartlist(startlist: readonly Entrant[]): TeamRos
   }
 
   return [...byTeam.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => compareIds(a, b))
     .map(([team_id, riders]) => ({
       team_id,
-      riders: [...riders].sort((a, b) => a.rider_id.localeCompare(b.rider_id)),
+      riders: [...riders].sort((a, b) => compareIds(a.rider_id, b.rider_id)),
     }));
 }

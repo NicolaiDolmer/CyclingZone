@@ -84,6 +84,7 @@ import type {
 } from "../types.ts";
 import { TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
 import { protectedRoleOrderWithCoCaptain, splitLeaderBonus } from "./sharedCaptain.ts";
+import { compareIds } from "../../../compareIds.ts";
 import { luxuryHelperTeamPlayEntrants } from "./luxuryHelper5982.ts"; // #5982
 
 export { TEAM_PLAY_EXTRA_TUNING as TEAM_PLAY_TUNING };
@@ -303,7 +304,7 @@ export function buildGroupTeamContexts(
   coCaptain = false, // #5981 (KUN s5_profiles_v3): delt kaptajn i lederraekkefoelgen + coLeaderId
 ): GroupTeamContext[] {
   const byTeam = new Map<string, { byRole: Map<string, string[]>; workerIds: string[] }>();
-  for (const riderId of [...group.rider_ids].sort((a, b) => a.localeCompare(b))) {
+  for (const riderId of [...group.rider_ids].sort((a, b) => compareIds(a, b))) {
     const entrant = entrants[riderId];
     const riderState = riders[riderId];
     if (!entrant || !riderState) continue;
@@ -326,7 +327,7 @@ export function buildGroupTeamContexts(
 
   const order = coCaptain ? protectedRoleOrderWithCoCaptain(protectedRoleOrder(profileType)) : protectedRoleOrder(profileType);
   const out: GroupTeamContext[] = [];
-  for (const [teamId, bucket] of [...byTeam.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+  for (const [teamId, bucket] of [...byTeam.entries()].sort((a, b) => compareIds(a[0], b[0]))) {
     let leaderId: string | null = null;
     for (const role of order) {
       const candidates = bucket.byRole.get(role);

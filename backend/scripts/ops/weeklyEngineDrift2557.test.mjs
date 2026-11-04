@@ -6,8 +6,12 @@ import {
   GROUPS, MEASURES, abandonCategory, alarmText, bandStatus, buildFacts, buildPayloads, computeGroupMetrics, evaluate, main,
   makeReadOnlyClient, raceGroupOfRace, renderReport, splitReport, summaryLine, windowOf, missingEnv, fetchRaw,
   executedStagesInWindow, wonFromBreakaway,
+  ENGINE_TIMELINE_VERSION, REALISM_DRIFT_METRICS, buildRealismRaces, evaluateRealism, gapSeconds, realismSummaryLine, renderRealismSection,
 } from "./weeklyEngineDrift2557.mjs";
 import { DRIFT_GROUPS, DRIFT_MEASURE_KEYS, parseWeeklyEngineDriftThresholds } from "../../lib/weeklyEngineDriftThresholds.ts";
+import { parseRealismGateBands } from "../../lib/realismGateBands.ts";
+import { breakawayTrajectoryRowFacts, computeRealismMetrics } from "../dev/lib/realismMetrics.mjs";
+import { TIMELINE_VERSION_V4 } from "../../lib/raceTimeline.js";
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -291,7 +295,11 @@ test("summaryLine og logfilen indeholder aldrig maalte tal", async () => {
     now: NOW,
   });
   assert.equal(code, 1);
-  assert.deepEqual(logs, ["weekly-engine-drift: 2 gates OK / 1 afvigelser, 1 uden nok data"]);
+  // #7588: realisme-linjen er kun en optaelling; uden baand er alle maalte realisme-maal manglende.
+  assert.deepEqual(logs, [
+    "weekly-engine-drift: 2 gates OK / 1 afvigelser, 1 uden nok data",
+    "weekly-engine-drift: realisme 0 OK / 0 afvigelser, 15 manglende (baand ikke sat)",
+  ]);
   assert.ok(sent.length >= 2);
   assert.equal(sent[0].content, "<@123>"); // alarmen foerst, med mention
   assert.match(sent[0].embeds[0].description, /afvigelser/);
@@ -420,6 +428,271 @@ test("GROUPS daekker alle fire krævede gruppe-typer", () => {
   for (const g of ["short_stage_race", "gt", "one_day", "monument", "u23_junior"]) assert.ok(GROUPS.includes(g));
 });
 
+// ── Realisme-maal (#7588) ────────────────────────────────────────────────────
+// Syntetiske etaper og opfundne graenser (hard rule 17). Etape 1: flad spurtetape med
+// motor-tidslinje, udbrud dannet tidligt og hentet taet paa maal. Etape 2: enkeltstart.
+
+const DIST = 100;
+const ENGINE_EVENTS = [
+  { km: 5, type: "breakaway_formed", params: { group_id: "g1", rider_ids: ["esc1", "esc2"] } },
+  { km: 10, type: "gap_update", params: { group_id: "g1", separation_seconds: 60 } },
+  { km: 30, type: "gap_update", params: { group_id: "g1", separation_seconds: 120 } },
+  { km: 55, type: "gap_update", params: { group_id: "g1", separation_seconds: 90 } },
+  { km: 80, type: "gap_update", params: { group_id: "g1", separation_seconds: 30 } },
+  { km: 90, type: "breakaway_caught", params: { group_id: "g1", rider_ids: ["esc1", "esc2"] } },
+  { km: DIST, type: "finish", params: {} },
+];
+const gapText = (s) => `+${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+/** n finishere; rytter i har tidsgabet gaps(i). Vinderen staar foerst. */
+const finishRows = (raceId, stage, n, gaps, extra = () => ({}), type = "stage") =>
+  Array.from({ length: n }, (_, i) => row(raceId, stage, i + 1, i === 0 ? `w${stage}` : `${raceId}-${stage}-r${i + 1}`, { result_type: type, finish_time: gapText(gaps(i)), ...extra(i) }));
+
+function realismRaw({ timelineVersion = 2 } = {}) {
+  return {
+    executed: [sched("sr", 1), sched("sr", 2)],
+    races: [race("sr", { stages: 3 })],
+    profiles: [
+      { race_id: "sr", stage_number: 1, profile_type: "flat", finale_type: "flat_sprint", distance_km: DIST },
+      { race_id: "sr", stage_number: 2, profile_type: "itt", finale_type: "solo_tt", distance_km: 20 },
+    ],
+    results: [
+      ...finishRows("sr", 1, 12, (i) => (i < 9 ? 0 : 12), (i) => (i === 1 ? { in_breakaway: true, breakaway_caught: true } : {})),
+      ...finishRows("sr", 2, 10, (i) => i * 5),
+    ],
+    incidents: [],
+    timelines: [{ race_id: "sr", stage_number: 1, timeline_version: timelineVersion, events: ENGINE_EVENTS }],
+  };
+}
+
+const REALISM_BANDS = {
+  version: 1,
+  _decisions: [{ version: 1, date: "2026-11-04", quote: "opfundet testbeslutning" }],
+  minRoutes: 1,
+  params: { bigLeadSeconds: 100, hardCapSeconds: 1000 },
+  cells: {
+    "stage_race|flat|sprint": {
+      breakawayMaxLead: { median: { max: 50 } },
+      bigLeadShare: { share: { max: 0.5 } },
+      breakawayCaughtKmToGo: { median: { min: 0, max: 50 } },
+    },
+    "*|*|*": { gapTo10: { median: { max: 1000 } } },
+    "gt|mountain|summit": { breakawayMaxLead: { median: { max: 50 } } },
+  },
+};
+const okBands = () => ({ status: "ok", value: parseRealismGateBands(REALISM_BANDS) });
+
+test("ENGINE_TIMELINE_VERSION er motorens egen tidslinje-version", () => {
+  assert.equal(ENGINE_TIMELINE_VERSION, TIMELINE_VERSION_V4);
+});
+
+test("gapSeconds: kun '+M:SS' er et tidsgab; alt andet er ukendt, aldrig 0", () => {
+  assert.equal(gapSeconds("+1:05"), 65);
+  assert.equal(gapSeconds("+0:00"), 0);
+  assert.equal(gapSeconds(null), null);
+  assert.equal(gapSeconds("DNF"), null);
+});
+
+test("buildRealismRaces: etaperaekker i tourScorecard-formen, forloebet fra motorens egne events (som i simulationen)", () => {
+  const [sr] = buildRealismRaces(realismRaw());
+  assert.equal(sr.raceId, "sr");
+  assert.equal(sr.stageCount, 3);
+  assert.equal(sr.raceGroup, null);
+  assert.equal(sr.perSeed.length, 1);
+  const [flat, itt] = sr.perSeed[0].rows;
+  assert.equal(flat.profile_type, "flat");
+  assert.equal(flat.gapTo10, 12);
+  assert.equal(flat.breakawayWon, false);
+  assert.equal(flat.breakawaySize, 2);
+  assert.equal(flat.winnerId, "w1");
+  // Samme maaling som tourScorecard.stageMetrics paa en simuleret etape.
+  const sim = breakawayTrajectoryRowFacts(ENGINE_EVENTS, DIST);
+  assert.deepEqual(
+    { breakawayLeadByDecile: flat.breakawayLeadByDecile, breakawayPeakFrac: flat.breakawayPeakFrac, breakawayCaughtKmToGo: flat.breakawayCaughtKmToGo },
+    sim,
+  );
+  assert.equal(flat.breakawayCaughtKmToGo, 10);
+  // Enkeltstart: kun tidsgabet pr. km, ingen udbrudsmaal.
+  assert.equal(itt.ittGapTo10Per40Km, (45 / 20) * 40);
+  assert.equal(itt.breakawayWon, null);
+  assert.equal(itt.breakawayLeadByDecile, null);
+});
+
+test("buildRealismRaces: udbrud der holder vinder fra motorens events; under ti finishere er tidsgabet ukendt", () => {
+  const raw = realismRaw();
+  raw.timelines[0].events = ENGINE_EVENTS.filter((e) => e.type !== "breakaway_caught").map((e) => (e.type === "breakaway_formed" ? { ...e, params: { ...e.params, rider_ids: ["w1", "esc2"] } } : e));
+  raw.results = raw.results.filter((r) => r.stage_number !== 1 || r.rank <= 5);
+  const [flat] = buildRealismRaces(raw)[0].perSeed[0].rows;
+  assert.equal(flat.breakawayWon, true);
+  assert.equal(flat.gapTo10, null);
+  assert.equal(flat.breakawayCaughtKmToGo, null);
+});
+
+test("buildRealismRaces: en ikke-motor-tidslinje bruges aldrig; uden den er forloebet ikke maalt", () => {
+  const [flat] = buildRealismRaces(realismRaw({ timelineVersion: 1 }))[0].perSeed[0].rows;
+  assert.equal(flat.breakawayLeadByDecile, null);
+  assert.equal(flat.breakawayCaughtKmToGo, null);
+  // Udfaldet falder tilbage paa etapens afregnede markering: vinderen var ikke udbryder.
+  assert.equal(flat.breakawayWon, false);
+  assert.equal(flat.breakawaySize, 1);
+  const metrics = computeRealismMetrics({ races: buildRealismRaces(realismRaw({ timelineVersion: 1 })) });
+  assert.equal(metrics.cells["stage_race|flat|sprint"].metrics.breakawayMaxLead.missing, 1);
+});
+
+test("buildRealismRaces: endagsloeb maales paa gc-raekkerne, monumenter faar egen gruppe, U23/junior udelades", () => {
+  const raw = {
+    executed: [sched("o1", 1), sched("m1", 1), sched("u1", 1)],
+    races: [race("o1"), race("m1", { race_class: "Monuments" }), race("u1", { squad: "u23" })],
+    profiles: ["o1", "m1", "u1"].map((id) => ({ race_id: id, stage_number: 1, profile_type: "hilly", finale_type: "punch", distance_km: DIST })),
+    results: [...finishRows("o1", 1, 10, (i) => i, () => ({}), "gc"), ...finishRows("m1", 1, 10, (i) => i, () => ({}), "gc"), ...finishRows("u1", 1, 10, (i) => i, () => ({}), "gc")],
+    incidents: [], timelines: [],
+  };
+  const races = buildRealismRaces(raw);
+  assert.deepEqual(races.map((r) => [r.raceId, r.raceGroup]), [["o1", null], ["m1", "monument"]]);
+  assert.equal(races[0].perSeed[0].rows[0].gapTo10, 9);
+  const cells = computeRealismMetrics({ races }).cells;
+  assert.ok(cells["one_day|hilly|punch"]);
+  assert.ok(cells["monument|hilly|punch"]);
+});
+
+test("evaluateRealism: uden baand er alle maalte maal manglende og intet er OK", () => {
+  const metrics = computeRealismMetrics({ races: buildRealismRaces(realismRaw()) });
+  for (const status of ["missing", "invalid", "error"]) {
+    const r = evaluateRealism(metrics, { status, value: null });
+    assert.equal(r.bandsStatus, status);
+    assert.equal(r.ok, 0);
+    assert.equal(r.deviations, 0);
+    assert.deepEqual(r.checks, []);
+    // Flad vejetape: alle syv vej-maal; enkeltstart: tidsgabet pr. km.
+    assert.equal(r.missingCount, REALISM_DRIFT_METRICS.length);
+    assert.deepEqual(r.missing.map((m) => m.cell).sort(), ["stage_race|flat|sprint", "stage_race|itt|tt"]);
+  }
+});
+
+test("evaluateRealism: OK, afvigelse med retning, for lidt data, jokertegn daekker, og et maal uden baand er manglende", () => {
+  const metrics = computeRealismMetrics({ races: buildRealismRaces(realismRaw()), params: okBands().value.params });
+  const r = evaluateRealism(metrics, okBands());
+  const by = (cell, metric) => r.checks.find((c) => c.cell === cell && c.metric === metric);
+  assert.equal(by("stage_race|flat|sprint", "breakawayMaxLead").status, "DEVIATION");
+  assert.equal(by("stage_race|flat|sprint", "breakawayMaxLead").direction, "above");
+  assert.equal(by("stage_race|flat|sprint", "bigLeadShare").status, "DEVIATION"); // taerskel fra params
+  assert.equal(by("stage_race|flat|sprint", "breakawayCaughtKmToGo").status, "OK");
+  assert.equal(by("*|*|*", "gapTo10").status, "OK");
+  assert.equal(by("gt|mountain|summit", "breakawayMaxLead").status, "FOR_LIDT"); // ingen etaper i cellen
+  assert.equal(r.ok, 2);
+  assert.equal(r.deviations, 2);
+  assert.equal(r.tooLittle, 1);
+  // gapTo10 er daekket af *|*|*; de tre forloebs-maal uden baand og enkeltstartens tidsgab mangler.
+  assert.deepEqual(r.missing, [
+    { cell: "stage_race|flat|sprint", metrics: ["overHardCapCount", "breakawayPeakFrac", "breakawayPlateau"] },
+    { cell: "stage_race|itt|tt", metrics: ["ittGapTo10PerKm"] },
+  ]);
+  assert.equal(r.missingCount, 4);
+  assert.equal(realismSummaryLine(r), "realisme 2 OK / 2 afvigelser, 1 uden nok data, 4 manglende");
+});
+
+/** Realisme-afsnittet maa ikke indeholde tal (definitionen "nr. 10" er et navn, ikke en maaling). */
+const assertNoNumbers = (text) => assert.doesNotMatch(text.replace(/nr\. 10/g, ""), /\d/);
+
+test("renderRealismSection: kvalitativ dansk tekst uden tal; manglende baand er aldrig OK", () => {
+  const metrics = computeRealismMetrics({ races: buildRealismRaces(realismRaw()), params: okBands().value.params });
+  const text = renderRealismSection(evaluateRealism(metrics, okBands()));
+  assertNoNumbers(text);
+  assert.match(text, /\*\*AFVIGELSE\*\* Flad, etapeløb, spurt: udbruddets største forspring \(typisk\) ligger over den øvre grænse\./);
+  assert.match(text, /Enkeltstart, etapeløb, enkeltstart: mangler grænse for afstanden fra vinderen til nr\. 10 pr\. km/);
+  assert.match(text, /korpus stadig ligner prod, er ikke med endnu/);
+  const missing = renderRealismSection(evaluateRealism(metrics, { status: "missing", value: null }));
+  assertNoNumbers(missing);
+  assert.match(missing, /ikke sat .*manglende, ikke som OK/);
+  assert.doesNotMatch(missing, /\[OK\]/);
+});
+
+test("main: realisme-afvigelse giver exit 1 og alarm, selv naar andels-maalene er OK; Discord-teksten for realisme har ingen tal", async () => {
+  const logs = [];
+  const sent = [];
+  const code = await main({
+    env: ENV,
+    makeDb: () => fakeDb(realismRaw(), { thresholds: { minStages: 1, groups: { short_stage_race: { abandonShare: { max: 0.9 } } } }, realismBands: REALISM_BANDS }),
+    loadModules: async () => fakeModules(),
+    fetchFn: async (url, init) => { sent.push(JSON.parse(init.body)); return { ok: true }; },
+    log: (s) => logs.push(s), errorLog: (s) => logs.push(s), now: NOW,
+  });
+  assert.equal(code, 1);
+  assert.deepEqual(logs, [
+    "weekly-engine-drift: 1 gates OK / 0 afvigelser",
+    "weekly-engine-drift: realisme 2 OK / 2 afvigelser, 1 uden nok data, 4 manglende",
+  ]);
+  assert.match(sent[0].embeds[0].description, /Realisme: Flad, etapeløb, spurt: udbruddets største forspring/);
+  const report = sent.slice(1).map((p) => p.embeds[0].description).join("\n");
+  const section = report.slice(report.indexOf("## Realisme"));
+  assert.ok(section.length > 0);
+  assertNoNumbers(section);
+});
+
+test("main: manglende realisme-baand stopper ikke andels-maalene, giver ikke exit 1, men rapporten er gul, ikke groen", async () => {
+  const sent = [];
+  const code = await main({
+    env: ENV,
+    makeDb: () => fakeDb(realismRaw(), { thresholds: { minStages: 1, groups: { short_stage_race: { abandonShare: { max: 0.9 } } } } }),
+    loadModules: async () => fakeModules(),
+    fetchFn: async (url, init) => { sent.push(JSON.parse(init.body)); return { ok: true }; },
+    log: () => {}, errorLog: () => {}, now: NOW,
+  });
+  assert.equal(code, 0);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].embeds[0].color, 0xf1c40f);
+  assert.match(sent[0].embeds[0].description, /Realisme-grænserne ikke sat/);
+  // Ugyldige baand (uden version) behandles ens: manglende, aldrig OK.
+  const logs = [];
+  await main({
+    env: { ...ENV, WEEKLY_DRIFT_DRY_RUN: "1" },
+    makeDb: () => fakeDb(realismRaw(), { thresholds: { minStages: 1, groups: { short_stage_race: { abandonShare: { max: 0.9 } } } }, realismBands: { ...REALISM_BANDS, version: undefined } }),
+    loadModules: async () => fakeModules(), log: (s) => logs.push(s), errorLog: (s) => logs.push(s), now: NOW,
+  });
+  assert.equal(logs.at(-1), `weekly-engine-drift: realisme 0 OK / 0 afvigelser, ${REALISM_DRIFT_METRICS.length} manglende (baand ugyldige)`);
+});
+
+test("evaluateRealism + buildPayloads: en OK-dom hvor andre etaper mangler motorens forloeb, er aldrig groen", () => {
+  const raw = realismRaw();
+  raw.executed.push(sched("sr", 3));
+  raw.profiles.push({ race_id: "sr", stage_number: 3, profile_type: "flat", finale_type: "flat_sprint", distance_km: DIST });
+  // Ingen tidslinje for etape 3, men etapens markering viser et hentet udbrud.
+  raw.results.push(...finishRows("sr", 3, 10, () => 0, (i) => (i === 4 ? { in_breakaway: true, breakaway_caught: true } : {})));
+  const bands = { status: "ok", value: parseRealismGateBands({ ...REALISM_BANDS, cells: { "stage_race|flat|sprint": { breakawayMaxLead: { median: { max: 1000 } } } } }) };
+  const r = evaluateRealism(computeRealismMetrics({ races: buildRealismRaces(raw) }), bands);
+  const check = r.checks.find((c) => c.metric === "breakawayMaxLead");
+  assert.equal(check.status, "OK");
+  assert.equal(check.unmeasured, true);
+  assert.equal(r.unmeasuredCount, 1);
+  assert.match(realismSummaryLine(r), /1 med etaper uden motorens forloeb/);
+  // Selv uden manglende baand er rapporten gul.
+  const result = { ...evaluate(computeGroupMetrics(buildFacts(raw, { observe })), parseThresholds({ minStages: 1, groups: {} })), realism: { ...r, missing: [], missingCount: 0 } };
+  assert.equal(buildPayloads(result, "x", { mention: null })[0].embeds[0].color, 0xf1c40f);
+  assert.match(renderRealismSection(r), /Nogle etaper mangler motorens forløb/);
+});
+
+test("evaluateRealism: en enkeltstart uden maalbart tidsgab goer dommen umaalt, aldrig groen (Codex)", () => {
+  const raw = realismRaw();
+  raw.executed.push(sched("sr", 3));
+  raw.profiles.push({ race_id: "sr", stage_number: 3, profile_type: "itt", finale_type: "solo_tt", distance_km: 20 });
+  // Kun ni i maal: tidsgabet til nr. 10 er ukendt for denne enkeltstart.
+  raw.results.push(...finishRows("sr", 3, 9, (i) => i * 5));
+  const bands = { status: "ok", value: parseRealismGateBands({ ...REALISM_BANDS, cells: { "*|*|*": { ittGapTo10PerKm: { median: { max: 1000 } } } } }) };
+  const metrics = computeRealismMetrics({ races: buildRealismRaces(raw) });
+  assert.equal(metrics.cells["stage_race|itt|tt"].metrics.ittGapTo10PerKm.missing, 1);
+  const r = evaluateRealism(metrics, bands);
+  const check = r.checks.find((c) => c.metric === "ittGapTo10PerKm");
+  assert.equal(check.status, "OK");
+  assert.equal(check.unmeasured, true);
+  assert.ok(r.unmeasuredCount >= 1);
+});
+
+test("fetchRaw: tidslinjer hentes kun for etaper koert i vinduet", async () => {
+  const raw = realismRaw();
+  raw.timelines.push({ race_id: "sr", stage_number: 3, timeline_version: 2, events: ENGINE_EVENTS });
+  const full = await fetchRaw(fakeDb(raw), { since: "2026-10-19T00:00:00Z", until: "2026-10-27T00:00:00Z" });
+  assert.deepEqual(full.timelines.map((t) => t.stage_number), [1]);
+});
+
 // ── Falsk Supabase ───────────────────────────────────────────────────────────
 
 function fakeModules() {
@@ -432,13 +705,17 @@ function fakeModules() {
 }
 
 /** Minimal PostgREST-lignende klient: kun select, med in/eq/gte/lt/gt/order/range/limit. */
-function fakeDb(data, { thresholds, configError } = {}) {
+function fakeDb(data, { thresholds, configError, realismBands } = {}) {
   const tables = {
-    private_config: thresholds === undefined ? [] : [{ key: "weekly_engine_drift_thresholds", value: thresholds }],
+    private_config: [
+      ...(thresholds === undefined ? [] : [{ key: "weekly_engine_drift_thresholds", value: thresholds }]),
+      ...(realismBands === undefined ? [] : [{ key: "realism_gate_bands", value: realismBands }]),
+    ],
     races: data.races ?? [],
     race_results: data.results ?? [],
     race_incidents: data.incidents ?? [],
     race_stage_profiles: data.profiles ?? [],
+    race_stage_timelines: data.timelines ?? [],
     rider_derived_abilities: data.abilities ?? [],
   };
   return makeReadOnlyClient({

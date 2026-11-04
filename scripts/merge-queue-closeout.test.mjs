@@ -23,10 +23,18 @@ function fakeGh({ prs = {}, comments = {}, labels = {}, fail = {} } = {}) {
       const pr = prs[args[2]];
       return pr ? { status: 0, stdout: JSON.stringify(pr) } : { status: 1, stdout: '' };
     }
+    if (args[0] === 'api' && args.includes('PATCH')) {
+      // Kommentar-id = issue * 1000 + indeks (se listen herunder).
+      if (fail['api patch']) return { status: 1, stdout: '' };
+      const id = Number(/issues\/comments\/(\d+)$/.exec(args[1])[1]);
+      const list = state.comments[Math.floor(id / 1000)];
+      list[id % 1000] = args[args.indexOf('-f') + 1].replace(/^body=/, '');
+      return { status: 0, stdout: '' };
+    }
     if (args[0] === 'api') {
       const issue = /issues\/(\d+)\/comments/.exec(args[1])[1];
       if (fail[`comments ${issue}`]) return { status: 1, stdout: '' };
-      const list = (state.comments[issue] ?? []).map((body) => ({ body }));
+      const list = (state.comments[issue] ?? []).map((body, i) => ({ id: Number(issue) * 1000 + i, body }));
       return { status: 0, stdout: JSON.stringify([list]) };
     }
     if (args[0] === 'issue' && args[1] === 'comment') {
@@ -49,7 +57,7 @@ function fakeGh({ prs = {}, comments = {}, labels = {}, fail = {} } = {}) {
   };
   return { gh, calls, state };
 }
-const writes = (calls) => calls.filter((a) => a[0] === 'issue' && (a[1] === 'comment' || a[1] === 'edit'));
+const writes = (calls) => calls.filter((a) => (a[0] === 'issue' && (a[1] === 'comment' || a[1] === 'edit')) || (a[0] === 'api' && a.includes('PATCH')));
 
 test('parseIssueRefs finds Refs and closing keywords, lists, and lets Closes win', () => {
   const body = 'Refs #10, #11 og #12\nCloses #20\nFixes: #21\nrefs #20\nresolves #22 and #23';
@@ -115,6 +123,74 @@ test('close-out is idempotent: a rerun writes no duplicate comments or labels', 
   assert.deepEqual(rerun.skippedComments, [{ issue: 2, pr: 100 }, { issue: 1, pr: 100 }]);
   assert.deepEqual(rerun.flips, []);
   assert.deepEqual(rerun.errors, []);
+});
+
+test('merged phase writes the SHA comment at once, touches no labels and gives no NOW line', () => {
+  const { gh, calls, state } = fakeGh({ prs: { 100: { title: 't', body: 'Closes #2\nRefs #1' } }, labels: { 2: ['claude:todo'] } });
+  const res = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh, phase: 'merged', now: NOW });
+  assert.deepEqual(res.errors, []);
+  assert.deepEqual(res.comments, [{ issue: 2, pr: 100 }, { issue: 1, pr: 100 }]);
+  assert.deepEqual(res.flips, []);
+  assert.equal(res.nowLine, null);
+  assert.deepEqual(state.labels[2], ['claude:todo'], 'labels wait for the verified train');
+  assert.ok(calls.every((a) => !(a[0] === 'issue' && (a[1] === 'view' || a[1] === 'edit'))));
+  const body = state.comments[2][0];
+  assert.ok(body.startsWith(markerFor(100, 2)) && body.includes(SHA_A) && body.includes(SHA_A.slice(0, 7)), 'the Stop hook finds the short SHA');
+  assert.match(body, /Verifikation afventer/);
+  assert.doesNotMatch(body, /Verificeret:|—/);
+  // Samme merge rapporteret igen (fx genstart): ingen dublet.
+  const again = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh, phase: 'merged', now: NOW });
+  assert.deepEqual(again.comments, []);
+  assert.deepEqual(again.skippedComments, [{ issue: 2, pr: 100 }, { issue: 1, pr: 100 }]);
+  assert.equal(state.comments[2].length, 1);
+});
+
+test('the verified run updates the same pending comment instead of writing a duplicate', () => {
+  const { gh, calls, state } = fakeGh({ prs: { 100: { title: 't', body: 'Closes #2\nRefs #1' } }, labels: { 2: ['claude:todo'] }, comments: { 2: ['andet'] } });
+  runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh, phase: 'merged', now: NOW });
+  const res = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh, deployVerified: false, now: NOW });
+  assert.deepEqual(res.errors, []);
+  assert.deepEqual(res.comments, [], 'no new comment');
+  assert.deepEqual(res.updatedComments, [{ issue: 2, pr: 100 }, { issue: 1, pr: 100 }]);
+  assert.deepEqual(res.flips, [2]);
+  assert.equal(state.comments[2].length, 2, 'unrelated comment + the one SHA comment');
+  assert.equal(state.comments[2][0], 'andet');
+  assert.equal(state.comments[2][1], commentBody({ pr: 100, issue: 2, sha: SHA_A, kind: 'closes', deployVerified: false }));
+  assert.equal(state.comments[1].length, 1);
+  assert.match(state.comments[1][0], /Verificeret: main-CI grøn, toget deployer ikke/);
+  const patch = calls.find((a) => a[0] === 'api' && a.includes('PATCH'));
+  assert.equal(patch[1], 'repos/NicolaiDolmer/CyclingZone/issues/comments/2001');
+  assert.ok(res.nowLine);
+  // Endnu en verificeret koersel: alt er opdateret, intet skrives.
+  const before = writes(calls).length;
+  const rerun = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh, now: NOW });
+  assert.equal(writes(calls).length, before);
+  assert.deepEqual(rerun.skippedComments, [{ issue: 2, pr: 100 }, { issue: 1, pr: 100 }]);
+});
+
+test('a failed update is a warning; dry-run only says it would update', () => {
+  const setup = { prs: { 100: { title: 't', body: 'Refs #1' } } };
+  const first = fakeGh(setup);
+  runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: first.gh, phase: 'merged', now: NOW });
+  const failing = fakeGh({ ...setup, comments: first.state.comments, fail: { 'api patch': true } });
+  const res = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: failing.gh, now: NOW });
+  assert.match(res.errors.join('\n'), /opdatering af SHA-kommentar fejlede/);
+  assert.equal(failing.calls.filter((a) => a[1] === 'comment').length, 0, 'never falls back to a duplicate');
+  const lines = [];
+  const dry = fakeGh({ ...setup, comments: first.state.comments });
+  runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: dry.gh, dryRun: true, log: (l) => lines.push(l), now: NOW });
+  assert.deepEqual(writes(dry.calls), []);
+  assert.ok(lines.some((l) => l.includes('ville opdatere SHA-kommentaren til verificeret')));
+  assert.deepEqual(runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: dry.gh, phase: 'x' }).errors, ['ukendt fase: x']);
+});
+
+test('CLI merged subcommand writes the pending comment and no NOW line', () => {
+  const out = [];
+  const { gh, state } = fakeGh({ prs: { 5: { title: 't', body: 'Refs #9' } } });
+  assert.equal(main(['merged', '--train', JSON.stringify([{ number: 5, sha: SHA_A }]), '--repo', 'o/r'], { gh, out: (l) => out.push(l), now: NOW }), 0);
+  assert.equal(state.comments[9].length, 1);
+  assert.ok(!out.some((l) => l.startsWith('NOW-LINJE')));
+  assert.match(out.at(-1), /\(straks efter merge\) faerdig: 1 kommentar\(er\), 0 opdateret/);
 });
 
 test('dry-run reads but never writes', () => {
@@ -279,6 +355,14 @@ test('close-out failure never turns a verified merge into a failure', () => {
   const missing = runQueue('Remove-Item Function:\\Invoke-TrainCloseOut; Close-OpenTrain');
   assert.equal(missing.status, 0, missing.stdout);
   assert.equal(missing.data.nextMerge, 1);
+});
+
+test('Invoke-TrainCloseOut -Phase merged calls the merged subcommand', () => {
+  const res = runQueue(`Invoke-TrainCloseOut -Entries @([pscustomobject]@{number=7;sha='${SHA_A}'}) -Phase 'merged'`);
+  assert.equal(res.status, 0, res.stdout);
+  const args = res.data.calls[0];
+  assert.equal(args[1], 'merged');
+  assert.deepEqual(JSON.parse(args[args.indexOf('--train') + 1]), [{ number: 7, sha: SHA_A }]);
 });
 
 test('-DryRun preview passes --dry-run and carries no merge SHA', () => {

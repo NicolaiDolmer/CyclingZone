@@ -125,6 +125,12 @@ test("dailytraining.trainingScore er registreret i SECTION_DEFS med flag: traini
   assert.equal(entry.flag, "training_score_visible");
 });
 
+test("#7536: dailytraining.raceDateTrainingDay vises kun bag condition_v2_race_date_training_day", () => {
+  const entry = sectionDefsBlockFlags().find((b) => b.id === "raceDateTrainingDay");
+  assert.ok(entry, "raceDateTrainingDay mangler en `flag`-egenskab i SECTION_DEFS");
+  assert.equal(entry.flag, "condition_v2_race_date_training_day");
+});
+
 test("hvert flag Hjaelp-siden gater paa staar i backendens allowlist", () => {
   const extraKeys = sectionDefsBlockFlags().map((b) => b.flag);
   const missing = helpGateFlagKeys(extraKeys).filter((key) => !PLAYER_VISIBLE_FLAG_KEYS.includes(key));

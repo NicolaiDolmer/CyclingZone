@@ -27,6 +27,7 @@
 
 import type { AbilityKey, Entrant, RiderState, TeamOrder } from "../types.ts";
 import { isOfficialTimesV3OrLater } from "../../../raceEngineRulesRevision.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -82,7 +83,7 @@ export function parseLeadoutOrders(orders: readonly TeamOrder[]): LeadoutOrder[]
       leadout_rider_ids: leadoutRiderIds,
     });
   }
-  return [...byTeam.values()].sort((a, b) => a.team_id.localeCompare(b.team_id));
+  return [...byTeam.values()].sort((a, b) => compareIds(a.team_id, b.team_id));
 }
 
 // ── #6352 (official_times_v3): hvem faar et tog ───────────────────────────────

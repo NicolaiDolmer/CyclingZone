@@ -37,6 +37,7 @@
 
 import type { EngineState, Entrant, RaceGroup, SegmentHookContext } from "../types.ts";
 import { suggestStagePlan, type StagePlanLeg, type StagePlanRoute } from "../../../stagePlan.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 /** DB/API-rollen. Motoren ser ham som "helper" + markoeren `luxury_helper`. */
 export const LUXURY_HELPER_ROLE = "luxury_helper" as const;
@@ -53,7 +54,7 @@ export function isLuxuryHelper(entrant: Entrant | undefined): boolean {
 export function luxuryHelperIds(entrants: Readonly<Record<string, Entrant>>): string[] {
   const seenTeams = new Set<string>();
   const out: string[] = [];
-  for (const riderId of Object.keys(entrants).sort((a, b) => a.localeCompare(b))) {
+  for (const riderId of Object.keys(entrants).sort((a, b) => compareIds(a, b))) {
     const entrant = entrants[riderId];
     if (!isLuxuryHelper(entrant)) continue;
     const teamId = entrant.team_id == null ? "" : String(entrant.team_id);
@@ -87,7 +88,7 @@ export function luxuryHelperDefaultPlans(
 
 /** Holdets kaptajn (eller spurtkaptajnen paa et hold uden kaptajn), uanset status. */
 export function luxuryHelperCaptainId(teamId: string, entrants: Readonly<Record<string, Entrant>>): string | null {
-  const ids = Object.keys(entrants).filter((id) => String(entrants[id].team_id ?? "") === teamId).sort((a, b) => a.localeCompare(b));
+  const ids = Object.keys(entrants).filter((id) => String(entrants[id].team_id ?? "") === teamId).sort((a, b) => compareIds(a, b));
   return ids.find((id) => entrants[id].role === "captain") ?? ids.find((id) => entrants[id].role === "sprint_captain") ?? null;
 }
 

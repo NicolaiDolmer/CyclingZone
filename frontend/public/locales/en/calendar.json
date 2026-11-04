@@ -128,6 +128,7 @@
       "squadShort": "Squad"
     },
     "openRace": "Open {name}",
+    "squadFill": "{count} of {field} riders selected",
     "squadShort": {
       "selected": "Ready",
       "missing": "Needed"
