@@ -287,7 +287,7 @@ const REAL_DROP_FILM = [
   { type: "stage_plan_leg", km: 60, params: { rider_id: "a", leg: 2, task: "ride_for_result", reason: "dropped" } },
 ];
 
-const crossCheck = (film: typeof DESCENT_FILM) => ({ inFrontOrFieldAt: (km: number) => riderInFrontOrFieldAt(film, "a", km) });
+const crossCheck = (film: Parameters<typeof riderInFrontOrFieldAt>[0]) => ({ inFrontOrFieldAt: (km: number) => riderInFrontOrFieldAt(film, "a", km) });
 
 test("#7636: filmen viser ham i feltet: hverken 'sat' eller 'sprunget over, han var sat'", () => {
   assert.equal(riderInFrontOrFieldAt(DESCENT_FILM, "a", 60), true, "tidslinjen: rytteren i feltet");
