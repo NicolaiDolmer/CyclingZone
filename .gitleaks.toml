@@ -61,6 +61,10 @@ regexes = [
   # i18n key-navne med cifre (fx rankings.colTop3 / shortTop10) trigger
   # generic-api-key-heuristikken pga. key:-prefix + ciffer. Ikke secrets.
   '''rankings\.(col|short)?Top\d+''',
+  # Feature-flag-nøgler med issue-nummer som suffiks (fx app_config "queen_stage_gap_7236",
+  # #7236) trigger generic-api-key pga. key:-prefix + entropi. Ankret: kun rene
+  # snake_case-ord (små bogstaver) + afsluttende _<3-5 cifre>. Ikke secrets.
+  '''^[a-z]+(?:_[a-z]+)*_\d{3,5}$''',
 ]
 paths = [
   '''node_modules/''',
