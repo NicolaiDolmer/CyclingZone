@@ -183,6 +183,8 @@ const E7635: Record<string, Entrant> = {
   x: entrant("x", "B", "captain"),
   y: entrant("y", "B", "helper"),
   z: entrant("z", "C", "captain"),
+  p: entrant("p", "C", "helper"),
+  q: entrant("q", "C", "helper"),
 };
 const GAP = STAGE_PLAN_DROPPED_7635_TUNING.minGapSeconds;
 
@@ -268,6 +270,40 @@ test("#7635: et hentet angreb, der beholder angrebets id, er derefter en rigtig 
   const split = state7635([g7635("solo-1900", ["x", "y", "z"], 0), g7635("chase-3001", ["cap", "h1"], GAP * 3, { kind: "chase" })]);
   const events = ride7635(true, [START, attack, caught, split, split]);
   assert.deepEqual(events.map((e) => [e.params.leg, e.params.reason]), [[2, "dropped"]]);
+});
+
+test("#7635 (Codex-review): en lille rigtig gruppe der henter et stoerre angreb goer det til en rigtig front", () => {
+  const start = state7635([g7635("peloton-0", ["cap", "h1", "x", "y", "z", "p", "q"], 0)]);
+  const attack = state7635([
+    g7635("chase-2900", ["x", "y", "z"], 0, { kind: "chase" }),
+    g7635("peloton-0", ["cap", "h1", "p", "q"], GAP * 3),
+  ]);
+  // En rigtig opdeling bag angrebet: kaptajnen kun lidt bag p og q (ikke sat).
+  const split = state7635([
+    g7635("chase-2900", ["x", "y", "z"], 0, { kind: "chase" }),
+    g7635("peloton-0", ["p", "q"], GAP * 3),
+    g7635("gruppetto-3001", ["cap", "h1"], GAP * 3 + GAP / 4, { kind: "gruppetto" }),
+  ]);
+  // p og q (en lille rigtig gruppe) henter angrebet; angrebets id overlever.
+  const caught = state7635([
+    g7635("chase-2900", ["x", "y", "z", "p", "q"], 0, { kind: "peloton" }),
+    g7635("gruppetto-3001", ["cap", "h1"], GAP * 3, { kind: "gruppetto" }),
+  ]);
+  const route = twoClimbRoute();
+  const rt = createStagePlanRuntime([planOrder("cap", CAPTAIN_PLAN)], route, E7635, { droppedFront7635: true })!;
+  const events = [start, attack, split, caught, caught].flatMap((state, segmentIndex) =>
+    advanceStagePlan(rt, { state, segment: route.segments[segmentIndex], segmentIndex, entrants: E7635 }));
+  assert.deepEqual([...rt.front7635!.attackGroups], [], "angrebets id baerer nu en rigtig gruppe");
+  assert.deepEqual(events.map((e) => [e.params.leg, e.params.reason]), [[2, "dropped"]]);
+});
+
+test("#7635: en enkelt rytter der slutter sig til et angreb (kontraangreb) aendrer ikke angrebet", () => {
+  const f: Front7635State = { prevGroupOf: null, seen: new Set(), attackGroups: new Set(), streak: new Map() };
+  observeGroups7635(f, [g7635("peloton-0", ["cap", "h1", "x", "y", "z", "p", "q"], 0)]);
+  observeGroups7635(f, [g7635("chase-2900", ["x", "y"], 0, { kind: "chase" }), g7635("peloton-0", ["cap", "h1", "z", "p", "q"], GAP * 3)]);
+  assert.deepEqual([...f.attackGroups], ["chase-2900"]);
+  observeGroups7635(f, [g7635("chase-2900", ["x", "y", "z"], 0, { kind: "chase" }), g7635("peloton-0", ["cap", "h1", "p", "q"], GAP * 3)]);
+  assert.deepEqual([...f.attackGroups], ["chase-2900"]);
 });
 
 test("#7635: hjaelperen bag lederens rigtige front er sat; bag lederens angreb er han ikke", () => {

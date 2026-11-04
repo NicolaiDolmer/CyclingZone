@@ -231,9 +231,11 @@ export function isRiderDropped(riderId: string, state: EngineState, entrants: Re
  * den gruppe de kom fra; et angreb saetter angriberne FORAN. Derfor:
  *  - en ny gruppe er et angreb naar den ligger foran alle de grupper, resten af rytterne fra
  *    dens kildegrupper nu sidder i, eller naar de fleste af dens ryttere kom fra et angreb;
- *  - en kendt angrebsgruppe holder op med at vaere det, naar en rigtig gruppe har hentet den
- *    (de fleste af dens ryttere kom saa ikke fra et angreb). Et merge beholder den forreste
- *    gruppes id, saa uden den regel ville hele feltet arve angrebets id og maerke.
+ *  - en kendt angrebsgruppe holder op med at vaere det, naar den har opslugt en rigtig gruppe
+ *    (de fleste af den gruppes ryttere sidder nu i angrebets id), uanset hvor stor den rigtige
+ *    gruppe var (Codex-review). Et merge beholder den forreste gruppes id, saa uden den regel
+ *    ville feltet eller en jagtgruppe arve angrebets id og maerke. Enkelte ryttere der slutter
+ *    sig til (et kontraangreb) aendrer intet.
  * Ren funktion af tilstanden; ingen rng, deterministisk i gruppe-raekkefoelgen.
  */
 export function observeGroups7635(f: Front7635State, groups: readonly RaceGroup[]): void {
@@ -247,11 +249,24 @@ export function observeGroups7635(f: Front7635State, groups: readonly RaceGroup[
       const p = prev.get(id);
       return p !== undefined && f.attackGroups.has(p);
     };
+    // De rigtige grupper ved forrige graense og deres ryttere, der stadig er i loebet.
+    const prevRegular = new Map<string, string[]>();
+    for (const [id, p] of prev) {
+      if (f.attackGroups.has(p) || !groupOfNow.has(id)) continue;
+      if (!prevRegular.has(p)) prevRegular.set(p, []);
+      prevRegular.get(p)!.push(id);
+    }
+    const absorbedRegular = (g: RaceGroup) => {
+      for (const [p, ids] of prevRegular) {
+        if (p !== g.id && ids.filter((id) => groupOfNow.get(id) === g.id).length * 2 >= ids.length) return true;
+      }
+      return false;
+    };
     for (const g of groups) {
       if (g.rider_ids.length === 0) continue;
       const fromAttack = g.rider_ids.filter(cameFromAttack).length * 2 >= g.rider_ids.length;
       if (f.seen.has(g.id)) {
-        if (f.attackGroups.has(g.id) && fromAttack) next.add(g.id);
+        if (f.attackGroups.has(g.id) && !absorbedRegular(g)) next.add(g.id);
         continue;
       }
       if (fromAttack) {
