@@ -671,7 +671,7 @@ export function buildV4StageInput({
     // #6649 (KUN s5_profiles_v3): dagsformen med forklaring kun naar kalderen eksplicit
     // sender dayForm6649=true. raceRunner goer det kun naar app_config day_form_6649 = "on"
     // (dayForm6649Flag.js); vaerdien er med i run-identiteten og #1857-genafspilningen.
-    // #7236 (KUN s5_profiles_v3, SLUKKET): topgabets loft paa dronningeetaper; kun naar kalderen eksplicit sender queenStageGap7236=true (testporten).
+    // #7236 (KUN s5_profiles_v3, SLUKKET): topgabets loft paa dronningeetaper; kun naar kalderen eksplicit sender queenStageGap7236=true (raceRunner: kun ved app_config queen_stage_gap_7236 = "on").
     if (queenStageGap7236 === true && isS5ProfilesV3OrLater(rulesRevision)) input.queen_stage_gap_7236 = true;
     if (dayForm6649 === true && isS5ProfilesV3OrLater(rulesRevision)) input.day_form_6649 = true;
     // #6912 (KUN s5_profiles_v3, SLUKKET): forspringskurven; kun naar kalderen eksplicit sender breakawayCurve6912=true (testporten).
