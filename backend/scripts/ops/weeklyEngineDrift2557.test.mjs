@@ -670,6 +670,22 @@ test("evaluateRealism + buildPayloads: en OK-dom hvor andre etaper mangler motor
   assert.match(renderRealismSection(r), /Nogle etaper mangler motorens forløb/);
 });
 
+test("evaluateRealism: en enkeltstart uden maalbart tidsgab goer dommen umaalt, aldrig groen (Codex)", () => {
+  const raw = realismRaw();
+  raw.executed.push(sched("sr", 3));
+  raw.profiles.push({ race_id: "sr", stage_number: 3, profile_type: "itt", finale_type: "solo_tt", distance_km: 20 });
+  // Kun ni i maal: tidsgabet til nr. 10 er ukendt for denne enkeltstart.
+  raw.results.push(...finishRows("sr", 3, 9, (i) => i * 5));
+  const bands = { status: "ok", value: parseRealismGateBands({ ...REALISM_BANDS, cells: { "*|*|*": { ittGapTo10PerKm: { median: { max: 1000 } } } } }) };
+  const metrics = computeRealismMetrics({ races: buildRealismRaces(raw) });
+  assert.equal(metrics.cells["stage_race|itt|tt"].metrics.ittGapTo10PerKm.missing, 1);
+  const r = evaluateRealism(metrics, bands);
+  const check = r.checks.find((c) => c.metric === "ittGapTo10PerKm");
+  assert.equal(check.status, "OK");
+  assert.equal(check.unmeasured, true);
+  assert.ok(r.unmeasuredCount >= 1);
+});
+
 test("fetchRaw: tidslinjer hentes kun for etaper koert i vinduet", async () => {
   const raw = realismRaw();
   raw.timelines.push({ race_id: "sr", stage_number: 3, timeline_version: 2, events: ENGINE_EVENTS });
