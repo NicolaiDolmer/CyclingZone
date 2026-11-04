@@ -2,17 +2,17 @@
 // #7666: grupperet efter horisont (denne uge, næste uge, denne sæson, næste
 // sæson, 2027, senere), så spilleren kan se HVORNÅR noget kommer. Ugerne står
 // med datoer. Det der bygges nu, står øverst i sin horisont med et "I gang"-
-// eller "I beta"-mærke og har ingen skala; planlagte punkter har én
-// ("Important to you?"). 2027 og senere ligger bag en fold.
+// mærke og har ingen skala (det der er i beta, står kun på Beta-fanen, #6160);
+// planlagte punkter har én ("Important to you?"). 2027 og senere er foldet.
 import { useTranslation } from "react-i18next";
 import {
-  FOLDED_HORIZONS, planStage, weekRange,
+  FOLDED_HORIZONS, weekRange,
   type PlanGroup, type RoadmapHorizon, type RoadmapItem, type RoadmapVote,
 } from "../../lib/roadmapModel.ts";
 import { CollapsibleSection, EmptyState, Section, SectionHeader, Button, StatusBadge } from "./roadmapUi.ts";
 import ScoreScale from "./ScoreScale.tsx";
 import { RowMeta, RowTitle, SaveNote, SkeletonRows, ROW, ROW_LIST } from "./RoadmapRows.tsx";
-import { areaTitle, dateRange, localTitle, shortDate, type SaveState } from "./roadmapFormat.ts";
+import { areaTitle, dateRange, localTitle, type SaveState } from "./roadmapFormat.ts";
 import { CheckIcon, ClipboardIcon } from "../ui/index.js";
 
 export interface PlanTabProps {
@@ -37,17 +37,6 @@ export interface PlanTabProps {
   now?: Date;
 }
 
-function StageBadge({ item }: { item: RoadmapItem }) {
-  const { t } = useTranslation("roadmap");
-  const stage = planStage(item);
-  if (stage === "beta") {
-    return item.live_soon
-      ? <StatusBadge state="won">{t("beta.badgeSoon")}</StatusBadge>
-      : <StatusBadge state="closing">{t("beta.badgeInBeta")}</StatusBadge>;
-  }
-  if (stage === "in_progress") return <StatusBadge state="info">{t("plan.badgeInProgress")}</StatusBadge>;
-  return null;
-}
 
 export default function PlanTab(props: PlanTabProps) {
   const { t, i18n } = useTranslation("roadmap");
@@ -87,9 +76,6 @@ export default function PlanTab(props: PlanTabProps) {
     const planned = item.status === "planned";
     const vote = props.votes.get(item.id);
     const state = props.saveState[item.id];
-    const meta = planStage(item) === "beta" && item.beta_since
-      ? `${areaTitle(t, item.engine)} · ${t("beta.since", { date: shortDate(item.beta_since, lang) })}`
-      : areaTitle(t, item.engine);
     return (
       <li key={item.id} className={`${ROW} flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4`}>
         <div className="flex-1 min-w-0 flex gap-3">
@@ -97,9 +83,9 @@ export default function PlanTab(props: PlanTabProps) {
             {planned ? props.rankById.get(item.id) ?? "" : ""}
           </span>
           <div className="min-w-0">
-            {!planned && <div className="mb-1"><StageBadge item={item} /></div>}
+            {!planned && <div className="mb-1"><StatusBadge state="info">{t("plan.badgeInProgress")}</StatusBadge></div>}
             <RowTitle isNew={props.isNew(item)} newLabel={t("labels.new")}>{localTitle(item, lang)}</RowTitle>
-            <RowMeta>{meta}</RowMeta>
+            <RowMeta>{areaTitle(t, item.engine)}</RowMeta>
           </div>
         </div>
         {planned && props.canVote && (
