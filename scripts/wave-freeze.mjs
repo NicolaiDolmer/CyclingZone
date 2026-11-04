@@ -416,6 +416,36 @@ export function applySchemaEvidenceRule(review) {
 }
 
 /**
+ * #7587: boelgens reviewer-dom -> Claude-review-markoeren paa PR'en (review-gate).
+ * Kaldes EFTER applySchemaEvidenceRule(), saa det er den endelige dom der taeller.
+ * GODKENDT -> clean, BEMAERKNINGER -> notes. BLOKERENDE, en ukendt dom, et
+ * blokerende fund under en ikke-blokerende dom, manglende PR-nummer eller en
+ * manglende/ufuldstaendig HEAD-SHA giver INGEN markoer (fail-closed). headSha er
+ * det commit revieweren laeste; markoer-trinnet skriver kun hvis PR'ens HEAD
+ * stadig er netop det commit. Noten bygges kun af kode (ingen reviewer-tekst),
+ * saa intet fra LLM-svaret ender i en shell-kommando.
+ * @returns {{post: false, reason: string}|{post: true, verdict: 'clean'|'notes', pr: number, headSha: string, note: string, args: string[]}}
+ *
+ * SPEJLING i .claude/workflows/wave.js - hold dem identiske.
+ */
+export function planClaudeMarker(review) {
+  const r = review && typeof review === 'object' ? review : {}
+  const verdict = r.verdict === 'GODKENDT' ? 'clean' : r.verdict === 'BEMAERKNINGER' ? 'notes' : null
+  if (!verdict) return { post: false, reason: r.verdict === 'BLOKERENDE' ? 'blokerende' : 'ukendt-dom' }
+  const findings = Array.isArray(r.findings) ? r.findings : []
+  if (findings.some((f) => f && f.severity === 'blokerende')) return { post: false, reason: 'blokerende-fund' }
+  const prMatch = String(r.pr || '').trim().match(/^#?(\d+)$|\/pull\/(\d+)(?:[/?#]|$)/)
+  const pr = prMatch ? Number(prMatch[1] || prMatch[2]) : 0
+  if (!(pr > 0)) return { post: false, reason: 'ingen-pr' }
+  const headSha = String(r.headSha || '').trim().toLowerCase()
+  if (!/^[0-9a-f]{40}$/.test(headSha)) return { post: false, reason: 'ingen-head-sha' }
+  const notes = findings.filter((f) => f && f.severity === 'bemaerkning').length
+  const label = verdict === 'clean' ? 'GODKENDT' : `BEMAERKNINGER (${notes})`
+  const note = `Boelge-reviewer: ${label}, commit ${headSha.slice(0, 7)}.`
+  return { post: true, verdict, pr, headSha, note, args: ['post-claude-review', '--pr', String(pr), '--verdict', verdict, '--note', note] }
+}
+
+/**
  * #5562 hale-tomgang. intervals: [{lane, start, end, closed}] i minutter paa
  * boelgens monotone minut-ur; en lukket lane (timeout) taeller som optaget
  * til boelgens slut. Halen starter ved den SENESTE sporstart; tomgangen er

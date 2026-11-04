@@ -308,11 +308,25 @@ const RELEASE_SCHEMA = {
   required: ['ok'],
 }
 
+// #7587: markoer-trinnet efter et ikke-blokerende review. posted=true kun naar
+// HEAD stadig var det reviewede commit og post-claude-review gav exit 0.
+const MARKER_SCHEMA = {
+  type: 'object',
+  properties: {
+    ok: { type: 'boolean', description: 'true kun hvis begge kommandoer lykkedes' },
+    posted: { type: 'boolean', description: 'true kun hvis markoeren blev skrevet (trin 2 gav exit 0)' },
+    problem: { type: 'string', description: '"HEAD flyttet <sha>" eller fejlteksten, ellers tom' },
+  },
+  required: ['ok', 'posted'],
+}
+
 const REVIEW_SCHEMA = {
   type: 'object',
   properties: {
     verdict: { type: 'string', enum: ['GODKENDT', 'BEMAERKNINGER', 'BLOKERENDE'] },
     pr: { type: 'string', description: 'PR-nummer eller -URL, eller "ingen"' },
+    // #7587: det commit dommen gaelder. Claude-markoeren skrives kun hvis PR'ens HEAD stadig er det.
+    headSha: { type: 'string', description: 'PR\'ens HEAD-commit (40 tegn) fra `gh api repos/<repo>/pulls/<N> --jq .head.sha`, hentet FOER du laeste diffen' },
     findings: {
       type: 'array',
       items: {
@@ -694,6 +708,26 @@ function applySchemaEvidenceRule(review) {
   return { review: { ...review, findings, verdict }, downgraded }
 }
 
+// SPEJLING af planClaudeMarker() i scripts/wave-freeze.mjs (#7587). Den
+// endelige dom -> Claude-review-markoer (clean/notes); BLOKERENDE eller
+// manglende PR/HEAD-SHA giver ingen markoer. Noten bygges kun af kode.
+function planClaudeMarker(review) {
+  const r = review && typeof review === 'object' ? review : {}
+  const verdict = r.verdict === 'GODKENDT' ? 'clean' : r.verdict === 'BEMAERKNINGER' ? 'notes' : null
+  if (!verdict) return { post: false, reason: r.verdict === 'BLOKERENDE' ? 'blokerende' : 'ukendt-dom' }
+  const findings = Array.isArray(r.findings) ? r.findings : []
+  if (findings.some((f) => f && f.severity === 'blokerende')) return { post: false, reason: 'blokerende-fund' }
+  const prMatch = String(r.pr || '').trim().match(/^#?(\d+)$|\/pull\/(\d+)(?:[/?#]|$)/)
+  const pr = prMatch ? Number(prMatch[1] || prMatch[2]) : 0
+  if (!(pr > 0)) return { post: false, reason: 'ingen-pr' }
+  const headSha = String(r.headSha || '').trim().toLowerCase()
+  if (!/^[0-9a-f]{40}$/.test(headSha)) return { post: false, reason: 'ingen-head-sha' }
+  const notes = findings.filter((f) => f && f.severity === 'bemaerkning').length
+  const label = verdict === 'clean' ? 'GODKENDT' : `BEMAERKNINGER (${notes})`
+  const note = `Boelge-reviewer: ${label}, commit ${headSha.slice(0, 7)}.`
+  return { post: true, verdict, pr, headSha, note, args: ['post-claude-review', '--pr', String(pr), '--verdict', verdict, '--note', note] }
+}
+
 // SPEJLING af tailIdleLaneMinutes() i scripts/wave-freeze.mjs (#5562).
 function tailIdleLaneMinutes(input) {
   const p = input || {}
@@ -932,6 +966,9 @@ function reviewPrompt(track, attempt) {
     '',
     'Du er READ-ONLY reviewer. Du maa IKKE aendre filer, committe, pushe eller checke branches ud.',
     `Laes diffen med \`gh pr diff --repo ${REPO} <PR-nummer>\` (find PR'en med \`gh pr list --repo ${REPO} --head ${track.branch} --state all --json number,url,isDraft\`).`,
+    // #7587: dommen bindes til det commit der blev reviewet; orkestratoren skriver markoeren.
+    `FOER du laeser diffen: hent PR'ens HEAD med \`gh api repos/${REPO}/pulls/<PR-nummer> --jq .head.sha\` og returner den (40 tegn) i headSha.`,
+    'Skriv ALDRIG selv en claude-review-markoer eller PR-kommentar: orkestratoren skriver Claude-review-markoeren ud fra din dom (GODKENDT -> clean, BEMAERKNINGER -> notes, BLOKERENDE -> ingen) paa netop det commit (#7587).',
     'Bruger du git, saa kun read-only kald med `git -C "' + track.worktree + '"` (log, diff, show) og altid `--no-pager`.',
     '',
     `Kontekst: issue #${track.issue} - ${track.title}`,
@@ -1169,6 +1206,27 @@ function releasePrompt(waveId, finishedBranches) {
     'Koer praecis denne ene kommando i forgrunden og intet andet - foer og efter den: ingen andre kommandoer, ingen filer laest, intet redigeret:',
     `\`node "${main}/scripts/wave-policy.mjs" finish --wave-id ${waveId} --finished ${finishedBranches.join(',')} --run-dir "${main}/.claude/run"\``,
     'Exit-kode 0: returner ok=true. Anden exit-kode: returner ok=false og fejlteksten i problem. Proev ikke igen og fejlsoeg ikke.',
+    'Dit svar er kun skemaet.',
+  ].join('\n')
+}
+
+// #7587: review-gate kraever en Claude-review-markoer for HEAD paa hoejrisiko-
+// PR'er. Revieweren er read-only, saa markoeren skrives af dette lille trin ud
+// fra planClaudeMarker(). Trin 1 binder den til det reviewede commit: er HEAD
+// flyttet (fx et ret-trin eller et sent push), skrives intet. review-gate.mjs
+// koeres fra hoved-checkoutet, aldrig fra PR'ens egen (maaske aendrede) kopi.
+function markerPrompt(plan) {
+  const main = MAIN_CHECKOUT.replace(/\\/g, '/')
+  return [
+    `WAVE-SETUP: Claude-review-markoer paa PR #${plan.pr} (#7587)`,
+    '',
+    ...subStepScopeLines(`skriv Claude-review-markoeren paa PR #${plan.pr}, kun hvis dens HEAD stadig er det reviewede commit, og returner resultatet`, 'setup'),
+    '',
+    'Koer praecis disse to kommandoer i forgrunden, i raekkefoelge, og intet andet - ingen filer laest, intet redigeret:',
+    `1. \`gh api repos/${REPO}/pulls/${plan.pr} --jq .head.sha\``,
+    `   Er outputtet IKKE praecis ${plan.headSha}, eller fejler kommandoen: koer IKKE trin 2. Returner ok=false, posted=false og i problem "HEAD flyttet <den sha du fik>" eller fejlteksten.`,
+    `2. \`node "${main}/scripts/review-gate.mjs" post-claude-review --repo ${REPO} --pr ${plan.pr} --verdict ${plan.verdict} --note "${plan.note}"\``,
+    '   Exit-kode 0: returner ok=true, posted=true. Anden exit-kode: ok=false, posted=false og fejlteksten i problem. Proev ikke igen og fejlsoeg ikke.',
     'Dit svar er kun skemaet.',
   ].join('\n')
 }
@@ -1684,6 +1742,10 @@ async function runTrack(track, trackTimeoutMinutes) {
   if (row.recovery) row.recovery.review = row.review
   row.reviewSummary = review.summary
   row.pr = review.pr || 'ingen'
+  // #7587: en ikke-blokerende dom bliver til Claude-markoeren paa PR'en, saa
+  // review-gate ikke staar roed paa en klar PR. BLOKERENDE skriver intet; efter
+  // et ret-trin skal det nye commit reviewes igen.
+  row.claudeMarker = await postClaudeMarkerNow(review, label)
 
   if (review.verdict === 'BLOKERENDE') {
     log(`BLOKERENDE fund paa ${label} - starter ret-trin i samme worktree.`)
@@ -1854,6 +1916,38 @@ async function releaseOwnershipNow(branch) {
     log(`${label}: straks-frigivelsen lykkedes ikke${answer && answer !== TIMED_OUT && answer.problem ? ` (${answer.problem})` : ''} - frigives ved naeste intake-tjek eller oprydningen.`)
   }
   return ok
+}
+
+// #7587: koeres af runTrack efter reviewet. Fejler trinnet eller svarer det
+// ikke, staar markoeren bare ikke paa PR'en (review-gate forbliver roed som
+// foer) - loggen viser kommandoen der skal koeres i haanden.
+let markersPosted = 0
+async function postClaudeMarkerNow(review, label) {
+  const plan = planClaudeMarker(review)
+  if (!plan.post) {
+    log(`${label}: ingen Claude-review-markoer (${plan.reason}).`)
+    return `ikke skrevet: ${plan.reason}`
+  }
+  const stepLabel = `markoer ${label}`
+  let answer = null
+  try {
+    answer = await withTimeout(
+      agentWithType(markerPrompt(plan), { label: stepLabel, phase: 'Review', model: 'sonnet', effort: 'low', agentType: 'wave-marker', schema: MARKER_SCHEMA }),
+      WAVE_FREEZE.INTAKE_CHECK_TIMEOUT_MINUTES * 60 * 1000,
+      stepLabel,
+    )
+  } catch (err) {
+    answer = null
+    log(`${stepLabel}: ${String((err && err.message) || err)}`)
+  }
+  if (answer && answer !== TIMED_OUT && answer.ok === true && answer.posted === true) {
+    markersPosted += 1
+    log(`Claude-review-markoer (${plan.verdict}) skrevet paa PR #${plan.pr} for ${plan.headSha.slice(0, 7)} (#7587).`)
+    return `skrevet: ${plan.verdict} @ ${plan.headSha.slice(0, 7)}`
+  }
+  const why = answer === TIMED_OUT ? 'timeout' : (answer && answer.problem) || 'intet svar'
+  log(`${stepLabel}: markoeren blev ikke skrevet (${why}). I haanden: node scripts/review-gate.mjs post-claude-review --pr ${plan.pr} --verdict ${plan.verdict}`)
+  return `ikke skrevet: ${why}`
 }
 
 async function runIntake() {
@@ -2162,6 +2256,8 @@ return {
   // #7587: spor hvis ejerskab blev frigivet straks efter build + review.
   releasesRun,
   releasedNow,
+  // #7587: Claude-review-markoerer skrevet af boelgen (pr. spor: row.claudeMarker).
+  markersPosted,
   tailIdle,
   dirtyWorktrees: stillDirty.map((r) => ({ issue: r.issue, branch: r.branch, gracefulStop: r.gracefulStop })),
   skipped: skipped.map((s) => ({ issue: s.issue, branch: s.branch, reason: s.reason })),
