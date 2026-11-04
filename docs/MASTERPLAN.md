@@ -20,7 +20,7 @@ Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden f
 - **Løbenes sandhed:** sandhedsvagten #7643 (merget 4/11, første prod-kørsel bekræftes); Giro-rettelserne #7635/#7636 (#7642), #7639 (#7647), #7640 (#7648 + tænd-ledning).
 - **Dronningeetaper #7236:** genmåling af Hexagone 15/17 og "kør" før 8/11.
 - **Kontrakter, transfer, sæsonskifte:** ungdom #6882, graduering/auktion #7323, værdier #5842.
-- **Stabilitet:** aftenafregningen #6490, ranglisten #6765, Postgres-genstart #7223. **Sikkerhed:** #7029, #7034, CodeQL #386 (#7653).
+- **Supabase uden fejl #7659 (ejer 4/11):** genstart 25/10 og 4/11 (#7223). Mindre pres (#7099/#5692, flag-cache, tunge læsninger), alarmer, robusthed; hver fejl får rodårsag og forebyggelse. Designes med ejeren i næste PC1-session. **Stabilitet:** aftenafregningen #6490, ranglisten #6765. **Sikkerhed:** #7029, #7034, CodeQL #386 (#7653).
 
 ## Loftet (ejer-rangeret 4/11)
 
