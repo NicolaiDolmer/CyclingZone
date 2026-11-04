@@ -13,6 +13,11 @@
 //
 // Bit-identitet kræver samme motor-KODE som etapen kørte på: rækkens engine_build
 // er den deployede commit. Afviger koden, viser output-hashen præcis det.
+//
+// Processens sprog (#1857): rapporten viser processens standardsprog, og alt
+// andet end en-US (prod) giver en advarsel på stderr. Motoren sorterer nu med et
+// fast sprog (backend/lib/compareIds.ts), men en engine_build fra før den rettelse
+// følger stadig maskinens sprog, så en dansk maskine kan give en falsk afvigelse.
 import { readFileSync } from "node:fs";
 import {
   ENGINE_INPUT_SNAPSHOT_TABLE,
@@ -60,6 +65,12 @@ async function loadRow() {
   return data;
 }
 
+const processLocale = new Intl.Collator().resolvedOptions().locale;
+const PROD_LOCALE = "en-US";
+if (processLocale !== PROD_LOCALE) {
+  console.error(`WARNING: process locale is ${processLocale}, prod runs ${PROD_LOCALE}. A hash mismatch can come from a sort outside the engine that still follows the machine locale (#1857).`);
+}
+
 const row = await loadRow();
 const payload = decodeSnapshot(row);
 if (row.input_sha256 && row.input_sha256 !== payload.inputSha256) fail("input_sha256 mismatch: the stored snapshot is corrupt");
@@ -73,6 +84,7 @@ const report = {
   engine: payload.engine,
   rules_revision: payload.rulesRevision,
   engine_build: row.engine_build ?? null,
+  process_locale: processLocale,
   stored_bytes: row.stored_bytes ?? null,
   input_bytes: row.input_bytes ?? null,
   stored_output_sha256: row.output_sha256 ?? null,
@@ -90,6 +102,7 @@ if (asJson) {
   console.log(JSON.stringify(report, null, 2));
 } else {
   console.log(`Race ${report.race_id ?? "(file)"} stage ${report.stage_number} · engine ${report.engine} · revision ${report.rules_revision} · build ${report.engine_build ?? "?"}`);
+  console.log(`Process locale: ${processLocale}${processLocale === PROD_LOCALE ? "" : ` (prod runs ${PROD_LOCALE})`}`);
   console.log(`Snapshot: ${report.stored_bytes ?? "?"} bytes stored (${report.input_bytes ?? "?"} raw)`);
   if (identical === null) console.log("Bit-identity: no stored output hash (engine threw or old row)");
   else console.log(`Bit-identity on the same revision: ${identical ? "YES" : "NO - output differs from the original run"}`);
