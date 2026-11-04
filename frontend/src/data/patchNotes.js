@@ -53,6 +53,23 @@ export const PATCHES = [
         "refs": [
           7236
         ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Contracts",
+        "en": {
+          "title": "Contract warnings reach every team",
+          "body": "Contract warnings stopped after the first 1,000 riders, so many teams got no warning before a contract ran out. Every rider with an expiring contract now gives his team a warning."
+        },
+        "da": {
+          "title": "Kontraktvarsler når alle hold",
+          "body": "Kontraktvarslerne stoppede efter de første 1.000 ryttere, så mange hold fik intet varsel, før en kontrakt udløb. Nu giver hver rytter med en udløbende kontrakt sit hold et varsel."
+        },
+        "refs": [
+          7246
+        ]
       }
     ]
   },
