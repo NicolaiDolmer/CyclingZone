@@ -359,3 +359,25 @@ export function searchRoadmap(
   }
   return hits.sort((a, b) => WHERE_ORDER.indexOf(a.where) - WHERE_ORDER.indexOf(b.where));
 }
+
+// ── Et hit åbnes: punktet skal stå synligt på sin fane (Codex-fund, #7668) ──
+
+/** Det hit spilleren trykkede på. nonce skifter ved hvert tryk, også på samme punkt. */
+export interface RoadmapReveal { id: string; tab: RoadmapTab; nonce: number }
+
+/** DOM-id på punktets række. Kun den aktive fane er monteret, så id'et er entydigt. */
+export function roadmapRowId(id: string): string {
+  return `roadmap-row-${id}`;
+}
+
+/** Ligger det valgte punkt i listen? Afgør om dens fold åbner. */
+export function holdsItem(list: ReadonlyArray<{ id: string }>, id: string | null | undefined): boolean {
+  return id != null && list.some((entry) => entry.id === id);
+}
+
+/** Så mange tidligere poster skal Done vise, for at det valgte punkt er med. */
+export function doneLimitFor(
+  earlier: ReadonlyArray<{ id: string }>, id: string | null | undefined, pageSize = DONE_PAGE_SIZE,
+): number {
+  return Math.max(pageSize, earlier.findIndex((entry) => entry.id === id) + 1);
+}

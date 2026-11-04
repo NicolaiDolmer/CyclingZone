@@ -4,7 +4,7 @@
 // bekræftet, og teksten lover ingen ændring. Spilleren ser kun sit eget tryk.
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { issueAreaCounts, issueTimeline, splitChecking, type KnownIssue, type KnownIssueUpdate } from "../../lib/roadmapModel.ts";
+import { holdsItem, issueAreaCounts, issueTimeline, roadmapRowId, splitChecking, type KnownIssue, type KnownIssueUpdate } from "../../lib/roadmapModel.ts";
 import { Button, CategoryTag, CollapsibleSection, EmptyState, Section, SectionHeader, SectionStack, Segmented, StatusBadge } from "./roadmapUi.ts";
 import { RowMeta, SkeletonRows, TitleCount, ROW, ROW_LIST } from "./RoadmapRows.tsx";
 import { areaTitle, localBody, localTitle, shortDate } from "./roadmapFormat.ts";
@@ -23,6 +23,8 @@ export interface KnownIssuesTabProps {
   onToggleReport: (issue: KnownIssue) => void;
   /** Tom tilstand: åbner feedback-fladen (eller login for udloggede). */
   emptyAction: ReactNode;
+  /** Fejlen et søgehit åbnede; dens fold står åben. */
+  revealId?: string | null;
 }
 
 function IssueBadge({ issue }: { issue: KnownIssue }) {
@@ -123,7 +125,7 @@ export default function KnownIssuesTab(props: KnownIssuesTabProps) {
   const row = (issue: KnownIssue, buttonLabel: string, meta: string, withButton: boolean) => {
     const reported = props.reports.has(issue.id);
     return (
-      <li key={issue.id} className={`${ROW} flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4`}>
+      <li key={issue.id} id={roadmapRowId(issue.id)} className={`${ROW} flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4`}>
         <div className="flex-1 min-w-0">
           <IssueBadge issue={issue} />
           <div className="mt-1 text-cz-1 text-sm leading-relaxed">{localTitle(issue, lang)}</div>
@@ -184,6 +186,7 @@ export default function KnownIssuesTab(props: KnownIssuesTabProps) {
         {checkingFolded.length > 0 && (
           <CollapsibleSection
             className="mt-3"
+            defaultOpen={holdsItem(checkingFolded, props.revealId)}
             title={ownFolded > 0
               ? t("issues.checkingMoreOwn", { count: checkingFolded.length, own: ownFolded })
               : t("issues.checkingMore", { count: checkingFolded.length })}

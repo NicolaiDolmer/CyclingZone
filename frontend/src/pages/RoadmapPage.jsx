@@ -12,7 +12,7 @@
 // Ruten er offentlig: udloggede kan læse alt, men ser ingen skalaer og ingen
 // "Affects me too"-knapper.
 
-import { useEffect, useMemo, useState, Suspense } from "react";
+import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase, authHeaders } from "../lib/supabase";
@@ -40,6 +40,7 @@ import {
   patchNotesByIssue,
   searchRoadmap,
   normalizeSearch,
+  roadmapRowId,
   SEARCH_MIN_CHARS,
 } from "../lib/roadmapModel.ts";
 import { loadPatches } from "../lib/patchNotes.js";
@@ -136,6 +137,10 @@ export default function RoadmapPage() {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   // ?q= åbner siden med en søgning (et link fra Discord eller Hjælp kan pege på et emne).
   const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
+  // Det hit spilleren sidst åbnede. Bliver stående, så en fold ikke lukker ved
+  // næste render; revealedNonce sørger for, at der kun scrolles én gang pr. tryk.
+  const [reveal, setReveal] = useState(/** @type {import("../lib/roadmapModel.ts").RoadmapReveal | null} */ (null));
+  const revealedNonce = useRef(0);
   // #7666: patch notes pr. GitHub-issue. Hentes først når Done åbnes (filen er
   // stor og caches af CDN'en); null = ikke hentet, tomt Map = fejlede.
   const [patchIndex, setPatchIndex] = useState(
@@ -246,11 +251,26 @@ export default function RoadmapPage() {
 
   // Et hit skal kunne findes på fanen: et punkt spilleren allerede har bedømt,
   // holdes synligt trods "kun ubedømte" (samme greb som et punkt bedømt i dette besøg).
+  // Fanen får id'et og monteres på ny (se revealKey), så dens områdefilter står
+  // på "alle", den rigtige fold er åben, og Done viser langt nok ned.
   function openFromSearch(hit) {
     if (hit.where === "planned" || hit.where === "idea") markRated(hit.id);
+    setReveal((prev) => ({ id: hit.id, tab: hit.tab, nonce: (prev?.nonce ?? 0) + 1 }));
     setQuery("");
     setTab(hit.tab);
   }
+
+  const revealId = (panel) => (reveal?.tab === panel ? reveal.id : null);
+  const revealKey = (panel) => (reveal?.tab === panel ? reveal.nonce : panel);
+
+  // Fanen skifter via routeren og kan lande en render senere end reveal, så
+  // effekten venter, til hit'ets fane er den aktive.
+  useEffect(() => {
+    if (!reveal || reveal.tab !== tab || reveal.nonce === revealedNonce.current) return;
+    revealedNonce.current = reveal.nonce;
+    document.getElementById(roadmapRowId(reveal.id))?.scrollIntoView({ block: "center" });
+  }, [reveal, tab]);
+
   const isNew = (item) => isRoadmapItemNew(item.created_at, lastSeenBeforeVisit);
 
   function setOnlyUnrated(value) {
@@ -381,6 +401,8 @@ export default function RoadmapPage() {
 
         <TabPanel value="plan">
           <PlanTab
+            key={revealKey("plan")}
+            revealId={revealId("plan")}
             loading={loading}
             groups={planGroups}
             decidedTotal={decidedTotal}
@@ -409,6 +431,7 @@ export default function RoadmapPage() {
         </TabPanel>
         <TabPanel value="vote">
           <VoteTab
+            key={revealKey("vote")}
             loading={loading}
             ideas={visible(parts.ideas)}
             ideasTotal={parts.ideas.length}
@@ -423,6 +446,8 @@ export default function RoadmapPage() {
         </TabPanel>
         <TabPanel value="issues">
           <KnownIssuesTab
+            key={revealKey("issues")}
+            revealId={revealId("issues")}
             loading={loading}
             confirmed={issueParts.confirmed}
             checking={issueParts.checking}
@@ -437,7 +462,14 @@ export default function RoadmapPage() {
           />
         </TabPanel>
         <TabPanel value="done">
-          <DoneTab loading={loading} entries={doneEntries} patchIndex={patchIndex} onGoPlan={() => setTab("plan")} />
+          <DoneTab
+            key={revealKey("done")}
+            revealId={revealId("done")}
+            loading={loading}
+            entries={doneEntries}
+            patchIndex={patchIndex}
+            onGoPlan={() => setTab("plan")}
+          />
         </TabPanel>
       </Tabs>
       </div>

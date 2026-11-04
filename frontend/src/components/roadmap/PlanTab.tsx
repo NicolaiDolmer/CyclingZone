@@ -6,7 +6,7 @@
 // planlagte punkter har én ("Important to you?"). 2027 og senere er foldet.
 import { useTranslation } from "react-i18next";
 import {
-  FOLDED_HORIZONS, weekRange,
+  FOLDED_HORIZONS, holdsItem, roadmapRowId, weekRange,
   type PlanGroup, type RoadmapHorizon, type RoadmapItem, type RoadmapVote,
 } from "../../lib/roadmapModel.ts";
 import { CollapsibleSection, EmptyState, Section, SectionHeader, Button, StatusBadge } from "./roadmapUi.ts";
@@ -33,6 +33,8 @@ export interface PlanTabProps {
   onRate: (item: RoadmapItem, value: number) => void;
   onShowAll: () => void;
   onGoVote: () => void;
+  /** Punktet et søgehit åbnede; dets fold står åben. */
+  revealId?: string | null;
   /** Til ugernes datoer; kan fastlåses i tests og billeder. */
   now?: Date;
 }
@@ -77,7 +79,7 @@ export default function PlanTab(props: PlanTabProps) {
     const vote = props.votes.get(item.id);
     const state = props.saveState[item.id];
     return (
-      <li key={item.id} className={`${ROW} flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4`}>
+      <li key={item.id} id={roadmapRowId(item.id)} className={`${ROW} flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4`}>
         <div className="flex-1 min-w-0 flex gap-3">
           <span className="w-5 shrink-0 font-data tabular-nums text-xs text-cz-3 pt-0.5 text-right">
             {planned ? props.rankById.get(item.id) ?? "" : ""}
@@ -140,6 +142,7 @@ export default function PlanTab(props: PlanTabProps) {
         {far.map((g) => (
           <CollapsibleSection
             key={g.horizon}
+            defaultOpen={holdsItem(g.items, props.revealId)}
             title={t(`plan.horizon.${g.horizon}`)}
             meta={<span className="tabular-nums">{g.items.length}</span>}
           >

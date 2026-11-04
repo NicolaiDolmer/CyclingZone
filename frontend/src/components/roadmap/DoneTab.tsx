@@ -7,7 +7,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import {
-  DONE_PAGE_SIZE, pickPatchNote, splitRecentDone,
+  DONE_PAGE_SIZE, doneLimitFor, pickPatchNote, roadmapRowId, splitRecentDone,
   type DoneEntry, type PatchNoteRef,
 } from "../../lib/roadmapModel.ts";
 import { Button, CategoryTag, EmptyState, Section, SectionHeader, SectionStack, StatusBadge } from "./roadmapUi.ts";
@@ -22,6 +22,8 @@ export interface DoneTabProps {
   /** Patch notes pr. GitHub-issue; null mens de hentes (eller hvis hentningen fejlede). */
   patchIndex: Map<number, PatchNoteRef[]> | null;
   onGoPlan: () => void;
+  /** Punktet et søgehit åbnede; listen viser mindst så langt ned. */
+  revealId?: string | null;
   /** Til "de sidste 7 dage"; kan fastlåses i tests og billeder. */
   now?: Date;
 }
@@ -48,9 +50,9 @@ function PatchNote({ note }: { note: PatchNoteRef }) {
   );
 }
 
-export default function DoneTab({ loading, entries, patchIndex, onGoPlan, now }: DoneTabProps) {
+export default function DoneTab({ loading, entries, patchIndex, onGoPlan, revealId, now }: DoneTabProps) {
   const { t, i18n } = useTranslation("roadmap");
-  const [limit, setLimit] = useState(DONE_PAGE_SIZE);
+  const [limit, setLimit] = useState(() => doneLimitFor(splitRecentDone(entries, now ?? new Date()).earlier, revealId));
 
   if (!loading && entries.length === 0) {
     return (
@@ -77,7 +79,7 @@ export default function DoneTab({ loading, entries, patchIndex, onGoPlan, now }:
   const row = (entry: DoneEntry) => {
     const note = patchIndex ? pickPatchNote(patchIndex, entry.issue_ref, entry.date) : null;
     return (
-      <li key={`${entry.kind}-${entry.id}`} className={`${ROW} flex items-start gap-3`}>
+      <li key={`${entry.kind}-${entry.id}`} id={roadmapRowId(entry.id)} className={`${ROW} flex items-start gap-3`}>
         <span className="w-14 shrink-0 font-data tabular-nums text-xs text-cz-3 pt-0.5">
           {shortDate(entry.date, i18n.language)}
         </span>

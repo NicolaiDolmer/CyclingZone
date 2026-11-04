@@ -5,6 +5,7 @@ import {
   engineCounts, issueAreaCounts, splitChecking, CHECKING_VISIBLE, splitIssues, buildDoneList, latestIssueUpdates,
   groupPlan, planRanks, planStage, normalizeHorizon, weekRange, copenhagenDateKey, issueTimeline,
   splitRecentDone, patchNotesByIssue, pickPatchNote, searchRoadmap, normalizeSearch,
+  holdsItem, doneLimitFor, roadmapRowId, DONE_PAGE_SIZE, FOLDED_HORIZONS,
   type RoadmapItem, type RoadmapVote, type KnownIssue,
 } from "./roadmapModel.ts";
 
@@ -271,4 +272,44 @@ test("searchRoadmap: EN og DA, uden accenter, med fanen hittet ligger på", () =
   assert.deepEqual(searchRoadmap("FILM", items, issues).map((h) => [h.id, h.tab]), [["b", "beta"]]);
   assert.deepEqual(searchRoadmap("e", items, issues), []);
   assert.equal(normalizeSearch("  Étape På "), "etape pa");
+});
+
+// Codex-fund på #7668: et hit på en gammel leveret post eller en fjern plan
+// skiftede fane, men punktet blev skjult bag "Show more" eller en lukket fold.
+test("doneLimitFor: et hit dybt i Done udvider listen, til punktet er med", () => {
+  const earlier = Array.from({ length: 95 }, (_, i) => ({ id: `e${i}` }));
+  const shown = (id: string | null) => earlier.slice(0, doneLimitFor(earlier, id));
+
+  assert.equal(shown("e70").at(-1)?.id, "e70");
+  assert.equal(shown("e94").length, 95);
+  assert.equal(doneLimitFor(earlier, "e3"), DONE_PAGE_SIZE, "listen krymper aldrig under én side");
+  assert.equal(doneLimitFor(earlier, null), DONE_PAGE_SIZE);
+  assert.equal(doneLimitFor(earlier, "ikke-her"), DONE_PAGE_SIZE);
+});
+
+test("holdsItem: kun folden med det valgte punkt åbner", () => {
+  const groups = groupPlan([
+    item({ id: "near", status: "planned", horizon: "this_week" }),
+    item({ id: "y", status: "planned", horizon: "y2027" }),
+    item({ id: "l", status: "planned", horizon: "later" }),
+  ]);
+  const open = (id: string | null) => groups
+    .filter((g) => FOLDED_HORIZONS.has(g.horizon) && holdsItem(g.items, id))
+    .map((g) => g.horizon);
+
+  assert.deepEqual(open("y"), ["y2027"]);
+  assert.deepEqual(open("l"), ["later"]);
+  assert.deepEqual(open("near"), []);
+  assert.deepEqual(open(null), []);
+});
+
+test("holdsItem: et hit i de foldede indmeldte fejl åbner den fold", () => {
+  const checking = Array.from({ length: CHECKING_VISIBLE + 2 }, (_, i) => iss({ id: `k${i}` }));
+  const { folded } = splitChecking(checking);
+  assert.equal(holdsItem(folded, `k${CHECKING_VISIBLE}`), true);
+  assert.equal(holdsItem(folded, "k0"), false);
+});
+
+test("roadmapRowId: samme id på rækken og i scroll-opslaget", () => {
+  assert.equal(roadmapRowId("abc"), "roadmap-row-abc");
 });
