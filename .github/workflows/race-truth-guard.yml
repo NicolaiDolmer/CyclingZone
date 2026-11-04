@@ -1,0 +1,135 @@
+name: Race truth guard
+
+# Sandhedsvagt efter hver etape (#7643, ejer-go valg A 4/11).
+# Efter etaperne sammenlignes resultat, løbsfilm, referat-input og etapeplan
+# (scripts/race-truth-guard.mjs, regler i scripts/lib/race-truth-rules.mjs).
+#
+# - Kun læsning (PostgREST GET) med de eksisterende secrets SUPABASE_URL og
+#   SUPABASE_SERVICE_KEY. Ingen nye løbende udgifter: GitHub Actions på cron.
+# - Ved fund: én kommentar pr. kørsel på det faste tracking-issue (repo-
+#   variablen RACE_TRUTH_TRACKING_ISSUE, ejeren/PC1 opretter issuet) og én
+#   besked til #ops (secret DISCORD_OPS_WEBHOOK_URL). Ingen navne, tider eller
+#   rytter-id'er i den offentlige kommentar eller loggen.
+# - Fail-soft: vagten kører adskilt fra motoren og returnerer altid 0; den kan
+#   aldrig stoppe et løb.
+# - Tilstand (hvilke etaper der er tjekket) ligger i Actions-cache, aldrig i prod.
+#
+# Etaperne kører i dag mellem ca. 09 og 18 UTC; vagten kører hver time lige
+# efter, plus en sen kørsel der samler op.
+#
+# På en pull request der rører vagten eller filmens afledning (raceStory.js)
+# kører kun regel-testene mod de anonymiserede Giro-fixtures, uden secrets.
+
+on:
+  schedule:
+    - cron: '25 9-19 * * *'
+    - cron: '55 22 * * *'
+  workflow_dispatch:
+    inputs:
+      lookback_hours:
+        description: 'Hvor mange timer tilbage der tjekkes (tom = 36).'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Kun log, ingen kommentar/besked/tilstand.'
+        type: boolean
+        required: false
+        default: false
+  pull_request:
+    paths:
+      - 'scripts/race-truth-guard.mjs'
+      - 'scripts/race-truth-guard.test.mjs'
+      - 'scripts/lib/race-truth-rules.mjs'
+      - 'scripts/lib/race-truth-rules.test.mjs'
+      - 'scripts/__fixtures__/race-truth/**'
+      - 'backend/lib/raceStory.js'
+      - 'backend/lib/raceParticipationHistory.ts'
+      - '.github/workflows/race-truth-guard.yml'
+
+permissions:
+  contents: read
+
+# PR-kørsler (kun tests) annullerer en forældet kørsel på samme PR; cron og
+# dispatch får hver sin gruppe og annulleres aldrig (#7582). Selve vagten
+# serialiseres i job-gruppen nedenfor, så to kørsler aldrig deler tilstanden.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: race-truth-rules
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24'
+
+      - name: Rule and runner tests
+        run: node --test scripts/lib/race-truth-rules.test.mjs scripts/race-truth-guard.test.mjs
+
+  guard:
+    name: race-truth-guard
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: write    # kun kommentaren på tracking-issuet
+      actions: write   # kun til at rydde gamle tilstands-cacher
+    concurrency:
+      group: race-truth-guard
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24'
+
+      - name: Restore guard state
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .race-truth-guard-state
+          key: race-truth-guard-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            race-truth-guard-state-
+
+      - name: Run guard (read-only, fail-soft)
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          DISCORD_OPS_WEBHOOK_URL: ${{ secrets.DISCORD_OPS_WEBHOOK_URL }}
+          RACE_TRUTH_TRACKING_ISSUE: ${{ vars.RACE_TRUTH_TRACKING_ISSUE }}
+          RACE_TRUTH_LOOKBACK_HOURS: ${{ github.event.inputs.lookback_hours }}
+          RACE_TRUTH_DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '1' || '' }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/race-truth-guard.mjs
+
+      - name: Save guard state
+        if: always() && hashFiles('.race-truth-guard-state/state.json') != ''
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .race-truth-guard-state
+          key: race-truth-guard-state-${{ github.run_id }}-${{ github.run_attempt }}
+
+      # Best effort: behold de 3 nyeste tilstands-cacher.
+      - name: Prune old state caches
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh cache list --key race-truth-guard-state- --sort created_at --order desc --limit 100 --json id --jq '.[3:][].id' \
+            | xargs -r -n1 gh cache delete

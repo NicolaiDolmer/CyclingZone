@@ -20,13 +20,21 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BACKEND_ROOT = join(__dirname, "..");
 
-function collectJsFiles(dir, out = []) {
+// Bevar kildedækning for bølgens flyttede wrappers. Bred TS-scanning afventer #5271.
+const MIGRATED_FLAG_SOURCES = new Set([
+  "academyIntakeExpiryFlag.ts",
+  "academyIntakePullFlag.ts",
+  "raceFinalizeResumableFlag.ts",
+  "stageSchedulerFlag.ts",
+]);
+
+function collectFlagSourceFiles(dir, out = []) {
   for (const entry of readdirSync(dir)) {
     if (entry === "node_modules") continue;
     const full = join(dir, entry);
     const st = statSync(full);
-    if (st.isDirectory()) collectJsFiles(full, out);
-    else if (entry.endsWith(".js") && !entry.endsWith(".test.js")) out.push(full);
+    if (st.isDirectory()) collectFlagSourceFiles(full, out);
+    else if ((entry.endsWith(".js") && !entry.endsWith(".test.js")) || MIGRATED_FLAG_SOURCES.has(entry)) out.push(full);
   }
   return out;
 }
@@ -87,7 +95,7 @@ function resolveKeysInFile(source) {
 
 test("#5259: hver evaluateFlagStage-noegle i backend staar i STAGE_FLAGS", () => {
   const missing = [];
-  for (const file of collectJsFiles(BACKEND_ROOT)) {
+  for (const file of collectFlagSourceFiles(BACKEND_ROOT)) {
     const source = readFileSync(file, "utf8");
     if (!source.includes("evaluateFlagStage")) continue;
     for (const key of resolveKeysInFile(source)) {

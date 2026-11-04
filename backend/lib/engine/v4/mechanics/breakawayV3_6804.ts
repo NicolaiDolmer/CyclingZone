@@ -20,6 +20,7 @@
 
 import type { FinaleType, GcContext, ProfileType } from "../types.ts";
 import { S5_V3_BREAKAWAY_TUNING } from "../tuning.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 /** Etapeloeb (ikke endagsloeb): klassementet findes eller loebet er paa sin foerste etape. */
 export function isStageRaceGcContext(gcContext: GcContext | null | undefined): boolean {
@@ -141,7 +142,7 @@ export function s5V3InterestedTeamIds(input: {
   const ids = new Set<string>();
   for (const [teamId, interest] of input.interestByTeam) if (interest > 0) ids.add(teamId);
   for (const [teamId, signal] of input.teamSignals ?? []) if (Math.max(0, signal) > 0) ids.add(teamId);
-  return [...ids].filter((id) => !input.excludedTeamIds?.has(id)).sort((a, b) => a.localeCompare(b));
+  return [...ids].filter((id) => !input.excludedTeamIds?.has(id)).sort((a, b) => compareIds(a, b));
 }
 
 /** P2: lad-gaa-loftet feltet tolererer: mellemzonen med interesse, ellers den oevre zone. */
