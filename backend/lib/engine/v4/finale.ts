@@ -38,7 +38,7 @@ import { applyLeadoutDeliveryCost, applyLeadoutScoreBonuses, parseLeadoutOrders 
 import { cobbledFinaleDemandVector } from "./mechanics/cobbles.ts";
 import { gcCaptainRollInApplies, rollInGcCaptainsOnBunchSprint } from "./mechanics/pointsJersey2757.ts";
 import { classifyRoadWinType } from "./winType.ts";
-import { mergedPhysicalGroup, mergedSharedCohorts } from "./groups.ts";
+import { isRetiredGroup, mergedPhysicalGroup, mergedSharedCohorts } from "./groups.ts";
 import type { GroupMerge } from "./groups.ts";
 import { climbTimeSeconds, finishDescentIndexFor, finishDescentRemainingCapSeconds, TIME_MODEL_V3_TUNING, timeModelTuningFor } from "./mechanics/timeModel.ts";
 import { s5FinaleDemandVector } from "./s5Profiles.ts";
@@ -582,7 +582,9 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     } else {
       const survivor: RaceGroup = { ...group, gap_seconds: newGap, rider_ids: [...group.rider_ids] };
       survivingGroups.push(survivor);
-      if (newGap < bestSurvivingGap) {
+      // #7639: en udgaaet rytters solo-gruppe "overlever" ikke et hul i
+      // tidslinjen; han er ude af loebet (kun eventet, ingen tid aendres).
+      if (newGap < bestSurvivingGap && !isRetiredGroup(survivor, state.riders)) {
         bestSurvivingGap = newGap;
         bestSurvivingGroupForEvent = survivor;
       }
@@ -621,14 +623,17 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     caughtGroups.splice(0, caughtGroups.length, ...caughtLines);
     survivingGroups.splice(0, survivingGroups.length, ...stack);
     contenderIds = [...frontPool.flatMap(g => g.rider_ids), ...caughtLines.flatMap(g => g.rider_ids)];
-    bestSurvivingGroupForEvent = stack[0] ?? null;
+    bestSurvivingGroupForEvent = stack.find((g) => !isRetiredGroup(g, state.riders)) ?? null; // #7639
   }
 
   // Hvis fronten selv IKKE er en ren peloton (dvs. et forspring der overlevede
   // hele finale-segmentet uindhentet uden nogen kontendent bagved overhovedet,
   // eller frontgruppens art er breakaway/solo/chase) markeres det som et
   // finale_attack: forspringet blev baaret helt i maal.
-  const frontKindsHoldGap = frontPool.some((g) => g.kind !== "peloton") && survivingGroups.length === 0
+  // #7639: en udgaaet rytters solo-gruppe bag fronten taeller ikke som en
+  // gruppe der stadig er med; den skjuler ikke et baaret forspring.
+  const frontKindsHoldGap = frontPool.some((g) => g.kind !== "peloton")
+    && survivingGroups.every((g) => isRetiredGroup(g, state.riders))
     ? frontPool.find((g) => g.kind !== "peloton")
     : null;
   if (frontKindsHoldGap) {
