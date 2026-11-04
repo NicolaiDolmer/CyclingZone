@@ -42,6 +42,9 @@ export interface ScoreRow {
   beta_since?: string | null;
   beta_soon?: boolean;
   live_soon?: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+  shipped_at?: string | null;
 }
 
 export interface IssueScoreRow {
@@ -57,6 +60,9 @@ export interface ItemFlagRow {
   beta_since: string | null;
   beta_soon: boolean;
   live_soon: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+  shipped_at?: string | null;
 }
 
 export interface IssueUpdateRow {
@@ -170,8 +176,185 @@ export function mergeItemRows<T extends ScoreRow>(rows: T[], items: ItemFlagRow[
       beta_since: i?.beta_since ?? null,
       beta_soon: i?.beta_soon ?? false,
       live_soon: i?.live_soon ?? false,
+      created_at: i?.created_at ?? null,
+      updated_at: i?.updated_at ?? null,
+      shipped_at: i?.shipped_at ?? null,
     };
   });
+}
+
+// ---------------------------------------------------------------------------
+// Faner, filtre og sortering (#6204)
+// ---------------------------------------------------------------------------
+
+export type AdminTab = "ideas" | "planned" | "in_progress" | "shipped" | "issues" | "y2027" | "votes";
+
+export const ADMIN_TABS: { key: AdminTab; label: string }[] = [
+  { key: "ideas", label: "Idéer" },
+  { key: "planned", label: "Planlagt" },
+  { key: "in_progress", label: "I gang" },
+  { key: "shipped", label: "Færdigt" },
+  { key: "issues", label: "Kendte fejl" },
+  { key: "y2027", label: "2027" },
+  { key: "votes", label: "Stemmer" },
+];
+
+export const DEFAULT_ADMIN_TAB: AdminTab = "planned";
+
+export function isAdminTab(value: unknown): value is AdminTab {
+  return ADMIN_TABS.some((t) => t.key === value);
+}
+
+// Horisonter, som vælgeren tilbyder. "next" er den gamle værdi og beholdes, så
+// eksisterende rækker stadig kan vælges. De nye værdier tilføjes i API'et af
+// spillersporet (#7666).
+export const HORIZONS = ["this_week", "next_week", "this_season", "next_season", "y2027", "later", "next"] as const;
+export type AdminHorizon = (typeof HORIZONS)[number];
+
+export const HORIZON_LABELS: Record<string, string> = {
+  this_week: "Denne uge",
+  next_week: "Næste uge",
+  this_season: "Denne sæson",
+  next_season: "Næste sæson",
+  y2027: "2027",
+  later: "Later",
+  next: "Next",
+};
+
+const DONE_STATUSES = ["shipped", "archived"];
+
+// Hvilke rækker hører til en fane. 2027 går på tværs af status (alt, der endnu
+// ikke er færdigt, og som er sat til 2027); Planlagt tager resten af de planlagte.
+export function tabRows<T extends ScoreRow>(rows: T[], tab: AdminTab): T[] {
+  switch (tab) {
+    case "ideas": return rows.filter((r) => r.status === "active");
+    case "planned": return rows.filter((r) => r.status === "planned" && r.horizon !== "y2027");
+    case "in_progress": return rows.filter((r) => r.status === "in_progress");
+    case "shipped": return rows.filter((r) => r.status === "shipped");
+    case "y2027": return rows.filter((r) => r.horizon === "y2027" && !DONE_STATUSES.includes(r.status));
+    case "votes": return rows.filter((r) => num(r.votes) !== null && (num(r.votes) ?? 0) > 0);
+    default: return [];
+  }
+}
+
+export interface RowFilters {
+  area?: string;
+  status?: string;
+  horizon?: string;
+  issue?: string;
+}
+
+const clean = (v: string | undefined) => (v ?? "").trim();
+
+// Tomt filter = ingen begrænsning. Issue-filteret matcher et nummer (med eller
+// uden #) som begyndelsen af issue-nummeret.
+function matchesIssue(ref: number | null | undefined, query: string): boolean {
+  const q = query.replace(/^#/, "").trim();
+  if (!q) return true;
+  return ref !== null && ref !== undefined && String(ref).startsWith(q);
+}
+
+export function filterItems<T extends ScoreRow>(rows: T[], f: RowFilters): T[] {
+  const area = clean(f.area), status = clean(f.status), horizon = clean(f.horizon), issue = clean(f.issue);
+  return rows.filter((r) =>
+    (!area || r.engine === area)
+    && (!status || r.status === status)
+    && (!horizon || r.horizon === horizon)
+    && matchesIssue(r.issue_ref, issue));
+}
+
+export function filterIssueRows<T extends IssueScoreRow>(rows: T[], f: RowFilters): T[] {
+  const area = clean(f.area), status = clean(f.status), issue = clean(f.issue);
+  return rows.filter((r) =>
+    (!area || r.area === area)
+    && (!status || r.status === status)
+    && matchesIssue(r.issue_ref as number | null | undefined, issue));
+}
+
+export type SortDir = "asc" | "desc";
+export interface SortState { key: string; dir: SortDir }
+
+// Standardsortering pr. fane: det samme som tabellerne havde før fanerne.
+export const DEFAULT_SORT: Record<AdminTab, SortState> = {
+  ideas: { key: "score", dir: "desc" },
+  planned: { key: "importance", dir: "desc" },
+  in_progress: { key: "own", dir: "asc" },
+  shipped: { key: "date", dir: "desc" },
+  issues: { key: "reports", dir: "desc" },
+  y2027: { key: "own", dir: "asc" },
+  votes: { key: "votes", dir: "desc" },
+};
+
+type Accessor = (r: Record<string, unknown>) => string | number | null;
+const numAcc = (field: string): Accessor => (r) => num(r[field] as Num);
+const strAcc = (field: string): Accessor => (r) => {
+  const v = r[field];
+  return typeof v === "string" && v ? v : null;
+};
+
+// Én værdi pr. sorteringsnøgle. Punkter og fejl deler nøglerne, hvor de findes
+// i begge ("title", "date", "status").
+const ACCESSORS: Record<string, Accessor> = {
+  title: (r) => String(r.title_da || r.title_en || "").toLowerCase() || null,
+  votes: numAcc("votes"),
+  importance: numAcc("avg_importance"),
+  idea: numAcc("avg_idea"),
+  score: numAcc("steering_score"),
+  own: numAcc("sort_order"),
+  status: strAcc("status"),
+  horizon: strAcc("horizon"),
+  area: (r) => strAcc("engine")(r) ?? strAcc("area")(r),
+  issue: numAcc("issue_ref"),
+  reports: numAcc("reports"),
+  days: numAcc("days_open"),
+  // Færdigt-datoen, ellers sidst ændret, ellers oprettet.
+  date: (r) => strAcc("shipped_at")(r) ?? strAcc("updated_at")(r) ?? strAcc("created_at")(r) ?? strAcc("closed_at")(r),
+  beta: strAcc("beta_since"),
+  flag: strAcc("flag_key"),
+};
+
+export const SORT_KEYS = Object.keys(ACCESSORS);
+
+// Ved lighed gælder ejerens rækkefølge og så titlen, som tabellerne altid har
+// gjort, så visningen stemmer med positionsnumrene og flyt-knapperne.
+function tieBreak(a: object, b: object): number {
+  const x = a as Record<string, unknown>, y = b as Record<string, unknown>;
+  return (num(x.sort_order as Num) ?? 0) - (num(y.sort_order as Num) ?? 0)
+    || String(x.title_en ?? "").localeCompare(String(y.title_en ?? ""));
+}
+
+// Stabil sortering; tomme værdier står altid sidst, uanset retning.
+export function sortRows<T extends object>(rows: T[], sort: SortState): T[] {
+  const acc = ACCESSORS[sort.key];
+  if (!acc) return [...rows];
+  const sign = sort.dir === "asc" ? 1 : -1;
+  return rows
+    .map((row, index) => ({ row, index, value: acc(row as Record<string, unknown>) }))
+    .sort((a, b) => {
+      if (a.value === null && b.value === null) return tieBreak(a.row, b.row) || a.index - b.index;
+      if (a.value === null) return 1;
+      if (b.value === null) return -1;
+      const cmp = typeof a.value === "number" && typeof b.value === "number"
+        ? a.value - b.value
+        : String(a.value).localeCompare(String(b.value), "da");
+      return cmp * sign || tieBreak(a.row, b.row) || a.index - b.index;
+    })
+    .map((x) => x.row);
+}
+
+// Klik på en kolonne: samme nøgle vender retningen, ny nøgle starter stigende
+// for tekst og faldende for tal (højeste først er det, man leder efter).
+const TEXT_KEYS = ["title", "status", "horizon", "area", "flag", "beta"];
+export function nextSort(current: SortState, key: string): SortState {
+  if (current.key === key) return { key, dir: current.dir === "asc" ? "desc" : "asc" };
+  return { key, dir: TEXT_KEYS.includes(key) ? "asc" : "desc" };
+}
+
+export function tabCounts(rows: ScoreRow[], issues: IssueScoreRow[]): Record<AdminTab, number> {
+  const openIssues = issues.filter((r) => !CLOSED_ISSUE.includes(r.status as IssueStatus)).length;
+  const out = {} as Record<AdminTab, number>;
+  for (const t of ADMIN_TABS) out[t.key] = t.key === "issues" ? openIssues : tabRows(rows, t.key).length;
+  return out;
 }
 
 export function latestUpdateByIssue<T extends IssueUpdateRow>(updates: T[]): Map<string, T> {

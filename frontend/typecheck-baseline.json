@@ -867,10 +867,10 @@
   "src/components/admin/growth/GrowthRoadmapTab.jsx": {
     "TS18046": 2,
     "TS18047": 1,
-    "TS2322": 10,
-    "TS2339": 28,
+    "TS2322": 7,
+    "TS2339": 26,
     "TS2345": 4,
-    "TS2353": 12
+    "TS2353": 9
   },
   "src/components/admin/growth/RoadmapAdminForms.jsx": {
     "TS2339": 1,
