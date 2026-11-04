@@ -23,6 +23,7 @@
 //   node scripts/merge-queue-active-marker.mjs stop   --pid <pid>
 //   node scripts/merge-queue-active-marker.mjs status
 //   node scripts/merge-queue-active-marker.mjs covers --sha <sha> [--subject "<commit-emne>"]
+// Env CHECK_NOW_MD_NOW_EPOCH (sekunder) erstatter uret, saa hook og test deler klokke.
 // covers: exit 0 = en levende markoer daekker commit'en (SHA'en er merget af
 // toget, eller emnet ender paa "(#N)" for en af togets PR'er); ellers exit 1.
 //
@@ -168,6 +169,9 @@ export function main(argv = process.argv.slice(2), { file = markerFilePath(), no
 
 if (process.argv[1]?.endsWith('merge-queue-active-marker.mjs')) {
   let code = 0;
-  try { code = main(); } catch (err) { process.stdout.write(`markoer ADVARSEL: uventet fejl: ${err?.message ?? err}\n`); code = process.argv[2] === 'covers' ? 1 : 0; }
+  // Injicerbar klokke (AGENTS.md regel 16): Stop-hooken og dens test deler samme tid.
+  const epoch = Number(process.env.CHECK_NOW_MD_NOW_EPOCH);
+  const now = Number.isFinite(epoch) && epoch > 0 ? new Date(epoch * 1000) : new Date();
+  try { code = main(process.argv.slice(2), { now }); } catch (err) { process.stdout.write(`markoer ADVARSEL: uventet fejl: ${err?.message ?? err}\n`); code = process.argv[2] === 'covers' ? 1 : 0; }
   process.exitCode = code;
 }

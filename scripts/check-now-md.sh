@@ -70,7 +70,8 @@ fi
 if [ -d ".git" ]; then
   LAST_MAIN_TS=$(git log origin/main -1 --format=%ct 2>/dev/null || echo 0)
   LAST_NOW_TS=$(git log -1 --format=%ct -- docs/NOW.md 2>/dev/null || echo 0)
-  NOW_TS=$(date +%s)
+  # Klokken kan injiceres (AGENTS.md regel 16); markoer-laeseren nedenfor arver den.
+  NOW_TS=${CHECK_NOW_MD_NOW_EPOCH:-$(date +%s)}
 
   if [ "$LAST_MAIN_TS" -gt 0 ] && [ "$LAST_NOW_TS" -gt 0 ]; then
     MAIN_AGE=$((NOW_TS - LAST_MAIN_TS))

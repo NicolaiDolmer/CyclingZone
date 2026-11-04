@@ -14,6 +14,9 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const HOOK = fileURLToPath(new URL('./check-now-md.sh', import.meta.url));
+// Fast klokke (AGENTS.md regel 16): hooken og markoer-laeseren faar den via
+// CHECK_NOW_MD_NOW_EPOCH, og fixturens commit- og markoer-tider regnes fra den.
+const NOW_S = 1_800_000_000;
 const NOW_WARNING = 'main blev opdateret';
 const REFS_WARNING = 'refererer #7 men issuet har ingen kommentar';
 
@@ -36,7 +39,7 @@ function git(cwd, args, epoch) {
 // Repo: NOW.md commit for 20 min siden, main-commit "(#42)" + "Refs #7" for 1 min siden.
 function setupRepo() {
   const dir = mkdtempSync(join(tmpdir(), 'now-hook-'));
-  const nowS = Math.floor(Date.now() / 1000);
+  const nowS = NOW_S;
   git(dir, ['init', '-q']);
   mkdirSync(join(dir, 'docs'));
   writeFileSync(join(dir, 'docs', 'NOW.md'), '# NOW\n');
@@ -62,7 +65,7 @@ function writeMarker(dir, marker) {
 }
 
 function runHook(repo) {
-  const env = { ...process.env, HOME: repo.dir, USERPROFILE: repo.dir, PATH: `${repo.bin}${delimiter}${process.env.PATH}` };
+  const env = { ...process.env, HOME: repo.dir, USERPROFILE: repo.dir, PATH: `${repo.bin}${delimiter}${process.env.PATH}`, CHECK_NOW_MD_NOW_EPOCH: String(NOW_S) };
   delete env.MERGE_QUEUE_MARKER_FILE;
   const res = spawnSync('bash', [HOOK.replaceAll('\\', '/')], { cwd: repo.dir, input: '', encoding: 'utf8', env, timeout: 60_000 });
   assert.ifError(res.error);
@@ -71,7 +74,7 @@ function runHook(repo) {
 }
 
 const deadPid = () => spawnSync(process.execPath, ['-e', '0']).pid;
-const started = (minutesAgo = 5) => new Date(Date.now() - minutesAgo * 60_000).toISOString();
+const started = (minutesAgo = 5) => new Date(NOW_S * 1000 - minutesAgo * 60_000).toISOString();
 
 test('without a marker the NOW and SHA reminders fire as before', () => {
   const repo = setupRepo();
