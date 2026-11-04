@@ -87,6 +87,7 @@ export function lockedRidersOnDates(lockedRidersByDate, dates) {
  * `riderIds` narrows the read (a team's roster); without it every locked rider on the
  * races' dates is returned (race-start autofill). `pressedAt` is the team's own first
  * press on those dates, for the "locked since" line in the UI (null without `teamId`).
+ * @param {{ supabase: any, raceIds: string[], riderIds?: string[] | null, teamId?: string | null }} args
  */
 export async function loadTrainNowLocksForRaces({ supabase, raceIds, riderIds = null, teamId = null }) {
   const ids = [...new Set((raceIds ?? []).filter(Boolean))];

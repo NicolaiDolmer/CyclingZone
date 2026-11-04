@@ -327,6 +327,19 @@ export function buildSplitTimes(
   return out;
 }
 
+/**
+ * #7636: sad rytteren forrest i loebet eller i feltet (hovedgruppen, som filmen kalder det) ved
+ * `km` (efter alle events til og med km)? En gruppe mellem fronten og feltet taeller ikke.
+ * null = ukendt (v3-tidslinje, udgaaet rytter, intet gruppe-billede).
+ */
+export function riderInFrontOrFieldAt(events: readonly TimelineEvent[] | null | undefined, riderId: string, km: number): boolean | null {
+  if (!hasGroupGaps(events)) return null;
+  let last = null as ReplayState | null;
+  replay(sortedEvents(events).filter((e) => (e.km ?? 0) <= km), (_e, state) => { last = state; });
+  const own = last ? snapshotGroups(last, [riderId]).find((g) => g.ownRiderIds.includes(riderId)) : undefined;
+  return own ? own.kind === "peloton" || own.gapSeconds === 0 : null;
+}
+
 function fromKind(state: ReplayState, groupId: string, leaving: readonly string[]): "breakaway" | "peloton" | "group" {
   const kind = groupKind(state, groupId, leaving);
   return kind === "breakaway" || kind === "peloton" ? kind : "group";
@@ -359,6 +372,8 @@ export function buildOwnTimeLoss(
   replay(sorted, (event, state, before) => {
     const p = event.params || {};
     if (event.type === "peloton_splits") {
+      // #7640: et split der koerer FREM (angreb, negativt hul) er aldrig tabt tid.
+      if (p.cause === "attack" || Number(p.gap_seconds) < 0) return;
       for (const riderId of idsOf(p.rider_ids)) {
         if (!own.has(riderId)) continue;
         const source = str(p.source_group_id) ?? before.get(riderId) ?? INITIAL_GROUP;

@@ -79,6 +79,17 @@ test('#5509: Codex reads issue content before setup or any spawn', async t => {
   assert.equal(reads, 1);
   assert.equal(existsSync(path.join(root, 'wave-active.json')), false);
 });
+test('#6335: Codex plans reject broad ownership and touches while keeping independent files', () => {
+  for (const field of ['ownership', 'touches']) {
+    for (const raw of ['backend/lib', 'backend/routes/**', 'FRONTEND\\SRC\\PAGES\\']) {
+      assert.throws(() => runner.executionPlan({ tracks: [{ ...tracks[0], [field]: [raw] }] }), /too broad/);
+    }
+  }
+  assert.doesNotThrow(() => runner.executionPlan({ tracks: [
+    { ...tracks[0], ownership: ['backend/lib/engine/v4/', 'backend/routes/raceFixture.ts'] },
+    { ...tracks[1], ownership: ['backend/lib/trainingRunResponse.ts'] },
+  ] }));
+});
 test('reviewer model and effort do not change worker, fixer or permission-probe selection', () => {
   const track = { worktree: '/fixture', scratch: '/scratch', model: 'gpt-6.1-sol', effort: 'medium', reviewerModel: 'gpt-6-astra', reviewerEffort: 'high' };
   for (const role of ['worker', 'fixer', 'permission-probe', 'reviewer']) {

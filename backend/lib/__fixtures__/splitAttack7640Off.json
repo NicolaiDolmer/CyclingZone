@@ -1,0 +1,16 @@
+{
+  "sourceCommit": "be8ea8a6f19eeaf0ad6c034cf101217011ab95bf",
+  "note": "#7640: v4-motoren gennem broen uden kontakter, skrevet fra merge-basen foer kontakten. Kun hashes. Genereres ALDRIG med den nye kode.",
+  "s5_profiles_v3:stage2": {
+    "outputSha256": "9d562372433304ab391e00bd04b825dcbdf978b3c664d555a80a73c2481854f2",
+    "withoutCausesSha256": "7e42a70d198889221c958a703ad53fd89e7d9c9c1582810ee2774c234af302b5"
+  },
+  "s5_profiles_v3:stage3": {
+    "outputSha256": "fc53fc6cb133a5ea4c1bc4063bff129d851942377652e66f6f5f598f90217092",
+    "withoutCausesSha256": "fc53fc6cb133a5ea4c1bc4063bff129d851942377652e66f6f5f598f90217092"
+  },
+  "s5_profiles_v2:stage2": {
+    "outputSha256": "88240de4d38cb09894cb41daad9fb279659c4a2dbb4ab2ad56e987f69052cd30",
+    "withoutCausesSha256": "68b4e99283777b6292a55fea28457a570b92acd3fcf134fc41f1da45cc564130"
+  }
+}

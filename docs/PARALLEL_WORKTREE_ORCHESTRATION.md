@@ -387,6 +387,10 @@ I `wave.js` starter alle laner, ogsaa naar koeen er kortere. En lane uden spor s
 
 ## Delte filer: `touches` (1/10, #5997)
 
+**Smalt ejerskab (#6335):** `ownership` og `touches` maa ikke daekke kendte brede faellesmapper: `backend/lib`, `backend/routes`, `frontend/src/pages`, `frontend/src/components`, `frontend/src/hooks`, `frontend/src/lib` og `frontend/src/utils`. Det gaelder ogsaa deres overmapper samt globs der daekker dem, uanset case, backslash eller trailing slash. Konkrete filer, afgraensede filglobs og smaa undermapper (fx `backend/lib/engine/v4/`) er tilladt. Brug fx den navngivne `backend/lib/trainingRunResponse.ts` separat fra et engine-spor, saa uafhaengige filer kan optages og merges.
+
+Faelles admission, enqueue og Codex-planen afviser en bred deklaration; naar branch-diffen kan laeses, foreslaar fejlen konkrete matchende filer fra `origin/main...<branch>` (ogsaa gamle og nye stier ved rename). En tom eller ulaeselig diff giver en handlingsanvisning, aldrig automatisk indskraenkning eller accept. Workflow-planen spejler afvisningen uden diskadgang; diff-forslag kommer fra faelles admission. Eksisterende markoerers overlap og merge-laas bevares konservativt; git-fejl frigiver aldrig ejerskab. Ingen regel afhaenger af den lokale mappes aktuelle filantal.
+
 Et spor kan have et valgfrit felt `touches: []` ved siden af `ownership`: delte hotspot-filer (fx en side flere spor skal sætte en lille kobling ind i). Samme sti-/glob-syntaks som `ownership`, samme reserverede stier og "for bredt"-regel.
 
 | Kombination | Resultat |
