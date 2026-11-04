@@ -103,6 +103,15 @@ for (const frozen of FROZEN) {
   });
 }
 
+test("#7639: aeldre revisioner er frosne og beholder deres tidslinje (rettelsen gaelder kun s5_profiles_v3)", () => {
+  const input = { ...loadInput("mellembjerg"), rulesRevision: "s5_profiles_v2" as const };
+  const out = runSegmentLoop(input, hooksCrashingOn(3));
+  const incidentIndex = out.timeline.findIndex((e) => e.type === "incident" && e.params?.outcome === "abandoned");
+  assert.ok(incidentIndex >= 0);
+  const victim = out.timeline[incidentIndex].params!.rider_id as string;
+  assert.ok(ghostRefs(out.timeline, incidentIndex, makeIncidentSoloGroupId(3, 0), victim).length > 0);
+});
+
 test("#7639 isRetiredGroup: kun en gruppe af udelukkende udgaaede ryttere", () => {
   const riders = {
     a: { status: "abandoned" as const },
