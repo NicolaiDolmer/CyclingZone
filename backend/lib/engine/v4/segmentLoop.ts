@@ -65,7 +65,7 @@ import {
   mergedSharedCohorts,
 } from "./groups.ts";
 import type { FinaleGroupTrace, GroupMerge } from "./groups.ts";
-import { carrySplitsWithSourceAdvance, segmentSplitsFromEvents } from "./groups.ts"; // #6440
+import { carrySplitsWithSourceAdvance, isRetiredGroup, segmentSplitsFromEvents } from "./groups.ts"; // #6440, #7639
 import {
   GROUP_DRAFT_EXTRA_TUNING,
   GROUP_TEMPO_EFFORT_EXTRA_TUNING,
@@ -1298,18 +1298,26 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // paa jagt-modellens egne praemisser. `group_merged` er den generelle,
     // state-afledte kvittering: den siger kun HVEM der endte HVOR, uden
     // aarsag — aarsagen ejes af den mekanik der flyttede gappet.
+    //
+    // #7639: en udgaaet rytters solo-gruppe (isRetiredGroup) er ude af loebet.
+    // Den bliver i motorens state og snapshots (uaendret resultat), men
+    // tidslinjen naevner ham ikke efter uheldet: intet gap_update, intet merge
+    // og aldrig som jagtgruppe. Kun tidslinje-events; ingen tid eller gruppe
+    // aendres.
     for (const merge of merges) {
+      lastEmittedGap.delete(merge.absorbed_group_id);
+      if (isRetiredGroup({ rider_ids: merge.rider_ids }, state.riders)) continue;
       pushEvent(timeline, segment.to_km, "group_merged", {
         group_id: merge.absorbed_group_id,
         into_group_id: merge.into_group_id,
         rider_ids: [...merge.rider_ids],
       });
-      lastEmittedGap.delete(merge.absorbed_group_id);
     }
 
-    for (const g of mergedGroups) {
+    const timelineGroups = mergedGroups.filter((g) => !isRetiredGroup(g, state.riders));
+    for (const g of timelineGroups) {
       if (pursuitSamples && isPursuedEscape(g)) {
-        const chase = findChaseGroup(mergedGroups, g);
+        const chase = findChaseGroup(timelineGroups, g);
         if (chase) {
           const sep = round2(chase.gap_seconds - g.gap_seconds);
           const prev = lastEmittedSeparation.get(g.id);
