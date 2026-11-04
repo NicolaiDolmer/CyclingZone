@@ -19,6 +19,23 @@ export const PATCHES = [
         "refs": [
           7561
         ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Help",
+        "en": {
+          "title": "Breakaway markers explained correctly",
+          "body": "Help now explains the race film's breakaway markers correctly: a lightning bolt marks a later attack, the flag's colour shows how the breakaway ended, and a red down arrow means dropped."
+        },
+        "da": {
+          "title": "Udbrudsmarkørerne forklaret rigtigt",
+          "body": "Hjælp forklarer nu løbsfilmens udbrudsmarkører rigtigt: et lyn viser et senere angreb, flagets farve viser hvordan udbruddet endte, og en rød pil nedad betyder sat af."
+        },
+        "refs": [
+          7092
+        ]
       }
     ]
   },
