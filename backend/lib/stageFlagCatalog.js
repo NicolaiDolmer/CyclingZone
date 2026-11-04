@@ -99,6 +99,9 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_form_peaks", area: "race-engine", label: "Formtoppe i løbene" },
   // #7290: højdeprofilens bakker i motoren (kun s5_profiles_v3). Slukket; virker først når raceRunner er koblet.
   { key: "route_profile_hills", area: "race-engine", label: "Bakker fra højdeprofilen i motoren" },
+  // #7236: loft på topgabet på dronningeetaper (kun s5_profiles_v3). Ikke seedet = off; kun "on"
+  // tænder, "beta" læses som off (queenStageGap7236Flag.js). Ejer-only flip.
+  { key: "queen_stage_gap_7236", area: "race-engine", label: "Dronningeetaper — loft på topgabet" },
   { key: "race_day_engine_enabled", area: "race-engine", label: "Løbsdags-motor" },
   { key: "race_finalize_resumable_enabled", area: "race-engine", label: "Genoptagelig finalisering" },
   { key: "race_notify_outbox_enabled", area: "race-engine", label: "Notify-kø — asynkron udsendelse" },
