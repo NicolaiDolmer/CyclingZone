@@ -403,6 +403,26 @@
     {
       "issue": 7588,
       "why": "Realisme-gate for motoren (løsning B), ejer-go 3/11 i chat"
+    },
+    {
+      "issue": 7628,
+      "why": "Merge-kø løser TS-baseline-konflikter selv, ejer-go 4/11 i chat"
+    },
+    {
+      "issue": 7629,
+      "why": "Delingstjek i close-out mellem PC'er, ejer-go 4/11 i chat"
+    },
+    {
+      "issue": 7630,
+      "why": "Roadmap-vagt der flagger forkerte punkter, ejer-go 4/11 i chat"
+    },
+    {
+      "issue": 7631,
+      "why": "Masterplan og artifact fra én kilde, ejer-go 4/11 i chat"
+    },
+    {
+      "issue": 7632,
+      "why": "Til dørs-tavlen som ejerens levende overblik, ejer-go 4/11 i chat"
     }
   ],
   "brandList": [
