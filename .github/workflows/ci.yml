@@ -100,7 +100,6 @@ jobs:
     env:
       SUPABASE_URL: https://example.supabase.co
       SUPABASE_SERVICE_KEY: test-service-key
-      BACKEND_TEST_FILE_LOG: ${{ runner.temp }}/backend-test-files/shard-${{ matrix.shard }}.txt
     defaults:
       run:
         working-directory: backend
@@ -128,6 +127,9 @@ jobs:
       # node:test deler selv filerne (--test-shard). Den ekstra reporter skriver
       # hver koert testfil til $BACKEND_TEST_FILE_LOG, som samle-jobbet taeller.
       - name: Run backend tests (del ${{ matrix.shard }}/3)
+        # runner.temp findes kun paa step-niveau, ikke i job-env.
+        env:
+          BACKEND_TEST_FILE_LOG: ${{ runner.temp }}/backend-test-files/shard-${{ matrix.shard }}.txt
         run: |
           mkdir -p "$(dirname "$BACKEND_TEST_FILE_LOG")"
           : > "$BACKEND_TEST_FILE_LOG"
