@@ -29,6 +29,7 @@
 //
 // REN: ingen IO, ingen rng. Returnerer samme Map naar intet aendres.
 import type { ProfileType, RaceGroup, Segment, SegmentKind } from "../types.ts";
+import { compareIds } from "../../../compareIds.ts";
 import { QUEEN_STAGE_GAP_7236_TUNING } from "../tuning.ts"; // #7236
 
 const deepFreeze = <T>(value: T): T => {
@@ -171,7 +172,7 @@ export function regroupClosingSeconds(
   t: DescentRegroup6486Tuning = DESCENT_REGROUP_6486_TUNING,
 ): Map<string, number> {
   const out = new Map<string, number>();
-  const sorted = [...chain].sort((a, b) => a.gap - b.gap || a.id.localeCompare(b.id));
+  const sorted = [...chain].sort((a, b) => a.gap - b.gap || compareIds(a.id, b.id));
   for (const g of sorted) out.set(g.id, 0);
   const km = Number.isFinite(lengthKm) ? Math.max(0, lengthKm) : 0;
   if (sorted.length < 2 || km === 0 || !((t.secondsPerKmByKind[kind] ?? 0) > 0)) return out;
@@ -236,7 +237,7 @@ export function descentRegroupTempo6486<T extends { dtSeconds: number }>(
   const inIncident = (g: RaceGroup) => incidentChasers !== undefined && g.rider_ids.some((id) => incidentChasers[id] !== undefined);
   const chainGroups = [...groups]
     .filter((g) => !isMorningBreakawayPiece(g) && !inIncident(g) && g.rider_ids.length > 0 && tempoByGroup.has(g.id))
-    .sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+    .sort((a, b) => a.gap_seconds - b.gap_seconds || compareIds(a.id, b.id));
   if (chainGroups.length < 2) return tempoByGroup;
   const closing = regroupClosingSeconds(chainGroups.map((g) => ({ id: g.id, gap: g.gap_seconds, riders: g.rider_ids.length })), seg.kind, lengthKm, t);
   let out: Map<string, T> | null = null;

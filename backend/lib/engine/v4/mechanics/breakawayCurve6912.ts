@@ -31,6 +31,7 @@ import type { ProfileType, RouteV2, StageInput } from "../types.ts";
 import { isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
 import { BREAKAWAY_CURVE_6912_TUNING } from "../tuning.ts";
 import { finalClimbStartIndex } from "./mountainSelection.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 type CurveTuning = typeof BREAKAWAY_CURVE_6912_TUNING;
 
@@ -216,7 +217,7 @@ export function curveChaseWork(input: { chasers: ReadonlyMap<string, readonly st
  */
 export function addWork(base: ReadonlyMap<string, number>, extra: ReadonlyMap<string, number>): Map<string, number> {
   const out = new Map<string, number>();
-  for (const id of [...new Set([...base.keys(), ...extra.keys()])].sort((x, y) => x.localeCompare(y))) {
+  for (const id of [...new Set([...base.keys(), ...extra.keys()])].sort((x, y) => compareIds(x, y))) {
     out.set(id, (base.get(id) ?? 0) + (extra.get(id) ?? 0));
   }
   return out;
