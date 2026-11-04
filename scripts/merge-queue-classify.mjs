@@ -10,12 +10,18 @@
 //   (b) motor-PR bag slukket race_engine_v4 (kun backend/lib/engine/v4);
 //       #5580/#5581 (indsats/realisme-gate med ejerens maaltal) er undtaget
 //   (c) Dependabot patch/minor · docs uden spillertekst · CI/hooks/test-only
+//   (d) additive, idempotente migrationer (+ docs/CI/test), ejer-valg B 4/11
+//       (#7578): flag-seed 'off' med ON CONFLICT DO NOTHING, nullable
+//       ADD COLUMN IF NOT EXISTS, CREATE INDEX IF NOT EXISTS. Afgoeres af
+//       SQL-indholdet (analyzeMigrationSql); ukendt eller manglende SQL = ejer-go.
 // Alt andet: "kraever ejer-go" med den foerste grund (UI, spillertekst,
-// spillervendte tal, migrationer, flag-flips, prod-skrivninger, og fra 4/10
-// release-tjek/deploy/overvaagning). Ejer-go er klaebende pr. PR (OWNER_GO_MARKER).
+// spillervendte tal, ikke-additive migrationer, flag-flips, prod-skrivninger, og
+// fra 4/10 release-tjek/deploy/overvaagning). Ejer-go er klaebende pr. PR
+// (OWNER_GO_MARKER).
 //
-// Input er labels + filstier + titel + body (+ author). Alt herunder er rent;
-// gh-kaldet ligger kun i main() nederst.
+// Input er labels + filstier + titel + body (+ author) + migrationernes SQL
+// (`migrationSql: { [sti]: tekst }`). Alt herunder er rent; gh-kaldene ligger
+// kun i fetchPrFromGh/fetchMigrationSql og main() nederst.
 //
 //   node scripts/merge-queue-classify.mjs --pr 5654 [--repo owner/name] [--json]
 //   node scripts/merge-queue-classify.mjs --input pr.json [--json]   # uden gh
@@ -32,6 +38,7 @@ export const CATEGORY = Object.freeze({
   A_BRAND_FIX: "a",
   B_ENGINE_V4: "b",
   C_SAFE: "c",
+  D_ADDITIVE_MIGRATION: "d",
   OWNER: "ejer-go",
 });
 
@@ -39,6 +46,7 @@ export const CATEGORY_LABEL = Object.freeze({
   a: "(a) brand-fejlrettelse uden ny spillertekst",
   b: "(b) motor bag slukket race_engine_v4",
   c: "(c) Dependabot/docs/CI-hooks-test",
+  d: "(d) additiv, idempotent migration",
   "ejer-go": "kraever ejer-go",
 });
 
@@ -132,6 +140,232 @@ export function hasOwnerGoMarker(comments) {
   return (comments ?? []).some((c) => String(typeof c === "string" ? c : c?.body ?? "").includes(OWNER_GO_MARKER));
 }
 
+// ── Migrationer: additiv og idempotent? (ejer-valg B 4/11, #7578) ─────────
+//
+// Fail-closed: hver saetning skal matche en kendt additiv, idempotent form.
+// Alt andet, ogsaa SQL vi ikke kan laese, er ejer-go. Kommentarer og
+// streng-literaler fjernes foerst, saa "DROP" i en kommentar eller en
+// beskrivelse ikke taeller, og "drop" i selve koden altid gør.
+
+/**
+ * Deler SQL i saetninger. Kommentarer fjernes; streng- og dollar-literaler
+ * erstattes af `'§n'`, og deres indhold gemmes i `literals[n]`.
+ * Returnerer null ved uafsluttet kommentar/streng (= ukendt SQL).
+ * @param {string} sql
+ * @returns {Array<{code: string, literals: string[]}>|null}
+ */
+export function splitSqlStatements(sql) {
+  const src = String(sql ?? "");
+  const out = [];
+  let code = "";
+  let literals = [];
+  const flush = () => {
+    const c = code.replace(/\s+/g, " ").trim();
+    if (c) out.push({ code: c, literals });
+    code = "";
+    literals = [];
+  };
+  let i = 0;
+  while (i < src.length) {
+    const ch = src[i];
+    const nx = src[i + 1];
+    if (ch === "-" && nx === "-") {
+      const j = src.indexOf("\n", i);
+      i = j < 0 ? src.length : j;
+      code += " ";
+      continue;
+    }
+    if (ch === "/" && nx === "*") {
+      let depth = 1;
+      i += 2;
+      while (i < src.length && depth) {
+        if (src[i] === "/" && src[i + 1] === "*") { depth++; i += 2; }
+        else if (src[i] === "*" && src[i + 1] === "/") { depth--; i += 2; }
+        else i++;
+      }
+      if (depth) return null;
+      code += " ";
+      continue;
+    }
+    if (ch === "'") {
+      // E'...' tillader backslash-escapes; ellers er '' det eneste escape.
+      const escapes = /(^|[^A-Za-z0-9_$])[eE]$/.test(code);
+      let j = i + 1;
+      let val = "";
+      for (;;) {
+        if (j >= src.length) return null;
+        const c = src[j];
+        if (escapes && c === "\\") { val += src[j + 1] ?? ""; j += 2; continue; }
+        if (c === "'") {
+          if (src[j + 1] === "'") { val += "'"; j += 2; continue; }
+          j++;
+          break;
+        }
+        val += c;
+        j++;
+      }
+      literals.push(val);
+      code += `'§${literals.length - 1}'`;
+      i = j;
+      continue;
+    }
+    if (ch === '"') {
+      const j = src.indexOf('"', i + 1);
+      if (j < 0) return null;
+      code += src.slice(i, j + 1);
+      i = j + 1;
+      continue;
+    }
+    if (ch === "$" && !/[A-Za-z0-9_$]$/.test(code)) {
+      const tag = /^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/.exec(src.slice(i));
+      if (tag) {
+        const j = src.indexOf(tag[0], i + tag[0].length);
+        if (j < 0) return null;
+        literals.push(src.slice(i + tag[0].length, j));
+        code += `'§${literals.length - 1}'`;
+        i = j + tag[0].length;
+        continue;
+      }
+    }
+    if (ch === ";") { flush(); i++; continue; }
+    code += ch;
+    i++;
+  }
+  flush();
+  return out;
+}
+
+/** Deler paa et skilletegn uden for parenteser (literaler er allerede erstattet). */
+function splitTopLevel(text, sep = ",") {
+  const parts = [];
+  let depth = 0;
+  let cur = "";
+  for (const ch of text) {
+    if (ch === "(") depth++;
+    if (ch === ")") depth--;
+    if (ch === sep && depth === 0) { parts.push(cur.trim()); cur = ""; continue; }
+    cur += ch;
+  }
+  parts.push(cur.trim());
+  return parts;
+}
+
+const IDENT = String.raw`(?:"[^"]+"|[A-Za-z_][A-Za-z0-9_$]*)`;
+const QUALIFIED = `${IDENT}(?:\\.${IDENT})?`;
+
+// Moenstre der altid er ejerens, uanset form (soeges i koden uden kommentarer
+// og literaler). Rækkefølgen giver den mest sigende grund.
+const DESTRUCTIVE_SQL = [
+  [/\bDROP\b/i, "DROP"],
+  [/\bTRUNCATE\b/i, "TRUNCATE"],
+  [/\bDELETE\b/i, "DELETE"],
+  [/\bUPDATE\b/i, "UPDATE af data"],
+  [/\b(GRANT|REVOKE)\b/i, "GRANT/REVOKE"],
+  [/\bPOLICY\b|\bROW LEVEL SECURITY\b/i, "RLS/policy"],
+  [/\bRENAME\b/i, "RENAME"],
+];
+
+// Flag-tabellen: kun en seed med vaerdien off/false er additiv. Alle andre
+// INSERTs kan vaere spillervendt indhold (roadmap, kendte fejl, katalog).
+const FLAG_SEED_RE = new RegExp(
+  String.raw`^INSERT INTO (?:public\.)?"?app_config"? \(([^()]*)\) VALUES (.+?) ON CONFLICT(?: ?\([^()]*\))? DO NOTHING$`,
+  "i",
+);
+const FLAG_OFF_VALUE_RE = /^\s*("off"|false)\s*$/i;
+
+function checkFlagSeed(stmt) {
+  const m = FLAG_SEED_RE.exec(stmt.code);
+  if (!m) {
+    if (/^INSERT INTO (?:public\.)?"?app_config"?\b/i.test(stmt.code) && !/\bON CONFLICT\b.*\bDO NOTHING$/i.test(stmt.code)) {
+      return "flag-INSERT uden ON CONFLICT DO NOTHING (ikke idempotent)";
+    }
+    return "INSERT uden for en flag-seed i app_config (data kan vaere spillervendt)";
+  }
+  const cols = m[1].split(",").map((c) => c.trim().replace(/"/g, "").toLowerCase());
+  const valueIdx = cols.indexOf("value");
+  if (valueIdx < 0) return "flag-seed uden value-kolonne";
+  const tuples = splitTopLevel(m[2]);
+  for (const tuple of tuples) {
+    const inner = /^\((.*)\)$/.exec(tuple);
+    if (!inner) return "flag-seed med ukendt VALUES-form";
+    const items = splitTopLevel(inner[1]);
+    if (items.length !== cols.length) return "flag-seed med ukendt VALUES-form";
+    const lit = /^'§(\d+)'(?:::jsonb)?$/i.exec(items[valueIdx]);
+    if (!lit || !FLAG_OFF_VALUE_RE.test(stmt.literals[Number(lit[1])] ?? "")) {
+      return "flag-seed med en vaerdi der ikke er off (flag-flip)";
+    }
+  }
+  return null;
+}
+
+const ADD_COLUMN_RE = new RegExp(`^ADD COLUMN IF NOT EXISTS ${IDENT} (.+)$`, "i");
+const COLUMN_FORBIDDEN_RE = /\bNOT NULL\b|\bREFERENCES\b|\bCHECK\b|\bUNIQUE\b|\bPRIMARY KEY\b|\bGENERATED\b|\bCONSTRAINT\b/i;
+
+function checkAlterTable(stmt) {
+  const m = new RegExp(`^ALTER TABLE (?:IF EXISTS )?(?:ONLY )?${QUALIFIED} (.+)$`, "i").exec(stmt.code);
+  if (!m) return "ALTER der aendrer eksisterende";
+  for (const action of splitTopLevel(m[1])) {
+    if (/^ADD COLUMN\b/i.test(action) && !/^ADD COLUMN IF NOT EXISTS\b/i.test(action)) {
+      return "ADD COLUMN uden IF NOT EXISTS (ikke idempotent)";
+    }
+    const col = ADD_COLUMN_RE.exec(action);
+    if (!col) return "ALTER der aendrer eksisterende";
+    if (COLUMN_FORBIDDEN_RE.test(col[1])) return "ny kolonne med NOT NULL/constraint (kun nullable er additiv)";
+  }
+  return null;
+}
+
+/** Én saetning: null = additiv og idempotent, ellers grunden. */
+function checkStatement(stmt) {
+  const c = stmt.code;
+  if (/^(BEGIN|COMMIT|END|START TRANSACTION)( (TRANSACTION|WORK))?$/i.test(c)) return null;
+  if (/^SET (LOCAL )?(lock_timeout|statement_timeout) ?(=|TO) ?('§\d+'|\d+)$/i.test(c)) return null;
+  if (/^NOTIFY pgrst ?, ?'§\d+'$/i.test(c)) return null;
+  if (/^COMMENT ON (TABLE|COLUMN|INDEX) \S+ IS '§\d+'$/i.test(c)) return null;
+  if (/^CREATE (UNIQUE )?INDEX\b/i.test(c)) {
+    if (/^CREATE UNIQUE\b/i.test(c)) return "UNIQUE-indeks (kan afvise eksisterende/nye raekker)";
+    if (/^CREATE INDEX (CONCURRENTLY )?IF NOT EXISTS\b/i.test(c)) return null;
+    return "CREATE INDEX uden IF NOT EXISTS (ikke idempotent)";
+  }
+  if (/^ALTER TABLE\b/i.test(c)) return checkAlterTable(stmt);
+  if (/^INSERT\b/i.test(c)) return checkFlagSeed(stmt);
+  if (/^CREATE (UNLOGGED )?TABLE\b/i.test(c)) return "ny tabel: grants/RLS er ejerens (DATA_API_GRANTS.md)";
+  if (/^CREATE (OR REPLACE )?(FUNCTION|PROCEDURE|TRIGGER|VIEW|MATERIALIZED VIEW|RULE)\b/i.test(c)) {
+    return "funktion/trigger/view aendrer adfaerd";
+  }
+  if (/^ALTER\b/i.test(c)) return "ALTER der aendrer eksisterende";
+  return `ukendt SQL-saetning: ${c.slice(0, 40)}`;
+}
+
+/**
+ * Er migrationen additiv, idempotent og ikke-destruktiv (hard rule 35 (d), #7578)?
+ * Fail-closed: tom, ulaeselig eller ukendt SQL er ikke additiv.
+ * @param {string} sql
+ * @returns {{additive: boolean, reason: string}}
+ */
+export function analyzeMigrationSql(sql) {
+  const statements = splitSqlStatements(sql);
+  if (!statements) return { additive: false, reason: "ulaeselig SQL (uafsluttet kommentar/streng)" };
+  if (!statements.length) return { additive: false, reason: "tom SQL" };
+  const allCode = statements.map((s) => s.code).join(" ; ");
+  for (const [re, reason] of DESTRUCTIVE_SQL) {
+    if (re.test(allCode)) return { additive: false, reason };
+  }
+  for (const stmt of statements) {
+    const reason = checkStatement(stmt);
+    if (reason) return { additive: false, reason };
+  }
+  return { additive: true, reason: `additiv og idempotent (${statements.length} saetninger)` };
+}
+
+function migrationVerdict(path, pr) {
+  const entry = (pr?.files ?? []).find((f) => typeof f === "object" && (f?.path ?? f?.filename) === path);
+  if (Number(entry?.deletions) > 0) return { additive: false, reason: "eksisterende migration aendret" };
+  const sql = pr?.migrationSql?.[path];
+  if (typeof sql !== "string") return { additive: false, reason: "SQL ikke hentet" };
+  return analyzeMigrationSql(sql);
+}
+
 // ── Klassifikationen ───────────────────────────────────────────────────────
 
 /**
@@ -142,7 +376,8 @@ export function hasOwnerGoMarker(comments) {
  * @param {Array<string|{path:string}|{filename:string}>} [pr.files]
  * @param {string|{login:string}} [pr.author]
  * @param {number} [pr.number]
- * @returns {{category: 'a'|'b'|'c'|'ejer-go', label: string, reason: string, ownerGo: boolean}}
+ * @param {Record<string, string>} [pr.migrationSql] database/*.sql -> indhold paa head
+ * @returns {{category: 'a'|'b'|'c'|'d'|'ejer-go', label: string, reason: string, ownerGo: boolean}}
  */
 export function classifyPr(pr) {
   const title = String(pr?.title ?? "");
@@ -166,8 +401,12 @@ export function classifyPr(pr) {
   if (hasOwnerGoMarker(pr?.comments)) return done(CATEGORY.OWNER, "klaebende: tidligere klassificeret ejer-go (omformulering loefter ikke)");
 
   // 1) Ejerens roede linjer FOERST: findes en af dem, er intet andet relevant.
+  //    Migrationer: kun additive, idempotente slipper forbi (ejer-valg B 4/11, #7578).
   const migrations = files.filter(isMigrationFile);
-  if (migrations.length) return done(CATEGORY.OWNER, `migration: ${migrations[0]}`);
+  for (const m of migrations) {
+    const verdict = migrationVerdict(m, pr);
+    if (!verdict.additive) return done(CATEGORY.OWNER, `migration: ${m} (${verdict.reason})`);
+  }
   if (labels.includes("flag-flip")) return done(CATEGORY.OWNER, "label flag-flip");
   const flagFiles = files.filter((f) => FLAG_FILE_RE.test(f) && !isTestFile(f) && !isDocsFile(f));
   if (flagFiles.length && FLAG_FLIP_RE.test(title)) return done(CATEGORY.OWNER, `flag-flip: ${flagFiles[0]}`);
@@ -192,14 +431,18 @@ export function classifyPr(pr) {
   }
 
   // 3) (c) docs uden spillertekst · CI/hooks/test-only (kombinationer taeller ogsaa).
-  const nonDocsCiTest = files.filter((f) => !isDocsFile(f) && !isCiOrHooksFile(f) && !isTestFile(f));
+  //    (d) det samme + additive migrationer (alle er tjekket i trin 1).
+  const nonDocsCiTest = files.filter((f) => !isDocsFile(f) && !isCiOrHooksFile(f) && !isTestFile(f) && !isMigrationFile(f));
   if (!nonDocsCiTest.length) {
     const kinds = [];
+    if (migrations.length) kinds.push(`additiv migration: ${migrations.join(", ")}`);
     if (files.some(isDocsFile)) kinds.push("docs uden spillertekst");
     if (files.some(isCiOrHooksFile)) kinds.push("CI/hooks");
     if (files.some(isTestFile)) kinds.push("test-only");
-    return done(CATEGORY.C_SAFE, kinds.join(" + "));
+    return done(migrations.length ? CATEGORY.D_ADDITIVE_MIGRATION : CATEGORY.C_SAFE, kinds.join(" + "));
   }
+  // Additiv migration sammen med kode: kun den rene form er (d); resten vurderer ejeren.
+  if (migrations.length) return done(CATEGORY.OWNER, `additiv migration sammen med kode: ${nonDocsCiTest[0]}`);
 
   // 4) (b) motor bag slukket race_engine_v4: alle kode-filer under engine/v4.
   const codeFiles = files.filter((f) => !isDocsFile(f) && !isCiOrHooksFile(f) && !isTestFile(f));
@@ -247,8 +490,28 @@ export function parseCliArgs(argv) {
 }
 
 export function fetchPrFromGh(pr, repo, runGh = defaultRunGh) {
-  const json = runGh(["pr", "view", String(pr), "--repo", repo, "--json", "number,title,body,labels,files,author,comments"]);
+  const json = runGh(["pr", "view", String(pr), "--repo", repo, "--json", "number,title,body,labels,files,author,comments,headRefOid"]);
   return JSON.parse(json);
+}
+
+/**
+ * Henter migrationernes SQL paa PR'ens head-commit (#7578). En fil der ikke kan
+ * hentes (slettet, net, rettigheder) udelades, og classifyPr goer den til ejer-go.
+ * @returns {Record<string, string>}
+ */
+export function fetchMigrationSql(pr, repo, runGh = defaultRunGh) {
+  const out = {};
+  const ref = String(pr?.headRefOid ?? "");
+  if (!/^[0-9a-f]{7,40}$/i.test(ref)) return out;
+  for (const path of filePaths(pr?.files).filter(isMigrationFile)) {
+    const encoded = path.split("/").map(encodeURIComponent).join("/");
+    try {
+      out[path] = runGh(["api", "-H", "Accept: application/vnd.github.raw", `repos/${repo}/contents/${encoded}?ref=${ref}`]);
+    } catch {
+      // Udeladt = "SQL ikke hentet" = ejer-go (fail-closed).
+    }
+  }
+  return out;
 }
 
 function defaultRunGh(args) {
@@ -258,6 +521,7 @@ function defaultRunGh(args) {
 export function main(argv = process.argv.slice(2)) {
   const cli = parseCliArgs(argv);
   const pr = cli.input ? JSON.parse(readFileSync(cli.input, "utf8")) : fetchPrFromGh(cli.pr, cli.repo);
+  if (!cli.input) pr.migrationSql = fetchMigrationSql(pr, cli.repo);
   const result = classifyPr(pr);
   process.stdout.write(cli.json ? `${JSON.stringify({ number: pr.number ?? cli.pr, ...result })}\n` : `${formatClassification(result)}\n`);
   return 0;

@@ -8,8 +8,10 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 import {
+  analyzeMigrationSql,
   CATEGORY,
   classifyPr,
+  fetchMigrationSql,
   fetchPrFromGh,
   formatClassification,
   hasProdMeasurement,
@@ -19,6 +21,7 @@ import {
   OWNER_GO_MARKER,
   parseCliArgs,
   semverBumpKind,
+  splitSqlStatements,
 } from "./merge-queue-classify.mjs";
 
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), "merge-queue-classify.mjs");
@@ -199,7 +202,127 @@ test("kode uden for kategorierne og tom filliste er ejer-go med grund", () => {
 
 test("formatClassification: én linje, kategori eller EJER-GO foerst", () => {
   assert.equal(formatClassification(classifyPr(pr({ files: ["docs/x.md"] }))), "KATEGORI c: (c) Dependabot/docs/CI-hooks-test [docs uden spillertekst]");
-  assert.match(formatClassification(classifyPr(pr({ files: ["database/x.sql"] }))), /^EJER-GO: kraever ejer-go \[migration: database\/x\.sql\]$/);
+  assert.match(formatClassification(classifyPr(pr({ files: ["database/x.sql"] }))), /^EJER-GO: kraever ejer-go \[migration: database\/x\.sql \(SQL ikke hentet\)\]$/);
+});
+
+// ── (d) additive, idempotente migrationer (ejer-valg B 4/11, #7578) ────────
+
+const FLAG_SEED_OFF = `-- #1: flag. DROP TABLE i en kommentar taeller ikke.
+INSERT INTO public.app_config (key, value, description)
+VALUES ('x_enabled', '"off"'::jsonb, 'Stage flag (off|on). Owner-only flip; never DROP or UPDATE.')
+ON CONFLICT (key) DO NOTHING;`;
+
+const ADD_COLUMN_INDEX = `BEGIN;
+SET LOCAL lock_timeout = '3s';
+ALTER TABLE public.auctions
+  ADD COLUMN IF NOT EXISTS value_at_close INTEGER,
+  ADD COLUMN IF NOT EXISTS note text DEFAULT 'x';
+COMMENT ON COLUMN public.auctions.value_at_close IS 'snapshot; NULL for old rows';
+CREATE INDEX CONCURRENTLY IF NOT EXISTS auctions_close_idx ON public.auctions (value_at_close) WHERE value_at_close IS NOT NULL;
+COMMIT;
+NOTIFY pgrst, 'reload schema';`;
+
+test("analyzeMigrationSql: additive, idempotente former", () => {
+  assert.equal(analyzeMigrationSql(FLAG_SEED_OFF).additive, true);
+  assert.equal(analyzeMigrationSql(ADD_COLUMN_INDEX).additive, true);
+  // Flere flag i én saetning, false i stedet for "off", citeret tabelnavn.
+  assert.equal(analyzeMigrationSql(`INSERT INTO "app_config" (key, value) VALUES ('a', '"off"'::jsonb), ('b', 'false') ON CONFLICT DO NOTHING;`).additive, true);
+});
+
+test("analyzeMigrationSql: destruktivt, RLS, grants og ikke-idempotent er ejer-go", () => {
+  const cases = [
+    ["DROP INDEX IF EXISTS x;", /DROP/],
+    ["ALTER TABLE t DROP COLUMN IF EXISTS c;", /DROP/],
+    ["TRUNCATE public.x;", /TRUNCATE/],
+    ["DELETE FROM public.app_config WHERE key = 'x';", /DELETE/],
+    ["UPDATE public.riders SET x = 1;", /UPDATE/],
+    [`INSERT INTO public.app_config (key, value) VALUES ('x', '"off"'::jsonb) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;`, /UPDATE/],
+    ["GRANT SELECT ON public.x TO authenticated;", /GRANT/],
+    ["REVOKE ALL ON FUNCTION public.f() FROM anon;", /GRANT\/REVOKE/],
+    ["ALTER TABLE public.x ENABLE ROW LEVEL SECURITY;", /RLS/],
+    ["CREATE POLICY p ON public.x FOR SELECT USING (true);", /RLS/],
+    ["ALTER TABLE public.x RENAME COLUMN a TO b;", /RENAME/],
+    // Ikke idempotent.
+    ["CREATE INDEX x_idx ON public.x (a);", /ikke idempotent/],
+    ["ALTER TABLE public.x ADD COLUMN c int;", /ikke idempotent/],
+    [`INSERT INTO public.app_config (key, value) VALUES ('x', '"off"'::jsonb);`, /ikke idempotent/],
+    // Flag-flip forklaedt som seed, og data-INSERT uden for flag-tabellen.
+    [`INSERT INTO public.app_config (key, value) VALUES ('x', '"on"'::jsonb) ON CONFLICT (key) DO NOTHING;`, /ikke er off/],
+    [`INSERT INTO public.app_config (key, value) VALUES ('x', '"beta"'::jsonb) ON CONFLICT (key) DO NOTHING;`, /ikke er off/],
+    [`INSERT INTO public.app_config (key, value) VALUES ('a', '"off"'::jsonb), ('b', 'true') ON CONFLICT DO NOTHING;`, /ikke er off/],
+    ["INSERT INTO public.roadmap_items (id, title) VALUES (1, 'x') ON CONFLICT DO NOTHING;", /spillervendt/],
+    // Aendrer eksisterende eller adfaerd.
+    ["ALTER TABLE public.x ALTER COLUMN c SET DEFAULT 0;", /aendrer eksisterende/],
+    ["ALTER TABLE public.x ADD COLUMN IF NOT EXISTS c int NOT NULL DEFAULT 0;", /nullable/],
+    ["ALTER TABLE public.x ADD COLUMN IF NOT EXISTS team_id uuid REFERENCES public.teams(id);", /nullable/],
+    ["CREATE UNIQUE INDEX IF NOT EXISTS x_u ON public.x (a);", /UNIQUE/],
+    ["CREATE TABLE IF NOT EXISTS public.x (id int);", /ny tabel/],
+    ["CREATE OR REPLACE FUNCTION public.f() RETURNS int LANGUAGE sql AS $$ SELECT 1 $$;", /funktion/],
+    ["DO $$ BEGIN PERFORM 1; END $$;", /ukendt/],
+    // Fail-closed: tom og ulaeselig SQL.
+    ["-- kun en kommentar\n", /tom/],
+    ["INSERT INTO public.app_config (key) VALUES ('x", /ulaeselig/],
+  ];
+  for (const [sql, reason] of cases) {
+    const r = analyzeMigrationSql(sql);
+    assert.equal(r.additive, false, sql);
+    assert.match(r.reason, reason, sql);
+  }
+  // Destruktivt i koden vinder, selvom resten er additiv.
+  assert.equal(analyzeMigrationSql(`${FLAG_SEED_OFF}\nDROP FUNCTION IF EXISTS public.f();`).additive, false);
+  // Et DROP gemt i en dollar-literal (DO-blok) er stadig ejer-go (ukendt form).
+  assert.equal(analyzeMigrationSql("DO $x$ BEGIN EXECUTE 'DROP TABLE t'; END $x$;").additive, false);
+});
+
+test("splitSqlStatements: kommentarer og literaler fjernes, semikolon i streng deler ikke", () => {
+  const stmts = splitSqlStatements("/* a /* nested */ b */ SELECT 'x;y' -- c;\n; SELECT $q$z;$q$;");
+  assert.deepEqual(stmts.map((s) => s.code), ["SELECT '§0'", "SELECT '§0'"]);
+  assert.deepEqual(stmts.map((s) => s.literals), [["x;y"], ["z;"]]);
+  assert.equal(splitSqlStatements("SELECT 1 /* aaben"), null);
+  assert.deepEqual(splitSqlStatements("SELECT E'a\\'b'")[0].literals, ["a'b"]);
+});
+
+test("(d) PR med kun additive migrationer + docs/test = kategori d; alt andet ejer-go", () => {
+  const files = [{ path: "database/2026-11-04-1-x-flag.sql", additions: 5, deletions: 0 }, { path: "docs/x.md" }, { path: "backend/lib/x.test.js" }];
+  const sql = { "database/2026-11-04-1-x-flag.sql": FLAG_SEED_OFF };
+  const ok = classifyPr(pr({ title: "feat(flags): seed x off", files, migrationSql: sql }));
+  assert.equal(ok.category, CATEGORY.D_ADDITIVE_MIGRATION);
+  assert.equal(ok.ownerGo, false);
+  assert.match(ok.reason, /additiv migration: database\/2026-11-04-1-x-flag\.sql \+ docs uden spillertekst \+ test-only/);
+  assert.match(formatClassification(ok), /^KATEGORI d: \(d\) additiv, idempotent migration/);
+  assert.equal(classifyPr(pr({ files: ["database/a.sql", "database/b.sql"], migrationSql: { "database/a.sql": FLAG_SEED_OFF, "database/b.sql": ADD_COLUMN_INDEX } })).category, CATEGORY.D_ADDITIVE_MIGRATION);
+
+  // Én destruktiv migration ud af to er nok til ejer-go, og grunden navngiver filen.
+  const mixed = classifyPr(pr({ files: ["database/a.sql", "database/b.sql"], migrationSql: { "database/a.sql": FLAG_SEED_OFF, "database/b.sql": "DROP TABLE x;" } }));
+  assert.equal(mixed.category, CATEGORY.OWNER);
+  assert.match(mixed.reason, /migration: database\/b\.sql \(DROP\)/);
+  // Fail-closed: SQL ikke hentet, eller en eksisterende migration aendret.
+  assert.match(classifyPr(pr({ files: ["database/a.sql"] })).reason, /SQL ikke hentet/);
+  const edited = classifyPr(pr({ files: [{ path: "database/a.sql", additions: 1, deletions: 1 }], migrationSql: { "database/a.sql": FLAG_SEED_OFF } }));
+  assert.match(edited.reason, /eksisterende migration aendret/);
+  // Additiv migration + kode, UI, spillertekst eller flag-flip-label er stadig ejer-go.
+  const withCode = classifyPr(pr({ files: ["database/a.sql", "backend/lib/x.js"], migrationSql: { "database/a.sql": FLAG_SEED_OFF } }));
+  assert.match(withCode.reason, /additiv migration sammen med kode: backend\/lib\/x\.js/);
+  assert.match(classifyPr(pr({ files: ["database/a.sql", "frontend/src/pages/X.jsx"], migrationSql: { "database/a.sql": FLAG_SEED_OFF } })).reason, /UI/);
+  assert.match(classifyPr(pr({ files: ["database/a.sql", "frontend/public/locales/en/x.json"], migrationSql: { "database/a.sql": FLAG_SEED_OFF } })).reason, /spillertekst/);
+  assert.match(classifyPr(pr({ labels: ["flag-flip"], files: ["database/a.sql"], migrationSql: { "database/a.sql": FLAG_SEED_OFF } })).reason, /flag-flip/);
+  // Klaebende ejer-go slaar ogsaa en additiv migration.
+  assert.match(classifyPr(pr({ files: ["database/a.sql"], migrationSql: { "database/a.sql": FLAG_SEED_OFF }, comments: [{ body: OWNER_GO_MARKER }] })).reason, /klaebende/);
+});
+
+test("fetchMigrationSql: henter kun database/*.sql paa head-commit; fejl udelades (fail-closed)", () => {
+  const calls = [];
+  const runGh = (args) => {
+    calls.push(args);
+    if (args.at(-1).includes("gone.sql")) throw new Error("404");
+    return "SELECT 1;";
+  };
+  const out = fetchMigrationSql({ headRefOid: "abc1234", files: [{ path: "database/2026-x.sql" }, { path: "database/gone.sql" }, { path: "docs/x.md" }] }, "o/r", runGh);
+  assert.deepEqual(out, { "database/2026-x.sql": "SELECT 1;" });
+  assert.deepEqual(calls[0], ["api", "-H", "Accept: application/vnd.github.raw", "repos/o/r/contents/database/2026-x.sql?ref=abc1234"]);
+  assert.equal(calls.length, 2);
+  // Uden gyldig head-SHA hentes intet, og classifyPr giver ejer-go.
+  assert.deepEqual(fetchMigrationSql({ files: [{ path: "database/a.sql" }] }, "o/r", runGh), {});
 });
 
 // ── CLI ────────────────────────────────────────────────────────────────────
@@ -213,7 +336,7 @@ test("parseCliArgs og fetchPrFromGh (gh-kaldet er injiceret)", () => {
   const calls = [];
   const out = fetchPrFromGh(7, "o/r", (args) => { calls.push(args); return JSON.stringify({ number: 7, title: "t", files: [] }); });
   assert.equal(out.number, 7);
-  assert.deepEqual(calls[0], ["pr", "view", "7", "--repo", "o/r", "--json", "number,title,body,labels,files,author,comments"]);
+  assert.deepEqual(calls[0], ["pr", "view", "7", "--repo", "o/r", "--json", "number,title,body,labels,files,author,comments,headRefOid"]);
 });
 
 test("CLI end-to-end med --input (ingen gh): tekst og --json", (t) => {
