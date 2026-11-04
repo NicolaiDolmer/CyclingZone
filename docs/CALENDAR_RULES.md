@@ -553,7 +553,7 @@ S4's første dag er den eneste dag hvor en etape ligger efter kl. 19; træningss
 | Hvor | Hvad |
 |---|---|
 | Reglen (data + ren funktion) | `slotsFor`, `seasonLastDaySlots`, `resolveEarliestSeasonTransition`, `resolveSeasonStartNotBefore` i `backend/lib/calendarPlanningWindow.js` |
-| Tidsplanen | `buildScheduleRows` (`raceCalendarScheduling.js`) tager slots pr. dato |
+| Tidsplanen | `buildScheduleRows` (`raceCalendarScheduling.ts`) tager slots pr. dato |
 | Gate | `detectPlanningWindowViolations` → `calendarViolations` → `gatePlan` — **hårdt krav uden override**, stopper `--apply` |
 | Rapportering | dry-runnets sektion "#5592 planlægningsvindue ved sæsonskiftet" pr. division, inkl. antal datoer på normale tider (`buildSeasonCalendar.js`) |
 

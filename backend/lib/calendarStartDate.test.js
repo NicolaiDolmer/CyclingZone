@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildScheduleRows } from "./raceCalendarScheduling.js";
+import { buildScheduleRows } from "./raceCalendarScheduling.ts";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import {
   resolveCalendarFrom, nextMonday, resolveSeasonWindow, seasonFinishWeekday, seasonEndCandidates,

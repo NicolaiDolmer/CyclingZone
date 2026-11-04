@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildScheduleRows } from "./raceCalendarScheduling.js";
+import { buildScheduleRows } from "./raceCalendarScheduling.ts";
 import { packLaneCalendar } from "./raceCalendarLanePacker.js";
 import { selectTierRaceSet } from "./tierRaceSelection.js";
 

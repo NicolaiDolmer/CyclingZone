@@ -304,10 +304,6 @@
     "TS2339": 15,
     "TS2345": 6
   },
-  "../backend/lib/raceCalendarScheduling.js": {
-    "TS2322": 1,
-    "TS2741": 1
-  },
   "../backend/lib/raceClassifications.js": {
     "TS2339": 2,
     "TS2561": 1,

@@ -127,17 +127,17 @@
         "lib/stageScheduler*",
         "lib/raceCalendarScheduling*"
       ],
-      "jsFileCount": 3,
-      "tsErrorCount": 45,
+      "jsFileCount": 2,
+      "tsErrorCount": 27,
       "files": {
-        "lib/raceCalendarScheduling.js": 18,
+        "lib/raceCalendarScheduling.ts": 0,
         "lib/stageScheduler.js": 26,
         "lib/stageSchedulerFlag.js": 1
       }
     }
   },
   "totals": {
-    "jsFileCount": 32,
-    "tsErrorCount": 901
+    "jsFileCount": 31,
+    "tsErrorCount": 883
   }
 }
