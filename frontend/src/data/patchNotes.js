@@ -7,6 +7,23 @@ export const PATCHES = [
         "category": "improved",
         "audience": "player",
         "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Training on a day with a race counts as a full day",
+          "body": "On a day where your rider races some of the race days and trains on the rest, his training now counts as one full training day for Fatigue and recovery. Hard training around a race can cost more Fatigue than before, so plan easier sessions or rest. Rest, the stages themselves and days without a race are unchanged."
+        },
+        "da": {
+          "title": "Træning på en dag med løb tæller som et helt døgn",
+          "body": "På en dag hvor din rytter kører løb på nogle af løbsdagene og træner på resten, tæller træningen nu som ét helt træningsdøgn for Træthed og restitution. Hård træning omkring et løb kan koste mere Træthed end før, så planlæg roligere pas eller hvile. Hvile, selve etaperne og dage uden løb er uændrede."
+        },
+        "refs": [
+          7536
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
         "topic": "Races",
         "en": {
           "title": "Selection fullness in the calendar",
