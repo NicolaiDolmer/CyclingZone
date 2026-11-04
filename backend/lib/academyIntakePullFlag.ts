@@ -7,6 +7,8 @@ import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 
 export const ACADEMY_INTAKE_PULL_FLAG_KEY = "academy_intake_pull_enabled";
 
-export async function isAcademyIntakePullEnabled(supabase, opts = {}) {
+type FlagOptions = NonNullable<Parameters<typeof evaluateFlagStage>[1]> & Record<string, unknown>;
+
+export async function isAcademyIntakePullEnabled(supabase: unknown, opts: FlagOptions = {}): Promise<boolean> {
   return evaluateFlagStage(await readFlagStage(supabase, ACADEMY_INTAKE_PULL_FLAG_KEY), opts);
 }

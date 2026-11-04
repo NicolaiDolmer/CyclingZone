@@ -81,7 +81,7 @@ import { runDeferredTransferHealSweep } from "./lib/deferredTransferHealSweep.js
 import { runRaceEntryGeneratorSweep } from "./lib/raceEntryGeneratorSweep.js";
 import { runIntakeOfferExpirySweep } from "./lib/academyIntakeExpirySweep.js";
 import { runSundayIntakeTick } from "./lib/sundayIntakeTick.js";
-import { isAcademyIntakePullEnabled } from "./lib/academyIntakePullFlag.js";
+import { isAcademyIntakePullEnabled } from "./lib/academyIntakePullFlag.ts";
 import { runAcademyWeeklyPullSweep } from "./lib/academyWeeklyPull.ts";
 import { runAcademyPullReminderSweep } from "./lib/academyReminder.ts";
 import { runMarketValueLevelCorrectionGateSweep } from "./lib/marketValueLevelCorrectionGate.js"; // #3449

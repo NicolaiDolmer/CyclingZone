@@ -323,7 +323,7 @@ import {
   signAcademyCandidate,
   rejectAcademyCandidate,
 } from "../lib/academyIntake.js";
-import { isAcademyIntakePullEnabled } from "../lib/academyIntakePullFlag.js";
+import { isAcademyIntakePullEnabled } from "../lib/academyIntakePullFlag.ts";
 import { pullWeeklyAcademyIntake, hasPulledThisWeek } from "../lib/academyIntakePull.js";
 import { academyEstimate, loadAcademyPrognoses, isAcademyKnowledgeEnabled } from "../lib/academyDisclosure.ts";
 import { buildIntake2View } from "../lib/academyIntake2View.ts"; // #6666
