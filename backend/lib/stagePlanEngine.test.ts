@@ -16,6 +16,7 @@ import {
   stagePlanEntrants,
   stagePlanFinalEfforts,
   observeGroups7635,
+  isRiderBehindFront7635,
   type Front7635State,
   type StagePlanRuntime,
 } from "./stagePlanEngine.ts";
@@ -295,6 +296,25 @@ test("#7635 (Codex-review): en lille rigtig gruppe der henter et stoerre angreb 
     advanceStagePlan(rt, { state, segment: route.segments[segmentIndex], segmentIndex, entrants: E7635 }));
   assert.deepEqual([...rt.front7635!.attackGroups], [], "angrebets id baerer nu en rigtig gruppe");
   assert.deepEqual(events.map((e) => [e.params.leg, e.params.reason]), [[2, "dropped"]]);
+});
+
+test("#7635 (Codex-review 2): stigningen splitter feltet, og fronten henter angrebet i samme segment", () => {
+  const f: Front7635State = { prevGroupOf: null, seen: new Set(), attackGroups: new Set(), streak: new Map() };
+  const all = ["cap", "h1", "x", "y", "z", "p1", "p2", "p3", "p4", "p5", "p6", "p7"];
+  observeGroups7635(f, [g7635("peloton-0", all, 0)]);
+  // Tre ryttere angriber vaek fra feltet.
+  observeGroups7635(f, [g7635("chase-2900", ["x", "y", "z"], 0, { kind: "chase" }), g7635("peloton-0", ["cap", "h1", "p1", "p2", "p3", "p4", "p5", "p6", "p7"], GAP)]);
+  assert.deepEqual([...f.attackGroups], ["chase-2900"]);
+  // I samme segment: stigningen splitter feltet (fronten p1-p3 beholder peloton-0, resten faar
+  // et nyt id), og fronten henter angrebet; merget beholder angrebets id. Feltets id er vaek.
+  const merged = [
+    g7635("chase-2900", ["x", "y", "z", "p1", "p2", "p3"], 0, { kind: "peloton" }),
+    g7635("chase-3001", ["cap", "h1", "p4", "p5", "p6", "p7"], GAP * 3, { kind: "chase" }),
+  ];
+  observeGroups7635(f, merged);
+  assert.deepEqual([...f.attackGroups], [], "den samlede front er en rigtig gruppe, ikke et angreb");
+  const state = state7635(merged);
+  assert.equal(isRiderBehindFront7635("cap", state, E7635, f.attackGroups), true, "kaptajnen i jagtgruppen er reelt sat");
 });
 
 test("#7635: en enkelt rytter der slutter sig til et angreb (kontraangreb) aendrer ikke angrebet", () => {

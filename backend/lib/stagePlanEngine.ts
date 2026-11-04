@@ -256,9 +256,18 @@ export function observeGroups7635(f: Front7635State, groups: readonly RaceGroup[
       if (!prevRegular.has(p)) prevRegular.set(p, []);
       prevRegular.get(p)!.push(id);
     }
+    // Codex-review 2: en rigtig gruppe kan splittes og opsluges i SAMME segment (stigningen
+    // koerer foer jagt og merge). Fronten beholder gruppens id og de afhaengte faar et nyt;
+    // naar fronten saa samles med angrebet, forsvinder id'et ind i angrebets. Derfor taeller
+    // det ogsaa som opslugt, naar den rigtige gruppes id er vaek og dens ryttere sidder i
+    // angrebet. Et kontraangreb fra feltet laader feltets id staa og aendrer intet.
+    const groupIdsNow = new Set(groups.map((g) => g.id));
     const absorbedRegular = (g: RaceGroup) => {
       for (const [p, ids] of prevRegular) {
-        if (p !== g.id && ids.filter((id) => groupOfNow.get(id) === g.id).length * 2 >= ids.length) return true;
+        if (p === g.id) continue;
+        const inG = ids.filter((id) => groupOfNow.get(id) === g.id).length;
+        if (inG * 2 >= ids.length) return true;
+        if (inG > 0 && !groupIdsNow.has(p)) return true;
       }
       return false;
     };
