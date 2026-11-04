@@ -604,6 +604,8 @@ export async function main(argv = process.argv.slice(2), { now, clock, monotonic
   }
   // #7236: topgabets loft er en kontakt, ikke en revision; samme --out maa ikke blande med og uden.
   if (prev && (prev.queenStageGap7236 === true) !== (process.env.CZ_QUEEN_STAGE_GAP_7236 === "1")) throw new Error(`${outDir} er koert ${prev.queenStageGap7236 ? "med" : "uden"} topgabets loft (CZ_QUEEN_STAGE_GAP_7236). Brug en ny --out.`);
+  // #7644: nedkoerslens loft er ogsaa en kontakt; samme --out maa ikke blande med og uden.
+  if (prev && (prev.descentRegroupCap7644 === true) !== (process.env.CZ_DESCENT_REGROUP_CAP_7644 === "1")) throw new Error(`${outDir} er koert ${prev.descentRegroupCap7644 ? "med" : "uden"} nedkoerslens loft (CZ_DESCENT_REGROUP_CAP_7644). Brug en ny --out.`);
   const thresholds = prev ? resolveReportThresholds(prev, opts) : loadThresholds(abs(opts.thresholds));
   const meta = {
     candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, parallel: opts.parallel, source, limit: opts.limit ?? prev?.limit ?? null, benchScope: opts.benchScope, thresholdsFile: resolveThresholdsFile(prev, opts), thresholds,
