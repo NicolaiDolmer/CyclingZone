@@ -372,6 +372,8 @@ export function buildOwnTimeLoss(
   replay(sorted, (event, state, before) => {
     const p = event.params || {};
     if (event.type === "peloton_splits") {
+      // #7640: et split der koerer FREM (angreb, negativt hul) er aldrig tabt tid.
+      if (p.cause === "attack" || Number(p.gap_seconds) < 0) return;
       for (const riderId of idsOf(p.rider_ids)) {
         if (!own.has(riderId)) continue;
         const source = str(p.source_group_id) ?? before.get(riderId) ?? INITIAL_GROUP;

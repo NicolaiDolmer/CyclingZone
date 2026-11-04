@@ -366,7 +366,7 @@ export async function acquireWave(dir, request, readPrs = getOpenPrs) {
   validateTracks(request.tracks);
   assertDesignGate(request.tracks); // #6344: begge runtimes, foer markoeren skrives
   const buildStop = loadBuildStop();
-  assertBuildStop(request.tracks, buildStop); // #7336: byggestop, begge runtimes, foer markoeren skrives
+  const admitted = assertBuildStop(request.tracks, buildStop); // #7336: byggestop/loft, begge runtimes, foer markoeren skrives
   if (!['claude', 'codex'].includes(request.runtime) || !request.owner || !Number.isFinite(request.now)) throw Error('runtime, owner and now required');
   fs.mkdirSync(dir, { recursive: true });
   const ownerProcess = admissionOwnerProcess(request.pid ?? process.pid);
@@ -383,7 +383,7 @@ export async function acquireWave(dir, request, readPrs = getOpenPrs) {
     updateWave(dir, wave.waveId, () => wave);
     // #7336: afslutningskortet viser brand-valg. Inde i try, saa en loggefejl
     // ruller optaget tilbage i stedet for at efterlade en 'admitting'-markoer.
-    logBrandAdmissions(request.tracks, buildStop, { channel: request.runtime, now: request.now, file: brandLogPath(dir) });
+    logBrandAdmissions(admitted, buildStop, { channel: request.runtime, now: request.now, file: brandLogPath(dir) });
     return wave;
   } catch (e) {
     releaseWave(dir, wave.waveId, true);
@@ -450,7 +450,7 @@ export function enqueueTracks(dir, waveId, tracks, snapshot = ownershipSnapshot)
   assertEnqueueable(tracks);
   assertDesignGate(tracks);
   const buildStop = loadBuildStop();
-  assertBuildStop(tracks, buildStop); // #7336
+  const admitted = assertBuildStop(tracks, buildStop); // #7336 (beriget med labels til brand-loggen)
   let plan;
   const next = updateWave(dir, waveId, wave => {
     assertIntakeOwner(wave, snapshot);
@@ -466,7 +466,7 @@ export function enqueueTracks(dir, waveId, tracks, snapshot = ownershipSnapshot)
     for (const t of tracks) if (ran.has(slugOf(t.branch))) throw Error(`branch already ran in this wave (finished or active): ${t.branch}`);
     // #5997: keep the marker's sharing plan current under the same lock; drop it when nothing is shared.
     // #7336: logges under laasen foer koeen skrives - fejler loggen, koees intet.
-    logBrandAdmissions(tracks, buildStop, { channel: 'intake', file: brandLogPath(dir) });
+    logBrandAdmissions(admitted, buildStop, { channel: 'intake', file: brandLogPath(dir) });
     const updated = { ...wave, pendingTracks: [...pending, ...tracks] };
     delete updated.sharedTouches;
     if (plan.shared.length) updated.sharedTouches = plan;

@@ -232,6 +232,8 @@ export type StageInput = {
   queen_stage_gap_7236?: true | null;
   // #7635 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): etapeplanens "sat" kun bag en rigtig front (stagePlanEngine.ts). Udeladt = som foer.
   stage_plan_dropped_front_7635?: true | null;
+  // #7640 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): et klatre-split der koerer FREM (angreb) faar aarsagen "attack". Kun event-feltet cause; udeladt = som foer.
+  split_attack_cause_7640?: true | null;
   // #7644 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): loft paa samlingens gevinst pr. km paa lange nedkoersler (mechanics/descentRegroup6486.ts). Udeladt = som foer.
   descent_regroup_cap_7644?: true | null;
   // #6649 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + app_config day_form_6649): dagsformen med forklaring
@@ -808,6 +810,8 @@ export type SegmentHookContext = {
   s5ProfilesV2?: true;
   // #7236 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + StageInput.queen_stage_gap_7236, SLUKKET): topgabets loft. Udeladt = som foer.
   queenStageGap7236?: true;
+  // #7640 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + StageInput.split_attack_cause_7640, SLUKKET): angrebets aarsag. Udeladt = som foer.
+  splitAttackCause7640?: true;
   // s5_profiles_v3 er den aktuelle revision, saa de tre v3-tilvalg herunder er live.
   // #6804 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3): udbrudspakken trin 2 (breakawayV3_6804.ts). Udeladt = v2.
   // #6938 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3): v3-tilvalgene (styrt-udgang pr. terraen). Udeladt = v2.
