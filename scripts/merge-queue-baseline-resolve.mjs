@@ -148,12 +148,22 @@ export function testsForChangedFiles(changed, exists) {
     if (!groups.has(pkg)) groups.set(pkg, []);
     groups.get(pkg).push(pkg ? file.slice(pkg.length + 1) : file);
   }
-  return [...groups.entries()].map(([pkg, files]) => ({
-    pkg,
-    // Backend-suiten koerer altid med sin test-setup (backend/scripts/run-tests.js).
-    args: pkg === 'backend' ? ['--test', '--import', './test-setup.js', ...files] : ['--test', ...files],
-  }));
+  const out = [];
+  for (const [pkg, files] of groups) {
+    if (pkg !== 'backend') { out.push({ pkg, args: ['--test', ...files] }); continue; }
+    // Backend koerer altid med sin test-setup, og den ene store fil koerer alene uden
+    // worker-isolation - samme omvej som backend/scripts/run-tests.js (#3172).
+    const rest = files.filter((f) => f !== BACKEND_ISOLATED_TEST);
+    if (files.includes(BACKEND_ISOLATED_TEST)) {
+      out.push({ pkg, args: ['--test', '--import', './test-setup.js', '--test-isolation=none', BACKEND_ISOLATED_TEST] });
+    }
+    if (rest.length) out.push({ pkg, args: ['--test', '--import', './test-setup.js', ...rest] });
+  }
+  return out;
 }
+
+// Samme fil som backend/scripts/run-tests.js koerer isoleret (Node-test-IPC-fejlen, #3172).
+export const BACKEND_ISOLATED_TEST = 'lib/economyEngine.test.js';
 
 export function commitMessage({ pr, files }) {
   return [
@@ -201,7 +211,10 @@ function realDeps() {
     repoRoot: REPO_ROOT,
     git: (args, opts) => exec('git', args, opts),
     gh: (args, opts) => exec('gh', args, opts),
-    node: (args, opts) => exec(process.execPath, args, opts),
+    // Compiler- og testkoersler er tunge: de gaar gennem maskinens verifikations-semafor
+    // (scripts/verify-lock.ps1 -Max 2). Exit 75 = intet ledigt slot -> STOP, proev igen.
+    node: (args, opts) => exec('pwsh', ['-NoProfile', '-File', path.join(REPO_ROOT, 'scripts', 'verify-lock.ps1'),
+      '-Max', '2', '-Timeout', '1800', '--', process.execPath, ...args], opts),
     bash: (args, opts) => exec('bash', args, opts),
     fs: {
       exists: (p) => fs.existsSync(p),
@@ -315,13 +328,6 @@ export function resolveBaselineConflict({ pr, repo, dryRun = false }, injected =
     };
     must(deps.git(['worktree', 'add', '-b', tmpBranch, wt, head]), 'git worktree add');
     worktreeAdded = true;
-    for (const pkg of NODE_MODULE_PACKAGES) {
-      const src = path.join(deps.repoRoot, pkg, 'node_modules');
-      const dst = path.join(wt, pkg, 'node_modules');
-      if (!deps.fs.exists(src) || deps.fs.exists(dst)) continue;
-      deps.fs.junction(deps.fs.realpath(src), dst);
-      links.push(dst);
-    }
     const inWt = { cwd: wt };
 
     const merge = deps.git(['merge', '--no-ff', '--no-commit', main], inWt);
@@ -332,6 +338,24 @@ export function resolveBaselineConflict({ pr, repo, dryRun = false }, injected =
     for (const file of recheck.baseline) {
       must(deps.git(['checkout', '--theirs', '--', file], inWt), `git checkout --theirs ${file}`);
       must(deps.git(['add', '--', file], inWt), `git add ${file}`);
+    }
+
+    // node_modules linkes foerst NU, og kun naar det mergede traes lockfile er praecis
+    // koe-checkoutets: ellers ville compileren og testene koere paa andre versioner end
+    // dem PR'en merges med (forkerte baseline-tal). Afvigelse = STOP, aldrig npm install her.
+    for (const pkg of NODE_MODULE_PACKAGES) {
+      const src = path.join(deps.repoRoot, pkg, 'node_modules');
+      const dst = path.join(wt, pkg, 'node_modules');
+      if (!deps.fs.exists(src) || deps.fs.exists(dst)) continue;
+      const lock = (dir) => {
+        const p = path.join(dir, pkg, 'package-lock.json');
+        return deps.fs.exists(p) ? deps.fs.readFile(p).replace(/\r\n/g, '\n') : null;
+      };
+      if (lock(deps.repoRoot) !== lock(wt)) {
+        throw new Stop(EXIT.STOPPED, `PR #${pr}: ${pkg ? `${pkg}/` : ''}package-lock.json i det mergede trae matcher ikke koe-checkoutets installation; koer npm run sync-deps i koe-checkoutet (eller loes konflikten manuelt).`);
+      }
+      deps.fs.junction(deps.fs.realpath(src), dst);
+      links.push(dst);
     }
 
     // Genberegn: kan kun saenke (scripts naegter selv at haeve) + eksplicit sammenligning mod main

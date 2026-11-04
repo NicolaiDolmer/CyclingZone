@@ -46,6 +46,7 @@ function world({
   mainFe = { '../backend/lib/a.js': { TS2339: 4 } },
   nextFe = { '../backend/lib/a.js': { TS2339: 3 } },
   unlinkFails = false,
+  lockMismatch = false,
 } = {}) {
   const calls = [];
   const files = new Map();
@@ -99,10 +100,14 @@ function world({
   const fs = {
     exists: (p) => {
       if (p.endsWith('node_modules')) return p.startsWith(ROOT) || links.has(p);
+      if (p.endsWith('package-lock.json')) return true;
       const r = rel(p);
       return r !== null && tree.includes(r);
     },
-    readFile: (p) => files.get(rel(p)),
+    // Koe-checkoutets og det mergede traes lockfile er ens, medmindre lockMismatch (CRLF taeller ikke).
+    readFile: (p) => (p.endsWith('package-lock.json')
+      ? (p.startsWith(ROOT) ? '{"v":1}\r\n' : (lockMismatch ? '{"v":2}\n' : '{"v":1}\n'))
+      : files.get(rel(p))),
     writeFile: (p, text) => { calls.push({ tool: 'writeFile', p }); files.set(p, text); },
     mkdtemp: (prefix) => { calls.push({ tool: 'mkdtemp' }); return `${prefix}x`; },
     realpath: (p) => p,
@@ -139,7 +144,8 @@ test('kun-baseline-konflikt loeses: main\'s baseline, genberegning, gate, tests,
   assert.ok(update >= 0 && update < gate && gate < tests && tests < guard && guard < commit && commit < push, 'raekkefoelge');
 
   const testCall = calls[tests];
-  assert.deepEqual(testCall.args, ['--test', '--import', './test-setup.js', 'lib/economyEngine.test.js']);
+  // economyEngine.test.js koerer uden worker-isolation, som i backend/scripts/run-tests.js (#3172).
+  assert.deepEqual(testCall.args, ['--test', '--import', './test-setup.js', '--test-isolation=none', 'lib/economyEngine.test.js']);
   assert.ok(testCall.cwd.endsWith('backend'), 'backend-tests koerer i backend/');
 
   const pushArgs = calls[push].args;
@@ -221,6 +227,25 @@ test('PR-hovedet flyttede sig under laesningen: STOP foer noget oprettes', () =>
   assert.equal(MUTATIONS(calls).worktree, false);
 });
 
+test('lockfile i det mergede trae afviger fra koe-checkoutets: STOP foer node_modules linkes eller noget koeres', () => {
+  const { deps, calls } = world({ lockMismatch: true });
+  const res = resolveBaselineConflict({ pr: 7011, repo: 'o/r' }, deps);
+  assert.equal(res.code, EXIT.STOPPED);
+  assert.match(res.lines.join('\n'), /package-lock\.json/);
+  assert.equal(has(calls, 'junction'), false);
+  assert.equal(has(calls, 'node'), false, 'hverken compiler eller tests paa forkerte versioner');
+  assert.equal(MUTATIONS(calls).push, false);
+  assert.ok(has(calls, 'git', (a) => a[0] === 'worktree' && a[1] === 'remove'), 'oprydning');
+});
+
+test('node_modules linkes foerst efter merget (lockfilen laeses fra det mergede trae)', () => {
+  const { deps, calls } = world();
+  resolveBaselineConflict({ pr: 7012, repo: 'o/r' }, deps);
+  const merge = index(calls, 'git', (a) => a[0] === 'merge');
+  const firstLink = calls.findIndex((c) => c.tool === 'junction');
+  assert.ok(merge >= 0 && firstLink > merge);
+});
+
 test('kan en junction ikke fjernes, fjernes worktreet IKKE (ingen rekursiv sletning gennem linket)', () => {
   const { deps, calls } = world({ unlinkFails: true });
   const res = resolveBaselineConflict({ pr: 7010, repo: 'o/r' }, deps);
@@ -252,6 +277,14 @@ test('rene hjaelpere: merge-tree-parsning, klassifikation, sammenligning, test-u
       { pkg: '', args: ['--test', 'scripts/z.test.mjs'] },
     ],
   );
+  // Den store backend-fil koerer alene uden worker-isolation (#3172), resten som normalt.
+  assert.deepEqual(
+    testsForChangedFiles(['backend/lib/economyEngine.js', 'backend/lib/x.js'], (f) => ['backend/lib/economyEngine.test.js', 'backend/lib/x.test.js'].includes(f)),
+    [
+      { pkg: 'backend', args: ['--test', '--import', './test-setup.js', '--test-isolation=none', 'lib/economyEngine.test.js'] },
+      { pkg: 'backend', args: ['--test', '--import', './test-setup.js', 'lib/x.test.js'] },
+    ],
+  );
 
   assert.deepEqual(parseArgs(['--pr', '12', '--repo', 'o/r', '--dry-run']), { pr: 12, repo: 'o/r', dryRun: true });
   assert.throws(() => parseArgs(['--pr', 'x']));
@@ -260,13 +293,14 @@ test('rene hjaelpere: merge-tree-parsning, klassifikation, sammenligning, test-u
 
 test('merge-queue.ps1 kalder modulet kun ved CONFLICTING, sender -DryRun videre og lader ventelogikken overtage', () => {
   const source = readFileSync(new URL('./merge-queue.ps1', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-  const block = source.match(/# #7628:[^\n]*\n(?:  [^\n]*\n){4}/);
+  const block = source.match(/# #7628:[^\n]*\n(?:  [^\n]*\n){5}/);
   assert.ok(block, 'koblingsblokken findes');
   assert.match(block[0], /\$fresh\.mergeable -eq 'CONFLICTING' -and -not \$script:updated\.ContainsKey\("\$n"\)/);
   assert.match(block[0], /merge-queue-baseline-resolve\.mjs'\) --pr "\$n" --repo \$Repo @\(if \(\$DryRun\) \{ '--dry-run' \}\)/);
-  // Loest: markeres som opdateret (ingen update-branch oven i) og laeses frisk, saa den
-  // eksisterende klar-foerst/Wait-PrGreen-logik venter paa groen CI + review-gate.
-  assert.match(block[0], /if \(\$LASTEXITCODE -eq 0 -and -not \$DryRun\) \{ \$script:updated\["\$n"\] = \$true; \$fresh = Get-PrPlanEntry \$n \}/);
+  // Loest: markeres som opdateret (ingen update-branch oven i), som allerede udskudt (koeen
+  // venter paa NETOP denne PR via Wait-PrGreen foer naeste konflikt loeses mod den nye main)
+  // og laeses frisk, saa ventelogikken venter paa groen CI + review-gate (Codex P2).
+  assert.match(block[0], /if \(\$LASTEXITCODE -eq 0 -and -not \$DryRun\) \{ \$script:updated\["\$n"\] = \$true; \$script:deferred\["\$n"\] = \$true; \$fresh = Get-PrPlanEntry \$n \}/);
   const after = source.slice(source.indexOf(block[0]) + block[0].length);
   assert.match(after, /^  if \(\$fresh\.checksExit -ne 0 -and -not \$StopOnRedPr -and -not \$DryRun\) \{/, 'lige foer den eksisterende vent/SKIP-logik');
 });
