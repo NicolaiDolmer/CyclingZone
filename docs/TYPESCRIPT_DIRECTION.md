@@ -1,5 +1,9 @@
 # TypeScript-retning: strict kerne, ingen omskrivning
 
+**Aktuel modulsti (#7583):** Den rene kalibreringshelper er flyttet til
+`backend/lib/salaryDecoupling.ts` uden runtime-ændring. Henvisninger til dens
+tidligere `.js`-navn og fejlantal nedenfor beskriver de historiske baselines.
+
 **Beslutning (ejeren, 11/9-2026, [#5158](https://github.com/NicolaiDolmer/CyclingZone/issues/5158)): retning A+.**
 Slut-tilstanden er **strict TypeScript for kernen**. Vejen derhen er **ikke** en
 omskrivning, men en skralde-gate der goer det umuligt at gaa baglaens.

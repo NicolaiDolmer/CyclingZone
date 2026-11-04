@@ -26,15 +26,15 @@
         "lib/financeForecast*",
         "lib/salaryDecoupling*"
       ],
-      "jsFileCount": 5,
-      "tsErrorCount": 295,
+      "jsFileCount": 4,
+      "tsErrorCount": 268,
       "files": {
         "lib/economyAdminDashboard.js": 4,
         "lib/economyConstants.js": 0,
         "lib/economyEngine.js": 216,
         "lib/economyNoUpkeepFlag.ts": 0,
         "lib/financeForecast.js": 48,
-        "lib/salaryDecoupling.js": 27
+        "lib/salaryDecoupling.ts": 0
       }
     },
     "auction": {
@@ -137,7 +137,7 @@
     }
   },
   "totals": {
-    "jsFileCount": 33,
-    "tsErrorCount": 928
+    "jsFileCount": 32,
+    "tsErrorCount": 901
   }
 }
