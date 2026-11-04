@@ -41,7 +41,8 @@ export const HTTP_TIMEOUT_MS = 15_000;
 export const PAGE_SIZE = 1000;
 export const DISCORD_DETAIL_LINES = 12;
 export const STATE_KEEP_DAYS = 7;
-export const RESULT_TYPES = ["stage", "leader", "points_day", "mountain_day"];
+// `gc` er et endagsløbs resultat (etape 1 uden etape-rækker).
+export const RESULT_TYPES = ["stage", "gc", "leader", "points_day", "mountain_day"];
 
 function isMain() {
   try {

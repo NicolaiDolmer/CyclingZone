@@ -320,7 +320,8 @@ export function ruleDroppedInFront(input) {
 export function ruleAbandonedGone(input) {
   const findings = [];
   const replay = replayTimeline(input.events, input.startlist, (event, index, view) => {
-    if (event.type === "incident") return;
+    // Uheldet selv, og motorens bogføring ved målstregen (vises aldrig i filmen).
+    if (event.type === "incident" || BOOKKEEPING_ATTACK_KINDS.has(event.params?.kind)) return;
     for (const riderId of namedRiderIds(event)) {
       if (!view.isOut(riderId)) continue;
       findings.push(finding("R2", "named_after_abandon", { index, km: placeOf(event).km, rider_id: riderId, type: event.type }));
@@ -578,6 +579,18 @@ export function ruleStandingsAddUp(input) {
   return findings;
 }
 
+/**
+ * Dagens resultat-rækker: etapens `stage`-rækker; et endagsløb (etape 1 uden
+ * etape-rækker) har sit resultat i `gc`-rækkerne. Samme valg som
+ * raceStory.storyInputsFromResults og etapesiden.
+ */
+export function dayRowsFor(raceRows = [], stageNumber) {
+  const onStage = (row) => row.stage_number === stageNumber || (stageNumber === 1 && row.stage_number == null);
+  const stageRows = raceRows.filter((row) => row.result_type === "stage" && onStage(row));
+  if (stageRows.length || stageNumber !== 1) return stageRows;
+  return raceRows.filter((row) => row.result_type === "gc" && onStage(row));
+}
+
 /** Startlisten: alle med en etape-række plus alle tidslinjen navngiver. */
 export function startlistFor(events = [], stageRows = []) {
   const out = new Set();
@@ -597,7 +610,7 @@ export function checkStage(stage) {
   try {
     const events = (Array.isArray(stage?.events) ? stage.events : []).filter((e) => e && typeof e === "object");
     const raceRows = (Array.isArray(stage?.raceRows) ? stage.raceRows : []).filter((r) => r && typeof r === "object");
-    const stageRows = raceRows.filter((row) => row.result_type === "stage" && row.stage_number === stage.stageNumber);
+    const stageRows = dayRowsFor(raceRows, stage.stageNumber);
     input = { ...stage, events, raceRows, stageRows, startlist: startlistFor(events, stageRows) };
   } catch (err) {
     return [{ race_id: stage?.raceId, stage_number: stage?.stageNumber, rule: "GUARD", code: "guard_error", error: String(err?.name ?? "Error") }];

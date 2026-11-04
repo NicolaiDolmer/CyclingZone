@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import {
   RULES,
   checkStage,
+  dayRowsFor,
   parseGapSeconds,
   publicFinding,
   replayTimeline,
@@ -181,6 +182,22 @@ test("checkStage samler kendte fejl på etape 6 og 8 og vælter aldrig", () => {
 test("publicFinding bærer kun race, etape, regel og kode", () => {
   const [first] = checkStage(stage8);
   assert.deepEqual(Object.keys(publicFinding(first)).sort(), ["code", "race_id", "rule", "stage_number"]);
+});
+
+test("dayRowsFor: et endagsløbs resultat står i gc-rækkerne", () => {
+  const rows = [{ result_type: "gc", stage_number: 1, rider_id: "a", rank: 1 }, { result_type: "team", stage_number: 1 }];
+  assert.deepEqual(dayRowsFor(rows, 1).map((r) => r.rider_id), ["a"]);
+  assert.deepEqual(dayRowsFor(rows, 2), []);
+  const staged = [{ result_type: "stage", stage_number: 1, rider_id: "b" }, ...rows];
+  assert.deepEqual(dayRowsFor(staged, 1).map((r) => r.rider_id), ["b"]);
+});
+
+test("R2: motorens bogføring ved målstregen tæller ikke som en optræden", () => {
+  const events = [
+    { km: 20, type: "incident", params: { rider_id: "a", outcome: "abandoned" } },
+    { km: 100, type: "finale_attack", params: { kind: "placement_gap", group_id: "peloton-0", rider_ids: ["a", "b"] } },
+  ];
+  assert.deepEqual(ruleAbandonedGone({ events, startlist: ["a", "b"], stageRows: [] }), []);
 });
 
 test("parseGapSeconds læser viste tider", () => {
