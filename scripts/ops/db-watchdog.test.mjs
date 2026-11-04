@@ -26,7 +26,9 @@ import {
   normalizeState,
   rollbackUnsent,
   SLOW_COOLDOWN_MS,
+  SLOW_FETCH_LIMIT,
   SLOW_MIN_CALLS,
+  SLOW_SQL,
   sentryCheckinUrl,
 } from "./db-watchdog.mjs";
 
@@ -426,6 +428,20 @@ test("#7662 genstart: en start lidt ældre end vinduet uden baseline er stadig k
   assert.deepEqual(evaluate(emptyState(), green(old), now).messages, []);
 });
 
+test("#7662 genstart: mislykket afsendelse af en frisk-genstart-besked prøves igen, også efter vinduet", () => {
+  const now = t(0);
+  const fresh = new Date(new Date(now).getTime() - 60_000).toISOString().replace(/\.\d+Z$/, "Z");
+  const first = evaluate(emptyState(), green(fresh), now);
+  const rolled = rollbackUnsent(first.state, emptyState(), first.messages[0]);
+  assert.equal(rolled.lastPostmasterStart, null);
+  assert.equal(rolled.pendingRestartStart, fresh);
+  const later = new Date(new Date(now).getTime() + 2 * FRESH_RESTART_MS).toISOString();
+  const retry = evaluate(rolled, green(fresh), later);
+  assert.deepEqual(retry.messages.map((m) => m.kind), ["restart"]);
+  assert.equal(retry.state.pendingRestartStart, null);
+  assert.deepEqual(evaluate(retry.state, green(fresh), later).messages, []);
+});
+
 test("#7662 genstart nulstiller query-snapshot (tællerne starter forfra)", () => {
   const prev = { ...evaluate(emptyState(), green(START_A), t(0)).state, slowSnapshot: { a: { calls: 5, totalMs: 100 } } };
   const r = evaluate(prev, green(START_B), t(5));
@@ -549,6 +565,24 @@ test("#7662 langsom: nedkøling pr. forespørgsel, så den ikke larmer hver kør
   const later = new Date(new Date(t(60)).getTime() + SLOW_COOLDOWN_MS + 1000).toISOString();
   const third = evaluateSlowQueries(second.state, [row("a", 15, 60_000)], later);
   assert.equal(third.messages.length, 1, "efter nedkølingen");
+});
+
+test("#7662 langsom: en ny forespørgsel der er langsom i sit første interval opdages (komplet snapshot)", () => {
+  const s = evaluateSlowQueries(emptyState(), [row("a", 10, 100)], t(0)).state;
+  const r = evaluateSlowQueries(s, [row("a", 10, 100), row("new", 4, 12_000)], t(60));
+  assert.deepEqual(r.messages[0].items.map((i) => i.id), ["new"]);
+});
+
+test("#7662 langsom: en forespørgsel uden for et afkortet snapshot er kun baseline", () => {
+  const full = Object.fromEntries(Array.from({ length: SLOW_FETCH_LIMIT }, (_, i) => [`q${i}`, { calls: 1, totalMs: 1 }]));
+  const s = { ...emptyState(), slowSnapshot: full };
+  const r = evaluateSlowQueries(s, [row("late", 900, 9_000_000)], t(60));
+  assert.deepEqual(r.messages, []);
+});
+
+test("#7662 langsom: SQL'en lægger tællere sammen pr. queryid og har bred grænse", () => {
+  assert.match(SLOW_SQL, /group by queryid/);
+  assert.match(SLOW_SQL, new RegExp(`limit ${SLOW_FETCH_LIMIT}\\)`));
 });
 
 test("#7662 langsom: nulstillede tællere (genstart) giver ingen falsk alarm", () => {

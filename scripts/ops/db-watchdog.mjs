@@ -87,6 +87,7 @@ export const SLOW_MIN_CALLS = 3;
 export const SLOW_MEAN_MS = 1000;
 export const SLOW_COOLDOWN_MS = 6 * 3_600_000;
 export const SLOW_MAX_LISTED = 5;
+export const SLOW_FETCH_LIMIT = 500;
 export const DEFAULT_PROJECT_REF = "ghwvkxzhsbbltzfnuhhz";
 
 const COLOR_DOWN = 0xe74c3c;
@@ -116,6 +117,7 @@ export function emptyState() {
     api5xxBaselineRate: null,
     slowSnapshot: null,
     slowAlertedAt: {},
+    pendingRestartStart: null,
   };
 }
 
@@ -139,6 +141,7 @@ export function normalizeState(raw) {
         : null,
     slowSnapshot: isPlainObject(raw.slowSnapshot) ? raw.slowSnapshot : null,
     slowAlertedAt: isPlainObject(raw.slowAlertedAt) ? raw.slowAlertedAt : {},
+    pendingRestartStart: typeof raw.pendingRestartStart === "string" ? raw.pendingRestartStart : null,
   };
 }
 
@@ -195,7 +198,12 @@ export function evaluate(prevInput, checks, nowIso) {
   if (start) {
     const changed = prev.lastPostmasterStart && prev.lastPostmasterStart !== start;
     const ageMs = new Date(nowIso).getTime() - new Date(start).getTime();
-    const freshWithoutBaseline = !prev.lastPostmasterStart && ageMs >= 0 && ageMs <= FRESH_RESTART_MS;
+    // En frisk-genstart-besked der ikke kunne sendes huskes (pendingRestartStart), så
+    // den prøves igen selv efter at starten er blevet ældre end vinduet.
+    const freshWithoutBaseline =
+      !prev.lastPostmasterStart &&
+      ((ageMs >= 0 && ageMs <= FRESH_RESTART_MS) || prev.pendingRestartStart === start);
+    next.pendingRestartStart = null;
     if (changed || freshWithoutBaseline) {
       messages.push({
         kind: "restart",
@@ -224,14 +232,20 @@ export function rollbackUnsent(nextState, prevInput, message) {
     state.alertActive = true;
     state.firstFailureAt = prev.firstFailureAt;
   }
-  if (message.kind === "restart") state.lastPostmasterStart = prev.lastPostmasterStart;
+  if (message.kind === "restart") {
+    state.lastPostmasterStart = prev.lastPostmasterStart;
+    if (!prev.lastPostmasterStart) state.pendingRestartStart = message.newStart;
+  }
   if (message.kind === "api5xx") state.api5xxActive = false;
   if (message.kind === "slow") {
     state.slowAlertedAt = { ...state.slowAlertedAt };
     state.slowSnapshot = state.slowSnapshot ? { ...state.slowSnapshot } : state.slowSnapshot;
     for (const item of message.items) {
       // Behold forrige tællerstand, så forskellen stadig kan måles næste kørsel.
-      if (state.slowSnapshot && prev.slowSnapshot?.[item.id]) state.slowSnapshot[item.id] = prev.slowSnapshot[item.id];
+      if (state.slowSnapshot) {
+        if (prev.slowSnapshot?.[item.id]) state.slowSnapshot[item.id] = prev.slowSnapshot[item.id];
+        else delete state.slowSnapshot[item.id];
+      }
       if (prev.slowAlertedAt[item.id] === undefined) delete state.slowAlertedAt[item.id];
       else state.slowAlertedAt[item.id] = prev.slowAlertedAt[item.id];
     }
@@ -315,9 +329,12 @@ export function evaluateSlowQueries(prevInput, rows, nowIso) {
 
   if (!prev.slowSnapshot) return { state: next, messages };
 
+  const snapshotComplete = Object.keys(prev.slowSnapshot).length < SLOW_FETCH_LIMIT;
   const items = [];
   for (const row of rows) {
-    const before = prev.slowSnapshot[row.id];
+    // En forespørgsel der ikke var i forrige (komplette) snapshot er oprettet siden da,
+    // så alle dens tællere er målt i dette interval. Var snapshot'et afkortet, ved vi det ikke.
+    const before = prev.slowSnapshot[row.id] ?? (snapshotComplete ? { calls: 0, totalMs: 0 } : null);
     if (!before) continue;
     const dCalls = row.calls - before.calls;
     const dTotal = row.totalMs - before.totalMs;
@@ -609,13 +626,15 @@ export async function fetchApi5xxSample(fetchFn, token, ref, nowDate) {
 // Intern støj og bevidste vedligeholdelseskommandoer ekskluderes (samme idé som scripts/db-health.sql).
 export const SLOW_SQL =
   "select coalesce(json_agg(t), '[]'::json) from (" +
-  "select queryid::text as id, calls::bigint as calls, round(total_exec_time)::bigint as total_ms, " +
-  "left(regexp_replace(query, '\\s+', ' ', 'g'), 80) as query " +
+  "select queryid::text as id, sum(calls)::bigint as calls, round(sum(total_exec_time))::bigint as total_ms, " +
+  "left(regexp_replace(max(query), '\\s+', ' ', 'g'), 80) as query " +
   "from pg_stat_statements " +
   "where calls > 0 and queryid is not null " +
   "and query !~* '(pg_stat_statements|pg_proc|information_schema|pg_catalog|pg_class|pg_attribute|pg_namespace)' " +
   "and query !~* '^\\s*(VACUUM|REINDEX|CLUSTER|ANALYZE|COPY|CREATE|ALTER)' " +
-  "order by total_exec_time desc limit 60) t";
+  // Samme queryid kan optræde pr. bruger/database: tællerne lægges sammen, så
+  // snapshot-nøglen er stabil. Bred grænse, så nye regressioner ikke falder uden for listen.
+  `group by queryid order by sum(total_exec_time) desc limit ${SLOW_FETCH_LIMIT}) t`;
 
 /** Returnerer { rows, reason }; rows er null ved fejl. Printer aldrig URL eller stderr. */
 export async function fetchSlowStatements(execFn, dbUrl) {

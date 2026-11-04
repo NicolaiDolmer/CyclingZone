@@ -75,7 +75,9 @@ jobs:
           restore-keys: |
             db-watchdog-state-
 
-      # Sikkerhedsnet (#7662): er cachen tabt, hentes den nyeste artefakt. Fejl her må
+      # Sikkerhedsnet (#7662): er cachen tabt, hentes den nyeste artefakt. Kun artefakter
+      # fra en planlagt eller manuel kørsel af DETTE workflow på main stoles på (en PR kan
+      # ellers uploade en artefakt med samme navn og lægge vagten i dvale). Fejl her må
       # aldrig fælde vagten; uden tilstand starter vagten blot forfra og logger det.
       - name: Restore watchdog state from artifact (fallback)
         if: hashFiles('.db-watchdog-state/state.json') == ''
@@ -83,15 +85,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          id=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=db-watchdog-state&per_page=20" \
-            --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last | .id // empty')
-          if [ -n "$id" ]; then
+          candidates=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=db-watchdog-state&per_page=20" \
+            --jq '[.artifacts[] | select(.expired == false and .workflow_run.head_branch == "main")] | sort_by(.created_at) | reverse | .[] | "\(.id) \(.workflow_run.id)"')
+          found=''
+          while read -r art_id run_id; do
+            [ -z "$art_id" ] && continue
+            trusted=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" \
+              --jq '(.path == ".github/workflows/db-watchdog.yml") and (.event == "schedule" or .event == "workflow_dispatch") and (.head_branch == "main")')
+            if [ "$trusted" = "true" ]; then found="$art_id"; break; fi
+          done <<< "$candidates"
+          if [ -n "$found" ]; then
             mkdir -p .db-watchdog-state
-            gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}/zip" > "$RUNNER_TEMP/state.zip"
+            gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${found}/zip" > "$RUNNER_TEMP/state.zip"
             unzip -o -q "$RUNNER_TEMP/state.zip" -d .db-watchdog-state
-            echo "Tilstand gendannet fra artefakt $id"
+            echo "Tilstand gendannet fra artefakt $found"
           else
-            echo "Ingen artefakt at gendanne fra"
+            echo "Ingen betroet artefakt at gendanne fra"
           fi
 
       - name: Run watchdog
