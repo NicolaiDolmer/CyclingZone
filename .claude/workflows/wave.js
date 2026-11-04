@@ -1950,7 +1950,11 @@ async function postClaudeMarkerNow(review, label) {
     return `skrevet: ${plan.verdict} @ ${plan.headSha.slice(0, 7)}`
   }
   const why = answer === TIMED_OUT ? 'timeout' : (answer && answer.problem) || 'intet svar'
-  log(`${stepLabel}: markoeren blev ikke skrevet (${why}). I haanden: node scripts/review-gate.mjs post-claude-review --pr ${plan.pr} --verdict ${plan.verdict}`)
+  // #7658 (Codex P2): kommandoen i haanden binder til det reviewede commit; er HEAD flyttet, skal der reviewes igen.
+  const manual = /HEAD flyttet/i.test(String(why))
+    ? 'HEAD er flyttet siden reviewet - review det nye commit, foer en markoer skrives'
+    : `I haanden: node scripts/review-gate.mjs post-claude-review --pr ${plan.pr} --verdict ${plan.verdict} --expect-sha ${plan.headSha}`
+  log(`${stepLabel}: markoeren blev ikke skrevet (${why}). ${manual}`)
   return `ikke skrevet: ${why}`
 }
 

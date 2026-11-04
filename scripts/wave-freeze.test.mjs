@@ -1131,6 +1131,7 @@ test("#7587: wave.js skriver markoeren efter reviewet, paa det reviewede HEAD, a
   assert.ok(step.includes("const plan = planClaudeMarker(review)") && step.includes("if (!plan.post) {"), "trinnet bruger den spejlede planClaudeMarker() og springer over naar post=false");
   assert.ok(/agentWithType\(markerPrompt\(plan\), \{ label: stepLabel, phase: 'Review', model: 'sonnet', effort: 'low', agentType: 'wave-marker', schema: MARKER_SCHEMA \}\)/.test(step), "trinnet koerer paa sonnet/low som agentType wave-marker");
   assert.ok(step.includes("answer.ok === true && answer.posted === true"), "kun et bekraeftet posted=true taeller som skrevet");
+  assert.ok(step.includes("--expect-sha ${plan.headSha}") && step.includes("/HEAD flyttet/i.test("), "haand-kommandoen binder til det reviewede commit, og flyttet HEAD kraever nyt review (#7658 Codex P2)");
   const prompt = extractFunction(src, "markerPrompt");
   assert.ok(prompt.includes("WAVE-SETUP: Claude-review-markoer"), "WAVE-SETUP-praefikset, saa guard-agent-spawn.sh lader den passere");
   assert.ok(prompt.includes("gh api repos/${REPO}/pulls/${plan.pr} --jq .head.sha"), "trin 1 henter PR'ens aktuelle HEAD");
