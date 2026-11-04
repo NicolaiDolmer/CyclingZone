@@ -106,6 +106,7 @@ export function matchBrandLabel(item, loft) {
 // Label, titel og forælder fra GitHub (én GraphQL-kald). null ved enhver fejl,
 // så et utilgængeligt GitHub aldrig åbner porten - issuet forbliver 'new'.
 export function ghIssueMeta(issue, { repo = 'NicolaiDolmer/CyclingZone', exec = execFileSync } = {}) {
+  if (process.env.CZ_BUILD_STOP_NO_GH === '1') return null; // tests: ingen netværk
   const [owner, name] = repo.split('/');
   const query = 'query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){issue(number:$n){title labels(first:50){nodes{name}} parent{number}}}}';
   try {
