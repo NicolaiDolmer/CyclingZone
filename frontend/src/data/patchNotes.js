@@ -4,6 +4,57 @@ export const PATCHES = [
     "date": "2026-11-04",
     "changes": [
       {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "An attack is no longer shown as lost time",
+          "body": "When your rider attacks and gets ahead on a climb, Split times no longer list it under Where your riders lost time. This also fixes stages already raced."
+        },
+        "da": {
+          "title": "Et angreb vises ikke længere som tabt tid",
+          "body": "Når din rytter angriber og kommer foran på en stigning, står det ikke længere under Hvor dine ryttere tabte tid i Mellemtider. Det retter også etaper, der allerede er kørt."
+        },
+        "refs": [
+          7640
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Riders who abandon leave the race film",
+          "body": "A rider who abandons after a crash now leaves How the race played out at the crash, instead of riding on as an empty group far behind. Times and results are unchanged."
+        },
+        "da": {
+          "title": "Udgåede ryttere forlader løbsfilmen",
+          "body": "En rytter, der udgår efter et styrt, forsvinder nu fra Sådan blev løbet kørt ved styrtet i stedet for at køre videre som en tom gruppe langt bagude. Tider og resultater er uændrede."
+        },
+        "refs": [
+          7639
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Queen stages stay closer",
+          "body": "On mountain stages with a short descent to the finish, the favourites can no longer be spread unrealistically far over the last summit. Climbers keep their advantage."
+        },
+        "da": {
+          "title": "Dronningeetaper holder sig tættere",
+          "body": "På bjergetaper med kort nedkørsel til mål kan favoritterne ikke længere blive spredt urealistisk langt over sidste top. Klatrerne beholder deres fordel."
+        },
+        "refs": [
+          7236
+        ]
+      },
+      {
         "category": "improved",
         "audience": "player",
         "rollout": "live",
