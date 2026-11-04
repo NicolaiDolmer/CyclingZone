@@ -315,7 +315,7 @@ try {
 
   # Spejler ts-core-ratchet.yml (required check). Kernen er backend/.
   Write-Host "== ts-core-ratchet (kernen maa ikke blive mere utjekket, #7582) ==" -ForegroundColor Cyan
-  if (Test-ChangedMatch '^(backend/|scripts/check-ts-core-ratchet)') {
+  if (Test-ChangedMatch '^(backend/|scripts/(check-)?ts-core-ratchet)') {
     node scripts/check-ts-core-ratchet.mjs
     if ($LASTEXITCODE -ne 0) { $failed += "ts-core-ratchet" }
   } else {

@@ -195,6 +195,14 @@ test("scanner: prosa-strenge giver kun hele filnavne, aldrig mapper", () => {
   assert.deepEqual(refs, [{ ref: "frontend/src/lib/x.js", cut: false }]);
 });
 
+test("scanner: et top-level-navn der kun findes i PR'ens filliste (slettet fil) kan stadig matches", () => {
+  const src = 'const ignore = readFileSync(join(REPO_ROOT, ".gitignore"), "utf8");';
+  assert.deepEqual(extractRepoReferences(src, "backend/x.test.js", ["docs"]), []);
+  assert.deepEqual(extractRepoReferences(src, "backend/x.test.js", ["docs", ".gitignore"]), [{ ref: ".gitignore", cut: false }]);
+  const refs = collectBackendRelevantRefs(REPO_ROOT, { extraTopNames: [".gitignore"] });
+  assert.ok(relevanceOf(".gitignore", refs), "backend-testene laeser .gitignore; en PR der sletter den skal koere dem");
+});
+
 test("stripComments bevarer strenge med // og /*", () => {
   const src = 'const u = "https://x.y/*z"; // kommentar\n/* blok */ const v = 1;';
   const out = stripComments(src);

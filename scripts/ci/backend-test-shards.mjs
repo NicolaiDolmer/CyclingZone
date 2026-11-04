@@ -422,8 +422,13 @@ function walkScanFiles(dir, out) {
  * scannes selv, saa dens egne imports og fil-laesninger ogsaa taeller.
  * @returns {{ref: string, cut: boolean}[]}
  */
-export function collectBackendRelevantRefs(repoRoot = REPO_ROOT) {
-  const topNames = listTopNames(repoRoot);
+export function collectBackendRelevantRefs(repoRoot = REPO_ROOT, { extraTopNames = [] } = {}) {
+  // extraTopNames: top-level navne fra PR'ens filliste. En PR der sletter et
+  // top-level input (fx .gitignore) skal stadig kunne matches, selvom navnet
+  // ikke laengere findes i checkoutet.
+  const topNames = [...new Set([...listTopNames(repoRoot), ...extraTopNames])].filter(
+    (n) => n && n !== "backend" && n !== "node_modules" && n !== ".git",
+  );
   const backendRoot = path.join(repoRoot, "backend");
   const byKey = new Map();
   const queue = walkScanFiles(backendRoot, []);
@@ -506,7 +511,7 @@ async function main(argv) {
       .split("\n")
       .map((l) => l.trim())
       .filter(Boolean);
-    const refs = collectBackendRelevantRefs(REPO_ROOT);
+    const refs = collectBackendRelevantRefs(REPO_ROOT, { extraTopNames: files.map((f) => f.split("/")[0]) });
     const { needsBackend, reasons } = classifyChangedFiles(files, refs);
     process.stderr.write(`needs-backend: ${files.length} aendrede filer, ${reasons.length} relevante for backend-tests\n`);
     for (const r of reasons.slice(0, 20)) process.stderr.write(`  ${r.file}: ${r.rule}\n`);
