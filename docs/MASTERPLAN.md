@@ -42,7 +42,7 @@ Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden f
 - **Forside #6665** gøres klar til merge 4/11 (rebase, CI, før/efter); merges på ejerens go.
 - **Spillerkommunikation:** én samlet patch note og ét Discord-opslag (EN) pr. dag med spillervendte ændringer; udkast ca. kl. 17, ejeren godkender.
 - Bogføring, moms EU-privat #4511, billing #4514/#4512/#6062, måling #5305, SEO #5249/#5250.
-- **Catch-up #6950:** samtale med ejeren 5/11 eller 6/11 (frist 8/11).
+- **Torsdag 5/11 (forretningsdag):** gennemgang af Codex' vækstpakke PR #7652 med ejeren (ingen A/B valgt; retning afstemmes, så wireframes til spillerne før byg) og catch-up #6950 (frist 8/11).
 
 ## Faste rutiner
 
