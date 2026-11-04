@@ -46,9 +46,9 @@ test("partitionItems deler efter status og horizon og sorterer på sort_order", 
   // "Snart for alle" først på Beta-fanen.
   assert.deepEqual(p.inBeta.map((i) => i.id), ["k", "h"]);
   assert.deepEqual(p.comingToBeta.map((i) => i.id), ["j"]);
-  // #7666: Plan = beta, i gang, planlagt pr. horisont.
+  // #7666: Plan = i gang og planlagt pr. horisont; beta står kun på Beta-fanen (#6160).
   assert.deepEqual(p.planGroups.map((g) => [g.horizon, g.items.map((i) => i.id)]), [
-    ["next", ["k", "h", "d", "c", "b", "j"]],
+    ["next", ["d", "c", "b", "j"]],
     ["later", ["a"]],
   ]);
   assert.deepEqual(p.ideas.map((i) => i.id), ["e"]);

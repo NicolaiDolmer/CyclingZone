@@ -99,7 +99,8 @@ export interface PlanGroup { horizon: RoadmapHorizon; items: RoadmapItem[] }
  * planlagte i ejerens rækkefølge. Tomme horisonter udelades.
  */
 export function groupPlan(items: RoadmapItem[] | null | undefined): PlanGroup[] {
-  const decided = (items ?? []).filter((i) => i.status === "planned" || i.status === "in_progress");
+  // Roadmap-hubben (#6160, 4/10): det, der er i beta, står kun på Beta-fanen.
+  const decided = (items ?? []).filter((i) => i.status === "planned" || (i.status === "in_progress" && !i.beta_since));
   return HORIZON_ORDER
     .map((horizon) => ({
       horizon,
