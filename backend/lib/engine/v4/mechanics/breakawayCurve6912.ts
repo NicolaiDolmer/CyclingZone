@@ -12,9 +12,10 @@
 //   2. Styring efter toppen: de interesserede hold sigter mod et forspring der falder
 //      gradvist mod finalen. Maalet afhaenger af de resterende km og af det udbruddet
 //      forventes at tabe paa finalestigningen (kun den; mellemstigningerne er terraen).
-//   3. Jagende hold lukker selv: under styringen loeftes daempningen foer finalen
-//      (mountainSelection.ts), og har de interesserede hold ryttere at jage med, lukker
-//      de ned til maalet, ogsaa paa stigninger. De betaler arbejdet oven i deres jagt.
+//   3. Jagende hold lukker selv: paa high mountain loeftes daempningen foer finalen under
+//      styringen (mountainSelection.ts; paa mountain ikke, ellers hentes udbruddet foer
+//      finalestigningens bjergpoint), og har de interesserede hold ryttere at jage med,
+//      lukker de ned til maalet, ogsaa paa stigninger. De betaler arbejdet oven i deres jagt.
 //   4. Kun flad/rullende-klassen (upperBoundProfiles): foer finalen henter den automatiske
 //      jagt ikke under maalet (fangsten flyttes til finalen, hvor jagt-gulvet tager over).
 //      Paa bjerg er der ingen overgraense: holdene lukker selv. En klassementsreaktion og
@@ -31,6 +32,7 @@ import type { ProfileType, RouteV2, StageInput } from "../types.ts";
 import { isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
 import { BREAKAWAY_CURVE_6912_TUNING } from "../tuning.ts";
 import { finalClimbStartIndex } from "./mountainSelection.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 type CurveTuning = typeof BREAKAWAY_CURVE_6912_TUNING;
 
@@ -216,7 +218,7 @@ export function curveChaseWork(input: { chasers: ReadonlyMap<string, readonly st
  */
 export function addWork(base: ReadonlyMap<string, number>, extra: ReadonlyMap<string, number>): Map<string, number> {
   const out = new Map<string, number>();
-  for (const id of [...new Set([...base.keys(), ...extra.keys()])].sort((x, y) => x.localeCompare(y))) {
+  for (const id of [...new Set([...base.keys(), ...extra.keys()])].sort((x, y) => compareIds(x, y))) {
     out.set(id, (base.get(id) ?? 0) + (extra.get(id) ?? 0));
   }
   return out;

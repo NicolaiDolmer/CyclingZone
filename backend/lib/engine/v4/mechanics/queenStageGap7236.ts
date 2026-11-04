@@ -15,7 +15,7 @@
 // top til maal. Topankomster og lange nedkoersler er uroerte.
 //
 // Kontakten taendes kun naar kalderen eksplicit sender queenStageGap7236=true
-// (broen; i dag kun maalingen/testporten). Uden kontakten er motoren bit-identisk
+// (broen; raceRunner kun ved app_config queen_stage_gap_7236 = "on"). Uden kontakten er motoren bit-identisk
 // for alle revisioner. Tal kun privat (balance-internals/7236/, hard rule 17).
 //
 // REN: ingen IO, ingen rng.

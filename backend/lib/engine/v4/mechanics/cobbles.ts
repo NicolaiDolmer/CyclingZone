@@ -86,6 +86,7 @@ import { makeGroupId, splitGroup } from "../groups.ts";
 import { COBBLES_EXTRA_TUNING, WEATHER_EXTRA_TUNING } from "../tuning.ts";
 import { incidentKmAt, incidentKmSpan } from "./incidents.ts";
 import { weatherAdjustedRiskBase, weatherTechniqueDampening, weatherTechniqueProxy } from "./weather.ts";
+import { compareIds } from "../../../compareIds.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -174,7 +175,7 @@ function computeSelections(
  * forbliver — monotoni-invarianten (SS2 §2 invariant 3, mor-spec §3.2).
  */
 function guardedSplitRiderIds(selections: RiderCobblesSelection[]): string[] {
-  const sorted = [...selections].sort((a, b) => b.baseScore - a.baseScore || a.riderId.localeCompare(b.riderId));
+  const sorted = [...selections].sort((a, b) => b.baseScore - a.baseScore || compareIds(a.riderId, b.riderId));
   let stillEligible = true;
   const split: string[] = [];
   for (const sel of sorted) {
@@ -300,7 +301,7 @@ export const cobblesHook: CobblesHook = (state: EngineState, ctx: SegmentHookCon
   // resultatet (rngFor er noeglet pr. rytter, ikke pr. kalde-raekkefolge),
   // men holder ny-gruppe-id'ernes taeller stabil pr. run (samme moenster som
   // climbSelection.ts).
-  const groupsSorted = [...state.groups].sort((a, b) => a.id.localeCompare(b.id));
+  const groupsSorted = [...state.groups].sort((a, b) => compareIds(a.id, b.id));
 
   // #7008 (KUN s5_profiles_v2): intet styrt lige efter starten (incidentKmSpan).
   const incidentSpan = incidentKmSpan(cobblesSegment, ctx.s5ProfilesV2 === true);

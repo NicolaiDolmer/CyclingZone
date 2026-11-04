@@ -52,6 +52,10 @@ try {
   node scripts/check-fetchallrows-order.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "fetchallrows-order-guard" }
 
+  Write-Host "== locale-compare-guard (localeCompare uden sprog i motor/race*, #1857) ==" -ForegroundColor Cyan
+  node scripts/check-locale-compare.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "locale-compare-guard" }
+
   Write-Host "== maybesingle-unique-scope-guard (.maybeSingle() uden fuldt UNIQUE-scope, #4496) ==" -ForegroundColor Cyan
   node scripts/check-maybesingle-unique-scope.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "maybesingle-unique-scope-guard" }
