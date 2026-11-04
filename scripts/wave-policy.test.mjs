@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { acquireWave, releaseWave, checkCapacity, validateTracks, handleHook, updateWave, withIdleWaveLock, withWaveStateLock, stopWaveWatch,
-  ownershipPrefix, ownershipOverlaps, activeTracks, enqueueTracks, intakeTracks, readTracksFile, assertMergeAllowed, guardedMerge,
+  ownershipPrefix, ownershipOverlaps, activeTracks, enqueueTracks, intakeTracks, finishTracks, readTracksFile, assertMergeAllowed, guardedMerge,
   flattenPrFilePages, findOwnershipConflicts, MAX_PENDING_TRACKS, assertCompatibleWithActive, sharedTouchPlan, trackTouches,
   requiredModel, designGateHits, assertDesignGate } from './wave-policy.mjs';
 import { assertWaveOwnership } from './wave-ownership.mjs';
@@ -493,6 +493,25 @@ test('#5602: intake --peek counts the queue and marks finished branches, but mov
   marker = markerOf(dir);
   assert.deepEqual(marker.finishedBranches, ['feat/1-fixture'], 'the idempotent --finished repeat adds no duplicate');
   assert.equal(intakeTracks(dir, 'rolling-wave', [], ownSnapshot, { peek: true }).pending, 0);
+});
+
+test('#7587: finish releases a built branch at once, moves and counts nothing, and is idempotent', t => {
+  const { dir, file } = runningWave(t);
+  enqueueTracks(dir, 'rolling-wave', [trackWith(2, ['docs/two.md'])], ownSnapshot);
+  const before = readFileSync(file, 'utf8');
+  assert.throws(() => finishTracks(dir, 'rolling-wave', ['feat/1-fixture'], foreignSnapshot), /Another session owns this wave/);
+  for (const empty of [[], undefined, ['  ']]) {
+    assert.throws(() => finishTracks(dir, 'rolling-wave', empty, ownSnapshot), /at least one --finished branch/);
+  }
+  assert.equal(readFileSync(file, 'utf8'), before, 'a refused finish leaves the marker untouched');
+  const r = finishTracks(dir, 'rolling-wave', ['feat/1-fixture', 'feat/999-unknown'], ownSnapshot);
+  assert.deepEqual(r, { finishedBranches: ['feat/1-fixture'], ignoredFinished: ['feat/999-unknown'] });
+  const marker = markerOf(dir);
+  assert.deepEqual(marker.tracks.map(x => x.issue), [1], 'finish never takes a pending track');
+  assert.deepEqual(marker.pendingTracks.map(x => x.issue), [2]);
+  assert.deepEqual(activeTracks(marker).map(x => x.branch), ['feat/2-fixture'], 'the finished branch leaves the merge gate at once');
+  finishTracks(dir, 'rolling-wave', ['feat/1-fixture'], ownSnapshot);
+  assert.deepEqual(markerOf(dir).finishedBranches, ['feat/1-fixture'], 'a repeat adds no duplicate');
 });
 
 test('#5602: the lock-busy error says to retry first; watch and the run binding wait out a merge', t => {

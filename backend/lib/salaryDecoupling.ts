@@ -5,11 +5,29 @@
 // Række-form: { current_production_value:number, current_salary:number|null,
 //               division:number, value_v4?:number }
 
+type NumericInput = number | string | null | undefined;
+type SalaryRow = {
+  current_production_value?: NumericInput;
+  current_salary?: NumericInput;
+  division?: number | string | null;
+  value_v4?: NumericInput;
+};
+type SalaryRates =
+  | number
+  | {
+      byDiv?: Readonly<Record<string, NumericInput>>;
+      global?: NumericInput;
+    }
+  | null
+  | undefined;
+type WageBill = { current: number; projected: number; count: number };
+
 // Sats der bevarer den GLOBALE lønbyrde: Σ nuværende_løn / Σ current_production_value
 // (kun rækker med både positiv cpv og positiv løn). Så total-lønbyrden er uændret
 // ved konstruktion; det interessante er fordelingen (G1 pr. division, G2 talent).
-export function calibrateSalaryRate(rows) {
-  let sumSalary = 0, sumCpv = 0;
+export function calibrateSalaryRate(rows: readonly SalaryRow[]) {
+  let sumSalary = 0,
+    sumCpv = 0;
   for (const r of rows) {
     const cpv = Number(r.current_production_value);
     const sal = Number(r.current_salary);
@@ -22,7 +40,7 @@ export function calibrateSalaryRate(rows) {
 }
 
 // Frossen-løn-formel med den nye base (spejler computeFrozenSalary's max(1,round)).
-export function projectedSalary(currentProductionValue, rate) {
+export function projectedSalary(currentProductionValue: NumericInput, rate: NumericInput) {
   const base = Number(currentProductionValue) > 0 ? Number(currentProductionValue) : 0;
   return Math.max(1, Math.round(base * Number(rate)));
 }
@@ -30,7 +48,7 @@ export function projectedSalary(currentProductionValue, rate) {
 // Slå satsen op for en række: et number bruges globalt; et {byDiv,global}-objekt
 // slår division-satsen op (fallback til global). Lader wageBills + gates virke med
 // BÅDE en global sats og per-division-satser (bagud-kompatibelt).
-function resolveRate(row, rateOrRates) {
+function resolveRate(row: SalaryRow, rateOrRates: SalaryRates) {
   if (typeof rateOrRates === "number") return rateOrRates;
   const d = row?.division ?? "ukendt";
   return rateOrRates?.byDiv?.[d] ?? rateOrRates?.global ?? 0;
@@ -39,42 +57,48 @@ function resolveRate(row, rateOrRates) {
 // Per-division sats: rate_d = Σløn_d / Σcpv_d for hver division (kun rækker med både
 // positiv cpv og positiv løn). Divisioner uden gyldige rækker falder tilbage til den
 // globale sats. Bevarer HVER divisions lønbyrde ved konstruktion (G1 grøn).
-export function calibrateSalaryRatesByDivision(rows) {
+export function calibrateSalaryRatesByDivision(rows: readonly SalaryRow[]) {
   const global = calibrateSalaryRate(rows);
-  const acc = {};
+  const acc: Record<string, { s: number; c: number }> = {};
   for (const r of rows) {
     const cpv = Number(r.current_production_value);
     const sal = Number(r.current_salary);
     if (Number.isFinite(cpv) && cpv > 0 && Number.isFinite(sal) && sal > 0) {
       const d = r.division ?? "ukendt";
-      (acc[d] ??= { s: 0, c: 0 });
+      acc[d] ??= { s: 0, c: 0 };
       acc[d].s += sal;
       acc[d].c += cpv;
     }
   }
-  const byDiv = {};
+  const byDiv: Record<string, number | null> = {};
   for (const [d, { s, c }] of Object.entries(acc)) byDiv[d] = c > 0 ? s / c : global;
   return { byDiv, global };
 }
 
-export function wageBillsByDivision(rows, rateOrRates) {
-  const byDiv = {};
+export function wageBillsByDivision(rows: readonly SalaryRow[], rateOrRates: SalaryRates) {
+  const byDiv: Record<string, WageBill> = {};
   for (const r of rows) {
     const div = r.division ?? "ukendt";
-    (byDiv[div] ??= { current: 0, projected: 0, count: 0 });
+    byDiv[div] ??= { current: 0, projected: 0, count: 0 };
     byDiv[div].current += Number(r.current_salary) || 0;
-    byDiv[div].projected += projectedSalary(r.current_production_value, resolveRate(r, rateOrRates));
+    byDiv[div].projected += projectedSalary(
+      r.current_production_value,
+      resolveRate(r, rateOrRates)
+    );
     byDiv[div].count += 1;
   }
   return byDiv;
 }
 
 // G1 (hård): hver divisions projicerede lønbyrde inden for ±tolerance af nuværende.
-export function wageBillContinuityGate(bills, tolerance) {
-  const rows = [];
+export function wageBillContinuityGate<TBill extends Pick<WageBill, "current" | "projected">>(
+  bills: Readonly<Record<string, TBill>>,
+  tolerance: number
+) {
+  const rows: Array<TBill & { division: string; drift: number; ok: boolean }> = [];
   let pass = true;
   for (const [div, b] of Object.entries(bills)) {
-    const drift = b.current > 0 ? (b.projected - b.current) / b.current : (b.projected > 0 ? 1 : 0);
+    const drift = b.current > 0 ? (b.projected - b.current) / b.current : b.projected > 0 ? 1 : 0;
     const ok = Math.abs(drift) <= tolerance;
     if (!ok) pass = false;
     rows.push({ division: div, ...b, drift, ok });
@@ -84,20 +108,35 @@ export function wageBillContinuityGate(bills, tolerance) {
 
 // G2 (hård): repræsentative talenter → projiceret løn < sponsor, OG løn/værdi-forhold
 // lavere end den gamle market_value-kobling (oldRate).
-export function talentFixGate(talents, rateOrRates, { sponsor, oldRate }) {
+export function talentFixGate<TRow extends SalaryRow>(
+  talents: readonly TRow[],
+  rateOrRates: SalaryRates,
+  { sponsor, oldRate }: { sponsor: number; oldRate: number }
+) {
   const rows = talents.map((t) => {
     const newSalary = projectedSalary(t.current_production_value, resolveRate(t, rateOrRates));
     const oldSalary = Math.max(1, Math.round(Number(t.value_v4) * oldRate));
     const belowSponsor = newSalary < sponsor;
     const lowerThanOld = newSalary < oldSalary;
-    return { ...t, newSalary, oldSalary, belowSponsor, lowerThanOld, ok: belowSponsor && lowerThanOld };
+    return {
+      ...t,
+      newSalary,
+      oldSalary,
+      belowSponsor,
+      lowerThanOld,
+      ok: belowSponsor && lowerThanOld,
+    };
   });
   return { pass: rows.every((r) => r.ok), sponsor, rows };
 }
 
 // G4 (hård): ingen projiceret løn over loft (fx maks sponsor).
-export function runawayGate(rows, rateOrRates, ceiling) {
+export function runawayGate(rows: readonly SalaryRow[], rateOrRates: SalaryRates, ceiling: number) {
   let maxSalary = 0;
-  for (const r of rows) maxSalary = Math.max(maxSalary, projectedSalary(r.current_production_value, resolveRate(r, rateOrRates)));
+  for (const r of rows)
+    maxSalary = Math.max(
+      maxSalary,
+      projectedSalary(r.current_production_value, resolveRate(r, rateOrRates))
+    );
   return { pass: maxSalary <= ceiling, maxSalary, ceiling };
 }

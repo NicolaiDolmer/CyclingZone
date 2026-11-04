@@ -129,6 +129,47 @@ test('on som liste og streng genkendes', () => {
   assert.deepEqual(rules(`on: pull_request\n${JOBS}`), ['pr-cancel-missing']);
 });
 
+test('pull_request_target dækkes: uden cancel for netop det event fejler (#7582)', () => {
+  assert.deepEqual(rules(`on:\n  pull_request_target:\n${JOBS}`), ['pr-cancel-missing']);
+  // Udtrykket gater kun pull_request, så en forældet pull_request_target-kørsel annulleres aldrig.
+  assert.deepEqual(rules(`on:\n  pull_request_target:\n${SAFE_BLOCK}\n${JOBS}`), ['pr-cancel-missing']);
+  const target = SAFE_BLOCK.replaceAll("'pull_request'", "'pull_request_target'");
+  assert.deepEqual(rules(`on:\n  pull_request_target:\n${target}\n${JOBS}`), []);
+  assert.equal(classifyCancel("${{ github.event_name == 'pull_request_target' }}"), 'pr-only');
+});
+
+test('to workflows med samme name: fejler, uden name: er filstien unik (#7582)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wf-name-'));
+  try {
+    const body = `on:\n  schedule:\n    - cron: '0 3 * * 1'\n${JOBS}`;
+    fs.writeFileSync(path.join(dir, 'a.yml'), `name: Samme navn\n${body}`);
+    fs.writeFileSync(path.join(dir, 'b.yml'), `name: Samme navn\n${body}`);
+    fs.writeFileSync(path.join(dir, 'c.yml'), body);
+    fs.writeFileSync(path.join(dir, 'd.yml'), body);
+    const { errors } = checkDirectory(dir, {});
+    assert.equal(errors.length, 1);
+    assert.match(errors[0], /^a\.yml, b\.yml: \[duplicate-name\] workflow-navnet "Samme navn"/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('PR-trigger med kun engangs-types (closed) kræver ingen cancel', () => {
+  assert.deepEqual(rules(`on:\n  pull_request:\n    types: [closed]\n${JOBS}`), []);
+  // synchronize kan give forældede kørsler, så blandede types kræver stadig cancel.
+  assert.deepEqual(rules(`on:\n  pull_request:\n    types: [closed, synchronize]\n${JOBS}`), ['pr-cancel-missing']);
+  assert.deepEqual(rules(`on:\n  pull_request_target:\n    types: [opened, ready_for_review]\n${JOBS}`), ['pr-cancel-missing']);
+});
+
+test('job-cancel afgrænset til issue-events er tilladt, men aldrig for schedule/dispatch (Til dørs, #7582)', () => {
+  const job = (cancel) => `jobs:\n  a:\n    runs-on: ubuntu-latest\n    concurrency:\n      group: g-\${{ github.event.issue.number || 'sweep' }}\n      cancel-in-progress: ${cancel}\n    steps:\n      - run: echo hi\n`;
+  const on = `on:\n  issue_comment:\n  issues:\n  pull_request:\n    types: [closed]\n  schedule:\n    - cron: '17 4 * * *'\n  workflow_dispatch:\n`;
+  assert.deepEqual(rules(`${on}${job("${{ github.event_name == 'issue_comment' || github.event_name == 'issues' }}")}`), []);
+  assert.deepEqual(rules(`${on}${job("${{ github.event_name == 'issue_comment' || github.event_name == 'schedule' }}")}`), ['non-pr-cancel']);
+  assert.deepEqual(rules(`${on}${job('true')}`), ['non-pr-cancel']);
+  assert.equal(classifyCancel("${{ github.event_name == 'issue_comment' || github.event_name == 'issues' }}"), 'events');
+});
+
 test('forældet undtagelse fejler (listen kan kun skrumpe)', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wf-conc-'));
   try {

@@ -5,7 +5,7 @@
 // ingen runaway — FØR cutover (slice B, separat migration, ejer merger).
 //
 // READ-ONLY mod prod (kun SELECT — skriver ALDRIG DB). Ren gate-matematik:
-// ../lib/salaryDecoupling.js (node --test). Rører INGEN live-økonomi/konstant.
+// ../lib/salaryDecoupling.ts (node --test). Rører INGEN live-økonomi/konstant.
 //
 //   node scripts/salaryDecouplingScorecard.js [--model-v4=<sti>] [--tolerance=0.15] [--out=<sti>]
 //
@@ -23,7 +23,7 @@ import { riderOverall } from "../lib/riderValuation.js";
 import {
   calibrateSalaryRatesByDivision, wageBillsByDivision,
   wageBillContinuityGate, talentFixGate, runawayGate,
-} from "../lib/salaryDecoupling.js";
+} from "../lib/salaryDecoupling.ts";
 import { SPONSOR_INCOME_BASE } from "../lib/economyConstants.js";
 import { ageForSeason } from "../lib/riderSeasonAge.js";
 

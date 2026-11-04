@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   calibrateSalaryRate, calibrateSalaryRatesByDivision, projectedSalary, wageBillsByDivision,
   wageBillContinuityGate, talentFixGate, runawayGate,
-} from "./salaryDecoupling.js";
+} from "./salaryDecoupling.ts";
 
 // rows: { current_production_value, current_salary, division, is_talent }
 const ROWS = [

@@ -1,4 +1,4 @@
-import { computeWorstCaseCommitment } from "./auctionRules.js";
+import { computeWorstCaseCommitment } from "./auctionRules.ts";
 import {
   closeTransferListingsForRiders,
   expectMaybeSingle,

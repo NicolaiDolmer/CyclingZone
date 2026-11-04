@@ -22,3 +22,7 @@ test("#6912: v1/v2 complete stage-race outputs remain byte-identical", () => {
 test("#6912: v3 one-day hilly/mountain/cobbles/classic outputs remain byte-identical", () => {
   assert.deepEqual(computeFlatChase6912("otherOneDay"), expected.otherOneDay);
 });
+
+test("#6912: v3 flat/rolling/cobbles/classic outputs with the lead curve switched off remain byte-identical", () => {
+  assert.deepEqual(computeFlatChase6912("curveOffV3"), expected.curveOffV3);
+});

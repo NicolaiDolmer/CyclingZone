@@ -113,28 +113,41 @@ test('a red train stops the queue and names the culprit for CI and deploy failur
   assert.doesNotMatch(source, /gh pr revert|git revert|railway (?:up|redeploy|rollback)/);
 });
 
-test('deploy-verify: the queue gate is its own job, the cron proof runs after it and only alarms', () => {
+test('deploy-verify: the queue gate is its own job, the cron proof runs in its own workflow and only alarms', () => {
   const workflow = read('../.github/workflows/deploy-verify.yml');
   const release = jobBlock(workflow, 'release');
-  const cron = jobBlock(workflow, 'cron-proof');
   const checks = jobBlock(workflow, 'release-checks');
   const report = jobBlock(workflow, 'report');
   assert.match(release, /^ {4}name: Deploy live \+ smoke$/m);
   assert.ok(stepNames(release).includes('Smoke-test prod'));
   assert.ok(!stepNames(release).includes('Verify affected cron check-ins'), 'cron proof must not delay the release job');
-  assert.match(cron, /^ {4}needs: release$/m);
-  assert.ok(stepNames(cron).includes('Verify affected cron check-ins'));
+  // #7582 del 2: the release job only dispatches the proof; a failed dispatch never costs the release signal.
+  const start = release.slice(release.indexOf('- name: Start cron proof'), release.indexOf('- name: Comment release verified'));
+  assert.match(start, /continue-on-error: true/);
+  assert.match(start, /gh workflow run cron-proof\.yml/);
+  assert.match(release, /^ {6}actions: write$/m);
+  assert.doesNotMatch(workflow, /^ {2}cron-proof:$/m, 'the proof no longer keeps the Deploy verify run open');
   assert.match(checks, /^ {4}needs: release$/m);
-  assert.match(report, /^ {4}needs: \[release, cron-proof, release-checks\]$/m);
+  assert.match(report, /^ {4}needs: \[release, release-checks\]$/m);
   assert.match(report, /^ {4}if: \$\{\{ !cancelled\(\)/m);
   const alarm = report.slice(report.indexOf('- name: Alarm Discord ops'));
   // !cancelled(): a failed PR comment step must never suppress the alarm (Codex review).
-  assert.match(alarm, /if: \$\{\{ !cancelled\(\) && \(needs\.cron-proof\.result != 'success' \|\| needs\.release-checks\.result != 'success'\) \}\}/);
+  assert.match(alarm, /if: \$\{\{ !cancelled\(\) && \(needs\.release\.outputs\.cron_proof != 'success' \|\| needs\.release-checks\.result != 'success'\) \}\}/);
   assert.match(alarm, /DISCORD_OPS_WEBHOOK_URL: \$\{\{ secrets\.DISCORD_OPS_WEBHOOK_URL \}\}/);
   // The alarm never fails the run: a missing webhook or a failed POST only warns.
   assert.doesNotMatch(alarm, /exit 1/);
   // One deploy-verify run per SHA; a newer merge never cancels an older proof.
   assert.match(workflow, /^ {2}group: deploy-verify-\$\{\{ github\.event\.inputs\.sha \|\| github\.sha \}\}$/m);
+
+  const proofWorkflow = read('../.github/workflows/cron-proof.yml');
+  const proof = jobBlock(proofWorkflow, 'cron-proof');
+  assert.ok(stepNames(proof).includes('Verify affected cron check-ins'));
+  // No shared concurrency group: a rerun's proof (new READY boundary) never waits behind an old one.
+  assert.doesNotMatch(proofWorkflow, /^concurrency:/m);
+  const proofAlarm = proof.slice(proof.indexOf('- name: Alarm Discord ops'));
+  assert.match(proofAlarm, /if: \$\{\{ !cancelled\(\) && steps\.crons\.outcome != 'success' \}\}/);
+  assert.match(proofAlarm, /DISCORD_OPS_WEBHOOK_URL: \$\{\{ secrets\.DISCORD_OPS_WEBHOOK_URL \}\}/);
+  assert.doesNotMatch(proofAlarm, /exit 1/);
 });
 
 test('PR-CI keeps runners free: stale PR runs are cancelled and e2e shards run only on e2e-relevant changes', () => {
