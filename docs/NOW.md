@@ -9,7 +9,7 @@
 > **🎯 Next action (4/11 sent):** Næste session (DolmerPC, PC1 holder pause) følger [prompten på #7495](https://github.com/NicolaiDolmer/CyclingZone/issues/7495#issuecomment-6640382527): 1) **kun merges og til dørs**, indtil de åbne PR'er er nede (TS-kæden #7613-#7619, Codex' ops, bølgens 9 PR'er); 2) kl. 9 med ejeren: nøgler #7029 + Railway #7034 + RAM/CPU-grafer #7659 + ops-webhook; 3) dagens aftaler i MASTERPLAN (Udvikling 2.0 topprioritet, motor-"kør", torsdag #7652 + del B #7661).
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Ingen aktiv session. PC1 4/11 aften: tog 1-4 (#7655/#7657/#7660, #7648/#7647/#7642, #7612, #7673/#7665), #7236 tændt, Supabase retning A, tidsplan for 42 punkter, auto-toget installeret på PC1, bølge med 9 spor (alle har PR).
+> **🤖 Working agent:** Ingen aktiv session. PC1 4/11 aften: tog 1-4 (#7655/#7657/#7660, #7648/#7647/#7642, #7612, #7673/#7665), #7236 tændt, Supabase retning A, tidsplan for 42 punkter, auto-toget flyttes til DolmerPC (afinstalleret på PC1), bølge med 9 spor (alle har PR).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 

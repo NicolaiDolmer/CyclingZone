@@ -8,7 +8,7 @@
 
 ## Tidsplan (ejer 4/11 aften, 20 planlagte + 22 påbegyndte punkter gennemgået enkeltvist)
 
-**Ejer 4/11 sent: når dagens aftaler er ordnet, er der kun ét fokus: merges og til dørs, indtil de åbne PR'er er nede.** Auto-toget (#7657) kører hvert 20. min på PC1; lavrisiko = Codex + grøn CI.
+**Ejer 4/11 sent: når dagens aftaler er ordnet, er der kun ét fokus: merges og til dørs, indtil de åbne PR'er er nede.** Auto-toget (#7657) kører hvert 20. min på én maskine ad gangen (DolmerPC fra 5/11); lavrisiko = Codex + grøn CI.
 
 Fuld liste med datoer: [#7632](https://github.com/NicolaiDolmer/CyclingZone/issues/7632). "Done" først ved alle 8 krav; fredagskort til ejeren (nået, skredet, hvorfor). Kategorier 4/11: markedsføring (rytme torsdag/fredag + 10x-plan med automatisering starter denne uge); moms #4511 + bogføring næste uge; taktikfejl #7557/#7625/#7624 og træning #7637/#7559/#7558/#7584 denne uge; #7565 + #7581 næste uge; dashboard #7626 mockup fredag, byg næste uge; sortering #7537 næste uge; indstillinger #3984 resten af S5; sandhedsvagt #7643, realisme-gate #7588 og #7260-gennemgang denne uge; ops-listen (Codex) senest tirsdag 10/11. Ekstra denne uge: motor-kontakterne #6912/#7644/#7635/#7640 i ét "kør", motor-pakkens krav 8, Form og træthed 2.0 #6984, rutematch + assistent, secrets #7029.
 
