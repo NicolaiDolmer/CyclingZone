@@ -262,6 +262,13 @@ function cloneMembership(m) {
   };
 }
 
+/** #6350: et uheldsoffers solo-gruppe opstod ved uheldet, ikke ved første melding. */
+function startAtIncident(span, ordered) {
+  if (!INCIDENT_SOLO_ID.test(span.group_id)) return;
+  const crash = ordered.findLast((e) => e.type === "incident" && namedRiders(e.params).includes(span.rider_ids[0]) && placeKm(e) <= span.from_km);
+  if (crash) span.from_km = round2(placeKm(crash));
+}
+
 /**
  * Gruppen en hændelse danner på vejen og gruppen den kom fra (samme regler
  * som medlemskabet), eller null.
@@ -649,12 +656,8 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
       }
       const opened = trackSpans(event);
       applyMembership(m, event);
-      for (const span of opened) {
-        span.rider_ids = [...(m.groups.get(span.group_id) ?? [])].sort();
-        // #6350: et uheldsoffers solo-gruppe opstod ved uheldet, ikke ved første melding.
-        const crash = INCIDENT_SOLO_ID.test(span.group_id) ? ordered.findLast((e) => e.type === "incident" && e.params?.rider_id === span.rider_ids[0] && placeKm(e) <= span.from_km) : null;
-        if (crash) span.from_km = round2(placeKm(crash));
-      }
+      for (const span of opened) span.rider_ids = [...(m.groups.get(span.group_id) ?? [])].sort();
+      opened.forEach((span) => startAtIncident(span, ordered));
       if (event.params && str(p.group_id) && finite(p.exact_time) != null && event.type !== "incident") {
         const leader = leaderTimeAt(story, placeKm(event));
         if (leader != null) {
