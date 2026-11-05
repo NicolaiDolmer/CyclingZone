@@ -382,7 +382,7 @@ import {
 } from "../lib/economyConstants.js";
 import { incrementBalanceWithAudit } from "../lib/balanceRpc.js";
 import { calculateRiderMarketValue } from "../lib/marketUtils.js";
-import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "../lib/riderOwnershipAudit.js";
+import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "../lib/riderOwnershipAudit.ts";
 import {
   getPriceBandViolation,
   getSwapPriceBandViolation,

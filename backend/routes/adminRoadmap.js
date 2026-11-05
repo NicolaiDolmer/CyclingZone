@@ -2,7 +2,8 @@ import express from 'express';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATUSES = new Set(['active', 'planned', 'in_progress', 'shipped', 'archived']);
-const HORIZONS = new Set(['next', 'later']);
+// #7666: horisonterne spillerne ser paa Plan-fanen. 'next' er den gamle vaerdi og bevares.
+const HORIZONS = new Set(['this_week', 'next_week', 'next', 'this_season', 'next_season', 'y2027', 'later']);
 const PASS = (_req, _res, next) => next();
 
 export function createAdminRoadmapRouter({ supabase, requireAdmin, writeLimiter = PASS, captureExceptionFn = () => {} }) {

@@ -7,7 +7,7 @@
 > - Plan `docs/superpowers/plans/2026-06-20-ws1-fase3-stage-by-stage-race.md` (SSOT, alle Fase-0-beslutninger DECIDED).
 > - PR [#1574](https://github.com/NicolaiDolmer/CyclingZone/pull/1574) — MERGED (migration + scheduler + flag).
 > - Migration `database/2026-06-20-races-stage-progress.sql`.
-> - `backend/scripts/backfillRaceScheduledFor.js`, `backend/lib/stageScheduler.js`, `backend/lib/stageSchedulerFlag.js`, `backend/lib/autoPrizeFlag.js`, `backend/lib/raceEngineFlag.js`, `backend/lib/featureStage.js`.
+> - `backend/scripts/backfillRaceScheduledFor.js`, `backend/lib/stageScheduler.js`, `backend/lib/stageSchedulerFlag.ts`, `backend/lib/autoPrizeFlag.js`, `backend/lib/raceEngineFlag.js`, `backend/lib/featureStage.js`.
 > - Forever-gate §6.1: `docs/superpowers/specs/2026-06-19-forever-relaunch-readiness-design.md` (linje 84).
 
 ## 0. Hvad denne aktivering gør (kontekst)
@@ -32,7 +32,7 @@ Relevante keys (verificeret i flag-modulerne):
 
 | Key | Modul | Rolle |
 |-----|-------|-------|
-| `stage_scheduler_enabled` | `backend/lib/stageSchedulerFlag.js` | Tænder stage-scheduler-cron |
+| `stage_scheduler_enabled` | `backend/lib/stageSchedulerFlag.ts` | Tænder stage-scheduler-cron |
 | `auto_prize_enabled` | `backend/lib/autoPrizeFlag.js` | Tænder auto-prize-sweep |
 | `race_engine_v2_enabled` | `backend/lib/raceEngineFlag.js` | Race-motoren (ekstra lag scheduleren kræver) |
 

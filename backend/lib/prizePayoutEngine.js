@@ -7,8 +7,8 @@ import {
   FINANCE_REASON,
   FINANCE_RELATED_ENTITY,
 } from "./economyConstants.js";
-// #4148: rene måle-hjælpere (ingen adfærdsændring) — se finalizeInstrumentation.js.
-import { wrapSupabaseWithCallCounter, formatPhaseLogLine } from "./finalizeInstrumentation.js";
+// #4148: rene måle-hjælpere (ingen adfærdsændring) — se finalizeInstrumentation.ts.
+import { wrapSupabaseWithCallCounter, formatPhaseLogLine } from "./finalizeInstrumentation.ts";
 
 export async function getSeasonPrizePreview(seasonId, supabase) {
   const { data: races, error: racesError } = await supabase
