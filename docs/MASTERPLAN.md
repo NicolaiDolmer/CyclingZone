@@ -32,7 +32,7 @@ Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden f
 
 ## Loftet (ejer-rangeret 4/11)
 
-**Ejer 5/11: Forstå løbet #7716 går først, foran #6110.** Alt har en ægte årsag og kan forklares (#7714, #7715, #7725-#7730, #7754). **Træning som dagens oplevelse:** Træn nu med det samme (#7737) og pop-up (#3924) designes med spillerne; intet byggegodkendt.
+**Ejer 5/11: Forstå løbet #7716 går først, foran #6110.** Alt har en ægte årsag og kan forklares (#7714, #7715, #7725-#7730, #7754). **Træn nu (#7737) og pop-up (#3924) lander samlet med Udvikling 2.0 (ejer 5/11)**; design med spillerne, intet byggegodkendt.
 
 1. **Motor og løbsfilm sande:** #6350 tidsstempling (design), selektion #7645 (A først), nedkørsler #7644 (#7651), bjergudbrud #6912 (#7650, flad måles bagefter), realisme-gaten #7588 PR 4-6, #7260-listen. Plan: [RACE_ENGINE_PLAN](RACE_ENGINE_PLAN.md).
 2. **Taktik synlig og forståelig:** træthed pr. indstilling på taktiksiden #7638 og indsatskortet #5101 (mockup først), delt kaptajn #7003/#7239/#7326 (krav 8), #7266, spillerfejl #7624/#7557/#7625.
