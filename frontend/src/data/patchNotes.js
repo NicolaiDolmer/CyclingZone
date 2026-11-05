@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.405",
+    "date": "2026-11-05",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Roadmap",
+        "en": {
+          "title": "The Vote tab says what its numbers mean",
+          "body": "The Vote tab now shows how many ideas still need your answer, out of all ideas."
+        },
+        "da": {
+          "title": "Stem-fanen siger, hvad tallene betyder",
+          "body": "Stem-fanen viser nu, hvor mange idéer der mangler dit svar, ud af alle idéer."
+        },
+        "refs": [
+          7735
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.404",
     "date": "2026-11-05",
     "changes": [

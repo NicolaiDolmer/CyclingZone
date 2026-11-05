@@ -77,6 +77,7 @@
     "hint": "Tus valoraciones deciden qué pasa al plan",
     "areaLabel": "Área",
     "all": "Todas",
+    "unrated": "A {unrated} de {total} les falta tu respuesta",
     "forum": "¿Tienes una idea propia? Publícala en el foro"
   },
   "issues": {
