@@ -564,6 +564,17 @@ test("#7705: dine ryttere får den sande årsag, ukendt årsag står, og intet o
   assert.ok(loss.entries.every((e) => e.riderId !== "m0"), "på vinderens tid er der intet tidstab");
 });
 
+test("#7705: uden kendt hul i mål er tidstabet ikke vist, og et fald uden grund står som ukendt", () => {
+  const noGap = LOSS_RESULTS.map((row) => (row.rider_id === "a" ? { ...row, finish_time: null } : row));
+  assert.ok(lossOf(summitFinish(), noGap).entries.every((e) => e.riderId !== "a" && !(e.type === "drop" && e.riderIds.includes("a"))));
+  const noCause = summitFinish()
+    .filter((e) => e.type !== "all_out_cracked" && e.type !== "bad_day")
+    .map((e) => (e.type === "peloton_splits" ? ev(180, "peloton_splits", { ...e.params, cause: undefined }) : e));
+  const loss = lossOf(noCause);
+  assert.deepEqual(loss.entries.map((e) => e.type === "drop" && e.reason), ["unknown"], "stedet står stadig");
+  assert.equal(loss.unknown, "Empty, Ill, Lost", "faldet siger ikke hvorfor, og han efter feltet står med");
+});
+
 test("#7705: din rytter i feltet bag et udbrud har ikke tabt tid", () => {
   const results = [
     rr(1, "w", "Winner", "t-x", "+0:00"), rr(2, "p1", "Pack", "t-me", "+6:00"), rr(3, "p2", "Pack", "t-x", "+6:00"), rr(4, "p3", "Pack", "t-x", "+6:00"),

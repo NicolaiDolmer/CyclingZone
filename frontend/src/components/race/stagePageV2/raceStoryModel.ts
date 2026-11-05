@@ -578,17 +578,23 @@ const NO_OWN_LOSS: OwnTimeLoss = { entries: [], unknown: "" };
 export function ownTimeLoss(story: RaceStory, cast: Cast, narrative: StoryNarrativeContext | null): OwnTimeLoss {
   if (!narrative || !story.precise_times) return NO_OWN_LOSS;
   const rows = cast.finishers.map((f) => ({ rider_id: f.riderId, gap_s: f.rank === 1 ? 0 : parseGap(f.gap) }));
-  const lost = rows.filter((r) => cast.mine.has(r.rider_id) && r.gap_s !== 0).map((r) => r.rider_id);
+  const lost = rows.filter((r) => cast.mine.has(r.rider_id) && r.gap_s != null && r.gap_s > 0).map((r) => r.rider_id);
   if (!lost.length) return NO_OWN_LOSS;
   const events = narrative.events as readonly TimelineEvent[];
   const riderNameById = castNames(cast);
   const found = buildOwnTimeLoss(events, { ownRiderIds: lost, effortByRider: narrative.effortByRider as ReadonlyMap<string, string> | null | undefined })
     // En aarsag uden tekst kan ikke staa; rytteren taeller da som uforklaret.
     .filter((entry) => entry.type === "drop" || describeEvent(entry.event, { riderNameById }));
-  const explained = new Set(found.flatMap((entry) => (entry.type === "drop" ? entry.riderIds : [entry.riderId])));
+  // Et fald uden grund og uden din ordre siger hvor, ikke hvorfor.
+  const noReason = (entry: TimeLossEntry) => entry.type === "drop" && entry.reason === "unknown" && !entry.order && !entry.planTask;
+  const ridersOf = (entry: TimeLossEntry) => (entry.type === "drop" ? entry.riderIds : [entry.riderId]);
+  const explained = new Set(found.filter((entry) => !noReason(entry)).flatMap(ridersOf));
+  const unexplained = lost.filter((id) => !explained.has(id));
+  const fellWithoutReason = new Set(found.filter(noReason).flatMap(ridersOf));
+  const behindField = new Set(ridersBehindField(rows, unexplained));
   return {
     entries: lossEntriesWithFilmKm(events as readonly SpanTimelineEvent[], found, { timelineVersion: story.timeline_version }),
-    unknown: namesList(ridersBehindField(rows, lost.filter((id) => !explained.has(id))), cast, 3),
+    unknown: namesList(unexplained.filter((id) => fellWithoutReason.has(id) || behindField.has(id)), cast, 3),
   };
 }
 
