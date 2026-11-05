@@ -19,6 +19,7 @@ import { publicEstimateView } from "./potentialEstimate.js";
 import { DISPLAY_SEASONS, PEAK_AGE, projectTrack } from "./developmentProjection.js";
 import { buildVerdict, ratingFromAbilities } from "./scoutingReport.js";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
+import { bestRoleForAbilities } from "./riderBestRoleCache.js";
 import { fetchAllRowsChunkedIn } from "./supabasePagination.js";
 
 // Spec §3.4 + S18: egen ungdomsrytter får sit første skøn efter så mange afregnede
@@ -27,6 +28,9 @@ export const TRAININGS_NEEDED = 5;
 
 // Bevidst kun de visningsfelter publicEstimateView bruger.
 const ESTIMATE_COLUMNS = "rider_id, value, certainty, previous_value, previous_certainty, changed_at";
+
+// Kun de viste evner: ability_caps og hidden_potential på samme række skal ikke læses her.
+const ABILITY_COLUMNS = `rider_id, ${REGISTRY_ABILITY_KEYS.join(", ")}`;
 
 const UNSCOUTED = Object.freeze({ hidden: true, reason: "unscouted" });
 
@@ -63,18 +67,30 @@ async function loadTrainingDates(supabase, { teamId, riderIds }) {
   return datesByRider;
 }
 
+// Rytterens rating lige nu. riders.best_role_rating opdateres af værdikørslen, ikke af den
+// daglige træning, så den kan halte efter, og gulvet skal følge det spilleren ser nu.
+function currentRating(rider, abilities) {
+  const live = abilities
+    ? bestRoleForAbilities(abilities, { primaryType: rider.primary_type, secondaryType: rider.secondary_type }).best_role_rating
+    : null;
+  return live ?? rider.best_role_rating ?? null;
+}
+
 // Holdets skøn for en liste ryttere. Kun holdets egne rækker læses, så et andet holds
 // skøn aldrig kan nå svaret. Ukendte rytter-id'er er ikke med i resultatet.
 async function loadEstimateContext(supabase, { teamId, riderIds }) {
   const ids = [...new Set((riderIds ?? []).filter(Boolean))];
-  if (!ids.length) return { riders: new Map(), views: new Map() };
-  const [riderRows, estimateRows] = await Promise.all([
+  if (!ids.length) return { abilities: new Map(), ratings: new Map(), views: new Map() };
+  const [riderRows, estimateRows, abilityRows] = await Promise.all([
     fetchAllRowsChunkedIn(ids, (chunk) => supabase
-      .from("riders").select("id, team_id, is_academy, best_role_rating").in("id", chunk).order("id")),
+      .from("riders").select("id, team_id, is_academy, primary_type, secondary_type, best_role_rating").in("id", chunk).order("id")),
     fetchAllRowsChunkedIn(ids, (chunk) => supabase
       .from("rider_potential_estimates").select(ESTIMATE_COLUMNS).eq("team_id", teamId).in("rider_id", chunk).order("rider_id")),
+    fetchAllRowsChunkedIn(ids, (chunk) => supabase
+      .from("rider_derived_abilities").select(ABILITY_COLUMNS).in("rider_id", chunk).order("rider_id")),
   ]);
-  const riders = new Map(riderRows.map((rider) => [rider.id, rider]));
+  const abilities = new Map(abilityRows.map((row) => [row.rider_id, row]));
+  const ratings = new Map(riderRows.map((rider) => [rider.id, currentRating(rider, abilities.get(rider.id))]));
   const rows = new Map(estimateRows.map((row) => [row.rider_id, row]));
   const isLearningYouth = (rider) => rider.team_id === teamId && rider.is_academy === true;
   const dates = await loadTrainingDates(supabase, {
@@ -83,11 +99,11 @@ async function loadEstimateContext(supabase, { teamId, riderIds }) {
   });
   const views = new Map(riderRows.map((rider) => [rider.id, buildPotentialView({
     row: rows.get(rider.id),
-    currentRating: rider.best_role_rating,
+    currentRating: ratings.get(rider.id),
     learningYouth: isLearningYouth(rider),
     trainings: dates.get(rider.id)?.size ?? 0,
   })]));
-  return { riders, views };
+  return { abilities, ratings, views };
 }
 
 export async function loadPotentialViews(supabase, { teamId, riderIds }) {
@@ -111,9 +127,9 @@ function estimateVerdict({ view, age, own, level, maxLevel, rating }) {
 // GET /riders/:id/scouting-report. `level` er knappens niveau (egen rytter = maxLevel);
 // `looks` er de kig holdet faktisk har taget ("bygger på", spec §3.6).
 export async function buildScoutingReportFromView(supabase, { teamId, rider, own, level, maxLevel, looks, age, scout, generatedAt }) {
-  const { riders, views } = await loadEstimateContext(supabase, { teamId, riderIds: [rider.id] });
+  const { ratings, views } = await loadEstimateContext(supabase, { teamId, riderIds: [rider.id] });
   const potentialView = views.get(rider.id) ?? UNSCOUTED;
-  const rating = riders.get(rider.id)?.best_role_rating ?? null;
+  const rating = ratings.get(rider.id) ?? null;
   return {
     potentialView,
     level, maxLevel, own, looks,
@@ -130,17 +146,13 @@ export function buildEstimateLine({ now, value, age, seasons = DISPLAY_SEASONS }
   return projectTrack(now, value, age, seasons).map((point) => ({ season: point.season, value: Math.round(point.value) }));
 }
 
-// GET /riders/:id/development-projection. Evnerne hentes uden ability_caps, som
-// den gamle projektion byggede på: den må ikke kunne nå dette svar.
+// GET /riders/:id/development-projection.
 export async function buildProjectionFromView(supabase, { teamId, rider, own, level, maxLevel, age }) {
-  const [views, abilities] = await Promise.all([
-    loadPotentialViews(supabase, { teamId, riderIds: [rider.id] }),
-    supabase.from("rider_derived_abilities").select(REGISTRY_ABILITY_KEYS.join(", ")).eq("rider_id", rider.id).maybeSingle(),
-  ]);
-  if (abilities.error) throw new Error(abilities.error.message);
+  const { abilities, views } = await loadEstimateContext(supabase, { teamId, riderIds: [rider.id] });
   const potentialView = views.get(rider.id) ?? UNSCOUTED;
   const primaryKey = rider.primary_type ?? null;
-  const now = abilities.data && primaryKey ? ratingFromAbilities(abilities.data, primaryKey) : null;
+  const riderAbilities = abilities.get(rider.id);
+  const now = riderAbilities && primaryKey ? ratingFromAbilities(riderAbilities, primaryKey) : null;
   const canDraw = !potentialView.hidden && now != null && age != null;
   return {
     level, maxLevel, own,

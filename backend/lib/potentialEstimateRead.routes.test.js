@@ -71,6 +71,7 @@ function context(supabase, extra = {}) {
     supabase,
     router: {},
     requireAuth() {}, presencePulseLimiter() {},
+    Date: class extends Date { constructor(...args) { super(...(args.length ? args : ["2026-11-05T12:00:00Z"])); } },
     isPotentialEstimateDisplayEnabled,
     buildAcademyFromViews, buildEstimatesFromViews, buildProjectionFromView, buildScoutingReportFromView,
     SCOUTING_CONFIG: { maxLevel: 3 },
@@ -164,6 +165,7 @@ test("scouting-rapport tændt: et gemt skøn vinder, også uden kig i scout_acti
   assert.equal(out.potentialView.value, 74);
   assert.equal(out.looks, 0);
   assert.equal(out.scout.name, "Scout A");
+  assert.equal(out.generatedAt, "2026-11-05T12:00:00.000Z");
   assert.ok(!("hidden" in out) && !("types" in out) && !("stars" in out));
   assert.doesNotMatch(JSON.stringify(out), FORBIDDEN);
 });

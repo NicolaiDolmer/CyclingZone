@@ -4,6 +4,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 import {
   TRAININGS_NEEDED,
   buildAcademyFromViews,
@@ -34,6 +35,9 @@ const estimateRow = (over = {}) => ({
   write_reason: "new_knowledge",
   ...over,
 });
+
+// En rytter med samme tal i alle evner har den rating i alle roller.
+const abilitiesAt = (rating) => Object.fromEntries(REGISTRY_ABILITY_KEYS.map((key) => [key, rating]));
 
 function fakeSupabase(tables) {
   const reads = [];
@@ -79,7 +83,7 @@ const world = (over = {}) => fakeSupabase({
     { rider_id: "youth", team_id: TEAM, tick_date: "2026-11-02", season_id: "s", game_day: 3 },
     { rider_id: "youth", team_id: OTHER_TEAM, tick_date: "2026-10-01", season_id: "s", game_day: 0 },
   ],
-  rider_derived_abilities: [{ rider_id: "scouted", climbing: 50, ability_caps: { climbing: 99 }, hidden_potential: 80 }],
+  rider_derived_abilities: [{ rider_id: "scouted", ...abilitiesAt(50), ability_caps: { climbing: 99 }, hidden_potential: 80 }],
   ...over,
 });
 
@@ -136,6 +140,23 @@ test("loadPotentialViews: tæller kun træninger, når en ungdomsrytter mangler 
   const supabase = world();
   await loadPotentialViews(supabase, { teamId: TEAM, riderIds: ["scouted", "veteran"] });
   assert.ok(!supabase.reads.some((read) => read.table === "training_rider_ticks"));
+});
+
+test("loadPotentialViews: gulvet følger evnerne nu, ikke den cachede rating", async () => {
+  const supabase = world({ rider_derived_abilities: [{ rider_id: "scouted", ...abilitiesAt(80) }] });
+  const views = await loadPotentialViews(supabase, { teamId: TEAM, riderIds: ["scouted"] });
+  assert.equal(views.get("scouted").value, 80);
+});
+
+test("loadPotentialViews: uden evner falder gulvet tilbage til den cachede rating", async () => {
+  const supabase = world({ rider_derived_abilities: [] });
+  const views = await loadPotentialViews(supabase, { teamId: TEAM, riderIds: ["scouted"] });
+  assert.equal(views.get("scouted").value, 74);
+  const lifted = await loadPotentialViews(world({
+    rider_derived_abilities: [],
+    rider_potential_estimates: [estimateRow({ value: 55 })],
+  }), { teamId: TEAM, riderIds: ["scouted"] });
+  assert.equal(lifted.get("scouted").value, 60);
 });
 
 test("loadPotentialViews: tom liste slår intet op", async () => {
