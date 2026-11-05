@@ -319,6 +319,18 @@ test("#7701 buildReport: egne udgaaede staar sidst og overlever loftet paa 5 sae
   assert.ok(plain.every((r) => r.key !== "ownOut"), "uden udgaaede er referatet uaendret");
 });
 
+test("#7701 buildReport: mange aarsager skubber aldrig vinderen og din bedste ud (Codex)", () => {
+  const s = story();
+  const c = castFrom(RESULTS, ROLES, 3, "t-me");
+  const kinds = ["crash", "withdrawal", "time_limit", "abandoned"];
+  const ownOut = kinds.map((kind) => ({ key: "ownOut", params: { kind, names: "Hansen" } }));
+  const keys = buildReport(s, curateMoments(s, c), c, ownOut).map((r) => r.key);
+  assert.ok(keys.length <= 5, keys.join(","));
+  assert.ok(keys.some((k) => k.startsWith("winner") || k === "mineWon"), keys.join(","));
+  assert.ok(keys.some((k) => k.startsWith("mine")), keys.join(","));
+  assert.equal(keys.filter((k) => k === "ownOut").length, 3, keys.join(","));
+});
+
 test("castFrom: raekker uden placering (rank null) er aldrig vinderen (Codex P2)", () => {
   const withNull = [{ ...rr(0, "dnf", "Nobody", "t-z", ""), rank: null } as unknown as ResultRow, ...RESULTS];
   const c = castFrom(withNull, ROLES, 3, "t-me");

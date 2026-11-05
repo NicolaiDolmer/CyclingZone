@@ -652,12 +652,15 @@ export function buildReport(story: RaceStory, lines: StoryLine[], cast: Cast, ow
       mentioned.add(f.riderId);
     }
   }
-  // #7701: sidst, saa de ikke taeller med i fyld-reglerne og aldrig skaeres vaek.
-  out.push(...ownOut);
-  // Hoejst 5: angrebet ryger foerst, saa udfaldet.
+  // #7701: sidst, saa de ikke taeller med i fyld-reglerne. Hoejst 3 aarsager, saa
+  // der altid er plads til vinderen og din bedste; resten staar i "Your riders".
+  out.push(...ownOut.slice(0, 3));
+  // Hoejst 5: angrebet ryger foerst, saa udfaldet. Vinderen, din bedste og dine
+  // udgaaede bliver staaende (Codex #7701).
+  const stays = (s: ReportSentence) => s.key.startsWith("winner") || s.key.startsWith("mine") || s.key === "ownOut";
   while (out.length > 5) {
-    const i = out.findIndex((s) => s.key.startsWith("attack"));
-    out.splice(i >= 0 ? i : 1, 1);
+    const attack = out.findIndex((s) => s.key.startsWith("attack"));
+    out.splice(attack >= 0 ? attack : out.findIndex((s) => !stays(s)), 1);
   }
   return out;
 }
