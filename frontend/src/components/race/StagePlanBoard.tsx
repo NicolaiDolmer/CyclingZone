@@ -125,8 +125,10 @@ function PlanChain({ t, legs, route, dashed = false, compact = false }: { t: TFn
   );
 }
 
-function recapLine(t: TFn, route: StagePlanRoute, legs: StagePlanLeg[], item: StagePlanRecapItem, i: number): string {
-  if (item.status === "skipped") return t("stagePlan.recap.skipped");
+function recapLine(t: TFn, route: StagePlanRoute, legs: StagePlanLeg[], items: StagePlanRecapItem[], i: number): string {
+  const item = items[i];
+  // #7706: "han blev sat foer" kun naar han blev sat; ellers (ikke med i udbruddet, to skift paa samme sted) ikke naaet.
+  if (item.status === "skipped") return t(items.find((it) => (it.endLeg ?? -1) > i)?.endReason === "dropped" ? "stagePlan.recap.skipped" : "stagePlan.recap.notReached");
   if (item.status === "not_reached") return t("stagePlan.recap.notReached");
   const km = item.endKm == null ? null : Math.round(item.endKm);
   // #7368: leddet staar med sit eget skift-punkt (som spilleren satte det) og slutter ved
@@ -164,7 +166,7 @@ function PlanRecap({ t, legs, route, events, riderId, crossCheck = false }: { t:
       {items.map((item, i) => {
         const outcome = outcomes[i];
         const { Icon, tone } = OUTCOME_MARK[outcome];
-        const line = recapLine(t, route, legs, item, i);
+        const line = recapLine(t, route, legs, items, i);
         return (
           <li key={i} data-outcome={outcome} className="flex items-start gap-2 text-xs">
             <span className={`w-3.5 shrink-0 pt-0.5 ${tone}`}>
