@@ -128,17 +128,49 @@ async function loadScoutTier(supabase, teamId) {
   return (data ?? []).reduce((best, row) => Math.max(best, Number(row.tier) || 0), 0) || null;
 }
 
+// Rapport-rækker fra den gamle kalenderdags-sti, hvor rytteren faktisk havde et pas.
+// "rest" er skadet eller hvilende (samme dage får ingen rider_training_scores-række),
+// og en rapport under afvikling (report.pending) har ingen ryttere endnu. Ren funktion.
+export function legacyTrainingRiderDates(runs, riderIds) {
+  const wanted = new Set(riderIds);
+  return (runs ?? []).flatMap((run) => (run.report?.riders ?? [])
+    .filter((rider) => wanted.has(rider.rider_id) && !["rest", "unknown_pending"].includes(rider.status))
+    .map((rider) => ({ rider_id: rider.rider_id, tick_date: run.tick_date })));
+}
+
 // Afregnede datoer pr. egen rytter på DETTE hold (S18). Træning på en tidligere
 // periode på holdet tæller med: filteret er historikkens hold, ikke rytterens.
+//
+// Tre kilder, fordi træningen har skiftet sti, og ingen af dem dækker alt:
+//   training_rider_ticks   dato-afregningen
+//   rider_training_scores  løbsdags-stien før kvitteringerne (og kalenderdage siden scoren)
+//   training_day_runs      kalenderdage fra før scoren. Kun game_day NULL: de
+//                          løbsdags-nøglede rapporter er dækket af de to andre, og
+//                          kalenderdags-rækkerne er en lukket, lille mængde pr. hold.
+// Samme dato i flere kilder tæller én gang.
 async function loadTrainingDates(supabase, teamId, riderIds) {
-  const rows = await fetchAllRowsChunkedIn(riderIds, (chunk) => supabase
-    .from("training_rider_ticks")
-    .select("rider_id, tick_date, season_id, game_day")
-    .eq("team_id", teamId)
-    .in("rider_id", chunk)
-    .order("rider_id").order("season_id").order("game_day"));
+  const [ticks, scores, runs] = await Promise.all([
+    fetchAllRowsChunkedIn(riderIds, (chunk) => supabase
+      .from("training_rider_ticks")
+      .select("rider_id, tick_date, season_id, game_day")
+      .eq("team_id", teamId)
+      .in("rider_id", chunk)
+      .order("rider_id").order("season_id").order("game_day")),
+    fetchAllRowsChunkedIn(riderIds, (chunk) => supabase
+      .from("rider_training_scores")
+      .select("id, rider_id, tick_date")
+      .eq("team_id", teamId)
+      .in("rider_id", chunk)
+      .order("id")),
+    fetchAllRows(() => supabase
+      .from("training_day_runs")
+      .select("tick_date, report")
+      .eq("team_id", teamId)
+      .is("game_day", null)
+      .order("tick_date")),
+  ]);
   const dates = new Map();
-  for (const row of rows) {
+  for (const row of [...ticks, ...scores, ...legacyTrainingRiderDates(runs, riderIds)]) {
     if (!dates.has(row.rider_id)) dates.set(row.rider_id, new Set());
     dates.get(row.rider_id).add(row.tick_date);
   }

@@ -36,6 +36,8 @@ const client = ({ flag = "on", params = PARAMS, ...tables } = {}) => createFakeS
   team_facilities: [],
   scout_actions: [],
   training_rider_ticks: [],
+  rider_training_scores: [],
+  training_day_runs: [],
   ...tables,
 });
 
@@ -89,6 +91,50 @@ test("datoer tælles, ikke løbsdage, og kun på dette hold", async () => {
   const sb = client({
     riders: [{ id: "r1", team_id: "t1", talent_ceiling: 70, is_retired: false }],
     training_rider_ticks: [...sameDate, ...ticks("r1", "t9", 8)],
+  });
+  assert.equal((await run(sb)).written, 0);
+});
+
+// Rækker fra før dato-afregningen: rider_training_scores (løbsdags-stien) og
+// training_day_runs (kalenderdags-stien). 3 + 2 datoer er grænsen på 5.
+const legacyScores = (riderId, teamId, n) => Array.from({ length: n }, (_, i) => ({
+  id: `${riderId}-${teamId}-${i}`, rider_id: riderId, team_id: teamId, tick_date: `2026-09-${String(i + 15).padStart(2, "0")}`,
+}));
+const legacyRun = (teamId, tickDate, riders, gameDay = null) => ({ team_id: teamId, tick_date: tickDate, game_day: gameDay, report: { riders } });
+const trained = (riderId) => ({ rider_id: riderId, status: "normal" });
+
+test("træning fra de gamle stier tæller med", async () => {
+  const sb = client({
+    riders: [{ id: "r1", team_id: "t1", talent_ceiling: 70, is_retired: false }],
+    rider_training_scores: legacyScores("r1", "t1", 3),
+    training_day_runs: [legacyRun("t1", "2026-07-01", [trained("r1")]), legacyRun("t1", "2026-07-02", [trained("r1")])],
+  });
+  assert.equal((await run(sb)).written, 1);
+});
+
+// De to næste står med 4 sikre datoer, så én ekstra dato fra et lækket filter giver et skøn.
+test("samme dato i flere kilder tæller én gang", async () => {
+  const sb = client({
+    riders: [{ id: "r1", team_id: "t1", talent_ceiling: 70, is_retired: false }],
+    training_rider_ticks: ticks("r1", "t1", 4),
+    rider_training_scores: [{ id: "a", rider_id: "r1", team_id: "t1", tick_date: "2026-10-01" }],
+    training_day_runs: [legacyRun("t1", "2026-10-02", [trained("r1")])],
+  });
+  assert.equal((await run(sb)).written, 0);
+});
+
+test("gammel træning på et andet hold, hviledage og uafsluttede rapporter tæller ikke", async () => {
+  const sb = client({
+    riders: [{ id: "r1", team_id: "t1", talent_ceiling: 70, is_retired: false }],
+    training_rider_ticks: ticks("r1", "t1", 4),
+    rider_training_scores: legacyScores("r1", "t9", 8),
+    training_day_runs: [
+      legacyRun("t9", "2026-07-01", [trained("r1")]),
+      legacyRun("t1", "2026-07-02", [{ rider_id: "r1", status: "rest", injured: true }]),
+      legacyRun("t1", "2026-07-03", [trained("r2")]),
+      { team_id: "t1", tick_date: "2026-07-04", game_day: null, report: { pending: true, token: "x" } },
+      legacyRun("t1", "2026-10-20", [trained("r1")], 7),
+    ],
   });
   assert.equal((await run(sb)).written, 0);
 });

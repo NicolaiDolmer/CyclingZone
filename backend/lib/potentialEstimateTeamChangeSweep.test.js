@@ -37,6 +37,8 @@ const client = ({ flag = "on", params = PARAMS, ...tables } = {}) => createFakeS
   team_facilities: [],
   scout_actions: [],
   training_rider_ticks: [],
+  rider_training_scores: [],
+  training_day_runs: [],
   ...tables,
 });
 
