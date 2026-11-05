@@ -13,7 +13,9 @@ import {
 } from "./stagePageV2Model.ts";
 import StageProfileV2, { GradientLegend } from "./StageProfileV2.tsx";
 import ClimbCard from "./ClimbCard.tsx";
-import YourDayCard, { type CareerEvent } from "./YourDayCard.tsx";
+import YourDayCard, { type CareerEvent, type RowWhy } from "./YourDayCard.tsx";
+import { riderWhy } from "../../../lib/riderWhyModel.ts"; // #7717
+import { useRiderWhyEnabled } from "../../../lib/riderWhyFlag.ts"; // #7717
 import RaceStoryCard from "./RaceStoryCard.tsx";
 import { castFrom, ownOutSentences, type RaceStory, type StoryNarrativeContext } from "./raceStoryModel.ts";
 import { stageWeather, type StageWeather } from "./stageWeather.ts";
@@ -112,11 +114,13 @@ export interface StageTabV2Props {
   /** #6570 spor 2: loebshistorien fra loebsloggen; null = ingen (nuvaerende visning). */
   story?: RaceStory | null;
   narrative?: StoryNarrativeContext | null;
+  /** #7717: loebshistorien hentes stadig, saa Hvorfor? ikke siger "ikke kendt" for tidligt. */
+  storyLoading?: boolean;
 }
 
 export default function StageTabV2({
   stageNumber, stagesCompleted, isStageRace, phase, profile, results, stagePointRows, profileByStage = {}, stageLoaded, stageErrorSlot, myTeamId,
-  stageRoles, careerEvents, dnfRows = [], tacticsAction, onOpenStandings, emptyState, story = null, narrative = null,
+  stageRoles, careerEvents, dnfRows = [], tacticsAction, onOpenStandings, emptyState, story = null, narrative = null, storyLoading = false,
 }: StageTabV2Props) {
   const { t } = useTranslation("races");
   const [selectedClimb, setSelectedClimb] = useState<number>(() => Math.max(0, sortedClimbs(profile).length - 1));
@@ -133,6 +137,12 @@ export default function StageTabV2({
   const cast = useMemo(() => castFrom(results, riders, stageNumber, myTeamId), [results, riders, stageNumber, myTeamId]);
   const ownOut = useMemo(() => ownOutSentences(dnfRows, myTeamId, cast), [dnfRows, myTeamId, cast]);
   const weather = stageWeather(profile, phase, story);
+  const whyEnabled = useRiderWhyEnabled();
+  const why = useMemo<RowWhy | null>(() => (whyEnabled ? {
+    loading: storyLoading,
+    // En ikke-starter har intet loeb at forklare; raekken siger allerede hvorfor.
+    forRow: (r) => (r.status === "dns" ? null : riderWhy({ riderId: r.riderId, rank: r.rank, status: r.status, reasonKey: r.reasonKey, events: narrative?.events, story, climbs })),
+  } : null), [whyEnabled, storyLoading, narrative, story, climbs]);
 
   if (phase === "after") {
     return (
@@ -148,6 +158,7 @@ export default function StageTabV2({
             dnfRows={dnfRows}
             primaryAction={tacticsAction}
             onOpenStandings={onOpenStandings}
+            why={why}
           />
         )}
         {story ? (

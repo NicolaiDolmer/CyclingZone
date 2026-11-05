@@ -83,7 +83,7 @@ export default function StagePageV2(props: StagePageV2Props) {
   const phase = stagePhase(selectedStage, stagesCompleted);
   // #6570 spor 2 (+ #6512 endagsloeb): loebshistorien for en koert etape. 404 =
   // ingen tidslinje = den nuvaerende visning, uaendret.
-  const { timeline } = useStageTimeline(phase === "after" && activeTab === "stage" ? raceId : null, selectedStage, { story: true });
+  const { timeline, loading: storyLoading } = useStageTimeline(phase === "after" && activeTab === "stage" ? raceId : null, selectedStage, { story: true });
   const story = useMemo(() => asStory((timeline as { story?: unknown } | null)?.story), [timeline]);
   // #6299 (b): egne rytteres laaste ordre paa en koert v4-etape.
   const ranTimeline = timeline as { timeline_version?: number; created_at?: string | null } | null;
@@ -178,6 +178,7 @@ export default function StagePageV2(props: StagePageV2Props) {
           emptyState={emptyStageSlot}
           story={story}
           narrative={narrative}
+          storyLoading={storyLoading}
         />
       )}
       {activeTab === "stage" && phase === "after" && (ranTimeline?.timeline_version ?? 1) >= 2 && (
