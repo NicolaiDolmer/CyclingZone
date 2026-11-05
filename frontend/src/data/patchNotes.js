@@ -1,5 +1,173 @@
 export const PATCHES = [
   {
+    "version": "7.401",
+    "date": "2026-11-05",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "The roadmap shows when things come",
+          "body": "The Plan tab is now grouped by when I expect to deliver: this week, next week, this season, next season, 2027 and later. Items I am building right now are marked In progress."
+        },
+        "da": {
+          "title": "Roadmappen viser, hvornår ting kommer",
+          "body": "Plan-fanen er nu grupperet efter, hvornår jeg regner med at levere: denne uge, næste uge, denne sæson, næste sæson, 2027 og senere. Det, jeg bygger lige nu, er mærket I gang."
+        },
+        "refs": [
+          7666,
+          6923
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Delivered items link to their patch note",
+          "body": "On the Done tab, Delivered in the last 7 days is at the top. Open an item to read its patch note without leaving the roadmap."
+        },
+        "da": {
+          "title": "Leverede punkter linker til deres patch note",
+          "body": "På Færdigt-fanen står Leveret de sidste 7 dage øverst. Åbn et punkt for at læse dens patch note uden at forlade roadmappen."
+        },
+        "refs": [
+          7666,
+          6923
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Known issues show how far a fix has come",
+          "body": "Each known issue now has a timeline: reported, confirmed, being fixed, fixed. The date is shown at each step I have reached."
+        },
+        "da": {
+          "title": "Kendte fejl viser, hvor langt en rettelse er",
+          "body": "Hver kendt fejl har nu en tidslinje: meldt, bekræftet, rettes nu, rettet. Datoen står ved hvert trin, jeg har nået."
+        },
+        "refs": [
+          7666,
+          6923
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Search the whole roadmap",
+          "body": "A search box on the roadmap finds items across all five tabs, in English or Danish. A hit shows which tab it sits on, and one tap opens that tab."
+        },
+        "da": {
+          "title": "Søg i hele roadmappen",
+          "body": "Et søgefelt på roadmappen finder punkter på tværs af alle fem faner, på engelsk eller dansk. Et hit viser, hvilken fane det står på, og et tryk åbner fanen."
+        },
+        "refs": [
+          7666,
+          6203
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Planning",
+        "en": {
+          "title": "Copy to stage no longer does nothing",
+          "body": "Copy to stage could silently do nothing when the source or target stage was missing from your draft. It now copies and creates the target stage. I could not reproduce your junior and U23 report, so tell me if it still fails."
+        },
+        "da": {
+          "title": "Kopiér til etape gør ikke længere ingenting",
+          "body": "Kopiér til etape kunne lydløst gøre ingenting, når kilde- eller måletapen manglede i din kladde. Nu kopierer den og opretter måletapen. Jeg kunne ikke gentage din rapport fra junior og U23, så sig til, hvis det stadig fejler."
+        },
+        "refs": [
+          7624,
+          7680
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Planning",
+        "en": {
+          "title": "The stage plan only mentions a descent when the road falls",
+          "body": "On a stage with a short descent and then flat road to the line, the plan no longer says the last kilometres start on the descent. It says so only when the road is still falling there."
+        },
+        "da": {
+          "title": "Etapeplanen nævner kun nedkørsel, når vejen falder",
+          "body": "På en etape med en kort nedkørsel og derefter flad vej til mål siger planen ikke længere, at de sidste kilometer starter på nedkørslen. Den siger det kun, når vejen stadig falder dér."
+        },
+        "refs": [
+          7625,
+          7679
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Scouting",
+        "en": {
+          "title": "A scouting message never promises too many riders",
+          "body": "If I cannot check which riders you can see when a mission finishes, the message now just says the mission is ready, instead of a number that can be too high. The report is unchanged."
+        },
+        "da": {
+          "title": "En scoutbesked lover aldrig for mange ryttere",
+          "body": "Hvis jeg ikke kan tjekke, hvilke ryttere du kan se, når en mission er færdig, siger beskeden nu bare, at missionen er klar, i stedet for et tal, der kan være for højt. Rapporten er uændret."
+        },
+        "refs": [
+          6138,
+          7602
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Dashboard",
+        "en": {
+          "title": "The rider ranking no longer fails",
+          "body": "The rider ranking on the dashboard could fail to load. If part of the lookup breaks, it now still shows points, but without the win badges until it recovers."
+        },
+        "da": {
+          "title": "Rytterranglisten fejler ikke længere",
+          "body": "Rytterranglisten på dashboardet kunne fejle ved indlæsning. Hvis en del af opslaget går i stykker, viser den nu stadig point, men uden sejrsmærker, til det virker igen."
+        },
+        "refs": [
+          7676,
+          7690
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Fewer short error messages",
+          "body": "Short outages on my side could show up as an error for a moment. The game now tries a lookup again before it shows you one."
+        },
+        "da": {
+          "title": "Færre kortvarige fejlbeskeder",
+          "body": "Korte udfald hos mig kunne give en fejl et øjeblik. Spillet prøver nu et opslag igen, før det viser dig en."
+        },
+        "refs": [
+          7675,
+          7691
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.400",
     "date": "2026-11-05",
     "changes": [
