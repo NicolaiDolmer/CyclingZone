@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
-import { engineCounts, type RoadmapItem } from "../../lib/roadmapModel.ts";
+import { engineCounts, roadmapRowId, type RoadmapItem } from "../../lib/roadmapModel.ts";
 import { isValidScore } from "../../lib/roadmapVoting.js";
 import { Button, EmptyState, Section, SectionHeader, Segmented } from "./roadmapUi.ts";
 import ScoreScale from "./ScoreScale.tsx";
@@ -101,7 +101,7 @@ export default function VoteTab(props: VoteTabProps) {
               // Trin 2 folder ud, når "Good idea?" er besvaret (også fra en gemt stemme).
               const showImportance = isValidScore(draft.idea) || isValidScore(draft.importance);
               return (
-                <li key={item.id} className={`${ROW} flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4`}>
+                <li key={item.id} id={roadmapRowId(item.id)} className={`${ROW} flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4`}>
                   <div className="flex-1 min-w-0">
                     <RowTitle isNew={props.isNew(item)} newLabel={t("labels.new")}>{localTitle(item, i18n.language)}</RowTitle>
                     <RowMeta>{areaTitle(t, item.engine)}</RowMeta>

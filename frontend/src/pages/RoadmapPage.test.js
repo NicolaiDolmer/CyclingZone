@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "RoadmapPage.jsx"), "utf8");
+const tabSource = (name) => readFileSync(join(__dirname, "..", "components", "roadmap", `${name}.tsx`), "utf8");
 
 test("RoadmapPage bevarer privacy-fix: egne stemmer + votesByItemId-lag (#1599)", () => {
   assert.match(
@@ -90,6 +91,46 @@ test("RoadmapPage nulstiller lastSeen ved besøg, også med kendte fejl i regnes
   assert.match(source, /writeLastSeenRoadmap\(latestRoadmapCreatedAt\(all\)\)/);
 });
 
-test("RoadmapPage's item-query bruger den delte kolonneliste (#5673)", () => {
-  assert.match(source, /\.select\(ROADMAP_ITEM_COLUMNS\)/);
+test("RoadmapPage's item-query bruger den delte kolonneliste + issue_ref (#5673, #7666)", () => {
+  assert.match(source, /const ITEM_COLUMNS = `\$\{ROADMAP_ITEM_COLUMNS\}, issue_ref`/);
+  assert.match(source, /from\("roadmap_items"\)\.select\(ITEM_COLUMNS\)/);
+});
+
+// #7666: de nye tidslinje-kolonner findes først når migrationen er applied.
+test("RoadmapPage falder tilbage til kendte fejl uden tidslinje-kolonner (#7666)", () => {
+  assert.match(source, /KNOWN_ISSUE_COLUMNS = `\$\{KNOWN_ISSUE_BASE_COLUMNS\}, confirmed_at, fixing_at`/);
+  assert.match(source, /result\.error \? await query\(KNOWN_ISSUE_BASE_COLUMNS\) : result/);
+});
+
+test("RoadmapPage henter patch notes først når Done åbnes (#7666)", () => {
+  assert.match(source, /if \(tab !== "done" \|\| patchIndex\) return;/);
+  assert.match(source, /patchNotesByIssue\(data\)/);
+});
+
+test("RoadmapPage søger på tværs af faner og gemmer fanerne mens der søges (#6203)", () => {
+  assert.match(source, /searchRoadmap\(query, items, issues\)/);
+  assert.match(source, /<div className=\{searching \? "hidden" : undefined\}>/);
+  // Codex-fund: et bedømt punkt må ikke være filtreret væk, når et hit åbnes.
+  assert.match(source, /if \(hit\.where === "planned" \|\| hit\.where === "idea"\) markRated\(hit\.id\);/);
+});
+
+// Codex-fund på #7668: repoet har ingen DOM-renderer i node --test, så
+// ledningerne vagtes her; selve udregningen testes i roadmapModel.test.ts.
+test("Et søgehit når frem til punktet: id til fanen, fold åben, scroll (#7668)", () => {
+  assert.match(source, /setReveal\(\(prev\) => \(\{ id: hit\.id, tab: hit\.tab, nonce: \(prev\?\.nonce \?\? 0\) \+ 1 \}\)\)/);
+  assert.match(source, /getElementById\(roadmapRowId\(reveal\.id\)\)\?\.scrollIntoView\(\{ block: "center" \}\)/);
+  // Ny key pr. tryk: områdefilteret nulstilles, og folden åbner også anden gang.
+  for (const [tag, panel] of [["PlanTab", "plan"], ["VoteTab", "vote"], ["KnownIssuesTab", "issues"], ["DoneTab", "done"]]) {
+    assert.match(source, new RegExp(`<${tag}\\s+key=\\{revealKey\\("${panel}"\\)\\}`), `${tag} mangler revealKey`);
+  }
+  for (const [tag, panel] of [["PlanTab", "plan"], ["KnownIssuesTab", "issues"], ["DoneTab", "done"]]) {
+    assert.match(source, new RegExp(`<${tag}[^>]*?revealId=\\{revealId\\("${panel}"\\)\\}`), `${tag} får ikke id'et`);
+  }
+
+  assert.match(tabSource("PlanTab"), /defaultOpen=\{holdsItem\(g\.items, props\.revealId\)\}/);
+  assert.match(tabSource("KnownIssuesTab"), /defaultOpen=\{holdsItem\(checkingFolded, props\.revealId\)\}/);
+  assert.match(tabSource("DoneTab"), /useState\(\(\) => doneLimitFor\(splitRecentDone\(entries, now \?\? new Date\(\)\)\.earlier, revealId\)\)/);
+  for (const tab of ["PlanTab", "BetaTab", "VoteTab", "KnownIssuesTab", "DoneTab"]) {
+    assert.match(tabSource(tab), /<li key=[^>]*id=\{roadmapRowId\(/, `${tab}: rækken mangler sit id`);
+  }
 });
