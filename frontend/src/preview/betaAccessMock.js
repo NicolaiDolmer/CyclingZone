@@ -8,7 +8,7 @@
 // svarene fra /api/me/beta-access* og /api/admin/beta-* + /api/admin/feature-flags,
 // og (#4948) spiller-svaret GET /api/feature-flags, afledt af SAMME tavle.
 
-import { previewPotentialEstimateEnabled } from "./potentialEstimateMock.js";
+import { previewPotentialEstimateEnabled } from "./potentialEstimateMock.ts";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {

@@ -9,7 +9,7 @@ import { parseTable, parseRpc, rpcResponse, wantsObject, restRows, restObject, a
 import { clubMockRoute } from "./clubMock.js";
 import { plannerMockRoute } from "./plannerMock.js";
 import { scoutingMockRoute } from "./scoutingMock.js";
-import { previewEstimate, previewPotentialEstimateEnabled } from "./potentialEstimateMock.js";
+import { previewEstimate, previewPotentialEstimateEnabled } from "./potentialEstimateMock.ts";
 import { contractsBatchMockRoute } from "./contractsBatchMock.ts"; // #6855
 import { boardMeetingMockRoute } from "./boardMeetingMock.js";
 import { betaAccessMockRoute } from "./betaAccessMock.js"; // #5259

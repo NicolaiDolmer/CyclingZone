@@ -185,6 +185,18 @@ function EstimateCopyGate({ children }) {
   );
 }
 
+// Egen komponent, så teksten først slås op, når gaten har hentet namespacet.
+function LearningCard({ view, t }) {
+  return (
+    <SectionCard>
+      <div data-testid="scouting-estimate-learning">
+        <PotentialEstimate view={view} size="report" />
+        <p className="text-cz-3 text-3xs mt-2 mb-0">{t("scouting:potentialEstimate.learningBody")}</p>
+      </div>
+    </SectionCard>
+  );
+}
+
 // #6110 Udvikling 2.0 (spec §3.6): skønnet er hele kortet. Stort tal + ord, måleren,
 // hvad skønnet bygger på, og en sekundær scout igen-knap. Intet interval pr. type.
 function EstimateCard({ view, report, canLookAgain, scoutAction, t }) {
@@ -394,12 +406,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
   if (estimateView?.hidden && estimateView.reason === "learning") {
     return (
       <EstimateCopyGate>
-        <SectionCard>
-          <div data-testid="scouting-estimate-learning">
-            <PotentialEstimate view={estimateView} size="report" />
-            <p className="text-cz-3 text-3xs mt-2 mb-0">{t("scouting:potentialEstimate.learningBody")}</p>
-          </div>
-        </SectionCard>
+        <LearningCard view={estimateView} t={t} />
       </EstimateCopyGate>
     );
   }

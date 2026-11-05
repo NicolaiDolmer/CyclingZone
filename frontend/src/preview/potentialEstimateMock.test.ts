@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { previewEstimate, previewPotentialEstimateEnabled, previewProjection, previewReport } from "./potentialEstimateMock.js";
+import { previewEstimate, previewPotentialEstimateEnabled, previewProjection, previewReport } from "./potentialEstimateMock.ts";
 import { SEED_PROJECTION, SEED_SCOUTING_REPORT, SEED_SCOUT_ESTIMATES } from "./seedData.js";
 import { potentialViewOf } from "../lib/potentialEstimateDisplay.ts";
 
