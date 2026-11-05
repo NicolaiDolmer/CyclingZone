@@ -155,7 +155,7 @@ function failingFor(sb, teamId) {
   sb.from = (table) => {
     const api = from(table);
     if (table !== POTENTIAL_ESTIMATES_TABLE) return api;
-    return { ...api, upsert: (rows, opts) => (rows[0].team_id === teamId ? Promise.resolve({ error: { message: "boom" } }) : api.upsert(rows, opts)) };
+    return { ...api, upsert: (rows, opts) => (rows[0].team_id === teamId ? { select: async () => ({ error: { message: "boom" } }) } : api.upsert(rows, opts)) };
   };
   return () => { sb.from = from; };
 }

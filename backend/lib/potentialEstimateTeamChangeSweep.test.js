@@ -164,7 +164,7 @@ test("Ã©t hold der fejler, stopper ikke de andre, og tick'et samler fejlen til Ã
   sb.from = (table) => {
     const api = from(table);
     if (table !== POTENTIAL_ESTIMATES_TABLE) return api;
-    return { ...api, upsert: (rows, opts) => (rows[0].team_id === "t1" ? Promise.resolve({ error: { message: "boom" } }) : api.upsert(rows, opts)) };
+    return { ...api, upsert: (rows, opts) => (rows[0].team_id === "t1" ? { select: async () => ({ error: { message: "boom" } }) } : api.upsert(rows, opts)) };
   };
   const captured = [];
   const original = { error: console.error, log: console.log };

@@ -83,7 +83,7 @@ async function runTargetBackstopSweep({ supabase, now, notify }) {
 
     for (const assignment of assignments) {
       try {
-        await completeTargetAssignment({ supabase, assignment, notify });
+        await completeTargetAssignment({ supabase, assignment, notify, now });
         swept += 1;
       } catch (err) {
         // best-effort pr. assignment: fejlen tælles i `failed`, som runScoutSweepCron

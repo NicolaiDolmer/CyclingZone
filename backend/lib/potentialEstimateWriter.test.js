@@ -8,9 +8,9 @@ import { knowledgeLevel, planEstimateWrite } from "./potentialEstimate.js";
 import { PRIVATE_CONFIG_KEYS, privateConfigHash, validatePrivateConfigValue } from "./privateConfig.ts";
 import {
   POTENTIAL_ESTIMATE_PARAMS_KEY, POTENTIAL_ESTIMATES_TABLE, loadEstimateTeamIds, loadEstimateWriteConfig,
-  planTeamEstimates, recordScoutLooks, scoutKnowledgeForWrite,
+  planTeamEstimates, recordScoutLooks, scoutKnowledgeForWrite, writeTeamEstimates,
 } from "./potentialEstimateWriter.js";
-import { completeTargetAssignment } from "./scoutTargetMaturation.js";
+import { completeTargetAssignment, lazyCompleteDueTargetAssignments } from "./scoutTargetMaturation.js";
 import { completeDueMissionAssignments } from "./scoutMissionMaturation.js";
 import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 
@@ -229,14 +229,14 @@ test("kig med flaget slukket læser ingen rytter og skriver intet", async () => 
   const tables = [];
   const from = sb.from;
   sb.from = (table) => { tables.push(table); return from(table); };
-  assert.deepEqual(await recordScoutLooks({ supabase: sb, teamId: "t1", riderIds: ["r1"] }), { skipped: "flag_off" });
+  assert.deepEqual(await recordScoutLooks({ supabase: sb, teamId: "t1", riderIds: ["r1"], now: new Date(NOW) }), { skipped: "flag_off" });
   assert.deepEqual([...new Set(tables)], ["app_config"]);
   assert.equal(sb.state[POTENTIAL_ESTIMATES_TABLE].length, 0);
 });
 
 test("kig uden kalibrering skriver intet", async () => {
   const sb = client({ ...lookState(), params: null });
-  assert.deepEqual(await recordScoutLooks({ supabase: sb, teamId: "t1", riderIds: ["r1"] }), { skipped: "params_missing" });
+  assert.deepEqual(await recordScoutLooks({ supabase: sb, teamId: "t1", riderIds: ["r1"], now: new Date(NOW) }), { skipped: "params_missing" });
   assert.equal(sb.state[POTENTIAL_ESTIMATES_TABLE].length, 0);
 });
 
@@ -257,7 +257,7 @@ test("kig på rytter uden talent_ceiling skriver intet", async () => {
   const state = lookState();
   state.riders[0].talent_ceiling = null;
   const sb = client(state);
-  await recordScoutLooks({ supabase: sb, teamId: "t1", riderIds: ["r1"] });
+  await recordScoutLooks({ supabase: sb, teamId: "t1", riderIds: ["r1"], now: new Date(NOW) });
   assert.equal(sb.state[POTENTIAL_ESTIMATES_TABLE].length, 0);
 });
 
@@ -265,7 +265,7 @@ test("pensioneret rytter skrives ikke", async () => {
   const state = lookState();
   state.riders[0].is_retired = true;
   const sb = client(state);
-  await recordScoutLooks({ supabase: sb, teamId: "t1", riderIds: ["r1"] });
+  await recordScoutLooks({ supabase: sb, teamId: "t1", riderIds: ["r1"], now: new Date(NOW) });
   assert.equal(sb.state[POTENTIAL_ESTIMATES_TABLE].length, 0);
 });
 
@@ -278,18 +278,101 @@ test("en fejl i skrivningen kaster aldrig: kigget er allerede betalt", async () 
   const original = console.error;
   console.error = () => {};
   try {
-    assert.deepEqual(await recordScoutLooks({ supabase: sb, teamId: "t1", riderIds: ["r1"] }), { failed: true });
+    assert.deepEqual(await recordScoutLooks({ supabase: sb, teamId: "t1", riderIds: ["r1"], now: new Date(NOW) }), { failed: true });
   } finally {
     console.error = original;
   }
 });
 
+// ── To skrivninger om samme par ────────────────────────────────────────────
+
+const CONFIG = { params: PARAMS, paramsVersion: "v1" };
+const FOREIGN_RIDER = { id: "r1", team_id: "t2", talent_ceiling: 70, is_retired: false };
+const storedRow = (knowledgeKey, overrides = {}) => ({
+  rider_id: "r1", team_id: "t1", value: 66, certainty: "unsure", uncertainty: 5.6, knowledge_key: knowledgeKey,
+  ceiling_at_write: 70, params_version: "v1", write_reason: "new_knowledge",
+  previous_value: null, previous_certainty: null, changed_at: null, computed_at: "2026-11-01T10:00:00.000Z", ...overrides,
+});
+
+// Lader en anden skrivning lande lige før denne kørsels første skrivning.
+function beforeFirstWrite(sb, action, otherWrite) {
+  const from = sb.from;
+  let done = false;
+  sb.from = (table) => {
+    const api = from(table);
+    if (table !== POTENTIAL_ESTIMATES_TABLE) return api;
+    return { ...api, [action]: (...args) => {
+      if (!done) { done = true; otherWrite(); }
+      return api[action](...args);
+    } };
+  };
+}
+
+const twoLooks = () => [{ id: "a1", team_id: "t1", rider_id: "r1" }, { id: "a2", team_id: "t1", rider_id: "r1" }];
+const writeLook = (sb) => writeTeamEstimates({
+  supabase: sb, teamId: "t1", riders: [FOREIGN_RIDER], trigger: "new_knowledge", config: CONFIG, now: new Date(NOW),
+});
+
+test("en stærkere viden, der lander undervejs, overskrives ikke", async () => {
+  const sb = client({ ...lookState(), scout_actions: twoLooks(), [POTENTIAL_ESTIMATES_TABLE]: [storedRow("s1t4")] });
+  beforeFirstWrite(sb, "update", () => Object.assign(sb.state[POTENTIAL_ESTIMATES_TABLE][0], { knowledge_key: "s3t4", uncertainty: 2.1, value: 71 }));
+  const counts = await writeLook(sb);
+  const [row] = sb.state[POTENTIAL_ESTIMATES_TABLE];
+  assert.equal(row.knowledge_key, "s3t4");
+  assert.equal(row.value, 71);
+  assert.equal(row.previous_value, null);
+  assert.equal(counts.written, 0);
+  assert.equal(counts.kept, 1);
+});
+
+test("et kig, der taber kapløbet, læses igen og skrives oven på den nye række", async () => {
+  const sb = client({ ...lookState(), scout_actions: twoLooks(), [POTENTIAL_ESTIMATES_TABLE]: [storedRow("s1t4")] });
+  beforeFirstWrite(sb, "update", () => Object.assign(sb.state[POTENTIAL_ESTIMATES_TABLE][0], { ceiling_at_write: 69 }));
+  const counts = await writeLook(sb);
+  const [row] = sb.state[POTENTIAL_ESTIMATES_TABLE];
+  assert.equal(row.knowledge_key, "s2t4");
+  assert.equal(row.ceiling_at_write, 70);
+  assert.equal(counts.written, 1);
+});
+
+test("to første skrivninger: den første række står, og taberen læser den igen", async () => {
+  const sb = client(lookState());
+  beforeFirstWrite(sb, "upsert", () => sb.state[POTENTIAL_ESTIMATES_TABLE].push(storedRow("s2t4", { uncertainty: 3.5 })));
+  const counts = await writeLook(sb);
+  assert.equal(sb.state[POTENTIAL_ESTIMATES_TABLE].length, 1);
+  assert.equal(sb.state[POTENTIAL_ESTIMATES_TABLE][0].knowledge_key, "s2t4");
+  assert.equal(counts.written, 0);
+  assert.equal(counts.kept, 1);
+});
+
 // ── De tre steder der indsætter scout_actions ──────────────────────────────
+
+test("target: lazy-stien skriver skønnet med det injicerede ur", async () => {
+  const sb = client({
+    ...lookState(),
+    scout_actions: [],
+    scout_assignments: [{
+      id: "as1", team_id: "t1", rider_id: "r1", kind: "target", status: "active", target_level: 1, season_id: null,
+      created_at: "2026-11-01T00:00:00.000Z",
+    }],
+  });
+  const result = await lazyCompleteDueTargetAssignments({ supabase: sb, teamId: "t1", now: new Date(NOW), notify: async () => {} });
+  assert.equal(result.completed, 1);
+  assert.equal(sb.state[POTENTIAL_ESTIMATES_TABLE][0].computed_at, NOW);
+});
+
+test("target: sweep-stien skriver skønnet med det injicerede ur", async () => {
+  const sb = client({ ...lookState(), scout_actions: [], scout_assignments: [{ id: "as1", status: "active" }] });
+  const assignment = { id: "as1", team_id: "t1", rider_id: "r1", target_level: 1, season_id: null };
+  await completeTargetAssignment({ supabase: sb, assignment, notify: async () => {}, now: new Date(NOW) });
+  assert.equal(sb.state[POTENTIAL_ESTIMATES_TABLE][0].computed_at, NOW);
+  assert.equal(sb.state.scout_assignments[0].completed_at, NOW);
+});
 
 test("target: et fuldført kig skriver skønnet, flere niveauer i ét hug giver én række", async () => {
   const sb = client({ ...lookState(), scout_actions: [], scout_assignments: [{ id: "as1", status: "active" }] });
   const assignment = { id: "as1", team_id: "t1", rider_id: "r1", target_level: 2, season_id: null };
-  await completeTargetAssignment({ supabase: sb, assignment, notify: async () => {} });
+  await completeTargetAssignment({ supabase: sb, assignment, notify: async () => {}, now: new Date(NOW) });
   assert.equal(sb.state.scout_actions.length, 2);
   assert.equal(sb.state[POTENTIAL_ESTIMATES_TABLE].length, 1);
   assert.equal(sb.state[POTENTIAL_ESTIMATES_TABLE][0].knowledge_key, "s2t4");
@@ -298,7 +381,7 @@ test("target: et fuldført kig skriver skønnet, flere niveauer i ét hug giver 
 test("target: uden nyt kig skrives intet", async () => {
   const sb = client({ ...lookState(), scout_assignments: [{ id: "as1", status: "active" }] });
   const assignment = { id: "as1", team_id: "t1", rider_id: "r1", target_level: 1, season_id: null };
-  await completeTargetAssignment({ supabase: sb, assignment, notify: async () => {} });
+  await completeTargetAssignment({ supabase: sb, assignment, notify: async () => {}, now: new Date(NOW) });
   assert.equal(sb.state[POTENTIAL_ESTIMATES_TABLE].length, 0);
 });
 

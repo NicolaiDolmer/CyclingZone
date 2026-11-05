@@ -170,11 +170,50 @@ async function loadStaffSpeed(supabase, teamId) {
   return Math.max(0, learningSpeed(await loadTrainingStaffContext(supabase, teamId)) - 1);
 }
 
+// Betinget skrivning: et kig og søndagskørslen kan planlægge samme par samtidig, og
+// en blind upsert ville lade den sidste overskrive en stærkere viden og historikken,
+// uden om monotoni-værnet. Nye rækker må derfor kun oprettes, og gemte rækker kun
+// ændres, hvis de stadig står som da de blev læst. Returnerer de ryttere, hvor en
+// anden skrivning kom først.
+async function persistRows(supabase, rows, storedByRider) {
+  const lost = new Set();
+  const created = rows.filter((row) => !storedByRider.has(row.rider_id));
+  for (let i = 0; i < created.length; i += UPSERT_CHUNK_SIZE) {
+    const chunk = created.slice(i, i + UPSERT_CHUNK_SIZE);
+    const { data, error } = await supabase
+      .from(POTENTIAL_ESTIMATES_TABLE)
+      .upsert(chunk, { onConflict: "rider_id,team_id", ignoreDuplicates: true })
+      .select("rider_id");
+    if (error) throw new Error(`${POTENTIAL_ESTIMATES_TABLE} upsert: ${error.message}`);
+    const inserted = new Set((data ?? []).map((row) => row.rider_id));
+    for (const row of chunk) if (!inserted.has(row.rider_id)) lost.add(row.rider_id);
+  }
+  for (const row of rows) {
+    const stored = storedByRider.get(row.rider_id);
+    if (!stored) continue;
+    const { data, error } = await supabase
+      .from(POTENTIAL_ESTIMATES_TABLE)
+      .update(row)
+      .eq("rider_id", row.rider_id)
+      .eq("team_id", row.team_id)
+      .eq("knowledge_key", stored.knowledge_key)
+      .eq("ceiling_at_write", stored.ceiling_at_write)
+      .select("rider_id");
+    if (error) throw new Error(`${POTENTIAL_ESTIMATES_TABLE} update: ${error.message}`);
+    if (!data?.length) lost.add(row.rider_id);
+  }
+  return lost;
+}
+
 /**
  * Skriver skønnene for ét hold. `riders`: rækker med ESTIMATE_RIDER_COLUMNS.
  * Kaster ved databasefejl; kalderne isolerer selv pr. hold.
+ *
+ * Kom en anden skrivning først, læses de ryttere igen og planlægges forfra én gang,
+ * så et nyt kig ikke går tabt. Taber den også, indhenter søndagskørslen det.
+ * `changed` tæller første forsøg; tallet bruges kun i logs.
  */
-export async function writeTeamEstimates({ supabase, teamId, riders, trigger, config, now = new Date() }) {
+export async function writeTeamEstimates({ supabase, teamId, riders, trigger, config, now = new Date(), retryLost = true }) {
   const candidates = riders.filter((rider) => rider.is_retired !== true);
   if (!candidates.length) return { written: 0, changed: 0, kept: 0, noKnowledge: 0, noCeiling: 0 };
   const riderIds = candidates.map((rider) => rider.id);
@@ -190,13 +229,14 @@ export async function writeTeamEstimates({ supabase, teamId, riders, trigger, co
     teamId, riders: candidates, storedByRider, looksByRider, datesByRider, staffSpeed, scoutTier,
     trigger, params: config.params, paramsVersion: config.paramsVersion, now: now.toISOString(),
   });
-  for (let i = 0; i < rows.length; i += UPSERT_CHUNK_SIZE) {
-    const { error } = await supabase
-      .from(POTENTIAL_ESTIMATES_TABLE)
-      .upsert(rows.slice(i, i + UPSERT_CHUNK_SIZE), { onConflict: "rider_id,team_id" });
-    if (error) throw new Error(`${POTENTIAL_ESTIMATES_TABLE} upsert: ${error.message}`);
-  }
-  return counts;
+  const lost = await persistRows(supabase, rows, storedByRider);
+  if (!lost.size) return counts;
+  counts.written -= lost.size;
+  if (!retryLost) return counts;
+  const retried = await writeTeamEstimates({
+    supabase, teamId, riders: candidates.filter((rider) => lost.has(rider.id)), trigger, config, now, retryLost: false,
+  });
+  return { ...counts, written: counts.written + retried.written, kept: counts.kept + retried.kept };
 }
 
 /** Hold der kan se et skøn: alle undtagen AI-hold og banken. */
