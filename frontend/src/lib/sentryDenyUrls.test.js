@@ -160,6 +160,8 @@ test("#7677: isAbortNoise dropper AbortError-typen (afbrudt fetch ved sideskift)
   assert.equal(isAbortNoise("AbortError", ""), true);
   assert.equal(isAbortNoise("AbortError: signal is aborted without reason", ""), false);
   assert.equal(isAbortNoise("", "AbortError: signal is aborted without reason"), true);
+  // Faktisk Sentry-form for DOMException uden stack: type "Error", navn i besked.
+  assert.equal(isAbortNoise("Error", "AbortError: The operation was aborted."), true);
 });
 
 test("#7677: isAbortNoise rammer IKKE aegte fejl der blot naevner 'aborted'", () => {

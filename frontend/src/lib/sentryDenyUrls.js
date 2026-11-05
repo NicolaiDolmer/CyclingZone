@@ -106,7 +106,8 @@ export function isKnownExtensionNoise(message) {
 // fejl der blot nævner ordet stadig naar Sentry.
 export function isAbortNoise(errorType, value) {
   if (errorType === "AbortError") return true;
-  // Nogle browsere/Sentry-integrationer serialiserer uden type; saa er
-  // beskeden prefikset med navnet ("AbortError: ...").
-  return !errorType && /^AbortError\b/.test(value || "");
+  // Sentry serialiserer en DOMException uden stack med type "Error" og navnet
+  // som besked-praefiks ("AbortError: ..."). Praefikset er ankeret, ikke ordet
+  // "aborted" et vilkaarligt sted i teksten.
+  return /^AbortError\b/.test(value || "");
 }
