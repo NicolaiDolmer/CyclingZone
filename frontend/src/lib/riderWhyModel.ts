@@ -134,9 +134,10 @@ type Setback = { main: WhyMain; moment: StoryMoment | null; sector: string | nul
 function firstSetback(input: RiderWhyInput, moments: StoryMoment[], backInField = false): Setback | null {
   const riderId = input.riderId as string;
   // Haendelsen staar paa tjekpunktets km, men momentet paa det praecise sted (exact_km).
-  const exactKms = (type: string, km: number) => input.events
-    .filter((e) => e.type === type && Math.abs((e.km ?? Number.NaN) - km) < EPS && Number.isFinite(e.params?.exact_km))
-    .map((e) => e.params.exact_km as number);
+  const exactKms = (type: string, km: number): number[] => (input.events ?? []).flatMap((e) => {
+    const exact = e?.params?.exact_km;
+    return e?.type === type && Math.abs((e.km ?? Number.NaN) - km) < EPS && typeof exact === "number" ? [exact] : [];
+  });
   const near = (m: StoryMoment, km: number) => [km, ...exactKms(m.type, km)]
     .some((k) => Math.abs((m.recorded_km ?? m.km) - k) < EPS || Math.abs(m.km - k) < EPS);
   for (const entry of buildOwnTimeLoss(input.events, { ownRiderIds: [riderId] })) {
