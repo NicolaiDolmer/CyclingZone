@@ -599,6 +599,90 @@ export function stagePlanRecap(
   return items.map((it, i) => (i === d ? { ...it, endReason: null } : i === to ? { ...it, fromHidden: true } : i < to && it.status === "skipped" ? { ...it, status: "not_reached" } : it));
 }
 
+// ── #7706: et flueben lover ikke succes ──────────────────────────────────────
+//
+// Status ovenfor siger kun om leddet blev koert. Udfaldet siger hvad filmen kan bevise:
+// flueben kraever bevis, en fiasko kraever bevis, og resten er ukendt. Fog of war:
+// kun fakta fra tidslinjen, ingen tal fra motoren.
+
+export type StagePlanOutcome = "done" | "failed" | "not_reached" | "unknown";
+
+export type StagePlanOutcomeOptions = {
+  /**
+   * Hvor rytteren mistede kontakten og ikke kom tilbage: km, null = filmen viser ingen
+   * saadan km, undefined = filmen kan ikke svare (ingen gruppe-gab).
+   */
+  lostContactKm?: number | null;
+};
+
+/** Opgaver hvor det at falde bagud betyder at opgaven ikke lykkedes. */
+const CONTACT_TASKS: ReadonlySet<StagePlanTask> = new Set<StagePlanTask>(["attack", "follow_moves", "ride_for_result"]);
+/** Opgaver der er loest naar rytteren er kommet igennem dem (at falde bagud er meningen). */
+const RIDE_HOME_TASKS: ReadonlySet<StagePlanTask> = new Set<StagePlanTask>(["grupetto", "ride_in"]);
+/** Bogfoering i motoren, ikke et angreb (samme liste som stageSplitTimes.ts). */
+const BOOKKEEPING_ATTACK_KINDS: ReadonlySet<string> = new Set(["stage_decided", "placement_gap", "gap_survived"]);
+
+function eventRiderIds(params: Rec | null | undefined, key = "rider_ids"): unknown[] {
+  const ids = params?.[key];
+  return Array.isArray(ids) ? ids : [];
+}
+
+/** Kom han i udbruddet? true/false kun naar filmen navngiver ham; ellers null. */
+function madeTheBreak(list: readonly TimelineEventLike[], riderId: string): boolean | null {
+  if (list.some((e) => e?.type === "breakaway_formed" && eventRiderIds(e.params).includes(riderId))) return true;
+  const attempted = list.some((e) => e?.type === "breakaway_attempt" && eventRiderIds(e.params).includes(riderId));
+  return attempted ? false : null;
+}
+
+/** Viser filmen hans eget angreb inden for leddet? */
+function attackedInLeg(list: readonly TimelineEventLike[], riderId: string, item: StagePlanRecapItem): boolean {
+  const from = item.fromKm ?? 0;
+  const to = item.endKm ?? Infinity;
+  return list.some((e) => {
+    const km = Number(e?.km);
+    if (!(km >= from && km <= to)) return false;
+    const named = e?.params?.rider_id === riderId || eventRiderIds(e?.params).includes(riderId);
+    if (e?.type === "finale_attack") return named && !BOOKKEEPING_ATTACK_KINDS.has(String(e.params?.kind));
+    return e?.type === "peloton_splits" && e.params?.cause === "attack" && named;
+  });
+}
+
+/** Udfaldet af hvert led i et resume (samme raekkefoelge som `items`). */
+export function stagePlanOutcomes(
+  items: readonly StagePlanRecapItem[],
+  events: readonly TimelineEventLike[] | null | undefined,
+  riderId: string,
+  { lostContactKm }: StagePlanOutcomeOptions = {},
+): StagePlanOutcome[] {
+  const list = events ?? [];
+  const outOfTime = list.some((e) => e?.type === "outside_time_limit" && eventRiderIds(e.params).includes(riderId));
+  return items.map((item): StagePlanOutcome => {
+    if (item.status === "skipped" || item.status === "not_reached") return "not_reached";
+    if (item.status === "abandoned") return "failed";
+    if (item.status === "to_finish" && outOfTime) return "failed";
+    if (item.task === "breakaway") {
+      if (item.endReason === "missed_break") return "failed";
+      if (item.endReason === "caught") return "done";
+      const made = madeTheBreak(list, riderId);
+      return made === null ? "unknown" : made ? "done" : "failed";
+    }
+    if (RIDE_HOME_TASKS.has(item.task)) return "done";
+    const filmSilent = lostContactKm === undefined;
+    const behind = typeof lostContactKm === "number" && lostContactKm <= (item.endKm ?? Infinity);
+    if (CONTACT_TASKS.has(item.task)) {
+      // Motoren siger "sat", men filmen viser intet tab: saa paastaas ingen fiasko (#7636).
+      if (behind || (item.endReason === "dropped" && filmSilent)) return "failed";
+      if (item.task === "attack") return attackedInLeg(list, riderId, item) ? "done" : "unknown";
+      if (item.task === "ride_for_result" || filmSilent || item.endReason === "dropped" || item.endReason === null) return "unknown";
+      return "done";
+    }
+    // Laeet og holdarbejde: at blive sat kan vaere planen (hjaelperen har gjort sit, sprinteren
+    // paa bjergetapen sparer sig), saa det er ingen fiasko, men heller ikke noget flueben.
+    if (behind || filmSilent || item.endReason === "dropped" || item.endReason === null) return "unknown";
+    return "done";
+  });
+}
+
 function stagePlanRecapFromEvents(legs: readonly StagePlanLeg[], events: readonly TimelineEventLike[] | null | undefined, riderId: string): StagePlanRecapItem[] {
   const list = events ?? [];
   const switches = list

@@ -30,6 +30,8 @@ const STAGE_2_PLANS = {
   "rider-97": [{ task: "breakaway" }, { task: "ride_for_result", from: { at: "dropped" } }],
   "rider-96": [{ task: "shelter_leader" }, { task: "tempo", from: { at: "kom", kom_index: 0 } }, { task: "ride_in", from: { at: "dropped" } }],
   "rider-95": [{ task: "stay_sheltered" }, { task: "ride_for_result", from: { at: "final_km" } }],
+  // #7706: et mislykket forsoeg og et led der ikke blev naaet, saa alle markeringer kan ses.
+  "rider-1": [{ task: "breakaway" }, { task: "attack", from: { at: "final_km" } }, { task: "ride_in", from: { at: "dropped" } }],
 };
 
 /** team-orders-svaret med planen slaaet til og etape 2's gemte planer. */
@@ -57,6 +59,8 @@ export function stagePlanPreviewTimeline() {
     events: [
       { km: 0, type: "stage_start", params: {} },
       { km: 14, type: "breakaway_formed", params: { group_id: "breakaway-1", rider_ids: ["rider-97"] } },
+      { km: 14, type: "gap_update", params: { group_id: "breakaway-1", gap_seconds: 60 } },
+      { km: 30, type: "stage_plan_leg", params: { rider_id: "rider-1", leg: 2, task: "ride_in", reason: "missed_break" } },
       { km: 96, type: "stage_plan_leg", params: { rider_id: "rider-96", leg: 2, task: "ride_in", reason: "dropped" } },
       { km: 138, type: "stage_plan_leg", params: { rider_id: "rider-97", leg: 1, task: "ride_for_result", reason: "caught" } },
       { km: 158, type: "stage_plan_leg", params: { rider_id: "rider-95", leg: 1, task: "ride_for_result", reason: "final_km" } },

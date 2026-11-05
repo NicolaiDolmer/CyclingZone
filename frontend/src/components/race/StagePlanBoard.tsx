@@ -21,9 +21,9 @@ import { authHeaders } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import { waypointsFor } from "../../lib/stageRouteProfile.js";
 import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js"; // #7636
-import { riderInFrontOrFieldAt, type TimelineEvent as SplitTimelineEvent } from "../../lib/stageSplitTimes.ts"; // #7636
+import { buildOwnTimeLoss, hasGroupGaps, riderInFrontOrFieldAt, type TimelineEvent as SplitTimelineEvent } from "../../lib/stageSplitTimes.ts"; // #7636, #7706
 import SortableTh from "../ui/SortableTh.jsx";
-import { Button, CheckIcon, ChevronRightIcon, LockIcon, MessageIcon, MinusIcon, PlusIcon, Select, XIcon } from "../ui/index.js";
+import { Button, CheckIcon, ChevronRightIcon, InfoIcon, LockIcon, MessageIcon, MinusIcon, PlusIcon, Select, XIcon } from "../ui/index.js";
 import {
   clearRiderPlan,
   fallbackOrderKeys,
@@ -35,6 +35,7 @@ import {
   setLegTrigger,
   setRiderPlan,
   stagePlanFeaturesFromRaw,
+  stagePlanOutcomes,
   stagePlanRecap,
   stagePlanRouteFromRaw,
   stagePlanSwitchNotes,
@@ -141,23 +142,39 @@ function recapLine(t: TFn, route: StagePlanRoute, legs: StagePlanLeg[], item: St
   return shownStart ? `${shownStart}, ${end}` : end;
 }
 
+const OUTCOME_MARK = {
+  done: { Icon: CheckIcon, tone: "text-cz-success" },
+  failed: { Icon: XIcon, tone: "text-cz-warning" },
+  not_reached: { Icon: MinusIcon, tone: "text-cz-3" },
+  unknown: { Icon: InfoIcon, tone: "text-cz-3" },
+} as const;
+
 /** Efter etapen: hvad rytteren faktisk gjorde i hvert led. */
 function PlanRecap({ t, legs, route, events, riderId, crossCheck = false }: { t: TFn; legs: StagePlanLeg[]; route: StagePlanRoute; events: TimelineEvent[]; riderId: string; crossCheck?: boolean }) {
   // #7636 (kontakten stage_plan_dropped_front_7635): krydstjek mod rytterens gruppe i filmen.
   const items = stagePlanRecap(legs, events, riderId, crossCheck ? { inFrontOrFieldAt: (km) => riderInFrontOrFieldAt(events as SplitTimelineEvent[], riderId, km) } : {});
+  // #7706: markeringen er udfaldet, ikke om leddet blev koert. Uden gruppe-gab svarer filmen ikke.
+  const film = events as SplitTimelineEvent[];
+  const lostContactKm = hasGroupGaps(film)
+    ? buildOwnTimeLoss(film, { ownRiderIds: [riderId] }).find((entry) => entry.type === "drop")?.km ?? null
+    : undefined;
+  const outcomes = stagePlanOutcomes(items, events, riderId, { lostContactKm });
   return (
     <ul className="space-y-1">
       {items.map((item, i) => {
-        const ridden = item.status === "done" || item.status === "to_finish" || item.status === "abandoned";
+        const outcome = outcomes[i];
+        const { Icon, tone } = OUTCOME_MARK[outcome];
         const line = recapLine(t, route, legs, item, i);
         return (
-          <li key={i} className="flex items-start gap-2 text-xs">
-            <span className="w-3.5 shrink-0 pt-0.5 text-cz-success">
-              {ridden ? <CheckIcon size={12} aria-hidden="true" /> : <MinusIcon size={12} aria-hidden="true" className="text-cz-3" />}
+          <li key={i} data-outcome={outcome} className="flex items-start gap-2 text-xs">
+            <span className={`w-3.5 shrink-0 pt-0.5 ${tone}`}>
+              <Icon size={12} aria-hidden="true" />
             </span>
-            <span className={ridden ? "text-cz-1" : "text-cz-3"}>
+            <span className={outcome === "not_reached" ? "text-cz-3" : "text-cz-1"}>
               <span className="font-medium">{t(`stagePlan.task.${item.task}`)}</span>
               {line ? <>{", "}<span className="tabular-nums">{line}</span></> : null}
+              {/* Ordet er med, saa markeringen aldrig kun er en farve; "ikke naaet" staar allerede i linjen. */}
+              {outcome !== "not_reached" && <span className="ml-1.5 text-3xs text-cz-3 whitespace-nowrap">{t(`stagePlan.recap.outcome.${outcome}`)}</span>}
             </span>
           </li>
         );

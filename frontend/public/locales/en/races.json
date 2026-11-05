@@ -92,7 +92,12 @@
       "abandoned": "abandoned at km {km}",
       "skipped": "skipped, he was dropped before",
       "notReached": "not reached",
-      "pending": "The race film for this stage is not ready yet."
+      "pending": "The race film for this stage is not ready yet.",
+      "outcome": {
+        "done": "Done",
+        "failed": "Tried, no luck",
+        "unknown": "Outcome unknown"
+      }
     }
   },
   "stagePageV2": {

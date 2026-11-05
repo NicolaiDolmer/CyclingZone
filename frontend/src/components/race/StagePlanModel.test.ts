@@ -9,6 +9,7 @@ import {
   removeLeg,
   setLegTask,
   setLegTrigger,
+  stagePlanOutcomes,
   stagePlanRecap,
   stagePlanReplacesControls,
   stagePlanRouteFromRaw,
@@ -359,4 +360,72 @@ test("#7636: fladen laeser kontakten og skjuler et tomt slut-led (ingen ny spill
   assert.match(board, /flags\?\.stage_plan_dropped_front_7635 === true/);
   assert.match(board, /crossCheck=\{crossCheck7636\}/);
   assert.match(board, /\{line \? <>\{", "\}/);
+});
+
+// #7706: markeringen er udfaldet. Flueben og fiasko kraever bevis; resten er ukendt.
+const outcomes = (legs: StagePlanLeg[], events: Parameters<typeof stagePlanRecap>[1], lostContactKm?: number | null) =>
+  stagePlanOutcomes(stagePlanRecap(legs, events, "a"), events, "a", { lostContactKm });
+const leg = (km: number, n: number, task: string, reason: string) => ({ type: "stage_plan_leg", km, params: { rider_id: "a", leg: n, task, reason } });
+const BREAK_PLAN: StagePlanLeg[] = [{ task: "breakaway" }, { task: "ride_for_result", from: { at: "dropped" } }];
+const ATTACK_PLAN: StagePlanLeg[] = [{ task: "stay_sheltered" }, { task: "attack", from: { at: "final_km" } }];
+
+test("#7706: 'Go in the break' uden udbrud er forsoegt uden held, ikke et flueben", () => {
+  assert.deepEqual(outcomes(BREAK_PLAN, [leg(30, 1, "ride_for_result", "missed_break")], null), ["failed", "unknown"]);
+  assert.deepEqual(outcomes(BREAK_PLAN, [leg(90, 1, "ride_for_result", "caught")], null), ["done", "unknown"]);
+});
+
+test("#7706: udbrud som eneste led: filmen afgoer, og uden navn er det ukendt", () => {
+  const solo: StagePlanLeg[] = [{ task: "breakaway" }];
+  assert.deepEqual(outcomes(solo, [{ type: "breakaway_formed", km: 10, params: { rider_ids: ["a"] } }], null), ["done"]);
+  assert.deepEqual(outcomes(solo, [{ type: "breakaway_attempt", km: 10, params: { rider_ids: ["a"] } }], null), ["failed"]);
+  assert.deepEqual(outcomes(solo, [{ type: "breakaway_formed", km: 10, params: { rider_ids: ["x"] } }], null), ["unknown"]);
+});
+
+test("#7706: 'Attack' for en rytter der tabte kontakten er ikke et flueben", () => {
+  const film = [leg(140, 1, "attack", "final_km")];
+  assert.deepEqual(outcomes(ATTACK_PLAN, film, 145), ["done", "failed"]);
+  assert.deepEqual(outcomes(ATTACK_PLAN, film, 100), ["unknown", "failed"]);
+  assert.deepEqual(outcomes(ATTACK_PLAN, film, null), ["done", "unknown"], "intet angreb i filmen: ukendt");
+  const attacked = [...film, { type: "finale_attack", km: 143, params: { kind: "late_attack", rider_id: "a" } }];
+  assert.deepEqual(outcomes(ATTACK_PLAN, attacked, null), ["done", "done"]);
+  const bookkeeping = [...film, { type: "finale_attack", km: 143, params: { kind: "stage_decided", rider_id: "a" } }];
+  assert.deepEqual(outcomes(ATTACK_PLAN, bookkeeping, null), ["done", "unknown"]);
+});
+
+test("#7706: manglende film giver aldrig et flueben paa en opgave der kraever bevis", () => {
+  assert.deepEqual(outcomes(ATTACK_PLAN, [leg(140, 1, "attack", "final_km")]), ["unknown", "unknown"]);
+});
+
+test("#7706: at blive sat er ingen fiasko for hjaelperen eller sprinteren, men heller intet flueben", () => {
+  const sat = [leg(64, 2, "grupetto", "dropped")];
+  assert.deepEqual(outcomes(HELPER, sat, 64), ["unknown", "not_reached", "done"]);
+});
+
+test("#7706: motoren siger sat, filmen viser intet tab: ingen paastand om fiasko (#7636)", () => {
+  const legs: StagePlanLeg[] = [{ task: "follow_moves" }, { task: "ride_in", from: { at: "dropped" } }];
+  const film = [leg(60, 1, "ride_in", "dropped")];
+  assert.deepEqual(outcomes(legs, film, null), ["unknown", "done"]);
+  assert.deepEqual(outcomes(legs, film, 60), ["failed", "done"]);
+  assert.deepEqual(outcomes(legs, film), ["failed", "done"], "uden gruppe-gab staar motorens ord alene");
+  // Skjult af krydstjekket (ingen slutgrund): heller intet flueben.
+  const hidden = stagePlanRecap(legs, film, "a", { inFrontOrFieldAt: () => true });
+  assert.deepEqual(stagePlanOutcomes(hidden, film, "a", { lostContactKm: null }), ["unknown", "done"]);
+});
+
+test("#7706: udgaaet og uden for tidsgraensen er forsoegt uden held; ikke naaet forbliver ikke naaet", () => {
+  const quit = [{ type: "incident", km: 80, params: { rider_id: "a", outcome: "abandoned" } }];
+  assert.deepEqual(outcomes(HELPER, quit, null), ["failed", "not_reached", "not_reached"]);
+  const late = [leg(64, 2, "grupetto", "dropped"), { type: "outside_time_limit", km: 150, params: { rider_ids: ["a"] } }];
+  assert.deepEqual(outcomes(HELPER, late, 64), ["unknown", "not_reached", "failed"]);
+});
+
+test("#7706: fladen viser udfaldet med ord, og teksten findes paa EN og DA", () => {
+  const board = readFileSync(new URL("./StagePlanBoard.tsx", import.meta.url), "utf8");
+  assert.match(board, /stagePlanOutcomes\(items, events, riderId/);
+  assert.match(board, /stagePlan\.recap\.outcome\.\$\{outcome\}/);
+  assert.doesNotMatch(board, /const ridden = /);
+  for (const lang of ["en", "da"]) {
+    const races = JSON.parse(readFileSync(new URL(`../../../public/locales/${lang}/races.json`, import.meta.url), "utf8"));
+    assert.deepEqual(Object.keys(races.stagePlan.recap.outcome).sort(), ["done", "failed", "unknown"]);
+  }
 });

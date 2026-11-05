@@ -92,7 +92,12 @@
       "abandoned": "udgik ved km {km}",
       "skipped": "sprunget over, han blev sat før",
       "notReached": "nåede han ikke",
-      "pending": "Løbsfilmen for etapen er ikke klar endnu."
+      "pending": "Løbsfilmen for etapen er ikke klar endnu.",
+      "outcome": {
+        "done": "Udført",
+        "failed": "Forsøgt uden held",
+        "unknown": "Ukendt udfald"
+      }
     }
   },
   "stagePageV2": {
