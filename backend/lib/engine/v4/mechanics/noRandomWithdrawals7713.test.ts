@@ -37,7 +37,7 @@ test("#7713: ingen rytter stiger af efter maalstregen i noget scenarie", () => {
 });
 
 test("#7713: styrt, tider, grupper, belastning og tidsgraense er uaendrede mod merge-basen", () => {
-  const now = digest7713(simulateStageV4, FIXTURES);
+  const now = digest7713(simulateStageV4, FIXTURES) as Record<string, { projection: string }>;
   assert.deepEqual(Object.keys(now), Object.keys(frozen.digests));
   for (const [id, digest] of Object.entries<{ projection: string }>(frozen.digests)) {
     assert.equal(now[id].projection, digest.projection, id);
