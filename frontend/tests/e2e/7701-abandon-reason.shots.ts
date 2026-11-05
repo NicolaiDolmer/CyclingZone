@@ -156,7 +156,7 @@ async function shoot(base: string, out: string, label: string) {
 async function compose(out: string) {
   const b64 = (name: string) => readFileSync(resolve(out, name)).toString("base64");
   const browser = await chromium.launch();
-  const ctx = await browser.newContext({ viewport: { width: 2640, height: 800 }, deviceScaleFactor: 1 });
+  const ctx = await browser.newContext({ viewport: { width: 1740, height: 800 }, deviceScaleFactor: 1 });
   const sheet = await ctx.newPage();
   const cols = [
     ["before", "#ff8a80", "BEFORE: 'Climbed off, exhausted', and your own rider's line gives no reason."],
@@ -168,8 +168,8 @@ async function compose(out: string) {
   <div style="flex:1">
     <div style="font-size:24px;font-weight:700;padding:0 0 12px;color:${color};min-height:64px">${label}</div>
     <div style="display:flex;gap:16px;align-items:flex-start">
-      <img src="data:image/png;base64,${b64(`${k}-results-1280.png`)}" style="width:50%;border:3px solid ${color}">
-      <img src="data:image/png;base64,${b64(`${k}-stage-1280.png`)}" style="width:50%;border:3px solid ${color}">
+      <img src="data:image/png;base64,${b64(`${k}-results-390.png`)}" style="width:390px;border:3px solid ${color}">
+      <img src="data:image/png;base64,${b64(`${k}-stage-390.png`)}" style="width:390px;border:3px solid ${color}">
     </div>
   </div>`).join("")}
 </div></body></html>`);
