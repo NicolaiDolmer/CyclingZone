@@ -649,7 +649,12 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
       }
       const opened = trackSpans(event);
       applyMembership(m, event);
-      for (const span of opened) span.rider_ids = [...(m.groups.get(span.group_id) ?? [])].sort();
+      for (const span of opened) {
+        span.rider_ids = [...(m.groups.get(span.group_id) ?? [])].sort();
+        // #6350: et uheldsoffers solo-gruppe opstod ved uheldet, ikke ved første melding.
+        const crash = INCIDENT_SOLO_ID.test(span.group_id) ? ordered.findLast((e) => e.type === "incident" && e.params?.rider_id === span.rider_ids[0] && placeKm(e) <= span.from_km) : null;
+        if (crash) span.from_km = round2(placeKm(crash));
+      }
       if (event.params && str(p.group_id) && finite(p.exact_time) != null && event.type !== "incident") {
         const leader = leaderTimeAt(story, placeKm(event));
         if (leader != null) {

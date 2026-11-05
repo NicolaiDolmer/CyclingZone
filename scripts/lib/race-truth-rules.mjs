@@ -47,7 +47,7 @@ export const PLAN_STAMP_TOLERANCE_KM = 1;
 const INCIDENT_SOLO_ID = /^solo-m10-(\d+)-(\d+)$/;
 const REST_GROUP_ID = "peloton-0";
 const BOOKKEEPING_ATTACK_KINDS = new Set(["stage_decided", "placement_gap", "gap_survived"]);
-const FORMING_TYPES = new Set(["breakaway_formed", "finale_attack", "peloton_splits", "breakaway_dropped", "incident"]);
+const FORMING_TYPES = new Set(["breakaway_formed", "finale_attack", "peloton_splits", "breakaway_dropped"]);
 const WIN_MOMENT_KEYS = new Set(["sprint_win", "close_win", "solo_win", "itt_win", "ttt_win", "reduced_sprint_win", "breakaway_win", "attack_win"]);
 
 function finite(value) {
@@ -303,13 +303,6 @@ export function replayTimeline(events = [], startlist = [], visit = () => {}) {
           removeRider(riderId);
           joinedAt.set(riderId, { km: place.km, exact: place.exact, index });
           if (m10Seq) pendingIncidents.push({ riderId, outcome: "time_loss", index, km: place.km, recordedKm, assigned: false });
-          // #6350: nyere etaper navngiver uheldets solo-gruppe på selve uheldet.
-          if (groupId) {
-            setGroup(groupId, [riderId]);
-            attack.set(groupId, false);
-            incidentGroups.set(groupId, { riderId, outcome: "time_loss", index });
-            form(groupId, index, event, "incident");
-          }
         }
         break;
       }
@@ -398,10 +391,10 @@ export function ruleCatchAfterFormation(input) {
     }));
   });
   for (const [groupId, ref] of replay.unformed) {
-    // Et uheldsoffers gruppe har heller ingen dannelse i loggen (#6350), men
-    // er en anden fejl end en helt ukendt gruppe; koden skiller dem ad.
-    const code = replay.incidentGroups.has(groupId) ? "incident_group_without_formation" : "group_without_formation";
-    findings.push(finding("R3", code, { index: ref.index, km: ref.km, group_id: groupId }));
+    // #6350: et uheldsoffers solo-gruppe er dannet af uheldet. Filmen fører den
+    // tilbage dertil (raceStory.js), så den er ikke en gruppe ud af ingenting.
+    if (replay.incidentGroups.has(groupId)) continue;
+    findings.push(finding("R3", "group_without_formation", { index: ref.index, km: ref.km, group_id: groupId }));
   }
   for (const [groupId, ref] of replay.referencedEarly) {
     findings.push(finding("R3", "referenced_before_formed", { index: ref.index, km: ref.km, group_id: groupId, formed_index: ref.formed_index }));

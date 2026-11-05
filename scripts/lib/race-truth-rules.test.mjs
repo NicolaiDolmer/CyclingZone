@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 
 import {
   RULES,
+  buildFilm,
   checkStage,
   dayRowsFor,
   parseGapSeconds,
@@ -93,8 +94,10 @@ test("R3 (#6350): etape 8, gruppen hentes før den angriber, og uheldsgrupper ud
   assert.equal(early[0].group_id, "breakaway-7000");
   assert.equal(early[0].km, 97.4);
   assert.equal(early[0].formed_km, 99.2);
-  const nowhere = findings.filter((f) => f.code === "incident_group_without_formation").map((f) => f.group_id);
-  assert.ok(nowhere.includes("solo-m10-10-0"));
+  // Et uheldsoffers solo-gruppe er dannet af uheldet: filmen starter den dér.
+  assert.ok(!findings.some((f) => f.group_id === "solo-m10-10-0"));
+  const span = buildFilm(prepared(stage8)).group_spans.find((s) => s.group_id === "solo-m10-8-0");
+  assert.equal(span.from_km, 107.23);
   // Et nedkørselsangreb der nævnes (holdordre) før selve angrebet står i loggen.
   assert.ok(findings.some((f) => f.code === "referenced_before_formed" && f.group_id === "breakaway-4000"));
 });
@@ -153,15 +156,6 @@ test("#6350: gemte etaper læst gennem withEventPlaces: ingen indhentning før d
   assert.ok(attack.params.exact_km <= 97.4);
   const dropped = withEventPlaces(stage8.events).find((e) => e.type === "stage_plan_leg" && e.km === 161 && e.params.reason === "dropped");
   assert.ok(dropped.params.exact_km < 161);
-});
-
-test("#6350: et uheld der navngiver sin solo-gruppe er gruppens dannelse", () => {
-  const events = [
-    { km: 0, type: "stage_start", params: { exact_km: 0 } },
-    { km: 42, type: "incident", params: { rider_id: "r1", kind: "crash", outcome: "time_loss", group_id: "solo-m10-3-0", exact_km: 42 } },
-    { km: 50, type: "gap_update", params: { group_id: "solo-m10-3-0", gap_seconds: 40, exact_km: 50 } },
-  ];
-  assert.deepEqual(ruleCatchAfterFormation({ events, startlist: ["r1", "r2"] }), []);
 });
 
 test("R6: referatets vinder og uheld svarer til resultat og tidslinje", () => {
