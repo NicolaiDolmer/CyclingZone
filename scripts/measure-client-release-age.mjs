@@ -264,7 +264,7 @@ export async function measure({ env = process.env, dryRun = false, store: inject
   if (!apiKey || !projectId) {
     const missing = [!apiKey && "POSTHOG_PERSONAL_API_KEY", !projectId && "POSTHOG_PROJECT_ID"].filter(Boolean).join(" + ");
     log(`::notice::${LOG_PREFIX} springer over: ${missing} mangler. Carry-forward bruger gulvet/seneste retention.json.`);
-    const seeded = await seedEmptyRetention({ env, store: injectedStore, fetchImpl, now, log });
+    const seeded = !dryRun && await seedEmptyRetention({ env, store: injectedStore, fetchImpl, now, log });
     return { status: "skipped", reason: `${missing} mangler`, seeded };
   }
   const config = injectedStore ? { kind: "injected" } : resolveStoreConfig(env);

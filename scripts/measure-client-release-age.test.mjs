@@ -124,6 +124,18 @@ test("spring-over (#7678): skriver gyldig tom retention.json hvis ingen findes, 
   assert.deepEqual(JSON.parse(fs.readFileSync(file, "utf8")).releases, ["relKeep"]);
 });
 
+test("spring-over med --dry-run opretter ikke retention.json", async () => {
+  const puts = [];
+  const store = {
+    getJson: async () => null,
+    put: async (objectPath) => { puts.push(objectPath); return { created: true }; },
+  };
+  const result = await measure({ env: {}, dryRun: true, store, now: NOW, log: quiet });
+  assert.equal(result.status, "skipped");
+  assert.equal(result.seeded, false);
+  assert.deepEqual(puts, []);
+});
+
 test("spring-over uden lager skriver intet og fejler ikke", async () => {
   const result = await measure({ env: { CZ_RELEASE_ASSETS_DISABLE: "1" }, now: NOW, log: quiet });
   assert.equal(result.status, "skipped");
