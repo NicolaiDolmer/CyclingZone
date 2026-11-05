@@ -215,6 +215,7 @@ export async function recordScoutLooks({ supabase, teamId, riderIds, now = new D
     const config = await loadEstimateWriteConfig(supabase);
     if (!config.enabled) return { skipped: config.reason };
     const ids = [...new Set((riderIds ?? []).filter(Boolean))];
+    // schema-columns-ok: talent_ceiling kommer fra 2026-11-04-6110-potential-estimates.sql, snapshottet er ældre
     const riders = await fetchAllRowsChunkedIn(ids, (chunk) => supabase
       .from("riders").select(ESTIMATE_RIDER_COLUMNS).in("id", chunk).order("id"));
     return await writeTeamEstimates({ supabase, teamId, riders, trigger: "new_knowledge", config, now });

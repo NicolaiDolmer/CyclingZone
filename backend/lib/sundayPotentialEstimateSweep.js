@@ -23,6 +23,7 @@ const processState = { cleanRunDate: null };
 
 // `gte 1` frem for "not null": talent_ceiling har CHECK 1-99, og NULL falder fra.
 async function loadOwnRiders(supabase, teamId) {
+  // schema-columns-ok: talent_ceiling kommer fra 2026-11-04-6110-potential-estimates.sql, snapshottet er ældre
   return fetchAllRows(() => supabase
     .from("riders").select(ESTIMATE_RIDER_COLUMNS).eq("team_id", teamId).gte("talent_ceiling", 1).order("id"));
 }
@@ -35,6 +36,7 @@ async function loadForeignRiders(supabase, teamId, ownIds) {
     fetchAllRows(() => supabase.from("scout_actions").select("id, rider_id").eq("team_id", teamId).order("id")),
   ]);
   const ids = [...new Set([...stored, ...actions].map((row) => row.rider_id))].filter((id) => !ownIds.has(id));
+  // schema-columns-ok: talent_ceiling kommer fra 2026-11-04-6110-potential-estimates.sql, snapshottet er ældre
   return fetchAllRowsChunkedIn(ids, (chunk) => supabase
     .from("riders").select(ESTIMATE_RIDER_COLUMNS).in("id", chunk).gte("talent_ceiling", 1).order("id"));
 }

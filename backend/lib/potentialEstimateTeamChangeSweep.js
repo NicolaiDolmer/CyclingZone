@@ -36,6 +36,7 @@ export async function runPotentialEstimateTeamChangeSweep({ supabase, now = new 
 
   const since = new Date(now.getTime() - lookbackHours * 3600 * 1000).toISOString();
   // `gte 1` frem for "not null": talent_ceiling har CHECK 1-99, og NULL falder fra.
+  // schema-columns-ok: talent_ceiling kommer fra 2026-11-04-6110-potential-estimates.sql, snapshottet er ældre
   const moved = await fetchAllRows(() => supabase
     .from("riders").select(ESTIMATE_RIDER_COLUMNS).gte("acquired_at", since).gte("talent_ceiling", 1).order("id"));
   const ridersByTeam = new Map();
