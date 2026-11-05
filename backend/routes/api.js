@@ -116,6 +116,7 @@ import { teamDistributionColumns } from "../lib/raceDistributionColumns.ts"; // 
 import { isOwnerUser } from "../lib/ownerGate.js"; // #3750 ejer-gate
 import { AUTH_FAILURE_RESPONSES, verifyBearerToken } from "../lib/authTokenVerification.js"; // #4369
 import { normalizeSupabaseErrorMessage, withSupabaseRetry } from "../lib/supabaseErrorNormalize.js";
+import { createSupabaseFetchWithRetry } from "../lib/supabaseFetchRetry.js";
 import { aggregateRiderViews } from "../lib/riderProfileViews.js";
 import {
   PAUSE_LEVELS,
@@ -881,7 +882,8 @@ async function fetchTeamCommitment(supabaseClient, teamId) {
 // Supabase admin client
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
+  process.env.SUPABASE_SERVICE_KEY,
+  { global: { fetch: createSupabaseFetchWithRetry() } } // #7675
 );
 
 // #203-logik udtrukket til lib/seasonStandingsBootstrap.js (delt med stage-scheduler-cron).

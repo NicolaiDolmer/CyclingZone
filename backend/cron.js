@@ -140,12 +140,16 @@ import {
 } from "./lib/cronMonitorRegistry.js";
 // #6858 — job med fast tidspunkt planlaegges efter dansk vaegur, ikke fra proces-start.
 import { startWallClockSchedule, DEPLOY_OVERLAP_GRACE_MS } from "./lib/wallClockScheduler.js";
+import { createSupabaseFetchWithRetry } from "./lib/supabaseFetchRetry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 // cron.js ligger i backend/-roden: ".env" er backend/.env (som server.js). "../.env" pegede
 // uden for backend/ (#6367, fanget af railway.backendOnlyFiles.test.js).
 dotenv.config({ path: join(__envdir, ".env"), quiet: true });
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+// #7675 — læsninger/upserts prøves igen ved kortvarige Cloudflare-HTML-svar.
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
+  global: { fetch: createSupabaseFetchWithRetry() },
+});
 
 // #2892 — kobl den egne cron-heartbeat-vagt ind i monitorCron (lib/sentry.js).
 // DI i stedet for at kopiere et check-in-kald ind i hvert af de ~40
