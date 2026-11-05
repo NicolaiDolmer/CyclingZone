@@ -55,6 +55,10 @@
         "end": "De sidste 10 km begynder på nedkørslen mod mål, så trin {number} starter først i finalen.",
         "finale": "De sidste 10 km begynder på nedkørslen mod mål, så trin {number} starter først i finalen."
       },
+      "flat": {
+        "start": "De sidste 10 km begynder mellem sidste stigning og mål, så trin {number} starter på toppen.",
+        "finale": "De sidste 10 km begynder mellem sidste stigning og mål, så trin {number} starter først i finalen."
+      },
       "samePoint": "Trin {first} og trin {second} skifter samme sted her, så trin {first} bliver ikke kørt."
     },
     "timeTrial": "Ingen etapeplan på en enkeltstart.",

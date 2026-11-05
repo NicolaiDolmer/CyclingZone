@@ -24,6 +24,16 @@ const baseConfig = {
   verifyCommands: ["node --test scripts/wave-lane-watch.test.mjs"],
 };
 
+test('#5509: build brief requires measured before-state and stops when already green', () => {
+  const brief = generateBrief(baseConfig);
+  assert.match(brief, /FOER kode:.*prod SQL\/endpoint \+ maalt resultat \+ player-report-evidence/);
+  assert.match(brief, /already-green.*STOP.*byg intet/);
+  assert.match(brief, /Admission erstatter aldrig mandat, SSOT eller byggestop/);
+  const investigation = generateBrief({ ...baseConfig, kind: 'investigate' });
+  assert.doesNotMatch(investigation, /# Maalt foerstatus/);
+  assert.match(investigation, /bygger INTET/);
+});
+
 test("kraever paakraevede felter", () => {
   assert.throws(() => generateBrief({}), /issue/);
   assert.throws(() => generateBrief({ issue: 1 }), /slug/);

@@ -324,7 +324,7 @@ test("#5017: capture-beskeden er FAST uanset hvor mange dage fakturaen har være
   assert.doesNotMatch(capturedDay22[0].message, /\d/, "intet tal i selve beskeden - dagstal hører til i extra");
 });
 
-test("#5017: fast fingerprint + dagstal i extra.worstDaysOverdue (samme mønster som ownershipInvariantWatch.js)", async () => {
+test("#5017: fast fingerprint + dagstal i extra.worstDaysOverdue (samme mønster som ownershipInvariantWatch.ts)", async () => {
   const client = {
     listInvoices: async () => ({ data: [{ uuid: "a", number: 2, outstanding: 6125, due_date: "2026-08-08" }], meta: { last_page: 1 } }),
   };

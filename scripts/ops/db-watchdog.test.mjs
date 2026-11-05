@@ -7,6 +7,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
+  API_5XX_MIN_COUNT,
   buildPayload,
   checkBackend,
   checkPostgrest,
@@ -15,10 +16,19 @@ import {
   CONFIRM_DELAY_MS,
   emptyState,
   evaluate,
+  evaluateApi5xx,
+  evaluateSlowQueries,
+  fetchApi5xxSample,
+  fetchSlowStatements,
+  FRESH_RESTART_MS,
   main,
   missingEnv,
   normalizeState,
   rollbackUnsent,
+  SLOW_COOLDOWN_MS,
+  SLOW_FETCH_LIMIT,
+  SLOW_MIN_CALLS,
+  SLOW_SQL,
   sentryCheckinUrl,
 } from "./db-watchdog.mjs";
 
@@ -184,7 +194,10 @@ test("payload: @mention kun på nedetids-alarmen, og ingen secrets i teksten", (
   assert.match(rec.embeds[0].description, /ca\. 20 min/);
 
   const restart = { kind: "restart", previousStart: START_A, newStart: START_B, healthyNow: true };
-  assert.equal(buildPayload(restart, { mention: "<@123>" }).content, undefined);
+  // #7662: en genstart er alvorlig nok til at pinge ejeren.
+  assert.equal(buildPayload(restart, { mention: "<@123>" }).content, "<@123>");
+  const slow = { kind: "slow", items: [{ id: "1", query: "select 1", calls: 4, meanMs: 2000 }], omitted: 0, at: t(0) };
+  assert.equal(buildPayload(slow, { mention: "<@123>" }).content, undefined);
 });
 
 test("payload uden mention sender kun embed", () => {
@@ -387,4 +400,319 @@ test("main (#6854): et kort blip der er grønt ved anden måling alarmerer ikke"
   assert.equal(code, 0);
   assert.equal(h.discord.length, 0);
   assert.equal(JSON.parse(fs.readFileSync(path.join(dir, "state.json"), "utf8")).consecutiveFailures, 0);
+});
+
+// --- #7662: genstart uden baseline --------------------------------------------
+
+test("#7662 genstart: første kørsel med gammel starttid er kun baseline (ingen falsk alarm)", () => {
+  const r = evaluate(emptyState(), green(START_A), t(0));
+  assert.deepEqual(r.messages, []);
+  assert.equal(r.state.lastPostmasterStart, START_A);
+});
+
+test("#7662 genstart: helt frisk start uden baseline (tabt tilstand) alarmerer alligevel", () => {
+  const now = t(0);
+  const fresh = new Date(new Date(now).getTime() - FRESH_RESTART_MS + 60_000).toISOString().replace(/\.\d+Z$/, "Z");
+  const r = evaluate(emptyState(), green(fresh), now);
+  assert.equal(r.messages.length, 1);
+  assert.equal(r.messages[0].kind, "restart");
+  assert.equal(r.messages[0].previousStart, null);
+  assert.match(buildPayload(r.messages[0], { mention: null }).embeds[0].description, /tabt/);
+  // Næste kørsel med samme starttid er stille.
+  assert.deepEqual(evaluate(r.state, green(fresh), t(5)).messages, []);
+});
+
+test("#7662 genstart: en start lidt ældre end vinduet uden baseline er stadig kun baseline", () => {
+  const now = t(0);
+  const old = new Date(new Date(now).getTime() - FRESH_RESTART_MS - 60_000).toISOString().replace(/\.\d+Z$/, "Z");
+  assert.deepEqual(evaluate(emptyState(), green(old), now).messages, []);
+});
+
+test("#7662 genstart: mislykket afsendelse af en frisk-genstart-besked prøves igen, også efter vinduet", () => {
+  const now = t(0);
+  const fresh = new Date(new Date(now).getTime() - 60_000).toISOString().replace(/\.\d+Z$/, "Z");
+  const first = evaluate(emptyState(), green(fresh), now);
+  const rolled = rollbackUnsent(first.state, emptyState(), first.messages[0]);
+  assert.equal(rolled.lastPostmasterStart, null);
+  assert.equal(rolled.pendingRestartStart, fresh);
+  const later = new Date(new Date(now).getTime() + 2 * FRESH_RESTART_MS).toISOString();
+  const retry = evaluate(rolled, green(fresh), later);
+  assert.deepEqual(retry.messages.map((m) => m.kind), ["restart"]);
+  assert.equal(retry.state.pendingRestartStart, null);
+  assert.deepEqual(evaluate(retry.state, green(fresh), later).messages, []);
+});
+
+test("#7662 genstart nulstiller query-snapshot (tællerne starter forfra)", () => {
+  const prev = { ...evaluate(emptyState(), green(START_A), t(0)).state, slowSnapshot: { a: { calls: 5, totalMs: 100 } } };
+  const r = evaluate(prev, green(START_B), t(5));
+  assert.equal(r.messages[0].kind, "restart");
+  assert.equal(r.state.slowSnapshot, null);
+});
+
+// --- #7662: 5xx-regel -----------------------------------------------------------
+
+test("#7662 5xx: første måling lægger kun baseline, selv ved høj fejlandel", () => {
+  const r = evaluateApi5xx(emptyState(), { errors: 500, total: 600 }, t(0));
+  assert.deepEqual(r.messages, []);
+  assert.ok(r.state.api5xxBaselineRate > 0.8);
+  assert.equal(r.state.api5xxActive, false);
+});
+
+test("#7662 5xx: roligt niveau alarmerer ikke og glider baseline", () => {
+  let s = evaluateApi5xx(emptyState(), { errors: 1, total: 1000 }, t(0)).state;
+  const r = evaluateApi5xx(s, { errors: 2, total: 1000 }, t(15));
+  assert.deepEqual(r.messages, []);
+  assert.ok(r.state.api5xxBaselineRate > 0.001 && r.state.api5xxBaselineRate < 0.002);
+});
+
+test("#7662 5xx: stigning giver præcis én besked og ingen gentagelser mens den varer", () => {
+  let s = evaluateApi5xx(emptyState(), { errors: 1, total: 1000 }, t(0)).state;
+  const spike = evaluateApi5xx(s, { errors: 80, total: 400 }, t(15));
+  assert.equal(spike.messages.length, 1);
+  assert.equal(spike.messages[0].kind, "api5xx");
+  assert.equal(spike.state.api5xxActive, true);
+  assert.equal(spike.state.api5xxBaselineRate, s.api5xxBaselineRate, "baseline følger ikke udfaldet");
+  const again = evaluateApi5xx(spike.state, { errors: 90, total: 400 }, t(30));
+  assert.deepEqual(again.messages, []);
+  const over = evaluateApi5xx(again.state, { errors: 0, total: 400 }, t(45));
+  assert.equal(over.state.api5xxActive, false);
+  const second = evaluateApi5xx(over.state, { errors: 80, total: 400 }, t(60));
+  assert.equal(second.messages.length, 1, "ny stigning kan alarmere igen");
+});
+
+test("#7662 5xx: for få fejl alarmerer ikke, selv ved høj andel af få kald", () => {
+  const s = evaluateApi5xx(emptyState(), { errors: 0, total: 1000 }, t(0)).state;
+  const r = evaluateApi5xx(s, { errors: API_5XX_MIN_COUNT - 1, total: API_5XX_MIN_COUNT }, t(15));
+  assert.deepEqual(r.messages, []);
+});
+
+test("#7662 5xx: en høj normalandel hæver grænsen (ingen larm på vedvarende støj)", () => {
+  let s = evaluateApi5xx(emptyState(), { errors: 100, total: 1000 }, t(0)).state;
+  const r = evaluateApi5xx(s, { errors: 120, total: 1000 }, t(15));
+  assert.deepEqual(r.messages, []);
+});
+
+test("#7662 5xx: manglende måling ændrer intet", () => {
+  const s = { ...emptyState(), api5xxBaselineRate: 0.01, api5xxActive: true };
+  const r = evaluateApi5xx(s, null, t(0));
+  assert.deepEqual(r.state, s);
+  assert.deepEqual(r.messages, []);
+});
+
+test("#7662 5xx: rollback efter mislykket afsendelse prøver igen næste gang", () => {
+  const base = evaluateApi5xx(emptyState(), { errors: 0, total: 1000 }, t(0)).state;
+  const spike = evaluateApi5xx(base, { errors: 80, total: 400 }, t(15));
+  const rolled = rollbackUnsent(spike.state, base, spike.messages[0]);
+  assert.equal(rolled.api5xxActive, false);
+  assert.equal(evaluateApi5xx(rolled, { errors: 80, total: 400 }, t(30)).messages.length, 1);
+});
+
+test("#7662 5xx: fetchApi5xxSample læser tællere, afviser fejl og kaster aldrig", async () => {
+  const now = new Date(t(0));
+  let seen;
+  const ok = await fetchApi5xxSample(async (url, opts) => {
+    seen = { url: String(url), auth: opts.headers.Authorization };
+    return { ok: true, status: 200, json: async () => ({ result: [{ errors: "7", total: 120 }] }) };
+  }, "tok", "ref123", now);
+  assert.deepEqual(ok.sample, { errors: 7, total: 120 });
+  assert.match(seen.url, /projects\/ref123\/analytics\/endpoints\/logs/);
+  assert.equal(seen.auth, "Bearer tok");
+
+  const empty = await fetchApi5xxSample(async () => ({ ok: true, json: async () => ({ result: [] }) }), "t", "r", now);
+  assert.deepEqual(empty.sample, { errors: 0, total: 0 });
+  const http = await fetchApi5xxSample(async () => ({ ok: false, status: 401 }), "t", "r", now);
+  assert.equal(http.sample, null);
+  assert.match(http.reason, /401/);
+  const sqlErr = await fetchApi5xxSample(async () => ({ ok: true, json: async () => ({ error: "boom" }) }), "t", "r", now);
+  assert.equal(sqlErr.sample, null);
+  const bad = await fetchApi5xxSample(async () => ({ ok: true, json: async () => ({ result: [{ errors: -1, total: 5 }] }) }), "t", "r", now);
+  assert.equal(bad.sample, null);
+  const net = await fetchApi5xxSample(async () => { throw Object.assign(new Error("x"), { cause: { code: "ECONNRESET" } }); }, "t", "r", now);
+  assert.equal(net.sample, null);
+  assert.doesNotMatch(net.reason, /tok/);
+});
+
+// --- #7662: langsom-forespørgsel-regel -----------------------------------------
+
+const row = (id, calls, totalMs, query = `select ${id}`) => ({ id, calls, totalMs, query });
+
+test("#7662 langsom: første kørsel lægger kun snapshot, selv med enorme akkumulerede tal", () => {
+  const r = evaluateSlowQueries(emptyState(), [row("a", 1000, 9_000_000)], t(0));
+  assert.deepEqual(r.messages, []);
+  assert.deepEqual(r.state.slowSnapshot, { a: { calls: 1000, totalMs: 9_000_000 } });
+});
+
+test("#7662 langsom: gentagne langsomme kald siden sidst giver én besked med de rigtige tal", () => {
+  const s = evaluateSlowQueries(emptyState(), [row("a", 10, 500), row("b", 10, 100)], t(0)).state;
+  const r = evaluateSlowQueries(s, [row("a", 10 + SLOW_MIN_CALLS, 500 + 3 * 2500), row("b", 20, 400)], t(60));
+  assert.equal(r.messages.length, 1);
+  assert.deepEqual(r.messages[0].items.map((i) => [i.id, i.calls, i.meanMs]), [["a", SLOW_MIN_CALLS, 2500]]);
+  assert.match(buildPayload(r.messages[0], { mention: null }).embeds[0].description, /2500 ms/);
+});
+
+test("#7662 langsom: et enkelt langsomt kald eller hurtigt gennemsnit alarmerer ikke", () => {
+  const s = evaluateSlowQueries(emptyState(), [row("a", 10, 500), row("b", 10, 500)], t(0)).state;
+  const r = evaluateSlowQueries(s, [row("a", 11, 500 + 9000), row("b", 100, 500 + 90 * 50)], t(60));
+  assert.deepEqual(r.messages, []);
+});
+
+test("#7662 langsom: nedkøling pr. forespørgsel, så den ikke larmer hver kørsel", () => {
+  let s = evaluateSlowQueries(emptyState(), [row("a", 0, 0)], t(0)).state;
+  const first = evaluateSlowQueries(s, [row("a", 5, 20_000)], t(60));
+  assert.equal(first.messages.length, 1);
+  const second = evaluateSlowQueries(first.state, [row("a", 10, 40_000)], t(120));
+  assert.deepEqual(second.messages, [], "inden for nedkølingen");
+  const later = new Date(new Date(t(60)).getTime() + SLOW_COOLDOWN_MS + 1000).toISOString();
+  const third = evaluateSlowQueries(second.state, [row("a", 15, 60_000)], later);
+  assert.equal(third.messages.length, 1, "efter nedkølingen");
+});
+
+test("#7662 langsom: en ny forespørgsel der er langsom i sit første interval opdages (komplet snapshot)", () => {
+  const s = evaluateSlowQueries(emptyState(), [row("a", 10, 100)], t(0)).state;
+  const r = evaluateSlowQueries(s, [row("a", 10, 100), row("new", 4, 12_000)], t(60));
+  assert.deepEqual(r.messages[0].items.map((i) => i.id), ["new"]);
+});
+
+test("#7662 langsom: en forespørgsel uden for et afkortet snapshot er kun baseline", () => {
+  const full = Object.fromEntries(Array.from({ length: SLOW_FETCH_LIMIT }, (_, i) => [`q${i}`, { calls: 1, totalMs: 1 }]));
+  const s = { ...emptyState(), slowSnapshot: full };
+  const r = evaluateSlowQueries(s, [row("late", 900, 9_000_000)], t(60));
+  assert.deepEqual(r.messages, []);
+});
+
+test("#7662 langsom: SQL'en lægger tællere sammen pr. queryid og har bred grænse", () => {
+  assert.match(SLOW_SQL, /group by queryid/);
+  assert.match(SLOW_SQL, new RegExp(`limit ${SLOW_FETCH_LIMIT}\\)`));
+});
+
+test("#7662 langsom: nulstillede tællere (genstart) giver ingen falsk alarm", () => {
+  const s = evaluateSlowQueries(emptyState(), [row("a", 1000, 5_000_000)], t(0)).state;
+  const r = evaluateSlowQueries(s, [row("a", 4, 20_000)], t(60));
+  assert.deepEqual(r.messages, []);
+});
+
+test("#7662 langsom: mislykket måling ændrer ingen tilstand", () => {
+  const s = evaluateSlowQueries(emptyState(), [row("a", 1, 1)], t(0)).state;
+  const r = evaluateSlowQueries(s, null, t(60));
+  assert.deepEqual(r.state, s);
+  assert.deepEqual(r.messages, []);
+});
+
+test("#7662 langsom: rollback efter mislykket afsendelse bevarer forskellen til næste kørsel", () => {
+  const base = evaluateSlowQueries(emptyState(), [row("a", 0, 0)], t(0)).state;
+  const hit = evaluateSlowQueries(base, [row("a", 5, 20_000)], t(60));
+  const rolled = rollbackUnsent(hit.state, base, hit.messages[0]);
+  assert.equal(rolled.slowAlertedAt.a, undefined);
+  assert.deepEqual(rolled.slowSnapshot.a, { calls: 0, totalMs: 0 });
+  const retry = evaluateSlowQueries(rolled, [row("a", 6, 24_000)], t(120));
+  assert.equal(retry.messages.length, 1);
+});
+
+test("#7662 langsom: kun de værste vises, resten tælles", () => {
+  const base = evaluateSlowQueries(emptyState(), Array.from({ length: 8 }, (_, i) => row(`q${i}`, 0, 0)), t(0)).state;
+  const r = evaluateSlowQueries(base, Array.from({ length: 8 }, (_, i) => row(`q${i}`, 5, 5 * (2000 + i * 100))), t(60));
+  assert.equal(r.messages[0].items.length, 5);
+  assert.equal(r.messages[0].omitted, 3);
+  assert.equal(r.messages[0].items[0].id, "q7");
+});
+
+test("#7662 langsom: fetchSlowStatements parser JSON, dropper ugyldige rækker og skjuler URL ved fejl", async () => {
+  const ok = await fetchSlowStatements(async (cmd, args, opts) => {
+    assert.equal(cmd, "psql");
+    assert.equal(args[0], "postgres://secret-url");
+    assert.match(args[args.length - 1], /pg_stat_statements/);
+    assert.match(opts.env.PGOPTIONS, /statement_timeout=5s/);
+    return { stdout: JSON.stringify([{ id: "1", calls: 3, total_ms: "900", query: "select 1" }, { id: "", calls: 1, total_ms: 1 }, { id: "2", calls: -1, total_ms: 1 }]) + "\n" };
+  }, "postgres://secret-url");
+  assert.deepEqual(ok.rows, [{ id: "1", calls: 3, totalMs: 900, query: "select 1" }]);
+
+  const garbage = await fetchSlowStatements(async () => ({ stdout: "SET\n" }), "postgres://x");
+  assert.equal(garbage.rows, null);
+  const bad = await fetchSlowStatements(async () => {
+    throw Object.assign(new Error("Command failed: psql postgres://secret-url"), { stderr: "timeout expired at db.secret-host" });
+  }, "postgres://secret-url");
+  assert.equal(bad.rows, null);
+  assert.doesNotMatch(JSON.stringify(bad), /secret/);
+});
+
+// --- #7662: main() med de nye regler -------------------------------------------
+
+test("#7662 main: første kørsel (ingen tilstand) sender ingen alarm, uanset 5xx og langsomme tal", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbw-"));
+  const discord = [];
+  const fetchFn = async (url, opts = {}) => {
+    const u = new URL(url);
+    if (u.hostname === "discord.example") { discord.push(JSON.parse(opts.body)); return { ok: true, status: 204 }; }
+    if (u.hostname === "api.supabase.com") return { ok: true, status: 200, json: async () => ({ result: [{ errors: 900, total: 1000 }] }) };
+    return { status: 200, ok: true };
+  };
+  const execFn = async (cmd, args) => {
+    if (/pg_stat_statements/.test(args[args.length - 1])) {
+      return { stdout: JSON.stringify([{ id: "a", calls: 5000, total_ms: 99_000_000, query: "select slow" }]) };
+    }
+    return { stdout: `${START_A}\n` };
+  };
+  const env = makeEnv(dir, { SUPABASE_ACCESS_TOKEN: "tok" });
+  const logs = [];
+  const code = await main({ env, fetchFn, execFn, now: () => new Date(t(0)), log: (l) => logs.push(l), sleep: noSleep });
+  assert.equal(code, 0);
+  assert.deepEqual(discord, []);
+  const saved = JSON.parse(fs.readFileSync(path.join(dir, "state.json"), "utf8"));
+  assert.ok(saved.slowSnapshot.a);
+  assert.ok(saved.api5xxBaselineRate > 0.8);
+  assert.ok(logs.some((l) => /Tilstandsfil mangler/.test(l)), "tabt tilstand logges som advarsel");
+});
+
+test("#7662 main: anden kørsel alarmerer ved 5xx-stigning og gentagen langsom forespørgsel, og en manglende token springer 5xx over", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbw-"));
+  const discord = [];
+  let errors = 1;
+  let slowCalls = 0;
+  const fetchFn = async (url, opts = {}) => {
+    const u = new URL(url);
+    if (u.hostname === "discord.example") { discord.push(JSON.parse(opts.body)); return { ok: true, status: 204 }; }
+    if (u.hostname === "api.supabase.com") return { ok: true, status: 200, json: async () => ({ result: [{ errors, total: 1000 }] }) };
+    return { status: 200, ok: true };
+  };
+  const execFn = async (cmd, args) => {
+    if (/pg_stat_statements/.test(args[args.length - 1])) {
+      return { stdout: JSON.stringify([{ id: "a", calls: slowCalls, total_ms: slowCalls * 3000, query: "select slow" }]) };
+    }
+    return { stdout: `${START_A}\n` };
+  };
+  const env = makeEnv(dir, { SUPABASE_ACCESS_TOKEN: "tok" });
+  const run = (min, e = env) => main({ env: e, fetchFn, execFn, now: () => new Date(t(min)), log: () => {}, sleep: noSleep });
+  await run(0);
+  errors = 400;
+  slowCalls = 6;
+  await run(20);
+  assert.deepEqual(discord.map((m) => m.embeds[0].title).sort(), [
+    "Databasevagt: 5xx-fejl stiger på Supabase-API'et",
+    "Databasevagt: langsomme forespørgsler gentager sig",
+  ].sort());
+  await run(40);
+  assert.equal(discord.length, 2, "ingen gentagelse mens begge er aktive/nedkølet");
+
+  const { SUPABASE_ACCESS_TOKEN, ...noToken } = env;
+  const logs = [];
+  await main({ env: noToken, fetchFn, execFn, now: () => new Date(t(60)), log: (l) => logs.push(l), sleep: noSleep });
+  assert.ok(logs.some((l) => /5xx-reglen er slukket/.test(l)));
+  assert.equal(discord.length, 2);
+});
+
+test("#7662 main: en fejlende 5xx-måling eller query-måling fælder ikke kørslen", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbw-"));
+  const fetchFn = async (url) => {
+    if (new URL(url).hostname === "api.supabase.com") throw new Error("nede");
+    return { status: 200, ok: true };
+  };
+  const execFn = async (cmd, args) => {
+    if (/pg_stat_statements/.test(args[args.length - 1])) throw Object.assign(new Error("x"), { stderr: "permission denied" });
+    return { stdout: `${START_A}\n` };
+  };
+  const code = await main({
+    env: makeEnv(dir, { SUPABASE_ACCESS_TOKEN: "tok" }), fetchFn, execFn,
+    now: () => new Date(t(0)), log: () => {}, sleep: noSleep,
+  });
+  assert.equal(code, 0);
 });

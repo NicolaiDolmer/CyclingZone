@@ -18,7 +18,7 @@
 
 import { fetchAllRows } from "./supabasePagination.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
-import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
+import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.ts";
 import { loadWithdrawnPairs, withdrawalKey } from "./raceWithdrawal.js";
 import { buildKeyedNotification } from "./notificationKeys.js";
 

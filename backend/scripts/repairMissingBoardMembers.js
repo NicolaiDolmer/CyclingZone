@@ -101,7 +101,7 @@ export async function fetchRepairSnapshot(supabase) {
   // her rammer BEGGE sider af #4715's delte predikat på én gang: tælling og
   // apply-loop er enige, bare om det forkerte snapshot.
   //
-  // fetchAllRows er samme hjælper som ownershipInvariantWatch.js bruger til
+  // fetchAllRows er samme hjælper som ownershipInvariantWatch.ts bruger til
   // nøjagtig de samme to tabeller. teams (373 rækker) er under loftet i dag, men
   // den vokser med hver tilmelding og hvert AI-hold — begge pagineres.
   const teams = await fetchAllRows(() =>

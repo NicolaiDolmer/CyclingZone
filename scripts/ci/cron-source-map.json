@@ -127,7 +127,7 @@
       "backend/lib/raceNotifyOutboxFlag.js",
       "backend/lib/seasonStandingsBootstrap.js",
       "backend/lib/stageScheduler.js",
-      "backend/lib/stageSchedulerFlag.js"
+      "backend/lib/stageSchedulerFlag.ts"
     ],
     "race-finalize-watch": [
       "backend/lib/raceFinalizeWatch.ts"
@@ -155,7 +155,7 @@
       "backend/lib/riderDoubleBookingWatch.js"
     ],
     "ownership-invariant-watch": [
-      "backend/lib/ownershipInvariantWatch.js"
+      "backend/lib/ownershipInvariantWatch.ts"
     ],
     "rider-double-booking-watch": [
       "backend/lib/riderDoubleBookingWatch.js"

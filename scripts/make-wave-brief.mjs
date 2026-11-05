@@ -371,6 +371,8 @@ export function generateBrief(config) {
     return parts.join("\n") + "\n";
   }
 
+  parts.push("# Maalt foerstatus (#5509)", "",
+    "FOER kode: laes issue-body, labels og seneste kommentarer. Ved player-report: kontroller prod SQL/endpoint + maalt resultat + player-report-evidence efter docs/GITHUB_WORKFLOW.md. Maal foerstatus mod issuets godkendte maal, ikke blot et regressionsgulv. Er foerstatus allerede groen (already-green): STOP og rapporter bevis paa issuet; byg intet. Manglende maaling: needs-repro, kun investigation som bygger intet. Admission erstatter aldrig mandat, SSOT eller byggestop. Publicer kun anonymiserede ufølsomme aggregates eller private evidenspointer, aldrig hemmeligheder, PII eller private balance-tal.", "");
   parts.push(reglerBlok(wd, branch, scratchDir, msgFile, ownNodeModules), "");
   if (needsFrozenGolden(config)) parts.push(frossenGoldenBlok(wd, scratchDir), "");
   parts.push(livstegnBlok(branch), "");

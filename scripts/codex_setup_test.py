@@ -44,6 +44,36 @@ class SetupTests(unittest.TestCase):
         updated = self.module.update_config(original)
         self.assertEqual(tomllib.loads(updated)['agents']['legacy'], {'description': 'keep'})
 
+    def test_value_comment_boundary_preserves_unrelated_bytes(self):
+        fixtures = [
+            ('max_concurrent_threads_per_session', '6', '# local cap'),
+            ('default_subagent_model', '"old # inside"', ' # outside'),
+            ('default_subagent_model', "'old # inside'", '# outside'),
+            ('default_subagent_model', r'"old \" # inside"', '\t# outside'),
+            ('default_subagent_model', r'"old \\"', '# outside'),
+            ('default_subagent_model', r'"old \\\" # inside"', ' # outside'),
+            ('default_subagent_model', r"'old \ # inside'", ' # outside'),
+            ('default_subagent_model', '"old # inside"', ''),
+        ]
+        for key, old, comment in fixtures:
+            for eol in ('\n', '\r\n', ''):
+                with self.subTest(key=key, old=old, comment=comment, eol=eol):
+                    header = '# synthetic fixture\r\n[agents]\r\nunknown = "keep # bytes"\r\n'
+                    prefix = f'\t{key} \t=\t'
+                    tail = comment + ' \t' + eol
+                    original = header + prefix + old + tail
+                    parsed = tomllib.loads(original)
+                    parsed['agents'].update(self.module.DEFAULTS)
+                    updated = self.module.update_config(original)
+                    expected_line = prefix + self.module.toml_literal(self.module.DEFAULTS[key]) + tail
+                    # Missing managed keys may require a new final line separator.
+                    if not eol:
+                        expected_line += '\r\n'
+                    self.assertTrue(updated.startswith(header))
+                    self.assertIn(expected_line, updated)
+                    self.assertEqual(tomllib.loads(updated), parsed)
+                    self.assertEqual(self.module.update_config(updated), updated)
+
     def test_rejects_ambiguous_or_malformed_config_without_write(self):
         examples = ['[agents]\nmax_threads = 8\n', '[agents]\nmax_threads=2\nmax_threads=3\n', 'agents = { max_threads = 2 }\n', '["agents"]\nmax_threads=2\n', '[agents]\nnote = """\n[agents]\n"""\n', '[agents\n']
         for content in examples:

@@ -55,6 +55,10 @@
         "end": "De laatste 10 km beginnen in de afdaling naar de finish, dus stap {number} begint pas in de finale.",
         "finale": "De laatste 10 km beginnen in de afdaling naar de finish, dus stap {number} begint pas in de finale."
       },
+      "flat": {
+        "start": "De laatste 10 km beginnen tussen de laatste klim en de finish, dus stap {number} begint op de top.",
+        "finale": "De laatste 10 km beginnen tussen de laatste klim en de finish, dus stap {number} begint pas in de finale."
+      },
       "samePoint": "Stap {first} en stap {second} wisselen op hetzelfde punt, dus stap {first} wordt niet gereden."
     },
     "timeTrial": "Geen etappeplan in een tijdrit.",

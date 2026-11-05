@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import {
   parseTab, partitionItems, isRated, countUnrated, filterUnrated,
   engineCounts, issueAreaCounts, splitChecking, CHECKING_VISIBLE, splitIssues, buildDoneList, latestIssueUpdates,
+  groupPlan, planRanks, planStage, normalizeHorizon, weekRange, copenhagenDateKey, issueTimeline,
+  splitRecentDone, patchNotesByIssue, pickPatchNote, searchRoadmap, normalizeSearch,
+  holdsItem, doneLimitFor, roadmapRowId, DONE_PAGE_SIZE, FOLDED_HORIZONS,
   type RoadmapItem, type RoadmapVote, type KnownIssue,
 } from "./roadmapModel.ts";
 
@@ -41,12 +44,14 @@ test("partitionItems deler efter status og horizon og sorterer på sort_order", 
     item({ id: "k", status: "in_progress", beta_since: "2026-09-27T00:00:00Z", live_soon: true, sort_order: 90 }),
     item({ id: "j", status: "planned", beta_soon: true, sort_order: 30 }),
   ]);
-  // I beta står kun på Beta-fanen; "snart for alle" først.
+  // "Snart for alle" først på Beta-fanen.
   assert.deepEqual(p.inBeta.map((i) => i.id), ["k", "h"]);
   assert.deepEqual(p.comingToBeta.map((i) => i.id), ["j"]);
-  assert.deepEqual(p.plannedNext.map((i) => i.id), ["c", "b", "j"]);
-  assert.deepEqual(p.plannedLater.map((i) => i.id), ["a"]);
-  assert.deepEqual(p.inProgress.map((i) => i.id), ["d"]);
+  // #7666: Plan = i gang og planlagt pr. horisont; beta står kun på Beta-fanen (#6160).
+  assert.deepEqual(p.planGroups.map((g) => [g.horizon, g.items.map((i) => i.id)]), [
+    ["next", ["d", "c", "b", "j"]],
+    ["later", ["a"]],
+  ]);
   assert.deepEqual(p.ideas.map((i) => i.id), ["e"]);
   assert.deepEqual(p.shipped.map((i) => i.id), ["f"]);
 });
@@ -143,4 +148,168 @@ test("latestIssueUpdates grupperer pr. fejl, nyeste først", () => {
   assert.deepEqual(map.get("k1")?.map((u) => u.id), ["u2", "u1"]);
   assert.deepEqual(map.get("k2")?.map((u) => u.id), ["u3"]);
   assert.equal(latestIssueUpdates(null).size, 0);
+});
+
+// ── #7666 ────────────────────────────────────────────────────────────────
+
+test("groupPlan: horisonter i fast rækkefølge, tomme udelades, ukendt læses som next", () => {
+  const groups = groupPlan([
+    item({ id: "l", status: "planned", horizon: "later" }),
+    item({ id: "y", status: "planned", horizon: "y2027" }),
+    item({ id: "w2", status: "planned", horizon: "this_week", sort_order: 20 }),
+    item({ id: "w1", status: "in_progress", horizon: "this_week", sort_order: 90 }),
+    item({ id: "n", status: "planned", horizon: "next_week" }),
+    item({ id: "s", status: "planned", horizon: "this_season" }),
+    item({ id: "u", status: "planned", horizon: "someday" as never }),
+    item({ id: "x", status: "active", horizon: "this_week" }),
+    item({ id: "z", status: "shipped", horizon: "this_week" }),
+  ]);
+  assert.deepEqual(groups.map((g) => [g.horizon, g.items.map((i) => i.id)]), [
+    ["this_week", ["w1", "w2"]],
+    ["next_week", ["n"]],
+    ["next", ["u"]],
+    ["this_season", ["s"]],
+    ["y2027", ["y"]],
+    ["later", ["l"]],
+  ]);
+  assert.equal(normalizeHorizon("next_season"), "next_season");
+  assert.equal(normalizeHorizon(null), "next");
+});
+
+test("planStage og planRanks: kun planlagte nummereres, og ikke i de foldede horisonter", () => {
+  assert.equal(planStage(item({ status: "in_progress", beta_since: "2026-10-01T00:00:00Z" })), "beta");
+  assert.equal(planStage(item({ status: "in_progress" })), "in_progress");
+  assert.equal(planStage(item({ status: "planned" })), "planned");
+  const ranks = planRanks(groupPlan([
+    item({ id: "a", status: "planned", horizon: "next_week" }),
+    item({ id: "b", status: "in_progress", horizon: "this_week" }),
+    item({ id: "c", status: "planned", horizon: "this_week" }),
+    item({ id: "d", status: "planned", horizon: "later" }),
+  ]));
+  assert.deepEqual([...ranks], [["c", 1], ["a", 2]]);
+});
+
+test("weekRange: mandag til søndag i dansk tid, også lige efter midnat søndag/mandag", () => {
+  // Søndag 8/11 23:30 UTC er mandag 9/11 00:30 i København.
+  assert.equal(copenhagenDateKey(new Date("2026-11-08T23:30:00Z")), "2026-11-09");
+  assert.deepEqual(weekRange(new Date("2026-11-08T23:30:00Z"), 0), { start: "2026-11-09", end: "2026-11-15" });
+  // Onsdag 4/11.
+  assert.deepEqual(weekRange(new Date("2026-11-04T12:00:00Z"), 0), { start: "2026-11-02", end: "2026-11-08" });
+  assert.deepEqual(weekRange(new Date("2026-11-04T12:00:00Z"), 1), { start: "2026-11-09", end: "2026-11-15" });
+});
+
+test("issueTimeline: datoer kun på nåede trin; et sprunget trin vises uden dato", () => {
+  const fixing = issueTimeline(iss({ status: "fixing", created_at: "2026-10-01T00:00:00Z", fixing_at: "2026-10-03T00:00:00Z" }));
+  assert.deepEqual(fixing.map((s) => [s.key, s.reached, s.current, s.date]), [
+    ["reported", true, false, "2026-10-01T00:00:00Z"],
+    ["confirmed", true, false, null],
+    ["fixing", true, true, "2026-10-03T00:00:00Z"],
+    ["fixed", false, false, null],
+  ]);
+  // En gammel closed_at på en genåbnet fejl må ikke vises.
+  const checking = issueTimeline(iss({ status: "checking", closed_at: "2026-10-05T00:00:00Z" }));
+  assert.deepEqual(checking.map((s) => s.reached), [true, false, false, false]);
+  assert.equal(checking[3].date, null);
+  const dismissed = issueTimeline(iss({ status: "dismissed", closed_at: "2026-10-05T00:00:00Z" }));
+  assert.deepEqual(dismissed.map((s) => [s.key, s.current, s.date]), [
+    ["reported", false, "2026-09-30T00:00:00Z"],
+    ["dismissed", true, "2026-10-05T00:00:00Z"],
+  ]);
+});
+
+test("buildDoneList bærer issue_ref, og splitRecentDone skiller de sidste 7 dage ud", () => {
+  const done = buildDoneList(
+    [item({ id: "f1", status: "shipped", shipped_at: "2026-11-02T00:00:00Z", issue_ref: 7003 }),
+     item({ id: "f2", status: "shipped", shipped_at: "2026-10-20T00:00:00Z" }),
+     item({ id: "f0", status: "shipped", shipped_at: null })],
+    [iss({ id: "k1", status: "fixed", closed_at: "2026-11-03T00:00:00Z", issue_ref: 7092 })],
+    Infinity,
+  );
+  assert.deepEqual(done.map((d) => [d.id, d.issue_ref]), [["k1", 7092], ["f1", 7003], ["f2", null], ["f0", null]]);
+  const { recent, earlier } = splitRecentDone(done, new Date("2026-11-04T12:00:00Z"));
+  assert.deepEqual(recent.map((d) => d.id), ["k1", "f1"]);
+  assert.deepEqual(earlier.map((d) => d.id), ["f2", "f0"]);
+});
+
+test("patchNotesByIssue + pickPatchNote: kun spillernoter, nærmeste dato vinder", () => {
+  const index = patchNotesByIssue([
+    { version: "7.398", date: "2026-11-04", changes: [
+      { audience: "player", refs: [7003], en: { title: "Later fix", body: "b" }, da: { title: "Senere", body: "b" } },
+      { audience: "admin", refs: [7092], en: { title: "Hidden", body: "b" }, da: { title: "Skjult", body: "b" } },
+    ] },
+    { version: "7.390", date: "2026-10-27", changes: [
+      { audience: "player", refs: [7003, "x"], en: { title: "Stage plan", body: "Plan it" }, da: { title: "Etapeplan", body: "Planlæg" } },
+    ] },
+    { nonsense: true },
+  ]);
+  assert.equal(index.has(7092), false);
+  assert.equal(index.get(7003)?.length, 2);
+  assert.equal(pickPatchNote(index, 7003, "2026-10-27T12:00:00Z")?.version, "7.390");
+  assert.equal(pickPatchNote(index, 7003, "2026-11-05T12:00:00Z")?.version, "7.398");
+  assert.equal(pickPatchNote(index, 7003, null)?.version, "7.398");
+  assert.equal(pickPatchNote(index, null, "2026-11-01"), null);
+  assert.equal(pickPatchNote(index, 1, "2026-11-01"), null);
+  assert.equal(patchNotesByIssue(null).size, 0);
+});
+
+test("searchRoadmap: EN og DA, uden accenter, med fanen hittet ligger på", () => {
+  const items = [
+    item({ id: "p", status: "planned", title_en: "Stage plan", title_da: "Etapeplan" }),
+    item({ id: "b", status: "in_progress", beta_since: "2026-10-01T00:00:00Z", title_en: "Race film", title_da: "Løbsfilm" }),
+    item({ id: "i", status: "active", title_en: "Team kit", title_da: "Holddragt på ryttere" }),
+    item({ id: "s", status: "shipped", title_en: "Stage weather", title_da: "Etapevejr" }),
+    item({ id: "a", status: "archived", title_en: "Stage old", title_da: "Gammel" }),
+  ];
+  const issues = [
+    iss({ id: "k", status: "confirmed", title_en: "Stage page is slow", title_da: "Etapesiden er langsom" }),
+    iss({ id: "f", status: "fixed", title_en: "Fixed thing", title_da: "Rettet etape" }),
+    iss({ id: "d", status: "dismissed", title_en: "Stage nothing", title_da: "Intet" }),
+  ];
+  assert.deepEqual(searchRoadmap("etape", items, issues).map((h) => [h.id, h.where, h.tab]), [
+    ["p", "planned", "plan"], ["k", "issue", "issues"], ["s", "done_feature", "done"], ["f", "done_fix", "done"],
+  ]);
+  assert.deepEqual(searchRoadmap("pa ryttere", items, issues).map((h) => h.id), ["i"]);
+  assert.deepEqual(searchRoadmap("FILM", items, issues).map((h) => [h.id, h.tab]), [["b", "beta"]]);
+  assert.deepEqual(searchRoadmap("e", items, issues), []);
+  assert.equal(normalizeSearch("  Étape På "), "etape pa");
+});
+
+// Codex-fund på #7668: et hit på en gammel leveret post eller en fjern plan
+// skiftede fane, men punktet blev skjult bag "Show more" eller en lukket fold.
+test("doneLimitFor: et hit dybt i Done udvider listen, til punktet er med", () => {
+  const earlier = Array.from({ length: 95 }, (_, i) => ({ id: `e${i}` }));
+  const shown = (id: string | null) => earlier.slice(0, doneLimitFor(earlier, id));
+
+  assert.equal(shown("e70").at(-1)?.id, "e70");
+  assert.equal(shown("e94").length, 95);
+  assert.equal(doneLimitFor(earlier, "e3"), DONE_PAGE_SIZE, "listen krymper aldrig under én side");
+  assert.equal(doneLimitFor(earlier, null), DONE_PAGE_SIZE);
+  assert.equal(doneLimitFor(earlier, "ikke-her"), DONE_PAGE_SIZE);
+});
+
+test("holdsItem: kun folden med det valgte punkt åbner", () => {
+  const groups = groupPlan([
+    item({ id: "near", status: "planned", horizon: "this_week" }),
+    item({ id: "y", status: "planned", horizon: "y2027" }),
+    item({ id: "l", status: "planned", horizon: "later" }),
+  ]);
+  const open = (id: string | null) => groups
+    .filter((g) => FOLDED_HORIZONS.has(g.horizon) && holdsItem(g.items, id))
+    .map((g) => g.horizon);
+
+  assert.deepEqual(open("y"), ["y2027"]);
+  assert.deepEqual(open("l"), ["later"]);
+  assert.deepEqual(open("near"), []);
+  assert.deepEqual(open(null), []);
+});
+
+test("holdsItem: et hit i de foldede indmeldte fejl åbner den fold", () => {
+  const checking = Array.from({ length: CHECKING_VISIBLE + 2 }, (_, i) => iss({ id: `k${i}` }));
+  const { folded } = splitChecking(checking);
+  assert.equal(holdsItem(folded, `k${CHECKING_VISIBLE}`), true);
+  assert.equal(holdsItem(folded, "k0"), false);
+});
+
+test("roadmapRowId: samme id på rækken og i scroll-opslaget", () => {
+  assert.equal(roadmapRowId("abc"), "roadmap-row-abc");
 });
