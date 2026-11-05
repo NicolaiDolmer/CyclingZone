@@ -12,7 +12,7 @@
 //   - buildReport:      3-5 saetninger, deterministisk, fra linjerne + resultatet
 //   - groupMembersAt:   hvem kører i hvilken gruppe ved et km (replay-navne)
 //   - finaleData/…:     "Final 5 km"-grafikkens tidsmodel og gruppevalg
-import { replayFrames as replayFramesJs, checkpointGapForRider as checkpointGapJs } from "../../../../../backend/lib/raceStory.js";
+import { replayFrames as replayFramesJs, checkpointGapForRider as checkpointGapJs, riderOutBy as riderOutByJs } from "../../../../../backend/lib/raceStory.js";
 import { withNarrativeCauses, isTimeTrialNarrative, type NarrativeEvent } from "../../../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts";
 import { collectRiderIds, describeEvent } from "../../../lib/stageTimelineFilm.js";
 import { classificationRowsForStage } from "../../../lib/raceStageClassifications.js";
@@ -95,6 +95,7 @@ export interface RiderGap { group_id: string; gap_s: number; time_s: number | nu
 /** Kontraktens egne funktioner (backend/lib/raceStory.js), typet her. */
 export const replayFrames = replayFramesJs as unknown as (story: RaceStory, opts?: { finaleKm?: number; stepKm?: number }) => ReplayFrame[];
 export const checkpointGapForRider = checkpointGapJs as unknown as (checkpoint: StoryCheckpoint, riderId: string) => RiderGap | null;
+const riderOutBy = riderOutByJs as unknown as (story: RaceStory, a: StorySnapshot) => (riderId: string, km: number) => boolean;
 
 /** Kun et svar der ligner kontrakten bruges; alt andet = ingen historie. */
 export function asStory(value: unknown): RaceStory | null {
@@ -660,6 +661,7 @@ export function groupMembersAt(story: RaceStory, km: number): Map<string, Member
   for (const s of story.snapshots) if (s.km <= km + EPS) a = s; else break;
   const state = new Map<string, Members>();
   if (!a) return state;
+  const isOutBy = riderOutBy(story, a);
   for (const g of a.groups) state.set(g.group_id, { riders: new Set(g.rider_ids), includesRest: g.includes_rest });
   const transitions: Array<{ km: number; order: number; span: GroupSpan; join?: { km: number; rider_ids: string[] } }> = [];
   for (const s of story.group_spans ?? []) {
@@ -674,7 +676,7 @@ export function groupMembersAt(story: RaceStory, km: number): Map<string, Member
       const target = state.get(span.group_id);
       if (!target) continue;
       for (const r of join.rider_ids) {
-        if (a.out_rider_ids?.includes(r)) continue; // som medlemskabet: den udgåede kører aldrig igen
+        if (isOutBy(r, join.km)) continue; // som medlemskabet: den udgåede kører aldrig igen
         for (const g of state.values()) g.riders.delete(r);
         target.riders.add(r);
       }

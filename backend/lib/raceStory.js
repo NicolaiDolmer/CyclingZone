@@ -900,6 +900,23 @@ function lerp(fromKm, fromGap, toKm, toGap, km) {
 }
 
 /**
+ * Er rytteren udgået på eller før km? Snapshot a kender kun udgåede frem til a;
+ * resten står i historiens egne linjer (uheld med udgåelse, uden for tidsgrænsen),
+ * på det sted de skete. Kendes stedet kun som et km-spænd, gælder spændets start:
+ * en rytter der måske allerede er ude, vises aldrig.
+ */
+export function riderOutBy(story, a) {
+  const outKm = new Map();
+  const note = (id, km) => { if (id && !(outKm.get(id) <= km)) outKm.set(id, km); };
+  for (const moment of story.moments ?? []) {
+    if (moment.type === "incident" && moment.data?.outcome === "abandoned") note(str(moment.data.rider_id), moment.km);
+    else if (moment.type === "outside_time_limit") for (const id of ids(moment.data?.rider_ids)) note(id, moment.km);
+  }
+  const atA = new Set(a.out_rider_ids ?? []);
+  return (/** @type {string} */ id, /** @type {number} */ km) => atA.has(id) || (outKm.get(id) ?? Infinity) <= km + 1e-9;
+}
+
+/**
  * Gruppernes hul ved et km mellem to snapshots (a <= km < b). Frame-medlemskab
  * bygges fra tilstanden FØR km (snapshot a) og den registrerede levetid
  * (`group_spans`, på hændelsens sande km), aldrig ved at projicere næste
@@ -950,8 +967,8 @@ function groupsBetween(story, a, b, km) {
 
   // Medlemskabet ved km: a, plus levetidernes overgange i (a, km].
   const state = new Map(a.groups.map((g) => [g.group_id, { meta: g, riders: new Set(g.rider_ids), size: g.size, includes_rest: g.includes_rest }]));
-  const outRiders = new Set(a.out_rider_ids ?? []);
-  const gone = new Set([...outRiders, ...(a.pending_rider_ids ?? [])]);
+  const isOutBy = riderOutBy(story, a);
+  const gone = new Set([...(a.out_rider_ids ?? []), ...(a.pending_rider_ids ?? [])]);
   const transitions = [];
   for (const s of spans) {
     if (s.to_km != null && s.to_km < s.from_km - EPS) continue; // ingen levetid på vejen
@@ -967,7 +984,7 @@ function groupsBetween(story, a, b, km) {
       if (!target) continue;
       for (const r of join.rider_ids) {
         // Som medlemskabet: den udgåede kører aldrig igen, uheldsofferet er ude af resten og får sin plads her.
-        if (outRiders.has(r)) continue;
+        if (isOutBy(r, join.km)) continue;
         const holder = [...state.values()].find((g) => g.riders.has(r)) ?? (gone.has(r) ? null : [...state.values()].find((g) => g.includes_rest));
         if (holder === target) continue;
         if (holder) { holder.riders.delete(r); shrink(holder); }
