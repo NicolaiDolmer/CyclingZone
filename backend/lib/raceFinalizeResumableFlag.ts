@@ -6,7 +6,7 @@
 // Fail-safe: fejl/fravær → false. Med flaget OFF skriver afslutningen INGEN markering
 // og læser ingen — adfærden er bit-identisk med før #4147 (den grovkornede
 // finalizationPending-recovery fra P0 2/7 er uændret aktiv). Vagten
-// (raceFinalizeWatch.js) er UAFHÆNGIG af flaget: den kan finde halve løb uden
+// (raceFinalizeWatch.ts) er UAFHÆNGIG af flaget: den kan finde halve løb uden
 // markering også, netop fordi et løb kan være crashet mens flaget var slukket.
 //
 // Default OFF ved merge — orkestratoren tænder den eksplicit efter at have set

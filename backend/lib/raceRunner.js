@@ -4165,7 +4165,7 @@ export async function simulateStageByIndex({
   }
 
   // #4147: afslutningen er i mål — ryd markeringen. Fra dette øjeblik har løbet igen
-  // ingen igangværende afslutning, og vagten (raceFinalizeWatch.js) ser intet.
+  // ingen igangværende afslutning, og vagten (raceFinalizeWatch.ts) ser intet.
   await clearFinalizeState();
 
   // #4148: sidste log-linje for denne invokation — dækker BÅDE normal

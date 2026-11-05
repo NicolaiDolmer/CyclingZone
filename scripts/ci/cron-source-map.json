@@ -130,7 +130,7 @@
       "backend/lib/stageSchedulerFlag.ts"
     ],
     "race-finalize-watch": [
-      "backend/lib/raceFinalizeWatch.js"
+      "backend/lib/raceFinalizeWatch.ts"
     ],
     "ranking-matview-refresh": [
       "backend/lib/refreshRankingMatviews.js"

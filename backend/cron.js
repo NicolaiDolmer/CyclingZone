@@ -63,7 +63,7 @@ import { runAutoPrizeSweep } from "./lib/autoPrizeSweep.js";
 import { isAutoPrizeEnabled } from "./lib/autoPrizeFlag.js";
 import { runStageScheduler } from "./lib/stageScheduler.js";
 import { startClockAlignedInterval } from "./lib/schedulerTick.js"; // #3624 trin 1
-import { runHalfFinalizedRaceWatch } from "./lib/raceFinalizeWatch.js"; // #4147
+import { runHalfFinalizedRaceWatch } from "./lib/raceFinalizeWatch.ts"; // #4147
 import { refreshRankingMatviewsGated } from "./lib/refreshRankingMatviews.js"; // #5911
 import { takeGlobalRankWeeklySnapshotSafe } from "./lib/globalRankWeeklySnapshot.js";
 import { isStageSchedulerEnabled } from "./lib/stageSchedulerFlag.ts";

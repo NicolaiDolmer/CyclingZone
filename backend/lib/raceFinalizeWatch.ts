@@ -37,11 +37,47 @@
 // "<type>:<race_id>"-par: kommer et nyt løb til, eller retter et sig, ændrer signaturen
 // sig og vi alarmerer straks.
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { captureException as defaultCaptureException } from "./sentry.js";
 import { buildAlertSignature, shouldAlertOnChange } from "./opsAlertDedupe.js";
 import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
 import { isAutoPrizeEnabled as defaultIsAutoPrizeEnabled } from "./autoPrizeFlag.js";
 import { STAGE_CLAIM_LEASE_MS } from "./adminSimulateRace.js";
+
+type WatchClient = { from(table: string): { select: unknown } };
+type Query = ReturnType<SupabaseClient["from"]>;
+type QueryResult<Row> = { data: Row[] | null; error: { message: string } | null };
+type FinalizeState = { stage_index?: unknown; stage_number?: unknown; done?: unknown };
+type RaceRow = {
+  id: string;
+  name?: string | null;
+  status?: string | null;
+  stages?: unknown;
+  stages_completed?: unknown;
+  prize_paid_at?: string | null;
+  finalize_state?: FinalizeState | null;
+  finalize_updated_at?: string | null;
+};
+type ClaimRow = { race_id: string; stage_index?: unknown; claimed_at?: string | null };
+type ScheduleRow = { race_id: string; scheduled_at?: string | null };
+type BaseFinding = { race_id: string; race_name: string | null };
+type StuckFinding = BaseFinding & { type: "stuck_marker"; stage_number: unknown; done: readonly unknown[]; stalled_minutes: number };
+type ResultsFinding = BaseFinding & { type: "results_without_status"; status: string | null; stages: number; stages_completed: number };
+type PrizeFinding = BaseFinding & { type: "completed_without_prize"; payable_rows: number };
+type Finding = StuckFinding | ResultsFinding | PrizeFinding;
+type FormattedFinding = StuckFinding | Omit<ResultsFinding, "stages_completed"> | PrizeFinding;
+type SelectOptions = { now?: Date; thresholdMs?: number };
+type StuckOptions = SelectOptions & { leaseMs?: number };
+type StageTimes = ReadonlyMap<string, string | null | undefined>;
+type PayableRows = ReadonlyMap<string, number>;
+type WatchResult = { findings: number; alerted: boolean; byType: Partial<Record<Finding["type"], number>> };
+type WatchOptions = {
+  supabase?: WatchClient | null;
+  now?: Date;
+  captureExceptionFn?: typeof defaultCaptureException;
+  isAutoPrizeEnabled?: typeof defaultIsAutoPrizeEnabled;
+  logger?: Partial<Pick<Console, "warn" | "error">>;
+};
 
 export const RACE_FINALIZE_ALERT_KEY = "race-finalize-half-state";
 
@@ -101,17 +137,17 @@ export const MAX_CANDIDATES = 25;
  * @param {Array<object>} races - rækker med { id, name, finalize_state, finalize_updated_at }
  * @param {Array<object>} claims - rækker fra race_stage_claims { race_id, stage_index, claimed_at }
  */
-export function selectStuckMarkers(races = [], claims = [], { now = new Date(), thresholdMs = HALF_FINALIZED_ALERT_AFTER_MS, leaseMs = STAGE_CLAIM_LEASE_MS } = {}) {
+export function selectStuckMarkers(races: readonly RaceRow[] = [], claims: readonly ClaimRow[] = [], { now = new Date(), thresholdMs = HALF_FINALIZED_ALERT_AFTER_MS, leaseMs = STAGE_CLAIM_LEASE_MS }: StuckOptions = {}): StuckFinding[] {
   const nowMs = now.getTime();
   const liveClaims = new Set();
   for (const c of claims) {
-    const at = Date.parse(c?.claimed_at);
+    const at = Date.parse(c?.claimed_at as string);
     if (Number.isFinite(at) && nowMs - at < leaseMs) liveClaims.add(`${c.race_id}:${c.stage_index}`);
   }
-  const out = [];
+  const out: StuckFinding[] = [];
   for (const r of races) {
     if (!r?.finalize_state) continue;
-    const updatedAt = Date.parse(r.finalize_updated_at);
+    const updatedAt = Date.parse(r.finalize_updated_at as string);
     if (!Number.isFinite(updatedAt)) continue; // markering uden tidsstempel → kan ikke aldersvurderes
     const ageMs = nowMs - updatedAt;
     if (ageMs < thresholdMs) continue;
@@ -135,15 +171,15 @@ export function selectStuckMarkers(races = [], claims = [], { now = new Date(), 
  * bud på "hvornår burde løbet være færdigt". Mangler tidspunktet (løb uden schedule),
  * medtages løbet: en manglende tidsangivelse må ikke kunne skjule en halv tilstand.
  */
-export function selectResultsWithoutStatus(races = [], lastStageAtByRace = new Map(), { now = new Date(), thresholdMs = RESULTS_WITHOUT_STATUS_ALERT_AFTER_MS } = {}) {
+export function selectResultsWithoutStatus(races: readonly RaceRow[] = [], lastStageAtByRace: StageTimes = new Map(), { now = new Date(), thresholdMs = RESULTS_WITHOUT_STATUS_ALERT_AFTER_MS }: SelectOptions = {}): ResultsFinding[] {
   const nowMs = now.getTime();
-  const out = [];
+  const out: ResultsFinding[] = [];
   for (const r of races) {
     if (r?.status === "completed") continue;
     const stages = Number(r?.stages) || 1;
     const done = Number(r?.stages_completed) || 0;
     if (done < stages) continue; // løbet er stadig i gang — helt normalt
-    const lastAt = Date.parse(lastStageAtByRace.get(r.id));
+    const lastAt = Date.parse(lastStageAtByRace.get(r.id) as string);
     if (Number.isFinite(lastAt) && nowMs - lastAt < thresholdMs) continue;
     out.push({
       type: "results_without_status",
@@ -162,14 +198,14 @@ export function selectResultsWithoutStatus(races = [], lastStageAtByRace = new M
  * `payableRowsByRace` tælles kun for kandidaterne (se runHalfFinalizedRaceWatch) —
  * et løb uden præmie-berettigede rækker udbetaler intet og er ikke et fund.
  */
-export function selectCompletedWithoutPrize(races = [], lastStageAtByRace = new Map(), payableRowsByRace = new Map(), { now = new Date(), thresholdMs = PRIZE_UNPAID_ALERT_AFTER_MS } = {}) {
+export function selectCompletedWithoutPrize(races: readonly RaceRow[] = [], lastStageAtByRace: StageTimes = new Map(), payableRowsByRace: PayableRows = new Map(), { now = new Date(), thresholdMs = PRIZE_UNPAID_ALERT_AFTER_MS }: SelectOptions = {}): PrizeFinding[] {
   const nowMs = now.getTime();
-  const out = [];
+  const out: PrizeFinding[] = [];
   for (const r of races) {
     if (r?.status !== "completed") continue;
     if (r?.prize_paid_at) continue;
     if ((payableRowsByRace.get(r.id) ?? 0) <= 0) continue;
-    const lastAt = Date.parse(lastStageAtByRace.get(r.id));
+    const lastAt = Date.parse(lastStageAtByRace.get(r.id) as string);
     if (Number.isFinite(lastAt) && nowMs - lastAt < thresholdMs) continue;
     out.push({
       type: "completed_without_prize",
@@ -182,7 +218,7 @@ export function selectCompletedWithoutPrize(races = [], lastStageAtByRace = new 
 }
 
 /** PUR: én læsbar linje pr. fund, til Railway-logstrømmen. */
-export function formatFindings(findings = []) {
+export function formatFindings(findings: readonly FormattedFinding[] = []): string[] {
   return findings.map((f) => {
     if (f.type === "stuck_marker") {
       return `[race-finalize-watch] løb ${f.race_id} (${f.race_name ?? "?"}) · etape ${f.stage_number ?? "?"} · afslutningen har stået stille i ${f.stalled_minutes} min · færdige trin: ${f.done.join(",") || "ingen"}`;
@@ -204,8 +240,8 @@ export async function runHalfFinalizedRaceWatch({
   captureExceptionFn = defaultCaptureException,
   isAutoPrizeEnabled = defaultIsAutoPrizeEnabled,
   logger = console,
-} = {}) {
-  const empty = { findings: 0, alerted: false, byType: {} };
+}: WatchOptions = {}): Promise<WatchResult> {
+  const empty: WatchResult = { findings: 0, alerted: false, byType: {} };
 
   // Fund 1 er globalt: en markering er per definition en igangværende afslutning, og
   // den kan sidde på et løb i en hvilken som helst sæson. Partial index på
@@ -213,8 +249,8 @@ export async function runHalfFinalizedRaceWatch({
   // schema-columns-ok: finalize_state/finalize_updated_at tilfoejes af
   // database/2026-09-04-4147-race-finalize-state.sql, som CI applier ved merge.
   // Snapshottet refreshes af ejer/orkestrator post-merge (#3586-kontrakten).
-  const { data: markerRows, error: markerErr } = await supabase
-    .from("races")
+  const { data: markerRows, error: markerErr }: QueryResult<RaceRow> = await (supabase!
+    .from("races") as Query)
     .select("id, name, season_id, status, stages, stages_completed, finalize_state, finalize_updated_at")
     .not("finalize_state", "is", null)
     .limit(MAX_CANDIDATES);
@@ -225,10 +261,10 @@ export async function runHalfFinalizedRaceWatch({
     logger.warn?.(`[race-finalize-watch] finalize_state-opslag fejlede (fortsaetter uden fund 1): ${markerErr.message}`);
   }
 
-  let stuck = [];
+  let stuck: StuckFinding[] = [];
   if (markerRows?.length) {
-    const { data: claims, error: claimsErr } = await supabase
-      .from("race_stage_claims")
+    const { data: claims, error: claimsErr }: QueryResult<ClaimRow> = await (supabase!
+      .from("race_stage_claims") as Query)
       .select("race_id, stage_index, claimed_at")
       .in("race_id", markerRows.map((r) => r.id));
     if (claimsErr) {
@@ -242,12 +278,12 @@ export async function runHalfFinalizedRaceWatch({
 
   // Fund 2 og 3 er afgrænset til den AKTIVE sæson: historiske sæsoner er lukkede
   // kapitler, og en alarm om et løb fra sæson 1 er ikke handlingsanvisende.
-  const season = await loadSingleActiveSeason(supabase, { tag: "race-finalize-watch", captureExceptionFn });
-  let resultsWithoutStatus = [];
-  let completedWithoutPrize = [];
+  const season = await loadSingleActiveSeason(supabase!, { tag: "race-finalize-watch", captureExceptionFn }) as { id?: string } | null;
+  let resultsWithoutStatus: ResultsFinding[] = [];
+  let completedWithoutPrize: PrizeFinding[] = [];
   if (season?.id) {
-    const { data: races, error: racesErr } = await supabase
-      .from("races")
+    const { data: races, error: racesErr }: QueryResult<RaceRow> = await (supabase!
+      .from("races") as Query)
       .select("id, name, status, stages, stages_completed, prize_paid_at")
       .eq("season_id", season.id);
     if (racesErr) {
@@ -270,8 +306,8 @@ export async function runHalfFinalizedRaceWatch({
       // etaper (verificeret rækketal i GAME_INVARIANTS) → svaret kan ikke nå PostgRESTs
       // tavse 1000-rækkers-loft. Det eksplicitte .limit() gør bundetheden synlig frem
       // for at hvile på et argument, og følger med hvis MAX_CANDIDATES hæves.
-      const { data: sched, error: schedErr } = await supabase
-        .from("race_stage_schedule")
+      const { data: sched, error: schedErr }: QueryResult<ScheduleRow> = await (supabase!
+        .from("race_stage_schedule") as Query)
         .select("race_id, scheduled_at")
         .in("race_id", ids)
         .limit(MAX_CANDIDATES * 25);
@@ -280,10 +316,10 @@ export async function runHalfFinalizedRaceWatch({
         // kandidater medtages. Fundene bliver stoejende, ikke tavse.
         logger.warn?.(`[race-finalize-watch] race_stage_schedule-opslag fejlede - alderskrav udelades: ${schedErr.message}`);
       }
-      const lastStageAtByRace = new Map();
+      const lastStageAtByRace = new Map<string, string | null | undefined>();
       for (const row of sched ?? []) {
         const prev = lastStageAtByRace.get(row.race_id);
-        if (!prev || Date.parse(row.scheduled_at) > Date.parse(prev)) lastStageAtByRace.set(row.race_id, row.scheduled_at);
+        if (!prev || Date.parse(row.scheduled_at as string) > Date.parse(prev)) lastStageAtByRace.set(row.race_id, row.scheduled_at);
       }
 
       resultsWithoutStatus = selectResultsWithoutStatus(capped, lastStageAtByRace, { now });
@@ -292,10 +328,10 @@ export async function runHalfFinalizedRaceWatch({
       // slukket, ER manuel udbetaling det tilsigtede og et fund ville være ren støj.
       if (await isAutoPrizeEnabled(supabase)) {
         const prizeCandidates = capped.filter((r) => r.status === "completed" && !r.prize_paid_at);
-        const payableRowsByRace = new Map();
+        const payableRowsByRace = new Map<string, number>();
         for (const r of prizeCandidates) {
-          const { count } = await supabase
-            .from("race_results")
+          const { count } = await (supabase!
+            .from("race_results") as Query)
             .select("id", { count: "exact", head: true })
             .eq("race_id", r.id)
             .gt("prize_money", 0)
@@ -316,7 +352,7 @@ export async function runHalfFinalizedRaceWatch({
   if (!findings.length) {
     // Tomt fund SKAL stadig gennem dedupen: den nulstiller signaturen, så næste gang
     // det samme løb dukker op, ser den som en ÆNDRING og alarmerer med det samme.
-    await shouldAlertOnChange({ supabase, alertKey: RACE_FINALIZE_ALERT_KEY, signature: "", now, captureExceptionFn });
+    await shouldAlertOnChange({ supabase, alertKey: RACE_FINALIZE_ALERT_KEY, signature: "", now, captureExceptionFn } as Parameters<typeof shouldAlertOnChange>[0]);
     return empty;
   }
 
@@ -328,7 +364,7 @@ export async function runHalfFinalizedRaceWatch({
     now,
     reAlertAfterMs: RE_ALERT_AFTER_MS,
     captureExceptionFn,
-  });
+  } as Parameters<typeof shouldAlertOnChange>[0]);
 
   if (alert) {
     for (const line of formatFindings(findings)) logger.error?.(line);
