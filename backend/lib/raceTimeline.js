@@ -40,6 +40,7 @@
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { stableSeed, stageGapModel, finiteDistanceKm } from "./raceSimulator.js";
 import { computeCatchKm } from "./racePassages.js";
+import { riderGroupsBefore } from "./raceStory.js"; // #6350
 import { separationFraction } from "./engine/v4/exactPlace.ts"; // #6350
 import { RACE_V4_TUNING } from "./engine/v4/tuning.ts"; // #6350
 
@@ -558,6 +559,7 @@ export function buildStageTimelineV4({
 const KM_EPSILON = 0.01;
 const FORMATION_TYPES = new Set(["peloton_splits", "breakaway_dropped", "finale_attack"]);
 const CONTACT_TYPES = new Set(["breakaway_caught", "group_merged"]);
+const GROUP_CHANGE_TYPES = new Set(["breakaway_formed", ...FORMATION_TYPES, ...CONTACT_TYPES]);
 const BOOKKEEPING_ATTACK_KINDS = new Set(["stage_decided", "placement_gap", "gap_survived"]);
 
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -595,12 +597,29 @@ function groupExistedBefore(groupId, km, events) {
 }
 
 /**
+ * Kørte hver af splittets ryttere i kildegruppen på det udledte sted, og blev de
+ * der til tjekpunktet? Et split har ét sted for hele gruppen, så en rytter der
+ * først kom med senere (fx hentet fra udbruddet inde i segmentet) ikke kan vises.
+ */
+function ridersInSourceAt(split, place, events) {
+  const groupOf = riderGroupsBefore(events, place);
+  const changedGroupAfter = (id) => events.some((e) => {
+    const at = exactKmOf(e) ?? e.km;
+    return e !== split && GROUP_CHANGE_TYPES.has(e.type) && !BOOKKEEPING_ATTACK_KINDS.has(e.params?.kind)
+      && at >= place && at < split.km && riderIdsOf(e).includes(id);
+  });
+  const riders = riderIdsOf(split);
+  return riders.length > 0 && riders.every((id) => groupOf(id) === split.params?.source_group_id && !changedGroupAfter(id));
+}
+
+/**
  * Et split motoren ikke kunne placere (ældre etaper: gruppen slugte ryttere inde
  * i segmentet, se exactPlace.ts) står på tjekpunktet, på en bjergankomst altså på
  * stregen. Gruppens hul er kendt, og to linjer glider lineært fra hinanden over
  * segmentet, så stedet er det samme som motoren selv regner. Kun med bevis: et
- * split motoren har placeret i samme segment, og en kildegruppe der fandtes ved
- * segmentets start. Ellers er tjekpunktet stadig det ærlige svar.
+ * split motoren har placeret i samme segment, en kildegruppe der fandtes ved
+ * segmentets start, og ryttere der alle kørte i den på stedet. Ellers er
+ * tjekpunktet stadig det ærlige svar.
  */
 function placeCheckpointSplits(events) {
   const visible = RACE_V4_TUNING.groups.mergeThresholdSeconds;
@@ -617,7 +636,9 @@ function placeCheckpointSplits(events) {
     if (start === null) continue;
     for (const split of stuck) {
       const fraction = separationFraction(0, finiteOrNull(split.params?.gap_seconds) ?? NaN, visible);
-      if (fraction !== null && groupExistedBefore(split.params?.source_group_id, km, events)) movePlace(split, round2(start + fraction * (km - start)));
+      if (fraction === null || !groupExistedBefore(split.params?.source_group_id, km, events)) continue;
+      const place = round2(start + fraction * (km - start));
+      if (ridersInSourceAt(split, place, events)) movePlace(split, place);
     }
   }
 }

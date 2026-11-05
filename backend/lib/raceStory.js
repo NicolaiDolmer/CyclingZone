@@ -398,6 +398,27 @@ export function leaderTimeAt(story, km) {
 
 // ── Hovedfunktion ──────────────────────────────────────────────────────────────
 
+/** Motorens egen rækkefølge: km som skrevet, samme km = input-rækkefølgen. */
+function engineOrder(events) {
+  return (Array.isArray(events) ? events : [])
+    .map((event, i) => ({ event, i }))
+    .filter(({ event }) => event && typeof event.type === "string")
+    .sort((a, b) => recordedKm(a.event) - recordedKm(b.event) || a.i - b.i)
+    .map(({ event }) => event);
+}
+
+/**
+ * #6350: rytternes gruppe lige før `km`, med historiens eget medlemskabs-replay.
+ * Svaret er et opslag rytter -> gruppe-id, null når han hverken kører i en gruppe
+ * (udgået) eller har en kendt gruppe (uheldsoffer der venter på sin solo-gruppe).
+ */
+export function riderGroupsBefore(events, km) {
+  const ordered = engineOrder(events);
+  const m = createMembership(finite(ordered.find((e) => e.type === "stage_start")?.params?.field_count));
+  for (const event of ordered) if (placeKm(event) < km) applyMembership(m, event);
+  return (id) => (m.abandoned.has(id) || m.pendingSolo.includes(id) ? null : m.placed.get(id) ?? m.restId);
+}
+
 /**
  * @param {{
  *   events: Array<{km?: number, type: string, params?: object}>,
@@ -407,12 +428,7 @@ export function leaderTimeAt(story, km) {
  * }} input
  */
 export function buildRaceStory({ events = [], timelineVersion = null, results = null, startlist = null } = {}) {
-  // Motorens egen rækkefølge: km som skrevet, samme km = input-rækkefølgen.
-  const ordered = (Array.isArray(events) ? events : [])
-    .map((event, i) => ({ event, i }))
-    .filter(({ event }) => event && typeof event.type === "string")
-    .sort((a, b) => recordedKm(a.event) - recordedKm(b.event) || a.i - b.i)
-    .map(({ event }) => event);
+  const ordered = engineOrder(events);
 
   const start = ordered.find((e) => e.type === "stage_start");
   const finish = ordered.find((e) => e.type === "finish");
