@@ -491,7 +491,7 @@ test("#7734: en sen halvdel med egen linje: navne og film følger rytteren fra k
   ];
   const story = buildRaceStory({ events: withEventPlaces(log), timelineVersion: 2 }) as unknown as RaceStory;
   const at = (km: number, rider: string) => groupOfRider(groupMembersAt(story, km), rider);
-  const frames = replayFrames(story, { finaleKm: 12, stepKm: 1 });
+  const frames = replayFrames(story, { finaleKm: 12, stepKm: 1 }) as Array<{ km: number; groups: Array<{ group_id: string; size: number | null; gap_s: number }> }>;
   const inFilm = (km: number, id: string) => frames.find((f) => f.km === km)?.groups.find((g) => g.group_id === id);
 
   assert.equal(at(172, "ahead"), "breakaway-1");
