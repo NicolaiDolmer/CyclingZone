@@ -660,3 +660,11 @@ test("#6350: en log uden præcise steder kommer uændret tilbage, og en ny etape
   const { events } = buildStageTimelineV4({ engineTimeline: { events: summitFinishLog() }, stageProfile: { distance_km: 180 } });
   assert.ok(events.find((e) => e.params.group_id === "gruppetto-3").params.exact_km < 171);
 });
+
+test("#7729: forsøget når filmen med alt det motoren skrev, også på en gemt etape", () => {
+  const params = { exact_km: 12, exact_time: 900, rider_ids: ["a", "b"], escaped_rider_ids: ["a"], reacting_team_ids: ["t1"] };
+  const [attempt] = withEventPlaces([{ km: 12, type: "breakaway_attempt", params }]);
+  assert.deepEqual(attempt.params, params);
+  const built = buildStageTimelineV4({ engineTimeline: { events: [{ km: 12, type: "breakaway_attempt", params }] }, stageProfile: { distance_km: 100 } });
+  assert.deepEqual(built.events.find((e) => e.type === "breakaway_attempt").params, params);
+});

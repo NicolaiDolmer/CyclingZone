@@ -1566,6 +1566,10 @@
           "all_out_held_on": "{rider} rode all out on your orders and stayed with the front group."
         },
         "breakaway_dropped": "{riders} {count, plural, one {is} other {are}} dropped from the break.",
+        "breakaway_attempt_failed": "{riders}{others, plural, =0 {} one { and # other} other { and # others}} {count, plural, one {tries} other {try}} to get away, but {count, plural, one {doesn't} other {don't}} get clear. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} and {teamLast}}} worked against it.",
+        "breakaway_attempt_failed_field": "{riders}{others, plural, =0 {} one { and # other} other { and # others}} {count, plural, one {tries} other {try}} to get away, but {count, plural, one {doesn't} other {don't}} get clear. {teamCount, plural, one {# team} other {# teams}} worked against it.",
+        "breakaway_attempt_none_clear": "{riders}{others, plural, =0 {} one { and # other} other { and # others}} {count, plural, one {tries} other {try}} to get away, but nobody gets clear. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} and {teamLast}}} worked against it.",
+        "breakaway_attempt_none_clear_field": "{riders}{others, plural, =0 {} one { and # other} other { and # others}} {count, plural, one {tries} other {try}} to get away, but nobody gets clear. {teamCount, plural, one {# team} other {# teams}} worked against it.",
         "group_ahead_formed": "{riders} {count, plural, one {goes} other {go}} clear in a group ahead of the peloton.",
         "group_ahead_caught": "The group ahead of the peloton is caught: {riders}.",
         "group_ahead_survived": "The group ahead of the peloton stays away to the line.",

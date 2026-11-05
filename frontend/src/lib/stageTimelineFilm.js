@@ -276,6 +276,32 @@ function describeCause(p, riderNameById, teamNameById) {
   }
 }
 
+// #7729: flere navne end dette er ikke en broadcast-linje; resten står som et antal.
+const MAX_ATTEMPT_RIDER_NAMES = 4;
+const MAX_ATTEMPT_TEAM_NAMES = 3;
+
+/**
+ * #7729: dem der forsøgte at komme med i morgenudbruddet og blev i feltet, og
+ * holdene der arbejdede imod. Kun det motoren skrev på `breakaway_attempt`: mangler
+ * listerne (ældre etaper) eller holdene, er der ingen forklaring og ingen linje.
+ * Egne ryttere nævnes altid ved navn (samme løfte som stageTimelineGrouping.ts).
+ */
+function describeFailedAttempt(p, riderNameById, teamNameById, ownRiderIds) {
+  const { rider_ids: attempted, escaped_rider_ids: escaped, reacting_team_ids: teamIds } = p;
+  if (!Array.isArray(attempted) || !Array.isArray(escaped) || !Array.isArray(teamIds) || !teamIds.length) return null;
+  const failed = attempted.filter((id) => !escaped.includes(id));
+  if (!failed.length) return null;
+  const own = new Set(Array.from(ownRiderIds ?? [], String));
+  const mine = failed.filter((id) => own.has(String(id)));
+  const named = [...mine, ...failed.filter((id) => !own.has(String(id)))];
+  const names = resolvedRiderNames(named, riderNameById).slice(0, Math.max(MAX_ATTEMPT_RIDER_NAMES, mine.length));
+  if (!names.length) return null;
+  const key = escaped.length ? "breakaway_attempt_failed" : "breakaway_attempt_none_clear";
+  const params = { riders: names.join(", "), count: failed.length, others: failed.length - names.length, teamCount: teamIds.length };
+  const teams = teamIds.length <= MAX_ATTEMPT_TEAM_NAMES ? teamListParams(teamIds, teamNameById) : null;
+  return teams?.teamCount === teamIds.length ? { key, params: { ...params, ...teams } } : { key: `${key}_field`, params };
+}
+
 function describeOrderImpact(p, riderNameById) {
   const rider = riderName(p.rider_id, riderNameById);
   if (!rider) return null;
@@ -384,7 +410,7 @@ export function collectRiderIds(events) {
 // #6649: årsagerne motoren skriver på `bad_day` (vejret som sin type). Ukendt årsag → ingen linje.
 const BAD_DAY_CAUSES = new Set(["fatigue", "form", "illness", "rain", "wind", "heat"]);
 
-export function describeEvent(event, { riderNameById, teamNameById } = {}) {
+export function describeEvent(event, { riderNameById, teamNameById, ownRiderIds = null } = {}) {
   if (!event?.type) return null;
   if (event.grouped) {
     return describeGroupedEvent(event, (id) => riderName(id, riderNameById), (member) => describeEvent(member, { riderNameById, teamNameById }));
@@ -404,6 +430,8 @@ export function describeEvent(event, { riderNameById, teamNameById } = {}) {
         key: TIME_TRIAL_STAGE_START_KEY[p.profile_type] ?? "stage_start",
         params: { count: p.field_count ?? 0, distance: p.distance_km ?? 0 },
       };
+    case "breakaway_attempt": // #7729
+      return describeFailedAttempt(p, riderNameById, teamNameById, ownRiderIds);
     case "breakaway_formed": {
       const params = breakawayParams();
       return params ? { key: "breakaway_formed", params } : null;
