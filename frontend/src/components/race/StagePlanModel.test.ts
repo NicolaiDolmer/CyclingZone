@@ -390,6 +390,15 @@ test("#7706: 'Attack' for en rytter der tabte kontakten er ikke et flueben", () 
   assert.deepEqual(outcomes(ATTACK_PLAN, attacked, null), ["done", "done"]);
   const bookkeeping = [...film, { type: "finale_attack", km: 143, params: { kind: "stage_decided", rider_id: "a" } }];
   assert.deepEqual(outcomes(ATTACK_PLAN, bookkeeping, null), ["done", "unknown"]);
+  const carried = [...film, { type: "finale_attack", km: 143, params: { kind: "carried_gap_held", rider_ids: ["a"] } }];
+  assert.deepEqual(outcomes(ATTACK_PLAN, carried, null), ["done", "unknown"]);
+  const atSwitch = [{ type: "finale_attack", km: 140, params: { kind: "descent_attack", rider_ids: ["a"] } }, ...film];
+  assert.deepEqual(outcomes(ATTACK_PLAN, atSwitch, null), ["done", "unknown"], "angrebet paa skiftets km var det forrige led");
+});
+
+test("#7706: filmen navngiver ham i udbruddet, motoren siger missed_break: ingen paastand", () => {
+  const film = [{ type: "breakaway_formed", km: 10, params: { rider_ids: ["a"] } }, leg(30, 1, "ride_for_result", "missed_break")];
+  assert.deepEqual(outcomes(BREAK_PLAN, film, null), ["unknown", "unknown"]);
 });
 
 test("#7706: manglende film giver aldrig et flueben paa en opgave der kraever bevis", () => {

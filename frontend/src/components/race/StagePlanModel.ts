@@ -619,8 +619,8 @@ export type StagePlanOutcomeOptions = {
 const CONTACT_TASKS: ReadonlySet<StagePlanTask> = new Set<StagePlanTask>(["attack", "follow_moves", "ride_for_result"]);
 /** Opgaver der er loest naar rytteren er kommet igennem dem (at falde bagud er meningen). */
 const RIDE_HOME_TASKS: ReadonlySet<StagePlanTask> = new Set<StagePlanTask>(["grupetto", "ride_in"]);
-/** Bogfoering i motoren, ikke et angreb (samme liste som stageSplitTimes.ts). */
-const BOOKKEEPING_ATTACK_KINDS: ReadonlySet<string> = new Set(["stage_decided", "placement_gap", "gap_survived"]);
+/** Kun de angreb motoren selv navngiver; resten af finale_attack er bogfoering eller uden art. */
+const OWN_ATTACK_KINDS: ReadonlySet<string> = new Set(["late_attack", "descent_attack"]);
 
 function eventRiderIds(params: Rec | null | undefined, key = "rider_ids"): unknown[] {
   const ids = params?.[key];
@@ -640,9 +640,10 @@ function attackedInLeg(list: readonly TimelineEventLike[], riderId: string, item
   const to = item.endKm ?? Infinity;
   return list.some((e) => {
     const km = Number(e?.km);
-    if (!(km >= from && km <= to)) return false;
+    // Et angreb paa selve skiftets km hoerer til det forrige led (motoren skriver det foer skiftet).
+    if (!(km > from && km <= to)) return false;
     const named = e?.params?.rider_id === riderId || eventRiderIds(e?.params).includes(riderId);
-    if (e?.type === "finale_attack") return named && !BOOKKEEPING_ATTACK_KINDS.has(String(e.params?.kind));
+    if (e?.type === "finale_attack") return named && OWN_ATTACK_KINDS.has(String(e.params?.kind));
     return e?.type === "peloton_splits" && e.params?.cause === "attack" && named;
   });
 }
@@ -661,7 +662,9 @@ export function stagePlanOutcomes(
     if (item.status === "abandoned") return "failed";
     if (item.status === "to_finish" && outOfTime) return "failed";
     if (item.task === "breakaway") {
-      if (item.endReason === "missed_break") return "failed";
+      const made = madeTheBreak(list, riderId);
+      // Et udbrud der dannes og hentes inden for samme segment: filmen navngiver ham, motoren saa det ikke.
+      if (item.endReason === "missed_break") return made === true ? "unknown" : "failed";
       if (item.endReason === "caught") return "done";
       const made = madeTheBreak(list, riderId);
       return made === null ? "unknown" : made ? "done" : "failed";
