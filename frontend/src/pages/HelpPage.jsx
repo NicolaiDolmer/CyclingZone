@@ -491,6 +491,7 @@ const SECTION_DEFS = [
       { id: "liveTracksStatus", kind: "text" },
       { id: "staffSynergy", kind: "text" },
       { id: "hireChiefScout", kind: "text" },
+      { id: "hireChiefScoutEstimate", kind: "text" }, // #6110 tal + ord (HELP_BLOCK_FLAGS.facilities)
       { id: "coachingGroups", kind: "text" },
       { id: "costs", kind: "text" },
       { id: "staffOverview", kind: "text" },

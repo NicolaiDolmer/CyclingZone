@@ -23,6 +23,7 @@ const BLOCK_TWINS: Array<[string, string, string]> = [
   ["riders", "potentialBestRole", "potentialBestRoleEstimate"],
   ["riders", "scouting", "scoutingEstimate"],
   ["academy", "prognosisTraining", "prognosisTrainingEstimate"],
+  ["facilities", "hireChiefScout", "hireChiefScoutEstimate"],
 ];
 const FAQ_TWINS: Array<[string, string]> = [
   ["developmentProjectionFaq", "developmentProjectionEstimateFaq"],
@@ -56,7 +57,7 @@ test("FAQ-tvillingerne foelger samme kontakt", () => {
     assert.equal(isHelpFaqVisible(oldId, { [FLAG]: true }), false, oldId);
     assert.equal(isHelpFaqVisible(newId, { [FLAG]: true }), true, newId);
   }
-  assert.equal(isHelpFaqVisible("typeRatingScaleFaq", { [FLAG]: true }), false);
+  assert.equal(isHelpFaqVisible("typeRatingScaleFaq", { potential_estimate_view: true }), false);
 });
 
 for (const [lang, forbidden] of [

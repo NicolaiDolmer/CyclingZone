@@ -183,7 +183,7 @@ function EstimateCard({ view, report, canLookAgain, scoutAction, t }) {
     ? t("potentialEstimate.builtOnOwn")
     : scoutMeta?.isDefault === false
       ? t("potentialEstimate.builtOnNamed", { count: looks, name: scoutMeta.name, tier: scoutMeta.tier })
-      : t("potentialEstimate.builtOnDefault", { count: looks, overall: scoutMeta?.overall ?? 40 });
+      : t("potentialEstimate.builtOnDefault", { count: looks, overall: scoutMeta?.overall ?? "—" });
   return (
     <SectionCard>
       <div data-testid="scouting-estimate-card">
@@ -456,7 +456,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
                 personale, aldrig noget om målets skjulte evner. */}
             <p className="text-cz-3 text-3xs font-mono mt-1 mb-0">
               {isDefaultScout
-                ? t("profile.scouting.provenanceDefault", { overall: scoutMeta?.overall ?? 40 })
+                ? t("profile.scouting.provenanceDefault", { overall: scoutMeta?.overall ?? "—" })
                 : t("profile.scouting.provenanceNamed", { name: scoutMeta?.name, tier: scoutMeta?.tier })}
             </p>
             <div className="flex items-center gap-2.5 mt-2 flex-wrap">

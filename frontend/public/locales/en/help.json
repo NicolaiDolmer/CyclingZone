@@ -1360,7 +1360,7 @@
       },
       "potentialBestRoleEstimate": {
         "title": "Potential across the game",
-        "text": "Everywhere in the game a rider's potential is one number on the same scale as his rating, with one word next to it: Uncertain, Fair or Confident. The number is your team's estimate of how high he can reach in his natural role, not a fact. The word says how far you can trust it, and even a confident estimate can land slightly off. More looks, a better scout and, for your own riders, more training on your team make it more certain. It doesn't jump when you open a page: it only moves when your team learns something new, at the Sunday update, or when the rider joins a new team."
+        "text": "Everywhere in the game a rider's potential is one number on the same scale as his rating, with one word next to it: Uncertain, Fair or Confident. The number is your team's estimate of how high he can reach in his natural role, and the word says how far to trust it. More looks, a better scout and, for your own riders, more training on your team make it more certain. It only moves when your team learns something new, at the Sunday update, or when he changes team."
       },
       "potentialBestRole": {
         "title": "Potential across the game",
@@ -1372,7 +1372,7 @@
       },
       "scoutingEstimate": {
         "title": "Scouting potential",
-        "text": "A rider's potential is hidden until you scout them: unscouted riders on other teams show Not scouted and no number. Every team has a talent scout, a real staff member if you have hired one, otherwise a default scout, who takes on jobs from the Scouting page or a rider's profile. A targeted job investigates one rider and reports back in about 30 minutes, at any scout level; a mission covers a division, a country, U23 riders or a national championship for a shortlist, plus one free report on the best find. When you start a mission you also choose who it targets: free agents (riders without a contract, recommended, sign them straight away) or riders on other teams (talent owned by another manager, where signing them means bidding or negotiating). Jobs cost travel money, and your scout can only run one or two jobs at once depending on his rating. Each look makes your estimate more certain, and a better scout gets there faster. The estimate slides toward the truth as you learn more instead of jumping to a new random number, and its word never gets less certain. Estimates are personal to your team, so two managers can read the same talent differently, and race results are what settle who was right. A report can never reference a rider who has since become unavailable (signed elsewhere, or mid-transfer): it always reflects who is actually available right now, and shows each rider's current status. The Scouting tab on the rider profile shows the number, the word, how many looks it's built on, which scout made them and what one more look would do. The number is on the same scale as the rider's rating, so you can hold the two up against each other. No scout ever knows a rider exactly: it's an estimate, not a fact."
+        "text": "A rider's potential is hidden until you scout them: unscouted riders on other teams show Not scouted and no number. Every team has a talent scout, a real staff member if you have hired one, otherwise a default scout, who takes on jobs from the Scouting page or a rider's profile. A targeted job investigates one rider and reports back in about 30 minutes, at any scout level; a mission covers a division, a country, U23 riders or a national championship for a shortlist, plus one free report on the best find. When you start a mission you also choose who it targets: free agents (riders without a contract, recommended, sign them straight away) or riders on other teams (talent owned by another manager, where signing them means bidding or negotiating). Jobs cost travel money, and your scout can only run one or two jobs at once depending on his rating. Each look makes your estimate more certain, and a better scout gets there faster. The estimate slides toward the truth as you learn more instead of jumping to a new random number, and its word never gets less certain. Estimates are personal to your team, so two managers can read the same talent differently, and race results are what settle who was right. A report can never reference a rider who has since become unavailable (signed elsewhere, or mid-transfer): it always reflects who is actually available right now, and shows each rider's current status. The Scouting tab on the rider profile shows the number, the word, how many looks it's built on and what one more look would do. No scout ever knows a rider exactly: it's an estimate, not a fact."
       },
       "scouting": {
         "title": "Scouting potential",
@@ -1599,7 +1599,7 @@
       },
       "prognosisTrainingEstimate": {
         "title": "Learning a prospect's potential",
-        "text": "A new youth rider has no potential number yet. He shows Learning and how many of his first 5 trainings he has done. A training counts when a date on your team is settled, by Train now or by the automatic training. After 5 you get a first estimate: one number with a word next to it. It gets more certain the longer he trains with you, and better coaching staff and training facilities get you there sooner. They do not change his talent, and even a confident estimate can land slightly off."
+        "text": "A new youth rider has no potential number yet: he shows Learning and how many of his first 5 trainings he has done. A training counts when a date on your team is settled, by Train now or the automatic training. After 5 you get a first estimate, and it gets more certain the longer he trains with you. Better coaching staff and facilities get you there sooner, but they do not change his talent."
       },
       "prognosisTraining": {
         "title": "Learning a prospect's potential",
@@ -1739,6 +1739,10 @@
       "hireChiefScout": {
         "title": "Hiring a chief scout",
         "text": "The Scouting Network's tier sets the highest tier of chief scout you're allowed to hire, so build or upgrade it first if the candidate you want is locked. Every team already has a default scout even with no facility built, but a hired chief scout has a real, higher overall rating: that rating narrows his estimates further (a tighter potential range on the Scouting tab) and, once his overall reaches about 80, lets him run two scouting jobs at once instead of one. Hire and fire chiefs from the Club page, same as any other facility track. The candidates you can hire are a small pool per role. Your facility's tier is the highest they can have, and at least one candidate per role is on that tier. A new pool is drawn at the season change; within a season it only shifts when you upgrade the facility or hire someone. Fired and current chiefs never appear in it."
+      },
+      "hireChiefScoutEstimate": {
+        "title": "Hiring a chief scout",
+        "text": "The Scouting Network's tier sets the highest tier of chief scout you're allowed to hire, so build or upgrade it first if the candidate you want is locked. Every team already has a default scout even with no facility built, but a hired chief scout has a real, higher overall rating: that rating makes his estimates more certain, faster and, once his overall reaches about 80, lets him run two scouting jobs at once instead of one. Hire and fire chiefs from the Club page, same as any other facility track. The candidates you can hire are a small pool per role. Your facility's tier is the highest they can have, and at least one candidate per role is on that tier. A new pool is drawn at the season change; within a season it only shifts when you upgrade the facility or hire someone. Fired and current chiefs never appear in it."
       },
       "coachingGroups": {
         "title": "Coaching groups: U23 vs Senior",
@@ -1967,7 +1971,7 @@
     },
     "developmentProjectionEstimateFaq": {
       "q": "What is the line on the Development tab?",
-      "a": "It's the curve from his rating today toward your estimate of his potential. It's one line, built on the same estimate you see everywhere else, so the Development tab can't disagree with the rider profile or the Scouting tab. Rivals you haven't scouted, and your own youth riders before their first 5 trainings, have no line: you only see the recorded curve."
+      "a": "It's the curve from his rating today toward your estimate of his potential, the same estimate you see everywhere else. Rivals you haven't scouted, and your own youth riders before their first 5 trainings, have no line: you only see the recorded curve."
     },
     "developmentProjectionFaq": {
       "q": "What is the projection on the Development tab?",
@@ -2031,7 +2035,7 @@
     },
     "scoutNetworkOwnRidersEstimateFaq": {
       "q": "Does a better scouting network also improve how well I see my own riders?",
-      "a": "Not through missions: a mission's candidate pool only searches other teams' and free-agent riders. For your own riders the estimate gets more certain with every training on your team, and better coaching staff and facilities speed that up. It never becomes exact: even a Confident estimate can land slightly off."
+      "a": "Not through missions: they only search other teams and free agents. For your own riders the estimate gets more certain with every training on your team, and better coaching staff and facilities speed that up."
     },
     "scoutNetworkOwnRidersFaq": {
       "q": "Does a better scouting network also improve how well I see my own riders?",
@@ -2039,7 +2043,7 @@
     },
     "scoutChangeEstimateFaq": {
       "q": "I hired a new chief scout. Does that change my estimates?",
-      "a": "Not by itself. Your estimates stay where they are until your team learns something new, so a new hire doesn't move a single number. His next look on a rider can make that estimate more certain, and a better scout gets there faster. Neither touches the rider's real abilities, which only move through training, age and racing."
+      "a": "Not by itself. Your estimates stay put until your team learns something new, so a new hire doesn't move a single number. His next look on a rider can make that estimate more certain, and a better scout gets there faster."
     },
     "scoutChangeRecalcFaq": {
       "q": "I hired a new chief scout and a rider's scouting report changed. Did the rider get worse?",
@@ -2051,7 +2055,7 @@
     },
     "scoutedEstimateGuaranteeFaq": {
       "q": "Is the estimate a guarantee?",
-      "a": "No. The number is your team's estimate, and the word next to it says how far to trust it. More knowledge makes it more certain, but it never becomes a fact: even a Confident estimate can land slightly off, on purpose. Two teams can read the same rider differently, and race results settle who was right."
+      "a": "No. The number is your team's estimate, and the word next to it says how far to trust it. Even a Confident estimate can land slightly off, on purpose. Two teams can read the same rider differently, and race results settle who was right."
     },
     "scoutedBandGuaranteeFaq": {
       "q": "Is the scouted band a guarantee?",

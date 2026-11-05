@@ -1360,7 +1360,7 @@
       },
       "potentialBestRoleEstimate": {
         "title": "Le potentiel dans tout le jeu",
-        "text": "Partout dans le jeu, le potentiel d'un coureur est un seul nombre sur la même échelle que sa note, avec un mot à côté : Incertain, Correct ou Sûr. Le nombre est l'estimation de ton équipe de ce qu'il peut atteindre dans son rôle naturel, pas une certitude. Le mot dit à quel point tu peux t'y fier, et même une estimation sûre peut tomber un peu à côté. Plus d'observations, un meilleur recruteur et, pour tes propres coureurs, plus d'entraînement dans ton équipe la rendent plus sûre. Elle ne saute pas quand tu ouvres une page : elle ne bouge que quand ton équipe apprend quelque chose de nouveau, à la mise à jour du dimanche ou quand le coureur rejoint une nouvelle équipe."
+        "text": "Partout dans le jeu, le potentiel d'un coureur est un seul nombre sur la même échelle que sa note, avec un mot à côté : Incertain, Correct ou Sûr. Le nombre est l'estimation de ton équipe de ce qu'il peut atteindre dans son rôle naturel, et le mot dit à quel point tu peux t'y fier. Plus d'observations, un meilleur recruteur et, pour tes propres coureurs, plus d'entraînement dans ton équipe la rendent plus sûre. Elle ne bouge que quand ton équipe apprend quelque chose de nouveau, à la mise à jour du dimanche ou quand il change d'équipe."
       },
       "potentialBestRole": {
         "title": "Le potentiel dans tout le jeu",
@@ -1372,7 +1372,7 @@
       },
       "scoutingEstimate": {
         "title": "Détecter le potentiel",
-        "text": "Le potentiel d'un coureur est masqué tant que tu ne l'as pas détecté : les coureurs non détectés d'autres équipes affichent Pas détecté et aucun nombre. Chaque équipe a un recruteur de talents, un vrai membre du staff si tu en as recruté un, sinon un recruteur par défaut, qui prend en charge des missions depuis la page Détection ou le profil d'un coureur. Une mission ciblée enquête sur un coureur et fait son rapport en 30 minutes environ, à tout niveau de recruteur ; une mission couvre une division, un pays, les coureurs U23 ou un championnat national pour établir une présélection, plus un rapport gratuit sur la meilleure trouvaille. Quand tu lances une mission, tu choisis aussi qui elle cible : des agents libres (coureurs sans contrat, recommandé, signe-les tout de suite) ou des coureurs d'autres équipes (du talent qui appartient à un autre manager, où les signer passe par une enchère ou une négociation). Les missions coûtent des frais de déplacement, et ton recruteur ne peut mener qu'une ou deux missions à la fois selon sa note. Chaque observation rend ton estimation plus sûre, et un meilleur recruteur y arrive plus vite. L'estimation glisse vers la vérité à mesure que tu en sais plus, au lieu de sauter sur un nouveau nombre au hasard, et son mot ne devient jamais moins sûr. Les estimations sont propres à ton équipe, deux managers peuvent donc lire différemment le même talent, et ce sont les résultats de course qui tranchent qui avait raison. Un rapport ne peut jamais faire référence à un coureur devenu indisponible entre-temps (signé ailleurs, ou en plein transfert) : il reflète toujours qui est réellement disponible en ce moment, et montre le statut actuel de chaque coureur. L'onglet Détection du profil du coureur montre le nombre, le mot, le nombre d'observations sur lesquelles il repose, le recruteur qui les a faites et ce qu'une observation de plus apporterait. Le nombre est sur la même échelle que la note du coureur, tu peux donc comparer les deux. Aucun recruteur ne connaît jamais un coureur exactement : c'est une estimation, pas une certitude."
+        "text": "Le potentiel d'un coureur est masqué tant que tu ne l'as pas détecté : les coureurs non détectés d'autres équipes affichent Pas détecté et aucun nombre. Chaque équipe a un recruteur de talents, un vrai membre du staff si tu en as recruté un, sinon un recruteur par défaut, qui prend en charge des missions depuis la page Détection ou le profil d'un coureur. Une mission ciblée enquête sur un coureur et fait son rapport en 30 minutes environ, à tout niveau de recruteur ; une mission couvre une division, un pays, les coureurs U23 ou un championnat national pour établir une présélection, plus un rapport gratuit sur la meilleure trouvaille. Quand tu lances une mission, tu choisis aussi qui elle cible : des agents libres (coureurs sans contrat, recommandé, signe-les tout de suite) ou des coureurs d'autres équipes (du talent qui appartient à un autre manager, où les signer passe par une enchère ou une négociation). Les missions coûtent des frais de déplacement, et ton recruteur ne peut mener qu'une ou deux missions à la fois selon sa note. Chaque observation rend ton estimation plus sûre, et un meilleur recruteur y arrive plus vite. L'estimation glisse vers la vérité à mesure que tu en sais plus, au lieu de sauter sur un nouveau nombre au hasard, et son mot ne devient jamais moins sûr. Les estimations sont propres à ton équipe, deux managers peuvent donc lire différemment le même talent, et ce sont les résultats de course qui tranchent qui avait raison. Un rapport ne peut jamais faire référence à un coureur devenu indisponible entre-temps (signé ailleurs, ou en plein transfert) : il reflète toujours qui est réellement disponible en ce moment, et montre le statut actuel de chaque coureur. L'onglet Détection du profil du coureur montre le nombre, le mot, le nombre d'observations sur lesquelles il repose et ce qu'une observation de plus apporterait. Aucun recruteur ne connaît jamais un coureur exactement : c'est une estimation, pas une certitude."
       },
       "scouting": {
         "title": "Détecter le potentiel",
@@ -1599,7 +1599,7 @@
       },
       "prognosisTrainingEstimate": {
         "title": "Découvrir le potentiel d'un jeune talent",
-        "text": "Un nouveau jeune coureur n'a pas encore de nombre de potentiel. Il affiche En apprentissage et combien de ses 5 premiers entraînements il a faits. Un entraînement compte quand une date est réglée dans ton équipe, avec Train now ou avec l'entraînement automatique. Après 5, tu reçois une première estimation : un nombre avec un mot à côté. Elle devient plus sûre à mesure qu'il s'entraîne chez toi, et un meilleur staff d'entraîneurs et de meilleures installations accélèrent les choses. Ils ne changent pas son talent, et même une estimation sûre peut tomber un peu à côté."
+        "text": "Un nouveau jeune coureur n'a pas encore de nombre de potentiel : il affiche En apprentissage et combien de ses 5 premiers entraînements il a faits. Un entraînement compte quand une date est réglée dans ton équipe, avec Train now ou avec l'entraînement automatique. Après 5, tu reçois une première estimation, et elle devient plus sûre à mesure qu'il s'entraîne chez toi. Un meilleur staff et de meilleures installations accélèrent les choses, mais ne changent pas son talent."
       },
       "prognosisTraining": {
         "title": "Découvrir le potentiel d'un jeune talent",
@@ -1739,6 +1739,10 @@
       "hireChiefScout": {
         "title": "Recruter un chef recruteur",
         "text": "Le palier du Réseau de détection fixe le plus haut palier de chef recruteur que tu as le droit de recruter, construis-le ou améliore-le donc d'abord si le candidat que tu veux est verrouillé. Chaque équipe a déjà un recruteur par défaut même sans installation construite, mais un chef recruteur recruté a une vraie note globale plus haute : cette note resserre davantage ses estimations (une fourchette de potentiel plus serrée dans l'onglet Détection) et, une fois sa note globale à environ 80, lui permet de mener deux missions de détection à la fois au lieu d'une. Recrute et licencie les responsables depuis la page Club, comme pour toute autre piste d'installation. Les candidats que tu peux recruter forment un petit vivier par rôle. Le palier de ton installation est le plus haut qu'ils peuvent avoir, et au moins un candidat par rôle est à ce palier. Un nouveau vivier est tiré à chaque changement de saison ; au cours d'une saison, il ne change que si tu améliores l'installation ou recrutes quelqu'un. Les responsables licenciés et actuels n'y apparaissent jamais."
+      },
+      "hireChiefScoutEstimate": {
+        "title": "Recruter un chef recruteur",
+        "text": "Le palier du Réseau de détection fixe le plus haut palier de chef recruteur que tu as le droit de recruter, construis-le ou améliore-le donc d'abord si le candidat que tu veux est verrouillé. Chaque équipe a déjà un recruteur par défaut même sans installation construite, mais un chef recruteur recruté a une vraie note globale plus haute : cette note rend ses estimations plus sûres, et plus vite et, une fois sa note globale à environ 80, lui permet de mener deux missions de détection à la fois au lieu d'une. Recrute et licencie les responsables depuis la page Club, comme pour toute autre piste d'installation. Les candidats que tu peux recruter forment un petit vivier par rôle. Le palier de ton installation est le plus haut qu'ils peuvent avoir, et au moins un candidat par rôle est à ce palier. Un nouveau vivier est tiré à chaque changement de saison ; au cours d'une saison, il ne change que si tu améliores l'installation ou recrutes quelqu'un. Les responsables licenciés et actuels n'y apparaissent jamais."
       },
       "coachingGroups": {
         "title": "Groupes d'encadrement : U23 contre Senior",
@@ -1967,7 +1971,7 @@
     },
     "developmentProjectionEstimateFaq": {
       "q": "Qu'est-ce que la ligne dans l'onglet Progression ?",
-      "a": "C'est la courbe de sa note d'aujourd'hui vers ton estimation de son potentiel. C'est une seule ligne, construite sur la même estimation que partout ailleurs, donc l'onglet Progression ne peut pas contredire le profil du coureur ni l'onglet Détection. Les rivaux que tu n'as pas détectés, et tes jeunes coureurs avant leurs 5 premiers entraînements, n'ont pas de ligne : tu vois seulement la courbe enregistrée."
+      "a": "C'est la courbe de sa note d'aujourd'hui vers ton estimation de son potentiel, la même que partout ailleurs. Les rivaux que tu n'as pas détectés, et tes jeunes coureurs avant leurs 5 premiers entraînements, n'ont pas de ligne : tu vois seulement la courbe enregistrée."
     },
     "developmentProjectionFaq": {
       "q": "Qu'est-ce que la projection dans l'onglet Progression ?",
@@ -2031,7 +2035,7 @@
     },
     "scoutNetworkOwnRidersEstimateFaq": {
       "q": "Un meilleur réseau de détection améliore-t-il aussi la façon dont je vois mes propres coureurs ?",
-      "a": "Pas par les missions : le vivier d'une mission ne cherche que chez les autres équipes et les coureurs libres. Pour tes propres coureurs, l'estimation devient plus sûre à chaque entraînement dans ton équipe, et un meilleur staff et de meilleures installations accélèrent les choses. Elle ne devient jamais exacte : même une estimation Sûre peut tomber un peu à côté."
+      "a": "Pas par les missions : elles ne cherchent que chez les autres équipes et les coureurs libres. Pour tes propres coureurs, l'estimation devient plus sûre à chaque entraînement dans ton équipe, et un meilleur staff et de meilleures installations accélèrent les choses."
     },
     "scoutNetworkOwnRidersFaq": {
       "q": "Un meilleur réseau de détection améliore-t-il aussi la façon dont je vois mes propres coureurs ?",
@@ -2039,7 +2043,7 @@
     },
     "scoutChangeEstimateFaq": {
       "q": "J'ai recruté un nouveau chef recruteur. Est-ce que ça change mes estimations ?",
-      "a": "Pas à lui seul. Tes estimations restent où elles sont tant que ton équipe n'apprend rien de nouveau, donc une embauche ne fait bouger aucun nombre. Sa prochaine observation d'un coureur peut rendre cette estimation plus sûre, et un meilleur recruteur y arrive plus vite. Rien de tout ça ne touche les vraies capacités du coureur, qui ne bougent qu'avec l'entraînement, l'âge et la course."
+      "a": "Pas à lui seul. Tes estimations restent où elles sont tant que ton équipe n'apprend rien de nouveau, donc une embauche ne fait bouger aucun nombre. Sa prochaine observation d'un coureur peut rendre cette estimation plus sûre, et un meilleur recruteur y arrive plus vite."
     },
     "scoutChangeRecalcFaq": {
       "q": "J'ai recruté un nouveau chef recruteur et le rapport de détection d'un coureur a changé. Le coureur est-il devenu moins bon ?",
@@ -2051,7 +2055,7 @@
     },
     "scoutedEstimateGuaranteeFaq": {
       "q": "L'estimation est-elle une garantie ?",
-      "a": "Non. Le nombre est l'estimation de ton équipe, et le mot à côté dit à quel point tu peux t'y fier. En savoir plus la rend plus sûre, mais elle ne devient jamais une certitude : même une estimation Sûre peut tomber un peu à côté, c'est voulu. Deux équipes peuvent lire le même coureur différemment, et ce sont les résultats en course qui tranchent."
+      "a": "Non. Le nombre est l'estimation de ton équipe, et le mot à côté dit à quel point tu peux t'y fier. Même une estimation Sûre peut tomber un peu à côté, c'est voulu. Deux équipes peuvent lire le même coureur différemment, et ce sont les résultats en course qui tranchent."
     },
     "scoutedBandGuaranteeFaq": {
       "q": "La bande détectée est-elle une garantie ?",

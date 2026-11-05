@@ -87,6 +87,10 @@ export const HELP_BLOCK_FLAGS = Object.freeze({
     ceilingReached: CURVE_B_OFF,
     ceilingReachedCurveB: CURVE_B_ON,
   }),
+  facilities: Object.freeze({
+    hireChiefScout: POTENTIAL_ESTIMATE_OFF,
+    hireChiefScoutEstimate: POTENTIAL_ESTIMATE_ON,
+  }),
   academy: Object.freeze({
     dailyTrainingBoost: CURVE_B_OFF,
     dailyTrainingBoostCurveB: CURVE_B_ON,

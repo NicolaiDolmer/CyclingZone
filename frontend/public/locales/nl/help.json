@@ -1360,7 +1360,7 @@
       },
       "potentialBestRoleEstimate": {
         "title": "Potentieel in het hele spel",
-        "text": "Overal in het spel is het potentieel van een renner één getal op dezelfde schaal als zijn rating, met één woord ernaast: Onzeker, Redelijk of Zeker. Het getal is de schatting van je team van hoe hoog hij kan komen in zijn natuurlijke rol, geen feit. Het woord zegt hoeveel je erop kunt vertrouwen, en zelfs een zekere schatting kan er net naast zitten. Meer blikken, een betere scout en, bij je eigen renners, meer training bij je team maken haar zekerder. Ze springt niet als je een pagina opent: ze beweegt alleen als je team iets nieuws leert, bij de zondagse update of als de renner naar een nieuw team gaat."
+        "text": "Overal in het spel is het potentieel van een renner één getal op dezelfde schaal als zijn rating, met één woord ernaast: Onzeker, Redelijk of Zeker. Het getal is de schatting van je team van hoe hoog hij kan komen in zijn natuurlijke rol, en het woord zegt hoeveel je erop kunt vertrouwen. Meer blikken, een betere scout en, bij je eigen renners, meer training bij je team maken haar zekerder. Ze beweegt alleen als je team iets nieuws leert, bij de zondagse update of als hij van team wisselt."
       },
       "potentialBestRole": {
         "title": "Potentieel in het hele spel",
@@ -1372,7 +1372,7 @@
       },
       "scoutingEstimate": {
         "title": "Potentieel scouten",
-        "text": "Het potentieel van een renner blijft verborgen tot je hem scout: ongescoute renners van andere teams tonen Niet gescout en geen getal. Elk team heeft een talentscout, een echt staflid als je er een hebt aangenomen, anders een standaardscout, die opdrachten uitvoert vanaf de pagina Scouting of het profiel van een renner. Een gerichte opdracht onderzoekt één renner en rapporteert na ongeveer 30 minuten terug, op elk scoutniveau; een missie dekt een divisie, een land, U23-renners of een nationaal kampioenschap voor een shortlist, plus één gratis rapport over de beste vondst. Als je een missie start, kies je ook op wie hij gericht is: transfervrije renners (renners zonder contract, aanbevolen, direct te contracteren) of renners bij andere teams (talent van een andere manager, waarbij contracteren bieden of onderhandelen betekent). Opdrachten kosten reisgeld, en je scout kan afhankelijk van zijn rating maar een of twee opdrachten tegelijk uitvoeren. Elke blik maakt je schatting zekerder, en een betere scout komt er sneller. De schatting schuift naar de waarheid naarmate je meer weet, in plaats van naar een nieuw willekeurig getal te springen, en haar woord wordt nooit minder zeker. Schattingen zijn persoonlijk voor je team, dus twee managers kunnen hetzelfde talent verschillend lezen, en koersuitslagen bepalen wie gelijk had. Een rapport kan nooit verwijzen naar een renner die inmiddels niet meer beschikbaar is (elders getekend, of midden in een transfer): het weerspiegelt altijd wie nu echt beschikbaar is en toont de huidige status van elke renner. Het tabblad Scouting op het rennersprofiel toont het getal, het woord, op hoeveel blikken het gebaseerd is, welke scout ze wierp en wat nog een blik zou doen. Het getal staat op dezelfde schaal als de rating van de renner, dus je kunt de twee naast elkaar leggen. Geen enkele scout kent een renner exact: het is een schatting, geen feit."
+        "text": "Het potentieel van een renner blijft verborgen tot je hem scout: ongescoute renners van andere teams tonen Niet gescout en geen getal. Elk team heeft een talentscout, een echt staflid als je er een hebt aangenomen, anders een standaardscout, die opdrachten uitvoert vanaf de pagina Scouting of het profiel van een renner. Een gerichte opdracht onderzoekt één renner en rapporteert na ongeveer 30 minuten terug, op elk scoutniveau; een missie dekt een divisie, een land, U23-renners of een nationaal kampioenschap voor een shortlist, plus één gratis rapport over de beste vondst. Als je een missie start, kies je ook op wie hij gericht is: transfervrije renners (renners zonder contract, aanbevolen, direct te contracteren) of renners bij andere teams (talent van een andere manager, waarbij contracteren bieden of onderhandelen betekent). Opdrachten kosten reisgeld, en je scout kan afhankelijk van zijn rating maar een of twee opdrachten tegelijk uitvoeren. Elke blik maakt je schatting zekerder, en een betere scout komt er sneller. De schatting schuift naar de waarheid naarmate je meer weet, in plaats van naar een nieuw willekeurig getal te springen, en haar woord wordt nooit minder zeker. Schattingen zijn persoonlijk voor je team, dus twee managers kunnen hetzelfde talent verschillend lezen, en koersuitslagen bepalen wie gelijk had. Een rapport kan nooit verwijzen naar een renner die inmiddels niet meer beschikbaar is (elders getekend, of midden in een transfer): het weerspiegelt altijd wie nu echt beschikbaar is en toont de huidige status van elke renner. Het tabblad Scouting op het rennersprofiel toont het getal, het woord, op hoeveel blikken het gebaseerd is en wat nog een blik zou doen. Geen enkele scout kent een renner exact: het is een schatting, geen feit."
       },
       "scouting": {
         "title": "Potentieel scouten",
@@ -1599,7 +1599,7 @@
       },
       "prognosisTrainingEstimate": {
         "title": "Het potentieel van een talent leren kennen",
-        "text": "Een nieuwe jeugdrenner heeft nog geen potentieelgetal. Hij toont Leert en hoeveel van zijn eerste 5 trainingen hij heeft gedaan. Een training telt als een datum bij je team is afgerekend, met Train now of met de automatische training. Na 5 krijg je een eerste schatting: één getal met een woord ernaast. Ze wordt zekerder naarmate hij langer bij je traint, en betere trainersstaf en trainingsfaciliteiten maken dat sneller. Ze veranderen zijn talent niet, en zelfs een zekere schatting kan er net naast zitten."
+        "text": "Een nieuwe jeugdrenner heeft nog geen potentieelgetal: hij toont Leert en hoeveel van zijn eerste 5 trainingen hij heeft gedaan. Een training telt als een datum bij je team is afgerekend, met Train now of met de automatische training. Na 5 krijg je een eerste schatting, en ze wordt zekerder naarmate hij langer bij je traint. Betere trainersstaf en faciliteiten maken dat sneller, maar veranderen zijn talent niet."
       },
       "prognosisTraining": {
         "title": "Het potentieel van een talent leren kennen",
@@ -1739,6 +1739,10 @@
       "hireChiefScout": {
         "title": "Een hoofdscout aannemen",
         "text": "Het niveau van het Scoutingnetwerk bepaalt het hoogste niveau hoofdscout dat je mag aannemen, dus bouw of waardeer het eerst op als de kandidaat die je wilt vergrendeld is. Elk team heeft al een standaardscout, ook zonder gebouwde faciliteit, maar een aangenomen hoofdscout heeft een echte, hogere totale rating: die rating maakt zijn schattingen smaller (een strakker potentieelbereik op het tabblad Scouting) en laat hem, zodra zijn totaal ongeveer 80 bereikt, twee scoutopdrachten tegelijk uitvoeren in plaats van één. Neem hoofden aan en ontsla ze via de pagina Club, net als bij elk ander faciliteitenspoor. De kandidaten die je kunt aannemen vormen een kleine pool per rol. Het niveau van je faciliteit is het hoogste dat ze kunnen hebben, en minstens één kandidaat per rol zit op dat niveau. Bij elke seizoenswissel komt er een nieuwe pool; binnen een seizoen verandert die alleen als je de faciliteit opwaardeert of iemand aanneemt. Ontslagen en huidige hoofden verschijnen er nooit in."
+      },
+      "hireChiefScoutEstimate": {
+        "title": "Een hoofdscout aannemen",
+        "text": "Het niveau van het Scoutingnetwerk bepaalt het hoogste niveau hoofdscout dat je mag aannemen, dus bouw of waardeer het eerst op als de kandidaat die je wilt vergrendeld is. Elk team heeft al een standaardscout, ook zonder gebouwde faciliteit, maar een aangenomen hoofdscout heeft een echte, hogere totale rating: die rating maakt zijn schattingen sneller zekerder en laat hem, zodra zijn totaal ongeveer 80 bereikt, twee scoutopdrachten tegelijk uitvoeren in plaats van één. Neem hoofden aan en ontsla ze via de pagina Club, net als bij elk ander faciliteitenspoor. De kandidaten die je kunt aannemen vormen een kleine pool per rol. Het niveau van je faciliteit is het hoogste dat ze kunnen hebben, en minstens één kandidaat per rol zit op dat niveau. Bij elke seizoenswissel komt er een nieuwe pool; binnen een seizoen verandert die alleen als je de faciliteit opwaardeert of iemand aanneemt. Ontslagen en huidige hoofden verschijnen er nooit in."
       },
       "coachingGroups": {
         "title": "Coachinggroepen: U23 tegenover Senioren",
@@ -1967,7 +1971,7 @@
     },
     "developmentProjectionEstimateFaq": {
       "q": "Wat is de lijn op het tabblad Ontwikkeling?",
-      "a": "Dat is de curve van zijn rating van vandaag naar je schatting van zijn potentieel. Het is één lijn, gebouwd op dezelfde schatting die je overal ziet, dus het tabblad Ontwikkeling kan niet afwijken van het rennersprofiel of het tabblad Scouting. Rivalen die je niet hebt gescout, en je eigen jeugdrenners vóór hun eerste 5 trainingen, hebben geen lijn: je ziet alleen de geregistreerde curve."
+      "a": "Dat is de curve van zijn rating van vandaag naar je schatting van zijn potentieel, dezelfde die je overal ziet. Rivalen die je niet hebt gescout, en je eigen jeugdrenners vóór hun eerste 5 trainingen, hebben geen lijn: je ziet alleen de geregistreerde curve."
     },
     "developmentProjectionFaq": {
       "q": "Wat is de verwachting op het tabblad Ontwikkeling?",
@@ -2031,7 +2035,7 @@
     },
     "scoutNetworkOwnRidersEstimateFaq": {
       "q": "Verbetert een beter scoutingnetwerk ook hoe goed ik mijn eigen renners zie?",
-      "a": "Niet via missies: de kandidatenpool van een missie zoekt alleen bij andere teams en renners zonder contract. Bij je eigen renners wordt de schatting zekerder met elke training bij je team, en betere trainersstaf en faciliteiten maken dat sneller. Ze wordt nooit exact: zelfs een Zekere schatting kan er net naast zitten."
+      "a": "Niet via missies: die zoeken alleen bij andere teams en renners zonder contract. Bij je eigen renners wordt de schatting zekerder met elke training bij je team, en betere trainersstaf en faciliteiten maken dat sneller."
     },
     "scoutNetworkOwnRidersFaq": {
       "q": "Verbetert een beter scoutingnetwerk ook hoe goed ik mijn eigen renners zie?",
@@ -2039,7 +2043,7 @@
     },
     "scoutChangeEstimateFaq": {
       "q": "Ik nam een nieuwe hoofdscout aan. Verandert dat mijn schattingen?",
-      "a": "Niet op zichzelf. Je schattingen blijven staan tot je team iets nieuws leert, dus een nieuwe aanstelling verplaatst geen enkel getal. Zijn volgende blik op een renner kan die schatting zekerder maken, en een betere scout komt er sneller. Geen van beide raakt de echte vaardigheden van de renner, die alleen veranderen door training, leeftijd en koersen."
+      "a": "Niet op zichzelf. Je schattingen blijven staan tot je team iets nieuws leert, dus een nieuwe aanstelling verplaatst geen enkel getal. Zijn volgende blik op een renner kan die schatting zekerder maken, en een betere scout komt er sneller."
     },
     "scoutChangeRecalcFaq": {
       "q": "Ik nam een nieuwe hoofdscout aan en het scoutingrapport van een renner veranderde. Is de renner slechter geworden?",
@@ -2051,7 +2055,7 @@
     },
     "scoutedEstimateGuaranteeFaq": {
       "q": "Is de schatting een garantie?",
-      "a": "Nee. Het getal is de schatting van je team, en het woord ernaast zegt hoeveel je erop kunt vertrouwen. Meer kennis maakt haar zekerder, maar ze wordt nooit een feit: zelfs een Zekere schatting kan er net naast zitten, met opzet. Twee teams kunnen dezelfde renner verschillend lezen, en koersresultaten beslissen wie gelijk had."
+      "a": "Nee. Het getal is de schatting van je team, en het woord ernaast zegt hoeveel je erop kunt vertrouwen. Zelfs een Zekere schatting kan er net naast zitten, met opzet. Twee teams kunnen dezelfde renner verschillend lezen, en koersresultaten beslissen wie gelijk had."
     },
     "scoutedBandGuaranteeFaq": {
       "q": "Is de gescoute band een garantie?",
