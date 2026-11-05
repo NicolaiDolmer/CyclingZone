@@ -281,7 +281,7 @@
         "thirdGap": "{name} werd derde, {gap} achter.",
         "placed": "{name} finishte op plaats {rank}.",
         "placedGap": "{name} finishte op plaats {rank}, {gap} achter.",
-        "ownOut": "{kind, select, withdrawal {Afgestapt: {names}. Ver achter en zonder taak.} time_limit {Buiten tijd: {names}.} crash {Afgestapt na een valpartij: {names}.} mechanical {Afgestapt door materiaalpech: {names}.} other {Afgestapt: {names}.}}"
+        "ownOut": "{kind, select, withdrawal {Afgestapt: {names}. Te ver achter de winnaar.} time_limit {Buiten tijd: {names}.} crash {Afgestapt na een valpartij: {names}.} mechanical {Afgestapt door materiaalpech: {names}.} other {Afgestapt: {names}.}}"
       },
       "final": {
         "aria": "De laatste 5 km: groepen op de weg met resterende afstand, achterstanden en koersklok",
@@ -1645,9 +1645,9 @@
       "teamDay": "{team} leidde het ploegenklassement met {count} renners in de top 10.",
       "teamWon": "{team} won het ploegenklassement.",
       "jerseys": "Truidragers: {points} in het puntenklassement, {mountain} in de bergen.",
-      "abandon": "{kind, select, crash {{rider} stapte af na een valpartij.} mechanical {{rider} stapte af door materiaalpech.} injury {{rider} startte niet: geblesseerd.} withdrawal {{rider} stapte af: ver achter en zonder taak.} time_limit {{rider} kwam buiten tijd binnen.} illness {{rider} startte niet: ziek.} other {{rider} stapte af.}}",
+      "abandon": "{kind, select, crash {{rider} stapte af na een valpartij.} mechanical {{rider} stapte af door materiaalpech.} injury {{rider} startte niet: geblesseerd.} withdrawal {{when, select, stage {{rider} stapte af na de etappe, te ver achter de winnaar.} other {{rider} stapte af, te ver achter de winnaar.}}} time_limit {{rider} kwam buiten tijd binnen.} illness {{rider} startte niet: ziek.} other {{rider} stapte af.}}",
       "notableCrash": "{rider} viel en verloor {marginText}.",
-      "withdrawalGroup": "{when, select, stage {{count} renners stapten na de etappe af: ver achter en zonder taak.} other {{count} renners stapten af: ver achter en zonder taak.}}",
+      "withdrawalGroup": "{when, select, stage {{count} renners stapten na de etappe af, te ver achter de winnaar.} other {{count} renners stapten af, te ver achter de winnaar.}}",
       "seeList": "Bekijk de lijst"
     },
     "incidents": {
@@ -1656,7 +1656,7 @@
       "mechanical": "Materiaalpech",
       "injury": "Niet gestart",
       "illness": "Ziek, niet gestart",
-      "withdrawal": "Afgestapt, ver achter",
+      "withdrawal": "Afgestapt, te ver achter",
       "time_limit": "Buiten tijd",
       "abandoned": "Afgestapt",
       "dnf": "DNF",
@@ -1903,7 +1903,7 @@
         "inBreak": "{rider} zat de hele dag in de ontsnapping.",
         "helperWork": "{count, plural, one {Een ploeggenoot reed} other {# ploeggenoten reden}} in dienst van {captain}.",
         "none": "Geen renners van jouw team zijn in deze etappe gestart.",
-        "out": "{kind, select, withdrawal {{rider} stapte af na etappe {number}: ver achter en zonder taak.} time_limit {{rider} kwam buiten tijd binnen in etappe {number}.} crash {{rider} stapte af na een valpartij in etappe {number}.} injury {{rider} startte niet in etappe {number}: geblesseerd.} illness {{rider} startte niet in etappe {number}: ziek.} other {{rider} stapte af in etappe {number}.}}",
+        "out": "{kind, select, withdrawal {{rider} stapte af na etappe {number}, te ver achter de winnaar.} time_limit {{rider} kwam buiten tijd binnen in etappe {number}.} crash {{rider} stapte af na een valpartij in etappe {number}.} injury {{rider} startte niet in etappe {number}: geblesseerd.} illness {{rider} startte niet in etappe {number}: ziek.} other {{rider} stapte af in etappe {number}.}}",
         "ridersLeft": "{count, plural, =0 {Je hebt geen renners meer over.} one {Je hebt nog # renner over.} other {Je hebt nog # renners over.}}"
       }
     },

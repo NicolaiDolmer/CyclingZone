@@ -361,7 +361,7 @@ function incidentKindLabel(kind) {
   if (kind === "crash" || kind === "mechanical") return kind;
   if (kind === "illness") return "ill, did not start";
   if (kind === "injury") return "injured, did not start";
-  if (kind === "withdrawal") return "far behind, no job left";
+  if (kind === "withdrawal") return "too far behind";
   if (kind === "time_limit") return "outside the time limit";
   return "abandoned";
 }

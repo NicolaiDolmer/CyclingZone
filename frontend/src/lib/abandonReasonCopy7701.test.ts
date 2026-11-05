@@ -22,24 +22,63 @@ function selectArm(message: string, arm: string): string {
 
 const TIRED = /exhaust|tired|worn|udkørt|udmattet|træt|épuis|fatigu|agotad|cansad|uitgeput|moe\b/i;
 const INCIDENT = /incident|uheld|crash|styrt|chute|caída|valpartij/i;
+// Ejeren 5/11: "no job left" lyder som en manglende ordre fra spilleren.
+const JOB = /\bjobs?\b|opgave|\btasks?\b|mission|tâche|tarea|\btaak\b|\btaken\b/i;
+const ORDER_OR_CAPTAIN = /order|ordre|orden|bevel|captain|kaptajn|capitaine|capitán|kopman|leader|jefe de filas/i;
+
+function withdrawalTexts(code: string): string[] {
+  const races = load(code, "races");
+  const recap = races.detail.recap;
+  return [
+    selectArm(recap.abandon, "withdrawal"),
+    selectArm(recap.withdrawalGroup, "stage"),
+    selectArm(recap.withdrawalGroup, "other"),
+    races.detail.incidents.withdrawal,
+    selectArm(races.detail.report.yourTeam.out, "withdrawal"),
+    selectArm(races.stagePageV2.story.report.ownOut, "withdrawal"),
+    selectArm(load(code, "dashboard").cards.heroAgony.moments.incident_abandon, "withdrawal"),
+  ];
+}
+
+// Hjaelpens afsnit om at stige af: alt efter sidste saetning om tidsgraensen.
+const HELP_START: Record<string, string> = {
+  en: "After the finish,", da: "Efter målstregen kan", fr: "Après l'arrivée, un coureur",
+  es: "Después de la meta, un ciclista", nl: "Na de finish kan een renner",
+};
+
+test("#7701 referatets ordlyd er ejerens, ordret paa en og da", () => {
+  const [enAbandon, enGroup] = [load("en", "races").detail.recap.abandon, load("en", "races").detail.recap.withdrawalGroup];
+  const [daAbandon, daGroup] = [load("da", "races").detail.recap.abandon, load("da", "races").detail.recap.withdrawalGroup];
+  assert.equal(load("en", "races").detail.incidents.withdrawal, "Climbed off, too far behind");
+  assert.equal(load("da", "races").detail.incidents.withdrawal, "Steg af, for langt efter");
+  assert.equal(selectArm(selectArm(enAbandon, "withdrawal"), "stage"), "{rider} climbed off after the stage, too far behind the winner.");
+  assert.equal(selectArm(selectArm(daAbandon, "withdrawal"), "stage"), "{rider} steg af efter etapen, for langt efter vinderen.");
+  assert.equal(selectArm(enGroup, "stage"), "{count} riders climbed off after the stage, too far behind the winner.");
+  assert.equal(selectArm(daGroup, "stage"), "{count} ryttere steg af efter etapen, for langt efter vinderen.");
+});
 
 for (const { code } of LANGUAGES) {
-  test(`#7701 ${code}: ingen tekst om den der steg af antyder traethed eller et uheld`, () => {
-    const races = load(code, "races");
-    const recap = races.detail.recap;
-    const texts = [
-      selectArm(recap.abandon, "withdrawal"),
-      selectArm(recap.withdrawalGroup, "stage"),
-      selectArm(recap.withdrawalGroup, "other"),
-      races.detail.incidents.withdrawal,
-      selectArm(races.detail.report.yourTeam.out, "withdrawal"),
-      selectArm(races.stagePageV2.story.report.ownOut, "withdrawal"),
-      selectArm(load(code, "dashboard").cards.heroAgony.moments.incident_abandon, "withdrawal"),
-    ];
-    for (const text of texts) {
+  test(`#7701 ${code}: ingen tekst om den der steg af antyder traethed, et uheld eller en opgave`, () => {
+    for (const text of withdrawalTexts(code)) {
       assert.doesNotMatch(text, TIRED, text);
       assert.doesNotMatch(text, INCIDENT, text);
+      assert.doesNotMatch(text, JOB, text);
     }
+  });
+
+  test(`#7701 ${code}: endagsloeb faar ingen "efter etapen" paa den enkelte rytter`, () => {
+    const arm = selectArm(load(code, "races").detail.recap.abandon, "withdrawal");
+    assert.notEqual(selectArm(arm, "stage"), selectArm(arm, "other"));
+  });
+
+  test(`#7701 ${code}: hjaelpen naevner hverken opgave, ordre, kaptajn eller tal`, () => {
+    const text: string = load(code, "help").sections.raceDay.timeLimitAndGrupetto.text;
+    const start = text.indexOf(HELP_START[code]);
+    assert.ok(start > 0, `mangler afsnittet om at stige af: ${code}`);
+    const part = text.slice(start);
+    assert.doesNotMatch(part, JOB, part);
+    assert.doesNotMatch(part, ORDER_OR_CAPTAIN, part);
+    assert.doesNotMatch(part, /\d/, part);
   });
 
   test(`#7701 ${code}: dashboardet kender hver vej ud og paastaar intet uheld uden aarsag`, () => {

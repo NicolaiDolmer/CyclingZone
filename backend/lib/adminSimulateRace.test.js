@@ -344,7 +344,7 @@ test("buildRaceSimEmbed: DNF-linjen viser sand årsag for alle veje ud af løbet
   const { description } = buildRaceSimEmbed({ race, resultRows, incidents: [
     out("withdrawal", "Ib"), out("time_limit", "Bo"), out("injury", "Jan"), out("illness", "Kim"), out("noget_nyt", "Per"),
   ] });
-  assert.ok(description.includes("Ib (far behind, no job left)"), description);
+  assert.ok(description.includes("Ib (too far behind)"), description);
   assert.ok(description.includes("Bo (outside the time limit)"), description);
   assert.ok(description.includes("Jan (injured, did not start)"), description);
   assert.ok(description.includes("Kim (ill, did not start)"), description);

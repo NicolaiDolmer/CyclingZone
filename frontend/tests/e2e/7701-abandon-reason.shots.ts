@@ -160,7 +160,7 @@ async function compose(out: string) {
   const sheet = await ctx.newPage();
   const cols = [
     ["before", "#ff8a80", "BEFORE: 'Climbed off, exhausted', and your own rider's line gives no reason."],
-    ["after", "#e8c04a", "AFTER: far behind, with no job left. The stage report names your rider too."],
+    ["after", "#e8c04a", "AFTER: too far behind the winner. The stage report names your rider too."],
   ];
   await sheet.setContent(`<!doctype html><html><body style="margin:0;background:#111;font-family:system-ui,sans-serif;color:#fff">
 <div style="display:flex;gap:24px;padding:24px;align-items:flex-start">
