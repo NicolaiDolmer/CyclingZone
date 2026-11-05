@@ -5,6 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildRaceStory } from "../../../../../backend/lib/raceStory.js";
+import { withEventPlaces } from "../../../../../backend/lib/raceTimeline.js";
 import {
   asStory, isTimeTrialStory, buildReport, castFrom, curateMoments, finaleData, finaleEndTime, finaleMarkerLabelsShown, finaleStateAt, formatClock, frameAt,
   groupMembersAt, groupOfRider, isPeloton, leaderKmAt, lineReplayKm, MAX_STORY_LINES, namesList, parseGap, pickGroups,
@@ -410,4 +411,25 @@ test("#6469 context: authoritative TT metadata overrides a stale mass-start stor
   }
   assert.equal(isTimeTrialStory(s, "hilly", hillyTimeline()), false);
   assert.equal(JSON.stringify(s), before);
+});
+
+test("#6350: en sen halvdel af et split: navnene følger rytteren fra kontakten, ikke fra stregen", () => {
+  const log = [
+    ev(0, "stage_start", { exact_km: 0, exact_time: 0, field_count: 6, distance_km: 180 }),
+    ev(10, "breakaway_formed", { group_id: "breakaway-1", rider_ids: ["ahead"], exact_km: 10, exact_time: 900 }),
+    ev(170, "gap_update", { group_id: "peloton-0", gap_seconds: 90, exact_km: 170, exact_time: 17000 }),
+    ev(174.07, "breakaway_caught", { group_id: "breakaway-1", rider_ids: ["ahead"], exact_km: 174.07 }),
+    ev(174.07, "group_merged", { group_id: "breakaway-1", into_group_id: "peloton-0", rider_ids: ["ahead"], exact_km: 174.07 }),
+    ev(180, "peloton_splits", { group_id: "front-part", source_group_id: "peloton-0", gap_seconds: 53.09, rider_ids: ["a"], exact_km: 170.76, exact_time: 17609 }),
+    ev(180, "peloton_splits", { group_id: "behind", source_group_id: "peloton-0", gap_seconds: 302.73, rider_ids: ["set", "ahead"], exact_km: 180, exact_time: 19700 }),
+    ev(180, "group_merged", { group_id: "behind", into_group_id: "front-part", rider_ids: ["set", "ahead"], exact_km: 176 }),
+    ev(180, "finish", { exact_km: 180, top: [] }),
+  ];
+  const story = buildRaceStory({ events: withEventPlaces(log), timelineVersion: 2 }) as unknown as RaceStory;
+  const at = (km: number, rider: string) => groupOfRider(groupMembersAt(story, km), rider);
+  assert.equal(at(172, "ahead"), "breakaway-1");
+  assert.equal(at(172, "set"), "behind");
+  assert.equal(at(175, "ahead"), "peloton-0");
+  assert.equal(at(178, "ahead"), "front-part");
+  assert.equal(at(178, "set"), "front-part");
 });

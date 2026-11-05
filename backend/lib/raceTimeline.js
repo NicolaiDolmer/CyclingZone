@@ -581,6 +581,8 @@ function segmentStartKm(km, splitsAtKm, events, visible) {
   const anchor = events.reduce((best, e) => (e.type === "gap_update" && e.km < km && e.km > best ? e.km : best), 0);
   const starts = [];
   for (const split of splitsAtKm) {
+    // Kun motorens egne steder måler segmentet. Dem vi selv har flyttet, har mistet tiden.
+    if (finiteOrNull(split.params?.exact_time) === null) continue;
     const at = exactKmOf(split);
     const fraction = separationFraction(0, finiteOrNull(split.params?.gap_seconds) ?? NaN, visible);
     if (at === null || at >= km || fraction === null || fraction >= 1) continue;
@@ -597,18 +599,41 @@ function groupExistedBefore(groupId, km, events) {
 }
 
 /**
+ * Hændelserne der flytter en rytter ind i eller ud af en anden gruppe end splittets
+ * egen. Motoren skriver altid rider_ids på en sammenlægning (segmentLoop.ts), så
+ * gruppens egen kontakt navngiver også splittets ryttere, ofte i en kæde af grupper
+ * på samme tjekpunkt. Den er ikke et skift: de kører stadig i linjen fra splittet.
+ */
+function groupChangesOutside(split, events) {
+  const line = new Set([split.params?.group_id]);
+  const ownContact = (e) => CONTACT_TYPES.has(e.type) && e.km === split.km && line.has(e.params?.group_id);
+  for (const e of events) if (ownContact(e) && typeof e.params?.into_group_id === "string") line.add(e.params.into_group_id);
+  return events.filter((e) => e !== split && GROUP_CHANGE_TYPES.has(e.type) && !BOOKKEEPING_ATTACK_KINDS.has(e.params?.kind)
+    && e.params?.group_id !== split.params?.group_id && !ownContact(e));
+}
+
+/**
  * Splittets ryttere der kørte i kildegruppen på det udledte sted og blev der til
  * tjekpunktet. De andre (fx hentet fra udbruddet inde i segmentet) kom først med
  * senere og hører ikke til stedet.
  */
 function ridersInSourceAt(split, place, events) {
   const groupOf = riderGroupsBefore(events, place);
-  const changedGroupAfter = (id) => events.some((e) => {
+  const changes = groupChangesOutside(split, events);
+  const changedGroupAfter = (id) => changes.some((e) => {
     const at = exactKmOf(e) ?? e.km;
-    return e !== split && GROUP_CHANGE_TYPES.has(e.type) && !BOOKKEEPING_ATTACK_KINDS.has(e.params?.kind)
-      && at >= place && at < split.km && riderIdsOf(e).includes(id);
+    return at >= place && at < split.km && riderIdsOf(e).includes(id);
   });
   return riderIdsOf(split).filter((id) => groupOf(id) === split.params?.source_group_id && !changedGroupAfter(id));
+}
+
+/** Det seneste sted før tjekpunktet hvor en af hændelsens ryttere skiftede gruppe. */
+function ridersFreeKm(event, events) {
+  const riders = new Set(riderIdsOf(event));
+  return groupChangesOutside(event, events).reduce((free, e) => {
+    const at = exactKmOf(e) ?? e.km;
+    return at < event.km && at > free && riderIdsOf(e).some((id) => riders.has(id)) ? at : free;
+  }, -Infinity);
 }
 
 /**
@@ -670,13 +695,20 @@ function placeFormationsBeforeContact(events) {
     contactOf.set(keyOf(event), Math.min(contactOf.get(keyOf(event)) ?? Infinity, at));
   }
   for (const event of events) {
-    // En sen halvdel af et split må aldrig trækkes tilbage til søster-splittenes sted.
-    if (!FORMATION_TYPES.has(event.type) || BOOKKEEPING_ATTACK_KINDS.has(event.params?.kind) || event.params?.joined_late) continue;
+    if (!FORMATION_TYPES.has(event.type) || BOOKKEEPING_ATTACK_KINDS.has(event.params?.kind)) continue;
     const contact = contactOf.get(keyOf(event));
     const at = exactKmOf(event);
     if (contact === undefined || at === null || at <= contact + KM_EPSILON) continue;
-    const siblings = events.filter((e) => e.type === event.type && e.km === event.km && (exactKmOf(e) ?? Infinity) <= contact).map(exactKmOf);
-    movePlace(event, siblings.length > 0 ? Math.max(...siblings) : contact);
+    // En sen halvdel hører aldrig til søster-splittenes sted: den står på kontakten,
+    // det sidste sted gruppen findes. Ingen står i gruppen før han var fri af den forrige.
+    const siblings = event.params?.joined_late ? []
+      : events.filter((e) => e.type === event.type && e.km === event.km && (exactKmOf(e) ?? Infinity) <= contact).map(exactKmOf);
+    const place = Math.max(siblings.length > 0 ? Math.max(...siblings) : contact, ridersFreeKm(event, events));
+    movePlace(event, place);
+    if (place <= contact) continue;
+    // Gruppen kan ikke være væk før den sidste rytter nåede den.
+    for (const e of events) if (CONTACT_TYPES.has(e.type) && keyOf(e) === keyOf(event) && (exactKmOf(e) ?? Infinity) < place) movePlace(e, place);
+    contactOf.set(keyOf(event), place);
   }
   // "Egne ryttere foran" meldes ved segmentets start, også om en gruppe der først
   // dannes inde i segmentet: meldingen står hvor gruppen blev dannet.
@@ -727,8 +759,11 @@ function placeRiderConsequences(events) {
       const from = p.reason === "dropped" ? joined.get(p.rider_id) : p.reason === "caught" ? caught.get(p.rider_id) : undefined;
       if (from && from.km < place.km - KM_EPSILON) movePlace(event, from.km, from.time);
     } else if ((event.type === "all_out_cracked" || event.type === "breakaway_dropped") && exactKmOf(event) === event.km) {
-      const split = splitAt.get(`${event.km}|${riderIdsOf(event)[0]}`);
-      if (split && exactKmOf(split) !== null && exactKmOf(split) < event.km) movePlace(event, exactKmOf(split), finiteOrNull(split.params?.exact_time));
+      // Flere ryttere kan stå i hver sin halvdel: hændelsen står ved den sidste af dem.
+      const splits = riderIdsOf(event).map((id) => splitAt.get(`${event.km}|${id}`));
+      if (splits.length === 0 || !splits.every((split) => split && exactKmOf(split) !== null && exactKmOf(split) < event.km)) continue;
+      const last = splits.reduce((a, b) => (exactKmOf(b) > exactKmOf(a) ? b : a));
+      movePlace(event, exactKmOf(last), finiteOrNull(last.params?.exact_time));
     }
   }
 }

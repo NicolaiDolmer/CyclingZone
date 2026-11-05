@@ -8,6 +8,7 @@ import {
   buildFilm,
   checkStage,
   dayRowsFor,
+  filmPlaceFindings,
   parseGapSeconds,
   publicFinding,
   replayTimeline,
@@ -296,8 +297,52 @@ test("#6350: en sen halvdel af et split flytter ikke gruppens dannelse", () => {
   const log = [
     { km: 0, type: "stage_start", params: { exact_km: 0, exact_time: 0 } },
     { km: 180, type: "peloton_splits", params: { group_id: "g", source_group_id: "peloton-0", rider_ids: ["a"], exact_km: 170.47 } },
-    { km: 180, type: "peloton_splits", params: { group_id: "g", source_group_id: "peloton-0", rider_ids: ["b"], exact_km: 180, joined_late: true } },
-    { km: 180, type: "group_merged", params: { group_id: "g", into_group_id: "peloton-0", exact_km: 176 } },
+    { km: 180, type: "peloton_splits", params: { group_id: "g", source_group_id: "peloton-0", rider_ids: ["b"], exact_km: 176, joined_late: true } },
+    { km: 180, type: "group_merged", params: { group_id: "g", into_group_id: "peloton-0", rider_ids: ["a", "b"], exact_km: 176 } },
   ];
-  assert.deepEqual(ruleCatchAfterFormation({ events: log, startlist: ["a", "b"] }).filter((f) => f.code === "caught_before_formed"), []);
+  assert.deepEqual(ruleCatchAfterFormation({ events: log, startlist: ["a", "b"] }), []);
+});
+
+// Motorens form: splits, så sammenlægningen med alle gruppens ryttere, samme km.
+function filmContradiction({ splitKm, lateKm, catchKm = 174.07 }) {
+  return [
+    { km: 0, type: "stage_start", params: { exact_km: 0, exact_time: 0 } },
+    { km: 10, type: "breakaway_formed", params: { group_id: "breakaway-1", rider_ids: ["ahead"], exact_km: 10 } },
+    { km: catchKm, type: "breakaway_caught", params: { group_id: "breakaway-1", rider_ids: ["ahead"], exact_km: catchKm } },
+    { km: catchKm, type: "group_merged", params: { group_id: "breakaway-1", into_group_id: "peloton-0", rider_ids: ["ahead"], exact_km: catchKm } },
+    { km: 180, type: "peloton_splits", params: { group_id: "g", source_group_id: "peloton-0", rider_ids: lateKm == null ? ["set", "ahead"] : ["set"], gap_seconds: 300, exact_km: splitKm } },
+    ...(lateKm == null ? [] : [{ km: 180, type: "peloton_splits", params: { group_id: "g", source_group_id: "peloton-0", rider_ids: ["ahead"], gap_seconds: 300, exact_km: lateKm, joined_late: true } }]),
+    { km: 180, type: "group_merged", params: { group_id: "g", into_group_id: "gruppetto-2", rider_ids: ["set", "ahead"], exact_km: 176 } },
+  ];
+}
+
+test("#6350 R3: vagten fanger en rytter der står i en gruppe før han var fri af udbruddet", () => {
+  // Det et trukket-tilbage split ville vise: i gruppen bag ved km 170,76, hentet ved km 174,07.
+  const found = ruleCatchAfterFormation({ events: filmContradiction({ splitKm: 170.76 }), startlist: ["set", "ahead"] });
+  const hit = found.filter((f) => f.code === "rider_in_group_before_free");
+  assert.equal(hit.length, 1);
+  assert.equal(hit[0].rider_id, "ahead");
+  assert.equal(hit[0].km, 170.76);
+  assert.equal(hit[0].left_km, 174.07);
+});
+
+test("#6350 R3: vagten fanger en sen halvdel der går ind i en gruppe efter gruppens kontakt", () => {
+  const hit = filmPlaceFindings(filmContradiction({ splitKm: 170.47, lateKm: 179 })).filter((f) => f.code === "split_after_group_contact");
+  assert.equal(hit.length, 1);
+  assert.equal(hit[0].group_id, "g");
+  assert.equal(hit[0].contact_km, 176);
+  // Reglen læser filmen som siden viser den: withEventPlaces har allerede rettet stedet.
+  assert.deepEqual(ruleCatchAfterFormation({ events: filmContradiction({ splitKm: 170.47, lateKm: 179 }), startlist: ["set", "ahead"] }), []);
+  // Det rigtige sted er ikke et fund.
+  assert.deepEqual(ruleCatchAfterFormation({ events: filmContradiction({ splitKm: 170.47, lateKm: 176 }), startlist: ["set", "ahead"] }), []);
+});
+
+test("#6350 R3: en kæde af sammenlægninger i segmentet er ikke et skift ud af en anden gruppe", () => {
+  const log = [
+    { km: 0, type: "stage_start", params: { exact_km: 0, exact_time: 0 } },
+    { km: 180, type: "peloton_splits", params: { group_id: "g1", source_group_id: "peloton-0", rider_ids: ["a"], gap_seconds: 60, exact_km: 171 } },
+    { km: 180, type: "group_merged", params: { group_id: "g1", into_group_id: "g2", rider_ids: ["a"], exact_km: 174 } },
+    { km: 180, type: "group_merged", params: { group_id: "g2", into_group_id: "g3", rider_ids: ["a", "b"], exact_km: 177 } },
+  ];
+  assert.deepEqual(ruleCatchAfterFormation({ events: log, startlist: ["a", "b"] }).filter((f) => f.code === "rider_in_group_before_free"), []);
 });

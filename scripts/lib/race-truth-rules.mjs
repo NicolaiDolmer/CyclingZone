@@ -24,6 +24,7 @@
 // tider, km-stempling), ikke motor-tuning.
 
 import { buildRaceStory, checkpointGapForRider } from "../../backend/lib/raceStory.js";
+import { withEventPlaces } from "../../backend/lib/raceTimeline.js";
 
 export const RULES = Object.freeze({
   R1: "En sat rytter er ikke i hovedgruppen eller frontgruppen",
@@ -369,9 +370,41 @@ export function ruleAbandonedGone(input) {
   return findings;
 }
 
-/** R3 (#6350): hentet før dannet (km/tid), eller en gruppe uden dannelse. */
-export function ruleCatchAfterFormation(input) {
+/**
+ * R3 (#6350): filmen som siden viser den (loggen læst gennem withEventPlaces) må
+ * ikke modsige sig selv. Et split står ikke efter sin gruppes kontakt, og en rytter
+ * står ikke i en gruppe før han er fri af den forrige.
+ */
+export function filmPlaceFindings(placed) {
   const findings = [];
+  const known = (placed ?? []).map((event, index) => ({ event, index, place: placeOf(event) })).filter(({ event, place }) => event && place.exact);
+  const contacts = known.filter(({ event }) => event.type === "breakaway_caught" || event.type === "group_merged");
+  const byPlace = [...contacts].sort((a, b) => a.place.km - b.place.km || a.index - b.index);
+  for (const { event, index, place } of known) {
+    if (event.type !== "peloton_splits") continue;
+    const groupId = str(event.params?.group_id);
+    const own = contacts.filter((c) => c.event.km === event.km && str(c.event.params?.group_id) === groupId);
+    if (own.length > 0) {
+      const contactKm = Math.min(...own.map((c) => c.place.km));
+      if (place.km > contactKm + ORDER_TOLERANCE_KM) findings.push(finding("R3", "split_after_group_contact", { index, km: place.km, group_id: groupId, contact_km: contactKm }));
+    }
+    // Gruppens egen linje: sammenlægninger videre er ikke et skift ud af en anden gruppe.
+    const line = new Set([groupId]);
+    for (const c of byPlace) {
+      if (line.has(str(c.event.params?.group_id)) && str(c.event.params?.into_group_id)) line.add(c.event.params.into_group_id);
+    }
+    for (const riderId of ids(event.params?.rider_ids)) {
+      const left = contacts.find((c) => !line.has(str(c.event.params?.group_id)) && ids(c.event.params?.rider_ids).includes(riderId)
+        && c.place.km > place.km + ORDER_TOLERANCE_KM && c.place.km < event.km);
+      if (left) findings.push(finding("R3", "rider_in_group_before_free", { index, km: place.km, group_id: groupId, rider_id: riderId, left_group_id: str(left.event.params?.group_id), left_km: left.place.km }));
+    }
+  }
+  return findings;
+}
+
+/** R3 (#6350): hentet før dannet (km/tid), en gruppe uden dannelse, eller en film der modsiger sig selv. */
+export function ruleCatchAfterFormation(input) {
+  const findings = filmPlaceFindings(withEventPlaces(input.events));
   const seen = new Set();
   const replay = replayTimeline(input.events, input.startlist, (event, index, view) => {
     if (event.type !== "breakaway_caught" && event.type !== "group_merged") return;

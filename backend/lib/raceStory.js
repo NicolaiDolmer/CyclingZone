@@ -532,6 +532,7 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
   // opstår og forsvinder mellem to snapshots).
   const openSpans = new Map([[REST_GROUP_ID, { group_id: REST_GROUP_ID, from_km: 0, to_km: null, source_group_id: null, into_group_id: null, rider_ids: [] }]]);
   const spans = [];
+  const lateJoins = new Map(); // group id -> [{ km, rider_ids }]
   const openSpan = (groupId, fromKm, sourceId) => {
     if (!groupId || openSpans.has(groupId)) return null;
     const span = { group_id: groupId, from_km: round2(fromKm), to_km: null, source_group_id: sourceId ?? null, into_group_id: null, rider_ids: [] };
@@ -542,6 +543,11 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
   const trackSpans = (event) => {
     const p = event.params ?? {};
     const groupId = str(p.group_id);
+    // #6350: en sen halvdel af et split danner ikke gruppen, den slutter sig til.
+    if (event.type === "peloton_splits" && p.joined_late && groupId && openSpans.has(groupId)) {
+      lateJoins.set(groupId, [...(lateJoins.get(groupId) ?? []), { km: round2(placeKm(event)), rider_ids: ids(p.rider_ids) }]);
+      return [];
+    }
     const opening = spanOpening(event, m.restId);
     if (opening) return [openSpan(opening.groupId, placeKm(event), opening.source)].filter(Boolean);
     if (event.type === "gap_update") return [openSpan(groupId, placeKm(event), null)].filter(Boolean);
@@ -753,7 +759,8 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
     .sort((a, b) => a.moment.km - b.moment.km || Number(Boolean(a.moment.km_span)) - Number(Boolean(b.moment.km_span)) || a.i - b.i)
     .map(({ moment }) => moment);
   story.group_spans = timeTrial ? [] : [...spans, ...openSpans.values()]
-    .sort((a, b) => a.from_km - b.from_km || a.group_id.localeCompare(b.group_id));
+    .sort((a, b) => a.from_km - b.from_km || a.group_id.localeCompare(b.group_id))
+    .map((span) => (lateJoins.has(span.group_id) ? { ...span, late_joins: lateJoins.get(span.group_id) } : span));
   story.checkpoints = buildCheckpoints(ordered, story, passageStates);
   story.breakaway = breakawaySummary(history, results);
   return story;
@@ -910,6 +917,7 @@ function lerp(fromKm, fromGap, toKm, toGap, km) {
  * split/merge vises kun hvor loggen kender den.
  */
 function groupsBetween(story, a, b, km) {
+  const lateJoinsOf = (/** @type {any} */ span) => span.late_joins ?? [];
   const EPS = 1e-9;
   const spans = Array.isArray(story.group_spans) ? story.group_spans : [];
   const inA = new Map(a.groups.map((g) => [g.group_id, g]));
@@ -947,12 +955,23 @@ function groupsBetween(story, a, b, km) {
   for (const s of spans) {
     if (s.to_km != null && s.to_km < s.from_km - EPS) continue; // ingen levetid på vejen
     if (s.from_km >= a.km - EPS && s.from_km <= km + EPS) transitions.push({ km: s.from_km, order: 0, span: s });
-    if (s.to_km != null && s.to_km >= a.km - EPS && s.to_km < km - EPS) transitions.push({ km: s.to_km, order: 1, span: s });
+    if (s.to_km != null && s.to_km >= a.km - EPS && s.to_km < km - EPS) transitions.push({ km: s.to_km, order: 2, span: s });
+    for (const join of lateJoinsOf(s)) if (join.km >= a.km - EPS && join.km <= km + EPS) transitions.push({ km: join.km, order: 1, span: s, join });
   }
   transitions.sort((x, y) => x.km - y.km || x.order - y.order);
   const shrink = (g) => { if (g.size != null) g.size = Math.max(g.riders.size, g.size - 1); };
-  for (const { order, span } of transitions) {
-    if (order === 0) {
+  for (const { order, span, join } of transitions) {
+    if (join) {
+      const target = state.get(span.group_id);
+      if (!target) continue;
+      for (const r of join.rider_ids) {
+        const holder = [...state.values()].find((g) => g.riders.has(r)) ?? [...state.values()].find((g) => g.includes_rest);
+        if (holder === target || (gone.has(r) && !holder?.riders.has(r))) continue;
+        if (holder) { holder.riders.delete(r); shrink(holder); }
+        target.riders.add(r);
+        if (target.size != null) target.size += 1;
+      }
+    } else if (order === 0) {
       // Allerede på vejen i a (dannet før a): intet at flytte.
       if (state.has(span.group_id)) continue;
       const riders = Array.isArray(span.rider_ids) ? span.rider_ids : (inB.get(span.group_id)?.rider_ids ?? []);

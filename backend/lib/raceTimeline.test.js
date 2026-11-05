@@ -554,12 +554,85 @@ test("#6350: loggen kender kun indhentningen, ikke dannelsen: den hentede holdes
   assert.equal(halves[1].params.exact_km, 180);
 });
 
-test("#6350: en sen halvdel trækkes ikke tilbage til søster-splittets sted af gruppens egen kontakt", () => {
-  const log = summitFinishLog(["dropped", "ahead"]);
-  log.splice(log.length - 1, 0, { km: 180, type: "group_merged", params: { group_id: "gruppetto-3", into_group_id: "gruppetto-2", exact_km: 176 } });
-  const halves = withEventPlaces(log).filter((e) => e.type === "peloton_splits" && e.params.group_id === "gruppetto-3");
-  assert.equal(halves[1].params.exact_km, 180);
+// Motorens form (segmentLoop.ts): sammenlægningen står efter splits på tjekpunktet
+// og navngiver ALLE gruppens ryttere, også splittets egne.
+function withOwnMerge(log, contactKm, riderIds) {
+  const out = [...log];
+  out.splice(out.length - 1, 0, { km: 180, type: "group_merged", params: { group_id: "gruppetto-3", into_group_id: "gruppetto-2", rider_ids: riderIds, exact_km: contactKm, exact_time: 18400 } });
+  return out;
+}
+const halvesOf = (events) => events.filter((e) => e.type === "peloton_splits" && e.params.group_id === "gruppetto-3");
+
+test("#6350: splittets egen sammenlægning er ikke et gruppeskift: den sene halvdel står på kontakten, de andre på stigningen", () => {
+  const halves = halvesOf(withEventPlaces(withOwnMerge(summitFinishLog(["dropped", "ahead"]), 176, ["dropped", "ahead"])));
+  assert.deepEqual(halves.map((e) => e.params.rider_ids), [["dropped"], ["ahead"]]);
   assert.ok(halves[0].params.exact_km < 171);
+  assert.equal(halves[1].params.exact_km, 176, "før gruppen forsvinder, aldrig på stregen");
+  assert.equal(halves[1].params.exact_time, undefined, "tiden på stregen hører ikke til stedet");
+  assert.equal(halves[1].params.joined_late, true);
+});
+
+test("#6350: en kæde af sammenlægninger på tjekpunktet er stadig splittets egen linje", () => {
+  const log = withOwnMerge(summitFinishLog(["dropped", "ahead"]), 176, ["dropped", "ahead"]);
+  log.splice(log.length - 1, 0, { km: 180, type: "group_merged", params: { group_id: "gruppetto-2", into_group_id: "gruppetto-1", rider_ids: ["b", "dropped", "ahead"], exact_km: 178 } });
+  assert.deepEqual(halvesOf(withEventPlaces(log)).map((e) => e.params.rider_ids), [["dropped"], ["ahead"]]);
+});
+
+test("#6350: et helt split af sene ryttere trækkes aldrig tilbage før rytterne var fri af udbruddet", () => {
+  const [only] = halvesOf(withEventPlaces(withOwnMerge(summitFinishLog(["ahead"]), 176, ["ahead"])));
+  assert.equal(only.params.exact_km, 174.07, "ikke søster-splittenes km 170,76");
+  assert.equal(only.params.joined_late, undefined);
+});
+
+test("#6350: kontakten før den sene rytter var fri: sammenlægningen venter på ham", () => {
+  const placed = withEventPlaces(withOwnMerge(summitFinishLog(["dropped", "ahead"]), 173, ["dropped", "ahead"]));
+  const halves = halvesOf(placed);
+  const merge = placed.find((e) => e.type === "group_merged" && e.params.group_id === "gruppetto-3");
+  assert.equal(halves[1].params.exact_km, 174.07);
+  assert.equal(merge.params.exact_km, 174.07);
+  assert.equal(merge.params.exact_time, undefined);
+  assert.deepEqual(withEventPlaces(placed), placed, "idempotent");
+});
+
+test("#6350: etape 10 med sammenlægningen i motorens form: filmen modsiger ikke sig selv", () => {
+  const riders = halvesOf(stage10Log())[0].params.rider_ids;
+  const log = withOwnMerge(stage10Log(), 176, riders);
+  const placed = withEventPlaces(log);
+  assert.deepEqual(placed.filter((e) => e.params?.joined_late !== true).map((e) => [e.type, e.km]), log.map((e) => [e.type, e.km]), "km er rækkefølgen og flyttes aldrig");
+  assert.deepEqual(withEventPlaces(placed), placed, "idempotent");
+  const [set, late] = halvesOf(placed);
+  assert.equal(set.params.rider_ids.length, 13);
+  assert.ok(set.params.exact_km > 170.4 && set.params.exact_km < 171);
+  assert.deepEqual(late.params.rider_ids, ["ahead", "ahead-2"]);
+  assert.equal(late.params.exact_km, 176);
+
+  const story = buildRaceStory({ events: placed });
+  const frames = replayFrames(story, { finaleKm: 12, stepKm: 1 });
+  const size = (frame, id) => frame.groups.find((g) => g.group_id === id)?.size;
+  for (const frame of frames.filter((f) => f.km >= 171 && f.km <= 174)) {
+    assert.equal(size(frame, "breakaway-1"), 2, `km ${frame.km}: udbruddet er helt til det er hentet`);
+    assert.equal(size(frame, "gruppetto-3"), 13, `km ${frame.km}: de 2 er ikke sat`);
+  }
+  for (const frame of frames.filter((f) => f.km > 174.07)) assert.equal(size(frame, "breakaway-1"), undefined, `km ${frame.km}: hentet`);
+  const after = frames.filter((f) => f.km > 176 && f.km < 180);
+  assert.ok(after.length > 0);
+  for (const frame of after) {
+    assert.equal(size(frame, "gruppetto-3"), undefined, `km ${frame.km}: gruppen er væk efter kontakten`);
+    assert.equal(size(frame, "gruppetto-2"), 16, `km ${frame.km}: alle 15 og gruppens egen rytter`);
+  }
+
+  const groupMoments = story.moments.filter((m) => m.data?.group_id === "gruppetto-3");
+  const joined = groupMoments.find((m) => m.key === "story.groups_joined");
+  assert.equal(joined.km, 176);
+  for (const moment of groupMoments.filter((m) => m.key === "story.split")) assert.ok(moment.km <= joined.km, `split ved km ${moment.km} efter kontakten`);
+  assert.ok(groupMoments.indexOf(joined) > groupMoments.findLastIndex((m) => m.key === "story.split"), "sammenlægningen fortælles sidst");
+});
+
+test("#6350: 'droppet fra udbruddet' med flere ryttere står ved den sidste af dem", () => {
+  const log = summitFinishLog(["dropped", "ahead"]);
+  log.splice(3, 0, { km: 180, type: "breakaway_dropped", params: { group_id: "piece", from_group_id: "breakaway-1", rider_ids: ["dropped", "ahead"], exact_km: 180 } });
+  const placed = withEventPlaces(withOwnMerge(log, 176, ["dropped", "ahead"]));
+  assert.equal(placed.find((e) => e.type === "breakaway_dropped").params.exact_km, 176);
 });
 
 test("#6350: et angreb hentet i samme segment står før sin indhentning; en melding om gruppen venter på dannelsen", () => {
