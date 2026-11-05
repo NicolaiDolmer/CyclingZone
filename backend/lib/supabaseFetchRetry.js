@@ -75,6 +75,7 @@ export function createSupabaseFetchWithRetry(baseFetch = globalThis.fetch, {
       try {
         response = await baseFetch(input, init);
       } catch (err) {
+        // best-effort: fejlen gemmes og kastes uændret videre når forsøgene er brugt op.
         failure = err;
       }
 
@@ -88,7 +89,7 @@ export function createSupabaseFetchWithRetry(baseFetch = globalThis.fetch, {
 
       if (!failure) {
         // Frigiv forbindelsen før næste forsøg.
-        try { await response.arrayBuffer(); } catch { /* body er ligegyldig, vi prøver igen */ }
+        try { await response.arrayBuffer(); } catch { /* best-effort: body er ligegyldig, vi prøver igen */ }
       }
       await sleep(delaysMs[attempt]);
       attempt += 1;
