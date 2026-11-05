@@ -968,7 +968,20 @@ features:
     ssot: docs/PROGRESSION_RULES.md
     epic: 6110
     verified: 2026-11-04
-    note: 'PR #7166/#7415/#7430 (#6853, til dørs 8/8 4/11): ét fælles bånd for bedste rolle på alle flader. "Ét skønnet tal" fra spec 23/10 (byggetrin 2-6: grundtalent, gemte skøn, søndagsjob) er IKKE bygget; potentialEstimate.js bruges kun af harnessen. Funktionens gate er fjernet fra koden, men prod-rækken potential_single_number MÅ IKKE slettes: HelpPage gater Udvikling 2.0-blokkene på den (stageFlagCatalog.js PLAYER_VISIBLE). Statusaudit 4/11.'
+    note: 'PR #7166/#7415/#7430 (#6853, til dørs 8/8 4/11): ét fælles bånd for bedste rolle på alle flader. "Ét skønnet tal" fra spec 23/10 er ikke tændt; se potential-estimate-display. Funktionens gate er fjernet fra koden, men prod-rækken potential_single_number MÅ IKKE slettes: HelpPage gater Udvikling 2.0-blokkene på den (stageFlagCatalog.js PLAYER_VISIBLE). Statusaudit 4/11.'
+
+  - id: potential-estimate-display
+    area: training
+    title_en: One potential source (stored estimate per rider and team)
+    title_da: Én prognose-kilde (gemt skøn pr. rytter og hold)
+    state: dormant
+    flag: potential_estimate_display
+    ssot: docs/superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md
+    epic: 6110
+    verified: 2026-11-05
+    note: 'Byggetrin 4 (#7684): estimates, scouting-rapport, development-projection og akademi svarer fra potentialEstimateRead.js, når flaget er tændt. Slukket som alt andet i Udvikling 2.0; kræver byggetrin 5 (skrivning af skøn) og 6 (frontend) før tænding.'
+    decision: goer-faerdigt
+    decide_by: 2026-12-31
 
   - id: train-now-whole-day
     area: training
