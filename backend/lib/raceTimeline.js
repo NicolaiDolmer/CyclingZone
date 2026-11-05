@@ -651,9 +651,9 @@ function ridersFreeKm(event, events) {
  * stadig det ærlige svar.
  *
  * Et split har ét sted, men stedet gælder pr. rytter: de der ikke kørte i
- * kildegruppen dér, bliver på tjekpunktet i en halvdel af splittet med samme
- * gruppe (`joined_late`). Svaret er split -> den halvdel, som kalderen sætter ind
- * lige efter splittet.
+ * kildegruppen dér, kommer i en halvdel af splittet med samme gruppe
+ * (`joined_late`), der står på tjekpunktet indtil placeLateRiders har set på den.
+ * Svaret er split -> den halvdel, som kalderen sætter ind lige efter splittet.
  */
 function placeCheckpointSplits(events) {
   const visible = RACE_V4_TUNING.groups.mergeThresholdSeconds;
@@ -669,11 +669,13 @@ function placeCheckpointSplits(events) {
     if (stuck.length === 0) continue;
     const start = segmentStartKm(km, splits, events, visible);
     if (start === null) continue;
+    // #7734: en sen halvdel fra et tidligere tjekpunkt kører allerede i sin gruppe her.
+    const soFar = events.flatMap((event) => (lateHalves.has(event) ? [event, lateHalves.get(event)] : [event]));
     for (const split of stuck) {
       const fraction = separationFraction(0, finiteOrNull(split.params?.gap_seconds) ?? NaN, visible);
       if (fraction === null || !groupExistedBefore(split.params?.source_group_id, km, events)) continue;
       const place = round2(start + fraction * (km - start));
-      const atPlace = ridersInSourceAt(split, place, events);
+      const atPlace = ridersInSourceAt(split, place, soFar);
       if (atPlace.length === 0) continue;
       const late = riderIdsOf(split).filter((id) => !atPlace.includes(id));
       if (late.length > 0) {
