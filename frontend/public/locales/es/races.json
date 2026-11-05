@@ -92,7 +92,12 @@
       "abandoned": "abandonó en el km {km}",
       "skipped": "saltado, se descolgó antes",
       "notReached": "no alcanzado",
-      "pending": "La película de la etapa aún no está lista."
+      "pending": "La película de la etapa aún no está lista.",
+      "outcome": {
+        "done": "Hecho",
+        "failed": "Lo intentó, sin suerte",
+        "unknown": "Resultado desconocido"
+      }
     }
   },
   "stagePageV2": {

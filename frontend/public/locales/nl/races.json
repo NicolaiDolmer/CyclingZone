@@ -92,7 +92,12 @@
       "abandoned": "gaf op bij km {km}",
       "skipped": "overgeslagen, hij was al gelost",
       "notReached": "niet bereikt",
-      "pending": "De koersfilm van deze etappe is nog niet klaar."
+      "pending": "De koersfilm van deze etappe is nog niet klaar.",
+      "outcome": {
+        "done": "Gedaan",
+        "failed": "Geprobeerd, zonder succes",
+        "unknown": "Uitkomst onbekend"
+      }
     }
   },
   "stagePageV2": {
