@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 
 import { previewEstimate, previewPotentialEstimateEnabled, previewProjection, previewReport } from "./potentialEstimateMock.ts";
 import { SEED_PROJECTION, SEED_SCOUTING_REPORT, SEED_SCOUT_ESTIMATES } from "./seedData.js";
-import { potentialViewOf } from "../lib/potentialEstimateDisplay.ts";
+import { potentialViewOf, potentialViewValue } from "../lib/potentialEstimateDisplay.ts";
 
 const FORBIDDEN = /"(lo|hi|prog|ceil|loft|progLo|progHi|ceilLo|ceilHi|band|academyPrognosis)":/;
 
@@ -16,7 +16,7 @@ test("standard er slukket, så fixtures og snapshots er uændrede", () => {
 test("ingen af de tre svar bærer interval eller loft", () => {
   for (const id of ["rider-1", "rider-2", "rider-x1", "rider-x2", "rider-x3", "rider-x4"]) {
     const answers = [
-      previewEstimate(id, SEED_SCOUT_ESTIMATES[id]),
+      previewEstimate(id, (SEED_SCOUT_ESTIMATES as Record<string, { level?: number }>)[id]),
       previewReport(id, SEED_SCOUTING_REPORT, true),
       previewProjection(id, SEED_PROJECTION),
     ];
@@ -33,5 +33,5 @@ test("samme rytter har samme skøn på alle tre svar", () => {
   const projection = previewProjection("rider-1", SEED_PROJECTION);
   assert.deepEqual(estimate.potentialView, report.potentialView);
   assert.deepEqual(estimate.potentialView, projection.potentialView);
-  assert.equal(projection.estimateLine.at(-1)?.value, estimate.potentialView.value);
+  assert.equal(projection.estimateLine.at(-1)?.value, potentialViewValue(estimate.potentialView));
 });
