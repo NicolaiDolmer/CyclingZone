@@ -22,7 +22,7 @@ import { fetchAllRows } from "../../lib/supabasePagination";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import { waypointsFor } from "../../lib/stageRouteProfile.js";
 import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js"; // #7636
-import { buildOwnTimeLoss, hasGroupGaps, riderInFrontOrFieldAt, ridersSplitKm, type TimelineEvent as SplitTimelineEvent } from "../../lib/stageSplitTimes.ts"; // #7636, #7706
+import { riderInFrontOrFieldAt, ridersSplitKm, stagePlanContactFacts, type TimelineEvent as SplitTimelineEvent } from "../../lib/stageSplitTimes.ts"; // #7636, #7706
 import SortableTh from "../ui/SortableTh.jsx";
 import { Button, CheckIcon, ChevronRightIcon, InfoIcon, LockIcon, MessageIcon, MinusIcon, PlusIcon, Select, XIcon } from "../ui/index.js";
 import {
@@ -159,13 +159,10 @@ function PlanRecap({ t, legs, route, events, riderId, rank = null, leader = null
   const items = stagePlanRecap(legs, events, riderId, crossCheck ? { inFrontOrFieldAt: (km) => riderInFrontOrFieldAt(events as SplitTimelineEvent[], riderId, km) } : {});
   // #7706: markeringen er udfaldet, ikke om leddet blev koert. Uden gruppe-gab svarer filmen ikke.
   const film = events as SplitTimelineEvent[];
-  const lostContactKm = hasGroupGaps(film)
-    ? buildOwnTimeLoss(film, { ownRiderIds: [riderId] }).find((entry) => entry.type === "drop")?.km ?? null
-    : undefined;
   const withLeader = leader?.name
     ? { name: leader.name, splitKm: (fromKm: number, toKm: number) => ridersSplitKm(film, riderId, leader.rider_id, fromKm, toKm) }
     : null;
-  const outcomes = stagePlanOutcomes(items, events, riderId, { lostContactKm, rank, leader: withLeader });
+  const outcomes = stagePlanOutcomes(items, events, riderId, { ...stagePlanContactFacts(film, riderId), rank, leader: withLeader });
   return (
     <ul className="space-y-1">
       {items.map((item, i) => {

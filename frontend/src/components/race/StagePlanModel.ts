@@ -620,6 +620,11 @@ export type StagePlanOutcomeOptions = {
    * saadan km, undefined = filmen kan ikke svare (ingen gruppe-gab).
    */
   lostContactKm?: number | null;
+  /**
+   * Sad han i sin gruppe hele strækningen, ifoelge filmen? stageSplitTimes.riderHeldContact;
+   * kun true er bevis. lostContactKm kan ikke svare: et fald han kom tilbage fra staar ikke dér.
+   */
+  heldContact?: (fromKm: number, toKm: number) => boolean | null;
   /** Hans placering paa etapen fra maalresultatet; ellers filmens top i maal. */
   rank?: number | null;
   /**
@@ -686,11 +691,10 @@ function outOfTime(list: readonly TimelineEventLike[], riderId: string): boolean
   return named("outside_time_limit") && !named("jury_reinstated");
 }
 
-/** Et styrt eller en defekt koster tid uden at filmen kalder det et fald. */
-function incidentInLeg(list: readonly TimelineEventLike[], riderId: string, item: StagePlanRecapItem): boolean {
-  const from = item.fromKm ?? 0;
+/** Et styrt eller en defekt koster tid uden at filmen kalder det et fald, ogsaa i de led der foelger efter. */
+function incidentByLegEnd(list: readonly TimelineEventLike[], riderId: string, item: StagePlanRecapItem): boolean {
   const to = item.endKm ?? Infinity;
-  return list.some((e) => e?.type === "incident" && e.params?.rider_id === riderId && e.params?.outcome !== "protected_three_km_rule" && Number(e.km) >= from && Number(e.km) <= to);
+  return list.some((e) => e?.type === "incident" && e.params?.rider_id === riderId && e.params?.outcome !== "protected_three_km_rule" && Number(e.km) <= to);
 }
 
 const roundKm = (km: number) => Math.round(km);
@@ -700,7 +704,7 @@ export function stagePlanOutcomes(
   items: readonly StagePlanRecapItem[],
   events: readonly TimelineEventLike[] | null | undefined,
   riderId: string,
-  { lostContactKm, rank = null, leader = null }: StagePlanOutcomeOptions = {},
+  { lostContactKm, heldContact, rank = null, leader = null }: StagePlanOutcomeOptions = {},
 ): StagePlanOutcome[] {
   const list = events ?? [];
   const late = outOfTime(list, riderId);
@@ -728,9 +732,11 @@ export function stagePlanOutcomes(
 
     const behind = typeof lostContactKm === "number" && lostContactKm <= (item.endKm ?? Infinity);
     const lost = () => ({ km: roundKm(lostContactKm as number) });
-    // Slut paa leddet uden tvivl: filmen kan svare, motoren siger ikke "sat", og han er i maal hvis leddet gik dertil.
-    const heldOn = !behind && !filmSilent && item.endReason !== "dropped" && item.endReason !== null
-      && !incidentInLeg(list, riderId, item) && (!toFinish || finishRank !== null);
+    // Slut paa leddet uden tvivl: filmen viser ham i gruppen hele leddet, motoren siger ikke "sat",
+    // intet uheld indtil da, og han er i maal hvis leddet gik dertil.
+    const heldOn = !behind && item.endReason !== "dropped" && item.endReason !== null
+      && heldContact?.(item.fromKm ?? 0, item.endKm ?? Infinity) === true
+      && !incidentByLegEnd(list, riderId, item) && (!toFinish || finishRank !== null);
 
     if (CONTACT_TASKS.has(item.task)) {
       const attackKm = item.task === "attack" ? attackKmInLeg(list, riderId, item) : null;

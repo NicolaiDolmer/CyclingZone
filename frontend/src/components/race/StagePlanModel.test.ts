@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { ridersSplitKm } from "../../lib/stageSplitTimes.ts";
+import { ridersSplitKm, stagePlanContactFacts } from "../../lib/stageSplitTimes.ts";
 import {
   clearRiderPlan,
   fallbackOrderKeys,
@@ -373,7 +373,12 @@ test("#7636: fladen laeser kontakten og skjuler et tomt slut-led (ingen ny spill
 // #7706: markeringen er udfaldet. Flueben og fiasko kraever bevis; uden bevis staar der intet.
 type RecapEvents = Parameters<typeof stagePlanRecap>[1];
 type OutcomeOpts = NonNullable<Parameters<typeof stagePlanOutcomes>[3]>;
-const results = (legs: StagePlanLeg[], events: RecapEvents, opts: OutcomeOpts = {}) => stagePlanOutcomes(stagePlanRecap(legs, events, "a"), events, "a", opts);
+// Testene her giver filmens svar som tal; held = filmen viser intet fald (de rigtige film: filmOutcomes).
+const results = (legs: StagePlanLeg[], events: RecapEvents, opts: OutcomeOpts = {}) =>
+  stagePlanOutcomes(stagePlanRecap(legs, events, "a"), events, "a", { heldContact: () => (opts.lostContactKm === undefined ? null : true), ...opts });
+const filmOutcomes = (legs: StagePlanLeg[], film: NonNullable<RecapEvents>, opts: OutcomeOpts = {}) =>
+  stagePlanOutcomes(stagePlanRecap(legs, film, "a"), film, "a", { ...stagePlanContactFacts(film as Parameters<typeof stagePlanContactFacts>[0], "a"), ...opts })
+    .map((o) => o.word && [o.mark, o.word.key.replace("stagePlan.recap.outcome.", ""), ...Object.values(o.word.params ?? {})].join(" "));
 const outcomes = (legs: StagePlanLeg[], events: RecapEvents, lostContactKm?: number | null, opts: OutcomeOpts = {}) =>
   results(legs, events, { lostContactKm, ...opts }).map((o) => o.mark);
 const words = (legs: StagePlanLeg[], events: RecapEvents, lostContactKm?: number | null, opts: OutcomeOpts = {}) =>
@@ -481,6 +486,59 @@ test("#7706: motorens form: hjaelperen sad med lederen, til han blev sat (fra en
 test("#7706: et styrt med tidstab tilbageholder 'holdt kontakten'", () => {
   const crash = [leg(140, 1, "attack", "final_km"), { type: "incident", km: 90, params: { rider_id: "a", kind: "crash", outcome: "time_loss" } }];
   assert.deepEqual(outcomes(ATTACK_PLAN, crash, null), ["none", "none"]);
+});
+
+const FIELD = [
+  { km: 0, type: "stage_start", params: { distance_km: 190, field_count: 163 } },
+  { km: 12, type: "gap_update", params: { group_id: "peloton-0", gap_seconds: 0 } },
+];
+const SHELTER_THEN_RESULT: StagePlanLeg[] = [{ task: "stay_sheltered" }, { task: "ride_for_result", from: { at: "final_km" } }];
+const fall = (km: number, group = "gruppetto-1") => ({ km, type: "peloton_splits", params: { cause: "climb_deficit", group_id: group, rider_ids: ["a"], gap_seconds: 58, source_group_id: "peloton-0" } });
+const back = (km: number) => ({ km, type: "group_merged", params: { group_id: "gruppetto-1", rider_ids: ["a"], into_group_id: "peloton-0" } });
+const FINISH = { km: 190, type: "finish", params: { top: [] } };
+
+test("#7706: sat i leddet og tilbage efter det er ikke 'holdt kontakten'", () => {
+  const switched = leg(120, 1, "ride_for_result", "final_km");
+  const film = [...FIELD, fall(100), switched, back(140), FINISH];
+  assert.deepEqual(filmOutcomes(SHELTER_THEN_RESULT, film), [null, null], "faldet er vaek fra tidstabet, men filmen viser ham bagud ved km 120");
+  const backInLeg = [...FIELD, fall(100), back(110), switched, FINISH];
+  assert.deepEqual(filmOutcomes(SHELTER_THEN_RESULT, backInLeg), [null, null], "undervejs taeller ogsaa, selv om han var tilbage ved leddets slut");
+  const noGap = film.filter((e) => e.type !== "gap_update");
+  assert.deepEqual(filmOutcomes(SHELTER_THEN_RESULT, noGap), [null, null], "uden gruppe-gab: intet");
+  assert.deepEqual(filmOutcomes(SHELTER_THEN_RESULT, [...FIELD, switched, FINISH]), ["done keptContact", null], "et rent led har stadig sit flueben");
+  const later = [...FIELD, switched, fall(140), back(150), FINISH];
+  assert.deepEqual(filmOutcomes(SHELTER_THEN_RESULT, later), ["done keptContact", null], "et fald efter leddet rammer ikke leddet");
+});
+
+test("#7706: et styrt foer leddet taeller i leddet", () => {
+  const plan: StagePlanLeg[] = [{ task: "follow_moves" }, { task: "stay_sheltered", from: { at: "final_km" } }];
+  const crash = { km: 50, type: "incident", params: { rider_id: "a", kind: "crash", outcome: "time_loss" } };
+  const solo = { km: 55, type: "gap_update", params: { group_id: "solo-m10-1-0", gap_seconds: 180 } };
+  const switched = leg(60, 1, "stay_sheltered", "final_km");
+  assert.deepEqual(filmOutcomes(plan, [...FIELD, crash, solo, switched, FINISH], { rank: 120 }), [null, null], "180 sek. efter i en solo-gruppe");
+  assert.deepEqual(filmOutcomes(plan, [...FIELD, crash, switched, FINISH], { rank: 120 }), [null, null], "ogsaa naar filmen aldrig viser solo-gruppen");
+  const protectedCrash = { ...crash, params: { ...crash.params, outcome: "protected_three_km_rule" } };
+  assert.deepEqual(filmOutcomes(plan, [...FIELD, protectedCrash, switched, FINISH], { rank: 120 }), ["done keptContact", "done keptContact"], "3-km-reglen koster ingen tid");
+});
+
+test("#7706: 'Med X til km Y' er den skilning der staar ved magt", () => {
+  assert.equal(ridersSplitKm([...FIELD, fall(60), back(65)], "a", "leader", 0, 190), null, "samlet igen: ingen km");
+  assert.equal(ridersSplitKm([...FIELD, fall(60), back(65), fall(100, "gruppetto-2")], "a", "leader", 0, 190), 100, "den sidste skilning");
+  assert.equal(ridersSplitKm([...FIELD, fall(60), back(120)], "a", "leader", 0, 100), 60, "stadig skilt ved leddets slut");
+});
+
+test("#7706: holdarbejdet ser uheld: uden sikker gruppe siger teksten ikke hvem han sad med", () => {
+  const plan: StagePlanLeg[] = [{ task: "tempo" }];
+  const leader = (film: Parameters<typeof ridersSplitKm>[0]) => ({ name: "A. Rider", splitKm: (from: number, to: number) => ridersSplitKm(film, "a", "leader", from, to) });
+  const crash = (rider: string) => ({ km: 50, type: "incident", params: { rider_id: rider, kind: "crash", outcome: "time_loss" } });
+  const clean = [...FIELD, FINISH];
+  assert.deepEqual(filmOutcomes(plan, clean, { leader: leader(clean), rank: 40 }), ["info withRider A. Rider"]);
+  const hisCrash = [...FIELD, crash("a"), FINISH];
+  assert.deepEqual(filmOutcomes(plan, hisCrash, { leader: leader(hisCrash), rank: 40 }), [null], "filmen viser ingen solo-gruppe, men han sad ikke med lederen");
+  const leaderCrash = [...FIELD, crash("leader"), FINISH];
+  assert.deepEqual(filmOutcomes(plan, leaderCrash, { leader: leader(leaderCrash), rank: 40 }), ["info keptContact"], "lederens styrt: intet om lederen, kun hans eget");
+  const lost = [...FIELD, crash("a"), { km: 55, type: "gap_update", params: { group_id: "solo-m10-1-0", gap_seconds: 180 } }, FINISH];
+  assert.deepEqual(filmOutcomes(plan, lost, { leader: leader(lost), rank: 40 }), [null], "heller ingen km fra en solo-gruppe");
 });
 
 test("#7706: at blive sat er ingen fiasko for hjaelperen eller sprinteren, men heller intet flueben", () => {
