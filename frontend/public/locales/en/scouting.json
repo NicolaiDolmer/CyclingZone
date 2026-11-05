@@ -93,5 +93,18 @@
       "description": "Nothing was lost. Your scout's active jobs are still running. Try again.",
       "retry": "Try again"
     }
+  },
+  "potentialEstimate": {
+    "learningBody": "His first estimate comes after his first trainings on your team.",
+    "notAFactLong": "An estimate, not a fact. Even a confident read can land slightly off.",
+    "builtOnLabel": "Built on",
+    "builtOnOwn": "His training on your team",
+    "builtOnNamed": "{count, plural, one {# look} other {# looks}} by {name} (tier {tier} scout)",
+    "builtOnDefault": "{count, plural, one {# look} other {# looks}} by your default scout (rating {overall})",
+    "nextLookLabel": "One more look",
+    "nextLookValue": "makes the estimate more certain",
+    "chartLabel": "Estimate {value}",
+    "chartCaption": "Recorded rating, then the curve toward the estimate",
+    "chartLegend": "Curve toward the estimate"
   }
 }

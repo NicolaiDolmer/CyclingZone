@@ -39,6 +39,7 @@ import { formatDate } from "../../../lib/intl.js";
 import { SkeletonLines } from "../../ui/Skeleton.jsx";
 import PotentialEstimate from "../PotentialEstimate";
 import { estimateLineOf, potentialViewOf } from "../../../lib/potentialEstimateDisplay";
+import I18nReadyGate from "../../I18nReadyGate";
 
 const DATA_FONT = '"Inter Tight", "Inter Tight Fallback", system-ui, sans-serif';
 
@@ -155,7 +156,7 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
             />
             <circle cx={VB.x1} cy={yAt(lastEstimate.value).toFixed(1)} r="2.5" fill={primaryColor} />
             <text x={(VB.x1 - 1).toFixed(1)} y={(yAt(lastEstimate.value) - 5).toFixed(1)} fontSize="10" fill={primaryColor} fontFamily={DATA_FONT} textAnchor="end">
-              {t("potentialEstimate.chartLabel", { value: lastEstimate.value })}
+              {t("scouting:potentialEstimate.chartLabel", { value: lastEstimate.value })}
             </text>
           </g>
         )}
@@ -204,7 +205,7 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
         })}
 
         <text x={(VB.x0 + VB.x1) / 2} y="168" fontSize="10" fill="var(--text-3)" fontFamily={DATA_FONT} textAnchor="middle">
-          {t(hasLine ? "potentialEstimate.chartCaption" : hasProj ? "profile.development.projection.caption" : "profile.development.chart.caption")}
+          {t(hasLine ? "scouting:potentialEstimate.chartCaption" : hasProj ? "profile.development.projection.caption" : "profile.development.chart.caption")}
         </text>
       </svg>
       <div className="flex gap-3.5 flex-wrap mt-2">
@@ -223,7 +224,7 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
         {hasLine && (
           <span className="inline-flex items-center gap-1.5 text-2xs text-cz-2">
             <span className="w-3.5 h-[3px] rounded-sm border-t-2 border-dashed" style={{ borderColor: primaryColor }} aria-hidden="true" />
-            {t("potentialEstimate.chartLegend")}
+            {t("scouting:potentialEstimate.chartLegend")}
           </span>
         )}
       </div>
@@ -445,7 +446,14 @@ export default function RiderDevelopmentTab({ rider, history = [], types = [], t
   return (
     <div className="flex flex-col gap-[13px]">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-[13px] items-start">
-        <ChartCard snapshots={snapshots} chartTypes={chartTypes} projection={projection} t={t} />
+        {/* #6110: kurvens tekster ligger i det lazy scouting-namespace. */}
+        {estimateLineOf(projection).length > 1 ? (
+          <I18nReadyGate ns="scouting" fallback={<SkeletonLines lines={4} />}>
+            <ChartCard snapshots={snapshots} chartTypes={chartTypes} projection={projection} t={t} />
+          </I18nReadyGate>
+        ) : (
+          <ChartCard snapshots={snapshots} chartTypes={chartTypes} projection={projection} t={t} />
+        )}
         <div className="flex flex-col gap-[13px] min-w-0">
           <GrowthCard
             primaryLabel={primaryLabel}

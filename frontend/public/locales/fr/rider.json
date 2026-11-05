@@ -593,7 +593,6 @@
     "beta": "Bêta",
     "disclaimer": "Nouveau modèle physiologique, calculé à partir des compétences actuelles. N'affecte pas encore les résultats de course.",
     "powerProfile": "Profil de puissance",
-    "derivedAbilities": "Aptitudes dérivées",
     "zones": {
       "ftp": "FTP",
       "vo2max": "Puissance VO2max",
@@ -719,8 +718,7 @@
     },
     "swap": {
       "label": "Échange",
-      "teamFallback": "Inconnu",
-      "cashAdjustment": "Complément en cash : {amount} CZ$"
+      "teamFallback": "Inconnu"
     }
   },
   "auctionPanel": {
@@ -906,19 +904,8 @@
     },
     "learning": "En apprentissage · {trainings} sur {needed} entraînements",
     "learningShort": "En apprentissage · {trainings} sur {needed}",
-    "learningBody": "Sa première estimation arrive après ses premiers entraînements dans ton équipe.",
     "notAFact": "Une estimation, pas une certitude.",
-    "notAFactLong": "Une estimation, pas une certitude. Même une lecture sûre peut tomber un peu à côté.",
-    "scoutedTimes": "{count, plural, one {Détecté # fois} other {Détecté # fois}}",
-    "builtOnLabel": "Repose sur",
-    "builtOnOwn": "Son entraînement dans ton équipe",
-    "builtOnNamed": "{count, plural, one {# observation} other {# observations}} de {name} (recruteur de palier {tier})",
-    "builtOnDefault": "{count, plural, one {# observation} other {# observations}} du recruteur par défaut de ton équipe (note {overall})",
-    "nextLookLabel": "Une observation de plus",
-    "nextLookValue": "rend l'estimation plus sûre",
-    "chartLabel": "Estimation {value}",
-    "chartCaption": "Note enregistrée, puis la courbe vers l'estimation",
-    "chartLegend": "Courbe vers l'estimation"
+    "scoutedTimes": "{count, plural, one {Détecté # fois} other {Détecté # fois}}"
   },
   "scouting": {
     "label_worldclass": "Jeune talent de classe mondiale",
@@ -968,8 +955,6 @@
   "training": {
     "title": "Axe d'entraînement",
     "intro": "Fixe un axe d'entraînement pour toute la saison à ce coureur clé. Il fait progresser plus vite les aptitudes entraînées vers leur cible.",
-    "gatedNote": "L'entraînement façonne l'aptitude permanente et s'applique au prochain changement de saison.",
-    "slotsLeft": "{remaining}/{total} places d'axe",
     "focus": "Axe",
     "intensity": "Intensité",
     "focus_vo2max": "VO2max (intervalles mixtes)",
@@ -1002,8 +987,6 @@
     "saving": "Enregistrement…",
     "noSlots": "Plus de places d'axe cette saison",
     "current": "Axe actuel",
-    "assistantNoRisk": "Progression ciblée plus rapide, sans risque de revers.",
-    "assistantRisk": "Progression ciblée plus rapide, mais ~{risk} % de risque de revers (gains perdus) cette saison.",
     "tradeoff": "Les autres aptitudes progressent un peu plus lentement.",
     "intensity_recovery": "Récupération"
   }

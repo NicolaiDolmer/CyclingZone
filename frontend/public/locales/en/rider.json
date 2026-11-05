@@ -593,7 +593,6 @@
     "beta": "Beta",
     "disclaimer": "New physiological model, calculated from current skills. Does not affect race results yet.",
     "powerProfile": "Power profile",
-    "derivedAbilities": "Derived abilities",
     "zones": {
       "ftp": "FTP",
       "vo2max": "VO2max power",
@@ -719,8 +718,7 @@
     },
     "swap": {
       "label": "Swap",
-      "teamFallback": "Unknown",
-      "cashAdjustment": "Cash adjustment: {amount} CZ$"
+      "teamFallback": "Unknown"
     }
   },
   "auctionPanel": {
@@ -906,19 +904,8 @@
     },
     "learning": "Learning · {trainings} of {needed} trainings",
     "learningShort": "Learning · {trainings} of {needed}",
-    "learningBody": "His first estimate comes after his first trainings on your team.",
     "notAFact": "An estimate, not a fact.",
-    "notAFactLong": "An estimate, not a fact. Even a confident read can land slightly off.",
-    "scoutedTimes": "{count, plural, one {Scouted # time} other {Scouted # times}}",
-    "builtOnLabel": "Built on",
-    "builtOnOwn": "His training on your team",
-    "builtOnNamed": "{count, plural, one {# look} other {# looks}} by {name} (tier {tier} scout)",
-    "builtOnDefault": "{count, plural, one {# look} other {# looks}} by your default scout (rating {overall})",
-    "nextLookLabel": "One more look",
-    "nextLookValue": "makes the estimate more certain",
-    "chartLabel": "Estimate {value}",
-    "chartCaption": "Recorded rating, then the curve toward the estimate",
-    "chartLegend": "Curve toward the estimate"
+    "scoutedTimes": "{count, plural, one {Scouted # time} other {Scouted # times}}"
   },
   "scouting": {
     "label_worldclass": "World-class prospect",
@@ -968,8 +955,6 @@
   "training": {
     "title": "Training focus",
     "intro": "Set a season-long training focus for this key rider. It nudges the trained abilities faster toward their target.",
-    "gatedNote": "Training shapes permanent ability and applies at the next season change.",
-    "slotsLeft": "{remaining}/{total} focus slots",
     "focus": "Focus",
     "intensity": "Intensity",
     "focus_vo2max": "VO2max (mixed intervals)",
@@ -1002,8 +987,6 @@
     "saving": "Saving…",
     "noSlots": "No focus slots left this season",
     "current": "Current focus",
-    "assistantNoRisk": "Faster targeted growth, no setback risk.",
-    "assistantRisk": "Faster targeted growth, but ~{risk}% risk of a setback (lost gains) this season.",
     "tradeoff": "Other abilities grow a little slower.",
     "intensity_recovery": "Recovery"
   }

@@ -593,7 +593,6 @@
     "beta": "Beta",
     "disclaimer": "Ny fysiologisk model, beregnet ud fra nuværende evner. Påvirker endnu ikke løbsresultater.",
     "powerProfile": "Effektprofil",
-    "derivedAbilities": "Udledte evner",
     "zones": {
       "ftp": "FTP",
       "vo2max": "VO2max-effekt",
@@ -719,8 +718,7 @@
     },
     "swap": {
       "label": "Bytte",
-      "teamFallback": "Ukendt",
-      "cashAdjustment": "Kontantjustering: {amount} CZ$"
+      "teamFallback": "Ukendt"
     }
   },
   "auctionPanel": {
@@ -906,19 +904,8 @@
     },
     "learning": "Læres · {trainings} af {needed} træninger",
     "learningShort": "Læres · {trainings} af {needed}",
-    "learningBody": "Det første skøn kommer efter hans første træninger på dit hold.",
     "notAFact": "Et skøn, ikke et facit.",
-    "notAFactLong": "Et skøn, ikke et facit. Selv en sikker vurdering kan ramme lidt ved siden af.",
-    "scoutedTimes": "{count, plural, one {Scoutet # gang} other {Scoutet # gange}}",
-    "builtOnLabel": "Bygger på",
-    "builtOnOwn": "Hans træning på dit hold",
-    "builtOnNamed": "{count, plural, one {# kig} other {# kig}} af {name} (tier {tier}-spejder)",
-    "builtOnDefault": "{count, plural, one {# kig} other {# kig}} af holdets standard-spejder (rating {overall})",
-    "nextLookLabel": "Endnu et kig",
-    "nextLookValue": "gør skønnet mere sikkert",
-    "chartLabel": "Skøn {value}",
-    "chartCaption": "Registreret rating, derefter kurven mod skønnet",
-    "chartLegend": "Kurve mod skønnet"
+    "scoutedTimes": "{count, plural, one {Scoutet # gang} other {Scoutet # gange}}"
   },
   "scouting": {
     "label_worldclass": "Verdensklasse-emne",
@@ -968,8 +955,6 @@
   "training": {
     "title": "Træningsfokus",
     "intro": "Sæt et sæson-langt træningsfokus for denne nøglerytter. Det rykker de trænede evner hurtigere mod deres mål.",
-    "gatedNote": "Træning former permanent evne og slår igennem ved næste sæson-skift.",
-    "slotsLeft": "{remaining}/{total} fokus-slots",
     "focus": "Fokus",
     "intensity": "Intensitet",
     "focus_vo2max": "VO2max (blandede intervaller)",
@@ -1002,8 +987,6 @@
     "saving": "Gemmer…",
     "noSlots": "Ingen fokus-slots tilbage i denne sæson",
     "current": "Nuværende fokus",
-    "assistantNoRisk": "Hurtigere målrettet vækst, ingen risiko for tilbageslag.",
-    "assistantRisk": "Hurtigere målrettet vækst, men ~{risk}% risiko for tilbageslag (tabt fremgang) denne sæson.",
     "tradeoff": "Andre evner vokser en anelse langsommere.",
     "intensity_recovery": "Restitution"
   }

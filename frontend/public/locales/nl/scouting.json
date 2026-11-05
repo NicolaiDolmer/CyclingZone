@@ -93,5 +93,18 @@
       "description": "Er is niets verloren gegaan. De lopende opdrachten van je scout lopen gewoon door. Probeer het opnieuw.",
       "retry": "Probeer opnieuw"
     }
+  },
+  "potentialEstimate": {
+    "learningBody": "Zijn eerste schatting komt na zijn eerste trainingen bij je team.",
+    "notAFactLong": "Een schatting, geen feit. Zelfs een zekere inschatting kan er net naast zitten.",
+    "builtOnLabel": "Gebaseerd op",
+    "builtOnOwn": "Zijn training bij je team",
+    "builtOnNamed": "{count, plural, one {# blik} other {# blikken}} van {name} (scout van niveau {tier})",
+    "builtOnDefault": "{count, plural, one {# blik} other {# blikken}} van de standaardscout van je team (rating {overall})",
+    "nextLookLabel": "Nog een blik",
+    "nextLookValue": "maakt de schatting zekerder",
+    "chartLabel": "Schatting {value}",
+    "chartCaption": "Geregistreerde rating, daarna de curve naar de schatting",
+    "chartLegend": "Curve naar de schatting"
   }
 }

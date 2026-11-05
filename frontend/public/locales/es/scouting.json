@@ -93,5 +93,18 @@
       "description": "No se ha perdido nada. Los trabajos activos de tu ojeador siguen en marcha. Inténtalo de nuevo.",
       "retry": "Reintentar"
     }
+  },
+  "potentialEstimate": {
+    "learningBody": "Su primera estimación llega tras sus primeros entrenamientos en tu equipo.",
+    "notAFactLong": "Una estimación, no un hecho. Incluso una lectura segura puede desviarse un poco.",
+    "builtOnLabel": "Se basa en",
+    "builtOnOwn": "Su entrenamiento en tu equipo",
+    "builtOnNamed": "{count, plural, one {# vistazo} other {# vistazos}} de {name} (ojeador de nivel {tier})",
+    "builtOnDefault": "{count, plural, one {# vistazo} other {# vistazos}} del ojeador por defecto de tu equipo (valoración {overall})",
+    "nextLookLabel": "Un vistazo más",
+    "nextLookValue": "hace la estimación más segura",
+    "chartLabel": "Estimación {value}",
+    "chartCaption": "Valoración registrada y después la curva hacia la estimación",
+    "chartLegend": "Curva hacia la estimación"
   }
 }
