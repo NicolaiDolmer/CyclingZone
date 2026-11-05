@@ -1,5 +1,45 @@
 export const PATCHES = [
   {
+    "version": "7.400",
+    "date": "2026-11-05",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Riders no longer climb off without a reason",
+          "body": "I have removed the draw after the finish, so riders no longer climb off without a reason. They now go out through the time limit, a crash, an injury or illness. This applies from the next stage, and stages already raced stay as they are."
+        },
+        "da": {
+          "title": "Ryttere stiger ikke længere af uden en grund",
+          "body": "Jeg har fjernet lodtrækningen efter målstregen, så ryttere ikke længere stiger af uden en grund. De udgår nu af tidsgrænsen, styrt, skade eller sygdom. Det gælder fra næste etape, og kørte etaper ændres ikke."
+        },
+        "refs": [
+          7713
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Riders who climbed off show the true reason",
+          "body": "I have corrected the text about riders who climbed off. It now says too far behind the winner, where it used to say exhausted or after an incident. You will still see it on stages already raced."
+        },
+        "da": {
+          "title": "Ryttere, der steg af, viser den sande årsag",
+          "body": "Jeg har rettet teksten om ryttere, der steg af. Der står nu for langt efter vinderen, hvor der før stod udkørt eller efter et uheld. Du ser den stadig på etaper, der allerede er kørt."
+        },
+        "refs": [
+          7701
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.399",
     "date": "2026-11-04",
     "changes": [
