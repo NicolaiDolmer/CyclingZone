@@ -329,6 +329,8 @@ import { isAcademyIntakePullEnabled } from "../lib/academyIntakePullFlag.ts";
 import { pullWeeklyAcademyIntake, hasPulledThisWeek } from "../lib/academyIntakePull.js";
 import { academyEstimate, loadAcademyPrognoses, isAcademyKnowledgeEnabled } from "../lib/academyDisclosure.ts";
 import { buildIntake2View } from "../lib/academyIntake2View.ts"; // #6666
+import { isPotentialEstimateDisplayEnabled } from "../lib/potentialEstimateFlag.js"; // #7684
+import { buildAcademyFromViews, buildEstimatesFromViews, buildProjectionFromView, buildScoutingReportFromView } from "../lib/potentialEstimateRead.js"; // #7684
 import { saveAcademyProfile } from "../lib/academyIntakeProfile.ts"; // #6666
 import { computeFrozenSalary } from "../lib/contractSeed.js";
 import {
@@ -1109,6 +1111,11 @@ async function isViewerBetaTester(req) {
     .eq("id", req.user.id)
     .single();
   return u?.role === "admin" || u?.is_beta_tester === true;
+}
+
+// #7684: én prognose-kilde. Beta-status slås kun op på stadie beta (se flag-modulet).
+function isPotentialEstimateOn(req) {
+  return isPotentialEstimateDisplayEnabled(supabase, { viewerIsBeta: () => isViewerBetaTester(req) });
 }
 
 // ── Auction config helper ─────────────────────────────────────────────────────
@@ -2403,6 +2410,10 @@ router.post("/scouting/estimates", requireAuth, presencePulseLimiter, async (req
   if (ids.length === 0) return res.json({ teamId: req.team.id, maxLevel: SCOUTING_CONFIG.maxLevel, estimates: {} });
   if (ids.length > 500) return res.status(400).json({ error: "too_many_riders", max: 500 });
   try {
+    if (await isPotentialEstimateOn(req)) {
+      const estimates = await buildEstimatesFromViews(supabase, { teamId: req.team.id, riderIds: ids });
+      return res.json({ teamId: req.team.id, maxLevel: SCOUTING_CONFIG.maxLevel, estimates });
+    }
     // #2454: `ability_caps` hentes nu med. Uden dem kunne POTENTIEL RATING slet
     // ikke beregnes for tabel- og kort-fladerne — de fik kun stjerne-enheder, og
     // rating-point-båndet fandtes udelukkende på de to enkelt-rytter-endpoints.
@@ -2780,6 +2791,12 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
 
     const own = rider.team_id != null && rider.team_id === req.team.id;
     const level = own ? state.maxLevel : (state.levels[rider.id] ?? 0);
+    if (await isPotentialEstimateOn(req)) {
+      return res.json(await buildScoutingReportFromView(supabase, {
+        teamId: req.team.id, rider, own, level, maxLevel: state.maxLevel, looks: state.levels[rider.id] ?? 0,
+        age: ageForSeason(rider.birthdate, await getActiveSeasonNumber()), scout: scoutMeta, generatedAt,
+      }));
+    }
     if (!own && level <= 0) {
       return res.json({ hidden: true, level: 0, maxLevel: state.maxLevel, own: false });
     }
@@ -2903,10 +2920,16 @@ router.get("/riders/:id/development-projection", requireAuth, async (req, res) =
     if (!rider) return res.status(404).json({ error: "Rider not found" });
 
     const own = rider.team_id != null && rider.team_id === req.team.id;
+    const level = own ? state.maxLevel : (state.levels[rider.id] ?? 0);
+    if (await isPotentialEstimateOn(req)) {
+      return res.json(await buildProjectionFromView(supabase, {
+        teamId: req.team.id, rider, own, level, maxLevel: state.maxLevel,
+        age: scoutBandAge(rider.birthdate, await resolveScoutBandSeasonNumber(supabase)),
+      }));
+    }
     if (own && rider.is_academy && await isAcademyKnowledgeEnabled(supabase)) {
       return res.json({ own: true, capsMissing: true });
     }
-    const level = own ? state.maxLevel : (state.levels[rider.id] ?? 0);
     if (!own && level <= 0) {
       return res.json({ hidden: true, level: 0, maxLevel: state.maxLevel, own: false });
     }
@@ -18983,14 +19006,17 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     const intake2 = intakePullEnabled
       ? await buildIntake2View(supabase, { teamId, roster, intake, seasonNumber: graduationSeasonNumber })
       : null;
+    const estimateViews = await isPotentialEstimateOn(req)
+      ? await buildAcademyFromViews(supabase, { teamId, roster: intake2?.roster ?? roster, intake: intake2?.intake ?? intake })
+      : null;
 
     res.json({
       enabled: true,
       squads,
       seniorCount,
       seniorMax,
-      roster: intake2?.roster ?? roster,
-      intake: intake2?.intake ?? intake,
+      roster: estimateViews?.roster ?? intake2?.roster ?? roster,
+      intake: estimateViews?.intake ?? intake2?.intake ?? intake,
       graduations,
       intakePull: { enabled: intakePullEnabled, pulledThisWeek: intakePulledThisWeek },
       academyProfile: intake2?.profile ?? null,
