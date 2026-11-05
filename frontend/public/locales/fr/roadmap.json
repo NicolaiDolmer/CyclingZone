@@ -77,6 +77,7 @@
     "hint": "Tes notes décident de ce qui passe dans le plan",
     "areaLabel": "Domaine",
     "all": "Tout",
+    "unrated": "{unrated} sur {total} attendent ta réponse",
     "forum": "Une idée à toi ? Poste-la dans le forum"
   },
   "issues": {
