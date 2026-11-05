@@ -75,6 +75,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "academy_intake_pull_enabled", // #6666
   "development_v2_aging_enabled", // #6110 Hjaelp
   "potential_single_number", // #6110 Hjaelp
+  "potential_estimate_display", // #7684 (flader + Hjaelp i byggetrin 6)
   "ability_cap_per_date_enabled", // #6110 Hjaelp
   "training_decision_card", // #6110 Hjaelp
   "training_catalog_v3", // #5319 vaelgere + Hjaelp
