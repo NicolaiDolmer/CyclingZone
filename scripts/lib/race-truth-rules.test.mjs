@@ -291,3 +291,13 @@ test("R7 (Codex P2): en rytter i GC der mangler en kørt etape giver et fund", (
   const found = codes(ruleStandingsAddUp({ raceId: "x", stageNumber: 2, raceRows: rows, stageRows, events: [], startlist: ["A", "B"] }));
   assert.equal(found.R7.codes.gc_rider_missing_stage, 1);
 });
+
+test("#6350: en sen halvdel af et split flytter ikke gruppens dannelse", () => {
+  const log = [
+    { km: 0, type: "stage_start", params: { exact_km: 0, exact_time: 0 } },
+    { km: 180, type: "peloton_splits", params: { group_id: "g", source_group_id: "peloton-0", rider_ids: ["a"], exact_km: 170.47 } },
+    { km: 180, type: "peloton_splits", params: { group_id: "g", source_group_id: "peloton-0", rider_ids: ["b"], exact_km: 180, joined_late: true } },
+    { km: 180, type: "group_merged", params: { group_id: "g", into_group_id: "peloton-0", exact_km: 176 } },
+  ];
+  assert.deepEqual(ruleCatchAfterFormation({ events: log, startlist: ["a", "b"] }).filter((f) => f.code === "caught_before_formed"), []);
+});

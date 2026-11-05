@@ -205,3 +205,10 @@ test("#6350 honestKmResolver gives a single event the km its film line shows", (
     assert.equal(filmKmValue(resolve(raw), fmt), filmKmValue(line, fmt), `${raw.type}@${raw.km}`);
   }
 });
+
+test("#6350: et split i to halvdele: tabslisten viser hver rytters eget sted", () => {
+  const half = (riderIds: string[], exactKm: number) => ({ type: "peloton_splits", km: 180, params: { group_id: "g", rider_ids: riderIds, exact_km: exactKm } });
+  const events = [{ type: "stage_start", km: 0, params: {} }, half(["set"], 170.47), half(["late"], 180), { type: "finish", km: 180, params: {} }];
+  const shown = lossEntriesWithFilmKm(events, [{ type: "drop", km: 180, riderId: "late" }, { type: "drop", km: 180, riderId: "set" }], V4);
+  assert.deepEqual(shown.map((l) => [l.riderId, filmKmValue(l.shown, fmt)]), [["set", "170.47"], ["late", "180"]]);
+});

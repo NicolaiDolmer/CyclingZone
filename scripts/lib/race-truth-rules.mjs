@@ -265,7 +265,8 @@ export function replayTimeline(events = [], startlist = [], visit = () => {}) {
         // Et splits gap_seconds er afstanden til den gruppe det blev splittet fra.
         const delta = finite(p.gap_seconds);
         gaps.set(groupId, sourceGap + (delta ?? 0));
-        form(groupId, index, event, event.type);
+        // #6350: en sen halvdel af et split danner ikke gruppen.
+        if (!p.joined_late) form(groupId, index, event, event.type);
         for (const id of named) joinedAt.set(id, { km: place.km, exact: place.exact, index });
         break;
       }

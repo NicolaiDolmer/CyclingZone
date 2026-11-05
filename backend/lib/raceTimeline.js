@@ -597,9 +597,9 @@ function groupExistedBefore(groupId, km, events) {
 }
 
 /**
- * Kørte hver af splittets ryttere i kildegruppen på det udledte sted, og blev de
- * der til tjekpunktet? Et split har ét sted for hele gruppen, så en rytter der
- * først kom med senere (fx hentet fra udbruddet inde i segmentet) ikke kan vises.
+ * Splittets ryttere der kørte i kildegruppen på det udledte sted og blev der til
+ * tjekpunktet. De andre (fx hentet fra udbruddet inde i segmentet) kom først med
+ * senere og hører ikke til stedet.
  */
 function ridersInSourceAt(split, place, events) {
   const groupOf = riderGroupsBefore(events, place);
@@ -608,8 +608,7 @@ function ridersInSourceAt(split, place, events) {
     return e !== split && GROUP_CHANGE_TYPES.has(e.type) && !BOOKKEEPING_ATTACK_KINDS.has(e.params?.kind)
       && at >= place && at < split.km && riderIdsOf(e).includes(id);
   });
-  const riders = riderIdsOf(split);
-  return riders.length > 0 && riders.every((id) => groupOf(id) === split.params?.source_group_id && !changedGroupAfter(id));
+  return riderIdsOf(split).filter((id) => groupOf(id) === split.params?.source_group_id && !changedGroupAfter(id));
 }
 
 /**
@@ -618,11 +617,17 @@ function ridersInSourceAt(split, place, events) {
  * stregen. Gruppens hul er kendt, og to linjer glider lineært fra hinanden over
  * segmentet, så stedet er det samme som motoren selv regner. Kun med bevis: et
  * split motoren har placeret i samme segment, en kildegruppe der fandtes ved
- * segmentets start, og ryttere der alle kørte i den på stedet. Ellers er
- * tjekpunktet stadig det ærlige svar.
+ * segmentets start, og ryttere der kørte i den på stedet. Ellers er tjekpunktet
+ * stadig det ærlige svar.
+ *
+ * Et split har ét sted, men stedet gælder pr. rytter: de der ikke kørte i
+ * kildegruppen dér, bliver på tjekpunktet i en halvdel af splittet med samme
+ * gruppe (`joined_late`). Svaret er split -> den halvdel, som kalderen sætter ind
+ * lige efter splittet.
  */
 function placeCheckpointSplits(events) {
   const visible = RACE_V4_TUNING.groups.mergeThresholdSeconds;
+  const lateHalves = new Map();
   const byKm = new Map();
   for (const event of events) {
     if (event.type !== "peloton_splits") continue;
@@ -630,7 +635,7 @@ function placeCheckpointSplits(events) {
     byKm.get(event.km).push(event);
   }
   for (const [km, splits] of byKm) {
-    const stuck = splits.filter((split) => exactKmOf(split) === km);
+    const stuck = splits.filter((split) => exactKmOf(split) === km && !split.params.joined_late);
     if (stuck.length === 0) continue;
     const start = segmentStartKm(km, splits, events, visible);
     if (start === null) continue;
@@ -638,9 +643,17 @@ function placeCheckpointSplits(events) {
       const fraction = separationFraction(0, finiteOrNull(split.params?.gap_seconds) ?? NaN, visible);
       if (fraction === null || !groupExistedBefore(split.params?.source_group_id, km, events)) continue;
       const place = round2(start + fraction * (km - start));
-      if (ridersInSourceAt(split, place, events)) movePlace(split, place);
+      const atPlace = ridersInSourceAt(split, place, events);
+      if (atPlace.length === 0) continue;
+      const late = riderIdsOf(split).filter((id) => !atPlace.includes(id));
+      if (late.length > 0) {
+        lateHalves.set(split, { ...split, params: { ...split.params, rider_ids: late, joined_late: true } });
+        split.params.rider_ids = atPlace;
+      }
+      movePlace(split, place);
     }
   }
+  return lateHalves;
 }
 
 /**
@@ -657,7 +670,8 @@ function placeFormationsBeforeContact(events) {
     contactOf.set(keyOf(event), Math.min(contactOf.get(keyOf(event)) ?? Infinity, at));
   }
   for (const event of events) {
-    if (!FORMATION_TYPES.has(event.type) || BOOKKEEPING_ATTACK_KINDS.has(event.params?.kind)) continue;
+    // En sen halvdel af et split må aldrig trækkes tilbage til søster-splittenes sted.
+    if (!FORMATION_TYPES.has(event.type) || BOOKKEEPING_ATTACK_KINDS.has(event.params?.kind) || event.params?.joined_late) continue;
     const contact = contactOf.get(keyOf(event));
     const at = exactKmOf(event);
     if (contact === undefined || at === null || at <= contact + KM_EPSILON) continue;
@@ -721,13 +735,15 @@ function placeRiderConsequences(events) {
 
 /**
  * #6350: tidslinjen med hver hændelse på det sted den skete. Input muteres aldrig.
+ * Et split kan komme tilbage som to hændelser (placeCheckpointSplits).
  * En log uden `exact_km` (version 1 og ældre v4-revisioner) kommer uændret tilbage.
  */
 export function withEventPlaces(events) {
   if (!Array.isArray(events) || !events.some((event) => event && exactKmOf(event) !== null)) return events;
-  const placed = events.map((event) => (event?.params ? { ...event, params: { ...event.params } } : event));
+  const copied = events.map((event) => (event?.params ? { ...event, params: { ...event.params } } : event));
+  const lateHalves = placeCheckpointSplits(copied.filter((event) => event?.params));
+  const placed = copied.flatMap((event) => (lateHalves.has(event) ? [event, lateHalves.get(event)] : [event]));
   const known = placed.filter((event) => event?.params);
-  placeCheckpointSplits(known);
   placeFormationsBeforeContact(known);
   placeRiderConsequences(known);
   return placed;
