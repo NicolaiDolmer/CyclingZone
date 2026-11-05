@@ -7,7 +7,7 @@
 // filen) med de samme scenarier (__fixtures__/startedFieldLock7733Scenarios.js) og genereres
 // aldrig med den nye kode. Kun hashes og antal; syntetisk, ingen prod-data.
 
-import { test } from "node:test";
+import { mock, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
@@ -23,6 +23,9 @@ import {
 } from "./__fixtures__/startedFieldLock7733Scenarios.js";
 
 const FROZEN = JSON.parse(readFileSync(new URL("./__fixtures__/startedFieldLock7733FlagOff.json", import.meta.url), "utf8"));
+
+// Stubben svarer ikke paa alle berigelsens opslag; den stoej maa ikke fylde testrunnerens IPC (#3172).
+for (const method of ["log", "warn", "error"]) mock.method(console, method, () => {});
 
 const poolRiders = Array.from({ length: 6 }, (_, i) => `pool-${i}`);
 
