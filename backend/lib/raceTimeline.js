@@ -574,7 +574,7 @@ function movePlace(event, km, time = null) {
   else event.params.exact_time = time;
 }
 
-/** Hvor segmentet bag et tjekpunkt startede, aflæst af de splits motoren kunne placere. */
+/** Hvor segmentet bag et tjekpunkt startede, aflæst af de splits motoren kunne placere; null uden dem. */
 function segmentStartKm(km, splitsAtKm, events, visible) {
   const anchor = events.reduce((best, e) => (e.type === "gap_update" && e.km < km && e.km > best ? e.km : best), 0);
   const starts = [];
@@ -585,15 +585,22 @@ function segmentStartKm(km, splitsAtKm, events, visible) {
     const start = (at - fraction * km) / (1 - fraction);
     if (start >= anchor - KM_EPSILON && start < km) starts.push(start);
   }
-  if (starts.length === 0) return anchor;
+  if (starts.length === 0) return null;
   return starts.sort((a, b) => a - b)[Math.floor(starts.length / 2)];
+}
+
+/** Fandtes gruppen før segmentet? En gruppe dannet i segmentet har ingen linje ved dets start. */
+function groupExistedBefore(groupId, km, events) {
+  return groupId === "peloton-0" || events.some((e) => e.km < km && (e.params?.group_id === groupId || e.params?.into_group_id === groupId));
 }
 
 /**
  * Et split motoren ikke kunne placere (ældre etaper: gruppen slugte ryttere inde
  * i segmentet, se exactPlace.ts) står på tjekpunktet, på en bjergankomst altså på
  * stregen. Gruppens hul er kendt, og to linjer glider lineært fra hinanden over
- * segmentet, så stedet er det samme som motoren selv regner.
+ * segmentet, så stedet er det samme som motoren selv regner. Kun med bevis: et
+ * split motoren har placeret i samme segment, og en kildegruppe der fandtes ved
+ * segmentets start. Ellers er tjekpunktet stadig det ærlige svar.
  */
 function placeCheckpointSplits(events) {
   const visible = RACE_V4_TUNING.groups.mergeThresholdSeconds;
@@ -607,9 +614,10 @@ function placeCheckpointSplits(events) {
     const stuck = splits.filter((split) => exactKmOf(split) === km);
     if (stuck.length === 0) continue;
     const start = segmentStartKm(km, splits, events, visible);
+    if (start === null) continue;
     for (const split of stuck) {
       const fraction = separationFraction(0, finiteOrNull(split.params?.gap_seconds) ?? NaN, visible);
-      if (fraction !== null) movePlace(split, round2(start + fraction * (km - start)));
+      if (fraction !== null && groupExistedBefore(split.params?.source_group_id, km, events)) movePlace(split, round2(start + fraction * (km - start)));
     }
   }
 }
@@ -672,8 +680,12 @@ function placeRiderConsequences(events) {
     } else if (event.type === "incident" && p.outcome === "time_loss") {
       for (const id of riderIdsOf(event)) joined.set(id, { km: place.km, time: null, source: null });
     } else if (event.type === "group_merged") {
-      // Tilbage i gruppen han blev sat fra: det split forklarer ikke et senere "sat".
-      for (const id of riderIdsOf(event)) if (joined.get(id)?.source === p.into_group_id) joined.delete(id);
+      // Tilbage i gruppen han blev sat fra, eller indhentet efter et uheld: det der
+      // skete, forklarer ikke et senere "sat".
+      for (const id of riderIdsOf(event)) {
+        const from = joined.get(id);
+        if (from && (from.source === null || from.source === p.into_group_id)) joined.delete(id);
+      }
     } else if (event.type === "breakaway_caught") {
       for (const id of riderIdsOf(event)) caught.set(id, place);
     } else if (event.type === "stage_plan_leg") {

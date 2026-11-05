@@ -468,6 +468,22 @@ test("#6350: 'hentet' står ved indhentningen, og et uheld forklarer 'sat' uden 
   assert.equal(placed.params.exact_time, undefined);
 });
 
+test("#6350 (Codex-review): uden bevis bliver tjekpunktet stående, og et uheld forklarer ikke et 'sat' efter han er tilbage", () => {
+  const stuck = (sourceGroupId) => ({ km: 180, type: "peloton_splits", params: { group_id: "late", source_group_id: sourceGroupId, gap_seconds: 120, rider_ids: ["r"], exact_km: 180, exact_time: 19000 } });
+  const placed = { km: 180, type: "peloton_splits", params: { group_id: "early", source_group_id: "peloton-0", gap_seconds: 53.09, rider_ids: ["a"], exact_km: 170.76, exact_time: 17609 } };
+  const update = { km: 170, type: "gap_update", params: { group_id: "peloton-0", gap_seconds: 10, exact_km: 170 } };
+  // Intet placeret split i segmentet: ingen viden om hvor segmentet startede.
+  assert.equal(withEventPlaces([update, stuck("peloton-0")])[1].params.exact_km, 180);
+  // Kildegruppen blev først dannet i segmentet: linjerne var ikke samlet ved starten.
+  assert.equal(withEventPlaces([update, placed, stuck("chase-new")])[2].params.exact_km, 180);
+  assert.ok(withEventPlaces([update, placed, stuck("peloton-0")])[2].params.exact_km < 171);
+
+  const crash = { km: 107, type: "incident", params: { rider_id: "r", outcome: "time_loss", exact_km: 107 } };
+  const back = { km: 115, type: "group_merged", params: { group_id: "solo-m10-1-0", into_group_id: "chase-2", rider_ids: ["r"], exact_km: 115 } };
+  const leg = { km: 140, type: "stage_plan_leg", params: { rider_id: "r", leg: 1, task: "ride_in", reason: "dropped", exact_km: 140 } };
+  assert.equal(withEventPlaces([crash, back, leg])[2].params.exact_km, 140);
+});
+
 test("#6350: et angreb hentet i samme segment står før sin indhentning; en melding om gruppen venter på dannelsen", () => {
   const attack = (groupId, exactKm, exactTime) => ({ km: 99.2, type: "finale_attack", params: { group_id: groupId, rider_ids: [groupId], direction: "descent", exact_km: exactKm, exact_time: exactTime } });
   const log = [
