@@ -205,6 +205,7 @@
       "kmAt": "km {km}",
       "kmSpan": "km {from}-{to}",
       "unfolded": "How it unfolded",
+      "lossUnknown": "Lost time, cause unknown: {names}.",
       "source": "Every time, gap and sentence here comes from this stage's race log.",
       "replay": {
         "play": "Play the stage",

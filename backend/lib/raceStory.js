@@ -894,6 +894,32 @@ export function checkpointGapForRider(checkpoint, riderId) {
   return { group_id: group.group_id, gap_s: group.gap_s, time_s: group.time_s, in_front: group.gap_s === 0, via_rest: !explicit };
 }
 
+/**
+ * #7705: de af `riderIds` der kom i mål efter feltet. Feltet er den største
+ * gruppe på samme hul i resultatet (ved lige store grupper den forreste), så en
+ * rytter der sad i feltet bag et udbrud ikke tæller som en der tabte tid.
+ * @param {Array<{rider_id: string, gap_s: number|null}>} rows målresultatet med hul til vinderen
+ * @param {Iterable<string>} riderIds
+ * @returns {string[]}
+ */
+export function ridersBehindField(rows, riderIds) {
+  const gapOf = new Map();
+  const sizes = new Map();
+  for (const row of rows ?? []) {
+    const gap = finite(row?.gap_s);
+    if (gap == null) continue;
+    gapOf.set(row.rider_id, gap);
+    sizes.set(gap, (sizes.get(gap) ?? 0) + 1);
+  }
+  let field = null;
+  for (const [gap, size] of sizes) {
+    const best = sizes.get(field) ?? 0;
+    if (size > best || (size === best && gap < field)) field = gap;
+  }
+  if (field == null) return [];
+  return [...riderIds].filter((id) => gapOf.has(id) && gapOf.get(id) - field >= GAP_CHANGE_EXPLAIN_SECONDS);
+}
+
 function lerp(fromKm, fromGap, toKm, toGap, km) {
   if (Math.abs(toKm - fromKm) < 1e-9) return round2(toGap);
   return round2(fromGap + ((toGap - fromGap) * (km - fromKm)) / (toKm - fromKm));

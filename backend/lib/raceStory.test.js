@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { frozenStageOutput, physicsOf } from "./engine/v4/testUtils/oldRevisionDigests6199.ts";
 import {
-  buildRaceStory, checkpointGapForRider, leaderTimeAt, replayFrames, storyInputsFromResults,
+  buildRaceStory, checkpointGapForRider, leaderTimeAt, replayFrames, ridersBehindField, storyInputsFromResults,
   GAP_CHANGE_EXPLAIN_SECONDS, REPLAY_FINALE_KM,
 } from "./raceStory.js";
 
@@ -631,4 +631,33 @@ test("#7388 mergeGroups: en delvis sammenlægning ud af resten flytter kun de na
     ev(100, "finish", {}),
   ], timelineVersion: 2 });
   assert.deepEqual(all.checkpoints.find((c) => c.kind === "finish").groups.map((g) => [g.group_id, g.size, g.includes_rest]), [["finale-bunch-0", 3, true]]);
+});
+
+test("#7705: årsagerne til tidstab når historien med rytter og grund, uden fog-felter", () => {
+  const story = buildRaceStory({ events: [
+    ev(0, "stage_start", { field_count: 3, distance_km: 100, profile_type: "mountain" }),
+    ev(100, "all_out_cracked", { rider_id: "a" }),
+    ev(100, "bad_day", { rider_id: "b", reason: "weather", weather: "rain", dayform: -3 }),
+    ev(100, "finish", {}),
+  ], timelineVersion: 2 });
+  const of = (key) => story.moments.find((m) => m.key === key)?.data;
+  assert.equal(of("story.all_out_cracked").rider_id, "a");
+  assert.deepEqual(of("story.bad_day"), { rider_id: "b", reason: "weather", weather: "rain" });
+});
+
+test("#7705: ridersBehindField måler mod feltet, ikke mod vinderen", () => {
+  const behind = GAP_CHANGE_EXPLAIN_SECONDS;
+  const rows = [
+    { rider_id: "w", gap_s: 0 },
+    { rider_id: "f1", gap_s: 300 }, { rider_id: "f2", gap_s: 300 }, { rider_id: "f3", gap_s: 300 },
+    { rider_id: "close", gap_s: 300 + behind - 1 },
+    { rider_id: "late", gap_s: 300 + behind },
+    { rider_id: "ukendt", gap_s: null },
+  ];
+  const all = rows.map((r) => r.rider_id);
+  assert.deepEqual(ridersBehindField(rows, all), ["late"], "feltet bag et udbrud har ikke tabt tid");
+  assert.deepEqual(ridersBehindField(rows, ["f1", "w"]), []);
+  // Lige store grupper: den forreste er feltet, så ingen forklaring tabes.
+  assert.deepEqual(ridersBehindField([{ rider_id: "a", gap_s: 0 }, { rider_id: "b", gap_s: 400 }], ["a", "b"]), ["b"]);
+  assert.deepEqual(ridersBehindField([], ["a"]), []);
 });

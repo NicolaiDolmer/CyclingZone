@@ -205,6 +205,7 @@
       "kmAt": "km {km}",
       "kmSpan": "km {from}-{to}",
       "unfolded": "Sådan gik det",
+      "lossUnknown": "Tabte tid, årsag ukendt: {names}.",
       "source": "Hver tid, hvert hul og hver sætning her kommer fra etapens løbslog.",
       "replay": {
         "play": "Afspil etapen",

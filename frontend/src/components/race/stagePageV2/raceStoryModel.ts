@@ -12,10 +12,12 @@
 //   - buildReport:      3-5 saetninger, deterministisk, fra linjerne + resultatet
 //   - groupMembersAt:   hvem kører i hvilken gruppe ved et km (replay-navne)
 //   - finaleData/…:     "Final 5 km"-grafikkens tidsmodel og gruppevalg
-import { replayFrames as replayFramesJs, checkpointGapForRider as checkpointGapJs, riderOutBy as riderOutByJs } from "../../../../../backend/lib/raceStory.js";
+import { replayFrames as replayFramesJs, checkpointGapForRider as checkpointGapJs, riderOutBy as riderOutByJs, ridersBehindField as ridersBehindFieldJs } from "../../../../../backend/lib/raceStory.js";
 import { withNarrativeCauses, isTimeTrialNarrative, type NarrativeEvent } from "../../../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts";
 import { collectRiderIds, describeEvent } from "../../../lib/stageTimelineFilm.js";
 import { classificationRowsForStage } from "../../../lib/raceStageClassifications.js";
+import { buildOwnTimeLoss, type TimeLossEntry, type TimelineEvent } from "../../../lib/stageSplitTimes.ts";
+import { lossEntriesWithFilmKm, type SpanTimelineEvent } from "../../../lib/stageTimelineKmSpan.ts";
 import type { ResultRow, RoleRider } from "./stagePageV2Model.ts";
 import { labelStoryLine, morningFromStory } from "../../../lib/breakawayLabels6299.ts"; // #6299
 
@@ -96,6 +98,7 @@ export interface RiderGap { group_id: string; gap_s: number; time_s: number | nu
 export const replayFrames = replayFramesJs as unknown as (story: RaceStory, opts?: { finaleKm?: number; stepKm?: number }) => ReplayFrame[];
 export const checkpointGapForRider = checkpointGapJs as unknown as (checkpoint: StoryCheckpoint, riderId: string) => RiderGap | null;
 const riderOutBy = riderOutByJs as unknown as (story: RaceStory, a: StorySnapshot) => (riderId: string, km: number) => boolean;
+const ridersBehindField = ridersBehindFieldJs as unknown as (rows: Array<{ rider_id: string; gap_s: number | null }>, riderIds: Iterable<string>) => string[];
 
 /** Kun et svar der ligner kontrakten bruges; alt andet = ingen historie. */
 export function asStory(value: unknown): RaceStory | null {
@@ -550,6 +553,43 @@ export function ownOutSentences(rows: readonly OwnOutRow[] | null | undefined, m
     const more = names.length - 2;
     return { key: "ownOut", params: { kind, names: more > 0 ? `${names.slice(0, 2).join(", ")} +${more}` : names.join(", ") } };
   });
+}
+
+/** Navneopslaget filmens tekster laeser (describeEvent, LossRow). */
+export function castNames(cast: Cast): { get(id: unknown): string | null } {
+  return { get: (id) => cast.nameOf(String(id)) };
+}
+
+export interface OwnTimeLoss {
+  entries: Array<TimeLossEntry & { shown: SpanTimelineEvent }>;
+  /** Dine ryttere efter feltet som loggen ikke har en aarsag til ("" = ingen). */
+  unknown: string;
+}
+
+const NO_OWN_LOSS: OwnTimeLoss = { entries: [], unknown: "" };
+
+/**
+ * #7705: hvorfor dine ryttere tabte tid, med de aarsager motoren skrev (fald med
+ * grund, uheld, koerte sig tom, daarlig dag, din egen ordre). Kun ryttere der kom
+ * i maal efter vinderen; udgaaede staar i ownOut. Sad en rytter efter feltet uden
+ * en aarsag i loggen, staar det, i stedet for at referatet tier.
+ * Uden praecise tider kender loggen ikke hullerne (spec §6): intet at sige.
+ */
+export function ownTimeLoss(story: RaceStory, cast: Cast, narrative: StoryNarrativeContext | null): OwnTimeLoss {
+  if (!narrative || !story.precise_times) return NO_OWN_LOSS;
+  const rows = cast.finishers.map((f) => ({ rider_id: f.riderId, gap_s: f.rank === 1 ? 0 : parseGap(f.gap) }));
+  const lost = rows.filter((r) => cast.mine.has(r.rider_id) && r.gap_s !== 0).map((r) => r.rider_id);
+  if (!lost.length) return NO_OWN_LOSS;
+  const events = narrative.events as readonly TimelineEvent[];
+  const riderNameById = castNames(cast);
+  const found = buildOwnTimeLoss(events, { ownRiderIds: lost, effortByRider: narrative.effortByRider as ReadonlyMap<string, string> | null | undefined })
+    // En aarsag uden tekst kan ikke staa; rytteren taeller da som uforklaret.
+    .filter((entry) => entry.type === "drop" || describeEvent(entry.event, { riderNameById }));
+  const explained = new Set(found.flatMap((entry) => (entry.type === "drop" ? entry.riderIds : [entry.riderId])));
+  return {
+    entries: lossEntriesWithFilmKm(events as readonly SpanTimelineEvent[], found, { timelineVersion: story.timeline_version }),
+    unknown: namesList(ridersBehindField(rows, lost.filter((id) => !explained.has(id))), cast, 3),
+  };
 }
 
 /**
