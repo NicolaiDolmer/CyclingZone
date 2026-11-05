@@ -91,8 +91,33 @@ function editionWinner(race: HistoryRace, rows: readonly ResultRow[], finalStage
 }
 
 /** Bygger løbshistorikken: én række pr. løb, nyeste udgave først, så navn. */
-export function buildRaceHistory({ races = [], winnerRows = [], myRows = [], profiles = [] }: {
+const familyKey = (race: HistoryRace): string => `${race.name}|${race.race_type ?? ""}`;
+
+// #7693: ruten er den nyeste udgaves, også når den ikke er kørt endnu. Ellers viser
+// et løb sidste sæsons rute, indtil årets udgave er afsluttet. Vindere og placeringer
+// tæller stadig kun afsluttede udgaver.
+function newestRouteEditions(races: readonly HistoryRace[], upcoming: readonly HistoryRace[]): Map<string, HistoryRace[]> {
+  const known = new Set(races.map(familyKey));
+  const byFamily = new Map<string, HistoryRace[]>();
+  for (const race of [...races, ...upcoming]) {
+    const key = familyKey(race);
+    if (!known.has(key)) continue;
+    const list = byFamily.get(key) ?? [];
+    list.push(race);
+    byFamily.set(key, list);
+  }
+  for (const list of byFamily.values()) list.sort((a, b) => (b.season_number ?? 0) - (a.season_number ?? 0));
+  return byFamily;
+}
+
+/** Id'er at hente ruter for: pr. familie den nyeste udgave og den før, hvis den nyeste ingen rute har. */
+export function routeEditionIds(races: readonly HistoryRace[], upcoming: readonly HistoryRace[] = []): string[] {
+  return [...newestRouteEditions(races, upcoming).values()].flatMap((list) => list.slice(0, 2).map((r) => r.id));
+}
+
+export function buildRaceHistory({ races = [], upcoming = [], winnerRows = [], myRows = [], profiles = [] }: {
   races?: readonly HistoryRace[];
+  upcoming?: readonly HistoryRace[];
   winnerRows?: readonly ResultRow[];
   myRows?: readonly ResultRow[];
   profiles?: readonly ProfileRow[];
@@ -101,10 +126,11 @@ export function buildRaceHistory({ races = [], winnerRows = [], myRows = [], pro
   const winnersByRace = groupBy(winnerRows, (r) => r.race_id);
   const mineByRace = groupBy(myRows, (r) => r.race_id);
   const profilesByRace = groupBy(profiles, (p) => p.race_id);
+  const routeEditions = newestRouteEditions(races, upcoming);
 
   const families = new Map<string, HistoryRace[]>();
   for (const race of races) {
-    const key = `${race.name}|${race.race_type ?? ""}`;
+    const key = familyKey(race);
     const list = families.get(key) ?? [];
     list.push(race);
     families.set(key, list);
@@ -135,8 +161,8 @@ export function buildRaceHistory({ races = [], winnerRows = [], myRows = [], pro
       if (!myBest || ed.myRank < myBest.rank) myBest = { rank: ed.myRank, season: ed.season, raceId: ed.raceId };
     }
 
-    // Terræn: den nyeste udgave med en offentliggjort rute.
-    const withProfiles = editions.find((r) => (profilesByRace.get(r.id) || []).length > 0);
+    // Terræn og etapeantal: den nyeste udgave med en offentliggjort rute (#7693).
+    const withProfiles = (routeEditions.get(key) ?? editions).find((r) => (profilesByRace.get(r.id) || []).length > 0);
     const profileTypes = withProfiles ? (profilesByRace.get(withProfiles.id) || []).map((p) => p.profile_type) : [];
 
     const row: HistoryRow = {
@@ -144,7 +170,7 @@ export function buildRaceHistory({ races = [], winnerRows = [], myRows = [], pro
       name: latest.name,
       raceType: latest.race_type ?? null,
       raceClass: latest.race_class ?? null,
-      stages: latest.stages ?? 1,
+      stages: (withProfiles ?? latest).stages ?? 1,
       latestSeason: latest.season_number ?? null,
       editions: eds,
       myBest,
