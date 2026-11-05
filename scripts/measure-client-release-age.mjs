@@ -220,13 +220,52 @@ function appendStepSummary(env, text) {
   } catch { /* summary er best-effort */ }
 }
 
+/**
+ * Spring-over-stien (#7678): uden PostHog-nøgle skrives en gyldig, tom
+ * retention.json hvis ingen findes. Ellers læser hver build en fil der ikke
+ * findes og får 400 fra Storage. Tom liste giver samme 7-døgns vindue som
+ * "findes ikke" (timeFloorWindowHours), så carry-forward ændrer ikke adfærd.
+ * Overskriver aldrig en eksisterende fil; best-effort, må aldrig fælde skridtet.
+ */
+export async function seedEmptyRetention({ env, store: injectedStore, fetchImpl, now, log }) {
+  try {
+    const config = injectedStore ? { kind: "injected" } : resolveStoreConfig(env);
+    if (config.kind === "none") return false;
+    const store = injectedStore ?? createStore(config, { fetchImpl });
+    if ((await store.getJson(RETENTION_OBJECT_PATH)) !== null) return false;
+    const empty = {
+      schema: RETENTION_SCHEMA,
+      generated_at: new Date(now).toISOString(),
+      source: "seed-empty",
+      lookback_days: MEASURE_LOOKBACK_DAYS,
+      floor: [],
+      cap: MAX_RELEASES,
+      releases: [],
+      dropped: [],
+      unknown_releases_seen: [],
+      alarms: [],
+    };
+    const { created } = await store.put(RETENTION_OBJECT_PATH, Buffer.from(`${JSON.stringify(empty, null, 2)}
+`), {
+      contentType: "application/json",
+      upsert: false,
+    });
+    if (created) log(`${LOG_PREFIX} skrev tom retention.json (ingen fandtes), så builds ikke læser en manglende fil.`);
+    return created;
+  } catch (err) {
+    log(`::notice::${LOG_PREFIX} kunne ikke oprette tom retention.json: ${err.message}`);
+    return false;
+  }
+}
+
 export async function measure({ env = process.env, dryRun = false, store: injectedStore, fetchImpl = globalThis.fetch, now = Date.now(), log = console.log } = {}) {
   const apiKey = env.POSTHOG_PERSONAL_API_KEY || "";
   const projectId = env.POSTHOG_PROJECT_ID || "";
   if (!apiKey || !projectId) {
     const missing = [!apiKey && "POSTHOG_PERSONAL_API_KEY", !projectId && "POSTHOG_PROJECT_ID"].filter(Boolean).join(" + ");
     log(`::notice::${LOG_PREFIX} springer over: ${missing} mangler. Carry-forward bruger gulvet/seneste retention.json.`);
-    return { status: "skipped", reason: `${missing} mangler` };
+    const seeded = !dryRun && await seedEmptyRetention({ env, store: injectedStore, fetchImpl, now, log });
+    return { status: "skipped", reason: `${missing} mangler`, seeded };
   }
   const config = injectedStore ? { kind: "injected" } : resolveStoreConfig(env);
   if (!injectedStore && config.kind === "none") {
