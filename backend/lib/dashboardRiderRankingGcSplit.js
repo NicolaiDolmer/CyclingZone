@@ -84,7 +84,7 @@ export function splitGcWins(riders, gcRows) {
  * #7676: split-opslaget er en forbedring oven paa RPC'ens allerede brugbare
  * raekker (uden det mangler kun klassikersejre). Det maa aldrig tage hele
  * dashboard-modulet ned med en 500. Proever opslaget igen ved transiente fejl;
- * fejler det stadig, sendes RPC'ens raekker UDEN opdeling (aldrig splitGcWins
+ * fejler det stadig, sendes RPC'ens raekker UDEN sejrs-opdeling (aldrig splitGcWins
  * med tomme raekker — den nulstiller gc_wins) og fejlen rapporteres til
  * Sentry, saa aarsagen kan findes.
  * @returns {Promise<Array<object>>}
@@ -100,6 +100,9 @@ export async function splitGcWinsSafe(
     return splitGcWins(riders, gcRows);
   } catch (error) {
     captureExceptionFn(error, { tags: { route: "dashboard-rider-ranking", degraded: "gc-split-skipped" } });
-    return riders || [];
+    // RPC'ens gc_wins taeller ALLE loebstyper; vist som "GC" ville klassikersejre
+    // vaere forkert info. Derfor udelades sejrs-opdelingen helt (frontend viser
+    // kun badges for vaerdier > 0), mens rangliste + point bevares.
+    return (riders || []).map(({ gc_wins: _combined, ...rest }) => rest);
   }
 }

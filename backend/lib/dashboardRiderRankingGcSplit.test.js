@@ -103,15 +103,16 @@ function failingSupabase(failures, rows) {
 const SAFE_ARGS = { riderIds: ["r1"], seasonId: "s1", leagueDivisionId: 3 };
 const noSleep = { retryOptions: { sleepFn: async () => {} } };
 
-test("splitGcWinsSafe: ved opslagsfejl returneres RPC-raekkerne uaendret (gc_wins nulstilles ikke) + fejlen rapporteres", async () => {
+test("splitGcWinsSafe: ved opslagsfejl bevares raekker + point, samlet gc_wins udelades + fejlen rapporteres", async () => {
   const riders = [{ rider_id: "r1", points: 10, gc_wins: 4 }];
   const captured = [];
   const out = await splitGcWinsSafe(failingSupabase(99, []), riders, SAFE_ARGS, {
     ...noSleep,
     captureExceptionFn: (e, ctx) => captured.push([e, ctx]),
   });
-  assert.deepEqual(out, riders);
-  assert.equal(out[0].gc_wins, 4);
+  // Samlet gc_wins (alle loebstyper) udelades, aldrig vist som "GC"; point bevares.
+  assert.deepEqual(out, [{ rider_id: "r1", points: 10 }]);
+  assert.ok(!("gc_wins" in out[0]));
   assert.equal(captured.length, 1);
   assert.equal(captured[0][1].tags.degraded, "gc-split-skipped");
 });
