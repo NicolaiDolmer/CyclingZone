@@ -1,4 +1,6 @@
 import AcademyPrognosisCell from "../components/rider/AcademyPrognosisCell";
+import PotentialEstimate from "../components/rider/PotentialEstimate";
+import { potentialViewOf, potentialViewValue } from "../lib/potentialEstimateDisplay";
 // TrainingPage — daglig træning (#1305).
 //
 // Viser holdets træningsprogrammer (fokus + intensitet per rytter) + dagens
@@ -2604,6 +2606,7 @@ export default function TrainingPage() {
                 const busy = savingId === rider.id || bulkApplying;
                 const hasBand = estimate && estimate.now != null && estimate.prog
                   && Number.isFinite(estimate.prog.lo) && Number.isFinite(estimate.prog.hi);
+                const estimateView = potentialViewOf(estimate); // #6110: tal + ord
                 // Tester-feedback 20/8 (#3798): rollen skal stå PÅ rækken —
                 // uden den skal spilleren gætte hvilken evne tallene gælder.
                 // estimate.role er båndets egen nøgle (backend, samme payload
@@ -2630,6 +2633,15 @@ export default function TrainingPage() {
                     <div className="min-w-[180px] max-w-[260px] flex-1">
                       {estimate === undefined ? (
                         <span className="text-cz-3 text-xs">{t("loading")}</span>
+                      ) : estimateView ? (
+                        <>
+                          <DevelopmentGlyph now={estimate.now ?? riderOverallRating(rider)} estimate={potentialViewValue(estimateView)} />
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            {roleLabel ? <span className="font-data uppercase tracking-wider text-3xs text-cz-1">{roleLabel}</span> : null}
+                            <span className="font-mono tabular-nums text-2xs text-cz-2">{estimate.now ?? riderOverallRating(rider) ?? "—"}</span>
+                            <PotentialEstimate view={estimateView} />
+                          </div>
+                        </>
                       ) : estimate?.academyPrognosis ? (
                         <div className="flex items-center gap-2">
                           <span className="font-mono tabular-nums text-2xs text-cz-1">{riderOverallRating(rider) ?? "—"}</span>

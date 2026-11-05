@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { potentialFromAcademy } from "../../lib/potentialDisplay6853";
 import PotentialRoleBox from "./PotentialRoleBox";
+import PotentialEstimate from "./PotentialEstimate";
+import { potentialViewOf } from "../../lib/potentialEstimateDisplay";
 
 export type AcademyPrognosis = {
   stage: string;
@@ -10,6 +12,9 @@ export type AcademyPrognosis = {
 
 export default function AcademyPrognosisCell({ prognosis }: { prognosis: AcademyPrognosis }) {
   const { t } = useTranslation("academy");
+  // #6110: bærer prognosen selv skønnet, er tal + ord hele cellen.
+  const estimateView = potentialViewOf(prognosis);
+  if (estimateView) return <PotentialEstimate view={estimateView} />;
   const { stage, band, nextStageDays } = prognosis;
   const display = potentialFromAcademy(prognosis);
   // Kort på fladen (mobilens smalle kolonne); forklaringen og dage til næste
