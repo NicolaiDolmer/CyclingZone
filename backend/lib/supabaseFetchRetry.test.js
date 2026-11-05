@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createClient } from "@supabase/supabase-js";
 import { createSupabaseFetchWithRetry, isRetryableRequest } from "./supabaseFetchRetry.js";
 
 const html = (status) => new Response("<html>cf</html>", { status, headers: { "content-type": "text/html" } });
@@ -29,18 +30,72 @@ test("GET prøves igen ved Cloudflare 522 og lykkes", async () => {
 });
 
 test("højst 2 gentagelser med backoff 300 ms og 1 s, derefter returneres sidste svar", async () => {
-  const { wrapped, calls, sleeps } = build([html(520), html(521), html(525)]);
+  const { wrapped, calls, sleeps } = build([html(521), html(524), html(525)]);
   const res = await wrapped(URL_, { method: "GET" });
   assert.equal(res.status, 525);
   assert.equal(calls.length, 3);
   assert.deepEqual(sleeps, [300, 1000]);
 });
 
-test("netværksfejl prøves igen og kastes til sidst uændret", async () => {
+test("læsninger: 520 og netværksfejl overlades til PostgREST-klienten (ingen gange-effekt)", async () => {
+  const { wrapped, calls } = build([html(520), ok()]);
+  const res = await wrapped(URL_, { method: "GET" });
+  assert.equal(res.status, 520);
+  assert.equal(calls.length, 1);
+
+  const err = new TypeError("fetch failed");
+  const second = build([err, ok()]);
+  await assert.rejects(() => second.wrapped(URL_, { method: "GET" }), (e) => e === err);
+  assert.equal(second.calls.length, 1);
+});
+
+test("upsert: netværksfejl prøves igen og kastes til sidst uændret", async () => {
   const err = new TypeError("fetch failed");
   const { wrapped, calls } = build([err, err, err]);
-  await assert.rejects(() => wrapped(URL_, { method: "GET" }), (e) => e === err);
+  const init = { method: "POST", headers: { Prefer: "resolution=merge-duplicates" }, body: "[]" };
+  await assert.rejects(() => wrapped(URL_, init), (e) => e === err);
   assert.equal(calls.length, 3);
+});
+
+test("upsert: Cloudflare 520 prøves igen (SDK'et prøver ikke skrivninger)", async () => {
+  const { wrapped, calls } = build([html(520), ok()]);
+  const res = await wrapped(URL_, { method: "POST", headers: { Prefer: "resolution=merge-duplicates" }, body: "[]" });
+  assert.equal(res.status, 200);
+  assert.equal(calls.length, 2);
+});
+
+function clientWith(responses, fetchCalls) {
+  const baseFetch = async (input, init) => {
+    fetchCalls.push({ input, init });
+    return responses.shift();
+  };
+  return createClient("https://x.supabase.co", "service-key", {
+    global: { fetch: createSupabaseFetchWithRetry(baseFetch, { delaysMs: [1, 1] }) },
+  });
+}
+
+test("gennem createClient: læsning med vedvarende 521 giver 3 kald, ikke flere", async () => {
+  const fetchCalls = [];
+  const client = clientWith([html(521), html(521), html(521), html(521)], fetchCalls);
+  const { error } = await client.from("race_team_orders").select("*");
+  assert.ok(error);
+  assert.equal(fetchCalls.length, 3);
+});
+
+test("gennem createClient: vedvarende 520 på læsning forstærkes ikke af wrapperen", async () => {
+  const fetchCalls = [];
+  const client = clientWith([html(520), html(520), html(520), html(520)], fetchCalls);
+  const { error } = await client.from("race_team_orders").select("*").retry(false);
+  assert.ok(error);
+  assert.equal(fetchCalls.length, 1);
+});
+
+test("gennem createClient: upsert med 522 lykkes ved andet forsøg", async () => {
+  const fetchCalls = [];
+  const client = clientWith([html(522), ok()], fetchCalls);
+  const { error } = await client.from("race_team_orders").upsert([{ id: 1 }], { onConflict: "id" });
+  assert.equal(error, null);
+  assert.equal(fetchCalls.length, 2);
 });
 
 test("upsert (POST + merge-duplicates) prøves igen", async () => {
