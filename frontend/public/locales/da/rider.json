@@ -898,6 +898,28 @@
     "loadErrorBody": "Intet er gået tabt. Prøv igen.",
     "retry": "Prøv igen"
   },
+  "potentialEstimate": {
+    "certainty": {
+      "unsure": "Usikker",
+      "fair": "Rimelig",
+      "sure": "Sikker"
+    },
+    "learning": "Læres · {trainings} af {needed} træninger",
+    "learningShort": "Læres · {trainings} af {needed}",
+    "learningBody": "Det første skøn kommer efter hans første træninger på dit hold.",
+    "notAFact": "Et skøn, ikke et facit.",
+    "notAFactLong": "Et skøn, ikke et facit. Selv en sikker vurdering kan ramme lidt ved siden af.",
+    "scoutedTimes": "{count, plural, one {Scoutet # gang} other {Scoutet # gange}}",
+    "builtOnLabel": "Bygger på",
+    "builtOnOwn": "Hans træning på dit hold",
+    "builtOnNamed": "{count, plural, one {# kig} other {# kig}} af {name} (tier {tier}-spejder)",
+    "builtOnDefault": "{count, plural, one {# kig} other {# kig}} af holdets standard-spejder (rating {overall})",
+    "nextLookLabel": "Endnu et kig",
+    "nextLookValue": "gør skønnet mere sikkert",
+    "chartLabel": "Skøn {value}",
+    "chartCaption": "Registreret rating, derefter kurven mod skønnet",
+    "chartLegend": "Kurve mod skønnet"
+  },
   "scouting": {
     "label_worldclass": "Verdensklasse-emne",
     "label_high": "Høj prognose",
