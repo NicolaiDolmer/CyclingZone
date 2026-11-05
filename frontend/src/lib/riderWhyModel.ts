@@ -133,7 +133,12 @@ type Setback = { main: WhyMain; moment: StoryMoment | null; sector: string | nul
  */
 function firstSetback(input: RiderWhyInput, moments: StoryMoment[], backInField = false): Setback | null {
   const riderId = input.riderId as string;
-  const near = (m: StoryMoment, km: number) => Math.abs((m.recorded_km ?? m.km) - km) < EPS || Math.abs(m.km - km) < EPS;
+  // Haendelsen staar paa tjekpunktets km, men momentet paa det praecise sted (exact_km).
+  const exactKms = (type: string, km: number) => input.events
+    .filter((e) => e.type === type && Math.abs((e.km ?? Number.NaN) - km) < EPS && Number.isFinite(e.params?.exact_km))
+    .map((e) => e.params.exact_km as number);
+  const near = (m: StoryMoment, km: number) => [km, ...exactKms(m.type, km)]
+    .some((k) => Math.abs((m.recorded_km ?? m.km) - k) < EPS || Math.abs(m.km - k) < EPS);
   for (const entry of buildOwnTimeLoss(input.events, { ownRiderIds: [riderId] })) {
     if (entry.type === "drop") {
       const moment = moments.find((m) => m.type === "peloton_splits" && near(m, entry.km)) ?? null;
@@ -221,7 +226,8 @@ export function riderWhy(input: RiderWhyInput): RiderWhy {
   const allOutGain = moments.find((m) => m.type === "all_out_gain");
   if (allOutGain) return said("allOutGain", placeOf(allOutGain, story, climbs), badDay?.lead ?? null);
   if (badDay) return said(badDay.main);
-  if (attack) return said("attackBehind", placeOf(attack, story, climbs));
+  // Kun et angreb der faktisk blev hentet: at slutte bag et udbrud er ikke at fejle.
+  if (attack && !attackHeld(attack, story, riderId)) return said("attackBehind", placeOf(attack, story, climbs));
   if (finaleGroup && sprint) return said("bunchBehindSprint");
   if (group?.includes_rest && isPeloton(true, group.size)) {
     const survivors = Object.values(outcomes ?? {}).some((o) => o === "survived");

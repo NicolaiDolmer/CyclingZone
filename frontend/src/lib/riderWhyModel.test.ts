@@ -190,3 +190,16 @@ test("kontakten slukket: 'Your day' tegner ingen knap og spoerger kun flaget", (
   assert.match(flag, /useState\(false\)/);
   assert.match(flag, /=== true/);
 });
+
+test("Codex: et angreb bag et overlevende udbrud kaldes ikke mislykket", () => {
+  const finish = finishAt(100, [["breakaway-0", ["w"], 0, false], ["solo-1", ["a"], 60, false], ["peloton-0", ["c"], 120, true, 15]]);
+  const attack = moment("finale_attack", 78, { rider_ids: ["a"] });
+  assert.notEqual(riderWhy(input("a", 2, [], storyOf([attack], finish))).main, "attackBehind");
+  const caught = moment("group_caught", 90, { rider_ids: ["a"] });
+  assert.equal(riderWhy(input("a", 2, [], storyOf([attack, caught], finish))).main, "attackBehind");
+});
+
+test("Codex: tilbageslag findes ogsaa, naar stedet er praecist (exact_km)", () => {
+  const why = riderWhy(input("a", 12, [split(90, "wprime_depleted", "a", { exact_km: 75 })], storyOf([splitMoment(75, "wprime_depleted")], behind)));
+  assert.deepEqual(why.where, { kind: "climb", name: "Col Test" });
+});
