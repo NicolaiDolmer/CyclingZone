@@ -397,9 +397,10 @@ export type StageResult = {
 //   alvorligt styrt -> udgaar (abandoned) + skadedage, SJAELDENT
 //   mekanisk uheld  -> ALTID kun tidstab (aldrig abandoned, aldrig skade);
 //                      en hjaelper taet paa giver hurtigere hjulskift
-// #6938 (ADDITIVT, KUN s5_profiles_v3, mechanics/abandons.ts): "illness" = startede
-// ikke (traethed/form, U1), "withdrawal" = en sat hjaelper steg af i et endagsloeb
-// (U3). Begge er altid udfaldet "abandoned", aldrig skade, aldrig tidstab.
+// #6938 (ADDITIVT, KUN s5_profiles_v3): "illness" = startede ikke (traethed/form, U1).
+// "withdrawal" er historisk: motoren skriver den ikke laengere (#7713), men etaper der
+// allerede er koert, staar stadig med den. Begge er altid udfaldet "abandoned", aldrig
+// skade, aldrig tidstab.
 export type IncidentKind = "crash" | "mechanical" | "illness" | "withdrawal";
 export type IncidentSeverity = "light" | "hard" | "serious";
 export type IncidentOutcome = "time_loss" | "protected_three_km_rule" | "abandoned";

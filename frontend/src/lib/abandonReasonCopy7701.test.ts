@@ -71,14 +71,10 @@ for (const { code } of LANGUAGES) {
     assert.notEqual(selectArm(arm, "stage"), selectArm(arm, "other"));
   });
 
-  test(`#7701 ${code}: hjaelpen naevner hverken opgave, ordre, kaptajn eller tal`, () => {
+  test(`#7713 ${code}: hjaelpen beskriver ikke laengere at ryttere stiger af efter maal`, () => {
     const text: string = load(code, "help").sections.raceDay.timeLimitAndGrupetto.text;
-    const start = text.indexOf(HELP_START[code]);
-    assert.ok(start > 0, `mangler afsnittet om at stige af: ${code}`);
-    const part = text.slice(start);
-    assert.doesNotMatch(part, JOB, part);
-    assert.doesNotMatch(part, ORDER_OR_CAPTAIN, part);
-    assert.doesNotMatch(part, /\d/, part);
+    assert.ok(!text.includes(HELP_START[code]), text);
+    assert.ok(!text.includes(load(code, "races").detail.incidents.withdrawal), text);
   });
 
   test(`#7701 ${code}: dashboardet kender hver vej ud og paastaar intet uheld uden aarsag`, () => {
