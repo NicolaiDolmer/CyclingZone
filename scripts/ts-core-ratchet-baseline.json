@@ -96,10 +96,10 @@
         "lib/riderOwnershipAudit*",
         "lib/transferExecution*"
       ],
-      "jsFileCount": 2,
-      "tsErrorCount": 98,
+      "jsFileCount": 1,
+      "tsErrorCount": 69,
       "files": {
-        "lib/ownershipInvariantWatch.js": 29,
+        "lib/ownershipInvariantWatch.ts": 0,
         "lib/riderOwnershipAudit.ts": 0,
         "lib/transferExecution.js": 69
       }
@@ -137,7 +137,7 @@
     }
   },
   "totals": {
-    "jsFileCount": 22,
-    "tsErrorCount": 807
+    "jsFileCount": 21,
+    "tsErrorCount": 778
   }
 }
