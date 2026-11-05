@@ -385,6 +385,8 @@ features:
     title_da: Hvorfor?-knap ved rytterne i Din dag
     state: dormant
     flag: rider_why_button
+    decision: taend
+    decide_by: 2026-11-20
     epic: 7716
     verified: 2026-11-05
     note: "#7717: seedet off, kun visning. Ejeren flytter flaget efter visuelt go."
