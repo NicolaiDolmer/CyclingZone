@@ -33,5 +33,5 @@ test("samme rytter har samme skøn på alle tre svar", () => {
   const projection = previewProjection("rider-1", SEED_PROJECTION);
   assert.deepEqual(estimate.potentialView, report.potentialView);
   assert.deepEqual(estimate.potentialView, projection.potentialView);
-  assert.equal(projection.estimateLine.at(-1).value, estimate.potentialView.value);
+  assert.equal(projection.estimateLine.at(-1)?.value, estimate.potentialView.value);
 });

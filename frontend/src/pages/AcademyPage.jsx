@@ -50,6 +50,12 @@ import { useTableSort } from "../lib/useTableSort.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import { scoutSortValue } from "../lib/scouting.js";
 import { potentialViewOf } from "../lib/potentialEstimateDisplay";
+
+// #6110: skønnet slår prognosen, når serveren sender det.
+function rosterPotentialSort(prognosis, estimate) {
+  if (!prognosis || potentialViewOf(estimate)) return scoutSortValue(estimate);
+  return prognosis.band ? (prognosis.band.lo + prognosis.band.hi) / 2 : null;
+}
 import { useYouthSquadPages } from "../lib/useYouthSquadPages.ts"; // #5519
 import { academyTargetSquad, isSquadFull, squadCapRows, SQUAD_CAPS } from "../lib/squadCaps.ts"; // #5568
 import { GiftIcon } from "../components/ui/icons/index.jsx";
@@ -170,10 +176,7 @@ export default function AcademyPage() {
   const rosterRows = useMemo(
     () => roster.map((r) => ({
       ...r,
-      // #6110: skønnet slår prognosen, når serveren sender det.
-      _potMid: r.prognosis && !potentialViewOf(scouting.estimateFor(r.id))
-        ? (r.prognosis.band ? (r.prognosis.band.lo + r.prognosis.band.hi) / 2 : null)
-        : scoutSortValue(scouting.estimateFor(r.id)),
+      _potMid: rosterPotentialSort(r.prognosis, scouting.estimateFor(r.id)),
     })),
     [roster, scouting],
   );
