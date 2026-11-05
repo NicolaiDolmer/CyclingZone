@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.403",
+    "date": "2026-11-05",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The stage plan recap only shows what can be proven",
+          "body": "The stage plan recap now only shows what the race film and the result can prove: his place, that he finished, or who he rode with. When nothing can be shown, it says nothing."
+        },
+        "da": {
+          "title": "Etapeplanens opsummering viser kun det, der kan bevises",
+          "body": "Etapeplanens opsummering viser nu kun det, løbsfilmen og resultatet kan bevise: hans placering, at han kom i mål, eller hvem han kørte med. Kan intet vises, står der ingenting."
+        },
+        "refs": [
+          7706
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.401",
     "date": "2026-11-05",
     "changes": [

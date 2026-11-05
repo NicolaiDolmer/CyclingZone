@@ -92,7 +92,19 @@
       "abandoned": "abandonó en el km {km}",
       "skipped": "saltado, se descolgó antes",
       "notReached": "no alcanzado",
-      "pending": "La película de la etapa aún no está lista."
+      "pending": "La película de la etapa aún no está lista.",
+      "outcome": {
+        "failed": "Lo intentó, sin suerte",
+        "finished": "Llegó a meta",
+        "attacked": "Atacó en el km {km}",
+        "inBreak": "En la escapada",
+        "keptContact": "Mantuvo el contacto",
+        "lostContact": "Perdió el contacto en el km {km}",
+        "outOfTime": "Fuera de control",
+        "rank": "N.º {rank} en meta",
+        "withRider": "Con {name}",
+        "withRiderTo": "Con {name} hasta el km {km}"
+      }
     }
   },
   "stagePageV2": {
