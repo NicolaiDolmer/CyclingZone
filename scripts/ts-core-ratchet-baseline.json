@@ -111,12 +111,12 @@
         "lib/finalizeInstrumentation*",
         "lib/raceFinalize*"
       ],
-      "jsFileCount": 4,
-      "tsErrorCount": 111,
+      "jsFileCount": 3,
+      "tsErrorCount": 110,
       "files": {
         "lib/boardWeekendFinalization.js": 58,
         "lib/finalizeInstrumentation.ts": 0,
-        "lib/raceFinalizeResumableFlag.js": 1,
+        "lib/raceFinalizeResumableFlag.ts": 0,
         "lib/raceFinalizeState.js": 24,
         "lib/raceFinalizeWatch.js": 28
       }
@@ -137,7 +137,7 @@
     }
   },
   "totals": {
-    "jsFileCount": 23,
-    "tsErrorCount": 808
+    "jsFileCount": 22,
+    "tsErrorCount": 807
   }
 }

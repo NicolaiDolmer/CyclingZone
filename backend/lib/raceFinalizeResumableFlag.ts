@@ -15,6 +15,8 @@ import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 
 export const RACE_FINALIZE_RESUMABLE_FLAG_KEY = "race_finalize_resumable_enabled";
 
-export async function isRaceFinalizeResumableEnabled(supabase, opts = {}) {
+type FlagOptions = NonNullable<Parameters<typeof evaluateFlagStage>[1]> & Record<string, unknown>;
+
+export async function isRaceFinalizeResumableEnabled(supabase: unknown, opts: FlagOptions = {}): Promise<boolean> {
   return evaluateFlagStage(await readFlagStage(supabase, RACE_FINALIZE_RESUMABLE_FLAG_KEY), opts);
 }
