@@ -482,6 +482,22 @@
     {
       "issue": 7654,
       "why": "Auto-tog + alarm for klare PR-er, ejer-go 4/11 i chat (MASTERPLAN §0)"
+    },
+    {
+      "issue": 7675,
+      "why": "Sentry-fejl, ejer-go 4/11 sent i chat (nat-mandat #7495)"
+    },
+    {
+      "issue": 7676,
+      "why": "Sentry-fejl, ejer-go 4/11 sent i chat (nat-mandat #7495)"
+    },
+    {
+      "issue": 7677,
+      "why": "Sentry-fejl, ejer-go 4/11 sent i chat (nat-mandat #7495)"
+    },
+    {
+      "issue": 7678,
+      "why": "Sentry-fejl, ejer-go 4/11 sent i chat (nat-mandat #7495)"
     }
   ],
   "brandList": [
