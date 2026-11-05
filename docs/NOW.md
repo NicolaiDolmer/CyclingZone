@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (5/11 20:00):** Forstå løbet #7716 går før #6110. Merget 5/11: #7699, #7687, #7689, #7698, #7703, #7723 (lodtrækning væk, live), #7724 (kontakt off), #7731. Roadmap skrevet i prod. Dernæst #7702, #7711 (ejer-go, bundle + review), #7712 (billede), #7705, #7693, #7733, #7717, #7715, #7725-#7730, A eller B #7638, besked til spillerne.
+> **🎯 Next action (5/11 21:50):** Forstå løbet #7716 går før #6110. Merget 5/11: #7699, #7687, #7689, #7698, #7703, #7723, #7724 (kontakt off), #7731, #7711, #7702, #7736. Roadmap i prod: Plan i ejerens rækkefølge, Senere tømt, Stem 50 idéer, Kendte fejl opdateret efter Discord-gennemgang (#7737-#7749). Dernæst: ejerens spillerbesked (vækst-påstanden er ikke bakket op af tal), #7712 billede + go, A/B taktik #7638, #7705, #7693, #7733, #7734, #7717, #7715, #7725-#7730. Træn nu-model og pop-up (#7737, #3924) drøftes i #build-a-feature; intet byggegodkendt.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** PC1-session 5/11 (taktikplan, afventer ejerens ja). Auto-toget kører på PC1.
+> **🤖 Working agent:** PC1-session 5/11 (roadmap og spillerbesked, lytter i #build-a-feature). Auto-toget kører på PC1.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
