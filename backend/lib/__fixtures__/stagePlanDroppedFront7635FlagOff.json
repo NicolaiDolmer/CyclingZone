@@ -1,0 +1,49 @@
+{
+  "sourceCommit": "4f38f035abd0c62b6ae5a5265c6c90e40e996128",
+  "note": "#7635: raceRunner med den rigtige v4-motor, etapeplaner for alle hold og ingen kontakt taendt, skrevet fra merge-basen foer kontakten. Kun hashes. Genereres ALDRIG med den nye kode.",
+  "wholeRace:s5_profiles_v3": {
+    "inputChecksums": [
+      4026291195,
+      4224155087,
+      1509638822
+    ],
+    "inputSha256": [
+      "cd55e1ef28df8c26bbe616a6c99efd8307c12ea6106567dc8734b296c9c8189f",
+      "9f81d69ae58bce2ec24f3f05ca079cd1b06a4a2fe9bb1e4e671e068e5635cd0e",
+      "be52a0764c85e90d0f67962b7cb57e5398ea4b8b0db5c91e0656a67ff354ee94"
+    ],
+    "outputSha256": [
+      "41467219d425519544f94882751eaa1f526ae85668bde8066858effc51c1f3a1",
+      "e6ebca0c71d46580e906bc6aa0819469605ba9aefabb9a4e5806b6d735af974f",
+      "b94586f725f25a2ac66c711d0356ddb5f579713110d0db9f3dc4bcfa34ce3f03"
+    ]
+  },
+  "wholeRace:s5_profiles_v2": {
+    "inputChecksums": [
+      4026291195,
+      1842379517,
+      2976971453
+    ],
+    "inputSha256": [
+      "bfc26d77b9c04235f9e8bfd0e8cd480f8b8212c08d7d094a829a1cb4b15febff",
+      "35d99782337d1ab69943a9497802edfcf0a944fa5d4c6e162e03e850d3e35224",
+      "1a7ca3b5e0b1f485f86577c00de2c91d192fb073cecaee5bd6c59ba0253c7a7c"
+    ],
+    "outputSha256": [
+      "64a99470b671b46e976b3f23a46714c2fda671be82b3e6d38cc0e63730a89910",
+      "94f58d8b043e42371980f586a6019e40003b4dde93039688e1f0084b4d689a0e",
+      "d20bf1a0e811f773ba47e7fd2f89047622e399109f425beacb7d141cef0896a0"
+    ]
+  },
+  "stageByStage:s5_profiles_v3:stage3": {
+    "inputChecksums": [
+      3524418005
+    ],
+    "inputSha256": [
+      "d72ce15597088469a57436a23e414ea050e68a1786c31edec6e07a693cf10878"
+    ],
+    "outputSha256": [
+      "e4d58a75ec0e30ceb8861e4147e838d05abc9d73bd1cf59b5e747676b561842a"
+    ]
+  }
+}

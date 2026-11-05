@@ -55,6 +55,10 @@
         "end": "The last 10 km start on the descent to the finish, so step {number} only begins in the finale.",
         "finale": "The last 10 km start on the descent to the finish, so step {number} only begins in the finale."
       },
+      "flat": {
+        "start": "The last 10 km start between the last climb and the finish, so step {number} begins at the top.",
+        "finale": "The last 10 km start between the last climb and the finish, so step {number} only begins in the finale."
+      },
       "samePoint": "Steps {first} and {second} switch at the same point here, so step {first} is not ridden."
     },
     "timeTrial": "No stage plan on a time trial.",

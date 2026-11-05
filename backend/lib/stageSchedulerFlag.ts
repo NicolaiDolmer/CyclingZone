@@ -10,6 +10,8 @@ import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 
 export const STAGE_SCHEDULER_FLAG_KEY = "stage_scheduler_enabled";
 
-export async function isStageSchedulerEnabled(supabase, opts = {}) {
+type FlagOptions = NonNullable<Parameters<typeof evaluateFlagStage>[1]> & Record<string, unknown>;
+
+export async function isStageSchedulerEnabled(supabase: unknown, opts: FlagOptions = {}): Promise<boolean> {
   return evaluateFlagStage(await readFlagStage(supabase, STAGE_SCHEDULER_FLAG_KEY), opts);
 }

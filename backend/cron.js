@@ -66,7 +66,7 @@ import { startClockAlignedInterval } from "./lib/schedulerTick.js"; // #3624 tri
 import { runHalfFinalizedRaceWatch } from "./lib/raceFinalizeWatch.js"; // #4147
 import { refreshRankingMatviewsGated } from "./lib/refreshRankingMatviews.js"; // #5911
 import { takeGlobalRankWeeklySnapshotSafe } from "./lib/globalRankWeeklySnapshot.js";
-import { isStageSchedulerEnabled } from "./lib/stageSchedulerFlag.js";
+import { isStageSchedulerEnabled } from "./lib/stageSchedulerFlag.ts";
 import { isRaceEngineV2Enabled } from "./lib/raceEngineFlag.js";
 import { processStallWatchdog } from "./lib/stallWatchdog.js";
 import { createOutageMonitor, OUTAGE_PROBE_INTERVAL_MS } from "./lib/outageMonitor.js"; // #6854
@@ -81,7 +81,7 @@ import { runDeferredTransferHealSweep } from "./lib/deferredTransferHealSweep.js
 import { runRaceEntryGeneratorSweep } from "./lib/raceEntryGeneratorSweep.js";
 import { runIntakeOfferExpirySweep } from "./lib/academyIntakeExpirySweep.js";
 import { runSundayIntakeTick } from "./lib/sundayIntakeTick.js";
-import { isAcademyIntakePullEnabled } from "./lib/academyIntakePullFlag.js";
+import { isAcademyIntakePullEnabled } from "./lib/academyIntakePullFlag.ts";
 import { runAcademyWeeklyPullSweep } from "./lib/academyWeeklyPull.ts";
 import { runAcademyPullReminderSweep } from "./lib/academyReminder.ts";
 import { runMarketValueLevelCorrectionGateSweep } from "./lib/marketValueLevelCorrectionGate.js"; // #3449

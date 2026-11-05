@@ -29,6 +29,18 @@ export function shortDate(iso: string | null | undefined, language: string | und
   }).format(d);
 }
 
+/**
+ * Datointerval fra to datonøgler ("2026-11-02", "2026-11-08") som "2–8 Nov" /
+ * "2.–8. nov.". Nøglerne er rene datoer, så de formateres i UTC (ingen tidszone-skred).
+ */
+export function dateRange(start: string, end: string, language: string | undefined): string {
+  const a = new Date(`${start}T00:00:00Z`);
+  const b = new Date(`${end}T00:00:00Z`);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return "";
+  const fmt = new Intl.DateTimeFormat(intlLocale(language), { day: "numeric", month: "short", timeZone: "UTC" });
+  return typeof fmt.formatRange === "function" ? fmt.formatRange(a, b) : `${fmt.format(a)} – ${fmt.format(b)}`;
+}
+
 export function areaTitle(t: Translate, key: string): string {
   return t(`engines.${key}.title`);
 }

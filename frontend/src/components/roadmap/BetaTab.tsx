@@ -4,7 +4,7 @@
 // fører til den eksisterende ansøgning under Indstillinger (#5259).
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
-import type { RoadmapItem } from "../../lib/roadmapModel.ts";
+import { roadmapRowId, type RoadmapItem } from "../../lib/roadmapModel.ts";
 import { CategoryTag, EmptyState, Section, SectionHeader, SectionStack, StatusBadge } from "./roadmapUi.ts";
 import { RowMeta, RowTitle, SkeletonRows, TitleCount, ROW, ROW_LIST } from "./RoadmapRows.tsx";
 import { areaTitle, localTitle, shortDate } from "./roadmapFormat.ts";
@@ -90,7 +90,7 @@ export default function BetaTab({ loading, inBeta, comingToBeta, betaState, isLo
         <p className="mb-3 text-cz-3 text-xs">{t("beta.inBetaHint")}</p>
         <ul className={ROW_LIST}>
           {inBeta.map((item) => (
-            <li key={item.id} className={`${ROW} flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-3`}>
+            <li key={item.id} id={roadmapRowId(item.id)} className={`${ROW} flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-3`}>
               <div className="sm:w-36 shrink-0 pt-0.5">
                 {item.live_soon
                   ? <StatusBadge state="won">{t("beta.badgeSoon")}</StatusBadge>

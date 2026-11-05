@@ -231,3 +231,16 @@ test("#7332: withIndividualTimeTrialEfforts normaliserer kun enkeltstart-etaper 
   assert.equal(matrix[3].r2.effort, "protect");
   assert.equal(withIndividualTimeTrialEfforts({ matrix, profileByStage: {} }), matrix);
 });
+
+test("#7624: kopi er aldrig en lydlos no-op, selv naar en etape mangler i matrixen", () => {
+  // Maal-etapen findes ikke i kladden: den oprettes med kildens intentioner.
+  let matrix = buildDraftMatrix({ riders: RIDERS, overrides: [], stageNumbers: [3], stagesCompleted: 2 });
+  matrix = setIntention({ matrix, stageNumber: 3, riderId: "r1", effort: "all_out" });
+  const toMissing = copyStageIntentions({ matrix, fromStage: 3, toStage: 4, riders: RIDERS });
+  assert.equal(intentionFor({ matrix: toMissing, stageNumber: 4, riderId: "r1" }), "all_out");
+  assert.equal(intentionFor({ matrix: toMissing, stageNumber: 4, riderId: "r2" }), "normal");
+  // Kilde-etapen mangler: maal-etapen faar standard-indsatsen for hele truppen.
+  const fromMissing = copyStageIntentions({ matrix: {}, fromStage: 3, toStage: 4, riders: RIDERS });
+  assert.equal(intentionFor({ matrix: fromMissing, stageNumber: 4, riderId: "r3" }), "normal");
+  assert.equal(Object.keys(fromMissing[4]).length, RIDERS.length);
+});
