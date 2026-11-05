@@ -410,7 +410,7 @@ export function collectRiderIds(events) {
 // #6649: årsagerne motoren skriver på `bad_day` (vejret som sin type). Ukendt årsag → ingen linje.
 const BAD_DAY_CAUSES = new Set(["fatigue", "form", "illness", "rain", "wind", "heat"]);
 
-export function describeEvent(event, { riderNameById, teamNameById, ownRiderIds = null } = {}) {
+export function describeEvent(event, { riderNameById, teamNameById, ownRiderIds } = {}) {
   if (!event?.type) return null;
   if (event.grouped) {
     return describeGroupedEvent(event, (id) => riderName(id, riderNameById), (member) => describeEvent(member, { riderNameById, teamNameById }));
