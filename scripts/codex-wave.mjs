@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { acquireWave, releaseWave, readWave, updateWave, hostBootId, validateTracks, getOpenPrs, sharedRunDir, REPO } from './wave-policy.mjs';
+import { acquireWave, releaseWave, readWave, updateWave, hostBootId, validateTracks, getOpenPrs, getIssue, sharedRunDir, REPO } from './wave-policy.mjs';
 import { generateBrief } from './make-wave-brief.mjs';
 import { assertBuildStop } from './lib/build-stop.mjs';
 import { assertLaneCount, hostLaneCap } from './wave-capacity.mjs';
@@ -84,9 +84,9 @@ function resultSchema(role) {
 export async function runWave(options, supplied = {}) {
   const { root, runDir, owner } = options;
   const tracks = validateTracks(options.tracks);
-  const deps = { now: () => Date.now(), bootId: hostBootId, readPrs: getOpenPrs, laneLimit: hostLaneCap, ...supplied };
+  const deps = { now: () => Date.now(), bootId: hostBootId, readPrs: getOpenPrs, readIssue: getIssue, laneLimit: hostLaneCap, ...supplied };
   const execution = executionPlan(options, deps.laneLimit());
-  const wave = await acquireWave(runDir, { runtime: 'codex', owner, pid: process.pid, bootId: deps.bootId(), dispatchStarted: false, processTracking: 'registered', children: [], cwd: root, now: deps.now(), tracks }, deps.readPrs);
+  const wave = await acquireWave(runDir, { runtime: 'codex', owner, pid: process.pid, bootId: deps.bootId(), dispatchStarted: false, processTracking: 'registered', children: [], cwd: root, now: deps.now(), tracks }, deps.readPrs, deps.readIssue);
   const evidence = path.join(runDir, 'waves', wave.waveId);
   fs.mkdirSync(evidence, { recursive: true });
   const report = path.join(evidence, 'report.json');

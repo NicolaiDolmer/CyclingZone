@@ -1,22 +1,59 @@
 // #3582 — bevægelses-log for rytter-ejerskab.
 //
 // SKRIVER til rider_ownership_events (database/2026-08-18-3582-rider-ownership-
-// audit.sql, IKKE anvendt endnu — se migrationens header). Én række pr.
+// audit.sql). Én række pr.
 // ejerskabsskifte: hvem havde rytteren, hvem fik ham, hvorfor, og hvilken
 // entitet (auktion/handel/bytte/admin) udløste det.
 //
 // BEST-EFFORT, ALDRIG FATAL — samme princip som #3401's post-hammerslag-reveal
 // og #1872's kontraktudløb-notifikation i auctionFinalization.js: en fejlet
 // berigelses-skrivning må ALDRIG kunne rulle en allerede-committet
-// ejerskabsændring tilbage. Det gælder DOBBELT her: indtil migrationen rent
-// faktisk er kørt i prod, findes tabellen slet ikke, og ethvert kald ville
-// ellers fejle finaliseringen for enhver auktion i systemet.
+// ejerskabsændring tilbage. Det gælder også ved databasefejl, eksempelvis
+// en manglende tabel i et test- eller migrationsmiljø.
 //
 // idempotency_key (valgfri) genbruger SAMME nøgle som den ledsagende
 // finance_transactions-postering hvor én findes (fx `auction_winner:<id>`) —
 // en cron-retry der rammer 23505 på financen no-op'er så også audit-raekken.
 
 import { normalizeSupabaseErrorMessage } from "./supabaseErrorNormalize.js";
+
+type OwnershipEvent = {
+  riderId?: string | null;
+  riderFirstname?: string | null;
+  riderLastname?: string | null;
+  fromTeamId?: string | null;
+  toTeamId?: string | null;
+  reason?: string | null;
+  relatedEntityType?: string | null;
+  relatedEntityId?: string | null;
+  actorType?: string | null;
+  actorId?: string | null;
+  occurredAt?: string | null;
+  idempotencyKey?: string | null;
+};
+type OwnershipPayload = {
+  rider_id: string;
+  rider_firstname: string | null;
+  rider_lastname: string | null;
+  from_team_id: string | null;
+  to_team_id: string | null;
+  reason: string;
+  related_entity_type: string | null;
+  related_entity_id: string | null;
+  actor_type: string | null;
+  actor_id: string | null;
+  idempotency_key: string | null;
+  occurred_at?: string;
+};
+type OwnershipAuditResponse = {
+  error?: { code?: string; message?: unknown } | null;
+};
+type OwnershipAuditClient = {
+  from?: (table: "rider_ownership_events") => {
+    insert(payload: OwnershipPayload): PromiseLike<OwnershipAuditResponse>;
+  };
+};
+type OwnershipAuditResult = { ok: boolean; skipped: boolean };
 
 export const RIDER_OWNERSHIP_REASON = Object.freeze({
   AUCTION_WIN: "auction_win",
@@ -52,14 +89,17 @@ export const RIDER_OWNERSHIP_REASON = Object.freeze({
  * @param {string} [event.idempotencyKey] genbrug financens nøgle hvor der findes én
  * @returns {Promise<{ok:boolean, skipped:boolean}>} kaster ALDRIG
  */
-export async function recordRiderOwnershipEvent(supabase, event) {
+export async function recordRiderOwnershipEvent(
+  supabase: OwnershipAuditClient | null | undefined,
+  event?: OwnershipEvent | null,
+): Promise<OwnershipAuditResult> {
   try {
     if (!supabase?.from) throw new Error("Supabase client required");
     if (!event?.riderId || !event?.reason) {
       throw new Error("recordRiderOwnershipEvent: riderId and reason are required");
     }
 
-    const payload = {
+    const payload: OwnershipPayload = {
       rider_id: event.riderId,
       rider_firstname: event.riderFirstname ?? null,
       rider_lastname: event.riderLastname ?? null,
@@ -95,7 +135,7 @@ export async function recordRiderOwnershipEvent(supabase, event) {
     console.error(
       "  ⚠️  recordRiderOwnershipEvent fejlede for rytter %s (ikke-fatal, #3582):",
       event?.riderId,
-      e.message
+      (e as { message?: unknown }).message
     );
     return { ok: false, skipped: false };
   }

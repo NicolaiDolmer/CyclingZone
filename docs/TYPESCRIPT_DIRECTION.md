@@ -13,6 +13,9 @@ Denne fil er SSOT for retningen. Mekanikken bor i tre filer:
 `backend/lib/financeForecast.ts` er nu TypeScript; den historiske `.js`-reference
 i prioriteringstabellen nedenfor angiver den oprindelige maaling (#7583).
 
+`backend/lib/finalizeInstrumentation.ts` er ligeledes konverteret uden
+runtime-ændringer (#7583); den aktuelle filstatus måles i ratchet-baselinen.
+
 | Fil | Rolle |
 |---|---|
 | [`scripts/ts-core-ratchet-baseline.json`](../scripts/ts-core-ratchet-baseline.json) | Kerne-listen som **data** (omraade -> globs) + baseline-tallene |

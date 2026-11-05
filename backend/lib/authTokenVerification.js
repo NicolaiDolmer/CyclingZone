@@ -93,18 +93,111 @@ export function classifyAuthFailure({ user, error }) {
   return { outcome: "unavailable", reason };
 }
 
+// ── #7663: lokalt login-tjek ────────────────────────────────────────────────
+// Før kaldte hvert eneste request /auth/v1/user. Det er et netværkskald pr.
+// request og gør Supabase Auth til et enkelt fejlpunkt. supabase-js' getClaims()
+// verificerer et asymmetrisk signeret token (ES256/RS256) lokalt mod projektets
+// offentlige nøgler (JWKS, som biblioteket selv henter og husker), og falder
+// selv tilbage til /auth/v1/user for symmetrisk signerede tokens.
+//
+// Kun to udfald af det lokale tjek er endelige:
+//  - gyldig signatur + ikke udløbet + ligner en bruger-session → authenticated
+//  - AuthInvalidJwtError (udløbet, forkert signatur, ødelagt token) → rejected
+// ALT andet (JWKS kunne ikke hentes, ukendt fejl, ingen getClaims på klienten,
+// et token der ikke ligner en bruger-session) går videre til det gamle kald,
+// så tvivl aldrig bliver til en afvisning den gamle sti ikke ville have givet.
+//
+// Bevidst afvejning: et lokalt tjek ser ikke en session der er logget ud eller
+// en bruger der er slettet, før tokenet selv udløber. Det er prisen for at
+// slippe for et kald pr. request, og den samme som Supabase selv anbefaler.
+
+/** Fejl-navnet supabase-js bruger når selve tokenet er ugyldigt. */
+const INVALID_JWT_ERROR_NAME = "AuthInvalidJwtError";
+
 /**
- * Verificér et bearer-token mod Supabase og oversæt svaret til en afgørelse.
+ * Byg det bruger-objekt requireAuth sætter på `req.user` ud fra JWT-claims.
+ * Nedstrøms bruges `id` (overalt) og `email` (billing); resten er med, så
+ * formen ligner getUser()'s svar.
+ *
+ * @param {Record<string, any>} claims
+ */
+export function userFromClaims(claims) {
+  return {
+    id: claims.sub,
+    email: claims.email ?? null,
+    phone: claims.phone ?? null,
+    role: claims.role ?? null,
+    aud: claims.aud ?? null,
+    app_metadata: claims.app_metadata ?? {},
+    user_metadata: claims.user_metadata ?? {},
+    is_anonymous: claims.is_anonymous === true,
+  };
+}
+
+function looksLikeUserSession(claims) {
+  return Boolean(claims)
+    && typeof claims.sub === "string" && claims.sub.length > 0
+    && claims.role === "authenticated";
+}
+
+/**
+ * Forsøg lokal verifikation. Returnerer en afgørelse, eller null når den gamle
+ * sti (getUser) skal spørges.
+ *
+ * @param {{ auth: { getClaims?: (token: string) => Promise<any> } }} authClient
+ * @param {string} token
+ * @returns {Promise<{ outcome: "authenticated" | "rejected", reason: string, user: object | null } | null>}
+ */
+export async function verifyBearerTokenLocally(authClient, token) {
+  if (typeof authClient?.auth?.getClaims !== "function") return null;
+  let result;
+  try {
+    result = await authClient.auth.getClaims(token);
+  } catch {
+    // catch-ok: lokal verifikation er en genvej, ikke sandheden. Kaster den
+    // (fx WebCrypto eller en uventet algoritme), spørges /auth/v1/user som
+    // før, og den sti klassificerer og logger selv sine fejl.
+    return null;
+  }
+  const error = result?.error ?? null;
+  if (error) {
+    if (error.name === INVALID_JWT_ERROR_NAME) {
+      return { outcome: "rejected", reason: authFailureReason(error), user: null };
+    }
+    // Netværk, JWKS-hentning, eller getClaims' egen getUser-fallback: lad den
+    // gamle sti afgøre det, så klassifikationen er præcis som i dag.
+    return null;
+  }
+  const claims = result?.data?.claims ?? null;
+  if (!looksLikeUserSession(claims)) return null;
+  return { outcome: "authenticated", reason: "ok", user: userFromClaims(claims) };
+}
+
+/**
+ * Verificér et bearer-token og oversæt svaret til en afgørelse. Først lokalt
+ * (#7663), ved tvivl mod /auth/v1/user.
  *
  * Exceptions fanges her: en kastet fejl fra fetch-laget er per definition
  * "kunne ikke spørge", og den må ikke blive til en 500 der ligner en bug i
  * vores egen kode.
  *
- * @param {{ auth: { getUser: (token: string) => Promise<any> } }} authClient
+ * @param {{ auth: { getUser: (token: string) => Promise<any>, getClaims?: (token: string) => Promise<any> } }} authClient
  * @param {string} token
  * @returns {Promise<{ outcome: "authenticated" | "rejected" | "unavailable", reason: string, user: object | null }>}
  */
 export async function verifyBearerToken(authClient, token) {
+  const local = await verifyBearerTokenLocally(authClient, token);
+  if (local) return local;
+  return verifyBearerTokenRemotely(authClient, token);
+}
+
+/**
+ * Den oprindelige sti: spørg /auth/v1/user (supabase-js getUser).
+ *
+ * @param {{ auth: { getUser: (token: string) => Promise<any> } }} authClient
+ * @param {string} token
+ */
+export async function verifyBearerTokenRemotely(authClient, token) {
   let user = null;
   let error = null;
   try {

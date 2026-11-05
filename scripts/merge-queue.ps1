@@ -83,6 +83,8 @@ param(
   [Parameter(Mandatory)]
   [string] $Pr,
   [switch] $DryRun,
+  # Codex P1 (#7657): auto-toget sender det vurderede/godkendte hoved; et andet hoved = STOP foer merge (kun med een PR).
+  [string] $ExpectHead = "",
   # Owner renewal 28/10: real CodeRabbit instead of Claude for #7313 only.
   [switch] $CodeRabbitNight,
   [int] $MinWaitMinutesNoBackend = 3,
@@ -135,6 +137,7 @@ $script:ActiveMarkerScript = Join-Path $PSScriptRoot 'merge-queue-active-marker.
 
 $PrNumbers = @($Pr -split '[,\s]+' | Where-Object { $_ } | ForEach-Object { [int]$_ })
 if ($PrNumbers.Count -eq 0) { Write-Error "Ingen gyldige PR-numre i -Pr '$Pr'."; exit 1 }
+if ($ExpectHead -and ($PrNumbers.Count -ne 1 -or $ExpectHead -notmatch '^[0-9a-f]{40}$')) { Write-Error "-ExpectHead kraever praecis een PR og en fuld SHA."; exit 1 }
 
 if ($CodeRabbitNight -and ($Repo -ne 'NicolaiDolmer/CyclingZone' -or @($PrNumbers | Where-Object { $_ -notin @(7313) }).Count -gt 0)) {
   throw 'CodeRabbitNight er kun ejer-godkendt for #7313 i CyclingZone.'
@@ -1068,6 +1071,11 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   }
 
   $fresh = Get-PrPlanEntry $n
+  # Codex P1 (#7657): hovedet skal vaere det, kalderen vurderede; ellers merges et ikke-godkendt commit.
+  if ($ExpectHead -and $fresh.headSha -ne $ExpectHead) {
+    Write-Host "STOP: PR #$n har hoved $($fresh.headSha) - ikke det godkendte $ExpectHead. Intet merges." -ForegroundColor Red
+    Exit-Queue 1
+  }
   # #7628: konflikt KUN i TS-baseline-filerne loeses af modulet (exit 0); alt andet = uaendret adfaerd.
   # Loest = vent paa netop denne PR nu (ikke bagerst), saa naeste konflikt loeses mod den nye main.
   if ($fresh.mergeable -eq 'CONFLICTING' -and -not $script:updated.ContainsKey("$n")) {
@@ -1158,6 +1166,12 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   $recheck = Get-PrPlanEntry $n
   if ($recheck.checksExit -ne 0 -or -not $recheck.headSha -or $recheck.headSha -ne $fresh.headSha) {
     Write-Host "STOP: PR #$n har aendret sig under ventetiden (hoved $($fresh.headSha) -> $($recheck.headSha), checks: $($recheck.checksSummary)). Koer koeen igen, naar det nye hoved er groent." -ForegroundColor Red
+    Exit-Queue 1
+  }
+  # Codex P1 (#7657): sidste vagt lige foer merge - et push under Wait-PrGreen eller en
+  # baseline-loesning maa aldrig merge et andet hoved end det, kalderen godkendte.
+  if ($ExpectHead -and $recheck.headSha -ne $ExpectHead) {
+    Write-Host "STOP: PR #$n har hoved $($recheck.headSha) lige foer merge - ikke det godkendte $ExpectHead. Intet merges." -ForegroundColor Red
     Exit-Queue 1
   }
   Write-Host "  Merger: gh pr merge $n --squash --delete-branch --admin"

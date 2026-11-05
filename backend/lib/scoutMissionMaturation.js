@@ -227,16 +227,28 @@ async function claimAndCompleteMission({ supabase, assignment, loadCandidates, g
   // rapporten filtrerer ved visning (scoutReportVisibility), så tæl med SAMME
   // filter her. Kun notifikationen får den filtrerede kopi; det gemte result
   // (og scout_actions ovenfor) er uændret. Fejl i opslaget må aldrig vælte en
-  // allerede claimet mission: så falder beskeden tilbage til shortlistens længde.
-  let notifyResult = result;
-  try {
-    const [visible] = await hydrateVisibility(supabase, [{ ...assignment, status: "completed", result }]);
-    notifyResult = visible.result;
-  } catch (err) {
-    console.error(`  scout-mission ${assignment.id}: visibility lookup for notification failed, using shortlist length:`, err.message);
-    captureException(err, { tags: { flow: "scouting", stage: "mission-notify-visibility" }, assignmentId: assignment.id });
+  // allerede claimet mission. Opslaget forsøges to gange (forbigående fejl);
+  // fejler begge, sendes beskeden UDEN antal i stedet for det ufiltrerede tal,
+  // så beskeden aldrig kan love flere ryttere end rapporten viser.
+  const completedAssignment = { ...assignment, status: "completed", result };
+  let notifyAssignment = null;
+  let lastErr = null;
+  for (let attempt = 0; attempt < 2 && !notifyAssignment; attempt += 1) {
+    try {
+      const [visible] = await hydrateVisibility(supabase, [completedAssignment]);
+      notifyAssignment = { ...completedAssignment, result: visible.result };
+    } catch (err) {
+      // best-effort: fejlen gemmes og rapporteres (log + Sentry) nedenfor, hvis
+      // også andet forsøg fejler; et lykket genforsøg er ikke en fejl.
+      lastErr = err;
+    }
   }
-  await notify({ supabase, assignment: { ...assignment, status: "completed", result: notifyResult }, now });
+  if (!notifyAssignment) {
+    console.error(`  scout-mission ${assignment.id}: visibility lookup for notification failed, sending without count:`, lastErr?.message);
+    captureException(lastErr, { tags: { flow: "scouting", stage: "mission-notify-visibility" }, assignmentId: assignment.id });
+    notifyAssignment = { ...completedAssignment, shortlistCountUnavailable: true };
+  }
+  await notify({ supabase, assignment: notifyAssignment, now });
   return { completed: true };
 }
 

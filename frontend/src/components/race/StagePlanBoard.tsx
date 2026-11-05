@@ -20,6 +20,8 @@ import { useEffect, useMemo, useState } from "react";
 import { authHeaders } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import { waypointsFor } from "../../lib/stageRouteProfile.js";
+import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js"; // #7636
+import { riderInFrontOrFieldAt, type TimelineEvent as SplitTimelineEvent } from "../../lib/stageSplitTimes.ts"; // #7636
 import SortableTh from "../ui/SortableTh.jsx";
 import { Button, CheckIcon, ChevronRightIcon, LockIcon, MessageIcon, MinusIcon, PlusIcon, Select, XIcon } from "../ui/index.js";
 import {
@@ -130,19 +132,24 @@ function recapLine(t: TFn, route: StagePlanRoute, legs: StagePlanLeg[], item: St
   // det led der faktisk afloeste det, ikke altid det naeste i kaeden.
   const start = i > 0 ? triggerLabel(t, route, legs[i].from, legs[i - 1].task) : "";
   const endFrom = item.endLeg == null ? undefined : legs[item.endLeg]?.from;
+  // #7636: et skift filmen ikke viser (fromHidden / ingen slutgrund) staar ikke i teksten.
+  const shownStart = item.fromHidden ? "" : start;
+  if (item.endReason == null) return shownStart;
   const end = item.endReason === "kom"
     ? t("stagePlan.recap.kom", { climb: endFrom?.at === "kom" ? climbLabel(t, route, endFrom.kom_index) : "—" })
     : t(`stagePlan.recap.${item.endReason}`, { km });
-  return start ? `${start}, ${end}` : end;
+  return shownStart ? `${shownStart}, ${end}` : end;
 }
 
 /** Efter etapen: hvad rytteren faktisk gjorde i hvert led. */
-function PlanRecap({ t, legs, route, events, riderId }: { t: TFn; legs: StagePlanLeg[]; route: StagePlanRoute; events: TimelineEvent[]; riderId: string }) {
-  const items = stagePlanRecap(legs, events, riderId);
+function PlanRecap({ t, legs, route, events, riderId, crossCheck = false }: { t: TFn; legs: StagePlanLeg[]; route: StagePlanRoute; events: TimelineEvent[]; riderId: string; crossCheck?: boolean }) {
+  // #7636 (kontakten stage_plan_dropped_front_7635): krydstjek mod rytterens gruppe i filmen.
+  const items = stagePlanRecap(legs, events, riderId, crossCheck ? { inFrontOrFieldAt: (km) => riderInFrontOrFieldAt(events as SplitTimelineEvent[], riderId, km) } : {});
   return (
     <ul className="space-y-1">
       {items.map((item, i) => {
         const ridden = item.status === "done" || item.status === "to_finish" || item.status === "abandoned";
+        const line = recapLine(t, route, legs, item, i);
         return (
           <li key={i} className="flex items-start gap-2 text-xs">
             <span className="w-3.5 shrink-0 pt-0.5 text-cz-success">
@@ -150,8 +157,7 @@ function PlanRecap({ t, legs, route, events, riderId }: { t: TFn; legs: StagePla
             </span>
             <span className={ridden ? "text-cz-1" : "text-cz-3"}>
               <span className="font-medium">{t(`stagePlan.task.${item.task}`)}</span>
-              {", "}
-              <span className="tabular-nums">{recapLine(t, route, legs, item, i)}</span>
+              {line ? <>{", "}<span className="tabular-nums">{line}</span></> : null}
             </span>
           </li>
         );
@@ -344,6 +350,13 @@ export default function StagePlanBoard({
   const route = useMemo(() => routeForProfile(profile), [profile]);
   const features = useMemo(() => stagePlanFeaturesFromRaw(profile), [profile]); // #7383
   const events = useStageTimeline(raceId, activeStage, stageCompleted);
+  // #7636: kontakten laeses fra GET /api/feature-flags (binaer; fejl = slukket = som foer).
+  const [crossCheck7636, setCrossCheck7636] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    fetchPlayerFeatureFlags().then((flags: Record<string, boolean>) => { if (alive) setCrossCheck7636(flags?.stage_plan_dropped_front_7635 === true); });
+    return () => { alive = false; };
+  }, []);
   const planByRider = new Map<string, StagePlanLeg[] | null>((order?.riders ?? []).map((r): [string, StagePlanLeg[] | null] => [r.rider_id, Array.isArray(r.plan) && r.plan.length ? r.plan : null]));
   const timeTrial = route.profile_type === "itt" || route.profile_type === "itt_hilly" || route.profile_type === "ttt";
 
@@ -393,7 +406,7 @@ export default function StagePlanBoard({
           </>
         );
       }
-      return <PlanRecap t={t} legs={legs} route={route} events={events} riderId={rider.rider_id} />;
+      return <PlanRecap t={t} legs={legs} route={route} events={events} riderId={rider.rider_id} crossCheck={crossCheck7636} />;
     }
     if (legs) {
       const fits = validateStagePlanLegs(legs, role, route) === null;

@@ -433,19 +433,46 @@ describe("completeDueMissionAssignments (#3997)", () => {
     assert.equal(supabase.state.inserts.scout_actions.length, stored.length); // gemt data uændret
   });
 
-  it("#6138: fejl i synligheds-opslaget vælter ikke missionen — beskeden bruger shortlistens længde", async () => {
+  it("#6138: fejl i synligheds-opslaget vælter ikke missionen — beskeden nævner intet antal (aldrig det ufiltrerede)", async () => {
     const now = new Date("2026-08-02T09:00:00.000Z");
     const supabase = makeMockSupabase({ assignments: [missionAssignment()], candidates: CANDIDATES });
     const calls = [];
-    const notify = async ({ assignment }) => { calls.push(assignment.result.shortlist.length); return { delivered: true }; };
-    const hydrateVisibility = async () => { throw new Error("db nede"); };
+    const notify = async ({ assignment }) => { calls.push(buildScoutReportReadyNotification({ assignment })); return { delivered: true }; };
+    let attempts = 0;
+    const hydrateVisibility = async () => { attempts += 1; throw new Error("db nede"); };
     const origError = console.error;
     console.error = () => {};
     try {
       const result = await complete({ supabase, now, loadCandidates: async () => CANDIDATES, notify, hydrateVisibility });
       assert.deepEqual(result, { completed: 1 });
     } finally { console.error = origError; }
-    assert.equal(calls[0], supabase.state.assignments[0].result.shortlist.length);
+    const stored = supabase.state.assignments[0].result.shortlist;
+    assert.ok(stored.length > 0);
+    assert.equal(attempts, 2, "opslaget forsøges igen én gang før fallback");
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].metadata.shortlistCount, null);
+    assert.equal(calls[0].metadata.messageCode, "notif.scoutReportReady.mission.messageNoCount");
+    assert.deepEqual(calls[0].metadata.messageParams, {});
+    assert.doesNotMatch(calls[0].message, /\d/, "ingen tal i beskeden");
+    assert.equal(supabase.state.inserts.scout_actions.length, stored.length); // gemt data uændret
+  });
+
+  it("#6138: forbigående fejl i synligheds-opslaget → andet forsøg giver det filtrerede antal", async () => {
+    const now = new Date("2026-08-02T09:00:00.000Z");
+    const supabase = makeMockSupabase({ assignments: [missionAssignment()], candidates: CANDIDATES });
+    const calls = [];
+    const notify = async ({ assignment }) => { calls.push(buildScoutReportReadyNotification({ assignment })); return { delivered: true }; };
+    let attempts = 0;
+    const hydrateVisibility = async (_client, completed) => {
+      attempts += 1;
+      if (attempts === 1) throw new Error("timeout");
+      const [a] = completed;
+      return [{ ...a, result: { ...a.result, shortlist: a.result.shortlist.slice(1) } }];
+    };
+    await complete({ supabase, now, loadCandidates: async () => CANDIDATES, notify, hydrateVisibility });
+    const stored = supabase.state.assignments[0].result.shortlist;
+    assert.equal(attempts, 2);
+    assert.equal(calls[0].metadata.shortlistCount, stored.length - 1);
   });
 
   it("en fejlende notify isoleres af per-assignment try/catch (kaster ikke videre) — status er allerede sat", async () => {

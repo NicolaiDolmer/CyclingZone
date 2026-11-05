@@ -14,20 +14,20 @@
 // returnerede query-objekt, ikke via nye from/rpc-kald) — god nok præcision til
 // fordelingsformål uden at hooke ind i den underliggende fetch.
 
-/**
- * @param {object} supabase - en ægte (eller mock-) supabase-klient.
- * @returns {{ client: object, counter: { calls: number } }}
- */
-export function wrapSupabaseWithCallCounter(supabase) {
+type CallCounter = { calls: number };
+type PhaseMeasurement = { name: string; ms: number; calls: number };
+
+/** Bevarer klientens type, også når værdier passerer uændret uden en proxy. */
+export function wrapSupabaseWithCallCounter<T>(supabase: T): { client: T; counter: CallCounter } {
   const counter = { calls: 0 };
   if (!supabase || typeof supabase !== "object") {
     return { client: supabase, counter };
   }
   const client = new Proxy(supabase, {
     get(target, prop, receiver) {
-      const value = Reflect.get(target, prop, receiver);
+      const value: unknown = Reflect.get(target, prop, receiver);
       if ((prop === "from" || prop === "rpc") && typeof value === "function") {
-        return (...args) => {
+        return (...args: unknown[]) => {
           counter.calls += 1;
           return value.apply(target, args);
         };
@@ -43,7 +43,12 @@ export function wrapSupabaseWithCallCounter(supabase) {
  * lægger { name, ms, calls } i `phases`-arrayet. `counter` er den delte tæller
  * fra wrapSupabaseWithCallCounter — diffet før/efter isolerer trinnets EGNE kald.
  */
-export async function measurePhase(phases, counter, name, fn) {
+export async function measurePhase<T>(
+  phases: PhaseMeasurement[],
+  counter: CallCounter,
+  name: string,
+  fn: () => T,
+): Promise<Awaited<T>> {
   const startMs = Date.now();
   const startCalls = counter.calls;
   try {
@@ -56,7 +61,7 @@ export async function measurePhase(phases, counter, name, fn) {
 /**
  * Formaterer én struktureret log-linje: `⏱ <label>: <fase>=<calls>c/<ms>ms · … · total=<calls>c/<ms>ms`.
  */
-export function formatPhaseLogLine(label, phases) {
+export function formatPhaseLogLine(label: string, phases: readonly PhaseMeasurement[]): string {
   const totalMs = phases.reduce((s, p) => s + p.ms, 0);
   const totalCalls = phases.reduce((s, p) => s + p.calls, 0);
   const parts = phases.map((p) => `${p.name}=${p.calls}c/${p.ms}ms`);

@@ -323,7 +323,7 @@ import {
   signAcademyCandidate,
   rejectAcademyCandidate,
 } from "../lib/academyIntake.js";
-import { isAcademyIntakePullEnabled } from "../lib/academyIntakePullFlag.js";
+import { isAcademyIntakePullEnabled } from "../lib/academyIntakePullFlag.ts";
 import { pullWeeklyAcademyIntake, hasPulledThisWeek } from "../lib/academyIntakePull.js";
 import { academyEstimate, loadAcademyPrognoses, isAcademyKnowledgeEnabled } from "../lib/academyDisclosure.ts";
 import { buildIntake2View } from "../lib/academyIntake2View.ts"; // #6666
@@ -382,7 +382,7 @@ import {
 } from "../lib/economyConstants.js";
 import { incrementBalanceWithAudit } from "../lib/balanceRpc.js";
 import { calculateRiderMarketValue } from "../lib/marketUtils.js";
-import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "../lib/riderOwnershipAudit.js";
+import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "../lib/riderOwnershipAudit.ts";
 import {
   getPriceBandViolation,
   getSwapPriceBandViolation,

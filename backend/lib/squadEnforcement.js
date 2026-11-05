@@ -44,7 +44,7 @@ import {
 import { contractOnAcquirePatch } from "./contractSeed.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { getRidersInActiveStageRace, shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
-import { fetchLiveAcademyOffers, filterOutPromisedAcademyRiders } from "./academyOfferProtection.js";
+import { fetchLiveAcademyOffers, filterOutPromisedAcademyRiders } from "./academyOfferProtection.ts";
 import { applySeniorSquadFilter } from "./squads.js";
 
 // #1309: aktiv sæson-number til contract_end_season-beregning.

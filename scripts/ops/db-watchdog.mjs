@@ -14,9 +14,21 @@
  *   3. Genstart-markør: ændres pg_postmaster_start_time, sendes én besked med
  *      gammel og ny starttid, også selvom alt er grønt nu.
  *
- * Tilstand (antal fejl i træk, alarm aktiv, sidste postmaster-start) ligger i en
- * lille JSON-fil som workflowet gemmer i Actions-cache. Aldrig i prod-databasen,
- * fordi den skal kunne læses mens databasen er nede.
+ *   4. (#7662) Stigende 5xx på Supabase-API'et: andelen af 5xx i de seneste
+ *      minutter sammenlignes med et glidende normalniveau. Kræver
+ *      SUPABASE_ACCESS_TOKEN; uden token springes reglen over.
+ *   5. (#7662) Gentagne langsomme forespørgsler: pg_stat_statements-tællere
+ *      sammenlignes med forrige kørsel, så kun forespørgsler der FAKTISK blev
+ *      kaldt langsomt siden sidst melder sig. Én besked pr. forespørgsel pr.
+ *      nedkølingsperiode.
+ *
+ * Første kørsel (ingen tilstand) lægger kun baseline: ingen falsk alarm.
+ *
+ * Tilstand (antal fejl i træk, alarm aktiv, sidste postmaster-start, 5xx-niveau,
+ * pg_stat_statements-snapshot) ligger i en lille JSON-fil som workflowet gemmer i
+ * Actions-cache med en artefakt som sikkerhedsnet (#7662: cachen mistede
+ * tilstanden i 13 af 30 kørsler). Aldrig i prod-databasen, fordi den skal kunne
+ * læses mens databasen er nede.
  *
  * Vagten belaster ikke databasen: ét HEAD-kald (limit 1) og ét skalar-select.
  * Ingen secret-værdier printes. psql-stderr printes aldrig (kan indeholde host).
@@ -29,6 +41,8 @@
  * Env (valgfri):
  *   DISCORD_OPS_MENTION          @mention-streng, se backend/lib/opsWebhook.js
  *   SENTRY_DSN                   giver Sentry Cron Monitor check-in pr. kørsel
+ *   SUPABASE_ACCESS_TOKEN        aktiverer 5xx-reglen (samme secret som supabase-log-watch)
+ *   SUPABASE_PROJECT_REF         default ghwvkxzhsbbltzfnuhhz
  *   DB_WATCHDOG_BACKEND_URL      default https://cyclingzone-production.up.railway.app
  *   DB_WATCHDOG_STATE            tilstandsfil, default .db-watchdog-state/state.json
  *   DB_WATCHDOG_SENTRY_SLUG      default db-watchdog
@@ -58,9 +72,28 @@ export const REQUIRED_ENV = [
   "DISCORD_OPS_WEBHOOK_URL",
 ];
 
+// #7662: en genstart der er yngre end dette alarmeres selv uden baseline
+// (tilstanden kan være tabt); en ældre starttid uden baseline er blot baseline.
+export const FRESH_RESTART_MS = 15 * 60_000;
+// 5xx-regel: vindue, mindste antal fejl, gulv for fejlandel og faktor over normalen.
+export const API_5XX_WINDOW_MS = 15 * 60_000;
+export const API_5XX_MIN_COUNT = 10;
+export const API_5XX_MIN_RATE = 0.05;
+export const API_5XX_BASELINE_FACTOR = 3;
+export const API_5XX_BASELINE_WEIGHT = 0.2;
+// Langsom-forespørgsel-regel: mindst så mange kald siden sidst, med gennemsnitstid
+// over grænsen, og højst én besked pr. forespørgsel pr. nedkølingsperiode.
+export const SLOW_MIN_CALLS = 3;
+export const SLOW_MEAN_MS = 1000;
+export const SLOW_COOLDOWN_MS = 6 * 3_600_000;
+export const SLOW_MAX_LISTED = 5;
+export const SLOW_FETCH_LIMIT = 500;
+export const DEFAULT_PROJECT_REF = "ghwvkxzhsbbltzfnuhhz";
+
 const COLOR_DOWN = 0xe74c3c;
 const COLOR_UP = 0x2ecc71;
 const COLOR_RESTART = 0xe67e22;
+const COLOR_WARN = 0xf1c40f;
 
 function isMain() {
   try {
@@ -80,7 +113,16 @@ export function emptyState() {
     firstFailureAt: null,
     alertActive: false,
     lastPostmasterStart: null,
+    api5xxActive: false,
+    api5xxBaselineRate: null,
+    slowSnapshot: null,
+    slowAlertedAt: {},
+    pendingRestartStart: null,
   };
+}
+
+function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 /** Tåler manglende/ødelagt fil: starter blot forfra. */
@@ -92,6 +134,14 @@ export function normalizeState(raw) {
     firstFailureAt: typeof raw.firstFailureAt === "string" ? raw.firstFailureAt : null,
     alertActive: raw.alertActive === true,
     lastPostmasterStart: typeof raw.lastPostmasterStart === "string" ? raw.lastPostmasterStart : null,
+    api5xxActive: raw.api5xxActive === true,
+    api5xxBaselineRate:
+      typeof raw.api5xxBaselineRate === "number" && Number.isFinite(raw.api5xxBaselineRate) && raw.api5xxBaselineRate >= 0
+        ? raw.api5xxBaselineRate
+        : null,
+    slowSnapshot: isPlainObject(raw.slowSnapshot) ? raw.slowSnapshot : null,
+    slowAlertedAt: isPlainObject(raw.slowAlertedAt) ? raw.slowAlertedAt : {},
+    pendingRestartStart: typeof raw.pendingRestartStart === "string" ? raw.pendingRestartStart : null,
   };
 }
 
@@ -142,16 +192,27 @@ export function evaluate(prevInput, checks, nowIso) {
   }
 
   // Genstart-markør: kun når vi faktisk fik en starttid. Første kørsel (ingen
-  // tidligere værdi) registrerer blot baseline.
+  // tidligere værdi) registrerer blot baseline, medmindre starten er helt frisk
+  // (#7662: så en tabt tilstand ikke skjuler en genstart lige før kørslen).
   const start = checks.postmaster.ok ? checks.postmaster.startTime ?? null : null;
   if (start) {
-    if (prev.lastPostmasterStart && prev.lastPostmasterStart !== start) {
+    const changed = prev.lastPostmasterStart && prev.lastPostmasterStart !== start;
+    const ageMs = new Date(nowIso).getTime() - new Date(start).getTime();
+    // En frisk-genstart-besked der ikke kunne sendes huskes (pendingRestartStart), så
+    // den prøves igen selv efter at starten er blevet ældre end vinduet.
+    const freshWithoutBaseline =
+      !prev.lastPostmasterStart &&
+      ((ageMs >= 0 && ageMs <= FRESH_RESTART_MS) || prev.pendingRestartStart === start);
+    next.pendingRestartStart = null;
+    if (changed || freshWithoutBaseline) {
       messages.push({
         kind: "restart",
         previousStart: prev.lastPostmasterStart,
         newStart: start,
         healthyNow: !failed,
       });
+      // Tællerne i pg_stat_statements nulstilles ved genstart: start snapshot forfra.
+      next.slowSnapshot = null;
     }
     next.lastPostmasterStart = start;
   }
@@ -171,8 +232,126 @@ export function rollbackUnsent(nextState, prevInput, message) {
     state.alertActive = true;
     state.firstFailureAt = prev.firstFailureAt;
   }
-  if (message.kind === "restart") state.lastPostmasterStart = prev.lastPostmasterStart;
+  if (message.kind === "restart") {
+    state.lastPostmasterStart = prev.lastPostmasterStart;
+    if (!prev.lastPostmasterStart) state.pendingRestartStart = message.newStart;
+  }
+  if (message.kind === "api5xx") state.api5xxActive = false;
+  if (message.kind === "slow") {
+    state.slowAlertedAt = { ...state.slowAlertedAt };
+    state.slowSnapshot = state.slowSnapshot ? { ...state.slowSnapshot } : state.slowSnapshot;
+    for (const item of message.items) {
+      // Behold forrige tællerstand, så forskellen stadig kan måles næste kørsel.
+      if (state.slowSnapshot) {
+        if (prev.slowSnapshot?.[item.id]) state.slowSnapshot[item.id] = prev.slowSnapshot[item.id];
+        else delete state.slowSnapshot[item.id];
+      }
+      if (prev.slowAlertedAt[item.id] === undefined) delete state.slowAlertedAt[item.id];
+      else state.slowAlertedAt[item.id] = prev.slowAlertedAt[item.id];
+    }
+  }
   return state;
+}
+
+// ---------------------------------------------------------------------------
+// 5xx-regel (REN)
+// ---------------------------------------------------------------------------
+
+/**
+ * sample: { errors, total } for de seneste minutter, eller null hvis målingen
+ * ikke kunne hentes (så ændres intet). Første måling lægger kun baseline.
+ * Alarmen kræver både et mindsteantal fejl og en fejlandel over både et gulv og
+ * et multiplum af det glidende normalniveau. Normalniveauet opdateres kun mens
+ * alt er roligt, så et udfald ikke bliver det nye normale.
+ */
+export function evaluateApi5xx(prevInput, sample, nowIso) {
+  const prev = normalizeState(prevInput);
+  const next = { ...prev };
+  const messages = [];
+  if (!sample) return { state: next, messages };
+
+  const rate = sample.total > 0 ? sample.errors / sample.total : 0;
+  if (prev.api5xxBaselineRate === null) {
+    next.api5xxBaselineRate = rate;
+    return { state: next, messages };
+  }
+
+  const limit = Math.max(API_5XX_MIN_RATE, prev.api5xxBaselineRate * API_5XX_BASELINE_FACTOR);
+  const spike = sample.errors >= API_5XX_MIN_COUNT && rate >= limit;
+  if (spike) {
+    if (!prev.api5xxActive) {
+      messages.push({
+        kind: "api5xx",
+        errors: sample.errors,
+        total: sample.total,
+        rate,
+        baselineRate: prev.api5xxBaselineRate,
+        at: nowIso,
+      });
+    }
+    next.api5xxActive = true;
+  } else {
+    next.api5xxActive = false;
+    next.api5xxBaselineRate =
+      prev.api5xxBaselineRate * (1 - API_5XX_BASELINE_WEIGHT) + rate * API_5XX_BASELINE_WEIGHT;
+  }
+  return { state: next, messages };
+}
+
+// ---------------------------------------------------------------------------
+// Langsom-forespørgsel-regel (REN)
+// ---------------------------------------------------------------------------
+
+/**
+ * rows: [{ id, calls, totalMs, query }] fra pg_stat_statements, eller null hvis
+ * hentningen fejlede (så ændres intet). Sammenligner med forrige snapshot, så
+ * gamle akkumulerede tal aldrig alarmerer; første kørsel og nulstillede tællere
+ * (genstart) lægger kun baseline for den forespørgsel.
+ */
+export function evaluateSlowQueries(prevInput, rows, nowIso) {
+  const prev = normalizeState(prevInput);
+  const next = { ...prev };
+  const messages = [];
+  if (!Array.isArray(rows)) return { state: next, messages };
+
+  const nowMs = new Date(nowIso).getTime();
+  const snapshot = {};
+  for (const row of rows) snapshot[row.id] = { calls: row.calls, totalMs: row.totalMs };
+  next.slowSnapshot = snapshot;
+
+  // Ryd udløbne nedkølinger.
+  const alerted = {};
+  for (const [id, iso] of Object.entries(prev.slowAlertedAt)) {
+    const age = nowMs - new Date(iso).getTime();
+    if (Number.isFinite(age) && age < SLOW_COOLDOWN_MS) alerted[id] = iso;
+  }
+  next.slowAlertedAt = alerted;
+
+  if (!prev.slowSnapshot) return { state: next, messages };
+
+  const snapshotComplete = Object.keys(prev.slowSnapshot).length < SLOW_FETCH_LIMIT;
+  const items = [];
+  for (const row of rows) {
+    // En forespørgsel der ikke var i forrige (komplette) snapshot er oprettet siden da,
+    // så alle dens tællere er målt i dette interval. Var snapshot'et afkortet, ved vi det ikke.
+    const before = prev.slowSnapshot[row.id] ?? (snapshotComplete ? { calls: 0, totalMs: 0 } : null);
+    if (!before) continue;
+    const dCalls = row.calls - before.calls;
+    const dTotal = row.totalMs - before.totalMs;
+    if (dCalls < 0 || dTotal < 0) continue; // tællere nulstillet
+    if (dCalls < SLOW_MIN_CALLS) continue;
+    const meanMs = dTotal / dCalls;
+    if (meanMs < SLOW_MEAN_MS) continue;
+    if (alerted[row.id] !== undefined) continue;
+    items.push({ id: row.id, query: row.query, calls: dCalls, meanMs: Math.round(meanMs) });
+  }
+  if (items.length) {
+    items.sort((a, b) => b.meanMs - a.meanMs);
+    const listed = items.slice(0, SLOW_MAX_LISTED);
+    for (const item of listed) next.slowAlertedAt[item.id] = nowIso;
+    messages.push({ kind: "slow", items: listed, omitted: items.length - listed.length, at: nowIso });
+  }
+  return { state: next, messages };
 }
 
 // ---------------------------------------------------------------------------
@@ -201,6 +380,10 @@ export function formatDuration(fromIso, toIso) {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return m ? `ca. ${h} t ${m} min` : `ca. ${h} t`;
+}
+
+function formatPercent(rate) {
+  return `${(rate * 100).toFixed(1)} %`;
 }
 
 function checkLine(label, check) {
@@ -256,12 +439,49 @@ export function buildEmbed(message, { runUrl = "" } = {}) {
       ],
     };
   }
+  if (message.kind === "api5xx") {
+    return {
+      embeds: [
+        {
+          title: "Databasevagt: 5xx-fejl stiger på Supabase-API'et",
+          description:
+            `${message.errors} af ${message.total} kald de seneste ${API_5XX_WINDOW_MS / 60_000} min gav 5xx ` +
+            `(${formatPercent(message.rate)}). Normalt: ${formatPercent(message.baselineRate)}.\n` +
+            `Tjek Supabase status og logs (API Gateway).${link}`,
+          color: COLOR_DOWN,
+          timestamp: message.at,
+        },
+      ],
+    };
+  }
+  if (message.kind === "slow") {
+    const lines = message.items
+      .map((i) => `${i.meanMs} ms i snit, ${i.calls} kald: ${i.query}`)
+      .join("\n");
+    return {
+      embeds: [
+        {
+          title: "Databasevagt: langsomme forespørgsler gentager sig",
+          description:
+            `Kaldt mindst ${SLOW_MIN_CALLS} gange siden forrige kørsel med gennemsnitstid over grænsen.\n` +
+            `\`\`\`\n${lines}\n\`\`\`` +
+            (message.omitted > 0 ? `\n+ ${message.omitted} flere` : "") +
+            link,
+          color: COLOR_WARN,
+          timestamp: message.at,
+        },
+      ],
+    };
+  }
+  const before = message.previousStart
+    ? `Før: ${formatCopenhagen(message.previousStart)} (dansk tid)\n`
+    : "Før: ukendt (vagtens tilstand var tabt)\n";
   return {
     embeds: [
       {
         title: "Databasevagt: Postgres er genstartet",
         description:
-          `Før: ${formatCopenhagen(message.previousStart)} (dansk tid)\n` +
+          before +
           `Nu: ${formatCopenhagen(message.newStart)} (dansk tid)\n` +
           (message.healthyNow
             ? "Alle checks er grønne nu."
@@ -273,11 +493,13 @@ export function buildEmbed(message, { runUrl = "" } = {}) {
   };
 }
 
-/** @mention kun på nedetids-alarmen; "oppe igen" og genstart er rolige. */
+/** @mention på nedetid, genstart og 5xx-stigning; "oppe igen" og langsomme forespørgsler er rolige. */
 export function buildPayload(message, { runUrl = "", mention = getOpsMention() } = {}) {
   const embed = buildEmbed(message, { runUrl });
-  return message.kind === "down" ? withOpsMention(embed, mention) : embed;
+  return PING_KINDS.has(message.kind) ? withOpsMention(embed, mention) : embed;
 }
+
+const PING_KINDS = new Set(["down", "restart", "api5xx"]);
 
 // ---------------------------------------------------------------------------
 // Checks (IO injiceret så de kan testes)
@@ -350,6 +572,94 @@ export async function checkPostmaster(execFn, dbUrl) {
     return { ok: true, detail: `oppe siden ${startTime}`, startTime };
   } catch (err) {
     return { ok: false, detail: classifyPsqlFailure(err) };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 5xx-måling (Management-API logquery, samme endpoint som supabase-log-watch)
+// ---------------------------------------------------------------------------
+
+export const API_5XX_SQL = `
+select
+  countIf(toInt32OrZero(log_attributes['response.status_code']) >= 500) as errors,
+  count() as total
+from logs
+where source = 'edge_logs'
+`.trim();
+
+function toCount(value) {
+  const n = typeof value === "string" && /^\d+$/.test(value) ? Number(value) : value;
+  return Number.isSafeInteger(n) && n >= 0 ? n : null;
+}
+
+/** Returnerer { errors, total } eller null (med årsag i `reason`), aldrig et kast. */
+export async function fetchApi5xxSample(fetchFn, token, ref, nowDate) {
+  try {
+    const url = new URL(`https://api.supabase.com/v1/projects/${ref}/analytics/endpoints/logs`);
+    url.searchParams.set("sql", API_5XX_SQL);
+    url.searchParams.set("iso_timestamp_start", new Date(nowDate.getTime() - API_5XX_WINDOW_MS).toISOString());
+    url.searchParams.set("iso_timestamp_end", nowDate.toISOString());
+    const res = await fetchFn(url, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!res.ok) return { sample: null, reason: `Management-API HTTP ${res.status}` };
+    const body = await res.json();
+    if (!body || body.error != null || !Array.isArray(body.result)) {
+      return { sample: null, reason: "uventet svar fra Management-API" };
+    }
+    const row = body.result[0];
+    const errors = toCount(row?.errors ?? 0);
+    const total = toCount(row?.total ?? 0);
+    if (errors === null || total === null) return { sample: null, reason: "ugyldig tæller fra Management-API" };
+    return { sample: { errors, total }, reason: "" };
+  } catch (err) {
+    return { sample: null, reason: describeError(err) };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Langsomme forespørgsler (pg_stat_statements, kun læsning)
+// ---------------------------------------------------------------------------
+
+// Intern støj og bevidste vedligeholdelseskommandoer ekskluderes (samme idé som scripts/db-health.sql).
+export const SLOW_SQL =
+  "select coalesce(json_agg(t), '[]'::json) from (" +
+  "select queryid::text as id, sum(calls)::bigint as calls, round(sum(total_exec_time))::bigint as total_ms, " +
+  "left(regexp_replace(max(query), '\\s+', ' ', 'g'), 80) as query " +
+  "from pg_stat_statements " +
+  "where calls > 0 and queryid is not null " +
+  "and query !~* '(pg_stat_statements|pg_proc|information_schema|pg_catalog|pg_class|pg_attribute|pg_namespace)' " +
+  "and query !~* '^\\s*(VACUUM|REINDEX|CLUSTER|ANALYZE|COPY|CREATE|ALTER)' " +
+  // Samme queryid kan optræde pr. bruger/database: tællerne lægges sammen, så
+  // snapshot-nøglen er stabil. Bred grænse, så nye regressioner ikke falder uden for listen.
+  `group by queryid order by sum(total_exec_time) desc limit ${SLOW_FETCH_LIMIT}) t`;
+
+/** Returnerer { rows, reason }; rows er null ved fejl. Printer aldrig URL eller stderr. */
+export async function fetchSlowStatements(execFn, dbUrl) {
+  try {
+    const { stdout } = await execFn(
+      "psql",
+      [dbUrl, "-X", "-tA", "-v", "ON_ERROR_STOP=1", "-c", SLOW_SQL],
+      {
+        timeout: 15_000,
+        env: { ...process.env, PGCONNECT_TIMEOUT: "5", PGOPTIONS: "-c statement_timeout=5s" },
+      }
+    );
+    const parsed = JSON.parse(String(stdout).trim());
+    if (!Array.isArray(parsed)) return { rows: null, reason: "uventet svar fra pg_stat_statements" };
+    const rows = [];
+    for (const r of parsed) {
+      const calls = toCount(typeof r?.calls === "number" ? r.calls : Number(r?.calls));
+      const totalMs = toCount(typeof r?.total_ms === "number" ? r.total_ms : Number(r?.total_ms));
+      if (typeof r?.id !== "string" || !r.id || calls === null || totalMs === null) continue;
+      rows.push({ id: r.id, calls, totalMs, query: typeof r.query === "string" ? r.query : "" });
+    }
+    return { rows, reason: "" };
+  } catch (err) {
+    if (err instanceof SyntaxError) return { rows: null, reason: "uventet svar fra pg_stat_statements" };
+    return { rows: null, reason: classifyPsqlFailure(err) };
   }
 }
 
@@ -437,7 +747,11 @@ export async function main({
   }
 
   const stateFile = env.DB_WATCHDOG_STATE || ".db-watchdog-state/state.json";
+  const stateExisted = fs.existsSync(stateFile);
   const prevState = readState(stateFile);
+  if (!stateExisted) {
+    log("::warning::Tilstandsfil mangler (cache og artefakt gav intet): baseline starter forfra");
+  }
   const nowIso = now().toISOString();
 
   // #6854: GitHub kører ofte kun vagten hver 2.-4. time i stedet for hvert 5. min
@@ -461,6 +775,28 @@ export async function main({
     messages.push(...result.messages);
     if (!runFailed(checks) || state.alertActive) break;
   }
+
+  // #7662: de to ekstra regler må aldrig fælde kørslen eller selve nedetids-alarmen;
+  // kan en måling ikke hentes, logges årsagen og tilstanden røres ikke.
+  if (checks.postmaster.ok) {
+    const { rows, reason } = await fetchSlowStatements(execFn, env.SUPABASE_DB_URL);
+    if (!rows) log(`langsomme forespørgsler: måling sprunget over (${reason})`);
+    const slow = evaluateSlowQueries(state, rows, now().toISOString());
+    state = slow.state;
+    messages.push(...slow.messages);
+  }
+  if (env.SUPABASE_ACCESS_TOKEN) {
+    const { sample, reason } = await fetchApi5xxSample(
+      fetchFn, env.SUPABASE_ACCESS_TOKEN, env.SUPABASE_PROJECT_REF || DEFAULT_PROJECT_REF, now()
+    );
+    if (!sample) log(`5xx-regel: måling sprunget over (${reason})`);
+    else log(`5xx seneste ${API_5XX_WINDOW_MS / 60_000} min: ${sample.errors} af ${sample.total}`);
+    const api = evaluateApi5xx(state, sample, now().toISOString());
+    state = api.state;
+    messages.push(...api.messages);
+  } else {
+    log("::warning::SUPABASE_ACCESS_TOKEN ikke sat: 5xx-reglen er slukket");
+  }
   const runUrl = env.GITHUB_RUN_ID && env.GITHUB_REPOSITORY
     ? `${env.GITHUB_SERVER_URL || "https://github.com"}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`
     : "";
@@ -481,7 +817,7 @@ export async function main({
   if (env.SENTRY_DSN) {
     log(await sentryCheckin(fetchFn, env.SENTRY_DSN, env.DB_WATCHDOG_SENTRY_SLUG || "db-watchdog"));
   } else {
-    log("SENTRY_DSN ikke sat: Sentry Cron Monitor check-in sprunget over");
+    log("::warning::SENTRY_DSN ikke sat: Sentry Cron Monitor check-in sprunget over (opret secret: gh secret set SENTRY_DSN)");
   }
   return 0;
 }
