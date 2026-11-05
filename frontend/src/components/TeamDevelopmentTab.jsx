@@ -96,6 +96,9 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
   }, [decorated, sort, sortDir]);
 
   const estimateMode = decorated.some((r) => r._estimateView);
+  const projectedHeader = estimateMode
+    ? t("rider:profile.scouting.potentialLabel")
+    : <span title={t("development.headers.projectedTitle")}>{t("development.headers.projected")}</span>;
   const columns = [
     {
       key: "name",
@@ -146,9 +149,7 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
     },
     {
       key: "projected",
-      header: estimateMode
-        ? t("rider:profile.scouting.potentialLabel")
-        : <span title={t("development.headers.projectedTitle")}>{t("development.headers.projected")}</span>,
+      header: projectedHeader,
       sortKey: "_progHi",
       numeric: true,
       compact: true,

@@ -109,7 +109,7 @@ function PotentialBand({ band, role, loft, pastPeak, label, large, t }) {
 // flag) er alt herunder uændret. `legacy` er kaldstedets egen gamle visning, så en
 // flade kan få estimatet hentet uden at ændre sig, mens flaget er slukket.
 // `estimateSize` og `showLooks` gælder kun tal + ord.
-export default function ScoutablePotentiale({ rider, scouting, showScout = false, large = false, labelAsTitle = true, hideLevel = false, estimateSize = "cell", showLooks = false, legacy = null }) {
+export default function ScoutablePotentiale({ rider, scouting, showScout = false, large = false, labelAsTitle = true, hideLevel = false, estimateSize = /** @type {"cell" | "hero" | "report"} */ ("cell"), showLooks = false, legacy = /** @type {import("react").ReactNode} */ (null) }) {
   const { t } = useTranslation();
   const {
     maxLevel, scout, scoutingId, slots, requestEstimates, estimateFor,
@@ -229,7 +229,7 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
         view={view}
         size={estimateSize}
         sub={showLooks && !view.hidden && level > 0 ? t("rider:potentialEstimate.scoutedTimes", { count: level }) : null}
-        action={view.reason === "learning" ? null : <>{pendingBadge}{scoutButton}{scoutErrorBadge}</>}
+        action={view.hidden && view.reason === "learning" ? null : <>{pendingBadge}{scoutButton}{scoutErrorBadge}</>}
       />
     );
   }

@@ -378,7 +378,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
     );
   }
 
-  if (estimateView?.reason === "learning") {
+  if (estimateView?.hidden && estimateView.reason === "learning") {
     return (
       <SectionCard>
         <div data-testid="scouting-estimate-learning">
@@ -394,7 +394,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
   }
 
   // FØR: uscoutet, ikke-egen rytter — intet potentiale, kun invitationen.
-  if (report.hidden || estimateView?.reason === "unscouted") {
+  if (report.hidden || estimateView?.hidden) {
     return (
       <SectionCard>
         <Eyebrow>{t("profile.scouting.eyebrowOther")}</Eyebrow>
