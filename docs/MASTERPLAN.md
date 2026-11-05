@@ -37,6 +37,8 @@ Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden f
 
 ## Loftet (ejer-rangeret 4/11)
 
+**Ejer 5/11: Forstå løbet #7716 går først, foran #6110.** Taktik, motor og løbsfilm skal blive spillets bedste del. Alt har en ægte årsag, kan forklares og kan ske igen; ingen tilfældige udgange (#7713, #7714, #7715). #6110 står på Næste uge.
+
 1. **Motor og løbsfilm sande:** #6350 tidsstempling (design), selektion #7645 (A først), nedkørsler #7644 (#7651), bjergudbrud #6912 (#7650, flad måles bagefter), realisme-gaten #7588 PR 4-6, #7260-listen. Plan: [RACE_ENGINE_PLAN](RACE_ENGINE_PLAN.md).
 2. **Taktik synlig og forståelig:** træthed pr. indstilling på taktiksiden #7638 og indsatskortet #5101 (mockup først), delt kaptajn #7003/#7239/#7326 (krav 8), #7266, spillerfejl #7624/#7557/#7625.
 3. **Udvikling 2.0 #6110:** #5950 variant B (opgavetabellen gennemgås med ejeren; tempo = mellemlange stigninger), trin 2-6 "ét skønnet tal" (plan klar, afventer ejerens godkendelse og frist), #4850 krav 4/5 og #7627 (gevinst pr. aktivitet i rapporten), #7637 træthed for ca. 200 ryttere, Score B parkeret til grundtalentet er bygget.
@@ -57,7 +59,6 @@ Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden f
 - Bogføring, moms EU-privat #4511, billing #4514/#4512/#6062, måling #5305, SEO #5249/#5250.
 - **Torsdag 5/11 (forretningsdag):** gennemgang af Codex' vækstpakke PR #7652 med ejeren (ingen A/B valgt; retning afstemmes, så wireframes til spillerne før byg). Catch-up #6950 besluttes ca. 15-18/11 (ejer 4/11), ikke torsdag.
 - **Del B, varig motivation (#7661, docs-only draft, Codex 4/11):** researchen bevares (audit + manager-game-kilder). Navigationsmockuppen er kun et forsøg, ikke hovedforslaget; et stærkt produktforslag mangler. Torsdag: find et dokumenteret spillerbehov med ejeren ud fra researchen; intet build-go. Privat grundlag i OneDrive `balance-internals/growth/del-b-2026-11-04/` (START-HER.md først).
-- **Codex' ops-PR'er:** #7529/#7531/#7532 i merge-køen nu; #7524/#7528 efter den aktive bølge (rører wave-policy); #7530 og #7571 kræver ejerens go, og #7571's child-tool-prøve køres i første rigtige PC1-bølge.
 
 ## Faste rutiner
 

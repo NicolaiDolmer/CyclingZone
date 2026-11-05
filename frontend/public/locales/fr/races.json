@@ -292,7 +292,8 @@
         "third": "{name} a pris la troisième place.",
         "thirdGap": "{name} a pris la troisième place, à {gap}.",
         "placed": "{name} a terminé à la position {rank}.",
-        "placedGap": "{name} a terminé à la position {rank}, à {gap}."
+        "placedGap": "{name} a terminé à la position {rank}, à {gap}.",
+        "ownOut": "{kind, select, withdrawal {Pied à terre : {names}. Trop loin du vainqueur.} time_limit {Hors délais : {names}.} crash {Abandon sur chute : {names}.} mechanical {Abandon sur problème mécanique : {names}.} other {Abandon : {names}.}}"
       },
       "final": {
         "aria": "Les derniers 5 km : groupes sur la route avec distance restante, écarts et chrono de course",
@@ -1656,9 +1657,9 @@
       "teamDay": "{team} a mené le classement par équipes avec {count} coureurs dans le top 10.",
       "teamWon": "{team} a remporté le classement par équipes.",
       "jerseys": "Leaders des maillots : {points} aux points, {mountain} en montagne.",
-      "abandon": "{kind, select, crash {{rider} a abandonné après une chute.} mechanical {{rider} a abandonné sur problème mécanique.} injury {{rider} n'a pas pris le départ : blessé.} withdrawal {{rider} a mis pied à terre, épuisé.} time_limit {{rider} est arrivé hors délais.} illness {{rider} n'a pas pris le départ : malade.} other {{rider} a abandonné.}}",
+      "abandon": "{kind, select, crash {{rider} a abandonné après une chute.} mechanical {{rider} a abandonné sur problème mécanique.} injury {{rider} n'a pas pris le départ : blessé.} withdrawal {{when, select, stage {{rider} a mis pied à terre après l'étape, trop loin du vainqueur.} other {{rider} a mis pied à terre, trop loin du vainqueur.}}} time_limit {{rider} est arrivé hors délais.} illness {{rider} n'a pas pris le départ : malade.} other {{rider} a abandonné.}}",
       "notableCrash": "{rider} a chuté et perdu {marginText}.",
-      "withdrawalGroup": "{when, select, stage {{count} coureurs ont mis pied à terre après l'étape, épuisés et loin derrière.} other {{count} coureurs ont mis pied à terre, épuisés et loin derrière.}}",
+      "withdrawalGroup": "{when, select, stage {{count} coureurs ont mis pied à terre après l'étape, trop loin du vainqueur.} other {{count} coureurs ont mis pied à terre, trop loin du vainqueur.}}",
       "seeList": "Voir la liste"
     },
     "incidents": {
@@ -1667,7 +1668,7 @@
       "mechanical": "Mécanique",
       "injury": "Non-partant",
       "illness": "Malade, non-partant",
-      "withdrawal": "Pied à terre, épuisé",
+      "withdrawal": "Pied à terre, trop loin derrière",
       "time_limit": "Hors délais",
       "abandoned": "Abandon",
       "dnf": "DNF",
@@ -1914,7 +1915,7 @@
         "inBreak": "{rider} a passé la journée dans l'échappée.",
         "helperWork": "{count, plural, one {Un coéquipier a roulé} other {# coéquipiers ont roulé}} au service de {captain}.",
         "none": "Aucun coureur de ton équipe n'a pris le départ de cette étape.",
-        "out": "{kind, select, withdrawal {{rider} a mis pied à terre après l'étape {number}.} time_limit {{rider} est arrivé hors délais sur l'étape {number}.} crash {{rider} a abandonné après une chute sur l'étape {number}.} injury {{rider} n'a pas pris le départ de l'étape {number} : blessé.} illness {{rider} n'a pas pris le départ de l'étape {number} : malade.} other {{rider} a abandonné sur l'étape {number}.}}",
+        "out": "{kind, select, withdrawal {{rider} a mis pied à terre après l'étape {number}, trop loin du vainqueur.} time_limit {{rider} est arrivé hors délais sur l'étape {number}.} crash {{rider} a abandonné après une chute sur l'étape {number}.} injury {{rider} n'a pas pris le départ de l'étape {number} : blessé.} illness {{rider} n'a pas pris le départ de l'étape {number} : malade.} other {{rider} a abandonné sur l'étape {number}.}}",
         "ridersLeft": "{count, plural, =0 {Il ne te reste plus aucun coureur.} one {Il te reste # coureur.} other {Il te reste # coureurs.}}"
       }
     },
