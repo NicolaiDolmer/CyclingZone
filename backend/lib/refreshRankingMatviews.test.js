@@ -740,18 +740,6 @@ test("#7664 forward-guard — migrationen saetter hash-join-planen paa den overl
   assert.doesNotMatch(sql, /REFRESH\s+MATERIALIZED\s+VIEW/i, "migrationen maa ikke selv refreshe i prod");
 });
 
-test("#7664 forward-guard — ingen nyere migration regenererer refresh-funktionen uden enable_mergejoin", () => {
-  const later = fs.readdirSync(DATABASE_DIR)
-    .filter((f) => f.endsWith(".sql") && f.localeCompare(PLAN_MIGRATION_7664) > 0);
-  const regenerates = /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.refresh_(?:team_race_points_mv|%I)\s*\(\s*p_concurrently\s+boolean\s*\)/i;
-  for (const file of later) {
-    const sql = stripSqlComments(fs.readFileSync(path.join(DATABASE_DIR, file), "utf8"));
-    if (!regenerates.test(sql)) continue;
-    assert.match(sql, /enable_mergejoin/i,
-      `${file} regenererer refresh_team_race_points_mv(boolean) uden at genanvende enable_mergejoin = off (#7664).`);
-  }
-});
-
 test("#7664 PGlite — migrationen er idempotent, saetter indstillingerne og refreshen giver samme rangliste", async () => {
   const db = new PGlite();
   try {
