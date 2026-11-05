@@ -21,6 +21,7 @@ import {
   summarize,
 } from "./race-truth-rules.mjs";
 import { stageInput } from "../__fixtures__/race-truth/load.mjs";
+import { withEventPlaces } from "../../backend/lib/raceTimeline.js"; // #6350
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -133,6 +134,34 @@ test("R6 (#6350): etape 8, 'sat' stemples ved segmentgrænsen km 161, ikke ved s
   const late = findings.find((f) => f.km === 161 && f.split_index === 229);
   assert.ok(late, "rytteren i gruppetto-11008 skal fanges");
   assert.ok(Math.abs(late.split_km - 147.31) < 0.01);
+});
+
+test("#6350: gemte etaper læst gennem withEventPlaces: ingen indhentning før dannelse, 'sat' står ved splittet, filmen holder", () => {
+  for (const stage of [stage6, stage8]) {
+    const placed = prepared({ ...stage, events: withEventPlaces(stage.events) });
+    assert.deepEqual(ruleCatchAfterFormation(placed).filter((f) => f.code === "caught_before_formed"), []);
+    assert.deepEqual(ruleClaimsMatchGroup(placed).filter((f) => f.code === "dropped_stamped_after_split"), []);
+    assert.deepEqual(ruleFilmMatchesResult(placed), []);
+    // km er rækkefølgen og flyttes aldrig; kun stedet.
+    assert.deepEqual(placed.events.map((e) => [e.type, e.km]), stage.events.map((e) => [e.type, e.km]));
+    assert.deepEqual(withEventPlaces(placed.events), placed.events, "idempotent");
+  }
+  const split = withEventPlaces(stage8.events).find((e) => e.type === "peloton_splits" && e.km === 89 && e.params.group_id === "solo-6003");
+  assert.ok(split.params.exact_km > 80.5 && split.params.exact_km < 82, "splittet på stigningen står på stigningen, ikke på toppen");
+  assert.equal(split.params.exact_time, undefined, "tiden på toppen hører ikke til stedet");
+  const attack = withEventPlaces(stage8.events).find((e) => e.type === "finale_attack" && e.params.group_id === "breakaway-7000");
+  assert.ok(attack.params.exact_km <= 97.4);
+  const dropped = withEventPlaces(stage8.events).find((e) => e.type === "stage_plan_leg" && e.km === 161 && e.params.reason === "dropped");
+  assert.ok(dropped.params.exact_km < 161);
+});
+
+test("#6350: et uheld der navngiver sin solo-gruppe er gruppens dannelse", () => {
+  const events = [
+    { km: 0, type: "stage_start", params: { exact_km: 0 } },
+    { km: 42, type: "incident", params: { rider_id: "r1", kind: "crash", outcome: "time_loss", group_id: "solo-m10-3-0", exact_km: 42 } },
+    { km: 50, type: "gap_update", params: { group_id: "solo-m10-3-0", gap_seconds: 40, exact_km: 50 } },
+  ];
+  assert.deepEqual(ruleCatchAfterFormation({ events, startlist: ["r1", "r2"] }), []);
 });
 
 test("R6: referatets vinder og uheld svarer til resultat og tidslinje", () => {

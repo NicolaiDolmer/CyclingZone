@@ -635,6 +635,19 @@ function placeFormationsBeforeContact(events) {
     const siblings = events.filter((e) => e.type === event.type && e.km === event.km && (exactKmOf(e) ?? Infinity) <= contact).map(exactKmOf);
     movePlace(event, siblings.length > 0 ? Math.max(...siblings) : contact);
   }
+  // "Egne ryttere foran" meldes ved segmentets start, også om en gruppe der først
+  // dannes inde i segmentet: meldingen står hvor gruppen blev dannet.
+  const formedAt = new Map();
+  for (const event of events) {
+    if (!FORMATION_TYPES.has(event.type) || BOOKKEEPING_ATTACK_KINDS.has(event.params?.kind) || formedAt.has(event.params?.group_id)) continue;
+    formedAt.set(event.params?.group_id, event);
+  }
+  for (const event of events) {
+    if (event.type !== "own_riders_ahead") continue;
+    const formation = formedAt.get(event.params?.group_id);
+    const at = exactKmOf(event);
+    if (formation && at !== null && (exactKmOf(formation) ?? -Infinity) > at) movePlace(event, exactKmOf(formation), finiteOrNull(formation.params?.exact_time));
+  }
 }
 
 /**

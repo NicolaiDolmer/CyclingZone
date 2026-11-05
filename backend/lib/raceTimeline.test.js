@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { buildStageTimeline, TIMELINE_VERSION } from "./raceTimeline.js";
+import { buildStageTimeline, buildStageTimelineV4, TIMELINE_VERSION, withEventPlaces } from "./raceTimeline.js";
 import { computeCatchKm } from "./racePassages.js";
 import { stableSeed, deriveBreakawayStatus, ABILITY_KEYS } from "./raceSimulator.js";
 import { buildRaceResults, buildStageRowsAccumulated } from "./raceRunner.js";
@@ -411,4 +411,85 @@ test("#4373 end-to-end: buildRaceResults giver itt_win på etape 1 og spurt-nøg
     stage2Moments.some((m) => ["sprint_win", "close_win", "solo_win"].includes(m.moment_key)),
     "etape 2 skal stadig klassificeres som spurt/tæt/solo",
   );
+});
+
+// #6350: formen fra en gemt bjergankomst (Giro-etapen fra ejerens Hvorfor-krav,
+// anonymiseret): feltet henter et udbrud inde i sidste segment, og den gruppe der
+// blev sat, står derfor på stregen sammen med en rytter der "gik kold" dér.
+function summitFinishLog() {
+  const split = (groupId, gapSeconds, exactKm, riderIds, exactTime) => ({
+    km: 180,
+    type: "peloton_splits",
+    params: { group_id: groupId, source_group_id: "peloton-0", gap_seconds: gapSeconds, rider_ids: riderIds, exact_km: exactKm, exact_time: exactTime },
+  });
+  return [
+    { km: 0, type: "stage_start", params: { exact_km: 0, exact_time: 0 } },
+    { km: 170, type: "gap_update", params: { group_id: "peloton-0", gap_seconds: 91, exact_km: 170 } },
+    { km: 174.07, type: "breakaway_caught", params: { group_id: "breakaway-1", rider_ids: ["ahead"], exact_km: 174.07 } },
+    { km: 180, type: "all_out_cracked", params: { rider_id: "dropped", exact_km: 180, exact_time: 19700 } },
+    split("gruppetto-1", 53.09, 170.76, ["a"], 17609),
+    split("gruppetto-2", 62.38, 170.71, ["b"], 17599),
+    split("gruppetto-3", 302.73, 180, ["dropped", "ahead"], 19700),
+    { km: 180, type: "finish", params: { exact_km: 180, top: [] } },
+  ];
+}
+
+test("#6350: et split der stod på stregen får stedet på stigningen, og 'gik kold' følger med", () => {
+  const log = summitFinishLog();
+  const before = JSON.stringify(log);
+  const placed = withEventPlaces(log);
+  assert.equal(JSON.stringify(log), before, "input muteres aldrig");
+  const split = placed.find((e) => e.params.group_id === "gruppetto-3");
+  assert.ok(Math.abs(split.params.exact_km - 170.46) <= 0.02, `motorens egen formel, fik ${split.params.exact_km}`);
+  assert.equal(split.params.exact_time, undefined, "tiden på stregen hører ikke til stedet");
+  assert.equal(split.km, 180, "rækkefølgen røres ikke");
+  const crack = placed.find((e) => e.type === "all_out_cracked");
+  assert.equal(crack.params.exact_km, split.params.exact_km);
+  assert.deepEqual(withEventPlaces(placed), placed, "idempotent");
+});
+
+test("#6350: 'sat' står hvor han blev sat, men kun til han er tilbage i gruppen han blev sat fra", () => {
+  const leg = (km) => ({ km, type: "stage_plan_leg", params: { rider_id: "r", leg: 1, task: "ride_in", reason: "dropped", exact_km: km } });
+  const dropped = { km: 90, type: "peloton_splits", params: { group_id: "chase-1", source_group_id: "peloton-0", rider_ids: ["r"], gap_seconds: 40, exact_km: 82.5, exact_time: 7000 } };
+  assert.deepEqual(withEventPlaces([dropped, leg(120)])[1].params, { rider_id: "r", leg: 1, task: "ride_in", reason: "dropped", exact_km: 82.5, exact_time: 7000 });
+  const back = { km: 100, type: "group_merged", params: { group_id: "chase-1", into_group_id: "peloton-0", rider_ids: ["r"], exact_km: 100 } };
+  assert.equal(withEventPlaces([dropped, back, leg(120)])[2].params.exact_km, 120);
+  const onward = { km: 100, type: "group_merged", params: { group_id: "chase-1", into_group_id: "gruppetto-2", rider_ids: ["r"], exact_km: 100 } };
+  assert.equal(withEventPlaces([dropped, onward, leg(120)])[2].params.exact_km, 82.5);
+});
+
+test("#6350: 'hentet' står ved indhentningen, og et uheld forklarer 'sat' uden at låne uheldets tid", () => {
+  const leg = (reason) => ({ km: 120, type: "stage_plan_leg", params: { rider_id: "r", leg: 1, task: "ride_in", reason, exact_km: 120 } });
+  const caught = { km: 118, type: "breakaway_caught", params: { group_id: "b", rider_ids: ["r"], exact_km: 112, exact_time: 9000 } };
+  assert.equal(withEventPlaces([caught, leg("caught")])[1].params.exact_km, 112);
+  const crash = { km: 107, type: "incident", params: { rider_id: "r", outcome: "time_loss", exact_km: 107 } };
+  const placed = withEventPlaces([crash, leg("dropped")])[1];
+  assert.equal(placed.params.exact_km, 107);
+  assert.equal(placed.params.exact_time, undefined);
+});
+
+test("#6350: et angreb hentet i samme segment står før sin indhentning; en melding om gruppen venter på dannelsen", () => {
+  const attack = (groupId, exactKm, exactTime) => ({ km: 99.2, type: "finale_attack", params: { group_id: groupId, rider_ids: [groupId], direction: "descent", exact_km: exactKm, exact_time: exactTime } });
+  const log = [
+    { km: 89, type: "own_riders_ahead", params: { group_id: "solo-2", rider_ids: ["solo-2"], exact_km: 89 } },
+    attack("break-1", 99.2, 10336),
+    attack("solo-2", 90.91, 9960),
+    { km: 99.2, type: "breakaway_caught", params: { group_id: "break-1", rider_ids: ["break-1"], exact_km: 97.4, exact_time: 10225 } },
+    { km: 99.2, type: "group_merged", params: { group_id: "break-1", into_group_id: "peloton-0", rider_ids: ["break-1"], exact_km: 97.4 } },
+  ];
+  const placed = withEventPlaces(log);
+  assert.equal(placed[1].params.exact_km, 90.91, "sammen med de angreb den hørte til");
+  assert.equal(placed[1].params.exact_time, undefined);
+  assert.equal(placed[0].params.exact_km, 90.91);
+  assert.equal(placed[0].params.exact_time, 9960);
+  // Uden andre angreb før kontakten står den på selve kontakten.
+  assert.equal(withEventPlaces(log.filter((e) => e.params.group_id !== "solo-2"))[0].params.exact_km, 97.4);
+});
+
+test("#6350: en log uden præcise steder kommer uændret tilbage, og en ny etape får stederne når den gemmes", () => {
+  const old = [{ km: 10, type: "peloton_splits", params: { group_id: "g", gap_seconds: 30, rider_ids: ["r"] } }];
+  assert.equal(withEventPlaces(old), old);
+  assert.equal(withEventPlaces(null), null);
+  const { events } = buildStageTimelineV4({ engineTimeline: { events: summitFinishLog() }, stageProfile: { distance_km: 180 } });
+  assert.ok(events.find((e) => e.params.group_id === "gruppetto-3").params.exact_km < 171);
 });

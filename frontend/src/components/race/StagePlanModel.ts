@@ -603,8 +603,10 @@ function stagePlanRecapFromEvents(legs: readonly StagePlanLeg[], events: readonl
   const list = events ?? [];
   const switches = list
     .filter((e) => e?.type === "stage_plan_leg" && e.params?.rider_id === riderId)
-    .map((e) => ({ km: Number(e.km), leg: Number(e.params?.leg), reason: String(e.params?.reason ?? "") }))
-    .sort((a, b) => a.km - b.km);
+    .map((e) => ({ km: Number(e.km), place: Number(e.params?.exact_km ?? e.km), leg: Number(e.params?.leg), reason: String(e.params?.reason ?? "") }))
+    .sort((a, b) => a.km - b.km)
+    // #6350: "sat ved km" er hvor han reelt blev sat, aldrig foer det forrige skift i kaeden.
+    .map((s, i, all) => ({ ...s, km: i === 0 ? s.place : Math.max(all[i - 1].km, s.place) }));
   const abandon = list.find((e) => e?.type === "incident" && e.params?.rider_id === riderId && e.params?.outcome === "abandoned");
   const reached = new Map<number, number>([[0, 0]]);
   for (const s of switches) reached.set(s.leg, s.km);
