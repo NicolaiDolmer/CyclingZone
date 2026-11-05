@@ -309,7 +309,7 @@ function StorySection({ story, lines, cast, km, onJump, ownOut, narrative }: { s
             <h3 className="m-0 mb-1 font-data text-3xs font-semibold uppercase tracking-[.16em] text-cz-3">{t("detail.film.split.lossTitle")}</h3>
             <ul className="m-0 list-none p-0">
               {loss.entries.map((entry, i) => (
-                <LossRow key={`${entry.riderId}-${entry.km}-${i}`} entry={entry} kmLabel={filmKmValue(entry.shown, formatNumber)} riderNameById={castNames(cast)} teamNameById={narrative?.teamNameById} t={t} />
+                <LossRow key={`${entry.riderId}-${entry.km}-${i}`} entry={entry} kmLabel={filmKmValue(entry.shown, text.km)} riderNameById={castNames(cast)} teamNameById={narrative?.teamNameById} t={t} />
               ))}
               {loss.unknown && <li className="border-t border-cz-border py-1.5 text-sm leading-snug text-cz-1 first:border-t-0">{t("stagePageV2.story.lossUnknown", { names: loss.unknown })}</li>}
             </ul>

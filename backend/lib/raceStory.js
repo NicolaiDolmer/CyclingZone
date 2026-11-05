@@ -911,12 +911,9 @@ export function ridersBehindField(rows, riderIds) {
     gapOf.set(row.rider_id, gap);
     sizes.set(gap, (sizes.get(gap) ?? 0) + 1);
   }
-  let field = null;
-  for (const [gap, size] of sizes) {
-    const best = sizes.get(field) ?? 0;
-    if (size > best || (size === best && gap < field)) field = gap;
-  }
-  if (field == null) return [];
+  const biggest = [...sizes].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0];
+  if (!biggest) return [];
+  const field = biggest[0];
   return [...riderIds].filter((id) => gapOf.has(id) && gapOf.get(id) - field >= GAP_CHANGE_EXPLAIN_SECONDS);
 }
 
