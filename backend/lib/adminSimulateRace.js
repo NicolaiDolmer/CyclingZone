@@ -357,10 +357,13 @@ export async function runAdminSimulateStage({
 
 // S4 (#1176): kind → short EN reason text til DNF-linjen.
 function incidentKindLabel(kind) {
-  // #6938: v3's to nye veje ud (s5_profiles_v3) maa ikke staa som "mechanical".
+  // #7701: kun en sand aarsag; en ukendt art bliver neutral, aldrig "mechanical".
+  if (kind === "crash" || kind === "mechanical") return kind;
   if (kind === "illness") return "ill, did not start";
-  if (kind === "withdrawal") return "abandoned";
-  return kind === "crash" ? "crash" : "mechanical";
+  if (kind === "injury") return "injured, did not start";
+  if (kind === "withdrawal") return "too far behind";
+  if (kind === "time_limit") return "outside the time limit";
+  return "abandoned";
 }
 
 // #3897: divisionLabel er puljens spillervendte navn (fx "Division 3 — A"),

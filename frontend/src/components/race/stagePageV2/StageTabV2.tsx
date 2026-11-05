@@ -15,7 +15,7 @@ import StageProfileV2, { GradientLegend } from "./StageProfileV2.tsx";
 import ClimbCard from "./ClimbCard.tsx";
 import YourDayCard, { type CareerEvent } from "./YourDayCard.tsx";
 import RaceStoryCard from "./RaceStoryCard.tsx";
-import { castFrom, type RaceStory, type StoryNarrativeContext } from "./raceStoryModel.ts";
+import { castFrom, ownOutSentences, type RaceStory, type StoryNarrativeContext } from "./raceStoryModel.ts";
 import { stageWeather, type StageWeather } from "./stageWeather.ts";
 import { WeatherTag } from "./WeatherTag.tsx";
 import { Button, Flag, RiderLink, Section, SectionHeader, SectionStack, SkeletonLines, TerrainTypeGlyph } from "./ui.ts";
@@ -131,6 +131,7 @@ export default function StageTabV2({
   const demands = dayDemands(profile?.demand_vector);
   const climbIndex = Math.min(selectedClimb, Math.max(0, climbs.length - 1));
   const cast = useMemo(() => castFrom(results, riders, stageNumber, myTeamId), [results, riders, stageNumber, myTeamId]);
+  const ownOut = useMemo(() => ownOutSentences(dnfRows, myTeamId, cast), [dnfRows, myTeamId, cast]);
   const weather = stageWeather(profile, phase, story);
 
   if (phase === "after") {
@@ -161,6 +162,7 @@ export default function StageTabV2({
             title={isStageRace ? t("stagePageV2.story.title", { number: stageNumber }) : t("stagePageV2.story.titleOneDay")}
             hudLabel={isStageRace ? t("stagePageV2.stripStage", { number: stageNumber }) : t("stagePageV2.story.hudOneDay")}
             weather={weather}
+            ownOut={ownOut}
             routeBody={profile && series ? <ProfileCard profile={profile} stageLabel={stageLabel} band={false} selectedClimb={climbIndex} onSelectClimb={setSelectedClimb} bare weather={weather} /> : null}
             onOpenStandings={onOpenStandings}
           />

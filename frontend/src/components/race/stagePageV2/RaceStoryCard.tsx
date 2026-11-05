@@ -12,7 +12,7 @@ import type { Climb, ElevationSeries, StageProfile } from "./stagePageV2Model.ts
 import {
   buildReport, curateMoments, finaleData, formatClock, lineReplayKm, myBestRider, namesList, pickGroups,
   replayGroupsAt, splitRows, wholeStageFrames, frameAt,
-  isPeloton, isTimeTrialStory, type Cast, type RaceStory, type ReplayGroup, type SplitRow, type StoryLine, type StoryNarrativeContext,
+  isPeloton, isTimeTrialStory, type Cast, type RaceStory, type ReplayGroup, type ReportSentence, type SplitRow, type StoryLine, type StoryNarrativeContext,
 } from "./raceStoryModel.ts";
 import StageProfileV2, { GradientLegend } from "./StageProfileV2.tsx";
 import FinaleView, { PlayIcon, prefersReducedMotion } from "./FinaleView.tsx";
@@ -22,6 +22,7 @@ import type { StageWeather } from "./stageWeather.ts";
 import { WeatherTag, weatherSentenceKey } from "./WeatherTag.tsx";
 
 type View = "route" | "stage" | "final";
+const NO_OWN_OUT: ReportSentence[] = [];
 
 export interface RaceStoryCardProps {
   story: RaceStory;
@@ -40,9 +41,11 @@ export interface RaceStoryCardProps {
   onOpenStandings: () => void;
   /** #6993: etapens vejr (stageWeather.ts); null = intet at vise. */
   weather?: StageWeather | null;
+  /** #7701: dine egne udgaaede paa etapen som referat-saetninger (ownOutSentences). */
+  ownOut?: ReportSentence[];
 }
 
-export default function RaceStoryCard({ story, profile, series, climbs, cast, title, oneDay = false, hudLabel, routeBody, onOpenStandings, weather = null, narrative = null }: RaceStoryCardProps) {
+export default function RaceStoryCard({ story, profile, series, climbs, cast, title, oneDay = false, hudLabel, routeBody, onOpenStandings, weather = null, narrative = null, ownOut = NO_OWN_OUT }: RaceStoryCardProps) {
   const { t } = useTranslation("races");
   const D = story.distance_km ?? (Number(profile?.distance_km) || 0);
   const timeTrial = isTimeTrialStory(story, profile?.profile_type, narrative?.events);
@@ -108,7 +111,7 @@ export default function RaceStoryCard({ story, profile, series, climbs, cast, ti
       )}
 
       {view !== "route" && (
-        <StorySection story={story} lines={lines} cast={cast} km={view === "stage" ? km : null} onJump={jumpTo} />
+        <StorySection story={story} lines={lines} cast={cast} km={view === "stage" ? km : null} onJump={jumpTo} ownOut={ownOut} />
       )}
     </Section>
   );
@@ -239,12 +242,12 @@ function ReplayView({ story, profile, series, climbs, cast, km, onKm }: {
 
 // ── Historien: oejeblikke, mellemtider, referat ───────────────────────────
 
-function StorySection({ story, lines, cast, km, onJump }: { story: RaceStory; lines: StoryLine[]; cast: Cast; km: number | null; onJump: (l: StoryLine) => void }) {
+function StorySection({ story, lines, cast, km, onJump, ownOut }: { story: RaceStory; lines: StoryLine[]; cast: Cast; km: number | null; onJump: (l: StoryLine) => void; ownOut: ReportSentence[] }) {
   const { t } = useTranslation("races");
   const text = useStoryText(cast);
   const me = useMemo(() => myBestRider(story, cast), [story, cast]);
   const rows = useMemo(() => splitRows(story, me), [story, me]);
-  const report = useMemo(() => buildReport(story, lines, cast), [story, lines, cast]);
+  const report = useMemo(() => buildReport(story, lines, cast, ownOut), [story, lines, cast, ownOut]);
   const current = km == null ? null : [...lines].reverse().find((l) => l.km <= km + 1e-6) ?? null;
 
   return (
