@@ -5,10 +5,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { LANGUAGES } from "../i18n/languages.js";
 
-const load = (lng, ns) => JSON.parse(readFileSync(new URL(`../../public/locales/${lng}/${ns}.json`, import.meta.url), "utf8"));
+const load = (lng: string, ns: string) => JSON.parse(readFileSync(new URL(`../../public/locales/${lng}/${ns}.json`, import.meta.url), "utf8"));
 
 // Arm for arm i en ICU-select: teksten mellem "<arm> {" og den matchende "}".
-function selectArm(message, arm) {
+function selectArm(message: string, arm: string): string {
   const start = message.indexOf(` ${arm} {`) + arm.length + 3;
   assert.ok(start > arm.length + 2, `mangler armen ${arm}: ${message}`);
   let depth = 1;
