@@ -56,7 +56,7 @@ Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden f
 
 ## Faste rutiner
 
-Rapport får issue og svarudkast; ejeren poster. Patch notes kun efter observeret aktivering. Roadmap spejler den godkendte plan. Hver tænding kræver patch note, EN/DA Hjælp ved mekanikændring og registry/status. NOW/merge-close-out ejes af PC1.
+Rapport får issue og svarudkast; ejeren poster. Patch notes efter observeret aktivering. Hver tænding kræver patch note, EN/DA Hjælp ved mekanikændring og registry/status. NOW/merge-close-out ejes af PC1.
 
 ## Doktrin
 
