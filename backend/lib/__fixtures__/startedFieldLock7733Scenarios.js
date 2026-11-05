@@ -5,12 +5,25 @@
 // computeOffDigests7733. Ingen prod-data.
 
 import { createHash } from "node:crypto";
+import { mock } from "node:test";
 
 import { loadEntrantsForRace, simulateStageByIndex } from "../raceRunner.js";
 import { ABILITY_KEYS } from "../raceSimulator.js";
 import { DEMAND_VECTORS } from "../raceStageProfileGenerator.js";
 
 export const POOL_7733 = 21;
+
+/** Scenarierne laeser aldrig vaeguret (hard rule 16): motorens dato-defaults koerer paa dette ur. */
+export const NOW_7733 = Date.UTC(2026, 9, 15, 12);
+
+async function atFixedClock7733(run) {
+  mock.timers.enable({ apis: ["Date"], now: NOW_7733 });
+  try {
+    return await run();
+  } finally {
+    mock.timers.reset();
+  }
+}
 
 export const RACE_7733 = Object.freeze({
   id: "race-7733-fixture", race_type: "stage_race", race_class: "ProSeries", season_id: "s1",
@@ -83,7 +96,7 @@ export function worldAfterStart7733({ race = RACE_7733 } = {}) {
     race_entries: entries,
     riders,
     rider_derived_abilities: riders.map((r) => ({ rider_id: r.id, ...abil(r.seed) })),
-    rider_condition: [{ rider_id: RIDERS_7733.injured, injured_until: "2099-01-01", form: 50, fatigue: 10 }],
+    rider_condition: [{ rider_id: RIDERS_7733.injured, injured_until: "2026-10-20", form: 50, fatigue: 10 }],
     race_points: [],
     races: [{ ...race }],
     teams: [
@@ -147,14 +160,14 @@ const NOOP_DEPS_7733 = {
 export async function runStage7733({ race = RACE_7733, stageIndex = 1, flag, extraDeps = {} } = {}) {
   const supabase = makeSupabase7733(worldAfterStart7733({ race }), { flag });
   let rows = null;
-  await simulateStageByIndex({
+  await atFixedClock7733(() => simulateStageByIndex({
     supabase, race, stageIndex, ...NOOP_DEPS_7733,
     applyStageResult: async (_client, { resultRows }) => {
       rows = resultRows;
       return { lockWon: true, rowsImported: resultRows.length };
     },
     ...extraDeps,
-  });
+  }));
   const stageRiderIds = (rows ?? []).filter((r) => r.result_type === "stage").map((r) => r.rider_id).sort();
   return { rows: rows ?? [], stageRiderIds, supabase };
 }
@@ -178,7 +191,7 @@ export async function computeOffDigests7733() {
     const { rows, stageRiderIds } = await runStage7733({ race, stageIndex });
     const entrants = await loadEntrantsForRace({
       supabase: makeSupabase7733(worldAfterStart7733({ race })), race, stages: STAGES_7733,
-      persist: false, allowAutofill: false,
+      persist: false, allowAutofill: false, today: "2026-10-15",
     });
     out[key] = {
       stageRiders: stageRiderIds.length,

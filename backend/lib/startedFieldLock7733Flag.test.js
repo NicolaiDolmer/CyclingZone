@@ -115,7 +115,7 @@ test("etape 1 spoerger aldrig kontakten: startreglerne gaelder fuldt ud ved star
   const race = { ...RACE_7733, stages_completed: 0 };
   const supabase = makeSupabase7733(worldAfterStart7733({ race }), { flag: "on" });
   const entrants = await loadEntrantsForRace({
-    supabase, race, stages: STAGES_7733, persist: false, allowAutofill: false,
+    supabase, race, stages: STAGES_7733, persist: false, allowAutofill: false, today: "2026-10-15",
   });
   assert.ok(!entrants.some((e) => poolRiders.includes(e.rider_id)));
   await runStage7733({
