@@ -94,9 +94,16 @@
       "notReached": "not reached",
       "pending": "The race film for this stage is not ready yet.",
       "outcome": {
-        "done": "Done",
         "failed": "Tried, no luck",
-        "unknown": "Outcome unknown"
+        "finished": "Finished",
+        "attacked": "Attacked at km {km}",
+        "inBreak": "In the break",
+        "keptContact": "Kept contact",
+        "lostContact": "Lost contact at km {km}",
+        "outOfTime": "Outside the time limit",
+        "rank": "Finished no. {rank}",
+        "withRider": "With {name}",
+        "withRiderTo": "With {name} to km {km}"
       }
     }
   },

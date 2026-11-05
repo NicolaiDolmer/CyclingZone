@@ -94,9 +94,16 @@
       "notReached": "niet bereikt",
       "pending": "De koersfilm van deze etappe is nog niet klaar.",
       "outcome": {
-        "done": "Gedaan",
         "failed": "Geprobeerd, zonder succes",
-        "unknown": "Uitkomst onbekend"
+        "finished": "Gefinisht",
+        "attacked": "Viel aan op km {km}",
+        "inBreak": "In de kopgroep",
+        "keptContact": "Hield contact",
+        "lostContact": "Verloor contact op km {km}",
+        "outOfTime": "Buiten tijdslimiet",
+        "rank": "Nr. {rank} op de finish",
+        "withRider": "Met {name}",
+        "withRiderTo": "Met {name} tot km {km}"
       }
     }
   },

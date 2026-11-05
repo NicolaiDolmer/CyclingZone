@@ -94,9 +94,16 @@
       "notReached": "pas atteinte",
       "pending": "Le film de l'étape n'est pas encore prêt.",
       "outcome": {
-        "done": "Fait",
         "failed": "Tenté, sans succès",
-        "unknown": "Résultat inconnu"
+        "finished": "Arrivé",
+        "attacked": "A attaqué au km {km}",
+        "inBreak": "Dans l'échappée",
+        "keptContact": "A gardé le contact",
+        "lostContact": "A perdu le contact au km {km}",
+        "outOfTime": "Hors délais",
+        "rank": "N° {rank} à l'arrivée",
+        "withRider": "Avec {name}",
+        "withRiderTo": "Avec {name} jusqu'au km {km}"
       }
     }
   },

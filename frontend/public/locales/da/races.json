@@ -94,9 +94,16 @@
       "notReached": "nåede han ikke",
       "pending": "Løbsfilmen for etapen er ikke klar endnu.",
       "outcome": {
-        "done": "Udført",
         "failed": "Forsøgt uden held",
-        "unknown": "Ukendt udfald"
+        "finished": "Kom i mål",
+        "attacked": "Angreb ved km {km}",
+        "inBreak": "I udbruddet",
+        "keptContact": "Holdt kontakten",
+        "lostContact": "Mistede kontakten ved km {km}",
+        "outOfTime": "Uden for tidsgrænsen",
+        "rank": "Nr. {rank} i mål",
+        "withRider": "Med {name}",
+        "withRiderTo": "Med {name} til km {km}"
       }
     }
   },

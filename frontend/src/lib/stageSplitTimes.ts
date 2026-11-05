@@ -340,6 +340,32 @@ export function riderInFrontOrFieldAt(events: readonly TimelineEvent[] | null | 
   return own ? own.kind === "peloton" || own.gapSeconds === 0 : null;
 }
 
+/**
+ * #7706: hvor skiltes to ryttere inden for strækningen? `toKm` taeller ikke med: et skift der
+ * sker paa selve slut-km er leddets slutning, og maalets finale-grupper er ikke et loebsbillede.
+ * km = de skiltes dér, null = sammen hele vejen, undefined = filmen kan ikke svare (v3-tidslinje,
+ * ikke sammen fra start, eller en af dem forlod loebet undervejs).
+ */
+export function ridersSplitKm(events: readonly TimelineEvent[] | null | undefined, a: string, b: string, fromKm: number, toKm: number): number | null | undefined {
+  if (!hasGroupGaps(events)) return undefined;
+  // Tilstanden efter det sidste event paa hver km: to events paa samme km er ét loebsbillede.
+  const byKm = new Map<number, { together: boolean; gone: boolean }>();
+  replay(sortedEvents(events).filter((e) => (e.km ?? 0) < toKm), (event, state) => {
+    byKm.set(event.km ?? 0, {
+      together: resolveAlias(state, groupOfRider(state, a)) === resolveAlias(state, groupOfRider(state, b)),
+      gone: state.removed.has(a) || state.removed.has(b),
+    });
+  });
+  let together = true;
+  let splitKm: number | null = null;
+  for (const [km, at] of [...byKm].sort(([x], [y]) => x - y)) {
+    if (at.gone) return undefined;
+    if (km <= fromKm) together = at.together;
+    else if (!at.together && splitKm === null) splitKm = km;
+  }
+  return together ? splitKm : undefined;
+}
+
 function fromKind(state: ReplayState, groupId: string, leaving: readonly string[]): "breakaway" | "peloton" | "group" {
   const kind = groupKind(state, groupId, leaving);
   return kind === "breakaway" || kind === "peloton" ? kind : "group";
