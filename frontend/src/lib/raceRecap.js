@@ -71,8 +71,9 @@ function scopedIncidents(incidents, scope) {
 
 // ── #7411: udgaaede synlige ─────────────────────────────────────────────────
 // Aarsags-noeglen under detail.incidents.* pr. incident-art. time_limit er
-// motorens tidsgraense (raceEngineV4Bridge), withdrawal en udkoert hjaelper der
-// steg af (#6938 U3/U4). Ukendt art falder tilbage til "abandoned" (neutral),
+// motorens tidsgraense (raceEngineV4Bridge), withdrawal en rytter langt efter
+// uden opgave tilbage der steg af (#6938 U3/U4, teksten #7701: motoren afgoer det
+// paa hullet, saa ordlyden maa ikke paastaa traethed). Ukendt art falder tilbage til "abandoned" (neutral),
 // aldrig til en forkert aarsag.
 const INCIDENT_REASON_KEYS = Object.freeze({
   crash: "crash",
