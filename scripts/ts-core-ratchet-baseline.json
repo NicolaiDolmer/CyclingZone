@@ -16,7 +16,7 @@
     "en fil under 'konverter naar du roerer'. Raekkefoelge + opskrift:",
     "docs/TYPESCRIPT_DIRECTION.md."
   ],
-  "generatedAt": "2026-11-04",
+  "generatedAt": "2026-11-05",
   "tsconfig": "backend/tsconfig.core.json",
   "areas": {
     "economy": {
@@ -96,11 +96,11 @@
         "lib/riderOwnershipAudit*",
         "lib/transferExecution*"
       ],
-      "jsFileCount": 3,
-      "tsErrorCount": 102,
+      "jsFileCount": 2,
+      "tsErrorCount": 98,
       "files": {
         "lib/ownershipInvariantWatch.js": 29,
-        "lib/riderOwnershipAudit.js": 4,
+        "lib/riderOwnershipAudit.ts": 0,
         "lib/transferExecution.js": 69
       }
     },
@@ -137,7 +137,7 @@
     }
   },
   "totals": {
-    "jsFileCount": 25,
-    "tsErrorCount": 813
+    "jsFileCount": 24,
+    "tsErrorCount": 809
   }
 }
