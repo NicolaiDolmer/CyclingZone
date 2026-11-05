@@ -18,6 +18,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { authHeaders, supabase } from "../../lib/supabase";
+import { fetchAllRows } from "../../lib/supabasePagination";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import { waypointsFor } from "../../lib/stageRouteProfile.js";
 import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js"; // #7636
@@ -306,9 +307,8 @@ const NO_RANKS: ReadonlyMap<string, number> = new Map();
 
 /** #7706: holdets placeringer paa etapen. Et enkeltdagsloeb gemmer sin maalraekkefoelge som gc. Fejl = ingen placeringer. */
 async function fetchStageRanks(raceId: string, stageNumber: number, isOneDay: boolean, riderIds: readonly string[]): Promise<ReadonlyMap<string, number>> {
-  const { data } = await supabase.from("race_results").select("rider_id, rank")
-    .eq("race_id", raceId).eq("stage_number", stageNumber).eq("result_type", isOneDay ? "gc" : "stage").in("rider_id", [...riderIds]);
-  const rows = (data ?? []) as Array<{ rider_id: string | null; rank: number | null }>;
+  const rows = (await fetchAllRows(() => supabase.from("race_results").select("rider_id, rank")
+    .eq("race_id", raceId).eq("stage_number", stageNumber).eq("result_type", isOneDay ? "gc" : "stage").in("rider_id", [...riderIds]).order("id"))) as Array<{ rider_id: string | null; rank: number | null }>;
   return new Map(rows.flatMap((r): Array<[string, number]> => (r.rider_id && typeof r.rank === "number" ? [[r.rider_id, r.rank]] : [])));
 }
 
