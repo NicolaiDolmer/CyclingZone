@@ -25,6 +25,12 @@
 // were already apart at entry, or never visibly apart at exit), the checkpoint
 // is the honest answer and `exact_km` = `event.km`.
 //
+// #6350: a split is measured between the riders who rode together at the entry.
+// A group can swallow riders inside the segment (a break caught there), so one
+// id can hold riders who were ahead at the entry. Measured from them the lines
+// looked apart already, and the whole split fell back to the checkpoint: on a
+// summit finish, the finish line.
+//
 // REN: ingen IO, input muteres aldrig. Old revisions never call this module.
 import type { TimelineEvent } from "./types.ts";
 import { round2 } from "./timeline.ts";
@@ -140,8 +146,23 @@ function subjectRiders(event: TimelineEvent, ctx: ExactPlaceContext): string[] {
   return typeof p.group_id === "string" ? [...(ctx.exitGroups.get(p.group_id) ?? [])] : [];
 }
 
+/** #6350: the riders of the group a split left, as they rode at the segment entry. */
+function sourceAtEntry(event: TimelineEvent, ctx: ExactPlaceContext): ReadonlySet<string> | null {
+  const p = event.params ?? {};
+  const named = event.type === "peloton_splits" ? p.source_group_id : event.type === "breakaway_dropped" ? p.from_group_id : undefined;
+  const members = typeof named === "string" ? ctx.entryGroups.get(named) : undefined;
+  return members && members.length > 0 ? new Set(members) : null;
+}
+
+/** #6350: only the riders who rode in the source at the entry, when any of them are named. */
+function onSourceLine(riderIds: readonly string[], source: ReadonlySet<string> | null): readonly string[] {
+  if (!source) return riderIds;
+  const inSource = riderIds.filter((id) => source.has(id));
+  return inSource.length > 0 ? inSource : riderIds;
+}
+
 /** The line an event's riders separated from or met. */
-function referenceRiders(event: TimelineEvent, subject: readonly string[], ctx: ExactPlaceContext): string[] {
+function referenceRiders(event: TimelineEvent, subject: readonly string[], ctx: ExactPlaceContext, source: ReadonlySet<string> | null): string[] {
   const p = event.params ?? {};
   const own = new Set(subject);
   const named = event.type === "peloton_splits" ? p.source_group_id
@@ -150,7 +171,12 @@ function referenceRiders(event: TimelineEvent, subject: readonly string[], ctx: 
         : event.type === "breakaway_caught" ? p.chase_group_id : undefined;
   if (typeof named === "string") {
     const members = (ctx.exitGroups.get(named) ?? []).filter((id) => !own.has(id));
-    if (members.length > 0) return members;
+    const stayed = source ? members.filter((id) => source.has(id)) : members;
+    if (stayed.length > 0) return stayed;
+    if (source) {
+      const rest = [...source].filter((id) => !own.has(id));
+      if (rest.length > 0) return rest;
+    }
   }
   // The group the subject's front-most rider rode in at the entry.
   let lead: string | null = null;
@@ -163,6 +189,12 @@ function referenceRiders(event: TimelineEvent, subject: readonly string[], ctx: 
     if (members.includes(lead)) return members.filter((id) => !own.has(id));
   }
   return [];
+}
+
+/** #6350: the solo group (mechanics/incidents.ts) a rider left the segment in, if any. */
+function incidentSoloGroup(riderId: string, ctx: ExactPlaceContext): string | null {
+  for (const [id, members] of ctx.exitGroups) if (id.startsWith("solo-m10-") && members.includes(riderId)) return id;
+  return null;
 }
 
 function fractionOfKm(km: number, ctx: ExactPlaceContext): number {
@@ -184,14 +216,16 @@ export function annotateExactPlaces(events: readonly TimelineEvent[], ctx: Exact
   return events.map((event) => {
     const params = event.params ?? {};
     let exactKm: number = typeof params.exact_km === "number" && Number.isFinite(params.exact_km) ? params.exact_km : event.km;
-    const subject = event.type === "stage_start" || event.type === "weather" ? [] : subjectRiders(event, ctx);
+    const named = event.type === "stage_start" || event.type === "weather" ? [] : subjectRiders(event, ctx);
+    const source = sourceAtEntry(event, ctx);
+    const subject = onSourceLine(named, source);
     const atCheckpoint = Math.abs(event.km - ctx.toKm) < KM_EPSILON && ctx.toKm > ctx.fromKm;
     if (typeof params.exact_km !== "number" && atCheckpoint) {
       if (event.type === "group_merged" && typeof params.group_id === "string" && caughtAt.has(params.group_id)) {
         exactKm = caughtAt.get(params.group_id) as number;
       } else if (SEPARATION_TYPES.has(event.type) || CONTACT_TYPES.has(event.type)) {
         const a = lineOf(subject, ctx);
-        const b = lineOf(referenceRiders(event, subject, ctx), ctx);
+        const b = lineOf(referenceRiders(event, named, ctx, source), ctx);
         if (a && b) {
           const entryGap = a.entry - b.entry;
           const exitGap = a.exit - b.exit;
@@ -204,6 +238,11 @@ export function annotateExactPlaces(events: readonly TimelineEvent[], ctx: Exact
     }
     exactKm = round2(Math.min(event.km, Math.max(Math.min(ctx.fromKm, event.km), exactKm)));
     const next: Record<string, unknown> = { ...params, exact_km: exactKm };
+    // #6350: the incident formed the victim's solo group, so the timeline names it here.
+    if (event.type === "incident" && params.outcome === "time_loss" && typeof params.rider_id === "string") {
+      const solo = incidentSoloGroup(params.rider_id, ctx);
+      if (solo) next.group_id = solo;
+    }
     if (typeof params.exact_time !== "number" && event.type !== "incident") {
       const fraction = fractionOfKm(exactKm, ctx);
       if (event.type === "stage_start") next.exact_time = 0;

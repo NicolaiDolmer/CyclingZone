@@ -44,7 +44,8 @@
 //      Intet andet felt paa rytteren roeres. Udbrudsforsoeg og sprinttog kommer
 //      fra de udledte ordre-felter (stagePlan.legacyOrderFromPlan), som motoren
 //      allerede laeser.
-//   5. Hvert skift skrives som et `stage_plan_leg`-event paa segmentets start-km
+//   5. Hvert skift skrives som et `stage_plan_leg`-event paa segmentets start-km (#6350: det
+//      sted han reelt blev sat laegges paa som exact_km, raceTimeline.withEventPlaces)
 //      (rider_id, led, opgave, aarsag). Fog of war: ingen tal ud over km.
 //      Opsummeringen efter etapen laeser kun disse events.
 //

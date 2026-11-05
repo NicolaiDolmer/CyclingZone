@@ -40,6 +40,8 @@
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { stableSeed, stageGapModel, finiteDistanceKm } from "./raceSimulator.js";
 import { computeCatchKm } from "./racePassages.js";
+import { separationFraction } from "./engine/v4/exactPlace.ts"; // #6350
+import { RACE_V4_TUNING } from "./engine/v4/tuning.ts"; // #6350
 
 export const TIMELINE_VERSION = 1;
 
@@ -541,5 +543,146 @@ export function buildStageTimelineV4({
   }
 
   events.sort((a, b) => a.km - b.km);
-  return { timeline_version: TIMELINE_VERSION_V4, events };
+  return { timeline_version: TIMELINE_VERSION_V4, events: withEventPlaces(events) };
+}
+
+// ── #6350: hændelsernes sted, læst af selve tidslinjen ───────────────────────
+// Motoren stempler hvert segment for sig (engine/v4/exactPlace.ts). Det der
+// kræver hele etapen eller flere hændelser på én gang, sker her, som en ren
+// funktion af loggen: den kører når en ny etape gemmes, og når en gemt etape
+// læses (GET /timeline), så allerede kørte etaper også fortæller rigtigt uden at
+// loggen røres. `km` (rækkefølgen) flyttes aldrig; kun `params.exact_km`, og
+// `params.exact_time` fjernes hvor tiden ikke længere hører til stedet, så
+// siden falder tilbage på førerens tid på stedet. Idempotent.
+
+const KM_EPSILON = 0.01;
+const FORMATION_TYPES = new Set(["peloton_splits", "breakaway_dropped", "finale_attack"]);
+const CONTACT_TYPES = new Set(["breakaway_caught", "group_merged"]);
+const BOOKKEEPING_ATTACK_KINDS = new Set(["stage_decided", "placement_gap", "gap_survived"]);
+
+const round2 = (n) => Math.round(n * 100) / 100;
+const finiteOrNull = (value) => (typeof value === "number" && Number.isFinite(value) ? value : null);
+const exactKmOf = (event) => finiteOrNull(event.params?.exact_km);
+const riderIdsOf = (event) => {
+  const list = Array.isArray(event.params?.rider_ids) ? event.params.rider_ids.filter((id) => typeof id === "string") : [];
+  return list.length > 0 ? list : typeof event.params?.rider_id === "string" ? [event.params.rider_id] : [];
+};
+
+function movePlace(event, km, time = null) {
+  event.params.exact_km = km;
+  if (time === null) delete event.params.exact_time;
+  else event.params.exact_time = time;
+}
+
+/** Hvor segmentet bag et tjekpunkt startede, aflæst af de splits motoren kunne placere. */
+function segmentStartKm(km, splitsAtKm, events, visible) {
+  const anchor = events.reduce((best, e) => (e.type === "gap_update" && e.km < km && e.km > best ? e.km : best), 0);
+  const starts = [];
+  for (const split of splitsAtKm) {
+    const at = exactKmOf(split);
+    const fraction = separationFraction(0, finiteOrNull(split.params?.gap_seconds) ?? NaN, visible);
+    if (at === null || at >= km || fraction === null || fraction >= 1) continue;
+    const start = (at - fraction * km) / (1 - fraction);
+    if (start >= anchor - KM_EPSILON && start < km) starts.push(start);
+  }
+  if (starts.length === 0) return anchor;
+  return starts.sort((a, b) => a - b)[Math.floor(starts.length / 2)];
+}
+
+/**
+ * Et split motoren ikke kunne placere (ældre etaper: gruppen slugte ryttere inde
+ * i segmentet, se exactPlace.ts) står på tjekpunktet, på en bjergankomst altså på
+ * stregen. Gruppens hul er kendt, og to linjer glider lineært fra hinanden over
+ * segmentet, så stedet er det samme som motoren selv regner.
+ */
+function placeCheckpointSplits(events) {
+  const visible = RACE_V4_TUNING.groups.mergeThresholdSeconds;
+  const byKm = new Map();
+  for (const event of events) {
+    if (event.type !== "peloton_splits") continue;
+    if (!byKm.has(event.km)) byKm.set(event.km, []);
+    byKm.get(event.km).push(event);
+  }
+  for (const [km, splits] of byKm) {
+    const stuck = splits.filter((split) => exactKmOf(split) === km);
+    if (stuck.length === 0) continue;
+    const start = segmentStartKm(km, splits, events, visible);
+    for (const split of stuck) {
+      const fraction = separationFraction(0, finiteOrNull(split.params?.gap_seconds) ?? NaN, visible);
+      if (fraction !== null) movePlace(split, round2(start + fraction * (km - start)));
+    }
+  }
+}
+
+/**
+ * En gruppe dannet og hentet i samme segment har intet hul ved segmentets slut at
+ * måle på, så dens dannelse faldt på tjekpunktet, efter sin egen indhentning. Den
+ * må stå før kontakten: sammen med de angreb den hørte til, ellers på kontakten.
+ */
+function placeFormationsBeforeContact(events) {
+  const contactOf = new Map();
+  const keyOf = (event) => `${event.km}|${event.params?.group_id}`;
+  for (const event of events) {
+    const at = exactKmOf(event);
+    if (!CONTACT_TYPES.has(event.type) || typeof event.params?.group_id !== "string" || at === null) continue;
+    contactOf.set(keyOf(event), Math.min(contactOf.get(keyOf(event)) ?? Infinity, at));
+  }
+  for (const event of events) {
+    if (!FORMATION_TYPES.has(event.type) || BOOKKEEPING_ATTACK_KINDS.has(event.params?.kind)) continue;
+    const contact = contactOf.get(keyOf(event));
+    const at = exactKmOf(event);
+    if (contact === undefined || at === null || at <= contact + KM_EPSILON) continue;
+    const siblings = events.filter((e) => e.type === event.type && e.km === event.km && (exactKmOf(e) ?? Infinity) <= contact).map(exactKmOf);
+    movePlace(event, siblings.length > 0 ? Math.max(...siblings) : contact);
+  }
+}
+
+/**
+ * Følgerne af at blive sat står hvor han blev sat, ikke hvor motoren opdagede det:
+ * planens "sat"/"hentet" afgøres først ved næste segmentgrænse (stagePlanEngine.ts),
+ * og "gik kold" stemples ved segmentets slut. `km` bliver stående, for det er dér
+ * opgaven skifter; `exact_km` er det sted filmen og opsummeringen fortæller.
+ */
+function placeRiderConsequences(events) {
+  const splitAt = new Map(); // `${km}|${rytter}` -> split
+  for (const event of events) {
+    if (event.type !== "peloton_splits") continue;
+    for (const id of riderIdsOf(event)) splitAt.set(`${event.km}|${id}`, event);
+  }
+  const joined = new Map(); // rytter -> { km, time, source }
+  const caught = new Map(); // rytter -> { km, time }
+  for (const event of events) {
+    const p = event.params ?? {};
+    const place = { km: exactKmOf(event) ?? event.km, time: finiteOrNull(p.exact_time) };
+    if (event.type === "peloton_splits") {
+      for (const id of riderIdsOf(event)) joined.set(id, { ...place, source: p.source_group_id ?? null });
+    } else if (event.type === "incident" && p.outcome === "time_loss") {
+      for (const id of riderIdsOf(event)) joined.set(id, { km: place.km, time: null, source: null });
+    } else if (event.type === "group_merged") {
+      // Tilbage i gruppen han blev sat fra: det split forklarer ikke et senere "sat".
+      for (const id of riderIdsOf(event)) if (joined.get(id)?.source === p.into_group_id) joined.delete(id);
+    } else if (event.type === "breakaway_caught") {
+      for (const id of riderIdsOf(event)) caught.set(id, place);
+    } else if (event.type === "stage_plan_leg") {
+      const from = p.reason === "dropped" ? joined.get(p.rider_id) : p.reason === "caught" ? caught.get(p.rider_id) : undefined;
+      if (from && from.km < place.km - KM_EPSILON) movePlace(event, from.km, from.time);
+    } else if ((event.type === "all_out_cracked" || event.type === "breakaway_dropped") && exactKmOf(event) === event.km) {
+      const split = splitAt.get(`${event.km}|${riderIdsOf(event)[0]}`);
+      if (split && exactKmOf(split) !== null && exactKmOf(split) < event.km) movePlace(event, exactKmOf(split), finiteOrNull(split.params?.exact_time));
+    }
+  }
+}
+
+/**
+ * #6350: tidslinjen med hver hændelse på det sted den skete. Input muteres aldrig.
+ * En log uden `exact_km` (version 1 og ældre v4-revisioner) kommer uændret tilbage.
+ */
+export function withEventPlaces(events) {
+  if (!Array.isArray(events) || !events.some((event) => event && exactKmOf(event) !== null)) return events;
+  const placed = events.map((event) => (event?.params ? { ...event, params: { ...event.params } } : event));
+  const known = placed.filter((event) => event?.params);
+  placeCheckpointSplits(known);
+  placeFormationsBeforeContact(known);
+  placeRiderConsequences(known);
+  return placed;
 }
