@@ -117,15 +117,21 @@ function badDayOf(moments: StoryMoment[]) {
   return typeof cause === "string" ? BAD_DAY[cause] ?? null : null;
 }
 
-/** Han kom tilbage efter uheldet, hvis en senere sammenlaegning navngiver ham. */
-function rejoinedAfter(story: RaceStory, riderId: string, km: number): boolean {
-  return story.moments.some((m) => m.type === "group_merged" && m.km >= km - EPS && ridersOf(m).includes(riderId));
+/** Holdt angrebet til stregen? Blev han eller hans gruppe hentet bagefter, gjorde det ikke. */
+function attackHeld(attack: StoryMoment, story: RaceStory, riderId: string): boolean {
+  const groupId = attack.data.group_id;
+  return !story.moments.some((m) => ["breakaway_caught", "group_caught", "group_merged"].includes(m.type) && m.km >= attack.km - EPS
+    && (ridersOf(m).includes(riderId) || (groupId != null && m.data.group_id === groupId)));
 }
 
 type Setback = { main: WhyMain; moment: StoryMoment | null; sector: string | null; climbName: string | null };
 
-/** Det foerste tilbageslag der stod ved magt. */
-function firstSetback(input: RiderWhyInput, story: RaceStory, moments: StoryMoment[], backInField = false): Setback | null {
+/**
+ * Det foerste tilbageslag der stod ved magt. Et uheld taeller kun bort, naar han
+ * kom i maal med feltet (`backInField`): en sammenlaegning med en gruppe laengere
+ * tilbage er ikke at vaere kommet tilbage.
+ */
+function firstSetback(input: RiderWhyInput, moments: StoryMoment[], backInField = false): Setback | null {
   const riderId = input.riderId as string;
   const near = (m: StoryMoment, km: number) => Math.abs((m.recorded_km ?? m.km) - km) < EPS || Math.abs(m.km - km) < EPS;
   for (const entry of buildOwnTimeLoss(input.events, { ownRiderIds: [riderId] })) {
@@ -142,7 +148,7 @@ function firstSetback(input: RiderWhyInput, story: RaceStory, moments: StoryMome
     const moment = moments.find((m) => m.type === type && near(m, entry.km)) ?? null;
     if (type === "favorite_crack") return { main: "crack", moment, sector: null, climbName: null };
     if (type !== "incident" || entry.event.params?.outcome !== "time_loss") continue;
-    if (backInField || rejoinedAfter(story, riderId, entry.km)) continue;
+    if (backInField) continue;
     const kind = entry.event.params?.kind;
     return { main: kind === "crash" ? "crashLoss" : kind === "mechanical" ? "mechanicalLoss" : "incidentLoss", moment, sector: null, climbName: null };
   }
@@ -164,7 +170,7 @@ function outOfRace(input: RiderWhyInput, story: RaceStory | null, moments: Story
   if (kind === "mechanical") return said("abandonedMechanical", where);
   if (input.reasonKey === "time_limit" || input.reasonKey === "withdrawal") {
     const main = input.reasonKey === "time_limit" ? "timeLimit" : "withdrawal";
-    const setback = story && hasGroupGaps(input.events) ? firstSetback(input, story, moments) : null;
+    const setback = story && hasGroupGaps(input.events) ? firstSetback(input, moments) : null;
     return setback ? said(main, NOWHERE, "afterDrop", setbackPlace(setback, story as RaceStory, input.climbs)) : said(main);
   }
   return incident ? said("abandoned", where) : UNKNOWN;
@@ -194,7 +200,7 @@ export function riderWhy(input: RiderWhyInput): RiderWhy {
   if (outcome === "survived") return said("survived");
   if (rank === 1) {
     if (sprint?.data.winner_rider_id === riderId) return said("wonSprint");
-    return attack && group?.size === 1 ? said("wonAttack", placeOf(attack, story, climbs)) : said("won");
+    return attack && group?.size === 1 && attackHeld(attack, story, riderId) ? said("wonAttack", placeOf(attack, story, climbs)) : said("won");
   }
   if (gap.in_front) return said(sprint ? "frontSprint" : "front");
 
@@ -202,7 +208,7 @@ export function riderWhy(input: RiderWhyInput): RiderWhy {
   const leadFor = (): WhyLead | null => badDay?.lead ?? (outcome === "caught" || outcome === "dropped" ? "afterBreak" : null);
   const allOut = moments.find((m) => m.type === "all_out_cracked");
   if (allOut) return said("allOut", placeOf(allOut, story, climbs), leadFor());
-  const setback = firstSetback(input, story, moments, gap.via_rest || finaleGroup);
+  const setback = firstSetback(input, moments, gap.via_rest || finaleGroup);
   if (setback) {
     const lead = setback.main === "dropFromBreak" ? badDay?.lead ?? null : leadFor();
     return said(setback.main, setbackPlace(setback, story, climbs), lead);

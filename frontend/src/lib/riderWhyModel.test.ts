@@ -80,12 +80,13 @@ test("et split frem er et angreb, aldrig et tab", () => {
   assert.equal(why.known, false);
 });
 
-test("uheld: tidstab taeller kun hvis han ikke kom tilbage", () => {
+test("uheld: tidstab taeller kun hvis han ikke kom tilbage til feltet", () => {
   const crash: Ev = { km: 40, type: "incident", params: { rider_id: "a", kind: "crash", outcome: "time_loss" } };
   const m = moment("incident", 40, { rider_id: "a", kind: "crash", outcome: "time_loss" });
   assert.equal(riderWhy(input("a", 12, [crash], storyOf([m], behind))).main, "crashLoss");
-  const merged = moment("group_merged", 55, { rider_ids: ["a"] });
-  assert.equal(riderWhy(input("a", 12, [crash], storyOf([m, merged], behind))).known, false);
+  // Codex: en sammenlaegning med en gruppe laengere tilbage er ikke at vaere kommet tilbage.
+  const merged = moment("group_merged", 55, { rider_ids: ["a"], into_group_id: "gruppetto-1" });
+  assert.equal(riderWhy(input("a", 12, [crash], storyOf([m, merged], behind))).main, "crashLoss");
   const inBunch = finishAt(100, [["finale-winner-0", ["w"], 0, false], ["finale-tier-1", ["a"], 4, true, 15]]);
   const sprint = moment("sprint_decided", 100, { winner_rider_id: "w" });
   assert.equal(riderWhy(input("a", 12, [crash], storyOf([m, sprint], inBunch))).main, "bunchBehindSprint");
@@ -100,6 +101,12 @@ test("vinderen: spurten, det alene angreb, og aldrig et angreb han ikke kom alen
   const why = riderWhy(input("a", 1, [], storyOf([attack], alone)));
   assert.equal(why.main, "wonAttack");
   assert.deepEqual(why.where, { kind: "climb", name: "Col Test" });
+  // Codex: finalens enkeltgruppe beviser ikke, at et hentet angreb holdt.
+  const caught = moment("breakaway_caught", 88, { rider_ids: ["a"] });
+  assert.equal(riderWhy(input("a", 1, [], storyOf([attack, caught], alone))).main, "won");
+  const groupCaught = moment("group_merged", 88, { group_id: "attack-1", rider_ids: [] });
+  const groupAttack = moment("finale_attack", 78, { rider_ids: ["a"], group_id: "attack-1" });
+  assert.equal(riderWhy(input("a", 1, [], storyOf([groupAttack, groupCaught], alone))).main, "won");
 });
 
 test("en rytter der vandt tid paa stigningen, forklares ikke med dagens form alene", () => {
