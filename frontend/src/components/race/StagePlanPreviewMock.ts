@@ -30,6 +30,8 @@ const STAGE_2_PLANS = {
   "rider-97": [{ task: "breakaway" }, { task: "ride_for_result", from: { at: "dropped" } }],
   "rider-96": [{ task: "shelter_leader" }, { task: "tempo", from: { at: "kom", kom_index: 0 } }, { task: "ride_in", from: { at: "dropped" } }],
   "rider-95": [{ task: "stay_sheltered" }, { task: "ride_for_result", from: { at: "final_km" } }],
+  // #7706: et mislykket forsoeg og et led der ikke blev naaet, saa alle markeringer kan ses.
+  "rider-1": [{ task: "breakaway" }, { task: "attack", from: { at: "final_km" } }, { task: "ride_in", from: { at: "dropped" } }],
 };
 
 /** team-orders-svaret med planen slaaet til og etape 2's gemte planer. */
@@ -55,12 +57,17 @@ export function stagePlanPreviewTimeline() {
     stage_number: 2,
     created_at: "2026-06-24T15:30:00.000Z",
     events: [
-      { km: 0, type: "stage_start", params: {} },
+      { km: 0, type: "stage_start", params: { field_count: 40 } },
       { km: 14, type: "breakaway_formed", params: { group_id: "breakaway-1", rider_ids: ["rider-97"] } },
+      { km: 14, type: "gap_update", params: { group_id: "breakaway-1", gap_seconds: 60 } },
+      { km: 30, type: "stage_plan_leg", params: { rider_id: "rider-1", leg: 2, task: "ride_in", reason: "missed_break" } },
+      // #7706: samme form som motoren: faldet staar paa skiftets km, og udbruddet gaar op i feltet.
+      { km: 96, type: "peloton_splits", params: { cause: "climb_deficit", group_id: "gruppetto-1", rider_ids: ["rider-96"], gap_seconds: 58, source_group_id: "peloton-0" } },
       { km: 96, type: "stage_plan_leg", params: { rider_id: "rider-96", leg: 2, task: "ride_in", reason: "dropped" } },
+      { km: 138, type: "group_merged", params: { group_id: "breakaway-1", rider_ids: ["rider-97"], into_group_id: "peloton-0" } },
       { km: 138, type: "stage_plan_leg", params: { rider_id: "rider-97", leg: 1, task: "ride_for_result", reason: "caught" } },
       { km: 158, type: "stage_plan_leg", params: { rider_id: "rider-95", leg: 1, task: "ride_for_result", reason: "final_km" } },
-      { km: 168, type: "finish", params: {} },
+      { km: 168, type: "finish", params: { top: [{ gap: 0, rank: 4, rider_id: "rider-95" }, { gap: 0, rank: 7, rider_id: "rider-97" }, { gap: 12, rank: 9, rider_id: "rider-1" }, { gap: 95, rank: 10, rider_id: "rider-96" }] } },
     ],
   };
 }

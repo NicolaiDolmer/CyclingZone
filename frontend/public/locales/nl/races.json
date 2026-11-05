@@ -92,7 +92,19 @@
       "abandoned": "gaf op bij km {km}",
       "skipped": "overgeslagen, hij was al gelost",
       "notReached": "niet bereikt",
-      "pending": "De koersfilm van deze etappe is nog niet klaar."
+      "pending": "De koersfilm van deze etappe is nog niet klaar.",
+      "outcome": {
+        "failed": "Geprobeerd, zonder succes",
+        "finished": "Gefinisht",
+        "attacked": "Viel aan op km {km}",
+        "inBreak": "In de kopgroep",
+        "keptContact": "Hield contact",
+        "lostContact": "Verloor contact op km {km}",
+        "outOfTime": "Buiten tijdslimiet",
+        "rank": "Nr. {rank} op de finish",
+        "withRider": "Met {name}",
+        "withRiderTo": "Met {name} tot km {km}"
+      }
     }
   },
   "stagePageV2": {
