@@ -7,6 +7,7 @@
 // være et cirkulært import.
 import { SCOUT_JOB_CONFIG } from "./scoutEngine.js";
 import { notifyScoutReportReady } from "./notificationService.js"; // #2945
+import { recordScoutLooks } from "./potentialEstimateWriter.js"; // #7685
 
 // scout_actions op til assignmentens target_level (bevarer den eksisterende
 // level=COUNT-derivation fra scouting.js). Genberegner behovet fra DB hver gang
@@ -27,6 +28,8 @@ async function insertTargetActions({ supabase, assignment }) {
       .insert({ team_id: assignment.team_id, rider_id: assignment.rider_id, season_id: assignment.season_id ?? null });
     if (insErr) throw new Error(`scout_actions insert: ${insErr.message}`);
   }
+  // #7685: nyt kig = ny viden. Flag-gated, og kaster aldrig.
+  if (needed > 0) await recordScoutLooks({ supabase, teamId: assignment.team_id, riderIds: [assignment.rider_id] });
 }
 
 // Sweep-stien (uændret adfærd ift. før #2644-flytningen hertil): actions først,

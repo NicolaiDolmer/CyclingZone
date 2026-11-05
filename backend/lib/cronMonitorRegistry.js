@@ -122,6 +122,7 @@ export const EMAIL_HEALTH_WALL_CLOCK = Object.freeze({ hour: 8, minute: 0, repea
 export const EMAIL_RACE_DIGEST_WALL_CLOCK = Object.freeze({ hour: 19, minute: 0, repeatHourly: true }); // DIGEST_HOUR_COPENHAGEN
 export const DISCORD_RACE_DIGEST_WALL_CLOCK = Object.freeze({ hour: 20, minute: 0, repeatHourly: true }); // DISCORD_DIGEST_HOUR_COPENHAGEN
 export const ACADEMY_REMINDER_WALL_CLOCK = Object.freeze({ weekdays: ["sun", "sat"], hour: 10, minute: 0, repeatHourly: true }); // #7177: REMINDER_READY_HOUR; loerdagens kl. 18 er modulets egen gate
+export const POTENTIAL_ESTIMATE_SUNDAY_WALL_CLOCK = Object.freeze({ weekdays: ["sun"], hour: SUNDAY_VALUE_FROM_HOUR, minute: 30, repeatHourly: true }); // #7685: efter vaerdierne, ikke oven i dem
 
 // Sentry-crontab-monitor for et vaegur-skema. Udebliver det faste tidspunkt, fyrer
 // Sentry MISSED efter checkinMargin (ejer-krav #6858: lille margin, 15 min).
@@ -145,6 +146,7 @@ export const CRON_MONITOR_EMAIL_HEALTH = wallClockMonitorConfig(EMAIL_HEALTH_WAL
 export const CRON_MONITOR_EMAIL_RACE_DIGEST = wallClockMonitorConfig(EMAIL_RACE_DIGEST_WALL_CLOCK); // "0 19 * * *"
 export const CRON_MONITOR_DISCORD_RACE_DIGEST = wallClockMonitorConfig(DISCORD_RACE_DIGEST_WALL_CLOCK); // "0 20 * * *"
 export const CRON_MONITOR_ACADEMY_REMINDER = wallClockMonitorConfig(ACADEMY_REMINDER_WALL_CLOCK); // "0 10 * * 0,6", kun skema (ingen Sentry-monitor, se UNMONITORED_CRON_TICKS)
+export const CRON_MONITOR_POTENTIAL_ESTIMATE_SUNDAY = wallClockMonitorConfig(POTENTIAL_ESTIMATE_SUNDAY_WALL_CLOCK); // kun skema (ingen Sentry-monitor, se UNMONITORED_CRON_TICKS)
 
 // ─── ALL_CRON_MONITORS ─────────────────────────────────────────────────────
 // Deploy-grace: boot-priming af cron-monitors (#2440). Rod-årsag: hver Railway-
@@ -298,4 +300,9 @@ export const UNMONITORED_CRON_TICKS = [
   // uge. En ny Sentry-cron-monitor er en ny løbende udgift; fejl når Sentry via
   // trackedTick + captureException i cron-funktionen.
   "academy-pull-reminder",
+  // #7685: skrivningen af potentiale-skøn er flag-gated (startstadie off) og
+  // idempotent. Samme begrundelse som ovenfor; fejl når Sentry via trackedTick og
+  // det samlede event i modulernes tick-funktioner.
+  "potential-estimate-sunday",
+  "potential-estimate-team-change",
 ];

@@ -230,6 +230,7 @@ import { buildRaceStory, storyInputsFromResults } from "../lib/raceStory.js"; //
 import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
 import { getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScout, loadScoutHistory } from "../lib/scoutAssignmentService.js";
+import { recordScoutLooks } from "../lib/potentialEstimateWriter.js"; // #7685
 import {
   buildTypeCeilingBands, buildVerdict, scoutPrecisionInfo,
   buildTypePrognosisBands, roleCeilRating, ratingFromAbilities,
@@ -2715,6 +2716,7 @@ router.post("/scouting/:riderId", requireAuth, marketWriteLimiter, async (req, r
       .from("scout_actions")
       .insert({ team_id: req.team.id, rider_id: riderId, season_id: activeSeasonId });
     if (insErr) throw new Error(insErr.message);
+    await recordScoutLooks({ supabase, teamId: req.team.id, riderIds: [riderId] }); // #7685: flag-gated, kaster aldrig
 
     // Returnér frisk state + nyt maskeret estimat (#1162) så UI'et kan opdatere
     // slots, niveau og stjerne-range uden ekstra round-trip.
