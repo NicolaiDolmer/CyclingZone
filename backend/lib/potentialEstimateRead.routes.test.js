@@ -20,6 +20,10 @@ const source = readFileSync(new URL("../routes/api.js", import.meta.url), "utf8"
 const TEAM = "own";
 const FORBIDDEN = /uncertainty|knowledge_key|ceiling_at_write/;
 const ESTIMATE_TABLES = ["rider_potential_estimates", "training_rider_ticks"];
+// AGENTS regel 16: vm-kontekstens Date når ikke det importerede flag-modul, så uret gives med.
+const FIXED_NOW = Date.parse("2026-11-05T12:00:00Z");
+const flagClock = () => { flagClock.calls += 1; return FIXED_NOW; };
+flagClock.calls = 0;
 
 function block(marker, closer) {
   const start = source.indexOf(marker);
@@ -72,7 +76,7 @@ function context(supabase, extra = {}) {
     router: {},
     requireAuth() {}, presencePulseLimiter() {},
     Date: class extends Date { constructor(...args) { super(...(args.length ? args : ["2026-11-05T12:00:00Z"])); } },
-    isPotentialEstimateDisplayEnabled,
+    isPotentialEstimateDisplayEnabled: (client, opts) => isPotentialEstimateDisplayEnabled(client, { ...opts, now: flagClock }),
     buildAcademyFromViews, buildEstimatesFromViews, buildProjectionFromView, buildScoutingReportFromView,
     SCOUTING_CONFIG: { maxLevel: 3 },
     PEAK_AGE: 28,
@@ -137,6 +141,12 @@ test("estimates tændt: potentialView pr. rytter, den gamle model kører ikke", 
   });
   assert.deepEqual(out.estimates.youth, { potentialView: { hidden: true, reason: "learning", trainings: 1, trainingsNeeded: 5 } });
   assert.doesNotMatch(JSON.stringify(out), FORBIDDEN);
+});
+
+test("flaget læses med testens faste ur, ikke vægur", async () => {
+  flagClock.calls = 0;
+  await route("post", "/scouting/estimates", fakeSupabase("on"))();
+  assert.ok(flagClock.calls > 0);
 });
 
 test("beta: kun beta-seeren får skønnet", async () => {

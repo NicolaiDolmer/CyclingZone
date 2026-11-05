@@ -14,8 +14,9 @@ export const POTENTIAL_ESTIMATE_DISPLAY_FLAG_KEY = "potential_estimate_display";
 
 // `viewerIsBeta` er en funktion, ikke en boolean: beta-status koster et bruger-opslag,
 // og estimates kaldes af næsten alle flader. Det opslag sker kun på stadie `beta`.
-export async function isPotentialEstimateDisplayEnabled(supabase, { viewerIsBeta } = {}) {
-  const stage = await readFlagStage(supabase, POTENTIAL_ESTIMATE_DISPLAY_FLAG_KEY);
+// `now` er uret bag flag-cachen; tests giver et fast ur, produktionen bruger default.
+export async function isPotentialEstimateDisplayEnabled(supabase, { viewerIsBeta, now } = {}) {
+  const stage = await readFlagStage(supabase, POTENTIAL_ESTIMATE_DISPLAY_FLAG_KEY, { now });
   const isBetaTester = stage === "beta" && viewerIsBeta ? (await viewerIsBeta()) === true : false;
   return evaluateFlagStage(stage, { isBetaTester });
 }
