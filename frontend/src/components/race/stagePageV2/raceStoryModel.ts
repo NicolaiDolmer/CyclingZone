@@ -167,12 +167,35 @@ export function namesList(ids: string[], cast: Cast, max = 2, total: number | nu
   return more > 0 ? `${shown.join(", ")} +${more}` : shown.join(", ");
 }
 
-/** Under dette antal er resten ikke "feltet" laengere, men en gruppe der navngives. */
+/** Under dette antal er en gruppe ikke "feltet", men en gruppe der navngives. */
 export const PELOTON_MIN_SIZE = 10;
 
-/** Gruppen hedder "Peloton" naar den baerer resten og stadig er et felt. */
-export function isPeloton(includesRest: boolean, size: number | null): boolean {
-  return includesRest && (size == null || size >= PELOTON_MIN_SIZE);
+/**
+ * #7704: "Feltet" er den stoerste gruppe paa vejen, samme regel som mellemtiderne
+ * (stageSplitTimes.ts). Resten (`includes_rest`) er kun motorens startgruppe: naar
+ * feltet saa falder fra hinanden bagfra, kan den vaere en lille gruppe foran en meget
+ * stoerre. Et udbrud er aldrig feltet, medmindre resten er gaaet op i det (#7388).
+ * Uden field_count kendes restens stoerrelse ikke, og saa er den det bedste bud.
+ * Ved lige stoerrelse vinder gruppen foran. null = ingen gruppe er stor nok.
+ */
+export function mainGroupId(groups: ReadonlyArray<Pick<FrameGroup, "group_id" | "size" | "includes_rest" | "gap_s">>): string | null {
+  const rest = groups.find((g) => g.includes_rest);
+  if (rest && rest.size == null) return rest.group_id;
+  let main: (typeof groups)[number] | null = null;
+  for (const g of groups) {
+    if (g.size == null || g.size < PELOTON_MIN_SIZE) continue;
+    if (g.group_id.startsWith("breakaway") && !g.includes_rest) continue;
+    if (!main || g.size > (main.size as number) || (g.size === main.size && g.gap_s < main.gap_s)) main = g;
+  }
+  return main?.group_id ?? null;
+}
+
+/** Referatets hul-linje: "feltet" kun om hovedgruppen ved tjekpunktet, ellers "jagten". */
+function gapLineGroup(story: RaceStory, m: StoryMoment): "rest" | "chase" {
+  const km = m.recorded_km ?? m.km;
+  const snapshot = story.snapshots.find((s) => Math.abs(s.km - km) < 0.01);
+  const isMain = snapshot ? mainGroupId(snapshot.groups) === m.data.group_id : m.data.includes_rest === true;
+  return isMain ? "rest" : "chase";
 }
 
 /** Din bedste rytter i etapen: bedste placering, ellers den foerste i historien. */
@@ -407,7 +430,7 @@ export function curateMoments(story: RaceStory, cast: Cast, max = MAX_STORY_LINE
         if (before == null || after == null) break;
         single.push(baseLine(m, "gap", 4, cast, {
           dir: m.key === "story.gap_grew" ? "grew" : "shrank",
-          group: m.data.includes_rest === true ? "rest" : "chase",
+          group: gapLineGroup(story, m),
           before,
           after,
         }));
@@ -495,7 +518,7 @@ export interface SplitRow {
   km: number;
   leaderTime: number | null;
   leaderIds: string[];
-  leaderIsRest: boolean;
+  leaderIsPeloton: boolean;
   leaderSize: number | null;
   /** Foerst over toppen/spurten (passagens point i loggen); kendt ogsaa uden praecise tider. */
   firstId: string | null;
@@ -513,7 +536,7 @@ export function splitRows(story: RaceStory, myRiderId: string | null): SplitRow[
       km: c.km,
       leaderTime: story.precise_times ? c.leader_time_s : null,
       leaderIds: c.leader_rider_ids ?? [],
-      leaderIsRest: Boolean(front?.includes_rest),
+      leaderIsPeloton: front != null && mainGroupId(c.groups) === front.group_id,
       leaderSize: front?.size ?? (c.leader_rider_ids?.length || null),
       firstId: typeof c.top?.[0]?.rider_id === "string" ? c.top[0].rider_id : null,
       // Uden praecise tider kender loggen ikke hullerne (spec §6): intet hul.
@@ -711,7 +734,8 @@ export interface ReplayGroup {
   gapS: number;
   size: number | null;
   front: boolean;
-  rest: boolean;
+  /** Hovedgruppen paa stedet (mainGroupId): den eneste der hedder "Feltet". */
+  peloton: boolean;
   mine: string[];
   riderIds: string[];
 }
@@ -726,13 +750,14 @@ export function replayGroupsAt(story: RaceStory, frames: ReplayFrame[], km: numb
     const g = groupOfRider(members, id);
     if (g) mineByGroup.set(g, [...(mineByGroup.get(g) ?? []), id]);
   }
+  const main = mainGroupId(frame.groups);
   return frame.groups.map((g) => ({
     groupId: g.group_id,
     km: g.km_behind == null ? (g.gap_s === 0 ? km : null) : Math.max(0, km - g.km_behind),
     gapS: g.gap_s,
     size: g.size,
     front: g.gap_s === 0,
-    rest: g.includes_rest,
+    peloton: g.group_id === main,
     mine: mineByGroup.get(g.group_id) ?? [],
     riderIds: [...(members.get(g.group_id)?.riders ?? [])],
   }));
@@ -848,7 +873,9 @@ export function finaleStateAt(story: RaceStory, data: FinaleData, cast: Cast, t:
     const g = groupOfRider(members, id);
     if (g) mineByGroup.set(g, [...(mineByGroup.get(g) ?? []), id]);
   }
-  const groups = gapsAt(data.frames, leaderKm).map((g) => {
+  const onRoad = gapsAt(data.frames, leaderKm);
+  const main = mainGroupId(onRoad);
+  const groups = onRoad.map((g) => {
     const km = Math.min(data.endKm, leaderKmAt(data.line, t - g.gap_s));
     return {
       groupId: g.group_id,
@@ -856,7 +883,7 @@ export function finaleStateAt(story: RaceStory, data: FinaleData, cast: Cast, t:
       gapS: Math.max(0, Math.round(g.gap_s)),
       size: g.size,
       front: g.gap_s < 0.5,
-      rest: g.includes_rest,
+      peloton: g.group_id === main,
       mine: mineByGroup.get(g.group_id) ?? [],
       riderIds: [...(members.get(g.group_id)?.riders ?? [])],
       finished: t - g.gap_s >= data.tLeaderEnd - 1e-6,

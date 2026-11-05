@@ -12,7 +12,7 @@ import type { Climb, ElevationSeries, StageProfile } from "./stagePageV2Model.ts
 import {
   buildReport, curateMoments, finaleData, formatClock, lineReplayKm, myBestRider, namesList, pickGroups,
   replayGroupsAt, splitRows, wholeStageFrames, frameAt,
-  isPeloton, isTimeTrialStory, type Cast, type RaceStory, type ReplayGroup, type SplitRow, type StoryLine, type StoryNarrativeContext,
+  isTimeTrialStory, type Cast, type RaceStory, type ReplayGroup, type SplitRow, type StoryLine, type StoryNarrativeContext,
 } from "./raceStoryModel.ts";
 import StageProfileV2, { GradientLegend } from "./StageProfileV2.tsx";
 import FinaleView, { PlayIcon, prefersReducedMotion } from "./FinaleView.tsx";
@@ -146,7 +146,7 @@ function ReplayView({ story, profile, series, climbs, cast, km, onKm }: {
   }
 
   const labelFor = (g: ReplayGroup): string => {
-    if (isPeloton(g.rest, g.size)) return t("stagePageV2.story.group.peloton");
+    if (g.peloton) return t("stagePageV2.story.group.peloton");
     return namesList(g.riderIds, cast, 2, g.size) || t("stagePageV2.story.group.riders", { count: g.size ?? 0 });
   };
   const { shown, rest } = pickGroups(groups, 2);
@@ -323,7 +323,7 @@ function SplitTable({ rows, cast, me, precise }: { rows: SplitRow[]; cast: Cast;
       : t("stagePageV2.story.splits.top", { name: r.name ?? t("stagePageV2.story.splits.climb") });
   };
   const leading = (r: SplitRow) => {
-    if (isPeloton(r.leaderIsRest, r.leaderSize)) return t("stagePageV2.story.group.peloton");
+    if (r.leaderIsPeloton) return t("stagePageV2.story.group.peloton");
     return namesList(r.leaderIds, cast, 2, r.leaderSize) || (r.leaderSize ? t("stagePageV2.story.group.riders", { count: r.leaderSize }) : "-");
   };
   const myGap = (r: SplitRow) => {
