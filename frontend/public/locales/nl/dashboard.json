@@ -243,7 +243,7 @@
         "tag_peak_day": "{rider} had zijn vorm getimed om te pieken voor deze etappe.",
         "tag_jour_sans": "{rider} had vandaag gewoon de benen niet.",
         "tag_crash_ruined": "De etappe van {rider} werd verpest door {kind, select, crash {een valpartij} mechanical {materiaalpech} other {een incident}}.",
-        "incident_abandon": "{kind, select, crash {{rider} stapte af na een valpartij.} mechanical {{rider} stapte af na materiaalpech.} injury {{rider} startte niet in de etappe: geblesseerd.} other {{rider} stapte af na een incident.}}",
+        "incident_abandon": "{kind, select, crash {{rider} stapte af na een valpartij.} mechanical {{rider} stapte af na materiaalpech.} injury {{rider} startte niet in de etappe: geblesseerd.} illness {{rider} startte niet in de etappe: ziek.} withdrawal {{rider} stapte af, te ver achter de winnaar.} time_limit {{rider} kwam buiten tijd binnen.} other {{rider} stapte af.}}",
         "incident_time_loss": "{rider} verloor {seconds, plural, one {# seconde} other {# seconden}} door {kind, select, crash {een valpartij} mechanical {materiaalpech} other {een incident}}.",
         "incident_time_loss_generic": "{rider} verloor tijd door {kind, select, crash {een valpartij} mechanical {materiaalpech} other {een incident}}.",
         "tag_outsider_win": "{rider} won zonder op papier de sterkste renner te zijn.",
