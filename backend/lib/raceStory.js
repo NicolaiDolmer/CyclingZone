@@ -950,7 +950,8 @@ function groupsBetween(story, a, b, km) {
 
   // Medlemskabet ved km: a, plus levetidernes overgange i (a, km].
   const state = new Map(a.groups.map((g) => [g.group_id, { meta: g, riders: new Set(g.rider_ids), size: g.size, includes_rest: g.includes_rest }]));
-  const gone = new Set([...(a.out_rider_ids ?? []), ...(a.pending_rider_ids ?? [])]);
+  const outRiders = new Set(a.out_rider_ids ?? []);
+  const gone = new Set([...outRiders, ...(a.pending_rider_ids ?? [])]);
   const transitions = [];
   for (const s of spans) {
     if (s.to_km != null && s.to_km < s.from_km - EPS) continue; // ingen levetid på vejen
@@ -965,8 +966,10 @@ function groupsBetween(story, a, b, km) {
       const target = state.get(span.group_id);
       if (!target) continue;
       for (const r of join.rider_ids) {
-        const holder = [...state.values()].find((g) => g.riders.has(r)) ?? [...state.values()].find((g) => g.includes_rest);
-        if (holder === target || (gone.has(r) && !holder?.riders.has(r))) continue;
+        // Som medlemskabet: den udgåede kører aldrig igen, uheldsofferet er ude af resten og får sin plads her.
+        if (outRiders.has(r)) continue;
+        const holder = [...state.values()].find((g) => g.riders.has(r)) ?? (gone.has(r) ? null : [...state.values()].find((g) => g.includes_rest));
+        if (holder === target) continue;
         if (holder) { holder.riders.delete(r); shrink(holder); }
         target.riders.add(r);
         if (target.size != null) target.size += 1;

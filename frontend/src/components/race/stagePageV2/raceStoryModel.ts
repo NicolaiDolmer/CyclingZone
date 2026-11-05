@@ -674,6 +674,7 @@ export function groupMembersAt(story: RaceStory, km: number): Map<string, Member
       const target = state.get(span.group_id);
       if (!target) continue;
       for (const r of join.rider_ids) {
+        if (a.out_rider_ids?.includes(r)) continue; // som medlemskabet: den udgåede kører aldrig igen
         for (const g of state.values()) g.riders.delete(r);
         target.riders.add(r);
       }

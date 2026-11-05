@@ -4,7 +4,7 @@
 // kontraktens egen buildRaceStory, saa testen ser praecis det siden faar.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildRaceStory } from "../../../../../backend/lib/raceStory.js";
+import { buildRaceStory, replayFrames } from "../../../../../backend/lib/raceStory.js";
 import { withEventPlaces } from "../../../../../backend/lib/raceTimeline.js";
 import {
   asStory, isTimeTrialStory, buildReport, castFrom, curateMoments, finaleData, finaleEndTime, finaleMarkerLabelsShown, finaleStateAt, formatClock, frameAt,
@@ -432,4 +432,29 @@ test("#6350: en sen halvdel af et split: navnene følger rytteren fra kontakten,
   assert.equal(at(175, "ahead"), "peloton-0");
   assert.equal(at(178, "ahead"), "front-part");
   assert.equal(at(178, "set"), "front-part");
+});
+
+test("#6350: en sen halvdel: film og navne er enige om uheldsofferet og den udgåede", () => {
+  const log = [
+    ev(0, "stage_start", { exact_km: 0, exact_time: 0, field_count: 6, distance_km: 100 }),
+    ev(20, "gap_update", { group_id: "peloton-0", gap_seconds: 0, exact_km: 20, exact_time: 2000 }),
+    ev(30, "incident", { kind: "crash", outcome: "time_loss", rider_id: "hurt", exact_km: 30 }),
+    ev(31, "incident", { kind: "crash", outcome: "abandoned", rider_id: "gone", exact_km: 31 }),
+    ev(40, "gap_update", { group_id: "peloton-0", gap_seconds: 0, exact_km: 40, exact_time: 4000 }),
+    ev(60, "peloton_splits", { group_id: "back", source_group_id: "peloton-0", gap_seconds: 60, rider_ids: ["x"], exact_km: 50 }),
+    ev(60, "peloton_splits", { group_id: "back", source_group_id: "peloton-0", gap_seconds: 60, rider_ids: ["hurt", "gone"], joined_late: true, exact_km: 55 }),
+    ev(60, "gap_update", { group_id: "peloton-0", gap_seconds: 0, exact_km: 60, exact_time: 6000 }),
+    ev(60, "gap_update", { group_id: "back", gap_seconds: 60, exact_km: 60, exact_time: 6060 }),
+    ev(100, "finish", { exact_km: 100, top: [] }),
+  ];
+  const story = buildRaceStory({ events: log, timelineVersion: 2 }) as unknown as RaceStory;
+  const frames = replayFrames(story, { finaleKm: 60, stepKm: 1 }) as Array<{ km: number; groups: Array<{ group_id: string; size: number | null }> }>;
+  const inFilm = (km: number, id: string) => frames.find((f) => f.km === km)?.groups.find((g) => g.group_id === id)?.size;
+  const inNames = (km: number) => [...(groupMembersAt(story, km).get("back")?.riders ?? [])].sort();
+
+  assert.equal(inFilm(52, "back"), 1);
+  assert.deepEqual(inNames(52), ["x"]);
+  assert.equal(inFilm(57, "back"), 2, "uheldsofferet er med fra sit eget sted, den udgåede aldrig");
+  assert.deepEqual(inNames(57), ["hurt", "x"]);
+  assert.equal(inFilm(57, "peloton-0"), 3, "uheldsofferet var ikke i resten, så resten mister kun den satte");
 });

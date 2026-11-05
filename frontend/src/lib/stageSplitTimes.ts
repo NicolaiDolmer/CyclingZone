@@ -23,7 +23,6 @@
 // kun "udbrud" naar den ligger foran feltet og rummer morgenudbruddets ryttere
 // (samme udbrud som resultat-maerkerne, morningBreakawayRiderIds).
 import { morningBreakawayRiderIds } from "./breakawayLabels6299.ts";
-import { exactEventKm } from "./stageTimelineKmSpan.ts";
 
 export type TimelineEvent = { km?: number; type?: string; params?: Record<string, unknown> | null } | null | undefined;
 
@@ -367,7 +366,7 @@ export function buildOwnTimeLoss(
     const name = e.type === "kom_passage" ? str(e.params?.name) : null;
     if (name) komKms.set(e.km ?? 0, name);
   }
-  const drops = new Map<string, Array<{ entry: Extract<TimeLossEntry, { type: "drop" }>; source: string; place: number | null }>>();
+  const drops = new Map<string, Array<{ entry: Extract<TimeLossEntry, { type: "drop" }>; source: string; lateHalf: boolean }>>();
   const other: TimeLossEntry[] = [];
 
   replay(sorted, (event, state, before) => {
@@ -394,7 +393,7 @@ export function buildOwnTimeLoss(
           planTask,
         };
         if (!drops.has(riderId)) drops.set(riderId, []);
-        (drops.get(riderId) as Array<{ entry: typeof entry; source: string; place: number | null }>).push({ entry, source, place: exactEventKm(event) });
+        (drops.get(riderId) as Array<{ entry: typeof entry; source: string; lateHalf: boolean }>).push({ entry, source, lateHalf: p.joined_late === true });
       }
     } else if (event.type === "group_merged") {
       const into = str(p.into_group_id);
@@ -412,13 +411,13 @@ export function buildOwnTimeLoss(
     }
   });
 
-  // Ryttere der faldt af samme sted af samme grund bliver én linje. Stedet er det
-  // præcise: to halvdele af et split (#6350) har samme km, men hver sit sted.
+  // Ryttere der faldt af samme sted af samme grund bliver én linje. Kun halvdelene
+  // af et split (#6350) skilles: de har samme km, men hver sit sted.
   const merged = new Map<string, Extract<TimeLossEntry, { type: "drop" }>>();
   for (const list of drops.values()) {
     if (!list.length) continue;
     const e = list[0].entry;
-    const key = [e.km, list[0].place, e.from, e.reason, e.climbName, e.sectorName, e.order, e.planTask].join("|");
+    const key = [e.km, list[0].lateHalf, e.from, e.reason, e.climbName, e.sectorName, e.order, e.planTask].join("|");
     const hit = merged.get(key);
     if (hit) hit.riderIds.push(e.riderId);
     else merged.set(key, { ...e, riderIds: [e.riderId] });
