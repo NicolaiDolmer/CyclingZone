@@ -1,13 +1,15 @@
 // #7686 · Preview af Udvikling 2.0 tal + ord, uden at backendens trin 4 skal være
 // tændt. ?potentialEstimate=on slår visningen til (huskes i localStorage, samme
 // mønster som ?youthSquads), =off slår den fra. Standard er off, så Playwright-
-// fixtures og snapshots er uændrede.
+// fixtures og snapshots er uændrede. ?potentialState=unsure|fair|sure|learning|unscouted
+// viser den tilstand på alle ryttere, =mix går tilbage til blandingen.
 //
 // Svarene følger kontrakten: tændt = `potentialView`, og lo/hi/prog/ceil/loft og
 // prognosen er fjernet, så et preview ikke kan se rigtigt ud på gamle felter.
 // Alle tal er opdigtede illustrationer.
 
 const KEY = "cz_mock_potential_estimate";
+const STATE_KEY = "cz_mock_potential_state";
 
 export function previewPotentialEstimateEnabled() {
   try {
@@ -19,6 +21,22 @@ export function previewPotentialEstimateEnabled() {
     return false;
   }
 }
+
+// Læses ved indlæsning, så parameteren virker på enhver side, også en der straks
+// omdirigerer og derfor aldrig når at spørge mocken.
+previewPotentialEstimateEnabled();
+
+function forcedState() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("potentialState");
+    if (param === "mix") localStorage.removeItem(STATE_KEY);
+    else if (param) localStorage.setItem(STATE_KEY, param);
+    return localStorage.getItem(STATE_KEY);
+  } catch {
+    return null;
+  }
+}
+forcedState();
 
 const shown = (value, certainty) => ({
   hidden: false, value, certainty, previousValue: null, previousCertainty: null, changedAt: null,
@@ -36,7 +54,15 @@ const STATES = [
 
 const FIXED = {
   "rider-1": shown(46, "sure"),
-  "rider-2": { hidden: true, reason: "unscouted" },
+  "rider-2": shown(58, "unsure"),
+};
+
+const FORCED = {
+  unsure: shown(58, "unsure"),
+  fair: shown(52, "fair"),
+  sure: shown(46, "sure"),
+  learning: STATES[3],
+  unscouted: STATES[4],
 };
 
 function hash(id) {
@@ -46,13 +72,13 @@ function hash(id) {
 }
 
 function viewFor(id) {
-  return FIXED[id] ?? STATES[hash(id) % STATES.length];
+  return FORCED[forcedState()] ?? FIXED[id] ?? STATES[hash(id) % STATES.length];
 }
 
 export function previewEstimate(id, seed) {
   const view = viewFor(id);
   return {
-    level: view.hidden ? 0 : seed?.level ?? 1,
+    level: view.hidden ? 0 : seed?.level || 1,
     role: seed?.role ?? null,
     now: seed?.now ?? null,
     potentialView: view,
