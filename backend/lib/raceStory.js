@@ -543,6 +543,19 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
   const trackSpans = (event) => {
     const p = event.params ?? {};
     const groupId = str(p.group_id);
+    // #7734: en sen halvdel med egen linje kører fra kildegruppen og når først gruppen
+    // på tjekpunktet. Linjen findes kun her: medlemskabet skifter gruppe på tjekpunktet.
+    if (event.type === "peloton_splits" && p.own_line && groupId) {
+      spans.push({
+        group_id: `${groupId}-late`,
+        from_km: round2(placeKm(event)),
+        to_km: round2(recordedKm(event)),
+        source_group_id: str(p.source_group_id),
+        into_group_id: groupId,
+        rider_ids: ids(p.rider_ids).filter((id) => !m.abandoned.has(id)),
+      });
+      return [];
+    }
     // #6350: en sen halvdel af et split danner ikke gruppen, den slutter sig til.
     if (event.type === "peloton_splits" && p.joined_late && groupId && openSpans.has(groupId)) {
       lateJoins.set(groupId, [...(lateJoins.get(groupId) ?? []), { km: round2(placeKm(event)), rider_ids: ids(p.rider_ids) }]);

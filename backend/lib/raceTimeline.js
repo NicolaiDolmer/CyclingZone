@@ -576,9 +576,14 @@ function movePlace(event, km, time = null) {
   else event.params.exact_time = time;
 }
 
+/** Tjekpunktet før km: det sidste sted motoren meldte gruppernes huller. */
+function checkpointBeforeKm(km, events) {
+  return events.reduce((best, e) => (e.type === "gap_update" && e.km < km && e.km > best ? e.km : best), 0);
+}
+
 /** Hvor segmentet bag et tjekpunkt startede, aflæst af de splits motoren kunne placere; null uden dem. */
 function segmentStartKm(km, splitsAtKm, events, visible) {
-  const anchor = events.reduce((best, e) => (e.type === "gap_update" && e.km < km && e.km > best ? e.km : best), 0);
+  const anchor = checkpointBeforeKm(km, events);
   const starts = [];
   for (const split of splitsAtKm) {
     // Kun motorens egne steder måler segmentet. Dem vi selv har flyttet, har mistet tiden.
@@ -726,6 +731,35 @@ function placeFormationsBeforeContact(events) {
 }
 
 /**
+ * #7734: ryttere der først kom til kildegruppen inde i segmentet (fx hentet fra
+ * udbruddet), kan ikke være sat på søster-splittenes sted, men de står heller ikke
+ * på tjekpunktet: de kørte i kildegruppen fra kontakten, og tjekpunktet siger hvor
+ * meget de tabte efter den. Stedet er det samme som motoren selv regner, bare målt
+ * fra kontakten. Kun med bevis: kontakten ligger i segmentet, og alle rytterne kørte
+ * i kildegruppen lige efter den. Ellers er tjekpunktet stadig det ærlige svar.
+ *
+ * En sen halvdel kører ikke i gruppens linje fra stedet (gruppen er længere tilbage),
+ * så den får `own_line`: sin egen linje fra kildegruppen til gruppen på tjekpunktet
+ * (raceStory.js). Ellers hopper rytterne bare et andet sted end på stregen. Et helt
+ * split af sene ryttere er selv linjen.
+ */
+function placeLateRiders(events) {
+  const visible = RACE_V4_TUNING.groups.mergeThresholdSeconds;
+  for (const split of events) {
+    if (split.type !== "peloton_splits" || exactKmOf(split) !== split.km) continue;
+    const free = ridersFreeKm(split, events);
+    if (free < checkpointBeforeKm(split.km, events)) continue;
+    const fraction = separationFraction(0, finiteOrNull(split.params?.gap_seconds) ?? NaN, visible);
+    if (fraction === null) continue;
+    const place = round2(free + fraction * (split.km - free));
+    const groupOf = riderGroupsBefore(events, free + KM_EPSILON);
+    if (place >= split.km || !riderIdsOf(split).every((id) => groupOf(id) === split.params?.source_group_id)) continue;
+    movePlace(split, place);
+    if (split.params.joined_late) split.params.own_line = true;
+  }
+}
+
+/**
  * Følgerne af at blive sat står hvor han blev sat, ikke hvor motoren opdagede det:
  * planens "sat"/"hentet" afgøres først ved næste segmentgrænse (stagePlanEngine.ts),
  * og "gik kold" stemples ved segmentets slut. `km` bliver stående, for det er dér
@@ -780,6 +814,7 @@ export function withEventPlaces(events) {
   const placed = copied.flatMap((event) => (lateHalves.has(event) ? [event, lateHalves.get(event)] : [event]));
   const known = placed.filter((event) => event?.params);
   placeFormationsBeforeContact(known);
+  placeLateRiders(known);
   placeRiderConsequences(known);
   return placed;
 }
