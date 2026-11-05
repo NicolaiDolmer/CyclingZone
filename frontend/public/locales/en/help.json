@@ -1358,6 +1358,10 @@
         "title": "AI riders and free agents",
         "text": "Riders on AI teams and riders without a contract don't develop. They still age like everyone else. When one of them joins your team, he starts developing through your training from the next day."
       },
+      "potentialBestRoleEstimate": {
+        "title": "Potential across the game",
+        "text": "Everywhere in the game a rider's potential is one number on the same scale as his rating, with one word next to it: Uncertain, Fair or Confident. The number is your team's estimate of how high he can reach in his natural role, not a fact. The word says how far you can trust it, and even a confident estimate can land slightly off. More looks, a better scout and, for your own riders, more training on your team make it more certain. It doesn't jump when you open a page: it only moves when your team learns something new, at the Sunday update, or when the rider joins a new team."
+      },
       "potentialBestRole": {
         "title": "Potential across the game",
         "text": "My Team, the academy, the rider profile and the Scouting tab show a rider's potential the same way. It's shown for the role where he can go highest, with a small box next to it saying which role that is. It's still an estimate: a better scout, or more training days on your team for your own riders, makes it sharper."
@@ -1365,6 +1369,10 @@
       "trainingFocus": {
         "title": "Training focus",
         "text": "From the profile of one of your own riders you can set a season-long training focus: a direction (VO2max, Threshold/TT, Sprint, Endurance, Technique, Aero or Race craft). The effort comes with the session type and is not a separate choice: intervals, threshold and sprint are hard, tempo is medium, the rest are easy. Trained abilities develop faster toward their ceiling through the daily training that runs each evening, while other abilities grow a little more slowly. Hard sessions build more fatigue but carry no risk of losing progress. You can set a training focus on as many of your riders as you like; changing an existing focus costs nothing. Training is free and does not cost money. Riders who race develop from the race instead of their planned session, including single-day races. Selected riders who do not start follow their programme, subject to injuries. Fatigue, form and training injury risk are assessed from the day's combined race and training activity at the evening update. Gaps between stages do not add extra recovery. Hard training remains more tiring than normal training."
+      },
+      "scoutingEstimate": {
+        "title": "Scouting potential",
+        "text": "A rider's potential is hidden until you scout them: unscouted riders on other teams show Not scouted and no number. Every team has a talent scout, a real staff member if you have hired one, otherwise a default scout, who takes on jobs from the Scouting page or a rider's profile. A targeted job investigates one rider and reports back in about 30 minutes, at any scout level; a mission covers a division, a country, U23 riders or a national championship for a shortlist, plus one free report on the best find. When you start a mission you also choose who it targets: free agents (riders without a contract, recommended, sign them straight away) or riders on other teams (talent owned by another manager, where signing them means bidding or negotiating). Jobs cost travel money, and your scout can only run one or two jobs at once depending on his rating. Each look makes your estimate more certain, and a better scout gets there faster. The estimate slides toward the truth as you learn more instead of jumping to a new random number, and its word never gets less certain. Estimates are personal to your team, so two managers can read the same talent differently, and race results are what settle who was right. A report can never reference a rider who has since become unavailable (signed elsewhere, or mid-transfer): it always reflects who is actually available right now, and shows each rider's current status. The Scouting tab on the rider profile shows the number, the word, how many looks it's built on, which scout made them and what one more look would do. The number is on the same scale as the rider's rating, so you can hold the two up against each other. No scout ever knows a rider exactly: it's an estimate, not a fact."
       },
       "scouting": {
         "title": "Scouting potential",
@@ -1588,6 +1596,10 @@
       "intakeProfile": {
         "title": "Your weekly intake and the Academy Expansion",
         "text": "Each week you bring in your intake with one click on the Academy page. The Academy Expansion on the Club page decides how big it is: 2 candidates without it, 3 from level 2 and 4 at level 5. From level 1 you can give the intake a profile, a nationality or region, from level 3 also a rider type, and from level 4 one extra choice. Every level makes the profile pull a little harder, but it never decides the whole intake, and talent is drawn the same way at every level. You can change the profile whenever you like; a change takes effect after 2 weeks. The Academy Expansion has no chief."
+      },
+      "prognosisTrainingEstimate": {
+        "title": "Learning a prospect's potential",
+        "text": "A new youth rider has no potential number yet. He shows Learning and how many of his first 5 trainings he has done. A training counts when a date on your team is settled, by Train now or by the automatic training. After 5 you get a first estimate: one number with a word next to it. It gets more certain the longer he trains with you, and better coaching staff and training facilities get you there sooner. They do not change his talent, and even a confident estimate can land slightly off."
       },
       "prognosisTraining": {
         "title": "Learning a prospect's potential",
@@ -1953,6 +1965,10 @@
       "q": "Can I see which riders my scout has already scouted?",
       "a": "Yes. Open your chief scout's profile (View profile on the Scouting page) and use the History tab. It lists every rider your scout has completed a targeted investigation on, most recent first, with a link to each rider's profile and report."
     },
+    "developmentProjectionEstimateFaq": {
+      "q": "What is the line on the Development tab?",
+      "a": "It's the curve from his rating today toward your estimate of his potential. It's one line, built on the same estimate you see everywhere else, so the Development tab can't disagree with the rider profile or the Scouting tab. Rivals you haven't scouted, and your own youth riders before their first 5 trainings, have no line: you only see the recorded curve."
+    },
     "developmentProjectionFaq": {
       "q": "What is the projection on the Development tab?",
       "a": "It is a forecast of where a rider is heading: a dashed line from his current type rating toward a shaded target band, with a rough estimate of how many seasons and at what age he reaches it. It is always a range, never an exact number, because nobody knows a rider's exact target. The band is deliberately fuzzy so it cannot be reverse-engineered into his hidden potential, and it stays hidden for rival riders you have not scouted. Two separate things can both mention age here, and they answer different questions: 'Target age' is when this projection expects his current growth to reach his target band, which can happen well before his career peak (age 27-28) if he still has years of development room left. A rider whose level is still far from his target gets an honest 'Long gap to target' line instead of a false 'Approaching target', reserved for riders who are genuinely close."
@@ -2013,9 +2029,17 @@
       "q": "Can I train Flat or Cobbles at Hard intensity?",
       "a": "Yes, with Cobbled Sectors and Echelon Drills. Cobbled Sectors trains Cobbles hardest, with Durability and Positioning coming along for the price. Echelon Drills trains Flat hardest, with Positioning and Durability coming along the same way. The older Hard sessions still leave both out: Mixed intervals (Climbing, Punch, Tempo), Climbing intervals (Climbing, Tempo), Punch intervals (Punch, Tempo), Threshold (Time trial, Tempo) and Sprint (Sprint, Acceleration). Tempo (Normal), Aero and Technique (both Easy) still work too, just at a lower intensity."
     },
+    "scoutNetworkOwnRidersEstimateFaq": {
+      "q": "Does a better scouting network also improve how well I see my own riders?",
+      "a": "Not through missions: a mission's candidate pool only searches other teams' and free-agent riders. For your own riders the estimate gets more certain with every training on your team, and better coaching staff and facilities speed that up. It never becomes exact: even a Confident estimate can land slightly off."
+    },
     "scoutNetworkOwnRidersFaq": {
       "q": "Does a better scouting network also improve how well I see my own riders?",
       "a": "Yes, in one specific way. Scouting missions never involve your own riders: a mission's candidate pool only searches other teams' and free-agent riders, and a single-rider investigation costs and takes the same regardless of your scout's rating. But the precision of the potential ranges you see does follow your chief scout: he knows your own squad fully, so his rating decides how narrow the potential range and per-type ceiling bands on your own riders are, exactly as for a fully scouted rival. No scout ever reports an exact value: even at the highest rating you see a narrow range, never a precise number value."
+    },
+    "scoutChangeEstimateFaq": {
+      "q": "I hired a new chief scout. Does that change my estimates?",
+      "a": "Not by itself. Your estimates stay where they are until your team learns something new, so a new hire doesn't move a single number. His next look on a rider can make that estimate more certain, and a better scout gets there faster. Neither touches the rider's real abilities, which only move through training, age and racing."
     },
     "scoutChangeRecalcFaq": {
       "q": "I hired a new chief scout and a rider's scouting report changed. Did the rider get worse?",
@@ -2024,6 +2048,10 @@
     "typeRatingScaleFaq": {
       "q": "Why did the numbers in 'Projection per rider type' change, and what do they mean now?",
       "a": "Your riders did not change. Their abilities, ceilings and rider types are exactly what they were: only the way the number is calculated changed. A role's number is now simply the weighted average of the abilities that role needs, so a rider with 13 in every ability that counts reads 13 in that role. Nothing is stretched to fit the rest of the field any more. Two consequences are worth knowing. The numbers are lower than before, but for most riders the shift is small: a typical rider reads 13 where he used to read 15. The change is biggest at the top, where the old calculation stretched the best riders into a ceiling that was the scale's, not theirs: 15 riders sat pinned at 99, and the highest number in the game is now 85. And they are stable: a rider's number can only move when his own abilities move. Before this change the scale was anchored to the whole rider pool, so refitting those anchors could move every rider's number without a single ability changing. That cannot happen any more, and removing it was the whole point."
+    },
+    "scoutedEstimateGuaranteeFaq": {
+      "q": "Is the estimate a guarantee?",
+      "a": "No. The number is your team's estimate, and the word next to it says how far to trust it. More knowledge makes it more certain, but it never becomes a fact: even a Confident estimate can land slightly off, on purpose. Two teams can read the same rider differently, and race results settle who was right."
     },
     "scoutedBandGuaranteeFaq": {
       "q": "Is the scouted band a guarantee?",

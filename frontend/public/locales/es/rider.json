@@ -898,6 +898,28 @@
     "loadErrorBody": "No se ha perdido nada. Inténtalo de nuevo.",
     "retry": "Reintentar"
   },
+  "potentialEstimate": {
+    "certainty": {
+      "unsure": "Incierto",
+      "fair": "Razonable",
+      "sure": "Seguro"
+    },
+    "learning": "Aprendiendo · {trainings} de {needed} entrenamientos",
+    "learningShort": "Aprendiendo · {trainings} de {needed}",
+    "learningBody": "Su primera estimación llega tras sus primeros entrenamientos en tu equipo.",
+    "notAFact": "Una estimación, no un hecho.",
+    "notAFactLong": "Una estimación, no un hecho. Incluso una lectura segura puede desviarse un poco.",
+    "scoutedTimes": "{count, plural, one {Ojeado # vez} other {Ojeado # veces}}",
+    "builtOnLabel": "Se basa en",
+    "builtOnOwn": "Su entrenamiento en tu equipo",
+    "builtOnNamed": "{count, plural, one {# vistazo} other {# vistazos}} de {name} (ojeador de nivel {tier})",
+    "builtOnDefault": "{count, plural, one {# vistazo} other {# vistazos}} del ojeador por defecto de tu equipo (valoración {overall})",
+    "nextLookLabel": "Un vistazo más",
+    "nextLookValue": "hace la estimación más segura",
+    "chartLabel": "Estimación {value}",
+    "chartCaption": "Valoración registrada y después la curva hacia la estimación",
+    "chartLegend": "Curva hacia la estimación"
+  },
   "scouting": {
     "label_worldclass": "Promesa de clase mundial",
     "label_high": "Proyección alta",

@@ -144,6 +144,8 @@ export const STAGE_FLAGS = Object.freeze([
   // #6853/#5764: pensioneret, koden læser den ikke (visningen er permanent). Rækken
   // bliver kun for patch notes-mærket.
   { key: "potential_single_number", area: "squad", label: "Udvikling 2.0 — potentiale: bedste rolle + typeboks (visning)" },
+  // #7686: tal + ord i Hjaelp (helpFlagGates.js). Fail-safe OFF; ejer-only flip.
+  { key: "potential_estimate_view", area: "squad", label: "Udvikling 2.0 — potentiale som ét skøn + ord (Hjælp)" },
   // #6950 (Udvikling 2.0): Udviklingsscore B i motoren (developmentScoreWiring.js) og
   // catch-up via løb (raceCatchUpWiring.js). Fail-safe OFF; "beta" læses som off; tal i
   // serverens miljø; kræver ability_cap_per_date_enabled. Ejer-only flip.
@@ -238,6 +240,7 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   // naar de er taendt for spilleren.
   "development_v2_aging_enabled",
   "potential_single_number",
+  "potential_estimate_view",
   "ability_cap_per_date_enabled",
   "training_decision_card",
   // #5319: sessionsvaelgerne og Hjaelp viser v3-kataloget paa dette flag.

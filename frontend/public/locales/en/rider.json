@@ -898,6 +898,28 @@
     "loadErrorBody": "Nothing was lost. Try again.",
     "retry": "Try again"
   },
+  "potentialEstimate": {
+    "certainty": {
+      "unsure": "Uncertain",
+      "fair": "Fair",
+      "sure": "Confident"
+    },
+    "learning": "Learning · {trainings} of {needed} trainings",
+    "learningShort": "Learning · {trainings} of {needed}",
+    "learningBody": "His first estimate comes after his first trainings on your team.",
+    "notAFact": "An estimate, not a fact.",
+    "notAFactLong": "An estimate, not a fact. Even a confident read can land slightly off.",
+    "scoutedTimes": "{count, plural, one {Scouted # time} other {Scouted # times}}",
+    "builtOnLabel": "Built on",
+    "builtOnOwn": "His training on your team",
+    "builtOnNamed": "{count, plural, one {# look} other {# looks}} by {name} (tier {tier} scout)",
+    "builtOnDefault": "{count, plural, one {# look} other {# looks}} by your default scout (rating {overall})",
+    "nextLookLabel": "One more look",
+    "nextLookValue": "makes the estimate more certain",
+    "chartLabel": "Estimate {value}",
+    "chartCaption": "Recorded rating, then the curve toward the estimate",
+    "chartLegend": "Curve toward the estimate"
+  },
   "scouting": {
     "label_worldclass": "World-class prospect",
     "label_high": "High projection",
