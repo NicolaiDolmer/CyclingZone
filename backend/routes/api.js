@@ -39,7 +39,7 @@ import {
 } from "../lib/auctionEngine.js";
 import { fetchSeasonTransitionBoundary } from "../lib/seasonTransitionBoundary.js";
 import { applyNameSearch } from "../lib/riderNameSearch.js";
-import { fetchGcClassicSplit, splitGcWins } from "../lib/dashboardRiderRankingGcSplit.js";
+import { splitGcWinsSafe } from "../lib/dashboardRiderRankingGcSplit.js";
 import { handleAluntaWebhook } from "../lib/aluntaWebhook.js";
 import { handleEmailUnsubscribe } from "../lib/emailUnsubRoute.js";
 import { handleResendWebhook } from "../lib/resendWebhook.js";
@@ -13573,12 +13573,13 @@ router.get("/dashboard/rider-ranking", requireAuth, cached({
     // dashboardRiderRankingGcSplit.js for hvorfor dette bevidst er en
     // hjælpefunktion uden for selve ruteblokken.
     const riderIds = (riders || []).map((r) => r.rider_id);
-    const gcRows = await fetchGcClassicSplit(supabase, {
+    // #7676: best-effort (retry + fallback til RPC-rækkerne uden opdeling).
+    const ridersOut = await splitGcWinsSafe(supabase, riders, {
       riderIds,
       seasonId: season.id,
       leagueDivisionId: req.team.league_division_id ?? null,
     });
-    res.json({ riders: splitGcWins(riders, gcRows) });
+    res.json({ riders: ridersOut });
   } catch (e) {
     captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
