@@ -56,6 +56,9 @@ test("buildRaceRecap: én udstiger faar sin egen linje med kind=withdrawal", () 
   const m = recap({ results: stageRows, scope: { type: "stage", stageNumber: 2 }, incidents: [inc("1", 2, "h1", "withdrawal")] });
   assert.ok(!m.some((x) => x.key === "withdrawalGroup"));
   assert.equal(m.find((x) => x.key === "abandon")?.params.kind, "withdrawal");
+  assert.equal(m.find((x) => x.key === "abandon")?.params.when, "stage");
+  const oneDay = recap({ results: stageRows, scope: { type: "overall" }, incidents: [inc("1", 1, "h1", "withdrawal")] });
+  assert.equal(oneDay.find((x) => x.key === "abandon")?.params.when, "other", "endagsloeb: ingen \"efter etapen\"");
 });
 
 test("dnfRowsForStage: etapens udgaaede som DNF-raekker med hold fra loebets etaperaekker", () => {

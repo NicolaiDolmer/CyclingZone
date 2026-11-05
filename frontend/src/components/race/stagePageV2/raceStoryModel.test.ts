@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { buildRaceStory } from "../../../../../backend/lib/raceStory.js";
 import {
   asStory, isTimeTrialStory, buildReport, castFrom, curateMoments, finaleData, finaleEndTime, finaleMarkerLabelsShown, finaleStateAt, formatClock, frameAt,
-  groupMembersAt, groupOfRider, leaderKmAt, lineReplayKm, mainGroupId, MAX_STORY_LINES, namesList, parseGap, pickGroups,
+  groupMembersAt, groupOfRider, leaderKmAt, lineReplayKm, mainGroupId, MAX_STORY_LINES, namesList, ownOutSentences, parseGap, pickGroups,
   replayGroupsAt, splitRows, wholeStageFrames, myBestRider,
   type RaceStory, type StoryLine,
 } from "./raceStoryModel.ts";
@@ -345,6 +345,48 @@ test("buildReport: din rytter vandt naevnes kun een gang (Codex P2)", () => {
   const c = castFrom(results, ROLES, 3, "t-me");
   const keys = buildReport(s, curateMoments(s, c), c).map((r) => r.key);
   assert.equal(keys.filter((k) => k === "mineWon" || k.startsWith("winner")).length, 1, keys.join(","));
+});
+
+test("#7701 ownOutSentences: kun egne udgaaede, een saetning pr. aarsag, uden ikke-startere", () => {
+  const c = castFrom(RESULTS, ROLES, 3, "t-me");
+  const rows = [
+    { rider_id: "o1", name: "Ib Hansen", team_id: "t-me", reasonKey: "withdrawal", status: "dnf" },
+    { rider_id: "o2", name: "Bo Olsen", team_id: "t-me", reasonKey: "withdrawal", status: "dnf" },
+    { rider_id: "o3", name: "Jan Berg", team_id: "t-me", reasonKey: "withdrawal", status: "dnf" },
+    { rider_id: "o4", name: "Kim Holm", team_id: "t-me", reasonKey: "time_limit", status: "dnf" },
+    { rider_id: "o5", name: "Per Lund", team_id: "t-me", reasonKey: "injury", status: "dns" },
+    { rider_id: "o6", name: "Ole Dam", team_id: "t-other", reasonKey: "withdrawal", status: "dnf" },
+  ];
+  assert.deepEqual(ownOutSentences(rows, "t-me", c), [
+    { key: "ownOut", params: { kind: "withdrawal", names: "Hansen, Olsen +1" } },
+    { key: "ownOut", params: { kind: "time_limit", names: "Holm" } },
+  ]);
+  assert.deepEqual(ownOutSentences(rows, null, c), [], "uden eget hold er der intet at fortaelle");
+  assert.deepEqual(ownOutSentences(null, "t-me", c), []);
+});
+
+test("#7701 buildReport: egne udgaaede staar sidst og overlever loftet paa 5 saetninger", () => {
+  const s = story();
+  const c = castFrom(RESULTS, ROLES, 3, "t-me");
+  const lines = curateMoments(s, c);
+  const plain = buildReport(s, lines, c);
+  const ownOut = [{ key: "ownOut", params: { kind: "withdrawal", names: "Hansen" } }];
+  const report = buildReport(s, lines, c, ownOut);
+  assert.equal(report[report.length - 1].key, "ownOut");
+  assert.ok(report.length <= 5, report.map((r) => r.key).join(","));
+  assert.ok(plain.every((r) => r.key !== "ownOut"), "uden udgaaede er referatet uaendret");
+});
+
+test("#7701 buildReport: mange aarsager skubber aldrig vinderen og din bedste ud (Codex)", () => {
+  const s = story();
+  const c = castFrom(RESULTS, ROLES, 3, "t-me");
+  const kinds = ["crash", "withdrawal", "time_limit", "abandoned"];
+  const ownOut = kinds.map((kind) => ({ key: "ownOut", params: { kind, names: "Hansen" } }));
+  const keys = buildReport(s, curateMoments(s, c), c, ownOut).map((r) => r.key);
+  assert.ok(keys.length <= 5, keys.join(","));
+  assert.ok(keys.some((k) => k.startsWith("winner") || k === "mineWon"), keys.join(","));
+  assert.ok(keys.some((k) => k.startsWith("mine")), keys.join(","));
+  assert.equal(keys.filter((k) => k === "ownOut").length, 3, keys.join(","));
 });
 
 test("castFrom: raekker uden placering (rank null) er aldrig vinderen (Codex P2)", () => {

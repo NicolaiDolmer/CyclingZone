@@ -71,8 +71,9 @@ function scopedIncidents(incidents, scope) {
 
 // ── #7411: udgaaede synlige ─────────────────────────────────────────────────
 // Aarsags-noeglen under detail.incidents.* pr. incident-art. time_limit er
-// motorens tidsgraense (raceEngineV4Bridge), withdrawal en udkoert hjaelper der
-// steg af (#6938 U3/U4). Ukendt art falder tilbage til "abandoned" (neutral),
+// motorens tidsgraense (raceEngineV4Bridge), withdrawal en rytter for langt efter
+// vinderen der steg af (#6938 U3/U4, teksten #7701: motoren afgoer det
+// paa hullet, saa ordlyden maa ikke paastaa traethed). Ukendt art falder tilbage til "abandoned" (neutral),
 // aldrig til en forkert aarsag.
 const INCIDENT_REASON_KEYS = Object.freeze({
   crash: "crash",
@@ -287,7 +288,7 @@ export function buildRaceRecap({ results = [], scope, incidents = [], profileTyp
   const abandons = scoped.filter((inc) => inc.outcome === "abandon" && incidentRiderName(inc)
     && !(group && inc.kind === "withdrawal"));
   for (const inc of abandons.slice(0, ABANDON_MOMENT_LIMIT)) {
-    moments.push({ key: "abandon", params: { rider: incidentRiderName(inc), kind: inc.kind } });
+    moments.push({ key: "abandon", params: { rider: incidentRiderName(inc), kind: inc.kind, when: sc.type === "stage" ? "stage" : "other" } });
   }
 
   const topRiderIds = new Set(finish.slice(0, 3).map((r) => r.rider_id).filter(Boolean));

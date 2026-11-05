@@ -549,12 +549,36 @@ export function splitRows(story: RaceStory, myRiderId: string | null): SplitRow[
 
 export interface ReportSentence { key: string; params: Record<string, string | number> }
 
+/** #7701: de felter af raceRecap.dnfRowsForStage som referatet laeser. */
+export interface OwnOutRow { rider_id?: string | null; name?: string | null; team_id?: string | number | null; reasonKey?: string; status?: string }
+
+/**
+ * #7701: dine egne ryttere der udgik paa etapen, som referat-saetninger med den
+ * aarsag motoren skrev (incident-arten). Een saetning pr. aarsag. Ikke-startere
+ * staar i "Your riders", ikke i et referat af selve etapen.
+ */
+export function ownOutSentences(rows: readonly OwnOutRow[] | null | undefined, myTeamId: string | null, cast: Cast): ReportSentence[] {
+  const byKind = new Map<string, string[]>();
+  for (const r of rows || []) {
+    if (r.status === "dns" || myTeamId == null || r.team_id == null || String(r.team_id) !== String(myTeamId)) continue;
+    const name = (r.rider_id ? cast.nameOf(String(r.rider_id)) : null) ?? surnameOf(r.name);
+    if (!name) continue;
+    const kind = r.reasonKey ?? "abandoned";
+    byKind.set(kind, [...(byKind.get(kind) ?? []), name]);
+  }
+  return [...byKind].map(([kind, names]) => {
+    const more = names.length - 2;
+    return { key: "ownOut", params: { kind, names: more > 0 ? `${names.slice(0, 2).join(", ")} +${more}` : names.join(", ") } };
+  });
+}
+
 /**
  * Referatet: kun hvad loggen og resultatet viser, i fast raekkefoelge:
- * udbruddet (dannet), dets udfald, det sidste angreb, vinderen, din bedste.
+ * udbruddet (dannet), dets udfald, det sidste angreb, vinderen, din bedste og
+ * til sidst dine egne udgaaede (#7701).
  * Mindst 3 saetninger naar etapen har et resultat; hoejst 5.
  */
-export function buildReport(story: RaceStory, lines: StoryLine[], cast: Cast): ReportSentence[] {
+export function buildReport(story: RaceStory, lines: StoryLine[], cast: Cast, ownOut: readonly ReportSentence[] = []): ReportSentence[] {
   const out: ReportSentence[] = [];
   const km = (v: number) => kmValue(v);
   const formed = lines.find((l) => l.kind === "formed");
@@ -651,10 +675,15 @@ export function buildReport(story: RaceStory, lines: StoryLine[], cast: Cast): R
       mentioned.add(f.riderId);
     }
   }
-  // Hoejst 5: angrebet ryger foerst, saa udfaldet.
+  // #7701: sidst, saa de ikke taeller med i fyld-reglerne. Hoejst 3 aarsager, saa
+  // der altid er plads til vinderen og din bedste; resten staar i "Your riders".
+  out.push(...ownOut.slice(0, 3));
+  // Hoejst 5: angrebet ryger foerst, saa udfaldet. Vinderen, din bedste og dine
+  // udgaaede bliver staaende (Codex #7701).
+  const stays = (s: ReportSentence) => s.key.startsWith("winner") || s.key.startsWith("mine") || s.key === "ownOut";
   while (out.length > 5) {
-    const i = out.findIndex((s) => s.key.startsWith("attack"));
-    out.splice(i >= 0 ? i : 1, 1);
+    const attack = out.findIndex((s) => s.key.startsWith("attack"));
+    out.splice(attack >= 0 ? attack : out.findIndex((s) => !stays(s)), 1);
   }
   return out;
 }
