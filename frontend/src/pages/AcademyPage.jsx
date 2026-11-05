@@ -49,6 +49,7 @@ import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { useTableSort } from "../lib/useTableSort.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import { scoutSortValue } from "../lib/scouting.js";
+import { potentialViewOf } from "../lib/potentialEstimateDisplay";
 import { useYouthSquadPages } from "../lib/useYouthSquadPages.ts"; // #5519
 import { academyTargetSquad, isSquadFull, squadCapRows, SQUAD_CAPS } from "../lib/squadCaps.ts"; // #5568
 import { GiftIcon } from "../components/ui/icons/index.jsx";
@@ -169,7 +170,8 @@ export default function AcademyPage() {
   const rosterRows = useMemo(
     () => roster.map((r) => ({
       ...r,
-      _potMid: r.prognosis
+      // #6110: skønnet slår prognosen, når serveren sender det.
+      _potMid: r.prognosis && !potentialViewOf(scouting.estimateFor(r.id))
         ? (r.prognosis.band ? (r.prognosis.band.lo + r.prognosis.band.hi) / 2 : null)
         : scoutSortValue(scouting.estimateFor(r.id)),
     })),
@@ -262,9 +264,10 @@ export default function AcademyPage() {
       sortKey: "potential",
       // #2796: labelAsTitle — stjernerne bærer informationen, den kvalitative
       // tekst ligger i tooltip'en.
-      render: (r) => (r.prognosis
-        ? <AcademyPrognosisCell prognosis={r.prognosis} />
-        : <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle />),
+      render: (r) => (
+        <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle
+          legacy={r.prognosis ? <AcademyPrognosisCell prognosis={r.prognosis} /> : null} />
+      ),
     },
     {
       key: "value",

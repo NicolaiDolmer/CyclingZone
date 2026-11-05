@@ -30,6 +30,7 @@ import { statPlateStyle } from "../../../lib/statColor";
 import RiderTypeBadge from "../RiderTypeBadge";
 import BestRoleTag from "../BestRoleTag.jsx";
 import ScoutablePotentiale from "../ScoutablePotentiale";
+import { potentialViewOf } from "../../../lib/potentialEstimateDisplay";
 import RiderBadges from "../RiderBadges";
 import ValueDeltaBadge from "../ValueDeltaBadge.jsx";
 import { retirementRiskBadgeKey, seasonNumberFromReferenceYear } from "../../../lib/riderAge";
@@ -281,9 +282,12 @@ export default function RiderProfileHero({
   const reputationOn = useRiderReputation();
 
   const teamName = rider.team?.name ?? t("header.freeAgent");
-  const potentialEyebrow = viewer === "scouting"
-    ? t("profile.hero.potentialScouted")
-    : t("profile.hero.potentialOwn");
+  // #6110: tal + ord er potentialet, ikke en prognose.
+  const potentialEyebrow = potentialViewOf(scouting?.estimateFor?.(rider?.id))
+    ? t("profile.scouting.potentialLabel")
+    : viewer === "scouting"
+      ? t("profile.hero.potentialScouted")
+      : t("profile.hero.potentialOwn");
   // #6934: truppen (riders.squad) afgør U23/Junior-mærket; alders-U23 er kun fallback når squad mangler (en senior-trup-rytter under 23 får intet U23-mærke).
   const squadKey = squadBadgeKey(rider.squad);
   const isU23 = rider.squad == null && rider.is_u25 != null && age != null && age < 23;
@@ -474,7 +478,7 @@ export default function RiderProfileHero({
         <HeroStat
           label={potentialEyebrow}
           value={scouting
-            ? <ScoutablePotentiale rider={rider} scouting={scouting} showScout={viewer === "scouting"} labelAsTitle hideLevel />
+            ? <ScoutablePotentiale rider={rider} scouting={scouting} showScout={viewer === "scouting"} labelAsTitle hideLevel estimateSize="hero" showLooks={viewer === "scouting"} />
             : "—"}
           valueClassName="text-[15px] font-semibold"
           /* #5435 (ejer 21/9): intet loft-tal under prognosen — taget er ens
