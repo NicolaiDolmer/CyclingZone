@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (5/11 18:40):** Forstå løbet #7716 går før #6110. Merget 5/11: #7699, #7687, #7689, #7698, #7703. #7713 (fjern lodtrækning) har ejerens merge og kør fra næste etape, afventer konflikt-rettelse. Dernæst #7702 (ny review), #7711, #7712 (billeder), #7724 (kontakt), Hvorfor?-knap #7717, #7715, A eller B #7638, roadmap-rest, besked til spillerne.
+> **🎯 Next action (5/11 20:00):** Forstå løbet #7716 går før #6110. Merget 5/11: #7699, #7687, #7689, #7698, #7703, #7723 (lodtrækning væk, live), #7724 (kontakt off), #7731. Roadmap skrevet i prod. Dernæst #7702, #7711 (ejer-go, bundle + review), #7712 (billede), #7705, #7693, #7733, #7717, #7715, #7725-#7730, A eller B #7638, besked til spillerne.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
 > **🤖 Working agent:** PC1-session 5/11 (taktikplan, afventer ejerens ja). Auto-toget kører på PC1.
