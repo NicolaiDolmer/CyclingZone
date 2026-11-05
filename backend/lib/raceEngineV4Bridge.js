@@ -572,6 +572,19 @@ export function withManagerChase6912(orders, teamOrderRows, stageNumber) {
 }
 
 /**
+ * #7557 (KUN s5_profiles_v3 + kontakten, SLUKKET): marker team_tactics-ordren for hold hvis
+ * manager selv har gemt stancen "let_go" for etapen, saa ordren vinder over motorens egen jagt.
+ * Ny liste; input muteres ikke. Parameternavnet er teamChaseReaction.ts's MANAGER_LET_GO_7557_PARAM.
+ */
+export function withManagerLetGo7557(orders, teamOrderRows, stageNumber) {
+  const rowByTeam = new Map();
+  for (const row of teamOrderRows ?? []) if (row && row.stage_number === stageNumber) rowByTeam.set(String(row.team_id), row);
+  const teams = new Set([...rowByTeam].filter(([, row]) => row.breakaway_stance === "let_go").map(([teamId]) => teamId));
+  if (teams.size === 0) return orders;
+  return orders.map((o) => (o.kind === "team_tactics" && teams.has(String(o.team_id)) ? { ...o, params: { ...(o.params ?? {}), manager_let_go_7557: true } } : o));
+}
+
+/**
  * Byg v4's StageInput af PRÆCIS de data raceRunner allerede har i hånden.
  * REN: ingen DB-kald (kaldstedet henter etape-rækken og ordre-rækkerne).
  *
@@ -594,6 +607,7 @@ export function buildV4StageInput({
   stagePlanDroppedFront7635 = false, // #7635 (slukket)
   splitAttackCause7640 = false, // #7640 (slukket)
   descentRegroupCap7644 = false, // #7644 (slukket)
+  letGoOrder7557 = false, // #7557 (slukket)
   modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null,
   rulesRevision = "legacy", gcStandings = null, formPeaks = true, dayForm6649 = false, breakawayCurve6912 = false,
 }) {
@@ -659,7 +673,9 @@ export function buildV4StageInput({
   // #6912 (KUN s5_profiles_v3 + kontakten, SLUKKET): en spillers gemte jag-ordre markeres, saa
   // forspringskurven kun begraenser den automatiske jagt (breakawayCurve6912.ts MANAGER_CHASE_6912_PARAM).
   const curve6912 = breakawayCurve6912 === true && isOrdersGcRulesRevision(rulesRevision) && isS5ProfilesV3OrLater(rulesRevision);
-  const orders = curve6912 ? withManagerChase6912(plan.orders, teamOrderRows, stageNumber) : plan.orders;
+  const curveOrders = curve6912 ? withManagerChase6912(plan.orders, teamOrderRows, stageNumber) : plan.orders;
+  // #7557 (KUN s5_profiles_v3 + kontakten, SLUKKET): markeringen paa ordren er hele kontakten.
+  const orders = letGoOrder7557 === true && isOrdersGcRulesRevision(rulesRevision) && isS5ProfilesV3OrLater(rulesRevision) ? withManagerLetGo7557(curveOrders, teamOrderRows, stageNumber) : curveOrders;
   const input = { route, startlist, orders, seed: seedString, tuning: modules.tuning.RACE_V4_TUNING };
   // Ejer 28/9: kun ungdomsloeb baerer truppen; seniorens input er uaendret.
   if (squad === "u23" || squad === "junior") input.squad = squad;
@@ -757,7 +773,7 @@ export function createRaceEngineV4Adapter(modules) {
      *   omkring etapen. Udeladt = løbet er ukendt for M14.
      * @returns {{ranked: Array, incidents: Array, passages: object|null, timeline: object|null, v4Output: object}}
      */
-    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null, rulesRevision = "legacy", gcStandings = null, formPeaks = true, dayForm6649 = false, breakawayCurve6912 = false, queenStageGap7236 = false, stagePlanDroppedFront7635 = false, splitAttackCause7640 = false, descentRegroupCap7644 = false }) {
+    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null, rulesRevision = "legacy", gcStandings = null, formPeaks = true, dayForm6649 = false, breakawayCurve6912 = false, queenStageGap7236 = false, stagePlanDroppedFront7635 = false, splitAttackCause7640 = false, descentRegroupCap7644 = false, letGoOrder7557 = false }) {
       if (!Array.isArray(entrants) || entrants.length === 0) {
         throw new Error("raceEngineV4Bridge: entrants kraeves (tomt startfelt)");
       }
@@ -765,7 +781,7 @@ export function createRaceEngineV4Adapter(modules) {
         throw new Error("raceEngineV4Bridge: seedString (streng) kraeves");
       }
       const input = buildV4StageInput({
-        modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages, squad, jerseyLeaders, rulesRevision, gcStandings, formPeaks, dayForm6649, breakawayCurve6912, queenStageGap7236, stagePlanDroppedFront7635, splitAttackCause7640, descentRegroupCap7644,
+        modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages, squad, jerseyLeaders, rulesRevision, gcStandings, formPeaks, dayForm6649, breakawayCurve6912, queenStageGap7236, stagePlanDroppedFront7635, splitAttackCause7640, descentRegroupCap7644, letGoOrder7557,
       });
       // #5577: med trace, når kernen har den (#5578), så fortællingen får
       // motorens egen dom over udbruddet. `output` er byte-identisk med
