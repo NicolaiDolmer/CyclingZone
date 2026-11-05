@@ -1,7 +1,114 @@
 {
   "meta": {
-    "title": "Cycling Zone · cykel-manageren i browseren hvor strategi slår penge",
-    "description": "Byg et hold, byd på ryttere i live-auktioner, læg din taktik og kør en hel sæson. Et gratis cykel-managerspil i browseren. Ingen pay-to-win."
+    "title": "Gratis cykelmanagerspil i browseren · Cycling Zone",
+    "description": "Byg dit eget cykelhold i browseren. Hent ryttere, udvikl talenter og læg taktikken mod andre managere. Gratis at spille, ingen installation.",
+    "ogAlt": "Cycling Zone: byg dit eget cykelhold"
+  },
+  "hero": {
+    "intro": "Gratis cykelmanagerspil i browseren",
+    "title": "Byg dit eget cykelhold.",
+    "body": "Hent ryttere, udvikl talenter og læg taktikken til næste løb. Konkurrér mod andre managere, sæson efter sæson.",
+    "cta": "Opret dit hold",
+    "ctaDiscord": "Kom med på Discord",
+    "micro": "Gratis at spille. CZ Pro er et valgfrit abonnement.",
+    "caption": "Dit hold i Cycling Zone",
+    "imageAlt": "Holdoversigt i Cycling Zone med managerens ryttere, deres rating, rolle, alder, potentiale og værdi"
+  },
+  "race": {
+    "title": "Planlæg dit løb.",
+    "body": "Studér ruten, vælg dine ryttere og udpeg kaptajnen. Læg taktikken, og følg, hvordan dit hold klarer sig mod andre managere.",
+    "scenario": "En bjergetape. Hvem kører du for?",
+    "beforeCaption": "Før løbet: ruten og holdets plan.",
+    "afterCaption": "Efter løbet: dine ryttere i resultatlisten.",
+    "beforeAlt": "Løbsforhåndsvisning i Cycling Zone: profilen af en 170 km lang bjergetape med tre stigninger, og holdets plan med kaptajn og spurttog",
+    "afterAlt": "Etapeoversigt i Cycling Zone: top 3 og managerens egne ryttere, den bedste på femtepladsen, 1:29 efter vinderen"
+  },
+  "develop": {
+    "title": "Udvikl dit hold sæson efter sæson.",
+    "rows": [
+      {
+        "title": "Træn dine ryttere",
+        "body": "Vælg, hvad dine ryttere skal træne, og følg udviklingen i deres evner."
+      },
+      {
+        "title": "Giv unge talenter en chance",
+        "body": "Find unge ryttere gennem akademiet, og vælg, hvem du vil hente til holdet."
+      },
+      {
+        "title": "Forstærk truppen",
+        "body": "Byd på ryttere, der passer til dine planer, og sæt andre til salg, når du vil ændre truppen."
+      }
+    ],
+    "link": "Sådan fungerer spillet"
+  },
+  "start": {
+    "title": "Sådan kommer du i gang",
+    "steps": [
+      {
+        "title": "Opret dit hold",
+        "body": "Vælg dit manager- og holdnavn, når du opretter din bruger."
+      },
+      {
+        "title": "Lær truppen at kende",
+        "body": "Se dine rytteres styrker, og find ud af, hvem du vil bygge holdet omkring."
+      },
+      {
+        "title": "Træf dine første valg",
+        "body": "Vælg træningsfokus, og planlæg, hvilke ryttere du vil sende til de kommende løb."
+      }
+    ],
+    "cta": "Opret dit hold"
+  },
+  "pro": {
+    "title": "Gratis at spille. CZ Pro er valgfrit.",
+    "body": "Byg dit hold, træn dine ryttere og konkurrér mod andre managere gratis. CZ Pro er et valgfrit abonnement med ekstra funktioner som gemte filtre og historik over rytternes evner på tværs af sæsoner.",
+    "fairness": "Spillet skal være lige for alle. Du kan ikke betale dig til bedre ryttere, hurtigere træning eller bedre resultater."
+  },
+  "person": {
+    "title": "Lavet af én person, helt åbent",
+    "paragraphs": [
+      "Jeg hedder Dolmer, er fra Danmark og bygger Cycling Zone alene. Det startede i 2025 som en multiplayer-liga i Pro Cycling Manager, holdt sammen af delte dokumenter.",
+      "Jeg ville have et cykelmanagerspil, hvor man ikke bare klikker sig igennem nogle tal, men bygger noget op over tid: strategi, udvikling, konkurrence og følelsen af at følge sit hold fra små fremskridt til store resultater. Så jeg byggede mit eget spil, med sin egen løbsmotor og sine egne ryttere.",
+      "I maj 2026 besluttede jeg at give det en reel chance og arbejde seriøst med det, med håbet om en dag at kunne leve af det. Spillet har været i åben beta siden, og spillerne på Discord er med til at bestemme, hvad jeg bygger næste gang."
+    ],
+    "link": "Kom med på Discord"
+  },
+  "faq": {
+    "title": "Godt at vide",
+    "items": [
+      {
+        "q": "Kan jeg starte midt i en sæson?",
+        "a": "Ja. Du kan oprette dig når som helst. Dit hold starter i den laveste division og kører resten af den igangværende sæson."
+      },
+      {
+        "q": "Skal jeg være online, når mine ryttere kører?",
+        "a": "Nej. Løbsmotoren afvikler alle løb selv, og bagefter kan du se, hvad der skete. Du vælger ryttere og taktik på forhånd. Har du ikke valgt et hold, vælger spillet et for dig inden start."
+      },
+      {
+        "q": "Kan jeg spille på min telefon?",
+        "a": "Ja. Cycling Zone kører i browseren på computer, tablet og telefon. Der er intet at installere."
+      },
+      {
+        "q": "Er det gratis?",
+        "a": "Ja. Alt, du skal bruge for at spille, er gratis. CZ Pro er et valgfrit abonnement med nogle ekstra funktioner."
+      },
+      {
+        "q": "Kan jeg betale mig til sejre?",
+        "a": "Nej. Du kan ikke betale dig til bedre ryttere, hurtigere træning eller bedre resultater."
+      }
+    ]
+  },
+  "closing": {
+    "title": "Byg dit eget cykelhold.",
+    "micro": "Gratis at spille. CZ Pro er et valgfrit abonnement.",
+    "cta": "Opret dit hold"
+  },
+  "footerV2": {
+    "tagline": "Et cykelmanagerspil i browseren.",
+    "game": "Spillet",
+    "community": "Fællesskab",
+    "legal": "Juridisk",
+    "madeBy": "Lavet af Dolmer i Danmark"
   },
   "nav": {
     "discordLabel": "Discord",
@@ -9,143 +116,6 @@
     "login": "Log ind",
     "signup": "Opret bruger",
     "skipToContent": "Spring til indhold"
-  },
-  "hero": {
-    "badge": "Open beta · Gratis at spille",
-    "title": "Et managerspil bygget til det lange løb.",
-    "subtitle": "Byg dit hold, byd på ryttere i live-auktioner, og træf hvert valg gennem en hel sæson. Klatr op gennem divisionerne, direkte i din browser.",
-    "ctaPlay": "Opret dit hold",
-    "ctaDiscord": "Kom med på Discord",
-    "ctaEmail": "Få launch-mailen",
-    "trustFree": "Gratis at spille",
-    "trustNoCard": "Ingen installation",
-    "trustBrowser": "Kører i din browser"
-  },
-  "signature": {
-    "kicker": "Inde i spillet",
-    "stageTitle": "Etape 14 · Bjergfinale",
-    "distanceLabel": "Distance",
-    "distanceValue": "182 km",
-    "climbLabel": "Sidste stigning",
-    "climbValue": "HC · 14,2 km med 7,8%",
-    "classificationTitle": "Samlet stilling",
-    "gapHeader": "Gab",
-    "jerseyYellow": "Fører",
-    "jerseyGreen": "Pointfører",
-    "jerseyPolka": "Bjergfører",
-    "sampleNote": "Eksempeldata. Stillingen opdateres mens løbet kører."
-  },
-  "how": {
-    "kicker": "Sådan spiller du",
-    "title": "Fem valg, hver sæson",
-    "rows": [
-      {
-        "no": "01",
-        "title": "Byg dit hold",
-        "body": "Vælg en trup der passer din strategi. Klatrere til bjergene, spurtere til det flade, en kaptajn at bygge omkring.",
-        "data": "Led en hel trup, ikke kun én stjerne"
-      },
-      {
-        "no": "02",
-        "title": "Byd i live-auktioner",
-        "body": "Konkurrér om ryttere i realtids-auktioner mod andre managere. Læs feltet, tim dit bud, betal ikke over.",
-        "data": "Live budgivning, manager mod manager"
-      },
-      {
-        "no": "03",
-        "title": "Udvikl dine ryttere",
-        "body": "Træn dine ryttere så deres styrker skærpes, og hent unge talenter op gennem akademiet. Dagens talent kan blive næste sæsons stjerne.",
-        "data": "Et ungdomsakademi til at skabe dine egne stjerner"
-      },
-      {
-        "no": "04",
-        "title": "Læg din taktik",
-        "body": "Udpeg din kaptajn, send ryttere i udbrud, og bestem hvem der jager og hvem der gemmer benene til finalen.",
-        "data": "Taktik der ændrer resultatet"
-      },
-      {
-        "no": "05",
-        "title": "Kør sæsonen",
-        "body": "Følg dit hold gennem etapeløb og endagsløb over en hel sæson, og byg så videre til næste sæson.",
-        "data": "Kør dig op gennem divisionerne"
-      }
-    ]
-  },
-  "different": {
-    "kicker": "Ikke det sædvanlige managerspil",
-    "title": "Bygget på ét løfte",
-    "fairness": "Spillet skal være lige for alle. Rigtige penge kan ikke købe bedre ryttere, hurtigere træning eller bedre resultater.",
-    "cards": [
-      {
-        "title": "Formet af fællesskabet",
-        "body": "Én udvikler, der bygger i det åbne. Din feedback afgør hvad der bygges som det næste, og hver ændring lander hvor du kan se den."
-      },
-      {
-        "title": "Gratis at spille",
-        "body": "Hele spillet er gratis. Tilmeld dig, byg et hold og konkurrér uden at betale for noget der påvirker udfaldet."
-      },
-      {
-        "title": "Ingen installation",
-        "body": "Det kører i din browser, på din telefon eller din computer. Intet at downloade, intet at opdatere."
-      }
-    ]
-  },
-  "discord": {
-    "kicker": "Vær med",
-    "title": "Spillet bygges i det åbne",
-    "body": "Cycling Zone startede som én idé: en cykel-manager hvor du ikke bare klikker dig gennem tal, men faktisk bygger noget op over en sæson. Jeg laver det på egen hånd, i det åbne, sæson for sæson. Discord er der hvor jeg deler hvad jeg arbejder på før det går live, hvor nye managere får en hånd med at finde fodfæste, og hvor din feedback afgør hvad jeg bygger som det næste. Det er ikke færdigt, og det bliver bedre hver uge. Du kommer for løbene. Du bliver for menneskene. Tag dit hold med, del dine tanker, og vær med til at forme hvor det går hen.",
-    "cta": "Åbn Discord"
-  },
-  "waitlist": {
-    "kicker": "Foretrækker du mail?",
-    "title": "Få launch-mailen",
-    "body": "Læg din mail, så sender jeg dig én besked når den næste sæson starter. Intet nyhedsbrev, ingen støj.",
-    "emailLabel": "Mail",
-    "emailPlaceholder": "dig@eksempel.dk",
-    "nameLabel": "Fornavn",
-    "nameOptional": "valgfrit",
-    "namePlaceholder": "Hvad skal jeg kalde dig?",
-    "consentBefore": "Jeg accepterer at blive kontaktet om launch og godkender ",
-    "consentLink": "privatlivspolitikken",
-    "consentAfter": ".",
-    "privacyPath": "/privatlivspolitik",
-    "submit": "Giv mig besked ved launch",
-    "submitting": "Tilføjer dig til listen...",
-    "disclaimer": "Én mail ved launch. Afmeld når som helst.",
-    "successTitle": "Du er på listen",
-    "successBody": "Tak. Jeg sender dig én mail når den næste sæson starter. Indtil da er Discord det bedste sted at følge med.",
-    "successDiscord": "Kom med på Discord",
-    "errors": {
-      "emailRequired": "Skriv din mail.",
-      "emailInvalid": "Den mail ser ikke rigtig ud.",
-      "consent": "Godkend privatlivspolitikken for at fortsætte.",
-      "duplicate": "Du er allerede på listen.",
-      "rls": "Noget blokerede tilmeldingen. Prøv igen.",
-      "network": "Netværksfejl. Tjek din forbindelse og prøv igen.",
-      "unknown": "Noget gik galt. Prøv igen."
-    }
-  },
-  "faq": {
-    "kicker": "Spørgsmål",
-    "title": "Godt at vide",
-    "items": [
-      {
-        "q": "Er det virkelig gratis?",
-        "a": "Ja. Hele spillet er gratis at spille. Du kan tilmelde dig, bygge et hold og konkurrere mod andre managere uden at betale for noget."
-      },
-      {
-        "q": "Er det pay-to-win?",
-        "a": "Nej. Rigtige penge kan ikke købe resultater. Den bedste manager vinder, ikke den der bruger mest."
-      },
-      {
-        "q": "Hvornår starter sæsonen?",
-        "a": "Cycling Zone er i open beta nu, og en frisk sæson åbner snart. Kom med på Discord eller læg din mail, så giver jeg besked i det øjeblik den starter."
-      },
-      {
-        "q": "Skal jeg installere noget?",
-        "a": "Nej. Det kører i din browser på computer og mobil. Der er intet at downloade."
-      }
-    ]
   },
   "footer": {
     "tagline": "Et managerspil i browseren.",

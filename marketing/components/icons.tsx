@@ -1,5 +1,5 @@
-// Stroke-ikoner porteret 1:1 fra frontend/src/components/ui/icons (kun de 8
-// landing-fladen bruger). Samme IconBase-kontrakt: 24-viewBox, stroke=currentColor.
+// Stroke-ikoner porteret 1:1 fra frontend/src/components/ui/icons (kun dem
+// marketing-fladen bruger). Samme IconBase-kontrakt: 24-viewBox, stroke=currentColor.
 
 import type { ComponentProps, ReactNode } from "react";
 
@@ -27,14 +27,6 @@ function IconBase({ size = 20, className = "", children, title, ...rest }: IconP
     >
       {children}
     </svg>
-  );
-}
-
-export function CheckIcon(props: IconProps) {
-  return (
-    <IconBase {...props}>
-      <path d="M20 6L9 17l-5-5" />
-    </IconBase>
   );
 }
 
@@ -79,14 +71,6 @@ export function CoinIcon(props: IconProps) {
       <circle cx="12" cy="12" r="9" />
       <path d="M15 8.5a4 4 0 1 0 0 7" />
       <path d="M7 11h6M7 13.5h5" />
-    </IconBase>
-  );
-}
-
-export function MountainIcon(props: IconProps) {
-  return (
-    <IconBase {...props}>
-      <path d="M3 19l6-11 4 6 2-3 6 8z" />
     </IconBase>
   );
 }
