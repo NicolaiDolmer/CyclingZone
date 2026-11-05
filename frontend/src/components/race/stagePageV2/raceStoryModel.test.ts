@@ -27,7 +27,7 @@ function hillyTimeline() {
     ev(60, "peloton_splits", { group_id: "gruppetto-3", source_group_id: "peloton-0", rider_ids: ["x3", "m2"], gap_seconds: 40, exact_km: 58.3, exact_time: 5320 }),
     ev(60, "peloton_splits", { group_id: "gruppetto-4", source_group_id: "peloton-0", rider_ids: ["x4"], gap_seconds: 50, exact_km: 58.4, exact_time: 5330 }),
     ev(60, "kom_passage", { name: "Col A", category: "1", exact_km: 60, top: [{ rider_id: "b1", points: 10 }] }),
-    ev(60, "gap_update", { group_id: "peloton-0", gap_seconds: 120, exact_km: 60, exact_time: 5520 }),
+    ev(60, "gap_update", { group_id: "peloton-0", gap_seconds: 60, exact_km: 60, exact_time: 5460 }),
     ev(60, "gap_update", { group_id: "gruppetto-1", gap_seconds: 150, exact_km: 60, exact_time: 5550 }),
     ev(60, "gap_update", { group_id: "gruppetto-2", gap_seconds: 170, exact_km: 60, exact_time: 5570 }),
     ev(60, "gap_update", { group_id: "gruppetto-3", gap_seconds: 190, exact_km: 60, exact_time: 5590 }),
@@ -294,18 +294,20 @@ function shatteredTimeline() {
   const ids = (prefix: string, n: number) => Array.from({ length: n }, (_, i) => `${prefix}${i}`);
   return [
     ev(0, "stage_start", { exact_km: 0, exact_time: 0, distance_km: 100, field_count: 60, profile_type: "mountain" }),
-    ev(20, "gap_update", { group_id: "peloton-0", gap_seconds: 0, exact_km: 20, exact_time: 1800 }),
+    ev(10, "breakaway_formed", { group_id: "breakaway-0", rider_ids: ["b1", "b2", "b3"], exact_km: 10, exact_time: 900 }),
+    ev(20, "gap_update", { group_id: "peloton-0", gap_seconds: 60, exact_km: 20, exact_time: 1860 }),
+    ev(30, "gap_update", { group_id: "peloton-0", gap_seconds: 150, exact_km: 30, exact_time: 2850 }),
     ev(40, "peloton_splits", { group_id: "gruppetto-1", source_group_id: "peloton-0", rider_ids: [...ids("g", 34), "m1"], gap_seconds: 60, exact_km: 40, exact_time: 3660 }),
     ev(40, "peloton_splits", { group_id: "gruppetto-2", source_group_id: "peloton-0", rider_ids: ids("h", 10), gap_seconds: 120, exact_km: 40, exact_time: 3720 }),
-    ev(60, "gap_update", { group_id: "peloton-0", gap_seconds: 0, exact_km: 60, exact_time: 5400 }),
-    ev(60, "gap_update", { group_id: "gruppetto-1", gap_seconds: 90, exact_km: 60, exact_time: 5490 }),
-    ev(60, "gap_update", { group_id: "gruppetto-2", gap_seconds: 150, exact_km: 60, exact_time: 5550 }),
-    ev(80, "gap_update", { group_id: "peloton-0", gap_seconds: 0, exact_km: 80, exact_time: 7200 }),
-    ev(80, "gap_update", { group_id: "gruppetto-1", gap_seconds: 200, exact_km: 80, exact_time: 7400 }),
-    ev(80, "gap_update", { group_id: "gruppetto-2", gap_seconds: 260, exact_km: 80, exact_time: 7460 }),
-    ev(100, "gap_update", { group_id: "peloton-0", gap_seconds: 0, exact_km: 100, exact_time: 9000 }),
-    ev(100, "gap_update", { group_id: "gruppetto-1", gap_seconds: 240, exact_km: 100, exact_time: 9240 }),
-    ev(100, "gap_update", { group_id: "gruppetto-2", gap_seconds: 300, exact_km: 100, exact_time: 9300 }),
+    ev(60, "gap_update", { group_id: "peloton-0", gap_seconds: 60, exact_km: 60, exact_time: 5460 }),
+    ev(60, "gap_update", { group_id: "gruppetto-1", gap_seconds: 200, exact_km: 60, exact_time: 5600 }),
+    ev(60, "gap_update", { group_id: "gruppetto-2", gap_seconds: 260, exact_km: 60, exact_time: 5660 }),
+    ev(80, "gap_update", { group_id: "peloton-0", gap_seconds: 200, exact_km: 80, exact_time: 7400 }),
+    ev(80, "gap_update", { group_id: "gruppetto-1", gap_seconds: 300, exact_km: 80, exact_time: 7500 }),
+    ev(80, "gap_update", { group_id: "gruppetto-2", gap_seconds: 360, exact_km: 80, exact_time: 7560 }),
+    ev(100, "gap_update", { group_id: "peloton-0", gap_seconds: 200, exact_km: 100, exact_time: 9200 }),
+    ev(100, "gap_update", { group_id: "gruppetto-1", gap_seconds: 340, exact_km: 100, exact_time: 9340 }),
+    ev(100, "gap_update", { group_id: "gruppetto-2", gap_seconds: 400, exact_km: 100, exact_time: 9400 }),
     ev(100, "finish", { win_type: "solo", exact_km: 100, exact_time: 9000 }),
   ];
 }
@@ -315,21 +317,26 @@ test("#7704: replay og Final 5 km kalder kun den reelle hovedgruppe for feltet",
   const c = cast();
   const onRoad = replayGroupsAt(s, wholeStageFrames(s), 60, c);
   assert.deepEqual(onRoad.filter((g) => g.peloton).map((g) => g.groupId), ["gruppetto-1"]);
-  assert.equal(onRoad.find((g) => g.groupId === "peloton-0")?.front, true, "startgruppen ligger stadig forrest");
+  const start = onRoad.find((g) => g.groupId === "peloton-0");
+  const main = onRoad.find((g) => g.peloton);
+  assert.ok(start && main && start.gapS < main.gapS, "startgruppen ligger foran hovedgruppen");
   const data = finaleData(s);
   assert.ok(data);
   const finale = finaleStateAt(s, data, c, data.t0);
   assert.deepEqual(finale.groups.filter((g) => g.peloton).map((g) => g.groupId), ["gruppetto-1"]);
 });
 
-test("#7704: hul-linjen siger kun feltet om hovedgruppen; hullerne er uaendrede", () => {
+test("#7704: hul-linjen siger kun feltet om hovedgruppen", () => {
   const s = story(shatteredTimeline());
   const gaps = s.moments.filter((m) => m.key === "story.gap_grew" || m.key === "story.gap_shrank");
-  assert.ok(gaps.length > 0, "fixturen giver hul-oejeblikke");
-  for (const line of curateMoments(s, cast(), 50).filter((l) => l.kind === "gap")) {
-    const moment = gaps.find((m) => m.km === line.km);
-    assert.equal(line.data.group, moment?.data.group_id === "gruppetto-1" ? "rest" : "chase");
-  }
+  const lines = curateMoments(s, cast(), 50).filter((l) => l.kind === "gap");
+  const groupAt = (km: number, id: string) => lines.find((l) => l.km === km && gaps.some((m) => m.km === km && m.data.group_id === id))?.data.group;
+  const afterSplit = gaps.find((m) => m.data.group_id === "peloton-0" && m.km >= 40);
+  assert.ok(afterSplit, "startgruppens hul flytter sig efter splittet");
+  assert.equal(groupAt(afterSplit.km, "peloton-0"), "chase", "startgruppen er ikke feltet efter splittet");
+  const beforeSplit = gaps.find((m) => m.data.group_id === "peloton-0" && m.km < 40);
+  assert.ok(beforeSplit);
+  assert.equal(groupAt(beforeSplit.km, "peloton-0"), "rest", "foer splittet er den feltet");
 });
 
 test("buildReport: din rytter vandt naevnes kun een gang (Codex P2)", () => {
