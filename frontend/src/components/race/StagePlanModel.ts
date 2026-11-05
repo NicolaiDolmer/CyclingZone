@@ -666,7 +666,6 @@ export function stagePlanOutcomes(
       // Et udbrud der dannes og hentes inden for samme segment: filmen navngiver ham, motoren saa det ikke.
       if (item.endReason === "missed_break") return made === true ? "unknown" : "failed";
       if (item.endReason === "caught") return "done";
-      const made = madeTheBreak(list, riderId);
       return made === null ? "unknown" : made ? "done" : "failed";
     }
     if (RIDE_HOME_TASKS.has(item.task)) return "done";
