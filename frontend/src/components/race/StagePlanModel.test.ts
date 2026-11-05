@@ -302,10 +302,17 @@ const CAPTAIN: StagePlanLeg[] = [
   { task: "ride_for_result", from: { at: "dropped" } },
 ];
 
+/** Samme form som motorens finale_attack i mechanics/descent.ts. */
+const descentAttack = (km: number, riderIds: string[]) => ({
+  type: "finale_attack",
+  km,
+  params: { direction: "descent", rider_ids: riderIds, group_id: "breakaway-2000", gained_seconds: 6 },
+});
+
 /** Giro-moenstret: et nedkoerselsangreb faa sekunder foran, rytteren "a" i feltet hele dagen. */
 const DESCENT_FILM = [
   { type: "stage_start", km: 0, params: { field_count: 8 } },
-  { type: "finale_attack", km: 60, params: { kind: "descent_attack", group_id: "breakaway-2000", rider_ids: ["x", "y", "z"], source_group_id: "peloton-0" } },
+  { type: "finale_attack", km: 60, params: { direction: "descent", rider_ids: ["x", "y", "z"], group_id: "breakaway-2000", gained_seconds: 6 } },
   { type: "gap_update", km: 60, params: { group_id: "peloton-0", gap_seconds: 6 } },
   { type: "stage_plan_leg", km: 60, params: { rider_id: "a", leg: 2, task: "ride_for_result", reason: "dropped" } },
   { type: "group_merged", km: 64, params: { group_id: "breakaway-2000", into_group_id: "peloton-0", rider_ids: ["x", "y", "z"] } },
@@ -392,8 +399,14 @@ test("#7706: 'Attack' for en rytter der tabte kontakten er ikke et flueben", () 
   assert.deepEqual(outcomes(ATTACK_PLAN, bookkeeping, null), ["done", "unknown"]);
   const carried = [...film, { type: "finale_attack", km: 143, params: { kind: "carried_gap_held", rider_ids: ["a"] } }];
   assert.deepEqual(outcomes(ATTACK_PLAN, carried, null), ["done", "unknown"]);
-  const atSwitch = [{ type: "finale_attack", km: 140, params: { kind: "descent_attack", rider_ids: ["a"] } }, ...film];
+  const atSwitch = [descentAttack(140, ["a"]), ...film];
   assert.deepEqual(outcomes(ATTACK_PLAN, atSwitch, null), ["done", "unknown"], "angrebet paa skiftets km var det forrige led");
+});
+
+test("#7706: et angreb paa nedkoersel i et Attack-led er et flueben, i motorens eget format", () => {
+  const film = [leg(140, 1, "attack", "final_km")];
+  assert.deepEqual(outcomes(ATTACK_PLAN, [...film, descentAttack(143, ["a", "x"])], null), ["done", "done"]);
+  assert.deepEqual(outcomes(ATTACK_PLAN, [...film, descentAttack(143, ["x"])], null), ["done", "unknown"], "en andens angreb er ikke hans");
 });
 
 test("#7706: filmen navngiver ham i udbruddet, motoren siger missed_break: ingen paastand", () => {
