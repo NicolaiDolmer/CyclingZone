@@ -332,6 +332,7 @@
         "dropFromBreak": "He could not stay with the break{where}",
         "crack": "He cracked{where} and lost contact with the front",
         "allOut": "He went all out{where} and ran empty",
+        "allOutGain": "He went all out{where} and gained time",
         "crashLoss": "He lost time in a crash{where}",
         "mechanicalLoss": "He lost time to a mechanical{where}",
         "incidentLoss": "He lost time to an incident{where}",

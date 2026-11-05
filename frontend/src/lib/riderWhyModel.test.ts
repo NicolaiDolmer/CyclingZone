@@ -102,6 +102,15 @@ test("vinderen: spurten, det alene angreb, og aldrig et angreb han ikke kom alen
   assert.deepEqual(why.where, { kind: "climb", name: "Col Test" });
 });
 
+test("en rytter der vandt tid paa stigningen, forklares ikke med dagens form alene", () => {
+  const finish = finishAt(100, [["breakaway-0", ["w"], 0, false], ["solo-1", ["a"], 300, false], ["peloton-0", ["c"], 400, true, 15]]);
+  const moments = [moment("all_out_gain", 80, { rider_id: "a" }), moment("bad_day", 100, { rider_id: "a", reason: "fatigue" })];
+  const why = riderWhy(input("a", 3, [], storyOf(moments, finish)));
+  assert.equal(why.main, "allOutGain");
+  assert.deepEqual(why.where, { kind: "climb", name: "Col Test" });
+  assert.equal(why.lead, "badDayFatigue");
+});
+
 test("udbruddet der holdt hjem, og feltet bag det", () => {
   const finish = finishAt(100, [["breakaway-0", ["a"], 0, false], ["peloton-0", ["c"], 200, true, 15]]);
   const breakaway = { morning_rider_ids: ["a"], outcomes: { a: "survived" as const } };
@@ -166,7 +175,7 @@ test("kontakten slukket: 'Your day' tegner ingen knap og spoerger kun flaget", (
   const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
   const card = read("../components/race/stagePageV2/YourDayCard.tsx");
   const tab = read("../components/race/stagePageV2/StageTabV2.tsx");
-  assert.match(card, /why = null/);
+  assert.match(card, /why: whyRows = null/);
   assert.match(card, /\{rowWhy && <RiderWhyButton/);
   assert.match(tab, /whyEnabled \? \{/);
   assert.match(tab, /\} : null\), \[whyEnabled/);

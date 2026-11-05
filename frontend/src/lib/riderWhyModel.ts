@@ -21,7 +21,7 @@ export type WhyMain =
   | "abandonedCrash" | "abandonedMechanical" | "abandoned" | "timeLimit" | "withdrawal"
   | "won" | "wonSprint" | "wonAttack" | "survived" | "front" | "frontSprint"
   | "dropEmpty" | "dropPace" | "dropGrupetto" | "dropCobbles" | "dropGeneric" | "dropFromBreak"
-  | "crack" | "allOut" | "crashLoss" | "mechanicalLoss" | "incidentLoss" | "caught"
+  | "crack" | "allOut" | "allOutGain" | "crashLoss" | "mechanicalLoss" | "incidentLoss" | "caught"
   | "badDayFatigue" | "badDayForm" | "badDayIllness" | "badDayRain" | "badDayWind" | "badDayHeat"
   | "attackBehind" | "bunchBehindSprint" | "pelotonBehindBreak" | "pelotonBehind";
 
@@ -211,6 +211,9 @@ export function riderWhy(input: RiderWhyInput): RiderWhy {
     const caught = moments.find((m) => m.type === "breakaway_caught") ?? null;
     return said("caught", placeOf(caught, story, climbs), badDay?.lead ?? null);
   }
+  // Han vandt tid paa stigningen: det forklarer resultatet bedre end dagens form alene.
+  const allOutGain = moments.find((m) => m.type === "all_out_gain");
+  if (allOutGain) return said("allOutGain", placeOf(allOutGain, story, climbs), badDay?.lead ?? null);
   if (badDay) return said(badDay.main);
   if (attack) return said("attackBehind", placeOf(attack, story, climbs));
   if (finaleGroup && sprint) return said("bunchBehindSprint");

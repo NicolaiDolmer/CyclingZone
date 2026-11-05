@@ -332,6 +332,7 @@
         "dropFromBreak": "Han kunne ikke blive i udbruddet{where}",
         "crack": "Han sprak{where} og mistede kontakten til fronten",
         "allOut": "Han kørte alt ud{where} og kørte sig tom",
+        "allOutGain": "Han kørte alt ud{where} og vandt tid",
         "crashLoss": "Han tabte tid i et styrt{where}",
         "mechanicalLoss": "Han tabte tid på en defekt{where}",
         "incidentLoss": "Han tabte tid på et uheld{where}",

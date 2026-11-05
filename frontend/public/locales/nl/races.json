@@ -349,6 +349,7 @@
         "dropFromBreak": "Hij kon niet bij de vlucht blijven{where}",
         "crack": "Hij knapte{where} en verloor het contact met de kop",
         "allOut": "Hij ging volle bak{where} en reed zich leeg",
+        "allOutGain": "Hij ging volle bak{where} en won tijd",
         "crashLoss": "Hij verloor tijd door een val{where}",
         "mechanicalLoss": "Hij verloor tijd door pech{where}",
         "incidentLoss": "Hij verloor tijd door een incident{where}",

@@ -79,7 +79,7 @@ export interface YourDayCardProps {
   why?: RowWhy | null;
 }
 
-export default function YourDayCard({ results, stageNumber, isStageRace, loaded, myTeamId, careerEvents, primaryAction, onOpenStandings, dnfRows = [], why = null }: YourDayCardProps) {
+export default function YourDayCard({ results, stageNumber, isStageRace, loaded, myTeamId, careerEvents, primaryAction, onOpenStandings, dnfRows = [], why: whyRows = null }: YourDayCardProps) {
   const { t } = useTranslation(["races", "dashboard"]);
   const [cls, setCls] = useState<"stage" | "gc">("stage");
   const stageDay = yourDay(results, stageNumber, myTeamId, "stage", dnfRows);
@@ -87,7 +87,7 @@ export default function YourDayCard({ results, stageNumber, isStageRace, loaded,
   const effectiveCls = !isStageRace && !stageDay.top.length ? "gc" : cls;
   const day = effectiveCls === "stage" ? stageDay : yourDay(results, stageNumber, myTeamId, "gc", dnfRows);
   // #7717: forklaringen handler om etapen, saa den staar ikke ved det samlede klassement.
-  const rowWhy = !isStageRace || effectiveCls === "stage" ? why : null;
+  const rowWhy = !isStageRace || effectiveCls === "stage" ? whyRows : null;
   const winner = stageDay.winner ?? day.top[0] ?? null;
   const second = (stageDay.top.length ? stageDay.top : day.top)[1] ?? null;
 

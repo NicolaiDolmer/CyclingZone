@@ -349,6 +349,7 @@
         "dropFromBreak": "No pudo seguir en la fuga{where}",
         "crack": "Flaqueó{where} y perdió el contacto con la cabeza",
         "allOut": "Lo dio todo{where} y se quedó vacío",
+        "allOutGain": "Lo dio todo{where} y ganó tiempo",
         "crashLoss": "Perdió tiempo en una caída{where}",
         "mechanicalLoss": "Perdió tiempo por una avería{where}",
         "incidentLoss": "Perdió tiempo por un percance{where}",
