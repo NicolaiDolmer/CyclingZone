@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { buildRaceStory } from "../../../backend/lib/raceStory.js";
+import { withEventPlaces } from "../../../backend/lib/raceTimeline.js";
 import {
   buildSplitTimes, buildOwnTimeLoss, effortByRiderForStage, effectiveEffortByRider, EFFORT_NORMAL_NOT_A_CHOICE_FROM, stageUsesEffortFix6647, formatSplitGap, hasGroupGaps,
   stagePlanTaskAt,
@@ -352,4 +353,28 @@ test("#7388 et udbrud uden morgenudbryderne er en gruppe foran feltet, ikke 'udb
     { km: 50, type: "kom_passage", params: { name: "Top", category: "3", top: [] } },
   ];
   assert.deepEqual(shape(buildSplitTimes(events)[0]), [["breakaway-7000", "group", 2], ["peloton-0", "peloton", 4]]);
+});
+
+test("#6350: en gemt etape uden halvdele: tabslisten er uændret, også når stederne er forskellige (giro-stage-8)", () => {
+  const stage = JSON.parse(readFileSync(new URL("../../../scripts/__fixtures__/race-truth/giro-stage-8.json", import.meta.url), "utf8"));
+  const riderColumn = stage.results.columns.indexOf("rider_id");
+  const ownRiderIds = [...new Set(stage.results.rows.map((row: unknown[]) => row[riderColumn]))] as string[];
+  const lines = (events: unknown[]) => buildOwnTimeLoss(events as never, { ownRiderIds })
+    .flatMap((e) => (e.type === "drop" ? [[e.km, e.from, e.reason, e.riderIds.length]] : []));
+  const expected = [
+    [53, "peloton", "mixed", 34], [53, "peloton", "wprime_depleted", 50],
+    [89, "peloton", "mixed", 15], [89, "peloton", "wprime_depleted", 25], [89, "breakaway", "wprime_depleted", 1],
+    [161, "peloton", "climb_deficit", 10], [161, "peloton", "mixed", 36],
+  ];
+  const placed = withEventPlaces(stage.events) as Array<{ params?: { joined_late?: boolean } }>;
+  assert.equal(placed.filter((e) => e.params?.joined_late).length, 0, "etapen har ingen halvdele");
+  assert.deepEqual(lines(stage.events), expected);
+  assert.deepEqual(lines(placed), expected);
+});
+
+test("#6350: kun et splits sene halvdel skilles fra, ikke to splits med hvert sit sted", () => {
+  const split = (groupId: string, riderId: string, exactKm: number, late = false) => ({ km: 180, type: "peloton_splits", params: { group_id: groupId, source_group_id: "peloton-0", rider_ids: [riderId], exact_km: exactKm, ...(late ? { joined_late: true } : {}) } });
+  const events = [{ km: 0, type: "stage_start", params: { field_count: 10 } }, { km: 100, type: "gap_update", params: { group_id: "peloton-0", gap_seconds: 10 } }, split("g1", "a", 170.5), split("g2", "b", 171.2), split("g2", "c", 180, true)];
+  const lines = buildOwnTimeLoss(events as never, { ownRiderIds: ["a", "b", "c"] });
+  assert.deepEqual(lines.map((l) => (l as { riderIds: string[] }).riderIds), [["a", "b"], ["c"]]);
 });

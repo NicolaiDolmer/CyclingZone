@@ -12,7 +12,7 @@
 //   - buildReport:      3-5 saetninger, deterministisk, fra linjerne + resultatet
 //   - groupMembersAt:   hvem kører i hvilken gruppe ved et km (replay-navne)
 //   - finaleData/…:     "Final 5 km"-grafikkens tidsmodel og gruppevalg
-import { replayFrames as replayFramesJs, checkpointGapForRider as checkpointGapJs } from "../../../../../backend/lib/raceStory.js";
+import { replayFrames as replayFramesJs, checkpointGapForRider as checkpointGapJs, riderOutBy as riderOutByJs } from "../../../../../backend/lib/raceStory.js";
 import { withNarrativeCauses, isTimeTrialNarrative, type NarrativeEvent } from "../../../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts";
 import { collectRiderIds, describeEvent } from "../../../lib/stageTimelineFilm.js";
 import { classificationRowsForStage } from "../../../lib/raceStageClassifications.js";
@@ -69,6 +69,8 @@ export interface GroupSpan {
   source_group_id: string | null;
   into_group_id: string | null;
   rider_ids: string[];
+  /** #6350: ryttere der først kom med senere (sen halvdel af et split). */
+  late_joins?: Array<{ km: number; rider_ids: string[] }>;
 }
 
 export interface RaceStory {
@@ -93,6 +95,7 @@ export interface RiderGap { group_id: string; gap_s: number; time_s: number | nu
 /** Kontraktens egne funktioner (backend/lib/raceStory.js), typet her. */
 export const replayFrames = replayFramesJs as unknown as (story: RaceStory, opts?: { finaleKm?: number; stepKm?: number }) => ReplayFrame[];
 export const checkpointGapForRider = checkpointGapJs as unknown as (checkpoint: StoryCheckpoint, riderId: string) => RiderGap | null;
+const riderOutBy = riderOutByJs as unknown as (story: RaceStory, a: StorySnapshot) => (riderId: string, km: number) => boolean;
 
 /** Kun et svar der ligner kontrakten bruges; alt andet = ingen historie. */
 export function asStory(value: unknown): RaceStory | null {
@@ -687,16 +690,26 @@ export function groupMembersAt(story: RaceStory, km: number): Map<string, Member
   for (const s of story.snapshots) if (s.km <= km + EPS) a = s; else break;
   const state = new Map<string, Members>();
   if (!a) return state;
+  const isOutBy = riderOutBy(story, a);
   for (const g of a.groups) state.set(g.group_id, { riders: new Set(g.rider_ids), includesRest: g.includes_rest });
-  const transitions: Array<{ km: number; order: number; span: GroupSpan }> = [];
+  const transitions: Array<{ km: number; order: number; span: GroupSpan; join?: { km: number; rider_ids: string[] } }> = [];
   for (const s of story.group_spans ?? []) {
     if (s.to_km != null && s.to_km < s.from_km - EPS) continue;
     if (s.from_km >= a.km - EPS && s.from_km <= km + EPS) transitions.push({ km: s.from_km, order: 0, span: s });
-    if (s.to_km != null && s.to_km >= a.km - EPS && s.to_km < km - EPS) transitions.push({ km: s.to_km, order: 1, span: s });
+    if (s.to_km != null && s.to_km >= a.km - EPS && s.to_km < km - EPS) transitions.push({ km: s.to_km, order: 2, span: s });
+    for (const join of s.late_joins ?? []) if (join.km >= a.km - EPS && join.km <= km + EPS) transitions.push({ km: join.km, order: 1, span: s, join });
   }
   transitions.sort((x, y) => x.km - y.km || x.order - y.order);
-  for (const { order, span } of transitions) {
-    if (order === 0) {
+  for (const { order, span, join } of transitions) {
+    if (join) {
+      const target = state.get(span.group_id);
+      if (!target) continue;
+      for (const r of join.rider_ids) {
+        if (isOutBy(r, join.km)) continue; // som medlemskabet: den udgåede kører aldrig igen
+        for (const g of state.values()) g.riders.delete(r);
+        target.riders.add(r);
+      }
+    } else if (order === 0) {
       if (state.has(span.group_id)) continue;
       for (const r of span.rider_ids ?? []) for (const g of state.values()) g.riders.delete(r);
       state.set(span.group_id, { riders: new Set(span.rider_ids ?? []), includesRest: false });

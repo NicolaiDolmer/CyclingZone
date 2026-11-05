@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.404",
+    "date": "2026-11-05",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The race film shows where riders were really dropped",
+          "body": "I fixed How the race played out: it now shows where riders were really dropped, instead of at the next checkpoint. This also fixes stages already raced."
+        },
+        "da": {
+          "title": "Løbsfilmen viser, hvor rytterne reelt blev sat",
+          "body": "Jeg har rettet Sådan blev løbet kørt: den viser nu, hvor rytterne reelt blev sat, i stedet for ved næste tjekpunkt. Det retter også etaper, der allerede er kørt."
+        },
+        "refs": [
+          6350
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.403",
     "date": "2026-11-05",
     "changes": [

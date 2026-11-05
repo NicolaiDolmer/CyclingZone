@@ -90,6 +90,16 @@ test("#7003: opsummeringen efter etapen laeses af stage_plan_leg-events", () => 
   assert.deepEqual(stagePlanRecap(HELPER, quit, "a").map((i) => i.status), ["abandoned", "not_reached", "not_reached"]);
 });
 
+test("#6350: 'sat ved km' er hvor han reelt blev sat, aldrig foer det forrige skift i kaeden", () => {
+  const sat = [
+    { type: "stage_plan_leg", km: 62, params: { rider_id: "a", leg: 1, task: "tempo", reason: "kom", exact_km: 62 } },
+    { type: "stage_plan_leg", km: 161, params: { rider_id: "a", leg: 2, task: "grupetto", reason: "dropped", exact_km: 147.31 } },
+  ];
+  assert.deepEqual(stagePlanRecap(HELPER, sat, "a").map((i) => [i.endReason, i.endKm]), [["kom", 62], ["dropped", 147.31], ["finish", null]]);
+  const before = [sat[0], { ...sat[1], params: { ...sat[1].params, exact_km: 50 } }];
+  assert.equal(stagePlanRecap(HELPER, before, "a")[1].endKm, 62);
+});
+
 test("#7368: et led slutter ved det led der faktisk afloeste det (ogsaa naar et led blev sprunget over)", () => {
   const legs: StagePlanLeg[] = [
     { task: "stay_sheltered" },

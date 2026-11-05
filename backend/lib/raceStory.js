@@ -262,6 +262,13 @@ function cloneMembership(m) {
   };
 }
 
+/** #6350: et uheldsoffers solo-gruppe opstod ved uheldet, ikke ved første melding. */
+function startAtIncident(span, ordered) {
+  if (!INCIDENT_SOLO_ID.test(span.group_id)) return;
+  const crash = ordered.findLast((e) => e.type === "incident" && namedRiders(e.params).includes(span.rider_ids[0]) && placeKm(e) <= span.from_km);
+  if (crash) span.from_km = round2(placeKm(crash));
+}
+
 /**
  * Gruppen en hændelse danner på vejen og gruppen den kom fra (samme regler
  * som medlemskabet), eller null.
@@ -391,6 +398,27 @@ export function leaderTimeAt(story, km) {
 
 // ── Hovedfunktion ──────────────────────────────────────────────────────────────
 
+/** Motorens egen rækkefølge: km som skrevet, samme km = input-rækkefølgen. */
+function engineOrder(events) {
+  return (Array.isArray(events) ? events : [])
+    .map((event, i) => ({ event, i }))
+    .filter(({ event }) => event && typeof event.type === "string")
+    .sort((a, b) => recordedKm(a.event) - recordedKm(b.event) || a.i - b.i)
+    .map(({ event }) => event);
+}
+
+/**
+ * #6350: rytternes gruppe lige før `km`, med historiens eget medlemskabs-replay.
+ * Svaret er et opslag rytter -> gruppe-id, null når han hverken kører i en gruppe
+ * (udgået) eller har en kendt gruppe (uheldsoffer der venter på sin solo-gruppe).
+ */
+export function riderGroupsBefore(events, km) {
+  const ordered = engineOrder(events);
+  const m = createMembership(finite(ordered.find((e) => e.type === "stage_start")?.params?.field_count));
+  for (const event of ordered) if (placeKm(event) < km) applyMembership(m, event);
+  return (id) => (m.abandoned.has(id) || m.pendingSolo.includes(id) ? null : m.placed.get(id) ?? m.restId);
+}
+
 /**
  * @param {{
  *   events: Array<{km?: number, type: string, params?: object}>,
@@ -400,12 +428,7 @@ export function leaderTimeAt(story, km) {
  * }} input
  */
 export function buildRaceStory({ events = [], timelineVersion = null, results = null, startlist = null } = {}) {
-  // Motorens egen rækkefølge: km som skrevet, samme km = input-rækkefølgen.
-  const ordered = (Array.isArray(events) ? events : [])
-    .map((event, i) => ({ event, i }))
-    .filter(({ event }) => event && typeof event.type === "string")
-    .sort((a, b) => recordedKm(a.event) - recordedKm(b.event) || a.i - b.i)
-    .map(({ event }) => event);
+  const ordered = engineOrder(events);
 
   const start = ordered.find((e) => e.type === "stage_start");
   const finish = ordered.find((e) => e.type === "finish");
@@ -509,6 +532,7 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
   // opstår og forsvinder mellem to snapshots).
   const openSpans = new Map([[REST_GROUP_ID, { group_id: REST_GROUP_ID, from_km: 0, to_km: null, source_group_id: null, into_group_id: null, rider_ids: [] }]]);
   const spans = [];
+  const lateJoins = new Map(); // group id -> [{ km, rider_ids }]
   const openSpan = (groupId, fromKm, sourceId) => {
     if (!groupId || openSpans.has(groupId)) return null;
     const span = { group_id: groupId, from_km: round2(fromKm), to_km: null, source_group_id: sourceId ?? null, into_group_id: null, rider_ids: [] };
@@ -519,6 +543,11 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
   const trackSpans = (event) => {
     const p = event.params ?? {};
     const groupId = str(p.group_id);
+    // #6350: en sen halvdel af et split danner ikke gruppen, den slutter sig til.
+    if (event.type === "peloton_splits" && p.joined_late && groupId && openSpans.has(groupId)) {
+      lateJoins.set(groupId, [...(lateJoins.get(groupId) ?? []), { km: round2(placeKm(event)), rider_ids: ids(p.rider_ids) }]);
+      return [];
+    }
     const opening = spanOpening(event, m.restId);
     if (opening) return [openSpan(opening.groupId, placeKm(event), opening.source)].filter(Boolean);
     if (event.type === "gap_update") return [openSpan(groupId, placeKm(event), null)].filter(Boolean);
@@ -650,6 +679,7 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
       const opened = trackSpans(event);
       applyMembership(m, event);
       for (const span of opened) span.rider_ids = [...(m.groups.get(span.group_id) ?? [])].sort();
+      opened.forEach((span) => startAtIncident(span, ordered));
       if (event.params && str(p.group_id) && finite(p.exact_time) != null && event.type !== "incident") {
         const leader = leaderTimeAt(story, placeKm(event));
         if (leader != null) {
@@ -729,7 +759,8 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
     .sort((a, b) => a.moment.km - b.moment.km || Number(Boolean(a.moment.km_span)) - Number(Boolean(b.moment.km_span)) || a.i - b.i)
     .map(({ moment }) => moment);
   story.group_spans = timeTrial ? [] : [...spans, ...openSpans.values()]
-    .sort((a, b) => a.from_km - b.from_km || a.group_id.localeCompare(b.group_id));
+    .sort((a, b) => a.from_km - b.from_km || a.group_id.localeCompare(b.group_id))
+    .map((span) => (lateJoins.has(span.group_id) ? { ...span, late_joins: lateJoins.get(span.group_id) } : span));
   story.checkpoints = buildCheckpoints(ordered, story, passageStates);
   story.breakaway = breakawaySummary(history, results);
   return story;
@@ -869,6 +900,23 @@ function lerp(fromKm, fromGap, toKm, toGap, km) {
 }
 
 /**
+ * Er rytteren udgået på eller før km? Snapshot a kender kun udgåede frem til a;
+ * resten står i historiens egne linjer (uheld med udgåelse, uden for tidsgrænsen),
+ * på det sted de skete. Kendes stedet kun som et km-spænd, gælder spændets start:
+ * en rytter der måske allerede er ude, vises aldrig.
+ */
+export function riderOutBy(story, a) {
+  const outKm = new Map();
+  const note = (id, km) => { if (id && !(outKm.get(id) <= km)) outKm.set(id, km); };
+  for (const moment of story.moments ?? []) {
+    if (moment.type === "incident" && moment.data?.outcome === "abandoned") note(str(moment.data.rider_id), moment.km);
+    else if (moment.type === "outside_time_limit") for (const id of ids(moment.data?.rider_ids)) note(id, moment.km);
+  }
+  const atA = new Set(a.out_rider_ids ?? []);
+  return (/** @type {string} */ id, /** @type {number} */ km) => atA.has(id) || (outKm.get(id) ?? Infinity) <= km + 1e-9;
+}
+
+/**
  * Gruppernes hul ved et km mellem to snapshots (a <= km < b). Frame-medlemskab
  * bygges fra tilstanden FØR km (snapshot a) og den registrerede levetid
  * (`group_spans`, på hændelsens sande km), aldrig ved at projicere næste
@@ -886,6 +934,7 @@ function lerp(fromKm, fromGap, toKm, toGap, km) {
  * split/merge vises kun hvor loggen kender den.
  */
 function groupsBetween(story, a, b, km) {
+  const lateJoinsOf = (/** @type {any} */ span) => span.late_joins ?? [];
   const EPS = 1e-9;
   const spans = Array.isArray(story.group_spans) ? story.group_spans : [];
   const inA = new Map(a.groups.map((g) => [g.group_id, g]));
@@ -918,17 +967,31 @@ function groupsBetween(story, a, b, km) {
 
   // Medlemskabet ved km: a, plus levetidernes overgange i (a, km].
   const state = new Map(a.groups.map((g) => [g.group_id, { meta: g, riders: new Set(g.rider_ids), size: g.size, includes_rest: g.includes_rest }]));
+  const isOutBy = riderOutBy(story, a);
   const gone = new Set([...(a.out_rider_ids ?? []), ...(a.pending_rider_ids ?? [])]);
   const transitions = [];
   for (const s of spans) {
     if (s.to_km != null && s.to_km < s.from_km - EPS) continue; // ingen levetid på vejen
     if (s.from_km >= a.km - EPS && s.from_km <= km + EPS) transitions.push({ km: s.from_km, order: 0, span: s });
-    if (s.to_km != null && s.to_km >= a.km - EPS && s.to_km < km - EPS) transitions.push({ km: s.to_km, order: 1, span: s });
+    if (s.to_km != null && s.to_km >= a.km - EPS && s.to_km < km - EPS) transitions.push({ km: s.to_km, order: 2, span: s });
+    for (const join of lateJoinsOf(s)) if (join.km >= a.km - EPS && join.km <= km + EPS) transitions.push({ km: join.km, order: 1, span: s, join });
   }
   transitions.sort((x, y) => x.km - y.km || x.order - y.order);
   const shrink = (g) => { if (g.size != null) g.size = Math.max(g.riders.size, g.size - 1); };
-  for (const { order, span } of transitions) {
-    if (order === 0) {
+  for (const { order, span, join } of transitions) {
+    if (join) {
+      const target = state.get(span.group_id);
+      if (!target) continue;
+      for (const r of join.rider_ids) {
+        // Som medlemskabet: den udgåede kører aldrig igen, uheldsofferet er ude af resten og får sin plads her.
+        if (isOutBy(r, join.km)) continue;
+        const holder = [...state.values()].find((g) => g.riders.has(r)) ?? (gone.has(r) ? null : [...state.values()].find((g) => g.includes_rest));
+        if (holder === target) continue;
+        if (holder) { holder.riders.delete(r); shrink(holder); }
+        target.riders.add(r);
+        if (target.size != null) target.size += 1;
+      }
+    } else if (order === 0) {
       // Allerede på vejen i a (dannet før a): intet at flytte.
       if (state.has(span.group_id)) continue;
       const riders = Array.isArray(span.rider_ids) ? span.rider_ids : (inB.get(span.group_id)?.rider_ids ?? []);
