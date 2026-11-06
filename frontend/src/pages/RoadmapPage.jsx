@@ -127,6 +127,7 @@ export default function RoadmapPage() {
   const [lastSeenBeforeVisit] = useState(() => readLastSeenRoadmap());
   const [onlyUnratedPref, setOnlyUnratedPref] = useState(() => readOnlyUnrated());
   const [votes, setVotes] = useState(() => new Map());
+  const [votesLoaded, setVotesLoaded] = useState(false);
   const [drafts, setDrafts] = useState({}); // item_id → { idea, importance } (Vote-fanen)
   const [saveState, setSaveState] = useState({}); // item_id → "saving" | "saved" | "error"
   // Punkter spilleren har bedømt i DETTE besøg bliver stående, så "Saved" kan
@@ -195,6 +196,7 @@ export default function RoadmapPage() {
       setDrafts(Object.fromEntries(
         [...byItem].map(([itemId, vote]) => [itemId, { idea: vote.idea_score, importance: vote.importance_score }]),
       ));
+      setVotesLoaded(true);
       setReports(new Set((reportData ?? []).filter((r) => r.user_id === uid).map((r) => r.issue_id)));
     })();
     return () => {
@@ -224,6 +226,8 @@ export default function RoadmapPage() {
 
   const loading = items === null;
   const canVote = !!userId;
+  const showVoteCounts = canVote && votesLoaded;
+  const votingLoading = loading || (canVote && !votesLoaded);
   const onlyUnrated = canVote && onlyUnratedPref;
 
   const parts = useMemo(() => partitionItems(items), [items]);
@@ -267,9 +271,10 @@ export default function RoadmapPage() {
   // effekten venter, til hit'ets fane er den aktive.
   useEffect(() => {
     if (!reveal || reveal.tab !== tab || reveal.nonce === revealedNonce.current) return;
+    if (votingLoading && (tab === "plan" || tab === "vote")) return;
     revealedNonce.current = reveal.nonce;
     document.getElementById(roadmapRowId(reveal.id))?.scrollIntoView({ block: "center" });
-  }, [reveal, tab]);
+  }, [reveal, tab, votingLoading]);
 
   const isNew = (item) => isRoadmapItemNew(item.created_at, lastSeenBeforeVisit);
 
@@ -349,7 +354,7 @@ export default function RoadmapPage() {
       <PageHeader
         title={t("page.title")}
         subtitle={t("page.subtitle")}
-        actions={canVote ? (
+        actions={showVoteCounts ? (
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             <Checkbox
               id="roadmap-only-unrated"
@@ -392,9 +397,9 @@ export default function RoadmapPage() {
       <div className={searching ? "hidden" : undefined}>
       <Tabs value={tab} onChange={setTab}>
         <TabList label={t("tabs.label")} className="mb-4">
-          <Tab value="plan"><TabLabel label={t("tabs.plan")} count={canVote ? counts.plan : 0} /></Tab>
+          <Tab value="plan"><TabLabel label={t("tabs.plan")} count={showVoteCounts ? counts.plan : 0} /></Tab>
           <Tab value="beta"><TabLabel label={t("tabs.beta")} count={parts.inBeta.length} /></Tab>
-          <Tab value="vote"><TabLabel label={t("tabs.vote")} count={canVote ? counts.vote : 0} /></Tab>
+          <Tab value="vote"><TabLabel label={t("tabs.vote")} count={showVoteCounts ? counts.vote : 0} /></Tab>
           <Tab value="issues"><TabLabel label={t("tabs.issues")} count={issueParts.confirmed.length} /></Tab>
           <Tab value="done"><TabLabel label={t("tabs.done")} count={recentDoneCount} /></Tab>
         </TabList>
@@ -403,7 +408,7 @@ export default function RoadmapPage() {
           <PlanTab
             key={revealKey("plan")}
             revealId={revealId("plan")}
-            loading={loading}
+            loading={votingLoading}
             groups={planGroups}
             decidedTotal={decidedTotal}
             plannedTotal={plannedTotal}
@@ -432,7 +437,7 @@ export default function RoadmapPage() {
         <TabPanel value="vote">
           <VoteTab
             key={revealKey("vote")}
-            loading={loading}
+            loading={votingLoading}
             ideas={visible(parts.ideas)}
             ideasTotal={parts.ideas.length}
             unrated={counts.vote}
