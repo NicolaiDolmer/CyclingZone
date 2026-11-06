@@ -122,6 +122,44 @@ test("Fejler gemningen, står svaret ikke som valgt", async ({ page }) => {
   await expect(dontKnow(idea)).toHaveAttribute("aria-pressed", "false");
 });
 
+test("Fra desktop står Ved ikke på linje med skalaen", async ({ page }) => {
+  await open(page, { tab: "vote", votes: [dontKnowRow(IDEA_ID)] });
+  const idea = row(page, IDEA_TITLE);
+  const scale = await idea.getByRole("radiogroup", { name: "God idé?" }).boundingBox();
+  const button = await dontKnow(idea).boundingBox();
+  expect(Math.abs(button.x - scale.x)).toBeLessThanOrEqual(1);
+  await shot(page, "stem-desktop");
+});
+
+test("Admin ser antallet pr. punkt og samlet, og et punkt med lutter Ved ikke står på Stemmer", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  const score = (id, title, votes, dontKnowCount) => ({
+    item_id: id, engine: "races", approved: true, title_en: title, title_da: title, status: "planned", horizon: "next",
+    sort_order: 10, votes, avg_importance: votes ? 4 : null, steering_score: null, sd_importance: 0, dont_know: dontKnowCount,
+  });
+  await page.route(/\/rest\/v1\/(users|roadmap_item_scores|roadmap_items|known_issue_scores|known_issue_updates)/, route => {
+    const url = route.request().url();
+    if (url.includes("/users")) {
+      const user = { ...TEST_USER, role: "admin", username: "Admin fixture" };
+      return json(route, (route.request().headers().accept || "").includes("vnd.pgrst.object") ? user : [user]);
+    }
+    if (url.includes("/roadmap_item_scores")) return json(route, [score("a", "Punkt med tal", 3, 2), score("b", "Lutter Ved ikke", 0, 4)]);
+    return json(route, []);
+  });
+  await page.route("**/api/admin/roadmap/stats", route => json(route, {
+    stats: { voters: 3, voters_14d: 3, votes_total: 3, voted_all: 1, managed_teams: 10 },
+  }));
+  await page.route("**/api/admin/feature-flags*", route => json(route, { flags: [] }));
+  await login(page);
+  await page.goto("/admin/growth?tab=roadmap&view=votes");
+
+  await expect(page.getByText("6 Ved ikke", { exact: true })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Ved ikke" })).toBeVisible();
+  await expect(page.getByText("Lutter Ved ikke", { exact: true })).toBeVisible();
+  await shot(page, "admin-stemmer");
+});
+
 test.describe("390 px", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
