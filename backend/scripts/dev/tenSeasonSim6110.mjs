@@ -59,7 +59,8 @@
 // Flag: --seasons 10 --race-days 160 --b-scales 0.75,1,1.25 --variants nu,nu_maks1,B
 //       --b-noise <bredde> --b-ref-age <alder> --render-only (kortet af koerte varianter)
 //       --out-dir <mappe> (default <repo>/balance-internals/6110/s25) --limit-teams N
-//       --xp-gates (kun gates uden for sæsonløkken: X4, X9 og H, efter varianterne)
+//       --xp-gates (gates uden for sæsonløkken: X4, X5, X8, X9 og H, efter varianterne)
+//       --gate-variant <navn> (gates med en anden xp-variants tal; default xp)
 //
 // Output (gitignoreret, må aldrig committes):
 //   <out-dir>/ten-season-sim-<dato>.md    ÉT privat kort med alle tal
@@ -1221,7 +1222,7 @@ export function estimateGates(rows, knowledge, params) {
 
 /** Gates uden for sæsonløkken: X4, X5, X8, X9 og H. Kører på billedet, ikke på simuleringen. */
 export function runXpGates(snapshot, opts, { estimateParams = null, knowledge = null, sampleRiders = 800 } = {}) {
-  const xp = xpVariant("xp", opts).xpParams;
+  const xp = xpVariant(opts.xpGateVariant ?? "xp", opts).xpParams;
   const world = buildWorld(snapshot);
   const season = world.startSeason;
   const types = {
@@ -1593,6 +1594,7 @@ function parseArgs(argv) {
   if (get("--variants")) opts.variants = get("--variants").split(",");
   if (get("--b-noise")) opts.bNoiseSpan = Number(get("--b-noise"));
   if (get("--b-ref-age")) opts.bReferenceAge = Number(get("--b-ref-age"));
+  if (get("--gate-variant")) opts.xpGateVariant = get("--gate-variant");
   return { opts, snapshotPath: get("--snapshot"), outDir: get("--out-dir"), limitTeams: Number(get("--limit-teams")) || null };
 }
 
@@ -1657,7 +1659,8 @@ async function main() {
   writeFileSync(join(outDir, `ten-season-sim-${date}${suffix}.json`), JSON.stringify({ date, opts, results }, null, 2) + "\n");
   console.log(`[s25] privat kort (${results.length} varianter): ${join(outDir, `ten-season-sim-${date}${suffix}.md`)}`);
   if (wantsXp) {
-    const gatesFile = join(outDir, `xp-gates-${date}${suffix}.json`);
+    const gateTag = opts.xpGateVariant ? `-${opts.xpGateVariant}` : "";
+    const gatesFile = join(outDir, `xp-gates-${date}${suffix}${gateTag}.json`);
     let gates = existsSync(gatesFile) ? JSON.parse(readFileSync(gatesFile, "utf8")) : null;
     if (process.argv.includes("--xp-gates")) {
       const t0 = Date.now();
@@ -1666,8 +1669,8 @@ async function main() {
       writeFileSync(gatesFile, JSON.stringify(gates, null, 2) + "\n");
       console.log(`[s25] gates uden for sæsonløkken færdig (${Math.round((Date.now() - t0) / 1000)} s)`);
     }
-    writeFileSync(join(outDir, `xp-gates-${date}${suffix}.md`), renderXpGates(snapshot, results, gates, opts, date));
-    console.log(`[s25] privat XP-kort: ${join(outDir, `xp-gates-${date}${suffix}.md`)}`);
+    writeFileSync(join(outDir, `xp-gates-${date}${suffix}${gateTag}.md`), renderXpGates(snapshot, results, gates, opts, date));
+    console.log(`[s25] privat XP-kort: ${join(outDir, `xp-gates-${date}${suffix}${gateTag}.md`)}`);
   }
 }
 
