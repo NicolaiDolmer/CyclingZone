@@ -1,5 +1,45 @@
 export const PATCHES = [
   {
+    "version": "7.407",
+    "date": "2026-11-06",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "See who your rider attacked with",
+          "body": "The stage report now names who your rider attacked with, and so does Why? on beta."
+        },
+        "da": {
+          "title": "Se hvem din rytter angreb med",
+          "body": "Referatet siger nu, hvem din rytter angreb sammen med, og det gør Hvorfor? på beta også."
+        },
+        "refs": [
+          7754
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Rest plans no longer carry over to a new season",
+          "body": "From the next season change, a rest plan no longer follows your rider into the new season. He gets a normal plan instead of standing still."
+        },
+        "da": {
+          "title": "Hvile-planer følger ikke med ind i en ny sæson",
+          "body": "Fra næste sæsonskifte følger en hvile-plan ikke længere rytteren med. Han får en normal plan i stedet for at stå stille."
+        },
+        "refs": [
+          7637
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.406",
     "date": "2026-11-06",
     "changes": [

@@ -4,25 +4,23 @@
 > Kilde: `gh pr list` / `gh issue list` (live) + [`docs/FEATURE_REGISTRY.yml`](FEATURE_REGISTRY.yml)
 > Regenerér: `node scripts/generate-status-board.mjs`
 
-131 features i FEATURE_REGISTRY.yml: live 105 · beta 1 · dormant 10 · building 6 · spec 1 · idea 2 · retired 6.
+132 features i FEATURE_REGISTRY.yml: live 105 · beta 1 · dormant 11 · building 6 · spec 1 · idea 2 · retired 6.
 
 ## 1) Lige nu (merge-koe)
 Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fejlet check. "DIRTY" er en aegte merge-konflikt (`mergeStateStatus`). GitHubs `mergeStateStatus: BLOCKED` (manglende review) taeller IKKE alene som roed (se slutrapport).
 
 - #6665 feat(marketing): ny forside med godkendt tekst og ægte produktbilleder (#1369) (1d) — DIRTY
-- #7571 fix(ops): frigiv bølger efter dokumenteret stop af Windows-børn (1d) — DIRTY
+- #7571 fix(ops): frigiv bølger efter dokumenteret stop af Windows-børn (1d) — roed
 - #7765 [EJER-GO KRÆVES] feat(motor): meget trætte ryttere risikerer tidsgrænsen, med varsel (#77… (0d) — DIRTY
-- #7768 feat(race): angreb sammen med andre i Hvorfor? og referatet (#7754) (0d) — groen
-- #7766 feat(motor): jagten afgøres af de hold der jager, bag slukket kontakt (#7730) (0d) — roed
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
 
 - #26 [feature] Transfer war-room (shortlist + sammenligning + budget-forecast) (183d)
 - #930 [Epic] Staff & manager-rolle som direktør (ansatte, sportsdirektører, læger, fysioterapeu… (157d)
-- #961 Kontekstuel hjaelp: omraade-specifikt FAQ-link overalt (banner -> ikon, progressive) (156d)
-- #1148 [Epic] World history & Club Museum — records, legends, rivalries and season stories (150d)
-- #1154 [Epic] Rider personality & club relationship — roles, ambition, loyalty and rebuilding (150d)
+- #961 Kontekstuel hjaelp: omraade-specifikt FAQ-link overalt (banner -> ikon, progressive) (157d)
+- #1148 [Epic] World history & Club Museum — records, legends, rivalries and season stories (151d)
+- #1154 [Epic] Rider personality & club relationship — roles, ambition, loyalty and rebuilding (151d)
 - #1173 Vækst/viralitets-loop: referral (del spillet med en ven) (149d)
 - #1177 Holddynamik-dybde: vejkaptajner + mentor + erfaring (149d)
 - #1239 [Design] Board-DNA og holdfokus v2: sportslige fokus-typer, nationalitet, egen avl (148d)
@@ -37,7 +35,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 
 **PR'er der venter paa "ejer-go" (label eller PR-body):**
 
-- #7571 fix(ops): frigiv bølger efter dokumenteret stop af Windows-børn (1d) — DIRTY
+- #7571 fix(ops): frigiv bølger efter dokumenteret stop af Windows-børn (1d) — roed
 
 ## 3) Bygget men ikke merget
 **Draft-PR'er:**
@@ -49,7 +47,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 
 **Ikke-draft med roed tilstand:**
 
-- #7766 feat(motor): jagten afgøres af de hold der jager, bag slukket kontakt (#7730) (0d) — roed
+- #7571 fix(ops): frigiv bølger efter dokumenteret stop af Windows-børn (1d) — roed
 
 ## 4) Ikke bygget
 `claude:todo`, ingen aaben PR endnu. Sorteret efter priority-label, saa alder.
@@ -69,7 +67,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #3564 [design] Progressionskæden samlet: potentiale 1-99, lofter pr. ryttertype, træningsscore,… (89d)
 - #4010 Supabase-hærdning: realtime-MalformedJWT, sponsor-sweep, offset-paginering og getUser() p… (78d)
 - #4159 [guard] game_day-aksen maa aldrig kunne skrives skaevt igen: DB-trigger + lane-packer-fix… (74d)
-- …og 819 mere
+- …og 824 mere
 
 ## 5) Faerdigt
 `claude:done` men stadig aabne — skal lukkes.
@@ -88,5 +86,5 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #6456 [motor] Tidsgab nr. 10 på bjergetaper uden topankomst og uden nedkørselsfinale har intet… (26d)
 - #6486 [motor] D3: bjergetape uden topankomst (to lange stigninger, top ca. 15 km fra mål) stadi… (25d)
 - #6649 [motor/design] Dagsform og dominans: de bedste vinder for ofte i forhold til virkeligheden (22d)
-- #6668 [S5] AI-ungdom løftes til menneskeholdenes niveau + menneskehold samles i færre grupper (… (21d)
-- …og 62 mere
+- #6668 [S5] AI-ungdom løftes til menneskeholdenes niveau + menneskehold samles i færre grupper (… (22d)
+- …og 63 mere
