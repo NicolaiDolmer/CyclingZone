@@ -157,7 +157,7 @@ function finaleVector(route, revision) {
 
 /**
  * Motorens krav til én etape som evne-vektor (sum 1), eller null uden data.
- * @param {object} stageRow race_stage_profiles-række (profile_type, finale_type, demand_vector, segments, ...)
+ * @param {any} stageRow race_stage_profiles-række (profile_type, finale_type, demand_vector, segments, ...)
  * @param {string} revision regel-revisionen løbet regnes under
  * @param {{finaleShare?: number}} [opts] kun til tests; produktionen bruger default
  */
@@ -221,7 +221,7 @@ export function routeMatchScore(abilities, vector) {
 /**
  * Ét opslag til kaldstederne: løbets vektor + etapevektorer pr. stage_number,
  * og funktioner der giver rytterens tal. Etapetal og løbstal kommer altid herfra.
- * @param {{race?: object, stages: Array<object>, revision?: string}} args
+ * @param {{race?: object|null, stages: Array<any>, revision?: string|null}} args
  */
 export function buildRouteMatch({ race = null, stages = [], revision = null }) {
   const rev = revision ?? routeMatchRevisionFor(race);
