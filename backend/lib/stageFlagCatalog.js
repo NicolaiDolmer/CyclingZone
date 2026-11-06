@@ -115,7 +115,7 @@ export const STAGE_FLAGS = Object.freeze([
   // kun "on" tænder, "beta" læses som off (letGoOrder7557Flag.js). Ejer-only flip.
   { key: "let_go_order_7557", area: "race-engine", label: "Lad andre jage — ordren vinder" },
   // #7726: enkeltstart uden den ekstra terning (kun s5_profiles_v3, kun løb der ikke er startet). Seedet off;
-  // kun "on" tænder, "beta" læses som off (ittNoDayRoll7726Flag.js). Ejer-only flip.
+  // kun "on" tænder, "beta" læses som off; "stop" er nødstop for løb i gang (ittNoDayRoll7726Flag.js). Ejer-only flip.
   { key: "itt_no_day_roll_7726", area: "race-engine", label: "Enkeltstart — uden den ekstra terning" },
   // #7733: fra etape 2 afgoer pulje og trup ikke laengere hvem der er i loebet. Ikke seedet = off;
   // kun "on" taender, "beta" laeses som off (startedFieldLock7733Flag.js). Ejer-only flip.

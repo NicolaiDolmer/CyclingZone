@@ -158,11 +158,34 @@ const MARKED = Object.freeze({ version: ENGINE_VERSION_V4, ittNoDayRoll7726: tru
 const bindArgs = (client, over = {}) => ({ supabase: client, race: { id: "r1", stages_completed: 0 }, v4Engine: MARKED, rulesRevision: "s5_profiles_v3", firstStageClaim: true, ...over });
 const MISSING = { code: "42703", message: "column races.itt_no_day_roll_7726 does not exist" };
 
-test("#7726 bind: slukket eller v3-motor = samme objekt og intet DB-kald", async () => {
-  const noDb = { from() { throw new Error("intet DB-kald naar kontakten er slukket"); } };
-  const engine = { version: ENGINE_VERSION_V4 };
-  assert.equal(await bindIttNoDayRoll7726(bindArgs(noDb, { v4Engine: engine })), engine);
+test("#7726 bind: v3-motor = intet DB-kald; slukket uden stempel = samme objekt og intet skrives", async () => {
+  const noDb = { from() { throw new Error("intet DB-kald paa v3-motoren"); } };
   assert.equal(await bindIttNoDayRoll7726(bindArgs(noDb, { v4Engine: null })), null);
+  const engine = { version: ENGINE_VERSION_V4 };
+  const { client, log } = racesStub({ itt_no_day_roll_7726: null, stages_completed: 0 });
+  assert.equal(await bindIttNoDayRoll7726(bindArgs(client, { v4Engine: engine })), engine);
+  assert.equal(log.updates.length, 0);
+  const missing = racesStub({}, { readError: MISSING });
+  assert.equal(await bindIttNoDayRoll7726(bindArgs(missing.client, { v4Engine: engine })), engine);
+});
+
+test("#7726 bind: slukket kontakt rammer kun nye loeb; et stemplet loeb koerer faerdigt (ejer 6/11)", async () => {
+  const engine = { version: ENGINE_VERSION_V4 };
+  const off = async () => "off";
+  const { client, log } = racesStub({ itt_no_day_roll_7726: true, stages_completed: 3 });
+  const out = await bindIttNoDayRoll7726(bindArgs(client, { v4Engine: engine, firstStageClaim: false, readStage: off }));
+  assert.equal(out.ittNoDayRoll7726, true);
+  assert.equal(log.updates.length, 0);
+  const failing = async () => { throw new Error("opslag fejlede"); };
+  const kept = await bindIttNoDayRoll7726(bindArgs(client, { v4Engine: engine, firstStageClaim: false, readStage: failing }));
+  assert.equal(kept.ittNoDayRoll7726, true, "en opslagsfejl aendrer aldrig et loeb i gang");
+});
+
+test("#7726 bind: noedstop 'stop' fjerner reglen fra et stemplet loeb", async () => {
+  const engine = { version: ENGINE_VERSION_V4 };
+  const { client } = racesStub({ itt_no_day_roll_7726: true, stages_completed: 3 });
+  const out = await bindIttNoDayRoll7726(bindArgs(client, { v4Engine: engine, firstStageClaim: false, readStage: async () => "stop" }));
+  assert.equal(out, engine);
 });
 
 test("#7726 bind: aeldre revision faar aldrig kontakten og skriver intet", async () => {
