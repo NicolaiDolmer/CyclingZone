@@ -61,9 +61,9 @@ export function buildImportancePayload({ itemId, userId, importanceScore }) {
 
 // #7788: Ved ikke er en række uden tal. Den gælder hele punktet, så begge felter
 // sendes som null, også en idea_score fra da punktet var en idé.
-export function buildDontKnowPayload({ itemId, userId }) {
+export function buildDontKnowPayload({ itemId, userId, now }) {
   if (!itemId || !userId) throw new Error("itemId and userId are required");
-  return { item_id: itemId, user_id: userId, idea_score: null, importance_score: null, updated_at: new Date().toISOString() };
+  return { item_id: itemId, user_id: userId, idea_score: null, importance_score: null, updated_at: now.toISOString() };
 }
 
 export function isDontKnow(vote) {

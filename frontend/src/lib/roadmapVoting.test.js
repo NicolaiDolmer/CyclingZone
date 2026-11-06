@@ -114,14 +114,12 @@ test("buildImportancePayload sender kun importance_score (idea_score røres ikke
 
 // #7788: ét Ved ikke pr. punkt, ikke pr. akse.
 test("buildDontKnowPayload nulstiller begge tal, så en gammel idea_score ikke bliver stående", () => {
-  const p = buildDontKnowPayload({ itemId: "i1", userId: "u1" });
-  assert.equal(p.item_id, "i1");
-  assert.equal(p.user_id, "u1");
-  assert.equal(p.idea_score, null);
-  assert.equal(p.importance_score, null);
-  assert.ok(typeof p.updated_at === "string" && !Number.isNaN(Date.parse(p.updated_at)));
-  assert.throws(() => buildDontKnowPayload({ itemId: "", userId: "u1" }));
-  assert.throws(() => buildDontKnowPayload({ itemId: "i1", userId: null }));
+  const now = new Date("2026-11-06T12:00:00Z");
+  assert.deepEqual(buildDontKnowPayload({ itemId: "i1", userId: "u1", now }), {
+    item_id: "i1", user_id: "u1", idea_score: null, importance_score: null, updated_at: "2026-11-06T12:00:00.000Z",
+  });
+  assert.throws(() => buildDontKnowPayload({ itemId: "", userId: "u1", now }));
+  assert.throws(() => buildDontKnowPayload({ itemId: "i1", userId: null, now }));
 });
 
 test("isDontKnow kræver en række uden tal; ingen række er ikke et svar", () => {

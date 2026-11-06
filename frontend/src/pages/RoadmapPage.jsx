@@ -327,7 +327,7 @@ export default function RoadmapPage() {
     markRated(item.id);
     setSaveState((prev) => ({ ...prev, [item.id]: "saving" }));
     const { error } = await supabase.from("roadmap_votes")
-      .upsert(buildDontKnowPayload({ itemId: item.id, userId }), { onConflict: "user_id,item_id" });
+      .upsert(buildDontKnowPayload({ itemId: item.id, userId, now: new Date() }), { onConflict: "user_id,item_id" });
     if (!error) {
       setVotes((prev) => new Map(prev).set(item.id, { item_id: item.id, idea_score: null, importance_score: null }));
       setDrafts((prev) => ({ ...prev, [item.id]: { idea: null, importance: null } }));
