@@ -90,6 +90,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "stage_plan_v1", area: "race-day", label: "Taktik — etapeplan langs ruten" },
   // #6912 B: motorens udbrudsbud i jægerboksen (kort prognose i dryRun). Ikke seedet = off; beta først.
   { key: "race_breakaway_outlook", area: "race-day", label: "Jægerboks — motorens udbrudsbud" },
+  // #7717: Hvorfor?-knappen i "Your day". Kun visning, seedet off.
+  { key: "rider_why_button", area: "race-day", label: "Hvorfor?-knappen ved rytterne (Your day)" },
 
   // ── Motorer og batch-jobs (spilleren ser resultatet, ikke kontakten) ──────
   { key: "race_engine_v2_enabled", area: "race-engine", label: "Løbsmotor v2" },
@@ -262,6 +264,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "condition_v2_race_date_training_day",
   // #7636: etapeplanens resumé krydstjekker filmen paa dette flag (binaert, som motoren).
   "stage_plan_dropped_front_7635",
+  // #7717: "Your day" viser Hvorfor?-knappen paa dette flag.
+  "rider_why_button",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,
