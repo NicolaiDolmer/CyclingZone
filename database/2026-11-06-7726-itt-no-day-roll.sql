@@ -17,6 +17,8 @@
 --    WHERE table_schema = 'public' AND table_name = 'races' AND column_name = 'itt_no_day_roll_7726';
 --   SELECT value FROM public.app_config WHERE key = 'itt_no_day_roll_7726';
 
+SET lock_timeout = '3s';
+
 ALTER TABLE public.races
   ADD COLUMN IF NOT EXISTS itt_no_day_roll_7726 boolean;
 
