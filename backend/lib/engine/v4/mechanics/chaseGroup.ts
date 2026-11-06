@@ -128,9 +128,9 @@ export function judgeFloorChase7730(input: {
   return { targetSeconds, short: true, reason: floorChaseShortReason(pull, sum("fresh"), sum("even"), t.onTimePull), teamIds };
 }
 
-/** Ville noget hold jage? Endagsloeb har ingen etapeinteresse (null); saa er det jag-ordrerne der svarer. */
+/** Ville noget hold jage? Etapeinteresse eller en gemt jag-ordre, ogsaa fra et hold med egen mand foran. */
 export function floorChaseWanted7730(interest: { teamIds: readonly string[] } | null | false | undefined, orders: readonly { breakaway_stance: string }[]): boolean {
-  return interest ? interest.teamIds.length > 0 : orders.some((order) => order.breakaway_stance === "chase");
+  return (interest ? interest.teamIds.length > 0 : false) || orders.some((order) => order.breakaway_stance === "chase");
 }
 
 /**

@@ -124,3 +124,19 @@ test("etape 1 laeser aldrig stemplet: startreglerne gaelder fuldt ud ved start",
   });
   assert.equal(asked, 0);
 });
+
+test("binding: foerste etape stempler loebet, naar kontakten er taendt", async () => {
+  const race = { ...RACE_7733, stages_completed: 0 };
+  const { supabase } = await runStage7733({ race, stageIndex: 0, extraDeps: { checkStartedFieldLock7733Enabled: async () => true } });
+  assert.ok(supabase.__writes.some((w) => w.table === "races" && w.op === "update" && w.obj.started_field_lock_7733 === true));
+});
+
+test("binding: slukket kontakt stempler aldrig", async () => {
+  const race = { ...RACE_7733, stages_completed: 0 };
+  const { supabase } = await runStage7733({ race, stageIndex: 0 });
+  assert.ok(!supabase.__writes.some((w) => w.table === "races" && w.obj?.started_field_lock_7733 !== undefined));
+});
+
+test("binding: en laesefejl fra etape 2 stopper etapen i stedet for at fjerne ryttere", async () => {
+  await assert.rejects(runStage7733({ extraDeps: { readStartedFieldLock7733: async () => { throw new Error("boom"); } } }), /boom/);
+});

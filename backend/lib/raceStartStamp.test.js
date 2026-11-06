@@ -3,6 +3,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import { bindLetGoOrder7557 } from "./letGoOrder7557Flag.js";
 import { bindStartedFieldLock7733, raceHasStartedFieldLock7733 } from "./startedFieldLock7733Flag.js";
@@ -147,10 +148,19 @@ test("#7733: stemplet afgoer fra etape 2, kontakten goer ikke, og stop fjerner d
   assert.equal(await raceHasStartedFieldLock7733({ supabase: plain, race: RACE, readStage: async () => "on" }), false);
 });
 
-test("#7730: endagsloeb uden etapeinteresse svarer ud fra jag-ordrerne", () => {
+test("#7730: en jag-ordre taeller, ogsaa uden etapeinteresse", () => {
   assert.equal(floorChaseWanted7730(null, [{ breakaway_stance: "chase" }]), true);
   assert.equal(floorChaseWanted7730(false, [{ breakaway_stance: "let_go" }, { breakaway_stance: "neutral" }]), false);
   assert.equal(floorChaseWanted7730(undefined, []), false);
   assert.equal(floorChaseWanted7730({ teamIds: ["a"] }, []), true);
-  assert.equal(floorChaseWanted7730({ teamIds: [] }, [{ breakaway_stance: "chase" }]), false);
+  assert.equal(floorChaseWanted7730({ teamIds: [] }, [{ breakaway_stance: "chase" }]), true, "holdet ville jage, men har egen mand foran");
+  assert.equal(floorChaseWanted7730({ teamIds: [] }, [{ breakaway_stance: "let_go" }]), false);
+});
+
+// Bindingen skal staa paa begge afviklings-veje. Forsvinder et kald, rammer kontakten loeb i gang.
+test("#7557/#7733: raceRunner binder paa begge veje", () => {
+  const source = readFileSync(new URL("./raceRunner.js", import.meta.url), "utf8");
+  assert.equal(source.match(/await bindLetGoOrder7557\(\{/g)?.length, 2, "helt-loeb og etape-stien");
+  assert.equal(source.match(/await bindStartedFieldLock7733\(\{/g)?.length, 1, "etape-stien");
+  assert.match(source, /stageIndex > 0 && await readStartedFieldLock7733\(\{ supabase, race \}\) === true/, "kun fra etape 2, og en laesefejl sluges ikke");
 });
