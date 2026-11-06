@@ -1587,6 +1587,10 @@
           "all_out_held_on": "{rider} ging volgens jouw opdracht voluit en bleef bij de kopgroep."
         },
         "breakaway_dropped": "{riders} {count, plural, one {moet} other {moeten}} de ontsnapping laten gaan.",
+        "breakaway_attempt_failed": "{riders}{others, plural, =0 {} one { en # andere} other { en # anderen}} {count, plural, one {probeert} other {proberen}} weg te rijden, maar {count, plural, one {komt} other {komen}} niet los. {teamCount, plural, =1 {{teamLast} reageerde} other {{teamsHead} en {teamLast} reageerden}}. De poging kostte kracht voor de rest van de etappe.",
+        "breakaway_attempt_failed_field": "{riders}{others, plural, =0 {} one { en # andere} other { en # anderen}} {count, plural, one {probeert} other {proberen}} weg te rijden, maar {count, plural, one {komt} other {komen}} niet los. {teamCount, plural, one {# ploeg reageerde} other {# ploegen reageerden}}. De poging kostte kracht voor de rest van de etappe.",
+        "breakaway_attempt_none_clear": "{riders}{others, plural, =0 {} one { en # andere} other { en # anderen}} {count, plural, one {probeert} other {proberen}} weg te rijden, maar niemand komt los. {teamCount, plural, =1 {{teamLast} reageerde} other {{teamsHead} en {teamLast} reageerden}}. De poging kostte kracht voor de rest van de etappe.",
+        "breakaway_attempt_none_clear_field": "{riders}{others, plural, =0 {} one { en # andere} other { en # anderen}} {count, plural, one {probeert} other {proberen}} weg te rijden, maar niemand komt los. {teamCount, plural, one {# ploeg reageerde} other {# ploegen reageerden}}. De poging kostte kracht voor de rest van de etappe.",
         "group_ahead_formed": "{riders} {count, plural, one {rijdt} other {rijden}} weg in een groep voor het peloton.",
         "group_ahead_caught": "De groep voor het peloton wordt ingelopen: {riders}.",
         "group_ahead_survived": "De groep voor het peloton houdt stand tot de streep.",
