@@ -61,7 +61,9 @@ function SplitPointBlock({ point, riderNameById, t }) {
   );
 }
 
-function LossRow({ entry, kmLabel, riderNameById, teamNameById, t }) {
+// #7705: også under referatet på etapeside 2.0 (RaceStoryCard). En dårlig dag er
+// hele dagen og står uden km; motoren stempler den kun ved målet.
+export function LossRow({ entry, kmLabel, riderNameById, teamNameById, t }) {
   let main;
   let reason = null;
   let order = null;
@@ -87,7 +89,7 @@ function LossRow({ entry, kmLabel, riderNameById, teamNameById, t }) {
   return (
     <li className="flex items-baseline gap-3 py-1.5 border-t border-cz-border first:border-t-0">
       <span className="font-data text-2xs text-cz-3 tabular-nums shrink-0 min-w-14 whitespace-nowrap">
-        {t("detail.film.km", { value: kmLabel })}
+        {entry.event?.type === "bad_day" ? null : t("detail.film.km", { value: kmLabel })}
       </span>
       <span className="text-sm leading-snug">
         <span className="text-cz-1">{main}</span>

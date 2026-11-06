@@ -54,7 +54,7 @@ export default function ClimbCard({ profile, series, climbs, selected, onSelect 
   const { t } = useTranslation("races");
   if (!climbs.length) {
     return (
-      <Section aria-label={t("stagePageV2.climbs.title")}>
+      <Section data-race-section="climbs" aria-label={t("stagePageV2.climbs.title")}>
         <SectionHeader title={t("stagePageV2.climbs.title")} />
         <p className="text-sm text-cz-3">{t("stagePageV2.climbs.none")}</p>
       </Section>
@@ -84,7 +84,7 @@ export default function ClimbCard({ profile, series, climbs, selected, onSelect 
       [t("stagePageV2.climbs.toFinish"), `${formatNumber(d.kmToGo)} km`],
     ];
   return (
-    <Section aria-label={t("stagePageV2.climbs.title")}>
+    <Section data-race-section="climbs" aria-label={t("stagePageV2.climbs.title")}>
       <SectionHeader title={t("stagePageV2.climbs.title")} meta={t("stagePageV2.climbs.hint")} />
       <div className="mb-3 flex flex-wrap gap-2">
         {climbs.map((c, i) => {

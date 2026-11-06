@@ -205,6 +205,7 @@
       "kmAt": "km {km}",
       "kmSpan": "km {from}-{to}",
       "unfolded": "How it unfolded",
+      "lossUnknown": "Lost time, cause unknown: {names}.",
       "source": "Every time, gap and sentence here comes from this stage's race log.",
       "replay": {
         "play": "Play the stage",
@@ -276,6 +277,8 @@
         "thirdGap": "{name} was third, {gap} down.",
         "placed": "{name} finished in position {rank}.",
         "placedGap": "{name} finished in position {rank}, {gap} down.",
+        "dayGreat": "{name} had a really good day.",
+        "dayGood": "{name} had a good day.",
         "ownOut": "{kind, select, withdrawal {Climbed off: {names}. Too far behind the winner.} time_limit {Outside the time limit: {names}.} crash {Out after a crash: {names}.} mechanical {Out with a mechanical: {names}.} other {Abandoned: {names}.}}"
       },
       "final": {
@@ -297,6 +300,66 @@
         "play": "Play the final 5 km",
         "scrubAria": "Race time in the final 5 km",
         "speedAria": "Playback speed"
+      }
+    },
+    "why": {
+      "button": "Why?",
+      "buttonAria": "Why did {name} finish here?",
+      "alone": "{main}.",
+      "withLead": "{main}, {lead}.",
+      "where": {
+        "climb": " on {name}",
+        "sector": " at {name}",
+        "lastClimb": " on the final climb",
+        "someClimb": " on a climb",
+        "finale": " in the finale"
+      },
+      "main": {
+        "unknown": "Not known. Nothing in the race events explains this result",
+        "abandonedCrash": "He crashed{where} and had to abandon",
+        "abandonedMechanical": "He had a mechanical{where} and had to abandon",
+        "abandoned": "He abandoned{where}",
+        "timeLimit": "He finished outside the time limit",
+        "withdrawal": "He climbed off, too far behind the winner",
+        "won": "He was first to the line",
+        "wonSprint": "He won the sprint",
+        "wonAttack": "He attacked{where} and reached the line alone",
+        "survived": "He got into the break and it stayed away to the finish",
+        "front": "He stayed with the front group to the finish",
+        "frontSprint": "He was in the group that sprinted for the win",
+        "dropEmpty": "He ran out of strength{where} and lost contact",
+        "dropPace": "He could not hold the pace{where}",
+        "dropGrupetto": "He dropped back to the grupetto{where}",
+        "dropCobbles": "He lost contact on the cobbles{where}",
+        "dropGeneric": "He lost contact{where}",
+        "dropFromBreak": "He could not stay with the break{where}",
+        "crack": "He cracked{where} and lost contact with the front",
+        "allOut": "He went all out{where} and ran empty",
+        "allOutGain": "He went all out{where} and gained time",
+        "crashLoss": "He lost time in a crash{where}",
+        "mechanicalLoss": "He lost time to a mechanical{where}",
+        "incidentLoss": "He lost time to an incident{where}",
+        "caught": "He rode in the break and was caught{where}",
+        "badDayFatigue": "He had a bad day, the hard days before caught up with him",
+        "badDayForm": "He had a bad day and was short of form",
+        "badDayIllness": "He had a bad day and was feeling ill",
+        "badDayRain": "He had a bad day in the rain",
+        "badDayWind": "He had a bad day in the wind",
+        "badDayHeat": "He had a bad day in the heat",
+        "attackBehind": "He attacked{where} but could not stay ahead to the line",
+        "bunchBehindSprint": "He finished in the bunch behind the sprint",
+        "pelotonBehindBreak": "He finished in the peloton, behind the break that stayed away",
+        "pelotonBehind": "He stayed in the peloton when the group ahead rode clear"
+      },
+      "lead": {
+        "afterBreak": "after a day in the break",
+        "afterDrop": "after losing contact{where}",
+        "badDayFatigue": "on a bad day with the hard days catching up with him",
+        "badDayForm": "on a bad day short of form",
+        "badDayIllness": "on a bad day feeling ill",
+        "badDayRain": "on a bad day in the rain",
+        "badDayWind": "on a bad day in the wind",
+        "badDayHeat": "on a bad day in the heat"
       }
     },
     "yourDay": {
@@ -464,7 +527,7 @@
       "fillMissing": "Fill gaps",
       "clearDay": "Clear day",
       "clearAllSeason": "Clear all",
-      "bound": "Locked riders cannot be added to any race shown today",
+      "bound": "Locked riders cannot be added to any of the races shown",
       "loadShort": "{days}d",
       "loadTitle": "Season load: {races, plural, one {# race} other {# races}}, {days, plural, one {# race day} other {# race days}} entered this season",
       "clearDayTooltip": "Clears {races, plural, one {# race} other {# races}} and removes {riders, plural, one {# rider} other {# riders}} for this day"
@@ -888,6 +951,10 @@
       "bodyAt": "You pressed Train now at {time}. Riders who trained today can't race today's race.",
       "body": "Riders who trained today can't race today's race.",
       "rider": "Trained today",
+      "titleEarlier": "Locked.",
+      "bodyEarlierAt": "You pressed Train now {day} at {time}. Riders who trained on one of the race's days can't race it.",
+      "bodyEarlier": "Riders who trained on one of the race's days can't race it.",
+      "riderEarlier": "Trained before",
       "columnLocked": "Locked"
     },
     "saving": "Saving…",
@@ -1569,6 +1636,10 @@
           "all_out_held_on": "{rider} rode all out on your orders and stayed with the front group."
         },
         "breakaway_dropped": "{riders} {count, plural, one {is} other {are}} dropped from the break.",
+        "breakaway_attempt_failed": "{riders}{others, plural, =0 {} one { and # other} other { and # others}} {count, plural, one {tries} other {try}} to get away, but {count, plural, one {doesn't} other {don't}} get clear. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} and {teamLast}}} worked against it. The attempt cost energy for the rest of the stage.",
+        "breakaway_attempt_failed_field": "{riders}{others, plural, =0 {} one { and # other} other { and # others}} {count, plural, one {tries} other {try}} to get away, but {count, plural, one {doesn't} other {don't}} get clear. {teamCount, plural, one {# team} other {# teams}} worked against it. The attempt cost energy for the rest of the stage.",
+        "breakaway_attempt_none_clear": "{riders}{others, plural, =0 {} one { and # other} other { and # others}} {count, plural, one {tries} other {try}} to get away, but nobody gets clear. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} and {teamLast}}} worked against it. The attempt cost energy for the rest of the stage.",
+        "breakaway_attempt_none_clear_field": "{riders}{others, plural, =0 {} one { and # other} other { and # others}} {count, plural, one {tries} other {try}} to get away, but nobody gets clear. {teamCount, plural, one {# team} other {# teams}} worked against it. The attempt cost energy for the rest of the stage.",
         "group_ahead_formed": "{riders} {count, plural, one {goes} other {go}} clear in a group ahead of the peloton.",
         "group_ahead_caught": "The group ahead of the peloton is caught: {riders}.",
         "group_ahead_survived": "The group ahead of the peloton stays away to the line.",

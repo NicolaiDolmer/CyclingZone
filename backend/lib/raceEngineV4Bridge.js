@@ -608,6 +608,7 @@ export function buildV4StageInput({
   splitAttackCause7640 = false, // #7640 (slukket)
   descentRegroupCap7644 = false, // #7644 (slukket)
   letGoOrder7557 = false, // #7557 (slukket)
+  ittNoDayRoll7726 = false, // #7726 (slukket)
   teamChase7730 = false, // #7730 (slukket)
   modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null,
   rulesRevision = "legacy", gcStandings = null, formPeaks = true, dayForm6649 = false, breakawayCurve6912 = false,
@@ -700,6 +701,8 @@ export function buildV4StageInput({
     if (splitAttackCause7640 === true && isS5ProfilesV3OrLater(rulesRevision)) input.split_attack_cause_7640 = true;
     // #7644 (KUN s5_profiles_v3, SLUKKET): loftet paa nedkoerslens samling pr. km; kun ved app_config descent_regroup_cap_7644 = "on".
     if (descentRegroupCap7644 === true && isS5ProfilesV3OrLater(rulesRevision)) input.descent_regroup_cap_7644 = true;
+    // #7726 (KUN s5_profiles_v3, SLUKKET): enkeltstart uden dagsudsving; kun for loeb bundet til kontakten ved foerste etape.
+    if (ittNoDayRoll7726 === true && isS5ProfilesV3OrLater(rulesRevision)) input.itt_no_day_roll_7726 = true;
     // #7730 (KUN s5_profiles_v3, SLUKKET): jagt-gulvet afgoeres af de hold der jager; kun for et loeb der blev bundet til kontakten foer start.
     if (teamChase7730 === true && isS5ProfilesV3OrLater(rulesRevision)) input.team_chase_7730 = true;
     if (dayForm6649 === true && isS5ProfilesV3OrLater(rulesRevision)) input.day_form_6649 = true;
@@ -760,6 +763,20 @@ function safeV4Timeline({ modules, v4Output, riderIds, distanceKm, stageNumber }
 }
 
 /**
+ * #7725: dagsformens ord på tidslinjen, lige før målstregen. Kun på det der går mod
+ * spillerfladen: motorens output returneres uændret, og resultatet kan ikke flytte
+ * sig. Kræver at motoren faktisk kørte #6649-dagsformen, ellers ville ordene lyve.
+ */
+function withDayWords7725({ modules, input, v4Output }) {
+  const events = v4Output?.timeline?.events;
+  if (!Array.isArray(events) || input.day_form_6649 !== true) return v4Output;
+  const words = modules.core.dayWordEvents7725(input.startlist, input.route, input.seed);
+  const at = events.findIndex((e) => e.type === "finish");
+  const merged = at < 0 ? [...events, ...words] : [...events.slice(0, at), ...words, ...events.slice(at)];
+  return { ...v4Output, timeline: { ...v4Output.timeline, events: merged } };
+}
+
+/**
  * Byg en drop-in-erstatning for raceSimulator.simulateStage oven på et sæt
  * allerede-indlæste v4-moduler. Eksporteret separat fra loadRaceEngineV4 så
  * tests kan bygge adapteren af rigtige imports uden dynamisk import.
@@ -776,7 +793,7 @@ export function createRaceEngineV4Adapter(modules) {
      *   omkring etapen. Udeladt = løbet er ukendt for M14.
      * @returns {{ranked: Array, incidents: Array, passages: object|null, timeline: object|null, v4Output: object}}
      */
-    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null, rulesRevision = "legacy", gcStandings = null, formPeaks = true, dayForm6649 = false, breakawayCurve6912 = false, queenStageGap7236 = false, stagePlanDroppedFront7635 = false, splitAttackCause7640 = false, descentRegroupCap7644 = false, letGoOrder7557 = false, teamChase7730 = false }) {
+    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null, rulesRevision = "legacy", gcStandings = null, formPeaks = true, dayForm6649 = false, breakawayCurve6912 = false, queenStageGap7236 = false, stagePlanDroppedFront7635 = false, splitAttackCause7640 = false, descentRegroupCap7644 = false, letGoOrder7557 = false, dayWords7725 = false, ittNoDayRoll7726 = false, teamChase7730 = false }) {
       if (!Array.isArray(entrants) || entrants.length === 0) {
         throw new Error("raceEngineV4Bridge: entrants kraeves (tomt startfelt)");
       }
@@ -784,7 +801,7 @@ export function createRaceEngineV4Adapter(modules) {
         throw new Error("raceEngineV4Bridge: seedString (streng) kraeves");
       }
       const input = buildV4StageInput({
-        modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages, squad, jerseyLeaders, rulesRevision, gcStandings, formPeaks, dayForm6649, breakawayCurve6912, queenStageGap7236, stagePlanDroppedFront7635, splitAttackCause7640, descentRegroupCap7644, letGoOrder7557, teamChase7730,
+        modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages, squad, jerseyLeaders, rulesRevision, gcStandings, formPeaks, dayForm6649, breakawayCurve6912, queenStageGap7236, stagePlanDroppedFront7635, splitAttackCause7640, descentRegroupCap7644, letGoOrder7557, ittNoDayRoll7726, teamChase7730,
       });
       // #5577: med trace, når kernen har den (#5578), så fortællingen får
       // motorens egen dom over udbruddet. `output` er byte-identisk med
@@ -807,7 +824,7 @@ export function createRaceEngineV4Adapter(modules) {
         // etapen, i stedet for at persistere et artefakt der bryder §2.3.
         timeline: safeV4Timeline({
           modules,
-          v4Output,
+          v4Output: dayWords7725 === true ? withDayWords7725({ modules, input, v4Output }) : v4Output, // #7725 (slukket)
           riderIds: entrants.map((e) => e.rider_id),
           distanceKm: input.route.distance_km,
           stageNumber,

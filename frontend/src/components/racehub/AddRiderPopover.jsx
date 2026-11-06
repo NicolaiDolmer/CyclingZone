@@ -7,9 +7,10 @@ import { useTranslation } from "react-i18next";
 import { canAddRiderToColumn, isTrainNowLockedInColumn, overlapConflictColumn, sameDayCompatibilityHint, toDisplayRaceDay } from "../../lib/raceHubLogic.js";
 import { LockIcon } from "../ui";
 import FitBar from "./FitBar.jsx";
+import { trainNowLockCopy } from "../training/trainNowClock.ts"; // #7558
 
 export default function AddRiderPopover({ rider, columns, bindingMap, onPick, onClose }) {
-  const { t } = useTranslation("races");
+  const { t, i18n } = useTranslation("races");
   const targets = columns
     .filter((c) => canAddRiderToColumn({ column: c, bindingMap, riderId: rider.id, outgoing: Boolean(rider.outgoing) }))
     .map((c) => ({
@@ -64,7 +65,7 @@ export default function AddRiderPopover({ rider, columns, bindingMap, onPick, on
             <span className="block text-sm truncate">{c.name}</span>
             <span className="text-3xs flex items-center gap-1">
               <LockIcon size={10} aria-hidden="true" />
-              {trainedToday ? t("selection.trainNowLock.rider") : t("racehub.popover.blockedReason", { race: conflict.name })}
+              {trainedToday ? trainNowLockCopy(t, c.trainNowLock?.pressedAt, i18n.language).rider : t("racehub.popover.blockedReason", { race: conflict.name })}
             </span>
           </span>
         </div>
