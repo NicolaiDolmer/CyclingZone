@@ -6,8 +6,11 @@ name: Known issues sync
 #     fil-tjek, ingen secrets.
 #
 #   sync — efter en groen Deploy verify paa main (aldrig paa tid alene):
-#     scripts/known-issues-sync.mjs --apply saetter aabne kendte fejl, hvis issue_ref staar som
-#     ref paa en patch note med rollout live (ogsaa beta_to_live og switched_on), til fixed.
+#     scripts/known-issues-sync.mjs saetter aabne kendte fejl, hvis issue_ref staar som
+#     ref paa en patch note med rollout live, og noten er strengt nyere end
+#     raekkens updated_at, til fixed. DRY-RUN som default: --apply kraever at
+#     repo-variablen KNOWN_ISSUES_SYNC_APPLY er 'true', saa ejeren foerst kan
+#     se listen i kørselsloggen.
 #     Idempotent, roerer kun
 #     aabne raekker; status-triggeren stempler closed_at. Samme moenster som
 #     roadmap-sync.yml: kun push til main + manuel dispatch.
@@ -77,4 +80,11 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: node scripts/known-issues-sync.mjs --apply
+          APPLY: ${{ vars.KNOWN_ISSUES_SYNC_APPLY }}
+        run: |
+          if [ "$APPLY" = "true" ]; then
+            node scripts/known-issues-sync.mjs --apply
+          else
+            echo "KNOWN_ISSUES_SYNC_APPLY er ikke 'true': dry-run, intet skrevet."
+            node scripts/known-issues-sync.mjs
+          fi

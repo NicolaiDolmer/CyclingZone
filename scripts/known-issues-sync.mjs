@@ -10,12 +10,11 @@
 // .github/workflows/known-issues-sync.yml (push paa patchNotes.js).
 //
 // Regler:
-//   - Kun patch-noter hvor aendringen har naaet spillerne taeller: rollout
-//     live, beta_to_live og switched_on (docs/PATCH_NOTES_RULES.md §2a). beta
-//     og event goer ingen fejl fixed.
-//   - Genaabnet fejl: en gammel note er ikke bevis for en ny fejl. Raekken
-//     lukkes kun af en note dateret samme dag som, eller efter, raekkens
-//     sidste aendring (updated_at). Aabnes en fejl igen, kraeves en ny note.
+//   - Kun patch-noter med rollout "live" taeller. beta, beta_to_live,
+//     switched_on og event goer ingen fejl fixed.
+//   - En note er kun bevis for en fejl, der var aaben da noten kom: raekken
+//     lukkes kun af en note dateret STRENGT efter raekkens sidste aendring
+//     (updated_at). En note samme dag eller aeldre lukker den ikke.
 //   - Kun aabne raekker (checking, confirmed, fixing) roeres. fixed og
 //     dismissed efterlades, som de er (idempotent, ingen gen-aabning).
 //   - Status-triggeren i databasen stempler closed_at; scriptet saetter kun
@@ -49,7 +48,7 @@ export async function loadPatches(path = PATCH_NOTES_PATH) {
 }
 
 /** Udrulninger hvor aendringen er naaet spillerne (ikke kun beta-gruppen). */
-export const RELEASED_ROLLOUTS = ["live", "beta_to_live", "switched_on"];
+export const RELEASED_ROLLOUTS = ["live"];
 
 /** Ren: issue-nummer -> seneste dato (YYYY-MM-DD) en udgivet note refererer det. */
 export function releasedRefs(patches) {
@@ -79,8 +78,8 @@ export function planSync({ released, issues, now }) {
   for (const k of issues) {
     if (k.issue_ref == null || !released.has(k.issue_ref)) continue;
     if (!OPEN_STATUSES.includes(k.status)) continue;
-    // Genaabnet efter noten? Saa er noten ikke bevis for den nye fejl.
-    if (k.updated_at && released.get(k.issue_ref) < String(k.updated_at).slice(0, 10)) continue;
+    // Noten skal vaere strengt nyere end raekkens sidste aendring.
+    if (k.updated_at && released.get(k.issue_ref) <= String(k.updated_at).slice(0, 10)) continue;
     if (seen.has(k.id)) continue;
     seen.add(k.id);
     plan.push({

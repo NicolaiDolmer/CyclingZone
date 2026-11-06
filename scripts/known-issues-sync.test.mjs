@@ -12,7 +12,7 @@ test("liveRefs: noter uden refs giver ingen issue-numre", () => {
   assert.deepEqual(liveRefs([note("live", undefined), note("live", []), { version: "2" }]), []);
 });
 
-test("liveRefs: live, beta_to_live og switched_on tæller; beta og event gør ikke; dubletter samles sorteret", () => {
+test("liveRefs: kun live tæller; beta, event, beta_to_live og switched_on gør ikke; dubletter samles sorteret", () => {
   const patches = [
     note("live", [30, 10]),
     note("beta", [99]),
@@ -21,7 +21,7 @@ test("liveRefs: live, beta_to_live og switched_on tæller; beta og event gør ik
     note("switched_on", [97]),
     note("live", [10, 20]),
   ];
-  assert.deepEqual(liveRefs(patches), [10, 20, 30, 97, 98]);
+  assert.deepEqual(liveRefs(patches), [10, 20, 30]);
 });
 
 test("releasedRefs: seneste dato vinder pr. ref", () => {
@@ -77,11 +77,11 @@ test("planSync: flere refs flytter hver sin række, og samme række kun én gang
   assert.deepEqual(plan.map((p) => p.id), ["a", "b"]);
 });
 
-test("planSync: genåbnet efter noten røres ikke, ny note samme dag eller senere lukker", () => {
-  const reopened = issue({ updated_at: "2026-11-05T10:00:00Z" });
-  assert.deepEqual(planSync({ released: rel([100, "2026-11-01"]), issues: [reopened], now: NOW }), []);
-  assert.equal(planSync({ released: rel([100, "2026-11-05"]), issues: [reopened], now: NOW }).length, 1);
-  assert.equal(planSync({ released: rel([100, "2026-11-06"]), issues: [reopened], now: NOW }).length, 1);
+test("planSync: note samme dag eller ældre end updated_at lukker ikke, kun strengt nyere note", () => {
+  const open = issue({ updated_at: "2026-11-05T10:00:00Z" });
+  assert.deepEqual(planSync({ released: rel([100, "2026-11-01"]), issues: [open], now: NOW }), []);
+  assert.deepEqual(planSync({ released: rel([100, "2026-11-05"]), issues: [open], now: NOW }), []);
+  assert.equal(planSync({ released: rel([100, "2026-11-06"]), issues: [open], now: NOW }).length, 1);
 });
 
 test("parseArgs: dry-run er default, --apply skriver, ukendt argument fejler", () => {
