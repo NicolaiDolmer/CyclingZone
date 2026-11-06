@@ -58,6 +58,7 @@ import { teamRostersFromStartlist } from "./adapters/teamRosterAdapter.ts";
 import { isIndividualTimeTrial, simulateIndividualTimeTrialStage } from "./mechanics/individualTimeTrial.ts";
 import { isOrdersGcV3OrLater, isS5ProfilesV2OrLater, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
 import { dayForm6649On } from "./mechanics/dayForm6649.ts"; // #6649
+export { dayWordEvents7725 } from "./mechanics/dayForm6649.ts"; // #7725: kun til broen, motoren kalder den aldrig
 import { withPointPlace } from "./exactPlace.ts";
 import { stageInputForRulesRevision } from "./s5Profiles.ts";
 import { compareIds } from "../../compareIds.ts";

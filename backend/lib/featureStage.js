@@ -44,6 +44,7 @@ export const FRESH_FLAG_KEYS = Object.freeze(new Set([
   "race_stage_timeline",
   "race_finalize_resumable_enabled",
   "day_form_6649",
+  "day_words_7725",
   "queen_stage_gap_7236",
   "stage_plan_dropped_front_7635",
   "descent_regroup_cap_7644",

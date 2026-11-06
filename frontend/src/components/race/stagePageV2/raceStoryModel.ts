@@ -552,13 +552,48 @@ export function ownOutSentences(rows: readonly OwnOutRow[] | null | undefined, m
   });
 }
 
+// #7725: de ord broen skriver paa `day_word`. Ukendt ord eller aarsag giver ingen saetning.
+const DAY_WORDS = new Set(["great", "good", "fatigue", "form", "illness", "rain", "wind", "heat"]);
+const DAY_WORD_ORDER = ["great", "fatigue", "form", "illness", "rain", "wind", "heat", "good"];
+
+/**
+ * #7725: rytterens dag i ord efter etapen, pr. rytter. Findes kun naar kontakten
+ * day_words_7725 var taendt da etapen koerte; ellers er kortet tomt og intet vises.
+ * Et daarligt ord er aarsagen (vejret som sin type), saa spilleren faar forklaringen.
+ */
+export function dayWordsByRider(events: readonly NarrativeEvent[] | null | undefined): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const e of events ?? []) {
+    if (e.type !== "day_word") continue;
+    const p = (e.params ?? {}) as { rider_id?: unknown; word?: unknown; reason?: unknown; weather?: unknown };
+    const word = p.word === "bad" ? (p.reason === "weather" ? p.weather : p.reason) : p.word;
+    if (typeof p.rider_id === "string" && typeof word === "string" && DAY_WORDS.has(word)) out.set(p.rider_id, word);
+  }
+  return out;
+}
+
+/** #7725: dagens ord for vinderen og dine egne i maal. Hoejst 2 saetninger: referatet er kort. */
+export function dayWordSentences(events: readonly NarrativeEvent[] | null | undefined, cast: Cast): ReportSentence[] {
+  const words = dayWordsByRider(events);
+  if (!words.size) return [];
+  const rows: Array<{ word: string; name: string; first: boolean }> = [];
+  cast.finishers.forEach((f, i) => {
+    const word = words.get(f.riderId);
+    const name = cast.nameOf(f.riderId);
+    if (word && name && (i === 0 || cast.mine.has(f.riderId))) rows.push({ word, name, first: i === 0 });
+  });
+  // Vinderens dag foerst: den forklarer etapen. Derefter dine egne, de klareste ord foerst.
+  rows.sort((a, b) => Number(b.first) - Number(a.first) || DAY_WORD_ORDER.indexOf(a.word) - DAY_WORD_ORDER.indexOf(b.word));
+  return rows.slice(0, 2).map(({ word, name }) => ({ key: "dayWord", params: { word, name } }));
+}
+
 /**
  * Referatet: kun hvad loggen og resultatet viser, i fast raekkefoelge:
- * udbruddet (dannet), dets udfald, det sidste angreb, vinderen, din bedste og
- * til sidst dine egne udgaaede (#7701).
+ * udbruddet (dannet), dets udfald, det sidste angreb, vinderen, din bedste,
+ * dagens ord (#7725) og til sidst dine egne udgaaede (#7701).
  * Mindst 3 saetninger naar etapen har et resultat; hoejst 5.
  */
-export function buildReport(story: RaceStory, lines: StoryLine[], cast: Cast, ownOut: readonly ReportSentence[] = []): ReportSentence[] {
+export function buildReport(story: RaceStory, lines: StoryLine[], cast: Cast, ownOut: readonly ReportSentence[] = [], dayWords: readonly ReportSentence[] = []): ReportSentence[] {
   const out: ReportSentence[] = [];
   const km = (v: number) => kmValue(v);
   const formed = lines.find((l) => l.kind === "formed");
@@ -657,9 +692,9 @@ export function buildReport(story: RaceStory, lines: StoryLine[], cast: Cast, ow
   }
   // #7701: sidst, saa de ikke taeller med i fyld-reglerne. Hoejst 3 aarsager, saa
   // der altid er plads til vinderen og din bedste; resten staar i "Your riders".
-  out.push(...ownOut.slice(0, 3));
-  // Hoejst 5: angrebet ryger foerst, saa udfaldet. Vinderen, din bedste og dine
-  // udgaaede bliver staaende (Codex #7701).
+  out.push(...dayWords, ...ownOut.slice(0, 3));
+  // Hoejst 5: angrebet ryger foerst, saa udfaldet og til sidst dagens ord. Vinderen,
+  // din bedste og dine udgaaede bliver staaende (Codex #7701).
   const stays = (s: ReportSentence) => s.key.startsWith("winner") || s.key.startsWith("mine") || s.key === "ownOut";
   while (out.length > 5) {
     const attack = out.findIndex((s) => s.key.startsWith("attack"));

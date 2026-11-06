@@ -293,6 +293,7 @@
         "thirdGap": "{name} fue tercero, a {gap}.",
         "placed": "{name} terminó en la posición {rank}.",
         "placedGap": "{name} terminó en la posición {rank}, a {gap}.",
+        "dayWord": "{word, select, great {{name} tuvo un día muy bueno.} good {{name} tuvo un buen día.} fatigue {{name} tuvo un mal día. Los días duros anteriores le pasaron factura.} form {{name} tuvo un mal día. Le faltaba forma.} illness {{name} tuvo un mal día. No se encontraba bien de salud.} rain {{name} tuvo un mal día bajo la lluvia.} wind {{name} tuvo un mal día con el viento.} heat {{name} tuvo un mal día con el calor.} other {{name} tuvo un mal día.}}",
         "ownOut": "{kind, select, withdrawal {Retirada: {names}. Demasiado lejos del ganador.} time_limit {Fuera de control: {names}.} crash {Abandono por caída: {names}.} mechanical {Abandono por problema mecánico: {names}.} other {Abandono: {names}.}}"
       },
       "final": {

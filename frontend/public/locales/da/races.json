@@ -276,6 +276,7 @@
         "thirdGap": "{name} blev nummer tre, {gap} efter.",
         "placed": "{name} blev nr. {rank}.",
         "placedGap": "{name} blev nr. {rank}, {gap} efter.",
+        "dayWord": "{word, select, great {{name} havde en rigtig god dag.} good {{name} havde en god dag.} fatigue {{name} havde en dårlig dag. De hårde dage før sad i benene.} form {{name} havde en dårlig dag. Formen var der ikke.} illness {{name} havde en dårlig dag. Han følte sig syg.} rain {{name} havde en dårlig dag i regnen.} wind {{name} havde en dårlig dag i vinden.} heat {{name} havde en dårlig dag i varmen.} other {{name} havde en dårlig dag.}}",
         "ownOut": "{kind, select, withdrawal {Steg af: {names}. For langt efter vinderen.} time_limit {Uden for tidsgrænsen: {names}.} crash {Udgik efter styrt: {names}.} mechanical {Udgik med mekanisk defekt: {names}.} other {Udgik: {names}.}}"
       },
       "final": {

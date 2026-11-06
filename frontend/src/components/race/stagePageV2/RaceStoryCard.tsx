@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../../lib/intl.js";
 import type { Climb, ElevationSeries, StageProfile } from "./stagePageV2Model.ts";
 import {
-  buildReport, curateMoments, finaleData, formatClock, lineReplayKm, myBestRider, namesList, pickGroups,
+  buildReport, curateMoments, dayWordSentences, finaleData, formatClock, lineReplayKm, myBestRider, namesList, pickGroups,
   replayGroupsAt, splitRows, wholeStageFrames, frameAt,
   isPeloton, isTimeTrialStory, type Cast, type RaceStory, type ReplayGroup, type ReportSentence, type SplitRow, type StoryLine, type StoryNarrativeContext,
 } from "./raceStoryModel.ts";
@@ -51,6 +51,7 @@ export default function RaceStoryCard({ story, profile, series, climbs, cast, ti
   const timeTrial = isTimeTrialStory(story, profile?.profile_type, narrative?.events);
   const finale = useMemo(() => timeTrial ? null : finaleData(story), [story, timeTrial]);
   const lines = useMemo(() => timeTrial ? [] : curateMoments(story, cast, undefined, narrative), [story, cast, narrative, timeTrial]);
+  const dayWords = useMemo(() => dayWordSentences(narrative?.events, cast), [narrative, cast]);
   const [view, setView] = useState<View>(timeTrial ? "route" : "stage");
   const [km, setKm] = useState<number>(D);
 
@@ -63,6 +64,12 @@ export default function RaceStoryCard({ story, profile, series, climbs, cast, ti
           <p className="m-0 flex-1 text-sm text-cz-2">{t("stagePageV2.story.timeTrial")}</p>
           <Button variant="secondary" size="md" onClick={onOpenStandings}>{t("stagePageV2.cta.fullResult")}</Button>
         </div>
+        {/* #7725: en enkeltstart har intet referat, men dagen forklarer stadig tiden. */}
+        {dayWords.length > 0 && (
+          <p className="m-0 mt-3 max-w-[72ch] text-[15px] leading-relaxed text-cz-1">
+            {dayWords.map((s) => t(`stagePageV2.story.report.${s.key}`, s.params)).join(" ")}
+          </p>
+        )}
       </Section>
     );
   }
@@ -111,7 +118,7 @@ export default function RaceStoryCard({ story, profile, series, climbs, cast, ti
       )}
 
       {view !== "route" && (
-        <StorySection story={story} lines={lines} cast={cast} km={view === "stage" ? km : null} onJump={jumpTo} ownOut={ownOut} />
+        <StorySection story={story} lines={lines} cast={cast} km={view === "stage" ? km : null} onJump={jumpTo} ownOut={ownOut} dayWords={dayWords} />
       )}
     </Section>
   );
@@ -242,12 +249,12 @@ function ReplayView({ story, profile, series, climbs, cast, km, onKm }: {
 
 // ── Historien: oejeblikke, mellemtider, referat ───────────────────────────
 
-function StorySection({ story, lines, cast, km, onJump, ownOut }: { story: RaceStory; lines: StoryLine[]; cast: Cast; km: number | null; onJump: (l: StoryLine) => void; ownOut: ReportSentence[] }) {
+function StorySection({ story, lines, cast, km, onJump, ownOut, dayWords }: { story: RaceStory; lines: StoryLine[]; cast: Cast; km: number | null; onJump: (l: StoryLine) => void; ownOut: ReportSentence[]; dayWords: ReportSentence[] }) {
   const { t } = useTranslation("races");
   const text = useStoryText(cast);
   const me = useMemo(() => myBestRider(story, cast), [story, cast]);
   const rows = useMemo(() => splitRows(story, me), [story, me]);
-  const report = useMemo(() => buildReport(story, lines, cast, ownOut), [story, lines, cast, ownOut]);
+  const report = useMemo(() => buildReport(story, lines, cast, ownOut, dayWords), [story, lines, cast, ownOut, dayWords]);
   const current = km == null ? null : [...lines].reverse().find((l) => l.km <= km + 1e-6) ?? null;
 
   return (

@@ -141,6 +141,17 @@ features:
     verified: 2026-10-30
     note: "day_form_6649 on siden 27/10; læst i prod 30/10."
 
+  - id: race-day-words-7725
+    area: race-engine
+    title_en: Day form in words after the stage
+    title_da: Dagsform i ord efter etapen
+    state: dormant
+    flag: day_words_7725
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 7725
+    verified: 2026-11-06
+    note: "Slukket ved merge; kræver day_form_6649. Ændrer kun tidslinjen, aldrig resultatet."
+
   - id: race-descent-regroup-cap-7644
     area: race-engine
     title_en: Long descents - cap on how much a regrouping chase can gain
