@@ -309,6 +309,40 @@ test("#6641/#7280 describeEvent: alt ud-linjen kun med det motoren meldte", asyn
   }
 });
 
+test("#7707 describeEvent: Angrib-teksten naar rytteren koerte opgaven Angrib, Alt ud ellers", async () => {
+  const names = new Map([["r1", "Lei Lin"]]);
+  const d = (type, params) => describeEvent({ type, km: 170, params }, { riderNameById: names });
+  assert.deepEqual(d("all_out_gain", { rider_id: "r1", task: "attack" }), { key: "attack_gain", params: { rider: "Lei Lin" } });
+  assert.deepEqual(d("all_out_cracked", { rider_id: "r1", task: "attack" }), { key: "attack_cracked", params: { rider: "Lei Lin" } });
+  for (const kind of ["attack_stayed_away", "attack_held_on"]) {
+    assert.deepEqual(d("order_impact", { kind, rider_id: "r1" }), { key: `order.${kind}`, params: { rider: "Lei Lin" } });
+  }
+  assert.deepEqual(d("order_impact", { kind: "attack_held_on", rider_id: "r1", climb_name: "Top" }), { key: "order.attack_held_on_climb", params: { rider: "Lei Lin", climb: "Top" } });
+  const { readFileSync } = await import("node:fs");
+  const { dirname, join } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const localesDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "public", "locales");
+  for (const lang of ["en", "da", "fr", "es", "nl"]) {
+    const doc = JSON.parse(readFileSync(join(localesDir, lang, "races.json"), "utf8"));
+    for (const key of ["attack_gain", "attack_cracked"]) assert.ok(doc.detail.film.event[key], `${lang}: ${key}`);
+    for (const key of ["attack_stayed_away", "attack_held_on_climb", "attack_held_on"]) assert.ok(doc.detail.film.event.order[key], `${lang}: order.${key}`);
+  }
+});
+
+test("#7707: filmen siger Angrib for en plan-rytter og Alt ud paa en enkeltstart", () => {
+  const events = [
+    { km: 0, type: "stage_start", params: { profile_type: "mountain", field_count: 100, distance_km: 160 } },
+    { km: 150, type: "all_out_gain", params: { rider_id: "rider-1" } },
+    { km: 150, type: "all_out_cracked", params: { rider_id: "rider-2" } },
+  ];
+  const names = riderNameByIdFixture();
+  const keys = (built) => built.feedEvents.filter((e) => e.type.startsWith("all_out")).map((e) => describeEvent(e, { riderNameById: names })?.key);
+  assert.deepEqual(keys(buildFilmTimeline({ events, distanceKm: 160 })), ["attack_gain", "attack_cracked"]);
+  const tt = events.map((e) => (e.type === "stage_start" ? { ...e, params: { ...e.params, profile_type: "itt" } } : e));
+  assert.deepEqual(keys(buildFilmTimeline({ events: tt, distanceKm: 160, profileType: "itt" })), ["all_out_gain", "all_out_cracked"]);
+  assert.deepEqual(keys(buildFilmTimeline({ events, distanceKm: 160, ownRiderIds: ["rider-1"], effortByRider: new Map([["rider-1", "all_out"]]) })), ["all_out_gain", "attack_cracked"]);
+});
+
 // ── #2944: incident-trappen → fire udfald i spillerens sprog ────────────────
 
 const INCIDENT_LADDER_KEYS = [

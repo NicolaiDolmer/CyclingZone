@@ -72,7 +72,7 @@
       "ride_for_result": "Courir pour un résultat",
       "sprint_train": "Train de sprint",
       "grupetto": "Gruppetto",
-      "ride_in": "Rentrer à l'arrivée"
+      "ride_in": "Rentrer tranquillement"
     },
     "from": {
       "kom": "après {climb}",
@@ -1654,7 +1654,10 @@
         "order": {
           "all_out_stayed_away": "{rider} a roulé à fond sur ton ordre et a tenu jusqu'à la ligne.",
           "all_out_held_on_climb": "{rider} a roulé à fond sur ton ordre et a passé {climb} avec les premiers.",
-          "all_out_held_on": "{rider} a roulé à fond sur ton ordre et est resté dans le groupe de tête."
+          "all_out_held_on": "{rider} a roulé à fond sur ton ordre et est resté dans le groupe de tête.",
+          "attack_stayed_away": "{rider} a attaqué sur ton ordre et a tenu jusqu'à la ligne.",
+          "attack_held_on_climb": "{rider} a attaqué sur ton ordre et a passé {climb} avec les premiers.",
+          "attack_held_on": "{rider} a attaqué sur ton ordre et est resté dans le groupe de tête."
         },
         "breakaway_dropped": "{riders} {count, plural, one {est lâché} other {sont lâchés}} de l'échappée.",
         "breakaway_attempt_failed": "{riders}{others, plural, =0 {} one { et # autre} other { et # autres}} {count, plural, one {tente} other {tentent}} de s’échapper, mais {count, plural, one {ne sort} other {ne sortent}} pas du peloton. {teamCount, plural, =1 {{teamLast} a réagi} other {{teamsHead} et {teamLast} ont réagi}}. La tentative a coûté des forces pour le reste de l’étape.",
@@ -1676,6 +1679,8 @@
         "favorite_crack_tt": "{rider} faiblit dans la seconde moitié et perd du temps.",
         "all_out_gain": "{rider} se donne à fond dans la dernière ascension et gagne du temps.",
         "all_out_cracked": "{rider} se donne à fond et se vide dans la dernière ascension.",
+        "attack_gain": "{rider} attaque dans la dernière ascension et gagne du temps.",
+        "attack_cracked": "{rider} attaque et se vide dans la dernière ascension.",
         "bad_day_fatigue": "{rider} a connu un jour sans. Les jours difficiles précédents ont laissé des traces.",
         "bad_day_form": "{rider} a connu un jour sans. Il manquait de forme.",
         "bad_day_illness": "{rider} a connu un jour sans. Il était malade.",
