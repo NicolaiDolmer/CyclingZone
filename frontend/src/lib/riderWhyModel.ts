@@ -64,6 +64,9 @@ function said(main: WhyMain, where: WhyPlace = NOWHERE, lead: WhyLead | null = n
 }
 
 const EPS = 1e-6;
+/** "Efter en dag i udbruddet" kraever mindst denne del af etapen foran. */
+const LONG_BREAK_SHARE = 0.25;
+const FIELD_GROUP = "peloton-0";
 /** En stigning og dens top i loggen er samme sted, selvom kilderne runder forskelligt. */
 const CREST_MATCH_KM = 0.5;
 
@@ -124,6 +127,20 @@ function attackHeld(attack: StoryMoment, story: RaceStory, riderId: string): boo
     && (ridersOf(m).includes(riderId) || (groupId != null && m.data.group_id === groupId)));
 }
 
+/** Sad han reelt i udbruddet en stor del af dagen? Et udbrud hentet efter faa km forklarer intet. */
+function longBreak(story: RaceStory, moments: StoryMoment[]): boolean {
+  const formed = moments.find((m) => m.type === "breakaway_formed") ?? story.moments.find((m) => m.type === "breakaway_formed");
+  const end = moments.find((m) => m.type === "breakaway_caught" || m.type === "breakaway_dropped");
+  if (!formed || !end || story.distance_km == null) return false;
+  return end.km - formed.km >= story.distance_km * LONG_BREAK_SHARE - EPS;
+}
+
+/** Kom han tilbage i feltet efter km? Saa er et senere tilbageslag aarsagen, ikke uheldet. */
+function rejoinedField(events: RiderWhyInput["events"], riderId: string, km: number): boolean {
+  return (events ?? []).some((e) => e?.type === "group_merged" && (e.km ?? 0) > km + EPS && e.params?.into_group_id === FIELD_GROUP
+    && Array.isArray(e.params?.rider_ids) && (e.params.rider_ids as unknown[]).includes(riderId));
+}
+
 type Setback = { main: WhyMain; moment: StoryMoment | null; sector: string | null; climbName: string | null };
 
 /**
@@ -154,7 +171,7 @@ function firstSetback(input: RiderWhyInput, moments: StoryMoment[], backInField 
     const moment = moments.find((m) => m.type === type && near(m, entry.km)) ?? null;
     if (type === "favorite_crack") return { main: "crack", moment, sector: null, climbName: null };
     if (type !== "incident" || entry.event.params?.outcome !== "time_loss") continue;
-    if (backInField) continue;
+    if (backInField || rejoinedField(input.events, riderId, entry.km)) continue;
     const kind = entry.event.params?.kind;
     return { main: kind === "crash" ? "crashLoss" : kind === "mechanical" ? "mechanicalLoss" : "incidentLoss", moment, sector: null, climbName: null };
   }
@@ -211,7 +228,7 @@ export function riderWhy(input: RiderWhyInput): RiderWhy {
   if (gap.in_front) return said(sprint ? "frontSprint" : "front");
 
   const badDay = badDayOf(moments);
-  const leadFor = (): WhyLead | null => badDay?.lead ?? (outcome === "caught" || outcome === "dropped" ? "afterBreak" : null);
+  const leadFor = (): WhyLead | null => badDay?.lead ?? ((outcome === "caught" || outcome === "dropped") && longBreak(story, moments) ? "afterBreak" : null);
   const allOut = moments.find((m) => m.type === "all_out_cracked");
   if (allOut) return said("allOut", placeOf(allOut, story, climbs), leadFor());
   const setback = firstSetback(input, moments, gap.via_rest || finaleGroup);

@@ -60,8 +60,11 @@ test("hvad der foerte til det: en dag i udbruddet og den daarlige dag", () => {
   const caught: Ev = { km: 60, type: "breakaway_caught", params: { group_id: "breakaway-0", rider_ids: ["a"] } };
   const breakaway = { morning_rider_ids: ["a"], outcomes: { a: "caught" as const } };
   const events = [caught, split(75, "climb_deficit")];
-  const moments = [moment("breakaway_caught", 60, { rider_ids: ["a"] }), splitMoment(75, "climb_deficit")];
+  const moments = [moment("breakaway_formed", 10, { rider_ids: ["a"] }), moment("breakaway_caught", 60, { rider_ids: ["a"] }), splitMoment(75, "climb_deficit")];
   assert.equal(riderWhy(input("a", 12, events, storyOf(moments, behind, { breakaway }))).lead, "afterBreak");
+  // Review 6/11: hentet efter faa km er ikke "en dag i udbruddet".
+  const short = [moment("breakaway_formed", 58, { rider_ids: ["a"] }), moment("breakaway_caught", 60, { rider_ids: ["a"] }), splitMoment(75, "climb_deficit")];
+  assert.equal(riderWhy(input("a", 12, events, storyOf(short, behind, { breakaway }))).lead, null);
   const rainy = [...moments, moment("bad_day", 100, { rider_id: "a", reason: "weather", weather: "rain" })];
   assert.equal(riderWhy(input("a", 12, events, storyOf(rainy, behind, { breakaway }))).lead, "badDayRain");
 });
@@ -87,6 +90,10 @@ test("uheld: tidstab taeller kun hvis han ikke kom tilbage til feltet", () => {
   // Codex: en sammenlaegning med en gruppe laengere tilbage er ikke at vaere kommet tilbage.
   const merged = moment("group_merged", 55, { rider_ids: ["a"], into_group_id: "gruppetto-1" });
   assert.equal(riderWhy(input("a", 12, [crash], storyOf([m, merged], behind))).main, "crashLoss");
+  // Review 6/11: tilbage i feltet og sat senere: faldet er aarsagen, ikke styrtet.
+  const back: Ev = { km: 55, type: "group_merged", params: { group_id: "chase-1", into_group_id: "peloton-0", rider_ids: ["a"] } };
+  const later = riderWhy(input("a", 12, [crash, back, split(75, "climb_deficit")], storyOf([m, splitMoment(75, "climb_deficit")], behind)));
+  assert.equal(later.main, "dropPace");
   const inBunch = finishAt(100, [["finale-winner-0", ["w"], 0, false], ["finale-tier-1", ["a"], 4, true, 15]]);
   const sprint = moment("sprint_decided", 100, { winner_rider_id: "w" });
   assert.equal(riderWhy(input("a", 12, [crash], storyOf([m, sprint], inBunch))).main, "bunchBehindSprint");
@@ -184,7 +191,7 @@ test("kontakten slukket: 'Your day' tegner ingen knap og spoerger kun flaget", (
   const tab = read("../components/race/stagePageV2/StageTabV2.tsx");
   assert.match(card, /why: whyRows = null/);
   assert.match(card, /\{rowWhy && <RiderWhyButton/);
-  assert.match(tab, /whyEnabled \? \{/);
+  assert.match(tab, /whyEnabled && !storyError \? \{/);
   assert.match(tab, /\} : null\), \[whyEnabled/);
   const flag = read("./riderWhyFlag.ts");
   assert.match(flag, /useState\(false\)/);

@@ -6,14 +6,15 @@ import { fetchPlayerFeatureFlags } from "./playerFeatureFlags.js";
 
 export const RIDER_WHY_FLAG_KEY = "rider_why_button";
 
-export function useRiderWhyEnabled(): boolean {
+export function useRiderWhyEnabled(active = true): boolean {
   const [enabled, setEnabled] = useState(false);
   useEffect(() => {
+    if (!active) return undefined;
     let alive = true;
     fetchPlayerFeatureFlags().then((flags: Record<string, boolean>) => {
       if (alive) setEnabled(flags?.[RIDER_WHY_FLAG_KEY] === true);
     });
     return () => { alive = false; };
-  }, []);
+  }, [active]);
   return enabled;
 }

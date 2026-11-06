@@ -28,9 +28,10 @@ export function RiderWhyButton({ open, panelId, name, onToggle }: { open: boolea
       aria-controls={panelId}
       aria-label={t("stagePageV2.why.buttonAria", { name })}
       onClick={onToggle}
-      className="min-h-11 flex-none rounded-cz px-1.5 font-data text-xs font-semibold text-cz-accent-t hover:underline"
+      className="min-h-11 min-w-11 flex-none rounded-cz px-1.5 font-data sm:min-w-0 text-xs font-semibold text-cz-accent-t hover:underline"
     >
-      {t("stagePageV2.why.button")}
+      <span aria-hidden="true" className="sm:hidden">?</span>
+      <span className="hidden sm:inline">{t("stagePageV2.why.button")}</span>
     </button>
   );
 }
