@@ -87,10 +87,6 @@
       "area": "race-engine"
     },
     {
-      "issue": 6938,
-      "area": "race-engine"
-    },
-    {
       "issue": 6984,
       "area": "race-engine"
     },
@@ -1004,6 +1000,11 @@
     {
       "issue": 7783,
       "reason": "Ejer-go 6/11: bølge efter til-dørs-tjek",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 2176,
+      "reason": "Ejer-go 6/11: designes og går på beta",
       "since": "2026-11-06"
     }
   ]

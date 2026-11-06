@@ -30,6 +30,8 @@
 //   6. Loefte-tjek    - roadmap_items status=active uden tekst-match i
 //                       MASTERPLAN.md (Supabase, samme env som #1).
 //   7. Budget         - scripts/check-agent-token-hygiene.ps1 FAIL/WARN.
+//   8. Spillersignal  - kun tal om hvad spillerne stemmer og melder (#7783);
+//                       samme Supabase-env som #1 og #6, aldrig navne/user_id.
 //
 // CAVEATS (skriv ALDRIG disse som loest - se ogsaa outputtets egne noter):
 //   - Sektion 5+6 er TEKST-heuristik (regex/ord-match), ikke semantisk
@@ -444,6 +446,284 @@ export function formatBudgetSection({ ok, output }) {
 }
 
 // ---------------------------------------------------------------------------
+// 8. Spillersignal (#7783)
+// ---------------------------------------------------------------------------
+//
+// WHY: stemmer, fejlmeldinger og feedback ligger i databasen, men blev kun
+// laest ved haandkraft. Sektionen giver ejeren et fast, sammenligneligt signal
+// hver uge. Rapporten havner i det offentlige docs/audits/, saa output er KUN
+// tal og offentlige punkt-titler: aldrig user_id, navne, e-mails eller tekst
+// pr. spiller. Ingen ny tabel eller view: alt beregnes her af read-only
+// laesninger, saa der ikke kraeves en migration.
+//
+// Laeser kun; aendrer aldrig noget i databasen.
+
+export const SIGNAL_MIN_VOTERS = 10;
+export const SIGNAL_MIN_VOTES_PER_VOTER = 10;
+export const SIGNAL_OUTSIDE_PLAN_LIFT = 0.5;
+const SIGNAL_ITEM_STATUSES = new Set(['active', 'planned', 'in_progress']);
+const DAY_MS = 24 * 60 * 60 * 1000;
+const PAGE_SIZE = 1000;
+
+async function fetchAllRows(buildQuery) {
+  const rows = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await buildQuery().range(from, from + PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    const page = data ?? [];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) break;
+  }
+  return rows;
+}
+
+/**
+ * Henter raa raekker til spillersignalet. Vaelger kun de kolonner der skal
+ * til; e-mail, brugernavne og beskedtekster hentes aldrig.
+ * @param {string} url
+ * @param {string} key
+ */
+export async function fetchPlayerSignalData(url, key) {
+  const { createClient } = await import('@supabase/supabase-js');
+  const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const [users, teams, votes, items, issues, reports] = await Promise.all([
+    fetchAllRows(() => db.from('users').select('id,role,last_seen').order('id')),
+    fetchAllRows(() => db.from('teams').select('id,user_id,is_ai,is_test_account,is_bank').order('id')),
+    fetchAllRows(() => db.from('roadmap_votes').select('id,item_id,user_id,importance_score,created_at,updated_at').not('importance_score', 'is', null).order('id')),
+    fetchAllRows(() => db.from('roadmap_items').select('id,issue_ref,title_da,title_en,status,approved,created_at').order('id')),
+    fetchAllRows(() => db.from('known_issues').select('id,issue_ref,title_da,title_en,status,published').order('id')),
+    fetchAllRows(() => db.from('known_issue_reports').select('issue_id,user_id').order('issue_id').order('user_id')),
+  ]);
+  const { count, error } = await db.from('player_feedback').select('id', { count: 'exact', head: true }).eq('status', 'new');
+  if (error) throw new Error(`player_feedback: ${error.message}`);
+  return { users, teams, votes, items, issues, reports, feedbackNew: count ?? 0 };
+}
+
+function round2(n) {
+  return Math.round(n * 100) / 100;
+}
+
+function mean(values) {
+  return values.reduce((a, b) => a + b, 0) / values.length;
+}
+
+/**
+ * Ren beregning (ingen I/O). Spejler det foreslaaede SQL-view: en stemmes
+ * "loeft" er afstanden til stemmerens eget gennemsnit, saa en haard og en
+ * venlig stemmer vejer ens. Kun aktive managere (sidst set inden for 7 dage,
+ * ikke admin/AI/test/bank) tael, og kun stemmere med nok stemmer til et
+ * paalideligt eget gennemsnit.
+ * @param {object} data raa raekker fra fetchPlayerSignalData
+ * @param {Date} now
+ * @param {Set<number>} masterplanNumbers issue-numre nævnt i MASTERPLAN.md
+ */
+export function computePlayerSignal(data, now, masterplanNumbers = new Set()) {
+  const cut7 = now.getTime() - 7 * DAY_MS;
+  const cut30 = now.getTime() - 30 * DAY_MS;
+
+  const eligibleTeamUsers = new Set(
+    data.teams
+      .filter((t) => t.user_id && !t.is_ai && !t.is_test_account && !t.is_bank)
+      .map((t) => t.user_id),
+  );
+  const eligibleUsers = data.users.filter((u) => eligibleTeamUsers.has(u.id) && u.role !== 'admin');
+  const active7 = new Set(
+    eligibleUsers.filter((u) => u.last_seen && new Date(u.last_seen).getTime() >= cut7).map((u) => u.id),
+  );
+
+  const votes = data.votes.filter((v) => active7.has(v.user_id) && Number.isFinite(Number(v.importance_score)));
+  const votesByUser = new Map();
+  for (const v of votes) {
+    if (!votesByUser.has(v.user_id)) votesByUser.set(v.user_id, []);
+    votesByUser.get(v.user_id).push(v);
+  }
+
+  const voted = (v, cut) => new Date(v.updated_at || v.created_at).getTime() >= cut;
+  const voters7 = [...votesByUser.entries()].filter(([, vs]) => vs.some((v) => voted(v, cut7))).length;
+  const voters30 = [...votesByUser.entries()].filter(([, vs]) => vs.some((v) => voted(v, cut30))).length;
+  const counts = [...votesByUser.values()].map((vs) => vs.length).sort((a, b) => b - a);
+  const totalVotes = counts.reduce((a, b) => a + b, 0);
+  const top5Share = totalVotes === 0 ? 0 : counts.slice(0, 5).reduce((a, b) => a + b, 0) / totalVotes;
+
+  const voterMean = new Map();
+  for (const [uid, vs] of votesByUser) {
+    if (vs.length >= SIGNAL_MIN_VOTES_PER_VOTER) voterMean.set(uid, mean(vs.map((v) => Number(v.importance_score))));
+  }
+
+  const rowsByItem = new Map();
+  for (const v of votes) {
+    if (!voterMean.has(v.user_id)) continue;
+    const score = Number(v.importance_score);
+    if (!rowsByItem.has(v.item_id)) rowsByItem.set(v.item_id, []);
+    rowsByItem.get(v.item_id).push({
+      score,
+      lift: score - voterMean.get(v.user_id),
+      isNew: new Date(v.created_at).getTime() > cut7,
+      unchangedSinceCut: new Date(v.updated_at || v.created_at).getTime() <= cut7,
+    });
+  }
+
+  const itemStats = [];
+  for (const item of data.items) {
+    if (!SIGNAL_ITEM_STATUSES.has(item.status) || item.approved !== true) continue; // kladder er ikke offentlige
+    const rows = rowsByItem.get(item.id) || [];
+    const n = rows.length;
+    const lifts = rows.map((r) => r.lift);
+    const liftAvg = n ? mean(lifts) : null;
+    let se = null;
+    if (n >= 2) {
+      const variance = lifts.reduce((a, l) => a + (l - liftAvg) ** 2, 0) / (n - 1);
+      se = Math.sqrt(variance / n);
+    }
+    const prev = rows.filter((r) => r.unchangedSinceCut);
+    const avg = n ? mean(rows.map((r) => r.score)) : null;
+    const prevAvg = prev.length ? mean(prev.map((r) => r.score)) : null;
+    itemStats.push({
+      id: item.id,
+      issueRef: item.issue_ref ?? null,
+      title: item.title_da || item.title_en || '(uden titel)',
+      titleEn: item.title_en || '',
+      voters: n,
+      avg: avg === null ? null : round2(avg),
+      high: rows.filter((r) => r.score >= 5).length,
+      low: rows.filter((r) => r.score <= 2).length,
+      lift: liftAvg === null ? null : round2(liftAvg),
+      se: se === null ? null : round2(se),
+      newVotes7d: rows.filter((r) => r.isNew).length,
+      enough: n >= SIGNAL_MIN_VOTERS,
+      prevVoters: prev.length,
+      moved: avg !== null && prevAvg !== null && prev.length >= SIGNAL_MIN_VOTERS ? round2(avg - prevAvg) : null,
+    });
+  }
+
+  const ranked = itemStats.filter((s) => s.enough).sort((a, b) => b.lift - a.lift || b.voters - a.voters);
+  const top = ranked.slice(0, 10);
+  const bottom = ranked.slice(10).slice(-5).reverse();
+  const thin = itemStats.filter((s) => !s.enough && s.voters > 0).sort((a, b) => b.voters - a.voters);
+  const movedMost = ranked
+    .filter((s) => s.moved !== null && s.moved !== 0)
+    .sort((a, b) => Math.abs(b.moved) - Math.abs(a.moved))
+    .slice(0, 5);
+  const outsidePlan = ranked.filter((s) => {
+    if (s.lift < SIGNAL_OUTSIDE_PLAN_LIFT) return false;
+    if (s.issueRef != null) return !masterplanNumbers.has(Number(s.issueRef));
+    return true; // uden issue_ref kan planhenvisning ikke afgoeres: vis og lad ejeren tjekke
+  });
+
+  const reportUsers = new Map();
+  for (const r of data.reports) {
+    if (!reportUsers.has(r.issue_id)) reportUsers.set(r.issue_id, new Set());
+    reportUsers.get(r.issue_id).add(r.user_id);
+  }
+  const openIssues = data.issues
+    .filter((i) => i.published && !['fixed', 'dismissed'].includes(i.status))
+    .map((i) => ({
+      issueRef: i.issue_ref ?? null,
+      title: i.title_da || i.title_en || '(uden titel)',
+      status: i.status,
+      reports: reportUsers.get(i.id)?.size ?? 0,
+    }))
+    .sort((a, b) => b.reports - a.reports);
+
+  return {
+    coverage: {
+      eligible: eligibleUsers.length,
+      active7: active7.size,
+      voted7: voters7,
+      voted30: voters30,
+      votes: totalVotes,
+      top5SharePct: Math.round(top5Share * 100),
+      calibratedVoters: voterMean.size,
+    },
+    top,
+    bottom,
+    thinCount: thin.length,
+    thin: thin.slice(0, 10),
+    movedMost,
+    outsidePlan,
+    openIssues: { total: openIssues.length, withReports: openIssues.filter((i) => i.reports > 0).length, top: openIssues.filter((i) => i.reports > 0).slice(0, 5) },
+    feedbackNew: data.feedbackNew ?? 0,
+  };
+}
+
+function itemLabel(s) {
+  const ref = s.issueRef != null ? `\`#${s.issueRef}\` ` : '';
+  return `${ref}${sanitizeTitle(s.title)}`;
+}
+
+function signed(n) {
+  if (n === null || n === undefined) return '—';
+  return `${n > 0 ? '+' : ''}${n.toFixed(2)}`;
+}
+
+function itemTable(rows) {
+  const lines = ['| Punkt | Stemmere | Snit | Høje | Lave | Løft | ±se | Nye 7d |', '|---|---|---|---|---|---|---|---|'];
+  for (const s of rows) {
+    lines.push(`| ${itemLabel(s)} | ${s.voters} | ${s.avg?.toFixed(2) ?? '—'} | ${s.high} | ${s.low} | ${signed(s.lift)} | ${s.se?.toFixed(2) ?? '—'} | ${s.newVotes7d} |`);
+  }
+  return lines;
+}
+
+export function formatPlayerSignalSection(signal, hasSupabaseEnv = true) {
+  if (!hasSupabaseEnv) {
+    return 'SUPABASE_URL/SUPABASE_SERVICE_KEY ikke sat — sektionen sprunget over (samme env som sektion 1).';
+  }
+  const c = signal.coverage;
+  const lines = [];
+  lines.push('Kun tal og offentlige punkt-titler. Løft = stemmens afstand fra stemmerens eget gennemsnit; kun aktive managere (sidst set inden for 7 dage) med mindst ' + `${SIGNAL_MIN_VOTES_PER_VOTER} stemmer tæller. Punkter med under ${SIGNAL_MIN_VOTERS} stemmere rangeres ikke.`);
+  lines.push('');
+  lines.push('### Dækning');
+  lines.push(`- Aktive managere sidste 7 dage: ${c.active7} af ${c.eligible}.`);
+  lines.push(`- Heraf har stemt (nyt eller ændret) sidste 7 dage: ${c.voted7}, sidste 30 dage: ${c.voted30}.`);
+  lines.push(`- ${c.votes} stemmer fra aktive. De 5 mest stemmende står for ${c.top5SharePct} %. ${c.calibratedVoters} stemmere har nok stemmer til løft.`);
+  lines.push('');
+  lines.push('### Top 10 (mindst ' + `${SIGNAL_MIN_VOTERS} stemmere)`);
+  lines.push(signal.top.length ? itemTable(signal.top).join('\n') : 'Ingen punkter har nok stemmere endnu.');
+  lines.push('');
+  lines.push('### Bund 5');
+  lines.push(signal.bottom.length ? itemTable(signal.bottom).join('\n') : 'Ingen punkter uden for top 10 har nok stemmere.');
+  lines.push('');
+  lines.push(`### Nye punkter under ${SIGNAL_MIN_VOTERS} stemmere (ikke rangeret)`);
+  if (signal.thinCount === 0) {
+    lines.push('Ingen.');
+  } else {
+    lines.push(`${signal.thinCount} punkt(er) med stemmer, men for få til at rangere. De ${signal.thin.length} med flest:`);
+    lines.push('');
+    lines.push(itemTable(signal.thin).join('\n'));
+  }
+  lines.push('');
+  lines.push('### Flyttet mest siden sidste uge');
+  lines.push('Ændring i snit mod stemmer, der er uændret siden for 7 dage siden. Ingen stemmehistorik gemmes, så tallet er en tilnærmelse.');
+  lines.push('');
+  if (signal.movedMost.length === 0) {
+    lines.push('Ingen punkter med nok stemmere har flyttet sig.');
+  } else {
+    for (const s of signal.movedMost) lines.push(`- ${itemLabel(s)}: ${signed(s.moved)} (${s.voters} stemmere)`);
+  }
+  lines.push('');
+  lines.push('### Åbne fejl spillerne har meldt');
+  const oi = signal.openIssues;
+  lines.push(`${oi.total} åbne, publicerede fejl, ${oi.withReports} med mindst én spillermelding.`);
+  if (oi.top.length) {
+    lines.push('');
+    for (const i of oi.top) lines.push(`- ${itemLabel(i)}: ${i.reports} spiller(e) har meldt den`);
+  }
+  lines.push('');
+  lines.push('### Ubehandlet feedback');
+  lines.push(`${signal.feedbackNew} feedback-besked(er) med status \`new\`.`);
+  lines.push('');
+  lines.push(`### Høje punkter uden for MASTERPLAN (løft over +${SIGNAL_OUTSIDE_PLAN_LIFT.toFixed(1)}, mindst ${SIGNAL_MIN_VOTERS} stemmere)`);
+  if (signal.outsidePlan.length === 0) {
+    lines.push('Ingen. ✅');
+  } else {
+    lines.push('Punkt uden issue-nummer kan ikke krydstjekkes og vises, så ejeren kan se efter.');
+    lines.push('');
+    for (const s of signal.outsidePlan) lines.push(`- ${itemLabel(s)}: løft ${signed(s.lift)}, ${s.voters} stemmere`);
+  }
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
 // CLI
 // ---------------------------------------------------------------------------
 
@@ -485,6 +765,7 @@ export async function generateReport(opts, deps = {}) {
   const execPwsh = deps.execPwsh || defaultExecPwsh;
   const readFile = deps.readFile || ((p) => readFileSync(p, 'utf8'));
   const fetchRoadmap = deps.fetchActiveRoadmapItems || fetchActiveRoadmapItems;
+  const fetchSignal = deps.fetchPlayerSignalData || fetchPlayerSignalData;
 
   const { repo, now, days } = opts;
   const hasSupabaseEnv = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY);
@@ -601,6 +882,22 @@ export async function generateReport(opts, deps = {}) {
   const budgetResult = runTokenHygieneCheck(execPwsh);
   lines.push(formatBudgetSection(budgetResult));
   lines.push('');
+
+  // 8. Spillersignal
+  lines.push('## 8. Spillersignal');
+  if (hasSupabaseEnv) {
+    try {
+      const data = await fetchSignal(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+      lines.push(formatPlayerSignalSection(computePlayerSignal(data, now, masterplanNumbers), true));
+    } catch (err) {
+      lines.push(`Spillersignal kunne ikke hentes: ${err.message}`);
+      notes.push(`Spillersignal fejlede: ${err.message}`);
+    }
+  } else {
+    lines.push(formatPlayerSignalSection(null, false));
+  }
+  lines.push('');
+  notes.push("Spillersignal (sektion 8) er kun tal. 'Flyttet mest' er en tilnaermelse, fordi stemmehistorik ikke gemmes.");
 
   if (notes.length > 0) {
     lines.push('## Forbehold under koerslen');
