@@ -11,14 +11,14 @@ type RiderMark = {
 };
 
 /** Varslet for en rytter på en etape, med det indsatsvalg der står lige nu. */
-export function showsTimeLimitRisk(rider: RiderMark | null | undefined, stageNumber: number, effort: string): boolean {
-  if (rider?.abandoned || rider?.time_limit_risk?.[stageNumber] !== true) return false;
+export function showsTimeLimitRisk(rider: RiderMark | null | undefined, stageNumber: number | null | undefined, effort: string): boolean {
+  if (stageNumber == null || rider?.abandoned || rider?.time_limit_risk?.[stageNumber] !== true) return false;
   return !(TIME_LIMIT_SAFE_EFFORTS as readonly string[]).includes(effort);
 }
 
 /** Forklaringen efter etapen: han røg ud på netop denne etape af træthed. */
-export function showsTimeLimitOut(rider: RiderMark | null | undefined, stageNumber: number): boolean {
-  return rider?.time_limit_out_stage === stageNumber;
+export function showsTimeLimitOut(rider: RiderMark | null | undefined, stageNumber: number | null | undefined): boolean {
+  return stageNumber != null && rider?.time_limit_out_stage === stageNumber;
 }
 
 /**
