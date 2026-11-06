@@ -1,6 +1,7 @@
 // Ved ikke på /roadmap (#7788). Guards: ét Ved ikke pr. punkt på Stem og Plan,
 // tal vises ikke, et valgt tal slukker knappen, punktet er besvaret ved næste
 // besøg, og 390 px uden vandret scroll.
+import type { Locator, Page } from "@playwright/test";
 import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, corsHeaders, evidenceShotPath, TEST_USER } from "./fixtures.js";
 
@@ -11,7 +12,7 @@ const IDEA_TITLE = "Eksempel på en idé.";
 const PLANNED_TITLE = "Eksempel på et planlagt punkt.";
 const OTHER_IDEA_TITLE = "Eksempel på en anden idé.";
 
-const roadmapItem = (id, status, title, sortOrder) => ({
+const roadmapItem = (id: string, status: string, title: string, sortOrder: number) => ({
   id, engine: "races", sort_order: sortOrder, title_en: title, title_da: title, approved: true, status,
   horizon: "this_season", beta_since: null, beta_soon: false, live_soon: false,
   created_at: "2026-10-01T08:00:00Z", shipped_at: null, issue_ref: null,
@@ -21,9 +22,18 @@ const ITEMS = [
   roadmapItem(IDEA_ID, "active", IDEA_TITLE, 20),
   roadmapItem(OTHER_IDEA_ID, "active", OTHER_IDEA_TITLE, 30),
 ];
-const dontKnowRow = (itemId) => ({ item_id: itemId, idea_score: null, importance_score: null, user_id: TEST_USER.id });
+const dontKnowRow = (itemId: string) => ({ item_id: itemId, idea_score: null, importance_score: null, user_id: TEST_USER.id });
 
-async function open(page, { tab, votes = [], posts = [], fail = false, onlyUnrated = false }) {
+type VotePost = Record<string, unknown>;
+interface OpenOptions {
+  tab: string;
+  votes?: ReturnType<typeof dontKnowRow>[];
+  posts?: VotePost[];
+  fail?: boolean;
+  onlyUnrated?: boolean;
+}
+
+async function open(page: Page, { tab, votes = [], posts = [], fail = false, onlyUnrated = false }: OpenOptions) {
   await stabilizePage(page);
   await installNetworkMocks(page);
   await page.route("**/rest/v1/roadmap_items*", route => json(route, ITEMS));
@@ -43,13 +53,13 @@ async function open(page, { tab, votes = [], posts = [], fail = false, onlyUnrat
   await page.goto(`/roadmap?tab=${tab}`);
 }
 
-const row = (page, title) => page.getByRole("listitem").filter({ hasText: title });
-const dontKnow = (scope) => scope.getByRole("button", { name: "Ved ikke" });
+const row = (page: Page, title: string) => page.getByRole("listitem").filter({ hasText: title });
+const dontKnow = (scope: Page | Locator) => scope.getByRole("button", { name: "Ved ikke" });
 
-const shot = (page, name) => page.screenshot({ path: evidenceShotPath(`pr-screens/7788/${name}.png`) });
+const shot = (page: Page, name: string) => page.screenshot({ path: evidenceShotPath(`pr-screens/7788/${name}.png`) });
 
 test("Stem: Ved ikke gemmer én række uden tal og slukker kladden", async ({ page }) => {
-  const posts = [];
+  const posts: VotePost[] = [];
   await open(page, { tab: "vote", posts });
   const idea = row(page, IDEA_TITLE);
 
@@ -75,7 +85,7 @@ test("Stem: Ved ikke gemmer én række uden tal og slukker kladden", async ({ pa
 });
 
 test("Stem: et valgt tal slukker Ved ikke, og begge tal erstatter det", async ({ page }) => {
-  const posts = [];
+  const posts: VotePost[] = [];
   await open(page, { tab: "vote", posts, votes: [dontKnowRow(IDEA_ID)] });
   const idea = row(page, IDEA_TITLE);
   await expect(dontKnow(idea)).toHaveAttribute("aria-pressed", "true");
@@ -89,7 +99,7 @@ test("Stem: et valgt tal slukker Ved ikke, og begge tal erstatter det", async ({
 });
 
 test("Plan: Ved ikke virker på et planlagt punkt og kan skiftes til et tal", async ({ page }) => {
-  const posts = [];
+  const posts: VotePost[] = [];
   await open(page, { tab: "plan", posts });
   const planned = row(page, PLANNED_TITLE);
 
@@ -123,14 +133,14 @@ test("Fra desktop står Ved ikke på linje med skalaen", async ({ page }) => {
   const idea = row(page, IDEA_TITLE);
   const scale = await idea.getByRole("radiogroup", { name: "God idé?" }).boundingBox();
   const button = await dontKnow(idea).boundingBox();
-  expect(Math.abs(button.x - scale.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs((button?.x ?? 0) - (scale?.x ?? 1000))).toBeLessThanOrEqual(1);
   await shot(page, "stem-desktop");
 });
 
 test("Admin ser antallet pr. punkt og samlet, og et punkt med lutter Ved ikke står på Stemmer", async ({ page }) => {
   await stabilizePage(page);
   await installNetworkMocks(page);
-  const score = (id, title, votes, dontKnowCount) => ({
+  const score = (id: string, title: string, votes: number, dontKnowCount: number) => ({
     item_id: id, engine: "races", approved: true, title_en: title, title_da: title, status: "planned", horizon: "next",
     sort_order: 10, votes, avg_importance: votes ? 4 : null, steering_score: null, sd_importance: 0, dont_know: dontKnowCount,
   });
@@ -169,7 +179,7 @@ test.describe("390 px", () => {
     await shot(page, "stem-390-ved-ikke");
 
     const box = await dontKnow(idea).boundingBox();
-    expect(box.height).toBeGreaterThanOrEqual(34);
+    expect(box?.height).toBeGreaterThanOrEqual(34);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(0);
 
