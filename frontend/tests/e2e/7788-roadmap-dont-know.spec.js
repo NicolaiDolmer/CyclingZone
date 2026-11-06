@@ -1,10 +1,8 @@
 // Ved ikke på /roadmap (#7788). Guards: ét Ved ikke pr. punkt på Stem og Plan,
 // tal vises ikke, et valgt tal slukker knappen, punktet er besvaret ved næste
 // besøg, og 390 px uden vandret scroll.
-//
-// PR_SCREEN_DIR=<mappe> gemmer billederne til PR'en.
 import { test, expect } from "./e2e-base.js";
-import { installNetworkMocks, login, stabilizePage, json, corsHeaders, TEST_USER } from "./fixtures.js";
+import { installNetworkMocks, login, stabilizePage, json, corsHeaders, evidenceShotPath, TEST_USER } from "./fixtures.js";
 
 const IDEA_ID = "7788-idea";
 const PLANNED_ID = "7788-planned";
@@ -48,9 +46,7 @@ async function open(page, { tab, votes = [], posts = [], fail = false, onlyUnrat
 const row = (page, title) => page.getByRole("listitem").filter({ hasText: title });
 const dontKnow = (scope) => scope.getByRole("button", { name: "Ved ikke" });
 
-async function shot(page, name) {
-  if (process.env.PR_SCREEN_DIR) await page.screenshot({ path: `${process.env.PR_SCREEN_DIR}/${name}.png` });
-}
+const shot = (page, name) => page.screenshot({ path: evidenceShotPath(`pr-screens/7788/${name}.png`) });
 
 test("Stem: Ved ikke gemmer én række uden tal og slukker kladden", async ({ page }) => {
   const posts = [];
