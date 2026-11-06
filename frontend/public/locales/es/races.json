@@ -1161,7 +1161,7 @@
         "neutral": "Leer la carrera",
         "let_go": "Dejar la persecución a otros"
       },
-      "gcNote": "El equipo puede dar una respuesta limitada a una amenaza seria en la general con sus ciclistas libres.",
+      "gcNote": "El equipo reacciona a una amenaza seria en la general con sus ciclistas libres, salvo que dejes la persecución a otros.",
       "breakNote": "El jefe de filas, el jefe de filas de sprint y el gregario solo van a por la escapada de la mañana si está seleccionado Intentar la escapada."
     },
     "breakaway": {

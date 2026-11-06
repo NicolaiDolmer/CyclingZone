@@ -1144,7 +1144,7 @@
         "neutral": "Read the race",
         "let_go": "Leave the chase to others"
       },
-      "gcNote": "The team can make a limited response to a serious GC threat with its free riders.",
+      "gcNote": "The team reacts to a serious GC threat with its free riders, unless you leave the chase to others.",
       "breakNote": "Captain, sprint captain and domestique only go for the morning break with Try the break selected."
     },
     "breakaway": {
