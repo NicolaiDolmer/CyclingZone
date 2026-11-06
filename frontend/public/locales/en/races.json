@@ -888,6 +888,10 @@
       "bodyAt": "You pressed Train now at {time}. Riders who trained today can't race today's race.",
       "body": "Riders who trained today can't race today's race.",
       "rider": "Trained today",
+      "titleEarlier": "Locked.",
+      "bodyEarlierAt": "You pressed Train now {day} at {time}. Riders who trained on one of the race's days can't race it.",
+      "bodyEarlier": "Riders who trained on one of the race's days can't race it.",
+      "riderEarlier": "Trained earlier",
       "columnLocked": "Locked"
     },
     "saving": "Saving…",

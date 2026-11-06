@@ -905,6 +905,10 @@
       "bodyAt": "Je drukte om {time} op Nu trainen. Renners die vandaag hebben getraind, kunnen de koers van vandaag niet rijden.",
       "body": "Renners die vandaag hebben getraind, kunnen de koers van vandaag niet rijden.",
       "rider": "Vandaag getraind",
+      "titleEarlier": "Vergrendeld.",
+      "bodyEarlierAt": "Je drukte {day} om {time} op Nu trainen. Renners die op een van de koersdagen hebben getraind, kunnen de koers niet rijden.",
+      "bodyEarlier": "Renners die op een van de koersdagen hebben getraind, kunnen de koers niet rijden.",
+      "riderEarlier": "Eerder getraind",
       "columnLocked": "Vergrendeld"
     },
     "saving": "Opslaan…",

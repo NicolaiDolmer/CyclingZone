@@ -905,6 +905,10 @@
       "bodyAt": "Pulsaste Entrenar ahora a las {time}. Los ciclistas que han entrenado hoy no pueden correr la carrera de hoy.",
       "body": "Los ciclistas que han entrenado hoy no pueden correr la carrera de hoy.",
       "rider": "Entrenó hoy",
+      "titleEarlier": "Bloqueado.",
+      "bodyEarlierAt": "Pulsaste Entrenar ahora {day} a las {time}. Los ciclistas que entrenaron en uno de los días de la carrera no pueden correrla.",
+      "bodyEarlier": "Los ciclistas que entrenaron en uno de los días de la carrera no pueden correrla.",
+      "riderEarlier": "Entrenó antes",
       "columnLocked": "Bloqueado"
     },
     "saving": "Guardando…",

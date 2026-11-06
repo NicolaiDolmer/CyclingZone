@@ -888,6 +888,10 @@
       "bodyAt": "Du trykkede Træn nu kl. {time}. Ryttere der trænede i dag kan ikke køre dagens løb.",
       "body": "Ryttere der trænede i dag kan ikke køre dagens løb.",
       "rider": "Trænede i dag",
+      "titleEarlier": "Låst.",
+      "bodyEarlierAt": "Du trykkede Træn nu {day} kl. {time}. Ryttere der trænede på en af løbets dage kan ikke køre løbet.",
+      "bodyEarlier": "Ryttere der trænede på en af løbets dage kan ikke køre løbet.",
+      "riderEarlier": "Trænede tidligere",
       "columnLocked": "Låst"
     },
     "saving": "Gemmer…",

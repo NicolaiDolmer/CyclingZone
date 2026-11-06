@@ -905,6 +905,10 @@
       "bodyAt": "Tu as appuyé sur S'entraîner maintenant à {time}. Les coureurs qui se sont entraînés aujourd'hui ne peuvent pas disputer la course du jour.",
       "body": "Les coureurs qui se sont entraînés aujourd'hui ne peuvent pas disputer la course du jour.",
       "rider": "Entraîné aujourd'hui",
+      "titleEarlier": "Verrouillé.",
+      "bodyEarlierAt": "Tu as appuyé sur S'entraîner maintenant {day} à {time}. Les coureurs qui se sont entraînés un des jours de la course ne peuvent pas la disputer.",
+      "bodyEarlier": "Les coureurs qui se sont entraînés un des jours de la course ne peuvent pas la disputer.",
+      "riderEarlier": "Entraîné plus tôt",
       "columnLocked": "Verrouillé"
     },
     "saving": "Enregistrement…",
