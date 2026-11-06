@@ -58,7 +58,7 @@ export default function RaceStoryCard({ story, profile, series, climbs, cast, ti
 
   if (timeTrial) {
     return (
-      <Section aria-label={title}>
+      <Section data-race-section="race_story" aria-label={title}>
         <h2 className="m-0 mb-3 font-data text-[15px] font-semibold text-cz-1">{title}</h2>
         {routeBody}
         <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-cz-border pt-3">
@@ -297,7 +297,7 @@ function StorySection({ story, lines, cast, km, onJump, ownOut, narrative }: { s
           <SplitTable rows={rows} cast={cast} me={me} precise={story.precise_times} />
         </div>
         {report.length > 0 && (
-          <div>
+          <div data-race-section="report">
             <h3 className="m-0 mb-1 font-data text-3xs font-semibold uppercase tracking-[.16em] text-cz-3">{t("stagePageV2.story.report.title")}</h3>
             <p className="m-0 max-w-[72ch] text-[15px] leading-relaxed text-cz-1">
               {report.map((s) => t(`stagePageV2.story.report.${s.key}`, s.params)).join(" ")}
