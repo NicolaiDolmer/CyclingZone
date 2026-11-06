@@ -7,6 +7,8 @@ import { randomUUID, createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { admissionOwnerProcess, assertWaveOwnership, ownershipSnapshot } from './wave-ownership.mjs';
+import { allChildrenObservedStopped, registeredChildProcesses } from './wave-child-lifecycle.mjs';
+import { restoredChildStop } from './wave-windows-job.mjs';
 import { measureBootIdentity, sameBoot } from './wave-boot-identity.mjs';
 import { assertLaneCount, hostLaneCap } from './wave-capacity.mjs';
 import { loadBuildStop, assertBuildStop, logBrandAdmissions, brandLogPath } from './lib/build-stop.mjs';
@@ -402,9 +404,15 @@ function updateWaveLocked(dir, waveId, transform) {
   const identity = JSON.stringify([wave.waveId, wave.owner, wave.runtime, wave.pid, wave.bootId, wave.ownerProcess, wave.admissionToolUseId]);
   const dispatched = wave.dispatchStarted === true;
   const boundRun = wave.workflowRunId;
+  const registrationClosed = wave.registrationClosed === true;
+  const childKeys = (wave.children || []).map(child => child.key).sort();
   const next = transform(wave);
   if (JSON.stringify([next.waveId, next.owner, next.runtime, next.pid, next.bootId, next.ownerProcess, next.admissionToolUseId]) !== identity) throw Error('Cannot change wave ownership');
   if (boundRun && next.workflowRunId !== boundRun) throw Error('Cannot change admitted workflow run');
+  if (registrationClosed) {
+    if (next.registrationClosed !== true) throw Error('Cannot reopen closed child registration');
+    if (JSON.stringify((next.children || []).map(child => child.key).sort()) !== JSON.stringify(childKeys)) throw Error('Cannot add or remove children after registration closed');
+  }
   if (dispatched && next.dispatchStarted !== true) throw Error('Cannot erase wave dispatch history');
   const target = path.join(dir, 'wave-active.json');
   const temporary = path.join(dir, `.wave-${waveId}-${randomUUID()}.tmp`);
@@ -438,6 +446,8 @@ export async function acquireWave(dir, request, readPrs = getOpenPrs, readIssue 
   assertPlayerReportEvidence(request.tracks, readIssue);
   if (!['claude', 'codex'].includes(request.runtime) || !request.owner || !Number.isFinite(request.now)) throw Error('runtime, owner and now required');
   fs.mkdirSync(dir, { recursive: true });
+  // No new await on the ordinary path: admission must stay inside an idle merge callback's lock.
+  if (fs.existsSync(path.join(dir, 'wave-active.json'))) await recoverObservedWave(dir, request.now);
   const ownerProcess = admissionOwnerProcess(request.pid ?? process.pid);
   const wave = { ...request, ownerProcess, waveId: randomUUID(), startedAt: new Date(request.now).toISOString(), verifyMax: 2, state: 'admitting' };
   const file = path.join(dir, 'wave-active.json');
@@ -460,13 +470,63 @@ export async function acquireWave(dir, request, readPrs = getOpenPrs, readIssue 
   }
 }
 
+// #7554: only the registered runtime opts into observed-stop finalization.
+// Legacy/owner-tree waves keep the explicit owner/reboot recovery contract.
+export function refreshObservedChildren(dir, waveId, now, snapshot = ownershipSnapshot, attempts) {
+  return withWaveStateLock(dir, () => {
+    const wave = requireModernWave(readWave(dir));
+    if (wave.waveId !== waveId) throw Error('Wave owner mismatch; marker retained');
+    if (!wave?.registrationClosed || wave.runtime !== 'codex' || wave.processTracking !== 'registered'
+      || allChildrenObservedStopped(wave) || !(wave.children || []).some(child => child.job)) return wave;
+    const observed = snapshot();
+    registeredChildProcesses(wave, observed); // Validate before consuming any evidence.
+    const children = wave.children.map(child => restoredChildStop(child, waveId, now, observed));
+    if (JSON.stringify(children) === JSON.stringify(wave.children)) return wave;
+    return updateWaveLocked(dir, waveId, current => ({ ...current, children }));
+  }, attempts);
+}
+
+export async function recoverObservedWave(dir, now, snapshot) {
+  let wave;
+  try { wave = readWave(dir); }
+  catch (error) { if (error.code === 'ENOENT' || error instanceof SyntaxError) return { released: false }; throw error; }
+  if (!wave?.registrationClosed || wave.runtime !== 'codex' || wave.processTracking !== 'registered') return { released: false };
+  const { recoverWave, processSnapshot } = await import('./wave-recovery.mjs');
+  try {
+    wave = refreshObservedChildren(dir, wave.waveId, now, snapshot || processSnapshot, LONG_LOCK_ATTEMPTS);
+    if (!allChildrenObservedStopped(wave)) return { released: false };
+    return recoverWave(dir, { waveId: wave.waveId, owner: wave.owner, now }, snapshot);
+  } catch { return { released: false }; } // Unproven ownership/process evidence never forces recovery.
+}
+
+export function finalizeObservedWave(dir, waveId, now, snapshot = ownershipSnapshot, attempts) {
+  if (!Number.isFinite(now)) throw Error('Finalization now required');
+  return withWaveStateLock(dir, () => {
+    const wave = requireModernWave(readWave(dir));
+    if (wave.waveId !== waveId) throw Error('Wave owner mismatch; marker retained');
+    if (!allChildrenObservedStopped(wave)) return { released: false };
+    assertWaveOwnership(wave, snapshot());
+    stopWaveWatch(wave);
+    const fresh = snapshot();
+    assertWaveOwnership(wave, fresh);
+    if (registeredChildProcesses(wave, fresh).length) throw Error('Registered child or descendant still alive; marker retained');
+    if (JSON.stringify(readWave(dir)) !== JSON.stringify(wave)) throw Error('Wave changed during finalization; marker retained');
+    const evidenceDir = path.join(dir, 'waves', waveId);
+    fs.mkdirSync(evidenceDir, { recursive: true });
+    const evidence = path.join(evidenceDir, 'completion.json');
+    fs.writeFileSync(evidence, JSON.stringify({ waveId, owner: wave.owner, checkedAt: now,
+      proof: 'registered-children-closed', children: wave.children.map(({ key, pid, closedAt }) => ({ key, pid, closedAt })) }, null, 2));
+    return { ...releaseWaveLocked(dir, waveId, true, () => fresh, wave), evidence };
+  }, attempts);
+}
+
 export function releaseWave(dir, waveId, childrenStopped, snapshot = ownershipSnapshot, attempts) {
   return withWaveStateLock(dir, () => releaseWaveLocked(dir, waveId, childrenStopped, snapshot), attempts);
 }
 
 const trackRef = t => ({ issue: t?.issue, branch: t?.branch });
 
-function releaseWaveLocked(dir, waveId, childrenStopped, snapshot) {
+function releaseWaveLocked(dir, waveId, childrenStopped, snapshot, expectedWave) {
   if (!childrenStopped) throw Error('All children must be observed stopped before release');
   const wave = requireModernWave(readWave(dir));
   if (!waveId || wave.waveId !== waveId) throw Error('Wave owner mismatch; marker retained');
@@ -474,7 +534,9 @@ function releaseWaveLocked(dir, waveId, childrenStopped, snapshot) {
   // #5562: queued-but-never-taken tracks are reported, never dropped silently.
   const pendingNeverTaken = (Array.isArray(wave.pendingTracks) ? wave.pendingTracks : []).map(trackRef);
   const tracks = (Array.isArray(wave.tracks) ? wave.tracks : []).map(trackRef);
-  stopWaveWatch(wave);
+  // Observed finalization already stopped the watch before its fresh snapshot.
+  if (!expectedWave) stopWaveWatch(wave);
+  if (expectedWave && JSON.stringify(readWave(dir)) !== JSON.stringify(expectedWave)) throw Error('Wave changed during finalization; marker retained');
   fs.unlinkSync(path.join(dir, 'wave-active.json'));
   return { released: true, waveId: wave.waveId, pendingNeverTaken, tracks };
 }
@@ -875,6 +937,8 @@ async function cli() {
   const [command, ...args] = process.argv.slice(2);
   const value = flag => { const i = args.indexOf(flag); return i < 0 ? undefined : args[i + 1]; };
   const dir = value('--run-dir') || sharedRunDir(process.cwd());
+  // Not in 'hook': a hook timeout can kill the process while it holds a boot-keyed lock.
+  if (['assert-idle', 'assert-merge-allowed', 'guarded-merge'].includes(command)) await recoverObservedWave(dir, Date.now());
   if (command === 'hook') {
     const payload = JSON.parse(fs.readFileSync(0, 'utf8'));
     await handleHook(payload, dir, getOpenPrs, Date.now(), hostBootId);

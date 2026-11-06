@@ -23,6 +23,8 @@ import {
 } from "../../lib/raceSelectionDraft.js";
 import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
+import TimeLimitRiskMark from "./TimeLimitRiskMark.tsx"; // #7715
+import { selectionTimeLimitRisk } from "../../lib/timeLimitRisk7715.ts"; // #7715
 import FitBar from "../racehub/FitBar.jsx";
 import HunterExplainer from "./HunterExplainer.jsx";
 import RiderFitInsight from "./RiderFitInsight.jsx";
@@ -722,6 +724,8 @@ export default function RaceSelectionPanel({
                     )}
                     <RiderTypeBadge primaryType={rider.primaryType} secondaryType={rider.secondaryType} />
                   </div>
+                  {/* #7715: i begge visninger, ligesom ved navnet på desktop. */}
+                  {selectionTimeLimitRisk(rider, selectedStageIndex) && <div className="mt-1.5"><TimeLimitRiskMark /></div>}
                   {/* #3809: mobil-listen viser enten dagens fit/form/træthed-linje,
                       eller (viewMode="abilities") et kompakt gitter med alle 15 evner. */}
                   {viewMode === "abilities" ? (
@@ -847,6 +851,7 @@ export default function RaceSelectionPanel({
                       )}
                       {rider.overAge && <OverAgeBadge label={t("selection.overAge")} />}
                       {lockedByTrainNow && <TrainNowRiderBadge label={trainNowCopy.rider} />}
+                      {selectionTimeLimitRisk(rider, selectedStageIndex) && <TimeLimitRiskMark />}
                       {bound && (
                         <span className={`text-3xs px-2 py-0.5 rounded-full border whitespace-nowrap ${checked
                           ? "bg-cz-danger/10 text-cz-danger border-cz-danger/20"

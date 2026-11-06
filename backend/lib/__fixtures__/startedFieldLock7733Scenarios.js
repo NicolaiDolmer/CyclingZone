@@ -158,7 +158,9 @@ const NOOP_DEPS_7733 = {
 
 /** Koer en etape og returnér raekkerne til apply_stage_result og sim-runnets felt. */
 export async function runStage7733({ race = RACE_7733, stageIndex = 1, flag, extraDeps = {} } = {}) {
-  const supabase = makeSupabase7733(worldAfterStart7733({ race }), { flag });
+  // #7733: "on" betyder her et loeb der blev stemplet ved start; kontakten alene goer intet.
+  const world = worldAfterStart7733({ race });
+  const supabase = makeSupabase7733(flag === "on" ? { ...world, races: [{ ...race, started_field_lock_7733: true }] } : world, { flag });
   let rows = null;
   await atFixedClock7733(() => simulateStageByIndex({
     supabase, race, stageIndex, ...NOOP_DEPS_7733,

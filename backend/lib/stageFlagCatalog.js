@@ -122,12 +122,15 @@ export const STAGE_FLAGS = Object.freeze([
   // #7726: enkeltstart uden den ekstra terning (kun s5_profiles_v3, kun løb der ikke er startet). Seedet off;
   // kun "on" tænder, "beta" læses som off; "stop" er nødstop for løb i gang (ittNoDayRoll7726Flag.js). Ejer-only flip.
   { key: "itt_no_day_roll_7726", area: "race-engine", label: "Enkeltstart — uden den ekstra terning" },
-  // #7733: fra etape 2 afgoer pulje og trup ikke laengere hvem der er i loebet. Ikke seedet = off;
-  // kun "on" taender, "beta" laeses som off (startedFieldLock7733Flag.js). Ejer-only flip.
+  // #7733: fra etape 2 afgoer pulje og trup ikke laengere hvem der er i loebet (kun loeb der ikke er startet).
+  // Seedet off; kun "on" taender, "beta" laeses som off; "stop" er noedstop for loeb i gang. Ejer-only flip.
   { key: "started_field_lock_7733", area: "race-engine", label: "Etapeløb — startfeltet holder til mål" },
   // #7730: jagten afgøres af de hold der jager (kun s5_profiles_v3, kun løb der ikke er startet). Seedet off;
   // kun "on" tænder, "beta" læses som off; "stop" er nødstop for løb i gang (teamChase7730Flag.js). Ejer-only flip.
   { key: "team_chase_7730", area: "race-engine", label: "Jagten — afgøres af de hold der jager" },
+  // #7715: meget traette ryttere paa en haard etape risikerer tidsgraensen, med maerke foer etapen (kun s5_profiles_v3 og kun
+  // loeb der ikke er startet). Ikke seedet = off; kun "on" taender (timeLimitFatigue7715.js). Ejer-only flip.
+  { key: "time_limit_fatigue_7715", area: "race-engine", label: "Tidsgrænsen — meget trætte ryttere" },
   { key: "race_day_engine_enabled", area: "race-engine", label: "Løbsdags-motor" },
   { key: "race_finalize_resumable_enabled", area: "race-engine", label: "Genoptagelig finalisering" },
   { key: "race_notify_outbox_enabled", area: "race-engine", label: "Notify-kø — asynkron udsendelse" },

@@ -355,6 +355,13 @@ export function nextLeg(legs: StagePlanLeg[], role: StagePlanRole, route: StageP
 type OrderRider = Rec & { rider_id: string; plan?: StagePlanLeg[] | null };
 type Order = Rec & { riders?: OrderRider[] };
 
+const EFFORT_RANK: readonly StagePlanEffort[] = ["grupetto", "save", "normal", "protect", "all_out"];
+
+/** Den haardeste indsats i kaeden: det motoren regner traethed efter (#7715). */
+export function hardestPlanEffort(legs: readonly StagePlanLeg[]): StagePlanEffort {
+  return legs.map((l) => TASK_EFFORT[l.task]).reduce((a, b) => (EFFORT_RANK.indexOf(b) > EFFORT_RANK.indexOf(a) ? b : a));
+}
+
 /** Ordren med planernes felter: de gamle felter udledes af kaeden (samme regel som serveren). */
 export function withStagePlanFields<T extends Order>(order: T): T {
   return {
