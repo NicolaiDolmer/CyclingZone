@@ -666,7 +666,7 @@ export function attackCompanions(story: RaceStory, riderId: string, cast: Cast):
 function ownAttackSentence(story: RaceStory, cast: Cast, attack: StoryLine | undefined): { moment: StoryMoment; sentence: ReportSentence } | null {
   for (const m of [...story.moments].reverse()) {
     const riders = jointAttackRiders(m);
-    if (riders.length < 2 || (m.type === "finale_attack" && attack?.km === m.km && riders.length <= 2)) continue;
+    if (riders.length < 2 || (m.type === "finale_attack" && riders.length <= 2 && attack && riders.every((id) => attack.riderIds.includes(id)))) continue;
     const own = knownByRank(riders.filter((id) => cast.mine.has(id)), cast);
     const subjects = own.slice(0, own.length === riders.length ? 1 : 2);
     const companions = companionsOf(riders.filter((id) => !subjects.includes(id)), cast);

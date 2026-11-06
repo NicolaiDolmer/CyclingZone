@@ -226,6 +226,10 @@ test("#7754: faelles angreb paa nedkoersel staar efter angrebet; et baaret forsp
   // To navne: angrebs-saetningen har allerede sagt det hele.
   const told = withEvent({ direction: "descent", rider_ids: ["m1", "b1"], gained_seconds: 5 });
   assert.deepEqual(ownAttackLines(buildReport(told, curateMoments(told, c), c)), []);
+  // Codex: et andet angreb paa samme km har ikke sagt, hvem din rytter koerte med.
+  const [mineFirst, other] = [ev(90, "finale_attack", { direction: "descent", group_id: "attack-a", rider_ids: ["m1", "b1"], gained_seconds: 5, exact_km: 90, exact_time: 7800 }), ev(90, "finale_attack", { direction: "descent", group_id: "attack-b", rider_ids: ["b2"], gained_seconds: 5, exact_km: 90, exact_time: 7801 })];
+  const twoAttacks = story([...without.slice(0, finish), mineFirst, other, ...without.slice(finish)]);
+  assert.equal(ownAttackLines(buildReport(twoAttacks, curateMoments(twoAttacks, c), c)).length, 1);
   const carried = withEvent({ kind: "carried_gap_held", rider_ids: ["m1", "b1", "b2"] });
   assert.deepEqual(ownAttackLines(buildReport(carried, curateMoments(carried, c), c)), []);
 });
