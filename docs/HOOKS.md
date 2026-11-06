@@ -199,6 +199,8 @@ Installeret via `pwsh -File scripts/install-user-hooks.ps1`. Idempotent — beva
 
 **Betinget siden [#3654](https://github.com/NicolaiDolmer/CyclingZone/issues/3654).** Advarslen er **tavs** medmindre der reelt er en cross-PC-situation: en anden PC end denne skal have synket ind i `~/OneDrive/CyclingZone-context/claude-transcripts-<PC>/` eller `codex-sessions-<PC>/` indenfor de sidste 14 dage. Det er samme sibling-PC-discovery som `scripts/time-tracker/report.mjs` bruger. Gaten spejler `AGENTS.md` §LOKAL: rutinen er ikke længere en per-session-gate, kun ad hoc ved mistanke om drift.
 
+**Én gang pr. session (ejer 5/11).** Samme slags fund blokerer kun én gang pr. `session_id`. Stop fyrer efter hver tur, og en gentaget blokering vækkede en færdig session og brugte tokens. Kun en ny slags fund vises igen.
+
 Transcript-syncen kører **altid**, uafhængigt af gaten. Den er selve målingen gaten hviler på.
 
 | Env | Default | Effekt |

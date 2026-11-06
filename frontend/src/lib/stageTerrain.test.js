@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { terrainBucket, bucketCounts, topDemands, remainderWeight, TERRAIN_BUCKETS } from "./stageTerrain.js";
+import { PROFILE_TYPE_KEYS } from "./stageProfileConfig.js";
 
 test("terrainBucket: 9 profiltyper → 5 buckets (mirror af backend raceTerrain.js)", () => {
   assert.equal(terrainBucket("flat"), "flat");
@@ -12,6 +13,16 @@ test("terrainBucket: 9 profiltyper → 5 buckets (mirror af backend raceTerrain.
   assert.equal(terrainBucket("cobbles"), "cobbles");
   assert.equal(terrainBucket("itt"), "itt");
   assert.equal(terrainBucket("ttt"), "itt");
+});
+
+test("#7693 terrainBucket: alle profiltyper er mappet, kun flat/rolling er flade", () => {
+  for (const type of PROFILE_TYPE_KEYS) {
+    const flat = type === "flat" || type === "rolling";
+    assert.equal(terrainBucket(type) === "flat", flat, type);
+  }
+  assert.equal(terrainBucket("medium_mountain"), "hilly");
+  assert.equal(terrainBucket("itt_hilly"), "itt");
+  assert.equal(terrainBucket("gravel"), "cobbles");
 });
 
 test("terrainBucket: ukendt/null → flat (defensiv default)", () => {
