@@ -83,7 +83,7 @@ function ProfileCard({ profile, stageLabel, band, selectedClimb, onSelectClimb, 
   if (bare) return body;
 
   return (
-    <Section aria-label={stageLabel}>
+    <Section data-race-section="stage_info" aria-label={stageLabel}>
       <SectionHeader title={stageLabel} meta={stats} />
       {body}
     </Section>
@@ -195,7 +195,7 @@ export default function StageTabV2({
         </SectionStack>
         <SectionStack>
           {demands.length > 0 && (
-            <Section aria-label={t("stagePageV2.demands.title")}>
+            <Section data-race-section="demands" aria-label={t("stagePageV2.demands.title")}>
               <SectionHeader title={t("stagePageV2.demands.title")} />
               <dl className="m-0 grid grid-cols-[1fr_auto]">
                 {demands.map((d) => (
@@ -209,7 +209,7 @@ export default function StageTabV2({
               </dl>
             </Section>
           )}
-          <Section aria-label={t("stagePageV2.lineup.title")}>
+          <Section data-race-section="lineup" aria-label={t("stagePageV2.lineup.title")}>
             <SectionHeader title={t("stagePageV2.lineup.title")} meta={t("stagePageV2.lineup.fit")} />
             {stageRoles === null && <SkeletonLines lines={4} />}
             {stageRoles === false && <p className="text-xs text-cz-3">{t("racePage.team.loadError")}</p>}
@@ -232,7 +232,7 @@ export default function StageTabV2({
             )}
           </Section>
           {favourites.length > 0 && (
-            <Section aria-label={t("stagePageV2.favourites.title")}>
+            <Section data-race-section="favourites" aria-label={t("stagePageV2.favourites.title")}>
               <SectionHeader title={t("stagePageV2.favourites.title")} />
               <ul>
                 {favourites.map((f, i) => {
