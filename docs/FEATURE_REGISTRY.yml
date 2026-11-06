@@ -141,6 +141,19 @@ features:
     verified: 2026-10-30
     note: "day_form_6649 on siden 27/10; læst i prod 30/10."
 
+  - id: race-itt-no-day-roll-7726
+    area: race-engine
+    title_en: Time trials without the extra day roll
+    title_da: Enkeltstart uden den ekstra terning
+    state: dormant
+    flag: itt_no_day_roll_7726
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 7726
+    verified: 2026-11-06
+    note: "#7726 ejer 5/11. Bygget, off; kun løb der ikke er startet; tændes af ejeren efter før/efter-billedet."
+    decision: ejer-beslutning
+    decide_by: 2026-11-20
+
   - id: race-descent-regroup-cap-7644
     area: race-engine
     title_en: Long descents - cap on how much a regrouping chase can gain
