@@ -490,7 +490,7 @@ export async function fetchPlayerSignalData(url, key) {
     fetchAllRows(() => db.from('users').select('id,role,last_seen').order('id')),
     fetchAllRows(() => db.from('teams').select('id,user_id,is_ai,is_test_account,is_bank').order('id')),
     fetchAllRows(() => db.from('roadmap_votes').select('id,item_id,user_id,importance_score,created_at,updated_at').not('importance_score', 'is', null).order('id')),
-    fetchAllRows(() => db.from('roadmap_items').select('id,issue_ref,title_da,title_en,status,created_at').order('id')),
+    fetchAllRows(() => db.from('roadmap_items').select('id,issue_ref,title_da,title_en,status,approved,created_at').order('id')),
     fetchAllRows(() => db.from('known_issues').select('id,issue_ref,title_da,title_en,status,published').order('id')),
     fetchAllRows(() => db.from('known_issue_reports').select('issue_id,user_id').order('issue_id').order('user_id')),
   ]);
@@ -565,7 +565,7 @@ export function computePlayerSignal(data, now, masterplanNumbers = new Set()) {
 
   const itemStats = [];
   for (const item of data.items) {
-    if (!SIGNAL_ITEM_STATUSES.has(item.status)) continue;
+    if (!SIGNAL_ITEM_STATUSES.has(item.status) || item.approved !== true) continue; // kladder er ikke offentlige
     const rows = rowsByItem.get(item.id) || [];
     const n = rows.length;
     const lifts = rows.map((r) => r.lift);

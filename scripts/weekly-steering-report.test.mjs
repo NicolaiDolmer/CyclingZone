@@ -54,10 +54,11 @@ function buildSignalData() {
   teams.push({ id: 'tai', user_id: 'ai', is_ai: true });
 
   const items = [
-    { id: 'hi', issue_ref: 111, title_da: 'Hoej | prioritet #5', title_en: 'High', status: 'active', created_at: DAYS_AGO(90) },
-    { id: 'lo', issue_ref: 222, title_da: 'Lav prioritet', title_en: 'Low', status: 'planned', created_at: DAYS_AGO(90) },
-    { id: 'new', issue_ref: 333, title_da: 'Nyt punkt', title_en: 'New', status: 'active', created_at: DAYS_AGO(2) },
-    { id: 'done', issue_ref: 444, title_da: 'Leveret', title_en: 'Shipped', status: 'shipped', created_at: DAYS_AGO(90) },
+    { id: 'hi', issue_ref: 111, title_da: 'Hoej | prioritet #5', title_en: 'High', status: 'active', approved: true, created_at: DAYS_AGO(90) },
+    { id: 'lo', issue_ref: 222, title_da: 'Lav prioritet', title_en: 'Low', status: 'planned', approved: true, created_at: DAYS_AGO(90) },
+    { id: 'new', issue_ref: 333, title_da: 'Nyt punkt', title_en: 'New', status: 'active', approved: true, created_at: DAYS_AGO(2) },
+    { id: 'done', issue_ref: 444, title_da: 'Leveret', title_en: 'Shipped', status: 'shipped', approved: true, created_at: DAYS_AGO(90) },
+    { id: 'draft', issue_ref: 666, title_da: 'Hemmelig kladde', title_en: 'Draft', status: 'active', approved: false, created_at: DAYS_AGO(1) },
   ];
 
   // Hver aktiv manager stemmer paa 12 punkter (10 fyldstof + hi + lo) saa de har eget snit.
@@ -535,4 +536,12 @@ test('main: --out skriver fil via injiceret writeFile/mkdir', async () => {
   assert.equal(written.path, 'docs/audits/2026-09-20-styringsrapport.md');
   assert.match(written.content, /Styringsrapport/);
   assert.match(logs[0], /Skrev docs\/audits/);
+});
+
+test('computePlayerSignal: ikke-godkendte kladder (fx fra split) vises aldrig i den offentlige rapport', () => {
+  const data = buildSignalData();
+  data.votes.push({ item_id: 'draft', user_id: 'u1', importance_score: 6, created_at: DAYS_AGO(1), updated_at: DAYS_AGO(1) });
+  const out = formatPlayerSignalSection(computePlayerSignal(data, SIG_NOW, new Set()), true);
+  assert.ok(!out.includes('Hemmelig kladde'));
+  assert.ok(!out.includes('666'));
 });
