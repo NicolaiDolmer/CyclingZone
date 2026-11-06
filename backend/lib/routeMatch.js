@@ -181,13 +181,18 @@ export function stageRouteVector(stageRow, revision, { finaleShare = ROUTE_MATCH
   return blend(finale, terrain, finaleShare);
 }
 
-/** Løbets vektor: snittet af etapernes (hver etape vejer lige meget). null uden etaper. */
-export function raceRouteVector(stageRows, revision, opts) {
-  const vectors = (stageRows || []).map((s) => stageRouteVector(s, revision, opts)).filter(Boolean);
-  if (!vectors.length) return null;
+/** Snittet af etapevektorer: hver etape vejer lige meget. null uden vektorer. */
+export function averageRouteVector(vectors) {
+  const usable = (vectors || []).filter(Boolean);
+  if (!usable.length) return null;
   const sum = {};
-  for (const v of vectors) for (const [k, w] of Object.entries(v)) sum[k] = (sum[k] || 0) + w / vectors.length;
+  for (const v of usable) for (const [k, w] of Object.entries(v)) sum[k] = (sum[k] || 0) + w / usable.length;
   return normalized(sum);
+}
+
+/** Løbets vektor: snittet af etapernes. null uden etaper. */
+export function raceRouteVector(stageRows, revision, opts) {
+  return averageRouteVector((stageRows || []).map((s) => stageRouteVector(s, revision, opts)));
 }
 
 /**
