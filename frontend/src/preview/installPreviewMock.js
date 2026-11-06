@@ -9,6 +9,7 @@ import { parseTable, parseRpc, rpcResponse, wantsObject, restRows, restObject, a
 import { clubMockRoute } from "./clubMock.js";
 import { plannerMockRoute } from "./plannerMock.js";
 import { scoutingMockRoute } from "./scoutingMock.js";
+import { previewEstimate, previewPotentialEstimateEnabled } from "./potentialEstimateMock.ts";
 import { contractsBatchMockRoute } from "./contractsBatchMock.ts"; // #6855
 import { boardMeetingMockRoute } from "./boardMeetingMock.js";
 import { betaAccessMockRoute } from "./betaAccessMock.js"; // #5259
@@ -303,7 +304,8 @@ export function installPreviewMock() {
         if (init && init.body) { try { ids = JSON.parse(init.body).riderIds ?? []; } catch { ids = []; } }
         const estimates = {};
         for (const id of ids) {
-          if (SEED_SCOUT_ESTIMATES[id]) estimates[id] = SEED_SCOUT_ESTIMATES[id];
+          if (previewPotentialEstimateEnabled()) estimates[id] = previewEstimate(id, SEED_SCOUT_ESTIMATES[id]);
+          else if (SEED_SCOUT_ESTIMATES[id]) estimates[id] = SEED_SCOUT_ESTIMATES[id];
         }
         return jsonResponse({ teamId: TEST_TEAM.id, maxLevel: 3, estimates });
       }

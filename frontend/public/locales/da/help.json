@@ -1358,6 +1358,10 @@
         "title": "AI-ryttere og frie ryttere",
         "text": "Ryttere på AI-hold og ryttere uden kontrakt udvikler sig ikke. De ældes stadig som alle andre. Når en af dem kommer på dit hold, begynder han at udvikle sig gennem din træning fra næste dag."
       },
+      "potentialBestRoleEstimate": {
+        "title": "Potentiale i hele spillet",
+        "text": "Overalt i spillet er en rytters potentiale ét tal på samme skala som hans rating, med ét ord ved siden af: Usikker, Rimelig eller Sikker. Tallet er dit holds skøn over, hvor højt han kan nå i sin naturlige rolle, og ordet siger, hvor meget du kan stole på det. Flere kig, en bedre spejder og, for dine egne ryttere, mere træning på dit hold gør det mere sikkert. Det flytter sig kun, når dit hold lærer noget nyt, ved søndagsopdateringen, eller når han skifter hold."
+      },
       "potentialBestRole": {
         "title": "Potentiale i hele spillet",
         "text": "Mit hold, akademiet, rytterprofilen og Scouting-fanen viser en rytters potentiale på samme måde. Det vises for den rolle, hvor han kan nå højest, med en lille boks ved siden af, der siger hvilken rolle det er. Det er stadig et skøn: en bedre scout, eller flere træningsdage på dit hold for dine egne ryttere, gør det skarpere."
@@ -1365,6 +1369,10 @@
       "trainingFocus": {
         "title": "Træningsfokus",
         "text": "Fra profilen på en af dine egne ryttere kan du sætte et sæson-langt træningsfokus: en retning (VO2max, Tærskel/TT, Spurt, Udholdenhed, Teknik, Aero eller Løbslære). Belastningen følger sessionstypen og er ikke et selvstændigt valg: intervaller, tærskel og sprint er hårde, tempo er mellem, resten er lette. Trænede evner udvikler sig hurtigere mod deres loft gennem den daglige træning, der kører hver aften, mens øvrige evner vokser en anelse langsommere. Hårde sessioner bygger mere træthed op, men har ingen risiko for at miste fremgang. Du kan sætte træningsfokus på så mange ryttere du vil; at ændre et eksisterende fokus koster intet. Træning er gratis og koster ikke penge. Ryttere, der kører løb, udvikler sig fra løbet i stedet for det planlagte pas, også ved endagsløb. Udtagne ryttere, der ikke starter, følger deres program under hensyn til skader. Træthed, form og risiko for træningsskader vurderes ud fra dagens samlede løbs- og træningsaktivitet ved aftenopgørelsen. Huller mellem etaper giver ikke ekstra restitution. Hård træning er fortsat mere belastende end normal træning."
+      },
+      "scoutingEstimate": {
+        "title": "Scouting af potentiale",
+        "text": "En rytters potentiale er skjult, indtil du scouter rytteren: uscoutede ryttere på andre hold viser Ikke scoutet og intet tal. Alle hold har en talentspejder, en rigtig staff-person hvis du har ansat en, ellers en standard-spejder, som tager opgaver fra Spejder-siden eller en rytters profil. En målrettet opgave undersøger én rytter og melder tilbage på cirka 30 minutter, uanset spejder-niveau; en mission dækker en division, et land, U23-ryttere eller et nationalt mesterskab for en shortlist, plus én gratis rapport på topfundet. Når du starter en mission vælger du også hvem den målretter: kontraktfrie ryttere (uden kontrakt, anbefalet, hent dem med det samme) eller ryttere på andre hold (talent ejet af en anden manager, hvor hentning kræver bud eller forhandling). Opgaver koster rejsepenge, og din spejder kan kun have én eller to opgaver kørende ad gangen afhængigt af hans rating. Hvert kig gør dit skøn mere sikkert, og en bedre spejder når dertil hurtigere. Skønnet glider mod sandheden, når du ved mere, i stedet for at springe til et nyt tilfældigt tal, og ordet bliver aldrig mindre sikkert. Estimater er personlige for dit hold, så to managere kan vurdere samme talent forskelligt, og løbsresultaterne afgør hvem der havde ret. En rapport kan aldrig referere en rytter der siden er blevet utilgængelig (hentet andetsteds, eller midt i en handel): den afspejler altid hvem der faktisk er tilgængelig lige nu, og viser hver rytters nuværende status. Scouting-fanen på rytterprofilen viser tallet, ordet, hvor mange kig det bygger på, og hvad endnu et kig vil gøre. Ingen spejder kender nogensinde en rytter præcist: det er et skøn, ikke et facit."
       },
       "scouting": {
         "title": "Scouting af potentiale",
@@ -1589,6 +1597,10 @@
         "title": "Ugens optag og akademi-udvidelsen",
         "text": "Hver uge henter du dit optag med ét klik på akademisiden. Akademi-udvidelsen på klubsiden afgør, hvor stort det er: 2 kandidater uden den, 3 fra niveau 2 og 4 på niveau 5. Fra niveau 1 kan du give optaget en profil, en nationalitet eller region, fra niveau 3 også en ryttertype og fra niveau 4 ét ekstra valg. Hvert niveau får profilen til at trække lidt hårdere, men den bestemmer aldrig hele optaget, og talentet trækkes ens på alle niveauer. Du kan ændre profilen når som helst; en ændring virker efter 2 uger. Akademi-udvidelsen har ingen chef."
       },
+      "prognosisTrainingEstimate": {
+        "title": "Sådan lærer du et talents potentiale",
+        "text": "En ny ungdomsrytter har endnu intet potentiale-tal: han viser Læres og hvor mange af sine første 5 træninger han har gennemført. En træning tæller, når en dato på dit hold er afregnet, med Train now eller den automatiske træning. Efter 5 får du det første skøn, og det bliver mere sikkert, jo længere han træner hos dig. Bedre trænerstab og faciliteter gør det hurtigere, men ændrer ikke hans talent."
+      },
       "prognosisTraining": {
         "title": "Sådan lærer du et talents potentiale",
         "text": "Når du har skrevet kontrakt med en akademirytter, bliver hans prognose skarpere med registrerede trænings- og løbsdage på dit hold. Dage siden underskrift tæller ikke alene, og en uge på holdet giver ikke i sig selv en fuld prognose. Først er der intet bud, derefter et groft, et skarpere og til sidst et endeligt rating-interval. Scouting-fanen viser det aktuelle trin, det afslørede interval og trænings- eller løbsdage til næste trin. Bedre trænerstab og træningsfaciliteter hjælper dig hurtigere til næste trin. De ændrer ikke hans talent, og selv den endelige prognose er stadig et interval. Søndagsopdateringen fastsætter hans markedsværdi, ikke en fuld prognose for potentialet."
@@ -1727,6 +1739,10 @@
       "hireChiefScout": {
         "title": "Ansæt en chefscout",
         "text": "Scouting-netværkets tier sætter det højeste tier af chefscout, du må ansætte, så byg eller opgradér det først hvis kandidaten du vil have er låst. Alle hold har allerede en standard-spejder selv uden en bygget facilitet, men en ansat chefscout har en ægte, højere samlet rating: den rating indsnævrer hans estimater yderligere (et smallere potentiale-bånd på Scouting-fanen) og lader ham, når hans rating når omkring 80, køre to spejder-opgaver ad gangen i stedet for én. Ansæt og fyr chefer fra Klub-siden, ligesom ethvert andet facilitets-spor. Kandidaterne du kan ansætte er en lille pulje pr. rolle. Facilitetens tier er det højeste, de kan have, og mindst én kandidat pr. rolle er på det tier. En ny pulje trækkes ved sæsonskiftet, og inden for en sæson ændrer den sig kun, når du opgraderer faciliteten eller ansætter nogen. Fyrede og nuværende chefer optræder aldrig i den."
+      },
+      "hireChiefScoutEstimate": {
+        "title": "Ansæt en chefscout",
+        "text": "Scouting-netværkets tier sætter det højeste tier af chefscout, du må ansætte, så byg eller opgradér det først hvis kandidaten du vil have er låst. Alle hold har allerede en standard-spejder selv uden en bygget facilitet, men en ansat chefscout har en ægte, højere samlet rating: den rating gør hans skøn mere sikre, hurtigere og lader ham, når hans rating når omkring 80, køre to spejder-opgaver ad gangen i stedet for én. Ansæt og fyr chefer fra Klub-siden, ligesom ethvert andet facilitets-spor. Kandidaterne du kan ansætte er en lille pulje pr. rolle. Facilitetens tier er det højeste, de kan have, og mindst én kandidat pr. rolle er på det tier. En ny pulje trækkes ved sæsonskiftet, og inden for en sæson ændrer den sig kun, når du opgraderer faciliteten eller ansætter nogen. Fyrede og nuværende chefer optræder aldrig i den."
       },
       "coachingGroups": {
         "title": "Trænings-grupper: U23 vs. Senior",
@@ -1953,6 +1969,10 @@
       "q": "Kan jeg se hvilke ryttere min spejder allerede har scoutet?",
       "a": "Ja. Åbn din chefspejders profil (Se profil på Spejder-siden) og brug Historik-fanen. Den viser hver rytter din spejder har afsluttet en målrettet undersøgelse på, nyeste først, med link til rytterens profil og rapport."
     },
+    "developmentProjectionEstimateFaq": {
+      "q": "Hvad er linjen på Udvikling-fanen?",
+      "a": "Det er kurven fra hans rating i dag mod dit skøn over hans potentiale, samme skøn som du ser alle andre steder. Rivaler du ikke har scoutet, og dine egne ungdomsryttere før deres første 5 træninger, har ingen linje: du ser kun den registrerede kurve."
+    },
     "developmentProjectionFaq": {
       "q": "Hvad er projektionen på Udvikling-fanen?",
       "a": "Det er et bud på hvor en rytter er på vej hen: en stiplet linje fra hans nuværende type-rating mod et skraveret mål-bånd, med et cirka-estimat af hvor mange sæsoner og i hvilken alder han når det. Det er altid et interval, aldrig et eksakt tal, for ingen kender en rytters præcise mål. Båndet er bevidst upræcist, så det ikke kan regnes tilbage til hans skjulte potentiale, og det er skjult for fremmede ryttere du ikke har scoutet. To forskellige ting kan begge nævne alder her, og de svarer på forskellige spørgsmål: 'Alder ved målet' er hvornår denne projektion forventer at hans nuværende vækst når mål-båndet, hvilket kan ske længe før hans karrieretop (alder 27-28), hvis han stadig har år med udviklingsrum tilbage. En rytter hvis niveau stadig er langt fra målet får i stedet en ærlig 'Stort spring til målet'-linje frem for et forkert 'Nærmer sig målet', som er forbeholdt ryttere der reelt er tæt på."
@@ -2013,9 +2033,17 @@
       "q": "Kan jeg træne Fladt eller Brosten med Hård intensitet?",
       "a": "Ja, med Brostenssektorer og Vifteøvelser. Brostenssektorer træner Brosten hårdest, og modstandskraft og positionering følger med i prisen. Vifteøvelser træner Fladt hårdest, med positionering og modstandskraft på samme måde. De ældre Hårde sessioner rammer stadig ikke nogen af de to: Blandede intervaller (Bjerg, Punch, Tempo), Klatreintervaller (Bjerg, Tempo), Punch-intervaller (Punch, Tempo), Tærskel (Enkeltstart, Tempo) og Sprint (Sprint, Acceleration). Tempo (Normal), Aero og Teknik (begge Let) virker stadig også, bare på en lavere intensitet."
     },
+    "scoutNetworkOwnRidersEstimateFaq": {
+      "q": "Forbedrer et bedre scouting-netværk også hvor godt jeg ser mine egne ryttere?",
+      "a": "Ikke gennem missioner: de søger kun på andre hold og blandt kontraktfrie ryttere. For dine egne ryttere bliver skønnet mere sikkert med hver træning på dit hold, og bedre trænerstab og faciliteter gør det hurtigere."
+    },
     "scoutNetworkOwnRidersFaq": {
       "q": "Forbedrer et bedre scouting-netværk også hvor godt jeg ser mine egne ryttere?",
       "a": "Ja, på ét bestemt punkt. Spejder-missioner omfatter aldrig dine egne ryttere: en missions kandidat-pulje søger kun i andre holds og kontraktfrie ryttere, og en enkelt-rytter-undersøgelse koster og tager det samme uanset din spejders rating. Men præcisionen af de potentiale-intervaller du ser, følger din chefscout: han kender din egen trup fuldt ud, så hans rating afgør hvor smalle potentiale-intervallet og loft-båndene pr. ryttertype er på dine egne ryttere, nøjagtig som for en fuldt scoutet rival. Ingen spejder melder nogensinde en eksakt værdi: selv ved højeste rating ser du et smalt interval, aldrig et præcist talværdi."
+    },
+    "scoutChangeEstimateFaq": {
+      "q": "Jeg ansatte en ny chefscout. Ændrer det mine skøn?",
+      "a": "Ikke i sig selv. Dine skøn står stille, indtil dit hold lærer noget nyt, så en ny ansættelse flytter ikke et eneste tal. Hans næste kig på en rytter kan gøre skønnet mere sikkert, og en bedre spejder når dertil hurtigere."
     },
     "scoutChangeRecalcFaq": {
       "q": "Jeg ansatte en ny chefscout, og en rytters scoutingrapport ændrede sig. Blev rytteren dårligere?",
@@ -2024,6 +2052,10 @@
     "typeRatingScaleFaq": {
       "q": "Hvorfor ændrede tallene sig i 'Prognose pr. ryttertype', og hvad betyder de nu?",
       "a": "Dine ryttere har ikke ændret sig. Deres evner, lofter og ryttertype er præcis som før: kun måden tallet regnes ud på er lavet om. En rolles tal er nu simpelthen det vægtede snit af de evner rollen bruger, så en rytter med 13 i alle de evner der tæller, viser 13 i den rolle. Der bliver ikke længere strakt noget for at passe til resten af feltet. To konsekvenser er værd at kende. Tallene er lavere end før, men for de fleste ryttere er forskellen lille: en typisk rytter viser 13, hvor han før viste 15. Ændringen er størst i toppen, hvor den gamle udregning strakte de bedste op mod et loft der var skalaens og ikke deres eget: 15 ryttere sad klemt på 99, og det højeste tal i spillet er nu 85. Og de er stabile: en rytters tal kan kun flytte sig når hans egne evner flytter sig. Før denne ændring var skalaen forankret i hele rytterbestanden, så en ny forankring kunne flytte alle rytteres tal uden at en eneste evne havde ændret sig. Det kan ikke længere ske, og det var hele formålet."
+    },
+    "scoutedEstimateGuaranteeFaq": {
+      "q": "Er skønnet en garanti?",
+      "a": "Nej. Tallet er dit holds skøn, og ordet ved siden af siger, hvor meget du kan stole på det. Selv et Sikkert skøn kan ramme lidt ved siden af, med vilje. To hold kan vurdere samme rytter forskelligt, og løbsresultaterne afgør, hvem der havde ret."
     },
     "scoutedBandGuaranteeFaq": {
       "q": "Er scouting-båndet en garanti?",

@@ -10,6 +10,8 @@ import { useTypeColumnLabel } from "../lib/useTypeColumnLabel.ts";
 import { WithBestRole } from "./rider/BestRoleTag.jsx";
 import PotentialRoleBox from "./rider/PotentialRoleBox";
 import { potentialFromEstimate } from "../lib/potentialDisplay6853";
+import { potentialViewOf, potentialViewValue } from "../lib/potentialEstimateDisplay";
+import PotentialEstimate from "./rider/PotentialEstimate";
 import { getRiderAge } from "../lib/riderAge";
 import { cycleSortState } from "../lib/riderSort";
 import { compareDevRows } from "../lib/teamDevelopmentSort.js";
@@ -70,6 +72,7 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
     const band = academyPrognosis ? academyPrognosis.band : (estimate && !estimate.hidden ? (estimate.prog ?? estimate.ceil) : null);
     const hasBand = Boolean(band && Number.isFinite(band.lo) && Number.isFinite(band.hi));
     const loft = !academyPrognosis && estimate && !estimate.hidden && Number.isFinite(estimate.loft) ? estimate.loft : null;
+    const estimateView = potentialViewOf(estimate); // #6110: tal + ord afløser bånd og loft
     return {
       ...r,
       _age: getRiderAge(r.birthdate, seasonYear),
@@ -77,7 +80,8 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
       _academyPrognosis: academyPrognosis,
       _band: hasBand ? band : null,
       _potential: potentialFromEstimate(estimate), // #6853: rolle + typeboks
-      _progHi: hasBand ? band.hi : null,
+      _estimateView: estimateView,
+      _progHi: estimateView ? potentialViewValue(estimateView) : hasBand ? band.hi : null,
       _loft: loft,
       // #4039: samme forbi-peak-dæmpning som hero/scouting-fanen — loftet er
       // stadig absolut, kun forklaringen (tooltip) skifter.
@@ -91,6 +95,10 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
     return result;
   }, [decorated, sort, sortDir]);
 
+  const estimateMode = decorated.some((r) => r._estimateView);
+  const projectedHeader = estimateMode
+    ? t("rider:profile.scouting.potentialLabel")
+    : <span title={t("development.headers.projectedTitle")}>{t("development.headers.projected")}</span>;
   const columns = [
     {
       key: "name",
@@ -141,11 +149,11 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
     },
     {
       key: "projected",
-      header: <span title={t("development.headers.projectedTitle")}>{t("development.headers.projected")}</span>,
+      header: projectedHeader,
       sortKey: "_progHi",
       numeric: true,
       compact: true,
-      render: (r) => (r._academyPrognosis ? <AcademyPrognosisCell prognosis={r._academyPrognosis} /> : r._band ? (
+      render: (r) => (r._estimateView ? <PotentialEstimate view={r._estimateView} /> : r._academyPrognosis ? <AcademyPrognosisCell prognosis={r._academyPrognosis} /> : r._band ? (
         <span className="inline-flex items-center gap-1.5">
           <span className="font-mono tabular-nums text-cz-1">{formatProjectedBand(r._band.lo, r._band.hi)}</span>
           {r._potential?.showRole && <PotentialRoleBox role={r._potential.role} lo={r._potential.lo} hi={r._potential.hi} />}
@@ -171,7 +179,7 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
         </span>
       ),
     },
-  ];
+  ].filter((column) => !(estimateMode && column.key === "ceiling"));
 
   if (riders.length === 0) {
     return (
@@ -190,7 +198,7 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
       rows={rows}
       rowKey={(r) => r.id}
       /* D-047 (#5102): udvikling handler om nu, forventet og loft. */
-      mobileDefaults={["rating", "projected", "ceiling"]}
+      mobileDefaults={estimateMode ? ["rating", "projected", "type"] : ["rating", "projected", "ceiling"]}
       dense
       rowProps={(r) => ({ onClick: () => navigate(`/riders/${r.id}`), className: "cursor-pointer" })}
       sort={sort}

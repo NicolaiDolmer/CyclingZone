@@ -258,8 +258,8 @@ test("hentede kandidater viser nuværende evner, som SSOT og copy lover (#6666 p
 });
 
 test("rosterets prognose læres gennem træning når Optag 2.0 er tændt (#6666 punkt 2)", () => {
-  assert.match(pageSource, /r\.prognosis\s*\n?\s*\? <AcademyPrognosisCell/);
-  assert.match(pageSource, /: <ScoutablePotentiale rider=\{r\}/, "flag off: uændret scouting-visning");
+  assert.match(pageSource, /legacy=\{r\.prognosis \? <AcademyPrognosisCell/);
+  assert.match(pageSource, /<ScoutablePotentiale rider=\{r\}/, "flag off: uændret scouting-visning");
 });
 
 test("profil-kortet vises kun med Optag 2.0 og har ingen guld-knap (#6666 punkt 4-5)", () => {

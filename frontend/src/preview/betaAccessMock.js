@@ -8,6 +8,8 @@
 // svarene fra /api/me/beta-access* og /api/admin/beta-* + /api/admin/feature-flags,
 // og (#4948) spiller-svaret GET /api/feature-flags, afledt af SAMME tavle.
 
+import { previewPotentialEstimateEnabled } from "./potentialEstimateMock.ts";
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -106,6 +108,7 @@ function previewCatalogV3Enabled() {
 function playerFlags() {
   return Object.fromEntries(PLAYER_VISIBLE_FLAG_KEYS.map((key) => {
     if (key === "training_catalog_v3") return [key, previewCatalogV3Enabled()];
+    if (key === "potential_estimate_display") return [key, previewPotentialEstimateEnabled()];
     const stage = flags.find((f) => f.key === key)?.stage;
     // #3564: binaere flag (PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden): beta = off.
     return [key, stage === "on" || (stage === "beta" && !BINARY_FLAG_KEYS.includes(key))];

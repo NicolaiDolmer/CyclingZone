@@ -1358,6 +1358,10 @@
         "title": "AI-renners en vrije renners",
         "text": "Renners van AI-ploegen en renners zonder contract ontwikkelen zich niet. Ze worden wel ouder zoals iedereen. Als een van hen bij je ploeg komt, begint hij zich vanaf de volgende dag te ontwikkelen via jouw training."
       },
+      "potentialBestRoleEstimate": {
+        "title": "Potentieel in het hele spel",
+        "text": "Overal in het spel is het potentieel van een renner één getal op dezelfde schaal als zijn rating, met één woord ernaast: Onzeker, Redelijk of Zeker. Het getal is de schatting van je team van hoe hoog hij kan komen in zijn natuurlijke rol, en het woord zegt hoeveel je erop kunt vertrouwen. Meer blikken, een betere scout en, bij je eigen renners, meer training bij je team maken haar zekerder. Ze beweegt alleen als je team iets nieuws leert, bij de zondagse update of als hij van team wisselt."
+      },
       "potentialBestRole": {
         "title": "Potentieel in het hele spel",
         "text": "Mijn ploeg, de academie, het rennersprofiel en het tabblad Scouting tonen het potentieel op dezelfde manier. Het wordt getoond voor de rol waarin hij het hoogst kan komen, met een klein vakje ernaast dat zegt welke rol dat is. Het blijft een schatting: een betere scout, of meer trainingsdagen bij je ploeg voor je eigen renners, maakt het scherper."
@@ -1365,6 +1369,10 @@
       "trainingFocus": {
         "title": "Trainingsfocus",
         "text": "Vanaf het profiel van een van je eigen renners kun je een trainingsfocus voor het hele seizoen instellen: een richting (VO2max, Drempel/TT, Sprint, Uithoudingsvermogen, Techniek, Aero of Koersinzicht). De inspanning hoort bij het sessietype en is geen aparte keuze: intervallen, drempel en sprint zijn zwaar, tempo is gemiddeld, de rest is licht. Getrainde vaardigheden ontwikkelen zich sneller richting hun plafond via de dagelijkse training die elke avond draait, terwijl andere vaardigheden iets langzamer groeien. Zware sessies bouwen meer vermoeidheid op maar brengen geen risico op verlies van voortgang met zich mee. Je kunt een trainingsfocus instellen op zoveel van je renners als je wilt; een bestaande focus wijzigen kost niets. Training is gratis en kost geen geld. Renners die koersen, ontwikkelen zich uit de koers in plaats van uit hun geplande sessie, ook in eendagskoersen. Geselecteerde renners die niet starten, volgen hun programma, behoudens blessures. Vermoeidheid, vorm en het blessurerisico door training worden bij de avondupdate beoordeeld op basis van de gecombineerde koers- en trainingsactiviteit van de dag. Tussenpozen tussen etappes leveren geen extra herstel op. Zware training blijft vermoeiender dan normale training."
+      },
+      "scoutingEstimate": {
+        "title": "Potentieel scouten",
+        "text": "Het potentieel van een renner blijft verborgen tot je hem scout: ongescoute renners van andere teams tonen Niet gescout en geen getal. Elk team heeft een talentscout, een echt staflid als je er een hebt aangenomen, anders een standaardscout, die opdrachten uitvoert vanaf de pagina Scouting of het profiel van een renner. Een gerichte opdracht onderzoekt één renner en rapporteert na ongeveer 30 minuten terug, op elk scoutniveau; een missie dekt een divisie, een land, U23-renners of een nationaal kampioenschap voor een shortlist, plus één gratis rapport over de beste vondst. Als je een missie start, kies je ook op wie hij gericht is: transfervrije renners (renners zonder contract, aanbevolen, direct te contracteren) of renners bij andere teams (talent van een andere manager, waarbij contracteren bieden of onderhandelen betekent). Opdrachten kosten reisgeld, en je scout kan afhankelijk van zijn rating maar een of twee opdrachten tegelijk uitvoeren. Elke blik maakt je schatting zekerder, en een betere scout komt er sneller. De schatting schuift naar de waarheid naarmate je meer weet, in plaats van naar een nieuw willekeurig getal te springen, en haar woord wordt nooit minder zeker. Schattingen zijn persoonlijk voor je team, dus twee managers kunnen hetzelfde talent verschillend lezen, en koersuitslagen bepalen wie gelijk had. Een rapport kan nooit verwijzen naar een renner die inmiddels niet meer beschikbaar is (elders getekend, of midden in een transfer): het weerspiegelt altijd wie nu echt beschikbaar is en toont de huidige status van elke renner. Het tabblad Scouting op het rennersprofiel toont het getal, het woord, op hoeveel blikken het gebaseerd is en wat nog een blik zou doen. Geen enkele scout kent een renner exact: het is een schatting, geen feit."
       },
       "scouting": {
         "title": "Potentieel scouten",
@@ -1589,6 +1597,10 @@
         "title": "Je wekelijkse instroom en de Academie-uitbreiding",
         "text": "Elke week haal je met één klik op de Academiepagina je instroom binnen. De Academie-uitbreiding op de pagina Club bepaalt hoe groot die is: 2 kandidaten zonder, 3 vanaf niveau 2 en 4 op niveau 5. Vanaf niveau 1 kun je de instroom een profiel geven, een nationaliteit of regio, vanaf niveau 3 ook een rennerstype, en vanaf niveau 4 één extra keuze. Elk niveau laat het profiel iets harder trekken, maar het bepaalt nooit de hele instroom, en talent wordt op elk niveau op dezelfde manier getrokken. Je kunt het profiel wijzigen wanneer je wilt; een wijziging gaat na 2 weken in. De Academie-uitbreiding heeft geen hoofd."
       },
+      "prognosisTrainingEstimate": {
+        "title": "Het potentieel van een talent leren kennen",
+        "text": "Een nieuwe jeugdrenner heeft nog geen potentieelgetal: hij toont Leert en hoeveel van zijn eerste 5 trainingen hij heeft gedaan. Een training telt als een datum bij je team is afgerekend, met Train now of met de automatische training. Na 5 krijg je een eerste schatting, en ze wordt zekerder naarmate hij langer bij je traint. Betere trainersstaf en faciliteiten maken dat sneller, maar veranderen zijn talent niet."
+      },
       "prognosisTraining": {
         "title": "Het potentieel van een talent leren kennen",
         "text": "Nadat je een academierenner hebt vastgelegd, wordt zijn prognose scherper door geregistreerde trainings- en koersdagen bij je ploeg. De tijd sinds zijn komst telt op zichzelf niet: hem een week bij je ploeg laten staan geeft geen volledige prognose. Eerst is er geen schatting, daarna volgt een ruwe, een scherpere en uiteindelijk een definitieve ratingmarge. Het tabblad Scouting toont de huidige fase, de onthulde marge en de trainings- of koersdagen tot de volgende fase. Betere trainers en trainingsfaciliteiten helpen je sneller naar de volgende fase. Ze veranderen zijn talent niet, en zelfs de definitieve prognose blijft een marge. De zondagse update bepaalt zijn marktwaarde; die voltooit zijn potentieelprognose niet."
@@ -1727,6 +1739,10 @@
       "hireChiefScout": {
         "title": "Een hoofdscout aannemen",
         "text": "Het niveau van het Scoutingnetwerk bepaalt het hoogste niveau hoofdscout dat je mag aannemen, dus bouw of waardeer het eerst op als de kandidaat die je wilt vergrendeld is. Elk team heeft al een standaardscout, ook zonder gebouwde faciliteit, maar een aangenomen hoofdscout heeft een echte, hogere totale rating: die rating maakt zijn schattingen smaller (een strakker potentieelbereik op het tabblad Scouting) en laat hem, zodra zijn totaal ongeveer 80 bereikt, twee scoutopdrachten tegelijk uitvoeren in plaats van één. Neem hoofden aan en ontsla ze via de pagina Club, net als bij elk ander faciliteitenspoor. De kandidaten die je kunt aannemen vormen een kleine pool per rol. Het niveau van je faciliteit is het hoogste dat ze kunnen hebben, en minstens één kandidaat per rol zit op dat niveau. Bij elke seizoenswissel komt er een nieuwe pool; binnen een seizoen verandert die alleen als je de faciliteit opwaardeert of iemand aanneemt. Ontslagen en huidige hoofden verschijnen er nooit in."
+      },
+      "hireChiefScoutEstimate": {
+        "title": "Een hoofdscout aannemen",
+        "text": "Het niveau van het Scoutingnetwerk bepaalt het hoogste niveau hoofdscout dat je mag aannemen, dus bouw of waardeer het eerst op als de kandidaat die je wilt vergrendeld is. Elk team heeft al een standaardscout, ook zonder gebouwde faciliteit, maar een aangenomen hoofdscout heeft een echte, hogere totale rating: die rating maakt zijn schattingen sneller zekerder en laat hem, zodra zijn totaal ongeveer 80 bereikt, twee scoutopdrachten tegelijk uitvoeren in plaats van één. Neem hoofden aan en ontsla ze via de pagina Club, net als bij elk ander faciliteitenspoor. De kandidaten die je kunt aannemen vormen een kleine pool per rol. Het niveau van je faciliteit is het hoogste dat ze kunnen hebben, en minstens één kandidaat per rol zit op dat niveau. Bij elke seizoenswissel komt er een nieuwe pool; binnen een seizoen verandert die alleen als je de faciliteit opwaardeert of iemand aanneemt. Ontslagen en huidige hoofden verschijnen er nooit in."
       },
       "coachingGroups": {
         "title": "Coachinggroepen: U23 tegenover Senioren",
@@ -1953,6 +1969,10 @@
       "q": "Kan ik zien welke renners mijn scout al heeft gescout?",
       "a": "Ja. Open het profiel van je hoofdscout (Profiel bekijken op de pagina Scouting) en gebruik het tabblad Geschiedenis. Het toont elke renner waarvoor je scout een gericht onderzoek heeft afgerond, de meest recente eerst, met een link naar het profiel en rapport van elke renner."
     },
+    "developmentProjectionEstimateFaq": {
+      "q": "Wat is de lijn op het tabblad Ontwikkeling?",
+      "a": "Dat is de curve van zijn rating van vandaag naar je schatting van zijn potentieel, dezelfde die je overal ziet. Rivalen die je niet hebt gescout, en je eigen jeugdrenners vóór hun eerste 5 trainingen, hebben geen lijn: je ziet alleen de geregistreerde curve."
+    },
     "developmentProjectionFaq": {
       "q": "Wat is de verwachting op het tabblad Ontwikkeling?",
       "a": "Het is een voorspelling van waar een renner naartoe gaat: een gestreepte lijn van zijn huidige typerating richting een gearceerde doelband, met een grove schatting van na hoeveel seizoenen en op welke leeftijd hij die bereikt. Het is altijd een bereik, nooit een exact getal, omdat niemand het exacte doel van een renner kent. De band is bewust wazig zodat hij niet kan worden teruggerekend naar zijn verborgen potentieel, en hij blijft verborgen voor renners van rivalen die je niet hebt gescout. Twee aparte dingen kunnen hier allebei leeftijd noemen, en ze beantwoorden verschillende vragen: 'Leeftijd bij het doel' is wanneer deze verwachting zijn huidige groei de doelband laat bereiken, wat ruim vóór zijn carrièrehoogtepunt (27-28 jaar) kan gebeuren als hij nog jaren ontwikkelruimte heeft. Een renner wiens niveau nog ver van zijn doel ligt, krijgt een eerlijke regel 'Grote afstand tot het doel' in plaats van een valse 'Nadert het doel', die is gereserveerd voor renners die echt dichtbij zijn."
@@ -2013,9 +2033,17 @@
       "q": "Kan ik Vlak of Kasseien op Zware intensiteit trainen?",
       "a": "Ja, met Kasseienstroken en Waaieroefeningen. Kasseienstroken trainen Kasseien het hardst, waarbij Weerbaarheid en Positionering meekomen in de prijs. Waaieroefeningen trainen Vlak het hardst, waarbij Positionering en Weerbaarheid op dezelfde manier meekomen. De oudere zware sessies laten beide nog steeds weg: Gemengde intervallen (Klimmen, Punch, Tempo), Klimintervallen (Klimmen, Tempo), Punch-intervallen (Punch, Tempo), Drempel (Tijdrit, Tempo) en Sprint (Sprint, Acceleratie). Tempo (Normaal), Aero en Techniek (beide Licht) werken nog steeds ook, alleen op een lagere intensiteit."
     },
+    "scoutNetworkOwnRidersEstimateFaq": {
+      "q": "Verbetert een beter scoutingnetwerk ook hoe goed ik mijn eigen renners zie?",
+      "a": "Niet via missies: die zoeken alleen bij andere teams en renners zonder contract. Bij je eigen renners wordt de schatting zekerder met elke training bij je team, en betere trainersstaf en faciliteiten maken dat sneller."
+    },
     "scoutNetworkOwnRidersFaq": {
       "q": "Verbetert een beter scoutingnetwerk ook hoe goed ik mijn eigen renners zie?",
       "a": "Ja, op één specifieke manier. Scoutingmissies betreffen nooit je eigen renners: de kandidatenpool van een missie doorzoekt alleen renners van andere teams en transfervrije renners, en een onderzoek naar één renner kost en duurt hetzelfde, ongeacht de rating van je scout. Maar de nauwkeurigheid van de potentieelbereiken die je ziet, volgt wel je hoofdscout: hij kent je eigen selectie volledig, dus zijn rating bepaalt hoe smal het potentieelbereik en de plafondbanden per type bij je eigen renners zijn, precies zoals bij een volledig gescoute rivaal. Geen enkele scout rapporteert een exacte waarde: zelfs bij de hoogste rating zie je een smal bereik, nooit een precieze getalswaarde."
+    },
+    "scoutChangeEstimateFaq": {
+      "q": "Ik nam een nieuwe hoofdscout aan. Verandert dat mijn schattingen?",
+      "a": "Niet op zichzelf. Je schattingen blijven staan tot je team iets nieuws leert, dus een nieuwe aanstelling verplaatst geen enkel getal. Zijn volgende blik op een renner kan die schatting zekerder maken, en een betere scout komt er sneller."
     },
     "scoutChangeRecalcFaq": {
       "q": "Ik nam een nieuwe hoofdscout aan en het scoutingrapport van een renner veranderde. Is de renner slechter geworden?",
@@ -2024,6 +2052,10 @@
     "typeRatingScaleFaq": {
       "q": "Waarom zijn de getallen in 'Verwachting per rennerstype' veranderd, en wat betekenen ze nu?",
       "a": "Je renners zijn niet veranderd. Hun vaardigheden, plafonds en rennerstypes zijn precies wat ze waren: alleen de manier waarop het getal wordt berekend, is veranderd. Het getal van een rol is nu simpelweg het gewogen gemiddelde van de vaardigheden die die rol nodig heeft, dus een renner met 13 in elke vaardigheid die telt, leest 13 in die rol. Niets wordt meer uitgerekt om bij de rest van het veld te passen. Twee gevolgen zijn goed om te weten. De getallen zijn lager dan eerder, maar voor de meeste renners is de verschuiving klein: een typische renner leest 13 waar hij eerder 15 las. De verandering is het grootst aan de top, waar de oude berekening de beste renners uitrekte tot een plafond dat van de schaal was, niet van hen: 15 renners zaten vastgepind op 99, en het hoogste getal in het spel is nu 85. En ze zijn stabiel: het getal van een renner kan alleen bewegen als zijn eigen vaardigheden bewegen. Vóór deze verandering was de schaal verankerd aan de hele rennerspool, dus het opnieuw afstemmen van die ankers kon het getal van elke renner laten bewegen zonder dat een enkele vaardigheid veranderde. Dat kan niet meer, en het wegnemen daarvan was het hele punt."
+    },
+    "scoutedEstimateGuaranteeFaq": {
+      "q": "Is de schatting een garantie?",
+      "a": "Nee. Het getal is de schatting van je team, en het woord ernaast zegt hoeveel je erop kunt vertrouwen. Zelfs een Zekere schatting kan er net naast zitten, met opzet. Twee teams kunnen dezelfde renner verschillend lezen, en koersresultaten beslissen wie gelijk had."
     },
     "scoutedBandGuaranteeFaq": {
       "q": "Is de gescoute band een garantie?",

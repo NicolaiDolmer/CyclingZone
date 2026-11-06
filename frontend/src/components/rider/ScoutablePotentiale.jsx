@@ -31,6 +31,8 @@ import { potentialLabelKey } from "../../lib/scouting";
 import { useScoutCountdown, scoutReadyClock } from "../../lib/scoutCountdown";
 import { potentialFromEstimate } from "../../lib/potentialDisplay6853";
 import PotentialRoleBox from "./PotentialRoleBox";
+import PotentialEstimate from "./PotentialEstimate";
+import { potentialViewOf } from "../../lib/potentialEstimateDisplay";
 
 // #2796: `labelAsTitle` videresendes til PotentialeStars — tætte tabel-celler
 // (akademi-rosteret) viser stjernerne alene og lægger den kvalitative label i
@@ -102,7 +104,12 @@ function PotentialBand({ band, role, loft, pastPeak, label, large, t }) {
   );
 }
 
-export default function ScoutablePotentiale({ rider, scouting, showScout = false, large = false, labelAsTitle = true, hideLevel = false }) {
+// #6110 Udvikling 2.0: bærer svaret `potentialView`, viser komponenten tal + ord
+// (PotentialEstimate) og læser intet andet potentiale-felt. Uden feltet (slukket
+// flag) er alt herunder uændret. `legacy` er kaldstedets egen gamle visning, så en
+// flade kan få estimatet hentet uden at ændre sig, mens flaget er slukket.
+// `estimateSize` og `showLooks` gælder kun tal + ord.
+export default function ScoutablePotentiale({ rider, scouting, showScout = false, large = false, labelAsTitle = true, hideLevel = false, estimateSize = /** @type {"cell" | "hero" | "report"} */ ("cell"), showLooks = false, legacy = /** @type {import("react").ReactNode} */ (null) }) {
   const { t } = useTranslation();
   const {
     maxLevel, scout, scoutingId, slots, requestEstimates, estimateFor,
@@ -131,8 +138,11 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
 
   const estimate = estimateFor(riderId);
 
+  const view = potentialViewOf(estimate);
+  if (!view && legacy) return legacy;
+
   // undefined = ikke hentet endnu, null = rytter uden potentiale → begge "—".
-  if (estimate?.academyPrognosis) {
+  if (!view && estimate?.academyPrognosis) {
     return <AcademyPrognosisCell prognosis={estimate.academyPrognosis} />;
   }
   if (estimate == null) {
@@ -212,6 +222,17 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
       {!scoutSystemEnabled && slots && <span className="ms-1 text-cz-3">{slots.remaining}/{slots.total}</span>}
     </button>
   );
+
+  if (view) {
+    return (
+      <PotentialEstimate
+        view={view}
+        size={estimateSize}
+        sub={showLooks && !view.hidden && level > 0 ? t("rider:potentialEstimate.scoutedTimes", { count: level }) : null}
+        action={view.hidden && view.reason === "learning" ? null : <>{pendingBadge}{scoutButton}{scoutErrorBadge}</>}
+      />
+    );
+  }
 
   if (hidden) {
     return (

@@ -93,5 +93,18 @@
       "description": "Intet gik tabt. Din spejders aktive opgaver kører stadig. Prøv igen.",
       "retry": "Prøv igen"
     }
+  },
+  "potentialEstimate": {
+    "learningBody": "Det første skøn kommer efter hans første træninger på dit hold.",
+    "notAFactLong": "Et skøn, ikke et facit. Selv en sikker vurdering kan ramme lidt ved siden af.",
+    "builtOnLabel": "Bygger på",
+    "builtOnOwn": "Hans træning på dit hold",
+    "builtOnNamed": "{count, plural, one {# kig} other {# kig}} af {name} (tier {tier}-spejder)",
+    "builtOnDefault": "{count, plural, one {# kig} other {# kig}} af holdets standard-spejder (rating {overall})",
+    "nextLookLabel": "Endnu et kig",
+    "nextLookValue": "gør skønnet mere sikkert",
+    "chartLabel": "Skøn {value}",
+    "chartCaption": "Registreret rating, derefter kurven mod skønnet",
+    "chartLegend": "Kurve mod skønnet"
   }
 }
