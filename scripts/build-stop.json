@@ -975,6 +975,36 @@
       "issue": 7692,
       "reason": "Ejer-go 6/11: solgt rytter og rytter ude af feltet hviler",
       "since": "2026-11-06"
+    },
+    {
+      "issue": 7730,
+      "reason": "Ejer-go 6/11: bølge efter til-dørs-tjek",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7715,
+      "reason": "Ejer-go 6/11: bølge efter til-dørs-tjek",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7733,
+      "reason": "Ejer-go 6/11: bølge efter til-dørs-tjek",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7754,
+      "reason": "Ejer-go 6/11: bølge efter til-dørs-tjek",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7782,
+      "reason": "Ejer-go 6/11: bølge efter til-dørs-tjek",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7783,
+      "reason": "Ejer-go 6/11: bølge efter til-dørs-tjek",
+      "since": "2026-11-06"
     }
   ]
 }
