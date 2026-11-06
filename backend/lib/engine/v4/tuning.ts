@@ -1418,7 +1418,7 @@ export const TIME_LIMIT_FATIGUE_7715_TUNING = deepFreeze({
   fitShareBelow: 0.85,
   fitShareFull: 0.5,
   severityFloor: 0.5,
-  marginLoss: 0.7,
+  marginLoss: 0.4,
 });
 
 // ── M16 (mechanics/teamPlay.ts, #4246) — ADDITIV holdspils-tuning ────────────

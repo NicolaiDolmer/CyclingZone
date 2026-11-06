@@ -16,6 +16,7 @@ import {
   bindRaceTimeLimitFatigue7715,
   evaluateTimeLimitFatigue7715Flag,
   isTimeLimitFatigue7715Enabled,
+  loadFatigueOutStages7715,
   raceTimeLimitFatigue7715Applies,
   riderOwnLevel7715,
   timeLimitFatigueSeverities7715,
@@ -211,6 +212,35 @@ test("#7715 eget niveau: snittet af evnerne, intet tal uden evner", () => {
   assert.equal(riderOwnLevel7715(null), null);
   assert.ok(riderOwnLevel7715({ climbing: 99 }) > 0);
   assert.deepEqual(timeLimitFatigueSeverities7715({ riders: entrants7715(), stageRow: null, revision: "s5_profiles_v3" }), {});
+});
+
+function timelinesStub(rows, { error = null } = {}) {
+  const calls = [];
+  return {
+    calls,
+    from(table) {
+      calls.push(table);
+      assert.equal(table, "race_stage_timelines");
+      return { select: () => ({ eq: () => ({ order: async () => (error ? { data: null, error } : { data: rows, error: null }) }) }) };
+    },
+  };
+}
+
+test("#7715 forklaringen: kun egne ryttere motoren satte ud af træthed, ikke andre OTL", async () => {
+  const rows = [
+    { stage_number: 1, events: [{ type: "finish" }] },
+    { stage_number: 2, events: [{ type: "outside_time_limit", params: { rider_ids: ["a", "b", "c"], rider_count: 3, fatigue_rider_ids: ["a", "c"] } }] },
+  ];
+  const out = await loadFatigueOutStages7715({ supabase: timelinesStub(rows), race: RACE, riderIds: ["a", "b"] });
+  assert.deepEqual([...out], [["a", 2]]);
+});
+
+test("#7715 forklaringen: ingen udgåede = intet opslag, og en fejl vælter aldrig fladen", async () => {
+  const none = timelinesStub([]);
+  assert.equal((await loadFatigueOutStages7715({ supabase: none, race: RACE, riderIds: [] })).size, 0);
+  assert.deepEqual(none.calls, []);
+  assert.equal((await loadFatigueOutStages7715({ supabase: timelinesStub([], { error: { message: "boom" } }), race: RACE, riderIds: ["a"] })).size, 0);
+  assert.equal((await loadFatigueOutStages7715({ supabase: { from() { throw new Error("db"); } }, race: RACE, riderIds: ["a"] })).size, 0);
 });
 
 // ── Slukket = bit-identisk med merge-basen ─────────────────────
