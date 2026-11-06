@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { frozenStageOutput, physicsOf } from "./engine/v4/testUtils/oldRevisionDigests6199.ts";
 import {
-  buildRaceStory, checkpointGapForRider, leaderTimeAt, replayFrames, ridersBehindField, storyInputsFromResults,
+  buildRaceStory, checkpointGapForRider, leaderKmAt, leaderTimeAt, replayFrames, ridersBehindField, storyInputsFromResults,
   GAP_CHANGE_EXPLAIN_SECONDS, REPLAY_FINALE_KM,
 } from "./raceStory.js";
 
@@ -660,4 +660,23 @@ test("#7705: ridersBehindField måler mod feltet, ikke mod vinderen", () => {
   // Lige store grupper: den forreste er feltet, så ingen forklaring tabes.
   assert.deepEqual(ridersBehindField([{ rider_id: "a", gap_s: 0 }, { rider_id: "b", gap_s: 400 }], ["a", "b"]), ["b"]);
   assert.deepEqual(ridersBehindField([], ["a"]), []);
+});
+
+test("#7749: km_behind følger førerlinjen og springer aldrig baglæns, selv med stærkt skiftende fart", () => {
+  const leader_line = [{ km: 0, time: 0 }, { km: 10, time: 1000 }, { km: 20, time: 1100 }, { km: 30, time: 2100 }, { km: 40, time: 2150 }];
+  const snapshots = [0, 10, 20, 30, 40].map((km) => ({ km, groups: [{ group_id: "g", size: 5, includes_rest: false, gap_s: 60 }] }));
+  const story = { snapshots, leader_line, distance_km: 40, group_spans: [] };
+  const frames = replayFrames(story, { finaleKm: 40, stepKm: 1 });
+  assert.ok(frames.length > 20);
+  let prev = -Infinity;
+  for (const f of frames) {
+    const g = f.groups.find((x) => x.group_id === "g");
+    if (!g) continue;
+    assert.ok(g.km_behind >= 0, `km ${f.km}`);
+    // gruppens egen position (km - km_behind) må aldrig gå baglæns
+    const pos = f.km - g.km_behind;
+    assert.ok(pos >= prev - 1e-6, `gruppen kører baglæns ved km ${f.km}`);
+    prev = pos;
+    assert.ok(Math.abs(g.km_behind - (f.km - leaderKmAt(leader_line, f.leader_time_s - 60))) < 0.011, `km ${f.km}`);
+  }
 });
