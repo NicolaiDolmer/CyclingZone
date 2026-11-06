@@ -23,6 +23,7 @@
 // kun "udbrud" naar den ligger foran feltet og rummer morgenudbruddets ryttere
 // (samme udbrud som resultat-maerkerne, morningBreakawayRiderIds).
 import { morningBreakawayRiderIds } from "./breakawayLabels6299.ts";
+import { withAttackWording } from "../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts"; // #7707
 
 export type TimelineEvent = { km?: number; type?: string; params?: Record<string, unknown> | null } | null | undefined;
 
@@ -445,7 +446,9 @@ export function buildOwnTimeLoss(
 ): TimeLossEntry[] {
   if (!hasGroupGaps(events) || !ownRiderIds.length) return [];
   const own = new Set(ownRiderIds);
-  const sorted = sortedEvents(events);
+  // #7707: "kørte sig tom" for en rytter på Angrib hedder "Angrib"-ordene (samme stempel som filmen og referatet).
+  const worded = withAttackWording((events ?? []) as readonly NonNullable<TimelineEvent>[], { ownRiderIds, effortByRider: effortByRider as never }) as TimelineEvent[];
+  const sorted = sortedEvents(worded);
   const komKms = new Map<number, string>();
   for (const e of sorted) {
     const name = e.type === "kom_passage" ? str(e.params?.name) : null;

@@ -1,5 +1,62 @@
 export const PATCHES = [
   {
+    "version": "7.410",
+    "date": "2026-11-06",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The race film no longer jumps",
+          "body": "Groups behind the front no longer jump backwards and forwards on the road. Results are unchanged."
+        },
+        "da": {
+          "title": "Løbsfilmen hopper ikke længere",
+          "body": "Grupperne bag fronten springer ikke længere frem og tilbage på vejen. Resultaterne er uændrede."
+        },
+        "refs": [
+          7749
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The race page opens on the latest stage",
+          "body": "When several stages are ridden on the same day, the race page now opens on the latest one that has been ridden."
+        },
+        "da": {
+          "title": "Løbssiden åbner på den seneste etape",
+          "body": "Når flere etaper køres samme dag, åbner løbssiden nu på den senest kørte etape."
+        },
+        "refs": [
+          7810
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Mobile",
+        "en": {
+          "title": "Bigger buttons in the mobile header",
+          "body": "The menu and the bell are easier to hit on your phone."
+        },
+        "da": {
+          "title": "Større knapper i mobilens top",
+          "body": "Menuen og klokken er lettere at ramme på telefonen."
+        },
+        "refs": [
+          6916
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.409",
     "date": "2026-11-06",
     "changes": [
