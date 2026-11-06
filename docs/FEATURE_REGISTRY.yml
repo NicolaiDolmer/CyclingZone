@@ -151,6 +151,8 @@ features:
     epic: 7725
     verified: 2026-11-06
     note: "Slukket; kræver day_form_6649."
+    decision: ejer-beslutning
+    decide_by: 2026-11-20
   - id: race-itt-no-day-roll-7726
     area: race-engine
     title_en: Time trials without the extra day roll
