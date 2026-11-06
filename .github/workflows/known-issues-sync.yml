@@ -7,7 +7,8 @@ name: Known issues sync
 #
 #   sync — efter push til main der roerer patch noterne: scripts/known-issues-
 #     sync.mjs --apply saetter aabne kendte fejl, hvis issue_ref staar som
-#     ref paa en patch note med rollout live, til fixed. Idempotent, roerer kun
+#     ref paa en patch note med rollout live (ogsaa beta_to_live og switched_on), til fixed efter en
+#     deploy-pause. Idempotent, roerer kun
 #     aabne raekker; status-triggeren stempler closed_at. Samme moenster som
 #     roadmap-sync.yml: kun push til main + manuel dispatch.
 
@@ -55,9 +56,6 @@ jobs:
     needs: selftest
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    concurrency:
-      group: known-issues-sync-prod
-      cancel-in-progress: false
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -73,6 +71,11 @@ jobs:
 
       - name: Install root dependencies
         run: npm ci
+
+      - name: Vent paa at Vercel og backend-deploy er faerdige
+        run: |
+          echo "Sover 3 min saa deploys naar at blive live, foer fejlen vises som rettet (samme margin som auto-migrate.yml)."
+          sleep 180
 
       - name: Saet kendte fejl til fixed naar patch noten er live
         env:

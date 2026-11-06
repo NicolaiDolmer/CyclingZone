@@ -1,25 +1,32 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { liveRefs, planSync, parseArgs, formatPlan, loadPatches } from "./known-issues-sync.mjs";
+import { liveRefs, releasedRefs, planSync, parseArgs, formatPlan, loadPatches } from "./known-issues-sync.mjs";
 
 const NOW = "2026-11-06T12:00:00.000Z";
-const note = (rollout, refs) => ({ version: "1", changes: [{ rollout, refs }] });
+const note = (rollout, refs, date = "2026-11-06") => ({ version: "1", date, changes: [{ rollout, refs }] });
+const rel = (...pairs) => new Map(pairs);
 const issue = (o) => ({ id: "aaaaaaaa-0000", issue_ref: 100, status: "confirmed", title_en: "Bug", ...o });
 
 test("liveRefs: noter uden refs giver ingen issue-numre", () => {
   assert.deepEqual(liveRefs([note("live", undefined), note("live", []), { version: "2" }]), []);
 });
 
-test("liveRefs: kun rollout live tæller, flere refs og dubletter samles sorteret", () => {
+test("liveRefs: live, beta_to_live og switched_on tæller; beta og event gør ikke; dubletter samles sorteret", () => {
   const patches = [
     note("live", [30, 10]),
     note("beta", [99]),
+    note("event", [96]),
     note("beta_to_live", [98]),
     note("switched_on", [97]),
     note("live", [10, 20]),
   ];
-  assert.deepEqual(liveRefs(patches), [10, 20, 30]);
+  assert.deepEqual(liveRefs(patches), [10, 20, 30, 97, 98]);
+});
+
+test("releasedRefs: seneste dato vinder pr. ref", () => {
+  const m = releasedRefs([note("live", [5], "2026-10-01"), note("live", [5], "2026-11-01"), note("live", [5], "2026-10-15")]);
+  assert.equal(m.get(5), "2026-11-01");
 });
 
 test("liveRefs: ugyldige refs ignoreres", () => {
@@ -27,15 +34,15 @@ test("liveRefs: ugyldige refs ignoreres", () => {
 });
 
 test("planSync: ref uden kendt fejl giver tom plan", () => {
-  assert.deepEqual(planSync({ refs: [555], issues: [issue({ issue_ref: 100 })], now: NOW }), []);
+  assert.deepEqual(planSync({ released: rel([555, "2026-11-06"]), issues: [issue({ issue_ref: 100 })], now: NOW }), []);
 });
 
 test("planSync: kendt fejl uden issue_ref røres ikke", () => {
-  assert.deepEqual(planSync({ refs: [100], issues: [issue({ issue_ref: null })], now: NOW }), []);
+  assert.deepEqual(planSync({ released: rel([100, "2026-11-06"]), issues: [issue({ issue_ref: null })], now: NOW }), []);
 });
 
 test("planSync: åben række sættes til fixed med updated_at, closed_at overlades til triggeren", () => {
-  const plan = planSync({ refs: [100], issues: [issue()], now: NOW });
+  const plan = planSync({ released: rel([100, "2026-11-06"]), issues: [issue()], now: NOW });
   assert.equal(plan.length, 1);
   assert.equal(plan[0].from, "confirmed");
   assert.deepEqual(plan[0].patch, { status: "fixed", updated_at: NOW });
@@ -49,14 +56,14 @@ test("planSync: alle åbne statusser tages, fixed og dismissed røres ikke (idem
     issue({ id: "4", status: "fixed" }),
     issue({ id: "5", status: "dismissed" }),
   ];
-  const plan = planSync({ refs: [100], issues, now: NOW });
+  const plan = planSync({ released: rel([100, "2026-11-06"]), issues, now: NOW });
   assert.deepEqual(plan.map((p) => p.id), ["1", "2", "3"]);
 });
 
 test("planSync: kører man planen igen på resultatet, er den tom", () => {
-  const first = planSync({ refs: [100], issues: [issue()], now: NOW });
+  const first = planSync({ released: rel([100, "2026-11-06"]), issues: [issue()], now: NOW });
   const after = [issue({ status: first[0].patch.status })];
-  assert.deepEqual(planSync({ refs: [100], issues: after, now: NOW }), []);
+  assert.deepEqual(planSync({ released: rel([100, "2026-11-06"]), issues: after, now: NOW }), []);
 });
 
 test("planSync: flere refs flytter hver sin række, og samme række kun én gang", () => {
@@ -66,8 +73,15 @@ test("planSync: flere refs flytter hver sin række, og samme række kun én gang
     issue({ id: "c", issue_ref: 30 }),
     issue({ id: "a", issue_ref: 10 }),
   ];
-  const plan = planSync({ refs: [10, 20], issues, now: NOW });
+  const plan = planSync({ released: rel([10, "2026-11-06"], [20, "2026-11-06"]), issues, now: NOW });
   assert.deepEqual(plan.map((p) => p.id), ["a", "b"]);
+});
+
+test("planSync: genåbnet efter noten røres ikke, ny note samme dag eller senere lukker", () => {
+  const reopened = issue({ updated_at: "2026-11-05T10:00:00Z" });
+  assert.deepEqual(planSync({ released: rel([100, "2026-11-01"]), issues: [reopened], now: NOW }), []);
+  assert.equal(planSync({ released: rel([100, "2026-11-05"]), issues: [reopened], now: NOW }).length, 1);
+  assert.equal(planSync({ released: rel([100, "2026-11-06"]), issues: [reopened], now: NOW }).length, 1);
 });
 
 test("parseArgs: dry-run er default, --apply skriver, ukendt argument fejler", () => {
@@ -78,7 +92,7 @@ test("parseArgs: dry-run er default, --apply skriver, ukendt argument fejler", (
 
 test("formatPlan: tom plan og linjer", () => {
   assert.match(formatPlan([]), /Ingen/);
-  const [p] = planSync({ refs: [100], issues: [issue()], now: NOW });
+  const [p] = planSync({ released: rel([100, "2026-11-06"]), issues: [issue()], now: NOW });
   assert.match(formatPlan([p]), /#100 {2}confirmed -> fixed/);
 });
 

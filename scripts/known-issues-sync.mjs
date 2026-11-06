@@ -10,9 +10,12 @@
 // .github/workflows/known-issues-sync.yml (push paa patchNotes.js).
 //
 // Regler:
-//   - Kun patch-noter med rollout "live" tæller. beta, beta_to_live,
-//     switched_on og event goer ingen fejl fixed: funktionen er ikke
-//     live for alle endnu.
+//   - Kun patch-noter hvor aendringen har naaet spillerne taeller: rollout
+//     live, beta_to_live og switched_on (docs/PATCH_NOTES_RULES.md §2a). beta
+//     og event goer ingen fejl fixed.
+//   - Genaabnet fejl: en gammel note er ikke bevis for en ny fejl. Raekken
+//     lukkes kun af en note dateret samme dag som, eller efter, raekkens
+//     sidste aendring (updated_at). Aabnes en fejl igen, kraeves en ny note.
 //   - Kun aabne raekker (checking, confirmed, fixing) roeres. fixed og
 //     dismissed efterlades, som de er (idempotent, ingen gen-aabning).
 //   - Status-triggeren i databasen stempler closed_at; scriptet saetter kun
@@ -45,28 +48,39 @@ export async function loadPatches(path = PATCH_NOTES_PATH) {
   return mod.PATCHES;
 }
 
-/** Ren: sorteret, unik liste af issue-numre fra noter der er live. */
-export function liveRefs(patches) {
-  const refs = new Set();
+/** Udrulninger hvor aendringen er naaet spillerne (ikke kun beta-gruppen). */
+export const RELEASED_ROLLOUTS = ["live", "beta_to_live", "switched_on"];
+
+/** Ren: issue-nummer -> seneste dato (YYYY-MM-DD) en udgivet note refererer det. */
+export function releasedRefs(patches) {
+  const refs = new Map();
   for (const patch of patches) {
     for (const change of patch.changes ?? []) {
-      if (change.rollout !== "live") continue;
+      if (!RELEASED_ROLLOUTS.includes(change.rollout)) continue;
       for (const ref of change.refs ?? []) {
-        if (Number.isSafeInteger(ref) && ref > 0) refs.add(ref);
+        if (!Number.isSafeInteger(ref) || ref < 1) continue;
+        const date = String(patch.date ?? "");
+        if (!refs.has(ref) || date > refs.get(ref)) refs.set(ref, date);
       }
     }
   }
-  return [...refs].sort((a, b) => a - b);
+  return refs;
+}
+
+/** Ren: sorteret liste af udgivne issue-numre. */
+export function liveRefs(patches) {
+  return [...releasedRefs(patches).keys()].sort((a, b) => a - b);
 }
 
 /** Ren planlaegger: ingen I/O. Returnerer en liste af patches til known_issues. */
-export function planSync({ refs, issues, now }) {
-  const wanted = new Set(refs);
+export function planSync({ released, issues, now }) {
   const seen = new Set();
   const plan = [];
   for (const k of issues) {
-    if (k.issue_ref == null || !wanted.has(k.issue_ref)) continue;
+    if (k.issue_ref == null || !released.has(k.issue_ref)) continue;
     if (!OPEN_STATUSES.includes(k.status)) continue;
+    // Genaabnet efter noten? Saa er noten ikke bevis for den nye fejl.
+    if (k.updated_at && released.get(k.issue_ref) < String(k.updated_at).slice(0, 10)) continue;
     if (seen.has(k.id)) continue;
     seen.add(k.id);
     plan.push({
@@ -105,20 +119,20 @@ async function main() {
     throw new Error("SUPABASE_URL/SUPABASE_SERVICE_KEY er ikke sat i miljøet (kør via infisical run).");
   }
 
-  const refs = liveRefs(await loadPatches());
-  console.log(`${refs.length} issue-numre i live patch-noter`);
+  const released = releasedRefs(await loadPatches());
+  console.log(`${released.size} issue-numre i udgivne patch-noter`);
 
   const { createClient } = await import("@supabase/supabase-js");
   const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
   const { data, error } = await db
     .from("known_issues")
-    .select("id, issue_ref, status, title_en")
+    .select("id, issue_ref, status, title_en, updated_at")
     .in("status", OPEN_STATUSES)
     .not("issue_ref", "is", null);
   if (error) throw new Error(`known_issues: ${error.message}`);
 
-  const plan = planSync({ refs, issues: data, now: new Date().toISOString() });
+  const plan = planSync({ released, issues: data, now: new Date().toISOString() });
   console.log(formatPlan(plan));
 
   if (!args.apply) {
