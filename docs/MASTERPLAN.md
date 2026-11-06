@@ -4,15 +4,15 @@
 
 **Reglen:** Færdig = bygget, merget, tændt, synligt, gammelt væk, Hjælp + patch note (8 Til dørs-krav). **Loftet afløser byggestoppet (ejer 4/11):** alt inden for de tre loft-områder plus brand og forkert info må bygges uden liste; alt andet kræver ejerens go. Højst 3 områder ad gangen. Nyt prøves bag slukket kontakt før tænding.
 
-**Arbejdsdeling (ejer 6/11):** Claude på PC1 ejer motor, taktik, udvikling, løbssiden, spillerkommunikation, merge, flag og prod. Codex på Dolmer PC laver mobil-gennemgangen og PR'er, men merger ikke.
+**Arbejdsdeling (ejer 6/11 aften):** fra 7/11 ejer Claude Code på Dolmer PC motor, taktik, udvikling, løbssiden, spillerkommunikation, merge, flag og prod. Ingen aktiv Codex-session. Kun én session merger og tænder ad gangen.
 
 ## Tidsplan (ejer 4/11 aften, 20 planlagte + 22 påbegyndte punkter gennemgået enkeltvist)
 
 
 Fuld liste med datoer: #7632. "Done" først ved alle 8 krav; fredagskort til ejeren.
 
-- **Denne uge (senest 8/11):** secrets #7029/#7034 lørdag; #7557 test og kør; #7726 tal og kør; #7733 binding og kør efter 7/11; #7638 ejer vælger; #7766/#7765/#7768; #7326.
-- **Næste uge (9-15/11):** Udvikling 2.0 som XP-model #6110, redesign af løbssiden ud fra målingen #7778, mobil-gennemgang (Codex), auto-bevis #7585, spillersvar, fair-play #5431, forside #6665, selektion #7645, udbrud #6912, graduering #7323, salg #6181, aftentræning #6490, viden ved salg #7455.
+- **Denne uge (senest 8/11):** secrets #7029/#7034 og sikkerhed #691/#720/#748 lørdag 11-12; #7726 og #7557 tændt 6/11; #7730 før 7/11 11:00; #7733 efter 7/11 16:30; #7638 ejer vælger; #7326.
+- **Næste uge (9-15/11):** 2 timers design af løbsside A med ejeren (#7778, #7754 indeni), Udvikling 2.0 som XP-model #6110, træthed lige nu #7801 (før #7715), dagsformens ord designes #7725, pengelås #6181 + auto-accept #2176 (design først), Ved ikke #7788, besked ved levering #7792, admin #7789, 29 feedback-svar og fair-play #5431 senest mandag, forside #6665, selektion #7645, udbrud #6912, graduering #7323, salg #6181, aftentræning #6490, viden ved salg #7455.
 - **Ca. 15-18/11:** catch-up #6950 besluttes (frist 8/11 udgået); spørg igen om "nye managers forstår første løb" (parkeret).
 - **Før S6-kalenderen:** løbstyper U23/junior #7471. **Før S6-start:** U23 del 2 #4620, junior-pyramiden #4621, Planning Workbench #7535.
 - **S6 (dec):** Pro-værdien + betaling #2806/#4514. **Starten af 2027:** TTT #3463, omdømme #4957/#5106.
@@ -36,7 +36,7 @@ Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden f
 
 1. **Motor og løbsfilm sande:** #6350 tidsstempling (design), selektion #7645 (A først), nedkørsler #7644 (#7651), bjergudbrud #6912 (#7650, flad måles bagefter), realisme-gaten #7588 PR 4-6, #7260-listen. Plan: [RACE_ENGINE_PLAN](RACE_ENGINE_PLAN.md).
 2. **Taktik synlig og forståelig:** træthed pr. indstilling på taktiksiden #7638 og indsatskortet #5101 (mockup først), delt kaptajn #7003/#7239/#7326 (krav 8), #7266, spillerfejl #7624/#7557/#7625.
-3. **Udvikling 2.0 #6110 (XP-model, ejer 6/11):** fælles prisliste, potentiale giver XP, intet hårdt loft, fokus i træning, spec PR #7784. Løser #7757; rapportens løbsgevinst #7627 med. Bagefter: trøjemål #5573.
+3. **Udvikling 2.0 #6110 (XP-model, ejer 6/11):** fælles prisliste, FAST potentiale giver XP, intet hårdt loft, mest fokus og lidt i resten, ét tal XP (i dag og 30 dage), Træn nu tæller straks og giver målt bonus (#7801). Bagefter går potentialet ud af prisen og træningshastigheden ind (#2798), og potentialet omregnes til 1-99 (#3564). Løser #7757; rapportens løbsgevinst #7627 med. Bagefter: trøjemål #5573.
 
 ## Kø (når et loft-område er færdigt)
 
