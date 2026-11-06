@@ -114,6 +114,9 @@ export const STAGE_FLAGS = Object.freeze([
   // #7557: spillerens gemte "lad andre jage" vinder over motorens egen jagt (kun s5_profiles_v3). Ikke seedet = off;
   // kun "on" tænder, "beta" læses som off (letGoOrder7557Flag.js). Ejer-only flip.
   { key: "let_go_order_7557", area: "race-engine", label: "Lad andre jage — ordren vinder" },
+  // #7715: meget traette ryttere paa en haard etape risikerer tidsgraensen, med maerke foer etapen (kun s5_profiles_v3 og kun
+  // loeb der ikke er startet). Ikke seedet = off; kun "on" taender (timeLimitFatigue7715.js). Ejer-only flip.
+  { key: "time_limit_fatigue_7715", area: "race-engine", label: "Tidsgrænsen — meget trætte ryttere" },
   { key: "race_day_engine_enabled", area: "race-engine", label: "Løbsdags-motor" },
   { key: "race_finalize_resumable_enabled", area: "race-engine", label: "Genoptagelig finalisering" },
   { key: "race_notify_outbox_enabled", area: "race-engine", label: "Notify-kø — asynkron udsendelse" },

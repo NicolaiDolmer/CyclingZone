@@ -44,6 +44,7 @@ import {
   applyReinstatementPointPenalty,
   applyTimeLimit,
   reinstatedRiderIdsOf,
+  timeLimitFatigue7715On,
   timeLimitTuningFor,
   type TimeLimitJuryInput,
 } from "./mechanics/timeLimit.ts";
@@ -308,6 +309,8 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
     jury: juryInputFor(input, state),
     // Ejer 28/9: ungdomsloeb har en mildere graense (timeLimitTuningFor).
     tuning: timeLimitTuningFor(input.squad),
+    // #7715 (SLUKKET): meget traette ryttere paa en etape der passer dem daarligt.
+    ...(timeLimitFatigue7715On(input) ? { fatigueSeverityByRider: input.time_limit_fatigue_7715 } : {}),
   });
   // #7713 (ejer 5/11): ingen lodtraekning efter maalstregen. En rytter udgaar kun af
   // en aegte aarsag: styrt og skade undervejs, sygdom foer start eller tidsgraensen.

@@ -1408,6 +1408,19 @@ const timeLimitExtra = {
 /** M15 additiv tidsgraense-tuning (deep-frosset). Se timeLimitExtra-kommentaren ovenfor. */
 export const TIME_LIMIT_EXTRA_TUNING = deepFreeze(timeLimitExtra);
 
+// #7715 (KUN s5_profiles_v3 + kontakten time_limit_fatigue_7715, SLUKKET): meget traette
+// ryttere paa en haard etape der passer dem daarligt. Reglen staar i mechanics/timeLimit.ts.
+// Kalibreret privat (balance-internals/7715/, hard rule 17). Vises aldrig for spilleren.
+export const TIME_LIMIT_FATIGUE_7715_TUNING = deepFreeze({
+  profiles: ["medium_mountain", "mountain", "high_mountain", "cobbles", "gravel", "classic"] as readonly ProfileType[],
+  tiredFrom: 70,
+  tiredFull: 90,
+  fitShareBelow: 0.85,
+  fitShareFull: 0.5,
+  severityFloor: 0.5,
+  marginLoss: 0.7,
+});
+
 // ── M16 (mechanics/teamPlay.ts, #4246) — ADDITIV holdspils-tuning ────────────
 // Samme additive praecedens som finaleExtra/effortCostExtra ovenfor: SS2's
 // frosne EngineTuning (types.ts) har ingen "teamPlay"-noegle, saa
