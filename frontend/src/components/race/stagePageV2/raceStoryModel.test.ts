@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { buildRaceStory, replayFrames } from "../../../../../backend/lib/raceStory.js";
 import { withEventPlaces } from "../../../../../backend/lib/raceTimeline.js";
 import {
-  asStory, isTimeTrialStory, buildReport, castFrom, curateMoments, finaleData, finaleEndTime, finaleMarkerLabelsShown, finaleStateAt, formatClock, frameAt,
+  asStory, isTimeTrialStory, buildReport, castFrom, curateMoments, dayWordsByRider, dayWordSentences, finaleData, finaleEndTime, finaleMarkerLabelsShown, finaleStateAt, formatClock, frameAt,
   groupMembersAt, groupOfRider, isPeloton, leaderKmAt, lineReplayKm, MAX_STORY_LINES, namesList, ownOutSentences, parseGap, pickGroups,
   replayGroupsAt, splitRows, wholeStageFrames, myBestRider,
   type RaceStory, type StoryLine,
@@ -318,6 +318,66 @@ test("#7701 buildReport: egne udgaaede staar sidst og overlever loftet paa 5 sae
   assert.equal(report[report.length - 1].key, "ownOut");
   assert.ok(report.length <= 5, report.map((r) => r.key).join(","));
   assert.ok(plain.every((r) => r.key !== "ownOut"), "uden udgaaede er referatet uaendret");
+});
+
+test("#7725 dayWordsByRider: et daarligt ord er aarsagen; ukendte ord og ryttere giver intet", () => {
+  const words = dayWordsByRider([
+    ev(100, "day_word", { rider_id: "a", word: "great" }),
+    ev(100, "day_word", { rider_id: "b", word: "bad", reason: "fatigue" }),
+    ev(100, "day_word", { rider_id: "c", word: "bad", reason: "weather", weather: "rain" }),
+    ev(100, "day_word", { rider_id: "d", word: "bad", reason: "weather" }),
+    ev(100, "day_word", { rider_id: "e", word: "lucky" }),
+    ev(100, "day_word", { word: "good" }),
+    ev(100, "bad_day", { rider_id: "f", reason: "form" }),
+  ]);
+  assert.deepEqual([...words], [["a", "great"], ["b", "fatigue"], ["c", "rain"]]);
+  assert.equal(dayWordsByRider(null).size, 0);
+});
+
+test("#7725 dayWordSentences: vinderen og dine egne i maal, vinderen foerst, hoejst to, aldrig andre hold", () => {
+  const c = castFrom(RESULTS, ROLES, 3, "t-me");
+  const mine = c.finishers.filter((f) => c.mine.has(f.riderId)).map((f) => f.riderId);
+  const other = c.finishers.find((f, i) => i > 0 && !c.mine.has(f.riderId))?.riderId;
+  assert.ok(mine.length > 0 && other);
+  const events = [
+    ev(100, "day_word", { rider_id: other, word: "great" }),
+    ev(100, "day_word", { rider_id: mine[0], word: "bad", reason: "form" }),
+    ev(100, "day_word", { rider_id: "w", word: "good" }),
+    ev(100, "day_word", { rider_id: "not-in-results", word: "great" }),
+  ];
+  assert.deepEqual(dayWordSentences(events, c), [
+    { key: "dayWord", params: { word: "good", name: c.nameOf("w") as string } },
+    { key: "dayWord", params: { word: "form", name: c.nameOf(mine[0]) as string } },
+  ]);
+  assert.deepEqual(dayWordSentences([], c), [], "slukket: ingen ord i loggen, ingen saetning");
+});
+
+test("#7725 buildReport: dagens ord staar foer dine udgaaede og ryger foer vinderen, din bedste og de udgaaede", () => {
+  const s = story();
+  const c = castFrom(RESULTS, ROLES, 3, "t-me");
+  const lines = curateMoments(s, c);
+  const dayWords = [{ key: "dayWord", params: { word: "great", name: "Winner" } }];
+  const ownOut = [{ key: "ownOut", params: { kind: "withdrawal", names: "Hansen" } }];
+  const keys = buildReport(s, lines, c, ownOut, dayWords).map((r) => r.key);
+  assert.ok(keys.length <= 5, keys.join(","));
+  assert.equal(keys.indexOf("dayWord"), keys.length - 2, keys.join(","));
+  assert.deepEqual(buildReport(s, lines, c, ownOut, []), buildReport(s, lines, c, ownOut), "uden ord er referatet uaendret");
+  const full = [ownOut[0], { ...ownOut[0] }, { ...ownOut[0] }];
+  const crowded = buildReport(s, lines, c, full, dayWords).map((r) => r.key);
+  assert.ok(crowded.length <= 5 && crowded.filter((k) => k === "ownOut").length === 3, crowded.join(","));
+  assert.ok(crowded.some((k) => k.startsWith("winner")), crowded.join(","));
+});
+
+test("#7725 dayWord: alle fem sprog har alle ord, uden tal", async () => {
+  const { readFileSync } = await import("node:fs");
+  for (const lang of ["en", "da", "es", "fr", "nl"]) {
+    const url = new URL(`../../../../public/locales/${lang}/races.json`, import.meta.url);
+    const text = JSON.parse(readFileSync(url, "utf8")).stagePageV2.story.report.dayWord as string;
+    for (const word of ["great", "good", "fatigue", "form", "illness", "rain", "wind", "heat", "other"]) {
+      assert.ok(text.includes(`${word} {{name}`), `${lang}: ${word}`);
+    }
+    assert.ok(!/[0-9%]/.test(text), `${lang}: ingen tal`);
+  }
 });
 
 test("#7701 buildReport: mange aarsager skubber aldrig vinderen og din bedste ud (Codex)", () => {
