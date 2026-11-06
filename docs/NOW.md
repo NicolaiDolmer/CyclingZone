@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (6/11 aften):** Ny PC1 starter med OneDrive private-handoffs/pc1-startprompt-2026-11-06.md: først alle åbne PR'er, så #7726 før 7/11 15:00, #7557, secrets lørdag, #7765, #7733, #7692. Codex kører mobil på Dolmer PC. 23 PR'er merget 6/11, patch notes 7.406-7.407 live.
+> **🎯 Next action (6/11 aften):** #7726 tændt 16:21; se første stempel 7/11 15:00. #7571, #7765 og #7807 venter på Codex-review og merge-kø; #7765 skal ikke tændes før fundene på #7715 er løst. #7557-tekst ligger på docs/7557-help-patchnote og merges ved tænding. Secrets lørdag, #7733 efter 7/11 16:30, #7692 efter tick.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Ingen aktiv session. Codex på Dolmer PC laver mobil-gennemgang.
+> **🤖 Working agent:** PC1-session 6/11 aktiv (motor, merge, flag). Codex på Dolmer PC laver mobil-gennemgang.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
