@@ -80,8 +80,8 @@ import SortableTh from "../ui/SortableTh.jsx";
 import FitBar from "../racehub/FitBar.jsx";
 import RaceStageProfileRow from "./RaceStageProfileRow.jsx";
 import { stageRouteMatch, routeMatchComparator } from "../../lib/lineupInsight.js";
-import TimeLimitRiskMark from "./TimeLimitRiskMark.jsx"; // #7715
-import { showsTimeLimitOut, showsTimeLimitRisk } from "../../lib/timeLimitRisk7715.js"; // #7715
+import TimeLimitRiskMark from "./TimeLimitRiskMark.tsx"; // #7715
+import { showsTimeLimitOut, showsTimeLimitRisk } from "../../lib/timeLimitRisk7715.ts"; // #7715
 import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import {
   buildDraftMatrix,

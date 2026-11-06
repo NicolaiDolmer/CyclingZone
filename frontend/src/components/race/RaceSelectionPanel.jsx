@@ -23,8 +23,8 @@ import {
 } from "../../lib/raceSelectionDraft.js";
 import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
-import TimeLimitRiskMark from "./TimeLimitRiskMark.jsx"; // #7715
-import { selectionTimeLimitRisk } from "../../lib/timeLimitRisk7715.js"; // #7715
+import TimeLimitRiskMark from "./TimeLimitRiskMark.tsx"; // #7715
+import { selectionTimeLimitRisk } from "../../lib/timeLimitRisk7715.ts"; // #7715
 import FitBar from "../racehub/FitBar.jsx";
 import HunterExplainer from "./HunterExplainer.jsx";
 import RiderFitInsight from "./RiderFitInsight.jsx";

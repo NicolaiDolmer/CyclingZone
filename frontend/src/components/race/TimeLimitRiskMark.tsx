@@ -9,7 +9,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertTriangleIcon } from "../ui/index.js";
 
-export default function TimeLimitRiskMark({ variant = "risk" }) {
+export default function TimeLimitRiskMark({ variant = "risk" }: { variant?: "risk" | "out" }) {
   const { t } = useTranslation("races");
   const [open, setOpen] = useState(false);
   const out = variant === "out";

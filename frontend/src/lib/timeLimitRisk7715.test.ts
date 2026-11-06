@@ -4,9 +4,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { LANGUAGES } from "../i18n/languages.js";
 import { TIME_LIMIT_FATIGUE_SAFE_EFFORTS_7715 } from "../../../backend/lib/engine/v4/mechanics/timeLimit.ts";
-import { TIME_LIMIT_SAFE_EFFORTS, selectionTimeLimitRisk, showsTimeLimitOut, showsTimeLimitRisk } from "./timeLimitRisk7715.js";
+import { TIME_LIMIT_SAFE_EFFORTS, selectionTimeLimitRisk, showsTimeLimitOut, showsTimeLimitRisk } from "./timeLimitRisk7715.ts";
 
-const load = (lng) => JSON.parse(readFileSync(new URL(`../../public/locales/${lng}/races.json`, import.meta.url), "utf8"));
+const load = (lng: string) => JSON.parse(readFileSync(new URL(`../../public/locales/${lng}/races.json`, import.meta.url), "utf8"));
 
 test("udvejen er den samme som motorens", () => {
   assert.deepEqual([...TIME_LIMIT_SAFE_EFFORTS].sort(), [...TIME_LIMIT_FATIGUE_SAFE_EFFORTS_7715].sort());
@@ -26,6 +26,7 @@ test("efter etapen: forklaringen står på den etape han røg ud", () => {
   assert.equal(showsTimeLimitOut({ time_limit_out_stage: 4 }, 4), true);
   assert.equal(showsTimeLimitOut({ time_limit_out_stage: 4 }, 5), false);
   assert.equal(showsTimeLimitOut({}, 4), false);
+  assert.equal(showsTimeLimitOut({ time_limit_out_stage: null }, 4), false);
 });
 
 test("udtagelsen: valgt etape, ellers en hvilken som helst", () => {

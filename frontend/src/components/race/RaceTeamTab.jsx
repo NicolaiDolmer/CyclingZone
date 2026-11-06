@@ -40,7 +40,7 @@ import RaceSelectionPanel from "./RaceSelectionPanel.jsx";
 import RaceStageProfileRow from "./RaceStageProfileRow.jsx";
 import StageStripe from "./StageStripe.jsx";
 import FitBar from "../racehub/FitBar.jsx";
-import TimeLimitRiskMark from "./TimeLimitRiskMark.jsx"; // #7715
+import TimeLimitRiskMark from "./TimeLimitRiskMark.tsx"; // #7715
 import { Section, SectionHeader, Button, SkeletonLines, LockIcon } from "../ui/index.js";
 import { WRAP, SCROLLER } from "../ui/dataTableStyles.js";
 import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
@@ -57,7 +57,7 @@ import {
 } from "../../lib/stageRoleMatrixLogic.js";
 import { DEFAULT_EFFORT } from "../../lib/raceIntention.js";
 import { roleLabelKey } from "../../lib/stageRoleVocabulary.ts";
-import { showsTimeLimitRisk } from "../../lib/timeLimitRisk7715.js"; // #7715
+import { showsTimeLimitRisk } from "../../lib/timeLimitRisk7715.ts"; // #7715
 
 const API = import.meta.env.VITE_API_URL;
 

@@ -1,14 +1,15 @@
 // #7715 (ejer 5/11): varslet som lille mærke på taktik og udtagelse, ingen indbakke. Serveren
 // sender kun et ja. Mærket forsvinder med spillerens udvej, og efter etapen står forklaringen
 // samme sted. Billederne går til PR-review.
+import type { Locator, Page } from "@playwright/test";
 import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, evidenceShotPath, json, corsHeaders, raceResultsRoute } from "./fixtures.js";
 
 const RACE_ID = "00000000-0000-4000-8000-000000007715";
 const FIVE_STEPS = ["grupetto", "save", "normal", "protect", "all_out"];
-const visible = (locator) => locator.filter({ visible: true }).first();
+const visible = (locator: Locator) => locator.filter({ visible: true }).first();
 
-const race = (stagesCompleted) => ({
+const race = (stagesCompleted: number) => ({
   id: RACE_ID, name: "E2E Mountain Tour", race_type: "stage_race", race_class: "OtherWorldTourA", stages: 3,
   stages_completed: stagesCompleted, edition_year: 2026, status: "scheduled", season: { id: "season-e2e", number: 1 }, pool_race: null,
 });
@@ -19,7 +20,7 @@ const RIDERS = [
   { rider_id: "r3", name: "Rider Three", race_role: "helper", abandoned: true, stage_fit: { 1: 28, 2: 30, 3: 32 }, time_limit_out_stage: 1 },
 ];
 
-async function mockRace(page, currentRace) {
+async function mockRace(page: Page, currentRace: ReturnType<typeof race>) {
   await page.route("**/rest/v1/races**", (route) => {
     const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
     return json(route, wantsObject ? currentRace : [currentRace]);
