@@ -29,7 +29,8 @@ export function useRaceViewTelemetry({ raceId, tab, stage, phase }: Context) {
     if (!raceId || typeof IntersectionObserver === "undefined" || typeof MutationObserver === "undefined") return undefined;
     tagClarity(tab, stage);
     const context = { race_id: raceId, tab, stage, phase };
-    let log = createRaceViewLog(performance.now());
+    // null = fanen er skjult: baggrundstid er ikke en visning.
+    let log: ReturnType<typeof createRaceViewLog> | null = createRaceViewLog(performance.now());
     const watched = new Set<Element>();
     const sectionOf = (el: Element) => el.getAttribute("data-race-section") ?? "page";
 
@@ -37,8 +38,8 @@ export function useRaceViewTelemetry({ raceId, tab, stage, phase }: Context) {
     const seen = new IntersectionObserver((entries) => {
       const now = performance.now();
       for (const entry of entries) {
-        if (entry.isIntersecting) log.enter(sectionOf(entry.target), now);
-        else log.leave(sectionOf(entry.target), now);
+        if (entry.isIntersecting) log?.enter(sectionOf(entry.target), now);
+        else log?.leave(sectionOf(entry.target), now);
       }
     }, { rootMargin: "-20% 0px -20% 0px" });
     const rescan = () => {
@@ -52,25 +53,26 @@ export function useRaceViewTelemetry({ raceId, tab, stage, phase }: Context) {
     const added = new MutationObserver(rescan);
     added.observe(document.body, { childList: true, subtree: true });
 
-    const onScroll = () => log.scroll(scrollPct());
+    const onScroll = () => log?.scroll(scrollPct());
     const onClick = (event: MouseEvent) => {
       const target = event.target instanceof Element ? event.target.closest(CLICKABLE) : null;
-      if (!target) return;
+      if (!target || !target.closest("[data-race-page]")) return;
       const section = target.closest(SECTION_SELECTOR);
       const kind = clickKind(target.tagName.toLowerCase(), target.getAttribute("role"), target.getAttribute("href"));
-      log.click(section ? sectionOf(section) : "page", kind, performance.now());
+      log?.click(section ? sectionOf(section) : "page", kind, performance.now());
     };
     const send = () => {
-      const summary = log.finish(performance.now());
+      const summary = log?.finish(performance.now());
       if (summary) capturePosthogEvent("race_view_summary", { ...context, ...summary });
-      log = createRaceViewLog(performance.now());
+      log = null;
     };
     const onVisibility = () => {
       if (document.visibilityState === "hidden") {
         send();
         return;
       }
-      // Tilbage paa fanen: observeren melder igen, hvad der er i laesezonen.
+      // Tilbage paa fanen: ny visning, og observeren melder igen, hvad der er i laesezonen.
+      log = createRaceViewLog(performance.now());
       for (const el of watched) {
         seen.unobserve(el);
         seen.observe(el);

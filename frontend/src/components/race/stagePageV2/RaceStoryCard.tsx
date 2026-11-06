@@ -83,7 +83,7 @@ export default function RaceStoryCard({ story, profile, series, climbs, cast, ti
   }
 
   return (
-    <Section aria-label={title}>
+    <Section data-race-section="race_story" aria-label={title}>
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <h2 className="m-0 min-w-[180px] flex-1 font-data text-[15px] font-semibold text-cz-1">{title}</h2>
         <Segmented

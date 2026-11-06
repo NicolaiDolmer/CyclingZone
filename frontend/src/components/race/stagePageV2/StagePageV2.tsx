@@ -144,7 +144,7 @@ export default function StagePageV2(props: StagePageV2Props) {
   }
 
   return (
-    <div className="flex flex-col gap-[14px]">
+    <div data-race-page className="flex flex-col gap-[14px]">
       <div className="sticky top-0 z-20 -my-2 flex flex-col gap-3 bg-cz-body py-2">
         <Tabs value={activeTab} onChange={(v) => onChangeTab(resolveV2Tab(v))}>
           <TabList label={t("stagePageV2.tabsAria")}>
