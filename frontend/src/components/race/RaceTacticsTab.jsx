@@ -828,7 +828,9 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         </span>
       );
     }
-    return <div className="flex flex-col items-start gap-1"><FitBar score={score} />{renderTimeLimitMark(rider)}</div>;
+    const timeLimitMark = renderTimeLimitMark(rider);
+    if (timeLimitMark) return <div className="flex flex-col items-start gap-1"><FitBar score={score} />{timeLimitMark}</div>;
+    return <FitBar score={score} />;
   }
 
   // #7715: varslet foer etapen, og samme sted efter den, hvorfor han roeg ud.

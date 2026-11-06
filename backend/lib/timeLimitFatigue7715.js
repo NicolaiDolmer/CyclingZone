@@ -86,11 +86,15 @@ export async function loadFatigueOutStages7715({ supabase, race, riderIds }) {
   const out = new Map();
   if (!riderIds?.length) return out;
   const wanted = new Set(riderIds);
-  const { data, error } = await Promise.resolve()
-    .then(() => supabase.from("race_stage_timelines").select("stage_number, events").eq("race_id", race.id).order("stage_number", { ascending: true }))
-    .catch((err) => ({ data: null, error: err }));
-  if (error) return out;
-  for (const row of data ?? []) {
+  let rows = null;
+  try {
+    const { data, error } = await supabase.from("race_stage_timelines").select("stage_number, events").eq("race_id", race.id).order("stage_number", { ascending: true });
+    rows = error ? null : data;
+  } catch {
+    // best-effort: uden forklaringen er fladen stadig fuldt brugbar, den maa aldrig vaelte af det.
+    rows = null;
+  }
+  for (const row of rows ?? []) {
     const events = Array.isArray(row.events) ? row.events : row.events?.events ?? [];
     for (const event of events) {
       if (event?.type !== "outside_time_limit") continue;
