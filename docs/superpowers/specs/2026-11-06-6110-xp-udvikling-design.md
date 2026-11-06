@@ -102,8 +102,8 @@ Potentialet styrer kun XP pr. dag. Prisen afslører det ikke. Denne spec regner 
 ### 4.5 Alder
 
 - Fuld XP til og med 28 år. Ingen ungdomsfaktor, ingen alderstabel.
-- XP falder tydeligt fra ca. 29 år. Kurven er privat. Den blide variant er vurderet for blød: for mange etablerede veteraner stiger. Den skarpere ligger tættest på i dag, og kørslen tager udgangspunkt i den.
-- En variant, hvor XP er uændret og kun sæsonfaldet bremser, udgår med B5. Den flytter toppen alt for sent og lader etablerede veteraner stige bredt.
+- XP falder tydeligt fra ca. 29 år. Kurven og vurderingen af den er private (`balance-internals/6110/`).
+- En variant, hvor XP er uændret og kun sæsonfaldet bremser, udgår med B5.
 - Tilbagegangen ved sæsonskiftet (D4) er uændret: intet fald til og med 30, fald fra 31, kun fysiske evner, løbsbremse. Kun D4's "ingen fremgang" på plateauet afløses af det lave XP.
 
 ### 4.6 Fokus (ÅBENT, se Å1)
@@ -124,8 +124,8 @@ Kørslen køres med begge, så svaret ikke koster en ny runde. Løbsdage er ikke
 ### 4.7 Rytterens type
 
 - Rolleklassen flytter fra at være et loft til at være **en andel af XP**: evnens XP = sessionens vægt gange klassens andel.
-- Andelen er nødvendig. Uden den bliver en sprinter lige så god en klatrer som en klatrer (grundlag §7.5).
-- Med dagens rater holder forskellen til den rene sprinter, men sekundæren ender på linje med signaturen på langt sigt. Det er i tråd med B6, men hvor stort springet skal være, er Å4. Bemærk spændingen: ejeren siger "lidt mindre", og dagens rater ligger langt fra hinanden. Gate X4 afgør, hvor lidt det kan være.
+- Andelen er det, der holder typerne adskilt.
+- Hvor stort springet mellem signatur og sekundær skal være, er Å4. Bemærk spændingen: ejeren siger "lidt mindre", og dagens rater ligger langt fra hinanden. Gate X4 afgør, hvor lidt det kan være.
 - Typen er anlæg. En bjergrytter, der trænes til bakkerytter, beholder sin XP-andel, men hans evner og bedste rolle flytter sig (Å6).
 
 ### 4.8 Mentale evner
@@ -223,18 +223,20 @@ Først når XP har kørt stabilt, og ejeren har sagt ja: kurve B's kode, #7382-s
 
 Kørslen er `backend/scripts/dev/tenSeasonSim6110.mjs` (read-only, kopi af prod, assistenten styrer alle hold, S25). Den skal udvides med en XP-variant på den rigtige pakke: prisliste, XP, alder, type, løbsdage, sæsonskifte og +1 pr. dato. Den køres med begge svar på Å1, og for "kun fokus" med en roterende plan. Resultatet er ét privat kort.
 
-| Gate | Krav | Hvad grundlaget viser nu |
-|---|---|---|
-| X1 Milepæle | D1-milepælene og top 27-28 (D-058) | Ingen variant rammer toppen i hårdtrænings-modellen, heller ikke dagens. Skal afgøres med rigtige planer og løb |
-| X2 Niveau | Lavt potentiale når reelt ikke toppen, topper ender over middeltalenter | Bunden stiger lidt, og nye topryttere ender lidt lavere end i dag |
-| X3 Veteraner | Etablerede ryttere over ca. 29 år stiger ikke bredt | Med den skarpe aldersvariant stiger flere end i dag, men få og kun lidt |
-| X4 Type | En ren sprinter bliver ikke topklatrer på en hel karriere. En bjergrytter kan blive bakkerytter | Holder med typens andel. Sekundæren ender tæt på signaturen |
-| X5 Aldrig nul | En hel træningsdag giver altid synligt XP (#7757) | Holder pr. konstruktion. Fremgang i toppen er stadig ikke mærkbar |
-| X6 Tændingen | 0 ratingfald, +1 pr. dato holder, ingen unormal første uge | Ikke målt |
-| X7 Mentale evner | Ingen mental evne løber fra de fysiske. Taktik vurderes særskilt | Taktik når over dagens tag på langt sigt |
-| X8 Løb | G1, G2, G6 og G8 fra del 2 holder i XP | Ikke målt |
-| X9 Talentet | H6b holder på XP-historikken, også mod en spiller, der kender koden (§5.2) | Vurderet, ikke målt: holder ikke uden højere variation og hemmelig nøgle |
-| X10 Fokus | Hver evne kan udvikles, og assistenten er ikke fanget på én session | Ikke målt |
+| Gate | Krav |
+|---|---|
+| X1 Milepæle | D1-milepælene og top 27-28 (D-058) |
+| X2 Niveau | Lavt potentiale når reelt ikke toppen, topper ender over middeltalenter |
+| X3 Veteraner | Etablerede ryttere over ca. 29 år stiger ikke bredt |
+| X4 Type | En ren sprinter bliver ikke topklatrer på en hel karriere. En bjergrytter kan blive bakkerytter |
+| X5 Aldrig nul | En hel træningsdag giver altid synligt XP (#7757) |
+| X6 Tændingen | 0 ratingfald, +1 pr. dato holder, ingen unormal første uge |
+| X7 Mentale evner | Ingen mental evne løber fra de fysiske. Taktik vurderes særskilt |
+| X8 Løb | G1, G2, G6 og G8 fra del 2 holder i XP |
+| X9 Talentet | H6b holder på XP-historikken, også mod en spiller, der kender koden (§5.2) |
+| X10 Fokus | Hver evne kan udvikles, og assistenten er ikke fanget på én session |
+
+Foreløbige resultater står kun i `balance-internals/6110/`.
 
 H1-H6 genkøres mod det nye sande tal (§6). Fejler en gate, ændres tallene, ikke beslutningerne. To kørsler med samme fejl er et ejer-kort. Ejeren vælger, om en gate må vige.
 
@@ -315,8 +317,8 @@ Verifikation: TIER FULL for 2, 4, 5 og 6. Migrationer er additive og efter #2642
 ## 12. Kendte risici
 
 1. **Talentet aflæses for hurtigt (§5.2).** Det kan vise sig, at variationen, der skal til, føles tilfældig. Så skal ejeren vælge mellem præcist XP og sent talent.
-2. **Toppen ligger for sent** i alle varianter af den private model. Kun den rigtige kørsel kan vise, om det er modellen eller antagelsen om daglig hård træning.
-3. **Nye generationer når ikke helt samme top som i dag.** Det kan være rigtigt, men det ændrer, hvad spillerne ser som verdensklasse.
+2. **Toppens timing** skal afgøres med rigtige planer og løb, ikke med en model med daglig hård træning.
+3. **Verdensklassen kan flytte sig** for nye generationer. Det ændrer, hvad spillerne ser som toppen, og skal vises for ejeren.
 4. **Toppen føles stille.** En evne højt på listen koster mange sæsoner pr. point. XP-tallet forklarer det, men fremgangen er ikke mærkbar.
 5. **Kun fokus gør manageren til planlægger.** Det er pointen, men det kræver, at assistent og træningsside kan bære rotation. Derfor spørges spillerne først.
 6. **`ability_caps` lever videre** som input til klassifikation og værdi, efter at de er holdt op med at betyde noget for træningen. Det skal stå tydeligt i koden, så ingen læser dem som lofter.
