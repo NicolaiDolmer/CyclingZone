@@ -11,7 +11,7 @@ import {
   dayXpFloor, estimateGates, expectedTopRating, isTrainNowTeam, limitSnapshotTeams, milestoneStats, nearestPotential,
   orderResults, potentialPeakStats, quantile, raceRoleFor, raceShareForAge, raceSlot, raceVsTraining, renderXpGates,
   riderXpRates, rotatingProgram, runFingerprint, runVariant, runXpGates, talentAttack, typeCareer, variantList,
-  variationSeries, veteranStats, xpDayVariation, xpProgramShares, xpVariant,
+  variationSeries, veteranStats, xpDayVariation, xpProgramShares, xpRunInputs, xpVariant,
 } from "./tenSeasonSim6110.mjs";
 import { validateDevelopmentXpParams, xpPriceForNextPoint } from "../../lib/developmentXp.ts";
 
@@ -318,6 +318,23 @@ test("runVariant: løbsandel efter alder afløser en sæson uden målte løb", (
   const opts = { ...XP_OPTS, raceShareByAge: [{ maxAge: 99, share: 1 }], raceRoles: [{ role: "captain", share: 1 }], raceRoleYield: { stageBonus: 0.5, leadShare: 0.5 } };
   const res = runVariant(snap, xpVariant("xp", opts), opts);
   assert.ok(res.gates.abilityPoints.leadership > 0, "kaptajner får lederskab gennem løb");
+});
+
+test("Codex: rolletillægget regnes i XP's forhold, og rollen kan styre basis-dagen", () => {
+  const world = buildWorld(syntheticSnapshot());
+  const yieldParams = { stageBonus: 0.5, leadShare: 0.5 };
+  const base = raceVsTraining(world, 4, XP, { ...XP_OPTS, raceRoleYield: yieldParams }, { sample: 3 });
+  const roleBase = raceVsTraining(world, 4, XP, { ...XP_OPTS, raceRoleYield: { ...yieldParams, roleDrivesBaseDay: true } }, { sample: 3 });
+  assert.notDeepEqual(base.ratio.helper, roleBase.ratio.helper, "hjælperens basis-dag følger rollen");
+});
+
+test("Codex: en XP-kørsel med andre løbsroller, bonus eller variation må ikke på samme kort", () => {
+  const variant = xpVariant("xp", XP_OPTS);
+  const a = xpRunInputs(variant, XP_OPTS);
+  assert.notDeepEqual(a, xpRunInputs(variant, { ...XP_OPTS, xpVariationSpan: 0.5 }));
+  assert.notDeepEqual(a, xpRunInputs(variant, { ...XP_OPTS, raceRoles: [{ role: "captain", share: 1 }] }));
+  assert.notDeepEqual(a, xpRunInputs(xpVariant("xp_bonus10", XP_OPTS), XP_OPTS));
+  assert.deepEqual(runVariant(syntheticSnapshot(), variant, XP_OPTS).params.xpRun, a);
 });
 
 test("potentialPeakStats og veteranStats: måler karrierens top og om veteraner stiger", () => {

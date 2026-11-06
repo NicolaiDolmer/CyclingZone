@@ -445,14 +445,21 @@ function seasonRaceShare(r, age, opts) {
   return opts.raceShareByAge ? raceShareForAge(age, opts.raceShareByAge) : r.raceShare;
 }
 
+/** Løbsdagens program og rolletillæg, regnet i XP-modellens forhold mellem fokus og resten. */
+function xpRaceDay(profile, role, { xp, raceRoleYield }) {
+  const trainingCfg = { ...TRAINING_CONFIG, offFocusMult: xp.raceOffFocusShare * TRAINING_CONFIG.focusGrowthMult.hard };
+  const program = raceDayRoleBaseProgram(profile, { role, roleDrivesBaseDay: raceRoleYield?.roleDrivesBaseDay === true, trainingCfg });
+  return { program, mults: raceRoleYield ? raceDayRoleYieldMultipliers({ params: raceRoleYield, profileType: profile, role, program, trainingCfg }) : null };
+}
+
 function xpRaceDayFor(profile, role, ctx, cache) {
   const key = `${profile}|${role}`;
   let hit = cache.get(key);
   if (!hit) {
-    const program = raceDayRoleBaseProgram(profile, { role });
+    const { program, mults } = xpRaceDay(profile, role, ctx);
     hit = {
       shares: xpProgramShares(program, { ...ctx, raceDay: true }),
-      mults: ctx.raceRoleYield ? raceDayRoleYieldMultipliers({ params: ctx.raceRoleYield, profileType: profile, role, program }) : null,
+      mults,
     };
     cache.set(key, hit);
   }
@@ -831,7 +838,7 @@ export function runVariant(snapshot, variant, opts = SIM_DEFAULTS) {
   result.dateCap = world.dateCap;
   result.params = { raceDaysPerSeason: opts.raceDaysPerSeason, bNoiseSpan: opts.bNoiseSpan, bReferenceAge: opts.bReferenceAge,
     curveB: variant.kind === "curveB" ? opts.curveB ?? null : null, // #3564: kortet blander aldrig to kalibreringer
-    xp: variant.kind === "xp" ? variant.xpParams : null, xpVariationSpan: variant.kind === "xp" ? opts.xpVariationSpan : null };
+    xp: variant.kind === "xp" ? variant.xpParams : null, xpRun: variant.kind === "xp" ? xpRunInputs(variant, opts) : null };
   result.fingerprint = runFingerprint(snapshot, opts);
   result.raceShares = { young: round(shares.youngMedian, 3), old: round(shares.oldMedian, 3) };
   return result;
@@ -848,6 +855,12 @@ export function variantList(opts = SIM_DEFAULTS) {
     else if (v.startsWith("xp")) list.push(xpVariant(v, opts));
   }
   return list;
+}
+
+/** Alt andet end XP-tallene, der flytter en XP-kørsel. To kørsler må kun på samme kort, hvis det er ens. */
+export function xpRunInputs(variant, opts) {
+  return { plan: variant.plan, intensity: variant.intensity, trainNowBonus: variant.trainNowBonus, variationSpan: opts.xpVariationSpan,
+    raceRoles: opts.raceRoles ?? null, raceRoleYield: opts.raceRoleYield ?? null };
 }
 
 /** En xp-variant: navnet vælger plan og Træn nu-bonus. Private varianter lægger tal ovenpå. */
@@ -1062,9 +1075,9 @@ export function raceVsTraining(world, seasonNumber, xp, opts, { sample = 1200 } 
       const hardBare = focusAbilities.reduce((s, a) => s + (hardShares[a] ?? 0) * (MENTAL_ABILITIES.has(a) ? rates.mental : rates.physical), 0);
       const hard = focusAbilities.reduce((s, a) => s + (hardShares[a] ?? 0) * staffMults[a] * (MENTAL_ABILITIES.has(a) ? rates.mental : rates.physical), 0);
       for (const [group, role] of Object.entries(roles)) {
-        const program = raceDayRoleBaseProgram(profile, { role });
+        const { program, mults: roleMults } = xpRaceDay(profile, role, { xp, raceRoleYield: opts.raceRoleYield });
         const shares = xpProgramShares(program, { ...ctx, raceDay: true });
-        const mults = opts.raceRoleYield ? raceDayRoleYieldMultipliers({ params: opts.raceRoleYield, profileType: profile, role, program }) : {};
+        const mults = roleMults ?? {};
         const race = focusAbilities.reduce((s, a) => s + (shares[a] ?? 0) * (mults[a] ?? 1) * (MENTAL_ABILITIES.has(a) ? rates.mental : rates.physical), 0);
         if (hard > 0) ratios[group].push(race / hard);
         checks += 1;
@@ -1242,8 +1255,9 @@ export function runXpGates(snapshot, opts, { estimateParams = null, knowledge = 
   validateEstimateParams(estimateParams);
   const potentials = xp.potentialXp.length ? [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6] : [];
   const onTeam = world.riders.filter((r) => r.teamId != null);
+  const career = { datesPerSeason: Math.ceil(opts.raceDaysPerSeason / opts.raceDaysPerDate) };
   const asInput = (r, potentiale) => ({ id: r.id, abilities: r.abilities, potentiale, age: ageForSeason(r.birthdate, season), primary_type: r.primary_type, secondary_type: r.secondary_type });
-  const rows = onTeam.map((r) => ({ id: r.id, potentiale: r.potentiale, rating: bestRating(r.abilities), truth: expectedTopRating(asInput(r, r.potentiale), xp) }));
+  const rows = onTeam.map((r) => ({ id: r.id, potentiale: r.potentiale, rating: bestRating(r.abilities), truth: expectedTopRating(asInput(r, r.potentiale), xp, career) }));
   out.truth = {
     riders: rows.length,
     aboveRatingAtStart: rows.filter((r) => r.truth > (r.rating ?? 0)).length,
@@ -1253,7 +1267,7 @@ export function runXpGates(snapshot, opts, { estimateParams = null, knowledge = 
   const step = Math.max(1, Math.floor(rows.length / sampleRiders));
   const sample = rows.filter((_, i) => i % step === 0).slice(0, sampleRiders).map((row) => {
     const r = onTeam.find((x) => x.id === row.id);
-    return { ...row, truthByPotential: Object.fromEntries(potentials.map((p) => [p, expectedTopRating(asInput(r, p), xp)])) };
+    return { ...row, truthByPotential: Object.fromEntries(potentials.map((p) => [p, expectedTopRating(asInput(r, p), xp, career)])) };
   });
   out.x9 = talentAttack(sample, xp, estimateParams, {
     dateSteps: [5, 12, 20, 40], spans: opts.xpAttackSpans ?? [DAILY_TRAINING_CONFIG.noiseSpan], memories: opts.xpAttackMemories ?? [0], potentials,
@@ -1650,7 +1664,12 @@ async function main() {
   const all = readdirSync(runsDir).filter((f) => f.endsWith(".json")).map((f) => JSON.parse(readFileSync(join(runsDir, f), "utf8")));
   const sameCurve = (r) => r.variant !== "kurveB" || JSON.stringify(r.params?.curveB ?? null) === JSON.stringify(opts.curveB ?? null);
   // Samme regel for XP: en kørsel med gamle tal kommer aldrig på kortet sammen med nye.
-  const sameXp = (r) => !r.variant.startsWith("xp") || JSON.stringify(r.params?.xp ?? null) === JSON.stringify(xpVariant(r.variant, opts).xpParams);
+  const sameXp = (r) => {
+    if (!r.variant.startsWith("xp")) return true;
+    const variant = xpVariant(r.variant, opts);
+    return JSON.stringify(r.params?.xp ?? null) === JSON.stringify(variant.xpParams)
+      && JSON.stringify(r.params?.xpRun ?? null) === JSON.stringify(xpRunInputs(variant, opts));
+  };
   const fits = (r) => r.fingerprint === fingerprint && sameCurve(r) && sameXp(r);
   const results = orderResults(all.filter(fits));
   const skipped = all.filter((r) => !fits(r)).map((r) => r.variant);
@@ -1661,11 +1680,14 @@ async function main() {
   if (wantsXp) {
     const gateTag = opts.xpGateVariant ? `-${opts.xpGateVariant}` : "";
     const gatesFile = join(outDir, `xp-gates-${date}${suffix}${gateTag}.json`);
-    let gates = existsSync(gatesFile) ? JSON.parse(readFileSync(gatesFile, "utf8")) : null;
+    // Gemte gates bruges kun, hvis de er regnet på samme billede og samme tal.
+    const gateKey = JSON.stringify([fingerprint, xpVariant(opts.xpGateVariant ?? "xp", opts).xpParams, opts.raceRoleYield ?? null]);
+    const stored = existsSync(gatesFile) ? JSON.parse(readFileSync(gatesFile, "utf8")) : null;
+    let gates = stored?.gateKey === gateKey ? stored : null;
     if (process.argv.includes("--xp-gates")) {
       const t0 = Date.now();
       const readPrivate = (path) => (path ? JSON.parse(readFileSync(join(REPO, path), "utf8")) : null);
-      gates = runXpGates(snapshot, opts, { estimateParams: readPrivate(opts.estimateParamsPath), knowledge: readPrivate(opts.knowledgePath) });
+      gates = { gateKey, ...runXpGates(snapshot, opts, { estimateParams: readPrivate(opts.estimateParamsPath), knowledge: readPrivate(opts.knowledgePath) }) };
       writeFileSync(gatesFile, JSON.stringify(gates, null, 2) + "\n");
       console.log(`[s25] gates uden for sæsonløkken færdig (${Math.round((Date.now() - t0) / 1000)} s)`);
     }
