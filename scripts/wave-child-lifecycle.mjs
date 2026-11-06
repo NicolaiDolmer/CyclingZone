@@ -34,10 +34,17 @@ export function registeredChildProcesses(wave, observed, includeOwner = false) {
   if (!Array.isArray(processes) || processes.some(p => !Number.isSafeInteger(p?.pid) || p.pid < 0 || !Number.isSafeInteger(p.ppid) || p.ppid < 0)) throw Error('Process snapshot invalid; marker retained');
   const roots = new Set([...(includeOwner ? [wave.pid] : []), wave.watchPid,
     ...(wave.children || []).map(child => child.pid)].filter(pid => Number.isSafeInteger(pid) && pid > 0));
+  // Windows reuses PIDs quickly. A process born after a child's observed close cannot be
+  // that child or its descendant, so it must not hold the lock.
+  const closedAt = new Map((wave.children || []).filter(child => Number.isFinite(child?.closedAt)).map(child => [child.pid, child.closedAt]));
+  const bornAfterClose = (process, pid) => closedAt.has(pid) && Date.parse(process.createdAt) > closedAt.get(pid);
+  for (const process of processes) if (bornAfterClose(process, process.pid)) roots.delete(process.pid);
   let changed = true;
   while (changed) {
     changed = false;
-    for (const process of processes) if (roots.has(process.ppid) && !roots.has(process.pid)) { roots.add(process.pid); changed = true; }
+    for (const process of processes) {
+      if (roots.has(process.ppid) && !roots.has(process.pid) && !bornAfterClose(process, process.ppid)) { roots.add(process.pid); changed = true; }
+    }
   }
   return processes.filter(process => roots.has(process.pid));
 }

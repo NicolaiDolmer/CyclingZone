@@ -347,3 +347,13 @@ test('#7554: automatic recovery restores a lost marker mirror from a bound kerne
     assert.equal(fs.existsSync(path.join(dir,'wave-active.json')),wrongToken);
   }
 });
+
+test('#7554: a reused PID born after the observed close does not hold the lock', () => {
+  const closedAt = Date.parse('2026-11-06T10:00:00Z');
+  const wave = { waveId: 'w', pid: 0, children: [{ key: 'a', pid: 400, closedAt }] };
+  const later = '2026-11-06T10:05:00Z';
+  const earlier = '2026-11-06T09:55:00Z';
+  assert.deepEqual(registeredChildProcesses(wave, { processes: [{ pid: 400, ppid: 1, createdAt: later }, { pid: 500, ppid: 400, createdAt: later }] }), []);
+  assert.deepEqual(registeredChildProcesses(wave, { processes: [{ pid: 400, ppid: 1, createdAt: earlier }] }).map(p => p.pid), [400]);
+  assert.deepEqual(registeredChildProcesses(wave, { processes: [{ pid: 500, ppid: 400, createdAt: earlier }] }).map(p => p.pid), [500]);
+});

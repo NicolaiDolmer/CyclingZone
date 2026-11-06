@@ -937,7 +937,8 @@ async function cli() {
   const [command, ...args] = process.argv.slice(2);
   const value = flag => { const i = args.indexOf(flag); return i < 0 ? undefined : args[i + 1]; };
   const dir = value('--run-dir') || sharedRunDir(process.cwd());
-  if (['assert-idle', 'assert-merge-allowed', 'guarded-merge', 'hook'].includes(command)) await recoverObservedWave(dir, Date.now());
+  // Not in 'hook': a hook timeout can kill the process while it holds a boot-keyed lock.
+  if (['assert-idle', 'assert-merge-allowed', 'guarded-merge'].includes(command)) await recoverObservedWave(dir, Date.now());
   if (command === 'hook') {
     const payload = JSON.parse(fs.readFileSync(0, 'utf8'));
     await handleHook(payload, dir, getOpenPrs, Date.now(), hostBootId);
