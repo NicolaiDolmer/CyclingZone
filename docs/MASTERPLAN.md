@@ -6,7 +6,7 @@
 
 **Arbejdsdeling (ejer 6/11 aften):** fra 7/11 ejer Claude Code på Dolmer PC motor, taktik, udvikling, løbssiden, spillerkommunikation, merge, flag og prod. Ingen aktiv Codex-session. Kun én session merger og tænder ad gangen.
 
-## Tidsplan (ejer 4/11 aften, 20 planlagte + 22 påbegyndte punkter gennemgået enkeltvist)
+## Tidsplan (ejer 4/11 aften)
 
 
 Fuld liste med datoer: #7632. "Done" først ved alle 8 krav; fredagskort til ejeren.
