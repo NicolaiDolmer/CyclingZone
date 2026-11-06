@@ -40,7 +40,9 @@
 //           dag-til-dag-slid, M11's vejr og udmattelsen (W'-reserven), alle
 //           proportionale, derefter dagsformen (§2 invariant 3: ingen af dem
 //           kan vende to rytteres orden paa samme dag) plus tidskoerslens
-//           dagsudsving (`ittStageNoise`, v3-paritet).
+//           dagsudsving (`ittStageNoise`, v3-paritet). #7726 (slukket): under
+//           kontakten falder dagsudsvinget vaek, og dagen er kun de aarsager
+//           der staar ovenfor.
 //   fart    Rytterens EGEN evne mod uret: tidsforskellen mellem to ryttere
 //           foelger deres evne-forskel og ikke hvem der ellers stiller op (se
 //           `ittSpeedKmh`, et lineaert tempo). Feltet saetter kun nulpunktet.
@@ -451,6 +453,8 @@ export type IndividualTimeTrialOptions = TeamTimeTrialOptions & {
   rulesRevision?: unknown;
   /** #6595: terraen-vaegten i fart-formlen (tests/bench); default ittTerrainWeight(rulesRevision). */
   ittTerrainWeight?: Readonly<Record<SegmentKind, number>>;
+  /** #7726 (KUN s5_profiles_v3, SLUKKET): ingen dagsudsving; udeladt = som foer. */
+  ittNoDayRoll7726?: true;
 };
 
 /**
@@ -472,7 +476,10 @@ export function simulateIndividualTimeTrialStage(
   // praecis som foer (byte-identisk).
   const climbShare = isOfficialTimesV3OrLater(options.rulesRevision) ? ittClimbShare(route.segments) : undefined;
   const reference = ittReferenceByKind(startlist, tuning, climbShare);
-  const stageNoiseByRider = new Map(startlist.map((e) => [e.rider_id, ittStageNoise(seed, e.rider_id, ittTuning)]));
+  // #7726 (ejer 5/11, slukket): en enkeltstart afgoeres af aarsager, ikke af en ekstra terning.
+  // Stroemmen er sin egen, saa alle andre udfald paa etapen traekker praecis som foer.
+  const noDayRoll = options.ittNoDayRoll7726 === true && isS5ProfilesV3OrLater(options.rulesRevision);
+  const stageNoiseByRider = new Map(startlist.map((e) => [e.rider_id, noDayRoll ? 0 : ittStageNoise(seed, e.rider_id, ittTuning)]));
   const { teams: _perRiderUnits, ...output } = runTimeTrialStage(
     route,
     units,

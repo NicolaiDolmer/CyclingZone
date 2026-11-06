@@ -260,7 +260,7 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
   // forgrener altid — ogsaa for fixtures og haandbyggede testlister.
   if (isIndividualTimeTrial(input.route.profile_type)) {
     return {
-      output: simulateIndividualTimeTrialStage(input.route, input.startlist, input.seed, input.tuning, { rulesRevision: input.rules_revision, ...(dayForm6649On(input) ? { dayForm6649: true as const } : {}) }), // #6649
+      output: simulateIndividualTimeTrialStage(input.route, input.startlist, input.seed, input.tuning, { rulesRevision: input.rules_revision, ...(dayForm6649On(input) ? { dayForm6649: true as const } : {}), ...(input.itt_no_day_roll_7726 === true ? { ittNoDayRoll7726: true as const } : {}) }), // #6649, #7726
       trace: TIME_TRIAL_TRACE,
     };
   }

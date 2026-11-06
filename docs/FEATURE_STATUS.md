@@ -21,6 +21,7 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 |-|-|-|-|-|-|-|
 | Day form in words after the stage (`race-day-words-7725`) | dormant | `day_words_7725` | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #7725 | 2026-11-06 | Slukket ved merge; kræver day_form_6649. Ændrer kun tidslinjen, aldrig resultatet. |
 | Long descents - cap on how much a regrouping chase can gain (`race-descent-regroup-cap-7644`) | dormant | `descent_regroup_cap_7644` | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #7644 | 2026-11-04 | #7644 ejer-valg B 4/11. Bygget, off; tændes af ejeren efter før/efter-billedet. |
+| Time trials without the extra day roll (`race-itt-no-day-roll-7726`) | dormant | `itt_no_day_roll_7726` | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #7726 | 2026-11-06 | #7726 ejer 5/11. Bygget, off; kun løb der ikke er startet; tændes af ejeren efter før/efter-billedet. |
 | Official time persistence revision (`race-official-times-v1`) | retired | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6284 | 2026-10-16 | Frosset prototype. |
 
 ## race-day
@@ -31,6 +32,7 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
+| Why? button beside riders in Your day (`rider-why-button`) | dormant | `rider_why_button` | - | #7716 | 2026-11-05 | #7717: seedet off, kun visning. Ejeren flytter flaget efter visuelt go. |
 | Engine breakaway forecast (`race-breakaway-outlook`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6912 | 2026-10-29 | Ingen app_config-række (fravær = off). Ejer-go til tænding. |
 
 ## market
