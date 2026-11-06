@@ -395,6 +395,7 @@ export async function loadRaceExitGameDays({ supabase, rows }) {
     }
     for (const row of leftField) {
       const key = raceExitKey(row.rider_id, row.race_id);
+      if (exits.has(key)) continue; // en registreret udgaaelse er det bedste bevis
       const day = dayByStage.get(`${row.race_id}:${lastRidden.get(key) ?? 1}`);
       if (day === undefined) continue;
       if (!exits.has(key) || day < exits.get(key)) exits.set(key, day);
