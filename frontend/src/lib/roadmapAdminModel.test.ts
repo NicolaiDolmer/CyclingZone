@@ -4,11 +4,25 @@ import {
   SPLIT_SD, IDEA_TARGET, rankPlan, rankIdeas, rankIssues, isSplit, nextSortOrder, statusPatch,
   issueStatusPatch, ownOrder, movePatches, ideaPool, visibleIdeaCount, mergeItemRows,
   latestUpdateByIssue, validateTitles, fmtScore, ADMIN_TABS, HORIZONS, HORIZON_LABELS, DEFAULT_SORT, isAdminTab,
-  tabRows, filterItems, filterIssueRows, sortRows, nextSort, tabCounts,
+  tabRows, filterItems, filterIssueRows, sortRows, nextSort, tabCounts, dontKnowTotal,
 } from "./roadmapAdminModel.ts";
 
 const row = (over = {}) => ({ item_id: "a", status: "planned", title_en: "A", title_da: "A", votes: 10,
   avg_idea: 5, avg_importance: 4, steering_score: 14, sort_order: 10, horizon: "next", sd_importance: 1, ...over });
+
+test("Ved ikke (#7788): Stemmer-fanen viser punktet, totalen lægges sammen, og kolonnen kan sorteres", () => {
+  const rows = [
+    row({ item_id: "a", votes: 0, dont_know: 2 }),
+    row({ item_id: "b", votes: 4, dont_know: "1" }),
+    row({ item_id: "c", votes: 0, dont_know: 0 }),
+    // Før migrationen er applied, har viewet ikke kolonnen.
+    row({ item_id: "d", votes: 0 }),
+  ];
+  assert.deepEqual(tabRows(rows, "votes").map((r) => r.item_id), ["a", "b"]);
+  assert.equal(dontKnowTotal(rows), 3);
+  assert.equal(dontKnowTotal([]), 0);
+  assert.deepEqual(sortRows(rows, { key: "dontKnow", dir: "desc" }).map((r) => r.item_id), ["a", "b", "c", "d"]);
+});
 
 test("rankPlan: kun planned, højeste vigtighed først, null sidst", () => {
   const r = rankPlan([row({ item_id: "a", avg_importance: 4 }), row({ item_id: "b", avg_importance: 5.1 }),

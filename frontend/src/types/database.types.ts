@@ -6464,7 +6464,7 @@ export type Database = {
           created_at: string
           id: number
           idea_score: number | null
-          importance_score: number
+          importance_score: number | null
           item_id: string
           updated_at: string
           user_id: string
@@ -6473,7 +6473,7 @@ export type Database = {
           created_at?: string
           id?: number
           idea_score?: number | null
-          importance_score: number
+          importance_score?: number | null
           item_id: string
           updated_at?: string
           user_id: string
@@ -6482,7 +6482,7 @@ export type Database = {
           created_at?: string
           id?: number
           idea_score?: number | null
-          importance_score?: number
+          importance_score?: number | null
           item_id?: string
           updated_at?: string
           user_id?: string
@@ -9319,6 +9319,7 @@ export type Database = {
           approved: boolean | null
           avg_idea: number | null
           avg_importance: number | null
+          dont_know: number | null
           engine: string | null
           horizon: string | null
           idea_votes: number | null

@@ -71,6 +71,17 @@ test("isRated: planlagt kræver kun vigtighed, idé kræver begge", () => {
   assert.equal(isRated(idea, { item_id: "i1", idea_score: 5, importance_score: 4 }), true);
 });
 
+test("Ved ikke besvarer punktet på begge faner og forsvinder fra mangler dit svar (#7788)", () => {
+  const planned = item({ id: "p1", status: "planned" });
+  const idea = item({ id: "v1", status: "active" });
+  const dontKnow = (id: string): RoadmapVote => ({ item_id: id, idea_score: null, importance_score: null });
+  assert.equal(isRated(planned, dontKnow("p1")), true);
+  assert.equal(isRated(idea, dontKnow("v1")), true);
+  const votes = new Map<string, RoadmapVote>([["p1", dontKnow("p1")], ["v1", dontKnow("v1")]]);
+  assert.deepEqual(countUnrated([planned, idea], votes), { plan: 0, vote: 0, total: 2, rated: 2 });
+  assert.deepEqual(filterUnrated([planned, idea], votes, true), []);
+});
+
 test("countUnrated tæller pr. fane og samlet", () => {
   const items = [
     item({ id: "p1", status: "planned" }), item({ id: "p2", status: "planned" }),

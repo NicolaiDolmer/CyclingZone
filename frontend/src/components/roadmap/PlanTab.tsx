@@ -10,7 +10,8 @@ import {
   type PlanGroup, type RoadmapHorizon, type RoadmapItem, type RoadmapVote,
 } from "../../lib/roadmapModel.ts";
 import { CollapsibleSection, EmptyState, Section, SectionHeader, Button, StatusBadge } from "./roadmapUi.ts";
-import ScoreScale from "./ScoreScale.tsx";
+import ScoreScale, { DontKnowButton } from "./ScoreScale.tsx";
+import { isDontKnow } from "../../lib/roadmapVoting.js";
 import { RowMeta, RowTitle, SaveNote, SkeletonRows, ROW, ROW_LIST } from "./RoadmapRows.tsx";
 import { areaTitle, dateRange, localTitle, type SaveState } from "./roadmapFormat.ts";
 import { CheckIcon, ClipboardIcon } from "../ui/index.js";
@@ -31,6 +32,7 @@ export interface PlanTabProps {
   canVote: boolean;
   isNew: (item: RoadmapItem) => boolean;
   onRate: (item: RoadmapItem, value: number) => void;
+  onDontKnow: (item: RoadmapItem) => void;
   onShowAll: () => void;
   onGoVote: () => void;
   /** Punktet et søgehit åbnede; dets fold står åben. */
@@ -97,6 +99,12 @@ export default function PlanTab(props: PlanTabProps) {
               value={vote?.importance_score}
               disabled={state === "saving"}
               onSelect={(n) => props.onRate(item, n)}
+            />
+            <DontKnowButton
+              label={t("voting.dontKnow")}
+              pressed={isDontKnow(vote)}
+              disabled={state === "saving"}
+              onSelect={() => props.onDontKnow(item)}
             />
             <SaveNote state={state} savedLabel={t("voting.saved")} errorLabel={t("voting.error")} />
           </div>

@@ -38,6 +38,8 @@ export interface ScoreRow {
   issue_ref?: number | null;
   idea_votes?: Num;
   sd_importance?: Num;
+  // #7788: svar uden tal. Tæller hverken i votes eller i snittene.
+  dont_know?: Num;
   flag_key?: string | null;
   beta_since?: string | null;
   beta_soon?: boolean;
@@ -232,9 +234,15 @@ export function tabRows<T extends ScoreRow>(rows: T[], tab: AdminTab): T[] {
     case "in_progress": return rows.filter((r) => r.status === "in_progress");
     case "shipped": return rows.filter((r) => r.status === "shipped");
     case "y2027": return rows.filter((r) => r.horizon === "y2027" && !DONE_STATUSES.includes(r.status));
-    case "votes": return rows.filter((r) => num(r.votes) !== null && (num(r.votes) ?? 0) > 0);
+    // Et punkt med lutter Ved ikke er også et svar, admin skal kunne finde.
+    case "votes": return rows.filter((r) => (num(r.votes) ?? 0) > 0 || (num(r.dont_know) ?? 0) > 0);
     default: return [];
   }
+}
+
+// Summen over punkterne. RPC'en har ikke tallet, så dens signatur kunne blive stående.
+export function dontKnowTotal(rows: ScoreRow[]): number {
+  return rows.reduce((sum, r) => sum + (num(r.dont_know) ?? 0), 0);
 }
 
 export interface RowFilters {
@@ -297,6 +305,7 @@ const strAcc = (field: string): Accessor => (r) => {
 const ACCESSORS: Record<string, Accessor> = {
   title: (r) => String(r.title_da || r.title_en || "").toLowerCase() || null,
   votes: numAcc("votes"),
+  dontKnow: numAcc("dont_know"),
   importance: numAcc("avg_importance"),
   idea: numAcc("avg_idea"),
   score: numAcc("steering_score"),

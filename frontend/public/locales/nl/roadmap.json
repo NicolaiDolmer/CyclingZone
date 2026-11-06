@@ -43,6 +43,7 @@
   "voting": {
     "idea": "Goed idee?",
     "importance": "Belangrijk voor jou?",
+    "dontKnow": "Weet ik niet",
     "saved": "Opgeslagen",
     "error": "Je stem is niet opgeslagen. Probeer het opnieuw."
   },
