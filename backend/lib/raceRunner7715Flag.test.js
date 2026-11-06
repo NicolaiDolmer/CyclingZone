@@ -123,10 +123,17 @@ test("#7715 resolveRaceEngineV4: slukket = samme motor-objekt, fejl = slukket, t
 
 // ── Kun løb der ikke er startet ───────────────────────────────
 
-test("#7715 withRaceTimeLimitFatigue7715: uden tilbud røres hverken database eller motor", async () => {
+test("#7715 withRaceTimeLimitFatigue7715: et bundet løb kører færdigt uden tilbud, og nødstop fjerner reglen", async () => {
+  const engine = { version: "v4" };
+  const bound = await withRaceTimeLimitFatigue7715({ v4Engine: engine, rulesRevision: "s5_profiles_v3", readBound: async () => true });
+  assert.equal(bound.timeLimitFatigue7715, true);
+  assert.equal(await withRaceTimeLimitFatigue7715({ v4Engine: engine, rulesRevision: "s5_profiles_v3", readBound: async () => false }), engine);
+});
+
+test("#7715 withRaceTimeLimitFatigue7715: uden tilbud bindes intet, og motoren er urørt", async () => {
   const engine = { simulateStage: () => ({}) };
   const bind = () => { throw new Error("må ikke kaldes"); };
-  assert.equal(await withRaceTimeLimitFatigue7715({ v4Engine: engine, rulesRevision: "s5_profiles_v3", bind }), engine);
+  assert.equal(await withRaceTimeLimitFatigue7715({ v4Engine: engine, rulesRevision: "s5_profiles_v3", bind, readBound: async () => false }), engine);
   assert.equal(await withRaceTimeLimitFatigue7715({ v4Engine: null, rulesRevision: "s5_profiles_v3", bind }), null);
   const offered = { ...engine, timeLimitFatigue7715Offered: true };
   assert.equal(await withRaceTimeLimitFatigue7715({ v4Engine: offered, rulesRevision: "s5_profiles_v2", bind }), offered, "ældre revision");
@@ -214,12 +221,13 @@ test("#7715 eget niveau: snittet af evnerne, intet tal uden evner", () => {
   assert.deepEqual(timeLimitFatigueSeverities7715({ riders: entrants7715(), stageRow: null, revision: "s5_profiles_v3" }), {});
 });
 
-function timelinesStub(rows, { error = null } = {}) {
+function timelinesStub(rows, { error = null, bound = true } = {}) {
   const calls = [];
   return {
     calls,
     from(table) {
       calls.push(table);
+      if (table === "races") return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { time_limit_fatigue_7715: bound ? true : null, stages_completed: 2 }, error: null }) }) }) };
       assert.equal(table, "race_stage_timelines");
       return { select: () => ({ eq: () => ({ order: async () => (error ? { data: null, error } : { data: rows, error: null }) }) }) };
     },
@@ -294,4 +302,10 @@ test("#7715 tændt: under s5_profiles_v2 gør kontakten intet", async () => {
   const off = await digests7715(wholeRace7715(engine, "s5_profiles_v2"));
   const on = await digests7715(wholeRace7715({ ...engine, timeLimitFatigue7715: true }, "s5_profiles_v2"));
   assert.deepEqual(on, off);
+});
+
+test("#7715 forklaringen: et løb uden binding læser aldrig tidslinjerne", async () => {
+  const stub = timelinesStub([], { bound: false });
+  assert.equal((await loadFatigueOutStages7715({ supabase: stub, race: RACE, riderIds: ["a"] })).size, 0);
+  assert.deepEqual(stub.calls, ["races"]);
 });

@@ -63,7 +63,7 @@ import { isLetGoOrder7557Enabled } from "./letGoOrder7557Flag.js"; // #7557
 import { bindIttNoDayRoll7726, isIttNoDayRoll7726Enabled } from "./ittNoDayRoll7726Flag.js"; // #7726
 import { isStartedFieldLock7733Enabled } from "./startedFieldLock7733Flag.js"; // #7733
 import { bindTeamChase7730, isTeamChase7730Enabled } from "./teamChase7730Flag.js"; // #7730
-import { bindRaceTimeLimitFatigue7715, isTimeLimitFatigue7715Enabled } from "./timeLimitFatigue7715.js"; // #7715
+import { bindRaceTimeLimitFatigue7715, isTimeLimitFatigue7715Enabled, raceBoundToTimeLimitFatigue7715 } from "./timeLimitFatigue7715.js"; // #7715
 // #5462: skadens varighed i LOEBSDAGE naar loebsdagen er tick-enheden.
 import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
 import { isTrainingConditionPerDateEnabled } from './trainingDateConditionFlag.js';
@@ -435,13 +435,15 @@ export function v4TimeLimitFatigue7715Arg(v4Engine, rulesRevision) {
 }
 
 /**
- * #7715: kontakten gaelder kun loeb der ikke er startet. Uden tilbud fra flaget roeres
- * hverken databasen eller motor-objektet. Med tilbud bindes loebet ved foerste etape, og
- * et allerede startet loeb uden binding koerer videre paa de regler det startede med.
+ * #7715: kontakten gaelder kun loeb der ikke er startet. Med tilbud bindes loebet ved
+ * foerste etape, og et startet loeb uden binding koerer videre paa de regler det startede
+ * med. Uden tilbud laeses kun bindingen, saa et bundet loeb koerer faerdigt med reglen,
+ * ogsaa hvis kontakten slukkes eller opslaget fejler. Kun noedstoppet fjerner den.
  */
-export async function withRaceTimeLimitFatigue7715({ supabase, race, v4Engine, rulesRevision, firstStageClaim, dryRun = false, bind = bindRaceTimeLimitFatigue7715 }) {
-  if (v4Engine?.timeLimitFatigue7715Offered !== true || !isS5ProfilesV3OrLater(rulesRevision)) return v4Engine;
-  const bound = await bind({ supabase, race, firstStageClaim, dryRun });
+export async function withRaceTimeLimitFatigue7715({ supabase, race, v4Engine, rulesRevision, firstStageClaim, dryRun = false, bind = bindRaceTimeLimitFatigue7715, readBound = raceBoundToTimeLimitFatigue7715 }) {
+  if (!v4Engine || !isS5ProfilesV3OrLater(rulesRevision)) return v4Engine;
+  const offered = v4Engine.timeLimitFatigue7715Offered === true;
+  const bound = offered ? await bind({ supabase, race, firstStageClaim, dryRun }) : await readBound({ supabase, race });
   return bound === true ? { ...v4Engine, timeLimitFatigue7715: true } : v4Engine;
 }
 
