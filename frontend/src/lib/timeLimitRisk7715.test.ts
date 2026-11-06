@@ -46,3 +46,9 @@ for (const { code } of LANGUAGES) {
     }
   });
 }
+
+test("#7715: planens haardeste indsats afgoer maerket, ikke den gamle intention", async () => {
+  const { hardestPlanEffort } = await import("../components/race/StagePlanModel.ts");
+  assert.equal(hardestPlanEffort([{ task: "grupetto" }]), "grupetto");
+  assert.equal(hardestPlanEffort([{ task: "stay_sheltered" }, { task: "attack" }]), "all_out");
+});

@@ -381,6 +381,7 @@ export default function StagePlanBoard({
     sortDir: "asc" | "desc" | null;
     onSort: () => void;
     renderCell: (rider: PlanRider, opts?: { numberOnly?: boolean }) => React.ReactNode;
+    renderMark?: (rider: PlanRider) => React.ReactNode;
   };
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
@@ -609,6 +610,7 @@ export default function StagePlanBoard({
                 )}
               </div>
               <div className="mt-0.5">{renderRoleCell(rider)}</div>
+              {routeMatch?.renderMark?.(rider)}
               {editable(rider) && !stageCompleted ? (
                 <button
                   type="button"
