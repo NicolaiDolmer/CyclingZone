@@ -21,6 +21,9 @@ export interface TrainingActivity {
   injury_days?: number;
   race_day?: boolean;
   bound_race_day?: boolean;
+  /** #7757: everything this session trains stood at the rider's ceiling. */
+  at_ceiling?: boolean;
+  fatigue_rule?: unknown;
   status?: string;
   settlement_status?: string;
   missing_evidence?: unknown[];

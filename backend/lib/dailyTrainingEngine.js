@@ -1588,6 +1588,8 @@ export async function runTeamTrainingDay({
       gains_detail: gainsDetail,
       // #6210: point udskudt til naeste dato af dato-loftet (kun naar det bandt).
       ...(tickResult?.capped_by_date ? { gains_deferred_by_date_cap: tickResult.capped_by_date } : {}),
+      // #7757: alt passet traener staar ved loftet; rapporten viser aarsagen i ord.
+      ...(tickResult?.at_ceiling ? { at_ceiling: true } : {}),
       // #3924 trin 2: pre-tick fremdrift — kun til frontend-udledning af dagens
       // bidrag til "på vej mod næste point"-baren, aldrig til ny trænings-logik.
       progress_before: preProgress,

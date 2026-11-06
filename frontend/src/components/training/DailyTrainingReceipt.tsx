@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { DailyTrainingReceipt as DateReceipt, DailyRiderReceipt, TrainingActivity } from "../../lib/trainingDailyReceipt.ts";
 import { averagePassScore, sortReceiptRiders, formatSlotRange, waitingForRace, type ReceiptSort } from "../../lib/trainingDailyReceipt.ts";
+import { dayReason } from "../../lib/trainingDayReason.ts";
 import Segmented from "../ui/Segmented.jsx";
 import { formatDate, formatNumber } from "../../lib/intl.js";
 import { todayGainTotal } from "../../lib/trainingReport.js";
@@ -60,8 +61,12 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
     : activity.race_day ? t("dailyReceipt.race")
     : activity.intensity === "rest" ? t("restDay")
     : activity.focus ? tRider(`training.focus_${activity.focus}`) : t("dailyReceipt.training");
+  // #7757: only a settled date has a whole day to explain.
+  const reasonFor = (row: DailyRiderReceipt) => isKnown(row) ? dayReason(row.activities, todayGainTotal(row)) : null;
   const gainsLabel = (row: DailyRiderReceipt) => {
     if (!showsDevelopment(row)) return t(`dailyReceipt.status.${row.receipt_status}`);
+    const reason = reasonFor(row);
+    if (reason) return t(`dailyReceipt.reason.${reason}`);
     const dev = development(row);
     const whole = Object.entries(dev.gains).filter(([, n])=>n > 0);
     if (whole.length) return whole.map(([key,n])=>`${abilityName(key)} +${formatNumber(n)}`).join(", ");
@@ -103,7 +108,7 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
         const visible = showsDevelopment(row);
         const dev = development(row);
         const latestScore = visible ? latestReceiptPassScore(trainingScore?.[row.rider_id],run.tick_date,run.season_id,row.activities) : null;
-        const gainTone = visible && (todayGainTotal(dev) > 0 || Object.values(dev.gain_percent).some(value => value != null && value > 0))
+        const gainTone = visible && !reasonFor(row) && (todayGainTotal(dev) > 0 || Object.values(dev.gain_percent).some(value => value != null && value > 0))
           ? "text-cz-success" : "text-cz-2";
         const reportInjury = condition && today ? injuryTimeLeft(condition[row.rider_id], today) : null;
         const injuryMessage = reportInjury && reportInjury.count > 0 ? injuryBadgeMessage(reportInjury, { compact: true }) : null;

@@ -597,6 +597,13 @@
       "reconciliation": "Algunas actividades requieren conciliación. La evidencia que falta nunca se muestra como desarrollo cero.",
       "recorded": "Las actividades registradas se combinan para esta fecha. Los informes más antiguos pueden no incluir la evidencia completa de progreso o liquidación."
     },
+    "reason": {
+      "injured": "Lesionado, así que sin entrenamiento.",
+      "raceBound": "Reservado para una carrera, así que sin entrenamiento.",
+      "fatigueRule": "Descansó todo el día por tu límite de fatiga.",
+      "restPlan": "Descansó todo el día porque el plan marca descanso.",
+      "nearBest": "Cerca de su mejor nivel, así que ahora entrenar apenas aporta nada."
+    },
     "riderReceipts": "Recibos de ciclistas",
     "trainedNow": "{count, plural, one {Entrenado ahora · día de carrera {range}} other {Entrenado ahora · días de carrera {range}}}",
     "trainedNowCount": "Entrenado ahora",

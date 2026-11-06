@@ -597,6 +597,13 @@
       "reconciliation": "Certaines activités demandent un rapprochement. Une preuve manquante n'est jamais affichée comme une progression nulle.",
       "recorded": "Les activités enregistrées sont combinées pour cette date. Les rapports plus anciens peuvent ne pas contenir toute la preuve de progression ou de règlement."
     },
+    "reason": {
+      "injured": "Blessé, donc pas d'entraînement.",
+      "raceBound": "Retenu pour une course, donc pas d'entraînement.",
+      "fatigueRule": "Repos toute la journée à cause de ta limite de fatigue.",
+      "restPlan": "Repos toute la journée, car le plan prévoit du repos.",
+      "nearBest": "Proche de son meilleur niveau, l'entraînement n'apporte presque plus rien."
+    },
     "riderReceipts": "Reçus des coureurs",
     "trainedNow": "{count, plural, one {Entraîné maintenant · jour de course {range}} other {Entraînés maintenant · jours de course {range}}}",
     "trainedNowCount": "Entraînés maintenant",

@@ -244,6 +244,21 @@ function settleProgressBar({ bar, gained, current, cap, dailyCeiling }) {
   return dailyCeilingBound ? bar : Math.min(bar, 0.999);
 }
 
+// #7757: står ALT det passet træner på eller over sit loft? Så kommer der næsten
+// intet ud af dagen, og det er det rapporten skal kunne sige i ord. Loftet er det
+// samme som motoren regner med: under kurve B det bløde loft (over det er der kun
+// restfart), ellers det hårde. Kun aflæsning, aldrig en del af udbyttet. Ukendt
+// loft giver false: rapporten må ikke påstå en årsag, motoren ikke kender.
+function trainsOnlyAtCeiling({ trained, abilities, caps, potentiale, curveB }) {
+  if (trained.length === 0) return false;
+  return trained.every((ability) => {
+    const cap = caps?.[ability];
+    if (cap == null) return false;
+    const ceiling = curveB ? curveBSoftCeiling(cap, potentiale, curveB) : cap;
+    return Number(abilities?.[ability] ?? 0) >= ceiling;
+  });
+}
+
 // Ét dags-tick for én rytter. Muterer ikke input. Returnerer nye abilities/progress + rapportfelter.
 // caps er PÅKRÆVET: manglende evne-nøgle ⇒ nul vækst for den evne (konservativt, jf. L0's lazy-caps).
 // hardDailyCap (valgfri, #2082/#1938): maks antal hele point én evne må stige pr. dag —
@@ -349,10 +364,16 @@ export function applyDailyTick({
     });
   }
 
+  // #7757: en restitutionsdag er en hviledag med sin egen årsag, ikke et pas ved loftet.
+  const trained = program?.intensity === RECOVERY_INTENSITY ? []
+    : VISIBLE_ABILITIES.filter((ability) => (program?.focusAbilities ?? TRAINING_FOCUSES[program?.focus] ?? []).includes(ability)
+      && abilityMult(ability, program, trainingCfg) > 0);
+
   return {
     abilities: nextAbilities,
     progress: nextProgress,
     gains,
+    ...(trainsOnlyAtCeiling({ trained, abilities, caps, potentiale, curveB }) ? { at_ceiling: true } : {}),
     // `score` er fortsat KVITTERINGEN (summen af raa evne-deltaer) — den er
     // rapport-feltet frontend allerede laeser. Det NYE tal er `trainingScore`.
     score: Math.round(score * 100) / 100,
@@ -484,6 +505,7 @@ export function applyRaceDevelopmentTick({
     abilities: nextAbilities,
     progress: nextProgress,
     gains,
+    ...(trainsOnlyAtCeiling({ trained: relevant, abilities, caps, potentiale, curveB }) ? { at_ceiling: true } : {}), // #7757
     score: Math.round(score * 100) / 100,
     // #4851: beregnet, men fladen viser "loeb" i stedet for tallet (spec §4.4).
     // Om en loebsdag SKAL have et tal paa samme skala er et AABENT punkt (§5).

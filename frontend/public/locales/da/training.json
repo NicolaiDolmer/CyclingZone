@@ -597,6 +597,13 @@
       "reconciliation": "Nogle aktiviteter kræver efterkontrol. Manglende bevis vises aldrig som nul udvikling.",
       "recorded": "De registrerede aktiviteter er samlet for datoen. Ældre rapporter kan mangle fuld fremdrift eller bevis for afregningen."
     },
+    "reason": {
+      "injured": "Skadet, så ingen træning.",
+      "raceBound": "Bundet til et løb, så ingen træning.",
+      "fatigueRule": "Hvilede hele dagen på grund af din træthedsgrænse.",
+      "restPlan": "Hvilede hele dagen, fordi planen siger hvile.",
+      "nearBest": "Tæt på sit bedste niveau, så træningen giver næsten intet nu."
+    },
     "riderReceipts": "Rytterkvitteringer",
     "trainedNow": "{count, plural, one {Trænet nu · løbsdag {range}} other {Trænet nu · løbsdage {range}}}",
     "trainedNowCount": "Trænet nu",

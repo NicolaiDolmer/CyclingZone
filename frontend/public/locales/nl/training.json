@@ -597,6 +597,13 @@
       "reconciliation": "Sommige activiteiten moeten worden afgestemd. Ontbrekend bewijs wordt nooit als nul ontwikkeling getoond.",
       "recorded": "Vastgelegde activiteiten zijn voor deze datum gecombineerd. Oudere rapporten bevatten mogelijk niet het volledige bewijs van voortgang of verwerking."
     },
+    "reason": {
+      "injured": "Geblesseerd, dus geen training.",
+      "raceBound": "Vastgelegd voor een koers, dus geen training.",
+      "fatigueRule": "Rustte de hele dag door je vermoeidheidslimiet.",
+      "restPlan": "Rustte de hele dag omdat het plan rust aangeeft.",
+      "nearBest": "Dicht bij zijn beste niveau, dus training levert nu bijna niets meer op."
+    },
     "riderReceipts": "Rennersoverzichten",
     "trainedNow": "{count, plural, one {Nu getraind · koersdag {range}} other {Nu getraind · koersdagen {range}}}",
     "trainedNowCount": "Nu getraind",

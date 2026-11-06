@@ -597,6 +597,13 @@
       "reconciliation": "Some activities need reconciliation. Missing evidence is never shown as zero development.",
       "recorded": "Recorded activities are combined for this date. Older reports may not contain full progress or settlement evidence."
     },
+    "reason": {
+      "injured": "Injured, so no training.",
+      "raceBound": "Held for a race, so no training.",
+      "fatigueRule": "Rested all day because of your fatigue limit.",
+      "restPlan": "Rested all day because the plan says rest.",
+      "nearBest": "Close to their best level, so training adds almost nothing now."
+    },
     "riderReceipts": "Rider receipts",
     "trainedNow": "{count, plural, one {Trained now · race day {range}} other {Trained now · race days {range}}}",
     "trainedNowCount": "Trained now",
