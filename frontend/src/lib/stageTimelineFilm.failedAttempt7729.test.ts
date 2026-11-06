@@ -8,10 +8,11 @@ import { buildFilmTimeline, collectRiderIds, describeEvent } from "./stageTimeli
 const riderNameById = new Map(["a", "b", "c", "d", "e", "f", "g"].map((id) => [id, `Rider ${id.toUpperCase()}`]));
 const teamNameById = new Map([["t1", "Team One"], ["t2", "Team Two"], ["t3", "Team Three"], ["t4", "Team Four"]]);
 const attempt = (params: Record<string, unknown>) => ({ km: 12, type: "breakaway_attempt", params: { exact_km: 12, ...params } });
+const OWN = new Set(["a", "b", "c"]);
 
 test("#7729 the riders left behind are named, with the teams that worked against them", () => {
   const event = attempt({ rider_ids: ["a", "b", "c"], escaped_rider_ids: ["a"], reacting_team_ids: ["t1", "t2"] });
-  assert.deepEqual(describeEvent(event, { riderNameById, teamNameById }), {
+  assert.deepEqual(describeEvent(event, { riderNameById, teamNameById, ownRiderIds: OWN }), {
     key: "breakaway_attempt_failed",
     params: { riders: "Rider B, Rider C", count: 2, others: 0, teamCount: 2, teams: "Team One, Team Two", teamsHead: "Team One", teamLast: "Team Two" },
   });
@@ -19,40 +20,43 @@ test("#7729 the riders left behind are named, with the teams that worked against
 
 test("#7729 riders who got away never appear as failed, and a clean attempt has no line", () => {
   const event = attempt({ rider_ids: ["a", "b"], escaped_rider_ids: ["a", "b"], reacting_team_ids: ["t1"] });
-  assert.equal(describeEvent(event, { riderNameById, teamNameById }), null);
+  assert.equal(describeEvent(event, { riderNameById, teamNameById, ownRiderIds: OWN }), null);
 });
 
 test("#7729 a morning with no break says nobody got clear", () => {
   const event = attempt({ rider_ids: ["a"], escaped_rider_ids: [], reacting_team_ids: ["t1"] });
-  assert.equal(describeEvent(event, { riderNameById, teamNameById })?.key, "breakaway_attempt_none_clear");
+  assert.equal(describeEvent(event, { riderNameById, teamNameById, ownRiderIds: OWN })?.key, "breakaway_attempt_none_clear");
 });
 
 test("#7729 many teams become a count, and so do teams without a known name", () => {
   const many = attempt({ rider_ids: ["a", "b"], escaped_rider_ids: ["a"], reacting_team_ids: ["t1", "t2", "t3", "t4"] });
-  assert.deepEqual(describeEvent(many, { riderNameById, teamNameById }), {
+  assert.deepEqual(describeEvent(many, { riderNameById, teamNameById, ownRiderIds: OWN }), {
     key: "breakaway_attempt_failed_field",
     params: { riders: "Rider B", count: 1, others: 0, teamCount: 4 },
   });
   const unknown = attempt({ rider_ids: ["a", "b"], escaped_rider_ids: ["a"], reacting_team_ids: ["t1", "gone"] });
-  assert.equal(describeEvent(unknown, { riderNameById, teamNameById })?.key, "breakaway_attempt_failed_field");
+  assert.equal(describeEvent(unknown, { riderNameById, teamNameById, ownRiderIds: OWN })?.key, "breakaway_attempt_failed_field");
   // Race Centre har ingen holdnavne: linjen er stadig sand, med antallet.
-  assert.equal(describeEvent(unknown, { riderNameById })?.key, "breakaway_attempt_failed_field");
+  assert.equal(describeEvent(unknown, { riderNameById, ownRiderIds: OWN })?.key, "breakaway_attempt_failed_field");
 });
 
-test("#7729 a crowded attempt stays a broadcast line, but your own riders are always named", () => {
+test("#7729 only attempts with your own riders get a line, and the others are a count", () => {
   const event = attempt({ rider_ids: ["a", "b", "c", "d", "e", "f", "g"], escaped_rider_ids: ["a"], reacting_team_ids: ["t1"] });
   const teams = { teamCount: 1, teams: "Team One", teamsHead: "", teamLast: "Team One" };
-  assert.deepEqual(describeEvent(event, { riderNameById, teamNameById })?.params, { riders: "Rider B, Rider C, Rider D, Rider E", count: 6, others: 2, ...teams });
-  assert.deepEqual(describeEvent(event, { riderNameById, teamNameById, ownRiderIds: new Set(["g"]) })?.params, { riders: "Rider G, Rider B, Rider C, Rider D", count: 6, others: 2, ...teams });
+  assert.deepEqual(describeEvent(event, { riderNameById, teamNameById, ownRiderIds: new Set(["g"]) })?.params, { riders: "Rider G", count: 6, others: 5, ...teams });
+  assert.equal(describeEvent(event, { riderNameById, teamNameById, ownRiderIds: new Set(["x"]) }), null);
+  assert.equal(describeEvent(event, { riderNameById, teamNameById }), null);
+  // Egen rytter der slap fri er ikke et mislykket forsoeg.
+  assert.equal(describeEvent(event, { riderNameById, teamNameById, ownRiderIds: new Set(["a"]) }), null);
 });
 
 test("#7729 missing data shows no attempt", () => {
   const base = { rider_ids: ["a", "b"], escaped_rider_ids: ["a"], reacting_team_ids: ["t1"] };
   for (const missing of Object.keys(base)) {
-    assert.equal(describeEvent(attempt({ ...base, [missing]: undefined }), { riderNameById, teamNameById }), null, missing);
+    assert.equal(describeEvent(attempt({ ...base, [missing]: undefined }), { riderNameById, teamNameById, ownRiderIds: OWN }), null, missing);
   }
-  assert.equal(describeEvent(attempt({ ...base, reacting_team_ids: [] }), { riderNameById, teamNameById }), null);
-  assert.equal(describeEvent(attempt(base), { riderNameById: new Map(), teamNameById }), null);
+  assert.equal(describeEvent(attempt({ ...base, reacting_team_ids: [] }), { riderNameById, teamNameById, ownRiderIds: OWN }), null);
+  assert.equal(describeEvent(attempt(base), { riderNameById: new Map(), teamNameById, ownRiderIds: OWN }), null);
 });
 
 test("#7729 the film feed carries the attempt, and the name lookup covers its riders", () => {

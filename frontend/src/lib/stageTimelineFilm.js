@@ -276,15 +276,15 @@ function describeCause(p, riderNameById, teamNameById) {
   }
 }
 
-// #7729: flere navne end dette er ikke en broadcast-linje; resten står som et antal.
-const MAX_ATTEMPT_RIDER_NAMES = 4;
+// #7729: flere hold end dette står som et antal.
 const MAX_ATTEMPT_TEAM_NAMES = 3;
 
 /**
  * #7729: dem der forsøgte at komme med i morgenudbruddet og blev i feltet, og
  * holdene der arbejdede imod. Kun det motoren skrev på `breakaway_attempt`: mangler
  * listerne (ældre etaper) eller holdene, er der ingen forklaring og ingen linje.
- * Egne ryttere nævnes altid ved navn (samme løfte som stageTimelineGrouping.ts).
+ * Ejer 6/11: kun forsøg med egne ryttere får en linje, ellers bliver filmen rodet.
+ * Andre der forsøgte samtidig står som et antal.
  */
 function describeFailedAttempt(p, riderNameById, teamNameById, ownRiderIds) {
   const { rider_ids: attempted, escaped_rider_ids: escaped, reacting_team_ids: teamIds } = p;
@@ -293,8 +293,8 @@ function describeFailedAttempt(p, riderNameById, teamNameById, ownRiderIds) {
   if (!failed.length) return null;
   const own = new Set(Array.from(ownRiderIds ?? [], String));
   const mine = failed.filter((id) => own.has(String(id)));
-  const named = [...mine, ...failed.filter((id) => !own.has(String(id)))];
-  const names = resolvedRiderNames(named, riderNameById).slice(0, Math.max(MAX_ATTEMPT_RIDER_NAMES, mine.length));
+  if (!mine.length) return null;
+  const names = resolvedRiderNames(mine, riderNameById);
   if (!names.length) return null;
   const key = escaped.length ? "breakaway_attempt_failed" : "breakaway_attempt_none_clear";
   const params = { riders: names.join(", "), count: failed.length, others: failed.length - names.length, teamCount: teamIds.length };
