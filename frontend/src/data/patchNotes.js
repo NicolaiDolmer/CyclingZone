@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.408",
+    "date": "2026-11-06",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Time trials no longer have an extra dice roll",
+          "body": "In races that haven't started yet, ability, form, fatigue, weather, the route and form on the day decide a time trial. The best time triallist wins more often, and evenly matched riders still have a real fight."
+        },
+        "da": {
+          "title": "Enkeltstart har ikke længere en ekstra terning",
+          "body": "I løb, der ikke er startet, afgør evne, form, træthed, vejr, rute og dagsform en enkeltstart. Den bedste tidskører vinder oftere, og lige stærke ryttere har stadig et reelt opgør."
+        },
+        "refs": [
+          7726
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.407",
     "date": "2026-11-06",
     "changes": [
