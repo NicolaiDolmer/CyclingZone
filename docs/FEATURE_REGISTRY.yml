@@ -1014,7 +1014,7 @@ features:
     ssot: docs/superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md
     epic: 6110
     verified: 2026-11-05
-    note: 'Byggetrin 4 (#7684): estimates, scouting-rapport, development-projection og akademi svarer fra potentialEstimateRead.js, når flaget er tændt. Slukket som alt andet i Udvikling 2.0; kræver byggetrin 5 (skrivning af skøn) og 6 (frontend) før tænding.'
+    note: 'Byggetrin 4 (#7684): estimates, scouting-rapport, development-projection og akademi svarer fra potentialEstimateRead.js, når flaget er tændt.'
     decision: goer-faerdigt
     decide_by: 2026-12-31
 
@@ -1028,7 +1028,7 @@ features:
     verified: 2026-11-05
     decision: goer-faerdigt
     decide_by: 2026-12-31
-    note: 'Trin 5 (#7685): søndagsjob, holdskifte og nye kig skriver bag flaget potential_estimate_writes (seedes off). Skriver intet, før ejeren har sat private_config potential_estimate_params, og før talent_ceiling er fyldt (trin 12). Ingen flade læser tabellen endnu.'
+    note: 'Trin 5 (#7685): søndagsjob, holdskifte og nye kig skriver bag flaget potential_estimate_writes (seedes off).'
 
   - id: train-now-whole-day
     area: training
