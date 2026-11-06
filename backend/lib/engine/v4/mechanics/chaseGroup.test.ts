@@ -14,7 +14,7 @@ const ON_TIME = 10;
 const t = TEAM_CHASE_7730_TUNING;
 
 /** `team:rider` -> hold; alle ryttere er lige staerke som udbruddet med mindre andet er sat. */
-function judge(work: Record<string, number>, opts: { factor?: Record<string, number>; engine?: Record<string, number> } = {}) {
+function judge(work: Record<string, number>, opts: { factor?: Record<string, number>; engine?: Record<string, number>; wanted?: boolean } = {}) {
   const riders = Object.fromEntries(Object.keys(work).map((id) => [id, { status: "racing", team_cp_factor: opts.factor?.[id] ?? 1 }]));
   return judgeFloorChase7730({
     work: new Map(Object.entries(work)),
@@ -24,6 +24,7 @@ function judge(work: Record<string, number>, opts: { factor?: Record<string, num
     breakEngine: 50,
     onTimeSeconds: ON_TIME,
     lateSeconds: LATE,
+    wanted: opts.wanted ?? true,
   });
 }
 
@@ -42,11 +43,18 @@ test("#7730 dommen: nok friske hold er i tide, og maalet er til-tiden", () => {
   assert.equal(v.reason, null);
 });
 
-test("#7730 dommen: ingen ryttere der arbejder = for sent, og aarsagen er ingen jagere", () => {
+test("#7730 dommen: holdene ville jage, men ingen ryttere arbejder = for sent, og aarsagen er ingen jagere", () => {
   const v = judge({});
   assert.equal(v.targetSeconds, LATE);
   assert.deepEqual([v.short, v.reason, v.teamIds], [true, "no_chasers", []]);
   assert.equal(judge({ "A:1": 0 }).reason, "no_chasers", "en rytter uden indsats arbejder ikke");
+});
+
+test("#7730 dommen: ingen arbejder og intet hold ville jage = ikke det samme som ingen ryttere", () => {
+  const v = judge({}, { wanted: false });
+  assert.equal(v.targetSeconds, LATE);
+  assert.deepEqual([v.short, v.reason, v.teamIds], [true, "nobody_wanted", []]);
+  assert.equal(judge(strongChase(), { wanted: false }).short, false, "viljen flytter aldrig maalet, naar nogen arbejder");
 });
 
 test("#7730 dommen: maalet ligger altid mellem til-tiden og for-sent", () => {
@@ -86,9 +94,25 @@ test("#7730 dommen: for faa ryttere er aarsagen, naar hverken friske ben eller s
   assert.deepEqual([v.short, v.reason, v.teamIds], [true, "too_few", ["A"]]);
 });
 
+test("#7730 dommen: ét helt udkoert hold er traethed, ikke for faa ryttere", () => {
+  const work = Object.fromEntries(Array.from({ length: 8 }, (_, i) => [`A:${i}`, 1]));
+  const spent = Object.fromEntries(Object.keys(work).map((id) => [id, TEAM_REACTION_TUNING.minWorkerFreshness - 0.001]));
+  const v = judge(work, { factor: spent });
+  assert.equal(v.targetSeconds, LATE);
+  assert.deepEqual([v.short, v.reason, v.teamIds], [true, "tired", ["A"]]);
+  assert.equal(judge(work).reason, "too_few", "samme hold friskt mangler kun flere hold");
+});
+
+test("#7730 dommen: aarsagen flytter aldrig maalet", () => {
+  const work = { "A:1": 1, "A:2": 1 };
+  const spent = { "A:1": TEAM_REACTION_TUNING.minWorkerFreshness - 0.001, "A:2": 1 };
+  const v = judge(work, { factor: spent });
+  assert.equal(v.targetSeconds, judge({ "A:2": 1 }).targetSeconds, "den udkoerte rytter taeller ikke, uanset hvad aarsagen hedder");
+});
+
 test("#7730 dommen: en rytter der ikke koerer mere, taeller ikke", () => {
   const riders = { "A:1": { status: "dnf" }, "A:2": { status: "racing" } };
-  const v = judgeFloorChase7730({ work: new Map([["A:1", 1], ["A:2", 1]]), teamOf: (id) => id.split(":")[0], engineOf: () => 50, riders, breakEngine: 50, onTimeSeconds: ON_TIME, lateSeconds: LATE });
+  const v = judgeFloorChase7730({ work: new Map([["A:1", 1], ["A:2", 1]]), teamOf: (id) => id.split(":")[0], engineOf: () => 50, riders, breakEngine: 50, onTimeSeconds: ON_TIME, lateSeconds: LATE, wanted: true });
   const alone = judge({ "A:2": 1 });
   assert.equal(v.targetSeconds, alone.targetSeconds);
 });

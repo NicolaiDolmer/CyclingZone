@@ -10,7 +10,10 @@
 --
 -- Hvem skriver: KUN backend-runneren (service role) ved loebets foerste etape-claim, med en
 -- betinget UPDATE (WHERE team_chase_7730 IS NULL AND stages_completed = 0), jf.
--- raceRunner.bindRaceTeamChase7730, og kun naar app_config team_chase_7730 = 'on'.
+-- teamChase7730Flag.bindTeamChase7730, og kun naar app_config team_chase_7730 = 'on'.
+--
+-- Slukkes kontakten, gaelder det kun nye loeb: et stemplet loeb koerer faerdigt med sine regler.
+-- Vaerdien 'stop' er ejerens noedstop og fjerner reglen fra stemplede loeb fra naeste etape.
 --
 -- Additiv og idempotent: ingen eksisterende kolonne roeres, ingen data flyttes, ingen default.
 -- Koden fungerer ogsaa FOER denne migration er applied (fravaer af kolonnen = ikke omfattet).
@@ -28,5 +31,5 @@ COMMENT ON COLUMN public.races.team_chase_7730 IS '#7730: true = loebet startede
 
 -- Kontakten seedes slukket, saa registret kan se noeglen. Tændes kun af ejeren.
 INSERT INTO public.app_config (key, value, description)
-VALUES ('team_chase_7730', '"off"'::jsonb, 'Stage flag (off|on) for #7730: the chase is decided by the teams chasing. Only races not started. Owner-only flip.')
+VALUES ('team_chase_7730', '"off"'::jsonb, 'Stage flag (off|on|stop) for #7730: the chase is decided by the teams chasing. Only races not started when the flag was on; off only reaches new races, stop is the owner''s emergency stop for bound races. Owner-only flip.')
 ON CONFLICT (key) DO NOTHING;

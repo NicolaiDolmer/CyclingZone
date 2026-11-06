@@ -11,8 +11,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { TEAM_CHASE_7730_FLAG_KEY, evaluateTeamChase7730Flag, isTeamChase7730Enabled } from "./teamChase7730Flag.js";
-import { bindRaceTeamChase7730, resolveRaceEngineV4, v4TeamChase7730Arg } from "./raceRunner.js";
+import { TEAM_CHASE_7730_EMERGENCY_STOP, TEAM_CHASE_7730_FLAG_KEY, bindTeamChase7730, evaluateTeamChase7730Flag, isTeamChase7730Enabled } from "./teamChase7730Flag.js";
+import { resolveRaceEngineV4, v4TeamChase7730Arg } from "./raceRunner.js";
 import { ENGINE_VERSION_V4, loadRaceEngineV4 } from "./raceEngineV4Bridge.js";
 import { findStageFlag, isStageFlagKey } from "./stageFlagCatalog.js";
 import { buildSnapshotRows, decodeSnapshot, replayEngineInput } from "./engineInputSnapshot1857.js";
@@ -61,8 +61,9 @@ function raceTable(row, { readError = null, updateError = null } = {}) {
   return { supabase, calls, row };
 }
 
-const ENGINE = Object.freeze({ version: ENGINE_VERSION_V4, teamChase7730Flag: true });
-const bind = (table, over = {}) => bindRaceTeamChase7730({ supabase: table.supabase, race: { id: "r1" }, v4Engine: ENGINE, rulesRevision: "s5_profiles_v3", firstStageClaim: true, ...over });
+const ENGINE = Object.freeze({ version: ENGINE_VERSION_V4, teamChase7730: true });
+const PLAIN = Object.freeze({ version: ENGINE_VERSION_V4 });
+const bind = (table, over = {}) => bindTeamChase7730({ supabase: table.supabase, race: { id: "r1" }, v4Engine: ENGINE, rulesRevision: "s5_profiles_v3", firstStageClaim: true, ...over });
 const MISSING = { code: "42703", message: "column races.team_chase_7730 does not exist" };
 
 // ── Flaget ───────────────────────────────────────────────────
@@ -70,7 +71,7 @@ const MISSING = { code: "42703", message: "column races.team_chase_7730 does not
 test("#7730 flag: kun den eksakte streng 'on' taender", () => {
   assert.equal(TEAM_CHASE_7730_FLAG_KEY, "team_chase_7730");
   assert.equal(evaluateTeamChase7730Flag("on"), true);
-  for (const v of ["off", "beta", true, false, null, undefined, "ON", 1, "true"]) assert.equal(evaluateTeamChase7730Flag(v), false, `${JSON.stringify(v)} er slukket`);
+  for (const v of ["off", "beta", "stop", true, false, null, undefined, "ON", 1, "true"]) assert.equal(evaluateTeamChase7730Flag(v), false, `${JSON.stringify(v)} er slukket`);
 });
 
 test("#7730 flag: app_config-opslaget, fail-safe slukket, og det staar i kataloget", async () => {
@@ -82,15 +83,25 @@ test("#7730 flag: app_config-opslaget, fail-safe slukket, og det staar i katalog
   assert.equal(findStageFlag("team_chase_7730").area, "race-engine");
 });
 
-test("#7730 resolveRaceEngineV4: slukket = samme motor-objekt, fejl = slukket, taendt taender ikke selv loebet", async () => {
+test("#7730 flag: migrationen seeder raekken 'off' og tilfoejer stemplet, additivt og idempotent", () => {
+  const sql = readFileSync(new URL("../../database/2026-11-06-7730-race-team-chase-binding.sql", import.meta.url), "utf8");
+  assert.match(sql, /'team_chase_7730',\s*'"off"'::jsonb/);
+  assert.match(sql, /ON CONFLICT \(key\) DO NOTHING/);
+  assert.match(sql, /ADD COLUMN IF NOT EXISTS team_chase_7730 boolean;/);
+  assert.doesNotMatch(sql.replace(/^--.*$/gm, ""), /\b(UPDATE|DELETE|DROP|TRUNCATE)\b/i);
+});
+
+test("#7730 resolveRaceEngineV4: slukket = samme motor-objekt, fejl = slukket, taendt er kun et forslag til bindingen", async () => {
   const engine = { version: ENGINE_VERSION_V4, simulateStage: () => ({}) };
   const base = { supabase: {}, race: RACE_7730, checkV4Enabled: async () => true, loadEngine: async () => engine, loadOrders: async () => [], checkFormPeaksEnabled: async () => true, checkDayForm6649Enabled: async () => false, checkQueenStageGap7236Enabled: async () => false, checkStagePlanDroppedFront7635Enabled: async () => false, checkDescentRegroupCap7644Enabled: async () => false, checkSplitAttackCause7640Enabled: async () => false, checkLetGoOrder7557Enabled: async () => false };
   assert.equal((await resolveRaceEngineV4({ ...base, checkTeamChase7730Enabled: async () => false })).v4Engine, engine);
   assert.equal((await resolveRaceEngineV4({ ...base, checkTeamChase7730Enabled: async () => { throw new Error("db"); } })).v4Engine, engine);
   const on = (await resolveRaceEngineV4({ ...base, checkTeamChase7730Enabled: async () => true })).v4Engine;
-  assert.equal(on.teamChase7730Flag, true);
-  assert.deepEqual(v4TeamChase7730Arg(on, "s5_profiles_v3"), {}, "flaget alene omfatter intet loeb");
-  assert.equal("teamChase7730Flag" in engine, false, "den indlaeste motor muteres aldrig");
+  assert.equal(on.teamChase7730, true);
+  const started = raceTable({ team_chase_7730: null, stages_completed: 1 });
+  const bound = await bind(started, { v4Engine: on, firstStageClaim: false });
+  assert.deepEqual(v4TeamChase7730Arg(bound, "s5_profiles_v3"), {}, "flaget alene omfatter intet startet loeb");
+  assert.equal("teamChase7730" in engine, false, "den indlaeste motor muteres aldrig");
 });
 
 test("#7730 v4TeamChase7730Arg: kun et omfattet loeb OG s5_profiles_v3 eller nyere", () => {
@@ -103,13 +114,18 @@ test("#7730 v4TeamChase7730Arg: kun et omfattet loeb OG s5_profiles_v3 eller nye
 
 // ── Kun loeb der ikke er startet ───────────────────────────────
 
-test("#7730 binding: flaget slukket = samme motor, ingen DB-kald", async () => {
-  const table = raceTable({ team_chase_7730: null, stages_completed: 0 });
-  const engine = { version: ENGINE_VERSION_V4 };
-  assert.equal(await bind(table, { v4Engine: engine }), engine);
+test("#7730 binding: uden v4-motor eller paa en aeldre revision sker intet, og markeringen fjernes", async () => {
+  const table = raceTable({ team_chase_7730: true, stages_completed: 0 });
   assert.equal(await bind(table, { v4Engine: null }), null);
-  assert.equal(await bind(table, { rulesRevision: "s5_profiles_v2" }), ENGINE);
+  assert.deepEqual(await bind(table, { rulesRevision: "s5_profiles_v2" }), PLAIN);
+  assert.equal(await bind(table, { v4Engine: PLAIN, rulesRevision: "s5_profiles_v2" }), PLAIN);
   assert.deepEqual([table.calls.reads, table.calls.updates.length], [0, 0]);
+});
+
+test("#7730 binding: slukket og ikke stemplet = samme motor, intet skrives", async () => {
+  const table = raceTable({ team_chase_7730: null, stages_completed: 0 });
+  assert.equal(await bind(table, { v4Engine: PLAIN }), PLAIN);
+  assert.equal(table.calls.updates.length, 0);
 });
 
 test("#7730 binding: et loeb der ikke er startet, bindes betinget ved sin foerste claim", async () => {
@@ -123,17 +139,42 @@ test("#7730 binding: et loeb der ikke er startet, bindes betinget ved sin foerst
 test("#7730 binding: et startet loeb omfattes aldrig, heller ikke naar flaget taendes midt i det", async () => {
   for (const over of [{ firstStageClaim: false }, { firstStageClaim: true }]) {
     const table = raceTable({ team_chase_7730: null, stages_completed: 2 });
-    assert.equal(await bind(table, over), ENGINE);
+    assert.deepEqual(await bind(table, over), PLAIN);
     assert.equal(table.calls.updates.length, 0, "intet skrives");
   }
   const notClaim = raceTable({ team_chase_7730: null, stages_completed: 0 });
-  assert.equal(await bind(notClaim, { firstStageClaim: false }), ENGINE, "en genoptagelse uden claim binder ikke");
+  assert.deepEqual(await bind(notClaim, { firstStageClaim: false }), PLAIN, "en genoptagelse uden claim binder ikke");
 });
 
 test("#7730 binding: et bundet loeb beholder kontakten paa senere etaper og ved retry", async () => {
   const table = raceTable({ team_chase_7730: true, stages_completed: 3 });
   assert.equal((await bind(table, { firstStageClaim: false })).teamChase7730, true);
   assert.equal(table.calls.updates.length, 0);
+});
+
+test("#7730 slukke-regel: slukket rammer kun nye loeb; et stemplet loeb koerer faerdigt, ogsaa ved opslagsfejl", async () => {
+  const stamped = () => raceTable({ team_chase_7730: true, stages_completed: 2 });
+  for (const value of ["off", "beta", null, undefined, true, "STOP"]) {
+    const out = await bind(stamped(), { v4Engine: PLAIN, firstStageClaim: false, readStage: async () => value });
+    assert.equal(out.teamChase7730, true, `${JSON.stringify(value)} stopper ikke et stemplet loeb`);
+  }
+  const failing = await bind(stamped(), { v4Engine: PLAIN, firstStageClaim: false, readStage: async () => { throw new Error("db"); } });
+  assert.equal(failing.teamChase7730, true, "en opslagsfejl aendrer aldrig et loeb i gang");
+  const throwing = await bind(stamped(), { v4Engine: PLAIN, firstStageClaim: false, readStage: () => { throw new Error("sync"); } });
+  assert.equal(throwing.teamChase7730, true, "heller ikke en synkron fejl");
+  const fresh = raceTable({ team_chase_7730: null, stages_completed: 0 });
+  assert.equal(await bind(fresh, { v4Engine: PLAIN, readStage: async () => "off" }), PLAIN, "et nyt loeb faar den ikke");
+});
+
+test("#7730 slukke-regel: 'stop' er ejerens noedstop og fjerner reglen fra stemplede loeb", async () => {
+  const seen = [];
+  const table = raceTable({ team_chase_7730: true, stages_completed: 2 });
+  const out = await bind(table, { v4Engine: PLAIN, firstStageClaim: false, readStage: async (_db, key) => { seen.push(key); return TEAM_CHASE_7730_EMERGENCY_STOP; } });
+  assert.equal(TEAM_CHASE_7730_EMERGENCY_STOP, "stop");
+  assert.equal(out, PLAIN);
+  assert.deepEqual(seen, ["team_chase_7730"]);
+  assert.equal(table.calls.updates.length, 0, "stemplet slettes aldrig");
+  assert.equal(evaluateTeamChase7730Flag("stop"), false, "stop taender aldrig");
 });
 
 test("#7730 binding: en anden claim vandt eller loebet startede imens = den gemte vaerdi gaelder", async () => {
@@ -143,7 +184,7 @@ test("#7730 binding: en anden claim vandt eller loebet startede imens = den gemt
     const api = realFrom(name);
     return { ...api, update: (patch) => { table.row.stages_completed = 1; return api.update(patch); } };
   };
-  assert.equal(await bind(table), ENGINE);
+  assert.deepEqual(await bind(table), PLAIN);
   assert.equal(table.row.team_chase_7730, null);
 });
 
@@ -154,9 +195,11 @@ test("#7730 binding: dryRun skriver aldrig, og et ikke-startet loeb previewes so
 });
 
 test("#7730 binding: uden kolonnen er loebet ikke omfattet; andre fejl er hoejlydte", async () => {
-  assert.equal(await bind(raceTable({}, { readError: MISSING })), ENGINE);
-  assert.equal(await bind(raceTable({ team_chase_7730: null, stages_completed: 0 }, { updateError: MISSING })), ENGINE);
+  assert.deepEqual(await bind(raceTable({}, { readError: MISSING })), PLAIN);
+  assert.equal(await bind(raceTable({}, { readError: MISSING }), { v4Engine: PLAIN }), PLAIN);
+  assert.deepEqual(await bind(raceTable({ team_chase_7730: null, stages_completed: 0 }, { updateError: MISSING })), PLAIN);
   await assert.rejects(bind(raceTable({}, { readError: { code: "500", message: "boom" } })), /kunne ikke laeses/);
+  await assert.rejects(bind(raceTable({}, { readError: { code: "42703", message: "column races.andet does not exist" } })), /kunne ikke laeses/, "kun denne kolonne");
   await assert.rejects(bind(raceTable({ team_chase_7730: null, stages_completed: 0 }, { updateError: { code: "500", message: "boom" } })), /kunne ikke bindes/);
 });
 

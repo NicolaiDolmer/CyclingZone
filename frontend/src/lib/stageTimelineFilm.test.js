@@ -551,7 +551,7 @@ const TEAMS = new Map([["team-a", "Hold A"], ["team-b", "Hold B"]]);
 test("#7730: filmen siger hvorfor jagten ikke naaede det, og motorens melding staar aldrig som sin egen linje", () => {
   const events = CAUSE_TIMELINE.filter((e) => e.type !== "breakaway_unchased" && e.type !== "own_riders_ahead");
   const at = events.findIndex((e) => e.type === "breakaway_survived");
-  for (const [reason, key] of [["tired", "cause.chase_tired"], ["outgunned", "cause.chase_outgunned"], ["too_few", "cause.chase_too_few"]]) {
+  for (const [reason, key] of [["tired", "cause.chase_tired"], ["outgunned", "cause.chase_outgunned"], ["too_few", "cause.chase_too_few"], ["no_chasers", "cause.no_chasers"], ["nobody_wanted", "cause.unchased"]]) {
     const short = { km: 160, type: "breakaway_chase_short", params: { group_id: "breakaway-0", reason, team_ids: ["team-a"] } };
     const built = buildFilmTimeline({ events: [...events.slice(0, at), short, ...events.slice(at)], distanceKm: 160 });
     const lines = built.feedEvents.map((e) => describeEvent(e, { riderNameById: riderNameByIdFixture(), teamNameById: TEAMS })).filter(Boolean);

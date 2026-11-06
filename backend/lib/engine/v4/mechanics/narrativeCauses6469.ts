@@ -215,6 +215,7 @@ function heldCauses(events: readonly NarrativeEvent[], w: Window, chaseId: strin
   // #7730: motorens egen dom over jagten paa gulvet (kun kontakten team_chase_7730).
   const short = slice.find((e) => e?.type === "breakaway_chase_short" && inGroup(w, e))?.params?.reason;
   if (short === "no_chasers" && !causes.some((c) => c.kind === "no_chasers")) causes.push({ kind: "no_chasers" });
+  if (short === "nobody_wanted" && !causes.some((c) => c.kind === "unchased")) causes.push({ kind: "unchased" });
   if (short === "tired") causes.push({ kind: "chase_tired" });
   if (short === "outgunned") causes.push({ kind: "chase_outgunned" });
   if (short === "too_few") causes.push({ kind: "chase_too_few" });

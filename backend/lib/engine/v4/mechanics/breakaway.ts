@@ -2461,7 +2461,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // segment i vinduet.
     // #7730 (KUN kontakten): dommen erstatter lodtraekningen; holdene der arbejder afgoer maalet.
     const floorVerdict = floorKm > 0 && ctx.teamChase7730 === true
-      ? judgeFloorChase7730({ work: workPlan.chaserWork, teamOf: (id) => teamIdOf(ctx.entrants[id]), engineOf: (id) => collectiveAbility([id], ctx.entrants, CHASE_ENGINE_KEYS), riders: state.riders, breakEngine: collectiveAbility(breakaway.rider_ids, ctx.entrants, CHASE_ENGINE_KEYS), onTimeSeconds: chaseFloorTargetGapSeconds(ctx.route, 1, chaseV3), lateSeconds: BREAKAWAY_EXTRA_TUNING.chaseFloorLateTargetGapSeconds })
+      ? judgeFloorChase7730({ work: workPlan.chaserWork, teamOf: (id) => teamIdOf(ctx.entrants[id]), engineOf: (id) => collectiveAbility([id], ctx.entrants, CHASE_ENGINE_KEYS), riders: state.riders, breakEngine: collectiveAbility(breakaway.rider_ids, ctx.entrants, CHASE_ENGINE_KEYS), onTimeSeconds: chaseFloorTargetGapSeconds(ctx.route, 1, chaseV3), lateSeconds: BREAKAWAY_EXTRA_TUNING.chaseFloorLateTargetGapSeconds, wanted: (p2Interest?.teamIds.length ?? 0) > 0 })
       : null;
     if (floorVerdict?.short && isLastSegment && !events.some((e) => e.type === "breakaway_chase_short" && e.params.group_id === breakaway.id)) events.push({ km: round2(ctx.segment.to_km), type: "breakaway_chase_short", params: { group_id: breakaway.id, reason: floorVerdict.reason, team_ids: floorVerdict.teamIds } });
     const floorClosingSeconds = floorKm > 0

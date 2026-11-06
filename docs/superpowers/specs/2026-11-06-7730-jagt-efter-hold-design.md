@@ -23,15 +23,17 @@ Samme tilstand giver samme dom. Ingen rng, og udfaldet kan genskabes.
 
 ## Filmen
 
-Kommer jagten ikke i tide, melder motoren `breakaway_chase_short` på sidste segment med art og hold, aldrig tal (fog-gate #1791). Årsagen er det der alene havde bragt jagten i tide: friske ben (`tired`), ben der matcher udbruddet (`outgunned`), ellers flere ryttere (`too_few`). Ingen der arbejder, er `no_chasers`. Holder udbruddet, bliver det til en årsagslinje i filmen (`narrativeCauses6469.ts`, `stageTimelineFilm.js`, alle fem sprog).
+Kommer jagten ikke i tide, melder motoren `breakaway_chase_short` på sidste segment med art og hold, aldrig tal (fog-gate #1791). Årsagen er det der alene havde bragt jagten i tide: friske ben (`tired`) eller ben der matcher udbruddet (`outgunned`). Kan intet af det alene gøre det, fordi ét hold aldrig når målet selv, er årsagen det der kostede mest af trækket: et helt udkørt hold er `tired`, et friskt hold der står alene er `too_few`. Arbejder ingen, skelner motoren mellem `no_chasers`, hvor hold ville jage men ingen ryttere havde, og `nobody_wanted`, hvor intet hold ville, og filmen siger det samme som for et ujaget udbrud. Årsagen flytter aldrig målet. Holder udbruddet, bliver det til en årsagslinje i filmen (`narrativeCauses6469.ts`, `stageTimelineFilm.js`, alle fem sprog).
 
 ## Kontakten
 
-`app_config.team_chase_7730 = "on"`, kun den streng, kun under `s5_profiles_v3` og senere. Ejer-only flip, ikke seedet.
+`app_config.team_chase_7730 = "on"`, kun den streng, kun under `s5_profiles_v3` og senere. Ejer-only flip, seedet `off` af migrationen.
 
-**Kun løb der ikke er startet.** Flaget alene tænder intet. Et løb omfattes ved sin første etape-claim og bindes på `races.team_chase_7730`, med samme betingede UPDATE som regel-revisionen (#5955). Senere etaper, retries og genstarter læser bindingen. Et startet løb uden binding omfattes aldrig, heller ikke hvis flaget tændes midt i det. Slukkes flaget, er bundne løb ikke omfattet fra næste etape: flaget er stadig nødstoppet.
+**Kun løb der ikke er startet.** Flaget alene tænder intet. Et løb omfattes ved sin første etape-claim og bindes på `races.team_chase_7730`, med samme betingede UPDATE som regel-revisionen (#5955). Senere etaper, retries og genstarter læser bindingen. Et startet løb uden binding omfattes aldrig, heller ikke hvis flaget tændes midt i det.
 
-Med flaget slukket er der ingen ekstra DB-kald, intet skrives, og motor-argumenter og `input_checksum` er uændrede. Værdien er med i run-identiteten og i #1857-snapshottet, så genafspilningen genskaber etapen.
+**Slukket rammer kun nye løb.** Samme regel som enkeltstartens kontakt (`ittNoDayRoll7726Flag.js`, #7726): et bundet løb kører færdigt på sine regler, også ved en opslagsfejl. Værdien `stop` er ejerens nødstop og fjerner reglen fra bundne løb fra næste etape. Den bruges kun på ejerens ord.
+
+Med flaget slukket læser runneren løbets binding, men intet skrives, og for et løb uden binding er motor-argumenter og `input_checksum` uændrede. Værdien er med i run-identiteten og i #1857-snapshottet, så genafspilningen genskaber etapen.
 
 ## Fravalgt
 
@@ -39,6 +41,7 @@ Med flaget slukket er der ingen ekstra DB-kald, intet skrives, og motor-argument
 - **Fjerne gulvet.** Så kan en ordre skabe store forspring (#5813), og det er en anden beslutning.
 - **Binde via en ny revision.** En revision for én mekanik binder alle andre valg med. Samme kolonne-mønster uden revisionen er mindre.
 - **Læse flaget pr. etape som de andre kontakter.** Det ville ændre reglerne midt i et etapeløb.
+- **Lade en slukket kontakt ramme bundne løb.** Det ville også ændre reglerne midt i et etapeløb. Nødstoppet er sin egen værdi, så det er et valg, aldrig en bivirkning.
 - **Aflede bindingen af `app_config.updated_at`.** Afhænger af hvordan flaget er sat, og fejler stille.
 
 ## Ikke dækket

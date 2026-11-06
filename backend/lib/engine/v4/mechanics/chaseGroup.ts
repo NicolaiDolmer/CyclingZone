@@ -69,7 +69,8 @@ export const TEAM_CHASE_7730_TUNING = Object.freeze({
   engineRatioBounds: [0.7, 1.3] as const,
 });
 
-export type FloorChaseShortReason = "no_chasers" | "tired" | "outgunned" | "too_few";
+/** `no_chasers`: holdene der ville jage havde ingen ryttere. `nobody_wanted`: intet hold ville jage. */
+export type FloorChaseShortReason = "no_chasers" | "nobody_wanted" | "tired" | "outgunned" | "too_few";
 
 export type FloorChaseVerdict = {
   /** Det forspring feltet koerer udbruddet ned til ved maal. Altid mellem til-tiden og for-sent. */
@@ -101,6 +102,8 @@ export function judgeFloorChase7730(input: {
   breakEngine: number;
   onTimeSeconds: number;
   lateSeconds: number;
+  /** Mindst ét hold ville jage. Afgoer kun, hvad filmen maa sige, naar ingen arbejder. */
+  wanted: boolean;
 }, t: typeof TEAM_CHASE_7730_TUNING = TEAM_CHASE_7730_TUNING): FloorChaseVerdict {
   const [lo, hi] = t.engineRatioBounds;
   const pullByTeam = new Map<string, { actual: number; fresh: number; even: number }>();
@@ -121,10 +124,24 @@ export function judgeFloorChase7730(input: {
   const share = Math.min(1, Math.max(0, (pull - t.latePull) / (t.onTimePull - t.latePull)));
   const targetSeconds = input.lateSeconds + (input.onTimeSeconds - input.lateSeconds) * share;
   if (share >= 1) return { targetSeconds, short: false, reason: null, teamIds };
-  if (teamIds.length === 0) return { targetSeconds, short: true, reason: "no_chasers", teamIds };
-  // Aarsagen er det der alene havde bragt jagten i tide: friske ben, ellers ben der matcher udbruddet, ellers flere ryttere.
-  const reason = sum("fresh") >= t.onTimePull ? "tired" : sum("even") >= t.onTimePull ? "outgunned" : "too_few";
-  return { targetSeconds, short: true, reason, teamIds };
+  if (teamIds.length === 0) return { targetSeconds, short: true, reason: input.wanted ? "no_chasers" : "nobody_wanted", teamIds };
+  return { targetSeconds, short: true, reason: floorChaseShortReason(pull, sum("fresh"), sum("even"), t.onTimePull), teamIds };
+}
+
+/**
+ * Aarsagen er det der alene havde bragt jagten i tide: friske ben, ellers ben der matcher
+ * udbruddet. Kan intet af det alene goere det (ét hold naar aldrig maalet selv), er aarsagen
+ * det der kostede mest af traekket, saa et udkoert hold hedder traet, ikke for faa ryttere.
+ */
+function floorChaseShortReason(pull: number, fresh: number, even: number, onTimePull: number): FloorChaseShortReason {
+  if (fresh >= onTimePull) return "tired";
+  if (even >= onTimePull) return "outgunned";
+  const keptByFatigue = fresh > 0 ? pull / fresh : 1;
+  const keptByStrength = even > 0 ? pull / even : 1;
+  const reachedByNumbers = Math.max(fresh, even) / onTimePull;
+  const worst = Math.min(keptByFatigue, keptByStrength, reachedByNumbers);
+  if (worst === reachedByNumbers) return "too_few";
+  return worst === keptByFatigue ? "tired" : "outgunned";
 }
 
 /** A pursuing group must be physically behind the group it is chasing. */

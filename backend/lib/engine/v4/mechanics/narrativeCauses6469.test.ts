@@ -24,6 +24,8 @@ test("#7730: motorens dom over jagten bliver til aarsagen, kun for det udbrud de
   assert.deepEqual(kinds([formed, short("outgunned"), survived()]), ["chase_outgunned"]);
   assert.deepEqual(kinds([formed, short("too_few"), survived()]), ["chase_too_few"]);
   assert.deepEqual(kinds([formed, short("no_chasers"), survived()]), ["no_chasers"]);
+  assert.deepEqual(kinds([formed, short("nobody_wanted"), survived()]), ["unchased"], "ingen ville jage siger aldrig, at holdene manglede ryttere");
+  assert.deepEqual(kinds([formed, ev(60, "breakaway_unchased", { group_id: "breakaway-0" }), short("nobody_wanted"), survived()]), ["unchased"], "aldrig samme linje to gange");
   assert.deepEqual(kinds([formed, ev(60, "breakaway_unchased", { group_id: "breakaway-0", reason: "no_riders" }), short("no_chasers"), survived()]), ["no_chasers"], "aldrig samme linje to gange");
   assert.equal(kinds([formed, short("tired", "breakaway-9"), survived()]).includes("chase_tired"), false, "et andet udbrud forklarer ikke dette");
 });
