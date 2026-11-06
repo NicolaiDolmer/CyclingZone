@@ -12,6 +12,7 @@ import { ROLE_KEYS, ROLE_KEYS_V3 } from "../../lib/roleHint.js";
 import FitBar from "./FitBar.jsx";
 import RoleCard from "./RoleCard.jsx";
 import TrainNowRiderBadge from "./TrainNowRiderBadge.tsx"; // #6383
+import { trainNowLockCopy } from "../training/trainNowClock.ts"; // #7558
 import RaceLink from "../RaceLink.jsx";
 import { LockIcon, StarIcon, AlertTriangleIcon, InfoIcon } from "../ui";
 import { encodeDrag } from "../../lib/raceHubDnd.js";
@@ -83,6 +84,8 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
   // #6383: ryttere der har trænet i dag (Train now) er afgjort for dette løb: grånet,
   // kan hverken fjernes eller trækkes — samme regel som udtagelsespanelet (#6139).
   const trainNowIds = new Set(column.trainNowLock?.riderIds ?? []);
+  // #7558: badge-teksten følger dagen trykket skete (flerdagsrace viser gårsdagens lås).
+  const trainNowRiderLabel = trainNowLockCopy(t, column.trainNowLock?.pressedAt, i18n.language).rider;
   // S5: profil-bevidste rolle-hints. primaryProfileType = løbets dominerende terræn
   // (backend); mangler det (gamle løb) → terrainBucket defaulter til "flat".
   const bucket = terrainBucket(column.primaryProfileType);
@@ -293,7 +296,7 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
                 <span className="min-w-0">
                   <span data-testid="race-rider-name" className="block truncate text-xs text-cz-1">{r.name}</span>
                   {r.injured && <InjuredBadge label={t("selection.injured")} />}
-                  {trainedToday && <TrainNowRiderBadge label={t("selection.trainNowLock.rider")} />}
+                  {trainedToday && <TrainNowRiderBadge label={trainNowRiderLabel} />}
                 </span>
                 <span data-testid="race-rider-order" className={`min-w-0 wrap-break-word text-2xs ${role ? "text-cz-accent-t" : "text-cz-2"}`}>{orderLabel(role)}</span>
                 <RiderNumbers rider={r} />
@@ -332,7 +335,7 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
                     className="group/role text-left min-w-0 disabled:opacity-50">
                     <span data-testid="race-rider-name" className="block truncate text-xs text-cz-1 transition-colors group-hover/role:text-cz-accent-t">{r.name}</span>
                     {r.injured && <InjuredBadge label={t("selection.injured")} />}
-                    {trainedToday && <TrainNowRiderBadge label={t("selection.trainNowLock.rider")} />}
+                    {trainedToday && <TrainNowRiderBadge label={trainNowRiderLabel} />}
                   </button>
                   <button type="button" data-testid="race-rider-order"
                     aria-label={t("racehub.column.editOrder", { name: r.name, order: orderLabel(role) })}

@@ -3,13 +3,14 @@
 // sæsonmatrixen. Tidspunktet er spillets tid (Europe/Copenhagen).
 import { useTranslation } from "react-i18next";
 import { LockIcon } from "../ui";
-import { trainNowClock } from "../training/trainNowClock.ts";
+import { trainNowLockCopy } from "../training/trainNowClock.ts";
 
 type TrainNowLockBannerProps = { pressedAt?: string | null; testId?: string; className?: string };
 
 export default function TrainNowLockBanner({ pressedAt, testId = "train-now-lock-banner", className = "mb-3" }: TrainNowLockBannerProps) {
-  const { t } = useTranslation("races");
-  const time = trainNowClock(pressedAt);
+  const { t, i18n } = useTranslation("races");
+  // #7558: lås-teksten følger dagen trykket faktisk skete (en flerdagsrace viser gårsdagens lås).
+  const copy = trainNowLockCopy(t, pressedAt, i18n.language);
   return (
     <div
       role="status"
@@ -18,8 +19,8 @@ export default function TrainNowLockBanner({ pressedAt, testId = "train-now-lock
     >
       <LockIcon size={14} aria-hidden="true" className="mt-px shrink-0 text-cz-warning" />
       <span>
-        <span className="font-semibold">{t("selection.trainNowLock.title")}</span>{" "}
-        {time ? t("selection.trainNowLock.bodyAt", { time }) : t("selection.trainNowLock.body")}
+        <span className="font-semibold">{copy.title}</span>{" "}
+        {copy.body}
       </span>
     </div>
   );
