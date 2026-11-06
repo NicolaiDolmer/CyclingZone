@@ -80,10 +80,14 @@ export function timeLimitRiskByRider7715({ riders, stages, race }) {
  */
 export async function raceTimeLimitFatigue7715Applies({ supabase, race, checkEnabled = isTimeLimitFatigue7715Enabled, readStage = readFlagStage }) {
   if (!raceHasStarted(race)) return await Promise.resolve().then(() => checkEnabled(supabase)).catch(() => false) === true;
-  // best-effort: varslet maa aldrig vaelte taktik-fladen; en fejl betyder blot intet maerke.
-  const { data, error } = await Promise.resolve().then(() => readBinding7715({ supabase, race })).catch((failure) => ({ data: null, error: failure }));
-  if (error || data?.time_limit_fatigue_7715 !== true) return false;
-  return !(await isEmergencyStop7715(supabase, readStage));
+  try {
+    const { data, error } = await readBinding7715({ supabase, race });
+    if (error || data?.time_limit_fatigue_7715 !== true) return false;
+    return !(await isEmergencyStop7715(supabase, readStage));
+  } catch {
+    // best-effort: varslet maa aldrig vaelte taktik-fladen; en fejl betyder blot intet maerke.
+    return false;
+  }
 }
 
 /**
