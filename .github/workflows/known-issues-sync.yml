@@ -5,10 +5,10 @@ name: Known issues sync
 #   selftest — paa PR og main: scripts/known-issues-sync.test.mjs. Rent
 #     fil-tjek, ingen secrets.
 #
-#   sync — efter push til main der roerer patch noterne: scripts/known-issues-
-#     sync.mjs --apply saetter aabne kendte fejl, hvis issue_ref staar som
-#     ref paa en patch note med rollout live (ogsaa beta_to_live og switched_on), til fixed efter en
-#     deploy-pause. Idempotent, roerer kun
+#   sync — efter en groen Deploy verify paa main (aldrig paa tid alene):
+#     scripts/known-issues-sync.mjs --apply saetter aabne kendte fejl, hvis issue_ref staar som
+#     ref paa en patch note med rollout live (ogsaa beta_to_live og switched_on), til fixed.
+#     Idempotent, roerer kun
 #     aabne raekker; status-triggeren stempler closed_at. Samme moenster som
 #     roadmap-sync.yml: kun push til main + manuel dispatch.
 
@@ -18,12 +18,10 @@ on:
       - 'frontend/src/data/patchNotes.js'
       - 'scripts/known-issues-sync*'
       - '.github/workflows/known-issues-sync.yml'
-  push:
+  workflow_run:
+    workflows: ['Deploy verify']
+    types: [completed]
     branches: [main]
-    paths:
-      - 'frontend/src/data/patchNotes.js'
-      - 'scripts/known-issues-sync*'
-      - '.github/workflows/known-issues-sync.yml'
   workflow_dispatch:
 
 permissions:
@@ -54,12 +52,15 @@ jobs:
   sync:
     name: sync
     needs: selftest
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           persist-credentials: false
 
       - name: Set up Node.js
@@ -71,11 +72,6 @@ jobs:
 
       - name: Install root dependencies
         run: npm ci
-
-      - name: Vent paa at Vercel og backend-deploy er faerdige
-        run: |
-          echo "Sover 3 min saa deploys naar at blive live, foer fejlen vises som rettet (samme margin som auto-migrate.yml)."
-          sleep 180
 
       - name: Saet kendte fejl til fixed naar patch noten er live
         env:
