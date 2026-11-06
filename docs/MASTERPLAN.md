@@ -11,8 +11,8 @@
 
 Fuld liste med datoer: #7632. "Done" først ved alle 8 krav; fredagskort til ejeren.
 
-- **Denne uge (senest 8/11):** secrets #7029/#7034 og sikkerhed #691/#720/#748 lørdag 11-12; #7726 og #7557 tændt 6/11; #7730 før 7/11 11:00; #7733 efter 7/11 16:30; #7638 ejer vælger; #7326.
-- **Næste uge (9-15/11):** 2 timers design af løbsside A med ejeren (#7778, #7754 indeni), Udvikling 2.0 som XP-model #6110, træthed lige nu #7801 (før #7715), dagsformens ord designes #7725, pengelås #6181 + auto-accept #2176 (design først), Ved ikke #7788, besked ved levering #7792, admin #7789, 29 feedback-svar og fair-play #5431 senest mandag, forside #6665, selektion #7645, udbrud #6912, graduering #7323, salg #6181, aftentræning #6490, viden ved salg #7455.
+- **Denne uge (senest 8/11):** secrets #7029/#7034 og sikkerhed #691/#720/#748 lørdag 11-12; #7733 efter 7/11 16:30; #7638 ejer vælger; #7326.
+- **Næste uge (9-15/11):** 2 timers design af løbsside A med ejeren (#7778, #7754 indeni), Udvikling 2.0 som XP-model #6110, træthed lige nu #7801 (før #7715), dagsformens ord designes #7725, pengelås #6181 + auto-accept #2176 (design først), besked ved levering #7792, admin #7789, 29 feedback-svar og fair-play #5431 senest mandag, forside #6665, selektion #7645, udbrud #6912, graduering #7323, salg #6181, aftentræning #6490, viden ved salg #7455.
 - **Ca. 15-18/11:** catch-up #6950 besluttes (frist 8/11 udgået); spørg igen om "nye managers forstår første løb" (parkeret).
 - **Før S6-kalenderen:** løbstyper U23/junior #7471. **Før S6-start:** U23 del 2 #4620, junior-pyramiden #4621, Planning Workbench #7535.
 - **S6 (dec):** Pro-værdien + betaling #2806/#4514. **Starten af 2027:** TTT #3463, omdømme #4957/#5106.
@@ -25,7 +25,7 @@ Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden f
 
 ## Brand (løbende, uden for loftet)
 
-- **Løbenes sandhed:** sandhedsvagten #7643; Giro-rettelserne #7635/#7636, #7639, #7640. "Lad andre jage" #7557 slukket til test.
+- **Løbenes sandhed:** sandhedsvagten #7643; Giro-rettelserne #7635/#7636, #7639, #7640.
 - **Dronningeetaper #7236:** tændt 4/11 (ejer "kør"); genmål Hexagone 15/17 ca. 7-8/11 med fuldere startliste.
 - **Kontrakter, transfer, sæsonskifte (prøves før S6):** ungdom #6882, graduering/auktion #7323, aftenafregningen #6490, trupstørrelser #7490.
 - **Supabase uden fejl #7659:** retning A (mål, ret det tunge, alarmer): #7662/#7663/#7664, ranglisten #6765 senest 14/11. **Sikkerhed (ét vindue med ejeren):** #7029 + #7034.
@@ -57,7 +57,7 @@ Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden f
 
 ## Faste rutiner
 
-Rapport får issue og svarudkast; ejeren poster. Patch notes efter observeret aktivering. Hver tænding kræver patch note, EN/DA Hjælp ved mekanikændring og registry/status. NOW/merge-close-out ejes af PC1.
+Rapport får issue og svarudkast; ejeren poster. Patch notes efter observeret aktivering. Hver tænding kræver patch note, EN/DA Hjælp ved mekanikændring og registry/status. NOW/merge-close-out ejes af Dolmer PC.
 
 ## Doktrin
 

@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.413",
+    "date": "2026-11-06",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Roadmap",
+        "en": {
+          "title": "Answer Don't know on the roadmap",
+          "body": "You can now answer Don't know on a roadmap item. It counts as answered, but not in the average. Pick a number if you change your mind."
+        },
+        "da": {
+          "title": "Svar Ved ikke på roadmappen",
+          "body": "Du kan nu svare Ved ikke på et punkt på roadmappen. Punktet tæller som besvaret, men ikke i snittet. Vælg et tal, hvis du skifter mening."
+        },
+        "refs": [
+          7788
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.412",
     "date": "2026-11-06",
     "changes": [
