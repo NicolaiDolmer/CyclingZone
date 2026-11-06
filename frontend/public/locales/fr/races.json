@@ -481,7 +481,7 @@
       "fillMissing": "Combler les manques",
       "clearDay": "Vider le jour",
       "clearAllSeason": "Tout vider",
-      "bound": "Les coureurs verrouillés ne peuvent être ajoutés à aucune course affichée aujourd'hui",
+      "bound": "Les coureurs verrouillés ne peuvent être ajoutés à aucune des courses affichées",
       "loadShort": "{days} j",
       "loadTitle": "Charge de la saison : {races, plural, one {# course} other {# courses}}, {days, plural, one {# jour de course engagé} other {# jours de course engagés}} cette saison",
       "clearDayTooltip": "Vide {races, plural, one {# course} other {# courses}} et retire {riders, plural, one {# coureur} other {# coureurs}} pour ce jour"

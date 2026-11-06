@@ -481,7 +481,7 @@
       "fillMissing": "Gaten vullen",
       "clearDay": "Dag wissen",
       "clearAllSeason": "Alles wissen",
-      "bound": "Vergrendelde renners kunnen niet aan een van de koersen van vandaag worden toegevoegd",
+      "bound": "Vergrendelde renners kunnen niet aan een van de getoonde koersen worden toegevoegd",
       "loadShort": "{days}d",
       "loadTitle": "Seizoensbelasting: {races, plural, one {# koers} other {# koersen}}, {days, plural, one {# koersdag} other {# koersdagen}} dit seizoen ingeschreven",
       "clearDayTooltip": "Wist {races, plural, one {# koers} other {# koersen}} en haalt {riders, plural, one {# renner} other {# renners}} voor deze dag weg"

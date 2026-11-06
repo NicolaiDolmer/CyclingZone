@@ -481,7 +481,7 @@
       "fillMissing": "Rellenar huecos",
       "clearDay": "Borrar día",
       "clearAllSeason": "Borrar todo",
-      "bound": "Los ciclistas bloqueados no se pueden añadir a ninguna carrera de las que se muestran hoy",
+      "bound": "Los ciclistas bloqueados no se pueden añadir a ninguna de las carreras mostradas",
       "loadShort": "{days} d",
       "loadTitle": "Carga de la temporada: {races, plural, one {# carrera} other {# carreras}}, {days, plural, one {# día de carrera} other {# días de carrera}} inscritos esta temporada",
       "clearDayTooltip": "Borra {races, plural, one {# carrera} other {# carreras}} y quita {riders, plural, one {# ciclista} other {# ciclistas}} de este día"
