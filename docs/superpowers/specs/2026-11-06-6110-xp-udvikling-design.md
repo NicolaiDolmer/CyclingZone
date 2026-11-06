@@ -40,7 +40,7 @@ Det åbner #2472's form og K3b og erstatter #7757-forklaringen. PR #7769 holdes 
 |---|---|---|---|---|
 | **Å1** | **Fokus-spørgsmålet:** giver en session kun XP i sine egne evner, så manageren må skifte mellem træninger over tid? | **Spillerne, derefter ejeren. ÅBENT, må ikke låses** | Off-fokus-andelen (§4.6), assistentens plan, kørslens variant | Ingen, ejeren har sagt, at spillerne spørges først |
 | Å2 | Bliver XP-tallet og Udviklingsscoren ét tal? | Ejer | Trin 7, navneskiftet 20/10, S9, S10 | Ét tal: XP. Scorens 1-99-skala og navneskiftet udgår (§5.3) |
-| Å3 | Skal omregningen 1-6 til 1-99 bygges alligevel? Den er låst 11/10 | Ejer | Trin 12 og kolonnerne til grundtalent | Nej. XP læser dagens potentiale direkte (§6) |
+| Å3 | Skal omregningen 1-6 til 1-99 og retning C's levende talent bygges alligevel? Begge er låst 11/10 | Ejer | Trin 12, kolonnerne til grundtalent, om potentialet står fast | Nej. XP læser dagens potentiale direkte, og B3 peger på et fast potentiale (§6) |
 | Å4 | Hvor meget er "lidt mindre" for evner uden for typen? | Ejer, efter kørslen | Typens andel (§4.7) | Sæt den efter gate X4, ikke på forhånd |
 | Å5 | Dagsvariationens form: kun dag for dag, eller med gode og dårlige perioder? | Ejer, efter måling | H6b, reglen fra 5/11 om at alt har en ægte årsag | Mål begge, vis ét kort (§5.2) |
 | Å6 | Skal rytterens type følge med, når han er trænet om? | Ejer | Hvilken evne der tæller som type | Nej. Typen er anlæg, bedste rolle følger evnerne som i dag (§4.7) |
@@ -55,7 +55,7 @@ Læst i koden på `origin/main` 6/11 og i det private grundlag (prod læst med S
 - **Kæden:** `dailyAbilityDelta` (`dailyTraining.js`) giver en rå fremdrift pr. evne. Under kurve B er basis niveau gange afstand til loftet. `gap === 0` giver 0, så en evne på det hårde tag står stille.
 - **Lageret:** `rider_derived_abilities.ability_progress` er en andel (0 til 1) af næste point pr. evne. Klippede point bæres videre og kan lægge baren over 1. Reglen maks +1 pr. evne pr. dato er live (`ability_cap_per_date_enabled`).
 - **Off-fokus:** alle evner uden for sessionen får i dag en lille andel (`offFocusMult`). Løbsdage har samme off-fokus (`includeOffFocus`).
-- **Sessioner:** katalog v3 er live. Holdarbejde og Lederskab er i ingen session; de udvikles kun gennem løb efter rolle (S21). Alle andre synlige evner er dækket af mindst én session.
+- **Sessioner:** katalog v3 er live. Holdarbejde og Lederskab er i ingen session; S21 lader dem udvikle sig gennem løb efter rolle. Alle andre synlige evner er dækket af mindst én session.
 - **Lofterne bærer mere end træningen:** `ability_caps` genberegnes ved hvert tick. Klassifikationen af ryttere uden gemt anlæg og værdisporet læser dem. En rytter med `archetype_draw` beholder sin type, uanset hvad han trænes til.
 - **Kontakter:** `development_curve_b`, aldring, +1 pr. dato og løbsdagens rolletillæg er on. Score B (`development_score_v2`), catch-up (`race_day_catchup_enabled`) og skønnets `potential_estimate_*` er off.
 - **Overgangen #7382:** stemplet i prod er 31/10. De 14 kalenderdage løber dermed til og med 13/11.
@@ -97,14 +97,14 @@ Form og træthed er ikke led i XP (S29). Træthed koster gennem form og skadesri
 
 ### 4.4 Potentiale
 
-Potentialet er fast gennem karrieren og styrer kun XP pr. dag. Prisen afslører det ikke. Dagens trin 1-6 i halve trin rækker til modellen (§6).
+Potentialet styrer kun XP pr. dag. Prisen afslører det ikke. Denne spec regner med, at det står fast gennem karrieren, og at dagens trin 1-6 i halve trin rækker til modellen. Begge dele er en slutning fra B2 og B3, ikke en ejerbeslutning (Å3).
 
 ### 4.5 Alder
 
 - Fuld XP til og med 28 år. Ingen ungdomsfaktor, ingen alderstabel.
 - XP falder tydeligt fra ca. 29 år. Kurven er privat. Den blide variant er vurderet for blød: for mange etablerede veteraner stiger. Den skarpere ligger tættest på i dag, og kørslen tager udgangspunkt i den.
-- En variant, hvor kun sæsonfaldet bremser, er fravalgt. Den flytter toppen alt for sent og lader etablerede veteraner stige bredt.
-- Tilbagegangen ved sæsonskiftet (D4) er uændret: plateau til og med 30 for fald, fald fra 31, kun fysiske evner, løbsbremse. Kun D4's "ingen fremgang" på plateauet afløses af det lave XP.
+- En variant, hvor XP er uændret og kun sæsonfaldet bremser, udgår med B5. Den flytter toppen alt for sent og lader etablerede veteraner stige bredt.
+- Tilbagegangen ved sæsonskiftet (D4) er uændret: intet fald til og med 30, fald fra 31, kun fysiske evner, løbsbremse. Kun D4's "ingen fremgang" på plateauet afløses af det lave XP.
 
 ### 4.6 Fokus (ÅBENT, se Å1)
 
@@ -170,9 +170,9 @@ Det samlede design 23/10 skønner over "det sande loft". Uden loft findes den st
 - Det regnes ét sted, så skøn, prognose og akademi fortsat er én kilde (trin 4).
 - Det opdateres ved søndagskørslen (§3.3 i designet 23/10).
 - Den bevidste undtagelse fra doktrinen #5490 står: skønnet er visning, motoren regner på det sande potentiale.
-- Retning C's bevægelige loft falder væk (§10). K1's særlinje om ryttere over loftet har intet at beskrive.
+- Retning C's bevægelige loft har intet at flytte, når loftet er væk (Å3). K1's særlinje om ryttere over loftet har intet at beskrive.
 - Skønnet vises aldrig under nuværende rating, som hidtil.
-- Omregningen 1-6 til 1-99 er ikke længere nødvendig for motoren eller visningen. Den er låst, så det kræver ejerens ja (Å3).
+- Omregningen 1-6 til 1-99 er ikke længere nødvendig for motoren eller visningen. Den er låst, så det kræver ejerens ja (Å3). Svarer ejeren, at det levende talent skal bestå, bliver XP pr. dag det, der flytter sig. Prisen er urørt, og resten af modellen står.
 
 ## 7. Overgang bag én slukket kontakt
 
@@ -226,13 +226,13 @@ Kørslen er `backend/scripts/dev/tenSeasonSim6110.mjs` (read-only, kopi af prod,
 |---|---|---|
 | X1 Milepæle | D1-milepælene og top 27-28 (D-058) | Ingen variant rammer toppen i hårdtrænings-modellen, heller ikke dagens. Skal afgøres med rigtige planer og løb |
 | X2 Niveau | Lavt potentiale når reelt ikke toppen, topper ender over middeltalenter | Bunden stiger lidt, og nye topryttere ender lidt lavere end i dag |
-| X3 Veteraner | Etablerede ryttere over ca. 29 år stiger ikke bredt | Den skarpe aldersvariant holder tæt på i dag |
-| X4 Type | En ren sprinter bliver ikke topklatrer på en hel karriere. En bjergrytter kan blive bakkerytter | Holder med typens andel, sekundæren er for tæt på signaturen |
+| X3 Veteraner | Etablerede ryttere over ca. 29 år stiger ikke bredt | Med den skarpe aldersvariant stiger flere end i dag, men få og kun lidt |
+| X4 Type | En ren sprinter bliver ikke topklatrer på en hel karriere. En bjergrytter kan blive bakkerytter | Holder med typens andel. Sekundæren ender tæt på signaturen |
 | X5 Aldrig nul | En hel træningsdag giver altid synligt XP (#7757) | Holder pr. konstruktion. Fremgang i toppen er stadig ikke mærkbar |
 | X6 Tændingen | 0 ratingfald, +1 pr. dato holder, ingen unormal første uge | Ikke målt |
 | X7 Mentale evner | Ingen mental evne løber fra de fysiske. Taktik vurderes særskilt | Taktik når over dagens tag på langt sigt |
 | X8 Løb | G1, G2, G6 og G8 fra del 2 holder i XP | Ikke målt |
-| X9 Talentet | H6b holder på XP-historikken (§5.2) | Holder ikke uden højere variation |
+| X9 Talentet | H6b holder på XP-historikken (§5.2) | Vurderet, ikke målt: holder ikke uden højere variation |
 | X10 Fokus | Hver evne kan udvikles, og assistenten er ikke fanget på én session | Ikke målt |
 
 H1-H6 genkøres mod det nye sande tal (§6). Fejler en gate, ændres tallene, ikke beslutningerne. To kørsler med samme fejl er et ejer-kort. Ejeren vælger, om en gate må vige.
@@ -286,7 +286,7 @@ Uden for de nummererede trin falder også D5's glidende overgang, K3b's personli
 | S23: fem fart-ord | Foreslået afløst af XP |
 | D5, K3b, K1: ryttere over loftet | Gruppen findes ikke |
 | K3: kalibrering af loftet | Bortfalder, §6 |
-| Retning C: det reelle loft flytter sig | Loftet er væk, potentialet er fast (B2, B3) |
+| Retning C: det reelle loft flytter sig | Foreslået afløst: loftet er væk, og potentialet står fast (Å3) |
 | D4: "ingen fremgang" på plateauet | Afløst af lavt XP. Faldet efter D4 står |
 | #5268: mentalt tag-loft | Afløst i XP-stien (B9) |
 | #2472: aftrapning af loftet | Får ny form som XP-fald |
