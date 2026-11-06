@@ -89,7 +89,7 @@ export function teamChase7730On(input: Pick<StageInput, "rules_revision" | "team
 /**
  * Jagtens dom paa jagt-gulvet. Hvem arbejder (`work`: indsats-vaegten fra jagtplanen), hvor
  * staerke de er mod udbruddet, hvor friske de er, og hvor mange hold der deler foeringerne.
- * En rytter der er for traet til at reagere (samme graense som klassementsreaktionen), trækker
+ * En rytter der er for traet til at reagere (samme graense som klassementsreaktionen), traekker
  * ikke. Dommen laeses paa jagtens tilstand i segmentet, saa et hold der har arbejdet hele dagen,
  * selv betaler for det i finalen. Samme tilstand giver samme dom. REN: ingen rng, ingen IO.
  */
