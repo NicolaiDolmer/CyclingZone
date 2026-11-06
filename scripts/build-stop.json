@@ -1006,6 +1006,16 @@
       "issue": 2176,
       "reason": "Ejer-go 6/11: designes og går på beta",
       "since": "2026-11-06"
+    },
+    {
+      "issue": 6916,
+      "reason": "Ejer-go 6/11: Mobil 10x, Codex-sporet; PR #7798 større trykflader",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7800,
+      "reason": "Forkert info: stemmetal på roadmappen, spillermeldt 5/11",
+      "since": "2026-11-06"
     }
   ]
 }
