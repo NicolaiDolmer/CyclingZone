@@ -25,6 +25,7 @@ import {
   isPosthogStarted,
   isPosthogCapturing,
   isPosthogAllowed,
+  isInternalPosthogUser,
   resolveEffectiveConsent,
   createPosthogClient,
   startPosthog,
@@ -314,7 +315,7 @@ test("posthogIntegration.jsx: gaten er isPosthogAllowed, ikke analytics-ja", () 
 });
 
 test("posthogIntegration.jsx: identify venter på profilen og bruger kun UUID'et", () => {
-  assert.match(integrationSource, /const profileReady = Boolean\(userId\) && !profileLoading;/);
+  assert.match(integrationSource, /const profileReady = Boolean\(userId\) && !profileLoading && teamLookupDone;/);
   assert.match(integrationSource, /identifyPosthog\(userId\)/);
   assert.match(integrationSource, /resetPosthog\(\)/, "logout skal resette");
   assert.doesNotMatch(integrationSource, /identifyPosthog\([^)]*(email|name)/i);
@@ -456,4 +457,26 @@ test("kerne-rejsen: team_created og first_training er navngivne events (#4321)",
   assert.match(logEventSource, /logFirstEvent\("team_created", \{\}\)/);
   // team_created kædes efter signup-flushen, så PostHog ser signup først.
   assert.match(logEventSource, /signupFlushInFlight\.then\(\(\) => logFirstEvent\("team_created"/);
+});
+
+// #7811: ejer og testkonti sorteres fra ved kilden.
+test("isInternalPosthogUser: admin og testhold er interne, almindelige spillere ikke", () => {
+  assert.equal(isInternalPosthogUser({ role: "admin" }), true);
+  assert.equal(isInternalPosthogUser({ role: "manager", teamIsTestAccount: true }), true);
+  assert.equal(isInternalPosthogUser({ role: "manager", teamIsTestAccount: false }), false);
+  assert.equal(isInternalPosthogUser({ role: "manager", teamIsTestAccount: null }), false);
+  assert.equal(isInternalPosthogUser({}), false);
+  assert.equal(isInternalPosthogUser(), false);
+});
+
+test("integrationen slår internt hold op og lukker gaten for interne brugere", () => {
+  assert.match(integrationSource, /isInternalPosthogUser\(/);
+  assert.match(integrationSource, /from\("teams"\)\s*\.select\("is_test_account"\)/);
+  assert.match(integrationSource, /isPosthogAllowed\(effectiveConsent\) && !isInternal/);
+  assert.match(integrationSource, /Boolean\(userId\) && !profileLoading && teamLookupDone/);
+});
+
+test("#7811: en start der lander efter lukket gate opter ud", () => {
+  const src = readFileSync(new URL("./posthogIntegration.jsx", import.meta.url), "utf8");
+  assert.match(src, /if \(cancelled\) \{\s*if \(!posthogOnRef\.current\) optOutPosthog\(\);/);
 });
