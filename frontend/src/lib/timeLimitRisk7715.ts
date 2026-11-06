@@ -1,6 +1,6 @@
 // #7715: hvornår taktik og udtagelse viser mærket. Selve risikoen afgør serveren (samme
 // funktion som motoren); her er kun spillerens udvej: Grupetto og Kør roligt holder ham
-// under den almindelige regel. Listen er låst mod motoren i timeLimitRisk7715.test.js.
+// under den almindelige regel. Listen er låst mod motoren i timeLimitRisk7715.test.ts.
 
 export const TIME_LIMIT_SAFE_EFFORTS = Object.freeze(["grupetto", "save"] as const);
 
