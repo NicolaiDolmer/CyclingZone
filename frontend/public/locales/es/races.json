@@ -72,7 +72,7 @@
       "ride_for_result": "Correr por un resultado",
       "sprint_train": "Tren de sprint",
       "grupetto": "Grupeta",
-      "ride_in": "Llegar a meta"
+      "ride_in": "Llegar tranquilo a meta"
     },
     "from": {
       "kom": "tras {climb}",
@@ -1654,7 +1654,10 @@
         "order": {
           "all_out_stayed_away": "{rider} fue a tope siguiendo tu orden y aguantó por delante hasta la meta.",
           "all_out_held_on_climb": "{rider} fue a tope siguiendo tu orden y pasó {climb} con los primeros.",
-          "all_out_held_on": "{rider} fue a tope siguiendo tu orden y se mantuvo en el grupo de cabeza."
+          "all_out_held_on": "{rider} fue a tope siguiendo tu orden y se mantuvo en el grupo de cabeza.",
+          "attack_stayed_away": "{rider} atacó siguiendo tu orden y aguantó por delante hasta la meta.",
+          "attack_held_on_climb": "{rider} atacó siguiendo tu orden y pasó {climb} con los primeros.",
+          "attack_held_on": "{rider} atacó siguiendo tu orden y se mantuvo en el grupo de cabeza."
         },
         "breakaway_dropped": "{riders} {count, plural, one {es descolgado} other {son descolgados}} de la escapada.",
         "breakaway_attempt_failed": "{riders}{others, plural, =0 {} one { y # más} other { y # más}} {count, plural, one {intenta} other {intentan}} escaparse, pero no {count, plural, one {logra} other {logran}} marcharse. {teamCount, plural, =1 {{teamLast} reaccionó} other {{teamsHead} y {teamLast} reaccionaron}}. El intento costó fuerzas para el resto de la etapa.",
@@ -1676,6 +1679,8 @@
         "favorite_crack_tt": "{rider} se apaga en la segunda mitad y pierde tiempo.",
         "all_out_gain": "{rider} lo da todo en la última subida y gana tiempo.",
         "all_out_cracked": "{rider} lo da todo y se queda vacío en la última subida.",
+        "attack_gain": "{rider} ataca en la última subida y gana tiempo.",
+        "attack_cracked": "{rider} ataca y se queda vacío en la última subida.",
         "bad_day_fatigue": "{rider} tuvo un mal día. Los días duros anteriores le pasaron factura.",
         "bad_day_form": "{rider} tuvo un mal día. Le faltaba forma.",
         "bad_day_illness": "{rider} tuvo un mal día. No se encontraba bien de salud.",
