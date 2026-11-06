@@ -837,7 +837,7 @@ export function buildReport(story: RaceStory, lines: StoryLine[], cast: Cast, ow
   out.push(...dayWords, ...ownOut.slice(0, 3));
   // Hoejst 5 plus dagens ord og din angrebs-saetning (#7754), som aldrig skubber loebets historie ud.
   // Angrebet ryger foerst. Vinderen, din bedste og dine udgaaede bliver staaende (Codex #7701).
-  const stays = (s: ReportSentence) => s.key.startsWith("winner") || s.key.startsWith("mine") || s.key === "ownOut";
+  const stays = (s: ReportSentence) => s.key.startsWith("winner") || s.key.startsWith("mine") || s.key.startsWith("ownAttackedWith") || s.key === "ownOut";
   while (out.length > 5 + dayWords.length + (ownAttack ? 1 : 0)) {
     const attack = out.findIndex((s) => s.key.startsWith("attack"));
     out.splice(attack >= 0 ? attack : out.findIndex((s) => !stays(s)), 1);
