@@ -94,6 +94,17 @@ export function resolveEffectiveConsent(localConsent, remoteConsent) {
   return remote || local;
 }
 
+// #7811: ejerens og testkontiers egen trafik må ikke tælle i målingerne.
+// Kohorten i PostHog var tom, fordi klienten aldrig sendte noget der kunne
+// definere den. I stedet for en kohorte bag et person-property (der ville
+// kræve en identificeret person og stadig lade events flyde) sorterer vi fra
+// ved kilden: en intern bruger sender ingen events og identify'es aldrig.
+// Intern = admin-rollen (ejeren) eller et hold med is_test_account.
+/** @param {{ role?: string | null, teamIsTestAccount?: boolean | null }} [user] */
+export function isInternalPosthogUser({ role, teamIsTestAccount } = {}) {
+  return role === "admin" || teamIsTestAccount === true;
+}
+
 // Den ene klient-instans. Sat af startPosthog(), aldrig genskabt.
 let client = null;
 let posthogStarted = false;

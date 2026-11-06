@@ -12,7 +12,7 @@
 //   - buildReport:      3-5 saetninger, deterministisk, fra linjerne + resultatet
 //   - groupMembersAt:   hvem kører i hvilken gruppe ved et km (replay-navne)
 //   - finaleData/…:     "Final 5 km"-grafikkens tidsmodel og gruppevalg
-import { replayFrames as replayFramesJs, checkpointGapForRider as checkpointGapJs, riderOutBy as riderOutByJs, ridersBehindField as ridersBehindFieldJs } from "../../../../../backend/lib/raceStory.js";
+import { leaderKmAt as leaderKmAtJs, replayFrames as replayFramesJs, checkpointGapForRider as checkpointGapJs, riderOutBy as riderOutByJs, ridersBehindField as ridersBehindFieldJs } from "../../../../../backend/lib/raceStory.js";
 import { withNarrativeCauses, isTimeTrialNarrative, type NarrativeEvent } from "../../../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts";
 import { collectRiderIds, describeEvent } from "../../../lib/stageTimelineFilm.js";
 import { classificationRowsForStage } from "../../../lib/raceStageClassifications.js";
@@ -1027,16 +1027,8 @@ function leaderTimeOnLine(line: Array<{ km: number; time: number }>, km: number)
   return null;
 }
 
-/** Foererens km ved race-tid t (foererlinjen vendt om; konstant tempo mellem tjekpunkter). */
-export function leaderKmAt(line: Array<{ km: number; time: number }>, t: number): number {
-  if (!line.length) return 0;
-  if (t <= line[0].time) return line[0].km;
-  for (let i = 1; i < line.length; i++) {
-    const a = line[i - 1], b = line[i];
-    if (b.time >= t) return b.time === a.time ? b.km : a.km + ((b.km - a.km) * (t - a.time)) / (b.time - a.time);
-  }
-  return line[line.length - 1].km;
-}
+/** Foererens km ved race-tid t: samme helper som replayFrames i backend (ét sted). */
+export const leaderKmAt: (line: Array<{ km: number; time: number }>, t: number) => number = leaderKmAtJs;
 
 /** Hullet for hver gruppe ved foererens km (lineaert mellem finale-frames). */
 function gapsAt(frames: ReplayFrame[], km: number): FrameGroup[] {

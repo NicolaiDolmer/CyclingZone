@@ -270,14 +270,14 @@ export function copenhagenDay(d: Date): string {
 }
 
 /**
- * Den etape siden aabner paa uden ?stage=: etapen der koeres i dag
- * (dansk tid). Ellers den senest koerte, ellers etape 1.
+ * Den etape siden aabner paa uden ?stage=: den senest koerte etape. Foerst naar
+ * intet er koert, dagens foerste etape (dansk tid), ellers etape 1. Dagens
+ * laveste etape er ikke nok: ved flere etaper samme dag er den ofte allerede
+ * koert, og siden skal ikke lande paa en gammel etape (#7810).
  */
 export function defaultStage({ totalStages, stagesCompleted, schedule, now }: { totalStages: number; stagesCompleted: number; schedule: ScheduleRow[]; now: Date }): number {
-  const today = todaysStage({ totalStages, schedule, now });
-  if (today != null) return today;
   if (stagesCompleted > 0) return Math.min(totalStages, stagesCompleted);
-  return 1;
+  return todaysStage({ totalStages, schedule, now }) ?? 1;
 }
 
 /**

@@ -40,6 +40,7 @@ Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden f
 
 ## Kø (når et loft-område er færdigt)
 
+0. **Mestertrøjer og talentmærker #7824 (ejer 6/11, kun design, intet byg uden go):** trøjer efter Forstå løbet og løbsside A, talentmærker efter XP og spillernes afstemning.
 1. **Dato-løfter #6947:** TTT #3463, U23 del 2 #4620, omdømme #4957/#5106, indstillinger #3984.
 2. **Løbssider:** Planning Workbench #7535 (i bero), løbstyper U23/junior #7471, etapekort #6365.
 3. **Akademi og ungdom:** påmindelse, junior-pyramiden.

@@ -30,7 +30,7 @@ export { filmKmValue } from "./stageTimelineKmSpan.ts";
 import { labelBreakawayEvents, breakawayFilmCopy, breakawayLabelOf } from "./breakawayLabels6299.ts"; // #6299: kun udbruddet hedder udbrud
 // #6469: hvorfor udbruddet holdt/blev hentet + spillerens egen "Alt ud" i udfaldet.
 // Ren afledning af tidslinjen; samme modul som backendens kontrakt-tests (G7).
-import { withNarrativeCauses, isTimeTrialNarrative } from "../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts";
+import { withNarrativeCauses, withAttackWording, isTimeTrialNarrative } from "../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts";
 
 // Kategori-skala til stignings-trekanterne på scrubberen — samme rækkefølge/
 // bogstaver som race_stage_passages.climb_category og StageProfileGraph.jsx's
@@ -223,11 +223,15 @@ const NARRATIVE_TYPES = new Set(["breakaway_cause", "order_impact"]);
 /** @param {NonNullable<Parameters<typeof withNarrativeCauses>[1]>} [options] */
 export function storyEventsWithCauses(storyEvents, allEvents, options = {}) {
   const { ownRiderIds = [], effortByRider = null, profileType = null } = options;
-  const picked = new Set(storyEvents || []);
+  // #7707: Angrib-stemplet (withAttackWording) laver nye objekter; udvalget flyttes med over.
+  const source = allEvents || [];
+  const worded = withAttackWording(source, { ownRiderIds, effortByRider, profileType });
+  const swap = new Map(source.map((e, i) => [e, worded[i]]));
+  const picked = new Set([...(storyEvents || [])].map((e) => swap.get(e) ?? e));
   if (!picked.size) return [];
   const out = [];
   let following = false;
-  for (const event of withNarrativeCauses(allEvents || [], { ownRiderIds, effortByRider, profileType })) {
+  for (const event of withNarrativeCauses(worded, { ownRiderIds, effortByRider, profileType })) {
     if (NARRATIVE_TYPES.has(String(event?.type ?? ""))) {
       if (following) out.push(event);
       continue;
@@ -308,9 +312,10 @@ function describeFailedAttempt(p, riderNameById, teamNameById, ownRiderIds) {
 function describeOrderImpact(p, riderNameById) {
   const rider = riderName(p.rider_id, riderNameById);
   if (!rider) return null;
-  if (p.kind === "all_out_stayed_away") return { key: "order.all_out_stayed_away", params: { rider } };
-  if (p.kind === "all_out_held_on") {
-    return p.climb_name ? { key: "order.all_out_held_on_climb", params: { rider, climb: p.climb_name } } : { key: "order.all_out_held_on", params: { rider } };
+  if (p.kind === "all_out_stayed_away" || p.kind === "attack_stayed_away") return { key: `order.${p.kind}`, params: { rider } };
+  // #7707: Angrib (etapeplan) og Alt ud (indsats-ordre, enkeltstart) har hver sin tekst.
+  if (p.kind === "all_out_held_on" || p.kind === "attack_held_on") {
+    return p.climb_name ? { key: `order.${p.kind}_climb`, params: { rider, climb: p.climb_name } } : { key: `order.${p.kind}`, params: { rider } };
   }
   return null;
 }
@@ -493,7 +498,9 @@ export function describeEvent(event, { riderNameById, teamNameById, ownRiderIds 
     case "all_out_cracked": {
       const rider = riderName(p.rider_id, riderNameById);
       if (!rider) return null;
-      return { key: event.type, params: { rider } };
+      // #7707: withAttackWording stempler `task: "attack"` paa en rytter med opgaven Angrib.
+      const attack = p.task === "attack";
+      return { key: attack ? event.type.replace("all_out_", "attack_") : event.type, params: { rider } };
     }
     case "bad_day": { // #6649 (s5_profiles_v3): "havde en daarlig dag" + aarsagen, skrevet bagefter
       const rider = riderName(p.rider_id, riderNameById);

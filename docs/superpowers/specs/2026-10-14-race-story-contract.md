@@ -182,8 +182,9 @@ hul (motoren melder kun ændringer); `front` = gruppen kører forrest.
 `replayFrames(story, { finaleKm = 5, stepKm = 1 })` giver
 `[{ km, leader_time_s, groups: [{group_id, size, includes_rest, gap_s, km_behind}] }]`
 på hvert tjekpunkt og pr. km over de sidste 5 km. Mellem tjekpunkter
-interpoleres hullet lineært; `km_behind` er hullet omregnet med førerens fart
-på stedet. Frame-medlemskabet bygges fra tilstanden før frame'en og
+interpoleres hullet lineært; `km_behind` er den strækning føreren har kørt
+siden gruppen var på stedet (hullet slået op på førerlinjen), så den aldrig
+springer baglæns. Frame-medlemskabet bygges fra tilstanden før frame'en og
 `group_spans`, aldrig ved at projicere næste snapshot baglæns: en gruppe der
 smelter sammen inde i et interval, er på vejen til sit merge-punkt og lukker
 lineært ind på gruppen den smelter ind i; en gruppe der splitter sig ud inde i

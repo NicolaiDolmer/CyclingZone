@@ -1083,7 +1083,8 @@ function groupsBetween(story, a, b, km) {
  * tjekpunkt og pr. km over de sidste `finaleKm` km. Mellem to tjekpunkter
  * interpoleres lineært (motorens konstante tempo pr. interval), og en gruppe
  * er på vejen fra sit split-punkt til sit merge-punkt (groupsBetween).
- * Afstanden i km bruger førerens fart på stedet.
+ * Afstanden i km er den strækning føreren havde kørt, da gruppen var her
+ * (hullet i tid tilbage på førerlinjen), så den aldrig springer baglæns.
  */
 export function replayFrames(story, { finaleKm = REPLAY_FINALE_KM, stepKm = 1 } = {}) {
   if (!story?.snapshots?.length || story.distance_km == null) return [];
@@ -1095,7 +1096,6 @@ export function replayFrames(story, { finaleKm = REPLAY_FINALE_KM, stepKm = 1 } 
   const snaps = story.snapshots;
   return ordered.map((km) => {
     const leader = leaderTimeAt(story, km);
-    const speed = leaderSpeedAt(story, km);
     let a = null; let b = null;
     for (const s of snaps) { if (s.km <= km + 1e-9) a = s; else { b = s; break; } }
     let rows;
@@ -1103,19 +1103,23 @@ export function replayFrames(story, { finaleKm = REPLAY_FINALE_KM, stepKm = 1 } 
     else if (Math.abs(a.km - km) < 1e-6 || !b) rows = Math.abs(a.km - km) < 1e-6 ? a.groups.map((g) => ({ meta: g, gap: g.gap_s })) : [];
     else rows = groupsBetween(story, a, b, km);
     const groups = rows
-      .map(({ meta, gap }) => ({ group_id: meta.group_id, size: meta.size, includes_rest: meta.includes_rest, gap_s: Math.max(0, gap), km_behind: speed == null ? null : round2(Math.max(0, gap) * speed) }))
+      .map(({ meta, gap }) => ({ group_id: meta.group_id, size: meta.size, includes_rest: meta.includes_rest, gap_s: Math.max(0, gap), km_behind: leader == null ? null : round2(Math.max(0, km - leaderKmAt(story.leader_line, leader - Math.max(0, gap)))) }))
       .sort((x, y) => x.gap_s - y.gap_s || x.group_id.localeCompare(y.group_id));
     return { km, leader_time_s: leader, groups };
   });
 }
 
-function leaderSpeedAt(story, km) {
-  const line = story.leader_line;
+/**
+ * Førerens km ved race-tid t (konstant tempo mellem tjekpunkter). Eneste
+ * kilde til "hvor er en gruppe", brugt af både replayFrames og filmen i
+ * frontend, så de to aldrig kan være uenige.
+ */
+export function leaderKmAt(line, t) {
+  if (!line?.length) return 0;
+  if (t <= line[0].time) return line[0].km;
   for (let i = 1; i < line.length; i++) {
-    if (line[i].km >= km - 1e-9) {
-      const dt = line[i].time - line[i - 1].time;
-      return dt > 0 ? (line[i].km - line[i - 1].km) / dt : null;
-    }
+    const a = line[i - 1], b = line[i];
+    if (b.time >= t) return b.time === a.time ? b.km : a.km + ((b.km - a.km) * (t - a.time)) / (b.time - a.time);
   }
-  return null;
+  return line[line.length - 1].km;
 }
