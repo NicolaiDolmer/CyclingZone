@@ -1022,8 +1022,8 @@ function Close-OpenTrain {
   # #7587 punkt 6: foerst nu er toget verificeret. Fail-soft (ogsaa hvis funktionen mangler).
   try { Invoke-TrainCloseOut -Entries $closeOutEntries -DeployVerified $closeOutDeploys }
   catch { Write-Host '  (close-out kunne ikke startes; merget er stadig verificeret.)' -ForegroundColor DarkYellow }
-  # #7585 PR 4: loesrevet dry-run af forsinket-auto-bevis efter close-out. Fail-soft, ingen ventetid, gater aldrig koeen.
-  try { Start-Process -FilePath node -ArgumentList @((Join-Path $PSScriptRoot 'til-doers-overdue.mjs'), '--dry-run', '--repo', $Repo) -WindowStyle Hidden | Out-Null } catch {}
+  # #7585: loesrevet auto-bevis (dry-run foerste uge) for togets PR'er efter close-out. Fail-soft, ingen ventetid, gater aldrig koeen.
+  try { $proofPrs = (@($closeOutEntries | Where-Object { $null -ne $_ } | ForEach-Object { [int]$_.number }) -join ','); if ($proofPrs) { Start-Process -FilePath node -ArgumentList @((Join-Path $PSScriptRoot 'til-doers-proof.mjs'), 'run', '--pr', $proofPrs, '--dry-run', '--repo', $Repo) -WindowStyle Hidden | Out-Null } } catch {}
 }
 
 # #7587: markoeren lever fra foerste merge-forsoeg til koeen slutter; finally (nederst) fjerner den ogsaa ved STOP/exit.
