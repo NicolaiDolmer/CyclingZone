@@ -1,18 +1,18 @@
 # MASTERPLAN: prioriteret rækkefølge (SSOT)
 
-> Ejer-afstemt 4/11, opdateret 5/11 (#7495). Intet udskydes uden ejer-aftale. Intention: GDD. Status: [audit 4/11](https://claude.ai/artifact/4ho37bWUTLwNNuGNuyuXpc). Release-gate: #6553 ved S6-start.
+> Ejer-afstemt 4/11, opdateret 6/11 (#7495). Intet udskydes uden ejer-aftale. Intention: GDD. Status: [audit 4/11](https://claude.ai/artifact/4ho37bWUTLwNNuGNuyuXpc). Release-gate: #6553 ved S6-start.
 
 **Reglen:** Færdig = bygget, merget, tændt, synligt, gammelt væk, Hjælp + patch note (8 Til dørs-krav). **Loftet afløser byggestoppet (ejer 4/11):** alt inden for de tre loft-områder plus brand og forkert info må bygges uden liste; alt andet kræver ejerens go. Højst 3 områder ad gangen. Nyt prøves bag slukket kontakt før tænding.
 
-**Arbejdsdeling:** Claude (PC1) ejer motor, taktik, udvikling, merge-køen, flag og prod. Codex: TS-kæden, ops-værktøj, test, vækst/penge-analyser og SEO.
+**Arbejdsdeling (ejer 6/11):** Claude på PC1 ejer motor, taktik, udvikling, løbssiden, spillerkommunikation, merge, flag og prod. Codex på Dolmer PC laver mobil-gennemgangen og PR'er, men merger ikke.
 
 ## Tidsplan (ejer 4/11 aften, 20 planlagte + 22 påbegyndte punkter gennemgået enkeltvist)
 
 
-Fuld liste med datoer: #7632. "Done" først ved alle 8 krav; fredagskort til ejeren. Åbne denne uge: markedsføring + 10x-plan; træning #7637/#7559/#7558/#7584; #7260; motor-kontakterne #6912/#7644/#7635/#7640 i ét "kør"; motor-pakkens krav 8; #6984; rutematch + assistent; secrets #7029. Næste uge: moms #4511, #7565, #7581, dashboard #7626, sortering #7537. Resten af S5: indstillinger #3984.
+Fuld liste med datoer: #7632. "Done" først ved alle 8 krav; fredagskort til ejeren.
 
-- **Denne uge (senest 8/11):** træthed pr. indstilling #7638 (ejer vælger A/B); feltet #7712; #7705, #7693, #7733, #7734; delt kaptajn krav 8 + #7326; forside #6665; Supabase #7659 (ranglisten senest 14/11).
-- **Næste uge (9-15/11), roadmap-rækkefølgen:** Hvorfor? #7717, selektion #7645, assistent #6207, udbrud #6912, graduering #7323, salg #6181, aftentræning #6490, enkeltstart #7565, rapport #7627, løbsudvikling #5950, sortering #7537, Udvikling 2.0 #6110; indsatskortet #5101; etapekortet #6365 besluttes.
+- **Denne uge (senest 8/11):** secrets #7029/#7034 lørdag; #7557 test og kør; #7726 tal og kør; #7733 binding og kør efter 7/11; #7638 ejer vælger; #7766/#7765/#7768; #7326.
+- **Næste uge (9-15/11):** Udvikling 2.0 som XP-model #6110, redesign af løbssiden ud fra målingen #7778, mobil-gennemgang (Codex), auto-bevis #7585, spillersvar, fair-play #5431, forside #6665, selektion #7645, udbrud #6912, graduering #7323, salg #6181, aftentræning #6490, viden ved salg #7455.
 - **Ca. 15-18/11:** catch-up #6950 besluttes (frist 8/11 udgået); spørg igen om "nye managers forstår første løb" (parkeret).
 - **Før S6-kalenderen:** løbstyper U23/junior #7471. **Før S6-start:** U23 del 2 #4620, junior-pyramiden #4621, Planning Workbench #7535.
 - **S6 (dec):** Pro-værdien + betaling #2806/#4514. **Starten af 2027:** TTT #3463, omdømme #4957/#5106.
@@ -25,7 +25,7 @@ Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden f
 
 ## Brand (løbende, uden for loftet)
 
-- **Løbenes sandhed:** sandhedsvagten #7643; Giro-rettelserne #7635/#7636, #7639, #7640. "Lad andre jage" #7557 tændt 5/11 (patch note + tjek efter første etape).
+- **Løbenes sandhed:** sandhedsvagten #7643; Giro-rettelserne #7635/#7636, #7639, #7640. "Lad andre jage" #7557 slukket til test.
 - **Dronningeetaper #7236:** tændt 4/11 (ejer "kør"); genmål Hexagone 15/17 ca. 7-8/11 med fuldere startliste.
 - **Kontrakter, transfer, sæsonskifte (prøves før S6):** ungdom #6882, graduering/auktion #7323, aftenafregningen #6490, trupstørrelser #7490.
 - **Supabase uden fejl #7659:** retning A (mål, ret det tunge, alarmer): #7662/#7663/#7664, ranglisten #6765 senest 14/11. **Sikkerhed (ét vindue med ejeren):** #7029 + #7034.
@@ -36,7 +36,7 @@ Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden f
 
 1. **Motor og løbsfilm sande:** #6350 tidsstempling (design), selektion #7645 (A først), nedkørsler #7644 (#7651), bjergudbrud #6912 (#7650, flad måles bagefter), realisme-gaten #7588 PR 4-6, #7260-listen. Plan: [RACE_ENGINE_PLAN](RACE_ENGINE_PLAN.md).
 2. **Taktik synlig og forståelig:** træthed pr. indstilling på taktiksiden #7638 og indsatskortet #5101 (mockup først), delt kaptajn #7003/#7239/#7326 (krav 8), #7266, spillerfejl #7624/#7557/#7625.
-3. **Udvikling 2.0 #6110:** næsten nul fremgang på en hel dag #7757 skal løses her; #5950 variant B (opgavetabellen gennemgås med ejeren; tempo = mellemlange stigninger), trin 2-6 "ét skønnet tal" (plan klar, afventer ejerens godkendelse og frist), #4850 krav 4/5 og #7627 (gevinst pr. aktivitet i rapporten), #7637 træthed for ca. 200 ryttere, Score B parkeret til grundtalentet er bygget.
+3. **Udvikling 2.0 #6110 (XP-model, ejer 6/11):** fælles prisliste, potentiale giver XP, intet hårdt loft, fokus i træning, spec PR #7784. Løser #7757; rapportens løbsgevinst #7627 med. Bagefter: trøjemål #5573.
 
 ## Kø (når et loft-område er færdigt)
 
@@ -60,4 +60,4 @@ Rapport får issue og svarudkast; ejeren poster. Patch notes efter observeret ak
 
 ## Doktrin
 
-Styrke straffes aldrig. Én rytter, ét løb pr. løbsdag. Simulér før ship. Et regressionsgulv er ikke et godkendt mål. Synlige ratings falder ikke uden ejerens vidende. Én motor; revisionsskift og flag er ejer-gated.
+Spilleren ser det, spillet regner på (dagsform bliver). Styrke straffes aldrig. Én rytter, ét løb pr. løbsdag. Simulér før ship. Et regressionsgulv er ikke et godkendt mål. Synlige ratings falder ikke uden ejerens vidende. Én motor; revisionsskift og flag er ejer-gated.

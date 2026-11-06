@@ -87,10 +87,6 @@
       "area": "race-engine"
     },
     {
-      "issue": 6938,
-      "area": "race-engine"
-    },
-    {
       "issue": 6984,
       "area": "race-engine"
     },
@@ -965,6 +961,51 @@
       "issue": 7584,
       "reason": "Ejer-go natbølge 5/11: blok A og C",
       "since": "2026-11-05"
+    },
+    {
+      "issue": 7778,
+      "reason": "Ejer-go 6/11: måling af løbssiden før redesign",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7692,
+      "reason": "Ejer-go 6/11: solgt rytter og rytter ude af feltet hviler",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7730,
+      "reason": "Ejer-go 6/11: bølge efter til-dørs-tjek",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7715,
+      "reason": "Ejer-go 6/11: bølge efter til-dørs-tjek",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7733,
+      "reason": "Ejer-go 6/11: bølge efter til-dørs-tjek",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7754,
+      "reason": "Ejer-go 6/11: bølge efter til-dørs-tjek",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7782,
+      "reason": "Ejer-go 6/11: bølge efter til-dørs-tjek",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7783,
+      "reason": "Ejer-go 6/11: bølge efter til-dørs-tjek",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 2176,
+      "reason": "Ejer-go 6/11: designes og går på beta",
+      "since": "2026-11-06"
     }
   ]
 }

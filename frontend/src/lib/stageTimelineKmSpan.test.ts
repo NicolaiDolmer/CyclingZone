@@ -237,7 +237,8 @@ test("#6350: hele kæden: egne ryttere fra hver halvdel af et split er to linjer
   const [setLine, lateLine] = lines(false);
   assert.deepEqual(setLine[0], ["set-own"]);
   assert.ok(Number(setLine[1]) > 170.4 && Number(setLine[1]) < 171, `sat ved km ${setLine[1]}`);
-  assert.deepEqual(lateLine, [["late-own"], "180"]);
+  assert.deepEqual(lateLine[0], ["late-own"]);
+  assert.ok(Number(lateLine[1]) > 174.07 && Number(lateLine[1]) < 175, `#7734: tabet begynder efter kontakten, fik km ${lateLine[1]}`);
   assert.equal(lines(false).length, 2);
   assert.deepEqual(lines(true)[1], [["late-own"], "176"], "med gruppens kontakt står han på kontakten");
 });

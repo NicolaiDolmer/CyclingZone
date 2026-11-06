@@ -1,5 +1,256 @@
 export const PATCHES = [
   {
+    "version": "7.407",
+    "date": "2026-11-06",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "See who your rider attacked with",
+          "body": "The stage report now names who your rider attacked with, and so does Why? on beta."
+        },
+        "da": {
+          "title": "Se hvem din rytter angreb med",
+          "body": "Referatet siger nu, hvem din rytter angreb sammen med, og det gør Hvorfor? på beta også."
+        },
+        "refs": [
+          7754
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Rest plans no longer carry over to a new season",
+          "body": "From the next season change, a rest plan no longer follows your rider into the new season. He gets a normal plan instead of standing still."
+        },
+        "da": {
+          "title": "Hvile-planer følger ikke med ind i en ny sæson",
+          "body": "Fra næste sæsonskifte følger en hvile-plan ikke længere rytteren med. Han får en normal plan i stedet for at stå stille."
+        },
+        "refs": [
+          7637
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.406",
+    "date": "2026-11-06",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "beta",
+        "flag": "rider_why_button",
+        "topic": "Races",
+        "en": {
+          "title": "Why? next to your riders",
+          "body": "After a stage, a Why? button next to your own riders gives one sentence on how his day went. If the race can't prove the reason, it says so."
+        },
+        "da": {
+          "title": "Hvorfor? ved dine ryttere",
+          "body": "Efter en etape giver en Hvorfor?-knap ved dine egne ryttere én sætning om hans dag. Kan løbet ikke bevise årsagen, står der det."
+        },
+        "refs": [
+          7717
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Where your riders lost time",
+          "body": "The stage report now has a block with where your riders lost time, and why: a crash, running out of energy or a bad day."
+        },
+        "da": {
+          "title": "Hvor dine ryttere tabte tid",
+          "body": "Referatet har nu en blok med, hvor dine ryttere tabte tid, og hvorfor: et styrt, løbet tør for kræfter eller en dårlig dag."
+        },
+        "refs": [
+          7705
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Failed attacks in the race film",
+          "body": "When your rider tries to get in the break and doesn't make it, the film now says so, who worked against him, and that it cost energy for the rest of the stage."
+        },
+        "da": {
+          "title": "Mislykkede forsøg i løbsfilmen",
+          "body": "Når din rytter forsøger at komme med i udbruddet uden held, siger filmen det nu, hvem der kørte imod, og at det kostede kræfter resten af etapen."
+        },
+        "refs": [
+          7729
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Assistant",
+        "en": {
+          "title": "The assistant picks on the number you see",
+          "body": "The assistant now selects on the same route match you see on screen, for every team. Automatic squads can change a little from the next selection, mostly in time trials."
+        },
+        "da": {
+          "title": "Assistenten vælger efter tallet på skærmen",
+          "body": "Assistenten udtager nu efter samme rutematch, som du ser på skærmen, for alle hold. Automatiske trupper kan ændre sig lidt fra næste udtagelse, mest i enkeltstarter."
+        },
+        "refs": [
+          6207
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Riders out of a stage race train again",
+          "body": "A rider who was no longer in a stage race, for example after being sold, stayed tied to it and rested until it ended. He now follows his programme again."
+        },
+        "da": {
+          "title": "Ryttere ude af et etapeløb træner igen",
+          "body": "En rytter, der ikke længere var i et etapeløb, fx efter et salg, stod stadig som bundet og hvilede, til løbet sluttede. Nu følger han sit program igen."
+        },
+        "refs": [
+          7692
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The right route everywhere",
+          "body": "Race history and planning now show this year's route instead of last season's."
+        },
+        "da": {
+          "title": "Den rigtige rute alle steder",
+          "body": "Løbshistorik og planlægning viser nu årets rute i stedet for sidste sæsons."
+        },
+        "refs": [
+          7693
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The peloton is the real peloton",
+          "body": "In the race film, the word peloton now only sits on the main group, the big group the attacks come from."
+        },
+        "da": {
+          "title": "Feltet er det rigtige felt",
+          "body": "I løbsfilmen står feltet nu kun på hovedgruppen, den store gruppe, angrebene kommer fra."
+        },
+        "refs": [
+          7704
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "No more jumps on the finish line",
+          "body": "Riders from a caught break now lose their time along the road in the film, instead of jumping back on the line. Results are unchanged."
+        },
+        "da": {
+          "title": "Ingen hop på målstregen",
+          "body": "Ryttere fra et hentet udbrud taber nu tiden undervejs i filmen i stedet for at hoppe tilbage på stregen. Resultater er uændrede."
+        },
+        "refs": [
+          7734
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "No crash line without a crash",
+          "body": "The film no longer mentions a crash on the cobbles unless a crash actually happened."
+        },
+        "da": {
+          "title": "Ingen styrt-linje uden et styrt",
+          "body": "Filmen nævner ikke længere et styrt på brostenene, medmindre der faktisk var et styrt."
+        },
+        "refs": [
+          7727
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Threshold is called what it is",
+          "body": "The training report no longer shows the old name for Threshold."
+        },
+        "da": {
+          "title": "Tærskel hedder det rigtige",
+          "body": "Træningsrapporten viser ikke længere det gamle navn for Tærskel."
+        },
+        "refs": [
+          7559
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The Day view no longer says today about yesterday",
+          "body": "If you pressed Train now on an earlier day, the Day view now says when, instead of today."
+        },
+        "da": {
+          "title": "Dag-visningen siger ikke i dag om i går",
+          "body": "Har du trykket Træn nu en tidligere dag, skriver Dag-visningen nu hvornår i stedet for i dag."
+        },
+        "refs": [
+          7558
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Help",
+        "en": {
+          "title": "Help no longer promises too much",
+          "body": "The FAQ now says it right: a mechanical costs time, it never takes a rider out of the race."
+        },
+        "da": {
+          "title": "Hjælp lover ikke for meget",
+          "body": "FAQ'en siger det nu rigtigt: en defekt koster tid, den tager aldrig en rytter ud af løbet."
+        },
+        "refs": [
+          7728
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.405",
     "date": "2026-11-05",
     "changes": [

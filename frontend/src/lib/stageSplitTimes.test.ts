@@ -118,6 +118,17 @@ test("buildOwnTimeLoss: foerste fald der staar ved magt + uheld, med dokumentere
   assert.equal(own2.type === "drop" && own2.climbName, "Col de la Colombière");
 });
 
+test("buildOwnTimeLoss: koerte sig tom og daarlig dag er egne linjer, kun for egne ryttere (#7705)", () => {
+  const events = [
+    ...EVENTS,
+    { km: 150, type: "all_out_cracked", params: { rider_id: "own1" } },
+    { km: 150, type: "all_out_cracked", params: { rider_id: "rival" } },
+    { km: 160, type: "bad_day", params: { rider_id: "own2", reason: "fatigue" } },
+  ];
+  const loss = buildOwnTimeLoss(events, { ownRiderIds: OWN }).filter((l) => l.type === "event" && l.event.type !== "incident");
+  assert.deepEqual(loss.map((l) => [l.type === "event" && l.event.type, l.riderId]), [["all_out_cracked", "own1"], ["bad_day", "own2"]]);
+});
+
 test("buildOwnTimeLoss: et fald hvor rytteren kom tilbage til sin gruppe tæller ikke", () => {
   // own1 faldt fra gruppetto-4001 ved km 102 men var tilbage ved km 109.1:
   // kun faldet fra feltet ved km 72 staar tilbage.
@@ -370,6 +381,19 @@ test("#6350: en gemt etape uden halvdele: tabslisten er uændret, også når ste
   assert.equal(placed.filter((e) => e.params?.joined_late).length, 0, "etapen har ingen halvdele");
   assert.deepEqual(lines(stage.events), expected);
   assert.deepEqual(lines(placed), expected);
+});
+
+test("#7734: etape 10: de hentede er én linje, den satte en anden, og begge ender i samme gruppe", () => {
+  const stage = JSON.parse(readFileSync(new URL("../../../scripts/__fixtures__/race-truth/giro-stage-10.json", import.meta.url), "utf8"));
+  const placed = withEventPlaces(stage.events) as never;
+  const ownRiderIds = ["rider-set", "rider-late-a", "rider-late-b"];
+  const lines = buildOwnTimeLoss(placed, { ownRiderIds }).filter((l) => l.type === "drop") as Array<{ riderIds: string[]; from: string }>;
+  const late = lines.find((l) => l.riderIds.includes("rider-late-a"));
+  assert.deepEqual([...(late?.riderIds ?? [])].sort(), ["rider-late-a", "rider-late-b"]);
+  assert.equal(late?.from, "peloton", "de faldt fra feltet, ikke fra udbruddet");
+  assert.ok(lines.some((l) => l.riderIds.includes("rider-set") && !l.riderIds.includes("rider-late-a")));
+  const atLine = buildSplitTimes(placed, { ownRiderIds }).at(-1)?.groups.find((g) => g.ownRiderIds.length > 0);
+  assert.deepEqual([...(atLine?.ownRiderIds ?? [])].sort(), [...ownRiderIds].sort(), "målets gruppe er uændret");
 });
 
 test("#6350: kun et splits sene halvdel skilles fra, ikke to splits med hvert sit sted", () => {

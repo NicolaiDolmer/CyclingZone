@@ -59,6 +59,7 @@ import { teamRostersFromStartlist } from "./adapters/teamRosterAdapter.ts";
 import { isIndividualTimeTrial, simulateIndividualTimeTrialStage } from "./mechanics/individualTimeTrial.ts";
 import { isOrdersGcV3OrLater, isS5ProfilesV2OrLater, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
 import { dayForm6649On } from "./mechanics/dayForm6649.ts"; // #6649
+export { dayWordEvents7725 } from "./mechanics/dayForm6649.ts"; // #7725: kun til broen, motoren kalder den aldrig
 import { withPointPlace } from "./exactPlace.ts";
 import { stageInputForRulesRevision } from "./s5Profiles.ts";
 import { compareIds } from "../../compareIds.ts";
@@ -260,7 +261,7 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
   // forgrener altid — ogsaa for fixtures og haandbyggede testlister.
   if (isIndividualTimeTrial(input.route.profile_type)) {
     return {
-      output: simulateIndividualTimeTrialStage(input.route, input.startlist, input.seed, input.tuning, { rulesRevision: input.rules_revision, ...(dayForm6649On(input) ? { dayForm6649: true as const } : {}) }), // #6649
+      output: simulateIndividualTimeTrialStage(input.route, input.startlist, input.seed, input.tuning, { rulesRevision: input.rules_revision, ...(dayForm6649On(input) ? { dayForm6649: true as const } : {}), ...(input.itt_no_day_roll_7726 === true ? { ittNoDayRoll7726: true as const } : {}) }), // #6649, #7726
       trace: TIME_TRIAL_TRACE,
     };
   }

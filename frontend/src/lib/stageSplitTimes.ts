@@ -68,6 +68,8 @@ const MEMBERSHIP_TYPES = new Set(["breakaway_formed", "peloton_splits", "finale_
 // Bogfoering i motoren (raceStory.js), ingen rytter skifter gruppe.
 const BOOKKEEPING_ATTACK_KINDS = new Set(["stage_decided", "placement_gap", "gap_survived"]);
 const KNOWN_CAUSES = new Set(["climb_deficit", "wprime_depleted", "mixed", "grupetto", "cobbles_sector"]);
+// Hændelser der selv er årsagen til en rytters tidstab, hver med sin egen linje.
+const OWN_LOSS_EVENTS = new Set(["incident", "favorite_crack", "all_out_cracked", "bad_day"]);
 export const DEFAULT_MAX_GROUPS = 5;
 
 function idsOf(value: unknown): string[] {
@@ -432,7 +434,8 @@ function fromKind(state: ReplayState, groupId: string, leaving: readonly string[
  * - Et fald (peloton_splits) taeller kun hvis rytteren ikke senere kom tilbage
  *   til gruppen han faldt fra (group_merged ind i den). Det foerste fald der
  *   staar ved magt vises.
- * - Styrt/defekt (incident) og favoritknæk vises som deres egne linjer.
+ * - Styrt/defekt (incident), favoritknæk, en rytter der kørte sig tom og en
+ *   dårlig dag (#7705) vises som deres egne linjer.
  * - `effortByRider`: spillerens egen indsats-ordre for etapen ("save" =
  *   Kør roligt, "grupetto"). Kun en ordre spilleren selv gav, aldrig gaettet.
  */
@@ -486,7 +489,7 @@ export function buildOwnTimeLoss(
         const at = list.findIndex((d) => resolveAlias(state, d.source) === into);
         if (at >= 0) list.splice(at);
       }
-    } else if ((event.type === "incident" || event.type === "favorite_crack") && own.has(str(p.rider_id) ?? "")) {
+    } else if (OWN_LOSS_EVENTS.has(event.type ?? "") && own.has(str(p.rider_id) ?? "")) {
       if (event.type === "incident" && p.outcome === "protected_three_km_rule") return;
       other.push({ type: "event", km: event.km ?? 0, riderId: str(p.rider_id) as string, event });
     }
