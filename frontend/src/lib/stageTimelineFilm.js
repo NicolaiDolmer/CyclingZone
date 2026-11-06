@@ -438,6 +438,11 @@ export function describeEvent(event, { riderNameById, teamNameById } = {}) {
       return params ? { key: "breakaway_dropped", params } : null;
     }
     case "incident": {
+      // #7727: filmen siger kun styrt, når motoren har et styrt med følger.
+      // Brosten-sektorernes risiko-event (cause "cobbles_sector") er ren
+      // information: det bærer intet udfald og ændrer hverken tid, status
+      // eller skade. Uden udfald er teksten forkert info, så linjen udgår.
+      if (p.outcome == null) return null;
       const rider = riderName(p.rider_id, riderNameById);
       if (!rider) return null;
       return { key: incidentCopyKey(p), params: incidentCopyParams(p, rider) };
