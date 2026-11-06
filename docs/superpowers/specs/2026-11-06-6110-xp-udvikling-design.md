@@ -82,7 +82,7 @@ XP på en evne er et produkt af led. Enheden er én hård dato. Motorens tick f�
 | Færdighedsdag | Uændret: en færdighedsdag træner højst til håndværks-raten (#3762) | 14/8 |
 | Træner og facilitet | Kun på træningsdage | S13 |
 | Træningsdisciplin | Løfter dagens udbytte, hvis trin 19 bygges (§9) | S11 |
-| Dagsvariation | Seeded pr. (rytter, dato) med `seededUnitMixed`, neutral over en sæson | B8, §5.2 |
+| Dagsvariation | Deterministisk pr. (rytter, dato) med en hemmelig nøgle på serveren, neutral over en sæson | B8, §5.2 |
 | Intention på løbsdage | Uændret multiplikator (#6641) | live |
 
 Form og træthed er ikke led i XP (S29). Træthed koster gennem form og skadesrisiko. Belastningsevnen (D1) er neutral i de gældende params og føres ikke med over. Viser kørslen, at de helt unge går for hurtigt, er det et nyt ejer-kort.
@@ -156,6 +156,7 @@ Dette er modellens sværeste punkt. Spændet i XP er stort, og XP er nu selve po
 
 - Krav: gate H6b gælder fortsat, nu på XP-historikken. Talent udledt af XP må ikke være mere præcist end holdets eget skøn efter samme antal afregnede datoer.
 - Variationen skal hæves til det niveau, H6b kræver, og må ikke flytte sæsonens samlede udbytte.
+- **Variationen skal bruge en hemmelig nøgle.** Repoet er offentligt, og `seededUnitMixed` er en åben hash. Seeded alene på rytter og dato kan en spiller regne variationen efter og trække den fra, uanset hvor stor den er. Nøglen ligger i `private_config` sammen med XP-params og sendes aldrig til klienten. Samme rytter og dato giver stadig samme tal ved en gen-kørsel. Gate X9 måles mod en spiller, der kender den offentlige kode og alle input undtagen nøglen.
 - Variation dag for dag midles hurtigt væk. Variation med hukommelse (gode og dårlige perioder) skjuler talentet længere ved samme daglige udsving. Begge måles (Å5).
 - Reglen fra 5/11 er, at alt har en ægte årsag. Ren dagslotteri kolliderer med den, og S10 forbyder en faktorforklaring. Kortet til ejeren skal tage stilling til det.
 
@@ -232,7 +233,7 @@ Kørslen er `backend/scripts/dev/tenSeasonSim6110.mjs` (read-only, kopi af prod,
 | X6 Tændingen | 0 ratingfald, +1 pr. dato holder, ingen unormal første uge | Ikke målt |
 | X7 Mentale evner | Ingen mental evne løber fra de fysiske. Taktik vurderes særskilt | Taktik når over dagens tag på langt sigt |
 | X8 Løb | G1, G2, G6 og G8 fra del 2 holder i XP | Ikke målt |
-| X9 Talentet | H6b holder på XP-historikken (§5.2) | Vurderet, ikke målt: holder ikke uden højere variation |
+| X9 Talentet | H6b holder på XP-historikken, også mod en spiller, der kender koden (§5.2) | Vurderet, ikke målt: holder ikke uden højere variation og hemmelig nøgle |
 | X10 Fokus | Hver evne kan udvikles, og assistenten er ikke fanget på én session | Ikke målt |
 
 H1-H6 genkøres mod det nye sande tal (§6). Fejler en gate, ændres tallene, ikke beslutningerne. To kørsler med samme fejl er et ejer-kort. Ejeren vælger, om en gate må vige.
