@@ -23,3 +23,8 @@
 ALTER TABLE public.races ADD COLUMN IF NOT EXISTS team_chase_7730 boolean;
 
 COMMENT ON COLUMN public.races.team_chase_7730 IS '#7730: true = loebet startede med kontakten team_chase_7730 taendt. NULL = ikke omfattet.';
+
+-- Kontakten seedes slukket, saa registret kan se noeglen. Tændes kun af ejeren.
+INSERT INTO public.app_config (key, value, description)
+VALUES ('team_chase_7730', '"off"'::jsonb, 'Stage flag (off|on) for #7730: the chase is decided by the teams chasing. Only races not started. Owner-only flip.')
+ON CONFLICT (key) DO NOTHING;
