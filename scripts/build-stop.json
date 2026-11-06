@@ -965,6 +965,11 @@
       "issue": 7584,
       "reason": "Ejer-go natbølge 5/11: blok A og C",
       "since": "2026-11-05"
+    },
+    {
+      "issue": 7692,
+      "reason": "Ejer-go 6/11: solgt rytter og rytter ude af feltet hviler",
+      "since": "2026-11-06"
     }
   ]
 }
