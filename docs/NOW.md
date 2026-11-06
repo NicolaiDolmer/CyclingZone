@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (6/11 kl. 9):** Natbølgen færdig, 23 spor. Ejer tager merge-kort: https://claude.ai/artifact/23jwffNnDc76Ei9w8jC7tB. Merget: #7770, #7776 (deploy grøn), Dependabot. Patch note samles efter merges. let_go_order_7557 SLUKKET, testes før tænding, kun løb der ikke er startet. #7757 og #7637: ingen kodefejl. #7768 venter på #7758+#7759. Fire højrisiko-PR mangler Claude-markør: #7758 #7765 #7766 #7767. Ejer: svar til spillerne (OneDrive discord-loefter), #7692.
+> **🎯 Next action (6/11 12:30):** 15 PR'er merget i dag; #7780 (ude af feltet træner igen, #7692) i køen. rider_why_button = beta. Ejer-valg på #6110 (XP-model). Tilbage: patch note, masterplan, roadmap, dubletter, 56 todo-labels, #7766/#7765 med slukke-regel, #7768, #7637 hvile-planer. Lør: secrets #7029. Efter 7/11 16:30: started_field_lock_7733 ved ejer-kør.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Ingen aktiv session. Auto-toget kører på PC1.
+> **🤖 Working agent:** PC1-session: merge, til dørs, plan for ugen.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
