@@ -534,6 +534,48 @@ test("#6350: en sen halvdel af et split: navnene følger rytteren fra kontakten,
   assert.equal(at(178, "set"), "front-part");
 });
 
+test("#7734: en sen halvdel med egen linje: navne og film følger rytteren fra kontakten til gruppen", () => {
+  const log = [
+    ev(0, "stage_start", { exact_km: 0, exact_time: 0, field_count: 6, distance_km: 180 }),
+    ev(10, "breakaway_formed", { group_id: "breakaway-1", rider_ids: ["ahead"], exact_km: 10, exact_time: 900 }),
+    ev(170, "gap_update", { group_id: "peloton-0", gap_seconds: 90, exact_km: 170, exact_time: 17000 }),
+    ev(174.07, "breakaway_caught", { group_id: "breakaway-1", rider_ids: ["ahead"], exact_km: 174.07 }),
+    ev(174.07, "group_merged", { group_id: "breakaway-1", into_group_id: "peloton-0", rider_ids: ["ahead"], exact_km: 174.07 }),
+    ev(180, "peloton_splits", { group_id: "front-part", source_group_id: "peloton-0", gap_seconds: 53.09, rider_ids: ["a"], exact_km: 170.76, exact_time: 17609 }),
+    ev(180, "peloton_splits", { group_id: "behind", source_group_id: "peloton-0", gap_seconds: 302.73, rider_ids: ["set", "ahead"], exact_km: 180, exact_time: 19700 }),
+    ev(180, "gap_update", { group_id: "front-part", gap_seconds: 53.09, exact_km: 180, exact_time: 19453 }),
+    ev(180, "gap_update", { group_id: "behind", gap_seconds: 302.73, exact_km: 180, exact_time: 19700 }),
+    ev(180, "finish", { exact_km: 180, exact_time: 19400, top: [] }),
+  ];
+  const story = buildRaceStory({ events: withEventPlaces(log), timelineVersion: 2 }) as unknown as RaceStory;
+  const at = (km: number, rider: string) => groupOfRider(groupMembersAt(story, km), rider);
+  const frames = replayFrames(story, { finaleKm: 12, stepKm: 1 }) as Array<{ km: number; groups: Array<{ group_id: string; size: number | null; gap_s: number }> }>;
+  const inFilm = (km: number, id: string) => frames.find((f) => f.km === km)?.groups.find((g) => g.group_id === id);
+
+  assert.equal(at(172, "ahead"), "breakaway-1");
+  assert.equal(at(172, "set"), "behind");
+  assert.equal(at(176, "ahead"), "behind-late", "ikke i feltet og ikke i gruppen han ender i");
+  assert.equal(at(176, "set"), "behind");
+  assert.equal(at(180, "ahead"), "behind", "på stregen er han i gruppen");
+  assert.equal(inFilm(176, "behind-late")?.size, 1, "film og navne er enige");
+  assert.equal(inFilm(176, "behind")?.size, 1);
+  assert.ok((inFilm(176, "behind-late")?.gap_s ?? 0) < (inFilm(178, "behind-late")?.gap_s ?? 0), "hullet vokser undervejs");
+});
+
+test("#7734: en rytter udgået før linjen slutter, står ikke på linjen", () => {
+  const log = [
+    ev(0, "stage_start", { exact_km: 0, exact_time: 0, field_count: 6, distance_km: 100 }),
+    ev(40, "gap_update", { group_id: "peloton-0", gap_seconds: 0, exact_km: 40, exact_time: 4000 }),
+    ev(55, "incident", { kind: "crash", outcome: "abandoned", rider_id: "gone", exact_km: 55 }),
+    ev(60, "peloton_splits", { group_id: "back", source_group_id: "peloton-0", gap_seconds: 60, rider_ids: ["x"], exact_km: 45 }),
+    ev(60, "peloton_splits", { group_id: "back", source_group_id: "peloton-0", gap_seconds: 60, rider_ids: ["ahead", "gone"], joined_late: true, own_line: true, exact_km: 50 }),
+    ev(60, "gap_update", { group_id: "back", gap_seconds: 60, exact_km: 60, exact_time: 6060 }),
+    ev(100, "finish", { exact_km: 100, top: [] }),
+  ];
+  const story = buildRaceStory({ events: log, timelineVersion: 2 }) as unknown as RaceStory;
+  assert.deepEqual(story.group_spans?.find((s) => s.group_id === "back-late")?.rider_ids, ["ahead"]);
+});
+
 test("#6350: en sen halvdel: film og navne er enige om uheldsofferet og den udgåede", () => {
   const log = [
     ev(0, "stage_start", { exact_km: 0, exact_time: 0, field_count: 6, distance_km: 100 }),
