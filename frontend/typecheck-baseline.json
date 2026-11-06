@@ -377,7 +377,7 @@
   "../backend/lib/raceStory.js": {
     "TS18047": 3,
     "TS2322": 12,
-    "TS2339": 49,
+    "TS2339": 35,
     "TS2345": 3,
     "TS2531": 1,
     "TS2741": 1
@@ -2024,7 +2024,6 @@
   },
   "src/lib/stageTimelineFilm.js": {
     "TS18048": 5,
-    "TS2339": 2,
     "TS2532": 1
   },
   "src/lib/stageTimelineFilm.test.js": {

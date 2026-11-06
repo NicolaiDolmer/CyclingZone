@@ -130,7 +130,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     development_v2_aging_enabled: false,
 
     potential_single_number: false,
-    potential_estimate_view: false,
+    potential_estimate_display: false,
 
     ability_cap_per_date_enabled: false,
 
@@ -141,6 +141,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     race_library_v2: false,
     condition_v2_race_date_training_day: false,
     stage_plan_dropped_front_7635: false,
+    rider_why_button: false,
   });
   assert.equal(f.betaLookups(), 0, "en anonym forespoergsel maa ikke slaa en bruger op");
 });
@@ -192,7 +193,7 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     development_v2_aging_enabled: false,
 
     potential_single_number: false,
-    potential_estimate_view: false,
+    potential_estimate_display: false,
 
     ability_cap_per_date_enabled: false,
 
@@ -203,6 +204,7 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     race_library_v2: false,
     condition_v2_race_date_training_day: false,
     stage_plan_dropped_front_7635: false,
+    rider_why_button: false,
   });
 });
 
@@ -262,7 +264,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     development_v2_aging_enabled: false,
 
     potential_single_number: false,
-    potential_estimate_view: false,
+    potential_estimate_display: false,
 
     ability_cap_per_date_enabled: false,
 
@@ -273,6 +275,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     race_library_v2: false,
     condition_v2_race_date_training_day: false,
     stage_plan_dropped_front_7635: false,
+    rider_why_button: false,
   });
   assert.deepEqual(await readPlayerFeatureFlags(supabase, { isBetaTester: true }), {
     race_engine_v4: true,
@@ -293,7 +296,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     development_v2_aging_enabled: false,
 
     potential_single_number: false,
-    potential_estimate_view: false,
+    potential_estimate_display: false,
 
     ability_cap_per_date_enabled: false,
 
@@ -304,6 +307,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     race_library_v2: false,
     condition_v2_race_date_training_day: false,
     stage_plan_dropped_front_7635: false,
+    rider_why_button: false,
   });
 });
 

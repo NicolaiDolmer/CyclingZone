@@ -46,7 +46,8 @@
 //      allerede laeser.
 //   5. Hvert skift skrives som et `stage_plan_leg`-event paa segmentets start-km
 //      (rider_id, led, opgave, aarsag). Fog of war: ingen tal ud over km.
-//      Opsummeringen efter etapen laeser kun disse events.
+//      Opsummeringen efter etapen laeser kun disse events. #6350: km er hvor opgaven
+//      skifter; hvor han reelt blev sat laegges paa som exact_km (raceTimeline.withEventPlaces).
 //
 // #5982: en luksushjaelper uden gemt plan faar sin standardplan her
 // (mechanics/luxuryHelper5982.ts, samme forslag som fladen viser).

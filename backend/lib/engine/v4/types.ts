@@ -236,12 +236,16 @@ export type StageInput = {
   split_attack_cause_7640?: true | null;
   // #7644 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): loft paa samlingens gevinst pr. km paa lange nedkoersler (mechanics/descentRegroup6486.ts). Udeladt = som foer.
   descent_regroup_cap_7644?: true | null;
+  // #7726 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): enkeltstarten koeres uden dagsudsving (mechanics/individualTimeTrial.ts). Udeladt = som foer.
+  itt_no_day_roll_7726?: true | null;
   // #6649 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + app_config day_form_6649): dagsformen med forklaring
   // (mechanics/dayForm6649.ts). Broen saetter feltet kun naar kalderen eksplicit sender
   // dayForm6649=true (raceRunner: kun ved app_config day_form_6649 = "on"). Udeladt = den gamle dagsform.
   day_form_6649?: true | null;
   // #6912 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): forspringskurven (mechanics/breakawayCurve6912.ts). Udeladt = som foer.
   breakaway_curve_6912?: true | null;
+  // #7730 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): jagt-gulvets maal afgoeres af de hold der jager (mechanics/chaseGroup.ts). Udeladt = som foer.
+  team_chase_7730?: true | null;
 };
 
 /** #5955: taktisk regel-revision. Kun "orders_gc_v1" aktiverer ordrestyret morgenudbrud. */
@@ -326,6 +330,9 @@ export type KnownTimelineEventType =
   // #6804 P2 (ADDITIV, KUN s5_profiles_v3): forspringet vokser forbi det feltet tolererer,
   // fordi intet hold vil jage (mechanics/breakawayV3_6804.ts). params: { group_id }.
   | "breakaway_unchased"
+  // #7730 (ADDITIV, KUN kontakten team_chase_7730): jagten naaede ikke hullet ned i tide, og hvorfor.
+  // params: { group_id, reason, team_ids }. Kun arter og hold, aldrig tal (fog-gate #1791).
+  | "breakaway_chase_short"
   // #6641/#7280 (ADDITIV, alt ud-pakken, KUN s5_profiles_v3): params { rider_id }.
   | "all_out_gain"
   | "all_out_cracked";
@@ -397,9 +404,10 @@ export type StageResult = {
 //   alvorligt styrt -> udgaar (abandoned) + skadedage, SJAELDENT
 //   mekanisk uheld  -> ALTID kun tidstab (aldrig abandoned, aldrig skade);
 //                      en hjaelper taet paa giver hurtigere hjulskift
-// #6938 (ADDITIVT, KUN s5_profiles_v3, mechanics/abandons.ts): "illness" = startede
-// ikke (traethed/form, U1), "withdrawal" = en sat hjaelper steg af i et endagsloeb
-// (U3). Begge er altid udfaldet "abandoned", aldrig skade, aldrig tidstab.
+// #6938 (ADDITIVT, KUN s5_profiles_v3): "illness" = startede ikke (traethed/form, U1).
+// "withdrawal" er historisk: motoren skriver den ikke laengere (#7713), men etaper der
+// allerede er koert, staar stadig med den. Begge er altid udfaldet "abandoned", aldrig
+// skade, aldrig tidstab.
 export type IncidentKind = "crash" | "mechanical" | "illness" | "withdrawal";
 export type IncidentSeverity = "light" | "hard" | "serious";
 export type IncidentOutcome = "time_loss" | "protected_three_km_rule" | "abandoned";
@@ -821,6 +829,8 @@ export type SegmentHookContext = {
   dayForm6649?: true;
   // #6912 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + StageInput.breakaway_curve_6912): forspringskurven. Udeladt = som foer.
   breakawayCurve6912?: true;
+  // #7730 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + StageInput.team_chase_7730): jagten afgoeres af de hold der jager. Udeladt = som foer.
+  teamChase7730?: true;
   // #7380 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 med en etapeplan): etapeplanens aktuelle opgave pr. rytter med plan,
   // som runtimen satte den ved segmentets start (stagePlanEngine.stagePlanCurrentTasks). Udeladt = ingen plan.
   stagePlanTasks?: Readonly<Record<string, import("../../stagePlan.ts").StagePlanTask>>;

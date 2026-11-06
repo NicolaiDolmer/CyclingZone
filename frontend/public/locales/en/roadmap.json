@@ -77,6 +77,7 @@
     "hint": "Your ratings decide what moves to the plan",
     "areaLabel": "Area",
     "all": "All",
+    "unrated": "{unrated} of {total} still need your answer",
     "forum": "Have an idea of your own? Post it in the forum"
   },
   "issues": {

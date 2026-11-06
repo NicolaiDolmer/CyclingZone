@@ -89,7 +89,7 @@ import {
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
 import { isLetGoChaseGroup, ownRidersOnWheelRaw } from "./mechanics/breakaway.ts";
 import { isOfficialTimesV4OrLater, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater, isS5ProfilesV3OrLater, sharedTimeModelGeneration, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
-import { findChaseGroup, isMorningRegroupCatch, noteFormationRiders } from "./mechanics/chaseGroup.ts";
+import { findChaseGroup, isMorningRegroupCatch, noteFormationRiders, teamChase7730On } from "./mechanics/chaseGroup.ts";
 import { annotateExactPlaces } from "./exactPlace.ts";
 import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
 import { finishDescentIndexFor, runInOpenOnlyTempo, timeModelTuningFor, valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
@@ -1139,6 +1139,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       ...(isS5ProfilesV3OrLater(rulesRevision) ? { s5ProfilesV3: true as const } : {}),
       ...(dayForm6649On(input) ? { dayForm6649: true as const } : {}), // #6649
       ...(breakawayCurve6912On(input) ? { breakawayCurve6912: true as const } : {}), // #6912
+      ...(teamChase7730On(input) ? { teamChase7730: true as const } : {}), // #7730
       ...(stagePlan ? { stagePlanTasks: stagePlanCurrentTasks(stagePlan) } : {}), // #7380: runtimens opgave ved segmentets start
     };
     const acceptMovement = (result: {state: EngineState; events: TimelineEvent[]}) => {

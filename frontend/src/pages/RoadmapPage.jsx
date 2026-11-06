@@ -435,6 +435,7 @@ export default function RoadmapPage() {
             loading={loading}
             ideas={visible(parts.ideas)}
             ideasTotal={parts.ideas.length}
+            unrated={counts.vote}
             onlyUnrated={onlyUnrated}
             drafts={drafts}
             saveState={saveState}

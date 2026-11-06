@@ -960,7 +960,7 @@
     "focus_vo2max": "VO2max (blandede intervaller)",
     "focus_vo2max_climb": "VO2max (klatreintervaller)",
     "focus_vo2max_punch": "VO2max (punch-intervaller)",
-    "focus_threshold": "Tærskel / TT",
+    "focus_threshold": "Tærskel",
     "focus_sprint": "Spurt",
     "focus_tempo": "Tempo",
     "focus_endurance": "Udholdenhed (Zone 2)",

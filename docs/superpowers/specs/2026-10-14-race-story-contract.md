@@ -101,7 +101,7 @@ const story = buildRaceStory({
 | `moments` | `Moment[]` | Se 3.2. km-sorteret. |
 | `checkpoints` | `Checkpoint[]` | Se 3.3. |
 | `snapshots` | `Snapshot[]` | Se 3.4. |
-| `group_spans` | `[{group_id, from_km, to_km, source_group_id, into_group_id, rider_ids}]` | Gruppernes levetid på vejen: fra dannelse/split (`source_group_id` = gruppen den kom fra) til sammenlægning (`into_group_id`), på hændelsens sande km. `rider_ids` = gruppens eksplicitte medlemmer lige efter dannelsen (tom for resten). `to_km: null` = gruppen findes stadig ved mål; `to_km` er aldrig mindre end `from_km`. Tom for enkeltstart. |
+| `group_spans` | `[{group_id, from_km, to_km, source_group_id, into_group_id, rider_ids}]` | Gruppernes levetid på vejen: fra dannelse/split (`source_group_id` = gruppen den kom fra) til sammenlægning (`into_group_id`), på hændelsens sande km. `rider_ids` = gruppens eksplicitte medlemmer lige efter dannelsen (tom for resten). `to_km: null` = gruppen findes stadig ved mål; `to_km` er aldrig mindre end `from_km`. Valgfrit `late_joins: [{km, rider_ids}]` = ryttere der først kom med senere (sen halvdel af et split, #6350). En sen halvdel med `own_line` (hentet inde i segmentet, #7734) får i stedet sin egen levetid `<gruppe>-late` fra stedet efter kontakten til tjekpunktet, med `source_group_id` = gruppen den kørte i og `into_group_id` = gruppen den ender i. Tom for enkeltstart. |
 | `breakaway` | `{morning_rider_ids, outcomes}`\|null | Dagens udbryderes udfald (`caught`/`dropped`/`survived`/null), samme projektion som mærkerne og de gemte flag (`raceParticipationHistory.ts`). Med `results` afgøres de mod målresultatet. |
 
 ### 3.2 `Moment`

@@ -50,8 +50,8 @@ const AGING_V2_ON = Object.freeze({ flag: "development_v2_aging_enabled", when: 
 // #6110 Udvikling 2.0 trin 6: tal + ord. potential_single_number kan ikke bruges her:
 // den staar on i prod og styrer ikke laengere noget, saa teksten ville skifte nu.
 // Off = dagens tekst om intervallet, on = "<blok>Estimate"-tvillingen.
-const POTENTIAL_ESTIMATE_OFF = Object.freeze({ flag: "potential_estimate_view", when: false });
-const POTENTIAL_ESTIMATE_ON = Object.freeze({ flag: "potential_estimate_view", when: true });
+const POTENTIAL_ESTIMATE_OFF = Object.freeze({ flag: "potential_estimate_display", when: false });
+const POTENTIAL_ESTIMATE_ON = Object.freeze({ flag: "potential_estimate_display", when: true });
 
 /**
  * BLOK-niveau (#4847). `dailytraining` er altid synlig, men nogle af dens

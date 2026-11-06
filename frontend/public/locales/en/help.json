@@ -618,7 +618,7 @@
           ],
           [
             "Solo time trial",
-            "Every rider starts alone against the clock, no drafting."
+            "Every rider starts alone against the clock, no drafting. There is no extra dice roll: ability, form, fatigue, weather, the route and form on the day decide it."
           ],
           [
             "Breakaway",
@@ -1785,7 +1785,7 @@
       },
       "stageTactics": {
         "title": "Stage races: roles and effort per stage",
-        "text": "In stage races the race page has a stage-by-stage tactics board. Completed stages are locked and show what happened; upcoming stages can still be changed while the race runs. Each rider can ride a different role per stage, plus an effort for the day. The effort steps have their own paragraph just below. If a rider takes the leader's jersey, a shortcut on the race page's Team tab makes him captain for every remaining stage in one click while the race is running, moving any other captain on those stages to a helper. Stages where you set nothing simply use the rider's race role. Conflicting orders cannot be combined. The explanation beside the choice tells you what to change before saving. A stage plan can switch a rider's task at the top of a climb, in the last 10 km or when he is dropped. The switch for the last 10 km happens exactly 10 km from the line, also in the middle of a climb or a cobbled sector. When that point falls on a descent, the switch happens at the top or the bottom of it instead, whichever is closer. If the descent runs all the way to the finish, team work (Set the tempo, Keep the leader up front) switches at the top of it, so the work happens before the line."
+        "text": "In stage races the race page has a stage-by-stage tactics board. Completed stages are locked and show what happened; upcoming stages can still be changed while the race runs. Each rider can ride a different role per stage, plus an effort for the day. The effort steps have their own paragraph just below. If a rider takes the leader's jersey, a shortcut on the race page's Team tab makes him captain for every remaining stage in one click while the race is running, moving any other captain on those stages to a helper. Stages where you set nothing simply use the rider's race role. Conflicting orders cannot be combined. The explanation beside the choice tells you what to change before saving. A stage plan can switch a rider's task at the top of a climb, in the last 10 km or when he is dropped. The switch for the last 10 km happens exactly 10 km from the line, also in the middle of a climb or a cobbled sector. When that point falls on a descent, the switch happens at the top or the bottom of it instead, whichever is closer. If the descent runs all the way to the finish, team work (Set the tempo, Keep the leader up front) switches at the top of it, so the work happens before the line. After the stage the plan shows what he actually did, step by step. I only write what the race film and the result can show: his place, that he finished, that he attacked, or who he rode with. When nothing can be shown, I write nothing. A tick means the job got done, a cross that it did not work out, and a dash that he never got to that step. The small i is a plain fact, not a verdict."
       },
       "effortSteps": {
         "title": "Effort steps",
@@ -1832,7 +1832,7 @@
       },
       "timeLimitAndGrupetto": {
         "title": "The time limit and the grupetto",
-        "text": "Arrive too far behind the stage winner and your race is over, out of the whole event on a stage race, a DNF on a one-day race. A big group that comes in together is saved as one instead, that is the grupetto, and it exists so a whole tired peloton is not sent home on a brutal day. How much room you get depends on the stage: flat days are the strictest, the high mountains the most forgiving. In youth races the limit is looser and a smaller group can be saved. It is a rule, never a roll of the dice, and it treats an AI team exactly the same way it treats you. All you ever see is the plain result: out of the time limit, or the grupetto saved. In a stage race, a worn-out helper who finished far behind can also climb off after the stage. He shows as DNF with the reason \"Climbed off, exhausted\" and is out of the rest of the race."
+        "text": "Arrive too far behind the stage winner and your race is over, out of the whole event on a stage race, a DNF on a one-day race. A big group that comes in together is saved as one instead, that is the grupetto, and it exists so a whole tired peloton is not sent home on a brutal day. How much room you get depends on the stage: flat days are the strictest, the high mountains the most forgiving. In youth races the limit is looser and a smaller group can be saved. It is a rule, never a roll of the dice, and it treats an AI team exactly the same way it treats you. All you ever see is the plain result: out of the time limit, or the grupetto saved."
       },
       "teamwork": {
         "title": "Teamwork on the road",
@@ -2307,7 +2307,7 @@
     },
     "crashesFaq": {
       "q": "What are crashes and abandons?",
-      "a": "During a stage a rider can crash or suffer a mechanical. Most incidents cost time on the result, but some force the rider to abandon the race: an abandoned rider is out of the remaining stages and all classifications. Only a crash can injure him on top of that; a rider who abandons with a mechanical costs you the race, not the body, and is fit again the next day. Incidents are rare and hit hectic finales and cobbled races hardest, while time trials are the safest. Riders with good field positioning are hit less often. Separately, a rider who gets injured outside the race while a stage race is running cannot start the remaining stages; he is listed as a non-starter. Abandons and non-starters are listed on the race page."
+      "a": "During a stage a rider can crash or suffer a mechanical. Most incidents cost time on the result. A mechanical, such as a puncture or a dropped chain, only ever costs time: it can never make a rider abandon and it can never injure him. Only a serious crash forces a rider to abandon the race, and a crash is also the only thing that can injure him. An abandoned rider is out of the remaining stages and all classifications. Incidents are rare and hit hectic finales and cobbled races hardest, while time trials are the safest. Riders with good field positioning are hit less often. Separately, a rider who gets injured outside the race while a stage race is running cannot start the remaining stages; he is listed as a non-starter. Abandons and non-starters are listed on the race page."
     },
     "whyReportFaq": {
       "q": "How can I see why a result happened?",

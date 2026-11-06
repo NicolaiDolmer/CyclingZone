@@ -35,6 +35,7 @@ import { ageForSeason } from "./riderSeasonAge.js"; // #4058
 import { fetchAllRows } from "./supabasePagination.js"; // #6551
 import { captureException } from "./sentry.js"; // #6138
 import { hydrateCompletedVisibility } from "./scoutReportVisibility.js"; // #6138
+import { recordScoutLooks } from "./potentialEstimateWriter.js"; // #7685
 
 // Standard kandidat-loader for missioner: alle ikke-pensionerede ryttere med
 // kendt potentiale, mappet til scoutMission's forventede rider-form. Scope
@@ -218,6 +219,8 @@ async function claimAndCompleteMission({ supabase, assignment, loadCandidates, g
     }));
     const { error: insErr } = await supabase.from("scout_actions").insert(rows);
     if (insErr) throw new Error(`scout_actions insert (mission shortlist reports): ${insErr.message}`);
+    // #7685: nyt kig = ny viden. Flag-gated, og kaster aldrig.
+    await recordScoutLooks({ supabase, teamId: assignment.team_id, riderIds: shortlist, now });
   }
 
   // #2945: notify() kaldes EFTER claimet + scout_actions er bekræftet —

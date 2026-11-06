@@ -960,7 +960,7 @@
     "focus_vo2max": "VO2max (gemengde intervallen)",
     "focus_vo2max_climb": "VO2max (klimintervallen)",
     "focus_vo2max_punch": "VO2max (punch-intervallen)",
-    "focus_threshold": "Drempel / TT",
+    "focus_threshold": "Drempel",
     "focus_sprint": "Sprint",
     "focus_tempo": "Tempo",
     "focus_endurance": "Uithoudingsvermogen (Zone 2)",

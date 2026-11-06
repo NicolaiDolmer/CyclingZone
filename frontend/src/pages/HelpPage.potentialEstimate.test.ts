@@ -1,4 +1,4 @@
-// #7686: Hjaelp beskriver intervallet indtil potential_estimate_view er taendt, og tal
+// #7686: Hjaelp beskriver intervallet indtil potential_estimate_display er taendt, og tal
 // + ord derefter. De to versioner maa aldrig staa side om side, og den nye tekst maa
 // ikke tale om interval eller loft.
 import { test } from "node:test";
@@ -18,7 +18,7 @@ const source = readFileSync(join(here, "HelpPage.jsx"), "utf8");
 const locale = (lang: string): Help =>
   JSON.parse(readFileSync(join(here, "..", "..", "public", "locales", lang, "help.json"), "utf8"));
 
-const FLAG = "potential_estimate_view";
+const FLAG = "potential_estimate_display";
 const BLOCK_TWINS: Array<[string, string, string]> = [
   ["riders", "potentialBestRole", "potentialBestRoleEstimate"],
   ["riders", "scouting", "scoutingEstimate"],
@@ -57,7 +57,7 @@ test("FAQ-tvillingerne foelger samme kontakt", () => {
     assert.equal(isHelpFaqVisible(oldId, { [FLAG]: true }), false, oldId);
     assert.equal(isHelpFaqVisible(newId, { [FLAG]: true }), true, newId);
   }
-  assert.equal(isHelpFaqVisible("typeRatingScaleFaq", { potential_estimate_view: true }), false);
+  assert.equal(isHelpFaqVisible("typeRatingScaleFaq", { potential_estimate_display: true }), false);
 });
 
 for (const [lang, forbidden] of [

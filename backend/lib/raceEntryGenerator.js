@@ -5,7 +5,8 @@
 // stabilt på vindue-start, så race_id). Pure — ingen DB.
 
 import { runWithRetry } from "./dbChunk.js";
-import { autopickTeamSelection, selectionSizeForRace, suitabilityScore, SELECTION_SIZE, MIN_RACE_ENTRIES } from "./raceAutopick.js";
+import { autopickTeamSelection, selectionSizeForRace, routeFitScorer, SELECTION_SIZE, MIN_RACE_ENTRIES } from "./raceAutopick.js";
+import { ROUTE_MATCH_STAGE_COLUMNS } from "./routeMatch.js"; // #6207
 import { OVERLAP_MIN_START } from "./raceFieldIntegrity.js";
 import { peakConcurrentNeed } from "./raceDayFloorPlan.js";
 import { isAiTeamRetireEnabled } from './aiTeamRetireFlag.js';
@@ -106,7 +107,8 @@ function floorAwareCap({ race, available, later, availableFor, strategy }) {
   const reservations = []; // [{ item, ids }] i rangorden
   const reserved = new Set();
   if (cap > 0) {
-    const fitForSelf = new Map(scorableRiders(available).map((r) => [r.rider_id, suitabilityScore(r.abilities, race.stages)]));
+    const fit = routeFitScorer(race.stages);
+    const fitForSelf = new Map(scorableRiders(available).map((r) => [r.rider_id, fit(r.abilities)]));
     for (const item of kept) {
       if (!item.restricted) continue;
       const pool = item.shared.filter((id) => !reserved.has(id));
@@ -450,7 +452,7 @@ export async function runRaceEntryGenerator({
   // 3. Etapeprofiler pr. løb (autopick scorer på dem), sorteret på stage_number.
   const { data: profileRows, error: profileErr } = await selectInChunks({
     supabase, table: "race_stage_profiles",
-    columns: "race_id, stage_number, profile_type, finale_type, demand_vector",
+    columns: ROUTE_MATCH_STAGE_COLUMNS,
     inColumn: "race_id", ids: raceIds, orderBy: ["race_id", "stage_number"], // unik nøgle → stabil paginering (#2375)
   });
   if (profileErr) throw new Error(`race_stage_profiles: ${profileErr.message}`);

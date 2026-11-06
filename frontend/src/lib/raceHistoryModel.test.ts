@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  normalizeRaceName, matchesSearch, finalStageByRace, buildRaceHistory, defendingChampion, paginate,
+  normalizeRaceName, matchesSearch, finalStageByRace, buildRaceHistory, defendingChampion, paginate, routeEditionIds,
   type HistoryRow,
 } from "./raceHistoryModel.ts";
 
@@ -62,6 +62,37 @@ test("#6514 buildRaceHistory: dit bedste = laveste placering i den endelige stil
   assert.deepEqual(giro.myBest, { rank: 4, season: 2, raceId: "g2" });
   const omloop = pick(buildRaceHistory({ races: RACES, winnerRows: WINNERS, myRows }), "Omloop");
   assert.equal(omloop.myBest, null);
+});
+
+test("#7693 buildRaceHistory: årets rute vises også før udgaven er kørt", () => {
+  const upcoming = [
+    { id: "g4", name: "Giro", race_type: "stage_race", race_class: "GiroVuelta", stages: 2, season_number: 4 },
+    { id: "ny", name: "Nyt løb", race_type: "single", race_class: "Monuments", stages: 1, season_number: 4 },
+  ];
+  assert.deepEqual(routeEditionIds(RACES, upcoming).sort(), ["g3", "g4", "o3"]);
+
+  const profiles = [
+    { race_id: "g3", stage_number: 1, profile_type: "flat" },
+    { race_id: "g4", stage_number: 1, profile_type: "high_mountain" },
+    { race_id: "g4", stage_number: 2, profile_type: "high_mountain" },
+  ];
+  const rows = buildRaceHistory({ races: RACES, upcoming, winnerRows: WINNERS, profiles });
+  const giro = pick(rows, "Giro");
+  assert.deepEqual(giro.terrain, [{ kind: "mountain", profileType: "high_mountain", count: 2 }]);
+  assert.equal(giro.stages, 2);
+  // Historikken er uændret: kun afsluttede udgaver, og et løb uden afsluttet udgave er ikke med.
+  assert.deepEqual(giro.editions.map((e) => e.raceId), ["g3", "g2"]);
+  assert.equal(giro.latestSeason, 3);
+  assert.equal(giro.champion?.raceId, "g3");
+  assert.equal(rows.some((r) => r.name === "Nyt løb"), false);
+});
+
+test("#7693 buildRaceHistory: uden rute på den kommende udgave bruges nyeste med rute", () => {
+  const upcoming = [{ id: "g4", name: "Giro", race_type: "stage_race", race_class: "GiroVuelta", stages: 2, season_number: 4 }];
+  const profiles = [{ race_id: "g3", stage_number: 1, profile_type: "flat" }];
+  const giro = pick(buildRaceHistory({ races: RACES, upcoming, winnerRows: WINNERS, profiles }), "Giro");
+  assert.deepEqual(giro.terrain, [{ kind: "sprint", profileType: "flat", count: 1 }]);
+  assert.equal(giro.stages, 3);
 });
 
 test("#6514 buildRaceHistory: terræn fra nyeste udgave med rute, hårdeste først", () => {

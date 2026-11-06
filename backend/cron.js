@@ -86,6 +86,8 @@ import { runAcademyWeeklyPullSweep } from "./lib/academyWeeklyPull.ts";
 import { runAcademyPullReminderSweep } from "./lib/academyReminder.ts";
 import { runMarketValueLevelCorrectionGateSweep } from "./lib/marketValueLevelCorrectionGate.js"; // #3449
 import { runSundayValueSweep } from "./lib/sundayValueSweep.js"; // #4419
+import { runSundayPotentialEstimateTick } from "./lib/sundayPotentialEstimateSweep.js"; // #7685
+import { runPotentialEstimateTeamChangeTick } from "./lib/potentialEstimateTeamChangeSweep.js"; // #7685
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
 import { runOwnershipInvariantWatch } from "./lib/ownershipInvariantWatch.ts";
 import { runRiderDoubleBookingWatch } from "./lib/riderDoubleBookingWatch.js";
@@ -133,16 +135,21 @@ import {
   CRON_MONITOR_EMAIL_RACE_DIGEST,
   CRON_MONITOR_DISCORD_RACE_DIGEST,
   CRON_MONITOR_ACADEMY_REMINDER,
+  CRON_MONITOR_POTENTIAL_ESTIMATE_SUNDAY,
   ALL_CRON_MONITORS,
 } from "./lib/cronMonitorRegistry.js";
 // #6858 — job med fast tidspunkt planlaegges efter dansk vaegur, ikke fra proces-start.
 import { startWallClockSchedule, DEPLOY_OVERLAP_GRACE_MS } from "./lib/wallClockScheduler.js";
+import { createSupabaseFetchWithRetry } from "./lib/supabaseFetchRetry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 // cron.js ligger i backend/-roden: ".env" er backend/.env (som server.js). "../.env" pegede
 // uden for backend/ (#6367, fanget af railway.backendOnlyFiles.test.js).
 dotenv.config({ path: join(__envdir, ".env"), quiet: true });
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+// #7675 — læsninger/upserts prøves igen ved kortvarige Cloudflare-HTML-svar.
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
+  global: { fetch: createSupabaseFetchWithRetry() },
+});
 
 // #2892 — kobl den egne cron-heartbeat-vagt ind i monitorCron (lib/sentry.js).
 // DI i stedet for at kopiere et check-in-kald ind i hvert af de ~40
@@ -2277,6 +2284,15 @@ export function startCron() {
     { label: "sunday-value-refresh", shouldStop: isCronSchedulingStopped }
   );
 
+  // #7685: gemte potentiale-skøn, søndag efter værdierne + hver hele time til midnat
+  // (flag-gated, idempotent). Holdskifte-sweepet kører hver time og ved boot.
+  startWallClockSchedule(
+    trackedTick("potential-estimate-sunday", () => runSundayPotentialEstimateTick({ supabase })),
+    CRON_MONITOR_POTENTIAL_ESTIMATE_SUNDAY.wallClock,
+    { label: "potential-estimate-sunday", shouldStop: isCronSchedulingStopped }
+  );
+  setInterval(trackedTick("potential-estimate-team-change", () => runPotentialEstimateTeamChangeTick({ supabase })), 60 * 60 * 1000);
+
   // Every 60 minutes: entry-generator sweep (#2375) — fylder proaktivt løb for den
   // aktive sæson løbende, ikke kun ved sæson-transition. Generatoren er idempotent
   // (dry-safe re-runs), så en times cadence er rigelig — mirror auto-prize/stage-
@@ -2462,6 +2478,8 @@ export function startCron() {
   // #6858: indhentning ved boot. Er søndag kl. 14:00 passeret og dagens claim ikke
   // taget (fx processen var nede kl. 14), kører den her med det samme.
   trackedTick("sunday-value-refresh", monitorCron("sunday-value-refresh", runSundayValueSweepCron, CRON_MONITOR_SUNDAY_VALUE))(); // boot-run: claim-idempotent, søndags- + time-gated
+  trackedTick("potential-estimate-sunday", () => runSundayPotentialEstimateTick({ supabase }))(); // #7685 boot-run: idempotent, søndags- + time-gated
+  trackedTick("potential-estimate-team-change", () => runPotentialEstimateTeamChangeTick({ supabase }))(); // #7685 boot-run: setInterval nulstilles ved hvert deploy
 }
 
 // ── Standalone mode ──────────────────────────────────────────────────────────

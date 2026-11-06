@@ -362,6 +362,21 @@ test("#2944: et gammelt incident-event uden alvorsakse falder tilbage på den op
   assert.equal(legacy.params.kind, "mechanical");
 });
 
+test("#7727: et brosten-incident uden udfald giver ingen filmlinje", () => {
+  const names = riderNameByIdFixture();
+  const [riderId] = [...names.keys()];
+  const cobbles = describeEvent(
+    { type: "incident", km: 40, params: { rider_id: riderId, cause: "cobbles_sector" } },
+    { riderNameById: names },
+  );
+  assert.equal(cobbles, null, "uden udfald har styrtet ingen følger, så filmen må ikke melde det");
+  const real = describeEvent(
+    { type: "incident", km: 40, params: { rider_id: riderId, kind: "crash", severity: "light", outcome: "time_loss", time_loss_seconds: 12 } },
+    { riderNameById: names },
+  );
+  assert.equal(real.key, "incident_crash_time_loss", "et styrt med følger skal stadig vises");
+});
+
 test("#2944: alle trappens nøgler findes i BEGGE locale-filer", async () => {
   const { readFileSync } = await import("node:fs");
   const { dirname, join } = await import("node:path");
@@ -532,6 +547,18 @@ const CAUSE_TIMELINE = [
   { km: 160, type: "finish", params: { top: [{ rider_id: "rider-1", rank: 1, gap: 0 }, { rider_id: "rider-3", rank: 2, gap: 90 }], win_type: "solo_win" } },
 ];
 const TEAMS = new Map([["team-a", "Hold A"], ["team-b", "Hold B"]]);
+
+test("#7730: filmen siger hvorfor jagten ikke naaede det, og motorens melding staar aldrig som sin egen linje", () => {
+  const events = CAUSE_TIMELINE.filter((e) => e.type !== "breakaway_unchased" && e.type !== "own_riders_ahead");
+  const at = events.findIndex((e) => e.type === "breakaway_survived");
+  for (const [reason, key] of [["tired", "cause.chase_tired"], ["outgunned", "cause.chase_outgunned"], ["too_few", "cause.chase_too_few"], ["no_chasers", "cause.no_chasers"], ["nobody_wanted", "cause.unchased"]]) {
+    const short = { km: 160, type: "breakaway_chase_short", params: { group_id: "breakaway-0", reason, team_ids: ["team-a"] } };
+    const built = buildFilmTimeline({ events: [...events.slice(0, at), short, ...events.slice(at)], distanceKm: 160 });
+    const lines = built.feedEvents.map((e) => describeEvent(e, { riderNameById: riderNameByIdFixture(), teamNameById: TEAMS })).filter(Boolean);
+    assert.ok(lines.some((l) => l.key === key), key);
+    assert.equal(lines.some((l) => /chase_short/.test(l.key)), false);
+  }
+});
 
 test("#6469: filmen siger hvorfor udbruddet holdt, lige efter udfaldet, uden tal", () => {
   const built = buildFilmTimeline({ events: CAUSE_TIMELINE, distanceKm: 160 });

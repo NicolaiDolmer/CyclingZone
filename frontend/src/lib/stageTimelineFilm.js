@@ -258,6 +258,9 @@ function describeCause(p, riderNameById, teamNameById) {
     case "unchased":
     case "no_chasers":
     case "chase_too_late":
+    case "chase_tired":
+    case "chase_outgunned":
+    case "chase_too_few":
     case "gap_never_closed":
       return { key: `cause.${cause}`, params: {} };
     case "chase_faded":
@@ -274,6 +277,32 @@ function describeCause(p, riderNameById, teamNameById) {
     default:
       return null;
   }
+}
+
+// #7729: flere hold end dette står som et antal.
+const MAX_ATTEMPT_TEAM_NAMES = 3;
+
+/**
+ * #7729: dem der forsøgte at komme med i morgenudbruddet og blev i feltet, og
+ * holdene der arbejdede imod. Kun det motoren skrev på `breakaway_attempt`: mangler
+ * listerne (ældre etaper) eller holdene, er der ingen forklaring og ingen linje.
+ * Ejer 6/11: kun forsøg med egne ryttere får en linje, ellers bliver filmen rodet.
+ * Andre der forsøgte samtidig står som et antal.
+ */
+function describeFailedAttempt(p, riderNameById, teamNameById, ownRiderIds) {
+  const { rider_ids: attempted, escaped_rider_ids: escaped, reacting_team_ids: teamIds } = p;
+  if (!Array.isArray(attempted) || !Array.isArray(escaped) || !Array.isArray(teamIds) || !teamIds.length) return null;
+  const failed = attempted.filter((id) => !escaped.includes(id));
+  if (!failed.length) return null;
+  const own = new Set(Array.from(ownRiderIds ?? [], String));
+  const mine = failed.filter((id) => own.has(String(id)));
+  if (!mine.length) return null;
+  const names = resolvedRiderNames(mine, riderNameById);
+  if (!names.length) return null;
+  const key = escaped.length ? "breakaway_attempt_failed" : "breakaway_attempt_none_clear";
+  const params = { riders: names.join(", "), count: failed.length, others: failed.length - names.length, teamCount: teamIds.length };
+  const teams = teamIds.length <= MAX_ATTEMPT_TEAM_NAMES ? teamListParams(teamIds, teamNameById) : null;
+  return teams?.teamCount === teamIds.length ? { key, params: { ...params, ...teams } } : { key: `${key}_field`, params };
 }
 
 function describeOrderImpact(p, riderNameById) {
@@ -384,7 +413,8 @@ export function collectRiderIds(events) {
 // #6649: årsagerne motoren skriver på `bad_day` (vejret som sin type). Ukendt årsag → ingen linje.
 const BAD_DAY_CAUSES = new Set(["fatigue", "form", "illness", "rain", "wind", "heat"]);
 
-export function describeEvent(event, { riderNameById, teamNameById } = {}) {
+/** @param {any} event @param {{riderNameById?: any, teamNameById?: any, ownRiderIds?: Iterable<unknown>|null}} [options] */
+export function describeEvent(event, { riderNameById, teamNameById, ownRiderIds } = {}) {
   if (!event?.type) return null;
   if (event.grouped) {
     return describeGroupedEvent(event, (id) => riderName(id, riderNameById), (member) => describeEvent(member, { riderNameById, teamNameById }));
@@ -404,6 +434,8 @@ export function describeEvent(event, { riderNameById, teamNameById } = {}) {
         key: TIME_TRIAL_STAGE_START_KEY[p.profile_type] ?? "stage_start",
         params: { count: p.field_count ?? 0, distance: p.distance_km ?? 0 },
       };
+    case "breakaway_attempt": // #7729
+      return describeFailedAttempt(p, riderNameById, teamNameById, ownRiderIds);
     case "breakaway_formed": {
       const params = breakawayParams();
       return params ? { key: "breakaway_formed", params } : null;
@@ -438,6 +470,11 @@ export function describeEvent(event, { riderNameById, teamNameById } = {}) {
       return params ? { key: "breakaway_dropped", params } : null;
     }
     case "incident": {
+      // #7727: filmen siger kun styrt, når motoren har et styrt med følger.
+      // Brosten-sektorernes risiko-event (cause "cobbles_sector") er ren
+      // information: det bærer intet udfald og ændrer hverken tid, status
+      // eller skade. Uden udfald er teksten forkert info, så linjen udgår.
+      if (p.outcome == null) return null;
       const rider = riderName(p.rider_id, riderNameById);
       if (!rider) return null;
       return { key: incidentCopyKey(p), params: incidentCopyParams(p, rider) };

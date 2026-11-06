@@ -300,9 +300,15 @@ const raceExitKey = (riderId, raceId) => `${riderId}:${raceId}`;
  * `race_stage_schedule` is his exit day. `race_entry_days` still carries the
  * rest of the race span, which made him rest until the race ended.
  *
+ * #7692: a rider can also leave the field without any incident, when the start
+ * field rules drop him from a running stage race. The latest stage's immutable
+ * snapshot proves that he is out. His exit day is the last stage he has a result on,
+ * so it stays the same while the race goes on; without any result it is stage 1.
+ *
  * Missing evidence keeps the binding: an abandon whose stage has no scheduled
- * game_day gives no exit day. Errors are RETURNED (same contract as the binding):
- * the engine refuses to tick rather than guess.
+ * game_day gives no exit day, and neither does a missing or unreadable snapshot.
+ * Errors are RETURNED (same contract as the binding): the engine refuses to tick
+ * rather than guess.
  *
  * @param {{supabase: object, rows: Array<{rider_id: string, race_id: string}>}} args
  * @returns {Promise<{data: Map<string, number>|null, error: unknown}>}
@@ -326,12 +332,55 @@ export async function loadRaceExitGameDays({ supabase, rows }) {
       .eq("outcome", "abandon");
     if (error) return { data: null, error };
     const abandons = (incidents ?? []).filter(row => wanted.has(raceExitKey(row.rider_id, row.race_id)));
-    if (!abandons.length) return { data: exits, error: null };
-    const abandonRaceIds = [...new Set(abandons.map(row => row.race_id))];
+    const { data: stageRuns, error: stageRunError } = await supabase.from("race_simulation_runs")
+      .select("race_id, stage_number")
+      // pagination-safe: one row per ridden stage of the roster's bound races, without
+      // the snapshot itself. A roster is bound to a few races of at most ~21 stages.
+      .in("race_id", raceIds);
+    if (stageRunError) return { data: null, error: stageRunError };
+    const latestStage = new Map();
+    for (const run of stageRuns ?? []) {
+      const stage = Number(run.stage_number);
+      if (Number.isFinite(stage) && stage > (latestStage.get(run.race_id) ?? 0)) latestStage.set(run.race_id, stage);
+    }
+    // Stage 1 is the DNS question (releaseNonStarters), not an exit.
+    const startedRaceIds = [...latestStage].filter(([, stage]) => stage >= 2).map(([raceId]) => raceId);
+    const latestFields = new Map();
+    if (startedRaceIds.length) {
+      const { data: runs, error: runError } = await supabase.from("race_simulation_runs")
+        .select("race_id, stage_number, entrant_snapshot")
+        // pagination-safe: filtered to one run per race below; the stage list is small.
+        .in("race_id", startedRaceIds)
+        .in("stage_number", [...new Set(startedRaceIds.map(raceId => latestStage.get(raceId)))]);
+      if (runError) return { data: null, error: runError };
+      for (const run of runs ?? []) {
+        if (Number(run.stage_number) !== latestStage.get(run.race_id)) continue;
+        const ids = Array.isArray(run.entrant_snapshot) ? run.entrant_snapshot.map(entry => typeof entry === "string" ? entry : entry?.rider_id) : null;
+        if (ids?.length && ids.every(id => typeof id === "string" && id)) latestFields.set(run.race_id, new Set(ids));
+      }
+    }
+    const leftField = bound.filter(row => latestFields.has(row.race_id) && !latestFields.get(row.race_id).has(row.rider_id));
+    const lastRidden = new Map();
+    if (leftField.length) {
+      const { data: ridden, error: riddenError } = await supabase.from("race_results")
+        .select("race_id, rider_id, stage_number")
+        // pagination-safe: only riders proven out of the field, at most one stage row
+        // per ridden stage each, so far below the 1000-row cap.
+        .in("race_id", [...new Set(leftField.map(row => row.race_id))])
+        .in("rider_id", [...new Set(leftField.map(row => row.rider_id))])
+        .eq("result_type", "stage");
+      if (riddenError) return { data: null, error: riddenError };
+      for (const row of ridden ?? []) {
+        const key = raceExitKey(row.rider_id, row.race_id);
+        lastRidden.set(key, Math.max(lastRidden.get(key) ?? 1, Number(row.stage_number)));
+      }
+    }
+    const exitRaceIds = [...new Set([...abandons, ...leftField].map(row => row.race_id))];
+    if (!exitRaceIds.length) return { data: exits, error: null };
     const { data: schedule, error: scheduleError } = await supabase.from("race_stage_schedule")
       .select("race_id, stage_number, game_day")
-      // pagination-safe: the few races a roster abandoned, at most ~21 stages each.
-      .in("race_id", abandonRaceIds);
+      // pagination-safe: the few races a roster left, at most ~21 stages each.
+      .in("race_id", exitRaceIds);
     if (scheduleError) return { data: null, error: scheduleError };
     const dayByStage = new Map();
     for (const row of schedule ?? []) {
@@ -342,6 +391,13 @@ export async function loadRaceExitGameDays({ supabase, rows }) {
       const day = dayByStage.get(`${row.race_id}:${Number(row.stage_number)}`);
       if (day === undefined) continue;
       const key = raceExitKey(row.rider_id, row.race_id);
+      if (!exits.has(key) || day < exits.get(key)) exits.set(key, day);
+    }
+    for (const row of leftField) {
+      const key = raceExitKey(row.rider_id, row.race_id);
+      if (exits.has(key)) continue; // en registreret udgaaelse er det bedste bevis
+      const day = dayByStage.get(`${row.race_id}:${lastRidden.get(key) ?? 1}`);
+      if (day === undefined) continue;
       if (!exits.has(key) || day < exits.get(key)) exits.set(key, day);
     }
     return { data: exits, error: null };

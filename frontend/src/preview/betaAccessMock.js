@@ -49,6 +49,7 @@ let flags = [
   { key: "youth_squad_pages", area: "squad", label: "U23 team- og Junior team-sider", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
   { key: "training_fatigue_rules", area: "training", label: "Træthedsgrænse (spillerens regler)", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "season_matrix_mobile", area: "season", label: "Sæsonmatrix på mobil — ny visning", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
+  { key: "rider_why_button", area: "race-day", label: "Hvorfor?-knappen ved rytterne (Your day)", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
 ];
 
 function readBody(init) {
@@ -77,7 +78,8 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "academy_intake_pull_enabled", // #6666
   "development_v2_aging_enabled", // #6110 Hjaelp
   "potential_single_number", // #6110 Hjaelp
-  "potential_estimate_view", // #7686 Hjaelp
+  "potential_estimate_display", // #7684 (flader + Hjaelp i byggetrin 6)
+  "rider_why_button", // #7717
   "ability_cap_per_date_enabled", // #6110 Hjaelp
   "training_decision_card", // #6110 Hjaelp
   "training_catalog_v3", // #5319 vaelgere + Hjaelp
@@ -106,7 +108,7 @@ function previewCatalogV3Enabled() {
 function playerFlags() {
   return Object.fromEntries(PLAYER_VISIBLE_FLAG_KEYS.map((key) => {
     if (key === "training_catalog_v3") return [key, previewCatalogV3Enabled()];
-    if (key === "potential_estimate_view") return [key, previewPotentialEstimateEnabled()];
+    if (key === "potential_estimate_display") return [key, previewPotentialEstimateEnabled()];
     const stage = flags.find((f) => f.key === key)?.stage;
     // #3564: binaere flag (PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden): beta = off.
     return [key, stage === "on" || (stage === "beta" && !BINARY_FLAG_KEYS.includes(key))];

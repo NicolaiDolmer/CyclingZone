@@ -136,7 +136,8 @@ export function deriveParticipationHistory(events: readonly ParticipationEvent[]
     } else if (event.type === "peloton_splits") {
       const source = typeof p.source_group_id === "string" ? p.source_group_id : null;
       if (source) for (const id of ids) groups.get(source)?.delete(id);
-      if (groupId) groups.set(groupId, new Set(ids));
+      // #6350: a split read through withEventPlaces can arrive in two halves.
+      if (groupId) groups.set(groupId, new Set([...(groups.get(groupId) ?? []), ...ids]));
       // A split takes the named riders out of their source group, ahead of it
       // or behind it (the event does not say which). Projection only: skipped
       // when the engine reports drops itself.

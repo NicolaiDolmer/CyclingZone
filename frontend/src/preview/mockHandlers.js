@@ -399,7 +399,9 @@ export function restRows(table, requestUrl = "") {
         const stageMatch = url.search.match(/stage_number=eq\.([^&]+)/);
         if (stageMatch) {
           const stageNumber = decodeURIComponent(stageMatch[1]);
-          return rows.filter(r => String(r.stage_number ?? 1) === stageNumber);
+          // #7706: etapeplanen beder kun om maalraekkefoelgen (result_type=eq.stage).
+          const typeMatch = url.search.match(/result_type=eq\.([^&]+)/);
+          return rows.filter(r => String(r.stage_number ?? 1) === stageNumber && (!typeMatch || r.result_type === decodeURIComponent(typeMatch[1])));
         }
         return rows;
       }

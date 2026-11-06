@@ -107,8 +107,8 @@ test("#6804 P1: v3 bevarer v2-fixtures uden for #6912 flad/rullende endagsjagt (
       const v2 = simulateStageV4({ ...input, ...extra, rules_revision: "s5_profiles_v2" });
       const v3 = simulateStageV4({ ...input, ...extra, rules_revision: "s5_profiles_v3" });
       if (gc?.status === "one_day") {
-        // #6938 U3 (v3, kun endagsloeb): en sat hjaelper kan stige af. Kun de ryttere afviger;
-        // alle andres tid og status er de samme som under v2.
+        // #7713: ingen rytter stiger af efter maalstregen (U3 er fjernet), saa alle ryttere
+        // har samme tid og status som under v2.
         // #7258 (C, v3, endagsloeb): dagens favoritter gaar sjaeldent i morgenudbrud. Danner v3 et andet
         // morgenudbrud end v2, maa det kun vaere med faerre af dagens favoritter (resten af loebet foelger af det).
         const morning = (out: ReturnType<typeof simulateStageV4>) => (out.timeline.events.find((e) => e.type === "breakaway_formed" && e.params?.reformation !== true)?.params?.rider_ids ?? []) as string[];
@@ -122,9 +122,8 @@ test("#6804 P1: v3 bevarer v2-fixtures uden for #6912 flad/rullende endagsjagt (
         // #6912 (owner 27/10): flat/rolling one-day chase now changes physics too.
         // The morning-favourite exclusion above remains checked on the same input.
         if (input.route.profile_type === "flat" || input.route.profile_type === "rolling") continue;
-        const off = new Set((v3.incidents ?? []).filter((i) => i.kind === "withdrawal").map((i) => i.rider_id));
-        assert.ok((v3.incidents ?? []).filter((i) => i.kind !== "withdrawal").length === (v2.incidents ?? []).length, `${name}: kun hjaelpere der stiger af er nye`);
-        const keep = (out: ReturnType<typeof simulateStageV4>) => out.results.filter((r) => !off.has(r.rider_id)).map((r) => [r.rider_id, r.time_seconds, r.status]);
+        assert.equal((v3.incidents ?? []).length, (v2.incidents ?? []).length, `${name}: ingen nye udgaaede`);
+        const keep = (out: ReturnType<typeof simulateStageV4>) => out.results.map((r) => [r.rider_id, r.time_seconds, r.status]);
         assert.deepEqual(keep(v3), keep(v2), `${name} endagsloeb`);
         continue;
       }

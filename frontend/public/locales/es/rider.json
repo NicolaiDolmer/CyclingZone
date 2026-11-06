@@ -960,7 +960,7 @@
     "focus_vo2max": "VO2max (intervalos mixtos)",
     "focus_vo2max_climb": "VO2max (intervalos de escalada)",
     "focus_vo2max_punch": "VO2max (intervalos de punch)",
-    "focus_threshold": "Umbral / CRI",
+    "focus_threshold": "Umbral",
     "focus_sprint": "Sprint",
     "focus_tempo": "Tempo",
     "focus_endurance": "Resistencia (Zona 2)",

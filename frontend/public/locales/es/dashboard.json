@@ -243,7 +243,7 @@
         "tag_peak_day": "{rider} afinó su forma para llegar en pico a esta etapa.",
         "tag_jour_sans": "{rider} simplemente no tuvo piernas hoy.",
         "tag_crash_ruined": "A {rider} se le arruinó la etapa por {kind, select, crash {una caída} mechanical {un problema mecánico} other {un incidente}}.",
-        "incident_abandon": "{kind, select, crash {{rider} abandonó la etapa tras una caída.} mechanical {{rider} abandonó la etapa tras un problema mecánico.} injury {{rider} no tomó la salida en la etapa: lesionado.} other {{rider} abandonó la etapa tras un incidente.}}",
+        "incident_abandon": "{kind, select, crash {{rider} abandonó la etapa tras una caída.} mechanical {{rider} abandonó la etapa tras un problema mecánico.} injury {{rider} no tomó la salida en la etapa: lesionado.} illness {{rider} no tomó la salida en la etapa: enfermo.} withdrawal {{rider} se bajó de la bici, demasiado lejos del ganador.} time_limit {{rider} llegó fuera de control.} other {{rider} abandonó la etapa.}}",
         "incident_time_loss": "{rider} perdió {seconds, plural, one {# segundo} other {# segundos}} por {kind, select, crash {una caída} mechanical {un problema mecánico} other {un incidente}}.",
         "incident_time_loss_generic": "{rider} perdió tiempo por {kind, select, crash {una caída} mechanical {un problema mecánico} other {un incidente}}.",
         "tag_outsider_win": "{rider} ganó sin ser el ciclista más fuerte sobre el papel.",

@@ -508,3 +508,35 @@ test("#4847: en tom trup koster ingen DB-tur", async () => {
   assert.equal(calls, 0);
   assert.deepEqual([...out.data], []);
 });
+
+const fieldRuns = (fields) => Object.entries(fields).map(([stage, ids]) => ({ race_id: "tour", stage_number: Number(stage), entrant_snapshot: ids }));
+
+test("#7692: ude af feltet uden incident: fri efter den seneste etape", async () => {
+  const tables = { ...tourTables({ incidents: [] }), race_simulation_runs: fieldRuns({ 1: ["a", "b"], 2: ["a", "b"], 3: ["b"] }) };
+  const out = await loadRaceExitGameDays({ supabase: mockSupabase(tables), rows: [{ rider_id: "a", race_id: "tour" }, { rider_id: "b", race_id: "tour" }] });
+  assert.equal(out.error, null);
+  assert.equal(out.data.has("a:tour"), true);
+  assert.equal(out.data.has("b:tour"), false, "med i seneste felt = bundet");
+});
+
+test("#7692: udgangsdagen staar fast, mens loebet koerer videre", async () => {
+  const results = [{ race_id: "tour", rider_id: "a", stage_number: 1, result_type: "stage" }, { race_id: "tour", rider_id: "a", stage_number: 2, result_type: "stage" }];
+  for (const fields of [{ 1: ["a", "b"], 2: ["a", "b"], 3: ["b"] }, { 1: ["a", "b"], 2: ["a", "b"], 3: ["b"], 4: ["b"], 5: ["b"] }]) {
+    const tables = { ...tourTables({ incidents: [] }), race_simulation_runs: fieldRuns(fields), race_results: results };
+    const out = await loadRaceExitGameDays({ supabase: mockSupabase(tables), rows: [{ rider_id: "a", race_id: "tour" }] });
+    assert.equal(out.data.get("a:tour"), 11, "sidste etape med resultat");
+  }
+});
+
+test("#7692: kun etape 1 koert, eller ulaeseligt felt: bindingen bevares", async () => {
+  const one = { ...tourTables({ incidents: [] }), race_simulation_runs: fieldRuns({ 1: ["b"] }) };
+  assert.equal((await loadRaceExitGameDays({ supabase: mockSupabase(one), rows: [{ rider_id: "a", race_id: "tour" }] })).data.size, 0);
+  const broken = { ...tourTables({ incidents: [] }), race_simulation_runs: [{ race_id: "tour", stage_number: 2, entrant_snapshot: null }] };
+  assert.equal((await loadRaceExitGameDays({ supabase: mockSupabase(broken), rows: [{ rider_id: "a", race_id: "tour" }] })).data.size, 0);
+});
+
+test("#7692: udgaaet paa etape 2 og fravaerende i etape 3: den tidligste dag vinder", async () => {
+  const tables = { ...tourTables({ incidents: [ABANDON_STAGE_2] }), race_simulation_runs: fieldRuns({ 2: ["a", "b"], 3: ["b"] }) };
+  const out = await loadRaceExitGameDays({ supabase: mockSupabase(tables), rows: [{ rider_id: "a", race_id: "tour" }] });
+  assert.equal(out.data.get("a:tour"), 11);
+});

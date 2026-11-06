@@ -116,6 +116,7 @@ import { teamDistributionColumns } from "../lib/raceDistributionColumns.ts"; // 
 import { isOwnerUser } from "../lib/ownerGate.js"; // #3750 ejer-gate
 import { AUTH_FAILURE_RESPONSES, verifyBearerToken } from "../lib/authTokenVerification.js"; // #4369
 import { normalizeSupabaseErrorMessage, withSupabaseRetry } from "../lib/supabaseErrorNormalize.js";
+import { createSupabaseFetchWithRetry } from "../lib/supabaseFetchRetry.js";
 import { aggregateRiderViews } from "../lib/riderProfileViews.js";
 import {
   PAUSE_LEVELS,
@@ -227,9 +228,11 @@ import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildGlobalTradeFeed, parseTradeFeedQuery } from "../lib/tradeListFeed.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { buildRaceStory, storyInputsFromResults } from "../lib/raceStory.js"; // #6350: ?story=1 på /timeline
+import { withEventPlaces } from "../lib/raceTimeline.js"; // #6350
 import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
 import { getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScout, loadScoutHistory } from "../lib/scoutAssignmentService.js";
+import { recordScoutLooks } from "../lib/potentialEstimateWriter.js"; // #7685
 import {
   buildTypeCeilingBands, buildVerdict, scoutPrecisionInfo,
   buildTypePrognosisBands, roleCeilRating, ratingFromAbilities,
@@ -299,7 +302,7 @@ import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabl
 import { buildCalendarModel, toCalendarWireEntry, toCopenhagenISODate, buildGameDayDateMap } from "../lib/raceCalendar.js";
 import { snapPeakWindow, lastStageDate, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
 import { dateStringToOrdinal, loadTargetRaceDemands, loadPeakPlans, resolvePeakTrainingQualities, aggregateDemandVector } from "../lib/racePeakPlans.js";
-import { buildRouteMatch, raceRouteVector, routeMatchRevisionFor, ROUTE_MATCH_STAGE_COLUMNS } from "../lib/routeMatch.js"; // #6207
+import { buildRouteMatch, raceRouteVector, routeMatchRevisionFor, stageRouteVector, ROUTE_MATCH_STAGE_COLUMNS } from "../lib/routeMatch.js"; // #6207
 import { RACE_V3_TUNING, VALID_EFFORTS_FIVE_STEP } from "../lib/raceRoles.js";
 import { peakStatus, stageProfileStrip, raceProfileSummary, countRivalPeaks, teamDivisionKnownForSeason, peakValueFormPoints, findPaybackCollisions, raceCardPeakOverlay } from "../lib/plannerBoard.js";
 import { suggestPeaksForRider, shouldRecommendNoPeak, buildNoPeakSuggestion } from "../lib/peakSuggestions.js";
@@ -327,6 +330,8 @@ import { isAcademyIntakePullEnabled } from "../lib/academyIntakePullFlag.ts";
 import { pullWeeklyAcademyIntake, hasPulledThisWeek } from "../lib/academyIntakePull.js";
 import { academyEstimate, loadAcademyPrognoses, isAcademyKnowledgeEnabled } from "../lib/academyDisclosure.ts";
 import { buildIntake2View } from "../lib/academyIntake2View.ts"; // #6666
+import { isPotentialEstimateDisplayEnabled } from "../lib/potentialEstimateFlag.js"; // #7684
+import { buildAcademyFromViews, buildEstimatesFromViews, buildProjectionFromView, buildScoutingReportFromView } from "../lib/potentialEstimateRead.js"; // #7684
 import { saveAcademyProfile } from "../lib/academyIntakeProfile.ts"; // #6666
 import { computeFrozenSalary } from "../lib/contractSeed.js";
 import {
@@ -880,7 +885,8 @@ async function fetchTeamCommitment(supabaseClient, teamId) {
 // Supabase admin client
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
+  process.env.SUPABASE_SERVICE_KEY,
+  { global: { fetch: createSupabaseFetchWithRetry() } } // #7675
 );
 
 // #203-logik udtrukket til lib/seasonStandingsBootstrap.js (delt med stage-scheduler-cron).
@@ -1106,6 +1112,11 @@ async function isViewerBetaTester(req) {
     .eq("id", req.user.id)
     .single();
   return u?.role === "admin" || u?.is_beta_tester === true;
+}
+
+// #7684: én prognose-kilde. Beta-status slås kun op på stadie beta (se flag-modulet).
+function isPotentialEstimateOn(req) {
+  return isPotentialEstimateDisplayEnabled(supabase, { viewerIsBeta: () => isViewerBetaTester(req) });
 }
 
 // ── Auction config helper ─────────────────────────────────────────────────────
@@ -2400,6 +2411,10 @@ router.post("/scouting/estimates", requireAuth, presencePulseLimiter, async (req
   if (ids.length === 0) return res.json({ teamId: req.team.id, maxLevel: SCOUTING_CONFIG.maxLevel, estimates: {} });
   if (ids.length > 500) return res.status(400).json({ error: "too_many_riders", max: 500 });
   try {
+    if (await isPotentialEstimateOn(req)) {
+      const estimates = await buildEstimatesFromViews(supabase, { teamId: req.team.id, riderIds: ids });
+      return res.json({ teamId: req.team.id, maxLevel: SCOUTING_CONFIG.maxLevel, estimates });
+    }
     // #2454: `ability_caps` hentes nu med. Uden dem kunne POTENTIEL RATING slet
     // ikke beregnes for tabel- og kort-fladerne — de fik kun stjerne-enheder, og
     // rating-point-båndet fandtes udelukkende på de to enkelt-rytter-endpoints.
@@ -2715,6 +2730,7 @@ router.post("/scouting/:riderId", requireAuth, marketWriteLimiter, async (req, r
       .from("scout_actions")
       .insert({ team_id: req.team.id, rider_id: riderId, season_id: activeSeasonId });
     if (insErr) throw new Error(insErr.message);
+    await recordScoutLooks({ supabase, teamId: req.team.id, riderIds: [riderId] }); // #7685: flag-gated, kaster aldrig
 
     // Returnér frisk state + nyt maskeret estimat (#1162) så UI'et kan opdatere
     // slots, niveau og stjerne-range uden ekstra round-trip.
@@ -2776,6 +2792,12 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
 
     const own = rider.team_id != null && rider.team_id === req.team.id;
     const level = own ? state.maxLevel : (state.levels[rider.id] ?? 0);
+    if (await isPotentialEstimateOn(req)) {
+      return res.json(await buildScoutingReportFromView(supabase, {
+        teamId: req.team.id, rider, own, level, maxLevel: state.maxLevel, looks: state.levels[rider.id] ?? 0,
+        age: ageForSeason(rider.birthdate, await getActiveSeasonNumber()), scout: scoutMeta, generatedAt,
+      }));
+    }
     if (!own && level <= 0) {
       return res.json({ hidden: true, level: 0, maxLevel: state.maxLevel, own: false });
     }
@@ -2899,10 +2921,16 @@ router.get("/riders/:id/development-projection", requireAuth, async (req, res) =
     if (!rider) return res.status(404).json({ error: "Rider not found" });
 
     const own = rider.team_id != null && rider.team_id === req.team.id;
+    const level = own ? state.maxLevel : (state.levels[rider.id] ?? 0);
+    if (await isPotentialEstimateOn(req)) {
+      return res.json(await buildProjectionFromView(supabase, {
+        teamId: req.team.id, rider, own, level, maxLevel: state.maxLevel,
+        age: scoutBandAge(rider.birthdate, await resolveScoutBandSeasonNumber(supabase)),
+      }));
+    }
     if (own && rider.is_academy && await isAcademyKnowledgeEnabled(supabase)) {
       return res.json({ own: true, capsMissing: true });
     }
-    const level = own ? state.maxLevel : (state.levels[rider.id] ?? 0);
     if (!own && level <= 0) {
       return res.json({ hidden: true, level: 0, maxLevel: state.maxLevel, own: false });
     }
@@ -6289,7 +6317,7 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
       // #6964: alder afgør ungdomsløb (seasonNumber slår aldersgaten til; seniorløb: undefined).
       applyRiderEligibilityFilter(supabase.from("riders").select("id").eq("team_id", req.team.id), { squad: raceSquadOf(race), seasonNumber: await loadRaceSeasonNumber({ supabase, race }) }),
       supabase.from("race_stage_profiles")
-        .select("stage_number, profile_type, finale_type, demand_vector")
+        .select(ROUTE_MATCH_STAGE_COLUMNS) // #6207: assistenten scorer på motorens rute
         .eq("race_id", race.id).order("stage_number", { ascending: true }),
     ]);
     if (ridersErr) return res.status(500).json({ error: ridersErr.message });
@@ -6633,15 +6661,16 @@ router.get("/races/:raceId/timeline", requireAuth, async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
     if (!data) return res.status(404).json({ error: "timeline_not_found" });
+    const events = withEventPlaces(data.events); // #6350: gemte etaper fortæller også hvor det skete
     // #6350: ?story=1 tilføjer løbshistorien (kontrakt: docs/superpowers/specs/2026-10-14-race-story-contract.md).
     let story = null; // en fejl i historien må aldrig tage tidslinjen med sig
     if (req.query.story === "1") try {
       // Målresultatet afgør udbrydernes udfald med samme svar som mærkerne (#6350 review).
       const resultRows = await fetchAllRows(() => supabase.from("race_results").select("rider_id, rank, result_type, stage_number")
         .eq("race_id", req.params.raceId).in("result_type", ["stage", "gc"]).or(`stage_number.eq.${stageNumber},stage_number.is.null`).order("id"));
-      story = buildRaceStory({ events: data.events, timelineVersion: data.timeline_version, ...storyInputsFromResults(resultRows, stageNumber) });
+      story = buildRaceStory({ events, timelineVersion: data.timeline_version, ...storyInputsFromResults(resultRows, stageNumber) });
     } catch (storyErr) { captureException(storyErr); }
-    res.json({ timeline_version: data.timeline_version, stage_number: data.stage_number, events: data.events, created_at: data.created_at ?? null, ...(story ? { story } : {}) });
+    res.json({ timeline_version: data.timeline_version, stage_number: data.stage_number, events, created_at: data.created_at ?? null, ...(story ? { story } : {}) });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
@@ -6840,7 +6869,7 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       .filter((r) => r.abilities && !injuredIds.has(r.rider_id));
 
     const { data: profs } = await supabase.from("race_stage_profiles")
-      .select("race_id, stage_number, profile_type, finale_type, demand_vector").in("race_id", target.map((r) => r.id));
+      .select(ROUTE_MATCH_STAGE_COLUMNS).in("race_id", target.map((r) => r.id)); // #6207
     const stagesByRace = new Map();
     for (const p of profs || []) {
       if (!stagesByRace.has(p.race_id)) stagesByRace.set(p.race_id, []);
@@ -7070,16 +7099,20 @@ router.get("/races/strategy", requireAuth, async (req, res) => {
     if (season) {
       // #5517: seniorløbene (squads.withSeniorSquadScope).
       const { data: races, error: racesErr } = await withSeniorSquadScope((senior) => senior(supabase
-        .from("races").select("id, name, race_class, stages, stages_completed, status, league_division_id"))
+        .from("races").select("id, name, race_class, stages, stages_completed, status, league_division_id, engine_rules_revision"))
         .eq("season_id", season.id));
       if (racesErr) throw new Error(`races (strategy): ${racesErr.message}`);
       const myRaces = (races || []).filter((r) =>
         teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: r.league_division_id }));
       const raceIds = myRaces.map((r) => r.id);
       const profs = raceIds.length
-        ? await fetchAllStageProfiles(supabase, raceIds, "race_id, profile_type, demand_vector")
+        ? await fetchAllStageProfiles(supabase, raceIds, ROUTE_MATCH_STAGE_COLUMNS) // #6207
         : [];
-      const stageProfiles = (profs || []).map((p) => ({ bucket: terrainBucket(p.profile_type), demand_vector: p.demand_vector }));
+      const raceById = new Map(myRaces.map((r) => [r.id, r]));
+      const stageProfiles = (profs || []).map((p) => ({
+        bucket: terrainBucket(p.profile_type),
+        vector: stageRouteVector(p, routeMatchRevisionFor(raceById.get(p.race_id))),
+      }));
       suitabilities = bucketSuitabilities({
         stageProfiles,
         riders: riderIdList.map((id) => ({ rider_id: id, abilities: abById.get(id) })).filter((r) => r.abilities),
@@ -7234,7 +7267,7 @@ router.post("/races/strategy/preview", requireAuth, marketWriteLimiter, async (r
       .map((id) => ({ rider_id: id, abilities: abById.get(id), fatigue: fatById.get(id) ?? 0 }))
       .filter((r) => r.abilities);
 
-    const profs = await fetchAllStageProfiles(supabase, raceIds, "race_id, stage_number, profile_type, finale_type, demand_vector");
+    const profs = await fetchAllStageProfiles(supabase, raceIds, ROUTE_MATCH_STAGE_COLUMNS); // #6207
     const stagesByRace = new Map();
     for (const p of profs || []) {
       if (!stagesByRace.has(p.race_id)) stagesByRace.set(p.race_id, []);
@@ -18979,14 +19012,17 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     const intake2 = intakePullEnabled
       ? await buildIntake2View(supabase, { teamId, roster, intake, seasonNumber: graduationSeasonNumber })
       : null;
+    const estimateViews = await isPotentialEstimateOn(req)
+      ? await buildAcademyFromViews(supabase, { teamId, roster: intake2?.roster ?? roster, intake: intake2?.intake ?? intake })
+      : null;
 
     res.json({
       enabled: true,
       squads,
       seniorCount,
       seniorMax,
-      roster: intake2?.roster ?? roster,
-      intake: intake2?.intake ?? intake,
+      roster: estimateViews?.roster ?? intake2?.roster ?? roster,
+      intake: estimateViews?.intake ?? intake2?.intake ?? intake,
       graduations,
       intakePull: { enabled: intakePullEnabled, pulledThisWeek: intakePulledThisWeek },
       academyProfile: intake2?.profile ?? null,

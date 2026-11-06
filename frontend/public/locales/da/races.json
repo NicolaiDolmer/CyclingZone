@@ -92,7 +92,19 @@
       "abandoned": "udgik ved km {km}",
       "skipped": "sprunget over, han blev sat før",
       "notReached": "nåede han ikke",
-      "pending": "Løbsfilmen for etapen er ikke klar endnu."
+      "pending": "Løbsfilmen for etapen er ikke klar endnu.",
+      "outcome": {
+        "failed": "Forsøgt uden held",
+        "finished": "Kom i mål",
+        "attacked": "Angreb ved km {km}",
+        "inBreak": "I udbruddet",
+        "keptContact": "Holdt kontakten",
+        "lostContact": "Mistede kontakten ved km {km}",
+        "outOfTime": "Uden for tidsgrænsen",
+        "rank": "Nr. {rank} i mål",
+        "withRider": "Med {name}",
+        "withRiderTo": "Med {name} til km {km}"
+      }
     }
   },
   "stagePageV2": {
@@ -193,6 +205,7 @@
       "kmAt": "km {km}",
       "kmSpan": "km {from}-{to}",
       "unfolded": "Sådan gik det",
+      "lossUnknown": "Tabte tid, årsag ukendt: {names}.",
       "source": "Hver tid, hvert hul og hver sætning her kommer fra etapens løbslog.",
       "replay": {
         "play": "Afspil etapen",
@@ -251,6 +264,8 @@
         "survived": "{names} holdt hele vejen til mål.",
         "attack": "{names} angreb ved km {km}.",
         "attackGain": "{names} angreb ved km {km} og tog {gain} på feltet.",
+        "ownAttackedWith": "{count, plural, one {{mine} angreb} other {{mine} angreb}} sammen med {others}.",
+        "ownAttackedWithMore": "{count, plural, one {{mine} angreb} other {{mine} angreb}} sammen med {others} og andre.",
         "winner": "{winner} vandt.",
         "winnerGap": "{winner} vandt, {gap} foran {second}.",
         "winnerSame": "{winner} vandt foran {second} på samme tid.",
@@ -263,7 +278,10 @@
         "third": "{name} blev nummer tre.",
         "thirdGap": "{name} blev nummer tre, {gap} efter.",
         "placed": "{name} blev nr. {rank}.",
-        "placedGap": "{name} blev nr. {rank}, {gap} efter."
+        "placedGap": "{name} blev nr. {rank}, {gap} efter.",
+        "dayGreat": "{name} havde en rigtig god dag.",
+        "dayGood": "{name} havde en god dag.",
+        "ownOut": "{kind, select, withdrawal {Steg af: {names}. For langt efter vinderen.} time_limit {Uden for tidsgrænsen: {names}.} crash {Udgik efter styrt: {names}.} mechanical {Udgik med mekanisk defekt: {names}.} other {Udgik: {names}.}}"
       },
       "final": {
         "aria": "De sidste 5 km: grupperne på vejen med afstand til mål, huller og løbsur",
@@ -284,6 +302,68 @@
         "play": "Afspil de sidste 5 km",
         "scrubAria": "Løbstid på de sidste 5 km",
         "speedAria": "Afspilningshastighed"
+      }
+    },
+    "why": {
+      "button": "Hvorfor?",
+      "buttonAria": "Hvorfor endte {name} her?",
+      "alone": "{main}.",
+      "withLead": "{main}, {lead}.",
+      "attackedWith": "Han angreb sammen med {names}.",
+      "attackedWithMore": "Han angreb sammen med {names} og andre.",
+      "where": {
+        "climb": " på {name}",
+        "sector": " ved {name}",
+        "lastClimb": " på den sidste stigning",
+        "someClimb": " på en stigning",
+        "finale": " i finalen"
+      },
+      "main": {
+        "unknown": "Det er ikke kendt. Intet i løbets hændelser forklarer dette resultat",
+        "abandonedCrash": "Han styrtede{where} og måtte udgå",
+        "abandonedMechanical": "Han fik defekt{where} og måtte udgå",
+        "abandoned": "Han udgik{where}",
+        "timeLimit": "Han kom i mål uden for tidsgrænsen",
+        "withdrawal": "Han stod af, for langt efter vinderen",
+        "won": "Han var først på stregen",
+        "wonSprint": "Han vandt spurten",
+        "wonAttack": "Han angreb{where} og kom alene til stregen",
+        "survived": "Han kom med i udbruddet, og det holdt hjem til mål",
+        "front": "Han blev i frontgruppen til mål",
+        "frontSprint": "Han sad i gruppen, der spurtede om sejren",
+        "dropEmpty": "Han kørte sig tom{where} og mistede kontakten",
+        "dropPace": "Han kunne ikke holde tempoet{where}",
+        "dropGrupetto": "Han faldt tilbage til gruppettoen{where}",
+        "dropCobbles": "Han mistede kontakten på brostenene{where}",
+        "dropGeneric": "Han mistede kontakten{where}",
+        "dropFromBreak": "Han kunne ikke blive i udbruddet{where}",
+        "crack": "Han sprak{where} og mistede kontakten til fronten",
+        "allOut": "Han kørte alt ud{where} og kørte sig tom",
+        "allOutGain": "Han kørte alt ud{where} og vandt tid",
+        "crashLoss": "Han tabte tid i et styrt{where}",
+        "mechanicalLoss": "Han tabte tid på en defekt{where}",
+        "incidentLoss": "Han tabte tid på et uheld{where}",
+        "caught": "Han kørte i udbruddet og blev hentet{where}",
+        "badDayFatigue": "Han havde en dårlig dag, de hårde dage før indhentede ham",
+        "badDayForm": "Han havde en dårlig dag, og formen var der ikke",
+        "badDayIllness": "Han havde en dårlig dag og følte sig syg",
+        "badDayRain": "Han havde en dårlig dag i regnen",
+        "badDayWind": "Han havde en dårlig dag i vinden",
+        "badDayHeat": "Han havde en dårlig dag i varmen",
+        "attackBehind": "Han angreb{where}, men kunne ikke holde sig foran til stregen",
+        "bunchBehindSprint": "Han kom i mål i feltet bag spurten",
+        "pelotonBehindBreak": "Han kom i mål i feltet, bag udbruddet der holdt hjem",
+        "pelotonBehind": "Han blev i feltet, da gruppen foran kørte væk"
+      },
+      "lead": {
+        "afterBreak": "efter en dag i udbruddet",
+        "afterDrop": "efter at have mistet kontakten{where}",
+        "badDayFatigue": "på en dårlig dag, hvor de hårde dage før indhentede ham",
+        "badDayForm": "på en dårlig dag uden form",
+        "badDayIllness": "på en dårlig dag, hvor han følte sig syg",
+        "badDayRain": "på en dårlig dag i regnen",
+        "badDayWind": "på en dårlig dag i vinden",
+        "badDayHeat": "på en dårlig dag i varmen"
       }
     },
     "yourDay": {
@@ -451,7 +531,7 @@
       "fillMissing": "Udfyld manglende",
       "clearDay": "Ryd dag",
       "clearAllSeason": "Ryd alt",
-      "bound": "Låste ryttere kan ikke sættes på nogen af de viste løb i dag",
+      "bound": "Låste ryttere kan ikke sættes på nogen af de viste løb",
       "loadShort": "{days}d",
       "loadTitle": "Sæson-belastning: {races, plural, one {# løb} other {# løb}}, {days, plural, one {# løbsdag} other {# løbsdage}} tilmeldt denne sæson",
       "clearDayTooltip": "Rydder {races, plural, one {# løb} other {# løb}} og fjerner {riders, plural, one {# rytter} other {# ryttere}} for denne dag"
@@ -875,6 +955,10 @@
       "bodyAt": "Du trykkede Træn nu kl. {time}. Ryttere der trænede i dag kan ikke køre dagens løb.",
       "body": "Ryttere der trænede i dag kan ikke køre dagens løb.",
       "rider": "Trænede i dag",
+      "titleEarlier": "Låst.",
+      "bodyEarlierAt": "Du trykkede Træn nu {day} kl. {time}. Ryttere der trænede på en af løbets dage kan ikke køre løbet.",
+      "bodyEarlier": "Ryttere der trænede på en af løbets dage kan ikke køre løbet.",
+      "riderEarlier": "Trænede før",
       "columnLocked": "Låst"
     },
     "saving": "Gemmer…",
@@ -1543,6 +1627,9 @@
           "chase_faded_climb": "Jagten døde ud efter {climb}, og hullet voksede igen.",
           "chase_faded": "Jagten døde ud, og hullet voksede igen.",
           "chase_too_late": "Jagten kom tættere på, men løb tør for vej.",
+          "chase_tired": "Holdene, der jagede, havde brugt for meget til at nå det i tide.",
+          "chase_outgunned": "Jagerne var ikke stærke nok til at hente udbruddet i tide.",
+          "chase_too_few": "For få ryttere arbejdede i jagten til at nå det i tide.",
           "gap_never_closed": "Jagten fik aldrig hullet ned.",
           "gc_threat": "{teamCount, plural, =1 {{teamLast}} other {{teamsHead} og {teamLast}}} jagede, fordi {threats} truede {rider} i klassementet.",
           "closed_on_climb": "Hullet faldt på {climb}."
@@ -1553,6 +1640,10 @@
           "all_out_held_on": "{rider} kørte alt ud på din ordre og blev i den forreste gruppe."
         },
         "breakaway_dropped": "{riders} {count, plural, one {bliver} other {bliver}} sat af fra udbruddet.",
+        "breakaway_attempt_failed": "{riders}{others, plural, =0 {} one { og # anden} other { og # andre}} forsøger at komme væk, men slipper ikke fri. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} og {teamLast}}} arbejdede imod. Forsøget kostede kræfter resten af etapen.",
+        "breakaway_attempt_failed_field": "{riders}{others, plural, =0 {} one { og # anden} other { og # andre}} forsøger at komme væk, men slipper ikke fri. {teamCount, plural, one {# hold} other {# hold}} arbejdede imod. Forsøget kostede kræfter resten af etapen.",
+        "breakaway_attempt_none_clear": "{riders}{others, plural, =0 {} one { og # anden} other { og # andre}} forsøger at komme væk, men ingen slipper fri. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} og {teamLast}}} arbejdede imod. Forsøget kostede kræfter resten af etapen.",
+        "breakaway_attempt_none_clear_field": "{riders}{others, plural, =0 {} one { og # anden} other { og # andre}} forsøger at komme væk, men ingen slipper fri. {teamCount, plural, one {# hold} other {# hold}} arbejdede imod. Forsøget kostede kræfter resten af etapen.",
         "group_ahead_formed": "{riders} kører væk i en gruppe foran feltet.",
         "group_ahead_caught": "Gruppen foran feltet bliver hentet: {riders}.",
         "group_ahead_survived": "Gruppen foran feltet holder hele vejen til stregen.",
@@ -1627,9 +1718,9 @@
       "teamDay": "{team} førte holdkonkurrencen med {count} ryttere i top 10.",
       "teamWon": "{team} vandt holdkonkurrencen.",
       "jerseys": "Trøjeførere: {points} i point, {mountain} i bjerg.",
-      "abandon": "{kind, select, crash {{rider} udgik efter styrt.} mechanical {{rider} udgik med mekanisk defekt.} injury {{rider} stillede ikke til start: skadet.} withdrawal {{rider} steg af, udkørt.} time_limit {{rider} kom i mål uden for tidsgrænsen.} illness {{rider} stillede ikke til start: syg.} other {{rider} udgik.}}",
+      "abandon": "{kind, select, crash {{rider} udgik efter styrt.} mechanical {{rider} udgik med mekanisk defekt.} injury {{rider} stillede ikke til start: skadet.} withdrawal {{when, select, stage {{rider} steg af efter etapen, for langt efter vinderen.} other {{rider} steg af, for langt efter vinderen.}}} time_limit {{rider} kom i mål uden for tidsgrænsen.} illness {{rider} stillede ikke til start: syg.} other {{rider} udgik.}}",
       "notableCrash": "{rider} styrtede og tabte {marginText}.",
-      "withdrawalGroup": "{when, select, stage {{count} ryttere steg af efter etapen, udkørte og langt efter.} other {{count} ryttere steg af, udkørte og langt efter.}}",
+      "withdrawalGroup": "{when, select, stage {{count} ryttere steg af efter etapen, for langt efter vinderen.} other {{count} ryttere steg af, for langt efter vinderen.}}",
       "seeList": "Se listen"
     },
     "incidents": {
@@ -1638,7 +1729,7 @@
       "mechanical": "Mekanisk defekt",
       "injury": "Ikke-starter",
       "illness": "Syg, startede ikke",
-      "withdrawal": "Steg af, udkørt",
+      "withdrawal": "Steg af, for langt efter",
       "time_limit": "Uden for tidsgrænsen",
       "abandoned": "Udgik",
       "dnf": "DNF",
@@ -1885,7 +1976,7 @@
         "inBreak": "{rider} brugte dagen i udbruddet.",
         "helperWork": "{count, plural, one {En holdkammerat kørte} other {# holdkammerater kørte}} i tjeneste for {captain}.",
         "none": "Ingen af dine ryttere stillede til start på denne etape.",
-        "out": "{kind, select, withdrawal {{rider} steg af efter etape {number}.} time_limit {{rider} kom i mål uden for tidsgrænsen på etape {number}.} crash {{rider} udgik efter et styrt på etape {number}.} injury {{rider} startede ikke på etape {number}: skadet.} illness {{rider} startede ikke på etape {number}: syg.} other {{rider} udgik på etape {number}.}}",
+        "out": "{kind, select, withdrawal {{rider} steg af efter etape {number}, for langt efter vinderen.} time_limit {{rider} kom i mål uden for tidsgrænsen på etape {number}.} crash {{rider} udgik efter et styrt på etape {number}.} injury {{rider} startede ikke på etape {number}: skadet.} illness {{rider} startede ikke på etape {number}: syg.} other {{rider} udgik på etape {number}.}}",
         "ridersLeft": "{count, plural, =0 {Du har ingen ryttere tilbage.} one {Du har # rytter tilbage.} other {Du har # ryttere tilbage.}}"
       }
     },

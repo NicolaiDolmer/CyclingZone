@@ -599,12 +599,179 @@ export function stagePlanRecap(
   return items.map((it, i) => (i === d ? { ...it, endReason: null } : i === to ? { ...it, fromHidden: true } : i < to && it.status === "skipped" ? { ...it, status: "not_reached" } : it));
 }
 
+// ── #7706: et flueben lover ikke succes ──────────────────────────────────────
+//
+// Status ovenfor siger kun om leddet blev koert. Udfaldet siger hvad filmen og maalresultatet
+// kan bevise: et flueben og en fiasko kraever bevis, en neutral kendsgerning (placering, hvem
+// han sad med) er ingen dom, og uden bevis staar der intet. Fog of war: kun fakta spilleren
+// allerede kan se, ingen tal fra motoren.
+
+/** Markeringen: "info" = en kendsgerning uden dom, "none" = intet at vise. */
+export type StagePlanOutcomeMark = "done" | "failed" | "not_reached" | "info" | "none";
+export type StagePlanOutcome = {
+  mark: StagePlanOutcomeMark;
+  /** i18n-noegle (races-namespace) og parametre; null = ingen tekst, linjen siger det selv. */
+  word: { key: string; params?: Record<string, string | number> } | null;
+};
+
+export type StagePlanOutcomeOptions = {
+  /**
+   * Hvor rytteren mistede kontakten og ikke kom tilbage: km, null = filmen viser ingen
+   * saadan km, undefined = filmen kan ikke svare (ingen gruppe-gab).
+   */
+  lostContactKm?: number | null;
+  /**
+   * Sad han i sin gruppe hele strækningen, ifoelge filmen? stageSplitTimes.riderHeldContact;
+   * kun true er bevis. lostContactKm kan ikke svare: et fald han kom tilbage fra staar ikke dér.
+   */
+  heldContact?: (fromKm: number, toKm: number) => boolean | null;
+  /** Hans placering paa etapen fra maalresultatet; ellers filmens top i maal. */
+  rank?: number | null;
+  /**
+   * Den rytter holdarbejdet gjaldt. `splitKm`: stageSplitTimes.ridersSplitKm for leddet.
+   * Vises ved navn, saa teksten kun siger hvem han sad med, ikke hvem der var leder.
+   */
+  leader?: { name: string; splitKm: (fromKm: number, toKm: number) => number | null | undefined } | null;
+};
+
+/** Opgaver hvor det at falde bagud betyder at opgaven ikke lykkedes. */
+const CONTACT_TASKS: ReadonlySet<StagePlanTask> = new Set<StagePlanTask>(["attack", "follow_moves", "ride_for_result"]);
+/** Opgaver der er loest naar rytteren er kommet i maal (at falde bagud er meningen). */
+const RIDE_HOME_TASKS: ReadonlySet<StagePlanTask> = new Set<StagePlanTask>(["grupetto", "ride_in"]);
+/** Holdarbejde: filmen navngiver ikke hjaelperens arbejde, kun hvem han sad i gruppe med. */
+const TEAM_WORK_TASKS: ReadonlySet<StagePlanTask> = new Set<StagePlanTask>(["shelter_leader", "tempo", "sprint_train"]);
+/** Kun rigtige angreb: motorens sene angreb og dens nedkoerselsangreb; resten af finale_attack er bogfoering eller uden art. */
+function isRealAttack(params: Rec | null | undefined): boolean {
+  return params?.kind === "late_attack" || params?.direction === "descent";
+}
+
+function eventRiderIds(params: Rec | null | undefined, key = "rider_ids"): unknown[] {
+  const ids = params?.[key];
+  return Array.isArray(ids) ? ids : [];
+}
+
+const outcomeOf = (mark: StagePlanOutcomeMark, word?: string, params?: Record<string, string | number>): StagePlanOutcome => ({
+  mark,
+  word: word ? { key: `stagePlan.recap.outcome.${word}`, ...(params ? { params } : {}) } : null,
+});
+const NOTHING_TO_SHOW = outcomeOf("none");
+
+/** Kom han i udbruddet? true/false kun naar filmen navngiver ham; ellers null. */
+function madeTheBreak(list: readonly TimelineEventLike[], riderId: string): boolean | null {
+  if (list.some((e) => e?.type === "breakaway_formed" && eventRiderIds(e.params).includes(riderId))) return true;
+  const attempted = list.some((e) => e?.type === "breakaway_attempt" && eventRiderIds(e.params).includes(riderId));
+  return attempted ? false : null;
+}
+
+/** Km for hans eget angreb inden for leddet; null = filmen viser intet. */
+function attackKmInLeg(list: readonly TimelineEventLike[], riderId: string, item: StagePlanRecapItem): number | null {
+  const from = item.fromKm ?? 0;
+  const to = item.endKm ?? Infinity;
+  const attack = list.find((e) => {
+    const km = Number(e?.km);
+    // Et angreb paa selve skiftets km hoerer til det forrige led (motoren skriver det foer skiftet).
+    if (!(km > from && km <= to)) return false;
+    const named = e?.params?.rider_id === riderId || eventRiderIds(e?.params).includes(riderId);
+    if (e?.type === "finale_attack") return named && isRealAttack(e.params);
+    return e?.type === "peloton_splits" && e.params?.cause === "attack" && named;
+  });
+  return attack ? Number(attack.km) : null;
+}
+
+/** Filmens top i maal (motoren navngiver kun de forreste). */
+function rankInFinish(list: readonly TimelineEventLike[], riderId: string): number | null {
+  const top = list.find((e) => e?.type === "finish")?.params?.top;
+  const hit = Array.isArray(top) ? top.find((row) => (row as Rec | null)?.rider_id === riderId) as Rec | undefined : undefined;
+  return typeof hit?.rank === "number" ? hit.rank : null;
+}
+
+/** Var han uden for tidsgraensen, uden at juryen tog ham ind igen? */
+function outOfTime(list: readonly TimelineEventLike[], riderId: string): boolean {
+  const named = (type: string) => list.some((e) => e?.type === type && eventRiderIds(e.params).includes(riderId));
+  return named("outside_time_limit") && !named("jury_reinstated");
+}
+
+/** Et styrt eller en defekt koster tid uden at filmen kalder det et fald, ogsaa i de led der foelger efter. */
+function incidentByLegEnd(list: readonly TimelineEventLike[], riderId: string, item: StagePlanRecapItem): boolean {
+  const to = item.endKm ?? Infinity;
+  return list.some((e) => e?.type === "incident" && e.params?.rider_id === riderId && e.params?.outcome !== "protected_three_km_rule" && Number(e.km) <= to);
+}
+
+const roundKm = (km: number) => Math.round(km);
+
+/** Udfaldet af hvert led i et resume (samme raekkefoelge som `items`). */
+export function stagePlanOutcomes(
+  items: readonly StagePlanRecapItem[],
+  events: readonly TimelineEventLike[] | null | undefined,
+  riderId: string,
+  { lostContactKm, heldContact, rank = null, leader = null }: StagePlanOutcomeOptions = {},
+): StagePlanOutcome[] {
+  const list = events ?? [];
+  const late = outOfTime(list, riderId);
+  const finishRank = rank ?? rankInFinish(list, riderId);
+  const finishKm = list.find((e) => e?.type === "finish")?.km;
+  const filmSilent = lostContactKm === undefined;
+
+  return items.map((item): StagePlanOutcome => {
+    if (item.status === "skipped" || item.status === "not_reached") return outcomeOf("not_reached");
+    // Linjen siger selv "udgik ved km".
+    if (item.status === "abandoned") return outcomeOf("failed");
+    const toFinish = item.status === "to_finish";
+    if (toFinish && late) return outcomeOf("failed", "outOfTime");
+
+    if (item.task === "breakaway") {
+      const made = madeTheBreak(list, riderId);
+      // Et udbrud der dannes og hentes inden for samme segment: filmen navngiver ham, motoren saa det ikke.
+      if (item.endReason === "missed_break") return made === true ? NOTHING_TO_SHOW : outcomeOf("failed", "failed");
+      if (item.endReason === "caught" || made === true) return outcomeOf("done", "inBreak");
+      return made === false ? outcomeOf("failed", "failed") : NOTHING_TO_SHOW;
+    }
+
+    // Kun en raekke i maalresultatet beviser at han kom i maal: at filmen intet siger, goer ikke.
+    if (RIDE_HOME_TASKS.has(item.task)) return toFinish && finishRank !== null ? outcomeOf("done", "finished") : NOTHING_TO_SHOW;
+
+    const behind = typeof lostContactKm === "number" && lostContactKm <= (item.endKm ?? Infinity);
+    const lost = () => ({ km: roundKm(lostContactKm as number) });
+    // Slut paa leddet uden tvivl: filmen viser ham i gruppen hele leddet, motoren siger ikke "sat",
+    // intet uheld indtil da, og han er i maal hvis leddet gik dertil.
+    const heldOn = !behind && item.endReason !== "dropped" && item.endReason !== null
+      && heldContact?.(item.fromKm ?? 0, item.endKm ?? Infinity) === true
+      && !incidentByLegEnd(list, riderId, item) && (!toFinish || finishRank !== null);
+
+    if (CONTACT_TASKS.has(item.task)) {
+      const attackKm = item.task === "attack" ? attackKmInLeg(list, riderId, item) : null;
+      if (item.task !== "follow_moves" && toFinish && finishRank !== null && attackKm === null) return outcomeOf("info", "rank", { rank: finishRank });
+      if (behind) return outcomeOf("failed", "lostContact", lost());
+      // Motoren siger "sat", men filmen viser intet tab: saa paastaas ingen fiasko (#7636).
+      if (item.endReason === "dropped" && filmSilent) return outcomeOf("failed", "failed");
+      if (attackKm !== null) return outcomeOf("done", "attacked", { km: roundKm(attackKm) });
+      if (item.task === "attack" || !heldOn) return NOTHING_TO_SHOW;
+      return outcomeOf(item.task === "follow_moves" ? "done" : "info", "keptContact");
+    }
+
+    // Holdarbejde: en kendsgerning om hvem han sad med, ingen dom over arbejdet.
+    if (TEAM_WORK_TASKS.has(item.task) && leader) {
+      const splitKm = leader.splitKm(item.fromKm ?? 0, item.endKm ?? (typeof finishKm === "number" ? finishKm : Infinity));
+      if (splitKm === null) return outcomeOf("info", "withRider", { name: leader.name });
+      if (typeof splitKm === "number") return outcomeOf("info", "withRiderTo", { name: leader.name, km: roundKm(splitKm) });
+    }
+
+    // Laeet og holdarbejde uden en leder at maale paa: at blive sat kan vaere planen (hjaelperen
+    // har gjort sit, sprinteren paa bjergetapen sparer sig), saa det er ingen fiasko.
+    if (behind) return outcomeOf("info", "lostContact", lost());
+    if (!heldOn) return NOTHING_TO_SHOW;
+    return outcomeOf(item.task === "stay_sheltered" ? "done" : "info", "keptContact");
+  });
+}
+
 function stagePlanRecapFromEvents(legs: readonly StagePlanLeg[], events: readonly TimelineEventLike[] | null | undefined, riderId: string): StagePlanRecapItem[] {
   const list = events ?? [];
   const switches = list
     .filter((e) => e?.type === "stage_plan_leg" && e.params?.rider_id === riderId)
-    .map((e) => ({ km: Number(e.km), leg: Number(e.params?.leg), reason: String(e.params?.reason ?? "") }))
-    .sort((a, b) => a.km - b.km);
+    .map((e) => ({ km: Number(e.km), place: Number(e.params?.exact_km ?? e.km), leg: Number(e.params?.leg), reason: String(e.params?.reason ?? "") }))
+    .sort((a, b) => a.km - b.km)
+    // #6350: "sat ved km" er hvor han reelt blev sat, aldrig foer det forrige skift i kaeden.
+    .map((s, i, all) => ({ ...s, km: i === 0 ? s.place : Math.max(all[i - 1].km, s.place) }));
   const abandon = list.find((e) => e?.type === "incident" && e.params?.rider_id === riderId && e.params?.outcome === "abandoned");
   const reached = new Map<number, number>([[0, 0]]);
   for (const s of switches) reached.set(s.leg, s.km);
