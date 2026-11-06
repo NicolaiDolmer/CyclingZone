@@ -119,7 +119,7 @@ test("#7730 dommen: en rytter der ikke koerer mere, taeller ikke", () => {
 
 test("#7730 dommen: raekkefoelgen i arbejdslisten flytter intet", () => {
   const entries = Object.entries(strongChase());
-  const args = { teamOf: (id: string) => id.split(":")[0], engineOf: () => 50, riders: Object.fromEntries(entries.map(([id]) => [id, { status: "racing", team_cp_factor: 0.97 }])), breakEngine: 50, onTimeSeconds: ON_TIME, lateSeconds: LATE };
+  const args = { wanted: true, teamOf: (id: string) => id.split(":")[0], engineOf: () => 50, riders: Object.fromEntries(entries.map(([id]) => [id, { status: "racing", team_cp_factor: 0.97 }])), breakEngine: 50, onTimeSeconds: ON_TIME, lateSeconds: LATE };
   assert.deepEqual(judgeFloorChase7730({ ...args, work: new Map(entries) }), judgeFloorChase7730({ ...args, work: new Map([...entries].reverse()) }));
 });
 

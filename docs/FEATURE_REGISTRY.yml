@@ -173,20 +173,20 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7644
     verified: 2026-11-04
-    note: "#7644 ejer-valg B 4/11. Bygget, off; tændes af ejeren efter før/efter-billedet."
+    note: "Slukket; tændes af ejeren."
     decision: ejer-beslutning
     decide_by: 2026-11-18
 
   - id: race-team-chase-7730
     area: race-engine
-    title_en: The chase is decided by the teams chasing, not a stage roll
+    title_en: The chase is decided by the teams chasing
     title_da: Jagten afgøres af de hold der jager, ikke af en lodtrækning
     state: dormant
     flag: team_chase_7730
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7730
     verified: 2026-11-06
-    note: "#7730 ejer 5/11. Bygget, off; gælder kun løb der ikke er startet; tændes af ejeren efter før/efter-billedet."
+    note: "Slukket; kun nye løb."
     decision: ejer-beslutning
     decide_by: 2026-11-20
 
@@ -1098,7 +1098,7 @@ features:
     flag: race_day_role_base_day_enabled
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: "#5950 løsning A (ejer-valg 3/11), underkontakt til race-day-role-yield. Bygget, off; tændes af ejeren."
+    note: "#5950 løsning A (ejer-valg 3/11), underkontakt til race-day-role-yield. Off."
     verified: 2026-11-03
     decision: ejer-beslutning
     decide_by: 2026-11-17
