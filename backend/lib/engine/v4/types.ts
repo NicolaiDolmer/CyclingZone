@@ -242,6 +242,8 @@ export type StageInput = {
   day_form_6649?: true | null;
   // #6912 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): forspringskurven (mechanics/breakawayCurve6912.ts). Udeladt = som foer.
   breakaway_curve_6912?: true | null;
+  // #7730 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): jagt-gulvets maal afgoeres af de hold der jager (mechanics/chaseGroup.ts). Udeladt = som foer.
+  team_chase_7730?: true | null;
 };
 
 /** #5955: taktisk regel-revision. Kun "orders_gc_v1" aktiverer ordrestyret morgenudbrud. */
@@ -326,6 +328,9 @@ export type KnownTimelineEventType =
   // #6804 P2 (ADDITIV, KUN s5_profiles_v3): forspringet vokser forbi det feltet tolererer,
   // fordi intet hold vil jage (mechanics/breakawayV3_6804.ts). params: { group_id }.
   | "breakaway_unchased"
+  // #7730 (ADDITIV, KUN kontakten team_chase_7730): jagten naaede ikke hullet ned i tide, og hvorfor.
+  // params: { group_id, reason, team_ids }. Kun arter og hold, aldrig tal (fog-gate #1791).
+  | "breakaway_chase_short"
   // #6641/#7280 (ADDITIV, alt ud-pakken, KUN s5_profiles_v3): params { rider_id }.
   | "all_out_gain"
   | "all_out_cracked";
@@ -822,6 +827,8 @@ export type SegmentHookContext = {
   dayForm6649?: true;
   // #6912 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + StageInput.breakaway_curve_6912): forspringskurven. Udeladt = som foer.
   breakawayCurve6912?: true;
+  // #7730 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + StageInput.team_chase_7730): jagten afgoeres af de hold der jager. Udeladt = som foer.
+  teamChase7730?: true;
   // #7380 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 med en etapeplan): etapeplanens aktuelle opgave pr. rytter med plan,
   // som runtimen satte den ved segmentets start (stagePlanEngine.stagePlanCurrentTasks). Udeladt = ingen plan.
   stagePlanTasks?: Readonly<Record<string, import("../../stagePlan.ts").StagePlanTask>>;

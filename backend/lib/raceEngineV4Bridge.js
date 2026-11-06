@@ -608,6 +608,7 @@ export function buildV4StageInput({
   splitAttackCause7640 = false, // #7640 (slukket)
   descentRegroupCap7644 = false, // #7644 (slukket)
   letGoOrder7557 = false, // #7557 (slukket)
+  teamChase7730 = false, // #7730 (slukket)
   modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null,
   rulesRevision = "legacy", gcStandings = null, formPeaks = true, dayForm6649 = false, breakawayCurve6912 = false,
 }) {
@@ -699,6 +700,8 @@ export function buildV4StageInput({
     if (splitAttackCause7640 === true && isS5ProfilesV3OrLater(rulesRevision)) input.split_attack_cause_7640 = true;
     // #7644 (KUN s5_profiles_v3, SLUKKET): loftet paa nedkoerslens samling pr. km; kun ved app_config descent_regroup_cap_7644 = "on".
     if (descentRegroupCap7644 === true && isS5ProfilesV3OrLater(rulesRevision)) input.descent_regroup_cap_7644 = true;
+    // #7730 (KUN s5_profiles_v3, SLUKKET): jagt-gulvet afgoeres af de hold der jager; kun for et loeb der blev bundet til kontakten foer start.
+    if (teamChase7730 === true && isS5ProfilesV3OrLater(rulesRevision)) input.team_chase_7730 = true;
     if (dayForm6649 === true && isS5ProfilesV3OrLater(rulesRevision)) input.day_form_6649 = true;
     // #6912 (KUN s5_profiles_v3, SLUKKET): forspringskurven; kun naar kalderen eksplicit sender breakawayCurve6912=true (testporten).
     if (curve6912) input.breakaway_curve_6912 = true;
@@ -773,7 +776,7 @@ export function createRaceEngineV4Adapter(modules) {
      *   omkring etapen. Udeladt = løbet er ukendt for M14.
      * @returns {{ranked: Array, incidents: Array, passages: object|null, timeline: object|null, v4Output: object}}
      */
-    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null, rulesRevision = "legacy", gcStandings = null, formPeaks = true, dayForm6649 = false, breakawayCurve6912 = false, queenStageGap7236 = false, stagePlanDroppedFront7635 = false, splitAttackCause7640 = false, descentRegroupCap7644 = false, letGoOrder7557 = false }) {
+    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null, rulesRevision = "legacy", gcStandings = null, formPeaks = true, dayForm6649 = false, breakawayCurve6912 = false, queenStageGap7236 = false, stagePlanDroppedFront7635 = false, splitAttackCause7640 = false, descentRegroupCap7644 = false, letGoOrder7557 = false, teamChase7730 = false }) {
       if (!Array.isArray(entrants) || entrants.length === 0) {
         throw new Error("raceEngineV4Bridge: entrants kraeves (tomt startfelt)");
       }
@@ -781,7 +784,7 @@ export function createRaceEngineV4Adapter(modules) {
         throw new Error("raceEngineV4Bridge: seedString (streng) kraeves");
       }
       const input = buildV4StageInput({
-        modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages, squad, jerseyLeaders, rulesRevision, gcStandings, formPeaks, dayForm6649, breakawayCurve6912, queenStageGap7236, stagePlanDroppedFront7635, splitAttackCause7640, descentRegroupCap7644, letGoOrder7557,
+        modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages, squad, jerseyLeaders, rulesRevision, gcStandings, formPeaks, dayForm6649, breakawayCurve6912, queenStageGap7236, stagePlanDroppedFront7635, splitAttackCause7640, descentRegroupCap7644, letGoOrder7557, teamChase7730,
       });
       // #5577: med trace, når kernen har den (#5578), så fortællingen får
       // motorens egen dom over udbruddet. `output` er byte-identisk med
