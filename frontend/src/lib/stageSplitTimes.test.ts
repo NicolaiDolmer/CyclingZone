@@ -383,6 +383,19 @@ test("#6350: en gemt etape uden halvdele: tabslisten er uændret, også når ste
   assert.deepEqual(lines(placed), expected);
 });
 
+test("#7734: etape 10: de hentede er én linje, den satte en anden, og begge ender i samme gruppe", () => {
+  const stage = JSON.parse(readFileSync(new URL("../../../scripts/__fixtures__/race-truth/giro-stage-10.json", import.meta.url), "utf8"));
+  const placed = withEventPlaces(stage.events) as never;
+  const ownRiderIds = ["rider-set", "rider-late-a", "rider-late-b"];
+  const lines = buildOwnTimeLoss(placed, { ownRiderIds }).filter((l) => l.type === "drop") as Array<{ riderIds: string[]; from: string }>;
+  const late = lines.find((l) => l.riderIds.includes("rider-late-a"));
+  assert.deepEqual([...(late?.riderIds ?? [])].sort(), ["rider-late-a", "rider-late-b"]);
+  assert.equal(late?.from, "peloton", "de faldt fra feltet, ikke fra udbruddet");
+  assert.ok(lines.some((l) => l.riderIds.includes("rider-set") && !l.riderIds.includes("rider-late-a")));
+  const atLine = buildSplitTimes(placed, { ownRiderIds }).at(-1)?.groups.find((g) => g.ownRiderIds.length > 0);
+  assert.deepEqual([...(atLine?.ownRiderIds ?? [])].sort(), [...ownRiderIds].sort(), "målets gruppe er uændret");
+});
+
 test("#6350: kun et splits sene halvdel skilles fra, ikke to splits med hvert sit sted", () => {
   const split = (groupId: string, riderId: string, exactKm: number, late = false) => ({ km: 180, type: "peloton_splits", params: { group_id: groupId, source_group_id: "peloton-0", rider_ids: [riderId], exact_km: exactKm, ...(late ? { joined_late: true } : {}) } });
   const events = [{ km: 0, type: "stage_start", params: { field_count: 10 } }, { km: 100, type: "gap_update", params: { group_id: "peloton-0", gap_seconds: 10 } }, split("g1", "a", 170.5), split("g2", "b", 171.2), split("g2", "c", 180, true)];

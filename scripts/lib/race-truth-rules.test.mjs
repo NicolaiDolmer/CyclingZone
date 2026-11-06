@@ -22,7 +22,7 @@ import {
   startlistFor,
   summarize,
 } from "./race-truth-rules.mjs";
-import { stageInput } from "../__fixtures__/race-truth/load.mjs";
+import { loadFixture, stageInput } from "../__fixtures__/race-truth/load.mjs";
 import { withEventPlaces } from "../../backend/lib/raceTimeline.js"; // #6350
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -335,6 +335,12 @@ test("#6350 R3: vagten fanger en sen halvdel der går ind i en gruppe efter grup
   assert.deepEqual(ruleCatchAfterFormation({ events: filmContradiction({ splitKm: 170.47, lateKm: 179 }), startlist: ["set", "ahead"] }), []);
   // Det rigtige sted er ikke et fund.
   assert.deepEqual(ruleCatchAfterFormation({ events: filmContradiction({ splitKm: 170.47, lateKm: 176 }), startlist: ["set", "ahead"] }), []);
+});
+
+test("#7734 R3: etape 10: de hentede står ikke i en gruppe før de var fri af udbruddet", () => {
+  const { events } = loadFixture("giro-stage-10.json");
+  const late = filmPlaceFindings(withEventPlaces(events)).filter((f) => f.rider_id === "rider-late-a" || f.rider_id === "rider-late-b");
+  assert.deepEqual(late, []);
 });
 
 test("#6350 R3: en kæde af sammenlægninger i segmentet er ikke et skift ud af en anden gruppe", () => {
