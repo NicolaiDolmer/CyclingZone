@@ -1161,7 +1161,7 @@
         "neutral": "Lire la course",
         "let_go": "Laisser la chasse aux autres"
       },
-      "gcNote": "L'équipe peut apporter une réponse limitée à une vraie menace au général avec ses coureurs libres.",
+      "gcNote": "L'équipe réagit à une vraie menace au général avec ses coureurs libres, sauf si tu laisses la chasse aux autres.",
       "breakNote": "Le leader, le leader sprint et l'équipier ne tentent l'échappée du matin que si Tenter l'échappée est sélectionné."
     },
     "breakaway": {

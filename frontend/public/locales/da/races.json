@@ -1144,7 +1144,7 @@
         "neutral": "Vurder undervejs",
         "let_go": "Overlad jagten til andre"
       },
-      "gcNote": "Holdet kan reagere begrænset på en alvorlig GC-trussel med de ledige ryttere.",
+      "gcNote": "Holdet reagerer på en alvorlig GC-trussel med de ledige ryttere, medmindre du overlader jagten til andre.",
       "breakNote": "Kaptajn, spurt-kaptajn og hjælper går kun i morgenudbrud med Forsøg udbrud valgt."
     },
     "breakaway": {
