@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import {
-  parseIssueRefs, runCloseOut, buildNowLine, markerFor, commentBody, copenhagenDate, validTrain, main,
+  parseIssueRefs, isBehindSwitch, shouldFlip, runCloseOut, buildNowLine, markerFor, commentBody, copenhagenDate, validTrain, main,
 } from './merge-queue-closeout.mjs';
 
 const SHA_A = 'a'.repeat(40);
@@ -92,7 +92,7 @@ test('fenced examples in a PR body never trigger issue mutations', () => {
   assert.ok(calls.every((a) => !a.includes('123') && !a.includes('124') && !String(a[1]).includes('/123/') && !String(a[1]).includes('/124/')));
 });
 
-test('close-out comments on every referenced issue and flips only Closes issues from claude:todo', () => {
+test('close-out comments on every referenced issue and flips Closes and Refs issues from claude:todo (#7782)', () => {
   const { gh, calls, state } = fakeGh({
     prs: { 100: { title: 'feat: noget', body: 'Refs #1\nCloses #2\nCloses #3' }, 101: { title: 'fix: andet', body: 'Refs #2' } },
     labels: { 1: ['claude:todo'], 2: ['claude:todo', 'type:bug'], 3: ['claude:done'] },
@@ -100,14 +100,13 @@ test('close-out comments on every referenced issue and flips only Closes issues 
   const res = runCloseOut({ train: [{ number: 100, sha: SHA_A }, { number: 101, sha: SHA_B }], gh, now: new Date('2026-11-04T12:00:00Z') });
   assert.deepEqual(res.errors, []);
   assert.deepEqual(res.comments, [{ issue: 1, pr: 100 }, { issue: 2, pr: 100 }, { issue: 3, pr: 100 }, { issue: 2, pr: 101 }]);
-  assert.deepEqual(res.flips, [2], 'Refs-issue #1 keeps claude:todo; #3 is already done');
-  assert.deepEqual(state.labels[1], ['claude:todo']);
+  assert.deepEqual(res.flips, [1, 2], 'Refs-issue #1 flips too; #3 is already done');
+  assert.deepEqual(state.labels[1], ['claude:done']);
   assert.deepEqual(state.labels[2], ['type:bug', 'claude:done']);
   assert.equal(state.comments[2].length, 2, 'one comment per (PR, issue)');
   assert.ok(state.comments[2][0].includes(markerFor(100, 2)) && state.comments[2][0].includes(SHA_A));
   assert.ok(state.comments[2][1].includes(markerFor(101, 2)) && state.comments[2][1].includes(SHA_B));
-  // Kun lukke-referencer laeser labels; Refs-issues roeres ikke.
-  assert.deepEqual(calls.filter((a) => a[0] === 'issue' && a[1] === 'view').map((a) => a[2]), ['2', '3']);
+  assert.deepEqual(calls.filter((a) => a[0] === 'issue' && a[1] === 'view').map((a) => a[2]), ['1', '2', '3', '2']);
   assert.equal(res.nowLine, '- 4/11 merge-tog verificeret (main-CI + deploy-verifikation grønne): #100 `aaaaaaaa` feat: noget (Refs #1, Closes #2, Closes #3); #101 `bbbbbbbb` fix: andet (Refs #2).');
 });
 
@@ -241,14 +240,57 @@ test('close-out is fail-soft: gh failures become warnings and unreadable comment
 });
 
 test('comment and NOW line state the verification honestly and use no em-dash', () => {
-  const body = commentBody({ pr: 7, issue: 8, sha: SHA_A, kind: 'refs', deployVerified: false });
+  const body = commentBody({ pr: 7, issue: 8, sha: SHA_A, kind: 'refs', deployVerified: false, behindSwitch: true });
   assert.match(body, /main-CI grøn, toget deployer ikke/);
-  assert.match(body, /labels er ikke ændret/);
+  assert.match(body, /bag slukket kontakt; labels er ikke ændret/);
+  assert.match(commentBody({ pr: 7, issue: 8, sha: SHA_A, kind: 'refs' }), /label flyttet til `claude:done`/);
   assert.ok(body.startsWith(markerFor(7, 8)));
   assert.doesNotMatch(body + commentBody({ pr: 7, issue: 8, sha: SHA_A, kind: 'closes' }), /—/);
   const line = buildNowLine([{ number: 7, sha: SHA_A, title: 'x'.repeat(100), refs: [] }], new Date('2026-11-04T23:30:00Z'), false);
   assert.match(line, /^- 5\/11 merge-tog verificeret \(main-CI grøn, toget deployer ikke\): #7 `aaaaaaaa` x{67}\.\.\.\.$/);
   assert.equal(copenhagenDate(new Date('2026-07-01T22:30:00Z')), '2/7', 'summer time is Copenhagen local');
+});
+
+test('behind-switch detection reads PR title and prose, not template help text or code (#7782)', () => {
+  assert.equal(isBehindSwitch('feat: ny motor', 'Ligger bag slukket kontakt.'), true);
+  assert.equal(isBehindSwitch('feat: x (bag kontakt)', ''), true);
+  assert.equal(isBehindSwitch('x', 'Shipped behind a feature flag, default off.'), true);
+  assert.equal(isBehindSwitch('x', 'Dark launch af nyt kort.'), true);
+  assert.equal(isBehindSwitch('fix: bug', 'Refs #1\nRettelsen er live.'), false);
+  assert.equal(isBehindSwitch('x', '<!-- skriv hvis bag slukket kontakt -->'), false);
+  assert.equal(isBehindSwitch('x', 'Se `bag slukket kontakt` i koden'), false);
+  assert.equal(isBehindSwitch(null, undefined), false);
+  assert.equal(shouldFlip('closes', true), true, 'Closes closes the issue on GitHub, so the label follows');
+  assert.equal(shouldFlip('refs', true), false);
+  assert.equal(shouldFlip('refs', false), true);
+});
+
+test('Refs issues of a PR behind a switched-off switch keep claude:todo and only get the comment (#7782)', () => {
+  const { gh, state } = fakeGh({
+    prs: { 100: { title: 'feat: dagsform', body: 'Refs #1\nLigger bag slukket kontakt.' }, 101: { title: 'fix: andet', body: 'Refs #2' } },
+    labels: { 1: ['claude:todo'], 2: ['claude:todo'] },
+  });
+  const lines = [];
+  const res = runCloseOut({ train: [{ number: 100, sha: SHA_A }, { number: 101, sha: SHA_B }], gh, now: NOW, log: (l) => lines.push(l) });
+  assert.deepEqual(res.errors, []);
+  assert.deepEqual(res.flips, [2]);
+  assert.deepEqual(state.labels[1], ['claude:todo']);
+  assert.deepEqual(state.labels[2], ['claude:done']);
+  assert.match(state.comments[1][0], /bag slukket kontakt; labels er ikke ændret/);
+  assert.ok(lines.some((l) => l.includes('#1') && l.includes('bag slukket kontakt')));
+});
+
+test('dry-run and merged phase never flip a Refs issue (#7782)', () => {
+  const setup = { prs: { 100: { title: 't', body: 'Refs #1' } }, labels: { 1: ['claude:todo'] } };
+  const dry = fakeGh(setup);
+  const dryRes = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: dry.gh, dryRun: true, now: NOW });
+  assert.deepEqual(dryRes.flips, []);
+  assert.deepEqual(writes(dry.calls), []);
+  const merged = fakeGh(setup);
+  const mergedRes = runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: merged.gh, phase: 'merged', now: NOW });
+  assert.deepEqual(mergedRes.flips, []);
+  assert.deepEqual(merged.state.labels[1], ['claude:todo']);
+  assert.match(merged.state.comments[1][0], /label flyttes først, når toget er verificeret/);
 });
 
 test('train validation and CLI exit codes', () => {
