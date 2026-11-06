@@ -59,9 +59,9 @@ import { isQueenStageGap7236Enabled } from "./queenStageGap7236Flag.js"; // #723
 import { isStagePlanDroppedFront7635Enabled } from "./stagePlanDroppedFront7635Flag.js"; // #7635
 import { isDescentRegroupCap7644Enabled } from "./descentRegroupCap7644Flag.js"; // #7644
 import { isSplitAttackCause7640Enabled } from "./splitAttackCause7640Flag.js"; // #7640
-import { isLetGoOrder7557Enabled } from "./letGoOrder7557Flag.js"; // #7557
+import { bindLetGoOrder7557, isLetGoOrder7557Enabled } from "./letGoOrder7557Flag.js"; // #7557
 import { bindIttNoDayRoll7726, isIttNoDayRoll7726Enabled } from "./ittNoDayRoll7726Flag.js"; // #7726
-import { isStartedFieldLock7733Enabled } from "./startedFieldLock7733Flag.js"; // #7733
+import { bindStartedFieldLock7733, isStartedFieldLock7733Enabled, raceHasStartedFieldLock7733 } from "./startedFieldLock7733Flag.js"; // #7733
 import { bindTeamChase7730, isTeamChase7730Enabled } from "./teamChase7730Flag.js"; // #7730
 import { bindRaceTimeLimitFatigue7715, isTimeLimitFatigue7715Enabled, raceBoundToTimeLimitFatigue7715 } from "./timeLimitFatigue7715.js"; // #7715
 // #5462: skadens varighed i LOEBSDAGE naar loebsdagen er tick-enheden.
@@ -2715,7 +2715,8 @@ export async function simulateRace({
   // #7726 og #7730: bindes samme sted som revisionen, og et stemplet loeb koerer faerdigt paa sine regler.
   const ittEngine = await bindIttNoDayRoll7726({ supabase, race, v4Engine: resolvedV4Engine, rulesRevision, firstStageClaim: true, dryRun });
   const chaseEngine = await bindTeamChase7730({ supabase, race, v4Engine: ittEngine, rulesRevision, firstStageClaim: true, dryRun });
-  const v4Engine = await withRaceTimeLimitFatigue7715({ supabase, race, v4Engine: chaseEngine, rulesRevision, firstStageClaim: true, dryRun }); // #7715
+  const letGoBoundEngine = await bindLetGoOrder7557({ supabase, race, v4Engine: chaseEngine, rulesRevision, firstStageClaim: true, dryRun }); // #7557
+  const v4Engine = await withRaceTimeLimitFatigue7715({ supabase, race, v4Engine: letGoBoundEngine, rulesRevision, firstStageClaim: true, dryRun }); // #7715
   if (v4Engine) await applyRouteProfileHills({ supabase, raceId: race.id, stages, rulesRevision }); // #7290: kun s5_profiles_v3 + flaget
   // S3 (#2034): overrides hentes KUN når v3=true — v3=false undgår DB-kaldet helt
   // og buildRaceResults modtager undefined, hvilket garanterer bit-identisk flag-off.
@@ -3420,6 +3421,7 @@ export async function simulateStageByIndex({
   checkTimelineEnabled = isRaceStageTimelineEnabled,
   // #7733: injectable, default læser app_config started_field_lock_7733. Kun fra etape 2.
   checkStartedFieldLock7733Enabled = isStartedFieldLock7733Enabled,
+  readStartedFieldLock7733 = raceHasStartedFieldLock7733,
   // #3855/#4707: se simulateRace' tilsvarende note. Læses pr. etape-invokation,
   // hvilket ER kill-switchen: slukkes flaget midt i et etapeløb, kører næste
   // etape v3, og klassementet akkumuleres uændret fra race_results.
@@ -3640,9 +3642,8 @@ export async function simulateStageByIndex({
   let injuryWithdrawals = [];
 
   if (!finalizationPending) {
-    // #7733: fail closed, kun app_config started_field_lock_7733 = "on" taender.
-    const startedFieldLock = stageIndex > 0
-      && await Promise.resolve().then(() => checkStartedFieldLock7733Enabled(supabase)).catch(() => false) === true;
+    // #7733: kun et loeb stemplet ved start har det laaste felt. En laesefejl kaster, saa etapen venter.
+    const startedFieldLock = stageIndex > 0 && await readStartedFieldLock7733({ supabase, race }) === true;
     // #1844: auto-fyld KUN ved etape 1. Senere etaper må ikke tilføje nye ryttere.
     entrants = await loadEntrantsForRace({
       supabase, race, stages, persist: persistEntries, allowAutofill: stageIndex === 0,
@@ -3671,7 +3672,10 @@ export async function simulateStageByIndex({
     // #7726 og #7730: bindes samme sted som revisionen, og et stemplet loeb koerer faerdigt paa sine regler.
     const ittEngine = await bindIttNoDayRoll7726({ supabase, race, v4Engine: resolvedV4Engine, rulesRevision, firstStageClaim, dryRun });
     const chaseEngine = await bindTeamChase7730({ supabase, race, v4Engine: ittEngine, rulesRevision, firstStageClaim, dryRun });
-    const v4Engine = await withRaceTimeLimitFatigue7715({ supabase, race, v4Engine: chaseEngine, rulesRevision, firstStageClaim, dryRun }); // #7715
+    const letGoBoundEngine = await bindLetGoOrder7557({ supabase, race, v4Engine: chaseEngine, rulesRevision, firstStageClaim, dryRun }); // #7557
+    const v4Engine = await withRaceTimeLimitFatigue7715({ supabase, race, v4Engine: letGoBoundEngine, rulesRevision, firstStageClaim, dryRun }); // #7715
+    // #7733: stemplet saettes samme sted; kontakten rammer kun loeb der ikke er startet.
+    await bindStartedFieldLock7733({ supabase, race, firstStageClaim, dryRun, checkEnabled: checkStartedFieldLock7733Enabled });
     if (v4Engine) await applyRouteProfileHills({ supabase, raceId: race.id, stages, rulesRevision }); // #7290: kun s5_profiles_v3 + flaget
 
     // #1844: frys feltet til etape-1-snapshot. Et igangværende etapeløbs felt MÅ ikke
