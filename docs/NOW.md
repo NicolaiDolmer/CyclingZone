@@ -9,7 +9,7 @@
 > **🎯 Next action (6/11 aften):** Fortsættes på Dolmer PC: OneDrive private-handoffs/overdragelse-pc1-til-dolmerpc-2026-11-06.md og plan på #7495. Første opgave: 2 timers design af løbsside A med ejeren, så #7725. Bølge: XP trin 2 og 4, #7792, #7789. #7726, #7557 og #7730 tændt; #7733 efter 7/11 16:30; secrets 7/11 11-12; feedback og fair-play senest 9/11. Mærker #7824: kun design, ingen afstemning, intet byg uden go; ordene verdensmester/europamester frigivet (#934).
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** PC1-session 6/11 afslutter (motor, merge, flag). Dolmer PC venter, til overdragelsen siger "PC1 færdig". Ingen aktiv Codex-session.
+> **🤖 Working agent:** Ingen aktiv session. PC1 er færdig 6/11; Dolmer PC overtager. Ingen aktiv Codex-session.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
