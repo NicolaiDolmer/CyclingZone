@@ -5,7 +5,7 @@ name: Known issues sync
 #   selftest — paa PR og main: scripts/known-issues-sync.test.mjs. Rent
 #     fil-tjek, ingen secrets.
 #
-#   sync — efter en groen Deploy verify paa main (aldrig paa tid alene):
+#   sync — efter en groen Deploy verify fra push til main (aldrig paa tid alene; et dispatch-run kan verificere et andet commit end head_sha):
 #     scripts/known-issues-sync.mjs saetter aabne kendte fejl, hvis issue_ref staar som
 #     ref paa en patch note med rollout live, og noten er strengt nyere end
 #     raekkens updated_at, til fixed. DRY-RUN som default: --apply kraever at
@@ -57,7 +57,7 @@ jobs:
     needs: selftest
     if: >-
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+      (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
