@@ -277,6 +277,8 @@
         "thirdGap": "{name} was third, {gap} down.",
         "placed": "{name} finished in position {rank}.",
         "placedGap": "{name} finished in position {rank}, {gap} down.",
+        "dayGreat": "{name} had a really good day.",
+        "dayGood": "{name} had a good day.",
         "ownOut": "{kind, select, withdrawal {Climbed off: {names}. Too far behind the winner.} time_limit {Outside the time limit: {names}.} crash {Out after a crash: {names}.} mechanical {Out with a mechanical: {names}.} other {Abandoned: {names}.}}"
       },
       "final": {

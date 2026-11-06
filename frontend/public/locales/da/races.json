@@ -277,6 +277,8 @@
         "thirdGap": "{name} blev nummer tre, {gap} efter.",
         "placed": "{name} blev nr. {rank}.",
         "placedGap": "{name} blev nr. {rank}, {gap} efter.",
+        "dayGreat": "{name} havde en rigtig god dag.",
+        "dayGood": "{name} havde en god dag.",
         "ownOut": "{kind, select, withdrawal {Steg af: {names}. For langt efter vinderen.} time_limit {Uden for tidsgrænsen: {names}.} crash {Udgik efter styrt: {names}.} mechanical {Udgik med mekanisk defekt: {names}.} other {Udgik: {names}.}}"
       },
       "final": {

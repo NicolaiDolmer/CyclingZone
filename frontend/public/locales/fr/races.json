@@ -294,6 +294,8 @@
         "thirdGap": "{name} a pris la troisième place, à {gap}.",
         "placed": "{name} a terminé à la position {rank}.",
         "placedGap": "{name} a terminé à la position {rank}, à {gap}.",
+        "dayGreat": "{name} a connu une très bonne journée.",
+        "dayGood": "{name} a connu une bonne journée.",
         "ownOut": "{kind, select, withdrawal {Pied à terre : {names}. Trop loin du vainqueur.} time_limit {Hors délais : {names}.} crash {Abandon sur chute : {names}.} mechanical {Abandon sur problème mécanique : {names}.} other {Abandon : {names}.}}"
       },
       "final": {

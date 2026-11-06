@@ -56,7 +56,7 @@ const PASSAGES = new Set(["kom_passage", "intermediate_sprint"]);
 
 // Bogføring i motoren, aldrig en linje i historien.
 const BOOKKEEPING_ATTACK_KINDS = new Set(["stage_decided", "placement_gap", "gap_survived"]);
-const SKIPPED_TYPES = new Set(["gap_update", "gc_context", "ttt_team_result"]);
+const SKIPPED_TYPES = new Set(["gap_update", "gc_context", "ttt_team_result", "day_word"]); // day_word (#7725): til referatet, ingen hændelse på vejen
 
 // Hændelser der flytter grupper og derfor kan forklare et hul (#6469).
 const STRUCTURE_TYPES = new Set([

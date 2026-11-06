@@ -54,6 +54,7 @@ import { processBoardWeekendFinalization as processBoardWeekendFinalizationShare
 import { simulateStage, stableSeed, ENGINE_VERSION, ENGINE_VERSION_V3, ABILITY_KEYS, deriveBreakawayStatus } from "./raceSimulator.js";
 import { isRaceEngineV3ScoringEnabled, isRaceStageTimelineEnabled, isRaceEngineV4Enabled, isRaceFormPeaksEnabled } from "./raceEngineFlag.js";
 import { isDayForm6649Enabled } from "./dayForm6649Flag.js"; // #6649
+import { isDayWords7725Enabled } from "./dayWords7725Flag.js"; // #7725
 import { isQueenStageGap7236Enabled } from "./queenStageGap7236Flag.js"; // #7236
 import { isStagePlanDroppedFront7635Enabled } from "./stagePlanDroppedFront7635Flag.js"; // #7635
 import { isDescentRegroupCap7644Enabled } from "./descentRegroupCap7644Flag.js"; // #7644
@@ -305,12 +306,13 @@ export async function resolveRaceEngineV4({
   checkDescentRegroupCap7644Enabled = isDescentRegroupCap7644Enabled,
   checkSplitAttackCause7640Enabled = isSplitAttackCause7640Enabled,
   checkLetGoOrder7557Enabled = isLetGoOrder7557Enabled,
+  checkDayWords7725Enabled = isDayWords7725Enabled,
   checkIttNoDayRoll7726Enabled = isIttNoDayRoll7726Enabled,
 }) {
   const enabled = await checkV4Enabled(supabase);
   if (!enabled) return { v4Engine: null, teamOrderRows: [] };
   try {
-    const [engine, teamOrderRows, formPeaks, dayForm6649, queenStageGap7236, stagePlanDroppedFront7635, descentRegroupCap7644, splitAttackCause7640, letGoOrder7557, ittNoDayRoll7726] = await Promise.all([
+    const [engine, teamOrderRows, formPeaks, dayForm6649, queenStageGap7236, stagePlanDroppedFront7635, descentRegroupCap7644, splitAttackCause7640, letGoOrder7557, dayWords7725, ittNoDayRoll7726] = await Promise.all([
       loadEngine(),
       loadOrders({ supabase, raceId: race.id }),
       // #6156 (ejer 19/10): fail closed, en fejl i flag-opslaget = ingen formtoppe.
@@ -327,6 +329,8 @@ export async function resolveRaceEngineV4({
       Promise.resolve().then(() => checkSplitAttackCause7640Enabled(supabase)).catch(() => false),
       // #7557: fail closed, kun app_config let_go_order_7557 = "on" taender.
       Promise.resolve().then(() => checkLetGoOrder7557Enabled(supabase)).catch(() => false),
+      // #7725: fail closed, kun app_config day_words_7725 = "on" taender.
+      Promise.resolve().then(() => checkDayWords7725Enabled(supabase)).catch(() => false),
       // #7726: fail closed, kun app_config itt_no_day_roll_7726 = "on" taender.
       Promise.resolve().then(() => checkIttNoDayRoll7726Enabled(supabase)).catch(() => false),
     ]);
@@ -349,9 +353,11 @@ export async function resolveRaceEngineV4({
     const attackEngine = splitAttackCause7640 === true ? { ...regroupEngine, splitAttackCause7640: true } : regroupEngine;
     // #7557: samme moenster (v4LetGoOrder7557Arg). Slukket = samme objekt som foer.
     const letGoEngine = letGoOrder7557 === true ? { ...attackEngine, letGoOrder7557: true } : attackEngine;
+    // #7725: samme moenster (v4DayWords7725Arg). Slukket = samme objekt som foer.
+    const dayWordsEngine = dayWords7725 === true ? { ...letGoEngine, dayWords7725: true } : letGoEngine;
     // #7726: samme moenster (v4IttNoDayRoll7726Arg), men markeringen er kun et forslag:
     // bindIttNoDayRoll7726 fjerner den igen, hvis loebet ikke er bundet til kontakten.
-    const v4Engine = ittNoDayRoll7726 === true ? { ...letGoEngine, ittNoDayRoll7726: true } : letGoEngine;
+    const v4Engine = ittNoDayRoll7726 === true ? { ...dayWordsEngine, ittNoDayRoll7726: true } : dayWordsEngine;
     return { v4Engine, teamOrderRows };
   } catch (err) {
     console.error(`  ⚠️  race ${race.id}: loebsmotor v4 kunne ikke indlaeses (${err?.message}) - koerer v3 for denne afvikling`);
@@ -414,6 +420,15 @@ export function v4LetGoOrder7557Arg(v4Engine, rulesRevision) {
 /** #7726: enkeltstart uden dagsudsving (flag itt_no_day_roll_7726), kun loeb bundet til kontakten ved foerste etape. */
 export function v4IttNoDayRoll7726Arg(v4Engine, rulesRevision) {
   return v4Engine?.ittNoDayRoll7726 === true && isS5ProfilesV3OrLater(rulesRevision) ? { ittNoDayRoll7726: true } : {};
+}
+
+/**
+ * #7725: dagsformens ord (flag day_words_7725) KUN naar dagsformen selv koerte (#6649).
+ * I motor-argumenterne, saa #1857-genafspilningen giver samme output. IKKE i input_checksum:
+ * ordene aendrer kun tidslinjen, aldrig resultatet, saa run-identiteten er den samme.
+ */
+export function v4DayWords7725Arg(v4Engine, rulesRevision) {
+  return v4Engine?.dayWords7725 === true && v4Engine?.dayForm6649 === true && isS5ProfilesV3OrLater(rulesRevision) ? { dayWords7725: true } : {};
 }
 
 /**
@@ -711,7 +726,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     const gcStandings = v4Engine && isStageRace && isOrdersGcRulesRevision(rulesRevision) ? (stageNumbersSoFar.size ? rankByCumTimeAsc(filterCompletedEntrants(entrants, stagesByRider, stageNumbersSoFar), cumTime, posSum) : []) : null;
     // #1857: runRecordedEngineCall = præcis call(args) når optageren er null (dryRun/tests).
     const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null, v4Output: v4StageOutput = null, efforts: v4StageEfforts = null } = runRecordedEngineCall(engineInputRecorder, { stageNumber, engine: v4Engine ? "v4" : "v3", engineVersion: v4Engine ? ENGINE_VERSION_V4 : (v3 ? ENGINE_VERSION_V3 : ENGINE_VERSION), rulesRevision, seedInput, formPeaksOff: v4Engine?.formPeaks === false }, v4Engine
-      ? { entrants: stageEntrants, stageProfile: stage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings ? { gcStandings } : {}), ...v4DayForm6649Arg(v4Engine, rulesRevision), ...v4QueenStageGap7236Arg(v4Engine, rulesRevision), ...v4StagePlanDroppedFront7635Arg(v4Engine, rulesRevision), ...v4DescentRegroupCap7644Arg(v4Engine, rulesRevision), ...v4SplitAttackCause7640Arg(v4Engine, rulesRevision), ...v4LetGoOrder7557Arg(v4Engine, rulesRevision), ...v4IttNoDayRoll7726Arg(v4Engine, rulesRevision) }
+      ? { entrants: stageEntrants, stageProfile: stage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings ? { gcStandings } : {}), ...v4DayForm6649Arg(v4Engine, rulesRevision), ...v4DayWords7725Arg(v4Engine, rulesRevision), ...v4IttNoDayRoll7726Arg(v4Engine, rulesRevision), ...v4QueenStageGap7236Arg(v4Engine, rulesRevision), ...v4StagePlanDroppedFront7635Arg(v4Engine, rulesRevision), ...v4DescentRegroupCap7644Arg(v4Engine, rulesRevision), ...v4SplitAttackCause7640Arg(v4Engine, rulesRevision), ...v4LetGoOrder7557Arg(v4Engine, rulesRevision) }
       : { entrants: stageEntrants, stageProfile: stage, seed, v3 }, v4Engine ? (a) => v4Engine.simulateStage(a) : simulateStage);
     for (const inc of incidents) {
       allIncidents.push({ stage_number: stageNumber, ...inc });
@@ -3083,7 +3098,7 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   // Motorvalget (#3855/#4707) — se buildRaceResults' tilsvarende note.
   // #1857: se buildRaceResults' tilsvarende note.
   const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null, v4Output: v4StageOutput = null, efforts: v4StageEfforts = null } = runRecordedEngineCall(engineInputRecorder, { stageNumber, engine: v4Engine ? "v4" : "v3", engineVersion: v4Engine ? ENGINE_VERSION_V4 : (v3 ? ENGINE_VERSION_V3 : ENGINE_VERSION), rulesRevision, seedInput, formPeaksOff: v4Engine?.formPeaks === false }, v4Engine
-    ? { entrants: simEntrants, stageProfile: thisStage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace: true, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings !== undefined ? { gcStandings } : {}), ...v4DayForm6649Arg(v4Engine, rulesRevision), ...v4QueenStageGap7236Arg(v4Engine, rulesRevision), ...v4StagePlanDroppedFront7635Arg(v4Engine, rulesRevision), ...v4DescentRegroupCap7644Arg(v4Engine, rulesRevision), ...v4SplitAttackCause7640Arg(v4Engine, rulesRevision), ...v4LetGoOrder7557Arg(v4Engine, rulesRevision), ...v4IttNoDayRoll7726Arg(v4Engine, rulesRevision) }
+    ? { entrants: simEntrants, stageProfile: thisStage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace: true, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings !== undefined ? { gcStandings } : {}), ...v4DayForm6649Arg(v4Engine, rulesRevision), ...v4DayWords7725Arg(v4Engine, rulesRevision), ...v4IttNoDayRoll7726Arg(v4Engine, rulesRevision), ...v4QueenStageGap7236Arg(v4Engine, rulesRevision), ...v4StagePlanDroppedFront7635Arg(v4Engine, rulesRevision), ...v4DescentRegroupCap7644Arg(v4Engine, rulesRevision), ...v4SplitAttackCause7640Arg(v4Engine, rulesRevision), ...v4LetGoOrder7557Arg(v4Engine, rulesRevision) }
     : { entrants: simEntrants, stageProfile: thisStage, seed, v3 }, v4Engine ? (a) => v4Engine.simulateStage(a) : simulateStage);
   // S4 (#1176): stemplet med dagens stage_number — additiv, rører ikke resultRows/runs-formen.
   const stampedIncidents = incidents.map((inc) => ({ stage_number: stageNumber, ...inc }));

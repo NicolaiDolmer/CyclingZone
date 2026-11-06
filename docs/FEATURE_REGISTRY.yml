@@ -141,6 +141,16 @@ features:
     verified: 2026-10-30
     note: "day_form_6649 on siden 27/10; læst i prod 30/10."
 
+  - id: race-day-words-7725
+    area: race-engine
+    title_en: Day form in words after the stage
+    title_da: Dagsform i ord efter etapen
+    state: dormant
+    flag: day_words_7725
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 7725
+    verified: 2026-11-06
+    note: "Slukket; kræver day_form_6649."
   - id: race-itt-no-day-roll-7726
     area: race-engine
     title_en: Time trials without the extra day roll
@@ -150,7 +160,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7726
     verified: 2026-11-06
-    note: "#7726 ejer 5/11. Bygget, off; kun løb der ikke er startet; tændes af ejeren efter før/efter-billedet."
+    note: "Slukket; kun nye løb."
     decision: ejer-beslutning
     decide_by: 2026-11-20
 
@@ -993,7 +1003,7 @@ features:
     ssot: docs/PROGRESSION_RULES.md
     epic: 6110
     verified: 2026-11-04
-    note: 'PR #7166/#7415/#7430 (#6853, til dørs 8/8 4/11): ét fælles bånd for bedste rolle på alle flader. "Ét skønnet tal" fra spec 23/10 er ikke tændt; se potential-estimate-display. Funktionens gate er fjernet fra koden, men prod-rækken potential_single_number MÅ IKKE slettes: HelpPage gater Udvikling 2.0-blokkene på den (stageFlagCatalog.js PLAYER_VISIBLE). Statusaudit 4/11.'
+    note: 'PR #7166/#7415/#7430 (#6853, til dørs 8/8 4/11): ét fælles bånd for bedste rolle på alle flader.'
 
   - id: potential-estimate-display
     area: training
@@ -1004,7 +1014,7 @@ features:
     ssot: docs/superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md
     epic: 6110
     verified: 2026-11-05
-    note: 'Byggetrin 4 (#7684): estimates, scouting-rapport, development-projection og akademi svarer fra potentialEstimateRead.js, når flaget er tændt. Slukket som alt andet i Udvikling 2.0; kræver byggetrin 5 (skrivning af skøn) og 6 (frontend) før tænding.'
+    note: 'Byggetrin 4 (#7684): estimates, scouting-rapport, development-projection og akademi svarer fra potentialEstimateRead.js, når flaget er tændt.'
     decision: goer-faerdigt
     decide_by: 2026-12-31
 
@@ -1018,7 +1028,7 @@ features:
     verified: 2026-11-05
     decision: goer-faerdigt
     decide_by: 2026-12-31
-    note: 'Trin 5 (#7685): søndagsjob, holdskifte og nye kig skriver bag flaget potential_estimate_writes (seedes off). Skriver intet, før ejeren har sat private_config potential_estimate_params, og før talent_ceiling er fyldt (trin 12). Ingen flade læser tabellen endnu.'
+    note: 'Trin 5 (#7685): søndagsjob, holdskifte og nye kig skriver bag flaget potential_estimate_writes (seedes off).'
 
   - id: train-now-whole-day
     area: training
