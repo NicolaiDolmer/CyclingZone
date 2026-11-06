@@ -64,6 +64,11 @@ test("validering: alderen", () => {
   assert.equal(age(RAW.ageShare.physical, null), null);
   assert.equal(age(RAW.ageShare.mental, RAW.ageShare.physical), null, "mentale evner får aldrig mindre end fysiske");
   assert.ok(age(RAW.ageShare.physical, RAW.ageShare.physical), "lige meget er tilladt");
+  // Interpolationen må ikke afrunde et punkt under sig selv og afvise gyldige params.
+  assert.ok(age(
+    [{ at: 28, value: 1 }, { at: 34, value: 0.2 }],
+    [{ at: 32, value: 1 }, { at: 38, value: 0.2 }],
+  ), "samme slutværdi på to kurver er gyldig");
 });
 
 test("validering: fokus og type", () => {

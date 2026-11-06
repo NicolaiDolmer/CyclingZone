@@ -86,6 +86,7 @@ import {
 import { CERTAINTY_WORDS, estimatePotential, uncertaintyFor, validateParams as validateEstimateParams } from "../../lib/potentialEstimate.js";
 import { raceDayRoleBaseProgram, raceDayRoleYieldMultipliers, withRaceDayRoleYield } from "../../lib/raceDayRoleYield5950.js";
 import { TRAINING_CONFIG, TRAINING_FOCUSES, programAbilityWeight } from "../../lib/training.js";
+import { computeTrainingScore } from "../../lib/trainingScore.js";
 import { V3_RIDER_TYPE_HARD_PAIRS, applyTrainingCatalog, v3SmartDefaultFocus } from "../../lib/trainingCatalogV3.js";
 import { RECOVERY_INTENSITY, dayTypeForProgram } from "../../lib/trainingDayTypes.js";
 import { facilityTrainingMultiplier, staffTrainingBonus } from "../../lib/staffTrainingBonus.js";
@@ -431,6 +432,7 @@ function trackDate(world, r, dateIndex, used, firstSeason, cap) {
   }
   world.seasonPoints += total;
   if (firstSeason) {
+    r.firstSeasonPoints = (r.firstSeasonPoints ?? 0) + total;
     world.firstSeasonByDate[dateIndex] = (world.firstSeasonByDate[dateIndex] ?? 0) + total;
     const week = Math.floor(dateIndex / 7);
     if (week < 2) (r.firstWeeks ??= [0, 0])[week] += total;
@@ -866,8 +868,21 @@ export function xpVariant(name, opts) {
 
 const statsOf = (values) => {
   const s = values.filter(Number.isFinite).sort((a, b) => a - b);
-  return { n: s.length, p50: round(quantile(s, 0.5)), p90: round(quantile(s, 0.9)), max: s.at(-1) ?? null };
+  const mean = s.length ? s.reduce((sum, x) => sum + x, 0) / s.length : null;
+  return { n: s.length, mean: round(mean, 2), p50: round(quantile(s, 0.5)), p90: round(quantile(s, 0.9)), max: s.at(-1) ?? null };
 };
+
+/** Kalibreringstjek: point i første sæson efter potentiale og aldersgruppe. */
+function firstSeasonByAgeAndPotential(riders) {
+  const out = {};
+  const band = (age) => (age <= 18 ? "16-18" : age <= 25 ? "19-25" : age <= 28 ? "26-28" : age <= 31 ? "29-31" : "32+");
+  for (const r of riders) {
+    if (r.firstSeasonPoints == null || r.inflow) continue;
+    ((out[band(r.start.age)] ??= {})[Math.floor(r.potentiale)] ??= []).push(r.firstSeasonPoints);
+  }
+  return Object.fromEntries(Object.entries(out).sort().map(([b, pots]) => [b,
+    Object.fromEntries(Object.entries(pots).map(([p, v]) => [p, statsOf(v)]))]));
+}
 
 /** X2: karrierens top efter potentiale for ryttere, der startede unge eller kom ind. */
 export function potentialPeakStats(riders) {
@@ -930,6 +945,7 @@ function worldGateStats(world, season, { variant, seasonPoints, inSeasonRatingDr
     mentalOverPhysical: { seniors: seniors.length, mentalBest: seniors.filter((x) => best(x.r, mental) > best(x.r, physical)).length },
     top50ByPotential: byPot.reduce((acc, x) => { const k = Math.floor(x.pot); acc[k] = (acc[k] ?? 0) + 1; return acc; }, {}),
     firstSeason: {
+      byAgeAndPotential: firstSeasonByAgeAndPotential(world.riders),
       byDate: world.firstSeasonByDate,
       barsOverOneAtStart: world.riders.reduce((s, r) => s + (r.startBarsOverOne ?? 0), 0),
       week1: statsOf(weeks.map((r) => r.firstWeeks[0])),
@@ -1025,6 +1041,7 @@ export function raceVsTraining(world, seasonNumber, xp, opts, { sample = 1200 } 
   const ratios = { leader: [], helper: [], free: [] };
   const roles = { leader: "captain", helper: "helper", free: "free_role" };
   let underHard = 0;
+  let underHardNoStaff = 0;
   let underToday = 0;
   let checks = 0;
   const divisor = raceDayBudgetDivisor();
@@ -1041,6 +1058,7 @@ export function raceVsTraining(world, seasonNumber, xp, opts, { sample = 1200 } 
     for (const profile of RACE_PROFILES) {
       const focusAbilities = RACE_PROFILE_ABILITY_MAP[profile];
       const hardShares = xpProgramShares({ focus: "race_day", intensity: "hard", focusAbilities }, ctx);
+      const hardBare = focusAbilities.reduce((s, a) => s + (hardShares[a] ?? 0) * (MENTAL_ABILITIES.has(a) ? rates.mental : rates.physical), 0);
       const hard = focusAbilities.reduce((s, a) => s + (hardShares[a] ?? 0) * staffMults[a] * (MENTAL_ABILITIES.has(a) ? rates.mental : rates.physical), 0);
       for (const [group, role] of Object.entries(roles)) {
         const program = raceDayRoleBaseProgram(profile, { role });
@@ -1050,11 +1068,15 @@ export function raceVsTraining(world, seasonNumber, xp, opts, { sample = 1200 } 
         if (hard > 0) ratios[group].push(race / hard);
         checks += 1;
         if (race < hard) underHard += 1;
+        if (race < hardBare) underHardNoStaff += 1;
         if (caps) {
+          const quality = computeTrainingScore({
+            program, age: null, potentiale: r.potentiale, conditionMult: 1, noise: 1, primaryType: r.primary_type, secondaryType: r.secondary_type,
+          })?.deltaQualityMult ?? 1;
           const pointsXp = focusAbilities.reduce((s, a) => s + ((shares[a] ?? 0) * (mults[a] ?? 1) * (MENTAL_ABILITIES.has(a) ? rates.mental : rates.physical) / opts.raceDaysPerDate) / xpPriceForNextPoint(r.abilities[a] ?? 0, xp), 0);
           const pointsToday = focusAbilities.reduce((s, a) => s + dailyAbilityDelta({
             ability: a, current: Number(r.abilities[a] ?? 0), cap: caps[a], age, program, conditionMult: 1, noise: 1, potentiale: r.potentiale,
-            primaryType: r.primary_type, secondaryType: r.secondary_type, budgetDivisor: divisor, curveB: opts.curveB, riderQualityMult: 1,
+            primaryType: r.primary_type, secondaryType: r.secondary_type, budgetDivisor: divisor, curveB: opts.curveB, riderQualityMult: quality,
           }) * (mults[a] ?? 1), 0);
           if (pointsXp < pointsToday) underToday += 1;
         }
@@ -1065,7 +1087,7 @@ export function raceVsTraining(world, seasonNumber, xp, opts, { sample = 1200 } 
     const s = v.sort((a, b) => a - b);
     return [k, { n: s.length, min: round(s[0], 2), p50: round(quantile(s, 0.5), 2) }];
   }));
-  return { checks, underHard, underToday, ratio: ratioStats };
+  return { checks, underHard, underHardNoStaff, underToday, ratio: ratioStats };
 }
 
 /** Variation med hukommelse: gode og dårlige perioder, neutral over tid, deterministisk pr. seed. */
@@ -1144,7 +1166,7 @@ export function estimateGates(rows, knowledge, params) {
     h1[group] = {};
     for (const word of CERTAINTY_WORDS) {
       const errs = list.filter((x) => x.own === (group === "own") && x.word === word).map((x) => x.err).sort((a, b) => a - b);
-      h1[group][word] = { n: errs.length, p50: quantile(errs, 0.5), p90: quantile(errs, 0.9), within5: errs.length ? round((100 * errs.filter((e) => e <= 5).length) / errs.length) : null };
+      h1[group][word] = { n: errs.length, p50: round(quantile(errs, 0.5)), p90: round(quantile(errs, 0.9)), within5: errs.length ? round((100 * errs.filter((e) => e <= 5).length) / errs.length) : null };
     }
   }
   let unstable = 0;
@@ -1472,7 +1494,7 @@ export function renderXpGates(snapshot, results, gates, opts, date) {
   L.push("");
   if (gates?.x8) {
     const x = gates.x8;
-    L.push(`G1/G2: ${x.checks} rytter-løbsdage. Løbsdag under hård dag i etapens evner: ${x.underHard}. Under løbsdagen i dag (kurve B, point pr. dag): ${x.underToday}.`);
+    L.push(`G1/G2: ${x.checks} rytter-løbsdage. Løbsdag under hård dag i etapens evner: ${x.underHard} med rytterens træner og facilitet, ${x.underHardNoStaff} uden. Under løbsdagen i dag (kurve B, point pr. dag): ${x.underToday}.`);
     L.push("");
     L.push("| Rolle | Forhold løb / hård dag: min | Median |");
     L.push("|---|---|---|");
@@ -1508,14 +1530,26 @@ export function renderXpGates(snapshot, results, gates, opts, date) {
   if (xpRuns.some((r) => r.variant.includes("bonus"))) {
     L.push("## Træn nu (#7801): halvdelen af managerholdene trykker hver dato");
     L.push("");
-    L.push("| Variant | Trykker: rating p50 / p90 / max | Trykker ikke | Forskel p50 |");
+    L.push("Holdene er delt tilfældigt, så de to grupper ikke starter ens. Fordelen er derfor forskellen mellem grupperne minus samme forskel i xp uden bonus.");
+    L.push("");
+    L.push("| Variant | Trykker: snit, p50 / p90 / max | Trykker ikke | Fordel i ratingsnit ved slut |");
     L.push("|---|---|---|---|");
-    for (const r of xpRuns) {
+    const base = xpRuns.find((r) => r.variant === "xp")?.gates.trainNow;
+    const gap = (t) => (t.aktive.mean ?? 0) - (t.passive.mean ?? 0);
+    for (const r of xpRuns.filter((x) => x.variant === "xp" || x.variant.includes("bonus"))) {
       const t = r.gates.trainNow;
-      L.push(`| ${r.variant} | ${fmtStats(t.aktive)} | ${fmtStats(t.passive)} | ${round((t.aktive.p50 ?? 0) - (t.passive.p50 ?? 0))} |`);
+      L.push(`| ${r.variant} | ${t.aktive.mean}, ${fmtStats(t.aktive)} | ${t.passive.mean}, ${fmtStats(t.passive)} | ${base ? round(gap(t) - gap(base), 2) : "-"} |`);
     }
     L.push("");
   }
+  L.push("## Kalibrering: point i første sæson efter alder og potentiale (p50 / p90 / max (n))");
+  L.push("");
+  L.push("| Variant | Alder | Pot 1 | Pot 2 | Pot 3 | Pot 4 | Pot 5 | Pot 6 |");
+  L.push("|---|---|---|---|---|---|---|---|");
+  for (const r of shown) {
+    for (const [band, byPot] of Object.entries(r.gates.firstSeason.byAgeAndPotential)) L.push(`| ${r.variant} | ${band} | ${pots.map((p) => fmtStats(byPot[p])).join(" | ")} |`);
+  }
+  L.push("");
   if (gates?.truth) {
     L.push("## Det nye sande tal (§6): forventet topniveau");
     L.push("");
@@ -1523,7 +1557,7 @@ export function renderXpGates(snapshot, results, gates, opts, date) {
     L.push("");
     L.push("| Potentiale | p50 / p90 / max (n) |");
     L.push("|---|---|");
-    for (const [k, v] of Object.entries(gates.truth.byPotential)) L.push(`| ${k} | ${fmtStats(v)} |`);
+    for (const [k, v] of Object.entries(gates.truth.byPotential).sort(([a], [b]) => Number(a) - Number(b))) L.push(`| ${k} | ${fmtStats(v)} |`);
     L.push("");
   }
   if (gates?.h) {

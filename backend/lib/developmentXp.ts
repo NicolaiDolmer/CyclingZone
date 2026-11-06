@@ -78,7 +78,9 @@ function curveValue(points: readonly XpCurvePoint[], x: number): number {
   if (x <= points[0].at) return points[0].value;
   for (let i = 1; i < points.length; i++) {
     const b = points[i];
-    if (x <= b.at) {
+    // Præcis på et punkt er tallet punktets eget, uden afrunding fra interpolationen.
+    if (x === b.at) return b.value;
+    if (x < b.at) {
       const a = points[i - 1];
       return a.value + ((b.value - a.value) * (x - a.at)) / (b.at - a.at);
     }
