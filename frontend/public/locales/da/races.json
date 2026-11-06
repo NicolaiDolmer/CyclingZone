@@ -205,6 +205,7 @@
       "kmAt": "km {km}",
       "kmSpan": "km {from}-{to}",
       "unfolded": "Sådan gik det",
+      "lossUnknown": "Tabte tid, årsag ukendt: {names}.",
       "source": "Hver tid, hvert hul og hver sætning her kommer fra etapens løbslog.",
       "replay": {
         "play": "Afspil etapen",
@@ -466,7 +467,7 @@
       "fillMissing": "Udfyld manglende",
       "clearDay": "Ryd dag",
       "clearAllSeason": "Ryd alt",
-      "bound": "Låste ryttere kan ikke sættes på nogen af de viste løb i dag",
+      "bound": "Låste ryttere kan ikke sættes på nogen af de viste løb",
       "loadShort": "{days}d",
       "loadTitle": "Sæson-belastning: {races, plural, one {# løb} other {# løb}}, {days, plural, one {# løbsdag} other {# løbsdage}} tilmeldt denne sæson",
       "clearDayTooltip": "Rydder {races, plural, one {# løb} other {# løb}} og fjerner {riders, plural, one {# rytter} other {# ryttere}} for denne dag"
@@ -890,6 +891,10 @@
       "bodyAt": "Du trykkede Træn nu kl. {time}. Ryttere der trænede i dag kan ikke køre dagens løb.",
       "body": "Ryttere der trænede i dag kan ikke køre dagens løb.",
       "rider": "Trænede i dag",
+      "titleEarlier": "Låst.",
+      "bodyEarlierAt": "Du trykkede Træn nu {day} kl. {time}. Ryttere der trænede på en af løbets dage kan ikke køre løbet.",
+      "bodyEarlier": "Ryttere der trænede på en af løbets dage kan ikke køre løbet.",
+      "riderEarlier": "Trænede før",
       "columnLocked": "Låst"
     },
     "saving": "Gemmer…",
@@ -1568,6 +1573,10 @@
           "all_out_held_on": "{rider} kørte alt ud på din ordre og blev i den forreste gruppe."
         },
         "breakaway_dropped": "{riders} {count, plural, one {bliver} other {bliver}} sat af fra udbruddet.",
+        "breakaway_attempt_failed": "{riders}{others, plural, =0 {} one { og # anden} other { og # andre}} forsøger at komme væk, men slipper ikke fri. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} og {teamLast}}} arbejdede imod. Forsøget kostede kræfter resten af etapen.",
+        "breakaway_attempt_failed_field": "{riders}{others, plural, =0 {} one { og # anden} other { og # andre}} forsøger at komme væk, men slipper ikke fri. {teamCount, plural, one {# hold} other {# hold}} arbejdede imod. Forsøget kostede kræfter resten af etapen.",
+        "breakaway_attempt_none_clear": "{riders}{others, plural, =0 {} one { og # anden} other { og # andre}} forsøger at komme væk, men ingen slipper fri. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} og {teamLast}}} arbejdede imod. Forsøget kostede kræfter resten af etapen.",
+        "breakaway_attempt_none_clear_field": "{riders}{others, plural, =0 {} one { og # anden} other { og # andre}} forsøger at komme væk, men ingen slipper fri. {teamCount, plural, one {# hold} other {# hold}} arbejdede imod. Forsøget kostede kræfter resten af etapen.",
         "group_ahead_formed": "{riders} kører væk i en gruppe foran feltet.",
         "group_ahead_caught": "Gruppen foran feltet bliver hentet: {riders}.",
         "group_ahead_survived": "Gruppen foran feltet holder hele vejen til stregen.",

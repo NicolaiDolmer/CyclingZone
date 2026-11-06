@@ -8,11 +8,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../../lib/intl.js";
+import { filmKmValue } from "../../../lib/stageTimelineKmSpan.ts";
+import { LossRow } from "../StageSplitTimes.jsx";
 import type { Climb, ElevationSeries, StageProfile } from "./stagePageV2Model.ts";
 import {
   buildReport, curateMoments, dayWordSentences, finaleData, formatClock, lineReplayKm, myBestRider, namesList, pickGroups,
   replayGroupsAt, reportTextKey, splitRows, wholeStageFrames, frameAt,
-  isPeloton, isTimeTrialStory, type Cast, type RaceStory, type ReplayGroup, type ReportSentence, type SplitRow, type StoryLine, type StoryNarrativeContext,
+  isTimeTrialStory, castNames, ownTimeLoss, type Cast, type RaceStory, type ReplayGroup, type ReportSentence, type SplitRow, type StoryLine, type StoryNarrativeContext,
 } from "./raceStoryModel.ts";
 import StageProfileV2, { GradientLegend } from "./StageProfileV2.tsx";
 import FinaleView, { PlayIcon, prefersReducedMotion } from "./FinaleView.tsx";
@@ -118,7 +120,7 @@ export default function RaceStoryCard({ story, profile, series, climbs, cast, ti
       )}
 
       {view !== "route" && (
-        <StorySection story={story} lines={lines} cast={cast} km={view === "stage" ? km : null} onJump={jumpTo} ownOut={ownOut} dayWords={dayWords} />
+        <StorySection story={story} lines={lines} cast={cast} km={view === "stage" ? km : null} onJump={jumpTo} ownOut={ownOut} narrative={narrative} dayWords={dayWords} />
       )}
     </Section>
   );
@@ -156,7 +158,7 @@ function ReplayView({ story, profile, series, climbs, cast, km, onKm }: {
   }
 
   const labelFor = (g: ReplayGroup): string => {
-    if (isPeloton(g.rest, g.size)) return t("stagePageV2.story.group.peloton");
+    if (g.peloton) return t("stagePageV2.story.group.peloton");
     return namesList(g.riderIds, cast, 2, g.size) || t("stagePageV2.story.group.riders", { count: g.size ?? 0 });
   };
   const { shown, rest } = pickGroups(groups, 2);
@@ -249,12 +251,13 @@ function ReplayView({ story, profile, series, climbs, cast, km, onKm }: {
 
 // ── Historien: oejeblikke, mellemtider, referat ───────────────────────────
 
-function StorySection({ story, lines, cast, km, onJump, ownOut, dayWords }: { story: RaceStory; lines: StoryLine[]; cast: Cast; km: number | null; onJump: (l: StoryLine) => void; ownOut: ReportSentence[]; dayWords: ReportSentence[] }) {
+function StorySection({ story, lines, cast, km, onJump, ownOut, narrative, dayWords }: { story: RaceStory; lines: StoryLine[]; cast: Cast; km: number | null; onJump: (l: StoryLine) => void; ownOut: ReportSentence[]; narrative: StoryNarrativeContext | null; dayWords: ReportSentence[] }) {
   const { t } = useTranslation("races");
   const text = useStoryText(cast);
   const me = useMemo(() => myBestRider(story, cast), [story, cast]);
   const rows = useMemo(() => splitRows(story, me), [story, me]);
   const report = useMemo(() => buildReport(story, lines, cast, ownOut, dayWords), [story, lines, cast, ownOut, dayWords]);
+  const loss = useMemo(() => ownTimeLoss(story, cast, narrative), [story, cast, narrative]);
   const current = km == null ? null : [...lines].reverse().find((l) => l.km <= km + 1e-6) ?? null;
 
   return (
@@ -308,6 +311,17 @@ function StorySection({ story, lines, cast, km, onJump, ownOut, dayWords }: { st
             </p>
           </div>
         )}
+        {(loss.entries.length > 0 || loss.unknown) && (
+          <div>
+            <h3 className="m-0 mb-1 font-data text-3xs font-semibold uppercase tracking-[.16em] text-cz-3">{t("detail.film.split.lossTitle")}</h3>
+            <ul className="m-0 list-none p-0">
+              {loss.entries.map((entry, i) => (
+                <LossRow key={`${entry.riderId}-${entry.km}-${i}`} entry={entry} kmLabel={filmKmValue(entry.shown, text.km)} riderNameById={castNames(cast)} teamNameById={narrative?.teamNameById} t={t} />
+              ))}
+              {loss.unknown && <li className="border-t border-cz-border py-1.5 text-sm leading-snug text-cz-1 first:border-t-0">{t("stagePageV2.story.lossUnknown", { names: loss.unknown })}</li>}
+            </ul>
+          </div>
+        )}
         <p className="m-0 font-data text-2xs text-cz-3">{t("stagePageV2.story.source")}</p>
       </div>
     </div>
@@ -333,7 +347,7 @@ function SplitTable({ rows, cast, me, precise }: { rows: SplitRow[]; cast: Cast;
       : t("stagePageV2.story.splits.top", { name: r.name ?? t("stagePageV2.story.splits.climb") });
   };
   const leading = (r: SplitRow) => {
-    if (isPeloton(r.leaderIsRest, r.leaderSize)) return t("stagePageV2.story.group.peloton");
+    if (r.leaderIsPeloton) return t("stagePageV2.story.group.peloton");
     return namesList(r.leaderIds, cast, 2, r.leaderSize) || (r.leaderSize ? t("stagePageV2.story.group.riders", { count: r.leaderSize }) : "-");
   };
   const myGap = (r: SplitRow) => {

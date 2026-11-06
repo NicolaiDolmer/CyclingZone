@@ -222,6 +222,7 @@
       "kmAt": "km {km}",
       "kmSpan": "km {from}-{to}",
       "unfolded": "Cómo se desarrolló",
+      "lossUnknown": "Perdió tiempo, causa desconocida: {names}.",
       "source": "Cada tiempo, diferencia y frase de aquí sale del registro de carrera de esta etapa.",
       "replay": {
         "play": "Reproducir la etapa",
@@ -483,7 +484,7 @@
       "fillMissing": "Rellenar huecos",
       "clearDay": "Borrar día",
       "clearAllSeason": "Borrar todo",
-      "bound": "Los ciclistas bloqueados no se pueden añadir a ninguna carrera de las que se muestran hoy",
+      "bound": "Los ciclistas bloqueados no se pueden añadir a ninguna de las carreras mostradas",
       "loadShort": "{days} d",
       "loadTitle": "Carga de la temporada: {races, plural, one {# carrera} other {# carreras}}, {days, plural, one {# día de carrera} other {# días de carrera}} inscritos esta temporada",
       "clearDayTooltip": "Borra {races, plural, one {# carrera} other {# carreras}} y quita {riders, plural, one {# ciclista} other {# ciclistas}} de este día"
@@ -907,6 +908,10 @@
       "bodyAt": "Pulsaste Entrenar ahora a las {time}. Los ciclistas que han entrenado hoy no pueden correr la carrera de hoy.",
       "body": "Los ciclistas que han entrenado hoy no pueden correr la carrera de hoy.",
       "rider": "Entrenó hoy",
+      "titleEarlier": "Bloqueado.",
+      "bodyEarlierAt": "Pulsaste Entrenar ahora {day} a las {time}. Los ciclistas que entrenaron en uno de los días de la carrera no pueden correrla.",
+      "bodyEarlier": "Los ciclistas que entrenaron en uno de los días de la carrera no pueden correrla.",
+      "riderEarlier": "Entrenó antes",
       "columnLocked": "Bloqueado"
     },
     "saving": "Guardando…",
@@ -1585,6 +1590,10 @@
           "all_out_held_on": "{rider} fue a tope siguiendo tu orden y se mantuvo en el grupo de cabeza."
         },
         "breakaway_dropped": "{riders} {count, plural, one {es descolgado} other {son descolgados}} de la escapada.",
+        "breakaway_attempt_failed": "{riders}{others, plural, =0 {} one { y # más} other { y # más}} {count, plural, one {intenta} other {intentan}} escaparse, pero no {count, plural, one {logra} other {logran}} marcharse. {teamCount, plural, =1 {{teamLast} reaccionó} other {{teamsHead} y {teamLast} reaccionaron}}. El intento costó fuerzas para el resto de la etapa.",
+        "breakaway_attempt_failed_field": "{riders}{others, plural, =0 {} one { y # más} other { y # más}} {count, plural, one {intenta} other {intentan}} escaparse, pero no {count, plural, one {logra} other {logran}} marcharse. {teamCount, plural, one {# equipo reaccionó} other {# equipos reaccionaron}}. El intento costó fuerzas para el resto de la etapa.",
+        "breakaway_attempt_none_clear": "{riders}{others, plural, =0 {} one { y # más} other { y # más}} {count, plural, one {intenta} other {intentan}} escaparse, pero nadie logra marcharse. {teamCount, plural, =1 {{teamLast} reaccionó} other {{teamsHead} y {teamLast} reaccionaron}}. El intento costó fuerzas para el resto de la etapa.",
+        "breakaway_attempt_none_clear_field": "{riders}{others, plural, =0 {} one { y # más} other { y # más}} {count, plural, one {intenta} other {intentan}} escaparse, pero nadie logra marcharse. {teamCount, plural, one {# equipo reaccionó} other {# equipos reaccionaron}}. El intento costó fuerzas para el resto de la etapa.",
         "group_ahead_formed": "{riders} {count, plural, one {se escapa} other {se escapan}} en un grupo por delante del pelotón.",
         "group_ahead_caught": "El grupo por delante del pelotón es alcanzado: {riders}.",
         "group_ahead_survived": "El grupo por delante del pelotón aguanta hasta la línea.",

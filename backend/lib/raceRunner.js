@@ -60,6 +60,7 @@ import { isStagePlanDroppedFront7635Enabled } from "./stagePlanDroppedFront7635F
 import { isDescentRegroupCap7644Enabled } from "./descentRegroupCap7644Flag.js"; // #7644
 import { isSplitAttackCause7640Enabled } from "./splitAttackCause7640Flag.js"; // #7640
 import { isLetGoOrder7557Enabled } from "./letGoOrder7557Flag.js"; // #7557
+import { isStartedFieldLock7733Enabled } from "./startedFieldLock7733Flag.js"; // #7733
 // #5462: skadens varighed i LOEBSDAGE naar loebsdagen er tick-enheden.
 import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
 import { isTrainingConditionPerDateEnabled } from './trainingDateConditionFlag.js';
@@ -1727,7 +1728,7 @@ export async function resolveRaceSquad({ supabase, race }) {
 // med navn, is_u25, abilities + race_role. Hold MED manager-udtagne entries røres ikke.
 // persist=false (#1102 dryRun): auto-fill beregnes i hukommelsen — ingen DB-insert.
 // stages bruges af autopick til egnethedsscore (suitabilityScore pr. terrain).
-export async function loadEntrantsForRace({ supabase, race, stages = [], persist = true, allowAutofill = true, onTeamsDropped = null, today = null }) {
+export async function loadEntrantsForRace({ supabase, race, stages = [], persist = true, allowAutofill = true, onTeamsDropped = null, today = null, startedFieldLock = false }) {
   // #4357: Postgres garanterer INGEN rækkefølge uden ORDER BY — kan skifte efter
   // updates/vacuum/planændring. Selve motoren (buildTeamContext) er nu FØRSTE-
   // vinder-deterministisk uafhængigt af denne rækkefølge (se raceSimulator.js), men
@@ -1746,7 +1747,12 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   // efterlod entries i den gamle divisions løb. Kun hold i løbets EGEN division må være i feltet.
   // #5645: for et ungdomsløb sammenlignes løbets pulje med holdets pulje FOR TRUPPEN.
   const raceSquad = raceSquadOf(race);
-  if (race.league_division_id != null && existingEntries.length) {
+  // #7733: pulje og trup afgoer hvem der maa stille op, ikke hvem der er i loebet. Med
+  // startedFieldLock (kun fra etape 2, kontakten started_field_lock_7733) springes de to
+  // regler over, saa et hold eller en rytter der skifter pulje eller trup koerer loebet
+  // faerdigt i stedet for at forsvinde uden spor. Solgt, fyret, pensioneret og skadet
+  // gaelder stadig.
+  if (race.league_division_id != null && existingEntries.length && !startedFieldLock) {
     const teamIds = [...new Set(existingEntries.map((e) => e.team_id).filter(Boolean))];
     const { data: teamDivs, error: teamDivErr } = await supabase.from("teams")
       .select(raceSquad === "senior" ? "id, league_division_id" : "id, league_division_id, u23_league_division_id, junior_league_division_id")
@@ -1779,8 +1785,8 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     // #5645: ghost-tjekket mod LØBETS trup — en U23-rytter i et U23-løb er ikke en ghost,
     // en senior i et U23-løb er. #6964 (ejer 20/10): og en for gammel rytter starter ikke.
     // Kun FØR start: et igangværende etapeløbs startfelt er låst (#1825/#1844).
-    const seasonNumber = Number(race.stages_completed) > 0 ? undefined : await loadRaceSeasonNumber({ supabase, race });
-    existingEntries = filterEligibleEntries({ entries: existingEntries, ridersById, squad: raceSquad, seasonNumber });
+    const seasonNumber = startedFieldLock || Number(race.stages_completed) > 0 ? undefined : await loadRaceSeasonNumber({ supabase, race });
+    existingEntries = filterEligibleEntries({ entries: existingEntries, ridersById, squad: startedFieldLock ? ANY_SQUAD : raceSquad, seasonNumber });
   }
   // #3896: skadede committede entries må hverken starte eller simuleres — motoren
   // ekskluderede tidligere KUN skade fra auto-fyld/auto-pick-kandidatpuljer (#2637/#1306),
@@ -3355,6 +3361,8 @@ export async function simulateStageByIndex({
   // #2410 (event-log S1): injectable, default læser den ægte kill-switch
   // (app_config.race_stage_timeline) — se simulateRace's tilsvarende note.
   checkTimelineEnabled = isRaceStageTimelineEnabled,
+  // #7733: injectable, default læser app_config started_field_lock_7733. Kun fra etape 2.
+  checkStartedFieldLock7733Enabled = isStartedFieldLock7733Enabled,
   // #3855/#4707: se simulateRace' tilsvarende note. Læses pr. etape-invokation,
   // hvilket ER kill-switchen: slukkes flaget midt i et etapeløb, kører næste
   // etape v3, og klassementet akkumuleres uændret fra race_results.
@@ -3575,10 +3583,14 @@ export async function simulateStageByIndex({
   let injuryWithdrawals = [];
 
   if (!finalizationPending) {
+    // #7733: fail closed, kun app_config started_field_lock_7733 = "on" taender.
+    const startedFieldLock = stageIndex > 0
+      && await Promise.resolve().then(() => checkStartedFieldLock7733Enabled(supabase)).catch(() => false) === true;
     // #1844: auto-fyld KUN ved etape 1. Senere etaper må ikke tilføje nye ryttere.
     entrants = await loadEntrantsForRace({
       supabase, race, stages, persist: persistEntries, allowAutofill: stageIndex === 0,
       onTeamsDropped: (ids) => droppedAtStart.push(...ids), // #6740: sendes efter result-skrivningen
+      startedFieldLock,
     });
 
     // #2352: kill-switch læst ÉN gang pr. etape-invokation (hver stageIndex-kald

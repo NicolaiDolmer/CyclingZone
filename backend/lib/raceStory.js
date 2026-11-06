@@ -398,6 +398,11 @@ export function leaderTimeAt(story, km) {
 
 // ── Hovedfunktion ──────────────────────────────────────────────────────────────
 
+/** #7734: linjen en sen halvdel kører på, før den når gruppen på tjekpunktet. */
+function ownLineId(groupId) {
+  return `${groupId}-late`;
+}
+
 /** Motorens egen rækkefølge: km som skrevet, samme km = input-rækkefølgen. */
 function engineOrder(events) {
   return (Array.isArray(events) ? events : [])
@@ -543,6 +548,19 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
   const trackSpans = (event) => {
     const p = event.params ?? {};
     const groupId = str(p.group_id);
+    // #7734: en sen halvdel med egen linje kører fra kildegruppen og når først gruppen
+    // på tjekpunktet. Linjen findes kun her: medlemskabet skifter gruppe på tjekpunktet.
+    if (event.type === "peloton_splits" && p.own_line && groupId) {
+      spans.push({
+        group_id: ownLineId(groupId),
+        from_km: round2(placeKm(event)),
+        to_km: round2(recordedKm(event)),
+        source_group_id: str(p.source_group_id),
+        into_group_id: groupId,
+        rider_ids: ids(p.rider_ids).filter((id) => !m.abandoned.has(id)),
+      });
+      return [];
+    }
     // #6350: en sen halvdel af et split danner ikke gruppen, den slutter sig til.
     if (event.type === "peloton_splits" && p.joined_late && groupId && openSpans.has(groupId)) {
       lateJoins.set(groupId, [...(lateJoins.get(groupId) ?? []), { km: round2(placeKm(event)), rider_ids: ids(p.rider_ids) }]);
@@ -593,10 +611,14 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
     const early = ordered.filter((e) => recordedKm(e) > km + 1e-9 && placeKm(e) < km - 1e-9);
     const membership = early.length ? cloneMembership(m) : m;
     const sources = new Map();
+    const lineGain = new Map(); // #7734: egen linje -> hvad den har tabt til kildegruppen på passagen
     for (const e of early) {
-      const opening = spanOpening(e, membership.restId);
+      // #7734: på vejen kører den sene halvdel på sin egen linje, ikke i gruppen endnu.
+      const onRoad = e.params?.own_line ? { ...e, params: { ...e.params, group_id: ownLineId(str(e.params.group_id)) } } : e;
+      const opening = spanOpening(onRoad, membership.restId);
       if (opening && !sources.has(opening.groupId)) sources.set(opening.groupId, opening.source);
-      applyMembership(membership, e);
+      applyMembership(membership, onRoad);
+      if (onRoad !== e) lineGain.set(onRoad.params.group_id, (finite(e.params.gap_seconds) ?? 0) * (km - placeKm(e)) / (recordedKm(e) - placeKm(e)));
     }
     const measured = new Map(); // group -> { km, gap }
     for (const e of ordered) {
@@ -624,7 +646,7 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
     for (const id of liveGroupIds(membership)) {
       if (lastGap.has(id)) continue;
       const gap = resolve(id, 0);
-      if (gap != null) fresh.set(id, gap);
+      if (gap != null) fresh.set(id, round2(gap + (lineGain.get(id) ?? 0)));
     }
     return takeSnapshot(km, { record: false, membership, fresh });
   };
@@ -892,6 +914,29 @@ export function checkpointGapForRider(checkpoint, riderId) {
   const group = explicit ?? checkpoint.groups.find((g) => g.includes_rest) ?? null;
   if (!group) return null;
   return { group_id: group.group_id, gap_s: group.gap_s, time_s: group.time_s, in_front: group.gap_s === 0, via_rest: !explicit };
+}
+
+/**
+ * #7705: de af `riderIds` der kom i mål efter feltet. Feltet er den største
+ * gruppe på samme hul i resultatet (ved lige store grupper den forreste), så en
+ * rytter der sad i feltet bag et udbrud ikke tæller som en der tabte tid.
+ * @param {Array<{rider_id: string, gap_s: number|null}>} rows målresultatet med hul til vinderen
+ * @param {Iterable<string>} riderIds
+ * @returns {string[]}
+ */
+export function ridersBehindField(rows, riderIds) {
+  const gapOf = new Map();
+  const sizes = new Map();
+  for (const row of rows ?? []) {
+    const gap = finite(row?.gap_s);
+    if (gap == null) continue;
+    gapOf.set(row.rider_id, gap);
+    sizes.set(gap, (sizes.get(gap) ?? 0) + 1);
+  }
+  const biggest = [...sizes].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0];
+  if (!biggest) return [];
+  const field = biggest[0];
+  return [...riderIds].filter((id) => gapOf.has(id) && gapOf.get(id) - field >= GAP_CHANGE_EXPLAIN_SECONDS);
 }
 
 function lerp(fromKm, fromGap, toKm, toGap, km) {

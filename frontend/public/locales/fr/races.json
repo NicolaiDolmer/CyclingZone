@@ -222,6 +222,7 @@
       "kmAt": "km {km}",
       "kmSpan": "km {from}-{to}",
       "unfolded": "Comment ça s'est passé",
+      "lossUnknown": "Temps perdu, cause inconnue : {names}.",
       "source": "Chaque temps, écart et phrase ici vient du journal de course de cette étape.",
       "replay": {
         "play": "Rejouer l'étape",
@@ -483,7 +484,7 @@
       "fillMissing": "Combler les manques",
       "clearDay": "Vider le jour",
       "clearAllSeason": "Tout vider",
-      "bound": "Les coureurs verrouillés ne peuvent être ajoutés à aucune course affichée aujourd'hui",
+      "bound": "Les coureurs verrouillés ne peuvent être ajoutés à aucune des courses affichées",
       "loadShort": "{days} j",
       "loadTitle": "Charge de la saison : {races, plural, one {# course} other {# courses}}, {days, plural, one {# jour de course engagé} other {# jours de course engagés}} cette saison",
       "clearDayTooltip": "Vide {races, plural, one {# course} other {# courses}} et retire {riders, plural, one {# coureur} other {# coureurs}} pour ce jour"
@@ -907,6 +908,10 @@
       "bodyAt": "Tu as appuyé sur S'entraîner maintenant à {time}. Les coureurs qui se sont entraînés aujourd'hui ne peuvent pas disputer la course du jour.",
       "body": "Les coureurs qui se sont entraînés aujourd'hui ne peuvent pas disputer la course du jour.",
       "rider": "Entraîné aujourd'hui",
+      "titleEarlier": "Verrouillé.",
+      "bodyEarlierAt": "Tu as appuyé sur S'entraîner maintenant {day} à {time}. Les coureurs qui se sont entraînés un des jours de la course ne peuvent pas la disputer.",
+      "bodyEarlier": "Les coureurs qui se sont entraînés un des jours de la course ne peuvent pas la disputer.",
+      "riderEarlier": "Entraîné plus tôt",
       "columnLocked": "Verrouillé"
     },
     "saving": "Enregistrement…",
@@ -1585,6 +1590,10 @@
           "all_out_held_on": "{rider} a roulé à fond sur ton ordre et est resté dans le groupe de tête."
         },
         "breakaway_dropped": "{riders} {count, plural, one {est lâché} other {sont lâchés}} de l'échappée.",
+        "breakaway_attempt_failed": "{riders}{others, plural, =0 {} one { et # autre} other { et # autres}} {count, plural, one {tente} other {tentent}} de s’échapper, mais {count, plural, one {ne sort} other {ne sortent}} pas du peloton. {teamCount, plural, =1 {{teamLast} a réagi} other {{teamsHead} et {teamLast} ont réagi}}. La tentative a coûté des forces pour le reste de l’étape.",
+        "breakaway_attempt_failed_field": "{riders}{others, plural, =0 {} one { et # autre} other { et # autres}} {count, plural, one {tente} other {tentent}} de s’échapper, mais {count, plural, one {ne sort} other {ne sortent}} pas du peloton. {teamCount, plural, one {# équipe a réagi} other {# équipes ont réagi}}. La tentative a coûté des forces pour le reste de l’étape.",
+        "breakaway_attempt_none_clear": "{riders}{others, plural, =0 {} one { et # autre} other { et # autres}} {count, plural, one {tente} other {tentent}} de s’échapper, mais personne ne sort du peloton. {teamCount, plural, =1 {{teamLast} a réagi} other {{teamsHead} et {teamLast} ont réagi}}. La tentative a coûté des forces pour le reste de l’étape.",
+        "breakaway_attempt_none_clear_field": "{riders}{others, plural, =0 {} one { et # autre} other { et # autres}} {count, plural, one {tente} other {tentent}} de s’échapper, mais personne ne sort du peloton. {teamCount, plural, one {# équipe a réagi} other {# équipes ont réagi}}. La tentative a coûté des forces pour le reste de l’étape.",
         "group_ahead_formed": "{riders} {count, plural, one {s'échappe} other {s'échappent}} dans un groupe devant le peloton.",
         "group_ahead_caught": "Le groupe devant le peloton est repris : {riders}.",
         "group_ahead_survived": "Le groupe devant le peloton tient jusqu'à la ligne.",

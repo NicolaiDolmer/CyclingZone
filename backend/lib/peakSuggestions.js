@@ -18,14 +18,14 @@
 //     is_auto_filled=false — den ægte "løbsprogram"-signal issue'et beder om;
 //     auto-fyldte entries opstår kun tæt på løbsdag og er IKKE et program-valg).
 //  3. Fyld resterende slots med bedst egnede løb: normaliseret type/evne-match
-//     mod løbets demand-vektor (samme formel som frontend riderSuitability,
-//     genbruger backend raceSimulator.terrainScore — ét sted for tallet).
+//     mod løbets rutevektor (rutematch-tallet fra routeMatch.js, #6207 — ét
+//     sted for tallet).
 //  4. Minimums-mellemrum mellem valgte peak-vindue-centre, så assistenten ikke
 //     stabler build→taper for to mål-løb oveni hinanden.
 //  5. Alder modulerer ANTAL forslag (ikke hvilke løb): unge/udviklings-ryttere
 //     får ét klart sæsonmål frem for et fuldt to-peak-program.
 
-import { ABILITY_KEYS, terrainScore } from "./raceSimulator.js";
+import { routeMatchScore } from "./routeMatch.js";
 import { snapPeakWindow, MAX_PEAK_PLANS_PER_SEASON } from "./riderPeakPlans.js";
 import { ageForSeason } from "./riderSeasonAge.js";
 
@@ -76,24 +76,14 @@ export function suggestedPeakCount(age, {
 }
 
 /**
- * Normaliseret 0-100 egnethed for én rytter mod ét løbs demand-vektor — spejl
- * af frontend/src/lib/suitability.js's riderSuitability, men genbruger
- * backend raceSimulator.terrainScore for selve rå-summen (ét sted for
- * evne×demand-formlen; kun normaliseringen til et aflæseligt 0-100-tal
- * duplikeres, samme som frontend af nødvendighed må gøre over ledningen).
+ * Rutematch 0-100 for én rytter mod ét løbs rutevektor (routeMatch.js, #6207);
+ * uden vektor 0, så løbet rangerer sidst.
  * @param {Record<string,number>} abilities
  * @param {Record<string,number>|null} demandVector
  * @returns {number}
  */
 export function normalizedSuitability(abilities, demandVector) {
-  if (!demandVector || typeof demandVector !== "object") return 0;
-  let denom = 0;
-  for (const k of ABILITY_KEYS) {
-    const w = Number(demandVector[k]);
-    if (Number.isFinite(w) && w > 0) denom += w;
-  }
-  if (denom <= 0) return 0;
-  return Math.round((terrainScore(abilities, demandVector) / denom) * 100);
+  return routeMatchScore(abilities, demandVector) ?? 0;
 }
 
 /**

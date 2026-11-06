@@ -8,7 +8,7 @@ import { buildRaceStory, replayFrames } from "../../../../../backend/lib/raceSto
 import { withEventPlaces } from "../../../../../backend/lib/raceTimeline.js";
 import {
   asStory, isTimeTrialStory, buildReport, castFrom, curateMoments, dayWordsByRider, dayWordSentences, finaleData, finaleEndTime, finaleMarkerLabelsShown, finaleStateAt, formatClock, frameAt,
-  groupMembersAt, groupOfRider, isPeloton, leaderKmAt, lineReplayKm, MAX_STORY_LINES, namesList, ownOutSentences, parseGap, pickGroups,
+  groupMembersAt, groupOfRider, leaderKmAt, lineReplayKm, mainGroupId, MAX_STORY_LINES, namesList, ownOutSentences, ownTimeLoss, parseGap, pickGroups,
   replayGroupsAt, reportTextKey, splitRows, wholeStageFrames, myBestRider,
   type RaceStory, type StoryLine,
 } from "./raceStoryModel.ts";
@@ -28,7 +28,7 @@ function hillyTimeline() {
     ev(60, "peloton_splits", { group_id: "gruppetto-3", source_group_id: "peloton-0", rider_ids: ["x3", "m2"], gap_seconds: 40, exact_km: 58.3, exact_time: 5320 }),
     ev(60, "peloton_splits", { group_id: "gruppetto-4", source_group_id: "peloton-0", rider_ids: ["x4"], gap_seconds: 50, exact_km: 58.4, exact_time: 5330 }),
     ev(60, "kom_passage", { name: "Col A", category: "1", exact_km: 60, top: [{ rider_id: "b1", points: 10 }] }),
-    ev(60, "gap_update", { group_id: "peloton-0", gap_seconds: 120, exact_km: 60, exact_time: 5520 }),
+    ev(60, "gap_update", { group_id: "peloton-0", gap_seconds: 60, exact_km: 60, exact_time: 5460 }),
     ev(60, "gap_update", { group_id: "gruppetto-1", gap_seconds: 150, exact_km: 60, exact_time: 5550 }),
     ev(60, "gap_update", { group_id: "gruppetto-2", gap_seconds: 170, exact_km: 60, exact_time: 5570 }),
     ev(60, "gap_update", { group_id: "gruppetto-3", gap_seconds: 190, exact_km: 60, exact_time: 5590 }),
@@ -276,10 +276,68 @@ test("asStory, formatClock og parseGap", () => {
   assert.equal(parseGap("+1:10"), 70);
   assert.equal(parseGap("2:23:20"), 8600);
   assert.equal(parseGap("DNF"), null);
-  assert.equal(isPeloton(true, null), true);
-  assert.equal(isPeloton(true, 40), true);
-  assert.equal(isPeloton(true, 1), false, "resten paa een rytter er ikke et felt");
-  assert.equal(isPeloton(false, 40), false);
+});
+
+test("mainGroupId (#7704): feltet er den stoerste gruppe, ikke motorens startgruppe", () => {
+  const g = (group_id: string, size: number | null, gap_s: number, includes_rest = false) => ({ group_id, size, gap_s, includes_rest });
+  assert.equal(mainGroupId([g("peloton-0", 40, 0, true)]), "peloton-0");
+  assert.equal(mainGroupId([g("peloton-0", 16, 60, true), g("gruppetto-1", 70, 300), g("gruppetto-2", 30, 400)]), "gruppetto-1", "lille rest foran en stor gruppe");
+  assert.equal(mainGroupId([g("peloton-0", 80, 60, true), g("gruppetto-1", 30, 300)]), "peloton-0", "resten er stadig stoerst");
+  assert.equal(mainGroupId([g("peloton-0", null, 60, true), g("gruppetto-1", 30, 300)]), "peloton-0", "uden field_count er resten det bedste bud");
+  assert.equal(mainGroupId([g("peloton-0", 1, 60, true), g("solo-1", 1, 90)]), null, "ingen gruppe er et felt");
+  assert.equal(mainGroupId([g("gruppetto-1", 20, 90), g("gruppetto-2", 20, 30)]), "gruppetto-2", "lige stor: gruppen foran");
+  assert.equal(mainGroupId([g("breakaway-0", 12, 0), g("peloton-0", 9, 60, true)]), null, "et udbrud er aldrig feltet");
+  assert.equal(mainGroupId([g("breakaway-0", 30, 0, true)]), "breakaway-0", "#7388: resten er gaaet op i gruppen");
+});
+
+/** Som prod (#7704): feltet falder fra hinanden bagfra, saa startgruppen er en lille gruppe foran en stor. */
+function shatteredTimeline() {
+  const ids = (prefix: string, n: number) => Array.from({ length: n }, (_, i) => `${prefix}${i}`);
+  return [
+    ev(0, "stage_start", { exact_km: 0, exact_time: 0, distance_km: 100, field_count: 60, profile_type: "mountain" }),
+    ev(10, "breakaway_formed", { group_id: "breakaway-0", rider_ids: ["b1", "b2", "b3"], exact_km: 10, exact_time: 900 }),
+    ev(20, "gap_update", { group_id: "peloton-0", gap_seconds: 60, exact_km: 20, exact_time: 1860 }),
+    ev(30, "gap_update", { group_id: "peloton-0", gap_seconds: 150, exact_km: 30, exact_time: 2850 }),
+    ev(40, "peloton_splits", { group_id: "gruppetto-1", source_group_id: "peloton-0", rider_ids: [...ids("g", 34), "m1"], gap_seconds: 60, exact_km: 40, exact_time: 3660 }),
+    ev(40, "peloton_splits", { group_id: "gruppetto-2", source_group_id: "peloton-0", rider_ids: ids("h", 10), gap_seconds: 120, exact_km: 40, exact_time: 3720 }),
+    ev(60, "gap_update", { group_id: "peloton-0", gap_seconds: 60, exact_km: 60, exact_time: 5460 }),
+    ev(60, "gap_update", { group_id: "gruppetto-1", gap_seconds: 200, exact_km: 60, exact_time: 5600 }),
+    ev(60, "gap_update", { group_id: "gruppetto-2", gap_seconds: 260, exact_km: 60, exact_time: 5660 }),
+    ev(80, "gap_update", { group_id: "peloton-0", gap_seconds: 200, exact_km: 80, exact_time: 7400 }),
+    ev(80, "gap_update", { group_id: "gruppetto-1", gap_seconds: 300, exact_km: 80, exact_time: 7500 }),
+    ev(80, "gap_update", { group_id: "gruppetto-2", gap_seconds: 360, exact_km: 80, exact_time: 7560 }),
+    ev(100, "gap_update", { group_id: "peloton-0", gap_seconds: 200, exact_km: 100, exact_time: 9200 }),
+    ev(100, "gap_update", { group_id: "gruppetto-1", gap_seconds: 340, exact_km: 100, exact_time: 9340 }),
+    ev(100, "gap_update", { group_id: "gruppetto-2", gap_seconds: 400, exact_km: 100, exact_time: 9400 }),
+    ev(100, "finish", { win_type: "solo", exact_km: 100, exact_time: 9000 }),
+  ];
+}
+
+test("#7704: replay og Final 5 km kalder kun den reelle hovedgruppe for feltet", () => {
+  const s = story(shatteredTimeline());
+  const c = cast();
+  const onRoad = replayGroupsAt(s, wholeStageFrames(s), 60, c);
+  assert.deepEqual(onRoad.filter((g) => g.peloton).map((g) => g.groupId), ["gruppetto-1"]);
+  const start = onRoad.find((g) => g.groupId === "peloton-0");
+  const main = onRoad.find((g) => g.peloton);
+  assert.ok(start && main && start.gapS < main.gapS, "startgruppen ligger foran hovedgruppen");
+  const data = finaleData(s);
+  assert.ok(data);
+  const finale = finaleStateAt(s, data, c, data.t0);
+  assert.deepEqual(finale.groups.filter((g) => g.peloton).map((g) => g.groupId), ["gruppetto-1"]);
+});
+
+test("#7704: hul-linjen siger kun feltet om hovedgruppen", () => {
+  const s = story(shatteredTimeline());
+  const gaps = s.moments.filter((m) => m.key === "story.gap_grew" || m.key === "story.gap_shrank");
+  const lines = curateMoments(s, cast(), 50).filter((l) => l.kind === "gap");
+  const groupAt = (km: number, id: string) => lines.find((l) => l.km === km && gaps.some((m) => m.km === km && m.data.group_id === id))?.data.group;
+  const afterSplit = gaps.find((m) => m.data.group_id === "peloton-0" && m.km >= 40);
+  assert.ok(afterSplit, "startgruppens hul flytter sig efter splittet");
+  assert.equal(groupAt(afterSplit.km, "peloton-0"), "chase", "startgruppen er ikke feltet efter splittet");
+  const beforeSplit = gaps.find((m) => m.data.group_id === "peloton-0" && m.km < 40);
+  assert.ok(beforeSplit);
+  assert.equal(groupAt(beforeSplit.km, "peloton-0"), "rest", "foer splittet er den feltet");
 });
 
 test("buildReport: din rytter vandt naevnes kun een gang (Codex P2)", () => {
@@ -352,19 +410,19 @@ test("#7725 dayWordSentences: vinderen og dine egne i maal, vinderen foerst, hoe
   assert.deepEqual(dayWordSentences([], c), [], "slukket: ingen ord i loggen, ingen saetning");
 });
 
-test("#7725 buildReport: dagens ord staar foer dine udgaaede og ryger foer vinderen, din bedste og de udgaaede", () => {
+test("#7725 buildReport: dagens ord staar foer dine udgaaede og skubber ikke loebets historie ud", () => {
   const s = story();
   const c = castFrom(RESULTS, ROLES, 3, "t-me");
   const lines = curateMoments(s, c);
   const dayWords = [{ key: "dayGreat", params: { name: "Winner" } }];
   const ownOut = [{ key: "ownOut", params: { kind: "withdrawal", names: "Hansen" } }];
   const keys = buildReport(s, lines, c, ownOut, dayWords).map((r) => r.key);
-  assert.ok(keys.length <= 5, keys.join(","));
+  assert.ok(keys.length <= 6, keys.join(","));
   assert.equal(keys.indexOf("dayGreat"), keys.length - 2, keys.join(","));
   assert.deepEqual(buildReport(s, lines, c, ownOut, []), buildReport(s, lines, c, ownOut), "uden ord er referatet uaendret");
   const full = [ownOut[0], { ...ownOut[0] }, { ...ownOut[0] }];
   const crowded = buildReport(s, lines, c, full, dayWords).map((r) => r.key);
-  assert.ok(crowded.length <= 5 && crowded.filter((k) => k === "ownOut").length === 3, crowded.join(","));
+  assert.ok(crowded.length <= 6 && crowded.filter((k) => k === "ownOut").length === 3, crowded.join(","));
   assert.ok(crowded.some((k) => k.startsWith("winner")), crowded.join(","));
 });
 
@@ -388,7 +446,7 @@ test("#7701 buildReport: mange aarsager skubber aldrig vinderen og din bedste ud
   const kinds = ["crash", "withdrawal", "time_limit", "abandoned"];
   const ownOut = kinds.map((kind) => ({ key: "ownOut", params: { kind, names: "Hansen" } }));
   const keys = buildReport(s, curateMoments(s, c), c, ownOut).map((r) => r.key);
-  assert.ok(keys.length <= 5, keys.join(","));
+  assert.ok(keys.length <= 6, keys.join(","));
   assert.ok(keys.some((k) => k.startsWith("winner") || k === "mineWon"), keys.join(","));
   assert.ok(keys.some((k) => k.startsWith("mine")), keys.join(","));
   assert.equal(keys.filter((k) => k === "ownOut").length, 3, keys.join(","));
@@ -538,6 +596,48 @@ test("#6350: en sen halvdel af et split: navnene følger rytteren fra kontakten,
   assert.equal(at(178, "set"), "front-part");
 });
 
+test("#7734: en sen halvdel med egen linje: navne og film følger rytteren fra kontakten til gruppen", () => {
+  const log = [
+    ev(0, "stage_start", { exact_km: 0, exact_time: 0, field_count: 6, distance_km: 180 }),
+    ev(10, "breakaway_formed", { group_id: "breakaway-1", rider_ids: ["ahead"], exact_km: 10, exact_time: 900 }),
+    ev(170, "gap_update", { group_id: "peloton-0", gap_seconds: 90, exact_km: 170, exact_time: 17000 }),
+    ev(174.07, "breakaway_caught", { group_id: "breakaway-1", rider_ids: ["ahead"], exact_km: 174.07 }),
+    ev(174.07, "group_merged", { group_id: "breakaway-1", into_group_id: "peloton-0", rider_ids: ["ahead"], exact_km: 174.07 }),
+    ev(180, "peloton_splits", { group_id: "front-part", source_group_id: "peloton-0", gap_seconds: 53.09, rider_ids: ["a"], exact_km: 170.76, exact_time: 17609 }),
+    ev(180, "peloton_splits", { group_id: "behind", source_group_id: "peloton-0", gap_seconds: 302.73, rider_ids: ["set", "ahead"], exact_km: 180, exact_time: 19700 }),
+    ev(180, "gap_update", { group_id: "front-part", gap_seconds: 53.09, exact_km: 180, exact_time: 19453 }),
+    ev(180, "gap_update", { group_id: "behind", gap_seconds: 302.73, exact_km: 180, exact_time: 19700 }),
+    ev(180, "finish", { exact_km: 180, exact_time: 19400, top: [] }),
+  ];
+  const story = buildRaceStory({ events: withEventPlaces(log), timelineVersion: 2 }) as unknown as RaceStory;
+  const at = (km: number, rider: string) => groupOfRider(groupMembersAt(story, km), rider);
+  const frames = replayFrames(story, { finaleKm: 12, stepKm: 1 }) as Array<{ km: number; groups: Array<{ group_id: string; size: number | null; gap_s: number }> }>;
+  const inFilm = (km: number, id: string) => frames.find((f) => f.km === km)?.groups.find((g) => g.group_id === id);
+
+  assert.equal(at(172, "ahead"), "breakaway-1");
+  assert.equal(at(172, "set"), "behind");
+  assert.equal(at(176, "ahead"), "behind-late", "ikke i feltet og ikke i gruppen han ender i");
+  assert.equal(at(176, "set"), "behind");
+  assert.equal(at(180, "ahead"), "behind", "på stregen er han i gruppen");
+  assert.equal(inFilm(176, "behind-late")?.size, 1, "film og navne er enige");
+  assert.equal(inFilm(176, "behind")?.size, 1);
+  assert.ok((inFilm(176, "behind-late")?.gap_s ?? 0) < (inFilm(178, "behind-late")?.gap_s ?? 0), "hullet vokser undervejs");
+});
+
+test("#7734: en rytter udgået før linjen slutter, står ikke på linjen", () => {
+  const log = [
+    ev(0, "stage_start", { exact_km: 0, exact_time: 0, field_count: 6, distance_km: 100 }),
+    ev(40, "gap_update", { group_id: "peloton-0", gap_seconds: 0, exact_km: 40, exact_time: 4000 }),
+    ev(55, "incident", { kind: "crash", outcome: "abandoned", rider_id: "gone", exact_km: 55 }),
+    ev(60, "peloton_splits", { group_id: "back", source_group_id: "peloton-0", gap_seconds: 60, rider_ids: ["x"], exact_km: 45 }),
+    ev(60, "peloton_splits", { group_id: "back", source_group_id: "peloton-0", gap_seconds: 60, rider_ids: ["ahead", "gone"], joined_late: true, own_line: true, exact_km: 50 }),
+    ev(60, "gap_update", { group_id: "back", gap_seconds: 60, exact_km: 60, exact_time: 6060 }),
+    ev(100, "finish", { exact_km: 100, top: [] }),
+  ];
+  const story = buildRaceStory({ events: log, timelineVersion: 2 }) as unknown as RaceStory;
+  assert.deepEqual(story.group_spans?.find((s) => s.group_id === "back-late")?.rider_ids, ["ahead"]);
+});
+
 test("#6350: en sen halvdel: film og navne er enige om uheldsofferet og den udgåede", () => {
   const log = [
     ev(0, "stage_start", { exact_km: 0, exact_time: 0, field_count: 6, distance_km: 100 }),
@@ -588,4 +688,67 @@ test("#6350: en rytter udgået efter snapshottet, men før den sene halvdel, st�
   assert.deepEqual([...(groupMembersAt(story, 57.5).get("back")?.riders ?? [])], ["x"]);
   assert.equal(inFilm(58, "back"), 1, "den udgåede kører aldrig igen, heller ikke på halvdelens km");
   assert.deepEqual([...(groupMembersAt(story, 58).get("back")?.riders ?? [])], ["x"]);
+});
+
+// #7705: formen fra den rapporterede etape (bjergetape med mål på toppen), anonymiseret.
+function summitFinish() {
+  return [
+    ev(0, "stage_start", { exact_km: 0, exact_time: 0, distance_km: 180, field_count: 6, profile_type: "mountain" }),
+    ev(170, "gap_update", { group_id: "peloton-0", gap_seconds: 91, exact_km: 170, exact_time: 17499 }),
+    ev(180, "all_out_cracked", { rider_id: "a", exact_km: 180, exact_time: 19715 }),
+    ev(180, "all_out_cracked", { rider_id: "b", exact_km: 180, exact_time: 19715 }),
+    ev(180, "peloton_splits", { group_id: "gruppetto-1", source_group_id: "peloton-0", rider_ids: ["a", "b", "x"], cause: "mixed", gap_seconds: 303, exact_km: 180, exact_time: 19715 }),
+    ev(180, "gap_update", { group_id: "gruppetto-1", gap_seconds: 303, exact_km: 180, exact_time: 19715 }),
+    ev(180, "bad_day", { rider_id: "b", reason: "illness" }),
+    ev(180, "kom_passage", { name: "Top", category: "HC", exact_km: 180 }),
+    ev(180, "finish", { exact_km: 180, exact_time: 19412, top: [{ rider_id: "w" }] }),
+  ];
+}
+const LOSS_RESULTS = [
+  rr(1, "w", "Winner", "t-x", "+0:00"), rr(2, "m0", "Same", "t-me", "+0:00"), rr(3, "a", "Empty", "t-me", "+5:03"), rr(4, "b", "Ill", "t-me", "+5:03"),
+  rr(5, "x", "Other", "t-x", "+5:03"), rr(6, "lost", "Lost", "t-me", "+7:30"),
+].map((row) => ({ ...row, stage_number: 10 }));
+const lossOf = (events = summitFinish(), results = LOSS_RESULTS) => {
+  const built = buildRaceStory({ events, timelineVersion: 2 }) as unknown as RaceStory;
+  return ownTimeLoss(built, castFrom(results, [], 10, "t-me"), { events });
+};
+
+test("#7705: dine ryttere får den sande årsag, ukendt årsag står, og intet opdigtes", () => {
+  const loss = lossOf();
+  assert.deepEqual(loss.entries.map((e) => (e.type === "drop" ? ["drop", e.riderIds, e.reason, e.climbName] : [e.event.type, e.riderId])), [
+    ["drop", ["a", "b"], "mixed", "Top"],
+    ["all_out_cracked", "a"],
+    ["all_out_cracked", "b"],
+    ["bad_day", "b"],
+  ]);
+  assert.equal(loss.unknown, "Lost", "efter feltet uden årsag i loggen");
+  assert.ok(loss.entries.every((e) => e.riderId !== "x"), "kun dine egne ryttere");
+  assert.ok(loss.entries.every((e) => e.riderId !== "m0"), "på vinderens tid er der intet tidstab");
+});
+
+test("#7705: uden kendt hul i mål er tidstabet ikke vist, og et fald uden grund står som ukendt", () => {
+  const noGap = LOSS_RESULTS.map((row) => (row.rider_id === "a" ? { ...row, finish_time: null } : row));
+  assert.ok(lossOf(summitFinish(), noGap).entries.every((e) => e.riderId !== "a" && !(e.type === "drop" && e.riderIds.includes("a"))));
+  const noCause = summitFinish()
+    .filter((e) => e.type !== "all_out_cracked" && e.type !== "bad_day")
+    .map((e) => (e.type === "peloton_splits" ? ev(180, "peloton_splits", { ...e.params, cause: undefined }) : e));
+  const loss = lossOf(noCause);
+  assert.deepEqual(loss.entries.map((e) => e.type === "drop" && e.reason), ["unknown"], "stedet står stadig");
+  assert.equal(loss.unknown, "Empty, Ill, Lost", "faldet siger ikke hvorfor, og han efter feltet står med");
+});
+
+test("#7705: din rytter i feltet bag et udbrud har ikke tabt tid", () => {
+  const results = [
+    rr(1, "w", "Winner", "t-x", "+0:00"), rr(2, "p1", "Pack", "t-me", "+6:00"), rr(3, "p2", "Pack", "t-x", "+6:00"), rr(4, "p3", "Pack", "t-x", "+6:00"),
+  ].map((row) => ({ ...row, stage_number: 10 }));
+  assert.deepEqual(lossOf(summitFinish().filter((e) => e.type !== "bad_day" && e.type !== "all_out_cracked"), results), { entries: [], unknown: "" });
+});
+
+test("#7705: en årsag uden tekst forklarer intet, og uden præcise tider siges intet", () => {
+  const events = summitFinish().filter((e) => e.type !== "all_out_cracked" && e.type !== "peloton_splits").map((e) => (e.type === "bad_day" ? ev(180, "bad_day", { rider_id: "lost", reason: "ny_grund" }) : e));
+  const loss = lossOf(events);
+  assert.deepEqual(loss.entries, []);
+  assert.equal(loss.unknown, "Lost", "linjen uden tekst forklarer ham ikke");
+  const noTimes = buildRaceStory({ events: [ev(0, "stage_start", { distance_km: 180 }), ev(180, "bad_day", { rider_id: "b", reason: "illness" }), ev(180, "finish", {})], timelineVersion: 1 }) as unknown as RaceStory;
+  assert.deepEqual(ownTimeLoss(noTimes, castFrom(LOSS_RESULTS, [], 10, "t-me"), { events: [] }), { entries: [], unknown: "" });
 });
