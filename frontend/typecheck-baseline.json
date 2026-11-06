@@ -2024,7 +2024,6 @@
   },
   "src/lib/stageTimelineFilm.js": {
     "TS18048": 5,
-    "TS2339": 2,
     "TS2532": 1
   },
   "src/lib/stageTimelineFilm.test.js": {

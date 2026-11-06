@@ -15,6 +15,7 @@ import {
   raceCardPeakOverlay,
   PEAK_STATUS_ONTRACK_TQ,
 } from "./plannerBoard.js";
+import { STAGE_PROFILE_TYPES as PROFILE_TYPES } from "./stageProfileTypes.js";
 
 test("peakStatus: optakt ikke begyndt → pending uanset tq", () => {
   // window_start = 100, leadup 14 → optakt starter dag 86. today 80 < 86.
@@ -44,6 +45,18 @@ test("terrainKey: mapper profiler til buckets, ukendt → flat", () => {
   assert.equal(terrainKey("cobbles"), "cobbles");
   assert.equal(terrainKey(undefined), "flat");
   assert.equal(terrainKey("nonsense"), "flat");
+});
+
+test("#7693 terrainKey: alle profiltyper er mappet, kun flat er flad", () => {
+  for (const type of PROFILE_TYPES) assert.equal(terrainKey(type) === "flat", type === "flat", type);
+  assert.equal(terrainKey("medium_mountain"), "mountain");
+  assert.equal(terrainKey("itt_hilly"), "itt");
+});
+
+test("#7693 isSummitFinish: en bjergetape med nedkørsels-finale ender ikke på toppen", () => {
+  assert.equal(isSummitFinish("mountain", "descent"), false);
+  assert.equal(isSummitFinish("high_mountain", "descent"), false);
+  assert.equal(isSummitFinish("high_mountain", "long_climb"), true);
 });
 
 test("isSummitFinish: bjerg-profil ELLER lang-klatrings-finale", () => {

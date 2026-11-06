@@ -90,6 +90,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "stage_plan_v1", area: "race-day", label: "Taktik — etapeplan langs ruten" },
   // #6912 B: motorens udbrudsbud i jægerboksen (kort prognose i dryRun). Ikke seedet = off; beta først.
   { key: "race_breakaway_outlook", area: "race-day", label: "Jægerboks — motorens udbrudsbud" },
+  // #7717: Hvorfor?-knappen i "Your day". Kun visning, seedet off.
+  { key: "rider_why_button", area: "race-day", label: "Hvorfor?-knappen ved rytterne (Your day)" },
 
   // ── Motorer og batch-jobs (spilleren ser resultatet, ikke kontakten) ──────
   { key: "race_engine_v2_enabled", area: "race-engine", label: "Løbsmotor v2" },
@@ -105,6 +107,9 @@ export const STAGE_FLAGS = Object.freeze([
   // #7635/#7636: etapeplanens "sat" kun ved en rigtig opdeling + resuméet krydstjekker filmen
   // (kun s5_profiles_v3). Seedet off; kun "on" tænder (stagePlanDroppedFront7635Flag.js). Ejer-only flip.
   { key: "stage_plan_dropped_front_7635", area: "race-engine", label: "Etapeplan — sat kun ved en rigtig opdeling af feltet" },
+  // #7725: dagsformen i ord efter etapen (kun tidslinjen, aldrig resultatet). Seedet off; kun "on" tænder
+  // (dayWords7725Flag.js). Ejer-only flip.
+  { key: "day_words_7725", area: "race-engine", label: "Dagsform i ord efter etapen" },
   // #7644: loft på samlingens gevinst pr. km på lange nedkørsler (kun s5_profiles_v3). Seedet off; kun "on"
   // tænder, "beta" læses som off (descentRegroupCap7644Flag.js). Ejer-only flip.
   { key: "descent_regroup_cap_7644", area: "race-engine", label: "Lange nedkørsler — loft på samlingen" },
@@ -114,6 +119,12 @@ export const STAGE_FLAGS = Object.freeze([
   // #7557: spillerens gemte "lad andre jage" vinder over motorens egen jagt (kun s5_profiles_v3). Ikke seedet = off;
   // kun "on" tænder, "beta" læses som off (letGoOrder7557Flag.js). Ejer-only flip.
   { key: "let_go_order_7557", area: "race-engine", label: "Lad andre jage — ordren vinder" },
+  // #7726: enkeltstart uden den ekstra terning (kun s5_profiles_v3, kun løb der ikke er startet). Seedet off;
+  // kun "on" tænder, "beta" læses som off; "stop" er nødstop for løb i gang (ittNoDayRoll7726Flag.js). Ejer-only flip.
+  { key: "itt_no_day_roll_7726", area: "race-engine", label: "Enkeltstart — uden den ekstra terning" },
+  // #7733: fra etape 2 afgoer pulje og trup ikke laengere hvem der er i loebet. Ikke seedet = off;
+  // kun "on" taender, "beta" laeses som off (startedFieldLock7733Flag.js). Ejer-only flip.
+  { key: "started_field_lock_7733", area: "race-engine", label: "Etapeløb — startfeltet holder til mål" },
   { key: "race_day_engine_enabled", area: "race-engine", label: "Løbsdags-motor" },
   { key: "race_finalize_resumable_enabled", area: "race-engine", label: "Genoptagelig finalisering" },
   { key: "race_notify_outbox_enabled", area: "race-engine", label: "Notify-kø — asynkron udsendelse" },
@@ -259,6 +270,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "condition_v2_race_date_training_day",
   // #7636: etapeplanens resumé krydstjekker filmen paa dette flag (binaert, som motoren).
   "stage_plan_dropped_front_7635",
+  // #7717: "Your day" viser Hvorfor?-knappen paa dette flag.
+  "rider_why_button",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,

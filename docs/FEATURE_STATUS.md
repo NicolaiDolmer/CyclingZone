@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-128 poster: live 105 · dormant 8 · building 6 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+131 poster: live 105 · dormant 11 · building 6 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -19,17 +19,20 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
+| Day form in words after the stage (`race-day-words-7725`) | dormant | `day_words_7725` | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #7725 | 2026-11-06 | Slukket; kræver day_form_6649. |
 | Long descents - cap on how much a regrouping chase can gain (`race-descent-regroup-cap-7644`) | dormant | `descent_regroup_cap_7644` | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #7644 | 2026-11-04 | #7644 ejer-valg B 4/11. Bygget, off; tændes af ejeren efter før/efter-billedet. |
+| Time trials without the extra day roll (`race-itt-no-day-roll-7726`) | dormant | `itt_no_day_roll_7726` | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #7726 | 2026-11-06 | Slukket; kun nye løb. |
 | Official time persistence revision (`race-official-times-v1`) | retired | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6284 | 2026-10-16 | Frosset prototype. |
 
 ## race-day
 
-**live:** Stage replay and timeline film (`race-replay`) 2026-11-04 · Role picker scope (stage N to the end / stage N only) (`role-scope-choice`) 2026-10-06 · Stage page 2.0 (stage tabs, real elevation profile, your day) (`stage-page-v2`) 2026-11-01 · Stage plan along the route (`stage-plan-v1`) 2026-10-27
+**live:** Stage replay and timeline film (`race-replay`) 2026-11-04 · Stage page 2.0 (stage tabs, real elevation profile, your day) (`stage-page-v2`) 2026-11-01 · Stage plan along the route (`stage-plan-v1`) 2026-10-27
 
-**arkiv:** `auto-entry-generator` · `race-day-development` · `race-day-engine` · `race-detail-page` · `race-page-tabs-v2` · `stage-scheduler`
+**arkiv:** `auto-entry-generator` · `race-day-development` · `race-day-engine` · `race-detail-page` · `race-page-tabs-v2` · `role-scope-choice` · `stage-scheduler`
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
+| Why? button beside riders in Your day (`rider-why-button`) | dormant | `rider_why_button` | - | #7716 | 2026-11-05 | #7717: seedet off, kun visning. Ejeren flytter flaget efter visuelt go. |
 | Engine breakaway forecast (`race-breakaway-outlook`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6912 | 2026-10-29 | Ingen app_config-række (fravær = off). Ejer-go til tænding. |
 
 ## market
@@ -62,10 +65,10 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
 | Development Score B in the engine (`development-score-b-engine`) | dormant | `development_score_v2` | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-11-04 | Ejer 31/10 (#6110): parkeret, indtil grundtalentet (spec 23/10, byggetrin 2) er bygget; decide_by 8/11 er afløst, ny frist ikke sat. Forudsætning før tænding: #7584. Statusaudit 4/11. |
-| One potential source (stored estimate per rider and team) (`potential-estimate-display`) | dormant | `potential_estimate_display` | [6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md) | #6110 | 2026-11-05 | Byggetrin 4 (#7684): estimates, scouting-rapport, development-projection og akademi svarer fra potentialEstimateRead.js, når flaget er tændt. Slukket som alt andet i Udvikling 2.0; kræver byggetrin 5 (skrivning af skøn) og 6 (frontend) før tænding. |
+| One potential source (stored estimate per rider and team) (`potential-estimate-display`) | dormant | `potential_estimate_display` | [6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md) | #6110 | 2026-11-05 | Byggetrin 4 (#7684): estimates, scouting-rapport, development-projection og akademi svarer fra potentialEstimateRead.js, når flaget er tændt. |
 | Catch-up via racing (`race-day-catchup`) | dormant | `race_day_catchup_enabled` | [TRAINING_RULES](TRAINING_RULES.md) | #6950 | 2026-10-25 | Ejer, med Udvikling 2.0. |
 | Race day - the rider's role also decides the base day (`race-day-role-base-day`) | dormant | `race_day_role_base_day_enabled` | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-11-03 | #5950 løsning A (ejer-valg 3/11), underkontakt til race-day-role-yield. Bygget, off; tændes af ejeren. |
-| Stored potential estimates (Sunday run and writes) (`potential-estimate-writes`) | building | - | [6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md) | #6110 | 2026-11-05 | Trin 5 (#7685): søndagsjob, holdskifte og nye kig skriver bag flaget potential_estimate_writes (seedes off). Skriver intet, før ejeren har sat private_config potential_estimate_params, og før talent_ceiling er fyldt (trin 12). Ingen flade læser tabellen endnu. |
+| Stored potential estimates (Sunday run and writes) (`potential-estimate-writes`) | building | - | [6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md) | #6110 | 2026-11-05 | Trin 5 (#7685): søndagsjob, holdskifte og nye kig skriver bag flaget potential_estimate_writes (seedes off). |
 
 ## academy
 
@@ -81,9 +84,9 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 ## season
 
-**live:** AI pool retirement (`ai-pool-retirement-v2`) 2026-10-15 · Development 2.0 part 1 (decline at season change, only manager teams develop) (`development-v2-aging`) 2026-10-26 · Season matrix on mobile (`season-matrix-mobile`) 2026-10-06 · Season transition (`season-transition`) 2026-10-17
+**live:** AI pool retirement (`ai-pool-retirement-v2`) 2026-10-15 · Development 2.0 part 1 (decline at season change, only manager teams develop) (`development-v2-aging`) 2026-10-26 · Season transition (`season-transition`) 2026-10-17
 
-**arkiv:** `ai-team-retire` · `season-end-recap` · `season-signup`
+**arkiv:** `ai-team-retire` · `season-end-recap` · `season-matrix-mobile` · `season-signup`
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|

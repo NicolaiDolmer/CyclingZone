@@ -867,6 +867,9 @@ træningskørsel). Tallene og den præcise model står aldrig i repoet (hard rul
   holdtempo, hvor den selv er en hjælpe-evne); fri eller ukendt rolle får gennemsnittet af de to
   basis-dage, evne for evne. Det samlede udbytte er det samme for alle roller. Off = modellen ovenfor,
   bit-identisk. En fejlet læsning af underkontakten kaster på dato-afregningens strikte sti, ellers off.
+- **Under Udviklingsscore B (#7584):** tillægget regnes pr. evne i tick'ets faktiske enhed, også for
+  off-fokus-evnerne (lederskab, aggression, hjælperens støtte-evner), så det stadig er ens i alt for
+  alle roller. Med scoren slukket er regningen uændret.
 - **Kode:** `raceDayRoleYield5950.js`, kaldt fra `dailyTrainingEngine.js` (`withRaceDayRoleYield`).
 
 ---
@@ -1130,6 +1133,8 @@ Løser fra §13.2: løbsdagens rytme i rigtig tid (5 pr. kalenderdag, samlet luk
 **Beslutning 8's forudsætning er indfriet i kalenderen (#5267, ejer-valg 20/9).** De 35 celler kræver at HVER kalenderdato faktisk bærer 5 løbsdage på aksen (`game_day`-slots, også dem uden etape; tætheden 5/4/3/3 tæller etaper, ikke løbsdage). Det gør den nu i alle fire divisioner: pakkeren fordeler de tomme løbsdage jævnt i stedet for at lægge dem i de få huller hvor intet løb kører. Reglen og prisen står i [`docs/CALENDAR_RULES.md` §1d/§1e-b](CALENDAR_RULES.md). De to ting sweepen skulle kunne for at udnytte det (drives af løbsdags-aksen, og et rytter-filter på `race_entry_days` i stedet for `race_results`) er bygget i B4 (#4847, rettet 20/9), se §13.3b. Kanterne ved sæsonens første og sidste løbsdato er lukket bag flaget (#4846, 24/9), så hver division tikker præcis 140 løbsdage; se §13.3b.
 
 ### 13.3b Ejerens realisme-regel 18/9 (låst princip; genåbn ikke)
+
+**Ude af feltet (#7692):** en rytter er kun bundet, så længe han er i løbet. Mangler han i seneste etapes startfelt (`entrant_snapshot`), er han ude, også uden en udgåelse. Hans udgangsdag er den sidste etape med et resultat, og fra dagen efter følger han sit program igen. Mangler beviset, eller er det ulæseligt, bevares bindingen. Reglen rører kun træningen, ikke løbet.
 
 Ejeren formulerede 18/9 aften den regel al løbsdags-mekanik skal måles mod. Fuld tekst: [#5267, kommentar 18/9](https://github.com/NicolaiDolmer/CyclingZone/issues/5267). Kort:
 

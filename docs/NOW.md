@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (6/11 kl. 9):** Merge-kort til ejeren fra natbølgen (20 spor: blok A, B, C, #6207, design E; kun rene fejl merges selv). Dependabot merget. let_go_order_7557 SLUKKET igen: testes grundigt 6/11, kun løb der ikke er startet. #7757: vis årsagen, mål lille fremgang i #6110. Træn nu #7737 + pop-up #3924 lander med Udvikling 2.0. Ejer: #7712 billede, svar til spillerne (OneDrive discord-loefter), #7692. Fremgang: #7758 klar til billede-go.
+> **🎯 Next action (6/11 eftermiddag):** 17 PR'er merget i dag; patch note 7.406 live. rider_why_button = beta. Bølge i gang: #7766, #7768, #7784 (XP-spec), #7785, #7786, #7787. Derefter #7765 og binding af #7733. Efter 7/11 16:30: started_field_lock_7733 ved ejer-kør, før juniorløb 11/11. Lør: secrets #7029. Overdragelse: OneDrive private-handoffs/overdragelse-pc1-dolmerpc-2026-11-06.md.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** PC1-session natbølge 5-6/11 (wave 8a3851e6). Auto-toget kører på PC1.
+> **🤖 Working agent:** PC1-session: merge, til dørs, plan for ugen.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 

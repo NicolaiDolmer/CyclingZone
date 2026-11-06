@@ -42,7 +42,7 @@ import {
 } from "../../lib/lineupInsight.js";
 import SortTh from "../rider/RiderSortTh.jsx";
 import { ArrowUpIcon, ArrowDownIcon, BlockedNote, LockIcon } from "../ui/index.js";
-import { trainNowClock } from "../training/trainNowClock.ts"; // #6139
+import { trainNowLockCopy } from "../training/trainNowClock.ts"; // #6139
 import RiderMiniProfileModal from "../rider/RiderMiniProfileModal.jsx";
 import { useBlockedAction } from "../../lib/useBlockedAction.js";
 
@@ -61,7 +61,7 @@ export default function RaceSelectionPanel({
   selectedStageProfileType = null,
   selectedStageFinaleType = null,
 }) {
-  const { t } = useTranslation("races");
+  const { t, i18n } = useTranslation("races");
   // #3809: fulde evne-navne til kolonne-tooltips (samme mønster som TeamPage's
   // SquadTab tRider-brug til de forkortede kolonne-headers).
   const { t: tRider } = useTranslation("rider");
@@ -270,7 +270,8 @@ export default function RaceSelectionPanel({
   // #6139: ryttere der traenede i dag via "Train now" (server-beregnet, pr. rytter). De kan
   // hverken saettes ind eller tages ud af loebet; holdets oevrige ryttere er frie.
   const trainNowLocked = new Set(data.trainNowLock?.riderIds ?? []);
-  const trainNowTime = trainNowClock(data.trainNowLock?.pressedAt);
+  // #7558: teksten følger dagen trykket skete (en flerdagsrace viser gårsdagens lås som "i dag").
+  const trainNowCopy = trainNowLockCopy(t, data.trainNowLock?.pressedAt, i18n.language);
   const fullyTrainNowLocked = trainNowLocked.size > 0 && riders.every((r) => trainNowLocked.has(r.id));
   // #2265: ryttere bundet i et ANDET løb med overlappende in-game-dag-vindue (server-
   // beregnet). Bundne ryttere greyes + kan ikke tilføjes; er en bunden rytter allerede
@@ -582,10 +583,8 @@ export default function RaceSelectionPanel({
         >
           <LockIcon size={14} aria-hidden="true" className="mt-px shrink-0 text-cz-warning" />
           <span>
-            <span className="font-semibold">{t("selection.trainNowLock.title")}</span>{" "}
-            {trainNowTime
-              ? t("selection.trainNowLock.bodyAt", { time: trainNowTime })
-              : t("selection.trainNowLock.body")}
+            <span className="font-semibold">{trainNowCopy.title}</span>{" "}
+            {trainNowCopy.body}
           </span>
         </div>
       )}
@@ -708,7 +707,7 @@ export default function RaceSelectionPanel({
                       </span>
                     )}
                     {rider.overAge && <OverAgeBadge label={t("selection.overAge")} />}
-                    {lockedByTrainNow && <TrainNowRiderBadge label={t("selection.trainNowLock.rider")} />}
+                    {lockedByTrainNow && <TrainNowRiderBadge label={trainNowCopy.rider} />}
                     {bound && (
                       <span className={`text-3xs px-2 py-0.5 rounded-full border ${checked
                         ? "bg-cz-danger/10 text-cz-danger border-cz-danger/20"
@@ -847,7 +846,7 @@ export default function RaceSelectionPanel({
                         </span>
                       )}
                       {rider.overAge && <OverAgeBadge label={t("selection.overAge")} />}
-                      {lockedByTrainNow && <TrainNowRiderBadge label={t("selection.trainNowLock.rider")} />}
+                      {lockedByTrainNow && <TrainNowRiderBadge label={trainNowCopy.rider} />}
                       {bound && (
                         <span className={`text-3xs px-2 py-0.5 rounded-full border whitespace-nowrap ${checked
                           ? "bg-cz-danger/10 text-cz-danger border-cz-danger/20"

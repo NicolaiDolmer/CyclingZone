@@ -25,8 +25,8 @@ import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 // scrubbing virker altid, uafhængigt af om auto-play kører (mockup-kontrakten).
 const FILM_DURATION_MS = 40_000;
 
-function FeedRow({ event, riderNameById, teamNameById, t }) {
-  const described = describeEvent(event, { riderNameById, teamNameById });
+function FeedRow({ event, riderNameById, teamNameById, ownRiderIds, t }) {
+  const described = describeEvent(event, { riderNameById, teamNameById, ownRiderIds });
   if (!described) return null;
   return (
     <li className="cz-overlay-pop flex items-baseline justify-between gap-3 py-1.5 border-t border-cz-border first:border-t-0">
@@ -40,20 +40,20 @@ function FeedRow({ event, riderNameById, teamNameById, t }) {
   );
 }
 
-function EventFeed({ events, riderNameById, teamNameById, emptyKey, t }) {
+function EventFeed({ events, riderNameById, teamNameById, ownRiderIds, emptyKey, t }) {
   if (!events.length) {
     return <p className="text-center text-cz-3 text-xs py-4">{t(emptyKey)}</p>;
   }
   return (
     <ul className="max-h-64 overflow-y-auto">
       {events.map((e, i) => (
-        <FeedRow key={`${e.type}-${e.km}-${i}`} event={e} riderNameById={riderNameById} teamNameById={teamNameById} t={t} />
+        <FeedRow key={`${e.type}-${e.km}-${i}`} event={e} riderNameById={riderNameById} teamNameById={teamNameById} ownRiderIds={ownRiderIds} t={t} />
       ))}
     </ul>
   );
 }
 
-function AnimatedFilm({ profile, built, distanceKm, riderNameById, teamNameById, splitProps, t }) {
+function AnimatedFilm({ profile, built, distanceKm, riderNameById, teamNameById, ownRiderIds, splitProps, t }) {
   const [scrubKm, setScrubKm] = useState(0);
   const [playing, setPlaying] = useState(true);
   // #5159 (B1): en koerende loebsfilm er ogsaa arbejde — spilleren ser noget der
@@ -126,14 +126,14 @@ function AnimatedFilm({ profile, built, distanceKm, riderNameById, teamNameById,
         </Button>
       </div>
       <div className="mt-3">
-        <EventFeed events={playedEvents} riderNameById={riderNameById} teamNameById={teamNameById} emptyKey="detail.film.feedEmpty" t={t} />
+        <EventFeed events={playedEvents} riderNameById={riderNameById} teamNameById={teamNameById} ownRiderIds={ownRiderIds} emptyKey="detail.film.feedEmpty" t={t} />
       </div>
       <div className="mt-4"><StageSplitTimes {...splitProps} variant="plain" uptoKm={scrubKm} riderNameById={riderNameById} teamNameById={teamNameById} t={t} /></div>
     </>
   );
 }
 
-function StaticFilm({ profile, built, distanceKm, riderNameById, teamNameById, splitProps, t }) {
+function StaticFilm({ profile, built, distanceKm, riderNameById, teamNameById, ownRiderIds, splitProps, t }) {
   return (
     <>
       <StageFilmScrubber
@@ -141,7 +141,7 @@ function StaticFilm({ profile, built, distanceKm, riderNameById, teamNameById, s
         catchKm={built.catchKm} gapCurve={built.gapCurve} scrubKm={distanceKm} distanceKm={distanceKm} t={t}
       />
       <div className="mt-3">
-        <EventFeed events={built.feedEvents} riderNameById={riderNameById} teamNameById={teamNameById} emptyKey="detail.film.feedEmpty" t={t} />
+        <EventFeed events={built.feedEvents} riderNameById={riderNameById} teamNameById={teamNameById} ownRiderIds={ownRiderIds} emptyKey="detail.film.feedEmpty" t={t} />
       </div>
       <div className="mt-4"><StageSplitTimes {...splitProps} variant="plain" riderNameById={riderNameById} teamNameById={teamNameById} t={t} /></div>
     </>
@@ -161,9 +161,9 @@ export default function TimelineFilmPlayer({ open, onClose, timeline, profile, d
   return (
     <Modal open={open} onClose={onClose} title={t("detail.film.title")} description={stageLabel} size="xl" closeLabel={t("common:actions.close")}>
       {reducedMotion ? (
-        <StaticFilm profile={profile} built={built} distanceKm={resolvedDistanceKm} riderNameById={riderNameById} teamNameById={teamNameById} splitProps={splitProps} t={t} />
+        <StaticFilm profile={profile} built={built} distanceKm={resolvedDistanceKm} riderNameById={riderNameById} teamNameById={teamNameById} ownRiderIds={ownRiderIds} splitProps={splitProps} t={t} />
       ) : (
-        <AnimatedFilm profile={profile} built={built} distanceKm={resolvedDistanceKm} riderNameById={riderNameById} teamNameById={teamNameById} splitProps={splitProps} t={t} />
+        <AnimatedFilm profile={profile} built={built} distanceKm={resolvedDistanceKm} riderNameById={riderNameById} teamNameById={teamNameById} ownRiderIds={ownRiderIds} splitProps={splitProps} t={t} />
       )}
     </Modal>
   );

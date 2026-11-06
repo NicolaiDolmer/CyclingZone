@@ -8,11 +8,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../../lib/intl.js";
+import { filmKmValue } from "../../../lib/stageTimelineKmSpan.ts";
+import { LossRow } from "../StageSplitTimes.jsx";
 import type { Climb, ElevationSeries, StageProfile } from "./stagePageV2Model.ts";
 import {
-  buildReport, curateMoments, finaleData, formatClock, lineReplayKm, myBestRider, namesList, pickGroups,
-  replayGroupsAt, splitRows, wholeStageFrames, frameAt,
-  isPeloton, isTimeTrialStory, type Cast, type RaceStory, type ReplayGroup, type ReportSentence, type SplitRow, type StoryLine, type StoryNarrativeContext,
+  buildReport, curateMoments, dayWordSentences, finaleData, formatClock, lineReplayKm, myBestRider, namesList, pickGroups,
+  replayGroupsAt, reportTextKey, splitRows, wholeStageFrames, frameAt,
+  isTimeTrialStory, castNames, ownTimeLoss, type Cast, type RaceStory, type ReplayGroup, type ReportSentence, type SplitRow, type StoryLine, type StoryNarrativeContext,
 } from "./raceStoryModel.ts";
 import StageProfileV2, { GradientLegend } from "./StageProfileV2.tsx";
 import FinaleView, { PlayIcon, prefersReducedMotion } from "./FinaleView.tsx";
@@ -51,18 +53,25 @@ export default function RaceStoryCard({ story, profile, series, climbs, cast, ti
   const timeTrial = isTimeTrialStory(story, profile?.profile_type, narrative?.events);
   const finale = useMemo(() => timeTrial ? null : finaleData(story), [story, timeTrial]);
   const lines = useMemo(() => timeTrial ? [] : curateMoments(story, cast, undefined, narrative), [story, cast, narrative, timeTrial]);
+  const dayWords = useMemo(() => dayWordSentences(narrative?.events, cast), [narrative, cast]);
   const [view, setView] = useState<View>(timeTrial ? "route" : "stage");
   const [km, setKm] = useState<number>(D);
 
   if (timeTrial) {
     return (
-      <Section aria-label={title}>
+      <Section data-race-section="race_story" aria-label={title}>
         <h2 className="m-0 mb-3 font-data text-[15px] font-semibold text-cz-1">{title}</h2>
         {routeBody}
         <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-cz-border pt-3">
           <p className="m-0 flex-1 text-sm text-cz-2">{t("stagePageV2.story.timeTrial")}</p>
           <Button variant="secondary" size="md" onClick={onOpenStandings}>{t("stagePageV2.cta.fullResult")}</Button>
         </div>
+        {/* #7725: en enkeltstart har intet referat, men dagen forklarer stadig tiden. */}
+        {dayWords.length > 0 && (
+          <p className="m-0 mt-3 max-w-[72ch] text-[15px] leading-relaxed text-cz-1">
+            {dayWords.map((s) => t(reportTextKey(s.key), s.params)).join(" ")}
+          </p>
+        )}
       </Section>
     );
   }
@@ -81,7 +90,7 @@ export default function RaceStoryCard({ story, profile, series, climbs, cast, ti
   }
 
   return (
-    <Section aria-label={title}>
+    <Section data-race-section="race_story" aria-label={title}>
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <h2 className="m-0 min-w-[180px] flex-1 font-data text-[15px] font-semibold text-cz-1">{title}</h2>
         <Segmented
@@ -111,7 +120,7 @@ export default function RaceStoryCard({ story, profile, series, climbs, cast, ti
       )}
 
       {view !== "route" && (
-        <StorySection story={story} lines={lines} cast={cast} km={view === "stage" ? km : null} onJump={jumpTo} ownOut={ownOut} />
+        <StorySection story={story} lines={lines} cast={cast} km={view === "stage" ? km : null} onJump={jumpTo} ownOut={ownOut} narrative={narrative} dayWords={dayWords} />
       )}
     </Section>
   );
@@ -149,7 +158,7 @@ function ReplayView({ story, profile, series, climbs, cast, km, onKm }: {
   }
 
   const labelFor = (g: ReplayGroup): string => {
-    if (isPeloton(g.rest, g.size)) return t("stagePageV2.story.group.peloton");
+    if (g.peloton) return t("stagePageV2.story.group.peloton");
     return namesList(g.riderIds, cast, 2, g.size) || t("stagePageV2.story.group.riders", { count: g.size ?? 0 });
   };
   const { shown, rest } = pickGroups(groups, 2);
@@ -242,12 +251,13 @@ function ReplayView({ story, profile, series, climbs, cast, km, onKm }: {
 
 // ── Historien: oejeblikke, mellemtider, referat ───────────────────────────
 
-function StorySection({ story, lines, cast, km, onJump, ownOut }: { story: RaceStory; lines: StoryLine[]; cast: Cast; km: number | null; onJump: (l: StoryLine) => void; ownOut: ReportSentence[] }) {
+function StorySection({ story, lines, cast, km, onJump, ownOut, narrative, dayWords }: { story: RaceStory; lines: StoryLine[]; cast: Cast; km: number | null; onJump: (l: StoryLine) => void; ownOut: ReportSentence[]; narrative: StoryNarrativeContext | null; dayWords: ReportSentence[] }) {
   const { t } = useTranslation("races");
   const text = useStoryText(cast);
   const me = useMemo(() => myBestRider(story, cast), [story, cast]);
   const rows = useMemo(() => splitRows(story, me), [story, me]);
-  const report = useMemo(() => buildReport(story, lines, cast, ownOut), [story, lines, cast, ownOut]);
+  const report = useMemo(() => buildReport(story, lines, cast, ownOut, dayWords), [story, lines, cast, ownOut, dayWords]);
+  const loss = useMemo(() => ownTimeLoss(story, cast, narrative), [story, cast, narrative]);
   const current = km == null ? null : [...lines].reverse().find((l) => l.km <= km + 1e-6) ?? null;
 
   return (
@@ -294,11 +304,22 @@ function StorySection({ story, lines, cast, km, onJump, ownOut }: { story: RaceS
           <SplitTable rows={rows} cast={cast} me={me} precise={story.precise_times} />
         </div>
         {report.length > 0 && (
-          <div>
+          <div data-race-section="report">
             <h3 className="m-0 mb-1 font-data text-3xs font-semibold uppercase tracking-[.16em] text-cz-3">{t("stagePageV2.story.report.title")}</h3>
             <p className="m-0 max-w-[72ch] text-[15px] leading-relaxed text-cz-1">
-              {report.map((s) => t(`stagePageV2.story.report.${s.key}`, s.params)).join(" ")}
+              {report.map((s) => t(reportTextKey(s.key), s.params)).join(" ")}
             </p>
+          </div>
+        )}
+        {(loss.entries.length > 0 || loss.unknown) && (
+          <div>
+            <h3 className="m-0 mb-1 font-data text-3xs font-semibold uppercase tracking-[.16em] text-cz-3">{t("detail.film.split.lossTitle")}</h3>
+            <ul className="m-0 list-none p-0">
+              {loss.entries.map((entry, i) => (
+                <LossRow key={`${entry.riderId}-${entry.km}-${i}`} entry={entry} kmLabel={filmKmValue(entry.shown, text.km)} riderNameById={castNames(cast)} teamNameById={narrative?.teamNameById} t={t} />
+              ))}
+              {loss.unknown && <li className="border-t border-cz-border py-1.5 text-sm leading-snug text-cz-1 first:border-t-0">{t("stagePageV2.story.lossUnknown", { names: loss.unknown })}</li>}
+            </ul>
           </div>
         )}
         <p className="m-0 font-data text-2xs text-cz-3">{t("stagePageV2.story.source")}</p>
@@ -326,7 +347,7 @@ function SplitTable({ rows, cast, me, precise }: { rows: SplitRow[]; cast: Cast;
       : t("stagePageV2.story.splits.top", { name: r.name ?? t("stagePageV2.story.splits.climb") });
   };
   const leading = (r: SplitRow) => {
-    if (isPeloton(r.leaderIsRest, r.leaderSize)) return t("stagePageV2.story.group.peloton");
+    if (r.leaderIsPeloton) return t("stagePageV2.story.group.peloton");
     return namesList(r.leaderIds, cast, 2, r.leaderSize) || (r.leaderSize ? t("stagePageV2.story.group.riders", { count: r.leaderSize }) : "-");
   };
   const myGap = (r: SplitRow) => {
