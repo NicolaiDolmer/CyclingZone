@@ -259,6 +259,18 @@ test('behind-switch detection reads PR title and prose, not template help text o
   assert.equal(isBehindSwitch('fix: bug', 'Refs #1\nRettelsen er live.'), false);
   assert.equal(isBehindSwitch('x', '<!-- skriv hvis bag slukket kontakt -->'), false);
   assert.equal(isBehindSwitch('x', 'Se `bag slukket kontakt` i koden'), false);
+  assert.equal(isBehindSwitch('x', 'Alt er bag slukket flag.'), true);
+  assert.equal(isBehindSwitch('x', 'Bag slukkede flag.'), true);
+  assert.equal(isBehindSwitch('x', 'Flaget new_thing er slukket.'), true);
+  assert.equal(isBehindSwitch('x', 'Shipped behind a feature flag, enabled for all players.'), false);
+  assert.equal(isBehindSwitch('x', 'Ligger bag flag, tændt for alle.'), false);
+  // Rigtige formuleringer fra projektets kontakt-PR'er (#7761, #7576, #7764, #7590).
+  assert.equal(isBehindSwitch('fix(motor): startfeltet holder til mål i etapeløb bag kontakt (#7733)', ''), true);
+  assert.equal(isBehindSwitch('feat(training): rollen styrer basis-dag bag egen kontakt (#5950)', ''), true);
+  assert.equal(isBehindSwitch('x', 'Ligger **slukket** kontakt i app_config.'), true);
+  assert.equal(isBehindSwitch('x', 'Ny motor (slukket)'), true);
+  assert.equal(isBehindSwitch('feat: potentiale bag slukket flag (#7685)', ''), true);
+  assert.equal(isBehindSwitch('x', 'Ligger bag _slukket_ kontakt.'), true);
   assert.equal(isBehindSwitch(null, undefined), false);
   assert.equal(shouldFlip('closes', true), true, 'Closes closes the issue on GitHub, so the label follows');
   assert.equal(shouldFlip('refs', true), false);
@@ -278,6 +290,32 @@ test('Refs issues of a PR behind a switched-off switch keep claude:todo and only
   assert.deepEqual(state.labels[2], ['claude:done']);
   assert.match(state.comments[1][0], /bag slukket kontakt; labels er ikke ændret/);
   assert.ok(lines.some((l) => l.includes('#1') && l.includes('bag slukket kontakt')));
+});
+
+test('the switch exception holds per issue: a later or same-train PR without the phrase does not flip it (#7782)', () => {
+  // Samme tog: kontakt-PR'en og en samle-PR (patch notes) Refs'er begge issue 1, i begge raekkefoelger.
+  for (const order of [[100, 101], [101, 100]]) {
+    const { gh, state } = fakeGh({
+      prs: { 100: { title: 'feat: dagsform bag kontakt', body: 'Refs #1' }, 101: { title: 'docs(patch-notes): samlet note', body: 'Refs #1, #2' } },
+      labels: { 1: ['claude:todo'], 2: ['claude:todo'] },
+    });
+    const res = runCloseOut({ train: order.map((number, i) => ({ number, sha: i ? SHA_B : SHA_A })), gh, now: NOW });
+    assert.deepEqual(res.errors, []);
+    assert.deepEqual(res.flips, [2], 'only the issue no PR holds back is flipped');
+    assert.deepEqual(state.labels[1], ['claude:todo']);
+    assert.deepEqual(state.labels[2], ['claude:done']);
+    assert.match(state.comments[1].join(' '), /en anden PR på issuet ligger bag slukket kontakt/);
+  }
+  // Senere tog: kontakt-PR'ens egen kommentar staar paa issuet og holder patch-note-PR'en tilbage.
+  const first = fakeGh({ prs: { 100: { title: 'feat: x bag kontakt', body: 'Refs #1' } }, labels: { 1: ['claude:todo'] } });
+  runCloseOut({ train: [{ number: 100, sha: SHA_A }], gh: first.gh, now: NOW });
+  const later = fakeGh({ prs: { 101: { title: 'docs(patch-notes): note', body: 'Refs #1' } }, labels: first.state.labels, comments: first.state.comments });
+  const res = runCloseOut({ train: [{ number: 101, sha: SHA_B }], gh: later.gh, now: NOW });
+  assert.deepEqual(res.flips, []);
+  assert.deepEqual(later.state.labels[1], ['claude:todo']);
+  // Closes flipper stadig altid.
+  const closes = fakeGh({ prs: { 100: { title: 'feat bag kontakt', body: 'Refs #1' }, 101: { title: 'fix', body: 'Closes #1' } }, labels: { 1: ['claude:todo'] } });
+  assert.deepEqual(runCloseOut({ train: [{ number: 100, sha: SHA_A }, { number: 101, sha: SHA_B }], gh: closes.gh, now: NOW }).flips, [1]);
 });
 
 test('dry-run and merged phase never flip a Refs issue (#7782)', () => {

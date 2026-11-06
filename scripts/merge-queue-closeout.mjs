@@ -99,16 +99,20 @@ export function isVerifiedComment(body) {
 // arbejdet ikke leveret til spillerne endnu). Closes flipper altid: GitHub lukker
 // issuet alligevel, og et lukket issue må ikke stå som todo.
 const SWITCH_OFF_RE = new RegExp([
-  'slukket\\s+kontakt',
-  'slukkede\\s+kontakter',
-  'bag\\s+(?:en\\s+|den\\s+|sin\\s+)?(?:feature[-\\s]?)?(?:kontakt|flag|toggle)',
-  'behind\\s+(?:a\\s+|an\\s+|the\\s+)?(?:feature\\s+)?(?:flag|switch|toggle)',
+  // Projektets egne formuleringer: "slukket kontakt", "bag kontakt", "bag egen kontakt",
+  // "bag slukket flag", "(slukket)". Markdown-fed (**slukket**) fjernes foer match.
+  'sluk(?:ket|kede)\\s+(?:\\S+\\s+)?(?:kontakt\\w*|flag\\w*|toggle\\w*)',
+  'bag\\s+(?:\\S+\\s+){0,2}?kontakt\\w*',
+  '\\(sluk(?:ket|kede)\\)',
+  // Et flag alene beviser intet: det skal stå, at det er slukket.
+  '(?:flag|flagget|toggle|switch)[^.\\n]{0,40}\\b(?:off|slukket|disabled)\\b',
+  '\\b(?:off|slukket|disabled)\\b[^.\\n]{0,40}(?:flag|toggle|switch)',
   'default[-\\s]?(?:off|slukket)',
   'dark[-\\s]?launch',
 ].join('|'), 'i');
 
 export function isBehindSwitch(...texts) {
-  return SWITCH_OFF_RE.test(stripNonProse(texts.filter(Boolean).join('\n')));
+  return SWITCH_OFF_RE.test(stripNonProse(texts.filter(Boolean).join('\n')).replace(/[*_]/g, ''));
 }
 
 export function shouldFlip(kind, behindSwitch = false) {
@@ -120,18 +124,21 @@ function kindLabel(kind) {
 }
 
 // phase: 'verified' (efter toget, default) eller 'merged' (straks efter merget).
-export function commentBody({ pr, issue, sha, kind, deployVerified = true, phase = 'verified', behindSwitch = false }) {
+export function commentBody({ pr, issue, sha, kind, deployVerified = true, phase = 'verified', behindSwitch = false, heldByOther = false }) {
   const head = `${markerFor(pr, issue)}\nMerget via merge-køen: PR #${pr} som \`${shortSha(sha)}\` (${sha}).`;
-  const flips = shouldFlip(kind, behindSwitch);
+  const flips = shouldFlip(kind, behindSwitch || heldByOther);
+  const holdText = heldByOther
+    ? `PR'en ${kindLabel(kind)}; en anden PR på issuet ligger bag slukket kontakt, så labels er ikke ændret.`
+    : `PR'en ${kindLabel(kind)} og ligger bag slukket kontakt; labels er ikke ændret.`;
   if (phase === 'merged') {
     const tail = flips
       ? `PR'en ${kindLabel(kind)}; label flyttes først, når toget er verificeret.`
-      : `PR'en ${kindLabel(kind)} og ligger bag slukket kontakt; labels er ikke ændret.`;
+      : holdText;
     return `${head} Verifikation afventer (main-CI + evt. deploy-verifikation); kommentaren opdateres, når toget er verificeret. ${tail}`;
   }
   const tail = flips
     ? `PR'en ${kindLabel(kind)}; label flyttet til \`claude:done\` hvis det stod på \`claude:todo\`.`
-    : `PR'en ${kindLabel(kind)} og ligger bag slukket kontakt; labels er ikke ændret.`;
+    : holdText;
   return `${head} ${VERIFIED_TAG} ${verificationText(deployVerified)}. ${tail}`;
 }
 
@@ -188,6 +195,7 @@ export function runCloseOut({ train, repo = DEFAULT_REPO, dryRun = false, deploy
   if (phase !== 'verified' && phase !== 'merged') { result.errors.push(`ukendt fase: ${phase}`); return result; }
   if (typeof gh !== 'function') { result.errors.push('ingen gh-runner'); return result; }
   const say = (line) => log(dryRun ? `[dry-run] ${line}` : line);
+  const loaded = [];
   for (const entry of train) {
     let refs = [];
     let title = '';
@@ -206,9 +214,18 @@ export function runCloseOut({ train, repo = DEFAULT_REPO, dryRun = false, deploy
       result.errors.push(`PR #${entry.number}: ${err?.message ?? err}`);
     }
     result.prs.push({ number: entry.number, sha: entry.sha, title, refs, behindSwitch });
+    loaded.push({ entry, refs, behindSwitch });
+  }
+  // Undtagelsen gælder pr. ISSUE, ikke pr. PR: en samle-PR (fx patch notes) der Refs'er et
+  // issue, som en anden PR i toget holder bag slukket kontakt, må ikke flippe det.
+  const heldInTrain = new Set();
+  for (const { refs, behindSwitch } of loaded) {
+    if (behindSwitch) for (const ref of refs) if (ref.kind === 'refs') heldInTrain.add(ref.issue);
+  }
+  for (const { entry, refs, behindSwitch } of loaded) {
     if (!refs.length) say(`close-out PR #${entry.number}: ingen Refs/Closes-issues i PR-body.`);
     for (const ref of refs) {
-      try { closeOutIssue({ entry, ref, repo, dryRun, deployVerified, phase, behindSwitch, gh, result, say }); }
+      try { closeOutIssue({ entry, ref, repo, dryRun, deployVerified, phase, behindSwitch, heldInTrain, gh, result, say }); }
       catch (err) { result.errors.push(`#${ref.issue}: ${err?.message ?? err}`); }
     }
   }
@@ -216,7 +233,12 @@ export function runCloseOut({ train, repo = DEFAULT_REPO, dryRun = false, deploy
   return result;
 }
 
-function closeOutIssue({ entry, ref, repo, dryRun, deployVerified, phase, behindSwitch = false, gh, result, say }) {
+// En tidligere PR på issuet har skrevet, at den ligger bag slukket kontakt (kun egen-PR-teksten, ikke hold-teksten).
+function heldByEarlierPr(comments, issue) {
+  return (comments ?? []).some((c) => c.body.includes(`${MARKER_PREFIX} pr=`) && c.body.includes(` issue=${issue} -->`) && c.body.includes('og ligger bag slukket kontakt'));
+}
+
+function closeOutIssue({ entry, ref, repo, dryRun, deployVerified, phase, behindSwitch = false, heldInTrain = new Set(), gh, result, say }) {
   const pr = entry.number;
   const issue = ref.issue;
   const marker = markerFor(pr, issue);
@@ -224,7 +246,8 @@ function closeOutIssue({ entry, ref, repo, dryRun, deployVerified, phase, behind
   const existing = comments?.find((c) => c.body.includes(marker));
   // Verificeret = sidste tilstand; 'merged' maa heller aldrig skrive oven i en afventende kommentar.
   const upToDate = existing && (phase === 'merged' || isVerifiedComment(existing.body));
-  const body = entry.sha ? commentBody({ pr, issue, sha: entry.sha, kind: ref.kind, deployVerified, phase, behindSwitch }) : null;
+  const heldByOther = ref.kind === 'refs' && !behindSwitch && (heldInTrain.has(issue) || heldByEarlierPr(comments, issue));
+  const body = entry.sha ? commentBody({ pr, issue, sha: entry.sha, kind: ref.kind, deployVerified, phase, behindSwitch, heldByOther }) : null;
   if (comments === null) {
     result.errors.push(`#${issue}: kommentarer kunne ikke laeses; SHA-kommentar springes over (ingen dublet-risiko)`);
   } else if (upToDate) {
@@ -246,8 +269,8 @@ function closeOutIssue({ entry, ref, repo, dryRun, deployVerified, phase, behind
     else result.errors.push(`#${issue}: SHA-kommentar fejlede (gh exit ${res.status})`);
   }
   if (phase === 'merged') return;
-  if (!shouldFlip(ref.kind, behindSwitch)) {
-    say(`close-out #${issue}: PR #${pr} ligger bag slukket kontakt; claude:todo beholdes.`);
+  if (!shouldFlip(ref.kind, behindSwitch || heldByOther)) {
+    say(`close-out #${issue}: ${heldByOther ? `en anden PR på issuet (ikke PR #${pr})` : `PR #${pr}`} ligger bag slukket kontakt; claude:todo beholdes.`);
     return;
   }
   const view = gh(['issue', 'view', String(issue), '--repo', repo, '--json', 'labels']);
