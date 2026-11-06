@@ -293,7 +293,8 @@
         "thirdGap": "{name} werd derde, {gap} achter.",
         "placed": "{name} finishte op plaats {rank}.",
         "placedGap": "{name} finishte op plaats {rank}, {gap} achter.",
-        "dayWord": "{word, select, great {{name} had een heel goede dag.} good {{name} had een goede dag.} fatigue {{name} had een slechte dag. De zware dagen ervoor eisten hun tol.} form {{name} had een slechte dag. Hij miste vorm.} illness {{name} had een slechte dag. Hij voelde zich ziek.} rain {{name} had een slechte dag in de regen.} wind {{name} had een slechte dag in de wind.} heat {{name} had een slechte dag in de hitte.} other {{name} had een slechte dag.}}",
+        "dayGreat": "{name} had een heel goede dag.",
+        "dayGood": "{name} had een goede dag.",
         "ownOut": "{kind, select, withdrawal {Afgestapt: {names}. Te ver achter de winnaar.} time_limit {Buiten tijd: {names}.} crash {Afgestapt na een valpartij: {names}.} mechanical {Afgestapt door materiaalpech: {names}.} other {Afgestapt: {names}.}}"
       },
       "final": {

@@ -151,6 +151,8 @@ features:
     epic: 7725
     verified: 2026-11-06
     note: "Slukket ved merge; kræver day_form_6649. Ændrer kun tidslinjen, aldrig resultatet."
+    decision: ejer-beslutning
+    decide_by: 2026-11-20
 
   - id: race-descent-regroup-cap-7644
     area: race-engine

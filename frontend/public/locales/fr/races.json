@@ -293,7 +293,8 @@
         "thirdGap": "{name} a pris la troisième place, à {gap}.",
         "placed": "{name} a terminé à la position {rank}.",
         "placedGap": "{name} a terminé à la position {rank}, à {gap}.",
-        "dayWord": "{word, select, great {{name} a connu une très bonne journée.} good {{name} a connu une bonne journée.} fatigue {{name} a connu un jour sans. Les jours difficiles précédents ont laissé des traces.} form {{name} a connu un jour sans. Il manquait de forme.} illness {{name} a connu un jour sans. Il était malade.} rain {{name} a connu un jour sans sous la pluie.} wind {{name} a connu un jour sans dans le vent.} heat {{name} a connu un jour sans dans la chaleur.} other {{name} a connu un jour sans.}}",
+        "dayGreat": "{name} a connu une très bonne journée.",
+        "dayGood": "{name} a connu une bonne journée.",
         "ownOut": "{kind, select, withdrawal {Pied à terre : {names}. Trop loin du vainqueur.} time_limit {Hors délais : {names}.} crash {Abandon sur chute : {names}.} mechanical {Abandon sur problème mécanique : {names}.} other {Abandon : {names}.}}"
       },
       "final": {

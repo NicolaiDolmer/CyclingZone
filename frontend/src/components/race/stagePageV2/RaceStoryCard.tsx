@@ -11,7 +11,7 @@ import { formatNumber } from "../../../lib/intl.js";
 import type { Climb, ElevationSeries, StageProfile } from "./stagePageV2Model.ts";
 import {
   buildReport, curateMoments, dayWordSentences, finaleData, formatClock, lineReplayKm, myBestRider, namesList, pickGroups,
-  replayGroupsAt, splitRows, wholeStageFrames, frameAt,
+  replayGroupsAt, reportTextKey, splitRows, wholeStageFrames, frameAt,
   isPeloton, isTimeTrialStory, type Cast, type RaceStory, type ReplayGroup, type ReportSentence, type SplitRow, type StoryLine, type StoryNarrativeContext,
 } from "./raceStoryModel.ts";
 import StageProfileV2, { GradientLegend } from "./StageProfileV2.tsx";
@@ -67,7 +67,7 @@ export default function RaceStoryCard({ story, profile, series, climbs, cast, ti
         {/* #7725: en enkeltstart har intet referat, men dagen forklarer stadig tiden. */}
         {dayWords.length > 0 && (
           <p className="m-0 mt-3 max-w-[72ch] text-[15px] leading-relaxed text-cz-1">
-            {dayWords.map((s) => t(`stagePageV2.story.report.${s.key}`, s.params)).join(" ")}
+            {dayWords.map((s) => t(reportTextKey(s.key), s.params)).join(" ")}
           </p>
         )}
       </Section>
@@ -304,7 +304,7 @@ function StorySection({ story, lines, cast, km, onJump, ownOut, dayWords }: { st
           <div>
             <h3 className="m-0 mb-1 font-data text-3xs font-semibold uppercase tracking-[.16em] text-cz-3">{t("stagePageV2.story.report.title")}</h3>
             <p className="m-0 max-w-[72ch] text-[15px] leading-relaxed text-cz-1">
-              {report.map((s) => t(`stagePageV2.story.report.${s.key}`, s.params)).join(" ")}
+              {report.map((s) => t(reportTextKey(s.key), s.params)).join(" ")}
             </p>
           </div>
         )}

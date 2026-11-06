@@ -564,7 +564,7 @@ const DAY_WORD_ORDER = ["great", "fatigue", "form", "illness", "rain", "wind", "
 export function dayWordsByRider(events: readonly NarrativeEvent[] | null | undefined): Map<string, string> {
   const out = new Map<string, string>();
   for (const e of events ?? []) {
-    if (e.type !== "day_word") continue;
+    if (e?.type !== "day_word") continue;
     const p = (e.params ?? {}) as { rider_id?: unknown; word?: unknown; reason?: unknown; weather?: unknown };
     const word = p.word === "bad" ? (p.reason === "weather" ? p.weather : p.reason) : p.word;
     if (typeof p.rider_id === "string" && typeof word === "string" && DAY_WORDS.has(word)) out.set(p.rider_id, word);
@@ -584,7 +584,14 @@ export function dayWordSentences(events: readonly NarrativeEvent[] | null | unde
   });
   // Vinderens dag foerst: den forklarer etapen. Derefter dine egne, de klareste ord foerst.
   rows.sort((a, b) => Number(b.first) - Number(a.first) || DAY_WORD_ORDER.indexOf(a.word) - DAY_WORD_ORDER.indexOf(b.word));
-  return rows.slice(0, 2).map(({ word, name }) => ({ key: "dayWord", params: { word, name } }));
+  return rows.slice(0, 2).map(({ word, name }): ReportSentence => (word === "great" || word === "good"
+    ? { key: word === "great" ? "dayGreat" : "dayGood", params: { name } }
+    : { key: `bad_day_${word}`, params: { rider: name } }));
+}
+
+/** i18n-noeglen for en referat-saetning. Den daarlige dag deler loebsfilmens tekst (#6649). */
+export function reportTextKey(key: string): string {
+  return key.startsWith("bad_day_") ? `detail.film.event.${key}` : `stagePageV2.story.report.${key}`;
 }
 
 /**

@@ -9,7 +9,7 @@ import { withEventPlaces } from "../../../../../backend/lib/raceTimeline.js";
 import {
   asStory, isTimeTrialStory, buildReport, castFrom, curateMoments, dayWordsByRider, dayWordSentences, finaleData, finaleEndTime, finaleMarkerLabelsShown, finaleStateAt, formatClock, frameAt,
   groupMembersAt, groupOfRider, isPeloton, leaderKmAt, lineReplayKm, MAX_STORY_LINES, namesList, ownOutSentences, parseGap, pickGroups,
-  replayGroupsAt, splitRows, wholeStageFrames, myBestRider,
+  replayGroupsAt, reportTextKey, splitRows, wholeStageFrames, myBestRider,
   type RaceStory, type StoryLine,
 } from "./raceStoryModel.ts";
 import type { ResultRow, RoleRider } from "./stagePageV2Model.ts";
@@ -346,8 +346,8 @@ test("#7725 dayWordSentences: vinderen og dine egne i maal, vinderen foerst, hoe
     ev(100, "day_word", { rider_id: "not-in-results", word: "great" }),
   ];
   assert.deepEqual(dayWordSentences(events, c), [
-    { key: "dayWord", params: { word: "good", name: c.nameOf("w") as string } },
-    { key: "dayWord", params: { word: "form", name: c.nameOf(mine[0]) as string } },
+    { key: "dayGood", params: { name: c.nameOf("w") as string } },
+    { key: "bad_day_form", params: { rider: c.nameOf(mine[0]) as string } },
   ]);
   assert.deepEqual(dayWordSentences([], c), [], "slukket: ingen ord i loggen, ingen saetning");
 });
@@ -356,11 +356,11 @@ test("#7725 buildReport: dagens ord staar foer dine udgaaede og ryger foer vinde
   const s = story();
   const c = castFrom(RESULTS, ROLES, 3, "t-me");
   const lines = curateMoments(s, c);
-  const dayWords = [{ key: "dayWord", params: { word: "great", name: "Winner" } }];
+  const dayWords = [{ key: "dayGreat", params: { name: "Winner" } }];
   const ownOut = [{ key: "ownOut", params: { kind: "withdrawal", names: "Hansen" } }];
   const keys = buildReport(s, lines, c, ownOut, dayWords).map((r) => r.key);
   assert.ok(keys.length <= 5, keys.join(","));
-  assert.equal(keys.indexOf("dayWord"), keys.length - 2, keys.join(","));
+  assert.equal(keys.indexOf("dayGreat"), keys.length - 2, keys.join(","));
   assert.deepEqual(buildReport(s, lines, c, ownOut, []), buildReport(s, lines, c, ownOut), "uden ord er referatet uaendret");
   const full = [ownOut[0], { ...ownOut[0] }, { ...ownOut[0] }];
   const crowded = buildReport(s, lines, c, full, dayWords).map((r) => r.key);
@@ -368,15 +368,17 @@ test("#7725 buildReport: dagens ord staar foer dine udgaaede og ryger foer vinde
   assert.ok(crowded.some((k) => k.startsWith("winner")), crowded.join(","));
 });
 
-test("#7725 dayWord: alle fem sprog har alle ord, uden tal", async () => {
+test("#7725 ord: alle fem sprog har begge gode dage og alle aarsager, uden tal, og hver saetning har sin noegle", async () => {
   const { readFileSync } = await import("node:fs");
+  assert.equal(reportTextKey("dayGreat"), "stagePageV2.story.report.dayGreat");
+  assert.equal(reportTextKey("bad_day_rain"), "detail.film.event.bad_day_rain");
   for (const lang of ["en", "da", "es", "fr", "nl"]) {
     const url = new URL(`../../../../public/locales/${lang}/races.json`, import.meta.url);
-    const text = JSON.parse(readFileSync(url, "utf8")).stagePageV2.story.report.dayWord as string;
-    for (const word of ["great", "good", "fatigue", "form", "illness", "rain", "wind", "heat", "other"]) {
-      assert.ok(text.includes(`${word} {{name}`), `${lang}: ${word}`);
-    }
-    assert.ok(!/[0-9%]/.test(text), `${lang}: ingen tal`);
+    const races = JSON.parse(readFileSync(url, "utf8"));
+    const report = races.stagePageV2.story.report;
+    for (const key of ["dayGreat", "dayGood"]) assert.ok(report[key]?.includes("{name}") && !/[0-9%]/.test(report[key]), `${lang}: ${key}`);
+    assert.notEqual(report.dayGreat, report.dayGood, lang);
+    for (const cause of ["fatigue", "form", "illness", "rain", "wind", "heat"]) assert.ok(races.detail.film.event[`bad_day_${cause}`]?.includes("{rider}"), `${lang}: ${cause}`);
   }
 });
 
