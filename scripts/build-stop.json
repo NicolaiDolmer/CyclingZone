@@ -1031,6 +1031,16 @@
       "issue": 7811,
       "reason": "Måling: filter for ejer og testkonti, #7778",
       "since": "2026-11-06"
+    },
+    {
+      "issue": 7790,
+      "reason": "Ejer-go 6/11: known issues følger patch noten (roadmap-sporet)",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7788,
+      "reason": "Ejer-go 6/11: Ved ikke én gang pr. punkt",
+      "since": "2026-11-06"
     }
   ]
 }
