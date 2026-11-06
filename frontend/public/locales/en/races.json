@@ -2110,5 +2110,11 @@
       "hours": "in {count}h",
       "days": "in {count, plural, one {# day} other {# days}}"
     }
+  },
+  "timeLimitRisk": {
+    "short": "Time limit risk",
+    "long": "Very tired, and this stage suits him poorly. He could miss the time limit. Set him to Grupetto or Ride easy to spare him the extra risk.",
+    "outShort": "Too tired",
+    "outLong": "Outside the time limit. He was very tired, and the stage suited him poorly."
   }
 }

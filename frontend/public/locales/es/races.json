@@ -2127,5 +2127,11 @@
       "hours": "en {count} h",
       "days": "en {count, plural, one {# día} other {# días}}"
     }
+  },
+  "timeLimitRisk": {
+    "short": "Riesgo de fuera de control",
+    "long": "Está muy cansado y esta etapa no le va bien. Podría quedar fuera de control. Ponlo en Grupeto o Ir tranquilo para ahorrarle el riesgo extra.",
+    "outShort": "Demasiado cansado",
+    "outLong": "Fuera de control. Estaba muy cansado y la etapa no le iba bien."
   }
 }

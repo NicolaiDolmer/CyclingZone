@@ -23,6 +23,8 @@ import {
 } from "../../lib/raceSelectionDraft.js";
 import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
+import TimeLimitRiskMark from "./TimeLimitRiskMark.jsx"; // #7715
+import { selectionTimeLimitRisk } from "../../lib/timeLimitRisk7715.js"; // #7715
 import FitBar from "../racehub/FitBar.jsx";
 import HunterExplainer from "./HunterExplainer.jsx";
 import RiderFitInsight from "./RiderFitInsight.jsx";
@@ -755,6 +757,7 @@ export default function RaceSelectionPanel({
                         <span className="text-cz-3 uppercase text-3xs tracking-wide">{t("selection.fatigue")}</span>
                         <span className="font-mono tabular-nums text-cz-2">{rider.fatigue ?? "—"}</span>
                       </span>
+                      {selectionTimeLimitRisk(rider, selectedStageIndex) && <TimeLimitRiskMark />}
                       {/* #6984 M4/M8: holdlægens ord (kun når backend sender dem). */}
                       {data?.doctor?.riders?.[rider.id] && (
                         <span className="inline-flex items-center gap-1">
@@ -848,6 +851,7 @@ export default function RaceSelectionPanel({
                       )}
                       {rider.overAge && <OverAgeBadge label={t("selection.overAge")} />}
                       {lockedByTrainNow && <TrainNowRiderBadge label={t("selection.trainNowLock.rider")} />}
+                      {selectionTimeLimitRisk(rider, selectedStageIndex) && <TimeLimitRiskMark />}
                       {bound && (
                         <span className={`text-3xs px-2 py-0.5 rounded-full border whitespace-nowrap ${checked
                           ? "bg-cz-danger/10 text-cz-danger border-cz-danger/20"

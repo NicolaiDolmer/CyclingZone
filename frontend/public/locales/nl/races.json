@@ -2127,5 +2127,11 @@
       "hours": "over {count}u",
       "days": "over {count, plural, one {# dag} other {# dagen}}"
     }
+  },
+  "timeLimitRisk": {
+    "short": "Risico op tijdslimiet",
+    "long": "Hij is erg moe en deze rit past slecht bij hem. Hij kan buiten de tijdslimiet vallen. Zet hem op Grupetto of Rustig rijden om hem het extra risico te besparen.",
+    "outShort": "Te moe",
+    "outLong": "Buiten de tijdslimiet. Hij was erg moe en de rit paste slecht bij hem."
   }
 }

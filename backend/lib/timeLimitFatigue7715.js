@@ -14,7 +14,7 @@
 import { readFlagStage } from "./featureStage.js";
 import { ROUTE_MATCH_ABILITY_KEYS, routeMatchRaw, routeMatchRevisionFor, stageRouteVector } from "./routeMatch.js";
 import { timeLimitFatigueSeverity7715 } from "./engine/v4/mechanics/timeLimit.ts";
-import { isMissingRulesRevisionColumnError, isS5ProfilesV3OrLater, raceHasStarted } from "./raceEngineRulesRevision.ts";
+import { isS5ProfilesV3OrLater, raceHasStarted } from "./raceEngineRulesRevision.ts";
 
 export const TIME_LIMIT_FATIGUE_7715_FLAG_KEY = "time_limit_fatigue_7715";
 
@@ -76,9 +76,40 @@ export async function raceTimeLimitFatigue7715Applies({ supabase, race, checkEna
   return !error && data?.time_limit_fatigue_7715 === true;
 }
 
+/**
+ * Forklaringen efter etapen: { rider_id -> etape } for de ryttere motoren satte ud af
+ * traethed. Laeser kun loebets tidslinjer, og kun naar holdet har udgaaede ryttere. Haenger
+ * ikke paa kontakten, saa forklaringen staar, ogsaa hvis den senere slukkes. En fejl = ingen
+ * forklaring: fladen maa aldrig vaelte af det.
+ */
+export async function loadFatigueOutStages7715({ supabase, race, riderIds }) {
+  const out = new Map();
+  if (!riderIds?.length) return out;
+  const wanted = new Set(riderIds);
+  const { data, error } = await Promise.resolve()
+    .then(() => supabase.from("race_stage_timelines").select("stage_number, events").eq("race_id", race.id).order("stage_number", { ascending: true }))
+    .catch((err) => ({ data: null, error: err }));
+  if (error) return out;
+  for (const row of data ?? []) {
+    const events = Array.isArray(row.events) ? row.events : row.events?.events ?? [];
+    for (const event of events) {
+      if (event?.type !== "outside_time_limit") continue;
+      for (const id of event.params?.fatigue_rider_ids ?? []) if (wanted.has(id)) out.set(id, row.stage_number);
+    }
+  }
+  return out;
+}
+
+/** Kun "kolonnen findes ikke". En constraint-fejl der naevner kolonnen, skal larme. */
+function isMissingBindingColumn7715(error) {
+  const message = typeof error?.message === "string" ? error.message : "";
+  if (!message.includes("time_limit_fatigue_7715")) return false;
+  return error.code === "42703" || error.code === "PGRST204" || /does not exist|could not find/i.test(message);
+}
+
 function readBinding7715({ supabase, race }) {
   // schema-columns-ok: time_limit_fatigue_7715 tilfoejes af database/2026-11-06-7715-race-time-limit-fatigue.sql;
-  // foer den er applied, er svaret bevidst nej (isMissingRulesRevisionColumnError).
+  // foer den er applied, er svaret bevidst nej (isMissingBindingColumn7715).
   return supabase.from("races").select("time_limit_fatigue_7715, stages_completed").eq("id", race.id).maybeSingle();
 }
 
@@ -91,7 +122,7 @@ function readBinding7715({ supabase, race }) {
 export async function bindRaceTimeLimitFatigue7715({ supabase, race, firstStageClaim, dryRun = false }) {
   const { data: row, error } = await readBinding7715({ supabase, race });
   if (error) {
-    if (isMissingRulesRevisionColumnError(error)) return false;
+    if (isMissingBindingColumn7715(error)) return false;
     throw new Error(`race ${race.id}: time_limit_fatigue_7715 kunne ikke laeses (${error.message})`);
   }
   if (row?.time_limit_fatigue_7715 === true) return true;
@@ -102,7 +133,7 @@ export async function bindRaceTimeLimitFatigue7715({ supabase, race, firstStageC
   const { error: bindError } = await supabase
     .from("races").update({ time_limit_fatigue_7715: true }).eq("id", race.id).is("time_limit_fatigue_7715", null).eq("stages_completed", 0);
   if (bindError) {
-    if (isMissingRulesRevisionColumnError(bindError)) return false;
+    if (isMissingBindingColumn7715(bindError)) return false;
     throw new Error(`race ${race.id}: time_limit_fatigue_7715 kunne ikke bindes (${bindError.message})`);
   }
   const { data: after, error: rereadError } = await readBinding7715({ supabase, race });

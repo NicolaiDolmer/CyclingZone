@@ -80,6 +80,8 @@ import SortableTh from "../ui/SortableTh.jsx";
 import FitBar from "../racehub/FitBar.jsx";
 import RaceStageProfileRow from "./RaceStageProfileRow.jsx";
 import { stageRouteMatch, routeMatchComparator } from "../../lib/lineupInsight.js";
+import TimeLimitRiskMark from "./TimeLimitRiskMark.jsx"; // #7715
+import { showsTimeLimitOut, showsTimeLimitRisk } from "../../lib/timeLimitRisk7715.js"; // #7715
 import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import {
   buildDraftMatrix,
@@ -826,7 +828,13 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         </span>
       );
     }
-    return <FitBar score={score} />;
+    return <div className="flex flex-col items-start gap-1"><FitBar score={score} />{renderTimeLimitMark(rider)}</div>;
+  }
+
+  // #7715: varslet foer etapen, og samme sted efter den, hvorfor han roeg ud.
+  function renderTimeLimitMark(rider) {
+    if (showsTimeLimitOut(rider, activeStage)) return <TimeLimitRiskMark variant="out" />;
+    return showsTimeLimitRisk(rider, activeStage, effortFor(rider)) ? <TimeLimitRiskMark /> : null;
   }
 
   function renderIntentionCell(rider) {
@@ -1199,6 +1207,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                 </span>
               </div>
               <div className="mt-0.5">{renderRoleCell(rider)}</div>
+              {renderTimeLimitMark(rider) && <div className="mt-1.5">{renderTimeLimitMark(rider)}</div>}
               <div className="mt-2">{renderIntentionCell(rider)}</div>
               {showOrders && <div className="mt-2">{renderOrdersCell(rider)}</div>}
               {openRole && (

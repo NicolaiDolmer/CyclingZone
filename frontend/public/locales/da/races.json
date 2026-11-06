@@ -2110,5 +2110,11 @@
       "hours": "om {count} t",
       "days": "om {count, plural, one {# dag} other {# dage}}"
     }
+  },
+  "timeLimitRisk": {
+    "short": "Tidsgrænse i fare",
+    "long": "Meget træt, og etapen passer ham dårligt. Han kan ryge uden for tidsgrænsen. Sæt ham til Grupetto eller Kør roligt, så slipper han for den ekstra risiko.",
+    "outShort": "For træt",
+    "outLong": "Uden for tidsgrænsen. Han var meget træt, og etapen passede ham dårligt."
   }
 }
