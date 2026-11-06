@@ -151,6 +151,8 @@ features:
     epic: 7725
     verified: 2026-11-06
     note: "Slukket; kræver day_form_6649."
+    decision: ejer-beslutning
+    decide_by: 2026-11-20
   - id: race-itt-no-day-roll-7726
     area: race-engine
     title_en: Time trials without the extra day roll
@@ -419,7 +421,7 @@ features:
     area: race-day
     title_en: Why? button beside riders in Your day
     title_da: Hvorfor?-knap ved rytterne i Din dag
-    state: dormant
+    state: beta
     flag: rider_why_button
     decision: taend
     decide_by: 2026-11-20

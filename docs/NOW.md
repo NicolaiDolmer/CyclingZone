@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (6/11 eftermiddag):** 17 PR'er merget i dag; patch note 7.406 live. rider_why_button = beta. Bølge i gang: #7766, #7768, #7784 (XP-spec), #7785, #7786, #7787. Derefter #7765 og binding af #7733. Efter 7/11 16:30: started_field_lock_7733 ved ejer-kør, før juniorløb 11/11. Lør: secrets #7029. Overdragelse: OneDrive private-handoffs/overdragelse-pc1-dolmerpc-2026-11-06.md.
+> **🎯 Next action (6/11 eftermiddag):** 21 PR'er merget i dag, patch note 7.406 live, rider_why_button = beta. Bølge: #7766, #7768. Derefter #7765 og binding af #7733. Overdragelse: OneDrive private-handoffs/overdragelse-pc1-dolmerpc-2026-11-06.md. Næste: secrets lør, #7557/#7726 kør, #7692 tilbageførsel ved ejer-kør.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
 > **🤖 Working agent:** PC1-session: merge, til dørs, plan for ugen.
