@@ -21,8 +21,9 @@ test("a fatigue rule, a race binding and an injury each win over the plan", () =
   assert.equal(dayReason(day(() => rest({ injured: true })), 0, {}), "injured");
 });
 
-test("a rider injured during the date's only session is injured, not near his best", () => {
-  assert.equal(dayReason([rest(), slot({ injured: true })], 0, nothing), "injured");
+test("an injury from a session did not stop the session, so it never says no training", () => {
+  assert.equal(dayReason([rest(), slot({ injured: true })], 0, { tempo: 60 }), null);
+  assert.equal(dayReason([rest(), slot({ injured: true, at_ceiling: true })], 0, nothing), "nearBest");
 });
 
 test("every session at the ceiling is the near-best reason, with or without rest and race slots", () => {

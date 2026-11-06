@@ -19,7 +19,8 @@ export function dayReason(
   activities: TrainingActivity[], wholePoints: number, gainPercent: Record<string, number | null>,
 ): DayReason | null {
   if (wholePoints > 0 || activities.length === 0) return null;
-  const sessions = activities.filter(a => a.intensity !== "rest" && !a.injured);
+  // An injury from a session keeps that session: only "rest" means no training.
+  const sessions = activities.filter(a => a.intensity !== "rest");
   if (activities.some(a => a.injured) && sessions.length === 0) return "injured";
   if (sessions.length > 0) {
     const percents = Object.values(gainPercent);
