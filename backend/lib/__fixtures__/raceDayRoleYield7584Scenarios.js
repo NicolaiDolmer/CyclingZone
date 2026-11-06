@@ -11,8 +11,13 @@ import { VALID_RACE_ROLES } from "../raceRoles.js";
 import { raceDayRoleBaseProgram, raceDayRoleYieldMultipliers, withRaceDayRoleYield } from "../raceDayRoleYield5950.js";
 
 // Syntetiske params, IKKE kalibreringen.
-const PARAMS = Object.freeze({ stageBonus: 0.5, leadShare: 0.6 });
-const PARAMS_A = Object.freeze({ ...PARAMS, roleDrivesBaseDay: true });
+// Flere saet med skaeve vaerdier: to regnemaader der er ens paa papiret, kan afvige i sidste
+// decimal, og "bit-identisk" skal kunne se det.
+const PARAM_SETS = Object.freeze([
+  Object.freeze({ stageBonus: 0.5, leadShare: 0.6 }),
+  Object.freeze({ stageBonus: 0.37, leadShare: 0.43 }),
+  Object.freeze({ stageBonus: 0.213, leadShare: 0.71 }),
+]);
 const PROFILES = [...Object.keys(RACE_PROFILE_ABILITY_MAP), null, "unknown_profile"];
 const ROLES = [...VALID_RACE_ROLES, null, "unknown_role"];
 const SCORE_B_CASES = Object.freeze([
@@ -35,7 +40,7 @@ const sha = (value) => createHash("sha256").update(JSON.stringify(value)).digest
 
 function eachCase(fn) {
   const out = [];
-  for (const params of [PARAMS, PARAMS_A]) {
+  for (const params of PARAM_SETS.flatMap((p) => [p, Object.freeze({ ...p, roleDrivesBaseDay: true })])) {
     for (const profileType of PROFILES) {
       for (const role of ROLES) out.push(fn({ params, profileType, role }));
     }
