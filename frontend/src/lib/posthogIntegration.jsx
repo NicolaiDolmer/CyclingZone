@@ -70,6 +70,9 @@ export default function PosthogIntegration() {
   // Seneste identificerede bruger-id, så vi ikke kalder identify() på hver
   // eneste navigation.
   const identifiedRef = useRef(null);
+  // #7811: seneste beslutning, saa en start der lander efter at gaten lukkede, kan opte ud.
+  const posthogOnRef = useRef(posthogOn);
+  useEffect(() => { posthogOnRef.current = posthogOn; }, [posthogOn]);
 
   useEffect(() => {
     if (!POSTHOG_ENABLED) return;
@@ -83,7 +86,11 @@ export default function PosthogIntegration() {
     }
     let cancelled = false;
     startPosthog().then(() => {
-      if (cancelled) return;
+      // SDK'et loades lazy: lukkede gaten imens, maa den startede klient ikke sende.
+      if (cancelled) {
+        if (!posthogOnRef.current) optOutPosthog();
+        return;
+      }
       startedRef.current = true;
       // Første sidevisning: capture_pageview er slået fra, så den fyres her.
       capturePosthogPageview();

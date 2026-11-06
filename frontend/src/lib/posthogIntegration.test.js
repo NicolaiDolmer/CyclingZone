@@ -475,3 +475,8 @@ test("integrationen slår internt hold op og lukker gaten for interne brugere", 
   assert.match(integrationSource, /isPosthogAllowed\(effectiveConsent\) && !isInternal/);
   assert.match(integrationSource, /Boolean\(userId\) && !profileLoading && teamLookupDone/);
 });
+
+test("#7811: en start der lander efter lukket gate opter ud", () => {
+  const src = readFileSync(new URL("./posthogIntegration.jsx", import.meta.url), "utf8");
+  assert.match(src, /if \(cancelled\) \{\s*if \(!posthogOnRef\.current\) optOutPosthog\(\);/);
+});
