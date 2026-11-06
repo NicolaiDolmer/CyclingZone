@@ -157,14 +157,12 @@ features:
     area: race-engine
     title_en: Time trials without the extra day roll
     title_da: Enkeltstart uden den ekstra terning
-    state: dormant
+    state: live
     flag: itt_no_day_roll_7726
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7726
     verified: 2026-11-06
-    note: "Slukket; kun nye løb."
-    decision: ejer-beslutning
-    decide_by: 2026-11-20
+    note: "on 6/11 kl. 16:21 på ejerens kør; kun løb der ikke er startet."
 
   - id: race-descent-regroup-cap-7644
     area: race-engine
