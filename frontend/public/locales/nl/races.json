@@ -1161,7 +1161,7 @@
         "neutral": "De koers lezen",
         "let_go": "Het najagen aan anderen overlaten"
       },
-      "gcNote": "De ploeg kan met haar vrije renners beperkt reageren op een serieuze bedreiging in het klassement.",
+      "gcNote": "De ploeg reageert met haar vrije renners op een serieuze bedreiging in het klassement, tenzij je het najagen aan anderen overlaat.",
       "breakNote": "Kopman, sprintkopman en knecht gaan alleen voor de ochtendontsnapping als Probeer de ontsnapping is geselecteerd."
     },
     "breakaway": {

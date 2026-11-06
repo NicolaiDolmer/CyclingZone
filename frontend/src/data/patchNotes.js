@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.409",
+    "date": "2026-11-07",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Tactics",
+        "en": {
+          "title": "Leave the chase to others now always holds",
+          "body": "In races that haven't started yet, your team doesn't chase at all with this order, also when the break threatens your GC rider. Other teams still decide for themselves."
+        },
+        "da": {
+          "title": "Overlad jagten til andre holder nu altid",
+          "body": "I løb, der ikke er startet, jager dit hold slet ikke med denne ordre, heller ikke når udbruddet truer din GC-rytter. De andre hold bestemmer stadig selv."
+        },
+        "refs": [
+          7557
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.408",
     "date": "2026-11-06",
     "changes": [
