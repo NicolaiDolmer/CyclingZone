@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (6/11 aften):** #7726 tændt 16:21; se første stempel 7/11 15:00. #7571, #7765 og #7807 venter på Codex-review og merge-kø; #7765 skal ikke tændes før fundene på #7715 er løst. #7557-tekst ligger på docs/7557-help-patchnote og merges ved tænding. Secrets lørdag, #7733 efter 7/11 16:30, #7692 efter tick.
+> **🎯 Next action (6/11 aften):** #7726 og #7557 tændt for nye løb 6/11; se første stempler 7/11 15:00. #7733 tændes efter 7/11 16:30 (patch note og Hjælp først). #7765 merget slukket, tænding blokeret af fundene på #7715. #7692 efter tick. Bølge 2: #7749, #7810, #7585.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
 > **🤖 Working agent:** PC1-session 6/11 aktiv (motor, merge, flag). Codex på Dolmer PC laver mobil-gennemgang.

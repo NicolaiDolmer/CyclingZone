@@ -1016,6 +1016,26 @@
       "issue": 7800,
       "reason": "Forkert info: stemmetal på roadmappen, spillermeldt 5/11",
       "since": "2026-11-06"
+    },
+    {
+      "issue": 7749,
+      "reason": "Forkert info: film-flimmer, ejer-go 6/11",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7810,
+      "reason": "Forkert info: løbssiden åbner på gammel etape, ejer-go 6/11",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7585,
+      "reason": "Ejer-go 6/11: auto-bevis PR 4",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7811,
+      "reason": "Måling: filter for ejer og testkonti, #7778",
+      "since": "2026-11-06"
     }
   ]
 }
