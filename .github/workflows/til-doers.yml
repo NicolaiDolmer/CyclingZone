@@ -105,7 +105,7 @@ jobs:
           node-version: 24
 
       - name: Unit-tests for til-doers-tjekket
-        run: node --test scripts/til-doers-check.test.mjs scripts/til-doers-monday.test.mjs
+        run: node --test scripts/til-doers-check.test.mjs scripts/til-doers-monday.test.mjs scripts/til-doers-overdue.test.mjs scripts/lib/til-doers-proof.test.mjs
 
       - name: Beregn og skriv til-doers-tabellen
         env:
@@ -136,6 +136,24 @@ jobs:
             *)
               node scripts/til-doers-check.mjs --sweep "$MODE" | tee "$OUT" ;;
           esac
+
+      # #7585 PR 4: paamindelse om auto-bevis, der ikke er koert inden for 24 timer.
+      # Kun dagligt sweep og manuel sweep. Signal, aldrig gate: scriptet exit'er
+      # altid 0, og trinnet maa ikke faelde jobbet.
+      - name: Forsinket auto-bevis (paamindelse)
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'sweep' && inputs.issue == '')
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_APPLY: ${{ inputs.apply }}
+        run: |
+          set -euo pipefail
+          MODE=--apply
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$INPUT_APPLY" != "true" ]; then
+            MODE=--dry-run
+          fi
+          node scripts/til-doers-overdue.mjs "$MODE" | tee "$RUNNER_TEMP/til-doers-overdue.txt"
 
       - name: Skriv job-summary
         if: always()
