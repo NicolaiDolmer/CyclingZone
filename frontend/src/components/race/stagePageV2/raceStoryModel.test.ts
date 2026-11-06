@@ -8,7 +8,7 @@ import { buildRaceStory, replayFrames } from "../../../../../backend/lib/raceSto
 import { withEventPlaces } from "../../../../../backend/lib/raceTimeline.js";
 import {
   asStory, isTimeTrialStory, buildReport, castFrom, curateMoments, finaleData, finaleEndTime, finaleMarkerLabelsShown, finaleStateAt, formatClock, frameAt,
-  groupMembersAt, groupOfRider, isPeloton, leaderKmAt, lineReplayKm, MAX_STORY_LINES, namesList, ownOutSentences, parseGap, pickGroups,
+  groupMembersAt, groupOfRider, leaderKmAt, lineReplayKm, mainGroupId, MAX_STORY_LINES, namesList, ownOutSentences, parseGap, pickGroups,
   replayGroupsAt, splitRows, wholeStageFrames, myBestRider,
   type RaceStory, type StoryLine,
 } from "./raceStoryModel.ts";
@@ -28,7 +28,7 @@ function hillyTimeline() {
     ev(60, "peloton_splits", { group_id: "gruppetto-3", source_group_id: "peloton-0", rider_ids: ["x3", "m2"], gap_seconds: 40, exact_km: 58.3, exact_time: 5320 }),
     ev(60, "peloton_splits", { group_id: "gruppetto-4", source_group_id: "peloton-0", rider_ids: ["x4"], gap_seconds: 50, exact_km: 58.4, exact_time: 5330 }),
     ev(60, "kom_passage", { name: "Col A", category: "1", exact_km: 60, top: [{ rider_id: "b1", points: 10 }] }),
-    ev(60, "gap_update", { group_id: "peloton-0", gap_seconds: 120, exact_km: 60, exact_time: 5520 }),
+    ev(60, "gap_update", { group_id: "peloton-0", gap_seconds: 60, exact_km: 60, exact_time: 5460 }),
     ev(60, "gap_update", { group_id: "gruppetto-1", gap_seconds: 150, exact_km: 60, exact_time: 5550 }),
     ev(60, "gap_update", { group_id: "gruppetto-2", gap_seconds: 170, exact_km: 60, exact_time: 5570 }),
     ev(60, "gap_update", { group_id: "gruppetto-3", gap_seconds: 190, exact_km: 60, exact_time: 5590 }),
@@ -276,10 +276,68 @@ test("asStory, formatClock og parseGap", () => {
   assert.equal(parseGap("+1:10"), 70);
   assert.equal(parseGap("2:23:20"), 8600);
   assert.equal(parseGap("DNF"), null);
-  assert.equal(isPeloton(true, null), true);
-  assert.equal(isPeloton(true, 40), true);
-  assert.equal(isPeloton(true, 1), false, "resten paa een rytter er ikke et felt");
-  assert.equal(isPeloton(false, 40), false);
+});
+
+test("mainGroupId (#7704): feltet er den stoerste gruppe, ikke motorens startgruppe", () => {
+  const g = (group_id: string, size: number | null, gap_s: number, includes_rest = false) => ({ group_id, size, gap_s, includes_rest });
+  assert.equal(mainGroupId([g("peloton-0", 40, 0, true)]), "peloton-0");
+  assert.equal(mainGroupId([g("peloton-0", 16, 60, true), g("gruppetto-1", 70, 300), g("gruppetto-2", 30, 400)]), "gruppetto-1", "lille rest foran en stor gruppe");
+  assert.equal(mainGroupId([g("peloton-0", 80, 60, true), g("gruppetto-1", 30, 300)]), "peloton-0", "resten er stadig stoerst");
+  assert.equal(mainGroupId([g("peloton-0", null, 60, true), g("gruppetto-1", 30, 300)]), "peloton-0", "uden field_count er resten det bedste bud");
+  assert.equal(mainGroupId([g("peloton-0", 1, 60, true), g("solo-1", 1, 90)]), null, "ingen gruppe er et felt");
+  assert.equal(mainGroupId([g("gruppetto-1", 20, 90), g("gruppetto-2", 20, 30)]), "gruppetto-2", "lige stor: gruppen foran");
+  assert.equal(mainGroupId([g("breakaway-0", 12, 0), g("peloton-0", 9, 60, true)]), null, "et udbrud er aldrig feltet");
+  assert.equal(mainGroupId([g("breakaway-0", 30, 0, true)]), "breakaway-0", "#7388: resten er gaaet op i gruppen");
+});
+
+/** Som prod (#7704): feltet falder fra hinanden bagfra, saa startgruppen er en lille gruppe foran en stor. */
+function shatteredTimeline() {
+  const ids = (prefix: string, n: number) => Array.from({ length: n }, (_, i) => `${prefix}${i}`);
+  return [
+    ev(0, "stage_start", { exact_km: 0, exact_time: 0, distance_km: 100, field_count: 60, profile_type: "mountain" }),
+    ev(10, "breakaway_formed", { group_id: "breakaway-0", rider_ids: ["b1", "b2", "b3"], exact_km: 10, exact_time: 900 }),
+    ev(20, "gap_update", { group_id: "peloton-0", gap_seconds: 60, exact_km: 20, exact_time: 1860 }),
+    ev(30, "gap_update", { group_id: "peloton-0", gap_seconds: 150, exact_km: 30, exact_time: 2850 }),
+    ev(40, "peloton_splits", { group_id: "gruppetto-1", source_group_id: "peloton-0", rider_ids: [...ids("g", 34), "m1"], gap_seconds: 60, exact_km: 40, exact_time: 3660 }),
+    ev(40, "peloton_splits", { group_id: "gruppetto-2", source_group_id: "peloton-0", rider_ids: ids("h", 10), gap_seconds: 120, exact_km: 40, exact_time: 3720 }),
+    ev(60, "gap_update", { group_id: "peloton-0", gap_seconds: 60, exact_km: 60, exact_time: 5460 }),
+    ev(60, "gap_update", { group_id: "gruppetto-1", gap_seconds: 200, exact_km: 60, exact_time: 5600 }),
+    ev(60, "gap_update", { group_id: "gruppetto-2", gap_seconds: 260, exact_km: 60, exact_time: 5660 }),
+    ev(80, "gap_update", { group_id: "peloton-0", gap_seconds: 200, exact_km: 80, exact_time: 7400 }),
+    ev(80, "gap_update", { group_id: "gruppetto-1", gap_seconds: 300, exact_km: 80, exact_time: 7500 }),
+    ev(80, "gap_update", { group_id: "gruppetto-2", gap_seconds: 360, exact_km: 80, exact_time: 7560 }),
+    ev(100, "gap_update", { group_id: "peloton-0", gap_seconds: 200, exact_km: 100, exact_time: 9200 }),
+    ev(100, "gap_update", { group_id: "gruppetto-1", gap_seconds: 340, exact_km: 100, exact_time: 9340 }),
+    ev(100, "gap_update", { group_id: "gruppetto-2", gap_seconds: 400, exact_km: 100, exact_time: 9400 }),
+    ev(100, "finish", { win_type: "solo", exact_km: 100, exact_time: 9000 }),
+  ];
+}
+
+test("#7704: replay og Final 5 km kalder kun den reelle hovedgruppe for feltet", () => {
+  const s = story(shatteredTimeline());
+  const c = cast();
+  const onRoad = replayGroupsAt(s, wholeStageFrames(s), 60, c);
+  assert.deepEqual(onRoad.filter((g) => g.peloton).map((g) => g.groupId), ["gruppetto-1"]);
+  const start = onRoad.find((g) => g.groupId === "peloton-0");
+  const main = onRoad.find((g) => g.peloton);
+  assert.ok(start && main && start.gapS < main.gapS, "startgruppen ligger foran hovedgruppen");
+  const data = finaleData(s);
+  assert.ok(data);
+  const finale = finaleStateAt(s, data, c, data.t0);
+  assert.deepEqual(finale.groups.filter((g) => g.peloton).map((g) => g.groupId), ["gruppetto-1"]);
+});
+
+test("#7704: hul-linjen siger kun feltet om hovedgruppen", () => {
+  const s = story(shatteredTimeline());
+  const gaps = s.moments.filter((m) => m.key === "story.gap_grew" || m.key === "story.gap_shrank");
+  const lines = curateMoments(s, cast(), 50).filter((l) => l.kind === "gap");
+  const groupAt = (km: number, id: string) => lines.find((l) => l.km === km && gaps.some((m) => m.km === km && m.data.group_id === id))?.data.group;
+  const afterSplit = gaps.find((m) => m.data.group_id === "peloton-0" && m.km >= 40);
+  assert.ok(afterSplit, "startgruppens hul flytter sig efter splittet");
+  assert.equal(groupAt(afterSplit.km, "peloton-0"), "chase", "startgruppen er ikke feltet efter splittet");
+  const beforeSplit = gaps.find((m) => m.data.group_id === "peloton-0" && m.km < 40);
+  assert.ok(beforeSplit);
+  assert.equal(groupAt(beforeSplit.km, "peloton-0"), "rest", "foer splittet er den feltet");
 });
 
 test("buildReport: din rytter vandt naevnes kun een gang (Codex P2)", () => {
