@@ -108,6 +108,19 @@ test('main: exit er altid 0, ogsaa ved GitHub-fejl og ugyldige argumenter', () =
   assert.equal(main(['--hours', 'x'], { errorLog: (s) => errs.push(s) }), 0);
 });
 
+test('main: et issue der ikke kan hentes tager ikke de andre paamindelser med', () => {
+  const f = fakeGh({ prs: [pr(1, '2026-11-04T00:00:00Z', 'Refs #6'), pr(2, '2026-11-04T00:00:00Z')] });
+  const inner = f.exec;
+  const exec = (args, input) => {
+    if (args.some((a) => String(a).endsWith('issues/6'))) throw new Error('404 Not Found');
+    return inner(args, input);
+  };
+  const errs = [];
+  main(['--apply', '--now', NOW], { execGh: exec, log: () => {}, errorLog: (s) => errs.push(s) });
+  assert.match(errs.join('\n'), /springer #6 over/);
+  assert.match(JSON.parse(posts(f)[0].input).body, /pr=2 issue=5/);
+});
+
 test('reportedPairs ignorerer utroede kommentarer', () => {
   const body = `${OVERDUE_MARKER_PREFIX} pr=3 issue=4 -->`;
   assert.equal(reportedPairs([{ author_association: 'NONE', user: { login: 'x' }, body }]).size, 0);
