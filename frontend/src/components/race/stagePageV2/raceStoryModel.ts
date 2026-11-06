@@ -160,14 +160,18 @@ export function castFrom(results: ResultRow[], roles: RoleRider[], stageNumber: 
   };
 }
 
+/** Rytterne med et kendt navn, bedst placerede foerst. */
+function knownByRank(ids: readonly string[], cast: Cast): string[] {
+  const known = [...new Set(ids)].filter((id) => cast.nameOf(id));
+  return known.sort((a, b) => (cast.rankOf(a) ?? 9999) - (cast.rankOf(b) ?? 9999) || String(cast.nameOf(a)).localeCompare(String(cast.nameOf(b))));
+}
+
 /**
  * "Rojas, Marchetti +3" - bedst placerede foerst, kun kendte navne. `total`
  * er gruppens stoerrelse naar den er stoerre end de navngivne (resten).
  */
 export function namesList(ids: string[], cast: Cast, max = 2, total: number | null = null): string {
-  const known = [...new Set(ids)].filter((id) => cast.nameOf(id));
-  known.sort((a, b) => (cast.rankOf(a) ?? 9999) - (cast.rankOf(b) ?? 9999) || String(cast.nameOf(a)).localeCompare(String(cast.nameOf(b))));
-  const shown = known.slice(0, max).map((id) => cast.nameOf(id) as string);
+  const shown = knownByRank(ids, cast).slice(0, max).map((id) => cast.nameOf(id) as string);
   const more = Math.max(ids.length, total ?? 0) - shown.length;
   if (!shown.length) return "";
   return more > 0 ? `${shown.join(", ")} +${more}` : shown.join(", ");
@@ -620,6 +624,62 @@ export function reportTextKey(key: string): string {
   return key.startsWith("bad_day_") ? `detail.film.event.${key}` : `stagePageV2.story.report.${key}`;
 }
 
+/** #7754: hvem en rytter angreb sammen med, i ord. `more` = der var flere end de navngivne. */
+export interface AttackCompanions { names: string; more: boolean }
+
+/**
+ * #7754: de to haendelser der beviser, at ryttere koerte fra sammen. Et baaret
+ * forspring (finale_attack med gruppens ryttere) navngiver ogsaa flere, men siger
+ * kun hvem der sad i gruppen; ryttere der kom til senere staar ikke her.
+ */
+function jointAttackRiders(m: StoryMoment): string[] {
+  const joint = m.type === "breakaway_formed" || (m.type === "finale_attack" && m.data.direction === "descent");
+  const list = joint && Array.isArray(m.data.rider_ids) ? m.data.rider_ids.filter((x): x is string => typeof x === "string") : [];
+  return [...new Set(list)];
+}
+
+function companionsOf(ids: readonly string[], cast: Cast): AttackCompanions | null {
+  const shown = knownByRank(ids, cast).slice(0, 2);
+  if (!shown.length) return null;
+  return { names: shown.map((id) => cast.nameOf(id) as string).join(", "), more: ids.length > shown.length };
+}
+
+/**
+ * #7754: hvem din rytter senest angreb sammen med. Kun dine egne, og intet hvis
+ * han kun koerte alene: `cast.mine` afgoer det, ikke kaldet.
+ */
+export function attackCompanions(story: RaceStory, riderId: string, cast: Cast): AttackCompanions | null {
+  if (!cast.mine.has(riderId)) return null;
+  for (const m of [...story.moments].reverse()) {
+    const riders = jointAttackRiders(m);
+    if (!riders.includes(riderId)) continue;
+    const companions = companionsOf(riders.filter((id) => id !== riderId), cast);
+    if (companions) return companions;
+  }
+  return null;
+}
+
+/**
+ * #7754: referatets saetning om dine ryttere i dagens seneste faelles angreb. Et
+ * angreb hvor referatets angrebs-saetning allerede navngiver alle, gentages ikke.
+ */
+function ownAttackSentence(story: RaceStory, cast: Cast, attack: StoryLine | undefined): { moment: StoryMoment; sentence: ReportSentence } | null {
+  for (const m of [...story.moments].reverse()) {
+    const riders = jointAttackRiders(m);
+    if (riders.length < 2 || (m.type === "finale_attack" && attack?.km === m.km && riders.length <= 2)) continue;
+    const own = knownByRank(riders.filter((id) => cast.mine.has(id)), cast);
+    const subjects = own.slice(0, own.length === riders.length ? 1 : 2);
+    const companions = companionsOf(riders.filter((id) => !subjects.includes(id)), cast);
+    if (!subjects.length || !companions) continue;
+    const mine = subjects.map((id) => cast.nameOf(id) as string).join(", ");
+    return {
+      moment: m,
+      sentence: { key: companions.more ? "ownAttackedWithMore" : "ownAttackedWith", params: { mine, others: companions.names, count: subjects.length } },
+    };
+  }
+  return null;
+}
+
 /** Navneopslaget filmens tekster laeser (describeEvent, LossRow). */
 export function castNames(cast: Cast): { get(id: unknown): string | null } {
   return { get: (id) => cast.nameOf(String(id)) };
@@ -665,20 +725,25 @@ export function ownTimeLoss(story: RaceStory, cast: Cast, narrative: StoryNarrat
 
 /**
  * Referatet: kun hvad loggen og resultatet viser, i fast raekkefoelge:
- * udbruddet (dannet), dets udfald, det sidste angreb, vinderen, din bedste,
- * dagens ord (#7725) og til sidst dine egne udgaaede (#7701).
+ * udbruddet (dannet), dets udfald, det sidste angreb, hvem dine angreb sammen med
+ * (#7754, lige efter den haendelse det handler om), vinderen, din bedste, dagens
+ * ord (#7725) og til sidst dine egne udgaaede (#7701).
  * Mindst 3 saetninger naar etapen har et resultat; hoejst 5.
  */
 export function buildReport(story: RaceStory, lines: StoryLine[], cast: Cast, ownOut: readonly ReportSentence[] = [], dayWords: readonly ReportSentence[] = []): ReportSentence[] {
   const out: ReportSentence[] = [];
   const km = (v: number) => kmValue(v);
   const formed = lines.find((l) => l.kind === "formed");
+  const attacks = lines.filter((l) => l.kind === "attack" && l.riderIds.length);
+  const attack = attacks[attacks.length - 1];
+  const ownAttack = ownAttackSentence(story, cast, attack);
   if (formed) {
     const mine = namesList(formed.mineIds, cast, 2);
     out.push(mine
       ? { key: "formedMine", params: { count: formed.count, km: km(formed.km), mine } }
       : { key: "formed", params: { count: formed.count, km: km(formed.km) } });
   }
+  if (ownAttack?.moment.type === "breakaway_formed") out.push(ownAttack.sentence);
   const outcomes = story.breakaway?.outcomes ?? null;
   if (formed && outcomes) {
     const survivors = Object.entries(outcomes).filter(([, o]) => o === "survived").map(([id]) => id);
@@ -691,13 +756,12 @@ export function buildReport(story: RaceStory, lines: StoryLine[], cast: Cast, ow
       out.push({ key: "caught", params: { km: km(last.kmTo ?? last.km) } });
     }
   }
-  const attacks = lines.filter((l) => l.kind === "attack" && l.riderIds.length);
-  const attack = attacks[attacks.length - 1];
   if (attack) {
     const names = namesList(attack.riderIds, cast, 2);
     const gain = typeof attack.data.gain === "number" && attack.data.gain >= 1 ? formatGapPlain(attack.data.gain) : null;
     if (names) out.push(gain ? { key: "attackGain", params: { names, km: km(attack.km), gain } } : { key: "attack", params: { names, km: km(attack.km) } });
   }
+  if (ownAttack && ownAttack.moment.type !== "breakaway_formed") out.push(ownAttack.sentence);
   const [first, second] = cast.finishers;
   const winnerName = first ? cast.nameOf(first.riderId) : null;
   // Vandt din rytter, bruges kun din egen saetning (mineWon nedenfor), ikke begge.
@@ -769,10 +833,10 @@ export function buildReport(story: RaceStory, lines: StoryLine[], cast: Cast, ow
   // #7701: sidst, saa de ikke taeller med i fyld-reglerne. Hoejst 3 aarsager, saa
   // der altid er plads til vinderen og din bedste; resten staar i "Your riders".
   out.push(...dayWords, ...ownOut.slice(0, 3));
-  // Hoejst 5 plus dagens ord, som aldrig skubber loebets historie ud. Angrebet ryger foerst. Vinderen,
-  // din bedste og dine udgaaede bliver staaende (Codex #7701).
+  // Hoejst 5 plus dagens ord og din angrebs-saetning (#7754), som aldrig skubber loebets historie ud.
+  // Angrebet ryger foerst. Vinderen, din bedste og dine udgaaede bliver staaende (Codex #7701).
   const stays = (s: ReportSentence) => s.key.startsWith("winner") || s.key.startsWith("mine") || s.key === "ownOut";
-  while (out.length > 5 + dayWords.length) {
+  while (out.length > 5 + dayWords.length + (ownAttack ? 1 : 0)) {
     const attack = out.findIndex((s) => s.key.startsWith("attack"));
     out.splice(attack >= 0 ? attack : out.findIndex((s) => !stays(s)), 1);
   }

@@ -281,6 +281,8 @@
         "survived": "{names} sont restés devant jusqu'à l'arrivée.",
         "attack": "{names} a attaqué au km {km}.",
         "attackGain": "{names} a attaqué au km {km} et pris {gain}.",
+        "ownAttackedWith": "{count, plural, one {{mine} a attaqué} other {{mine} ont attaqué}} avec {others}.",
+        "ownAttackedWithMore": "{count, plural, one {{mine} a attaqué} other {{mine} ont attaqué}} avec {others} et d'autres.",
         "winner": "{winner} a gagné.",
         "winnerGap": "{winner} a gagné, {gap} devant {second}.",
         "winnerSame": "{winner} a gagné devant {second}, dans le même temps.",
@@ -324,6 +326,8 @@
       "buttonAria": "Pourquoi {name} a-t-il fini ici ?",
       "alone": "{main}.",
       "withLead": "{main}, {lead}.",
+      "attackedWith": "Il a attaqué avec {names}.",
+      "attackedWithMore": "Il a attaqué avec {names} et d'autres.",
       "where": {
         "climb": " dans {name}",
         "sector": " à {name}",

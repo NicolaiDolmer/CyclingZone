@@ -143,8 +143,8 @@ export default function StageTabV2({
   const why = useMemo<RowWhy | null>(() => (whyEnabled && !storyError ? {
     loading: storyLoading,
     // En ikke-starter har intet loeb at forklare; raekken siger allerede hvorfor.
-    forRow: (r) => (r.status === "dns" ? null : riderWhy({ riderId: r.riderId, rank: r.rank, status: r.status, reasonKey: r.reasonKey, events: narrative?.events, story, climbs })),
-  } : null), [whyEnabled, storyError, storyLoading, narrative, story, climbs]);
+    forRow: (r) => (r.status === "dns" ? null : riderWhy({ riderId: r.riderId, rank: r.rank, status: r.status, reasonKey: r.reasonKey, events: narrative?.events, story, climbs, cast })),
+  } : null), [whyEnabled, storyError, storyLoading, narrative, story, climbs, cast]);
 
   if (phase === "after") {
     return (

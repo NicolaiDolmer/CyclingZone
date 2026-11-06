@@ -264,6 +264,8 @@
         "survived": "{names} stayed away to the finish.",
         "attack": "{names} attacked at km {km}.",
         "attackGain": "{names} attacked at km {km} and gained {gain} on the bunch.",
+        "ownAttackedWith": "{mine} attacked together with {others}.",
+        "ownAttackedWithMore": "{mine} attacked together with {others} and others.",
         "winner": "{winner} won.",
         "winnerGap": "{winner} won, {gap} ahead of {second}.",
         "winnerSame": "{winner} won ahead of {second} on the same time.",
@@ -307,6 +309,8 @@
       "buttonAria": "Why did {name} finish here?",
       "alone": "{main}.",
       "withLead": "{main}, {lead}.",
+      "attackedWith": "He attacked together with {names}.",
+      "attackedWithMore": "He attacked together with {names} and others.",
       "where": {
         "climb": " on {name}",
         "sector": " at {name}",

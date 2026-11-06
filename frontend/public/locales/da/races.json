@@ -264,6 +264,8 @@
         "survived": "{names} holdt hele vejen til mål.",
         "attack": "{names} angreb ved km {km}.",
         "attackGain": "{names} angreb ved km {km} og tog {gain} på feltet.",
+        "ownAttackedWith": "{mine} angreb sammen med {others}.",
+        "ownAttackedWithMore": "{mine} angreb sammen med {others} og andre.",
         "winner": "{winner} vandt.",
         "winnerGap": "{winner} vandt, {gap} foran {second}.",
         "winnerSame": "{winner} vandt foran {second} på samme tid.",
@@ -307,6 +309,8 @@
       "buttonAria": "Hvorfor endte {name} her?",
       "alone": "{main}.",
       "withLead": "{main}, {lead}.",
+      "attackedWith": "Han angreb sammen med {names}.",
+      "attackedWithMore": "Han angreb sammen med {names} og andre.",
       "where": {
         "climb": " på {name}",
         "sector": " ved {name}",
