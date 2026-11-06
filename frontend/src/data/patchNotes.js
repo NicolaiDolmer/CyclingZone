@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.411",
+    "date": "2026-11-06",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The chase is decided by the teams chasing",
+          "body": "In races that haven't started yet, a break late in a stage is caught or not by the teams that actually chase: how many they are, how fresh they are and how strong they are. No draw decides it. The race film tells you why."
+        },
+        "da": {
+          "title": "Jagten afgøres af de hold, der jager",
+          "body": "I løb, der ikke er startet, afgøres et udbrud sent på etapen af de hold, der faktisk jager: hvor mange de er, hvor friske de er, og hvor stærke de er. Ingen lodtrækning afgør det. Løbsfilmen fortæller hvorfor."
+        },
+        "refs": [
+          7730
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.410",
     "date": "2026-11-06",
     "changes": [

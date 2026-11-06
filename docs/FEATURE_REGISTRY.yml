@@ -181,14 +181,12 @@ features:
     area: race-engine
     title_en: The chase is decided by the teams chasing
     title_da: Jagten afgøres af de hold der jager, ikke af en lodtrækning
-    state: dormant
+    state: live
     flag: team_chase_7730
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7730
     verified: 2026-11-06
-    note: "Slukket; kun nye løb."
-    decision: ejer-beslutning
-    decide_by: 2026-11-20
+    note: "on 6/11 på ejerens kør; kun løb der ikke er startet."
 
   - id: race-official-times-v1
     area: race-engine

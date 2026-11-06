@@ -18,6 +18,13 @@ const survived = (km = 150, riders = ["a"]) => ev(km, "breakaway_survived", { gr
 const sep = (km: number, seconds: number) => ev(km, "gap_update", { group_id: "breakaway-0", gap_seconds: 0, chase_group_id: "peloton-0", separation_seconds: seconds });
 const kinds = (events: NarrativeEvent[]) => deriveBreakawayStories(events).flatMap((s) => s.causes.map((c) => c.kind));
 
+test("#7730: ingen jagede, saa filmen paastaar ikke, at jagten kom taettere paa", () => {
+  const short = (reason: string) => ev(140, "breakaway_chase_short", { group_id: "breakaway-0", reason });
+  assert.deepEqual(kinds([formed, sep(60, 300), sep(120, 100), short("nobody_wanted"), survived()]), ["unchased"]);
+  assert.deepEqual(kinds([formed, sep(60, 300), sep(120, 100), short("no_chasers"), survived()]), ["no_chasers"]);
+  assert.deepEqual(kinds([formed, sep(60, 300), sep(120, 100), survived()]), ["chase_too_late"], "uden dom staar indhentningen");
+});
+
 test("#7730: motorens dom over jagten bliver til aarsagen, kun for det udbrud der holdt", () => {
   const short = (reason: string, group_id = "breakaway-0") => ev(99, "breakaway_chase_short", { group_id, reason, team_ids: ["t-a"] });
   assert.deepEqual(kinds([formed, short("tired"), survived()]), ["chase_tired"]);

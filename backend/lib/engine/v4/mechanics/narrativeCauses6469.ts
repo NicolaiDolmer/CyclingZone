@@ -232,7 +232,9 @@ function heldCauses(events: readonly NarrativeEvent[], w: Window, chaseId: strin
   const contained = teamsWith(reactions, "stopped", "contained").filter((id) => !spent.includes(id));
   if (contained.length) causes.push({ kind: "gc_contained", team_ids: contained });
   const series = separationSeries(events, w, chaseId);
-  const curve = curveCauseHeld(series, events, w);
+  // #7730: ingen jagede, saa "jagten kom taettere paa" er ikke sandt; gulvet lukkede hullet alene.
+  const nobodyChased = causes.some((c) => c.kind === "unchased" || c.kind === "no_chasers");
+  const curve = nobodyChased ? null : curveCauseHeld(series, events, w);
   if (curve) causes.push(curve);
   if (!causes.length && series.length >= 2) causes.push({ kind: "gap_never_closed" });
   return causes;
