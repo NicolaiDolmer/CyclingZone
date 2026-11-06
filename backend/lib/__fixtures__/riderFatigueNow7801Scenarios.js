@@ -124,16 +124,10 @@ const sha = (value) => createHash("sha256").update(value).digest("hex");
 export async function runScenario(seed, apply = applySameDateEnteringFatigueV2) {
   const scenario = buildScenario(seed);
   const log = [];
-  let returned;
-  let thrown = null;
-  try {
-    returned = await apply({
-      supabase: fakeSupabase(scenario, log), raceId: `race-${seed}`, stageNumber: scenario.stageNumber,
-      entrants: scenario.entrants, medicalBonusByTeam: scenario.medicalBonusByTeam,
-    });
-  } catch (error) {
-    thrown = error.message;
-  }
+  const { returned, thrown } = await apply({
+    supabase: fakeSupabase(scenario, log), raceId: `race-${seed}`, stageNumber: scenario.stageNumber,
+    entrants: scenario.entrants, medicalBonusByTeam: scenario.medicalBonusByTeam,
+  }).then((value) => ({ returned: value, thrown: null }), (error) => ({ returned: undefined, thrown: error.message }));
   return { returned, thrown, entrants: scenario.entrants, log };
 }
 
