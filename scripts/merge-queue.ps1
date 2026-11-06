@@ -637,8 +637,9 @@ function Stop-QueueStall {
 }
 
 # #7587 punkt 6: close-out efter et VERIFICERET tog (scripts/merge-queue-closeout.mjs):
-# SHA-kommentar paa hvert Refs/Closes-issue i PR-body, claude:todo -> claude:done kun
-# ved Closes, og een udskrevet NOW-linje pr. tog (orkestratoren committer den).
+# SHA-kommentar paa hvert Refs/Closes-issue i PR-body, claude:todo -> claude:done for
+# baade Closes og Refs (#7782) medmindre PR-teksten siger bag slukket kontakt,
+# og een udskrevet NOW-linje pr. tog (orkestratoren committer den).
 # Idempotent via skjult markoer pr. (PR, issue). Fail-soft: en fejl her aendrer aldrig
 # koeens udfald. -DryRun sender --dry-run: laeser, skriver intet.
 function Invoke-TrainCloseOut {
