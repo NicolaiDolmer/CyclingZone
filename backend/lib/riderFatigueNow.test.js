@@ -139,8 +139,8 @@ test("#7801: lige nu efter en etape er motorens tal ved næste etape samme dato"
 test("#7801: uden condition_model_v2 er rider_condition sandt og ledgeren læses ikke", async () => {
   const log = [];
   const riders = [{ rider_id: "a", team_id: "t", fatigue: 30 }];
-  const out = await ridersWithFatigueNow({ supabase: flaggedSupabase("off", { ledger: [] }, log), riders });
+  const out = await ridersWithFatigueNow({ supabase: flaggedSupabase("off", { ledger: [] }, log), riders, now: new Date("2026-10-31T23:30:00Z") });
   assert.deepEqual(out, riders);
   assert.deepEqual(log, []);
-  assert.deepEqual(await ridersWithFatigueNow({ supabase: { from() { throw new Error("må ikke læse"); } }, riders: null }), []);
+  assert.deepEqual(await ridersWithFatigueNow({ supabase: { from() { throw new Error("må ikke læse"); } }, riders: null, now: new Date("2026-10-31T23:30:00Z") }), []);
 });
