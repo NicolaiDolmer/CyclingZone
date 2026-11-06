@@ -725,6 +725,8 @@ export default function RaceSelectionPanel({
                     )}
                     <RiderTypeBadge primaryType={rider.primaryType} secondaryType={rider.secondaryType} />
                   </div>
+                  {/* #7715: i begge visninger, ligesom ved navnet på desktop. */}
+                  {selectionTimeLimitRisk(rider, selectedStageIndex) && <div className="mt-1.5"><TimeLimitRiskMark /></div>}
                   {/* #3809: mobil-listen viser enten dagens fit/form/træthed-linje,
                       eller (viewMode="abilities") et kompakt gitter med alle 15 evner. */}
                   {viewMode === "abilities" ? (
@@ -757,7 +759,6 @@ export default function RaceSelectionPanel({
                         <span className="text-cz-3 uppercase text-3xs tracking-wide">{t("selection.fatigue")}</span>
                         <span className="font-mono tabular-nums text-cz-2">{rider.fatigue ?? "—"}</span>
                       </span>
-                      {selectionTimeLimitRisk(rider, selectedStageIndex) && <TimeLimitRiskMark />}
                       {/* #6984 M4/M8: holdlægens ord (kun når backend sender dem). */}
                       {data?.doctor?.riders?.[rider.id] && (
                         <span className="inline-flex items-center gap-1">

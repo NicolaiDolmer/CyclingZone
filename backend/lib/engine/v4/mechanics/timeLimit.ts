@@ -469,6 +469,11 @@ export type ApplyTimeLimitArgs = {
    * Udeladt = M15 som foer, bit for bit.
    */
   fatigueSeverityByRider?: Readonly<Record<string, number>> | null;
+  /**
+   * #7715: den haardeste indsats rytteren faktisk koerte med paa etapen (etapeplanen).
+   * Udvejen gaelder kun hele dagen; juryen laeser stadig det sidste led. Udeladt = juryens kort.
+   */
+  fatigueEffortByRider?: Readonly<Record<string, EffortLevel | undefined>>;
   /** #7715: til tests. Udeladt = TIME_LIMIT_FATIGUE_7715_TUNING. */
   fatigueTuning?: TimeLimitFatigueTuning;
 };
@@ -500,6 +505,7 @@ function fatigueOutRiderIds(args: {
   winnerTimeSeconds: number;
   juryIds: ReadonlySet<string>;
   jury?: TimeLimitJuryInput;
+  effortByRider?: Readonly<Record<string, EffortLevel | undefined>>;
   tuning?: TimeLimitFatigueTuning;
 }): string[] {
   const lossByRider = incidentTimeLossByRider(args.jury?.incidents ?? []);
@@ -507,7 +513,7 @@ function fatigueOutRiderIds(args: {
   for (const r of args.finishers) {
     const severity = Number(args.severityByRider[r.rider_id]);
     if (!Number.isFinite(severity) || severity <= 0 || args.juryIds.has(r.rider_id)) continue;
-    const effort = args.jury?.effortByRider?.[r.rider_id];
+    const effort = args.effortByRider?.[r.rider_id] ?? args.jury?.effortByRider?.[r.rider_id];
     if (effort && TIME_LIMIT_FATIGUE_SAFE_EFFORTS_7715.has(effort)) continue;
     const incidentLoss = lossByRider.get(r.rider_id) ?? 0;
     const chaseLoss = incidentLoss > 0 ? Number(args.jury?.chaseLossByRider?.[r.rider_id]) : 0;
@@ -610,6 +616,7 @@ export function applyTimeLimit(args: ApplyTimeLimitArgs): TimeLimitOutcome {
           winnerTimeSeconds,
           juryIds,
           jury: args.jury,
+          effortByRider: args.fatigueEffortByRider,
           tuning: args.fatigueTuning,
         })
       : [],

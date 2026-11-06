@@ -134,6 +134,17 @@ test("spillerens udvej: grupetto og spar kraefter er under den almindelige regel
   assert.deepEqual(out.otlRiderIds, ["c"]);
 });
 
+test("udvejen gaelder hele dagen: et skift til grupetto paa sidste led redder ham ikke", () => {
+  const results = [row("win", 1, WINNER), row("skift", 2, justBehind), row("helt", 3, justBehind)];
+  const out = applyTimeLimit({
+    results, profileType: "mountain", distanceKm: 100,
+    fatigueSeverityByRider: { skift: 1, helt: 1 },
+    fatigueEffortByRider: { skift: "normal", helt: "grupetto" },
+    jury: { incidents: [], effortByRider: { skift: "grupetto", helt: "grupetto" } },
+  });
+  assert.deepEqual(out.otlRiderIds, ["skift"]);
+});
+
 test("et uheld taeller ikke: rytteren doemmes paa sin tid minus uheldet", () => {
   const results = [row("win", 1, WINNER), row("styrtet", 2, justBehind), row("traet", 3, justBehind)];
   const out = applyTimeLimit({
