@@ -230,6 +230,8 @@ export type StageInput = {
   gc_context?: GcContext | null;
   // #7236 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): loft paa favoritgabet over sidste top paa bjerg med kort nedkoersel. Udeladt = som foer.
   queen_stage_gap_7236?: true | null;
+  // #7715 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): alvor pr. rytter med risiko for tidsgraensen (mechanics/timeLimit.ts). Tomt kort = taendt uden ramte. Udeladt = som foer.
+  time_limit_fatigue_7715?: Readonly<Record<string, number>> | null;
   // #7635 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): etapeplanens "sat" kun bag en rigtig front (stagePlanEngine.ts). Udeladt = som foer.
   stage_plan_dropped_front_7635?: true | null;
   // #7640 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): et klatre-split der koerer FREM (angreb) faar aarsagen "attack". Kun event-feltet cause; udeladt = som foer.

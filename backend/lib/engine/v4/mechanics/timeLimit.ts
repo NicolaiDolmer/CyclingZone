@@ -60,18 +60,37 @@
 // en reddet grupetto, mister deres point i loebets point- og bjergkonkurrence.
 // Modulet maerker dem (`StageResult.reinstated_by`) og leverer
 // `applyReinstatementPointPenalty` til etapens egne point; index.ts kalder den.
+//
+// ── #7715 MEGET TRAETTE RYTTERE (ejer 5/11, SLUKKET) ──────────────────────────
+// Maalingen viste, at traethed naesten ikke flytter tiden paa en haard etape:
+// gruppen baerer rytteren, og grupetto-redningen tager resten. Efter #7713 er der
+// ingen lodtraekning, saa en udkoert rytter havde ingen synlig risiko tilbage.
+//   - Risikoen er en REGEL af to synlige ting: rytteren er meget traet, og en haard
+//     etape passer ham daarligt. Ingen rng.
+//   - Har rytteren risikoen, har han mindre tid at give af end resten af feltet, og
+//     grupettoen baerer ham ikke. Kommer han ind i god tid, sker der intet.
+//   - Spilleren kan undgaa det: en rytter der koerer `grupetto` eller `save` holder
+//     igen hele dagen og er under den almindelige regel. Eller han lader ham hjemme.
+//   - Et uheld doemmes som hos juryen: tiden minus uheldet, og en genindsat rytter
+//     bliver genindsat. Reglen kan kun flytte en rytter fra i maal til OTL.
+//   - Varslet foer etapen bruger SAMME funktion (timeLimitFatigueSeverity7715), saa
+//     maerket og motoren kan ikke vaere uenige. Taerskler er aldrig paa en spiller-
+//     flade: serveren sender kun "har risikoen", aldrig tal (fog-gate).
+//   - Kun vej-etaper paa de haarde typer. Enkeltstart og holdtidskoersel er uroerte.
 
 import type {
   EffortLevel,
   ProfileType,
   RiderPassageTotals,
   StageIncident,
+  StageInput,
   StageResult,
   StageResultStatus,
   TimelineEvent,
 } from "../types.ts";
-import { TIME_LIMIT_EXTRA_TUNING } from "../tuning.ts";
+import { TIME_LIMIT_EXTRA_TUNING, TIME_LIMIT_FATIGUE_7715_TUNING } from "../tuning.ts";
 import { compareIds } from "../../../compareIds.ts";
+import { isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
 
 /**
  * Tuning-formen TIME_LIMIT_EXTRA_TUNING (tuning.ts) implementerer. Holdt her
@@ -105,8 +124,72 @@ export const JURY_REINSTATED_EVENT = "jury_reinstated";
 /** Indsatsvalg der betyder "kaempede ikke videre" — juryen genindsaetter dem ikke. */
 const JURY_INELIGIBLE_EFFORTS: ReadonlySet<EffortLevel> = new Set<EffortLevel>(["grupetto", "save"]);
 
+/** #7715: de samme to valg er spillerens udvej. Han holder igen hele dagen og er under den almindelige regel. */
+export const TIME_LIMIT_FATIGUE_SAFE_EFFORTS_7715: ReadonlySet<EffortLevel> = JURY_INELIGIBLE_EFFORTS;
+
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+function clamp01(n: number): number {
+  return Math.max(0, Math.min(1, n));
+}
+
+/** #7715: tuning-formen TIME_LIMIT_FATIGUE_7715_TUNING (tuning.ts) implementerer. */
+export type TimeLimitFatigueTuning = {
+  /** De haarde etapetyper reglen gaelder paa. */
+  profiles: readonly ProfileType[];
+  /** Traethed (0-100) hvor rytteren regnes for meget traet. */
+  tiredFrom: number;
+  /** Traethed hvor den traette side er fuldt udslaaet. */
+  tiredFull: number;
+  /** Hvor etapen begynder at passe rytteren daarligt. */
+  fitShareBelow: number;
+  /** Hvor det daarlige match er fuldt udslaaet. */
+  fitShareFull: number;
+  /** Alvoren lige ved taersklerne. Derfra vokser den med traetheden og det daarlige match. */
+  severityFloor: number;
+  /** Hvor stor en del af etapens margin rytteren mister ved fuld alvor. */
+  marginLoss: number;
+};
+
+/**
+ * #7715: hvor alvorligt tidsgraensen truer rytteren paa etapen, 0 = slet ikke.
+ *
+ * Den ENE regel for baade motoren og varslet foer etapen: broen og serverens
+ * taktik-flader kalder den med de samme tal. Alvoren vokser med traetheden og det
+ * daarlige match, og reglen betyder det samme i alle divisioner og ungdomsloeb.
+ * Manglende tal giver 0: hellere intet varsel end et gaet.
+ * Resultatet er motor-internt (fog-gate); spillerens flade faar kun ja eller nej.
+ */
+export function timeLimitFatigueSeverity7715(args: {
+  /** Rytterens traethed, 0-100. */
+  fatigue: number | null | undefined;
+  /** Rutematch paa etapen, urundet 0-100. */
+  stageFit: number | null | undefined;
+  /** Rytterens eget evne-niveau. */
+  ownLevel: number | null | undefined;
+  profileType: ProfileType | null | undefined;
+  tuning?: TimeLimitFatigueTuning;
+}): number {
+  const tuning = args.tuning ?? TIME_LIMIT_FATIGUE_7715_TUNING;
+  if (!args.profileType || !tuning.profiles.includes(args.profileType)) return 0;
+  if (args.fatigue == null || args.stageFit == null || args.ownLevel == null) return 0;
+  const fatigue = Number(args.fatigue);
+  const stageFit = Number(args.stageFit);
+  const ownLevel = Number(args.ownLevel);
+  if (!Number.isFinite(fatigue) || !Number.isFinite(stageFit) || !Number.isFinite(ownLevel) || ownLevel <= 0) return 0;
+  const fitShare = stageFit / ownLevel;
+  if (fatigue < tuning.tiredFrom || fitShare >= tuning.fitShareBelow) return 0;
+  const tired = clamp01((fatigue - tuning.tiredFrom) / (tuning.tiredFull - tuning.tiredFrom));
+  const badFit = clamp01((tuning.fitShareBelow - fitShare) / (tuning.fitShareBelow - tuning.fitShareFull));
+  const share = (1 - tuning.severityFloor) / 2;
+  return round2(tuning.severityFloor + share * tired + share * badFit);
+}
+
+/** #7715: kontakten, kun s5_profiles_v3 (og senere) OG et kort fra broen. Haandbyggede fixtures: nej. */
+export function timeLimitFatigue7715On(input: Pick<StageInput, "rules_revision" | "time_limit_fatigue_7715">): boolean {
+  return input.time_limit_fatigue_7715 != null && isS5ProfilesV3OrLater(input.rules_revision);
 }
 
 /**
@@ -229,6 +312,8 @@ export type TimeLimitOutcome = {
   rescuedRiderIds: string[];
   /** #5582: ryttere der laa uden for graensen men blev genindsat af juryen efter et uheld. */
   juryReinstatedRiderIds: string[];
+  /** #7715: de OTL-ryttere hvis aarsag er traethed paa en etape der passer daarligt. Udeladt naar kontakten er slukket. */
+  fatigueRiderIds?: string[];
 };
 
 /**
@@ -379,7 +464,64 @@ export type ApplyTimeLimitArgs = {
   tuning?: TimeLimitTuning;
   /** #5582: juryen. Udeladt = ingen jury (M15 som foer). */
   jury?: TimeLimitJuryInput;
+  /**
+   * #7715 (SLUKKET): alvor pr. rytter med risikoen (timeLimitFatigueSeverity7715).
+   * Udeladt = M15 som foer, bit for bit.
+   */
+  fatigueSeverityByRider?: Readonly<Record<string, number>> | null;
+  /**
+   * #7715: den haardeste indsats rytteren faktisk koerte med paa etapen (etapeplanen).
+   * Udvejen gaelder kun hele dagen; juryen laeser stadig det sidste led. Udeladt = juryens kort.
+   */
+  fatigueEffortByRider?: Readonly<Record<string, EffortLevel | undefined>>;
+  /** #7715: til tests. Udeladt = TIME_LIMIT_FATIGUE_7715_TUNING. */
+  fatigueTuning?: TimeLimitFatigueTuning;
 };
+
+/**
+ * #7715: rytterens egen graense, vindertid plus den del af margin han har tilbage.
+ * Motor-intern (fog-gate), ligesom timeLimitSecondsFor. Graensen kan aldrig ligge
+ * foer vindertiden, saa vinderen kan ikke ramme reglen.
+ */
+export function fatigueLimitSecondsFor(
+  winnerTimeSeconds: number,
+  limitSeconds: number,
+  severity: number,
+  tuning: TimeLimitFatigueTuning = TIME_LIMIT_FATIGUE_7715_TUNING,
+): number {
+  const margin = Math.max(0, limitSeconds - winnerTimeSeconds);
+  return round2(winnerTimeSeconds + margin * (1 - clamp01(tuning.marginLoss * clamp01(severity))));
+}
+
+/**
+ * #7715: hvem der er for traette til etapen. Ren; id'er i resultatlistens orden.
+ * Rytteren doemmes paa sin tid minus et uheld (samme tal som juryen), og en rytter
+ * med `grupetto` eller `save` er uden for reglen. Genindsatte af juryen roeres ikke.
+ */
+function fatigueOutRiderIds(args: {
+  finishers: readonly StageResult[];
+  severityByRider: Readonly<Record<string, number>>;
+  limitSeconds: number;
+  winnerTimeSeconds: number;
+  juryIds: ReadonlySet<string>;
+  jury?: TimeLimitJuryInput;
+  effortByRider?: Readonly<Record<string, EffortLevel | undefined>>;
+  tuning?: TimeLimitFatigueTuning;
+}): string[] {
+  const lossByRider = incidentTimeLossByRider(args.jury?.incidents ?? []);
+  const out: string[] = [];
+  for (const r of args.finishers) {
+    const severity = Number(args.severityByRider[r.rider_id]);
+    if (!Number.isFinite(severity) || severity <= 0 || args.juryIds.has(r.rider_id)) continue;
+    const effort = args.effortByRider?.[r.rider_id] ?? args.jury?.effortByRider?.[r.rider_id];
+    if (effort && TIME_LIMIT_FATIGUE_SAFE_EFFORTS_7715.has(effort)) continue;
+    const incidentLoss = lossByRider.get(r.rider_id) ?? 0;
+    const chaseLoss = incidentLoss > 0 ? Number(args.jury?.chaseLossByRider?.[r.rider_id]) : 0;
+    const judged = round2(r.time_seconds - incidentLoss - (Number.isFinite(chaseLoss) && chaseLoss > 0 ? chaseLoss : 0));
+    if (judged > fatigueLimitSecondsFor(args.winnerTimeSeconds, args.limitSeconds, severity, args.tuning)) out.push(r.rider_id);
+  }
+  return out;
+}
 
 /**
  * M15: anvend tidsgraensen paa en faerdig resultatliste.
@@ -419,7 +561,9 @@ export function applyTimeLimit(args: ApplyTimeLimitArgs): TimeLimitOutcome {
   const limitSeconds = timeLimitSecondsFor(winnerTimeSeconds, args.profileType, tuning);
 
   const overLimit = finishers.filter((r) => r.time_seconds > limitSeconds);
-  if (overLimit.length === 0) {
+  // #7715: kontakten er kun taendt naar broen har sendt et kort, ogsaa et tomt.
+  const fatigueSeverity = args.fatigueSeverityByRider ?? null;
+  if (overLimit.length === 0 && (fatigueSeverity === null || Object.keys(fatigueSeverity).length === 0)) {
     return { ...empty, limitSeconds, winnerTimeSeconds };
   }
 
@@ -461,6 +605,27 @@ export function applyTimeLimit(args: ApplyTimeLimitArgs): TimeLimitOutcome {
   );
   for (const id of juryIds) otlIds.delete(id);
 
+  // #7715: efter juryen. Grupettoen baerer ikke en rytter med risikoen, og han kan
+  // ryge ud foer den almindelige graense. Reglen flytter kun mod OTL.
+  const fatigueIds = new Set(
+    fatigueSeverity
+      ? fatigueOutRiderIds({
+          finishers,
+          severityByRider: fatigueSeverity,
+          limitSeconds,
+          winnerTimeSeconds,
+          juryIds,
+          jury: args.jury,
+          effortByRider: args.fatigueEffortByRider,
+          tuning: args.fatigueTuning,
+        })
+      : [],
+  );
+  for (const id of fatigueIds) {
+    otlIds.add(id);
+    rescuedIds.delete(id);
+  }
+
   const results = args.results.map((r) => {
     if (otlIds.has(r.rider_id)) return { ...r, status: OTL_STATUS };
     if (juryIds.has(r.rider_id)) return { ...r, reinstated_by: "jury" as const };
@@ -493,15 +658,20 @@ export function applyTimeLimit(args: ApplyTimeLimitArgs): TimeLimitOutcome {
       params: { rider_ids: juryReinstatedRiderIds, rider_count: juryReinstatedRiderIds.length },
     });
   }
+  const fatigueRiderIds = otlRiderIds.filter((id) => fatigueIds.has(id));
   if (otlRiderIds.length > 0) {
     events.push({
       km: finishKm,
       type: OUTSIDE_TIME_LIMIT_EVENT,
-      params: { rider_ids: otlRiderIds, rider_count: otlRiderIds.length },
+      // #7715: hvem der var for traette er aarsagen, aldrig en graense eller et tal.
+      params: { rider_ids: otlRiderIds, rider_count: otlRiderIds.length, ...(fatigueRiderIds.length > 0 ? { fatigue_rider_ids: fatigueRiderIds } : {}) },
     });
   }
 
-  return { results, events, limitSeconds, winnerTimeSeconds, otlRiderIds, rescuedRiderIds, juryReinstatedRiderIds };
+  return {
+    results, events, limitSeconds, winnerTimeSeconds, otlRiderIds, rescuedRiderIds, juryReinstatedRiderIds,
+    ...(fatigueSeverity ? { fatigueRiderIds } : {}),
+  };
 }
 
 // ── FLIP-KONTRAKT: hvad `feat/v4-flip-infrastructure` skal goere med OTL ──────
