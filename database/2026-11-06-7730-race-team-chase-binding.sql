@@ -20,6 +20,8 @@
 --    WHERE table_schema = 'public' AND table_name = 'races' AND column_name = 'team_chase_7730';
 --   SELECT team_chase_7730, count(*) FROM public.races GROUP BY 1;
 
+SET lock_timeout = '3s';
+
 ALTER TABLE public.races ADD COLUMN IF NOT EXISTS team_chase_7730 boolean;
 
 COMMENT ON COLUMN public.races.team_chase_7730 IS '#7730: true = loebet startede med kontakten team_chase_7730 taendt. NULL = ikke omfattet.';
