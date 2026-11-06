@@ -2,6 +2,8 @@
 -- taending. Valget bindes her ved loebets foerste etape, samme princip som
 -- races.engine_rules_revision. NULL = ikke bundet endnu. Additivt og idempotent.
 
+SET lock_timeout = '3s';
+
 ALTER TABLE public.races
   ADD COLUMN IF NOT EXISTS time_limit_fatigue_7715 boolean;
 
