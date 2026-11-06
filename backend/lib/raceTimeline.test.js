@@ -1,7 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
-import { buildStageTimeline, TIMELINE_VERSION } from "./raceTimeline.js";
+import { buildStageTimeline, buildStageTimelineV4, TIMELINE_VERSION, withEventPlaces } from "./raceTimeline.js";
+import { buildRaceStory, checkpointGapForRider, replayFrames } from "./raceStory.js";
 import { computeCatchKm } from "./racePassages.js";
 import { stableSeed, deriveBreakawayStatus, ABILITY_KEYS } from "./raceSimulator.js";
 import { buildRaceResults, buildStageRowsAccumulated } from "./raceRunner.js";
@@ -411,4 +413,371 @@ test("#4373 end-to-end: buildRaceResults giver itt_win på etape 1 og spurt-nøg
     stage2Moments.some((m) => ["sprint_win", "close_win", "solo_win"].includes(m.moment_key)),
     "etape 2 skal stadig klassificeres som spurt/tæt/solo",
   );
+});
+
+// #6350: formen fra en gemt bjergankomst (Giro-etapen fra ejerens Hvorfor-krav,
+// anonymiseret): feltet henter et udbrud inde i sidste segment, og den gruppe der
+// blev sat, står derfor på stregen sammen med en rytter der "gik kold" dér.
+function summitFinishLog(lastSplitRiders = ["dropped"]) {
+  const split = (groupId, gapSeconds, exactKm, riderIds, exactTime) => ({
+    km: 180,
+    type: "peloton_splits",
+    params: { group_id: groupId, source_group_id: "peloton-0", gap_seconds: gapSeconds, rider_ids: riderIds, exact_km: exactKm, exact_time: exactTime },
+  });
+  return [
+    { km: 0, type: "stage_start", params: { exact_km: 0, exact_time: 0 } },
+    { km: 170, type: "gap_update", params: { group_id: "peloton-0", gap_seconds: 91, exact_km: 170 } },
+    { km: 174.07, type: "breakaway_caught", params: { group_id: "breakaway-1", rider_ids: ["ahead"], exact_km: 174.07 } },
+    { km: 180, type: "all_out_cracked", params: { rider_id: "dropped", exact_km: 180, exact_time: 19700 } },
+    split("gruppetto-1", 53.09, 170.76, ["a"], 17609),
+    split("gruppetto-2", 62.38, 170.71, ["b"], 17599),
+    split("gruppetto-3", 302.73, 180, lastSplitRiders, 19700),
+    { km: 180, type: "finish", params: { exact_km: 180, top: [] } },
+  ];
+}
+
+test("#6350: et split der stod på stregen får stedet på stigningen, og 'gik kold' følger med", () => {
+  const log = summitFinishLog();
+  const before = JSON.stringify(log);
+  const placed = withEventPlaces(log);
+  assert.equal(JSON.stringify(log), before, "input muteres aldrig");
+  const split = placed.find((e) => e.params.group_id === "gruppetto-3");
+  assert.ok(Math.abs(split.params.exact_km - 170.46) <= 0.02, `motorens egen formel, fik ${split.params.exact_km}`);
+  assert.equal(split.params.exact_time, undefined, "tiden på stregen hører ikke til stedet");
+  assert.equal(split.km, 180, "rækkefølgen røres ikke");
+  const crack = placed.find((e) => e.type === "all_out_cracked");
+  assert.equal(crack.params.exact_km, split.params.exact_km);
+  assert.deepEqual(withEventPlaces(placed), placed, "idempotent");
+});
+
+test("#6350: 'sat' står hvor han blev sat, men kun til han er tilbage i gruppen han blev sat fra", () => {
+  const leg = (km) => ({ km, type: "stage_plan_leg", params: { rider_id: "r", leg: 1, task: "ride_in", reason: "dropped", exact_km: km } });
+  const dropped = { km: 90, type: "peloton_splits", params: { group_id: "chase-1", source_group_id: "peloton-0", rider_ids: ["r"], gap_seconds: 40, exact_km: 82.5, exact_time: 7000 } };
+  assert.deepEqual(withEventPlaces([dropped, leg(120)])[1].params, { rider_id: "r", leg: 1, task: "ride_in", reason: "dropped", exact_km: 82.5, exact_time: 7000 });
+  const back = { km: 100, type: "group_merged", params: { group_id: "chase-1", into_group_id: "peloton-0", rider_ids: ["r"], exact_km: 100 } };
+  assert.equal(withEventPlaces([dropped, back, leg(120)])[2].params.exact_km, 120);
+  const onward = { km: 100, type: "group_merged", params: { group_id: "chase-1", into_group_id: "gruppetto-2", rider_ids: ["r"], exact_km: 100 } };
+  assert.equal(withEventPlaces([dropped, onward, leg(120)])[2].params.exact_km, 82.5);
+});
+
+test("#6350: 'hentet' står ved indhentningen, og et uheld forklarer 'sat' uden at låne uheldets tid", () => {
+  const leg = (reason) => ({ km: 120, type: "stage_plan_leg", params: { rider_id: "r", leg: 1, task: "ride_in", reason, exact_km: 120 } });
+  const caught = { km: 118, type: "breakaway_caught", params: { group_id: "b", rider_ids: ["r"], exact_km: 112, exact_time: 9000 } };
+  assert.equal(withEventPlaces([caught, leg("caught")])[1].params.exact_km, 112);
+  const crash = { km: 107, type: "incident", params: { rider_id: "r", outcome: "time_loss", exact_km: 107 } };
+  const placed = withEventPlaces([crash, leg("dropped")])[1];
+  assert.equal(placed.params.exact_km, 107);
+  assert.equal(placed.params.exact_time, undefined);
+});
+
+test("#6350 (Codex-review): uden bevis bliver tjekpunktet stående, og et uheld forklarer ikke et 'sat' efter han er tilbage", () => {
+  const stuck = (sourceGroupId) => ({ km: 180, type: "peloton_splits", params: { group_id: "late", source_group_id: sourceGroupId, gap_seconds: 120, rider_ids: ["r"], exact_km: 180, exact_time: 19000 } });
+  const placed = { km: 180, type: "peloton_splits", params: { group_id: "early", source_group_id: "peloton-0", gap_seconds: 53.09, rider_ids: ["a"], exact_km: 170.76, exact_time: 17609 } };
+  const update = { km: 170, type: "gap_update", params: { group_id: "peloton-0", gap_seconds: 10, exact_km: 170 } };
+  // Intet placeret split i segmentet: ingen viden om hvor segmentet startede.
+  assert.equal(withEventPlaces([update, stuck("peloton-0")])[1].params.exact_km, 180);
+  // Kildegruppen blev først dannet i segmentet: linjerne var ikke samlet ved starten.
+  assert.equal(withEventPlaces([update, placed, stuck("chase-new")])[2].params.exact_km, 180);
+  assert.ok(withEventPlaces([update, placed, stuck("peloton-0")])[2].params.exact_km < 171);
+
+  const crash = { km: 107, type: "incident", params: { rider_id: "r", outcome: "time_loss", exact_km: 107 } };
+  const back = { km: 115, type: "group_merged", params: { group_id: "solo-m10-1-0", into_group_id: "chase-2", rider_ids: ["r"], exact_km: 115 } };
+  const leg = { km: 140, type: "stage_plan_leg", params: { rider_id: "r", leg: 1, task: "ride_in", reason: "dropped", exact_km: 140 } };
+  assert.equal(withEventPlaces([crash, back, leg])[2].params.exact_km, 140);
+});
+
+// Formen fra etape 10 på rigtige data, anonymiseret: et split på stregen med 15
+// ryttere, 13 fra feltet og 2 fra et udbrud der først blev hentet ved km 174,07.
+// Hul, steder og hentninger er de gemte tal. 'caught-early' blev hentet før stedet.
+function stage10Log() {
+  const fieldRiders = ["dropped", "caught-early", ...Array.from({ length: 11 }, (_, i) => `field-${i}`)];
+  const log = summitFinishLog([...fieldRiders, "ahead", "ahead-2"]);
+  const ahead = ["ahead", "ahead-2"];
+  const catchAt = log.findIndex((e) => e.type === "breakaway_caught");
+  log[catchAt] = { km: 174.07, type: "breakaway_caught", params: { group_id: "breakaway-1", rider_ids: ahead, exact_km: 174.07, exact_time: 18313.7 } };
+  log.splice(catchAt + 1, 0, { km: 174.07, type: "group_merged", params: { group_id: "breakaway-1", into_group_id: "peloton-0", rider_ids: ahead, exact_km: 174.07, exact_time: 18313.7 } });
+  log.splice(1, 0,
+    { km: 97.1, type: "finale_attack", params: { group_id: "breakaway-1", rider_ids: ahead, exact_km: 93.02, exact_time: 9086.87 } },
+    { km: 130, type: "peloton_splits", params: { group_id: "solo-early", source_group_id: "breakaway-1", gap_seconds: 102.04, rider_ids: ["caught-early"], exact_km: 120.23, exact_time: 11708.61 } },
+    { km: 160.54, type: "group_merged", params: { group_id: "solo-early", into_group_id: "peloton-0", rider_ids: ["caught-early"], exact_km: 160.54, exact_time: 16568.81 } });
+  return log;
+}
+
+test("#6350: split'et deles pr. rytter: den der blev sat, får stedet på stigningen, den hentede bliver i udbruddet til km 174", () => {
+  const log = stage10Log();
+  const before = JSON.stringify(log);
+  const placed = withEventPlaces(log);
+  assert.equal(JSON.stringify(log), before, "input muteres ikke");
+
+  const halves = placed.filter((e) => e.type === "peloton_splits" && e.params.group_id === "gruppetto-3");
+  assert.equal(halves.length, 2);
+  const [set, late] = halves;
+  assert.ok(set.params.exact_km > 170.4 && set.params.exact_km < 171, `sat ved km ${set.params.exact_km}, på stigningen`);
+  assert.equal(set.params.exact_time, undefined, "tiden hører ikke til stedet");
+  assert.equal(set.params.rider_ids.length, 13);
+  assert.ok(set.params.rider_ids.includes("dropped"));
+  assert.ok(set.params.rider_ids.includes("caught-early"), "hentet før stedet: han var i feltet da hullet åbnede");
+  assert.deepEqual(late.params.rider_ids, ["ahead", "ahead-2"]);
+  assert.ok(late.params.exact_km > 174.07 && late.params.exact_km < 175, `#7734: tabet begynder efter kontakten, fik km ${late.params.exact_km}`);
+  assert.equal(late.params.exact_time, undefined, "tiden på stregen hører ikke til stedet");
+  assert.equal(late.params.own_line, true);
+  assert.equal(set.km, 180);
+  assert.equal(late.km, 180);
+  assert.equal(placed.find((e) => e.type === "all_out_cracked").params.exact_km, set.params.exact_km, "'gik kold' følger rytteren");
+  assert.deepEqual(withEventPlaces(placed), placed, "idempotent");
+
+  const story = buildRaceStory({ events: placed });
+  const frames = replayFrames(story, { finaleKm: 12, stepKm: 1 });
+  const onClimb = frames.filter((f) => f.km >= 171 && f.km <= 174);
+  assert.ok(onClimb.length > 0);
+  for (const frame of onClimb) {
+    assert.equal(frame.groups.find((g) => g.group_id === "breakaway-1")?.size, 2, `km ${frame.km}: udbruddet er helt til det er hentet`);
+    assert.equal(frame.groups.find((g) => g.group_id === "gruppetto-3")?.size, 13, `km ${frame.km}: de 13 er sat, de 2 er ikke`);
+  }
+  const atLine = story.snapshots.at(-1).groups.find((g) => g.group_id === "gruppetto-3");
+  assert.equal(atLine.size, 15, "alle 15 ender i gruppen på stregen");
+});
+
+test("#6350: split'et bliver helt, når ingen eller alle ryttere kørte i kildegruppen på stedet", () => {
+  const onlyLate = withEventPlaces(summitFinishLog(["ahead"])).filter((e) => e.params.group_id === "gruppetto-3");
+  assert.equal(onlyLate.length, 1);
+  assert.ok(onlyLate[0].params.exact_km > 174.07 && onlyLate[0].params.exact_km < 175, "#7734: gruppen er selv linjen fra kontakten");
+  assert.equal(onlyLate[0].params.joined_late, undefined);
+  assert.equal(onlyLate[0].params.own_line, undefined);
+
+  const all = withEventPlaces(summitFinishLog(["dropped", "other"])).filter((e) => e.params.group_id === "gruppetto-3");
+  assert.equal(all.length, 1);
+  assert.ok(all[0].params.exact_km < 171);
+  assert.deepEqual(all[0].params.rider_ids, ["dropped", "other"]);
+});
+
+test("#6350: loggen kender kun indhentningen, ikke dannelsen: den hentede holdes stadig tilbage", () => {
+  const halves = withEventPlaces(summitFinishLog(["dropped", "ahead"])).filter((e) => e.params.group_id === "gruppetto-3");
+  assert.deepEqual(halves.map((e) => e.params.rider_ids), [["dropped"], ["ahead"]]);
+  assert.ok(halves[1].params.exact_km > 174.07 && halves[1].params.exact_km < 180);
+});
+
+// #7734: etape 10 på rigtige data (anonymiseret fixture, kun events). rider-set blev
+// sat på stigningen, rider-late-a/b kørte i udbruddet til km 174,07.
+function realStage10() {
+  const { events } = JSON.parse(readFileSync(new URL("../../scripts/__fixtures__/race-truth/giro-stage-10.json", import.meta.url), "utf8"));
+  const placed = withEventPlaces(events);
+  const story = buildRaceStory({ events: placed, timelineVersion: 2 });
+  return { events, placed, story, frames: replayFrames(story, { finaleKm: 12, stepKm: 1 }) };
+}
+
+test("#7734: etape 10: de hentede taber tiden undervejs og hopper ikke ind i gruppen på stregen", () => {
+  const { placed, story, frames } = realStage10();
+  assert.deepEqual(withEventPlaces(placed), placed, "idempotent");
+  const [set, late] = placed.filter((e) => e.type === "peloton_splits" && e.params.group_id === "gruppetto-13010");
+  assert.equal(set.params.exact_km, 170.47, "den satte rytter er uændret");
+  assert.ok(set.params.rider_ids.includes("rider-set"));
+  assert.deepEqual([...late.params.rider_ids].sort(), ["rider-late-a", "rider-late-b"]);
+  assert.ok(late.params.exact_km > 174.07 && late.params.exact_km < 175, `fik km ${late.params.exact_km}`);
+
+  const line = story.group_spans.find((s) => s.group_id === "gruppetto-13010-late");
+  assert.deepEqual([line.from_km, line.to_km, line.source_group_id, line.into_group_id], [late.params.exact_km, 180, "peloton-0", "gruppetto-13010"]);
+  const gapOf = (frame, id) => frame.groups.find((g) => g.group_id === id);
+  const onRoad = frames.filter((f) => f.km >= 175 && f.km < 180);
+  assert.ok(onRoad.length >= 5);
+  let previous = gapOf(frames.find((f) => f.km === 174), "breakaway-6000").gap_s;
+  for (const frame of onRoad) {
+    const own = gapOf(frame, "gruppetto-13010-late");
+    assert.equal(own?.size, 2, `km ${frame.km}: de to kører for sig selv`);
+    assert.equal(gapOf(frame, "gruppetto-13010").size, 13, `km ${frame.km}: gruppen er de 13`);
+    assert.ok(own.gap_s > previous, `km ${frame.km}: hullet vokser`);
+    assert.ok(own.gap_s < gapOf(frame, "gruppetto-13010").gap_s, `km ${frame.km}: de er ikke bag gruppen de ender i`);
+    previous = own.gap_s;
+  }
+  const last = frames.at(-1);
+  assert.equal(last.km, 180);
+  assert.equal(gapOf(last, "gruppetto-13010").size, 15, "alle 15 på stregen");
+  assert.equal(gapOf(last, "gruppetto-13010-late"), undefined);
+  const stepToLine = gapOf(last, "gruppetto-13010").gap_s - previous;
+  const stepOnRoad = gapOf(onRoad.at(-1), "gruppetto-13010-late").gap_s - gapOf(onRoad.at(-2), "gruppetto-13010-late").gap_s;
+  assert.ok(Math.abs(stepToLine - stepOnRoad) < 1, `sidste km er samme hældning som resten, ikke et hop (${stepToLine} mod ${stepOnRoad})`);
+});
+
+test("#7734: en passage på vejen viser de hentede på deres egen linje, som filmen gør", () => {
+  const { events, frames } = realStage10();
+  const withPassage = withEventPlaces([...events, { km: 176, type: "kom_passage", params: { name: "x", category: "3", exact_km: 176, top: [] } }]);
+  const story = buildRaceStory({ events: withPassage, timelineVersion: 2 });
+  const passage = story.checkpoints.find((c) => c.km === 176);
+  const late = checkpointGapForRider(passage, "rider-late-a");
+  assert.equal(late.group_id, "gruppetto-13010-late");
+  assert.equal(checkpointGapForRider(passage, "rider-set").group_id, "gruppetto-13010");
+  // En passage bærer hullerne fra sidste melding, så de sammenlignes med feltet, ikke fronten.
+  const behindField = (groups) => groups.find((g) => g.group_id === "gruppetto-13010-late").gap_s - groups.find((g) => g.group_id === "peloton-0").gap_s;
+  const inFilm = behindField(frames.find((f) => f.km === 176).groups);
+  const atPassage = behindField(passage.groups);
+  assert.ok(Math.abs(atPassage - inFilm) < 5, `passagen ${atPassage} og filmen ${inFilm} fortæller det samme`);
+  assert.equal(story.checkpoints.at(-1).groups.find((g) => g.group_id === "gruppetto-13010").size, 15, "målet er uændret");
+});
+
+test("#7734: filmens mål er det samme: kun vejen derhen ændrer sig", () => {
+  const { placed, story } = realStage10();
+  const lateOnLine = placed.map((e) => {
+    if (!e.params?.own_line) return e;
+    const { own_line: _ownLine, ...params } = e.params;
+    return { ...e, params: { ...params, exact_km: e.km } };
+  });
+  const before = buildRaceStory({ events: lateOnLine, timelineVersion: 2 });
+  assert.deepEqual(story.snapshots.at(-1), before.snapshots.at(-1));
+  assert.deepEqual(story.checkpoints.at(-1), before.checkpoints.at(-1));
+  assert.deepEqual(story.breakaway, before.breakaway);
+});
+
+test("#7734: uden bevis bliver den sene halvdel på tjekpunktet", () => {
+  const inOtherGroup = summitFinishLog(["dropped", "ahead"]);
+  inOtherGroup.splice(3, 0, { km: 174.07, type: "group_merged", params: { group_id: "breakaway-1", into_group_id: "gruppetto-1", rider_ids: ["ahead"], exact_km: 174.07 } });
+  const [, late] = halvesOf(withEventPlaces(inOtherGroup));
+  assert.equal(late.params.exact_km, 180, "han kørte ikke i kildegruppen efter kontakten");
+  assert.equal(late.params.own_line, undefined);
+
+  const noVisibleGap = summitFinishLog(["dropped", "ahead"]).map((e) => (e.params.group_id === "gruppetto-3" ? { ...e, params: { ...e.params, gap_seconds: 0.5 } } : e));
+  assert.equal(withEventPlaces(noVisibleGap).find((e) => e.params.group_id === "gruppetto-3").params.own_line, undefined, "intet hul at vise");
+
+  const beforeSegment = summitFinishLog(["ahead"]).filter((e) => e.type !== "breakaway_caught");
+  beforeSegment.splice(1, 0, { km: 150, type: "group_merged", params: { group_id: "breakaway-1", into_group_id: "side", rider_ids: ["ahead"], exact_km: 150 } });
+  assert.equal(withEventPlaces(beforeSegment).find((e) => e.params.group_id === "gruppetto-3").params.exact_km, 180, "kontakten er ikke i segmentet");
+});
+
+test("#7734: en sen halvdel fra et tidligere tjekpunkt kører i sin gruppe ved det næste split", () => {
+  const split = (km, groupId, source, gap, exactKm, riderIds, time) => ({ km, type: "peloton_splits", params: { group_id: groupId, source_group_id: source, gap_seconds: gap, rider_ids: riderIds, exact_km: exactKm, ...(time ? { exact_time: time } : {}) } });
+  const log = [
+    { km: 0, type: "stage_start", params: { exact_km: 0, exact_time: 0 } },
+    { km: 10, type: "breakaway_formed", params: { group_id: "breakaway-1", rider_ids: ["late"], exact_km: 10 } },
+    { km: 40, type: "gap_update", params: { group_id: "peloton-0", gap_seconds: 30, exact_km: 40 } },
+    { km: 51, type: "breakaway_caught", params: { group_id: "breakaway-1", rider_ids: ["late"], exact_km: 51 } },
+    { km: 51, type: "group_merged", params: { group_id: "breakaway-1", into_group_id: "peloton-0", rider_ids: ["late"], exact_km: 51 } },
+    split(56, "g1", "peloton-0", 60, 45, ["a"], 4500),
+    split(56, "g2", "peloton-0", 120, 56, ["set", "x", "late"], 5700),
+    { km: 56, type: "gap_update", params: { group_id: "g2", gap_seconds: 120, exact_km: 56 } },
+    split(85, "h1", "g2", 60, 70, ["x"], 7000),
+    split(85, "h2", "g2", 90, 85, ["set", "late"], 8600),
+    { km: 85, type: "gap_update", params: { group_id: "h2", gap_seconds: 210, exact_km: 85 } },
+    { km: 100, type: "finish", params: { exact_km: 100, top: [] } },
+  ];
+  const placed = withEventPlaces(log);
+  const atSecond = placed.filter((e) => e.type === "peloton_splits" && e.params.group_id === "h2");
+  assert.equal(atSecond.length, 1, "ingen ny halvdel: begge kørte i g2 på stedet");
+  assert.deepEqual(atSecond[0].params.rider_ids, ["set", "late"]);
+  assert.ok(atSecond[0].params.exact_km < 75);
+  assert.equal(placed.find((e) => e.params?.own_line)?.params.group_id, "g2");
+  assert.deepEqual(withEventPlaces(placed), placed, "idempotent");
+});
+
+// Motorens form (segmentLoop.ts): sammenlægningen står efter splits på tjekpunktet
+// og navngiver ALLE gruppens ryttere, også splittets egne.
+function withOwnMerge(log, contactKm, riderIds) {
+  const out = [...log];
+  out.splice(out.length - 1, 0, { km: 180, type: "group_merged", params: { group_id: "gruppetto-3", into_group_id: "gruppetto-2", rider_ids: riderIds, exact_km: contactKm, exact_time: 18400 } });
+  return out;
+}
+const halvesOf = (events) => events.filter((e) => e.type === "peloton_splits" && e.params.group_id === "gruppetto-3");
+
+test("#6350: splittets egen sammenlægning er ikke et gruppeskift: den sene halvdel står på kontakten, de andre på stigningen", () => {
+  const halves = halvesOf(withEventPlaces(withOwnMerge(summitFinishLog(["dropped", "ahead"]), 176, ["dropped", "ahead"])));
+  assert.deepEqual(halves.map((e) => e.params.rider_ids), [["dropped"], ["ahead"]]);
+  assert.ok(halves[0].params.exact_km < 171);
+  assert.equal(halves[1].params.exact_km, 176, "før gruppen forsvinder, aldrig på stregen");
+  assert.equal(halves[1].params.exact_time, undefined, "tiden på stregen hører ikke til stedet");
+  assert.equal(halves[1].params.joined_late, true);
+});
+
+test("#6350: en kæde af sammenlægninger på tjekpunktet er stadig splittets egen linje", () => {
+  const log = withOwnMerge(summitFinishLog(["dropped", "ahead"]), 176, ["dropped", "ahead"]);
+  log.splice(log.length - 1, 0, { km: 180, type: "group_merged", params: { group_id: "gruppetto-2", into_group_id: "gruppetto-1", rider_ids: ["b", "dropped", "ahead"], exact_km: 178 } });
+  assert.deepEqual(halvesOf(withEventPlaces(log)).map((e) => e.params.rider_ids), [["dropped"], ["ahead"]]);
+});
+
+test("#6350: et helt split af sene ryttere trækkes aldrig tilbage før rytterne var fri af udbruddet", () => {
+  const [only] = halvesOf(withEventPlaces(withOwnMerge(summitFinishLog(["ahead"]), 176, ["ahead"])));
+  assert.equal(only.params.exact_km, 174.07, "ikke søster-splittenes km 170,76");
+  assert.equal(only.params.joined_late, undefined);
+});
+
+test("#6350: kontakten før den sene rytter var fri: sammenlægningen venter på ham", () => {
+  const placed = withEventPlaces(withOwnMerge(summitFinishLog(["dropped", "ahead"]), 173, ["dropped", "ahead"]));
+  const halves = halvesOf(placed);
+  const merge = placed.find((e) => e.type === "group_merged" && e.params.group_id === "gruppetto-3");
+  assert.equal(halves[1].params.exact_km, 174.07);
+  assert.equal(merge.params.exact_km, 174.07);
+  assert.equal(merge.params.exact_time, undefined);
+  assert.deepEqual(withEventPlaces(placed), placed, "idempotent");
+});
+
+test("#6350: etape 10 med sammenlægningen i motorens form: filmen modsiger ikke sig selv", () => {
+  const riders = halvesOf(stage10Log())[0].params.rider_ids;
+  const log = withOwnMerge(stage10Log(), 176, riders);
+  const placed = withEventPlaces(log);
+  assert.deepEqual(placed.filter((e) => e.params?.joined_late !== true).map((e) => [e.type, e.km]), log.map((e) => [e.type, e.km]), "km er rækkefølgen og flyttes aldrig");
+  assert.deepEqual(withEventPlaces(placed), placed, "idempotent");
+  const [set, late] = halvesOf(placed);
+  assert.equal(set.params.rider_ids.length, 13);
+  assert.ok(set.params.exact_km > 170.4 && set.params.exact_km < 171);
+  assert.deepEqual(late.params.rider_ids, ["ahead", "ahead-2"]);
+  assert.equal(late.params.exact_km, 176);
+
+  const story = buildRaceStory({ events: placed });
+  const frames = replayFrames(story, { finaleKm: 12, stepKm: 1 });
+  const size = (frame, id) => frame.groups.find((g) => g.group_id === id)?.size;
+  for (const frame of frames.filter((f) => f.km >= 171 && f.km <= 174)) {
+    assert.equal(size(frame, "breakaway-1"), 2, `km ${frame.km}: udbruddet er helt til det er hentet`);
+    assert.equal(size(frame, "gruppetto-3"), 13, `km ${frame.km}: de 2 er ikke sat`);
+  }
+  for (const frame of frames.filter((f) => f.km > 174.07)) assert.equal(size(frame, "breakaway-1"), undefined, `km ${frame.km}: hentet`);
+  const after = frames.filter((f) => f.km > 176 && f.km < 180);
+  assert.ok(after.length > 0);
+  for (const frame of after) {
+    assert.equal(size(frame, "gruppetto-3"), undefined, `km ${frame.km}: gruppen er væk efter kontakten`);
+    assert.equal(size(frame, "gruppetto-2"), 16, `km ${frame.km}: alle 15 og gruppens egen rytter`);
+  }
+
+  const groupMoments = story.moments.filter((m) => m.data?.group_id === "gruppetto-3");
+  const joined = groupMoments.find((m) => m.key === "story.groups_joined");
+  assert.equal(joined.km, 176);
+  for (const moment of groupMoments.filter((m) => m.key === "story.split")) assert.ok(moment.km <= joined.km, `split ved km ${moment.km} efter kontakten`);
+  assert.ok(groupMoments.indexOf(joined) > groupMoments.findLastIndex((m) => m.key === "story.split"), "sammenlægningen fortælles sidst");
+});
+
+test("#6350: 'droppet fra udbruddet' med flere ryttere står ved den sidste af dem", () => {
+  const log = summitFinishLog(["dropped", "ahead"]);
+  log.splice(3, 0, { km: 180, type: "breakaway_dropped", params: { group_id: "piece", from_group_id: "breakaway-1", rider_ids: ["dropped", "ahead"], exact_km: 180 } });
+  const placed = withEventPlaces(withOwnMerge(log, 176, ["dropped", "ahead"]));
+  assert.equal(placed.find((e) => e.type === "breakaway_dropped").params.exact_km, 176);
+});
+
+test("#6350: et angreb hentet i samme segment står før sin indhentning; en melding om gruppen venter på dannelsen", () => {
+  const attack = (groupId, exactKm, exactTime) => ({ km: 99.2, type: "finale_attack", params: { group_id: groupId, rider_ids: [groupId], direction: "descent", exact_km: exactKm, exact_time: exactTime } });
+  const log = [
+    { km: 89, type: "own_riders_ahead", params: { group_id: "solo-2", rider_ids: ["solo-2"], exact_km: 89 } },
+    attack("break-1", 99.2, 10336),
+    attack("solo-2", 90.91, 9960),
+    { km: 99.2, type: "breakaway_caught", params: { group_id: "break-1", rider_ids: ["break-1"], exact_km: 97.4, exact_time: 10225 } },
+    { km: 99.2, type: "group_merged", params: { group_id: "break-1", into_group_id: "peloton-0", rider_ids: ["break-1"], exact_km: 97.4 } },
+  ];
+  const placed = withEventPlaces(log);
+  assert.equal(placed[1].params.exact_km, 90.91, "sammen med de angreb den hørte til");
+  assert.equal(placed[1].params.exact_time, undefined);
+  assert.equal(placed[0].params.exact_km, 90.91);
+  assert.equal(placed[0].params.exact_time, 9960);
+  // Uden andre angreb før kontakten står den på selve kontakten.
+  assert.equal(withEventPlaces(log.filter((e) => e.params.group_id !== "solo-2"))[0].params.exact_km, 97.4);
+});
+
+test("#6350: en log uden præcise steder kommer uændret tilbage, og en ny etape får stederne når den gemmes", () => {
+  const old = [{ km: 10, type: "peloton_splits", params: { group_id: "g", gap_seconds: 30, rider_ids: ["r"] } }];
+  assert.equal(withEventPlaces(old), old);
+  assert.equal(withEventPlaces(null), null);
+  const { events } = buildStageTimelineV4({ engineTimeline: { events: summitFinishLog() }, stageProfile: { distance_km: 180 } });
+  assert.ok(events.find((e) => e.params.group_id === "gruppetto-3").params.exact_km < 171);
+});
+
+test("#7729: forsøget når filmen med alt det motoren skrev, også på en gemt etape", () => {
+  const params = { exact_km: 12, exact_time: 900, rider_ids: ["a", "b"], escaped_rider_ids: ["a"], reacting_team_ids: ["t1"] };
+  const [attempt] = withEventPlaces([{ km: 12, type: "breakaway_attempt", params }]);
+  assert.deepEqual(attempt.params, params);
+  const built = buildStageTimelineV4({ engineTimeline: { events: [{ km: 12, type: "breakaway_attempt", params }] }, stageProfile: { distance_km: 100 } });
+  assert.deepEqual(built.events.find((e) => e.type === "breakaway_attempt").params, params);
 });

@@ -370,3 +370,14 @@ test("#6185 nonEscapeeAheadByRider uses the timeline's morning set, not later at
   // Every finisher an escapee: nobody has a non-escapee ahead.
   assert.deepEqual([...nonEscapeeAheadByRider(history, [{ rider_id: "e1", rank: 1 }, { rider_id: "e2", rank: 2 }])], [["e1", false], ["e2", false]]);
 });
+
+test("#6350: a split in two halves keeps both halves in the group", () => {
+  const split = (riders: string[]) => ({ km: 180, type: "peloton_splits", params: { group_id: "g", source_group_id: "peloton-0", rider_ids: riders } });
+  const history = deriveParticipationHistory([start,
+    { km: 12, type: "breakaway_formed", params: { group_id: "escape", rider_ids: ["a", "b", "c"] } },
+    split(["p"]),
+    split(["c"]),
+    { km: 180, type: "group_merged", params: { group_id: "escape", into_group_id: "g", rider_ids: ["a", "b"] } }, finish,
+  ], ["a", "b", "c", "p"]);
+  assert.equal(history.riders.get("a")?.caught, true, "the field rider from the first half proves the catch");
+});

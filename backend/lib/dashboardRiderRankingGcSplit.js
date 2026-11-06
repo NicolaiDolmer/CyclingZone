@@ -22,6 +22,9 @@
 // splitGcWins er en REN funktion (ingen Supabase-afhaengighed) — testet med
 // node --test, se dashboardRiderRankingGcSplit.test.js.
 
+import { withSupabaseRetry } from "./supabaseErrorNormalize.js";
+import { captureException as defaultCaptureException } from "./sentry.js";
+
 /**
  * Henter GC-vinder-raekker (rank=1, result_type='gc') for et bundet saet
  * rytter-id'er, joinet til racens race_type — kilden splitGcWins bruger til at
@@ -75,4 +78,31 @@ export function splitGcWins(riders, gcRows) {
     const split = counts.get(r.rider_id) || { gc_wins: 0, classic_wins: 0 };
     return { ...r, gc_wins: split.gc_wins, classic_wins: split.classic_wins };
   });
+}
+
+/**
+ * #7676: split-opslaget er en forbedring oven paa RPC'ens allerede brugbare
+ * raekker (uden det mangler kun klassikersejre). Det maa aldrig tage hele
+ * dashboard-modulet ned med en 500. Proever opslaget igen ved transiente fejl;
+ * fejler det stadig, sendes RPC'ens raekker UDEN sejrs-opdeling (aldrig splitGcWins
+ * med tomme raekker — den nulstiller gc_wins) og fejlen rapporteres til
+ * Sentry, saa aarsagen kan findes.
+ * @returns {Promise<Array<object>>}
+ */
+export async function splitGcWinsSafe(
+  supabase,
+  riders,
+  args,
+  { captureExceptionFn = defaultCaptureException, retryOptions } = {},
+) {
+  try {
+    const gcRows = await withSupabaseRetry(() => fetchGcClassicSplit(supabase, args), retryOptions);
+    return splitGcWins(riders, gcRows);
+  } catch (error) {
+    captureExceptionFn(error, { tags: { route: "dashboard-rider-ranking", degraded: "gc-split-skipped" } });
+    // RPC'ens gc_wins taeller ALLE loebstyper; vist som "GC" ville klassikersejre
+    // vaere forkert info. Derfor udelades sejrs-opdelingen helt (frontend viser
+    // kun badges for vaerdier > 0), mens rangliste + point bevares.
+    return (riders || []).map(({ gc_wins: _combined, ...rest }) => rest);
+  }
 }

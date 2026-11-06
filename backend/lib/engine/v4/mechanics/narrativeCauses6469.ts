@@ -45,6 +45,9 @@ export type BreakawayCauseKind =
   | "gc_contained" // klassementsholdet koerte kun for klassementet og stoppede (contained)
   | "chase_faded" // jagten lukkede ind og slap saa igen (tidslinjens afstand)
   | "chase_too_late" // jagten lukkede ind, men naaede det ikke
+  | "chase_tired" // #7730: de jagende hold havde brugt for meget (breakaway_chase_short)
+  | "chase_outgunned" // #7730: de jagende ryttere var for svage mod udbruddet
+  | "chase_too_few" // #7730: for faa ryttere arbejdede i jagten
   | "gap_never_closed" // afstanden kom aldrig ned (kun naar intet andet forklarer)
   | "gc_threat" // hentet: et hold jagede, fordi en udbryder truede deres klassementsrytter
   | "closed_on_climb"; // hentet: hullet faldt mest over en stigning
@@ -209,6 +212,13 @@ function heldCauses(events: readonly NarrativeEvent[], w: Window, chaseId: strin
   const unchased = slice.filter((e) => e?.type === "breakaway_unchased" && inGroup(w, e));
   if (unchased.some((e) => e?.params?.reason === undefined || e?.params?.reason === null)) causes.push({ kind: "unchased" });
   if (unchased.some((e) => e?.params?.reason === "no_riders")) causes.push({ kind: "no_chasers" });
+  // #7730: motorens egen dom over jagten paa gulvet (kun kontakten team_chase_7730).
+  const short = slice.find((e) => e?.type === "breakaway_chase_short" && inGroup(w, e))?.params?.reason;
+  if (short === "no_chasers" && !causes.some((c) => c.kind === "no_chasers")) causes.push({ kind: "no_chasers" });
+  if (short === "nobody_wanted" && !causes.some((c) => c.kind === "unchased")) causes.push({ kind: "unchased" });
+  if (short === "tired") causes.push({ kind: "chase_tired" });
+  if (short === "outgunned") causes.push({ kind: "chase_outgunned" });
+  if (short === "too_few") causes.push({ kind: "chase_too_few" });
   const ownAhead = uniq(slice
     .filter((e) => e?.type === "own_riders_ahead" && (inGroup(w, e) || ids(e.params?.rider_ids).some((id) => w.riders.has(id))))
     .map((e) => str(e?.params?.team_id))

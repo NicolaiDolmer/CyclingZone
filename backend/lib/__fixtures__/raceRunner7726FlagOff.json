@@ -1,0 +1,60 @@
+{
+  "sourceCommit": "7894bb3f8343a0a3489efa980154a085db9f7256",
+  "note": "#7726: raceRunner med den rigtige v4-motor og ingen kontakt taendt, skrevet fra merge-basen foer kontakten. Kun hashes. Genereres ALDRIG med den nye kode.",
+  "wholeRace:s5_profiles_v3": {
+    "inputChecksums": [
+      2833103683,
+      2690381502,
+      3024359510
+    ],
+    "inputSha256": [
+      "fc7a2b000c136cf7387e5e4072dc3d0f923923a77873b51607b5f07936af0324",
+      "e092c3a63c44e1276a8d5e9ba51b299abdec3b622fcbe0c2cc61ea13a0353267",
+      "35e97854a9d8e8d56cc150bffccaa7252bf2aabee476896e2e993b7b7a14e35b"
+    ],
+    "outputSha256": [
+      "3aea05df0b22a3d171729e745ed38e2612c4adc7b5cfa5e6d2302845ebe090c8",
+      "0f7bb646fd53952d8db5aa038c6787b76ae60e59cb9de23200244ac42ceea22f",
+      "63aab7c6f7dd1188d1ea6f59897f0ec801a6bd4b0c19423c1709d9c6894d2b24"
+    ]
+  },
+  "wholeRace:s5_profiles_v2": {
+    "inputChecksums": [
+      2833103683,
+      3171036392,
+      823899696
+    ],
+    "inputSha256": [
+      "1b0937205aa6aeac78d389f637aedff221daa0cfc00216de57ea7a67f428d04e",
+      "6527c256e207f7e314702ac16e64d258590d9975bfe8f6bece265b41befdc92c",
+      "a38fbbafa108370be71d1f1ac4f1e43518a5fb124470307f9fc7eafe3d26c864"
+    ],
+    "outputSha256": [
+      "2d1d6dcfc1cdbf0db29ccd5e2630c6900eb33cf0fffca6df35549eea211e1167",
+      "4dd48909206245bd6e510075f8b9ebcbf70e60297cac44b6bcd09118a5f2335f",
+      "87313a5f93cb656749787c54fa5c291517e839e87f99a632318fc1189506c88d"
+    ]
+  },
+  "stageByStage:s5_profiles_v3:stage2": {
+    "inputChecksums": [
+      4105683081
+    ],
+    "inputSha256": [
+      "55eb87962f6eee539164d02f4ca9d378e2ef1ec11cc85e0c37135a0e28e6d0a4"
+    ],
+    "outputSha256": [
+      "b0f01987aa6411cff9ab0d3bf790be7f9d09446aacb04b103dc3df85849ed3be"
+    ]
+  },
+  "stageByStage:s5_profiles_v3:stage3": {
+    "inputChecksums": [
+      864561185
+    ],
+    "inputSha256": [
+      "08d074d3d67ba1184e219994a7b7e7ecd7f6827930c78801e1ae2720cab60a4a"
+    ],
+    "outputSha256": [
+      "b5c6d74ef536d358ed72f02519237a2782153528cfff1a06dd7ec2b1a422cc40"
+    ]
+  }
+}

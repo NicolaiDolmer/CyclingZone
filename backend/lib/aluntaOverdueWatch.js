@@ -255,7 +255,7 @@ export async function runAluntaOverdueWatch({
       // ÉN fortsat sag blev til flere issues (CYCLINGZONE-54 + -5R, "værste 33
       // dage" vs. "værste 31 dage" for samme faktura). Beskeden er nu FAST;
       // dagstal/antal ligger udelukkende i `extra` (samme mønster som
-      // ownershipInvariantWatch.js's `fingerprint: ["stuck-academy-graduate"]`).
+      // ownershipInvariantWatch.ts's `fingerprint: ["stuck-academy-graduate"]`).
       const err = new Error("billing-watch: ubetalte fakturaer og/eller entitlement-afvigelser fundet");
       captureExceptionFn(err, {
         tags: { flow: "billing", stage: "overdue-watch" },

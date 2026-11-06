@@ -13,9 +13,11 @@ import {
 } from "./stagePageV2Model.ts";
 import StageProfileV2, { GradientLegend } from "./StageProfileV2.tsx";
 import ClimbCard from "./ClimbCard.tsx";
-import YourDayCard, { type CareerEvent } from "./YourDayCard.tsx";
+import YourDayCard, { type CareerEvent, type RowWhy } from "./YourDayCard.tsx";
+import { riderWhy } from "../../../lib/riderWhyModel.ts"; // #7717
+import { useRiderWhyEnabled } from "../../../lib/riderWhyFlag.ts"; // #7717
 import RaceStoryCard from "./RaceStoryCard.tsx";
-import { castFrom, type RaceStory, type StoryNarrativeContext } from "./raceStoryModel.ts";
+import { castFrom, ownOutSentences, type RaceStory, type StoryNarrativeContext } from "./raceStoryModel.ts";
 import { stageWeather, type StageWeather } from "./stageWeather.ts";
 import { WeatherTag } from "./WeatherTag.tsx";
 import { Button, Flag, RiderLink, Section, SectionHeader, SectionStack, SkeletonLines, TerrainTypeGlyph } from "./ui.ts";
@@ -81,7 +83,7 @@ function ProfileCard({ profile, stageLabel, band, selectedClimb, onSelectClimb, 
   if (bare) return body;
 
   return (
-    <Section aria-label={stageLabel}>
+    <Section data-race-section="stage_info" aria-label={stageLabel}>
       <SectionHeader title={stageLabel} meta={stats} />
       {body}
     </Section>
@@ -112,11 +114,15 @@ export interface StageTabV2Props {
   /** #6570 spor 2: loebshistorien fra loebsloggen; null = ingen (nuvaerende visning). */
   story?: RaceStory | null;
   narrative?: StoryNarrativeContext | null;
+  /** #7717: loebshistorien hentes stadig, saa Hvorfor? ikke siger "ikke kendt" for tidligt. */
+  storyLoading?: boolean;
+  /** Loebshistorien kunne ikke hentes: saa kan Hvorfor? intet sige om etapen. */
+  storyError?: boolean;
 }
 
 export default function StageTabV2({
   stageNumber, stagesCompleted, isStageRace, phase, profile, results, stagePointRows, profileByStage = {}, stageLoaded, stageErrorSlot, myTeamId,
-  stageRoles, careerEvents, dnfRows = [], tacticsAction, onOpenStandings, emptyState, story = null, narrative = null,
+  stageRoles, careerEvents, dnfRows = [], tacticsAction, onOpenStandings, emptyState, story = null, narrative = null, storyLoading = false, storyError = false,
 }: StageTabV2Props) {
   const { t } = useTranslation("races");
   const [selectedClimb, setSelectedClimb] = useState<number>(() => Math.max(0, sortedClimbs(profile).length - 1));
@@ -131,7 +137,14 @@ export default function StageTabV2({
   const demands = dayDemands(profile?.demand_vector);
   const climbIndex = Math.min(selectedClimb, Math.max(0, climbs.length - 1));
   const cast = useMemo(() => castFrom(results, riders, stageNumber, myTeamId), [results, riders, stageNumber, myTeamId]);
+  const ownOut = useMemo(() => ownOutSentences(dnfRows, myTeamId, cast), [dnfRows, myTeamId, cast]);
   const weather = stageWeather(profile, phase, story);
+  const whyEnabled = useRiderWhyEnabled(phase === "after");
+  const why = useMemo<RowWhy | null>(() => (whyEnabled && !storyError ? {
+    loading: storyLoading,
+    // En ikke-starter har intet loeb at forklare; raekken siger allerede hvorfor.
+    forRow: (r) => (r.status === "dns" ? null : riderWhy({ riderId: r.riderId, rank: r.rank, status: r.status, reasonKey: r.reasonKey, events: narrative?.events, story, climbs, cast })),
+  } : null), [whyEnabled, storyError, storyLoading, narrative, story, climbs, cast]);
 
   if (phase === "after") {
     return (
@@ -147,6 +160,7 @@ export default function StageTabV2({
             dnfRows={dnfRows}
             primaryAction={tacticsAction}
             onOpenStandings={onOpenStandings}
+            why={why}
           />
         )}
         {story ? (
@@ -161,6 +175,7 @@ export default function StageTabV2({
             title={isStageRace ? t("stagePageV2.story.title", { number: stageNumber }) : t("stagePageV2.story.titleOneDay")}
             hudLabel={isStageRace ? t("stagePageV2.stripStage", { number: stageNumber }) : t("stagePageV2.story.hudOneDay")}
             weather={weather}
+            ownOut={ownOut}
             routeBody={profile && series ? <ProfileCard profile={profile} stageLabel={stageLabel} band={false} selectedClimb={climbIndex} onSelectClimb={setSelectedClimb} bare weather={weather} /> : null}
             onOpenStandings={onOpenStandings}
           />
@@ -180,7 +195,7 @@ export default function StageTabV2({
         </SectionStack>
         <SectionStack>
           {demands.length > 0 && (
-            <Section aria-label={t("stagePageV2.demands.title")}>
+            <Section data-race-section="demands" aria-label={t("stagePageV2.demands.title")}>
               <SectionHeader title={t("stagePageV2.demands.title")} />
               <dl className="m-0 grid grid-cols-[1fr_auto]">
                 {demands.map((d) => (
@@ -194,7 +209,7 @@ export default function StageTabV2({
               </dl>
             </Section>
           )}
-          <Section aria-label={t("stagePageV2.lineup.title")}>
+          <Section data-race-section="lineup" aria-label={t("stagePageV2.lineup.title")}>
             <SectionHeader title={t("stagePageV2.lineup.title")} meta={t("stagePageV2.lineup.fit")} />
             {stageRoles === null && <SkeletonLines lines={4} />}
             {stageRoles === false && <p className="text-xs text-cz-3">{t("racePage.team.loadError")}</p>}
@@ -217,7 +232,7 @@ export default function StageTabV2({
             )}
           </Section>
           {favourites.length > 0 && (
-            <Section aria-label={t("stagePageV2.favourites.title")}>
+            <Section data-race-section="favourites" aria-label={t("stagePageV2.favourites.title")}>
               <SectionHeader title={t("stagePageV2.favourites.title")} />
               <ul>
                 {favourites.map((f, i) => {

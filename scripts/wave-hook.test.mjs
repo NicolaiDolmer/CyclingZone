@@ -30,7 +30,9 @@ test('full Claude hook requires registered admission and permits only its owner 
   assert.match(first.stderr, /Cannot verify admission owner process/);
   assert.equal(fs.existsSync(path.join(runDir, 'wave-active.json')), false);
   await acquireWave(runDir, { runtime: 'claude', owner: payload.session_id, pid: process.pid,
-    now: 1790000000000, workflowRunId: 'fixture-run', tracks: payload.tool_input.args.tracks }, async () => []);
+    now: 1790000000000, workflowRunId: 'fixture-run', tracks: payload.tool_input.args.tracks,
+    // Issue #1 is synthetic: admission must not query live GitHub from this test.
+  }, async () => [], () => ({ labels: [], body: '' }));
   const original = fs.readFileSync(path.join(runDir, 'wave-active.json'), 'utf8');
   assert.equal(JSON.parse(original).runtime, 'claude');
   const resume = { tool_name: 'Workflow', session_id: payload.session_id, tool_input: { resumeFromRunId: 'fixture-run' } };

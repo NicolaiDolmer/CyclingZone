@@ -16,7 +16,7 @@
     "en fil under 'konverter naar du roerer'. Raekkefoelge + opskrift:",
     "docs/TYPESCRIPT_DIRECTION.md."
   ],
-  "generatedAt": "2026-11-04",
+  "generatedAt": "2026-11-05",
   "tsconfig": "backend/tsconfig.core.json",
   "areas": {
     "economy": {
@@ -57,8 +57,8 @@
       "globs": [
         "lib/academy*"
       ],
-      "jsFileCount": 13,
-      "tsErrorCount": 238,
+      "jsFileCount": 11,
+      "tsErrorCount": 233,
       "files": {
         "lib/academyBoardGift.ts": 0,
         "lib/academyDisclosure.ts": 0,
@@ -75,10 +75,10 @@
         "lib/academyIntakeExpirySweep.js": 5,
         "lib/academyIntakeProfile.ts": 0,
         "lib/academyIntakePull.js": 10,
-        "lib/academyIntakePullFlag.js": 1,
+        "lib/academyIntakePullFlag.ts": 0,
         "lib/academyIntakeReconcile.js": 9,
         "lib/academyIntakeSource.ts": 0,
-        "lib/academyOfferProtection.js": 4,
+        "lib/academyOfferProtection.ts": 0,
         "lib/academyPnl.ts": 0,
         "lib/academyProspectKnowledge.ts": 0,
         "lib/academyReminder.ts": 0,
@@ -96,11 +96,11 @@
         "lib/riderOwnershipAudit*",
         "lib/transferExecution*"
       ],
-      "jsFileCount": 3,
-      "tsErrorCount": 102,
+      "jsFileCount": 1,
+      "tsErrorCount": 69,
       "files": {
-        "lib/ownershipInvariantWatch.js": 29,
-        "lib/riderOwnershipAudit.js": 4,
+        "lib/ownershipInvariantWatch.ts": 0,
+        "lib/riderOwnershipAudit.ts": 0,
         "lib/transferExecution.js": 69
       }
     },
@@ -111,14 +111,14 @@
         "lib/finalizeInstrumentation*",
         "lib/raceFinalize*"
       ],
-      "jsFileCount": 5,
-      "tsErrorCount": 123,
+      "jsFileCount": 2,
+      "tsErrorCount": 82,
       "files": {
         "lib/boardWeekendFinalization.js": 58,
-        "lib/finalizeInstrumentation.js": 12,
-        "lib/raceFinalizeResumableFlag.js": 1,
+        "lib/finalizeInstrumentation.ts": 0,
+        "lib/raceFinalizeResumableFlag.ts": 0,
         "lib/raceFinalizeState.js": 24,
-        "lib/raceFinalizeWatch.js": 28
+        "lib/raceFinalizeWatch.ts": 0
       }
     },
     "scheduler": {
@@ -127,17 +127,17 @@
         "lib/stageScheduler*",
         "lib/raceCalendarScheduling*"
       ],
-      "jsFileCount": 2,
-      "tsErrorCount": 27,
+      "jsFileCount": 1,
+      "tsErrorCount": 26,
       "files": {
         "lib/raceCalendarScheduling.ts": 0,
         "lib/stageScheduler.js": 26,
-        "lib/stageSchedulerFlag.js": 1
+        "lib/stageSchedulerFlag.ts": 0
       }
     }
   },
   "totals": {
-    "jsFileCount": 28,
-    "tsErrorCount": 830
+    "jsFileCount": 20,
+    "tsErrorCount": 750
   }
 }

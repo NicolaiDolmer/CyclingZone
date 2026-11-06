@@ -616,8 +616,10 @@ export async function main(argv = process.argv.slice(2), { now, clock, monotonic
     cacheDir: fromDir ?? prev?.cacheDir ?? null,
     // #6912: forspringskurven er en kontakt, ikke en revision; kortet skal vise om den var taendt.
     ...(process.env.CZ_BREAKAWAY_CURVE_6912 === "1" ? { breakawayCurve6912: true } : {}),
+    ...(process.env.CZ_TEAM_CHASE_7730 === "1" ? { teamChase7730: true } : {}), // #7730: kortet viser om jagten efter holdene var taendt
   };
   if (prev && (prev.breakawayCurve6912 === true) !== (meta.breakawayCurve6912 === true)) throw new Error(`${outDir} er koert ${prev.breakawayCurve6912 ? "med" : "uden"} forspringskurven (CZ_BREAKAWAY_CURVE_6912). Brug en ny --out.`);
+  if (prev && (prev.teamChase7730 === true) !== (meta.teamChase7730 === true)) throw new Error(`${outDir} er koert ${prev.teamChase7730 ? "med" : "uden"} jagten efter holdene (#7730); brug en ny --out`);
   writeFileSync(metaFile, JSON.stringify(meta, null, 2));
 
   const tasks = planTasks({ raceIds, opts, outDir, fromDir, prebuilt: inputs.prebuilt });

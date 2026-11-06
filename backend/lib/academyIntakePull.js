@@ -9,7 +9,7 @@
 // Genbruger den delte kerne (seedAcademyCohortForTeam) + samme claim-tabel som det
 // gamle drip (academy_intake_ticks, PK team_id+tick_date) — men "tick_date" er her
 // UGENS LØRDAG (kan claimes en hvilken som helst dag i ugen), ikke selve kørselsdagen.
-// Flag-gated: academy_intake_pull_enabled (academyIntakePullFlag.js), seedet OFF —
+// Flag-gated: academy_intake_pull_enabled (academyIntakePullFlag.ts), seedet OFF —
 // cron.js's søndags-drip fortsætter uændret indtil flaget flippes ved cutover.
 import {
   fetchActiveSeason,
@@ -18,7 +18,7 @@ import {
   referenceYearForSeason,
   seedAcademyCohortForTeam,
 } from "./academyIntake.js";
-import { isAcademyIntakePullEnabled } from "./academyIntakePullFlag.js";
+import { isAcademyIntakePullEnabled } from "./academyIntakePullFlag.ts";
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 import {

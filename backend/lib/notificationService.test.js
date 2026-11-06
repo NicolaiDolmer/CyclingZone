@@ -1013,6 +1013,20 @@ test("buildScoutReportReadyNotification (mission): entals-variant ved præcis 1 
   assert.match(payload.message, /found 1 rider\. /);
 });
 
+test("buildScoutReportReadyNotification (mission, #6138): ukendt synligt antal → besked uden antal, aldrig det ufiltrerede tal", () => {
+  const assignment = {
+    id: "m-4", team_id: "team-1", kind: "mission", shortlistCountUnavailable: true,
+    result: { shortlist: ["r1", "r2", "r3", "r4", "r5"], top_rider_id: "r1" },
+  };
+  const payload = buildScoutReportReadyNotification({ assignment });
+  assert.equal(payload.metadata.titleCode, "notif.scoutReportReady.mission.title");
+  assert.equal(payload.metadata.messageCode, "notif.scoutReportReady.mission.messageNoCount");
+  assert.equal(payload.metadata.shortlistCount, null);
+  assert.deepEqual(payload.metadata.messageParams, {});
+  assert.doesNotMatch(payload.message, /5/);
+  assert.equal(payload.relatedId, "m-4");
+});
+
 test("buildScoutReportReadyNotification (mission): tom shortlist → messageEmpty, ingen '0 riders'-tekst", () => {
   const assignment = { id: "m-3", team_id: "team-1", kind: "mission", result: { shortlist: [], top_rider_id: null } };
   const payload = buildScoutReportReadyNotification({ assignment });

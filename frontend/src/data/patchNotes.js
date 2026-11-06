@@ -1,5 +1,607 @@
 export const PATCHES = [
   {
+    "version": "7.407",
+    "date": "2026-11-06",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "See who your rider attacked with",
+          "body": "The stage report now names who your rider attacked with, and so does Why? on beta."
+        },
+        "da": {
+          "title": "Se hvem din rytter angreb med",
+          "body": "Referatet siger nu, hvem din rytter angreb sammen med, og det gør Hvorfor? på beta også."
+        },
+        "refs": [
+          7754
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Rest plans no longer carry over to a new season",
+          "body": "From the next season change, a rest plan no longer follows your rider into the new season. He gets a normal plan instead of standing still."
+        },
+        "da": {
+          "title": "Hvile-planer følger ikke med ind i en ny sæson",
+          "body": "Fra næste sæsonskifte følger en hvile-plan ikke længere rytteren med. Han får en normal plan i stedet for at stå stille."
+        },
+        "refs": [
+          7637
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.406",
+    "date": "2026-11-06",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "beta",
+        "flag": "rider_why_button",
+        "topic": "Races",
+        "en": {
+          "title": "Why? next to your riders",
+          "body": "After a stage, a Why? button next to your own riders gives one sentence on how his day went. If the race can't prove the reason, it says so."
+        },
+        "da": {
+          "title": "Hvorfor? ved dine ryttere",
+          "body": "Efter en etape giver en Hvorfor?-knap ved dine egne ryttere én sætning om hans dag. Kan løbet ikke bevise årsagen, står der det."
+        },
+        "refs": [
+          7717
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Where your riders lost time",
+          "body": "The stage report now has a block with where your riders lost time, and why: a crash, running out of energy or a bad day."
+        },
+        "da": {
+          "title": "Hvor dine ryttere tabte tid",
+          "body": "Referatet har nu en blok med, hvor dine ryttere tabte tid, og hvorfor: et styrt, løbet tør for kræfter eller en dårlig dag."
+        },
+        "refs": [
+          7705
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Failed attacks in the race film",
+          "body": "When your rider tries to get in the break and doesn't make it, the film now says so, who worked against him, and that it cost energy for the rest of the stage."
+        },
+        "da": {
+          "title": "Mislykkede forsøg i løbsfilmen",
+          "body": "Når din rytter forsøger at komme med i udbruddet uden held, siger filmen det nu, hvem der kørte imod, og at det kostede kræfter resten af etapen."
+        },
+        "refs": [
+          7729
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Assistant",
+        "en": {
+          "title": "The assistant picks on the number you see",
+          "body": "The assistant now selects on the same route match you see on screen, for every team. Automatic squads can change a little from the next selection, mostly in time trials."
+        },
+        "da": {
+          "title": "Assistenten vælger efter tallet på skærmen",
+          "body": "Assistenten udtager nu efter samme rutematch, som du ser på skærmen, for alle hold. Automatiske trupper kan ændre sig lidt fra næste udtagelse, mest i enkeltstarter."
+        },
+        "refs": [
+          6207
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Riders out of a stage race train again",
+          "body": "A rider who was no longer in a stage race, for example after being sold, stayed tied to it and rested until it ended. He now follows his programme again."
+        },
+        "da": {
+          "title": "Ryttere ude af et etapeløb træner igen",
+          "body": "En rytter, der ikke længere var i et etapeløb, fx efter et salg, stod stadig som bundet og hvilede, til løbet sluttede. Nu følger han sit program igen."
+        },
+        "refs": [
+          7692
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The right route everywhere",
+          "body": "Race history and planning now show this year's route instead of last season's."
+        },
+        "da": {
+          "title": "Den rigtige rute alle steder",
+          "body": "Løbshistorik og planlægning viser nu årets rute i stedet for sidste sæsons."
+        },
+        "refs": [
+          7693
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The peloton is the real peloton",
+          "body": "In the race film, the word peloton now only sits on the main group, the big group the attacks come from."
+        },
+        "da": {
+          "title": "Feltet er det rigtige felt",
+          "body": "I løbsfilmen står feltet nu kun på hovedgruppen, den store gruppe, angrebene kommer fra."
+        },
+        "refs": [
+          7704
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "No more jumps on the finish line",
+          "body": "Riders from a caught break now lose their time along the road in the film, instead of jumping back on the line. Results are unchanged."
+        },
+        "da": {
+          "title": "Ingen hop på målstregen",
+          "body": "Ryttere fra et hentet udbrud taber nu tiden undervejs i filmen i stedet for at hoppe tilbage på stregen. Resultater er uændrede."
+        },
+        "refs": [
+          7734
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "No crash line without a crash",
+          "body": "The film no longer mentions a crash on the cobbles unless a crash actually happened."
+        },
+        "da": {
+          "title": "Ingen styrt-linje uden et styrt",
+          "body": "Filmen nævner ikke længere et styrt på brostenene, medmindre der faktisk var et styrt."
+        },
+        "refs": [
+          7727
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Threshold is called what it is",
+          "body": "The training report no longer shows the old name for Threshold."
+        },
+        "da": {
+          "title": "Tærskel hedder det rigtige",
+          "body": "Træningsrapporten viser ikke længere det gamle navn for Tærskel."
+        },
+        "refs": [
+          7559
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The Day view no longer says today about yesterday",
+          "body": "If you pressed Train now on an earlier day, the Day view now says when, instead of today."
+        },
+        "da": {
+          "title": "Dag-visningen siger ikke i dag om i går",
+          "body": "Har du trykket Træn nu en tidligere dag, skriver Dag-visningen nu hvornår i stedet for i dag."
+        },
+        "refs": [
+          7558
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Help",
+        "en": {
+          "title": "Help no longer promises too much",
+          "body": "The FAQ now says it right: a mechanical costs time, it never takes a rider out of the race."
+        },
+        "da": {
+          "title": "Hjælp lover ikke for meget",
+          "body": "FAQ'en siger det nu rigtigt: en defekt koster tid, den tager aldrig en rytter ud af løbet."
+        },
+        "refs": [
+          7728
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.405",
+    "date": "2026-11-05",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Roadmap",
+        "en": {
+          "title": "The Vote tab says what its numbers mean",
+          "body": "The Vote tab now shows how many ideas still need your answer, out of all ideas."
+        },
+        "da": {
+          "title": "Stem-fanen siger, hvad tallene betyder",
+          "body": "Stem-fanen viser nu, hvor mange idéer der mangler dit svar, ud af alle idéer."
+        },
+        "refs": [
+          7735
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.404",
+    "date": "2026-11-05",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The race film shows where riders were really dropped",
+          "body": "I fixed How the race played out: it now shows where riders were really dropped, instead of at the next checkpoint. This also fixes stages already raced."
+        },
+        "da": {
+          "title": "Løbsfilmen viser, hvor rytterne reelt blev sat",
+          "body": "Jeg har rettet Sådan blev løbet kørt: den viser nu, hvor rytterne reelt blev sat, i stedet for ved næste tjekpunkt. Det retter også etaper, der allerede er kørt."
+        },
+        "refs": [
+          6350
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.403",
+    "date": "2026-11-05",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The stage plan recap only shows what can be proven",
+          "body": "The stage plan recap now only shows what the race film and the result can prove: his place, that he finished, or who he rode with. When nothing can be shown, it says nothing."
+        },
+        "da": {
+          "title": "Etapeplanens opsummering viser kun det, der kan bevises",
+          "body": "Etapeplanens opsummering viser nu kun det, løbsfilmen og resultatet kan bevise: hans placering, at han kom i mål, eller hvem han kørte med. Kan intet vises, står der ingenting."
+        },
+        "refs": [
+          7706
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.401",
+    "date": "2026-11-05",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "The roadmap shows when things come",
+          "body": "The Plan tab is now grouped by when I expect to deliver: this week, next week, this season, next season, 2027 and later. Items I am building right now are marked In progress."
+        },
+        "da": {
+          "title": "Roadmappen viser, hvornår ting kommer",
+          "body": "Plan-fanen er nu grupperet efter, hvornår jeg regner med at levere: denne uge, næste uge, denne sæson, næste sæson, 2027 og senere. Det, jeg bygger lige nu, er mærket I gang."
+        },
+        "refs": [
+          7666,
+          6923
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Delivered items link to their patch note",
+          "body": "On the Done tab, Delivered in the last 7 days is at the top. Open an item to read its patch note without leaving the roadmap."
+        },
+        "da": {
+          "title": "Leverede punkter linker til deres patch note",
+          "body": "På Færdigt-fanen står Leveret de sidste 7 dage øverst. Åbn et punkt for at læse dens patch note uden at forlade roadmappen."
+        },
+        "refs": [
+          7666,
+          6923
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Known issues show how far a fix has come",
+          "body": "Each known issue now has a timeline: reported, confirmed, being fixed, fixed. The date is shown at each step I have reached."
+        },
+        "da": {
+          "title": "Kendte fejl viser, hvor langt en rettelse er",
+          "body": "Hver kendt fejl har nu en tidslinje: meldt, bekræftet, rettes nu, rettet. Datoen står ved hvert trin, jeg har nået."
+        },
+        "refs": [
+          7666,
+          6923
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Search the whole roadmap",
+          "body": "A search box on the roadmap finds items across all five tabs, in English or Danish. A hit shows which tab it sits on, and one tap opens that tab."
+        },
+        "da": {
+          "title": "Søg i hele roadmappen",
+          "body": "Et søgefelt på roadmappen finder punkter på tværs af alle fem faner, på engelsk eller dansk. Et hit viser, hvilken fane det står på, og et tryk åbner fanen."
+        },
+        "refs": [
+          7666,
+          6203
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Planning",
+        "en": {
+          "title": "Copy to stage no longer does nothing",
+          "body": "Copy to stage could silently do nothing when the source or target stage was missing from your draft. It now copies and creates the target stage. I could not reproduce your junior and U23 report, so tell me if it still fails."
+        },
+        "da": {
+          "title": "Kopiér til etape gør ikke længere ingenting",
+          "body": "Kopiér til etape kunne lydløst gøre ingenting, når kilde- eller måletapen manglede i din kladde. Nu kopierer den og opretter måletapen. Jeg kunne ikke gentage din rapport fra junior og U23, så sig til, hvis det stadig fejler."
+        },
+        "refs": [
+          7624,
+          7680
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Planning",
+        "en": {
+          "title": "The stage plan only mentions a descent when the road falls",
+          "body": "On a stage with a short descent and then flat road to the line, the plan no longer says the last kilometres start on the descent. It says so only when the road is still falling there."
+        },
+        "da": {
+          "title": "Etapeplanen nævner kun nedkørsel, når vejen falder",
+          "body": "På en etape med en kort nedkørsel og derefter flad vej til mål siger planen ikke længere, at de sidste kilometer starter på nedkørslen. Den siger det kun, når vejen stadig falder dér."
+        },
+        "refs": [
+          7625,
+          7679
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Scouting",
+        "en": {
+          "title": "A scouting message never promises too many riders",
+          "body": "If I cannot check which riders you can see when a mission finishes, the message now just says the mission is ready, instead of a number that can be too high. The report is unchanged."
+        },
+        "da": {
+          "title": "En scoutbesked lover aldrig for mange ryttere",
+          "body": "Hvis jeg ikke kan tjekke, hvilke ryttere du kan se, når en mission er færdig, siger beskeden nu bare, at missionen er klar, i stedet for et tal, der kan være for højt. Rapporten er uændret."
+        },
+        "refs": [
+          6138,
+          7602
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Dashboard",
+        "en": {
+          "title": "The rider ranking no longer fails",
+          "body": "The rider ranking on the dashboard could fail to load. If part of the lookup breaks, it now still shows points, but without the win badges until it recovers."
+        },
+        "da": {
+          "title": "Rytterranglisten fejler ikke længere",
+          "body": "Rytterranglisten på dashboardet kunne fejle ved indlæsning. Hvis en del af opslaget går i stykker, viser den nu stadig point, men uden sejrsmærker, til det virker igen."
+        },
+        "refs": [
+          7676,
+          7690
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Fewer short error messages",
+          "body": "Short outages on my side could show up as an error for a moment. The game now tries a lookup again before it shows you one."
+        },
+        "da": {
+          "title": "Færre kortvarige fejlbeskeder",
+          "body": "Korte udfald hos mig kunne give en fejl et øjeblik. Spillet prøver nu et opslag igen, før det viser dig en."
+        },
+        "refs": [
+          7675,
+          7691
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.400",
+    "date": "2026-11-05",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Riders no longer climb off without a reason",
+          "body": "I have removed the draw after the finish, so riders no longer climb off without a reason. They now go out through the time limit, a crash, an injury or illness. This applies from the next stage, and stages already raced stay as they are."
+        },
+        "da": {
+          "title": "Ryttere stiger ikke længere af uden en grund",
+          "body": "Jeg har fjernet lodtrækningen efter målstregen, så ryttere ikke længere stiger af uden en grund. De udgår nu af tidsgrænsen, styrt, skade eller sygdom. Det gælder fra næste etape, og kørte etaper ændres ikke."
+        },
+        "refs": [
+          7713
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Riders who climbed off show the true reason",
+          "body": "I have corrected the text about riders who climbed off. It now says too far behind the winner, where it used to say exhausted or after an incident. You will still see it on stages already raced."
+        },
+        "da": {
+          "title": "Ryttere, der steg af, viser den sande årsag",
+          "body": "Jeg har rettet teksten om ryttere, der steg af. Der står nu for langt efter vinderen, hvor der før stod udkørt eller efter et uheld. Du ser den stadig på etaper, der allerede er kørt."
+        },
+        "refs": [
+          7701
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.399",
+    "date": "2026-11-04",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "An attack is no longer shown as lost time",
+          "body": "When your rider attacks and gets ahead on a climb, Split times no longer list it under Where your riders lost time. This also fixes stages already raced."
+        },
+        "da": {
+          "title": "Et angreb vises ikke længere som tabt tid",
+          "body": "Når din rytter angriber og kommer foran på en stigning, står det ikke længere under Hvor dine ryttere tabte tid i Mellemtider. Det retter også etaper, der allerede er kørt."
+        },
+        "refs": [
+          7640
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Riders who abandon leave the race film",
+          "body": "A rider who abandons after a crash now leaves How the race played out at the crash, instead of riding on as an empty group far behind. Times and results are unchanged."
+        },
+        "da": {
+          "title": "Udgåede ryttere forlader løbsfilmen",
+          "body": "En rytter, der udgår efter et styrt, forsvinder nu fra Sådan blev løbet kørt ved styrtet i stedet for at køre videre som en tom gruppe langt bagude. Tider og resultater er uændrede."
+        },
+        "refs": [
+          7639
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Queen stages stay closer",
+          "body": "On mountain stages with a short descent to the finish, the favourites can no longer be spread unrealistically far over the last summit. Climbers keep their advantage."
+        },
+        "da": {
+          "title": "Dronningeetaper holder sig tættere",
+          "body": "På bjergetaper med kort nedkørsel til mål kan favoritterne ikke længere blive spredt urealistisk langt over sidste top. Klatrerne beholder deres fordel."
+        },
+        "refs": [
+          7236
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Contracts",
+        "en": {
+          "title": "Contract warnings reach every team",
+          "body": "Contract warnings stopped after the first 1,000 riders, so many teams got no warning before a contract ran out. Every rider with an expiring contract now gives his team a warning."
+        },
+        "da": {
+          "title": "Kontraktvarsler når alle hold",
+          "body": "Kontraktvarslerne stoppede efter de første 1.000 ryttere, så mange hold fik intet varsel, før en kontrakt udløb. Nu giver hver rytter med en udløbende kontrakt sit hold et varsel."
+        },
+        "refs": [
+          7246
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.398",
     "date": "2026-11-04",
     "changes": [

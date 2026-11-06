@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeStrategy, diffAssignments, bucketSuitabilities } from "./raceStrategy.js";
+import { averageRouteVector, routeMatchScore } from "./routeMatch.js";
 
 const roster = new Set(["r0", "r1", "r2", "r3"]);
 
@@ -56,7 +57,7 @@ test("diffAssignments: identiske → ingen ændring", () => {
 });
 
 test("bucketSuitabilities: stærk klatrer scorer højere på mountain end svag", () => {
-  const profiles = [{ bucket: "mountain", demand_vector: { climbing: 1.0 } }];
+  const profiles = [{ bucket: "mountain", vector: { climbing: 1.0 } }];
   const riders = [
     { rider_id: "strong", abilities: { climbing: 90 } },
     { rider_id: "weak", abilities: { climbing: 20 } },
@@ -66,7 +67,25 @@ test("bucketSuitabilities: stærk klatrer scorer højere på mountain end svag",
 });
 
 test("bucketSuitabilities: bucket uden profiler → fraværende (UI viser —)", () => {
-  const s = bucketSuitabilities({ stageProfiles: [{ bucket: "flat", demand_vector: { sprint: 1 } }], riders: [{ rider_id: "r", abilities: { sprint: 50 } }] });
+  const s = bucketSuitabilities({ stageProfiles: [{ bucket: "flat", vector: { sprint: 1 } }], riders: [{ rider_id: "r", abilities: { sprint: 50 } }] });
   assert.ok("flat" in s.r);
+  assert.ok(!("itt" in s.r));
+});
+
+test("bucketSuitabilities #6207: samme tal som rutematch mod etapernes snit", () => {
+  const vectors = [{ climbing: 0.75, endurance: 0.25 }, { climbing: 0.25, endurance: 0.75 }];
+  const abilities = { climbing: 80, endurance: 40 };
+  const s = bucketSuitabilities({
+    stageProfiles: vectors.map((vector) => ({ bucket: "mountain", vector })),
+    riders: [{ rider_id: "r", abilities }],
+  });
+  assert.equal(s.r.mountain, routeMatchScore(abilities, averageRouteVector(vectors)));
+});
+
+test("bucketSuitabilities #6207: en etape uden vektor tæller ikke med", () => {
+  const s = bucketSuitabilities({
+    stageProfiles: [{ bucket: "itt", vector: null }, { bucket: "flat", vector: { sprint: 1 } }],
+    riders: [{ rider_id: "r", abilities: { sprint: 50 } }],
+  });
   assert.ok(!("itt" in s.r));
 });

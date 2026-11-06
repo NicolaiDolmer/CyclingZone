@@ -14,8 +14,42 @@ import { assertLaneCount, hostLaneCap } from './wave-capacity.mjs';
 import { loadBuildStop, assertBuildStop, logBrandAdmissions, brandLogPath } from './lib/build-stop.mjs';
 
 export const REPO = 'NicolaiDolmer/CyclingZone';
+
+export function getIssue(issue) {
+  return JSON.parse(execFileSync('gh', ['issue', 'view', String(issue), '--repo', REPO, '--json', 'labels,body'], { encoding: 'utf8', timeout: 30000 }));
+}
+
+// Structural admission evidence, never a claim that this process queried prod.
+// Private queries/results stay private; only their stable pointer is public.
+export function assertPlayerReportEvidence(tracks, readIssue = getIssue) {
+  const text = value => typeof value === 'string' && value.trim().length > 0 &&
+    !/^(?:n\/a|none|unknown|pending|todo|tbd|_No response_|\.\.\.|<.*>)$/i.test(value.trim());
+  const pointer = value => text(value) && /^balance-internals\/[\w./-]+$/.test(value) && !value.split('/').includes('..');
+  for (const track of tracks) {
+    if (track.kind === 'investigate') continue; // Builds nothing; investigation may collect the missing evidence.
+    const issue = readIssue(track.issue);
+    if (!issue || !Array.isArray(issue.labels)) throw Error(`Player-report evidence: cannot read issue #${track.issue}`);
+    if (!issue.labels.some(label => (typeof label === 'string' ? label : label?.name) === 'player-report')) continue;
+    const fail = reason => { throw Error(`Player-report evidence #${track.issue}: ${reason}; keep needs-repro, no build. See docs/GITHUB_WORKFLOW.md`); };
+    if (typeof issue.body !== 'string') fail('cannot read issue body');
+    const blocks = [...issue.body.matchAll(/^```player-report-evidence\s*\r?\n([\s\S]*?)^```\s*$/gm)];
+    if (blocks.length !== 1) fail('requires one player-report-evidence JSON section');
+    let evidence;
+    try { evidence = JSON.parse(blocks[0][1]); } catch { fail('invalid evidence JSON'); }
+    const source = evidence?.source;
+    const aggregate = evidence?.evidence?.aggregate;
+    const query = source?.kind === 'sql' ? /^\s*(?:SELECT|WITH)\b/i.test(source?.query ?? '') :
+      source?.kind === 'endpoint' && /^GET \/\S+/.test(source?.query ?? '');
+    if (evidence?.environment !== 'prod' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(evidence?.measuredAt ?? '') ||
+        !Number.isFinite(Date.parse(evidence.measuredAt)) || !['sql', 'endpoint'].includes(source?.kind) ||
+        !(query || pointer(source?.privatePointer)) || !text(evidence?.result?.summary) ||
+        !((text(aggregate?.metric) && Number.isFinite(aggregate?.value) && text(aggregate?.unit)) || pointer(evidence?.evidence?.privatePointer))) fail('requires prod timestamp, SQL/endpoint, measured result and aggregate/private evidence pointer');
+    if (evidence.result.status === 'already-green') fail('before measurement already green: stop and report, do not build');
+    if (evidence.result.status !== 'reproduces') fail('result.status must be reproduces');
+  }
+}
 const reserved = ['docs/now.md', '.claude/run', '.claude/launch.json'];
-const normalize = p => p.replaceAll('\\', '/').replace(/\/$/, '').toLowerCase();
+const normalize = p => p.replaceAll('\\', '/').replace(/\/+$/, '').toLowerCase();
 const slugOf = branch => branch.replaceAll('/', '-').toLowerCase();
 // #5562: rullende optag - maks saa mange spor kan staa i koe til en koerende boelge.
 export const MAX_PENDING_TRACKS = 12;
@@ -44,6 +78,38 @@ export function ownershipOverlaps(a, b) {
   const x = typeof a === 'string' ? ownershipPrefix(a) : a;
   const y = typeof b === 'string' ? ownershipPrefix(b) : b;
   return covers(x, y) || covers(y, x);
+}
+
+// #6335: declaration policy only. Keep overlap semantics conservative for
+// existing markers, PR filenames and model-risk classification.
+export const BROAD_SHARED_DIRECTORIES = [
+  'backend/lib', 'backend/routes', 'frontend/src/pages',
+  'frontend/src/components', 'frontend/src/hooks', 'frontend/src/lib', 'frontend/src/utils',
+];
+export function broadSharedDirectory(raw) {
+  const own = ownershipPrefix(raw);
+  return BROAD_SHARED_DIRECTORIES.find(prefix => covers(own, { prefix, open: false }));
+}
+
+function readOwnershipDiff(branch) {
+  const root = fileURLToPath(new URL('../', import.meta.url));
+  return execFileSync('git', ['-C', root, '--no-pager', 'diff', '--name-only', '-z', '--no-renames', `origin/main...${branch}`, '--'],
+    { encoding: 'utf8', timeout: 10000, maxBuffer: 4 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] }).split('\0').filter(Boolean);
+}
+
+export function assertNarrowOwnership(t, raw, field, readDiff = readOwnershipDiff) {
+  if (!broadSharedDirectory(raw)) return;
+  let hint;
+  try {
+    const files = readDiff(t.branch);
+    if (!Array.isArray(files) || files.some(f => typeof f !== 'string')) throw Error('Invalid diff file list');
+    const narrower = [...new Set(files.filter(f => covers(ownershipPrefix(raw), ownershipPrefix(f)) && !broadSharedDirectory(f)))].sort();
+    hint = narrower.length ? `Use concrete ${field} from branch diff: ${JSON.stringify(narrower)}.`
+      : 'No matching files in branch diff; declare concrete files or a small subdirectory.';
+  } catch {
+    hint = 'Branch diff unavailable; declaration remains rejected. Check the branch and origin/main, then declare concrete files or a small subdirectory.';
+  }
+  throw Error(`${field} too broad for #${t.issue}: ${raw}. ${hint}`);
 }
 
 // #5997: `touches` = shared files a track may touch with a minimal coupling.
@@ -85,7 +151,7 @@ export function sharedTouchPlan(tracks) {
   return { shared, mergeOrder };
 }
 
-export function validateTracks(tracks) {
+export function validateTracks(tracks, { readDiff = readOwnershipDiff } = {}) {
   if (!Array.isArray(tracks) || !tracks.length || tracks.length > 12) throw Error('Expected 1-12 tracks');
   const issues = new Set(), branches = new Set(), slugs = new Set(), files = [];
   for (const t of tracks) {
@@ -99,6 +165,7 @@ export function validateTracks(tracks) {
       // Directory/glob prefixes conservatively conflict with descendants.
       const own = ownershipPrefix(raw);
       if (reserved.some(r => ownershipOverlaps(own, { prefix: r, open: false }))) throw Error(`reserved ownership: ${raw}`);
+      assertNarrowOwnership(t, raw, 'ownership', readDiff);
       for (const f of files) {
         if (f.issue !== t.issue && ownershipOverlaps(own, f.own)) throw Error(`ownership overlap: ${raw}`);
       }
@@ -112,6 +179,7 @@ export function validateTracks(tracks) {
     for (const raw of trackTouches(t)) {
       const touch = ownershipPrefix(raw);
       if (reserved.some(r => ownershipOverlaps(touch, { prefix: r, open: false }))) throw Error(`reserved touches: ${raw}`);
+      assertNarrowOwnership(t, raw, 'touches', readDiff);
       touchEntries.push({ issue: t.issue, raw, own: touch });
     }
   }
@@ -370,11 +438,12 @@ function claudeOwnerPid(sessionId) {
   return matches.length === 1 ? matches[0] : undefined;
 }
 
-export async function acquireWave(dir, request, readPrs = getOpenPrs) {
+export async function acquireWave(dir, request, readPrs = getOpenPrs, readIssue = getIssue) {
   validateTracks(request.tracks);
   assertDesignGate(request.tracks); // #6344: begge runtimes, foer markoeren skrives
   const buildStop = loadBuildStop();
   const admitted = assertBuildStop(request.tracks, buildStop); // #7336: byggestop/loft, begge runtimes, foer markoeren skrives
+  assertPlayerReportEvidence(request.tracks, readIssue);
   if (!['claude', 'codex'].includes(request.runtime) || !request.owner || !Number.isFinite(request.now)) throw Error('runtime, owner and now required');
   fs.mkdirSync(dir, { recursive: true });
   // No new await on the ordinary path: admission must stay inside an idle merge callback's lock.
@@ -507,12 +576,13 @@ export function assertEnqueueable(tracks) {
   }
 }
 
-export function enqueueTracks(dir, waveId, tracks, snapshot = ownershipSnapshot) {
+export function enqueueTracks(dir, waveId, tracks, snapshot = ownershipSnapshot, readIssue = getIssue) {
   validateTracks(tracks);
   assertEnqueueable(tracks);
   assertDesignGate(tracks);
   const buildStop = loadBuildStop();
   const admitted = assertBuildStop(tracks, buildStop); // #7336 (beriget med labels til brand-loggen)
+  assertPlayerReportEvidence(tracks, readIssue);
   let plan;
   const next = updateWave(dir, waveId, wave => {
     assertIntakeOwner(wave, snapshot);
@@ -542,7 +612,7 @@ export function enqueueTracks(dir, waveId, tracks, snapshot = ownershipSnapshot)
 // #5602: with { peek: true } it only marks finished branches and COUNTS the
 // queue; nothing moves. wave.js' cheap intake check uses that form, so a
 // check that answers wrongly can delay a track but never lose one.
-export function intakeTracks(dir, waveId, finished = [], snapshot = ownershipSnapshot, { peek = false } = {}) {
+export function intakeTracks(dir, waveId, finished = [], snapshot = ownershipSnapshot, { peek = false, readIssue = getIssue } = {}) {
   let taken = [], ignoredFinished = [], pending = 0;
   const next = updateWave(dir, waveId, wave => {
     assertIntakeOwner(wave, snapshot);
@@ -556,6 +626,7 @@ export function intakeTracks(dir, waveId, finished = [], snapshot = ownershipSna
       pending = queued.length;
       return { ...wave, finishedBranches: [...done] };
     }
+    assertPlayerReportEvidence(queued, readIssue);
     taken = queued;
     return { ...wave, tracks: [...wave.tracks, ...taken], pendingTracks: [], finishedBranches: [...done] };
   }, LONG_LOCK_ATTEMPTS);
@@ -812,7 +883,7 @@ export function stopWaveWatch(wave, observedBootId) {
   }
 }
 
-export async function handleHook(payload, dir, readPrs = getOpenPrs, now, captureBoot = () => undefined, resolveOwnerPid = claudeOwnerPid, laneLimit = hostLaneCap) {
+export async function handleHook(payload, dir, readPrs = getOpenPrs, now, captureBoot = () => undefined, resolveOwnerPid = claudeOwnerPid, laneLimit = hostLaneCap, readIssue = getIssue) {
   const input = payload.tool_input || {};
   if (payload.hook_event_name === 'PostToolUse') {
     if (payload.tool_name !== 'Workflow' || !fs.existsSync(path.join(dir, 'wave-active.json'))) return;
@@ -848,7 +919,7 @@ export async function handleHook(payload, dir, readPrs = getOpenPrs, now, captur
     if (!Number.isSafeInteger(pid) || pid < 1) throw Error('Cannot verify admission owner process');
     // rollingIntake (#5562): wave.js takes enqueued tracks unless args.rollingIntake === false.
     // Only a marker that says so accepts `enqueue`; an older wave.js never would take them.
-    return acquireWave(dir, { runtime: 'claude', owner: payload.session_id, pid, bootId: captureBoot(), admissionToolUseId: payload.tool_use_id ?? null, dispatchStarted: false, processTracking: 'owner-tree', rollingIntake: Array.isArray(args) || args.rollingIntake !== false, now, tracks: Array.isArray(args) ? args : args.tracks }, readPrs);
+    return acquireWave(dir, { runtime: 'claude', owner: payload.session_id, pid, bootId: captureBoot(), admissionToolUseId: payload.tool_use_id ?? null, dispatchStarted: false, processTracking: 'owner-tree', rollingIntake: Array.isArray(args) || args.rollingIntake !== false, now, tracks: Array.isArray(args) ? args : args.tracks }, readPrs, readIssue);
   }
   if (payload.tool_name !== 'Agent') return;
   const prompt = String(input.prompt || input.description || '').trimStart();

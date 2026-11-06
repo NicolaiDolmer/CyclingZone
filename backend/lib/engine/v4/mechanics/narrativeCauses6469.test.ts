@@ -18,6 +18,18 @@ const survived = (km = 150, riders = ["a"]) => ev(km, "breakaway_survived", { gr
 const sep = (km: number, seconds: number) => ev(km, "gap_update", { group_id: "breakaway-0", gap_seconds: 0, chase_group_id: "peloton-0", separation_seconds: seconds });
 const kinds = (events: NarrativeEvent[]) => deriveBreakawayStories(events).flatMap((s) => s.causes.map((c) => c.kind));
 
+test("#7730: motorens dom over jagten bliver til aarsagen, kun for det udbrud der holdt", () => {
+  const short = (reason: string, group_id = "breakaway-0") => ev(99, "breakaway_chase_short", { group_id, reason, team_ids: ["t-a"] });
+  assert.deepEqual(kinds([formed, short("tired"), survived()]), ["chase_tired"]);
+  assert.deepEqual(kinds([formed, short("outgunned"), survived()]), ["chase_outgunned"]);
+  assert.deepEqual(kinds([formed, short("too_few"), survived()]), ["chase_too_few"]);
+  assert.deepEqual(kinds([formed, short("no_chasers"), survived()]), ["no_chasers"]);
+  assert.deepEqual(kinds([formed, short("nobody_wanted"), survived()]), ["unchased"], "ingen ville jage siger aldrig, at holdene manglede ryttere");
+  assert.deepEqual(kinds([formed, ev(60, "breakaway_unchased", { group_id: "breakaway-0" }), short("nobody_wanted"), survived()]), ["unchased"], "aldrig samme linje to gange");
+  assert.deepEqual(kinds([formed, ev(60, "breakaway_unchased", { group_id: "breakaway-0", reason: "no_riders" }), short("no_chasers"), survived()]), ["no_chasers"], "aldrig samme linje to gange");
+  assert.equal(kinds([formed, short("tired", "breakaway-9"), survived()]).includes("chase_tired"), false, "et andet udbrud forklarer ikke dette");
+});
+
 test("#6469: intet hold ville jage, og holdene med interesse havde ingen ryttere", () => {
   assert.deepEqual(kinds([formed, ev(60, "breakaway_unchased", { group_id: "breakaway-0" }), survived()]), ["unchased"]);
   assert.deepEqual(kinds([formed, ev(60, "breakaway_unchased", { group_id: "breakaway-0", reason: "no_riders" }), survived()]), ["no_chasers"]);
