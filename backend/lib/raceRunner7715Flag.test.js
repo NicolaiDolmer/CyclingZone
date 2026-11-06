@@ -270,7 +270,7 @@ test("#7715 slukket: scenariet viser fejlen (ingen rytter ryger ud på sin træt
 
 test("#7715 tændt: en udkørt rytter ryger ud på bjerget, med træthed som årsag, og kun dem med mærket", async () => {
   const engine = await loadRaceEngineV4();
-  const on = stageByStage7715({ ...engine, timeLimitFatigue7715: true }, "s5_profiles_v3", 2);
+  const on = stageByStage7715({ ...engine, timeLimitFatigue7715: true }, "s5_profiles_v3", 1);
   const out = fatigueOut(on.outputs);
   assert.ok(out.length > 0, "scenariet skal ramme");
   const tired = new Set(tiredRiderIds7715());

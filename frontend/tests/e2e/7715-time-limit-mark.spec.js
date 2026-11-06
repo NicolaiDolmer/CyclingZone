@@ -96,7 +96,7 @@ test("udtagelsen: mærket står på rytteren", async ({ page }, testInfo) => {
   await mockRace(page, scheduled);
   const riders = Array.from({ length: 8 }, (_, i) => ({
     id: `sel-r${i}`, name: `Rider ${i}`, suitability: 70 - i, form: 55, fatigue: i === 2 ? 78 : 10, injured: false,
-    ...(i === 2 ? { stageTimeLimitRisk: [false, true, false] } : {}),
+    ...(i === 2 ? { stageTimeLimitRisk: [true, false, false] } : {}),
   }));
   await page.route(`**/api/races/${RACE_ID}/selection`, (route) => {
     const request = route.request();
