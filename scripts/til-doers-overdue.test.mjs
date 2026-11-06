@@ -131,3 +131,16 @@ test('reportedPairs ignorerer utroede kommentarer', () => {
 test('renderOverdueComment: ingen em-dash', () => {
   assert.equal(renderOverdueComment([{ pr: 1, issue: 2, ageHours: 30 }]).includes('—'), false);
 });
+
+test('main: kan kommentarerne ikke hentes, meldes issuet ikke som uden bevis', () => {
+  const f = fakeGh({ prs: [pr(1, '2026-11-04T00:00:00Z')] });
+  const inner = f.exec;
+  const exec = (args, input) => {
+    if (args.some((a) => String(a).includes('issues/5/comments'))) throw new Error('HTTP 502');
+    return inner(args, input);
+  };
+  const errs = [];
+  main(['--apply', '--now', NOW], { execGh: exec, log: () => {}, errorLog: (s) => errs.push(s) });
+  assert.match(errs.join('\n'), /springer #5 over/);
+  assert.equal(posts(f).length, 0);
+});

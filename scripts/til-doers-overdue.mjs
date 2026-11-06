@@ -159,8 +159,10 @@ export function main(argv = process.argv.slice(2), deps = {}) {
       // Et slettet eller flyttet issue maa ikke tage de andre paamindelser med sig.
       try {
         const issue = ghJson(execGh, [`repos/${opts.repo}/issues/${n}`]);
+        // Foerst naar kommentarerne er hentet: en mislykket hentning maa ikke ligne 'intet bevis'.
+        const issueComments = issue.state === 'open' && declared.has(n) ? ghPaged(execGh, `repos/${opts.repo}/issues/${n}/comments?per_page=100`) : null;
+        if (issueComments) comments[n] = issueComments;
         issues.push({ number: n, state: issue.state });
-        if (issue.state === 'open' && declared.has(n)) comments[n] = ghPaged(execGh, `repos/${opts.repo}/issues/${n}/comments?per_page=100`);
       } catch (err) {
         errorLog(`til-doers-overdue: springer #${n} over: ${String(err.message || err).split('\n')[0]}`);
       }
