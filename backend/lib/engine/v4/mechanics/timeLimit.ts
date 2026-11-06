@@ -66,7 +66,7 @@
 // gruppen baerer rytteren, og grupetto-redningen tager resten. Efter #7713 er der
 // ingen lodtraekning, saa en udkoert rytter havde ingen synlig risiko tilbage.
 //   - Risikoen er en REGEL af to synlige ting: rytteren er meget traet, og en haard
-//     etape passer ham daarligt i forhold til hans egne evner. Ingen rng.
+//     etape passer ham daarligt. Ingen rng.
 //   - Har rytteren risikoen, har han mindre tid at give af end resten af feltet, og
 //     grupettoen baerer ham ikke. Kommer han ind i god tid, sker der intet.
 //   - Spilleren kan undgaa det: en rytter der koerer `grupetto` eller `save` holder
@@ -143,11 +143,11 @@ export type TimeLimitFatigueTuning = {
   tiredFrom: number;
   /** Traethed hvor den traette side er fuldt udslaaet. */
   tiredFull: number;
-  /** Rutematch som andel af rytterens eget evne-niveau, under denne passer etapen ham daarligt. */
+  /** Hvor etapen begynder at passe rytteren daarligt. */
   fitShareBelow: number;
-  /** Andelen hvor den daarlige side er fuldt udslaaet. */
+  /** Hvor det daarlige match er fuldt udslaaet. */
   fitShareFull: number;
-  /** Alvor lige ved taersklerne; resten fordeles ligeligt paa de to sider op til 1. */
+  /** Alvoren lige ved taersklerne. Derfra vokser den med traetheden og det daarlige match. */
   severityFloor: number;
   /** Hvor stor en del af etapens margin rytteren mister ved fuld alvor. */
   marginLoss: number;
@@ -157,9 +157,9 @@ export type TimeLimitFatigueTuning = {
  * #7715: hvor alvorligt tidsgraensen truer rytteren paa etapen, 0 = slet ikke.
  *
  * Den ENE regel for baade motoren og varslet foer etapen: broen og serverens
- * taktik-flader kalder den med de samme tal. Rutematch maales mod rytterens eget
- * evne-niveau, ikke mod en fast skala, saa reglen betyder det samme i alle
- * divisioner og ungdomsloeb. Manglende tal giver 0: hellere intet varsel end et gaet.
+ * taktik-flader kalder den med de samme tal. Alvoren vokser med traetheden og det
+ * daarlige match, og reglen betyder det samme i alle divisioner og ungdomsloeb.
+ * Manglende tal giver 0: hellere intet varsel end et gaet.
  * Resultatet er motor-internt (fog-gate); spillerens flade faar kun ja eller nej.
  */
 export function timeLimitFatigueSeverity7715(args: {
@@ -167,7 +167,7 @@ export function timeLimitFatigueSeverity7715(args: {
   fatigue: number | null | undefined;
   /** Rutematch paa etapen, urundet 0-100. */
   stageFit: number | null | undefined;
-  /** Rytterens eget evne-niveau paa samme skala. */
+  /** Rytterens eget evne-niveau. */
   ownLevel: number | null | undefined;
   profileType: ProfileType | null | undefined;
   tuning?: TimeLimitFatigueTuning;
