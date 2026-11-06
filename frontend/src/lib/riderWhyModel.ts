@@ -12,7 +12,7 @@
 //      han var tabt undervejs og kom tilbage,
 //   4. bag fronten: det foerste tilbageslag der stod ved magt (buildOwnTimeLoss
 //      vogter "kom han tilbage"), og hvad der foerte til det.
-import { checkpointGapForRider, mainGroupId, FINALE_KM, type RaceStory, type StoryMoment } from "../components/race/stagePageV2/raceStoryModel.ts";
+import { attackCompanions, checkpointGapForRider, mainGroupId, FINALE_KM, type AttackCompanions, type Cast, type RaceStory, type StoryMoment } from "../components/race/stagePageV2/raceStoryModel.ts";
 import type { Climb } from "../components/race/stagePageV2/stagePageV2Model.ts";
 import { buildOwnTimeLoss, hasGroupGaps, type DropReason, type TimelineEvent } from "./stageSplitTimes.ts";
 
@@ -44,6 +44,8 @@ export interface RiderWhy {
   lead: WhyLead | null;
   /** Stedet for tilbageslaget i `lead` ("efter at have mistet kontakten paa ..."). */
   leadWhere: WhyPlace;
+  /** #7754: hvem din rytter angreb sammen med; feltet findes kun, naar haendelserne viser det. */
+  companions?: AttackCompanions;
 }
 
 export interface RiderWhyInput {
@@ -54,6 +56,8 @@ export interface RiderWhyInput {
   events: readonly TimelineEvent[] | null | undefined;
   story: RaceStory | null | undefined;
   climbs: readonly Climb[];
+  /** #7754: navne og dine egne ryttere. Uden den siges intet om, hvem han angreb med. */
+  cast?: Cast | null;
 }
 
 const NOWHERE: WhyPlace = { kind: "none" };
@@ -201,6 +205,13 @@ function outOfRace(input: RiderWhyInput, story: RaceStory | null, moments: Story
 
 /** Forklaringen paa een raekke i resultatet. Kendes den ikke, er `known` false. */
 export function riderWhy(input: RiderWhyInput): RiderWhy {
+  const why = explain(input);
+  const { riderId, story, cast } = input;
+  const companions = why.known && riderId && story && cast ? attackCompanions(story, riderId, cast) : null;
+  return companions ? { ...why, companions } : why;
+}
+
+function explain(input: RiderWhyInput): RiderWhy {
   const { riderId, rank, status, story, climbs } = input;
   if (!riderId || status === "dns") return UNKNOWN;
   const moments = story ? story.moments.filter((m) => ridersOf(m).includes(riderId)) : [];

@@ -281,6 +281,8 @@
         "survived": "{names} bleven uit de greep tot de finish.",
         "attack": "{names} viel aan bij km {km}.",
         "attackGain": "{names} viel aan bij km {km} en pakte {gain} op het peloton.",
+        "ownAttackedWith": "{count, plural, one {{mine} viel} other {{mine} vielen}} samen met {others} aan.",
+        "ownAttackedWithMore": "{count, plural, one {{mine} viel} other {{mine} vielen}} samen met {others} en anderen aan.",
         "winner": "{winner} won.",
         "winnerGap": "{winner} won, {gap} voor {second}.",
         "winnerSame": "{winner} won voor {second} op dezelfde tijd.",
@@ -324,6 +326,8 @@
       "buttonAria": "Waarom eindigde {name} hier?",
       "alone": "{main}.",
       "withLead": "{main}, {lead}.",
+      "attackedWith": "Hij viel samen met {names} aan.",
+      "attackedWithMore": "Hij viel samen met {names} en anderen aan.",
       "where": {
         "climb": " op {name}",
         "sector": " bij {name}",

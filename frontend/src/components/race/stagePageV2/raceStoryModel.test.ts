@@ -4,6 +4,8 @@
 // kontraktens egen buildRaceStory, saa testen ser praecis det siden faar.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { IntlMessageFormat } from "intl-messageformat";
 import { buildRaceStory, replayFrames } from "../../../../../backend/lib/raceStory.js";
 import { withEventPlaces } from "../../../../../backend/lib/raceTimeline.js";
 import {
@@ -166,17 +168,85 @@ test("splitRows: foerer, foerertid og din bedste rytters hul pr. kontrolpunkt", 
   assert.equal(finish.myGap?.gap_s, 8);
 });
 
-test("buildReport: 3-5 saetninger, kun fra linjerne og resultatet, i fast raekkefoelge", () => {
+test("buildReport: 3-5 saetninger plus din angrebs-saetning, kun fra linjerne og resultatet, i fast raekkefoelge", () => {
   const s = story();
   const c = cast();
   const report = buildReport(s, curateMoments(s, c), c);
-  assert.ok(report.length >= 3 && report.length <= 5, `${report.length} saetninger`);
-  assert.deepEqual(report.map((r) => r.key), ["formedMine", "caught", "attackGain", "winnerGap", "mineGap"]);
+  assert.ok(report.length >= 3 && report.length <= 6, `${report.length} saetninger`);
+  assert.deepEqual(report.map((r) => r.key), ["formedMine", "ownAttackedWithMore", "caught", "attackGain", "winnerGap", "mineGap"]);
   assert.deepEqual(report[0].params, { count: 4, km: 10, mine: "Mine" });
-  assert.deepEqual(report[1].params, { km: 85 });
-  assert.deepEqual(report[3].params, { winner: "Winner", second: "Second", gap: "0:08" });
-  assert.deepEqual(report[4].params, { name: "Mine", rank: 5, gap: "0:08" });
+  assert.deepEqual(report[2].params, { km: 85 });
+  assert.deepEqual(report[4].params, { winner: "Winner", second: "Second", gap: "0:08" });
+  assert.deepEqual(report[5].params, { name: "Mine", rank: 5, gap: "0:08" });
   assert.deepEqual(buildReport(s, curateMoments(s, c), c), report, "deterministisk");
+});
+
+const ownAttackLines = (report: ReturnType<typeof buildReport>) => report.filter((r) => r.key.startsWith("ownAttackedWith"));
+
+test("#7754: referatet siger hvem din rytter angreb med, lige efter udbruddet og uden tal", () => {
+  const s = story();
+  const c = cast();
+  const report = buildReport(s, curateMoments(s, c), c);
+  assert.equal(report[1].key, "ownAttackedWithMore");
+  assert.deepEqual(report[1].params, { mine: "Mine", others: "Second, Climber", count: 1 });
+  assert.ok(!("km" in report[1].params) && !("gap" in report[1].params));
+});
+
+test("#7754: et senere udbrud klistres ikke paa det foerste", () => {
+  const events = hillyTimeline().flatMap((e) => (e.type === "breakaway_formed"
+    ? [{ ...e, params: { ...e.params, rider_ids: ["b1", "b2"] } }, ev(30, "breakaway_formed", { group_id: "breakaway-2500", reformation: true, rider_ids: ["b3", "m1"], exact_km: 30, exact_time: 2800 })]
+    : [e]));
+  const s = story(events);
+  const c = cast();
+  const keys = buildReport(s, curateMoments(s, c), c).map((r) => r.key);
+  assert.ok(keys.indexOf("ownAttackedWith") > keys.findIndex((k) => k.startsWith("formed")) + 1, keys.join(","));
+});
+
+test("#7754: uden egne ryttere i angrebet siges intet; to egne alene angreb med hinanden", () => {
+  const s = story();
+  const noMine = castFrom(RESULTS, [], 3, "t-none");
+  assert.deepEqual(ownAttackLines(buildReport(s, curateMoments(s, noMine), noMine)), []);
+  const pair = story(hillyTimeline().map((e) => (e.type === "breakaway_formed" ? { ...e, params: { ...e.params, rider_ids: ["m1", "m2"] } } : e)));
+  const c = cast();
+  assert.deepEqual(ownAttackLines(buildReport(pair, curateMoments(pair, c), c)).map((r) => r.params), [{ mine: "Mine", others: "Helper", count: 1 }]);
+});
+
+test("#7754: faelles angreb paa nedkoersel staar efter angrebet; et baaret forspring er intet angreb", () => {
+  const without = hillyTimeline().filter((e) => e.type !== "breakaway_formed" && e.type !== "breakaway_caught" && e.type !== "group_merged" && e.type !== "finale_attack");
+  const finish = without.findIndex((e) => e.type === "finish");
+  const withEvent = (params: Record<string, unknown>) => {
+    const events = [...without];
+    events.splice(finish, 0, ev(90, "finale_attack", { group_id: "attack-90", exact_km: 90, exact_time: 7800, ...params }));
+    return story(events);
+  };
+  const c = cast();
+  const descent = withEvent({ direction: "descent", rider_ids: ["m1", "b1", "b2"], gained_seconds: 5 });
+  const keys = buildReport(descent, curateMoments(descent, c), c).map((r) => r.key);
+  assert.equal(keys[keys.findIndex((k) => k.startsWith("attack")) + 1], "ownAttackedWith");
+  // To navne: angrebs-saetningen har allerede sagt det hele.
+  const told = withEvent({ direction: "descent", rider_ids: ["m1", "b1"], gained_seconds: 5 });
+  assert.deepEqual(ownAttackLines(buildReport(told, curateMoments(told, c), c)), []);
+  // Codex: et andet angreb paa samme km har ikke sagt, hvem din rytter koerte med.
+  const [mineFirst, other] = [ev(90, "finale_attack", { direction: "descent", group_id: "attack-a", rider_ids: ["m1", "b1"], gained_seconds: 5, exact_km: 90, exact_time: 7800 }), ev(90, "finale_attack", { direction: "descent", group_id: "attack-b", rider_ids: ["b2"], gained_seconds: 5, exact_km: 90, exact_time: 7801 })];
+  const twoAttacks = story([...without.slice(0, finish), mineFirst, other, ...without.slice(finish)]);
+  assert.equal(ownAttackLines(buildReport(twoAttacks, curateMoments(twoAttacks, c), c)).length, 1);
+  const carried = withEvent({ kind: "carried_gap_held", rider_ids: ["m1", "b1", "b2"] });
+  assert.deepEqual(ownAttackLines(buildReport(carried, curateMoments(carried, c), c)), []);
+});
+
+test("#7754: tekst paa alle sprog med enkelte klammer og uden tal", () => {
+  for (const lang of ["en", "da", "fr", "es", "nl"]) {
+    const report = JSON.parse(readFileSync(new URL(`../../../../public/locales/${lang}/races.json`, import.meta.url), "utf8")).stagePageV2.story.report;
+    for (const key of ["ownAttackedWith", "ownAttackedWithMore"]) {
+      const text = String(report[key]);
+      assert.match(text, /\{mine\}/, `${lang}.${key}`);
+      assert.match(text, /\{others\}/, `${lang}.${key}`);
+      assert.doesNotMatch(text, /\{\{(?!mine)|\d|#/, `${lang}.${key}`);
+      const said = (count: number) => new IntlMessageFormat(text, lang).format({ mine: "A", others: "B", count });
+      assert.match(String(said(1)), /A.*B/, `${lang}.${key}`);
+      assert.match(String(said(2)), /A.*B/, `${lang}.${key}`);
+    }
+  }
 });
 
 test("buildReport: din rytter vandt = egen saetning; ingen udbrud = ingen udbruds-saetning", () => {
@@ -374,7 +444,7 @@ test("#7701 buildReport: egne udgaaede staar sidst og overlever loftet paa 5 sae
   const ownOut = [{ key: "ownOut", params: { kind: "withdrawal", names: "Hansen" } }];
   const report = buildReport(s, lines, c, ownOut);
   assert.equal(report[report.length - 1].key, "ownOut");
-  assert.ok(report.length <= 5, report.map((r) => r.key).join(","));
+  assert.ok(report.length <= 6, report.map((r) => r.key).join(","));
   assert.ok(plain.every((r) => r.key !== "ownOut"), "uden udgaaede er referatet uaendret");
 });
 
@@ -417,12 +487,12 @@ test("#7725 buildReport: dagens ord staar foer dine udgaaede og skubber ikke loe
   const dayWords = [{ key: "dayGreat", params: { name: "Winner" } }];
   const ownOut = [{ key: "ownOut", params: { kind: "withdrawal", names: "Hansen" } }];
   const keys = buildReport(s, lines, c, ownOut, dayWords).map((r) => r.key);
-  assert.ok(keys.length <= 6, keys.join(","));
+  assert.ok(keys.length <= 7, keys.join(","));
   assert.equal(keys.indexOf("dayGreat"), keys.length - 2, keys.join(","));
   assert.deepEqual(buildReport(s, lines, c, ownOut, []), buildReport(s, lines, c, ownOut), "uden ord er referatet uaendret");
   const full = [ownOut[0], { ...ownOut[0] }, { ...ownOut[0] }];
   const crowded = buildReport(s, lines, c, full, dayWords).map((r) => r.key);
-  assert.ok(crowded.length <= 6 && crowded.filter((k) => k === "ownOut").length === 3, crowded.join(","));
+  assert.ok(crowded.length <= 7 && crowded.filter((k) => k === "ownOut").length === 3, crowded.join(","));
   assert.ok(crowded.some((k) => k.startsWith("winner")), crowded.join(","));
 });
 

@@ -281,6 +281,8 @@
         "survived": "{names} resistieron hasta la meta.",
         "attack": "{names} atacó en el km {km}.",
         "attackGain": "{names} atacó en el km {km} y ganó {gain}.",
+        "ownAttackedWith": "{count, plural, one {{mine} atacó} other {{mine} atacaron}} junto a {others}.",
+        "ownAttackedWithMore": "{count, plural, one {{mine} atacó} other {{mine} atacaron}} junto a {others} y otros.",
         "winner": "{winner} ganó.",
         "winnerGap": "{winner} ganó, {gap} por delante de {second}.",
         "winnerSame": "{winner} ganó por delante de {second} con el mismo tiempo.",
@@ -324,6 +326,8 @@
       "buttonAria": "¿Por qué terminó {name} aquí?",
       "alone": "{main}.",
       "withLead": "{main}, {lead}.",
+      "attackedWith": "Atacó junto a {names}.",
+      "attackedWithMore": "Atacó junto a {names} y otros.",
       "where": {
         "climb": " en {name}",
         "sector": " en {name}",

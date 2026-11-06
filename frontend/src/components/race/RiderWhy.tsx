@@ -44,7 +44,11 @@ export function RiderWhyLine({ id, why }: { id: string; why: RiderWhy | null }) 
   if (why) {
     const main = t(`stagePageV2.why.main.${why.main}`, { where: placeText(why.where) });
     const lead = why.lead ? t(`stagePageV2.why.lead.${why.lead}`, { where: placeText(why.leadWhere) }) : null;
-    body = <>{lead ? t("stagePageV2.why.withLead", { main, lead }) : t("stagePageV2.why.alone", { main })}</>;
+    const told = lead ? t("stagePageV2.why.withLead", { main, lead }) : t("stagePageV2.why.alone", { main });
+    const companions = why.companions
+      ? t(`stagePageV2.why.${why.companions.more ? "attackedWithMore" : "attackedWith"}`, { names: why.companions.names })
+      : null;
+    body = <>{companions ? `${told} ${companions}` : told}</>;
   }
   return (
     <div id={id} role="status" className={`mb-2 basis-full pl-[46px] text-sm leading-relaxed ${why?.known === false ? "text-cz-3" : "text-cz-2"}`}>

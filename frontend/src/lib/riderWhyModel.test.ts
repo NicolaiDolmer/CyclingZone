@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { placeOf, riderWhy, type RiderWhyInput } from "./riderWhyModel.ts";
-import type { RaceStory, StoryCheckpoint, StoryMoment } from "../components/race/stagePageV2/raceStoryModel.ts";
+import type { Cast, RaceStory, StoryCheckpoint, StoryMoment } from "../components/race/stagePageV2/raceStoryModel.ts";
 import type { Climb } from "../components/race/stagePageV2/stagePageV2Model.ts";
 
 type Ev = { km: number; type: string; params?: Record<string, unknown> };
@@ -178,8 +178,8 @@ test("teksten baerer aldrig tal, og hvert udfald har en saetning paa alle sprog"
     const why = locale(lang);
     assert.deepEqual(Object.keys(why.main).sort(), [...mains].sort(), lang);
     assert.deepEqual(Object.keys(why.lead).sort(), [...leads].sort(), lang);
-    for (const text of [...Object.values(why.main), ...Object.values(why.lead), ...Object.values(why.where)] as string[]) {
-      assert.doesNotMatch(text, /\d/, `${lang}: ${text}`);
+    for (const text of [...Object.values(why.main), ...Object.values(why.lead), ...Object.values(why.where), why.attackedWith, why.attackedWithMore] as string[]) {
+      assert.doesNotMatch(text, /\d|\{\{/, `${lang}: ${text}`);
       assert.doesNotMatch(text, /\{(km|gap|time|seconds|rank)\b/, `${lang}: ${text}`);
     }
   }
@@ -204,6 +204,45 @@ test("Codex: et angreb bag et overlevende udbrud kaldes ikke mislykket", () => {
   assert.notEqual(riderWhy(input("a", 2, [], storyOf([attack], finish))).main, "attackBehind");
   const caught = moment("group_caught", 90, { rider_ids: ["a"] });
   assert.equal(riderWhy(input("a", 2, [], storyOf([attack, caught], finish))).main, "attackBehind");
+});
+
+const castOf = (mine: string[], names: Record<string, string>): Cast => ({
+  nameOf: (id) => names[id] ?? null, mine: new Set(mine), rankOf: () => null, finishers: [],
+});
+const NAMES = { a: "Own", b: "Bravo", c: "Charlie", d: "Delta" };
+const inBreak = finishAt(100, [["breakaway-0", ["w", "a"], 0, false], ["peloton-0", ["c"], 120, true, 15]]);
+
+test("#7754: egen rytter faar navnene paa dem han angreb sammen med, uden tal", () => {
+  const formed = moment("breakaway_formed", 10, { rider_ids: ["a", "b", "c"] });
+  const cast = castOf(["a"], NAMES);
+  assert.deepEqual(riderWhy(input("a", 2, [], storyOf([formed], inBreak), { cast })).companions, { names: "Bravo, Charlie", more: false });
+  const bigger = moment("breakaway_formed", 10, { rider_ids: ["a", "b", "c", "d"] });
+  assert.deepEqual(riderWhy(input("a", 2, [], storyOf([bigger], inBreak), { cast })).companions, { names: "Bravo, Charlie", more: true });
+});
+
+test("#7754: kun egne ryttere, og kun naar forklaringen er kendt", () => {
+  const formed = moment("breakaway_formed", 10, { rider_ids: ["a", "b"] });
+  assert.equal("companions" in riderWhy(input("a", 2, [], storyOf([formed], inBreak), { cast: castOf([], NAMES) })), false);
+  assert.equal("companions" in riderWhy(input("a", 2, [], storyOf([formed], inBreak))), false);
+  const unknown = riderWhy(input("a", 2, [], storyOf([formed], null), { cast: castOf(["a"], NAMES) }));
+  assert.equal(unknown.known, false);
+  assert.equal("companions" in unknown, false);
+});
+
+test("#7754: hvad haendelserne ikke beviser, siges ikke", () => {
+  const cast = castOf(["a"], NAMES);
+  const companionsFrom = (m: StoryMoment) => riderWhy(input("a", 2, [], storyOf([m], inBreak), { cast })).companions;
+  assert.equal(companionsFrom(moment("breakaway_formed", 10, { rider_ids: ["a"] })), undefined, "alene");
+  assert.equal(companionsFrom(moment("breakaway_formed", 10, { rider_ids: ["b", "c"] })), undefined, "ikke med");
+  assert.equal(companionsFrom(moment("breakaway_formed", 10, { rider_ids: ["a", "x"] })), undefined, "ukendt navn");
+  assert.equal(companionsFrom(moment("finale_attack", 90, { kind: "carried_gap_held", rider_ids: ["a", "b"] })), undefined, "bogfoering");
+  assert.equal(companionsFrom(moment("group_merged", 50, { rider_ids: ["a", "b"] })), undefined, "kom til senere");
+  assert.deepEqual(companionsFrom(moment("finale_attack", 90, { direction: "descent", rider_ids: ["a", "b"] })), { names: "Bravo", more: false });
+});
+
+test("#7754: det seneste faelles angreb taeller", () => {
+  const moments = [moment("breakaway_formed", 10, { rider_ids: ["a", "b"] }), moment("finale_attack", 90, { direction: "descent", rider_ids: ["a", "c"] })];
+  assert.equal(riderWhy(input("a", 2, [], storyOf(moments, inBreak), { cast: castOf(["a"], NAMES) })).companions?.names, "Charlie");
 });
 
 test("Codex: tilbageslag findes ogsaa, naar stedet er praecist (exact_km)", () => {
