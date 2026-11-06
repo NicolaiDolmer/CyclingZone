@@ -1,5 +1,45 @@
 export const PATCHES = [
   {
+    "version": "7.412",
+    "date": "2026-11-06",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The race story says Attack",
+          "body": "Riders with a stage plan now attack in the film, the report and the order lines. All out is only used in time trials. \"Ride to the finish\" is now \"Ride in easy\"."
+        },
+        "da": {
+          "title": "Løbshistorien siger Angrib",
+          "body": "Ryttere med etapeplan angriber nu i filmen, referatet og ordre-linjerne. Alt ud bruges kun på enkeltstart. \"Kør i mål\" hedder nu \"Kør roligt i mål\"."
+        },
+        "refs": [
+          7707
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Roadmap",
+        "en": {
+          "title": "Your vote count stays correct",
+          "body": "The counter on the roadmap no longer drops back after you vote. Vote buttons appear once your own votes have loaded."
+        },
+        "da": {
+          "title": "Dit stemmetal bliver stående",
+          "body": "Tælleren på roadmappen falder ikke længere tilbage, efter du har stemt. Stemmeknapperne vises, når dine egne stemmer er læst."
+        },
+        "refs": [
+          7800
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.411",
     "date": "2026-11-06",
     "changes": [
