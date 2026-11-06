@@ -1,0 +1,90 @@
+name: Known issues sync
+
+# Known issues foelger patch noten (#7790).
+#
+#   selftest — paa PR og main: scripts/known-issues-sync.test.mjs. Rent
+#     fil-tjek, ingen secrets.
+#
+#   sync — efter en groen Deploy verify fra push til main (aldrig paa tid alene; et dispatch-run kan verificere et andet commit end head_sha):
+#     scripts/known-issues-sync.mjs saetter aabne kendte fejl, hvis issue_ref staar som
+#     ref paa en patch note med rollout live, og noten er strengt nyere end
+#     raekkens updated_at, til fixed. DRY-RUN som default: --apply kraever at
+#     repo-variablen KNOWN_ISSUES_SYNC_APPLY er 'true', saa ejeren foerst kan
+#     se listen i kørselsloggen.
+#     Idempotent, roerer kun
+#     aabne raekker; status-triggeren stempler closed_at. Samme moenster som
+#     roadmap-sync.yml: kun push til main + manuel dispatch.
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/src/data/patchNotes.js'
+      - 'scripts/known-issues-sync*'
+      - '.github/workflows/known-issues-sync.yml'
+  workflow_run:
+    workflows: ['Deploy verify']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  selftest:
+    name: known-issues-selftest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+
+      - name: Selftests
+        run: node --test scripts/known-issues-sync.test.mjs
+
+  sync:
+    name: sync
+    needs: selftest
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Saet kendte fejl til fixed naar patch noten er live
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          APPLY: ${{ vars.KNOWN_ISSUES_SYNC_APPLY }}
+        run: |
+          if [ "$APPLY" = "true" ]; then
+            node scripts/known-issues-sync.mjs --apply
+          else
+            echo "KNOWN_ISSUES_SYNC_APPLY er ikke 'true': dry-run, intet skrevet."
+            node scripts/known-issues-sync.mjs
+          fi
