@@ -1556,6 +1556,9 @@
           "chase_faded_climb": "Jagten døde ud efter {climb}, og hullet voksede igen.",
           "chase_faded": "Jagten døde ud, og hullet voksede igen.",
           "chase_too_late": "Jagten kom tættere på, men løb tør for vej.",
+          "chase_tired": "Holdene, der jagede, havde brugt for meget til at nå det i tide.",
+          "chase_outgunned": "Jagerne var ikke stærke nok til at hente udbruddet i tide.",
+          "chase_too_few": "For få ryttere arbejdede i jagten til at nå det i tide.",
           "gap_never_closed": "Jagten fik aldrig hullet ned.",
           "gc_threat": "{teamCount, plural, =1 {{teamLast}} other {{teamsHead} og {teamLast}}} jagede, fordi {threats} truede {rider} i klassementet.",
           "closed_on_climb": "Hullet faldt på {climb}."

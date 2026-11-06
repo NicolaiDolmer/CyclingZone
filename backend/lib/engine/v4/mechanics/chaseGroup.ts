@@ -60,11 +60,11 @@ export function withWinnerEscapeOutcome(
  * START-KANDIDATER, kalibreres privat (balance-internals/7730/).
  */
 export const TEAM_CHASE_7730_TUNING = Object.freeze({
-  /** Et hold bidrager hoejst saa meget: flere hold er staerkere end ét hold med mange ryttere. */
-  teamPullCap: 3,
+  /** Et hold bidrager hoejst saa meget: ét hold kan ikke alene vaere i tide, flere hold deler foeringerne. */
+  teamPullCap: 2,
   /** Under dette traek kommer jagten for sent, over det naeste er den til tiden. Imellem glider maalet. */
-  latePull: 1,
-  onTimePull: 4,
+  latePull: 0.75,
+  onTimePull: 2.5,
   /** Rytterens motor set mod udbruddets, begraenset saa én stjerne ikke er et helt hold. */
   engineRatioBounds: [0.7, 1.3] as const,
 });
@@ -121,11 +121,9 @@ export function judgeFloorChase7730(input: {
   const share = Math.min(1, Math.max(0, (pull - t.latePull) / (t.onTimePull - t.latePull)));
   const targetSeconds = input.lateSeconds + (input.onTimeSeconds - input.lateSeconds) * share;
   if (share >= 1) return { targetSeconds, short: false, reason: null, teamIds };
-  if (teamIds.length === 0 || !(pull > 0)) return { targetSeconds, short: true, reason: "no_chasers", teamIds };
-  // Aarsagen er den der kostede jagten mest: traethed, for svage ben mod udbruddet, ellers for faa.
-  const tiredLoss = sum("fresh") - pull;
-  const weakLoss = sum("even") - pull;
-  const reason = tiredLoss > 0 && tiredLoss >= weakLoss ? "tired" : weakLoss > 0 ? "outgunned" : "too_few";
+  if (teamIds.length === 0) return { targetSeconds, short: true, reason: "no_chasers", teamIds };
+  // Aarsagen er det der alene havde bragt jagten i tide: friske ben, ellers ben der matcher udbruddet, ellers flere ryttere.
+  const reason = sum("fresh") >= t.onTimePull ? "tired" : sum("even") >= t.onTimePull ? "outgunned" : "too_few";
   return { targetSeconds, short: true, reason, teamIds };
 }
 

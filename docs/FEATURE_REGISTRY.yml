@@ -154,6 +154,19 @@ features:
     decision: ejer-beslutning
     decide_by: 2026-11-18
 
+  - id: race-team-chase-7730
+    area: race-engine
+    title_en: The chase is decided by the teams chasing, not a stage roll
+    title_da: Jagten afgøres af de hold der jager, ikke af en lodtrækning
+    state: dormant
+    flag: team_chase_7730
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 7730
+    verified: 2026-11-06
+    note: "#7730 ejer 5/11. Bygget, off; gælder kun løb der ikke er startet; tændes af ejeren efter før/efter-billedet."
+    decision: ejer-beslutning
+    decide_by: 2026-11-20
+
   - id: race-official-times-v1
     area: race-engine
     title_en: Official time persistence revision

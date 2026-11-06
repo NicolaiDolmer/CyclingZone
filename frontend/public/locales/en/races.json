@@ -1556,6 +1556,9 @@
           "chase_faded_climb": "The chase faded after {climb}, and the gap grew again.",
           "chase_faded": "The chase faded, and the gap grew again.",
           "chase_too_late": "The chase closed in, but ran out of road.",
+          "chase_tired": "The teams chasing had spent too much to close it in time.",
+          "chase_outgunned": "The chasers weren't strong enough to pull this break back in time.",
+          "chase_too_few": "Too few riders were working in the chase to close it in time.",
           "gap_never_closed": "The chase never brought the gap down.",
           "gc_threat": "{teamCount, plural, =1 {{teamLast} chased} other {{teamsHead} and {teamLast} chased}} because {threats} {threatCount, plural, one {was a threat} other {were a threat}} to {rider} in the GC.",
           "closed_on_climb": "The gap came down on {climb}."

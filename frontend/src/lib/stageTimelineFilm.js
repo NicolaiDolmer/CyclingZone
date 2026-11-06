@@ -258,6 +258,9 @@ function describeCause(p, riderNameById, teamNameById) {
     case "unchased":
     case "no_chasers":
     case "chase_too_late":
+    case "chase_tired":
+    case "chase_outgunned":
+    case "chase_too_few":
     case "gap_never_closed":
       return { key: `cause.${cause}`, params: {} };
     case "chase_faded":

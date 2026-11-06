@@ -1573,6 +1573,9 @@
           "chase_faded_climb": "La persecución se apagó después de {climb}, y la diferencia volvió a crecer.",
           "chase_faded": "La persecución se apagó, y la diferencia volvió a crecer.",
           "chase_too_late": "La persecución se acercó, pero se quedó sin carretera.",
+          "chase_tired": "Los equipos que perseguían habían gastado demasiado para cerrarlo a tiempo.",
+          "chase_outgunned": "Los perseguidores no fueron lo bastante fuertes para neutralizar esta fuga a tiempo.",
+          "chase_too_few": "Había muy pocos ciclistas trabajando en la persecución para cerrarlo a tiempo.",
           "gap_never_closed": "La persecución nunca logró recortar la diferencia.",
           "gc_threat": "{teamCount, plural, =1 {{teamLast} persiguió} other {{teamsHead} y {teamLast} persiguieron}} porque {threats} {threatCount, plural, one {era una amenaza} other {eran una amenaza}} para {rider} en la general.",
           "closed_on_climb": "La diferencia cayó en {climb}."
