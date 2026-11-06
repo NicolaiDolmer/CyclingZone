@@ -1134,6 +1134,8 @@ Løser fra §13.2: løbsdagens rytme i rigtig tid (5 pr. kalenderdag, samlet luk
 
 ### 13.3b Ejerens realisme-regel 18/9 (låst princip; genåbn ikke)
 
+**Ude af feltet (#7692):** en rytter er kun bundet, så længe han er i løbet. Mangler han i seneste etapes startfelt (`entrant_snapshot`), er han ude, også uden en udgåelse. Hans udgangsdag er den sidste etape med et resultat, og fra dagen efter følger han sit program igen. Mangler beviset, eller er det ulæseligt, bevares bindingen. Reglen rører kun træningen, ikke løbet.
+
 Ejeren formulerede 18/9 aften den regel al løbsdags-mekanik skal måles mod. Fuld tekst: [#5267, kommentar 18/9](https://github.com/NicolaiDolmer/CyclingZone/issues/5267). Kort:
 
 1. **En løbsdag er én dato i cykelåret.** Den sker kun én gang.

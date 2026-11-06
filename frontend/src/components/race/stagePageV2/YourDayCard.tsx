@@ -109,7 +109,7 @@ export default function YourDayCard({ results, stageNumber, isStageRace, loaded,
     .slice(0, 2);
 
   return (
-    <Section aria-label={isStageRace ? t("stagePageV2.yourDay.title", { number: stageNumber }) : t("stagePageV2.yourDay.titleOneDay")}>
+    <Section data-race-section="your_day" aria-label={isStageRace ? t("stagePageV2.yourDay.title", { number: stageNumber }) : t("stagePageV2.yourDay.titleOneDay")}>
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <h2 className="m-0 flex-1 font-data text-[15px] font-semibold text-cz-1">
           {isStageRace ? t("stagePageV2.yourDay.title", { number: stageNumber }) : t("stagePageV2.yourDay.titleOneDay")}

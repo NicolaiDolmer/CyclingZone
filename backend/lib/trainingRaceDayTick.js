@@ -302,7 +302,8 @@ const raceExitKey = (riderId, raceId) => `${riderId}:${raceId}`;
  *
  * #7692: a rider can also leave the field without any incident, when the start
  * field rules drop him from a running stage race. The latest stage's immutable
- * snapshot proves that: absent there means he is out, and that stage is his exit day.
+ * snapshot proves that he is out. His exit day is the last stage he has a result on,
+ * so it stays the same while the race goes on; without any result it is stage 1.
  *
  * Missing evidence keeps the binding: an abandon whose stage has no scheduled
  * game_day gives no exit day, and neither does a missing or unreadable snapshot.
@@ -359,6 +360,21 @@ export async function loadRaceExitGameDays({ supabase, rows }) {
       }
     }
     const leftField = bound.filter(row => latestFields.has(row.race_id) && !latestFields.get(row.race_id).has(row.rider_id));
+    const lastRidden = new Map();
+    if (leftField.length) {
+      const { data: ridden, error: riddenError } = await supabase.from("race_results")
+        .select("race_id, rider_id, stage_number")
+        // pagination-safe: only riders proven out of the field, at most one stage row
+        // per ridden stage each, so far below the 1000-row cap.
+        .in("race_id", [...new Set(leftField.map(row => row.race_id))])
+        .in("rider_id", [...new Set(leftField.map(row => row.rider_id))])
+        .eq("result_type", "stage");
+      if (riddenError) return { data: null, error: riddenError };
+      for (const row of ridden ?? []) {
+        const key = raceExitKey(row.rider_id, row.race_id);
+        lastRidden.set(key, Math.max(lastRidden.get(key) ?? 1, Number(row.stage_number)));
+      }
+    }
     const exitRaceIds = [...new Set([...abandons, ...leftField].map(row => row.race_id))];
     if (!exitRaceIds.length) return { data: exits, error: null };
     const { data: schedule, error: scheduleError } = await supabase.from("race_stage_schedule")
@@ -378,9 +394,9 @@ export async function loadRaceExitGameDays({ supabase, rows }) {
       if (!exits.has(key) || day < exits.get(key)) exits.set(key, day);
     }
     for (const row of leftField) {
-      const day = dayByStage.get(`${row.race_id}:${latestStage.get(row.race_id)}`);
-      if (day === undefined) continue;
       const key = raceExitKey(row.rider_id, row.race_id);
+      const day = dayByStage.get(`${row.race_id}:${lastRidden.get(key) ?? 1}`);
+      if (day === undefined) continue;
       if (!exits.has(key) || day < exits.get(key)) exits.set(key, day);
     }
     return { data: exits, error: null };
