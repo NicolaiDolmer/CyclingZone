@@ -119,8 +119,7 @@ export function summarizeLeadupTraining(riderDayEntries) {
 
 /**
  * Gennemsnit af et mål-løbs etape-demand-vektorer → ét aggregeret demand (evne→
- * vægt). Ren. Fokus-match måles mod dette (raceAutopick.suitabilityScore
- * gennemsnitter terrainScore over etaper på samme vis). Ingen gyldige → null.
+ * vægt). Ren. Fokus-match måles mod dette. Ingen gyldige → null.
  * @param {Array<{demand_vector?:Record<string,number>}>} stageProfiles
  * @returns {Record<string,number>|null}
  */

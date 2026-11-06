@@ -263,30 +263,21 @@ bor i `CALENDAR_RULES.md` §8.
 Dette er hele modellen. Der er ingen anden vægtning, og ingen rytter-**type** indgår nogen
 steder - kun rytterens evner mod etapens efterspørgsels-vektor.
 
-**Trin 1 - rå etape-score** (`backend/lib/raceSimulator.js:475-484`):
+**Trin 1 - rutematch-tallet** (`backend/lib/routeMatch.js`, #6207): assistenten rangerer på det
+tal manageren ser i sæsonmatrix, Planlæg dag og Taktik. Hver etapes krav kommer fra motoren under
+den aktuelle regel-revision, og rytterens evner måles mod dem. Tallet bruges urundet, så to ryttere
+på samme viste tal stadig skilles. Assistenten udtager kun til løb der ikke er startet, så
+revisionen er altid den aktuelle (`routeFitScorer` i `raceAutopick.js`).
 
-```js
-export function terrainScore(abilities, demandVector) {
-  let s = 0;
-  for (const k of ABILITY_KEYS) {
-    const w = demandVector[k];
-    if (!w) continue;
-    const a = Number(abilities?.[k]) || 0;
-    s += (a / ABILITY_MAX) * w;
-  }
-  return s;
-}
-```
-
-**Trin 2 - løbs-egnethed = uvægtet gennemsnit over løbets etaper**
-(`raceAutopick.js:51-56`). Alle etaper tæller lige meget; en 21-etapers Grand Tour vægter ikke
-sine bjergetaper højere end sine flade.
+**Trin 2 - løbs-egnethed = snittet af etapernes krav** (`raceRouteVector`). Alle etaper tæller
+lige meget; en 21-etapers Grand Tour vægter ikke sine bjergetaper højere end sine flade.
+Kaptajnen vælges på samme måde, men uden de flade etaper.
 
 **Trin 3 - trætheds-dæmpning** (`raceAutopick.js:86-89`):
 
 ```
 freshness = 1 − clamp(fatigue, 0, 100)/100 × 0,3
-score     = suitabilityScore × freshness
+score     = rutematch × freshness
 ```
 
 **Trin 4 - sortering, og så tages de `sizeRule.max` bedste.** Tiebreak er `rider_id`-streng, så
@@ -296,26 +287,16 @@ udvælgelsen er deterministisk (`raceAutopick.js:91`, `:107`).
 sorteres A-kæden først (rang → score → id), så managerens kerne-ryttere garanteres pladser
 (`raceAutopick.js:96-105`). `preference == null` eller ikke-mål-løb → uændret score-rækkefølge.
 
-**Efterspørgsels-vektorerne er persisterede pr. etape**, ikke afledt runtime
-(`race_stage_profiles.demand_vector`). Målt i prod 30/8:
-
-| `profile_type` | etaper | eksempel-vektor |
-|---|---:|---|
-| `flat` | 1.056 | `sprint 0,61 · acceleration 0,15 · positioning 0,08 · randomness 0,08 · flat 0,06 · endurance 0,02` |
-| `mountain` | 723 | `climbing ~0,50 · endurance ~0,14` |
-| `hilly` | 662 | `climbing ~0,06 · endurance ~0,06` |
-| `high_mountain` | 321 | `climbing ~0,52 · endurance ~0,18` |
-| `classic` | 125 | `endurance ~0,18 · climbing ~0,12 · flat ~0,06 · positioning ~0,06` |
-
-`select profile_type, count(*), avg((demand_vector->>'climbing')::numeric) ... from race_stage_profiles group by 1`
-Den viste `flat`-vektor er Københavns Klassikers egen (`OtherWorldTourC`, `finale_type=bunch_sprint`).
+**Etapens krav er ikke kun den gemte vægtliste.** `race_stage_profiles.demand_vector` er terræn-delen
+af en vej-etape; finalen kommer fra motoren. En enkeltstart og en holdtidskørsel regnes alene på
+motorens egne krav. Kolonnerne assistenten skal hente står i `ROUTE_MATCH_STAGE_COLUMNS`.
 
 **Tre egenskaber ved modellen, som er faktiske og skal kendes før nogen rører den:**
 
-1. **`randomness` scores ikke.** Den er ikke i `ABILITY_KEYS` (`raceSimulator.js:49-56`), så den
-   vægt er død i egnethedsberegningen. Det er tilsigtet - den bruges af selve motoren.
-2. **Scoren er ikke normaliseret mod vektorens vægtsum.** Det er uden betydning inden for ét
-   løb (alle ryttere måles mod samme vektor), men to løbs scorer kan ikke sammenlignes.
+1. **`randomness` scores ikke.** Den er ikke en evne, så den vægt er død i rutematch. Det er
+   tilsigtet - den bruges af selve motoren.
+2. **Tallet er normaliseret.** En rytter med 99 i alt etapen kræver får 100, så to løbs tal kan
+   sammenlignes. Rytter-**typen** indgår stadig ikke.
 3. **Assistenten fylder op til `sizeRule.max`, når holdet har ryttere nok.** Der findes ingen
    tærskel hvor den hellere lader en plads stå tom end at sende en dårligt matchet rytter. Det er
    rod-mekanikken bag [#3957](https://github.com/NicolaiDolmer/CyclingZone/issues/3957) - se §11.
@@ -471,7 +452,7 @@ manageren opretter en ægte plan (`peakSuggestions.js:6-14`).
 1. Kandidater = holdets egen divisions **fremtidige** løb i den aktive sæson.
 2. Foretræk løb rytteren allerede er **manuelt** tilmeldt (`is_auto_filled=false`) - et
    auto-fyldt entry er ikke et program-valg.
-3. Fyld resten med bedst egnede løb (`normalizedSuitability`, samme `terrainScore` som §4).
+3. Fyld resten med bedst egnede løb (`normalizedSuitability`, samme rutematch-tal som §4).
 4. Håndhæv minimums-afstand mellem peak-centre.
 5. Alder modulerer **antallet** af forslag, aldrig hvilke løb.
 
@@ -700,7 +681,7 @@ Hver post er ÉN ting der mangler at blive afgjort. Ingen af dem må gættes på
    sket. *(`raceAutopick.js:11`)*
 
 7. **Skal etaperne vægtes ulige i egnetheds-snittet?** I dag er det et uvægtet gennemsnit over
-   alle etaper (`raceAutopick.js:51-56`), så en Grand Tours bjergetaper tæller det samme som
+   alle etaper (`raceRouteVector`), så en Grand Tours bjergetaper tæller det samme som
    dens flade. Skal afgørende etaper veje tungere?
 
 8. **Må assistenten sætte `hunter`?** Rollen findes i motorens vokabular og har sin egen
