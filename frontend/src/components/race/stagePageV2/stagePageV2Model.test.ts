@@ -102,11 +102,30 @@ test("defaultStage: i dag (dansk tid), ellers senest koerte, ellers 1", () => {
     { stage_number: 2, scheduled_at: "2026-10-14T15:00:00Z" },
     { stage_number: 3, scheduled_at: "2026-10-15T15:00:00Z" },
   ];
-  assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 1, schedule, now: new Date("2026-10-14T08:00:00Z") }), 2);
-  // 23:30 UTC den 14. er den 15. i Koebenhavn.
-  assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 2, schedule, now: new Date("2026-10-14T23:30:00Z") }), 3);
+  // Etape 1 er koert, etape 2 er i dag men ikke koert endnu: senest koerte vinder.
+  assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 1, schedule, now: new Date("2026-10-14T08:00:00Z") }), 1);
+  // Intet koert endnu: dagens foerste etape. 23:30 UTC den 14. er den 15. i Koebenhavn.
+  assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 0, schedule, now: new Date("2026-10-14T23:30:00Z") }), 3);
+  assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 0, schedule, now: new Date("2026-10-14T08:00:00Z") }), 2);
   assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 2, schedule, now: new Date("2026-10-20T08:00:00Z") }), 2);
   assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 0, schedule: [], now: new Date("2026-10-14T08:00:00Z") }), 1);
+});
+
+test("defaultStage: flere etaper samme dag aabner paa den senest koerte (#7810)", () => {
+  const schedule = [
+    { stage_number: 1, scheduled_at: "2026-10-24T08:00:00Z" },
+    { stage_number: 2, scheduled_at: "2026-10-24T10:00:00Z" },
+    { stage_number: 3, scheduled_at: "2026-10-24T14:00:00Z" },
+  ];
+  const now = new Date("2026-10-24T14:30:00Z");
+  // Alle tre er i dag; to er koert: etape 2, ikke dagens laveste (1).
+  assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 2, schedule, now }), 2);
+  // Intet koert endnu: dagens laveste.
+  assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 0, schedule, now }), 1);
+  // Alt koert: sidste etape.
+  assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 3, schedule, now }), 3);
+  // Taeller ud over antal etaper klippes.
+  assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 9, schedule, now }), 3);
 });
 
 test("todaysStages: alle dagens etaper faar 'I dag' (Danmark Rundt 24/10: etape 2 og 3 samme dato)", () => {
