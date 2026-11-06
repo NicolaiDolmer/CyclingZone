@@ -222,6 +222,7 @@
       "kmAt": "km {km}",
       "kmSpan": "km {from}-{to}",
       "unfolded": "Comment ça s'est passé",
+      "lossUnknown": "Temps perdu, cause inconnue : {names}.",
       "source": "Chaque temps, écart et phrase ici vient du journal de course de cette étape.",
       "replay": {
         "play": "Rejouer l'étape",

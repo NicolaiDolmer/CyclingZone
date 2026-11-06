@@ -118,6 +118,17 @@ test("buildOwnTimeLoss: foerste fald der staar ved magt + uheld, med dokumentere
   assert.equal(own2.type === "drop" && own2.climbName, "Col de la Colombière");
 });
 
+test("buildOwnTimeLoss: koerte sig tom og daarlig dag er egne linjer, kun for egne ryttere (#7705)", () => {
+  const events = [
+    ...EVENTS,
+    { km: 150, type: "all_out_cracked", params: { rider_id: "own1" } },
+    { km: 150, type: "all_out_cracked", params: { rider_id: "rival" } },
+    { km: 160, type: "bad_day", params: { rider_id: "own2", reason: "fatigue" } },
+  ];
+  const loss = buildOwnTimeLoss(events, { ownRiderIds: OWN }).filter((l) => l.type === "event" && l.event.type !== "incident");
+  assert.deepEqual(loss.map((l) => [l.type === "event" && l.event.type, l.riderId]), [["all_out_cracked", "own1"], ["bad_day", "own2"]]);
+});
+
 test("buildOwnTimeLoss: et fald hvor rytteren kom tilbage til sin gruppe tæller ikke", () => {
   // own1 faldt fra gruppetto-4001 ved km 102 men var tilbage ved km 109.1:
   // kun faldet fra feltet ved km 72 staar tilbage.

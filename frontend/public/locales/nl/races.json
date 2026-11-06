@@ -222,6 +222,7 @@
       "kmAt": "km {km}",
       "kmSpan": "km {from}-{to}",
       "unfolded": "Hoe het verliep",
+      "lossUnknown": "Tijd verloren, oorzaak onbekend: {names}.",
       "source": "Elke tijd, achterstand en zin hier komt uit het koerslogboek van deze etappe.",
       "replay": {
         "play": "Speel de etappe af",

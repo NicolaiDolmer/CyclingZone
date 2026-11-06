@@ -8,7 +8,7 @@ import { buildRaceStory, replayFrames } from "../../../../../backend/lib/raceSto
 import { withEventPlaces } from "../../../../../backend/lib/raceTimeline.js";
 import {
   asStory, isTimeTrialStory, buildReport, castFrom, curateMoments, finaleData, finaleEndTime, finaleMarkerLabelsShown, finaleStateAt, formatClock, frameAt,
-  groupMembersAt, groupOfRider, leaderKmAt, lineReplayKm, mainGroupId, MAX_STORY_LINES, namesList, ownOutSentences, parseGap, pickGroups,
+  groupMembersAt, groupOfRider, leaderKmAt, lineReplayKm, mainGroupId, MAX_STORY_LINES, namesList, ownOutSentences, ownTimeLoss, parseGap, pickGroups,
   replayGroupsAt, splitRows, wholeStageFrames, myBestRider,
   type RaceStory, type StoryLine,
 } from "./raceStoryModel.ts";
@@ -626,4 +626,67 @@ test("#6350: en rytter udgået efter snapshottet, men før den sene halvdel, st�
   assert.deepEqual([...(groupMembersAt(story, 57.5).get("back")?.riders ?? [])], ["x"]);
   assert.equal(inFilm(58, "back"), 1, "den udgåede kører aldrig igen, heller ikke på halvdelens km");
   assert.deepEqual([...(groupMembersAt(story, 58).get("back")?.riders ?? [])], ["x"]);
+});
+
+// #7705: formen fra den rapporterede etape (bjergetape med mål på toppen), anonymiseret.
+function summitFinish() {
+  return [
+    ev(0, "stage_start", { exact_km: 0, exact_time: 0, distance_km: 180, field_count: 6, profile_type: "mountain" }),
+    ev(170, "gap_update", { group_id: "peloton-0", gap_seconds: 91, exact_km: 170, exact_time: 17499 }),
+    ev(180, "all_out_cracked", { rider_id: "a", exact_km: 180, exact_time: 19715 }),
+    ev(180, "all_out_cracked", { rider_id: "b", exact_km: 180, exact_time: 19715 }),
+    ev(180, "peloton_splits", { group_id: "gruppetto-1", source_group_id: "peloton-0", rider_ids: ["a", "b", "x"], cause: "mixed", gap_seconds: 303, exact_km: 180, exact_time: 19715 }),
+    ev(180, "gap_update", { group_id: "gruppetto-1", gap_seconds: 303, exact_km: 180, exact_time: 19715 }),
+    ev(180, "bad_day", { rider_id: "b", reason: "illness" }),
+    ev(180, "kom_passage", { name: "Top", category: "HC", exact_km: 180 }),
+    ev(180, "finish", { exact_km: 180, exact_time: 19412, top: [{ rider_id: "w" }] }),
+  ];
+}
+const LOSS_RESULTS = [
+  rr(1, "w", "Winner", "t-x", "+0:00"), rr(2, "m0", "Same", "t-me", "+0:00"), rr(3, "a", "Empty", "t-me", "+5:03"), rr(4, "b", "Ill", "t-me", "+5:03"),
+  rr(5, "x", "Other", "t-x", "+5:03"), rr(6, "lost", "Lost", "t-me", "+7:30"),
+].map((row) => ({ ...row, stage_number: 10 }));
+const lossOf = (events = summitFinish(), results = LOSS_RESULTS) => {
+  const built = buildRaceStory({ events, timelineVersion: 2 }) as unknown as RaceStory;
+  return ownTimeLoss(built, castFrom(results, [], 10, "t-me"), { events });
+};
+
+test("#7705: dine ryttere får den sande årsag, ukendt årsag står, og intet opdigtes", () => {
+  const loss = lossOf();
+  assert.deepEqual(loss.entries.map((e) => (e.type === "drop" ? ["drop", e.riderIds, e.reason, e.climbName] : [e.event.type, e.riderId])), [
+    ["drop", ["a", "b"], "mixed", "Top"],
+    ["all_out_cracked", "a"],
+    ["all_out_cracked", "b"],
+    ["bad_day", "b"],
+  ]);
+  assert.equal(loss.unknown, "Lost", "efter feltet uden årsag i loggen");
+  assert.ok(loss.entries.every((e) => e.riderId !== "x"), "kun dine egne ryttere");
+  assert.ok(loss.entries.every((e) => e.riderId !== "m0"), "på vinderens tid er der intet tidstab");
+});
+
+test("#7705: uden kendt hul i mål er tidstabet ikke vist, og et fald uden grund står som ukendt", () => {
+  const noGap = LOSS_RESULTS.map((row) => (row.rider_id === "a" ? { ...row, finish_time: null } : row));
+  assert.ok(lossOf(summitFinish(), noGap).entries.every((e) => e.riderId !== "a" && !(e.type === "drop" && e.riderIds.includes("a"))));
+  const noCause = summitFinish()
+    .filter((e) => e.type !== "all_out_cracked" && e.type !== "bad_day")
+    .map((e) => (e.type === "peloton_splits" ? ev(180, "peloton_splits", { ...e.params, cause: undefined }) : e));
+  const loss = lossOf(noCause);
+  assert.deepEqual(loss.entries.map((e) => e.type === "drop" && e.reason), ["unknown"], "stedet står stadig");
+  assert.equal(loss.unknown, "Empty, Ill, Lost", "faldet siger ikke hvorfor, og han efter feltet står med");
+});
+
+test("#7705: din rytter i feltet bag et udbrud har ikke tabt tid", () => {
+  const results = [
+    rr(1, "w", "Winner", "t-x", "+0:00"), rr(2, "p1", "Pack", "t-me", "+6:00"), rr(3, "p2", "Pack", "t-x", "+6:00"), rr(4, "p3", "Pack", "t-x", "+6:00"),
+  ].map((row) => ({ ...row, stage_number: 10 }));
+  assert.deepEqual(lossOf(summitFinish().filter((e) => e.type !== "bad_day" && e.type !== "all_out_cracked"), results), { entries: [], unknown: "" });
+});
+
+test("#7705: en årsag uden tekst forklarer intet, og uden præcise tider siges intet", () => {
+  const events = summitFinish().filter((e) => e.type !== "all_out_cracked" && e.type !== "peloton_splits").map((e) => (e.type === "bad_day" ? ev(180, "bad_day", { rider_id: "lost", reason: "ny_grund" }) : e));
+  const loss = lossOf(events);
+  assert.deepEqual(loss.entries, []);
+  assert.equal(loss.unknown, "Lost", "linjen uden tekst forklarer ham ikke");
+  const noTimes = buildRaceStory({ events: [ev(0, "stage_start", { distance_km: 180 }), ev(180, "bad_day", { rider_id: "b", reason: "illness" }), ev(180, "finish", {})], timelineVersion: 1 }) as unknown as RaceStory;
+  assert.deepEqual(ownTimeLoss(noTimes, castFrom(LOSS_RESULTS, [], 10, "t-me"), { events: [] }), { entries: [], unknown: "" });
 });
