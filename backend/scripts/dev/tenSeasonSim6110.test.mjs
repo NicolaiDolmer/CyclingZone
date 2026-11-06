@@ -7,7 +7,7 @@ import { applyDailyTick, resolveProgram } from "../../lib/dailyTraining.js";
 import { buildCapsForRider } from "../../lib/riderProgression.js";
 import { ageForSeason } from "../../lib/riderSeasonAge.js";
 import {
-  SIM_DEFAULTS, applyPrivateXp, applyTickB, applyTickXp, assistantProgram, birthdateForAge, buildWorld, capGainsPerDate,
+  SIM_DEFAULTS, curveBRunInputs, sameCurveBRun, xpGateKey, applyPrivateXp, applyTickB, applyTickXp, assistantProgram, birthdateForAge, buildWorld, capGainsPerDate,
   dayXpFloor, estimateGates, expectedTopRating, isTrainNowTeam, limitSnapshotTeams, milestoneStats, nearestPotential,
   orderResults, potentialPeakStats, quantile, raceRoleFor, raceShareForAge, raceSlot, raceVsTraining, renderXpGates,
   riderXpRates, rotatingProgram, runFingerprint, runVariant, runXpGates, talentAttack, typeCareer, variantList,
@@ -436,6 +436,30 @@ test("runXpGates + renderXpGates: kortet bygges af varianter og gates, uden at r
   const card = renderXpGates(snap, results, gates, XP_OPTS, "test");
   for (const heading of ["X1", "X2", "X3", "X4", "X5", "X6", "X7", "X8", "X9", "X10", "Træn nu", "Kalibrering"]) assert.ok(card.includes(heading), heading);
   assert.ok(xpPriceForNextPoint(10, XP) > 0);
+});
+
+test("sameCurveBRun: en gemt kurve B med andre roller eller rolletillæg kommer ikke på kortet", () => {
+  const opts = { curveB: { a: 1 }, raceRoles: { captain: 0.2 }, raceRoleYield: { bonus: 1 } };
+  const saved = { variant: "kurveB", params: { curveB: { a: 1 }, curveBRun: curveBRunInputs(opts) } };
+  assert.equal(sameCurveBRun(saved, opts), true);
+  assert.equal(sameCurveBRun(saved, { ...opts, raceRoles: { captain: 0.3 } }), false);
+  assert.equal(sameCurveBRun(saved, { ...opts, raceRoleYield: { bonus: 2 } }), false);
+  assert.equal(sameCurveBRun(saved, { ...opts, curveB: { a: 2 } }), false);
+  assert.equal(sameCurveBRun({ variant: "kurveB", params: { curveB: { a: 1 } } }, opts), false, "gamle filer uden roller er ugyldige");
+  assert.equal(sameCurveBRun({ variant: "nu", params: {} }, opts), true);
+});
+
+test("xpGateKey: alle gate-input ugyldiggør de gemte tal", () => {
+  const opts = { ...XP_OPTS, xpVariationSpan: 1, xpAttackSpans: [1], xpAttackMemories: [2], curveB: { a: 1 }, raceRoles: { c: 1 }, raceRoleYield: { b: 1 } };
+  const args = { fingerprint: "f", opts, estimateParams: { e: 1 }, knowledge: { k: 1 } };
+  const base = xpGateKey(args);
+  assert.equal(xpGateKey(args), base);
+  for (const change of [{ xpAttackSpans: [9] }, { xpAttackMemories: [9] }, { curveB: { a: 2 } }, { raceRoles: { c: 2 } }, { raceRoleYield: { b: 2 } }, { xpVariationSpan: 2 }]) {
+    assert.notEqual(xpGateKey({ ...args, opts: { ...opts, ...change } }), base, JSON.stringify(change));
+  }
+  assert.notEqual(xpGateKey({ ...args, estimateParams: { e: 2 } }), base);
+  assert.notEqual(xpGateKey({ ...args, knowledge: { k: 2 } }), base);
+  assert.notEqual(xpGateKey({ ...args, fingerprint: "g" }), base);
 });
 
 test("limitSnapshotTeams: beholder kun de første aktive hold og deres ryttere", () => {

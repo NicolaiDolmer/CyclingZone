@@ -68,6 +68,7 @@
 //   <out-dir>/xp-gates-<dato>.md          XP-gates X1-X10 og H (kun med xp-varianter)
 //   <out-dir>/snapshot-<dato>.json        øjebliksbilledet (kun ved prod-kørsel)
 
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -838,6 +839,7 @@ export function runVariant(snapshot, variant, opts = SIM_DEFAULTS) {
   result.dateCap = world.dateCap;
   result.params = { raceDaysPerSeason: opts.raceDaysPerSeason, bNoiseSpan: opts.bNoiseSpan, bReferenceAge: opts.bReferenceAge,
     curveB: variant.kind === "curveB" ? opts.curveB ?? null : null, // #3564: kortet blander aldrig to kalibreringer
+    curveBRun: variant.kind === "curveB" ? curveBRunInputs(opts) : null,
     xp: variant.kind === "xp" ? variant.xpParams : null, xpRun: variant.kind === "xp" ? xpRunInputs(variant, opts) : null };
   result.fingerprint = runFingerprint(snapshot, opts);
   result.raceShares = { young: round(shares.youngMedian, 3), old: round(shares.oldMedian, 3) };
@@ -861,6 +863,29 @@ export function variantList(opts = SIM_DEFAULTS) {
 export function xpRunInputs(variant, opts) {
   return { plan: variant.plan, intensity: variant.intensity, trainNowBonus: variant.trainNowBonus, variationSpan: opts.xpVariationSpan,
     raceRoles: opts.raceRoles ?? null, raceRoleYield: opts.raceRoleYield ?? null };
+}
+
+/** Det, der ud over kurve B's egne tal flytter en kurve B-kørsel: løbsdagens roller og rolletillæg. */
+export function curveBRunInputs(opts) {
+  return { raceRoles: opts.raceRoles ?? null, raceRoleYield: opts.raceRoleYield ?? null };
+}
+
+/** Kurve B må kun på kortet, hvis både kalibreringen og løbets antagelser er de samme som i denne kørsel. */
+export function sameCurveBRun(result, opts) {
+  if (result.variant !== "kurveB") return true;
+  return JSON.stringify(result.params?.curveB ?? null) === JSON.stringify(opts.curveB ?? null)
+    && JSON.stringify(result.params?.curveBRun ?? null) === JSON.stringify(curveBRunInputs(opts));
+}
+
+/**
+ * Identiteten på gemte gates: alt, der flytter X8, X9 og H. Indholdet af de private
+ * filer indgår, så en ny fil ugyldiggør de gemte tal. Nøglen er et hash, så tallene
+ * ikke står i klar tekst i nøglen.
+ */
+export function xpGateKey({ fingerprint, opts, estimateParams = null, knowledge = null }) {
+  const inputs = [fingerprint, xpVariant(opts.xpGateVariant ?? "xp", opts).xpParams, curveBRunInputs(opts), opts.curveB ?? null,
+    opts.xpVariationSpan ?? null, opts.xpAttackSpans ?? null, opts.xpAttackMemories ?? null, estimateParams, knowledge];
+  return createHash("sha256").update(JSON.stringify(inputs)).digest("hex");
 }
 
 /** En xp-variant: navnet vælger plan og Træn nu-bonus. Private varianter lægger tal ovenpå. */
@@ -1662,7 +1687,6 @@ async function main() {
   // Kun kørsler på samme billede og samme sæson-parametre kommer på samme kort.
   const fingerprint = runFingerprint(snapshot, opts);
   const all = readdirSync(runsDir).filter((f) => f.endsWith(".json")).map((f) => JSON.parse(readFileSync(join(runsDir, f), "utf8")));
-  const sameCurve = (r) => r.variant !== "kurveB" || JSON.stringify(r.params?.curveB ?? null) === JSON.stringify(opts.curveB ?? null);
   // Samme regel for XP: en kørsel med gamle tal kommer aldrig på kortet sammen med nye.
   const sameXp = (r) => {
     if (!r.variant.startsWith("xp")) return true;
@@ -1670,7 +1694,7 @@ async function main() {
     return JSON.stringify(r.params?.xp ?? null) === JSON.stringify(variant.xpParams)
       && JSON.stringify(r.params?.xpRun ?? null) === JSON.stringify(xpRunInputs(variant, opts));
   };
-  const fits = (r) => r.fingerprint === fingerprint && sameCurve(r) && sameXp(r);
+  const fits = (r) => r.fingerprint === fingerprint && sameCurveBRun(r, opts) && sameXp(r);
   const results = orderResults(all.filter(fits));
   const skipped = all.filter((r) => !fits(r)).map((r) => r.variant);
   if (skipped.length) console.warn(`[s25] springer varianter over fra et andet billede eller andre parametre: ${skipped.join(", ")}`);
@@ -1680,14 +1704,16 @@ async function main() {
   if (wantsXp) {
     const gateTag = opts.xpGateVariant ? `-${opts.xpGateVariant}` : "";
     const gatesFile = join(outDir, `xp-gates-${date}${suffix}${gateTag}.json`);
-    // Gemte gates bruges kun, hvis de er regnet på samme billede og samme tal.
-    const gateKey = JSON.stringify([fingerprint, xpVariant(opts.xpGateVariant ?? "xp", opts).xpParams, opts.raceRoleYield ?? null]);
+    // Gemte gates bruges kun, hvis de er regnet på samme billede og samme input.
+    const readPrivate = (path) => (path ? JSON.parse(readFileSync(join(REPO, path), "utf8")) : null);
+    const estimateParams = readPrivate(opts.estimateParamsPath);
+    const knowledge = readPrivate(opts.knowledgePath);
+    const gateKey = xpGateKey({ fingerprint, opts, estimateParams, knowledge });
     const stored = existsSync(gatesFile) ? JSON.parse(readFileSync(gatesFile, "utf8")) : null;
     let gates = stored?.gateKey === gateKey ? stored : null;
     if (process.argv.includes("--xp-gates")) {
       const t0 = Date.now();
-      const readPrivate = (path) => (path ? JSON.parse(readFileSync(join(REPO, path), "utf8")) : null);
-      gates = { gateKey, ...runXpGates(snapshot, opts, { estimateParams: readPrivate(opts.estimateParamsPath), knowledge: readPrivate(opts.knowledgePath) }) };
+      gates = { gateKey, ...runXpGates(snapshot, opts, { estimateParams, knowledge }) };
       writeFileSync(gatesFile, JSON.stringify(gates, null, 2) + "\n");
       console.log(`[s25] gates uden for sæsonløkken færdig (${Math.round((Date.now() - t0) / 1000)} s)`);
     }
