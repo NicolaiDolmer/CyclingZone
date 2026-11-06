@@ -16,7 +16,11 @@ import { bindRaceTeamChase7730, resolveRaceEngineV4, v4TeamChase7730Arg } from "
 import { ENGINE_VERSION_V4, loadRaceEngineV4 } from "./raceEngineV4Bridge.js";
 import { findStageFlag, isStageFlagKey } from "./stageFlagCatalog.js";
 import { buildSnapshotRows, decodeSnapshot, replayEngineInput } from "./engineInputSnapshot1857.js";
-import { OFF_DIGEST_CASES_7730, RACE_7730, computeOffDigests7730Runner, digests7730, wholeRace7730 } from "./__fixtures__/raceRunner7730Scenarios.js";
+import { ENGINE_SEEDS_7730, OFF_DIGEST_CASES_7730, RACE_7730, computeOffDigests7730Runner, digests7730, wholeRace7730 } from "./__fixtures__/raceRunner7730Scenarios.js";
+import { chaseFloorTargetGapSeconds } from "./engine/v4/mechanics/breakaway.ts";
+import { rngFor } from "./engine/v4/rng.ts";
+import { stageRaceRuns } from "./engine/v4/testUtils/stageRaceField6804.ts";
+import { BREAKAWAY_EXTRA_TUNING } from "./engine/v4/tuning.ts";
 
 const FROZEN = JSON.parse(readFileSync(new URL("./__fixtures__/raceRunner7730FlagOff.json", import.meta.url), "utf8"));
 
@@ -161,6 +165,15 @@ test("#7730 binding: uden kolonnen er loebet ikke omfattet; andre fejl er hoejly
 test("#7730 slukket: den frosne fixture er fra merge-basen og daekker praecis scenarierne", () => {
   assert.match(FROZEN.sourceCommit, /^[0-9a-f]{40}$/);
   assert.deepEqual(Object.keys(FROZEN).filter((k) => !["sourceCommit", "note", "engine"].includes(k)), OFF_DIGEST_CASES_7730.map((c) => c.key));
+});
+
+test("#7730 slukket: fixturens seeds rammer begge lodtraekningens udfald, ellers beviser den intet", () => {
+  const late = BREAKAWAY_EXTRA_TUNING.chaseFloorLateTargetGapSeconds;
+  const outcomes = stageRaceRuns("s5_profiles_v3", ["flat", "rolling"], ENGINE_SEEDS_7730).map((r) => {
+    const [, stage, seed] = r.key.match(/#(\d+)@(.+)$/);
+    return chaseFloorTargetGapSeconds(r.route, rngFor(`${seed}:${stage}`, "breakaway_chase_floor")(), true) === late;
+  });
+  assert.ok(outcomes.includes(true) && outcomes.includes(false));
 });
 
 test("#7730 slukket: checksum, motor-input og output er bit-identiske med merge-basen", async () => {

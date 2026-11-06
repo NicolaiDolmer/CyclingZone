@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-128 poster: live 105 · dormant 8 · building 6 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+129 poster: live 105 · dormant 9 · building 6 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -20,13 +20,14 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
 | Long descents - cap on how much a regrouping chase can gain (`race-descent-regroup-cap-7644`) | dormant | `descent_regroup_cap_7644` | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #7644 | 2026-11-04 | #7644 ejer-valg B 4/11. Bygget, off; tændes af ejeren efter før/efter-billedet. |
+| The chase is decided by the teams chasing, not a stage roll (`race-team-chase-7730`) | dormant | `team_chase_7730` | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #7730 | 2026-11-06 | #7730 ejer 5/11. Bygget, off; gælder kun løb der ikke er startet; tændes af ejeren efter før/efter-billedet. |
 | Official time persistence revision (`race-official-times-v1`) | retired | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6284 | 2026-10-16 | Frosset prototype. |
 
 ## race-day
 
-**live:** Stage replay and timeline film (`race-replay`) 2026-11-04 · Role picker scope (stage N to the end / stage N only) (`role-scope-choice`) 2026-10-06 · Stage page 2.0 (stage tabs, real elevation profile, your day) (`stage-page-v2`) 2026-11-01 · Stage plan along the route (`stage-plan-v1`) 2026-10-27
+**live:** Stage replay and timeline film (`race-replay`) 2026-11-04 · Stage page 2.0 (stage tabs, real elevation profile, your day) (`stage-page-v2`) 2026-11-01 · Stage plan along the route (`stage-plan-v1`) 2026-10-27
 
-**arkiv:** `auto-entry-generator` · `race-day-development` · `race-day-engine` · `race-detail-page` · `race-page-tabs-v2` · `stage-scheduler`
+**arkiv:** `auto-entry-generator` · `race-day-development` · `race-day-engine` · `race-detail-page` · `race-page-tabs-v2` · `role-scope-choice` · `stage-scheduler`
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
@@ -81,9 +82,9 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 ## season
 
-**live:** AI pool retirement (`ai-pool-retirement-v2`) 2026-10-15 · Development 2.0 part 1 (decline at season change, only manager teams develop) (`development-v2-aging`) 2026-10-26 · Season matrix on mobile (`season-matrix-mobile`) 2026-10-06 · Season transition (`season-transition`) 2026-10-17
+**live:** AI pool retirement (`ai-pool-retirement-v2`) 2026-10-15 · Development 2.0 part 1 (decline at season change, only manager teams develop) (`development-v2-aging`) 2026-10-26 · Season transition (`season-transition`) 2026-10-17
 
-**arkiv:** `ai-team-retire` · `season-end-recap` · `season-signup`
+**arkiv:** `ai-team-retire` · `season-end-recap` · `season-matrix-mobile` · `season-signup`
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
