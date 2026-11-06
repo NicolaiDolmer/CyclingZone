@@ -52,6 +52,7 @@ export const FRESH_FLAG_KEYS = Object.freeze(new Set([
   "let_go_order_7557",
   "itt_no_day_roll_7726",
   "started_field_lock_7733",
+  "team_chase_7730",
   "route_profile_hills",
   "ai_team_retire_enabled",
   "ai_pool_retirement_v2_enabled",

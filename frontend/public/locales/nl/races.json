@@ -1644,6 +1644,9 @@
           "chase_faded_climb": "De achtervolging doofde uit na {climb}, en het gat groeide weer.",
           "chase_faded": "De achtervolging doofde uit, en het gat groeide weer.",
           "chase_too_late": "De achtervolging kwam dichterbij, maar kwam weg tekort.",
+          "chase_tired": "De jagende ploegen hadden te veel verbruikt om het op tijd dicht te rijden.",
+          "chase_outgunned": "De achtervolgers waren niet sterk genoeg om deze vlucht op tijd terug te halen.",
+          "chase_too_few": "Te weinig renners werkten mee in de achtervolging om het op tijd dicht te rijden.",
           "gap_never_closed": "De achtervolging kreeg het gat nooit kleiner.",
           "gc_threat": "{teamCount, plural, =1 {{teamLast} jaagde} other {{teamsHead} en {teamLast} jaagden}} omdat {threats} een gevaar {threatCount, plural, one {was} other {waren}} voor {rider} in het klassement.",
           "closed_on_climb": "Het gat slonk op {climb}."

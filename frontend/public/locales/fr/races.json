@@ -1644,6 +1644,9 @@
           "chase_faded_climb": "La chasse s'est éteinte après {climb}, et l'écart a de nouveau grandi.",
           "chase_faded": "La chasse s'est éteinte, et l'écart a de nouveau grandi.",
           "chase_too_late": "La chasse s'est rapprochée, mais a manqué de route.",
+          "chase_tired": "Les équipes en chasse en avaient trop fait pour revenir à temps.",
+          "chase_outgunned": "Les poursuivants n'étaient pas assez forts pour reprendre cette échappée à temps.",
+          "chase_too_few": "Trop peu de coureurs roulaient dans la chasse pour revenir à temps.",
           "gap_never_closed": "La chasse n'a jamais fait baisser l'écart.",
           "gc_threat": "{teamCount, plural, =1 {{teamLast} a chassé} other {{teamsHead} et {teamLast} ont chassé}} parce que {threats} {threatCount, plural, one {menaçait} other {menaçaient}} {rider} au général.",
           "closed_on_climb": "L'écart a fondu dans {climb}."
