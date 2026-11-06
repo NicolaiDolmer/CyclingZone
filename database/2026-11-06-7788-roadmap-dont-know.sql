@@ -15,6 +15,12 @@
 --   - Ingen rækker har importance_score NULL, så den nye CHECK validerer rent.
 --   - Policies, view og RPC står i prod som i 2026-10-05-5387 og 2026-10-06-6221.
 
+-- Én transaktion: auto-migrate kører filen uden, og ellers ville stemmer fejle i
+-- hullet mellem DROP POLICY og CREATE POLICY. Kan låsen ikke fås, ruller det hele
+-- tilbage, og auto-migrate kan køres igen (#6342).
+SET lock_timeout = '3s';
+BEGIN;
+
 -- 1. roadmap_votes -----------------------------------------------------------
 ALTER TABLE roadmap_votes ALTER COLUMN importance_score DROP NOT NULL;
 
@@ -124,6 +130,8 @@ COMMENT ON COLUMN roadmap_votes.importance_score IS
   'Vigtighed 1-6. NULL = Ved ikke (#7788): punktet er besvaret uden tal, og idea_score er da også NULL.';
 
 NOTIFY pgrst, 'reload schema';
+
+COMMIT;
 
 -- Post-verify (read-only, køres efter apply):
 --   1. SELECT is_nullable FROM information_schema.columns
