@@ -100,6 +100,7 @@ export function resolveEffectiveConsent(localConsent, remoteConsent) {
 // kræve en identificeret person og stadig lade events flyde) sorterer vi fra
 // ved kilden: en intern bruger sender ingen events og identify'es aldrig.
 // Intern = admin-rollen (ejeren) eller et hold med is_test_account.
+/** @param {{ role?: string | null, teamIsTestAccount?: boolean | null }} [user] */
 export function isInternalPosthogUser({ role, teamIsTestAccount } = {}) {
   return role === "admin" || teamIsTestAccount === true;
 }

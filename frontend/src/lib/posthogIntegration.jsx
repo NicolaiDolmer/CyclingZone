@@ -39,7 +39,7 @@ export default function PosthogIntegration() {
   // #7811: ejer (admin) og testkonti tæller ikke med i målingerne. Holdets
   // is_test_account slås op én gang pr. bruger; indtil svaret er der, er
   // teamIsTest null og profilen "ikke klar", så ingen identify når at ske.
-  const [teamIsTest, setTeamIsTest] = useState({ userId: null, value: null });
+  const [teamIsTest, setTeamIsTest] = useState(/** @type {{ userId: string | null, value: boolean | null }} */ ({ userId: null, value: null }));
   useEffect(() => {
     if (!POSTHOG_ENABLED || !userId) return;
     let cancelled = false;
@@ -59,7 +59,7 @@ export default function PosthogIntegration() {
   }, [userId]);
   const teamLookupDone = !userId || teamIsTest.userId === userId;
   const isInternal = isInternalPosthogUser({
-    role: profile?.role,
+    role: /** @type {{ role?: string } | null} */ (profile)?.role,
     teamIsTestAccount: teamIsTest.userId === userId ? teamIsTest.value : null,
   });
   const posthogOn = isPosthogAllowed(effectiveConsent) && !isInternal;
