@@ -743,7 +743,9 @@ export function buildReport(story: RaceStory, lines: StoryLine[], cast: Cast, ow
       ? { key: "formedMine", params: { count: formed.count, km: km(formed.km), mine } }
       : { key: "formed", params: { count: formed.count, km: km(formed.km) } });
   }
-  if (ownAttack?.moment.type === "breakaway_formed") out.push(ownAttack.sentence);
+  // Et senere udbrud er ikke det, saetningen foer fortaeller om: saa staar han efter angrebene.
+  const sameBreak = ownAttack?.moment.type === "breakaway_formed" && ownAttack.moment.km === formed?.km;
+  if (ownAttack && sameBreak) out.push(ownAttack.sentence);
   const outcomes = story.breakaway?.outcomes ?? null;
   if (formed && outcomes) {
     const survivors = Object.entries(outcomes).filter(([, o]) => o === "survived").map(([id]) => id);
@@ -761,7 +763,7 @@ export function buildReport(story: RaceStory, lines: StoryLine[], cast: Cast, ow
     const gain = typeof attack.data.gain === "number" && attack.data.gain >= 1 ? formatGapPlain(attack.data.gain) : null;
     if (names) out.push(gain ? { key: "attackGain", params: { names, km: km(attack.km), gain } } : { key: "attack", params: { names, km: km(attack.km) } });
   }
-  if (ownAttack && ownAttack.moment.type !== "breakaway_formed") out.push(ownAttack.sentence);
+  if (ownAttack && !sameBreak) out.push(ownAttack.sentence);
   const [first, second] = cast.finishers;
   const winnerName = first ? cast.nameOf(first.riderId) : null;
   // Vandt din rytter, bruges kun din egen saetning (mineWon nedenfor), ikke begge.

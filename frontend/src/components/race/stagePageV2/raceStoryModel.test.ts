@@ -192,6 +192,16 @@ test("#7754: referatet siger hvem din rytter angreb med, lige efter udbruddet og
   assert.ok(!("km" in report[1].params) && !("gap" in report[1].params));
 });
 
+test("#7754: et senere udbrud klistres ikke paa det foerste", () => {
+  const events = hillyTimeline().flatMap((e) => (e.type === "breakaway_formed"
+    ? [{ ...e, params: { ...e.params, rider_ids: ["b1", "b2"] } }, ev(30, "breakaway_formed", { group_id: "breakaway-2500", reformation: true, rider_ids: ["b3", "m1"], exact_km: 30, exact_time: 2800 })]
+    : [e]));
+  const s = story(events);
+  const c = cast();
+  const keys = buildReport(s, curateMoments(s, c), c).map((r) => r.key);
+  assert.ok(keys.indexOf("ownAttackedWith") > keys.findIndex((k) => k.startsWith("formed")) + 1, keys.join(","));
+});
+
 test("#7754: uden egne ryttere i angrebet siges intet; to egne alene angreb med hinanden", () => {
   const s = story();
   const noMine = castFrom(RESULTS, [], 3, "t-none");
