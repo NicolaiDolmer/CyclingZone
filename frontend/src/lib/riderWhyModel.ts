@@ -12,7 +12,7 @@
 //      han var tabt undervejs og kom tilbage,
 //   4. bag fronten: det foerste tilbageslag der stod ved magt (buildOwnTimeLoss
 //      vogter "kom han tilbage"), og hvad der foerte til det.
-import { checkpointGapForRider, isPeloton, FINALE_KM, type RaceStory, type StoryMoment } from "../components/race/stagePageV2/raceStoryModel.ts";
+import { checkpointGapForRider, mainGroupId, FINALE_KM, type RaceStory, type StoryMoment } from "../components/race/stagePageV2/raceStoryModel.ts";
 import type { Climb } from "../components/race/stagePageV2/stagePageV2Model.ts";
 import { buildOwnTimeLoss, hasGroupGaps, type DropReason, type TimelineEvent } from "./stageSplitTimes.ts";
 
@@ -247,7 +247,7 @@ export function riderWhy(input: RiderWhyInput): RiderWhy {
   // Kun et angreb der faktisk blev hentet: at slutte bag et udbrud er ikke at fejle.
   if (attack && !attackHeld(attack, story, riderId)) return said("attackBehind", placeOf(attack, story, climbs));
   if (finaleGroup && sprint) return said("bunchBehindSprint");
-  if (group?.includes_rest && isPeloton(true, group.size)) {
+  if (group && mainGroupId(finish.groups) === group.group_id) {
     const survivors = Object.values(outcomes ?? {}).some((o) => o === "survived");
     return said(survivors ? "pelotonBehindBreak" : "pelotonBehind");
   }
