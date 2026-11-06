@@ -2205,5 +2205,11 @@
       "hours": "dans {count} h",
       "days": "dans {count, plural, one {# jour} other {# jours}}"
     }
+  },
+  "timeLimitRisk": {
+    "short": "Risque de hors délai",
+    "long": "Il est très fatigué et cette étape ne lui convient pas. Il pourrait finir hors délai. Mets-le sur Autobus ou Rouler tranquille pour lui éviter ce risque supplémentaire.",
+    "outShort": "Trop fatigué",
+    "outLong": "Hors délai. Il était très fatigué et l'étape ne lui convenait pas."
   }
 }

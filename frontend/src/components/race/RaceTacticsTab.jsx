@@ -80,6 +80,8 @@ import SortableTh from "../ui/SortableTh.jsx";
 import FitBar from "../racehub/FitBar.jsx";
 import RaceStageProfileRow from "./RaceStageProfileRow.jsx";
 import { stageRouteMatch, routeMatchComparator } from "../../lib/lineupInsight.js";
+import TimeLimitRiskMark from "./TimeLimitRiskMark.tsx"; // #7715
+import { showsTimeLimitOut, showsTimeLimitRisk } from "../../lib/timeLimitRisk7715.ts"; // #7715
 import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import {
   buildDraftMatrix,
@@ -121,7 +123,7 @@ import { roadOrdersAvailable, withoutRoadOrders } from "../../lib/tacticsProfile
 import { isStageLockedForTactics } from "../../lib/racePageTabs.js";
 import { tacticsStartStage } from "./stagePageV2/stagePageV2Model.ts"; // #6570
 import StagePlanBoard from "./StagePlanBoard.tsx"; // #7003
-import { stagePlanReplacesControls, withStagePlanFields, withoutStagePlans } from "./StagePlanModel.ts"; // #7003
+import { hardestPlanEffort, stagePlanReplacesControls, withStagePlanFields, withoutStagePlans } from "./StagePlanModel.ts"; // #7003
 import { blockedReasonKey, oppositeOrderError } from "../../lib/oppositeOrders.js"; // #7003 spec §3
 import { advanceBaseline, keepMineAfterConflict, runTacticsSave, withConfirmedVersions } from "../../lib/tacticsSaveFlow.ts"; // #7327
 import TacticsSaveStatus from "./TacticsSaveStatus.tsx"; // #7327
@@ -826,7 +828,18 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         </span>
       );
     }
+    const timeLimitMark = renderTimeLimitMark(rider);
+    if (timeLimitMark) return <div className="flex flex-col items-start gap-1"><FitBar score={score} />{timeLimitMark}</div>;
     return <FitBar score={score} />;
+  }
+
+  // #7715: varslet foer etapen, og samme sted efter den, hvorfor han roeg ud.
+  function renderTimeLimitMark(rider) {
+    if (showsTimeLimitOut(rider, activeStage)) return <TimeLimitRiskMark variant="out" />;
+    // Med en etapeplan taeller planens haardeste indsats, ikke den gamle intention.
+    const plan = stagePlanOn ? orderByRider.get(rider.rider_id)?.plan : null;
+    const effort = Array.isArray(plan) && plan.length ? hardestPlanEffort(plan) : effortFor(rider);
+    return showsTimeLimitRisk(rider, activeStage, effort) ? <TimeLimitRiskMark /> : null;
   }
 
   function renderIntentionCell(rider) {
@@ -1101,6 +1114,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
             sortDir: routeSortDir,
             onSort: toggleRouteSort,
             renderCell: renderRouteMatchCell,
+            renderMark: renderTimeLimitMark,
           }}
         />
       )}
@@ -1199,6 +1213,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                 </span>
               </div>
               <div className="mt-0.5">{renderRoleCell(rider)}</div>
+              {renderTimeLimitMark(rider) && <div className="mt-1.5">{renderTimeLimitMark(rider)}</div>}
               <div className="mt-2">{renderIntentionCell(rider)}</div>
               {showOrders && <div className="mt-2">{renderOrdersCell(rider)}</div>}
               {openRole && (

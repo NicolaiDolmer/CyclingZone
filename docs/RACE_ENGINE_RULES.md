@@ -741,6 +741,16 @@ Ejeren besluttede 4/9 at UCI's tidsgrænser bliver et krav til v4 før flip — 
 | Bruger terningen | Ingen rng. Tidsgrænsen er en **regel**, ikke en lodtrækning |
 | Flytter placeringer | Rank, tid, gruppe og rækkefølge er urørte. Kun `status` ændres. Invariant 3 og 6 er derfor uberørte per konstruktion |
 
+**Meget trætte ryttere ([#7715](https://github.com/NicolaiDolmer/CyclingZone/issues/7715), ejer 5/11, **slukket**).** Målingen viste, at træthed næsten ikke flytter tiden på en hård etape: gruppen bærer rytteren, og grupetto-redningen tager resten. Efter [#7713](https://github.com/NicolaiDolmer/CyclingZone/issues/7713) er der ingen lodtrækning, så en udkørt rytter havde ingen synlig risiko. Kontakten retter det uden en terning:
+1. **Årsagen er to synlige ting.** Rytteren er meget træt, og en hård etape passer ham dårligt set i forhold til hans egne evner. Målet er rytterens eget niveau, så reglen betyder det samme i alle divisioner og ungdomsløb. Kun de hårde vej-typer. Enkeltstart og holdtidskørsel er urørte.
+2. **Virkningen.** Rytteren har mindre tid at give af end resten af feltet, og jo mere træt og jo dårligere match, jo mindre tid. Grupettoen bærer ham ikke. Kommer han ind i god tid, sker der intet, og vinderen kan aldrig ramme reglen. Reglen rører kun `status`, som resten af M15.
+3. **Spilleren kan undgå det.** Grupetto og Kør roligt holder ham under den almindelige regel. Eller han lader ham blive hjemme. AI-hold rammes ens.
+4. **Et uheld tæller ikke.** Rytteren dømmes på sin tid minus uheldet, som hos juryen, og en genindsat rytter bliver genindsat.
+5. **Varsel og forklaring.** Motoren og mærket bruger samme funktion (`timeLimitFatigueSeverity7715`). De kan stadig være uenige på en dag med flere etaper, fordi mærket læser morgenens træthed (#7801); det skal løses før tænding. Mærket står på taktik og udtagelse, kun som et ja, aldrig med tal, og ingen indbakke. Det forsvinder, når spilleren vælger en af udvejene. `outside_time_limit` bærer `fatigue_rider_ids`, og forklaringen står samme sted efter etapen.
+6. **Kun løb der ikke er startet.** `app_config`-rækken `time_limit_fatigue_7715 = "on"` (præcis den streng) tilbyder reglen, og den bindes på `races.time_limit_fatigue_7715` ved løbets første etape, samme princip som regel-revisionen. Et løb uden binding får den aldrig undervejs. Kun under `s5_profiles_v3` og senere. Et bundet løb kører færdigt med reglen, også hvis kontakten slukkes. Kun værdien `stop` er nødstop og fjerner den fra næste etape.
+
+Slukket er bit-identisk med merge-basen (`raceRunner7715FlagOff.json`). Tænding kræver ejerens ord, og Hjælp og patch note skal med samme dag. Knapperne står i `TIME_LIMIT_FATIGUE_7715_TUNING` (`tuning.ts`). Målingerne står privat (`balance-internals/7715/`). Kode: `mechanics/timeLimit.ts`, `backend/lib/timeLimitFatigue7715.js`. Test: `mechanics/timeLimitFatigue7715.test.ts`, `backend/lib/raceRunner7715Flag.test.js`.
+
 **Faktortabellen — grænsen som andel af vindertiden. Alle værdier er STARTGÆT** (samme forbehold som resten af `tuning.ts`), kalibreres i harnesset. Bor i `TIME_LIMIT_EXTRA_TUNING` (`backend/lib/engine/v4/tuning.ts`).
 
 | Etapetype | Andel over vindertiden | Hvorfor |
