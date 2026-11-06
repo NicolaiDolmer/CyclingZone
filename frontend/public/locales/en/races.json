@@ -464,7 +464,7 @@
       "fillMissing": "Fill gaps",
       "clearDay": "Clear day",
       "clearAllSeason": "Clear all",
-      "bound": "Locked riders cannot be added to any race shown today",
+      "bound": "Locked riders cannot be added to any of the races shown",
       "loadShort": "{days}d",
       "loadTitle": "Season load: {races, plural, one {# race} other {# races}}, {days, plural, one {# race day} other {# race days}} entered this season",
       "clearDayTooltip": "Clears {races, plural, one {# race} other {# races}} and removes {riders, plural, one {# rider} other {# riders}} for this day"
@@ -888,6 +888,10 @@
       "bodyAt": "You pressed Train now at {time}. Riders who trained today can't race today's race.",
       "body": "Riders who trained today can't race today's race.",
       "rider": "Trained today",
+      "titleEarlier": "Locked.",
+      "bodyEarlierAt": "You pressed Train now {day} at {time}. Riders who trained on one of the race's days can't race it.",
+      "bodyEarlier": "Riders who trained on one of the race's days can't race it.",
+      "riderEarlier": "Trained before",
       "columnLocked": "Locked"
     },
     "saving": "Saving…",
@@ -1566,6 +1570,10 @@
           "all_out_held_on": "{rider} rode all out on your orders and stayed with the front group."
         },
         "breakaway_dropped": "{riders} {count, plural, one {is} other {are}} dropped from the break.",
+        "breakaway_attempt_failed": "{riders}{others, plural, =0 {} one { and # other} other { and # others}} {count, plural, one {tries} other {try}} to get away, but {count, plural, one {doesn't} other {don't}} get clear. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} and {teamLast}}} worked against it. The attempt cost energy for the rest of the stage.",
+        "breakaway_attempt_failed_field": "{riders}{others, plural, =0 {} one { and # other} other { and # others}} {count, plural, one {tries} other {try}} to get away, but {count, plural, one {doesn't} other {don't}} get clear. {teamCount, plural, one {# team} other {# teams}} worked against it. The attempt cost energy for the rest of the stage.",
+        "breakaway_attempt_none_clear": "{riders}{others, plural, =0 {} one { and # other} other { and # others}} {count, plural, one {tries} other {try}} to get away, but nobody gets clear. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} and {teamLast}}} worked against it. The attempt cost energy for the rest of the stage.",
+        "breakaway_attempt_none_clear_field": "{riders}{others, plural, =0 {} one { and # other} other { and # others}} {count, plural, one {tries} other {try}} to get away, but nobody gets clear. {teamCount, plural, one {# team} other {# teams}} worked against it. The attempt cost energy for the rest of the stage.",
         "group_ahead_formed": "{riders} {count, plural, one {goes} other {go}} clear in a group ahead of the peloton.",
         "group_ahead_caught": "The group ahead of the peloton is caught: {riders}.",
         "group_ahead_survived": "The group ahead of the peloton stays away to the line.",

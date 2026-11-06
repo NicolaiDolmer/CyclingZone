@@ -302,7 +302,7 @@ import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabl
 import { buildCalendarModel, toCalendarWireEntry, toCopenhagenISODate, buildGameDayDateMap } from "../lib/raceCalendar.js";
 import { snapPeakWindow, lastStageDate, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
 import { dateStringToOrdinal, loadTargetRaceDemands, loadPeakPlans, resolvePeakTrainingQualities, aggregateDemandVector } from "../lib/racePeakPlans.js";
-import { buildRouteMatch, raceRouteVector, routeMatchRevisionFor, ROUTE_MATCH_STAGE_COLUMNS } from "../lib/routeMatch.js"; // #6207
+import { buildRouteMatch, raceRouteVector, routeMatchRevisionFor, stageRouteVector, ROUTE_MATCH_STAGE_COLUMNS } from "../lib/routeMatch.js"; // #6207
 import { RACE_V3_TUNING, VALID_EFFORTS_FIVE_STEP } from "../lib/raceRoles.js";
 import { peakStatus, stageProfileStrip, raceProfileSummary, countRivalPeaks, teamDivisionKnownForSeason, peakValueFormPoints, findPaybackCollisions, raceCardPeakOverlay } from "../lib/plannerBoard.js";
 import { suggestPeaksForRider, shouldRecommendNoPeak, buildNoPeakSuggestion } from "../lib/peakSuggestions.js";
@@ -6317,7 +6317,7 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
       // #6964: alder afgør ungdomsløb (seasonNumber slår aldersgaten til; seniorløb: undefined).
       applyRiderEligibilityFilter(supabase.from("riders").select("id").eq("team_id", req.team.id), { squad: raceSquadOf(race), seasonNumber: await loadRaceSeasonNumber({ supabase, race }) }),
       supabase.from("race_stage_profiles")
-        .select("stage_number, profile_type, finale_type, demand_vector")
+        .select(ROUTE_MATCH_STAGE_COLUMNS) // #6207: assistenten scorer på motorens rute
         .eq("race_id", race.id).order("stage_number", { ascending: true }),
     ]);
     if (ridersErr) return res.status(500).json({ error: ridersErr.message });
@@ -6869,7 +6869,7 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       .filter((r) => r.abilities && !injuredIds.has(r.rider_id));
 
     const { data: profs } = await supabase.from("race_stage_profiles")
-      .select("race_id, stage_number, profile_type, finale_type, demand_vector").in("race_id", target.map((r) => r.id));
+      .select(ROUTE_MATCH_STAGE_COLUMNS).in("race_id", target.map((r) => r.id)); // #6207
     const stagesByRace = new Map();
     for (const p of profs || []) {
       if (!stagesByRace.has(p.race_id)) stagesByRace.set(p.race_id, []);
@@ -7099,16 +7099,20 @@ router.get("/races/strategy", requireAuth, async (req, res) => {
     if (season) {
       // #5517: seniorløbene (squads.withSeniorSquadScope).
       const { data: races, error: racesErr } = await withSeniorSquadScope((senior) => senior(supabase
-        .from("races").select("id, name, race_class, stages, stages_completed, status, league_division_id"))
+        .from("races").select("id, name, race_class, stages, stages_completed, status, league_division_id, engine_rules_revision"))
         .eq("season_id", season.id));
       if (racesErr) throw new Error(`races (strategy): ${racesErr.message}`);
       const myRaces = (races || []).filter((r) =>
         teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: r.league_division_id }));
       const raceIds = myRaces.map((r) => r.id);
       const profs = raceIds.length
-        ? await fetchAllStageProfiles(supabase, raceIds, "race_id, profile_type, demand_vector")
+        ? await fetchAllStageProfiles(supabase, raceIds, ROUTE_MATCH_STAGE_COLUMNS) // #6207
         : [];
-      const stageProfiles = (profs || []).map((p) => ({ bucket: terrainBucket(p.profile_type), demand_vector: p.demand_vector }));
+      const raceById = new Map(myRaces.map((r) => [r.id, r]));
+      const stageProfiles = (profs || []).map((p) => ({
+        bucket: terrainBucket(p.profile_type),
+        vector: stageRouteVector(p, routeMatchRevisionFor(raceById.get(p.race_id))),
+      }));
       suitabilities = bucketSuitabilities({
         stageProfiles,
         riders: riderIdList.map((id) => ({ rider_id: id, abilities: abById.get(id) })).filter((r) => r.abilities),
@@ -7263,7 +7267,7 @@ router.post("/races/strategy/preview", requireAuth, marketWriteLimiter, async (r
       .map((id) => ({ rider_id: id, abilities: abById.get(id), fatigue: fatById.get(id) ?? 0 }))
       .filter((r) => r.abilities);
 
-    const profs = await fetchAllStageProfiles(supabase, raceIds, "race_id, stage_number, profile_type, finale_type, demand_vector");
+    const profs = await fetchAllStageProfiles(supabase, raceIds, ROUTE_MATCH_STAGE_COLUMNS); // #6207
     const stagesByRace = new Map();
     for (const p of profs || []) {
       if (!stagesByRace.has(p.race_id)) stagesByRace.set(p.race_id, []);
