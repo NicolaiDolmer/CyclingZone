@@ -130,6 +130,18 @@ Gemte fremdriftsmaps er sparsomme: en manglende evnenøgle betyder nul, som i
 motoren. Et helt manglende snapshot eller en ugyldig eksplicit værdi er ukendt.
 Det gælder både foreløbige og afregnede kvitteringer (#6971).
 
+En afregnet dato uden et helt point siger i ord hvorfor (#7757), i stedet for en
+tom linje. Hviledage har fire årsager, i denne rækkefølge: skade, bundet til et
+løb, spillerens træthedsgrænse og planens hvile (egen plan, egen ugeplan eller
+holdets ugerytme; motoren skriver aldrig selv en hvile-plan). Et pas får mærket
+`at_ceiling`, når alt det træner står på eller over loftet: under kurve B det
+bløde loft, ellers det hårde. Loftet aftrappes med alderen og kan ligge under det
+rytteren kan i dag, så de ældste ryttere får ingen vækst uden at det er en fejl.
+Teksten "tæt på sit bedste niveau" kræver at alle datoens pas har mærket, og at
+dagen reelt gav næsten intet, for evner uden for fokus kan stadig flytte sig.
+Mærket er kun aflæsning og ændrer aldrig udbyttet. Gamle rapporter uden beviset
+viser ingen årsag.
+
 Alle forventede slots skal have kompatibel datokadence, før kvitteringen er
 afregnet. Manglende slots er afventende; karantæne, modstridende dubletter og
 blandet kadence kræver efterkontrol. Disse tilstande må ikke blive til målte

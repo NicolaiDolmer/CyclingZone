@@ -62,7 +62,7 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
     : activity.intensity === "rest" ? t("restDay")
     : activity.focus ? tRider(`training.focus_${activity.focus}`) : t("dailyReceipt.training");
   // #7757: only a settled date has a whole day to explain.
-  const reasonFor = (row: DailyRiderReceipt) => isKnown(row) ? dayReason(row.activities, todayGainTotal(row)) : null;
+  const reasonFor = (row: DailyRiderReceipt) => isKnown(row) ? dayReason(row.activities, todayGainTotal(row), row.gain_percent) : null;
   const gainsLabel = (row: DailyRiderReceipt) => {
     if (!showsDevelopment(row)) return t(`dailyReceipt.status.${row.receipt_status}`);
     const reason = reasonFor(row);
