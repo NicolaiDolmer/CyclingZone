@@ -8,6 +8,8 @@ import {
   isValidScore,
   buildVotePayload,
   buildImportancePayload,
+  buildDontKnowPayload,
+  isDontKnow,
   ROADMAP_ITEM_COLUMNS,
   votesByItemId,
 } from "./roadmapVoting.js";
@@ -108,6 +110,26 @@ test("buildImportancePayload sender kun importance_score (idea_score røres ikke
   assert.equal("idea_score" in p, false);
   assert.throws(() => buildImportancePayload({ itemId: "i1", userId: "u1", importanceScore: 7 }));
   assert.throws(() => buildImportancePayload({ itemId: "i1", userId: null, importanceScore: 4 }));
+});
+
+// #7788: ét Ved ikke pr. punkt, ikke pr. akse.
+test("buildDontKnowPayload nulstiller begge tal, så en gammel idea_score ikke bliver stående", () => {
+  const p = buildDontKnowPayload({ itemId: "i1", userId: "u1" });
+  assert.equal(p.item_id, "i1");
+  assert.equal(p.user_id, "u1");
+  assert.equal(p.idea_score, null);
+  assert.equal(p.importance_score, null);
+  assert.ok(typeof p.updated_at === "string" && !Number.isNaN(Date.parse(p.updated_at)));
+  assert.throws(() => buildDontKnowPayload({ itemId: "", userId: "u1" }));
+  assert.throws(() => buildDontKnowPayload({ itemId: "i1", userId: null }));
+});
+
+test("isDontKnow kræver en række uden tal; ingen række er ikke et svar", () => {
+  assert.equal(isDontKnow({ idea_score: null, importance_score: null }), true);
+  assert.equal(isDontKnow({ idea_score: null, importance_score: 4 }), false);
+  assert.equal(isDontKnow({ idea_score: 5, importance_score: 4 }), false);
+  assert.equal(isDontKnow(undefined), false);
+  assert.equal(isDontKnow(null), false);
 });
 
 test("ROADMAP_ITEM_COLUMNS henter horizon og beta-felterne (#6150)", () => {

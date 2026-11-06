@@ -43,6 +43,7 @@
   "voting": {
     "idea": "Bonne idée ?",
     "importance": "Important pour toi ?",
+    "dontKnow": "Je ne sais pas",
     "saved": "Enregistré",
     "error": "Ton vote n'a pas été enregistré. Réessaie."
   },

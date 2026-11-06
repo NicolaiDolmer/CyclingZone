@@ -24,7 +24,7 @@ import { apiFetch } from "../../../lib/apiFetch.ts";
 import { useAdminAuth } from "../shared/useAdminAuth";
 import {
   ADMIN_TABS, DEFAULT_ADMIN_TAB, DEFAULT_SORT, HORIZONS, HORIZON_LABELS, IDEA_TARGET, ISSUE_STATUSES,
-  fmtScore, filterIssueRows, filterItems, isAdminTab, isSplit, latestUpdateByIssue, mergeItemRows, movePatches,
+  dontKnowTotal, fmtScore, filterIssueRows, filterItems, isAdminTab, isSplit, latestUpdateByIssue, mergeItemRows, movePatches,
   nextSort, nextSortOrder, ownOrder, sortRows, statusPatch, tabCounts, tabRows, visibleIdeaCount, ROADMAP_STATUSES,
 } from "../../../lib/roadmapAdminModel.ts";
 import {
@@ -290,6 +290,7 @@ export default function GrowthRoadmapTab() {
     importance: { key: "importance", header: "Vigtighed", mobileHeader: "Vigt.", sortKey: "importance", numeric: true, compact: true, render: (r) => <Num>{fmtScore(r.avg_importance)}</Num> },
     score: { key: "score", header: "Score", sortKey: "score", numeric: true, compact: true, render: (r) => <Num>{fmtScore(r.steering_score, 1)}</Num> },
     votes: { key: "votes", header: "Stemmer", sortKey: "votes", numeric: true, compact: true, render: (r) => <Num>{fmtInt(r.votes)}</Num> },
+    dontKnow: { key: "dontKnow", header: "Ved ikke", sortKey: "dontKnow", numeric: true, compact: true, render: (r) => <Num>{fmtInt(r.dont_know)}</Num> },
     own: {
       key: "own", header: "Din rækkefølge", mobileHeader: "Din", sortKey: "own", numeric: true, compact: true,
       render: (r) => {
@@ -374,8 +375,8 @@ export default function GrowthRoadmapTab() {
   ));
 
   const itemColumnsByTab = {
-    ideas: [col.rank, col.title("Idé"), col.horizon, col.idea, col.importance, col.score, col.votes, col.issue, ideaActions],
-    planned: [col.rank, col.title("Punkt", true), col.horizonEdit, col.importance, col.votes, col.own, col.flag, statusActions],
+    ideas: [col.rank, col.title("Idé"), col.horizon, col.idea, col.importance, col.score, col.votes, col.dontKnow, col.issue, ideaActions],
+    planned: [col.rank, col.title("Punkt", true), col.horizonEdit, col.importance, col.votes, col.dontKnow, col.own, col.flag, statusActions],
     in_progress: [col.title("Punkt"), col.horizonEdit, col.votes, col.beta, col.flag, statusActions],
     shipped: [col.title("Punkt"), col.date, col.importance, col.votes, col.flag,
       col.actions((r) => (
@@ -384,8 +385,8 @@ export default function GrowthRoadmapTab() {
           <RowButton onClick={() => setModal({ kind: "item", row: r })}>Ret</RowButton>
         </>
       ))],
-    y2027: [col.rank, col.title("Punkt", true), col.statusEdit, col.importance, col.votes, col.own, col.flag, horizonActions],
-    votes: [col.rank, col.title("Punkt"), col.status, col.horizon, col.votes, col.idea, col.importance, col.score,
+    y2027: [col.rank, col.title("Punkt", true), col.statusEdit, col.importance, col.votes, col.dontKnow, col.own, col.flag, horizonActions],
+    votes: [col.rank, col.title("Punkt"), col.status, col.horizon, col.votes, col.dontKnow, col.idea, col.importance, col.score,
       col.actions((r) => <RowButton onClick={() => setModal({ kind: "item", row: r })}>Ret</RowButton>)],
   };
 
@@ -449,7 +450,7 @@ export default function GrowthRoadmapTab() {
   const statItems = [
     { label: "Har stemt", value: fmtInt(stats?.voters), sub: stats ? `af ${fmtInt(stats.managed_teams)} hold` : undefined },
     { label: "Aktive 14 dage", value: fmtInt(stats?.voters_14d) },
-    { label: "Stemmer i alt", value: fmtInt(stats?.votes_total) },
+    { label: "Stemmer i alt", value: fmtInt(stats?.votes_total), sub: stats ? `${fmtInt(dontKnowTotal(rows))} Ved ikke` : undefined },
     { label: "Har svaret på alt", value: fmtInt(stats?.voted_all) },
   ];
 

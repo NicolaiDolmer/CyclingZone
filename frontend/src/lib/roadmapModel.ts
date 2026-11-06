@@ -6,7 +6,7 @@
 // #7666: Plan-fanen grupperes efter horisont (denne uge ... senere), færdige
 // punkter kobles til deres patch note, kendte fejl får en dateret tidslinje,
 // og en søgning går på tværs af alle fanerne.
-import { ENGINE_ORDER, isValidScore } from "./roadmapVoting.js";
+import { ENGINE_ORDER, isDontKnow, isValidScore } from "./roadmapVoting.js";
 
 export type RoadmapStatus = "active" | "planned" | "in_progress" | "shipped" | "archived";
 // "next" er den gamle "snart"-værdi; den bevares, til ejeren har flyttet punkterne.
@@ -139,6 +139,7 @@ export function weekRange(now: Date, offsetWeeks: number): { start: string; end:
 }
 
 export function isRated(item: RoadmapItem, vote: RoadmapVote | undefined): boolean {
+  if (isDontKnow(vote)) return true; // #7788: et Ved ikke er også et svar
   if (!vote || !isValidScore(vote.importance_score)) return false;
   return item.status === "planned" ? true : isValidScore(vote.idea_score);
 }

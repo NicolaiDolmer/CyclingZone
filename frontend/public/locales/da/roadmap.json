@@ -43,6 +43,7 @@
   "voting": {
     "idea": "God idé?",
     "importance": "Vigtigt for dig?",
+    "dontKnow": "Ved ikke",
     "saved": "Gemt",
     "error": "Din stemme blev ikke gemt. Prøv igen."
   },

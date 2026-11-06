@@ -43,6 +43,7 @@
   "voting": {
     "idea": "Good idea?",
     "importance": "Important to you?",
+    "dontKnow": "Don't know",
     "saved": "Saved",
     "error": "Your vote was not saved. Try again."
   },
