@@ -66,11 +66,11 @@ test("slukket: fejlen er stadig der, hold og ryttere falder ud", async () => {
   assert.ok(!stageRiderIds.includes(RIDERS_7733.movedSquad));
 });
 
-test("slukket: en fejl i kontakten aendrer intet", async () => {
+test("slukket: uden stempel aendrer en taendt kontakt intet paa et startet loeb", async () => {
   const off = await runStage7733();
   const failing = await runStage7733({
     flag: "on",
-    extraDeps: { checkStartedFieldLock7733Enabled: async () => { throw new Error("boom"); } },
+    extraDeps: { readStartedFieldLock7733: async () => false },
   });
   assert.deepEqual(failing.stageRiderIds, off.stageRiderIds);
 });
@@ -110,7 +110,7 @@ test("taendt: det gaelder ogsaa et seniorloeb", async () => {
   assert.ok(stageRiderIds.includes(RIDERS_7733.movedSquad));
 });
 
-test("etape 1 spoerger aldrig kontakten: startreglerne gaelder fuldt ud ved start", async () => {
+test("etape 1 laeser aldrig stemplet: startreglerne gaelder fuldt ud ved start", async () => {
   let asked = 0;
   const race = { ...RACE_7733, stages_completed: 0 };
   const supabase = makeSupabase7733(worldAfterStart7733({ race }), { flag: "on" });
@@ -120,7 +120,7 @@ test("etape 1 spoerger aldrig kontakten: startreglerne gaelder fuldt ud ved star
   assert.ok(!entrants.some((e) => poolRiders.includes(e.rider_id)));
   await runStage7733({
     race, stageIndex: 0, flag: "on",
-    extraDeps: { checkStartedFieldLock7733Enabled: async () => { asked += 1; return true; } },
+    extraDeps: { readStartedFieldLock7733: async () => { asked += 1; return true; } },
   });
   assert.equal(asked, 0);
 });

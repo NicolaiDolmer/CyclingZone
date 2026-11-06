@@ -128,6 +128,11 @@ export function judgeFloorChase7730(input: {
   return { targetSeconds, short: true, reason: floorChaseShortReason(pull, sum("fresh"), sum("even"), t.onTimePull), teamIds };
 }
 
+/** Ville noget hold jage? Endagsloeb har ingen etapeinteresse (null); saa er det jag-ordrerne der svarer. */
+export function floorChaseWanted7730(interest: { teamIds: readonly string[] } | null | false | undefined, orders: readonly { breakaway_stance: string }[]): boolean {
+  return interest ? interest.teamIds.length > 0 : orders.some((order) => order.breakaway_stance === "chase");
+}
+
 /**
  * Aarsagen er det der alene havde bragt jagten i tide: friske ben, ellers ben der matcher
  * udbruddet. Kan intet af det alene goere det (ét hold naar aldrig maalet selv), er aarsagen
