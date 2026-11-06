@@ -131,7 +131,7 @@ export default function YourDayCard({ results, stageNumber, isStageRace, loaded,
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
             <div>
               <div className="mb-1 font-data text-2xs font-semibold uppercase tracking-[.14em] text-cz-3"><span className="md:hidden">{t("stagePageV2.yourDay.topN", { count: DAY_TOP_COUNT_MOBILE })}</span><span className="hidden md:inline">{t("stagePageV2.yourDay.topN", { count: DAY_TOP_COUNT })}</span></div>
-              <Rows rows={day.top} mobileLimit={DAY_TOP_COUNT_MOBILE} why={rowWhy} />
+              <Rows rows={day.top} mobileLimit={DAY_TOP_COUNT_MOBILE} />
             </div>
             <div>
               <div className="mb-1 font-data text-2xs font-semibold uppercase tracking-[.14em] text-cz-3">{t("stagePageV2.yourDay.yourRiders")}</div>
