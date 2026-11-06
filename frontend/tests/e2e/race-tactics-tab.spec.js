@@ -134,6 +134,52 @@ async function mockTacticsRace(page, {
   return () => capturedBody;
 }
 
+for (const { width, stagePlan } of [
+  { width: 375, stagePlan: false },
+  { width: 390, stagePlan: false },
+  { width: 375, stagePlan: true },
+]) {
+  test(`taktik: kanttryk åbner ${stagePlan ? "rollevælgeren på etapeplanen" : "begge vælgere"} ved ${width} px`, async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.use.hasTouch, "Requires a touch browser context");
+    await page.setViewportSize({ width, height: width === 375 ? 812 : 844 });
+    await stabilizePage(page);
+    await installNetworkMocks(page);
+    const getBody = await mockTacticsRace(page, {
+      race: {
+        ...raceFixture({ stages: 3, stagesCompleted: 1, raceType: "stage_race" }),
+        ...(stagePlan ? { engine_rules_revision: "orders_gc_v1" } : {}),
+      },
+      validEfforts: FIVE_STEPS,
+      results: LIVE_RESULTS,
+    });
+    if (stagePlan) {
+      await page.route("**/rest/v1/race_stage_profiles**", (route) => json(route, [ittProfile(2, "flat")]));
+      await mockIttTeamOrders(page);
+    }
+    await login(page);
+    await page.goto(`/races/${RACE_ID}?tab=tactics`);
+    const panel = page.getByTestId(stagePlan ? "stage-plan-board" : "race-tactics-tab");
+    const role = panel.getByRole("button", { name: /^Skift .+s rolle$/ }).first();
+    const intention = panel.getByRole("button", { name: "Sæt intention", exact: true }).first();
+
+    if (stagePlan) await expect(intention).toHaveCount(0);
+    for (const action of stagePlan ? [role] : [role, intention]) {
+      await action.evaluate((button) => button.scrollIntoView({ block: "center" }));
+      const box = await action.boundingBox();
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      const point = { x: box.x + box.width / 2, y: box.y + box.height - 2 };
+      expect(await action.evaluate((button, { x, y }) => button.contains(document.elementFromPoint(x, y)), point)).toBe(true);
+      await page.touchscreen.tap(point.x, point.y);
+      const openAction = panel.locator('button[aria-expanded="true"]').filter({ visible: true });
+      await expect(openAction).toHaveCount(1);
+      await expect(openAction).toHaveText("Luk");
+      await openAction.tap();
+      await expect(openAction).toHaveCount(0);
+    }
+    expect(getBody()).toBeNull();
+  });
+}
+
 test("taktik: etape-vælger, femtrins-vælger og et gem der ikke taber andre etaper", async ({ page }, testInfo) => {
   await stabilizePage(page);
   await installNetworkMocks(page);
