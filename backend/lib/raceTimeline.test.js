@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { buildStageTimeline, buildStageTimelineV4, TIMELINE_VERSION, withEventPlaces } from "./raceTimeline.js";
-import { buildRaceStory, replayFrames } from "./raceStory.js";
+import { buildRaceStory, checkpointGapForRider, replayFrames } from "./raceStory.js";
 import { computeCatchKm } from "./racePassages.js";
 import { stableSeed, deriveBreakawayStatus, ABILITY_KEYS } from "./raceSimulator.js";
 import { buildRaceResults, buildStageRowsAccumulated } from "./raceRunner.js";
@@ -596,6 +596,22 @@ test("#7734: etape 10: de hentede taber tiden undervejs og hopper ikke ind i gru
   const stepToLine = gapOf(last, "gruppetto-13010").gap_s - previous;
   const stepOnRoad = gapOf(onRoad.at(-1), "gruppetto-13010-late").gap_s - gapOf(onRoad.at(-2), "gruppetto-13010-late").gap_s;
   assert.ok(Math.abs(stepToLine - stepOnRoad) < 1, `sidste km er samme hældning som resten, ikke et hop (${stepToLine} mod ${stepOnRoad})`);
+});
+
+test("#7734: en passage på vejen viser de hentede på deres egen linje, som filmen gør", () => {
+  const { events, frames } = realStage10();
+  const withPassage = withEventPlaces([...events, { km: 176, type: "kom_passage", params: { name: "x", category: "3", exact_km: 176, top: [] } }]);
+  const story = buildRaceStory({ events: withPassage, timelineVersion: 2 });
+  const passage = story.checkpoints.find((c) => c.km === 176);
+  const late = checkpointGapForRider(passage, "rider-late-a");
+  assert.equal(late.group_id, "gruppetto-13010-late");
+  assert.equal(checkpointGapForRider(passage, "rider-set").group_id, "gruppetto-13010");
+  // En passage bærer hullerne fra sidste melding, så de sammenlignes med feltet, ikke fronten.
+  const behindField = (groups) => groups.find((g) => g.group_id === "gruppetto-13010-late").gap_s - groups.find((g) => g.group_id === "peloton-0").gap_s;
+  const inFilm = behindField(frames.find((f) => f.km === 176).groups);
+  const atPassage = behindField(passage.groups);
+  assert.ok(Math.abs(atPassage - inFilm) < 5, `passagen ${atPassage} og filmen ${inFilm} fortæller det samme`);
+  assert.equal(story.checkpoints.at(-1).groups.find((g) => g.group_id === "gruppetto-13010").size, 15, "målet er uændret");
 });
 
 test("#7734: filmens mål er det samme: kun vejen derhen ændrer sig", () => {
