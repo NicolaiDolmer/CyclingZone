@@ -86,7 +86,7 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, seaso
                 disabled={busy}
                 draggable={!locked && !busy}
                 onDragStart={(e) => e.dataTransfer.setData("text/plain", encodeDrag({ riderId: r.id, fromRaceId: null }))}
-                title={outgoing ? t("racehub.lockOutgoing") : trainedToday ? trainNowCopy.body : boundRace ? t("racehub.boundNamed", { race: boundRace }) : undefined}
+                title={outgoing ? t("racehub.lockOutgoing") : trainedToday ? trainNowCopy?.body : boundRace ? t("racehub.boundNamed", { race: boundRace }) : undefined}
                 onClick={() => setOpenRiderId(openRiderId === r.id ? null : r.id)}
                 className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border ${
                   locked
@@ -110,7 +110,7 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, seaso
               )}
               {trainedToday && (
                 <span data-testid="pool-train-now-lock" className="pl-1.5 text-3xs text-cz-3 flex items-center gap-1 max-w-[160px] truncate">
-                  <LockIcon size={9} aria-hidden="true" />{trainNowCopy.rider}
+                  <LockIcon size={9} aria-hidden="true" />{trainNowCopy?.rider}
                 </span>
               )}
               {boundRace && (
