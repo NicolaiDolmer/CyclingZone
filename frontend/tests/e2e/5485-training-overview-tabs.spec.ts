@@ -189,6 +189,24 @@ async function openTraining(page: Page, width: number, height: number, me = trai
   await overview(page).or(page.getByRole("group", { name: /Today at a glance|Dagen på et blik/ })).first().waitFor();
 }
 
+for (const [width, height] of [[375, 812], [390, 844]]) {
+  test(`navnet i I dag-detaljen åbner rytterprofilen ved ${width} px (#6524)`, async ({ page, browserName, isMobile }) => {
+    test.skip(browserName !== "chromium" || !isMobile, "Android touch regression");
+    await page.clock.setFixedTime(new Date("2026-11-06T15:00:00Z"));
+    await openTraining(page, width, height);
+    const row = page.getByTestId("training-onetap-row").first();
+    await row.getByRole("button", { expanded: false }).tap();
+    const detail = page.getByTestId("training-onetap-detail");
+    const footerLink = detail.getByRole("link", { name: /Rider profile|Rytterprofil/ });
+    const profileHref = await footerLink.getAttribute("href");
+    expect(profileHref).toMatch(/^\/riders\//);
+    const nameLink = detail.getByRole("heading", { level: 3 }).getByRole("link");
+    await expect(nameLink).toHaveAttribute("href", profileHref!);
+    await nameLink.tap();
+    await expect(page).toHaveURL(new URL(profileHref!, page.url()).href);
+  });
+}
+
 test("desktop 1440 × 900: guld-knap og overblik på første skærm, faner, kort under rækken", async ({ page }) => {
   await openTraining(page, 1440, 900);
   await expect(page.getByTestId("training-today-table")).toBeVisible();
@@ -212,6 +230,7 @@ test("desktop 1440 × 900: guld-knap og overblik på første skærm, faner, kort
   const nextIsDetail = await firstRow.evaluate((row) => row.nextElementSibling?.getAttribute("data-testid"));
   expect(nextIsDetail).toBe("training-rider-detail");
   await expect(detail.getByRole("link", { name: /Rider profile|Rytterprofil/ })).toBeVisible();
+  await expect(detail.getByRole("heading", { level: 3 }).getByRole("link")).toHaveCount(0);
 
   await page.screenshot({ path: evidenceShotPath("pr-screens/5485-training-1440-today.png") });
 });
