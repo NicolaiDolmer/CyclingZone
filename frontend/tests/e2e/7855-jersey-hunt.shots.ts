@@ -7,7 +7,7 @@
 //
 // Brug:
 //   npm run dev:preview --prefix frontend
-//   node tests/e2e/7855-jersey-hunt.shots.mjs http://localhost:5173 <outdir>
+//   node tests/e2e/7855-jersey-hunt.shots.ts http://localhost:5173 <outdir>
 import { chromium } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
