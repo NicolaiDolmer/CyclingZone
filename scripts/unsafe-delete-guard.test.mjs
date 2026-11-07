@@ -4,7 +4,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { checkCommand, SAFE_REMOVERS } from './unsafe-delete-guard.mjs';
 
-const none = { readScript: () => null, isTracked: () => false };
+const none = { readScript: () => null, isTracked: () => false, listWorktrees: () => [] };
 
 test('7/11-haendelsen: raa git worktree remove blokeres', () => {
   assert.equal(checkCommand('git worktree remove --force --force "C:/dev/CyclingZone-worktrees/x"', none).blocked, true);
@@ -47,6 +47,22 @@ test('review #7839: relative maal oploeses mod cwd', () => {
   assert.equal(checkCommand('rm -rf frontend/dist', inWt).blocked, false);
   assert.equal(checkCommand('rm -rf node_modules/.vite', inWt).blocked, false);
   assert.equal(checkCommand('rm -rf frontend/dist', { ...none, cwd: '/c/dev/CyclingZone' }).blocked, false);
+});
+
+test('Codex-review #7839: mappe der indeholder worktrees eller cwd blokeres', () => {
+  const inWt = { ...none, cwd: '/c/dev/CyclingZone-worktrees/keep', listWorktrees: () => ['/c/dev/CyclingZone', '/c/dev/CyclingZone-worktrees/keep'] };
+  assert.equal(checkCommand('rm -rf ../..', inWt).blocked, true);
+  assert.equal(checkCommand('rm -rf ..', inWt).blocked, true);
+  const inRepoSub = { ...none, cwd: '/c/dev/CyclingZone/frontend', listWorktrees: () => ['/c/dev/CyclingZone'] };
+  assert.equal(checkCommand('rm -rf ..', inRepoSub).blocked, true);
+  assert.equal(checkCommand('rm -rf dist', inRepoSub).blocked, false);
+});
+
+test('Codex-review #7839: ad hoc-script med fast relativ sti uden ordet worktree blokeres', () => {
+  const opts = { cwd: '/c/dev/CyclingZone-worktrees/keep', readScript: () => "import fs from 'node:fs';\nfs.rmSync('../victim', { recursive: true });", isTracked: () => false, listWorktrees: () => [] };
+  assert.equal(checkCommand('node clean.mjs', opts).blocked, true);
+  const okScript = { ...opts, readScript: () => "import fs from 'node:fs';\nfs.rmSync('dist', { recursive: true });" };
+  assert.equal(checkCommand('node clean.mjs', okScript).blocked, false);
 });
 
 test('sikre veje og almindeligt arbejde blokeres ikke', () => {

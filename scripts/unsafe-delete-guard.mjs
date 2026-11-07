@@ -56,7 +56,9 @@ const hasRecursiveDelete = (s) => RECURSIVE_DELETE.some((re) => re.test(s));
 
 // Ren: afgoer om en kommandotekst (og indholdet af de scripts den koerer) er en usikker sletning.
 // readScript(path) -> string|null; isTracked(path) -> boolean (versioneret, reviewet script).
-export function checkCommand(command, { cwd = process.cwd(), readScript = defaultReadScript, isTracked = defaultIsTracked } = {}) {
+export function checkCommand(command, { cwd = process.cwd(), readScript = defaultReadScript, isTracked = defaultIsTracked, listWorktrees = defaultListWorktrees } = {}) {
+  let wtCache = null;
+  const worktreeRoots = () => (wtCache ??= listWorktrees(cwd));
   // Tekst der kun BESKRIVER en kommando (gh-kommentarer, commit-beskeder, echo) koerer intet.
   // Hvert led i en pipeline vurderes for sig (#7839-review: `printf x | git worktree remove`).
   const segments = String(command || '')
@@ -73,7 +75,7 @@ export function checkCommand(command, { cwd = process.cwd(), readScript = defaul
   for (const seg of segments) {
     if (!hasRecursiveDelete(seg)) continue;
     for (const target of deleteOperands(seg)) {
-      if (protectedTarget(resolve(cwd, target.replace(/\\/g, '/')), resolve(cwd))) return block(`rekursiv sletning af ${target} rammer et worktree eller en delt mappe`);
+      if (protectedTarget(resolve(cwd, target.replace(/\\/g, '/')), resolve(cwd), worktreeRoots())) return block(`rekursiv sletning af ${target} rammer et worktree eller en delt mappe`);
     }
   }
   for (const m of cmd.matchAll(SCRIPT_RUNNER)) {
@@ -87,6 +89,12 @@ export function checkCommand(command, { cwd = process.cwd(), readScript = defaul
     if (WORKTREE_REMOVE.test(body)) return block(`scriptet ${raw} fjerner worktrees direkte`);
     if (hasRecursiveDelete(body) && (PROTECTED_PATH.test(body) || /worktree/i.test(body))) {
       return block(`scriptet ${raw} sletter rekursivt i worktrees eller delte mapper`);
+    }
+    // #7839-review P1: faste stier i scriptets slettekald oploeses mod cwd.
+    for (const target of scriptDeleteTargets(body)) {
+      if (protectedTarget(resolve(cwd, target.replace(/\\/g, '/')), resolve(cwd), worktreeRoots())) {
+        return block(`scriptet ${raw} sletter ${target}, som rammer et worktree eller en delt mappe`);
+      }
     }
   }
   return { blocked: false };
@@ -104,16 +112,31 @@ export function deleteOperands(seg) {
 
 // Beskyttet = et worktree-rod eller en mappe over det, eller en beskyttet sti uden for
 // det worktree, kommandoen koerer i. Sletning INDE i eget worktree (fx frontend/dist) er fri.
-export function protectedTarget(abs, cwd) {
-  const norm = (p) => p.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+export function protectedTarget(abs, cwd, worktreeRoots = []) {
+  const norm = (p) => String(p).replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
   const a = norm(abs);
+  const c = norm(cwd);
+  // #7839-review P1: en mappe, der INDEHOLDER arbejdsmappen eller et registreret worktree
+  // (fx `rm -rf ../..`), sletter alt derunder.
+  const containsOrIs = (p) => p === a || p.startsWith(a + '/');
+  if (containsOrIs(c)) return true;
+  if (worktreeRoots.some((r) => containsOrIs(norm(r)))) return true;
   const roots = /^(.*?\/(?:cyclingzone-worktrees|\.codex\/worktrees|\.claude\/worktrees))(\/[^/]+)?/;
-  const mine = norm(cwd).match(roots);
+  const mine = c.match(roots);
   const own = mine && mine[2] ? mine[1] + mine[2] : null;
   const hit = a.match(roots);
   if (hit && (!hit[2] || a === hit[1] + hit[2])) return true; // selve worktree-mappen eller en hel worktree
-  if (own && (a === own || a.startsWith(own + '/'))) return a === own;
+  if (own && a.startsWith(own + '/')) return false; // inde i eget worktree, fx frontend/dist
   return PROTECTED_PATH.test(a);
+}
+
+// Faste (literal) stier i rekursive slettekald i et script: rmSync('../x', ...), `rm -rf ../x` m.fl.
+export function scriptDeleteTargets(body) {
+  const out = [];
+  const re = /\b(?:rmSync|rmdirSync|rimraf(?:\.sync)?|rmtree|(?:fs|fsp|promises)\.rm)\s*\(\s*(['"`])([^'"`$]+)\1/g;
+  for (const m of String(body).matchAll(re)) out.push(m[2]);
+  for (const line of String(body).split(/\r?\n/)) if (hasRecursiveDelete(line)) out.push(...deleteOperands(line));
+  return out;
 }
 
 function block(reason) {
@@ -139,6 +162,12 @@ function relativeToRepo(abs) {
   if (!root) return null;
   const rel = relative(root, abs).replace(/\\/g, '/');
   return rel.startsWith('..') ? null : rel;
+}
+function defaultListWorktrees(cwd) {
+  try {
+    return execFileSync('git', ['-C', cwd, 'worktree', 'list', '--porcelain'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+      .split('\n').filter((l) => l.startsWith('worktree ')).map((l) => l.slice(9).trim());
+  } catch { return []; }
 }
 function defaultReadScript(abs) {
   try { if (!existsSync(abs) || statSync(abs).size > 2e6) return null; return readFileSync(abs, 'utf8'); } catch { return null; }

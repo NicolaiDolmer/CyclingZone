@@ -13,10 +13,11 @@
 #   2. Arkivér til OneDrive private-recovery/worktree-archive/<dato>/<slug>-<tid>/:
 #      - files.tar: ALLE ikke-versionerede filer, ogsaa ignorerede (git ls-files --others),
 #        undtagen afhaengigheder/build-output og secrets (.env-hardlinks, .mcp.json),
-#      - tracked-changes.patch: ucommittede aendringer i versionerede filer (git diff HEAD --binary),
-#      - commits.bundle: commits der ikke er paa origin/main (ogsaa naar branchen er pushet),
+#      - staged-changes.patch og unstaged-changes.patch: index og working tree hver for sig,
+#        verificeret ved omvendt anvendelse (git apply --check -R),
+#      - commits.bundle: commits der ikke findes paa nogen remote-ref (uafhaengigt af BaseRef),
 #      - manifest.json: hvad der er gemt og sprunget over.
-#      Arkivet verificeres (tar-listen = fil-listen, bundle verify), foer der slettes.
+#      Arkivet verificeres (praecise filnavne i tar, patches, bundle verify), foer der slettes; enhver ukendt git-status giver Ok=false.
 #   3. git worktree remove (uden --force; --force kun naar 1 og 2 er lykkedes).
 # Fejler et trin, returneres Ok=$false, og worktreet roeres ikke.
 #
@@ -47,15 +48,27 @@ function Save-WorktreeUnversioned {
   $slug = Split-Path -Leaf $WorktreePath
   $dir = Join-Path $root ((Get-Date -Format 'yyyy-MM-dd') + '\' + $slug + '-' + (Get-Date -Format 'HHmmss'))
 
+  # #7839-review (Codex P1): enhver ukendt git-status giver Ok=false; intet antages.
+  $fail = { param($m) [pscustomobject]@{ Ok = $false; Dir = $dir; Files = 0; Skipped = 0; Errors = @($m) } }
   $raw = & git -C $WorktreePath ls-files --others -z 2>$null
-  if ($LASTEXITCODE -ne 0) { return [pscustomobject]@{ Ok = $false; Dir = $dir; Files = 0; Skipped = 0; Errors = @("git ls-files fejlede i $WorktreePath") } }
+  if ($LASTEXITCODE -ne 0) { return (& $fail "git ls-files fejlede i $WorktreePath") }
   $all = @(([string]$raw) -split "`0" | Where-Object { $_ })
   $keep = @($all | Where-Object { $_ -notmatch $script:ArchiveSkip })
   $skipped = @($all | Where-Object { $_ -match $script:ArchiveSkip })
-  $patch = & git -C $WorktreePath diff HEAD --binary 2>$null
-  $head = (& git -C $WorktreePath rev-parse HEAD 2>$null)
+  $head = (& git -C $WorktreePath rev-parse --verify HEAD 2>$null)
+  if ($LASTEXITCODE -ne 0 -or -not $head) { return (& $fail "git rev-parse HEAD fejlede i $WorktreePath") }
   $branch = (& git -C $WorktreePath branch --show-current 2>$null)
-  $ahead = 0
+  if ($LASTEXITCODE -ne 0) { return (& $fail "git branch --show-current fejlede i $WorktreePath") }
+  # Staged (HEAD->index) og ikke-staged (index->working tree) hver for sig (#7839-review P1).
+  & git -C $WorktreePath diff --cached --quiet 2>$null; $stagedRc = $LASTEXITCODE
+  & git -C $WorktreePath diff --quiet 2>$null; $unstagedRc = $LASTEXITCODE
+  if ($stagedRc -gt 1 -or $unstagedRc -gt 1) { return (& $fail "git diff fejlede i $WorktreePath") }
+  $hasStaged = $stagedRc -eq 1; $hasUnstaged = $unstagedRc -eq 1
+  # Commits der ikke findes paa nogen remote-ref gemmes altid, uanset BaseRef (#7839-review P1).
+  $unpushed = [string](& git -C $WorktreePath rev-list --count HEAD --not --remotes 2>$null)
+  if ($LASTEXITCODE -ne 0 -or $unpushed -notmatch '^\d+$') { return (& $fail "git rev-list (upushede commits) fejlede i $WorktreePath") }
+  $unpushed = [int]$unpushed
+  $ahead = $null
   & git -C $WorktreePath rev-parse --verify --quiet $BaseRef *> $null
   if ($LASTEXITCODE -eq 0) { $ahead = [int](& git -C $WorktreePath rev-list --count "$BaseRef..HEAD" 2>$null) }
 
@@ -67,22 +80,45 @@ function Save-WorktreeUnversioned {
   if ($keep.Count -gt 0) {
     $list = Join-Path $dir 'files.txt'
     [IO.File]::WriteAllLines($list, [string[]]$keep, (New-Object Text.UTF8Encoding $false))
-    $tarExe = Join-Path $env:SystemRoot 'System32\tar.exe'
-    if (-not (Test-Path -LiteralPath $tarExe)) { $tarExe = 'tar' }
+    $tarExe = if ($env:SystemRoot) { Join-Path $env:SystemRoot 'System32\tar.exe' } else { 'tar' }
+    if ($env:SystemRoot -and -not (Test-Path -LiteralPath $tarExe)) { $tarExe = 'tar' }
     $tar = Join-Path $dir 'files.tar'
     & $tarExe -cf $tar -C $WorktreePath -T $list 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) { $errors += "tar fejlede ($LASTEXITCODE)" }
     else {
-      $listed = @(& $tarExe -tf $tar 2>$null | Where-Object { $_ -and -not $_.EndsWith('/') })
-      if ($listed.Count -lt $keep.Count) { $errors += "arkivet har $($listed.Count) af $($keep.Count) filer" }
+      # Praecis navnesammenligning, ikke kun antal (#7839-review P2).
+      $listed = @(& $tarExe -tf $tar 2>$null)
+      if ($LASTEXITCODE -ne 0) { $errors += 'tar -tf fejlede' }
+      else {
+        $got = [System.Collections.Generic.HashSet[string]]::new([string[]]@($listed | Where-Object { $_ -and -not $_.EndsWith('/') } | ForEach-Object { $_.Replace([char]92, [char]47) }))
+        $missing = @($keep | Where-Object { -not $got.Contains($_.Replace([char]92, [char]47)) })
+        if ($missing.Count -gt 0) { $errors += "arkivet mangler $($missing.Count) filer (fx $($missing[0]))" }
+      }
     }
   }
-  if ($patch) {
-    [IO.File]::WriteAllText((Join-Path $dir 'tracked-changes.patch'), (($patch -join "`n") + "`n"), (New-Object Text.UTF8Encoding $false))
+  # Patches skrives af git selv (binaert korrekt) og verificeres ved omvendt anvendelse paa
+  # den nuvaerende tilstand: kan de ikke traekkes fra, er de ikke en tro kopi.
+  if ($hasStaged) {
+    $sp = Join-Path $dir 'staged-changes.patch'
+    & git -C $WorktreePath diff --cached --binary "--output=$sp" 2>$null
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $sp) -or (Get-Item -LiteralPath $sp).Length -eq 0) { $errors += 'staged patch kunne ikke skrives' }
+    else {
+      & git -C $WorktreePath apply --check --cached -R $sp 2>$null
+      if ($LASTEXITCODE -ne 0) { $errors += 'staged patch matcher ikke index' }
+    }
   }
-  if ($ahead -gt 0) {
+  if ($hasUnstaged) {
+    $up = Join-Path $dir 'unstaged-changes.patch'
+    & git -C $WorktreePath diff --binary "--output=$up" 2>$null
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $up) -or (Get-Item -LiteralPath $up).Length -eq 0) { $errors += 'unstaged patch kunne ikke skrives' }
+    else {
+      & git -C $WorktreePath apply --check -R $up 2>$null
+      if ($LASTEXITCODE -ne 0) { $errors += 'unstaged patch matcher ikke working tree' }
+    }
+  }
+  if ($unpushed -gt 0) {
     $bundle = Join-Path $dir 'commits.bundle'
-    & git -C $WorktreePath bundle create $bundle HEAD "^$BaseRef" 2>&1 | Out-Null
+    & git -C $WorktreePath bundle create $bundle HEAD --not --remotes 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) { $errors += 'git bundle create fejlede' }
     else {
       & git -C $WorktreePath bundle verify $bundle *> $null
@@ -90,9 +126,10 @@ function Save-WorktreeUnversioned {
     }
   }
   $manifest = [ordered]@{
-    worktree = $WorktreePath; branch = $branch; head = $head; baseRef = $BaseRef; aheadOfBase = $ahead
-    archivedFiles = $keep.Count; trackedChanges = [bool]$patch; skipped = $skipped
-    created = (Get-Date).ToString('o'); restore = 'tar -xf files.tar -C <tomt worktree>; git apply tracked-changes.patch; git fetch commits.bundle HEAD:refs/heads/<branch>'
+    worktree = $WorktreePath; branch = $branch; head = $head; baseRef = $BaseRef; aheadOfBase = $ahead; unpushedCommits = $unpushed
+    archivedFiles = $keep.Count; stagedChanges = $hasStaged; unstagedChanges = $hasUnstaged; skipped = $skipped
+    created = (Get-Date).ToString('o')
+    restore = 'git fetch commits.bundle HEAD:refs/heads/<branch> (hvis den findes); git worktree add <sti> <branch>; git apply --index staged-changes.patch; git apply unstaged-changes.patch; tar -xf files.tar -C <sti>'
   }
   [IO.File]::WriteAllText((Join-Path $dir 'manifest.json'), ($manifest | ConvertTo-Json -Depth 4), (New-Object Text.UTF8Encoding $false))
   return [pscustomobject]@{ Ok = ($errors.Count -eq 0); Dir = $dir; Files = $keep.Count; Skipped = $skipped.Count; Errors = $errors }
