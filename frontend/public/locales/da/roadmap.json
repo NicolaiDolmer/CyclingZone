@@ -54,9 +54,9 @@
     "horizon": {
       "this_week": "Denne uge",
       "next_week": "Næste uge",
-      "season": "Sæson {{season}}",
-      "quarter": "Q{{quarter}} {{year}}",
-      "year": "{{year}}",
+      "season": "Sæson {season}",
+      "quarter": "Q{quarter} {year}",
+      "year": "{year}",
       "unscheduled": "Til afstemning"
     }
   },

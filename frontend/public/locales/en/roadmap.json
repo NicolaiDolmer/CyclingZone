@@ -54,9 +54,9 @@
     "horizon": {
       "this_week": "This week",
       "next_week": "Next week",
-      "season": "Season {{season}}",
-      "quarter": "Q{{quarter}} {{year}}",
-      "year": "{{year}}",
+      "season": "Season {season}",
+      "quarter": "Q{quarter} {year}",
+      "year": "{year}",
       "unscheduled": "Open for votes"
     }
   },
