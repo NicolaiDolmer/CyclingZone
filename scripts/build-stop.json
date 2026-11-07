@@ -1060,6 +1060,11 @@
       "issue": 7789,
       "reason": "Ejer-go 7/11 (plan på #7495): roadmap-admin med graf",
       "since": "2026-11-07"
+    },
+    {
+      "issue": 6181,
+      "reason": "Ejer-go 7/11 (design på #6181): pengelås, byg fra første ledige lane",
+      "since": "2026-11-07"
     }
   ]
 }
