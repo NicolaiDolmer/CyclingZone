@@ -1,6 +1,7 @@
 // #6110 trin 2: kontakten for XP-modellen og grenen i motoren. Tallene er syntetiske
 // (hard rule 17). Testene laaser:
-//   · slukket (alle former) = bit-identisk med en FROSSEN kopi fra merge-basen (#7587)
+//   · slukket (alle former) = identisk med en FROSSEN kopi fra merge-basen (#7587); hele tal
+//     eksakt, kommatal til faste betydende cifre, saa Windows og Linux giver samme hash
 //   · loaderen: kontakt, startdato (tick-datoen afgoer), params, strict og de ugyldige par
 //   · grenen: intet loft, prisen bremser, maks +1 pr. dato uden XP-tab, kurve B taber
 //   · loebsdagens rolletillaeg laegger det samme oven i, uanset off-fokus-andelen
@@ -34,42 +35,7 @@ const FIXED_NOW = () => 1_700_000_000_000;
 
 // ── Frossen golden ────────────────────────────────────────────────────────────
 
-// DIAG6110 midlertidig: opdeler applyDailyTick-hashen, saa CI og lokal kan sammenlignes.
-test("DIAG6110 opdeling (midlertidig)", async () => {
-  const { createHash } = await import("node:crypto");
-  const { __diagRider, __diagPrograms, __diagOptionSets } = await import("./__fixtures__/developmentXpOffScenarios.js");
-  const h = (v) => createHash("sha256").update(JSON.stringify(v)).digest("hex").slice(0, 10);
-  const progs = __diagPrograms((extra, ctx) => withRaceDayRoleYieldXp(null, extra, ctx));
-  const cells = {};
-  const firstDiff = {};
-  for (let seed = 0; seed < 7; seed++) {
-    const base = __diagRider(seed);
-    for (const [oi, opts] of __diagOptionSets.entries()) {
-      const rows = [];
-      for (const [pi, prog] of progs.entries()) {
-        if ((pi + seed) % 3 !== 0) continue;
-        const { __yield: yieldMult, ...program } = prog;
-        const args = { ...base, program, ...opts, developmentXp: null };
-        if (yieldMult) args.abilityYieldMult = { ...(opts.abilityYieldMult ?? {}), ...yieldMult };
-        const r = applyDailyTick(args);
-        const row = [r.abilities, r.progress, r.gains, r.score, r.trainingScore, r.noise, r.status];
-        rows.push(row);
-        if (["5|0|196", "5|0|241", "5|2|277", "6|0|3"].includes(`${seed}|${oi}|${pi}`)) {
-          firstDiff[`${seed}|${oi}|${pi}`] = { row, program, yieldMult: yieldMult ?? null, opts: oi };
-        }
-      }
-      cells[`${seed}|${oi}`] = h(rows);
-    }
-  }
-  const probes = [];
-  for (let i = 1; i < 200; i++) {
-    const x = i / 197;
-    probes.push(Math.pow(x, 0.5), Math.pow(x, 2), Math.pow(1 - x, 1.7), Math.exp(x), Math.log(x + 1), Math.pow(x, -2));
-  }
-  console.log("DIAG6110 " + JSON.stringify({ env: [process.platform, process.version, process.versions.v8], probes, cells, rows: firstDiff }));
-});
-
-test("#6110 golden: slukket XP er bit-identisk med merge-basen (funktioner og motor, alle slukkede former)", async () => {
+test("#6110 golden: slukket XP er identisk med merge-basen (funktioner og motor, alle slukkede former)", async () => {
   assert.match(GOLDEN.sourceCommit, /^[0-9a-f]{40}$/);
   const now = await allOffDigests({ withRoleYield: (extra, ctx) => withRaceDayRoleYieldXp(null, extra, ctx) });
   assert.equal(now.applyDailyTick, GOLDEN.applyDailyTick, "applyDailyTick");
