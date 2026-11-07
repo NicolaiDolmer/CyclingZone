@@ -11,8 +11,8 @@
 
 Fuld liste med datoer: #7632. "Done" først ved alle 8 krav; fredagskort til ejeren.
 
-- **Status 7/11:** tændt #7733, #7726. #7638 + #7754 indgår i løbsside-redesignet #7778 (spec 2026-11-07). Bølge PC1: #7801, #7715 (tænd-kort), #2009 (beta), #7644 + #6912 (måling), #7645 (design), #6181 PR 1-2, trøjejagt #7855, træningsrapport #7745/#7746. Secrets + sikkerhed senest 9/11.
-- **Næste uge (9-15/11):** #7778 v3 → implementeringsplan, sandhedsvagt (8/11), fri rolle + hunter (ejersvar), auto-accept #2176, XP #6110, dagsform #7725, feedback + fair-play #5431 (9/11), forside #6665, graduering #7323, aftentræning #6490, scouting ved salg #7455 (før sæsonskifte), rangliste #6765 (14/11).
+- **Status 7/11:** tændt #7733, #7726. #7638 + #7754 indgår i løbsside-redesignet #7778. Bølge PC1: #7801, #7715 (tænd-kort), #2009 hover + højreklik #7858 (live 7/11), #7644 + #6912 (måling), #7645 (design), #6181 PR 1-2, trøjejagt #7855, træningsrapport #7745/#7746. Secrets + sikkerhed senest 9/11.
+- **Næste uge (9-15/11):** #7778 v3 (dele #7859-#7868) → plan, sandhedsvagt (8/11), auto-accept #2176, XP #6110, dagsform #7725, fri rolle #7856, trøjejagt #7855, Discord-afstemning #7869, feedback + fair-play #5431 (9/11), forside #6665, graduering #7323, aftentræning #6490, scouting ved salg #7455 (før sæsonskifte), rangliste #6765 (14/11).
 - **Ca. 15-18/11:** catch-up #6950 besluttes (frist 8/11 udgået); spørg igen om "nye managers forstår første løb" (parkeret).
 - **Før S6-kalenderen:** løbstyper U23/junior #7471. **Før S6-start:** U23 del 2 #4620, junior-pyramiden #4621, Planning Workbench #7535.
 - **S6 (dec):** Pro-værdien + betaling #2806/#4514. **Starten af 2027:** TTT #3463, omdømme #4957/#5106.
