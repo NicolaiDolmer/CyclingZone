@@ -21,7 +21,8 @@ import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.ts";
 import { loadWithdrawnPairs, withdrawalKey } from "./raceWithdrawal.js";
 import { buildKeyedNotification } from "./notificationKeys.js";
-import { ANY_SQUAD, filterEligibleEntries, isEligibleRider } from "./riderEligibility.js";
+import { ANY_SQUAD, isEligibleRider } from "./riderEligibility.js";
+import { DEFAULT_SQUAD } from "./squads.js";
 
 const NOOP = () => {};
 
@@ -40,16 +41,17 @@ const NOOP = () => {};
  * (#1844-frysningen tilføjer aldrig nogen). Et løb der ikke er startet, får den
  * almindelige dom: en solgt, gradueret rytter starter ikke et nyt U23-løb.
  *
- * @param {{ entries?: object[], ridersById: Map<string, object>, squad?: string, seasonNumber?: number|null, raceStarted?: boolean }} args
+ * @param {{ entries?: any[], ridersById: Map<string, any>, squad?: string, seasonNumber?: number|null, raceStarted?: boolean }} args
  *   ridersById-rækkerne skal projicere pending_team_id.
- * @returns {object[]} entries i uændret rækkefølge
+ * @returns {any[]} entries i uændret rækkefølge
  */
-export function filterEligibleEntriesKeepingParked({ entries = [], ridersById, squad, seasonNumber, raceStarted = false }) {
-  if (!raceStarted) return filterEligibleEntries({ entries, ridersById, squad, seasonNumber });
+export function filterEligibleEntriesKeepingParked({ entries = [], ridersById, squad = DEFAULT_SQUAD, seasonNumber, raceStarted = false }) {
+  // Samme prædikat som riderEligibility.filterEligibleEntries, pr. entry.
   return entries.filter((e) => {
     const rider = ridersById.get(e.rider_id);
-    const parked = rider?.pending_team_id != null;
-    return isEligibleRider(rider, { teamId: e.team_id, squad: parked ? ANY_SQUAD : squad, seasonNumber });
+    const keepParked = raceStarted && rider?.pending_team_id != null;
+    const opts = { teamId: e.team_id, squad: keepParked ? ANY_SQUAD : squad, seasonNumber };
+    return isEligibleRider(rider, opts);
   });
 }
 
