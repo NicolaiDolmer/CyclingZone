@@ -1,5 +1,6 @@
 const BASE =
   "inline-flex items-center justify-center gap-2 font-semibold rounded-cz border " +
+  "[@media(max-width:640px),(pointer:coarse)]:min-h-11 [@media(max-width:640px),(pointer:coarse)]:min-w-11 " +
   "transition-colors duration-150 ease-out disabled:opacity-40 disabled:pointer-events-none";
 
 const SIZES = {
