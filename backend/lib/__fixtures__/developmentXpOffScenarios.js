@@ -28,7 +28,15 @@ import { DEVELOPMENT_SCORE_V2_FLAG_KEY, DEVELOPMENT_SCORE_V2_PARAMS_ENV } from "
 import { RACE_DAY_CATCHUP_FLAG_KEY, RACE_DAY_CATCHUP_PARAMS_ENV } from "../raceCatchUpWiring.js";
 import { SCORE_PARAMS, CATCHUP_PARAMS } from "../developmentScoreWiring.fixtures.js";
 
-const sha = (value) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
+// Hashen skal kunne genskabes paa tvaers af platforme: Node paa Windows og Node paa
+// Linux (CI) giver ikke altid samme sidste bit fra Math-funktionerne, saa en raa hash
+// var groen lokalt og roed i CI med uaendret kode. Kommatal afrundes derfor til et fast
+// antal betydende cifre foer hashen. En reel aendring i den slukkede sti flytter langt
+// mere end afrundingen og fanges stadig; hele tal (evner, point) sammenlignes eksakt.
+const SIGNIFICANT_DIGITS = 10;
+const canonical = (_key, v) => (typeof v === "number" && Number.isFinite(v) && !Number.isInteger(v)
+  ? Number(v.toPrecision(SIGNIFICANT_DIGITS)) : v);
+const sha = (value) => createHash("sha256").update(JSON.stringify(value, canonical)).digest("hex");
 
 // Syntetiske XP-params (IKKE kalibreringen). Gyldige, saa "on + params" kun er slukket
 // af startdatoen eller kontakten selv.
