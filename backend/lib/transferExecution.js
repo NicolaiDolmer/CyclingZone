@@ -11,6 +11,7 @@ import {
   getTeamMarketState,
 } from "./marketUtils.js";
 import { fetchAtRiskCount } from "./squadRiskGuard.js";
+import { countSellerAuctionOutgoing } from "./autoAccept2176.js"; // #2176
 import { shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.ts";
 import { buildRiderValueSnapshot, updateDealWithValueSnapshot } from "./dealValueSnapshot.js";
@@ -480,6 +481,8 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   sellerState.at_risk_count = await fetchAtRiskCount(supabase, offer.seller_team_id, activeSeasonNumber, {
     excludeRiderIds: [offer.rider_id],
   });
+  // #2176: saelgers ryttere paa auktion med en byder er ogsaa paa vej vaek.
+  sellerState.at_risk_count += await countSellerAuctionOutgoing(supabase, offer.seller_team_id, { skipRiderIds: [offer.rider_id], atRiskSeasonNumber: activeSeasonNumber });
 
   // #1748 (a) TOCTOU-guard: hvis rytteren er kommet på en aktiv auktion EFTER
   // tilbuddet blev oprettet (oprettelses-gaten i api.js fanger det ikke), må

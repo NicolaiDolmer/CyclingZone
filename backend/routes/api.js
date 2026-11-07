@@ -147,6 +147,7 @@ import {
 import * as transferNotif from "../lib/transferNotifications.js";
 import { withdrawCounterOffer, claimCounterForAccept, buildCounterOfferWithdrawnNotification } from "../lib/counterOfferWithdraw.js"; // #6463
 import { getParkedRiderReleaseIssue, getParkedRiderTradeIssue } from "../lib/parkedRiderGuard6181.js"; // #6181
+import { countSellerAuctionOutgoing, getOfferAutoAcceptIssue, registerAutoAcceptRoutes } from "../lib/autoAccept2176.js"; // #2176
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
 import {
   notifyNewAuction,
@@ -2068,7 +2069,7 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
     excludeRiderIds: [rider.id],
   });
   releaseTeamState.at_risk_count = releaseAtRiskRiders.length;
-  const releaseRiskViolation = getSquadRiskViolation(releaseTeamState, { outgoingCount: 1 });
+  const releaseRiskViolation = getSquadRiskViolation(releaseTeamState, { outgoingCount: 1 + await countSellerAuctionOutgoing(supabase, req.team.id, { skipRiderIds: [rider.id, ...releaseAtRiskRiders.map((r) => r.id)] }) }); // #2176
   if (releaseRiskViolation) {
     return res.status(409).json({
       error: `You can't drop below ${releaseRiskViolation.minRiders} riders once contract expiry and retirement risk at the next season change are counted`,
@@ -7523,7 +7524,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
       excludeRiderIds: [rider.id],
     });
     auctionSellerState.at_risk_count = auctionAtRiskRiders.length;
-    const auctionRiskViolation = getSquadRiskViolation(auctionSellerState, { outgoingCount: 1 });
+    const auctionRiskViolation = getSquadRiskViolation(auctionSellerState, { outgoingCount: 1 + await countSellerAuctionOutgoing(supabase, req.team.id, { skipRiderIds: [rider.id, ...auctionAtRiskRiders.map((r) => r.id)] }) }); // #2176
     if (auctionRiskViolation) {
       return res.status(409).json({
         error: `You can't drop below ${auctionRiskViolation.minRiders} riders once contract expiry and retirement risk at the next season change are counted`,
@@ -8633,6 +8634,7 @@ router.patch("/transfers/:id", requireAuth, marketWriteLimiter, async (req, res)
     .eq("id", req.params.id)
     .select()
     .single();
+  if (error?.code === "23514") return res.status(400).json({ error: "The asking price must stay below the auto-accept price", errorCode: "asking_price_not_below_auto_accept" }); // #2176
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
@@ -8732,6 +8734,9 @@ router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res
       errorCode: "rider_on_auction_transfer",
     });
   }
+
+  const autoAcceptOfferIssue = await getOfferAutoAcceptIssue(supabase, { riderId: rider_id, offerAmount: offer_amount }); // #2176
+  if (autoAcceptOfferIssue) return res.status(autoAcceptOfferIssue.status).json(autoAcceptOfferIssue.body);
 
   // Check buyer balance
   const buyerState = await getTeamMarketState(supabase, req.team.id);
@@ -9109,6 +9114,8 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
     if (offer.status !== "countered") {
       return res.status(409).json({ error: "The counter offer is no longer open", errorCode: "counter_offer_not_open" });
     }
+    const newOfferAutoAcceptIssue = await getOfferAutoAcceptIssue(supabase, { riderId: offer.rider_id, offerAmount: counter_amount }); // #2176
+    if (newOfferAutoAcceptIssue) return res.status(newOfferAutoAcceptIssue.status).json(newOfferAutoAcceptIssue.body);
     const { data: reopened, error: reopenError } = await supabase.from("transfer_offers").update({
       offer_amount: counter_amount,
       counter_amount: null,
@@ -9184,6 +9191,8 @@ router.post("/transfers/:id/offer", requireAuth, marketWriteLimiter, async (req,
       error: "This rider is on an active auction. Bid on the auction instead of making a transfer offer.",
       errorCode: "rider_on_auction_transfer",
     });
+  const listingAutoAcceptIssue = await getOfferAutoAcceptIssue(supabase, { listing, offerAmount: offer_amount }); // #2176
+  if (listingAutoAcceptIssue) return res.status(listingAutoAcceptIssue.status).json(listingAutoAcceptIssue.body);
   const listingBuyerState = await getTeamMarketState(supabase, req.team.id);
   if (offer_amount > listingBuyerState.balance)
     return res.status(400).json({ error: "You can't afford this offer", errorCode: "cannot_afford_offer" });
@@ -9215,6 +9224,9 @@ router.post("/transfers/:id/offer", requireAuth, marketWriteLimiter, async (req,
 
 
 
+
+// #2176 auto-accept: POST /transfers/:id/auto-accept + PUT /transfers/:id/auto-accept-price (bag auto_accept_enabled).
+registerAutoAcceptRoutes(router, { supabase, requireAuth, marketWriteLimiter, assertMarketOpen, assertTeamNotTransferFrozen, getAuctionConfig, getActiveSeasonNumber, logActivity });
 
 // ── Swap Offers ───────────────────────────────────────────────────────────────
 
