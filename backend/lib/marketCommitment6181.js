@@ -24,6 +24,7 @@ import { readFlagStage } from "./featureStage.js";
 import { fetchAuctionCommitment } from "./availableBalance.js";
 import { getMinimumAuctionBid } from "./auctionRules.ts";
 import { MAX_SQUAD_SIZE } from "./marketUtils.js";
+import { fetchAtRiskCount } from "./squadRiskGuard.js";
 
 export const MARKET_COMMITMENT_FLAG = "market_commitment_6181";
 export const MARKET_GATE_PREFIX = "market_gate_6181:";
@@ -195,13 +196,25 @@ async function countLeadingAuctions(supabase, teamId) {
   return count || 0;
 }
 
-async function countOutgoingAuctions(supabase, teamId, excludeRiderId) {
-  const { data, error } = await supabase.rpc("team_outgoing_auction_count", {
+async function fetchOutgoingAuctionRiderIds(supabase, teamId, excludeRiderId) {
+  const { data, error } = await supabase.rpc("team_outgoing_auction_rider_ids", {
     p_team_id: teamId,
     p_exclude_rider_id: excludeRiderId ?? null,
   });
-  if (error) throw new Error(`marketCommitment6181: could not count outgoing auctions for ${teamId}: ${error.message}`);
-  return Number(data) || 0;
+  if (error) throw new Error(`marketCommitment6181: could not load outgoing auctions for ${teamId}: ${error.message}`);
+  return Array.isArray(data) ? data.filter(Boolean) : [];
+}
+
+// En rytter paa auktion, der ogsaa er i risiko (kontraktudloeb/pension), maa kun
+// taelles een gang: risiko-taellingen genberegnes uden auktionsrytterne.
+async function applySellerOutgoing(supabase, sellerState, excludeRiderId, seasonNumber) {
+  const ids = await fetchOutgoingAuctionRiderIds(supabase, sellerState.id, excludeRiderId);
+  if (ids.length > 0 && seasonNumber != null && sellerState.at_risk_count != null) {
+    sellerState.at_risk_count = await fetchAtRiskCount(supabase, sellerState.id, seasonNumber, {
+      excludeRiderIds: [excludeRiderId, ...ids].filter(Boolean),
+    });
+  }
+  applyMarketSeatCounts({ sellerState, sellerOutgoing: ids.length });
 }
 
 /**
@@ -209,13 +222,11 @@ async function countOutgoingAuctions(supabase, teamId, excludeRiderId) {
  * auktioner og saelgerens ryttere paa auktion indgaar i trup-tjekkene.
  * Slukket => ingen opslag, ingen mutation.
  */
-export async function applyTransferMarketCommitment6181(supabase, { buyerState, sellerState, riderId = null }) {
+export async function applyTransferMarketCommitment6181(supabase, { buyerState, sellerState, riderId = null, seasonNumber = null }) {
   if (!(await isMarketCommitment6181On(supabase))) return false;
-  const [buyerLeading, sellerOutgoing] = await Promise.all([
-    buyerState?.id ? countLeadingAuctions(supabase, buyerState.id) : 0,
-    sellerState?.id ? countOutgoingAuctions(supabase, sellerState.id, riderId) : 0,
-  ]);
-  applyMarketSeatCounts({ buyerState, sellerState, buyerLeading, sellerOutgoing });
+  const buyerLeading = buyerState?.id ? await countLeadingAuctions(supabase, buyerState.id) : 0;
+  applyMarketSeatCounts({ buyerState, buyerLeading });
+  if (sellerState?.id) await applySellerOutgoing(supabase, sellerState, riderId, seasonNumber);
   return true;
 }
 
@@ -223,10 +234,9 @@ export async function applyTransferMarketCommitment6181(supabase, { buyerState, 
  * Saelgers gulv (POST /auctions paa egen rytter, frigivelse): taendt => holdets
  * andre ryttere paa auktion taeller som udgaaende. Slukket => uroert.
  */
-export async function applySellerOutgoingAuctions6181(supabase, sellerState, excludeRiderId = null) {
+export async function applySellerOutgoingAuctions6181(supabase, sellerState, excludeRiderId = null, { seasonNumber = null } = {}) {
   if (!sellerState?.id || !(await isMarketCommitment6181On(supabase))) return false;
-  const sellerOutgoing = await countOutgoingAuctions(supabase, sellerState.id, excludeRiderId);
-  applyMarketSeatCounts({ sellerState, sellerOutgoing });
+  await applySellerOutgoing(supabase, sellerState, excludeRiderId, seasonNumber);
   return true;
 }
 

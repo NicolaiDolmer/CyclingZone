@@ -2069,7 +2069,7 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
     excludeRiderIds: [rider.id],
   });
   releaseTeamState.at_risk_count = releaseAtRiskRiders.length;
-  await applySellerOutgoingAuctions6181(supabase, releaseTeamState, rider.id); // #6181 PR 5: ryttere paa auktion er udgaaende
+  await applySellerOutgoingAuctions6181(supabase, releaseTeamState, rider.id, { seasonNumber: currentSeason }); // #6181 PR 5: ryttere paa auktion er udgaaende
   const releaseRiskViolation = getSquadRiskViolation(releaseTeamState, { outgoingCount: 1 });
   if (releaseRiskViolation) {
     return res.status(409).json({
@@ -7525,7 +7525,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
       excludeRiderIds: [rider.id],
     });
     auctionSellerState.at_risk_count = auctionAtRiskRiders.length;
-    await applySellerOutgoingAuctions6181(supabase, auctionSellerState, rider.id); // #6181 PR 5
+    await applySellerOutgoingAuctions6181(supabase, auctionSellerState, rider.id, { seasonNumber: auctionSeasonNumber }); // #6181 PR 5
     const auctionRiskViolation = getSquadRiskViolation(auctionSellerState, { outgoingCount: 1 });
     if (auctionRiskViolation) {
       return res.status(409).json({
@@ -7963,11 +7963,13 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
 
   // Store proxy max-loft if provided with the bid
   const numericProxyMax = Number(proxy_max);
+  let proxyGate = null; // #6181 PR 5: M3 kan afvise autobuddet; buddet staar, spilleren faar besked til sidst
   if (Number.isFinite(numericProxyMax) && numericProxyMax > numericAmount) {
-    await supabase.from("auction_proxy_bids").upsert(
+    const { error: bidProxyError } = await supabase.from("auction_proxy_bids").upsert(
       { auction_id: auction.id, team_id: req.team.id, max_amount: numericProxyMax },
       { onConflict: "auction_id,team_id" }
     );
+    proxyGate = await marketGateResponse6181(supabase, bidProxyError, { kind: "proxy", teamId: req.team.id, auctionId: auction.id });
   }
 
   // #1740: outbid-notifikationen til den forrige fører er FLYTTET til EFTER
@@ -8076,6 +8078,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
     .eq("id", auction.id)
     .single();
 
+  if (proxyGate) return res.status(proxyGate.status).json({ ...proxyGate.body, bid_placed: true, new_price: finalAuction?.current_price ?? numericAmount });
   res.json({
     success: true,
     new_price: finalAuction?.current_price ?? numericAmount,

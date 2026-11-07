@@ -500,6 +500,36 @@ med 600K-loft kun accepteres hvis manageren også har råd til 600K.
 Målt 30/8: højeste enkelte proxy-loft i basen er **932.843 CZ$**; 80 hold har på et
 tidspunkt sat mindst ét autobud.
 
+### 8.1 Atomisk bud-gate bag `market_commitment_6181` (#6181 PR 5, #7872)
+
+Kontakten seedes **off** af `database/2026-11-07-6181-m3-market-commitment.sql`.
+Off = alt ovenfor gælder uændret (tjekket i JS, så skrevet i flere kald).
+Kun `on` (eller `true`) tænder; `beta` er off her.
+
+Tændt:
+- **Bud, autobud og startbud gates i databasen** under holdlåsen (samme nøgle som
+  `increment_balance_with_audit`): triggere på `auction_bids` (bud og proxy-cascade),
+  `auctions` (startbyder ved POST /auctions) og `auction_proxy_bids` (nyt/hævet loft).
+  Penge = samme worst case-regel som tabellen ovenfor. Et bud tager føringen i samme
+  transaktion, og prisen kan ikke falde. Samtidige bud fra ét hold kan derfor ikke
+  overbooke.
+- **Plads:** fremtidig senior-trup (`future_count`) + førende auktioner + 1 må ikke
+  overstige loftet. Et forsvarsbud (holdet fører allerede) blokeres aldrig på plads.
+  Et autobud uden føring optager ingen plads (ejer-spørgsmål 7 er ubesvaret).
+- **Undtagelse, ungdomsauktioner:** pladsen tjekkes kun i ruten (akademi-loftet
+  afhænger af alder); pengene gates altid.
+- **POST /auctions:** startbyderen skal have penge (worst case, også autobud uden
+  føring) og plads, ikke kun en advarsel.
+- **Transfer-bekræftelse** tæller købers førende auktioner som pladser.
+- **Sælgers gulv:** holdets egne ryttere på aktiv auktion tæller som udgående
+  (POST /auctions på egen rytter, frigivelse, transfer-bekræftelse) og udelades af
+  risiko-tællingen, så de ikke tælles to gange.
+- Fejl bruger de eksisterende fejlkoder (`insufficient_balance_after_bids`,
+  `insufficient_balance_after_proxy`, `start_bid_exceeds_balance`, `squad_full_bid`,
+  409 `price_changed`).
+- Andre udgifter (køb, gebyrer) tjekker stadig i JS før låsen; finalize-gaten står
+  som sidste værn.
+
 ---
 
 ## 9. Trup-lofter

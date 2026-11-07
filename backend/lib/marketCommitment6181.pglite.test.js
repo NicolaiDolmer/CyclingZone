@@ -245,6 +245,8 @@ test('team_outgoing_auction_count: egne senior-ryttere paa aktiv auktion', async
   assert.equal((await one(db, 'SELECT public.team_outgoing_auction_count($1) AS n', [TEAM.A])).n, 2);
   const ownRider = (await one(db, 'SELECT rider_id FROM auctions WHERE id = $1', [own])).rider_id;
   assert.equal((await one(db, 'SELECT public.team_outgoing_auction_count($1, $2) AS n', [TEAM.A, ownRider])).n, 1);
+  assert.deepEqual((await one(db, 'SELECT public.team_outgoing_auction_rider_ids($1, $2) AS ids', [TEAM.A, ownRider])).ids.length, 1);
+  assert.equal((await one(db, 'SELECT public.team_outgoing_auction_rider_ids($1) AS ids', [TEAM.A])).ids.length, 2);
 });
 
 test('rettigheder: kun service_role kan kalde funktionerne', async () => {
@@ -253,16 +255,16 @@ test('rettigheder: kun service_role kan kalde funktionerne', async () => {
       has_function_privilege('anon', p.oid, 'EXECUTE') AS anon,
       has_function_privilege('authenticated', p.oid, 'EXECUTE') AS auth,
       has_function_privilege('service_role', p.oid, 'EXECUTE') AS svc
-    FROM pg_proc p WHERE p.proname IN ('team_market_commitment','team_seat_commitment','team_outgoing_auction_count',
+    FROM pg_proc p WHERE p.proname IN ('team_market_commitment','team_seat_commitment','team_outgoing_auction_count','team_outgoing_auction_rider_ids',
       'market_bid_issue_6181','market_commitment_6181_on','market_squad_max') ORDER BY 1`)).rows;
-  assert.equal(rows.length, 6);
+  assert.equal(rows.length, 7);
   for (const row of rows) assert.deepEqual([row.anon, row.auth, row.svc], [false, false, true], row.proname);
 });
 
 // ── Backend-siden ────────────────────────────────────────────────────────────
 
 // Lille fake-klient: app_config + de opslag helperne laver.
-function fakeSupabase({ flag = 'off', leading = 0, outgoing = 0, commitment = 0, balance = 0, calls = [] } = {}) {
+function fakeSupabase({ flag = 'off', leading = 0, outgoing = 0, commitment = 0, balance = 0, riders = [], calls = [] } = {}) {
   const builder = (table) => {
     const q = {
       _table: table,
@@ -277,6 +279,7 @@ function fakeSupabase({ flag = 'off', leading = 0, outgoing = 0, commitment = 0,
         calls.push(table);
         if (table === 'auctions') return resolve({ count: leading, data: [], error: null });
         if (table === 'auction_proxy_bids') return resolve({ data: [], error: null });
+        if (table === 'riders') return resolve({ data: riders, error: null });
         return resolve({ data: [], error: null });
       },
     };
@@ -286,7 +289,7 @@ function fakeSupabase({ flag = 'off', leading = 0, outgoing = 0, commitment = 0,
     from: (t) => builder(t),
     rpc: async (name) => {
       calls.push(`rpc:${name}`);
-      if (name === 'team_outgoing_auction_count') return { data: outgoing, error: null };
+      if (name === 'team_outgoing_auction_rider_ids') return { data: Array.from({ length: outgoing }, (_, i) => id(500 + i)), error: null };
       if (name === 'team_market_commitment') return { data: commitment, error: null };
       return { data: null, error: null };
     },
@@ -331,6 +334,23 @@ test('taendt: transfer-bekraeftelse taeller foerende auktioner og saelgers rytte
   assert.equal(await applyTransferMarketCommitment6181(supabase, { buyerState, sellerState, riderId: id(9) }), true);
   assert.equal(buyerState.future_count, 30);
   assert.equal(sellerState.future_count, 9);
+});
+
+test('taendt: en rytter paa auktion, der ogsaa er i risiko, taelles kun een gang (Codex P2)', async () => {
+  clearFlagStageCache();
+  const season = 5;
+  // Hold A: rytteren paa auktion har kontrakt, der udloeber; en anden rytter er ogsaa i risiko.
+  const riders = [
+    { id: id(500), contract_end_season: season, is_retired: false, pending_team_id: null },
+    { id: id(600), contract_end_season: season, is_retired: false, pending_team_id: null },
+    { id: id(601), contract_end_season: season + 3, is_retired: false, pending_team_id: null },
+  ];
+  const supabase = fakeSupabase({ flag: 'on', outgoing: 1, riders });
+  // Kalderen har talt begge risiko-ryttere (kun den handlede rytter udeladt).
+  const sellerState = { id: TEAM.A, future_count: 10, at_risk_count: 2 };
+  assert.equal(await applySellerOutgoingAuctions6181(supabase, sellerState, id(9), { seasonNumber: season }), true);
+  assert.equal(sellerState.future_count, 9, 'auktionsrytteren er udgaaende');
+  assert.equal(sellerState.at_risk_count, 1, 'og taelles ikke ogsaa som risiko');
 });
 
 test('ren regel: applyMarketSeatCounts og startbyderens krav', () => {

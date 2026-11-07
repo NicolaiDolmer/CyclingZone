@@ -21,6 +21,7 @@
 --   5. team_outgoing_auction_count(team, udelad_rytter): holdets egne senior-
 --      ryttere paa aktiv auktion. Taeller som udgaaende i saelgers gulv-tjek, saa
 --      en saelger ikke kan saelge sig under gulvet og faa auktionen annulleret.
+--      team_outgoing_auction_rider_ids giver de samme ryttere som id'er.
 --   6. market_bid_issue_6181(...): den rene regel (NULL = ok). Bruges af triggerne
 --      og af backenden som for-tjek (proxy-cascaden), saa reglen findes eet sted.
 --   7. Tre BEFORE-triggere, der under holdlaasen (samme noegle som
@@ -65,8 +66,9 @@
 --   4. SELECT p.proname, has_function_privilege('anon', p.oid, 'EXECUTE') AS anon,
 --             has_function_privilege('authenticated', p.oid, 'EXECUTE') AS auth
 --        FROM pg_proc p WHERE p.proname IN ('team_market_commitment','team_seat_commitment',
---          'team_outgoing_auction_count','market_bid_issue_6181','market_commitment_6181_on','market_squad_max');
---      -- anon=false, auth=false for alle seks
+--          'team_outgoing_auction_count','team_outgoing_auction_rider_ids','market_bid_issue_6181',
+--          'market_commitment_6181_on','market_squad_max');
+--      -- anon=false, auth=false for alle syv
 --
 -- Rollback:
 --   DROP TRIGGER IF EXISTS trg_market_commitment_6181_bid ON public.auction_bids;
@@ -76,6 +78,7 @@
 --   DROP FUNCTION IF EXISTS public.market_commitment_6181_start_gate();
 --   DROP FUNCTION IF EXISTS public.market_commitment_6181_proxy_gate();
 --   DROP FUNCTION IF EXISTS public.market_bid_issue_6181(uuid, uuid, bigint, boolean);
+--   DROP FUNCTION IF EXISTS public.team_outgoing_auction_rider_ids(uuid, uuid);
 --   DROP FUNCTION IF EXISTS public.team_outgoing_auction_count(uuid, uuid);
 --   DROP FUNCTION IF EXISTS public.team_seat_commitment(uuid, uuid);
 --   DROP FUNCTION IF EXISTS public.team_market_commitment(uuid, uuid);
@@ -164,6 +167,24 @@ STABLE
 SET search_path = public, pg_catalog
 AS $$
   SELECT count(DISTINCT r.id)::integer
+    FROM public.auctions a
+    JOIN public.riders r ON r.id = a.rider_id
+   WHERE a.status IN ('active', 'extended')
+     AND r.team_id = p_team_id
+     AND r.squad = 'senior' AND r.is_academy = false AND r.is_retired = false
+     AND NOT (r.pending_team_id IS NOT NULL AND r.pending_team_id <> p_team_id)
+     AND (p_exclude_rider_id IS NULL OR r.id <> p_exclude_rider_id)
+$$;
+
+-- Samme ryttere som id'er: backenden udelader dem fra risiko-taellingen
+-- (kontraktudloeb/pension), saa en rytter paa auktion aldrig taelles to gange.
+CREATE OR REPLACE FUNCTION public.team_outgoing_auction_rider_ids(p_team_id uuid, p_exclude_rider_id uuid DEFAULT NULL)
+RETURNS uuid[]
+LANGUAGE sql
+STABLE
+SET search_path = public, pg_catalog
+AS $$
+  SELECT coalesce(array_agg(DISTINCT r.id), '{}')
     FROM public.auctions a
     JOIN public.riders r ON r.id = a.rider_id
    WHERE a.status IN ('active', 'extended')
@@ -353,6 +374,8 @@ REVOKE ALL ON FUNCTION public.team_seat_commitment(uuid, uuid) FROM PUBLIC, anon
 GRANT EXECUTE ON FUNCTION public.team_seat_commitment(uuid, uuid) TO service_role;
 REVOKE ALL ON FUNCTION public.team_outgoing_auction_count(uuid, uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.team_outgoing_auction_count(uuid, uuid) TO service_role;
+REVOKE ALL ON FUNCTION public.team_outgoing_auction_rider_ids(uuid, uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.team_outgoing_auction_rider_ids(uuid, uuid) TO service_role;
 REVOKE ALL ON FUNCTION public.market_bid_issue_6181(uuid, uuid, bigint, boolean) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.market_bid_issue_6181(uuid, uuid, bigint, boolean) TO service_role;
 REVOKE ALL ON FUNCTION public.market_commitment_6181_bid_gate() FROM PUBLIC, anon, authenticated, service_role;
