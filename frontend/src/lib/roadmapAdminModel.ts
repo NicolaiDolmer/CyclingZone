@@ -527,7 +527,9 @@ export function categoryOf(row: ScoreRow, areaLabel: (engine: string) => string)
   return areaLabel(row.engine ?? "other");
 }
 
-export function mergeCategories<T extends ScoreRow>(rows: T[], items: { id: string; category: string | null }[]): T[] {
+export function mergeCategories<T extends ScoreRow>(
+  rows: T[], items: { id: string; category: string | null }[],
+): (T & { category: string | null })[] {
   const byId = new Map(items.map((i) => [i.id, i.category]));
   return rows.map((r) => ({ ...r, category: byId.get(r.item_id) ?? null }));
 }
@@ -609,7 +611,7 @@ export const CHART_SCOPES: { key: ChartScope; label: string }[] = [
   { key: "planned", label: "Planlagt" },
 ];
 
-export function chartRows<T extends ScoreRow>(rows: T[], scope: ChartScope): T[] {
+export function chartRows<T extends ScoreRow>(rows: T[], scope: ChartScope | string): T[] {
   if (scope === "ideas") return rows.filter((r) => r.status === "active");
   if (scope === "planned") return rows.filter((r) => r.status === "planned");
   return rows.filter((r) => !DONE_STATUSES.includes(r.status));

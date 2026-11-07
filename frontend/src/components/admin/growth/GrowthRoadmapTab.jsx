@@ -142,7 +142,7 @@ function PointStats({ point }) {
 function RoadmapChartSection({ rows, votePayload, loading, busy, onMoveHorizon, onToPlan, onEdit }) {
   const [view, setView] = useState("items");
   const [f, setF] = useState(EMPTY_CHART_FILTERS);
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState(/** @type {string | null} */ (null));
   const setFilter = (key, value) => { setF((prev) => ({ ...prev, [key]: value })); setSelected(null); };
   const canSegment = votePayload !== null;
 
@@ -226,7 +226,7 @@ function RoadmapChartSection({ rows, votePayload, loading, busy, onMoveHorizon, 
 
   return (
     <Section>
-      <SectionHeader title="Vigtighed mod idé" meta={meta} />
+      <SectionHeader title="Vigtighed mod idé" meta={/** @type {any} */ (meta)} />
       <div className="mb-4 flex flex-wrap items-end gap-2" role="group" aria-label="Grafens filtre">
         <Segmented label="Vis" value={view} onChange={switchView} options={CHART_VIEWS} />
         <Select size="sm" aria-label="Hvilke punkter" value={f.scope} onChange={(e) => setFilter("scope", e.target.value)}>
@@ -295,8 +295,8 @@ export default function GrowthRoadmapTab() {
   const [baseRows, setRows] = useState([]);
   // #7789: kategorien og stemme-rækkerne til grafen. Begge er null/tomme, indtil
   // migrationen er applied; så viser grafen viewets tal uden filtre.
-  const [categories, setCategories] = useState([]);
-  const [votePayload, setVotePayload] = useState(null);
+  const [categories, setCategories] = useState(/** @type {{ id: string, category: string | null }[]} */ ([]));
+  const [votePayload, setVotePayload] = useState(/** @type {import("../../../lib/roadmapAdminModel.ts").VotePayload | null} */ (null));
   const [issues, setIssues] = useState([]);
   const [updates, setUpdates] = useState([]);
   const [flags, setFlags] = useState([]);
@@ -305,7 +305,7 @@ export default function GrowthRoadmapTab() {
   const [actionError, setActionError] = useState("");
   const [busy, setBusy] = useState(null);
   // { kind: "item" | "split" | "issue" | "update", row, focus? }
-  const [modal, setModal] = useState(null);
+  const [modal, setModal] = useState(/** @type {any} */ (null));
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -345,8 +345,8 @@ export default function GrowthRoadmapTab() {
         supabase.from("roadmap_items").select("id, category"),
         apiFetch(`${API}/api/admin/roadmap/votes`, { headers: await getAuth() }, { source: "admin-roadmap-votes" }),
       ]);
-      setCategories(catRes.error ? [] : catRes.data ?? []);
-      setVotePayload(votesRes.ok ? parseVotePayload(votesRes.data?.votes) : null);
+      setCategories(catRes.error ? [] : /** @type {any} */ (catRes.data) ?? []);
+      setVotePayload(votesRes.ok ? parseVotePayload(/** @type {any} */ (votesRes.data)?.votes) : null);
     } catch {
       setCategories([]);
       setVotePayload(null);
