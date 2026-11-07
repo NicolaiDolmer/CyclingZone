@@ -109,7 +109,8 @@ test('versioneret script i et andet worktree end hookens cwd blokeres ikke (bøl
   const { dirname, join } = await import('node:path');
   // Scriptet ligger i dette repo; hooken koerer fra en helt anden mappe (fx hovedmappen).
   const repo = dirname(dirname(fileURLToPath(import.meta.url)));
-  const script = join(repo, 'scripts', 'guard-commit-branch.sh').replace(/\/g, '/');
-  const res = checkCommand(`bash "${script}" fix/x "${repo.replace(/\/g, '/')}"`, { cwd: tmpdir(), listWorktrees: () => [] });
+  const fwd = (p) => p.split('\\').join('/');
+  const script = fwd(join(repo, 'scripts', 'guard-commit-branch.sh'));
+  const res = checkCommand(`bash "${script}" fix/x "${fwd(repo)}"`, { cwd: tmpdir(), listWorktrees: () => [] });
   assert.equal(res.blocked, false, res.reason);
 });
