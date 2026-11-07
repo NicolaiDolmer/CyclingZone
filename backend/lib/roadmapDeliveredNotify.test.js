@@ -13,20 +13,28 @@ import {
 import { translate } from "./i18nServer.js";
 
 const NOW = new Date("2026-11-07T10:00:00.000Z");
+// Naeste tick efter vinduet for andres uafsluttede claims.
+const LATER = new Date("2026-11-07T10:11:00.000Z");
 
 function makeStore({ items, voters = {}, receipts = new Set(), failMark = false } = {}) {
   const state = { items: items.map((i) => ({ ...i, done: false })), receipts, released: [] };
   const key = (itemId, userId) => `${itemId}:${userId}`;
+  // Seedede kvitteringer er gamle; nye faar koerslens tidspunkt.
+  const times = new Map([...receipts].map((k) => [k, "2026-01-01T00:00:00.000Z"]));
   return {
     state,
     listOpenItems: async () => state.items.filter((i) => !i.done),
     listHighVoters: async ({ itemId }) => voters[itemId] ?? [],
-    claim: async ({ itemId, userId }) => {
+    claim: async ({ itemId, userId, sentAtIso }) => {
       if (state.receipts.has(key(itemId, userId))) return false;
       state.receipts.add(key(itemId, userId));
+      times.set(key(itemId, userId), sentAtIso);
       return true;
     },
-    release: async ({ itemId, userId }) => { state.receipts.delete(key(itemId, userId)); state.released.push(userId); },
+    release: async ({ itemId, userId }) => { state.receipts.delete(key(itemId, userId)); times.delete(key(itemId, userId)); state.released.push(userId); },
+    listReceiptTimes: async ({ itemId }) => new Map([...state.receipts]
+      .filter((k) => k.startsWith(`${itemId}:`))
+      .map((k) => [k.slice(itemId.length + 1), times.get(k)])),
     markItemDone: async ({ itemId }) => {
       if (failMark) throw new Error("mark failed");
       state.items.find((i) => i.id === itemId).done = true;
@@ -89,7 +97,7 @@ test("en fejlet afsendelse ruller kun sin egen claim tilbage og holder punktet �
   assert.deepEqual(sent, ["u2"]);
   assert.equal(store.state.items[0].done, false);
   fail = false;
-  const second = await runRoadmapDeliveredNotify({ supabase: {}, now: NOW, store, notify });
+  const second = await runRoadmapDeliveredNotify({ supabase: {}, now: LATER, store, notify });
   assert.deepEqual(sent, ["u2", "u1"]);
   assert.equal(second.skipped, 1);
   assert.equal(store.state.items[0].done, true);
@@ -155,4 +163,23 @@ test("standardlageret spørger kun efter høje stemmer på de to akser og claime
   assert.equal(claimed, true);
   const upsert = calls[1].ops.find(([op]) => op === "upsert");
   assert.deepEqual(upsert[2], { onConflict: "item_id,user_id", ignoreDuplicates: true });
+});
+
+test("overlappende sweep lukker ikke punktet, mens en andens claim stadig kan rulles tilbage (Codex P2)", async () => {
+  const store = makeStore({ items: [ITEM], voters: { "item-1": ["u1"] } });
+  // Koersel A har claimet u1 og venter paa indsaettelsen.
+  await store.claim({ itemId: "item-1", userId: "u1", sentAtIso: NOW.toISOString() });
+  const sent = [];
+  const notify = async (a) => { sent.push(a.userId); return { delivered: true }; };
+  // Koersel B ser claimen og springer u1 over, men maa ikke lukke punktet.
+  const b = await runRoadmapDeliveredNotify({ supabase: {}, now: NOW, store, notify });
+  assert.equal(b.skipped, 1);
+  assert.equal(store.state.items[0].done, false);
+  // A's indsaettelse fejler og ruller claimen tilbage: naeste tick sender u1.
+  await store.release({ itemId: "item-1", userId: "u1" });
+  await runRoadmapDeliveredNotify({ supabase: {}, now: LATER, store, notify });
+  assert.deepEqual(sent, ["u1"]);
+  // Tick efter vinduet: claimen er afsluttet, punktet lukkes.
+  await runRoadmapDeliveredNotify({ supabase: {}, now: new Date("2026-11-07T10:30:00.000Z"), store, notify });
+  assert.equal(store.state.items[0].done, true);
 });

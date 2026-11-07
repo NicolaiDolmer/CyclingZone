@@ -30,6 +30,11 @@ import { captureException } from "./sentry.js";
 export const ROADMAP_DELIVERED_TYPE = "roadmap_delivered";
 export const ROADMAP_HIGH_VOTE_MIN = 5;
 export const ROADMAP_DELIVERED_ITEMS_PER_TICK = 10;
+// En claim, en ANDEN koersel skrev for nylig, kan stadig vente paa sin afsendelse
+// (og blive rullet tilbage ved fejl). Punktet lukkes foerst, naar alle andres
+// claims er aeldre end dette vindue, saa et overlappende sweep aldrig lukker et
+// punkt med en uafsluttet levering (Codex P2 paa #7846).
+export const ROADMAP_DELIVERED_PENDING_GRACE_MS = 10 * 60 * 1000;
 const RECEIPTS_TABLE = "roadmap_delivery_receipts";
 
 /**
@@ -104,6 +109,16 @@ export const defaultRoadmapDeliveredStore = Object.freeze({
       .eq("sent_at", sentAtIso);
     if (error) throw error;
   },
+  async listReceiptTimes({ supabase, itemId }) {
+    const rows = await fetchAllRows(() =>
+      supabase
+        .from(RECEIPTS_TABLE)
+        .select("user_id, sent_at")
+        .eq("item_id", itemId)
+        .order("user_id")
+    );
+    return new Map(rows.map((row) => [row.user_id, row.sent_at]));
+  },
   async markItemDone({ supabase, itemId, nowIso }) {
     const { error } = await supabase
       .from("roadmap_items")
@@ -145,6 +160,7 @@ export async function runRoadmapDeliveredNotify({
   for (const item of items) {
     result.items += 1;
     let itemFailed = false;
+    const claimedByOthers = [];
     try {
       const voters = await store.listHighVoters({ supabase, itemId: item.id });
       for (const userId of voters) {
@@ -158,7 +174,7 @@ export async function runRoadmapDeliveredNotify({
           }
           throw error;
         }
-        if (!claimed) { result.skipped += 1; continue; }
+        if (!claimed) { result.skipped += 1; claimedByOthers.push(userId); continue; }
         try {
           await notify({
             supabase, userId, type: ROADMAP_DELIVERED_TYPE, relatedId: item.id, now,
@@ -177,11 +193,24 @@ export async function runRoadmapDeliveredNotify({
           }
         }
       }
-      if (!itemFailed) await store.markItemDone({ supabase, itemId: item.id, nowIso });
+      if (!itemFailed && await othersSettled({ store, supabase, itemId: item.id, userIds: claimedByOthers, now })) {
+        await store.markItemDone({ supabase, itemId: item.id, nowIso });
+      }
     } catch (error) {
       result.failed += 1;
       captureException(error, { tags: { flow: "notifications", stage: "roadmap-delivered-item" }, extra: { itemId: item.id } });
     }
   }
   return result;
+}
+
+/** Alle andres claims er aeldre end vinduet, saa ingen af dem kan rulles tilbage laengere. */
+async function othersSettled({ store, supabase, itemId, userIds, now }) {
+  if (userIds.length === 0) return true;
+  const times = await store.listReceiptTimes({ supabase, itemId });
+  const cutoff = now.getTime() - ROADMAP_DELIVERED_PENDING_GRACE_MS;
+  return userIds.every((userId) => {
+    const sentAt = Date.parse(times.get(userId) ?? "");
+    return Number.isFinite(sentAt) && sentAt <= cutoff;
+  });
 }
