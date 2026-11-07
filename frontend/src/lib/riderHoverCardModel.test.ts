@@ -1,7 +1,7 @@
 // #2009 · Hover-miniprofilen: hvad kortet viser for egen vs. andens rytter.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildRiderHoverCardModel, canHover, flattenHoverCardRow, placeHoverCard, type HoverCardRiderRow } from "./riderHoverCardModel.ts";
+import { buildRiderHoverCardModel, canHover, flattenHoverCardRow, placeHoverCard, summarizeRaceNow, summarizeRecentResults, type HoverCardRiderRow } from "./riderHoverCardModel.ts";
 import { ABILITY_CATEGORIES, ABILITY_KEYS } from "./generated/abilityRegistry.js";
 
 function abilities(value: number): Record<string, number> {
@@ -121,4 +121,95 @@ test("placeHoverCard: under navnet, over hvis der ikke er plads, og inden for vi
 
   const right = { ...anchor, left: 1200, right: 1260 };
   assert.equal(placeHoverCard(right, card, { width: 1280, height: 800 }).left, 1280 - 8 - 360);
+});
+
+// ── Kort v2 (#2009, ejer 7/11) ───────────────────────────────────────────────
+
+test("v2: form, traethed og plan kun for egen rytter (scouting-fog)", () => {
+  const ctx = {
+    seasonYear: 2028,
+    condition: { form: 61, fatigue: 22, injured: false },
+    plan: { role: "captain", tasks: null, effort: "normal" },
+  };
+  const own = buildRiderHoverCardModel(row(), { ...ctx, viewerTeamId: "team-a" });
+  const other = buildRiderHoverCardModel(row(), { ...ctx, viewerTeamId: "team-b" });
+  assert.deepEqual(own?.own, { form: 61, fatigue: 22, plan: { role: "captain", tasks: null, effort: "normal" } });
+  assert.equal(other?.own, null);
+});
+
+test("v2: status-maerker i spillets egne noegler og raekkefoelge", () => {
+  const m = buildRiderHoverCardModel(row({ birthdate: "2006-01-01", contract_end_season: 3 }), {
+    viewerTeamId: "team-b",
+    seasonYear: 2028,
+    activeSeasonNumber: 3,
+    market: { inAuction: true, listed: false },
+    condition: { injured: true },
+  });
+  assert.deepEqual(m?.badges, ["u23", "injured", "auction", "contractExpiring"]);
+});
+
+test("v2: fri rytter har hverken kontrakt eller loen, men stadig vaerdi", () => {
+  const m = buildRiderHoverCardModel(row({ team_id: null, team: null, salary: 900, contract_end_season: 4, market_value: 1200 }), { viewerTeamId: "team-a", seasonYear: 2028 });
+  assert.equal(m?.contractEndSeason, null);
+  assert.equal(m?.salary, null);
+  assert.equal(m?.marketValue, 1200);
+  assert.equal(m?.teamName, null);
+});
+
+test("v2: knapper giver kun mening hvor de kan bruges", () => {
+  const own = buildRiderHoverCardModel(row(), { viewerTeamId: "team-a", seasonYear: 2028 });
+  const other = buildRiderHoverCardModel(row(), { viewerTeamId: "team-b", seasonYear: 2028 });
+  const free = buildRiderHoverCardModel(row({ team_id: null, team: null }), { viewerTeamId: "team-b", seasonYear: 2028 });
+  const retired = buildRiderHoverCardModel(row({ is_retired: true }), { viewerTeamId: "team-b", seasonYear: 2028 });
+  const loggedOut = buildRiderHoverCardModel(row(), { viewerTeamId: null, seasonYear: 2028 });
+  assert.deepEqual(own?.actions, { profile: true, compare: true, watchlist: false, bid: false });
+  assert.deepEqual(other?.actions, { profile: true, compare: true, watchlist: true, bid: true });
+  assert.equal(free?.actions.bid, false);
+  assert.equal(free?.actions.watchlist, true);
+  assert.equal(retired?.actions.bid, false);
+  assert.equal(retired?.actions.watchlist, false);
+  assert.deepEqual(loggedOut?.actions, { profile: true, compare: true, watchlist: false, bid: false });
+});
+
+test("summarizeRaceNow: etape, samlet og troejer paa seneste koerte etape", () => {
+  const race = summarizeRaceNow({
+    raceId: "race-1", raceName: "Loeb A", raceType: "stage_race", stages: 7, stagesCompleted: 3,
+    results: [
+      { result_type: "stage", stage_number: 3, rank: 12 },
+      { result_type: "leader", stage_number: 3, rank: 1 },
+      { result_type: "mountain_day", stage_number: 3, rank: 1 },
+      { result_type: "points_day", stage_number: 3, rank: 4 },
+      // anden etape taeller ikke
+      { result_type: "young_day", stage_number: 2, rank: 1 },
+    ],
+  });
+  assert.deepEqual(race, {
+    raceId: "race-1", raceName: "Loeb A", stageNumber: 3, stageCount: 7, stageRank: 12, gcRank: 1, jerseys: ["leader", "mountain_day"],
+  });
+});
+
+test("summarizeRaceNow: endagsloeb har ingen samlet stilling og ingen troejer; ikke startet = ingen etape", () => {
+  const oneDay = summarizeRaceNow({ raceId: "r", raceName: null, raceType: "single", stages: 1, stagesCompleted: 1, results: [{ result_type: "stage", stage_number: 1, rank: 2 }, { result_type: "leader", stage_number: 1, rank: 1 }] });
+  assert.equal(oneDay?.stageRank, 2);
+  assert.equal(oneDay?.gcRank, null);
+  assert.deepEqual(oneDay?.jerseys, []);
+  const notStarted = summarizeRaceNow({ raceId: "r", raceName: null, raceType: "stage_race", stages: 5, stagesCompleted: 0, results: [] });
+  assert.equal(notStarted?.stageNumber, null);
+  assert.equal(notStarted?.stageRank, null);
+  assert.equal(summarizeRaceNow(null), null);
+});
+
+test("summarizeRecentResults: loebsdage, sejre og podier inden for 5 uger", () => {
+  const now = new Date("2026-11-07T12:00:00Z");
+  const day = (d: number) => new Date(now.getTime() - d * 86_400_000).toISOString();
+  const rows = [
+    { race_id: "a", stage_number: 1, rank: 1, imported_at: day(1) },
+    { race_id: "a", stage_number: 2, rank: 3, imported_at: day(2) },
+    { race_id: "a", stage_number: 2, rank: 3, imported_at: day(2) }, // dobbelt raekke taeller én gang
+    { race_id: "b", stage_number: 1, rank: 40, imported_at: day(20) },
+    { race_id: "c", stage_number: 1, rank: null, imported_at: day(30) }, // DNF er stadig en loebsdag
+    { race_id: "d", stage_number: 1, rank: 1, imported_at: day(40) }, // uden for vinduet
+  ];
+  assert.deepEqual(summarizeRecentResults(rows, now), { raceDays: 4, wins: 1, podiums: 2 });
+  assert.deepEqual(summarizeRecentResults([], now), { raceDays: 0, wins: 0, podiums: 0 });
 });
