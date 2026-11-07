@@ -34,6 +34,8 @@
     "rider_on_auction_transfer": "Ce coureur est dans une enchère en cours. Enchéris sur l'enchère au lieu de faire une offre de transfert.",
     "rider_on_auction_swap": "L'un des coureurs échangés est dans une enchère en cours. L'échange a été annulé. Enchéris sur l'enchère à la place.",
     "rider_on_auction_release": "Ce coureur est actuellement aux enchères et ne peut pas être libéré. Attends d'abord la fin de l'enchère",
+    "rider_pending_transfer_release": "Ce coureur est vendu et attend de rejoindre sa nouvelle équipe, donc tu ne peux pas le libérer",
+    "rider_pending_transfer_trade": "Ce coureur est déjà vendu et attend de rejoindre sa nouvelle équipe, il ne peut donc pas être revendu",
     "invalid_start_price": "Prix de départ invalide",
     "invalid_offer_amount": "Montant invalide",
     "invalid_loan_amount": "Montant invalide",

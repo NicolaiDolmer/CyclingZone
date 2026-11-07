@@ -147,9 +147,11 @@ export function calculateAuctionEnd(startTime, cfg = DEFAULT_AUCTION_CONFIG, { m
       continue;
     }
 
-    // Within active window
+    // Within active window. #6181: the window is half-open [open, close), so an
+    // end landing EXACTLY on close is outside it. With close_hour=24 that end is
+    // 00:00, the start of the night, so it rolls on to the next window's open.
     const availableMs = wClose.getTime() - current.getTime();
-    if (remaining <= availableMs) {
+    if (remaining < availableMs) {
       return new Date(current.getTime() + remaining);
     }
 
@@ -288,8 +290,11 @@ export function checkBidExtension(bidTime, currentEnd, cfg = DEFAULT_AUCTION_CON
   const { close: wClose, nextOpen } = windowForEnd(end, cfg);
   const hardCap = new Date(wClose.getTime() + graceMs);
 
+  // #6181: without grace the cap IS the window close, and an end exactly on
+  // close (00:00 with close_hour=24) is outside the half-open window, so it
+  // rolls over too. A grace cap stays inclusive: it is an explicit allowance.
   let newEnd;
-  if (extendedEnd > hardCap) {
+  if (graceMs === 0 ? extendedEnd >= hardCap : extendedEnd > hardCap) {
     const overflowMs = extendedEnd.getTime() - hardCap.getTime();
     newEnd = new Date(nextOpen.getTime() + overflowMs);
   } else {
