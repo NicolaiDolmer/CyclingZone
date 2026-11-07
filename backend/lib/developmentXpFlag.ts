@@ -157,13 +157,15 @@ export function withRaceDayRoleYieldXp(
   extraTickArgs: Record<string, unknown>,
   { params = null, profileType = null, role = null }: { params?: any; profileType?: string | null; role?: string | null } = {},
 ): Record<string, unknown> {
-  if (!developmentXp) return withRaceDayRoleYield(extraTickArgs, { params, profileType, role });
+  // JS-hjaelperne udleder typer af deres null-standardvaerdier; cast holder kaldet
+  // uaendret i runtime (typecheck-fejl paa main efter #7843).
+  if (!developmentXp) return withRaceDayRoleYield(extraTickArgs, { params, profileType, role } as any);
   if (!params) return extraTickArgs;
   const trainingCfg = {
     ...TRAINING_CONFIG,
     offFocusMult: developmentXp.raceOffFocusShare * TRAINING_CONFIG.focusGrowthMult.hard,
   };
-  const program = raceDayRoleBaseProgram(profileType, { role, roleDrivesBaseDay: params.roleDrivesBaseDay === true, trainingCfg });
-  const abilityYieldMult = raceDayRoleYieldMultipliers({ params, profileType, role, program, trainingCfg });
+  const program = raceDayRoleBaseProgram(profileType as any, { role, roleDrivesBaseDay: params.roleDrivesBaseDay === true, trainingCfg } as any);
+  const abilityYieldMult = raceDayRoleYieldMultipliers({ params, profileType, role, program, trainingCfg } as any);
   return { ...extraTickArgs, program, abilityYieldMult };
 }
