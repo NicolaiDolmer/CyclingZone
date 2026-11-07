@@ -166,7 +166,7 @@ features:
 
   - id: race-descent-regroup-cap-7644
     area: race-engine
-    title_en: Long descents - cap on how much a regrouping chase can gain
+    title_en: Long descent chase cap
     title_da: Lange nedkørsler - loft på samlingens gevinst
     state: dormant
     flag: descent_regroup_cap_7644
@@ -220,7 +220,7 @@ features:
 
   - id: race-finalize-resumable
     area: race-engine
-    title_en: Resumable race finalisation (step markers)
+    title_en: Resumable race finalisation
     title_da: Genoptagelig løbsafslutning (trin-markører)
     state: live
     flag: race_finalize_resumable_enabled
@@ -312,7 +312,7 @@ features:
 
   - id: race-final-km-boundary-7383
     area: race-engine
-    title_en: Stage plan switches exactly 10 km from the finish
+    title_en: Stage plan 10 km switch
     title_da: Etapeplanens skift præcis 10 km fra mål
     state: live
     ssot: docs/RACE_ENGINE_RULES.md
@@ -398,7 +398,7 @@ features:
 
   - id: role-scope-choice
     area: race-day
-    title_en: Role picker scope (stage N to the end / stage N only)
+    title_en: Role picker scope
     title_da: Rollevælger med etape-valg (etape N og løbet ud / kun etape N)
     state: live
     flag: race_role_scope_choice
@@ -533,7 +533,7 @@ features:
 
   - id: rider-valuation-v5
     area: market
-    title_en: Rider value on the same abilities as the rating
+    title_en: Rider value on rating abilities
     title_da: Rytterværdi på samme evner som ratingen
     state: live
     ssot: docs/ECONOMY_RULES.md
@@ -600,7 +600,7 @@ features:
 
   - id: rider-primary-type-from-distribution
     area: squad
-    title_en: New riders' primary type from the target distribution
+    title_en: New riders' primary type
     title_da: Nye rytteres primære type fra mål-fordelingen
     state: building
     ssot: docs/RIDER_GENERATION.md
@@ -686,7 +686,7 @@ features:
 
   - id: training-hard-sessions-cobbles-echelon-attack
     area: training
-    title_en: Hard sessions for cobbles, echelons and attacks
+    title_en: Hard sessions for cobbles and attacks
     title_da: Hårde sessioner for brosten, vifter og angreb
     state: live
     ssot: docs/TRAINING_RULES.md
@@ -772,7 +772,7 @@ features:
 
   - id: training-bulk-day
     area: training
-    title_en: Set the training day for several riders at once
+    title_en: Bulk training day
     title_da: Sæt træningsdagen for flere ryttere på én gang
     state: live
     ssot: docs/TRAINING_RULES.md
@@ -886,7 +886,7 @@ features:
   # --- season --------------------------------------------------------------
   - id: auto-calendar
     area: season
-    title_en: Auto-generated season calendar at forever transitions
+    title_en: Auto-generated season calendar
     title_da: Auto-genereret sæsonkalender ved forever-skifter
     state: building
     ssot: docs/CALENDAR_RULES.md
@@ -1013,7 +1013,7 @@ features:
 
   - id: condition-v2-race-date-training-day
     area: training
-    title_en: Training on a race date weighs a full training day
+    title_en: Race date as full training day
     title_da: Træning på en løbsdato vejer et helt træningsdøgn
     state: live
     flag: condition_v2_race_date_training_day
@@ -1044,7 +1044,7 @@ features:
 
   - id: potential-estimate-display
     area: training
-    title_en: One potential source (stored estimate per rider and team)
+    title_en: One potential source
     title_da: Én prognose-kilde (gemt skøn pr. rytter og hold)
     state: dormant
     flag: potential_estimate_display
@@ -1057,7 +1057,7 @@ features:
 
   - id: potential-estimate-writes
     area: training
-    title_en: Stored potential estimates (Sunday run and writes)
+    title_en: Stored potential estimates
     title_da: Gemte potentiale-skøn (søndagsjob og skrivning)
     state: building
     ssot: docs/superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md
@@ -1069,7 +1069,7 @@ features:
 
   - id: train-now-whole-day
     area: training
-    title_en: Train now B (the click settles the rider's whole known date)
+    title_en: Train now B
     title_da: Træn nu B (klikket afregner rytterens hele kendte dato)
     state: live
     ssot: docs/TRAINING_RULES.md
@@ -1128,7 +1128,7 @@ features:
 
   - id: race-day-role-base-day
     area: training
-    title_en: Race day - the rider's role also decides the base day
+    title_en: Race day role base day
     title_da: Løbsdag - rollen styrer også basis-dagen
     state: dormant
     flag: race_day_role_base_day_enabled
@@ -1200,7 +1200,7 @@ features:
 
   - id: upkeep-per-race-day
     area: economy
-    title_en: Upkeep paid per senior race day (Travel & staff)
+    title_en: Upkeep per senior race day
     title_da: Upkeep betalt pr. seniorløbsdag (Rejse og personale)
     state: live
     flag: upkeep_per_race_day
@@ -1339,7 +1339,7 @@ features:
 
   - id: first-race-card
     area: onboarding
-    title_en: Your first race card on the dashboard (new teams)
+    title_en: First race card on the dashboard
     title_da: Dit første løb-kort på dashboardet (nye hold)
     state: live
     flag: first_race_card
