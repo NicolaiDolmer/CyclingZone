@@ -334,7 +334,7 @@ export function developmentXpAbilityDelta(
   });
   // Træner og facilitet tæller kun på træningsdage (S13).
   const coach = raceDay ? 1 : facilityTrainingMultiplier({ facilityTier, staff })
-    * staffTrainingBonus({ facilityTier, staff, ability, riderLevel });
+    * staffTrainingBonus({ facilityTier, staff: (staff ?? null) as object | null, ability, riderLevel: riderLevel as string });
   const intention = isNum(academyRateMult) && academyRateMult >= 0 ? academyRateMult : 1;
   const raceDayAxis = isNum(budgetDivisor) && budgetDivisor > 0;
   return abilityXpForTick({
