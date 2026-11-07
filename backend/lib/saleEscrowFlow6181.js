@@ -13,7 +13,7 @@
 //   OPRETTELSE og de varme afregningsstier (handel, bytte, auktion, flush,
 //   pension/kontraktudloeb) er bag kontakten. Slukket returnerer de deres
 //   no-op-vaerdi (fx den uaendrede incrementBalanceWithAudit), saa adfaerden er
-//   den samme som foer PR 3. saleEscrowFlow6181.test.js beviser det.
+//   den samme som foer PR 3. saleEscrowFlow6181.pglite.test.js beviser det.
 //
 //   SIKKERHEDSNETTET (reconcileHeldSaleEscrows, kaldt af heal-sweepet hvert 5. min,
 //   og beta-reset) er IKKE bag kontakten. En escrow, der blev holdt mens kontakten
@@ -44,6 +44,8 @@ const FINANCE_KEY_PREFIX = Object.freeze({
 const HOLD_HANDLED = new Set(["held", "exists"]);
 // Postgres 42P01 / PostgREST PGRST205: tabellen findes ikke endnu (M1 ikke applied).
 const MISSING_TABLE_CODES = new Set(["42P01", "PGRST205"]);
+// Slukket/ikke parkeret: den uaendrede betaling.
+const DIRECT_PAYMENT = Object.freeze({ incrementBalanceWithAudit });
 const ESCROW_COLUMNS = "id, deal_type, deal_id, payer_team_id, payee_team_id, amount, rider_ids, target_team_ids, delivered_rider_ids, status, created_at";
 
 /**
@@ -56,14 +58,15 @@ export async function isSaleEscrowEnabled(supabase, { fresh = true } = {}) {
 }
 
 /**
- * Betalingsfunktion til en handel. Signaturen er incrementBalanceWithAudit's, saa
- * kalderen kun bytter funktionsnavnet ud:
+ * Betaling til en handel: et objekt med metoden incrementBalanceWithAudit (samme
+ * signatur), saa kalderen kun saetter objektet foran kaldet, og audit-vagten
+ * (auditTrail.test.js) stadig ser og tjekker hvert penge-kaldsted:
  *
- *   const pay = await saleEscrowPayment(supabase, { parked, dealType, dealId, riderIds, targetTeamIds });
- *   await pay(supabase, koeberens traek, opts);
- *   await pay(supabase, saelgers kredit, opts);
+ *   const payment = await saleEscrowPayment(supabase, { parked, dealType, dealId, riderIds, targetTeamIds });
+ *   await payment.incrementBalanceWithAudit(supabase, koeberens traek, opts);
+ *   await payment.incrementBalanceWithAudit(supabase, saelgers kredit, opts);
  *
- * Ikke parkeret eller kontakten slukket: returnerer incrementBalanceWithAudit selv
+ * Ikke parkeret eller kontakten slukket: metoden ER incrementBalanceWithAudit
  * (samme funktion, samme kald, samme raekkefoelge som foer).
  *
  * Parkeret og taendt: de to ben samles og sendes som EET hold_sale_escrow-kald
@@ -78,17 +81,17 @@ export async function isSaleEscrowEnabled(supabase, { fresh = true } = {}) {
  *
  * @param {object} supabase
  * @param {{ parked: boolean, dealType: "transfer"|"auction"|"swap", dealId: string, riderIds: string[], targetTeamIds: string[] }} deal
- * @returns {Promise<typeof incrementBalanceWithAudit>}
+ * @returns {Promise<{ incrementBalanceWithAudit: typeof incrementBalanceWithAudit }>}
  */
 export async function saleEscrowPayment(supabase, { parked, dealType, dealId, riderIds, targetTeamIds }) {
-  if (!parked) return incrementBalanceWithAudit;
-  if (!(await isSaleEscrowEnabled(supabase))) return incrementBalanceWithAudit;
+  if (!parked) return DIRECT_PAYMENT;
+  if (!(await isSaleEscrowEnabled(supabase))) return DIRECT_PAYMENT;
   if (!DEAL_TYPES.has(dealType) || !dealId) {
     throw new Error(`saleEscrowPayment: ukendt handel ${dealType}/${dealId}`);
   }
 
   const legs = [];
-  return async function payThroughSaleEscrow(client, leg, options = {}) {
+  return { incrementBalanceWithAudit: async function payThroughSaleEscrow(client, leg, options = {}) {
     legs.push({ leg, options });
     if (legs.length === 1) return { skipped: false, balance: null, escrowPending: true };
     if (legs.length > 2) throw new Error("saleEscrowPayment: en handel har kun to ben");
@@ -123,7 +126,7 @@ export async function saleEscrowPayment(supabase, { parked, dealType, dealId, ri
     console.warn(`[saleEscrow] ${dealType} ${dealId}: ${data?.status ?? "ukendt"}, betales uden escrow`);
     await incrementBalanceWithAudit(client, payer.leg, payer.options);
     return incrementBalanceWithAudit(client, payee.leg, payee.options);
-  };
+  } };
 }
 
 /**

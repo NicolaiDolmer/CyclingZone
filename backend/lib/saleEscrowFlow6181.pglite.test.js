@@ -193,7 +193,7 @@ function swapLegs(deal, cash, { payer = TEAM.B, receiver = TEAM.A } = {}) {
   ];
 }
 async function payBoth(supabase, pay, legs) {
-  for (const leg of legs) await pay(supabase, leg, { allowDuplicate: true });
+  for (const leg of legs) await pay.incrementBalanceWithAudit(supabase, leg, { allowDuplicate: true });
 }
 
 // ── slukket = som foer ─────────────────────────────────────────────────────────
@@ -205,13 +205,13 @@ test("slukket kontakt: betalingen er den uaendrede incrementBalanceWithAudit, ua
     if (value !== null) await setFlag(db, value);
     assert.equal(await isSaleEscrowEnabled(supabase), false, `vaerdi ${value}`);
     const pay = await saleEscrowPayment(supabase, { parked: true, dealType: "transfer", dealId: DEAL.t1, riderIds: [RIDER.r1], targetTeamIds: [TEAM.B] });
-    assert.equal(pay, incrementBalanceWithAudit, `vaerdi ${value}: samme funktion som foer`);
+    assert.equal(pay.incrementBalanceWithAudit, incrementBalanceWithAudit, `vaerdi ${value}: samme funktion som foer`);
   }
   // Ikke parkeret: kontakten laeses slet ikke.
   await setFlag(db, "on");
   const log = [];
   const pay = await saleEscrowPayment(adapter(db, { log }), { parked: false, dealType: "transfer", dealId: DEAL.t1, riderIds: [RIDER.r1], targetTeamIds: [TEAM.B] });
-  assert.equal(pay, incrementBalanceWithAudit);
+  assert.equal(pay.incrementBalanceWithAudit, incrementBalanceWithAudit);
   assert.deepEqual(log, []);
 });
 
@@ -300,8 +300,8 @@ test("taendt: forkerte finance-noegler eller ben afvises, foer der flyttes penge
   await park(db, RIDER.r1, TEAM.B);
   const pay = await saleEscrowPayment(supabase, { parked: true, dealType: "transfer", dealId: DEAL.t1, riderIds: [RIDER.r1], targetTeamIds: [TEAM.B] });
   const [buyer, seller] = transferLegs(DEAL.t2, 50_000);
-  await pay(supabase, buyer);
-  await assert.rejects(() => pay(supabase, seller), /faste finance-noegler/);
+  await pay.incrementBalanceWithAudit(supabase, buyer);
+  await assert.rejects(() => pay.incrementBalanceWithAudit(supabase, seller), /faste finance-noegler/);
   assert.equal(await balance(db, TEAM.B), START);
   assert.deepEqual(await escrows(db), []);
 });

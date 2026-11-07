@@ -647,8 +647,8 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   const actorId = auditCtx?.actorId || null;
   const transferSeasonId = await fetchActiveSeasonId(supabase);
   // #6181: parkeret + sale_escrow_enabled → saelgers penge laases til holdskiftet.
-  const payTransfer = await saleEscrowPayment(supabase, { parked: deferRegistration, dealType: "transfer", dealId: offer.id, riderIds: [rider.id], targetTeamIds: [offer.buyer_team_id] });
-  await payTransfer(supabase, {
+  const transferPayment = await saleEscrowPayment(supabase, { parked: deferRegistration, dealType: "transfer", dealId: offer.id, riderIds: [rider.id], targetTeamIds: [offer.buyer_team_id] });
+  await transferPayment.incrementBalanceWithAudit(supabase, {
     teamId: offer.buyer_team_id,
     delta: -price,
     payload: {
@@ -669,7 +669,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
       idempotency_key: `transfer_buyer:${offer.id}`,
     },
   }, { allowDuplicate: true });
-  await payTransfer(supabase, {
+  await transferPayment.incrementBalanceWithAudit(supabase, {
     teamId: offer.seller_team_id,
     delta: price,
     payload: {
@@ -997,9 +997,9 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     const swapActorId = auditCtx?.actorId || null;
     const swapSeasonId = await fetchActiveSeasonId(supabase);
     // #6181: parkeret + sale_escrow_enabled → kontanterne laases, til begge ryttere er flyttet.
-    const paySwap = await saleEscrowPayment(supabase, { parked: deferRegistration, dealType: "swap", dealId: swap.id, riderIds: [offered.id, requested.id], targetTeamIds: [swap.receiving_team_id, swap.proposing_team_id] });
+    const swapPayment = await saleEscrowPayment(supabase, { parked: deferRegistration, dealType: "swap", dealId: swap.id, riderIds: [offered.id, requested.id], targetTeamIds: [swap.receiving_team_id, swap.proposing_team_id] });
 
-    await paySwap(supabase, {
+    await swapPayment.incrementBalanceWithAudit(supabase, {
       teamId: payerId,
       delta: -absCash,
       payload: {
@@ -1017,7 +1017,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
         idempotency_key: `swap_payer:${swap.id}`,
       },
     }, { allowDuplicate: true });
-    await paySwap(supabase, {
+    await swapPayment.incrementBalanceWithAudit(supabase, {
       teamId: receiverId,
       delta: absCash,
       payload: {

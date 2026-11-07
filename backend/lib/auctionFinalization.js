@@ -1464,8 +1464,8 @@ async function finalizeAuctionRecord({
     // 07d Fase B / #240: cron-finalizer → actor_type=cron, actor_id=null,
     // season_id eksplicit + idempotency_key så cron-retries ikke double-pay.
     // #6181: parkeret + sale_escrow_enabled → saelgers penge laases til holdskiftet.
-    const payAuction = await saleEscrowPayment(supabase, { parked: deferTeamChange && Boolean(actualSellerTeamId) && actualSellerTeamId !== effectiveBidderId && price > 0, dealType: "auction", dealId: auction.id, riderIds: [auction.rider.id], targetTeamIds: [effectiveBidderId] });
-    await payAuction(supabase, {
+    const auctionPayment = await saleEscrowPayment(supabase, { parked: deferTeamChange && Boolean(actualSellerTeamId) && actualSellerTeamId !== effectiveBidderId && price > 0, dealType: "auction", dealId: auction.id, riderIds: [auction.rider.id], targetTeamIds: [effectiveBidderId] });
+    await auctionPayment.incrementBalanceWithAudit(supabase, {
       teamId: effectiveBidderId,
       delta: -price,
       payload: {
@@ -1488,7 +1488,7 @@ async function finalizeAuctionRecord({
     }, { allowDuplicate: true });
 
     if (actualSellerTeamId) {
-      await payAuction(supabase, {
+      await auctionPayment.incrementBalanceWithAudit(supabase, {
         teamId: actualSellerTeamId,
         delta: price,
         payload: {
