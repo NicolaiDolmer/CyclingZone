@@ -245,6 +245,10 @@ Den anbefalede arbejdsgang er nu beskrevet i [`docs/AGENT_DISPATCH.md`](AGENT_DI
 
 **Daglig digest:** comment på ledger-issue [#627](https://github.com/NicolaiDolmer/CyclingZone/issues/627) (auto-lukket / reopened / eskaleret / label-drift). Scan den om morgenen; håndtér kun Tier 3. Skip-create ved 0 actions.
 
+## Branches og worktrees (ejer 7/11, #7834)
+
+En branch lever kun, mens den har en åben PR. Undtagelser: rørt de seneste 48 timer (en lane arbejder), eller branchens issue er åbent, og arbejdet ligger ikke på main. Alt andet fjernes, men først efter en bundle i OneDrive, så intet ubrugt arbejde går tabt. GitHub sletter selv ved merge (`delete_branch_on_merge`). Lokalt: én worktree pr. aktiv lane; hver maskine rydder sine egne ved sessionsstart. Arkiv og genskabelse 7/11: OneDrive `private-handoffs/dolmerpc-lokalt-2026-11-07/LÆS-MIG.md`.
+
 ## Til dørs: 8 krav pr. issue (#7336)
 
 Færdig = spilleren har det: **1** bygget, **2** merget, **3** tændt, **4** synligt, **5** gammelt væk, **6** Hjælp, **7** patch note, **8** verificeret i prod. [`scripts/til-doers-check.mjs`](../scripts/til-doers-check.mjs) holder én kommentar pr. issue (`<!-- til-doers:v1 -->`) med status `ok`/`na`/`mangler` og udfylder 1, 2, 3, 4, 6 og 7 selv (PR/main-commit, `FEATURE_REGISTRY.yml`, `help.json`, patch note-refs). Resten markerer en collaborator i en kommentar, én linje pr. krav: `Til dørs: 5 ok <evidens>` eller `Til dørs: 4 na <begrundelse>` (na uden tekst tæller ikke, seneste linje vinder). Når alle 8 er ok/na, lukkes issuet som completed, dog aldrig ved `needs-decision`/`auto-close-veto`, et brand-issue uden krav 8 = ok, eller et genåbnet issue uden ny markering. Mandagsrapport på #7336: `claude:done` ældre end 7 dage. Lokalt er alt dry-run: `node scripts/til-doers-check.mjs --issue N`.
