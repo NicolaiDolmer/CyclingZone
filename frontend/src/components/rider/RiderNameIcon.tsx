@@ -139,7 +139,8 @@ function installRowMenuListener() {
 
 // ── Det enkelte navn ─────────────────────────────────────────────────────────
 type CardMode = "closed" | "hover" | "pinned" | "sheet";
-type MenuState = { x: number; y: number } | null;
+type MenuState = { x: number; y: number; n: number } | null;
+let menuSeq = 0;
 
 function hoverDevice(): boolean {
   return canHover(typeof window === "undefined" ? null : window.matchMedia?.bind(window));
@@ -193,7 +194,8 @@ export function useRiderNameOverlay(riderId: string | number | null | undefined,
   const openMenu = useCallback((x: number, y: number) => {
     clearTimers();
     setMode("closed");
-    setMenu({ x, y });
+    // Nyt nummer pr. aabning: menuen starter forfra, ogsaa efter et lukket skrivefelt (Codex-fund).
+    setMenu({ x, y, n: ++menuSeq });
   }, [clearTimers]);
 
   // Hoejreklik paa raekken (sendt videre af lytteren ovenfor).
@@ -255,6 +257,18 @@ export function useRiderNameOverlay(riderId: string | number | null | undefined,
       },
       onTouchEnd: () => { if (pressTimer.current) clearTimeout(pressTimer.current); pressTimer.current = null; },
       onTouchCancel: () => { if (pressTimer.current) clearTimeout(pressTimer.current); pressTimer.current = null; },
+      // Tastatur: navnet faar fokus (Tab) = kortet vises, som hover paa ikonet;
+      // Enter aabner profilen som altid, Shift+F10 menuen (Codex-fund: ikonet
+      // er kun til mus og touch). Kun synligt fokus, ikke et museklik.
+      onFocus: (e: { currentTarget: Element }) => {
+        let visible = false;
+        try { visible = e.currentTarget.matches(":focus-visible"); } catch { visible = false; }
+        if (!visible) return;
+        keepOpen();
+        if (openTimer.current) clearTimeout(openTimer.current);
+        openTimer.current = setTimeout(() => { openTimer.current = null; setMode((m) => (m === "closed" ? "hover" : m)); }, OPEN_DELAY_MS);
+      },
+      onBlur: () => scheduleClose(),
       // Et langt tryk maa ikke ogsaa navigere til profilen bagefter.
       onClickCapture: (e: ReactMouseEvent) => {
         if (!pressFired.current) return;
@@ -263,7 +277,7 @@ export function useRiderNameOverlay(riderId: string | number | null | undefined,
         e.stopPropagation();
       },
     };
-  }, [active, id, menuAt, openMenu]);
+  }, [active, id, menuAt, openMenu, keepOpen, scheduleClose]);
 
   const icon = active ? (
     <span
@@ -306,7 +320,7 @@ export function useRiderNameOverlay(riderId: string | number | null | undefined,
         />
       )}
       {menu && (
-        <RiderContextMenu riderId={id} name={name ?? null} point={menu} onClose={() => setMenu(null)} />
+        <RiderContextMenu key={menu.n} riderId={id} name={name ?? null} point={menu} onClose={() => setMenu(null)} />
       )}
     </Suspense>
   ) : null;

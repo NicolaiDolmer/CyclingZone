@@ -39,6 +39,7 @@ import { fetchTeamOrders } from "../../lib/tacticsOrdersAdapter.js";
 import { stageOrdersRecap } from "../stageOrders/stageOrdersRecap.ts";
 import type { TeamOrdersContext } from "../stageOrders/stageOrdersRecap.ts";
 import { reportActionFailure } from "../../lib/actionTelemetry.js";
+import { deriveRaceStatus } from "../../lib/raceHubLogic.js";
 import { supabase } from "../../lib/supabase.ts";
 import {
   RECENT_WINDOW_DAYS, buildRiderHoverCardModel, canHover, placeHoverCard, summarizeRecentResults,
@@ -117,10 +118,12 @@ async function fetchRiderCard(riderId: string, viewerTeamId: string | null): Pro
     Promise.resolve(db.from("riders").select(RIDER_COLUMNS).eq("id", riderId).maybeSingle()) as Promise<{ data: HoverCardRiderRow | null; error: unknown }>,
     settle<Array<{ id: string }>>(db.from("auctions").select("id").eq("rider_id", riderId).in("status", ["active", "extended"]).limit(1)),
     settle<Array<{ id: string }>>(db.from("transfer_listings").select("id").eq("rider_id", riderId).eq("status", "open").limit(1)),
-    // pagination-safe: én rytter, kun loeb der koerer nu.
+    // pagination-safe: én rytter, kun startede loeb der ikke er afsluttet. Et loeb
+    // staar som "scheduled" mens etaperne koerer; "live" afledes af fremdriften
+    // (deriveRaceStatus, #1828), backenden skriver aldrig "active" (Codex-fund).
     settle<Array<{ race_id: string; race: Loose }>>(db.from("race_entries")
       .select("race_id, race:race_id!inner(id, name, race_type, stages, stages_completed, status)")
-      .eq("rider_id", riderId).eq("race.status", "active").limit(3)),
+      .eq("rider_id", riderId).eq("race.status", "scheduled").gt("race.stages_completed", 0).limit(5)),
     // pagination-safe: én rytter, kun etape-resultater fra de sidste 5 uger.
     settle<Array<Record<string, unknown>>>(db.from("race_results")
       .select("race_id, stage_number, rank, imported_at")
@@ -136,7 +139,8 @@ async function fetchRiderCard(riderId: string, viewerTeamId: string | null): Pro
 
   const condEmbed = (row as Record<string, unknown>).rider_condition as Loose;
   const cond = (Array.isArray(condEmbed) ? condEmbed[0] : condEmbed) ?? null;
-  const entry = (entries ?? []).find((e) => e?.race);
+  const entry = (entries ?? []).find((e) => e?.race
+    && deriveRaceStatus(e.race.status, Number(e.race.stages_completed), Number(e.race.stages)) === "live");
   const race = entry?.race ?? null;
 
   let raceInput: HoverCardRaceInput | null = null;
@@ -568,7 +572,11 @@ function HoverPopover({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     // Fastlaast kort foelger med naar siden ruller; et hover-kort lukker.
-    const onScroll = () => { if (pinned) place(); else onClose(); };
+    // Rulning INDE i kortet (lavt vindue/zoom) maa ikke lukke det (Codex-fund).
+    const onScroll = (e: Event) => {
+      if (e.target instanceof Node && ref.current?.contains(e.target)) return;
+      if (pinned) place(); else onClose();
+    };
     const onDown = (e: MouseEvent) => {
       if (!pinned) return;
       const target = e.target as Node | null;
@@ -601,7 +609,7 @@ function HoverPopover({
         onClick={(e) => e.stopPropagation()}
         onContextMenu={(e) => e.stopPropagation()}
         style={{ top: pos?.top ?? 0, left: pos?.left ?? 0, visibility: pos ? "visible" : "hidden" }}
-        className="fixed z-overlay w-[24rem] max-w-[calc(100vw-1rem)] rounded-cz border border-cz-border bg-cz-card p-4 shadow-overlay"
+        className="fixed z-overlay w-[24rem] max-w-[calc(100vw-1rem)] max-h-[calc(100dvh-1rem)] overflow-y-auto overscroll-contain rounded-cz border border-cz-border bg-cz-card p-4 shadow-overlay"
       >
         {pinned && (
           <button

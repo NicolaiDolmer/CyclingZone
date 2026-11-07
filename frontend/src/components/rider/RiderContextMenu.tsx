@@ -39,8 +39,12 @@ function MessageLauncher({ teamId, managerName }: { teamId: string; managerName:
     mo.observe(host, { childList: true, subtree: true });
     return () => mo.disconnect();
   }, []);
+  // Klikket og skrivefeltets haendelser (portal) bobler op gennem React-traeet:
+  // de maa ikke naa en klikbar raekke, der ellers navigerer vaek (Codex-fund).
+  const stop = (e: { stopPropagation(): void }) => e.stopPropagation();
   return (
-    <span ref={hostRef} className="sr-only" aria-hidden="true">
+    <span ref={hostRef} className="sr-only" aria-hidden="true"
+      onClick={stop} onMouseDown={stop} onKeyDown={stop} onContextMenu={stop}>
       <MessageManagerButton teamId={teamId} managerName={managerName ?? ""} />
     </span>
   );
