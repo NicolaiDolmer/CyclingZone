@@ -54,7 +54,9 @@ test("DIAG6110 opdeling (midlertidig)", async () => {
         const r = applyDailyTick(args);
         const row = [r.abilities, r.progress, r.gains, r.score, r.trainingScore, r.noise, r.status];
         rows.push(row);
-        firstDiff[`${seed}|${oi}|${pi}`] = h(row);
+        if (["5|0|196", "5|0|241", "5|2|277", "6|0|3"].includes(`${seed}|${oi}|${pi}`)) {
+          firstDiff[`${seed}|${oi}|${pi}`] = { row, program, yieldMult: yieldMult ?? null, opts: oi };
+        }
       }
       cells[`${seed}|${oi}`] = h(rows);
     }
@@ -64,8 +66,7 @@ test("DIAG6110 opdeling (midlertidig)", async () => {
     const x = i / 197;
     probes.push(Math.pow(x, 0.5), Math.pow(x, 2), Math.pow(1 - x, 1.7), Math.exp(x), Math.log(x + 1), Math.pow(x, -2));
   }
-  const all = await allOffDigests({ withRoleYield: (extra, ctx) => withRaceDayRoleYieldXp(null, extra, ctx) });
-  console.log("DIAG6110 " + JSON.stringify({ env: [process.platform, process.version, process.versions.v8], probes: h(probes), all, cells, rows: firstDiff }));
+  console.log("DIAG6110 " + JSON.stringify({ env: [process.platform, process.version, process.versions.v8], probes, cells, rows: firstDiff }));
 });
 
 test("#6110 golden: slukket XP er bit-identisk med merge-basen (funktioner og motor, alle slukkede former)", async () => {
