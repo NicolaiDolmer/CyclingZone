@@ -126,12 +126,12 @@ function ChartStat({ label, value }) {
   );
 }
 
-function PointStats({ point }) {
+function PointStats({ point, votersLabel = "Stemmere" }) {
   return (
     <dl className="grid grid-cols-3 gap-x-4 gap-y-3">
       <ChartStat label="God idé" value={fmtScore(point.x)} />
       <ChartStat label="Vigtighed" value={fmtScore(point.y)} />
-      <ChartStat label="Stemmere" value={fmtInt(point.voters)} />
+      <ChartStat label={votersLabel} value={fmtInt(point.voters)} />
       <ChartStat label="Ved ikke" value={fmtInt(point.dontKnow)} />
       <ChartStat label="Uenighed" value={fmtScore(point.sd)} />
       {point.items !== undefined && <ChartStat label="Punkter" value={fmtInt(point.items)} />}
@@ -195,7 +195,10 @@ function RoadmapChartSection({ rows, votePayload, loading, busy, onMoveHorizon, 
             </button>
           </li>
         ))}
-        <li className="pt-2 text-2xs text-cz-3">Vigtighed / god idé · stemmere. Vælg en kategori for detaljer.</li>
+        {/* Uden stemme-rækker lægges punkternes stemmer sammen, så samme manager kan tælle flere gange. */}
+        <li className="pt-2 text-2xs text-cz-3">
+          Vigtighed / god idé · {canSegment ? "stemmere" : "stemmer"}. Vælg en kategori for detaljer.
+        </li>
       </ol>
     ) : (
       <p className="text-sm text-cz-3">Vælg en boble for at se tallene og flytte horisonten.</p>
@@ -215,7 +218,7 @@ function RoadmapChartSection({ rows, votePayload, loading, busy, onMoveHorizon, 
           {point.split && <StatusBadge state="closing">Deler spillerne</StatusBadge>}
         </div>
       </div>
-      <PointStats point={point} />
+      <PointStats point={point} votersLabel={!canSegment && !point.item ? "Stemmer" : "Stemmere"} />
       {row ? (
         <div className="space-y-2">
           <p className="text-3xs uppercase tracking-[.08em] text-cz-3">Flyt horisont</p>
