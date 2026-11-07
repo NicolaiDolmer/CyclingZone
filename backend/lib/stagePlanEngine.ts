@@ -116,10 +116,14 @@ export type Front7635State = {
 // #7239: delt kaptajn valideres som leder (stagePlan.ts), ikke som fri rolle.
 const ROLES: ReadonlySet<string> = new Set(["captain", "co_captain", "sprint_captain", "helper", "hunter", "free_role"]);
 
-/** Rutens skift-punkter fra motorens egne vejpunkter (samme index som race_stage_profiles.climbs). */
-export function stagePlanRouteFromV4(route: RouteV2): StagePlanRoute {
+/**
+ * Rutens skift-punkter fra motorens egne vejpunkter (samme index som race_stage_profiles.climbs).
+ * #7855 (slukket): med `jerseyHunt7855` baerer ruten ogsaa de indlagte spurter og kontakten, saa
+ * troejejagtens opgaver findes. Uden den er ruten praecis som foer.
+ */
+export function stagePlanRouteFromV4(route: RouteV2, opts: { jerseyHunt7855?: boolean } = {}): StagePlanRoute {
   const komWaypoints = route.waypoints.filter((w) => w.kind === "kom");
-  return {
+  const base: StagePlanRoute = {
     distance_km: route.distance_km,
     profile_type: route.profile_type,
     climbs: komWaypoints
@@ -128,6 +132,12 @@ export function stagePlanRouteFromV4(route: RouteV2): StagePlanRoute {
       .sort((a, b) => a.km - b.km || a.index - b.index),
     summit_finish: komWaypoints.some((w) => w.summit_finish === true),
   };
+  if (opts.jerseyHunt7855 !== true) return base;
+  const sprints = route.waypoints
+    .filter((w) => w.kind === "sprint" && Number.isFinite(w.km) && w.km > 0 && w.km < route.distance_km)
+    .map((w) => ({ index: w.index, km: w.km, name: w.name ?? null }))
+    .sort((a, b) => a.km - b.km || a.index - b.index);
+  return { ...base, sprints, jersey_hunt_7855: true };
 }
 
 function resolveLegs(legs: readonly StagePlanLeg[], route: StagePlanRoute): ResolvedLeg[] {
@@ -154,9 +164,9 @@ export function createStagePlanRuntime(
   orders: readonly TeamOrder[],
   route: RouteV2,
   entrants: Readonly<Record<string, Entrant>>,
-  opts: { droppedFront7635?: boolean } = {},
+  opts: { droppedFront7635?: boolean; jerseyHunt7855?: boolean } = {},
 ): StagePlanRuntime | null {
-  const planRoute = stagePlanRouteFromV4(route);
+  const planRoute = stagePlanRouteFromV4(route, { jerseyHunt7855: opts.jerseyHunt7855 === true }); // #7855 (slukket)
   const legs = new Map<string, ResolvedLeg[]>();
   for (const order of orders) {
     if (order.kind !== STAGE_PLAN_ORDER_KIND) continue;

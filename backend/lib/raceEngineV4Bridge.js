@@ -611,6 +611,7 @@ export function buildV4StageInput({
   letGoOrder7557 = false, // #7557 (slukket)
   ittNoDayRoll7726 = false, // #7726 (slukket)
   teamChase7730 = false, // #7730 (slukket)
+  jerseyHunt7855 = false, // #7855 (slukket)
   timeLimitFatigue7715 = false, // #7715 (slukket)
   modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null,
   rulesRevision = "legacy", gcStandings = null, formPeaks = true, dayForm6649 = false, breakawayCurve6912 = false,
@@ -707,6 +708,8 @@ export function buildV4StageInput({
     if (ittNoDayRoll7726 === true && isS5ProfilesV3OrLater(rulesRevision)) input.itt_no_day_roll_7726 = true;
     // #7730 (KUN s5_profiles_v3, SLUKKET): jagt-gulvet afgoeres af de hold der jager; kun for et loeb der blev bundet til kontakten foer start.
     if (teamChase7730 === true && isS5ProfilesV3OrLater(rulesRevision)) input.team_chase_7730 = true;
+    // #7855 (KUN s5_profiles_v3, SLUKKET): troejejagten i etapeplanen; kun for et loeb bundet til kontakten foer start.
+    if (jerseyHunt7855 === true && isS5ProfilesV3OrLater(rulesRevision)) input.jersey_hunt_7855 = true;
     // #7715 (KUN s5_profiles_v3, SLUKKET): hvem der er for traette til etapen; kun naar raceRunner har bundet kontakten til loebet.
     if (timeLimitFatigue7715 === true && isS5ProfilesV3OrLater(rulesRevision)) input.time_limit_fatigue_7715 = timeLimitFatigueSeverities7715({ riders: entrants, stageRow: stageProfile, revision: rulesRevision });
     if (dayForm6649 === true && isS5ProfilesV3OrLater(rulesRevision)) input.day_form_6649 = true;
@@ -797,7 +800,7 @@ export function createRaceEngineV4Adapter(modules) {
      *   omkring etapen. Udeladt = løbet er ukendt for M14.
      * @returns {{ranked: Array, incidents: Array, passages: object|null, timeline: object|null, v4Output: object}}
      */
-    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null, rulesRevision = "legacy", gcStandings = null, formPeaks = true, dayForm6649 = false, breakawayCurve6912 = false, queenStageGap7236 = false, stagePlanDroppedFront7635 = false, splitAttackCause7640 = false, descentRegroupCap7644 = false, letGoOrder7557 = false, dayWords7725 = false, ittNoDayRoll7726 = false, teamChase7730 = false, timeLimitFatigue7715 = false }) {
+    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null, rulesRevision = "legacy", gcStandings = null, formPeaks = true, dayForm6649 = false, breakawayCurve6912 = false, queenStageGap7236 = false, stagePlanDroppedFront7635 = false, splitAttackCause7640 = false, descentRegroupCap7644 = false, letGoOrder7557 = false, dayWords7725 = false, ittNoDayRoll7726 = false, teamChase7730 = false, jerseyHunt7855 = false, timeLimitFatigue7715 = false }) {
       if (!Array.isArray(entrants) || entrants.length === 0) {
         throw new Error("raceEngineV4Bridge: entrants kraeves (tomt startfelt)");
       }
@@ -805,7 +808,7 @@ export function createRaceEngineV4Adapter(modules) {
         throw new Error("raceEngineV4Bridge: seedString (streng) kraeves");
       }
       const input = buildV4StageInput({
-        modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages, squad, jerseyLeaders, rulesRevision, gcStandings, formPeaks, dayForm6649, breakawayCurve6912, queenStageGap7236, stagePlanDroppedFront7635, splitAttackCause7640, descentRegroupCap7644, letGoOrder7557, ittNoDayRoll7726, teamChase7730, timeLimitFatigue7715,
+        modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages, squad, jerseyLeaders, rulesRevision, gcStandings, formPeaks, dayForm6649, breakawayCurve6912, queenStageGap7236, stagePlanDroppedFront7635, splitAttackCause7640, descentRegroupCap7644, letGoOrder7557, ittNoDayRoll7726, teamChase7730, jerseyHunt7855, timeLimitFatigue7715,
       });
       // #5577: med trace, når kernen har den (#5578), så fortællingen får
       // motorens egen dom over udbruddet. `output` er byte-identisk med
