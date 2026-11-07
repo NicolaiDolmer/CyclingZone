@@ -119,12 +119,12 @@ export async function applyStageStartFatigue({ supabase, raceId, stageNumber, en
  * entrants ({ rider_id, team_id, fatigue, abilities: { recovery } }). Uden condition_model_v2
  * er rider_condition selv det sande tal, og ledgeren læses ikke.
  */
-export async function ridersWithFatigueNow({ supabase, riders, now = new Date(), medicalBonusByTeam = new Map() }) {
+export async function ridersWithFatigueNow({ supabase, riders, now = new Date(), beforeGameDay = null, medicalBonusByTeam = new Map() }) {
   const copies = (riders ?? []).map((r) => ({ ...r }));
   const known = withCondition(copies);
   if (!known.length || !await isConditionModelV2Enabled(supabase)) return copies;
   const loadsByRider = await loadUnsettledDateLoads({
-    supabase, riderIds: known.map((r) => r.rider_id), tickDate: copenhagenDateString(now),
+    supabase, riderIds: known.map((r) => r.rider_id), tickDate: copenhagenDateString(now), beforeGameDay,
   });
   applyDateLoads(known, loadsByRider, medicalBonusByTeam);
   return copies;
@@ -175,19 +175,52 @@ async function recoveryByRiderFor(supabase, riderIds) {
   return out;
 }
 
+/** Første etape i løbets etapeliste (den, assistenten udtager til). Uden liste: etape 1. */
+export function firstStageNumber(stages) {
+  const numbers = (stages ?? []).map((s) => Number(s?.stage_number || 1)).filter(Number.isFinite);
+  return numbers.length ? Math.min(...numbers) : 1;
+}
+
+/**
+ * Etapens planlagte start som `now` og dens løbsdag. Null, hvis etapen ikke er planlagt; så
+ * lægger motoren heller intet oveni (applyStageStartFatigue).
+ */
+export async function loadStageStartAt({ supabase, raceId, stageNumber }) {
+  const { data, error } = await supabase.from("race_stage_schedule")
+    .select("game_day, scheduled_at").eq("race_id", raceId).eq("stage_number", stageNumber).maybeSingle();
+  if (error) throw new Error(`race_stage_schedule (fatigue now): ${error.message}`);
+  const gameDay = Number(data?.game_day);
+  const at = data?.scheduled_at ? new Date(data.scheduled_at) : null;
+  if (!Number.isInteger(gameDay) || !at || !Number.isFinite(at.getTime())) return null;
+  return { now: at, gameDay };
+}
+
 /**
  * Træthed pr. rytter til fladerne og assistentens udtagelse. `conditions` = rider_condition-
  * rækker ({ rider_id, fatigue }). Slukket: præcis `new Map(rider_id → fatigue)` som i dag.
  * Tændt: trætheden lige nu. `abilityByRider` (rider_id → { recovery }) læses selv, hvis den
  * ikke gives; holdet findes via `teamIdByRider` eller `teamId`.
  *
+ * `atStage` ({ raceId, stageNumber }) gør tallet til trætheden ved den etapes start: etapens
+ * planlagte starttidspunkt er `now`, og kun datoens løbsdage før etapen tæller, som i motoren.
+ * Assistenten udtager til en bestemt etape, så dens tal må ikke afhænge af, hvornår koden kører.
+ * Planen læses først efter kontakten, så slukket læser intet nyt.
+ *
  * En læsefejl på tændt kontakt giver dagens tal frem for en væltet side eller udtagelse:
  * live-tallet er en forbedring af visningen, ikke en forudsætning for den.
  */
-export async function fatigueByRiderNow({ supabase, conditions, abilityByRider = null, teamIdByRider = null, teamId = null, now = new Date() }) {
+export async function fatigueByRiderNow({ supabase, conditions, abilityByRider = null, teamIdByRider = null, teamId = null, now = new Date(), atStage = null }) {
   const base = sameMap(conditions);
   if (!base.size || !await isFatigueNow7801Enabled(supabase)) return base;
   try {
+    let at = now;
+    let beforeGameDay = null;
+    if (atStage) {
+      const start = await loadStageStartAt({ supabase, raceId: atStage.raceId, stageNumber: atStage.stageNumber });
+      if (!start) return base;
+      at = start.now;
+      beforeGameDay = start.gameDay;
+    }
     const ids = [...base.keys()];
     const recovery = abilityByRider ?? await recoveryByRiderFor(supabase, ids);
     const recoveryOf = (id) => {
@@ -202,7 +235,7 @@ export async function fatigueByRiderNow({ supabase, conditions, abilityByRider =
     const medicalBonusByTeam = await isConditionModelV2Enabled(supabase)
       ? await loadMedicalBonusByTeam(supabase, riders.map((r) => r.team_id))
       : new Map();
-    const live = await ridersWithFatigueNow({ supabase, riders, now, medicalBonusByTeam });
+    const live = await ridersWithFatigueNow({ supabase, riders, now: at, beforeGameDay, medicalBonusByTeam });
     return new Map(live.map((r) => [r.rider_id, r.fatigue]));
   } catch (err) {
     // best-effort: visningen og udtagelsen falder tilbage til dagens tal (åbningen).
@@ -219,19 +252,34 @@ function nextDateString(dateStr) {
 
 /**
  * Rytternes næste etape i dag eller i morgen (dansk dato): rider_id → { raceId, stageNumber,
- * gameDay, tickDate }. Kun etaper, der ikke er startet. Længere frem gives intet skøn
- * (ejerens punkt 4): planen for dagene imellem er et gæt.
+ * gameDay, tickDate }. Kun etaper, der ikke er kørt (løbets stages_completed), uanset uret:
+ * en forsinket etape, hvis planlagte tid er passeret, er stadig rytterens næste. Længere frem
+ * gives intet skøn (ejerens punkt 4): planen for dagene imellem er et gæt.
  */
 export async function loadNextStageByRider({ supabase, riderIds, seasonId, now = new Date() }) {
   const out = new Map();
   if (!riderIds?.length || !seasonId) return out;
   const today = copenhagenDateString(now);
   const tomorrow = nextDateString(today);
+  const from = new Date(copenhagenWallTimeToUTC(today, 0)).toISOString();
   const until = new Date(copenhagenWallTimeToUTC(nextDateString(tomorrow), 0)).toISOString();
-  const schedule = await fetchAllRows(() => supabase.from("race_stage_schedule")
+  const planned = await fetchAllRows(() => supabase.from("race_stage_schedule")
     .select("race_id, stage_number, game_day, scheduled_at")
-    .gt("scheduled_at", now.toISOString()).lt("scheduled_at", until)
+    .gte("scheduled_at", from).lt("scheduled_at", until)
     .order("scheduled_at").order("race_id").order("stage_number"));
+  if (!planned.length) return out;
+  const completedByRace = new Map();
+  const raceIds = [...new Set(planned.map((s) => s.race_id))];
+  for (let i = 0; i < raceIds.length; i += SUPABASE_IN_CHUNK_SIZE) {
+    // pagination-safe: én række pr. løb, ≤100 pr. kald.
+    const { data, error } = await supabase.from("races")
+      .select("id, stages_completed").in("id", raceIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE));
+    if (error) throw new Error(`races (fatigue now): ${error.message}`);
+    for (const race of data ?? []) completedByRace.set(race.id, Number(race.stages_completed) || 0);
+  }
+  // Et løb, der ikke kan læses, giver intet skøn frem for et skøn til en kørt etape.
+  const schedule = planned.filter((s) => completedByRace.has(s.race_id)
+    && Number(s.stage_number) > completedByRace.get(s.race_id));
   if (!schedule.length) return out;
   const gameDays = [...new Set(schedule.map((s) => Number(s.game_day)).filter(Number.isFinite))];
   const stageBy = new Map(schedule.map((s) => [`${s.race_id}:${Number(s.game_day)}`, s]));
