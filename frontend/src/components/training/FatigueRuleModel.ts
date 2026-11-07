@@ -11,6 +11,8 @@ export type RecentHit = {
 };
 export type FatigueRulesResponse = {
   enabled?: boolean;
+  // #7801: true når reglen vurderes på trætheden lige nu (kontakten fatigue_now_7801).
+  fatigueNow?: boolean;
   today?: string;
   days?: string[];
   team?: RuleView | null;
