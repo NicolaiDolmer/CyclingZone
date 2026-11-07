@@ -117,3 +117,66 @@ Findes ikke i dag:
 - "hop til mit hold"
 
 Refs #7778, #7716, #7638, #7801, #7417, #7373, #3455.
+
+## Svar 7/11 eftermiddag (ejer + en spiller)
+
+### Taktik
+- **T1:** jagt-valget bruger `ui/Segmented` i første række af planen. Spiller: brug sidens egne farver.
+- **T2:** profilen er altid åben, mens taktikken sættes.
+- **T3:** skift sker på fire faste punkter (foden, midtvejs, 3 km før toppen, toppen).
+- **T4:** prisen vises kun som ord (Let/Middel/Hård/Meget hård).
+- **T5:** kolonnen "I aften" er ét ord (Frisk/OK/Træt/Meget træt).
+- **T6:** best practice: guld "Bekræft plan" plus en linje om, hvad der sker, hvis man intet gør.
+- **T7:** kaptajnen står først.
+- **Q2:** form = formen nu.
+- Spiller: mindre luft omkring holdets udbrudsvalg.
+
+### Film
+- **F1:** én afspiller med kapitler. Ruteprofilen er filmens tidslinje.
+- **F2-F4, F6, F7:** A.
+- **F5:** afvist i første form. Nyt forslag: "Hvad han gjorde" flytter til Taktik som plan mod det, der skete, pr. etape. Resultater beholder plads, tid og én linje. Afventer svar.
+
+### Resultater og spoiler
+- **Q3:** en færdig etape åbner i Resultater. Siden husker det sidste valg; med skjoldet slået til åbner den i Historie.
+- **Q5:** skjoldet findes både som indstilling for alle løb og som kontakt pr. løb.
+
+### Startliste (Q4)
+- Startliste før løbet efter PCS-mønster: pr. hold med rygnumre, nation og alder.
+- Favoritter pr. klassement ud fra synlige resultater. Aldrig form, rutematch eller roller.
+- Favoritter til en etape vælges ikke kun ud fra seneste etape, men ud fra resultater på samme slags etape plus stillingen (spiller).
+- Afventer: rygnumre ja/nej, og stjerner eller tekstgrund (S5).
+
+### Åbne spørgsmål (S1-S5)
+- S1: indbakke uden placering, når skjoldet er slået til
+- S2: Discord-botten
+- S3: forsidens resultat-chips følger skjoldet
+- S4: indsatskortet = plan mod virkelighed i Taktik
+- S5: stjerner eller tekst
+
+## Spillergennemgang 7/11 (issues, Discord, roadmap, analyse)
+
+Med i designet:
+- #4490: kommentarer kun på etapen.
+- #7810: åbn den seneste etape.
+- #6514: søgning i resultatarkivet.
+- #7701: DNF-grund.
+- #6850: holdpoint efter dagens hold.
+- #7822: første tryk på mobil.
+- #7643: automatisk tjek af, at resultat, film og referat stemmer.
+- #7725/#7705: dagsform og tidstab-grund i referatet.
+- Enkeltstart mangler en "hvorfor"-grund (intet issue endnu).
+- #6513: favorit-stjerner.
+- #7715: tidsgrænse-varsel.
+- #5573/#5074: trøjejagt som ordre i Taktik, ikke som løbsmål.
+- #6365: genbrug StageProfileCard.
+
+Konflikter, der kræver beslutning:
+- #7717 Hvorfor-knap (skjules i Historie)
+- #4916/#5120/#91 live, 3D og ticker (skal være den samme ene afspiller)
+- #6519, #5061, #3950/#2153, #1299 og #3982: spoiler uden for siden
+- #5101 indsatskort (ét sted)
+- #3529 rytterens løbsoversigt (overlapper Hold-fanens matrix)
+
+Adfærd (analyse C):
+- 149 visninger af etapen og 51 af stillingerne efter løb, med 24 hop mellem dem.
+- Ca. 63 % af sessionerne er på mobil.
