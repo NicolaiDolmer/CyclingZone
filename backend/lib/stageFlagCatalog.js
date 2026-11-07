@@ -95,6 +95,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_breakaway_outlook", area: "race-day", label: "Jægerboks — motorens udbrudsbud" },
   // #7717: Hvorfor?-knappen i "Your day". Kun visning, seedet off.
   { key: "rider_why_button", area: "race-day", label: "Hvorfor?-knappen ved rytterne (Your day)" },
+  // #7879: talentmærker ved rytternavne. Kun visning, seedet off.
+  { key: "talent_marks_7879", area: "squad", label: "Talentmærker ved rytternavne (Toptalent, Næste generation)" },
 
   // ── Motorer og batch-jobs (spilleren ser resultatet, ikke kontakten) ──────
   { key: "race_engine_v2_enabled", area: "race-engine", label: "Løbsmotor v2" },
@@ -284,6 +286,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "stage_plan_dropped_front_7635",
   // #7717: "Your day" viser Hvorfor?-knappen paa dette flag.
   "rider_why_button",
+  // #7879: navnecellen, rytterprofilen og Hjaelp viser talentmaerkerne paa dette flag.
+  "talent_marks_7879",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,
