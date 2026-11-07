@@ -1879,7 +1879,7 @@
     },
     "stageRaceLockout": {
       "q": "Pourquoi mon coureur est-il bloqué pendant une course par étapes ?",
-      "a": "Une course par étapes retient un coureur sur toute la durée de ses jours de course. Si elle court du jour de course 11 au 30, il ne peut rien prendre d'autre dans cette fenêtre, pas même les jours où la course ne roule pas."
+      "a": "Une course par étapes retient un coureur sur toute la durée de ses jours de course. Si elle court du jour de course 11 au 30, il ne peut rien prendre d'autre dans cette fenêtre, pas même les jours où la course ne roule pas. Une fois parti, il court la course par étapes jusqu'à l'arrivée, même si tu le passes dans un autre effectif pendant la course. Seule une blessure ou la retraite l'en fait sortir."
     },
     "autoSelect": {
       "q": "Que fait la sélection auto ?",

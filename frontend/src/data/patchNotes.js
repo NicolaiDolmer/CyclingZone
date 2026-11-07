@@ -23,6 +23,30 @@ export const PATCHES = [
     ]
   },
   {
+    "version": "7.414",
+    "date": "2026-11-07",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Your stage race field holds to the finish",
+          "body": "In stage races that start from now on, a rider who has started rides to the finish, even if you move him to another squad during the race. Only an injury or retirement takes him out."
+        },
+        "da": {
+          "title": "Dit felt i etapeløbet holder til mål",
+          "body": "I etapeløb, der starter fra nu af, kører en rytter, der er startet, til mål, også hvis du flytter ham til en anden trup undervejs. Kun en skade eller et karrierestop tager ham ud."
+        },
+        "refs": [
+          7733,
+          7777
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.413",
     "date": "2026-11-06",
     "changes": [
