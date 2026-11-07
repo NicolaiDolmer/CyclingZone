@@ -367,7 +367,7 @@ export default function StagePlanBoard({
   stageCompleted: boolean;
   saving: boolean;
   teamHasSprintCaptain: boolean;
-  renderRoleCell: (rider: PlanRider) => React.ReactNode;
+  renderRoleCell: (rider: PlanRider, options?: { mobile?: boolean }) => React.ReactNode;
   rolePickerFor?: (rider: PlanRider) => React.ReactNode;
   onEditorOpen?: () => void;
   roleDefaultFor?: (riderId: string) => Record<string, unknown> | null;
@@ -609,7 +609,7 @@ export default function StagePlanBoard({
                   </span>
                 )}
               </div>
-              <div className="mt-0.5">{renderRoleCell(rider)}</div>
+              <div className="mt-0.5">{renderRoleCell(rider, { mobile: true })}</div>
               {routeMatch?.renderMark?.(rider)}
               {editable(rider) && !stageCompleted ? (
                 <button
