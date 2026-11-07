@@ -107,7 +107,7 @@ export async function readDevelopmentXpParams({
  */
 export async function loadDevelopmentXp({
   supabase, tickDate, log = console, strict = false, now = Date.now,
-  developmentScoreB = null, raceCatchUp = null,
+  developmentScoreB = null, raceCatchUp = null, capPerDateOn = false,
 }: {
   supabase: DbClient;
   tickDate: string | null | undefined;
@@ -116,8 +116,14 @@ export async function loadDevelopmentXp({
   now?: () => number;
   developmentScoreB?: unknown;
   raceCatchUp?: unknown;
+  /** ability_cap_per_date_enabled. XP kræver maks +1 pr. dato (spec §4.3); uden er det dagens model. */
+  capPerDateOn?: boolean;
 }): Promise<DevelopmentXpParams | null> {
   if (!(await isDevelopmentXpEnabled(supabase, { strict }))) return null;
+  if (!capPerDateOn) {
+    log?.warn?.(`${LOG_TAG} ${DEVELOPMENT_XP_FLAG_KEY} is on, but ability_cap_per_date_enabled is off - XP requires max +1 per date, running today's model`);
+    return null;
+  }
   const fromDate = await readDevelopmentXpFromDate(supabase, { strict, log });
   if (!fromDate) {
     log?.warn?.(`${LOG_TAG} ${DEVELOPMENT_XP_FLAG_KEY} is on, but ${DEVELOPMENT_XP_FROM_DATE_KEY} is missing or invalid - running today's model`);

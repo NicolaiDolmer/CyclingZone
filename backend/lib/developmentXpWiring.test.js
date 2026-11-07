@@ -87,7 +87,15 @@ function fakeDb({ app = {}, priv = {}, failApp = [], failPriv = false } = {}) {
 const ON = { [DEVELOPMENT_XP_FLAG_KEY]: "on", [DEVELOPMENT_XP_FROM_DATE_KEY]: "2026-11-15" };
 const PRIV = { [DEVELOPMENT_XP_PARAMS_KEY]: XP_TEST_PARAMS };
 const quiet = () => { const warnings = []; return { warnings, log: { warn: (m) => warnings.push(String(m)) } }; };
-const load = (db, extra = {}) => loadDevelopmentXp({ supabase: db, tickDate: "2026-11-15", now: FIXED_NOW, ...extra });
+const load = (db, extra = {}) => loadDevelopmentXp({ supabase: db, tickDate: "2026-11-15", now: FIXED_NOW, capPerDateOn: true, ...extra });
+
+test("#6110 loader: XP kraever maks +1 pr. dato; uden dato-loftet er det dagens model + advarsel", async () => {
+  const { warnings, log } = quiet();
+  const db = fakeDb({ app: ON, priv: PRIV });
+  assert.equal(await load(db, { capPerDateOn: false, log }), null);
+  assert.ok(warnings.some((w) => w.includes("ability_cap_per_date_enabled")));
+  assert.ok(!db.reads.some((r) => r.table === "private_config"), "ingen params-opslag");
+});
 
 test("#6110 loader: slukket, beta og false er null uden at laese params", async () => {
   for (const value of [undefined, "off", "beta", false, null, "yes"]) {
@@ -307,6 +315,14 @@ test("#6110 motor: taendt paa datoen skifter model, holder maks +1 pr. dato og l
       for (const k of VISIBLE_ABILITIES) assert.ok(row[k] - before[i][k] <= 1 && row[k] >= before[i][k], `${k}: 0 eller +1`);
     }
   }
+});
+
+test("#6110 motor: XP taendt uden maks +1 pr. dato = dagens model (Codex-fund)", async () => {
+  const today = engineSeed({ flags: ENGINE_SCENARIOS.noCap.flags, raced: false, overlay: NONE, plan: "vo2max" });
+  const r0 = await runEngine(today);
+  const on = engineSeed({ flags: ENGINE_SCENARIOS.noCap.flags, raced: false, overlay: XP_ON, plan: "vo2max" });
+  const r1 = await runEngine(on);
+  assert.deepEqual(gameState(on, r1), gameState(today, r0));
 });
 
 test("#6110 motor: D6 under XP, et AI-hold udvikler sig ikke (ogsaa uden aldrings-flaget)", async () => {
