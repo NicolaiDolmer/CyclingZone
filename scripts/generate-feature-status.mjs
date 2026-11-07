@@ -245,7 +245,7 @@ function liveEntry(e) {
  * registrets egen nyeste dato, ikke "i dag", saa output er deterministisk og
  * --check ikke driver med kalenderen. Titel/dato/flag staar stadig i registret.
  */
-export const LIVE_ARCHIVE_AFTER_DAYS = 30;
+export const LIVE_ARCHIVE_AFTER_DAYS = 14; // 30 -> 14 (7/11): mange nye poster samme aften ramte 3.000-loftet
 
 function dayNumber(isoDate) {
   const t = Date.parse(`${isoDate}T00:00:00Z`);
