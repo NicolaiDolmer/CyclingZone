@@ -473,16 +473,6 @@ features:
     ssot: docs/TRANSFER_MARKET_RULES.md
     verified: 2026-09-06
 
-  - id: market-commitment-6181
-    area: market
-    title_en: Bids reserve money and squad room
-    title_da: Bud reserverer penge og plads
-    state: building
-    ssot: docs/TRANSFER_MARKET_RULES.md
-    epic: 6181
-    verified: 2026-11-07
-    note: Kontakt market_commitment_6181 (off).
-
   - id: direct-transfers
     area: market
     title_en: Direct transfers and offers
