@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (7/11 aften):** Bølge 3 på PC1: #7801 (ret review-fund i PR #7842), #7715 til dørs (tænd kun på ejerens "kør"), #2009 hover-miniprofil bag beta. Venter på ejeren: A #7624 / B #7625 som ekstra spor, D sandhedsvagt-issue (RACE_TRUTH_TRACKING_ISSUE ikke sat), auto-accept #2176. Løbsside-redesign #7778: klikbart wireframe v2 (artifact) + spec `docs/superpowers/specs/2026-11-07-race-page-redesign-discord.md`; næste: ejerens rettelser, så implementeringsplan. Tændt i dag: #7726, #7733 (16:34); #7557 effekt tjekkes efter etape 2. Merge-kø: #7846 venter på uafhængig review-markør. Codex: XP-kalibrering runde 2 (#6110). Mandag: secrets, feedback, fair-play #5431.
+> **🎯 Next action (7/11 aften):** Hover-kort #2009 + højreklik #7858 designes i Discord og går live i dag (beta først). Bølge 4 på PC1: #7644/#6912 måling, #7645 design, #6181 PR 2, trøjejagt #7855, træningsrapport #7745/#7746, #7715 billeder. Løbsside #7778 delt i #7859-#7868; v3 når ejer+spiller siger færdig. Venter på ejer: roadmap-forslag, patch-note-form, fri rolle #7856 start, beta-udrulning. Merge-kø: #7847, #7842, #7854. 8/11: sandhedsvagt, Discord-afstemning #7869. 9/11: secrets, feedback, fair-play #5431.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
 > **🤖 Working agent:** PC1 Claude Code-session 7/11 (bølge 3 kører; Discord #build-a-feature). Dolmer PC: Codex XP-kalibrering.
