@@ -35,6 +35,8 @@ import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isTrainingConditionPerDateEnabled } from "./trainingDateConditionFlag.js";
 import { isConditionModelV2Enabled, isRaceDateTrainingDayEnabled } from "./conditionModelV2Flag.js";
 import { loadTeamMedicalBonus } from "./medicalEffects.js";
+import { riderFatigueNow } from "./riderFatigueNow.js"; // #7801
+import { isFatigueNow7801Enabled } from "./riderFatigueNowFlag.js";
 import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
 import { isTrainingCatalogV3EnabledForTeam } from "./trainingCatalogV3.js"; // #5319
 import { loadRaceExitGameDays, dropBindingsAfterRaceExit } from "./trainingRaceDayTick.js";
@@ -116,6 +118,7 @@ export function buildTeamFatigueForecast({
   catalogV3 = false, // #5319: samme katalog-gate som motoren
   // #4854: holdets regler (loadTeamFatigueRules) + hvem koerte etape i gaar.
   fatigueRules = null, stageYesterdayRiderIds = new Set(),
+  fatigueNow = false, // #7801: reglen paa traetheden lige nu, samme tal som motoren (I5)
 }) {
   const days = [...new Set((dateGameDays ?? []).map(Number).filter(Number.isFinite))].sort((a, b) => a - b);
   if (days.length !== FORECAST_SLOTS) return {};
@@ -133,6 +136,7 @@ export function buildTeamFatigueForecast({
     const recoveryAbility = firstReport?.recovery_before_date ?? recoveryByRider.get(rider.id) ?? 50;
     const hasStageOnDate = plannedStages.some((row) => row.rider_id === rider.id)
       || recordedLoads.some((row) => row.rider_id === rider.id);
+    const ruleLoads = []; // #7801: etaper i tidligere felter samme dato
     const slots = days.map((day) => {
       const slotIndex = programSlotForRaceDay(day, days);
       const dayProgram = resolveDayProgram({
@@ -148,14 +152,16 @@ export function buildTeamFatigueForecast({
       };
       const ruled = fatigueRules ? applyFatigueRules({
         program: planned, rule: fatigueRules.forRider(rider.id),
-        fatigueAtDateStart: Number(opening?.fatigue ?? 0),
+        fatigueAtDateStart: fatigueNow
+          ? riderFatigueNow({ openingFatigue: Number(opening?.fatigue ?? 0), dateLoads: ruleLoads, recoveryAbility: Number(recoveryByRider.get(rider.id) ?? 50), medicalBonus })
+          : Number(opening?.fatigue ?? 0),
         slotIndex, rodeStagePreviousDate: stageYesterdayRiderIds.has(rider.id),
       }) : null;
       const planIntensity = ruled?.stamp ? ruled.intensity : planned.intensity;
       const recorded = recordedLoads.find((row) => row.rider_id === rider.id && Number(row.game_day) === day && row.duplicate_of_race_id == null);
       const plannedStage = plannedStages.find((row) => row.rider_id === rider.id && Number(row.game_day) === day);
       const bound = boundRiderIdsByGameDay.get(day)?.has(rider.id) ?? false;
-      return forecastSlotActivity({
+      const activity = forecastSlotActivity({
         riderId: rider.id,
         receipt: riderReceipts.find((row) => row.game_day === day) ?? null,
         recordedLoad: recorded ? recorded.load : null,
@@ -165,6 +171,8 @@ export function buildTeamFatigueForecast({
         planIntensity,
         conditionModelV2,
       });
+      if (fatigueNow && activity.intensity === "race") ruleLoads.push(Number(activity.raceLoad ?? 0));
+      return activity;
     });
     const fatigue = forecastRiderFatigue({ riderId: rider.id, dateStr: tickDate, opening, slots, recoveryAbility, recoveryConfig, conditionModelV2, medicalBonus, raceDateTrainingDay });
     if (fatigue == null) continue;
@@ -277,8 +285,10 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   const conditionModelV2 = await isConditionModelV2Enabled(supabase);
   const medicalBonus = conditionModelV2 ? await loadTeamMedicalBonus(supabase, team.id) : 0;
   const raceDateTrainingDay = conditionModelV2 ? await isRaceDateTrainingDayEnabled(supabase) : false; // #7536
+  const fatigueNow = conditionModelV2 ? await isFatigueNow7801Enabled(supabase) : false; // #7801, samme gate som motoren
   const forecast = buildTeamFatigueForecast({
     conditionModelV2,
+    fatigueNow,
     medicalBonus,
     raceDateTrainingDay,
     fatigueRules,
