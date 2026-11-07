@@ -78,6 +78,8 @@ ALTER TABLE public.roadmap_items ADD CONSTRAINT roadmap_items_horizon_check
          OR horizon ~ '^(season_[0-9]{1,2}|q[1-4]_20[0-9]{2}|y20[0-9]{2})$');
 
 -- roadmap_split_item havde standard/fallback 'next', som nu bryder reglen.
+-- Funktion + rettigheder i een transaktion (grant-atomic, #6342).
+BEGIN;
 CREATE OR REPLACE FUNCTION public.roadmap_split_item(
   p_source UUID, p_title_en TEXT, p_title_da TEXT,
   p_status TEXT DEFAULT 'planned', p_horizon TEXT DEFAULT 'next_week', p_issue_ref INTEGER DEFAULT NULL
@@ -110,6 +112,7 @@ END;
 $fn$;
 REVOKE ALL ON FUNCTION public.roadmap_split_item(uuid,text,text,text,text,integer) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.roadmap_split_item(uuid,text,text,text,text,integer) TO service_role;
+COMMIT;
 
 COMMENT ON COLUMN public.roadmap_items.horizon IS
   'Hvornaar punktet er planlagt (#7895): this_week, next_week, season_<N>, q<1-4>_<YYYY>, y<YYYY>, eller unscheduled (ide uden tid).';
