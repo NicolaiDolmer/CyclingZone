@@ -440,17 +440,6 @@ features:
     roadmap_da: "Hvorfor? ved dine ryttere: ét tryk fortæller, hvad der afgjorde hans resultat."
     roadmap_horizon: next
 
-  - id: rider-hover-card
-    area: squad
-    title_en: Rider card and right-click menu
-    title_da: Rytterkort og højreklik-menu
-    state: building
-    decision: ejer-beslutning
-    decide_by: 2026-11-14
-    epic: 2000
-    verified: 2026-11-07
-    note: "#7858. Kontakt rider_hover_card (fravær = off)."
-
   - id: race-library-v2
     area: stats
     title_en: Calendar race card and race history library
