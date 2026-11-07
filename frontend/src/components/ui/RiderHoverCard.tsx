@@ -249,6 +249,16 @@ function HoverPopover({
 
   useLayoutEffect(() => { place(); });
 
+  // Indholdet hentes efter aabning, saa kortet vokser: maal igen, saa det kan
+  // flytte op over navnet i stedet for at gaa ud af vinduet (Codex-fund).
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || typeof ResizeObserver === "undefined") return undefined;
+    const ro = new ResizeObserver(() => place());
+    ro.observe(node);
+    return () => ro.disconnect();
+  }, [place]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
@@ -270,6 +280,8 @@ function HoverPopover({
         data-testid="rider-hover-card"
         onMouseEnter={onEnter}
         onMouseLeave={onLeave}
+        // Portalen sender klik op gennem React-traeet; de maa ikke naa raekkens egen klik-navigation.
+        onClick={(e) => e.stopPropagation()}
         style={{ top: pos?.top ?? 0, left: pos?.left ?? 0, visibility: pos ? "visible" : "hidden" }}
         className="fixed z-overlay w-[22rem] max-w-[calc(100vw-1rem)] rounded-cz border border-cz-border border-t-2 border-t-cz-accent bg-cz-card p-4 shadow-overlay"
       >
@@ -286,7 +298,8 @@ function TapSheet({ riderId, viewerTeamId, extra, onClose }: { riderId: string; 
   const titleId = `rider-hover-sheet-${riderId}`;
   return (
     <Portal>
-      <div className="fixed inset-0 z-modal flex items-end justify-center">
+      {/* Portalen sender klik op gennem React-traeet: luk, baggrund og indhold maa ikke naa raekkens klik (Codex-fund). */}
+      <div className="fixed inset-0 z-modal flex items-end justify-center" onClick={(e) => e.stopPropagation()}>
         <div className="cz-overlay-backdrop absolute inset-0 bg-black/60" aria-hidden="true" onClick={onClose} />
         <div
           ref={ref}
