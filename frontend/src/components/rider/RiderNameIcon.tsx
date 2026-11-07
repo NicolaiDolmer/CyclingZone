@@ -22,8 +22,6 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, useS
 import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent, ReactNode, TouchEvent as ReactTouchEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { UserIcon } from "../ui/icons/index.jsx";
-import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js";
-import { supabase } from "../../lib/supabase.ts";
 import { canHover } from "../../lib/riderHoverCardModel.ts";
 import { isContextMenuKey } from "../../lib/riderContextMenuModel.ts";
 
@@ -39,13 +37,21 @@ const LONG_PRESS_SLOP_PX = 10;
 const ROW_MENU_EVENT = "cz:rider-menu";
 
 // ── Kontakten: ét abonnement for hele appen, ikke ét pr. navn ────────────────
+// Klienten og flag-kaldet hentes dynamisk: RiderLink importeres af mange rene
+// node-tests, og de skal ikke traekke supabase-klienten med ind.
 type AuthClient = {
-  auth: {
-    getSession(): Promise<{ data: { session: { user?: { id?: string } } | null } }>;
-    onAuthStateChange(cb: () => void): { data: { subscription: { unsubscribe(): void } } };
-  };
+  getSession(): Promise<{ data: { session: { user?: { id?: string } } | null } }>;
+  onAuthStateChange(cb: () => void): { data: { subscription: { unsubscribe(): void } } };
 };
-const auth = (supabase as unknown as AuthClient).auth;
+let authSubscribed = false;
+
+async function flagDeps(): Promise<{ auth: AuthClient; fetchFlags: () => Promise<Record<string, boolean>> }> {
+  const [{ supabase }, { fetchPlayerFeatureFlags }] = await Promise.all([
+    import("../../lib/supabase.ts"),
+    import("../../lib/playerFeatureFlags.js"),
+  ]);
+  return { auth: (supabase as unknown as { auth: AuthClient }).auth, fetchFlags: fetchPlayerFeatureFlags };
+}
 
 let enabledSnapshot = false;
 let started = false;
@@ -61,16 +67,29 @@ function setEnabled(next: boolean) {
 
 async function refreshFlag() {
   const gen = ++generation;
+  let deps: Awaited<ReturnType<typeof flagDeps>>;
+  try {
+    deps = await flagDeps();
+  } catch {
+    // catch-ok: uden klient er kontakten slukket (fail-safe som serverens flag).
+    if (gen === generation) setEnabled(false);
+    return;
+  }
+  if (!authSubscribed) {
+    authSubscribed = true;
+    // Ny session (ind-/udlogning): spoerg igen for den nye bruger (Codex P2 paa #7849).
+    deps.auth.onAuthStateChange(() => { void refreshFlag(); });
+  }
   let userId: string | null = null;
   try {
-    const { data } = await auth.getSession();
+    const { data } = await deps.auth.getSession();
     userId = data?.session?.user?.id ?? null;
   } catch {
     userId = null;
   }
   // Kontakten er en beta-kontakt: uden login er den altid slukket.
   if (!userId) { if (gen === generation) setEnabled(false); return; }
-  const flags = await fetchPlayerFeatureFlags().catch(() => ({} as Record<string, boolean>));
+  const flags = await deps.fetchFlags().catch(() => ({} as Record<string, boolean>));
   if (gen === generation) setEnabled(flags?.[RIDER_HOVER_CARD_FLAG_KEY] === true);
 }
 
@@ -79,8 +98,6 @@ function subscribe(cb: () => void) {
   if (!started && typeof window !== "undefined") {
     started = true;
     void refreshFlag();
-    // Ny session (ind-/udlogning): spoerg igen for den nye bruger (Codex P2 paa #7849).
-    auth.onAuthStateChange(() => { void refreshFlag(); });
   }
   return () => { listeners.delete(cb); };
 }
