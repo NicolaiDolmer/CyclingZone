@@ -44,6 +44,10 @@ const FINANCE_KEY_PREFIX = Object.freeze({
 const HOLD_HANDLED = new Set(["held", "exists"]);
 // Postgres 42P01 / PostgREST PGRST205: tabellen findes ikke endnu (M1 ikke applied).
 const MISSING_TABLE_CODES = new Set(["42P01", "PGRST205"]);
+// PostgRESTs svarloft. Holdte escrows er faa (aabne parkerede salg); naar listen
+// rammer loftet, er svaret maaske afskaaret, og opslaget fejler i stedet.
+const MAX_HELD_ROWS = 1000;
+const RIDER_CHUNK = 200;
 // Slukket/ikke parkeret: den uaendrede betaling.
 const DIRECT_PAYMENT = Object.freeze({ incrementBalanceWithAudit });
 const ESCROW_COLUMNS = "id, deal_type, deal_id, payer_team_id, payee_team_id, amount, rider_ids, target_team_ids, delivered_rider_ids, status, created_at";
@@ -123,7 +127,18 @@ export async function saleEscrowPayment(supabase, { parked, dealType, dealId, ri
       return { skipped: false, balance: null, escrow: data };
     }
 
-    console.warn(`[saleEscrow] ${dealType} ${dealId}: ${data?.status ?? "ukendt"}, betales uden escrow`);
+    // Uden escrow maa der kun betales, naar det er sikkert: den gamle sti har allerede
+    // krediteret saelger (gentagelse), eller alle ryttere er faktisk leveret. Ellers
+    // (parkeringen forsvandt, eller rytteren er i en anden laast handel) flyttes ingen
+    // penge, og handlen fejler hoejt i stedet for at betale for en rytter, der ikke kom.
+    if (data?.status !== "payee_already_credited") {
+      const states = await loadRiderStates(client, riderIds);
+      const delivered = riderIds.every((rid, i) => states.get(rid)?.team_id === targetTeamIds[i]);
+      if (data?.status !== "not_parked" || !delivered) {
+        throw new Error(`saleEscrowPayment: ${dealType} ${dealId} kan hverken laases eller betales (${data?.status ?? "ukendt"})`);
+      }
+    }
+    console.warn(`[saleEscrow] ${dealType} ${dealId}: ${data?.status}, betales uden escrow`);
     await incrementBalanceWithAudit(client, payer.leg, payer.options);
     return incrementBalanceWithAudit(client, payee.leg, payee.options);
   } };
@@ -147,7 +162,11 @@ export async function fetchHeldSaleEscrows(supabase, { riderIds = null } = {}) {
     if (MISSING_TABLE_CODES.has(error.code)) return { rows: [], error: null };
     return { rows: [], error };
   }
-  const rows = Array.isArray(data) ? data.filter((e) => e?.status === "held" && Array.isArray(e.rider_ids)) : [];
+  // Fail-closed: et afskaaret svar maa aldrig se ud som "ingen escrows".
+  if (Array.isArray(data) && data.length >= MAX_HELD_ROWS) {
+    return { rows: [], error: { message: `mindst ${MAX_HELD_ROWS} holdte escrows; opslaget skal pagineres` } };
+  }
+  const rows =Array.isArray(data) ? data.filter((e) => e?.status === "held" && Array.isArray(e.rider_ids)) : [];
   if (!riderIds) return { rows, error: null };
   const wanted = new Set(riderIds);
   return { rows: rows.filter((e) => e.rider_ids.some((id) => wanted.has(id))), error: null };
@@ -159,13 +178,17 @@ const errorMessage = (err) => (err instanceof Error ? err.message : String(err))
 /** @param {any} supabase @param {string[]} riderIds @returns {Promise<Map<string, any>>} */
 async function loadRiderStates(supabase, riderIds) {
   const ids = [...new Set(riderIds)];
-  if (ids.length === 0) return new Map();
-  const { data, error } = await supabase
-    .from("riders")
-    .select("id, team_id, pending_team_id")
-    .in("id", ids);
-  if (error) throw new Error(`saleEscrow: rytteropslag fejlede: ${error.message}`);
-  return new Map((data || []).map((r) => [r.id, r]));
+  const states = new Map();
+  // Bidder under PostgRESTs svarloft, saa en manglende raekke kun kan betyde en slettet rytter.
+  for (let i = 0; i < ids.length; i += RIDER_CHUNK) {
+    const { data, error } = await supabase
+      .from("riders")
+      .select("id, team_id, pending_team_id")
+      .in("id", ids.slice(i, i + RIDER_CHUNK));
+    if (error) throw new Error(`saleEscrow: rytteropslag fejlede: ${error.message}`);
+    for (const r of data || []) states.set(r.id, r);
+  }
+  return states;
 }
 
 /**

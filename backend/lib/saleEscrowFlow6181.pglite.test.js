@@ -229,7 +229,7 @@ test("slukket kontakt: flush, refusion og saelgerens penge opfoerer sig som foer
 
   log.length = 0;
   assert.equal(await releaseSaleEscrowForFlush(supabase, { id: RIDER.r1, pending_team_id: TEAM.B }, { flushedAt: FLUSHED_AT }), null);
-  assert.deepEqual(await refundSaleEscrowsForReleasedRiders(supabase, [RIDER.r1], { sourcePath: "test" }), { refunded: 0, failed: 0 });
+  assert.deepEqual(await refundSaleEscrowsForReleasedRiders(supabase, [RIDER.r1], { now: new Date(FLUSHED_AT), sourcePath: "test" }), { refunded: 0, failed: 0 });
   assert.ok(!log.some((l) => l.table === "sale_escrows" || l.rpc), "slukket: ingen escrow-opslag og ingen rpc");
 
   const moved = await flushParkedRider(supabase, { id: RIDER.r1, firstname: "Rytter", lastname: "En", team_id: TEAM.A, pending_team_id: TEAM.B },
@@ -293,6 +293,20 @@ test("taendt, men rytteren er allerede flyttet (loebet sluttede imellem): betale
   assert.deepEqual(await escrows(db), []);
 });
 
+test("taendt, men parkeringen forsvandt foer laasen (fx pension imellem): ingen betaling, handlen fejler", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  // Rytteren staar stadig hos saelger og er ikke parkeret: hverken laas eller betaling.
+  const pay = await saleEscrowPayment(supabase, { parked: true, dealType: "transfer", dealId: DEAL.t1, riderIds: [RIDER.r1], targetTeamIds: [TEAM.B] });
+  const [buyer, seller] = transferLegs(DEAL.t1, 90_000);
+  await pay.incrementBalanceWithAudit(supabase, buyer);
+  await assert.rejects(() => pay.incrementBalanceWithAudit(supabase, seller), /hverken laases eller betales \(not_parked\)/);
+  assert.equal(await balance(db, TEAM.B), START, "koeberen betaler ikke for en rytter, der ikke kommer");
+  assert.equal(await balance(db, TEAM.A), START);
+  assert.deepEqual(await ledgerKeys(db), []);
+});
+
 test("taendt: forkerte finance-noegler eller ben afvises, foer der flyttes penge", async () => {
   const db = await database();
   await setFlag(db, "on");
@@ -352,17 +366,18 @@ test("hul 6: pension/kontraktudloeb frigiver en solgt, ventende rytter -> koeber
 
   // Samme opdatering som retirementRelease/contractExpiryRelease (rytteren bliver fri agent).
   await db.query("UPDATE riders SET team_id = NULL, pending_team_id = NULL WHERE id = $1", [RIDER.r1]);
-  const stats = await refundSaleEscrowsForReleasedRiders(supabase, [RIDER.r1], { sourcePath: "retirementRelease.saleEscrowRefund" });
+  const stats = await refundSaleEscrowsForReleasedRiders(supabase, [RIDER.r1], { now: new Date(FLUSHED_AT), sourcePath: "retirementRelease.saleEscrowRefund" });
   assert.deepEqual(stats, { refunded: 1, failed: 0 });
   assert.equal(await balance(db, TEAM.B), START, "koeberen har sine penge igen");
   assert.equal(await balance(db, TEAM.A), START, "saelgeren fik aldrig noget");
   assert.deepEqual(await escrows(db), [{ status: "refunded", deal_type: "auction", amount: 120_000 }]);
+  assert.equal(new Date((await one(db, "SELECT settled_at FROM sale_escrows")).settled_at).toISOString(), FLUSHED_AT, "afregnet paa det injicerede ur");
   const refund = await one(db, "SELECT reason_code, source_path, type FROM finance_transactions WHERE idempotency_key LIKE 'sale_escrow_refund:%'");
   assert.deepEqual(refund, { reason_code: "sale_escrow_refund", source_path: "retirementRelease.saleEscrowRefund", type: "transfer_in" });
   assert.equal(await total(db), before);
 
   // Gentagelse refunderer aldrig igen.
-  assert.deepEqual(await refundSaleEscrowsForReleasedRiders(supabase, [RIDER.r1], { sourcePath: "x" }), { refunded: 0, failed: 0 });
+  assert.deepEqual(await refundSaleEscrowsForReleasedRiders(supabase, [RIDER.r1], { now: new Date(FLUSHED_AT), sourcePath: "x" }), { refunded: 0, failed: 0 });
   assert.equal(await balance(db, TEAM.B), START);
 });
 
