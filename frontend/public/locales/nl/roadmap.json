@@ -125,7 +125,8 @@
     "recent": "Geleverd in de laatste 7 dagen",
     "earlier": "Eerder",
     "patchNote": "Patchnote · {date}",
-    "allPatchNotes": "Alle patchnotes"
+    "allPatchNotes": "Alle patchnotes",
+    "youVoted": "Je stemde"
   },
   "empty": {
     "plan": {

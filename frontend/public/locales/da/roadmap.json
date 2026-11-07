@@ -125,7 +125,8 @@
     "recent": "Leveret de sidste 7 dage",
     "earlier": "Tidligere",
     "patchNote": "Patch note · {date}",
-    "allPatchNotes": "Alle patch notes"
+    "allPatchNotes": "Alle patch notes",
+    "youVoted": "Du stemte"
   },
   "empty": {
     "plan": {

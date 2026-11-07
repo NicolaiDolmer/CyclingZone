@@ -1913,6 +1913,8 @@ export default function TrainingPage() {
         seasonPoints: seasonPointsFor(rider.id),
         // #6025: "nu -> i aften", samme prognose som telefonens raekke (#6021).
         fatigueTonight: rowForecast(forecastFor(rider.id)),
+        // #7801: kun med fatigue_now_7801 (feltet findes ellers ikke i svaret).
+        fatigueAtStart: cond.fatigue_at_start ?? null,
         noDay: !planFor(rider.id)?.focus && !racingTodayFor(rider.id),
         squad: rider.squad ?? null,
         score: cell

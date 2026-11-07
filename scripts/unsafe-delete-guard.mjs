@@ -25,7 +25,7 @@
 // Fail-open ved uventede fejl (en vagt maa ikke spaerre for arbejdet), fail-closed ved match.
 
 import { readFileSync, existsSync, statSync } from 'node:fs';
-import { isAbsolute, resolve, relative } from 'node:path';
+import { isAbsolute, resolve, relative, dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -80,9 +80,11 @@ export function checkCommand(command, { cwd = process.cwd(), readScript = defaul
   }
   for (const m of cmd.matchAll(SCRIPT_RUNNER)) {
     const raw = m[1].replace(/^["']|["']$/g, '');
-    const abs = isAbsolute(raw) ? raw : resolve(cwd, raw);
-    const rel = relativeToRepo(abs);
-    if (rel && SAFE_REMOVERS.includes(rel)) continue;
+    const native = gitBashToNative(raw);
+    const abs = isAbsolute(native) ? native : resolve(cwd, native);
+    // Review #7854: et sikkert NAVN er ikke nok. Ogsaa remove-worktree.ps1 skal vaere
+    // versioneret og uaendret, ellers laeses den (en omskrevet kopi i et andet worktree
+    // maa ikke slippe igennem uden scanning).
     if (isTracked(abs)) continue;
     const body = readScript(abs);
     if (body == null) continue;
@@ -154,14 +156,35 @@ function block(reason) {
   };
 }
 
-function repoRoot() {
-  try { return execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; }
+// Roden for det repo/worktree, SCRIPTET ligger i, ikke hookens cwd: et script i
+// C:/Dev/CyclingZone-worktrees/<spor>/scripts er versioneret i sporets worktree,
+// og skal genkendes som det (bølge 7/11: guard-commit-branch.sh blev blokeret,
+// fordi den blev slået op i hovedmappens repo og så scannet som ad hoc-script).
+// Codex P1 (#7854): undtagelsen gælder KUN scripts i samme repo som vagten selv
+// (samme fælles .git, dvs. hovedmappen eller et af dens worktrees). Et script i et
+// fremmed repo bliver altid gennemlæst, også hvis det hedder som et sikkert script.
+// Git Bash-stier (/c/dev/x) er ikke absolutte for Windows' resolve(); uden denne
+// oversaettelse blev scriptet slaaet op i C:\c\dev\x, ikke fundet og sprunget over (fail-open).
+export function gitBashToNative(p) {
+  const m = process.platform === 'win32' && String(p).match(/^\/([a-zA-Z])(\/.*)?$/);
+  return m ? `${m[1].toUpperCase()}:${m[2] || '/'}` : p;
 }
-function relativeToRepo(abs) {
-  const root = repoRoot();
-  if (!root) return null;
-  const rel = relative(root, abs).replace(/\\/g, '/');
-  return rel.startsWith('..') ? null : rel;
+function gitOut(dir, args) {
+  try { return execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; }
+}
+const normPath = (p) => (p ? resolve(p).replace(/\\/g, '/').toLowerCase() : null);
+// Doven: kun kommandoer der koerer et script betaler for git-kaldet (review #7854).
+let guardCommonDir;
+const GUARD_COMMON_DIR_OF = () => (guardCommonDir === undefined
+  ? (guardCommonDir = normPath(gitOut(dirname(fileURLToPath(import.meta.url)), ['rev-parse', '--path-format=absolute', '--git-common-dir'])))
+  : guardCommonDir);
+function repoRoot(abs) {
+  if (!abs) return gitOut(process.cwd(), ['rev-parse', '--show-toplevel']);
+  const dir = dirname(abs);
+  const common = normPath(gitOut(dir, ['rev-parse', '--path-format=absolute', '--git-common-dir']));
+  const guardCommon = GUARD_COMMON_DIR_OF();
+  if (!common || !guardCommon || common !== guardCommon) return null;
+  return gitOut(dir, ['rev-parse', '--show-toplevel']);
 }
 function defaultListWorktrees(cwd) {
   try {
@@ -173,7 +196,7 @@ function defaultReadScript(abs) {
   try { if (!existsSync(abs) || statSync(abs).size > 2e6) return null; return readFileSync(abs, 'utf8'); } catch { return null; }
 }
 function defaultIsTracked(abs) {
-  const root = repoRoot();
+  const root = repoRoot(abs);
   if (!root) return false;
   const rel = relative(root, abs).replace(/\\/g, '/');
   if (rel.startsWith('..')) return false;

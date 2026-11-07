@@ -224,6 +224,9 @@
     ],
     "sunday-value-refresh": [
       "backend/lib/sundayValueSweep.js"
+    ],
+    "roadmap-delivered": [
+      "backend/lib/roadmapDeliveredNotify.js"
     ]
   }
 }
