@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** 8/11: spørg egomadsen om træningsrapporten #7870 (billeder, form/træthed sløret) · 8/11: XP-valget #6110 visuelt + byg · Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (7/11 nat):** Merge-kø: #7887 (main-typecheck) → #7849 (hover+højreklik, ejer-go beta) → #7853 (pengelås M1). Bølge 4 i gang: mestertrøjer #7824, talentmærker #7879, pengelås/auto-accept #7871-#7873, patch notes #7876. Venter ejer: tabeller #7886, taktik #7880/#7884/#7885, wireframe v3, tænd-kort #7644, TASTE række 6. 8/11: egomadsen #7870, XP #6110, sandhedsvagt, #7869. 9/11: secrets, feedback, #5431.
+> **🎯 Next action (7/11 nat):** Merge-kø: #7887 (main-typecheck) → #7849 (hover+højreklik, ejer-go beta) → #7853 (pengelås M1). Bølge 5 i gang: mestertrøjer #7824 (blev ikke startet i bølge 4), færdiggør #7871 (WIP-redning på draft #7874), #7879, #7873. Klar efter CI: #7857, #7883. Venter ejer: tabeller #7886, taktik #7880/#7884/#7885, wireframe v3, tænd-kort #7644, TASTE række 6. 8/11: egomadsen #7870, XP #6110, sandhedsvagt, #7869. 9/11: secrets, feedback, #5431.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
 > **🤖 Working agent:** PC1 Claude Code-session 7/11 (bølge 4 kører; Discord #build-a-feature). Dolmer PC: Codex XP-kalibrering.
