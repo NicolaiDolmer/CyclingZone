@@ -81,6 +81,10 @@
     "success": "✓",
     "error": "Fout"
   },
+  "riderHoverCard": {
+    "openProfile": "Profiel openen",
+    "loadError": "Deze renner kon niet worden geladen. Open het profiel."
+  },
   "time": {
     "justNow": "Zojuist",
     "minutesAgo": "{m}m geleden",

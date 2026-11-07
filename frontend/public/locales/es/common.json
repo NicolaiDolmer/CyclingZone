@@ -81,6 +81,10 @@
     "success": "OK",
     "error": "Error"
   },
+  "riderHoverCard": {
+    "openProfile": "Abrir perfil",
+    "loadError": "No se pudo cargar este corredor. Abre el perfil."
+  },
   "time": {
     "justNow": "Ahora mismo",
     "minutesAgo": "hace {m} min",

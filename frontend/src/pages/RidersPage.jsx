@@ -17,6 +17,7 @@ import { WithBestRole } from "../components/rider/BestRoleTag.jsx";
 import { useNavigate, Link, useSearchParams, useLocation, useNavigationType } from "react-router";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
+import RiderHoverCard from "../components/ui/RiderHoverCard.tsx"; // #2009
 import { riderShortName } from "../lib/riderName.ts";
 import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
@@ -489,26 +490,31 @@ export default function RidersPage() {
       sticky: true,
       sortKey: "firstname",
       render: (r) => (
-        <RiderNameCell
-          id={r.id}
-          firstname={r.firstname}
-          lastname={r.lastname}
-          stopPropagation
-          className="text-cz-1 hover:text-cz-accent-t transition-colors"
-        />
+        // #2009: hover-miniprofil paa navnet (bag rider_hover_card).
+        <RiderHoverCard riderId={r.id} viewerTeamId={myTeam?.id}>
+          <RiderNameCell
+            id={r.id}
+            firstname={r.firstname}
+            lastname={r.lastname}
+            stopPropagation
+            className="text-cz-1 hover:text-cz-accent-t transition-colors"
+          />
+        </RiderHoverCard>
       ),
       // #5383: paa mobil er navnekolonnen smal nok til at "Ada Pedersen" brod
       // til to linjer. Den korte form (#5350, ejer-valgt 18/9) staar paa een —
       // samme navneform som Mit Hold og traeningssiden.
       renderShort: (r) => (
-        <RiderNameCell
-          id={r.id}
-          firstname={r.firstname}
-          lastname={r.lastname}
-          name={riderShortName(r)}
-          stopPropagation
-          className="text-cz-1 hover:text-cz-accent-t transition-colors"
-        />
+        <RiderHoverCard riderId={r.id} viewerTeamId={myTeam?.id}>
+          <RiderNameCell
+            id={r.id}
+            firstname={r.firstname}
+            lastname={r.lastname}
+            name={riderShortName(r)}
+            stopPropagation
+            className="text-cz-1 hover:text-cz-accent-t transition-colors"
+          />
+        </RiderHoverCard>
       ),
     },
     {

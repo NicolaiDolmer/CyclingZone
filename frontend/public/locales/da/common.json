@@ -81,6 +81,10 @@
     "success": "✓",
     "error": "Fejl"
   },
+  "riderHoverCard": {
+    "openProfile": "Åbn profil",
+    "loadError": "Rytteren kunne ikke hentes. Åbn profilen i stedet."
+  },
   "time": {
     "justNow": "Lige nu",
     "minutesAgo": "{m}m siden",

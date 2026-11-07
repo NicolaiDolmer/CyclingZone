@@ -81,6 +81,10 @@
     "success": "✓",
     "error": "Error"
   },
+  "riderHoverCard": {
+    "openProfile": "Open profile",
+    "loadError": "Couldn't load this rider. Open the profile instead."
+  },
   "time": {
     "justNow": "Just now",
     "minutesAgo": "{m}m ago",
