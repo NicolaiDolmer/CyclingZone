@@ -9,6 +9,7 @@
   "linesPerDeployment": 5000,
   "tags": {
     "(untagged)": 50,
+    "fatigue-now-7801": 5,
     "fatal": 1,
     "alunta-webhook": 1,
     "health": 1,
