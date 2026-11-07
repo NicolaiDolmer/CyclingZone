@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { Link, useParams, useSearchParams, useLocation } from "react-router";
 import RiderLink from "../components/RiderLink";
-import RiderHoverCard from "../components/ui/RiderHoverCard.tsx"; // #2009
 import TeamLink from "../components/TeamLink";
 import RaceTeamTab from "../components/race/RaceTeamTab.jsx";
 import RaceTacticsTab from "../components/race/RaceTacticsTab.jsx";
@@ -2330,10 +2329,7 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
                   >
                     <td className={`ps-3 pe-1 sm:px-4 py-2 w-8 sm:w-10 font-mono text-xs ${isWinner ? "text-cz-accent-t" : "text-cz-3"}`}>{r.rank ?? "—"}</td>
                     <td className="ps-1 pe-2 sm:px-2 py-2">
-                      {/* #2009: hover-miniprofil paa rytternavnet (bag rider_hover_card). */}
-                      <RiderHoverCard riderId={resultEntity(r).kind === "rider" ? resultEntity(r).linkId : null} viewerTeamId={myOwnTeamId}>
-                        <ResultEntityCell row={r} highlightWinner={highlightWinner} isMine={isMine} t={t} moments={moments} stageNumber={stageNumber} raceId={raceId}  participationHistory={participationHistory} />
-                      </RiderHoverCard>
+                      <ResultEntityCell row={r} highlightWinner={highlightWinner} isMine={isMine} t={t} moments={moments} stageNumber={stageNumber} raceId={raceId}  participationHistory={participationHistory} />
                       {showTeamCol && resultEntity(r).kind === "rider" && (
                         // #6684 (D-047, ejer-go 15/10): på mobil står holdet under rytteren i
                         // stedet for i egen kolonne, så tid og point kan stå uden vandret scroll.
