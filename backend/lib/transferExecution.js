@@ -583,6 +583,8 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
           })
           .eq("id", rider.id)
           .eq("team_id", offer.seller_team_id)
+          // #6181: en allerede solgt, ventende rytter kan ikke sælges igen.
+          .is("pending_team_id", null)
           .select("id")
       );
 

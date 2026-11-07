@@ -146,6 +146,7 @@ import {
 } from "../lib/notificationService.js";
 import * as transferNotif from "../lib/transferNotifications.js";
 import { withdrawCounterOffer, claimCounterForAccept, buildCounterOfferWithdrawnNotification } from "../lib/counterOfferWithdraw.js"; // #6463
+import { getParkedRiderReleaseIssue, getParkedRiderTradeIssue } from "../lib/parkedRiderGuard6181.js"; // #6181
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
 import {
   notifyNewAuction,
@@ -1774,7 +1775,7 @@ async function loadOwnedSeniorRiderForAction(req, riderId) {
   // #5568: birthdate med, så academy-demote-quote kan vælge mål-truppen.
   const { data: rider } = await supabase
     .from("riders")
-    .select("id, firstname, lastname, team_id, is_retired, is_academy, salary, market_value, base_value, prize_earnings_bonus, current_production_value, contract_length, contract_end_season, birthdate")
+    .select("id, firstname, lastname, team_id, pending_team_id, is_retired, is_academy, salary, market_value, base_value, prize_earnings_bonus, current_production_value, contract_length, contract_end_season, birthdate")
     .eq("id", riderId)
     .single();
   if (!rider || rider.team_id !== req.team.id) {
@@ -1907,6 +1908,8 @@ router.get("/riders/:id/release-quote", requireAuth, async (req, res) => {
   const result = await loadOwnedSeniorRiderForAction(req, req.params.id);
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const { rider } = result;
+  const parkedIssue = getParkedRiderReleaseIssue(rider); // #6181
+  if (parkedIssue) return res.status(parkedIssue.status).json(parkedIssue.body);
   const auctionGuard = await assertRiderNotOnActiveAuction(rider.id);
   if (auctionGuard.error) return res.status(auctionGuard.error.status).json(auctionGuard.error.body);
   const currentSeason = await getActiveSeasonNumber();
@@ -2028,6 +2031,9 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
   const result = await loadOwnedSeniorRiderForAction(req, req.params.id);
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const { rider } = result;
+  // #6181: en solgt rytter, der venter på at skifte hold, er købers; han kan ikke fyres.
+  const parkedIssue = getParkedRiderReleaseIssue(rider);
+  if (parkedIssue) return res.status(parkedIssue.status).json(parkedIssue.body);
   const auctionGuard = await assertRiderNotOnActiveAuction(rider.id);
   if (auctionGuard.error) return res.status(auctionGuard.error.status).json(auctionGuard.error.body);
 
@@ -2084,6 +2090,7 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
     })
     .eq("id", rider.id)
     .eq("team_id", req.team.id)
+    .is("pending_team_id", null) // #6181: et salg, der parkerede ham imens, vinder
     .select("id");
   if (!released || released.length === 0) {
     return res.status(409).json({ error: "This rider is no longer on your team", errorCode: "rider_state_changed" });
@@ -8422,11 +8429,13 @@ router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
     return res.status(400).json({ error: "Asking price must be a positive whole number", errorCode: "invalid_asking_price" });
   }
   const { data: rider } = await supabase
-    .from("riders").select("id, team_id, firstname, lastname, is_retired, is_academy").eq("id", rider_id).single();
+    .from("riders").select("id, team_id, pending_team_id, firstname, lastname, is_retired, is_academy").eq("id", rider_id).single();
   if (!rider || rider.team_id !== req.team.id)
     return res.status(403).json({ error: "Du ejer ikke denne rytter", errorCode: "rider_not_owned" });
   if (rider.is_retired)
     return res.status(409).json({ error: "This rider has retired and can't be listed for sale", errorCode: "rider_retired_listing" });
+  const parkedListingIssue = getParkedRiderTradeIssue(rider); // #6181
+  if (parkedListingIssue) return res.status(parkedListingIssue.status).json(parkedListingIssue.body);
   // #3650 (ejer-løfte i Discord 11/8): akademiryttere må NU listes direkte —
   // #1824's is_academy-GUARD er fjernet HER (blokerer stadig auktion, se POST
   // /auctions). Ingen manuel graduation krævet længere: salget graduerer
@@ -8681,9 +8690,11 @@ router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res
     return res.status(400).json({ error: "Invalid amount", errorCode: "invalid_offer_amount" });
 
   const { data: rider } = await supabase
-    .from("riders").select("id, team_id, firstname, lastname, is_retired").eq("id", rider_id).single();
+    .from("riders").select("id, team_id, pending_team_id, firstname, lastname, is_retired").eq("id", rider_id).single();
   if (!rider || !rider.team_id) return res.status(404).json({ error: "Rytter ikke fundet eller har intet hold", errorCode: "rider_not_found_or_no_team" });
   if (rider.is_retired) return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke handles", errorCode: "rider_retired_trade" });
+  const parkedOfferIssue = getParkedRiderTradeIssue(rider); // #6181
+  if (parkedOfferIssue) return res.status(parkedOfferIssue.status).json(parkedOfferIssue.body);
   if (rider.team_id === req.team.id) return res.status(400).json({ error: "You can't bid on your own rider", errorCode: "cannot_bid_own_rider" });
 
   const { data: sellerTeam } = await supabase
@@ -9136,10 +9147,12 @@ router.post("/transfers/:id/offer", requireAuth, marketWriteLimiter, async (req,
   const { offer_amount, message } = req.body;
   const { data: listing } = await supabase
     .from("transfer_listings")
-    .select("*, rider:rider_id(id, firstname, lastname, team_id)")
+    .select("*, rider:rider_id(id, firstname, lastname, team_id, pending_team_id)")
     .eq("id", req.params.id).single();
   if (!listing || listing.status !== "open")
     return res.status(404).json({ error: "Listing ikke fundet", errorCode: "listing_unavailable" });
+  const parkedListingOfferIssue = getParkedRiderTradeIssue(listing.rider); // #6181
+  if (parkedListingOfferIssue) return res.status(parkedListingOfferIssue.status).json(parkedListingOfferIssue.body);
   if (listing.seller_team_id === req.team.id)
     return res.status(400).json({ error: "You can't bid on your own listing", errorCode: "cannot_bid_own_listing" });
   const { data: listingSeller } = await supabase
