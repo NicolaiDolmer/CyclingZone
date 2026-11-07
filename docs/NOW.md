@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (7/11 morgen):** Dolmer PC har overtaget (OneDrive-overdragelsen og plan på #7495). Merget og verificeret: #7819, #7820, #7823 (patch note 7.413), #7828 (interne opgaver lukker selv, #7827). Bevis der venter på en hændelse: #7829. Løbsside A: designet fortsættes 7/11 med ejerens rettelser (status på #7778), så #7725. Bølge: XP trin 2 og 4, #7792, #7789; vis sporene først. XP-kortet skal køres om. #7726, #7557 og #7730 tændt; bevis 7/11 15:00; #7733 efter 7/11 16:30; secrets 7/11 11-12; feedback og fair-play senest 9/11. Mærker #7824: kun design, ingen afstemning, intet byg uden go; ordene verdensmester/europamester frigivet (#934).
+> **🎯 Next action (7/11):** PC1 overtager; plan på #7495 og i OneDrive overdragelse-dolmerpc-til-pc1-2026-11-07.md. Bølge 1: #7832, #7692, #6110 trin 2+4, #7792, #7789. Design: #6181/#2176, så løbsside A (#7778) og #7725. Bevis 15:00 (#7726, #7557); #7733 efter 16:30; secrets, feedback og fair-play senest 9/11. Ventende bevis: #7829. Mærker #7824: kun design, intet byg uden go.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
 > **🤖 Working agent:** Ingen aktiv session. Fra 7/11: PC1 (Claude Code) merger og tænder, og auto-toget installeres på PC1; Dolmer PC kører Codex. Auto-toget er fjernet fra Dolmer PC.
