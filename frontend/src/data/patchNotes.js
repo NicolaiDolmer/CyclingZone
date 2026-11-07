@@ -14,7 +14,7 @@ export const PATCHES = [
         },
         "da": {
           "title": "En besked, når et punkt du stemte på, er leveret",
-          "body": "Når et punkt på roadmappen, du gav 5 eller 6, er leveret, får du én besked i indbakken. Done-fanen viser Du stemte på de punkter, du har stemt på. Ved ikke tæller ikke som en stemme."
+          "body": "Når et punkt på roadmappen, du gav 5 eller 6, er leveret, får du én besked i indbakken. Færdigt-fanen viser Du stemte på de punkter, du har stemt på. Ved ikke tæller ikke som en stemme."
         },
         "refs": [
           7792

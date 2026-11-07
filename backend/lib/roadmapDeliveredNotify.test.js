@@ -183,3 +183,15 @@ test("overlappende sweep lukker ikke punktet, mens en andens claim stadig kan ru
   await runRoadmapDeliveredNotify({ supabase: {}, now: new Date("2026-11-07T10:30:00.000Z"), store, notify });
   assert.equal(store.state.items[0].done, true);
 });
+
+test("en andens claim ældre end vinduet lukker punktet; præcis på grænsen tæller som afsluttet", async () => {
+  const store = makeStore({ items: [ITEM], voters: { "item-1": ["u1"] } });
+  // Koersel A claimede u1 for 10 min siden (praecis paa graensen) og sendte.
+  await store.claim({ itemId: "item-1", userId: "u1", sentAtIso: "2026-11-07T09:50:00.000Z" });
+  const sent = [];
+  const res = await runRoadmapDeliveredNotify({ supabase: {}, now: NOW, store, notify: async (a) => { sent.push(a.userId); return { delivered: true }; } });
+  assert.equal(res.skipped, 1);
+  assert.deepEqual(sent, []);
+  assert.equal(store.state.items[0].done, true);
+});
+
