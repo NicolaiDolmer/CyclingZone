@@ -267,6 +267,21 @@ Bruges i slice 2 på hver af de 63 sider, i lys, mørk og mobil. **Hvert "nej" e
 
 ---
 
+## 5a. FORSLAG (ikke godkendt): Overlays: hover-kort, højreklik-menu, tooltip
+
+> **Status: FORSLAG fra #2009/#7858 (7/11).** Gælder først når ejeren har sagt ja; indtil da er det kun en beskrivelse af det bygget, der ligger bag beta-kontakten `rider_hover_card`.
+
+- **Hvornår hvad:** tooltip = ét ord eller én sætning til et ikon/tal (`title`/`aria-label`, ingen egen flade). Hover-kort = et opslag på en ting (rytter) uden at forlade listen. Højreklik-menu = handlinger på en ting. Aldrig handlinger i et tooltip, aldrig en hel profil i en menu.
+- **Bredde:** hover-kort 24rem (384 px), menu 16rem (256 px), begge `max-w-[calc(100vw-1rem)]`. Ét kort ad gangen.
+- **Luft:** kort `p-4`, sektioner adskilt af hairline + `pt-2.5`; menu `py-1`, rækker `px-3 py-1.5` (min. 36 px, 44 px på touch), grupper adskilt af én hairline.
+- **Typografi:** navn i Inter Tight 16/700 (aldrig Bebas, P4), labels 10 px uppercase `--text-3`, værdier tabulære. Ingen nye pille-stile: kun spillets egne mærker (`RiderBadges`, `RiderTypeBadge`).
+- **Kant og skygge:** hairline + 5 px radius som alle kort. `shadow-overlay` er tilladt HER (§3: popover/modal) og ingen andre steder; ingen guld-keyline (den er T3-heroens).
+- **Guld:** et overlay ligger oven på en side, der allerede har sin ene guld-knap, så overlayets knapper er sekundære. Undtagelse: mobilens bundark er en selvstændig flade og må have én guld-knap ("Åbn profil").
+- **Åbning:** desktop: hover på en lille stroke-ikon-trigger (forsinkelse ca. 250 ms), klik fastlåser; højreklik åbner menuen. Tastatur: fokus/Shift+F10/kontekst-tast, Esc lukker, fokus-fælde i menuen, fokus tilbage til navnet.
+- **Mobil:** intet hover. Tryk på ikonet = bundark (fuld bredde, max 85 % højde, luk-knap 36 px); langt tryk på navnet = menuen. Et tryk på selve navnet gør det samme som i dag.
+
+---
+
 ## 6. Ejer-beslutninger 2/9 (visuel dialog, genåbn dem ikke)
 
 Otte forks blev vist som mockup-varianter (A/B/C) og afgjort af ejeren 2/9 2026. De står her som SSOT; principperne ovenfor citerer dem.

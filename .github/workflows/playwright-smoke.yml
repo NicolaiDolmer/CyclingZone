@@ -50,6 +50,9 @@ name: Playwright Smoke
 
 on:
   pull_request:
+    # ready_for_review: kladder springer e2e over (se changes); naar PR'en
+    # markeres klar, koerer suiten paa samme HEAD (ejer 7/11).
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
   # Merge queue (4/8): suiten kørte allerede på selve PR'en. I køen sætter
   # changes-jobbet eksplicit frontend=false, så shards'ene skipper
@@ -108,8 +111,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
         run: |
           set -euo pipefail
+          # Ejer 7/11: kladde-PR'er koerer ikke e2e; ready_for_review koerer suiten.
+          if [[ "$PR_DRAFT" == "true" ]]; then
+            echo "frontend=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           FILES=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq '.[].filename')
           # Ikke `grep -q`: tidlig exit + pipefail kan SIGPIPE printf og vende
           # svaret til falsk "ingen frontend-ændringer". >/dev/null læser alt.
