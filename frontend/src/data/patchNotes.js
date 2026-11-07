@@ -1,5 +1,29 @@
 export const PATCHES = [
   {
+    "version": "7.416",
+    "date": "2026-11-07",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "A clearer training report",
+          "body": "Whole ability points now stand out in bold, and riders without a whole point are folded into one row you can open. Abilities follow the same order as on the rider profile."
+        },
+        "da": {
+          "title": "En tydeligere træningsrapport",
+          "body": "Hele evnepoint står nu med fed skrift, og ryttere uden et helt point er samlet i én række, du kan folde ud. Evnerne står i samme rækkefølge som på rytterprofilen."
+        },
+        "refs": [
+          7745,
+          7746
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.415",
     "date": "2026-11-07",
     "changes": [
