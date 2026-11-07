@@ -21,7 +21,7 @@ import { runOwnershipInvariantWatch } from "./ownershipInvariantWatch.ts";
 //                   med et åbent/nyligt override-vindue fra. Default-sæsonen
 //                   holder de eksisterende fixtures uændrede: ingen af dem har
 //                   birthdate, så ageForSeason giver null og ingen bliver flagget.
-function makeMock({ auctions = [], riders = [], intake = [], races = [], raceEntries = [], raceWithdrawals = [], auctionsError = null, teams = [], teamBoardMembers = [], activeSeason = { number: 3 }, graduations = [] } = {}) {
+function makeMock({ auctions = [], riders = [], intake = [], races = [], raceEntries = [], raceWithdrawals = [], auctionsError = null, teams = [], teamBoardMembers = [], activeSeason = { number: 3 }, graduations = [], saleEscrows = [] } = {}) {
   return {
     from(table) {
       if (table === "seasons") {
@@ -103,6 +103,8 @@ function makeMock({ auctions = [], riders = [], intake = [], races = [], raceEnt
             out = out.slice(from, to + 1);
             return Promise.resolve({ data: out, error: null });
           },
+          // #6181: invariant H laeser rytterne uden range (lille population).
+          then(resolve, reject) { return b.range(0, Number.MAX_SAFE_INTEGER - 1).then(resolve, reject); },
         };
         return b;
       }
@@ -208,6 +210,11 @@ function makeMock({ auctions = [], riders = [], intake = [], races = [], raceEnt
         };
         return b;
       }
+      // #6181 invariant H: holdte escrows.
+      if (table === "sale_escrows") {
+        const b = { select() { return b; }, eq() { return b; }, order() { return Promise.resolve({ data: saleEscrows, error: null }); } };
+        return b;
+      }
       throw new Error(`uventet tabel: ${table}`);
     },
   };
@@ -229,7 +236,7 @@ test("#2647 clean fixture — ingen brud, ingen capture, alerted=false", async (
   });
   assert.equal(calls.length, 0);
   assert.equal(result.alerted, false);
-  assert.deepEqual(result.findings, { youthOwned: 0, sellerlessOwned: 0, staleIntake: 0, strandedAcademy: 0, stalePendingTransfer: 0, teamsMissingBoardMembers: 0, stuckAcademyGraduates: 0, teamsAwaitingDnaChoice: 0 });
+  assert.deepEqual(result.findings, { youthOwned: 0, sellerlessOwned: 0, staleIntake: 0, strandedAcademy: 0, stalePendingTransfer: 0, teamsMissingBoardMembers: 0, stuckAcademyGraduates: 0, teamsAwaitingDnaChoice: 0, staleSaleEscrows: 0 });
   assert.equal(result.checked, 2);
 });
 
@@ -1023,4 +1030,56 @@ test("#4495 invariant G — rytter i et åbent override-vindue alarmerer ikke", 
   assert.equal(result.findings.stuckAcademyGraduates, 0);
   assert.equal(result.alerted, false);
   assert.equal(calls.length, 0);
+});
+
+// ─── #6181 · invariant H: laast salg, der ikke er afregnet ───────────────────
+
+const ESCROW_NOW = new Date("2026-11-10T12:00:00Z");
+const heldEscrow = (over = {}) => ({
+  id: "esc-1", deal_type: "transfer", deal_id: "deal-1", status: "held",
+  rider_ids: ["r-sold"], target_team_ids: ["team-buyer"], delivered_rider_ids: [],
+  created_at: "2026-11-01T12:00:00Z", ...over,
+});
+
+test("#6181 gammel holdt escrow, hvor rytteren aldrig kan leveres → invariant H med fast fingerprint", async () => {
+  const calls = [];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({
+      saleEscrows: [heldEscrow()],
+      riders: [{ id: "r-sold", team_id: null, pending_team_id: null }],
+    }),
+    captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+    now: ESCROW_NOW,
+  });
+  assert.equal(result.findings.staleSaleEscrows, 1);
+  assert.equal(result.alerted, true);
+  assert.deepEqual(calls.map((c) => c.ctx.fingerprint[0]), ["stale-held-sale-escrow"]);
+  assert.match(calls[0].ctx.extra.sample[0], /escrow=esc-1 deal=transfer action=refund/);
+});
+
+test("#6181 holdt escrow, hvis rytter stadig koerer et aktivt etapeloeb → intet brud", async () => {
+  const calls = [];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({
+      saleEscrows: [heldEscrow()],
+      riders: [{ id: "r-sold", team_id: "team-seller", pending_team_id: "team-buyer", updated_at: "2026-11-09T12:00:00Z" }],
+    }),
+    captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+    now: ESCROW_NOW,
+    getRidersInActiveStageRaceFn: async () => ["r-sold"],
+  });
+  assert.equal(result.findings.staleSaleEscrows, 0);
+  assert.equal(calls.length, 0);
+});
+
+test("#6181 ny holdt escrow (under graensen) → intet brud", async () => {
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({
+      saleEscrows: [heldEscrow({ created_at: "2026-11-10T06:00:00Z" })],
+      riders: [{ id: "r-sold", team_id: null, pending_team_id: null }],
+    }),
+    captureExceptionFn: () => {},
+    now: ESCROW_NOW,
+  });
+  assert.equal(result.findings.staleSaleEscrows, 0);
 });

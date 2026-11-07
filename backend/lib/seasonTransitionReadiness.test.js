@@ -66,6 +66,8 @@ function createMockSupabase({
   humanTeams = [],
   seniorRiders = [],
   ridersError = null,
+  // #6181: holdte escrows, der skal afregnes foer skiftet.
+  heldSaleEscrows = [],
   calls = null,
 } = {}) {
   const thenableCount = (count) => ({
@@ -116,6 +118,11 @@ function createMockSupabase({
             error: null,
           }),
         };
+        return { select: () => chain };
+      }
+      // #6181: holdte escrows (laaste salg), status held.
+      if (table === "sale_escrows") {
+        const chain = { eq: () => chain, order: () => Promise.resolve({ data: heldSaleEscrows, error: null }) };
         return { select: () => chain };
       }
       throw new Error(`Uventet tabel i mock: ${table}`);
@@ -270,6 +277,18 @@ test("#5855 udskudte transfers blokerer med antal i detail", async () => {
   assert.equal(result.ready, false);
   assert.deepEqual(result.failed_critical, ["no_deferred_transfers"]);
   assert.match(result.checks.no_deferred_transfers.detail, /^2 gennemførte transfers/);
+});
+
+test("#6181 holdte escrows (låste salg) blokerer under no_deferred_transfers", async () => {
+  const supabase = createMockSupabase({
+    humanTeams: COMPLIANT_TEAMS,
+    seniorRiders: COMPLIANT_RIDERS,
+    heldSaleEscrows: [{ id: "e-1", status: "held", rider_ids: ["r-1"], target_team_ids: ["t-1"] }],
+  });
+  const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
+  assert.equal(result.ready, false);
+  assert.deepEqual(result.failed_critical, ["no_deferred_transfers"]);
+  assert.match(result.checks.no_deferred_transfers.detail, /^1 låste salg venter på afregning/);
 });
 
 test("#5855 læsefejl på udskudte transfers kaster (fail-closed)", async () => {
