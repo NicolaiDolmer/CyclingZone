@@ -1879,7 +1879,7 @@
     },
     "stageRaceLockout": {
       "q": "Hvorfor er min rytter låst under et etapeløb?",
-      "a": "Et etapeløb binder rytteren i hele sit løbsdags-spænd. Kører det løbsdag 11 til 30, kan han ikke starte i noget andet i det vindue, heller ikke på de dage løbet holder pause."
+      "a": "Et etapeløb binder rytteren i hele sit løbsdags-spænd. Kører det løbsdag 11 til 30, kan han ikke starte i noget andet i det vindue, heller ikke på de dage løbet holder pause. Når han er startet, kører han etapeløbet til mål, også hvis du flytter ham til en anden trup undervejs. Kun en skade eller et karrierestop tager ham ud."
     },
     "autoSelect": {
       "q": "Hvad gør Auto-udtag?",

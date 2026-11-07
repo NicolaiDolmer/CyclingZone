@@ -167,6 +167,14 @@ dokumenteret i `auctionEngine.js:26-30, 47-51`). Konsekvens: den hårde grænse 
 med lukketid, og et bud der forlænger forbi lukketid ruller over til næste dags åbning med
 overskuds-minutterne (`checkBidExtension`, `auctionEngine.js:275-299`).
 
+**Vinduet er halvåbent: åbning er med, lukketid er ikke (#6181).** En auktion kan aldrig slutte
+præcis på lukketidspunktet. Med lukketid 24 ville det være kl. 00.00, starten på de døde timer,
+hvor ingen kan nå at byde. Både standard-sluttiden (`calculateAuctionEnd`) og en budforlængelse
+uden grace (`checkBidExtension`) behandler derfor en sluttid der lander præcis på lukketid som
+uden for vinduet, og ruller den til næste vindues åbning. En forlængelse der lander lige før
+lukketid bliver stående. Findes en grace-periode, er den hårde grænse lukketid + grace og
+inklusiv, fordi grace er en bevidst ekstra frist.
+
 ### 2.2 De tre sluttids-veje
 
 `api.js:6443-6447` - én af tre, i denne rækkefølge:
@@ -551,6 +559,23 @@ holdskiftet parkeres hvis rytteren er midt i et aktivt fleretape-løb.
 | Selv-heling | periodisk sweep hvert **300. sekund** | `deferredTransferHealSweep.js:29-50`, `cron_checkins` job-slug `deferred-transfer-heal` |
 
 Hele det aktive løb krediteres sælgeren; først næste løb tilfalder køberen.
+
+**En parkeret rytter er købers og kan ikke frigives eller handles igen (#6181, pengelås PR 1).**
+Mens `pending_team_id` er sat, står `team_id` stadig på sælgeren, men køberen har betalt. I det
+vindue afviser backenden med HTTP 409:
+
+| Handling | Rute | Fejlkode |
+|---|---|---|
+| Fyre rytteren (og prisoverslaget for det) | `POST /riders/:id/release`, `GET /riders/:id/release-quote` | `rider_pending_transfer_release` |
+| Sætte rytteren til salg | `POST /transfers` | `rider_pending_transfer_trade` |
+| Give et direkte tilbud | `POST /transfers/offer` | `rider_pending_transfer_trade` |
+| Give et tilbud på en salgsliste | `POST /transfers/:id/offer` | `rider_pending_transfer_trade` |
+
+Reglen ligger i `parkedRiderGuard6181.js` og kaldes før ruten skriver noget. Bagved ligger to
+skrive-værn mod kapløb: frigivelsen skriver kun hvis `pending_team_id` stadig er tom, og
+`executeTransferOffer` flytter kun en rytter der ikke allerede er parkeret. Et tilbud der blev
+givet før parkeringen, kan altså ikke gennemføres bagefter; det afvises med `stale_rider_state`,
+og ingen penge flyttes.
 
 Målt 30/8: **0 ryttere står parkeret** (`select count(*) from riders where pending_team_id
 is not null`). Heal-sweepen tjekkede sidst ind 20:46:20 UTC med forventet kadence 300 sek.

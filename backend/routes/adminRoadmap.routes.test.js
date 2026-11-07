@@ -3,12 +3,13 @@ import assert from 'node:assert/strict';
 import express from 'express';
 import { createAdminRoadmapRouter } from './adminRoadmap.js';
 
-async function withApp(run, rpc = async () => ({ data: [], error: null })) {
+async function withApp(run, rpc = async () => ({ data: [], error: null }), extra = {}) {
   const calls = [];
   const app = express();
   app.use(express.json());
   app.use('/api/admin/roadmap', createAdminRoadmapRouter({
     supabase: { rpc: async (...args) => { calls.push(args); return rpc(...args); } },
+    ...extra,
     requireAdmin: (req, res, next) => req.headers.authorization === 'admin'
       ? next() : res.status(req.headers.authorization ? 403 : 401).json({ error: 'Admin only' }),
   }));
@@ -72,4 +73,26 @@ test('database failures and transport failures return fixed errors without raw p
       assert.deepEqual(await res.json(), { error: 'Roadmap request failed' });
     }, rpc);
   }
+});
+
+test('notify-delivered is admin only and returns the sweep summary (#7792)', async () => {
+  let runs = 0;
+  const runDelivered = async () => { runs += 1; return { items: 1, sent: 2 }; };
+  await withApp(async base => {
+    assert.equal((await fetch(base + '/notify-delivered', { method: 'POST' })).status, 401);
+    assert.equal((await fetch(base + '/notify-delivered', { method: 'POST', headers: { authorization: 'player' } })).status, 403);
+    assert.equal(runs, 0);
+    const res = await fetch(base + '/notify-delivered', { method: 'POST', headers: { authorization: 'admin' } });
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), { items: 1, sent: 2 });
+    assert.equal(runs, 1);
+  }, undefined, { runDelivered });
+});
+
+test('notify-delivered failures return a fixed error (#7792)', async () => {
+  await withApp(async base => {
+    const res = await fetch(base + '/notify-delivered', { method: 'POST', headers: { authorization: 'admin' } });
+    assert.equal(res.status, 500);
+    assert.deepEqual(await res.json(), { error: 'Roadmap request failed' });
+  }, undefined, { runDelivered: async () => { throw new Error('PRIVATE_DETAIL'); } });
 });

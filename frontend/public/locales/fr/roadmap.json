@@ -125,7 +125,8 @@
     "recent": "Livré ces 7 derniers jours",
     "earlier": "Avant",
     "patchNote": "Note de mise à jour · {date}",
-    "allPatchNotes": "Toutes les notes de mise à jour"
+    "allPatchNotes": "Toutes les notes de mise à jour",
+    "youVoted": "Tu as voté"
   },
   "empty": {
     "plan": {

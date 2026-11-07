@@ -284,7 +284,8 @@ test("#7587 punkt 2: motor/traening faar frossen-golden-blokken mod merge-base, 
     assert.match(brief, /merge-base HEAD origin\/main/);
     assert.match(brief, /worktree add --detach "C:\\Dev\\CyclingZone-worktrees\\\.wave-scratch\\chore-4918-wave-ops\\golden-base"/);
     assert.match(brief, /genereres ALDRIG igen med den nye kode/);
-    assert.match(brief, /aldrig raa `git worktree remove --force`/);
+    assert.match(brief, /aldrig raa `git worktree remove`/);
+    assert.match(brief, /Remove-WorktreeSafely/);
   }
   assert.equal(needsFrozenGolden({ ownership: ["docs/X.md"], scopeText: "doc" }), false);
   assert.equal(needsFrozenGolden({ ownership: ["backend/lib/engine/"] }), true);

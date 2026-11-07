@@ -115,7 +115,7 @@ export default function FatigueRulePanel({ rules, className = "", groupException
       <div className="flex items-start justify-between gap-3 border-b border-cz-border px-4 py-3 sm:px-5">
         <div className="min-w-0">
           <h2 className="text-[15px] font-semibold text-cz-1">{t("fatigueRule.title")}</h2>
-          <p className="mt-0.5 text-[12.5px] text-cz-2">{t("fatigueRule.dateStartNote")}</p>
+          <p className="mt-0.5 text-[12.5px] text-cz-2">{t(data?.fatigueNow ? "fatigueRule.nowNote" : "fatigueRule.dateStartNote")}</p>
         </div>
         <span role="status" aria-live="polite" className="flex-none text-xs" data-testid="fatigue-rule-status">
           {busy ? <span className="text-cz-3">{t("fatigueRule.saving")}</span>

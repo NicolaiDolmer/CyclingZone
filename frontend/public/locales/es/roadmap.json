@@ -125,7 +125,8 @@
     "recent": "Entregado en los últimos 7 días",
     "earlier": "Antes",
     "patchNote": "Nota de parche · {date}",
-    "allPatchNotes": "Todas las notas de parche"
+    "allPatchNotes": "Todas las notas de parche",
+    "youVoted": "Votaste"
   },
   "empty": {
     "plan": {

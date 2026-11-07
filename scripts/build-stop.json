@@ -297,6 +297,10 @@
       "why": "Intern betalingsvagt: falsk alarm ved opsagt uden periodeslut, ejer-go 7/11 i Codex' prioriterede ops-mandat"
     },
     {
+      "issue": 7170,
+      "why": "Intern bundle-gate: kun stoerste valgfrie sprog, ejer-go 7/11 i Codex' prioriterede ops-mandat"
+    },
+    {
       "issue": 6679,
       "why": "Interne Windows-procesbeviser, ejer-go 2/11 i #7495"
     },
@@ -502,6 +506,10 @@
     {
       "issue": 7827,
       "why": "Til dørs lukker selv interne opgaver, ejer-go 7/11 i chat"
+    },
+    {
+      "issue": 7837,
+      "why": "Hændelse 7/11: worktree-oprydning slettede arbejde; ejer 7/11 i chat: sørg for at det aldrig sker igen"
     }
   ],
   "brandList": [
@@ -1049,6 +1057,91 @@
       "issue": 7788,
       "reason": "Ejer-go 6/11: Ved ikke én gang pr. punkt",
       "since": "2026-11-06"
+    },
+    {
+      "issue": 7832,
+      "reason": "Ejer-go 7/11 (plan på #7495): nyt hold må aldrig miste sin første træningsdato",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7792,
+      "reason": "Ejer-go 7/11 (plan på #7495): besked ved levering af roadmap-punkt",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7789,
+      "reason": "Ejer-go 7/11 (plan på #7495): roadmap-admin med graf",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 6181,
+      "reason": "Ejer-go 7/11 (design på #6181): pengelås, byg fra første ledige lane",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7801,
+      "reason": "Ejer-go 7/11 (Discord, PC1-bølge): træthed lige nu, ret review-fund før tænding",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7701,
+      "reason": "Ejer-go 7/11 (Discord, PC1-bølge): forkert/manglende DNF-grund",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 2009,
+      "reason": "Ejer-go 7/11 (Discord): hover-miniprofil inden for en uge, beta-testere først",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7855,
+      "reason": "Ejer-go 7/11 (Discord): byg point- og bjergtrøje-opgaverne i etapeplanen",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7745,
+      "reason": "Ejer-go 7/11 (Discord): træningsrapporten, hæv standarden meget",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7746,
+      "reason": "Ejer-go 7/11 (Discord): træningsrapporten, hæv standarden meget",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7824,
+      "reason": "Ejer-go 7/11 (Discord): mestertrøjer og talentmærker live i dag, beta først",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7858,
+      "reason": "Ejer-go 7/11 (Discord): højreklik-menu designes og går live i dag",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7871,
+      "reason": "Ejer 7/11 19:30: pengelås PR 3, byg alt i aften",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7872,
+      "reason": "Ejer 7/11 19:30: pengelås PR 5, byg alt i aften",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7873,
+      "reason": "Ejer 7/11 19:30: auto-accept PR 6, byg alt i aften",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7876,
+      "reason": "Ejer 7/11 Discord: patch notes her og nu paa alt der mangler",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7879,
+      "reason": "Ejer 7/11 19:49: talentmaerker laast, live i dag (beta)",
+      "since": "2026-11-07"
     }
   ]
 }

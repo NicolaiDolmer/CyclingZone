@@ -493,6 +493,7 @@ export default function RoadmapPage() {
             entries={doneEntries}
             patchIndex={patchIndex}
             onGoPlan={() => setTab("plan")}
+            votes={votes}
           />
         </TabPanel>
       </Tabs>

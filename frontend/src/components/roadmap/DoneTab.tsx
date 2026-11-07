@@ -8,8 +8,9 @@ import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import {
   DONE_PAGE_SIZE, doneLimitFor, pickPatchNote, roadmapRowId, splitRecentDone,
-  type DoneEntry, type PatchNoteRef,
+  type DoneEntry, type PatchNoteRef, type RoadmapVote,
 } from "../../lib/roadmapModel.ts";
+import { hasScoredVote } from "../../lib/roadmapVoting.js";
 import { Button, CategoryTag, EmptyState, Section, SectionHeader, SectionStack, StatusBadge } from "./roadmapUi.ts";
 import { SkeletonRows, TitleCount, ROW, ROW_LIST } from "./RoadmapRows.tsx";
 import { isDanish, localTitle, shortDate } from "./roadmapFormat.ts";
@@ -22,6 +23,8 @@ export interface DoneTabProps {
   /** Patch notes pr. GitHub-issue; null mens de hentes (eller hvis hentningen fejlede). */
   patchIndex: Map<number, PatchNoteRef[]> | null;
   onGoPlan: () => void;
+  /** Egne stemmer pr. punkt (#7792): et leveret punkt med en stemme får "You voted". */
+  votes?: Map<string, RoadmapVote>;
   /** Punktet et søgehit åbnede; listen viser mindst så langt ned. */
   revealId?: string | null;
   /** Til "de sidste 7 dage"; kan fastlåses i tests og billeder. */
@@ -50,7 +53,7 @@ function PatchNote({ note }: { note: PatchNoteRef }) {
   );
 }
 
-export default function DoneTab({ loading, entries, patchIndex, onGoPlan, revealId, now }: DoneTabProps) {
+export default function DoneTab({ loading, entries, patchIndex, onGoPlan, votes, revealId, now }: DoneTabProps) {
   const { t, i18n } = useTranslation("roadmap");
   const [limit, setLimit] = useState(() => doneLimitFor(splitRecentDone(entries, now ?? new Date()).earlier, revealId));
 
@@ -87,7 +90,10 @@ export default function DoneTab({ loading, entries, patchIndex, onGoPlan, reveal
           <span className="text-cz-1 text-sm leading-relaxed">{localTitle(entry, i18n.language)}</span>
           {note && <PatchNote note={note} />}
         </div>
-        <span className="shrink-0 pt-0.5">
+        <span className="shrink-0 pt-0.5 flex flex-wrap items-center justify-end gap-1.5">
+          {entry.kind === "feature" && hasScoredVote(votes?.get(entry.id)) && (
+            <StatusBadge state="info">{t("done.youVoted")}</StatusBadge>
+          )}
           {entry.kind === "fix"
             ? <StatusBadge state="won">{t("done.fix")}</StatusBadge>
             : <CategoryTag>{t("done.feature")}</CategoryTag>}

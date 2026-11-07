@@ -143,8 +143,69 @@ test("calculateAuctionEnd: close=24 — 1h passer indenfor samme aften (22:30 �
   assert.equal(cph(calculateAuctionEnd(iso("2026-06-26T20:30:00Z"), C24)), "2026-06-26 23:30:00");
 });
 
-test("calculateAuctionEnd: close=24 — start 23:00 lander præcis på midnat-close", () => {
-  assert.equal(cph(calculateAuctionEnd(iso("2026-06-26T21:00:00Z"), C24)), "2026-06-27 00:00:00");
+test("calculateAuctionEnd: close=24 — start 23:00 + 1h slutter IKKE kl. 00:00, men ved næste open (#6181)", () => {
+  // Før #6181 landede den præcis på midnat-close (remaining <= availableMs).
+  // Vinduet er halvåbent [open, close), så 00:00 er nat og ruller videre.
+  assert.equal(cph(calculateAuctionEnd(iso("2026-06-26T21:00:00Z"), C24)), "2026-06-27 08:00:00");
+});
+
+// ── #6181: midnatsgrænsen med prod-lignende config (08-24, ingen grace) ──
+const C24_PROD = { ...C24, extension_grace_minutes: 0 };
+const cphHour = (d) => Number(d.toLocaleString("en-GB", { timeZone: "Europe/Copenhagen", hour: "2-digit", hour12: false })) % 24;
+
+test("calculateAuctionEnd #6181: 23:30 + 30 min slutter ved næste open, ikke kl. 00:00", () => {
+  // Tir 10/11 23:30 CET (UTC+1).
+  const end = calculateAuctionEnd(iso("2026-11-10T22:30:00Z"), { ...C24_PROD, duration_hours: 0.5 });
+  assert.equal(cph(end), "2026-11-11 08:00:00");
+});
+
+test("calculateAuctionEnd #6181: 23:29 + 30 min slutter stadig 23:59 samme aften", () => {
+  const end = calculateAuctionEnd(iso("2026-11-10T22:29:00Z"), { ...C24_PROD, duration_hours: 0.5 });
+  assert.equal(cph(end), "2026-11-10 23:59:00");
+});
+
+test("calculateAuctionEnd #6181: close=22 — en slutning præcis på close ruller også (halvåbent vindue)", () => {
+  // Tir 21:30 CEST + 30 min = præcis 22:00 → næste dags open (16:00).
+  const end = calculateAuctionEnd(iso("2026-05-05T19:30:00Z"), { ...DEFAULT_AUCTION_CONFIG, duration_hours: 0.5 });
+  assert.equal(cph(end), "2026-05-06 16:00:00");
+});
+
+test("calculateAuctionEnd #6181: sweep — ingen slutning lander i natten 00:00-08:00", () => {
+  // Hver 7. minut i en uge (CET) x fire længder; ingen må slutte i nattetimerne.
+  const base = Date.parse("2026-11-09T00:00:00Z");
+  const nightEnds = [];
+  for (let i = 0; i < 7 * 24 * 60; i += 7) {
+    const start = new Date(base + i * 60000);
+    for (const minutes of [30, 90, 720, 1440]) {
+      const end = calculateAuctionEnd(start, { ...C24_PROD, duration_hours: minutes / 60 });
+      if (cphHour(end) < 8) nightEnds.push(`${cph(start)} +${minutes} -> ${cph(end)}`);
+    }
+  }
+  assert.deepEqual(nightEnds, []);
+});
+
+test("checkBidExtension #6181: uden grace ruller en forlængelse der lander præcis kl. 00:00 til næste open", () => {
+  // Bud 23:50, slut 23:55 → +10 min = præcis 00:00 = close → ruller til 08:00.
+  const r = checkBidExtension(iso("2026-11-10T22:50:00Z"), iso("2026-11-10T22:55:00Z"), C24_PROD);
+  assert.equal(r.shouldExtend, true);
+  assert.equal(cph(r.newEnd), "2026-11-11 08:00:00");
+});
+
+test("checkBidExtension #6181: uden grace forlænges et bud 23:45 stadig til 23:55 samme aften", () => {
+  const r = checkBidExtension(iso("2026-11-10T22:45:00Z"), iso("2026-11-10T22:50:00Z"), C24_PROD);
+  assert.equal(r.shouldExtend, true);
+  assert.equal(cph(r.newEnd), "2026-11-10 23:55:00");
+});
+
+test("checkBidExtension #6181: sweep — ingen forlængelse lander i natten 00:00-08:00", () => {
+  const base = Date.parse("2026-11-10T21:00:00Z"); // 22:00 CET
+  const nightEnds = [];
+  for (let s = 0; s < 3 * 3600; s += 15) {
+    const end = new Date(base + s * 1000);
+    const r = checkBidExtension(new Date(end.getTime() - 60000), end, C24_PROD);
+    if (r.shouldExtend && cphHour(r.newEnd) < 8) nightEnds.push(`${cph(end)} -> ${cph(r.newEnd)}`);
+  }
+  assert.deepEqual(nightEnds, []);
 });
 
 test("calculateAuctionEnd: close=24 — start i dead-hours (03:00) snapper til 08:00-open", () => {

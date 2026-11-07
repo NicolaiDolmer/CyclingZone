@@ -4,12 +4,12 @@
 
 ## Aktiv styring
 
-> **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
+> **⏰ Påmind ejeren:** 8/11: spørg egomadsen om træningsrapporten #7870 (billeder, form/træthed sløret) · 8/11: XP-valget #6110 visuelt + byg · Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (7/11):** PC1 overtager; plan på #7495 og i OneDrive overdragelse-dolmerpc-til-pc1-2026-11-07.md. Bølge 1: #7832, #7692, #6110 trin 2+4, #7792, #7789. Design: #6181/#2176, så løbsside A (#7778) og #7725. Bevis 15:00 (#7726, #7557); #7733 efter 16:30; secrets, feedback og fair-play senest 9/11. Ventende bevis: #7829. Mærker #7824: kun design, intet byg uden go.
+> **🎯 Next action (7/11 nat):** Merge-kø: #7887 (main-typecheck) → #7849 (hover+højreklik, ejer-go beta) → #7853 (pengelås M1). Bølge 5 i gang: mestertrøjer #7824 (blev ikke startet i bølge 4), færdiggør #7871 (WIP-redning på draft #7874), #7879, #7873. Klar efter CI: #7857, #7883. Venter ejer: tabeller #7886, taktik #7880/#7884/#7885, wireframe v3, tænd-kort #7644, TASTE række 6. 8/11: egomadsen #7870, XP #6110, sandhedsvagt, #7869. 9/11: secrets, feedback, #5431.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Ingen aktiv session. Fra 7/11: PC1 (Claude Code) merger og tænder, og auto-toget installeres på PC1; Dolmer PC kører Codex. Auto-toget er fjernet fra Dolmer PC.
+> **🤖 Working agent:** PC1 Claude Code-session 7/11 (bølge 4 kører; Discord #build-a-feature). Dolmer PC: Codex XP-kalibrering.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 

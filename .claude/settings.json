@@ -8,7 +8,9 @@
     "vercel@claude-plugins-official": false
   },
   "deniedMcpServers": [
-    { "serverUrl": "https://mcp.railway.com*" }
+    {
+      "serverUrl": "https://mcp.railway.com*"
+    }
   ],
   "permissions": {
     "additionalDirectories": [
@@ -148,6 +150,16 @@
             "type": "command",
             "command": "bash .claude/hooks/block-dangerous-secret-commands.sh",
             "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/block-unsafe-delete.sh",
+            "timeout": 10
           }
         ]
       },

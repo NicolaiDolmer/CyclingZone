@@ -1,0 +1,8 @@
+{
+  "settleCount": 500,
+  "settle": "93d4b771afb821677f7e1e8d1d5cdcb170e0d2657dfb189b81c9886af4c5c1e7",
+  "forecastCount": 300,
+  "forecast": "f7aadc83bddcbabef3cbcb666ffa52e9750bce3515bf0c3a0a832b958f8a58d2",
+  "settleWithRisk": true,
+  "forecastWithRuleHit": true
+}
