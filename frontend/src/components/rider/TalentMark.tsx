@@ -188,7 +188,7 @@ export function TalentMark({ mark, riderType = null, variant = "cell" }: TalentM
 
   const short = t(mark === "top_talent" ? "talentMark.topTalent.short" : "talentMark.nextGen.short");
   return (
-    <Tooltip label={`${name}: ${short}`}>
+    <Tooltip label={`${name}: ${short}`} id={undefined}>
       <button
         type="button"
         aria-label={name}
