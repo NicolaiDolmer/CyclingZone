@@ -34,10 +34,10 @@
 
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { readConditionWriterFlag } from "./trainingDateConditionFlag.js";
-import { readPrivateConfigEntry } from "./privateConfig.ts";
+import { readPrivateConfigEntry, PRIVATE_CONFIG_KEYS } from "./privateConfig.ts";
 import { TRAINING_CONFIG } from "./training.js";
 import { raceDayRoleBaseProgram, raceDayRoleYieldMultipliers, withRaceDayRoleYield } from "./raceDayRoleYield5950.js";
-import { validateDevelopmentXpParams, type DevelopmentXpParams } from "./developmentXp.ts";
+import { type DevelopmentXpParams } from "./developmentXp.ts";
 
 export const DEVELOPMENT_XP_FLAG_KEY = "development_xp_model";
 export const DEVELOPMENT_XP_FROM_DATE_KEY = "development_xp_from_date";
@@ -48,13 +48,6 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 type DbClient = { from(table: string): any };
 type Log = Pick<Console, "warn">;
-
-/** Parseren til private_config: gyldige params eller en værdi-fri fejl. */
-export function parseDevelopmentXpParams(raw: unknown): DevelopmentXpParams {
-  const params = validateDevelopmentXpParams(raw);
-  if (!params) throw new Error("opfylder ikke validateDevelopmentXpParams");
-  return params;
-}
 
 // strict = dato-stiens atomare sti: en fejlet læsning kaster i stedet for at blive
 // tolket som "off" og committe dagens model på en tick, der ikke kan køres igen.
@@ -102,7 +95,7 @@ export async function readDevelopmentXpParams({
   now?: () => number;
 }): Promise<DevelopmentXpParams | null> {
   const entry = await readPrivateConfigEntry<DevelopmentXpParams>(supabase, DEVELOPMENT_XP_PARAMS_KEY, {
-    strict, log, now, schema: parseDevelopmentXpParams,
+    strict, log, now, schema: PRIVATE_CONFIG_KEYS.development_xp_params.parse,
   });
   return entry.status === "ok" ? entry.value : null;
 }

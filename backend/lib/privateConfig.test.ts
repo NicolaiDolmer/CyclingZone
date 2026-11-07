@@ -50,7 +50,7 @@ function client(rows: Record<string, unknown>, { error = null as string | null, 
 const quiet = () => { const warnings: string[] = []; return { warnings, log: { warn: (m: string) => { warnings.push(m); } } }; };
 
 test("registret: de kendte nøgler er private og har en parser", () => {
-  assert.deepEqual(Object.keys(PRIVATE_CONFIG_KEYS).sort(), ["development_curve_b_params", "potential_estimate_params", "race_day_role_yield_params", "weekly_engine_drift_thresholds"]);
+  assert.deepEqual(Object.keys(PRIVATE_CONFIG_KEYS).sort(), ["development_curve_b_params", "development_xp_params", "potential_estimate_params", "race_day_role_yield_params", "weekly_engine_drift_thresholds"]);
   for (const spec of Object.values(PRIVATE_CONFIG_KEYS)) {
     assert.equal(spec.private, true);
     assert.equal(typeof spec.parse, "function");
