@@ -1,0 +1,123 @@
+<div id="cz-plan-flow">
+<style>
+#cz-plan-flow{color-scheme:light dark;font-family:Arial,sans-serif;--cz-bg:light-dark(#f5f4f0,#151719);--cz-paper:light-dark(#fff,#202326);--cz-text:light-dark(#25282b,#ecebe5);--cz-muted:light-dark(#62696d,#b2b8ba);--cz-line:light-dark(#d9dcdb,#41474a);--cz-gold:light-dark(#84651e,#d5b86b);color:var(--cz-text)}
+#cz-plan-flow *{box-sizing:border-box}
+#cz-plan-flow [hidden]{display:none!important}
+#cz-plan-flow .stage{min-height:900px;padding:14px 0}
+#cz-plan-flow .device{container-type:inline-size;background:var(--cz-bg);border:1px solid var(--cz-line);border-radius:5px;width:100%;margin:0 auto}
+#cz-plan-flow .phone{max-width:375px}
+#cz-plan-flow .app{padding:20px}
+#cz-plan-flow .design-label{font-size:12px;line-height:1.5;color:var(--cz-muted);margin:0 0 14px}
+#cz-plan-flow .phase-controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+#cz-plan-flow button,#cz-plan-flow select{font-family:inherit;font-size:13px;color:var(--cz-text);background:var(--cz-paper);border:1px solid var(--cz-line);border-radius:5px;min-height:40px;padding:8px 10px;max-width:100%}
+#cz-plan-flow button[aria-pressed=true]{border-color:var(--cz-text);font-weight:600}
+#cz-plan-flow button:focus-visible,#cz-plan-flow select:focus-visible,#cz-plan-flow summary:focus-visible{outline:2px solid var(--cz-gold);outline-offset:3px}
+#cz-plan-flow h2{font-size:20px;margin:0 0 5px;font-weight:700}
+#cz-plan-flow .meta{font-size:12px;color:var(--cz-muted);margin:0;line-height:1.5}
+#cz-plan-flow .tabs{display:flex;gap:22px;border-bottom:1px solid var(--cz-line);margin:20px 0 16px;padding-bottom:10px;font-size:13px}
+#cz-plan-flow .tabs [aria-current=page]{color:var(--cz-gold);font-weight:600;border-bottom:2px solid var(--cz-gold);padding-bottom:10px;margin-bottom:-11px}
+#cz-plan-flow .panel{background:var(--cz-paper);border:1px solid var(--cz-line);border-radius:5px;padding:16px}
+#cz-plan-flow .panelhead{display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap;align-items:baseline;margin-bottom:15px}
+#cz-plan-flow h3{font-size:15px;font-weight:600;margin:0}
+#cz-plan-flow .rider{border-top:1px solid var(--cz-line);padding:12px 0}
+#cz-plan-flow .rider-head{display:flex;gap:12px;justify-content:space-between;align-items:baseline;font-size:13px}
+#cz-plan-flow .rider-name{font-weight:600}
+#cz-plan-flow .rider-head .meta{font-size:11px}
+#cz-plan-flow .chain{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0 12px}
+#cz-plan-flow .leg{min-width:0;border-left:2px solid var(--cz-line);padding:1px 0 1px 9px;display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+#cz-plan-flow .leg select{width:100%;padding:7px 5px;font-size:12px}
+#cz-plan-flow .leg .trigger{font-size:11px;color:var(--cz-muted);line-height:1.4}
+#cz-plan-flow .price,#cz-plan-flow .evidence-label{font-size:11px;color:var(--cz-muted);line-height:1.4}
+#cz-plan-flow .task-label{font-size:13px;font-weight:600;line-height:1.4}
+#cz-plan-flow .chain-summary{font-size:12px;line-height:1.6;color:var(--cz-muted);margin-top:6px}
+#cz-plan-flow .foot{border-top:1px solid var(--cz-line);margin-top:4px;padding-top:12px;font-size:12px;line-height:1.5;color:var(--cz-muted)}
+#cz-plan-flow .primary{background:var(--cz-gold);color:light-dark(#fff,#17191b);border-color:var(--cz-gold)}
+#cz-plan-flow .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px}
+#cz-plan-flow details{font-size:12px;margin-top:8px;line-height:1.5}
+#cz-plan-flow summary{min-height:38px;display:list-item;padding:9px 0;color:var(--cz-text)}
+#cz-plan-flow .event{display:grid;grid-template-columns:64px 1fr;gap:12px;padding:9px 0;border-top:1px solid var(--cz-line);font-size:12px;line-height:1.5}
+#cz-plan-flow .event span:first-child{font-variant-numeric:tabular-nums;color:var(--cz-muted)}
+#cz-plan-flow .scenario{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:0 0 14px;font-size:12px}
+#cz-plan-flow .annotation{font-size:12px;line-height:1.5;margin:12px 0 0;color:var(--cz-muted)}
+#cz-plan-flow .after .leg{padding-top:2px;padding-bottom:2px}
+#cz-plan-flow .status{font-size:11px;font-weight:600;line-height:1.4}
+#cz-plan-flow .after .leg details{width:100%;margin-top:0}
+#cz-plan-flow .after .leg summary{min-height:32px;font-size:11px}
+#cz-plan-flow .after .leg details p{margin:0 0 8px;font-size:12px;line-height:1.5}
+#cz-plan-flow .muted{color:var(--cz-muted)}
+@container(max-width:480px){#cz-plan-flow .app{padding:14px}#cz-plan-flow .chain{grid-template-columns:1fr;gap:10px}#cz-plan-flow .leg{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:8px;row-gap:4px}#cz-plan-flow .leg .trigger{grid-column:1/-1}#cz-plan-flow .leg select{grid-column:1/-1;font-size:14px}#cz-plan-flow .leg .price{grid-column:1/-1}#cz-plan-flow .after .leg details{grid-column:1/-1}#cz-plan-flow .tabs{gap:18px}#cz-plan-flow .panel{padding:12px}#cz-plan-flow .rider-head .meta{font-size:11px}#cz-plan-flow .actions button{min-height:44px}}
+@media(max-width:480px){#cz-plan-flow .stage{min-height:1000px}}
+</style>
+<p class="design-label">DESIGNNOTER · Fiktive data · Prismærker i [ ] er illustration, ikke validerede priser eller færdig spillertekst.</p>
+<div class="viz-carousel" aria-label="Plan og forløb på desktop og mobil" data-previous-label="Forrige" data-next-label="Næste">
+<section data-variant="Desktop" aria-label="Samlet forløb på desktop">
+<div class="stage"><div class="device" id="cz-flow-desktop"><div class="app">
+<div class="phase-controls" aria-label="Skitsens tidspunkt">
+<button class="cursor-interaction" type="button" data-phase="before" aria-pressed="true">Før løbet</button>
+<button class="cursor-interaction" type="button" data-phase="after" aria-pressed="false">Efter etapen</button>
+</div>
+<h2>Etape 3</h2><p class="meta">Eksempelløb · Kuperet · 180 km · Colle Verde ved km 120</p>
+<div class="tabs" aria-label="Placering på løbssiden"><span>Etape</span><span>Resultater</span><span data-tab="team">Hold</span><span data-tab="tactics" aria-current="page">Taktik</span></div>
+<div class="before">
+<div class="panel">
+<div class="panelhead"><h3>Etapeplan</h3><span class="meta">Design: pris ved valget og i hvert led</span></div>
+<div class="rider">
+<div class="rider-head"><span class="rider-name">A. Holm</span><span class="meta">Jæger · Egen gemt plan</span></div>
+<div class="chain">
+<div class="leg"><span class="trigger">Fra start</span><label class="task-label">Bliv i læ</label><span class="price">Træthed [lavere]*</span></div>
+<div class="leg"><span class="trigger">Efter Colle Verde</span><select aria-label="Opgave i andet led med illustrativ pris"><option value="attack">Angrib · [højere]*</option><option value="tempo">Kør tempo · [mellem]*</option><option value="shelter">Hold lederen fremme · [mellem]*</option><option value="result">Kør for resultat · [mellem]*</option></select><span class="price" data-selected-price>Træthed [højere]*</span></div>
+<div class="leg"><span class="trigger">Når han er sat</span><label class="task-label">Kør i mål</label><span class="price">Træthed [lavere]*</span></div>
+</div>
+</div>
+<div class="rider"><div class="rider-head"><span class="rider-name">M. Berg</span><span class="meta">Kaptajn</span></div><div class="chain-summary">Bliv i læ · [lavere]* / Følg angrebene · [mellem]* / Kør for resultat · [mellem]*</div></div>
+<div class="rider"><div class="rider-head"><span class="rider-name">S. Lund</span><span class="meta">Hjælper</span></div><div class="chain-summary">Hold lederen fremme · [mellem]* / Kør i mål · [lavere]*</div></div>
+<div class="foot">Design: én kort fælles forklaring af afregningen. Motoren bruger det hårdeste planled, den medregner som kørt. Et led medregnes ved aktivering, også i finalen, uden krav om en særskilt angrebshændelse. Tid i hvert led summeres ikke her.</div>
+<div class="actions"><button type="button" class="primary cursor-interaction" data-save>Gem etape 3</button><span class="meta" data-save-state aria-live="polite">Kun lokal skitse</span></div>
+</div>
+<p class="annotation">* Niveauerne viser placeringen af prismærker. Den endelige kvalitative inddeling skal valideres mod reglerne for opgave, ordre og etapetype. Ingen samlet træthedsprognose.</p>
+</div>
+<div class="after" hidden>
+<label class="scenario">Designcase<select aria-label="Eksempel på dokumenteret forløb" data-scenario><option value="followed">Alle led aktiveret</option><option value="skipped">Sat før led 2</option><option value="unknown">Manglende log</option></select></label>
+<div class="panel">
+<div class="panelhead"><h3>Holdets etape</h3><span class="meta">Design: samme gemte plan, dokumenteret forløb</span></div>
+<div class="rider">
+<div class="rider-head"><span class="rider-name">A. Holm</span><span class="meta">Jæger · Egen gemt plan</span></div>
+<div class="chain" aria-live="polite">
+<div class="leg"><span class="trigger">Fra start</span><span class="task-label">Bliv i læ</span><span class="status" data-status="0">Dokumenteret aktiv</span><details><summary class="cursor-interaction">Hændelse / skift</summary><p data-evidence="0">Planled aktivt fra start. Skift til angreb registreret ved Colle Verde, km 120.</p></details></div>
+<div class="leg"><span class="trigger">Efter Colle Verde</span><span class="task-label" data-after-task>Angrib</span><span class="status" data-status="1">Dokumenteret aktiv</span><details><summary class="cursor-interaction">Hændelse / skift</summary><p data-evidence="1">Opgaveskift til angreb registreret ved km 120. Det dokumenterer ordren, ikke i sig selv et vellykket angreb.</p></details></div>
+<div class="leg"><span class="trigger">Når han er sat</span><span class="task-label">Kør i mål</span><span class="status" data-status="2">Dokumenteret aktiv</span><details><summary class="cursor-interaction">Hændelse / skift</summary><p data-evidence="2">Skift registreret ved km 144. Tidslinjens gruppedata bekræfter, at rytteren var bag den relevante gruppe.</p></details></div>
+</div>
+<details class="events"><summary class="cursor-interaction">Dokumenterede løbshændelser</summary><div data-event-list><div class="event"><span>120 km</span><span>Planleddet Angrib aktiveret. Ingen separat angrebshændelse i denne eksempel-log.</span></div><div class="event"><span>144 km</span><span>Registreret bag hovedgruppen. Sidste planled aktiveret.</span></div></div></details>
+</div>
+<div class="rider"><div class="rider-head"><span class="rider-name">M. Berg</span><span class="meta">Kaptajn</span></div><div class="chain-summary">Bliv i læ / Følg angrebene / Kør for resultat</div><details><summary class="cursor-interaction">Plan og forløb</summary><p class="meta">Design: samme ryttervise visning åbner her. Dette eksempel fokuserer på A. Holm.</p></details></div>
+<div class="rider"><div class="rider-head"><span class="rider-name">S. Lund</span><span class="meta">Hjælper</span></div><div class="chain-summary">Hold lederen fremme / Kør i mål</div><details><summary class="cursor-interaction">Plan og forløb</summary><p class="meta">Design: aktiv hjælpeopgave er ikke i sig selv bevis for, hvor meget kaptajnen fik ud af arbejdet.</p></details></div>
+<div class="foot">Design: ingen præstationsdom, ingen pris- eller træthedstal på kortet. Ordre, opgaveskift og observeret løbshændelse er forskellige oplysninger.</div>
+</div>
+</div>
+</div></div></div>
+</section>
+<section data-variant="Mobil" aria-label="Samlet forløb på mobil" hidden><div class="stage" data-mobile-mount></div></section>
+</div>
+<script>
+(()=>{
+const root=document.getElementById('cz-plan-flow');
+const desktop=root.querySelector('#cz-flow-desktop');
+const mobile=desktop.cloneNode(true);mobile.id='cz-flow-mobile';mobile.classList.add('phone');root.querySelector('[data-mobile-mount]').appendChild(mobile);
+const taskNames={attack:'Angrib',tempo:'Kør tempo',shelter:'Hold lederen fremme',result:'Kør for resultat'};
+const evidence={
+ followed:{status:['Dokumenteret aktiv','Dokumenteret aktiv','Dokumenteret aktiv'],text:['Planled aktivt fra start. Skift til næste led registreret ved Colle Verde, km 120.','Næste opgave registreret som aktiv ved km 120. Det dokumenterer planleddet, ikke i sig selv udførelsen eller effekten af opgaven.','Skift registreret ved km 144. Tidslinjens gruppedata bekræfter, at rytteren var bag den relevante gruppe.'],events:[['120 km','Planled 2 aktiveret. Ingen separat angrebshændelse i denne eksempel-log.'],['144 km','Registreret bag hovedgruppen. Sidste planled aktiveret.']]},
+ skipped:{status:['Dokumenteret aktiv','Dokumenteret sprunget over','Dokumenteret aktiv'],text:['Skift direkte fra første til sidste led ved km 108, før Colle Verde.','Loggen dokumenterer et spring fra led 1 til led 3. Gruppeloggen bekræfter, at rytteren var sat før det planlagte angrebspunkt.','Aktiveret ved km 108 på grund af dokumenteret afstand bag den relevante gruppe.'],events:[['108 km','Gruppelog og planskift dokumenterer, at rytteren blev sat. Planen sprang direkte til sidste led.']]},
+ unknown:{status:['Ukendt','Ukendt','Ukendt'],text:['Den gemte plan kendes. Loggen kan ikke dokumentere, om eller hvor længe dette led var aktivt.','Ingen tilstrækkelig log. Manglende angrebshændelse beviser ikke, at opgaven blev sprunget over.','Ingen tilstrækkelig log. Der udledes hverken planskift eller årsag af slutplaceringen.'],events:[['Ukendt','Intet dokumenteret forløb i denne eksempel-log. Den gemte plan vises fortsat.']]}
+};
+for(const screen of [desktop,mobile]){
+ const select=screen.querySelector('.before select');const scenario=screen.querySelector('[data-scenario]');
+ let savedTask='attack';
+ function renderCase(){const item=evidence[scenario.value];screen.querySelectorAll('[data-status]').forEach((el,i)=>el.textContent=item.status[i]);screen.querySelectorAll('[data-evidence]').forEach((el,i)=>el.textContent=item.text[i].replace('det planlagte angrebspunkt','det planlagte skiftpunkt'));const list=screen.querySelector('[data-event-list]');list.replaceChildren();for(const [km,text]of item.events){const row=document.createElement('div');row.className='event';const distance=document.createElement('span');distance.textContent=km;const desc=document.createElement('span');desc.textContent=scenario.value==='followed'&&km==='120 km'?'Planled '+taskNames[savedTask]+' aktiveret. Et aktivt planled er ikke i sig selv bevis for opgavens effekt.':text;row.append(distance,desc);list.appendChild(row);}}
+ screen.querySelectorAll('[data-phase]').forEach(button=>button.addEventListener('click',()=>{const after=button.dataset.phase==='after';screen.querySelector('.before').hidden=after;screen.querySelector('.after').hidden=!after;screen.querySelectorAll('[data-phase]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));screen.querySelector('[data-tab=team]').setAttribute('aria-current',after?'page':'false');screen.querySelector('[data-tab=tactics]').setAttribute('aria-current',after?'false':'page');}));
+ select.addEventListener('change',()=>{screen.querySelector('[data-selected-price]').textContent='Træthed '+(select.value==='attack'?'[højere]*':'[mellem]*');screen.querySelector('[data-save-state]').textContent='Lokal kladde ændret';});
+ screen.querySelector('[data-save]').addEventListener('click',()=>{savedTask=select.value;screen.querySelector('[data-after-task]').textContent=taskNames[savedTask];screen.querySelector('[data-save-state]').textContent='Gemt i skitsen. Ingen data sendt.';renderCase();});
+ scenario.addEventListener('change',renderCase);renderCase();
+}
+})();
+</script>
+</div>
