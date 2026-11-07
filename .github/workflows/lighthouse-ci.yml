@@ -34,6 +34,7 @@ on:
     paths:
       - 'frontend/**'
       - 'scripts/check-bundle-budget.mjs'
+      - 'scripts/check-bundle-budget.test.mjs'
       - 'scripts/dependabot-perf-gate.test.mjs'
       - 'lighthouserc.json'
       - '.github/workflows/lighthouse-ci.yml'
@@ -43,6 +44,7 @@ on:
     paths:
       - 'frontend/**'
       - 'scripts/check-bundle-budget.mjs'
+      - 'scripts/check-bundle-budget.test.mjs'
       - 'scripts/dependabot-perf-gate.test.mjs'
       - 'lighthouserc.json'
       - '.github/workflows/lighthouse-ci.yml'
@@ -87,7 +89,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Run bundle gate regression tests
-        run: node --test scripts/dependabot-perf-gate.test.mjs
+        run: node --test scripts/dependabot-perf-gate.test.mjs scripts/check-bundle-budget.test.mjs
 
       - name: Install frontend dependencies
         run: npm ci

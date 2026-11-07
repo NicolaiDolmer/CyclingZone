@@ -14,6 +14,7 @@ on:
     paths-ignore:
       - 'frontend/**'
       - 'scripts/check-bundle-budget.mjs'
+      - 'scripts/check-bundle-budget.test.mjs'
       - 'scripts/dependabot-perf-gate.test.mjs'
       - 'lighthouserc.json'
       - '.github/workflows/lighthouse-ci.yml'
