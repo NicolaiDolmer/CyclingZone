@@ -124,6 +124,9 @@ export const DESCENT_ATTACK_BARRED_TASKS_7380: ReadonlySet<StagePlanTask> = new 
   "sprint_train",
   "grupetto",
   "ride_in",
+  // #7855 (findes kun med kontakten jersey_hunt_7855): troejejaegeren koerer efter pointene, ikke etapen.
+  "hunt_points",
+  "hunt_kom",
 ]);
 /** Uden en etapeplan: indsatserne der aldrig angriber (Spar, Grupetto, Beskyt lederen). */
 export const DESCENT_ATTACK_BARRED_EFFORTS_7380: ReadonlySet<EffortLevel> = new Set<EffortLevel>(["save", "grupetto", "protect"]);
