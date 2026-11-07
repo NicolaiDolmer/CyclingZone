@@ -74,7 +74,7 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
     const whole = wholePointEntries(development(row));
     if (!whole.length) return <span className="text-cz-3">{t("dailyReceipt.noWholePoint")}</span>;
     return <span className="flex flex-wrap gap-x-3 gap-y-1" data-testid="daily-receipt-whole-points">{whole.map(({key,points:n})=>
-      <span key={key} className="inline-flex items-baseline gap-1 whitespace-nowrap"><span className="font-data font-semibold tabular-nums text-cz-success">+{formatNumber(n)}</span><span className="text-cz-1">{abilityName(key)}</span></span>)}</span>;
+      <span key={key} className="inline-flex min-w-0 max-w-full items-baseline gap-1"><span className="shrink-0 font-data font-semibold tabular-nums text-cz-success">+{formatNumber(n)}</span><span className="min-w-0 wrap-break-word text-cz-1">{abilityName(key)}</span></span>)}</span>;
   };
   const renderRow = (row: DailyRiderReceipt) => {
     const open = openRiders.has(row.rider_id);
