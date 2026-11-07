@@ -198,13 +198,14 @@ export function settleDateFatigueV2({ fatigue, intensities, raceLoads, recoveryA
 }
 
 /** v2-udgaven af trainingDateCondition.settleTrainingDateCondition (samme signatur og retur). */
-export function settleTrainingDateConditionV2({ riderId, dateStr, condition, intensities, raceLoads, recoveryAbility = 50, medicalBonus = 0, raceDateTrainingDay = false, cfg = CONDITION_V2_CONFIG }) {
+export function settleTrainingDateConditionV2({ riderId, dateStr, condition, intensities, raceLoads, recoveryAbility = 50, medicalBonus = 0, raceDateTrainingDay = false, riskFatigues = null, cfg = CONDITION_V2_CONFIG }) {
   const preFatigue = Number(condition.fatigue ?? 0);
   const fatigue = settleDateFatigueV2({ fatigue: preFatigue, intensities, raceLoads, recoveryAbility, medicalBonus, raceDateTrainingDay, cfg });
   const form = nextFormV2({ form: Number(condition.form ?? 50), fatigue, cfg });
   // Skaderisiko som i v1 (kun hård træning over skadegrænsen, på åbningstrætheden);
   // M2 sænker risikoen, M3 forkorter en skade.
-  const baseRisk = intensities.reduce((total, intensity) => total + injuryRisk({ intensity, fatigue: preFatigue }), 0) / intensities.length;
+  // #7801: med fatigue_now_7801 vurderes hvert felt på trætheden lige nu før feltet (riskFatigues).
+  const baseRisk = intensities.reduce((total, intensity, index) => total + injuryRisk({ intensity, fatigue: riskFatigues?.[index] ?? preFatigue }), 0) / intensities.length;
   const risk = medicalTrainingInjuryRisk(baseRisk, medicalBonus);
   const injury = rollInjury({ riderId, dateStr, risk });
   return { fatigue, form, risk, injury: injury.injured ? { ...injury, days: medicalInjuryDays(injury.days, medicalBonus) } : injury };

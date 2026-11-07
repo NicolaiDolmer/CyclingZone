@@ -320,6 +320,18 @@ features:
     verified: 2026-10-31
     note: Live 31/10 efter ejer-go; kodekontakten FINAL_KM_BOUNDARY_7383_ACTIVE (motor og taktikside) fjernet 1/11 (krav 5), reglen gælder altid under s5_profiles_v3.
 
+  - id: training-fatigue-now-7801
+    area: training
+    title_en: Fatigue now counts today's earlier stages
+    title_da: Træthed lige nu tæller dagens tidligere etaper
+    state: building
+    ssot: docs/TRAINING_RULES.md
+    epic: 7801
+    verified: 2026-11-07
+    decision: taend
+    decide_by: 2026-11-21
+    note: Kontakt fatigue_now_7801 (ikke seedet = slukket); ejer tænder.
+
   - id: luxury-helper-role
     area: race-engine
     title_en: Luxury helper
