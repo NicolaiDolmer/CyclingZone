@@ -17,6 +17,7 @@ import { createFeatureFlagsRouter } from "../api/featureFlagsApi.js"; // #4948
 import { createTrainingProgramsRouter } from "./trainingPrograms.js"; // #4629
 import { createTrainingGroupsRouter } from "./trainingGroups.js"; // #6000
 import { createAdminRoadmapRouter } from "./adminRoadmap.js";
+import { createAdminSaleEscrowsRouter } from "./adminSaleEscrows.js";
 import { createTrainingFatigueRulesRouter } from "./trainingFatigueRules.js"; // #4854
 import { stripProgramFromWeekDays } from "../lib/trainingPrograms.js"; // #4629
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -387,7 +388,6 @@ import {
   FINANCE_RELATED_ENTITY,
 } from "../lib/economyConstants.js";
 import { incrementBalanceWithAudit } from "../lib/balanceRpc.js";
-import { listHeldSaleEscrowsForAdmin, resolveStuckSaleEscrow } from "../lib/saleEscrowFlow6181.js";
 import { calculateRiderMarketValue } from "../lib/marketUtils.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "../lib/riderOwnershipAudit.ts";
 import {
@@ -1036,6 +1036,10 @@ async function requireAdmin(req, res, next) {
 }
 
 router.use("/admin/roadmap", createAdminRoadmapRouter({
+  supabase, requireAdmin, writeLimiter: adminWriteLimiter, captureExceptionFn: captureException,
+}));
+// #6181/#7871: låste salg og den manuelle vej for et fastlåst bytte.
+router.use("/admin/sale-escrows", createAdminSaleEscrowsRouter({
   supabase, requireAdmin, writeLimiter: adminWriteLimiter, captureExceptionFn: captureException,
 }));
 
@@ -12001,47 +12005,6 @@ router.post("/admin/transfers/offers/:id/cancel", requireAdmin, adminWriteLimite
     });
 
     res.json({ success: true, rider_name: riderName, message: `Handel annulleret: ${riderName}` });
-  } catch (e) {
-    captureApiRouteError(e, req);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// #6181 ejer-krav 2 (#7871): låste salg (sale_escrows). GET viser de holdte og
-// hvad heal-sweepet ville gøre med dem; "stuck" (et bytte med én rytter leveret og
-// den anden mistet) kan kun afgøres her: release krediterer modtageren, refund
-// giver betaleren beløbet tilbage. Ingen rytter flyttes. Én transaktion i
-// resolve_stuck_sale_escrow, som selv afviser alt, der ikke sidder fast.
-router.get("/admin/sale-escrows", requireAdmin, async (req, res) => {
-  try {
-    res.json({ escrows: await listHeldSaleEscrowsForAdmin(supabase) });
-  } catch (e) {
-    captureApiRouteError(e, req);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-router.post("/admin/sale-escrows/:id/resolve", requireAdmin, adminWriteLimiter, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { outcome, reason } = req.body || {};
-    if (outcome !== "release" && outcome !== "refund") {
-      return res.status(400).json({ error: "outcome must be release or refund" });
-    }
-    const result = await resolveStuckSaleEscrow(supabase, { escrowId: id, outcome, adminUserId: req.user.id });
-    if (result?.status === "missing") return res.status(404).json({ error: "Sale escrow not found", result });
-    if (result?.status !== "released" && result?.status !== "refunded") {
-      return res.status(409).json({ error: `This sale escrow cannot be resolved manually (${result?.status ?? "unknown"})`, result });
-    }
-
-    await supabase.from("admin_log").insert({
-      admin_user_id: req.user.id,
-      action_type: ADMIN_ACTION_TYPE.MANUAL_OVERRIDE,
-      description: `Sale escrow ${id} resolved manually: ${outcome}${reason ? ` (${reason})` : ""}`,
-      meta: { sale_escrow_id: id, outcome, result, reason: reason || null },
-    });
-
-    res.json({ success: true, result });
   } catch (e) {
     captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });

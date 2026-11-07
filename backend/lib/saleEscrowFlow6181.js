@@ -59,6 +59,35 @@ const PAID_BY_EXISTING_ESCROW = Object.freeze({
   },
 });
 const ESCROW_COLUMNS = "id, deal_type, deal_id, payer_team_id, payee_team_id, amount, rider_ids, target_team_ids, delivered_rider_ids, status, created_at";
+// M1-review krav 5 (#7871): RPC'erne laaser hold foer ryttere. En sti, der laaser i
+// omvendt raekkefoelge, kan give en deadlock; Postgres afbryder saa den ene
+// transaktion helt (intet er sket), og kaldet proeves igen.
+const RETRYABLE_LOCK_CODES = new Set(["40P01", "40001"]);
+const RPC_ATTEMPTS = 3;
+
+/** @param {any} client @param {string} name @param {Record<string, unknown>} args @returns {Promise<{ data: any, error: any }>} */
+async function rpcWithLockRetry(client, name, args) {
+  let result = await client.rpc(name, args);
+  for (let attempt = 2; attempt <= RPC_ATTEMPTS && result.error && RETRYABLE_LOCK_CODES.has(result.error.code); attempt += 1) {
+    console.warn(`[saleEscrow] ${name}: ${result.error.code}, proever igen (${attempt}/${RPC_ATTEMPTS})`);
+    result = await client.rpc(name, args);
+  }
+  return result;
+}
+
+/**
+ * Codex P1 (#7874): foer-billedet af trup-felterne for en rytter, hvis handel
+ * graduerer ham allerede ved parkeringen (seniorSquadPatch). Refunderes handlen,
+ * gendanner M2-triggeren det. null, naar handlen ikke aendrer trup-felterne.
+ *
+ * @param {{ is_academy?: boolean|null, squad?: string|null }} rider  foer handlen
+ * @param {Record<string, unknown>} patch  den trup-patch, handlen skriver
+ * @returns {{ is_academy: boolean, squad?: string } | null}
+ */
+export function squadRestoreImage(rider, patch) {
+  if (!patch || Object.keys(patch).length === 0) return null;
+  return { is_academy: rider?.is_academy === true, ...(typeof rider?.squad === "string" ? { squad: rider.squad } : {}) };
+}
 
 /**
  * Kontakten. Kun 'on' (eller true) taender; 'beta' er slukket, fordi det er penge.
@@ -99,11 +128,20 @@ export async function isSaleEscrowEnabled(supabase, { fresh = true } = {}) {
  * databasens: triggeren fra M2 afviser en saelger-kredit efter en refusion under
  * holdlaasen. "none" (eller udeladt) = adfaerden fra foer.
  *
+ * riderRestore (Codex P1, #7874) er foer-billedet pr. rytter (samme raekkefoelge
+ * som riderIds, fra squadRestoreImage; null = intet at gendanne). Det gemmes i
+ * escrow'en, og en refusion gendanner trup-status for en rytter, der bliver hos
+ * sit hold.
+ *
+ * Ejerskab og raad (M1-review krav 3): kalderen har tjekket begge under handlen
+ * (saelger ejer rytteren, koeber har raad), som den direkte sti. hold_sale_escrow
+ * tjekker desuden, at et parkeret ben staar paa sit kildehold.
+ *
  * @param {any} supabase
- * @param {{ parked: boolean, dealType: "transfer"|"auction"|"swap", dealId: string, riderIds: string[], targetTeamIds: string[], priorEscrow?: "none"|"held"|"released"|"refunded" }} deal
+ * @param {{ parked: boolean, dealType: "transfer"|"auction"|"swap", dealId: string, riderIds: string[], targetTeamIds: string[], priorEscrow?: "none"|"held"|"released"|"refunded", riderRestore?: Array<Record<string, unknown>|null> }} deal
  * @returns {Promise<{ incrementBalanceWithAudit: typeof incrementBalanceWithAudit }>}
  */
-export async function saleEscrowPayment(supabase, { parked, dealType, dealId, riderIds, targetTeamIds, priorEscrow = "none" }) {
+export async function saleEscrowPayment(supabase, { parked, dealType, dealId, riderIds, targetTeamIds, priorEscrow = "none", riderRestore = [] }) {
   if (priorEscrow === "refunded") {
     throw new Error(`saleEscrowPayment: ${dealType} ${dealId} er refunderet til koeberen; handlen betales ikke igen`);
   }
@@ -131,7 +169,10 @@ export async function saleEscrowPayment(supabase, { parked, dealType, dealId, ri
       throw new Error(`saleEscrowPayment: ${dealType} ${dealId} bruger ikke de faste finance-noegler`);
     }
 
-    const { data, error } = await client.rpc("hold_sale_escrow", {
+    /** @type {Record<string, unknown>} */
+    const restore = {};
+    riderIds.forEach((riderId, i) => { if (riderRestore[i]) restore[riderId] = riderRestore[i]; });
+    const { data, error } = await rpcWithLockRetry(client, "hold_sale_escrow", {
       p_deal_type: dealType,
       p_deal_id: dealId,
       p_payer_team_id: payer.leg.teamId,
@@ -141,6 +182,7 @@ export async function saleEscrowPayment(supabase, { parked, dealType, dealId, ri
       p_target_team_ids: targetTeamIds,
       p_payer_payload: payer.leg.payload,
       p_payee_payload: payee.leg.payload,
+      p_rider_restore: restore,
     });
     if (error) throw error;
     if (HOLD_HANDLED.has(data?.status)) {
@@ -284,7 +326,7 @@ function refundPayload(sourcePath) {
 
 /** @param {any} supabase @param {string} escrowId @param {"release"|"refund"} outcome @param {{ at: string, sourcePath: string }} opts */
 async function settle(supabase, escrowId, outcome, { at, sourcePath }) {
-  const { data, error } = await supabase.rpc("settle_sale_escrow", {
+  const { data, error } = await rpcWithLockRetry(supabase, "settle_sale_escrow", {
     p_escrow_id: escrowId,
     p_outcome: outcome,
     p_refund_payload: outcome === "refund" ? refundPayload(sourcePath) : null,
@@ -314,10 +356,12 @@ export async function releaseSaleEscrowForFlush(supabase, rider, { flushedAt }) 
     console.warn(`[saleEscrow] escrow-opslag fejlede for ${rider.id}, almindelig flush: ${error.message}`);
     return null;
   }
-  const escrow = rows[0];
+  // Rytteren kan staa i to holdte escrows: leveret i et bytte, hvis andet ben stadig
+  // venter, og solgt videre af sin nye ejer. Kun den, han endnu ikke er leveret i,
+  // og som peger paa hans parkering, gaelder.
+  const escrow = rows.find((e) => !(e.delivered_rider_ids || []).includes(rider.id)
+    && e.target_team_ids[e.rider_ids.indexOf(rider.id)] === rider.pending_team_id);
   if (!escrow) return null;
-  const index = escrow.rider_ids.indexOf(rider.id);
-  if (escrow.target_team_ids[index] !== rider.pending_team_id) return null;
 
   // Et bytte frigives foerst, naar begge ryttere er flyttet.
   const others = escrow.rider_ids.filter((id) => id !== rider.id);
@@ -331,7 +375,7 @@ export async function releaseSaleEscrowForFlush(supabase, rider, { flushedAt }) 
     if (!allOthersDelivered) return null;
   }
 
-  const { data, error: rpcError } = await supabase.rpc("settle_sale_escrow", {
+  const { data, error: rpcError } = await rpcWithLockRetry(supabase, "settle_sale_escrow", {
     p_escrow_id: escrow.id,
     p_outcome: "release",
     p_refund_payload: null,
@@ -473,7 +517,7 @@ export async function resolveStuckSaleEscrow(supabase, { escrowId, outcome, admi
   if (outcome !== "release" && outcome !== "refund") {
     throw new Error(`resolveStuckSaleEscrow: outcome skal vaere release eller refund, ikke ${outcome}`);
   }
-  const { data, error } = await supabase.rpc("resolve_stuck_sale_escrow", {
+  const { data, error } = await rpcWithLockRetry(supabase, "resolve_stuck_sale_escrow", {
     p_escrow_id: escrowId,
     p_outcome: outcome,
     // Refusionens post. Ved release bruges escrow'ens gemte saelger-post (samme

@@ -14,7 +14,7 @@ import { fetchAtRiskCount } from "./squadRiskGuard.js";
 import { incrementBalanceWithAudit, DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
-import { saleEscrowPayment, saleEscrowStatusForDeal } from "./saleEscrowFlow6181.js";
+import { saleEscrowPayment, saleEscrowStatusForDeal, squadRestoreImage } from "./saleEscrowFlow6181.js";
 import { contractOnAcquirePatch, computeFrozenSalary } from "./contractSeed.js";
 import { notifyIfContractExpiresThisSeason, buildKeyedNotification, notifyAndClearWatchlistForRiders } from "./notificationService.js";
 import { ACADEMY } from "./academyFlag.js";
@@ -1475,7 +1475,7 @@ async function finalizeAuctionRecord({
     // 07d Fase B / #240: cron-finalizer → actor_type=cron, actor_id=null,
     // season_id eksplicit + idempotency_key så cron-retries ikke double-pay.
     // #6181: parkeret + sale_escrow_enabled → saelgers penge laases til holdskiftet.
-    const auctionPayment = await saleEscrowPayment(supabase, { parked: deferTeamChange && Boolean(actualSellerTeamId) && actualSellerTeamId !== effectiveBidderId && price > 0, dealType: "auction", dealId: auction.id, riderIds: [auction.rider.id], targetTeamIds: [effectiveBidderId], priorEscrow: priorSaleEscrow });
+    const auctionPayment = await saleEscrowPayment(supabase, { parked: deferTeamChange && Boolean(actualSellerTeamId) && actualSellerTeamId !== effectiveBidderId && price > 0, dealType: "auction", dealId: auction.id, riderIds: [auction.rider.id], targetTeamIds: [effectiveBidderId], priorEscrow: priorSaleEscrow, riderRestore: [squadRestoreImage(auction.rider, graduatePatch)] });
     await auctionPayment.incrementBalanceWithAudit(supabase, {
       teamId: effectiveBidderId,
       delta: -price,

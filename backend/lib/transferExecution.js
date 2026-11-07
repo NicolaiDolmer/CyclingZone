@@ -14,7 +14,7 @@ import { fetchAtRiskCount } from "./squadRiskGuard.js";
 import { shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.ts";
 import { buildRiderValueSnapshot, updateDealWithValueSnapshot } from "./dealValueSnapshot.js";
-import { saleEscrowPayment, saleEscrowStatusForDeal } from "./saleEscrowFlow6181.js";
+import { saleEscrowPayment, saleEscrowStatusForDeal, squadRestoreImage } from "./saleEscrowFlow6181.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
 import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
 import { seniorSquadPatch } from "./squads.js";
@@ -655,7 +655,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   const actorId = auditCtx?.actorId || null;
   const transferSeasonId = await fetchActiveSeasonId(supabase);
   // #6181: parkeret + sale_escrow_enabled → saelgers penge laases til holdskiftet.
-  const transferPayment = await saleEscrowPayment(supabase, { parked: deferRegistration, dealType: "transfer", dealId: offer.id, riderIds: [rider.id], targetTeamIds: [offer.buyer_team_id], priorEscrow: priorSaleEscrow });
+  const transferPayment = await saleEscrowPayment(supabase, { parked: deferRegistration, dealType: "transfer", dealId: offer.id, riderIds: [rider.id], targetTeamIds: [offer.buyer_team_id], priorEscrow: priorSaleEscrow, riderRestore: [squadRestoreImage(rider, graduatePatch)] });
   await transferPayment.incrementBalanceWithAudit(supabase, {
     teamId: offer.buyer_team_id,
     delta: -price,
@@ -1011,7 +1011,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     const swapActorId = auditCtx?.actorId || null;
     const swapSeasonId = await fetchActiveSeasonId(supabase);
     // #6181: parkeret + sale_escrow_enabled → kontanterne laases, til begge ryttere er flyttet.
-    const swapPayment = await saleEscrowPayment(supabase, { parked: deferRegistration, dealType: "swap", dealId: swap.id, riderIds: [offered.id, requested.id], targetTeamIds: [swap.receiving_team_id, swap.proposing_team_id], priorEscrow: priorSaleEscrow });
+    const swapPayment = await saleEscrowPayment(supabase, { parked: deferRegistration, dealType: "swap", dealId: swap.id, riderIds: [offered.id, requested.id], targetTeamIds: [swap.receiving_team_id, swap.proposing_team_id], priorEscrow: priorSaleEscrow, riderRestore: [squadRestoreImage(offered, offeredGraduatePatch), squadRestoreImage(requested, requestedGraduatePatch)] });
 
     await swapPayment.incrementBalanceWithAudit(supabase, {
       teamId: payerId,
