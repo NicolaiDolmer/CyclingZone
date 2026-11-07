@@ -10,6 +10,7 @@
 
 
 begin;
+set local lock_timeout = '5s';
 
 alter table public.notifications
   drop constraint if exists notifications_type_check;
