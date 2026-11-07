@@ -29,7 +29,7 @@ const MIGRATION_PATH = join(
   // (assistant_filled_squad) forgrenede fra 2026-09-18-5259-beta-access-
   // notification-type.sql og tilføjer kun ét nyt element, så ingen
   // union-håndtering er nødvendig her.
-  "../../database/2026-09-21-4759-assistant-filled-squad-notification-type.sql",
+  "../../database/2026-11-07-7792-roadmap-delivered-notification-type.sql",
 );
 const BACKEND_ROOT = join(__dirname, "..");
 

@@ -54,9 +54,23 @@ export type TodayRow = {
   // #6025: "nu -> i aften" fra SAMME prognose som Program -> Plan (#5933) og
   // telefonens raekke (#6021, rowForecast). null = ingen prognose (flag off).
   fatigueTonight?: { value: number; tone: "ok" | "warn" | "risk" } | null;
+  // #7801: skønnet ved start af rytterens næste etape (i dag eller i morgen). Kun med
+  // kontakten fatigue_now_7801; ellers udeladt, og cellen er som i dag.
+  fatigueAtStart?: number | null;
 };
 
 export const TONIGHT_TEXT = { ok: "text-cz-success", warn: "text-cz-warning", risk: "text-cz-danger" } as const;
+
+/** #7801: "62 nu, ca. 70 ved start" under træthedsmåleren. Intet skøn = ingen linje. */
+export function FatigueAtStartLine({ now, atStart }: { now: number | null; atStart?: number | null }) {
+  const { t } = useTranslation("training");
+  if (atStart == null || !Number.isFinite(atStart)) return null;
+  return (
+    <div className="mt-0.5 whitespace-nowrap font-data text-2xs tabular-nums text-cz-3" data-testid="fatigue-at-start">
+      {t("today.fatigueAtStart", { now: now ?? "—", value: Math.round(atStart) })}
+    </div>
+  );
+}
 
 export type TodayGroup = { key: string; label: string; count: string; rows: TodayRow[] };
 
@@ -236,6 +250,7 @@ export default function TrainingTodayTable({
             ) : (
               <Meter value={row.fatigue} warn={row.tired} tone="fatigue" />
             )}
+            <FatigueAtStartLine now={row.fatigue} atStart={row.fatigueAtStart} />
           </td>
           {showScore && (
             <td

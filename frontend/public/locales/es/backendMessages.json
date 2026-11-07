@@ -306,6 +306,10 @@
       "title": "El asistente rellenó tu plantilla",
       "message": "Tu asistente eligió tu plantilla para {race}. No tenías ninguna selección. Échale un vistazo y cámbiala si quieres."
     },
+    "roadmapDelivered": {
+      "title": "Algo por lo que votaste ya está disponible",
+      "message": "Votaste alto por {item}, y ya está disponible. Gracias por ayudarme a elegir qué construir."
+    },
     "riderRetired": {
       "title": "{name} se ha retirado",
       "message": "{name} se ha retirado del ciclismo profesional a los {age} años. Su plaza en tu plantilla queda libre."

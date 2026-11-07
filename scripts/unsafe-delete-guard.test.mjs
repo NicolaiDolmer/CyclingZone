@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { checkCommand, SAFE_REMOVERS } from './unsafe-delete-guard.mjs';
+import { checkCommand, SAFE_REMOVERS, gitBashToNative } from './unsafe-delete-guard.mjs';
 
 const none = { readScript: () => null, isTracked: () => false, listWorktrees: () => [] };
 
@@ -102,4 +102,49 @@ test('kun allowlisten maa indeholde `worktree remove` blandt versionerede script
   const allowed = new Set([...SAFE_REMOVERS, 'scripts/unsafe-delete-guard.mjs', 'scripts/new-worktree.ps1', 'scripts/guard-commit-branch.sh', 'scripts/link-onedrive-context.ps1', 'scripts/make-wave-brief.mjs', 'scripts/merge-queue-baseline-resolve.mjs', 'scripts/hooks/cycling-manager-cleanup.sh', 'scripts/lib/archive-worktree-unversioned.ps1', 'scripts/report-orphan-worktree-dirs.mjs' /* kun kommentar */, 'scripts/hooks/block-unsafe-delete.sh' /* kun kommentar */]);
   const extra = out.filter((f) => !allowed.has(f));
   assert.deepEqual(extra, [], `nye scripts der naevner worktree remove - fjern via remove-worktree.ps1 i stedet: ${extra.join(', ')}`);
+});
+
+test('versioneret script i et andet worktree end hookens cwd blokeres ikke (bølge 7/11)', async () => {
+  const { tmpdir } = await import('node:os');
+  const { dirname, join } = await import('node:path');
+  // Scriptet ligger i dette repo; hooken koerer fra en helt anden mappe (fx hovedmappen).
+  const repo = dirname(dirname(fileURLToPath(import.meta.url)));
+  const fwd = (p) => p.split('\\').join('/');
+  const script = fwd(join(repo, 'scripts', 'guard-commit-branch.sh'));
+  const res = checkCommand(`bash "${script}" fix/x "${fwd(repo)}"`, { cwd: tmpdir(), listWorktrees: () => [] });
+  assert.equal(res.blocked, false, res.reason);
+});
+
+test('script i et FREMMED repo får ingen undtagelse, heller ikke med et sikkert navn (Codex P1 #7854)', async () => {
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import('node:fs');
+  const dir = mkdtempSync(join(tmpdir(), 'guard-foreign-'));
+  execFileSync('git', ['init', '-q', dir]);
+  mkdirSync(join(dir, 'scripts'));
+  const script = join(dir, 'scripts', 'remove-worktree.ps1');
+  writeFileSync(script, 'git worktree remove --force C:/x\n');
+  // Ogsaa naar scriptet er committet i det fremmede repo.
+  execFileSync('git', ['-C', dir, 'add', '.']);
+  execFileSync('git', ['-C', dir, '-c', 'user.email=t@t', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'x']);
+  const fwd = (p) => p.split('\\').join('/');
+  try {
+    const res = checkCommand(`pwsh -File "${fwd(script)}"`, { cwd: tmpdir(), listWorktrees: () => [] });
+    assert.equal(res.blocked, true);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('review #7854: et sikkert NAVN alene undtager ikke; en aendret remove-worktree.ps1 laeses', () => {
+  const body = 'git worktree ' + 're' + 'move --force C:/x';
+  const cmd = 'pwsh -File C:/dev/CyclingZone-worktrees/lane/scripts/remove-worktree.ps1';
+  assert.equal(checkCommand(cmd, { readScript: () => body, isTracked: () => false, listWorktrees: () => [] }).blocked, true);
+  assert.equal(checkCommand(cmd, { readScript: () => body, isTracked: () => true, listWorktrees: () => [] }).blocked, false);
+});
+
+test('review #7854: Git Bash-sti til et ad hoc-script laeses (ikke fail-open)', () => {
+  if (process.platform === 'win32') assert.equal(gitBashToNative('/c/dev/x.mjs'), 'C:/dev/x.mjs');
+  let seen = null;
+  const res = checkCommand('node /c/Users/x/scratch/clean.mjs', { readScript: (p) => { seen = p; return 'rmSync(worktree, { recursive: true })'; }, isTracked: () => false, listWorktrees: () => [] });
+  assert.equal(res.blocked, true);
+  if (process.platform === 'win32') assert.ok(seen.replace(/\\/g, '/').startsWith('C:/Users/x/scratch/clean.mjs'));
 });

@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.415",
+    "date": "2026-11-07",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Roadmap",
+        "en": {
+          "title": "A message when an item you voted for ships",
+          "body": "When a roadmap item you gave a 5 or 6 is delivered, you get one message in your inbox. The Done tab shows You voted on items you voted for. Don't know does not count as a vote."
+        },
+        "da": {
+          "title": "En besked, når et punkt du stemte på, er leveret",
+          "body": "Når et punkt på roadmappen, du gav 5 eller 6, er leveret, får du én besked i indbakken. Færdigt-fanen viser Du stemte på de punkter, du har stemt på. Ved ikke tæller ikke som en stemme."
+        },
+        "refs": [
+          7792
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.414",
     "date": "2026-11-07",
     "changes": [

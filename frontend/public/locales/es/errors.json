@@ -34,6 +34,8 @@
     "rider_on_auction_transfer": "Este ciclista está en una subasta activa. Puja en la subasta en lugar de hacer una oferta de fichaje.",
     "rider_on_auction_swap": "Uno de los ciclistas del intercambio está en una subasta activa. El intercambio se ha cancelado. Puja en la subasta en su lugar.",
     "rider_on_auction_release": "Este ciclista está ahora en subasta y no se puede liberar. Espera primero a que termine la subasta",
+    "rider_pending_transfer_release": "Este ciclista está vendido y espera para unirse a su nuevo equipo, así que no puedes liberarlo",
+    "rider_pending_transfer_trade": "Este ciclista ya está vendido y espera para unirse a su nuevo equipo, así que no se puede volver a vender",
     "invalid_start_price": "Precio de salida no válido",
     "invalid_offer_amount": "Importe no válido",
     "invalid_loan_amount": "Importe no válido",

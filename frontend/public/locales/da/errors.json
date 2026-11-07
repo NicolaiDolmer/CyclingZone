@@ -34,6 +34,8 @@
     "rider_on_auction_transfer": "Rytteren er på en aktiv auktion. Byd på auktionen i stedet for at sende et transfertilbud.",
     "rider_on_auction_swap": "En af de byttede ryttere er på en aktiv auktion. Byttehandlen blev annulleret. Byd på auktionen i stedet.",
     "rider_on_auction_release": "Rytteren ligger på auktion lige nu og kan ikke fyres. Vent til auktionen er slut",
+    "rider_pending_transfer_release": "Rytteren er solgt og venter på at skifte hold, så du kan ikke fyre rytteren",
+    "rider_pending_transfer_trade": "Rytteren er allerede solgt og venter på at skifte hold, så rytteren kan ikke sælges igen",
     "invalid_start_price": "Ugyldig startpris",
     "invalid_offer_amount": "Ugyldigt beløb",
     "invalid_loan_amount": "Ugyldigt beløb",
