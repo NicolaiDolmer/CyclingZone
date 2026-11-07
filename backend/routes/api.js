@@ -128,6 +128,7 @@ import {
   shiftCalculatedEnd,
 } from "../lib/marketPause.js";
 import { resolveProxyBids } from "../lib/proxyBidding.js";
+import { isMarketCommitment6181On, marketGateResponse6181, canAffordAutoBid6181, syncBidLeader6181, applySellerOutgoingAuctions6181, auctionStartCommitmentResponse6181 } from "../lib/marketCommitment6181.js"; // #6181 PR 5
 import {
   createLoan,
   repayLoan,
@@ -2067,6 +2068,7 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
     excludeRiderIds: [rider.id],
   });
   releaseTeamState.at_risk_count = releaseAtRiskRiders.length;
+  await applySellerOutgoingAuctions6181(supabase, releaseTeamState, rider.id); // #6181 PR 5: ryttere paa auktion er udgaaende
   const releaseRiskViolation = getSquadRiskViolation(releaseTeamState, { outgoingCount: 1 });
   if (releaseRiskViolation) {
     return res.status(409).json({
@@ -7512,6 +7514,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
       excludeRiderIds: [rider.id],
     });
     auctionSellerState.at_risk_count = auctionAtRiskRiders.length;
+    await applySellerOutgoingAuctions6181(supabase, auctionSellerState, rider.id); // #6181 PR 5
     const auctionRiskViolation = getSquadRiskViolation(auctionSellerState, { outgoingCount: 1 });
     if (auctionRiskViolation) {
       return res.status(409).json({
@@ -7634,6 +7637,9 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
       getTeamMarketState(supabase, initialBidderId),
     ]);
     const activeLeading = leadingAuctions.data || [];
+    // #6181 PR 5: taendt kraever startbuddet penge (worst case) OG plads, ikke kun en advarsel.
+    const startGate = await auctionStartCommitmentResponse6181(supabase, { teamId: initialBidderId, teamState, price });
+    if (startGate) return res.status(startGate.status).json(startGate.body);
     const proxiesByAuctionId = await fetchOwnProxiesByAuctionId(
       supabase,
       initialBidderId,
@@ -7676,6 +7682,8 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
     // request (typisk dobbeltklik) lige nåede at oprette auktion på samme rytter
     // mellem vores SELECT-tjek ovenfor og denne INSERT. Returner samme 409 som
     // SELECT-tjekket, så frontend ser én konsistent fejl.
+    const startGateError = await marketGateResponse6181(supabase, error, { kind: "start", teamId: initialBidderId }); // #6181 PR 5
+    if (startGateError) return res.status(startGateError.status).json(startGateError.body);
     if (error.code === "23505") {
       return res.status(409).json({ error: "Rider already has an active auction" });
     }
@@ -7918,8 +7926,12 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
     if (isLateBidTriggerError(bidInsertError)) {
       return res.status(400).json({ error: "The auction has ended", errorCode: "auction_expired" });
     }
+    const bidGate = await marketGateResponse6181(supabase, bidInsertError, { kind: "bid", teamId: req.team.id, auctionId: auction.id }); // #6181 PR 5
+    if (bidGate) return res.status(bidGate.status).json(bidGate.body);
     return res.status(500).json({ error: "Bud kunne ikke gemmes", errorCode: "bid_save_failed" });
   }
+  // #6181 PR 5: taendt har M3-triggeren allerede sat pris og foerer under laasen.
+  const marketGateOn = await isMarketCommitment6181On(supabase);
 
   // #3132: identitets-telemetri for værdibærende handling (fair-play-bevis).
   // Fire-and-forget, fail-open — må aldrig blokere resten af bud-flowet.
@@ -7932,7 +7944,8 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
   });
 
   // Update auction (price + leader only — no extension yet).
-  await supabase.from("auctions").update({
+  if (marketGateOn) await syncBidLeader6181(supabase, { auctionId: auction.id, amount: numericAmount, teamId: req.team.id });
+  else await supabase.from("auctions").update({
     current_price: numericAmount,
     current_bidder_id: req.team.id,
   }).eq("id", auction.id);
@@ -7985,6 +7998,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
       // føreren føringen (tie-break) — cascaden skal kende lederen før buddet.
       previousLeader,
       actorTeamId: req.team.id, // #5919: ingen DM til holdet der selv byder
+      ...(marketGateOn ? { canAffordAutoBidFn: canAffordAutoBid6181 } : {}), // #6181 PR 5: penge + plads
     });
   } catch (e) {
     console.error("[resolveProxyBids] failed for auction", auction.id, e);
@@ -8201,6 +8215,8 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     { onConflict: "auction_id,team_id" }
   );
   if (proxyUpsertError) {
+    const proxyGate = await marketGateResponse6181(supabase, proxyUpsertError, { kind: "proxy", teamId: req.team.id, auctionId: req.params.id }); // #6181 PR 5
+    if (proxyGate) return res.status(proxyGate.status).json(proxyGate.body);
     return res.status(500).json({ error: "Autobud kunne ikke gemmes", errorCode: "proxy_save_failed" });
   }
 
@@ -8230,6 +8246,8 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
       if (isLateBidTriggerError(bidInsertError)) {
         return res.status(400).json({ error: "The auction has ended", errorCode: "auction_expired" });
       }
+      const openingGate = await marketGateResponse6181(supabase, bidInsertError, { kind: "proxy", teamId: req.team.id, auctionId: auction.id }); // #6181 PR 5
+      if (openingGate) return res.status(openingGate.status).json(openingGate.body);
       return res.status(500).json({ error: "Autobud kunne ikke placeres", errorCode: "proxy_place_failed" });
     }
 
@@ -8274,6 +8292,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
       // hidtidige fører's proxy-loft, beholder føreren føringen.
       previousLeader,
       actorTeamId: req.team.id, // #5919: ingen DM til holdet der selv sætter autobud
+      ...((await isMarketCommitment6181On(supabase)) ? { canAffordAutoBidFn: canAffordAutoBid6181 } : {}), // #6181 PR 5
     });
   } catch (e) {
     console.error("[resolveProxyBids] failed for auction", req.params.id, e);
