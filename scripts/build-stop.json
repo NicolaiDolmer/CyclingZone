@@ -1088,6 +1088,21 @@
       "issue": 2009,
       "reason": "Ejer-go 7/11 (Discord): hover-miniprofil inden for en uge, beta-testere først",
       "since": "2026-11-07"
+    },
+    {
+      "issue": 7855,
+      "reason": "Ejer-go 7/11 (Discord): byg point- og bjergtrøje-opgaverne i etapeplanen",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7745,
+      "reason": "Ejer-go 7/11 (Discord): træningsrapporten, hæv standarden meget",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7746,
+      "reason": "Ejer-go 7/11 (Discord): træningsrapporten, hæv standarden meget",
+      "since": "2026-11-07"
     }
   ]
 }
