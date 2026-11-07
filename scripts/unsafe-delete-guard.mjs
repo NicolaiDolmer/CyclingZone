@@ -158,9 +158,20 @@ function block(reason) {
 // C:/Dev/CyclingZone-worktrees/<spor>/scripts er versioneret i sporets worktree,
 // og skal genkendes som det (bølge 7/11: guard-commit-branch.sh blev blokeret,
 // fordi den blev slået op i hovedmappens repo og så scannet som ad hoc-script).
+// Codex P1 (#7854): undtagelsen gælder KUN scripts i samme repo som vagten selv
+// (samme fælles .git, dvs. hovedmappen eller et af dens worktrees). Et script i et
+// fremmed repo bliver altid gennemlæst, også hvis det hedder som et sikkert script.
+function gitOut(dir, args) {
+  try { return execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; }
+}
+const normPath = (p) => (p ? resolve(p).replace(/\\/g, '/').toLowerCase() : null);
+const GUARD_COMMON_DIR = normPath(gitOut(dirname(fileURLToPath(import.meta.url)), ['rev-parse', '--path-format=absolute', '--git-common-dir']));
 function repoRoot(abs) {
-  const args = abs ? ['-C', dirname(abs), 'rev-parse', '--show-toplevel'] : ['rev-parse', '--show-toplevel'];
-  try { return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; }
+  if (!abs) return gitOut(process.cwd(), ['rev-parse', '--show-toplevel']);
+  const dir = dirname(abs);
+  const common = normPath(gitOut(dir, ['rev-parse', '--path-format=absolute', '--git-common-dir']));
+  if (!common || !GUARD_COMMON_DIR || common !== GUARD_COMMON_DIR) return null;
+  return gitOut(dir, ['rev-parse', '--show-toplevel']);
 }
 function relativeToRepo(abs) {
   const root = repoRoot(abs);

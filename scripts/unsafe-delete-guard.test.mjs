@@ -114,3 +114,20 @@ test('versioneret script i et andet worktree end hookens cwd blokeres ikke (bøl
   const res = checkCommand(`bash "${script}" fix/x "${fwd(repo)}"`, { cwd: tmpdir(), listWorktrees: () => [] });
   assert.equal(res.blocked, false, res.reason);
 });
+
+test('script i et FREMMED repo får ingen undtagelse, heller ikke med et sikkert navn (Codex P1 #7854)', async () => {
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { mkdtempSync, mkdirSync, writeFileSync } = await import('node:fs');
+  const dir = mkdtempSync(join(tmpdir(), 'guard-foreign-'));
+  execFileSync('git', ['init', '-q', dir]);
+  mkdirSync(join(dir, 'scripts'));
+  const script = join(dir, 'scripts', 'remove-worktree.ps1');
+  writeFileSync(script, 'git worktree remove --force C:/x\n');
+  // Ogsaa naar scriptet er committet i det fremmede repo.
+  execFileSync('git', ['-C', dir, 'add', '.']);
+  execFileSync('git', ['-C', dir, '-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '-m', 'x']);
+  const fwd = (p) => p.split('\\').join('/');
+  const res = checkCommand(`pwsh -File "${fwd(script)}"`, { cwd: tmpdir(), listWorktrees: () => [] });
+  assert.equal(res.blocked, true);
+});
