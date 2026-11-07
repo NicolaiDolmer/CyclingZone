@@ -398,6 +398,7 @@ export function collectRiderIds(events) {
     add(p.previous_leader_id);
     add(p.protected_rider_id); // #6067: gc_reaction navngiver holdets GC-rytter
     for (const t of p.top || []) add(t?.rider_id);
+    for (const id of p.hunters || []) add(id); // #7855: passagens jaegere
   }
   return [...out];
 }

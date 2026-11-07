@@ -584,7 +584,7 @@ test("#7706: fladen viser kun ord med bevis; ingen 'ukendt', og alle fem sprog h
   assert.match(board, /\{word && <span/);
   assert.match(board, /isOneDay \? "gc" : "stage"/, "et enkeltdagsloeb gemmer maalraekkefoelgen som gc");
   assert.doesNotMatch(board, /const ridden = /);
-  const keys = ["failed", "finished", "attacked", "inBreak", "keptContact", "lostContact", "outOfTime", "rank", "withRider", "withRiderTo"].sort();
+  const keys = ["failed", "finished", "attacked", "inBreak", "keptContact", "lostContact", "outOfTime", "rank", "withRider", "withRiderTo", "sprintPoints", "komPoints", "noPoints"].sort(); // #7855: troejejagtens tre
   for (const lang of ["en", "da", "es", "fr", "nl"]) {
     const races = JSON.parse(readFileSync(new URL(`../../../public/locales/${lang}/races.json`, import.meta.url), "utf8"));
     assert.deepEqual(Object.keys(races.stagePlan.recap.outcome).sort(), keys, lang);

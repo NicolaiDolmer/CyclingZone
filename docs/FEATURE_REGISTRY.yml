@@ -153,6 +153,17 @@ features:
     note: "Slukket; kræver day_form_6649."
     decision: ejer-beslutning
     decide_by: 2026-11-20
+  - id: race-jersey-hunt-7855
+    area: race-engine
+    title_en: Jersey hunt in the stage plan
+    title_da: Trøjejagt i etapeplanen
+    state: building
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 7855
+    verified: 2026-11-07
+    note: "Kontakt jersey_hunt_7855 (off); kun ikke-startede løb. Ejer-go."
+    decision: ejer-beslutning
+    decide_by: 2026-11-21
   - id: race-itt-no-day-roll-7726
     area: race-engine
     title_en: Time trials without the extra day roll

@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-132 poster: live 107 · beta 1 · dormant 9 · building 6 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+133 poster: live 107 · beta 1 · dormant 9 · building 7 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -21,6 +21,7 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 |-|-|-|-|-|-|-|
 | Day form in words after the stage (`race-day-words-7725`) | dormant | `day_words_7725` | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #7725 | 2026-11-06 | Slukket; kræver day_form_6649. |
 | Long descents - cap on how much a regrouping chase can gain (`race-descent-regroup-cap-7644`) | dormant | `descent_regroup_cap_7644` | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #7644 | 2026-11-04 | Slukket; tændes af ejeren. |
+| Jersey hunt in the stage plan (`race-jersey-hunt-7855`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #7855 | 2026-11-07 | Kontakt jersey_hunt_7855 (off); kun ikke-startede løb. Ejer-go. |
 | Official time persistence revision (`race-official-times-v1`) | retired | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6284 | 2026-10-16 | Frosset prototype. |
 
 ## race-day
