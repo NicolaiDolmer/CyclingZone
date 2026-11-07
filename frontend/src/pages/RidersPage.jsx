@@ -491,7 +491,7 @@ export default function RidersPage() {
       sortKey: "firstname",
       render: (r) => (
         // #2009: hover-miniprofil paa navnet (bag rider_hover_card).
-        <RiderHoverCard riderId={r.id} viewerTeamId={myTeam?.id}>
+        <RiderHoverCard riderId={r.id} viewerTeamId={/** @type {any} */ (myTeam)?.id}>
           <RiderNameCell
             id={r.id}
             firstname={r.firstname}
@@ -505,7 +505,7 @@ export default function RidersPage() {
       // til to linjer. Den korte form (#5350, ejer-valgt 18/9) staar paa een —
       // samme navneform som Mit Hold og traeningssiden.
       renderShort: (r) => (
-        <RiderHoverCard riderId={r.id} viewerTeamId={myTeam?.id}>
+        <RiderHoverCard riderId={r.id} viewerTeamId={/** @type {any} */ (myTeam)?.id}>
           <RiderNameCell
             id={r.id}
             firstname={r.firstname}
