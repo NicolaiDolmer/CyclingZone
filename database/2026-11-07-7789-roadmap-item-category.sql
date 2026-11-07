@@ -53,10 +53,12 @@ COMMENT ON COLUMN public.roadmap_items.category IS
 -- voters: [[division, aktiv], ...] i loebenummer-orden.
 -- votes:  [[item_id, loebenummer, vigtighed, idé], ...]; Ved ikke (#7788) har
 --         begge tal NULL og tæller som svar, men ikke i snittene.
--- secdef-lint: allow roadmap_admin_vote_rows (backendens admin-route kalder den som service_role; gaten er auth.role() i kroppen)
+-- SECURITY INVOKER: kun backendens admin-route kalder den, som service_role, der
+-- i forvejen maa laese tabellerne. Funktionen faar derfor ingen rettigheder ud
+-- over kalderens, og auth.role()-gaten i kroppen svarer tomt for alle andre.
 CREATE OR REPLACE FUNCTION public.roadmap_admin_vote_rows()
 RETURNS jsonb
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp
+LANGUAGE sql STABLE SECURITY INVOKER SET search_path = public, pg_temp
 AS $$
   WITH voters AS (
     SELECT v.user_id, (ROW_NUMBER() OVER (ORDER BY v.user_id) - 1)::int AS idx
