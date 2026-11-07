@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-133 poster: live 107 · beta 1 · dormant 9 · building 7 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+134 poster: live 107 · beta 2 · dormant 9 · building 7 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -31,7 +31,7 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
-| Why? button beside riders in Your day (`rider-why-button`) | beta | `rider_why_button` | - | #7716 | 2026-11-05 | #7717: seedet off, kun visning. Ejeren flytter flaget efter visuelt go. |
+| Why? button beside riders in Your day (`rider-why-button`) | beta | `rider_why_button` | - | #7716 | 2026-11-05 | #7717: seedet off, kun visning. |
 | Engine breakaway forecast (`race-breakaway-outlook`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6912 | 2026-10-29 | Ingen app_config-række (fravær = off). Ejer-go til tænding. |
 
 ## market
@@ -52,6 +52,7 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
+| Talent marks (`talent-marks`) | beta | `talent_marks_7879` | - | #7824 | 2026-11-07 | talent_marks_7879 |
 | Teamwork and Leadership abilities (`mental-abilities-teamwork-leadership`) | building | - | [holdarbejde-og-lederskab-evner-design](superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md) | #1177 | 2026-11-04 | Kun data er bygget (#5268). Løbsmotoren (#5348) og mentorpar (#5349) er ikke bygget, og arbejdet står stille (statusaudit 4/11). |
 | New riders' primary type from the target distribution (`rider-primary-type-from-distribution`) | building | - | [RIDER_GENERATION](RIDER_GENERATION.md) | #5327 | 2026-09-23 | Kontakt (off); flip er ejer-gated. |
 
@@ -64,7 +65,7 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
 | Development Score B in the engine (`development-score-b-engine`) | dormant | `development_score_v2` | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-11-04 | Ejer 31/10 (#6110): parkeret, indtil grundtalentet (spec 23/10, byggetrin 2) er bygget; decide_by 8/11 er afløst, ny frist ikke sat. Forudsætning før tænding: #7584. Statusaudit 4/11. |
-| One potential source (stored estimate per rider and team) (`potential-estimate-display`) | dormant | `potential_estimate_display` | [6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md) | #6110 | 2026-11-05 | Byggetrin 4 (#7684): estimates, scouting-rapport, development-projection og akademi svarer fra potentialEstimateRead.js, når flaget er tændt. |
+| One potential source (stored estimate per rider and team) (`potential-estimate-display`) | dormant | `potential_estimate_display` | [6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md) | #6110 | 2026-11-05 | Byggetrin 4 (#7684): fladerne svarer fra potentialEstimateRead.js, når flaget er tændt. |
 | Catch-up via racing (`race-day-catchup`) | dormant | `race_day_catchup_enabled` | [TRAINING_RULES](TRAINING_RULES.md) | #6950 | 2026-10-25 | Ejer, med Udvikling 2.0. |
 | Race day - the rider's role also decides the base day (`race-day-role-base-day`) | dormant | `race_day_role_base_day_enabled` | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-11-03 | #5950 løsning A (ejer-valg 3/11), underkontakt til race-day-role-yield. Off. |
 | Development XP (`development-xp-model`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-11-07 | Kontakter development_xp_model + development_xp_from_date; tændes efter kalibrering. |

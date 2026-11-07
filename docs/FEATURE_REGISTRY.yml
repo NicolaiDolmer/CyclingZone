@@ -435,10 +435,20 @@ features:
     decide_by: 2026-11-20
     epic: 7716
     verified: 2026-11-05
-    note: "#7717: seedet off, kun visning. Ejeren flytter flaget efter visuelt go."
+    note: "#7717: seedet off, kun visning."
     roadmap_en: "Why? next to your riders: one tap tells you what decided his result."
     roadmap_da: "Hvorfor? ved dine ryttere: ét tryk fortæller, hvad der afgjorde hans resultat."
     roadmap_horizon: next
+
+  - id: talent-marks
+    area: squad
+    title_en: Talent marks
+    title_da: Talentmærker
+    state: beta
+    flag: talent_marks_7879
+    epic: 7824
+    verified: 2026-11-07
+    note: talent_marks_7879
 
   - id: race-library-v2
     area: stats
@@ -1040,7 +1050,7 @@ features:
     ssot: docs/superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md
     epic: 6110
     verified: 2026-11-05
-    note: 'Byggetrin 4 (#7684): estimates, scouting-rapport, development-projection og akademi svarer fra potentialEstimateRead.js, når flaget er tændt.'
+    note: 'Byggetrin 4 (#7684): fladerne svarer fra potentialEstimateRead.js, når flaget er tændt.'
     decision: goer-faerdigt
     decide_by: 2026-12-31
 

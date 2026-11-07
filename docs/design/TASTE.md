@@ -83,6 +83,7 @@ Vi har ét stroke-ikonsæt (16/20/24 px). Emoji, unicode-pile (→ ← ↔ ↑ �
 
 - **Forkert i dag:** `dashboard-desktop-light.png`: "Fuld rangliste → ›" har både en tekst-pil OG et rigtigt chevron-ikon. "← Forrige / Næste →" i pagination. "↔ Sæt til salg" i rytterprofilens knap. 559 forekomster i 153 filer (25/7).
 - **Rigtigt i dag:** `SectionAction`-primitiven med `chevron-right 13px`. Findes, bruges bare ikke overalt.
+- **Undtagelse (ejer 6/11, #7824/#7879):** talentmærkerne (slebet guldstjerne, slebet diamant) og mestertrøjerne er fyldte, flerfarvede symboler og bruger guld uden for rationeringen. Kun disse mærker, 16 px i tabeller og 24 px på profilen.
 - **Spørgsmål:** Er der nul emoji, nul unicode-pile og nul tekst-glyffer brugt som UI-chrome?
 
 ### P8 · Ét sprog for status og prioritet

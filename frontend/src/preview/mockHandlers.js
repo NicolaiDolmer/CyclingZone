@@ -250,6 +250,12 @@ export function restRows(table, requestUrl = "") {
       }
       return rows;
     }
+    // #7879: talentmærker på preview, så navnecellen og profilen kan ses med kontakten i beta.
+    case "rider_talent_marks":
+      return [
+        { rider_id: "rider-1", mark: "top_talent", rider_type: "sprinter" },
+        { rider_id: "rider-2", mark: "next_gen", rider_type: null },
+      ];
     case "auctions":
       // #3401: AuctionHistoryPage forespørger .eq("status","completed") —
       // AuctionsPage's aktive liste (.in("status",["active","extended"])) skal

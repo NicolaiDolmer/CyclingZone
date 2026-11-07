@@ -1,4 +1,18 @@
 {
+  "talentMark": {
+    "topTalent": {
+      "name": "Top Talent",
+      "short": "one of the best riders under 23 in his rider type right now.",
+      "full": "Among the best 1% of {type}s under 23, measured on rating right now. Updated every day.",
+      "fullNoType": "Among the best 1% of riders under 23 in his rider type, measured on rating right now. Updated every day."
+    },
+    "nextGen": {
+      "name": "Next Gen",
+      "short": "one of the juniors with the most progress in the last 30 days.",
+      "full": "Among the 2% of juniors (16-18) with the most progress in the ability bars over the last 30 days. The last 7 days count double. Updated every day."
+    },
+    "helpLink": "How talent marks work"
+  },
   "badges": {
     "u23": "Under 23 (U23)",
     "u25": "Under 25 (U25)",

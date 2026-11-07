@@ -1,4 +1,18 @@
 {
+  "talentMark": {
+    "topTalent": {
+      "name": "Toptalent",
+      "short": "en af de bedste ryttere under 23 i sin ryttertype lige nu.",
+      "full": "Hører til den bedste 1 % af ryttere under 23 i typen {type}, målt på rating lige nu. Opdateres hver dag.",
+      "fullNoType": "Hører til den bedste 1 % af ryttere under 23 i sin ryttertype, målt på rating lige nu. Opdateres hver dag."
+    },
+    "nextGen": {
+      "name": "Næste generation",
+      "short": "en af de juniorer, der har haft mest fremgang de seneste 30 dage.",
+      "full": "Hører til de 2 % af juniorerne (16-18) med mest fremgang i evnebjælkerne de seneste 30 dage. De seneste 7 dage tæller dobbelt. Opdateres hver dag."
+    },
+    "helpLink": "Sådan virker talentmærker"
+  },
   "badges": {
     "u23": "Under 23 (U23)",
     "u25": "Under 25 (U25)",
