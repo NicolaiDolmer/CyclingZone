@@ -80,6 +80,7 @@ export async function getOfferAutoAcceptIssue(supabase, { riderId, listing = nul
   if (!(await isAutoAcceptEnabled(supabase))) return null;
   let row = listing;
   if (!row) {
+    // schema-columns-ok: auto_accept_price kommer med database/2026-11-07-2176-m2-auto-accept.sql og laeses kun med kontakten taendt (efter apply).
     const { data, error } = await supabase
       .from("transfer_listings")
       .select("id, status, auto_accept_price")
@@ -117,6 +118,7 @@ export async function getOfferAutoAcceptIssue(supabase, { riderId, listing = nul
  */
 export async function countSellerAuctionOutgoing(supabase, teamId, { skipRiderIds = [], atRiskSeasonNumber = null } = {}) {
   if (!teamId || !(await isAutoAcceptEnabled(supabase))) return 0;
+  // pagination-safe: eet holds senior-trup, begraenset af trup-loftet.
   const { data: riders, error: riderError } = await applySeniorSquadFilter(
     supabase.from("riders").select("id").eq("team_id", teamId)
   ).eq("is_retired", false).is("pending_team_id", null);
