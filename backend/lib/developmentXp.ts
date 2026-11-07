@@ -3,9 +3,10 @@
 // Spec: docs/superpowers/specs/2026-11-06-6110-xp-udvikling-design.md (§4, §11 trin 1).
 //
 // ═══ STATUS ══════════════════════════════════════════════════════════════════
-// Rent modul uden kaldere i spillet. Eneste bruger er 10-sæsoners-kørslen
-// (scripts/dev/tenSeasonSim6110.mjs). Motoren kobles på i et senere trin bag en
-// slukket kontakt, så intet i spillet ændrer sig af denne fil.
+// Rent modul. Brugere: 10-sæsoners-kørslen (scripts/dev/tenSeasonSim6110.mjs) og,
+// fra trin 2, træningsmotoren (dailyTraining.js), men kun når kontakten
+// development_xp_model er tændt for tick-datoen (developmentXpFlag.ts). Kontakten
+// er slukket, så intet i spillet ændrer sig af denne fil.
 //
 // ═══ HVAD MODELLEN ER ════════════════════════════════════════════════════════
 //   1. PRISEN: næste point koster XP efter evnens værdi og intet andet. Den er ens
@@ -28,6 +29,14 @@
 //
 // Ren funktion: ingen DB, ingen Date, ingen Math.random. Dagsvariationen beregnes
 // af kalderen, fordi den bruger en hemmelig nøgle på serveren (spec §5.2).
+
+import { TRAINING_CONFIG, TRAINING_FOCUSES, programAbilityWeight } from "./training.js";
+import { dayTypeForProgram, RECOVERY_INTENSITY } from "./trainingDayTypes.js";
+import { abilityRoleClass } from "./riderProgression.js";
+import { abilityMeta } from "./abilityRegistry.js";
+import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { staffTrainingBonus, facilityTrainingMultiplier } from "./staffTrainingBonus.js";
+import { TRAINING_RACE_DAY_CONFIG } from "./trainingRaceDayTick.js";
 
 // Skalaens top. Evner går til 99; prisen regner mod 100, så 99 aldrig koster uendeligt.
 const SCALE_TOP = 100;
@@ -252,4 +261,183 @@ export function xpBarView(
 ): { xp: number; price: number } {
   const price = xpPriceForNextPoint(level, params);
   return { xp: (isNum(bar) && bar > 0 ? bar : 0) * price, price };
+}
+
+// ═══ MOTORENS TICK (#6110 trin 2) ════════════════════════════════════════════
+// Bruges af dailyTraining.js (dailyAbilityDelta og applyDailyTick), kun når
+// kontakten development_xp_model er tændt for tick-datoen (developmentXpFlag.ts).
+// Samme fordeling som 10-sæsoners-kørslen (scripts/dev/tenSeasonSim6110.mjs), så
+// det, kørslen måler, er det, motoren kører. Form og træthed er ikke led (S29), og
+// alder er aldrig en turbo: ungdomsfaktoren og alderstabellen er ikke med.
+// Endnu ikke med: dagsvariationen med hemmelig nøgle (§5.2) og Træn nu-bonussen
+// (B16). Begge er krav før tænding, ikke en del af dette trin.
+
+// Løbsdagens program (raceDayYield.js RACE_DAY_FOCUS). Gentaget her, fordi
+// raceDayYield.js importerer dailyTraining.js; en test låser, at de er ens.
+export const XP_RACE_DAY_FOCUS = "race_day";
+
+const MENTAL_ABILITIES: ReadonlySet<string> = new Set(
+  (VISIBLE_ABILITIES as readonly string[]).filter((a) => abilityMeta(a)?.category === "mental"),
+);
+
+export interface XpTickProgram {
+  focus?: string | null;
+  intensity?: string | null;
+  focusAbilities?: readonly string[] | null;
+  focusWeights?: Readonly<Record<string, number>> | null;
+  offFocus?: boolean;
+}
+
+export interface XpAbilityDeltaInput {
+  ability: string;
+  age: number | null | undefined;
+  potentiale: number | null | undefined;
+  program: XpTickProgram | null | undefined;
+  primaryType?: string | null;
+  secondaryType?: string | null;
+  staff?: unknown;
+  facilityTier?: number | null;
+  riderLevel?: string | null;
+  /** Dagens intention på løbsdage (#6641); 1 på træningsdage. */
+  academyRateMult?: number;
+  trainingCfg?: { focusGrowthMult?: Record<string, number> };
+  /** Sat = løbsdags-aksen (#4846): en dato har flere ticks, som deler datoens XP. */
+  budgetDivisor?: number | null;
+}
+
+/**
+ * XP på én evne for ét tick. Erstatter dailyAbilityDelta's andel af et point, når
+ * kontakten er tændt. Kender intet loft (B4): kun prisen bremser.
+ */
+export function developmentXpAbilityDelta(
+  {
+    ability, age, potentiale, program, primaryType = null, secondaryType = null,
+    staff = null, facilityTier = null, riderLevel = null, academyRateMult = 1,
+    trainingCfg = TRAINING_CONFIG, budgetDivisor = null,
+  }: XpAbilityDeltaInput,
+  params: DevelopmentXpParams,
+): number {
+  if (!program || program.intensity === "rest") return 0;
+  const grow = trainingCfg?.focusGrowthMult ?? {};
+  const intensityShare = (grow[program.intensity as string] ?? 1) / grow.hard;
+  const focusAbilities = program.focusAbilities ?? (TRAINING_FOCUSES as Record<string, readonly string[]>)[program.focus as string] ?? [];
+  const raceDay = program.focus === XP_RACE_DAY_FOCUS;
+  // En restitutionsdag giver kun XP i sessionens egen evne (#3762).
+  const noOffFocus = program.intensity === RECOVERY_INTENSITY || program.offFocus === false;
+  const offFocusShare = noOffFocus ? 0 : (raceDay ? params.raceOffFocusShare : params.offFocusShare);
+  const sessionShare = xpSessionShare({
+    inFocus: focusAbilities.includes(ability), intensityShare, weight: programAbilityWeight(program, ability), offFocusShare,
+  });
+  if (!(sessionShare > 0)) return 0;
+  const typeShare = xpTypeShare(abilityRoleClass(primaryType, secondaryType, ability), params, {
+    skillDay: dayTypeForProgram(program) === "skill",
+  });
+  // Træner og facilitet tæller kun på træningsdage (S13).
+  const coach = raceDay ? 1 : facilityTrainingMultiplier({ facilityTier, staff })
+    * staffTrainingBonus({ facilityTier, staff: (staff ?? null) as object | null, ability, riderLevel: riderLevel as string });
+  const intention = isNum(academyRateMult) && academyRateMult >= 0 ? academyRateMult : 1;
+  const raceDayAxis = isNum(budgetDivisor) && budgetDivisor > 0;
+  return abilityXpForTick({
+    riderXp: xpPerDate({ potentiale, age, mental: MENTAL_ABILITIES.has(ability) }, params),
+    sessionShare,
+    typeShare,
+    dayMult: coach * intention,
+    // #6711: enheden er én dato; på løbsdags-aksen deler datoens løbsdage den.
+    ticksPerDate: raceDayAxis ? TRAINING_RACE_DAY_CONFIG.raceDaysPerDate : 1,
+  });
+}
+
+export interface XpTickResult {
+  abilities: Record<string, number>;
+  progress: Record<string, number>;
+  gains: Record<string, number>;
+  /** XP tjent pr. evne på dette tick (til tick-rapporten, trin 4). */
+  xp: Record<string, number>;
+  /** Kvitteringen som i dag: summen af tickets fremdrift målt i point. */
+  score: number;
+}
+
+/**
+ * Ét XP-tick for én rytter. `xpFor(ability)` er evnens XP på tick'et (kalderen
+ * samler dailyAbilityDelta og løbsdagens tillæg). Point købes til prisen og højst
+ * `maxPointsPerTick` pr. evne; resten bliver på bjælken (spec §4.3). Muterer ikke input.
+ */
+export function developmentXpTick(
+  { abilities, progress, maxPointsPerTick = Infinity, xpFor }: {
+    abilities: Record<string, unknown>;
+    progress?: Record<string, unknown> | null;
+    maxPointsPerTick?: number;
+    xpFor: (ability: string) => number;
+  },
+  params: DevelopmentXpParams,
+): XpTickResult {
+  const nextAbilities = { ...abilities } as Record<string, number>;
+  const nextProgress = { ...(progress ?? {}) } as Record<string, number>;
+  const gains: Record<string, number> = {};
+  const xp: Record<string, number> = {};
+  let score = 0;
+  for (const ability of VISIBLE_ABILITIES as readonly string[]) {
+    const level = Number(nextAbilities[ability] ?? 0);
+    if (!Number.isFinite(level)) continue; // korrupt input må ikke forgifte bjælken
+    const raw = Number(xpFor(ability));
+    const earned = Number.isFinite(raw) && raw > 0 ? raw : 0;
+    const bar = Number(nextProgress[ability] ?? 0);
+    // En bjælke over 1 (klippet af dato-loftet) betales ud, også uden ny XP (§7.3).
+    if (!(earned > 0) && !(bar >= 1)) continue;
+    const out = buyPoints({ level, bar, xp: earned, maxPoints: maxPointsPerTick }, params);
+    if (earned > 0) {
+      xp[ability] = earned;
+      score += earned / xpPriceForNextPoint(level, params);
+    }
+    nextProgress[ability] = out.bar;
+    if (out.points > 0) {
+      gains[ability] = out.points;
+      nextAbilities[ability] = out.level;
+    }
+  }
+  return { abilities: nextAbilities, progress: nextProgress, gains, xp, score: Math.round(score * 100) / 100 };
+}
+
+/**
+ * Maks +1 pr. evne pr. dato (#6210) i XP. Dagens capTickGainsPerDate lægger klippede
+ * point tilbage som +1 på bjælken; det holder ikke, når prisen skifter mellem to
+ * point. Her købes tick'et om fra rytterens tilstand før tick'et med datoens rest,
+ * så ingen XP går tabt eller opstår. Uden klip returneres samme objekt.
+ */
+export function capXpTickGainsPerDate(
+  { tickResult, abilities, progress, usedGains = {}, cap = 1 }: {
+    tickResult: (Partial<XpTickResult> & Record<string, unknown>) | null | undefined;
+    abilities: Record<string, unknown>;
+    progress?: Record<string, unknown> | null;
+    usedGains?: Record<string, unknown>;
+    cap?: number;
+  },
+  params: DevelopmentXpParams,
+): typeof tickResult {
+  if (!tickResult?.gains) return tickResult;
+  let next: (Partial<XpTickResult> & Record<string, unknown> & { capped_by_date: Record<string, number> }) | null = null;
+  for (const [ability, n] of Object.entries(tickResult.gains)) {
+    const gained = Number(n) || 0;
+    const allowance = Math.max(0, cap - (Number(usedGains[ability]) || 0));
+    if (gained <= allowance) continue;
+    next ??= {
+      ...tickResult,
+      abilities: { ...tickResult.abilities },
+      progress: { ...tickResult.progress },
+      gains: { ...tickResult.gains },
+      capped_by_date: {},
+    };
+    const out = buyPoints({
+      level: Number(abilities?.[ability] ?? 0),
+      bar: Number(progress?.[ability] ?? 0),
+      xp: Number(tickResult.xp?.[ability] ?? 0),
+      maxPoints: allowance,
+    }, params);
+    next.abilities![ability] = out.level;
+    next.progress![ability] = out.bar;
+    if (out.points > 0) next.gains![ability] = out.points;
+    else delete next.gains![ability];
+    next.capped_by_date[ability] = gained - out.points;
+  }
+  return next ?? tickResult;
 }
