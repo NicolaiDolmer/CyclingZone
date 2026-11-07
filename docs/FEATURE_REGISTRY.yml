@@ -192,12 +192,11 @@ features:
     area: race-engine
     title_en: Tired riders can miss the time limit, with a warning
     title_da: Trætte ryttere kan misse tidsgrænsen, med varsel
-    state: dormant
-    flag: time_limit_fatigue_7715
+    state: building
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7715
     verified: 2026-11-07
-    note: "Slukket; tændes kun på ejerens kør."
+    note: "Nøgle time_limit_fatigue_7715 uden række (off)."
     decision: ejer-beslutning
     decide_by: 2026-11-20
 
