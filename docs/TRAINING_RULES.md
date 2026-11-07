@@ -54,10 +54,12 @@ motor-transition fra sæsonen står mellem sit start-anker og sin afslutning (au
 `season_transition` eller completed-anker i `admin_log`). Transitionen nulstiller form og
 træthed undervejs, og arbejde registreret før det ville fryse en starttilstand fra før
 nulstillingen. Sæsonafslutning alene (næste sæson endnu ikke aktiv) venter derfor på
-skiftet. Arbejde, der registreres efter datoens frist (næste dag kl. 02), får som alle
-sene datoer intet starttilstands-snapshot og går til afstemning
-(`roster_or_opening_evidence_unavailable`). En sen registreringsvej med bevist
-starttilstand findes kun for brodatoer (#7282).
+skiftet. Arbejde på sæsonens sidste dato, der registreres efter datoens frist (næste dag
+kl. 02), får intet starttilstands-snapshot og går til afstemning
+(`roster_or_opening_evidence_unavailable`): transitionens nulstilling har allerede flyttet
+rytterne. Sene registreringsveje med bevist starttilstand findes for brodatoer (#7282) og
+almindelige datoer i den aktive sæson (#7832, se "Sent oprettede hold" nedenfor), ikke for
+sæsonens sidste dato.
 
 Afregningen ser sæsonen, som den var ved skæringstidspunktet: det tidligste af
 sæsonafslutningens claim (`season_end_claims.claimed_at`) og transitionens eget
@@ -109,6 +111,13 @@ ejer-go og præcis fil-hash. Dette er ikke en godkendelse af en ny datareparatio
 - Én regel for begge writers: `isLegacyCalendarTickTeam` (`trainingDateClose.js`) og `isTrainingDateTeam` (`trainingDateReadiness.js`).
 - Managerens egne tryk afviser også et parkeret hold med 409 `team_parked`: "Træn nu" (`runTrainNow`) og den gamle `POST /api/training/run-today`. `GET /api/training/me` viser gaten lukket for et parkeret hold (`enabled: false`, og `dayClose.reason: "team_parked"` når løbsdags-tick er on), så fladen ikke lover en knap, der afvises (#6811).
 - **Varig parkeringsperiode (#6811):** et comeback (`returnParkedTeam`) sætter `teams.comeback_at`. En dato der sluttede før comebacket, regnes ikke med for holdet, samme regel som `created_at` for et nyt hold; comeback-dagen selv tæller. Reglen ligger i databasen, så den holder også efter en genstart, hvor sweepen gennemgår alle sæsonens datoer igen. Uden den fik et tilbagevendt hold alle de parkerede datoer på én gang. Comebacks fra før kolonnen fandtes, har `comeback_at` NULL og er ikke dækket.
+
+## Sent oprettede hold mister aldrig datoen (#7832, ejer 7/11)
+
+- Et hold må aldrig miste en træningsdato, heller ikke et helt nyt hold på sin første dag. "Start på næste dato" er afvist.
+- **Samme proces finder holdet:** sweepens hukommelses-cache (`completedDates`) husker hvilke hold en dato så. Er datoen ikke slut, læser sweepen holdene én gang pr. kørsel og kører datoen igen, hvis der er kommet et nyt hold (`isTrainingDateTeam`). Holdet registreres så inden fristen og træner normalt. Når datoen er slut, og tjekket intet nyt har fundet, stopper tjekket for den dato. Før #7832 så sweepen først holdet efter en genstart.
+- **Nås holdet først efter fristen** (fx efter en genstart), registrerer sweepen en almindelig dato via `register_late_training_date_work` (`database/2026-11-07-7832-late-team-training-date.sql`). Den gemmer starttilstanden, kun når registreringen sker efter fristen, rækken er ny og tom, holdet intet arbejde har på en senere dato, og ingen af rytterne har et tick eller en tilstands-afregning på en senere dato. Ellers er svaret som `register_training_date_work`: karantæne og alarm (alarmen dæmpes ikke). Samme princip som broen (#7282); sæsonens sidste dato er undtaget (se ovenfor).
+- **Deploy-vinduet:** mangler funktionen, registreres den sene dato ikke. Holdet venter til næste kørsel, og senere datoer for holdet holdes tilbage i samme kørsel, så datoen aldrig fryses tom.
 
 ## Forbigående DB-fejl i facilitets- og træneropslaget (#6596, 17/10)
 

@@ -2,7 +2,7 @@ import { trainingDateRpc } from "./trainingDateRpc.js";
 import { copenhagenDateString, copenhagenHour } from './copenhagenTime.js';
 import { fetchAllRows } from './supabasePagination.js';
 import { refreshRankingsAfterTrainingSettlement } from './refreshRankingMatviews.js';
-import { loadTrainingDateContext, nextCivilDate, resolveTrainingDateReadiness, trainingDateDeadline, trainingDateBounds } from './trainingDateReadiness.js';
+import { isTrainingDateTeam, loadTrainingDateContext, loadTrainingDateTeams, nextCivilDate, resolveTrainingDateReadiness, trainingDateDeadline, trainingDateBounds } from './trainingDateReadiness.js';
 import { loadFinalTrainingDate, TRAINING_DATE_SETTLEMENT_HOUR } from './seasonTransitionReadiness.js';
 import { ADMIN_ACTION_TYPE } from './economyConstants.js';
 import { TRANSITION_PHASE_LOG_SOURCE, TRANSITION_PHASE_STATUS } from './seasonTransitionPhaseLog.js';
@@ -163,7 +163,7 @@ export async function loadTrainingDateIndex({ supabase, now }) {
   return { jobs: [...jobs.values()].sort((a, b) => a.tickDate.localeCompare(b.tickDate)), today, activeSeasonId: active?.id ?? null };
 }
 
-export async function registerTrainingDateWork({ supabase, teamId, seasonId, tickDate, gameDays, riderIds, now, nonBlocking = false, lateBridge = false }) {
+export async function registerTrainingDateWork({ supabase, teamId, seasonId, tickDate, gameDays, riderIds, now, nonBlocking = false, lateBridge = false, lateDate = false }) {
   const args = {
     p_team_id: teamId, p_season_id: seasonId, p_tick_date: tickDate,
     p_game_days: gameDays, p_expected_rider_ids: riderIds,
@@ -171,12 +171,17 @@ export async function registerTrainingDateWork({ supabase, teamId, seasonId, tic
     p_registered_at: now.toISOString(),
   };
   // #7282: a bridge date caught up after its deadline needs the bridge RPC, which keeps
-  // the opening snapshot when nothing has trained the riders since. Before auto-migrate
-  // has created it, return null: the caller waits instead of freezing the date empty.
-  if (lateBridge) {
-    const { data, error } = await supabase.rpc('register_training_bridge_date_work', args);
+  // the opening snapshot when nothing has trained the riders since. #7832: the same for
+  // an ordinary date (a team created after the evening run, reached after the deadline).
+  // Before auto-migrate has created the RPC, return null: the caller waits instead of
+  // freezing the date empty.
+  if (lateBridge || lateDate) {
+    const [name, label] = lateBridge
+      ? ['register_training_bridge_date_work', 'register training bridge date']
+      : ['register_late_training_date_work', 'register late training date'];
+    const { data, error } = await supabase.rpc(name, args);
     if (error?.code === 'PGRST202' || error?.code === '42883') return null;
-    if (error) throw new Error(`register training bridge date: ${error.message}`);
+    if (error) throw new Error(`${label}: ${error.message}`);
     return data;
   }
   return checked(trainingDateRpc(supabase, 'register_training_date_work', args, nonBlocking), 'register training date');
@@ -216,7 +221,12 @@ async function loadLegacyRunTeamIds({ supabase, tickDate }) {
   return new Set(rows.map(row => row.team_id));
 }
 
-const completedDates = new Set();
+// Dates whose pass finished without waiting or failing. #7832: each entry remembers
+// the teams that pass saw. A date swept before it ended can still gain a team (one
+// created, or back from parking, later that evening), so while `open` the sweep checks
+// for a new one and sweeps the date again, instead of skipping it until a restart.
+const completedDates = new Map();
+const NO_REGISTERED_TEAMS = new Set();
 // #6004: dates whose full pass already ran in this process without a failure
 // outside durable work. A forced retry of such a past date only revisits teams
 // with pending/partial work instead of re-sweeping every team each tick.
@@ -296,7 +306,7 @@ export async function runNormalizedTrainingDateSweep({
   loadIndex = loadTrainingDateIndex, loadContext = loadTrainingDateContext,
   registerWork = registerTrainingDateWork, dispatchAlarms = dispatchTrainingDateAlarms,
   loadWorkRows = loadTrainingWorkRows, quarantineRiders = quarantineTrainingRiders, departRiders = departTrainingDateRiders,
-  loadLegacyRuns = loadLegacyRunTeamIds,
+  loadLegacyRuns = loadLegacyRunTeamIds, loadTeams = loadTrainingDateTeams,
   loadSeasonDivisions = loadSeasonStandingDivisions, loadParkedTeams = loadTeamsParkedAfter,
   refreshRankings = refreshRankingsAfterTrainingSettlement,
   elapsedClock = () => performance.now(),
@@ -307,13 +317,25 @@ export async function runNormalizedTrainingDateSweep({
   const index = await loadIndex({ supabase, now });
   const summary = { ran: false, tickDate: index.today, gameDays: [], divisions: 0, planned: 0, swept: 0, alreadyRan: 0, failed: 0, failures: [], pending: 0, quarantined: 0, departed: 0, durationMs: 0 };
   const allDays = new Set(), divisions = new Set();
-  // #7282: a team whose late bridge date waits for the bridge RPC registers no later
-  // date in this pass; a later row would stop the bridge RPC from keeping its snapshot.
-  const deferredBridgeTeams = new Set();
-  let settledToday = false;
+  // #7282/#7832: a team whose late date waits for its late RPC registers no later date
+  // in this pass; a later row would stop the late RPC from keeping its snapshot.
+  const deferredLateTeams = new Set();
+  let settledToday = false, currentTeams = null;
   for (const job of index.jobs) {
     const dateKey = `${job.season.id}:${job.tickDate}`;
-    if (completedDates.has(dateKey) && !job.forceRetry) continue;
+    const cached = completedDates.get(dateKey);
+    if (cached && !job.forceRetry) {
+      if (!cached.open) continue;
+      // #7832: one teams read per sweep, only while a cached date can still gain a team.
+      const { end } = trainingDateBounds(job.tickDate);
+      currentTeams ??= await loadTeams(supabase);
+      const newTeam = currentTeams.some(team => !cached.teamIds.has(team.id) && isTrainingDateTeam(team, NO_REGISTERED_TEAMS, end));
+      if (!newTeam) {
+        // Read after the date ended: a team created or back later is not on this date.
+        if (now >= end) cached.open = false;
+        continue;
+      }
+    }
     const failuresBeforeDate = summary.failed, sweptBeforeDate = summary.swept;
     let waitingForDate = false, untrackedFailure = false, legacyRanPromise = null;
     // One lookup per date even when teams run in parallel; a failed lookup is
@@ -369,14 +391,20 @@ export async function runNormalizedTrainingDateSweep({
         return;
       }
       if (!days?.length) return;
-      if (deferredBridgeTeams.has(team.id) && !workByTeam.has(team.id)) { waitingForDate = true; return; }
+      if (deferredLateTeams.has(team.id) && !workByTeam.has(team.id)) { waitingForDate = true; return; }
       let tracked = workByTeam.has(team.id);
       // #6609: failure identity carries the race day being settled (or the date race days when it fails before the loop).
       let failingGameDay = null;
       try {
-        const lateBridge = !workByTeam.has(team.id) && days.every(day => day < 0) && now >= trainingDateDeadline(job.tickDate);
-        const work = workByTeam.get(team.id) ?? await registerWork({ supabase, teamId: team.id, seasonId: job.season.id, tickDate: job.tickDate, gameDays: days, riderIds: currentIds, now, lateBridge });
-        if (!work) { deferredBridgeTeams.add(team.id); waitingForDate = true; return; }
+        // #7832 (owner 7/11): a team reached after the deadline (created after the
+        // evening run) keeps its date: the late RPC keeps the opening snapshot when
+        // nothing has trained the riders since, so the date settles instead of quarantine.
+        // Not a season's final date (#6924): the transition's season-start resets have
+        // already moved the riders, which the late RPC cannot see.
+        const late = !workByTeam.has(team.id) && now >= trainingDateDeadline(job.tickDate);
+        const lateBridge = late && days.every(day => day < 0);
+        const work = workByTeam.get(team.id) ?? await registerWork({ supabase, teamId: team.id, seasonId: job.season.id, tickDate: job.tickDate, gameDays: days, riderIds: currentIds, now, lateBridge, lateDate: late && !lateBridge && !final });
+        if (!work) { deferredLateTeams.add(team.id); waitingForDate = true; return; }
         tracked = true;
         const remaining = work.expected_rider_ids.filter(id => !(work.quarantined_rider_ids ?? []).includes(id));
         // #6439 (owner 10/10): training follows the rider. A rider who changed team
@@ -432,7 +460,9 @@ export async function runNormalizedTrainingDateSweep({
       }
     });
     // Capacity only: persisted unfinished work always bypasses this cache.
-    if (!waitingForDate && summary.failed === failuresBeforeDate) completedDates.add(dateKey);
+    if (!waitingForDate && summary.failed === failuresBeforeDate) {
+      completedDates.set(dateKey, { teamIds: new Set(context.teams.map(team => team.id)), open: now < trainingDateBounds(job.tickDate).end });
+    }
     // Failures without durable work are only found again by a full pass.
     if (!untrackedFailure) fullPassDates.add(dateKey);
     if (job.tickDate === index.today && summary.swept > sweptBeforeDate) settledToday = true;
