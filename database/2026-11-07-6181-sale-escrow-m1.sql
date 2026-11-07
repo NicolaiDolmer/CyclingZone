@@ -357,7 +357,9 @@ BEGIN
          count(*) FILTER (WHERE t.rider_id = ANY (e.delivered_rider_ids) OR r.team_id = t.target_team_id)
     INTO v_parked, v_arrived
     FROM unnest(e.rider_ids, e.target_team_ids) AS t(rider_id, target_team_id)
-    JOIN public.riders r ON r.id = t.rider_id;
+    -- LEFT JOIN (Codex #7853): en leveret rytter, hvis raekke siden er slettet
+    -- (fx deleteRiderWithCleanup), taeller stadig som leveret via beviset.
+    LEFT JOIN public.riders r ON r.id = t.rider_id;
 
   IF p_outcome = 'release' THEN
     -- Hver rytter skal kunne leveres: parkeret mod maalholdet eller allerede leveret.
