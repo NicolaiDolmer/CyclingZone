@@ -23,7 +23,7 @@ import SortableTh from "../ui/SortableTh.jsx";
 import { squadBadgeKey } from "../../lib/squadBadge.ts";
 import { CheckIcon, ChevronDownIcon, ChevronRightIcon, FlagIcon, InfoIcon } from "../ui/icons/index.jsx";
 import TrainingScoreSparkline from "./TrainingScoreSparkline.tsx";
-import { Meter, TONIGHT_TEXT, type TodayRow } from "./TrainingTodayTable.tsx";
+import { FatigueAtStartLine, Meter, TONIGHT_TEXT, type TodayRow } from "./TrainingTodayTable.tsx";
 import type { AssistantKind } from "./TrainingTeamTableBModel.ts";
 
 export type TeamRowB = TodayRow & {
@@ -182,6 +182,7 @@ export default function TrainingTeamTableB({
             ) : (
               <Meter value={row.fatigue} warn={row.tired} tone="fatigue" />
             )}
+            <FatigueAtStartLine now={row.fatigue} atStart={row.fatigueAtStart} />
           </td>
           <td
             className={`${cellBase} w-[84px] text-right font-data text-[12.5px] tabular-nums ${
