@@ -45,6 +45,11 @@
 -- Afhaenger IKKE af M1 (2026-11-07-6181-sale-escrow-m1.sql); filerne kan
 -- applies i vilkaarlig raekkefoelge.
 --
+-- Forudsaetning foer flaget taendes: almindelige bud (POST /auctions/:id/bid)
+-- tager endnu ikke samme holdlaas. Den atomiske bud-gate kommer med pengelaas
+-- PR 5 (#6181); foer den er merget kan et samtidigt almindeligt bud og en start
+-- se samme ledige penge eller plads.
+--
 -- Ingen FK fra auctions.source_listing_id eller prisloggen til listings/hold med
 -- vilje: beta-reset sletter hold og listings (#1471), og loggen er et
 -- revisionsspor, der hverken maa blokere eller kaskade-slettes.
