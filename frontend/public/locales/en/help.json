@@ -1381,6 +1381,10 @@
       "u25u23": {
         "title": "U25 and U23 riders",
         "text": "U25 riders are 25 and younger in the season's reference year (the UCI rule), and U23 riders are 22 and younger. You can filter on U25/U23 in the rider database and watchlist."
+      },
+      "championJerseys": {
+        "title": "Champion jerseys",
+        "text": "A small jersey next to a rider's name shows a champion from last season's ranking. The white jersey with a navy and gold band is the world champion: the most points on the world ranking. The same jersey with a navy 23 panel is the U23 world champion: the most points on the U23 ranking, or the most points on the world ranking among riders under 23 if no U23 races gave points, so there is always one. The continental champions of Europe, Asia, the Americas, Africa and Oceania wear a jersey in their continent's colour with three dots, and a national champion wears his country's flag. Each title goes to the rider with the most ranking points in his group. A tie goes to the rider with the most wins, then the best placing. A rider keeps every title he wins, so a title never passes to number two. Tables show his highest title, and his profile shows them all. Ages follow the season year. The titles last the whole following season and only change when a new season starts. They are for show only and don't change value, races or the board. Hover or tap a jersey to see what it means."
       }
     },
     "dailytraining": {

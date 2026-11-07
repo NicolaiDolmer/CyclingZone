@@ -239,6 +239,14 @@ export function restRows(table, requestUrl = "") {
     // fejlklasse der har bidt før (ejeren skal kunne teste FØR live).
     // Evnerne ligger allerede embeddet på RIDERS; her serveres de som den
     // selvstændige tabel siden faktisk forespørger.
+    // #7824: mestertitler på preview, så navnecellen og profilen kan ses med kontakten i beta.
+    case "rider_champion_titles":
+      return [
+        { rider_id: "rider-1", title: "world", scope: "", season_number: 2 },
+        { rider_id: "rider-1", title: "continent", scope: "Europe", season_number: 2 },
+        { rider_id: "rider-1", title: "national", scope: "DK", season_number: 2 },
+        { rider_id: "rider-2", title: "u23_world", scope: "", season_number: 2 },
+      ];
     case "rider_derived_abilities": {
       const rows = RIDERS
         .filter((r) => r.rider_derived_abilities)

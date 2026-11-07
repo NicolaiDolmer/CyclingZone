@@ -49,6 +49,7 @@ let flags = [
   { key: "youth_squad_pages", area: "squad", label: "U23 team- og Junior team-sider", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
   { key: "training_fatigue_rules", area: "training", label: "Træthedsgrænse (spillerens regler)", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "season_matrix_mobile", area: "season", label: "Sæsonmatrix på mobil — ny visning", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
+  { key: "champion_jerseys_7824", area: "squad", label: "Mestertrøjer ved rytternavne (verden, U23, kontinent, national)", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "rider_why_button", area: "race-day", label: "Hvorfor?-knappen ved rytterne (Your day)", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
 ];
 
@@ -79,6 +80,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "development_v2_aging_enabled", // #6110 Hjaelp
   "potential_single_number", // #6110 Hjaelp
   "potential_estimate_display", // #7684 (flader + Hjaelp i byggetrin 6)
+  "champion_jerseys_7824", // #7824
   "rider_why_button", // #7717
   "ability_cap_per_date_enabled", // #6110 Hjaelp
   "training_decision_card", // #6110 Hjaelp

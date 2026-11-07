@@ -29,6 +29,9 @@ import {
 // sæsonslut; det er `Foreløbig`-chippen i sektions-headeren der bærer
 // forskellen. Skal det en dag være en titel, er det fire strenge i
 // seasonEnd-namespacet, ikke en kodeændring.
+// #7824 (ejer 6/11): beslutningen fra 26/7 er ændret. Ranglisten giver nu
+// titlerne verdensmester, kontinentmester og national mester som mestertrøjer ved
+// navnet (ChampionJersey.tsx). Blokken her bliver en optælling af sæsonen.
 //
 // Blokken må ALDRIG kunne vælte resten af siden. Ved sæson-cutover rammer ~150
 // managere /seasons samtidig via season_ended-notifikationen, så SeasonEndPage

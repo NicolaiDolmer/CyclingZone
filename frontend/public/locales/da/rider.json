@@ -989,5 +989,32 @@
     "current": "Nuværende fokus",
     "tradeoff": "Andre evner vokser en anelse langsommere.",
     "intensity_recovery": "Restitution"
+  },
+  "championJersey": {
+    "world": {
+      "name": "Verdensmester",
+      "short": "flest point på verdensranglisten sidste sæson.",
+      "full": "Flest point på verdensranglisten i sæson {{prev}}. Han bærer trøjen hele sæson {{season}}."
+    },
+    "u23World": {
+      "name": "U23-verdensmester",
+      "short": "flest point på sidste sæsons U23-rangliste.",
+      "full": "Flest point på U23-ranglisten i sæson {{prev}}, eller på verdensranglisten blandt ryttere under 23, hvis ingen U23-løb har givet point. Han bærer trøjen hele sæson {{season}}."
+    },
+    "continent": {
+      "europe": "Europamester",
+      "asia": "Asienmester",
+      "americas": "Panamerikansk mester",
+      "africa": "Afrikamester",
+      "oceania": "Oceanienmester",
+      "short": "flest ranglistepoint fra sit kontinent sidste sæson.",
+      "full": "Flest ranglistepoint blandt ryttere fra hans kontinent i sæson {{prev}}. Han bærer trøjen hele sæson {{season}}."
+    },
+    "national": {
+      "name": "National mester, {{country}}",
+      "short": "flest ranglistepoint fra {{country}} sidste sæson.",
+      "full": "Flest ranglistepoint blandt ryttere fra {{country}} i sæson {{prev}}. Han bærer trøjen hele sæson {{season}}."
+    },
+    "helpLink": "Sådan virker mestertrøjerne"
   }
 }
