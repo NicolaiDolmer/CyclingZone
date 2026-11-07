@@ -37,6 +37,9 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "season_academy_intake_enabled", area: "academy", label: "Akademi — sæsonoptag" },
   { key: "board_mandate_model_enabled", area: "board", label: "Bestyrelse — mandat-modellen" },
   { key: "daily_training_enabled", area: "training", label: "Daglig træning" },
+  // #7801: træthed lige nu på fladerne, i træningens regler og i assistentens udtagelse. Ikke seedet = off;
+  // kun "on" tænder, "beta" læses som off (riderFatigueNowFlag.js). Ejer-only flip.
+  { key: "fatigue_now_7801", area: "training", label: "Træthed lige nu — flader og regler" },
   { key: "training_score_visible", area: "training", label: "Træningsscore 1-99 (visning)" },
   { key: "training_mobile_table", area: "training", label: "Træningssiden på mobil — ny tabel" },
   // #1140: "Your first race"-kort for nye hold paa dashboardet. Seedet off.

@@ -73,6 +73,7 @@ export const FRESH_FLAG_KEYS = Object.freeze(new Set([
   "race_day_role_yield_enabled",
   "race_day_role_base_day_enabled",
   "race_day_catchup_enabled",
+  "fatigue_now_7801", // #7801: træningens regler og assistentens udtagelse på live-tallet
   // Nødstop for live systemer
   "stage_scheduler_enabled",
   "auto_prize_enabled",

@@ -65,6 +65,7 @@ Tæt er ikke det samme som rodet. Football Manager er tæt fordi alt sidder i et
 - **Rigtigt i dag:** `standings-desktop-light.png`: kolonner højrestillet, tabulære tal, "FØRER"-pille i guld, DIG-markør, zone-forklaring under.
 - **Forkert i dag:** `riders-desktop-light.png`: rytterens hold ("E2E Racing") ombrydes over to linjer i en smal kolonne, status-badge og type-badge har forskellig højde og farvelogik, og CLM-kolonnens 52/86 vises som farvede firkanter uden forklaring på fladen.
 - **Forkert på mobil:** `riders-mobile-light.png`. Tabellen dropper al numerik og viser kun navn + én meta-linje i ~19 px og ~15 px uppercase. Genren kører 14 px navn og 11 px meta. Mobil skal være tæt, ikke stor (P10).
+- **Evne-skalaen (ejer 7/11):** evner vises altid som `statColor`-firkanter med tallet indeni, i profilens rækkefølge. Skalaen bruges aldrig til penge, form eller andet. Én forklaring bor i Hjælp og i hover-kortet. Gælder, indtil vi har en bedre løsning for farveblinde (tallet står der altid).
 - **Spørgsmål:** Er tal tabulære og højrestillede, står ens ting ens (samme badge-højde, samme radius, samme rækkehøjde), og er der intet under 10 px?
 
 ### P6 · Tomme flader siger hvad man gør, ikke hvad der mangler
@@ -115,6 +116,51 @@ Ingen falske tal, ingen mock-ryttere, ingen "Coming soon" som fejl-fallback, ing
 
 - **Forkert i dag:** `help.json` lover "your club's Senior/U23/Junior squad structure" før den findes (rettes i #4618). `rider-profile-desktop-light.png` viser en tankestreg for rating og "Evner endnu ikke beregnet" uden at sige hvorfor eller hvornår.
 - **Spørgsmål:** Er hvert tal, hver liste og hver løfte på siden bakket af noget der findes i databasen nu?
+
+### P12 · Navne og tabeller er ens overalt (ejer 7/11)
+
+Et rytternavn og et holdnavn er altid et link til profilen, på samme måde på hver side, medmindre der er en relevant undtagelse (fx navnet i profilens egen hero). Tabeller med samme slags indhold ser ens ud i hele spillet: samme kolonnerækkefølge for de samme ting, samme rækkehøjde, samme sortering (§4 spørgsmål 7a).
+
+- **Navnecellens rækkefølge (ejer 7/11):** nation · navn · hover-ikon · mærker (mestertrøje eller talentmærke, højst ét af hver) · status-mærker (U25, AI, LIST, INJ…) · evt. ryttertype, placeret som de typisk står i dag. Mærkerne bruger spillets egne komponenter (`RiderBadges`, `RiderTypeBadge`), aldrig nye pille-stile (P8).
+- **Spørgsmål:** Er hvert rytter- og holdnavn et link til profilen med samme udseende som resten af spillet, og følger navnecellen den faste rækkefølge?
+
+### P13 · Én skrivemåde pr. slags tal (ejer 7/11)
+
+| Slags | Rigtigt | Forkert |
+|---|---|---|
+| Tidsgab | `+1:29` · `+10:31` · `+1:02:05` | `1m29s` · `01:29` · `+89 s` |
+| Vinderens tid | vinderens egen tid `h:mm:ss` | `+0:00` |
+| Penge | `1.432.766 CZ$` (DA) · `1,432,766 CZ$` (EN) | `1.4M` · `$1432766` |
+| Placering | tal i tabeller (`3`), ord i tekst (`3rd`/`nr. 3`) | `#3` |
+| Point og bonus | `20 pts` · `3 s bonus` | `20p` · `3"` |
+| Stigning, distance, højde | `8.3 %` · `11.8 km` · `2.740 m` | `8,30%` · `11.80km` |
+| Manglende værdi | en kort grund ("Ikke kørt endnu") | `—` · `0` · `N/A` |
+
+Hver række får én formatter i koden, så ingen formaterer i hånden. **Spørgsmål:** Er hvert tal skrevet på sin ene rigtige måde?
+
+### P14 · Bevægelse forklarer, den pynter ikke (ejer 7/11)
+
+Overlays åbner og lukker med en kort fade (ca. 150 ms). Tal der ændrer sig må tælle op, aldrig hoppe. Løbsfilmen har sit eget tempo og kan sættes på pause. Står enheden på "reducer bevægelse", animeres intet. **Ejer 7/11: flere animationer må gerne komme ind, hvor de hjælper spilleren med at forstå, hvad der skete** (fx at et tal ændrede sig, at en rytter rykkede op). Fjedre, glidende kort og forskudte lister uden mening er stadig forbudt (§3, AI-tell).
+
+### P15 · Hjælp man kan klikke på (ejer 7/11)
+
+Et fagord på fladen kan være prikket understreget: tryk eller hover viser én sætning og "Læs mere i Hjælp". Hver sektion må have højst ét "Hjælp: …"-link i guld-tekst (P3 quiet action). Ingen "?"- eller "i"-ikoner ved hver label (P7).
+
+### P16 · Fingre på mobil (ejer 7/11)
+
+Trykflader er mindst 44 × 44 px (WCAG 2.2 kræver mindst 24 × 24; 44 er det anbefalede niveau og Apples). Den synlige knap må være mindre, men trykfladen er 44. Langt tryk på en rytterrække åbner højreklik-menuen som et ark nederst; Safari på iOS sender ikke `contextmenu` ved langt tryk, så det laves med en timer på pointer-events. Fordi langt tryk er svært at opdage, findes de samme handlinger altid også via et tryk på hover-ikonet.
+
+### P18 · Overlays: hover-kort, højreklik-menu, tooltip (ejer 7/11, valg A)
+
+På computeren svæver kortet ved siden af det, man holder musen over (ca. 360 px bredt); listen bliver stående. På telefonen glider samme kort op fra bunden som et ark efter et tryk. Overlays bruger Inter Tight/DM Sans (aldrig Bebas, P4), spillets egne mærker (P8), hairline + 5 px radius + én skygge (§3 tillader skygge her), Esc lukker, fokus holdes inde, og de bygges med browserens popover og ankerpositionering (Googles menu-vejledning). Sidepanel og "fold ud under rækken" er afvist som standard.
+
+### P19 · Ruteprofilen: én tegning, to størrelser (ejer 7/11, valg A)
+
+Hver etape har én profil. Stor (løbssiden): farvet efter stigningsprocent (under 3 / 3-6 / 6-8 / 8-10 / over 10 %), stigningens navn, kategori og den rigtige højde på toppen fra højdedata. Lille (etapebjælken, lister): samme form i én rolig tone med en rød prik ved hver kategoriseret stigning, plus spillets terræn-ikon i farve. Én komponent tegner begge.
+
+### P17 · Designbilleder fortæller sandheden (ejer 7/11)
+
+Billeder, vi beslutter ud fra, følger samme krav som spillet: ægte data fra spillet (private tal vises som "eksempel"), før og efter side om side, nummererede noter der peger på billedet, muligheder med fordele og ulemper og én anbefaling. Engelsk i Discord, dansk med ejeren. **Kun ejeren godkender ændringer til dette dokument**; andre må gerne sige deres mening.
 
 ---
 
@@ -196,6 +242,12 @@ Bruges i slice 2 på hver af de 63 sider, i lys, mørk og mobil. **Hvert "nej" e
 15. Viser 375 px-udgaven navnekolonnen + tre kolonner uden vandret scroll — heriblandt sidens handling, hvis rækken har en — med chip-rækken og "Fuld tabel" (neutral, aldrig gold) til resten, og 16 px sidepadding? (P10 / D-047)
 16. Holder mørk tilstand samme hierarki (ingen flader der forsvinder, ingen guld-tekst der ikke er `--accent-t`-ækvivalent)? (GUIDELINES §2)
 
+**Tilføjet 7/11 (ejer)**
+18. Er hvert rytter- og holdnavn et ensartet link, og følger navnecellen den faste rækkefølge? (P12)
+19. Er hvert tal skrevet på sin ene rigtige måde? (P13)
+20. Har hver trykflade på mobil mindst 44 × 44 px, og når man alle handlinger uden langt tryk? (P16)
+21. Følger overlays reglen: svævende kort på computeren, ark på telefonen, spillets fonte og mærker, Esc lukker? (P18)
+
 **Bonus-spørgsmålet der afgør verdensklasse**
 17. Ville en Football Manager-spiller der ser siden i 5 sekunder tro at den var lavet af nogen der elsker cykelsport? Hvis nej: hvad mangler? Skriv det som fundet.
 
@@ -228,6 +280,24 @@ Otte forks blev vist som mockup-varianter (A/B/C) og afgjort af ejeren 2/9 2026.
 | 6 | Mobil-tabel | **A · pinned navn + vandret scroll** | Bygges én gang i `DataTable`; gælder alle T2-sider |
 | 7 | Genre-anker ved konflikt | **Football Manager** | Tæthed vinder over ro; roen kommer fra typografi |
 | 8 | Tjeklistens strenghed | **Som skrevet** (17 spørgsmål, tre bånd, fire vejer dobbelt) | Fund = hvert nej; rangering = manglende point × trafik |
+
+### Ejer-beslutninger 7/11 (Discord #build-a-feature, visuelle forslag 1-10)
+
+| # | Forslag | Valg |
+|---|---|---|
+| 1 | Overlays | A · svævende kort på computeren, ark fra bunden på telefonen (P18) |
+| 4 | Ruteprofil | A · stor farvet efter stigning, lille i én tone med røde prikker + terræn-ikon (P19) |
+| 2 | Navnecellen | Nation · navn · ikon · mærker · status · evt. ryttertype (P12) |
+| 3 | Evne-farver | A · behold firkanterne, forklaring i Hjælp og kortet, indtil bedre løsning for farveblinde (P5) |
+| 5 | Talformater | Ja (P13) |
+| 6 | Bevægelse | A · kun når den forklarer; flere animationer må gerne komme ind, hvor de passer (P14) |
+| 7 | Klikbar hjælp | A · prikket ord + ét Hjælp-link pr. sektion (P15) |
+| 8 | Fingre på mobil | A · 44 px, langt tryk = menu, hvis det følger moderne web-praksis (P16) |
+| 9 | Designbilleder | A · standard for billeder (P17) |
+| 10 | Tjeklisten | Ja, spørgsmål 18-20 i §4 |
+| ny | Tabeller og navne | Tabeller ens overalt, rytter- og holdnavne altid klikbare (P12) |
+
+Åben: rettelsen af række 6 ovenfor (mobil-tabeller, D-047) afventer svar. Hele spillet gennemgås side for side mod TASTE (eget issue), og rettes løbende, når vi kommer forbi siderne.
 
 ## 7. Kilder
 

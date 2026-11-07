@@ -58,6 +58,8 @@ import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { isTrainingConditionPerDateEnabled, readConditionWriterFlag } from './trainingDateConditionFlag.js';
 import { isConditionModelV2Enabled, isRaceDateTrainingDayEnabled } from './conditionModelV2Flag.js';
 import { loadTeamMedicalBonus } from './medicalEffects.js';
+import { fatigueNowBeforeGameDay, slotFatiguesNow } from './riderFatigueNow.js'; // #7801
+import { isFatigueNow7801Enabled } from './riderFatigueNowFlag.js';
 import { settleTrainingDateCondition, canonicalRaceLoads } from './trainingDateCondition.js';
 import {
   TRAINING_RACE_DAY_CONFIG, resolveRaceDayBudgetDivisor, raceDaySeedKey, resolveTeamRaceDay,
@@ -519,6 +521,8 @@ export async function runTeamTrainingDay({
   // #6984: v2 laeses kun naar dato-modellen ejer tilstanden (ellers ingen ekstra read).
   const conditionModelV2On = conditionPerDate ? await isConditionModelV2Enabled(supabase) : false;
   const raceDateTrainingDayOn = conditionModelV2On ? await isRaceDateTrainingDayEnabled(supabase) : false; // #7536
+  // #7801: reglerne og skaderisikoen på trætheden lige nu. Kun under v2 (ellers ingen read).
+  const fatigueNowOn = conditionModelV2On ? await isFatigueNow7801Enabled(supabase) : false;
   if(conditionPerDate && eligibleRiderIds==null) throw new Error('Normalized training requires an explicit ready-rider list');
   let dateReceipts = [];
   let dateWork = null;
@@ -1083,8 +1087,13 @@ export async function runTeamTrainingDay({
     if (dayProgram.source === "program") program.focus = dayProgram.focus;
     program.intensity = dayProgram.intensity;
     // #4854: reglen vurderes paa traethed ved DATOENS START og retter aldrig planen.
+    // #7801: med kontakten paa trætheden lige nu (aabningen plus datoens koerte etaper).
     const fatigueRuleResult = fatigueRules ? applyFatigueRules({
-      program, rule: fatigueRules.forRider(rider.id), fatigueAtDateStart: Number(conditionBeforeDate.fatigue ?? 0),
+      program, rule: fatigueRules.forRider(rider.id),
+      fatigueAtDateStart: fatigueNowOn ? fatigueNowBeforeGameDay({
+        openingFatigue: Number(conditionBeforeDate.fatigue ?? 0), loadRows: canonicalLoadRows, riderId: rider.id,
+        beforeGameDay: raceDay, recoveryAbility: Number(abRow.recovery ?? 50), medicalBonus: teamMedicalBonus,
+      }) : Number(conditionBeforeDate.fatigue ?? 0),
       slotIndex: programSlot, rodeStagePreviousDate: stageYesterdayRiderIds.has(rider.id),
     }) : null;
     if (fatigueRuleResult?.stamp) {
@@ -1330,10 +1339,17 @@ export async function runTeamTrainingDay({
     // 57 mod 67 med de gamle tal), ikke mod løbsdags-udviklingen. At slukke
     // udviklingen må ikke rulle dem tilbage — det var netop koblingen der gjorde
     // "sluk udviklingen for S3" umulig før dette split.
+    const settleIntensities = settlesCondition ? [...priorDateReports.map(report=>canonicalLoadRows.some(load=>load.rider_id===rider.id&&load.game_day===report.game_day)?'race':report.intensity),effectiveIntensity] : null;
+    const settleRaceLoads = settlesCondition ? dateDays.map(day => Number(canonicalLoadRows.find(row => row.rider_id === rider.id && row.game_day === day)?.load ?? 0)) : null;
     const dailyCondition = settlesCondition ? settleTrainingDateCondition({
       riderId: rider.id, dateStr: tickDate, condition: conditionBeforeDate,
-      intensities: [...priorDateReports.map(report=>canonicalLoadRows.some(load=>load.rider_id===rider.id&&load.game_day===report.game_day)?'race':report.intensity),effectiveIntensity],
-      raceLoads: dateDays.map(day => Number(canonicalLoadRows.find(row => row.rider_id === rider.id && row.game_day === day)?.load ?? 0)),
+      intensities: settleIntensities,
+      raceLoads: settleRaceLoads,
+      // #7801: skaderisikoen pr. felt paa trætheden lige nu foer feltet (kun med kontakten).
+      riskFatigues: fatigueNowOn ? slotFatiguesNow({
+        openingFatigue: Number(conditionBeforeDate.fatigue ?? 0), intensities: settleIntensities, raceLoads: settleRaceLoads,
+        recoveryAbility: Number(abRow.recovery ?? 50), medicalBonus: teamMedicalBonus,
+      }) : null,
       recoveryAbility: recoveryBeforeDate,
       recoveryConfig: raceDayEngineOn ? RACE_DAY_ENGINE_RECOVERY_CONFIG : {},
       modelV2: conditionModelV2On,
