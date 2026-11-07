@@ -101,6 +101,7 @@ import { processEmailRetryDrain } from "./lib/emailRetrySweep.js"; // #3600
 import { runEmailHealthReport } from "./lib/emailHealthReport.js"; // #2853
 import { runDiscordRaceDigestSweep } from "./lib/discordRaceDigestSweep.js"; // #3400
 import { runDiscordWelcomeSweep } from "./lib/discordWelcomeSweep.js"; // #5130
+import { runRoadmapDeliveredNotify } from "./lib/roadmapDeliveredNotify.js"; // #7792
 import { runSeasonDocumentarySweep } from "./lib/seasonDocumentarySweep.js"; // #3402
 import { createAluntaClient } from "./lib/alunta.js"; // #2736
 import { runAluntaSubscriptionReconcile } from "./lib/aluntaSubscriptionReconcile.js"; // #2736
@@ -1572,6 +1573,13 @@ async function runDiscordWelcomeSweepCron() {
   if (r.sent) console.log(`💬 Discord-welcome: ${r.sent} sendt (${r.candidates} kandidater, ${r.failed} fejlet)`);
 }
 
+// #7792: besked til managere der stemte hoejt paa et roadmap-punkt, naar det er leveret.
+// Idempotent via roadmap_delivery_receipts; no-op naar intet leveret er aabent.
+async function runRoadmapDeliveredNotifyCron() {
+  const r = await runRoadmapDeliveredNotify({ supabase, now: new Date() });
+  if (r.sent) console.log(`Roadmap-delivered: ${r.sent} beskeder (${r.items} punkter, ${r.failed} fejlet)`);
+}
+
 async function runEmailDay1SweepCron() {
   const r = await runEmailDay1Sweep({ supabase, now: new Date(), ...emailOpsWiring });
   if (r.sent) console.log(`✉️  Email-day1: ${r.sent} sendt/dry-run (${r.candidates} kandidater)`);
@@ -2315,6 +2323,11 @@ export function startCron() {
   // minutter, så en 5-min-poll rammer det praktisk talt med det samme.
   setInterval(
     trackedTick("discord-welcome sweep", monitorCron("discord-welcome", runDiscordWelcomeSweepCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
+  // #7792 - leveret-beskeden til dem der stemte hoejt. Samme 5-min-kadence.
+  setInterval(
+    trackedTick("roadmap-delivered sweep", monitorCron("roadmap-delivered", runRoadmapDeliveredNotifyCron, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
   );
   setInterval(

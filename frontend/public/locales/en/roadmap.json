@@ -125,7 +125,8 @@
     "recent": "Delivered in the last 7 days",
     "earlier": "Earlier",
     "patchNote": "Patch note · {date}",
-    "allPatchNotes": "All patch notes"
+    "allPatchNotes": "All patch notes",
+    "youVoted": "You voted"
   },
   "empty": {
     "plan": {

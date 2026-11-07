@@ -306,6 +306,10 @@
       "title": "De assistent heeft je selectie ingevuld",
       "message": "Je assistent heeft je selectie voor {race} gekozen. Je had geen selectie ingediend. Kijk ernaar en wijzig hem als je wilt."
     },
+    "roadmapDelivered": {
+      "title": "Iets waar je op stemde is live",
+      "message": "Je stemde hoog op {item}, en het is nu live. Bedankt dat je me helpt kiezen wat ik bouw."
+    },
     "riderRetired": {
       "title": "{name} is gestopt",
       "message": "{name} is op {age}-jarige leeftijd gestopt met het profwielrennen. Zijn plek in je selectie is nu vrij."
