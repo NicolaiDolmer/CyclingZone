@@ -9,11 +9,16 @@
 -- krediteres foerst naar rytteren faktisk skifter hold. Ved oejeblikkeligt skifte
 -- bruges escrow ikke; den sti er uaendret.
 --
--- Tre dele:
+-- Fire dele:
 --   1. public.sale_escrows: en raekke pr. parkeret handel (transfer, auktion,
 --      bytte med kontanter). UNIQUE (deal_type, deal_id) goer oprettelsen
 --      idempotent. En rytter kan hoejst vaere i een holdt escrow ad gangen
 --      (haandhaeves i hold_sale_escrow under raekkelaas paa rytterne).
+--   1b. Varigt leveringsbevis: en trigger paa riders noterer i
+--      delivered_rider_ids, naar en rytter i en holdt escrow faar sit maalhold
+--      som team_id, uanset hvilken sti der flyttede ham. Saa kan en senere
+--      parkering eller et videresalg aldrig skjule, at koeberen fik rytteren,
+--      og en refusion afvises.
 --   2. public.hold_sale_escrow(...): i EEN transaktion opretter den escrow'en
 --      og traekker koeberen. Rytterne skal allerede vaere parkeret mod deres
 --      maalhold (pending_team_id). Koeberens finance-noegle er den samme som i
@@ -35,9 +40,11 @@
 -- release/refund: ryd fremtidige loebstilmeldinger, ejerskabslog, beskeder og
 -- trup-gendannelse ved refusion. RPC'en returnerer de flyttede ryttere.
 --
--- Laaseraekkefoelge (deadlock-fri): hold laaser rytter-raekkerne (sorteret) og
--- derefter koeberens holdlaas (via increment_balance_with_audit). settle laaser
--- escrow-raekken, derefter rytter-raekkerne (sorteret), derefter een holdlaas.
+-- Laaseraekkefoelge (deadlock-fri, samme som de eksisterende RPC'er, fx
+-- demote_rider_to_academy): foerst holdlaasene (pg_advisory_xact_lock paa begge
+-- hold i fast raekkefoelge), saa rytter-raekkerne (sorteret), til sidst
+-- escrow-raekken. Leverings-triggeren laaser ogsaa rytter foer escrow.
+-- increment_balance_with_audit tager en holdlaas, transaktionen allerede har.
 --
 -- Ingen FK til teams/riders med vilje: beta-reset sletter hold (reset-fk-audit
 -- #1471), og en escrow er et revisionsspor, der hverken maa blokere eller
@@ -56,12 +63,16 @@
 --       WHERE table_schema = 'public' AND table_name = 'sale_escrows';  -- kun service_role (+ postgres)
 --   4. SELECT p.proname, has_function_privilege('anon', p.oid, 'EXECUTE') AS anon,
 --             has_function_privilege('authenticated', p.oid, 'EXECUTE') AS auth
---        FROM pg_proc p WHERE p.proname IN ('hold_sale_escrow','settle_sale_escrow','sale_escrow_finance_key');
---      -- anon=false, auth=false for alle tre
+--        FROM pg_proc p WHERE p.proname IN ('hold_sale_escrow','settle_sale_escrow','sale_escrow_finance_key','sale_escrow_mark_delivery','sale_escrow_lock_teams');
+--      -- anon=false, auth=false for alle fem
+--   5. SELECT tgname FROM pg_trigger WHERE tgrelid = 'public.riders'::regclass AND tgname = 'riders_sale_escrow_delivery';  -- 1 raekke
 --
 -- Rollback (kun mens tabellen er tom):
+--   DROP TRIGGER IF EXISTS riders_sale_escrow_delivery ON public.riders;
+--   DROP FUNCTION IF EXISTS public.sale_escrow_mark_delivery();
 --   DROP FUNCTION IF EXISTS public.settle_sale_escrow(uuid, text, jsonb, timestamptz);
 --   DROP FUNCTION IF EXISTS public.hold_sale_escrow(text, uuid, uuid, uuid, bigint, uuid[], uuid[], jsonb, jsonb);
+--   DROP FUNCTION IF EXISTS public.sale_escrow_lock_teams(uuid, uuid);
 --   DROP FUNCTION IF EXISTS public.sale_escrow_finance_key(text, text, uuid);
 --   DROP TABLE IF EXISTS public.sale_escrows;
 --
@@ -81,6 +92,7 @@ CREATE TABLE IF NOT EXISTS public.sale_escrows (
   rider_ids uuid[] NOT NULL,
   target_team_ids uuid[] NOT NULL,
   payee_payload jsonb NOT NULL,
+  delivered_rider_ids uuid[] NOT NULL DEFAULT '{}',
   status text NOT NULL DEFAULT 'held' CHECK (status IN ('held', 'released', 'refunded')),
   created_at timestamptz NOT NULL DEFAULT now(),
   settled_at timestamptz,
@@ -127,6 +139,47 @@ AS $$
     WHEN 'swap:payee'     THEN 'swap_receiver:'
   END || p_deal_id::text
 $$;
+
+-- Holdlaase i fast raekkefoelge. Samme noegle som increment_balance_with_audit,
+-- saa en escrow-afregning og enhver anden pengebevaegelse paa holdet serialiseres.
+CREATE OR REPLACE FUNCTION public.sale_escrow_lock_teams(p_a uuid, p_b uuid)
+RETURNS void
+LANGUAGE plpgsql
+SET search_path = public, pg_catalog
+AS $$
+BEGIN
+  PERFORM pg_advisory_xact_lock(hashtextextended(least(p_a, p_b)::text, 0));
+  PERFORM pg_advisory_xact_lock(hashtextextended(greatest(p_a, p_b)::text, 0));
+END;
+$$;
+
+-- Varigt leveringsbevis (se 1b i headeren). Koerer under raekkelaasen paa
+-- rytteren og laaser derefter escrow-raekken: samme raekkefoelge som settle.
+-- SECURITY DEFINER, saa en sti der flytter ryttere uden rettigheder paa
+-- sale_escrows aldrig fejler paa grund af triggeren.
+CREATE OR REPLACE FUNCTION public.sale_escrow_mark_delivery()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_catalog
+AS $$
+BEGIN
+  UPDATE public.sale_escrows e
+     SET delivered_rider_ids = array_append(e.delivered_rider_ids, NEW.id)
+   WHERE e.status = 'held'
+     AND e.rider_ids @> ARRAY[NEW.id]
+     AND NOT (e.delivered_rider_ids @> ARRAY[NEW.id])
+     AND e.target_team_ids[array_position(e.rider_ids, NEW.id)] = NEW.team_id;
+  RETURN NULL;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS riders_sale_escrow_delivery ON public.riders;
+CREATE TRIGGER riders_sale_escrow_delivery
+  AFTER UPDATE OF team_id ON public.riders
+  FOR EACH ROW
+  WHEN (NEW.team_id IS NOT NULL AND OLD.team_id IS DISTINCT FROM NEW.team_id)
+  EXECUTE FUNCTION public.sale_escrow_mark_delivery();
 
 CREATE OR REPLACE FUNCTION public.hold_sale_escrow(
   p_deal_type text,
@@ -190,8 +243,9 @@ BEGIN
   v_payer_key := public.sale_escrow_finance_key(p_deal_type, 'payer', p_deal_id);
   v_payee_key := public.sale_escrow_finance_key(p_deal_type, 'payee', p_deal_id);
 
-  -- Rytter-raekkerne laases i fast raekkefoelge: to samtidige hold paa samme
-  -- rytter (eller en settle) serialiseres her.
+  -- Holdlaase foerst, saa rytter-raekkerne i fast raekkefoelge (se headeren):
+  -- to samtidige hold paa samme rytter (eller en settle) serialiseres her.
+  PERFORM public.sale_escrow_lock_teams(p_payer_team_id, p_payee_team_id);
   PERFORM 1 FROM public.riders WHERE id = ANY (p_rider_ids) ORDER BY id FOR UPDATE;
 
   SELECT * INTO v_existing FROM public.sale_escrows
@@ -280,34 +334,46 @@ BEGIN
     RAISE EXCEPTION 'settle_sale_escrow: refund payload must be a transfer_in object' USING ERRCODE = '22023';
   END IF;
 
-  SELECT * INTO e FROM public.sale_escrows WHERE id = p_escrow_id FOR UPDATE;
+  -- Laaseraekkefoelge (se headeren): hold, ryttere, escrow. Hold og ryttere i en
+  -- escrow aendres aldrig, saa de kan laeses foer laasene; status laeses igen
+  -- under raekkelaasen.
+  SELECT * INTO e FROM public.sale_escrows WHERE id = p_escrow_id;
   IF NOT FOUND THEN
     RETURN jsonb_build_object('status', 'missing');
   END IF;
+  PERFORM public.sale_escrow_lock_teams(e.payer_team_id, e.payee_team_id);
+  PERFORM 1 FROM public.riders WHERE id = ANY (e.rider_ids) ORDER BY id FOR UPDATE;
+  SELECT * INTO e FROM public.sale_escrows WHERE id = p_escrow_id FOR UPDATE;
   IF e.status <> 'held' THEN
     RETURN jsonb_build_object('status', 'already_settled', 'escrow_status', e.status);
   END IF;
 
   v_n := cardinality(e.rider_ids);
-  PERFORM 1 FROM public.riders WHERE id = ANY (e.rider_ids) ORDER BY id FOR UPDATE;
 
-  SELECT count(*) FILTER (WHERE r.pending_team_id = t.target_team_id AND r.team_id IS DISTINCT FROM t.target_team_id),
-         count(*) FILTER (WHERE r.team_id = t.target_team_id AND r.pending_team_id IS NULL)
+  -- Leveret = varigt bevis fra triggeren ELLER rytteren staar paa maalholdet nu
+  -- (ogsaa hvis koeberen allerede har parkeret ham videre).
+  SELECT count(*) FILTER (WHERE NOT (t.rider_id = ANY (e.delivered_rider_ids) OR r.team_id = t.target_team_id)
+                            AND r.pending_team_id = t.target_team_id),
+         count(*) FILTER (WHERE t.rider_id = ANY (e.delivered_rider_ids) OR r.team_id = t.target_team_id)
     INTO v_parked, v_arrived
     FROM unnest(e.rider_ids, e.target_team_ids) AS t(rider_id, target_team_id)
     JOIN public.riders r ON r.id = t.rider_id;
 
   IF p_outcome = 'release' THEN
-    -- Hver rytter skal kunne leveres: parkeret mod maalholdet eller allerede der.
+    -- Hver rytter skal kunne leveres: parkeret mod maalholdet eller allerede leveret.
     IF v_parked + v_arrived <> v_n THEN
       RETURN jsonb_build_object('status', 'not_deliverable');
     END IF;
 
+    -- Kun ryttere, der aldrig er leveret, flyttes: en leveret rytter, der siden
+    -- er parkeret i en ny handel, tilhoerer den handel.
     WITH moved AS (
       UPDATE public.riders r
          SET team_id = t.target_team_id, pending_team_id = NULL, acquired_at = p_settled_at
         FROM unnest(e.rider_ids, e.target_team_ids) AS t(rider_id, target_team_id)
        WHERE r.id = t.rider_id AND r.pending_team_id = t.target_team_id
+         AND r.team_id IS DISTINCT FROM t.target_team_id
+         AND NOT (t.rider_id = ANY (e.delivered_rider_ids))
       RETURNING r.id
     )
     SELECT coalesce(array_agg(id ORDER BY id), '{}') INTO v_riders FROM moved;
@@ -342,6 +408,8 @@ BEGIN
     RETURN jsonb_build_object('status', 'payee_already_credited');
   END IF;
 
+  -- Ingen rytter er leveret (tjekket ovenfor), saa en parkering mod maalholdet
+  -- tilhoerer denne handel.
   WITH unparked AS (
     UPDATE public.riders r
        SET pending_team_id = NULL
@@ -376,6 +444,9 @@ $$;
 
 REVOKE ALL ON FUNCTION public.sale_escrow_finance_key(text, text, uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.sale_escrow_finance_key(text, text, uuid) TO service_role;
+REVOKE ALL ON FUNCTION public.sale_escrow_lock_teams(uuid, uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.sale_escrow_lock_teams(uuid, uuid) TO service_role;
+REVOKE ALL ON FUNCTION public.sale_escrow_mark_delivery() FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.hold_sale_escrow(text, uuid, uuid, uuid, bigint, uuid[], uuid[], jsonb, jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.hold_sale_escrow(text, uuid, uuid, uuid, bigint, uuid[], uuid[], jsonb, jsonb) TO service_role;
 REVOKE ALL ON FUNCTION public.settle_sale_escrow(uuid, text, jsonb, timestamptz) FROM PUBLIC, anon, authenticated;

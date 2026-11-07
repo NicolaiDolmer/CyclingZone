@@ -168,6 +168,35 @@ test('release efter at rytteren allerede er ankommet krediterer kun saelger', as
   assert.equal((await rider(db, RIDER.r1)).acquired_at, null, 'en allerede flyttet rytter roeres ikke');
 });
 
+test('en leveret rytter forbliver leveret, ogsaa naar koeberen handler ham videre', async () => {
+  // Rytteren leveres uden om escrow'en og parkeres straks i en ny handel mod Hold C.
+  const db = await database();
+  await park(db, RIDER.r1, TEAM.B);
+  const held = await hold(db, transfer());
+  await db.query('UPDATE riders SET team_id = $2, pending_team_id = NULL WHERE id = $1', [RIDER.r1, TEAM.B]);
+  await park(db, RIDER.r1, TEAM.C);
+  assert.deepEqual((await one(db, 'SELECT delivered_rider_ids FROM sale_escrows WHERE id = $1', [held.escrow_id])).delivered_rider_ids, [RIDER.r1]);
+  assert.deepEqual(await settle(db, held.escrow_id, 'refund'), { status: 'already_delivered' });
+  assert.equal(await balance(db, TEAM.B), START - 250_000, 'koeber faar ikke pengene tilbage for en rytter, han fik');
+  const released = await settle(db, held.escrow_id, 'release');
+  assert.equal(released.status, 'released');
+  assert.deepEqual(released.moved_rider_ids, [], 'den nye parkering tilhoerer den nye handel');
+  assert.equal((await rider(db, RIDER.r1)).pending_team_id, TEAM.C);
+  assert.equal(await balance(db, TEAM.A), START + 250_000);
+
+  // Videresolgt og flyttet til Hold C, inden escrow'en blev afregnet: beviset staar.
+  const db2 = await database();
+  await park(db2, RIDER.r1, TEAM.B);
+  const held2 = await hold(db2, transfer());
+  await db2.query('UPDATE riders SET team_id = $2, pending_team_id = NULL WHERE id = $1', [RIDER.r1, TEAM.B]);
+  await db2.query('UPDATE riders SET team_id = $2 WHERE id = $1', [RIDER.r1, TEAM.C]);
+  await park(db2, RIDER.r1, TEAM.B); // Hold C saelger ham tilbage til Hold B
+  assert.deepEqual(await settle(db2, held2.escrow_id, 'refund'), { status: 'already_delivered' });
+  const released2 = await settle(db2, held2.escrow_id, 'release');
+  assert.deepEqual(released2.moved_rider_ids, [], 'parkeringen tilbage til Hold B er en anden handel');
+  assert.equal((await rider(db2, RIDER.r1)).team_id, TEAM.C);
+});
+
 test('fejlet levering: release afvises, refusion giver koeber pengene tilbage een gang', async () => {
   const db = await database();
   const before = await total(db);
@@ -278,8 +307,8 @@ test('kun service_role kan laese tabellen og kalde RPC\'erne', async () => {
   assert.equal((await one(db, "SELECT relrowsecurity FROM pg_class WHERE oid = 'public.sale_escrows'::regclass")).relrowsecurity, true);
   for (const role of ['anon', 'authenticated']) {
     const rows = (await db.query(`SELECT p.proname, has_function_privilege('${role}', p.oid, 'EXECUTE') AS ok FROM pg_proc p
-      WHERE p.proname IN ('hold_sale_escrow', 'settle_sale_escrow', 'sale_escrow_finance_key')`)).rows;
-    assert.equal(rows.length, 3);
+      WHERE p.proname IN ('hold_sale_escrow', 'settle_sale_escrow', 'sale_escrow_finance_key', 'sale_escrow_lock_teams', 'sale_escrow_mark_delivery')`)).rows;
+    assert.equal(rows.length, 5);
     assert.ok(rows.every(row => row.ok === false), `${role} may not execute`);
     assert.equal((await one(db, `SELECT has_table_privilege('${role}', 'public.sale_escrows', 'SELECT') AS ok`)).ok, false);
   }
