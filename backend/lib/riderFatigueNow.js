@@ -206,7 +206,7 @@ export async function fatigueByRiderNow({ supabase, conditions, abilityByRider =
     return new Map(live.map((r) => [r.rider_id, r.fatigue]));
   } catch (err) {
     // best-effort: visningen og udtagelsen falder tilbage til dagens tal (åbningen).
-    console.warn(`[fatigue-now-7801] live-tal faldt tilbage til åbningen: ${err.message}`);
+    console.warn(`[fatigue-now-7801] fell back to opening fatigue: ${err.message}`);
     return base;
   }
 }
@@ -294,7 +294,7 @@ export async function fatigueOutlookForTeam({ supabase, team, seasonId, conditio
     }
   } catch (err) {
     // best-effort: uden skøn viser fladen kun tallet lige nu.
-    console.warn(`[fatigue-now-7801] skøn ved start udeladt: ${err.message}`);
+    console.warn(`[fatigue-now-7801] stage-start estimate omitted: ${err.message}`);
   }
   return out;
 }
