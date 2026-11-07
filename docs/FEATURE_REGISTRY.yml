@@ -408,7 +408,7 @@ features:
 
   - id: stage-page-v2
     area: race-day
-    title_en: Stage page 2.0 (stage tabs, real elevation profile, your day)
+    title_en: Stage page 2.0
     title_da: Etapeside 2.0 (etapefaner, rigtig højdeprofil, din dag)
     state: live
     epic: 6570
@@ -971,7 +971,7 @@ features:
 
   - id: development-v2-aging
     area: season
-    title_en: Development 2.0 part 1 (decline at season change, only manager teams develop)
+    title_en: Development 2.0 part 1
     title_da: Udvikling 2.0 del 1 (tilbagegang ved sæsonskiftet, kun managerhold udvikler sig)
     state: live
     flag: development_v2_aging_enabled
@@ -991,7 +991,7 @@ features:
 
   - id: development-curve-b
     area: training
-    title_en: Development curve B (level and potential drive development, not age)
+    title_en: Development curve B
     title_da: Udviklingskurve B (niveau og potentiale styrer udviklingen, ikke alder)
     state: live
     flag: development_curve_b
@@ -1117,7 +1117,7 @@ features:
 
   - id: race-day-role-yield
     area: training
-    title_en: Race day = hard day plus a role-weighted extra in the stage abilities
+    title_en: Race day as a hard training day
     title_da: Løbsdag = hård dag + tillæg i etapens evner efter rolle
     state: live
     flag: race_day_role_yield_enabled
@@ -1141,7 +1141,7 @@ features:
 
   - id: promotion-pending
     area: academy
-    title_en: Awaiting promotion instead of auto-sale when the next squad is full
+    title_en: Awaiting promotion instead of auto-sale
     title_da: Afventer oprykning i stedet for automatisk salg ved fuld trup
     state: live
     flag: promotion_pending_enabled
