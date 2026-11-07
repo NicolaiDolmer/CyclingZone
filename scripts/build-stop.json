@@ -498,6 +498,10 @@
     {
       "issue": 7827,
       "why": "Til dørs lukker selv interne opgaver, ejer-go 7/11 i chat"
+    },
+    {
+      "issue": 7837,
+      "why": "Hændelse 7/11: worktree-oprydning slettede arbejde; ejer 7/11 i chat: sørg for at det aldrig sker igen"
     }
   ],
   "brandList": [
