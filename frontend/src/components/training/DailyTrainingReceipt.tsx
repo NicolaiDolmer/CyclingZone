@@ -121,8 +121,9 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
           </div>}
           {visible && progress.length > 0 && <div data-testid="daily-receipt-progress-detail">
             <p className={`${META} mb-1`}>{t("dailyReceipt.progressHeading")}</p>
-            <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
-              {progress.map(({key,percent})=><div key={key} className="flex items-baseline justify-between gap-3 border-t border-cz-border py-1.5 text-xs">
+            {/* #7746: columns read top to bottom, so the list keeps the profile's order. */}
+            <div className="gap-x-6 sm:columns-2">
+              {progress.map(({key,percent})=><div key={key} className="flex break-inside-avoid items-baseline justify-between gap-3 border-t border-cz-border py-1.5 text-xs">
                 <span className="text-cz-2">{abilityName(key)}</span>
                 <span className="font-data tabular-nums text-cz-2">{t("dailyReceipt.pointContribution",{percent:formatNumber(percent)})}</span>
               </div>)}
@@ -138,7 +139,7 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
   const quietId = `receipt-${run.tick_date}-${run.season_id ?? "legacy"}-no-whole-point`;
   return (
     <Section data-testid="daily-training-receipt" data-date={run.tick_date} data-status={run.receipt_status}>
-      <button type="button" className={`flex min-h-[44px] w-full flex-wrap items-baseline justify-between gap-3 text-left ${expanded ? "mb-4" : ""}`} aria-expanded={expanded} onClick={()=>setExpanded(value=>!value)} data-testid="training-history-day-toggle">
+      <button type="button" className={`flex min-h-[44px] w-full flex-wrap items-center justify-between gap-x-3 gap-y-1 text-left ${expanded ? "mb-4" : ""}`} aria-expanded={expanded} onClick={()=>setExpanded(value=>!value)} data-testid="training-history-day-toggle">
         <SectionHeader title={`${formatDate(run.tick_date)}${run.previous_season ? ` · ${t("dailyReceipt.previousSeason")}` : ""}`} className="mb-0" />
         <span className={`flex items-center gap-2 ${META}`}>
           {/* #7745: a folded date still says what it landed. */}
