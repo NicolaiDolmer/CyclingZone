@@ -158,7 +158,7 @@ export function ItemFormModal({ open, item, flags, planned, onClose, onSaved }) 
         <Field label="Titel (DA)" htmlFor={`${uid}-da`}>
           <Input id={`${uid}-da`} size="sm" value={form.title_da} onChange={(e) => set("title_da", e.target.value)} />
         </Field>
-        <Field label="Kategori" htmlFor={`${uid}-category`} helper="Kun til admin-grafen. Tom = området.">
+        <Field label="Kategori" htmlFor={`${uid}-category`} helper="Kun til admin-grafen. Tom = området." error={undefined}>
           <Input id={`${uid}-category`} size="sm" maxLength={40} value={form.category} onChange={(e) => set("category", e.target.value)} />
         </Field>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
