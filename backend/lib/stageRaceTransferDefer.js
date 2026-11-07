@@ -21,8 +21,37 @@ import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.ts";
 import { loadWithdrawnPairs, withdrawalKey } from "./raceWithdrawal.js";
 import { buildKeyedNotification } from "./notificationKeys.js";
+import { ANY_SQUAD, filterEligibleEntries, isEligibleRider } from "./riderEligibility.js";
 
 const NOOP = () => {};
+
+/**
+ * #7692: ghost-filteret for et etapeløbs committede entries, med én undtagelse for en
+ * PARKERET rytter (pending_team_id sat) i et løb der allerede er startet.
+ *
+ * Rodårsag: handel, bytte og auktion skriver ungdoms-graduationen (squad -> senior,
+ * is_academy -> false) med det samme ved parkeringen, mens team_id bliver hos sælgeren
+ * til løbet er kørt. Fra etape 2 krydsede motoren hans entry mod U23-truppen, så han
+ * faldt ud af U23-løbet midt i det. Ejer: en solgt rytter kører som altid, indtil
+ * skiftet sker.
+ *
+ * Undtagelsen springer KUN trup-leddet over. Han skal stadig stå på entry'ens hold
+ * (team_id = sælger), ikke være pensioneret, og han er stadig i etape-1-feltet
+ * (#1844-frysningen tilføjer aldrig nogen). Et løb der ikke er startet, får den
+ * almindelige dom: en solgt, gradueret rytter starter ikke et nyt U23-løb.
+ *
+ * @param {{ entries?: object[], ridersById: Map<string, object>, squad?: string, seasonNumber?: number|null, raceStarted?: boolean }} args
+ *   ridersById-rækkerne skal projicere pending_team_id.
+ * @returns {object[]} entries i uændret rækkefølge
+ */
+export function filterEligibleEntriesKeepingParked({ entries = [], ridersById, squad, seasonNumber, raceStarted = false }) {
+  if (!raceStarted) return filterEligibleEntries({ entries, ridersById, squad, seasonNumber });
+  return entries.filter((e) => {
+    const rider = ridersById.get(e.rider_id);
+    const parked = rider?.pending_team_id != null;
+    return isEligibleRider(rider, { teamId: e.team_id, squad: parked ? ANY_SQUAD : squad, seasonNumber });
+  });
+}
 
 /**
  * Hvilke af `riderIds` er lige nu i et AKTIVT fleretape-løb?
