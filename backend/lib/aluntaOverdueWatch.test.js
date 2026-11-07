@@ -144,6 +144,34 @@ test("selectStaleEntitlements: manglende current_period_end fanges (praecis #273
   assert.equal(res[0].state, "missing_period_end");
 });
 
+for (const currentPeriodEnd of [null, undefined, ""]) {
+  test(`selectStaleEntitlements: cancelled uden periodeslut ignoreres (${String(currentPeriodEnd)})`, () => {
+    const row = { team_id: "cancelled-fixture", status: "cancelled", current_period_end: currentPeriodEnd };
+    assert.deepEqual(selectStaleEntitlements([row], { now: NOW }), []);
+  });
+}
+
+for (const status of ["active", "past_due"]) {
+  test(`selectStaleEntitlements: ${status} uden periodeslut varsles stadig`, () => {
+    const res = selectStaleEntitlements([{ team_id: "ongoing-fixture", status, current_period_end: null }], { now: NOW });
+    assert.equal(res.length, 1);
+    assert.equal(res[0].state, "missing_period_end");
+  });
+}
+
+test("selectStaleEntitlements: cancelled med periodeslut bevarer varsler", () => {
+  const rows = [
+    { team_id: "expired-fixture", status: "cancelled", current_period_end: "2026-08-30T00:00:00Z" },
+    { team_id: "soon-fixture", status: "cancelled", current_period_end: "2026-09-01T00:00:00Z" },
+    { team_id: "future-fixture", status: "cancelled", current_period_end: "2027-01-01T00:00:00Z" },
+    { team_id: "invalid-fixture", status: "cancelled", current_period_end: "invalid" },
+  ];
+  assert.deepEqual(selectStaleEntitlements(rows, { now: NOW }).map(({ teamId, state }) => [teamId, state]), [
+    ["expired-fixture", "expired"],
+    ["soon-fixture", "expiring_soon"],
+    ["invalid-fixture", "unparsable_period_end"],
+  ]);
+});
 // ── formatFindings ────────────────────────────────────────────────────────────
 
 test("formatFindings: laekker aldrig navn, e-mail eller pay_url", () => {

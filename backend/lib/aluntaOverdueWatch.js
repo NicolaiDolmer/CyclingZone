@@ -116,6 +116,9 @@ export function selectStaleEntitlements(rows = [], { now = new Date(), warnDays 
   for (const row of rows) {
     if (!ENTITLING_STATUSES.has(row?.status)) continue;
     if (!row?.current_period_end) {
+      // entitlement.js: cancelled uden periodeslut giver ingen Pro-adgang.
+      // Active/past_due varsles stadig, saa manglende cachedata ikke skjules.
+      if (row.status === "cancelled") continue;
       out.push({ teamId: row?.team_id ?? null, status: row?.status ?? null, currentPeriodEnd: null, state: "missing_period_end" });
       continue;
     }
