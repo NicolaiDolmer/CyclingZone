@@ -397,7 +397,6 @@ export function CardContent({ model, extra, titleId, honours, onWatchlist = null
   const meta = [
     model.teamName ?? t("rider:header.freeAgent"),
     model.age !== null ? t("rider:header.ageYears", { age: model.age }) : null,
-    model.nationalityCode ? model.nationalityCode.toUpperCase() : null,
   ].filter(Boolean);
   return (
     <>
