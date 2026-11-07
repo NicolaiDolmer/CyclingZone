@@ -1146,6 +1146,15 @@ jobs:
       # koere i CI, ellers er den usynlig ligesom monday-numbers var (#5092).
       - name: Test Railway deploy-status classifier (#5489)
         run: node --test scripts/railway-deploy-status.test.mjs
+      # #7837: worktrees maa kun fjernes via de sikre scripts (links ud + arkiv af alt
+      # ikke-versioneret). Testen fanger ogsaa nye scripts med raa `worktree remove`.
+      - name: Test unsafe-delete guard (#7837)
+        run: node --test scripts/unsafe-delete-guard.test.mjs
+      # #7837 (Codex-review #7839): arkivet gemmer staged og ikke-staged arbejde, upushede
+      # commits uanset base-ref, og giver Ok=false ved enhver ukendt git-status.
+      - name: Test worktree archive (#7837)
+        shell: pwsh
+        run: pwsh -NoProfile -File scripts/test-archive-worktree-unversioned.ps1
 
       # #5508: merge-queue.ps1 printer hard rule 35's kategori (a)/(b)/(c) pr. PR
       # via scripts/merge-queue-classify.mjs. Ren Node, gh er injiceret vaek i

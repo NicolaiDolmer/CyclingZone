@@ -30,23 +30,20 @@ try {
   process.exit(2);
 }
 
-// #6836: et skjult beta-sprogs lazy chunk (`i18n-messages-<kode>`, languages.js
-// beta: true) hentes aldrig af en almindelig spiller og preloades aldrig, saa den
-// taeller ikke mod budgettet. Det loft beskytter spillerens vaegt. Bliver sproget
-// offentligt (beta: false) taeller chunken automatisk med, og budgettet haeves
-// bevidst i samme PR.
-const { isBetaLang } = await import("../frontend/src/i18n/languages.js");
-const betaChunkLang = (f) => {
-  const m = /^i18n-messages-([a-z]{2,3})-/.exec(f);
-  return m && isBetaLang(m[1]) ? m[1] : null;
+// #7170: English is statically loaded as the shared fallback. A player also
+// loads at most one optional language, so count the largest such chunk,
+// regardless of its beta status. All non-language JS remains in the budget.
+const optionalChunkLang = (file) => {
+  const match = /^i18n-messages-([a-z]{2,3})-/.exec(file);
+  return match && match[1] !== "en" ? match[1] : null;
 };
 
 const all = files
   .map((f) => ({ file: f, kb: gzipKB(readFileSync(join(assetsDir, f))) }))
   .sort((a, b) => b.kb - a.kb);
-const betaChunks = all.filter((x) => betaChunkLang(x.file));
-const sizes = all.filter((x) => !betaChunkLang(x.file));
-
+const optionalChunks = all.filter((x) => optionalChunkLang(x.file));
+const largestLocale = optionalChunks[0];
+const sizes = all.filter((x) => !optionalChunkLang(x.file) || x === largestLocale);
 const totalKB = sizes.reduce((s, x) => s + x.kb, 0);
 
 const budget = JSON.parse(readFileSync(budgetPath, "utf8"));
@@ -58,12 +55,9 @@ for (const { file, kb } of sizes.slice(0, 8)) {
   console.log(`  ${kb.toFixed(1).padStart(7)} KB  ${file}`);
 }
 console.log(`  (… ${sizes.length} JS-chunks i alt)`);
-if (betaChunks.length > 0) {
-  const betaKB = betaChunks.reduce((s, x) => s + x.kb, 0);
-  console.log(
-    `  (+ ${betaChunks.length} skjulte beta-sprog-chunks udenfor budget: ${betaKB.toFixed(1)} KB, ` +
-      `${betaChunks.map((x) => betaChunkLang(x.file)).join("/")})`
-  );
+if (largestLocale) {
+  console.log(`  (largest optional language: ${optionalChunkLang(largestLocale.file)}, ${largestLocale.kb.toFixed(1)} KB; ` +
+    `${optionalChunks.length - 1} alternative language chunks excluded)`);
 }
 console.log(
   `\nTotal gzipped JS: ${totalKB.toFixed(1)} KB  ` +
