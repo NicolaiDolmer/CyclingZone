@@ -164,7 +164,7 @@ function CardContent({ model, extra, titleId }: { model: RiderHoverCardModel; ex
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 id={titleId} className="font-display text-[22px] leading-none uppercase text-cz-1 wrap-break-word">
-            {model.nationalityCode && <Flag code={model.nationalityCode} className="me-1.5 align-[-1px] text-[15px]" />}
+            {model.nationalityCode && <Flag code={model.nationalityCode} className="me-1.5 align-[-1px] text-[15px]" title={undefined} />}
             {model.name || "—"}
           </h2>
           <p className="mt-1.5 text-xs text-cz-2">
