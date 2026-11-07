@@ -42,6 +42,7 @@ $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot 'lib\git-merge-detection.ps1')
 . (Join-Path $PSScriptRoot 'lib\claude-project-paths.ps1')
 . (Join-Path $PSScriptRoot 'close-out-cleanup-junctions.ps1')
+. (Join-Path $PSScriptRoot 'lib\archive-worktree-unversioned.ps1')
 
 $dry = -not $Execute
 $mode = if ($dry) { "DRY-RUN (intet slettes — kør med -Execute)" } else { "EXECUTE" }
@@ -89,10 +90,11 @@ function Remove-MemoryJunction([string]$wtPath) {
   $encoded = Get-ClaudeProjectDirName $wtPath
   $claudeProj = Join-Path $env:USERPROFILE ".claude\projects\$encoded"
   if (-not (Test-Path $claudeProj)) { return }
-  if ($script:dry) { Write-Host "      [would-remove] $claudeProj" -ForegroundColor DarkGray; return }
+  # #7837: kun memory-linket fjernes (ikke-rekursivt); transcripts bevares altid.
+  if ($script:dry) { Write-Host "      [would-unlink] $claudeProj\memory (transcripts bevares)" -ForegroundColor DarkGray; return }
   $memJunc = Join-Path $claudeProj 'memory'
-  if (Test-Path $memJunc) { & cmd /c rmdir /Q "$memJunc" 2>&1 | Out-Null }
-  Remove-Item $claudeProj -Recurse -Force -ErrorAction SilentlyContinue
+  $mi = Get-Item -LiteralPath $memJunc -Force -ErrorAction SilentlyContinue
+  if ($mi -and ($mi.LinkType -eq 'Junction' -or $mi.LinkType -eq 'SymbolicLink')) { [IO.Directory]::Delete($memJunc, $false) }
 }
 
 Write-Host "`n--- Worktrees ---" -ForegroundColor Cyan
@@ -133,18 +135,15 @@ foreach ($b in $blocks) {
   # #6687: fjern junctions/symlinks (fx node_modules -> hovedcheckoutens) FOER
   # 'git worktree remove' - ellers foelger --force linket og toemmer maalet.
   # Kan et link ikke fjernes (eller et maal forsvinder), nægtes fjernelsen.
-  $jr = Remove-WorktreeJunctions -WorktreePath $path -DryRun:$dry
-  if (-not $jr.Ok) {
-    foreach ($e in $jr.Errors) { Write-Host "      [REFUSED] $e" -ForegroundColor Red }
-    $skipped += "junction ikke fjernet (worktree BEHOLDT): $tag"
+  # #7837: links ud -> alt ikke-versioneret arkiveret og verificeret -> foerst saa fjernelse.
+  $safe = Remove-WorktreeSafely -WorktreePath $path -RepoRoot $RepoRoot -BaseRef $BaseRef -DryRun:$dry
+  if (-not $safe.Ok) {
+    foreach ($e in $safe.Errors) { Write-Host "      [REFUSED] $e" -ForegroundColor Red }
+    $skipped += "ikke arkiveret/links ikke fjernet (worktree BEHOLDT): $tag"
     continue
   }
-
+  Write-Host "      [arkiv] $($safe.ArchiveDir)" -ForegroundColor DarkGray
   Remove-MemoryJunction $path
-  if (-not $dry) {
-    & git -C $RepoRoot worktree remove $path 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { & git -C $RepoRoot worktree remove --force $path 2>&1 | Out-Null }
-  }
   [void]$branchesToSweep.Add("$branch|$forceDel")
   $removed += $tag
 }

@@ -100,8 +100,9 @@ git worktree list --porcelain | awk '
   # Only delete if fully merged to origin/main.
   if git merge-base --is-ancestor "$branch" origin/main; then
     # #6687/#7446: links ud foerst, ellers foelger '--force' en junction og toemmer maalet.
-    pwsh -NoProfile -Command ". '$REPO/scripts/close-out-cleanup-junctions.ps1'; if (-not (Remove-WorktreeJunctions -WorktreePath '$wt').Ok) { exit 1 }" >/dev/null 2>&1 || continue
-    git worktree remove --force "$wt" && REMOVED_WTS=$((REMOVED_WTS + 1))
+    # #7837: links ud + arkiv af alt ikke-versioneret (ogsaa ignorerede filer) foer fjernelse.
+    pwsh -NoProfile -Command ". '$REPO/scripts/lib/archive-worktree-unversioned.ps1'; if (-not (Remove-WorktreeSafely -WorktreePath '$wt' -RepoRoot '$REPO').Ok) { exit 1 }" >/dev/null 2>&1 || continue
+    REMOVED_WTS=$((REMOVED_WTS + 1))
     git branch -D "$branch" >/dev/null && REMOVED_BRANCHES=$((REMOVED_BRANCHES + 1))
   fi
 done
