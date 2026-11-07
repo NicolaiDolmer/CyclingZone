@@ -37,16 +37,20 @@ export default function RiderNameCell({
           ("S/a/n/d/e/r"). Uden wrap-break-word er kolonnens minimumsbredde det
           LÆNGSTE ORD i navnet, som table-layout ikke kan presse under — samme
           fix som TrainingPage.jsx's roster (#5124). */}
-      <RiderLink
-        id={id}
-        stopPropagation={stopPropagation}
-        className={`${className} ${wrap ? "min-w-0" : "whitespace-nowrap"}`}
-        aria-label={fullName && shown !== fullName ? fullName : undefined}
-        title={fullName && shown !== fullName ? fullName : undefined}
-      >
-        {shown}
-      </RiderLink>
-      <RiderChampionJersey riderId={id} />
+      {/* #7824: navn og trøje i én gruppe uden linjeskift imellem, så trøjen aldrig
+          ryger ned under navnet, når tabellen giver kolonnen sin mindste bredde. */}
+      <span className={`inline-flex items-center gap-1.5 ${wrap ? "min-w-0" : ""}`}>
+        <RiderLink
+          id={id}
+          stopPropagation={stopPropagation}
+          className={`${className} ${wrap ? "min-w-0" : "whitespace-nowrap"}`}
+          aria-label={fullName && shown !== fullName ? fullName : undefined}
+          title={fullName && shown !== fullName ? fullName : undefined}
+        >
+          {shown}
+        </RiderLink>
+        <RiderChampionJersey riderId={id} />
+      </span>
       {children}
     </span>
   );

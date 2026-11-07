@@ -201,7 +201,8 @@ function NationalJersey({ size, code }: { size: number; code: string }) {
           height: size,
           fontSize: 0,
           lineHeight: 0,
-          backgroundSize: "cover",
+          // Hele flaget strækkes over trøjen, så ingen stribe klippes væk (fx Frankrigs blå).
+          backgroundSize: "100% 100%",
           backgroundPosition: "center",
           maskImage: JERSEY_MASK,
           WebkitMaskImage: JERSEY_MASK,
