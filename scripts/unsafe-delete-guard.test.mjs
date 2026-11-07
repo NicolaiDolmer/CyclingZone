@@ -103,3 +103,13 @@ test('kun allowlisten maa indeholde `worktree remove` blandt versionerede script
   const extra = out.filter((f) => !allowed.has(f));
   assert.deepEqual(extra, [], `nye scripts der naevner worktree remove - fjern via remove-worktree.ps1 i stedet: ${extra.join(', ')}`);
 });
+
+test('versioneret script i et andet worktree end hookens cwd blokeres ikke (bølge 7/11)', async () => {
+  const { tmpdir } = await import('node:os');
+  const { dirname, join } = await import('node:path');
+  // Scriptet ligger i dette repo; hooken koerer fra en helt anden mappe (fx hovedmappen).
+  const repo = dirname(dirname(fileURLToPath(import.meta.url)));
+  const script = join(repo, 'scripts', 'guard-commit-branch.sh').replace(/\/g, '/');
+  const res = checkCommand(`bash "${script}" fix/x "${repo.replace(/\/g, '/')}"`, { cwd: tmpdir(), listWorktrees: () => [] });
+  assert.equal(res.blocked, false, res.reason);
+});

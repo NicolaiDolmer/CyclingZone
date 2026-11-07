@@ -25,7 +25,7 @@
 // Fail-open ved uventede fejl (en vagt maa ikke spaerre for arbejdet), fail-closed ved match.
 
 import { readFileSync, existsSync, statSync } from 'node:fs';
-import { isAbsolute, resolve, relative } from 'node:path';
+import { isAbsolute, resolve, relative, dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -154,11 +154,16 @@ function block(reason) {
   };
 }
 
-function repoRoot() {
-  try { return execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; }
+// Roden for det repo/worktree, SCRIPTET ligger i, ikke hookens cwd: et script i
+// C:/Dev/CyclingZone-worktrees/<spor>/scripts er versioneret i sporets worktree,
+// og skal genkendes som det (bølge 7/11: guard-commit-branch.sh blev blokeret,
+// fordi den blev slået op i hovedmappens repo og så scannet som ad hoc-script).
+function repoRoot(abs) {
+  const args = abs ? ['-C', dirname(abs), 'rev-parse', '--show-toplevel'] : ['rev-parse', '--show-toplevel'];
+  try { return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; }
 }
 function relativeToRepo(abs) {
-  const root = repoRoot();
+  const root = repoRoot(abs);
   if (!root) return null;
   const rel = relative(root, abs).replace(/\\/g, '/');
   return rel.startsWith('..') ? null : rel;
@@ -173,7 +178,7 @@ function defaultReadScript(abs) {
   try { if (!existsSync(abs) || statSync(abs).size > 2e6) return null; return readFileSync(abs, 'utf8'); } catch { return null; }
 }
 function defaultIsTracked(abs) {
-  const root = repoRoot();
+  const root = repoRoot(abs);
   if (!root) return false;
   const rel = relative(root, abs).replace(/\\/g, '/');
   if (rel.startsWith('..')) return false;
