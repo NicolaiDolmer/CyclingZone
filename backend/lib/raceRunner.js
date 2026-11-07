@@ -93,6 +93,7 @@ import { buildStageTimeline, buildStageTimelineV4 } from "./raceTimeline.js";
 import { raceSeedInput, activeSaltVersion } from "./raceSeedSalt.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRaceFatigue, attachConditionWork, conditionWorkForRun, raceConditionLoads, stageConditionWork, stageEnteringFatigues, loadSeasonRaceDaysByRider, applySameDateEnteringFatigueV2, applyGrandTourRestDayFatigue as applyGrandTourRestDayFatigueShared } from "./raceFatigue.js";
+import { fatigueByRiderNow, firstStageNumber } from "./riderFatigueNow.js"; // #7801
 import { isConditionModelV2Enabled } from "./conditionModelV2Flag.js";
 import { applyMedicalToStageOutputs, loadMedicalBonusByTeam, loadMedicalBonusForRiders } from "./medicalEffects.js";
 import {
@@ -1573,7 +1574,8 @@ export async function fillMissingTeamEntries({
     supabase, table: "rider_condition", columns: "rider_id, fatigue",
     inColumn: "rider_id", ids: candidateIds,
   });
-  if (!condErr) fatigueByRider = new Map((conditions || []).map((c) => [c.rider_id, c.fatigue]));
+  // #7801: med fatigue_now_7801 regner assistenten på trætheden ved etapens planlagte start (ikke uret); slukket = samme map som før.
+  if (!condErr) fatigueByRider = await fatigueByRiderNow({ supabase, conditions, abilityByRider, teamIdByRider: new Map(candidates.map((r) => [r.id, r.team_id])), atStage: { raceId: race.id, stageNumber: firstStageNumber(stages) } });
 
   const sizeRule = selectionSizeForRace(race);
   const rows = [];
