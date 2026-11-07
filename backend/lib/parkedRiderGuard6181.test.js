@@ -25,6 +25,10 @@ import { confirmTransferOffer } from "./transferExecution.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, "..", "..");
 
+// AGENTS.md regel 16: fast ur gennem bekræftelses-/eksekveringsstien, så hverken
+// ung-konto-cooldownen eller acquired_at læser maskinens ur.
+const FIXED_NOW = new Date("2026-06-02T12:00:00.000Z");
+
 // ── 1. Rene guard-funktioner ────────────────────────────────────────────────
 
 test("isRiderParked: kun en rytter med pending_team_id er parkeret", () => {
@@ -250,7 +254,7 @@ test("executeTransferOffer #6181: en solgt, ventende rytter kan ikke sælges ige
   const supabase = makeSupabase(db);
 
   const result = await confirmTransferOffer({
-    supabase, offerId: "offer-b", confirmingTeamId: "team-b", notifyTeamOwner: async () => {},
+    supabase, offerId: "offer-b", confirmingTeamId: "team-b", notifyTeamOwner: async () => {}, now: FIXED_NOW,
   });
 
   assert.equal(result.ok, false);
@@ -268,10 +272,12 @@ test("executeTransferOffer #6181 (kontrol): en ikke-parkeret rytter sælges som 
   const supabase = makeSupabase(db);
 
   const result = await confirmTransferOffer({
-    supabase, offerId: "offer-b", confirmingTeamId: "team-b", notifyTeamOwner: async () => {},
+    supabase, offerId: "offer-b", confirmingTeamId: "team-b", notifyTeamOwner: async () => {}, now: FIXED_NOW,
   });
 
   assert.equal(result.ok, true);
   assert.equal(result.action, "accepted");
-  assert.equal(db.riders.find((r) => r.id === "rider-1").team_id, "team-b");
+  const sold = db.riders.find((r) => r.id === "rider-1");
+  assert.equal(sold.team_id, "team-b");
+  assert.equal(sold.acquired_at, FIXED_NOW.toISOString(), "acquired_at kommer fra det injicerede ur");
 });
