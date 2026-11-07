@@ -513,7 +513,7 @@ export default function ActivityPage() {
                     <span className="text-cz-accent-t font-mono text-sm font-bold whitespace-nowrap shrink-0">
                       {formatNumber(getRiderMarketValue(r))} CZ$
                     </span>
-                    <RiderLink id={r?.id}
+                    <RiderLink id={r?.id} hoverCard={false}
                       className="text-cz-3 hover:text-cz-accent-t text-sm transition-colors shrink-0">
                       <ChevronRightIcon size={16} aria-hidden="true" />
                     </RiderLink>

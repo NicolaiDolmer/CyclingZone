@@ -1,5 +1,30 @@
 export const PATCHES = [
   {
+    "version": "7.417",
+    "date": "2026-11-07",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "beta",
+        "flag": "rider_hover_card",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider card and right-click menu",
+          "body": "A small icon after every rider name opens his card: abilities, value, contract and how he is doing in the race. Right-click a name for quick actions like compare, watchlist or a bid. On the phone, tap the icon."
+        },
+        "da": {
+          "title": "Rytterkort og højreklik-menu",
+          "body": "Et lille ikon efter hvert rytternavn åbner hans kort: evner, værdi, kontrakt og hvordan det går i løbet. Højreklik på et navn for hurtige handlinger som sammenlign, ønskeliste eller bud. På telefonen trykker du på ikonet."
+        },
+        "refs": [
+          2009,
+          7858
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.416",
     "date": "2026-11-07",
     "changes": [
