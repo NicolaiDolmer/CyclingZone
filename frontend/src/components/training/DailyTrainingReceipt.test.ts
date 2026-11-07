@@ -33,3 +33,41 @@ for (const gameDays of [undefined, null, {}]) {
     assert.match(html,/—/);
   });
 }
+
+const rider = (rider_id: string, name: string, gains: Record<string, number>, gain_percent: Record<string, number | null>) => ({
+  rider_id, name, activities:[], receipt_status:'complete', gains, gains_detail:{}, gain_percent,
+  fatigue_before:10, fatigue:12, form_before:50, form:51, progress_before:{}, trained_now:null,
+});
+const settled = { tick_date:'2026-11-06', receipt_status:'complete', game_days:[0], trained_now_slots:[], expected_game_days:null,
+  report:{ condition_settled:true, riders:[
+    rider('r1','Ada Pedersen',{positioning:1,climbing:1},{positioning:110,climbing:104,flat:3}),
+    rider('r2','Bo Holm',{},{tempo:40,climbing:12}),
+    rider('r3','Cai Berg',{},{}),
+  ]}};
+const render = (props: Record<string, unknown>) => renderToStaticMarkup(createElement(I18nextProvider,{i18n},
+  createElement(DailyTrainingReceipt,props as never)));
+
+test('#7745 whole points lead in profile order, riders without one fold together', () => {
+  const html = render({ run:settled });
+  const whole = html.slice(html.indexOf('data-testid="daily-receipt-whole-points"'));
+  assert.ok(whole.indexOf('racePreview.derived.climbing') < whole.indexOf('racePreview.derived.positioning'), '#7746 climbing before positioning');
+  assert.match(html,/Ada Pedersen/);
+  assert.match(html,/data-testid="daily-receipt-quiet-toggle"/);
+  assert.match(html,/aria-expanded="false" aria-controls="receipt-2026-11-06-legacy-no-whole-point"/);
+  assert.doesNotMatch(html,/Bo Holm|Cai Berg/, 'riders without a whole point are folded');
+  assert.doesNotMatch(html,/\+40%|\+12%/, 'progress toward the next point never sits on the summary line');
+});
+
+test('#7745 a folded date still says how many whole points it landed', () => {
+  const html = render({ run:settled, defaultExpanded:false });
+  assert.match(html,/data-testid="daily-receipt-points-meta"/);
+  assert.match(html,/data-testid="daily-receipt-status"/);
+});
+
+test('#7745 a date whose development is not known yet folds nobody away', () => {
+  const html = render({ run:{ ...settled, receipt_status:'pending',
+    report:{ ...settled.report, riders:settled.report.riders.map(row=>({ ...row, receipt_status:'pending' })) } } });
+  assert.doesNotMatch(html,/daily-receipt-quiet-group/);
+  assert.match(html,/Bo Holm/);
+  assert.doesNotMatch(html,/daily-receipt-points-meta/);
+});

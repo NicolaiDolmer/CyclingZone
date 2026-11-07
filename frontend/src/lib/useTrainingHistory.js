@@ -58,9 +58,12 @@ export function useTrainingHistory() {
   // før: begge blev vist som et målt "+0".
   const [seasonState, setSeasonState] = useState(SEASON_RECEIPT_UNKNOWN);
   const [loading, setLoading] = useState(true);
+  // #7745: a failed fetch is an error state, never an empty history.
+  const [error, setError] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    setError(false);
     let activeStart = null;
     try {
       const user = await getAuthedUser();
@@ -120,6 +123,7 @@ export function useTrainingHistory() {
         setSeasonState(receiptState(activeStart, seasonRows));
       }
     } catch {
+      setError(true);
       setSeasonState(receiptState(activeStart, null));
     } finally {
       setLoading(false);
@@ -132,5 +136,5 @@ export function useTrainingHistory() {
   // data under its explicit fields, never as a temporary default UI shape.
   return { runs, rawRuns, rawSeasonRuns,
     seasonRuns,
-    seasonStart, seasonState, loading, refresh };
+    seasonStart, seasonState, loading, error, refresh };
 }
