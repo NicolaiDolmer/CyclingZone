@@ -14,7 +14,7 @@ import { fetchAtRiskCount } from "./squadRiskGuard.js";
 import { incrementBalanceWithAudit, DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
-import { saleEscrowPayment } from "./saleEscrowFlow6181.js";
+import { saleEscrowPayment, saleEscrowStatusForDeal } from "./saleEscrowFlow6181.js";
 import { contractOnAcquirePatch, computeFrozenSalary } from "./contractSeed.js";
 import { notifyIfContractExpiresThisSeason, buildKeyedNotification, notifyAndClearWatchlistForRiders } from "./notificationService.js";
 import { ACADEMY } from "./academyFlag.js";
@@ -1384,6 +1384,17 @@ async function finalizeAuctionRecord({
     // #3582: capture FØR mutationen — rider_ownership_events skal afspejle
     // hvem der FAKTISK havde rytteren, ikke den allerede-opdaterede værdi.
     const ownershipFromTeamId = auction.rider.team_id;
+    // #6181 ejer-krav 1 (#7871): en gentaget kørsel efter en escrow-refusion må
+    // hverken flytte rytteren igen (opdateringen nedenfor har ingen ejer-guard)
+    // eller kreditere sælger (køberens træk springes over som dublet, sælgers
+    // kredit ikke). Salget er annulleret: auktionen lukkes uden handel.
+    const priorSaleEscrow = actualSellerTeamId && price > 0
+      ? await saleEscrowStatusForDeal(supabase, { dealType: "auction", dealId: auction.id })
+      : "none";
+    if (priorSaleEscrow === "refunded") {
+      await closeAuction({ supabase, auction, status: "cancelled", actualEnd, sellerOwned, currentBidderId: null });
+      return { ok: true, code: "sale_escrow_refunded", auction_id: auction.id };
+    }
     await expectMutationAffectingRows(
       supabase
         .from("riders")
@@ -1464,7 +1475,7 @@ async function finalizeAuctionRecord({
     // 07d Fase B / #240: cron-finalizer → actor_type=cron, actor_id=null,
     // season_id eksplicit + idempotency_key så cron-retries ikke double-pay.
     // #6181: parkeret + sale_escrow_enabled → saelgers penge laases til holdskiftet.
-    const auctionPayment = await saleEscrowPayment(supabase, { parked: deferTeamChange && Boolean(actualSellerTeamId) && actualSellerTeamId !== effectiveBidderId && price > 0, dealType: "auction", dealId: auction.id, riderIds: [auction.rider.id], targetTeamIds: [effectiveBidderId] });
+    const auctionPayment = await saleEscrowPayment(supabase, { parked: deferTeamChange && Boolean(actualSellerTeamId) && actualSellerTeamId !== effectiveBidderId && price > 0, dealType: "auction", dealId: auction.id, riderIds: [auction.rider.id], targetTeamIds: [effectiveBidderId], priorEscrow: priorSaleEscrow });
     await auctionPayment.incrementBalanceWithAudit(supabase, {
       teamId: effectiveBidderId,
       delta: -price,

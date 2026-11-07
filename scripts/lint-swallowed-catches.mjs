@@ -153,7 +153,10 @@ const BASELINE = {
   // ikke fejlet, det er for tidligt, og det skal ikke fylde i Sentry.
   // #5686 (24/9): +1 for GET /admin/value-preview (ejerens værdi-forhåndsvisning),
   // samme captureApiRouteError-mønster på den ydre catch, samme kendte regex-gab.
-  "backend/routes/api.js": 191,
+  // #7871 (7/11): +1 netto for GET /admin/sale-escrows og POST /admin/sale-escrows/
+  // :id/resolve (den manuelle vej for fastlåste byt, #6181), samme
+  // captureApiRouteError-mønster på den ydre catch, samme kendte regex-gab.
+  "backend/routes/api.js": 192,
   "backend/lib/seasonTransition.js": 3,
   "backend/lib/responseCache.js": 4,
   "backend/cron.js": 3,

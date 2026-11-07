@@ -68,6 +68,8 @@ function createMockSupabase({
   ridersError = null,
   // #6181: holdte escrows, der skal afregnes foer skiftet.
   heldSaleEscrows = [],
+  // #7871: rytterstatus for de holdte escrows (stuck-klassifikationen).
+  escrowRiders = [],
   calls = null,
 } = {}) {
   const thenableCount = (count) => ({
@@ -88,7 +90,11 @@ function createMockSupabase({
               return pagedChain(incomingRiders, { calls: c, error: ridersError });
             }
             if (calls) calls.push(["riders", c]);
-            return pagedChain(seniorRiders, { calls: c, error: ridersError });
+            const chain = pagedChain(seniorRiders, { calls: c, error: ridersError });
+            // #7871: rytteropslaget for holdte escrows (.in("id", ...)) svarer direkte.
+            const inTeams = chain.in;
+            chain.in = (col, ...rest) => (col === "id" ? Promise.resolve({ data: escrowRiders, error: null }) : inTeams(col, ...rest));
+            return chain;
           },
         };
       }
@@ -289,6 +295,20 @@ test("#6181 holdte escrows (låste salg) blokerer under no_deferred_transfers", 
   assert.equal(result.ready, false);
   assert.deepEqual(result.failed_critical, ["no_deferred_transfers"]);
   assert.match(result.checks.no_deferred_transfers.detail, /^1 låste salg venter på afregning/);
+  assert.doesNotMatch(result.checks.no_deferred_transfers.detail, /fastlåste/);
+});
+
+test("#7871 et fastlåst bytte peger på admin-vejen i detail", async () => {
+  const supabase = createMockSupabase({
+    humanTeams: COMPLIANT_TEAMS,
+    seniorRiders: COMPLIANT_RIDERS,
+    heldSaleEscrows: [{ id: "e-1", status: "held", rider_ids: ["r-1", "r-2"], target_team_ids: ["t-2", "t-1"], delivered_rider_ids: ["r-1"] }],
+    escrowRiders: [{ id: "r-1", team_id: "t-2", pending_team_id: null }, { id: "r-2", team_id: null, pending_team_id: null }],
+  });
+  const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
+  assert.equal(result.ready, false);
+  assert.deepEqual(result.failed_critical, ["no_deferred_transfers"]);
+  assert.match(result.checks.no_deferred_transfers.detail, /1 af dem er fastlåste byt, som kun kan afgøres manuelt: GET \/api\/admin\/sale-escrows/);
 });
 
 test("#5855 læsefejl på udskudte transfers kaster (fail-closed)", async () => {

@@ -26,9 +26,12 @@ import {
   classifyHeldEscrow,
   isSaleEscrowEnabled,
   reconcileHeldSaleEscrows,
+  listHeldSaleEscrowsForAdmin,
   refundSaleEscrowsForReleasedRiders,
   releaseSaleEscrowForFlush,
+  resolveStuckSaleEscrow,
   saleEscrowPayment,
+  saleEscrowStatusForDeal,
 } from "./saleEscrowFlow6181.js";
 import { flushParkedRider } from "./stageRaceTransferDefer.js";
 
@@ -72,6 +75,7 @@ async function database() {
   await db.exec(SCHEMA);
   await db.exec(await balanceRpc());
   await db.exec(await file("2026-11-07-6181-sale-escrow-m1.sql"));
+  await db.exec(await file("2026-11-07-6181-sale-escrow-m2-guards.sql"));
   await db.exec(`INSERT INTO teams VALUES ('${TEAM.A}', ${START}), ('${TEAM.B}', ${START}), ('${TEAM.C}', ${START});
     INSERT INTO riders(id, firstname, lastname, team_id) VALUES
       ('${RIDER.r1}', 'Rytter', 'En', '${TEAM.A}'), ('${RIDER.r2}', 'Rytter', 'To', '${TEAM.B}'), ('${RIDER.r3}', 'Rytter', 'Tre', '${TEAM.A}');`);
@@ -86,6 +90,7 @@ const RPC_ARGS = {
     p_rider_ids: "uuid[]", p_target_team_ids: "uuid[]", p_payer_payload: "jsonb", p_payee_payload: "jsonb",
   },
   settle_sale_escrow: { p_escrow_id: "uuid", p_outcome: "text", p_refund_payload: "jsonb", p_settled_at: "timestamptz" },
+  resolve_stuck_sale_escrow: { p_escrow_id: "uuid", p_outcome: "text", p_payload: "jsonb", p_settled_at: "timestamptz" },
 };
 const pgValue = (v, type) => {
   if (v == null) return null;
@@ -416,4 +421,128 @@ test("classifyHeldEscrow: release, refund, wait og stuck", () => {
   assert.equal(classifyHeldEscrow(swap, states({ team_id: null }, { team_id: "B", pending_team_id: "A" })), "refund");
   assert.equal(classifyHeldEscrow({ ...swap, delivered_rider_ids: ["x"] }, states({ team_id: "C" }, { team_id: null })), "stuck");
   assert.equal(classifyHeldEscrow({ rider_ids: ["x"], target_team_ids: ["B"] }, new Map()), "refund", "slettet rytter kan ikke leveres");
+});
+
+// ── ejer-krav 1 og 2 (#7871) ──────────────────────────────────────────────────
+
+test("ejer-krav 1: efter en refusion kan den gamle saelger-kredit ikke skabe penge, og en gentagelse stoppes foer betaling", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  const before = await total(db);
+  await park(db, RIDER.r1, TEAM.B);
+  await payBoth(supabase, await saleEscrowPayment(supabase, { parked: true, dealType: "transfer", dealId: DEAL.t1, riderIds: [RIDER.r1], targetTeamIds: [TEAM.B] }), transferLegs(DEAL.t1, 150_000));
+  assert.equal(await saleEscrowStatusForDeal(supabase, { dealType: "transfer", dealId: DEAL.t1 }), "held");
+
+  // Parkeringen forsvinder (fx admin), kontakten slukkes, og reconcile refunderer.
+  await db.query("UPDATE riders SET pending_team_id = NULL WHERE id = $1", [RIDER.r1]);
+  await setFlag(db, "off");
+  const result = await reconcileHeldSaleEscrows({ supabase, now: new Date(FLUSHED_AT) });
+  assert.equal(result.refunded, 1);
+  assert.equal(await balance(db, TEAM.B), START, "koeberen har sine penge igen");
+  assert.equal(await saleEscrowStatusForDeal(supabase, { dealType: "transfer", dealId: DEAL.t1 }), "refunded");
+
+  // En gentagelse af handlen ser refusionen og betaler intet.
+  await assert.rejects(() => saleEscrowPayment(supabase, { parked: false, dealType: "transfer", dealId: DEAL.t1, riderIds: [RIDER.r1], targetTeamIds: [TEAM.B], priorEscrow: "refunded" }), /refunderet/);
+
+  // Databasen er den endelige garanti: den gamle sti (koeberens traek er en dublet,
+  // saelgers kredit ikke) afvises under holdlaasen, og saldoen rulles tilbage.
+  const [buyerLeg, sellerLeg] = transferLegs(DEAL.t1, 150_000);
+  await incrementBalanceWithAudit(supabase, buyerLeg, { allowDuplicate: true });
+  await assert.rejects(() => incrementBalanceWithAudit(supabase, sellerLeg, { allowDuplicate: true }), (e) => /sale_escrow_refunded/.test(e.message));
+  assert.equal(await balance(db, TEAM.A), START, "saelgeren krediteres aldrig efter refusionen");
+  assert.equal(await balance(db, TEAM.B), START);
+  assert.equal(await total(db), before, "ingen penge er opstaaet");
+
+  // En anden handels saelger-kredit roeres ikke af vaernet.
+  await incrementBalanceWithAudit(supabase, transferLegs(DEAL.t2, 10_000)[1]);
+  assert.equal(await balance(db, TEAM.A), START + 10_000);
+});
+
+test("ejer-krav 1: en gentagelse, mens escrow'en holder, betaler ingen af benene igen (ogsaa med kontakten slukket)", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  const legs = [
+    { teamId: TEAM.B, delta: -60_000, payload: { type: "transfer_out", amount: -60_000, idempotency_key: `auction_winner:${DEAL.a1}` } },
+    { teamId: TEAM.A, delta: 60_000, payload: { type: "transfer_in", amount: 60_000, idempotency_key: `auction_seller:${DEAL.a1}` } },
+  ];
+  await park(db, RIDER.r1, TEAM.B);
+  await payBoth(supabase, await saleEscrowPayment(supabase, { parked: true, dealType: "auction", dealId: DEAL.a1, riderIds: [RIDER.r1], targetTeamIds: [TEAM.B] }), legs);
+  await setFlag(db, "off");
+  const priorEscrow = await saleEscrowStatusForDeal(supabase, { dealType: "auction", dealId: DEAL.a1 });
+  assert.equal(priorEscrow, "held");
+  await payBoth(supabase, await saleEscrowPayment(supabase, { parked: false, dealType: "auction", dealId: DEAL.a1, riderIds: [RIDER.r1], targetTeamIds: [TEAM.B], priorEscrow }), legs);
+  assert.equal(await balance(db, TEAM.A), START, "saelger venter stadig paa holdskiftet");
+  assert.equal(await balance(db, TEAM.B), START - 60_000);
+  assert.equal(await saleEscrowStatusForDeal(supabase, { dealType: "transfer", dealId: DEAL.t2 }), "none");
+});
+
+async function stuckSwap(db, supabase) {
+  await park(db, RIDER.r1, TEAM.B);
+  await park(db, RIDER.r2, TEAM.A);
+  await payBoth(supabase, await saleEscrowPayment(supabase, { parked: true, dealType: "swap", dealId: DEAL.s1, riderIds: [RIDER.r1, RIDER.r2], targetTeamIds: [TEAM.B, TEAM.A] }), swapLegs(DEAL.s1, 40_000));
+  // r1 flyttes (leveret), r2 pensioneres, foer han flyttes: byttet sidder fast.
+  await flushParkedRider(supabase, { id: RIDER.r1, team_id: TEAM.A, pending_team_id: TEAM.B },
+    { notifyTeamOwner: async () => {}, flushedAt: FLUSHED_AT, arrival: { reason: "dealCompleted" } });
+  await db.query("UPDATE riders SET team_id = NULL, pending_team_id = NULL WHERE id = $1", [RIDER.r2]);
+  const result = await reconcileHeldSaleEscrows({ supabase, now: new Date(FLUSHED_AT) });
+  assert.equal(result.stuck, 1, "reconcile kan ikke afregne et fastlaast bytte");
+  const [listed] = await listHeldSaleEscrowsForAdmin(supabase);
+  assert.equal(listed.action, "stuck");
+  return listed.id;
+}
+
+test("ejer-krav 2: et fastlaast bytte kan refunderes manuelt, een gang, og modtageren kan ikke krediteres bagefter", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  const before = await total(db);
+  const escrowId = await stuckSwap(db, supabase);
+  assert.equal(await balance(db, TEAM.B), START - 40_000);
+
+  const refunded = await resolveStuckSaleEscrow(supabase, { escrowId, outcome: "refund", adminUserId: null, now: new Date(FLUSHED_AT) });
+  assert.equal(refunded.status, "refunded");
+  assert.equal(await balance(db, TEAM.B), START, "betaleren har kontanterne igen");
+  assert.equal(await balance(db, TEAM.A), START);
+  assert.equal((await rider(db, RIDER.r1)).team_id, TEAM.B, "den leverede rytter bliver, hvor han er");
+  const post = await one(db, "SELECT reason_code, source_path, actor_type FROM finance_transactions WHERE idempotency_key LIKE 'sale_escrow_refund:%'");
+  assert.deepEqual(post, { reason_code: "sale_escrow_refund", source_path: "api.admin.saleEscrowResolve", actor_type: "admin" });
+  assert.equal(await total(db), before);
+
+  assert.equal((await resolveStuckSaleEscrow(supabase, { escrowId, outcome: "release", adminUserId: null, now: new Date(FLUSHED_AT) })).status, "already_settled");
+  await assert.rejects(() => incrementBalanceWithAudit(supabase, swapLegs(DEAL.s1, 40_000)[1]), (e) => /sale_escrow_refunded/.test(e.message));
+  assert.equal(await total(db), before);
+  assert.deepEqual(await listHeldSaleEscrowsForAdmin(supabase), [], "intet blokerer saesonskiftet laengere");
+});
+
+test("ejer-krav 2: et fastlaast bytte kan frigives manuelt til modtageren", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  const before = await total(db);
+  const escrowId = await stuckSwap(db, supabase);
+  const released = await resolveStuckSaleEscrow(supabase, { escrowId, outcome: "release", adminUserId: null, now: new Date(FLUSHED_AT) });
+  assert.equal(released.status, "released");
+  assert.equal(await balance(db, TEAM.A), START + 40_000, "modtageren krediteret");
+  assert.equal(await balance(db, TEAM.B), START - 40_000);
+  assert.deepEqual(await escrows(db), [{ status: "released", deal_type: "swap", amount: 40_000 }]);
+  const post = await one(db, "SELECT reason_code, source_path, actor_type FROM finance_transactions WHERE idempotency_key = $1", [`swap_receiver:${DEAL.s1}`]);
+  assert.deepEqual(post, { reason_code: "swap_cash_delta", source_path: "api.admin.saleEscrowResolve", actor_type: "admin" });
+  assert.equal(await total(db), before);
+});
+
+test("ejer-krav 2: den manuelle vej afviser en escrow, der ikke sidder fast", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  await park(db, RIDER.r1, TEAM.B);
+  await payBoth(supabase, await saleEscrowPayment(supabase, { parked: true, dealType: "transfer", dealId: DEAL.t1, riderIds: [RIDER.r1], targetTeamIds: [TEAM.B] }), transferLegs(DEAL.t1, 30_000));
+  const [held] = await listHeldSaleEscrowsForAdmin(supabase);
+  assert.equal(held.action, "wait");
+  for (const outcome of ["release", "refund"]) {
+    assert.equal((await resolveStuckSaleEscrow(supabase, { escrowId: held.id, outcome, adminUserId: null, now: new Date(FLUSHED_AT) })).status, "not_stuck");
+  }
+  assert.deepEqual(await escrows(db), [{ status: "held", deal_type: "transfer", amount: 30_000 }]);
+  await assert.rejects(() => resolveStuckSaleEscrow(supabase, { escrowId: held.id, outcome: "cancel", adminUserId: null }), /release eller refund/);
 });

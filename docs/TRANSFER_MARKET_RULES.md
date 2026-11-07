@@ -589,6 +589,8 @@ krediteres først når rytteren faktisk skifter hold. Ved øjeblikkeligt skifte 
 | Refusion | frigives en solgt, ventende rytter (pension, kontraktudløb), får køberen pengene tilbage | `refundSaleEscrowsForReleasedRiders` |
 | Sikkerhedsnet | heal-sweepet afregner enhver holdt escrow, der kan afregnes, også efter at kontakten er slukket igen; beta-reset gør det samme | `reconcileHeldSaleEscrows` |
 | Vagter | sæsonskiftet venter på holdte escrows (`no_deferred_transfers`); invariant H i `ownershipInvariantWatch` melder en escrow, der ikke er afregnet efter 48 t uden et aktivt løb | `seasonTransitionReadiness.js`, `ownershipInvariantWatch.ts` |
+| Gentagelse | en handel med en escrow betales aldrig igen af den gamle sti; er escrow'en refunderet, er handlen annulleret (rytteren flyttes ikke, ingen betaler). Databasen afviser en sælger-kredit efter en refusion under holdlåsen | `saleEscrowStatusForDeal`, `2026-11-07-6181-sale-escrow-m2-guards.sql` |
+| Fastlåst bytte | én rytter leveret, den anden mistet: heal-sweepet kan ikke afregne det. Admin afgør det med `GET /api/admin/sale-escrows` og `POST /api/admin/sale-escrows/:id/resolve` (`release` krediterer modtageren, `refund` giver betaleren beløbet tilbage; ingen rytter flyttes) | `resolveStuckSaleEscrow`, `resolve_stuck_sale_escrow` |
 
 Nuværende parkeringer får ingen tilbagevirkning: sælgeren af en handel fra før kontakten blev
 tændt, er allerede krediteret. Visning af låste penge og hjælpetekster kommer i PR 4.

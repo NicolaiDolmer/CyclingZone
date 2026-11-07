@@ -50,6 +50,14 @@ const MAX_HELD_ROWS = 1000;
 const RIDER_CHUNK = 200;
 // Slukket/ikke parkeret: den uaendrede betaling.
 const DIRECT_PAYMENT = Object.freeze({ incrementBalanceWithAudit });
+// Ejer-krav 1 (#7871): handlen har allerede en escrow (held/released). Koeberen er
+// trukket af hold_sale_escrow, og saelger krediteres af settle_sale_escrow, saa en
+// gentagelse af handlen maa ikke betale nogen af de to ben igen.
+const PAID_BY_EXISTING_ESCROW = Object.freeze({
+  incrementBalanceWithAudit: async function paidByExistingSaleEscrow() {
+    return { skipped: true, balance: null, escrowExisting: true };
+  },
+});
 const ESCROW_COLUMNS = "id, deal_type, deal_id, payer_team_id, payee_team_id, amount, rider_ids, target_team_ids, delivered_rider_ids, status, created_at";
 
 /**
@@ -83,11 +91,23 @@ export async function isSaleEscrowEnabled(supabase, { fresh = true } = {}) {
  * Kalderen maa kun saette parked=true, naar begge ben kommer (der er en saelger
  * og et positivt beloeb).
  *
+ * priorEscrow (ejer-krav 1, #7871) er svaret fra saleEscrowStatusForDeal, laest af
+ * kalderen FOER rytteren flyttes. Har handlen allerede en escrow (held/released),
+ * betales intet af den gamle sti, uanset kontakt og parkering: escrow'en ejer
+ * pengene. Refunderet = handlen er annulleret, og kalderen skal have stoppet foer
+ * rytteren blev flyttet; her kastes der som sidste vaern. Den endelige garanti er
+ * databasens: triggeren fra M2 afviser en saelger-kredit efter en refusion under
+ * holdlaasen. "none" (eller udeladt) = adfaerden fra foer.
+ *
  * @param {any} supabase
- * @param {{ parked: boolean, dealType: "transfer"|"auction"|"swap", dealId: string, riderIds: string[], targetTeamIds: string[] }} deal
+ * @param {{ parked: boolean, dealType: "transfer"|"auction"|"swap", dealId: string, riderIds: string[], targetTeamIds: string[], priorEscrow?: "none"|"held"|"released"|"refunded" }} deal
  * @returns {Promise<{ incrementBalanceWithAudit: typeof incrementBalanceWithAudit }>}
  */
-export async function saleEscrowPayment(supabase, { parked, dealType, dealId, riderIds, targetTeamIds }) {
+export async function saleEscrowPayment(supabase, { parked, dealType, dealId, riderIds, targetTeamIds, priorEscrow = "none" }) {
+  if (priorEscrow === "refunded") {
+    throw new Error(`saleEscrowPayment: ${dealType} ${dealId} er refunderet til koeberen; handlen betales ikke igen`);
+  }
+  if (priorEscrow === "held" || priorEscrow === "released") return PAID_BY_EXISTING_ESCROW;
   if (!parked) return DIRECT_PAYMENT;
   if (!(await isSaleEscrowEnabled(supabase))) return DIRECT_PAYMENT;
   if (!DEAL_TYPES.has(dealType) || !dealId) {
@@ -172,6 +192,37 @@ export async function fetchHeldSaleEscrows(supabase, { riderIds = null } = {}) {
   return { rows: rows.filter((e) => e.rider_ids.some((id) => wanted.has(id))), error: null };
 }
 
+/**
+ * Ejer-krav 1 (#7871): har denne handel en escrow, og hvilken status? Laeses af
+ * handels-stierne FOER rytteren flyttes, saa en gentagelse af handlen efter en
+ * refusion hverken flytter rytteren igen eller krediterer saelger (koeberens traek
+ * ville springes over som dublet, saelgers kredit ikke: penge ville opstaa). IKKE
+ * bag kontakten: en escrow fra en taendt periode gaelder ogsaa efter et sluk.
+ * Fail-closed: en laesefejl kaster (handlen stopper, foer noget flyttes).
+ *
+ * @param {any} supabase
+ * @param {{ dealType: "transfer"|"auction"|"swap", dealId: string }} deal
+ * @returns {Promise<"none"|"held"|"released"|"refunded">}
+ */
+export async function saleEscrowStatusForDeal(supabase, { dealType, dealId }) {
+  if (!DEAL_TYPES.has(dealType) || !dealId) {
+    throw new Error(`saleEscrowStatusForDeal: ukendt handel ${dealType}/${dealId}`);
+  }
+  // UNIQUE (deal_type, deal_id) i M1: hoejst een raekke.
+  const { data, error } = await supabase
+    .from("sale_escrows")
+    .select("status")
+    .eq("deal_type", dealType)
+    .eq("deal_id", dealId)
+    .limit(1);
+  if (error) {
+    if (MISSING_TABLE_CODES.has(error.code)) return "none";
+    throw new Error(`sale_escrows-opslag for ${dealType} ${dealId} fejlede: ${error.message}`);
+  }
+  const status = Array.isArray(data) ? data[0]?.status : undefined;
+  return status === "held" || status === "released" || status === "refunded" ? status : "none";
+}
+
 /** @param {unknown} err */
 const errorMessage = (err) => (err instanceof Error ? err.message : String(err));
 
@@ -198,7 +249,8 @@ async function loadRiderStates(supabase, riderIds) {
  *            er vaek: pension, kontraktudloeb, reset, admin). Handlen er annulleret.
  *   wait:    resten venter parkeret mod maalholdet (flushen flytter dem).
  *   stuck:   et bytte, hvor een rytter er leveret og den anden ikke kan leveres.
- *            Kraever et menneske; ownershipInvariantWatch melder det.
+ *            Kraever et menneske; ownershipInvariantWatch melder det, og admin
+ *            afgoer det med resolveStuckSaleEscrow (ejer-krav 2, #7871).
  *
  * @param {{ rider_ids: string[], target_team_ids: string[], delivered_rider_ids?: string[] }} escrow
  * @param {Map<string, { team_id?: string|null, pending_team_id?: string|null }>} ridersById
@@ -371,6 +423,73 @@ export async function reconcileHeldSaleEscrows({ supabase, now = new Date(), sou
     }
   }
   return result;
+}
+
+/**
+ * Ejer-krav 2 (#7871): oversigt til admin over holdte escrows med den handling,
+ * reconcile ville tage (release/refund/wait/stuck). "stuck" er dem, kun
+ * resolveStuckSaleEscrow kan afregne. Read-only.
+ *
+ * @param {any} supabase
+ * @returns {Promise<Array<{ id: string, deal_type: string, deal_id: string, payer_team_id: string, payee_team_id: string, amount: number, rider_ids: string[], target_team_ids: string[], delivered_rider_ids: string[], created_at: string, action: string }>>}
+ */
+export async function listHeldSaleEscrowsForAdmin(supabase) {
+  const { rows, error } = await fetchHeldSaleEscrows(supabase);
+  if (error) throw new Error(`sale_escrows-opslag fejlede: ${error.message}`);
+  if (rows.length === 0) return [];
+  const states = await loadRiderStates(supabase, rows.flatMap((e) => e.rider_ids));
+  return rows.map((e) => ({
+    id: e.id,
+    deal_type: e.deal_type,
+    deal_id: e.deal_id,
+    payer_team_id: e.payer_team_id,
+    payee_team_id: e.payee_team_id,
+    amount: Number(e.amount),
+    rider_ids: e.rider_ids,
+    target_team_ids: e.target_team_ids,
+    delivered_rider_ids: e.delivered_rider_ids || [],
+    created_at: e.created_at,
+    action: classifyHeldEscrow(e, states),
+  }));
+}
+
+/**
+ * Ejer-krav 2 (#7871): den manuelle vej for et bytte, der sidder fast (een rytter
+ * er leveret, den anden kan ikke leveres; settle_sale_escrow afviser baade release
+ * og refund). Admin vaelger:
+ *   release: modtageren krediteres kontantbeloebet (byttet staar ved magt).
+ *   refund:  betaleren faar kontantbeloebet tilbage.
+ * Ingen rytter flyttes i nogen af delene; den leverede bliver, hvor han er.
+ * resolve_stuck_sale_escrow (M2) goer det i een transaktion under hold- og
+ * raekkelaasene og tjekker selv, at escrow'en faktisk sidder fast (ellers
+ * 'not_stuck': saa er det reconcile/heal-sweepets sag). Penge kan ikke opstaa:
+ * release og refund udelukker hinanden (samme noegler og vagter som settle).
+ *
+ * @param {any} supabase
+ * @param {{ escrowId: string, outcome: "release"|"refund", adminUserId: string|null, now?: Date }} args
+ * @returns {Promise<{ status: string, [k: string]: any }>}
+ */
+export async function resolveStuckSaleEscrow(supabase, { escrowId, outcome, adminUserId, now = new Date() }) {
+  if (outcome !== "release" && outcome !== "refund") {
+    throw new Error(`resolveStuckSaleEscrow: outcome skal vaere release eller refund, ikke ${outcome}`);
+  }
+  const { data, error } = await supabase.rpc("resolve_stuck_sale_escrow", {
+    p_escrow_id: escrowId,
+    p_outcome: outcome,
+    // Refusionens post. Ved release bruges escrow'ens gemte saelger-post (samme
+    // tekst som handlen), og herfra kun actor_type, actor_id og source_path.
+    p_payload: {
+      type: "transfer_in",
+      description: "Refusion af handel, afgjort af admin",
+      metadata: { code: "tx.saleEscrowRefund", params: {} },
+      actor_type: FINANCE_ACTOR_TYPE.ADMIN,
+      actor_id: adminUserId,
+      source_path: "api.admin.saleEscrowResolve",
+    },
+    p_settled_at: now.toISOString(),
+  });
+  if (error) throw new Error(`resolve_stuck_sale_escrow(${escrowId}, ${outcome}) fejlede: ${error.message}`);
+  return data;
 }
 
 /**

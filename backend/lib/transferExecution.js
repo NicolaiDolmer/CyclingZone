@@ -14,7 +14,7 @@ import { fetchAtRiskCount } from "./squadRiskGuard.js";
 import { shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.ts";
 import { buildRiderValueSnapshot, updateDealWithValueSnapshot } from "./dealValueSnapshot.js";
-import { saleEscrowPayment } from "./saleEscrowFlow6181.js";
+import { saleEscrowPayment, saleEscrowStatusForDeal } from "./saleEscrowFlow6181.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
 import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
 import { seniorSquadPatch } from "./squads.js";
@@ -562,7 +562,15 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   // #3330: updated_at stemples eksplicit ved parkering (ingen auto-touch-
   // trigger på riders) så ownershipInvariantWatch's forward-guard kan måle
   // pending-alder pålideligt i stedet for at læse en tilfældig gammel værdi.
-  const movedRider = deferRegistration
+  // #6181 ejer-krav 1 (#7871): er handlen allerede refunderet via escrow (en
+  // gentagelse efter refusionen), er den annulleret. Rytterguarden nedenfor ville
+  // ellers bestå igen (refusionen fjerner parkeringen), og sælger ville blive
+  // krediteret, mens køberens træk springes over som dublet. Så går handlen i
+  // stale-grenen i stedet: intet flyttes, ingen betaler.
+  const priorSaleEscrow = await saleEscrowStatusForDeal(supabase, { dealType: "transfer", dealId: offer.id });
+  const movedRider = priorSaleEscrow === "refunded"
+    ? null
+    : deferRegistration
     ? await expectMaybeSingle(
         supabase
           .from("riders")
@@ -647,7 +655,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   const actorId = auditCtx?.actorId || null;
   const transferSeasonId = await fetchActiveSeasonId(supabase);
   // #6181: parkeret + sale_escrow_enabled → saelgers penge laases til holdskiftet.
-  const transferPayment = await saleEscrowPayment(supabase, { parked: deferRegistration, dealType: "transfer", dealId: offer.id, riderIds: [rider.id], targetTeamIds: [offer.buyer_team_id] });
+  const transferPayment = await saleEscrowPayment(supabase, { parked: deferRegistration, dealType: "transfer", dealId: offer.id, riderIds: [rider.id], targetTeamIds: [offer.buyer_team_id], priorEscrow: priorSaleEscrow });
   await transferPayment.incrementBalanceWithAudit(supabase, {
     teamId: offer.buyer_team_id,
     delta: -price,
@@ -875,7 +883,13 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   // allerede er reserveret til en anden handel); registrér = flyt team_id direkte.
   // #3330: updated_at stemples eksplicit ved parkering (ingen auto-touch-trigger
   // på riders) — se begrundelse ved single-offer-parkeringen ovenfor.
-  const movedOffered = deferRegistration
+  // #6181 ejer-krav 1 (#7871): et bytte, hvis escrow er refunderet, er annulleret
+  // (se executeTransferOffer): stale-grenen, intet flyttes, ingen betaler. Kun et
+  // bytte med kontanter kan have en escrow.
+  const priorSaleEscrow = cash !== 0 ? await saleEscrowStatusForDeal(supabase, { dealType: "swap", dealId: swap.id }) : "none";
+  const movedOffered = priorSaleEscrow === "refunded"
+    ? null
+    : deferRegistration
     ? await expectMaybeSingle(
         supabase
           .from("riders")
@@ -997,7 +1011,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     const swapActorId = auditCtx?.actorId || null;
     const swapSeasonId = await fetchActiveSeasonId(supabase);
     // #6181: parkeret + sale_escrow_enabled → kontanterne laases, til begge ryttere er flyttet.
-    const swapPayment = await saleEscrowPayment(supabase, { parked: deferRegistration, dealType: "swap", dealId: swap.id, riderIds: [offered.id, requested.id], targetTeamIds: [swap.receiving_team_id, swap.proposing_team_id] });
+    const swapPayment = await saleEscrowPayment(supabase, { parked: deferRegistration, dealType: "swap", dealId: swap.id, riderIds: [offered.id, requested.id], targetTeamIds: [swap.receiving_team_id, swap.proposing_team_id], priorEscrow: priorSaleEscrow });
 
     await swapPayment.incrementBalanceWithAudit(supabase, {
       teamId: payerId,
