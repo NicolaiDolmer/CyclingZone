@@ -237,6 +237,17 @@ export function queueVerified(comments, pr, issue) {
   });
 }
 
+/** Sidst mergede PR efter merge-tid. PR-nummeret afgoer kun ved ens eller manglende tid. */
+export function latestMerged(prs) {
+  return [...prs].sort((a, b) => String(b.mergedAt || '').localeCompare(String(a.mergedAt || '')) || b.number - a.number)[0];
+}
+
+/** Main-commits der ikke er squash-commits fra issuets mergede PR'er. */
+export function directCommits(commits, prs) {
+  const fromPr = prs.filter((p) => p.merged).map((p) => `(#${p.number})`);
+  return (commits || []).filter((c) => !fromPr.some((tag) => String(c.subject || '').includes(tag)));
+}
+
 function prLabel(pr) {
   return `PR #${pr.number}${pr.merged ? ' (merget)' : pr.state === 'open' ? ' (åben)' : ''}`;
 }
@@ -311,7 +322,7 @@ export function evaluateDoor({ issue, comments = [], prs = [], commits = [], reg
     for (const krav of [3, 4, 5, 6, 7]) {
       if (autoResults[krav].status === 'mangler') autoResults[krav] = auto('na', INTERNAL_SOURCE);
     }
-    const newest = Math.max(...merged.map((p) => p.number));
+    const newest = latestMerged(merged).number;
     if (queueVerified(comments, newest, n)) {
       // autoBevis: en menneskelig markering vinder stadig, og brand kraever et menneske.
       autoResults[8] = { ...auto('ok', `merge-køen verificerede PR #${newest}`), autoBevis: true, menneskeStatus: null };
@@ -516,12 +527,16 @@ export function resolveMainRef(execGit) {
   return 'HEAD';
 }
 
-function commitTouches(execGit, sha, file) {
+function commitFiles(execGit, sha) {
   try {
-    return execGit(['diff-tree', '--no-commit-id', '--name-only', '-r', '-m', '--first-parent', sha]).split(/\r?\n/).includes(file);
+    return execGit(['diff-tree', '--no-commit-id', '--name-only', '-r', '-m', '--first-parent', sha]).split(/\r?\n/).filter(Boolean);
   } catch {
-    return false;
+    return []; // ukendt filliste: isInternalChange svarer nej
   }
+}
+
+function commitTouches(execGit, sha, file) {
+  return commitFiles(execGit, sha).includes(file);
 }
 
 /** Henter alt evaluateDoor skal bruge for ét issue. */
@@ -544,6 +559,8 @@ export function fetchIssueBundle({ execGh = defaultExecGh, execGit = defaultExec
     if (!isInternalChange(files)) internalOnly = false;
     if (!helpChanged && files.includes(HELP_FILE)) helpChanged = `PR #${pr.number}`;
   }
+  // En direkte main-commit er ogsaa levering: roerer den spillerkode, er issuet ikke internt.
+  if (internalOnly && directCommits(commits, prs).some((c) => !isInternalChange(commitFiles(execGit, c.sha)))) internalOnly = false;
   if (!helpChanged) {
     const hit = commits.find((c) => commitTouches(execGit, c.sha, HELP_FILE));
     if (hit) helpChanged = `commit ${hit.sha.slice(0, 9)}`;

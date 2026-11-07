@@ -20,7 +20,7 @@ import {
   DUP_BODY,
 } from './lib/til-doers.mjs';
 import { parseArgs, main, processIssue, targetsFromPr } from './til-doers-check.mjs';
-import { titleScopeIssues, mergedIntoMain, lastMarkerAt, isInternalChange, queueVerified } from './lib/til-doers.mjs';
+import { titleScopeIssues, mergedIntoMain, lastMarkerAt, isInternalChange, queueVerified, latestMerged, directCommits, fetchIssueBundle } from './lib/til-doers.mjs';
 
 const N = 4242;
 const owner = (body, created_at = '2026-10-31T10:00:00Z', extra = {}) => ({ id: Math.floor(Math.random() * 1e9), body, created_at, author_association: 'OWNER', user: { login: 'ejer' }, ...extra });
@@ -623,4 +623,39 @@ test('et brand-issue lukkes ikke alene på køens verificering', () => {
   const door = evaluateDoor({ issue: DONE, prs: MERGED, comments: [verified()], internalOnly: true });
   const res = decideClose({ issue: { ...DONE, state: 'open' }, door, brandList: [{ issue: N }] });
   assert.equal(res.close, false);
+});
+
+test('seneste PR vælges efter merge-tid, ikke PR-nummer', () => {
+  const prs = [
+    { number: 100, state: 'closed', merged: true, mergedAt: '2026-11-01T10:00:00Z' },
+    { number: 90, state: 'closed', merged: true, mergedAt: '2026-11-02T10:00:00Z' },
+  ];
+  assert.equal(latestMerged(prs).number, 90);
+  assert.equal(status(evaluateDoor({ issue: DONE, prs, comments: [verified(100)], internalOnly: true }), 8), 'mangler');
+  assert.equal(status(evaluateDoor({ issue: DONE, prs, comments: [verified(90)], internalOnly: true }), 8), 'ok');
+});
+
+test('directCommits skiller squash-commits fra direkte main-commits', () => {
+  const commits = [{ sha: 'a', subject: 'feat: x (#77)' }, { sha: 'b', subject: 'fix: direkte Refs #1' }];
+  assert.deepEqual(directCommits(commits, MERGED).map((c) => c.sha), ['b']);
+});
+
+test('fetchIssueBundle: en direkte spiller-commit gør issuet ikke-internt', () => {
+  const execGh = (args) => {
+    const path = args.find((a) => a.startsWith('repos/')) || '';
+    if (path.endsWith('/comments?per_page=100')) return '';
+    if (path.includes('/timeline')) {
+      return `${JSON.stringify({ event: 'cross-referenced', source: { issue: { number: 77, title: 'x', body: `Refs #${N}`, state: 'closed', pull_request: { merged_at: '2026-11-01T10:00:00Z' }, repository: { full_name: 'o/r' } } } })}\n`;
+    }
+    if (path.includes('/pulls/77/files')) return `${JSON.stringify({ filename: 'scripts/a.mjs' })}\n`;
+    if (path.includes('/pulls/77')) return JSON.stringify({ merged_at: '2026-11-01T10:00:00Z', base: { ref: 'main' } });
+    return JSON.stringify({ number: N, state: 'open', labels: [] });
+  };
+  const gitWith = (file) => (args) => {
+    if (args[0] === 'log') return `abc1234\x1ffix: direkte\x1fRefs #${N}\x1e`;
+    return `${file}\n`;
+  };
+  const run = (file) => fetchIssueBundle({ execGh, execGit: gitWith(file), repo: 'o/r', number: N, mainRef: 'main' }).internalOnly;
+  assert.equal(run('frontend/src/pages/A.jsx'), false);
+  assert.equal(run('docs/a.md'), true);
 });
