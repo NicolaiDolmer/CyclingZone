@@ -45,15 +45,34 @@ const CLOSE_DELAY_MS = 150;
 const CACHE_TTL_MS = 60_000;
 
 // ── Kontakten: ét kald pr. side, ikke ét pr. raekke ──────────────────────────
-let flagCache: { at: number; promise: Promise<boolean> } | null = null;
+// Cachen er bundet til den indloggede bruger (Codex P2 paa #7849): logger en
+// beta-tester ud og en anden ind i samme fane, maa den naeste ikke arve svaret.
+let flagCache: { userId: string; at: number; promise: Promise<boolean> } | null = null;
 
-function loadHoverCardFlag(): Promise<boolean> {
+type AuthClient = {
+  auth: {
+    getSession(): Promise<{ data: { session: { user?: { id?: string } } | null } }>;
+    onAuthStateChange(cb: () => void): { data: { subscription: { unsubscribe(): void } } };
+  };
+};
+const auth = (supabase as unknown as AuthClient).auth;
+
+async function currentUserId(): Promise<string | null> {
+  try {
+    const { data } = await auth.getSession();
+    return data?.session?.user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function loadHoverCardFlag(userId: string): Promise<boolean> {
   const now = Date.now();
-  if (flagCache && now - flagCache.at < CACHE_TTL_MS) return flagCache.promise;
+  if (flagCache && flagCache.userId === userId && now - flagCache.at < CACHE_TTL_MS) return flagCache.promise;
   const promise = fetchPlayerFeatureFlags()
     .then((flags: Record<string, boolean>) => flags?.[RIDER_HOVER_CARD_FLAG_KEY] === true)
     .catch(() => false);
-  flagCache = { at: now, promise };
+  flagCache = { userId, at: now, promise };
   return promise;
 }
 
@@ -61,8 +80,15 @@ export function useRiderHoverCardEnabled(): boolean {
   const [enabled, setEnabled] = useState(false);
   useEffect(() => {
     let alive = true;
-    loadHoverCardFlag().then((on) => { if (alive) setEnabled(on); });
-    return () => { alive = false; };
+    const refresh = async () => {
+      const userId = await currentUserId();
+      const on = userId ? await loadHoverCardFlag(userId) : false;
+      if (alive) setEnabled(on);
+    };
+    void refresh();
+    // Ny session (ind-/udlogning): glem svaret og spoerg igen for den nye bruger.
+    const { data } = auth.onAuthStateChange(() => { flagCache = null; void refresh(); });
+    return () => { alive = false; data?.subscription?.unsubscribe(); };
   }, []);
   return enabled;
 }
