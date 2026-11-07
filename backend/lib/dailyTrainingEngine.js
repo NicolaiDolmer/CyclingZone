@@ -76,8 +76,10 @@ import { notifyTrainingInjuries } from "./raceAvailabilityNotifications.js"; // 
 import { loadDevelopmentCurveB } from "./developmentCurveBFlag.ts"; // #3564 kurve B
 import { ensureCurveBIgnition, curveBTransitionForDate, loadCurveBTransitionRoster } from "./developmentCurveBTransition7382.ts"; // #7382 blød overgang
 import { loadRaceDayEffortByRider, raceDayIntentionYieldMultiplier } from "./raceDayIntentionYield.js"; // #6641 variant B
-import { loadRaceDayRoleYield, loadRaceDayRoleByRider, withRaceDayRoleYield } from "./raceDayRoleYield5950.js"; // #5950 haard dag + rolle
+import { loadRaceDayRoleYield, loadRaceDayRoleByRider } from "./raceDayRoleYield5950.js"; // #5950 haard dag + rolle (kaldes via withRaceDayRoleYieldXp)
 import { loadDevelopmentScoreB, developmentTickArgs } from "./developmentScoreWiring.js"; // #6950 Udviklingsscore B
+import { loadDevelopmentXp, withRaceDayRoleYieldXp } from "./developmentXpFlag.ts"; // #6110 XP-modellen (slukket)
+import { capXpTickGainsPerDate } from "./developmentXp.ts"; // #6110: maks +1 pr. dato i XP
 import { loadRaceCatchUp } from "./raceCatchUpWiring.js"; // #6950 catch-up via loeb
 import { assessIllness } from "./conditionIllness.js"; // #6938 sygdom af langvarig ekstrem traethed
 import { CURRENT_RACE_RULES_REVISION, isS5ProfilesV3OrLater } from "./raceEngineRulesRevision.ts";
@@ -795,14 +797,16 @@ export async function runTeamTrainingDay({
   ]);
   // #5950: loebsdag = haard dag + rolle-vaegtet tillaeg. null = dagens loebsdag, bit-identisk.
   const raceRoleYield = await loadRaceDayRoleYield({ supabase, strict: conditionPerDate });
+  // #6110: XP-modellen for tick-datoen. null = dagens model, bit-identisk; kaster sammen med Score B/catch-up.
+  const developmentXp = await loadDevelopmentXp({ supabase, tickDate, strict: conditionPerDate, developmentScoreB, raceCatchUp, capPerDateOn, now: () => +now });
 
   // #6500: holdets raekke hentes ÉN gang, og kun naar flaget er taendt. Regel-gate,
   // ikke berigelse: et gaet ville enten give et AI-hold udvikling eller tage den
   // fra en manager. Derfor kastes der (reservationen slettes i catch'en nedenfor),
   // og naeste sweep proever igen. ASCII-only besked (intern ops-fejl).
-  // #6950: D6 gaelder ogsaa naar Udviklingsscore B eller catch-up er taendt.
+  // #6950: D6 gaelder ogsaa naar Udviklingsscore B eller catch-up er taendt. #6110: og under XP.
   let developmentAllowed = true;
-  if (developmentV2On || developmentScoreB || raceCatchUp) {
+  if (developmentV2On || developmentScoreB || raceCatchUp || developmentXp) {
     const { data: teamRow, error: teamError } = await supabase
       .from("teams")
       .select("id, user_id, is_ai, is_bank, is_test_account")
@@ -1279,6 +1283,7 @@ export async function runTeamTrainingDay({
         // #3564: baade traeningsdagen og loebsdagen (applyDailyTick nedenfor) faar kurven.
         curveB,
         curveBTransition: riderCurveBTransition, // #7382
+        developmentXp, // #6110: null = dagens model
       };
       if (racedToday) {
         // #4850 variant A (ejer 24/9, S1 valgt efter simuleringen i #5640):
@@ -1297,7 +1302,7 @@ export async function runTeamTrainingDay({
           program: raceDayProgram(racedRiderProfileByRider.get(rider.id) ?? RACE_DAY_FALLBACK_PROFILE),
           hardDailyCap: TRAINING_RACE_DAY_CONFIG.abilityGainCapPerRaceDay,
           academyRateMult: raceDayIntentionYieldMultiplier(raceDayEffortByRider.get(rider.id)),
-          ...withRaceDayRoleYield(developmentTickArgs({ developmentScoreB, raceCatchUp, dayKey: seedScope, tickArgs: sharedTickArgs, racedToday: true, profileType: racedRiderProfileByRider.get(rider.id) }), // #6950
+          ...withRaceDayRoleYieldXp(developmentXp, developmentTickArgs({ developmentScoreB, raceCatchUp, dayKey: seedScope, tickArgs: sharedTickArgs, racedToday: true, profileType: racedRiderProfileByRider.get(rider.id) }), // #6950
             { params: raceRoleYield, profileType: racedRiderProfileByRider.get(rider.id), role: raceDayRoleByRiderMap.get(rider.id) }), // #5950
         });
       } else {
@@ -1321,12 +1326,12 @@ export async function runTeamTrainingDay({
             && row.tick_date === tickDate && row.game_day !== raceDay).map((row) => row.report) : []),
           ...sameDateRunReports.filter((row) => row.rider_id === rider.id),
         ]);
-        tickResult = capTickGainsPerDate({ tickResult, abilities, usedGains });
+        tickResult = developmentXp ? capXpTickGainsPerDate({ tickResult, abilities, progress: preProgress, usedGains }, developmentXp) : capTickGainsPerDate({ tickResult, abilities, usedGains });
       } else {
         // #6210 (Codex P1): kalenderdags-stien (flag slukket, rollback eller loebsdags-fallback)
         // faar samme dato-loft, inkl. gevinster fra datoens tidligere loebsdags-ticks.
         const usedGains = sumDateGains(sameDateRunReports.filter((row) => row.rider_id === rider.id));
-        tickResult = capTickGainsPerDate({ tickResult, abilities, usedGains });
+        tickResult = developmentXp ? capXpTickGainsPerDate({ tickResult, abilities, progress: preProgress, usedGains }, developmentXp) : capTickGainsPerDate({ tickResult, abilities, usedGains });
       }
     }
 
