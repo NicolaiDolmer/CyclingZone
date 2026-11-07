@@ -994,12 +994,12 @@
     "world": {
       "name": "World champion",
       "short": "most points on the world ranking last season.",
-      "full": "Most points on the world ranking in season {{prev}}. He wears the jersey all of season {{season}}."
+      "full": "Most points on the world ranking in season {prev}. He wears the jersey all of season {season}."
     },
     "u23World": {
       "name": "U23 world champion",
       "short": "most points on last season's U23 ranking.",
-      "full": "Most points on the U23 ranking in season {{prev}}, or on the world ranking among riders under 23 if no U23 races gave points. He wears the jersey all of season {{season}}."
+      "full": "Most points on the U23 ranking in season {prev}, or on the world ranking among riders under 23 if no U23 races gave points. He wears the jersey all of season {season}."
     },
     "continent": {
       "europe": "European champion",
@@ -1008,12 +1008,12 @@
       "africa": "African champion",
       "oceania": "Oceania champion",
       "short": "most ranking points from his continent last season.",
-      "full": "Most ranking points among riders from his continent in season {{prev}}. He wears the jersey all of season {{season}}."
+      "full": "Most ranking points among riders from his continent in season {prev}. He wears the jersey all of season {season}."
     },
     "national": {
-      "name": "National champion, {{country}}",
-      "short": "most ranking points from {{country}} last season.",
-      "full": "Most ranking points among riders from {{country}} in season {{prev}}. He wears the jersey all of season {{season}}."
+      "name": "National champion, {country}",
+      "short": "most ranking points from {country} last season.",
+      "full": "Most ranking points among riders from {country} in season {prev}. He wears the jersey all of season {season}."
     },
     "helpLink": "How champion jerseys work"
   }

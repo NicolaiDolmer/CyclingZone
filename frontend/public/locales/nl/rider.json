@@ -994,12 +994,12 @@
     "world": {
       "name": "Wereldkampioen",
       "short": "de meeste punten op de wereldranglijst vorig seizoen.",
-      "full": "De meeste punten op de wereldranglijst in seizoen {{prev}}. Hij draagt de trui het hele seizoen {{season}}."
+      "full": "De meeste punten op de wereldranglijst in seizoen {prev}. Hij draagt de trui het hele seizoen {season}."
     },
     "u23World": {
       "name": "Wereldkampioen U23",
       "short": "de meeste punten op de U23-ranglijst van vorig seizoen.",
-      "full": "De meeste punten op de U23-ranglijst in seizoen {{prev}}, of op de wereldranglijst onder renners jonger dan 23 als geen enkele U23-koers punten gaf. Hij draagt de trui het hele seizoen {{season}}."
+      "full": "De meeste punten op de U23-ranglijst in seizoen {prev}, of op de wereldranglijst onder renners jonger dan 23 als geen enkele U23-koers punten gaf. Hij draagt de trui het hele seizoen {season}."
     },
     "continent": {
       "europe": "Europees kampioen",
@@ -1008,12 +1008,12 @@
       "africa": "Afrikaans kampioen",
       "oceania": "Oceanisch kampioen",
       "short": "de meeste rankingpunten van zijn continent vorig seizoen.",
-      "full": "De meeste rankingpunten onder renners van zijn continent in seizoen {{prev}}. Hij draagt de trui het hele seizoen {{season}}."
+      "full": "De meeste rankingpunten onder renners van zijn continent in seizoen {prev}. Hij draagt de trui het hele seizoen {season}."
     },
     "national": {
-      "name": "Nationaal kampioen, {{country}}",
-      "short": "de meeste rankingpunten uit {{country}} vorig seizoen.",
-      "full": "De meeste rankingpunten onder renners uit {{country}} in seizoen {{prev}}. Hij draagt de trui het hele seizoen {{season}}."
+      "name": "Nationaal kampioen, {country}",
+      "short": "de meeste rankingpunten uit {country} vorig seizoen.",
+      "full": "De meeste rankingpunten onder renners uit {country} in seizoen {prev}. Hij draagt de trui het hele seizoen {season}."
     },
     "helpLink": "Zo werken de kampioenstruien"
   }
