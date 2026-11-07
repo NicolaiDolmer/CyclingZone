@@ -242,6 +242,8 @@ export const ALL_CRON_MONITORS = [
   ["discord-race-digest", CRON_MONITOR_DISCORD_RACE_DIGEST],
   // #5130: Discord-velkomstbesked, samme kadence som email-welcome.
   ["discord-welcome", CRON_MONITOR_5MIN],
+  // #7792: besked til dem der stemte hoejt paa et leveret roadmap-punkt.
+  ["roadmap-delivered", CRON_MONITOR_5MIN],
   ["alunta-subscription-reconcile", CRON_MONITOR_60MIN],
   // #4514 — forfalds-vagt. Ikke gated bag et flag: en vagt der er slukket som
   // default er præcis den fejl den findes for at fange. Den skriver intet.

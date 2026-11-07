@@ -1,4 +1,5 @@
 import express from 'express';
+import { runRoadmapDeliveredNotify } from '../lib/roadmapDeliveredNotify.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATUSES = new Set(['active', 'planned', 'in_progress', 'shipped', 'archived']);
@@ -6,7 +7,7 @@ const STATUSES = new Set(['active', 'planned', 'in_progress', 'shipped', 'archiv
 const HORIZONS = new Set(['this_week', 'next_week', 'next', 'this_season', 'next_season', 'y2027', 'later']);
 const PASS = (_req, _res, next) => next();
 
-export function createAdminRoadmapRouter({ supabase, requireAdmin, writeLimiter = PASS, captureExceptionFn = () => {} }) {
+export function createAdminRoadmapRouter({ supabase, requireAdmin, writeLimiter = PASS, captureExceptionFn = () => {}, runDelivered = runRoadmapDeliveredNotify }) {
   if (typeof requireAdmin !== 'function') throw new TypeError('requireAdmin is required');
   const router = express.Router();
   router.use(requireAdmin);
@@ -24,6 +25,13 @@ export function createAdminRoadmapRouter({ supabase, requireAdmin, writeLimiter 
 
   router.get('/stats', (req, res) => call(req, res, 'roadmap_admin_stats', undefined, data => ({ stats: data?.[0] ?? null })));
   router.post('/resync', writeLimiter, (req, res) => call(req, res, 'roadmap_resync_flags', undefined, data => ({ updated: data })));
+  // #7792: kør leveret-sweepet nu (cron'en tager det ellers inden for få minutter).
+  router.post('/notify-delivered', writeLimiter, async (req, res) => {
+    try { return res.json(await runDelivered({ supabase })); } catch (error) {
+      captureExceptionFn(error, { tags: { source: 'admin-roadmap', route: 'notify-delivered' } });
+      return res.status(500).json({ error: 'Roadmap request failed' });
+    }
+  });
   router.post('/split', writeLimiter, (req, res) => {
     const body = req.body;
     if (!body || Array.isArray(body) || typeof body.source !== 'string' || !UUID.test(body.source)

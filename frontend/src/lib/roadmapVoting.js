@@ -70,6 +70,12 @@ export function isDontKnow(vote) {
   return Boolean(vote) && vote.importance_score == null && vote.idea_score == null;
 }
 
+// #7792: "You voted" på et leveret punkt. Kun en stemme med et tal tæller; et Ved ikke er
+// et svar, men ikke en stemme.
+export function hasScoredVote(vote) {
+  return Boolean(vote) && (vote.importance_score != null || vote.idea_score != null);
+}
+
 // Privacy (#1599): når userId er sat, filtreres til KUN den brugers egne
 // stemmer FØR Map'en bygges. Forsvars-lag 2 oven på query-filteret — så en
 // admin-RLS-undtagelse (OR is_admin()) der lækker andres rows ikke kan skrive
