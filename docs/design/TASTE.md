@@ -150,6 +150,14 @@ Et fagord på fladen kan være prikket understreget: tryk eller hover viser én 
 
 Trykflader er mindst 44 × 44 px (WCAG 2.2 kræver mindst 24 × 24; 44 er det anbefalede niveau og Apples). Den synlige knap må være mindre, men trykfladen er 44. Langt tryk på en rytterrække åbner højreklik-menuen som et ark nederst; Safari på iOS sender ikke `contextmenu` ved langt tryk, så det laves med en timer på pointer-events. Fordi langt tryk er svært at opdage, findes de samme handlinger altid også via et tryk på hover-ikonet.
 
+### P18 · Overlays: hover-kort, højreklik-menu, tooltip (ejer 7/11, valg A)
+
+På computeren svæver kortet ved siden af det, man holder musen over (ca. 360 px bredt); listen bliver stående. På telefonen glider samme kort op fra bunden som et ark efter et tryk. Overlays bruger Inter Tight/DM Sans (aldrig Bebas, P4), spillets egne mærker (P8), hairline + 5 px radius + én skygge (§3 tillader skygge her), Esc lukker, fokus holdes inde, og de bygges med browserens popover og ankerpositionering (Googles menu-vejledning). Sidepanel og "fold ud under rækken" er afvist som standard.
+
+### P19 · Ruteprofilen: én tegning, to størrelser (ejer 7/11, valg A)
+
+Hver etape har én profil. Stor (løbssiden): farvet efter stigningsprocent (under 3 / 3-6 / 6-8 / 8-10 / over 10 %), stigningens navn, kategori og den rigtige højde på toppen fra højdedata. Lille (etapebjælken, lister): samme form i én rolig tone med en rød prik ved hver kategoriseret stigning, plus spillets terræn-ikon i farve. Én komponent tegner begge.
+
 ### P17 · Designbilleder fortæller sandheden (ejer 7/11)
 
 Billeder, vi beslutter ud fra, følger samme krav som spillet: ægte data fra spillet (private tal vises som "eksempel"), før og efter side om side, nummererede noter der peger på billedet, muligheder med fordele og ulemper og én anbefaling. Engelsk i Discord, dansk med ejeren. **Kun ejeren godkender ændringer til dette dokument**; andre må gerne sige deres mening.
@@ -238,6 +246,7 @@ Bruges i slice 2 på hver af de 63 sider, i lys, mørk og mobil. **Hvert "nej" e
 18. Er hvert rytter- og holdnavn et ensartet link, og følger navnecellen den faste rækkefølge? (P12)
 19. Er hvert tal skrevet på sin ene rigtige måde? (P13)
 20. Har hver trykflade på mobil mindst 44 × 44 px, og når man alle handlinger uden langt tryk? (P16)
+21. Følger overlays reglen: svævende kort på computeren, ark på telefonen, spillets fonte og mærker, Esc lukker? (P18)
 
 **Bonus-spørgsmålet der afgør verdensklasse**
 17. Ville en Football Manager-spiller der ser siden i 5 sekunder tro at den var lavet af nogen der elsker cykelsport? Hvis nej: hvad mangler? Skriv det som fundet.
@@ -276,6 +285,8 @@ Otte forks blev vist som mockup-varianter (A/B/C) og afgjort af ejeren 2/9 2026.
 
 | # | Forslag | Valg |
 |---|---|---|
+| 1 | Overlays | A · svævende kort på computeren, ark fra bunden på telefonen (P18) |
+| 4 | Ruteprofil | A · stor farvet efter stigning, lille i én tone med røde prikker + terræn-ikon (P19) |
 | 2 | Navnecellen | Nation · navn · ikon · mærker · status · evt. ryttertype (P12) |
 | 3 | Evne-farver | A · behold firkanterne, forklaring i Hjælp og kortet, indtil bedre løsning for farveblinde (P5) |
 | 5 | Talformater | Ja (P13) |
@@ -286,7 +297,7 @@ Otte forks blev vist som mockup-varianter (A/B/C) og afgjort af ejeren 2/9 2026.
 | 10 | Tjeklisten | Ja, spørgsmål 18-20 i §4 |
 | ny | Tabeller og navne | Tabeller ens overalt, rytter- og holdnavne altid klikbare (P12) |
 
-Åbne: 1 (overlays) vises i et større, ægte eksempel; 4 (ruteprofil) forklares bedre; rettelsen af række 6 ovenfor afventer svar. Hele spillet gennemgås side for side mod TASTE (eget issue), og rettes løbende, når vi kommer forbi siderne.
+Åben: rettelsen af række 6 ovenfor (mobil-tabeller, D-047) afventer svar. Hele spillet gennemgås side for side mod TASTE (eget issue), og rettes løbende, når vi kommer forbi siderne.
 
 ## 7. Kilder
 
