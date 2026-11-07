@@ -108,7 +108,7 @@ export default function RoadmapAdminChart({
             tabIndex={0}
             aria-label={label}
             aria-pressed={selected}
-            className="cursor-pointer outline-none [&:focus-visible>circle]:stroke-cz-1"
+            className="cursor-pointer outline-hidden [&:focus-visible>circle]:stroke-cz-1"
             onClick={() => onSelect(p.key)}
             onKeyDown={onKey(p.key)}
           >
