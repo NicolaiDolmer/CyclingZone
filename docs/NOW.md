@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (7/11):** Bølge 1 kører på PC1 (6 laner: #7832, #7692, #6110 trin 2→4, #7792, #7789, #7801). Merge PR #7839 (worktree-oprydning uden tab, #7837) ved grøn CI. Pengelås #6181 og auto-accept #2176 designet 7/11 (beslutninger på issuerne); PR 1 i kø i bølge 1. Codex: #7829. Design næst: løbsside A (#7778), så #7725. Bevis 15:00 (#7726, #7557); #7733 efter 16:30; secrets, feedback og fair-play senest 9/11. PC1 mangler `infisical login` (Discord-webhook til auto-toget). Mærker #7824: kun design.
+> **🎯 Next action (7/11 aften):** Bølge 3 på PC1: #7801 (ret review-fund i PR #7842), #7715 til dørs (tænd kun på ejerens "kør"), #2009 hover-miniprofil bag beta. Venter på ejeren: A #7624 / B #7625 som ekstra spor, D sandhedsvagt-issue (RACE_TRUTH_TRACKING_ISSUE ikke sat), auto-accept #2176. Løbsside-redesign #7778: klikbart wireframe v2 (artifact) + spec `docs/superpowers/specs/2026-11-07-race-page-redesign-discord.md`; næste: ejerens rettelser, så implementeringsplan. Tændt i dag: #7726, #7733 (16:34); #7557 effekt tjekkes efter etape 2. Merge-kø: #7846 venter på uafhængig review-markør. Codex: XP-kalibrering runde 2 (#6110). Mandag: secrets, feedback, fair-play #5431.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** PC1 Claude Code-session 7/11 (merger og tænder; auto-toget installeret på PC1). Dolmer PC kører Codex (#7833, #7348, #7170, #6862, #7248).
+> **🤖 Working agent:** PC1 Claude Code-session 7/11 (bølge 3 kører; Discord #build-a-feature). Dolmer PC: Codex XP-kalibrering.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 

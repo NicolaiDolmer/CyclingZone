@@ -21,8 +21,39 @@ import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.ts";
 import { loadWithdrawnPairs, withdrawalKey } from "./raceWithdrawal.js";
 import { buildKeyedNotification } from "./notificationKeys.js";
+import { ANY_SQUAD, isEligibleRider } from "./riderEligibility.js";
+import { DEFAULT_SQUAD } from "./squads.js";
 
 const NOOP = () => {};
+
+/**
+ * #7692: ghost-filteret for et etapeløbs committede entries, med én undtagelse for en
+ * PARKERET rytter (pending_team_id sat) i et løb der allerede er startet.
+ *
+ * Rodårsag: handel, bytte og auktion skriver ungdoms-graduationen (squad -> senior,
+ * is_academy -> false) med det samme ved parkeringen, mens team_id bliver hos sælgeren
+ * til løbet er kørt. Fra etape 2 krydsede motoren hans entry mod U23-truppen, så han
+ * faldt ud af U23-løbet midt i det. Ejer: en solgt rytter kører som altid, indtil
+ * skiftet sker.
+ *
+ * Undtagelsen springer KUN trup-leddet over. Han skal stadig stå på entry'ens hold
+ * (team_id = sælger), ikke være pensioneret, og han er stadig i etape-1-feltet
+ * (#1844-frysningen tilføjer aldrig nogen). Et løb der ikke er startet, får den
+ * almindelige dom: en solgt, gradueret rytter starter ikke et nyt U23-løb.
+ *
+ * @param {{ entries?: any[], ridersById: Map<string, any>, squad?: string, seasonNumber?: number|null, raceStarted?: boolean }} args
+ *   ridersById-rækkerne skal projicere pending_team_id.
+ * @returns {any[]} entries i uændret rækkefølge
+ */
+export function filterEligibleEntriesKeepingParked({ entries = [], ridersById, squad = DEFAULT_SQUAD, seasonNumber, raceStarted = false }) {
+  // Samme prædikat som riderEligibility.filterEligibleEntries, pr. entry.
+  return entries.filter((e) => {
+    const rider = ridersById.get(e.rider_id);
+    const keepParked = raceStarted && rider?.pending_team_id != null;
+    const opts = { teamId: e.team_id, squad: keepParked ? ANY_SQUAD : squad, seasonNumber };
+    return isEligibleRider(rider, opts);
+  });
+}
 
 /**
  * Hvilke af `riderIds` er lige nu i et AKTIVT fleretape-løb?
