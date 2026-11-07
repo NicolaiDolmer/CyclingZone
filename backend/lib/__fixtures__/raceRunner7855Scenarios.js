@@ -12,9 +12,28 @@ import { entrants7236, stages7236 } from "./raceRunner7236Scenarios.js";
 
 export const RACE_7855 = Object.freeze({ id: "race-7855-runner-fixture", race_type: "stage_race", race_class: "ProSeries", season_id: "s1", stages: 3 });
 
-/** Samme etaper som #7236 (flad med spurt, topankomst med spurt, bjerg med tre toppe og en spurt). */
+// Bjergetapens gemte segmenter (som rutegeneratoren skriver dem), saa alle tre toppe og spurten
+// er rigtige passager undervejs. Uden segmenter gaetter adapteren kun etapens sidste stykke.
+const MOUNTAIN_SEGMENTS_7855 = Object.freeze([
+  { kind: "rolling", from_km: 0, to_km: 50 },
+  { kind: "climb", from_km: 50, to_km: 60, category: "1", avg_gradient: 6.5, top_elevation_m: 1400 },
+  { kind: "descent", from_km: 60, to_km: 70, technicality: 2 },
+  { kind: "flat", from_km: 70, to_km: 100 },
+  { kind: "climb", from_km: 100, to_km: 110, category: "1", avg_gradient: 7, top_elevation_m: 1600 },
+  { kind: "descent", from_km: 110, to_km: 122, technicality: 2 },
+  { kind: "rolling", from_km: 122, to_km: 148 },
+  { kind: "climb", from_km: 148, to_km: 162, category: "HC", avg_gradient: 8, top_elevation_m: 2100 },
+  { kind: "descent", from_km: 162, to_km: 170, technicality: 3 },
+]);
+
+/** Samme etaper som #7236 (flad med spurt, topankomst med spurt, bjerg med tre toppe og en spurt); bjergetapen med segmenter. */
 export function stages7855() {
-  return stages7236().map((s) => ({ ...s, race_id: RACE_7855.id, id: `sp-7855-${s.stage_number}` }));
+  return stages7236().map((s) => ({
+    ...s,
+    race_id: RACE_7855.id,
+    id: `sp-7855-${s.stage_number}`,
+    ...(s.stage_number === 3 ? { segments: MOUNTAIN_SEGMENTS_7855.map((seg) => ({ ...seg })) } : {}),
+  }));
 }
 
 // Faste roller til rytterne med plan (resten koerer paa deres rolle som i #7236).
