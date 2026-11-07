@@ -87,7 +87,8 @@ export async function marketGateResponse6181(supabase, error, { kind, teamId, au
   if (code === "squad_full") return { status: 400, body: SQUAD_FULL_BODY() };
 
   if (code === "price_changed" && auctionId) {
-    const { data: fresh } = await supabase.from("auctions").select("current_price, current_bidder_id").eq("id", auctionId).maybeSingle();
+    const { data: fresh, error: freshError } = await supabase.from("auctions").select("current_price, current_bidder_id").eq("id", auctionId).maybeSingle();
+    if (freshError) console.error("[marketCommitment6181] could not read price for 409", { auctionId, error: freshError.message });
     return {
       status: 409,
       body: {
