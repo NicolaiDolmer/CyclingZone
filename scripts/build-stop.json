@@ -1045,6 +1045,21 @@
       "issue": 7788,
       "reason": "Ejer-go 6/11: Ved ikke én gang pr. punkt",
       "since": "2026-11-06"
+    },
+    {
+      "issue": 7832,
+      "reason": "Ejer-go 7/11 (plan på #7495): nyt hold må aldrig miste sin første træningsdato",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7792,
+      "reason": "Ejer-go 7/11 (plan på #7495): besked ved levering af roadmap-punkt",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7789,
+      "reason": "Ejer-go 7/11 (plan på #7495): roadmap-admin med graf",
+      "since": "2026-11-07"
     }
   ]
 }

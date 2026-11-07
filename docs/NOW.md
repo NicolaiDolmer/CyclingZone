@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (7/11):** PC1 overtager; plan på #7495 og i OneDrive overdragelse-dolmerpc-til-pc1-2026-11-07.md. Bølge 1: #7832, #7692, #6110 trin 2+4, #7792, #7789. Design: #6181/#2176, så løbsside A (#7778) og #7725. Bevis 15:00 (#7726, #7557); #7733 efter 16:30; secrets, feedback og fair-play senest 9/11. Ventende bevis: #7829. Mærker #7824: kun design, intet byg uden go.
+> **🎯 Next action (7/11):** Bølge 1 kører på PC1 (6 laner: #7832, #7692, #6110 trin 2→4, #7792, #7789, #7801). Merge PR #7839 (worktree-oprydning uden tab, #7837) ved grøn CI. Design: #6181/#2176, så løbsside A (#7778) og #7725. Bevis 15:00 (#7726, #7557); #7733 efter 16:30; secrets, feedback og fair-play senest 9/11. PC1 mangler `infisical login` (Discord-webhook til auto-toget). Mærker #7824: kun design.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Ingen aktiv session. Fra 7/11: PC1 (Claude Code) merger og tænder, og auto-toget installeres på PC1; Dolmer PC kører Codex. Auto-toget er fjernet fra Dolmer PC.
+> **🤖 Working agent:** PC1 Claude Code-session 7/11 (merger og tænder; auto-toget installeret på PC1). Dolmer PC kører Codex (#7833, #7348, #7170, #6862, #7248).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
