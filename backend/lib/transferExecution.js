@@ -14,7 +14,7 @@ import { fetchAtRiskCount } from "./squadRiskGuard.js";
 import { shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.ts";
 import { buildRiderValueSnapshot, updateDealWithValueSnapshot } from "./dealValueSnapshot.js";
-import { incrementBalanceWithAudit } from "./balanceRpc.js";
+import { saleEscrowPayment } from "./saleEscrowFlow6181.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
 import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
 import { seniorSquadPatch } from "./squads.js";
@@ -646,7 +646,9 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   const actorType = auditCtx?.actorType || FINANCE_ACTOR_TYPE.CRON;
   const actorId = auditCtx?.actorId || null;
   const transferSeasonId = await fetchActiveSeasonId(supabase);
-  await incrementBalanceWithAudit(supabase, {
+  // #6181: parkeret + sale_escrow_enabled → saelgers penge laases til holdskiftet.
+  const payTransfer = await saleEscrowPayment(supabase, { parked: deferRegistration, dealType: "transfer", dealId: offer.id, riderIds: [rider.id], targetTeamIds: [offer.buyer_team_id] });
+  await payTransfer(supabase, {
     teamId: offer.buyer_team_id,
     delta: -price,
     payload: {
@@ -667,7 +669,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
       idempotency_key: `transfer_buyer:${offer.id}`,
     },
   }, { allowDuplicate: true });
-  await incrementBalanceWithAudit(supabase, {
+  await payTransfer(supabase, {
     teamId: offer.seller_team_id,
     delta: price,
     payload: {
@@ -994,8 +996,10 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     const swapActorType = auditCtx?.actorType || FINANCE_ACTOR_TYPE.CRON;
     const swapActorId = auditCtx?.actorId || null;
     const swapSeasonId = await fetchActiveSeasonId(supabase);
+    // #6181: parkeret + sale_escrow_enabled → kontanterne laases, til begge ryttere er flyttet.
+    const paySwap = await saleEscrowPayment(supabase, { parked: deferRegistration, dealType: "swap", dealId: swap.id, riderIds: [offered.id, requested.id], targetTeamIds: [swap.receiving_team_id, swap.proposing_team_id] });
 
-    await incrementBalanceWithAudit(supabase, {
+    await paySwap(supabase, {
       teamId: payerId,
       delta: -absCash,
       payload: {
@@ -1013,7 +1017,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
         idempotency_key: `swap_payer:${swap.id}`,
       },
     }, { allowDuplicate: true });
-    await incrementBalanceWithAudit(supabase, {
+    await paySwap(supabase, {
       teamId: receiverId,
       delta: absCash,
       payload: {

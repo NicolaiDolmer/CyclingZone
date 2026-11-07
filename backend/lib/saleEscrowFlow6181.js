@@ -48,10 +48,11 @@ const ESCROW_COLUMNS = "id, deal_type, deal_id, payer_team_id, payee_team_id, am
 
 /**
  * Kontakten. Kun 'on' (eller true) taender; 'beta' er slukket, fordi det er penge.
- * Laeses friskt, saa et sluk virker med det samme. Fejl giver slukket (featureStage).
+ * Laeses friskt (et sluk virker med det samme); refusions-loekker i saesonskiftet
+ * bruger den korte cache. Fejl giver slukket (featureStage).
  */
-export async function isSaleEscrowEnabled(supabase) {
-  return evaluateFlagStage(await readFlagStage(supabase, SALE_ESCROW_FLAG_KEY, { fresh: true }));
+export async function isSaleEscrowEnabled(supabase, { fresh = true } = {}) {
+  return evaluateFlagStage(await readFlagStage(supabase, SALE_ESCROW_FLAG_KEY, { fresh }));
 }
 
 /**
@@ -268,7 +269,7 @@ export async function releaseSaleEscrowForFlush(supabase, rider, { flushedAt }) 
  */
 export async function refundSaleEscrowsForReleasedRiders(supabase, riderIds, { now = new Date(), sourcePath } = {}) {
   const stats = { refunded: 0, failed: 0 };
-  if (!riderIds?.length || !(await isSaleEscrowEnabled(supabase))) return stats;
+  if (!riderIds?.length || !(await isSaleEscrowEnabled(supabase, { fresh: false }))) return stats;
   try {
     const { rows, error } = await fetchHeldSaleEscrows(supabase, { riderIds });
     if (error) throw new Error(error.message);
@@ -304,7 +305,15 @@ export async function reconcileHeldSaleEscrows({ supabase, now = new Date(), sou
   if (rows.length === 0) return result;
   result.checked = rows.length;
 
-  const states = await loadRiderStates(supabase, rows.flatMap((e) => e.rider_ids));
+  let states;
+  try {
+    states = await loadRiderStates(supabase, rows.flatMap((e) => e.rider_ids));
+  } catch (err) {
+    result.failed += 1;
+    result.errors.push({ escrowId: null, message: err?.message || String(err) });
+    console.error("[saleEscrow] reconcile kunne ikke laese rytterne:", err?.message || err);
+    return result;
+  }
   const at = now.toISOString();
   for (const escrow of rows) {
     const action = classifyHeldEscrow(escrow, states);

@@ -53,6 +53,7 @@ import {
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { captureException } from "./sentry.js";
 import { closePendingGraduationOnRelease } from "./academyGraduationRelease.ts";
+import { refundSaleEscrowsForReleasedRiders } from "./saleEscrowFlow6181.js";
 
 async function defaultFetchRetiredOwnedRiders({ supabase }) {
   // Bemærk: INGEN is_academy-filtrering her (modsat contractExpiryRelease, hvor den
@@ -138,6 +139,8 @@ export async function releaseRetiredRiders({
       await closeTransferListingsForRiders(supabase, [rider.id], "withdrawn");
       await withdrawOpenTransferDealsForRiders(supabase, [rider.id]);
       await closePendingGraduationOnRelease(supabase, { teamId: rider.team_id, riderId: rider.id, now }); // #7488
+      // #6181 hul 6: var han solgt og ventede paa holdskiftet, faar koeberen pengene tilbage.
+      await refundSaleEscrowsForReleasedRiders(supabase, [rider.id], { now, sourcePath: "retirementRelease.saleEscrowRefund" });
       stats.released += 1;
     } catch (err) {
       stats.failed += 1;

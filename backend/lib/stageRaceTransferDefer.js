@@ -23,6 +23,7 @@ import { loadWithdrawnPairs, withdrawalKey } from "./raceWithdrawal.js";
 import { buildKeyedNotification } from "./notificationKeys.js";
 import { ANY_SQUAD, isEligibleRider } from "./riderEligibility.js";
 import { DEFAULT_SQUAD } from "./squads.js";
+import { releaseSaleEscrowForFlush } from "./saleEscrowFlow6181.js";
 
 const NOOP = () => {};
 
@@ -147,7 +148,10 @@ export async function flushParkedRider(supabase, rider, { notifyTeamOwner, flush
   const sourceTeamId = rider.team_id ?? null;
   // TOCTOU/idempotency-guard: flush KUN hvis pending_team_id stadig peger hvor vi
   // læste. En genkørsel (recovery/heal-sweep) finder pending_team_id=null → 0 rows → skip.
-  const { data: moved, error: mErr } = await supabase
+  // #6181: med sale_escrow_enabled flytter settle_sale_escrow rytteren og krediterer
+  // saelger i een transaktion; null = almindelig flush som foer.
+  const viaEscrow = await releaseSaleEscrowForFlush(supabase, rider, { flushedAt });
+  const { data: moved, error: mErr } = viaEscrow ?? await supabase
     .from("riders")
     .update({ team_id: targetTeamId, pending_team_id: null, acquired_at: flushedAt })
     .eq("id", rider.id)

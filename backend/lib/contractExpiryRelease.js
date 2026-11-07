@@ -44,6 +44,7 @@ import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 import { notifyUser as defaultNotifyUser } from "./notificationService.js";
 import { captureException } from "./sentry.js";
 import { closePendingGraduationOnRelease } from "./academyGraduationRelease.ts";
+import { refundSaleEscrowsForReleasedRiders } from "./saleEscrowFlow6181.js";
 import { buildContractRosterNotification } from "./contractNoticeRoster.js";
 
 export const CONTRACT_EXPIRED_RELEASE_TYPE = "contract_expired_release";
@@ -226,6 +227,8 @@ export async function releaseExpiredContractRiders({
       await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "contract_expiry_release" });
       await closeTransferListingsForRiders(supabase, [rider.id], "withdrawn");
       await closePendingGraduationOnRelease(supabase, { teamId: rider.team_id, riderId: rider.id, now }); // #7488
+      // #6181 hul 6: var han solgt og ventede paa holdskiftet, faar koeberen pengene tilbage.
+      await refundSaleEscrowsForReleasedRiders(supabase, [rider.id], { now, sourcePath: "contractExpiryRelease.saleEscrowRefund" });
       stats.released += 1;
       if (patch.is_academy === false) stats.youthNormalized += 1;
 

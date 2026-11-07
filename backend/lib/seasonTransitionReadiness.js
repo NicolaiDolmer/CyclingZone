@@ -53,6 +53,7 @@ import { loadEmptyPoolFilter } from "./emptyPoolPolicy.js";
 import { getSquadLimits } from "./marketUtils.js";
 import { applySeniorSquadFilter } from "./squads.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
+import { fetchHeldSaleEscrows } from "./saleEscrowFlow6181.js";
 
 /**
  * #5855 — read-only måling af trup-håndhævelsens postcondition.
@@ -158,6 +159,11 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
   if (poolFilterRes.error) throw new Error(`Kunne ikke læse puljer: ${poolFilterRes.error.message || poolFilterRes.error}`);
 
   const deferredTransfers = (deferredRes.data || []).length;
+  // #6181: en holdt escrow er en betalt handel, hvor saelger endnu ikke er krediteret
+  // (eller koeberen ikke refunderet). Den skal afregnes foer skiftet, ligesom parkeringen.
+  const { rows: heldEscrowRows, error: heldEscrowError } = await fetchHeldSaleEscrows(supabase);
+  if (heldEscrowError) throw new Error(`Kunne ikke tælle låste salg: ${heldEscrowError.message}`);
+  const heldSaleEscrows = heldEscrowRows.length;
   const activeAuctions = auctionsRes.count || 0;
   const { inEmptyPool } = poolFilterRes.data;
   const unfinishedRaces = (racesRes.data || []).filter((r) => !inEmptyPool(r)).length;
@@ -199,11 +205,12 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
         : `Sæson ${season.number} er stadig '${season.status}' — kør 'Afslut sæson' (season-end) FØRST, ellers springes op/nedrykning + divisionsbonusser over`,
     },
     no_deferred_transfers: {
-      ok: deferredTransfers === 0,
+      ok: deferredTransfers === 0 && heldSaleEscrows === 0,
       critical: true,
-      detail: deferredTransfers === 0
-        ? null
-        : `${deferredTransfers} gennemførte transfers venter på at blive flyttet (pending_team_id) — kør flush/heal-sweepet først`,
+      detail: [
+        deferredTransfers === 0 ? null : `${deferredTransfers} gennemførte transfers venter på at blive flyttet (pending_team_id) — kør flush/heal-sweepet først`,
+        heldSaleEscrows === 0 ? null : `${heldSaleEscrows} låste salg venter på afregning (sale_escrows) — kør heal-sweepet først`,
+      ].filter(Boolean).join("; ") || null,
     },
     squad_enforcement_completed: { ok: squadOk, critical: true, detail: squadDetail },
     no_active_auctions: {

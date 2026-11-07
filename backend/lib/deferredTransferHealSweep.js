@@ -23,6 +23,7 @@
 
 import { fetchAllRows } from "./supabasePagination.js";
 import { getRidersInActiveStageRace, flushParkedRider } from "./stageRaceTransferDefer.js";
+import { reconcileHeldSaleEscrows } from "./saleEscrowFlow6181.js";
 
 const NOOP = () => {};
 
@@ -45,7 +46,7 @@ export async function runDeferredTransferHealSweep({
   );
 
   if (parked.length === 0) {
-    return { candidates: 0, healed: 0, failed: 0, stillRacing: 0, errors: [] };
+    return withSaleEscrows(supabase, now, { candidates: 0, healed: 0, failed: 0, stillRacing: 0, errors: [] });
   }
 
   const racingIds = new Set(
@@ -77,11 +78,27 @@ export async function runDeferredTransferHealSweep({
     }
   }
 
-  return {
+  return withSaleEscrows(supabase, now, {
     candidates: parked.length,
     healed,
     failed,
     stillRacing: racingIds.size,
     errors,
+  });
+}
+
+// #6181: sikkerhedsnettet for laaste salgspenge, IKKE bag sale_escrow_enabled (en
+// escrow fra en taendt periode skal afregnes, ogsaa efter et sluk). Koerer efter
+// flushen, saa en netop leveret rytter afregnes i samme koersel. Fejl taelles i
+// failed/errors, saa cron-wrapperens Sentry-capture ser dem. Ingen escrows = samme
+// resultat som foer.
+async function withSaleEscrows(supabase, now, result) {
+  const escrows = await reconcileHeldSaleEscrows({ supabase, now, sourcePath: "deferredTransferHealSweep.saleEscrow" });
+  if (escrows.checked === 0 && escrows.failed === 0) return result;
+  return {
+    ...result,
+    failed: result.failed + escrows.failed,
+    errors: [...result.errors, ...escrows.errors],
+    saleEscrows: escrows,
   };
 }
