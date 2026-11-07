@@ -131,6 +131,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
 
     potential_single_number: false,
     potential_estimate_display: false,
+    champion_jerseys_7824: false,
 
     ability_cap_per_date_enabled: false,
 
@@ -194,6 +195,7 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
 
     potential_single_number: false,
     potential_estimate_display: false,
+    champion_jerseys_7824: false,
 
     ability_cap_per_date_enabled: false,
 
@@ -265,6 +267,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
 
     potential_single_number: false,
     potential_estimate_display: false,
+    champion_jerseys_7824: false,
 
     ability_cap_per_date_enabled: false,
 
@@ -297,6 +300,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
 
     potential_single_number: false,
     potential_estimate_display: false,
+    champion_jerseys_7824: false,
 
     ability_cap_per_date_enabled: false,
 
