@@ -30,8 +30,8 @@ export default function TrainingHistory({ history, trainingScore = null, conditi
     <SectionHeader title={t("historyTitle")} />
     {loading ? <SkeletonLines lines={4} />
       : error ? <ErrorState title={t("dailyReceipt.loadError")} description={t("dailyReceipt.loadErrorBody")}
-          action={refresh ? <Button variant="secondary" size="sm" onClick={() => refresh()}>{t("dailyReceipt.retry")}</Button> : null} />
-      : <EmptyState icon={<ClockIcon size={26} aria-hidden="true" />} title={t("historyEmpty")}
+          action={/** @type {any} */ (<Button variant="secondary" size="sm" onClick={() => refresh?.()}>{t("dailyReceipt.retry")}</Button>)} />
+      : <EmptyState icon={<ClockIcon size={26} aria-hidden="true" />} title={t("historyEmpty")} description={null}
           action={<Button variant="secondary" size="sm" onClick={() => navigate("/training?tab=today")}>{t("dailyReceipt.emptyAction")}</Button>} />}
   </Section>;
   return <div className="space-y-[14px]">{runs.map((run,index)=>
