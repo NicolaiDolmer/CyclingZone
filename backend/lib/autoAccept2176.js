@@ -22,7 +22,7 @@
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { calculateAuctionEnd, getAuctionSeasonBoundaryIssue } from "./auctionEngine.js";
 import { getTeamMarketState, MIN_RIDERS_FOR_RACE } from "./marketUtils.js";
-import { fetchAtRiskRiders } from "./squadRiskGuard.js";
+import { buildAtRiskErrorParams, fetchAtRiskRiders } from "./squadRiskGuard.js";
 import { assertSigningAllowed } from "./boardConsequences.js";
 import { fetchSeasonTransitionBoundary } from "./seasonTransitionBoundary.js";
 import { notifyNewAuction } from "./discordNotifier.js";
@@ -215,6 +215,63 @@ async function rpc(supabase, name, args) {
   const { data, error } = await supabase.rpc(name, args);
   if (error) throw error;
   return data;
+}
+
+/**
+ * Oversaetter auto_accept_release_rider's status til samme svar som
+ * frigivelsesruten giver i dag. atRiskRiders er den liste, ruten selv har hentet
+ * (samme som blev sendt til RPC'en), saa fejlens navne og tal passer sammen.
+ */
+export function mapReleaseUnderTeamLockResult(result, atRiskRiders = []) {
+  switch (result?.status) {
+    case "released":
+      return { data: [{ id: result.rider_id }] };
+    case "rider_state_changed":
+      return { error: { status: 409, body: { error: "This rider is no longer on your team", errorCode: "rider_state_changed" } } };
+    case "rider_on_auction":
+      return {
+        error: {
+          status: 409,
+          body: {
+            error: "This rider is currently on auction and can't be released. Wait for the auction to end first",
+            errorCode: "rider_on_auction_release",
+          },
+        },
+      };
+    case "squad_floor":
+      return {
+        error: {
+          status: 409,
+          body: {
+            error: `You can't drop below ${result.min_riders} riders once contract expiry and retirement risk at the next season change are counted`,
+            errorCode: "cannot_release_squad_risk",
+            errorParams: buildAtRiskErrorParams({ minRiders: result.min_riders }, atRiskRiders),
+          },
+        },
+      };
+    default:
+      throw new Error(`auto_accept_release_rider: unexpected status ${result?.status}`);
+  }
+}
+
+/**
+ * Frigivelse af en rytter under samme holdlaas som start_auto_accept_auction
+ * (Codex P2 paa #7878): gulv-tjek og ejerskabsskift i een transaktion, saa en
+ * samtidig auto-accept-start og en frigivelse ikke begge kan passere gulvet.
+ *
+ * Slukket kontakt: null efter kun at have laest kontakten; kalderen bruger sin
+ * egen opdatering uaendret. Taendt: { data: [{ id }] } (frigivet) eller
+ * { error: { status, body } }.
+ */
+export async function releaseRiderUnderTeamLock(supabase, { riderId, teamId, atRiskRiders = [] }) {
+  if (!(await isAutoAcceptEnabled(supabase))) return null;
+  const result = await rpc(supabase, "auto_accept_release_rider", {
+    p_rider_id: riderId,
+    p_team_id: teamId,
+    p_min_riders: MIN_RIDERS_FOR_RACE,
+    p_at_risk_rider_ids: (atRiskRiders || []).map((r) => r.id),
+  });
+  return mapReleaseUnderTeamLockResult(result, atRiskRiders);
 }
 
 // null eller et positivt heltal; undefined (feltet mangler) er en fejl, saa

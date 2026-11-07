@@ -36,11 +36,15 @@
 --      (samme noegle som increment_balance_with_audit) tjekkes listing, pris,
 --      rytter, koeberens penge og plads samt saelgers gulv; saa oprettes auktion
 --      og foerende bud, og listingen saettes paa pause (#4211-reglen).
+--   7. public.auto_accept_release_rider(...): frigivelse af en rytter med gulv-tjek
+--      og ejerskabsskift under samme holdlaas som 6 (Codex P2 paa #7878). Backend
+--      kalder den kun med kontakten taendt; slukket bruger frigivelsen sin gamle sti.
 --
 -- Laaseraekkefoelge (deadlock-fri, samme som M1 og de eksisterende RPC'er):
 -- holdlaase (pg_advisory_xact_lock paa begge hold i fast raekkefoelge), saa
 -- rytter-raekken, saa listing-raekken. set_listing_auto_accept_price tager
--- saelgerens holdlaas og saa listing-raekken.
+-- saelgerens holdlaas og saa listing-raekken. auto_accept_release_rider tager
+-- holdets laas og saa rytter-raekken.
 --
 -- Afhaenger IKKE af M1 (2026-11-07-6181-sale-escrow-m1.sql); filerne kan
 -- applies i vilkaarlig raekkefoelge.
@@ -68,14 +72,16 @@
 --   5. SELECT p.proname, has_function_privilege('anon', p.oid, 'EXECUTE') AS anon,
 --             has_function_privilege('authenticated', p.oid, 'EXECUTE') AS auth
 --        FROM pg_proc p WHERE p.proname IN ('set_listing_auto_accept_price','start_auto_accept_auction',
---          'transfer_listing_auto_accept_guard','transfer_listing_price_log_write','auto_accept_lock_teams');
---      -- anon=false, auth=false for alle fem
+--          'transfer_listing_auto_accept_guard','transfer_listing_price_log_write','auto_accept_lock_teams',
+--          'auto_accept_release_rider');
+--      -- anon=false, auth=false for alle seks
 --   6. SELECT tgname FROM pg_trigger WHERE tgrelid = 'public.transfer_listings'::regclass
 --        AND tgname LIKE 'transfer_listings_auto_accept%';  -- 4 raekker
 --   7. SELECT conname FROM pg_constraint WHERE conname IN
 --        ('transfer_listings_auto_accept_price_check','auctions_origin_check','auctions_auto_accept_shape');  -- 3 raekker
 --
 -- Rollback (kun mens ingen listing har en auto-pris og ingen auto-accept-auktion findes):
+--   DROP FUNCTION IF EXISTS public.auto_accept_release_rider(uuid, uuid, integer, uuid[]);
 --   DROP FUNCTION IF EXISTS public.start_auto_accept_auction(uuid, uuid, bigint, integer, timestamptz, integer, integer, uuid[], timestamptz);
 --   DROP FUNCTION IF EXISTS public.set_listing_auto_accept_price(uuid, uuid, bigint, bigint, uuid);
 --   DROP TRIGGER IF EXISTS transfer_listings_auto_accept_guard_ins ON public.transfer_listings;
@@ -506,6 +512,80 @@ BEGIN
 END;
 $$;
 
+-- 7. Frigivelse under samme holdlaas ----------------------------------------
+-- Codex P2 paa #7878: POST /riders/:id/release tjekkede gulvet og aendrede
+-- ejerskabet i to kald uden holdlaasen. En samtidig start_auto_accept_auction
+-- paa en anden af holdets ryttere kunne saa ogsaa passere gulvet, og auktionen
+-- blev annulleret ved slut. Med kontakten taendt koerer frigivelsen her: samme
+-- holdlaas, saa rytter-raekken, og gulvet regnes som i start-RPC'en (rytteren
+-- her, holdets andre ryttere paa auktion med en anden byder og
+-- risiko-rytterne, hver kun een gang). Gebyret traekkes bagefter af backend
+-- som foer (increment_balance_with_audit, samme noegle).
+-- p_at_risk_rider_ids = holdets risiko-ryttere uden rytteren her.
+CREATE OR REPLACE FUNCTION public.auto_accept_release_rider(
+  p_rider_id uuid,
+  p_team_id uuid,
+  p_min_riders integer,
+  p_at_risk_rider_ids uuid[] DEFAULT '{}'
+) RETURNS jsonb
+LANGUAGE plpgsql
+SET search_path = public, pg_catalog
+AS $$
+DECLARE
+  r public.riders;
+  v_count integer;
+  v_out integer;
+  v_risk integer;
+BEGIN
+  IF p_rider_id IS NULL OR p_team_id IS NULL OR p_min_riders IS NULL THEN
+    RAISE EXCEPTION 'auto_accept_release_rider: missing argument' USING ERRCODE = '22023';
+  END IF;
+
+  PERFORM public.auto_accept_lock_teams(p_team_id, p_team_id);
+  SELECT * INTO r FROM public.riders WHERE id = p_rider_id FOR UPDATE;
+  -- Samme vagt som backendens opdatering: kun hvis han stadig er holdets og
+  -- ikke er solgt og venter paa holdskifte (#6181).
+  IF NOT FOUND OR r.team_id IS DISTINCT FROM p_team_id OR r.pending_team_id IS NOT NULL THEN
+    RETURN jsonb_build_object('status', 'rider_state_changed');
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.auctions a
+              WHERE a.rider_id = r.id AND a.status IN ('active', 'extended')) THEN
+    RETURN jsonb_build_object('status', 'rider_on_auction');
+  END IF;
+
+  SELECT count(*) INTO v_count
+    FROM public.riders x
+   WHERE x.squad = 'senior' AND NOT x.is_academy AND NOT coalesce(x.is_retired, false)
+     AND ((x.team_id = p_team_id AND (x.pending_team_id IS NULL OR x.pending_team_id = p_team_id))
+          OR (x.pending_team_id = p_team_id AND x.team_id IS DISTINCT FROM p_team_id));
+  SELECT count(*) INTO v_out
+    FROM public.auctions a
+    JOIN public.riders x ON x.id = a.rider_id
+   WHERE a.status IN ('active', 'extended')
+     AND x.team_id = p_team_id AND x.pending_team_id IS NULL
+     AND x.squad = 'senior' AND NOT x.is_academy AND NOT coalesce(x.is_retired, false)
+     AND a.current_bidder_id IS NOT NULL AND a.current_bidder_id <> p_team_id
+     AND x.id <> r.id;
+  SELECT count(*) INTO v_risk
+    FROM public.riders x
+   WHERE x.id = ANY (coalesce(p_at_risk_rider_ids, '{}'))
+     AND x.id <> r.id AND x.team_id = p_team_id AND x.pending_team_id IS NULL
+     AND NOT EXISTS (SELECT 1 FROM public.auctions a
+                      WHERE a.rider_id = x.id AND a.status IN ('active', 'extended')
+                        AND a.current_bidder_id IS NOT NULL AND a.current_bidder_id <> p_team_id);
+  IF v_count - 1 - v_out - v_risk < p_min_riders THEN
+    RETURN jsonb_build_object('status', 'squad_floor', 'min_riders', p_min_riders);
+  END IF;
+
+  UPDATE public.riders
+     SET team_id = NULL, pending_team_id = NULL, salary = NULL,
+         contract_length = NULL, contract_end_season = NULL, acquired_at = NULL
+   WHERE id = r.id;
+
+  RETURN jsonb_build_object('status', 'released', 'rider_id', r.id);
+END;
+$$;
+
 REVOKE ALL ON FUNCTION public.transfer_listing_auto_accept_guard() FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.transfer_listing_price_log_write() FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.auto_accept_lock_teams(uuid, uuid) FROM PUBLIC, anon, authenticated;
@@ -514,6 +594,8 @@ REVOKE ALL ON FUNCTION public.set_listing_auto_accept_price(uuid, uuid, bigint, 
 GRANT EXECUTE ON FUNCTION public.set_listing_auto_accept_price(uuid, uuid, bigint, bigint, uuid) TO service_role;
 REVOKE ALL ON FUNCTION public.start_auto_accept_auction(uuid, uuid, bigint, integer, timestamptz, integer, integer, uuid[], timestamptz) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.start_auto_accept_auction(uuid, uuid, bigint, integer, timestamptz, integer, integer, uuid[], timestamptz) TO service_role;
+REVOKE ALL ON FUNCTION public.auto_accept_release_rider(uuid, uuid, integer, uuid[]) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.auto_accept_release_rider(uuid, uuid, integer, uuid[]) TO service_role;
 
 NOTIFY pgrst, 'reload schema';
 

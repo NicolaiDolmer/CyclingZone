@@ -147,7 +147,7 @@ import {
 import * as transferNotif from "../lib/transferNotifications.js";
 import { withdrawCounterOffer, claimCounterForAccept, buildCounterOfferWithdrawnNotification } from "../lib/counterOfferWithdraw.js"; // #6463
 import { getParkedRiderReleaseIssue, getParkedRiderTradeIssue } from "../lib/parkedRiderGuard6181.js"; // #6181
-import { countSellerAuctionOutgoing, getOfferAutoAcceptIssue, registerAutoAcceptRoutes } from "../lib/autoAccept2176.js"; // #2176
+import { countSellerAuctionOutgoing, getOfferAutoAcceptIssue, registerAutoAcceptRoutes, releaseRiderUnderTeamLock } from "../lib/autoAccept2176.js"; // #2176
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
 import {
   notifyNewAuction,
@@ -2080,7 +2080,9 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
 
   // Frigør rytteren først (concurrency-guard: kun hvis stadig på vores hold) — så
   // vi ikke debiterer gebyret for en rytter en parallel handel allerede flyttede.
-  const { data: released } = await supabase
+  const lockedRelease = await releaseRiderUnderTeamLock(supabase, { riderId: rider.id, teamId: req.team.id, atRiskRiders: releaseAtRiskRiders }); // #2176: under holdlåsen, slukket = null
+  if (lockedRelease?.error) return res.status(lockedRelease.error.status).json(lockedRelease.error.body);
+  const { data: released } = lockedRelease ?? await supabase
     .from("riders")
     .update({
       team_id: null,
