@@ -79,7 +79,7 @@ export async function isSaleEscrowEnabled(supabase, { fresh = true } = {}) {
  * Kalderen maa kun saette parked=true, naar begge ben kommer (der er en saelger
  * og et positivt beloeb).
  *
- * @param {object} supabase
+ * @param {any} supabase
  * @param {{ parked: boolean, dealType: "transfer"|"auction"|"swap", dealId: string, riderIds: string[], targetTeamIds: string[] }} deal
  * @returns {Promise<{ incrementBalanceWithAudit: typeof incrementBalanceWithAudit }>}
  */
@@ -133,6 +133,8 @@ export async function saleEscrowPayment(supabase, { parked, dealType, dealId, ri
  * Alle holdte escrows (eller dem, der indeholder en af riderIds). Populationen er
  * lille (aabne parkerede salg), saa der filtreres i JS.
  *
+ * @param {any} supabase
+ * @param {{ riderIds?: string[] | null }} [opts]
  * @returns {Promise<{ rows: any[], error: any }>} manglende tabel = ingen escrows.
  */
 export async function fetchHeldSaleEscrows(supabase, { riderIds = null } = {}) {
@@ -151,6 +153,10 @@ export async function fetchHeldSaleEscrows(supabase, { riderIds = null } = {}) {
   return { rows: rows.filter((e) => e.rider_ids.some((id) => wanted.has(id))), error: null };
 }
 
+/** @param {unknown} err */
+const errorMessage = (err) => (err instanceof Error ? err.message : String(err));
+
+/** @param {any} supabase @param {string[]} riderIds @returns {Promise<Map<string, any>>} */
 async function loadRiderStates(supabase, riderIds) {
   const ids = [...new Set(riderIds)];
   if (ids.length === 0) return new Map();
@@ -201,6 +207,7 @@ function refundPayload(sourcePath) {
   };
 }
 
+/** @param {any} supabase @param {string} escrowId @param {"release"|"refund"} outcome @param {{ at: string, sourcePath: string }} opts */
 async function settle(supabase, escrowId, outcome, { at, sourcePath }) {
   const { data, error } = await supabase.rpc("settle_sale_escrow", {
     p_escrow_id: escrowId,
@@ -220,7 +227,7 @@ async function settle(supabase, escrowId, outcome, { at, sourcePath }) {
  * krediterer saelger i een transaktion, og svaret har samme form som
  * riders.update(...).select("id"): { data: [{ id }] | [], error }.
  *
- * @param {object} supabase
+ * @param {any} supabase
  * @param {{ id: string, pending_team_id: string }} rider
  * @param {{ flushedAt: string }} opts
  */
@@ -268,9 +275,12 @@ export async function releaseSaleEscrowForFlush(supabase, rider, { flushedAt }) 
  * Bag kontakten; slukket goer den intet. Kaster ikke: en fejl logges, og
  * heal-sweepets reconcile refunderer bagefter.
  *
+ * @param {any} supabase
+ * @param {string[]} riderIds
+ * @param {{ now?: Date, sourcePath?: string }} [opts]
  * @returns {Promise<{ refunded: number, failed: number }>}
  */
-export async function refundSaleEscrowsForReleasedRiders(supabase, riderIds, { now = new Date(), sourcePath } = {}) {
+export async function refundSaleEscrowsForReleasedRiders(supabase, riderIds, { now = new Date(), sourcePath = "saleEscrowFlow6181.refund" } = {}) {
   const stats = { refunded: 0, failed: 0 };
   if (!riderIds?.length || !(await isSaleEscrowEnabled(supabase, { fresh: false }))) return stats;
   try {
@@ -286,7 +296,7 @@ export async function refundSaleEscrowsForReleasedRiders(supabase, riderIds, { n
   } catch (err) {
     // best-effort: frigivelsen er allerede sket; reconcile i heal-sweepet refunderer inden for 5 min.
     stats.failed += 1;
-    console.error(`[saleEscrow] refusion fejlede (${sourcePath}), reconcile tager den:`, err?.message || err);
+    console.error(`[saleEscrow] refusion fejlede (${sourcePath}), reconcile tager den:`, errorMessage(err));
   }
   return stats;
 }
@@ -298,7 +308,9 @@ export async function refundSaleEscrowsForReleasedRiders(supabase, riderIds, { n
  *
  * @returns {Promise<{ checked: number, released: number, refunded: number, waiting: number, stuck: number, failed: number, errors: Array<{ escrowId: string|null, message: string }> }>}
  */
-export async function reconcileHeldSaleEscrows({ supabase, now = new Date(), sourcePath = "saleEscrowFlow6181.reconcile" } = {}) {
+/** @param {{ supabase: any, now?: Date, sourcePath?: string }} args */
+export async function reconcileHeldSaleEscrows({ supabase, now = new Date(), sourcePath = "saleEscrowFlow6181.reconcile" }) {
+  /** @type {{ checked: number, released: number, refunded: number, waiting: number, stuck: number, failed: number, errors: Array<{ escrowId: string|null, message: string }> }} */
   const result = { checked: 0, released: 0, refunded: 0, waiting: 0, stuck: 0, failed: 0, errors: [] };
   const { rows, error } = await fetchHeldSaleEscrows(supabase);
   if (error) {
@@ -315,8 +327,8 @@ export async function reconcileHeldSaleEscrows({ supabase, now = new Date(), sou
   } catch (err) {
     // best-effort: taelles i failed/errors, som cron-wrapperen sender til Sentry; naeste koersel proever igen.
     result.failed += 1;
-    result.errors.push({ escrowId: null, message: err?.message || String(err) });
-    console.error("[saleEscrow] reconcile kunne ikke laese rytterne:", err?.message || err);
+    result.errors.push({ escrowId: null, message: errorMessage(err) });
+    console.error("[saleEscrow] reconcile kunne ikke laese rytterne:", errorMessage(err));
     return result;
   }
   const at = now.toISOString();
@@ -331,8 +343,8 @@ export async function reconcileHeldSaleEscrows({ supabase, now = new Date(), sou
     } catch (err) {
       // best-effort: een escrow maa ikke stoppe resten; taelles i failed/errors (Sentry via cron-wrapperen).
       result.failed += 1;
-      result.errors.push({ escrowId: escrow.id, message: err?.message || String(err) });
-      console.error(`[saleEscrow] reconcile af ${escrow.id} fejlede:`, err?.message || err);
+      result.errors.push({ escrowId: escrow.id, message: errorMessage(err) });
+      console.error(`[saleEscrow] reconcile af ${escrow.id} fejlede:`, errorMessage(err));
     }
   }
   return result;
@@ -343,7 +355,7 @@ export async function reconcileHeldSaleEscrows({ supabase, now = new Date(), sou
  * graensen og ikke venter paa et loeb, der stadig koerer. Det er netop dem, flush,
  * heal-sweep og reconcile skulle have afregnet. Read-only.
  *
- * @param {object} supabase
+ * @param {any} supabase
  * @param {{ now: Date, staleHours: number, getRidersInActiveStageRaceFn: Function }} opts
  * @returns {Promise<Array<{ id: string, deal_type: string, action: string, created_at: string }>>}
  */
