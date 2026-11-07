@@ -510,6 +510,16 @@ features:
     verified: 2026-09-06
     note: Findes ikke i kode.
 
+  - id: market-auto-accept
+    area: market
+    title_en: Auto-accept price
+    title_da: Auto-accept-pris
+    state: building
+    epic: 2176
+    verified: 2026-11-07
+    decision: taend
+    decide_by: 2026-11-28
+
   - id: market-value-blend
     area: market
     title_en: Market value blend sweep
@@ -860,7 +870,7 @@ features:
     ssot: docs/YOUTH_RULES.md
     epic: 2911
     verified: 2026-10-15
-    note: Sikkerhedsventil efter ejer-beslutning (#2911); off i prod (læst 15/10), kun ejeren flipper.
+    note: Sikkerhedsventil (ejer-beslutning); off i prod (læst 15/10), kun ejeren flipper.
 
   - id: three-squads
     area: academy
@@ -1074,7 +1084,7 @@ features:
     flag: development_score_v2
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: 'Ejer 31/10 (#6110): parkeret, indtil grundtalentet (spec 23/10, byggetrin 2) er bygget; decide_by 8/11 er afløst, ny frist ikke sat. Forudsætning før tænding: #7584. Statusaudit 4/11.'
+    note: 'Ejer 31/10: parkeret til grundtalentet (byggetrin 2) er bygget; decide_by 8/11 afløst, ingen ny frist. #7584 før tænding.'
     verified: 2026-11-04
     decision: ejer-beslutning
     decide_by: 2026-11-08

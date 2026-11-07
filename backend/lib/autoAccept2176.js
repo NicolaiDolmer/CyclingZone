@@ -27,6 +27,7 @@ import { assertSigningAllowed } from "./boardConsequences.js";
 import { fetchSeasonTransitionBoundary } from "./seasonTransitionBoundary.js";
 import { notifyNewAuction } from "./discordNotifier.js";
 import { applySeniorSquadFilter } from "./squads.js";
+import { captureException } from "./sentry.js";
 
 export const AUTO_ACCEPT_FLAG_KEY = "auto_accept_enabled";
 export const AUTO_ACCEPT_MIN_MINUTES = 30;
@@ -361,7 +362,7 @@ async function announceAutoAcceptAuction({ supabase, logActivity, result, calcul
       endsAt: calculatedEnd.toISOString(),
     }).catch((err) => console.warn("[autoAccept2176] new-auction notice failed", err?.message));
   } catch (err) {
-    console.warn("[autoAccept2176] announce failed", err?.message);
+    captureException(err, { tags: { route: "POST /transfers/:id/auto-accept", step: "announce" } });
   }
 }
 
