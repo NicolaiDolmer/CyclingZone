@@ -440,6 +440,17 @@ features:
     roadmap_da: "Hvorfor? ved dine ryttere: ét tryk fortæller, hvad der afgjorde hans resultat."
     roadmap_horizon: next
 
+  - id: rider-hover-card
+    area: squad
+    title_en: Rider card
+    title_da: Rytterkort
+    state: building
+    decision: ejer-beslutning
+    decide_by: 2026-11-14
+    epic: 2000
+    verified: 2026-11-07
+    note: "Kontakt rider_hover_card."
+
   - id: race-library-v2
     area: stats
     title_en: Calendar race card and race history library
@@ -564,7 +575,7 @@ features:
     ssot: docs/superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md
     epic: 1177
     verified: 2026-11-04
-    note: 'Kun data er bygget (#5268). Løbsmotoren (#5348) og mentorpar (#5349) er ikke bygget, og arbejdet står stille (statusaudit 4/11).'
+    note: 'Kun data er bygget (#5268); løbsmotor (#5348) og mentorpar (#5349) mangler, og arbejdet står stille (statusaudit 4/11).'
 
   - id: rider-rating-best-role-display
     area: squad
@@ -1040,7 +1051,7 @@ features:
     ssot: docs/superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md
     epic: 6110
     verified: 2026-11-05
-    note: 'Byggetrin 4 (#7684): estimates, scouting-rapport, development-projection og akademi svarer fra potentialEstimateRead.js, når flaget er tændt.'
+    note: 'Byggetrin 4 (#7684): fladerne læser potentialEstimateRead.js, når flaget er tændt.'
     decision: goer-faerdigt
     decide_by: 2026-12-31
 
@@ -1074,7 +1085,7 @@ features:
     flag: development_score_v2
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: 'Ejer 31/10 (#6110): parkeret, indtil grundtalentet (spec 23/10, byggetrin 2) er bygget; decide_by 8/11 er afløst, ny frist ikke sat. Forudsætning før tænding: #7584. Statusaudit 4/11.'
+    note: 'Ejer 31/10 (#6110): parkeret, indtil grundtalentet (spec 23/10, byggetrin 2) er bygget; ny frist ikke sat. Forudsætning før tænding: #7584. Statusaudit 4/11.'
     verified: 2026-11-04
     decision: ejer-beslutning
     decide_by: 2026-11-08
