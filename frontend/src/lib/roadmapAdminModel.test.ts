@@ -6,7 +6,7 @@ import {
   latestUpdateByIssue, validateTitles, fmtScore, ADMIN_TABS, HORIZONS, HORIZON_LABELS, DEFAULT_SORT, isAdminTab,
   tabRows, filterItems, filterIssueRows, sortRows, nextSort, tabCounts, dontKnowTotal,
   parseVotePayload, voterDivisions, filterVotes, itemPoints, categoryPoints, plottable, chartRows, categoryOf,
-  mergeCategories, bubbleRadius, CHART_SCOPES, SCORE_MIN, SCORE_MAX, UNKNOWN_DIVISION,
+  mergeCategories, bubbleRadius, coincidentIndex, votesForItems, distinctVoters, CHART_SCOPES, SCORE_MIN, SCORE_MAX, UNKNOWN_DIVISION,
 } from "./roadmapAdminModel.ts";
 
 const row = (over = {}) => ({ item_id: "a", status: "planned", title_en: "A", title_da: "A", votes: 10,
@@ -323,6 +323,22 @@ test("bubbleRadius: mindst klikbar, størst ved flest stemmere, aldrig over loft
   assert.ok(bubbleRadius(3, 10) < bubbleRadius(6, 10));
   assert.equal(bubbleRadius(5, 0), 1.2);
   assert.deepEqual([SCORE_MIN, SCORE_MAX], [1, 6]);
+});
+
+test("stemmere tælles kun på de punkter, grafen viser", () => {
+  const votes = parseVotePayload(payload)!.votes;
+  assert.equal(distinctVoters(votes), 3);
+  // Kun b: stemmer 0 og 2 (stemmer 1 stemte kun på a).
+  assert.equal(distinctVoters(votesForItems(votes, ["b"])), 2);
+  // Ved ikke alene gør ingen til stemmer.
+  assert.equal(distinctVoters(votesForItems(votes, ["a"])), 2);
+  assert.equal(distinctVoters(votesForItems(votes, [])), 0);
+});
+
+test("coincidentIndex: bobler på samme sted får hvert sit nummer, andre står stille", () => {
+  const p = (key: string, x: number | null, y: number | null) => ({ key, label: key, x, y, voters: 1, dontKnow: 0, sd: null, split: false, category: "c" });
+  const m = coincidentIndex([p("b", 4, 4), p("a", 4, 4), p("c", 3, 4), p("d", 4, 4)]);
+  assert.deepEqual([m.get("a"), m.get("b"), m.get("d"), m.get("c")], [0, 1, 2, 0]);
 });
 
 test("sortering på uenighed (sd)", () => {

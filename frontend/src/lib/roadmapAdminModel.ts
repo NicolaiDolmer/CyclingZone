@@ -617,6 +617,32 @@ export function chartRows<T extends ScoreRow>(rows: T[], scope: ChartScope | str
   return rows.filter((r) => !DONE_STATUSES.includes(r.status));
 }
 
+// Bobler med præcis samme snit ville ligge oven i hinanden, så kun den øverste
+// kunne klikkes. Hver boble får sit nummer blandt dem på samme sted (0 = står
+// stille); grafen skubber de øvrige lidt ud til siden.
+export function coincidentIndex(points: ChartPoint[]): Map<string, number> {
+  const seen = new Map<string, number>();
+  const out = new Map<string, number>();
+  for (const p of [...points].sort((a, b) => a.key.localeCompare(b.key))) {
+    const spot = `${p.x}|${p.y}`;
+    const i = seen.get(spot) ?? 0;
+    seen.set(spot, i + 1);
+    out.set(p.key, i);
+  }
+  return out;
+}
+
+// De stemmer, der hører til punkterne på grafen lige nu (scope og kategori),
+// så "N stemmere" i overskriften ikke tæller stemmer på andre punkter med.
+export function votesForItems(votes: VoteTuple[], itemIds: Iterable<string>): VoteTuple[] {
+  const ids = new Set(itemIds);
+  return votes.filter((v) => ids.has(v[0]));
+}
+
+export function distinctVoters(votes: VoteTuple[]): number {
+  return new Set(votes.filter((v) => v[2] !== null).map((v) => v[1])).size;
+}
+
 // Boblens radius i viewBox-enheder. Den vokser med kvadratroden af antal
 // stemmere, så arealet (det øjet læser) følger antallet og en stor boble ikke
 // dækker hele grafen. Mindsteradius holder en enkelt stemme klikbar.

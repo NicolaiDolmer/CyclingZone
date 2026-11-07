@@ -31,7 +31,7 @@ import {
   dontKnowTotal, fmtScore, filterIssueRows, filterItems, isAdminTab, isSplit, latestUpdateByIssue, mergeItemRows, movePatches,
   nextSort, nextSortOrder, ownOrder, sortRows, statusPatch, tabCounts, tabRows, visibleIdeaCount, ROADMAP_STATUSES,
   CHART_SCOPES, UNKNOWN_DIVISION, categoryPoints, chartRows, filterVotes, itemPoints, mergeCategories, parseVotePayload,
-  plottable, voterDivisions,
+  plottable, voterDivisions, votesForItems, distinctVoters, categoryOf,
 } from "../../../lib/roadmapAdminModel.ts";
 import RoadmapAdminChart from "./RoadmapAdminChart.tsx";
 import {
@@ -159,7 +159,14 @@ function RoadmapChartSection({ rows, votePayload, loading, busy, onMoveHorizon, 
   }, [view, scopeRows, votes, f.category]);
   const shown = useMemo(() => plottable(points), [points]);
   const hidden = points.length - shown.length;
-  const voterCount = votes ? new Set(votes.filter((v) => v[2] !== null).map((v) => v[1])).size : null;
+  // Kun stemmer på de punkter, grafen viser (scope og kategori), tæller med.
+  const shownItemIds = useMemo(() => {
+    const inView = view === "categories" || !f.category
+      ? scopeRows
+      : scopeRows.filter((r) => categoryOf(r, areaLabel) === f.category);
+    return inView.map((r) => r.item_id);
+  }, [view, scopeRows, f.category]);
+  const voterCount = votes ? distinctVoters(votesForItems(votes, shownItemIds)) : null;
   const point = shown.find((p) => p.key === selected) ?? null;
   const filtersActive = f.scope !== EMPTY_CHART_FILTERS.scope || f.activeOnly || f.division !== "" || f.category !== "";
 

@@ -12,7 +12,7 @@
 // neutral blæk, ikke som en ny farve: den kan ses uden farvesyn, og guld
 // forbliver det eneste prioritetssignal (TASTE §3).
 import type { KeyboardEvent } from "react";
-import { SCORE_MAX, SCORE_MIN, bubbleRadius, fmtScore } from "../../../lib/roadmapAdminModel.ts";
+import { SCORE_MAX, SCORE_MIN, bubbleRadius, coincidentIndex, fmtScore } from "../../../lib/roadmapAdminModel.ts";
 import type { ChartPoint } from "../../../lib/roadmapAdminModel.ts";
 
 interface Props {
@@ -54,6 +54,7 @@ export default function RoadmapAdminChart({
   const maxVoters = points.reduce((m, p) => Math.max(m, p.voters), 0);
   // Store bobler tegnes først, så en lille boble oven på en stor kan klikkes.
   const ordered = [...points].sort((a, b) => b.voters - a.voters || a.key.localeCompare(b.key));
+  const spread = coincidentIndex(points);
 
   const onKey = (key: string) => (e: KeyboardEvent<SVGGElement>) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -92,9 +93,12 @@ export default function RoadmapAdminChart({
       ))}
 
       {ordered.map((p) => {
-        const cx = toX(clamp(p.x ?? SCORE_MIN));
-        const cy = toY(clamp(p.y ?? SCORE_MIN));
         const r = bubbleRadius(p.voters, maxVoters);
+        // Samme snit: skub boblen en radius ud i sin egen retning, så den kan klikkes.
+        const nth = spread.get(p.key) ?? 0;
+        const angle = nth * 2.4;
+        const cx = toX(clamp(p.x ?? SCORE_MIN)) + (nth ? Math.cos(angle) * r : 0);
+        const cy = toY(clamp(p.y ?? SCORE_MIN)) + (nth ? Math.sin(angle) * r : 0);
         const selected = p.key === selectedKey;
         const label = describe(p, axisXLabel, axisYLabel);
         return (

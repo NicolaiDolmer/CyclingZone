@@ -6,10 +6,15 @@
 -- vigtighed mod idé-score pr. punkt, boble efter antal stemmere, samme graf pr.
 -- kategori og filter paa aktive managere og division.
 --
--- 1. roadmap_items.category: valgfri fritekst, som kun admin ser og saetter.
---    Omraadet (engine) er spillernes faste inddeling; kategorien er ejerens
---    egen, finere gruppering til grafen. NULL = ingen kategori, og grafen viser
---    da punktet under dets omraade.
+-- 1. roadmap_items.category: valgfri fritekst, som kun admin saetter, og som
+--    kun admin-grafen viser. Omraadet (engine) er spillernes faste inddeling;
+--    kategorien er ejerens egen, finere gruppering af de samme punkter. NULL =
+--    ingen kategori, og grafen viser da punktet under dets omraade.
+--    IKKE HEMMELIG: kolonnen kan laeses via PostgREST paa samme vilkaar som
+--    titel og omraade (de eksisterende SELECT-policies + tabel-grants), fordi
+--    den kun grupperer punkter der i forvejen er offentlige. Skriv aldrig noget
+--    i kategorien, spillerne ikke maa se. Skal noget skjules, hoerer det i en
+--    admin-beskyttet tabel, ikke her.
 --
 -- 2. roadmap_admin_vote_rows(): stemmerne som ét jsonb-objekt til grafens
 --    filtre. Hvorfor ét objekt og ikke en tabel: PostgREST lofter antal
