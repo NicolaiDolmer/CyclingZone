@@ -1103,6 +1103,16 @@
       "issue": 7746,
       "reason": "Ejer-go 7/11 (Discord): træningsrapporten, hæv standarden meget",
       "since": "2026-11-07"
+    },
+    {
+      "issue": 7824,
+      "reason": "Ejer-go 7/11 (Discord): mestertrøjer og talentmærker live i dag, beta først",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7858,
+      "reason": "Ejer-go 7/11 (Discord): højreklik-menu designes og går live i dag",
+      "since": "2026-11-07"
     }
   ]
 }
