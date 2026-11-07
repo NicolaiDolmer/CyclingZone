@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import {
-  fatigueByRiderNow, fatigueNowBeforeGameDay, fatigueOutlookForTeam, loadNextStageByRider, riderFatigueNow, slotFatiguesNow,
+  fatigueByRiderNow, fatigueNowBeforeGameDay, fatigueOutlookForTeam, firstStageNumber, loadNextStageByRider, riderFatigueNow, slotFatiguesNow,
 } from "./riderFatigueNow.js";
 import { evaluateFatigueNow7801Flag, FATIGUE_NOW_7801_FLAG_KEY, isFatigueNow7801Enabled } from "./riderFatigueNowFlag.js";
 import { FRESH_FLAG_KEYS } from "./featureStage.js";
@@ -18,7 +18,9 @@ import { runScenarios } from "./__fixtures__/fatigueNow7801FlagOffScenarios.js";
 const BASE = JSON.parse(readFileSync(new URL("./__fixtures__/fatigueNow7801FlagOffBase.json", import.meta.url), "utf8"));
 
 // ── Fake supabase: app_config + de tabeller kalderne læser ──────────────────────────
-function fakeSupabase({ flag = undefined, v2 = "on", ledger = [], abilities = [], schedule = [], entryDays = [], log = [] } = {}) {
+function fakeSupabase({ flag = undefined, v2 = "on", ledger = [], abilities = [], schedule = [], entryDays = [], races = null, log = [] } = {}) {
+  // Uden `races`: hvert planlagt løb står som uden kørte etaper.
+  const raceRows = races ?? [...new Set(schedule.map((s) => s.race_id))].map((id) => ({ id, stages_completed: 0 }));
   const config = { fatigue_now_7801: flag, condition_model_v2: v2, training_condition_per_date: "on", training_tick_per_race_day: "on" };
   return {
     from(table) {
@@ -30,14 +32,18 @@ function fakeSupabase({ flag = undefined, v2 = "on", ledger = [], abilities = []
         in(col, vals) { filters.push((r) => vals.includes(r[col])); return chain; },
         lt(col, val) { filters.push((r) => r[col] < val); return chain; },
         gt(col, val) { filters.push((r) => r[col] > val); return chain; },
+        gte(col, val) { filters.push((r) => r[col] >= val); return chain; },
         is(col, val) { filters.push((r) => (r[col] ?? null) === val); return chain; },
         order() { return chain; },
         range() { return chain; },
         limit() { return chain; },
-        maybeSingle() { return Promise.resolve({ data: null, error: null }); },
+        rows() {
+          const rows = { training_race_loads: ledger, rider_derived_abilities: abilities, race_stage_schedule: schedule, race_entry_days: entryDays, races: raceRows, race_entries: [], race_results: [] }[table] ?? [];
+          return rows.filter((r) => filters.every((f) => f(r)));
+        },
+        maybeSingle() { return Promise.resolve({ data: chain.rows()[0] ?? null, error: null }); },
         then(resolve, reject) {
-          const rows = { training_race_loads: ledger, rider_derived_abilities: abilities, race_stage_schedule: schedule, race_entry_days: entryDays, race_entries: [], race_results: [] }[table] ?? [];
-          return Promise.resolve({ data: rows.filter((r) => filters.every((f) => f(r))), error: null }).then(resolve, reject);
+          return Promise.resolve({ data: chain.rows(), error: null }).then(resolve, reject);
         },
       };
       if (table === "app_config") {
@@ -177,4 +183,58 @@ test("loadNextStageByRider: tidligste ikke-startede etape; længere frem end i m
   assert.equal(next.get("a").tickDate, "2026-11-04");
   assert.equal(next.get("b").tickDate, "2026-11-05");
   assert.equal(next.has("c"), false);
+});
+
+// Review 7/11, P2: en etape, hvis planlagte tid er passeret uden at den er kørt, er stadig
+// rytterens næste. Uret afgør ikke, om en etape er kørt; løbets stages_completed gør.
+test("loadNextStageByRider: en forsinket etape er stadig den næste; en kørt etape er ikke", async () => {
+  const now = new Date("2026-11-04T15:30:00Z");
+  const schedule = [
+    { race_id: "R", stage_number: 1, game_day: 40, scheduled_at: "2026-11-04T11:00:00Z" },
+    { race_id: "R", stage_number: 2, game_day: 41, scheduled_at: "2026-11-04T14:00:00Z" },
+    { race_id: "R", stage_number: 3, game_day: 46, scheduled_at: "2026-11-05T12:00:00Z" },
+    { race_id: "Q", stage_number: 1, game_day: 41, scheduled_at: "2026-11-04T14:00:00Z" },
+  ];
+  const entryDays = [
+    { rider_id: "a", race_id: "R", game_day: 40, season_id: "s" },
+    { rider_id: "a", race_id: "R", game_day: 41, season_id: "s" },
+    { rider_id: "a", race_id: "R", game_day: 46, season_id: "s" },
+    { rider_id: "b", race_id: "Q", game_day: 41, season_id: "s" },
+  ];
+  const races = [{ id: "R", stages_completed: 1 }, { id: "Q", stages_completed: 1 }];
+  const next = await loadNextStageByRider({ supabase: fakeSupabase({ schedule, entryDays, races }), riderIds: ["a", "b"], seasonId: "s", now });
+  assert.equal(next.get("a").stageNumber, 2, "etape 2 er forsinket (planlagt før nu) og ikke kørt");
+  assert.equal(next.get("a").tickDate, "2026-11-04");
+  assert.equal(next.has("b"), false, "Q's eneste etape er kørt");
+
+  const allRun = await loadNextStageByRider({ supabase: fakeSupabase({ schedule, entryDays, races: [{ id: "R", stages_completed: 3 }] }), riderIds: ["a", "b"], seasonId: "s", now });
+  assert.equal(allRun.size, 0, "kørte etaper og et løb uden række giver intet skøn");
+});
+
+// Review 7/11, P1: assistenten udtager til en bestemt etape. Fast ur (AGENTS 16): `now` peger
+// på en anden dato end etapen, og etapens planlagte start skal vinde.
+test("fatigueByRiderNow atStage: etapens planlagte start er nu, og kun løbsdagene før etapen tæller", async () => {
+  const row = (game_day, load, tick_date = "2026-11-04") => ({ rider_id: "a", tick_date, game_day, load, consumed_at: null, duplicate_of_race_id: null });
+  const ledger = [row(41, 30), row(44, 25), row(41, 40, "2026-11-09")];
+  const schedule = [{ race_id: "R", stage_number: 3, game_day: 43, scheduled_at: "2026-11-04T17:00:00Z" }];
+  const args = { conditions: CONDITIONS, teamId: "t", now: new Date("2026-11-09T10:00:00Z"), atStage: { raceId: "R", stageNumber: 3 } };
+  const supabase = fakeSupabase({ flag: "on", ledger, schedule, abilities: [{ rider_id: "a", recovery: 60 }] });
+  const got = await fatigueByRiderNow({ supabase, ...args });
+  assert.equal(got.get("a"), riderFatigueNow({ openingFatigue: 55, dateLoads: [30], recoveryAbility: 60 }));
+  assert.equal(got.get("c"), 80);
+
+  const unplanned = await fatigueByRiderNow({ supabase: fakeSupabase({ flag: "on", ledger }), ...args });
+  assert.deepEqual([...unplanned], [...new Map(CONDITIONS.map((c) => [c.rider_id, c.fatigue]))], "uplanlagt etape = åbningen, som i motoren");
+
+  const log = [];
+  const off = await fatigueByRiderNow({ supabase: fakeSupabase({ flag: "off", ledger, schedule, log }), ...args });
+  assert.deepEqual([...off], [...new Map(CONDITIONS.map((c) => [c.rider_id, c.fatigue]))]);
+  assert.deepEqual([...new Set(log)], ["app_config"], "slukket læser ikke planen");
+});
+
+test("firstStageNumber: laveste etapenummer; tom liste = etape 1", () => {
+  assert.equal(firstStageNumber([{ stage_number: 3 }, { stage_number: 2 }]), 2);
+  assert.equal(firstStageNumber([{ profile_type: "flat" }]), 1);
+  assert.equal(firstStageNumber([]), 1);
+  assert.equal(firstStageNumber(undefined), 1);
 });
