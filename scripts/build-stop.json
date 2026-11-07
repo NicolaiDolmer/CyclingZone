@@ -293,6 +293,10 @@
   ],
   "cleanupList": [
     {
+      "issue": 7833,
+      "why": "Intern betalingsvagt: falsk alarm ved opsagt uden periodeslut, ejer-go 7/11 i Codex' prioriterede ops-mandat"
+    },
+    {
       "issue": 6679,
       "why": "Interne Windows-procesbeviser, ejer-go 2/11 i #7495"
     },
