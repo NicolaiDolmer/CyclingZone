@@ -240,12 +240,14 @@ export function restRows(table, requestUrl = "") {
     // Evnerne ligger allerede embeddet på RIDERS; her serveres de som den
     // selvstændige tabel siden faktisk forespørger.
     // #7824: mestertitler på preview, så navnecellen og profilen kan ses med kontakten i beta.
+    // ?jerseys=off viser siden som med kontakten slukket (betaAccessMock).
+    // rider-2 (den ældste) har tre titler, så profilen viser listen; rider-1 er U23.
     case "rider_champion_titles":
       return [
-        { rider_id: "rider-1", title: "world", scope: "", season_number: 2 },
-        { rider_id: "rider-1", title: "continent", scope: "Europe", season_number: 2 },
-        { rider_id: "rider-1", title: "national", scope: "DK", season_number: 2 },
-        { rider_id: "rider-2", title: "u23_world", scope: "", season_number: 2 },
+        { rider_id: "rider-2", title: "world", scope: "", season_number: 2 },
+        { rider_id: "rider-2", title: "continent", scope: "Europe", season_number: 2 },
+        { rider_id: "rider-2", title: "national", scope: "DK", season_number: 2 },
+        { rider_id: "rider-1", title: "u23_world", scope: "", season_number: 2 },
       ];
     case "rider_derived_abilities": {
       const rows = RIDERS

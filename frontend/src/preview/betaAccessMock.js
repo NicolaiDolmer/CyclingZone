@@ -109,9 +109,23 @@ function previewCatalogV3Enabled() {
   }
 }
 
+// #7824: mestertrøjerne er i beta på preview (tændt), men ?jerseys=off viser
+// siden som med kontakten slukket (= som i dag). Huskes i localStorage.
+function previewChampionJerseysEnabled() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("jerseys");
+    if (param === "on") localStorage.setItem("cz_mock_champion_jerseys", "1");
+    if (param === "off") localStorage.setItem("cz_mock_champion_jerseys", "0");
+    return localStorage.getItem("cz_mock_champion_jerseys") !== "0";
+  } catch {
+    return true;
+  }
+}
+
 function playerFlags() {
   return Object.fromEntries(PLAYER_VISIBLE_FLAG_KEYS.map((key) => {
     if (key === "training_catalog_v3") return [key, previewCatalogV3Enabled()];
+    if (key === "champion_jerseys_7824") return [key, previewChampionJerseysEnabled()];
     if (key === "potential_estimate_display") return [key, previewPotentialEstimateEnabled()];
     const stage = flags.find((f) => f.key === key)?.stage;
     // #3564: binaere flag (PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden): beta = off.
