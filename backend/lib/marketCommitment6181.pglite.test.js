@@ -387,8 +387,12 @@ test('PG17: 8 samtidige bud fra samme hold mod penge til 1 overbooker aldrig', {
   const data = join(dir, 'data');
   const port = 56000 + Math.floor(Math.random() * 1000);
   run('initdb', ['-D', data, '-U', 'postgres', '-A', 'trust', '-E', 'UTF8', '--locale=C']);
-  run('pg_ctl', ['-D', data, '-o', `-p ${port} -c listen_addresses=127.0.0.1 -c max_connections=40`, '-w', '-l', join(dir, 'pg.log'), 'start']);
-  const psql = (sql) => run('psql', ['-X', '-q', '-t', '-A', '-h', '127.0.0.1', '-p', String(port), '-U', 'postgres', '-d', 'gate', '-v', 'ON_ERROR_STOP=1', '-c', sql]);
+  // stdio ignore: serveren arver ellers pipen, og spawnSync venter for evigt (Windows).
+  const started = spawnSync(join(PG_BIN, 'pg_ctl'), ['-D', data, '-o', `-p ${port} -c listen_addresses=127.0.0.1 -c max_connections=40`, '-w', '-l', join(dir, 'pg.log'), 'start'], { stdio: 'ignore' });
+  assert.equal(started.status, 0, 'pg_ctl start failed');
+  // SQL via stdin som UTF-8: kommandolinjen paa Windows mister tegnkodningen.
+  const psql = (sql) => run('psql', ['-X', '-q', '-t', '-A', '-h', '127.0.0.1', '-p', String(port), '-U', 'postgres', '-d', 'gate', '-v', 'ON_ERROR_STOP=1'],
+    { input: sql, env: { ...process.env, PGCLIENTENCODING: 'UTF8' } });
   try {
     run('psql', ['-X', '-q', '-h', '127.0.0.1', '-p', String(port), '-U', 'postgres', '-d', 'postgres', '-c', 'CREATE DATABASE gate']);
     psql(SCHEMA);
@@ -413,7 +417,7 @@ test('PG17: 8 samtidige bud fra samme hold mod penge til 1 overbooker aldrig', {
     assert.equal(overbooked, 0, `overbooket i ${overbooked} af ${rounds} runder (flest foeringer: ${maxLeads})`);
     assert.equal(maxLeads, 1);
   } finally {
-    spawnSync(join(PG_BIN, 'pg_ctl'), ['-D', data, '-m', 'fast', '-w', 'stop']);
+    spawnSync(join(PG_BIN, 'pg_ctl'), ['-D', data, '-m', 'fast', '-w', 'stop'], { stdio: 'ignore' });
     await rm(dir, { recursive: true, force: true });
   }
 });
