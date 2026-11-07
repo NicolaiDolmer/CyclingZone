@@ -1103,6 +1103,31 @@
       "issue": 7746,
       "reason": "Ejer-go 7/11 (Discord): træningsrapporten, hæv standarden meget",
       "since": "2026-11-07"
+    },
+    {
+      "issue": 7824,
+      "reason": "Ejer-go 7/11 (Discord): mestertrøjer og talentmærker live i dag, beta først",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7858,
+      "reason": "Ejer-go 7/11 (Discord): højreklik-menu designes og går live i dag",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7871,
+      "reason": "Ejer 7/11 19:30: pengelås PR 3, byg alt i aften",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7872,
+      "reason": "Ejer 7/11 19:30: pengelås PR 5, byg alt i aften",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7873,
+      "reason": "Ejer 7/11 19:30: auto-accept PR 6, byg alt i aften",
+      "since": "2026-11-07"
     }
   ]
 }
