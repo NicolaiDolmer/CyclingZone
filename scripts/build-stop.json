@@ -1073,6 +1073,21 @@
       "issue": 6181,
       "reason": "Ejer-go 7/11 (design på #6181): pengelås, byg fra første ledige lane",
       "since": "2026-11-07"
+    },
+    {
+      "issue": 7801,
+      "reason": "Ejer-go 7/11 (Discord, PC1-bølge): træthed lige nu, ret review-fund før tænding",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7701,
+      "reason": "Ejer-go 7/11 (Discord, PC1-bølge): forkert/manglende DNF-grund",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 2009,
+      "reason": "Ejer-go 7/11 (Discord): hover-miniprofil inden for en uge, beta-testere først",
+      "since": "2026-11-07"
     }
   ]
 }
