@@ -800,9 +800,9 @@ export async function runTeamTrainingDay({
   // ikke berigelse: et gaet ville enten give et AI-hold udvikling eller tage den
   // fra en manager. Derfor kastes der (reservationen slettes i catch'en nedenfor),
   // og naeste sweep proever igen. ASCII-only besked (intern ops-fejl).
-  // #6950: D6 gaelder ogsaa naar Udviklingsscore B eller catch-up er taendt.
+  // #6950: D6 gaelder ogsaa naar Udviklingsscore B eller catch-up er taendt. #6110: og under XP.
   let developmentAllowed = true;
-  if (developmentV2On || developmentScoreB || raceCatchUp) {
+  if (developmentV2On || developmentScoreB || raceCatchUp || developmentXp) {
     const { data: teamRow, error: teamError } = await supabase
       .from("teams")
       .select("id, user_id, is_ai, is_bank, is_test_account")
