@@ -197,6 +197,20 @@ test('en leveret rytter forbliver leveret, ogsaa naar koeberen handler ham vider
   assert.equal((await rider(db2, RIDER.r1)).team_id, TEAM.C);
 });
 
+test('Codex #7853: leveret rytter, hvis raekke siden slettes, taeller stadig som leveret', async () => {
+  const db = await database();
+  await park(db, RIDER.r1, TEAM.B);
+  const held = await hold(db, transfer());
+  await db.query('UPDATE riders SET team_id = $2, pending_team_id = NULL WHERE id = $1', [RIDER.r1, TEAM.B]);
+  await db.query('DELETE FROM riders WHERE id = $1', [RIDER.r1]);
+  assert.deepEqual(await settle(db, held.escrow_id, 'refund'), { status: 'already_delivered' });
+  assert.equal(await balance(db, TEAM.B), START - 250_000, 'koeber faar ikke pengene tilbage for en leveret rytter');
+  const released = await settle(db, held.escrow_id, 'release');
+  assert.equal(released.status, 'released');
+  assert.deepEqual(released.moved_rider_ids, []);
+  assert.equal(await balance(db, TEAM.A), START + 250_000);
+});
+
 test('fejlet levering: release afvises, refusion giver koeber pengene tilbage een gang', async () => {
   const db = await database();
   const before = await total(db);
