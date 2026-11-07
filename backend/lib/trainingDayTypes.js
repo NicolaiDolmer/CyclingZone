@@ -174,6 +174,7 @@ export function levelForSession(session) {
 // hjemme i samme modul som stigen.
 //   previousFocus : rytterens hidtidige fokus, kun brugt til at bevare valget
 //                   hen over en hviledag (se REST_FOCUS_FALLBACK).
+/** @param {{ dayType?: string, session?: string | null, previousFocus?: string | null, catalogV3?: boolean }} [choice] */
 export function programForChoice({ dayType, session = null, previousFocus = null, catalogV3 = false } = {}) {
   if (!DAY_TYPES.includes(dayType)) return { ok: false, reason: "invalid_day_type" };
 
