@@ -17,10 +17,13 @@ import {
   getOfferAutoAcceptIssue,
   makeSetAutoAcceptPriceHandler,
   makeStartAutoAcceptHandler,
+  mapReleaseUnderTeamLockResult,
   mapSetAutoAcceptPriceResult,
   mapStartAutoAcceptResult,
+  releaseRiderUnderTeamLock,
 } from "./autoAccept2176.js";
 import { calculateAuctionEnd, DEFAULT_AUCTION_CONFIG } from "./auctionEngine.js";
+import { MIN_RIDERS_FOR_RACE } from "./marketUtils.js";
 
 // Optagende fake: hvert opslag gemmes som { table, ops }, svaret kommer fra `respond`.
 function fakeSupabase({ flag = null, respond = () => ({ data: null, error: null }), rpc = () => ({ data: null, error: null }) } = {}) {
@@ -106,6 +109,15 @@ test("slukket: handlerne svarer 404 og kalder ingen RPC", async () => {
   assert.equal(res2.statusCode, 404);
   assert.equal(client.rpcCalls.length, 0);
   assert.ok(tablesTouched(client).every((table) => table === "app_config"), "kun kontakten laeses (cachet)");
+});
+
+test("slukket: frigivelsen under holdlaasen svarer null, kalder ingen RPC og laeser kun kontakten", async () => {
+  for (const flag of [null, "off", false, "beta"]) {
+    const client = fakeSupabase({ flag });
+    assert.equal(await releaseRiderUnderTeamLock(client, { riderId: "R1", teamId: "A", atRiskRiders: [{ id: "R2" }] }), null);
+    assert.equal(client.rpcCalls.length, 0, `ingen RPC (flag=${flag})`);
+    assert.deepEqual(tablesTouched(client), ["app_config"], `kun kontakten laeses (flag=${flag})`);
+  }
 });
 
 // ── Taendt kontakt ──────────────────────────────────────────────────────────
@@ -208,6 +220,32 @@ test("RPC-status oversaettes til HTTP-svar med kendte fejlkoder", () => {
   assert.equal(mapSetAutoAcceptPriceResult({ status: "not_owner" }).status, 403);
   assert.equal(mapSetAutoAcceptPriceResult({ status: "not_above_asking", asking_price: 4 }).body.errorParams.askingPrice, 4);
   assert.throws(() => mapSetAutoAcceptPriceResult({ status: "nope" }), /unexpected status/);
+});
+
+test("taendt: frigivelsen sender gulv og risiko-ryttere til RPC'en og svarer som ruten", async () => {
+  const atRiskRiders = [{ id: "R2", firstname: "Rytter", lastname: "To" }];
+  let answer = { status: "released", rider_id: "R1" };
+  const client = fakeSupabase({ flag: "on", rpc: () => ({ data: answer, error: null }) });
+
+  assert.deepEqual(await releaseRiderUnderTeamLock(client, { riderId: "R1", teamId: "A", atRiskRiders }), { data: [{ id: "R1" }] });
+  assert.deepEqual(client.rpcCalls, [{
+    name: "auto_accept_release_rider",
+    args: { p_rider_id: "R1", p_team_id: "A", p_min_riders: MIN_RIDERS_FOR_RACE, p_at_risk_rider_ids: ["R2"] },
+  }]);
+
+  answer = { status: "squad_floor", min_riders: MIN_RIDERS_FOR_RACE };
+  const floor = await releaseRiderUnderTeamLock(client, { riderId: "R1", teamId: "A", atRiskRiders });
+  assert.equal(floor.error.status, 409);
+  assert.equal(floor.error.body.errorCode, "cannot_release_squad_risk");
+  assert.deepEqual(floor.error.body.errorParams, { minRiders: MIN_RIDERS_FOR_RACE, atRiskCount: 1, atRiskNames: "Rytter To" });
+
+  assert.deepEqual(mapReleaseUnderTeamLockResult({ status: "rider_state_changed" }).error,
+    { status: 409, body: { error: "This rider is no longer on your team", errorCode: "rider_state_changed" } });
+  assert.equal(mapReleaseUnderTeamLockResult({ status: "rider_on_auction" }).error.body.errorCode, "rider_on_auction_release");
+  assert.throws(() => mapReleaseUnderTeamLockResult({ status: "nope" }), /unexpected status/);
+
+  const failing = fakeSupabase({ flag: "on", rpc: () => ({ data: null, error: new Error("boom") }) });
+  await assert.rejects(releaseRiderUnderTeamLock(failing, { riderId: "R1", teamId: "A" }), /boom/);
 });
 
 test("taendt: start-handleren sender aktiv-tid-sluttid, trup-loft, gulv og risiko-ryttere til RPC'en", async () => {

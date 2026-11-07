@@ -1,5 +1,6 @@
 // #2176 auto-accept M2 mod en rigtig Postgres (PGlite): auto-prisen, prisloggen,
-// klient-vagten og RPC'erne set_listing_auto_accept_price / start_auto_accept_auction.
+// klient-vagten og RPC'erne set_listing_auto_accept_price / start_auto_accept_auction /
+// auto_accept_release_rider (frigivelse under samme holdlaas, Codex P2 paa #7878).
 //
 // Bruger den RIGTIGE migration og den RIGTIGE reject_late_auction_bid-trigger fra
 // database/. Hold og ryttere er aliaser (Hold A/B/C), ingen prod-data.
@@ -30,7 +31,9 @@ CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 CREATE TABLE teams (id uuid PRIMARY KEY, balance bigint NOT NULL);
 CREATE TABLE riders (id uuid PRIMARY KEY, team_id uuid, pending_team_id uuid,
-  squad text NOT NULL DEFAULT 'senior', is_academy boolean NOT NULL DEFAULT false, is_retired boolean DEFAULT false);
+  squad text NOT NULL DEFAULT 'senior', is_academy boolean NOT NULL DEFAULT false, is_retired boolean DEFAULT false,
+  salary integer DEFAULT 1000, contract_length integer DEFAULT 2, contract_end_season integer DEFAULT 3,
+  acquired_at timestamptz DEFAULT now());
 CREATE TABLE transfer_listings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   rider_id uuid NOT NULL, seller_team_id uuid NOT NULL, asking_price integer NOT NULL,
@@ -97,6 +100,18 @@ async function start(db, listingId, { buyer = TEAM.B, expected = 500_000, minute
   return (await one(db, 'SELECT public.start_auto_accept_auction($1,$2,$3,$4,$5,$6,$7,$8::uuid[],$9) AS r',
     [listingId, buyer, expected, minutes, end, max, floor, `{${atRisk.join(',')}}`, now])).r;
 }
+async function release(db, rider, { team = TEAM.A, floor = FLOOR, atRisk = [] } = {}) {
+  return (await one(db, 'SELECT public.auto_accept_release_rider($1,$2,$3,$4::uuid[]) AS r',
+    [rider, team, floor, `{${atRisk.join(',')}}`])).r;
+}
+// Advisory-laase holdt af den aabne transaktion (holdlaasene).
+const advisoryLocks = async (tx) => (await tx.query(
+  "SELECT (classid::text::numeric * 4294967296 + objid::text::numeric)::text AS k FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid() ORDER BY 1"))
+  .rows.map(r => String(r.k));
+const teamLockKey = async (db, team) => {
+  const k = BigInt((await one(db, 'SELECT hashtextextended($1::text, 0) AS k', [team])).k);
+  return String(k < 0n ? k + (1n << 64n) : k);
+};
 const log = async (db, listingId) => (await db.query(
   'SELECT old_asking_price, new_asking_price, old_auto_accept_price, new_auto_accept_price, actor_user_id, source FROM transfer_listing_price_log WHERE listing_id = $1 ORDER BY changed_at, id', [listingId]))
   .rows.map(r => ({ ...r,
@@ -316,4 +331,93 @@ test('samtidighed: een koeber med penge til een start kan ikke starte tre', asyn
   const results = await Promise.all(listings.map(l => start(db, l, { expected: 600_000 })));
   assert.equal(results.filter(x => x.status === 'started').length, 1);
   assert.equal(results.filter(x => x.status === 'insufficient_funds').length, 2);
+});
+
+// ── Frigivelse under samme holdlaas (Codex P2 paa #7878) ─────────────────────
+
+test('frigivelse: rytteren forlader holdet med nulstillet kontrakt; status-vagterne svarer som ruten', async () => {
+  const db = await database();
+  const [a, b, c] = await squad(db, TEAM.A, 12);
+  assert.deepEqual(await release(db, a), { status: 'released', rider_id: a });
+  assert.deepEqual(await one(db, 'SELECT team_id, pending_team_id, salary, contract_length, contract_end_season, acquired_at FROM riders WHERE id = $1', [a]),
+    { team_id: null, pending_team_id: null, salary: null, contract_length: null, contract_end_season: null, acquired_at: null });
+
+  // Ikke laengere holdets, eller solgt og venter paa holdskifte (#6181).
+  assert.deepEqual(await release(db, a), { status: 'rider_state_changed' });
+  assert.deepEqual(await release(db, b, { team: TEAM.C }), { status: 'rider_state_changed' });
+  assert.deepEqual(await release(db, id(5556)), { status: 'rider_state_changed' });
+  await db.query('UPDATE riders SET pending_team_id = $2 WHERE id = $1', [b, TEAM.C]);
+  assert.deepEqual(await release(db, b), { status: 'rider_state_changed' });
+  assert.equal((await one(db, 'SELECT team_id FROM riders WHERE id = $1', [b])).team_id, TEAM.A);
+
+  await db.query(`INSERT INTO auctions(rider_id, calculated_end) VALUES ($1, '${END}')`, [c]);
+  assert.deepEqual(await release(db, c), { status: 'rider_on_auction' });
+  await assert.rejects(release(db, c, { floor: null }), /missing argument/);
+});
+
+test('frigivelse: gulvet taeller holdets auktioner med en anden byder og risiko-rytterne een gang', async () => {
+  const db = await database();
+  const riders = await squad(db, TEAM.A, 10);
+  // Auktion uden byder eller med saelger selv som byder taeller ikke som udgaaende.
+  await db.query(`INSERT INTO auctions(rider_id, seller_team_id, calculated_end) VALUES ($1, '${TEAM.A}', '${END}')`, [riders[2]]);
+  await db.query(`INSERT INTO auctions(rider_id, seller_team_id, current_price, current_bidder_id, calculated_end) VALUES ($1, '${TEAM.A}', 1000, '${TEAM.C}', '${END}')`, [riders[1]]);
+  // Risiko-rytteren, der allerede er paa auktion, taelles kun een gang.
+  assert.deepEqual(await release(db, riders[0], { atRisk: [riders[1]], floor: 9 }), { status: 'squad_floor', min_riders: 9 });
+  assert.deepEqual(await release(db, riders[0], { atRisk: [riders[3]] }), { status: 'squad_floor', min_riders: FLOOR });
+  assert.equal((await one(db, 'SELECT team_id FROM riders WHERE id = $1', [riders[0]])).team_id, TEAM.A);
+  assert.equal((await release(db, riders[0], { atRisk: [riders[1]] })).status, 'released');
+});
+
+test('frigivelse og auto-accept-start tager samme holdlaas', async () => {
+  const db = await database();
+  const riders = await squad(db, TEAM.A, 12);
+  const l = await listing(db, riders[0], { auto: 500_000 });
+  const sellerKey = await teamLockKey(db, TEAM.A);
+
+  const releaseLocks = await db.transaction(async tx => {
+    await tx.query('SELECT public.auto_accept_release_rider($1,$2,$3,$4::uuid[])', [riders[1], TEAM.A, FLOOR, '{}']);
+    return advisoryLocks(tx);
+  });
+  const startLocks = await db.transaction(async tx => {
+    await tx.query('SELECT public.start_auto_accept_auction($1,$2,$3,$4,$5,$6,$7,$8::uuid[],$9)',
+      [l, TEAM.B, 500_000, 60, END, MAX, FLOOR, '{}', NOW]);
+    return advisoryLocks(tx);
+  });
+  assert.deepEqual(releaseLocks, [sellerKey]);
+  assert.ok(startLocks.includes(sellerKey), 'start-RPC tager saelgers holdlaas');
+});
+
+// Codex-scenariet: Hold A har praecis een rytter over gulvet. En frigivelse og en
+// auto-accept-start paa en ANDEN af holdets ryttere kan ikke begge lykkes, uanset
+// raekkefoelge. Foer rettelsen laeste ruten gulvet i eet kald og skrev i et andet,
+// saa en start imellem blev overset (et forældet forhaandstjek).
+test('samtidighed: frigivelse og auto-accept-start kan ikke begge passere saelgers gulv', async () => {
+  for (const order of ['start-foerst', 'frigivelse-foerst', 'samtidig']) {
+    const db = await database();
+    const riders = await squad(db, TEAM.A, FLOOR + 1);
+    const l = await listing(db, riders[0], { auto: 500_000 });
+
+    let started; let released;
+    if (order === 'start-foerst') {
+      started = await start(db, l);
+      // Rutens forhaandstjek (uden laas) saa intet udgaaende foer starten; RPC'en
+      // regner gulvet igen under laasen.
+      released = await release(db, riders[1]);
+    } else if (order === 'frigivelse-foerst') {
+      released = await release(db, riders[1]);
+      started = await start(db, l);
+    } else {
+      [started, released] = await Promise.all([start(db, l), release(db, riders[1])]);
+    }
+
+    const ok = [started.status === 'started', released.status === 'released'].filter(Boolean).length;
+    assert.equal(ok, 1, `${order}: praecis een lykkes (start=${started.status}, frigivelse=${released.status})`);
+    if (started.status !== 'started') assert.equal(started.status, 'seller_squad_floor', order);
+    if (released.status !== 'released') assert.deepEqual(released, { status: 'squad_floor', min_riders: FLOOR }, order);
+
+    // Holdet staar aldrig under gulvet, naar aktive auktioner med byder taelles som udgaaende.
+    const left = Number((await one(db, `SELECT count(*) AS n FROM riders x WHERE x.team_id = $1
+      AND NOT EXISTS (SELECT 1 FROM auctions a WHERE a.rider_id = x.id AND a.status IN ('active','extended') AND a.current_bidder_id IS NOT NULL)`, [TEAM.A])).n);
+    assert.equal(left, FLOOR, order);
+  }
 });
