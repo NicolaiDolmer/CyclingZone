@@ -430,15 +430,14 @@ features:
 
   - id: rider-hover-card
     area: squad
-    title_en: Rider mini profile on hover
-    title_da: Hover-miniprofil på ryttere
-    state: dormant
-    flag: rider_hover_card
-    decision: taend
+    title_en: Rider card and right-click menu
+    title_da: Rytterkort og højreklik-menu
+    state: building
+    decision: ejer-beslutning
     decide_by: 2026-11-14
     epic: 2000
     verified: 2026-11-07
-    note: "#2009: seedet off, kun visning. Beta-testere først efter ejerens visuelle go."
+    note: "#7858. Kontakt rider_hover_card (fravær = off)."
 
   - id: race-library-v2
     area: stats
