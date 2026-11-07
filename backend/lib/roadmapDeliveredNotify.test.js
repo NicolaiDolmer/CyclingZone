@@ -113,7 +113,7 @@ test("punkt uden høje stemmer lukkes uden besked", async () => {
 
 test("migrationen mangler endnu: tick springes over uden at kaste", async () => {
   const store = { listOpenItems: async () => { throw Object.assign(new Error("column roadmap_items.delivery_notified_at does not exist"), { code: "42703" }); } };
-  const r = await runRoadmapDeliveredNotify({ supabase: {}, store, notify: async () => assert.fail("ingen besked") });
+  const r = await runRoadmapDeliveredNotify({ supabase: {}, now: NOW, store, notify: async () => assert.fail("ingen besked") });
   assert.equal(r.pending, true);
   assert.equal(isRoadmapDeliveredSchemaPending({ code: "PGRST205" }), true);
   assert.equal(isRoadmapDeliveredSchemaPending({ code: "23505", message: "dup" }), false);
