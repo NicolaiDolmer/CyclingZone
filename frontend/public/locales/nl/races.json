@@ -38,6 +38,9 @@
     "useSuggestion": "Gebruik het voorstel",
     "clearPlan": "Plan verwijderen",
     "effortNote": "De inspanning volgt de taak.",
+    "huntOption": "{task} · {price}",
+    "price": { "hard": "Zwaar" },
+    "huntNote": "Puntenjacht: hij rijdt om de tussensprints of klimmen op zijn stuk vanuit de groep waarin hij zit. Een vlucht vooruit pakt de punten nog steeds eerst. De taak wordt hard gereden en telt mee in zijn vermoeidheid.",
     "rulesNote": "De vlucht kan alleen de eerste taak zijn. Gruppetto, binnenrijden en de sprinttrein komen altijd als laatste.",
     "switchNote": {
       "climb": {
@@ -72,7 +75,9 @@
       "ride_for_result": "Rijden voor een uitslag",
       "sprint_train": "Sprinttrein",
       "grupetto": "Gruppetto",
-      "ride_in": "Rustig binnenrijden"
+      "ride_in": "Rustig binnenrijden",
+      "hunt_points": "Punten pakken in de sprints",
+      "hunt_kom": "Bergpunten pakken"
     },
     "from": {
       "kom": "na {climb}",
@@ -103,7 +108,10 @@
         "outOfTime": "Buiten tijdslimiet",
         "rank": "Nr. {rank} op de finish",
         "withRider": "Met {name}",
-        "withRiderTo": "Met {name} tot km {km}"
+        "withRiderTo": "Met {name} tot km {km}",
+        "sprintPoints": "{points} sprintpunten",
+        "komPoints": "{points} bergpunten",
+        "noPoints": "Ging ervoor, geen punten"
       }
     }
   },
@@ -1630,6 +1638,8 @@
         "breakaway_formed": "{riders} {count, plural, one {rijdt} other {rijden}} weg aan de kop.",
         "kom_passage": "{name} (cat. {category}): {rider} is als eerste boven.",
         "intermediate_sprint": "{name}: {rider} pakt de tussensprint.",
+        "intermediate_sprint_hunted": "{name}: {rider} pakt de tussensprint. {count, plural, one {{hunters} ging} other {{hunters} gingen}} voor de punten.",
+        "kom_passage_hunted": "{name} (cat. {category}): {rider} is als eerste boven. {count, plural, one {{hunters} ging} other {{hunters} gingen}} voor de punten.",
         "breakaway_caught": "{riders} {count, plural, one {wordt} other {worden}} gegrepen door de achtervolgende groep.",
         "breakaway_caught_by_teams": "{riders} {count, plural, one {wordt} other {worden}} gegrepen. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} en {teamLast}}} deed het achtervolgingswerk.",
         "breakaway_caught_by_peloton": "{riders} {count, plural, one {wordt} other {worden}} gegrepen door het peloton.",

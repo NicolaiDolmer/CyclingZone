@@ -796,6 +796,24 @@ export function stagePlanOutcomes(
     // Kun en raekke i maalresultatet beviser at han kom i maal: at filmen intet siger, goer ikke.
     if (RIDE_HOME_TASKS.has(item.task)) return toFinish && finishRank !== null ? outcomeOf("done", "finished") : NOTHING_TO_SHOW;
 
+    // #7855: troejejagten. Beviset er filmens passager paa leddets straekning, hvor motoren
+    // navngiver ham som jaeger; pointene er dem klassementet ogsaa viser. Uden en saadan passage
+    // staar der intet.
+    const huntKind = JERSEY_HUNT_TASKS[item.task];
+    if (huntKind) {
+      const type = huntKind === "kom" ? "kom_passage" : "intermediate_sprint";
+      const from = item.fromKm ?? 0;
+      const to = item.endKm ?? Infinity;
+      const hunted = list.filter((e) => e?.type === type && Number(e.km) > from && Number(e.km) <= to && eventRiderIds(e.params, "hunters").includes(riderId));
+      if (!hunted.length) return NOTHING_TO_SHOW;
+      const points = hunted.reduce((sum, e) => {
+        const top = Array.isArray(e.params?.top) ? (e.params?.top as Rec[]) : [];
+        const row = top.find((r) => r?.rider_id === riderId);
+        return sum + (typeof row?.points === "number" ? row.points : 0);
+      }, 0);
+      return points > 0 ? outcomeOf("done", huntKind === "kom" ? "komPoints" : "sprintPoints", { points }) : outcomeOf("failed", "noPoints");
+    }
+
     const behind = typeof lostContactKm === "number" && lostContactKm <= (item.endKm ?? Infinity);
     const lost = () => ({ km: roundKm(lostContactKm as number) });
     // Slut paa leddet uden tvivl: filmen viser ham i gruppen hele leddet, motoren siger ikke "sat",

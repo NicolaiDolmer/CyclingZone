@@ -38,6 +38,9 @@
     "useSuggestion": "Brug forslaget",
     "clearPlan": "Fjern planen",
     "effortNote": "Indsatsen følger opgaven.",
+    "huntOption": "{task} · {price}",
+    "price": { "hard": "Hård" },
+    "huntNote": "Pointjagt: han kører om spurterne eller stigningerne på sin strækning fra den gruppe, han sidder i. Et udbrud foran tager stadig pointene først. Opgaven køres hårdt og tæller med i hans træthed.",
     "rulesNote": "Udbrud kan kun være første opgave. Grupetto, kør i mål og sprinttog kommer altid sidst.",
     "switchNote": {
       "climb": {
@@ -72,7 +75,9 @@
       "ride_for_result": "Kør for resultat",
       "sprint_train": "Sprinttog",
       "grupetto": "Grupetto",
-      "ride_in": "Kør roligt i mål"
+      "ride_in": "Kør roligt i mål",
+      "hunt_points": "Hent point i spurterne",
+      "hunt_kom": "Hent bjergpoint"
     },
     "from": {
       "kom": "efter {climb}",
@@ -103,7 +108,10 @@
         "outOfTime": "Uden for tidsgrænsen",
         "rank": "Nr. {rank} i mål",
         "withRider": "Med {name}",
-        "withRiderTo": "Med {name} til km {km}"
+        "withRiderTo": "Med {name} til km {km}",
+        "sprintPoints": "{points} spurtpoint",
+        "komPoints": "{points} bjergpoint",
+        "noPoints": "Kørte efter dem, ingen point"
       }
     }
   },
@@ -1613,6 +1621,8 @@
         "breakaway_formed": "{riders} rykker væk fra feltet.",
         "kom_passage": "{name} (kat. {category}): {rider} fører over toppen.",
         "intermediate_sprint": "{name}: {rider} tager mellemsprinten.",
+        "intermediate_sprint_hunted": "{name}: {rider} tager mellemsprinten. {hunters} kørte efter pointene.",
+        "kom_passage_hunted": "{name} (kat. {category}): {rider} fører over toppen. {hunters} kørte efter pointene.",
         "breakaway_caught": "{riders} {count, plural, one {bliver} other {bliver}} indhentet af jagtgruppen.",
         "breakaway_caught_by_teams": "{riders} bliver indhentet. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} og {teamLast}}} stod for jagten.",
         "breakaway_caught_by_peloton": "{riders} bliver indhentet af feltet.",

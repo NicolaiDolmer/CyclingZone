@@ -47,6 +47,8 @@ import {
   triggerKey,
   triggerOptions,
   validateStagePlanLegs,
+  withJerseyHunt7855,
+  JERSEY_HUNT_TASKS,
 } from "./StagePlanModel.ts";
 import type { StagePlanLeg, StagePlanRecapItem, StagePlanRole, StagePlanRoute, StagePlanTask, StagePlanTrigger } from "./StagePlanModel.ts";
 
@@ -244,7 +246,7 @@ function PlanEditor({ t, riderName, legs, role, route, suggestion, showsSuggesti
                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onChange(setLegTask(legs, i, e.target.value as StagePlanTask, role, route))}
                 >
                   {tasks.map((task) => (
-                    <option key={task} value={task}>{t(`stagePlan.task.${task}`)}</option>
+                    <option key={task} value={task}>{JERSEY_HUNT_TASKS[task] ? t("stagePlan.huntOption", { task: t(`stagePlan.task.${task}`), price: t("stagePlan.price.hard") }) : t(`stagePlan.task.${task}`)}</option>
                   ))}
                 </Select>
               </label>
@@ -294,6 +296,8 @@ function PlanEditor({ t, riderName, legs, role, route, suggestion, showsSuggesti
           {t("stagePlan.clearPlan")}
         </button>
       </div>
+      {/* #7855: troejejagten forklaret med ord, kun naar en jagt-opgave er i kaeden. */}
+      {legs.some((l) => JERSEY_HUNT_TASKS[l.task]) && <p className="px-3.5 py-2 border-t border-cz-border text-3xs text-cz-2">{t("stagePlan.huntNote")}</p>}
       <p className="px-3.5 py-2 border-t border-cz-border text-3xs text-cz-3">{t("stagePlan.rulesNote")}</p>
     </div>
   );
@@ -347,6 +351,7 @@ export default function StagePlanBoard({
   stageCompleted,
   saving,
   teamHasSprintCaptain,
+  jerseyHunt7855 = false,
   renderRoleCell,
   rolePickerFor,
   onEditorOpen,
@@ -367,6 +372,8 @@ export default function StagePlanBoard({
   stageCompleted: boolean;
   saving: boolean;
   teamHasSprintCaptain: boolean;
+  /** #7855: troejejagtens opgaver kan vaelges i dette loeb (serverens jersey_hunt_7855). */
+  jerseyHunt7855?: boolean;
   renderRoleCell: (rider: PlanRider) => React.ReactNode;
   rolePickerFor?: (rider: PlanRider) => React.ReactNode;
   onEditorOpen?: () => void;
@@ -385,7 +392,7 @@ export default function StagePlanBoard({
   };
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
-  const route = useMemo(() => routeForProfile(profile), [profile]);
+  const route = useMemo(() => withJerseyHunt7855(routeForProfile(profile), jerseyHunt7855 === true), [profile, jerseyHunt7855]); // #7855
   const features = useMemo(() => stagePlanFeaturesFromRaw(profile), [profile]); // #7383
   const { events, ranks } = useStageTimeline(raceId, activeStage, stageCompleted, isOneDay, riders.map((r) => r.rider_id));
   // #7636: kontakten laeses fra GET /api/feature-flags (binaer; fejl = slukket = som foer).

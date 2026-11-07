@@ -18,6 +18,7 @@ import {
   normalizeStagePlanLegs,
   stagePlanRouteFromRaw,
   validateStagePlanLegs,
+  withJerseyHunt7855,
 } from "./stagePlan.ts";
 
 export const STAGE_PLAN_FLAG_KEY = "stage_plan_v1";
@@ -39,12 +40,13 @@ const VALID_ROLES = new Set(["captain", "co_captain", "sprint_captain", "helper"
  * Konteksten til at validere planer for EN etape: rutens skift-punkter og rytternes
  * effektive rolle. Kaldes kun naar PUT-kroppen faktisk baerer en plan.
  */
-export async function loadStagePlanContext({ supabase, raceId, stageNumber, baseRoleByRider }) {
+// #7855: `jerseyHunt7855` = loebet tager imod troejejagtens opgaver (jerseyHunt7855Flag.jerseyHunt7855OpenForRace).
+export async function loadStagePlanContext({ supabase, raceId, stageNumber, baseRoleByRider, jerseyHunt7855 = false }) {
   const riderIds = [...baseRoleByRider.keys()];
   const [profileRes, rolesRes] = await Promise.all([
     supabase
       .from("race_stage_profiles")
-      .select("distance_km, profile_type, climbs")
+      .select("distance_km, profile_type, climbs, sprints") // #7855: spurterne til troejejagten
       .eq("race_id", raceId)
       .eq("stage_number", stageNumber)
       .maybeSingle(),
@@ -66,7 +68,7 @@ export async function loadStagePlanContext({ supabase, raceId, stageNumber, base
   for (const row of rolesRes.data || []) {
     if (VALID_ROLES.has(planRole(row.race_role))) roleByRider.set(row.rider_id, planRole(row.race_role));
   }
-  return { route: stagePlanRouteFromRaw(profileRes.data), roleByRider, hasRoute: Boolean(profileRes.data) };
+  return { route: withJerseyHunt7855(stagePlanRouteFromRaw(profileRes.data), jerseyHunt7855 === true), roleByRider, hasRoute: Boolean(profileRes.data) };
 }
 
 /** Baerer kroppen en plan paa mindst en rytter? */

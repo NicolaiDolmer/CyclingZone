@@ -67,6 +67,7 @@ export async function fetchTeamOrders({ raceId }) {
     orders: body.orders ?? [],
     effortKeys: body.valid_efforts ?? null,
     stagePlanEnabled: body.stage_plan_enabled === true, // #7003
+    jerseyHunt7855: body.jersey_hunt_7855 === true, // #7855: troejejagtens opgaver kan vaelges
   };
 }
 
