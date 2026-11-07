@@ -11,24 +11,23 @@
 
 Fuld liste med datoer: #7632. "Done" først ved alle 8 krav; fredagskort til ejeren.
 
-- **Status 7/11:** tændt #7733, #7726. #7638 + #7754 indgår i løbsside-redesignet #7778. Bølge PC1: #7801, #7715 (tænd-kort), #2009 hover + højreklik #7858 (live 7/11), #7644 + #6912 (måling), #7645 (design), #6181 PR 1-2, trøjejagt #7855, træningsrapport #7745/#7746. Secrets + sikkerhed senest 9/11.
+- **Status 7/11:** tændt #7733, #7726. #7638 + #7754 i #7778. Bølge: #7715, hover #2009/#7858, #7644/#6912 (måling), #7645, trøjejagt #7855, træningsrapport #7745. Hexagone-generalprøve #7890. Sikkerhed senest 9/11.
 - **Næste uge (9-15/11):** #7778 v3 (dele #7859-#7868) → plan, sandhedsvagt (8/11), auto-accept #2176, XP #6110, dagsform #7725, fri rolle #7856, trøjejagt #7855, Discord-afstemning #7869, feedback + fair-play #5431 (9/11), forside #6665, graduering #7323, aftentræning #6490, scouting ved salg #7455 (før sæsonskifte), rangliste #6765 (14/11).
 - **Ca. 15-18/11:** catch-up #6950 besluttes (frist 8/11 udgået); spørg igen om "nye managers forstår første løb" (parkeret).
 - **Før S6-kalenderen:** løbstyper U23/junior #7471. **Før S6-start:** U23 del 2 #4620, Planning Workbench #7535.
-- **S6 (dec):** Pro-værdien + betaling #2806/#4514. **Starten af 2027:** TTT #3463, omdømme #4957/#5106, træningsværksted #4630, ønskelister #5621, følg/inviter #935, markedsrygter #1147.
-- **S6 eller senere:** junior-pyramiden #4621, akademiryttere #6191, scouts #5625, personlighed #1154, milepæle #5180. **Laves ikke:** #3147, #2840, #6194, #7747, #6126.
-- **Roadmap efter spillernes karakterer (ejer 7/11 nat):** op: træthedsprognose #7892 (næste uge), kaptajner #1177 (efter loftet), evnernes kilde #3813 + formtræning #5238 (med Udvikling 2.0). [Beslutninger](investigations/2026-11-07-roadmap-omprioritering-forslag.md).
+- **S6 (dec):** Pro-værdien + betaling #2806/#4514. **Starten af 2027:** TTT #3463, omdømme #4957/#5106, #4630, #5621, #935, #1147. **S6+:** #4621, #6191, #5625, #1154, #5180.
+- **Roadmap efter karakterer (ejer 7/11):** op #7892 (næste uge), #1177, #3813, #5238; laves ikke #3147/#2840/#6194/#7747/#6126 ([beslutninger](investigations/2026-11-07-roadmap-omprioritering-forslag.md)).
 
 ## 0. Merge og til dørs først (ejer 4/11, skarpt)
 
 Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden for 24 timer. Værktøj frem for disciplin:
-- **Reviewer sætter markøren selv**, **main-CI afbrydes ikke**, **auto-tog** hvert 20. min med alarm i #ops. Codex-genreview kun ved produktionskode. Billede-go sendes med det samme.
-- **Til dørs-tavlen #7632** er ejerens overblik; **auto-beviset #7585 PR 3-4** melder merget issue uden bevis efter 24 timer.
+- **Reviewer sætter markøren selv**, **main-CI afbrydes ikke**, **auto-tog** hvert 20. min. Billede-go sendes med det samme.
+- **Til dørs-tavlen #7632** er ejerens overblik; auto-beviset #7585 melder manglende bevis efter 24 timer.
 
 ## Brand (løbende, uden for loftet)
 
-- **Løbenes sandhed:** sandhedsvagten #7643; Giro-rettelserne #7635/#7636, #7639, #7640.
-- **Dronningeetaper #7236:** tændt 4/11 (ejer "kør"); genmål Hexagone 15/17 ca. 7-8/11 med fuldere startliste.
+- **Løbenes sandhed:** sandhedsvagten #7643; Giro-rettelserne #7635-#7640.
+- **Dronningeetaper #7236:** tændt 4/11; genmåles i Hexagone-generalprøven #7890.
 - **Kontrakter, transfer, sæsonskifte (prøves før S6):** ungdom #6882, graduering/auktion #7323, aftenafregningen #6490, trupstørrelser #7490.
 - **Supabase uden fejl #7659:** retning A (mål, ret det tunge, alarmer): #7662/#7663/#7664, ranglisten #6765 senest 14/11. **Sikkerhed (ét vindue med ejeren):** #7029 + #7034.
 
@@ -45,8 +44,8 @@ Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden f
 0. **Mestertrøjer og talentmærker #7824 (ejer 6/11, kun design, intet byg uden go):** trøjer efter Forstå løbet og løbsside A, talentmærker efter XP og spillernes afstemning.
 1. **Dato-løfter #6947:** TTT #3463, U23 del 2 #4620, omdømme #4957/#5106, indstillinger #3984.
 2. **Løbssider:** Planning Workbench #7535 (i bero), løbstyper U23/junior #7471, etapekort #6365.
-3. **Kaptajner på vejen og mentorer #1177** (spillernes karakter, ejer 7/11).
-4. **Akademi og ungdom:** påmindelse (junior-pyramiden S6 eller senere).
+3. **Kaptajner og mentorer #1177.**
+4. **Akademi og ungdom:** påmindelse.
 
 ## Forretning
 
@@ -56,7 +55,7 @@ Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden f
 - **Spillerkommunikation:** én patch note og ét Discord-opslag (EN) pr. dag; udkast ca. kl. 17.
 - Bogføring, moms EU-privat #4511, billing #4514/#4512/#6062, måling #5305, SEO #5249/#5250.
 - **Vækstpakken PR #7652:** retning afstemmes med ejeren, så wireframes før byg. Catch-up #6950 besluttes ca. 15-18/11.
-- **Del B, varig motivation (#7661):** find et dokumenteret spillerbehov med ejeren; intet build-go. Grundlag: OneDrive `balance-internals/growth/del-b-2026-11-04/`.
+- **Del B, varig motivation (#7661):** find et dokumenteret spillerbehov med ejeren; intet build-go.
 
 ## Faste rutiner
 
