@@ -22,9 +22,10 @@ interface Props {
   axisXLabel: string;
   axisYLabel: string;
   cornerLabel: string;
-  // Kategorier er få og får deres navn ved boblen; punkter er mange og står
-  // kun i title-elementet (og i panelet, når de vælges).
-  showLabels?: boolean;
+  // Et kort mærke ved boblen (kategoriernes nummer i listen ved siden af).
+  // Hele navne overlappede, fordi kategoriernes snit ligger tæt; punkterne står
+  // kun i title-elementet og i panelet, når de vælges.
+  labels?: Map<string, string>;
 }
 
 const PAD = 12;
@@ -48,7 +49,7 @@ function describe(p: ChartPoint, axisXLabel: string, axisYLabel: string): string
 }
 
 export default function RoadmapAdminChart({
-  points, selectedKey, onSelect, axisXLabel, axisYLabel, cornerLabel, showLabels = false,
+  points, selectedKey, onSelect, axisXLabel, axisYLabel, cornerLabel, labels,
 }: Props) {
   const maxVoters = points.reduce((m, p) => Math.max(m, p.voters), 0);
   // Store bobler tegnes først, så en lille boble oven på en stor kan klikkes.
@@ -123,9 +124,9 @@ export default function RoadmapAdminChart({
                 vectorEffect="non-scaling-stroke"
               />
             )}
-            {showLabels && (
-              <text x={cx + r + 1.2} y={cy + 1} className="fill-cz-2 font-data" style={{ fontSize: "2.8px" }}>
-                {p.label}
+            {labels?.has(p.key) && (
+              <text x={cx} y={cy + 1} textAnchor="middle" className="pointer-events-none fill-cz-1 font-data font-semibold" style={{ fontSize: "2.8px" }}>
+                {labels.get(p.key)}
               </text>
             )}
           </g>
@@ -136,7 +137,7 @@ export default function RoadmapAdminChart({
         {axisXLabel}
       </text>
       <text
-        x={toX(SCORE_MIN) - 4} y={toY(SCORE_MAX)} textAnchor="start"
+        x={toX(SCORE_MIN) - 4} y={toY(SCORE_MAX)} textAnchor="end"
         className="fill-cz-3 font-data" style={{ fontSize: "3.2px" }}
         transform={`rotate(-90 ${toX(SCORE_MIN) - 4} ${toY(SCORE_MAX)})`}
       >
