@@ -34,6 +34,21 @@ test('rekursiv sletning mod beskyttede stier blokeres', () => {
   ]) assert.equal(checkCommand(c, none).blocked, true, c);
 });
 
+test('review #7839: pipeline efter printf/echo vurderes stadig', () => {
+  assert.equal(checkCommand('printf start | git worktree remove --force /c/dev/CyclingZone-worktrees/fix-1', none).blocked, true);
+  assert.equal(checkCommand('echo x | rm -rf /c/dev/CyclingZone-worktrees/fix-1', none).blocked, true);
+});
+
+test('review #7839: relative maal oploeses mod cwd', () => {
+  const inWt = { ...none, cwd: '/c/dev/CyclingZone-worktrees/keep' };
+  assert.equal(checkCommand('rm -rf ../fix-1', inWt).blocked, true);
+  assert.equal(checkCommand('rm -rf .', inWt).blocked, true);
+  assert.equal(checkCommand('Remove-Item -Recurse -Force ..\\fix-1', inWt).blocked, true);
+  assert.equal(checkCommand('rm -rf frontend/dist', inWt).blocked, false);
+  assert.equal(checkCommand('rm -rf node_modules/.vite', inWt).blocked, false);
+  assert.equal(checkCommand('rm -rf frontend/dist', { ...none, cwd: '/c/dev/CyclingZone' }).blocked, false);
+});
+
 test('sikre veje og almindeligt arbejde blokeres ikke', () => {
   for (const c of [
     'pwsh -File scripts/remove-worktree.ps1 -Branch fix/abc',
@@ -68,7 +83,7 @@ test('kun allowlisten maa indeholde `worktree remove` blandt versionerede script
   const out = execFileSync('git', ['grep', '-l', '-E', 'worktree.{0,4}remove', '--', 'scripts/*.ps1', 'scripts/*.mjs', 'scripts/*.js', 'scripts/*.sh', 'scripts/lib/*', '.claude/workflows/*'], { encoding: 'utf8' })
     .split('\n').filter(Boolean)
     .filter((f) => !/\.test\.|test-|__tests__/.test(f));
-  const allowed = new Set([...SAFE_REMOVERS, 'scripts/unsafe-delete-guard.mjs', 'scripts/new-worktree.ps1', 'scripts/guard-commit-branch.sh', 'scripts/link-onedrive-context.ps1', 'scripts/make-wave-brief.mjs', 'scripts/merge-queue-baseline-resolve.mjs', 'scripts/hooks/cycling-manager-cleanup.sh', 'scripts/lib/archive-worktree-unversioned.ps1', 'scripts/report-orphan-worktree-dirs.mjs' /* kun kommentar */]);
+  const allowed = new Set([...SAFE_REMOVERS, 'scripts/unsafe-delete-guard.mjs', 'scripts/new-worktree.ps1', 'scripts/guard-commit-branch.sh', 'scripts/link-onedrive-context.ps1', 'scripts/make-wave-brief.mjs', 'scripts/merge-queue-baseline-resolve.mjs', 'scripts/hooks/cycling-manager-cleanup.sh', 'scripts/lib/archive-worktree-unversioned.ps1', 'scripts/report-orphan-worktree-dirs.mjs' /* kun kommentar */, 'scripts/hooks/block-unsafe-delete.sh' /* kun kommentar */]);
   const extra = out.filter((f) => !allowed.has(f));
   assert.deepEqual(extra, [], `nye scripts der naevner worktree remove - fjern via remove-worktree.ps1 i stedet: ${extra.join(', ')}`);
 });

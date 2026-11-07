@@ -58,15 +58,23 @@ const hasRecursiveDelete = (s) => RECURSIVE_DELETE.some((re) => re.test(s));
 // readScript(path) -> string|null; isTracked(path) -> boolean (versioneret, reviewet script).
 export function checkCommand(command, { cwd = process.cwd(), readScript = defaultReadScript, isTracked = defaultIsTracked } = {}) {
   // Tekst der kun BESKRIVER en kommando (gh-kommentarer, commit-beskeder, echo) koerer intet.
-  const cmd = String(command || '')
-    .split(/\r?\n|&&|\|\||;/)
-    .filter((seg) => !/^\s*(?:gh\s|git\s+(?:-C\s+\S+\s+)?commit\b|echo\b|printf\b|Write-(?:Host|Output)\b)/i.test(seg))
-    .join('\n');
+  // Hvert led i en pipeline vurderes for sig (#7839-review: `printf x | git worktree remove`).
+  const segments = String(command || '')
+    .split(/\r?\n|&&|\|\|?|;/)
+    .filter((seg) => !/^\s*(?:gh\s|git\s+(?:-C\s+\S+\s+)?commit\b|echo\b|printf\b|Write-(?:Host|Output)\b)/i.test(seg));
+  const cmd = segments.join('\n');
   if (WORKTREE_REMOVE.test(cmd)) {
     return block('raa `git worktree remove` i kommandoen');
   }
   if (hasRecursiveDelete(cmd) && PROTECTED_PATH.test(cmd)) {
     return block('rekursiv sletning mod en beskyttet sti (worktree, OneDrive eller delt cache)');
+  }
+  // Relative maal oploeses mod cwd (#7839-review: `rm -rf ../fix-1` inde fra et worktree).
+  for (const seg of segments) {
+    if (!hasRecursiveDelete(seg)) continue;
+    for (const target of deleteOperands(seg)) {
+      if (protectedTarget(resolve(cwd, target.replace(/\\/g, '/')), resolve(cwd))) return block(`rekursiv sletning af ${target} rammer et worktree eller en delt mappe`);
+    }
   }
   for (const m of cmd.matchAll(SCRIPT_RUNNER)) {
     const raw = m[1].replace(/^["']|["']$/g, '');
@@ -82,6 +90,30 @@ export function checkCommand(command, { cwd = process.cwd(), readScript = defaul
     }
   }
   return { blocked: false };
+}
+
+// Operander efter en slettekommando (rm, Remove-Item, rmdir, rd, del, ri), uden flag.
+export function deleteOperands(seg) {
+  const m = seg.match(/\b(?:rm|Remove-Item|rmdir|rd|del|ri)\b(.*)$/i);
+  if (!m) return [];
+  const toks = m[1].match(/"[^"]*"|'[^']*'|\S+/g) || [];
+  return toks
+    .map((t) => t.replace(/^["']|["']$/g, ''))
+    .filter((t) => t && !/^-|^\/[a-zA-Z]$/.test(t) && !/^\$/.test(t) && !/^(?:Force|Recurse|Path|LiteralPath)$/i.test(t));
+}
+
+// Beskyttet = et worktree-rod eller en mappe over det, eller en beskyttet sti uden for
+// det worktree, kommandoen koerer i. Sletning INDE i eget worktree (fx frontend/dist) er fri.
+export function protectedTarget(abs, cwd) {
+  const norm = (p) => p.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+  const a = norm(abs);
+  const roots = /^(.*?\/(?:cyclingzone-worktrees|\.codex\/worktrees|\.claude\/worktrees))(\/[^/]+)?/;
+  const mine = norm(cwd).match(roots);
+  const own = mine && mine[2] ? mine[1] + mine[2] : null;
+  const hit = a.match(roots);
+  if (hit && (!hit[2] || a === hit[1] + hit[2])) return true; // selve worktree-mappen eller en hel worktree
+  if (own && (a === own || a.startsWith(own + '/'))) return a === own;
+  return PROTECTED_PATH.test(a);
 }
 
 function block(reason) {
