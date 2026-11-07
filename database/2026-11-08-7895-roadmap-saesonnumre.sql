@@ -13,7 +13,8 @@
 --
 -- Placeringen af hvert planlagt punkt er besluttet med ejeren en ad gangen
 -- (docs/investigations/2026-11-07-roadmap-omprioritering-forslag.md).
--- Idempotent: hver UPDATE saetter en fast vaerdi.
+-- Idempotent: den generelle oversaettelse (trin 1) koerer kun, mens der
+-- stadig findes gamle vaerdier, saa en genkoersel ikke flytter y2027 igen.
 -- APPLY IKKE her: auto-migrate.yml applier post-merge (#2642).
 --
 -- Rollback (gamle vaerdier kan ikke gendannes 1:1; foer-tilstand i beslutningsfilen):
@@ -29,16 +30,21 @@ SET lock_timeout = '3s';
 ALTER TABLE public.roadmap_items DROP CONSTRAINT IF EXISTS roadmap_items_horizon_check;
 
 -- 1. Generel oversaettelse af de gamle vaerdier for besluttede punkter.
+DO $do$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.roadmap_items WHERE horizon IN ('next', 'later', 'this_season', 'next_season')) THEN
+    UPDATE public.roadmap_items SET horizon = 'q1_2027'
+      WHERE status IN ('planned', 'in_progress') AND horizon = 'y2027';
+    UPDATE public.roadmap_items SET horizon = 'y2027'
+      WHERE status IN ('planned', 'in_progress') AND horizon = 'later';
+  END IF;
+END $do$;
 UPDATE public.roadmap_items SET horizon = 'season_5'
   WHERE status IN ('planned', 'in_progress') AND horizon = 'this_season';
 UPDATE public.roadmap_items SET horizon = 'season_6'
   WHERE status IN ('planned', 'in_progress') AND horizon = 'next_season';
 UPDATE public.roadmap_items SET horizon = 'next_week'
   WHERE status IN ('planned', 'in_progress') AND horizon = 'next';
-UPDATE public.roadmap_items SET horizon = 'q1_2027'
-  WHERE status IN ('planned', 'in_progress') AND horizon = 'y2027';
-UPDATE public.roadmap_items SET horizon = 'y2027'
-  WHERE status IN ('planned', 'in_progress') AND horizon = 'later';
 
 -- 2. Ejerens placering 8/11, punkt for punkt (kun besluttede punkter).
 UPDATE public.roadmap_items SET horizon = 'this_week'
@@ -70,6 +76,40 @@ ALTER TABLE public.roadmap_items ALTER COLUMN horizon SET DEFAULT 'unscheduled';
 ALTER TABLE public.roadmap_items ADD CONSTRAINT roadmap_items_horizon_check
   CHECK (horizon IN ('this_week', 'next_week', 'unscheduled')
          OR horizon ~ '^(season_[0-9]{1,2}|q[1-4]_20[0-9]{2}|y20[0-9]{2})$');
+
+-- roadmap_split_item havde standard/fallback 'next', som nu bryder reglen.
+CREATE OR REPLACE FUNCTION public.roadmap_split_item(
+  p_source UUID, p_title_en TEXT, p_title_da TEXT,
+  p_status TEXT DEFAULT 'planned', p_horizon TEXT DEFAULT 'next_week', p_issue_ref INTEGER DEFAULT NULL
+) RETURNS UUID
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp
+AS $fn$
+DECLARE
+  v_src public.roadmap_items%ROWTYPE;
+  v_new UUID;
+BEGIN
+  IF auth.role() IS DISTINCT FROM 'service_role' THEN
+    RAISE EXCEPTION 'not allowed' USING ERRCODE = '42501';
+  END IF;
+  IF btrim(coalesce(p_title_en, '')) = '' OR btrim(coalesce(p_title_da, '')) = '' THEN
+    RAISE EXCEPTION 'both titles are required' USING ERRCODE = '22023';
+  END IF;
+  SELECT * INTO v_src FROM public.roadmap_items WHERE id = p_source;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'source item not found' USING ERRCODE = 'P0002';
+  END IF;
+  INSERT INTO public.roadmap_items (engine, sort_order, title_en, title_da, approved, status, horizon, issue_ref)
+  VALUES (v_src.engine, v_src.sort_order, btrim(p_title_en), btrim(p_title_da), FALSE,
+          coalesce(p_status, 'planned'), coalesce(p_horizon, 'next_week'), p_issue_ref)
+  RETURNING id INTO v_new;
+  INSERT INTO public.roadmap_votes (item_id, user_id, idea_score, importance_score, created_at, updated_at)
+  SELECT v_new, user_id, idea_score, importance_score, created_at, updated_at
+  FROM public.roadmap_votes WHERE item_id = p_source;
+  RETURN v_new;
+END;
+$fn$;
+REVOKE ALL ON FUNCTION public.roadmap_split_item(uuid,text,text,text,text,integer) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.roadmap_split_item(uuid,text,text,text,text,integer) TO service_role;
 
 COMMENT ON COLUMN public.roadmap_items.horizon IS
   'Hvornaar punktet er planlagt (#7895): this_week, next_week, season_<N>, q<1-4>_<YYYY>, y<YYYY>, eller unscheduled (ide uden tid).';
