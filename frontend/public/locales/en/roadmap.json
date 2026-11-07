@@ -54,11 +54,10 @@
     "horizon": {
       "this_week": "This week",
       "next_week": "Next week",
-      "next": "Coming up",
-      "this_season": "This season",
-      "next_season": "Next season",
-      "y2027": "2027",
-      "later": "Later"
+      "season": "Season {{season}}",
+      "quarter": "Q{{quarter}} {{year}}",
+      "year": "{{year}}",
+      "unscheduled": "Open for votes"
     }
   },
   "beta": {

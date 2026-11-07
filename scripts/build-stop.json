@@ -1138,6 +1138,11 @@
       "issue": 7879,
       "reason": "Ejer 7/11 19:49: talentmaerker laast, live i dag (beta)",
       "since": "2026-11-07"
+    },
+    {
+      "issue": 7895,
+      "reason": "Ejer 8/11 nat i chat: ingen Snart/Senere paa roadmappet, saesonnumre og kvartaler",
+      "since": "2026-11-08"
     }
   ]
 }
