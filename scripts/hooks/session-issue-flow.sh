@@ -23,4 +23,8 @@ CLOSED=$(count "closed:>=$SINCE")
 [ -n "$OPEN" ] && [ -n "$DONE" ] && [ -n "$CREATED" ] && [ -n "$CLOSED" ] || exit 0
 
 echo "ISSUE-FLOW (#7827): $OPEN åbne, $CREATED oprettet og $CLOSED lukket på 7 dage, $DONE færdige men åbne. Vis ejeren tallene ved sessionsstart, og tag de færdige men åbne til dørs."
+
+# Opfoelgningslisten: lukkede opgaver, hvor beviset venter paa en haendelse i prod.
+WAITING=$(timeout 4 gh issue view 7829 --repo "$REPO" --json body --jq '.body' 2>/dev/null | grep -c '^- \[ \]')
+[ "${WAITING:-0}" -gt 0 ] && echo "OPFØLGNING (#7829): $WAITING bevis venter på en hændelse i prod. Tjek listen, og sæt kryds ved det, der er set."
 exit 0
