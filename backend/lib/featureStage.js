@@ -65,6 +65,7 @@ export const FRESH_FLAG_KEYS = Object.freeze(new Set([
   "development_v2_aging_enabled",
   "development_score_v2",
   "development_curve_b",
+  "development_xp_model",
   "training_program_cells",
   "training_catalog_v3",
   "training_fatigue_rules",
