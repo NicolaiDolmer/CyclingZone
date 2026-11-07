@@ -23,6 +23,10 @@ VALUES (
 ON CONFLICT (key) DO NOTHING;
 
 -- ── 2) Dagens mærker ─────────────────────────────────────────────────────────
+-- Læses af alle indloggede: mærket er offentligt og bygger kun på offentlige tal.
+-- Kun service-rollen skriver (docs/DATA_API_GRANTS.md, database/templates/new-public-table.sql).
+-- data-api-access: {"table":"public.rider_talent_marks","roles":{"anon":[],"authenticated":["SELECT"],"service_role":["SELECT","INSERT","UPDATE","DELETE"]},"reason":"Public talent marks beside rider names; the daily backend job writes them"}
+BEGIN;
 CREATE TABLE IF NOT EXISTS public.rider_talent_marks (
   rider_id      UUID PRIMARY KEY REFERENCES public.riders(id) ON DELETE CASCADE,
   mark          TEXT NOT NULL CHECK (mark IN ('top_talent', 'next_gen')),
@@ -36,24 +40,23 @@ COMMENT ON TABLE public.rider_talent_marks IS
   '#7879: dagens talentmærker (top_talent | next_gen), højst ét pr. rytter. Skrives dagligt af '
   'backend/lib/talentMarks7879.js, når talent_marks_7879 ikke er off. Kun visning.';
 
--- Læses af alle indloggede: mærket er offentligt og bygger kun på offentlige tal.
--- Kun service-rollen skriver.
 ALTER TABLE public.rider_talent_marks ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "rider_talent_marks_select_authenticated" ON public.rider_talent_marks;
-CREATE POLICY "rider_talent_marks_select_authenticated"
+REVOKE ALL ON TABLE public.rider_talent_marks FROM PUBLIC, anon, authenticated, service_role;
+GRANT SELECT ON TABLE public.rider_talent_marks TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.rider_talent_marks TO service_role;
+DROP POLICY IF EXISTS rider_talent_marks_select_authenticated ON public.rider_talent_marks;
+CREATE POLICY rider_talent_marks_select_authenticated
   ON public.rider_talent_marks FOR SELECT TO authenticated USING (true);
-
-BEGIN;
-REVOKE ALL ON public.rider_talent_marks FROM anon, authenticated;
-GRANT SELECT ON public.rider_talent_marks TO authenticated;
 COMMIT;
 
 -- ── 3) Juniorernes fremgang i et vindue ──────────────────────────────────────
 -- En historik-række er evnevektoren EFTER dagens gevinst. Dagens fremgang er derfor
 -- forskellen til rytterens forrige række, uanset kilde, så et sæsonskifte eller en
 -- baseline aldrig tæller som fremgang. Kun nøgler med tal i begge rækker tæller.
--- Ved samme dato sorteres kilderne som i proRiderHistory.compareHistoryRows.
+-- Kalenderdagens række fryser på datoens første gevinst; med træning pr. løbsdag
+-- ligger datoens senere gevinster i rider_ability_race_day_history. Begge tabeller
+-- flettes derfor, sorteret som proRiderHistory.compareHistoryRows (dato, kilde,
+-- løbsdag med kalenderrækken først), så hver gevinst tæller på sin egen dato.
 CREATE OR REPLACE FUNCTION public.talent_marks_junior_gains(
   p_rider_ids     UUID[],
   p_window_start  DATE,
@@ -65,16 +68,26 @@ STABLE
 SECURITY INVOKER
 SET search_path = public
 AS $$
-  WITH h AS (
+  WITH x AS (
+    SELECT c.id, c.rider_id, c.snapshot_date, c.source, -1 AS game_day, c.abilities
+    FROM public.rider_derived_ability_history c
+    WHERE c.rider_id = ANY (p_rider_ids)
+    UNION ALL
+    SELECT r.id, r.rider_id, r.snapshot_date, r.source, r.game_day, r.abilities
+    FROM public.rider_ability_race_day_history r
+    WHERE r.rider_id = ANY (p_rider_ids)
+  ),
+  h AS (
     SELECT x.rider_id, x.snapshot_date, x.source, x.abilities,
            LAG(x.abilities) OVER (
              PARTITION BY x.rider_id
              ORDER BY x.snapshot_date,
                       CASE x.source WHEN 'baseline' THEN 1 WHEN 'season_transition' THEN 2 ELSE 3 END,
+                      x.game_day,
+                      x.source,
                       x.id
            ) AS prev
-    FROM public.rider_derived_ability_history x
-    WHERE x.rider_id = ANY (p_rider_ids)
+    FROM x
   ),
   g AS (
     SELECT h.rider_id, h.snapshot_date,
@@ -83,7 +96,7 @@ AS $$
              WHERE jsonb_typeof(h.abilities -> e.key) = 'number'
                AND jsonb_typeof(h.prev -> e.key) = 'number') AS gain
     FROM h
-    WHERE h.source = 'daily_training'
+    WHERE h.source IN ('daily_training', 'race_development')
       AND h.prev IS NOT NULL
       AND h.snapshot_date >= p_window_start
   )

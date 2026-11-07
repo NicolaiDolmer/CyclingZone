@@ -157,11 +157,13 @@ async function loadActiveSeasonNumber(supabase) {
   return Number.isFinite(data?.number) ? data.number : null;
 }
 
-async function loadLastComputedOn(supabase) {
+// Den ældste række, ikke den nyeste: dagen er først færdig, når gårsdagens rækker
+// også er fjernet. Fejler oprydningen efter dagens skrivning, prøver næste time igen.
+async function loadOldestComputedOn(supabase) {
   // schema-columns-ok: rider_talent_marks kommer fra 2026-11-07-7879-talent-marks.sql
   const { data, error } = await supabase
     .from("rider_talent_marks").select("computed_on")
-    .order("computed_on", { ascending: false }).limit(1);
+    .order("computed_on", { ascending: true }).limit(1);
   if (error) throw new Error(`rider_talent_marks: ${error.message}`);
   return data?.[0]?.computed_on ?? null;
 }
@@ -191,7 +193,7 @@ export async function runTalentMarksDaily({ supabase, now = new Date() }) {
   if (!evaluateFlagStage(stage, { engineWrite: true })) return { ran: false, skipped: "flag_off" };
 
   const today = copenhagenDateString(now);
-  if ((await loadLastComputedOn(supabase)) === today) return { ran: false, skipped: "already_today" };
+  if ((await loadOldestComputedOn(supabase)) === today) return { ran: false, skipped: "already_today" };
 
   const seasonNumber = await loadActiveSeasonNumber(supabase);
   if (seasonNumber === null) return { ran: false, skipped: "no_active_season" };

@@ -31,11 +31,19 @@ export interface TalentMarkRow {
   rider_type: string | null;
 }
 
-// ── Delt opslag: ét kald pr. sidevisning, uanset hvor mange celler ───────────
+// ── Delt opslag: ét kald for alle celler ─────────────────────────────────────
+// Hentes igen når viewer skifter (log ind/ud: kontakten er pr. viewer) og når
+// opslaget er mere end en time gammelt (mærkerne skifter én gang i døgnet).
+// Et svar fra et forældet opslag kasseres.
 
-type StoreState = { status: "idle" | "loading" | "ready"; byRider: Map<string, TalentMarkRow> };
+type StoreState = { status: "idle" | "loading" | "ready"; byRider: Map<string, TalentMarkRow>; loadedAt: number };
 
-let state: StoreState = { status: "idle", byRider: new Map() };
+export const TALENT_MARKS_REFRESH_MS = 60 * 60 * 1000;
+const PAGE_SIZE = 1000;
+
+let state: StoreState = { status: "idle", byRider: new Map(), loadedAt: 0 };
+let generation = 0;
+let authWatched = false;
 const listeners = new Set<() => void>();
 
 function setState(next: StoreState) {
@@ -44,9 +52,10 @@ function setState(next: StoreState) {
 }
 
 // Tabellen er nyere end de genererede typer (frontend/src/types/database.types.ts).
+type PageResult = PromiseLike<{ data: unknown[] | null; error: unknown }>;
 type UntypedSelect = {
   from: (table: string) => {
-    select: (columns: string) => PromiseLike<{ data: unknown[] | null; error: unknown }>;
+    select: (columns: string) => { order: (column: string) => { range: (from: number, to: number) => PageResult } };
   };
 };
 
@@ -59,26 +68,53 @@ function isMarkRow(row: unknown): row is TalentMarkRow {
 async function loadTalentMarks(): Promise<Map<string, TalentMarkRow>> {
   const flags = await fetchPlayerFeatureFlags();
   if (flags?.[TALENT_MARKS_FLAG_KEY] !== true) return new Map();
+  const out = new Map<string, TalentMarkRow>();
   try {
     const client = supabase as unknown as UntypedSelect;
-    const { data, error } = await client.from("rider_talent_marks").select("rider_id, mark, rider_type");
-    if (error || !Array.isArray(data)) return new Map();
-    return new Map(data.filter(isMarkRow).map((row) => [row.rider_id, row]));
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data, error } = await client.from("rider_talent_marks")
+        .select("rider_id, mark, rider_type").order("rider_id").range(from, from + PAGE_SIZE - 1);
+      if (error || !Array.isArray(data)) return new Map();
+      for (const row of data) if (isMarkRow(row)) out.set(row.rider_id, row);
+      if (data.length < PAGE_SIZE) break;
+    }
+    return out;
   } catch {
     // catch-ok: mærkerne er pynt ved navnet; et fejlet opslag viser bare ingen mærker.
     return new Map();
   }
 }
 
-function ensureLoaded() {
-  if (state.status !== "idle") return;
-  setState({ status: "loading", byRider: new Map() });
-  void loadTalentMarks().then((byRider) => setState({ status: "ready", byRider }));
+function startLoad() {
+  const mine = ++generation;
+  setState({ ...state, status: "loading" });
+  void loadTalentMarks().then((byRider) => {
+    if (mine !== generation) return;
+    setState({ status: "ready", byRider, loadedAt: Date.now() });
+  });
+}
+
+function watchViewer() {
+  if (authWatched || typeof window === "undefined") return;
+  authWatched = true;
+  supabase.auth.onAuthStateChange((event) => {
+    if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+    // Ny viewer: intet fra den forrige må stå, heller ikke mens det nye hentes.
+    generation += 1;
+    setState({ status: "idle", byRider: new Map(), loadedAt: 0 });
+    if (listeners.size > 0) startLoad();
+  });
+}
+
+function ensureFresh() {
+  if (state.status === "idle") { startLoad(); return; }
+  if (state.status === "ready" && Date.now() - state.loadedAt > TALENT_MARKS_REFRESH_MS) startLoad();
 }
 
 function subscribe(fn: () => void) {
   listeners.add(fn);
-  ensureLoaded();
+  watchViewer();
+  ensureFresh();
   return () => { listeners.delete(fn); };
 }
 
@@ -94,7 +130,8 @@ export function useTalentMark(riderId: string | null | undefined): TalentMarkRow
 
 /** Kun til tests: nulstil det delte opslag. */
 export function resetTalentMarksForTests(next?: Map<string, TalentMarkRow>) {
-  state = next ? { status: "ready", byRider: next } : { status: "idle", byRider: new Map() };
+  generation += 1;
+  state = next ? { status: "ready", byRider: next, loadedAt: Date.now() } : { status: "idle", byRider: new Map(), loadedAt: 0 };
   for (const fn of listeners) fn();
 }
 

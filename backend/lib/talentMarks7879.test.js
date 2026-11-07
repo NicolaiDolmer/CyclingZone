@@ -215,6 +215,15 @@ test("kørslen: højst én gang pr. dansk kalenderdag", async () => {
   assert.equal(sb.writes.upserts.length, 0);
 });
 
+test("kørslen: gårsdagens rækker står tilbage (fejlet oprydning) = dagen køres igen", async () => {
+  clearFlagStageCache();
+  // Den ældste række er fra i går, selv om dagens rækker allerede er skrevet.
+  const sb = fakeSupabase({ flag: "beta", lastComputedOn: "2026-11-06", riders: [rider({ id: "u21", age: 21 })] });
+  const result = await runTalentMarksDaily({ supabase: sb, now: new Date("2026-11-07T10:00:00Z") });
+  assert.equal(result.ran, true);
+  assert.deepEqual(sb.writes.deletes, [{ table: "rider_talent_marks", col: "computed_on", val: "2026-11-07" }]);
+});
+
 test("kørslen: skriver dagens mærker og fjerner gårsdagens", async () => {
   clearFlagStageCache();
   const riders = [
