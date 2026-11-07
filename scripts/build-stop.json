@@ -1113,6 +1113,31 @@
       "issue": 7858,
       "reason": "Ejer-go 7/11 (Discord): højreklik-menu designes og går live i dag",
       "since": "2026-11-07"
+    },
+    {
+      "issue": 7871,
+      "reason": "Ejer 7/11 19:30: pengelås PR 3, byg alt i aften",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7872,
+      "reason": "Ejer 7/11 19:30: pengelås PR 5, byg alt i aften",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7873,
+      "reason": "Ejer 7/11 19:30: auto-accept PR 6, byg alt i aften",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7876,
+      "reason": "Ejer 7/11 Discord: patch notes her og nu paa alt der mangler",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7879,
+      "reason": "Ejer 7/11 19:49: talentmaerker laast, live i dag (beta)",
+      "since": "2026-11-07"
     }
   ]
 }

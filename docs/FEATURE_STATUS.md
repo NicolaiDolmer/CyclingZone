@@ -5,27 +5,27 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-132 poster: live 107 · beta 1 · dormant 9 · building 6 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+134 poster: live 107 · beta 1 · dormant 9 · building 8 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
-Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319).
+Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319).
 
 ## race-engine
 
-**live:** Luxury helper (`luxury-helper-role`) 2026-11-02 · All out on the decisive climb (`race-all-out-7280`) 2026-11-02 · Day form with causes (`race-day-form-6649`) 2026-10-30 · Descent attacks respect the rider's task (`race-descent-task-7380`) 2026-11-01 · Profile hills in the race engine (`race-engine-profile-hills`) 2026-10-28 · S5 engine rules (s5_profiles_v3) (`race-engine-s5-profiles`) 2026-10-26 · Stage plan switches exactly 10 km from the finish (`race-final-km-boundary-7383`) 2026-10-31 · Form peaks in races (`race-form-peaks`) 2026-10-27 · Stage intention choice (`race-intention-choice`) 2026-11-02 · Time trials without the extra day roll (`race-itt-no-day-roll-7726`) 2026-11-06 · Saving effort in individual time trials (`race-itt-save-7332`) 2026-11-01 · Time trial terrain weight (`race-itt-terrain-6595`) 2026-10-31 · The chase is decided by the teams chasing (`race-team-chase-7730`) 2026-11-06
+**live:** Luxury helper (`luxury-helper-role`) 2026-11-02 · All out on the decisive climb (`race-all-out-7280`) 2026-11-02 · Day form with causes (`race-day-form-6649`) 2026-10-30 · Descent attacks respect the rider's task (`race-descent-task-7380`) 2026-11-01 · Profile hills in the race engine (`race-engine-profile-hills`) 2026-10-28 · S5 engine rules (s5_profiles_v3) (`race-engine-s5-profiles`) 2026-10-26 · Stage plan 10 km switch (`race-final-km-boundary-7383`) 2026-10-31 · Form peaks in races (`race-form-peaks`) 2026-10-27 · Stage intention choice (`race-intention-choice`) 2026-11-02 · Time trials without the extra day roll (`race-itt-no-day-roll-7726`) 2026-11-06 · Saving effort in individual time trials (`race-itt-save-7332`) 2026-11-01 · Time trial terrain weight (`race-itt-terrain-6595`) 2026-10-31 · The chase is decided by the teams chasing (`race-team-chase-7730`) 2026-11-06
 
 **arkiv:** `form-and-fatigue` · `race-engine-v3` · `race-engine-v3-scoring` · `race-engine-v4` · `race-finalize-resumable` · `race-notify-outbox` · `team-selection-and-roles`
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
 | Day form in words after the stage (`race-day-words-7725`) | dormant | `day_words_7725` | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #7725 | 2026-11-06 | Slukket; kræver day_form_6649. |
-| Long descents - cap on how much a regrouping chase can gain (`race-descent-regroup-cap-7644`) | dormant | `descent_regroup_cap_7644` | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #7644 | 2026-11-04 | Slukket; tændes af ejeren. |
+| Long descent chase cap (`race-descent-regroup-cap-7644`) | dormant | `descent_regroup_cap_7644` | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #7644 | 2026-11-04 | Slukket; tændes af ejeren. |
 | Official time persistence revision (`race-official-times-v1`) | retired | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6284 | 2026-10-16 | Frosset prototype. |
 
 ## race-day
 
-**live:** Stage replay and timeline film (`race-replay`) 2026-11-04 · Stage page 2.0 (stage tabs, real elevation profile, your day) (`stage-page-v2`) 2026-11-01 · Stage plan along the route (`stage-plan-v1`) 2026-10-27
+**live:** Stage replay and timeline film (`race-replay`) 2026-11-04 · Stage page 2.0 (`stage-page-v2`) 2026-11-01 · Stage plan along the route (`stage-plan-v1`) 2026-10-27
 
 **arkiv:** `auto-entry-generator` · `race-day-development` · `race-day-engine` · `race-detail-page` · `race-page-tabs-v2` · `role-scope-choice` · `stage-scheduler`
 
@@ -53,27 +53,29 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
 | Teamwork and Leadership abilities (`mental-abilities-teamwork-leadership`) | building | - | [holdarbejde-og-lederskab-evner-design](superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md) | #1177 | 2026-11-04 | Kun data er bygget (#5268). Løbsmotoren (#5348) og mentorpar (#5349) er ikke bygget, og arbejdet står stille (statusaudit 4/11). |
-| New riders' primary type from the target distribution (`rider-primary-type-from-distribution`) | building | - | [RIDER_GENERATION](RIDER_GENERATION.md) | #5327 | 2026-09-23 | Kontakt (off); flip er ejer-gated. |
+| New riders' primary type (`rider-primary-type-from-distribution`) | building | - | [RIDER_GENERATION](RIDER_GENERATION.md) | #5327 | 2026-09-23 | Kontakt (off); flip er ejer-gated. |
 
 ## training
 
-**live:** Max +1 per ability per date (`ability-cap-per-date`) 2026-10-26 · Form and fatigue 2.0 (`condition-model-v2`) 2026-10-26 · Training on a race date weighs a full training day (`condition-v2-race-date-training-day`) 2026-11-04 · Daily training (`daily-training`) 2026-10-27 · Development curve B (level and potential drive development, not age) (`development-curve-b`) 2026-10-30 · Peak planner (`peak-planner`) 2026-10-17 · Same potential band everywhere (`potential-single-number`) 2026-11-04 · Race day = hard day plus a role-weighted extra in the stage abilities (`race-day-role-yield`) 2026-11-01 · Season fatigue and form reset (`season-fatigue-reset`) 2026-10-27 · Train now B (the click settles the rider's whole known date) (`train-now-whole-day`) 2026-11-02 · Set the training day for several riders at once (`training-bulk-day`) 2026-11-02 · Training catalog v3 (`training-catalog-v3`) 2026-10-30 · Training condition settled per date (`training-condition-per-date`) 2026-10-26 · Today's decision card on the Training page (`training-decision-card`) 2026-10-26 · Training groups (`training-groups`) 2026-10-14 · Training programs per race day (`training-programs`) 2026-10-14 · Training tick system (`training-tick-system`) 2026-10-16 · Train now (no bonus) (`training-train-now`) 2026-10-14
+**live:** Max +1 per ability per date (`ability-cap-per-date`) 2026-10-26 · Form and fatigue 2.0 (`condition-model-v2`) 2026-10-26 · Race date as full training day (`condition-v2-race-date-training-day`) 2026-11-04 · Daily training (`daily-training`) 2026-10-27 · Development curve B (`development-curve-b`) 2026-10-30 · Same potential band everywhere (`potential-single-number`) 2026-11-04 · Race day as a hard training day (`race-day-role-yield`) 2026-11-01 · Season fatigue and form reset (`season-fatigue-reset`) 2026-10-27 · Train now B (`train-now-whole-day`) 2026-11-02 · Bulk training day (`training-bulk-day`) 2026-11-02 · Training catalog v3 (`training-catalog-v3`) 2026-10-30 · Training condition settled per date (`training-condition-per-date`) 2026-10-26 · Today's decision card on the Training page (`training-decision-card`) 2026-10-26
 
-**arkiv:** `training-daily-receipt` · `training-fatigue-rules` · `training-hard-sessions-cobbles-echelon-attack` · `training-mobile-table` · `training-program-cells` · `training-score` · `training-tick-per-race-day`
+**arkiv:** `peak-planner` · `training-daily-receipt` · `training-fatigue-rules` · `training-groups` · `training-hard-sessions-cobbles-echelon-attack` · `training-mobile-table` · `training-program-cells` · `training-programs` · `training-score` · `training-tick-per-race-day` · `training-tick-system` · `training-train-now`
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
 | Development Score B in the engine (`development-score-b-engine`) | dormant | `development_score_v2` | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-11-04 | Ejer 31/10 (#6110): parkeret, indtil grundtalentet (spec 23/10, byggetrin 2) er bygget; decide_by 8/11 er afløst, ny frist ikke sat. Forudsætning før tænding: #7584. Statusaudit 4/11. |
-| One potential source (stored estimate per rider and team) (`potential-estimate-display`) | dormant | `potential_estimate_display` | [6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md) | #6110 | 2026-11-05 | Byggetrin 4 (#7684): estimates, scouting-rapport, development-projection og akademi svarer fra potentialEstimateRead.js, når flaget er tændt. |
+| One potential source (`potential-estimate-display`) | dormant | `potential_estimate_display` | [6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md) | #6110 | 2026-11-05 | Byggetrin 4 (#7684): estimates, scouting-rapport, development-projection og akademi svarer fra potentialEstimateRead.js, når flaget er tændt. |
 | Catch-up via racing (`race-day-catchup`) | dormant | `race_day_catchup_enabled` | [TRAINING_RULES](TRAINING_RULES.md) | #6950 | 2026-10-25 | Ejer, med Udvikling 2.0. |
-| Race day - the rider's role also decides the base day (`race-day-role-base-day`) | dormant | `race_day_role_base_day_enabled` | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-11-03 | #5950 løsning A (ejer-valg 3/11), underkontakt til race-day-role-yield. Off. |
-| Stored potential estimates (Sunday run and writes) (`potential-estimate-writes`) | building | - | [6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md) | #6110 | 2026-11-05 | Trin 5 (#7685): søndagsjob, holdskifte og nye kig skriver bag flaget potential_estimate_writes (seedes off). |
+| Race day role base day (`race-day-role-base-day`) | dormant | `race_day_role_base_day_enabled` | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-11-03 | #5950 løsning A (ejer-valg 3/11), underkontakt til race-day-role-yield. Off. |
+| Development XP (`development-xp-model`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-11-07 | Kontakter development_xp_model + development_xp_from_date; tændes efter kalibrering. |
+| Stored potential estimates (`potential-estimate-writes`) | building | - | [6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md) | #6110 | 2026-11-05 | Trin 5 (#7685): søndagsjob, holdskifte og nye kig skriver bag flaget potential_estimate_writes (seedes off). |
+| Fatigue now counts today's earlier stages (`training-fatigue-now-7801`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #7801 | 2026-11-07 | Kontakt fatigue_now_7801 (ikke seedet = slukket); ejer tænder. |
 
 ## academy
 
-**live:** Academy intake pull (`academy-intake-pull`) 2026-10-16 · Academy reminders (`academy-pull-reminder`) 2026-10-30 · Awaiting promotion instead of auto-sale when the next squad is full (`promotion-pending`) 2026-10-24
+**live:** Academy reminders (`academy-pull-reminder`) 2026-10-30 · Awaiting promotion instead of auto-sale (`promotion-pending`) 2026-10-24
 
-**arkiv:** `academy` · `academy-sunday-drip` · `intake-offer-expiry` · `scout-system`
+**arkiv:** `academy` · `academy-intake-pull` · `academy-sunday-drip` · `intake-offer-expiry` · `scout-system`
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
@@ -83,21 +85,19 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 ## season
 
-**live:** AI pool retirement (`ai-pool-retirement-v2`) 2026-10-15 · Development 2.0 part 1 (decline at season change, only manager teams develop) (`development-v2-aging`) 2026-10-26 · Season transition (`season-transition`) 2026-10-17
+**live:** Development 2.0 part 1 (`development-v2-aging`) 2026-10-26
 
-**arkiv:** `ai-team-retire` · `season-end-recap` · `season-matrix-mobile` · `season-signup`
+**arkiv:** `ai-pool-retirement-v2` · `ai-team-retire` · `season-end-recap` · `season-matrix-mobile` · `season-signup` · `season-transition`
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
-| Auto-generated season calendar at forever transitions (`auto-calendar`) | building | - | [CALENDAR_RULES](CALENDAR_RULES.md) | - | 2026-10-26 | Ingen række i prod (= off). |
+| Auto-generated season calendar (`auto-calendar`) | building | - | [CALENDAR_RULES](CALENDAR_RULES.md) | - | 2026-10-26 | Ingen række i prod (= off). |
 | Season documentary (LLM) (`season-documentary-llm`) | building | `season_documentary_llm_enabled` | - | - | 2026-09-06 | - |
 | Automatic season transition cron (`season-auto-transition`) | retired | - | [SEASON_CUTOVER_RUNBOOK](SEASON_CUTOVER_RUNBOOK.md) | #1155 | 2026-10-17 | Fjernet 17/10 (#6796); sæsonskiftet er manuelt. |
 
 ## economy
 
-**live:** No running costs from season 5 (`economy-no-upkeep`) 2026-10-20
-
-**arkiv:** `auto-prize` · `finance-overview` · `rider-values-bulk-write` · `sponsors` · `upkeep-per-race-day`
+**arkiv:** `auto-prize` · `economy-no-upkeep` · `finance-overview` · `rider-values-bulk-write` · `sponsors` · `upkeep-per-race-day`
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
@@ -131,15 +131,13 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 ## onboarding
 
-**live:** Your first race card on the dashboard (new teams) (`first-race-card`) 2026-10-15
-
-**arkiv:** `onboarding-first-session` · `season-start-guide`
+**arkiv:** `first-race-card` · `onboarding-first-session` · `season-start-guide`
 
 ## comms
 
-**live:** Email retention loop (`email-loop`) 2026-10-15 · Push notifications (`push-notifications`) 2026-10-24
+**live:** Push notifications (`push-notifications`) 2026-10-24
 
-**arkiv:** `discord-welcome-inbox` · `in-app-survey` · `manager-dm-v1` · `roadmap-hub`
+**arkiv:** `discord-welcome-inbox` · `email-loop` · `in-app-survey` · `manager-dm-v1` · `roadmap-hub`
 
 ## billing
 

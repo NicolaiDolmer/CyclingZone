@@ -180,3 +180,26 @@ Konflikter, der kræver beslutning:
 Adfærd (analyse C):
 - 149 visninger af etapen og 51 af stillingerne efter løb, med 24 hop mellem dem.
 - Ca. 63 % af sessionerne er på mobil.
+
+## Feedback på wireframe v2 (7/11 kl. 16:29-17:23, ejer + jeppek) → skal med i v3
+
+Ejer:
+- Ruteprofilen skal ligne og tilbyde det bedste, siden har i dag: vejr, stigningsprocenter, stigningernes navne, mellemspurter og bjergspurter (TASTE P19). Profil også under Hold.
+- Rigtige nationsflag ved ryttere (ikke landekoder). Rytter- og holdnavne klikbare (TASTE P12).
+- Hele holdet vises og kan scrolles. Favoritter til den enkelte etape, og favoritter må huske andre løb i sæsonen eller en periode, ikke kun det igangværende løb.
+- Udtagelsen viser form (nuværende form, ikke hvad den kan blive til), træthed, rutematch, rating og ryttertype som på resten af siden.
+- Rating i stedet for alder, og U25 synligt (hvid trøje). Ryttertyper vises som andre steder (RiderTypeBadge).
+- Løbsfilmen skal kunne klikkes rundt i. Preview først, derefter kun beta.
+- Holdets indstillinger skal i en højere standard (to renere forslag).
+
+jeppek:
+- "More" (gå i udbrud, sprintertog) kan ikke klikkes og er gemt væk.
+- Første hold med rygnumre 1-7.
+- Den foreslåede taktik på flade etaper lader kaptajnen angribe på en stigning, der ikke findes: flade etaper skal have en flad standardplan.
+- "How tactics work" skal kunne klikkes (TASTE P15).
+- Navne på sprinterne, hvis det var der før. Spillets terræn-ikoner ved etaperne.
+- Tidspunktet flyttes op over Rider/Role/Rating; svært at se, hvad hver taktik gør for hver rytter og hvornår.
+- Ved flere stigninger: hvordan vælger man, hvornår noget skal ske? (se også #7884). Hvad betyder "middle"?
+- Ingen favorit til den etape, der skal køres; vejr, afslutning og terræn mangler på de kommende etaper; tidspunkt på dagens øvrige etaper.
+
+Relaterede issues oprettet 7/11 aften: #7880 (taktik for mange etaper), #7884 (angrib efter tidligere stigning), #7885 (taktik-assistenten), #7886 (tabeller på telefonen).

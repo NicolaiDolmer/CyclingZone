@@ -573,6 +573,7 @@ import {
 } from "../lib/selectionDeadlineReminder.js";
 import { selectionSizeForRace, MIN_RACE_ENTRIES } from "../lib/raceAutopick.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
+import { fatigueByRiderNow, fatigueOutlookForTeam } from "../lib/riderFatigueNow.js"; // #7801
 import { REGISTRY_ABILITY_KEYS } from "../lib/abilityRegistry.js";
 import { selectInChunks } from "../lib/dbChunk.js";
 import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
@@ -3203,13 +3204,22 @@ router.get("/training/me", requireAuth, async (req, res) => {
     // Byg condition-map: rider_id → { form, fatigue, injured_until, risk }
     // risk = injuryRisk med planlagt intensitet for dagen.
     const condition = {};
+    // #7801: med fatigue_now_7801 er fatigue tallet lige nu, og fatigue_at_start skønnet ved
+    // næste etape. Slukket = null og felterne præcis som i dag.
+    const fatigueOutlook = await fatigueOutlookForTeam({
+      supabase, team: req.team, seasonId: activeSeasonId, conditions: conditionResult.data,
+      abilityByRider: new Map((progressResult.data ?? []).map((r) => [r.rider_id, r])),
+    });
     for (const row of conditionResult.data ?? []) {
       const plan = state.plans[row.rider_id] ?? null;
       const program = resolveProgram(plan, primaryTypeByRider.get(row.rider_id) ?? null);
-      const risk = injuryRisk({ intensity: program.intensity, fatigue: Number(row.fatigue ?? 0) });
+      const outlook = fatigueOutlook?.get(row.rider_id) ?? null;
+      const fatigue = outlook ? outlook.fatigue : row.fatigue;
+      const risk = injuryRisk({ intensity: program.intensity, fatigue: Number(fatigue ?? 0) });
       condition[row.rider_id] = {
         form: row.form,
-        fatigue: row.fatigue,
+        fatigue,
+        ...(fatigueOutlook ? { fatigue_at_start: outlook?.fatigueAtStart ?? null } : {}),
         injured_until: row.injured_until ?? null,
         // #5462: resterende LOEBSDAGE inkl. i dag. null = skaden ejes af
         // kalenderdagen (flag off, eller skrevet foer flippet).
@@ -4397,6 +4407,7 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
       ratingRowByRider.set(row.rider_id, row);
     }
     const condByRider = new Map((condRes.data || []).map((c) => [c.rider_id, c]));
+    const fatigueNowByRider = await fatigueByRiderNow({ supabase, conditions: condRes.data, teamId: req.team.id }); // #7801
 
     // Trænings-kvalitets-prognose pr. peak-vindue: samme kobling motoren bruger.
     // loadPeakPlans → ordinaler; resolvePeakTrainingQualities muterer vinduerne
@@ -4515,7 +4526,7 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
         // → weights/displayRecipes.ratingForRole).
         rating: ratingFromAbilities(ratingRowByRider.get(r.id) ?? null, r.primary_type ?? null),
         form: cond.form ?? null,
-        fatigue: cond.fatigue ?? null,
+        fatigue: fatigueNowByRider.get(r.id) ?? cond.fatigue ?? null,
         injuredUntil: cond.injured_until ?? null,
         peaks: plans.map((p) => {
           const tq = tqByRiderRace.has(`${r.id}:${p.target_race_id}`) ? tqByRiderRace.get(`${r.id}:${p.target_race_id}`) : null;
@@ -6347,7 +6358,7 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     if (abErr) return res.status(500).json({ error: abErr.message });
     if (condErr) return res.status(500).json({ error: condErr.message });
     const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
-    const fatById = new Map((conditions || []).map((c) => [c.rider_id, c.fatigue]));
+    const fatById = await fatigueByRiderNow({ supabase, conditions, abilityByRider: abById, teamId: req.team.id }); // #7801
     // #4701: reference-dato = løbets EGEN startdato, ikke "nu" — assistenten må gerne
     // fylde en rytter ind der er skadet i dag, men rask inden dette løb starter.
     const todayStr = raceSelectionReferenceDateStr(race, copenhagenDateString());
@@ -6857,7 +6868,7 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       supabase.from("rider_condition").select("rider_id, fatigue, injured_until").in("rider_id", teamRiderIds),
     ]);
     const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
-    const fatById = new Map((conditions || []).map((c) => [c.rider_id, c.fatigue]));
+    const fatById = await fatigueByRiderNow({ supabase, conditions, abilityByRider: abById, teamId: req.team.id }); // #7801
     // #2637/#3896: skadede ryttere (kanonisk isRiderInjured) må ALDRIG auto-udtages —
     // spejler raceRunner.fillMissingTeamEntries (spec 6.5, #1306) og raceEntryGenerator-sweepet.
     // Dette endpoint er spillerens EGEN "auto-udfyld"-knap; manglede samme guard.
@@ -7269,7 +7280,7 @@ router.post("/races/strategy/preview", requireAuth, marketWriteLimiter, async (r
       supabase.from("race_entries").select("race_id, rider_id, race_role, is_auto_filled").eq("team_id", req.team.id),
     ]);
     const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
-    const fatById = new Map((conditions || []).map((c) => [c.rider_id, c.fatigue]));
+    const fatById = await fatigueByRiderNow({ supabase, conditions, abilityByRider: abById, teamId: req.team.id }); // #7801
     const riderObjs = teamRiderIds
       .map((id) => ({ rider_id: id, abilities: abById.get(id), fatigue: fatById.get(id) ?? 0 }))
       .filter((r) => r.abilities);

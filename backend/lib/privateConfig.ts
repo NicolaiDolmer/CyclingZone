@@ -21,6 +21,7 @@
 
 import { createHash } from "node:crypto";
 import { validateDevelopmentCurveBParams, type DevelopmentCurveBParams } from "./developmentCurveB.ts";
+import { validateDevelopmentXpParams, type DevelopmentXpParams } from "./developmentXp.ts";
 import { validateParams as validatePotentialEstimateParams } from "./potentialEstimate.js";
 import { validateRaceDayRoleYieldParams } from "./raceDayRoleYieldParams.js";
 import { parseWeeklyEngineDriftThresholds, type WeeklyEngineDriftThresholds } from "./weeklyEngineDriftThresholds.ts";
@@ -62,6 +63,15 @@ export const PRIVATE_CONFIG_KEYS = Object.freeze({
       return params;
     },
   }) as PrivateConfigKeySpec<{ stageBonus: number; leadShare: number }>,
+  development_xp_params: Object.freeze({
+    description: "XP-modellens tal (#6110). Læses af developmentXpFlag.ts.",
+    private: true,
+    parse: (raw: unknown): DevelopmentXpParams => {
+      const params = validateDevelopmentXpParams(raw);
+      if (!params) throw new Error("opfylder ikke validateDevelopmentXpParams");
+      return params;
+    },
+  }) as PrivateConfigKeySpec<DevelopmentXpParams>,
   potential_estimate_params: Object.freeze({
     description: "Potentiale-skønnets kalibrering (#6110). Læses af potentialEstimateWriter.js.",
     private: true,
