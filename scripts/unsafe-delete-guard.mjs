@@ -80,9 +80,11 @@ export function checkCommand(command, { cwd = process.cwd(), readScript = defaul
   }
   for (const m of cmd.matchAll(SCRIPT_RUNNER)) {
     const raw = m[1].replace(/^["']|["']$/g, '');
-    const abs = isAbsolute(raw) ? raw : resolve(cwd, raw);
-    const rel = relativeToRepo(abs);
-    if (rel && SAFE_REMOVERS.includes(rel)) continue;
+    const native = gitBashToNative(raw);
+    const abs = isAbsolute(native) ? native : resolve(cwd, native);
+    // Review #7854: et sikkert NAVN er ikke nok. Ogsaa remove-worktree.ps1 skal vaere
+    // versioneret og uaendret, ellers laeses den (en omskrevet kopi i et andet worktree
+    // maa ikke slippe igennem uden scanning).
     if (isTracked(abs)) continue;
     const body = readScript(abs);
     if (body == null) continue;
@@ -161,23 +163,28 @@ function block(reason) {
 // Codex P1 (#7854): undtagelsen gælder KUN scripts i samme repo som vagten selv
 // (samme fælles .git, dvs. hovedmappen eller et af dens worktrees). Et script i et
 // fremmed repo bliver altid gennemlæst, også hvis det hedder som et sikkert script.
+// Git Bash-stier (/c/dev/x) er ikke absolutte for Windows' resolve(); uden denne
+// oversaettelse blev scriptet slaaet op i C:\c\dev\x, ikke fundet og sprunget over (fail-open).
+export function gitBashToNative(p) {
+  const m = process.platform === 'win32' && String(p).match(/^\/([a-zA-Z])(\/.*)?$/);
+  return m ? `${m[1].toUpperCase()}:${m[2] || '/'}` : p;
+}
 function gitOut(dir, args) {
   try { return execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; }
 }
 const normPath = (p) => (p ? resolve(p).replace(/\\/g, '/').toLowerCase() : null);
-const GUARD_COMMON_DIR = normPath(gitOut(dirname(fileURLToPath(import.meta.url)), ['rev-parse', '--path-format=absolute', '--git-common-dir']));
+// Doven: kun kommandoer der koerer et script betaler for git-kaldet (review #7854).
+let guardCommonDir;
+const GUARD_COMMON_DIR_OF = () => (guardCommonDir === undefined
+  ? (guardCommonDir = normPath(gitOut(dirname(fileURLToPath(import.meta.url)), ['rev-parse', '--path-format=absolute', '--git-common-dir'])))
+  : guardCommonDir);
 function repoRoot(abs) {
   if (!abs) return gitOut(process.cwd(), ['rev-parse', '--show-toplevel']);
   const dir = dirname(abs);
   const common = normPath(gitOut(dir, ['rev-parse', '--path-format=absolute', '--git-common-dir']));
-  if (!common || !GUARD_COMMON_DIR || common !== GUARD_COMMON_DIR) return null;
+  const guardCommon = GUARD_COMMON_DIR_OF();
+  if (!common || !guardCommon || common !== guardCommon) return null;
   return gitOut(dir, ['rev-parse', '--show-toplevel']);
-}
-function relativeToRepo(abs) {
-  const root = repoRoot(abs);
-  if (!root) return null;
-  const rel = relative(root, abs).replace(/\\/g, '/');
-  return rel.startsWith('..') ? null : rel;
 }
 function defaultListWorktrees(cwd) {
   try {
