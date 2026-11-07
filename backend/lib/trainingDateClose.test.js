@@ -533,6 +533,20 @@ test('#6924: unfinished final-date work is settled the next day, then becomes hi
   }
 });
 
+test('#7832: a final date registered after its deadline never takes the late ordinary-date path', async () => {
+  __resetNormalizedTrainingDateCacheForTests();
+  const { options, endSeasonAndTransition } = cutoverWorld();
+  endSeasonAndTransition();
+  const flags = [];
+  const registerWork = options.registerWork;
+  // The day after, past the 02:00 deadline: the transition's resets already moved the riders.
+  await runNormalizedTrainingDateSweep({ ...options, now: at('2026-10-26T09:00:00Z'),
+    registerWork: async args => { flags.push([args.tickDate, Boolean(args.lateDate), Boolean(args.lateBridge)]); return registerWork(args); } });
+  assert.ok(flags.length > 0);
+  assert.deepEqual(flags.filter(([date]) => date === FINAL).map(([, lateDate, lateBridge]) => [lateDate, lateBridge]),
+    flags.filter(([date]) => date === FINAL).map(() => [false, false]));
+});
+
 test('#6924: only the latest completed season, while its final date is due and at most a day old', async () => {
   const { db, options, endSeasonAndTransition } = cutoverWorld();
   const load = now => loadTrainingDateIndex({ supabase: options.supabase, now: at(now) })

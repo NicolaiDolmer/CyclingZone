@@ -399,9 +399,11 @@ export async function runNormalizedTrainingDateSweep({
         // #7832 (owner 7/11): a team reached after the deadline (created after the
         // evening run) keeps its date: the late RPC keeps the opening snapshot when
         // nothing has trained the riders since, so the date settles instead of quarantine.
+        // Not a season's final date (#6924): the transition's season-start resets have
+        // already moved the riders, which the late RPC cannot see.
         const late = !workByTeam.has(team.id) && now >= trainingDateDeadline(job.tickDate);
         const lateBridge = late && days.every(day => day < 0);
-        const work = workByTeam.get(team.id) ?? await registerWork({ supabase, teamId: team.id, seasonId: job.season.id, tickDate: job.tickDate, gameDays: days, riderIds: currentIds, now, lateBridge, lateDate: late && !lateBridge });
+        const work = workByTeam.get(team.id) ?? await registerWork({ supabase, teamId: team.id, seasonId: job.season.id, tickDate: job.tickDate, gameDays: days, riderIds: currentIds, now, lateBridge, lateDate: late && !lateBridge && !final });
         if (!work) { deferredLateTeams.add(team.id); waitingForDate = true; return; }
         tracked = true;
         const remaining = work.expected_rider_ids.filter(id => !(work.quarantined_rider_ids ?? []).includes(id));
