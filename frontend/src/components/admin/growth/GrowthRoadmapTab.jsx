@@ -172,9 +172,34 @@ function RoadmapChartSection({ rows, votePayload, loading, busy, onMoveHorizon, 
     voterCount !== null ? `${fmtInt(voterCount)} stemmere` : null,
   ].filter(Boolean).join(" · ");
 
+  // Kategorierne nummereres efter vigtighed; nummeret står i boblen og i listen.
+  const ranked = useMemo(
+    () => (view === "categories" ? [...shown].sort((a, b) => (b.y ?? 0) - (a.y ?? 0) || a.key.localeCompare(b.key, "da")) : []),
+    [view, shown],
+  );
+  const labels = useMemo(() => new Map(ranked.map((p, i) => [p.key, String(i + 1)])), [ranked]);
+
   const row = point?.item;
   const panel = !point ? (
-    <p className="text-sm text-cz-3">Vælg en boble for at se tallene og flytte horisonten.</p>
+    view === "categories" && ranked.length > 0 ? (
+      <ol className="divide-y divide-cz-border" aria-label="Kategorier efter vigtighed">
+        {ranked.map((p, i) => (
+          <li key={p.key}>
+            <button type="button" onClick={() => setSelected(p.key)}
+              className="flex w-full items-baseline gap-3 py-2 text-left hover:text-cz-1">
+              <span className="w-4 shrink-0 font-data text-2xs tabular-nums text-cz-3">{i + 1}</span>
+              <span className="min-w-0 grow text-sm text-cz-1">{p.label}</span>
+              <span className="shrink-0 font-data text-xs tabular-nums text-cz-2">
+                {fmtScore(p.y)} / {fmtScore(p.x)} · {fmtInt(p.voters)}
+              </span>
+            </button>
+          </li>
+        ))}
+        <li className="pt-2 text-2xs text-cz-3">Vigtighed / god idé · stemmere. Vælg en kategori for detaljer.</li>
+      </ol>
+    ) : (
+      <p className="text-sm text-cz-3">Vælg en boble for at se tallene og flytte horisonten.</p>
+    )
   ) : (
     <div className="space-y-4">
       <div>
@@ -273,7 +298,7 @@ function RoadmapChartSection({ rows, votePayload, loading, busy, onMoveHorizon, 
                 axisXLabel="God idé"
                 axisYLabel="Vigtighed"
                 cornerLabel="Byg først"
-                showLabels={view === "categories"}
+                labels={labels}
               />
             )}
             <p className="mt-2 text-xs text-cz-3">
