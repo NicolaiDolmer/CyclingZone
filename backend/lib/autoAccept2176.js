@@ -362,7 +362,9 @@ async function announceAutoAcceptAuction({ supabase, logActivity, result, calcul
       sellerName: seller?.name,
       startPrice: Number(result.price),
       endsAt: calculatedEnd.toISOString(),
-    }).catch((err) => console.warn("[autoAccept2176] new-auction notice failed", err?.message));
+    }).catch((err) => {
+      captureException(err, { tags: { route: "POST /transfers/:id/auto-accept", step: "notify" } });
+    });
   } catch (err) {
     captureException(err, { tags: { route: "POST /transfers/:id/auto-accept", step: "announce" } });
   }
