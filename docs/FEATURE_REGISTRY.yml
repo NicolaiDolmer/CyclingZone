@@ -1090,6 +1090,18 @@ features:
     decision: ejer-beslutning
     decide_by: 2026-11-08
 
+  - id: development-xp-model
+    area: training
+    title_en: Development XP
+    title_da: Udviklings-XP
+    state: building
+    ssot: docs/TRAINING_RULES.md
+    epic: 6110
+    note: 'Kontakter development_xp_model + development_xp_from_date; tændes efter kalibrering.'
+    verified: 2026-11-07
+    decision: taend
+    decide_by: 2026-11-21
+
   - id: race-day-catchup
     area: training
     title_en: Catch-up via racing

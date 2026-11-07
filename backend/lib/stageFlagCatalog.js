@@ -166,6 +166,9 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "ability_cap_per_date_enabled", area: "training", label: "Udvikling 2.0 — maks +1 pr. evne pr. dato" },
   // #3564: kurve B (D-058, developmentCurveBFlag.ts). Fail-safe OFF; "beta" læses som off. Ejer-only flip.
   { key: "development_curve_b", area: "training", label: "Udvikling 2.0 — kurve B (niveau og potentiale styrer, ikke alder)" },
+  // #6110 trin 2: XP-modellen (developmentXpFlag.ts). Fail-safe OFF; "beta" læses som off;
+  // gælder fra startdatoen development_xp_from_date; tal i private_config. Ejer-only flip.
+  { key: "development_xp_model", area: "training", label: "Udvikling 2.0 — XP-modellen (fælles prisliste, potentiale giver XP)" },
   // #6853/#5764: pensioneret, koden læser den ikke (visningen er permanent). Rækken
   // bliver kun for patch notes-mærket.
   { key: "potential_single_number", area: "squad", label: "Udvikling 2.0 — potentiale: bedste rolle + typeboks (visning)" },
