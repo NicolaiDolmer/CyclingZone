@@ -281,6 +281,7 @@ export async function refundSaleEscrowsForReleasedRiders(supabase, riderIds, { n
       if (result?.status === "refunded") stats.refunded += 1;
     }
   } catch (err) {
+    // best-effort: frigivelsen er allerede sket; reconcile i heal-sweepet refunderer inden for 5 min.
     stats.failed += 1;
     console.error(`[saleEscrow] refusion fejlede (${sourcePath}), reconcile tager den:`, err?.message || err);
   }
@@ -309,6 +310,7 @@ export async function reconcileHeldSaleEscrows({ supabase, now = new Date(), sou
   try {
     states = await loadRiderStates(supabase, rows.flatMap((e) => e.rider_ids));
   } catch (err) {
+    // best-effort: taelles i failed/errors, som cron-wrapperen sender til Sentry; naeste koersel proever igen.
     result.failed += 1;
     result.errors.push({ escrowId: null, message: err?.message || String(err) });
     console.error("[saleEscrow] reconcile kunne ikke laese rytterne:", err?.message || err);
@@ -324,6 +326,7 @@ export async function reconcileHeldSaleEscrows({ supabase, now = new Date(), sou
       if (settled?.status === "released") result.released += 1;
       else if (settled?.status === "refunded") result.refunded += 1;
     } catch (err) {
+      // best-effort: een escrow maa ikke stoppe resten; taelles i failed/errors (Sentry via cron-wrapperen).
       result.failed += 1;
       result.errors.push({ escrowId: escrow.id, message: err?.message || String(err) });
       console.error(`[saleEscrow] reconcile af ${escrow.id} fejlede:`, err?.message || err);
