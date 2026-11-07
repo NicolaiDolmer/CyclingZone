@@ -111,7 +111,7 @@ test("fatigueByRiderNow slukket: præcis dagens map, og intet læses ud over kon
     assert.deepEqual([...got], [...new Map(CONDITIONS.map((c) => [c.rider_id, c.fatigue]))]);
     assert.deepEqual([...new Set(log)], ["app_config"], `flag=${flag}`);
   }
-  const empty = await fatigueByRiderNow({ supabase: { from() { throw new Error("må ikke læse"); } }, conditions: [] });
+  const empty = await fatigueByRiderNow({ supabase: { from() { throw new Error("må ikke læse"); } }, conditions: [], now: new Date("2026-11-04T15:00:00Z") });
   assert.equal(empty.size, 0);
 });
 
@@ -134,12 +134,12 @@ test("fatigueByRiderNow tændt men læsefejl: dagens tal frem for en væltet udt
     if (table === "training_race_loads") throw new Error("ledger nede");
     return from(table);
   };
-  const got = await fatigueByRiderNow({ supabase, conditions: CONDITIONS, teamId: "t", abilityByRider: new Map() });
+  const got = await fatigueByRiderNow({ supabase, conditions: CONDITIONS, teamId: "t", abilityByRider: new Map(), now: new Date("2026-11-04T15:00:00Z") });
   assert.deepEqual([...got], [...new Map(CONDITIONS.map((c) => [c.rider_id, c.fatigue]))]);
 });
 
 test("fatigueOutlookForTeam: slukket = null (fladen er som i dag)", async () => {
-  assert.equal(await fatigueOutlookForTeam({ supabase: fakeSupabase({ flag: "off" }), team: { id: "t" }, seasonId: "s", conditions: CONDITIONS }), null);
+  assert.equal(await fatigueOutlookForTeam({ supabase: fakeSupabase({ flag: "off" }), team: { id: "t" }, seasonId: "s", conditions: CONDITIONS, now: new Date("2026-11-04T15:00:00Z") }), null);
 });
 
 test("fatigueOutlookForTeam tændt: næste etape i dag = tallet lige nu; uden etape intet skøn", async () => {
