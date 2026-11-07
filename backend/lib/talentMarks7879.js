@@ -161,9 +161,9 @@ async function loadLastComputedOn(supabase) {
   // schema-columns-ok: rider_talent_marks kommer fra 2026-11-07-7879-talent-marks.sql
   const { data, error } = await supabase
     .from("rider_talent_marks").select("computed_on")
-    .order("computed_on", { ascending: false }).limit(1).maybeSingle();
+    .order("computed_on", { ascending: false }).limit(1);
   if (error) throw new Error(`rider_talent_marks: ${error.message}`);
-  return data?.computed_on ?? null;
+  return data?.[0]?.computed_on ?? null;
 }
 
 async function loadJuniorGains(supabase, riderIds, { windowStart, recentStart }) {
@@ -235,14 +235,14 @@ export async function runTalentMarksDaily({ supabase, now = new Date() }) {
 }
 
 /** Cron-indgangen: kørsel + log. En fejl når Sentry; næste time prøver igen. */
-export async function runTalentMarksDailyTick({ supabase, now = new Date(), capture = captureException }) {
+export async function runTalentMarksDailyTick({ supabase, now = new Date() }) {
   try {
     const result = await runTalentMarksDaily({ supabase, now });
     if (result.ran) console.log(`Talent marks: ${result.topTalent} top talent, ${result.nextGen} next gen`);
     return result;
   } catch (err) {
     console.error("  talent marks failed:", err.message);
-    capture(err, { tags: { cron: "talent-marks-daily" } });
+    captureException(err, { tags: { cron: "talent-marks-daily" } });
     return { ran: false, skipped: "error" };
   }
 }

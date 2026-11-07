@@ -175,12 +175,14 @@ function fakeSupabase({ flag = "beta", lastComputedOn = null, riders = [], gains
       eq(col, val) { state.filters.push([col, val]); return api; },
       gte() { return api; },
       order() { return api; },
-      limit() { return api; },
+      limit() {
+        if (table === "rider_talent_marks") return Promise.resolve(single(lastComputedOn ? [{ computed_on: lastComputedOn }] : []));
+        return api;
+      },
       range(from) { return Promise.resolve(single(from === 0 ? riders : [])); },
       maybeSingle() {
         if (table === "app_config") return Promise.resolve(single({ value: flag }));
         if (table === "seasons") return Promise.resolve(single({ number: SEASON }));
-        if (table === "rider_talent_marks") return Promise.resolve(single(lastComputedOn ? { computed_on: lastComputedOn } : null));
         return Promise.resolve(single(null));
       },
       upsert(rows, opts) { writes.upserts.push({ table, rows, opts }); return Promise.resolve({ error: null }); },
