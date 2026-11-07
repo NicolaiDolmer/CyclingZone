@@ -494,6 +494,10 @@
     {
       "issue": 7678,
       "why": "Sentry-fejl, ejer-go 4/11 sent i chat (nat-mandat #7495)"
+    },
+    {
+      "issue": 7827,
+      "why": "Til dørs lukker selv interne opgaver, ejer-go 7/11 i chat"
     }
   ],
   "brandList": [

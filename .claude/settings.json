@@ -120,6 +120,11 @@
           },
           {
             "type": "command",
+            "command": "bash scripts/hooks/session-issue-flow.sh",
+            "timeout": 15
+          },
+          {
+            "type": "command",
             "command": "bash scripts/hooks/ensure-scheduled-tasks.sh"
           },
           {
