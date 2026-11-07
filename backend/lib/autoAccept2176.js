@@ -252,9 +252,15 @@ export function makeSetAutoAcceptPriceHandler({ supabase }) {
  * POST /api/transfers/:id/auto-accept
  * body: { expected_price: number, duration_minutes: number }
  *
- * deps fra api.js: getAuctionConfig, getActiveSeasonNumber, logActivity.
+ * deps fra api.js: getAuctionConfig, getActiveSeasonNumber, logActivity. De
+ * resterende (opslag i andre moduler) kan erstattes i tests.
  */
-export function makeStartAutoAcceptHandler({ supabase, getAuctionConfig, getActiveSeasonNumber, logActivity, now = () => new Date() }) {
+export function makeStartAutoAcceptHandler({
+  supabase, getAuctionConfig, getActiveSeasonNumber, logActivity, now = () => new Date(),
+  marketState = getTeamMarketState, atRiskRiders = fetchAtRiskRiders,
+  signingAllowed = assertSigningAllowed, seasonBoundary = fetchSeasonTransitionBoundary,
+  announce = announceAutoAcceptAuction,
+}) {
   return async (req, res) => {
     if (!(await isAutoAcceptEnabled(supabase))) return res.status(404).json(DISABLED);
     if (!req.team) return res.status(400).json({ error: "No team found" });
@@ -283,7 +289,7 @@ export function makeStartAutoAcceptHandler({ supabase, getAuctionConfig, getActi
     }
 
     // Samme loftsregel som board-konsekvenserne paa alle andre koeb.
-    const signingBlock = await assertSigningAllowed({
+    const signingBlock = await signingAllowed({
       supabase, buyerTeamId: req.team.id, riderId: listing.rider_id, purchasePrice: expected.value,
     });
     if (signingBlock) {
@@ -293,8 +299,8 @@ export function makeStartAutoAcceptHandler({ supabase, getAuctionConfig, getActi
     const startedAt = now();
     const [cfg, boundary, buyerState, seasonNumber] = await Promise.all([
       getAuctionConfig(),
-      fetchSeasonTransitionBoundary(supabase),
-      getTeamMarketState(supabase, req.team.id),
+      seasonBoundary(supabase),
+      marketState(supabase, req.team.id),
       getActiveSeasonNumber(),
     ]);
     const calculatedEnd = autoAcceptAuctionEnd(startedAt, cfg, minutes);
@@ -309,7 +315,7 @@ export function makeStartAutoAcceptHandler({ supabase, getAuctionConfig, getActi
         errorParams: { boundaryAt: boundaryText },
       });
     }
-    const atRisk = await fetchAtRiskRiders(supabase, listing.seller_team_id, seasonNumber, {
+    const atRisk = await atRiskRiders(supabase, listing.seller_team_id, seasonNumber, {
       excludeRiderIds: [listing.rider_id],
     });
 
@@ -325,7 +331,7 @@ export function makeStartAutoAcceptHandler({ supabase, getAuctionConfig, getActi
       p_now: startedAt.toISOString(),
     });
     const mapped = mapStartAutoAcceptResult(result);
-    if (result.status === "started") await announceAutoAcceptAuction({ supabase, logActivity, result, calculatedEnd });
+    if (result.status === "started") await announce({ supabase, logActivity, result, calculatedEnd });
     return res.status(mapped.status).json(mapped.body);
   };
 }
