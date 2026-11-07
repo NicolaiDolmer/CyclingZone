@@ -97,6 +97,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "rider_why_button", area: "race-day", label: "Hvorfor?-knappen ved rytterne (Your day)" },
   // #7879: talentmærker ved rytternavne. Kun visning, seedet off.
   { key: "talent_marks_7879", area: "squad", label: "Talentmærker ved rytternavne (Toptalent, Næste generation)" },
+  // #2009: hover-miniprofil på rytternavne. Kun visning, seedet off; beta først (ejer 7/11).
+  { key: "rider_hover_card", area: "squad", label: "Hover-miniprofil på ryttere" },
 
   // ── Motorer og batch-jobs (spilleren ser resultatet, ikke kontakten) ──────
   { key: "race_engine_v2_enabled", area: "race-engine", label: "Løbsmotor v2" },
@@ -288,6 +290,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "rider_why_button",
   // #7879: navnecellen, rytterprofilen og Hjaelp viser talentmaerkerne paa dette flag.
   "talent_marks_7879",
+  // #2009: rytternavnene viser hover-miniprofilen paa dette flag.
+  "rider_hover_card",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,
