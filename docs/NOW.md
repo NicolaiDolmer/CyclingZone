@@ -9,13 +9,13 @@
 > **🎯 Next action (7/11 morgen):** Dolmer PC har overtaget (OneDrive-overdragelsen og plan på #7495). Merget og verificeret: #7819, #7820, #7823 (patch note 7.413), #7828 (interne opgaver lukker selv, #7827). Bevis der venter på en hændelse: #7829. Løbsside A: designet fortsættes 7/11 med ejerens rettelser (status på #7778), så #7725. Bølge: XP trin 2 og 4, #7792, #7789; vis sporene først. XP-kortet skal køres om. #7726, #7557 og #7730 tændt; bevis 7/11 15:00; #7733 efter 7/11 16:30; secrets 7/11 11-12; feedback og fair-play senest 9/11. Mærker #7824: kun design, ingen afstemning, intet byg uden go; ordene verdensmester/europamester frigivet (#934).
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Ingen aktiv session. Dolmer PC merger og tænder. Ingen aktiv Codex-session.
+> **🤖 Working agent:** Ingen aktiv session. Fra 7/11: PC1 (Claude Code) merger og tænder, og auto-toget installeres på PC1; Dolmer PC kører Codex. Auto-toget er fjernet fra Dolmer PC.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
 > **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; `ratingGolden.5321.json` KUN m. ejer-go.
 
-> **🔴 Åbne fund:** #6490 aftenspids · #5692 matview · #6504 frigivelse (ny forekomst 16/10, CYCLINGZONE-9B). **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`.
+> **🔴 Åbne fund:** #7832 sent hold mister første træningsdato (ejer: aldrig mistet dato) · #6490 aftenspids · #7139 ranglisten halter · #6504 frigivelse (ny forekomst 16/10, CYCLINGZONE-9B). **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`.
 
 ## Standing context (forever-relaunch)
 
