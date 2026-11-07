@@ -59,6 +59,10 @@
 //      stuckAcademyGraduates.js — SAMME funktion som reparations-scriptet
 //      bruger, saa vagt og reparation aldrig kan divergere.
 //
+//   H. (#6181) Et LAAST SALG (sale_escrows, status held), der er aeldre end
+//      samme graense som E og ikke venter paa et aktivt etapeloeb. Flush,
+//      heal-sweep og reconcile (saleEscrowFlow6181.js) skulle have afregnet det.
+//
 // READ-ONLY: ingen DB-writes, ingen ny tabel, ingen migration. Én Sentry-
 // capture pr. invariant pr. tick med FAST fingerprint (mirror ai-trim-
 // invariant-guard #2407/#2434-mønstret i cron.js) — ét Sentry-issue pr.

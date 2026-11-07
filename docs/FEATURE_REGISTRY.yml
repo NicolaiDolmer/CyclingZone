@@ -478,6 +478,16 @@ features:
     verified: 2026-09-06
     note: Knap på profilen, ikke egen fane.
 
+  - id: sale-escrow
+    area: market
+    title_en: Sale escrow
+    title_da: Låste salgspenge
+    state: building
+    ssot: docs/TRANSFER_MARKET_RULES.md
+    epic: 6181
+    verified: 2026-11-07
+    note: Kontakt sale_escrow_enabled, slukket; UI i PR 4.
+
   - id: rider-loans
     area: market
     title_en: Rider loans
