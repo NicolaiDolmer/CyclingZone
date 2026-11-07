@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-134 poster: live 107 · beta 1 · dormant 9 · building 8 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+135 poster: live 107 · beta 1 · dormant 9 · building 9 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -64,7 +64,7 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
-| Development Score B in the engine (`development-score-b-engine`) | dormant | `development_score_v2` | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-11-04 | Ejer 31/10: parkeret til grundtalentet (byggetrin 2) er bygget; decide_by 8/11 afløst, ingen ny frist. #7584 før tænding. |
+| Development Score B in the engine (`development-score-b-engine`) | dormant | `development_score_v2` | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-11-04 | Ejer 31/10 (#6110): parkeret, indtil grundtalentet (spec 23/10, byggetrin 2) er bygget; decide_by 8/11 er afløst, ny frist ikke sat. Forudsætning før tænding: #7584. Statusaudit 4/11. |
 | One potential source (stored estimate per rider and team) (`potential-estimate-display`) | dormant | `potential_estimate_display` | [6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md) | #6110 | 2026-11-05 | Byggetrin 4 (#7684): estimates, scouting-rapport, development-projection og akademi svarer fra potentialEstimateRead.js, når flaget er tændt. |
 | Catch-up via racing (`race-day-catchup`) | dormant | `race_day_catchup_enabled` | [TRAINING_RULES](TRAINING_RULES.md) | #6950 | 2026-10-25 | Ejer, med Udvikling 2.0. |
 | Race day - the rider's role also decides the base day (`race-day-role-base-day`) | dormant | `race_day_role_base_day_enabled` | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-11-03 | #5950 løsning A (ejer-valg 3/11), underkontakt til race-day-role-yield. Off. |
@@ -81,7 +81,7 @@ Arkiv = live verificeret over 30 dage foer registrets nyeste dato: kun id (#5319
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
 | AI academy pull (`academy-ai-weekly-pull`) | dormant | - | [YOUTH_RULES](YOUTH_RULES.md) | #6666 | 2026-10-25 | Flag academy_ai_weekly_pull_enabled; ikke nu. |
-| Season academy intake (`season-academy-intake`) | dormant | `season_academy_intake_enabled` | [YOUTH_RULES](YOUTH_RULES.md) | #2911 | 2026-10-15 | Sikkerhedsventil (ejer-beslutning); off i prod (læst 15/10), kun ejeren flipper. |
+| Season academy intake (`season-academy-intake`) | dormant | `season_academy_intake_enabled` | [YOUTH_RULES](YOUTH_RULES.md) | #2911 | 2026-10-15 | Sikkerhedsventil efter ejer-beslutning (#2911); off i prod (læst 15/10), kun ejeren flipper. |
 | Three squads (`three-squads`) | spec | - | [YOUTH_RULES](YOUTH_RULES.md) | #2492 | 2026-09-06 | Slice 0 er leveret; resten er spec. |
 
 ## season
