@@ -355,6 +355,8 @@ export async function engineOffDigests() {
   return out;
 }
 
+export { rider as __diagRider, programs as __diagPrograms, OPTION_SETS as __diagOptionSets }; // DIAG6110 midlertidig
+
 export async function allOffDigests(hooks) {
   return {
     applyDailyTick: applyDailyTickOffDigest(hooks.withRoleYield),
