@@ -124,6 +124,8 @@ export const HELP_FAQ_FLAGS = Object.freeze({
   scoutNetworkOwnRidersEstimateFaq: POTENTIAL_ESTIMATE_ON,
   // Svaret forklarer tabellen "Prognose pr. ryttertype", som ikke findes med tal + ord.
   typeRatingScaleFaq: POTENTIAL_ESTIMATE_OFF,
+  // #7725: ordene om dagsformen findes kun i referatet naar kontakten er on.
+  dayWordsFaq: Object.freeze({ flag: "day_words_7725", when: true }),
 });
 
 /**

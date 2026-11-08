@@ -627,6 +627,7 @@ const FAQ_KEYS = [
   "raceJerseysFaq",
   "raceRouteRealismFaq",
   "dayFormFaq",
+  "dayWordsFaq",
   "crashesFaq",
   "newPlayerEconomyFaq",
   "seasonChangeMoneyFaq",
