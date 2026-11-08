@@ -144,6 +144,8 @@ const JERSEY_PATH = "M8.2 2.5 L4.2 4 L1 8.2 L3.6 10.8 L6 9.2 L6 21.5 L18 21.5 L1
 const WHITE = "rgb(255 255 255)";
 const NAVY = "rgb(20 33 61)";
 const GOLD = "rgb(212 160 23)";
+// Tallene 2 og 3 i U23-feltet (x 6-18, y 16.1-21.5).
+const U23_DIGITS = "M9 17.7 Q9 17 10.3 17 Q11.6 17 11.6 18 Q11.6 18.8 9 20.6 L11.6 20.6 M12.4 17 L15 17 L13.6 18.6 Q15 18.6 15 19.6 Q15 20.6 13.7 20.6 Q12.8 20.6 12.4 20.1";
 const JERSEY_MASK = `url("data:image/svg+xml,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="${JERSEY_PATH}"/></svg>`,
 )}")`;
@@ -166,8 +168,8 @@ function WorldJersey({ size, u23 }: { size: number; u23: boolean }) {
         {u23 && (
           <>
             <rect x="6" y="16.1" width="12" height="5.4" fill={NAVY} />
-            <text x="12" y="20.35" textAnchor="middle" fontSize="4.6" fontWeight="800" fill={WHITE}
-              fontFamily="Inter Tight, Inter, system-ui, sans-serif">23</text>
+            {/* "23" tegnet som streger (et piktogram, ikke tekst), så det står skarpt ved 16 px. */}
+            <path d={U23_DIGITS} fill="none" stroke={WHITE} strokeWidth={0.85} strokeLinecap="round" strokeLinejoin="round" />
           </>
         )}
       </g>
