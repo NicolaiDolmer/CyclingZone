@@ -97,10 +97,10 @@ test("parseArgs", () => {
 
 test("roadmap-felterne valideres af registrets validate()", () => {
   const base = { id: "a", area: "training", title_en: "A", title_da: "A", state: "beta", verified: "2026-10-15" };
-  assert.deepEqual(validate([{ ...base, roadmap_en: "A", roadmap_da: "B", roadmap_horizon: "later" }]), []);
+  assert.deepEqual(validate([{ ...base, roadmap_en: "A", roadmap_da: "B", roadmap_horizon: "season_6" }]), []);
   assert.match(validate([{ ...base, roadmap_en: "A" }]).join("\n"), /saettes sammen/);
-  assert.match(validate([{ ...base, roadmap_en: "A", roadmap_da: "B", roadmap_horizon: "soon" }]).join("\n"), /next eller later/);
-  assert.match(validate([{ ...base, roadmap_horizon: "next" }]).join("\n"), /kraever roadmap_en/);
+  assert.match(validate([{ ...base, roadmap_en: "A", roadmap_da: "B", roadmap_horizon: "later" }]).join("\n"), /season_N/);
+  assert.match(validate([{ ...base, roadmap_horizon: "next_week" }]).join("\n"), /kraever roadmap_en/);
 });
 
 test("det committede register er groent mod den committede baseline", () => {

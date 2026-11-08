@@ -1,5 +1,29 @@
 export const PATCHES = [
   {
+    "version": "7.419",
+    "date": "2026-11-08",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Roadmap",
+        "en": {
+          "title": "The roadmap shows season numbers",
+          "body": "The plan on the roadmap no longer says Coming up or Later. Each item now sits under this week, next week, a season number (Season 5 means it comes in season 5, before season 6 starts) or a quarter such as Q1 2027. Ideas you can vote on have no time until they are planned. Several items moved based on your votes."
+        },
+        "da": {
+          "title": "Roadmappet viser sæsonnumre",
+          "body": "Planen på roadmappet siger ikke længere Snart eller Senere. Hvert punkt står nu under denne uge, næste uge, et sæsonnummer (Sæson 5 betyder, at det kommer i sæson 5, før sæson 6 starter) eller et kvartal som Q1 2027. Idéer, I kan stemme på, har ingen tid, før de er planlagt. Flere punkter er flyttet ud fra jeres stemmer."
+        },
+        "refs": [
+          7895,
+          7892
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.417",
     "date": "2026-11-07",
     "changes": [

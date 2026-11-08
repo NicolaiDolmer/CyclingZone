@@ -34,7 +34,7 @@
 #   verified  YYYY-MM-DD — hvornår tilstanden sidst blev verificeret mod kode/prod
 #   note      max 1 linje. Kun det der ikke kan udledes af felterne ovenfor.
 #             Obligatorisk ved state: dormant.
-#   roadmap_en / roadmap_da / roadmap_horizon (next|later, valgfri) - spillerens
+#   roadmap_en / roadmap_da / roadmap_horizon (this_week|next_week|season_N|qN_YYYY|yYYYY, valgfri; #7895) - spillerens
 #             roadmap-tekst (#6693), godkendt af ejeren. Kraeves for spillervendte
 #             flag (flag + area ikke ops) naar state er beta; building/dormant giver
 #             kun en advarsel. scripts/roadmap-sync-registry.mjs opretter punktet
@@ -438,7 +438,7 @@ features:
     note: "#7717: seedet off, kun visning. Ejeren flytter flaget efter visuelt go."
     roadmap_en: "Why? next to your riders: one tap tells you what decided his result."
     roadmap_da: "Hvorfor? ved dine ryttere: ét tryk fortæller, hvad der afgjorde hans resultat."
-    roadmap_horizon: next
+    roadmap_horizon: next_week
 
   - id: rider-hover-card
     area: squad

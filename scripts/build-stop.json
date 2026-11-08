@@ -1148,6 +1148,11 @@
       "since": "2026-11-07"
     },
     {
+      "issue": 7895,
+      "reason": "Ejer 8/11 nat i chat: ingen Snart/Senere paa roadmappet, saesonnumre og kvartaler",
+      "since": "2026-11-08"
+    },
+    {
       "issue": 7877,
       "reason": "Ejer-go 7/11 i Codex: byg P16 K1/K2/K3/K6/K8/K11 i faelles komponenter; ingen merge uden billede-go. https://github.com/NicolaiDolmer/CyclingZone/issues/7877#issuecomment-6712966598",
       "since": "2026-11-07"
