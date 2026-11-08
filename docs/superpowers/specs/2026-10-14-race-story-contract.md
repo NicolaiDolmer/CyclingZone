@@ -157,6 +157,14 @@ melding får sin egen måling (`exact_time` på `exact_km`) eller hullet fra
 gruppen den kom fra (også `carried`). Et senere snapshot bruges aldrig
 (fremtidige huller og splits hører ikke til passagen).
 
+Undtagelse for målet (#7900): har alle rækker i `results` et hul (`gap_s`, fra
+`storyInputsFromResults` over `finish_time`), er snapshot og kontrolpunkt ved
+målet bygget af resultatet: én gruppe pr. hul, `gap_source: "result"`. En gruppe
+beholder sit id på det hul, hvor flest af dens ryttere endte. Etaperesultatet er
+sandheden; filmen må aldrig vise andet ved målstregen. Lige før stregen ligger et
+snapshot med tilstanden på vejen, så replay er motorens indtil selve stregen, og
+ved stregen flytter ingen af motorens overgange rytterne ud af resultatets grupper.
+
 `checkpointGapForRider(checkpoint, riderId)` giver
 `{ group_id, gap_s, time_s, in_front, via_rest } | null` (null: udgået, dvs.
 i `out_rider_ids`; uheldsoffer i `pending_rider_ids`; eller gruppen er
