@@ -28,6 +28,7 @@ function fakeSupabase(tables) {
       const chain = {
         select: () => chain,
         eq: (column, value) => { call.filters[column] = value; return chain; },
+        limit: () => chain,
         then: (resolve) => resolve(tables[table] ?? { data: [], error: null }),
       };
       return chain;
