@@ -23,3 +23,20 @@ server shutdown. CI without AUTO_ACCEPT_PG_BIN explicitly skips that proof.
 
 Registry now links market-auto-accept to its flag and SSOT. No flag activation,
 production SQL, new player copy, merge or relaxed verification baseline.
+M2 seeds the missing gate off idempotently, without changing existing values;
+PR registry validation treats that unapplied migration as pending. Otherwise a
+tracked but deliberately absent flag is a genuine registry failure.
+
+Integration with PR5 e8efd5b5e found a concrete overlap: retaining both counters
+rejected a valid release with both gates on. The regression observed HTTP409
+instead of success. Prefer M3's completed count; M2 is a fallback only. Test all
+four flag combinations for release/start and the transfer boundary, and run the
+real M2 RPCs together with enabled M3 triggers in PGlite/PG17, including ordinary
+bids racing auto-accept starts for the same available money.
+
+Second integration boundary: M3 reserves active auctions even before a bidder
+arrives. M2's bidder-only SQL count allowed a second departure while the JS
+routes blocked it. Reproduced RED for start/release/claim at the seller floor.
+The three locked paths now share M3's outgoing rider IDs when M3 is installed
+and enabled, and retain the bidder-only fallback otherwise. The same ID set
+deduplicates risk; its read helper is service-only with a fixed search path.

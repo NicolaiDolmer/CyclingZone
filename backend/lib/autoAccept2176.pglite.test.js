@@ -9,7 +9,7 @@
 // hinanden, hvert i sin egen transaktion. Testen viser, at tjek og skrivning
 // sker i samme transaktion (ingen dobbeltstart, ingen overbooking). Den aegte
 // laase-test med flere forbindelser koeres mod PG17 uden for CI (se PR-body).
-import test from 'node:test';
+import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
@@ -29,18 +29,162 @@ const FLOOR = 8;
 // Minimalt udsnit af prod-skemaet: de kolonner, checks og indeks RPC'erne roerer.
 
 
-async function database() {
+const openDatabases = new Set();
+afterEach(async () => {
+  for (const db of openDatabases) await db.close();
+  openDatabases.clear();
+});
+
+async function database({ marketGate = false, beforeMigration = null } = {}) {
   const db = new PGlite();
+  openDatabases.add(db);
   await db.exec(SCHEMA);
   await db.exec(await file('2026-05-10-reject-late-auction-bid-trigger.sql'));
   // Eksisterende raekker foer migrationen: de maa ikke aendres af den.
   await db.exec(`INSERT INTO teams VALUES ('${TEAM.A}', ${START}), ('${TEAM.B}', ${START}), ('${TEAM.C}', ${START}), ('${TEAM.D}', ${START});
     INSERT INTO auctions(id, rider_id, seller_team_id, calculated_end) VALUES ('${id(700)}', '${id(799)}', '${TEAM.D}', '2026-11-01T12:00:00Z');`);
   const migration = await file(MIGRATION);
+  if (beforeMigration) await beforeMigration(db);
   await db.exec(migration);
   await db.exec(migration); // idempotent
+  if (marketGate) {
+    await db.exec(await file('2026-11-07-6181-m3-market-commitment.sql'));
+    await db.exec(`UPDATE app_config SET value='"on"' WHERE key='market_commitment_6181'`);
+  }
   return db;
 }
+
+test('listing identities remain stable and new rows match their owner', async () => {
+  const db = await database();
+  const riders = await squad(db, TEAM.A, 12);
+  const l = await listing(db, riders[0], { auto: 500000 });
+  await assert.rejects(db.query('UPDATE transfer_listings SET rider_id=$2 WHERE id=$1', [l, riders[1]]), /listing_identity_immutable/);
+  await assert.rejects(db.query('UPDATE transfer_listings SET seller_team_id=$2 WHERE id=$1', [l, TEAM.C]), /listing_owner_mismatch/);
+  await assert.rejects(db.query('INSERT INTO transfer_listings(rider_id,seller_team_id,asking_price) VALUES ($1,$2,1)', [riders[2], TEAM.C]), /listing_owner_mismatch/);
+});
+
+test('price updates validate existing listing state', async () => {
+  const r=id(89001); const l=id(89002);
+  const db=await database({beforeMigration:async db=>{
+    await db.query('INSERT INTO riders(id,team_id) VALUES ($1,$2)',[r,TEAM.B]);
+    await db.query('INSERT INTO transfer_listings(id,rider_id,seller_team_id,asking_price) VALUES ($1,$2,$3,1)',[l,r,TEAM.A]);
+  }});
+  assert.equal((await setPrice(db,l,{price:500000})).status,'rider_not_with_seller');
+});
+
+test('start argument shape requires an identity-aware request', async () => {
+  const db=await database();
+  const [r]=await squad(db,TEAM.A,12);
+  const l=await listing(db,r,{auto:500000});
+  const result=await one(db,'SELECT public.start_auto_accept_auction($1,$2,$3,$4,$5,$6,$7,$8::uuid[],$9) AS r',
+    [l,TEAM.B,500000,60,END,MAX,FLOOR,'{}',NOW]);
+  assert.equal(result.r.status,'rider_state_changed');
+  const valueSnapshot=JSON.stringify({market_value:1000000,base_value:1000000,prize_earnings_bonus:0});
+  const previous=await one(db,'SELECT public.start_auto_accept_auction($1,$2,$3,$4::jsonb,$5,$6,$7,$8,$9,$10::uuid[],$11) AS r',
+    [l,TEAM.B,r,valueSnapshot,500000,60,END,MAX,FLOOR,'{}',NOW]);
+  assert.equal(previous.r.status,'rider_state_changed');
+  for (const signature of [
+    'uuid,uuid,bigint,integer,timestamptz,integer,integer,uuid[],timestamptz',
+    'uuid,uuid,uuid,jsonb,bigint,integer,timestamptz,integer,integer,uuid[],timestamptz',
+    'uuid,uuid,uuid,uuid,jsonb,bigint,integer,timestamptz,integer,integer,uuid[],timestamptz',
+  ]) {
+    for (const role of ['anon','authenticated','service_role']) {
+      const privilege=await one(db,"SELECT has_function_privilege($1,$2,'EXECUTE') AS allowed",[role,`public.start_auto_accept_auction(${signature})`]);
+      assert.equal(privilege.allowed,role==='service_role');
+    }
+  }
+});
+
+test('listing lifecycle permits closure and validates client writes', async () => {
+  const db=await database();
+  const riders=await squad(db,TEAM.A,12);
+  await db.exec('SET ROLE authenticated');
+  const l=await one(db,'INSERT INTO transfer_listings(rider_id,seller_team_id,asking_price) VALUES ($1,$2,1) RETURNING id',[riders[0],TEAM.A]);
+  await assert.rejects(db.query('UPDATE transfer_listings SET rider_id=$2 WHERE id=$1',[l.id,riders[1]]),/listing_identity_immutable/);
+  await assert.rejects(db.query('INSERT INTO transfer_listings(rider_id,seller_team_id,asking_price) VALUES ($1,$2,1)',[riders[2],TEAM.C]),/listing_owner_mismatch/);
+  await db.exec('RESET ROLE');
+  await db.query('UPDATE riders SET team_id=$2 WHERE id=$1',[riders[0],TEAM.B]);
+  await db.query("UPDATE transfer_listings SET status='paused' WHERE id=$1",[l.id]);
+  await db.query("UPDATE transfer_listings SET status='withdrawn' WHERE id=$1",[l.id]);
+  await assert.rejects(db.query("UPDATE transfer_listings SET status='open' WHERE id=$1",[l.id]),/listing_owner_mismatch/);
+});
+
+test('start validation binds locked identity and current value', async () => {
+  const db=await database();
+  const riders=await squad(db,TEAM.A,12);
+  const l=await listing(db,riders[0],{auto:500000});
+  assert.equal((await start(db,l,{expectedRider:riders[1]})).status,'rider_state_changed');
+  const args=await startArgs(db,l);
+  await db.query('UPDATE riders SET market_value=market_value+1 WHERE id=$1',[riders[0]]);
+  assert.equal((await one(db,START_SQL,args)).r.status,'rider_state_changed');
+  assert.equal(Number((await one(db,'SELECT count(*) AS n FROM auction_bids')).n),0);
+  assert.equal((await start(db,l)).status,'started');
+});
+
+test('start validation binds the server listing context', async () => {
+  const db=await database();
+  const [r]=await squad(db,TEAM.A,12);
+  await squad(db,TEAM.C,FLOOR);
+  const l=await listing(db,r,{auto:500000});
+  const args=await startArgs(db,l);
+  await db.query('UPDATE riders SET team_id=$2 WHERE id=$1',[r,TEAM.C]);
+  await db.query('UPDATE transfer_listings SET seller_team_id=$2 WHERE id=$1',[l,TEAM.C]);
+  assert.equal((await one(db,START_SQL,args)).r.status,'rider_state_changed');
+  assert.equal(Number((await one(db,'SELECT count(*) AS n FROM auction_bids')).n),0);
+});
+
+test('start validation rechecks context at the lock boundary', async () => {
+  const db=await database();
+  const [r]=await squad(db,TEAM.A,12);
+  const l=await listing(db,r,{auto:500000});
+  await db.exec(`CREATE OR REPLACE FUNCTION public.auto_accept_lock_teams(p_a uuid,p_b uuid)
+    RETURNS void LANGUAGE plpgsql AS $$ BEGIN
+      UPDATE public.riders SET team_id='${TEAM.C}' WHERE id='${r}';
+      UPDATE public.transfer_listings SET seller_team_id='${TEAM.C}' WHERE id='${l}';
+      PERFORM pg_advisory_xact_lock(hashtextextended(least(p_a,p_b)::text,0));
+      IF p_a IS DISTINCT FROM p_b THEN PERFORM pg_advisory_xact_lock(hashtextextended(greatest(p_a,p_b)::text,0)); END IF;
+    END; $$;`);
+  assert.equal((await start(db,l)).status,'rider_state_changed');
+  assert.equal(Number((await one(db,'SELECT count(*) AS n FROM auction_bids')).n),0);
+});
+
+test('M2 plus M3 enabled: auto-accept start reserves money/seat and ordinary bids see it', async () => {
+  const db = await database({ marketGate: true });
+  const riders = await squad(db, TEAM.A, 12);
+  const first = await listing(db, riders[0], { auto: 600_000 });
+  const second = await listing(db, riders[1], { auto: 600_000 });
+  assert.equal((await start(db, first, { expected: 600_000 })).status, 'started');
+  assert.equal(Number((await one(db, 'SELECT public.team_market_commitment($1) AS n', [TEAM.B])).n), 600_000);
+  assert.equal(Number((await one(db, 'SELECT public.team_seat_commitment($1) AS n', [TEAM.B])).n), 1);
+  assert.equal((await start(db, second, { expected: 600_000 })).status, 'insufficient_funds');
+  const auction = await one(db, `INSERT INTO auctions(rider_id,calculated_end) VALUES ($1,'${END}') RETURNING id`, [riders[2]]);
+  await assert.rejects(db.query(`INSERT INTO auction_bids(auction_id,team_id,amount,bid_time) VALUES ($1,$2,500000,'${NOW}')`,
+    [auction.id, TEAM.B]), /market_gate_6181:insufficient_available_balance/);
+  assert.equal(Number((await one(db, 'SELECT count(*) AS n FROM auction_bids')).n), 1);
+});
+
+test('M3 seller reservation: unbid active auctions also reserve the last departure', async t => {
+  for (const action of ['start', 'release', 'claim']) {
+    await t.test(action, async () => {
+      const db = await database({ marketGate: true });
+      const riders = await squad(db, TEAM.A, FLOOR + 1);
+      await db.query(`INSERT INTO auctions(rider_id,seller_team_id,calculated_end) VALUES ($1,$2,'${END}')`, [riders[0], TEAM.A]);
+      const l = await listing(db, riders[1], { auto: 500_000 });
+      const answer = action === 'start' ? await start(db, l)
+        : action === 'release' ? await release(db, riders[1]) : await claim(db, riders[1]);
+      assert.equal(answer.status, action === 'release' ? 'squad_floor' : 'seller_squad_floor');
+      assert.equal(Number((await one(db, 'SELECT count(*) AS n FROM riders WHERE team_id=$1', [TEAM.A])).n), FLOOR + 1);
+      assert.equal(Number((await one(db, 'SELECT count(*) AS n FROM auction_bids')).n), 0);
+      // One additional rider makes the departure valid. The unbid auction's
+      // rider is also at risk and must not be subtracted for a second time.
+      await squad(db, TEAM.A, 1);
+      const retry = action === 'start' ? await start(db, l, { atRisk: [riders[0]] })
+        : action === 'release' ? await release(db, riders[1], { atRisk: [riders[0]] })
+          : await claim(db, riders[1], { atRisk: [riders[0]] });
+      assert.equal(retry.status, { start: 'started', release: 'released', claim: 'claimed' }[action]);
+    });
+  }
+});
 
 const one = async (db, sql, params = []) => (await db.query(sql, params)).rows[0];
 const balance = async (db, team) => Number((await one(db, 'SELECT balance FROM teams WHERE id = $1', [team])).balance);
@@ -67,9 +211,15 @@ async function listing(db, rider, { seller = TEAM.A, asking = 100_000, auto = nu
 async function setPrice(db, listingId, { seller = TEAM.A, price, expected = null, actor = USER }) {
   return (await one(db, 'SELECT public.set_listing_auto_accept_price($1,$2,$3,$4,$5) AS r', [listingId, seller, price, expected, actor])).r;
 }
-async function start(db, listingId, { buyer = TEAM.B, expected = 500_000, minutes = 60, end = END, max = MAX, floor = FLOOR, atRisk = [], now = NOW } = {}) {
-  return (await one(db, 'SELECT public.start_auto_accept_auction($1,$2,$3,$4,$5,$6,$7,$8::uuid[],$9) AS r',
-    [listingId, buyer, expected, minutes, end, max, floor, `{${atRisk.join(',')}}`, now])).r;
+const START_SQL = 'SELECT public.start_auto_accept_auction($1,$2,$3,$4,$5::jsonb,$6,$7,$8,$9,$10,$11::uuid[],$12) AS r';
+async function startArgs(db, listingId, { buyer = TEAM.B, expectedRider, expectedSeller, expectedValue, expected = 500_000, minutes = 60, end = END, max = MAX, floor = FLOOR, atRisk = [], now = NOW } = {}) {
+  const view = await one(db, 'SELECT l.rider_id,l.seller_team_id,r.market_value,r.base_value,r.prize_earnings_bonus FROM transfer_listings l LEFT JOIN riders r ON r.id=l.rider_id WHERE l.id=$1', [listingId]);
+  const value = key => view?.[key] == null ? null : Number(view[key]);
+  const snapshot = expectedValue ?? { market_value: value('market_value'), base_value: value('base_value'), prize_earnings_bonus: value('prize_earnings_bonus') };
+  return [listingId,buyer,expectedRider ?? view?.rider_id ?? id(0),expectedSeller ?? view?.seller_team_id ?? id(0),JSON.stringify(snapshot),expected,minutes,end,max,floor,`{${atRisk.join(',')}}`,now];
+}
+async function start(db, listingId, options) {
+  return (await one(db, START_SQL, await startArgs(db, listingId, options))).r;
 }
 async function release(db, rider, { team = TEAM.A, floor = FLOOR, atRisk = [] } = {}) {
   return (await one(db, 'SELECT public.auto_accept_release_rider($1,$2,$3,$4::uuid[]) AS r',
@@ -104,6 +254,9 @@ test('transfer-claim: immediate and parked ownership preserve inheritance, patch
     const privilege = await one(db, `SELECT has_function_privilege($1,
       'public.auto_accept_claim_transfer(uuid,uuid,uuid,boolean,timestamptz,jsonb,integer,uuid[],integer)', 'EXECUTE') AS allowed`, [role]);
     assert.equal(privilege.allowed, role === 'service_role');
+    const helperPrivilege = await one(db, `SELECT has_function_privilege($1,
+      'public.auto_accept_seller_outgoing_rider_ids(uuid,uuid)', 'EXECUTE') AS allowed`, [role]);
+    assert.equal(helperPrivilege.allowed, role === 'service_role');
   }
 });
 
@@ -156,6 +309,10 @@ const log = async (db, listingId) => (await db.query(
 
 test('migrationen er additiv: eksisterende auktioner bliver standard, listings faar ingen auto-pris', async () => {
   const db = await database();
+  assert.equal((await one(db, "SELECT value FROM app_config WHERE key='auto_accept_enabled'")).value, 'off');
+  await db.exec(`UPDATE app_config SET value='"on"' WHERE key='auto_accept_enabled'`);
+  await db.exec(await file(MIGRATION));
+  assert.equal((await one(db, "SELECT value FROM app_config WHERE key='auto_accept_enabled'")).value, 'on', 'reapply preserves an existing operator choice');
   const old = await one(db, `SELECT origin, source_listing_id, buyer_duration_minutes FROM auctions WHERE id = '${id(700)}'`);
   assert.deepEqual(old, { origin: 'standard', source_listing_id: null, buyer_duration_minutes: null });
   await assert.rejects(db.query(`INSERT INTO auctions(rider_id, calculated_end, origin) VALUES ('${id(798)}', now(), 'auto_accept')`), /auctions_auto_accept_shape/);
@@ -413,8 +570,7 @@ test('frigivelse og auto-accept-start tager samme holdlaas', async () => {
     return advisoryLocks(tx);
   });
   const startLocks = await db.transaction(async tx => {
-    await tx.query('SELECT public.start_auto_accept_auction($1,$2,$3,$4,$5,$6,$7,$8::uuid[],$9)',
-      [l, TEAM.B, 500_000, 60, END, MAX, FLOOR, '{}', NOW]);
+    await tx.query(START_SQL, await startArgs(tx, l));
     return advisoryLocks(tx);
   });
   assert.deepEqual(releaseLocks, [sellerKey]);

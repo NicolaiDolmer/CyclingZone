@@ -21,7 +21,8 @@
 
 import { evaluateFlagStage } from "./featureStage.js";
 import { calculateAuctionEnd, getAuctionSeasonBoundaryIssue } from "./auctionEngine.js";
-import { getTeamMarketState, MIN_RIDERS_FOR_RACE } from "./marketUtils.js";
+import { getTeamMarketState, MIN_RIDERS_FOR_RACE, calculateRiderMarketValue } from "./marketUtils.js";
+import { readTransferPriceBandConfig, getPriceBandViolation } from "./transferPriceBand.js";
 import { buildAtRiskErrorParams, fetchAtRiskRiders } from "./squadRiskGuard.js";
 import { assertSigningAllowed } from "./boardConsequences.js";
 import { fetchSeasonTransitionBoundary } from "./seasonTransitionBoundary.js";
@@ -88,7 +89,7 @@ export async function getOfferAutoAcceptIssue(supabase, { riderId, listing = nul
     // schema-columns-ok: auto_accept_price kommer med database/2026-11-07-2176-m2-auto-accept.sql og laeses kun med kontakten taendt (efter apply).
     const { data, error } = await supabase
       .from("transfer_listings")
-      .select("id, status, auto_accept_price")
+      .select("id, rider_id, seller_team_id, status, auto_accept_price")
       .eq("rider_id", riderId)
       .in("status", ["open", "negotiating"])
       .maybeSingle();
@@ -97,6 +98,12 @@ export async function getOfferAutoAcceptIssue(supabase, { riderId, listing = nul
   }
   const conflict = getOfferAutoAcceptConflict(row, offerAmount);
   if (!conflict) return null;
+  const listingRiderId = row?.rider_id ?? riderId;
+  if (!listingRiderId || !row?.seller_team_id) return null;
+  const { data: currentRider, error: ownerError } = await supabase.from("riders")
+    .select("team_id").eq("id", listingRiderId).maybeSingle();
+  if (ownerError) throw ownerError;
+  if (!currentRider || currentRider.team_id !== row.seller_team_id) return null;
   return {
     status: 409,
     body: {
@@ -175,6 +182,7 @@ export function mapStartAutoAcceptResult(result) {
     case "rider_on_auction":
       return { status: 409, body: { error: "This rider is on an active auction. Bid on the auction instead of making a transfer offer.", errorCode: "rider_on_auction_transfer" } };
     case "rider_not_with_seller":
+    case "rider_state_changed":
     case "rider_retired":
     case "rider_is_academy":
     case "rider_pending_transfer":
@@ -209,6 +217,7 @@ export function mapSetAutoAcceptPriceResult(result) {
       return { status: 400, body: { error: "The auto-accept price must be above the asking price", errorCode: "auto_accept_not_above_asking", errorParams: { askingPrice: Number(result.asking_price) } } };
     case "price_too_high":
       return { status: 400, body: { error: "Invalid auto-accept price", errorCode: "auto_accept_invalid_price" } };
+    case "rider_not_with_seller":
     case "rider_is_academy":
       return RIDER_UNAVAILABLE;
     default:
@@ -339,7 +348,7 @@ export function makeSetAutoAcceptPriceHandler({ supabase }) {
 
 /**
  * POST /api/transfers/:id/auto-accept
- * body: { expected_price: number, duration_minutes: number }
+ * body: { expected_rider_id: string, expected_price: number, duration_minutes: number }
  *
  * deps fra api.js: getAuctionConfig, getActiveSeasonNumber, logActivity. De
  * resterende (opslag i andre moduler) kan erstattes i tests.
@@ -348,6 +357,7 @@ export function makeStartAutoAcceptHandler({
   supabase, getAuctionConfig, getActiveSeasonNumber, logActivity, now = () => new Date(),
   marketState = getTeamMarketState, atRiskRiders = fetchAtRiskRiders,
   signingAllowed = assertSigningAllowed, seasonBoundary = fetchSeasonTransitionBoundary,
+  priceBandConfig = readTransferPriceBandConfig, buildPriceBandErrorBody,
   announce = announceAutoAcceptAuction,
 }) {
   return async (req, res) => {
@@ -366,9 +376,10 @@ export function makeStartAutoAcceptHandler({
     const expected = parseOptionalPrice(req.body?.expected_price);
     if (!expected.ok || expected.value === null) return res.status(400).json(INVALID_PRICE);
 
+    // schema-columns-ok: auto_accept_price is added by database/2026-11-07-2176-m2-auto-accept.sql; this read is behind the enabled gate after apply.
     const { data: listing, error: listingError } = await supabase
       .from("transfer_listings")
-      .select("id, rider_id, seller_team_id")
+      .select("id, rider_id, seller_team_id, status, auto_accept_price")
       .eq("id", req.params.id)
       .maybeSingle();
     if (listingError) throw listingError;
@@ -376,6 +387,25 @@ export function makeStartAutoAcceptHandler({
     if (listing.seller_team_id === req.team.id) {
       return res.status(400).json({ error: "You can't bid on your own listing", errorCode: "cannot_bid_own_listing" });
     }
+    const expectedRiderId = req.body?.expected_rider_id;
+    if (typeof expectedRiderId !== "string" || !expectedRiderId.trim()) {
+      return res.status(400).json(RIDER_UNAVAILABLE.body);
+    }
+    if (expectedRiderId !== listing.rider_id) return res.status(409).json(RIDER_UNAVAILABLE.body);
+    if (Number(listing.auto_accept_price) !== expected.value) {
+      const changed = PRICE_CHANGED(listing.auto_accept_price);
+      return res.status(changed.status).json(changed.body);
+    }
+    const { data: rider, error: riderError } = await supabase.from("riders")
+      .select("id, team_id, market_value, base_value, prize_earnings_bonus")
+      .eq("id", listing.rider_id).maybeSingle();
+    if (riderError) throw riderError;
+    if (!rider || rider.team_id !== listing.seller_team_id) return res.status(409).json(RIDER_UNAVAILABLE.body);
+    const band = await priceBandConfig(supabase);
+    const bandIssue = getPriceBandViolation({ price: Number(listing.auto_accept_price),
+      marketValue: Math.max(calculateRiderMarketValue(rider), 1), ...band });
+    if (bandIssue) return res.status(400).json(buildPriceBandErrorBody(bandIssue,
+      { codePrefix: "auction_start", label: "auction starting price" }));
 
     // Samme loftsregel som board-konsekvenserne paa alle andre koeb.
     const signingBlock = await signingAllowed({
@@ -411,6 +441,10 @@ export function makeStartAutoAcceptHandler({
     const result = await rpc(supabase, "start_auto_accept_auction", {
       p_listing_id: listing.id,
       p_buyer_team_id: req.team.id,
+      p_expected_rider_id: expectedRiderId,
+      p_expected_seller_team_id: listing.seller_team_id,
+      p_expected_rider_value: { market_value: rider.market_value ?? null,
+        base_value: rider.base_value ?? null, prize_earnings_bonus: rider.prize_earnings_bonus ?? null },
       p_expected_price: expected.value,
       p_duration_minutes: minutes,
       p_calculated_end: calculatedEnd.toISOString(),

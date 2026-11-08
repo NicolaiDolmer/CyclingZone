@@ -386,6 +386,9 @@ Bygget i PR 6 (backend + migration M2, `database/2026-11-07-2176-m2-auto-accept.
 tekster kommer i PR 7. Slukket kontakt = adfærden ovenfor er uændret (bevist i
 `backend/lib/autoAccept2176.test.js`). Ejer-beslutninger 6/11 og 7/11 på #2176:
 
+Migrationen opretter en manglende `auto_accept_enabled` som `off`, så registry/liveness kan
+følge kontakten efter apply; den ændrer aldrig en eksisterende værdi. Aktivering er særskilt ejer-gated.
+
 - **Pris:** sælger kan give en listing en auto-pris Y over listeprisen
   (`transfer_listings.auto_accept_price`, CHECK Y > X). Prisen er synlig for alle. Den sættes
   kun via `PUT /api/transfers/:id/auto-accept-price` med den pris, klienten så (forskel = 409);
@@ -401,6 +404,8 @@ tekster kommer i PR 7. Slukket kontakt = adfærden ovenfor er uændret (bevist i
   (`origin = 'auto_accept'`, `source_listing_id`, `buyer_duration_minutes`) med købers bud som
   førende bud, og listingen sættes på pause (#4211). Ingen penge flyttes ved start; buddet
   binder dem som alle andre førende bud (§8).
+  Kaldet medsender `expected_rider_id` og forventet pris. Listingens rytter er fast efter
+  oprettelse, sælgeren skal være aktuel ejer, og serveren anvender markedets eksisterende prisbånd.
 - **Sælgers gulv:** med kontakten tændt tæller sælgers ryttere på en aktiv auktion med en anden
   byder som udgående i gulv-tjekket ved frigivelse, ny auktion og transfer, så sælger ikke kan
   handle sig under gulvet og få auktionen annulleret ved slut.
@@ -413,6 +418,11 @@ tekster kommer i PR 7. Slukket kontakt = adfærden ovenfor er uændret (bevist i
   før mutation; de må ikke vælge den ulåste frigivelses-/transfersti. Hvert opslag er friskt.
   SQL-reglerne testes i PGlite; ægte samtidighed testes separat med otte PG17-forbindelser
   i `backend/lib/autoAccept2176.pg17.test.js` (lokalt opt-in via `AUTO_ACCEPT_PG_BIN`).
+  Når M3 også er tændt, håndterer M3's fælles optælling de udgående auktioner;
+  alle aktive sælgerauktioner reserveres da, også dem uden bud. M2's SQL genbruger
+  de samme rytter-id'er til gulv og risiko-deduplikering; JS tæller kun selv som
+  fallback. Uden aktiv M3 bevares M2's optælling af auktioner med en anden byder.
+  De samme ryttere må ikke tælles to gange.
 - **Forudsætning før tænding:** almindelige bud (`POST /auctions/:id/bid`) tager endnu ikke
   samme holdlås; den atomiske bud-gate kommer med pengelås PR 5 (#6181). Indtil da kan et
   samtidigt almindeligt bud og en auto-accept-start se samme ledige penge eller plads.
@@ -536,6 +546,44 @@ med 600K-loft kun accepteres hvis manageren også har råd til 600K.
 
 Målt 30/8: højeste enkelte proxy-loft i basen er **932.843 CZ$**; 80 hold har på et
 tidspunkt sat mindst ét autobud.
+
+### 8.1 Atomisk bud-gate bag `market_commitment_6181` (#6181 PR 5, #7872)
+
+Kontakten seedes **off** af `database/2026-11-07-6181-m3-market-commitment.sql`.
+Off = alt ovenfor gælder uændret (tjekket i JS, så skrevet i flere kald).
+  Kun `on` (eller `true`) tænder; `beta` er off her.
+  Et vellykket opslag uden en række er også off. Fejler selve opslaget, er tilstanden
+  ukendt: operationen stopper før en markedsmutation i stedet for at vælge den gamle
+  sti. Bud og PATCH proxy læser derfor kontakten før den første skrivning.
+
+  Et gennemført manuelt bud er stadig en succes, hvis det valgfrie medsendte autobud
+  afvises af M3. Svaret er HTTP 200 med `bid_placed: true` og en `proxy_rejected`-warning
+  med den eksisterende fejlkode. Den delte frontend-formatter viser den eksisterende
+  lokaliserede fejl som advarsel; den rapporterer ikke det gennemførte bud som fejlet.
+
+Tændt:
+- **Bud, autobud og startbud gates i databasen** under holdlåsen (samme nøgle som
+  `increment_balance_with_audit`): triggere på `auction_bids` (bud og proxy-cascade),
+  `auctions` (startbyder ved POST /auctions) og `auction_proxy_bids` (nyt/hævet loft).
+  Penge = samme worst case-regel som tabellen ovenfor. Et bud tager føringen i samme
+  transaktion, og prisen kan ikke falde. Samtidige bud fra ét hold kan derfor ikke
+  overbooke.
+- **Plads:** fremtidig senior-trup (`future_count`) + førende auktioner + 1 må ikke
+  overstige loftet. Et forsvarsbud (holdet fører allerede) blokeres aldrig på plads.
+  Et autobud uden føring optager ingen plads (ejer-spørgsmål 7 er ubesvaret).
+- **Undtagelse, ungdomsauktioner:** pladsen tjekkes kun i ruten (akademi-loftet
+  afhænger af alder); pengene gates altid.
+- **POST /auctions:** startbyderen skal have penge (worst case, også autobud uden
+  føring) og plads, ikke kun en advarsel.
+- **Transfer-bekræftelse** tæller købers førende auktioner som pladser.
+- **Sælgers gulv:** holdets egne ryttere på aktiv auktion tæller som udgående
+  (POST /auctions på egen rytter, frigivelse, transfer-bekræftelse) og udelades af
+  risiko-tællingen, så de ikke tælles to gange.
+- Fejl bruger de eksisterende fejlkoder (`insufficient_balance_after_bids`,
+  `insufficient_balance_after_proxy`, `start_bid_exceeds_balance`, `squad_full_bid`,
+  409 `price_changed`).
+- Andre udgifter (køb, gebyrer) tjekker stadig i JS før låsen; finalize-gaten står
+  som sidste værn.
 
 ---
 

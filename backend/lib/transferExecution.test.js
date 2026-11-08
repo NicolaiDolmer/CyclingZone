@@ -612,6 +612,14 @@ function makeSupabase(db, { claimTransfer = null, beforeRiderUpdate = null } = {
     _finance: finance,
     from(table) { return builder(table); },
     rpc(name, params) {
+      if (name === "team_outgoing_auction_rider_ids") {
+        const ids = rowsFor(db,"auctions").filter(auction => ["active","extended"].includes(auction.status)
+          && auction.current_bidder_id && auction.current_bidder_id !== params.p_team_id
+          && auction.rider_id !== params.p_exclude_rider_id
+          && rowsFor(db,"riders").some(rider => rider.id === auction.rider_id && rider.team_id === params.p_team_id && !rider.pending_team_id))
+          .map(auction => auction.rider_id);
+        return Promise.resolve({ data: ids, error: null });
+      }
       if (name === "auto_accept_claim_transfer" && claimTransfer) {
         return Promise.resolve({ data: claimTransfer(params), error: null });
       }
@@ -732,6 +740,25 @@ test("#2176: enabled claim preserves transfer wiring for inheritance, new contra
     if (mode === "inherit" || mode === "parked") assert.equal(rider.salary, 700, mode);
     if (mode === "graduate") assert.equal(rider.is_academy, false);
   }
+});
+
+test("#2176 plus #6181: a transfer counts an outgoing auction once with both gates on", async () => {
+  const db=baseDb({windowStatus:"open"});
+  db.app_config=[{key:"auto_accept_enabled",value:"on"},{key:"market_commitment_6181",value:"on"}];
+  db.auctions.push({id:"existing-outgoing",rider_id:"s-rider-0",current_bidder_id:"other-buyer",current_price:200,status:"active"});
+  db.transfer_offers.push({id:"offer-1",rider_id:"rider-1",seller_team_id:"seller",buyer_team_id:"buyer",
+    offer_amount:200,status:"awaiting_confirmation",buyer_confirmed:false,seller_confirmed:true});
+  let claims=0;
+  const client=makeSupabase(db,{claimTransfer:params=>{
+    claims++;
+    Object.assign(db.riders.find(rider=>rider.id===params.p_rider_id),params.p_acquire_patch,
+      {team_id:params.p_buyer_team_id,pending_team_id:null,acquired_at:params.p_now});
+    return {status:"claimed",rider_id:params.p_rider_id};
+  }});
+  const result=await confirmTransferOffer({supabase:client,offerId:"offer-1",confirmingTeamId:"buyer",now:new Date("2026-11-09T10:00:00Z")});
+  assert.equal(result.ok,true,JSON.stringify(result));
+  assert.equal(claims,1);
+  assert.equal(client._finance.length,2);
 });
 
 test("#16: confirmTransferOffer registrerer med det samme — selv med en 'closed' transfer_windows-række (altid-åben handel)", async () => {

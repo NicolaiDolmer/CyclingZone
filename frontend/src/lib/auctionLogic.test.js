@@ -132,6 +132,14 @@ test("formatBidWarning — squad-cap warning resolver i18n-key med beregnet bød
   assert.equal(calls[0].params.points, 8);     // 4 * 2
 });
 
+test("formatBidWarning resolves a rejected proxy through the existing localized error", () => {
+  const t = (key, params) => key === "errors:api.insufficient_balance_after_proxy"
+    ? `Available after commitments: ${params.available}` : key;
+  const message = formatBidWarning({ code: "proxy_rejected", errorCode: "insufficient_balance_after_proxy", errorParams: { available: 700 } }, t);
+  assert.equal(message, "Available after commitments: 700");
+  assert.equal(formatBidWarning({ code: "proxy_rejected", errorCode: "insufficient_balance_after_proxy" }), null);
+});
+
 test("formatBidWarning — ignorerer ukendte warning-koder og manglende t", () => {
   const t = () => "skal-ikke-kaldes";
   assert.equal(formatBidWarning({ code: "other_warning" }, t), null);

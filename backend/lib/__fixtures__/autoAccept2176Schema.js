@@ -1,10 +1,12 @@
 export const SCHEMA = `
 CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+CREATE TABLE app_config (key text PRIMARY KEY, value jsonb NOT NULL, description text);
 CREATE TABLE teams (id uuid PRIMARY KEY, balance bigint NOT NULL);
 CREATE TABLE riders (id uuid PRIMARY KEY, team_id uuid, pending_team_id uuid,
   squad text NOT NULL DEFAULT 'senior', is_academy boolean NOT NULL DEFAULT false, is_retired boolean DEFAULT false,
   salary integer DEFAULT 1000, contract_length integer DEFAULT 2, contract_end_season integer DEFAULT 3,
+  market_value bigint DEFAULT 1000000, base_value bigint DEFAULT 1000000, prize_earnings_bonus bigint DEFAULT 0,
   acquired_at timestamptz DEFAULT now(), updated_at timestamptz);
 CREATE TABLE transfer_listings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -19,7 +21,7 @@ CREATE TABLE auctions (
   min_increment integer DEFAULT 1, requested_start timestamptz NOT NULL DEFAULT now(),
   calculated_end timestamptz NOT NULL, actual_end timestamptz,
   status text DEFAULT 'active' CHECK (status IN ('active', 'extended', 'completed', 'cancelled')),
-  extension_count integer DEFAULT 0, is_flash boolean NOT NULL DEFAULT false,
+  extension_count integer DEFAULT 0, is_flash boolean NOT NULL DEFAULT false, is_youth boolean DEFAULT false,
   created_at timestamptz DEFAULT now());
 CREATE UNIQUE INDEX uniq_auctions_one_active_per_rider ON auctions(rider_id) WHERE status IN ('active', 'extended');
 CREATE TABLE auction_bids (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), auction_id uuid NOT NULL, team_id uuid NOT NULL,
