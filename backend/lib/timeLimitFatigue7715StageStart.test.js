@@ -6,8 +6,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { enteringFatigueV2, stageLoadV2 } from "./conditionModelV2.js";
+import { riderFatigueAtStageStart } from "./riderFatigueNow.js";
 import {
-  loadStageStartFatigues7715, loadTodayStageLoads7715, stageStartFatigues7715, timeLimitRiskByRider7715,
+  loadDateStageLoads7715, loadStageStartFatigues7715, stageStartFatigues7715, timeLimitRiskByRider7715,
 } from "./timeLimitFatigue7715.js";
 import { RACE_7715, entrants7715, stages7715, tiredRiderIds7715 } from "./__fixtures__/raceRunner7715Scenarios.js";
 
@@ -23,43 +24,59 @@ const SCHEDULE = [
   { stage_number: 16, scheduled_at: "2026-11-13T15:00:00Z", game_day: 82 },
   { stage_number: 17, scheduled_at: "2026-11-14T09:00:00Z", game_day: 84 },
 ];
+const DATE = "2026-11-13";
 const RIDER = { rider_id: "r1", fatigue: 70, abilities: { recovery: 40 } };
+const forecast15 = (extra = {}) => stageLoadV2({ profileType: "high_mountain", distanceKm: 170, stageNumber: 15, effort: "normal", seasonRaceDays: 1, rulesRevision: REV, ...extra });
+const run = (args = {}) => stageStartFatigues7715({ riders: [RIDER], stages: STAGES, schedule: SCHEDULE, revision: REV, ...args });
 
-test("#7890 foerste etape paa datoen: aabningen, uaendret", () => {
-  const out = stageStartFatigues7715({ riders: [RIDER], stages: STAGES, schedule: SCHEDULE, todayStr: "2026-11-13", revision: REV });
+test("#7890 foerste etape paa datoen og ny dato: aabningen, uaendret", () => {
+  const out = run();
   assert.equal(out.get(15).get("r1"), 70);
-  assert.equal(out.get(17).get("r1"), 70, "ny dato starter fra aabningen");
+  assert.equal(out.get(17).get("r1"), 70);
 });
 
 test("#7890 senere etape samme dato: aabningen plus prognosen for den tidligere etape, som motoren", () => {
-  const out = stageStartFatigues7715({ riders: [RIDER], stages: STAGES, schedule: SCHEDULE, todayStr: "2026-11-13", revision: REV });
-  const load = stageLoadV2({ profileType: "high_mountain", distanceKm: 170, stageNumber: 15, effort: "normal", rulesRevision: REV });
-  assert.equal(out.get(16).get("r1"), enteringFatigueV2({ openingFatigue: 70, priorLoadsToday: [load], recoveryAbility: 40 }));
-  assert.ok(out.get(16).get("r1") > 70, "dagens foerste etape goer ham traettere");
+  const out = run();
+  assert.equal(out.get(16).get("r1"), enteringFatigueV2({ openingFatigue: 70, priorLoadsToday: [forecast15()], recoveryAbility: 40 }));
+  assert.ok(out.get(16).get("r1") > 70, "dagens foerste etape goer ham traettere i tredje uge");
 });
 
-test("#7890 en koert etape i dag taeller med sin registrerede belastning, kun dens egen loebsdag", () => {
-  const recorded = new Map([["r1", [{ game_day: 80, load: 22 }, { game_day: 79, load: 99 }]]]);
-  const out = stageStartFatigues7715({ riders: [RIDER], stages: STAGES, schedule: SCHEDULE, stagesCompleted: 15, todayStr: "2026-11-13", recordedLoadsByRider: recorded, revision: REV });
+test("#7890 en koert etape taeller med de registrerede raekker, praecis som motorens kerne", () => {
+  const rows = [{ game_day: 80, load: 22 }, { game_day: 79, load: 5 }, { game_day: 83, load: 99 }];
+  const out = run({ stagesCompleted: 15, recordedLoadsByDate: new Map([[DATE, new Map([["r1", rows]])]]) });
   assert.equal(out.has(15), false, "koerte etaper faar intet varsel");
-  assert.equal(out.get(16).get("r1"), enteringFatigueV2({ openingFatigue: 70, priorLoadsToday: [22], recoveryAbility: 40 }));
+  // Motoren: alle datoens raekker foer etapens loebsdag, én pr. raekke, i loebsdags-orden.
+  const engine = riderFatigueAtStageStart({ openingFatigue: 70, loadsBeforeStage: [5, 22], recoveryAbility: 40 });
+  assert.equal(out.get(16).get("r1"), engine);
 });
 
-test("#7890 registrerede belastninger fra en anden dato bruges ikke", () => {
-  const recorded = new Map([["r1", [{ game_day: 80, load: 22 }]]]);
-  const out = stageStartFatigues7715({ riders: [RIDER], stages: STAGES, schedule: SCHEDULE, stagesCompleted: 15, todayStr: "2026-11-12", recordedLoadsByRider: recorded, revision: REV });
-  assert.equal(out.get(16).get("r1"), enteringFatigueV2({ openingFatigue: 70, priorLoadsToday: [0], recoveryAbility: 40 }));
+test("#7890 en koert etape uden raekker for rytteren: aabningen, som motoren (ingen ekstra restitution)", () => {
+  const out = run({ stagesCompleted: 15, recordedLoadsByDate: new Map([[DATE, new Map()]]) });
+  assert.equal(out.get(16).get("r1"), 70);
+  assert.equal(riderFatigueAtStageStart({ openingFatigue: 70, loadsBeforeStage: [], recoveryAbility: 40 }), 70);
+});
+
+test("#7890 ukendte raekker for datoen (opslaget fejlede): den koerte etape faar en prognose", () => {
+  const out = run({ stagesCompleted: 15 });
+  assert.equal(out.get(16).get("r1"), enteringFatigueV2({ openingFatigue: 70, priorLoadsToday: [forecast15()], recoveryAbility: 40 }));
+});
+
+test("#7890 prognosen bruger saesonens loebsdage som motoren", () => {
+  const fresh = run().get(16).get("r1");
+  const late = run({ seasonRaceDaysByRider: new Map([["r1", 60]]) }).get(16).get("r1");
+  assert.equal(late, enteringFatigueV2({ openingFatigue: 70, priorLoadsToday: [forecast15({ seasonRaceDays: 61 })], recoveryAbility: 40 }));
+  assert.ok(late >= fresh);
 });
 
 test("#7890 holdets indsats styrer prognosen", () => {
-  const normal = stageStartFatigues7715({ riders: [RIDER], stages: STAGES, schedule: SCHEDULE, todayStr: "2026-11-13", revision: REV }).get(16).get("r1");
-  const allOut = stageStartFatigues7715({ riders: [RIDER], stages: STAGES, schedule: SCHEDULE, todayStr: "2026-11-13", revision: REV, effortFor: () => "all_out" }).get(16).get("r1");
-  const easy = stageStartFatigues7715({ riders: [RIDER], stages: STAGES, schedule: SCHEDULE, todayStr: "2026-11-13", revision: REV, effortFor: () => "grupetto" }).get(16).get("r1");
+  const normal = run().get(16).get("r1");
+  const allOut = run({ effortFor: () => "all_out" }).get(16).get("r1");
+  const easy = run({ effortFor: () => "grupetto" }).get(16).get("r1");
   assert.ok(allOut >= normal && normal >= easy, `${allOut} >= ${normal} >= ${easy}`);
 });
 
 test("#7890 uden plan for etapen, eller uden traethed: aabningen eller intet tal", () => {
-  const out = stageStartFatigues7715({ riders: [RIDER, { rider_id: "r2", fatigue: null }], stages: STAGES, schedule: [], todayStr: "2026-11-13", revision: REV });
+  const out = stageStartFatigues7715({ riders: [RIDER, { rider_id: "r2", fatigue: null }], stages: STAGES, schedule: [], revision: REV });
   assert.equal(out.get(16).get("r1"), 70);
   assert.equal(out.get(16).has("r2"), false);
 });
@@ -80,21 +97,18 @@ test("#7890 varslet bruger traetheden ved start, og en rytter uden skoen beholde
 
 test("#7890 varslet fanger en rytter, der foerst bliver for traet efter dagens foerste etape", () => {
   const race = { ...RACE_7715, stages_completed: 0, engine_rules_revision: REV };
-  const stages = stages7715();
-  const mountain = stages.find((s) => s.profile_type !== "flat");
+  const mountain = stages7715().find((s) => s.profile_type !== "flat");
   const riders = entrants7715().filter((e) => tiredRiderIds7715().includes(e.rider_id)).map((e) => ({ ...e, fatigue: 0 }));
   assert.deepEqual(timeLimitRiskByRider7715({ riders, stages: [mountain], race }), {}, "udhvilet om morgenen: intet varsel");
   const tiredAtStart = new Map([[mountain.stage_number, new Map(riders.map((r) => [r.rider_id, 95]))]]);
-  const risk = timeLimitRiskByRider7715({ riders, stages: [mountain], race, fatigueAtStage: tiredAtStart });
-  assert.ok(Object.keys(risk).length > 0, "udkoert ved etapens start: varsel");
+  assert.ok(Object.keys(timeLimitRiskByRider7715({ riders, stages: [mountain], race, fatigueAtStage: tiredAtStart })).length > 0);
 });
 
-function stub({ conditionV2 = "on", scheduleError = null, orders = [], loads = [], loadsError = null, throwOn = null } = {}) {
+function stub({ scheduleError = null, orders = [], loads = [], loadsError = null, throwOn = null } = {}) {
   const calls = [];
   const chain = (table, result) => {
     const c = {
       select: () => c, eq: (col, v) => { calls.push([table, col, v]); return c; }, in: () => c, is: () => c, order: () => c,
-      maybeSingle: async () => result(),
       then: (resolve) => resolve(result()),
     };
     return c;
@@ -103,7 +117,6 @@ function stub({ conditionV2 = "on", scheduleError = null, orders = [], loads = [
     calls,
     from(table) {
       if (throwOn === table) throw new Error("boom");
-      if (table === "app_config") return chain(table, () => ({ data: conditionV2 == null ? null : { value: conditionV2 }, error: null }));
       if (table === "race_stage_schedule") return chain(table, () => (scheduleError ? { data: null, error: scheduleError } : { data: SCHEDULE, error: null }));
       if (table === "race_team_orders") return chain(table, () => ({ data: orders, error: null }));
       if (table === "training_race_loads") return chain(table, () => (loadsError ? { data: null, error: loadsError } : { data: loads, error: null }));
@@ -112,35 +125,47 @@ function stub({ conditionV2 = "on", scheduleError = null, orders = [], loads = [
   };
 }
 
-const RACE = { id: "race-x", stages_completed: 0, engine_rules_revision: REV };
-const NOW = new Date("2026-11-13T08:00:00Z");
+const RACE = { id: "race-x", season_id: "s1", stages_completed: 0, engine_rules_revision: REV };
+const V2 = { checkConditionV2: async () => true, loadSeasonRaceDays: async () => new Map() };
 
 test("#7890 loadStageStartFatigues7715: kun under condition_model_v2", async () => {
-  const off = await loadStageStartFatigues7715({ supabase: stub(), race: RACE, riders: [RIDER], stages: STAGES, now: NOW, checkConditionV2: async () => false });
-  assert.equal(off, null);
-  const on = await loadStageStartFatigues7715({ supabase: stub(), race: RACE, riders: [RIDER], stages: STAGES, now: NOW, checkConditionV2: async () => true });
+  assert.equal(await loadStageStartFatigues7715({ supabase: stub(), race: RACE, riders: [RIDER], stages: STAGES, ...V2, checkConditionV2: async () => false }), null);
+  const on = await loadStageStartFatigues7715({ supabase: stub(), race: RACE, riders: [RIDER], stages: STAGES, ...V2 });
   assert.ok(on.get(16).get("r1") > 70);
 });
 
 test("#7890 loadStageStartFatigues7715: holdets gemte indsats bruges, og fejl = null (aldrig en vaeltet flade)", async () => {
-  const orders = [{ stage_number: 15, riders: [{ rider_id: "r1", effort: "grupetto" }] }];
-  const s = stub({ orders });
-  const withOrder = await loadStageStartFatigues7715({ supabase: s, race: RACE, teamId: "t1", riders: [RIDER], stages: STAGES, now: NOW, checkConditionV2: async () => true });
-  const normal = await loadStageStartFatigues7715({ supabase: stub(), race: RACE, teamId: "t1", riders: [RIDER], stages: STAGES, now: NOW, checkConditionV2: async () => true });
+  const s = stub({ orders: [{ stage_number: 15, riders: [{ rider_id: "r1", effort: "grupetto" }] }] });
+  const withOrder = await loadStageStartFatigues7715({ supabase: s, race: RACE, teamId: "t1", riders: [RIDER], stages: STAGES, ...V2 });
+  const normal = await loadStageStartFatigues7715({ supabase: stub(), race: RACE, teamId: "t1", riders: [RIDER], stages: STAGES, ...V2 });
   assert.ok(withOrder.get(16).get("r1") <= normal.get(16).get("r1"));
   assert.ok(s.calls.some(([t, c, v]) => t === "race_team_orders" && c === "team_id" && v === "t1"));
-  assert.equal(await loadStageStartFatigues7715({ supabase: stub({ scheduleError: { message: "x" } }), race: RACE, riders: [RIDER], stages: STAGES, now: NOW, checkConditionV2: async () => true }), null);
-  assert.equal(await loadStageStartFatigues7715({ supabase: stub({ throwOn: "race_stage_schedule" }), race: RACE, riders: [RIDER], stages: STAGES, now: NOW, checkConditionV2: async () => true }), null);
+  assert.equal(await loadStageStartFatigues7715({ supabase: stub({ scheduleError: { message: "x" } }), race: RACE, riders: [RIDER], stages: STAGES, ...V2 }), null);
+  assert.equal(await loadStageStartFatigues7715({ supabase: stub({ throwOn: "race_stage_schedule" }), race: RACE, riders: [RIDER], stages: STAGES, ...V2 }), null);
 });
 
-test("#7890 loadStageStartFatigues7715: et startet loeb laeser datoens registrerede belastninger", async () => {
+test("#7890 loadStageStartFatigues7715: et startet loeb laeser den koerte etapes dato, ogsaa efter midnat", async () => {
   const s = stub({ loads: [{ rider_id: "r1", game_day: 80, load: 30 }] });
-  const out = await loadStageStartFatigues7715({ supabase: s, race: { ...RACE, stages_completed: 15 }, riders: [RIDER], stages: STAGES, now: new Date("2026-11-13T12:00:00Z"), checkConditionV2: async () => true });
+  const out = await loadStageStartFatigues7715({ supabase: s, race: { ...RACE, stages_completed: 15 }, riders: [RIDER], stages: STAGES, ...V2 });
   assert.equal(out.get(16).get("r1"), enteringFatigueV2({ openingFatigue: 70, priorLoadsToday: [30], recoveryAbility: 40 }));
-  assert.ok(s.calls.some(([t, c, v]) => t === "training_race_loads" && c === "tick_date" && v === "2026-11-13"));
+  assert.ok(s.calls.some(([t, c, v]) => t === "training_race_loads" && c === "tick_date" && v === DATE), "etapens egen dato, ikke vaegurets");
 });
 
-test("#7890 loadTodayStageLoads7715: fejl = tomt, aldrig en undtagelse", async () => {
-  assert.equal((await loadTodayStageLoads7715({ supabase: stub({ loadsError: { message: "x" } }), riderIds: ["r1"], todayStr: "2026-11-13" })).size, 0);
-  assert.equal((await loadTodayStageLoads7715({ supabase: stub({ throwOn: "training_race_loads" }), riderIds: ["r1"], todayStr: "2026-11-13" })).size, 0);
+test("#7890 loadStageStartFatigues7715: fejl i raekkerne = prognose for den koerte etape, ikke en restitution", async () => {
+  const out = await loadStageStartFatigues7715({ supabase: stub({ loadsError: { message: "x" } }), race: { ...RACE, stages_completed: 15 }, riders: [RIDER], stages: STAGES, ...V2 });
+  assert.equal(out.get(16).get("r1"), enteringFatigueV2({ openingFatigue: 70, priorLoadsToday: [forecast15()], recoveryAbility: 40 }));
+});
+
+test("#7890 loadStageStartFatigues7715: saesonens loebsdage hentes og bruges; fejl = som saesonens foerste dag", async () => {
+  const late = await loadStageStartFatigues7715({ supabase: stub(), race: RACE, riders: [RIDER], stages: STAGES, checkConditionV2: async () => true, loadSeasonRaceDays: async () => new Map([["r1", 60]]) });
+  assert.equal(late.get(16).get("r1"), enteringFatigueV2({ openingFatigue: 70, priorLoadsToday: [forecast15({ seasonRaceDays: 61 })], recoveryAbility: 40 }));
+  const failed = await loadStageStartFatigues7715({ supabase: stub(), race: RACE, riders: [RIDER], stages: STAGES, checkConditionV2: async () => true, loadSeasonRaceDays: async () => { throw new Error("x"); } });
+  assert.equal(failed.get(16).get("r1"), enteringFatigueV2({ openingFatigue: 70, priorLoadsToday: [forecast15()], recoveryAbility: 40 }));
+});
+
+test("#7890 loadDateStageLoads7715: fejl = null (ukendt), aldrig en undtagelse", async () => {
+  assert.equal(await loadDateStageLoads7715({ supabase: stub({ loadsError: { message: "x" } }), riderIds: ["r1"], tickDate: DATE }), null);
+  assert.equal(await loadDateStageLoads7715({ supabase: stub({ throwOn: "training_race_loads" }), riderIds: ["r1"], tickDate: DATE }), null);
+  const ok = await loadDateStageLoads7715({ supabase: stub({ loads: [{ rider_id: "r1", game_day: 80, load: 3 }] }), riderIds: ["r1"], tickDate: DATE });
+  assert.deepEqual(ok.get("r1"), [{ game_day: 80, load: 3 }]);
 });

@@ -346,7 +346,7 @@ export async function getStageRolesContext({ supabase, race, teamId, now = new D
         stages: riskStages,
         race,
         // #7890: traetheden ved etapens start, som motoren ser den (datoens tidligere etaper med).
-        fatigueAtStage: await loadStageStartFatigues7715({ supabase, race, teamId, riders: riskRiders, stages, now }),
+        fatigueAtStage: await loadStageStartFatigues7715({ supabase, race, teamId, riders: riskRiders, stages }),
       });
     }
     fatigueOutStageByRider = await loadFatigueOutStages7715({ supabase, race, riderIds: riderIds.filter((id) => abandonedRiderIds.has(id)) });

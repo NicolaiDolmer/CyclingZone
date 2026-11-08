@@ -85,18 +85,23 @@ export function timeLimitRiskByRider7715({ riders, stages, race, fatigueAtStage 
 
 /**
  * #7890: traetheden ved hver kommende etapes start, som motoren regner den
- * (riderFatigueNow.applyStageStartFatigue): rytterens aabning plus belastningen fra
- * datoens tidligere etaper, hver minus én restitution (enteringFatigueV2). En koert etape
- * taeller med sin registrerede belastning (`recordedLoadsByRider`: datoens uafregnede
- * raekker { game_day, load }), en ikke-koert med en prognose (stageLoadV2 med holdets
- * indsats, ellers normal). Uden dette saa varslet kun morgenens traethed, saa paa en dag
- * med flere etaper kunne en rytter ryge ud af traethed uden varsel.
- * Etaper paa en senere dato end i dag starter fra aabningen (nattens afregning kendes ikke
- * endnu); mangler planen dato eller loebsdag, bruges aabningen. Medicinsk afdeling regnes
- * ikke med (0), saa varslet hellere kommer én gang for meget end for lidt. REN.
+ * (riderFatigueNow.applyStageStartFatigue): rytterens aabning plus datoens belastninger
+ * foer etapens loebsdag, hver minus én restitution (enteringFatigueV2).
+ *  - Registrerede belastninger (`recordedLoadsByDate`: dato -> rytter -> raekker
+ *    { game_day, load }) tages som motoren goer: alle datoens uafregnede raekker med lavere
+ *    loebsdag, én pr. raekke, uanset loeb. Har rytteren ingen raekker, laegges intet til.
+ *  - Ikke-koerte etaper tidligere paa datoen faar en prognose (stageLoadV2 med holdets
+ *    indsats, ellers normal, og saesonens loebsdage som motoren).
+ *  - Kender vi ikke datoens raekker (opslaget fejlede eller blev ikke lavet), faar ogsaa de
+ *    koerte etaper paa datoen en prognose, saa varslet hellere kommer for tidligt end aldrig.
+ * Uden dette saa varslet kun morgenens traethed, saa paa en dag med flere etaper kunne en
+ * rytter ryge ud af traethed uden varsel. Etaper paa en senere dato end deres tidligere
+ * etaper starter fra aabningen (nattens afregning kendes ikke endnu); mangler planen dato
+ * eller loebsdag, bruges aabningen. Medicinsk afdeling regnes ikke med (0), saa varslet
+ * hellere kommer én gang for meget end for lidt. REN.
  * @returns {Map<number, Map<string, number>>}
  */
-export function stageStartFatigues7715({ riders, stages, schedule, stagesCompleted = 0, todayStr, recordedLoadsByRider = new Map(), effortFor = () => "normal", revision = null }) {
+export function stageStartFatigues7715({ riders, stages, schedule, stagesCompleted = 0, recordedLoadsByDate = new Map(), seasonRaceDaysByRider = new Map(), effortFor = () => "normal", revision = null }) {
   const out = new Map();
   const slot = new Map();
   for (const row of schedule ?? []) {
@@ -112,18 +117,23 @@ export function stageStartFatigues7715({ riders, stages, schedule, stagesComplet
     if (n <= done) continue;
     const own = slot.get(n);
     const before = own ? sorted.filter((p) => { const s = slot.get(Number(p.stage_number)); return s && s.date === own.date && s.gameDay < own.gameDay; }) : [];
+    const dateRows = own ? recordedLoadsByDate.get(own.date) : undefined;
+    const projected = before.filter((p) => Number(p.stage_number) > done || dateRows === undefined);
     const byRider = new Map();
     for (const rider of riders ?? []) {
       const opening = Number(rider?.fatigue);
       if (rider?.fatigue == null || !Number.isFinite(opening)) continue;
-      if (!before.length) { byRider.set(rider.rider_id, opening); continue; }
-      const recorded = own.date === todayStr ? recordedLoadsByRider.get(String(rider.rider_id)) ?? [] : [];
-      const loads = before.map((p) => {
-        const pn = Number(p.stage_number);
-        if (pn <= done) return recorded.filter((r) => Number(r.game_day) === slot.get(pn).gameDay).reduce((sum, r) => sum + (Number(r.load) || 0), 0);
-        return stageLoadV2({ profileType: p.profile_type, distanceKm: p.distance_km ?? null, stageNumber: pn, effort: effortFor(rider.rider_id, pn) ?? "normal", rulesRevision: revision });
-      });
-      byRider.set(rider.rider_id, enteringFatigueV2({ openingFatigue: opening, priorLoadsToday: loads, recoveryAbility: Number(rider.abilities?.recovery ?? 50) }));
+      const recorded = dateRows === undefined ? [] : (dateRows.get(String(rider.rider_id)) ?? [])
+        .filter((r) => Number(r.game_day) < own.gameDay)
+        .sort((x, y) => Number(x.game_day) - Number(y.game_day))
+        .map((r) => Number(r.load) || 0);
+      const baseDays = (Number(seasonRaceDaysByRider.get(String(rider.rider_id))) || 0) + recorded.length;
+      const forecast = projected.map((p, k) => stageLoadV2({
+        profileType: p.profile_type, distanceKm: p.distance_km ?? null, stageNumber: Number(p.stage_number),
+        effort: effortFor(rider.rider_id, Number(p.stage_number)) ?? "normal", seasonRaceDays: baseDays + k + 1, rulesRevision: revision,
+      }));
+      const loads = [...recorded, ...forecast];
+      byRider.set(rider.rider_id, loads.length ? enteringFatigueV2({ openingFatigue: opening, priorLoadsToday: loads, recoveryAbility: Number(rider.abilities?.recovery ?? 50) }) : opening);
     }
     out.set(n, byRider);
   }
@@ -137,7 +147,7 @@ export function stageStartFatigues7715({ riders, stages, schedule, stagesComplet
  * normal. Best-effort: en fejl eller slukket model = null, og varslet bruger aabningen
  * som foer. Kaldes kun, naar reglen gaelder loebet (raceTimeLimitFatigue7715Applies).
  */
-export async function loadStageStartFatigues7715({ supabase, race, teamId = null, riders, stages, now = new Date(), checkConditionV2 = isConditionModelV2Enabled }) {
+export async function loadStageStartFatigues7715({ supabase, race, teamId = null, riders, stages, checkConditionV2 = isConditionModelV2Enabled, loadSeasonRaceDays = null }) {
   try {
     if (await checkConditionV2(supabase) !== true) return null;
     const { data: schedule, error } = await supabase.from("race_stage_schedule")
@@ -155,12 +165,29 @@ export async function loadStageStartFatigues7715({ supabase, race, teamId = null
         }
       }
     }
-    const todayStr = copenhagenDateString(now);
-    const recordedLoadsByRider = Number(race.stages_completed) > 0
-      ? await loadTodayStageLoads7715({ supabase, riderIds: (riders ?? []).map((r) => r.rider_id), todayStr })
-      : new Map();
+    const riderIds = (riders ?? []).map((r) => r.rider_id);
+    const done = Number(race.stages_completed) || 0;
+    // Datoer hvor en kommende etape har en allerede koert etape foran sig samme dato.
+    const dateOf = new Map();
+    for (const row of schedule ?? []) if (row?.scheduled_at && Number.isInteger(Number(row.game_day))) dateOf.set(Number(row.stage_number), { date: copenhagenDateString(new Date(row.scheduled_at)), gameDay: Number(row.game_day) });
+    const datesWithRunStages = new Set();
+    for (const [n, s] of dateOf) if (n > done && [...dateOf].some(([m, t]) => m <= done && t.date === s.date && t.gameDay < s.gameDay)) datesWithRunStages.add(s.date);
+    const recordedLoadsByDate = new Map();
+    for (const date of datesWithRunStages) {
+      const rows = await loadDateStageLoads7715({ supabase, riderIds, tickDate: date });
+      if (rows) recordedLoadsByDate.set(date, rows); // ukendt dato = prognose for de koerte etaper
+    }
+    // Saesonens loebsdage, som motorens belastning ganges med (raceFatigue.raceConditionLoads).
+    let seasonRaceDaysByRider = new Map();
+    try {
+      const load = loadSeasonRaceDays ?? (await import("./raceFatigue.js")).loadSeasonRaceDaysByRider;
+      seasonRaceDaysByRider = await load({ supabase, seasonId: race.season_id, riderIds });
+    } catch {
+      // best-effort: uden loebsdagene regnes prognosen som saesonens foerste dag.
+      seasonRaceDaysByRider = new Map();
+    }
     return stageStartFatigues7715({
-      riders, stages, schedule, stagesCompleted: race.stages_completed ?? 0, todayStr, recordedLoadsByRider,
+      riders, stages, schedule, stagesCompleted: done, recordedLoadsByDate, seasonRaceDaysByRider,
       effortFor: (riderId, stageNumber) => effortByStage.get(stageNumber)?.get(String(riderId)) ?? "normal",
       revision: routeMatchRevisionFor(race),
     });
@@ -171,20 +198,20 @@ export async function loadStageStartFatigues7715({ supabase, race, teamId = null
 }
 
 /**
- * #7890: datoens uafregnede etape-belastninger pr. rytter (samme raekker som
- * riderFatigueNow.loadUnsettledDateLoads, men med loebsdagen, saa hver etape faar sine).
- * Best-effort: en fejl = intet (varslet falder tilbage til prognosen og aabningen).
+ * #7890: datoens uafregnede etape-belastninger pr. rytter, med loebsdagen (samme raekker
+ * som riderFatigueNow.loadUnsettledDateLoads). Best-effort: en fejl = null (datoen er
+ * ukendt, og de koerte etaper faar en prognose i stedet).
  */
-export async function loadTodayStageLoads7715({ supabase, riderIds, todayStr }) {
+export async function loadDateStageLoads7715({ supabase, riderIds, tickDate }) {
   const out = new Map();
   try {
     for (let i = 0; i < (riderIds ?? []).length; i += SUPABASE_IN_CHUNK_SIZE) {
       const { data, error } = await supabase.from("training_race_loads")
         .select("rider_id, game_day, load")
         .in("rider_id", riderIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE))
-        .eq("tick_date", todayStr)
+        .eq("tick_date", tickDate)
         .is("consumed_at", null).is("duplicate_of_race_id", null);
-      if (error) return new Map();
+      if (error) return null;
       for (const row of data ?? []) {
         const key = String(row.rider_id);
         if (!out.has(key)) out.set(key, []);
@@ -193,7 +220,7 @@ export async function loadTodayStageLoads7715({ supabase, riderIds, todayStr }) 
     }
   } catch {
     // best-effort: varslet maa aldrig vaelte taktik-fladen.
-    return new Map();
+    return null;
   }
   return out;
 }
