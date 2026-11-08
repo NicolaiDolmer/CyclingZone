@@ -2213,7 +2213,7 @@
   },
   "timeLimitRisk": {
     "short": "Riesgo de fuera de control",
-    "long": "Está muy cansado y esta etapa no le va bien. Podría quedar fuera de control. Ponlo en Grupeto o Ir tranquilo para ahorrarle el riesgo extra.",
+    "long": "Está muy cansado y esta etapa no le va bien. Podría quedar fuera de control. Ponlo en Grupeta o Llegar tranquilo a meta, y no le des una tarea más dura el mismo día.",
     "outShort": "Demasiado cansado",
     "outLong": "Fuera de control. Estaba muy cansado y la etapa no le iba bien."
   }

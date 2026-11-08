@@ -2196,7 +2196,7 @@
   },
   "timeLimitRisk": {
     "short": "Time limit risk",
-    "long": "Very tired, and this stage suits him poorly. He could miss the time limit. Set him to Grupetto or Ride easy to spare him the extra risk.",
+    "long": "Very tired, and this stage suits him poorly. He could miss the time limit. Put him on Grupetto or Ride in easy, and don't give him a harder job the same day.",
     "outShort": "Too tired",
     "outLong": "Outside the time limit. He was very tired, and the stage suited him poorly."
   }

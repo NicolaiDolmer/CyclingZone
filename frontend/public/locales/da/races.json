@@ -2196,7 +2196,7 @@
   },
   "timeLimitRisk": {
     "short": "Tidsgrænse i fare",
-    "long": "Meget træt, og etapen passer ham dårligt. Han kan ryge uden for tidsgrænsen. Sæt ham til Grupetto eller Kør roligt, så slipper han for den ekstra risiko.",
+    "long": "Meget træt, og etapen passer ham dårligt. Han kan ryge uden for tidsgrænsen. Sæt ham på Grupetto eller Kør roligt i mål, og giv ham ikke en hårdere opgave samme dag.",
     "outShort": "For træt",
     "outLong": "Uden for tidsgrænsen. Han var meget træt, og etapen passede ham dårligt."
   }
