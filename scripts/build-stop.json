@@ -1156,6 +1156,11 @@
       "issue": 7877,
       "reason": "Ejer-go 7/11 i Codex: byg P16 K1/K2/K3/K6/K8/K11 i faelles komponenter; ingen merge uden billede-go. https://github.com/NicolaiDolmer/CyclingZone/issues/7877#issuecomment-6712966598",
       "since": "2026-11-07"
+    },
+    {
+      "issue": 7904,
+      "reason": "Ejer-go 8/11 (mulighed B): kodegrænsen 1339 til 1350 KB, UI-PR'er blokeret af perf-gate",
+      "since": "2026-11-08"
     }
   ]
 }
