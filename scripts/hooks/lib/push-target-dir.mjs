@@ -1,7 +1,7 @@
 // Ejer 4/11 (#7660, Codex P2): finder det worktree, en `git push` faktisk koerer fra.
 // Laeser hook-input (JSON) paa stdin og printer mappen fra `cd <dir> && ...` eller
 // `git -C <dir> push`, med shell-quoting fjernet. Intet output = sessionens cwd.
-// Med --dest printes i stedet pushets maal, som vagterne skal tjekke (ejer 8/11).
+// Med --dest printes i stedet pushets maal og mapper, som vagterne skal tjekke (ejer 8/11).
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,15 +19,18 @@ function pick(m) {
 // Mappe med en shell-udvidelse kan vagten ikke cd'e til (saa ville den give op): brug cwd.
 const literalDir = (d) => (d && !/[$`]/.test(d) ? d : null);
 
+const leadingCdDir = (cmd) => literalDir(pick(cmd.match(new RegExp(String.raw`^\s*\(?\s*cd\s+${ARG}\s*&&`))));
+
 export function pushTargetDir(command) {
   const cmd = String(command ?? '');
   const viaC = gitPushes(cmd).pushes.find((p) => p.dir)?.dir;
   if (viaC) return literalDir(viaC);
-  return literalDir(pick(cmd.match(new RegExp(String.raw`^\s*\(?\s*cd\s+${ARG}\s*&&`))));
+  return leadingCdDir(cmd);
 }
 
 export const LOCAL_BRANCH = '__LOCAL__';
-export const ALL_BACKUP = '__ALL_BACKUP__';
+export const DELETED = '__DELETED__';
+export const ALL_EXEMPT = '__ALL_EXEMPT__';
 
 // Backup-branches uden PR: preflight og CI-loop-vagten har intet at beskytte der.
 export const BACKUP_BRANCH_RE = /^(wip|backup)\//;
@@ -170,50 +173,87 @@ function gitPushes(src) {
 // Kun et bogstaveligt navn kan slaas op eller vaere backup (review #7907).
 const LITERAL_BRANCH_RE = /^[\w./-]+$/;
 
+// git push' korte flag uden vaerdi; -d kan staa i en klynge (-fd). -o tager en vaerdi
+// og er derfor ikke med: `-od` er et push-option, ikke en sletning.
+const DELETE_FLAG_RE = /^(?:--delete|-[vqfnu46]*d[vqfnu46]*)$/;
+
 function destinationsOf(args) {
   const positional = [];
   const everything = args.some((a) => a === '--all' || a === '--mirror' || a === '--branches');
+  let deleting = false;
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a === '-o' || a === '--push-option' || a === '--repo') { i++; continue; }
+    if (DELETE_FLAG_RE.test(a)) deleting = true;
     if (a.startsWith('-')) continue;
     positional.push(a);
   }
   const specs = positional.slice(1); // positional[0] = remote
   if (!specs.length) return [LOCAL_BRANCH];
+  if (deleting && !everything) return specs.map(() => DELETED);
   const named = specs.map((raw) => {
     const spec = raw.replace(/^\+/, '');
     const dst = spec.includes(':') ? spec.slice(spec.indexOf(':') + 1) : spec;
     if (!dst || dst === 'HEAD') return LOCAL_BRANCH;
     const name = dst.replace(/^refs\/heads\//, '');
-    return LITERAL_BRANCH_RE.test(name) ? name : LOCAL_BRANCH;
+    if (!LITERAL_BRANCH_RE.test(name)) return LOCAL_BRANCH;
+    return spec.startsWith(':') ? DELETED : name;
   });
   return everything ? [...named, LOCAL_BRANCH] : named;
 }
 
-// Ejer 8/11: vagterne doemte pushets maal ud fra den lokale branch, saa
-// `git push origin HEAD:wip/x` fra feat/y blev tjekket som feat/y. Returnerer ALLE
-// maal i ALLE `git push` i kommandoen (Codex P2); LOCAL_BRANCH = den lokale branch.
-export function pushDestinations(command) {
-  const { pushes, mentionsPush } = gitPushes(String(command ?? ''));
-  const out = pushes.flatMap((p) => destinationsOf(p.args));
+// Hvert maal i kommandoen med den mappe, netop det push koerer fra (review #7907:
+// ved kaedede pushes gaelder hvert -C sit eget push). dir null = sessionens cwd.
+function pushTargets(command) {
+  const cmd = String(command ?? '');
+  const { pushes, mentionsPush } = gitPushes(cmd);
+  const cdDir = leadingCdDir(cmd);
+  const out = pushes.flatMap((p) => {
+    const dir = p.dir ? literalDir(p.dir) : cdDir;
+    return destinationsOf(p.args).map((dest) => ({ dest, dir }));
+  });
   // En omtale kan vaere et rigtigt push (bash -c): aldrig grundlag for en undtagelse.
-  return mentionsPush ? [...out, LOCAL_BRANCH] : out;
+  return mentionsPush ? [...out, { dest: LOCAL_BRANCH, dir: pushTargetDir(cmd) }] : out;
 }
 
-// Det vagterne skal tjekke: ALL_BACKUP naar hvert eneste maal er en backup-branch,
-// ellers de ikke-backup-maal der er tilbage.
-export function guardTargets(command) {
-  const all = pushDestinations(command);
-  if (all.length && all.every((d) => BACKUP_BRANCH_RE.test(d))) return [ALL_BACKUP];
-  return [...new Set(all.filter((d) => !BACKUP_BRANCH_RE.test(d)))];
+// Ejer 8/11: vagterne doemte pushets maal ud fra den lokale branch, saa
+// `git push origin HEAD:wip/x` fra feat/y blev tjekket som feat/y. Returnerer ALLE
+// maal i ALLE `git push` i kommandoen (Codex P2); LOCAL_BRANCH = den lokale branch,
+// DELETED = en sletning, der intet kode sender.
+export function pushDestinations(command) {
+  return pushTargets(command).map((t) => t.dest);
 }
+
+const isExempt = (dest) => dest === DELETED || BACKUP_BRANCH_RE.test(dest);
+
+// Det vagterne skal tjekke: ALL_EXEMPT naar hvert eneste maal er en backup-branch
+// eller en sletning, ellers de maal der er tilbage, hvert med sin mappe. Sletninger
+// skal ende i ALL_EXEMPT og ikke i en tom liste: tom betyder "intet fundet", og saa
+// falder vagterne tilbage til den lokale branch.
+export function guardPlan(command) {
+  const all = pushTargets(command);
+  if (all.length && all.every((t) => isExempt(t.dest))) return [{ dest: ALL_EXEMPT, dir: null }];
+  const seen = new Set();
+  return all.filter((t) => {
+    const key = `${t.dest}\t${t.dir ?? ''}`;
+    if (isExempt(t.dest) || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+export function guardTargets(command) {
+  return [...new Set(guardPlan(command).map((t) => t.dest))];
+}
+
+// Vagternes format: et maal pr. linje, efterfulgt af tab + mappe naar pushet har sin egen.
+const planLines = (command) => guardPlan(command).map((t) => (t.dir ? `${t.dest}\t${t.dir}` : t.dest)).join('\n');
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   try {
     const input = JSON.parse(readFileSync(0, 'utf8'));
     const command = input?.tool_input?.command;
-    const out = process.argv.includes('--dest') ? guardTargets(command).join('\n') : pushTargetDir(command);
+    const out = process.argv.includes('--dest') ? planLines(command) : pushTargetDir(command);
     if (out) process.stdout.write(out);
   } catch { /* fail-soft: intet output */ }
 }

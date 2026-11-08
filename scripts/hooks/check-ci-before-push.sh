@@ -49,27 +49,22 @@ esac
 # end sessionens cwd; tjek den branch, der faktisk pushes.
 # Codex P2 (#7660): kommandoen afkodes som JSON, og shell-quoting fjernes (lib/push-target-dir.mjs).
 # Ejer 8/11: destinations-branchen i en eksplicit refspec (`HEAD:wip/x`) er maalet, ikke den lokale branch.
+# Et maal pr. linje, efterfulgt af tab + mappe naar netop det push koerer et andet sted (review #7907).
 DEST=$(printf '%s' "$INPUT" | node "$(dirname "$0")/lib/push-target-dir.mjs" --dest 2>/dev/null)
-# Ejer 8/11: kun undtaget naar HVERT maal er en backup-branch (wip/*, backup/*): ingen PR, intet merges derfra.
-[ "$DEST" = "__ALL_BACKUP__" ] && exit 0
+# Ejer 8/11: kun undtaget naar HVERT maal er en backup-branch (wip/*, backup/*) eller en sletning:
+# ingen PR at beskytte, intet nyt kode sendes.
+[ "$DEST" = "__ALL_EXEMPT__" ] && exit 0
 # Intet maal fundet (usaedvanlig kommandoform, node fejlede): tjek den lokale branch som foer.
 [ -z "$DEST" ] && DEST="__LOCAL__"
-TARGET_DIR=$(printf '%s' "$INPUT" | node "$(dirname "$0")/lib/push-target-dir.mjs" 2>/dev/null)
-if [ -n "$TARGET_DIR" ]; then cd "$TARGET_DIR" 2>/dev/null || exit 0; fi
 
 # Eksplicit kvittering: CI_FAIL_ACK="<hvad er koert lokalt>" i kommandoen.
 case "$CMD" in *CI_FAIL_ACK=*) exit 0 ;; esac
 
-# Skip hvis ikke i et git-repo
-if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  exit 0
-fi
-
 # Skip hvis gh CLI mangler eller ikke authentikeret
 command -v gh >/dev/null 2>&1 || exit 0
-gh auth status >/dev/null 2>&1 || exit 0
+gh auth status >/dev/null 2>&1 </dev/null || exit 0
 
-LOCAL_BRANCH_NAME=$(git branch --show-current 2>/dev/null)
+START_DIR=$(pwd)
 
 # Ejer 8/11: tjek hvert maal for pushet (Codex P2), ikke kun den lokale branch.
 check_branch() {
@@ -85,7 +80,7 @@ esac
 # → emit warning. Vi bruger --json conclusion,headSha for at filtrere på
 # faktisk afsluttede runs.
 # Ejer 4/11: kun CI (ci.yml); review-gate og andre workflows er ikke testfejl.
-LATEST=$(gh run list --branch "$CURRENT_BRANCH" --workflow ci.yml --limit 1 --json conclusion,headSha,status 2>/dev/null)
+LATEST=$(gh run list --branch "$CURRENT_BRANCH" --workflow ci.yml --limit 1 --json conclusion,headSha,status 2>/dev/null </dev/null)
 [ -z "$LATEST" ] && return 0
 
 # Parse conclusion uden jq (best-effort substring match)
@@ -112,8 +107,17 @@ printf '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecisi
 exit 0
 }
 
-while IFS= read -r TARGET; do
-  [ "$TARGET" = "__LOCAL__" ] && TARGET="$LOCAL_BRANCH_NAME"
+TAB=$(printf '\t')
+while IFS="$TAB" read -r TARGET PUSH_DIR; do
+  cd "$START_DIR" 2>/dev/null || exit 0
+  if [ -n "$PUSH_DIR" ]; then cd "$PUSH_DIR" 2>/dev/null || continue; fi
+  # Skip hvis ikke i et git-repo
+  git rev-parse --is-inside-work-tree >/dev/null 2>&1 || continue
+  # Review #7907: main/master har aldrig en loop at bryde, men koden paa vej derop kommer
+  # fra den lokale branch; `git push origin HEAD:main` fra en roed branch skal fanges.
+  case "$TARGET" in
+    __LOCAL__|main|master) TARGET=$(git branch --show-current 2>/dev/null) ;;
+  esac
   check_branch "$TARGET"
 done <<EOT
 $DEST
