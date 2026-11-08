@@ -32,8 +32,10 @@ import {
   resolveStuckSaleEscrow,
   saleEscrowPayment,
   saleEscrowStatusForDeal,
+  squadRestoreImage,
 } from "./saleEscrowFlow6181.js";
 import { flushParkedRider } from "./stageRaceTransferDefer.js";
+import { seniorSquadPatch } from "./squads.js";
 
 const file = (name) => readFile(new URL(`../../database/${name}`, import.meta.url), "utf8");
 const id = (n) => `00000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
@@ -47,7 +49,8 @@ const SCHEMA = `
 CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 CREATE TABLE teams (id uuid PRIMARY KEY, balance bigint NOT NULL);
-CREATE TABLE riders (id uuid PRIMARY KEY, firstname text, lastname text, team_id uuid, pending_team_id uuid, acquired_at timestamptz);
+CREATE TABLE riders (id uuid PRIMARY KEY, firstname text, lastname text, team_id uuid, pending_team_id uuid, acquired_at timestamptz,
+  is_academy boolean NOT NULL DEFAULT false, squad text NOT NULL DEFAULT 'senior');
 CREATE TABLE app_config (key text PRIMARY KEY, value jsonb);
 CREATE TABLE finance_transactions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -87,7 +90,7 @@ const RPC_ARGS = {
   increment_balance_with_audit: { p_team_id: "uuid", p_delta: "bigint", p_finance_payload: "jsonb" },
   hold_sale_escrow: {
     p_deal_type: "text", p_deal_id: "uuid", p_payer_team_id: "uuid", p_payee_team_id: "uuid", p_amount: "bigint",
-    p_rider_ids: "uuid[]", p_target_team_ids: "uuid[]", p_payer_payload: "jsonb", p_payee_payload: "jsonb",
+    p_rider_ids: "uuid[]", p_target_team_ids: "uuid[]", p_payer_payload: "jsonb", p_payee_payload: "jsonb", p_rider_restore: "jsonb",
   },
   settle_sale_escrow: { p_escrow_id: "uuid", p_outcome: "text", p_refund_payload: "jsonb", p_settled_at: "timestamptz" },
   resolve_stuck_sale_escrow: { p_escrow_id: "uuid", p_outcome: "text", p_payload: "jsonb", p_settled_at: "timestamptz" },
@@ -545,4 +548,216 @@ test("ejer-krav 2: den manuelle vej afviser en escrow, der ikke sidder fast", as
   }
   assert.deepEqual(await escrows(db), [{ status: "held", deal_type: "transfer", amount: 30_000 }]);
   await assert.rejects(() => resolveStuckSaleEscrow(supabase, { escrowId: held.id, outcome: "cancel", adminUserId: null }), /release eller refund/);
+});
+
+// ── #7871: Codex P1 og M1-review ──────────────────────────────────────────────
+
+const squadOf = async (db, r) => one(db, "SELECT is_academy, squad FROM riders WHERE id = $1", [r]);
+const FLUSH_OPTS = { notifyTeamOwner: async () => {}, flushedAt: FLUSHED_AT, arrival: { reason: "dealCompleted" } };
+// Som flushen uden escrow (heal-sweepet foer escrow'en findes): team_id flyttes.
+const flushWithoutEscrow = (db, r, team) => db.query("UPDATE riders SET team_id = $2, pending_team_id = NULL WHERE id = $1", [r, team]);
+
+test("Codex P1: et byttes ene ben flyttes af heal-sweepet mellem parkering og hold -> escrow med det leverede ben, ingen gratis rytter", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  const before = await total(db);
+  await park(db, RIDER.r1, TEAM.B);
+  await park(db, RIDER.r2, TEAM.A);
+  // Loebet slutter imellem: r1 flyttes, foer handlen naar hold_sale_escrow.
+  await flushWithoutEscrow(db, RIDER.r1, TEAM.B);
+  const pay = await saleEscrowPayment(supabase, { parked: true, dealType: "swap", dealId: DEAL.s1, riderIds: [RIDER.r1, RIDER.r2], targetTeamIds: [TEAM.B, TEAM.A] });
+  await payBoth(supabase, pay, swapLegs(DEAL.s1, 70_000));
+  assert.equal(await balance(db, TEAM.B), START - 70_000, "betaleren har betalt");
+  assert.equal(await balance(db, TEAM.A), START, "modtageren venter paa det andet ben");
+  const held = await one(db, "SELECT status, delivered_rider_ids FROM sale_escrows");
+  assert.deepEqual(held, { status: "held", delivered_rider_ids: [RIDER.r1] }, "det leverede ben er noteret ved oprettelsen");
+
+  // Andet ben: flushen afregner byttet i een transaktion.
+  assert.equal(await flushParkedRider(supabase, { id: RIDER.r2, team_id: TEAM.B, pending_team_id: TEAM.A }, FLUSH_OPTS), true);
+  assert.equal((await rider(db, RIDER.r2)).team_id, TEAM.A);
+  assert.equal(await balance(db, TEAM.A), START + 70_000);
+  assert.deepEqual(await escrows(db), [{ status: "released", deal_type: "swap", amount: 70_000 }]);
+  assert.equal(await total(db), before);
+});
+
+test("Codex P1: begge ben flyttet foer hold -> betales som ved oejeblikkeligt skifte, ingen escrow", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  const before = await total(db);
+  await park(db, RIDER.r1, TEAM.B);
+  await park(db, RIDER.r2, TEAM.A);
+  await flushWithoutEscrow(db, RIDER.r1, TEAM.B);
+  await flushWithoutEscrow(db, RIDER.r2, TEAM.A);
+  await payBoth(supabase, await saleEscrowPayment(supabase, { parked: true, dealType: "swap", dealId: DEAL.s1, riderIds: [RIDER.r1, RIDER.r2], targetTeamIds: [TEAM.B, TEAM.A] }), swapLegs(DEAL.s1, 70_000));
+  assert.equal(await balance(db, TEAM.A), START + 70_000);
+  assert.equal(await balance(db, TEAM.B), START - 70_000);
+  assert.deepEqual(await escrows(db), []);
+  assert.equal(await total(db), before);
+});
+
+test("Codex P1: refusion af et bytte gendanner trup-status for den rytter, der bliver hos sit hold", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  const before = await total(db);
+  // r2 er akademirytter hos Hold B; byttet graduerer ham ved parkeringen (som executeSwapOffer).
+  await db.query("UPDATE riders SET is_academy = true, squad = 'u23' WHERE id = $1", [RIDER.r2]);
+  const r2Before = await squadOf(db, RIDER.r2);
+  const graduate = seniorSquadPatch();
+  await park(db, RIDER.r1, TEAM.B);
+  await db.query("UPDATE riders SET pending_team_id = $2, is_academy = $3, squad = $4 WHERE id = $1", [RIDER.r2, TEAM.A, graduate.is_academy, graduate.squad]);
+  const pay = await saleEscrowPayment(supabase, {
+    parked: true, dealType: "swap", dealId: DEAL.s1, riderIds: [RIDER.r1, RIDER.r2], targetTeamIds: [TEAM.B, TEAM.A],
+    riderRestore: [squadRestoreImage({ is_academy: false, squad: "senior" }, {}), squadRestoreImage(r2Before, graduate)],
+  });
+  await payBoth(supabase, pay, swapLegs(DEAL.s1, 50_000));
+  assert.deepEqual(await squadOf(db, RIDER.r2), { is_academy: false, squad: "senior" }, "gradueret ved parkeringen");
+
+  // r1 pensioneres foer flushen: byttet annulleres, betaleren refunderes.
+  await db.query("UPDATE riders SET team_id = NULL, pending_team_id = NULL WHERE id = $1", [RIDER.r1]);
+  assert.deepEqual(await refundSaleEscrowsForReleasedRiders(supabase, [RIDER.r1], { now: new Date(FLUSHED_AT), sourcePath: "test" }), { refunded: 1, failed: 0 });
+  assert.deepEqual(await rider(db, RIDER.r2), { team_id: TEAM.B, pending_team_id: null, acquired_at: null });
+  assert.deepEqual(await squadOf(db, RIDER.r2), r2Before, "akademipladsen er tilbage");
+  assert.equal(await balance(db, TEAM.B), START);
+  assert.equal(await total(db), before);
+});
+
+test("Codex P1: en refunderet transfer gendanner trup-status, men aldrig for en leveret rytter", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  await db.query("UPDATE riders SET is_academy = true, squad = 'junior' WHERE id IN ($1, $2)", [RIDER.r1, RIDER.r3]);
+  const image = squadRestoreImage({ is_academy: true, squad: "junior" }, seniorSquadPatch());
+  for (const [r, deal] of [[RIDER.r1, DEAL.t1], [RIDER.r3, DEAL.t2]]) {
+    await db.query("UPDATE riders SET pending_team_id = $2, is_academy = false, squad = 'senior' WHERE id = $1", [r, TEAM.B]);
+    await payBoth(supabase, await saleEscrowPayment(supabase, { parked: true, dealType: "transfer", dealId: deal, riderIds: [r], targetTeamIds: [TEAM.B], riderRestore: [image] }), transferLegs(deal, 20_000));
+  }
+  // r1: parkeringen ryddes (handlen annulleret) -> refusion + gendannelse.
+  await db.query("UPDATE riders SET pending_team_id = NULL WHERE id = $1", [RIDER.r1]);
+  // r3: leveret -> release; trup-felterne roeres ikke.
+  assert.equal(await flushParkedRider(supabase, { id: RIDER.r3, team_id: TEAM.A, pending_team_id: TEAM.B }, FLUSH_OPTS), true);
+  const result = await reconcileHeldSaleEscrows({ supabase, now: new Date(FLUSHED_AT) });
+  assert.equal(result.refunded, 1);
+  assert.deepEqual(await squadOf(db, RIDER.r1), { is_academy: true, squad: "junior" });
+  assert.deepEqual(await squadOf(db, RIDER.r3), { is_academy: false, squad: "senior" }, "koeberen beholder sin senior");
+});
+
+test("hold_sale_escrow afviser et foer-billede, der ikke passer til handlens ryttere", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  await park(db, RIDER.r1, TEAM.B);
+  const pay = await saleEscrowPayment(supabase, { parked: true, dealType: "transfer", dealId: DEAL.t1, riderIds: [RIDER.r1], targetTeamIds: [TEAM.B], riderRestore: [{ is_academy: "ja" }] });
+  const [buyer, seller] = transferLegs(DEAL.t1, 10_000);
+  await pay.incrementBalanceWithAudit(supabase, buyer);
+  await assert.rejects(() => pay.incrementBalanceWithAudit(supabase, seller), (e) => /rider_restore/.test(e.message));
+  assert.equal(await balance(db, TEAM.B), START);
+  assert.deepEqual(await escrows(db), []);
+});
+
+test("M1-review krav 3: et parkeret ben, der ikke staar paa sit kildehold, laases ikke og betales ikke", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  // r3 tilhoerer Hold A, men handlen paastaar, at Hold C saelger.
+  await park(db, RIDER.r3, TEAM.B);
+  const pay = await saleEscrowPayment(supabase, { parked: true, dealType: "transfer", dealId: DEAL.t2, riderIds: [RIDER.r3], targetTeamIds: [TEAM.B] });
+  const [buyer, seller] = transferLegs(DEAL.t2, 45_000, { seller: TEAM.C });
+  await pay.incrementBalanceWithAudit(supabase, buyer);
+  await assert.rejects(() => pay.incrementBalanceWithAudit(supabase, seller), /not_parked/);
+  assert.equal(await balance(db, TEAM.B), START);
+  assert.equal(await balance(db, TEAM.C), START);
+  assert.deepEqual(await escrows(db), []);
+});
+
+test("M1-review krav 4: en koeber-debitering, der er reverseret, stoles ikke paa; en staaende bruges een gang", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  const before = await total(db);
+  const [buyer, seller] = transferLegs(DEAL.t1, 35_000);
+  // Den gamle sti naaede at traekke koeberen, og en manuel reversering gav pengene tilbage.
+  await incrementBalanceWithAudit(supabase, buyer);
+  await incrementBalanceWithAudit(supabase, { teamId: TEAM.B, delta: 35_000, payload: { type: "transfer_in", amount: 35_000, source_path: "test.reversal", related_entity_type: "transfer", related_entity_id: DEAL.t1, idempotency_key: `test_reversal:${DEAL.t1}` } });
+  await park(db, RIDER.r1, TEAM.B);
+  const pay = await saleEscrowPayment(supabase, { parked: true, dealType: "transfer", dealId: DEAL.t1, riderIds: [RIDER.r1], targetTeamIds: [TEAM.B] });
+  await pay.incrementBalanceWithAudit(supabase, buyer, { allowDuplicate: true });
+  await assert.rejects(() => pay.incrementBalanceWithAudit(supabase, seller, { allowDuplicate: true }), /payer_debit_not_standing/);
+  assert.deepEqual(await escrows(db), [], "ingen escrow uden en betaling bag");
+  assert.equal(await balance(db, TEAM.A), START);
+  assert.equal(await total(db), before);
+
+  // Staaende debitering (anden handel): escrow'en oprettes uden at traekke igen.
+  const [buyer2, seller2] = transferLegs(DEAL.t2, 15_000);
+  await incrementBalanceWithAudit(supabase, buyer2);
+  await park(db, RIDER.r3, TEAM.B);
+  const pay2 = await saleEscrowPayment(supabase, { parked: true, dealType: "transfer", dealId: DEAL.t2, riderIds: [RIDER.r3], targetTeamIds: [TEAM.B] });
+  await payBoth(supabase, pay2, [buyer2, seller2]);
+  assert.equal(await balance(db, TEAM.B), START - 15_000, "traekket een gang");
+  assert.deepEqual(await escrows(db), [{ status: "held", deal_type: "transfer", amount: 15_000 }]);
+  assert.equal(await total(db), before);
+});
+
+test("videresalg: en rytter leveret i et holdt bytte kan saelges videre, og hver flush afregner sin egen escrow", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  const before = await total(db);
+  await park(db, RIDER.r1, TEAM.B);
+  await park(db, RIDER.r2, TEAM.A);
+  await payBoth(supabase, await saleEscrowPayment(supabase, { parked: true, dealType: "swap", dealId: DEAL.s1, riderIds: [RIDER.r1, RIDER.r2], targetTeamIds: [TEAM.B, TEAM.A] }), swapLegs(DEAL.s1, 25_000));
+  assert.equal(await flushParkedRider(supabase, { id: RIDER.r1, team_id: TEAM.A, pending_team_id: TEAM.B }, FLUSH_OPTS), true);
+
+  // Hold B saelger r1 videre til Hold C, mens r2 stadig koerer for Hold B.
+  await park(db, RIDER.r1, TEAM.C);
+  await payBoth(supabase, await saleEscrowPayment(supabase, { parked: true, dealType: "transfer", dealId: DEAL.t1, riderIds: [RIDER.r1], targetTeamIds: [TEAM.C] }),
+    transferLegs(DEAL.t1, 60_000, { buyer: TEAM.C, seller: TEAM.B }));
+  assert.equal(await balance(db, TEAM.C), START - 60_000);
+
+  assert.equal(await flushParkedRider(supabase, { id: RIDER.r1, team_id: TEAM.B, pending_team_id: TEAM.C }, FLUSH_OPTS), true);
+  assert.equal((await rider(db, RIDER.r1)).team_id, TEAM.C);
+  assert.equal(await balance(db, TEAM.B), START - 25_000 + 60_000, "videresalget er afregnet");
+  assert.equal(await balance(db, TEAM.A), START, "byttet venter stadig paa r2");
+
+  assert.equal(await flushParkedRider(supabase, { id: RIDER.r2, team_id: TEAM.B, pending_team_id: TEAM.A }, FLUSH_OPTS), true);
+  assert.equal(await balance(db, TEAM.A), START + 25_000);
+  assert.deepEqual((await escrows(db)).map((e) => e.status), ["released", "released"]);
+  assert.equal(await total(db), before);
+});
+
+test("M1-review krav 5: en deadlock i RPC'en proeves igen; transaktionen er rullet tilbage, saa intet sker to gange", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const base = adapter(db);
+  let failures = 0;
+  const supabase = {
+    ...base,
+    async rpc(name, args) {
+      if ((name === "hold_sale_escrow" || name === "settle_sale_escrow") && failures < 2) {
+        failures += 1;
+        return { data: null, error: { code: "40P01", message: "deadlock detected" } };
+      }
+      return base.rpc(name, args);
+    },
+  };
+  const before = await total(db);
+  await park(db, RIDER.r1, TEAM.B);
+  await payBoth(supabase, await saleEscrowPayment(supabase, { parked: true, dealType: "transfer", dealId: DEAL.t1, riderIds: [RIDER.r1], targetTeamIds: [TEAM.B] }), transferLegs(DEAL.t1, 12_000));
+  assert.equal(failures, 2);
+  assert.equal(await balance(db, TEAM.B), START - 12_000, "traekket een gang");
+  failures = 0;
+  assert.equal(await flushParkedRider(supabase, { id: RIDER.r1, team_id: TEAM.A, pending_team_id: TEAM.B }, FLUSH_OPTS), true);
+  assert.equal(failures, 2);
+  assert.equal(await balance(db, TEAM.A), START + 12_000);
+  assert.equal(await total(db), before);
+
+  // Tre deadlocks i traek: fejlen gives videre (ingen uendelig loekke).
+  const alwaysLocked = { ...base, rpc: async () => ({ data: null, error: { code: "40P01", message: "deadlock detected" } }) };
+  await park(db, RIDER.r3, TEAM.B);
+  const pay = await saleEscrowPayment(alwaysLocked, { parked: true, dealType: "transfer", dealId: DEAL.t2, riderIds: [RIDER.r3], targetTeamIds: [TEAM.B] });
+  const [buyer, seller] = transferLegs(DEAL.t2, 5_000);
+  await pay.incrementBalanceWithAudit(alwaysLocked, buyer);
+  await assert.rejects(() => pay.incrementBalanceWithAudit(alwaysLocked, seller), (e) => e.code === "40P01");
 });

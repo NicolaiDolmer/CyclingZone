@@ -19,7 +19,7 @@ async function withApp(run, rpc = async () => ({ data: [], error: null }), extra
   finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
 }
 
-const split = { source: '00000000-0000-0000-0000-000000000001', title_en: 'Next', title_da: 'Næste', status: 'planned', horizon: 'next', issue_ref: 123 };
+const split = { source: '00000000-0000-0000-0000-000000000001', title_en: 'Next', title_da: 'Næste', status: 'planned', horizon: 'season_5', issue_ref: 123 };
 
 test('all roadmap RPC routes reject anonymous and non-admin callers before the database', async () => {
   await withApp(async (base, calls) => {
@@ -44,8 +44,8 @@ test('admin stats and writes call only their fixed service RPCs', async () => {
   });
 });
 
-test('split accepts every player-facing horizon, including the legacy next (#7666)', async () => {
-  const horizons = ['this_week', 'next_week', 'next', 'this_season', 'next_season', 'y2027', 'later'];
+test('split accepts every player-facing horizon pattern (#7895)', async () => {
+  const horizons = ['this_week', 'next_week', 'season_5', 'season_12', 'q1_2027', 'q4_2028', 'y2027', 'unscheduled'];
   await withApp(async (base, calls) => {
     for (const horizon of horizons) {
       const res = await fetch(base + '/split', { method: 'POST', headers: { authorization: 'admin', 'Content-Type': 'application/json' }, body: JSON.stringify({ ...split, horizon }) });
@@ -57,7 +57,7 @@ test('split accepts every player-facing horizon, including the legacy next (#766
 
 test('invalid split input is rejected before calling the writer', async () => {
   await withApp(async (base, calls) => {
-    for (const body of [[], {}, { ...split, source: 'invalid' }, { ...split, title_da: '' }, { ...split, status: 'invalid' }, { ...split, horizon: 'invalid' }, { ...split, issue_ref: -1 }]) {
+    for (const body of [[], {}, { ...split, source: 'invalid' }, { ...split, title_da: '' }, { ...split, status: 'invalid' }, { ...split, horizon: 'invalid' }, { ...split, horizon: 'next' }, { ...split, horizon: 'later' }, { ...split, horizon: 'q5_2027' }, { ...split, issue_ref: -1 }]) {
       const res = await fetch(base + '/split', { method: 'POST', headers: { authorization: 'admin', 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       assert.equal(res.status, 400);
     }

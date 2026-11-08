@@ -275,7 +275,7 @@ async function loadRiderStates(supabase, riderIds) {
   // Bidder under PostgRESTs svarloft, saa en manglende raekke kun kan betyde en slettet rytter.
   for (let i = 0; i < ids.length; i += RIDER_CHUNK) {
     const { data, error } = await supabase
-      .from("riders")
+      .from("riders") // pagination-safe: unique riders.id IN at most RIDER_CHUNK (200) ids, below the response cap.
       .select("id, team_id, pending_team_id")
       .in("id", ids.slice(i, i + RIDER_CHUNK));
     if (error) throw new Error(`saleEscrow: rytteropslag fejlede: ${error.message}`);
