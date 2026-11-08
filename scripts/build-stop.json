@@ -1166,6 +1166,11 @@
       "issue": 7917,
       "reason": "Ejer-go 8/11 (Claude Code, efter Sentry-gennemgang): backend tåler at databasen er nede; design først, ingen scheduler-deploy før 13/11",
       "since": "2026-11-08"
+    },
+    {
+      "issue": 7908,
+      "reason": "Ejer 8/11: push-vagterne, PR #7907 gøres færdig efter uafhængigt review",
+      "since": "2026-11-08"
     }
   ]
 }
