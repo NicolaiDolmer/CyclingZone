@@ -16,6 +16,10 @@ import { readFlagStage } from "./featureStage.js";
 import { ROUTE_MATCH_ABILITY_KEYS, routeMatchRaw, routeMatchRevisionFor, stageRouteVector } from "./routeMatch.js";
 import { timeLimitFatigueSeverity7715 } from "./engine/v4/mechanics/timeLimit.ts";
 import { isS5ProfilesV3OrLater, raceHasStarted } from "./raceEngineRulesRevision.ts";
+import { enteringFatigueV2, stageLoadV2 } from "./conditionModelV2.js"; // #7890
+import { copenhagenDateString } from "./copenhagenTime.js"; // #7890
+import { SUPABASE_IN_CHUNK_SIZE } from "./supabasePagination.js"; // #7890
+import { isConditionModelV2Enabled } from "./conditionModelV2Flag.js"; // #7890
 
 export const TIME_LIMIT_FATIGUE_7715_FLAG_KEY = "time_limit_fatigue_7715";
 export const TIME_LIMIT_FATIGUE_7715_EMERGENCY_STOP = "stop";
@@ -59,15 +63,137 @@ export function timeLimitFatigueSeverities7715({ riders, stageRow, revision }) {
   return out;
 }
 
-/** Varslet til fladerne: { [rider_id]: { [stage_number]: true } }, kun ramte etaper. */
-export function timeLimitRiskByRider7715({ riders, stages, race }) {
+/**
+ * Varslet til fladerne: { [rider_id]: { [stage_number]: true } }, kun ramte etaper.
+ * #7890: `fatigueAtStage` (Map etape -> Map rytter -> traethed, fra stageStartFatigues7715)
+ * giver hver etape traetheden ved dens start, som motoren ser den. Uden den, eller for en
+ * rytter den ikke kender, bruges rytterens egen traethed som foer.
+ */
+export function timeLimitRiskByRider7715({ riders, stages, race, fatigueAtStage = null }) {
   const revision = routeMatchRevisionFor(race);
   const out = {};
   if (!isS5ProfilesV3OrLater(revision)) return out;
   for (const stageRow of stages ?? []) {
-    for (const riderId of Object.keys(timeLimitFatigueSeverities7715({ riders, stageRow, revision }))) {
+    const atStart = fatigueAtStage?.get(Number(stageRow.stage_number));
+    const stageRiders = atStart ? (riders ?? []).map((r) => (atStart.has(r.rider_id) ? { ...r, fatigue: atStart.get(r.rider_id) } : r)) : riders;
+    for (const riderId of Object.keys(timeLimitFatigueSeverities7715({ riders: stageRiders, stageRow, revision }))) {
       (out[riderId] ??= {})[stageRow.stage_number] = true;
     }
+  }
+  return out;
+}
+
+/**
+ * #7890: traetheden ved hver kommende etapes start, som motoren regner den
+ * (riderFatigueNow.applyStageStartFatigue): rytterens aabning plus belastningen fra
+ * datoens tidligere etaper, hver minus én restitution (enteringFatigueV2). En koert etape
+ * taeller med sin registrerede belastning (`recordedLoadsByRider`: datoens uafregnede
+ * raekker { game_day, load }), en ikke-koert med en prognose (stageLoadV2 med holdets
+ * indsats, ellers normal). Uden dette saa varslet kun morgenens traethed, saa paa en dag
+ * med flere etaper kunne en rytter ryge ud af traethed uden varsel.
+ * Etaper paa en senere dato end i dag starter fra aabningen (nattens afregning kendes ikke
+ * endnu); mangler planen dato eller loebsdag, bruges aabningen. Medicinsk afdeling regnes
+ * ikke med (0), saa varslet hellere kommer én gang for meget end for lidt. REN.
+ * @returns {Map<number, Map<string, number>>}
+ */
+export function stageStartFatigues7715({ riders, stages, schedule, stagesCompleted = 0, todayStr, recordedLoadsByRider = new Map(), effortFor = () => "normal", revision = null }) {
+  const out = new Map();
+  const slot = new Map();
+  for (const row of schedule ?? []) {
+    const gameDay = Number(row?.game_day);
+    const at = row?.scheduled_at ? new Date(row.scheduled_at) : null;
+    if (!Number.isInteger(gameDay) || !at || !Number.isFinite(at.getTime())) continue;
+    slot.set(Number(row.stage_number), { gameDay, date: copenhagenDateString(at) });
+  }
+  const done = Number(stagesCompleted) || 0;
+  const sorted = (stages ?? []).slice().sort((a, b) => Number(a.stage_number) - Number(b.stage_number));
+  for (const stage of sorted) {
+    const n = Number(stage.stage_number);
+    if (n <= done) continue;
+    const own = slot.get(n);
+    const before = own ? sorted.filter((p) => { const s = slot.get(Number(p.stage_number)); return s && s.date === own.date && s.gameDay < own.gameDay; }) : [];
+    const byRider = new Map();
+    for (const rider of riders ?? []) {
+      const opening = Number(rider?.fatigue);
+      if (rider?.fatigue == null || !Number.isFinite(opening)) continue;
+      if (!before.length) { byRider.set(rider.rider_id, opening); continue; }
+      const recorded = own.date === todayStr ? recordedLoadsByRider.get(String(rider.rider_id)) ?? [] : [];
+      const loads = before.map((p) => {
+        const pn = Number(p.stage_number);
+        if (pn <= done) return recorded.filter((r) => Number(r.game_day) === slot.get(pn).gameDay).reduce((sum, r) => sum + (Number(r.load) || 0), 0);
+        return stageLoadV2({ profileType: p.profile_type, distanceKm: p.distance_km ?? null, stageNumber: pn, effort: effortFor(rider.rider_id, pn) ?? "normal", rulesRevision: revision });
+      });
+      byRider.set(rider.rider_id, enteringFatigueV2({ openingFatigue: opening, priorLoadsToday: loads, recoveryAbility: Number(rider.abilities?.recovery ?? 50) }));
+    }
+    out.set(n, byRider);
+  }
+  return out;
+}
+
+/**
+ * #7890: traetheden ved hver kommende etapes start for fladernes varsel (taktik, holdfane,
+ * udtagelse). Kun under condition_model_v2, for kun dér laegger motoren datoens tidligere
+ * etaper oven i aabningen. Indsatsen tages fra holdets gemte ordrer (`teamId`), ellers
+ * normal. Best-effort: en fejl eller slukket model = null, og varslet bruger aabningen
+ * som foer. Kaldes kun, naar reglen gaelder loebet (raceTimeLimitFatigue7715Applies).
+ */
+export async function loadStageStartFatigues7715({ supabase, race, teamId = null, riders, stages, now = new Date(), checkConditionV2 = isConditionModelV2Enabled }) {
+  try {
+    if (await checkConditionV2(supabase) !== true) return null;
+    const { data: schedule, error } = await supabase.from("race_stage_schedule")
+      .select("stage_number, scheduled_at, game_day").eq("race_id", race.id); // pagination-safe: ét løbs etaper (< 30 rækker)
+    if (error) return null;
+    const effortByStage = new Map();
+    if (teamId != null) {
+      const { data: orders, error: ordersError } = await supabase.from("race_team_orders")
+        .select("stage_number, riders").eq("race_id", race.id).eq("team_id", teamId); // pagination-safe: ét holds ordrer i ét løb (< 30 rækker)
+      if (!ordersError) {
+        for (const row of orders ?? []) {
+          const m = new Map();
+          for (const r of Array.isArray(row.riders) ? row.riders : []) if (r?.rider_id != null && typeof r.effort === "string") m.set(String(r.rider_id), r.effort);
+          effortByStage.set(Number(row.stage_number), m);
+        }
+      }
+    }
+    const todayStr = copenhagenDateString(now);
+    const recordedLoadsByRider = Number(race.stages_completed) > 0
+      ? await loadTodayStageLoads7715({ supabase, riderIds: (riders ?? []).map((r) => r.rider_id), todayStr })
+      : new Map();
+    return stageStartFatigues7715({
+      riders, stages, schedule, stagesCompleted: race.stages_completed ?? 0, todayStr, recordedLoadsByRider,
+      effortFor: (riderId, stageNumber) => effortByStage.get(stageNumber)?.get(String(riderId)) ?? "normal",
+      revision: routeMatchRevisionFor(race),
+    });
+  } catch {
+    // best-effort: varslet maa aldrig vaelte fladen; uden skoennet bruges aabningen.
+    return null;
+  }
+}
+
+/**
+ * #7890: datoens uafregnede etape-belastninger pr. rytter (samme raekker som
+ * riderFatigueNow.loadUnsettledDateLoads, men med loebsdagen, saa hver etape faar sine).
+ * Best-effort: en fejl = intet (varslet falder tilbage til prognosen og aabningen).
+ */
+export async function loadTodayStageLoads7715({ supabase, riderIds, todayStr }) {
+  const out = new Map();
+  try {
+    for (let i = 0; i < (riderIds ?? []).length; i += SUPABASE_IN_CHUNK_SIZE) {
+      const { data, error } = await supabase.from("training_race_loads")
+        .select("rider_id, game_day, load")
+        .in("rider_id", riderIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE))
+        .eq("tick_date", todayStr)
+        .is("consumed_at", null).is("duplicate_of_race_id", null);
+      if (error) return new Map();
+      for (const row of data ?? []) {
+        const key = String(row.rider_id);
+        if (!out.has(key)) out.set(key, []);
+        out.get(key).push({ game_day: row.game_day, load: row.load });
+      }
+    }
+  } catch {
+    // best-effort: varslet maa aldrig vaelte taktik-fladen.
+    return new Map();
   }
   return out;
 }

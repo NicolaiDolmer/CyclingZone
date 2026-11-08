@@ -4,7 +4,7 @@
 
 import { selectionSizeForRace } from "./raceAutopick.js";
 import { buildRouteMatch, ROUTE_MATCH_STAGE_COLUMNS } from "./routeMatch.js";
-import { raceTimeLimitFatigue7715Applies, timeLimitRiskByRider7715 } from "./timeLimitFatigue7715.js"; // #7715
+import { loadStageStartFatigues7715, raceTimeLimitFatigue7715Applies, timeLimitRiskByRider7715 } from "./timeLimitFatigue7715.js"; // #7715, #7890
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr, raceSquadOf, isWithinRaceAgeLimit, loadRaceSeasonNumber, RIDER_OVER_RACE_AGE_ERROR } from "./riderEligibility.js";
@@ -532,13 +532,14 @@ export async function getSelectionContext({ supabase, race, teamId }) {
   const todayStr = raceSelectionReferenceDateStr(race, copenhagenDateString());
 
   // #7715: maerket i udtagelsen, samme regel som motoren. Slukket kontakt = intet felt.
-  const timeLimitRisk = await raceTimeLimitFatigue7715Applies({ supabase, race })
-    ? timeLimitRiskByRider7715({
-      riders: riders.map((r) => ({ rider_id: r.id, abilities: abilityByRider.get(r.id), fatigue: conditionByRider.get(r.id)?.fatigue })),
-      stages,
-      race,
-    })
-    : {};
+  let timeLimitRisk = {};
+  if (await raceTimeLimitFatigue7715Applies({ supabase, race })) {
+    const riskRiders = riders.map((r) => ({ rider_id: r.id, abilities: abilityByRider.get(r.id), fatigue: conditionByRider.get(r.id)?.fatigue }));
+    // #7890: traetheden ved hver etapes start (datoens tidligere etaper med), som motoren ser den.
+    // Indsatsen saettes foerst paa Taktik, saa udtagelsen regner med normal (teamId = null).
+    const fatigueAtStage = await loadStageStartFatigues7715({ supabase, race, riders: riskRiders, stages });
+    timeLimitRisk = timeLimitRiskByRider7715({ riders: riskRiders, stages, race, fatigueAtStage });
+  }
   const stageNumbers = stages.map((s) => s.stage_number).sort((a, b) => (a ?? 0) - (b ?? 0));
 
   const riderRows = buildRiderRows({ riders, stages, abilityByRider, conditionByRider, todayStr, race })
