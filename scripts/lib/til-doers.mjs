@@ -30,6 +30,29 @@ export const DONE_LABEL = 'claude:done';
 // (docs/GITHUB_WORKFLOW.md "Autonom close-policy"), respekteres ogsaa her.
 export const NO_AUTOCLOSE_LABELS = ['needs-decision', 'auto-close-veto'];
 export const HELP_FILE = 'frontend/public/locales/en/help.json';
+
+// #7827: internt arbejde. Spilleren kan ikke se eller maerke disse stier, saa
+// krav 3-7 giver ingen mening for et issue, der kun har roert dem. Listen er en
+// positivliste: en ukendt sti (ny mappe, frontend/src, backend/lib, database/)
+// goer issuet spillervendt, saa fejlen altid gaar mod at holde det aabent.
+const INTERNAL_PATHS = [
+  /^scripts\//,
+  /^\.github\//,
+  /^\.claude\//,
+  /^docs\//,
+  /^pr-screens\//,
+  /^[^/]+\.md$/,
+  /^backend\/scripts\/dev\//,
+  /^backend\/test\//,
+  /^frontend\/tests\//,
+  /\.test\.[cm]?[jt]sx?$/,
+];
+
+/** Roerer fillisten kun interne stier? Tom eller ukendt liste = nej (fail-safe). */
+export function isInternalChange(paths) {
+  if (!Array.isArray(paths) || paths.length === 0) return false;
+  return paths.every((p) => typeof p === 'string' && INTERNAL_PATHS.some((re) => re.test(p)));
+}
 export const COLLABORATOR_ASSOCIATIONS = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
 
 export const KRAV = [
@@ -203,6 +226,28 @@ function auto(status, kilde, hvorfor = '') {
   return { status, kilde, hvorfor };
 }
 
+const INTERNAL_SOURCE = 'internt arbejde: kun scripts, CI, tests eller docs';
+
+/** Har merge-koeen skrevet "Verificeret" for netop denne PR paa netop dette issue? */
+export function queueVerified(comments, pr, issue) {
+  const marker = `<!-- merge-queue-closeout:v1 pr=${pr} issue=${issue} -->`;
+  return (comments || []).some((c) => {
+    const body = c.body || '';
+    return body.includes(marker) && body.includes('Verificeret:') && COLLABORATOR_ASSOCIATIONS.has(String(c.author_association || '').toUpperCase());
+  });
+}
+
+/** Sidst mergede PR efter merge-tid. PR-nummeret afgoer kun ved ens eller manglende tid. */
+export function latestMerged(prs) {
+  return [...prs].sort((a, b) => String(b.mergedAt || '').localeCompare(String(a.mergedAt || '')) || b.number - a.number)[0];
+}
+
+/** Main-commits der ikke er squash-commits fra issuets mergede PR'er. */
+export function directCommits(commits, prs) {
+  const fromPr = prs.filter((p) => p.merged).map((p) => `(#${p.number})`);
+  return (commits || []).filter((c) => !fromPr.some((tag) => String(c.subject || '').includes(tag)));
+}
+
 function prLabel(pr) {
   return `PR #${pr.number}${pr.merged ? ' (merget)' : pr.state === 'open' ? ' (åben)' : ''}`;
 }
@@ -218,9 +263,10 @@ function prLabel(pr) {
  * @param {Array} p.registry   parseRegistry(FEATURE_REGISTRY.yml)
  * @param {string} p.patchNotesText indholdet af frontend/src/data/patchNotes.js
  * @param {false|string} p.helpChanged falsk, eller kilden der aendrede help.json (fx "PR #12")
+ * @param {boolean} [p.internalOnly] alle mergede PR'er roerte kun interne stier (#7827)
  * @returns {Array<{krav, navn, status, kilde, hvorfor}>}
  */
-export function evaluateDoor({ issue, comments = [], prs = [], commits = [], registry = [], patchNotesText = '', helpChanged = false }) {
+export function evaluateDoor({ issue, comments = [], prs = [], commits = [], registry = [], patchNotesText = '', helpChanged = false, internalOnly = false }) {
   const n = Number(issue.number);
   const markers = parseMarkers(comments, { issue: n });
   const merged = prs.filter((p) => p.merged);
@@ -268,10 +314,25 @@ export function evaluateDoor({ issue, comments = [], prs = [], commits = [], reg
   // 8 Verificeret i prod: altid manuelt
   autoResults[8] = auto('mangler', 'manuelt', MANUAL_HINT);
 
+  // #7827: internt arbejde udfyldes selv, saa det ikke hober sig op som aabent.
+  // Kun naar nogen har sagt done, intet er aabent og issuet ikke er en epic:
+  // en enkelt merget PR under en delopgave er ikke det samme som faerdig.
+  const labels = labelNames(issue);
+  if (internalOnly && merged.length && !open.length && labels.includes(DONE_LABEL) && !labels.some((l) => l === 'epic' || l.startsWith('epic:'))) {
+    for (const krav of [3, 4, 5, 6, 7]) {
+      if (autoResults[krav].status === 'mangler') autoResults[krav] = auto('na', INTERNAL_SOURCE);
+    }
+    const newest = latestMerged(merged).number;
+    if (queueVerified(comments, newest, n)) {
+      // autoBevis: en menneskelig markering vinder stadig, og brand kraever et menneske.
+      autoResults[8] = { ...auto('ok', `merge-køen verificerede PR #${newest}`), autoBevis: true, menneskeStatus: null };
+    }
+  }
+
   return KRAV.map(({ krav, navn }) => {
     const a = autoResults[krav];
     const m = markers.get(krav);
-    if (a.status === 'ok' || !m) return { krav, navn, ...a };
+    if ((a.status === 'ok' && !a.autoBevis) || !m) return { krav, navn, ...a };
     if (m.auto) {
       // menneskeStatus: seneste menneskelige markering for samme krav, til brand-reglen i decideClose.
       return { krav, navn, status: m.status, kilde: 'auto-bevis', hvorfor: m.tekst, autoBevis: true, menneskeStatus: m.menneske?.status || null };
@@ -466,12 +527,16 @@ export function resolveMainRef(execGit) {
   return 'HEAD';
 }
 
-function commitTouches(execGit, sha, file) {
+function commitFiles(execGit, sha) {
   try {
-    return execGit(['diff-tree', '--no-commit-id', '--name-only', '-r', '-m', '--first-parent', sha]).split(/\r?\n/).includes(file);
+    return execGit(['diff-tree', '--no-commit-id', '--name-only', '-r', '-m', '--first-parent', sha]).split(/\r?\n/).filter(Boolean);
   } catch {
-    return false;
+    return []; // ukendt filliste: isInternalChange svarer nej
   }
+}
+
+function commitTouches(execGit, sha, file) {
+  return commitFiles(execGit, sha).includes(file);
 }
 
 /** Henter alt evaluateDoor skal bruge for ét issue. */
@@ -488,19 +553,20 @@ export function fetchIssueBundle({ execGh = defaultExecGh, execGit = defaultExec
   const commits = mainCommitsFor(execGit, number, ref);
 
   let helpChanged = false;
+  let internalOnly = prs.some((p) => p.merged);
   for (const pr of prs.filter((p) => p.merged)) {
     const files = ghPaged(execGh, `repos/${repo}/pulls/${pr.number}/files?per_page=100`).map((f) => f.filename);
-    if (files.includes(HELP_FILE)) {
-      helpChanged = `PR #${pr.number}`;
-      break;
-    }
+    if (!isInternalChange(files)) internalOnly = false;
+    if (!helpChanged && files.includes(HELP_FILE)) helpChanged = `PR #${pr.number}`;
   }
+  // En direkte main-commit er ogsaa levering: roerer den spillerkode, er issuet ikke internt.
+  if (internalOnly && directCommits(commits, prs).some((c) => !isInternalChange(commitFiles(execGit, c.sha)))) internalOnly = false;
   if (!helpChanged) {
     const hit = commits.find((c) => commitTouches(execGit, c.sha, HELP_FILE));
     if (hit) helpChanged = `commit ${hit.sha.slice(0, 9)}`;
   }
 
-  return { issue, comments, timeline, prs, commits, helpChanged };
+  return { issue, comments, timeline, prs, commits, helpChanged, internalOnly };
 }
 
 export const BOT_LOGIN = 'github-actions[bot]';

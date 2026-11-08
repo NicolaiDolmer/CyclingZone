@@ -43,6 +43,7 @@
   "voting": {
     "idea": "God idé?",
     "importance": "Vigtigt for dig?",
+    "dontKnow": "Ved ikke",
     "saved": "Gemt",
     "error": "Din stemme blev ikke gemt. Prøv igen."
   },
@@ -53,11 +54,10 @@
     "horizon": {
       "this_week": "Denne uge",
       "next_week": "Næste uge",
-      "next": "Snart",
-      "this_season": "Denne sæson",
-      "next_season": "Næste sæson",
-      "y2027": "2027",
-      "later": "Senere"
+      "season": "Sæson {season}",
+      "quarter": "Q{quarter} {year}",
+      "year": "{year}",
+      "unscheduled": "Til afstemning"
     }
   },
   "beta": {
@@ -124,7 +124,8 @@
     "recent": "Leveret de sidste 7 dage",
     "earlier": "Tidligere",
     "patchNote": "Patch note · {date}",
-    "allPatchNotes": "Alle patch notes"
+    "allPatchNotes": "Alle patch notes",
+    "youVoted": "Du stemte"
   },
   "empty": {
     "plan": {

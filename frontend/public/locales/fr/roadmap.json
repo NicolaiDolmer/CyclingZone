@@ -43,6 +43,7 @@
   "voting": {
     "idea": "Bonne idée ?",
     "importance": "Important pour toi ?",
+    "dontKnow": "Je ne sais pas",
     "saved": "Enregistré",
     "error": "Ton vote n'a pas été enregistré. Réessaie."
   },
@@ -53,11 +54,10 @@
     "horizon": {
       "this_week": "Cette semaine",
       "next_week": "La semaine prochaine",
-      "next": "Bientôt",
-      "this_season": "Cette saison",
-      "next_season": "La saison prochaine",
-      "y2027": "2027",
-      "later": "Plus tard"
+      "season": "Saison {season}",
+      "quarter": "Q{quarter} {year}",
+      "year": "{year}",
+      "unscheduled": "Ouvert au vote"
     }
   },
   "beta": {
@@ -124,7 +124,8 @@
     "recent": "Livré ces 7 derniers jours",
     "earlier": "Avant",
     "patchNote": "Note de mise à jour · {date}",
-    "allPatchNotes": "Toutes les notes de mise à jour"
+    "allPatchNotes": "Toutes les notes de mise à jour",
+    "youVoted": "Tu as voté"
   },
   "empty": {
     "plan": {

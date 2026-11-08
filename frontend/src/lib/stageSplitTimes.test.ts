@@ -129,6 +129,18 @@ test("buildOwnTimeLoss: koerte sig tom og daarlig dag er egne linjer, kun for eg
   assert.deepEqual(loss.map((l) => [l.type === "event" && l.event.type, l.riderId]), [["all_out_cracked", "own1"], ["bad_day", "own2"]]);
 });
 
+test("#7707 buildOwnTimeLoss: koerte sig tom for en plan-rytter paa Angrib staempler Angrib; indsats-ordren Alt ud bevares", () => {
+  const events = [...EVENTS, { km: 150, type: "all_out_cracked", params: { rider_id: "own1" } }];
+  const planned = effectiveEffortByRider(null, { orders: [{ stage_number: 1, riders: [{ rider_id: "own1", effort: "normal", plan: [{ task: "attack" }] }] }] }, 1, { v4: true });
+  const taskOf = (efforts: unknown) => {
+    const loss = buildOwnTimeLoss(events, { ownRiderIds: OWN, effortByRider: efforts as never }).find((l) => l.type === "event" && l.event?.type === "all_out_cracked");
+    return loss && loss.type === "event" ? loss.event?.params?.task : "mangler";
+  };
+  assert.equal(taskOf(planned), "attack");
+  assert.equal(taskOf(effectiveEffortByRider(null, { orders: [{ stage_number: 1, riders: [{ rider_id: "own1", effort: "all_out" }] }] }, 1, { v4: true })), undefined);
+  assert.equal((events.at(-1)?.params as Record<string, unknown>).task, undefined, "input roeres ikke");
+});
+
 test("buildOwnTimeLoss: et fald hvor rytteren kom tilbage til sin gruppe tæller ikke", () => {
   // own1 faldt fra gruppetto-4001 ved km 102 men var tilbage ved km 109.1:
   // kun faldet fra feltet ved km 72 staar tilbage.

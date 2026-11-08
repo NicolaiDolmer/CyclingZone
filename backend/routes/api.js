@@ -146,6 +146,7 @@ import {
 } from "../lib/notificationService.js";
 import * as transferNotif from "../lib/transferNotifications.js";
 import { withdrawCounterOffer, claimCounterForAccept, buildCounterOfferWithdrawnNotification } from "../lib/counterOfferWithdraw.js"; // #6463
+import { getParkedRiderReleaseIssue, getParkedRiderTradeIssue } from "../lib/parkedRiderGuard6181.js"; // #6181
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
 import {
   notifyNewAuction,
@@ -228,6 +229,7 @@ import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildGlobalTradeFeed, parseTradeFeedQuery } from "../lib/tradeListFeed.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { buildRaceStory, storyInputsFromResults } from "../lib/raceStory.js"; // #6350: ?story=1 på /timeline
+import { ownDayFormEvents } from "../lib/dayFormVisibility7725.js"; // #7725: dagsform kun for egne ryttere
 import { withEventPlaces } from "../lib/raceTimeline.js"; // #6350
 import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
@@ -572,6 +574,7 @@ import {
 } from "../lib/selectionDeadlineReminder.js";
 import { selectionSizeForRace, MIN_RACE_ENTRIES } from "../lib/raceAutopick.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
+import { fatigueByRiderNow, fatigueByRiderForRaces, fatigueOutlookForTeam, openingFatigueMap } from "../lib/riderFatigueNow.js"; // #7801
 import { REGISTRY_ABILITY_KEYS } from "../lib/abilityRegistry.js";
 import { selectInChunks } from "../lib/dbChunk.js";
 import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
@@ -1774,7 +1777,7 @@ async function loadOwnedSeniorRiderForAction(req, riderId) {
   // #5568: birthdate med, så academy-demote-quote kan vælge mål-truppen.
   const { data: rider } = await supabase
     .from("riders")
-    .select("id, firstname, lastname, team_id, is_retired, is_academy, salary, market_value, base_value, prize_earnings_bonus, current_production_value, contract_length, contract_end_season, birthdate")
+    .select("id, firstname, lastname, team_id, pending_team_id, is_retired, is_academy, salary, market_value, base_value, prize_earnings_bonus, current_production_value, contract_length, contract_end_season, birthdate")
     .eq("id", riderId)
     .single();
   if (!rider || rider.team_id !== req.team.id) {
@@ -1907,6 +1910,8 @@ router.get("/riders/:id/release-quote", requireAuth, async (req, res) => {
   const result = await loadOwnedSeniorRiderForAction(req, req.params.id);
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const { rider } = result;
+  const parkedIssue = getParkedRiderReleaseIssue(rider); // #6181
+  if (parkedIssue) return res.status(parkedIssue.status).json(parkedIssue.body);
   const auctionGuard = await assertRiderNotOnActiveAuction(rider.id);
   if (auctionGuard.error) return res.status(auctionGuard.error.status).json(auctionGuard.error.body);
   const currentSeason = await getActiveSeasonNumber();
@@ -2028,6 +2033,9 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
   const result = await loadOwnedSeniorRiderForAction(req, req.params.id);
   if (result.error) return res.status(result.error.status).json(result.error.body);
   const { rider } = result;
+  // #6181: en solgt rytter, der venter på at skifte hold, er købers; han kan ikke fyres.
+  const parkedIssue = getParkedRiderReleaseIssue(rider);
+  if (parkedIssue) return res.status(parkedIssue.status).json(parkedIssue.body);
   const auctionGuard = await assertRiderNotOnActiveAuction(rider.id);
   if (auctionGuard.error) return res.status(auctionGuard.error.status).json(auctionGuard.error.body);
 
@@ -2084,6 +2092,7 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
     })
     .eq("id", rider.id)
     .eq("team_id", req.team.id)
+    .is("pending_team_id", null) // #6181: et salg, der parkerede ham imens, vinder
     .select("id");
   if (!released || released.length === 0) {
     return res.status(409).json({ error: "This rider is no longer on your team", errorCode: "rider_state_changed" });
@@ -3196,13 +3205,22 @@ router.get("/training/me", requireAuth, async (req, res) => {
     // Byg condition-map: rider_id → { form, fatigue, injured_until, risk }
     // risk = injuryRisk med planlagt intensitet for dagen.
     const condition = {};
+    // #7801: med fatigue_now_7801 er fatigue tallet lige nu, og fatigue_at_start skønnet ved
+    // næste etape. Slukket = null og felterne præcis som i dag.
+    const fatigueOutlook = await fatigueOutlookForTeam({
+      supabase, team: req.team, seasonId: activeSeasonId, conditions: conditionResult.data,
+      abilityByRider: new Map((progressResult.data ?? []).map((r) => [r.rider_id, r])),
+    });
     for (const row of conditionResult.data ?? []) {
       const plan = state.plans[row.rider_id] ?? null;
       const program = resolveProgram(plan, primaryTypeByRider.get(row.rider_id) ?? null);
-      const risk = injuryRisk({ intensity: program.intensity, fatigue: Number(row.fatigue ?? 0) });
+      const outlook = fatigueOutlook?.get(row.rider_id) ?? null;
+      const fatigue = outlook ? outlook.fatigue : row.fatigue;
+      const risk = injuryRisk({ intensity: program.intensity, fatigue: Number(fatigue ?? 0) });
       condition[row.rider_id] = {
         form: row.form,
-        fatigue: row.fatigue,
+        fatigue,
+        ...(fatigueOutlook ? { fatigue_at_start: outlook?.fatigueAtStart ?? null } : {}),
         injured_until: row.injured_until ?? null,
         // #5462: resterende LOEBSDAGE inkl. i dag. null = skaden ejes af
         // kalenderdagen (flag off, eller skrevet foer flippet).
@@ -4390,6 +4408,7 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
       ratingRowByRider.set(row.rider_id, row);
     }
     const condByRider = new Map((condRes.data || []).map((c) => [c.rider_id, c]));
+    const fatigueNowByRider = await fatigueByRiderNow({ supabase, conditions: condRes.data, teamId: req.team.id }); // #7801
 
     // Trænings-kvalitets-prognose pr. peak-vindue: samme kobling motoren bruger.
     // loadPeakPlans → ordinaler; resolvePeakTrainingQualities muterer vinduerne
@@ -4508,7 +4527,7 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
         // → weights/displayRecipes.ratingForRole).
         rating: ratingFromAbilities(ratingRowByRider.get(r.id) ?? null, r.primary_type ?? null),
         form: cond.form ?? null,
-        fatigue: cond.fatigue ?? null,
+        fatigue: fatigueNowByRider.get(r.id) ?? cond.fatigue ?? null,
         injuredUntil: cond.injured_until ?? null,
         peaks: plans.map((p) => {
           const tq = tqByRiderRace.has(`${r.id}:${p.target_race_id}`) ? tqByRiderRace.get(`${r.id}:${p.target_race_id}`) : null;
@@ -6340,7 +6359,9 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     if (abErr) return res.status(500).json({ error: abErr.message });
     if (condErr) return res.status(500).json({ error: condErr.message });
     const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
-    const fatById = new Map((conditions || []).map((c) => [c.rider_id, c.fatigue]));
+    // #7801: træthed ved løbets første etapestart (som assistenten ved løbsstart), ikke efter uret.
+    const fatNow = await fatigueByRiderForRaces({ supabase, conditions, abilityByRider: abById, teamId: req.team.id, races: [{ id: race.id, stages: stageProfiles }] });
+    const fatById = fatNow.byRace?.get(race.id) ?? fatNow.fatById;
     // #4701: reference-dato = løbets EGEN startdato, ikke "nu" — assistenten må gerne
     // fylde en rytter ind der er skadet i dag, men rask inden dette løb starter.
     const todayStr = raceSelectionReferenceDateStr(race, copenhagenDateString());
@@ -6439,7 +6460,7 @@ router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
     const enabled = await isRaceEngineV3ScoringEnabled(supabase);
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, status, stages, stages_completed, squad, scheduled_for, engine_rules_revision")
+      .select("id, status, stages, stages_completed, squad, scheduled_for, engine_rules_revision, season_id")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -6478,7 +6499,7 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
   try {
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, status, stages, stages_completed, engine_rules_revision")
+      .select("id, status, stages, stages_completed, engine_rules_revision, season_id")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -6661,12 +6682,13 @@ router.get("/races/:raceId/timeline", requireAuth, async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
     if (!data) return res.status(404).json({ error: "timeline_not_found" });
-    const events = withEventPlaces(data.events); // #6350: gemte etaper fortæller også hvor det skete
+    const visible = await ownDayFormEvents(supabase, { events: data.events, raceId: req.params.raceId, stageNumber, teamId: req.team?.id }); // #7725
+    const events = withEventPlaces(visible); // #6350: gemte etaper fortæller også hvor det skete
     // #6350: ?story=1 tilføjer løbshistorien (kontrakt: docs/superpowers/specs/2026-10-14-race-story-contract.md).
     let story = null; // en fejl i historien må aldrig tage tidslinjen med sig
     if (req.query.story === "1") try {
       // Målresultatet afgør udbrydernes udfald med samme svar som mærkerne (#6350 review).
-      const resultRows = await fetchAllRows(() => supabase.from("race_results").select("rider_id, rank, result_type, stage_number")
+      const resultRows = await fetchAllRows(() => supabase.from("race_results").select("rider_id, rank, result_type, stage_number, finish_time")
         .eq("race_id", req.params.raceId).in("result_type", ["stage", "gc"]).or(`stage_number.eq.${stageNumber},stage_number.is.null`).order("id"));
       story = buildRaceStory({ events, timelineVersion: data.timeline_version, ...storyInputsFromResults(resultRows, stageNumber) });
     } catch (storyErr) { captureException(storyErr); }
@@ -6850,7 +6872,7 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       supabase.from("rider_condition").select("rider_id, fatigue, injured_until").in("rider_id", teamRiderIds),
     ]);
     const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
-    const fatById = new Map((conditions || []).map((c) => [c.rider_id, c.fatigue]));
+    const fatById = openingFatigueMap(conditions); // #7801: pr. løb ved etapestart, se assignRaces
     // #2637/#3896: skadede ryttere (kanonisk isRiderInjured) må ALDRIG auto-udtages —
     // spejler raceRunner.fillMissingTeamEntries (spec 6.5, #1306) og raceEntryGenerator-sweepet.
     // Dette endpoint er spillerens EGEN "auto-udfyld"-knap; manglede samme guard.
@@ -6898,9 +6920,12 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     // S3: holdets strategi som deterministisk præference-lag. Ingen row → null (uændret).
     const strategy = await loadTeamStrategy({ supabase, teamId: req.team.id, rosterIds: new Set(teamRiderIds) });
 
+    const { byRace: fatByRace } = await fatigueByRiderForRaces({ supabase, conditions, abilityByRider: abById, teamId: req.team.id, // #7801
+      races: target.map((r) => ({ id: r.id, stages: stagesByRace.get(r.id) })) });
     const assignRaces = target.map((r) => ({
       race_id: r.id, window: bindingWindowByRace.get(r.id), stages: stagesByRace.get(r.id) || [],
       sizeRule: selectionSizeForRace(r), excludedRiderIds: regenLocks.get(r.id)?.riderIds, // #6139
+      fatigueByRider: fatByRace?.get(r.id), // #7801
     }));
     // #6132: kanoniske brugte dage (også hos et tidligere hold) og andre holds entries.
     lockedWindows.push(...await loadRegenerateBindingLocks({ supabase, seasonId: season.id, teamId: req.team.id,
@@ -7262,7 +7287,7 @@ router.post("/races/strategy/preview", requireAuth, marketWriteLimiter, async (r
       supabase.from("race_entries").select("race_id, rider_id, race_role, is_auto_filled").eq("team_id", req.team.id),
     ]);
     const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
-    const fatById = new Map((conditions || []).map((c) => [c.rider_id, c.fatigue]));
+    const fatById = openingFatigueMap(conditions); // #7801: pr. løb ved etapestart, se assignRaces
     const riderObjs = teamRiderIds
       .map((id) => ({ rider_id: id, abilities: abById.get(id), fatigue: fatById.get(id) ?? 0 }))
       .filter((r) => r.abilities);
@@ -7295,9 +7320,12 @@ router.post("/races/strategy/preview", requireAuth, marketWriteLimiter, async (r
       targetRaceIds: new Set((Array.isArray(req.body?.target_race_ids) ? req.body.target_race_ids : []).filter((id) => raceIds.includes(id))),
     };
 
+    const { byRace: fatByRace } = await fatigueByRiderForRaces({ supabase, conditions, abilityByRider: abById, teamId: req.team.id, // #7801
+      races: target.map((r) => ({ id: r.id, stages: stagesByRace.get(r.id) })) });
     const assignRaces = target.map((r) => ({
       race_id: r.id, window: bindingWindowByRace.get(r.id), stages: stagesByRace.get(r.id) || [],
       sizeRule: selectionSizeForRace(r),
+      fatigueByRider: fatByRace?.get(r.id), // #7801
     }));
     const proposed = assignTeamAcrossRaces({ riders: riderObjs, races: assignRaces, lockedWindows, strategy: proposedStrategy });
 
@@ -8422,11 +8450,13 @@ router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
     return res.status(400).json({ error: "Asking price must be a positive whole number", errorCode: "invalid_asking_price" });
   }
   const { data: rider } = await supabase
-    .from("riders").select("id, team_id, firstname, lastname, is_retired, is_academy").eq("id", rider_id).single();
+    .from("riders").select("id, team_id, pending_team_id, firstname, lastname, is_retired, is_academy").eq("id", rider_id).single();
   if (!rider || rider.team_id !== req.team.id)
     return res.status(403).json({ error: "Du ejer ikke denne rytter", errorCode: "rider_not_owned" });
   if (rider.is_retired)
     return res.status(409).json({ error: "This rider has retired and can't be listed for sale", errorCode: "rider_retired_listing" });
+  const parkedListingIssue = getParkedRiderTradeIssue(rider); // #6181
+  if (parkedListingIssue) return res.status(parkedListingIssue.status).json(parkedListingIssue.body);
   // #3650 (ejer-løfte i Discord 11/8): akademiryttere må NU listes direkte —
   // #1824's is_academy-GUARD er fjernet HER (blokerer stadig auktion, se POST
   // /auctions). Ingen manuel graduation krævet længere: salget graduerer
@@ -8681,9 +8711,11 @@ router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res
     return res.status(400).json({ error: "Invalid amount", errorCode: "invalid_offer_amount" });
 
   const { data: rider } = await supabase
-    .from("riders").select("id, team_id, firstname, lastname, is_retired").eq("id", rider_id).single();
+    .from("riders").select("id, team_id, pending_team_id, firstname, lastname, is_retired").eq("id", rider_id).single();
   if (!rider || !rider.team_id) return res.status(404).json({ error: "Rytter ikke fundet eller har intet hold", errorCode: "rider_not_found_or_no_team" });
   if (rider.is_retired) return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke handles", errorCode: "rider_retired_trade" });
+  const parkedOfferIssue = getParkedRiderTradeIssue(rider); // #6181
+  if (parkedOfferIssue) return res.status(parkedOfferIssue.status).json(parkedOfferIssue.body);
   if (rider.team_id === req.team.id) return res.status(400).json({ error: "You can't bid on your own rider", errorCode: "cannot_bid_own_rider" });
 
   const { data: sellerTeam } = await supabase
@@ -9136,10 +9168,12 @@ router.post("/transfers/:id/offer", requireAuth, marketWriteLimiter, async (req,
   const { offer_amount, message } = req.body;
   const { data: listing } = await supabase
     .from("transfer_listings")
-    .select("*, rider:rider_id(id, firstname, lastname, team_id)")
+    .select("*, rider:rider_id(id, firstname, lastname, team_id, pending_team_id)")
     .eq("id", req.params.id).single();
   if (!listing || listing.status !== "open")
     return res.status(404).json({ error: "Listing ikke fundet", errorCode: "listing_unavailable" });
+  const parkedListingOfferIssue = getParkedRiderTradeIssue(listing.rider); // #6181
+  if (parkedListingOfferIssue) return res.status(parkedListingOfferIssue.status).json(parkedListingOfferIssue.body);
   if (listing.seller_team_id === req.team.id)
     return res.status(400).json({ error: "You can't bid on your own listing", errorCode: "cannot_bid_own_listing" });
   const { data: listingSeller } = await supabase

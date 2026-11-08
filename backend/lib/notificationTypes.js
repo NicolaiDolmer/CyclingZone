@@ -95,6 +95,10 @@ export const NOTIFICATION_TYPES = [
   // auto-raekke) i den beroerte (loeb, hold)-enhed — det haandhaeves af
   // kaldestederne, ikke af selve notifikationstypen.
   "assistant_filled_squad",
+  // #7792: et roadmap-punkt manageren stemte hoejt paa er leveret. Hoejst en
+  // gang pr. manager pr. punkt (roadmap_delivery_receipts), se
+  // roadmapDeliveredNotify.js.
+  "roadmap_delivered",
 ];
 
 // #6385: når en auktion er afgjort, skjuler indbakken (frontend/src/lib/

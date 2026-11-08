@@ -37,6 +37,9 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "season_academy_intake_enabled", area: "academy", label: "Akademi — sæsonoptag" },
   { key: "board_mandate_model_enabled", area: "board", label: "Bestyrelse — mandat-modellen" },
   { key: "daily_training_enabled", area: "training", label: "Daglig træning" },
+  // #7801: træthed lige nu på fladerne, i træningens regler og i assistentens udtagelse. Ikke seedet = off;
+  // kun "on" tænder, "beta" læses som off (riderFatigueNowFlag.js). Ejer-only flip.
+  { key: "fatigue_now_7801", area: "training", label: "Træthed lige nu — flader og regler" },
   { key: "training_score_visible", area: "training", label: "Træningsscore 1-99 (visning)" },
   { key: "training_mobile_table", area: "training", label: "Træningssiden på mobil — ny tabel" },
   // #1140: "Your first race"-kort for nye hold paa dashboardet. Seedet off.
@@ -92,6 +95,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_breakaway_outlook", area: "race-day", label: "Jægerboks — motorens udbrudsbud" },
   // #7717: Hvorfor?-knappen i "Your day". Kun visning, seedet off.
   { key: "rider_why_button", area: "race-day", label: "Hvorfor?-knappen ved rytterne (Your day)" },
+  // #2009: hover-miniprofil på rytternavne. Kun visning, seedet off; beta først (ejer 7/11).
+  { key: "rider_hover_card", area: "squad", label: "Hover-miniprofil på ryttere" },
 
   // ── Motorer og batch-jobs (spilleren ser resultatet, ikke kontakten) ──────
   { key: "race_engine_v2_enabled", area: "race-engine", label: "Løbsmotor v2" },
@@ -161,6 +166,9 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "ability_cap_per_date_enabled", area: "training", label: "Udvikling 2.0 — maks +1 pr. evne pr. dato" },
   // #3564: kurve B (D-058, developmentCurveBFlag.ts). Fail-safe OFF; "beta" læses som off. Ejer-only flip.
   { key: "development_curve_b", area: "training", label: "Udvikling 2.0 — kurve B (niveau og potentiale styrer, ikke alder)" },
+  // #6110 trin 2: XP-modellen (developmentXpFlag.ts). Fail-safe OFF; "beta" læses som off;
+  // gælder fra startdatoen development_xp_from_date; tal i private_config. Ejer-only flip.
+  { key: "development_xp_model", area: "training", label: "Udvikling 2.0 — XP-modellen (fælles prisliste, potentiale giver XP)" },
   // #6853/#5764: pensioneret, koden læser den ikke (visningen er permanent). Rækken
   // bliver kun for patch notes-mærket.
   { key: "potential_single_number", area: "squad", label: "Udvikling 2.0 — potentiale: bedste rolle + typeboks (visning)" },
@@ -278,6 +286,10 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "stage_plan_dropped_front_7635",
   // #7717: "Your day" viser Hvorfor?-knappen paa dette flag.
   "rider_why_button",
+  // #2009: rytternavnene viser hover-miniprofilen paa dette flag.
+  "rider_hover_card",
+  // #7725: Hjaelp viser svaret om dagsformen i ord paa dette flag (binaert, som motoren).
+  "day_words_7725",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,
@@ -285,4 +297,4 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
 // en flade aldrig beskriver en model motoren ikke koerer for beta-gruppen.
 // #7536: condition_v2_race_date_training_day laeses ogsaa kun som "on" af motoren
 // (conditionModelV2Flag.isRaceDateTrainingDayEnabled).
-export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635"]);
+export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725"]);

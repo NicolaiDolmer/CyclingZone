@@ -142,6 +142,8 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     condition_v2_race_date_training_day: false,
     stage_plan_dropped_front_7635: false,
     rider_why_button: false,
+    rider_hover_card: false,
+    day_words_7725: false,
   });
   assert.equal(f.betaLookups(), 0, "en anonym forespoergsel maa ikke slaa en bruger op");
 });
@@ -205,6 +207,8 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     condition_v2_race_date_training_day: false,
     stage_plan_dropped_front_7635: false,
     rider_why_button: false,
+    rider_hover_card: false,
+    day_words_7725: false,
   });
 });
 
@@ -276,6 +280,8 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     condition_v2_race_date_training_day: false,
     stage_plan_dropped_front_7635: false,
     rider_why_button: false,
+    rider_hover_card: false,
+    day_words_7725: false,
   });
   assert.deepEqual(await readPlayerFeatureFlags(supabase, { isBetaTester: true }), {
     race_engine_v4: true,
@@ -308,6 +314,8 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     condition_v2_race_date_training_day: false,
     stage_plan_dropped_front_7635: false,
     rider_why_button: false,
+    rider_hover_card: false,
+    day_words_7725: false,
   });
 });
 
@@ -375,6 +383,17 @@ test("#7536: condition_v2_race_date_training_day er binaert som motoren (kun on 
   const chain = { training_tick_per_race_day: "on", training_condition_per_date: "on", condition_model_v2: "on" };
   const on = await readPlayerFeatureFlags(fakeSupabase({ ...chain, condition_v2_race_date_training_day: "on" }));
   assert.equal(on.condition_v2_race_date_training_day, true);
+});
+
+test("#7725: day_words_7725 er binaert og strengt som motoren (kun strengen on taender Hjaelp)", async () => {
+  assert.ok(PLAYER_VISIBLE_BINARY_FLAG_KEYS.includes("day_words_7725"));
+  for (const value of ["beta", "off", true, false, undefined]) {
+    const rows = value === undefined ? {} : { day_words_7725: value };
+    const flags = await readPlayerFeatureFlags(fakeSupabase(rows), { isBetaTester: true });
+    assert.equal(flags.day_words_7725, false, `vaerdi ${String(value)}`);
+  }
+  const on = await readPlayerFeatureFlags(fakeSupabase({ day_words_7725: "on" }));
+  assert.equal(on.day_words_7725, true);
 });
 
 test("#7536: Hjaelp-flaget er off naar condition_model_v2 eller dens forudsaetning er off", async () => {

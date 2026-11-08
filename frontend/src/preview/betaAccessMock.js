@@ -50,6 +50,8 @@ let flags = [
   { key: "training_fatigue_rules", area: "training", label: "Træthedsgrænse (spillerens regler)", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "season_matrix_mobile", area: "season", label: "Sæsonmatrix på mobil — ny visning", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "rider_why_button", area: "race-day", label: "Hvorfor?-knappen ved rytterne (Your day)", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
+  { key: "rider_hover_card", area: "squad", label: "Hover-miniprofil på ryttere", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
+  { key: "day_words_7725", area: "race-engine", label: "Dagsform i ord efter etapen", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
 ];
 
 function readBody(init) {
@@ -80,16 +82,18 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "potential_single_number", // #6110 Hjaelp
   "potential_estimate_display", // #7684 (flader + Hjaelp i byggetrin 6)
   "rider_why_button", // #7717
+  "rider_hover_card", // #2009
   "ability_cap_per_date_enabled", // #6110 Hjaelp
   "training_decision_card", // #6110 Hjaelp
   "training_catalog_v3", // #5319 vaelgere + Hjaelp
   "race_library_v2", // #7533 (kun patch-noten)
   "condition_v2_race_date_training_day", // #7536 Hjaelp
   "stage_plan_dropped_front_7635", // #7636 etapeplanens resume
+  "day_words_7725", // #7725 Hjaelp
 ];
 
 // Spejler PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden: "beta" er off.
-const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635"];
+const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725"];
 
 // #5319: træningskatalog v3 er OFF på preview (som i prod), men kan tændes med
 // ?catalogV3=on for at se de nye sessioner i vælgerne. Huskes i localStorage

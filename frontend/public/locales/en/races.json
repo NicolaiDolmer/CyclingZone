@@ -72,7 +72,7 @@
       "ride_for_result": "Ride for a result",
       "sprint_train": "Sprint train",
       "grupetto": "Grupetto",
-      "ride_in": "Ride to the finish"
+      "ride_in": "Ride in easy"
     },
     "from": {
       "kom": "after {climb}",
@@ -281,7 +281,7 @@
         "placedGap": "{name} finished in position {rank}, {gap} down.",
         "dayGreat": "{name} had a really good day.",
         "dayGood": "{name} had a good day.",
-        "ownOut": "{kind, select, withdrawal {Climbed off: {names}. Too far behind the winner.} time_limit {Outside the time limit: {names}.} crash {Out after a crash: {names}.} mechanical {Out with a mechanical: {names}.} other {Abandoned: {names}.}}"
+        "ownOut": "{kind, select, withdrawal {Climbed off: {names}. Too far behind the winner.} time_limit {Outside the time limit: {names}.} time_limit_fatigue {Outside the time limit because of fatigue: {names}.} crash {Out after a crash: {names}.} mechanical {Out with a mechanical: {names}.} other {Abandoned: {names}.}}"
       },
       "final": {
         "aria": "The final 5 km: groups on the road with distance to go, gaps and race clock",
@@ -324,6 +324,7 @@
         "abandonedMechanical": "He had a mechanical{where} and had to abandon",
         "abandoned": "He abandoned{where}",
         "timeLimit": "He finished outside the time limit",
+        "timeLimitFatigue": "He finished outside the time limit because he was too tired",
         "withdrawal": "He climbed off, too far behind the winner",
         "won": "He was first to the line",
         "wonSprint": "He won the sprint",
@@ -353,7 +354,12 @@
         "attackBehind": "He attacked{where} but could not stay ahead to the line",
         "bunchBehindSprint": "He finished in the bunch behind the sprint",
         "pelotonBehindBreak": "He finished in the peloton, behind the break that stayed away",
-        "pelotonBehind": "He stayed in the peloton when the group ahead rode clear"
+        "pelotonBehind": "He stayed in the peloton when the group ahead rode clear",
+        "ttFastest": "He set the fastest time",
+        "ttDayGreat": "He had a great day on the bike",
+        "ttDayGood": "He had a good day on the bike",
+        "ttRouteGood": "The course suited him",
+        "ttRouteBad": "The course did not suit him"
       },
       "lead": {
         "afterBreak": "after a day in the break",
@@ -363,7 +369,9 @@
         "badDayIllness": "on a bad day feeling ill",
         "badDayRain": "on a bad day in the rain",
         "badDayWind": "on a bad day in the wind",
-        "badDayHeat": "on a bad day in the heat"
+        "badDayHeat": "on a bad day in the heat",
+        "ttRouteGood": "on a course that suited him",
+        "ttRouteBad": "on a course that did not suit him"
       }
     },
     "yourDay": {
@@ -1637,7 +1645,10 @@
         "order": {
           "all_out_stayed_away": "{rider} rode all out on your orders and stayed away to the line.",
           "all_out_held_on_climb": "{rider} rode all out on your orders and stayed with the front over {climb}.",
-          "all_out_held_on": "{rider} rode all out on your orders and stayed with the front group."
+          "all_out_held_on": "{rider} rode all out on your orders and stayed with the front group.",
+          "attack_stayed_away": "{rider} attacked on your orders and stayed away to the line.",
+          "attack_held_on_climb": "{rider} attacked on your orders and stayed with the front over {climb}.",
+          "attack_held_on": "{rider} attacked on your orders and stayed with the front group."
         },
         "breakaway_dropped": "{riders} {count, plural, one {is} other {are}} dropped from the break.",
         "breakaway_attempt_failed": "{riders}{others, plural, =0 {} one { and # other} other { and # others}} {count, plural, one {tries} other {try}} to get away, but {count, plural, one {doesn't} other {don't}} get clear. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} and {teamLast}}} worked against it. The attempt cost energy for the rest of the stage.",
@@ -1659,6 +1670,8 @@
         "favorite_crack_tt": "{rider} fades in the second half and bleeds time.",
         "all_out_gain": "{rider} goes all out on the last climb and gains time.",
         "all_out_cracked": "{rider} goes all out and runs empty on the last climb.",
+        "attack_gain": "{rider} attacks on the last climb and gains time.",
+        "attack_cracked": "{rider} attacks and runs empty on the last climb.",
         "bad_day_fatigue": "{rider} had a bad day. The hard days before caught up with him.",
         "bad_day_form": "{rider} had a bad day. He was short of form.",
         "bad_day_illness": "{rider} had a bad day. He was feeling ill.",
@@ -1731,6 +1744,7 @@
       "illness": "Ill, did not start",
       "withdrawal": "Climbed off, too far behind",
       "time_limit": "Outside time limit",
+      "time_limit_fatigue": "Outside time limit, tired",
       "abandoned": "Abandoned",
       "dnf": "DNF",
       "dnfCollapsed": "{count, plural, one {# rider did not finish} other {# riders did not finish}}",

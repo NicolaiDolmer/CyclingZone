@@ -5,10 +5,10 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
-import { engineCounts, roadmapRowId, type RoadmapItem } from "../../lib/roadmapModel.ts";
-import { isValidScore } from "../../lib/roadmapVoting.js";
+import { engineCounts, roadmapRowId, type RoadmapItem, type RoadmapVote } from "../../lib/roadmapModel.ts";
+import { isDontKnow, isValidScore } from "../../lib/roadmapVoting.js";
 import { Button, EmptyState, Section, SectionHeader, Segmented } from "./roadmapUi.ts";
-import ScoreScale from "./ScoreScale.tsx";
+import ScoreScale, { DontKnowButton } from "./ScoreScale.tsx";
 import { RowMeta, RowTitle, SaveNote, SkeletonRows, ROW, ROW_LIST } from "./RoadmapRows.tsx";
 import { areaTitle, localTitle, type SaveState } from "./roadmapFormat.ts";
 import { buttonClass } from "../ui/buttonStyles.js";
@@ -28,10 +28,13 @@ export interface VoteTabProps {
   unrated: number;
   onlyUnrated: boolean;
   drafts: Record<string, VoteDraft>;
+  /** De gemte svar. Et Ved ikke står kun her, for en kladde har ingen tal at vise. */
+  votes: Map<string, RoadmapVote>;
   saveState: Record<string, SaveState>;
   canVote: boolean;
   isNew: (item: RoadmapItem) => boolean;
   onScore: (item: RoadmapItem, axis: "idea" | "importance", value: number) => void;
+  onDontKnow: (item: RoadmapItem) => void;
   onShowAll: () => void;
 }
 
@@ -128,6 +131,13 @@ export default function VoteTab(props: VoteTabProps) {
                           onSelect={(n) => props.onScore(item, "importance", n)}
                         />
                       )}
+                      {/* Et valgt tal er en ny stemme på vej, så knappen slukker straks. */}
+                      <DontKnowButton
+                        label={t("voting.dontKnow")}
+                        pressed={!showImportance && isDontKnow(props.votes.get(item.id))}
+                        disabled={state === "saving"}
+                        onSelect={() => props.onDontKnow(item)}
+                      />
                       <SaveNote state={state} savedLabel={t("voting.saved")} errorLabel={t("voting.error")} />
                     </div>
                   )}

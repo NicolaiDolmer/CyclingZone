@@ -92,6 +92,7 @@ import { buildStageTimeline, buildStageTimelineV4 } from "./raceTimeline.js";
 import { raceSeedInput, activeSaltVersion } from "./raceSeedSalt.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRaceFatigue, attachConditionWork, conditionWorkForRun, raceConditionLoads, stageConditionWork, stageEnteringFatigues, loadSeasonRaceDaysByRider, applySameDateEnteringFatigueV2, applyGrandTourRestDayFatigue as applyGrandTourRestDayFatigueShared } from "./raceFatigue.js";
+import { fatigueByRiderNow, firstStageNumber } from "./riderFatigueNow.js"; // #7801
 import { isConditionModelV2Enabled } from "./conditionModelV2Flag.js";
 import { applyMedicalToStageOutputs, loadMedicalBonusByTeam, loadMedicalBonusForRiders } from "./medicalEffects.js";
 import {
@@ -142,7 +143,7 @@ import { raceBindingWindow, isRiderDayInvariantViolation, isDrainingAiObligation
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries, injuryShortTeamIds,
   addRidersByTeam, startDayOverlapRiderIds, teamStartsShortOnOverlap, overlapShortTeamIds, overlapRuleApplies, startDaySpentRiderIds } from "./raceFieldIntegrity.js"; // #6739
 import { loadStartDaySpentRiderIds } from "./raceStartOutlook.js"; // #6739
-import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury, raceSquadOf, ANY_SQUAD, loadRaceSeasonNumber } from "./riderEligibility.js";
+import { applyRiderEligibilityFilter, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury, raceSquadOf, ANY_SQUAD, loadRaceSeasonNumber } from "./riderEligibility.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { loadSpentRaceDays } from './raceSpentDays.js';
 import { isMissingSquadColumnError } from "./racePoolCatalog.js";
@@ -150,7 +151,7 @@ import { isMissingSquadColumnError } from "./racePoolCatalog.js";
 // stillingen, se hook-stedet i simulateStageByIndex nedenfor.
 import { refreshYouthStandings as refreshYouthStandingsShared, isYouthSquad } from "./youthStandings.js";
 import { loadEligibleEntries } from "./raceEntriesLoader.js";
-import { flushDeferredTransfersForRace } from "./stageRaceTransferDefer.js";
+import { flushDeferredTransfersForRace, filterEligibleEntriesKeepingParked } from "./stageRaceTransferDefer.js";
 // #4423: flush udskudte akademi-optagelser ved løbs-finalisering (spejler #1995 ovenfor).
 import { flushDeferredAcademySigningsForRace } from "./academySigningDefer.js";
 import { requestRankingMatviewRefresh } from "./refreshRankingMatviews.js"; // #5911: gated + samlet
@@ -1562,7 +1563,8 @@ export async function fillMissingTeamEntries({
     supabase, table: "rider_condition", columns: "rider_id, fatigue",
     inColumn: "rider_id", ids: candidateIds,
   });
-  if (!condErr) fatigueByRider = new Map((conditions || []).map((c) => [c.rider_id, c.fatigue]));
+  // #7801: med fatigue_now_7801 regner assistenten på trætheden ved etapens planlagte start (ikke uret); slukket = samme map som før.
+  if (!condErr) fatigueByRider = await fatigueByRiderNow({ supabase, conditions, abilityByRider, teamIdByRider: new Map(candidates.map((r) => [r.id, r.team_id])), atStage: { raceId: race.id, stageNumber: firstStageNumber(stages) } });
 
   const sizeRule = selectionSizeForRace(race);
   const rows = [];
@@ -1827,7 +1829,7 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     const entryRiderIds = [...new Set(existingEntries.map((e) => e.rider_id))];
     const { data: entryRiders, error: erErr } = await selectInChunks({
       supabase, table: "riders",
-      columns: "id, team_id, squad, is_academy, is_retired, birthdate",
+      columns: "id, team_id, squad, is_academy, is_retired, birthdate, pending_team_id",
       inColumn: "id", ids: entryRiderIds,
     });
     if (erErr) throw new Error(`riders (eligibility): ${erErr.message}`);
@@ -1836,7 +1838,8 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     // en senior i et U23-løb er. #6964 (ejer 20/10): og en for gammel rytter starter ikke.
     // Kun FØR start: et igangværende etapeløbs startfelt er låst (#1825/#1844).
     const seasonNumber = startedFieldLock || Number(race.stages_completed) > 0 ? undefined : await loadRaceSeasonNumber({ supabase, race });
-    existingEntries = filterEligibleEntries({ entries: existingEntries, ridersById, squad: startedFieldLock ? ANY_SQUAD : raceSquad, seasonNumber });
+    // #7692: en solgt rytter med parkeret skifte koerer et startet etapeloeb faerdigt.
+    existingEntries = filterEligibleEntriesKeepingParked({ entries: existingEntries, ridersById, squad: startedFieldLock ? ANY_SQUAD : raceSquad, seasonNumber, raceStarted: Number(race.stages_completed) > 0 });
   }
   // #3896: skadede committede entries må hverken starte eller simuleres — motoren
   // ekskluderede tidligere KUN skade fra auto-fyld/auto-pick-kandidatpuljer (#2637/#1306),
