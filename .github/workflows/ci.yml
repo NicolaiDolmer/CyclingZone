@@ -5,6 +5,9 @@ on:
     branches:
       - main
   pull_request:
+    # ready_for_review: kladder springer de tunge tests over (se backend-changes);
+    # naar PR'en markeres klar, koerer hele suiten paa samme HEAD (ejer 7/11).
+    types: [opened, synchronize, reopened, ready_for_review]
   # Merge queue (4/8): required checks skal rapportere på merge-group-SHA'en,
   # ellers timer køen ud. Alle jobs her er fil-/test-baserede og kører uændret.
   merge_group:
@@ -54,6 +57,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
@@ -65,6 +69,12 @@ jobs:
           # enhver ukendt event-type koerer altid hele suiten.
           if [[ "$EVENT_NAME" != "pull_request" ]]; then
             record "true" "ikke en PR, koerer altid fuldt"
+            exit 0
+          fi
+          # Ejer 7/11: kladde-PR'er (boelgens mellemtrin) koerer ikke backend-shards.
+          # Kladder kan ikke merges, og ready_for_review koerer hele suiten bagefter.
+          if [[ "$PR_DRAFT" == "true" ]]; then
+            record "false" "kladde-PR, tunge tests venter til ready_for_review"
             exit 0
           fi
           # previous_filename med: en omdoebt eller slettet testfil kan goere

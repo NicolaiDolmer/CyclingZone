@@ -4,12 +4,12 @@
 
 ## Aktiv styring
 
-> **⏰ Påmind ejeren:** 8/11: spørg egomadsen om træningsrapporten #7870 (billeder, form/træthed sløret) · 8/11: XP-valget #6110 visuelt + byg · Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
+> **⏰ Påmind ejeren:** egomadsen #7870 (billeder, form/træthed sløret) · Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (7/11 nat):** Merge-kø: #7887 (main-typecheck) → #7849 (hover+højreklik, ejer-go beta) → #7853 (pengelås M1). Bølge 5 i gang: mestertrøjer #7824 (blev ikke startet i bølge 4), færdiggør #7871 (WIP-redning på draft #7874), #7879, #7873. Klar efter CI: #7857, #7883. Venter ejer: tabeller #7886, taktik #7880/#7884/#7885, wireframe v3, tænd-kort #7644, TASTE række 6. 8/11: egomadsen #7870, XP #6110, sandhedsvagt, #7869. 9/11: secrets, feedback, #5431.
+> **🎯 Next action (8/11):** **Dirigent-tavle [#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911) er sandheden; start der.** 8/11 live: film #7910; tændt 7725, 7635, hover. **Large kører (målt 8/11 kl. 16.25: shared_buffers 2 GB, 160 forbindelser, #7659).** **Hexagone kl. 15:** 7644 SLUKKET; sandhedsvagt på #7897. **7715-tænding:** #7701 først bag kontakten; #7850 + patch note PÅ tænd-dagen (tjekliste #7715). **Efter løbet:** #6912, #7899, #7902, 7644 tuning vs G19-bånd.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** PC1 Claude Code-session 7/11 (bølge 4 kører; Discord #build-a-feature). Dolmer PC: Codex XP-kalibrering.
+> **🤖 Working agent:** Dirigent på Dolmer PC (Claude, start 8/11 kl. 16.22; PC1 holder pause). Tavle #7911, plan #7659. **Codex (Dolmer PC):** #7875, #7878.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
