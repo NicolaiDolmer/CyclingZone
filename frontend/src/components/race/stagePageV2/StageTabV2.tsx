@@ -119,11 +119,13 @@ export interface StageTabV2Props {
   storyLoading?: boolean;
   /** Loebshistorien kunne ikke hentes: saa kan Hvorfor? intet sige om etapen. */
   storyError?: boolean;
+  /** #7717: sidens ur, saa rute-friskheden ikke afhaenger af Date.now(). */
+  nowMs: number;
 }
 
 export default function StageTabV2({
   stageNumber, stagesCompleted, isStageRace, phase, profile, results, stagePointRows, profileByStage = {}, stageLoaded, stageErrorSlot, myTeamId,
-  stageRoles, careerEvents, dnfRows = [], tacticsAction, onOpenStandings, emptyState, story = null, narrative = null, storyLoading = false, storyError = false,
+  stageRoles, careerEvents, dnfRows = [], tacticsAction, onOpenStandings, emptyState, story = null, narrative = null, storyLoading = false, storyError = false, nowMs,
 }: StageTabV2Props) {
   const { t } = useTranslation("races");
   const [selectedClimb, setSelectedClimb] = useState<number>(() => Math.max(0, sortedClimbs(profile).length - 1));
@@ -142,7 +144,7 @@ export default function StageTabV2({
   const weather = stageWeather(profile, phase, story);
   const whyEnabled = useRiderWhyEnabled(phase === "after");
   const ranAt = narrative?.ranAt;
-  const routeFits = useMemo(() => routeFitsAtRaceTime(new Map<string, number | null>(riders.map((r) => [r.rider_id, stageRouteMatch(r, stageNumber)])), ranAt), [riders, stageNumber, ranAt]);
+  const routeFits = useMemo(() => routeFitsAtRaceTime(new Map<string, number | null>(riders.map((r) => [r.rider_id, stageRouteMatch(r, stageNumber)])), ranAt, nowMs), [riders, stageNumber, ranAt, nowMs]);
   const why = useMemo<RowWhy | null>(() => (whyEnabled && !storyError ? {
     loading: storyLoading,
     // En ikke-starter har intet loeb at forklare; raekken siger allerede hvorfor.

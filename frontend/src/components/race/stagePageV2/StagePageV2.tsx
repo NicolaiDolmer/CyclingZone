@@ -162,6 +162,7 @@ export default function StagePageV2(props: StagePageV2Props) {
       {activeTab === "stage" && (
         <StageTabV2
           key={selectedStage}
+          nowMs={nowMs}
           stageNumber={selectedStage}
           stagesCompleted={stagesCompleted}
           isStageRace={isStageRace}
