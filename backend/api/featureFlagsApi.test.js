@@ -385,6 +385,17 @@ test("#7536: condition_v2_race_date_training_day er binaert som motoren (kun on 
   assert.equal(on.condition_v2_race_date_training_day, true);
 });
 
+test("#7725: day_words_7725 er binaert og strengt som motoren (kun strengen on taender Hjaelp)", async () => {
+  assert.ok(PLAYER_VISIBLE_BINARY_FLAG_KEYS.includes("day_words_7725"));
+  for (const value of ["beta", "off", true, false, undefined]) {
+    const rows = value === undefined ? {} : { day_words_7725: value };
+    const flags = await readPlayerFeatureFlags(fakeSupabase(rows), { isBetaTester: true });
+    assert.equal(flags.day_words_7725, false, `vaerdi ${String(value)}`);
+  }
+  const on = await readPlayerFeatureFlags(fakeSupabase({ day_words_7725: "on" }));
+  assert.equal(on.day_words_7725, true);
+});
+
 test("#7536: Hjaelp-flaget er off naar condition_model_v2 eller dens forudsaetning er off", async () => {
   const parentOff = await readPlayerFeatureFlags(fakeSupabase({ condition_v2_race_date_training_day: "on", condition_model_v2: "off" }));
   assert.equal(parentOff.condition_v2_race_date_training_day, false, "motoren bruger ikke reglen uden v2");
