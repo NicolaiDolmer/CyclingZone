@@ -1,0 +1,11 @@
+{
+  "sourceCommit": "d51291d02b5434113e113c4a802b1e49fedc5dfa",
+  "note": "#7801: motorens træthed ved etapestart, skrevet fra merge-basen før riderFatigueNow.js. Kun hashes. Genereres ALDRIG med den nye kode.",
+  "scenarios": 600,
+  "modelFingerprint": "26923547ec715c3e2c5afa8fca8575b796e6c5e6577f1a13136721bbee7efa53",
+  "entrants": "c43c4b117dd3e1c23a31646a918a9a278367c783c5243677903c04d934a694cc",
+  "returned": "f5174ed78081dd0e870136c2ddcfa1709d5dc8ca35430fd131b5a5f7667b6388",
+  "thrown": "2660b9f3c95e385c9affb995d270ef31848fc5718b9dbdb25ae13f60d95132c3",
+  "reads": "bc4d90ea0ddc8cd3048fe11bfbbb963a184da3cc586f78273c3f95dcb62875e4",
+  "empty": "2a08979e8002252124e861b2816490b04fe03b6b779f9287fb7c25652bbc4052"
+}

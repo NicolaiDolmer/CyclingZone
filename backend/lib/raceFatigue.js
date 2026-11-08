@@ -12,9 +12,9 @@ import { effortFatigueMultiplier } from "./raceRoles.js";
 import { nextFatigue, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isS5ProfilesV1OrLater } from "./raceEngineRulesRevision.ts";
-import { stageLoadV2, enteringFatigueV2 } from "./conditionModelV2.js";
+import { stageLoadV2 } from "./conditionModelV2.js";
 import { fetchAllRows, SUPABASE_IN_CHUNK_SIZE } from "./supabasePagination.js";
-import { copenhagenDateString } from "./copenhagenTime.js";
+import { applyStageStartFatigue } from "./riderFatigueNow.js";
 import { deriveParticipationHistory } from "./raceParticipationHistory.ts";
 
 const RACE_FATIGUE_BY_PROFILE = {
@@ -462,42 +462,6 @@ export async function loadSeasonRaceDaysByRider({ supabase, seasonId, riderIds, 
  * røres ikke (neutral i motoren som i dag). Kaldes kun under v2 + regel-revision.
  * @returns {Promise<number>} antal ryttere hvis træthed blev hævet
  */
-export async function applySameDateEnteringFatigueV2({ supabase, raceId, stageNumber, entrants, medicalBonusByTeam = new Map() }) {
-  const withCondition = (entrants ?? []).filter((e) => Number.isFinite(Number(e.fatigue)));
-  if (!withCondition.length) return 0;
-  const { data: sched, error: schedErr } = await supabase.from("race_stage_schedule")
-    .select("game_day, scheduled_at").eq("race_id", raceId).eq("stage_number", stageNumber).maybeSingle();
-  if (schedErr) throw new Error(`race_stage_schedule (same-date fatigue): ${schedErr.message}`);
-  const gameDay = Number(sched?.game_day);
-  if (!Number.isInteger(gameDay) || !sched?.scheduled_at) return 0;
-  // Samme dato som ledgerens tick_date (dansk kalenderdato for etapens start).
-  const tickDate = copenhagenDateString(new Date(sched.scheduled_at));
-  const ids = withCondition.map((e) => e.rider_id);
-  const rows = [];
-  for (let i = 0; i < ids.length; i += SUPABASE_IN_CHUNK_SIZE) {
-    // pagination-safe: ≤100 ryttere × højst 4 tidligere løbsdage samme dato.
-    const { data, error } = await supabase.from("training_race_loads")
-      .select("rider_id, game_day, load")
-      .in("rider_id", ids.slice(i, i + SUPABASE_IN_CHUNK_SIZE))
-      .eq("tick_date", tickDate).lt("game_day", gameDay)
-      .is("consumed_at", null).is("duplicate_of_race_id", null)
-      .order("game_day");
-    if (error) throw new Error(`training_race_loads (same-date fatigue): ${error.message}`);
-    rows.push(...(data ?? []));
-  }
-  const loadsByRider = new Map();
-  for (const row of rows.slice().sort((a, b) => Number(a.game_day) - Number(b.game_day))) {
-    const key = String(row.rider_id);
-    if (!loadsByRider.has(key)) loadsByRider.set(key, []);
-    loadsByRider.get(key).push(Number(row.load) || 0);
-  }
-  let raised = 0;
-  for (const e of withCondition) {
-    const prior = loadsByRider.get(String(e.rider_id));
-    if (!prior?.length) continue;
-    const next = enteringFatigueV2({ openingFatigue: Number(e.fatigue), priorLoadsToday: prior, recoveryAbility: e.abilities?.recovery ?? 50, medicalBonus: medicalBonusByTeam.get(e.team_id) ?? 0 });
-    if (next !== Number(e.fatigue)) raised++;
-    e.fatigue = next;
-  }
-  return raised;
+export async function applySameDateEnteringFatigueV2(args) {
+  return applyStageStartFatigue(args); // #7801: samme kerne som fladernes tal
 }

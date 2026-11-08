@@ -43,6 +43,7 @@
   "voting": {
     "idea": "Goed idee?",
     "importance": "Belangrijk voor jou?",
+    "dontKnow": "Weet ik niet",
     "saved": "Opgeslagen",
     "error": "Je stem is niet opgeslagen. Probeer het opnieuw."
   },
@@ -53,11 +54,10 @@
     "horizon": {
       "this_week": "Deze week",
       "next_week": "Volgende week",
-      "next": "Binnenkort",
-      "this_season": "Dit seizoen",
-      "next_season": "Volgend seizoen",
-      "y2027": "2027",
-      "later": "Later"
+      "season": "Seizoen {season}",
+      "quarter": "Q{quarter} {year}",
+      "year": "{year}",
+      "unscheduled": "Open voor stemmen"
     }
   },
   "beta": {
@@ -124,7 +124,8 @@
     "recent": "Geleverd in de laatste 7 dagen",
     "earlier": "Eerder",
     "patchNote": "Patchnote · {date}",
-    "allPatchNotes": "Alle patchnotes"
+    "allPatchNotes": "Alle patchnotes",
+    "youVoted": "Je stemde"
   },
   "empty": {
     "plan": {

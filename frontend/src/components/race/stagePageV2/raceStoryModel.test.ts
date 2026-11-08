@@ -6,7 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { IntlMessageFormat } from "intl-messageformat";
-import { buildRaceStory, replayFrames } from "../../../../../backend/lib/raceStory.js";
+import { buildRaceStory, replayFrames, storyInputsFromResults } from "../../../../../backend/lib/raceStory.js";
 import { withEventPlaces } from "../../../../../backend/lib/raceTimeline.js";
 import {
   asStory, isTimeTrialStory, buildReport, castFrom, curateMoments, dayWordsByRider, dayWordSentences, finaleData, finaleEndTime, finaleMarkerLabelsShown, finaleStateAt, formatClock, frameAt,
@@ -273,6 +273,24 @@ test("buildReport: sparsom flad spurt (kun start, spurt, maal) fyldes op til 3 f
   assert.ok(keys.includes("third"), "tredjepladsen naevnes paa samme tid");
 });
 
+test("#7900: ved stregen staar alle ryttere i en af resultatets grupper, ogsaa ved samme hul (Codex)", () => {
+  const events = [
+    ev(0, "stage_start", { exact_km: 0, exact_time: 0, distance_km: 100, field_count: 4, profile_type: "flat" }),
+    ev(95, "finale_attack", { group_id: "finale-winner-0", source_group_id: "peloton-0", rider_ids: ["a"], exact_km: 100, exact_time: 8200 }),
+    ev(95, "finale_attack", { group_id: "finale-tier-1", source_group_id: "peloton-0", rider_ids: ["b"], exact_km: 100, exact_time: 8200 }),
+    ev(100, "finish", { win_type: "small_group", exact_km: 100, exact_time: 8200 }),
+  ];
+  const rows = [["a", 1, "+0:00"], ["b", 2, "+0:00"], ["c", 3, "+0:16"], ["d", 4, "+0:16"]]
+    .map(([rider_id, rank, finish_time]) => ({ rider_id: rider_id as string, rank: rank as number, finish_time: finish_time as string, result_type: "stage", stage_number: 2 }));
+  const s = asStory(buildRaceStory({ events, timelineVersion: 2, ...storyInputsFromResults(rows, 2) })) as RaceStory;
+  const finish = s.snapshots[s.snapshots.length - 1];
+  assert.equal(finish.groups.every((g) => g.gap_source === "result"), true);
+  const shown = new Set(finish.groups.map((g) => g.group_id));
+  assert.equal([...shown].filter((id) => id.startsWith("finale-")).length, 1, "to grupper paa samme hul er een gruppe");
+  const members = groupMembersAt(s, 100);
+  for (const { rider_id } of rows) assert.equal(shown.has(groupOfRider(members, rider_id) as string), true, rider_id);
+});
+
 test("groupMembersAt: splits flytter rytterne fra deres split-punkt; resten foelger feltet", () => {
   const s = story();
   const at = groupMembersAt(s, 58.35);
@@ -462,11 +480,12 @@ test("#7725 dayWordsByRider: et daarligt ord er aarsagen; ukendte ord og ryttere
   assert.equal(dayWordsByRider(null).size, 0);
 });
 
-test("#7725 dayWordSentences: vinderen og dine egne i maal, vinderen foerst, hoejst to, aldrig andre hold", () => {
+test("#7725 dayWordSentences: kun dine egne i maal, aldrig andre hold, heller ikke vinderen", () => {
   const c = castFrom(RESULTS, ROLES, 3, "t-me");
   const mine = c.finishers.filter((f) => c.mine.has(f.riderId)).map((f) => f.riderId);
   const other = c.finishers.find((f, i) => i > 0 && !c.mine.has(f.riderId))?.riderId;
   assert.ok(mine.length > 0 && other);
+  assert.equal(c.mine.has("w"), false, "vinderen koerer for et andet hold");
   const events = [
     ev(100, "day_word", { rider_id: other, word: "great" }),
     ev(100, "day_word", { rider_id: mine[0], word: "bad", reason: "form" }),
@@ -474,10 +493,21 @@ test("#7725 dayWordSentences: vinderen og dine egne i maal, vinderen foerst, hoe
     ev(100, "day_word", { rider_id: "not-in-results", word: "great" }),
   ];
   assert.deepEqual(dayWordSentences(events, c), [
-    { key: "dayGood", params: { name: c.nameOf("w") as string } },
     { key: "bad_day_form", params: { rider: c.nameOf(mine[0]) as string } },
   ]);
   assert.deepEqual(dayWordSentences([], c), [], "slukket: ingen ord i loggen, ingen saetning");
+});
+
+test("#7725 dayWordSentences: andres vinder giver ingen saetning, egen vinder goer, hoejst to", () => {
+  const rows = (winnerTeam: string) => [rr(1, "w", "Winner", winnerTeam, "+0:00"), rr(2, "m1", "One", "t-me", "+0:10"), rr(3, "m2", "Two", "t-me", "+0:20"), rr(4, "x", "Rival", "t-x", "+0:30")]
+    .map((row) => ({ ...row, stage_number: 3 }));
+  const onlyWinner = [ev(100, "day_word", { rider_id: "w", word: "great" })];
+  assert.deepEqual(dayWordSentences(onlyWinner, castFrom(rows("t-x"), [], 3, "t-me")), [], "andres vinder: ingen saetning");
+  const own = castFrom(rows("t-me"), [], 3, "t-me");
+  assert.deepEqual(dayWordSentences(onlyWinner, own), [{ key: "dayGreat", params: { name: own.nameOf("w") as string } }], "egen vinder: saetning");
+  assert.deepEqual(dayWordSentences(onlyWinner, castFrom(rows("t-me"), [], 3, null)), [], "uden hold: ingen saetning");
+  const three = [ev(100, "day_word", { rider_id: "m2", word: "good" }), ev(100, "day_word", { rider_id: "m1", word: "good" }), ev(100, "day_word", { rider_id: "w", word: "great" })];
+  assert.deepEqual(dayWordSentences(three, own).map((s) => s.params.name), [own.nameOf("w"), own.nameOf("m1")], "klareste ord foerst, saa maal-raekkefoelge, hoejst to");
 });
 
 test("#7725 buildReport: dagens ord staar foer dine udgaaede og skubber ikke loebets historie ud", () => {

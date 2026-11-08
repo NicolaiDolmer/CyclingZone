@@ -18,6 +18,8 @@ import {
   isTrainingFatigueRulesEnabled, isFatigueFallback, isValidThreshold, isMissingRulesTable, loadFatigueRuleRows,
 } from "../lib/trainingFatigueRules.ts";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
+import { fatigueByRiderNow } from "../lib/riderFatigueNow.js"; // #7801
+import { isFatigueNow7801Enabled } from "../lib/riderFatigueNowFlag.js";
 
 const PASS = (_req, _res, next) => next();
 export const RECENT_DAYS = 7;
@@ -101,7 +103,10 @@ export function createTrainingFatigueRulesRouter({
         ? await supabase.from("rider_condition").select("rider_id, fatigue").in("rider_id", riderIds)
         : { data: [], error: null };
       if (condError) throw new Error(condError.message);
-      const fatigueBy = new Map((conditions ?? []).map((c) => [c.rider_id, Number(c.fatigue ?? 0)]));
+      // #7801: med fatigue_now_7801 er tallet trætheden lige nu, som reglen også vurderer.
+      const fatigueNowOn = await isFatigueNow7801Enabled(supabase);
+      const live = fatigueNowOn ? await fatigueByRiderNow({ supabase, conditions, teamId, now: now() }) : new Map();
+      const fatigueBy = new Map((conditions ?? []).map((c) => [c.rider_id, Number(live.get(c.rider_id) ?? c.fatigue ?? 0)]));
 
       const today = copenhagenDateString(now());
       const since = dateMinusDays(today, RECENT_DAYS - 1);
@@ -118,6 +123,7 @@ export function createTrainingFatigueRulesRouter({
       for (const row of rows) if (row.rider_id != null) riderRules[row.rider_id] = ruleView(row);
       res.json({
         enabled: true,
+        ...(fatigueNowOn ? { fatigueNow: true } : {}),
         today,
         days: Array.from({ length: RECENT_DAYS }, (_, i) => dateMinusDays(today, RECENT_DAYS - 1 - i)),
         team: ruleView(team),

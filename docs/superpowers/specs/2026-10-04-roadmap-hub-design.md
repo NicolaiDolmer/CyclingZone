@@ -60,6 +60,8 @@ Motorernes "Today"-prosa fra den nuværende side udgår. Done-fanen viser, hvad 
 
 Ét kort med `Segmented` pr. område (All, Races, Training, Youth, Market, Club; kun områder med punkter vises, hvert med antal). Hver række har titel og område. Skalaen vises i to trin: først kun "Good idea?"; når den er valgt, folder "Important to you?" ud under den. Et punkt, spilleren allerede har stemt på, viser begge. Stemmen gemmes, når begge skalaer er valgt (som i dag). Fanen viser ca. 30 idéer ad gangen (§8). Nederst en stille handling, der fører til forummet for egne idéer.
 
+**Ved ikke (#7788, ejer 6/11):** ét Ved ikke pr. punkt, ikke pr. skala, både på Plan og Vote. Punktet er dermed besvaret, men svaret tæller ikke i snittene. Det kan ændres til en almindelig stemme, så længe punktet er åbent for stemmer.
+
 ### 3.3 Known issues
 
 To kort, med ét fælles `Segmented` pr. område over dem:
@@ -141,9 +143,11 @@ Alt er additivt. Ingen rækker slettes, ingen stemmer ændres.
 - Insert/update-policies: punktet skal være godkendt og have status `active` eller `planned`. Stemmer på punkter i gang eller færdige er låst og bevaret.
 - Flyttes en idé til planen, beholder eksisterende rækker begge tal. Nye stemmer på et planlagt punkt skriver kun `importance_score` og rører ikke en eksisterende `idea_score`.
 
+- **Ved ikke (#7788):** en række, hvor `importance_score` og `idea_score` begge er NULL. Rækken findes, så punktet tæller som besvaret og står ikke som ubesvaret. `importance_score` er nullable, og CHECK `roadmap_votes_dont_know_check` forbyder en halv stemme: uden vigtighed er der heller ingen `idea_score`. En idé (`active`) kræver fortsat begge tal, medmindre svaret er Ved ikke.
+
 ### 5.3 `roadmap_item_scores` (view)
 
-Formlen er uændret. Viewet får tilføjet `sort_order`, `horizon`, `title_da`, `importance_votes` og `sd_importance`. Fortsat `security_invoker`, så kun admin ser de samlede tal.
+Formlen er uændret. Viewet får tilføjet `sort_order`, `horizon`, `title_da`, `importance_votes` og `sd_importance`. Fortsat `security_invoker`, så kun admin ser de samlede tal. Ved ikke-rækker (#7788) indgår ikke i snit, spredning eller stemmetal. De tælles for sig i `dont_know`, og admin viser dem som svar uden tal.
 
 ### 5.4 Kendte fejl (nye tabeller)
 

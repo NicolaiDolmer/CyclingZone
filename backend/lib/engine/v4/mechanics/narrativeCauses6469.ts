@@ -232,7 +232,9 @@ function heldCauses(events: readonly NarrativeEvent[], w: Window, chaseId: strin
   const contained = teamsWith(reactions, "stopped", "contained").filter((id) => !spent.includes(id));
   if (contained.length) causes.push({ kind: "gc_contained", team_ids: contained });
   const series = separationSeries(events, w, chaseId);
-  const curve = curveCauseHeld(series, events, w);
+  // #7730: ingen jagede, saa "jagten kom taettere paa" er ikke sandt; gulvet lukkede hullet alene.
+  const nobodyChased = causes.some((c) => c.kind === "unchased" || c.kind === "no_chasers");
+  const curve = nobodyChased ? null : curveCauseHeld(series, events, w);
   if (curve) causes.push(curve);
   if (!causes.length && series.length >= 2) causes.push({ kind: "gap_never_closed" });
   return causes;
@@ -301,7 +303,9 @@ export function deriveBreakawayStories(events: readonly NarrativeEvent[] = []): 
   return stories;
 }
 
-export type OrderImpact = { kind: "all_out_stayed_away" | "all_out_held_on"; rider_id: string; climb_name?: string };
+// #7707: "attack_*" er samme situation for en rytter med etapeplan (opgaven Angrib); "all_out_*"
+// er indsats-ordren Alt ud, som kun findes paa enkeltstart og i aeldre etaper uden plan.
+export type OrderImpact = { kind: "all_out_stayed_away" | "all_out_held_on" | "attack_stayed_away" | "attack_held_on"; rider_id: string; climb_name?: string };
 
 /**
  * Hvor spillerens egen indsats-ordre "Alt ud" ses i udfaldet:
@@ -326,10 +330,11 @@ export function deriveOrderImpacts(
   const allOut = own.filter((id) => ALL_OUT_EFFORTS.has(String(effortByRider.get(id) ?? "")));
   const planTaskAt = typeof effortByRider.taskAt === "function" ? effortByRider.taskAt.bind(effortByRider) : null;
   if (!allOut.length && !planTaskAt) return [];
-  const allOutInBreakaway = (id: string, km: number): boolean => {
+  // #7707: en rytter med plan faar Angrib-ordene, en rytter med indsats-ordren Alt ud-ordene.
+  const stayedAwayKind = (id: string, km: number): "all_out_stayed_away" | "attack_stayed_away" | null => {
     const task = str(planTaskAt?.(events, id, km));
-    if (task === null) return allOut.includes(id);
-    return ALL_OUT_EFFORTS.has(String((TASK_EFFORT as Readonly<Record<string, string>>)[task] ?? ""));
+    if (task === null) return allOut.includes(id) ? "all_out_stayed_away" : null;
+    return ALL_OUT_EFFORTS.has(String((TASK_EFFORT as Readonly<Record<string, string>>)[task] ?? "")) ? "attack_stayed_away" : null;
   };
   const out: Array<OrderImpact & { km: number; after_index: number }> = [];
   const used = new Set<string>();
@@ -337,9 +342,10 @@ export function deriveOrderImpacts(
     if (story.outcome !== "held") continue;
     const heldKm = raceKm(events[story.outcome_index]);
     for (const id of own) {
-      if (used.has(id) || !story.survivor_ids.includes(id) || !allOutInBreakaway(id, heldKm)) continue;
+      const kind = used.has(id) || !story.survivor_ids.includes(id) ? null : stayedAwayKind(id, heldKm);
+      if (!kind) continue;
       used.add(id);
-      out.push({ kind: "all_out_stayed_away", rider_id: id, km: story.outcome_km, after_index: story.outcome_index });
+      out.push({ kind, rider_id: id, km: story.outcome_km, after_index: story.outcome_index });
     }
   }
   const finishIndex = events.findIndex((e) => e?.type === "finish");
@@ -364,6 +370,37 @@ export function deriveOrderImpacts(
  * (`order_impact`) indsat lige efter den hændelse de forklarer, paa samme km.
  * Nye objekter; input muteres ikke. Uden udbrud og uden ordrer: samme indhold.
  */
+/**
+ * #7707: motorens "all_out_gain"/"all_out_cracked" hedder Alt ud i motoren, men for en
+ * rytter paa opgaven Angrib er det Angrib, som spilleren valgte. Linjen faar `task: "attack"`,
+ * og filmen vaelger saa Angrib-teksten. Alt ud bevares paa enkeltstart og for en egen rytter
+ * med indsats-ordren Alt ud (aeldre etaper). Opgaven laeses fra planens skift (taskAt): et
+ * skift paa samme km som stigningens top hoerer til det forrige led.
+ * Idempotent; en uaendret haendelse returneres som det samme objekt.
+ */
+export function withAttackWording<T extends NarrativeEvent>(
+  events: readonly T[] = [],
+  opts: { ownRiderIds?: Iterable<unknown> | null; effortByRider?: OrderEfforts | null; profileType?: string | null } = {},
+): T[] {
+  if (isTimeTrialNarrative(events, opts.profileType)) return [...events];
+  const own = new Set([...(opts.ownRiderIds ?? [])].filter((id): id is string => typeof id === "string"));
+  const efforts = opts.effortByRider ?? null;
+  const taskAt = typeof efforts?.taskAt === "function" ? efforts.taskAt.bind(efforts) : null;
+  const chrono = [...events].sort((a, b) => raceKm(a) - raceKm(b));
+  return events.map((e) => {
+    if (!e || (e.type !== "all_out_gain" && e.type !== "all_out_cracked") || e.params?.task === "attack") return e;
+    const id = str(e.params?.rider_id);
+    if (!id) return e;
+    if (own.has(id)) {
+      const task = str(taskAt?.(chrono, id, raceKm(e)));
+      if (task !== null) {
+        if (!ALL_OUT_EFFORTS.has(String((TASK_EFFORT as Readonly<Record<string, string>>)[task] ?? ""))) return e;
+      } else if (ALL_OUT_EFFORTS.has(String(efforts?.get(id) ?? ""))) return e;
+    }
+    return { ...e, params: { ...e.params, task: "attack" } };
+  });
+}
+
 export type NarrativeLine = { km: number; type: "breakaway_cause" | "order_impact"; params: Record<string, unknown> };
 
 export function withNarrativeCauses<T extends NarrativeEvent>(
@@ -371,6 +408,7 @@ export function withNarrativeCauses<T extends NarrativeEvent>(
   opts: { ownRiderIds?: Iterable<unknown> | null; effortByRider?: OrderEfforts | null; profileType?: string | null } = {},
 ): Array<T | NarrativeLine> {
   if (isTimeTrialNarrative(events, opts.profileType)) return events.filter(event => !groupRaceEvent(event));
+  events = withAttackWording(events, opts); // #7707
   // Aarsagerne udledes i loebets egen raekkefoelge (motorens km: `recorded_km` naar et
   // film-spaend har flyttet `km`), og linjerne saettes efter udfaldet der hvor listen
   // viser det. Ellers kan et spaend lukke vinduet foer de maalinger der forklarer det.

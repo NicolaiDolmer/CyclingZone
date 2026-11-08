@@ -1,10 +1,12 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router";
 import { useConsent } from "./consent.jsx";
 import { useUserProfile } from "./userProfile.jsx";
+import { supabase } from "./supabase";
 import {
   POSTHOG_ENABLED,
   isPosthogAllowed,
+  isInternalPosthogUser,
   resolveEffectiveConsent,
   startPosthog,
   capturePosthogPageview,
@@ -34,7 +36,33 @@ export default function PosthogIntegration() {
     hasResponded ? consent : null,
     profile?.consent_preferences,
   );
-  const posthogOn = isPosthogAllowed(effectiveConsent);
+  // #7811: ejer (admin) og testkonti tæller ikke med i målingerne. Holdets
+  // is_test_account slås op én gang pr. bruger; indtil svaret er der, er
+  // teamIsTest null og profilen "ikke klar", så ingen identify når at ske.
+  const [teamIsTest, setTeamIsTest] = useState(/** @type {{ userId: string | null, value: boolean | null }} */ ({ userId: null, value: null }));
+  useEffect(() => {
+    if (!POSTHOG_ENABLED || !userId) return;
+    let cancelled = false;
+    supabase
+      .from("teams")
+      .select("is_test_account")
+      .eq("user_id", userId)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        // Ved fejl behandles brugeren som ikke-test (samme retning som før).
+        setTeamIsTest({
+          userId,
+          value: !error && Array.isArray(data) && data.some((t) => t.is_test_account === true),
+        });
+      });
+    return () => { cancelled = true; };
+  }, [userId]);
+  const teamLookupDone = !userId || teamIsTest.userId === userId;
+  const isInternal = isInternalPosthogUser({
+    role: /** @type {{ role?: string } | null} */ (profile)?.role,
+    teamIsTestAccount: teamIsTest.userId === userId ? teamIsTest.value : null,
+  });
+  const posthogOn = isPosthogAllowed(effectiveConsent) && !isInternal;
   const location = useLocation();
   // Sandt når vi har nået at starte SDK'et mindst én gang i denne page load —
   // bruges så pageview-effekten ikke fyrer før init.
@@ -42,6 +70,9 @@ export default function PosthogIntegration() {
   // Seneste identificerede bruger-id, så vi ikke kalder identify() på hver
   // eneste navigation.
   const identifiedRef = useRef(null);
+  // #7811: seneste beslutning, saa en start der lander efter at gaten lukkede, kan opte ud.
+  const posthogOnRef = useRef(posthogOn);
+  useEffect(() => { posthogOnRef.current = posthogOn; }, [posthogOn]);
 
   useEffect(() => {
     if (!POSTHOG_ENABLED) return;
@@ -55,7 +86,11 @@ export default function PosthogIntegration() {
     }
     let cancelled = false;
     startPosthog().then(() => {
-      if (cancelled) return;
+      // SDK'et loades lazy: lukkede gaten imens, maa den startede klient ikke sende.
+      if (cancelled) {
+        if (!posthogOnRef.current) optOutPosthog();
+        return;
+      }
       startedRef.current = true;
       // Første sidevisning: capture_pageview er slået fra, så den fyres her.
       capturePosthogPageview();
@@ -72,7 +107,7 @@ export default function PosthogIntegration() {
   // en bruger der har afvist på en anden enhed nå at blive identify'et i
   // vinduet før profilen landede. Logget-ud brugere identificeres bevidst
   // ikke: person_profiles er "identified_only".
-  const profileReady = Boolean(userId) && !profileLoading;
+  const profileReady = Boolean(userId) && !profileLoading && teamLookupDone;
   useEffect(() => {
     if (!POSTHOG_ENABLED || !posthogOn) return;
     let cancelled = false;

@@ -34,6 +34,8 @@
     "rider_on_auction_transfer": "Deze renner zit in een actieve veiling. Bied op de veiling in plaats van een transferaanbieding te doen.",
     "rider_on_auction_swap": "Een van de geruilde renners zit in een actieve veiling. De ruil is geannuleerd. Bied in plaats daarvan op de veiling.",
     "rider_on_auction_release": "Deze renner zit op dit moment in een veiling en kan niet worden vrijgegeven. Wacht eerst tot de veiling afloopt",
+    "rider_pending_transfer_release": "Deze renner is verkocht en wacht op de overstap naar zijn nieuwe ploeg, dus je kunt hem niet vrijgeven",
+    "rider_pending_transfer_trade": "Deze renner is al verkocht en wacht op de overstap naar zijn nieuwe ploeg, dus hij kan niet opnieuw worden verkocht",
     "invalid_start_price": "Ongeldige startprijs",
     "invalid_offer_amount": "Ongeldig bedrag",
     "invalid_loan_amount": "Ongeldig bedrag",

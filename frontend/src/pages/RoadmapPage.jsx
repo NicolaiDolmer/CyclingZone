@@ -25,6 +25,7 @@ import {
   isValidScore,
   buildVotePayload,
   buildImportancePayload,
+  buildDontKnowPayload,
   votesByItemId,
 } from "../lib/roadmapVoting.js";
 import {
@@ -320,6 +321,20 @@ export default function RoadmapPage() {
     setSaveState((prev) => ({ ...prev, [item.id]: error ? "error" : "saved" }));
   }
 
+  // #7788: Ved ikke gælder hele punktet og gemmes straks, på begge faner.
+  async function markDontKnow(item) {
+    if (!userId) return;
+    markRated(item.id);
+    setSaveState((prev) => ({ ...prev, [item.id]: "saving" }));
+    const { error } = await supabase.from("roadmap_votes")
+      .upsert(buildDontKnowPayload({ itemId: item.id, userId, now: new Date() }), { onConflict: "user_id,item_id" });
+    if (!error) {
+      setVotes((prev) => new Map(prev).set(item.id, { item_id: item.id, idea_score: null, importance_score: null }));
+      setDrafts((prev) => ({ ...prev, [item.id]: { idea: null, importance: null } }));
+    }
+    setSaveState((prev) => ({ ...prev, [item.id]: error ? "error" : "saved" }));
+  }
+
   // Known issues: "Affects me too" / "I see this too". Et nyt tryk fortryder.
   async function toggleReport(issue) {
     if (!userId) return;
@@ -419,6 +434,7 @@ export default function RoadmapPage() {
             canVote={canVote}
             isNew={isNew}
             onRate={rateImportance}
+            onDontKnow={markDontKnow}
             onShowAll={() => setOnlyUnrated(false)}
             onGoVote={() => setTab("vote")}
           />
@@ -443,10 +459,12 @@ export default function RoadmapPage() {
             unrated={counts.vote}
             onlyUnrated={onlyUnrated}
             drafts={drafts}
+            votes={votes}
             saveState={saveState}
             canVote={canVote}
             isNew={isNew}
             onScore={handleScore}
+            onDontKnow={markDontKnow}
             onShowAll={() => setOnlyUnrated(false)}
           />
         </TabPanel>
@@ -475,6 +493,7 @@ export default function RoadmapPage() {
             entries={doneEntries}
             patchIndex={patchIndex}
             onGoPlan={() => setTab("plan")}
+            votes={votes}
           />
         </TabPanel>
       </Tabs>

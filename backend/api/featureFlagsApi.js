@@ -32,6 +32,7 @@ import { evaluateFlagStage } from "../lib/featureStage.js";
 import { PLAYER_VISIBLE_BINARY_FLAG_KEYS, PLAYER_VISIBLE_FLAG_KEYS } from "../lib/stageFlagCatalog.js";
 import { DEVELOPMENT_CURVE_B_FLAG_KEY, readDevelopmentCurveBParams } from "../lib/developmentCurveBFlag.ts";
 import { isConditionModelV2Enabled, RACE_DATE_TRAINING_DAY_FLAG_KEY } from "../lib/conditionModelV2Flag.js";
+import { DAY_WORDS_7725_FLAG_KEY, evaluateDayWords7725Flag } from "../lib/dayWords7725Flag.js";
 
 /**
  * { <noegle>: boolean } for hver noegle i allowlisten. En fejlet batch lukker
@@ -78,6 +79,11 @@ export async function readPlayerFeatureFlags(supabase, { isBetaTester = false, r
       flags[RACE_DATE_TRAINING_DAY_FLAG_KEY] = false;
       reportError(error, { tags: { route: "/feature-flags", read: "condition_model_v2" } });
     }
+  }
+  // #7725: motoren tager kun den eksakte streng "on" (ikke boolean true fra det gamle
+  // skema), og Hjaelp foelger motoren, saa teksten aldrig beskriver ord der ikke kommer.
+  if (flags[DAY_WORDS_7725_FLAG_KEY] && !evaluateDayWords7725Flag(stages.get(DAY_WORDS_7725_FLAG_KEY))) {
+    flags[DAY_WORDS_7725_FLAG_KEY] = false;
   }
   return flags;
 }

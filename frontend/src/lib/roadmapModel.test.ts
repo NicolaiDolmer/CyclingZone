@@ -5,13 +5,13 @@ import {
   engineCounts, issueAreaCounts, splitChecking, CHECKING_VISIBLE, splitIssues, buildDoneList, latestIssueUpdates,
   groupPlan, planRanks, planStage, normalizeHorizon, weekRange, copenhagenDateKey, issueTimeline,
   splitRecentDone, patchNotesByIssue, pickPatchNote, searchRoadmap, normalizeSearch,
-  holdsItem, doneLimitFor, roadmapRowId, DONE_PAGE_SIZE, FOLDED_HORIZONS,
+  holdsItem, doneLimitFor, roadmapRowId, DONE_PAGE_SIZE, isFoldedHorizon, parseHorizon, horizonRank, horizonLabelKey,
   type RoadmapItem, type RoadmapVote, type KnownIssue,
 } from "./roadmapModel.ts";
 
 const item = (over: Partial<RoadmapItem> = {}): RoadmapItem => ({
   id: "i1", engine: "races", sort_order: 10, title_en: "A", title_da: "A",
-  approved: true, status: "active", horizon: "next",
+  approved: true, status: "active", horizon: "next_week",
   beta_since: null, beta_soon: false, live_soon: false,
   created_at: "2026-09-24T00:00:00Z", shipped_at: null, ...over,
 });
@@ -33,7 +33,7 @@ test("parseTab falder tilbage til plan ved ukendt eller manglende værdi", () =>
 
 test("partitionItems deler efter status og horizon og sorterer på sort_order", () => {
   const p = partitionItems([
-    item({ id: "a", status: "planned", horizon: "later", sort_order: 5 }),
+    item({ id: "a", status: "planned", horizon: "q1_2027", sort_order: 5 }),
     item({ id: "b", status: "planned", sort_order: 20 }),
     item({ id: "c", status: "planned", sort_order: 10 }),
     item({ id: "d", status: "in_progress" }),
@@ -49,8 +49,8 @@ test("partitionItems deler efter status og horizon og sorterer på sort_order", 
   assert.deepEqual(p.comingToBeta.map((i) => i.id), ["j"]);
   // #7666: Plan = i gang og planlagt pr. horisont; beta står kun på Beta-fanen (#6160).
   assert.deepEqual(p.planGroups.map((g) => [g.horizon, g.items.map((i) => i.id)]), [
-    ["next", ["d", "c", "b", "j"]],
-    ["later", ["a"]],
+    ["next_week", ["d", "c", "b", "j"]],
+    ["q1_2027", ["a"]],
   ]);
   assert.deepEqual(p.ideas.map((i) => i.id), ["e"]);
   assert.deepEqual(p.shipped.map((i) => i.id), ["f"]);
@@ -69,6 +69,17 @@ test("isRated: planlagt kræver kun vigtighed, idé kræver begge", () => {
   assert.equal(isRated(planned, undefined), false);
   assert.equal(isRated(idea, { item_id: "i1", idea_score: null, importance_score: 4 }), false);
   assert.equal(isRated(idea, { item_id: "i1", idea_score: 5, importance_score: 4 }), true);
+});
+
+test("Ved ikke besvarer punktet på begge faner og forsvinder fra mangler dit svar (#7788)", () => {
+  const planned = item({ id: "p1", status: "planned" });
+  const idea = item({ id: "v1", status: "active" });
+  const dontKnow = (id: string): RoadmapVote => ({ item_id: id, idea_score: null, importance_score: null });
+  assert.equal(isRated(planned, dontKnow("p1")), true);
+  assert.equal(isRated(idea, dontKnow("v1")), true);
+  const votes = new Map<string, RoadmapVote>([["p1", dontKnow("p1")], ["v1", dontKnow("v1")]]);
+  assert.deepEqual(countUnrated([planned, idea], votes), { plan: 0, vote: 0, total: 2, rated: 2 });
+  assert.deepEqual(filterUnrated([planned, idea], votes, true), []);
 });
 
 test("countUnrated tæller pr. fane og samlet", () => {
@@ -152,14 +163,16 @@ test("latestIssueUpdates grupperer pr. fejl, nyeste først", () => {
 
 // ── #7666 ────────────────────────────────────────────────────────────────
 
-test("groupPlan: horisonter i fast rækkefølge, tomme udelades, ukendt læses som next", () => {
+test("groupPlan (#7895): uger, sæsoner, kvartaler, år; tomme udelades, ukendt læses som uden tid", () => {
   const groups = groupPlan([
-    item({ id: "l", status: "planned", horizon: "later" }),
+    item({ id: "l", status: "planned", horizon: "q2_2027" }),
     item({ id: "y", status: "planned", horizon: "y2027" }),
+    item({ id: "q", status: "planned", horizon: "q1_2027" }),
+    item({ id: "s6", status: "planned", horizon: "season_6" }),
     item({ id: "w2", status: "planned", horizon: "this_week", sort_order: 20 }),
     item({ id: "w1", status: "in_progress", horizon: "this_week", sort_order: 90 }),
     item({ id: "n", status: "planned", horizon: "next_week" }),
-    item({ id: "s", status: "planned", horizon: "this_season" }),
+    item({ id: "s", status: "planned", horizon: "season_5" }),
     item({ id: "u", status: "planned", horizon: "someday" as never }),
     item({ id: "x", status: "active", horizon: "this_week" }),
     item({ id: "z", status: "shipped", horizon: "this_week" }),
@@ -167,13 +180,16 @@ test("groupPlan: horisonter i fast rækkefølge, tomme udelades, ukendt læses s
   assert.deepEqual(groups.map((g) => [g.horizon, g.items.map((i) => i.id)]), [
     ["this_week", ["w1", "w2"]],
     ["next_week", ["n"]],
-    ["next", ["u"]],
-    ["this_season", ["s"]],
+    ["season_5", ["s"]],
+    ["season_6", ["s6"]],
+    ["q1_2027", ["q"]],
+    ["q2_2027", ["l"]],
     ["y2027", ["y"]],
-    ["later", ["l"]],
+    ["unscheduled", ["u"]],
   ]);
-  assert.equal(normalizeHorizon("next_season"), "next_season");
-  assert.equal(normalizeHorizon(null), "next");
+  assert.equal(normalizeHorizon("season_7"), "season_7");
+  assert.equal(normalizeHorizon("later"), "unscheduled");
+  assert.equal(normalizeHorizon(null), "unscheduled");
 });
 
 test("planStage og planRanks: kun planlagte nummereres, og ikke i de foldede horisonter", () => {
@@ -184,7 +200,7 @@ test("planStage og planRanks: kun planlagte nummereres, og ikke i de foldede hor
     item({ id: "a", status: "planned", horizon: "next_week" }),
     item({ id: "b", status: "in_progress", horizon: "this_week" }),
     item({ id: "c", status: "planned", horizon: "this_week" }),
-    item({ id: "d", status: "planned", horizon: "later" }),
+    item({ id: "d", status: "planned", horizon: "q1_2027" }),
   ]));
   assert.deepEqual([...ranks], [["c", 1], ["a", 2]]);
 });
@@ -291,14 +307,14 @@ test("holdsItem: kun folden med det valgte punkt åbner", () => {
   const groups = groupPlan([
     item({ id: "near", status: "planned", horizon: "this_week" }),
     item({ id: "y", status: "planned", horizon: "y2027" }),
-    item({ id: "l", status: "planned", horizon: "later" }),
+    item({ id: "l", status: "planned", horizon: "q2_2027" }),
   ]);
   const open = (id: string | null) => groups
-    .filter((g) => FOLDED_HORIZONS.has(g.horizon) && holdsItem(g.items, id))
+    .filter((g) => isFoldedHorizon(g.horizon) && holdsItem(g.items, id))
     .map((g) => g.horizon);
 
   assert.deepEqual(open("y"), ["y2027"]);
-  assert.deepEqual(open("l"), ["later"]);
+  assert.deepEqual(open("l"), ["q2_2027"]);
   assert.deepEqual(open("near"), []);
   assert.deepEqual(open(null), []);
 });
@@ -312,4 +328,18 @@ test("holdsItem: et hit i de foldede indmeldte fejl åbner den fold", () => {
 
 test("roadmapRowId: samme id på rækken og i scroll-opslaget", () => {
   assert.equal(roadmapRowId("abc"), "roadmap-row-abc");
+});
+
+test("horisont-hjælpere (#7895): navne, rækkefølge og fold", () => {
+  assert.deepEqual(parseHorizon("season_5"), { kind: "season", season: 5 });
+  assert.deepEqual(parseHorizon("q2_2027"), { kind: "quarter", quarter: 2, year: 2027 });
+  assert.deepEqual(parseHorizon("next"), { kind: "unscheduled" });
+  assert.deepEqual(horizonLabelKey("season_6"), { key: "plan.horizon.season", values: { season: 6 } });
+  assert.deepEqual(horizonLabelKey("q1_2027"), { key: "plan.horizon.quarter", values: { quarter: 1, year: 2027 } });
+  assert.deepEqual(horizonLabelKey("y2027"), { key: "plan.horizon.year", values: { year: 2027 } });
+  assert.ok(horizonRank("next_week") < horizonRank("season_5"));
+  assert.ok(horizonRank("season_12") < horizonRank("q1_2027"));
+  assert.ok(horizonRank("q4_2027") < horizonRank("y2027"));
+  assert.equal(isFoldedHorizon("season_6"), false);
+  assert.equal(isFoldedHorizon("q1_2027"), true);
 });

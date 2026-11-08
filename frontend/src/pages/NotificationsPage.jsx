@@ -144,6 +144,8 @@ const TYPE_CONFIG = {
   // late_fill/opt_in-sweepen) — informativ, ikke en advarsel (truppen ER
   // udtaget), samme raceId-metadata-mønster som selection_warning ovenfor.
   assistant_filled_squad:    { Icon: InfoIcon,          color: "text-cz-info",     bg: "bg-cz-info/8 border-cz-info/15",     link: "/planning?tab=calendar" },
+  // #7792: et roadmap-punkt du stemte hoejt paa er leveret — Done-fanen viser det med "You voted".
+  roadmap_delivered:         { Icon: RocketIcon,       color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/roadmap?tab=done" },
   // #3334: chefscout-skift-forklaring — ingen enkelt rytter at linke til
   // (rammer HELE holdets rapporter), så CTA'en er Scouting-centralen.
   scout_changed:             { Icon: SearchIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/scouting" },

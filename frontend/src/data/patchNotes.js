@@ -1,5 +1,440 @@
 export const PATCHES = [
   {
+    "version": "7.422",
+    "date": "2026-11-08",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "Your riders' day in words",
+          "body": "After a stage, the race report now says how your own riders' day went: a really good day, a good day, or a bad day with the reason. You see this for your own riders and not for other teams, and the same goes for bad-day lines in the race film. It describes the day the race already gave him, so results are unchanged."
+        },
+        "da": {
+          "title": "Dine rytteres dag i ord",
+          "body": "Efter en etape siger referatet nu, hvordan dine egne rytteres dag gik: en rigtig god dag, en god dag eller en dårlig dag med årsagen. Du ser det for dine egne ryttere og ikke for andre hold, og det samme gælder linjerne om en dårlig dag i løbsfilmen. Det beskriver den dag, løbet allerede gav ham, så resultaterne er uændrede."
+        },
+        "refs": [
+          7725
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.421",
+    "date": "2026-11-08",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The race film shows the real gaps at the finish",
+          "body": "The race film could show a different gap at the line than the result list, for example the whole bunch level with the winners. At the finish the film now always shows the same gaps as the result. Results and times have not changed."
+        },
+        "da": {
+          "title": "Løbsfilmen viser de rigtige huller ved målet",
+          "body": "Løbsfilmen kunne vise et andet hul ved målstregen end resultatlisten, for eksempel hele feltet på linje med vinderne. Ved målet viser filmen nu altid de samme huller som resultatet. Resultater og tider er ikke ændret."
+        },
+        "refs": [
+          7900
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.420",
+    "date": "2026-11-08",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Mobile",
+        "en": {
+          "title": "Bigger buttons on your phone",
+          "body": "Small buttons on the phone, like the language picker, the buttons on the front page and the tabs, are now tall enough to hit with a finger. Pages can be a little longer on the phone. Nothing changes on a computer."
+        },
+        "da": {
+          "title": "Større knapper på telefonen",
+          "body": "Små knapper på telefonen, som sprogvælgeren, knapperne på forsiden og fanerne, er nu høje nok til at ramme med en finger. Siderne kan blive lidt længere på telefonen. Intet ændrer sig på en computer."
+        },
+        "refs": [
+          7877
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.419",
+    "date": "2026-11-08",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Roadmap",
+        "en": {
+          "title": "The roadmap shows season numbers",
+          "body": "The plan on the roadmap no longer says Coming up or Later. Each item now sits under this week, next week, a season number (Season 5 means it comes in season 5, before season 6 starts) or a quarter such as Q1 2027. Ideas you can vote on have no time until they are planned. Several items moved based on your votes."
+        },
+        "da": {
+          "title": "Roadmappet viser sæsonnumre",
+          "body": "Planen på roadmappet siger ikke længere Snart eller Senere. Hvert punkt står nu under denne uge, næste uge, et sæsonnummer (Sæson 5 betyder, at det kommer i sæson 5, før sæson 6 starter) eller et kvartal som Q1 2027. Idéer, I kan stemme på, har ingen tid, før de er planlagt. Flere punkter er flyttet ud fra jeres stemmer."
+        },
+        "refs": [
+          7895,
+          7892
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.417",
+    "date": "2026-11-07",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "beta",
+        "flag": "rider_hover_card",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider card and right-click menu",
+          "body": "A small icon after every rider name opens his card: abilities, value, contract and how he is doing in the race. Right-click a name for quick actions like compare, watchlist or a bid. On the phone, tap the icon."
+        },
+        "da": {
+          "title": "Rytterkort og højreklik-menu",
+          "body": "Et lille ikon efter hvert rytternavn åbner hans kort: evner, værdi, kontrakt og hvordan det går i løbet. Højreklik på et navn for hurtige handlinger som sammenlign, ønskeliste eller bud. På telefonen trykker du på ikonet."
+        },
+        "refs": [
+          2009,
+          7858
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.416",
+    "date": "2026-11-07",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "A late-created team still gets its training day",
+          "body": "A team created late in the evening, after the evening training, no longer loses its first training day. It is picked up before the deadline and trains as normal."
+        },
+        "da": {
+          "title": "Et sent oprettet hold får stadig sin træningsdag",
+          "body": "Et hold, der oprettes sent på aftenen, efter aftentræningen, mister ikke længere sin første træningsdag. Det bliver fanget inden fristen og træner som normalt."
+        },
+        "refs": [
+          7832
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Transfers",
+        "en": {
+          "title": "A sold rider waiting to move cannot be released or sold again",
+          "body": "A rider you have sold, but whose move is waiting (for example because he is riding a stage race), can no longer be released or sold on to someone else. You get a clear message instead."
+        },
+        "da": {
+          "title": "En solgt rytter, der venter på at skifte, kan ikke fyres eller sælges igen",
+          "body": "En rytter, du har solgt, men hvis skifte venter (for eksempel fordi han kører et etapeløb), kan ikke længere fyres eller sælges videre til en anden. Du får en tydelig besked i stedet."
+        },
+        "refs": [
+          6181
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Auctions",
+        "en": {
+          "title": "Auctions no longer end on the closing minute",
+          "body": "An auction can no longer end exactly when the auction hours close. If it would, it ends when the hours open again the next morning."
+        },
+        "da": {
+          "title": "Auktioner slutter ikke på lukketidspunktet",
+          "body": "En auktion kan ikke længere slutte præcis, når auktionstiden lukker. Ville den det, slutter den, når auktionstiden åbner igen næste morgen."
+        },
+        "refs": [
+          6181
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Calendar",
+        "en": {
+          "title": "Missing instead of Grand Tour",
+          "body": "A race without enough riders picked now says Missing in the calendar table and on the race card, also when your team is riding a Grand Tour at the same time. The Grand Tour status is gone."
+        },
+        "da": {
+          "title": "Mangler i stedet for Grand Tour",
+          "body": "Et løb uden nok udtagne ryttere viser nu Mangler i kalendertabellen og på løbskortet, også når dit hold samtidig kører en Grand Tour. Grand Tour-status er fjernet."
+        },
+        "refs": [
+          7568
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Calendar",
+        "en": {
+          "title": "One Show picker in the calendar",
+          "body": "The calendar has one Show picker instead of the My team, All teams and Divisions tabs and the division dropdown. Pick My team, All divisions or a single division. Calendar or Table, month and season sit on the same line."
+        },
+        "da": {
+          "title": "Én Vis-vælger i kalenderen",
+          "body": "Kalenderen har nu én Vis-vælger i stedet for fanerne Mit hold, Alle hold og Divisioner og division-dropdownen. Vælg Mit hold, Alle divisioner eller en enkelt division. Kalender eller Tabel, måned og sæson står i samme linje."
+        },
+        "refs": [
+          7461
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "Time trials have their own terrain weighting",
+          "body": "On flat and rolling roads, an individual time trial now has its own terrain weighting instead of the one it shared with mass-start stages. It applies from the next time trial."
+        },
+        "da": {
+          "title": "Enkeltstart har sin egen terrænvægt",
+          "body": "På flad og rullende vej har en enkeltstart nu sin egen terrænvægt i stedet for den, den delte med almindelige etaper. Det gælder fra næste enkeltstart."
+        },
+        "refs": [
+          6595
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Help",
+        "en": {
+          "title": "Help corrected after a check",
+          "body": "Help now says rider values update once right after the season change and then every Sunday. It also explains that a worn-out helper can climb off a stage race, the uphill sprint and the wall finish, the exception that lets a stage race start with at least 4 free riders, and that expiring contracts run out before youth riders move up. The wrong line saying races do not use form peaks is gone."
+        },
+        "da": {
+          "title": "Hjælp rettet efter et eftersyn",
+          "body": "Hjælp siger nu, at rytterværdier opdateres én gang lige efter sæsonskiftet og derefter hver søndag. Den forklarer også, at en udkørt hjælper kan stige af et etapeløb, den stigende spurt og murfinalen, undtagelsen der lader et etapeløb starte med mindst 4 frie ryttere, og at udløbende kontrakter udløber, før ungdomsryttere rykker op. Den forkerte linje om, at løb ikke bruger formtoppe, er væk."
+        },
+        "refs": [
+          7476,
+          7478,
+          5842
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.415",
+    "date": "2026-11-07",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Roadmap",
+        "en": {
+          "title": "A message when an item you voted for ships",
+          "body": "When a roadmap item you gave a 5 or 6 is delivered, you get one message in your inbox. The Done tab shows You voted on items you voted for. Don't know does not count as a vote."
+        },
+        "da": {
+          "title": "En besked, når et punkt du stemte på, er leveret",
+          "body": "Når et punkt på roadmappen, du gav 5 eller 6, er leveret, får du én besked i indbakken. Færdigt-fanen viser Du stemte på de punkter, du har stemt på. Ved ikke tæller ikke som en stemme."
+        },
+        "refs": [
+          7792
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.414",
+    "date": "2026-11-07",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Your stage race field holds to the finish",
+          "body": "In stage races that start from now on, a rider who has started rides to the finish, even if you move him to another squad during the race. Only an injury or retirement takes him out."
+        },
+        "da": {
+          "title": "Dit felt i etapeløbet holder til mål",
+          "body": "I etapeløb, der starter fra nu af, kører en rytter, der er startet, til mål, også hvis du flytter ham til en anden trup undervejs. Kun en skade eller et karrierestop tager ham ud."
+        },
+        "refs": [
+          7733,
+          7777
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.413",
+    "date": "2026-11-06",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Roadmap",
+        "en": {
+          "title": "Answer Don't know on the roadmap",
+          "body": "You can now answer Don't know on a roadmap item. It counts as answered, but not in the average. Pick a number if you change your mind."
+        },
+        "da": {
+          "title": "Svar Ved ikke på roadmappen",
+          "body": "Du kan nu svare Ved ikke på et punkt på roadmappen. Punktet tæller som besvaret, men ikke i snittet. Vælg et tal, hvis du skifter mening."
+        },
+        "refs": [
+          7788
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.412",
+    "date": "2026-11-06",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The race story says Attack",
+          "body": "Riders with a stage plan now attack in the film, the report and the order lines. All out is only used in time trials. \"Ride to the finish\" is now \"Ride in easy\"."
+        },
+        "da": {
+          "title": "Løbshistorien siger Angrib",
+          "body": "Ryttere med etapeplan angriber nu i filmen, referatet og ordre-linjerne. Alt ud bruges kun på enkeltstart. \"Kør i mål\" hedder nu \"Kør roligt i mål\"."
+        },
+        "refs": [
+          7707
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Roadmap",
+        "en": {
+          "title": "Your vote count stays correct",
+          "body": "The counter on the roadmap no longer drops back after you vote. Vote buttons appear once your own votes have loaded."
+        },
+        "da": {
+          "title": "Dit stemmetal bliver stående",
+          "body": "Tælleren på roadmappen falder ikke længere tilbage, efter du har stemt. Stemmeknapperne vises, når dine egne stemmer er læst."
+        },
+        "refs": [
+          7800
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.411",
+    "date": "2026-11-06",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The chase is decided by the teams chasing",
+          "body": "In races that haven't started yet, a break late in a stage is caught or not by the teams that actually chase: how many they are, how fresh they are and how strong they are. No draw decides it. The race film tells you why."
+        },
+        "da": {
+          "title": "Jagten afgøres af de hold, der jager",
+          "body": "I løb, der ikke er startet, afgøres et udbrud sent på etapen af de hold, der faktisk jager: hvor mange de er, hvor friske de er, og hvor stærke de er. Ingen lodtrækning afgør det. Løbsfilmen fortæller hvorfor."
+        },
+        "refs": [
+          7730
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.410",
+    "date": "2026-11-06",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The race film no longer jumps",
+          "body": "Groups behind the front no longer jump backwards and forwards on the road. Results are unchanged."
+        },
+        "da": {
+          "title": "Løbsfilmen hopper ikke længere",
+          "body": "Grupperne bag fronten springer ikke længere frem og tilbage på vejen. Resultaterne er uændrede."
+        },
+        "refs": [
+          7749
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The race page opens on the latest stage",
+          "body": "When several stages are ridden on the same day, the race page now opens on the latest one that has been ridden."
+        },
+        "da": {
+          "title": "Løbssiden åbner på den seneste etape",
+          "body": "Når flere etaper køres samme dag, åbner løbssiden nu på den senest kørte etape."
+        },
+        "refs": [
+          7810
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Mobile",
+        "en": {
+          "title": "Bigger buttons in the mobile header",
+          "body": "The menu and the bell are easier to hit on your phone."
+        },
+        "da": {
+          "title": "Større knapper i mobilens top",
+          "body": "Menuen og klokken er lettere at ramme på telefonen."
+        },
+        "refs": [
+          6916
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.409",
     "date": "2026-11-06",
     "changes": [
