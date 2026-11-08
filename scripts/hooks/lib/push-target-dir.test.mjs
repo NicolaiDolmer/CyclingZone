@@ -141,6 +141,12 @@ test('ikke alt med kolon eller d er en sletning', () => {
   assert.deepEqual(guardTargets('git push origin --delete feat/a && git commit -m "git push"'), [LOCAL_BRANCH]);
 });
 
+test('--tags og --follow-tags sender mere end backup-maalet (Codex P2)', () => {
+  assert.deepEqual(guardTargets('git push origin HEAD:wip/a --tags'), [LOCAL_BRANCH]);
+  assert.deepEqual(guardTargets('git push --follow-tags origin HEAD:wip/a'), [LOCAL_BRANCH]);
+  assert.deepEqual(guardTargets('git push origin HEAD:wip/a --no-tags'), [ALL_EXEMPT]);
+});
+
 test('guardPlan: hvert push har sin egen mappe (review 8/11)', () => {
   assert.deepEqual(guardPlan('git -C /c/a push origin feat/a && git -C "/c/b c" push'), [
     { dest: 'feat/a', dir: '/c/a' },
@@ -214,11 +220,14 @@ function makeRepo(name, branch) {
   return dir;
 }
 
+// Faste tidspunkter (Codex P2): raekkefoelgen maa ikke afhaenge af vaeguret.
 function stampPreflight(dir) {
   const stamp = join(dir, '.git', 'preflight-ok');
   writeFileSync(stamp, 'ok');
-  const future = new Date(Date.now() + 3_600_000);
-  utimesSync(stamp, future, future);
+  const workTime = new Date('2020-01-01T00:00:00Z');
+  const stampTime = new Date('2021-01-01T00:00:00Z');
+  utimesSync(join(dir, 'work.js'), workTime, workTime);
+  utimesSync(stamp, stampTime, stampTime);
 }
 
 function runHook(name, cwd, command) {

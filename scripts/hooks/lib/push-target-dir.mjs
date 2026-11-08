@@ -179,7 +179,8 @@ const DELETE_FLAG_RE = /^(?:--delete|-[vqfnu46]*d[vqfnu46]*)$/;
 
 function destinationsOf(args) {
   const positional = [];
-  const everything = args.some((a) => a === '--all' || a === '--mirror' || a === '--branches');
+  // Flag der sender mere end refspecs'ene viser (Codex P2): aldrig grundlag for en undtagelse.
+  const everything = args.some((a) => ['--all', '--mirror', '--branches', '--tags', '--follow-tags'].includes(a));
   let deleting = false;
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
