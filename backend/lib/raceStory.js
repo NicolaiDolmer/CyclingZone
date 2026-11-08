@@ -972,13 +972,18 @@ export function storyInputsFromResults(rows, stageNumber) {
   const onStage = (row) => row.stage_number === stageNumber || (stageNumber === 1 && row.stage_number == null);
   const stageRows = list.filter((row) => row.result_type === "stage" && onStage(row));
   const dayRows = stageRows.length ? stageRows : stageNumber === 1 ? list.filter((row) => row.result_type === "gc") : [];
-  const results = dayRows
-    .filter((row) => typeof row.rider_id === "string" && typeof row.rank === "number")
-    .map((row) => {
-      const gap = resultGapSeconds(row.finish_time);
-      return gap == null ? { rider_id: row.rider_id, rank: row.rank } : { rider_id: row.rider_id, rank: row.rank, gap_s: gap };
-    });
-  const startlist =[...new Set(dayRows.map((row) => row.rider_id).filter((id) => typeof id === "string" && id.length > 0))];
+  /** @type {Array<{rider_id: string, rank: number, gap_s?: number}>} */
+  const results = [];
+  /** @type {Set<string>} */
+  const riderIds = new Set();
+  for (const row of dayRows) {
+    const { rider_id: riderId, rank } = row;
+    if (typeof riderId === "string" && riderId.length > 0) riderIds.add(riderId);
+    if (typeof riderId !== "string" || typeof rank !== "number") continue;
+    const gap = resultGapSeconds(row.finish_time);
+    results.push(gap == null ? { rider_id: riderId, rank } : { rider_id: riderId, rank, gap_s: gap });
+  }
+  const startlist = [...riderIds];
   return { results, startlist };
 }
 
