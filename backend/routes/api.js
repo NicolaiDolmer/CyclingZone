@@ -229,6 +229,7 @@ import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildGlobalTradeFeed, parseTradeFeedQuery } from "../lib/tradeListFeed.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { buildRaceStory, storyInputsFromResults } from "../lib/raceStory.js"; // #6350: ?story=1 på /timeline
+import { ownDayFormEvents } from "../lib/dayFormVisibility7725.js"; // #7725: dagsform kun for egne ryttere
 import { withEventPlaces } from "../lib/raceTimeline.js"; // #6350
 import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
@@ -573,7 +574,7 @@ import {
 } from "../lib/selectionDeadlineReminder.js";
 import { selectionSizeForRace, MIN_RACE_ENTRIES } from "../lib/raceAutopick.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
-import { fatigueByRiderNow, fatigueOutlookForTeam } from "../lib/riderFatigueNow.js"; // #7801
+import { fatigueByRiderNow, fatigueByRiderForRaces, fatigueOutlookForTeam, openingFatigueMap } from "../lib/riderFatigueNow.js"; // #7801
 import { REGISTRY_ABILITY_KEYS } from "../lib/abilityRegistry.js";
 import { selectInChunks } from "../lib/dbChunk.js";
 import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
@@ -6358,7 +6359,9 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     if (abErr) return res.status(500).json({ error: abErr.message });
     if (condErr) return res.status(500).json({ error: condErr.message });
     const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
-    const fatById = await fatigueByRiderNow({ supabase, conditions, abilityByRider: abById, teamId: req.team.id }); // #7801
+    // #7801: træthed ved løbets første etapestart (som assistenten ved løbsstart), ikke efter uret.
+    const fatNow = await fatigueByRiderForRaces({ supabase, conditions, abilityByRider: abById, teamId: req.team.id, races: [{ id: race.id, stages: stageProfiles }] });
+    const fatById = fatNow.byRace?.get(race.id) ?? fatNow.fatById;
     // #4701: reference-dato = løbets EGEN startdato, ikke "nu" — assistenten må gerne
     // fylde en rytter ind der er skadet i dag, men rask inden dette løb starter.
     const todayStr = raceSelectionReferenceDateStr(race, copenhagenDateString());
@@ -6457,7 +6460,7 @@ router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
     const enabled = await isRaceEngineV3ScoringEnabled(supabase);
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, status, stages, stages_completed, squad, scheduled_for, engine_rules_revision")
+      .select("id, status, stages, stages_completed, squad, scheduled_for, engine_rules_revision, season_id")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -6496,7 +6499,7 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
   try {
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, status, stages, stages_completed, engine_rules_revision")
+      .select("id, status, stages, stages_completed, engine_rules_revision, season_id")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -6679,12 +6682,13 @@ router.get("/races/:raceId/timeline", requireAuth, async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
     if (!data) return res.status(404).json({ error: "timeline_not_found" });
-    const events = withEventPlaces(data.events); // #6350: gemte etaper fortæller også hvor det skete
+    const visible = await ownDayFormEvents(supabase, { events: data.events, raceId: req.params.raceId, stageNumber, teamId: req.team?.id }); // #7725
+    const events = withEventPlaces(visible); // #6350: gemte etaper fortæller også hvor det skete
     // #6350: ?story=1 tilføjer løbshistorien (kontrakt: docs/superpowers/specs/2026-10-14-race-story-contract.md).
     let story = null; // en fejl i historien må aldrig tage tidslinjen med sig
     if (req.query.story === "1") try {
       // Målresultatet afgør udbrydernes udfald med samme svar som mærkerne (#6350 review).
-      const resultRows = await fetchAllRows(() => supabase.from("race_results").select("rider_id, rank, result_type, stage_number")
+      const resultRows = await fetchAllRows(() => supabase.from("race_results").select("rider_id, rank, result_type, stage_number, finish_time")
         .eq("race_id", req.params.raceId).in("result_type", ["stage", "gc"]).or(`stage_number.eq.${stageNumber},stage_number.is.null`).order("id"));
       story = buildRaceStory({ events, timelineVersion: data.timeline_version, ...storyInputsFromResults(resultRows, stageNumber) });
     } catch (storyErr) { captureException(storyErr); }
@@ -6868,7 +6872,7 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       supabase.from("rider_condition").select("rider_id, fatigue, injured_until").in("rider_id", teamRiderIds),
     ]);
     const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
-    const fatById = await fatigueByRiderNow({ supabase, conditions, abilityByRider: abById, teamId: req.team.id }); // #7801
+    const fatById = openingFatigueMap(conditions); // #7801: pr. løb ved etapestart, se assignRaces
     // #2637/#3896: skadede ryttere (kanonisk isRiderInjured) må ALDRIG auto-udtages —
     // spejler raceRunner.fillMissingTeamEntries (spec 6.5, #1306) og raceEntryGenerator-sweepet.
     // Dette endpoint er spillerens EGEN "auto-udfyld"-knap; manglede samme guard.
@@ -6916,9 +6920,12 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     // S3: holdets strategi som deterministisk præference-lag. Ingen row → null (uændret).
     const strategy = await loadTeamStrategy({ supabase, teamId: req.team.id, rosterIds: new Set(teamRiderIds) });
 
+    const { byRace: fatByRace } = await fatigueByRiderForRaces({ supabase, conditions, abilityByRider: abById, teamId: req.team.id, // #7801
+      races: target.map((r) => ({ id: r.id, stages: stagesByRace.get(r.id) })) });
     const assignRaces = target.map((r) => ({
       race_id: r.id, window: bindingWindowByRace.get(r.id), stages: stagesByRace.get(r.id) || [],
       sizeRule: selectionSizeForRace(r), excludedRiderIds: regenLocks.get(r.id)?.riderIds, // #6139
+      fatigueByRider: fatByRace?.get(r.id), // #7801
     }));
     // #6132: kanoniske brugte dage (også hos et tidligere hold) og andre holds entries.
     lockedWindows.push(...await loadRegenerateBindingLocks({ supabase, seasonId: season.id, teamId: req.team.id,
@@ -7280,7 +7287,7 @@ router.post("/races/strategy/preview", requireAuth, marketWriteLimiter, async (r
       supabase.from("race_entries").select("race_id, rider_id, race_role, is_auto_filled").eq("team_id", req.team.id),
     ]);
     const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
-    const fatById = await fatigueByRiderNow({ supabase, conditions, abilityByRider: abById, teamId: req.team.id }); // #7801
+    const fatById = openingFatigueMap(conditions); // #7801: pr. løb ved etapestart, se assignRaces
     const riderObjs = teamRiderIds
       .map((id) => ({ rider_id: id, abilities: abById.get(id), fatigue: fatById.get(id) ?? 0 }))
       .filter((r) => r.abilities);
@@ -7313,9 +7320,12 @@ router.post("/races/strategy/preview", requireAuth, marketWriteLimiter, async (r
       targetRaceIds: new Set((Array.isArray(req.body?.target_race_ids) ? req.body.target_race_ids : []).filter((id) => raceIds.includes(id))),
     };
 
+    const { byRace: fatByRace } = await fatigueByRiderForRaces({ supabase, conditions, abilityByRider: abById, teamId: req.team.id, // #7801
+      races: target.map((r) => ({ id: r.id, stages: stagesByRace.get(r.id) })) });
     const assignRaces = target.map((r) => ({
       race_id: r.id, window: bindingWindowByRace.get(r.id), stages: stagesByRace.get(r.id) || [],
       sizeRule: selectionSizeForRace(r),
+      fatigueByRider: fatByRace?.get(r.id), // #7801
     }));
     const proposed = assignTeamAcrossRaces({ riders: riderObjs, races: assignRaces, lockedWindows, strategy: proposedStrategy });
 

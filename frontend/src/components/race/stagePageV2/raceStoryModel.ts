@@ -43,7 +43,7 @@ export interface GroupAt {
   members_inferred?: boolean;
   gap_s: number;
   time_s?: number | null;
-  gap_source?: "reported" | "carried" | "front";
+  gap_source?: "reported" | "carried" | "front" | "result";
 }
 
 export interface StoryCheckpoint {
@@ -246,6 +246,8 @@ export interface StoryNarrative { key: string; params: Record<string, unknown> }
 export interface StoryNarrativeContext {
   profileType?: string | null;
   events: readonly NarrativeEvent[];
+  /** #7717: hvornaar etapen koerte (loebsloggens created_at). */
+  ranAt?: string | null;
   effortByRider?: { get(id: string): unknown } | null;
   teamNameById?: ReadonlyMap<string, string>;
 }
@@ -602,18 +604,18 @@ export function dayWordsByRider(events: readonly NarrativeEvent[] | null | undef
   return out;
 }
 
-/** #7725: dagens ord for vinderen og dine egne i maal. Hoejst 2 saetninger: referatet er kort. */
+/** #7725 (ejer 8/11): dagens ord kun for dine egne i maal, ogsaa naar vinderen er en andens. Hoejst 2 saetninger: referatet er kort. */
 export function dayWordSentences(events: readonly NarrativeEvent[] | null | undefined, cast: Cast): ReportSentence[] {
   const words = dayWordsByRider(events);
   if (!words.size) return [];
-  const rows: Array<{ word: string; name: string; first: boolean }> = [];
-  cast.finishers.forEach((f, i) => {
+  const rows: Array<{ word: string; name: string }> = [];
+  for (const f of cast.finishers) {
     const word = words.get(f.riderId);
     const name = cast.nameOf(f.riderId);
-    if (word && name && (i === 0 || cast.mine.has(f.riderId))) rows.push({ word, name, first: i === 0 });
-  });
-  // Vinderens dag foerst: den forklarer etapen. Derefter dine egne, de klareste ord foerst.
-  rows.sort((a, b) => Number(b.first) - Number(a.first) || DAY_WORD_ORDER.indexOf(a.word) - DAY_WORD_ORDER.indexOf(b.word));
+    if (word && name && cast.mine.has(f.riderId)) rows.push({ word, name });
+  }
+  // De klareste ord foerst; samme ord staar i maal-raekkefoelge (stabil sortering).
+  rows.sort((a, b) => DAY_WORD_ORDER.indexOf(a.word) - DAY_WORD_ORDER.indexOf(b.word));
   return rows.slice(0, 2).map(({ word, name }): ReportSentence => (word === "great" || word === "good"
     ? { key: word === "great" ? "dayGreat" : "dayGood", params: { name } }
     : { key: `bad_day_${word}`, params: { rider: name } }));
@@ -869,6 +871,8 @@ export function groupMembersAt(story: RaceStory, km: number): Map<string, Member
   if (!a) return state;
   const isOutBy = riderOutBy(story, a);
   for (const g of a.groups) state.set(g.group_id, { riders: new Set(g.rider_ids), includesRest: g.includes_rest });
+  // #7900: maalets grupper fra resultatet er facit; motorens overgange paa stregen maa ikke flytte rytterne igen.
+  if (a.groups.some((g) => g.gap_source === "result")) return state;
   const transitions: Array<{ km: number; order: number; span: GroupSpan; join?: { km: number; rider_ids: string[] } }> = [];
   for (const s of story.group_spans ?? []) {
     if (s.to_km != null && s.to_km < s.from_km - EPS) continue;

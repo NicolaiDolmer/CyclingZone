@@ -459,7 +459,10 @@ export function ruleSplitNeverAhead(input) {
 export function buildFilm(input) {
   const results = (input.stageRows ?? [])
     .filter((row) => typeof row.rider_id === "string" && typeof row.rank === "number")
-    .map((row) => ({ rider_id: row.rider_id, rank: row.rank }));
+    .map((row) => {
+      const gap = parseGapSeconds(row.finish_time);
+      return gap == null ? { rider_id: row.rider_id, rank: row.rank } : { rider_id: row.rider_id, rank: row.rank, gap_s: gap };
+    });
   return buildRaceStory({ events: input.events, timelineVersion: input.timelineVersion ?? null, results, startlist: input.startlist });
 }
 
