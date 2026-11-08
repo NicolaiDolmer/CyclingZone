@@ -238,6 +238,12 @@ export async function runTalentMarksDaily({ supabase, now = new Date(), log = co
   const marks = computeTalentMarks({ riders, juniorGains, seasonNumber, params });
   const rows = marks.map((m) => ({ ...m, season_number: seasonNumber, computed_on: today }));
 
+  // Et genforsøg samme dag starter forfra: en rytter, der har mistet pladsen siden
+  // det fejlede forsøg, må ikke blive stående med dagens dato. Første kørsel på
+  // dagen rammer ingen rækker her.
+  const { error: retryError } = await supabase.from("rider_talent_marks").delete().eq("computed_on", today);
+  if (retryError) throw new Error(`rider_talent_marks retry cleanup: ${retryError.message}`);
+
   // Først dagens mærker (én række pr. rytter, så en rytter der beholder sit mærke
   // bare får datoen fornyet), så fjernes de mærker, der ikke er givet i dag.
   if (rows.length > 0) {

@@ -55,8 +55,9 @@ COMMIT;
 -- baseline aldrig tæller som fremgang. Kun nøgler med tal i begge rækker tæller.
 -- Kalenderdagens række fryser på datoens første gevinst; med træning pr. løbsdag
 -- ligger datoens senere gevinster i rider_ability_race_day_history. Begge tabeller
--- flettes derfor, sorteret som proRiderHistory.compareHistoryRows (dato, kilde,
--- løbsdag med kalenderrækken først), så hver gevinst tæller på sin egen dato.
+-- flettes derfor i den rækkefølge, de faktisk blev skrevet (dato, baseline først,
+-- skrivetidspunkt, løbsdag med kalenderrækken først), så hver gevinst tæller på sin
+-- egen dato, også når et sæsonskifte følger træning samme dato.
 CREATE OR REPLACE FUNCTION public.talent_marks_junior_gains(
   p_rider_ids     UUID[],
   p_window_start  DATE,
@@ -69,11 +70,11 @@ SECURITY INVOKER
 SET search_path = public
 AS $$
   WITH x AS (
-    SELECT c.id, c.rider_id, c.snapshot_date, c.source, -1 AS game_day, c.abilities
+    SELECT c.id, c.rider_id, c.snapshot_date, c.source, -1 AS game_day, c.abilities, c.created_at
     FROM public.rider_derived_ability_history c
     WHERE c.rider_id = ANY (p_rider_ids)
     UNION ALL
-    SELECT r.id, r.rider_id, r.snapshot_date, r.source, r.game_day, r.abilities
+    SELECT r.id, r.rider_id, r.snapshot_date, r.source, r.game_day, r.abilities, r.created_at
     FROM public.rider_ability_race_day_history r
     WHERE r.rider_id = ANY (p_rider_ids)
   ),
@@ -82,7 +83,8 @@ AS $$
            LAG(x.abilities) OVER (
              PARTITION BY x.rider_id
              ORDER BY x.snapshot_date,
-                      CASE x.source WHEN 'baseline' THEN 1 WHEN 'season_transition' THEN 2 ELSE 3 END,
+                      CASE x.source WHEN 'baseline' THEN 1 ELSE 2 END,
+                      x.created_at,
                       x.game_day,
                       x.source,
                       x.id

@@ -218,7 +218,7 @@ test("alle ryttere tæller: frie, AI- og managerhold vurderes ens", () => {
 // ── Den daglige kørsel mod en lille fake ─────────────────────────────────────
 
 function fakeSupabase({ flag = "beta", lastComputedOn = null, riders = [], gains = [], params = PARAMS } = {}) {
-  const writes = { upserts: [], deletes: [], rpcCalls: [], tablesRead: [] };
+  const writes = { upserts: [], deletes: [], sameDayDeletes: [], rpcCalls: [], tablesRead: [], events: [] };
   const single = (data) => ({ data, error: null });
   function q(table) {
     writes.tablesRead.push(table);
@@ -239,9 +239,12 @@ function fakeSupabase({ flag = "beta", lastComputedOn = null, riders = [], gains
         if (table === "private_config") return Promise.resolve(single(params === null ? null : { value: params }));
         return Promise.resolve(single(null));
       },
-      upsert(rows, opts) { writes.upserts.push({ table, rows, opts }); return Promise.resolve({ error: null }); },
+      upsert(rows, opts) { writes.events.push("upsert"); writes.upserts.push({ table, rows, opts }); return Promise.resolve({ error: null }); },
       delete() {
-        return { lt(col, val) { writes.deletes.push({ table, col, val }); return Promise.resolve({ error: null }); } };
+        return {
+          eq(col, val) { writes.events.push("same-day-delete"); writes.sameDayDeletes.push({ table, col, val }); return Promise.resolve({ error: null }); },
+          lt(col, val) { writes.events.push("old-delete"); writes.deletes.push({ table, col, val }); return Promise.resolve({ error: null }); },
+        };
       },
     };
     return api;
@@ -308,6 +311,9 @@ test("kørslen: gårsdagens rækker står tilbage (fejlet oprydning) = dagen kø
   const result = await runTalentMarksDaily({ supabase: sb, now: new Date("2026-11-07T10:00:00Z") });
   assert.equal(result.ran, true);
   assert.deepEqual(sb.writes.deletes, [{ table: "rider_talent_marks", col: "computed_on", val: "2026-11-07" }]);
+  // Dagens rækker fra det fejlede forsøg ryddes først, så en tabt plads ikke bliver stående.
+  assert.deepEqual(sb.writes.sameDayDeletes, [{ table: "rider_talent_marks", col: "computed_on", val: "2026-11-07" }]);
+  assert.deepEqual(sb.writes.events, ["same-day-delete", "upsert", "old-delete"]);
 });
 
 test("kørslen: skriver dagens mærker med paramsenes vinduer og fjerner gårsdagens", async () => {
