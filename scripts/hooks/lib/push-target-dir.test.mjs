@@ -19,21 +19,32 @@ test('CLI laeser hook-JSON, hvor dobbelte anfoerselstegn er JSON-escaped', () =>
   assert.equal(r.stdout, '/c/my wt');
 });
 
-import { pushDestBranch, BACKUP_BRANCH_RE } from './push-target-dir.mjs';
+import { pushDestinations, guardTargets, LOCAL_BRANCH, ALL_BACKUP } from './push-target-dir.mjs';
 
-test('pushDestBranch: eksplicit refspec giver destinationen, ellers null (ejer 8/11)', () => {
-  assert.equal(pushDestBranch('git push -q origin HEAD:refs/heads/wip/6181-x'), 'wip/6181-x');
-  assert.equal(pushDestBranch('cd /c/wt && FOO=1 git push origin HEAD:wip/a 2>&1 | tail -3'), 'wip/a');
-  assert.equal(pushDestBranch('git -C "/c/my wt" push origin feat/a:backup/a'), 'backup/a');
-  assert.equal(pushDestBranch('git push origin +HEAD:feat/b'), 'feat/b');
-  assert.equal(pushDestBranch('git push -q origin HEAD'), null);
-  assert.equal(pushDestBranch('git push'), null);
-  assert.ok(BACKUP_BRANCH_RE.test('wip/6181-x'));
-  assert.ok(!BACKUP_BRANCH_RE.test('feat/wip-thing'));
+test('pushDestinations: refspec, quoting, redirects og lokal branch (ejer 8/11, Codex P2)', () => {
+  assert.deepEqual(pushDestinations('git push -q origin HEAD:refs/heads/wip/6181-x'), ['wip/6181-x']);
+  assert.deepEqual(pushDestinations('cd /c/wt && FOO=1 git push origin HEAD:wip/a 2>&1 | tail -3'), ['wip/a']);
+  assert.deepEqual(pushDestinations('git -C "/c/my wt" push origin feat/a:backup/a'), ['backup/a']);
+  assert.deepEqual(pushDestinations('git push origin +HEAD:feat/b'), ['feat/b']);
+  assert.deepEqual(pushDestinations('git push origin "HEAD:refs/heads/feat/review"'), ['feat/review']);
+  assert.deepEqual(pushDestinations("git push origin 'HEAD:feat/review'"), ['feat/review']);
+  assert.deepEqual(pushDestinations('git push -q origin HEAD'), [LOCAL_BRANCH]);
+  assert.deepEqual(pushDestinations('git push'), [LOCAL_BRANCH]);
+  assert.deepEqual(pushDestinations('git push -u origin feat/c'), ['feat/c']);
 });
 
-test('CLI --dest printer destinations-branchen', () => {
-  const input = JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'cd /c/wt && git push -q origin HEAD:refs/heads/wip/x' } });
-  const r = spawnSync(process.execPath, [fileURLToPath(new URL('./push-target-dir.mjs', import.meta.url)), '--dest'], { input, encoding: 'utf8' });
-  assert.equal(r.stdout, 'wip/x');
+test('guardTargets: kun undtaget naar hvert maal er en backup-branch (Codex P2)', () => {
+  assert.deepEqual(guardTargets('git push origin HEAD:wip/a'), [ALL_BACKUP]);
+  assert.deepEqual(guardTargets('git push origin HEAD:wip/a HEAD:backup/b'), [ALL_BACKUP]);
+  assert.deepEqual(guardTargets('git push origin HEAD:refs/heads/wip/s HEAD:refs/heads/feat/r'), ['feat/r']);
+  assert.deepEqual(guardTargets('git push origin HEAD:wip/s && git push origin HEAD:feat/r'), ['feat/r']);
+  assert.deepEqual(guardTargets('git push origin HEAD:wip/s && git push'), [LOCAL_BRANCH]);
+  assert.deepEqual(guardTargets('git push origin HEAD:feat/wip-thing'), ['feat/wip-thing']);
+  assert.deepEqual(guardTargets('echo hej'), []);
+});
+
+test('CLI --dest printer vagternes maal, ét pr. linje', () => {
+  const run = (command) => spawnSync(process.execPath, [fileURLToPath(new URL('./push-target-dir.mjs', import.meta.url)), '--dest'], { input: JSON.stringify({ tool_name: 'Bash', tool_input: { command } }), encoding: 'utf8' }).stdout;
+  assert.equal(run('cd /c/wt && git push -q origin HEAD:refs/heads/wip/x'), ALL_BACKUP);
+  assert.equal(run('git push origin HEAD:wip/x HEAD:feat/a HEAD:feat/b'), ['feat/a', 'feat/b'].join(String.fromCharCode(10)));
 });

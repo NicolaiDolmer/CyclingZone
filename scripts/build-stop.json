@@ -514,6 +514,10 @@
     {
       "issue": 7891,
       "why": "CI-koe fyldt af kladde-PR-tests, ejer-go 7/11 i chat"
+    },
+    {
+      "issue": 7908,
+      "why": "Push-vagter doemte pushets maal ud fra lokal branch, ejer-go 8/11 i chat"
     }
   ],
   "brandList": [
