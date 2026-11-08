@@ -83,6 +83,14 @@ test("ingen regnbuebånd: koden tegner ingen regnbuetrøje", () => {
   assert.doesNotMatch(code(jersey) + code(model), /rainbow|regnbue/i);
 });
 
+test("kun den igangværende sæsons titler vises (ikke bare den nyeste sæson i tabellen)", () => {
+  // Afslutning og start af en sæson er to trin; den nyeste titelsæson kan ligge
+  // foran eller bag den sæson, der faktisk spilles (Codex-fund 8/11).
+  assert.match(jersey, /from\("seasons"\)\.select\("number"\)\.eq\("status", "active"\)/);
+  assert.match(jersey, /\.eq\("season_number", season\)/);
+  assert.doesNotMatch(jersey, /order\("season_number", \{ ascending: false \}\)/);
+});
+
 test("national trøje: flaget ligger inline-absolut over hele trøjen og beskæres ikke", () => {
   // flag-icons' .fi { position: relative } vinder ellers over en utility-klasse,
   // og flaget skubbes ned under konturen (fundet på billederne 8/11).

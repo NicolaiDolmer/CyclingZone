@@ -244,10 +244,10 @@ export function restRows(table, requestUrl = "") {
     // rider-2 (den ældste) har tre titler, så profilen viser listen; rider-1 er U23.
     case "rider_champion_titles":
       return [
-        { rider_id: "rider-2", title: "world", scope: "", season_number: 2 },
-        { rider_id: "rider-2", title: "continent", scope: "Europe", season_number: 2 },
-        { rider_id: "rider-2", title: "national", scope: "DK", season_number: 2 },
-        { rider_id: "rider-1", title: "u23_world", scope: "", season_number: 2 },
+        { rider_id: "rider-2", title: "world", scope: "", season_number: ACTIVE_SEASON.number },
+        { rider_id: "rider-2", title: "continent", scope: "Europe", season_number: ACTIVE_SEASON.number },
+        { rider_id: "rider-2", title: "national", scope: "DK", season_number: ACTIVE_SEASON.number },
+        { rider_id: "rider-1", title: "u23_world", scope: "", season_number: ACTIVE_SEASON.number },
       ];
     case "rider_derived_abilities": {
       const rows = RIDERS

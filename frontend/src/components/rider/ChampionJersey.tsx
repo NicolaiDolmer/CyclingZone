@@ -58,7 +58,7 @@ function setState(next: StoreState) {
 // Tabellen er nyere end de genererede typer (frontend/src/types/database.types.ts).
 type Result = PromiseLike<{ data: unknown[] | null; error: unknown }>;
 type Query = {
-  eq: (column: string, value: number) => Query & Result;
+  eq: (column: string, value: number | string) => Query & Result;
   order: (column: string, opts?: { ascending?: boolean }) => Query & Result;
   limit: (n: number) => Result;
   range: (from: number, to: number) => Result;
@@ -72,12 +72,11 @@ async function loadChampionTitles(): Promise<Map<string, ChampionTitleRow[]>> {
   if (flags?.[CHAMPION_JERSEYS_FLAG_KEY] !== true) return new Map();
   try {
     const client = supabase as unknown as UntypedSelect;
-    // Den nyeste sæson med titler. Titlerne for en sæson skrives først, når den
-    // forrige er afsluttet, så den nyeste er altid den, der bæres nu.
-    const latest = await client.from("rider_champion_titles").select("season_number")
-      .order("season_number", { ascending: false }).limit(1);
-    const season = (latest.data?.[0] as { season_number?: unknown } | undefined)?.season_number;
-    if (latest.error || typeof season !== "number") return new Map();
+    // Kun den igangværende sæsons titler: en afsluttet sæsons trøjer udløber ved
+    // sæsonskiftet, og næste sæsons titler vises ikke, før den er startet.
+    const active = await client.from("seasons").select("number").eq("status", "active").limit(1);
+    const season = (active.data?.[0] as { number?: unknown } | undefined)?.number;
+    if (active.error || typeof season !== "number") return new Map();
     const rows: unknown[] = [];
     for (let from = 0; ; from += PAGE_SIZE) {
       const { data, error } = await client.from("rider_champion_titles").select(COLUMNS)

@@ -174,19 +174,26 @@ test("U23-lighed på U23-ranglisten slås op i U23-løbene", () => {
 
 // ── Kørslens gates (ingen database: en lille falsk klient) ───────────────────
 
-function fakeSupabase({ flag = '"off"', completed = { id: "s2", number: 2 }, existing = [], tables = {} } = {}) {
+function fakeSupabase({
+  flag = '"off"', completed = { id: "s2", number: 2 }, active = { id: "s3", number: 3 },
+  rankingPending = false, existing = [], tables = {},
+} = {}) {
   const writes = [];
   const reads = [];
   function builder(table) {
+    const filters = [];
     const result = () => {
       reads.push(table);
       if (table === "app_config") return { data: [{ key: "champion_jerseys_7824", value: JSON.parse(flag) }], error: null };
-      if (table === "seasons") return { data: completed, error: null };
+      if (table === "seasons") {
+        const wantsActive = filters.some(([col, val]) => col === "status" && val === "active");
+        return { data: wantsActive ? active : completed, error: null };
+      }
       if (table === "rider_champion_titles") return { data: existing, error: null };
       return { data: tables[table] ?? [], error: null };
     };
     const chain = {
-      select: () => chain, eq: () => chain, gt: () => chain, in: () => chain, order: () => chain,
+      select: () => chain, eq: (col, val) => { filters.push([col, val]); return chain; }, gt: () => chain, in: () => chain, order: () => chain,
       limit: () => chain, range: () => chain,
       maybeSingle: () => Promise.resolve(table === "app_config"
         ? { data: { value: JSON.parse(flag) }, error: null }
@@ -197,8 +204,28 @@ function fakeSupabase({ flag = '"off"', completed = { id: "s2", number: 2 }, exi
     };
     return chain;
   }
-  return { from: (table) => builder(table), writes, reads };
+  const rpc = (name) => {
+    reads.push(`rpc:${name}`);
+    return Promise.resolve({ data: { pending: rankingPending, pending_age_ms: 0, last_completed_at: "2026-11-07T00:00:00Z" }, error: null });
+  };
+  return { from: (table) => builder(table), rpc, writes, reads };
 }
+
+test("kørslen: venter til den nye sæson er startet (afslutning og start er to trin)", async () => {
+  const supabase = fakeSupabase({ flag: '"on"', active: null });
+  const result = await runChampionTitles({ supabase });
+  assert.equal(result.skipped, "next_season_not_started");
+  assert.equal(supabase.writes.length, 0);
+  assert.ok(!supabase.reads.includes("rider_rankings_mv"));
+});
+
+test("kørslen: venter mens ranglisten opdateres, så titlerne aldrig bygger på forældet rangliste", async () => {
+  const supabase = fakeSupabase({ flag: '"on"', rankingPending: true });
+  const result = await runChampionTitles({ supabase });
+  assert.equal(result.skipped, "ranking_refresh_pending");
+  assert.equal(supabase.writes.length, 0);
+  assert.ok(!supabase.reads.includes("rider_rankings_mv"));
+});
 
 test("kørslen: kontakten off = ingen læsning af ranglisten og ingen skrivning", async () => {
   const supabase = fakeSupabase({ flag: '"off"' });

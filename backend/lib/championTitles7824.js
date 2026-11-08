@@ -21,7 +21,8 @@
 // (runChampionTitlesTick), som finder den seneste afsluttede sæson, regner
 // titlerne for sæsonen efter og skriver dem i rider_champion_titles
 // (database/2026-11-07-7824-champion-titles.sql). Kørslen er idempotent: findes
-// sæsonens titler allerede, sker intet. Den kører hver time, så titlerne kommer
+// sæsonens titler allerede, sker intet. Den venter, til den nye sæson er startet,
+// og til ranglisten er opdateret med alle resultater. Den kører hver time, så titlerne kommer
 // kort efter et sæsonskifte, og første kørsel efter merge er engangsberegningen
 // for den igangværende sæson.
 
@@ -29,6 +30,7 @@ import { ageForSeason } from "./riderSeasonAge.js";
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { captureException } from "./sentry.js";
+import { getRankingRefreshWorkState } from "./rankingRefreshWork.ts";
 
 export const CHAMPION_JERSEYS_FLAG_KEY = "champion_jerseys_7824";
 
@@ -216,6 +218,13 @@ async function loadLatestCompletedSeason(supabase) {
   return data && Number.isFinite(data.number) ? data : null;
 }
 
+async function loadActiveSeasonNumber(supabase) {
+  const { data, error } = await supabase
+    .from("seasons").select("id, number").eq("status", "active").maybeSingle();
+  if (error) throw new Error(`seasons (active): ${error.message}`);
+  return data && Number.isFinite(data.number) ? data.number : null;
+}
+
 async function titlesExist(supabase, seasonNumber) {
   // schema-columns-ok: rider_champion_titles kommer fra 2026-11-07-7824-champion-titles.sql
   const { data, error } = await supabase
@@ -257,7 +266,14 @@ export async function runChampionTitles({ supabase }) {
   const source = await loadLatestCompletedSeason(supabase);
   if (!source) return { ran: false, skipped: "no_completed_season" };
   const seasonNumber = source.number + 1;
+  // Sæsonafslutning og sæsonstart er to adskilte trin. Titlerne skrives først, når
+  // sæsonen de bæres i faktisk er startet, så en ny trøje aldrig vises for tidligt.
+  if (await loadActiveSeasonNumber(supabase) !== seasonNumber) return { ran: false, skipped: "next_season_not_started", seasonNumber };
   if (await titlesExist(supabase, seasonNumber)) return { ran: false, skipped: "already_computed" };
+  // Titlerne skrives én gang og regnes aldrig om, så ranglisten skal være opdateret
+  // med alle resultater først. Venter en opdatering, prøver næste time igen.
+  const refresh = await getRankingRefreshWorkState(supabase, new Date());
+  if (refresh.pending) return { ran: false, skipped: "ranking_refresh_pending", seasonNumber };
 
   const [seniorRows, u23Rows, countries] = await Promise.all([
     fetchAllRows(() => supabase.from("rider_rankings_mv").select(RANKING_COLUMNS)
