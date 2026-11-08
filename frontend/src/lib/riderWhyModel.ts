@@ -7,12 +7,14 @@
 //
 // Raekkefoelgen er bevidst:
 //   1. udgaaet: aarsagen fra raekken og uheldet,
-//   2. ingen gruppe-log (enkeltstart, gammel tidslinje): ikke kendt,
+//   2. enkeltstart: ingen grupper, saa kun uheld, dagsform (med vejr) og rute,
+//      og kun naar det passer til placeringen,
+//   2b. ingen gruppe-log (holdtidskoersel, gammel tidslinje): ikke kendt,
 //   3. i maal foran: en rytter i frontgruppen blev aldrig sat, heller ikke selvom
 //      han var tabt undervejs og kom tilbage,
 //   4. bag fronten: det foerste tilbageslag der stod ved magt (buildOwnTimeLoss
 //      vogter "kom han tilbage"), og hvad der foerte til det.
-import { attackCompanions, checkpointGapForRider, mainGroupId, FINALE_KM, type AttackCompanions, type Cast, type RaceStory, type StoryMoment } from "../components/race/stagePageV2/raceStoryModel.ts";
+import { attackCompanions, checkpointGapForRider, dayWordsByRider, mainGroupId, FINALE_KM, type AttackCompanions, type Cast, type RaceStory, type StoryMoment } from "../components/race/stagePageV2/raceStoryModel.ts";
 import type { Climb } from "../components/race/stagePageV2/stagePageV2Model.ts";
 import { buildOwnTimeLoss, hasGroupGaps, type DropReason, type TimelineEvent } from "./stageSplitTimes.ts";
 
@@ -23,11 +25,13 @@ export type WhyMain =
   | "dropEmpty" | "dropPace" | "dropGrupetto" | "dropCobbles" | "dropGeneric" | "dropFromBreak"
   | "crack" | "allOut" | "allOutGain" | "crashLoss" | "mechanicalLoss" | "incidentLoss" | "caught"
   | "badDayFatigue" | "badDayForm" | "badDayIllness" | "badDayRain" | "badDayWind" | "badDayHeat"
-  | "attackBehind" | "bunchBehindSprint" | "pelotonBehindBreak" | "pelotonBehind";
+  | "attackBehind" | "bunchBehindSprint" | "pelotonBehindBreak" | "pelotonBehind"
+  | "ttFastest" | "ttDayGreat" | "ttDayGood" | "ttRouteGood" | "ttRouteBad";
 
 export type WhyLead =
   | "afterBreak" | "afterDrop"
-  | "badDayFatigue" | "badDayForm" | "badDayIllness" | "badDayRain" | "badDayWind" | "badDayHeat";
+  | "badDayFatigue" | "badDayForm" | "badDayIllness" | "badDayRain" | "badDayWind" | "badDayHeat"
+  | "ttRouteGood" | "ttRouteBad";
 
 export type WhyPlace =
   | { kind: "none" }
@@ -58,6 +62,8 @@ export interface RiderWhyInput {
   climbs: readonly Climb[];
   /** #7754: navne og dine egne ryttere. Uden den siges intet om, hvem han angreb med. */
   cast?: Cast | null;
+  /** #7717: rute-match pr. egen rytter paa denne etape. Uden den siges intet om ruten. */
+  routeFits?: ReadonlyMap<string, number | null> | null;
 }
 
 const NOWHERE: WhyPlace = { kind: "none" };
@@ -203,6 +209,74 @@ function outOfRace(input: RiderWhyInput, story: RaceStory | null, moments: Story
   return incident ? said("abandoned", where) : UNKNOWN;
 }
 
+// Grov placering og rute-match i forhold til holdkammeraterne: kun til at afgoere, om en
+// aarsag passer til resultatet. Rute-tallet er absolut og siger intet alene.
+const TT_TOP_SHARE = 0.25;
+const TT_POOR_SHARE = 0.6;
+const TT_ROUTE_SUITED = 1.2;
+const TT_ROUTE_UNSUITED = 0.8;
+
+const TT_ROUTE_FRESH_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Rute-matchet regnes af rytterens evner i dag, ikke paa loebsdagen. Et gammelt
+ * resultat kan derfor ikke forklares med det; uden etapens tidspunkt siges intet.
+ */
+export function routeFitsAtRaceTime<T>(routeFits: T, ranAt: string | null | undefined, now = Date.now()): T | null {
+  const ran = ranAt ? Date.parse(ranAt) : Number.NaN;
+  return Number.isFinite(ran) && now - ran <= TT_ROUTE_FRESH_MS ? routeFits : null;
+}
+
+type TtPlacing = "top" | "mid" | "poor" | null;
+
+function timeTrialPlacing(rank: number | null | undefined, field: number | null): TtPlacing {
+  if (rank == null || !field) return null;
+  if (rank <= Math.max(1, Math.ceil(field * TT_TOP_SHARE))) return "top";
+  return rank > Math.ceil(field * TT_POOR_SHARE) ? "poor" : "mid";
+}
+
+/** Passede ruten ham bedre eller daarligere end holdkammeraterne, og viste resultatet det? */
+function timeTrialRoute(input: RiderWhyInput, placing: TtPlacing): "good" | "bad" | null {
+  const fit = input.routeFits?.get(input.riderId as string);
+  const squad = [...(input.routeFits?.values() ?? [])].filter((v): v is number => typeof v === "number" && Number.isFinite(v)).sort((a, b) => a - b);
+  if (typeof fit !== "number" || squad.length < 2) return null;
+  const middle = squad.length / 2;
+  const median = squad.length % 2 ? squad[Math.floor(middle)] : (squad[middle - 1] + squad[middle]) / 2;
+  if (median <= 0) return null;
+  if (placing === "top" && fit >= median * TT_ROUTE_SUITED) return "good";
+  return placing === "poor" && fit <= median * TT_ROUTE_UNSUITED ? "bad" : null;
+}
+
+/**
+ * Enkeltstarten: rytteren koerer alene, saa der er ingen grupper at laese. Det vi ved
+ * er uheld, dagens ben fra motoren (vejret er en af dens aarsager) og ruten. Vejret
+ * logges ikke for hver rytter, saa det naevnes kun som aarsag til en daarlig dag.
+ */
+function timeTrialWhy(input: RiderWhyInput, story: RaceStory, moments: StoryMoment[]): RiderWhy {
+  const riderId = input.riderId as string;
+  const word = dayWordsByRider(input.events).get(riderId) ?? null;
+  const badDay = badDayOf(moments) ?? (word ? BAD_DAY[word] ?? null : null);
+  const loss = moments.find((m) => m.type === "incident" && m.data.outcome === "time_loss");
+  if (loss) {
+    const main = loss.data.kind === "crash" ? "crashLoss" : loss.data.kind === "mechanical" ? "mechanicalLoss" : "incidentLoss";
+    return said(main, placeOf(loss, story, input.climbs), badDay?.lead ?? null);
+  }
+  const placing = timeTrialPlacing(input.rank, story.field_count);
+  const route = timeTrialRoute(input, placing);
+  // Vinderen tabte ikke paa dagen, heller ikke med tunge ben.
+  if (badDay && input.rank !== 1) return said(badDay.main, NOWHERE, route === "bad" ? "ttRouteBad" : null);
+  if ((word === "great" || word === "good") && placing !== "poor") {
+    return said(word === "great" ? "ttDayGreat" : "ttDayGood", NOWHERE, route === "good" ? "ttRouteGood" : null);
+  }
+  if (route) return said(route === "good" ? "ttRouteGood" : "ttRouteBad");
+  return input.rank === 1 ? said("ttFastest") : UNKNOWN;
+}
+
+function isIndividualTimeTrial(events: RiderWhyInput["events"], story: RaceStory): boolean {
+  const start = (events ?? []).find((e) => e?.type === "stage_start");
+  return story.time_trial && /^itt/.test(String(start?.params?.profile_type ?? ""));
+}
+
 /** Forklaringen paa een raekke i resultatet. Kendes den ikke, er `known` false. */
 export function riderWhy(input: RiderWhyInput): RiderWhy {
   const why = explain(input);
@@ -216,6 +290,7 @@ function explain(input: RiderWhyInput): RiderWhy {
   if (!riderId || status === "dns") return UNKNOWN;
   const moments = story ? story.moments.filter((m) => ridersOf(m).includes(riderId)) : [];
   if (status === "dnf") return outOfRace(input, story ?? null, moments);
+  if (story && isIndividualTimeTrial(input.events, story)) return timeTrialWhy(input, story, moments);
   if (!story || story.time_trial || !hasGroupGaps(input.events)) return UNKNOWN;
 
   const finish = story.checkpoints.find((c) => c.kind === "finish");

@@ -628,6 +628,7 @@ const FAQ_KEYS = [
   "raceRouteRealismFaq",
   "dayFormFaq",
   "dayWordsFaq",
+  "whyButtonFaq", // #7717
   "crashesFaq",
   "newPlayerEconomyFaq",
   "seasonChangeMoneyFaq",
