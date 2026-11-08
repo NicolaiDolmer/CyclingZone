@@ -52,6 +52,11 @@ function isMissingColumn7855(error) {
   return error.code === "42703" || error.code === "PGRST204" || /does not exist|could not find/i.test(message);
 }
 
+/** Et endagsloeb giver ingen passagepoint (racePassages, passagesFromV4Output): opgaven ville koste uden at give noget. */
+function isStageRace7855(row) {
+  return row?.race_type === "stage_race";
+}
+
 function withoutMarker(v4Engine) {
   const { jerseyHunt7855: _dropped, ...rest } = v4Engine;
   return rest;
@@ -82,7 +87,7 @@ export async function bindJerseyHunt7855({ supabase, race, v4Engine, rulesRevisi
     .from("races")
     // schema-columns-ok: jersey_hunt_7855 tilfoejes af database/2026-11-07-7855-race-jersey-hunt-binding.sql;
     // foer den er applied, falder laesningen bevidst tilbage til slukket (isMissingColumn7855).
-    .select("jersey_hunt_7855, stages_completed")
+    .select("jersey_hunt_7855, stages_completed, race_type")
     .eq("id", race.id)
     .maybeSingle();
   const { data: row, error } = await readRow();
@@ -97,7 +102,7 @@ export async function bindJerseyHunt7855({ supabase, race, v4Engine, rulesRevisi
   if (!proposed) return v4Engine;
 
   const stagesCompleted = row?.stages_completed ?? race.stages_completed ?? null;
-  const canBind = firstStageClaim === true && !raceHasStarted({ id: race.id, stages_completed: stagesCompleted });
+  const canBind = firstStageClaim === true && isStageRace7855(row) && !raceHasStarted({ id: race.id, stages_completed: stagesCompleted });
   if (!canBind) return withoutMarker(v4Engine);
   if (dryRun) return v4Engine;
 
@@ -131,12 +136,12 @@ export async function jerseyHunt7855OpenForRace({ supabase, race, readStage = re
     const { data: row, error } = await supabase
       .from("races")
       // schema-columns-ok: se bindJerseyHunt7855; uden kolonnen er loebet ikke omfattet.
-      .select("jersey_hunt_7855, stages_completed")
+      .select("jersey_hunt_7855, stages_completed, race_type")
       .eq("id", race.id)
       .maybeSingle();
     if (error) return false;
     if (row?.jersey_hunt_7855 === true) return value !== JERSEY_HUNT_7855_EMERGENCY_STOP;
-    return evaluateJerseyHunt7855Flag(value) && !raceHasStarted({ id: race.id, stages_completed: row?.stages_completed ?? race.stages_completed ?? null });
+    return evaluateJerseyHunt7855Flag(value) && isStageRace7855(row) && !raceHasStarted({ id: race.id, stages_completed: row?.stages_completed ?? race.stages_completed ?? null });
   } catch {
     return false; // catch-ok: fail closed, opgaverne kan ikke gemmes
   }

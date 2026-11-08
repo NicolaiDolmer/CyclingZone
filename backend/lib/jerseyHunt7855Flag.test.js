@@ -40,7 +40,7 @@ function raceTable(row, { readError = null, updateError = null } = {}) {
     from(table) {
       assert.equal(table, "races");
       return {
-        select: () => ({ eq: () => ({ maybeSingle: async () => { calls.reads += 1; return readError ? { data: null, error: readError } : { data: { ...row }, error: null }; } }) }),
+        select: () => ({ eq: () => ({ maybeSingle: async () => { calls.reads += 1; return readError ? { data: null, error: readError } : { data: { race_type: "stage_race", ...row }, error: null }; } }) }),
         update: (patch) => {
           const filters = [];
           const chain = {
@@ -159,6 +159,15 @@ test("#7855 API-gaten: opgaverne kan kun gemmes i et loeb der vil koere med dem"
   assert.equal(await open({ jersey_hunt_7855: true, stages_completed: 2 }, "stop"), false, "noedstop");
   assert.equal(await open({}, "on", { readError: MISSING }), false, "uden kolonnen");
   assert.equal(await jerseyHunt7855OpenForRace({ supabase: raceTable({ jersey_hunt_7855: null, stages_completed: 0 }).supabase, race: { id: "r1" }, readStage: async () => { throw new Error("db"); } }), false, "fejl = lukket");
+});
+
+test("#7855 Codex-review: endagsloeb giver ingen passagepoint, saa opgaverne hverken tilbydes eller stemples dér", async () => {
+  const oneDay = () => raceTable({ jersey_hunt_7855: null, stages_completed: 0, race_type: "single" });
+  const table = oneDay();
+  assert.deepEqual(await bind(table), PLAIN, "ingen markering");
+  assert.equal(table.calls.updates.length, 0, "intet stempel");
+  assert.equal(await jerseyHunt7855OpenForRace({ supabase: oneDay().supabase, race: { id: "r1" }, readStage: async () => "on" }), false);
+  assert.equal(await jerseyHunt7855OpenForRace({ supabase: raceTable({ jersey_hunt_7855: null, stages_completed: 0 }).supabase, race: { id: "r1" }, readStage: async () => "on" }), true, "etapeloeb som foer");
 });
 
 // ── Slukket = bit-identisk med merge-basen ─────────────────────
