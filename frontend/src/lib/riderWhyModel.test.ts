@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { placeOf, riderWhy, type RiderWhyInput } from "./riderWhyModel.ts";
+import { placeOf, riderWhy, routeFitsAtRaceTime, type RiderWhyInput } from "./riderWhyModel.ts";
 import type { Cast, RaceStory, StoryCheckpoint, StoryMoment } from "../components/race/stagePageV2/raceStoryModel.ts";
 import type { Climb } from "../components/race/stagePageV2/stagePageV2Model.ts";
 
@@ -148,10 +148,85 @@ test("udgaaet: aarsagen fra uheldet, stedet hvis det kendes, og ellers ikke kend
 test("mangler data, er svaret ikke kendt", () => {
   assert.equal(riderWhy(input("a", 5, [], null)).known, false, "ingen historie");
   assert.equal(riderWhy(input("a", 5, [], storyOf([], null))).known, false, "intet maal i loggen");
-  assert.equal(riderWhy(input("a", 5, [], storyOf([], behind, { time_trial: true }))).known, false, "enkeltstart");
+  assert.equal(riderWhy(input("a", 5, [], storyOf([], behind, { time_trial: true }))).known, false, "tidskoersel uden kendt profil");
   assert.equal(riderWhy({ riderId: "a", rank: 5, events: [start], story: storyOf([], behind), climbs: [] }).known, false, "ingen gruppe-log");
   assert.equal(riderWhy(input(null as unknown as string, 5, [], storyOf([], behind))).known, false, "ingen rytter");
   assert.equal(riderWhy(input("a", 12, [], storyOf([], behind))).known, false, "gruppe bag fronten uden nogen haendelse");
+});
+
+// #7717: enkeltstarten. Ingen grupper; kun uheld, dagens ben og ruten, og kun naar det passer til placeringen.
+const ittEvents = (...extra: Ev[]): Ev[] => [{ km: 0, type: "stage_start", params: { field_count: 40, profile_type: "itt", distance_km: 24 } }, ...extra];
+const ittStory = (moments: StoryMoment[] = []) => storyOf(moments, null, { time_trial: true, distance_km: 24, field_count: 40 });
+const dayWord = (word: string, extra: Record<string, unknown> = {}): Ev => ({ km: 24, type: "day_word", params: { rider_id: "a", word, ...extra } });
+const FITS = new Map<string, number | null>([["a", 30], ["b", 20], ["c", 20], ["d", 12]]);
+const ittWhy = (rank: number | null, events: Ev[] = [], moments: StoryMoment[] = [], routeFits: RiderWhyInput["routeFits"] = null, riderId = "a") => riderWhy({ riderId, rank, events: ittEvents(...events), story: ittStory(moments), climbs: [], routeFits });
+
+test("#7717 enkeltstart: motorens daarlige dag er aarsagen, ogsaa vejret som type", () => {
+  assert.equal(ittWhy(30, [], [moment("bad_day", 24, { rider_id: "a", reason: "fatigue" })]).main, "badDayFatigue");
+  assert.equal(ittWhy(30, [], [moment("bad_day", 24, { rider_id: "a", reason: "weather", weather: "rain" })]).main, "badDayRain");
+  assert.equal(ittWhy(30, [dayWord("bad", { reason: "form" })]).main, "badDayForm");
+  assert.equal(ittWhy(30, [dayWord("bad", { reason: "weather", weather: "wind" })]).main, "badDayWind");
+  assert.equal(ittWhy(30, [], [moment("bad_day", 24, { rider_id: "b", reason: "fatigue" })]).known, false, "en andens daarlige dag");
+});
+
+test("#7717 enkeltstart: uheld med tidstab forklarer foer dagen", () => {
+  const crash = moment("incident", 12, { rider_id: "a", kind: "crash", outcome: "time_loss" });
+  const bad = moment("bad_day", 24, { rider_id: "a", reason: "form" });
+  const why = ittWhy(30, [], [crash, bad]);
+  assert.equal(why.main, "crashLoss");
+  assert.equal(why.lead, "badDayForm");
+  assert.equal(ittWhy(30, [], [moment("incident", 12, { rider_id: "a", kind: "mechanical", outcome: "time_loss" })]).main, "mechanicalLoss");
+  assert.equal(ittWhy(30, [], [moment("incident", 12, { rider_id: "a", kind: "crash", outcome: "protected_three_km_rule" })]).known, false);
+});
+
+test("#7717 enkeltstart: en god dag siges kun, naar resultatet ikke modsiger den", () => {
+  assert.equal(ittWhy(3, [dayWord("great")]).main, "ttDayGreat");
+  assert.equal(ittWhy(15, [dayWord("good")]).main, "ttDayGood");
+  assert.equal(ittWhy(35, [dayWord("great")]).known, false, "langt nede kan en god dag ikke vaere forklaringen");
+});
+
+test("#7717 enkeltstart: ruten sammenlignes med holdkammeraterne og skal passe til placeringen", () => {
+  assert.deepEqual(ittWhy(4, [], [], FITS), { known: true, main: "ttRouteGood", where: { kind: "none" }, lead: null, leadWhere: { kind: "none" } });
+  assert.equal(ittWhy(35, [], [], FITS, "d").main, "ttRouteBad");
+  assert.equal(ittWhy(35, [], [], FITS).known, false, "ruten passede ham, men han sluttede langt nede");
+  assert.equal(ittWhy(4, [], [], FITS, "d").known, false, "ruten passede ham ikke, men han kom langt frem");
+  assert.equal(ittWhy(20, [], [], FITS).known, false, "midt i feltet er ruten ikke forklaringen");
+  assert.equal(ittWhy(4, [], [], null).known, false, "uden rute-match siges intet (andre holds ryttere)");
+  assert.equal(ittWhy(4, [], [], new Map([["a", 30]])).known, false, "ingen holdkammerater at sammenligne med");
+});
+
+test("#7717 Codex: rute-match er dagens evner, saa et gammelt resultat forklares ikke med det", () => {
+  const now = Date.parse("2026-11-08T12:00:00.000Z");
+  assert.equal(routeFitsAtRaceTime(FITS, "2026-11-07T12:00:00.000Z", now), FITS, "frisk etape");
+  assert.equal(routeFitsAtRaceTime(FITS, "2026-10-20T12:00:00.000Z", now), null, "gammel etape");
+  assert.equal(routeFitsAtRaceTime(FITS, null, now), null, "ukendt tidspunkt");
+  assert.equal(routeFitsAtRaceTime(FITS, "ikke en dato", now), null, "ugyldigt tidspunkt");
+});
+
+test("#7717 enkeltstart: dag og rute i samme saetning; vinderen faar aldrig en daarlig dag", () => {
+  const bad = moment("bad_day", 24, { rider_id: "d", reason: "form" });
+  const worst = riderWhy({ riderId: "d", rank: 35, events: ittEvents(), story: ittStory([bad]), climbs: [], routeFits: FITS });
+  assert.equal(worst.main, "badDayForm");
+  assert.equal(worst.lead, "ttRouteBad");
+  const best = ittWhy(2, [dayWord("great")], [], FITS);
+  assert.equal(best.main, "ttDayGreat");
+  assert.equal(best.lead, "ttRouteGood");
+  assert.equal(ittWhy(1, [], [moment("bad_day", 24, { rider_id: "a", reason: "form" })]).main, "ttFastest");
+  assert.equal(ittWhy(1).main, "ttFastest");
+});
+
+test("#7717 enkeltstart: ingen aarsag i data giver ingen forklaring; holdtidskoersel er uroert", () => {
+  assert.equal(ittWhy(20).known, false);
+  assert.equal(ittWhy(2).known, false, "en fin placering alene er ikke en aarsag");
+  const ttt: Ev = { km: 0, type: "stage_start", params: { field_count: 40, profile_type: "ttt", distance_km: 24 } };
+  const why = riderWhy({ riderId: "a", rank: 1, events: [ttt, dayWord("great")], story: ittStory(), climbs: [], routeFits: FITS });
+  assert.equal(why.known, false);
+});
+
+test("#7717 enkeltstart: udgaaet foelger stadig udgaaet-grenen", () => {
+  const crash = moment("incident", 12, { rider_id: "a", kind: "crash", outcome: "abandoned" });
+  const why = riderWhy({ riderId: "a", rank: null, status: "dnf", reasonKey: "crash", events: ittEvents(), story: ittStory([crash]), climbs: [] });
+  assert.equal(why.main, "abandonedCrash");
 });
 
 test("stedet: et km-spaend siger kun en stigning hvis hele stykket ligger paa den", () => {

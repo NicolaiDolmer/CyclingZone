@@ -298,7 +298,7 @@
         "placedGap": "{name} terminó en la posición {rank}, a {gap}.",
         "dayGreat": "{name} tuvo un día muy bueno.",
         "dayGood": "{name} tuvo un buen día.",
-        "ownOut": "{kind, select, withdrawal {Retirada: {names}. Demasiado lejos del ganador.} time_limit {Fuera de control: {names}.} crash {Abandono por caída: {names}.} mechanical {Abandono por problema mecánico: {names}.} other {Abandono: {names}.}}"
+        "ownOut": "{kind, select, withdrawal {Retirada: {names}. Demasiado lejos del ganador.} time_limit {Fuera de control: {names}.} time_limit_fatigue {Fuera de control por cansancio: {names}.} crash {Abandono por caída: {names}.} mechanical {Abandono por problema mecánico: {names}.} other {Abandono: {names}.}}"
       },
       "final": {
         "aria": "Los últimos 5 km: grupos en carretera con distancia a meta, diferencias y reloj de carrera",
@@ -341,6 +341,7 @@
         "abandonedMechanical": "Tuvo una avería{where} y tuvo que abandonar",
         "abandoned": "Abandonó{where}",
         "timeLimit": "Llegó fuera de control",
+        "timeLimitFatigue": "Llegó fuera de control porque estaba demasiado cansado",
         "withdrawal": "Se bajó de la bici, demasiado lejos del ganador",
         "won": "Fue el primero en la meta",
         "wonSprint": "Ganó el esprint",
@@ -370,7 +371,12 @@
         "attackBehind": "Atacó{where}, pero no pudo seguir delante hasta la meta",
         "bunchBehindSprint": "Llegó en el pelotón detrás del esprint",
         "pelotonBehindBreak": "Llegó en el pelotón, detrás de la fuga que llegó a meta",
-        "pelotonBehind": "Se quedó en el pelotón cuando el grupo de delante se marchó"
+        "pelotonBehind": "Se quedó en el pelotón cuando el grupo de delante se marchó",
+        "ttFastest": "Hizo el mejor tiempo",
+        "ttDayGreat": "Tuvo un día excelente sobre la bici",
+        "ttDayGood": "Tuvo un buen día sobre la bici",
+        "ttRouteGood": "El recorrido le venía bien",
+        "ttRouteBad": "El recorrido no le venía bien"
       },
       "lead": {
         "afterBreak": "tras un día en la fuga",
@@ -380,7 +386,9 @@
         "badDayIllness": "en un mal día, sintiéndose enfermo",
         "badDayRain": "en un mal día bajo la lluvia",
         "badDayWind": "en un mal día con el viento",
-        "badDayHeat": "en un mal día con el calor"
+        "badDayHeat": "en un mal día con el calor",
+        "ttRouteGood": "en un recorrido que le venía bien",
+        "ttRouteBad": "en un recorrido que no le venía bien"
       }
     },
     "yourDay": {
@@ -1753,6 +1761,7 @@
       "illness": "Enfermo, no tomó la salida",
       "withdrawal": "Se bajó de la bici, demasiado rezagado",
       "time_limit": "Fuera de control",
+      "time_limit_fatigue": "Fuera de control, cansado",
       "abandoned": "Abandonó",
       "dnf": "DNF",
       "dnfCollapsed": "{count, plural, one {# ciclista no terminó} other {# ciclistas no terminaron}}",
