@@ -10,6 +10,7 @@ import {
   buildImportancePayload,
   buildDontKnowPayload,
   isDontKnow,
+  hasScoredVote,
   ROADMAP_ITEM_COLUMNS,
   votesByItemId,
 } from "./roadmapVoting.js";
@@ -134,4 +135,11 @@ test("ROADMAP_ITEM_COLUMNS henter horizon og beta-felterne (#6150)", () => {
   for (const col of ["horizon", "beta_since", "beta_soon", "live_soon", "created_at", "shipped_at"]) {
     assert.match(ROADMAP_ITEM_COLUMNS, new RegExp(`\\b${col}\\b`));
   }
+});
+
+test("hasScoredVote: kun en stemme med et tal tæller, ikke Ved ikke og ikke ingen række (#7792)", () => {
+  assert.equal(hasScoredVote({ idea_score: null, importance_score: 6 }), true);
+  assert.equal(hasScoredVote({ idea_score: 2, importance_score: null }), true);
+  assert.equal(hasScoredVote({ idea_score: null, importance_score: null }), false);
+  assert.equal(hasScoredVote(undefined), false);
 });

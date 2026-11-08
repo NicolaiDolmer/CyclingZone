@@ -4,12 +4,12 @@
 
 ## Aktiv styring
 
-> **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
+> **⏰ Påmind ejeren:** egomadsen #7870 (billeder, form/træthed sløret) · Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (7/11):** Bølge 1 kører på PC1 (6 laner: #7832, #7692, #6110 trin 2→4, #7792, #7789, #7801). Merge PR #7839 (worktree-oprydning uden tab, #7837) ved grøn CI. Pengelås #6181 og auto-accept #2176 designet 7/11 (beslutninger på issuerne); PR 1 i kø i bølge 1. Codex: #7829. Design næst: løbsside A (#7778), så #7725. Bevis 15:00 (#7726, #7557); #7733 efter 16:30; secrets, feedback og fair-play senest 9/11. PC1 mangler `infisical login` (Discord-webhook til auto-toget). Mærker #7824: kun design.
+> **🎯 Next action (8/11):** Merget nat 7-8/11: #7887, #7853, #7883, #7881, #7849 (hover, kontakt **beta**), #7889 (kladder uden tunge tests), #7894 (masterplan), #7893 (P16), #7835, #7896 (roadmap: sæson 5/6, Q1/Q2 2027; migration verificeret). **Ejer 09-12:** Hexagone-generalprøve #7890 + tænd-kort #7715 (PC1-session), nedkørsels-loft #7644, talentmærker #7882 (rule 17: A/B på #7879 + billede-go), mestertrøjer #7888 (bølge, billede-go), trøjejagt #7857, egomadsen #7870, XP #6110, sandhedsvagt før 15. Efter Hexagone-start: pengelås/auto-accept #7874/#7875/#7878. 9/11: secrets, feedback, #5431.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** PC1 Claude Code-session 7/11 (merger og tænder; auto-toget installeret på PC1). Dolmer PC kører Codex (#7833, #7348, #7170, #6862, #7248).
+> **🤖 Working agent:** PC1: merge-session (bølge med #7824) + generalprøve-session #7890 (merger intet). Dolmer PC: slukket, ingen Codex.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 

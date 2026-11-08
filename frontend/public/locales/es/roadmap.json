@@ -54,11 +54,10 @@
     "horizon": {
       "this_week": "Esta semana",
       "next_week": "La próxima semana",
-      "next": "Próximamente",
-      "this_season": "Esta temporada",
-      "next_season": "La próxima temporada",
-      "y2027": "2027",
-      "later": "Más adelante"
+      "season": "Temporada {season}",
+      "quarter": "Q{quarter} {year}",
+      "year": "{year}",
+      "unscheduled": "Abierto a votación"
     }
   },
   "beta": {
@@ -125,7 +124,8 @@
     "recent": "Entregado en los últimos 7 días",
     "earlier": "Antes",
     "patchNote": "Nota de parche · {date}",
-    "allPatchNotes": "Todas las notas de parche"
+    "allPatchNotes": "Todas las notas de parche",
+    "youVoted": "Votaste"
   },
   "empty": {
     "plan": {

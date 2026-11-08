@@ -1879,7 +1879,7 @@
     },
     "stageRaceLockout": {
       "q": "¿Por qué mi ciclista está bloqueado durante una carrera por etapas?",
-      "a": "Una carrera por etapas retiene a un ciclista durante todo su tramo de días de carrera. Si se corre del día de carrera 11 al 30, no puede tomar la salida en nada más en esa ventana, ni siquiera en los días en que la carrera no se corre."
+      "a": "Una carrera por etapas retiene a un ciclista durante todo su tramo de días de carrera. Si se corre del día de carrera 11 al 30, no puede tomar la salida en nada más en esa ventana, ni siquiera en los días en que la carrera no se corre. Una vez que ha salido, corre la carrera por etapas hasta la meta, aunque lo cambies a otra plantilla durante ella. Solo una lesión o la retirada lo sacan de ella."
     },
     "autoSelect": {
       "q": "¿Qué hace la Selección automática?",

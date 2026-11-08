@@ -127,7 +127,7 @@ export default function LanguageSwitcher({ className = "", surface = "page" }) {
         aria-expanded={open}
         aria-label={t("language.switchTooltip")}
         title={t("language.switchTooltip")}
-        className={`inline-flex items-center gap-1.5 rounded-cz px-2 py-1 text-sm ${surface === "sidebar" ? "text-cz-sidebar-2 hover:bg-cz-sidebar-hover" : "text-cz-2 hover:bg-cz-subtle"} focus:outline-hidden focus:ring-2 focus:ring-cz-accent`}
+        className={`inline-flex items-center gap-1.5 rounded-cz px-2 py-1 text-sm [@media(max-width:640px),(pointer:coarse)]:min-h-11 [@media(max-width:640px),(pointer:coarse)]:min-w-11 ${surface === "sidebar" ? "text-cz-sidebar-2 hover:bg-cz-sidebar-hover" : "text-cz-2 hover:bg-cz-subtle"} focus:outline-hidden focus:ring-2 focus:ring-cz-accent`}
       >
         <LanguageSwitcherFlag code={active.flag} />
         <span className="hidden sm:inline uppercase text-xs font-medium">{active.code}</span>
@@ -167,7 +167,7 @@ export default function LanguageSwitcher({ className = "", surface = "page" }) {
                       setLanguage(opt.code);
                       setOpen(false);
                     }}
-                    className={`w-full text-left px-3 py-1.5 text-sm flex items-center gap-2 text-cz-1 hover:bg-cz-subtle ${
+                    className={`w-full text-left px-3 py-1.5 text-sm flex items-center gap-2 text-cz-1 hover:bg-cz-subtle [@media(max-width:640px),(pointer:coarse)]:min-h-11 [@media(max-width:640px),(pointer:coarse)]:min-w-11 ${
                       selected ? "font-semibold" : ""
                     }`}
                   >

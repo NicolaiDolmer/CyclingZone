@@ -58,7 +58,7 @@ const nowIso = () => new Date().toISOString();
 
 // ── Punkt: opret / ret ──────────────────────────────────────────────────────
 const EMPTY_ITEM = {
-  engine: "races", title_en: "", title_da: "", status: "planned", horizon: "next",
+  engine: "races", title_en: "", title_da: "", status: "planned", horizon: "next_week",
   issue_ref: "", approved: false, flag_key: "", beta_soon: false, live_soon: false, category: "",
 };
 
@@ -69,7 +69,7 @@ function itemDraft(item) {
     title_en: item.title_en ?? "",
     title_da: item.title_da ?? "",
     status: item.status ?? "planned",
-    horizon: item.horizon ?? "next",
+    horizon: item.horizon ?? "next_week",
     issue_ref: item.issue_ref ?? "",
     approved: item.approved !== false,
     flag_key: item.flag_key ?? "",
@@ -201,13 +201,13 @@ export function SplitItemModal({ open, item, onClose, onSaved }) {
   const { getAuth } = useAdminAuth();
   const uid = useId();
   const formId = `${uid}-split`;
-  const [form, setForm] = useState({ title_en: "", title_da: "", status: "planned", horizon: "next", issue_ref: "" });
+  const [form, setForm] = useState({ title_en: "", title_da: "", status: "planned", horizon: "next_week", issue_ref: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (open) {
-      setForm({ title_en: "", title_da: "", status: "planned", horizon: item?.horizon ?? "next", issue_ref: "" });
+      setForm({ title_en: "", title_da: "", status: "planned", horizon: item?.horizon ?? "next_week", issue_ref: "" });
       setError("");
       setSaving(false);
     }

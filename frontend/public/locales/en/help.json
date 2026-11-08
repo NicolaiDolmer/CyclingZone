@@ -1879,7 +1879,7 @@
     },
     "stageRaceLockout": {
       "q": "Why is my rider locked out during a stage race?",
-      "a": "A stage race holds a rider for its whole race-day span. If it runs race days 11 to 30, he cannot start anything else in that window, not even on the days the race is not riding."
+      "a": "A stage race holds a rider for its whole race-day span. If it runs race days 11 to 30, he cannot start anything else in that window, not even on the days the race is not riding. Once he has started, he rides the stage race to the finish, even if you move him to another squad during it. Only an injury or retirement takes him out."
     },
     "autoSelect": {
       "q": "What does Auto-select do?",

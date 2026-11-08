@@ -14,6 +14,7 @@ import { computeTrainingScore, TRAINING_SCORE_CONFIG } from "./trainingScore.js"
 // Under kurven skal `riderQualityMult` vaere alders-neutral; applyDailyTick/applyRaceDevelopmentTick sikrer det.
 import { curveBBase, curveBCapSoftness, curveBSoftCeiling } from "./developmentCurveB.ts";
 import { blendCurveBTransition } from "./developmentCurveBTransition7382.ts"; // #7382 blød overgang
+import { developmentXpAbilityDelta, developmentXpTick } from "./developmentXp.ts"; // #6110 XP, kun med `developmentXp`
 
 export const DAILY_TRAINING_CONFIG = Object.freeze({
   daysPerSeason: 28,        // budget-konvertering; kalibreres i sim (Task A10)
@@ -158,7 +159,10 @@ export function dailyAbilityDelta({
   budgetDivisor = null, riderQualityMult = null,
   // #3564: validerede kurve B-params (developmentCurveB.ts). Udeladt/null = dagens model, bit-identisk.
   curveB = null,
+  developmentXp = null, // #6110: validerede XP-params (developmentXpFlag.ts). Udeladt/null = dagens model, bit-identisk.
 }) {
+  // #6110: XP-modellen giver XP (ikke en andel af et point) og kender intet loft (B4).
+  if (developmentXp) return developmentXpAbilityDelta({ ability, age, potentiale, program, primaryType, secondaryType, staff, facilityTier, riderLevel, academyRateMult, trainingCfg, budgetDivisor }, developmentXp);
   const gap = Math.max(0, (cap ?? current) - current);
   if (gap === 0) return 0;
   const mult = abilityMult(ability, program, trainingCfg);
@@ -273,6 +277,7 @@ export function applyDailyTick({
   // #6950: Udviklingsscore B ({ score, devMult, kind, offFocusDevMult? }, developmentScoreWiring.js) og
   // catch-up via loeb ({ evne: multiplikator }, raceCatchUpWiring.js). Udeladt = bit-identisk.
   developmentScore = null, abilityYieldMult = null,
+  developmentXp = null, // #6110: XP-modellen erstatter evne-loopet. Udeladt/null = bit-identisk.
 }) {
   const cfg = DAILY_TRAINING_CONFIG;
   const seedScope = tickSeedKey ?? dateStr;
@@ -313,6 +318,11 @@ export function applyDailyTick({
   const scoreBFocus = scoreB ? (program?.focusAbilities ?? TRAINING_FOCUSES[program?.focus] ?? []) : null;
   // Loebsdag: loebets tillaeg kun i etapens profil-evner; off-fokus faar basis (offFocusDevMult).
   const scoreBOffFocusMult = Number.isFinite(scoreB?.offFocusDevMult) && scoreB.offFocusDevMult >= 0 ? scoreB.offFocusDevMult : scoreB?.devMult;
+  // #6110: XP-grenen. Scoren og stoejen ovenfor er uaendrede; loebsdagens tillaeg ganges paa XP'en.
+  if (developmentXp) return { ...developmentXpTick({ abilities, progress, maxPointsPerTick: Number.isFinite(hardDailyCap) ? hardDailyCap : Infinity,
+    xpFor: (ability) => dailyAbilityDelta({ ability, age, program, potentiale, staff, facilityTier, riderLevel, academyRateMult, primaryType, secondaryType, trainingCfg, budgetDivisor, developmentXp })
+      * (abilityYieldMult?.[ability] > 0 ? abilityYieldMult[ability] : 1) }, developmentXp),
+  trainingScore, noise, status: noise > 1.05 ? "over" : noise < 0.95 ? "under" : "normal" };
 
   for (const ability of VISIBLE_ABILITIES) {
     const current = Number(nextAbilities[ability] ?? 0);

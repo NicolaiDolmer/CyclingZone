@@ -554,12 +554,6 @@
     "TS2322": 1,
     "TS2339": 3
   },
-  "../backend/lib/trainingDayTypes.js": {
-    "TS2339": 1,
-    "TS2345": 1,
-    "TS2353": 1,
-    "TS2538": 1
-  },
   "../backend/lib/valuationTypefree/abilityProduction.js": {
     "TS18047": 1,
     "TS2345": 1

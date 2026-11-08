@@ -230,8 +230,8 @@ function RoadmapChartSection({ rows, votePayload, loading, busy, onMoveHorizon, 
         <div className="space-y-2">
           <p className="text-3xs uppercase tracking-[.08em] text-cz-3">Flyt horisont</p>
           <div className="flex flex-wrap gap-1.5" role="group" aria-label={`Horisont for ${point.label}`}>
-            {HORIZONS.filter((h) => h !== "next" || row.horizon === "next").map((h) => {
-              const current = (row.horizon ?? "next") === h;
+            {HORIZONS.map((h) => {
+              const current = (row.horizon ?? "unscheduled") === h;
               return (
                 <Button key={h} variant="secondary" size="sm" type="button" aria-pressed={current}
                   className={current ? "border-cz-accent text-cz-accent-t" : ""}
@@ -465,7 +465,7 @@ export default function GrowthRoadmapTab() {
     <Select
       size="sm"
       aria-label={`Horisont for ${row.title_da || row.title_en}`}
-      value={row.horizon ?? "next"}
+      value={row.horizon ?? "unscheduled"}
       disabled={busy !== null}
       onChange={(e) => run(`hz-${row.item_id}`, () => updateItem(row.item_id, { horizon: e.target.value }))}
     >
@@ -488,7 +488,6 @@ export default function GrowthRoadmapTab() {
       <span>{AREA_LABELS[row.engine] ?? row.engine}</span>
       {row.category && <span className="normal-case tracking-normal">{row.category}</span>}
       {row.approved === false && <Tag>Skjult</Tag>}
-      {row.horizon === "later" && row.status === "planned" && <Tag>Later</Tag>}
       {row.beta_soon && <Tag>Næste i beta</Tag>}
       {row.live_soon && <Tag>Snart for alle</Tag>}
       {row.issue_ref ? <span className="font-data">#{row.issue_ref}</span> : null}
@@ -496,7 +495,7 @@ export default function GrowthRoadmapTab() {
   );
 
   const toPlan = (r) => run(`plan-${r.item_id}`, () => updateItem(r.item_id,
-    { status: "planned", horizon: "next", sort_order: nextSortOrder(plannedRows) }));
+    { status: "planned", horizon: "next_week", sort_order: nextSortOrder(plannedRows) }));
 
   const move = (r, dir) => run(`${dir < 0 ? "up" : "down"}-${r.item_id}`, () => Promise.all(movePatches(plannedRows, r.item_id, dir)
     .map((p) => updateItem(p.item_id, { sort_order: p.sort_order }))));

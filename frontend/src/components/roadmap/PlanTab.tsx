@@ -1,12 +1,12 @@
 // #6150 · Plan-fanen (spec §3.1): det besluttede, i ejerens rækkefølge.
-// #7666: grupperet efter horisont (denne uge, næste uge, denne sæson, næste
-// sæson, 2027, senere), så spilleren kan se HVORNÅR noget kommer. Ugerne står
+// #7666/#7895: grupperet efter horisont (denne uge, næste uge, sæson 5, sæson 6,
+// Q1 2027 ...), så spilleren kan se HVORNÅR noget kommer. Ugerne står
 // med datoer. Det der bygges nu, står øverst i sin horisont med et "I gang"-
 // mærke og har ingen skala (det der er i beta, står kun på Beta-fanen, #6160);
-// planlagte punkter har én ("Important to you?"). 2027 og senere er foldet.
+// planlagte punkter har én ("Important to you?"). Kvartaler og år er foldet.
 import { useTranslation } from "react-i18next";
 import {
-  FOLDED_HORIZONS, holdsItem, roadmapRowId, weekRange,
+  holdsItem, horizonLabelKey, isFoldedHorizon, roadmapRowId, weekRange,
   type PlanGroup, type RoadmapHorizon, type RoadmapItem, type RoadmapVote,
 } from "../../lib/roadmapModel.ts";
 import { CollapsibleSection, EmptyState, Section, SectionHeader, Button, StatusBadge } from "./roadmapUi.ts";
@@ -113,8 +113,12 @@ export default function PlanTab(props: PlanTabProps) {
     );
   };
 
-  const near = groups.filter((g) => !FOLDED_HORIZONS.has(g.horizon));
-  const far = groups.filter((g) => FOLDED_HORIZONS.has(g.horizon));
+  const horizonTitle = (horizon: RoadmapHorizon): string => {
+    const { key, values } = horizonLabelKey(horizon);
+    return t(key, values);
+  };
+  const near = groups.filter((g) => !isFoldedHorizon(g.horizon));
+  const far = groups.filter((g) => isFoldedHorizon(g.horizon));
   const plannedVisible = groups.reduce((n, g) => n + g.items.filter((i) => i.status === "planned").length, 0);
   const allRated = onlyUnrated && plannedTotal > 0 && plannedVisible === 0;
 
@@ -128,7 +132,7 @@ export default function PlanTab(props: PlanTabProps) {
             <section key={g.horizon} aria-labelledby={`roadmap-horizon-${g.horizon}`}>
               <div className="flex items-baseline justify-between gap-3 pb-2 border-b border-cz-border">
                 <h3 id={`roadmap-horizon-${g.horizon}`} className="text-sm font-semibold text-cz-1">
-                  {t(`plan.horizon.${g.horizon}`)}
+                  {horizonTitle(g.horizon)}
                   {dates && <span className="ms-2 font-data tabular-nums text-xs font-normal text-cz-3">{dates}</span>}
                 </h3>
                 <span className="font-data tabular-nums text-xs text-cz-3">{g.items.length}</span>
@@ -151,7 +155,7 @@ export default function PlanTab(props: PlanTabProps) {
           <CollapsibleSection
             key={g.horizon}
             defaultOpen={holdsItem(g.items, props.revealId)}
-            title={t(`plan.horizon.${g.horizon}`)}
+            title={horizonTitle(g.horizon)}
             meta={<span className="tabular-nums">{g.items.length}</span>}
           >
             <ul className={ROW_LIST}>{g.items.map(renderRow)}</ul>

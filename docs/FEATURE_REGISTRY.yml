@@ -34,7 +34,7 @@
 #   verified  YYYY-MM-DD — hvornår tilstanden sidst blev verificeret mod kode/prod
 #   note      max 1 linje. Kun det der ikke kan udledes af felterne ovenfor.
 #             Obligatorisk ved state: dormant.
-#   roadmap_en / roadmap_da / roadmap_horizon (next|later, valgfri) - spillerens
+#   roadmap_en / roadmap_da / roadmap_horizon (this_week|next_week|season_N|qN_YYYY|yYYYY, valgfri; #7895) - spillerens
 #             roadmap-tekst (#6693), godkendt af ejeren. Kraeves for spillervendte
 #             flag (flag + area ikke ops) naar state er beta; building/dormant giver
 #             kun en advarsel. scripts/roadmap-sync-registry.mjs opretter punktet
@@ -166,7 +166,7 @@ features:
 
   - id: race-descent-regroup-cap-7644
     area: race-engine
-    title_en: Long descents - cap on how much a regrouping chase can gain
+    title_en: Long descent chase cap
     title_da: Lange nedkørsler - loft på samlingens gevinst
     state: dormant
     flag: descent_regroup_cap_7644
@@ -220,7 +220,7 @@ features:
 
   - id: race-finalize-resumable
     area: race-engine
-    title_en: Resumable race finalisation (step markers)
+    title_en: Resumable race finalisation
     title_da: Genoptagelig løbsafslutning (trin-markører)
     state: live
     flag: race_finalize_resumable_enabled
@@ -312,13 +312,25 @@ features:
 
   - id: race-final-km-boundary-7383
     area: race-engine
-    title_en: Stage plan switches exactly 10 km from the finish
+    title_en: Stage plan 10 km switch
     title_da: Etapeplanens skift præcis 10 km fra mål
     state: live
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7383
     verified: 2026-10-31
     note: Live 31/10 efter ejer-go; kodekontakten FINAL_KM_BOUNDARY_7383_ACTIVE (motor og taktikside) fjernet 1/11 (krav 5), reglen gælder altid under s5_profiles_v3.
+
+  - id: training-fatigue-now-7801
+    area: training
+    title_en: Fatigue now counts today's earlier stages
+    title_da: Træthed lige nu tæller dagens tidligere etaper
+    state: building
+    ssot: docs/TRAINING_RULES.md
+    epic: 7801
+    verified: 2026-11-07
+    decision: taend
+    decide_by: 2026-11-21
+    note: Kontakt fatigue_now_7801 (ikke seedet = slukket); ejer tænder.
 
   - id: luxury-helper-role
     area: race-engine
@@ -386,7 +398,7 @@ features:
 
   - id: role-scope-choice
     area: race-day
-    title_en: Role picker scope (stage N to the end / stage N only)
+    title_en: Role picker scope
     title_da: Rollevælger med etape-valg (etape N og løbet ud / kun etape N)
     state: live
     flag: race_role_scope_choice
@@ -396,7 +408,7 @@ features:
 
   - id: stage-page-v2
     area: race-day
-    title_en: Stage page 2.0 (stage tabs, real elevation profile, your day)
+    title_en: Stage page 2.0
     title_da: Etapeside 2.0 (etapefaner, rigtig højdeprofil, din dag)
     state: live
     epic: 6570
@@ -426,7 +438,18 @@ features:
     note: "#7717: seedet off, kun visning. Ejeren flytter flaget efter visuelt go."
     roadmap_en: "Why? next to your riders: one tap tells you what decided his result."
     roadmap_da: "Hvorfor? ved dine ryttere: ét tryk fortæller, hvad der afgjorde hans resultat."
-    roadmap_horizon: next
+    roadmap_horizon: next_week
+
+  - id: rider-hover-card
+    area: squad
+    title_en: Rider card
+    title_da: Rytterkort
+    state: building
+    decision: ejer-beslutning
+    decide_by: 2026-11-14
+    epic: 2000
+    verified: 2026-11-07
+    note: "Kontakt rider_hover_card."
 
   - id: race-library-v2
     area: stats
@@ -510,7 +533,7 @@ features:
 
   - id: rider-valuation-v5
     area: market
-    title_en: Rider value on the same abilities as the rating
+    title_en: Rider value on rating abilities
     title_da: Rytterværdi på samme evner som ratingen
     state: live
     ssot: docs/ECONOMY_RULES.md
@@ -552,7 +575,7 @@ features:
     ssot: docs/superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md
     epic: 1177
     verified: 2026-11-04
-    note: 'Kun data er bygget (#5268). Løbsmotoren (#5348) og mentorpar (#5349) er ikke bygget, og arbejdet står stille (statusaudit 4/11).'
+    note: 'Kun data er bygget (#5268); løbsmotor (#5348) og mentorpar (#5349) mangler, og arbejdet står stille (statusaudit 4/11).'
 
   - id: rider-rating-best-role-display
     area: squad
@@ -577,7 +600,7 @@ features:
 
   - id: rider-primary-type-from-distribution
     area: squad
-    title_en: New riders' primary type from the target distribution
+    title_en: New riders' primary type
     title_da: Nye rytteres primære type fra mål-fordelingen
     state: building
     ssot: docs/RIDER_GENERATION.md
@@ -663,7 +686,7 @@ features:
 
   - id: training-hard-sessions-cobbles-echelon-attack
     area: training
-    title_en: Hard sessions for cobbles, echelons and attacks
+    title_en: Hard sessions for cobbles and attacks
     title_da: Hårde sessioner for brosten, vifter og angreb
     state: live
     ssot: docs/TRAINING_RULES.md
@@ -749,7 +772,7 @@ features:
 
   - id: training-bulk-day
     area: training
-    title_en: Set the training day for several riders at once
+    title_en: Bulk training day
     title_da: Sæt træningsdagen for flere ryttere på én gang
     state: live
     ssot: docs/TRAINING_RULES.md
@@ -863,7 +886,7 @@ features:
   # --- season --------------------------------------------------------------
   - id: auto-calendar
     area: season
-    title_en: Auto-generated season calendar at forever transitions
+    title_en: Auto-generated season calendar
     title_da: Auto-genereret sæsonkalender ved forever-skifter
     state: building
     ssot: docs/CALENDAR_RULES.md
@@ -948,7 +971,7 @@ features:
 
   - id: development-v2-aging
     area: season
-    title_en: Development 2.0 part 1 (decline at season change, only manager teams develop)
+    title_en: Development 2.0 part 1
     title_da: Udvikling 2.0 del 1 (tilbagegang ved sæsonskiftet, kun managerhold udvikler sig)
     state: live
     flag: development_v2_aging_enabled
@@ -968,7 +991,7 @@ features:
 
   - id: development-curve-b
     area: training
-    title_en: Development curve B (level and potential drive development, not age)
+    title_en: Development curve B
     title_da: Udviklingskurve B (niveau og potentiale styrer udviklingen, ikke alder)
     state: live
     flag: development_curve_b
@@ -990,7 +1013,7 @@ features:
 
   - id: condition-v2-race-date-training-day
     area: training
-    title_en: Training on a race date weighs a full training day
+    title_en: Race date as full training day
     title_da: Træning på en løbsdato vejer et helt træningsdøgn
     state: live
     flag: condition_v2_race_date_training_day
@@ -1021,20 +1044,20 @@ features:
 
   - id: potential-estimate-display
     area: training
-    title_en: One potential source (stored estimate per rider and team)
+    title_en: One potential source
     title_da: Én prognose-kilde (gemt skøn pr. rytter og hold)
     state: dormant
     flag: potential_estimate_display
     ssot: docs/superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md
     epic: 6110
     verified: 2026-11-05
-    note: 'Byggetrin 4 (#7684): estimates, scouting-rapport, development-projection og akademi svarer fra potentialEstimateRead.js, når flaget er tændt.'
+    note: 'Byggetrin 4 (#7684): fladerne læser potentialEstimateRead.js, når flaget er tændt.'
     decision: goer-faerdigt
     decide_by: 2026-12-31
 
   - id: potential-estimate-writes
     area: training
-    title_en: Stored potential estimates (Sunday run and writes)
+    title_en: Stored potential estimates
     title_da: Gemte potentiale-skøn (søndagsjob og skrivning)
     state: building
     ssot: docs/superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md
@@ -1046,7 +1069,7 @@ features:
 
   - id: train-now-whole-day
     area: training
-    title_en: Train now B (the click settles the rider's whole known date)
+    title_en: Train now B
     title_da: Træn nu B (klikket afregner rytterens hele kendte dato)
     state: live
     ssot: docs/TRAINING_RULES.md
@@ -1062,10 +1085,22 @@ features:
     flag: development_score_v2
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: 'Ejer 31/10 (#6110): parkeret, indtil grundtalentet (spec 23/10, byggetrin 2) er bygget; decide_by 8/11 er afløst, ny frist ikke sat. Forudsætning før tænding: #7584. Statusaudit 4/11.'
+    note: 'Ejer 31/10 (#6110): parkeret, indtil grundtalentet (spec 23/10, byggetrin 2) er bygget; ny frist ikke sat. Forudsætning før tænding: #7584. Statusaudit 4/11.'
     verified: 2026-11-04
     decision: ejer-beslutning
     decide_by: 2026-11-08
+
+  - id: development-xp-model
+    area: training
+    title_en: Development XP
+    title_da: Udviklings-XP
+    state: building
+    ssot: docs/TRAINING_RULES.md
+    epic: 6110
+    note: 'Kontakter development_xp_model + development_xp_from_date; tændes efter kalibrering.'
+    verified: 2026-11-07
+    decision: taend
+    decide_by: 2026-11-21
 
   - id: race-day-catchup
     area: training
@@ -1082,7 +1117,7 @@ features:
 
   - id: race-day-role-yield
     area: training
-    title_en: Race day = hard day plus a role-weighted extra in the stage abilities
+    title_en: Race day as a hard training day
     title_da: Løbsdag = hård dag + tillæg i etapens evner efter rolle
     state: live
     flag: race_day_role_yield_enabled
@@ -1093,7 +1128,7 @@ features:
 
   - id: race-day-role-base-day
     area: training
-    title_en: Race day - the rider's role also decides the base day
+    title_en: Race day role base day
     title_da: Løbsdag - rollen styrer også basis-dagen
     state: dormant
     flag: race_day_role_base_day_enabled
@@ -1106,7 +1141,7 @@ features:
 
   - id: promotion-pending
     area: academy
-    title_en: Awaiting promotion instead of auto-sale when the next squad is full
+    title_en: Awaiting promotion instead of auto-sale
     title_da: Afventer oprykning i stedet for automatisk salg ved fuld trup
     state: live
     flag: promotion_pending_enabled
@@ -1165,7 +1200,7 @@ features:
 
   - id: upkeep-per-race-day
     area: economy
-    title_en: Upkeep paid per senior race day (Travel & staff)
+    title_en: Upkeep per senior race day
     title_da: Upkeep betalt pr. seniorløbsdag (Rejse og personale)
     state: live
     flag: upkeep_per_race_day
@@ -1304,7 +1339,7 @@ features:
 
   - id: first-race-card
     area: onboarding
-    title_en: Your first race card on the dashboard (new teams)
+    title_en: First race card on the dashboard
     title_da: Dit første løb-kort på dashboardet (nye hold)
     state: live
     flag: first_race_card

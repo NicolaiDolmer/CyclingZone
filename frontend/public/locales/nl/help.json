@@ -1879,7 +1879,7 @@
     },
     "stageRaceLockout": {
       "q": "Waarom is mijn renner tijdens een etappekoers vergrendeld?",
-      "a": "Een etappekoers houdt een renner vast voor zijn hele spanne van koersdagen. Als hij koersdagen 11 tot 30 loopt, kan de renner in dat venster niets anders starten, ook niet op de dagen waarop de koers niet rijdt."
+      "a": "Een etappekoers houdt een renner vast voor zijn hele spanne van koersdagen. Als hij koersdagen 11 tot 30 loopt, kan de renner in dat venster niets anders starten, ook niet op de dagen waarop de koers niet rijdt. Zodra hij gestart is, rijdt hij de etappekoers uit, ook als je hem tijdens de koers naar een andere selectie verplaatst. Alleen een blessure of stoppen haalt hem eruit."
     },
     "autoSelect": {
       "q": "Wat doet Automatisch kiezen?",

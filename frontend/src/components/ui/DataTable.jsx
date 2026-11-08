@@ -392,7 +392,8 @@ function TableHead({ columns, sort, sortDir, onSort, dense, mobile = false, stic
 function MobileColumnChips({ columns, selected, onPick, fullTable, onToggleFullTable, t }) {
   const base =
     "flex-none inline-flex items-center gap-1.5 rounded-cz-pill border px-2.5 min-h-[32px] " +
-    "font-data text-2xs font-semibold uppercase tracking-[.06em] transition-colors duration-150";
+    "font-data text-2xs font-semibold uppercase tracking-[.06em] transition-colors duration-150 " +
+    "[@media(max-width:640px),(pointer:coarse)]:min-h-11 [@media(max-width:640px),(pointer:coarse)]:min-w-11";
   return (
     <div className="mb-2 flex items-center gap-1.5">
       <div
