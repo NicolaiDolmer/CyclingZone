@@ -8,6 +8,7 @@
 import { captureException } from "./sentry.js";
 
 const DAY_FORM_TYPES = new Set(["day_word", "bad_day"]);
+const MAX_TEAM_RIDERS_IN_RACE = 100;
 
 const isDayForm = (event) => DAY_FORM_TYPES.has(event?.type);
 
@@ -19,10 +20,11 @@ export function withOwnDayFormOnly(events, ownRiderIds) {
 
 /** Holdets ryttere i dette loeb: startlisten plus etapens resultat, som referatets "dine egne". */
 async function loadOwnRiderIds(supabase, { raceId, stageNumber, teamId }) {
+  // Et hold har aldrig saa mange ryttere i ét loeb; loftet er kun et sikkerhedsnet.
   const [entries, results] = await Promise.all([
-    supabase.from("race_entries").select("rider_id").eq("race_id", raceId).eq("team_id", teamId),
+    supabase.from("race_entries").select("rider_id").eq("race_id", raceId).eq("team_id", teamId).limit(MAX_TEAM_RIDERS_IN_RACE),
     supabase.from("race_results").select("rider_id").eq("race_id", raceId).eq("team_id", teamId)
-      .eq("stage_number", stageNumber).eq("result_type", "stage"),
+      .eq("stage_number", stageNumber).eq("result_type", "stage").limit(MAX_TEAM_RIDERS_IN_RACE),
   ]);
   const failed = entries.error ?? results.error;
   if (failed) throw new Error(`day_form_visibility: ${failed.message}`);
