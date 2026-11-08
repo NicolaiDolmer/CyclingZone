@@ -33,6 +33,10 @@ esac
 # Ejer 4/11: `cd <dir> && git push` eller `git -C <dir> push` pusher fra et andet
 # worktree end sessionens cwd; tjek det worktree (ellers maaltes det forkerte trae).
 # Codex P2 (#7660): kommandoen afkodes som JSON, og shell-quoting fjernes (lib/push-target-dir.mjs).
+# Ejer 8/11: destinations-branchen i en eksplicit refspec (`HEAD:wip/x`) er maalet, ikke den lokale branch.
+DEST=$(printf '%s' "$INPUT" | node "$(dirname "$0")/lib/push-target-dir.mjs" --dest 2>/dev/null)
+# Ejer 8/11: en backup-branch (wip/*, backup/*) har ingen PR og intet merges derfra.
+case "$DEST" in wip/*|backup/*) exit 0 ;; esac
 TARGET_DIR=$(printf '%s' "$INPUT" | node "$(dirname "$0")/lib/push-target-dir.mjs" 2>/dev/null)
 if [ -n "$TARGET_DIR" ]; then cd "$TARGET_DIR" 2>/dev/null || exit 0; fi
 
@@ -79,7 +83,8 @@ STAMP=$(git rev-parse --git-path preflight-ok 2>/dev/null)
 # Ejer 4/11: en advarsel i systemMessage ses kun af ejeren, saa pushet gik igennem
 # uden preflight. Nu afvises pushet med en begrundelse, Claude ser og handler paa.
 emit() {
-  printf '{"systemMessage": "%s", "hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "%s\\nUndtagelse: saet PREFLIGHT_SKIP=\\"<hvorfor>\\" foran git push."}}\n' "$1" "$1"
+  # Ejer 8/11: ingen systemMessage; den viste hele teksten i ejerens vindue. Afvisningen naar Claude via begrundelsen.
+  printf '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "%s\\nUndtagelse: saet PREFLIGHT_SKIP=\\"<hvorfor>\\" foran git push."}}\n' "$1"
   exit 0
 }
 

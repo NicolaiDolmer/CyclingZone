@@ -47,6 +47,10 @@ esac
 # Ejer 4/11: `cd <dir> && git push` / `git -C <dir> push` pusher fra et andet worktree
 # end sessionens cwd; tjek den branch, der faktisk pushes.
 # Codex P2 (#7660): kommandoen afkodes som JSON, og shell-quoting fjernes (lib/push-target-dir.mjs).
+# Ejer 8/11: destinations-branchen i en eksplicit refspec (`HEAD:wip/x`) er maalet, ikke den lokale branch.
+DEST=$(printf '%s' "$INPUT" | node "$(dirname "$0")/lib/push-target-dir.mjs" --dest 2>/dev/null)
+# Ejer 8/11: en backup-branch (wip/*, backup/*) har ingen PR og intet merges derfra.
+case "$DEST" in wip/*|backup/*) exit 0 ;; esac
 TARGET_DIR=$(printf '%s' "$INPUT" | node "$(dirname "$0")/lib/push-target-dir.mjs" 2>/dev/null)
 if [ -n "$TARGET_DIR" ]; then cd "$TARGET_DIR" 2>/dev/null || exit 0; fi
 
@@ -69,6 +73,9 @@ CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
 case "$CURRENT_BRANCH" in
   main|master) exit 0 ;;
 esac
+
+# Ejer 8/11: tjek CI paa den branch, der faktisk pushes til.
+[ -n "$DEST" ] && CURRENT_BRANCH="$DEST"
 
 # Tjek seneste CI-run på denne branch. Hvis sidste run var failure/cancelled
 # → emit warning. Vi bruger --json conclusion,headSha for at filtrere på
@@ -96,6 +103,7 @@ SHORT_SHA=$(printf '%s' "$SHA" | head -c 7)
 # Ejer 4/11: systemMessage ses kun af ejeren. Pushet afvises nu med en begrundelse, Claude
 # ser; efter lokal koersel kvitteres med CI_FAIL_ACK="<hvad er koert>" foran git push.
 MSG=$(printf '⚠️  CI-FAIL-LOOP-GUARD: Seneste push (%s) på branch %s havde CI-conclusion=%s. Inden du pusher endnu en fix:\\n  1. Har du kørt den fejlende test LOKALT? Specifikt for Playwright: npx playwright test <spec> --project=desktop-chromium\\n  2. Hvis det er 2+ runder på samme symptom → STOP, find rod-årsag, spørg brugeren før push.\\nSe postmortem: .claude/learnings/2026-05-17-symptom-patching-loop-vs-root-cause.md' "$SHORT_SHA" "$CURRENT_BRANCH" "$CONCLUSION")
-printf '{"systemMessage": "%s", "hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "%s\\nKvittering efter lokal koersel: CI_FAIL_ACK=\\"<hvad er koert>\\" foran git push."}}\n' "$MSG" "$MSG"
+# Ejer 8/11: ingen systemMessage; den viste hele teksten i ejerens vindue. Afvisningen naar Claude via begrundelsen.
+printf '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "%s\\nKvittering efter lokal koersel: CI_FAIL_ACK=\\"<hvad er koert>\\" foran git push."}}\n' "$MSG"
 
 exit 0

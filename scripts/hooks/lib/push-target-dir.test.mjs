@@ -18,3 +18,22 @@ test('CLI laeser hook-JSON, hvor dobbelte anfoerselstegn er JSON-escaped', () =>
   const r = spawnSync(process.execPath, [fileURLToPath(new URL('./push-target-dir.mjs', import.meta.url))], { input, encoding: 'utf8' });
   assert.equal(r.stdout, '/c/my wt');
 });
+
+import { pushDestBranch, BACKUP_BRANCH_RE } from './push-target-dir.mjs';
+
+test('pushDestBranch: eksplicit refspec giver destinationen, ellers null (ejer 8/11)', () => {
+  assert.equal(pushDestBranch('git push -q origin HEAD:refs/heads/wip/6181-x'), 'wip/6181-x');
+  assert.equal(pushDestBranch('cd /c/wt && FOO=1 git push origin HEAD:wip/a 2>&1 | tail -3'), 'wip/a');
+  assert.equal(pushDestBranch('git -C "/c/my wt" push origin feat/a:backup/a'), 'backup/a');
+  assert.equal(pushDestBranch('git push origin +HEAD:feat/b'), 'feat/b');
+  assert.equal(pushDestBranch('git push -q origin HEAD'), null);
+  assert.equal(pushDestBranch('git push'), null);
+  assert.ok(BACKUP_BRANCH_RE.test('wip/6181-x'));
+  assert.ok(!BACKUP_BRANCH_RE.test('feat/wip-thing'));
+});
+
+test('CLI --dest printer destinations-branchen', () => {
+  const input = JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'cd /c/wt && git push -q origin HEAD:refs/heads/wip/x' } });
+  const r = spawnSync(process.execPath, [fileURLToPath(new URL('./push-target-dir.mjs', import.meta.url)), '--dest'], { input, encoding: 'utf8' });
+  assert.equal(r.stdout, 'wip/x');
+});
