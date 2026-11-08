@@ -28,6 +28,7 @@ const OLD_ROADMAP_MIGRATIONS = [
   "2026-06-20-roadmap-shipped-history.sql",
   "2026-09-07-3457-roadmap-anon-read.sql",
 ];
+const HORIZON_MIGRATIONS = ["2026-11-04-7666-roadmap-horizons.sql", "2026-11-08-7895-roadmap-saesonnumre.sql"];
 
 const ADMIN = randomUUID();
 const P1 = randomUUID();
@@ -61,6 +62,8 @@ before(async () => {
   for (const file of OLD_ROADMAP_MIGRATIONS) await db.exec(readMigration(file));
   await db.exec(PRE_CUTOVER_GRANTS);
   await db.exec(readMigration(NEW_MIGRATION));
+  // #7895: horisonterne er siden udvidet (#7666) og erstattet af sæsoner/kvartaler.
+  for (const file of HORIZON_MIGRATIONS) await db.exec(readMigration(file));
 
   for (const [id, name] of [[ADMIN, "admin"], [P1, "p1"], [P2, "p2"]]) {
     await db.query("INSERT INTO auth.users (id) VALUES ($1)", [id]);
@@ -125,6 +128,9 @@ async function setFlag(key, jsonValue) {
 
 test("migrationen er idempotent: anden apply fejler ikke", async () => {
   await db.exec(readMigration(NEW_MIGRATION));
+  // Hub-migrationen sætter den gamle next/later-regel igen; de nyere horisont-migrationer
+  // skal derfor også kunne køres en gang til (#7895-idempotens).
+  for (const file of HORIZON_MIGRATIONS) await db.exec(readMigration(file));
 });
 
 test("status-CHECK accepterer planned og in_progress og afviser ukendt værdi", async () => {
@@ -133,14 +139,19 @@ test("status-CHECK accepterer planned og in_progress og afviser ukendt værdi", 
   await assert.rejects(() => item({ status: "someday" }), /roadmap_items_status_check/);
 });
 
-test("horizon er 'next' som default og afviser andet end next/later", async () => {
+test("horizon er 'unscheduled' som default og tager kun uger, sæsoner, kvartaler og år (#7895)", async () => {
   const it = await item({ status: "planned" });
-  assert.equal(it.horizon, "next");
-  await db.query("UPDATE roadmap_items SET horizon = 'later' WHERE id = $1", [it.id]);
-  await assert.rejects(
-    () => db.query("UPDATE roadmap_items SET horizon = 'soon' WHERE id = $1", [it.id]),
-    /roadmap_items_horizon_check/,
-  );
+  assert.equal(it.horizon, "unscheduled");
+  for (const h of ["this_week", "next_week", "season_5", "season_12", "q1_2027", "y2028"]) {
+    await db.query("UPDATE roadmap_items SET horizon = $2 WHERE id = $1", [it.id, h]);
+  }
+  for (const bad of ["next", "later", "soon", "q5_2027", "season_x"]) {
+    await assert.rejects(
+      () => db.query("UPDATE roadmap_items SET horizon = $2 WHERE id = $1", [it.id, bad]),
+      /roadmap_items_horizon_check/,
+      bad,
+    );
+  }
 });
 
 test("anon læser godkendte active/planned/in_progress/shipped, ikke archived og ikke ikke-godkendte", async () => {
@@ -288,7 +299,7 @@ test("roadmap_item_scores: sd_importance og idea_votes regnes rigtigt når idea_
   assert.equal(Number(r.avg_idea), 4);
   assert.equal(Number(r.avg_importance), 4);
   assert.equal(Number(r.sd_importance), 2.83);
-  assert.equal(r.horizon, "next");
+  assert.equal(r.horizon, "unscheduled");
   assert.deepEqual(
     Object.keys(r),
     ["item_id", "engine", "title_en", "approved", "status", "votes", "avg_idea", "avg_importance", "steering_score",
@@ -606,14 +617,15 @@ test("roadmap_split_item: admin får nyt skjult punkt med samme område og en ko
     "INSERT INTO roadmap_votes (item_id, user_id, idea_score, importance_score) VALUES ($1, $2, 5, 6), ($1, $3, NULL, 3)",
     [src.id, P1, P2],
   );
-  const { rows } = await asAdmin((tx) =>
-    tx.query("SELECT roadmap_split_item($1, ' Rest EN ', 'Rest DA', 'planned', 'later', 6149) AS id", [src.id]),
+  // #6221/#7895: kun service_role maa splitte (backend-ruten).
+  const { rows } = await asService((tx) =>
+    tx.query("SELECT roadmap_split_item($1, ' Rest EN ', 'Rest DA', 'planned', 'q2_2027', 6149) AS id", [src.id]),
   );
   const created = await getItem(rows[0].id);
   assert.equal(created.engine, "youth");
   assert.equal(created.approved, false);
   assert.equal(created.status, "planned");
-  assert.equal(created.horizon, "later");
+  assert.equal(created.horizon, "q2_2027");
   assert.equal(created.issue_ref, 6149);
   assert.equal(created.title_en, "Rest EN");
 
@@ -665,7 +677,7 @@ test('#6221: forward hardening denies client roles and preserves service stats/s
   const stats = await asService(tx => tx.query('SELECT * FROM roadmap_admin_stats()'));
   assert.equal(stats.rows.length, 1);
   const src = await item({ status: 'planned' });
-  const result = await asService(tx => tx.query("SELECT roadmap_split_item($1,'Rest EN','Rest DA') AS id", [src.id]));
+  const result = await asService(tx => tx.query("SELECT roadmap_split_item($1,'Rest EN','Rest DA','planned','next_week') AS id", [src.id]));
   assert.ok(result.rows[0].id);
   const synced = await asService(tx => tx.query('SELECT roadmap_resync_flags() AS n'));
   assert.equal(typeof synced.rows[0].n, 'number');
