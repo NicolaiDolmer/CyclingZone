@@ -2307,7 +2307,7 @@
     },
     "dayWordsFaq": {
       "q": "¿Qué significa la línea sobre la forma del día en el resumen de la carrera?",
-      "a": "Después de una etapa, el resumen de la carrera puede decir cómo fue el día del ganador y de tus propios ciclistas que terminaron. Un ciclista puede tener un día muy bueno, un buen día o un mal día, y un mal día viene con su motivo: cansancio, falta de forma, enfermedad o el tiempo. Las palabras solo describen la forma del día que la carrera ya le había dado, así que nunca cambian el resultado. Las ves para el ganador y para tus propios ciclistas, no para otros equipos. Una contrarreloj no tiene resumen, así que allí las frases van bajo el recorrido."
+      "a": "Después de una etapa, el resumen de la carrera puede decir cómo fue el día de tus propios ciclistas que terminaron. Un ciclista puede tener un día muy bueno, un buen día o un mal día, y un mal día viene con su motivo: cansancio, falta de forma, enfermedad o el tiempo. Las palabras solo describen la forma del día que la carrera ya le había dado, así que nunca cambian el resultado. Solo las ves para tus propios ciclistas, no para otros equipos. Una contrarreloj no tiene resumen, así que allí las frases van bajo el recorrido."
     },
     "crashesFaq": {
       "q": "¿Qué son las caídas y los abandonos?",

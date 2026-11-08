@@ -480,11 +480,12 @@ test("#7725 dayWordsByRider: et daarligt ord er aarsagen; ukendte ord og ryttere
   assert.equal(dayWordsByRider(null).size, 0);
 });
 
-test("#7725 dayWordSentences: vinderen og dine egne i maal, vinderen foerst, hoejst to, aldrig andre hold", () => {
+test("#7725 dayWordSentences: kun dine egne i maal, aldrig andre hold, heller ikke vinderen", () => {
   const c = castFrom(RESULTS, ROLES, 3, "t-me");
   const mine = c.finishers.filter((f) => c.mine.has(f.riderId)).map((f) => f.riderId);
   const other = c.finishers.find((f, i) => i > 0 && !c.mine.has(f.riderId))?.riderId;
   assert.ok(mine.length > 0 && other);
+  assert.equal(c.mine.has("w"), false, "vinderen koerer for et andet hold");
   const events = [
     ev(100, "day_word", { rider_id: other, word: "great" }),
     ev(100, "day_word", { rider_id: mine[0], word: "bad", reason: "form" }),
@@ -492,10 +493,21 @@ test("#7725 dayWordSentences: vinderen og dine egne i maal, vinderen foerst, hoe
     ev(100, "day_word", { rider_id: "not-in-results", word: "great" }),
   ];
   assert.deepEqual(dayWordSentences(events, c), [
-    { key: "dayGood", params: { name: c.nameOf("w") as string } },
     { key: "bad_day_form", params: { rider: c.nameOf(mine[0]) as string } },
   ]);
   assert.deepEqual(dayWordSentences([], c), [], "slukket: ingen ord i loggen, ingen saetning");
+});
+
+test("#7725 dayWordSentences: andres vinder giver ingen saetning, egen vinder goer, hoejst to", () => {
+  const rows = (winnerTeam: string) => [rr(1, "w", "Winner", winnerTeam, "+0:00"), rr(2, "m1", "One", "t-me", "+0:10"), rr(3, "m2", "Two", "t-me", "+0:20"), rr(4, "x", "Rival", "t-x", "+0:30")]
+    .map((row) => ({ ...row, stage_number: 3 }));
+  const onlyWinner = [ev(100, "day_word", { rider_id: "w", word: "great" })];
+  assert.deepEqual(dayWordSentences(onlyWinner, castFrom(rows("t-x"), [], 3, "t-me")), [], "andres vinder: ingen saetning");
+  const own = castFrom(rows("t-me"), [], 3, "t-me");
+  assert.deepEqual(dayWordSentences(onlyWinner, own), [{ key: "dayGreat", params: { name: own.nameOf("w") as string } }], "egen vinder: saetning");
+  assert.deepEqual(dayWordSentences(onlyWinner, castFrom(rows("t-me"), [], 3, null)), [], "uden hold: ingen saetning");
+  const three = [ev(100, "day_word", { rider_id: "m2", word: "good" }), ev(100, "day_word", { rider_id: "m1", word: "good" }), ev(100, "day_word", { rider_id: "w", word: "great" })];
+  assert.deepEqual(dayWordSentences(three, own).map((s) => s.params.name), [own.nameOf("w"), own.nameOf("m1")], "klareste ord foerst, saa maal-raekkefoelge, hoejst to");
 });
 
 test("#7725 buildReport: dagens ord staar foer dine udgaaede og skubber ikke loebets historie ud", () => {

@@ -2307,7 +2307,7 @@
     },
     "dayWordsFaq": {
       "q": "Que signifie la ligne sur la forme du jour dans le compte rendu de course ?",
-      "a": "Après une étape, le compte rendu peut dire comment s'est passée la journée du vainqueur et de tes propres coureurs arrivés. Un coureur peut avoir une très bonne journée, une bonne journée ou un jour sans, et un jour sans vient avec sa raison : fatigue, manque de forme, maladie ou météo. Les mots décrivent seulement la forme du jour que la course lui avait déjà donnée, ils ne changent donc jamais le résultat. Tu les vois pour le vainqueur et pour tes propres coureurs, pas pour les autres équipes. Un contre-la-montre n'a pas de compte rendu, les phrases se trouvent donc sous le parcours."
+      "a": "Après une étape, le compte rendu peut dire comment s'est passée la journée de tes propres coureurs arrivés. Un coureur peut avoir une très bonne journée, une bonne journée ou un jour sans, et un jour sans vient avec sa raison : fatigue, manque de forme, maladie ou météo. Les mots décrivent seulement la forme du jour que la course lui avait déjà donnée, ils ne changent donc jamais le résultat. Tu les vois seulement pour tes propres coureurs, pas pour les autres équipes. Un contre-la-montre n'a pas de compte rendu, les phrases se trouvent donc sous le parcours."
     },
     "crashesFaq": {
       "q": "Que sont les chutes et les abandons ?",

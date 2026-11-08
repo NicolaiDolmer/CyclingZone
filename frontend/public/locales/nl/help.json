@@ -2307,7 +2307,7 @@
     },
     "dayWordsFaq": {
       "q": "Wat betekent de dagvormregel in het koersverslag?",
-      "a": "Na een etappe kan het koersverslag vertellen hoe de dag verliep voor de winnaar en voor je eigen renners die finishten. Een renner kan een heel goede dag, een goede dag of een slechte dag hebben, en een slechte dag komt met een reden: vermoeidheid, slechte vorm, ziekte of het weer. De woorden beschrijven alleen de dagvorm die de koers hem al had gegeven, dus ze veranderen nooit de uitslag. Je ziet ze voor de winnaar en voor je eigen renners, niet voor andere ploegen. Een tijdrit heeft geen verslag, dus daar staan de zinnen onder het parcours."
+      "a": "Na een etappe kan het koersverslag vertellen hoe de dag verliep voor je eigen renners die finishten. Een renner kan een heel goede dag, een goede dag of een slechte dag hebben, en een slechte dag komt met een reden: vermoeidheid, slechte vorm, ziekte of het weer. De woorden beschrijven alleen de dagvorm die de koers hem al had gegeven, dus ze veranderen nooit de uitslag. Je ziet ze alleen voor je eigen renners, niet voor andere ploegen. Een tijdrit heeft geen verslag, dus daar staan de zinnen onder het parcours."
     },
     "crashesFaq": {
       "q": "Wat zijn valpartijen en opgaven?",

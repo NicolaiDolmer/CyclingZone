@@ -2307,7 +2307,7 @@
     },
     "dayWordsFaq": {
       "q": "Hvad betyder dagsformen i løbsreferatet?",
-      "a": "Efter en etape kan referatet sige, hvordan dagen gik for vinderen og for dine egne ryttere, der kom i mål. En rytter kan have en rigtig god dag, en god dag eller en dårlig dag, og en dårlig dag får sin årsag: træthed, manglende form, sygdom eller vejret. Ordene beskriver kun den dagsform, løbet allerede havde givet ham, så de ændrer aldrig resultatet. Du ser dem for vinderen og for dine egne ryttere, ikke for andre holds ryttere. En enkeltstart har intet referat, så sætningerne står under ruten dér."
+      "a": "Efter en etape kan referatet sige, hvordan dagen gik for dine egne ryttere, der kom i mål. En rytter kan have en rigtig god dag, en god dag eller en dårlig dag, og en dårlig dag får sin årsag: træthed, manglende form, sygdom eller vejret. Ordene beskriver kun den dagsform, løbet allerede havde givet ham, så de ændrer aldrig resultatet. Du ser dem kun for dine egne ryttere, ikke for andre holds ryttere. En enkeltstart har intet referat, så sætningerne står under ruten dér."
     },
     "crashesFaq": {
       "q": "Hvad er styrt og opgivelser?",
