@@ -133,8 +133,11 @@ test("fanerne er de syv aftalte, og isAdminTab afviser andet", () => {
   assert.equal(isAdminTab("roadmap"), false);
   assert.equal(isAdminTab(null), false);
 });
-test("horisont-vælgeren tilbyder de nye værdier og beholder den gamle", () => {
-  for (const h of ["this_week", "next_week", "this_season", "next_season", "y2027", "later", "next"]) {
+test("horisont-vælgeren tilbyder sæsoner, kvartaler og uden tid (#7895)", () => {
+  assert.equal(HORIZON_LABELS.season_5, "Sæson 5");
+  assert.equal(HORIZON_LABELS.q1_2027, "Q1 2027");
+  assert.ok(!(HORIZONS as readonly string[]).includes("later"));
+  for (const h of ["this_week", "next_week", "season_5", "season_6", "q1_2027", "q2_2027", "y2027", "unscheduled"]) {
     assert.ok((HORIZONS as readonly string[]).includes(h), h);
     assert.ok(HORIZON_LABELS[h], h);
   }

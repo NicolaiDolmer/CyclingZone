@@ -5,6 +5,7 @@
 // De fire delte typer ejes af spillersiden (lib/roadmapModel.ts, #6150, planens
 // "Fælles kontrakt") og gen-eksporteres her, så admin-fladens importer er uændrede.
 import type { RoadmapStatus, RoadmapHorizon, IssueStatus, IssueArea } from "./roadmapModel.ts";
+import { HORIZON_ORDER, UNSCHEDULED, parseHorizon } from "./roadmapModel.ts";
 export type { RoadmapStatus, RoadmapHorizon, IssueStatus, IssueArea };
 
 // Standardafvigelse på vigtighed, hvor "Deler spillerne" vises (spec §4).
@@ -207,20 +208,28 @@ export function isAdminTab(value: unknown): value is AdminTab {
   return ADMIN_TABS.some((t) => t.key === value);
 }
 
-// Horisonter, som vælgeren tilbyder. "next" er den gamle værdi og beholdes, så
-// eksisterende rækker stadig kan vælges. De nye værdier tilføjes i API'et af
-// spillersporet (#7666).
-export const HORIZONS = ["this_week", "next_week", "this_season", "next_season", "y2027", "later", "next"] as const;
-export type AdminHorizon = (typeof HORIZONS)[number];
+// Horisonter, som vælgeren tilbyder (#7895): planens rækkefølge + "uden tid"
+// til idéer. Ny sæson/kvartal tilføjes i HORIZON_ORDER i roadmapModel.ts.
+export const HORIZONS: readonly string[] = [...HORIZON_ORDER, UNSCHEDULED];
+export type AdminHorizon = string;
 
-export const HORIZON_LABELS: Record<string, string> = {
-  this_week: "Denne uge",
-  next_week: "Næste uge",
-  this_season: "Denne sæson",
-  next_season: "Næste sæson",
-  y2027: "2027",
-  later: "Later",
-  next: "Next",
+/** Dansk navn på en horisont til admin ("Sæson 5", "Q1 2027"). */
+export function horizonLabel(horizon: string | null | undefined): string {
+  const h = parseHorizon(horizon);
+  switch (h.kind) {
+    case "week": return h.key === "this_week" ? "Denne uge" : "Næste uge";
+    case "season": return `Sæson ${h.season}`;
+    case "quarter": return `Q${h.quarter} ${h.year}`;
+    case "year": return String(h.year);
+    default: return "Uden tid";
+  }
+}
+
+export const HORIZON_LABELS: Record<string, string> = Object.fromEntries(HORIZONS.map((h) => [h, horizonLabel(h)]));
+
+const isYear2027 = (horizon: string | null | undefined): boolean => {
+  const h = parseHorizon(horizon);
+  return (h.kind === "quarter" || h.kind === "year") && h.year === 2027;
 };
 
 const DONE_STATUSES = ["shipped", "archived"];
@@ -230,10 +239,10 @@ const DONE_STATUSES = ["shipped", "archived"];
 export function tabRows<T extends ScoreRow>(rows: T[], tab: AdminTab): T[] {
   switch (tab) {
     case "ideas": return rows.filter((r) => r.status === "active");
-    case "planned": return rows.filter((r) => r.status === "planned" && r.horizon !== "y2027");
+    case "planned": return rows.filter((r) => r.status === "planned" && !isYear2027(r.horizon));
     case "in_progress": return rows.filter((r) => r.status === "in_progress");
     case "shipped": return rows.filter((r) => r.status === "shipped");
-    case "y2027": return rows.filter((r) => r.horizon === "y2027" && !DONE_STATUSES.includes(r.status));
+    case "y2027": return rows.filter((r) => isYear2027(r.horizon) && !DONE_STATUSES.includes(r.status));
     // Et punkt med lutter Ved ikke er også et svar, admin skal kunne finde.
     case "votes": return rows.filter((r) => (num(r.votes) ?? 0) > 0 || (num(r.dont_know) ?? 0) > 0);
     default: return [];

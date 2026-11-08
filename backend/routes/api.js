@@ -6457,7 +6457,7 @@ router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
     const enabled = await isRaceEngineV3ScoringEnabled(supabase);
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, status, stages, stages_completed, squad, scheduled_for, engine_rules_revision")
+      .select("id, status, stages, stages_completed, squad, scheduled_for, engine_rules_revision, season_id")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -6496,7 +6496,7 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
   try {
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, status, stages, stages_completed, engine_rules_revision")
+      .select("id, status, stages, stages_completed, engine_rules_revision, season_id")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });

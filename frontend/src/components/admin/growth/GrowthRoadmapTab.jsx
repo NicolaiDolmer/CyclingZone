@@ -223,7 +223,7 @@ export default function GrowthRoadmapTab() {
     <Select
       size="sm"
       aria-label={`Horisont for ${row.title_da || row.title_en}`}
-      value={row.horizon ?? "next"}
+      value={row.horizon ?? "unscheduled"}
       disabled={busy !== null}
       onChange={(e) => run(`hz-${row.item_id}`, () => updateItem(row.item_id, { horizon: e.target.value }))}
     >
@@ -245,7 +245,6 @@ export default function GrowthRoadmapTab() {
     <>
       <span>{AREA_LABELS[row.engine] ?? row.engine}</span>
       {row.approved === false && <Tag>Skjult</Tag>}
-      {row.horizon === "later" && row.status === "planned" && <Tag>Later</Tag>}
       {row.beta_soon && <Tag>Næste i beta</Tag>}
       {row.live_soon && <Tag>Snart for alle</Tag>}
       {row.issue_ref ? <span className="font-data">#{row.issue_ref}</span> : null}
@@ -344,7 +343,7 @@ export default function GrowthRoadmapTab() {
     <>
       <RowButton disabled={busy !== null}
         onClick={() => run(`plan-${r.item_id}`, () => updateItem(r.item_id,
-          { status: "planned", horizon: "next", sort_order: nextSortOrder(plannedRows) }))}>
+          { status: "planned", horizon: "next_week", sort_order: nextSortOrder(plannedRows) }))}>
         Til planen
       </RowButton>
       {r.approved === false ? (

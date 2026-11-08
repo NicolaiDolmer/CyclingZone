@@ -9,20 +9,75 @@
 import { ENGINE_ORDER, isDontKnow, isValidScore } from "./roadmapVoting.js";
 
 export type RoadmapStatus = "active" | "planned" | "in_progress" | "shipped" | "archived";
-// "next" er den gamle "snart"-værdi; den bevares, til ejeren har flyttet punkterne.
-export type RoadmapHorizon =
-  | "this_week" | "next_week" | "next" | "this_season" | "next_season" | "y2027" | "later";
+// #7895 (ejer 8/11): ingen "Snart"/"Senere". Sæsoner har nummer (season_5 =
+// kommer i sæson 5, før sæson 6), derefter kvartaler (q1_2027) og år (y2027).
+// "unscheduled" er en idé i afstemningspuljen uden tid. Databasen tillader
+// mønsteret, så en ny sæson eller et nyt kvartal kræver kun HORIZON_ORDER her.
+export type RoadmapHorizon = string;
 export type IssueStatus = "checking" | "confirmed" | "fixing" | "fixed" | "dismissed";
 export type IssueArea = "races" | "training" | "youth" | "market" | "club" | "other";
 export type RoadmapTab = "plan" | "beta" | "vote" | "issues" | "done";
 
 export const ROADMAP_TABS: RoadmapTab[] = ["plan", "beta", "vote", "issues", "done"];
 export const ISSUE_AREA_ORDER: IssueArea[] = ["races", "training", "youth", "market", "club", "other"];
+/** De horisonter, admin kan vælge. Opdateres, når en ny sæson starter. */
 export const HORIZON_ORDER: RoadmapHorizon[] = [
-  "this_week", "next_week", "next", "this_season", "next_season", "y2027", "later",
+  "this_week", "next_week", "season_5", "season_6", "q1_2027", "q2_2027", "y2027",
 ];
+export const UNSCHEDULED: RoadmapHorizon = "unscheduled";
+
+const SEASON_RE = /^season_(\d{1,2})$/;
+const QUARTER_RE = /^q([1-4])_(20\d{2})$/;
+const YEAR_RE = /^y(20\d{2})$/;
+
+export type HorizonKind =
+  | { kind: "week"; key: "this_week" | "next_week" }
+  | { kind: "season"; season: number }
+  | { kind: "quarter"; quarter: number; year: number }
+  | { kind: "year"; year: number }
+  | { kind: "unscheduled" };
+
+/** Læser en horisont-værdi. Ukendte værdier læses som "uden tid". */
+export function parseHorizon(horizon: string | null | undefined): HorizonKind {
+  if (horizon === "this_week" || horizon === "next_week") return { kind: "week", key: horizon };
+  let m = SEASON_RE.exec(horizon ?? "");
+  if (m) return { kind: "season", season: Number(m[1]) };
+  m = QUARTER_RE.exec(horizon ?? "");
+  if (m) return { kind: "quarter", quarter: Number(m[1]), year: Number(m[2]) };
+  m = YEAR_RE.exec(horizon ?? "");
+  if (m) return { kind: "year", year: Number(m[1]) };
+  return { kind: "unscheduled" };
+}
+
+/** Sorteringsnøgle: uger, så sæsoner, så kvartaler og år; uden tid sidst. */
+export function horizonRank(horizon: string | null | undefined): number {
+  const h = parseHorizon(horizon);
+  switch (h.kind) {
+    case "week": return h.key === "this_week" ? 0 : 1;
+    case "season": return 100 + h.season;
+    case "quarter": return h.year * 10 + h.quarter;
+    case "year": return h.year * 10 + 9;
+    default: return Number.MAX_SAFE_INTEGER;
+  }
+}
+
+/** i18n-nøgle + værdier til en horisonts overskrift (roadmap.json plan.horizon.*). */
+export function horizonLabelKey(horizon: string | null | undefined): { key: string; values: Record<string, number> } {
+  const h = parseHorizon(horizon);
+  switch (h.kind) {
+    case "week": return { key: `plan.horizon.${h.key}`, values: {} };
+    case "season": return { key: "plan.horizon.season", values: { season: h.season } };
+    case "quarter": return { key: "plan.horizon.quarter", values: { quarter: h.quarter, year: h.year } };
+    case "year": return { key: "plan.horizon.year", values: { year: h.year } };
+    default: return { key: "plan.horizon.unscheduled", values: {} };
+  }
+}
+
 /** Horisonter langt ude ligger bag en fold, så planen starter med det nære. */
-export const FOLDED_HORIZONS: ReadonlySet<RoadmapHorizon> = new Set<RoadmapHorizon>(["y2027", "later"]);
+export function isFoldedHorizon(horizon: string | null | undefined): boolean {
+  const kind = parseHorizon(horizon).kind;
+  return kind === "quarter" || kind === "year" || kind === "unscheduled";
+}
 export const RECENTLY_FIXED_DAYS = 14;
 export const RECENT_DONE_DAYS = 7;
 export const DONE_PAGE_SIZE = 30;
@@ -86,9 +141,9 @@ export function planStage(item: RoadmapItem): PlanStage {
 
 const STAGE_RANK: Record<PlanStage, number> = { beta: 0, in_progress: 1, planned: 2 };
 
-/** Ukendt horisont (fx en ny værdi klienten ikke kender endnu) læses som "next". */
+/** Gyldig horisont-værdi, ellers "unscheduled". */
 export function normalizeHorizon(horizon: string | null | undefined): RoadmapHorizon {
-  return HORIZON_ORDER.includes(horizon as RoadmapHorizon) ? (horizon as RoadmapHorizon) : "next";
+  return parseHorizon(horizon).kind === "unscheduled" ? UNSCHEDULED : (horizon as RoadmapHorizon);
 }
 
 export interface PlanGroup { horizon: RoadmapHorizon; items: RoadmapItem[] }
@@ -101,22 +156,22 @@ export interface PlanGroup { horizon: RoadmapHorizon; items: RoadmapItem[] }
 export function groupPlan(items: RoadmapItem[] | null | undefined): PlanGroup[] {
   // Roadmap-hubben (#6160, 4/10): det, der er i beta, står kun på Beta-fanen.
   const decided = (items ?? []).filter((i) => i.status === "planned" || (i.status === "in_progress" && !i.beta_since));
-  return HORIZON_ORDER
-    .map((horizon) => ({
-      horizon,
-      items: decided
-        .filter((i) => normalizeHorizon(i.horizon) === horizon)
-        .sort((a, b) => STAGE_RANK[planStage(a)] - STAGE_RANK[planStage(b)]
-          || Number(b.live_soon) - Number(a.live_soon) || byOrder(a, b)),
-    }))
-    .filter((g) => g.items.length > 0);
+  const horizons = [...new Set(decided.map((i) => normalizeHorizon(i.horizon)))]
+    .sort((a, b) => horizonRank(a) - horizonRank(b));
+  return horizons.map((horizon) => ({
+    horizon,
+    items: decided
+      .filter((i) => normalizeHorizon(i.horizon) === horizon)
+      .sort((a, b) => STAGE_RANK[planStage(a)] - STAGE_RANK[planStage(b)]
+        || Number(b.live_soon) - Number(a.live_soon) || byOrder(a, b)),
+  }));
 }
 
 /** Ejerens nummer pr. planlagt punkt på tværs af de nære horisonter (de foldede får intet). */
 export function planRanks(groups: PlanGroup[]): Map<string, number> {
   const ranks = new Map<string, number>();
   for (const g of groups) {
-    if (FOLDED_HORIZONS.has(g.horizon)) continue;
+    if (isFoldedHorizon(g.horizon)) continue;
     for (const item of g.items) if (item.status === "planned") ranks.set(item.id, ranks.size + 1);
   }
   return ranks;
