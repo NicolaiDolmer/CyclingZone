@@ -42,6 +42,7 @@
 // position for adfærdsdata, og undertællingen er ensartet på tværs af events.
 import * as Sentry from "@sentry/react";
 import { logEvent } from "./logEvent.js";
+import { loadFailureFingerprint } from "./loadFailureFingerprint.js";
 
 const ENABLED = import.meta.env.PROD && Boolean(import.meta.env.VITE_SENTRY_DSN);
 
@@ -133,8 +134,10 @@ export function reportLoadFailure(surface, detail = {}) {
   const error = cause instanceof Error
     ? cause
     : new Error(`load failed: ${surface} (${kind}${status ? ` ${status}` : ""})`);
+  const fingerprint = loadFailureFingerprint(status);
   Sentry.captureException(error, {
     level: "warning",
+    ...(fingerprint ? { fingerprint } : {}),
     tags: { load_failure: surface, load_failure_kind: kind, ...(status ? { load_failure_status: String(status) } : {}) },
     extra: { reason: trim(reason), status, ...context },
   });
