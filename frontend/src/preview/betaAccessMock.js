@@ -121,6 +121,8 @@ function previewChampionJerseysEnabled() {
     return true;
   }
 }
+// Læses ved indlæsning, så parameteren virker, før en side omskriver URL'en.
+previewChampionJerseysEnabled();
 
 function playerFlags() {
   return Object.fromEntries(PLAYER_VISIBLE_FLAG_KEYS.map((key) => {
