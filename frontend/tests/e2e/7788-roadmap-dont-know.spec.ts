@@ -14,7 +14,7 @@ const OTHER_IDEA_TITLE = "Eksempel på en anden idé.";
 
 const roadmapItem = (id: string, status: string, title: string, sortOrder: number) => ({
   id, engine: "races", sort_order: sortOrder, title_en: title, title_da: title, approved: true, status,
-  horizon: "this_season", beta_since: null, beta_soon: false, live_soon: false,
+  horizon: "season_5", beta_since: null, beta_soon: false, live_soon: false,
   created_at: "2026-10-01T08:00:00Z", shipped_at: null, issue_ref: null,
 });
 const ITEMS = [
@@ -141,7 +141,7 @@ test("Admin ser antallet pr. punkt og samlet, og et punkt med lutter Ved ikke st
   await stabilizePage(page);
   await installNetworkMocks(page);
   const score = (id: string, title: string, votes: number, dontKnowCount: number) => ({
-    item_id: id, engine: "races", approved: true, title_en: title, title_da: title, status: "planned", horizon: "next",
+    item_id: id, engine: "races", approved: true, title_en: title, title_da: title, status: "planned", horizon: "next_week",
     sort_order: 10, votes, avg_importance: votes ? 4 : null, steering_score: null, sd_importance: 0, dont_know: dontKnowCount,
   });
   await page.route(/\/rest\/v1\/(users|roadmap_item_scores|roadmap_items|known_issue_scores|known_issue_updates)/, route => {

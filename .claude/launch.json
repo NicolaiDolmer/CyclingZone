@@ -313,6 +313,21 @@
       }
     },
     {
+      "name": "roadmap-7896-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "C:/dev/CyclingZone-worktrees/feat-roadmap-saesonnumre/frontend"
+      ],
+      "port": 5296,
+      "autoPort": true,
+      "env": {
+        "VITE_PREVIEW_MOCK": "1"
+      }
+    },
+    {
       "name": "notif-dashboard-5384-mock",
       "runtimeExecutable": "npm",
       "runtimeArgs": [

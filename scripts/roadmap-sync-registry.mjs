@@ -74,7 +74,7 @@ export function itemFromEntry(e, sortOrder = SORT_STEP) {
     approved: false,
     publish_on_beta: true,
     status: "planned",
-    horizon: e.roadmap_horizon || "next",
+    horizon: e.roadmap_horizon || "unscheduled", // #7895: admin saetter tiden, naar punktet publiceres
     issue_ref: e.epic ? Number(e.epic) : null,
     flag_key: e.flag,
   };
