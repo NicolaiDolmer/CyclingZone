@@ -2305,6 +2305,10 @@
       "q": "Hvorfor svinger løbsresultaterne fra dag til dag?",
       "a": "Hver rytter får en dagsform for hver løbsdag, så den samme rytter kan flyve den ene dag og hænge den næste. På sjældne dage knækker en rytter helt og taber stort, og favoritter er ikke fredet. Ryttere i god form knækker sjældnere, og form tæller også mere i selve resultatet, så formstyring betaler sig dobbelt. Løbene bruger hver rytters form. Over et langt etapeløb udligner de gode og dårlige dage sig stort set, men ét enkelt kollaps på en bjergetape kan afgøre en GC, præcis som i virkelighedens cykelsport. Dine egne ryttere fortæller dig nu hvordan dagen gik med egne ord, en kort linje under deres navn i etaperesultatet, men du ser det aldrig for andre holds ryttere."
     },
+    "dayWordsFaq": {
+      "q": "Hvad betyder dagsformen i løbsreferatet?",
+      "a": "Efter en etape kan referatet sige, hvordan dagen gik for dine egne ryttere, der kom i mål. En rytter kan have en rigtig god dag, en god dag eller en dårlig dag, og en dårlig dag får sin årsag: træthed, manglende form, sygdom eller vejret. Ordene beskriver kun den dagsform, løbet allerede havde givet ham, så de ændrer aldrig resultatet. Du ser dem kun for dine egne ryttere, ikke for andre holds ryttere. En enkeltstart har intet referat, så sætningerne står under ruten dér."
+    },
     "whyButtonFaq": {
       "q": "Hvad fortæller Hvorfor?-knappen ved mine ryttere?",
       "a": "Efter en etape giver Hvorfor? ved dine ryttere én kort sætning om, hvad der afgjorde rytterens resultat, altid i ord og aldrig i tal. Den siger kun det, løbet faktisk viser. På landevejen er det, hvor han mistede kontakten, eller hvad der gik godt. På en enkeltstart er det styrt eller defekt, hvordan dagen gik, vejret, når det gav ham en dårlig dag, og om ruten passede ham. Forklarer intet i løbet resultatet, står der det i stedet for et gæt."

@@ -231,6 +231,7 @@ import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildGlobalTradeFeed, parseTradeFeedQuery } from "../lib/tradeListFeed.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { buildRaceStory, storyInputsFromResults } from "../lib/raceStory.js"; // #6350: ?story=1 på /timeline
+import { ownDayFormEvents } from "../lib/dayFormVisibility7725.js"; // #7725: dagsform kun for egne ryttere
 import { withEventPlaces } from "../lib/raceTimeline.js"; // #6350
 import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
@@ -6687,7 +6688,8 @@ router.get("/races/:raceId/timeline", requireAuth, async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
     if (!data) return res.status(404).json({ error: "timeline_not_found" });
-    const events = withEventPlaces(data.events); // #6350: gemte etaper fortæller også hvor det skete
+    const visible = await ownDayFormEvents(supabase, { events: data.events, raceId: req.params.raceId, stageNumber, teamId: req.team?.id }); // #7725
+    const events = withEventPlaces(visible); // #6350: gemte etaper fortæller også hvor det skete
     // #6350: ?story=1 tilføjer løbshistorien (kontrakt: docs/superpowers/specs/2026-10-14-race-story-contract.md).
     let story = null; // en fejl i historien må aldrig tage tidslinjen med sig
     if (req.query.story === "1") try {
