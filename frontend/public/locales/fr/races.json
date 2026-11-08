@@ -298,7 +298,7 @@
         "placedGap": "{name} a terminé à la position {rank}, à {gap}.",
         "dayGreat": "{name} a connu une très bonne journée.",
         "dayGood": "{name} a connu une bonne journée.",
-        "ownOut": "{kind, select, withdrawal {Pied à terre : {names}. Trop loin du vainqueur.} time_limit {Hors délais : {names}.} crash {Abandon sur chute : {names}.} mechanical {Abandon sur problème mécanique : {names}.} other {Abandon : {names}.}}"
+        "ownOut": "{kind, select, withdrawal {Pied à terre : {names}. Trop loin du vainqueur.} time_limit {Hors délais : {names}.} time_limit_fatigue {Hors délais par fatigue : {names}.} crash {Abandon sur chute : {names}.} mechanical {Abandon sur problème mécanique : {names}.} other {Abandon : {names}.}}"
       },
       "final": {
         "aria": "Les derniers 5 km : groupes sur la route avec distance restante, écarts et chrono de course",
@@ -341,6 +341,7 @@
         "abandonedMechanical": "Il a eu un incident mécanique{where} et a dû abandonner",
         "abandoned": "Il a abandonné{where}",
         "timeLimit": "Il a fini hors délais",
+        "timeLimitFatigue": "Il a fini hors délais, car il était trop fatigué",
         "withdrawal": "Il a mis pied à terre, trop loin du vainqueur",
         "won": "Il a été le premier sur la ligne",
         "wonSprint": "Il a gagné le sprint",
@@ -1753,6 +1754,7 @@
       "illness": "Malade, non-partant",
       "withdrawal": "Pied à terre, trop loin derrière",
       "time_limit": "Hors délais",
+      "time_limit_fatigue": "Hors délais, fatigué",
       "abandoned": "Abandon",
       "dnf": "DNF",
       "dnfCollapsed": "{count, plural, one {# coureur n'a pas terminé} other {# coureurs n'ont pas terminé}}",

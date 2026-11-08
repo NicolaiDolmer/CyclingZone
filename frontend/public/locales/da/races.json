@@ -281,7 +281,7 @@
         "placedGap": "{name} blev nr. {rank}, {gap} efter.",
         "dayGreat": "{name} havde en rigtig god dag.",
         "dayGood": "{name} havde en god dag.",
-        "ownOut": "{kind, select, withdrawal {Steg af: {names}. For langt efter vinderen.} time_limit {Uden for tidsgrænsen: {names}.} crash {Udgik efter styrt: {names}.} mechanical {Udgik med mekanisk defekt: {names}.} other {Udgik: {names}.}}"
+        "ownOut": "{kind, select, withdrawal {Steg af: {names}. For langt efter vinderen.} time_limit {Uden for tidsgrænsen: {names}.} time_limit_fatigue {Uden for tidsgrænsen på grund af træthed: {names}.} crash {Udgik efter styrt: {names}.} mechanical {Udgik med mekanisk defekt: {names}.} other {Udgik: {names}.}}"
       },
       "final": {
         "aria": "De sidste 5 km: grupperne på vejen med afstand til mål, huller og løbsur",
@@ -324,6 +324,7 @@
         "abandonedMechanical": "Han fik defekt{where} og måtte udgå",
         "abandoned": "Han udgik{where}",
         "timeLimit": "Han kom i mål uden for tidsgrænsen",
+        "timeLimitFatigue": "Han kom i mål uden for tidsgrænsen, fordi han var for træt",
         "withdrawal": "Han stod af, for langt efter vinderen",
         "won": "Han var først på stregen",
         "wonSprint": "Han vandt spurten",
@@ -1736,6 +1737,7 @@
       "illness": "Syg, startede ikke",
       "withdrawal": "Steg af, for langt efter",
       "time_limit": "Uden for tidsgrænsen",
+      "time_limit_fatigue": "Uden for tidsgrænsen, træt",
       "abandoned": "Udgik",
       "dnf": "DNF",
       "dnfCollapsed": "{count, plural, one {# rytter udgik} other {# ryttere udgik}}",

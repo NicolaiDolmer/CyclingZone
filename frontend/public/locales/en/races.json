@@ -281,7 +281,7 @@
         "placedGap": "{name} finished in position {rank}, {gap} down.",
         "dayGreat": "{name} had a really good day.",
         "dayGood": "{name} had a good day.",
-        "ownOut": "{kind, select, withdrawal {Climbed off: {names}. Too far behind the winner.} time_limit {Outside the time limit: {names}.} crash {Out after a crash: {names}.} mechanical {Out with a mechanical: {names}.} other {Abandoned: {names}.}}"
+        "ownOut": "{kind, select, withdrawal {Climbed off: {names}. Too far behind the winner.} time_limit {Outside the time limit: {names}.} time_limit_fatigue {Outside the time limit because of fatigue: {names}.} crash {Out after a crash: {names}.} mechanical {Out with a mechanical: {names}.} other {Abandoned: {names}.}}"
       },
       "final": {
         "aria": "The final 5 km: groups on the road with distance to go, gaps and race clock",
@@ -324,6 +324,7 @@
         "abandonedMechanical": "He had a mechanical{where} and had to abandon",
         "abandoned": "He abandoned{where}",
         "timeLimit": "He finished outside the time limit",
+        "timeLimitFatigue": "He finished outside the time limit because he was too tired",
         "withdrawal": "He climbed off, too far behind the winner",
         "won": "He was first to the line",
         "wonSprint": "He won the sprint",
@@ -1736,6 +1737,7 @@
       "illness": "Ill, did not start",
       "withdrawal": "Climbed off, too far behind",
       "time_limit": "Outside time limit",
+      "time_limit_fatigue": "Outside time limit, tired",
       "abandoned": "Abandoned",
       "dnf": "DNF",
       "dnfCollapsed": "{count, plural, one {# rider did not finish} other {# riders did not finish}}",
