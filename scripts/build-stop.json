@@ -1161,6 +1161,11 @@
       "issue": 7904,
       "reason": "Ejer-go 8/11 (mulighed B): kodegrænsen 1339 til 1350 KB, UI-PR'er blokeret af perf-gate",
       "since": "2026-11-08"
+    },
+    {
+      "issue": 7917,
+      "reason": "Ejer-go 8/11 (Claude Code, efter Sentry-gennemgang): backend tåler at databasen er nede; design først, ingen scheduler-deploy før 13/11",
+      "since": "2026-11-08"
     }
   ]
 }
