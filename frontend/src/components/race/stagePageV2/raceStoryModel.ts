@@ -604,18 +604,18 @@ export function dayWordsByRider(events: readonly NarrativeEvent[] | null | undef
   return out;
 }
 
-/** #7725: dagens ord for vinderen og dine egne i maal. Hoejst 2 saetninger: referatet er kort. */
+/** #7725 (ejer 8/11): dagens ord kun for dine egne i maal, ogsaa naar vinderen er en andens. Hoejst 2 saetninger: referatet er kort. */
 export function dayWordSentences(events: readonly NarrativeEvent[] | null | undefined, cast: Cast): ReportSentence[] {
   const words = dayWordsByRider(events);
   if (!words.size) return [];
-  const rows: Array<{ word: string; name: string; first: boolean }> = [];
-  cast.finishers.forEach((f, i) => {
+  const rows: Array<{ word: string; name: string }> = [];
+  for (const f of cast.finishers) {
     const word = words.get(f.riderId);
     const name = cast.nameOf(f.riderId);
-    if (word && name && (i === 0 || cast.mine.has(f.riderId))) rows.push({ word, name, first: i === 0 });
-  });
-  // Vinderens dag foerst: den forklarer etapen. Derefter dine egne, de klareste ord foerst.
-  rows.sort((a, b) => Number(b.first) - Number(a.first) || DAY_WORD_ORDER.indexOf(a.word) - DAY_WORD_ORDER.indexOf(b.word));
+    if (word && name && cast.mine.has(f.riderId)) rows.push({ word, name });
+  }
+  // De klareste ord foerst; samme ord staar i maal-raekkefoelge (stabil sortering).
+  rows.sort((a, b) => DAY_WORD_ORDER.indexOf(a.word) - DAY_WORD_ORDER.indexOf(b.word));
   return rows.slice(0, 2).map(({ word, name }): ReportSentence => (word === "great" || word === "good"
     ? { key: word === "great" ? "dayGreat" : "dayGood", params: { name } }
     : { key: `bad_day_${word}`, params: { rider: name } }));
