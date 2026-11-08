@@ -309,8 +309,8 @@ export function checkBidExtension(bidTime, currentEnd, cfg = DEFAULT_AUCTION_CON
 /**
  * Check if an auction should be finalized now.
  */
-export function isAuctionExpired(auctionEnd) {
-  return new Date() >= new Date(auctionEnd);
+export function isAuctionExpired(auctionEnd, now = new Date()) {
+  return now >= new Date(auctionEnd);
 }
 
 /**

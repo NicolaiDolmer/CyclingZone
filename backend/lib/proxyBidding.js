@@ -145,6 +145,8 @@ export async function resolveProxyBids({
   // teams/auctions/auction_proxy_bids-tabellerne i fuld bredde. Default = real
   // DB-aware impl.
   canAffordAutoBidFn = canAffordAutoBid,
+  databaseOwnsLeaderSync = false,
+  now = () => new Date(),
 }) {
   // #44: teams hvis auto-bid blev rejected pga. utilstrækkelig balance i denne
   // resolveProxyBids-kørsel. Eksluderes fra challengers så vi ikke looper uendeligt
@@ -187,7 +189,7 @@ export async function resolveProxyBids({
     }
 
     if (!auction || !["active", "extended"].includes(auction.status)) break;
-    if (isAuctionExpired(auction.calculated_end)) break;
+    if (isAuctionExpired(auction.calculated_end, now())) break;
 
     const currentPrice = auction.current_price;
     const currentWinner = auction.current_bidder_id;
@@ -258,9 +260,11 @@ export async function resolveProxyBids({
       }
 
       // Kun føringen flyttes tilbage — current_price er allerede beløbet.
-      await supabase.from("auctions").update({
-        current_bidder_id: previousLeader,
-      }).eq("id", auctionId);
+      if (!databaseOwnsLeaderSync) {
+        await supabase.from("auctions").update({
+          current_bidder_id: previousLeader,
+        }).eq("id", auctionId);
+      }
 
       if (notifyTeamOwner) {
         // #2997: rent kosmetisk berigelse (holdnavn i beskeden). Rapportér, men
@@ -449,10 +453,12 @@ export async function resolveProxyBids({
       throw cascadeInsertError;
     }
 
-    await supabase.from("auctions").update({
-      current_price: autoBidAmount,
-      current_bidder_id: autoBidder,
-    }).eq("id", auctionId);
+    if (!databaseOwnsLeaderSync) {
+      await supabase.from("auctions").update({
+        current_price: autoBidAmount,
+        current_bidder_id: autoBidder,
+      }).eq("id", auctionId);
+    }
 
     // #230 (ejer-valg A, 11/6): når en proxy er slået over sit loft, annulleres
     // rækken straks så reservationen (worst-case-commitment) frigives — før fixet

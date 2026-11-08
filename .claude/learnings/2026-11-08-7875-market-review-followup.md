@@ -29,3 +29,9 @@ was observed RED (price lowered) and GREEN (higher leader/price preserved).
 Known gap retained from the reviewed PR: market_commitment_6181 has no
 FEATURE_REGISTRY entry, so check-flag-liveness does not track it. This is stated
 in the PR; no production flag change or new activation decision was made.
+# Follow-up validation
+
+The follow-up uses the actual cascade, executable handlers, SQL transaction
+boundaries and a real PG17 lock barrier. Off-mode remains covered separately.
+Review mapping and detailed evidence are kept in the owner's private context;
+public PR communication contains aggregate status only.

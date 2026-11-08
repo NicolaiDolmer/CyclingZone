@@ -28,9 +28,8 @@
 --      increment_balance_with_audit) haandhaever reglen atomisk:
 --        - auction_bids INSERT: penge + plads, pris maa ikke falde; buddet tager
 --          foeringen i SAMME transaktion (current_price/current_bidder_id), saa
---          det naeste bud fra holdet ser forpligtelsen. Alle eksisterende kaldere
---          skriver bagefter de samme to vaerdier; deres opdatering er derfor en
---          gentagelse uden virkning.
+--          det naeste bud fra holdet ser forpligtelsen. Gatede cascader bruger
+--          databasens foerer; legacy-stien synkroniserer fortsat i JS.
 --        - auctions INSERT med en foerer (POST /auctions paa en fri rytter):
 --          penge + plads for startbyderen.
 --        - auction_proxy_bids INSERT/haevet loft: penge (autobud uden foering
@@ -40,6 +39,7 @@
 --      reject_late_auction_bid_trigger, saa et for sent bud stadig afvises med
 --      sin egen fejl foerst.
 --   8. Kontakten seedes 'off' (ON CONFLICT DO NOTHING).
+--   9. set_auction_proxy_6181: loft og eventuelt aabningsbud i samme transaktion.
 --
 -- Fejlform: RAISE 'market_gate_6181:<kode>' med ERRCODE P0001. Koder:
 -- insufficient_available_balance, squad_full, price_changed.
@@ -67,10 +67,11 @@
 --             has_function_privilege('authenticated', p.oid, 'EXECUTE') AS auth
 --        FROM pg_proc p WHERE p.proname IN ('team_market_commitment','team_seat_commitment',
 --          'team_outgoing_auction_count','team_outgoing_auction_rider_ids','market_bid_issue_6181',
---          'market_commitment_6181_on','market_squad_max');
---      -- anon=false, auth=false for alle syv
+--          'market_commitment_6181_on','market_squad_max','set_auction_proxy_6181');
+--      -- anon=false, auth=false for alle otte
 --
 -- Rollback:
+--   DROP FUNCTION IF EXISTS public.set_auction_proxy_6181(uuid, uuid, bigint, integer, timestamptz);
 --   DROP TRIGGER IF EXISTS trg_market_commitment_6181_bid ON public.auction_bids;
 --   DROP TRIGGER IF EXISTS trg_market_commitment_6181_start ON public.auctions;
 --   DROP TRIGGER IF EXISTS trg_market_commitment_6181_proxy ON public.auction_proxy_bids;
@@ -244,13 +245,14 @@ BEGIN
 
   PERFORM pg_advisory_xact_lock(hashtextextended(NEW.team_id::text, 0));
   SELECT * INTO a FROM public.auctions WHERE id = NEW.auction_id FOR UPDATE;
-  -- Ukendt eller lukket auktion: reject_late_auction_bid har allerede svaret.
-  IF NOT FOUND OR a.status NOT IN ('active', 'extended') THEN
-    RETURN NEW;
+  IF NOT FOUND OR a.status IS NULL OR a.status NOT IN ('active', 'extended') THEN
+    RAISE EXCEPTION 'auction_not_active' USING ERRCODE = 'P0001';
   END IF;
 
   -- En anden byder naaede foerst (laest under raekkelaasen): prisen falder aldrig.
-  IF NEW.amount < a.current_price THEN
+  IF NEW.amount < a.current_price OR
+     (NEW.amount = a.current_price AND a.current_bidder_id IS NOT NULL
+      AND a.current_bidder_id IS DISTINCT FROM NEW.team_id AND NOT coalesce(NEW.is_proxy, false)) THEN
     RAISE EXCEPTION 'market_gate_6181:price_changed' USING ERRCODE = 'P0001';
   END IF;
 
@@ -368,6 +370,36 @@ REVOKE ALL ON FUNCTION public.market_commitment_6181_on() FROM PUBLIC, anon, aut
 GRANT EXECUTE ON FUNCTION public.market_commitment_6181_on() TO service_role;
 REVOKE ALL ON FUNCTION public.market_squad_max() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.market_squad_max() TO service_role;
+-- Gated proxy-program write and optional opening bid share one transaction.
+CREATE OR REPLACE FUNCTION public.set_auction_proxy_6181(
+  p_auction_id uuid, p_team_id uuid, p_max_amount bigint, p_opening_amount integer, p_bid_time timestamptz
+) RETURNS void
+LANGUAGE plpgsql
+SET search_path = public, pg_catalog
+AS $$
+DECLARE
+  v_status text;
+BEGIN
+  IF p_auction_id IS NULL OR p_team_id IS NULL OR p_max_amount IS NULL OR p_max_amount <= 0 OR p_bid_time IS NULL THEN
+    RAISE EXCEPTION 'set_auction_proxy_6181: invalid argument' USING ERRCODE='22023';
+  END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended(p_team_id::text,0));
+  SELECT status INTO v_status FROM public.auctions WHERE id=p_auction_id FOR UPDATE;
+  IF NOT FOUND OR v_status IS NULL OR v_status NOT IN ('active','extended') THEN
+    RAISE EXCEPTION 'auction_not_active' USING ERRCODE='P0001';
+  END IF;
+  INSERT INTO public.auction_proxy_bids(auction_id,team_id,max_amount)
+    VALUES(p_auction_id,p_team_id,p_max_amount)
+    ON CONFLICT(auction_id,team_id) DO UPDATE SET max_amount=EXCLUDED.max_amount;
+  IF p_opening_amount IS NOT NULL THEN
+    INSERT INTO public.auction_bids(auction_id,team_id,amount,bid_time,triggered_extension,is_proxy)
+      VALUES(p_auction_id,p_team_id,p_opening_amount,p_bid_time,false,true);
+  END IF;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.set_auction_proxy_6181(uuid, uuid, bigint, integer, timestamptz) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.set_auction_proxy_6181(uuid, uuid, bigint, integer, timestamptz) TO service_role;
+
 REVOKE ALL ON FUNCTION public.team_market_commitment(uuid, uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.team_market_commitment(uuid, uuid) TO service_role;
 REVOKE ALL ON FUNCTION public.team_seat_commitment(uuid, uuid) FROM PUBLIC, anon, authenticated;

@@ -34,7 +34,7 @@ function fixture({ flag = 'off', flagError = false, proxyError = null, bidError 
       let action = 'select'; let payload; const filters = [];
       const query = {
         select() { return query; }, eq(k,v) { filters.push([k,v]); return query; },
-        in() { return query; }, is() { return query; }, neq() { return query; }, order() { return query; }, limit() { return query; },
+        in(k,v) { filters.push(['in',k,v]);return query; }, is() { return query; }, neq() { return query; }, order() { return query; }, limit() { return query; },
         lt(k,v) { filters.push(['lt',k,v]); return query; },
         insert(v) { action='insert'; payload=v; return query; },
         upsert(v) { action='upsert'; payload=v; return query; },
@@ -46,6 +46,7 @@ function fixture({ flag = 'off', flagError = false, proxyError = null, bidError 
       function run(single) {
         if (action !== 'select') {
           writes.push({ table, action });
+          if(table==='auctions' && action==='update' && filters.some(f=>f[0]==='in' && !f[2].includes(auction[f[1]])))return {data:[],error:null};
           if (table==='auction_bids' && bidError) return { data:null, error:bidError };
           if (table==='auction_proxy_bids' && proxyError) return { data:null, error:proxyError };
           if (table==='auctions' && action==='insert') {
@@ -72,7 +73,17 @@ function fixture({ flag = 'off', flagError = false, proxyError = null, bidError 
       }
       return query;
     },
-    async rpc(name) {
+    async rpc(name,args) {
+      if(name==='set_auction_proxy_6181') {
+        if(proxyError || (args.p_opening_amount!==null && bidError))return {data:null,error:proxyError??bidError};
+        proxies.push({auction_id:args.p_auction_id,team_id:args.p_team_id,max_amount:args.p_max_amount});
+        if(args.p_opening_amount!==null){
+          bids.push({auction_id:args.p_auction_id,team_id:args.p_team_id,amount:args.p_opening_amount,is_proxy:true});
+          Object.assign(auction,{current_price:args.p_opening_amount,current_bidder_id:args.p_team_id});
+          if(afterBidInsert)Object.assign(auction,afterBidInsert);
+        }
+        return {data:null,error:null};
+      }
       if (name==='team_market_commitment') return {data:0,error:null};
       if (name==='team_outgoing_auction_rider_ids') return {data:Array.from({length:outgoing},(_,i)=>`outgoing-${i}`),error:null};
       if (name==='market_bid_issue_6181') return {data:null,error:null};
@@ -126,6 +137,7 @@ for (const flag of ['off','on']) {
     assert.equal(out.status,200);assert.equal(out.body.success,true);
     assert.equal(f.bids.length,1);assert.equal(f.auction.current_bidder_id,TEAM);
     assert.equal(f.cascade[0].canAffordAutoBidFn===market.canAffordAutoBid6181,flag==='on');
+    assert.equal(Boolean(f.cascade[0].databaseOwnsLeaderSync),flag==='on');
   });
 }
 
@@ -153,6 +165,7 @@ for (const flag of ['off','on']) {
     assert.equal(out.status,200);assert.equal(out.body.success,true);
     assert.equal(f.proxies[0].max_amount,200);assert.equal(f.bids.length,1);
     assert.equal(f.cascade[0].canAffordAutoBidFn===market.canAffordAutoBid6181,flag==='on');
+    assert.equal(Boolean(f.cascade[0].databaseOwnsLeaderSync),flag==='on');
   });
   test(`POST auctions ${flag}: the M3 seat gate is used only when enabled`,async()=>{
     const f=fixture({flag,futureCount:30});
@@ -196,6 +209,31 @@ test('PATCH proxy translates a DB gate rejection without saving a proxy or placi
   const out=await route('patch','/auctions/:id/proxy',f)({max_amount:200});
   assert.equal(out.status,400);assert.equal(out.body.errorCode,'insufficient_balance_after_proxy');
   assert.equal(f.proxies.length,0);assert.equal(f.bids.length,0);
+});
+
+test('proxy opening rejection preserves the previous proxy state',async()=>{
+  const f=fixture({flag:'on',bidError:moneyError});
+  const out=await route('patch','/auctions/:id/proxy',f)({max_amount:200});
+  assert.equal(out.status,400);
+  assert.equal(f.proxies.length,0);
+  assert.equal(f.bids.length,0);
+});
+
+for(const flag of ['off','on']){
+  test(`proxy status response ${flag} retains its mode contract`,async()=>{
+    const f=fixture({flag,proxyError:{code:'P0001',message:'auction_not_active'}});
+    const out=await route('patch','/auctions/:id/proxy',f)({max_amount:200});
+    assert.equal(out.status,flag==='on'?400:500);
+    assert.equal(out.body.errorCode,flag==='on'?'auction_expired':'proxy_save_failed');
+  });
+}
+
+test('leader sync preserves inactive state',async()=>{
+  const f=fixture({flag:'on'});
+  Object.assign(f.auction,{status:'completed',current_price:100,current_bidder_id:'settled-team'});
+  await market.syncBidLeader6181(f.client,{auctionId:AUCTION,amount:200,teamId:TEAM});
+  assert.equal(f.auction.current_price,100);
+  assert.equal(f.auction.current_bidder_id,'settled-team');
 });
 
 test('PATCH proxy on: a later higher bid cannot be overwritten by the opening-bid update',async()=>{

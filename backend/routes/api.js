@@ -574,7 +574,7 @@ import {
 } from "../lib/selectionDeadlineReminder.js";
 import { selectionSizeForRace, MIN_RACE_ENTRIES } from "../lib/raceAutopick.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
-import { fatigueByRiderNow, fatigueOutlookForTeam } from "../lib/riderFatigueNow.js"; // #7801
+import { fatigueByRiderNow, fatigueByRiderForRaces, fatigueOutlookForTeam, openingFatigueMap } from "../lib/riderFatigueNow.js"; // #7801
 import { REGISTRY_ABILITY_KEYS } from "../lib/abilityRegistry.js";
 import { selectInChunks } from "../lib/dbChunk.js";
 import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
@@ -6360,7 +6360,9 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     if (abErr) return res.status(500).json({ error: abErr.message });
     if (condErr) return res.status(500).json({ error: condErr.message });
     const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
-    const fatById = await fatigueByRiderNow({ supabase, conditions, abilityByRider: abById, teamId: req.team.id }); // #7801
+    // #7801: træthed ved løbets første etapestart (som assistenten ved løbsstart), ikke efter uret.
+    const fatNow = await fatigueByRiderForRaces({ supabase, conditions, abilityByRider: abById, teamId: req.team.id, races: [{ id: race.id, stages: stageProfiles }] });
+    const fatById = fatNow.byRace?.get(race.id) ?? fatNow.fatById;
     // #4701: reference-dato = løbets EGEN startdato, ikke "nu" — assistenten må gerne
     // fylde en rytter ind der er skadet i dag, men rask inden dette løb starter.
     const todayStr = raceSelectionReferenceDateStr(race, copenhagenDateString());
@@ -6870,7 +6872,7 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       supabase.from("rider_condition").select("rider_id, fatigue, injured_until").in("rider_id", teamRiderIds),
     ]);
     const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
-    const fatById = await fatigueByRiderNow({ supabase, conditions, abilityByRider: abById, teamId: req.team.id }); // #7801
+    const fatById = openingFatigueMap(conditions); // #7801: pr. løb ved etapestart, se assignRaces
     // #2637/#3896: skadede ryttere (kanonisk isRiderInjured) må ALDRIG auto-udtages —
     // spejler raceRunner.fillMissingTeamEntries (spec 6.5, #1306) og raceEntryGenerator-sweepet.
     // Dette endpoint er spillerens EGEN "auto-udfyld"-knap; manglede samme guard.
@@ -6918,9 +6920,12 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     // S3: holdets strategi som deterministisk præference-lag. Ingen row → null (uændret).
     const strategy = await loadTeamStrategy({ supabase, teamId: req.team.id, rosterIds: new Set(teamRiderIds) });
 
+    const { byRace: fatByRace } = await fatigueByRiderForRaces({ supabase, conditions, abilityByRider: abById, teamId: req.team.id, // #7801
+      races: target.map((r) => ({ id: r.id, stages: stagesByRace.get(r.id) })) });
     const assignRaces = target.map((r) => ({
       race_id: r.id, window: bindingWindowByRace.get(r.id), stages: stagesByRace.get(r.id) || [],
       sizeRule: selectionSizeForRace(r), excludedRiderIds: regenLocks.get(r.id)?.riderIds, // #6139
+      fatigueByRider: fatByRace?.get(r.id), // #7801
     }));
     // #6132: kanoniske brugte dage (også hos et tidligere hold) og andre holds entries.
     lockedWindows.push(...await loadRegenerateBindingLocks({ supabase, seasonId: season.id, teamId: req.team.id,
@@ -7282,7 +7287,7 @@ router.post("/races/strategy/preview", requireAuth, marketWriteLimiter, async (r
       supabase.from("race_entries").select("race_id, rider_id, race_role, is_auto_filled").eq("team_id", req.team.id),
     ]);
     const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
-    const fatById = await fatigueByRiderNow({ supabase, conditions, abilityByRider: abById, teamId: req.team.id }); // #7801
+    const fatById = openingFatigueMap(conditions); // #7801: pr. løb ved etapestart, se assignRaces
     const riderObjs = teamRiderIds
       .map((id) => ({ rider_id: id, abilities: abById.get(id), fatigue: fatById.get(id) ?? 0 }))
       .filter((r) => r.abilities);
@@ -7315,9 +7320,12 @@ router.post("/races/strategy/preview", requireAuth, marketWriteLimiter, async (r
       targetRaceIds: new Set((Array.isArray(req.body?.target_race_ids) ? req.body.target_race_ids : []).filter((id) => raceIds.includes(id))),
     };
 
+    const { byRace: fatByRace } = await fatigueByRiderForRaces({ supabase, conditions, abilityByRider: abById, teamId: req.team.id, // #7801
+      races: target.map((r) => ({ id: r.id, stages: stagesByRace.get(r.id) })) });
     const assignRaces = target.map((r) => ({
       race_id: r.id, window: bindingWindowByRace.get(r.id), stages: stagesByRace.get(r.id) || [],
       sizeRule: selectionSizeForRace(r),
+      fatigueByRider: fatByRace?.get(r.id), // #7801
     }));
     const proposed = assignTeamAcrossRaces({ riders: riderObjs, races: assignRaces, lockedWindows, strategy: proposedStrategy });
 
@@ -8011,7 +8019,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
       // føreren føringen (tie-break) — cascaden skal kende lederen før buddet.
       previousLeader,
       actorTeamId: req.team.id, // #5919: ingen DM til holdet der selv byder
-      ...(marketGateOn ? { canAffordAutoBidFn: canAffordAutoBid6181 } : {}), // #6181 PR 5: penge + plads
+      ...(marketGateOn ? { canAffordAutoBidFn: canAffordAutoBid6181, databaseOwnsLeaderSync: true } : {}), // #6181 PR 5
     });
   } catch (e) {
     console.error("[resolveProxyBids] failed for auction", auction.id, e);
@@ -8225,17 +8233,26 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     }
   }
 
-  const { error: proxyUpsertError } = await supabase.from("auction_proxy_bids").upsert(
-    { auction_id: req.params.id, team_id: req.team.id, max_amount: numericMax },
-    { onConflict: "auction_id,team_id" }
-  );
+  const atomicProxyBidTime = marketGateOn ? new Date() : null;
+  const { error: proxyUpsertError } = marketGateOn
+    ? await supabase.rpc("set_auction_proxy_6181", {
+        p_auction_id: req.params.id, p_team_id: req.team.id, p_max_amount: numericMax,
+        p_opening_amount: openingBidAmount, p_bid_time: atomicProxyBidTime.toISOString(),
+      })
+    : await supabase.from("auction_proxy_bids").upsert(
+        { auction_id: req.params.id, team_id: req.team.id, max_amount: numericMax },
+        { onConflict: "auction_id,team_id" }
+      );
   if (proxyUpsertError) {
+    if (marketGateOn && isLateBidTriggerError(proxyUpsertError)) {
+      return res.status(400).json({ error: "The auction has ended", errorCode: "auction_expired" });
+    }
     const proxyGate = await marketGateResponse6181(supabase, proxyUpsertError, { kind: "proxy", teamId: req.team.id, auctionId: req.params.id }); // #6181 PR 5
     if (proxyGate) return res.status(proxyGate.status).json(proxyGate.body);
     return res.status(500).json({ error: "Autobud kunne ikke gemmes", errorCode: "proxy_save_failed" });
   }
 
-  const proxyBidTime = new Date();
+  const proxyBidTime = atomicProxyBidTime ?? new Date();
   const proxyBidCfg = await getAuctionConfig();
   // #257: capture leader before opening bid so post-cascade extension check
   // can detect whether this proxy actually disrupted the standing leader.
@@ -8249,7 +8266,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     });
 
     // #269: oversæt reject_late_auction_bid trigger-fejl til 400 i stedet for 500.
-    const { error: bidInsertError } = await supabase.from("auction_bids").insert({
+    const { error: bidInsertError } = marketGateOn ? { error: null } : await supabase.from("auction_bids").insert({
       auction_id: auction.id,
       team_id: req.team.id,
       amount: openingBidAmount,
@@ -8311,7 +8328,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
       // hidtidige fører's proxy-loft, beholder føreren føringen.
       previousLeader,
       actorTeamId: req.team.id, // #5919: ingen DM til holdet der selv sætter autobud
-      ...(marketGateOn ? { canAffordAutoBidFn: canAffordAutoBid6181 } : {}), // #6181 PR 5
+      ...(marketGateOn ? { canAffordAutoBidFn: canAffordAutoBid6181, databaseOwnsLeaderSync: true } : {}), // #6181 PR 5
     });
   } catch (e) {
     console.error("[resolveProxyBids] failed for auction", req.params.id, e);
