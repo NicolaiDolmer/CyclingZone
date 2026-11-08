@@ -3,8 +3,9 @@
 //
 // Én komponent for alle flader (TASTE P12): navnecellen viser ikonet i 16 px
 // efter navnet og før status-mærkerne, hover-kortet det samme, og rytterprofilen
-// viser ikonet i 24 px med den fulde tekst. Tooltip ved hover og ved tryk
-// (fokus), med navnet og én sætning. Resten bor i Hjælp (P9).
+// viser ikonet i 24 px med samme sætning. Tooltip ved hover og ved tryk
+// (fokus), med navnet og én kort sætning. Hjælp siger kun, at mærkerne findes og
+// hvad de betyder; reglerne er private.
 //
 // Ikonerne er en bevidst undtagelse fra stroke-reglen og guld-rationeringen
 // (TASTE P7, ejer 6/11): to fyldte, slebne symboler, der kun bruges her.
@@ -189,32 +190,35 @@ const NAME_KEY: Record<TalentMarkKind, string> = {
   next_gen: "talentMark.nextGen.name",
 };
 
+const TEXT_KEY: Record<TalentMarkKind, string> = {
+  top_talent: "talentMark.topTalent.text",
+  next_gen: "talentMark.nextGen.text",
+};
+
 export interface TalentMarkProps {
   mark: TalentMarkKind;
-  riderType?: string | null;
-  /** "cell": 16 px ikon med tooltip. "profile": 24 px ikon med den fulde tekst. */
+  /** "cell": 16 px ikon med tooltip. "profile": 24 px ikon med teksten. */
   variant?: "cell" | "profile";
 }
 
-/** Ren visning af ét mærke (ingen hentning). */
-export function TalentMark({ mark, riderType = null, variant = "cell" }: TalentMarkProps) {
+/**
+ * Ren visning af ét mærke (ingen hentning). Teksten er én kort sætning uden tal;
+ * reglerne bag mærket er private og forklares hverken her eller i Hjælp.
+ */
+export function TalentMark({ mark, variant = "cell" }: TalentMarkProps) {
   const { t } = useTranslation("rider");
-  const { t: tTypes } = useTranslation("riderTypes");
   const name = t(NAME_KEY[mark]);
+  const text = t(TEXT_KEY[mark]);
   const Icon = mark === "top_talent" ? TopTalentIcon : NextGenIcon;
 
   if (variant === "profile") {
-    const typeLabel = riderType ? tTypes(`types.${riderType}`) : "";
-    const full = mark === "top_talent"
-      ? t(riderType ? "talentMark.topTalent.full" : "talentMark.topTalent.fullNoType", { type: typeLabel })
-      : t("talentMark.nextGen.full");
     return (
       <div className="flex items-start gap-2 mt-2.5 max-w-xl" data-testid={`talent-mark-profile-${mark}`}>
         <Icon size={24} />
         <p className="text-sm text-cz-2 leading-snug">
           <span className="font-semibold text-cz-1">{name}</span>
           {" · "}
-          {full}{" "}
+          {text}{" "}
           <Link to="/help?section=riders" className="text-cz-accent-t hover:underline whitespace-nowrap">
             {t("talentMark.helpLink")}
           </Link>
@@ -223,9 +227,8 @@ export function TalentMark({ mark, riderType = null, variant = "cell" }: TalentM
     );
   }
 
-  const short = t(mark === "top_talent" ? "talentMark.topTalent.short" : "talentMark.nextGen.short");
   return (
-    <Tooltip label={`${name}: ${short}`} id={undefined}>
+    <Tooltip label={`${name}: ${text}`} id={undefined}>
       <button
         type="button"
         aria-label={name}
@@ -245,5 +248,5 @@ export function TalentMark({ mark, riderType = null, variant = "cell" }: TalentM
 export default function RiderTalentMark({ riderId, variant = "cell" }: { riderId: string | null | undefined; variant?: "cell" | "profile" }) {
   const row = useTalentMark(riderId);
   if (!row) return null;
-  return <TalentMark mark={row.mark} riderType={row.rider_type} variant={variant} />;
+  return <TalentMark mark={row.mark} variant={variant} />;
 }

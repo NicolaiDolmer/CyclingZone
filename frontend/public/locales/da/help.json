@@ -1380,7 +1380,7 @@
       },
       "talentMarks": {
         "title": "Talentmærker",
-        "text": "Et lille mærke ved en rytters navn viser en af de mest spændende unge ryttere. Guldstjernen er Toptalent: den bedste 1 % af ryttere under 23 inden for hver ryttertype, målt på rating lige nu, og mindst én pr. type. Diamanten er Næste generation: de 2 % af juniorerne (16-18) med mest fremgang i evnebjælkerne de seneste 30 dage, hvor de seneste 7 dage tæller dobbelt. En rytter har højst ét talentmærke. Er han Toptalent, går hans plads i Næste generation videre til den næste i rækken. Alle ryttere tæller, også ryttere på AI-hold og ryttere uden kontrakt. Alderen regnes efter sæsonåret, og mærkerne opdateres hver dag. De bruger kun tal, som alle managere allerede kan se, aldrig potentiale, og de ændrer hverken værdi, løb eller bestyrelse. Hold musen over et mærke eller tryk på det for at se, hvad det betyder."
+        "text": "Et lille mærke ved en rytters navn viser en ung rytter, der er værd at holde øje med. Guldstjernen er Toptalent: et af de største talenter under 23. Diamanten er Næste generation: en junior i kraftig fremgang. Mærkerne er kun til visning og ændrer hverken værdi, løb eller bestyrelse. Hold musen over et mærke eller tryk på det for at se, hvad det betyder."
       },
       "u25u23": {
         "title": "U25 og U23 ryttere",

@@ -1380,7 +1380,7 @@
       },
       "talentMarks": {
         "title": "Marcas de talento",
-        "text": "Una pequeña marca junto al nombre de un ciclista señala a uno de los jóvenes más interesantes. La estrella dorada es Top Talent: el mejor 1 % de los ciclistas sub-23 dentro de cada tipo de ciclista, medido por su valoración actual, y al menos uno por tipo. El diamante es Next Gen: el 2 % de los juniors (16-18) con más progreso en sus barras de habilidad en los últimos 30 días, donde los últimos 7 días cuentan doble. Un ciclista lleva como máximo una marca de talento. Si es Top Talent, su plaza en Next Gen pasa al siguiente de la lista. Cuentan todos los ciclistas, también los de equipos de IA y los que no tienen contrato. La edad sigue el año de la temporada y las marcas se actualizan cada día. Solo usan números que todos los mánagers ya pueden ver, nunca el potencial, y no cambian el valor, las carreras ni la junta. Pasa el ratón por encima o toca una marca para ver qué significa."
+        "text": "Una pequeña marca junto al nombre de un ciclista señala a un joven al que merece la pena seguir. La estrella dorada es Top Talent: uno de los mayores talentos sub-23. El diamante es Next Gen: un junior con un gran progreso. Las marcas son solo visuales y no cambian el valor, las carreras ni la junta. Pasa el ratón por encima o toca una marca para ver qué significa."
       },
       "u25u23": {
         "title": "Ciclistas sub-25 y sub-23",

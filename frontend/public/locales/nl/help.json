@@ -1380,7 +1380,7 @@
       },
       "talentMarks": {
         "title": "Talentmarkeringen",
-        "text": "Een kleine markering naast de naam van een renner wijst op een van de spannendste jonge renners. De gouden ster is Top Talent: de beste 1% van de renners onder 23 binnen elk rennerstype, gemeten op de huidige rating, en minstens één per type. De diamant is Next Gen: de 2% junioren (16-18) met de meeste vooruitgang in hun vaardigheidsbalken in de laatste 30 dagen, waarbij de laatste 7 dagen dubbel tellen. Een renner heeft hoogstens één talentmarkering. Is hij Top Talent, dan gaat zijn Next Gen-plek naar de volgende in de rij. Alle renners tellen mee, ook renners van AI-ploegen en renners zonder contract. Leeftijden volgen het seizoensjaar en de markeringen worden elke dag bijgewerkt. Ze gebruiken alleen cijfers die elke manager al kan zien, nooit potentieel, en ze veranderen niets aan waarde, koersen of het bestuur. Beweeg over een markering of tik erop om te zien wat ze betekent."
+        "text": "Een kleine markering naast de naam van een renner wijst op een jonge renner om in de gaten te houden. De gouden ster is Top Talent: een van de grootste talenten onder 23. De diamant is Next Gen: een junior met sterke vooruitgang. De markeringen zijn alleen weergave en veranderen niets aan waarde, koersen of het bestuur. Beweeg over een markering of tik erop om te zien wat ze betekent."
       },
       "u25u23": {
         "title": "U25- en U23-renners",

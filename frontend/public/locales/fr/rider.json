@@ -2,16 +2,13 @@
   "talentMark": {
     "topTalent": {
       "name": "Top Talent",
-      "short": "un des meilleurs coureurs de moins de 23 ans de son type en ce moment.",
-      "full": "Un des 1 % meilleurs coureurs de moins de 23 ans du type {type}, mesuré sur sa note actuelle. Mis à jour chaque jour.",
-      "fullNoType": "Un des 1 % meilleurs coureurs de moins de 23 ans de son type, mesuré sur sa note actuelle. Mis à jour chaque jour."
+      "text": "un des plus grands talents de moins de 23 ans."
     },
     "nextGen": {
       "name": "Next Gen",
-      "short": "un des juniors qui ont le plus progressé ces 30 derniers jours.",
-      "full": "Un des 2 % de juniors (16-18 ans) qui ont le plus progressé dans les barres de capacités ces 30 derniers jours. Les 7 derniers jours comptent double. Mis à jour chaque jour."
+      "text": "un junior en forte progression."
     },
-    "helpLink": "Comment fonctionnent les marques de talent"
+    "helpLink": "Ce que signifient les marques"
   },
   "badges": {
     "u23": "Moins de 23 ans (U23)",

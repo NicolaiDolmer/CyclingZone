@@ -1,16 +1,20 @@
 // #7879 (del af #7824) · Talentmærker ved rytternavne: Toptalent og Næste generation.
 //
-// Låst af ejeren 7/11:
-//   · Toptalent / Top Talent: den bedste rating (best_role_rating) inden for hver
-//     ryttertype (primary_type), kun ryttere under 23 efter sæsonår. Top 1 % pr.
-//     type, mindst én pr. type.
+// Reglerne (ejer 7/11, spillerteksten gjort kort 8/11):
+//   · Toptalent / Top Talent: de højest ratede ryttere (best_role_rating) inden for
+//     hver ryttertype (primary_type), kun ryttere under 23 efter sæsonår. Mindst
+//     én pr. type.
 //   · Næste generation / Next Gen: mest reel fremgang i evnebjælkerne blandt
-//     juniorer (16-18 efter sæsonår) de seneste 30 dage, hvor de seneste 7 dage
-//     tæller dobbelt. Top 2 % af juniorerne.
+//     juniorer over et nyligt vindue, hvor den nyeste del vejer tungere.
 //   · Ét mærke pr. rytter. Har en rytter Toptalent, kan han ikke få Næste
 //     generation, og pladsen går videre til den næste i rækken.
 //   · Alle ryttere tæller: managerhold, AI-hold og frie ryttere vurderes ens.
 //   · Opdateres dagligt.
+//
+// Andele, vinduer og vægte er private (hard rule 17): de ligger i private_config
+// under nøglen talent_marks_params (privateConfig.ts, validering i
+// talentMarksParams.js). Mangler rækken eller er den ugyldig, beregnes der ingen
+// mærker (slukket adfærd). Spillerteksten nævner ingen tal.
 //
 // Måles ALDRIG på potentiale eller skjult talent. Kilderne er rating og de synlige
 // evner, som alle indloggede managere allerede kan læse (rider_derived_abilities'
@@ -26,19 +30,19 @@ import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { captureException } from "./sentry.js";
+import { readPrivateConfigEntry } from "./privateConfig.ts";
+import { validateTalentMarksParams } from "./talentMarksParams.js";
 
 export const TALENT_MARKS_FLAG_KEY = "talent_marks_7879";
+export const TALENT_MARKS_PARAMS_KEY = "talent_marks_params";
 
 export const TALENT_MARK = Object.freeze({ TOP_TALENT: "top_talent", NEXT_GEN: "next_gen" });
 
-// Ejerens låste regler (7/11). Andelene står også i Hjælp-teksten.
+// Aldersbåndene er definitioner, ikke balance: "under 23" og "junior" er det
+// spillerne selv læser i teksten.
 export const TOP_TALENT_MAX_AGE = 22; // "under 23"
-export const TOP_TALENT_SHARE = 0.01;
 export const JUNIOR_MIN_AGE = 16;
 export const JUNIOR_MAX_AGE = 18;
-export const NEXT_GEN_SHARE = 0.02;
-export const PROGRESS_WINDOW_DAYS = 30;
-export const RECENT_WINDOW_DAYS = 7;
 
 // PostgREST giver højst 1000 rækker pr. svar; funktionen svarer med én række pr.
 // rytter, så en blok på 500 ryttere holder sig altid under loftet.
@@ -61,18 +65,21 @@ export function shiftDate(dateStr, days) {
 }
 
 /** Første dato i de to vinduer, begge inklusive dagens dato. */
-export function progressWindows(today) {
+export function progressWindows(today, { windowDays, recentDays }) {
   return {
-    windowStart: shiftDate(today, -(PROGRESS_WINDOW_DAYS - 1)),
-    recentStart: shiftDate(today, -(RECENT_WINDOW_DAYS - 1)),
+    windowStart: shiftDate(today, -(windowDays - 1)),
+    recentStart: shiftDate(today, -(recentDays - 1)),
   };
 }
 
-/** Fremgangen i vinduet med de seneste dage talt dobbelt (de indgår i begge summer). */
-export function progressScore(gain) {
+/**
+ * Fremgangen i vinduet med det nyeste delvindue vægtet ekstra (det indgår i begge
+ * summer, så vægten kommer oveni).
+ */
+export function progressScore(gain, { recentWeight }) {
   const window = Number(gain?.gain_window) || 0;
   const recent = Number(gain?.gain_recent) || 0;
-  return window + recent;
+  return window + recentWeight * recent;
 }
 
 function byId(a, b) {
@@ -87,10 +94,13 @@ function byId(a, b) {
  *   best_role_rating: number|null, is_retired?: boolean|null }>} input.riders
  * @param {Array<{ rider_id: string, gain_window: number, gain_recent: number }>} input.juniorGains
  * @param {number} input.seasonNumber
+ * @param {{ topTalentShare: number, nextGenShare: number, recentWeight: number }} input.params
+ *   De private params (validateTalentMarksParams). Uden gyldige params gives ingen mærker.
  * @returns {Array<{ rider_id: string, mark: string, rider_type: string|null }>}
  *   Højst én række pr. rytter.
  */
-export function computeTalentMarks({ riders = [], juniorGains = [], seasonNumber }) {
+export function computeTalentMarks({ riders = [], juniorGains = [], seasonNumber, params }) {
+  if (!validateTalentMarksParams(params)) return [];
   const active = [];
   for (const rider of riders) {
     if (!rider?.id || rider.is_retired === true) continue;
@@ -114,7 +124,7 @@ export function computeTalentMarks({ riders = [], juniorGains = [], seasonNumber
     // Lige rating: den yngste står først (samme niveau i en yngre alder), så id,
     // så rækkefølgen aldrig afhænger af databasens svar.
     group.sort((a, b) => b.best_role_rating - a.best_role_rating || a.age - b.age || byId(a, b));
-    const quota = quotaFor(group.length, TOP_TALENT_SHARE, 1);
+    const quota = quotaFor(group.length, params.topTalentShare, 1);
     for (const rider of group.slice(0, quota)) {
       marks.push({ rider_id: rider.id, mark: TALENT_MARK.TOP_TALENT, rider_type: type });
       marked.add(rider.id);
@@ -126,11 +136,11 @@ export function computeTalentMarks({ riders = [], juniorGains = [], seasonNumber
   const gainByRider = new Map(juniorGains.map((g) => [g.rider_id, g]));
   // Pladserne regnes af alle juniorer, også dem med Toptalent: deres plads går
   // videre til den næste i rækken i stedet for at forsvinde.
-  const quota = quotaFor(juniors.length, NEXT_GEN_SHARE, 1);
+  const quota = quotaFor(juniors.length, params.nextGenShare, 1);
   const ranked = juniors
     .map((r) => {
       const gain = gainByRider.get(r.id);
-      return { ...r, score: progressScore(gain), recent: Number(gain?.gain_recent) || 0 };
+      return { ...r, score: progressScore(gain, params), recent: Number(gain?.gain_recent) || 0 };
     })
     // Kun reel fremgang: en junior uden fremgang i vinduet får aldrig mærket.
     .filter((r) => r.score > 0)
@@ -188,12 +198,21 @@ async function loadJuniorGains(supabase, riderIds, { windowStart, recentStart })
  *
  * @returns {Promise<{ ran: boolean, skipped?: string, topTalent?: number, nextGen?: number }>}
  */
-export async function runTalentMarksDaily({ supabase, now = new Date() }) {
+export async function runTalentMarksDaily({ supabase, now = new Date(), log = console }) {
   const stage = await readFlagStage(supabase, TALENT_MARKS_FLAG_KEY);
   if (!evaluateFlagStage(stage, { engineWrite: true })) return { ran: false, skipped: "flag_off" };
 
   const today = copenhagenDateString(now);
   if ((await loadOldestComputedOn(supabase)) === today) return { ran: false, skipped: "already_today" };
+
+  // Uden gyldige private params er adfærden slukket: ingen beregning, ingen skrivning.
+  // Advarslen nævner aldrig værdierne.
+  const entry = await readPrivateConfigEntry(supabase, TALENT_MARKS_PARAMS_KEY, { strict: false, log });
+  if (entry.status !== "ok" || !entry.value) {
+    log?.warn?.(`[talent-marks] ${TALENT_MARKS_FLAG_KEY} is on, but ${TALENT_MARKS_PARAMS_KEY} is missing, invalid or unreadable - no marks computed`);
+    return { ran: false, skipped: "no_params" };
+  }
+  const params = entry.value;
 
   const seasonNumber = await loadActiveSeasonNumber(supabase);
   if (seasonNumber === null) return { ran: false, skipped: "no_active_season" };
@@ -214,9 +233,9 @@ export async function runTalentMarksDaily({ supabase, now = new Date() }) {
       return r.is_retired !== true && age !== null && age >= JUNIOR_MIN_AGE && age <= JUNIOR_MAX_AGE;
     })
     .map((r) => r.id);
-  const juniorGains = await loadJuniorGains(supabase, juniorIds, progressWindows(today));
+  const juniorGains = await loadJuniorGains(supabase, juniorIds, progressWindows(today, params));
 
-  const marks = computeTalentMarks({ riders, juniorGains, seasonNumber });
+  const marks = computeTalentMarks({ riders, juniorGains, seasonNumber, params });
   const rows = marks.map((m) => ({ ...m, season_number: seasonNumber, computed_on: today }));
 
   // Først dagens mærker (én række pr. rytter, så en rytter der beholder sit mærke

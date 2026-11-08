@@ -18,7 +18,7 @@ INSERT INTO public.app_config (key, value, description)
 VALUES (
   'talent_marks_7879',
   '"off"'::jsonb,
-  'Stage flag (off|beta|on) for talent marks beside rider names (#7879): Top Talent (best rating per rider type, under 23) and Next Gen (most progress in the ability bars among juniors, last 30 days). Display only. Off = nothing visible and the daily calculation does not run.'
+  'Stage flag (off|beta|on) for talent marks beside rider names (#7879): Top Talent (best rating per rider type, under 23) and Next Gen (most progress in the ability bars among juniors). Display only. Off = nothing visible and the daily calculation does not run. Thresholds and weights live in private_config (talent_marks_params), never here.'
 )
 ON CONFLICT (key) DO NOTHING;
 

@@ -2,16 +2,13 @@
   "talentMark": {
     "topTalent": {
       "name": "Top Talent",
-      "short": "uno de los mejores ciclistas sub-23 de su tipo ahora mismo.",
-      "full": "Uno del mejor 1 % de los ciclistas sub-23 del tipo {type}, medido por su valoración actual. Se actualiza cada día.",
-      "fullNoType": "Uno del mejor 1 % de los ciclistas sub-23 de su tipo, medido por su valoración actual. Se actualiza cada día."
+      "text": "uno de los mayores talentos sub-23."
     },
     "nextGen": {
       "name": "Next Gen",
-      "short": "uno de los juniors que más ha progresado en los últimos 30 días.",
-      "full": "Uno del 2 % de los juniors (16-18) con más progreso en las barras de habilidad en los últimos 30 días. Los últimos 7 días cuentan doble. Se actualiza cada día."
+      "text": "un junior con un gran progreso."
     },
-    "helpLink": "Cómo funcionan las marcas de talento"
+    "helpLink": "Qué significan las marcas"
   },
   "badges": {
     "u23": "Menor de 23 (sub-23)",

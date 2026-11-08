@@ -1380,7 +1380,7 @@
       },
       "talentMarks": {
         "title": "Talent marks",
-        "text": "A small mark next to a rider's name shows one of the most exciting young riders. The gold star is Top Talent: the best 1% of riders under 23 within each rider type, measured on rating right now, and at least one per type. The diamond is Next Gen: the 2% of juniors (16-18) with the most progress in their ability bars over the last 30 days, where the last 7 days count double. A rider carries one talent mark at most. If he is Top Talent, his Next Gen place goes to the next rider in line. Every rider counts, also riders on AI teams and riders without a contract. Ages follow the season year, and the marks are updated every day. They only use numbers every manager can already see, never potential, and they don't change value, races or the board. Hover or tap a mark to see what it means."
+        "text": "A small mark next to a rider's name shows a young rider worth watching. The gold star is Top Talent: one of the biggest talents under 23. The diamond is Next Gen: a junior making strong progress. The marks are for display only and don't change value, races or the board. Hover or tap a mark to see what it means."
       },
       "u25u23": {
         "title": "U25 and U23 riders",

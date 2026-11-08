@@ -48,7 +48,7 @@ test("profilen viser den fulde tekst i 24 px under navnet", () => {
 
 test("et tryk på mærket i en klikbar række åbner ikke rytteren", () => {
   assert.match(mark, /onClick=\{\(e\) => \{ e\.stopPropagation\(\); e\.preventDefault\(\); \}\}/);
-  assert.match(mark, /<Tooltip label=\{`\$\{name\}: \$\{short\}`\}/);
+  assert.match(mark, /<Tooltip label=\{`\$\{name\}: \$\{text\}`\}/);
 });
 
 test("ikonerne bruger tokens, ingen rå hex (TASTE §3)", () => {
@@ -63,18 +63,43 @@ test("Hjælp-blokken følger kontakten", () => {
 test("teksterne findes på alle fem sprog", () => {
   for (const lang of LANGS) {
     const r = locale(lang, "rider").talentMark;
-    for (const key of ["name", "short", "full", "fullNoType"]) assert.ok(r?.topTalent?.[key], `${lang} topTalent.${key}`);
-    for (const key of ["name", "short", "full"]) assert.ok(r?.nextGen?.[key], `${lang} nextGen.${key}`);
+    for (const mark of ["topTalent", "nextGen"]) {
+      for (const key of ["name", "text"]) assert.ok(r?.[mark]?.[key], `${lang} ${mark}.${key}`);
+      assert.deepEqual(Object.keys(r[mark]).sort(), ["name", "text"], `${lang} ${mark}: kun navn og én sætning`);
+    }
     assert.ok(r?.helpLink, `${lang} helpLink`);
-    assert.match(r.topTalent.full, /\{type\}/, `${lang} topTalent.full bruger typen`);
     const h = locale(lang, "help").sections.riders.talentMarks;
     assert.ok(h?.title && h?.text, `${lang} help talentMarks`);
     assert.doesNotMatch(`${JSON.stringify(r)} ${h.text}`, /—/, `${lang}: ingen em-dash`);
   }
 });
 
-test("ingen tekst lover potentiale: mærket måles på rating og synlig fremgang", () => {
+test("spillerteksten har ingen procenter, vinduer eller vægte (hard rule 17, ejer 8/11)", () => {
+  for (const lang of LANGS) {
+    const r = locale(lang, "rider").talentMark;
+    const h = locale(lang, "help").sections.riders.talentMarks;
+    const visible = [r.topTalent.text, r.nextGen.text, r.helpLink, h.text].join(" ");
+    // Det eneste tal i teksten er aldersgrænsen "23" (Toptalent er under 23).
+    const numbers = visible.match(/\d+/g) ?? [];
+    assert.ok(numbers.every((n) => n === "23"), `${lang}: kun 23 må stå som tal, fandt ${numbers.join(",")}`);
+    assert.doesNotMatch(visible, /%/, `${lang}: ingen procenter`);
+  }
+});
+
+test("ingen tekst lover potentiale eller forklarer reglen", () => {
   const en = locale("en", "rider").talentMark;
-  assert.match(en.topTalent.full, /rating/);
-  assert.match(en.nextGen.full, /ability bars/);
+  assert.equal(en.topTalent.text, "one of the biggest talents under 23.");
+  assert.equal(en.nextGen.text, "a junior making strong progress.");
+  assert.doesNotMatch(JSON.stringify(locale("en", "help").sections.riders.talentMarks), /potential/i);
+});
+
+test("tooltip og profil bruger samme korte sætning, ingen typeopslag", () => {
+  assert.doesNotMatch(mark, /riderTypes|fullNoType|talentMark\.[a-zA-Z]+\.(short|full)\b/);
+  assert.match(mark, /talentMark\.topTalent\.text/);
+  assert.match(mark, /talentMark\.nextGen\.text/);
+});
+
+test("backend: andele, vinduer og vægte læses fra private_config, ikke fra koden", () => {
+  assert.match(backend, /readPrivateConfigEntry\(supabase, TALENT_MARKS_PARAMS_KEY/);
+  assert.doesNotMatch(backend, /TOP_TALENT_SHARE|NEXT_GEN_SHARE|PROGRESS_WINDOW_DAYS|RECENT_WINDOW_DAYS/);
 });

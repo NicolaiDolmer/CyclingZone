@@ -1380,7 +1380,7 @@
       },
       "talentMarks": {
         "title": "Marques de talent",
-        "text": "Une petite marque à côté du nom d'un coureur signale un des jeunes les plus prometteurs. L'étoile dorée est Top Talent : les 1 % meilleurs coureurs de moins de 23 ans dans chaque type de coureur, mesurés sur leur note actuelle, et au moins un par type. Le diamant est Next Gen : les 2 % de juniors (16-18 ans) qui ont le plus progressé dans leurs barres de capacités ces 30 derniers jours, les 7 derniers jours comptant double. Un coureur porte au plus une marque de talent. S'il est Top Talent, sa place en Next Gen passe au suivant. Tous les coureurs comptent, y compris ceux des équipes IA et ceux sans contrat. L'âge suit l'année de la saison, et les marques sont mises à jour chaque jour. Elles n'utilisent que des chiffres que tous les managers voient déjà, jamais le potentiel, et ne changent ni la valeur, ni les courses, ni le conseil. Survole ou touche une marque pour voir ce qu'elle signifie."
+        "text": "Une petite marque à côté du nom d'un coureur signale un jeune à suivre. L'étoile dorée est Top Talent : un des plus grands talents de moins de 23 ans. Le diamant est Next Gen : un junior en forte progression. Les marques sont purement visuelles et ne changent ni la valeur, ni les courses, ni le conseil. Survole ou touche une marque pour voir ce qu'elle signifie."
       },
       "u25u23": {
         "title": "Coureurs U25 et U23",

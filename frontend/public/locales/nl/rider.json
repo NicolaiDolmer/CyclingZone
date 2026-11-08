@@ -2,16 +2,13 @@
   "talentMark": {
     "topTalent": {
       "name": "Top Talent",
-      "short": "een van de beste renners onder 23 in zijn rennerstype op dit moment.",
-      "full": "Een van de beste 1% van de renners onder 23 binnen het type {type}, gemeten op zijn huidige rating. Elke dag bijgewerkt.",
-      "fullNoType": "Een van de beste 1% van de renners onder 23 in zijn rennerstype, gemeten op zijn huidige rating. Elke dag bijgewerkt."
+      "text": "een van de grootste talenten onder 23."
     },
     "nextGen": {
       "name": "Next Gen",
-      "short": "een van de junioren met de meeste vooruitgang in de laatste 30 dagen.",
-      "full": "Een van de 2% junioren (16-18) met de meeste vooruitgang in de vaardigheidsbalken in de laatste 30 dagen. De laatste 7 dagen tellen dubbel. Elke dag bijgewerkt."
+      "text": "een junior met sterke vooruitgang."
     },
-    "helpLink": "Zo werken talentmarkeringen"
+    "helpLink": "Wat de markeringen betekenen"
   },
   "badges": {
     "u23": "Onder 23 (U23)",
