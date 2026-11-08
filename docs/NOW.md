@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** egomadsen #7870 (billeder, form/træthed sløret) · Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (8/11, overdragelse):** **Hexagone kl. 15:** generalprøve #7890 sund; 7644 SLUKKET (G19 rødere, se #7644); sandhedsvagt på #7897. **Under løbet:** #7900 film mod resultat (plan på issuet, trin 1: vagt eller film?). **7715-tænding:** #7701 bygges først bag kontakten; #7850 (Hjælp) + patch note merges PÅ tænd-dagen, ikke før (tjekliste #7715). **Efter 15:** pengelås #7874 (WIP cd481f6ea på `wip/6181-pr3-escrow-stier`), #7875, #7878. **Ejer-gates:** bundle #7904 A/B blokerer #7888/#7882/#7841; rule 17 A/B #7879; billede-go #7888/#7882; #7870 egomadsen; #7857; #7907 push-vagter (ops). **Efter løbet:** #6912, #7899, #7902, 7644 tuning vs G19-bånd.
+> **🎯 Next action (8/11):** **Dirigent-tavle [#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911) er sandheden; start der.** **Hexagone kl. 15:** 7644 SLUKKET; sandhedsvagt på #7897. **7715-tænding:** #7701 først bag kontakten; #7850 + patch note PÅ tænd-dagen (tjekliste #7715). **Efter løbet:** #6912, #7899, #7902, 7644 tuning vs G19-bånd.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Ingen aktiv session på PC1. Start med handoff på #7890 (8/11). **Dolmer PC (Codex):** #7874 efter kl. 15.
+> **🤖 Working agent:** PC1-dirigent 8/11 (Claude, bølge via wave.js). **Dolmer PC (Codex):** #7874, #7875, #7878 efter kl. 15.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
