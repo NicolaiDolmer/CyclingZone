@@ -178,7 +178,6 @@ function fakeSupabase({ flag = '"off"', completed = { id: "s2", number: 2 }, exi
   const writes = [];
   const reads = [];
   function builder(table) {
-    const q = { table, filters: [] };
     const result = () => {
       reads.push(table);
       if (table === "app_config") return { data: [{ key: "champion_jerseys_7824", value: JSON.parse(flag) }], error: null };
