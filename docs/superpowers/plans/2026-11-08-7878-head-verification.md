@@ -18,3 +18,11 @@ Claude marker; PC1/owner retains merge, apply and activation. Flags remain off.
    with the same symptom park the track with exact issue status.
 4. PR body follows template with Refs #7873, commands/output and limitations.
    Report HEAD/CI/review/missing steps on issue and PR for dirigent marker.
+
+Owner continuation 8/11: integrate PR5 8242a48fa after fresh main e21924749,
+preserving M2's release fixture and M3's atomic proxy fixture. Match the shared
+SQL fixture's proxy uniqueness constraint to production and exercise the real
+proxy RPC on an auto-started auction, including transactional rejection.
+Repeat combined JS/SQL/PG17, preflight, full verification and HEAD-bound review.
+PR5 stays untouched while dirigenten reviews it. After PR6 handoff, resolve
+PR3's main conflict and verify that separate worktree under the same gates.

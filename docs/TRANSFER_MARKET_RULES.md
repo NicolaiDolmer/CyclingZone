@@ -568,6 +568,12 @@ Tændt:
   Penge = samme worst case-regel som tabellen ovenfor. Et bud tager føringen i samme
   transaktion, og prisen kan ikke falde. Samtidige bud fra ét hold kan derfor ikke
   overbooke.
+- **Proxy-oprettelse:** `set_auction_proxy_6181` gemmer loft og eventuelt åbningsbud i
+  samme transaktion. Fejl bevarer den foregående proxy-tilstand.
+  Den gatede cascade bruger databasens føreropdatering; legacy-stien synkroniserer fortsat i JS.
+- **Budgrænser:** første bud uden eksisterende fører kan ramme startprisen. Lighed med
+  en eksisterende føring kræver proxy-bud eller samme førende hold. Gyldig auktionsstatus
+  kontrolleres under rækkelåsen; efterfølgende sync gælder kun aktive/forlængede auktioner.
 - **Plads:** fremtidig senior-trup (`future_count`) + førende auktioner + 1 må ikke
   overstige loftet. Et forsvarsbud (holdet fører allerede) blokeres aldrig på plads.
   Et autobud uden føring optager ingen plads (ejer-spørgsmål 7 er ubesvaret).

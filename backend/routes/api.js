@@ -8026,7 +8026,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
       // føreren føringen (tie-break) — cascaden skal kende lederen før buddet.
       previousLeader,
       actorTeamId: req.team.id, // #5919: ingen DM til holdet der selv byder
-      ...(marketGateOn ? { canAffordAutoBidFn: canAffordAutoBid6181 } : {}), // #6181 PR 5: penge + plads
+      ...(marketGateOn ? { canAffordAutoBidFn: canAffordAutoBid6181, databaseOwnsLeaderSync: true } : {}), // #6181 PR 5
     });
   } catch (e) {
     console.error("[resolveProxyBids] failed for auction", auction.id, e);
@@ -8240,17 +8240,26 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     }
   }
 
-  const { error: proxyUpsertError } = await supabase.from("auction_proxy_bids").upsert(
-    { auction_id: req.params.id, team_id: req.team.id, max_amount: numericMax },
-    { onConflict: "auction_id,team_id" }
-  );
+  const atomicProxyBidTime = marketGateOn ? new Date() : null;
+  const { error: proxyUpsertError } = marketGateOn
+    ? await supabase.rpc("set_auction_proxy_6181", {
+        p_auction_id: req.params.id, p_team_id: req.team.id, p_max_amount: numericMax,
+        p_opening_amount: openingBidAmount, p_bid_time: atomicProxyBidTime.toISOString(),
+      })
+    : await supabase.from("auction_proxy_bids").upsert(
+        { auction_id: req.params.id, team_id: req.team.id, max_amount: numericMax },
+        { onConflict: "auction_id,team_id" }
+      );
   if (proxyUpsertError) {
+    if (marketGateOn && isLateBidTriggerError(proxyUpsertError)) {
+      return res.status(400).json({ error: "The auction has ended", errorCode: "auction_expired" });
+    }
     const proxyGate = await marketGateResponse6181(supabase, proxyUpsertError, { kind: "proxy", teamId: req.team.id, auctionId: req.params.id }); // #6181 PR 5
     if (proxyGate) return res.status(proxyGate.status).json(proxyGate.body);
     return res.status(500).json({ error: "Autobud kunne ikke gemmes", errorCode: "proxy_save_failed" });
   }
 
-  const proxyBidTime = new Date();
+  const proxyBidTime = atomicProxyBidTime ?? new Date();
   const proxyBidCfg = await getAuctionConfig();
   // #257: capture leader before opening bid so post-cascade extension check
   // can detect whether this proxy actually disrupted the standing leader.
@@ -8264,7 +8273,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     });
 
     // #269: oversæt reject_late_auction_bid trigger-fejl til 400 i stedet for 500.
-    const { error: bidInsertError } = await supabase.from("auction_bids").insert({
+    const { error: bidInsertError } = marketGateOn ? { error: null } : await supabase.from("auction_bids").insert({
       auction_id: auction.id,
       team_id: req.team.id,
       amount: openingBidAmount,
@@ -8326,7 +8335,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
       // hidtidige fører's proxy-loft, beholder føreren føringen.
       previousLeader,
       actorTeamId: req.team.id, // #5919: ingen DM til holdet der selv sætter autobud
-      ...(marketGateOn ? { canAffordAutoBidFn: canAffordAutoBid6181 } : {}), // #6181 PR 5
+      ...(marketGateOn ? { canAffordAutoBidFn: canAffordAutoBid6181, databaseOwnsLeaderSync: true } : {}), // #6181 PR 5
     });
   } catch (e) {
     console.error("[resolveProxyBids] failed for auction", req.params.id, e);

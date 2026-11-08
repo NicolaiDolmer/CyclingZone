@@ -143,6 +143,7 @@ export async function syncBidLeader6181(supabase, { auctionId, amount, teamId })
     .from("auctions")
     .update({ current_price: amount, current_bidder_id: teamId })
     .eq("id", auctionId)
+      .in("status", ["active", "extended"])
     .lt("current_price", amount);
   if (error) console.error("[marketCommitment6181] leader sync failed", { auctionId, error: error.message });
 }

@@ -26,7 +26,7 @@ CREATE TABLE auctions (
 CREATE UNIQUE INDEX uniq_auctions_one_active_per_rider ON auctions(rider_id) WHERE status IN ('active', 'extended');
 CREATE TABLE auction_bids (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), auction_id uuid NOT NULL, team_id uuid NOT NULL,
   amount integer NOT NULL, bid_time timestamptz NOT NULL DEFAULT now(), triggered_extension boolean DEFAULT false, is_proxy boolean DEFAULT false);
-CREATE TABLE auction_proxy_bids (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), auction_id uuid NOT NULL, team_id uuid NOT NULL, max_amount bigint NOT NULL);
+CREATE TABLE auction_proxy_bids (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), auction_id uuid NOT NULL, team_id uuid NOT NULL, max_amount bigint NOT NULL, UNIQUE(auction_id,team_id));
 CREATE TABLE swap_offers (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), offered_rider_id uuid, requested_rider_id uuid, status text NOT NULL);
 GRANT SELECT, INSERT, UPDATE ON teams, riders, transfer_listings, auctions, auction_bids, auction_proxy_bids, swap_offers TO service_role;
 GRANT SELECT, INSERT, UPDATE ON transfer_listings TO authenticated;

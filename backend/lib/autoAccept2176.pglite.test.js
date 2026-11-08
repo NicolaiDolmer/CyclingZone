@@ -163,6 +163,39 @@ test('M2 plus M3 enabled: auto-accept start reserves money/seat and ordinary bid
   assert.equal(Number((await one(db, 'SELECT count(*) AS n FROM auction_bids')).n), 1);
 });
 
+test('M2 plus M3 enabled: auto-started auction uses the shared atomic proxy RPC', async () => {
+  const db = await database({ marketGate: true });
+  const [rider] = await squad(db, TEAM.A, 12);
+  const listingId = await listing(db, rider, { auto: 600_000 });
+  const started = await start(db, listingId, { expected: 600_000 });
+  assert.equal(started.status, 'started');
+  await db.exec('SET ROLE service_role');
+  const proxy = (max, opening) => db.query(
+    'SELECT public.set_auction_proxy_6181($1,$2,$3,$4,$5)',
+    [started.auction_id, TEAM.B, max, opening, NOW],
+  );
+  const state = () => one(db, `SELECT a.current_price,a.current_bidder_id,p.max_amount,
+    (SELECT count(*) FROM auction_bids WHERE auction_id=a.id) AS bids,
+    public.team_market_commitment($2) AS commitment
+    FROM auctions a JOIN auction_proxy_bids p ON p.auction_id=a.id AND p.team_id=$2 WHERE a.id=$1`,
+  [started.auction_id, TEAM.B]);
+  await proxy(700_000, null);
+  const before = await state();
+  assert.equal(Number(before.current_price), 600_000);
+  assert.equal(before.current_bidder_id, TEAM.B);
+  assert.equal(Number(before.commitment), 700_000);
+  await assert.rejects(proxy(900_000, 500_000), /market_gate_6181:price_changed/);
+  assert.deepEqual(await state(), before);
+  await proxy(800_000, 650_000);
+  const after = await state();
+  assert.equal(Number(after.current_price), 650_000);
+  assert.equal(after.current_bidder_id, TEAM.B);
+  assert.equal(Number(after.max_amount), 800_000);
+  assert.equal(Number(after.commitment), 800_000);
+  assert.equal(Number(after.bids), 2);
+  assert.equal(Number((await one(db, 'SELECT count(*) AS n FROM auction_proxy_bids')).n), 1);
+});
+
 test('M3 seller reservation: unbid active auctions also reserve the last departure', async t => {
   for (const action of ['start', 'release', 'claim']) {
     await t.test(action, async () => {

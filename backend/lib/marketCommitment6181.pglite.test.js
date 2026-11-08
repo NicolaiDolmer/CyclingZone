@@ -6,11 +6,11 @@
 // Den aegte samtidigheds-test (8 samtidige bud mod penge til 1) kraever en lokal
 // Postgres og koerer kun, naar MARKET_GATE_PG_BIN peger paa dens bin-mappe; PGlite
 // har kun een forbindelse og kan ikke vise et kapploeb.
-import test from 'node:test';
+import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve, dirname } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { PGlite } from '@electric-sql/pglite';
 
@@ -34,6 +34,7 @@ const MIGRATION = '2026-11-07-6181-m3-market-commitment.sql';
 const id = n => `00000000-0000-0000-0000-${String(n).padStart(12, '0')}`;
 const TEAM = { A: id(1), B: id(2), C: id(3) };
 const FUTURE = '2099-01-01T12:00:00Z';
+const FIXED_BID_TIME = '2026-11-08T15:00:00Z';
 
 // Minimalt udsnit af prod-skemaet: de kolonner M3 laeser og skriver.
 const SCHEMA = `
@@ -49,15 +50,19 @@ CREATE TABLE auctions (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), rider_id u
   calculated_end timestamptz NOT NULL DEFAULT '${FUTURE}', is_youth boolean DEFAULT false);
 CREATE UNIQUE INDEX uniq_auctions_one_active_per_rider ON auctions(rider_id) WHERE status IN ('active','extended');
 CREATE TABLE auction_bids (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), auction_id uuid NOT NULL REFERENCES auctions(id),
-  team_id uuid NOT NULL REFERENCES teams(id), amount bigint NOT NULL, bid_time timestamptz NOT NULL DEFAULT now(),
+  team_id uuid NOT NULL REFERENCES teams(id), amount bigint NOT NULL, bid_time timestamptz NOT NULL DEFAULT '${FIXED_BID_TIME}',
   triggered_extension boolean DEFAULT false, is_proxy boolean DEFAULT false);
 CREATE TABLE auction_proxy_bids (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), auction_id uuid NOT NULL REFERENCES auctions(id),
-  team_id uuid NOT NULL REFERENCES teams(id), max_amount bigint NOT NULL, created_at timestamptz DEFAULT now(),
+  team_id uuid NOT NULL REFERENCES teams(id), max_amount bigint NOT NULL, created_at timestamptz DEFAULT '${FIXED_BID_TIME}',
   UNIQUE (auction_id, team_id));
+GRANT SELECT,INSERT,UPDATE,DELETE ON teams,riders,auctions,auction_bids,auction_proxy_bids TO service_role;
 `;
 
+const openDatabases = new Set();
+afterEach(async()=>{for(const db of openDatabases)await db.close();openDatabases.clear();});
 async function database({ flag = null } = {}) {
   const db = new PGlite();
+  openDatabases.add(db);
   await db.exec(SCHEMA);
   await db.exec(await file('2026-05-10-reject-late-auction-bid-trigger.sql'));
   const migration = await file(MIGRATION);
@@ -91,6 +96,55 @@ const gateError = async (promise) => {
   return null;
 };
 
+test('bid eligibility distinguishes initial, current and proxy leadership',async()=>{
+  const db=await database({flag:'on'});
+  const a=await auction(db,{price:10});
+  assert.equal(await gateError(bid(db,a,TEAM.B,10)),null);
+  assert.equal(await gateError(bid(db,a,TEAM.C,10)),'price_changed');
+  assert.deepEqual(await leader(db,a),{price:10,bidder:TEAM.B});
+  assert.equal(await gateError(bid(db,a,TEAM.B,10)),null);
+  assert.equal(await gateError(bid(db,a,TEAM.C,10,true)),null);
+});
+
+test('bid gate validates locked auction state independently',async()=>{
+  const db=await database({flag:'on'});
+  const a=await auction(db);
+  await db.exec(`CREATE OR REPLACE FUNCTION public.reject_late_auction_bid() RETURNS trigger LANGUAGE plpgsql AS $$
+    BEGIN UPDATE public.auctions SET status='completed' WHERE id=NEW.auction_id; RETURN NEW; END; $$;`);
+  await assert.rejects(bid(db,a,TEAM.B,20),error=>error.code==='P0001' && error.message==='auction_not_active');
+  assert.equal(Number((await one(db,'SELECT count(*) AS n FROM auction_bids')).n),0);
+});
+
+test('proxy program and opening bid form one SQL operation',async()=>{
+  const db=await database({flag:'on'});
+  const a=await auction(db,{price:50,bidder:TEAM.C});
+  const write=(max,opening)=>db.query('SELECT public.set_auction_proxy_6181($1,$2,$3,$4,$5)',[a,TEAM.B,max,opening,FIXED_BID_TIME]);
+  assert.equal(await gateError(write(100,40)),'price_changed');
+  assert.equal(Number((await one(db,'SELECT count(*) AS n FROM auction_proxy_bids')).n),0);
+  await proxy(db,a,TEAM.B,70);
+  assert.equal(await gateError(write(100,40)),'price_changed');
+  assert.equal(Number((await one(db,'SELECT max_amount FROM auction_proxy_bids WHERE auction_id=$1 AND team_id=$2',[a,TEAM.B])).max_amount),70);
+  assert.equal(Number((await one(db,'SELECT count(*) AS n FROM auction_bids')).n),0);
+  await write(100,51);
+  assert.deepEqual(await leader(db,a),{price:51,bidder:TEAM.B});
+  assert.equal(Number((await one(db,'SELECT max_amount FROM auction_proxy_bids WHERE auction_id=$1 AND team_id=$2',[a,TEAM.B])).max_amount),100);
+  for(const role of ['anon','authenticated','service_role']){
+    const row=await one(db,"SELECT has_function_privilege($1,'public.set_auction_proxy_6181(uuid,uuid,bigint,integer,timestamptz)','EXECUTE') AS allowed",[role]);
+    assert.equal(row.allowed,role==='service_role');
+  }
+  await db.exec('SET ROLE service_role');
+  await write(120,null);
+  await db.exec('RESET ROLE');
+  assert.equal(Number((await one(db,'SELECT max_amount FROM auction_proxy_bids WHERE auction_id=$1 AND team_id=$2',[a,TEAM.B])).max_amount),120);
+  assert.equal(Number((await one(db,'SELECT count(*) AS n FROM auction_bids')).n),1);
+  for(let i=0;i<MAX_SQUAD_SIZE-1;i++)await rider(db,{team:TEAM.B});
+  const b=await auction(db,{price:50,bidder:TEAM.C});
+  assert.equal(await gateError(db.query('SELECT public.set_auction_proxy_6181($1,$2,$3,$4,$5)',
+    [b,TEAM.B,100,51,FIXED_BID_TIME])),'squad_full');
+  assert.equal(Number((await one(db,'SELECT count(*) AS n FROM auction_proxy_bids WHERE auction_id=$1 AND team_id=$2',[b,TEAM.B])).n),0);
+  assert.equal(Number((await one(db,'SELECT public.team_market_commitment($1) AS n',[TEAM.B])).n),120);
+});
+
 test('kontakten seedes slukket; en ejer-flyttet vaerdi overskrives ikke ved gen-apply', async () => {
   const db = await database();
   assert.deepEqual((await one(db, `SELECT value FROM app_config WHERE key = 'market_commitment_6181'`)).value, 'off');
@@ -118,7 +172,7 @@ test('slukket: triggerne roerer intet (overbooking som i dag, ingen foerer-opdat
     [await rider(db), TEAM.A])), null);
   // Et for sent bud afvises stadig af sin egen trigger.
   const late = await auction(db);
-  await db.query(`UPDATE auctions SET calculated_end = now() - interval '1 minute' WHERE id = $1`, [late]);
+  await db.query(`UPDATE auctions SET calculated_end = $2::timestamptz - interval '1 minute' WHERE id = $1`, [late,FIXED_BID_TIME]);
   assert.match(await gateError(bid(db, late, TEAM.A, 20)), /auction_expired_at_insert/);
 });
 
@@ -415,26 +469,54 @@ test('taendt: gatens fejl bliver til de eksisterende fejlkoder', async () => {
 const PG_BIN = process.env.MARKET_GATE_PG_BIN;
 
 function run(cmd, args, opts = {}) {
-  const r = spawnSync(join(PG_BIN, cmd), args, { encoding: 'utf8', windowsHide: true, ...opts });
+  const r = spawnSync(join(PG_BIN, cmd), args, { encoding: 'utf8', windowsHide: true,
+    timeout: cmd === 'initdb' ? 120000 : 30000, ...opts,
+    env: { ...process.env, PGCONNECT_TIMEOUT: '5', ...opts.env } });
   if (r.status !== 0) throw new Error(`${cmd} ${args.join(' ')} failed: ${r.stderr || r.stdout}`);
   return r.stdout;
 }
 function psqlAsync(port, sql) {
   return new Promise((resolve) => {
-    const p = spawn(join(PG_BIN, 'psql'), ['-X', '-q', '-h', '127.0.0.1', '-p', String(port), '-U', 'postgres', '-d', 'gate', '-v', 'ON_ERROR_STOP=1', '-c', sql], { windowsHide: true });
+    const p = spawn(join(PG_BIN, 'psql'), ['-X', '-q', '-h', '127.0.0.1', '-p', String(port), '-U', 'postgres', '-d', 'gate', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=verbose', '-c', `SET statement_timeout='30s'; ${sql}`],
+      { windowsHide: true, env: { ...process.env, PGCONNECT_TIMEOUT: '5' } });
     let err = '';
     p.stderr.on('data', d => { err += d; });
+    p.on('error', error => resolve({ ok: false, err: error.message }));
     p.on('close', code => resolve({ ok: code === 0, err }));
   });
 }
 
-test('PG17: 8 samtidige bud fra samme hold mod penge til 1 overbooker aldrig', { skip: !PG_BIN && 'MARKET_GATE_PG_BIN er ikke sat' }, async (t) => {
+function controlledPsql(port, sql) {
+  const child=spawn(join(PG_BIN,'psql'),['-X','-q','-t','-A','-h','127.0.0.1','-p',String(port),'-U','postgres','-d','gate','-v','ON_ERROR_STOP=1'],
+    {windowsHide:true,stdio:['pipe','ignore','pipe'],env:{...process.env,PGCONNECT_TIMEOUT:'5'}});
+  let err='';
+  child.stderr.on('data',part=>{err+=part;});
+  child.stdin.on('error',error=>{err+=error.message;});
+  const closed=new Promise(resolve=>{
+    child.on('error',error=>resolve({code:-1,err:error.message}));
+    child.on('close',code=>resolve({code,err}));
+  });
+  const sent=new Promise(resolve=>child.stdin.write(sql,()=>resolve()));
+  return {child,closed,sent};
+}
+
+function awaitPgState(psql, condition) {
+  psql(`DO $$ BEGIN FOR i IN 1..400 LOOP
+    PERFORM pg_stat_clear_snapshot();
+    IF ${condition} THEN RETURN; END IF;
+    PERFORM pg_sleep(0.025);
+  END LOOP; RAISE EXCEPTION 'test state barrier timed out'; END $$;`);
+}
+
+test('PG17: budget, equal-price and locked-state boundaries', { skip: !PG_BIN && 'MARKET_GATE_PG_BIN er ikke sat', timeout:600000 }, async (t) => {
   const version = run('psql', ['--version']).trim();
   assert.match(version, /PostgreSQL\) 17\./, 'the concurrency evidence requires real PostgreSQL 17');
-  const dir = await mkdtemp(join(tmpdir(), 'm3gate-'));
+  const temporaryRoot=resolve(tmpdir());
+  const dir = await mkdtemp(join(temporaryRoot, 'm3gate-'));
   const data = join(dir, 'data');
   const port = 56000 + Math.floor(Math.random() * 1000);
   let serverStarted = false;
+  const failures=[];
   try {
     run('initdb', ['-D', data, '-U', 'postgres', '-A', 'trust', '-E', 'UTF8', '--locale=C']);
     // stdio ignore: serveren arver ellers pipen, og spawnSync venter for evigt (Windows).
@@ -476,12 +558,61 @@ test('PG17: 8 samtidige bud fra samme hold mod penge til 1 overbooker aldrig', {
     assert.equal(overbooked, 0, `overbooket i ${overbooked} af ${rounds} runder (flest foeringer: ${maxLeads})`);
     assert.equal(maxLeads, 1);
     t.diagnostic(`${version}; rounds=${rounds}; connections_per_round=8; attempted=${rounds * 8}; accepted=${accepted}; gate_rejected=${gateRejected}; overbooked=${overbooked}; max_leads=${maxLeads}`);
+    const stateAuction=id(91000); const stateRider=id(91001);
+    const resetState=()=>psql(`TRUNCATE auction_bids,auction_proxy_bids,auctions,riders,teams CASCADE;
+      INSERT INTO teams(id,balance) VALUES('${TEAM.A}',100);
+      INSERT INTO riders(id) VALUES('${stateRider}');
+      INSERT INTO auctions(id,rider_id,current_price) VALUES('${stateAuction}','${stateRider}',10);`);
+    resetState();
+    psql(`INSERT INTO teams(id,balance) SELECT ('00000000-0000-0000-0000-'||lpad(n::text,12,'0'))::uuid,1000 FROM generate_series(500,507) n;`);
+    const equalOutcomes=await Promise.all(Array.from({length:8},(_,n)=>psqlAsync(port,
+      `INSERT INTO auction_bids(auction_id,team_id,amount,bid_time) VALUES('${stateAuction}','${id(500+n)}',50,'${FIXED_BID_TIME}')`)));
+    assert.equal(equalOutcomes.filter(outcome=>outcome.ok).length,1);
+    for(const outcome of equalOutcomes.filter(outcome=>!outcome.ok))assert.match(outcome.err,/market_gate_6181:price_changed/);
+    t.diagnostic('equal_price_attempts=8; equal_price_accepted=1; equal_price_rejected=7');
+
+    resetState();
+    const owner=controlledPsql(port,`SET application_name='m3-state-owner'; SET statement_timeout='30s'; BEGIN;
+      SELECT id FROM auctions WHERE id='${stateAuction}' FOR UPDATE;\n`);
+    let waitingBid;
+    try {
+      await owner.sent;
+      awaitPgState(psql,"EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name='m3-state-owner' AND state='idle in transaction' AND query LIKE '%FOR UPDATE%')");
+      waitingBid=psqlAsync(port,`SET application_name='m3-state-bid'; INSERT INTO auction_bids(auction_id,team_id,amount,bid_time)
+        VALUES('${stateAuction}','${TEAM.A}',20,'${FIXED_BID_TIME}')`);
+      awaitPgState(psql,"EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name='m3-state-bid' AND wait_event_type='Lock')");
+      owner.child.stdin.end(`UPDATE auctions SET status='completed' WHERE id='${stateAuction}'; COMMIT;\n`);
+      const ownerResult=await owner.closed;
+      assert.equal(ownerResult.code,0,ownerResult.err);
+      const result=await waitingBid;
+      assert.equal(result.ok,false);
+      assert.match(result.err,/P0001:.*auction_not_active/s);
+      assert.equal(Number(psql('SELECT count(*) FROM auction_bids').trim()),0);
+      assert.equal(psql(`SELECT status FROM auctions WHERE id='${stateAuction}'`).trim(),'completed');
+      t.diagnostic('inactive_after_row_lock_rejected=true; sqlstate=P0001');
+    } finally {
+      if(owner.child.exitCode===null && !owner.child.stdin.writableEnded && !owner.child.stdin.destroyed)owner.child.stdin.end('ROLLBACK;\n');
+      await owner.closed;
+      if(waitingBid)await waitingBid;
+    }
+  } catch(error) {
+    failures.push(error);
   } finally {
-    const stopped = spawnSync(join(PG_BIN, 'pg_ctl'), ['-D', data, '-m', 'fast', '-w', 'stop'], { stdio: 'ignore', windowsHide: true });
-    await rm(dir, { recursive: true, force: true });
-    if (serverStarted) {
-      assert.equal(stopped.status, 0, 'temporary PG17 server must have stopped');
-      t.diagnostic('temporary_pg17_server_stopped=true');
+    try {
+      const stopped = spawnSync(join(PG_BIN, 'pg_ctl'), ['-D', data, '-m', 'fast', '-w', 'stop'], { stdio: 'ignore', windowsHide: true,timeout:30000 });
+      if (serverStarted) {
+        assert.equal(stopped.status, 0, 'temporary PG17 server must have stopped');
+        const status=spawnSync(join(PG_BIN,'pg_ctl'),['-D',data,'status'],{stdio:'ignore',windowsHide:true,timeout:30000});
+        assert.equal(status.status,3,'pg_ctl must report no server running');
+        t.diagnostic('temporary_pg17_server_stopped=true');
+      }
+      assert.equal(dirname(resolve(dir)),temporaryRoot);
+      try {await rm(dir,{recursive:true,force:true,maxRetries:20,retryDelay:250});}
+      catch(error){if(['EBUSY','EPERM'].includes(error.code))t.diagnostic(`temporary_pg17_cleanup_deferred=${dir}`);else failures.push(error);}
+    } catch(error) {
+      failures.push(error);
     }
   }
+  if(failures.length===1)throw failures[0];
+  if(failures.length>1)throw new AggregateError(failures,'PG17 verification and cleanup failed');
 });

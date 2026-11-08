@@ -8,7 +8,7 @@ import { resolveProxyBids as resolveProxyBidsRaw } from "./proxyBidding.js";
 // canAffordAutoBidFn eksplicit.
 const ALWAYS_AFFORD = async () => true;
 const resolveProxyBids = (args) =>
-  resolveProxyBidsRaw({ canAffordAutoBidFn: ALWAYS_AFFORD, ...args });
+  resolveProxyBidsRaw({ canAffordAutoBidFn: ALWAYS_AFFORD, now: () => new Date('2030-05-04T10:00:00Z'), ...args });
 
 // Allowed eq() columns per table — resolver må ikke filtrere på andet
 const ALLOWED_EQ_COLUMNS = {
@@ -23,7 +23,7 @@ const ALLOWED_EQ_COLUMNS = {
 // #230: proxyDeleteError lader en test simulere at DELETE på auction_proxy_bids
 // fejler. supabase-js kaster ikke — den returnerer { error } — så det er den
 // eneste måde at dække "sletningen mislykkedes"-grenen på.
-function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = null, proxyDeleteError = null }) {
+function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = null, proxyDeleteError = null, databaseLeaderSync = false, afterBidInsert = null }) {
   const auctionState = { ...auction };
   // #183: muterbar kopi så delete på auction_proxy_bids reflekteres i efterfølgende selects.
   const proxiesState = [...proxies];
@@ -116,6 +116,8 @@ function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = nu
         return {
           insert(payload) {
             bidLog.push({ ...payload });
+            if (databaseLeaderSync) Object.assign(auctionState, { current_price: payload.amount, current_bidder_id: payload.team_id });
+            afterBidInsert?.(auctionState, payload);
             return Promise.resolve({ data: null, error: null });
           },
         };
@@ -143,13 +145,31 @@ function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = nu
   };
 }
 
-const FUTURE_END = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // +1h
-const BID_TIME = new Date();
+const FUTURE_END = '2030-05-04T11:00:00.000Z';
+const BID_TIME = new Date('2030-05-04T10:00:00Z');
+
+for (const tie of [false, true]) {
+  test(`database-owned cascade ${tie ? 'tie' : 'raise'} preserves authoritative state`, async () => {
+    const fixedNow = new Date('2030-05-04T10:00:00Z');
+    const supabase = createMockSupabase({
+      auction: { id: 'gated', status: 'active', calculated_end: '2030-05-04T11:00:00Z', current_price: 100,
+        current_bidder_id: 'team-b', rider: { firstname: 'Test', lastname: 'Rider', team_id: null }, seller_team_id: 'seller' },
+      proxies: [{ team_id: 'team-a', max_amount: tie ? 100 : 150 }], databaseLeaderSync: true,
+      afterBidInsert: state => Object.assign(state, { current_price: 500, current_bidder_id: 'later-team' }),
+    });
+    const result = await resolveProxyBids({ supabase, auctionId: 'gated', bidTime: fixedNow, now: () => fixedNow,
+      databaseOwnsLeaderSync: true, previousLeader: tie ? 'team-a' : null });
+    assert.equal(supabase.state.bids.length, 1);
+    assert.equal(supabase.state.updates.length, 0);
+    assert.equal(supabase.state.auction.current_price, 500);
+    assert.equal(supabase.state.auction.current_bidder_id, 'later-team');
+    assert.equal(result.finalLeaderId, 'later-team');
+  });
+}
 
 // Fast tidsstempel der falder på lørdag 12:00 CEST — robust mod weekend/weekday
 // vinduer (08-23 CEST på weekend) og uafhængig af test-runner-tidspunkt.
-// Bevidst valgt langt i fremtiden: isAuctionExpired bruger real Date.now() og
-// ville få resolver til at bail før checkBidExtension hvis datoen var i fortiden.
+// Resolverens ur injiceres eksplicit af test-wrapperen ovenfor.
 const SAT_NOON_UTC = new Date("2030-05-04T10:00:00.000Z");
 // Standard auction-config så windowCloseTime kan beregnes deterministisk
 const FULL_CFG = {
@@ -381,7 +401,7 @@ test("resolver: ekspireret auktion → no-op", async () => {
   const auction = {
     id: "auc-5",
     status: "active",
-    calculated_end: new Date(Date.now() - 60_000).toISOString(), // -1 min
+    calculated_end: new Date(BID_TIME.getTime() - 60_000).toISOString(), // -1 min
     current_price: 50000,
     current_bidder_id: "team-b",
     rider: { firstname: "Test", lastname: "Rider", team_id: null },
