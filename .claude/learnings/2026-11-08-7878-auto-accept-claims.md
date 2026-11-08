@@ -40,3 +40,9 @@ routes blocked it. Reproduced RED for start/release/claim at the seller floor.
 The three locked paths now share M3's outgoing rider IDs when M3 is installed
 and enabled, and retain the bidder-only fallback otherwise. The same ID set
 deduplicates risk; its read helper is service-only with a fixed search path.
+
+CI audit-log test: a timestamp plus random UUID orders equal-time records
+deterministically but does not establish the action sequence. Assert the full
+multiset of audit contents when chronology is outside the test's contract.
+Force equal explicit timestamps and reversed UUID order to cover the boundary;
+do not add sleeps or depend on the runner's clock resolution.

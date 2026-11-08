@@ -339,6 +339,7 @@ const log = async (db, listingId) => (await db.query(
     new_asking_price: Number(r.new_asking_price),
     old_auto_accept_price: r.old_auto_accept_price == null ? null : Number(r.old_auto_accept_price),
     new_auto_accept_price: r.new_auto_accept_price == null ? null : Number(r.new_auto_accept_price) }));
+const byContents = rows => rows.toSorted((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
 
 test('migrationen er additiv: eksisterende auktioner bliver standard, listings faar ingen auto-pris', async () => {
   const db = await database();
@@ -383,12 +384,20 @@ test('saelger saetter, aendrer og fjerner Y med forventet pris; alt logges med a
   await db.query('UPDATE transfer_listings SET asking_price = 200000 WHERE id = $1', [l]);
   assert.equal((await setPrice(db, l, { price: null, expected: 450_000 })).status, 'updated');
 
-  assert.deepEqual(await log(db, l), [
+  // Force equal timestamps and UUID order opposite to the actions. A UUID
+  // tie-break does not establish chronology for events at the same instant.
+  await db.query(`UPDATE transfer_listing_price_log SET changed_at=$2, id=CASE
+    WHEN old_auto_accept_price IS NULL THEN $3::uuid
+    WHEN new_auto_accept_price IS NULL THEN $4::uuid
+    WHEN source='listing_update' THEN $5::uuid ELSE $6::uuid END WHERE listing_id=$1`,
+  [l, NOW, id(9804), id(9801), id(9802), id(9803)]);
+
+  assert.deepEqual(byContents(await log(db, l)), byContents([
     { old_asking_price: 100000, new_asking_price: 100000, old_auto_accept_price: null, new_auto_accept_price: 500000, actor_user_id: USER, source: 'seller_set_price' },
     { old_asking_price: 100000, new_asking_price: 100000, old_auto_accept_price: 500000, new_auto_accept_price: 450000, actor_user_id: USER, source: 'seller_set_price' },
     { old_asking_price: 100000, new_asking_price: 200000, old_auto_accept_price: 450000, new_auto_accept_price: 450000, actor_user_id: null, source: 'listing_update' },
     { old_asking_price: 200000, new_asking_price: 200000, old_auto_accept_price: 450000, new_auto_accept_price: null, actor_user_id: USER, source: 'seller_set_price' },
-  ]);
+  ]));
 
   await db.query("UPDATE transfer_listings SET status = 'withdrawn' WHERE id = $1", [l]);
   assert.deepEqual(await setPrice(db, l, { price: 500_000 }), { status: 'listing_closed' });
@@ -414,7 +423,13 @@ test('klienten kan aldrig selv aendre auto-prisen (RLS-politikken tillader eller
   await db.query('UPDATE transfer_listings SET asking_price = 110000 WHERE id = $1', [l]);
   await db.exec('RESET ROLE');
   assert.equal(Number((await one(db, 'SELECT auto_accept_price FROM transfer_listings WHERE id = $1', [l])).auto_accept_price), 500000);
-  assert.equal((await log(db, l)).at(-1).source, 'listing_update');
+  await db.query(`UPDATE transfer_listing_price_log SET changed_at=$2,
+    id=CASE WHEN source='listing_update' THEN $3::uuid ELSE $4::uuid END WHERE listing_id=$1`,
+  [l, NOW, id(9811), id(9812)]);
+  assert.deepEqual(byContents(await log(db, l)), byContents([
+    { old_asking_price: 100000, new_asking_price: 100000, old_auto_accept_price: null, new_auto_accept_price: 500000, actor_user_id: USER, source: 'seller_set_price' },
+    { old_asking_price: 100000, new_asking_price: 110000, old_auto_accept_price: 500000, new_auto_accept_price: 500000, actor_user_id: null, source: 'listing_update' },
+  ]));
 });
 
 test('koeberen byder Y: auktion med foerende bud, listing paa pause, ingen penge flyttet', async () => {
