@@ -120,8 +120,20 @@ test("R5: et resultat-hul filmen ikke viser giver et fund", () => {
   const stage = clone(stage8);
   const row = stage.raceRows.find((r) => r.result_type === "stage" && r.stage_number === 8 && r.rank === 2);
   row.finish_time = "+0:00";
-  const found = codes(ruleFilmMatchesResult(prepared(stage)));
+  const input = prepared(stage);
+  // #7900: filmen bygges nu af resultatets huller; her en film uden dem (motorens målbillede).
+  const motorFilm = buildFilm({ ...input, stageRows: input.stageRows.map(({ finish_time: _gap, ...rest }) => rest) });
+  const found = codes(ruleFilmMatchesResult(input, motorFilm));
   assert.equal(found.R5.codes.finish_gap_mismatch, 1);
+});
+
+test("R5 (#7900): filmen følger resultatets hul ved målet, så samme etape giver intet fund", () => {
+  const stage = clone(stage8);
+  const row = stage.raceRows.find((r) => r.result_type === "stage" && r.stage_number === 8 && r.rank === 2);
+  row.finish_time = "+0:00";
+  const found = codes(ruleFilmMatchesResult(prepared(stage)));
+  assert.equal(found.R5?.codes.finish_gap_mismatch, undefined);
+  assert.equal(found.R5?.codes.finish_order_mismatch, undefined);
 });
 
 test("R5: en byttet vinder i filmens målrækkefølge giver et fund, også med samme hul", () => {

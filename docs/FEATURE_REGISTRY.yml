@@ -145,7 +145,7 @@ features:
     area: race-engine
     title_en: Day form in words after the stage
     title_da: Dagsform i ord efter etapen
-    state: dormant
+    state: live
     flag: day_words_7725
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7725
