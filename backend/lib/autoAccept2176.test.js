@@ -9,6 +9,8 @@ import assert from "node:assert/strict";
 
 import {
   AUTO_ACCEPT_FLAG_KEY,
+  isAutoAcceptEnabled,
+  claimTransferUnderTeamLock,
   autoAcceptAuctionEnd,
   autoAcceptRouteGate,
   countSellerAuctionOutgoing,
@@ -26,7 +28,7 @@ import { calculateAuctionEnd, DEFAULT_AUCTION_CONFIG } from "./auctionEngine.js"
 import { MIN_RIDERS_FOR_RACE } from "./marketUtils.js";
 
 // Optagende fake: hvert opslag gemmes som { table, ops }, svaret kommer fra `respond`.
-function fakeSupabase({ flag = null, respond = () => ({ data: null, error: null }), rpc = () => ({ data: null, error: null }) } = {}) {
+function fakeSupabase({ flag = null, flagError = null, respond = () => ({ data: null, error: null }), rpc = () => ({ data: null, error: null }) } = {}) {
   const calls = [];
   const rpcCalls = [];
   const client = {
@@ -36,7 +38,7 @@ function fakeSupabase({ flag = null, respond = () => ({ data: null, error: null 
       const entry = { table, ops: [] };
       calls.push(entry);
       const result = () => (table === "app_config"
-        ? { data: flag == null ? null : { value: flag }, error: null }
+        ? { data: flag == null ? null : { value: flag }, error: flagError }
         : respond(table, entry.ops));
       const builder = new Proxy({}, {
         get(_target, prop) {
@@ -69,13 +71,47 @@ function fakeRes() {
 
 // ── Slukket kontakt ─────────────────────────────────────────────────────────
 
+test("ukendt kontakt: alle auto-accept-stier stopper foer opslag eller mutation", async (t) => {
+  const failure = new Error("flag read failed");
+  const operations = {
+    flag: client => isAutoAcceptEnabled(client),
+    offer: client => getOfferAutoAcceptIssue(client, { riderId: "R1", offerAmount: 1000 }),
+    floor: client => countSellerAuctionOutgoing(client, "A"),
+    release: client => releaseRiderUnderTeamLock(client, { riderId: "R1", teamId: "A" }),
+    claim: client => claimTransferUnderTeamLock(client, { riderId: "R1" }),
+    start: client => makeStartAutoAcceptHandler({ supabase: client, now: () => new Date("2026-11-09T10:00:00Z") })({}, fakeRes()),
+    price: client => makeSetAutoAcceptPriceHandler({ supabase: client })({}, fakeRes()),
+    route: client => autoAcceptRouteGate(client)({}, fakeRes(), () => { throw new Error("must not enter legacy route"); }),
+  };
+  for (const [name, operation] of Object.entries(operations)) {
+    await t.test(name, async () => {
+      const client = fakeSupabase({ flagError: failure });
+      await assert.rejects(operation(client), error => error === failure);
+      assert.deepEqual(tablesTouched(client), ["app_config"]);
+      assert.equal(client.rpcCalls.length, 0);
+    });
+  }
+});
+
+test("kontaktens tilstand laeses friskt, og fejl efter on bliver ikke til off eller cached on", async () => {
+  const failure = new Error("flag read failed after on");
+  const replies = [{ data: { value: "on" }, error: null }, { data: null, error: failure }];
+  const client = { from() { return {
+    select() { return this; }, eq() { return this; },
+    async maybeSingle() { return replies.shift(); },
+  }; } };
+  assert.equal(await isAutoAcceptEnabled(client), true);
+  await assert.rejects(isAutoAcceptEnabled(client), error => error === failure);
+  assert.equal(replies.length, 0);
+});
+
 test("slukket: tilbuds-gaten laeser kun kontakten og svarer null (uaendret tilbudsflow)", async () => {
   for (const flag of [null, "off", false, "beta"]) {
     const client = fakeSupabase({ flag });
     const listing = { id: "L1", status: "open", auto_accept_price: 500 };
     assert.equal(await getOfferAutoAcceptIssue(client, { riderId: "R1", offerAmount: 10_000 }), null);
     assert.equal(await getOfferAutoAcceptIssue(client, { listing, offerAmount: 10_000 }), null);
-    assert.deepEqual(tablesTouched(client), ["app_config"], `kun kontakten laeses (flag=${flag})`);
+    assert.deepEqual(tablesTouched(client), ["app_config", "app_config"], `kun kontakten laeses (flag=${flag})`);
     assert.equal(client.calls[0].ops.find((op) => op[0] === "eq")?.[2], AUTO_ACCEPT_FLAG_KEY);
   }
 });
@@ -120,6 +156,15 @@ test("slukket: frigivelsen under holdlaasen svarer null, kalder ingen RPC og lae
   }
 });
 
+test("slukket: transfer-claim er null uden RPC, risikolaesning eller ejerskabsskrivning", async () => {
+  for (const flag of [null, "off", false, "beta"]) {
+    const client = fakeSupabase({ flag });
+    assert.equal(await claimTransferUnderTeamLock(client, { riderId: "R1" }), null);
+    assert.deepEqual(tablesTouched(client), ["app_config"]);
+    assert.equal(client.rpcCalls.length, 0);
+  }
+});
+
 // ── Taendt kontakt ──────────────────────────────────────────────────────────
 
 test("tilbuds-reglen: bud paa Y eller derover afvises, bud under Y gaar igennem", () => {
@@ -144,11 +189,11 @@ test("taendt: begge tilbudsruter peger paa knappen ved bud paa Y", async () => {
   assert.deepEqual(listingOps.find((op) => op[0] === "eq"), ["eq", "rider_id", "R1"]);
   assert.equal(await getOfferAutoAcceptIssue(client, { riderId: "R1", offerAmount: 499_999 }), null);
 
-  // Listing-ruten har allerede listingen: intet ekstra opslag.
+  // Listing-ruten har allerede listingen: kun kontakten laeses friskt.
   const before = client.calls.length;
   const viaListing = await getOfferAutoAcceptIssue(client, { listing: { id: "L2", status: "open", auto_accept_price: 700 }, offerAmount: 700 });
   assert.equal(viaListing.body.errorParams.listingId, "L2");
-  assert.deepEqual(tablesTouched(client).slice(before), []);
+  assert.deepEqual(tablesTouched(client).slice(before), ["app_config"]);
 });
 
 test("taendt: saelgers ryttere paa auktion med en anden byder taeller som udgaaende", async () => {

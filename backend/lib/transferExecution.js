@@ -11,7 +11,7 @@ import {
   getTeamMarketState,
 } from "./marketUtils.js";
 import { fetchAtRiskCount } from "./squadRiskGuard.js";
-import { countSellerAuctionOutgoing } from "./autoAccept2176.js"; // #2176
+import { countSellerAuctionOutgoing, claimTransferUnderTeamLock } from "./autoAccept2176.js"; // #2176
 import { shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.ts";
 import { buildRiderValueSnapshot, updateDealWithValueSnapshot } from "./dealValueSnapshot.js";
@@ -565,7 +565,21 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   // #3330: updated_at stemples eksplicit ved parkering (ingen auto-touch-
   // trigger på riders) så ownershipInvariantWatch's forward-guard kan måle
   // pending-alder pålideligt i stedet for at læse en tilfældig gammel værdi.
-  const movedRider = deferRegistration
+  const lockedClaim = await claimTransferUnderTeamLock(supabase, {
+    riderId: rider.id, sellerTeamId: offer.seller_team_id, buyerTeamId: offer.buyer_team_id,
+    deferRegistration, now, acquirePatch: { ...transferContractPatch, ...graduatePatch },
+    activeSeasonNumber, maxRiders: buyerState.squad_limits.max,
+  });
+  if (lockedClaim?.issue) {
+    const claimIssue = lockedClaim.issue;
+    const message = describeTransferIssue(claimIssue, { rider, buyerState, sellerState });
+    await withdrawTransferOffer(supabase, offer.id);
+    const issueMeta = issueNotificationMetadata(message, rider.id);
+    await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, offer.id, issueMeta);
+    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, offer.id, issueMeta);
+    return failure(400, message.error, claimIssue.code, "errorParams" in message ? { errorParams: message.errorParams } : {});
+  }
+  const movedRider = lockedClaim ? lockedClaim.data : deferRegistration
     ? await expectMaybeSingle(
         supabase
           .from("riders")

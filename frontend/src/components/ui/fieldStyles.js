@@ -1,5 +1,6 @@
 const CONTROL_BASE =
   "w-full rounded-cz border bg-cz-card text-cz-1 placeholder:text-cz-3 " +
+  "cz-field-target " +
   "transition-colors duration-150 ease-out disabled:opacity-50 disabled:cursor-not-allowed";
 
 const CONTROL_SIZES = {

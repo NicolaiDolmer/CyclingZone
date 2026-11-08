@@ -39,12 +39,15 @@
 --   7. public.auto_accept_release_rider(...): frigivelse af en rytter med gulv-tjek
 --      og ejerskabsskift under samme holdlaas som 6 (Codex P2 paa #7878). Backend
 --      kalder den kun med kontakten taendt; slukket bruger frigivelsen sin gamle sti.
+--   8. public.auto_accept_claim_transfer(...): ejerskab/parkeringsclaim med samme
+--      holdlaase, gulv-, plads- og rytterstatus-tjek. Betaling foelger bagefter.
 --
 -- Laaseraekkefoelge (deadlock-fri, samme som M1 og de eksisterende RPC'er):
 -- holdlaase (pg_advisory_xact_lock paa begge hold i fast raekkefoelge), saa
 -- rytter-raekken, saa listing-raekken. set_listing_auto_accept_price tager
 -- saelgerens holdlaas og saa listing-raekken. auto_accept_release_rider tager
 -- holdets laas og saa rytter-raekken.
+-- auto_accept_claim_transfer tager begge holdlaase og saa rytter-raekken.
 --
 -- Afhaenger IKKE af M1 (2026-11-07-6181-sale-escrow-m1.sql); filerne kan
 -- applies i vilkaarlig raekkefoelge.
@@ -73,7 +76,7 @@
 --             has_function_privilege('authenticated', p.oid, 'EXECUTE') AS auth
 --        FROM pg_proc p WHERE p.proname IN ('set_listing_auto_accept_price','start_auto_accept_auction',
 --          'transfer_listing_auto_accept_guard','transfer_listing_price_log_write','auto_accept_lock_teams',
---          'auto_accept_release_rider');
+--          'auto_accept_release_rider','auto_accept_claim_transfer');
 --      -- anon=false, auth=false for alle seks
 --   6. SELECT tgname FROM pg_trigger WHERE tgrelid = 'public.transfer_listings'::regclass
 --        AND tgname LIKE 'transfer_listings_auto_accept%';  -- 4 raekker
@@ -81,6 +84,7 @@
 --        ('transfer_listings_auto_accept_price_check','auctions_origin_check','auctions_auto_accept_shape');  -- 3 raekker
 --
 -- Rollback (kun mens ingen listing har en auto-pris og ingen auto-accept-auktion findes):
+--   DROP FUNCTION IF EXISTS public.auto_accept_claim_transfer(uuid, uuid, uuid, boolean, timestamptz, jsonb, integer, uuid[], integer);
 --   DROP FUNCTION IF EXISTS public.auto_accept_release_rider(uuid, uuid, integer, uuid[]);
 --   DROP FUNCTION IF EXISTS public.start_auto_accept_auction(uuid, uuid, bigint, integer, timestamptz, integer, integer, uuid[], timestamptz);
 --   DROP FUNCTION IF EXISTS public.set_listing_auto_accept_price(uuid, uuid, bigint, bigint, uuid);
@@ -585,6 +589,86 @@ BEGIN
   RETURN jsonb_build_object('status', 'released', 'rider_id', r.id);
 END;
 $$;
+
+-- Ordinary transfer ownership claims share the start/release lock boundary.
+-- Only existing contract/graduate fields are accepted; payment stays in JS.
+CREATE OR REPLACE FUNCTION public.auto_accept_claim_transfer(
+  p_rider_id uuid, p_seller_team_id uuid, p_buyer_team_id uuid,
+  p_defer_registration boolean, p_now timestamptz, p_acquire_patch jsonb,
+  p_min_seller_riders integer, p_seller_at_risk_rider_ids uuid[], p_max_riders integer
+) RETURNS jsonb
+LANGUAGE plpgsql
+SET search_path = public, pg_catalog
+AS $$
+DECLARE
+  r public.riders;
+  v_count integer;
+  v_out integer;
+  v_risk integer;
+  v_buyer_count integer;
+  v_assignments text;
+  v_contract_assignments text;
+BEGIN
+  IF p_rider_id IS NULL OR p_seller_team_id IS NULL OR p_buyer_team_id IS NULL
+     OR p_seller_team_id = p_buyer_team_id OR p_defer_registration IS NULL OR p_now IS NULL
+     OR p_min_seller_riders IS NULL OR p_max_riders IS NULL
+     OR p_acquire_patch IS NULL OR jsonb_typeof(p_acquire_patch) <> 'object' THEN
+    RAISE EXCEPTION 'auto_accept_claim_transfer: invalid argument' USING ERRCODE = '22023';
+  END IF;
+  IF EXISTS (SELECT 1 FROM jsonb_object_keys(p_acquire_patch) k
+             WHERE k NOT IN ('salary','contract_length','contract_end_season','squad','is_academy')) THEN
+    RAISE EXCEPTION 'auto_accept_claim_transfer: invalid patch' USING ERRCODE = '22023';
+  END IF;
+  PERFORM public.auto_accept_lock_teams(p_seller_team_id, p_buyer_team_id);
+  SELECT * INTO r FROM public.riders WHERE id = p_rider_id FOR UPDATE;
+  IF NOT FOUND OR r.team_id IS DISTINCT FROM p_seller_team_id OR r.pending_team_id IS NOT NULL THEN
+    RETURN jsonb_build_object('status','rider_state_changed');
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.auctions a WHERE a.rider_id=r.id AND a.status IN ('active','extended')) THEN
+    RETURN jsonb_build_object('status','rider_on_auction');
+  END IF;
+  SELECT count(*) INTO v_count FROM public.riders x
+   WHERE x.squad='senior' AND NOT x.is_academy AND NOT coalesce(x.is_retired,false)
+     AND ((x.team_id=p_seller_team_id AND (x.pending_team_id IS NULL OR x.pending_team_id=p_seller_team_id))
+          OR (x.pending_team_id=p_seller_team_id AND x.team_id IS DISTINCT FROM p_seller_team_id));
+  SELECT count(*) INTO v_out FROM public.auctions a JOIN public.riders x ON x.id=a.rider_id
+   WHERE a.status IN ('active','extended') AND x.team_id=p_seller_team_id AND x.pending_team_id IS NULL
+     AND x.squad='senior' AND NOT x.is_academy AND NOT coalesce(x.is_retired,false)
+     AND a.current_bidder_id IS NOT NULL AND a.current_bidder_id<>p_seller_team_id AND x.id<>r.id;
+  SELECT count(*) INTO v_risk FROM public.riders x
+   WHERE x.id=ANY(coalesce(p_seller_at_risk_rider_ids,'{}')) AND x.id<>r.id
+     AND x.team_id=p_seller_team_id AND x.pending_team_id IS NULL
+     AND NOT EXISTS (SELECT 1 FROM public.auctions a WHERE a.rider_id=x.id
+       AND a.status IN ('active','extended') AND a.current_bidder_id IS NOT NULL AND a.current_bidder_id<>p_seller_team_id);
+  IF v_count - 1 - v_out - v_risk < p_min_seller_riders THEN
+    RETURN jsonb_build_object('status','seller_squad_floor','min_riders',p_min_seller_riders);
+  END IF;
+  SELECT count(*) INTO v_buyer_count FROM public.riders x
+   WHERE x.squad='senior' AND NOT x.is_academy AND NOT coalesce(x.is_retired,false)
+     AND ((x.team_id=p_buyer_team_id AND (x.pending_team_id IS NULL OR x.pending_team_id=p_buyer_team_id))
+          OR (x.pending_team_id=p_buyer_team_id AND x.team_id IS DISTINCT FROM p_buyer_team_id));
+  v_buyer_count := v_buyer_count + (SELECT count(*) FROM public.auctions a
+    WHERE a.status IN ('active','extended') AND a.current_bidder_id=p_buyer_team_id);
+  IF v_buyer_count + 1 > p_max_riders THEN
+    RETURN jsonb_build_object('status','squad_full','max_riders',p_max_riders);
+  END IF;
+
+  -- Preserve omitted versus explicit-null patch fields and UPDATE OF semantics.
+  v_assignments := CASE WHEN p_defer_registration THEN 'pending_team_id=$2, updated_at=$3'
+    ELSE 'team_id=$2, pending_team_id=NULL, acquired_at=$3' END;
+  SELECT string_agg(format('%1$I=p.%1$I', k), ', ' ORDER BY k) INTO v_contract_assignments
+    FROM jsonb_object_keys(p_acquire_patch) k;
+  IF v_contract_assignments IS NOT NULL THEN
+    v_assignments := v_assignments || ', ' || v_contract_assignments;
+  END IF;
+  EXECUTE 'UPDATE public.riders r SET ' || v_assignments ||
+    ' FROM jsonb_populate_record(NULL::public.riders,$1) p WHERE r.id=$4'
+    USING p_acquire_patch, p_buyer_team_id, p_now, r.id;
+  RETURN jsonb_build_object('status','claimed','rider_id',r.id);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.auto_accept_claim_transfer(uuid, uuid, uuid, boolean, timestamptz, jsonb, integer, uuid[], integer) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.auto_accept_claim_transfer(uuid, uuid, uuid, boolean, timestamptz, jsonb, integer, uuid[], integer) TO service_role;
 
 REVOKE ALL ON FUNCTION public.transfer_listing_auto_accept_guard() FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.transfer_listing_price_log_write() FROM PUBLIC, anon, authenticated, service_role;

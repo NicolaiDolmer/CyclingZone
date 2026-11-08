@@ -404,6 +404,15 @@ tekster kommer i PR 7. Slukket kontakt = adfærden ovenfor er uændret (bevist i
 - **Sælgers gulv:** med kontakten tændt tæller sælgers ryttere på en aktiv auktion med en anden
   byder som udgående i gulv-tjekket ved frigivelse, ny auktion og transfer, så sælger ikke kan
   handle sig under gulvet og få auktionen annulleret ved slut.
+  Frigivelse (`auto_accept_release_rider`) og almindelig transfers ejerskabs-/parkeringsclaim
+  (`auto_accept_claim_transfer`) gentjekker gulvet og muterer under de samme holdlåse som
+  auto-accept-start. Transfer-claim gentjekker også køberplads og auktion på selve rytteren;
+  kontraktarv/gradueringspatch og efterfølgende betalingsflow bevares. Claim er ikke en
+  atomisk betalings-RPC: de eksisterende betalingstrin ligger fortsat bagefter.
+- **Kontaktopslag:** bekræftet off/missing bevarer legacy-stien. Opslagsfejl kastes videre
+  før mutation; de må ikke vælge den ulåste frigivelses-/transfersti. Hvert opslag er friskt.
+  SQL-reglerne testes i PGlite; ægte samtidighed testes separat med otte PG17-forbindelser
+  i `backend/lib/autoAccept2176.pg17.test.js` (lokalt opt-in via `AUTO_ACCEPT_PG_BIN`).
 - **Forudsætning før tænding:** almindelige bud (`POST /auctions/:id/bid`) tager endnu ikke
   samme holdlås; den atomiske bud-gate kommer med pengelås PR 5 (#6181). Indtil da kan et
   samtidigt almindeligt bud og en auto-accept-start se samme ledige penge eller plads.

@@ -19,7 +19,7 @@
 // Sluttidspunktet regnes her med calculateAuctionEnd (aktiv tid, natten
 // springes over). Flash-stien (vaegur) bruges aldrig.
 
-import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
+import { evaluateFlagStage } from "./featureStage.js";
 import { calculateAuctionEnd, getAuctionSeasonBoundaryIssue } from "./auctionEngine.js";
 import { getTeamMarketState, MIN_RIDERS_FOR_RACE } from "./marketUtils.js";
 import { buildAtRiskErrorParams, fetchAtRiskRiders } from "./squadRiskGuard.js";
@@ -37,7 +37,12 @@ const MAX_PRICE = 2147483647;
 
 /** Kun "on" (eller true) taender. Ingen beta-stage: reglen skal gaelde ens for koeber og saelger. */
 export async function isAutoAcceptEnabled(supabase) {
-  return evaluateFlagStage(await readFlagStage(supabase, AUTO_ACCEPT_FLAG_KEY));
+  // An unknown state must not select the unlocked release/legacy offer path.
+  // Read freshly: cached on/off must not outlive an operational flag change.
+  const { data, error } = await supabase.from("app_config").select("value")
+    .eq("key", AUTO_ACCEPT_FLAG_KEY).maybeSingle();
+  if (error) throw error;
+  return evaluateFlagStage(data?.value ?? null);
 }
 
 const isWholePrice = (value) => Number.isInteger(value) && value > 0 && value <= MAX_PRICE;
@@ -272,6 +277,30 @@ export async function releaseRiderUnderTeamLock(supabase, { riderId, teamId, atR
     p_at_risk_rider_ids: (atRiskRiders || []).map((r) => r.id),
   });
   return mapReleaseUnderTeamLockResult(result, atRiskRiders);
+}
+
+// Claim ownership/parking under the same team locks as an auto-accept start.
+// Payment remains in the existing transfer flow; this is not a payment RPC.
+export async function claimTransferUnderTeamLock(supabase, {
+  riderId, sellerTeamId, buyerTeamId, deferRegistration, now, acquirePatch,
+  activeSeasonNumber, maxRiders,
+}) {
+  if (!(await isAutoAcceptEnabled(supabase))) return null;
+  const atRisk = await fetchAtRiskRiders(supabase, sellerTeamId, activeSeasonNumber, { excludeRiderIds: [riderId] });
+  const result = await rpc(supabase, "auto_accept_claim_transfer", {
+    p_rider_id: riderId, p_seller_team_id: sellerTeamId, p_buyer_team_id: buyerTeamId,
+    p_defer_registration: deferRegistration, p_now: now.toISOString(),
+    p_acquire_patch: acquirePatch, p_min_seller_riders: MIN_RIDERS_FOR_RACE,
+    p_seller_at_risk_rider_ids: atRisk.map(rider => rider.id), p_max_riders: maxRiders,
+  });
+  switch (result?.status) {
+    case "claimed": return { data: { id: result.rider_id } };
+    case "seller_squad_floor": return { issue: { code: "seller_squad_risk_too_small", minRiders: result.min_riders } };
+    case "squad_full": return { issue: { code: "buyer_squad_full", maxRiders: result.max_riders } };
+    case "rider_state_changed":
+    case "rider_on_auction": return { data: null };
+    default: throw new Error(`auto_accept_claim_transfer: unexpected status ${result?.status}`);
+  }
 }
 
 // null eller et positivt heltal; undefined (feltet mangler) er en fejl, saa

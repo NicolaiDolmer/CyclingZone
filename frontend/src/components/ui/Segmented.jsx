@@ -49,7 +49,7 @@ export function Segmented({ label, value, onChange, options, className = "" }) {
             title={option.title}
             disabled={blocked}
             onClick={active ? undefined : () => onChange(option.value)}
-            className={`px-3 py-1.5 text-xs font-medium transition-colors duration-150 ${
+            className={`px-3 py-1.5 text-xs font-medium transition-colors duration-150 [@media(max-width:640px),(pointer:coarse)]:min-h-11 [@media(max-width:640px),(pointer:coarse)]:min-w-11 ${
               blocked
                 ? "cursor-not-allowed bg-cz-card text-cz-3 opacity-40"
                 : active

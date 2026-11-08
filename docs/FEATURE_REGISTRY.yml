@@ -34,7 +34,7 @@
 #   verified  YYYY-MM-DD — hvornår tilstanden sidst blev verificeret mod kode/prod
 #   note      max 1 linje. Kun det der ikke kan udledes af felterne ovenfor.
 #             Obligatorisk ved state: dormant.
-#   roadmap_en / roadmap_da / roadmap_horizon (next|later, valgfri) - spillerens
+#   roadmap_en / roadmap_da / roadmap_horizon (this_week|next_week|season_N|qN_YYYY|yYYYY, valgfri; #7895) - spillerens
 #             roadmap-tekst (#6693), godkendt af ejeren. Kraeves for spillervendte
 #             flag (flag + area ikke ops) naar state er beta; building/dormant giver
 #             kun en advarsel. scripts/roadmap-sync-registry.mjs opretter punktet
@@ -145,12 +145,12 @@ features:
     area: race-engine
     title_en: Day form in words after the stage
     title_da: Dagsform i ord efter etapen
-    state: dormant
+    state: live
     flag: day_words_7725
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7725
-    verified: 2026-11-06
-    note: "Slukket; kræver day_form_6649."
+    verified: 2026-11-08
+    note: "Tændt 8/11 af dirigenten på ejer-go (#7725); kræver day_form_6649. Hjælp, patch note og første-etape-bevis afventer #7914."
     decision: ejer-beslutning
     decide_by: 2026-11-20
   - id: race-itt-no-day-roll-7726
@@ -438,7 +438,18 @@ features:
     note: "#7717: seedet off, kun visning. Ejeren flytter flaget efter visuelt go."
     roadmap_en: "Why? next to your riders: one tap tells you what decided his result."
     roadmap_da: "Hvorfor? ved dine ryttere: ét tryk fortæller, hvad der afgjorde hans resultat."
-    roadmap_horizon: next
+    roadmap_horizon: next_week
+
+  - id: rider-hover-card
+    area: squad
+    title_en: Rider card
+    title_da: Rytterkort
+    state: building
+    decision: ejer-beslutning
+    decide_by: 2026-11-14
+    epic: 2000
+    verified: 2026-11-07
+    note: "Kontakt rider_hover_card."
 
   - id: race-library-v2
     area: stats
@@ -515,6 +526,8 @@ features:
     title_en: Auto-accept price
     title_da: Auto-accept-pris
     state: building
+    flag: auto_accept_enabled
+    ssot: docs/TRANSFER_MARKET_RULES.md
     epic: 2176
     verified: 2026-11-07
     decision: taend
@@ -574,7 +587,7 @@ features:
     ssot: docs/superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md
     epic: 1177
     verified: 2026-11-04
-    note: 'Kun data er bygget (#5268). Løbsmotoren (#5348) og mentorpar (#5349) er ikke bygget, og arbejdet står stille (statusaudit 4/11).'
+    note: 'Kun data er bygget (#5268); løbsmotor (#5348) og mentorpar (#5349) mangler, og arbejdet står stille (statusaudit 4/11).'
 
   - id: rider-rating-best-role-display
     area: squad
@@ -1050,7 +1063,7 @@ features:
     ssot: docs/superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md
     epic: 6110
     verified: 2026-11-05
-    note: 'Byggetrin 4 (#7684): estimates, scouting-rapport, development-projection og akademi svarer fra potentialEstimateRead.js, når flaget er tændt.'
+    note: 'Byggetrin 4 (#7684): fladerne læser potentialEstimateRead.js, når flaget er tændt.'
     decision: goer-faerdigt
     decide_by: 2026-12-31
 
@@ -1084,7 +1097,7 @@ features:
     flag: development_score_v2
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: 'Ejer 31/10 (#6110): parkeret, indtil grundtalentet (spec 23/10, byggetrin 2) er bygget; decide_by 8/11 er afløst, ny frist ikke sat. Forudsætning før tænding: #7584. Statusaudit 4/11.'
+    note: 'Ejer 31/10 (#6110): parkeret, indtil grundtalentet (spec 23/10, byggetrin 2) er bygget; ny frist ikke sat. Forudsætning før tænding: #7584. Statusaudit 4/11.'
     verified: 2026-11-04
     decision: ejer-beslutning
     decide_by: 2026-11-08

@@ -13,6 +13,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
+import { SCHEMA } from './__fixtures__/autoAccept2176Schema.js';
 
 const file = name => readFile(new URL(`../../database/${name}`, import.meta.url), 'utf8');
 const MIGRATION = '2026-11-07-2176-m2-auto-accept.sql';
@@ -26,37 +27,7 @@ const MAX = 30;
 const FLOOR = 8;
 
 // Minimalt udsnit af prod-skemaet: de kolonner, checks og indeks RPC'erne roerer.
-const SCHEMA = `
-CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
-GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
-CREATE TABLE teams (id uuid PRIMARY KEY, balance bigint NOT NULL);
-CREATE TABLE riders (id uuid PRIMARY KEY, team_id uuid, pending_team_id uuid,
-  squad text NOT NULL DEFAULT 'senior', is_academy boolean NOT NULL DEFAULT false, is_retired boolean DEFAULT false,
-  salary integer DEFAULT 1000, contract_length integer DEFAULT 2, contract_end_season integer DEFAULT 3,
-  acquired_at timestamptz DEFAULT now());
-CREATE TABLE transfer_listings (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  rider_id uuid NOT NULL, seller_team_id uuid NOT NULL, asking_price integer NOT NULL,
-  status text DEFAULT 'open' CHECK (status IN ('open', 'negotiating', 'sold', 'withdrawn', 'paused')),
-  created_at timestamptz DEFAULT now());
-CREATE UNIQUE INDEX uniq_transfer_listings_one_active_per_rider ON transfer_listings(rider_id) WHERE status IN ('open', 'negotiating');
-CREATE TABLE auctions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  rider_id uuid NOT NULL, seller_team_id uuid,
-  starting_price integer NOT NULL DEFAULT 1, current_price integer NOT NULL DEFAULT 1, current_bidder_id uuid,
-  min_increment integer DEFAULT 1, requested_start timestamptz NOT NULL DEFAULT now(),
-  calculated_end timestamptz NOT NULL, actual_end timestamptz,
-  status text DEFAULT 'active' CHECK (status IN ('active', 'extended', 'completed', 'cancelled')),
-  extension_count integer DEFAULT 0, is_flash boolean NOT NULL DEFAULT false,
-  created_at timestamptz DEFAULT now());
-CREATE UNIQUE INDEX uniq_auctions_one_active_per_rider ON auctions(rider_id) WHERE status IN ('active', 'extended');
-CREATE TABLE auction_bids (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), auction_id uuid NOT NULL, team_id uuid NOT NULL,
-  amount integer NOT NULL, bid_time timestamptz NOT NULL DEFAULT now(), triggered_extension boolean DEFAULT false, is_proxy boolean DEFAULT false);
-CREATE TABLE auction_proxy_bids (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), auction_id uuid NOT NULL, team_id uuid NOT NULL, max_amount bigint NOT NULL);
-CREATE TABLE swap_offers (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), offered_rider_id uuid, requested_rider_id uuid, status text NOT NULL);
-GRANT SELECT, INSERT, UPDATE ON teams, riders, transfer_listings, auctions, auction_bids, auction_proxy_bids, swap_offers TO service_role;
-GRANT SELECT, INSERT, UPDATE ON transfer_listings TO authenticated;
-`;
+
 
 async function database() {
   const db = new PGlite();
@@ -104,6 +75,69 @@ async function release(db, rider, { team = TEAM.A, floor = FLOOR, atRisk = [] } 
   return (await one(db, 'SELECT public.auto_accept_release_rider($1,$2,$3,$4::uuid[]) AS r',
     [rider, team, floor, `{${atRisk.join(',')}}`])).r;
 }
+
+async function claim(db, rider, { buyer = TEAM.B, defer = false, patch = {}, floor = FLOOR, atRisk = [], max = MAX } = {}) {
+  return (await one(db, 'SELECT public.auto_accept_claim_transfer($1,$2,$3,$4,$5,$6::jsonb,$7,$8::uuid[],$9) AS r',
+    [rider, TEAM.A, buyer, defer, NOW, JSON.stringify(patch), floor, `{${atRisk.join(',')}}`, max])).r;
+}
+
+test('transfer-claim: immediate and parked ownership preserve inheritance, patch shape and role grants', async () => {
+  const db = await database();
+  const [direct, parked, graduate] = await squad(db, TEAM.A, 12);
+  assert.equal((await claim(db, direct)).status, 'claimed');
+  assert.deepEqual(await one(db, 'SELECT team_id, pending_team_id, salary, contract_length, contract_end_season FROM riders WHERE id=$1', [direct]),
+    { team_id: TEAM.B, pending_team_id: null, salary: 1000, contract_length: 2, contract_end_season: 3 });
+  assert.equal((await claim(db, parked, { defer: true, patch: { salary: 2500, contract_length: 4, contract_end_season: 9 } })).status, 'claimed');
+  const row = await one(db, 'SELECT team_id, pending_team_id, salary, contract_length, contract_end_season, updated_at FROM riders WHERE id=$1', [parked]);
+  assert.equal(row.team_id, TEAM.A);
+  assert.equal(row.pending_team_id, TEAM.B);
+  assert.equal(row.salary, 2500);
+  assert.equal(row.contract_length, 4);
+  assert.equal(row.contract_end_season, 9);
+  assert.equal(row.updated_at.toISOString(), new Date(NOW).toISOString());
+  await db.query("UPDATE riders SET is_academy=true, squad='junior' WHERE id=$1", [graduate]);
+  assert.equal((await claim(db, graduate, { patch: { is_academy: false, squad: 'senior', salary: null } })).status, 'claimed');
+  assert.deepEqual(await one(db, 'SELECT is_academy,squad,salary FROM riders WHERE id=$1', [graduate]),
+    { is_academy: false, squad: 'senior', salary: null });
+  await assert.rejects(claim(db, id(555), { patch: { team_id: TEAM.C } }), /invalid patch/);
+  for (const role of ['anon', 'authenticated', 'service_role']) {
+    const privilege = await one(db, `SELECT has_function_privilege($1,
+      'public.auto_accept_claim_transfer(uuid,uuid,uuid,boolean,timestamptz,jsonb,integer,uuid[],integer)', 'EXECUTE') AS allowed`, [role]);
+    assert.equal(privilege.allowed, role === 'service_role');
+  }
+});
+
+test('transfer-claim and auto-accept: both orderings protect seller floor, same rider and buyer seat', async () => {
+  for (const defer of [false, true]) {
+    for (const first of ['claim', 'start']) {
+      const db = await database();
+      const riders = await squad(db, TEAM.A, FLOOR + 1);
+      const l = await listing(db, riders[0], { auto: 500_000 });
+      let started; let claimed;
+      if (first === 'claim') {
+        claimed = await claim(db, riders[1], { buyer: TEAM.C, defer });
+        started = await start(db, l);
+      } else {
+        started = await start(db, l);
+        claimed = await claim(db, riders[1], { buyer: TEAM.C, defer });
+      }
+      assert.equal(Number(started.status === 'started') + Number(claimed.status === 'claimed'), 1);
+      assert.equal((first === 'claim' ? started : claimed).status, 'seller_squad_floor');
+    }
+  }
+  const db = await database();
+  const riders = await squad(db, TEAM.A, 14);
+  const l = await listing(db, riders[0], { auto: 500_000 });
+  assert.equal((await start(db, l)).status, 'started');
+  assert.equal((await claim(db, riders[0])).status, 'rider_on_auction');
+  const l2 = await listing(db, riders[1], { auto: 500_000 });
+  assert.equal((await claim(db, riders[1], { defer: true })).status, 'claimed');
+  assert.equal((await start(db, l2)).status, 'rider_pending_transfer');
+  await squad(db, TEAM.C, MAX - 1);
+  const l3 = await listing(db, riders[2], { auto: 500_000 });
+  assert.equal((await start(db, l3, { buyer: TEAM.C })).status, 'started');
+  assert.deepEqual(await claim(db, riders[3], { buyer: TEAM.C }), { status: 'squad_full', max_riders: MAX });
+});
 // Advisory-laase holdt af den aabne transaktion (holdlaasene).
 const advisoryLocks = async (tx) => (await tx.query(
   "SELECT (classid::text::numeric * 4294967296 + objid::text::numeric)::text AS k FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid() ORDER BY 1"))
