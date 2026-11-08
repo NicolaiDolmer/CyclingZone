@@ -1171,6 +1171,11 @@
       "issue": 7908,
       "reason": "Ejer 8/11: push-vagterne, PR #7907 gøres færdig efter uafhængigt review",
       "since": "2026-11-08"
+    },
+    {
+      "issue": 7922,
+      "reason": "Ejer-go 8/11: stram reglerne for salgsannoncer, planlagt til 9/11",
+      "since": "2026-11-08"
     }
   ]
 }

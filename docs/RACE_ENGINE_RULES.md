@@ -278,7 +278,9 @@ Ejer 5/11: dagsformen skal kunne ses, med ord og aldrig tal, og først efter eta
 
 Motoren er uændret: den kalder ikke ordene. Broen regner dem bagefter med samme `dayForm6649For` og samme seed, rute og startliste, og lægger `day_word` på tidslinjen lige før målstregen (`rider_id`, `word`: `great`, `good` eller `bad`; ved `bad` også `reason` og evt. `weather`). Resultater og `input_checksum` er ens med og uden kontakten; kontakten står i motor-argumenterne, så #1857-genafspilningen giver samme output. En almindelig dag får intet ord, og en god dag har ingen årsag, fordi benene på op-siden er ens for alle.
 
-Referatet (`dayWordSentences` i `raceStoryModel.ts`) nævner vinderen og dine egne i mål, højst to sætninger; en enkeltstart får sætningerne under ruten. `dayWordsByRider` er kilden for andre flader. Uden `day_word` på tidslinjen vises intet, så ældre etaper er uændrede. Test: `backend/lib/dayWords7725Flag.test.js`.
+Dagsformen er privat (ejer 8/11): `GET /api/races/:raceId/timeline` sender kun `day_word` og `bad_day` for seerens egne ryttere i løbet, startlisten plus etapens resultat (`backend/lib/dayFormVisibility7725.js`). Uden hold, eller hvis opslaget fejler, sendes ingen dagsform. Den gemte tidslinje er uændret. Referat, løbsfilm og Hvorfor?-knappen læser alle det samme svar.
+
+Referatet (`dayWordSentences` i `raceStoryModel.ts`) nævner kun dine egne i mål, også når vinderen er en andens, højst to sætninger; en enkeltstart får sætningerne under ruten. `dayWordsByRider` er kilden for andre flader. Uden `day_word` på tidslinjen vises intet, så ældre etaper er uændrede. Test: `backend/lib/dayWords7725Flag.test.js`, `backend/lib/dayFormVisibility7725.test.js`.
 
 ## Forspringskurven for dagens udbrud under `s5_profiles_v3` ([#6912](https://github.com/NicolaiDolmer/CyclingZone/issues/6912), **slukket**)
 
