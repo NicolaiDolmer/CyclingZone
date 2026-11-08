@@ -783,7 +783,7 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
   story.group_spans = timeTrial ? [] : [...spans, ...openSpans.values()]
     .sort((a, b) => a.from_km - b.from_km || a.group_id.localeCompare(b.group_id))
     .map((span) => (lateJoins.has(span.group_id) ? { ...span, late_joins: lateJoins.get(span.group_id) } : span));
-  if (!timeTrial && finishKm != null) settleFinishOnResults(snapshotsByKm.get(round2(finishKm)), results);
+  if (!timeTrial && finishKm != null) settleFinishOnResults(story, story.snapshots, snapshotsByKm.get(round2(finishKm)), results);
   story.checkpoints = buildCheckpoints(ordered, story, passageStates);
   story.breakaway = breakawaySummary(history, results);
   return story;
@@ -797,10 +797,27 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
  * En gruppe beholder sit id på det hul, hvor flest af dens ryttere endte. Kun
  * visning: tidslinjen og motoren røres ikke. Uden huller på alle rækker (ældre
  * kaldere, mangelfuldt resultat) står motorens målbillede urørt.
+ *
+ * Motorens billede bliver stående lige før stregen, så filmen ikke glider mod
+ * resultatet hen over den sidste strækning: skiftet sker på målstregen.
+ * @param {any} story
+ * @param {any[]} snapshots
+ * @param {any} snapshot
+ * @param {any} results
  */
-function settleFinishOnResults(snapshot, results) {
+function settleFinishOnResults(story, snapshots, snapshot, results) {
   const rows = (Array.isArray(results) ? results : []).filter((row) => typeof row?.rider_id === "string");
   if (!snapshot || !rows.length || rows.some((row) => finite(row.gap_s) == null)) return;
+  const justBeforeKm = round2(snapshot.km - 0.01);
+  if (justBeforeKm > 0) {
+    const leaderBefore = leaderTimeAt(story, justBeforeKm);
+    snapshots.splice(snapshots.indexOf(snapshot), 0, {
+      ...snapshot,
+      km: justBeforeKm,
+      leader_time_s: leaderBefore,
+      groups: snapshot.groups.map((/** @type {any} */ g) => ({ ...g, time_s: leaderBefore == null ? null : round2(leaderBefore + g.gap_s) })),
+    });
+  }
   const out = new Set(snapshot.out_rider_ids);
   const finishers = rows.filter((row) => !out.has(row.rider_id));
   const ownerOf = new Map(snapshot.groups.flatMap((g) => g.rider_ids.map((id) => [id, g])));

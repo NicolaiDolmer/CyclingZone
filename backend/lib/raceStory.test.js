@@ -284,16 +284,21 @@ test("#7900: replay slutter på resultatets huller, og den sidste kendte tilstan
   assert.deepEqual(last.groups.map((g) => g.gap_s), [0, 14, 16, 144]);
   assert.equal(story.snapshots[0].km, 0);
   assert.equal(story.snapshots[0].groups.every((g) => g.gap_source !== "result"), true);
+  // Motorens billede står til lige før stregen: filmen glider ikke mod resultatet.
+  const justBefore = frames.find((f) => f.km === 99);
+  assert.equal(justBefore.groups.find((g) => g.group_id === "peloton-0").gap_s, 0);
+  assert.equal(justBefore.groups.some((g) => g.gap_s === 0), true);
 });
 
 test("#7900: uden hul på alle rækker røres målbilledet ikke; en udgået rytter genopstår aldrig", () => {
   const partial = finaleRows.map((r, i) => (i === 7 ? { ...r, finish_time: null } : r));
   assert.equal(finishOf(finaleStory(partial)).groups.every((g) => g.gap_source !== "result"), true);
   const events = finaleWithoutFieldGap();
-  events.splice(3, 0, ev(50, "incident", { rider_id: "h", outcome: "abandon", exact_km: 50, exact_time: 4000 }));
+  events.splice(1, 0, ev(50, "incident", { rider_id: "h", kind: "crash", outcome: "abandoned", exact_km: 50 }));
   const story = buildRaceStory({ events, timelineVersion: 2, ...storyInputsFromResults(finaleRows, 2) });
   const finish = finishOf(story);
-  if (finish.out_rider_ids.includes("h")) assert.equal(checkpointGapForRider(finish, "h"), null);
+  assert.equal(finish.out_rider_ids.includes("h"), true);
+  assert.equal(checkpointGapForRider(finish, "h"), null);
 });
 
 test("#7900: en enkeltstart har ingen grupper at rette", () => {
