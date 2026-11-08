@@ -16,6 +16,8 @@ import {
   GAP_CHANGE_EXPLAIN_SECONDS, REPLAY_FINALE_KM,
 } from "./raceStory.js";
 
+import { stageInput } from "../../scripts/__fixtures__/race-truth/load.mjs";
+
 const LIVE_REVISION = "official_times_v4";
 const SEED = "6350-story";
 
@@ -299,6 +301,27 @@ test("#7900: uden hul på alle rækker røres målbilledet ikke; en udgået rytt
   const finish = finishOf(story);
   assert.equal(finish.out_rider_ids.includes("h"), true);
   assert.equal(checkpointGapForRider(finish, "h"), null);
+});
+
+test("#7900: replay før stregen er motorens, også når grupper smelter sammen på stregen (Codex)", () => {
+  for (const file of ["giro-stage-2-clean.json", "giro-stage-6.json"]) {
+    const stage = stageInput(file);
+    const rows = stage.raceRows.filter((r) => r.result_type === "stage" && r.stage_number === stage.stageNumber);
+    const inputs = storyInputsFromResults(rows, stage.stageNumber);
+    const base = { events: stage.events, timelineVersion: stage.timelineVersion, startlist: inputs.startlist };
+    const engine = buildRaceStory({ ...base, results: inputs.results.map(({ rider_id, rank }) => ({ rider_id, rank })) });
+    const settled = buildRaceStory({ ...base, results: inputs.results });
+    assert.equal(finishOf(settled).groups.every((g) => g.gap_source === "result"), true, `${file}: målet er bygget af resultatet`);
+    const engineFrames = new Map(replayFrames(engine).map((f) => [f.km, f]));
+    const byId = (frame) => [...frame.groups].sort((a, b) => a.group_id.localeCompare(b.group_id, "en-US"));
+    const before = replayFrames(settled).filter((f) => f.km < settled.distance_km && engineFrames.has(f.km));
+    assert.ok(before.length > 0, `${file}: der er frames at sammenligne`);
+    for (const frame of before) {
+      const want = byId(engineFrames.get(frame.km));
+      assert.deepEqual(byId(frame).map((g) => [g.group_id, g.size]), want.map((g) => [g.group_id, g.size]), `${file} km ${frame.km}`);
+      byId(frame).forEach((g, i) => assert.ok(Math.abs(g.gap_s - want[i].gap_s) <= 0.02, `${file} km ${frame.km} ${g.group_id}`));
+    }
+  }
 });
 
 test("#7900: en enkeltstart har ingen grupper at rette", () => {

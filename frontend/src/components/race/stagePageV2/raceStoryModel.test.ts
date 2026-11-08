@@ -6,7 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { IntlMessageFormat } from "intl-messageformat";
-import { buildRaceStory, replayFrames } from "../../../../../backend/lib/raceStory.js";
+import { buildRaceStory, replayFrames, storyInputsFromResults } from "../../../../../backend/lib/raceStory.js";
 import { withEventPlaces } from "../../../../../backend/lib/raceTimeline.js";
 import {
   asStory, isTimeTrialStory, buildReport, castFrom, curateMoments, dayWordsByRider, dayWordSentences, finaleData, finaleEndTime, finaleMarkerLabelsShown, finaleStateAt, formatClock, frameAt,
@@ -271,6 +271,24 @@ test("buildReport: sparsom flad spurt (kun start, spurt, maal) fyldes op til 3 f
   assert.equal(keys[0], "winnerSame");
   assert.deepEqual(report.find((r) => r.key === "sameTime")?.params, { count: 4 });
   assert.ok(keys.includes("third"), "tredjepladsen naevnes paa samme tid");
+});
+
+test("#7900: ved stregen staar alle ryttere i en af resultatets grupper, ogsaa ved samme hul (Codex)", () => {
+  const events = [
+    ev(0, "stage_start", { exact_km: 0, exact_time: 0, distance_km: 100, field_count: 4, profile_type: "flat" }),
+    ev(95, "finale_attack", { group_id: "finale-winner-0", source_group_id: "peloton-0", rider_ids: ["a"], exact_km: 100, exact_time: 8200 }),
+    ev(95, "finale_attack", { group_id: "finale-tier-1", source_group_id: "peloton-0", rider_ids: ["b"], exact_km: 100, exact_time: 8200 }),
+    ev(100, "finish", { win_type: "small_group", exact_km: 100, exact_time: 8200 }),
+  ];
+  const rows = [["a", 1, "+0:00"], ["b", 2, "+0:00"], ["c", 3, "+0:16"], ["d", 4, "+0:16"]]
+    .map(([rider_id, rank, finish_time]) => ({ rider_id: rider_id as string, rank: rank as number, finish_time: finish_time as string, result_type: "stage", stage_number: 2 }));
+  const s = asStory(buildRaceStory({ events, timelineVersion: 2, ...storyInputsFromResults(rows, 2) })) as RaceStory;
+  const finish = s.snapshots[s.snapshots.length - 1];
+  assert.equal(finish.groups.every((g) => g.gap_source === "result"), true);
+  const shown = new Set(finish.groups.map((g) => g.group_id));
+  assert.equal([...shown].filter((id) => id.startsWith("finale-")).length, 1, "to grupper paa samme hul er een gruppe");
+  const members = groupMembersAt(s, 100);
+  for (const { rider_id } of rows) assert.equal(shown.has(groupOfRider(members, rider_id) as string), true, rider_id);
 });
 
 test("groupMembersAt: splits flytter rytterne fra deres split-punkt; resten foelger feltet", () => {

@@ -808,15 +808,18 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
 function settleFinishOnResults(story, snapshots, snapshot, results) {
   const rows = (Array.isArray(results) ? results : []).filter((row) => typeof row?.rider_id === "string");
   if (!snapshot || !rows.length || rows.some((row) => finite(row.gap_s) == null)) return;
+  const finishIndex = snapshots.indexOf(snapshot);
+  const previous = snapshots[finishIndex - 1] ?? null;
   const justBeforeKm = round2(snapshot.km - 0.01);
-  if (justBeforeKm > 0) {
+  if (previous && justBeforeKm > previous.km) {
     const leaderBefore = leaderTimeAt(story, justBeforeKm);
-    snapshots.splice(snapshots.indexOf(snapshot), 0, {
-      ...snapshot,
-      km: justBeforeKm,
-      leader_time_s: leaderBefore,
-      groups: snapshot.groups.map((/** @type {any} */ g) => ({ ...g, time_s: leaderBefore == null ? null : round2(leaderBefore + g.gap_s) })),
+    // Tilstanden på vejen, ikke målets grupper: en gruppe der først smelter sammen
+    // på stregen, skal stadig være der lige før den.
+    const groups = groupsBetween(story, previous, snapshot, justBeforeKm).map(({ meta, gap }) => {
+      const gapS = Math.max(0, gap);
+      return { ...meta, gap_s: gapS, time_s: leaderBefore == null ? null : round2(leaderBefore + gapS) };
     });
+    snapshots.splice(finishIndex, 0, { ...snapshot, km: justBeforeKm, leader_time_s: leaderBefore, groups });
   }
   const out = new Set(snapshot.out_rider_ids);
   const finishers = rows.filter((row) => !out.has(row.rider_id));

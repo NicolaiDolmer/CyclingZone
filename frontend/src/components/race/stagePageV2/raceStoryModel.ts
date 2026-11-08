@@ -869,6 +869,8 @@ export function groupMembersAt(story: RaceStory, km: number): Map<string, Member
   if (!a) return state;
   const isOutBy = riderOutBy(story, a);
   for (const g of a.groups) state.set(g.group_id, { riders: new Set(g.rider_ids), includesRest: g.includes_rest });
+  // #7900: maalets grupper fra resultatet er facit; motorens overgange paa stregen maa ikke flytte rytterne igen.
+  if (a.groups.some((g) => g.gap_source === "result")) return state;
   const transitions: Array<{ km: number; order: number; span: GroupSpan; join?: { km: number; rider_ids: string[] } }> = [];
   for (const s of story.group_spans ?? []) {
     if (s.to_km != null && s.to_km < s.from_km - EPS) continue;
