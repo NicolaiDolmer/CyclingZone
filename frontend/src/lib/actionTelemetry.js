@@ -42,7 +42,7 @@
 // position for adfærdsdata, og undertællingen er ensartet på tværs af events.
 import * as Sentry from "@sentry/react";
 import { logEvent } from "./logEvent.js";
-import { loadFailureFingerprint } from "./loadFailureFingerprint.js";
+import { loadFailureFingerprint } from "./loadFailureFingerprint.ts";
 
 const ENABLED = import.meta.env.PROD && Boolean(import.meta.env.VITE_SENTRY_DSN);
 

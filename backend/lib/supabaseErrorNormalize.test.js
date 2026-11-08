@@ -19,6 +19,23 @@ test("isSupabaseUnavailableMessage — kun de to nedbrudsbeskeder, også bag et 
   assert.equal(isSupabaseUnavailableMessage("Could not query the database for the schema cache. Retrying."), true);
 });
 
+test("isSupabaseUnavailableMessage — andre upstreams' HTML-sider er ikke et databasenedbrud", () => {
+  for (const raw of [
+    `Alunta POST /customers -> 502: ${CF_522}`,
+    `openDm 503: ${CF_522}`,
+    `postDm 502: ${CF_522}`,
+  ]) {
+    const normalized = normalizeSupabaseErrorMessage(raw);
+    assert.match(normalized, /Supabase unavailable/, "forudsætning: normaliseringen kender ikke afsenderen");
+    assert.equal(isSupabaseUnavailableMessage(normalized), false, raw);
+  }
+  // En Discord-outbox, der ikke kan læse databasen, ER et databasenedbrud.
+  assert.equal(
+    isSupabaseUnavailableMessage("Discord DM-outbox drain-select fejlede: Supabase unavailable (522 Connection timed out)"),
+    true,
+  );
+});
+
 test("isSupabaseUnavailableMessage — er snævrere end de transiente fejl", () => {
   for (const message of ["fetch failed", "socket hang up", "canceling statement due to statement timeout", "code=57014"]) {
     assert.equal(isSupabaseUnavailableMessage(message), false, message);

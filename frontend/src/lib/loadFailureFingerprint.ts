@@ -4,6 +4,6 @@
 //
 // Eget modul uden Sentry- og Supabase-importer, så node --test kan importere det
 // direkte (actionTelemetry.js kan ikke indlæses der, se actionTelemetry.test.js).
-export function loadFailureFingerprint(status) {
-  return status >= 502 && status <= 504 ? ["frontend-backend-unavailable"] : undefined;
+export function loadFailureFingerprint(status?: number): string[] | undefined {
+  return status !== undefined && status >= 502 && status <= 504 ? ["frontend-backend-unavailable"] : undefined;
 }

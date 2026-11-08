@@ -233,8 +233,14 @@ const SUPABASE_UNAVAILABLE_MARKERS = [
   "Could not query the database for the schema cache",
 ];
 
+// normalizeSupabaseErrorMessage kender ikke afsenderen og koger enhver HTML-fejlside
+// ned til "Supabase unavailable". Alunta og Discords DM-kald lægger svar-body'en
+// direkte i beskeden, så deres egne udfald skal holdes uden for klassen.
+const OTHER_UPSTREAM_RESPONSE_RE = /\bAlunta [A-Z]+ \S+ -> \d{3}:|\b(?:openDm|postDm) \d{3}:/;
+
 export function isSupabaseUnavailableMessage(message) {
   if (typeof message !== "string") return false;
+  if (OTHER_UPSTREAM_RESPONSE_RE.test(message)) return false;
   return SUPABASE_UNAVAILABLE_MARKERS.some((marker) => message.includes(marker));
 }
 
