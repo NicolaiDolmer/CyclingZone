@@ -144,7 +144,7 @@ export function computeTalentMarks({ riders = [], juniorGains = [], seasonNumber
     })
     // Kun reel fremgang: en junior uden fremgang i vinduet får aldrig mærket.
     .filter((r) => r.score > 0)
-    // Lige fremgang: mest i den seneste uge, så den yngste, så id.
+    // Lige fremgang: mest i det nyeste delvindue, så den yngste, så id.
     .sort((a, b) => b.score - a.score || b.recent - a.recent || a.age - b.age || byId(a, b));
   let given = 0;
   for (const rider of ranked) {

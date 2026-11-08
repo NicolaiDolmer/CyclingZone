@@ -13,8 +13,8 @@
 // Kontakten talent_marks_7879 evalueres server-side mod viewerens beta-status
 // (GET /api/feature-flags). Slukket, fejl eller manglende svar = intet synligt,
 // og mærkerne hentes slet ikke. Mærkerne regnes én gang i døgnet af backenden
-// (backend/lib/talentMarks7879.js) og hentes her én gang pr. sidevisning,
-// delt af alle celler.
+// (backend/lib/talentMarks7879.js) og hentes her højst én gang i timen, delt af
+// alle celler.
 import { useSyncExternalStore } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -40,11 +40,14 @@ export interface TalentMarkRow {
 type StoreState = { status: "idle" | "loading" | "ready"; byRider: Map<string, TalentMarkRow>; loadedAt: number };
 
 export const TALENT_MARKS_REFRESH_MS = 60 * 60 * 1000;
+export const TALENT_MARKS_CHECK_MS = 5 * 60 * 1000;
 const PAGE_SIZE = 1000;
 
 let state: StoreState = { status: "idle", byRider: new Map(), loadedAt: 0 };
 let generation = 0;
 let authWatched = false;
+let viewerId: string | null | undefined; // undefined = endnu ikke set
+let refreshTimer: ReturnType<typeof setInterval> | null = null;
 const listeners = new Set<() => void>();
 
 function setState(next: StoreState) {
@@ -98,8 +101,13 @@ function startLoad() {
 function watchViewer() {
   if (authWatched || typeof window === "undefined") return;
   authWatched = true;
-  supabase.auth.onAuthStateChange((event) => {
-    if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+  supabase.auth.onAuthStateChange((_event, session) => {
+    // Kun en ny viewer tæller: SIGNED_IN kommer også, når fanen får fokus igen, og
+    // mærkerne må ikke blinke væk af den grund.
+    const next = session?.user?.id ?? null;
+    const changed = viewerId !== undefined && next !== viewerId;
+    viewerId = next;
+    if (!changed) return;
     // Ny viewer: intet fra den forrige må stå, heller ikke mens det nye hentes.
     generation += 1;
     setState({ status: "idle", byRider: new Map(), loadedAt: 0 });
@@ -116,7 +124,17 @@ function subscribe(fn: () => void) {
   listeners.add(fn);
   watchViewer();
   ensureFresh();
-  return () => { listeners.delete(fn); };
+  // En åben side monterer ingen nye celler, så friskheden tjekkes, så længe nogen lytter.
+  if (refreshTimer === null && typeof window !== "undefined") {
+    refreshTimer = setInterval(ensureFresh, TALENT_MARKS_CHECK_MS);
+  }
+  return () => {
+    listeners.delete(fn);
+    if (listeners.size === 0 && refreshTimer !== null) {
+      clearInterval(refreshTimer);
+      refreshTimer = null;
+    }
+  };
 }
 
 const getSnapshot = () => state;

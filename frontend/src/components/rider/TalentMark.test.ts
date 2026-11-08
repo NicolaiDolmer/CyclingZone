@@ -27,10 +27,22 @@ test("kontakten er den samme i frontend, backend og spiller-allowlisten", () => 
 });
 
 test("slukket kontakt = mærkerne hentes slet ikke", () => {
-  const load = mark.slice(mark.indexOf("async function loadTalentMarks"), mark.indexOf("function ensureLoaded"));
+  const load = mark.slice(mark.indexOf("async function loadTalentMarks"), mark.indexOf("function startLoad"));
   const flagCheck = load.indexOf("flags?.[TALENT_MARKS_FLAG_KEY] !== true) return new Map()");
   assert.ok(flagCheck > 0, "kontakten tjekkes først");
   assert.ok(load.indexOf("rider_talent_marks") > flagCheck, "tabellen læses først efter kontakten");
+});
+
+test("en åben side får friske mærker, så længe nogen lytter", () => {
+  const sub = mark.slice(mark.indexOf("function subscribe"), mark.indexOf("const getSnapshot"));
+  assert.match(sub, /setInterval\(ensureFresh, TALENT_MARKS_CHECK_MS\)/);
+  assert.match(sub, /listeners\.size === 0[\s\S]*clearInterval\(refreshTimer\)/);
+});
+
+test("kun en ny viewer nulstiller mærkerne, ikke fokus på fanen", () => {
+  const watch = mark.slice(mark.indexOf("function watchViewer"), mark.indexOf("function ensureFresh"));
+  assert.match(watch, /next !== viewerId/);
+  assert.ok(watch.indexOf("if (!changed) return;") < watch.indexOf("generation += 1"), "samme viewer stopper før nulstilling");
 });
 
 test("navnecellen: nation, navn, mærke, status (TASTE P12)", () => {
