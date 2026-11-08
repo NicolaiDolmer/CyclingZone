@@ -6,9 +6,26 @@ import {
   isTransientSupabaseError,
   isLockTimeoutError,
   isRaceCountLockTimeoutError,
+  isSupabaseUnavailableMessage,
   toSupabaseError,
   withSupabaseRetry,
 } from "./supabaseErrorNormalize.js";
+
+// ── isSupabaseUnavailableMessage (#7917) ─────────────────────────────────────
+
+test("isSupabaseUnavailableMessage — kun de to nedbrudsbeskeder, også bag et præfiks", () => {
+  assert.equal(isSupabaseUnavailableMessage("Supabase unavailable (522 Connection timed out)"), true);
+  assert.equal(isSupabaseUnavailableMessage("stall-watchdog seasons: Supabase unavailable (HTML error page)"), true);
+  assert.equal(isSupabaseUnavailableMessage("Could not query the database for the schema cache. Retrying."), true);
+});
+
+test("isSupabaseUnavailableMessage — er snævrere end de transiente fejl", () => {
+  for (const message of ["fetch failed", "socket hang up", "canceling statement due to statement timeout", "code=57014"]) {
+    assert.equal(isSupabaseUnavailableMessage(message), false, message);
+  }
+  assert.equal(isTransientSupabaseError({ message: "fetch failed" }), true, "forudsætning: den er transient");
+  assert.equal(isSupabaseUnavailableMessage(undefined), false);
+});
 
 // Realistiske Cloudflare-fejlsider (forkortet) som de lander i error.message når
 // PostgREST/supabase-js får et non-JSON-svar fra gatewayen og text()'er det rå body.

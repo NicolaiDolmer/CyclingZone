@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadFailureFingerprint } from "./loadFailureFingerprint.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "actionTelemetry.js"), "utf8");
@@ -58,3 +59,21 @@ test("logEvent kaldes uden for Sentry-DSN-gaten — analytics må ikke afhænge 
 // en test der flager sin egen dokumentation er ikke et værn. Feltvalget er
 // eksplicit i koden ({action, reason, status} + spil-id'er fra kalderen) og
 // dækkes af review, ikke af en tekstsøgning.
+
+// #7917: backenden nede er én alarm, uanset hvilken flade der spurgte.
+test("502-504 samles i ét fingerprint", () => {
+  for (const status of [502, 503, 504]) {
+    assert.deepEqual(loadFailureFingerprint(status), ["frontend-backend-unavailable"]);
+  }
+});
+
+test("status 500 og andre udfald beholder Sentrys egen gruppering", () => {
+  for (const status of [500, 501, 505, 404, undefined]) {
+    assert.equal(loadFailureFingerprint(status), undefined, String(status));
+  }
+});
+
+test("reportLoadFailure bruger fingerprintet og sender det kun, når det findes", () => {
+  assert.match(source, /loadFailureFingerprint\(status\)/);
+  assert.match(source, /\.\.\.\(fingerprint \? \{ fingerprint \} : \{\}\)/);
+});
