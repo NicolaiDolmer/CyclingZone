@@ -307,4 +307,7 @@ export const UNMONITORED_CRON_TICKS = [
   // det samlede event i modulernes tick-funktioner.
   "potential-estimate-sunday",
   "potential-estimate-team-change",
+  // #7879: talentmærkerne er flag-gated (startstadie off) og idempotente pr. dato.
+  // Samme begrundelse; fejl når Sentry via captureException i tick-funktionen.
+  "talent-marks-daily",
 ];

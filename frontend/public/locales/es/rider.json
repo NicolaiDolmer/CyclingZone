@@ -1,4 +1,15 @@
 {
+  "talentMark": {
+    "topTalent": {
+      "name": "Top Talent",
+      "text": "uno de los mayores talentos sub-23."
+    },
+    "nextGen": {
+      "name": "Next Gen",
+      "text": "un junior con un gran progreso."
+    },
+    "helpLink": "Qué significan las marcas"
+  },
   "badges": {
     "u23": "Menor de 23 (sub-23)",
     "u25": "Menor de 25 (sub-25)",

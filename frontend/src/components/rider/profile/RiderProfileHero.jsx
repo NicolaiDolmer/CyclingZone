@@ -32,6 +32,7 @@ import BestRoleTag from "../BestRoleTag.jsx";
 import ScoutablePotentiale from "../ScoutablePotentiale";
 import { potentialViewOf } from "../../../lib/potentialEstimateDisplay";
 import RiderBadges from "../RiderBadges";
+import RiderTalentMark from "../TalentMark.tsx"; // #7879
 import ValueDeltaBadge from "../ValueDeltaBadge.jsx";
 import { retirementRiskBadgeKey, seasonNumberFromReferenceYear } from "../../../lib/riderAge";
 import { contractOfferEligibility, CONTRACT_STATE } from "../../../../../backend/lib/contractOfferEligibility.js";
@@ -394,6 +395,7 @@ export default function RiderProfileHero({
                   en spærre. Uafhængig af U23-tagget ovenfor (aldrig begge). */}
               <RiderBadges badges={[retirementRiskBadgeKey(rider, seasonYear)]} />
             </div>
+            <RiderTalentMark riderId={rider.id} variant="profile" /> {/* #7879 */}
 
             {/* Hold (+ AI-tag) — kun når switcher-baren ikke allerede bærer
                 holdnavnet i toppen (ejer-runde 3: navnet må aldrig stå dobbelt) */}
