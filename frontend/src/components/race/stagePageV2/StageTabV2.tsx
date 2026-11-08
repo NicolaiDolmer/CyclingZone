@@ -14,8 +14,10 @@ import {
 import StageProfileV2, { GradientLegend } from "./StageProfileV2.tsx";
 import ClimbCard from "./ClimbCard.tsx";
 import YourDayCard, { type CareerEvent, type RowWhy } from "./YourDayCard.tsx";
-import { riderWhy } from "../../../lib/riderWhyModel.ts"; // #7717
+import { riderWhy, routeFitsAtRaceTime } from "../../../lib/riderWhyModel.ts"; // #7717
+import { stageRouteMatch } from "../../../lib/lineupInsight.js"; // #7717
 import { useRiderWhyEnabled } from "../../../lib/riderWhyFlag.ts"; // #7717
+import { withTimeLimitFatigue } from "../../../lib/raceRecap.js"; // #7701
 import RaceStoryCard from "./RaceStoryCard.tsx";
 import { castFrom, ownOutSentences, type RaceStory, type StoryNarrativeContext } from "./raceStoryModel.ts";
 import { stageWeather, type StageWeather } from "./stageWeather.ts";
@@ -118,11 +120,13 @@ export interface StageTabV2Props {
   storyLoading?: boolean;
   /** Loebshistorien kunne ikke hentes: saa kan Hvorfor? intet sige om etapen. */
   storyError?: boolean;
+  /** #7717: sidens ur, saa rute-friskheden ikke afhaenger af Date.now(). */
+  nowMs: number;
 }
 
 export default function StageTabV2({
   stageNumber, stagesCompleted, isStageRace, phase, profile, results, stagePointRows, profileByStage = {}, stageLoaded, stageErrorSlot, myTeamId,
-  stageRoles, careerEvents, dnfRows = [], tacticsAction, onOpenStandings, emptyState, story = null, narrative = null, storyLoading = false, storyError = false,
+  stageRoles, careerEvents, dnfRows = [], tacticsAction, onOpenStandings, emptyState, story = null, narrative = null, storyLoading = false, storyError = false, nowMs,
 }: StageTabV2Props) {
   const { t } = useTranslation("races");
   const [selectedClimb, setSelectedClimb] = useState<number>(() => Math.max(0, sortedClimbs(profile).length - 1));
@@ -137,14 +141,18 @@ export default function StageTabV2({
   const demands = dayDemands(profile?.demand_vector);
   const climbIndex = Math.min(selectedClimb, Math.max(0, climbs.length - 1));
   const cast = useMemo(() => castFrom(results, riders, stageNumber, myTeamId), [results, riders, stageNumber, myTeamId]);
-  const ownOut = useMemo(() => ownOutSentences(dnfRows, myTeamId, cast), [dnfRows, myTeamId, cast]);
+  // #7701: tidsgraense-rytter som etapens haendelser kalder for traet faar den aarsag; ellers uaendret.
+  const outRows = useMemo<DnfRowInput[]>(() => withTimeLimitFatigue(dnfRows, narrative?.events), [dnfRows, narrative]);
+  const ownOut = useMemo(() => ownOutSentences(outRows, myTeamId, cast), [outRows, myTeamId, cast]);
   const weather = stageWeather(profile, phase, story);
   const whyEnabled = useRiderWhyEnabled(phase === "after");
+  const ranAt = narrative?.ranAt;
+  const routeFits = useMemo(() => routeFitsAtRaceTime(new Map<string, number | null>(riders.map((r) => [r.rider_id, stageRouteMatch(r, stageNumber)])), ranAt, nowMs), [riders, stageNumber, ranAt, nowMs]);
   const why = useMemo<RowWhy | null>(() => (whyEnabled && !storyError ? {
     loading: storyLoading,
     // En ikke-starter har intet loeb at forklare; raekken siger allerede hvorfor.
-    forRow: (r) => (r.status === "dns" ? null : riderWhy({ riderId: r.riderId, rank: r.rank, status: r.status, reasonKey: r.reasonKey, events: narrative?.events, story, climbs, cast })),
-  } : null), [whyEnabled, storyError, storyLoading, narrative, story, climbs, cast]);
+    forRow: (r) => (r.status === "dns" ? null : riderWhy({ riderId: r.riderId, rank: r.rank, status: r.status, reasonKey: r.reasonKey, events: narrative?.events, story, climbs, cast, routeFits })),
+  } : null), [whyEnabled, storyError, storyLoading, narrative, story, climbs, cast, routeFits]);
 
   if (phase === "after") {
     return (
@@ -157,7 +165,7 @@ export default function StageTabV2({
             loaded={stageLoaded}
             myTeamId={myTeamId}
             careerEvents={careerEvents}
-            dnfRows={dnfRows}
+            dnfRows={outRows}
             primaryAction={tacticsAction}
             onOpenStandings={onOpenStandings}
             why={why}
