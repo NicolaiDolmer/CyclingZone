@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** egomadsen #7870 (billeder, form/træthed sløret) · Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (8/11):** Merget nat 7-8/11: #7887, #7853, #7883, #7881, #7849 (hover, kontakt **beta**), #7889 (kladder uden tunge tests), #7894 (masterplan), #7893 (P16), #7835, #7896 (roadmap: sæson 5/6, Q1/Q2 2027; migration verificeret). **Ejer 09-12:** Hexagone-generalprøve #7890 + tænd-kort #7715 (PC1-session), nedkørsels-loft #7644, talentmærker #7882 (rule 17: A/B på #7879 + billede-go), mestertrøjer #7888 (bølge, billede-go), trøjejagt #7857, egomadsen #7870, XP #6110, sandhedsvagt før 15. Efter Hexagone-start: pengelås/auto-accept #7874/#7875/#7878. 9/11: secrets, feedback, #5431.
+> **🎯 Next action (8/11, overdragelse):** **Hexagone kl. 15:** generalprøve #7890 sund; 7644 SLUKKET (G19 rødere, se #7644); sandhedsvagt på #7897. **Under løbet:** #7900 film mod resultat (plan på issuet, trin 1: vagt eller film?). **7715-tænding:** #7701 bygges først bag kontakten; #7850 (Hjælp) + patch note merges PÅ tænd-dagen, ikke før (tjekliste #7715). **Efter 15:** pengelås #7874 (WIP cd481f6ea på `wip/6181-pr3-escrow-stier`), #7875, #7878. **Ejer-gates:** bundle #7904 A/B blokerer #7888/#7882/#7841; rule 17 A/B #7879; billede-go #7888/#7882; #7870 egomadsen; #7857; #7907 push-vagter (ops). **Efter løbet:** #6912, #7899, #7902, 7644 tuning vs G19-bånd.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** PC1: merge-session (bølge med #7824) + generalprøve-session #7890 (merger intet). Dolmer PC: slukket, ingen Codex.
+> **🤖 Working agent:** PC1: ÉN samlet Claude Code-session (pc1-samlet, 8/11). **Dolmer PC (Codex):** #7904 mulighed A (måling + kladde-PR), derefter #7874 efter kl. 15.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
