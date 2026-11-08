@@ -428,7 +428,7 @@ export function riderGroupsBefore(events, km) {
  * @param {{
  *   events: Array<{km?: number, type: string, params?: object}>,
  *   timelineVersion?: number|null,
- *   results?: Array<{rider_id: string, rank: number}>|null,
+ *   results?: Array<{rider_id: string, rank: number, gap_s?: number}>|null,
  *   startlist?: string[]|null,
  * }} input
  */
@@ -783,9 +783,78 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
   story.group_spans = timeTrial ? [] : [...spans, ...openSpans.values()]
     .sort((a, b) => a.from_km - b.from_km || a.group_id.localeCompare(b.group_id))
     .map((span) => (lateJoins.has(span.group_id) ? { ...span, late_joins: lateJoins.get(span.group_id) } : span));
+  if (!timeTrial && finishKm != null) settleFinishOnResults(snapshotsByKm.get(round2(finishKm)), results);
   story.checkpoints = buildCheckpoints(ordered, story, passageStates);
   story.breakaway = breakawaySummary(history, results);
   return story;
+}
+
+/**
+ * #7900: målbilledet er etaperesultatet. Motoren melder kun hullet for nogle af
+ * grupperne ved målet, så uden dette står en gruppe på sit sidst bårne hul, og
+ * en rytter der tabte tid i resultatet står stadig i sin gruppe. Med resultatets
+ * huller bliver målets grupper til rytterne samlet på samme hul i resultatet.
+ * En gruppe beholder sit id på det hul, hvor flest af dens ryttere endte. Kun
+ * visning: tidslinjen og motoren røres ikke. Uden huller på alle rækker (ældre
+ * kaldere, mangelfuldt resultat) står motorens målbillede urørt.
+ */
+function settleFinishOnResults(snapshot, results) {
+  const rows = (Array.isArray(results) ? results : []).filter((row) => typeof row?.rider_id === "string");
+  if (!snapshot || !rows.length || rows.some((row) => finite(row.gap_s) == null)) return;
+  const out = new Set(snapshot.out_rider_ids);
+  const finishers = rows.filter((row) => !out.has(row.rider_id));
+  const ownerOf = new Map(snapshot.groups.flatMap((g) => g.rider_ids.map((id) => [id, g])));
+  const rest = snapshot.groups.find((g) => g.includes_rest) ?? null;
+
+  const clusters = new Map(); // hul i resultatet -> { gap, riders, from: Map(gruppe -> antal) }
+  for (const { rider_id: id, gap_s: gapS } of finishers) {
+    const gap = round2(Math.max(0, gapS));
+    const cluster = clusters.get(gap) ?? { gap, riders: [], from: new Map() };
+    clusters.set(gap, cluster);
+    cluster.riders.push(id);
+    const owner = ownerOf.get(id) ?? rest;
+    if (owner) cluster.from.set(owner.group_id, (cluster.from.get(owner.group_id) ?? 0) + 1);
+  }
+
+  // Hver gruppe gør krav på sit tungeste hul; den største gruppe vælger først.
+  const totals = snapshot.groups
+    .map((g) => ({ g, total: [...clusters.values()].reduce((sum, c) => sum + (c.from.get(g.group_id) ?? 0), 0) }))
+    .filter(({ total }) => total > 0)
+    .sort((a, b) => b.total - a.total || a.g.gap_s - b.g.gap_s || a.g.group_id.localeCompare(b.g.group_id, "en-US"));
+  const claimedBy = new Map();
+  for (const { g } of totals) {
+    const home = [...clusters.values()]
+      .filter((c) => c.from.has(g.group_id))
+      .sort((a, b) => b.from.get(g.group_id) - a.from.get(g.group_id) || a.gap - b.gap)[0];
+    if (!claimedBy.has(home)) claimedBy.set(home, g);
+  }
+
+  const leaderTime = snapshot.leader_time_s;
+  snapshot.groups = [...clusters.values()].map((cluster) => {
+    const claimed = claimedBy.get(cluster) ?? null;
+    const includesRest = claimed?.includes_rest === true;
+    // Resten forbliver implicit; kun ryttere fra en navngiven gruppe står på listen.
+    const riderIds = (includesRest ? cluster.riders.filter((id) => ownerOf.has(id)) : cluster.riders).sort();
+    return {
+      group_id: claimed?.group_id ?? `finish-gap-${cluster.gap}`,
+      rider_ids: riderIds,
+      size: cluster.riders.length,
+      includes_rest: includesRest,
+      members_inferred: claimed?.members_inferred ?? false,
+      gap_s: cluster.gap,
+      time_s: leaderTime == null ? null : round2(leaderTime + cluster.gap),
+      gap_source: "result",
+    };
+  }).sort((a, b) => a.gap_s - b.gap_s || a.group_id.localeCompare(b.group_id, "en-US"));
+  const finished = new Set(finishers.map((row) => row.rider_id));
+  snapshot.pending_rider_ids = snapshot.pending_rider_ids.filter((id) => !finished.has(id));
+}
+
+/** #7900: resultatets viste tid ("+m:ss", "+h:mm:ss") som sekunder; null ellers. */
+export function resultGapSeconds(value) {
+  if (typeof value !== "string") return null;
+  const match = /^\+?\s*(\d+(?::\d{1,2}){0,2})$/.exec(value.trim());
+  return match ? match[1].split(":").map(Number).reduce((total, part) => total * 60 + part, 0) : null;
 }
 
 function describeMoment(event, momentFor, m) {
@@ -874,7 +943,7 @@ function buildCheckpoints(ordered, story, passageStates) {
  * raceParticipationMarkers.historyForStage): etapens `stage`-rækker, og for et
  * endagsløb (etape 1) uden etape-rækker dets `gc`-rækker. Så afgør serverens
  * `story.breakaway` udbrydernes udfald med samme svar som mærkerne.
- * @param {Array<{rider_id?: string|null, rank?: number|null, result_type?: string|null, stage_number?: number|null}>|null} rows
+ * @param {Array<{rider_id?: string|null, rank?: number|null, result_type?: string|null, stage_number?: number|null, finish_time?: string|null}>|null} rows
  * @param {number} stageNumber
  */
 export function storyInputsFromResults(rows, stageNumber) {
@@ -884,8 +953,11 @@ export function storyInputsFromResults(rows, stageNumber) {
   const dayRows = stageRows.length ? stageRows : stageNumber === 1 ? list.filter((row) => row.result_type === "gc") : [];
   const results = dayRows
     .filter((row) => typeof row.rider_id === "string" && typeof row.rank === "number")
-    .map((row) => ({ rider_id: row.rider_id, rank: row.rank }));
-  const startlist = [...new Set(dayRows.map((row) => row.rider_id).filter((id) => typeof id === "string" && id.length > 0))];
+    .map((row) => {
+      const gap = resultGapSeconds(row.finish_time);
+      return gap == null ? { rider_id: row.rider_id, rank: row.rank } : { rider_id: row.rider_id, rank: row.rank, gap_s: gap };
+    });
+  const startlist =[...new Set(dayRows.map((row) => row.rider_id).filter((id) => typeof id === "string" && id.length > 0))];
   return { results, startlist };
 }
 

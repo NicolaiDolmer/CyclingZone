@@ -43,7 +43,7 @@ export interface GroupAt {
   members_inferred?: boolean;
   gap_s: number;
   time_s?: number | null;
-  gap_source?: "reported" | "carried" | "front";
+  gap_source?: "reported" | "carried" | "front" | "result";
 }
 
 export interface StoryCheckpoint {
