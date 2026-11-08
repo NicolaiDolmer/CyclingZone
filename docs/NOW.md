@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** egomadsen #7870 (billeder, form/træthed sløret) · Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (8/11):** **Dirigent-tavle [#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911) er sandheden; start der.** Merget 8/11: #7909, #7912 (kodegrænse 1350). **Hexagone kl. 15:** 7644 SLUKKET; sandhedsvagt på #7897. **7715-tænding:** #7701 først bag kontakten; #7850 + patch note PÅ tænd-dagen (tjekliste #7715). **Efter løbet:** #6912, #7899, #7902, 7644 tuning vs G19-bånd.
+> **🎯 Next action (8/11):** **Dirigent-tavle [#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911) er sandheden; start der.** 8/11 live: film #7910; tændt 7725, 7635, hover. **Hexagone kl. 15:** 7644 SLUKKET; sandhedsvagt på #7897. **7715-tænding:** #7701 først bag kontakten; #7850 + patch note PÅ tænd-dagen (tjekliste #7715). **Efter løbet:** #6912, #7899, #7902, 7644 tuning vs G19-bånd.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
 > **🤖 Working agent:** PC1-dirigent 8/11 (Claude, bølge via wave.js). **Dolmer PC (Codex):** #7874, #7875, #7878 efter kl. 15.
