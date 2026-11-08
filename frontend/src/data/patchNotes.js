@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.422",
+    "date": "2026-11-08",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "Your riders' day in words",
+          "body": "After a stage, the race report now says how the winner's and your own riders' day went, a really good day, a good day, or a bad day with the reason. It only describes the day the race already gave him, so results are unchanged."
+        },
+        "da": {
+          "title": "Dine rytteres dag i ord",
+          "body": "Efter en etape siger referatet nu, hvordan vinderens og dine egne rytteres dag gik: en rigtig god dag, en god dag eller en dårlig dag med årsagen. Det beskriver kun den dag, løbet allerede gav ham, så resultaterne er uændrede."
+        },
+        "refs": [
+          7725
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.421",
     "date": "2026-11-08",
     "changes": [
