@@ -127,7 +127,8 @@ export function stageStartFatigues7715({ riders, stages, schedule, stagesComplet
         .filter((r) => Number(r.game_day) < own.gameDay)
         .sort((x, y) => Number(x.game_day) - Number(y.game_day))
         .map((r) => Number(r.load) || 0);
-      const baseDays = (Number(seasonRaceDaysByRider.get(String(rider.rider_id))) || 0) + recorded.length;
+      // Saesonens loebsdage indeholder allerede dagens koerte etaper (hele saesonens ledger).
+      const baseDays = Number(seasonRaceDaysByRider.get(String(rider.rider_id))) || 0;
       const forecast = projected.map((p, k) => stageLoadV2({
         profileType: p.profile_type, distanceKm: p.distance_km ?? null, stageNumber: Number(p.stage_number),
         effort: effortFor(rider.rider_id, Number(p.stage_number)) ?? "normal", seasonRaceDays: baseDays + k + 1, rulesRevision: revision,
@@ -178,8 +179,10 @@ export async function loadStageStartFatigues7715({ supabase, race, teamId = null
       if (rows) recordedLoadsByDate.set(date, rows); // ukendt dato = prognose for de koerte etaper
     }
     // Saesonens loebsdage, som motorens belastning ganges med (raceFatigue.raceConditionLoads).
+    // Kun naar en etape faktisk faar en prognose: opslaget laeser hele saesonens ledger.
+    const needsForecast = [...dateOf].some(([n, s]) => n > done && [...dateOf].some(([m, t]) => t.date === s.date && t.gameDay < s.gameDay && (m > done || !recordedLoadsByDate.has(t.date))));
     let seasonRaceDaysByRider = new Map();
-    try {
+    if (needsForecast) try {
       const load = loadSeasonRaceDays ?? (await import("./raceFatigue.js")).loadSeasonRaceDaysByRider;
       seasonRaceDaysByRider = await load({ supabase, seasonId: race.season_id, riderIds });
     } catch {

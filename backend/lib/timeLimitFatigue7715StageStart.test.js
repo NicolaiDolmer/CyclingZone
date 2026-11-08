@@ -163,6 +163,16 @@ test("#7890 loadStageStartFatigues7715: saesonens loebsdage hentes og bruges; fe
   assert.equal(failed.get(16).get("r1"), enteringFatigueV2({ openingFatigue: 70, priorLoadsToday: [forecast15()], recoveryAbility: 40 }));
 });
 
+test("#7890 loadStageStartFatigues7715: saesonens ledger laeses kun, naar en etape faar en prognose", async () => {
+  let calls = 0;
+  const count = async () => { calls += 1; return new Map(); };
+  // Etape 15 koert og dens raekker kendt; 16 har kun den koerte etape foran sig; 17 er alene paa sin dato.
+  await loadStageStartFatigues7715({ supabase: stub({ loads: [] }), race: { ...RACE, stages_completed: 15 }, riders: [RIDER], stages: STAGES, checkConditionV2: async () => true, loadSeasonRaceDays: count });
+  assert.equal(calls, 0);
+  await loadStageStartFatigues7715({ supabase: stub(), race: RACE, riders: [RIDER], stages: STAGES, checkConditionV2: async () => true, loadSeasonRaceDays: count });
+  assert.equal(calls, 1, "etape 16 faar en prognose for etape 15");
+});
+
 test("#7890 loadDateStageLoads7715: fejl = null (ukendt), aldrig en undtagelse", async () => {
   assert.equal(await loadDateStageLoads7715({ supabase: stub({ loadsError: { message: "x" } }), riderIds: ["r1"], tickDate: DATE }), null);
   assert.equal(await loadDateStageLoads7715({ supabase: stub({ throwOn: "training_race_loads" }), riderIds: ["r1"], tickDate: DATE }), null);
