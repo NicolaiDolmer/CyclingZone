@@ -965,6 +965,7 @@ function buildCheckpoints(ordered, story, passageStates) {
  * `story.breakaway` udbrydernes udfald med samme svar som mærkerne.
  * @param {Array<{rider_id?: string|null, rank?: number|null, result_type?: string|null, stage_number?: number|null, finish_time?: string|null}>|null} rows
  * @param {number} stageNumber
+ * @returns {{results: Array<{rider_id: string, rank: number, gap_s?: number}>, startlist: string[]}}
  */
 export function storyInputsFromResults(rows, stageNumber) {
   const list = Array.isArray(rows) ? rows.filter(Boolean) : [];
