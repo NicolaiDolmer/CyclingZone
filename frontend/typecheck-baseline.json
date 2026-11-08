@@ -21,9 +21,6 @@
     "TS2739": 1,
     "TS8032": 1
   },
-  "../backend/lib/academyOfferProtection.js": {
-    "TS2339": 2
-  },
   "../backend/lib/activeSeasonLookup.js": {
     "TS2339": 2,
     "TS2345": 1,
@@ -380,7 +377,7 @@
   "../backend/lib/raceStory.js": {
     "TS18047": 3,
     "TS2322": 12,
-    "TS2339": 49,
+    "TS2339": 35,
     "TS2345": 3,
     "TS2531": 1,
     "TS2741": 1
@@ -410,10 +407,6 @@
   "../backend/lib/riderEligibility.js": {
     "TS2339": 2,
     "TS2353": 1
-  },
-  "../backend/lib/riderOwnershipAudit.js": {
-    "TS18046": 1,
-    "TS2339": 2
   },
   "../backend/lib/riderProgression.js": {
     "TS2339": 5
@@ -560,12 +553,6 @@
   "../backend/lib/training.js": {
     "TS2322": 1,
     "TS2339": 3
-  },
-  "../backend/lib/trainingDayTypes.js": {
-    "TS2339": 1,
-    "TS2345": 1,
-    "TS2353": 1,
-    "TS2538": 1
   },
   "../backend/lib/valuationTypefree/abilityProduction.js": {
     "TS18047": 1,
@@ -870,10 +857,10 @@
   "src/components/admin/growth/GrowthRoadmapTab.jsx": {
     "TS18046": 2,
     "TS18047": 1,
-    "TS2322": 10,
-    "TS2339": 28,
+    "TS2322": 7,
+    "TS2339": 26,
     "TS2345": 4,
-    "TS2353": 12
+    "TS2353": 9
   },
   "src/components/admin/growth/RoadmapAdminForms.jsx": {
     "TS2339": 1,
@@ -2031,7 +2018,6 @@
   },
   "src/lib/stageTimelineFilm.js": {
     "TS18048": 5,
-    "TS2339": 2,
     "TS2532": 1
   },
   "src/lib/stageTimelineFilm.test.js": {
@@ -2242,7 +2228,7 @@
   },
   "src/pages/AcademyPage.jsx": {
     "TS2322": 5,
-    "TS2339": 19,
+    "TS2339": 16,
     "TS2345": 1,
     "TS2353": 2,
     "TS2698": 2,

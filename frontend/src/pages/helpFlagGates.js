@@ -47,6 +47,12 @@ const RACE_DAY_TICK_ON = Object.freeze({ flag: "training_tick_per_race_day", whe
 // aldring, saa den gamle tekst ("agingAndDecline") er fjernet fra siden.
 const AGING_V2_ON = Object.freeze({ flag: "development_v2_aging_enabled", when: true });
 
+// #6110 Udvikling 2.0 trin 6: tal + ord. potential_single_number kan ikke bruges her:
+// den staar on i prod og styrer ikke laengere noget, saa teksten ville skifte nu.
+// Off = dagens tekst om intervallet, on = "<blok>Estimate"-tvillingen.
+const POTENTIAL_ESTIMATE_OFF = Object.freeze({ flag: "potential_estimate_display", when: false });
+const POTENTIAL_ESTIMATE_ON = Object.freeze({ flag: "potential_estimate_display", when: true });
+
 /**
  * BLOK-niveau (#4847). `dailytraining` er altid synlig, men nogle af dens
  * blokke modsiger hinanden og maa aldrig staa side om side. `when` er den
@@ -62,6 +68,10 @@ const AGING_V2_ON = Object.freeze({ flag: "development_v2_aging_enabled", when: 
 export const HELP_BLOCK_FLAGS = Object.freeze({
   riders: Object.freeze({
     aiRidersV2: AGING_V2_ON,
+    potentialBestRole: POTENTIAL_ESTIMATE_OFF,
+    potentialBestRoleEstimate: POTENTIAL_ESTIMATE_ON,
+    scouting: POTENTIAL_ESTIMATE_OFF,
+    scoutingEstimate: POTENTIAL_ESTIMATE_ON,
   }),
   dailytraining: Object.freeze({
     runDayNow: RACE_DAY_TICK_ON,
@@ -77,9 +87,15 @@ export const HELP_BLOCK_FLAGS = Object.freeze({
     ceilingReached: CURVE_B_OFF,
     ceilingReachedCurveB: CURVE_B_ON,
   }),
+  facilities: Object.freeze({
+    hireChiefScout: POTENTIAL_ESTIMATE_OFF,
+    hireChiefScoutEstimate: POTENTIAL_ESTIMATE_ON,
+  }),
   academy: Object.freeze({
     dailyTrainingBoost: CURVE_B_OFF,
     dailyTrainingBoostCurveB: CURVE_B_ON,
+    prognosisTraining: POTENTIAL_ESTIMATE_OFF,
+    prognosisTrainingEstimate: POTENTIAL_ESTIMATE_ON,
   }),
 });
 
@@ -98,6 +114,18 @@ export const HELP_FAQ_FLAGS = Object.freeze({
   stageRaceRestDayFaq: RACE_DAY_TICK_ON,
   teamworkLeadershipTrainingFaq: CURVE_B_OFF,
   teamworkLeadershipTrainingCurveBFaq: CURVE_B_ON,
+  developmentProjectionFaq: POTENTIAL_ESTIMATE_OFF,
+  developmentProjectionEstimateFaq: POTENTIAL_ESTIMATE_ON,
+  scoutedBandGuaranteeFaq: POTENTIAL_ESTIMATE_OFF,
+  scoutedEstimateGuaranteeFaq: POTENTIAL_ESTIMATE_ON,
+  scoutChangeRecalcFaq: POTENTIAL_ESTIMATE_OFF,
+  scoutChangeEstimateFaq: POTENTIAL_ESTIMATE_ON,
+  scoutNetworkOwnRidersFaq: POTENTIAL_ESTIMATE_OFF,
+  scoutNetworkOwnRidersEstimateFaq: POTENTIAL_ESTIMATE_ON,
+  // Svaret forklarer tabellen "Prognose pr. ryttertype", som ikke findes med tal + ord.
+  typeRatingScaleFaq: POTENTIAL_ESTIMATE_OFF,
+  // #7725: ordene om dagsformen findes kun i referatet naar kontakten er on.
+  dayWordsFaq: Object.freeze({ flag: "day_words_7725", when: true }),
 });
 
 /**

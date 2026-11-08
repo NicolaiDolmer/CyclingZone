@@ -9,7 +9,12 @@ import {
   ownStageAbandons,
   isNonStarterKind,
   teamIdByRiderFromRows,
+  withTimeLimitFatigue,
+  fatigueRiderIdsFromEvents,
 } from "./raceRecap.js";
+import { readFileSync } from "node:fs";
+import { riderWhy } from "./riderWhyModel.ts";
+import { castFrom, ownOutSentences } from "../components/race/stagePageV2/raceStoryModel.ts";
 
 // buildRaceRecap er JS med tomme default-arrays (never[] for tsc); testen giver den rigtige raekker.
 const recap = buildRaceRecap as unknown as (opts: Record<string, unknown>) => Array<{ key: string; params: Record<string, any> }>;
@@ -56,6 +61,9 @@ test("buildRaceRecap: én udstiger faar sin egen linje med kind=withdrawal", () 
   const m = recap({ results: stageRows, scope: { type: "stage", stageNumber: 2 }, incidents: [inc("1", 2, "h1", "withdrawal")] });
   assert.ok(!m.some((x) => x.key === "withdrawalGroup"));
   assert.equal(m.find((x) => x.key === "abandon")?.params.kind, "withdrawal");
+  assert.equal(m.find((x) => x.key === "abandon")?.params.when, "stage");
+  const oneDay = recap({ results: stageRows, scope: { type: "overall" }, incidents: [inc("1", 1, "h1", "withdrawal")] });
+  assert.equal(oneDay.find((x) => x.key === "abandon")?.params.when, "other", "endagsloeb: ingen \"efter etapen\"");
 });
 
 test("dnfRowsForStage: etapens udgaaede som DNF-raekker med hold fra loebets etaperaekker", () => {
@@ -126,4 +134,69 @@ test("ownStageAbandons: en skadet ikke-starter markeres nonStarter, ikke som udg
   assert.deepEqual(byId.get("h1"), { riderId: "h1", rider: "R H1", kind: "injury", nonStarter: true });
   assert.equal((byId.get("h2") as { nonStarter: boolean }).nonStarter, false);
   assert.equal(out.ridersLeft, 2);
+});
+
+// ── #7701: uden for tidsgraensen, fordi han var for traet ───────────────────
+const otl = (fatigue?: string[]) => ({
+  type: "outside_time_limit", km: 150,
+  params: { rider_ids: ["f1", "n1", "f2"], rider_count: 3, ...(fatigue ? { fatigue_rider_ids: fatigue } : {}) },
+});
+const limitRows = () => dnfRowsForStage([
+  inc("1", 2, "f1", "time_limit", { rider: rider("f1", "Ib", "Hansen") }),
+  inc("2", 2, "n1", "time_limit", { rider: rider("n1", "Bo", "Olsen") }),
+  inc("3", 2, "c1", "crash", { rider: rider("c1", "Cy", "Crash") }),
+], 2, teamIdByRiderFromRows([{ rider_id: "f1", team_id: "tA" }, { rider_id: "n1", team_id: "tA" }, { rider_id: "c1", team_id: "tA" }]));
+const reasons = (rows: Array<{ rider_id: string | null; reasonKey: string }>) => Object.fromEntries(rows.map((r) => [r.rider_id, r.reasonKey]));
+
+test("#7701 withTimeLimitFatigue: kun den rytter haendelsen peger paa faar aarsagen traethed", () => {
+  const rows = withTimeLimitFatigue(limitRows(), [otl(["f1"])]);
+  assert.deepEqual(reasons(rows), { c1: "crash", f1: "time_limit_fatigue", n1: "time_limit" });
+});
+
+test("#7701 withTimeLimitFatigue: blandet gruppe, en traet og en ikke, og et styrt der aldrig bliver traet", () => {
+  const rows = withTimeLimitFatigue(limitRows(), [otl(["f1", "c1"])]);
+  assert.deepEqual(reasons(rows), { c1: "crash", f1: "time_limit_fatigue", n1: "time_limit" }, "kun tidsgraense-raekker kan blive traette");
+  const cast = castFrom([], [], 2, "tA");
+  assert.deepEqual(ownOutSentences(rows, "tA", cast), [
+    { key: "ownOut", params: { kind: "time_limit", names: "Olsen" } },
+    { key: "ownOut", params: { kind: "crash", names: "Crash" } },
+    { key: "ownOut", params: { kind: "time_limit_fatigue", names: "Hansen" } },
+  ]);
+});
+
+test("#7701 withTimeLimitFatigue: kontakten slukket (intet fatigue_rider_ids) giver bit-identiske raekker", () => {
+  const rows = limitRows();
+  const before = JSON.stringify(rows);
+  for (const events of [undefined, null, [], [otl()], [otl([])], [{ type: "outside_time_limit", km: 1 }], [{ type: "stage_start", params: { fatigue_rider_ids: ["f1"] } }]]) {
+    const out = withTimeLimitFatigue(rows, events as never);
+    assert.equal(JSON.stringify(out), before);
+    assert.deepEqual(reasons(out), { c1: "crash", f1: "time_limit", n1: "time_limit" });
+  }
+  assert.equal(JSON.stringify(rows), before, "inputtet roeres aldrig");
+  assert.equal(fatigueRiderIdsFromEvents([otl(["f1"]), otl(["f2", 7 as never])]).size, 2, "kun streng-id'er og kun fra outside_time_limit");
+  assert.equal(ownOutSentences(rows, "tA", castFrom([], [], 2, "tA")).some((s) => s.params.kind === "time_limit_fatigue"), false);
+});
+
+test("#7701 Hvorfor?: traet siger traethed, ellers uaendret tekst", () => {
+  const why = (reasonKey: string) => riderWhy({ riderId: "f1", rank: null, status: "dnf", reasonKey, events: [], story: null, climbs: [] });
+  assert.equal(why("time_limit_fatigue").main, "timeLimitFatigue");
+  assert.equal(why("time_limit_fatigue").known, true);
+  assert.equal(why("time_limit").main, "timeLimit");
+  assert.equal(why("withdrawal").main, "withdrawal");
+});
+
+test("#7701 teksten findes paa alle 5 sprog, uden tal og uden tankestreg", () => {
+  for (const lang of ["en", "da", "es", "fr", "nl"]) {
+    const races = JSON.parse(readFileSync(new URL(`../../public/locales/${lang}/races.json`, import.meta.url), "utf8"));
+    const texts: string[] = [
+      races.stagePageV2.why.main.timeLimitFatigue,
+      races.detail.incidents.time_limit_fatigue,
+      /time_limit_fatigue \{([^}]*)\}/.exec(races.stagePageV2.story.report.ownOut)?.[1] ?? "",
+    ];
+    for (const text of texts) {
+      assert.ok(text.length > 5, `${lang}: mangler tekst`);
+      assert.doesNotMatch(text, /\d|—|–/, `${lang}: ${text}`);
+    }
+    assert.notEqual(texts[0], races.stagePageV2.why.main.timeLimit, lang);
+  }
 });

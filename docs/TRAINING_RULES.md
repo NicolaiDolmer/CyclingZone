@@ -54,10 +54,12 @@ motor-transition fra sæsonen står mellem sit start-anker og sin afslutning (au
 `season_transition` eller completed-anker i `admin_log`). Transitionen nulstiller form og
 træthed undervejs, og arbejde registreret før det ville fryse en starttilstand fra før
 nulstillingen. Sæsonafslutning alene (næste sæson endnu ikke aktiv) venter derfor på
-skiftet. Arbejde, der registreres efter datoens frist (næste dag kl. 02), får som alle
-sene datoer intet starttilstands-snapshot og går til afstemning
-(`roster_or_opening_evidence_unavailable`). En sen registreringsvej med bevist
-starttilstand findes kun for brodatoer (#7282).
+skiftet. Arbejde på sæsonens sidste dato, der registreres efter datoens frist (næste dag
+kl. 02), får intet starttilstands-snapshot og går til afstemning
+(`roster_or_opening_evidence_unavailable`): transitionens nulstilling har allerede flyttet
+rytterne. Sene registreringsveje med bevist starttilstand findes for brodatoer (#7282) og
+almindelige datoer i den aktive sæson (#7832, se "Sent oprettede hold" nedenfor), ikke for
+sæsonens sidste dato.
 
 Afregningen ser sæsonen, som den var ved skæringstidspunktet: det tidligste af
 sæsonafslutningens claim (`season_end_claims.claimed_at`) og transitionens eget
@@ -109,6 +111,13 @@ ejer-go og præcis fil-hash. Dette er ikke en godkendelse af en ny datareparatio
 - Én regel for begge writers: `isLegacyCalendarTickTeam` (`trainingDateClose.js`) og `isTrainingDateTeam` (`trainingDateReadiness.js`).
 - Managerens egne tryk afviser også et parkeret hold med 409 `team_parked`: "Træn nu" (`runTrainNow`) og den gamle `POST /api/training/run-today`. `GET /api/training/me` viser gaten lukket for et parkeret hold (`enabled: false`, og `dayClose.reason: "team_parked"` når løbsdags-tick er on), så fladen ikke lover en knap, der afvises (#6811).
 - **Varig parkeringsperiode (#6811):** et comeback (`returnParkedTeam`) sætter `teams.comeback_at`. En dato der sluttede før comebacket, regnes ikke med for holdet, samme regel som `created_at` for et nyt hold; comeback-dagen selv tæller. Reglen ligger i databasen, så den holder også efter en genstart, hvor sweepen gennemgår alle sæsonens datoer igen. Uden den fik et tilbagevendt hold alle de parkerede datoer på én gang. Comebacks fra før kolonnen fandtes, har `comeback_at` NULL og er ikke dækket.
+
+## Sent oprettede hold mister aldrig datoen (#7832, ejer 7/11)
+
+- Et hold må aldrig miste en træningsdato, heller ikke et helt nyt hold på sin første dag. "Start på næste dato" er afvist.
+- **Samme proces finder holdet:** sweepens hukommelses-cache (`completedDates`) husker hvilke hold en dato så. Er datoen ikke slut, læser sweepen holdene én gang pr. kørsel og kører datoen igen, hvis der er kommet et nyt hold (`isTrainingDateTeam`). Holdet registreres så inden fristen og træner normalt. Når datoen er slut, og tjekket intet nyt har fundet, stopper tjekket for den dato. Før #7832 så sweepen først holdet efter en genstart.
+- **Nås holdet først efter fristen** (fx efter en genstart), registrerer sweepen en almindelig dato via `register_late_training_date_work` (`database/2026-11-07-7832-late-team-training-date.sql`). Den gemmer starttilstanden, kun når registreringen sker efter fristen, rækken er ny og tom, holdet intet arbejde har på en senere dato, og ingen af rytterne har et tick eller en tilstands-afregning på en senere dato. Ellers er svaret som `register_training_date_work`: karantæne og alarm (alarmen dæmpes ikke). Samme princip som broen (#7282); sæsonens sidste dato er undtaget (se ovenfor).
+- **Deploy-vinduet:** mangler funktionen, registreres den sene dato ikke. Holdet venter til næste kørsel, og senere datoer for holdet holdes tilbage i samme kørsel, så datoen aldrig fryses tom.
 
 ## Forbigående DB-fejl i facilitets- og træneropslaget (#6596, 17/10)
 
@@ -249,6 +258,8 @@ i Sentry. Leveringens varige genforsøg består. Ingen balancerater ændres.
 Forudsætning: `training_tick_per_race_day` skal være aktivt for motoren, før `training_condition_per_date` må være aktivt. Inkonsistente flag og fejlede flagopslag afvises før skrivning i træning, løbsbelastning og cutover. Løbsdagsaksen er nulbaseret; datoen kommer fra kalenderen, aldrig fra en udledning af løbsdagsnummeret.
 
 `training_condition_per_date` er bygget med standard `off`; ingen aktivering er godkendt. Ejerens efterfølgende build-go 29/9 normaliserer den SAMLEDE løbs- og træningsbelastning: hver etape optager ét af datoens fem slots. Evner udvikles fortsat på alle sæsonens 140 løbsdage. Datoens fem trin bruger samme gemte udgangspunkt for udviklingens form-/træthedsfaktor. Kun sidste trin afregner tilstanden, efter de fire tidligere rapporter er færdige: gennemsnittet af eksisterende belastninger, én restitution, én formændring og ét datoseedet skadesrul baseret på datoens starttilstand. Løb skriver under flaget kun idempotente belastningsrækker i `training_race_loads`, med eksisterende profil og indsats. Eksisterende restitutionskonstanter følger fortsat `race_day_engine_enabled`; skadens løbsdagsvarighed består. Ny formsemantik er ikke en del af rettelsen.
+
+**#7801 (ejer 6/11, bag `fatigue_now_7801`, ikke seedet = slukket, kun "on" tænder; kræver `condition_model_v2`):** træthedsgrænsen (auto-hvile/let/restitution) vurderes på trætheden lige nu før feltet, altså åbningen plus datoens kørte etaper på tidligere løbsdage, i stedet for datoens starttilstand. Skadesrullet sker stadig én gang ved afregningen, men risikoen regnes pr. felt på trætheden lige nu før feltet. Prognosen ("Træthed i aften") bruger samme tal (I5). Slukket = reglen ovenfor uændret, bevist mod en frossen digest fra merge-basen. Dagens træningspas tæller først med ved afregningen, både i fladernes tal og i motoren.
 
 **#5928 (ejer 15/10, kun `s5_profiles_v1`):** etapens belastning i datoens slot vokser med etapens plads i etapeløbet og med rytterens reelle arbejde (se [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)). Afregningen, restitutionen pr. dato og managerens valg af træning på GT-datoerne er uændrede; hård træning oven på en trættende GT koster som altid (træthed, form, skaderisiko over grænsen).
 
@@ -867,6 +878,9 @@ træningskørsel). Tallene og den præcise model står aldrig i repoet (hard rul
   holdtempo, hvor den selv er en hjælpe-evne); fri eller ukendt rolle får gennemsnittet af de to
   basis-dage, evne for evne. Det samlede udbytte er det samme for alle roller. Off = modellen ovenfor,
   bit-identisk. En fejlet læsning af underkontakten kaster på dato-afregningens strikte sti, ellers off.
+- **Under Udviklingsscore B (#7584):** tillægget regnes pr. evne i tick'ets faktiske enhed, også for
+  off-fokus-evnerne (lederskab, aggression, hjælperens støtte-evner), så det stadig er ens i alt for
+  alle roller. Med scoren slukket er regningen uændret.
 - **Kode:** `raceDayRoleYield5950.js`, kaldt fra `dailyTrainingEngine.js` (`withRaceDayRoleYield`).
 
 ---
@@ -1131,6 +1145,8 @@ Løser fra §13.2: løbsdagens rytme i rigtig tid (5 pr. kalenderdag, samlet luk
 
 ### 13.3b Ejerens realisme-regel 18/9 (låst princip; genåbn ikke)
 
+**Ude af feltet (#7692):** en rytter er kun bundet, så længe han er i løbet. Mangler han i seneste etapes startfelt (`entrant_snapshot`), er han ude, også uden en udgåelse. Hans udgangsdag er den sidste etape med et resultat, og fra dagen efter følger han sit program igen. Mangler beviset, eller er det ulæseligt, bevares bindingen. Reglen rører kun træningen, ikke løbet.
+
 Ejeren formulerede 18/9 aften den regel al løbsdags-mekanik skal måles mod. Fuld tekst: [#5267, kommentar 18/9](https://github.com/NicolaiDolmer/CyclingZone/issues/5267). Kort:
 
 1. **En løbsdag er én dato i cykelåret.** Den sker kun én gang.
@@ -1209,6 +1225,7 @@ Alt nedenfor ligger bag `training_tick_per_race_day`, som er **on** i S4 (read-o
 - **Trænings-slot-vagten (G9).** Andels-gaten måler en tilstand og er uændret. Spring-gaten var kalibreret mod én kalenderdags træning mellem to snapshots. På løbsdags-ticket tæller vagten de løbsdags-ticks der faktisk blev kørt i intervallet (medianen pr. hold, trupper talt én gang) og regner dem om til kalenderdags-ækvivalenter via G1-deleren i `trainingRaceDayTick.js`. Spring-loftet skaleres med det tal, dog aldrig under 1, så vagten aldrig bliver mere følsom end i dag. Der divideres bevidst **ikke** med det rå antal ticks: deleren holder sæsonens samlede udvikling uændret, så en normal løbsdato er omtrent én kalenderdags træning, og at dividere med antallet af løbsdage ville gøre vagten blind. Kan tick-tallet ikke læses, droppes spring-gaten for det snapshot (Sentry får besked) i stedet for at fyre en falsk alarm.
 - **Off-season.** Uden en aktiv sæson er en dato **ikke** en træningsdag: intet tick, og dermed heller ikke den restitution der kører i ticket (§5.1), og ingen historik. Rytternes trænings-tilstand står stille, til sæsonskiftets nulstilling (§5.2) og planernes overførsel i `seasonTransition.js` tager over. Begge sweeps logger tilstanden én gang pr. dansk dato og returnerer `offSeason: true`. Day-close-sweepen sætter ikke sin dags-claim, så en sæson der aktiveres senere samme aften stadig kører. Løbsdags-aksen springer ingen løbsdage over hen over hullet, fordi den starter forfra i den nye sæson, og `gameDaySpansByDivision` opfinder ingen træningsdage før sæsonens første løbsdato. Adfærden med en aktiv sæson (S3) er uændret.
 - **Ingen sæsonpause (ejer 26/10, #7282).** Ordret: *"Vi har aftalt, at der ikke er sæsonpause."* Dagen efter forrige sæsons sidste dato hører til den nye sæson. Datoer før den nye sæsons første løbsdato er **rene træningsdatoer**: hver dato er 5 løbsdage uden løb (`BRIDGE_SLOTS_PER_DATE`), ens for alle divisioner. Manageren eget program (slot 1-5), normal træthed og restitution, ungdom som normalt, Træn nu virker. De får negative løbsdagsnumre talt tilbage fra første løbsdato (datoen før er -5..-1), så de aldrig rammer aksen, der starter på 0. Missede brodatoer indhentes automatisk af indexet, præcis én gang pr. hold (nøglen er den samme som på løbsdage). Kvitteringen viser "Aktivitet 1-5" i stedet for løbsdagsnummer. Sæsonskifte-tjekket advarer (gult, ingen spærre) hvis der er dage uden løb mellem to sæsoner. Kode: `trainingDateReadiness.js` (`bridgeGameDays`, `loadSeasonBridgeBounds`), `trainingDateClose.js` (`loadTrainingDateIndex`). Punktet ovenfor (ingen aktiv sæson) gælder stadig kun i selve skiftet.
+- **Hvile-planer følger ikke med ved sæsonskiftet (ejer 6/11, #7637).** Planernes overførsel (`carryTrainingPlans` i `seasonCarryOver.js`) springer planer med intensitet `rest` over. En hvile-plan som ingen har rørt, må ikke lade en rytter stå stille ind i en ny sæson; rytteren får standardplanen, og manageren kan vælge hvile igen bevidst. Antallet står i overførslens stats som `skipped_rest_plan`. Eksisterende planer i databasen ændres ikke.
 
 **Økonomi-aksen (status quo, ingen kodeændring, åben for ejeren).** Kun udviklingen flytter til løbsdagen. Økonomien bliver på kalenderen:
 

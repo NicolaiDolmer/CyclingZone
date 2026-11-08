@@ -59,6 +59,23 @@ export function buildImportancePayload({ itemId, userId, importanceScore }) {
   return { item_id: itemId, user_id: userId, importance_score: importanceScore, updated_at: new Date().toISOString() };
 }
 
+// #7788: Ved ikke er en række uden tal. Den gælder hele punktet, så begge felter
+// sendes som null, også en idea_score fra da punktet var en idé.
+export function buildDontKnowPayload({ itemId, userId, now }) {
+  if (!itemId || !userId) throw new Error("itemId and userId are required");
+  return { item_id: itemId, user_id: userId, idea_score: null, importance_score: null, updated_at: now.toISOString() };
+}
+
+export function isDontKnow(vote) {
+  return Boolean(vote) && vote.importance_score == null && vote.idea_score == null;
+}
+
+// #7792: "You voted" på et leveret punkt. Kun en stemme med et tal tæller; et Ved ikke er
+// et svar, men ikke en stemme.
+export function hasScoredVote(vote) {
+  return Boolean(vote) && (vote.importance_score != null || vote.idea_score != null);
+}
+
 // Privacy (#1599): når userId er sat, filtreres til KUN den brugers egne
 // stemmer FØR Map'en bygges. Forsvars-lag 2 oven på query-filteret — så en
 // admin-RLS-undtagelse (OR is_admin()) der lækker andres rows ikke kan skrive

@@ -5,8 +5,10 @@ import assert from "node:assert/strict";
 
 import {
   RULES,
+  buildFilm,
   checkStage,
   dayRowsFor,
+  filmPlaceFindings,
   parseGapSeconds,
   publicFinding,
   replayTimeline,
@@ -20,7 +22,8 @@ import {
   startlistFor,
   summarize,
 } from "./race-truth-rules.mjs";
-import { stageInput } from "../__fixtures__/race-truth/load.mjs";
+import { loadFixture, stageInput } from "../__fixtures__/race-truth/load.mjs";
+import { withEventPlaces } from "../../backend/lib/raceTimeline.js"; // #6350
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -92,8 +95,10 @@ test("R3 (#6350): etape 8, gruppen hentes før den angriber, og uheldsgrupper ud
   assert.equal(early[0].group_id, "breakaway-7000");
   assert.equal(early[0].km, 97.4);
   assert.equal(early[0].formed_km, 99.2);
-  const nowhere = findings.filter((f) => f.code === "incident_group_without_formation").map((f) => f.group_id);
-  assert.ok(nowhere.includes("solo-m10-10-0"));
+  // Et uheldsoffers solo-gruppe er dannet af uheldet: filmen starter den dér.
+  assert.ok(!findings.some((f) => f.group_id === "solo-m10-10-0"));
+  const span = buildFilm(prepared(stage8)).group_spans.find((s) => s.group_id === "solo-m10-8-0");
+  assert.equal(span.from_km, 107.23);
   // Et nedkørselsangreb der nævnes (holdordre) før selve angrebet står i loggen.
   assert.ok(findings.some((f) => f.code === "referenced_before_formed" && f.group_id === "breakaway-4000"));
 });
@@ -115,8 +120,20 @@ test("R5: et resultat-hul filmen ikke viser giver et fund", () => {
   const stage = clone(stage8);
   const row = stage.raceRows.find((r) => r.result_type === "stage" && r.stage_number === 8 && r.rank === 2);
   row.finish_time = "+0:00";
-  const found = codes(ruleFilmMatchesResult(prepared(stage)));
+  const input = prepared(stage);
+  // #7900: filmen bygges nu af resultatets huller; her en film uden dem (motorens målbillede).
+  const motorFilm = buildFilm({ ...input, stageRows: input.stageRows.map(({ finish_time: _gap, ...rest }) => rest) });
+  const found = codes(ruleFilmMatchesResult(input, motorFilm));
   assert.equal(found.R5.codes.finish_gap_mismatch, 1);
+});
+
+test("R5 (#7900): filmen følger resultatets hul ved målet, så samme etape giver intet fund", () => {
+  const stage = clone(stage8);
+  const row = stage.raceRows.find((r) => r.result_type === "stage" && r.stage_number === 8 && r.rank === 2);
+  row.finish_time = "+0:00";
+  const found = codes(ruleFilmMatchesResult(prepared(stage)));
+  assert.equal(found.R5?.codes.finish_gap_mismatch, undefined);
+  assert.equal(found.R5?.codes.finish_order_mismatch, undefined);
 });
 
 test("R5: en byttet vinder i filmens målrækkefølge giver et fund, også med samme hul", () => {
@@ -133,6 +150,25 @@ test("R6 (#6350): etape 8, 'sat' stemples ved segmentgrænsen km 161, ikke ved s
   const late = findings.find((f) => f.km === 161 && f.split_index === 229);
   assert.ok(late, "rytteren i gruppetto-11008 skal fanges");
   assert.ok(Math.abs(late.split_km - 147.31) < 0.01);
+});
+
+test("#6350: gemte etaper læst gennem withEventPlaces: ingen indhentning før dannelse, 'sat' står ved splittet, filmen holder", () => {
+  for (const stage of [stage6, stage8]) {
+    const placed = prepared({ ...stage, events: withEventPlaces(stage.events) });
+    assert.deepEqual(ruleCatchAfterFormation(placed).filter((f) => f.code === "caught_before_formed"), []);
+    assert.deepEqual(ruleClaimsMatchGroup(placed).filter((f) => f.code === "dropped_stamped_after_split"), []);
+    assert.deepEqual(ruleFilmMatchesResult(placed), []);
+    // km er rækkefølgen og flyttes aldrig; kun stedet.
+    assert.deepEqual(placed.events.map((e) => [e.type, e.km]), stage.events.map((e) => [e.type, e.km]));
+    assert.deepEqual(withEventPlaces(placed.events), placed.events, "idempotent");
+  }
+  const split = withEventPlaces(stage8.events).find((e) => e.type === "peloton_splits" && e.km === 89 && e.params.group_id === "solo-6003");
+  assert.ok(split.params.exact_km > 80.5 && split.params.exact_km < 82, "splittet på stigningen står på stigningen, ikke på toppen");
+  assert.equal(split.params.exact_time, undefined, "tiden på toppen hører ikke til stedet");
+  const attack = withEventPlaces(stage8.events).find((e) => e.type === "finale_attack" && e.params.group_id === "breakaway-7000");
+  assert.ok(attack.params.exact_km <= 97.4);
+  const dropped = withEventPlaces(stage8.events).find((e) => e.type === "stage_plan_leg" && e.km === 161 && e.params.reason === "dropped");
+  assert.ok(dropped.params.exact_km < 161);
 });
 
 test("R6: referatets vinder og uheld svarer til resultat og tidslinje", () => {
@@ -267,4 +303,64 @@ test("R7 (Codex P2): en rytter i GC der mangler en kørt etape giver et fund", (
   const stageRows = rows.filter((r) => r.result_type === "stage" && r.stage_number === 2);
   const found = codes(ruleStandingsAddUp({ raceId: "x", stageNumber: 2, raceRows: rows, stageRows, events: [], startlist: ["A", "B"] }));
   assert.equal(found.R7.codes.gc_rider_missing_stage, 1);
+});
+
+test("#6350: en sen halvdel af et split flytter ikke gruppens dannelse", () => {
+  const log = [
+    { km: 0, type: "stage_start", params: { exact_km: 0, exact_time: 0 } },
+    { km: 180, type: "peloton_splits", params: { group_id: "g", source_group_id: "peloton-0", rider_ids: ["a"], exact_km: 170.47 } },
+    { km: 180, type: "peloton_splits", params: { group_id: "g", source_group_id: "peloton-0", rider_ids: ["b"], exact_km: 176, joined_late: true } },
+    { km: 180, type: "group_merged", params: { group_id: "g", into_group_id: "peloton-0", rider_ids: ["a", "b"], exact_km: 176 } },
+  ];
+  assert.deepEqual(ruleCatchAfterFormation({ events: log, startlist: ["a", "b"] }), []);
+});
+
+// Motorens form: splits, så sammenlægningen med alle gruppens ryttere, samme km.
+function filmContradiction({ splitKm, lateKm, catchKm = 174.07 }) {
+  return [
+    { km: 0, type: "stage_start", params: { exact_km: 0, exact_time: 0 } },
+    { km: 10, type: "breakaway_formed", params: { group_id: "breakaway-1", rider_ids: ["ahead"], exact_km: 10 } },
+    { km: catchKm, type: "breakaway_caught", params: { group_id: "breakaway-1", rider_ids: ["ahead"], exact_km: catchKm } },
+    { km: catchKm, type: "group_merged", params: { group_id: "breakaway-1", into_group_id: "peloton-0", rider_ids: ["ahead"], exact_km: catchKm } },
+    { km: 180, type: "peloton_splits", params: { group_id: "g", source_group_id: "peloton-0", rider_ids: lateKm == null ? ["set", "ahead"] : ["set"], gap_seconds: 300, exact_km: splitKm } },
+    ...(lateKm == null ? [] : [{ km: 180, type: "peloton_splits", params: { group_id: "g", source_group_id: "peloton-0", rider_ids: ["ahead"], gap_seconds: 300, exact_km: lateKm, joined_late: true } }]),
+    { km: 180, type: "group_merged", params: { group_id: "g", into_group_id: "gruppetto-2", rider_ids: ["set", "ahead"], exact_km: 176 } },
+  ];
+}
+
+test("#6350 R3: vagten fanger en rytter der står i en gruppe før han var fri af udbruddet", () => {
+  // Det et trukket-tilbage split ville vise: i gruppen bag ved km 170,76, hentet ved km 174,07.
+  const found = ruleCatchAfterFormation({ events: filmContradiction({ splitKm: 170.76 }), startlist: ["set", "ahead"] });
+  const hit = found.filter((f) => f.code === "rider_in_group_before_free");
+  assert.equal(hit.length, 1);
+  assert.equal(hit[0].rider_id, "ahead");
+  assert.equal(hit[0].km, 170.76);
+  assert.equal(hit[0].left_km, 174.07);
+});
+
+test("#6350 R3: vagten fanger en sen halvdel der går ind i en gruppe efter gruppens kontakt", () => {
+  const hit = filmPlaceFindings(filmContradiction({ splitKm: 170.47, lateKm: 179 })).filter((f) => f.code === "split_after_group_contact");
+  assert.equal(hit.length, 1);
+  assert.equal(hit[0].group_id, "g");
+  assert.equal(hit[0].contact_km, 176);
+  // Reglen læser filmen som siden viser den: withEventPlaces har allerede rettet stedet.
+  assert.deepEqual(ruleCatchAfterFormation({ events: filmContradiction({ splitKm: 170.47, lateKm: 179 }), startlist: ["set", "ahead"] }), []);
+  // Det rigtige sted er ikke et fund.
+  assert.deepEqual(ruleCatchAfterFormation({ events: filmContradiction({ splitKm: 170.47, lateKm: 176 }), startlist: ["set", "ahead"] }), []);
+});
+
+test("#7734 R3: etape 10: de hentede står ikke i en gruppe før de var fri af udbruddet", () => {
+  const { events } = loadFixture("giro-stage-10.json");
+  const late = filmPlaceFindings(withEventPlaces(events)).filter((f) => f.rider_id === "rider-late-a" || f.rider_id === "rider-late-b");
+  assert.deepEqual(late, []);
+});
+
+test("#6350 R3: en kæde af sammenlægninger i segmentet er ikke et skift ud af en anden gruppe", () => {
+  const log = [
+    { km: 0, type: "stage_start", params: { exact_km: 0, exact_time: 0 } },
+    { km: 180, type: "peloton_splits", params: { group_id: "g1", source_group_id: "peloton-0", rider_ids: ["a"], gap_seconds: 60, exact_km: 171 } },
+    { km: 180, type: "group_merged", params: { group_id: "g1", into_group_id: "g2", rider_ids: ["a"], exact_km: 174 } },
+    { km: 180, type: "group_merged", params: { group_id: "g2", into_group_id: "g3", rider_ids: ["a", "b"], exact_km: 177 } },
+  ];
+  assert.deepEqual(ruleCatchAfterFormation({ events: log, startlist: ["a", "b"] }).filter((f) => f.code === "rider_in_group_before_free"), []);
 });

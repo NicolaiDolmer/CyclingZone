@@ -4,18 +4,18 @@
 
 ## Aktiv styring
 
-> **⏰ Påmind ejeren:** Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
+> **⏰ Påmind ejeren:** egomadsen #7870 (billeder, form/træthed sløret) · Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (4/11 formiddag, designet med ejeren):** PC1 følger [prompten på #7495](https://github.com/NicolaiDolmer/CyclingZone/issues/7495#issuecomment-6627637501): merge og følg til dørs #7620/#7623/#7621/#7622/#7579, permanent rettelse af Stop-hookens advarsel midt i tog, #7585 PR 2-4, TS-kæden #7611 → #7619 (PC1 overtager), ejerens beslutninger, design af rettelserne for #5950 og #6912 bjerg, og forbedringerne #7628-#7632; fast tog-afslutning (SHA, roadmap, patch note, Discord-udkast, MASTERPLAN og artifact). Codex (DolmerPC): vækst og penge, derefter spildesign 2.0, kun design.
+> **🎯 Next action (8/11):** **Dirigent-tavle [#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911) er sandheden; start der.** **Large kører (målt 8/11, #7659).** **Deploy til 13/11 (ejer 8/11):** merges kun mellem store slots, aldrig i timen før eller under; ændringer i baggrundsjob og motor venter til efter 13/11 (scheduler kører i API-processen). #7913, #7915 live. 7644 SLUKKET under Hexagone; første etape med felt 9/11 kl. 11 (tjek 7635 + #7897). **Efter løbet:** #6912, #7899, #7902, 7644 tuning vs G19-bånd.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** PC1-session 4/11 (Opus, til ca. 17). Tog 1-3 verificeret (8 PR'er, sidst #7634 `a6edbb32`). #7536 tændt. Bølgen bygger Giro-rettelserne og designspor.
+> **🤖 Working agent:** Dirigent på Dolmer PC (8/11; PC1 pause). Tavle #7911. **Codex (Dolmer PC):** #7875, #7878.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
 > **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; `ratingGolden.5321.json` KUN m. ejer-go.
 
-> **🔴 Åbne fund:** #6490 aftenspids · #5692 matview · #6504 frigivelse (ny forekomst 16/10, CYCLINGZONE-9B). **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`.
+> **🔴 Åbne fund:** #7832 sent hold mister første træningsdato (ejer: aldrig mistet dato) · #6490 aftenspids · #7139 ranglisten halter · #6504 frigivelse (ny forekomst 16/10, CYCLINGZONE-9B). **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`.
 
 ## Standing context (forever-relaunch)
 

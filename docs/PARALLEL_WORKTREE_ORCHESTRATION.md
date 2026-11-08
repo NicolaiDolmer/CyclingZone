@@ -7,6 +7,14 @@ Claude Code bruger `.claude/workflows/wave.js`; Codex bruger `scripts/codex-wave
 
 ## Codex-boelger (#5467)
 
+**Player-report (#5509):** Begge runtimes bruger den fælles evidence-gate i
+`wave-policy.mjs` før reservation/spawn samt ved enqueue/intake. GitHub-issue-body
+skal følge [evidenskontrakten](GITHUB_WORKFLOW.md#spillerklager-måling-før-build-5509).
+Ingen måling eller allerede grøn førstatus betyder stop, ikke build. Investigation
+kan fremskaffe manglende evidens, men bygger intet. Briefen kræver målt førstatus
+før kode; admission er strukturel validering, ikke selvstændig prod-verifikation.
+Mandat, SSOT, design og byggestop gælder uændret.
+
 SSOT for roller og claims: [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md#runtime-synlighed-og-boelger-4016-5467). Ejerens valg af issues, design-go og filansvar skal vaere afklaret foer en plan koeres.
 
 ```powershell
@@ -378,6 +386,10 @@ I `wave.js` starter alle laner, ogsaa naar koeen er kortere. En lane uden spor s
 **5. Hale-tomgang.** `wave.js` har intet `Date.now()`, saa den maaler med et monotont minut-ur (et selv-genplanlagt `setTimeout`, ryddet foer scriptet returnerer). Start- og slutminut pr. spor og lane giver via `tailIdleLaneMinutes()` tre tal i rapportens `tailIdle`: `tailStartMinute` (seneste sporstart), `idleLaneMinutes` (tomme lane-minutter derfra til boelgens slut; en lukket lane taeller som optaget) og `capacityPct` (tomgang i procent af lanes x boelgens varighed). Loggen skriver `Hale-tomgang: X lane-minutter (Y % af kapacitet)`. Minut 0 er lane-fasens start.
 
 ## Delte filer: `touches` (1/10, #5997)
+
+**Smalt ejerskab (#6335):** `ownership` og `touches` maa ikke daekke kendte brede faellesmapper: `backend/lib`, `backend/routes`, `frontend/src/pages`, `frontend/src/components`, `frontend/src/hooks`, `frontend/src/lib` og `frontend/src/utils`. Det gaelder ogsaa deres overmapper samt globs der daekker dem, uanset case, backslash eller trailing slash. Konkrete filer, afgraensede filglobs og smaa undermapper (fx `backend/lib/engine/v4/`) er tilladt. Brug fx den navngivne `backend/lib/trainingRunResponse.ts` separat fra et engine-spor, saa uafhaengige filer kan optages og merges.
+
+Faelles admission, enqueue og Codex-planen afviser en bred deklaration; naar branch-diffen kan laeses, foreslaar fejlen konkrete matchende filer fra `origin/main...<branch>` (ogsaa gamle og nye stier ved rename). En tom eller ulaeselig diff giver en handlingsanvisning, aldrig automatisk indskraenkning eller accept. Workflow-planen spejler afvisningen uden diskadgang; diff-forslag kommer fra faelles admission. Eksisterende markoerers overlap og merge-laas bevares konservativt; git-fejl frigiver aldrig ejerskab. Ingen regel afhaenger af den lokale mappes aktuelle filantal.
 
 Et spor kan have et valgfrit felt `touches: []` ved siden af `ownership`: delte hotspot-filer (fx en side flere spor skal sætte en lille kobling ind i). Samme sti-/glob-syntaks som `ownership`, samme reserverede stier og "for bredt"-regel.
 

@@ -81,32 +81,29 @@ if (Test-Path $claudeProj) {
   if ($DryRun) {
     Write-Host "[would-remove] Claude project-mappe: $claudeProj" -ForegroundColor Cyan
   } else {
-    # Junction-child slettes via rmdir; herefter resten af mappen
+    # Kun memory-linket fjernes (ikke-rekursivt). Transcripts bevares altid (#7837):
+    # de er kilden, hvis noget fra worktreet alligevel skal genskabes.
     $memJunc = Join-Path $claudeProj "memory"
     if (Test-Path $memJunc) {
-      & cmd /c rmdir /Q "$memJunc" 2>&1 | Out-Null
+      $mi = Get-Item -LiteralPath $memJunc -Force -ErrorAction SilentlyContinue
+      if ($mi -and ($mi.LinkType -eq 'Junction' -or $mi.LinkType -eq 'SymbolicLink')) { [IO.Directory]::Delete($memJunc, $false) }
     }
-    Remove-Item $claudeProj -Recurse -Force -ErrorAction SilentlyContinue
-    Write-Host "  [ok] Fjernet Claude project-mappe"
+    Write-Host "  [ok] Memory-link fjernet; transcripts bevaret i $claudeProj"
   }
 }
 
-# git worktree remove - foerst links ud (#6687/#7446): '--force' foelger en junction og
-# toemmer maalet (node_modules-cachen, OneDrive repo-local).
-. (Join-Path $PSScriptRoot 'close-out-cleanup-junctions.ps1')
-$linkResult = Remove-WorktreeJunctions -WorktreePath $wt -DryRun:$DryRun
-if (-not $linkResult.Ok) {
-  Write-Host "[STOP] Links i $wt kunne ikke fjernes - worktreet roeres ikke: $($linkResult.Errors -join '; ')" -ForegroundColor Red
+# #7837: links ud -> alt ikke-versioneret (ogsaa ignorerede filer) arkiveret og verificeret
+# paa OneDrive -> foerst derefter git worktree remove. Gaelder ogsaa med -Force.
+. (Join-Path $PSScriptRoot 'lib\archive-worktree-unversioned.ps1')
+$safe = Remove-WorktreeSafely -WorktreePath $wt -RepoRoot $RepoRoot -DryRun:$DryRun
+if (-not $safe.Ok) {
+  Write-Host "[STOP] $wt roeres ikke: $($safe.Errors -join '; ')" -ForegroundColor Red
   exit 1
 }
 if ($DryRun) {
-  Write-Host "[would-run] git -C $RepoRoot worktree remove $wt" -ForegroundColor Cyan
+  Write-Host "[would-run] arkiv -> $($safe.ArchiveDir); git -C $RepoRoot worktree remove $wt" -ForegroundColor Cyan
 } else {
-  & git -C $RepoRoot worktree remove $wt
-  if ($LASTEXITCODE -ne 0) {
-    Write-Host "[warn] worktree remove fejlede; prøver --force" -ForegroundColor Yellow
-    & git -C $RepoRoot worktree remove --force $wt
-  }
+  Write-Host "  [ok] Arkiveret: $($safe.ArchiveDir)"
   Write-Host "  [ok] Worktree fjernet: $wt"
 }
 

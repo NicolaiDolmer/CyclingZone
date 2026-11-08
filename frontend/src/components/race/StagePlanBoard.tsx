@@ -17,11 +17,14 @@
 // Fog of war: kun opgaver, stigningernes navne og km. Ingen tal fra motoren.
 
 import { useEffect, useMemo, useState } from "react";
-import { authHeaders } from "../../lib/supabase";
+import { authHeaders, supabase } from "../../lib/supabase";
+import { fetchAllRows } from "../../lib/supabasePagination";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import { waypointsFor } from "../../lib/stageRouteProfile.js";
+import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js"; // #7636
+import { riderInFrontOrFieldAt, ridersSplitKm, stagePlanContactFacts, type TimelineEvent as SplitTimelineEvent } from "../../lib/stageSplitTimes.ts"; // #7636, #7706
 import SortableTh from "../ui/SortableTh.jsx";
-import { Button, CheckIcon, ChevronRightIcon, LockIcon, MessageIcon, MinusIcon, PlusIcon, Select, XIcon } from "../ui/index.js";
+import { Button, CheckIcon, ChevronRightIcon, InfoIcon, LockIcon, MessageIcon, MinusIcon, PlusIcon, Select, XIcon } from "../ui/index.js";
 import {
   clearRiderPlan,
   fallbackOrderKeys,
@@ -33,6 +36,7 @@ import {
   setLegTrigger,
   setRiderPlan,
   stagePlanFeaturesFromRaw,
+  stagePlanOutcomes,
   stagePlanRecap,
   stagePlanRouteFromRaw,
   stagePlanSwitchNotes,
@@ -122,36 +126,59 @@ function PlanChain({ t, legs, route, dashed = false, compact = false }: { t: TFn
   );
 }
 
-function recapLine(t: TFn, route: StagePlanRoute, legs: StagePlanLeg[], item: StagePlanRecapItem, i: number): string {
-  if (item.status === "skipped") return t("stagePlan.recap.skipped");
+function recapLine(t: TFn, route: StagePlanRoute, legs: StagePlanLeg[], items: StagePlanRecapItem[], i: number): string {
+  const item = items[i];
+  // #7706: "han blev sat foer" kun naar han blev sat; ellers (ikke med i udbruddet, to skift paa samme sted) ikke naaet.
+  if (item.status === "skipped") return t(items.find((it) => (it.endLeg ?? -1) > i)?.endReason === "dropped" ? "stagePlan.recap.skipped" : "stagePlan.recap.notReached");
   if (item.status === "not_reached") return t("stagePlan.recap.notReached");
   const km = item.endKm == null ? null : Math.round(item.endKm);
   // #7368: leddet staar med sit eget skift-punkt (som spilleren satte det) og slutter ved
   // det led der faktisk afloeste det, ikke altid det naeste i kaeden.
   const start = i > 0 ? triggerLabel(t, route, legs[i].from, legs[i - 1].task) : "";
   const endFrom = item.endLeg == null ? undefined : legs[item.endLeg]?.from;
+  // #7636: et skift filmen ikke viser (fromHidden / ingen slutgrund) staar ikke i teksten.
+  const shownStart = item.fromHidden ? "" : start;
+  if (item.endReason == null) return shownStart;
   const end = item.endReason === "kom"
     ? t("stagePlan.recap.kom", { climb: endFrom?.at === "kom" ? climbLabel(t, route, endFrom.kom_index) : "—" })
     : t(`stagePlan.recap.${item.endReason}`, { km });
-  return start ? `${start}, ${end}` : end;
+  return shownStart ? `${shownStart}, ${end}` : end;
 }
 
+const OUTCOME_MARK = {
+  done: { Icon: CheckIcon, tone: "text-cz-success" },
+  failed: { Icon: XIcon, tone: "text-cz-warning" },
+  not_reached: { Icon: MinusIcon, tone: "text-cz-3" },
+  info: { Icon: InfoIcon, tone: "text-cz-3" },
+  none: { Icon: null, tone: "" },
+} as const;
+
 /** Efter etapen: hvad rytteren faktisk gjorde i hvert led. */
-function PlanRecap({ t, legs, route, events, riderId }: { t: TFn; legs: StagePlanLeg[]; route: StagePlanRoute; events: TimelineEvent[]; riderId: string }) {
-  const items = stagePlanRecap(legs, events, riderId);
+function PlanRecap({ t, legs, route, events, riderId, rank = null, leader = null, crossCheck = false }: { t: TFn; legs: StagePlanLeg[]; route: StagePlanRoute; events: TimelineEvent[]; riderId: string; rank?: number | null; leader?: PlanRider | null; crossCheck?: boolean }) {
+  // #7636 (kontakten stage_plan_dropped_front_7635): krydstjek mod rytterens gruppe i filmen.
+  const items = stagePlanRecap(legs, events, riderId, crossCheck ? { inFrontOrFieldAt: (km) => riderInFrontOrFieldAt(events as SplitTimelineEvent[], riderId, km) } : {});
+  // #7706: markeringen er udfaldet, ikke om leddet blev koert. Uden gruppe-gab svarer filmen ikke.
+  const film = events as SplitTimelineEvent[];
+  const withLeader = leader?.name
+    ? { name: leader.name, splitKm: (fromKm: number, toKm: number) => ridersSplitKm(film, riderId, leader.rider_id, fromKm, toKm) }
+    : null;
+  const outcomes = stagePlanOutcomes(items, events, riderId, { ...stagePlanContactFacts(film, riderId), rank, leader: withLeader });
   return (
     <ul className="space-y-1">
       {items.map((item, i) => {
-        const ridden = item.status === "done" || item.status === "to_finish" || item.status === "abandoned";
+        const { mark, word } = outcomes[i];
+        const { Icon, tone } = OUTCOME_MARK[mark];
+        const line = recapLine(t, route, legs, items, i);
         return (
-          <li key={i} className="flex items-start gap-2 text-xs">
-            <span className="w-3.5 shrink-0 pt-0.5 text-cz-success">
-              {ridden ? <CheckIcon size={12} aria-hidden="true" /> : <MinusIcon size={12} aria-hidden="true" className="text-cz-3" />}
+          <li key={i} data-outcome={mark} className="flex items-start gap-2 text-xs">
+            <span className={`w-3.5 shrink-0 pt-0.5 ${tone}`}>
+              {Icon && <Icon size={12} aria-hidden="true" />}
             </span>
-            <span className={ridden ? "text-cz-1" : "text-cz-3"}>
+            <span className={mark === "not_reached" ? "text-cz-3" : "text-cz-1"}>
               <span className="font-medium">{t(`stagePlan.task.${item.task}`)}</span>
-              {", "}
-              <span className="tabular-nums">{recapLine(t, route, legs, item, i)}</span>
+              {line ? <>{", "}<span className="tabular-nums">{line}</span></> : null}
+              {/* Ordet er med, saa markeringen aldrig kun er en farve. Uden bevis staar der intet (#7706). */}
+              {word && <span className="ml-1.5 text-3xs text-cz-3 tabular-nums whitespace-nowrap">{t(word.key, word.params)}</span>}
             </span>
           </li>
         );
@@ -273,8 +300,18 @@ function PlanEditor({ t, riderName, legs, role, route, suggestion, showsSuggesti
 }
 
 /** Tidslinjen for en koert etape (kun til opsummeringen). null = henter/ikke klar. */
-function useStageTimeline(raceId: string, stageNumber: number, enabled: boolean): TimelineEvent[] | null {
-  const [state, setState] = useState<{ key: string | null; events: TimelineEvent[] | null }>({ key: null, events: null });
+const NO_RANKS: ReadonlyMap<string, number> = new Map();
+
+/** #7706: holdets placeringer paa etapen. Et enkeltdagsloeb gemmer sin maalraekkefoelge som gc. Fejl = ingen placeringer. */
+async function fetchStageRanks(raceId: string, stageNumber: number, isOneDay: boolean, riderIds: readonly string[]): Promise<ReadonlyMap<string, number>> {
+  const rows = (await fetchAllRows(() => supabase.from("race_results").select("rider_id, rank")
+    .eq("race_id", raceId).eq("stage_number", stageNumber).eq("result_type", isOneDay ? "gc" : "stage").in("rider_id", [...riderIds]).order("id"))) as Array<{ rider_id: string | null; rank: number | null }>;
+  return new Map(rows.flatMap((r): Array<[string, number]> => (r.rider_id && typeof r.rank === "number" ? [[r.rider_id, r.rank]] : [])));
+}
+
+function useStageTimeline(raceId: string, stageNumber: number, enabled: boolean, isOneDay: boolean, riderIds: readonly string[]): { events: TimelineEvent[] | null; ranks: ReadonlyMap<string, number> } {
+  const [state, setState] = useState<{ key: string | null; events: TimelineEvent[] | null; ranks: ReadonlyMap<string, number> }>({ key: null, events: null, ranks: NO_RANKS });
+  const riderKey = [...riderIds].sort().join(",");
   const key = enabled ? `${raceId}:${stageNumber}` : null;
   useEffect(() => {
     if (!key) return undefined;
@@ -282,13 +319,19 @@ function useStageTimeline(raceId: string, stageNumber: number, enabled: boolean)
     (async () => {
       const headers = await authHeaders({ json: false });
       if (!headers) return;
-      const res = (await apiFetch(`${API}/api/races/${raceId}/timeline?stage=${stageNumber}`, { headers })) as unknown as { ok: boolean; data?: { events?: unknown } | null }; // catch-ok: ikke-ok = ingen opsummering
-      if (active) setState({ key, events: res.ok && Array.isArray(res.data?.events) ? (res.data?.events as TimelineEvent[]) : [] });
-    })().catch(() => { if (active) setState({ key, events: [] }); });
+      const [res, ranks] = await Promise.all([
+        apiFetch(`${API}/api/races/${raceId}/timeline?stage=${stageNumber}`, { headers }) as unknown as Promise<{ ok: boolean; data?: { events?: unknown } | null }>, // catch-ok: ikke-ok = ingen opsummering
+        fetchStageRanks(raceId, stageNumber, isOneDay, riderKey ? riderKey.split(",") : []).catch(() => NO_RANKS), // catch-ok: uden placering vises intet
+      ]);
+      if (active) setState({ key, events: res.ok && Array.isArray(res.data?.events) ? (res.data?.events as TimelineEvent[]) : [], ranks });
+    })().catch(() => { if (active) setState({ key, events: [], ranks: NO_RANKS }); });
     return () => { active = false; };
-  }, [key, raceId, stageNumber]);
-  return state.key === key ? state.events : null;
+  }, [key, raceId, stageNumber, isOneDay, riderKey]);
+  return state.key === key ? state : { events: null, ranks: NO_RANKS };
 }
+
+/** Motorens raekkefoelge for holdets leder (stagePlanEngine teamLeaderId). */
+const LEADER_ROLES = ["captain", "co_captain", "sprint_captain"];
 
 export default function StagePlanBoard({
   t,
@@ -338,12 +381,20 @@ export default function StagePlanBoard({
     sortDir: "asc" | "desc" | null;
     onSort: () => void;
     renderCell: (rider: PlanRider, opts?: { numberOnly?: boolean }) => React.ReactNode;
+    renderMark?: (rider: PlanRider) => React.ReactNode;
   };
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const route = useMemo(() => routeForProfile(profile), [profile]);
   const features = useMemo(() => stagePlanFeaturesFromRaw(profile), [profile]); // #7383
-  const events = useStageTimeline(raceId, activeStage, stageCompleted);
+  const { events, ranks } = useStageTimeline(raceId, activeStage, stageCompleted, isOneDay, riders.map((r) => r.rider_id));
+  // #7636: kontakten laeses fra GET /api/feature-flags (binaer; fejl = slukket = som foer).
+  const [crossCheck7636, setCrossCheck7636] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    fetchPlayerFeatureFlags().then((flags: Record<string, boolean>) => { if (alive) setCrossCheck7636(flags?.stage_plan_dropped_front_7635 === true); });
+    return () => { alive = false; };
+  }, []);
   const planByRider = new Map<string, StagePlanLeg[] | null>((order?.riders ?? []).map((r): [string, StagePlanLeg[] | null] => [r.rider_id, Array.isArray(r.plan) && r.plan.length ? r.plan : null]));
   const timeTrial = route.profile_type === "itt" || route.profile_type === "itt_hilly" || route.profile_type === "ttt";
 
@@ -379,6 +430,16 @@ export default function StagePlanBoard({
     return t(locked ? "stagePlan.noPlanOrdersLocked" : "stagePlan.noPlanOrders", { orders: keys.map((k) => t(k)).join(", ") });
   }
 
+  // #7706: rytteren holdarbejdet gjaldt, saa opsummeringen kan sige hvem han sad med.
+  function teamLeaderFor(rider: PlanRider) {
+    const others = riders.filter((r) => r.rider_id !== rider.rider_id && !r.abandoned);
+    for (const role of LEADER_ROLES) {
+      const hit = others.find((r) => roleFor(r) === role);
+      if (hit) return hit;
+    }
+    return null;
+  }
+
   function renderPlanCell(rider: PlanRider, { compact = false }: { compact?: boolean } = {}) {
     const legs = planByRider.get(rider.rider_id);
     const role = planRole(roleFor(rider));
@@ -393,7 +454,7 @@ export default function StagePlanBoard({
           </>
         );
       }
-      return <PlanRecap t={t} legs={legs} route={route} events={events} riderId={rider.rider_id} />;
+      return <PlanRecap t={t} legs={legs} route={route} events={events} riderId={rider.rider_id} rank={ranks.get(rider.rider_id) ?? null} leader={teamLeaderFor(rider)} crossCheck={crossCheck7636} />;
     }
     if (legs) {
       const fits = validateStagePlanLegs(legs, role, route) === null;
@@ -549,6 +610,7 @@ export default function StagePlanBoard({
                 )}
               </div>
               <div className="mt-0.5">{renderRoleCell(rider)}</div>
+              {routeMatch?.renderMark?.(rider)}
               {editable(rider) && !stageCompleted ? (
                 <button
                   type="button"

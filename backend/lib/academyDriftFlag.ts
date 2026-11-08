@@ -1,6 +1,6 @@
 // #5741: kill-switch for AKADEMI-DRIFT specifikt ved S3→S4-skiftet 27/9
 // (ejer-beslutning 25/9 kl. 13:30: ingen ungdomsdrift ved dette ene skifte).
-// Bor i app_config (samme mønster som raceFinalizeResumableFlag.js, men skrevet i TS per TYPESCRIPT_DIRECTION.md) →
+// Bor i app_config (samme mønster som raceFinalizeResumableFlag.ts, men skrevet i TS per TYPESCRIPT_DIRECTION.md) →
 // flippes runtime uden re-deploy.
 //
 // Fail-safe: MODSAT de fleste stage-flag i denne mappe (som fail-safer til

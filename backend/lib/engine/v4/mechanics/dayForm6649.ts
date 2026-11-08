@@ -272,3 +272,43 @@ export function dayForm6649Events(
   }
   return events;
 }
+
+// #7725 (ejer 5/11): dagsformen i ord efter etapen. Rene afledninger af den samme dag
+// som motoren regnede: de kaldes aldrig fra motoren, saa udfaldet er uroert. Broen
+// laegger ordene paa tidslinjen bag kontakten day_words_7725 (dayWords7725Flag.js).
+
+export type DayWord7725 = "great" | "good" | "bad";
+
+// Hvor langt op ad benenes op-side en dag skal ligge for at hedde god / rigtig god.
+export const DAY_WORD_7725_TUNING = Object.freeze({ goodUp: 1, greatUp: 2 });
+
+/** Dagens ord, eller null for en almindelig dag. Op-siden har ingen aarsag: den er bare benene. */
+export function dayWord7725(day: Pick<DayForm6649, "delta" | "reason">, t: DayForm6649Tuning = DAY_FORM_6649_TUNING, w: typeof DAY_WORD_7725_TUNING = DAY_WORD_7725_TUNING): DayWord7725 | null {
+  if (day.reason) return "bad";
+  const up = (day.delta + (t.legsUpSd - t.legsSd) / Math.sqrt(2 * Math.PI)) / t.legsUpSd;
+  if (up >= w.greatUp) return "great";
+  return up >= w.goodUp ? "good" : null;
+}
+
+/**
+ * `day_word`-events ved maal for hele startlisten (ikke kun kandidaterne som `bad_day`):
+ * dit eget hold skal ogsaa kunne forklares. Fog-gate (#1791): kun rytter og ord,
+ * ved en daarlig dag ogsaa aarsagen, aldrig tal.
+ */
+export function dayWordEvents7725(
+  startlist: readonly Entrant[],
+  route: Pick<RouteV2, "weather" | "segments" | "distance_km">,
+  seed: string,
+  t: DayForm6649Tuning = DAY_FORM_6649_TUNING,
+): TimelineEvent[] {
+  const events: TimelineEvent[] = [];
+  for (const e of startlist) {
+    const day = dayForm6649For(e, route, seed, t);
+    const word = dayWord7725(day, t);
+    if (!word) continue;
+    events.push(makeEvent(route.distance_km, "day_word", {
+      rider_id: e.rider_id, word, ...(day.reason ? { reason: day.reason } : {}), ...(day.weather ? { weather: day.weather } : {}),
+    }));
+  }
+  return events;
+}

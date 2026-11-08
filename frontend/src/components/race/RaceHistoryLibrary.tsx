@@ -18,7 +18,7 @@ import { raceArchiveHref, TERRAIN_KINDS } from "../../lib/racePeek.ts";
 import { useSortState, sortRows } from "../../lib/useTableSort.js";
 import { applySeniorSquadFilter } from "../../lib/seniorScope.ts";
 import {
-  buildRaceHistory, matchesSearch, paginate, HISTORY_PAGE_SIZE,
+  buildRaceHistory, matchesSearch, paginate, routeEditionIds, HISTORY_PAGE_SIZE,
   type HistoryRace, type HistoryRow, type ProfileRow, type ResultRow,
 } from "../../lib/raceHistoryModel.ts";
 import FilterBarBase from "../ui/FilterBar.jsx";
@@ -75,7 +75,7 @@ const EmptyState = EmptyStateBase as unknown as ComponentType<StateProps>;
 const Button = ButtonBase as unknown as ComponentType<ButtonProps>;
 
 interface Pool { id: number; tier: number; pool_index: number; label: string }
-interface RaceRow { id: string; name: string; race_type: string | null; race_class: string | null; stages: number | null; season: { number: number | null } | null }
+interface RaceRow { id: string; name: string; race_type: string | null; race_class: string | null; stages: number | null; status: string | null; season: { number: number | null } | null }
 
 const ID_CHUNK = 100; // samme loft som biblioteket i #6636 (URL-længde på .in())
 
@@ -116,11 +116,13 @@ async function loadHistory({ poolId, teamId }: { poolId: number; teamId: string 
     .from("races")
     .select("id, name, race_type, race_class, stages, status, season:season_id(number)"))
     .eq("league_division_id", poolId)
-    .eq("status", "completed")
     .order("id", { ascending: true }))) as RaceRow[];
-  const flat: HistoryRace[] = races.map((r) => ({
+  const toHistoryRace = (r: RaceRow): HistoryRace => ({
     id: r.id, name: r.name, race_type: r.race_type, race_class: r.race_class, stages: r.stages, season_number: r.season?.number ?? null,
-  }));
+  });
+  // Historikken er afsluttede udgaver; de kommende bruges kun til ruten (#7693).
+  const flat = races.filter((r) => r.status === "completed").map(toHistoryRace);
+  const upcoming = races.filter((r) => r.status !== "completed").map(toHistoryRace);
   const oneDayIds = flat.filter((r) => r.race_type !== "stage_race").map((r) => r.id);
   const stageIds = flat.filter((r) => r.race_type === "stage_race").map((r) => r.id);
   const winnerCols = "race_id, stage_number, result_type, rank, rider_id, rider_name, team_name";
@@ -170,19 +172,13 @@ async function loadHistory({ poolId, teamId }: { poolId: number; teamId: string 
     myRows = parts.flat();
   }
 
-  // Terræn: ruten for hvert løbs nyeste udgave.
-  const latestByFamily = new Map<string, HistoryRace>();
-  for (const r of flat) {
-    const key = `${r.name}|${r.race_type ?? ""}`;
-    const cur = latestByFamily.get(key);
-    if (!cur || (r.season_number ?? 0) > (cur.season_number ?? 0)) latestByFamily.set(key, r);
-  }
-  const profiles = await readChunked<ProfileRow>([...latestByFamily.values()].map((r) => r.id), (ids) => supabase
+  // Terræn: ruten for hvert løbs nyeste udgave, også en der ikke er kørt endnu (#7693).
+  const profiles = await readChunked<ProfileRow>(routeEditionIds(flat, upcoming), (ids) => supabase
     // pagination-safe: readChunked pager via fetchAllRows pr. id-chunk.
     .from("race_stage_profiles").select("race_id, stage_number, profile_type")
     .in("race_id", ids).order("race_id").order("stage_number"));
 
-  return buildRaceHistory({ races: flat, winnerRows, myRows, profiles });
+  return buildRaceHistory({ races: flat, upcoming, winnerRows, myRows, profiles });
 }
 
 

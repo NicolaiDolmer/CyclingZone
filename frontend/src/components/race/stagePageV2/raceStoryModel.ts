@@ -12,10 +12,12 @@
 //   - buildReport:      3-5 saetninger, deterministisk, fra linjerne + resultatet
 //   - groupMembersAt:   hvem kører i hvilken gruppe ved et km (replay-navne)
 //   - finaleData/…:     "Final 5 km"-grafikkens tidsmodel og gruppevalg
-import { replayFrames as replayFramesJs, checkpointGapForRider as checkpointGapJs } from "../../../../../backend/lib/raceStory.js";
+import { leaderKmAt as leaderKmAtJs, replayFrames as replayFramesJs, checkpointGapForRider as checkpointGapJs, riderOutBy as riderOutByJs, ridersBehindField as ridersBehindFieldJs } from "../../../../../backend/lib/raceStory.js";
 import { withNarrativeCauses, isTimeTrialNarrative, type NarrativeEvent } from "../../../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts";
 import { collectRiderIds, describeEvent } from "../../../lib/stageTimelineFilm.js";
 import { classificationRowsForStage } from "../../../lib/raceStageClassifications.js";
+import { buildOwnTimeLoss, type TimeLossEntry, type TimelineEvent } from "../../../lib/stageSplitTimes.ts";
+import { lossEntriesWithFilmKm, type SpanTimelineEvent } from "../../../lib/stageTimelineKmSpan.ts";
 import type { ResultRow, RoleRider } from "./stagePageV2Model.ts";
 import { labelStoryLine, morningFromStory } from "../../../lib/breakawayLabels6299.ts"; // #6299
 
@@ -41,7 +43,7 @@ export interface GroupAt {
   members_inferred?: boolean;
   gap_s: number;
   time_s?: number | null;
-  gap_source?: "reported" | "carried" | "front";
+  gap_source?: "reported" | "carried" | "front" | "result";
 }
 
 export interface StoryCheckpoint {
@@ -69,6 +71,8 @@ export interface GroupSpan {
   source_group_id: string | null;
   into_group_id: string | null;
   rider_ids: string[];
+  /** #6350: ryttere der først kom med senere (sen halvdel af et split). */
+  late_joins?: Array<{ km: number; rider_ids: string[] }>;
 }
 
 export interface RaceStory {
@@ -93,6 +97,8 @@ export interface RiderGap { group_id: string; gap_s: number; time_s: number | nu
 /** Kontraktens egne funktioner (backend/lib/raceStory.js), typet her. */
 export const replayFrames = replayFramesJs as unknown as (story: RaceStory, opts?: { finaleKm?: number; stepKm?: number }) => ReplayFrame[];
 export const checkpointGapForRider = checkpointGapJs as unknown as (checkpoint: StoryCheckpoint, riderId: string) => RiderGap | null;
+const riderOutBy = riderOutByJs as unknown as (story: RaceStory, a: StorySnapshot) => (riderId: string, km: number) => boolean;
+const ridersBehindField = ridersBehindFieldJs as unknown as (rows: Array<{ rider_id: string; gap_s: number | null }>, riderIds: Iterable<string>) => string[];
 
 /** Kun et svar der ligner kontrakten bruges; alt andet = ingen historie. */
 export function asStory(value: unknown): RaceStory | null {
@@ -154,25 +160,52 @@ export function castFrom(results: ResultRow[], roles: RoleRider[], stageNumber: 
   };
 }
 
+/** Rytterne med et kendt navn, bedst placerede foerst. */
+function knownByRank(ids: readonly string[], cast: Cast): string[] {
+  const known = [...new Set(ids)].filter((id) => cast.nameOf(id));
+  return known.sort((a, b) => (cast.rankOf(a) ?? 9999) - (cast.rankOf(b) ?? 9999) || String(cast.nameOf(a)).localeCompare(String(cast.nameOf(b))));
+}
+
 /**
  * "Rojas, Marchetti +3" - bedst placerede foerst, kun kendte navne. `total`
  * er gruppens stoerrelse naar den er stoerre end de navngivne (resten).
  */
 export function namesList(ids: string[], cast: Cast, max = 2, total: number | null = null): string {
-  const known = [...new Set(ids)].filter((id) => cast.nameOf(id));
-  known.sort((a, b) => (cast.rankOf(a) ?? 9999) - (cast.rankOf(b) ?? 9999) || String(cast.nameOf(a)).localeCompare(String(cast.nameOf(b))));
-  const shown = known.slice(0, max).map((id) => cast.nameOf(id) as string);
+  const shown = knownByRank(ids, cast).slice(0, max).map((id) => cast.nameOf(id) as string);
   const more = Math.max(ids.length, total ?? 0) - shown.length;
   if (!shown.length) return "";
   return more > 0 ? `${shown.join(", ")} +${more}` : shown.join(", ");
 }
 
-/** Under dette antal er resten ikke "feltet" laengere, men en gruppe der navngives. */
+/** Under dette antal er en gruppe ikke "feltet", men en gruppe der navngives. */
 export const PELOTON_MIN_SIZE = 10;
 
-/** Gruppen hedder "Peloton" naar den baerer resten og stadig er et felt. */
-export function isPeloton(includesRest: boolean, size: number | null): boolean {
-  return includesRest && (size == null || size >= PELOTON_MIN_SIZE);
+/**
+ * #7704: "Feltet" er den stoerste gruppe paa vejen, samme regel som mellemtiderne
+ * (stageSplitTimes.ts). Resten (`includes_rest`) er kun motorens startgruppe: naar
+ * feltet saa falder fra hinanden bagfra, kan den vaere en lille gruppe foran en meget
+ * stoerre. Et udbrud er aldrig feltet, medmindre resten er gaaet op i det (#7388).
+ * Uden field_count kendes restens stoerrelse ikke, og saa er den det bedste bud.
+ * Ved lige stoerrelse vinder gruppen foran. null = ingen gruppe er stor nok.
+ */
+export function mainGroupId(groups: ReadonlyArray<Pick<FrameGroup, "group_id" | "size" | "includes_rest" | "gap_s">>): string | null {
+  const rest = groups.find((g) => g.includes_rest);
+  if (rest && rest.size == null) return rest.group_id;
+  let main: (typeof groups)[number] | null = null;
+  for (const g of groups) {
+    if (g.size == null || g.size < PELOTON_MIN_SIZE) continue;
+    if (g.group_id.startsWith("breakaway") && !g.includes_rest) continue;
+    if (!main || g.size > (main.size as number) || (g.size === main.size && g.gap_s < main.gap_s)) main = g;
+  }
+  return main?.group_id ?? null;
+}
+
+/** Referatets hul-linje: "feltet" kun om hovedgruppen ved tjekpunktet, ellers "jagten". */
+function gapLineGroup(story: RaceStory, m: StoryMoment): "rest" | "chase" {
+  const km = m.recorded_km ?? m.km;
+  const snapshot = story.snapshots.find((s) => Math.abs(s.km - km) < 0.01);
+  const isMain = snapshot ? mainGroupId(snapshot.groups) === m.data.group_id : m.data.includes_rest === true;
+  return isMain ? "rest" : "chase";
 }
 
 /** Din bedste rytter i etapen: bedste placering, ellers den foerste i historien. */
@@ -213,6 +246,8 @@ export interface StoryNarrative { key: string; params: Record<string, unknown> }
 export interface StoryNarrativeContext {
   profileType?: string | null;
   events: readonly NarrativeEvent[];
+  /** #7717: hvornaar etapen koerte (loebsloggens created_at). */
+  ranAt?: string | null;
   effortByRider?: { get(id: string): unknown } | null;
   teamNameById?: ReadonlyMap<string, string>;
 }
@@ -407,7 +442,7 @@ export function curateMoments(story: RaceStory, cast: Cast, max = MAX_STORY_LINE
         if (before == null || after == null) break;
         single.push(baseLine(m, "gap", 4, cast, {
           dir: m.key === "story.gap_grew" ? "grew" : "shrank",
-          group: m.data.includes_rest === true ? "rest" : "chase",
+          group: gapLineGroup(story, m),
           before,
           after,
         }));
@@ -495,7 +530,7 @@ export interface SplitRow {
   km: number;
   leaderTime: number | null;
   leaderIds: string[];
-  leaderIsRest: boolean;
+  leaderIsPeloton: boolean;
   leaderSize: number | null;
   /** Foerst over toppen/spurten (passagens point i loggen); kendt ogsaa uden praecise tider. */
   firstId: string | null;
@@ -513,7 +548,7 @@ export function splitRows(story: RaceStory, myRiderId: string | null): SplitRow[
       km: c.km,
       leaderTime: story.precise_times ? c.leader_time_s : null,
       leaderIds: c.leader_rider_ids ?? [],
-      leaderIsRest: Boolean(front?.includes_rest),
+      leaderIsPeloton: front != null && mainGroupId(c.groups) === front.group_id,
       leaderSize: front?.size ?? (c.leader_rider_ids?.length || null),
       firstId: typeof c.top?.[0]?.rider_id === "string" ? c.top[0].rider_id : null,
       // Uden praecise tider kender loggen ikke hullerne (spec §6): intet hul.
@@ -526,21 +561,193 @@ export function splitRows(story: RaceStory, myRiderId: string | null): SplitRow[
 
 export interface ReportSentence { key: string; params: Record<string, string | number> }
 
+/** #7701: de felter af raceRecap.dnfRowsForStage som referatet laeser. */
+export interface OwnOutRow { rider_id?: string | null; name?: string | null; team_id?: string | number | null; reasonKey?: string; status?: string }
+
+/**
+ * #7701: dine egne ryttere der udgik paa etapen, som referat-saetninger med den
+ * aarsag motoren skrev (incident-arten). Een saetning pr. aarsag. Ikke-startere
+ * staar i "Your riders", ikke i et referat af selve etapen.
+ */
+export function ownOutSentences(rows: readonly OwnOutRow[] | null | undefined, myTeamId: string | null, cast: Cast): ReportSentence[] {
+  const byKind = new Map<string, string[]>();
+  for (const r of rows || []) {
+    if (r.status === "dns" || myTeamId == null || r.team_id == null || String(r.team_id) !== String(myTeamId)) continue;
+    const name = (r.rider_id ? cast.nameOf(String(r.rider_id)) : null) ?? surnameOf(r.name);
+    if (!name) continue;
+    const kind = r.reasonKey ?? "abandoned";
+    byKind.set(kind, [...(byKind.get(kind) ?? []), name]);
+  }
+  return [...byKind].map(([kind, names]) => {
+    const more = names.length - 2;
+    return { key: "ownOut", params: { kind, names: more > 0 ? `${names.slice(0, 2).join(", ")} +${more}` : names.join(", ") } };
+  });
+}
+
+// #7725: de ord broen skriver paa `day_word`. Ukendt ord eller aarsag giver ingen saetning.
+const DAY_WORDS = new Set(["great", "good", "fatigue", "form", "illness", "rain", "wind", "heat"]);
+const DAY_WORD_ORDER = ["great", "fatigue", "form", "illness", "rain", "wind", "heat", "good"];
+
+/**
+ * #7725: rytterens dag i ord efter etapen, pr. rytter. Findes kun naar kontakten
+ * day_words_7725 var taendt da etapen koerte; ellers er kortet tomt og intet vises.
+ * Et daarligt ord er aarsagen (vejret som sin type), saa spilleren faar forklaringen.
+ */
+export function dayWordsByRider(events: readonly NarrativeEvent[] | null | undefined): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const e of events ?? []) {
+    if (e?.type !== "day_word") continue;
+    const p = (e.params ?? {}) as { rider_id?: unknown; word?: unknown; reason?: unknown; weather?: unknown };
+    const word = p.word === "bad" ? (p.reason === "weather" ? p.weather : p.reason) : p.word;
+    if (typeof p.rider_id === "string" && typeof word === "string" && DAY_WORDS.has(word)) out.set(p.rider_id, word);
+  }
+  return out;
+}
+
+/** #7725 (ejer 8/11): dagens ord kun for dine egne i maal, ogsaa naar vinderen er en andens. Hoejst 2 saetninger: referatet er kort. */
+export function dayWordSentences(events: readonly NarrativeEvent[] | null | undefined, cast: Cast): ReportSentence[] {
+  const words = dayWordsByRider(events);
+  if (!words.size) return [];
+  const rows: Array<{ word: string; name: string }> = [];
+  for (const f of cast.finishers) {
+    const word = words.get(f.riderId);
+    const name = cast.nameOf(f.riderId);
+    if (word && name && cast.mine.has(f.riderId)) rows.push({ word, name });
+  }
+  // De klareste ord foerst; samme ord staar i maal-raekkefoelge (stabil sortering).
+  rows.sort((a, b) => DAY_WORD_ORDER.indexOf(a.word) - DAY_WORD_ORDER.indexOf(b.word));
+  return rows.slice(0, 2).map(({ word, name }): ReportSentence => (word === "great" || word === "good"
+    ? { key: word === "great" ? "dayGreat" : "dayGood", params: { name } }
+    : { key: `bad_day_${word}`, params: { rider: name } }));
+}
+
+/** i18n-noeglen for en referat-saetning. Den daarlige dag deler loebsfilmens tekst (#6649). */
+export function reportTextKey(key: string): string {
+  return key.startsWith("bad_day_") ? `detail.film.event.${key}` : `stagePageV2.story.report.${key}`;
+}
+
+/** #7754: hvem en rytter angreb sammen med, i ord. `more` = der var flere end de navngivne. */
+export interface AttackCompanions { names: string; more: boolean }
+
+/**
+ * #7754: de to haendelser der beviser, at ryttere koerte fra sammen. Et baaret
+ * forspring (finale_attack med gruppens ryttere) navngiver ogsaa flere, men siger
+ * kun hvem der sad i gruppen; ryttere der kom til senere staar ikke her.
+ */
+function jointAttackRiders(m: StoryMoment): string[] {
+  const joint = m.type === "breakaway_formed" || (m.type === "finale_attack" && m.data.direction === "descent");
+  const list = joint && Array.isArray(m.data.rider_ids) ? m.data.rider_ids.filter((x): x is string => typeof x === "string") : [];
+  return [...new Set(list)];
+}
+
+function companionsOf(ids: readonly string[], cast: Cast): AttackCompanions | null {
+  const shown = knownByRank(ids, cast).slice(0, 2);
+  if (!shown.length) return null;
+  return { names: shown.map((id) => cast.nameOf(id) as string).join(", "), more: ids.length > shown.length };
+}
+
+/**
+ * #7754: hvem din rytter senest angreb sammen med. Kun dine egne, og intet hvis
+ * han kun koerte alene: `cast.mine` afgoer det, ikke kaldet.
+ */
+export function attackCompanions(story: RaceStory, riderId: string, cast: Cast): AttackCompanions | null {
+  if (!cast.mine.has(riderId)) return null;
+  for (const m of [...story.moments].reverse()) {
+    const riders = jointAttackRiders(m);
+    if (!riders.includes(riderId)) continue;
+    const companions = companionsOf(riders.filter((id) => id !== riderId), cast);
+    if (companions) return companions;
+  }
+  return null;
+}
+
+/**
+ * #7754: referatets saetning om dine ryttere i dagens seneste faelles angreb. Et
+ * angreb hvor referatets angrebs-saetning allerede navngiver alle, gentages ikke.
+ */
+function ownAttackSentence(story: RaceStory, cast: Cast, attack: StoryLine | undefined): { moment: StoryMoment; sentence: ReportSentence } | null {
+  for (const m of [...story.moments].reverse()) {
+    const riders = jointAttackRiders(m);
+    if (riders.length < 2 || (m.type === "finale_attack" && riders.length <= 2 && attack && riders.every((id) => attack.riderIds.includes(id)))) continue;
+    const own = knownByRank(riders.filter((id) => cast.mine.has(id)), cast);
+    const subjects = own.slice(0, own.length === riders.length ? 1 : 2);
+    const companions = companionsOf(riders.filter((id) => !subjects.includes(id)), cast);
+    if (!subjects.length || !companions) continue;
+    const mine = subjects.map((id) => cast.nameOf(id) as string).join(", ");
+    return {
+      moment: m,
+      sentence: { key: companions.more ? "ownAttackedWithMore" : "ownAttackedWith", params: { mine, others: companions.names, count: subjects.length } },
+    };
+  }
+  return null;
+}
+
+/** Navneopslaget filmens tekster laeser (describeEvent, LossRow). */
+export function castNames(cast: Cast): { get(id: unknown): string | null } {
+  return { get: (id) => cast.nameOf(String(id)) };
+}
+
+export interface OwnTimeLoss {
+  entries: Array<TimeLossEntry & { shown: SpanTimelineEvent }>;
+  /** Dine ryttere efter feltet som loggen ikke har en aarsag til ("" = ingen). */
+  unknown: string;
+}
+
+const NO_OWN_LOSS: OwnTimeLoss = { entries: [], unknown: "" };
+
+/**
+ * #7705: hvorfor dine ryttere tabte tid, med de aarsager motoren skrev (fald med
+ * grund, uheld, koerte sig tom, daarlig dag, din egen ordre). Kun ryttere der kom
+ * i maal efter vinderen; udgaaede staar i ownOut. Sad en rytter efter feltet uden
+ * en aarsag i loggen, staar det, i stedet for at referatet tier.
+ * Uden praecise tider kender loggen ikke hullerne (spec §6): intet at sige.
+ */
+export function ownTimeLoss(story: RaceStory, cast: Cast, narrative: StoryNarrativeContext | null): OwnTimeLoss {
+  if (!narrative || !story.precise_times) return NO_OWN_LOSS;
+  const rows = cast.finishers.map((f) => ({ rider_id: f.riderId, gap_s: f.rank === 1 ? 0 : parseGap(f.gap) }));
+  const lost = rows.filter((r) => cast.mine.has(r.rider_id) && r.gap_s != null && r.gap_s > 0).map((r) => r.rider_id);
+  if (!lost.length) return NO_OWN_LOSS;
+  const events = narrative.events as readonly TimelineEvent[];
+  const riderNameById = castNames(cast);
+  const found = buildOwnTimeLoss(events, { ownRiderIds: lost, effortByRider: narrative.effortByRider as ReadonlyMap<string, string> | null | undefined })
+    // En aarsag uden tekst kan ikke staa; rytteren taeller da som uforklaret.
+    .filter((entry) => entry.type === "drop" || describeEvent(entry.event, { riderNameById }));
+  // Et fald uden grund og uden din ordre siger hvor, ikke hvorfor.
+  const noReason = (entry: TimeLossEntry) => entry.type === "drop" && entry.reason === "unknown" && !entry.order && !entry.planTask;
+  const ridersOf = (entry: TimeLossEntry) => (entry.type === "drop" ? entry.riderIds : [entry.riderId]);
+  const explained = new Set(found.filter((entry) => !noReason(entry)).flatMap(ridersOf));
+  const unexplained = lost.filter((id) => !explained.has(id));
+  const fellWithoutReason = new Set(found.filter(noReason).flatMap(ridersOf));
+  const behindField = new Set(ridersBehindField(rows, unexplained));
+  return {
+    entries: lossEntriesWithFilmKm(events as readonly SpanTimelineEvent[], found, { timelineVersion: story.timeline_version }),
+    unknown: namesList(unexplained.filter((id) => fellWithoutReason.has(id) || behindField.has(id)), cast, 3),
+  };
+}
+
 /**
  * Referatet: kun hvad loggen og resultatet viser, i fast raekkefoelge:
- * udbruddet (dannet), dets udfald, det sidste angreb, vinderen, din bedste.
+ * udbruddet (dannet), dets udfald, det sidste angreb, hvem dine angreb sammen med
+ * (#7754, lige efter den haendelse det handler om), vinderen, din bedste, dagens
+ * ord (#7725) og til sidst dine egne udgaaede (#7701).
  * Mindst 3 saetninger naar etapen har et resultat; hoejst 5.
  */
-export function buildReport(story: RaceStory, lines: StoryLine[], cast: Cast): ReportSentence[] {
+export function buildReport(story: RaceStory, lines: StoryLine[], cast: Cast, ownOut: readonly ReportSentence[] = [], dayWords: readonly ReportSentence[] = []): ReportSentence[] {
   const out: ReportSentence[] = [];
   const km = (v: number) => kmValue(v);
   const formed = lines.find((l) => l.kind === "formed");
+  const attacks = lines.filter((l) => l.kind === "attack" && l.riderIds.length);
+  const attack = attacks[attacks.length - 1];
+  const ownAttack = ownAttackSentence(story, cast, attack);
   if (formed) {
     const mine = namesList(formed.mineIds, cast, 2);
     out.push(mine
       ? { key: "formedMine", params: { count: formed.count, km: km(formed.km), mine } }
       : { key: "formed", params: { count: formed.count, km: km(formed.km) } });
   }
+  // Et senere udbrud er ikke det, saetningen foer fortaeller om: saa staar han efter angrebene.
+  const sameBreak = ownAttack?.moment.type === "breakaway_formed" && ownAttack.moment.km === formed?.km;
+  if (ownAttack && sameBreak) out.push(ownAttack.sentence);
   const outcomes = story.breakaway?.outcomes ?? null;
   if (formed && outcomes) {
     const survivors = Object.entries(outcomes).filter(([, o]) => o === "survived").map(([id]) => id);
@@ -553,13 +760,12 @@ export function buildReport(story: RaceStory, lines: StoryLine[], cast: Cast): R
       out.push({ key: "caught", params: { km: km(last.kmTo ?? last.km) } });
     }
   }
-  const attacks = lines.filter((l) => l.kind === "attack" && l.riderIds.length);
-  const attack = attacks[attacks.length - 1];
   if (attack) {
     const names = namesList(attack.riderIds, cast, 2);
     const gain = typeof attack.data.gain === "number" && attack.data.gain >= 1 ? formatGapPlain(attack.data.gain) : null;
     if (names) out.push(gain ? { key: "attackGain", params: { names, km: km(attack.km), gain } } : { key: "attack", params: { names, km: km(attack.km) } });
   }
+  if (ownAttack && !sameBreak) out.push(ownAttack.sentence);
   const [first, second] = cast.finishers;
   const winnerName = first ? cast.nameOf(first.riderId) : null;
   // Vandt din rytter, bruges kun din egen saetning (mineWon nedenfor), ikke begge.
@@ -628,10 +834,15 @@ export function buildReport(story: RaceStory, lines: StoryLine[], cast: Cast): R
       mentioned.add(f.riderId);
     }
   }
-  // Hoejst 5: angrebet ryger foerst, saa udfaldet.
-  while (out.length > 5) {
-    const i = out.findIndex((s) => s.key.startsWith("attack"));
-    out.splice(i >= 0 ? i : 1, 1);
+  // #7701: sidst, saa de ikke taeller med i fyld-reglerne. Hoejst 3 aarsager, saa
+  // der altid er plads til vinderen og din bedste; resten staar i "Your riders".
+  out.push(...dayWords, ...ownOut.slice(0, 3));
+  // Hoejst 5 plus dagens ord og din angrebs-saetning (#7754), som aldrig skubber loebets historie ud.
+  // Angrebet ryger foerst. Vinderen, din bedste og dine udgaaede bliver staaende (Codex #7701).
+  const stays = (s: ReportSentence) => s.key.startsWith("winner") || s.key.startsWith("mine") || s.key.startsWith("ownAttackedWith") || s.key === "ownOut";
+  while (out.length > 5 + dayWords.length + (ownAttack ? 1 : 0)) {
+    const attack = out.findIndex((s) => s.key.startsWith("attack"));
+    out.splice(attack >= 0 ? attack : out.findIndex((s) => !stays(s)), 1);
   }
   return out;
 }
@@ -658,16 +869,28 @@ export function groupMembersAt(story: RaceStory, km: number): Map<string, Member
   for (const s of story.snapshots) if (s.km <= km + EPS) a = s; else break;
   const state = new Map<string, Members>();
   if (!a) return state;
+  const isOutBy = riderOutBy(story, a);
   for (const g of a.groups) state.set(g.group_id, { riders: new Set(g.rider_ids), includesRest: g.includes_rest });
-  const transitions: Array<{ km: number; order: number; span: GroupSpan }> = [];
+  // #7900: maalets grupper fra resultatet er facit; motorens overgange paa stregen maa ikke flytte rytterne igen.
+  if (a.groups.some((g) => g.gap_source === "result")) return state;
+  const transitions: Array<{ km: number; order: number; span: GroupSpan; join?: { km: number; rider_ids: string[] } }> = [];
   for (const s of story.group_spans ?? []) {
     if (s.to_km != null && s.to_km < s.from_km - EPS) continue;
     if (s.from_km >= a.km - EPS && s.from_km <= km + EPS) transitions.push({ km: s.from_km, order: 0, span: s });
-    if (s.to_km != null && s.to_km >= a.km - EPS && s.to_km < km - EPS) transitions.push({ km: s.to_km, order: 1, span: s });
+    if (s.to_km != null && s.to_km >= a.km - EPS && s.to_km < km - EPS) transitions.push({ km: s.to_km, order: 2, span: s });
+    for (const join of s.late_joins ?? []) if (join.km >= a.km - EPS && join.km <= km + EPS) transitions.push({ km: join.km, order: 1, span: s, join });
   }
   transitions.sort((x, y) => x.km - y.km || x.order - y.order);
-  for (const { order, span } of transitions) {
-    if (order === 0) {
+  for (const { order, span, join } of transitions) {
+    if (join) {
+      const target = state.get(span.group_id);
+      if (!target) continue;
+      for (const r of join.rider_ids) {
+        if (isOutBy(r, join.km)) continue; // som medlemskabet: den udgåede kører aldrig igen
+        for (const g of state.values()) g.riders.delete(r);
+        target.riders.add(r);
+      }
+    } else if (order === 0) {
       if (state.has(span.group_id)) continue;
       for (const r of span.rider_ids ?? []) for (const g of state.values()) g.riders.delete(r);
       state.set(span.group_id, { riders: new Set(span.rider_ids ?? []), includesRest: false });
@@ -711,7 +934,8 @@ export interface ReplayGroup {
   gapS: number;
   size: number | null;
   front: boolean;
-  rest: boolean;
+  /** Hovedgruppen paa stedet (mainGroupId): den eneste der hedder "Feltet". */
+  peloton: boolean;
   mine: string[];
   riderIds: string[];
 }
@@ -726,13 +950,14 @@ export function replayGroupsAt(story: RaceStory, frames: ReplayFrame[], km: numb
     const g = groupOfRider(members, id);
     if (g) mineByGroup.set(g, [...(mineByGroup.get(g) ?? []), id]);
   }
+  const main = mainGroupId(frame.groups);
   return frame.groups.map((g) => ({
     groupId: g.group_id,
     km: g.km_behind == null ? (g.gap_s === 0 ? km : null) : Math.max(0, km - g.km_behind),
     gapS: g.gap_s,
     size: g.size,
     front: g.gap_s === 0,
-    rest: g.includes_rest,
+    peloton: g.group_id === main,
     mine: mineByGroup.get(g.group_id) ?? [],
     riderIds: [...(members.get(g.group_id)?.riders ?? [])],
   }));
@@ -806,16 +1031,8 @@ function leaderTimeOnLine(line: Array<{ km: number; time: number }>, km: number)
   return null;
 }
 
-/** Foererens km ved race-tid t (foererlinjen vendt om; konstant tempo mellem tjekpunkter). */
-export function leaderKmAt(line: Array<{ km: number; time: number }>, t: number): number {
-  if (!line.length) return 0;
-  if (t <= line[0].time) return line[0].km;
-  for (let i = 1; i < line.length; i++) {
-    const a = line[i - 1], b = line[i];
-    if (b.time >= t) return b.time === a.time ? b.km : a.km + ((b.km - a.km) * (t - a.time)) / (b.time - a.time);
-  }
-  return line[line.length - 1].km;
-}
+/** Foererens km ved race-tid t: samme helper som replayFrames i backend (ét sted). */
+export const leaderKmAt: (line: Array<{ km: number; time: number }>, t: number) => number = leaderKmAtJs;
 
 /** Hullet for hver gruppe ved foererens km (lineaert mellem finale-frames). */
 function gapsAt(frames: ReplayFrame[], km: number): FrameGroup[] {
@@ -848,7 +1065,9 @@ export function finaleStateAt(story: RaceStory, data: FinaleData, cast: Cast, t:
     const g = groupOfRider(members, id);
     if (g) mineByGroup.set(g, [...(mineByGroup.get(g) ?? []), id]);
   }
-  const groups = gapsAt(data.frames, leaderKm).map((g) => {
+  const onRoad = gapsAt(data.frames, leaderKm);
+  const main = mainGroupId(onRoad);
+  const groups = onRoad.map((g) => {
     const km = Math.min(data.endKm, leaderKmAt(data.line, t - g.gap_s));
     return {
       groupId: g.group_id,
@@ -856,7 +1075,7 @@ export function finaleStateAt(story: RaceStory, data: FinaleData, cast: Cast, t:
       gapS: Math.max(0, Math.round(g.gap_s)),
       size: g.size,
       front: g.gap_s < 0.5,
-      rest: g.includes_rest,
+      peloton: g.group_id === main,
       mine: mineByGroup.get(g.group_id) ?? [],
       riderIds: [...(members.get(g.group_id)?.riders ?? [])],
       finished: t - g.gap_s >= data.tLeaderEnd - 1e-6,

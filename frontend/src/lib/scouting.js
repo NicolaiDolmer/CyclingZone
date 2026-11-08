@@ -6,6 +6,8 @@
 // (hentes batched via useScouting.requestEstimates). Her ligger kun rene
 // display-hjælpere der arbejder på det maskerede estimat.
 
+import { potentialViewOf, potentialViewValue } from "./potentialEstimateDisplay.ts";
+
 // Kvalitativ label-NØGLE fra estimatets midtpunkt (oversættes via i18n
 // rider:scouting.label_*). Bevidst grov (4 bånd) — flavor, ikke præcision.
 // #1543: et skjult (uscoutet) estimat har intet midtpunkt → ingen label.
@@ -46,6 +48,9 @@ export function potentialLabelKey(range) {
 // (riderColumnSort.js / useTableSort.js) placerer `null` sidst uanset
 // sorteringsretning.
 export function scoutSortValue(estimate) {
+  // #6110: tændt flag sorterer på det viste skøn, aldrig på noget andet tal.
+  const view = potentialViewOf(estimate);
+  if (view) return potentialViewValue(view);
   if (estimate?.academyPrognosis) {
     const band = estimate.academyPrognosis.band;
     return band && Number.isFinite(band.lo) && Number.isFinite(band.hi) ? (band.lo + band.hi) / 2 : null;

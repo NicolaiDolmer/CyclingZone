@@ -2,6 +2,61 @@
   "active": true,
   "since": "2026-10-29",
   "areaCap": 3,
+  "loft": {
+    "areas": [
+      {
+        "area": "race-engine",
+        "name": "Motor og løbsfilm",
+        "labels": [
+          "cat:race-engine",
+          "slice:race-engine"
+        ],
+        "titleKeywords": [
+          "[motor]",
+          "[race]",
+          "[race-engine]",
+          "[løbsfilm]",
+          "løbsfilm"
+        ],
+        "epics": [
+          7260
+        ]
+      },
+      {
+        "area": "taktik",
+        "name": "Taktik",
+        "labels": [
+          "cat:taktik"
+        ],
+        "titleKeywords": [
+          "[taktik]",
+          "taktik"
+        ],
+        "epics": [
+          7266
+        ]
+      },
+      {
+        "area": "udvikling-2",
+        "name": "Udvikling 2.0",
+        "labels": [
+          "cat:udvikling-2",
+          "epic:progression"
+        ],
+        "titleKeywords": [
+          "[udvikling]",
+          "udvikling 2.0"
+        ],
+        "epics": [
+          6110
+        ]
+      }
+    ],
+    "brandLabels": [
+      "brand",
+      "forkert-info"
+    ]
+  },
   "finishList": [
     {
       "issue": 7445,
@@ -29,10 +84,6 @@
     },
     {
       "issue": 7260,
-      "area": "race-engine"
-    },
-    {
-      "issue": 6938,
       "area": "race-engine"
     },
     {
@@ -242,6 +293,14 @@
   ],
   "cleanupList": [
     {
+      "issue": 7833,
+      "why": "Intern betalingsvagt: falsk alarm ved opsagt uden periodeslut, ejer-go 7/11 i Codex' prioriterede ops-mandat"
+    },
+    {
+      "issue": 7170,
+      "why": "Intern bundle-gate: kun stoerste valgfrie sprog, ejer-go 7/11 i Codex' prioriterede ops-mandat"
+    },
+    {
       "issue": 6679,
       "why": "Interne Windows-procesbeviser, ejer-go 2/11 i #7495"
     },
@@ -427,6 +486,34 @@
     {
       "issue": 7654,
       "why": "Auto-tog + alarm for klare PR-er, ejer-go 4/11 i chat (MASTERPLAN §0)"
+    },
+    {
+      "issue": 7675,
+      "why": "Sentry-fejl, ejer-go 4/11 sent i chat (nat-mandat #7495)"
+    },
+    {
+      "issue": 7676,
+      "why": "Sentry-fejl, ejer-go 4/11 sent i chat (nat-mandat #7495)"
+    },
+    {
+      "issue": 7677,
+      "why": "Sentry-fejl, ejer-go 4/11 sent i chat (nat-mandat #7495)"
+    },
+    {
+      "issue": 7678,
+      "why": "Sentry-fejl, ejer-go 4/11 sent i chat (nat-mandat #7495)"
+    },
+    {
+      "issue": 7827,
+      "why": "Til dørs lukker selv interne opgaver, ejer-go 7/11 i chat"
+    },
+    {
+      "issue": 7837,
+      "why": "Hændelse 7/11: worktree-oprydning slettede arbejde; ejer 7/11 i chat: sørg for at det aldrig sker igen"
+    },
+    {
+      "issue": 7891,
+      "why": "CI-koe fyldt af kladde-PR-tests, ejer-go 7/11 i chat"
     }
   ],
   "brandList": [
@@ -824,6 +911,271 @@
       "issue": 7640,
       "reason": "Vinderens angreb står som tabt tid (Giro etape 8), ejer-go valg A 4/11 i #7495",
       "since": "2026-11-04"
+    },
+    {
+      "issue": 7659,
+      "reason": "Supabase uden fejl: DB genstartede 25/10 og 4/11 med fejlsvar til spillerne; ejer valgte retning A 4/11 (MASTERPLAN Brand)",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 7662,
+      "reason": "#7659 trin 2: alarm ved DB-genstart/5xx/langsomme forespørgsler + db-vagten",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 7663,
+      "reason": "#7659 trin 4: kontakt-cache + lokalt login-tjek (JWT)",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 7664,
+      "reason": "#7659 trin 3: team_race_points_mv billigere (målt før/efter)",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 7666,
+      "reason": "Roadmap-horisonter + transparens for spillerne, ejer-go 4/11 aften: byg i dag",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 6923,
+      "reason": "Roadmap: leveret fra patch notes, known issues-tidslinje, i gang/beta (ejer-valg 19/10, byg 4/11)",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 6203,
+      "reason": "Roadmap-søgning for spillerne (ejer 5/10, byg 4/11)",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 6204,
+      "reason": "Roadmap-admin: faner, filtre, sortering (ejer 5/10, byg 4/11)",
+      "since": "2026-11-04"
+    },
+    {
+      "issue": 7728,
+      "reason": "Ejer-go natbølge 5/11: blok A og C",
+      "since": "2026-11-05"
+    },
+    {
+      "issue": 7693,
+      "reason": "Ejer-go natbølge 5/11: blok A og C",
+      "since": "2026-11-05"
+    },
+    {
+      "issue": 7637,
+      "reason": "Ejer-go natbølge 5/11: blok A og C",
+      "since": "2026-11-05"
+    },
+    {
+      "issue": 7559,
+      "reason": "Ejer-go natbølge 5/11: blok A og C",
+      "since": "2026-11-05"
+    },
+    {
+      "issue": 7558,
+      "reason": "Ejer-go natbølge 5/11: blok A og C",
+      "since": "2026-11-05"
+    },
+    {
+      "issue": 7584,
+      "reason": "Ejer-go natbølge 5/11: blok A og C",
+      "since": "2026-11-05"
+    },
+    {
+      "issue": 7778,
+      "reason": "Ejer-go 6/11: måling af løbssiden før redesign",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7692,
+      "reason": "Ejer-go 6/11: solgt rytter og rytter ude af feltet hviler",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7730,
+      "reason": "Ejer-go 6/11: bølge efter til-dørs-tjek",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7715,
+      "reason": "Ejer-go 6/11: bølge efter til-dørs-tjek",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7733,
+      "reason": "Ejer-go 6/11: bølge efter til-dørs-tjek",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7754,
+      "reason": "Ejer-go 6/11: bølge efter til-dørs-tjek",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7782,
+      "reason": "Ejer-go 6/11: bølge efter til-dørs-tjek",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7783,
+      "reason": "Ejer-go 6/11: bølge efter til-dørs-tjek",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 2176,
+      "reason": "Ejer-go 6/11: designes og går på beta",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 6916,
+      "reason": "Ejer-go 6/11: Mobil 10x, Codex-sporet; PR #7798 større trykflader",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7800,
+      "reason": "Forkert info: stemmetal på roadmappen, spillermeldt 5/11",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7749,
+      "reason": "Forkert info: film-flimmer, ejer-go 6/11",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7810,
+      "reason": "Forkert info: løbssiden åbner på gammel etape, ejer-go 6/11",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7811,
+      "reason": "Måling: filter for ejer og testkonti, #7778",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7790,
+      "reason": "Ejer-go 6/11: known issues følger patch noten (roadmap-sporet)",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7788,
+      "reason": "Ejer-go 6/11: Ved ikke én gang pr. punkt",
+      "since": "2026-11-06"
+    },
+    {
+      "issue": 7832,
+      "reason": "Ejer-go 7/11 (plan på #7495): nyt hold må aldrig miste sin første træningsdato",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7792,
+      "reason": "Ejer-go 7/11 (plan på #7495): besked ved levering af roadmap-punkt",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7789,
+      "reason": "Ejer-go 7/11 (plan på #7495): roadmap-admin med graf",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 6181,
+      "reason": "Ejer-go 7/11 (design på #6181): pengelås, byg fra første ledige lane",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7801,
+      "reason": "Ejer-go 7/11 (Discord, PC1-bølge): træthed lige nu, ret review-fund før tænding",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7701,
+      "reason": "Ejer-go 7/11 (Discord, PC1-bølge): forkert/manglende DNF-grund",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 2009,
+      "reason": "Ejer-go 7/11 (Discord): hover-miniprofil inden for en uge, beta-testere først",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7855,
+      "reason": "Ejer-go 7/11 (Discord): byg point- og bjergtrøje-opgaverne i etapeplanen",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7745,
+      "reason": "Ejer-go 7/11 (Discord): træningsrapporten, hæv standarden meget",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7746,
+      "reason": "Ejer-go 7/11 (Discord): træningsrapporten, hæv standarden meget",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7824,
+      "reason": "Ejer-go 7/11 (Discord): mestertrøjer og talentmærker live i dag, beta først",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7858,
+      "reason": "Ejer-go 7/11 (Discord): højreklik-menu designes og går live i dag",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7871,
+      "reason": "Ejer 7/11 19:30: pengelås PR 3, byg alt i aften",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7872,
+      "reason": "Ejer 7/11 19:30: pengelås PR 5, byg alt i aften",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7873,
+      "reason": "Ejer 7/11 19:30: auto-accept PR 6, byg alt i aften",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7876,
+      "reason": "Ejer 7/11 Discord: patch notes her og nu paa alt der mangler",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7879,
+      "reason": "Ejer 7/11 19:49: talentmaerker laast, live i dag (beta)",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7895,
+      "reason": "Ejer 8/11 nat i chat: ingen Snart/Senere paa roadmappet, saesonnumre og kvartaler",
+      "since": "2026-11-08"
+    },
+    {
+      "issue": 7877,
+      "reason": "Ejer-go 7/11 i Codex: byg P16 K1/K2/K3/K6/K8/K11 i faelles komponenter; ingen merge uden billede-go. https://github.com/NicolaiDolmer/CyclingZone/issues/7877#issuecomment-6712966598",
+      "since": "2026-11-07"
+    },
+    {
+      "issue": 7904,
+      "reason": "Ejer-go 8/11 (mulighed B): kodegrænsen 1339 til 1350 KB, UI-PR'er blokeret af perf-gate",
+      "since": "2026-11-08"
+    },
+    {
+      "issue": 7917,
+      "reason": "Ejer-go 8/11 (Claude Code, efter Sentry-gennemgang): backend tåler at databasen er nede; design først, ingen scheduler-deploy før 13/11",
+      "since": "2026-11-08"
+    },
+    {
+      "issue": 7908,
+      "reason": "Ejer 8/11: push-vagterne, PR #7907 gøres færdig efter uafhængigt review",
+      "since": "2026-11-08"
+    },
+    {
+      "issue": 7922,
+      "reason": "Ejer-go 8/11: stram reglerne for salgsannoncer, planlagt til 9/11",
+      "since": "2026-11-08"
     }
   ]
 }

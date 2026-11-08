@@ -157,7 +157,7 @@ function finaleVector(route, revision) {
 
 /**
  * Motorens krav til én etape som evne-vektor (sum 1), eller null uden data.
- * @param {object} stageRow race_stage_profiles-række (profile_type, finale_type, demand_vector, segments, ...)
+ * @param {any} stageRow race_stage_profiles-række (profile_type, finale_type, demand_vector, segments, ...)
  * @param {string} revision regel-revisionen løbet regnes under
  * @param {{finaleShare?: number}} [opts] kun til tests; produktionen bruger default
  */
@@ -181,13 +181,18 @@ export function stageRouteVector(stageRow, revision, { finaleShare = ROUTE_MATCH
   return blend(finale, terrain, finaleShare);
 }
 
-/** Løbets vektor: snittet af etapernes (hver etape vejer lige meget). null uden etaper. */
-export function raceRouteVector(stageRows, revision, opts) {
-  const vectors = (stageRows || []).map((s) => stageRouteVector(s, revision, opts)).filter(Boolean);
-  if (!vectors.length) return null;
+/** Snittet af etapevektorer: hver etape vejer lige meget. null uden vektorer. */
+export function averageRouteVector(vectors) {
+  const usable = (vectors || []).filter(Boolean);
+  if (!usable.length) return null;
   const sum = {};
-  for (const v of vectors) for (const [k, w] of Object.entries(v)) sum[k] = (sum[k] || 0) + w / vectors.length;
+  for (const v of usable) for (const [k, w] of Object.entries(v)) sum[k] = (sum[k] || 0) + w / usable.length;
   return normalized(sum);
+}
+
+/** Løbets vektor: snittet af etapernes. null uden etaper. */
+export function raceRouteVector(stageRows, revision, opts) {
+  return averageRouteVector((stageRows || []).map((s) => stageRouteVector(s, revision, opts)));
 }
 
 /**
@@ -216,7 +221,7 @@ export function routeMatchScore(abilities, vector) {
 /**
  * Ét opslag til kaldstederne: løbets vektor + etapevektorer pr. stage_number,
  * og funktioner der giver rytterens tal. Etapetal og løbstal kommer altid herfra.
- * @param {{race?: object, stages: Array<object>, revision?: string}} args
+ * @param {{race?: object|null, stages: Array<any>, revision?: string|null}} args
  */
 export function buildRouteMatch({ race = null, stages = [], revision = null }) {
   const rev = revision ?? routeMatchRevisionFor(race);

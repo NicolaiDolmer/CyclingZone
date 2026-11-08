@@ -1,0 +1,49 @@
+{
+  "sourceCommit": "4c8cc62fbed3e6bd20f6cbf8471c2d5627712d9e",
+  "note": "#7644: raceRunner med den rigtige v4-motor og ingen kontakt taendt, skrevet fra merge-basen foer kontakten. Kun hashes. Genereres ALDRIG med den nye kode. Eneste undtagelse: #7713 fjernede lodtraekningen efter maalstregen, saa sidste etapes output under s5_profiles_v3 er skrevet om; alle input og s5_profiles_v2 er uroerte.",
+  "wholeRace:s5_profiles_v3": {
+    "inputChecksums": [
+      2833103683,
+      2453768958,
+      1320975787
+    ],
+    "inputSha256": [
+      "805cee35327530c419aab7361ea5eb21d73b2e9f63f32fd12508a68ae45a765b",
+      "8deb43dbbb686fd61f2aab643e226c0581746f2c1d54b5072f98d065bce2e5a6",
+      "d5735cb4e462632add7dfca83c42e7a528beb54a6a36d584cce1ff15c7322ba2"
+    ],
+    "outputSha256": [
+      "b3b5a79c791e5285cdda53cb313c4401d2e6ca75779a7e74f13899d46db0d34f",
+      "b3ee21108f4f0523365c463c030c8b9edffaa64d0d3d2408e403521d8047754f",
+      "0260925e22e7b2d36c5ffbe28abf47525211433093e868fc51897d85cd26b758"
+    ]
+  },
+  "wholeRace:s5_profiles_v2": {
+    "inputChecksums": [
+      2833103683,
+      833317112,
+      3635097234
+    ],
+    "inputSha256": [
+      "57e7e85b1e4dbfbb92a1f56d2d4637e6ebaba841207e0202050395b98dd39b27",
+      "cc1f94f00e2404c46ab6991eeffbdd4b09af4cdd48aab7c98bc2053adcbcd143",
+      "392af602e71806391338eddd7fdef0cdbe56d20d329d08fe9d21fd3c1dff25bc"
+    ],
+    "outputSha256": [
+      "52e64364986baabc1a8ac9f6d601f444f6cb2b6fbf5b7168e7276251c064540e",
+      "6d48f521ed7eaf4e27eb6be827d1efe272dfee95fbbfdbe195693d0482b412e5",
+      "f3c5e92bfacdcac1141415d62c71a3295236992449c9d2305fa3887d4c3fc5b0"
+    ]
+  },
+  "stageByStage:s5_profiles_v3:stage2": {
+    "inputChecksums": [
+      1491180061
+    ],
+    "inputSha256": [
+      "e7993ef5eb74c14b6ec0979e0ac5b7f57d8f0d2b527ede8c841d7e2de8f05012"
+    ],
+    "outputSha256": [
+      "bc0a9f5e84ab3c44f662da0cfd619bce3447748e40baddffc4bb1b8e2a2d00c7"
+    ]
+  }
+}

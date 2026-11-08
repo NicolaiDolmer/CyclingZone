@@ -9,7 +9,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { FLOOR_RELEASES, MAX_RELEASES, MIN_WINDOW_HOURS } from "./lib/releaseAssetsStore.mjs";
+import { FLOOR_RELEASES, MAX_RELEASES, MIN_WINDOW_HOURS, RETENTION_OBJECT_PATH, RETENTION_SCHEMA } from "./lib/releaseAssetsStore.mjs";
 import {
   RETENTION_QUERY,
   computeRetention,
@@ -104,6 +104,42 @@ test("uden PostHog-noegle: springer over, skriver intet", async () => {
   const result = await measure({ env: {}, log: (m) => lines.push(m) });
   assert.equal(result.status, "skipped");
   assert.match(lines[0], /springer over: POSTHOG_PERSONAL_API_KEY \+ POSTHOG_PROJECT_ID mangler/);
+});
+
+test("spring-over (#7678): skriver gyldig tom retention.json hvis ingen findes, overskriver aldrig", async () => {
+  const storeDir = fs.mkdtempSync(path.join(os.tmpdir(), "cz-retention-seed-"));
+  const env = { CZ_RELEASE_ASSETS_LOCAL_DIR: storeDir };
+  const file = path.join(storeDir, RETENTION_OBJECT_PATH);
+
+  const first = await measure({ env, now: NOW, log: quiet });
+  assert.equal(first.status, "skipped");
+  assert.equal(first.seeded, true);
+  const written = JSON.parse(fs.readFileSync(file, "utf8"));
+  assert.equal(written.schema, RETENTION_SCHEMA);
+  assert.deepEqual(written.releases, []);
+
+  fs.writeFileSync(file, JSON.stringify({ schema: RETENTION_SCHEMA, releases: ["relKeep"] }));
+  const second = await measure({ env, now: NOW, log: quiet });
+  assert.equal(second.seeded, false);
+  assert.deepEqual(JSON.parse(fs.readFileSync(file, "utf8")).releases, ["relKeep"]);
+});
+
+test("spring-over med --dry-run opretter ikke retention.json", async () => {
+  const puts = [];
+  const store = {
+    getJson: async () => null,
+    put: async (objectPath) => { puts.push(objectPath); return { created: true }; },
+  };
+  const result = await measure({ env: {}, dryRun: true, store, now: NOW, log: quiet });
+  assert.equal(result.status, "skipped");
+  assert.equal(result.seeded, false);
+  assert.deepEqual(puts, []);
+});
+
+test("spring-over uden lager skriver intet og fejler ikke", async () => {
+  const result = await measure({ env: { CZ_RELEASE_ASSETS_DISABLE: "1" }, now: NOW, log: quiet });
+  assert.equal(result.status, "skipped");
+  assert.equal(result.seeded, false);
 });
 
 test("maaling skriver KUN retention.json til lageret; PostHog kaldes read-only; --dry-run skriver intet", async () => {

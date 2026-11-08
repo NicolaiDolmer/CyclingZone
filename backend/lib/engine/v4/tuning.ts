@@ -485,6 +485,13 @@ export const QUEEN_STAGE_GAP_7236_TUNING = deepFreeze({
   maxTopToFinishKm: 13, // kun naar resten fra toppen til maal er kortere end dette (lange nedkoersler uroerte)
 });
 
+// #7635 (KUN s5_profiles_v3 + kontakten stage_plan_dropped_front_7635, SLUKKET): hvornaar en rytter
+// med etapeplan er "sat" (stagePlanEngine.isRiderDropped7635). Valgt konservativt, begrundelse privat.
+export const STAGE_PLAN_DROPPED_7635_TUNING = deepFreeze({
+  minGapSeconds: 20, // afstanden bag fronten der taeller som sat
+  consecutiveChecks: 2, // segmentgraenser i traek afstanden skal holde
+});
+
 // ── M1 (groups.mergeTailGroupsDetailed, #5813) — ADDITIV grupetto-samling ────
 // SS2's frosne GroupsTuning har kun den almindelige merge-taerskel. Se
 // groups.mergeTailGroupsDetailed for reglen og segmentLoop for hvornaar den
@@ -1400,6 +1407,19 @@ const timeLimitExtra = {
 
 /** M15 additiv tidsgraense-tuning (deep-frosset). Se timeLimitExtra-kommentaren ovenfor. */
 export const TIME_LIMIT_EXTRA_TUNING = deepFreeze(timeLimitExtra);
+
+// #7715 (KUN s5_profiles_v3 + kontakten time_limit_fatigue_7715, SLUKKET): meget traette
+// ryttere paa en haard etape der passer dem daarligt. Reglen staar i mechanics/timeLimit.ts.
+// Kalibreret privat (balance-internals/7715/, hard rule 17). Vises aldrig for spilleren.
+export const TIME_LIMIT_FATIGUE_7715_TUNING = deepFreeze({
+  profiles: ["medium_mountain", "mountain", "high_mountain", "cobbles", "gravel", "classic"] as readonly ProfileType[],
+  tiredFrom: 70,
+  tiredFull: 90,
+  fitShareBelow: 0.85,
+  fitShareFull: 0.5,
+  severityFloor: 0.5,
+  marginLoss: 0.4,
+});
 
 // ── M16 (mechanics/teamPlay.ts, #4246) — ADDITIV holdspils-tuning ────────────
 // Samme additive praecedens som finaleExtra/effortCostExtra ovenfor: SS2's

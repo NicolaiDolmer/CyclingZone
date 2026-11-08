@@ -18,6 +18,25 @@ const survived = (km = 150, riders = ["a"]) => ev(km, "breakaway_survived", { gr
 const sep = (km: number, seconds: number) => ev(km, "gap_update", { group_id: "breakaway-0", gap_seconds: 0, chase_group_id: "peloton-0", separation_seconds: seconds });
 const kinds = (events: NarrativeEvent[]) => deriveBreakawayStories(events).flatMap((s) => s.causes.map((c) => c.kind));
 
+test("#7730: ingen jagede, saa filmen paastaar ikke, at jagten kom taettere paa", () => {
+  const short = (reason: string) => ev(140, "breakaway_chase_short", { group_id: "breakaway-0", reason });
+  assert.deepEqual(kinds([formed, sep(60, 300), sep(120, 100), short("nobody_wanted"), survived()]), ["unchased"]);
+  assert.deepEqual(kinds([formed, sep(60, 300), sep(120, 100), short("no_chasers"), survived()]), ["no_chasers"]);
+  assert.deepEqual(kinds([formed, sep(60, 300), sep(120, 100), survived()]), ["chase_too_late"], "uden dom staar indhentningen");
+});
+
+test("#7730: motorens dom over jagten bliver til aarsagen, kun for det udbrud der holdt", () => {
+  const short = (reason: string, group_id = "breakaway-0") => ev(99, "breakaway_chase_short", { group_id, reason, team_ids: ["t-a"] });
+  assert.deepEqual(kinds([formed, short("tired"), survived()]), ["chase_tired"]);
+  assert.deepEqual(kinds([formed, short("outgunned"), survived()]), ["chase_outgunned"]);
+  assert.deepEqual(kinds([formed, short("too_few"), survived()]), ["chase_too_few"]);
+  assert.deepEqual(kinds([formed, short("no_chasers"), survived()]), ["no_chasers"]);
+  assert.deepEqual(kinds([formed, short("nobody_wanted"), survived()]), ["unchased"], "ingen ville jage siger aldrig, at holdene manglede ryttere");
+  assert.deepEqual(kinds([formed, ev(60, "breakaway_unchased", { group_id: "breakaway-0" }), short("nobody_wanted"), survived()]), ["unchased"], "aldrig samme linje to gange");
+  assert.deepEqual(kinds([formed, ev(60, "breakaway_unchased", { group_id: "breakaway-0", reason: "no_riders" }), short("no_chasers"), survived()]), ["no_chasers"], "aldrig samme linje to gange");
+  assert.equal(kinds([formed, short("tired", "breakaway-9"), survived()]).includes("chase_tired"), false, "et andet udbrud forklarer ikke dette");
+});
+
 test("#6469: intet hold ville jage, og holdene med interesse havde ingen ryttere", () => {
   assert.deepEqual(kinds([formed, ev(60, "breakaway_unchased", { group_id: "breakaway-0" }), survived()]), ["unchased"]);
   assert.deepEqual(kinds([formed, ev(60, "breakaway_unchased", { group_id: "breakaway-0", reason: "no_riders" }), survived()]), ["no_chasers"]);
@@ -170,7 +189,7 @@ test("#7381: plan-rytter paa angreb i et udbrud der holdt, faar 'Alt ud holdt ud
   const finish = ev(150, "finish", { top: [{ rider_id: "a", rank: 1, gap: 0 }, { rider_id: "q", rank: 2, gap: 40 }] });
   const events = [formed, survived(150, ["a"]), finish];
   const efforts = planEfforts([], { a: [[0, "attack"]] });
-  assert.deepEqual(deriveOrderImpacts(events, { ownRiderIds: ["a"], effortByRider: efforts }).map(({ kind, rider_id }) => [kind, rider_id]), [["all_out_stayed_away", "a"]]);
+  assert.deepEqual(deriveOrderImpacts(events, { ownRiderIds: ["a"], effortByRider: efforts }).map(({ kind, rider_id }) => [kind, rider_id]), [["attack_stayed_away", "a"]]);
   // Opgaven da udbruddet holdt taeller: angreb efter et forsoeg-led giver ogsaa historien.
   assert.equal(deriveOrderImpacts(events, { ownRiderIds: ["a"], effortByRider: planEfforts([], { a: [[0, "breakaway"], [90, "attack"]] }) }).length, 1);
   // Forsoeg (normal indsats) eller et skift vaek fra angreb foer udfaldet: ingen historie.
@@ -199,7 +218,7 @@ test("#7381: opgaven slaas op ved det km hvor udbruddet holdt, ikke ved maal", (
   assert.deepEqual(withNarrativeCauses(events, { ownRiderIds: ["a"], effortByRider: late }).filter((e) => e?.type === "order_impact"), []);
   // Kontrol: samme skift foer km 120 giver historien, saa testen maaler km-opslaget.
   const early = planEfforts([], { a: [[0, "breakaway"], [110, "attack"]] });
-  assert.deepEqual(deriveOrderImpacts(events, { ownRiderIds: ["a"], effortByRider: early }).map(({ kind, rider_id }) => [kind, rider_id]), [["all_out_stayed_away", "a"]]);
+  assert.deepEqual(deriveOrderImpacts(events, { ownRiderIds: ["a"], effortByRider: early }).map(({ kind, rider_id }) => [kind, rider_id]), [["attack_stayed_away", "a"]]);
 });
 
 test("#7381: uden plan er alt som foer, ogsaa naar ordrerne kan slaa planer op", () => {

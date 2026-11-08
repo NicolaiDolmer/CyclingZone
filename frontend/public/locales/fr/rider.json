@@ -593,7 +593,6 @@
     "beta": "Bêta",
     "disclaimer": "Nouveau modèle physiologique, calculé à partir des compétences actuelles. N'affecte pas encore les résultats de course.",
     "powerProfile": "Profil de puissance",
-    "derivedAbilities": "Aptitudes dérivées",
     "zones": {
       "ftp": "FTP",
       "vo2max": "Puissance VO2max",
@@ -719,8 +718,7 @@
     },
     "swap": {
       "label": "Échange",
-      "teamFallback": "Inconnu",
-      "cashAdjustment": "Complément en cash : {amount} CZ$"
+      "teamFallback": "Inconnu"
     }
   },
   "auctionPanel": {
@@ -898,6 +896,17 @@
     "loadErrorBody": "Rien n'a été perdu. Réessaie.",
     "retry": "Réessayer"
   },
+  "potentialEstimate": {
+    "certainty": {
+      "unsure": "Incertain",
+      "fair": "Correct",
+      "sure": "Sûr"
+    },
+    "learning": "En apprentissage · {trainings} sur {needed} entraînements",
+    "learningShort": "En apprentissage · {trainings} sur {needed}",
+    "notAFact": "Une estimation, pas une certitude.",
+    "scoutedTimes": "{count, plural, one {Détecté # fois} other {Détecté # fois}}"
+  },
   "scouting": {
     "label_worldclass": "Jeune talent de classe mondiale",
     "label_high": "Projection élevée",
@@ -946,14 +955,12 @@
   "training": {
     "title": "Axe d'entraînement",
     "intro": "Fixe un axe d'entraînement pour toute la saison à ce coureur clé. Il fait progresser plus vite les aptitudes entraînées vers leur cible.",
-    "gatedNote": "L'entraînement façonne l'aptitude permanente et s'applique au prochain changement de saison.",
-    "slotsLeft": "{remaining}/{total} places d'axe",
     "focus": "Axe",
     "intensity": "Intensité",
     "focus_vo2max": "VO2max (intervalles mixtes)",
     "focus_vo2max_climb": "VO2max (intervalles en grimpe)",
     "focus_vo2max_punch": "VO2max (intervalles de punch)",
-    "focus_threshold": "Seuil / CLM",
+    "focus_threshold": "Seuil",
     "focus_sprint": "Sprint",
     "focus_tempo": "Tempo",
     "focus_endurance": "Endurance (zone 2)",
@@ -980,8 +987,6 @@
     "saving": "Enregistrement…",
     "noSlots": "Plus de places d'axe cette saison",
     "current": "Axe actuel",
-    "assistantNoRisk": "Progression ciblée plus rapide, sans risque de revers.",
-    "assistantRisk": "Progression ciblée plus rapide, mais ~{risk} % de risque de revers (gains perdus) cette saison.",
     "tradeoff": "Les autres aptitudes progressent un peu plus lentement.",
     "intensity_recovery": "Récupération"
   }

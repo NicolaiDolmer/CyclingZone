@@ -604,17 +604,22 @@ export async function main(argv = process.argv.slice(2), { now, clock, monotonic
   }
   // #7236: topgabets loft er en kontakt, ikke en revision; samme --out maa ikke blande med og uden.
   if (prev && (prev.queenStageGap7236 === true) !== (process.env.CZ_QUEEN_STAGE_GAP_7236 === "1")) throw new Error(`${outDir} er koert ${prev.queenStageGap7236 ? "med" : "uden"} topgabets loft (CZ_QUEEN_STAGE_GAP_7236). Brug en ny --out.`);
+  // #7644: nedkoerslens loft er ogsaa en kontakt; samme --out maa ikke blande med og uden.
+  if (prev && (prev.descentRegroupCap7644 === true) !== (process.env.CZ_DESCENT_REGROUP_CAP_7644 === "1")) throw new Error(`${outDir} er koert ${prev.descentRegroupCap7644 ? "med" : "uden"} nedkoerslens loft (CZ_DESCENT_REGROUP_CAP_7644). Brug en ny --out.`);
   const thresholds = prev ? resolveReportThresholds(prev, opts) : loadThresholds(abs(opts.thresholds));
   const meta = {
     candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, parallel: opts.parallel, source, limit: opts.limit ?? prev?.limit ?? null, benchScope: opts.benchScope, thresholdsFile: resolveThresholdsFile(prev, opts), thresholds,
     syntheticField: opts.syntheticField, breakawayIntent: breakawayIntentMeta ?? { mode: opts.breakawayIntent ?? "none" }, routesFrom: opts.routesFrom, routesSignature: opts.routesSignature ?? null, season: opts.season, trackFatigue: opts.trackFatigue === true, field: inputs.field, routes: inputs.routes,
     ...(process.env.CZ_QUEEN_STAGE_GAP_7236 === "1" ? { queenStageGap7236: true } : {}), // #7236: kortet viser om loftet var taendt
+    ...(process.env.CZ_DESCENT_REGROUP_CAP_7644 === "1" ? { descentRegroupCap7644: true } : {}), // #7644: kortet viser om nedkoerslens loft var taendt
     // #6804/#2757: eksportens mappe, saa kortet (ogsaa --report-only) finder loebenes cache.json.
     cacheDir: fromDir ?? prev?.cacheDir ?? null,
     // #6912: forspringskurven er en kontakt, ikke en revision; kortet skal vise om den var taendt.
     ...(process.env.CZ_BREAKAWAY_CURVE_6912 === "1" ? { breakawayCurve6912: true } : {}),
+    ...(process.env.CZ_TEAM_CHASE_7730 === "1" ? { teamChase7730: true } : {}), // #7730: kortet viser om jagten efter holdene var taendt
   };
   if (prev && (prev.breakawayCurve6912 === true) !== (meta.breakawayCurve6912 === true)) throw new Error(`${outDir} er koert ${prev.breakawayCurve6912 ? "med" : "uden"} forspringskurven (CZ_BREAKAWAY_CURVE_6912). Brug en ny --out.`);
+  if (prev && (prev.teamChase7730 === true) !== (meta.teamChase7730 === true)) throw new Error(`${outDir} er koert ${prev.teamChase7730 ? "med" : "uden"} jagten efter holdene (#7730); brug en ny --out`);
   writeFileSync(metaFile, JSON.stringify(meta, null, 2));
 
   const tasks = planTasks({ raceIds, opts, outDir, fromDir, prebuilt: inputs.prebuilt });

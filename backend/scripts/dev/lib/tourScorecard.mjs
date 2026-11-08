@@ -616,10 +616,14 @@ function simulate({ v4, data, stages, profile, entrants, revision, gcStandings, 
     rulesRevision: revision, gcStandings, jerseyLeaders, // #5914/#6937: troejefoererne som i raceRunner
     // #7236: topgabets loft er slukket i spillet; kun maalingen taender det (CZ_QUEEN_STAGE_GAP_7236=1).
     ...(process.env.CZ_QUEEN_STAGE_GAP_7236 === "1" ? { queenStageGap7236: true } : {}),
+    // #7644: loftet paa nedkoerslens samling er slukket i spillet; kun maalingen taender det (CZ_DESCENT_REGROUP_CAP_7644=1).
+    ...(process.env.CZ_DESCENT_REGROUP_CAP_7644 === "1" ? { descentRegroupCap7644: true } : {}),
     // #6649: dagsformen er slukket i spillet; kun maalingen taender den (CZ_DAY_FORM_6649=1).
     ...(process.env.CZ_DAY_FORM_6649 === "1" ? { dayForm6649: true } : {}),
     // #6912: forspringskurven er slukket i spillet; kun maalingen taender den (CZ_BREAKAWAY_CURVE_6912=1).
     ...(process.env.CZ_BREAKAWAY_CURVE_6912 === "1" ? { breakawayCurve6912: true } : {}),
+    // #7730: jagten efter holdene er slukket i spillet; kun maalingen taender den (CZ_TEAM_CHASE_7730=1).
+    ...(process.env.CZ_TEAM_CHASE_7730 === "1" ? { teamChase7730: true } : {}),
   });
 }
 

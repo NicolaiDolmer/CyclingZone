@@ -141,7 +141,7 @@ Konsekvenser for designet:
 | **#6461** Train now = hele dagen | **Ejer-valg B 23/10: hele dagen for alle.** Klikket afregner datoens træning for alle ryttere, også dem med løb samme dag; løbet lægges på som egen linje, når det er kørt. Løbet køres stadig på datoens starttilstand (29/9, beslutning 3). Reglen "træthed og form skrives én gang pr. dato" (I4 fra 29/9) revideres | Designes og bygges sammen med form og træthed 2.0 (#6984), så træthed og form ikke bygges om to gange. Efter skiftet 25/10, bag flag. Klikket tæller som træning til de 5 træninger og respekterer +1 pr. dato |
 
 ## 8. Flag
-Ét paraply-flag for visningen (`potential_single_number`) og de eksisterende/nye flag for motoren. Alle **fail-safe off, bit-identisk off**: med flaget slukket ser spillet ud og regner præcis som i dag. Tænding sker samlet en søndag i S5 efter harness-kort og ejer-go (D7).
+Ét paraply-flag for visningen (`potential_estimate_display`, #7684; `potential_single_number` er pensioneret og står `on` i prod, så den kan ikke bruges) og de eksisterende/nye flag for motoren. Alle **fail-safe off, bit-identisk off**: med flaget slukket ser spillet ud og regner præcis som i dag. Tænding sker samlet en søndag i S5 efter harness-kort og ejer-go (D7).
 
 ## 9. Harness og gates (før tænding)
 

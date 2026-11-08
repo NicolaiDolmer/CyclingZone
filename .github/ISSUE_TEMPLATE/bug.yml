@@ -1,7 +1,7 @@
 name: Bug report
 description: Noget virker ikke som forventet
 title: "[bug] "
-labels: ["type:bug", "claude:todo"]
+labels: ["type:bug", "player-report", "needs-repro"]
 body:
   - type: textarea
     id: repro
@@ -30,7 +30,14 @@ body:
     id: evidence
     attributes:
       label: Logs / screenshot / version
-      description: Console-fejl, screenshot, app-version (fra patch notes), browser, evt. user-id
+      description: Console-fejl, screenshot, app-version og browser. Anonymisér; ingen personoplysninger eller hemmeligheder.
+  - type: textarea
+    id: prod_measurement
+    attributes:
+      label: Prod-måling (SQL/endpoint + resultat)
+      description: "Kræves før claude:todo. Har du ingen måling, skriv ikke målt; sagen bliver i needs-repro. Maintainer tilføjer player-report-evidence JSON efter docs/GITHUB_WORKFLOW.md. Kun anonymiserede ufølsomme aggregates eller privat evidenspointer; ingen PII, nøgler eller private balance-tal."
+    validations:
+      required: true
   - type: textarea
     id: til_doers
     attributes:

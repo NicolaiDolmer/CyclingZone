@@ -19,6 +19,8 @@ import {
   dayForm6649For,
   dayForm6649FinaleScale,
   dayForm6649On,
+  dayWord7725,
+  dayWordEvents7725,
   weatherStress,
 } from "./dayForm6649.ts";
 
@@ -190,6 +192,36 @@ test("#6649: events name only the day's candidates, at the finish, without numbe
     assert.ok(top.has(e.params.rider_id as string), "only a real candidate is named");
     assert.ok(["form", "fatigue", "illness", "weather"].includes(e.params.reason as string));
     for (const v of Object.values(e.params)) assert.equal(typeof v, "string", "no numbers in the params");
+  }
+});
+
+test("#7725: the word follows the day: a clear slump is bad, the top of the good legs is great, most days have no word", () => {
+  const words = ids.map((id) => dayWord7725(dayForm6649For(rider(id), route("overcast"), "seed-w")));
+  const share = (w: string | null) => words.filter((x) => x === w).length / words.length;
+  assert.ok(share(null) > 0.5, "an ordinary day has no word");
+  assert.ok(share("good") > share("great") && share("great") > 0, "a really good day is rarer than a good one");
+  assert.equal(dayWord7725({ delta: 0, reason: "form" }), "bad");
+  assert.equal(dayWord7725({ delta: 0, reason: null }), null);
+  for (const id of ids) {
+    const day = dayForm6649For(rider(id), route("overcast"), "seed-w");
+    if (dayWord7725(day) === "good" || dayWord7725(day) === "great") assert.ok(day.delta > 0, "a good day is never a negative day");
+  }
+});
+
+test("#7725: the word events cover the whole field, at the finish, without numbers, and do not touch the input", () => {
+  const startlist = ids.slice(0, 200).map((id) => rider(id, { condition: 0.3 }));
+  const before = JSON.stringify(startlist);
+  const r = route("rain", [flat(0, 80), climb(80, 100), flat(100, 160)]);
+  const events = dayWordEvents7725(startlist, r, "seed-e");
+  assert.equal(JSON.stringify(startlist), before);
+  assert.deepEqual(events, dayWordEvents7725(startlist, r, "seed-e"), "deterministic");
+  assert.ok(events.length > 10, "more than the day's candidates");
+  for (const e of events) {
+    assert.equal(e.type, "day_word");
+    assert.equal(e.km, r.distance_km);
+    for (const v of Object.values(e.params)) assert.equal(typeof v, "string", "no numbers in the params");
+    if (e.params.word === "bad") assert.ok(["form", "fatigue", "illness", "weather"].includes(e.params.reason as string));
+    else assert.equal("reason" in e.params, false);
   }
 });
 

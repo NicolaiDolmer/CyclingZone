@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { STAGE_SCHEDULER_FLAG_KEY, isStageSchedulerEnabled } from "./stageSchedulerFlag.js";
+import { STAGE_SCHEDULER_FLAG_KEY, isStageSchedulerEnabled } from "./stageSchedulerFlag.ts";
 
 function flagClient(value) {
   return { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: value === undefined ? null : { value }, error: null }) }) }) }) };

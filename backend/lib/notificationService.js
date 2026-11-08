@@ -936,6 +936,24 @@ export function buildScoutReportReadyNotification({ assignment, riderName }) {
   }
 
   const shortlistCount = assignment.result?.shortlist?.length ?? 0;
+  // #6138: kunne synlighedsopslaget ikke køres, kender vi ikke det antal
+  // rapporten viser. Så nævnes intet antal (aldrig det ufiltrerede tal).
+  if (assignment.shortlistCountUnavailable === true && shortlistCount > 0) {
+    return {
+      type: SCOUT_REPORT_READY_TYPE,
+      title: "Scouting mission ready",
+      message: "Your scouting mission is ready. View the shortlist.",
+      relatedId: assignment.id,
+      metadata: {
+        kind: "mission",
+        shortlistCount: null,
+        titleCode: "notif.scoutReportReady.mission.title",
+        titleParams: {},
+        messageCode: "notif.scoutReportReady.mission.messageNoCount",
+        messageParams: {},
+      },
+    };
+  }
   return {
     type: SCOUT_REPORT_READY_TYPE,
     // #6551: tom shortlist = spejderen fandt reelt ingen inden for kriterierne.

@@ -655,3 +655,26 @@ test("taktik (#7317): ingen udbrud/tog paa enkeltstart og holdtidskoersel, indsa
     puts.length = 0;
   }
 });
+
+// #7624: "Kopiér til etape N" skal virke i U23- og juniorløb (squad != senior, ingen gemt regel-revision, ingen kørte etaper).
+for (const squad of ["senior", "junior"]) {
+  test(`taktik (#7624): kopiér til næste etape virker i ${squad}-løb`, async ({ page }) => {
+    await stabilizePage(page);
+    await installNetworkMocks(page);
+    const getBody = await mockTacticsRace(page, {
+      race: { ...raceFixture({ stages: 3, stagesCompleted: 0, raceType: "stage_race" }), squad },
+      validEfforts: FIVE_STEPS,
+    });
+    await login(page);
+    await page.goto(`/races/${RACE_ID}?tab=tactics`);
+    const panel = page.getByTestId("race-tactics-tab");
+    await visible(panel.getByRole("button", { name: "Sæt intention" })).click();
+    await visible(panel.getByRole("button", { name: /^Alt ud/ })).click();
+    await visible(panel.getByRole("button", { name: "Kopiér til etape 2" })).click();
+    await visible(panel.getByRole("button", { name: "Intentioner for etape 2", exact: true })).click();
+    await expect(visible(panel.getByText("Standard: kaptajn. I dag: alt ud."))).toBeVisible();
+    await visible(panel.getByRole("button", { name: "Gem etape 2" })).click();
+    await expect(visible(panel.getByText("Intentionerne er gemt."))).toBeVisible();
+    expect(getBody().overrides.some((o) => o.stage_number === 2 && o.rider_id === "r1" && o.effort === "all_out")).toBe(true);
+  });
+}

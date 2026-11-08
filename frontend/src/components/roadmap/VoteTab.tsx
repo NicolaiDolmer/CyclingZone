@@ -5,10 +5,10 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
-import { engineCounts, type RoadmapItem } from "../../lib/roadmapModel.ts";
-import { isValidScore } from "../../lib/roadmapVoting.js";
+import { engineCounts, roadmapRowId, type RoadmapItem, type RoadmapVote } from "../../lib/roadmapModel.ts";
+import { isDontKnow, isValidScore } from "../../lib/roadmapVoting.js";
 import { Button, EmptyState, Section, SectionHeader, Segmented } from "./roadmapUi.ts";
-import ScoreScale from "./ScoreScale.tsx";
+import ScoreScale, { DontKnowButton } from "./ScoreScale.tsx";
 import { RowMeta, RowTitle, SaveNote, SkeletonRows, ROW, ROW_LIST } from "./RoadmapRows.tsx";
 import { areaTitle, localTitle, type SaveState } from "./roadmapFormat.ts";
 import { buttonClass } from "../ui/buttonStyles.js";
@@ -24,12 +24,17 @@ export interface VoteTabProps {
   ideas: RoadmapItem[];
   /** Hvor mange idéer der findes i alt, før filteret. */
   ideasTotal: number;
+  /** Idéer uden spillerens svar: samme tal som på fanen (#7735). */
+  unrated: number;
   onlyUnrated: boolean;
   drafts: Record<string, VoteDraft>;
+  /** De gemte svar. Et Ved ikke står kun her, for en kladde har ingen tal at vise. */
+  votes: Map<string, RoadmapVote>;
   saveState: Record<string, SaveState>;
   canVote: boolean;
   isNew: (item: RoadmapItem) => boolean;
   onScore: (item: RoadmapItem, axis: "idea" | "importance", value: number) => void;
+  onDontKnow: (item: RoadmapItem) => void;
   onShowAll: () => void;
 }
 
@@ -87,6 +92,10 @@ export default function VoteTab(props: VoteTabProps) {
         />
       ) : (
         <>
+          {/* #7735: fanen tæller manglende svar, "Alle" tæller alle idéer. Linjen binder de to tal sammen. */}
+          {props.canVote && props.unrated > 0 && (
+            <p className="mb-2 text-xs text-cz-2 tabular-nums">{t("vote.unrated", { unrated: props.unrated, total: ideasTotal })}</p>
+          )}
           {counts.length > 1 && (
             // Én linje, der scroller vandret inde i rækken (spec §3.6): w-max
             // hindrer at segmenterne presses sammen og bryder over flere linjer.
@@ -101,7 +110,7 @@ export default function VoteTab(props: VoteTabProps) {
               // Trin 2 folder ud, når "Good idea?" er besvaret (også fra en gemt stemme).
               const showImportance = isValidScore(draft.idea) || isValidScore(draft.importance);
               return (
-                <li key={item.id} className={`${ROW} flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4`}>
+                <li key={item.id} id={roadmapRowId(item.id)} className={`${ROW} flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4`}>
                   <div className="flex-1 min-w-0">
                     <RowTitle isNew={props.isNew(item)} newLabel={t("labels.new")}>{localTitle(item, i18n.language)}</RowTitle>
                     <RowMeta>{areaTitle(t, item.engine)}</RowMeta>
@@ -122,6 +131,13 @@ export default function VoteTab(props: VoteTabProps) {
                           onSelect={(n) => props.onScore(item, "importance", n)}
                         />
                       )}
+                      {/* Et valgt tal er en ny stemme på vej, så knappen slukker straks. */}
+                      <DontKnowButton
+                        label={t("voting.dontKnow")}
+                        pressed={!showImportance && isDontKnow(props.votes.get(item.id))}
+                        disabled={state === "saving"}
+                        onSelect={() => props.onDontKnow(item)}
+                      />
                       <SaveNote state={state} savedLabel={t("voting.saved")} errorLabel={t("voting.error")} />
                     </div>
                   )}

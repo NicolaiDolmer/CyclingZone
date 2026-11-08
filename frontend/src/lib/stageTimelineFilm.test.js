@@ -309,6 +309,40 @@ test("#6641/#7280 describeEvent: alt ud-linjen kun med det motoren meldte", asyn
   }
 });
 
+test("#7707 describeEvent: Angrib-teksten naar rytteren koerte opgaven Angrib, Alt ud ellers", async () => {
+  const names = new Map([["r1", "Lei Lin"]]);
+  const d = (type, params) => describeEvent({ type, km: 170, params }, { riderNameById: names });
+  assert.deepEqual(d("all_out_gain", { rider_id: "r1", task: "attack" }), { key: "attack_gain", params: { rider: "Lei Lin" } });
+  assert.deepEqual(d("all_out_cracked", { rider_id: "r1", task: "attack" }), { key: "attack_cracked", params: { rider: "Lei Lin" } });
+  for (const kind of ["attack_stayed_away", "attack_held_on"]) {
+    assert.deepEqual(d("order_impact", { kind, rider_id: "r1" }), { key: `order.${kind}`, params: { rider: "Lei Lin" } });
+  }
+  assert.deepEqual(d("order_impact", { kind: "attack_held_on", rider_id: "r1", climb_name: "Top" }), { key: "order.attack_held_on_climb", params: { rider: "Lei Lin", climb: "Top" } });
+  const { readFileSync } = await import("node:fs");
+  const { dirname, join } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const localesDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "public", "locales");
+  for (const lang of ["en", "da", "fr", "es", "nl"]) {
+    const doc = JSON.parse(readFileSync(join(localesDir, lang, "races.json"), "utf8"));
+    for (const key of ["attack_gain", "attack_cracked"]) assert.ok(doc.detail.film.event[key], `${lang}: ${key}`);
+    for (const key of ["attack_stayed_away", "attack_held_on_climb", "attack_held_on"]) assert.ok(doc.detail.film.event.order[key], `${lang}: order.${key}`);
+  }
+});
+
+test("#7707: filmen siger Angrib for en plan-rytter og Alt ud paa en enkeltstart", () => {
+  const events = [
+    { km: 0, type: "stage_start", params: { profile_type: "mountain", field_count: 100, distance_km: 160 } },
+    { km: 150, type: "all_out_gain", params: { rider_id: "rider-1" } },
+    { km: 150, type: "all_out_cracked", params: { rider_id: "rider-2" } },
+  ];
+  const names = riderNameByIdFixture();
+  const keys = (built) => built.feedEvents.filter((e) => e.type.startsWith("all_out")).map((e) => describeEvent(e, { riderNameById: names })?.key);
+  assert.deepEqual(keys(buildFilmTimeline({ events, distanceKm: 160 })), ["attack_gain", "attack_cracked"]);
+  const tt = events.map((e) => (e.type === "stage_start" ? { ...e, params: { ...e.params, profile_type: "itt" } } : e));
+  assert.deepEqual(keys(buildFilmTimeline({ events: tt, distanceKm: 160, profileType: "itt" })), ["all_out_gain", "all_out_cracked"]);
+  assert.deepEqual(keys(buildFilmTimeline({ events, distanceKm: 160, ownRiderIds: ["rider-1"], effortByRider: new Map([["rider-1", "all_out"]]) })), ["all_out_gain", "attack_cracked"]);
+});
+
 // ── #2944: incident-trappen → fire udfald i spillerens sprog ────────────────
 
 const INCIDENT_LADDER_KEYS = [
@@ -360,6 +394,21 @@ test("#2944: et gammelt incident-event uden alvorsakse falder tilbage på den op
   );
   assert.equal(legacy.key, "incident", "v3-events (uden severity) skal beholde den art-only sætning");
   assert.equal(legacy.params.kind, "mechanical");
+});
+
+test("#7727: et brosten-incident uden udfald giver ingen filmlinje", () => {
+  const names = riderNameByIdFixture();
+  const [riderId] = [...names.keys()];
+  const cobbles = describeEvent(
+    { type: "incident", km: 40, params: { rider_id: riderId, cause: "cobbles_sector" } },
+    { riderNameById: names },
+  );
+  assert.equal(cobbles, null, "uden udfald har styrtet ingen følger, så filmen må ikke melde det");
+  const real = describeEvent(
+    { type: "incident", km: 40, params: { rider_id: riderId, kind: "crash", severity: "light", outcome: "time_loss", time_loss_seconds: 12 } },
+    { riderNameById: names },
+  );
+  assert.equal(real.key, "incident_crash_time_loss", "et styrt med følger skal stadig vises");
 });
 
 test("#2944: alle trappens nøgler findes i BEGGE locale-filer", async () => {
@@ -532,6 +581,18 @@ const CAUSE_TIMELINE = [
   { km: 160, type: "finish", params: { top: [{ rider_id: "rider-1", rank: 1, gap: 0 }, { rider_id: "rider-3", rank: 2, gap: 90 }], win_type: "solo_win" } },
 ];
 const TEAMS = new Map([["team-a", "Hold A"], ["team-b", "Hold B"]]);
+
+test("#7730: filmen siger hvorfor jagten ikke naaede det, og motorens melding staar aldrig som sin egen linje", () => {
+  const events = CAUSE_TIMELINE.filter((e) => e.type !== "breakaway_unchased" && e.type !== "own_riders_ahead");
+  const at = events.findIndex((e) => e.type === "breakaway_survived");
+  for (const [reason, key] of [["tired", "cause.chase_tired"], ["outgunned", "cause.chase_outgunned"], ["too_few", "cause.chase_too_few"], ["no_chasers", "cause.no_chasers"], ["nobody_wanted", "cause.unchased"]]) {
+    const short = { km: 160, type: "breakaway_chase_short", params: { group_id: "breakaway-0", reason, team_ids: ["team-a"] } };
+    const built = buildFilmTimeline({ events: [...events.slice(0, at), short, ...events.slice(at)], distanceKm: 160 });
+    const lines = built.feedEvents.map((e) => describeEvent(e, { riderNameById: riderNameByIdFixture(), teamNameById: TEAMS })).filter(Boolean);
+    assert.ok(lines.some((l) => l.key === key), key);
+    assert.equal(lines.some((l) => /chase_short/.test(l.key)), false);
+  }
+});
 
 test("#6469: filmen siger hvorfor udbruddet holdt, lige efter udfaldet, uden tal", () => {
   const built = buildFilmTimeline({ events: CAUSE_TIMELINE, distanceKm: 160 });

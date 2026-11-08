@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { autopickTeamSelection, selectionSizeForRace, stageSuitabilityScores, suitabilityScore } from "./raceAutopick.js";
+import { autopickTeamSelection, routeFitScorer, selectionSizeForRace, stageSuitabilityScores, suitabilityScore } from "./raceAutopick.js";
+import { buildRouteMatch } from "./routeMatch.js";
+import { riderSuitability } from "../../frontend/src/lib/suitability.js";
 
 const ab = (over = {}) => ({
   climbing: 50, time_trial: 50, sprint: 50, punch: 50, endurance: 50,
@@ -184,19 +186,52 @@ test("S3 determinisme: to kørsler med samme input giver identisk output", () =>
 });
 
 // S4: per-etape suitability til rute-match på løbs-detaljen.
-test("stageSuitabilityScores: ét 0-100-tal pr. etape, samme skala som suitabilityScore-snit", () => {
+test("stageSuitabilityScores: ét 0-100-tal pr. etape", () => {
   const climber = ab({ climbing: 90, sprint: 20 });
-  const stages = [flatStage, mtnStage];
-  const perStage = stageSuitabilityScores(climber, stages);
+  const perStage = stageSuitabilityScores(climber, [flatStage, mtnStage]);
   assert.equal(perStage.length, 2);
   // Klatrer scorer højere på bjerg-etapen end på flad.
   assert.ok(perStage[1] > perStage[0]);
-  // Snit af per-etape ≈ det eksisterende løb-snit (×100), tolerance for afrunding.
-  const avg = (perStage[0] + perStage[1]) / 2;
-  assert.ok(Math.abs(avg - Math.round(suitabilityScore(climber, stages) * 100)) <= 1);
 });
 
 test("stageSuitabilityScores: tom stages → tom liste; manglende demand_vector → 0", () => {
   assert.deepEqual(stageSuitabilityScores(ab(), []), []);
   assert.deepEqual(stageSuitabilityScores(ab(), [{ stage_number: 1 }]), [0]);
+});
+
+// #6207: assistenten rangerer på det tal manageren ser i sæsonmatrix og Planlæg dag.
+const notStarted = { status: "scheduled", stages_completed: 0, engine_rules_revision: null };
+const ittStage = {
+  race_id: "race-itt", stage_number: 1, profile_type: "itt", finale_type: "solo_tt", distance_km: 30,
+  demand_vector: { time_trial: 0.3, positioning: 0.7 },
+  segments: [{ kind: "flat", from_km: 0, to_km: 30 }],
+};
+const roadStage = {
+  race_id: "race-itt", stage_number: 2, profile_type: "mountain", finale_type: "long_climb", distance_km: 150,
+  demand_vector: { climbing: 0.7, endurance: 0.2, randomness: 0.1 },
+  segments: [{ kind: "rolling", from_km: 0, to_km: 140 }, { kind: "climb", from_km: 140, to_km: 150, category: "1", avg_gradient: 8 }],
+};
+
+test("suitabilityScore #6207: præcis det viste rutematch-tal, på et etapeløb", () => {
+  const rider = ab({ climbing: 80, time_trial: 40, endurance: 60 });
+  const stages = [ittStage, roadStage];
+  const shown = buildRouteMatch({ race: notStarted, stages });
+  assert.equal(Math.round(suitabilityScore(rider, stages)), shown.race(rider));
+  assert.equal(Math.round(suitabilityScore(rider, stages)), riderSuitability(rider, shown.raceVector).score);
+});
+
+test("autopick #6207: tager rytteren med det højeste viste tal, ikke den gemte vægtliste", () => {
+  // Den gemte vægtliste vægter positionering tungest; motoren afgør enkeltstarten på tidskørsel.
+  const positioner = { rider_id: "a-positioner", abilities: ab({ positioning: 90, time_trial: 30 }), fatigue: 0 };
+  const timeTrialist = { rider_id: "b-tidskoerer", abilities: ab({ positioning: 30, time_trial: 70 }), fatigue: 0 };
+  const shown = buildRouteMatch({ race: notStarted, stages: [ittStage] });
+  assert.ok(shown.race(timeTrialist.abilities) > shown.race(positioner.abilities));
+  const picks = autopickTeamSelection({ riders: [positioner, timeTrialist], stages: [ittStage], sizeRule: { min: 1, max: 1 } });
+  assert.deepEqual(picks.map((p) => p.rider_id), ["b-tidskoerer"]);
+});
+
+test("routeFitScorer #6207: ingen etaper → 0, aldrig et opfundet tal", () => {
+  assert.equal(routeFitScorer([])(ab()), 0);
+  assert.equal(routeFitScorer(undefined)(ab()), 0);
+  assert.equal(suitabilityScore(ab(), [{ stage_number: 1 }]), 0);
 });

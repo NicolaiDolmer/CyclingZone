@@ -12,9 +12,10 @@ import AddRiderPopover from "./AddRiderPopover.jsx";
 import { LockIcon } from "../ui";
 import { encodeDrag } from "../../lib/raceHubDnd.js";
 import { canAddRiderToColumn, isTrainNowLockedInColumn } from "../../lib/raceHubLogic.js";
+import { trainNowLockCopy } from "../training/trainNowClock.ts"; // #7558
 
 export default function AvailableRidersPool({ roster, columns, bindingMap, seasonLoadByRider = {}, dayClearImpact = null, onAddRiderToRace, onRegenerate, onClearSquad, busy, onDropRider }) {
-  const { t } = useTranslation("races");
+  const { t, i18n } = useTranslation("races");
   const [openRiderId, setOpenRiderId] = useState(null);
   const [dragOver, setDragOver] = useState(false); // #1925: pulje-drop-zone (fjern rytter ved drop)
   // Hvilket løb kører rytteren (til lås-titlen)? Første ikke-afmeldte kolonne han er i.
@@ -73,7 +74,10 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, seaso
           // binding-entry'en i stedet for i en kolonne.
           const externalName = (bindingMap?.[r.id] || []).find((e) => e.name)?.name ?? null;
           // #6383: trænet i dag (Train now) — egen forklaring, den vinder over løbsnavnet.
-          const trainedToday = locked && !outgoing && columns.some((c) => isTrainNowLockedInColumn(c, r.id));
+          const trainNowColumn = locked && !outgoing ? columns.find((c) => isTrainNowLockedInColumn(c, r.id)) : null;
+          const trainedToday = Boolean(trainNowColumn);
+          // #7558: teksten følger dagen trykket skete, ikke altid "i dag".
+          const trainNowCopy = trainNowColumn ? trainNowLockCopy(t, trainNowColumn.trainNowLock?.pressedAt, i18n.language) : null;
           const boundRace = locked && !outgoing && !trainedToday ? (raceByRider.get(r.id) ?? externalName) : null;
           return (
             <div key={r.id} className="relative flex flex-col items-start gap-0.5">
@@ -82,7 +86,7 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, seaso
                 disabled={busy}
                 draggable={!locked && !busy}
                 onDragStart={(e) => e.dataTransfer.setData("text/plain", encodeDrag({ riderId: r.id, fromRaceId: null }))}
-                title={outgoing ? t("racehub.lockOutgoing") : trainedToday ? t("selection.trainNowLock.body") : boundRace ? t("racehub.boundNamed", { race: boundRace }) : undefined}
+                title={outgoing ? t("racehub.lockOutgoing") : trainedToday ? trainNowCopy?.body : boundRace ? t("racehub.boundNamed", { race: boundRace }) : undefined}
                 onClick={() => setOpenRiderId(openRiderId === r.id ? null : r.id)}
                 className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border ${
                   locked
@@ -106,7 +110,7 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, seaso
               )}
               {trainedToday && (
                 <span data-testid="pool-train-now-lock" className="pl-1.5 text-3xs text-cz-3 flex items-center gap-1 max-w-[160px] truncate">
-                  <LockIcon size={9} aria-hidden="true" />{t("selection.trainNowLock.rider")}
+                  <LockIcon size={9} aria-hidden="true" />{trainNowCopy?.rider}
                 </span>
               )}
               {boundRace && (

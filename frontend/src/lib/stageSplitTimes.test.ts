@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { buildRaceStory } from "../../../backend/lib/raceStory.js";
+import { withEventPlaces } from "../../../backend/lib/raceTimeline.js";
 import {
   buildSplitTimes, buildOwnTimeLoss, effortByRiderForStage, effectiveEffortByRider, EFFORT_NORMAL_NOT_A_CHOICE_FROM, stageUsesEffortFix6647, formatSplitGap, hasGroupGaps,
   stagePlanTaskAt,
@@ -117,6 +118,29 @@ test("buildOwnTimeLoss: foerste fald der staar ved magt + uheld, med dokumentere
   assert.equal(own2.type === "drop" && own2.climbName, "Col de la Colombière");
 });
 
+test("buildOwnTimeLoss: koerte sig tom og daarlig dag er egne linjer, kun for egne ryttere (#7705)", () => {
+  const events = [
+    ...EVENTS,
+    { km: 150, type: "all_out_cracked", params: { rider_id: "own1" } },
+    { km: 150, type: "all_out_cracked", params: { rider_id: "rival" } },
+    { km: 160, type: "bad_day", params: { rider_id: "own2", reason: "fatigue" } },
+  ];
+  const loss = buildOwnTimeLoss(events, { ownRiderIds: OWN }).filter((l) => l.type === "event" && l.event.type !== "incident");
+  assert.deepEqual(loss.map((l) => [l.type === "event" && l.event.type, l.riderId]), [["all_out_cracked", "own1"], ["bad_day", "own2"]]);
+});
+
+test("#7707 buildOwnTimeLoss: koerte sig tom for en plan-rytter paa Angrib staempler Angrib; indsats-ordren Alt ud bevares", () => {
+  const events = [...EVENTS, { km: 150, type: "all_out_cracked", params: { rider_id: "own1" } }];
+  const planned = effectiveEffortByRider(null, { orders: [{ stage_number: 1, riders: [{ rider_id: "own1", effort: "normal", plan: [{ task: "attack" }] }] }] }, 1, { v4: true });
+  const taskOf = (efforts: unknown) => {
+    const loss = buildOwnTimeLoss(events, { ownRiderIds: OWN, effortByRider: efforts as never }).find((l) => l.type === "event" && l.event?.type === "all_out_cracked");
+    return loss && loss.type === "event" ? loss.event?.params?.task : "mangler";
+  };
+  assert.equal(taskOf(planned), "attack");
+  assert.equal(taskOf(effectiveEffortByRider(null, { orders: [{ stage_number: 1, riders: [{ rider_id: "own1", effort: "all_out" }] }] }, 1, { v4: true })), undefined);
+  assert.equal((events.at(-1)?.params as Record<string, unknown>).task, undefined, "input roeres ikke");
+});
+
 test("buildOwnTimeLoss: et fald hvor rytteren kom tilbage til sin gruppe tæller ikke", () => {
   // own1 faldt fra gruppetto-4001 ved km 102 men var tilbage ved km 109.1:
   // kun faldet fra feltet ved km 72 staar tilbage.
@@ -163,6 +187,21 @@ test("buildOwnTimeLoss: brosten bærer sektorens navn", () => {
 test("buildOwnTimeLoss: ingen egne ryttere eller v3 → tom", () => {
   assert.deepEqual(buildOwnTimeLoss(EVENTS, { ownRiderIds: [] }), []);
   assert.deepEqual(buildOwnTimeLoss([{ km: 1, type: "gap_update", params: { gap_seconds: 5 } }], { ownRiderIds: ["x"] }), []);
+});
+
+test("#7640 buildOwnTimeLoss: et split der koerer FREM (angreb) er aldrig tabt tid", () => {
+  const events = [
+    { km: 0, type: "stage_start", params: { field_count: 4 } },
+    // Gemte etaper fra foer kontakten: angrebet staar som climb_deficit med negativt hul.
+    { km: 150, type: "peloton_splits", params: { group_id: "solo-1", source_group_id: "peloton-0", rider_ids: ["w"], cause: "climb_deficit", gap_seconds: -121.17 } },
+    // Med kontakten: aarsagen er angreb.
+    { km: 150, type: "peloton_splits", params: { group_id: "solo-2", source_group_id: "peloton-0", rider_ids: ["v"], cause: "attack", gap_seconds: -40 } },
+    { km: 150, type: "peloton_splits", params: { group_id: "chase-3", source_group_id: "peloton-0", rider_ids: ["d"], cause: "climb_deficit", gap_seconds: 30 } },
+    { km: 150, type: "gap_update", params: { group_id: "chase-3", gap_seconds: 30 } },
+    { km: 150, type: "kom_passage", params: { name: "Col", category: "1", top: [] } },
+  ];
+  const loss = buildOwnTimeLoss(events, { ownRiderIds: ["w", "v", "d"] });
+  assert.deepEqual(loss.map((l) => l.type === "drop" && l.riderIds), [["d"]], "kun rytteren der faldt bagud");
 });
 
 test("effortByRiderForStage: kun overrides for etapen", () => {
@@ -337,4 +376,41 @@ test("#7388 et udbrud uden morgenudbryderne er en gruppe foran feltet, ikke 'udb
     { km: 50, type: "kom_passage", params: { name: "Top", category: "3", top: [] } },
   ];
   assert.deepEqual(shape(buildSplitTimes(events)[0]), [["breakaway-7000", "group", 2], ["peloton-0", "peloton", 4]]);
+});
+
+test("#6350: en gemt etape uden halvdele: tabslisten er uændret, også når stederne er forskellige (giro-stage-8)", () => {
+  const stage = JSON.parse(readFileSync(new URL("../../../scripts/__fixtures__/race-truth/giro-stage-8.json", import.meta.url), "utf8"));
+  const riderColumn = stage.results.columns.indexOf("rider_id");
+  const ownRiderIds = [...new Set(stage.results.rows.map((row: unknown[]) => row[riderColumn]))] as string[];
+  const lines = (events: unknown[]) => buildOwnTimeLoss(events as never, { ownRiderIds })
+    .flatMap((e) => (e.type === "drop" ? [[e.km, e.from, e.reason, e.riderIds.length]] : []));
+  const expected = [
+    [53, "peloton", "mixed", 34], [53, "peloton", "wprime_depleted", 50],
+    [89, "peloton", "mixed", 15], [89, "peloton", "wprime_depleted", 25], [89, "breakaway", "wprime_depleted", 1],
+    [161, "peloton", "climb_deficit", 10], [161, "peloton", "mixed", 36],
+  ];
+  const placed = withEventPlaces(stage.events) as Array<{ params?: { joined_late?: boolean } }>;
+  assert.equal(placed.filter((e) => e.params?.joined_late).length, 0, "etapen har ingen halvdele");
+  assert.deepEqual(lines(stage.events), expected);
+  assert.deepEqual(lines(placed), expected);
+});
+
+test("#7734: etape 10: de hentede er én linje, den satte en anden, og begge ender i samme gruppe", () => {
+  const stage = JSON.parse(readFileSync(new URL("../../../scripts/__fixtures__/race-truth/giro-stage-10.json", import.meta.url), "utf8"));
+  const placed = withEventPlaces(stage.events) as never;
+  const ownRiderIds = ["rider-set", "rider-late-a", "rider-late-b"];
+  const lines = buildOwnTimeLoss(placed, { ownRiderIds }).filter((l) => l.type === "drop") as Array<{ riderIds: string[]; from: string }>;
+  const late = lines.find((l) => l.riderIds.includes("rider-late-a"));
+  assert.deepEqual([...(late?.riderIds ?? [])].sort(), ["rider-late-a", "rider-late-b"]);
+  assert.equal(late?.from, "peloton", "de faldt fra feltet, ikke fra udbruddet");
+  assert.ok(lines.some((l) => l.riderIds.includes("rider-set") && !l.riderIds.includes("rider-late-a")));
+  const atLine = buildSplitTimes(placed, { ownRiderIds }).at(-1)?.groups.find((g) => g.ownRiderIds.length > 0);
+  assert.deepEqual([...(atLine?.ownRiderIds ?? [])].sort(), [...ownRiderIds].sort(), "målets gruppe er uændret");
+});
+
+test("#6350: kun et splits sene halvdel skilles fra, ikke to splits med hvert sit sted", () => {
+  const split = (groupId: string, riderId: string, exactKm: number, late = false) => ({ km: 180, type: "peloton_splits", params: { group_id: groupId, source_group_id: "peloton-0", rider_ids: [riderId], exact_km: exactKm, ...(late ? { joined_late: true } : {}) } });
+  const events = [{ km: 0, type: "stage_start", params: { field_count: 10 } }, { km: 100, type: "gap_update", params: { group_id: "peloton-0", gap_seconds: 10 } }, split("g1", "a", 170.5), split("g2", "b", 171.2), split("g2", "c", 180, true)];
+  const lines = buildOwnTimeLoss(events as never, { ownRiderIds: ["a", "b", "c"] });
+  assert.deepEqual(lines.map((l) => (l as { riderIds: string[] }).riderIds), [["a", "b"], ["c"]]);
 });

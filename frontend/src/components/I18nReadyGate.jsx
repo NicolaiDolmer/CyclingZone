@@ -28,7 +28,7 @@
 import { useTranslation } from "react-i18next";
 import { PageLoader } from "./ui";
 
-export default function I18nReadyGate({ ns, fallback = null, children }) {
+export default function I18nReadyGate({ ns, fallback = /** @type {import("react").ReactNode} */ (null), children }) {
   const { ready } = useTranslation(ns);
   if (!ready) return fallback ?? <PageLoader />;
   return children;

@@ -7,11 +7,12 @@
 // være et cirkulært import.
 import { SCOUT_JOB_CONFIG } from "./scoutEngine.js";
 import { notifyScoutReportReady } from "./notificationService.js"; // #2945
+import { recordScoutLooks } from "./potentialEstimateWriter.js"; // #7685
 
 // scout_actions op til assignmentens target_level (bevarer den eksisterende
 // level=COUNT-derivation fra scouting.js). Genberegner behovet fra DB hver gang
 // — et re-kald efter delvis indsættelse indsætter kun det manglende.
-async function insertTargetActions({ supabase, assignment }) {
+async function insertTargetActions({ supabase, assignment, now }) {
   const { data: existing, error } = await supabase
     .from("scout_actions")
     .select("rider_id")
@@ -27,6 +28,8 @@ async function insertTargetActions({ supabase, assignment }) {
       .insert({ team_id: assignment.team_id, rider_id: assignment.rider_id, season_id: assignment.season_id ?? null });
     if (insErr) throw new Error(`scout_actions insert: ${insErr.message}`);
   }
+  // #7685: nyt kig = ny viden. Flag-gated, og kaster aldrig.
+  if (needed > 0) await recordScoutLooks({ supabase, teamId: assignment.team_id, riderIds: [assignment.rider_id], now });
 }
 
 // Sweep-stien (uændret adfærd ift. før #2644-flytningen hertil): actions først,
@@ -36,14 +39,14 @@ async function insertTargetActions({ supabase, assignment }) {
 // #2945: notify() kaldes EFTER status→completed er bekræftet — notifyScoutReportReady
 // isolerer selv sine fejl (fanger, logger, Sentry, kaster aldrig), så en
 // notifikationsfejl aldrig kan vælte selve fuldførelsen. `notify` injicérbar for test.
-export async function completeTargetAssignment({ supabase, assignment, notify = notifyScoutReportReady }) {
-  await insertTargetActions({ supabase, assignment });
+export async function completeTargetAssignment({ supabase, assignment, notify = notifyScoutReportReady, now = new Date() }) {
+  await insertTargetActions({ supabase, assignment, now });
 
   const { error: updErr } = await supabase
     .from("scout_assignments")
     .update({
       status: "completed",
-      completed_at: new Date().toISOString(),
+      completed_at: now.toISOString(),
       result: { level: assignment.target_level },
     })
     .eq("id", assignment.id);
@@ -89,7 +92,7 @@ export async function lazyCompleteDueTargetAssignments({
     if (claimErr) throw new Error(`scout_assignments claim: ${claimErr.message}`);
     if (!claimed || claimed.length === 0) continue;
 
-    await insertTargetActions({ supabase, assignment });
+    await insertTargetActions({ supabase, assignment, now });
     // #2945: dette er hovedstien (#2644 ~30 min) — kaldt inde i en GET-request,
     // så notify() må ALDRIG kaste (notifyScoutReportReady isolerer selv sine fejl).
     await notify({ supabase, assignment: { ...assignment, status: "completed" }, now });

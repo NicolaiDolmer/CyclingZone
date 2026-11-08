@@ -11,7 +11,7 @@ import {
   selectCompletedWithoutPrize,
   selectResultsWithoutStatus,
   selectStuckMarkers,
-} from "./raceFinalizeWatch.js";
+} from "./raceFinalizeWatch.ts";
 
 const NOW = new Date("2026-09-04T18:00:00.000Z");
 const minutesAgo = (m) => new Date(NOW.getTime() - m * 60000).toISOString();

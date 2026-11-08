@@ -226,9 +226,12 @@ const PROFILE_TERRAIN = Object.freeze({
   flat: "flat",
   rolling: "hilly",
   hilly: "hilly",
+  // #7693: de to S5-typer manglede og stod som flade i Planner. Samme bucket som kalenderen (#6683).
+  medium_mountain: "mountain",
   mountain: "mountain",
   high_mountain: "mountain",
   itt: "itt",
+  itt_hilly: "itt",
   ttt: "ttt",
   cobbles: "cobbles",
   gravel: "cobbles", // #4105
@@ -245,7 +248,8 @@ export function terrainKey(profileType) {
 }
 
 // Etaper der ender på toppen af en stigning (spec §8.1 "summit finishes"). En summit
-// finish = bjerg-profil ELLER en finale der afgøres på en lang stigning.
+// finish = bjerg-profil ELLER en finale der afgøres på en lang stigning. #7693: en
+// bjergetape der slutter på en nedkørsel, ender ikke på toppen.
 const SUMMIT_PROFILES = new Set(["mountain", "high_mountain"]);
 const SUMMIT_FINALES = new Set(["long_climb"]);
 
@@ -256,6 +260,7 @@ const SUMMIT_FINALES = new Set(["long_climb"]);
  * @returns {boolean}
  */
 export function isSummitFinish(profileType, finaleType) {
+  if (finaleType === "descent") return false;
   return SUMMIT_PROFILES.has(profileType) || SUMMIT_FINALES.has(finaleType);
 }
 

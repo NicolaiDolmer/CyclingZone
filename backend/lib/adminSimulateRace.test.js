@@ -336,6 +336,22 @@ test("buildRaceSimEmbed: incidents med abandons → DNF-linje med navn + årsag"
   assert.ok(!embed.description.includes("Ada Time"), "time_loss (ikke abandon) må ikke optræde i DNF-linjen");
 });
 
+// #7701: Discord-linjen viser den årsag motoren skrev; en ukendt art bliver neutral.
+test("buildRaceSimEmbed: DNF-linjen viser sand årsag for alle veje ud af løbet", () => {
+  const race = { id: "r1", name: "Test GP" };
+  const resultRows = [{ result_type: "gc", rank: 1, rider_name: "A", rider_id: "a", stage_number: null }];
+  const out = (kind, rider_name) => ({ stage_number: 1, rider_id: rider_name, kind, outcome: "abandon", rider_name });
+  const { description } = buildRaceSimEmbed({ race, resultRows, incidents: [
+    out("withdrawal", "Ib"), out("time_limit", "Bo"), out("injury", "Jan"), out("illness", "Kim"), out("noget_nyt", "Per"),
+  ] });
+  assert.ok(description.includes("Ib (too far behind)"), description);
+  assert.ok(description.includes("Bo (outside the time limit)"), description);
+  assert.ok(description.includes("Jan (injured, did not start)"), description);
+  assert.ok(description.includes("Kim (ill, did not start)"), description);
+  assert.ok(description.includes("Per (abandoned)"), description);
+  assert.ok(!description.includes("mechanical"), "ingen af dem var en mekanisk defekt");
+});
+
 // Ingen abandons/ingen incidents-param → ingen DNF-linje (dormant flag-off-adfærd).
 test("buildRaceSimEmbed: ingen abandons → ingen DNF-linje, ingen crash på manglende incidents-param", () => {
   const race = { id: "r1", name: "Test GP" };

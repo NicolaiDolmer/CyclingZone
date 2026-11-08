@@ -1,0 +1,49 @@
+{
+  "sourceCommit": "e3373cd837960293fab98f2f2fd7b13c01240676",
+  "note": "#7557: skrevet af merge-basens kode, kun hashes; genereres aldrig med den nye kode.",
+  "wholeRace:s5_profiles_v3": {
+    "inputChecksums": [
+      3780912940,
+      3609625838,
+      2096701504
+    ],
+    "inputSha256": [
+      "259d432efdc9a3da27a6010f4e11b22e8fda89bfd32d06c88ef2ce79cb7508fe",
+      "997d1405e2556d8eb29cbf91cffdad7dad2c1d338f1f76fec53f0d0338236090",
+      "83a6f28003b737853a05055e0fe9c45d8ed191aeb772f0bc20e78086d38ea2e5"
+    ],
+    "outputSha256": [
+      "f59af035d0384316a058a24550a13d1032d8a05ac7b42e455b790606e530ae54",
+      "144a6946fca00c742b383092544547a24b7b8e58399ba68964d169012da611a3",
+      "0dcb3e2cb193f949cbc76af84fe0fa33ce8d85931918fe7f356bd2f4ab5728dd"
+    ]
+  },
+  "wholeRace:s5_profiles_v2": {
+    "inputChecksums": [
+      3780912940,
+      817275768,
+      1839763394
+    ],
+    "inputSha256": [
+      "dc7957d49b86499a093f3734fa46b875426126f18f7f7711f24b54857f66708d",
+      "4fd7809cba0f468347947a69d58b7f63463e9a9aa27244c83c5f9f79bbd65b61",
+      "6b41f5c73061fc82a40d54e4ae8478516e33fd6105157f37585a16ab63c0a44b"
+    ],
+    "outputSha256": [
+      "94c9bf9431cf4cdb2993790060cae3f550de98cdc43d6c2780af80aefdd79919",
+      "503c1e5465f21513ca67e625fa1e1ad9cea0380507c2d2cfa28d49ff7bd0f3eb",
+      "2eae8fe90705252f3d11eb4d0a0f7a1589a674a8aedf3c9122f63c122b3ead09"
+    ]
+  },
+  "stageByStage:s5_profiles_v3:stage2": {
+    "inputChecksums": [
+      974539384
+    ],
+    "inputSha256": [
+      "af2eba24a114e3ddff721927a7314ba91dc17f2b8ce0d058ff15b57a2c10cd32"
+    ],
+    "outputSha256": [
+      "4db918d231b6dd2895cf0d209a2d2e6241db41b5f4d513cc30436499215d4611"
+    ]
+  }
+}

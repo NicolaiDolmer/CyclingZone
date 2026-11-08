@@ -181,6 +181,7 @@ def collect_sessions(repo_root: str, exclude_session_id: str, now_ms: int | None
     paths = glob.glob(os.path.join(run_dir, "agent-sessions", "*.json"))
     paths.append(os.path.join(run_dir, "wave-active.json"))
     seen = {e["sessionId"] for e in alive}
+    stale_claims.clear()
     for claim_path in paths:
         try:
             with open(claim_path, encoding="utf-8-sig") as fh:
@@ -193,6 +194,12 @@ def collect_sessions(repo_root: str, exclude_session_id: str, now_ms: int | None
             started = claim.get("startedAt") or claim.get("now") or now_ms
             if not isinstance(started, (int, float)):
                 started = claim.get("now") or now_ms
+            # Ejer 4/11: et claim uden livstegn (lastSeenAt, ellers startedAt) i over 48 t er
+            # forældet. Det fjernes ikke stille; det vises paa een linje med ryd-kommandoen.
+            last_seen = claim.get("lastSeenAt") or started
+            if isinstance(last_seen, (int, float)) and now_ms - last_seen > STALE_CLAIM_MS:
+                stale_claims.append(sid)
+                continue
             entry = {"pid": claim.get("pid", "unknown"), "sessionId": sid,
                      "name": "Codex " + ("wave" if claim.get("waveId") else "session") + " (claim)",
                      "startedAt": started, "ageLabel": fmt_duration(started, now_ms), "claimed": True}
@@ -277,6 +284,15 @@ def update_now_md(now_md_path: str, new_value: str) -> str:
         return "skipped-missing-file"
 
 
+STALE_CLAIM_MS = 48 * 3600 * 1000
+stale_claims: list[str] = []
+
+
+def build_stale_note() -> str:
+    return (f"Foraeldede Codex-claims ({len(stale_claims)}, intet livstegn i over 48 t) taeller ikke i gaten. "
+            "Ryd dem med: pwsh -NoProfile -File scripts/hooks/codex-session-claim.ps1 -Mode prune")
+
+
 def build_warning(others: list[dict]) -> str:
     lines = [
         f"MULTI-AI GATE (#559/#4016): {len(others)} anden(e) agent-session(er) eller claims findes mod dette repo (samme maskine):",
@@ -293,7 +309,9 @@ def build_warning(others: list[dict]) -> str:
 
 
 def emit(message: str) -> None:
-    payload = {"systemMessage": message}
+    # Ejer 4/11: systemMessage ses kun af ejeren; additionalContext naar ogsaa Claude.
+    payload = {"systemMessage": message,
+               "hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": message}}
     sys.stdout.write(json.dumps(payload, ensure_ascii=False) + "\n")
 
 
@@ -313,7 +331,10 @@ def main() -> int:
             value = render_field_value(all_alive, self_session_id)
             update_now_md(now_md_path, value)
             if others:
-                emit(build_warning(others))
+                msg = build_warning(others)
+                emit(msg + ("\\n" + build_stale_note() if stale_claims else ""))
+            elif stale_claims:
+                emit(build_stale_note())
         else:  # stop
             # 'others' already excludes self; that is exactly "who remains".
             value = render_field_value(others, "")

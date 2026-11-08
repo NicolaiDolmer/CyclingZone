@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
+import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.ts";
 
 function makeSupabase({ error = null } = {}) {
   const inserts = [];

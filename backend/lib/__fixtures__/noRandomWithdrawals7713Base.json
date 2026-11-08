@@ -1,0 +1,581 @@
+{
+  "merge_base": "e3373cd837960293fab98f2f2fd7b13c01240676",
+  "digests": {
+    "bjerg-selektion/one_day/a": {
+      "had_withdrawal": true,
+      "projection": "683f628bca6c0682e675e81edae655f68d198534408708cf9fed6b65b4a96214"
+    },
+    "bjerg-selektion/one_day/b": {
+      "had_withdrawal": true,
+      "projection": "f3579d5c04594270ca354d36d497db872584feb2f54cc7cc4ea2b1ef838dfee7"
+    },
+    "bjerg-selektion/one_day/c": {
+      "had_withdrawal": true,
+      "projection": "392ce3537be561d8141dd551e501d3404809ee339ea0ab4b483563d573891a58"
+    },
+    "bjerg-selektion/one_day/d": {
+      "had_withdrawal": true,
+      "projection": "a3b54f3491e764ef2e7f752db30a3c68b4db51ae6dc8824058bcc108ed24bc1c"
+    },
+    "bjerg-selektion/one_day/e": {
+      "had_withdrawal": true,
+      "projection": "cbb06873689f412ba53c935fd6b44c34e039daac7123c893708af6f32292f873"
+    },
+    "bjerg-selektion/one_day/f": {
+      "had_withdrawal": true,
+      "projection": "aaddee430b284ecf4846f4e05b72e72d80d78a3123c782c6aa4c4d2b8ee07237"
+    },
+    "bjerg-selektion/first_stage/a": {
+      "had_withdrawal": false,
+      "projection": "7403cc47fa149ac0f0194217d2848fbcdb74078132712d3f1804989a0b7fde71"
+    },
+    "bjerg-selektion/first_stage/b": {
+      "had_withdrawal": true,
+      "projection": "8d03a8950d628442292e98670d31e09546bdcd96ca3611513c229f335b341133"
+    },
+    "bjerg-selektion/first_stage/c": {
+      "had_withdrawal": true,
+      "projection": "2165bfd7b7a3dd66c95161624c1025d14ae75d587e80374da652b8458f78a636"
+    },
+    "bjerg-selektion/first_stage/d": {
+      "had_withdrawal": false,
+      "projection": "8c7b35ea371aa92437ed820ea78467532b29770fe7d48078b45f75a742f19865"
+    },
+    "bjerg-selektion/first_stage/e": {
+      "had_withdrawal": false,
+      "projection": "6f78a8d159828a380e2e167e7f68c4b85956d68d54444797cf03688eac3c9ae1"
+    },
+    "bjerg-selektion/first_stage/f": {
+      "had_withdrawal": true,
+      "projection": "62e70c0e844da3289ee360a0cc22709eb31480ee29f00828eb54ea2ffcb03421"
+    },
+    "bjerg-selektion/standings/a": {
+      "had_withdrawal": false,
+      "projection": "b933abc77629d8e155b925eb0d1db9944daf696f71f61249ce015b27339b4b63"
+    },
+    "bjerg-selektion/standings/b": {
+      "had_withdrawal": true,
+      "projection": "a6c81e81d6592e8efd0c02744cc3b02d0fa721f111374c564a67d956abac8542"
+    },
+    "bjerg-selektion/standings/c": {
+      "had_withdrawal": true,
+      "projection": "941d994137660c7a2b6d65f6563f48de94d8b600ffe38a819e6ed8d9ef39f0b2"
+    },
+    "bjerg-selektion/standings/d": {
+      "had_withdrawal": false,
+      "projection": "adcec86b1848ae555f0685ffae51733b0453d709a6d7dada78fe738ca845d208"
+    },
+    "bjerg-selektion/standings/e": {
+      "had_withdrawal": false,
+      "projection": "1ebd3e5873dc8abb65da6380cb91ead750c6e8daadd8e66a636b884f671a6752"
+    },
+    "bjerg-selektion/standings/f": {
+      "had_withdrawal": true,
+      "projection": "89c04043f914a06abcaa4a1bf92193e8b2992e6d784a3cf04861c02dc2dbb466"
+    },
+    "flat-massespurt/one_day/a": {
+      "had_withdrawal": false,
+      "projection": "fb838f71bcc3efcd6986ce87c81feeef64956570fb72e19b3795391427ebd1ad"
+    },
+    "flat-massespurt/one_day/b": {
+      "had_withdrawal": false,
+      "projection": "2afff98fb6343f60040938fe488afedd8cbf374d8f08fac62be8aaf4d8690043"
+    },
+    "flat-massespurt/one_day/c": {
+      "had_withdrawal": false,
+      "projection": "b6af34bbfd5ee6c8191e90811ad7f4aa3d5a0c4065c2845973ecb5a5be1d84a0"
+    },
+    "flat-massespurt/one_day/d": {
+      "had_withdrawal": false,
+      "projection": "2726fa725056b01ca25e8c70685aa08c92df788ace25b90585a1cc9591feb151"
+    },
+    "flat-massespurt/one_day/e": {
+      "had_withdrawal": false,
+      "projection": "f1a589c58a2af97f6578ae9f6e1b38d1a4beab14fa4e315a3a9df56e3eb18b64"
+    },
+    "flat-massespurt/one_day/f": {
+      "had_withdrawal": false,
+      "projection": "fe22bf261d96644f8091c43bf41644d93d64dfce5499bd3820c04281b5b2b518"
+    },
+    "flat-massespurt/first_stage/a": {
+      "had_withdrawal": false,
+      "projection": "65b5ad061b1c989ca32102a19ce7e7941840a17c087fc605fc12e03be053bcd8"
+    },
+    "flat-massespurt/first_stage/b": {
+      "had_withdrawal": false,
+      "projection": "b86b3b1f50e463dcb1060331a4ae071851d0750e99dac3c03db38437ecee0f65"
+    },
+    "flat-massespurt/first_stage/c": {
+      "had_withdrawal": false,
+      "projection": "ef0980070c18f300116484084eebfbf5c392012a7bac0c6645eb8531f9cdead9"
+    },
+    "flat-massespurt/first_stage/d": {
+      "had_withdrawal": false,
+      "projection": "48aaf2a6f988832a9f0ef86dd2f6961d7f93fc81c36c261b0276243b5fc53c90"
+    },
+    "flat-massespurt/first_stage/e": {
+      "had_withdrawal": false,
+      "projection": "50d41b9cd625abaaba9640d935b19524c6dcd52b0c837ae75c183a74fe87ad68"
+    },
+    "flat-massespurt/first_stage/f": {
+      "had_withdrawal": false,
+      "projection": "1439948fce3492c22e0db1f9df316cfebb52329ee1535c25419e30a123b7f2a5"
+    },
+    "flat-massespurt/standings/a": {
+      "had_withdrawal": false,
+      "projection": "e137bd624bd97d0b7c3fb6d4699d3616da3ab7f3e94af2395567fe797cd0297c"
+    },
+    "flat-massespurt/standings/b": {
+      "had_withdrawal": false,
+      "projection": "def6d7ef353d84d186e6fcad1b2839c8daa595c7caf22a2b26df0a619727ec39"
+    },
+    "flat-massespurt/standings/c": {
+      "had_withdrawal": false,
+      "projection": "eae8d2839f9b40507db307fbed963c824ecdb6a5638b31fe8b9abd36bd245f3f"
+    },
+    "flat-massespurt/standings/d": {
+      "had_withdrawal": false,
+      "projection": "1b63f132f9ebd00f7baac7ad13a99eae6e3b265fc822cca591b81a646856f539"
+    },
+    "flat-massespurt/standings/e": {
+      "had_withdrawal": false,
+      "projection": "ffd9482697850bc01825e7223b6cd068b78d6924be122e4b961100162caa8fa6"
+    },
+    "flat-massespurt/standings/f": {
+      "had_withdrawal": false,
+      "projection": "09e6e0340d07b06b30805c440887e11f5d65c8de44968fcb3110453c11b74be7"
+    },
+    "itt-solo/one_day/a": {
+      "had_withdrawal": false,
+      "projection": "09ceb5d987cde9216bc64a2c6becf502c025e9903f9de10303caeda3311f203a"
+    },
+    "itt-solo/one_day/b": {
+      "had_withdrawal": false,
+      "projection": "5ca81de77d4ed06bdfda0ba99810d358a3a1f5f1f039afce14051ed09515d605"
+    },
+    "itt-solo/one_day/c": {
+      "had_withdrawal": false,
+      "projection": "c1aea23a6d907e680ab99ef5aa617f230bc27e0d2b099416461805e1180bb449"
+    },
+    "itt-solo/one_day/d": {
+      "had_withdrawal": false,
+      "projection": "ae3f46c6a42b289ada111139939e8289fbb3f84e377ffc010d0e8e3aea693d38"
+    },
+    "itt-solo/one_day/e": {
+      "had_withdrawal": false,
+      "projection": "40ad756ca15099dc4a1961a3c6c3ef1f54e84c6519fdfd3c4a9ed6540af1670a"
+    },
+    "itt-solo/one_day/f": {
+      "had_withdrawal": false,
+      "projection": "2155ae210cacb086ed6252f6c6dc3f82a8f9bbacc6abe43567b2733f5c8ce3bc"
+    },
+    "itt-solo/first_stage/a": {
+      "had_withdrawal": false,
+      "projection": "c8ee34e6bb8e9a4db21e99a689b28c0ff4404ff173287ae2e1b7b40835aea1f2"
+    },
+    "itt-solo/first_stage/b": {
+      "had_withdrawal": false,
+      "projection": "af25fbb2050ade7a76c6b5b647d14579de0979a55bd4aedacde93ea2adc46a45"
+    },
+    "itt-solo/first_stage/c": {
+      "had_withdrawal": false,
+      "projection": "d842045ad0c53af08fafafc0adb6390d7c4f2d62370977357a0a141ac7d82716"
+    },
+    "itt-solo/first_stage/d": {
+      "had_withdrawal": false,
+      "projection": "a4d4ddfeac9cdfc44ffb15d0b2ea4b0d8ca36f10167554bcd6cbe40bc0c2bf6d"
+    },
+    "itt-solo/first_stage/e": {
+      "had_withdrawal": false,
+      "projection": "8a9cb92a977386f506c72dbd858e39c95e8c242d6f01000e31a1ad0cde84ff8b"
+    },
+    "itt-solo/first_stage/f": {
+      "had_withdrawal": false,
+      "projection": "c3d12fc401b586a66d5059c124fb6fd86a6e53d14d72a43a00c516c1992a1cdb"
+    },
+    "itt-solo/standings/a": {
+      "had_withdrawal": false,
+      "projection": "c8ee34e6bb8e9a4db21e99a689b28c0ff4404ff173287ae2e1b7b40835aea1f2"
+    },
+    "itt-solo/standings/b": {
+      "had_withdrawal": false,
+      "projection": "af25fbb2050ade7a76c6b5b647d14579de0979a55bd4aedacde93ea2adc46a45"
+    },
+    "itt-solo/standings/c": {
+      "had_withdrawal": false,
+      "projection": "d842045ad0c53af08fafafc0adb6390d7c4f2d62370977357a0a141ac7d82716"
+    },
+    "itt-solo/standings/d": {
+      "had_withdrawal": false,
+      "projection": "a4d4ddfeac9cdfc44ffb15d0b2ea4b0d8ca36f10167554bcd6cbe40bc0c2bf6d"
+    },
+    "itt-solo/standings/e": {
+      "had_withdrawal": false,
+      "projection": "8a9cb92a977386f506c72dbd858e39c95e8c242d6f01000e31a1ad0cde84ff8b"
+    },
+    "itt-solo/standings/f": {
+      "had_withdrawal": false,
+      "projection": "c3d12fc401b586a66d5059c124fb6fd86a6e53d14d72a43a00c516c1992a1cdb"
+    },
+    "mellembjerg/one_day/a": {
+      "had_withdrawal": false,
+      "projection": "e1101dd5f7f022ecfc7b4c80c703aba0bda9107ba78d1df915589568607d3cca"
+    },
+    "mellembjerg/one_day/b": {
+      "had_withdrawal": false,
+      "projection": "618ceacb201234e0b040f6cbbaef48f9da20e30f1da979e9ab882c2ca3e81d07"
+    },
+    "mellembjerg/one_day/c": {
+      "had_withdrawal": false,
+      "projection": "5e07ec0301a1d3e7597e148e9c5a43cee21ff252cc03e3b053c797e782b2e98b"
+    },
+    "mellembjerg/one_day/d": {
+      "had_withdrawal": false,
+      "projection": "8ed143c8389c778c97384d28ff041714d2b455724497045b8075b03c4c8491bc"
+    },
+    "mellembjerg/one_day/e": {
+      "had_withdrawal": false,
+      "projection": "7d866ccf79e55b954ba45262b64eb4bf425612780539a11d1f5645e24628adff"
+    },
+    "mellembjerg/one_day/f": {
+      "had_withdrawal": false,
+      "projection": "dbdb12b43e9228562208b2c35e4317a0932ab6610eca9f0348ae1535806dd4f0"
+    },
+    "mellembjerg/first_stage/a": {
+      "had_withdrawal": false,
+      "projection": "e50885fcc7eae1e7d80d8e243dc56e07dffdd680edfb69bf1a3ad4444589b9fc"
+    },
+    "mellembjerg/first_stage/b": {
+      "had_withdrawal": false,
+      "projection": "e1d5df3d708fc019d96551441107e292747cf5e672520e09d51518158ab232de"
+    },
+    "mellembjerg/first_stage/c": {
+      "had_withdrawal": false,
+      "projection": "a87b1e3265770464f5990120a4ef24336df811098c8c9d709c5a4dcaa7b0cf53"
+    },
+    "mellembjerg/first_stage/d": {
+      "had_withdrawal": false,
+      "projection": "1deedd17804fa8ea146047f29b80161b2bc79895aac1d458cfb51b399f38d450"
+    },
+    "mellembjerg/first_stage/e": {
+      "had_withdrawal": false,
+      "projection": "2bc7a29a464f988b6cf0652d1d9216a53a5539c2e5b94b04b5d4682f0adea622"
+    },
+    "mellembjerg/first_stage/f": {
+      "had_withdrawal": false,
+      "projection": "b7edc546172ea06fd3231f6280e810fb45873265892876713e0f443a20346682"
+    },
+    "mellembjerg/standings/a": {
+      "had_withdrawal": false,
+      "projection": "049df58d3f9e23006fdefb8f1f312846e7819c9a15ccd0fbae4aaf267116b6ca"
+    },
+    "mellembjerg/standings/b": {
+      "had_withdrawal": false,
+      "projection": "f59ba11bb1fc722061e16d988313a24b6552dcf658a340c83f62dc2a53a62b5b"
+    },
+    "mellembjerg/standings/c": {
+      "had_withdrawal": false,
+      "projection": "94ece3af7aa68327c2ff9d4e1117f15574c9fdefd36c14809ee5f3fb39413630"
+    },
+    "mellembjerg/standings/d": {
+      "had_withdrawal": false,
+      "projection": "0a4ce7904b897146050024cb95cd844f4c3391d12aa20253e3bb1fd3566a82a8"
+    },
+    "mellembjerg/standings/e": {
+      "had_withdrawal": false,
+      "projection": "d0f16c01e30d57009c684cf350954987eee3b4a56749de5a17157b50a4e67202"
+    },
+    "mellembjerg/standings/f": {
+      "had_withdrawal": false,
+      "projection": "a798399007938d8563549dbefa519a6eb8e62b7c160f12c9c8936c1d47a556fe"
+    },
+    "mur-finale/one_day/a": {
+      "had_withdrawal": false,
+      "projection": "b223b2f1deea28ca538f4dc043c4683f35f573e026f6f7dfba0053bf701a5636"
+    },
+    "mur-finale/one_day/b": {
+      "had_withdrawal": false,
+      "projection": "8b258fe9be8416fff881b92fbfa19d7bbc92cd52930eac2e4fd0f2d875a2dfda"
+    },
+    "mur-finale/one_day/c": {
+      "had_withdrawal": false,
+      "projection": "e97f412e93b63aa5b3d8578f49af9078e666fb002bb859e8869818c5a7a496e7"
+    },
+    "mur-finale/one_day/d": {
+      "had_withdrawal": false,
+      "projection": "4d050888bbcda21b7d80af1ea275b0d337d92df17f5b8fadd0d191315e549649"
+    },
+    "mur-finale/one_day/e": {
+      "had_withdrawal": false,
+      "projection": "1fdde49491776bab9d0f6ff2f745885db605d27ef9b5febdca76ea174cd84519"
+    },
+    "mur-finale/one_day/f": {
+      "had_withdrawal": false,
+      "projection": "9a6b978f3343788e790a4d0750a5b18abc985a6102b8512d54531996de61514c"
+    },
+    "mur-finale/first_stage/a": {
+      "had_withdrawal": false,
+      "projection": "c32b002f91ef3be5b005af84d3f1c6f89c2f7ccc2849581329364275adb18be9"
+    },
+    "mur-finale/first_stage/b": {
+      "had_withdrawal": false,
+      "projection": "6d2f8f7da49bac4ce03d35a2f02d7f7f73506941424280c46ab937e394c5c029"
+    },
+    "mur-finale/first_stage/c": {
+      "had_withdrawal": false,
+      "projection": "20cac24ccedbac8b3345687c43c9f06df8f3edbd15decb823368140bb08d959e"
+    },
+    "mur-finale/first_stage/d": {
+      "had_withdrawal": false,
+      "projection": "51668e5cc79ff52f39e07b9a47fe4b7e732e81b8a4d0cf4c645c88149d6cb507"
+    },
+    "mur-finale/first_stage/e": {
+      "had_withdrawal": false,
+      "projection": "7b28f8153e7c54d57eae94f7df02032e6327c93f511899bddc3f312ff6343c46"
+    },
+    "mur-finale/first_stage/f": {
+      "had_withdrawal": false,
+      "projection": "161c1e44230f09b29bc36d45bcfb59f16ce56b381f0d661fe3cd3b523d6d76f7"
+    },
+    "mur-finale/standings/a": {
+      "had_withdrawal": false,
+      "projection": "a3e32ebc840ffcebaa3ad1d10433571e99b7b6c38c1ba8cfef375a748d6d81b5"
+    },
+    "mur-finale/standings/b": {
+      "had_withdrawal": false,
+      "projection": "a8af33656d55d26a4730cf12dd15a406157bd816b3ff341d57226244d40abb7a"
+    },
+    "mur-finale/standings/c": {
+      "had_withdrawal": false,
+      "projection": "ce1b05cb2affa51989ab63cc869838d16f601be002c4c23832fa326b2d6805be"
+    },
+    "mur-finale/standings/d": {
+      "had_withdrawal": false,
+      "projection": "acd7882aa7d188d1789162d7d3005ba1f8d6c8be84d0adf539f02d0162e51d6f"
+    },
+    "mur-finale/standings/e": {
+      "had_withdrawal": false,
+      "projection": "51c76d4a5e1155cd08a630774c65357cad04d559b824a58bd4f9e06e378ca098"
+    },
+    "mur-finale/standings/f": {
+      "had_withdrawal": false,
+      "projection": "4156d27c473e82ed94727c188092b9794f08531dee93898c41ca5f59e4959c1c"
+    },
+    "nedkoerselsfinale/one_day/a": {
+      "had_withdrawal": false,
+      "projection": "0a367d4c559b746a167b787f474bb1126146ed970d7cbbb266e97ef19ef520db"
+    },
+    "nedkoerselsfinale/one_day/b": {
+      "had_withdrawal": false,
+      "projection": "107fef710df374603e334864bdccf6bb78944ba3f9fb1ecdf336648623da6d2e"
+    },
+    "nedkoerselsfinale/one_day/c": {
+      "had_withdrawal": false,
+      "projection": "59023084f68908b20710968a50e2f7c1a006b2f50ec6c295125bae0aaadc8039"
+    },
+    "nedkoerselsfinale/one_day/d": {
+      "had_withdrawal": false,
+      "projection": "5cd3b25ce224d31ae510a1e945722d042ea7e8567ce822b0fea56f3c8ede539d"
+    },
+    "nedkoerselsfinale/one_day/e": {
+      "had_withdrawal": false,
+      "projection": "132dae0f078f7d8563ecc420d2835d8a2a39edaf41010dc45df41119a866eaad"
+    },
+    "nedkoerselsfinale/one_day/f": {
+      "had_withdrawal": false,
+      "projection": "5b4c94a2273a0faf64a3322ec768af321286265c9dc7fba7ad8e6c35acb6ca5c"
+    },
+    "nedkoerselsfinale/first_stage/a": {
+      "had_withdrawal": true,
+      "projection": "9bce50ccf52683b00082b8cafc49ad242a28022fa50e78984c5074811cb2b83f"
+    },
+    "nedkoerselsfinale/first_stage/b": {
+      "had_withdrawal": false,
+      "projection": "1fdb2c20dfaa5596301a2633bb2e99d7b4bb2b4813490fa2f9a3b9d344757044"
+    },
+    "nedkoerselsfinale/first_stage/c": {
+      "had_withdrawal": false,
+      "projection": "8dc22ce2cdfccfbfa5f2836c385a73f6acc8116dcff863acae5846ee90bb9fc4"
+    },
+    "nedkoerselsfinale/first_stage/d": {
+      "had_withdrawal": false,
+      "projection": "bd20c8b9b1d1794167f23ba45e8e06c4777e4291ce45a56a6900ddda26b81ad8"
+    },
+    "nedkoerselsfinale/first_stage/e": {
+      "had_withdrawal": true,
+      "projection": "67e777c2c7d9dcd48d62ede154e50c4fa141bcab490de8c8c26ed4093ebea9c6"
+    },
+    "nedkoerselsfinale/first_stage/f": {
+      "had_withdrawal": false,
+      "projection": "42dcc8ee80a39a706d861c73c3ac1b16f64ea56f72039522e5774bc85cdbbe5a"
+    },
+    "nedkoerselsfinale/standings/a": {
+      "had_withdrawal": false,
+      "projection": "d7de443ed118da9ce349b8cdb0cb4adbfae887130567dde245b7b1336a425f61"
+    },
+    "nedkoerselsfinale/standings/b": {
+      "had_withdrawal": false,
+      "projection": "ac4cec6656a80b067b27ab20895c3d1282b781eca99c98607c25da583d6cb124"
+    },
+    "nedkoerselsfinale/standings/c": {
+      "had_withdrawal": false,
+      "projection": "44bd06ddb0f1f6db5055054376bfb8f6ca285002ee2a19fa5ad22cc35c8b691b"
+    },
+    "nedkoerselsfinale/standings/d": {
+      "had_withdrawal": false,
+      "projection": "8eeca5c2b62dab309cb19fa1d6c89d27168a928945f2f824f9ed4dcdd3a6fe4e"
+    },
+    "nedkoerselsfinale/standings/e": {
+      "had_withdrawal": false,
+      "projection": "497dccc792f315097cbacba87f83495acfd9d6b769660e6e7e356adcabee7315"
+    },
+    "nedkoerselsfinale/standings/f": {
+      "had_withdrawal": false,
+      "projection": "dbc0da450d0ccc23293262c6771dd66ef6180a618a704a5865f3dcd98fe46698"
+    },
+    "punch-finale-forspring/one_day/a": {
+      "had_withdrawal": false,
+      "projection": "78d821b8e4aae49508180d1fbe7e77aebde5c8ba5ca434c13c7ea5ca11abec01"
+    },
+    "punch-finale-forspring/one_day/b": {
+      "had_withdrawal": false,
+      "projection": "7bdbdf68285f372f375ba320c0d33743294ddc3c0eb50ee4f04c6d9659c48188"
+    },
+    "punch-finale-forspring/one_day/c": {
+      "had_withdrawal": false,
+      "projection": "9f745b3fa99fa2e6e6191c5bdd6ed1b3d53f3fcf470b7681fc5097048c17f898"
+    },
+    "punch-finale-forspring/one_day/d": {
+      "had_withdrawal": false,
+      "projection": "14fb10b63267a3d4629a070813a56f49221ac3a703890c48a1c20cb8e5fff594"
+    },
+    "punch-finale-forspring/one_day/e": {
+      "had_withdrawal": false,
+      "projection": "d4250f40a105da4740d6a06c6522e5a1e7ed2ab98c957ef20a3fc860e8e6dd3f"
+    },
+    "punch-finale-forspring/one_day/f": {
+      "had_withdrawal": false,
+      "projection": "a71aa050933493b6c7ba4d8f517ad5562832d1c64c5d370f55c2376563090011"
+    },
+    "punch-finale-forspring/first_stage/a": {
+      "had_withdrawal": false,
+      "projection": "7cfab49898001ca23e60bc79522f84175c94488ae1088eca404e3a5d3926e9ba"
+    },
+    "punch-finale-forspring/first_stage/b": {
+      "had_withdrawal": false,
+      "projection": "00f1ec5bd8d20ec2f75ac525459435eee8f449c6ac27a5111eb27b85f857d0f7"
+    },
+    "punch-finale-forspring/first_stage/c": {
+      "had_withdrawal": false,
+      "projection": "1820bea3444d734ce801ed7f738b66e78145ff9203cd1f20b94fc4d2e9e038cd"
+    },
+    "punch-finale-forspring/first_stage/d": {
+      "had_withdrawal": false,
+      "projection": "08c75e5f4961f1189e7235fb76bfa8a6aae4823363bf61c4a966c6f7e1a5f057"
+    },
+    "punch-finale-forspring/first_stage/e": {
+      "had_withdrawal": false,
+      "projection": "276f24427545110deb5c28fbc6dc07e6812d50220d801206e2dac0f5dbf53d20"
+    },
+    "punch-finale-forspring/first_stage/f": {
+      "had_withdrawal": false,
+      "projection": "052b9a25c1378ccb096cbc0c3fb2639d3c1f81605f22766d4e0234e7305ff933"
+    },
+    "punch-finale-forspring/standings/a": {
+      "had_withdrawal": false,
+      "projection": "f0d3386594f4ec1189e0c2d73f35e30c4e9ca9de5e3a2416ec9ebcd59a53ac40"
+    },
+    "punch-finale-forspring/standings/b": {
+      "had_withdrawal": false,
+      "projection": "d69627364df15d28ef576779ed626f0ee0b3913e6cb97fb7062b66b0fd3050f8"
+    },
+    "punch-finale-forspring/standings/c": {
+      "had_withdrawal": false,
+      "projection": "8c0b9a11bb9220c7ddaa36770045df623bf6f07b2edf73e9fe9b3aa04257e820"
+    },
+    "punch-finale-forspring/standings/d": {
+      "had_withdrawal": false,
+      "projection": "62b075ec3fec7697cff4298a5c9819d9e4d9fbb9c8f37b7d638c8644a55e1bc9"
+    },
+    "punch-finale-forspring/standings/e": {
+      "had_withdrawal": false,
+      "projection": "5f7ae48a1f6fd14ed5a6497c242d11067e7ee767e850244bb9ab2cf26815e7bf"
+    },
+    "punch-finale-forspring/standings/f": {
+      "had_withdrawal": false,
+      "projection": "113f93ad4ba7c5d2ecec0949c31e9576fda514ffb0bc0d7942bf9fea713ab662"
+    },
+    "stigende-spurt/one_day/a": {
+      "had_withdrawal": false,
+      "projection": "3e06c73172144988109c8556a0997d12e176828410f3d73cb3c3b41af5398971"
+    },
+    "stigende-spurt/one_day/b": {
+      "had_withdrawal": false,
+      "projection": "1dd700d681daca17690ce5b8022fcf16230541cc41316aa95be5b4d2dfc96e9e"
+    },
+    "stigende-spurt/one_day/c": {
+      "had_withdrawal": false,
+      "projection": "93b5e7d74c2320fb1c860ae266e3d8b0f05485fcb4abec40155c9b966fd8c12c"
+    },
+    "stigende-spurt/one_day/d": {
+      "had_withdrawal": false,
+      "projection": "5e92a95c25a51ccc835ca8c7dea0b0b12f695023c6bc40a75c35f89c1aef6d74"
+    },
+    "stigende-spurt/one_day/e": {
+      "had_withdrawal": false,
+      "projection": "d3378171d6396874fd1c5be9a21010d1a347aba215caad1c676fd931adb39363"
+    },
+    "stigende-spurt/one_day/f": {
+      "had_withdrawal": false,
+      "projection": "5f95b59a1cad3dbd6ef52d0dd5047ca8c298ec5c534b3c18cfec0ea0f5d36688"
+    },
+    "stigende-spurt/first_stage/a": {
+      "had_withdrawal": false,
+      "projection": "55b3696f41edc1a4282b6ce13ecf1182ec08b240c70f83c046c3a9b0b1936774"
+    },
+    "stigende-spurt/first_stage/b": {
+      "had_withdrawal": false,
+      "projection": "a55f596424b1555e9710879c31423c7c6c770bda3427aa8f15f7793362eb68fc"
+    },
+    "stigende-spurt/first_stage/c": {
+      "had_withdrawal": false,
+      "projection": "b9161f9c810ecead372e3402acf2bdebbeb302842f6f86276939d72e26bda4a4"
+    },
+    "stigende-spurt/first_stage/d": {
+      "had_withdrawal": false,
+      "projection": "aa37ec22cc8a491097104d4b1ad5b5646a44ab1cd6686d442319f482ff00466b"
+    },
+    "stigende-spurt/first_stage/e": {
+      "had_withdrawal": false,
+      "projection": "22f40d70eabd85ef8998178688924f374bfe93bf133fbb1e7423e4aa7f53d6fe"
+    },
+    "stigende-spurt/first_stage/f": {
+      "had_withdrawal": false,
+      "projection": "0a5ab4c758763770ce88946758abf34aa9f65ddb050a4781eb8138ba6d505c6e"
+    },
+    "stigende-spurt/standings/a": {
+      "had_withdrawal": false,
+      "projection": "639c1ddbce13e5435c1731816fedd114236b81e6faceb648ca6f2bffec316bb1"
+    },
+    "stigende-spurt/standings/b": {
+      "had_withdrawal": false,
+      "projection": "592024f2a3cafca2ac22fe7203a27fa5d9e0098edd13ff2ea4b9d5841396f79e"
+    },
+    "stigende-spurt/standings/c": {
+      "had_withdrawal": false,
+      "projection": "adbda00f32f3f21ab1358b57c69a6940baef12cc45a9b23e5947931e3da904b9"
+    },
+    "stigende-spurt/standings/d": {
+      "had_withdrawal": false,
+      "projection": "888e9e4171ec9b22232e3bd52c180e1bc91e4c3893e6a5fd3ac50e06766ce56f"
+    },
+    "stigende-spurt/standings/e": {
+      "had_withdrawal": false,
+      "projection": "ddee5a16f70f7ed3f48db2ab03622ccaa8e49e38735b6d5426c7044b286bca16"
+    },
+    "stigende-spurt/standings/f": {
+      "had_withdrawal": false,
+      "projection": "c78d5c36135b67f823342f4d0b14d9c65e3f00b4a95fe8bbb113e2053b6c070b"
+    }
+  }
+}

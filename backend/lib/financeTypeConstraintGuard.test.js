@@ -127,7 +127,7 @@ test("HVER kode-skrevet finance_transactions.type har en CHECK-constraint-værdi
 // actor_type = 5 tilladte værdier, related_entity_type = 7, ingen drift i dag.
 //
 // rider_ownership_events (#3582) er med af samme grund: RIDER_OWNERSHIP_REASON i
-// backend/lib/riderOwnershipAudit.js er endnu et frosset konstant-objekt (10 værdier)
+// backend/lib/riderOwnershipAudit.ts er endnu et frosset konstant-objekt (10 værdier)
 // der skal matche rider_ownership_events_reason_check, plus tabellens egne actor_type-
 // og related_entity_type-CHECKs.
 // ────────────────────────────────────────────────────────────────────────────

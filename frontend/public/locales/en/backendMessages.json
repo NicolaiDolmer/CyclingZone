@@ -306,6 +306,10 @@
       "title": "Assistant filled your squad",
       "message": "Your assistant picked your squad for {race}. You had no selection in. Take a look and change it if you want."
     },
+    "roadmapDelivered": {
+      "title": "Something you voted for is live",
+      "message": "You voted high on {item}, and it is live now. Thank you for helping me choose what to build."
+    },
     "riderRetired": {
       "title": "{name} has retired",
       "message": "{name} has retired from professional cycling at age {age}. His place in your squad is now free."
@@ -331,6 +335,7 @@
         "title": "Scouting mission ready",
         "messageSingle": "Your scouting mission found {count} rider. View the shortlist.",
         "messageMulti": "Your scouting mission found {count} riders. View the shortlist.",
+        "messageNoCount": "Your scouting mission is ready. View the shortlist.",
         "titleEmpty": "Scouting mission: no matches",
         "messageEmpty": "Your scout searched but found no riders matching your criteria."
       }

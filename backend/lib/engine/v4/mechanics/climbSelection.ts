@@ -561,6 +561,14 @@ function gapSecondsDeltaFor(selections: RiderSelection[], splitRiderIds: string[
   );
 }
 
+/**
+ * #7640 (KUN kontakten split_attack_cause_7640, SLUKKET): aarsagen paa et klatre-split
+ * der koerer FREM fra gruppen (alt ud-angrebet, negativt hul). Uden kontakten faar
+ * angrebet den gamle aarsag fra causeFor, saa motoren er bit-identisk. Kun event-feltet
+ * cause aendres; grupper, huller og tider er de samme med og uden.
+ */
+export const SPLIT_ATTACK_CAUSE_7640 = "attack";
+
 function causeFor(selections: RiderSelection[], splitRiderIds: string[]): string {
   const splitSet = new Set(splitRiderIds);
   const chosen = selections.filter((s) => splitSet.has(s.riderId));
@@ -585,7 +593,8 @@ function splitKindFor(sourceKind: GroupKind, splitCount: number): GroupKind {
  * M2-hook: kaldes paa climb-segmenter (segmentLoop.ts). Behandler hver
  * eksisterende gruppe uafhaengigt (>=2 ryttere), splitter de udvalgte
  * ryttere bagud i en ny gruppe og emitterer ét peloton_splits-event pr.
- * ny gruppe med en kategorisk aarsag (wprime_depleted/climb_deficit/mixed).
+ * ny gruppe med en kategorisk aarsag (wprime_depleted/climb_deficit/mixed;
+ * #7640 bag kontakten: attack for et split der koerer frem).
  * REN: intet input muteres, samme (state, ctx) -> samme output.
  */
 export const climbSelectionHook: ClimbSelectionHook = (
@@ -710,6 +719,8 @@ export const climbSelectionHook: ClimbSelectionHook = (
     const parts = splitRiderIds.length > 0 ? partsOf(selections, splitRiderIds) : [];
     // Ejer 27/10: angriberen splitter FREM med forspringet (negativt hul, rebaselines af segment-loopet).
     if (front7280 && splitRiderIds.length + front7280.attackerIds.size < group.rider_ids.length) parts.push(...front7280.parts);
+    // #7640 (KUN kontakten split_attack_cause_7640): angriberens split er et angreb, aldrig et underskud.
+    const attackParts: ReadonlySet<object> = ctx.splitAttackCause7640 === true && front7280 ? new Set(front7280.parts) : new Set();
     // #7280: gevinsten taelles i de grupper motoren faktisk danner (foer/efter alt ud).
     if (allOutOn) {
       const idsBefore = retainFront(beforeAllOut, splitOf(beforeAllOut));
@@ -740,7 +751,7 @@ export const climbSelectionHook: ClimbSelectionHook = (
           group_id: newGroupId,
           source_group_id: group.id,
           rider_ids: [...part.riderIds],
-          cause: causeFor(selections, part.riderIds),
+          cause: attackParts.has(part) ? SPLIT_ATTACK_CAUSE_7640 : causeFor(selections, part.riderIds),
           gap_seconds: round2(gapSecondsDelta),
         },
       });

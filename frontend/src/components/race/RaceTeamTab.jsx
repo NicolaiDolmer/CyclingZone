@@ -40,6 +40,7 @@ import RaceSelectionPanel from "./RaceSelectionPanel.jsx";
 import RaceStageProfileRow from "./RaceStageProfileRow.jsx";
 import StageStripe from "./StageStripe.jsx";
 import FitBar from "../racehub/FitBar.jsx";
+import TimeLimitRiskMark from "./TimeLimitRiskMark.tsx"; // #7715
 import { Section, SectionHeader, Button, SkeletonLines, LockIcon } from "../ui/index.js";
 import { WRAP, SCROLLER } from "../ui/dataTableStyles.js";
 import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
@@ -56,6 +57,7 @@ import {
 } from "../../lib/stageRoleMatrixLogic.js";
 import { DEFAULT_EFFORT } from "../../lib/raceIntention.js";
 import { roleLabelKey } from "../../lib/stageRoleVocabulary.ts";
+import { showsTimeLimitRisk } from "../../lib/timeLimitRisk7715.ts"; // #7715
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -66,7 +68,7 @@ const roleLabel = (t, role) => {
   return key ? t(key) : "—";
 };
 
-function ReadOnlyRoster({ t, riders, stageNumbers, overridesMap, gcRankByRider, showStages, isOneDay }) {
+function ReadOnlyRoster({ t, riders, stageNumbers, overridesMap, gcRankByRider, showStages, isOneDay, nextStage }) {
   return (
     <div className={WRAP}>
       <div className={SCROLLER}>
@@ -96,7 +98,13 @@ function ReadOnlyRoster({ t, riders, stageNumbers, overridesMap, gcRankByRider, 
           <tbody className="divide-y divide-cz-border">
             {riders.map((rider) => (
               <tr key={rider.rider_id} className="hover:bg-cz-subtle transition-colors">
-                <td className="px-4 py-2.5 text-cz-1 font-medium">{rider.name || "—"}</td>
+                <td className="px-4 py-2.5 text-cz-1 font-medium">
+                  {rider.name || "—"}
+                  {/* #7715: varslet til naeste etape, og forklaringen hvis han er ude. */}
+                  {rider.time_limit_out_stage != null
+                    ? <div className="mt-1"><TimeLimitRiskMark variant="out" /></div>
+                    : !showStages && showsTimeLimitRisk(rider, nextStage, resolveCell({ rider, stageNumber: nextStage, overridesMap }).effort) && <div className="mt-1"><TimeLimitRiskMark /></div>}
+                </td>
                 <td className="px-4 py-2.5">
                   <div className="text-cz-1 text-xs">{roleLabel(t, baseRoleForRider(rider))}</div>
                   <div className="text-3xs uppercase tracking-wider text-cz-3 mt-0.5">
@@ -333,6 +341,7 @@ export default function RaceTeamTab({
         gcRankByRider={gcRankByRider}
         showStages={afterRace}
         isOneDay={isOneDay}
+        nextStage={nextEditableStage}
       />
       {afterRace && (
         <p className="mt-3 pt-3 border-t border-cz-border text-3xs text-cz-3">

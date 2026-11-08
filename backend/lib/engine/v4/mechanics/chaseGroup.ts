@@ -1,6 +1,8 @@
-import type { RaceGroup, SegmentHookResult, TimelineEvent } from "../types.ts";
+import type { RaceGroup, SegmentHookResult, StageInput, TimelineEvent } from "../types.ts";
 import type { FinaleGroupTrace } from "../groups.ts";
 import { compareIds } from "../../../compareIds.ts";
+import { isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
+import { TEAM_REACTION_TUNING } from "./teamChaseReaction.ts";
 
 /** #6748: gruppen rytteren koerer i, naar den er af dagens udbrud (oprindelse "breakaway", enhver art). */
 function morningOriginGroupOf(groups: readonly RaceGroup[], riderId: string): RaceGroup | null {
@@ -48,6 +50,103 @@ export function withWinnerEscapeOutcome(
   const group = named ? null : morningOriginGroupOf(trace.preFinaleGroups, winnerId);
   if (!group) return [...events];
   return [...events, { km: args.km, type: args.breakawayWin ? "breakaway_survived" : "breakaway_caught", params: { group_id: group.id, rider_ids: [winnerId] } }];
+}
+
+/**
+ * #7730 (KUN s5_profiles_v3 + StageInput.team_chase_7730, SLUKKET): hvor sent feltet henter
+ * udbruddet paa jagt-gulvet afgoeres af de hold der jager, ikke af etapens lodtraekning.
+ * Spec: docs/superpowers/specs/2026-11-06-7730-jagt-efter-hold-design.md.
+ *
+ * START-KANDIDATER, kalibreres privat (balance-internals/7730/).
+ */
+export const TEAM_CHASE_7730_TUNING = Object.freeze({
+  /** Et hold bidrager hoejst saa meget: ét hold kan ikke alene vaere i tide, flere hold deler foeringerne. */
+  teamPullCap: 2,
+  /** Under dette traek kommer jagten for sent, over det naeste er den til tiden. Imellem glider maalet. */
+  latePull: 0.75,
+  onTimePull: 2.5,
+  /** Rytterens motor set mod udbruddets, begraenset saa én stjerne ikke er et helt hold. */
+  engineRatioBounds: [0.7, 1.3] as const,
+});
+
+/** `no_chasers`: holdene der ville jage havde ingen ryttere. `nobody_wanted`: intet hold ville jage. */
+export type FloorChaseShortReason = "no_chasers" | "nobody_wanted" | "tired" | "outgunned" | "too_few";
+
+export type FloorChaseVerdict = {
+  /** Det forspring feltet koerer udbruddet ned til ved maal. Altid mellem til-tiden og for-sent. */
+  targetSeconds: number;
+  /** Jagten kom ikke helt i tide, og `reason` siger hvorfor. */
+  short: boolean;
+  reason: FloorChaseShortReason | null;
+  /** Holdene der arbejdede, sorteret. */
+  teamIds: string[];
+};
+
+/** Kontakten: KUN s5_profiles_v3 (og senere) og kun naar kalderen eksplicit har sat `team_chase_7730`. */
+export function teamChase7730On(input: Pick<StageInput, "rules_revision" | "team_chase_7730">): boolean {
+  return input.team_chase_7730 === true && isS5ProfilesV3OrLater(input.rules_revision);
+}
+
+/**
+ * Jagtens dom paa jagt-gulvet. Hvem arbejder (`work`: indsats-vaegten fra jagtplanen), hvor
+ * staerke de er mod udbruddet, hvor friske de er, og hvor mange hold der deler foeringerne.
+ * En rytter der er for traet til at reagere (samme graense som klassementsreaktionen), traekker
+ * ikke. Dommen laeses paa jagtens tilstand i segmentet, saa et hold der har arbejdet hele dagen,
+ * selv betaler for det i finalen. Samme tilstand giver samme dom. REN: ingen rng, ingen IO.
+ */
+export function judgeFloorChase7730(input: {
+  work: ReadonlyMap<string, number>;
+  teamOf: (riderId: string) => string | null;
+  engineOf: (riderId: string) => number;
+  riders: Readonly<Record<string, { status: string; team_cp_factor?: number }>>;
+  breakEngine: number;
+  onTimeSeconds: number;
+  lateSeconds: number;
+  /** Mindst ét hold ville jage. Afgoer kun, hvad filmen maa sige, naar ingen arbejder. */
+  wanted: boolean;
+}, t: typeof TEAM_CHASE_7730_TUNING = TEAM_CHASE_7730_TUNING): FloorChaseVerdict {
+  const [lo, hi] = t.engineRatioBounds;
+  const pullByTeam = new Map<string, { actual: number; fresh: number; even: number }>();
+  for (const riderId of [...input.work.keys()].sort((a, b) => compareIds(a, b))) {
+    const weight = input.work.get(riderId) ?? 0;
+    const teamId = input.teamOf(riderId);
+    const rider = input.riders[riderId];
+    if (!(weight > 0) || !teamId || rider?.status !== "racing") continue;
+    const factor = Number.isFinite(rider.team_cp_factor) ? (rider.team_cp_factor as number) : 1;
+    const freshness = factor < TEAM_REACTION_TUNING.minWorkerFreshness ? 0 : Math.min(1, factor);
+    const ratio = input.breakEngine > 0 ? Math.min(hi, Math.max(lo, input.engineOf(riderId) / input.breakEngine)) : 1;
+    const team = pullByTeam.get(teamId) ?? { actual: 0, fresh: 0, even: 0 };
+    pullByTeam.set(teamId, { actual: team.actual + weight * ratio * freshness, fresh: team.fresh + weight * ratio, even: team.even + weight * Math.max(1, ratio) * freshness });
+  }
+  const teamIds = [...pullByTeam.keys()].sort((a, b) => compareIds(a, b));
+  const sum = (key: "actual" | "fresh" | "even") => teamIds.reduce((n, id) => n + Math.min(t.teamPullCap, pullByTeam.get(id)![key]), 0);
+  const pull = sum("actual");
+  const share = Math.min(1, Math.max(0, (pull - t.latePull) / (t.onTimePull - t.latePull)));
+  const targetSeconds = input.lateSeconds + (input.onTimeSeconds - input.lateSeconds) * share;
+  if (share >= 1) return { targetSeconds, short: false, reason: null, teamIds };
+  if (teamIds.length === 0) return { targetSeconds, short: true, reason: input.wanted ? "no_chasers" : "nobody_wanted", teamIds };
+  return { targetSeconds, short: true, reason: floorChaseShortReason(pull, sum("fresh"), sum("even"), t.onTimePull), teamIds };
+}
+
+/** Ville noget hold jage? Etapeinteresse eller en gemt jag-ordre, ogsaa fra et hold med egen mand foran. */
+export function floorChaseWanted7730(interest: { teamIds: readonly string[] } | null | false | undefined, orders: readonly { breakaway_stance: string }[]): boolean {
+  return (interest ? interest.teamIds.length > 0 : false) || orders.some((order) => order.breakaway_stance === "chase");
+}
+
+/**
+ * Aarsagen er det der alene havde bragt jagten i tide: friske ben, ellers ben der matcher
+ * udbruddet. Kan intet af det alene goere det (ét hold naar aldrig maalet selv), er aarsagen
+ * det der kostede mest af traekket, saa et udkoert hold hedder traet, ikke for faa ryttere.
+ */
+function floorChaseShortReason(pull: number, fresh: number, even: number, onTimePull: number): FloorChaseShortReason {
+  if (fresh >= onTimePull) return "tired";
+  if (even >= onTimePull) return "outgunned";
+  const keptByFatigue = fresh > 0 ? pull / fresh : 1;
+  const keptByStrength = even > 0 ? pull / even : 1;
+  const reachedByNumbers = Math.max(fresh, even) / onTimePull;
+  const worst = Math.min(keptByFatigue, keptByStrength, reachedByNumbers);
+  if (worst === reachedByNumbers) return "too_few";
+  return worst === keptByFatigue ? "tired" : "outgunned";
 }
 
 /** A pursuing group must be physically behind the group it is chasing. */

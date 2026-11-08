@@ -37,6 +37,9 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "season_academy_intake_enabled", area: "academy", label: "Akademi — sæsonoptag" },
   { key: "board_mandate_model_enabled", area: "board", label: "Bestyrelse — mandat-modellen" },
   { key: "daily_training_enabled", area: "training", label: "Daglig træning" },
+  // #7801: træthed lige nu på fladerne, i træningens regler og i assistentens udtagelse. Ikke seedet = off;
+  // kun "on" tænder, "beta" læses som off (riderFatigueNowFlag.js). Ejer-only flip.
+  { key: "fatigue_now_7801", area: "training", label: "Træthed lige nu — flader og regler" },
   { key: "training_score_visible", area: "training", label: "Træningsscore 1-99 (visning)" },
   { key: "training_mobile_table", area: "training", label: "Træningssiden på mobil — ny tabel" },
   // #1140: "Your first race"-kort for nye hold paa dashboardet. Seedet off.
@@ -90,6 +93,10 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "stage_plan_v1", area: "race-day", label: "Taktik — etapeplan langs ruten" },
   // #6912 B: motorens udbrudsbud i jægerboksen (kort prognose i dryRun). Ikke seedet = off; beta først.
   { key: "race_breakaway_outlook", area: "race-day", label: "Jægerboks — motorens udbrudsbud" },
+  // #7717: Hvorfor?-knappen i "Your day". Kun visning, seedet off.
+  { key: "rider_why_button", area: "race-day", label: "Hvorfor?-knappen ved rytterne (Your day)" },
+  // #2009: hover-miniprofil på rytternavne. Kun visning, seedet off; beta først (ejer 7/11).
+  { key: "rider_hover_card", area: "squad", label: "Hover-miniprofil på ryttere" },
 
   // ── Motorer og batch-jobs (spilleren ser resultatet, ikke kontakten) ──────
   { key: "race_engine_v2_enabled", area: "race-engine", label: "Løbsmotor v2" },
@@ -102,6 +109,33 @@ export const STAGE_FLAGS = Object.freeze([
   // #7236: loft på topgabet på dronningeetaper (kun s5_profiles_v3). Ikke seedet = off; kun "on"
   // tænder, "beta" læses som off (queenStageGap7236Flag.js). Ejer-only flip.
   { key: "queen_stage_gap_7236", area: "race-engine", label: "Dronningeetaper — loft på topgabet" },
+  // #7635/#7636: etapeplanens "sat" kun ved en rigtig opdeling + resuméet krydstjekker filmen
+  // (kun s5_profiles_v3). Seedet off; kun "on" tænder (stagePlanDroppedFront7635Flag.js). Ejer-only flip.
+  { key: "stage_plan_dropped_front_7635", area: "race-engine", label: "Etapeplan — sat kun ved en rigtig opdeling af feltet" },
+  // #7725: dagsformen i ord efter etapen (kun tidslinjen, aldrig resultatet). Seedet off; kun "on" tænder
+  // (dayWords7725Flag.js). Ejer-only flip.
+  { key: "day_words_7725", area: "race-engine", label: "Dagsform i ord efter etapen" },
+  // #7644: loft på samlingens gevinst pr. km på lange nedkørsler (kun s5_profiles_v3). Seedet off; kun "on"
+  // tænder, "beta" læses som off (descentRegroupCap7644Flag.js). Ejer-only flip.
+  { key: "descent_regroup_cap_7644", area: "race-engine", label: "Lange nedkørsler — loft på samlingen" },
+  // #7640: et klatre-split der kører frem hedder angreb, ikke underskud (kun s5_profiles_v3). Ikke seedet = off;
+  // kun "on" tænder, "beta" læses som off (splitAttackCause7640Flag.js). Ejer-only flip.
+  { key: "split_attack_cause_7640", area: "race-engine", label: "Klatre-split — angreb frem hedder angreb" },
+  // #7557: spillerens gemte "lad andre jage" vinder over motorens egen jagt (kun s5_profiles_v3). Ikke seedet = off;
+  // kun "on" tænder, "beta" læses som off (letGoOrder7557Flag.js). Ejer-only flip.
+  { key: "let_go_order_7557", area: "race-engine", label: "Lad andre jage — ordren vinder" },
+  // #7726: enkeltstart uden den ekstra terning (kun s5_profiles_v3, kun løb der ikke er startet). Seedet off;
+  // kun "on" tænder, "beta" læses som off; "stop" er nødstop for løb i gang (ittNoDayRoll7726Flag.js). Ejer-only flip.
+  { key: "itt_no_day_roll_7726", area: "race-engine", label: "Enkeltstart — uden den ekstra terning" },
+  // #7733: fra etape 2 afgoer pulje og trup ikke laengere hvem der er i loebet (kun loeb der ikke er startet).
+  // Seedet off; kun "on" taender, "beta" laeses som off; "stop" er noedstop for loeb i gang. Ejer-only flip.
+  { key: "started_field_lock_7733", area: "race-engine", label: "Etapeløb — startfeltet holder til mål" },
+  // #7730: jagten afgøres af de hold der jager (kun s5_profiles_v3, kun løb der ikke er startet). Seedet off;
+  // kun "on" tænder, "beta" læses som off; "stop" er nødstop for løb i gang (teamChase7730Flag.js). Ejer-only flip.
+  { key: "team_chase_7730", area: "race-engine", label: "Jagten — afgøres af de hold der jager" },
+  // #7715: meget traette ryttere paa en haard etape risikerer tidsgraensen, med maerke foer etapen (kun s5_profiles_v3 og kun
+  // loeb der ikke er startet). Ikke seedet = off; kun "on" taender (timeLimitFatigue7715.js). Ejer-only flip.
+  { key: "time_limit_fatigue_7715", area: "race-engine", label: "Tidsgrænsen — meget trætte ryttere" },
   { key: "race_day_engine_enabled", area: "race-engine", label: "Løbsdags-motor" },
   { key: "race_finalize_resumable_enabled", area: "race-engine", label: "Genoptagelig finalisering" },
   { key: "race_notify_outbox_enabled", area: "race-engine", label: "Notify-kø — asynkron udsendelse" },
@@ -132,13 +166,21 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "ability_cap_per_date_enabled", area: "training", label: "Udvikling 2.0 — maks +1 pr. evne pr. dato" },
   // #3564: kurve B (D-058, developmentCurveBFlag.ts). Fail-safe OFF; "beta" læses som off. Ejer-only flip.
   { key: "development_curve_b", area: "training", label: "Udvikling 2.0 — kurve B (niveau og potentiale styrer, ikke alder)" },
+  // #6110 trin 2: XP-modellen (developmentXpFlag.ts). Fail-safe OFF; "beta" læses som off;
+  // gælder fra startdatoen development_xp_from_date; tal i private_config. Ejer-only flip.
+  { key: "development_xp_model", area: "training", label: "Udvikling 2.0 — XP-modellen (fælles prisliste, potentiale giver XP)" },
   // #6853/#5764: pensioneret, koden læser den ikke (visningen er permanent). Rækken
   // bliver kun for patch notes-mærket.
   { key: "potential_single_number", area: "squad", label: "Udvikling 2.0 — potentiale: bedste rolle + typeboks (visning)" },
+  // #7684: én prognose-kilde (potentialEstimateRead.js). Seedet off; rent visning. Ejer-only flip.
+  { key: "potential_estimate_display", area: "squad", label: "Udvikling 2.0 — potentiale: ét skønnet tal fra én kilde" },
   // #6950 (Udvikling 2.0): Udviklingsscore B i motoren (developmentScoreWiring.js) og
   // catch-up via løb (raceCatchUpWiring.js). Fail-safe OFF; "beta" læses som off; tal i
   // serverens miljø; kræver ability_cap_per_date_enabled. Ejer-only flip.
   { key: "development_score_v2", area: "training", label: "Udvikling 2.0 — Udviklingsscore B styrer dagens udvikling" },
+  // #7685: søndagsjob, holdskifte og nye kig skriver gemte potentiale-skøn. Fail-safe OFF;
+  // "beta" læses som off. Ikke spiller-synlig; kræver private_config-kalibreringen. Ejer-only flip.
+  { key: "potential_estimate_writes", area: "training", label: "Udvikling 2.0 — gemte potentiale-skøn (skrivning)" },
   { key: "race_day_catchup_enabled", area: "training", label: "Udvikling 2.0 — catch-up via løb (løbsdagens ekstra ens for alle hold)" },
   // #5950: løbsdag = hård dag + rolle-vægtet tillæg (raceDayRoleYield5950.js). Fail-safe OFF; tal i private_config. Ejer-only flip.
   { key: "race_day_role_yield_enabled", area: "race-day", label: "Udvikling 2.0 — løbsdag = hård dag + tillæg efter rolle" },
@@ -229,6 +271,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   // naar de er taendt for spilleren.
   "development_v2_aging_enabled",
   "potential_single_number",
+  // #7684: skønnets flader og Hjaelp skifter paa dette flag (byggetrin 6).
+  "potential_estimate_display",
   "ability_cap_per_date_enabled",
   "training_decision_card",
   // #5319: sessionsvaelgerne og Hjaelp viser v3-kataloget paa dette flag.
@@ -238,6 +282,14 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "race_library_v2",
   // #7536: HelpPage gater blokken om traening paa en dato med loeb paa dette flag.
   "condition_v2_race_date_training_day",
+  // #7636: etapeplanens resumé krydstjekker filmen paa dette flag (binaert, som motoren).
+  "stage_plan_dropped_front_7635",
+  // #7717: "Your day" viser Hvorfor?-knappen paa dette flag.
+  "rider_why_button",
+  // #2009: rytternavnene viser hover-miniprofilen paa dette flag.
+  "rider_hover_card",
+  // #7725: Hjaelp viser svaret om dagsformen i ord paa dette flag (binaert, som motoren).
+  "day_words_7725",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,
@@ -245,4 +297,4 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
 // en flade aldrig beskriver en model motoren ikke koerer for beta-gruppen.
 // #7536: condition_v2_race_date_training_day laeses ogsaa kun som "on" af motoren
 // (conditionModelV2Flag.isRaceDateTrainingDayEnabled).
-export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day"]);
+export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725"]);

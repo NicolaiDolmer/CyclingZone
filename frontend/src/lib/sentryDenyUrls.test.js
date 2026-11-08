@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DENY_URLS, isDeniedUrl, isKnownExtensionNoise, isProxiedOrigin, isTranslateProxyHistoryError } from "./sentryDenyUrls.js";
+import { DENY_URLS, isAbortNoise, isDeniedUrl, isKnownExtensionNoise, isProxiedOrigin, isTranslateProxyHistoryError } from "./sentryDenyUrls.js";
 
 // #2018: Vercel Live Feedback / Toolbar injicerer /_next-live/feedback/instrument.js
 // og kaster tredjeparts-fejl (CYCLINGZONE-18/19/1A/1B/1C). Disse SKAL filtreres,
@@ -152,4 +152,22 @@ test("toolbar-moensteret er tilfoejet til DENY_URLS-arrayet (bruges af Sentry.in
     re.test("https://cyclingzone.org/_next-live/feedback/instrument.js")
   );
   assert.equal(hasToolbarPattern, true, "DENY_URLS skal indeholde toolbar-moensteret");
+});
+
+test("#7677: isAbortNoise dropper AbortError-typen (afbrudt fetch ved sideskift)", () => {
+  assert.equal(isAbortNoise("AbortError", "signal is aborted without reason"), true);
+  assert.equal(isAbortNoise("AbortError", "The user aborted a request."), true);
+  assert.equal(isAbortNoise("AbortError", ""), true);
+  assert.equal(isAbortNoise("AbortError: signal is aborted without reason", ""), false);
+  assert.equal(isAbortNoise("", "AbortError: signal is aborted without reason"), true);
+  // Faktisk Sentry-form for DOMException uden stack: type "Error", navn i besked.
+  assert.equal(isAbortNoise("Error", "AbortError: The operation was aborted."), true);
+});
+
+test("#7677: isAbortNoise rammer IKKE aegte fejl der blot naevner 'aborted'", () => {
+  assert.equal(isAbortNoise("TypeError", "signal is aborted without reason"), false);
+  assert.equal(isAbortNoise("Error", "Upload aborted by server"), false);
+  assert.equal(isAbortNoise("", "Transaction aborted: deadlock"), false);
+  assert.equal(isAbortNoise("", ""), false);
+  assert.equal(isAbortNoise(undefined, undefined), false);
 });

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { PGlite } from "@electric-sql/pglite";
 
 import {
   refreshRankingMatviewsSafe as rawSafe,
@@ -716,4 +717,86 @@ test('#6765: time spent in legacy refresh is included in parity peak admission',
   const now=new Date('2026-10-19T16:59:59Z');
   assert.equal(await rawSafe(db,{now,clock:()=>elapsed,testNowFn:()=>now}),true);
   assert.equal(parityCalls,0);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// #7664: team_race_points_mv refreshes med hash join (funktions-scoped SET).
+//
+// Planner-indstillingen sidder paa refresh_team_race_points_mv(boolean). En senere
+// CREATE OR REPLACE af den overload uden SET-klausulen nulstiller den stille, og
+// refreshen falder tilbage til den dyre merge join uden at noget fejler. Testene
+// herunder fanger begge veje: migrationen forsvinder, eller en nyere migration
+// regenererer funktionen uden at genanvende indstillingen.
+const PLAN_MIGRATION_7664 = "2026-11-04-7664-team-race-points-mv.sql";
+const DATABASE_DIR = path.join(REPO_ROOT, "database");
+const readPlanMigration7664 = () => fs.readFileSync(path.join(DATABASE_DIR, PLAN_MIGRATION_7664), "utf8");
+
+test("#7664 forward-guard — migrationen saetter hash-join-planen paa den overload der udfoerer REFRESH", () => {
+  const sql = stripSqlComments(readPlanMigration7664());
+  assert.match(sql, /ALTER\s+FUNCTION\s+public\.refresh_team_race_points_mv\(boolean\)\s+SET\s+enable_mergejoin\s*(?:=|TO)\s*off/i);
+  assert.match(sql, /ALTER\s+FUNCTION\s+public\.refresh_team_race_points_mv\(boolean\)\s+SET\s+work_mem\s*(?:=|TO)\s*'\d+MB'/i);
+  // Matview-definitionen skal vaere uroert: ingen DROP/CREATE af matviewet.
+  assert.doesNotMatch(sql, /(DROP|CREATE)\s+MATERIALIZED\s+VIEW/i);
+  assert.doesNotMatch(sql, /REFRESH\s+MATERIALIZED\s+VIEW/i, "migrationen maa ikke selv refreshe i prod");
+});
+
+test("#7664 PGlite — migrationen er idempotent, saetter indstillingerne og refreshen giver samme rangliste", async () => {
+  const db = new PGlite();
+  try {
+    // Minimal kopi af prod-formen: tabellerne, matviewet og boolean-overloaden
+    // som 2026-10-06-5692-ranking-refresh-events.sql genererer den.
+    await db.exec(`
+      CREATE TABLE races (id int PRIMARY KEY, season_id int, name text, squad text);
+      CREATE TABLE riders (id int PRIMARY KEY, team_id int);
+      CREATE TABLE race_results (id serial PRIMARY KEY, race_id int, rider_id int, prize_money bigint);
+      CREATE MATERIALIZED VIEW public.team_race_points_mv AS
+        SELECT ra.season_id, ri.team_id, rr.race_id, ra.name AS race_name, SUM(rr.prize_money) AS race_points
+        FROM public.race_results rr
+        JOIN public.races ra ON ra.id = rr.race_id
+        JOIN public.riders ri ON ri.id = rr.rider_id
+        WHERE ri.team_id IS NOT NULL AND ra.squad = 'senior'
+        GROUP BY ra.season_id, ri.team_id, rr.race_id, ra.name;
+      CREATE UNIQUE INDEX team_race_points_mv_pk ON public.team_race_points_mv (season_id, team_id, race_id);
+      CREATE FUNCTION public.refresh_team_race_points_mv(p_concurrently boolean) RETURNS void
+        LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $body$ BEGIN
+        IF p_concurrently IS DISTINCT FROM true THEN RAISE EXCEPTION 'Concurrent refresh is required'; END IF;
+        REFRESH MATERIALIZED VIEW CONCURRENTLY public.team_race_points_mv; END; $body$;
+      INSERT INTO races VALUES (1, 1, 'Loeb A', 'senior'), (2, 1, 'Loeb B', 'senior'), (3, 1, 'Loeb U', 'u23');
+      INSERT INTO riders VALUES (1, 10), (2, 10), (3, 20), (4, NULL);
+      INSERT INTO race_results (race_id, rider_id, prize_money) VALUES
+        (1, 1, 5), (1, 2, 3), (1, 3, 7), (1, 4, 9), (2, 1, NULL), (2, 3, 2), (3, 1, 100);
+    `);
+
+    const migration = readPlanMigration7664();
+    await db.exec(migration);
+    await db.exec(migration); // auto-migrate-sikker: anden koersel er en no-op.
+
+    const { rows: [fn] } = await db.query(
+      "SELECT proconfig FROM pg_proc WHERE oid = 'public.refresh_team_race_points_mv(boolean)'::regprocedure");
+    assert.ok(fn.proconfig.includes("enable_mergejoin=off"), `proconfig: ${fn.proconfig}`);
+    assert.ok(fn.proconfig.some((c) => c.startsWith("work_mem=")), `proconfig: ${fn.proconfig}`);
+    assert.ok(fn.proconfig.some((c) => c.startsWith("search_path=")), "eksisterende search_path skal bevares");
+
+    // Indstillingen er funktions-scoped: sessionen udenfor er uroert.
+    const { rows: [outside] } = await db.query("SELECT current_setting('enable_mergejoin') AS v");
+    assert.equal(outside.v, "on");
+
+    // Nyt resultat, refresh gennem funktionen (CONCURRENTLY under de nye indstillinger).
+    await db.exec("INSERT INTO race_results (race_id, rider_id, prize_money) VALUES (2, 2, 4)");
+    await db.query("SELECT public.refresh_team_race_points_mv(true)");
+
+    const { rows: diff } = await db.query(`
+      WITH fresh AS (
+        SELECT ra.season_id, ri.team_id, rr.race_id, ra.name AS race_name, SUM(rr.prize_money) AS race_points
+        FROM race_results rr JOIN races ra ON ra.id = rr.race_id JOIN riders ri ON ri.id = rr.rider_id
+        WHERE ri.team_id IS NOT NULL AND ra.squad = 'senior'
+        GROUP BY ra.season_id, ri.team_id, rr.race_id, ra.name),
+      mv AS (SELECT season_id, team_id, race_id, race_name, race_points FROM public.team_race_points_mv)
+      SELECT (SELECT count(*) FROM (SELECT * FROM fresh EXCEPT ALL SELECT * FROM mv) a)::int AS fresh_minus_mv,
+             (SELECT count(*) FROM (SELECT * FROM mv EXCEPT ALL SELECT * FROM fresh) b)::int AS mv_minus_fresh,
+             (SELECT count(*) FROM mv)::int AS mv_rows`);
+    assert.deepEqual(diff[0], { fresh_minus_mv: 0, mv_minus_fresh: 0, mv_rows: 4 });
+  } finally {
+    await db.close();
+  }
 });

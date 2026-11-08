@@ -17,7 +17,7 @@ import { apiFetch } from "../../../lib/apiFetch.ts";
 import { useAdminAuth } from "../shared/useAdminAuth";
 import { ENGINE_ORDER } from "../../../lib/roadmapVoting.js";
 import {
-  ISSUE_AREAS, ISSUE_STATUSES, ROADMAP_STATUSES, issueStatusPatch, nextSortOrder, statusPatch, validateTitles,
+  HORIZONS, HORIZON_LABELS, ISSUE_AREAS, ISSUE_STATUSES, ROADMAP_STATUSES, issueStatusPatch, nextSortOrder, statusPatch, validateTitles,
 } from "../../../lib/roadmapAdminModel.ts";
 import { Button, Checkbox, Field, Input, Modal, Select, Textarea } from "../../ui";
 
@@ -30,7 +30,6 @@ export const STATUS_LABELS = {
 export const ISSUE_STATUS_LABELS = {
   checking: "Tjekkes", confirmed: "Bekræftet", fixing: "Rettes", fixed: "Rettet", dismissed: "Lukket uden fund",
 };
-export const HORIZON_LABELS = { next: "Next", later: "Later" };
 export const FLAG_STAGE_LABELS = { off: "Fra", beta: "Beta", on: "Til" };
 
 function parseIssueRef(value) {
@@ -59,7 +58,7 @@ const nowIso = () => new Date().toISOString();
 
 // ── Punkt: opret / ret ──────────────────────────────────────────────────────
 const EMPTY_ITEM = {
-  engine: "races", title_en: "", title_da: "", status: "planned", horizon: "next",
+  engine: "races", title_en: "", title_da: "", status: "planned", horizon: "next_week",
   issue_ref: "", approved: false, flag_key: "", beta_soon: false, live_soon: false,
 };
 
@@ -70,7 +69,7 @@ function itemDraft(item) {
     title_en: item.title_en ?? "",
     title_da: item.title_da ?? "",
     status: item.status ?? "planned",
-    horizon: item.horizon ?? "next",
+    horizon: item.horizon ?? "next_week",
     issue_ref: item.issue_ref ?? "",
     approved: item.approved !== false,
     flag_key: item.flag_key ?? "",
@@ -144,10 +143,9 @@ export function ItemFormModal({ open, item, flags, planned, onClose, onSaved }) 
               {ROADMAP_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
             </Select>
           </Field>
-          <Field label="Next/Later" htmlFor={`${uid}-horizon`}>
+          <Field label="Horisont" htmlFor={`${uid}-horizon`}>
             <Select id={`${uid}-horizon`} size="sm" value={form.horizon} onChange={(e) => set("horizon", e.target.value)}>
-              <option value="next">Next</option>
-              <option value="later">Later</option>
+              {HORIZONS.map((h) => <option key={h} value={h}>{HORIZON_LABELS[h]}</option>)}
             </Select>
           </Field>
         </div>
@@ -197,13 +195,13 @@ export function SplitItemModal({ open, item, onClose, onSaved }) {
   const { getAuth } = useAdminAuth();
   const uid = useId();
   const formId = `${uid}-split`;
-  const [form, setForm] = useState({ title_en: "", title_da: "", status: "planned", horizon: "next", issue_ref: "" });
+  const [form, setForm] = useState({ title_en: "", title_da: "", status: "planned", horizon: "next_week", issue_ref: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (open) {
-      setForm({ title_en: "", title_da: "", status: "planned", horizon: item?.horizon ?? "next", issue_ref: "" });
+      setForm({ title_en: "", title_da: "", status: "planned", horizon: item?.horizon ?? "next_week", issue_ref: "" });
       setError("");
       setSaving(false);
     }
@@ -253,10 +251,9 @@ export function SplitItemModal({ open, item, onClose, onSaved }) {
               {["planned", "in_progress", "active"].map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
             </Select>
           </Field>
-          <Field label="Next/Later" htmlFor={`${uid}-horizon`}>
+          <Field label="Horisont" htmlFor={`${uid}-horizon`}>
             <Select id={`${uid}-horizon`} size="sm" value={form.horizon} onChange={(e) => set("horizon", e.target.value)}>
-              <option value="next">Next</option>
-              <option value="later">Later</option>
+              {HORIZONS.map((h) => <option key={h} value={h}>{HORIZON_LABELS[h]}</option>)}
             </Select>
           </Field>
           <Field label="GitHub-issue" htmlFor={`${uid}-ref`}>

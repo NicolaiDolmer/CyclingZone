@@ -101,7 +101,7 @@ const story = buildRaceStory({
 | `moments` | `Moment[]` | Se 3.2. km-sorteret. |
 | `checkpoints` | `Checkpoint[]` | Se 3.3. |
 | `snapshots` | `Snapshot[]` | Se 3.4. |
-| `group_spans` | `[{group_id, from_km, to_km, source_group_id, into_group_id, rider_ids}]` | Gruppernes levetid på vejen: fra dannelse/split (`source_group_id` = gruppen den kom fra) til sammenlægning (`into_group_id`), på hændelsens sande km. `rider_ids` = gruppens eksplicitte medlemmer lige efter dannelsen (tom for resten). `to_km: null` = gruppen findes stadig ved mål; `to_km` er aldrig mindre end `from_km`. Tom for enkeltstart. |
+| `group_spans` | `[{group_id, from_km, to_km, source_group_id, into_group_id, rider_ids}]` | Gruppernes levetid på vejen: fra dannelse/split (`source_group_id` = gruppen den kom fra) til sammenlægning (`into_group_id`), på hændelsens sande km. `rider_ids` = gruppens eksplicitte medlemmer lige efter dannelsen (tom for resten). `to_km: null` = gruppen findes stadig ved mål; `to_km` er aldrig mindre end `from_km`. Valgfrit `late_joins: [{km, rider_ids}]` = ryttere der først kom med senere (sen halvdel af et split, #6350). En sen halvdel med `own_line` (hentet inde i segmentet, #7734) får i stedet sin egen levetid `<gruppe>-late` fra stedet efter kontakten til tjekpunktet, med `source_group_id` = gruppen den kørte i og `into_group_id` = gruppen den ender i. Tom for enkeltstart. |
 | `breakaway` | `{morning_rider_ids, outcomes}`\|null | Dagens udbryderes udfald (`caught`/`dropped`/`survived`/null), samme projektion som mærkerne og de gemte flag (`raceParticipationHistory.ts`). Med `results` afgøres de mod målresultatet. |
 
 ### 3.2 `Moment`
@@ -157,6 +157,14 @@ melding får sin egen måling (`exact_time` på `exact_km`) eller hullet fra
 gruppen den kom fra (også `carried`). Et senere snapshot bruges aldrig
 (fremtidige huller og splits hører ikke til passagen).
 
+Undtagelse for målet (#7900): har alle rækker i `results` et hul (`gap_s`, fra
+`storyInputsFromResults` over `finish_time`), er snapshot og kontrolpunkt ved
+målet bygget af resultatet: én gruppe pr. hul, `gap_source: "result"`. En gruppe
+beholder sit id på det hul, hvor flest af dens ryttere endte. Etaperesultatet er
+sandheden; filmen må aldrig vise andet ved målstregen. Lige før stregen ligger et
+snapshot med tilstanden på vejen, så replay er motorens indtil selve stregen, og
+ved stregen flytter ingen af motorens overgange rytterne ud af resultatets grupper.
+
 `checkpointGapForRider(checkpoint, riderId)` giver
 `{ group_id, gap_s, time_s, in_front, via_rest } | null` (null: udgået, dvs.
 i `out_rider_ids`; uheldsoffer i `pending_rider_ids`; eller gruppen er
@@ -182,8 +190,9 @@ hul (motoren melder kun ændringer); `front` = gruppen kører forrest.
 `replayFrames(story, { finaleKm = 5, stepKm = 1 })` giver
 `[{ km, leader_time_s, groups: [{group_id, size, includes_rest, gap_s, km_behind}] }]`
 på hvert tjekpunkt og pr. km over de sidste 5 km. Mellem tjekpunkter
-interpoleres hullet lineært; `km_behind` er hullet omregnet med førerens fart
-på stedet. Frame-medlemskabet bygges fra tilstanden før frame'en og
+interpoleres hullet lineært; `km_behind` er den strækning føreren har kørt
+siden gruppen var på stedet (hullet slået op på førerlinjen), så den aldrig
+springer baglæns. Frame-medlemskabet bygges fra tilstanden før frame'en og
 `group_spans`, aldrig ved at projicere næste snapshot baglæns: en gruppe der
 smelter sammen inde i et interval, er på vejen til sit merge-punkt og lukker
 lineært ind på gruppen den smelter ind i; en gruppe der splitter sig ud inde i

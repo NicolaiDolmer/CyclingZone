@@ -396,6 +396,7 @@ export async function carryTrainingPlans({
     skipped_rider_left_team: 0,
     skipped_rider_retired: 0,
     skipped_already_present: 0,
+    skipped_rest_plan: 0,
     eligible: 0,
     carried: 0,
     teams: 0,
@@ -420,6 +421,13 @@ export async function carryTrainingPlans({
     }
     if (existingKeys.has(`${plan.team_id}|${plan.rider_id}`)) {
       stats.skipped_already_present += 1;
+      continue;
+    }
+    if (plan.intensity === "rest") {
+      // #7637: en hvile-plan som ingen har rørt må ikke følge med ind i en ny
+      // sæson og lade rytteren stå stille. Rytteren får standardplanen, og
+      // manageren kan stadig vælge hvile bevidst i den nye sæson.
+      stats.skipped_rest_plan += 1;
       continue;
     }
     stats.eligible += 1;

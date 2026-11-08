@@ -44,6 +44,7 @@ import {
   applyReinstatementPointPenalty,
   applyTimeLimit,
   reinstatedRiderIdsOf,
+  timeLimitFatigue7715On,
   timeLimitTuningFor,
   type TimeLimitJuryInput,
 } from "./mechanics/timeLimit.ts";
@@ -56,9 +57,9 @@ import { teamRostersFromStartlist } from "./adapters/teamRosterAdapter.ts";
 // #5576: enkeltstarten. Samme kerne som holdtidskoerslen, én rytter pr. enhed —
 // se ITT-blokken i simulateStageV4 og mechanics/individualTimeTrial.ts's filhoved.
 import { isIndividualTimeTrial, simulateIndividualTimeTrialStage } from "./mechanics/individualTimeTrial.ts";
-import { isOrdersGcV3OrLater, isS5ProfilesV2OrLater, isS5ProfilesV3OrLater, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
-import { applyHelperWithdrawals } from "./mechanics/abandons.ts";
+import { isOrdersGcV3OrLater, isS5ProfilesV2OrLater, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
 import { dayForm6649On } from "./mechanics/dayForm6649.ts"; // #6649
+export { dayWordEvents7725 } from "./mechanics/dayForm6649.ts"; // #7725: kun til broen, motoren kalder den aldrig
 import { withPointPlace } from "./exactPlace.ts";
 import { stageInputForRulesRevision } from "./s5Profiles.ts";
 import { compareIds } from "../../compareIds.ts";
@@ -260,7 +261,7 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
   // forgrener altid — ogsaa for fixtures og haandbyggede testlister.
   if (isIndividualTimeTrial(input.route.profile_type)) {
     return {
-      output: simulateIndividualTimeTrialStage(input.route, input.startlist, input.seed, input.tuning, { rulesRevision: input.rules_revision, ...(dayForm6649On(input) ? { dayForm6649: true as const } : {}) }), // #6649
+      output: simulateIndividualTimeTrialStage(input.route, input.startlist, input.seed, input.tuning, { rulesRevision: input.rules_revision, ...(dayForm6649On(input) ? { dayForm6649: true as const } : {}), ...(input.itt_no_day_roll_7726 === true ? { ittNoDayRoll7726: true as const } : {}) }), // #6649, #7726
       trace: TIME_TRIAL_TRACE,
     };
   }
@@ -309,14 +310,12 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
     jury: juryInputFor(input, state),
     // Ejer 28/9: ungdomsloeb har en mildere graense (timeLimitTuningFor).
     tuning: timeLimitTuningFor(input.squad),
+    // #7715 (SLUKKET): meget traette ryttere paa en etape der passer dem daarligt.
+    ...(timeLimitFatigue7715On(input) ? { fatigueSeverityByRider: input.time_limit_fatigue_7715, fatigueEffortByRider: state.stage_plan_load_efforts } : {}),
   });
-  // #6938 U3 (KUN s5_profiles_v3, slukket, kun endagsloeb): en sat hjaelper
-  // (langt efter, ingen opgave) kan stige af. Efter tidsgraensen, saa en
-  // OTL-rytter beholder sin udfaldsklasse; foer finish-eventet og passagerne.
-  const withdrawals = isS5ProfilesV3OrLater(input.rules_revision)
-    ? applyHelperWithdrawals(timeLimit.results, input.startlist, { seed: input.seed, distanceKm: input.route.distance_km, gc: input.gc_context })
-    : null;
-  const results = withdrawals ? withdrawals.results : timeLimit.results;
+  // #7713 (ejer 5/11): ingen lodtraekning efter maalstregen. En rytter udgaar kun af
+  // en aegte aarsag: styrt og skade undervejs, sygdom foer start eller tidsgraensen.
+  const results = timeLimit.results;
   const finishEvent = buildFinishEvent(results, input.route.distance_km, sortedTimeline);
   const winnerId = results[0]?.rider_id ?? null;
   // #6748 (KUN s5_profiles_v2): ogsaa en sejr fra et stykke af udbruddet (chaseGroup.ts).
@@ -387,7 +386,7 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
     results,
     loads,
     groupSnapshots,
-    incidents: withdrawals?.incidents.length ? [...buildIncidents(state), ...withdrawals.incidents] : buildIncidents(state),
+    incidents: buildIncidents(state),
     passages,
     // #5582 (ejer 23/9, UCI 2.6.032): en genindsat rytter (juryen eller en
     // reddet grupetto) mister sine point i point- og bjergkonkurrencen.

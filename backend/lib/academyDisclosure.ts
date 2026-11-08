@@ -5,7 +5,7 @@ import { learningSpeed, loadPullSignedRiderIds, loadTrainingDaysOnTeam } from ".
 import { loadTrainingStaffContext } from "./trainingStaffContext.js";
 
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
-import { ACADEMY_INTAKE_PULL_FLAG_KEY } from "./academyIntakePullFlag.js";
+import { ACADEMY_INTAKE_PULL_FLAG_KEY } from "./academyIntakePullFlag.ts";
 
 // An unavailable rollout flag must never grant extra knowledge.
 export async function isAcademyKnowledgeEnabled(supabase: any): Promise<boolean> {

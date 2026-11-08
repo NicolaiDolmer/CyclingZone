@@ -21,6 +21,7 @@ import { isStageLocked } from "./raceTeamOrdersApi.js";
 import { stageVersions } from "./stageRolesWriteScope.ts";
 import { teamWillStart, loadTeamsInStartedField, overlapRuleApplies, loadStartDaySpentRiderIds } from "./raceStartOutlook.js";
 import { splitWithdrawals } from "./raceWithdrawal.js"; // #6740
+import { loadFatigueOutStages7715, loadStageStartFatigues7715, raceTimeLimitFatigue7715Applies, timeLimitRiskByRider7715 } from "./timeLimitFatigue7715.js"; // #7715, #7890
 import { loadRaceTrainNowLock } from "./trainNowLock.js"; // #6740
 import { loadSpentRaceDays } from "./raceSpentDays.js"; // #6740
 import {
@@ -304,6 +305,9 @@ export async function getStageRolesContext({ supabase, race, teamId, now = new D
   let stageFitByRider = new Map();
   let fitByRider = new Map();
   let conditionByRider = new Map();
+  // #7715: maerket foer etapen (kun kommende etaper) og forklaringen efter den.
+  let timeLimitRiskByRider = {};
+  let fatigueOutStageByRider = new Map();
   if (riderIds.length) {
     const [abilitiesRes, conditionRes, profileRows] = await Promise.all([
       supabase.from("rider_derived_abilities").select(["rider_id", ...ABILITY_KEYS].join(", ")).in("rider_id", riderIds),
@@ -334,6 +338,18 @@ export async function getStageRolesContext({ supabase, race, teamId, now = new D
     if (!conditionRes.error) {
       conditionByRider = new Map((conditionRes.data || []).map((c) => [c.rider_id, c]));
     }
+    if (!abilitiesRes.error && !conditionRes.error && stages.length && await raceTimeLimitFatigue7715Applies({ supabase, race })) {
+      const riskRiders = (abilitiesRes.data || []).map((ab) => ({ rider_id: ab.rider_id, abilities: ab, fatigue: conditionByRider.get(ab.rider_id)?.fatigue }));
+      const riskStages = stages.filter((s) => s.stage_number > (race.stages_completed ?? 0));
+      timeLimitRiskByRider = timeLimitRiskByRider7715({
+        riders: riskRiders,
+        stages: riskStages,
+        race,
+        // #7890: traetheden ved etapens start, som motoren ser den (datoens tidligere etaper med).
+        fatigueAtStage: await loadStageStartFatigues7715({ supabase, race, teamId, riders: riskRiders, stages }),
+      });
+    }
+    fatigueOutStageByRider = await loadFatigueOutStages7715({ supabase, race, riderIds: riderIds.filter((id) => abandonedRiderIds.has(id)) });
   }
 
   const riders = (entries || []).map((e) => {
@@ -350,6 +366,9 @@ export async function getStageRolesContext({ supabase, race, teamId, now = new D
       stage_fit: stageFitByRider.get(e.rider_id) ?? null,
       form: cond?.form ?? null,
       fatigue: cond?.fatigue ?? null,
+      // #7715: kun naar der er noget at vise; aldrig et tal. Slukket kontakt = felterne findes ikke.
+      ...(timeLimitRiskByRider[e.rider_id] ? { time_limit_risk: timeLimitRiskByRider[e.rider_id] } : {}),
+      ...(fatigueOutStageByRider.has(e.rider_id) ? { time_limit_out_stage: fatigueOutStageByRider.get(e.rider_id) } : {}),
     };
   });
 

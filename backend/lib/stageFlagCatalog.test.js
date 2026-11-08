@@ -43,7 +43,7 @@ function collectFlagSourceFiles(dir, out = []) {
 // er enten en strengliteral ("facilities_enabled" i economyEngine.js) eller et
 // identifier der er defineret som en strengliteral i SAMME fil (det moenster
 // alle *Flag.js-modulerne foelger).
-const CALL_RE = /evaluateFlagStage\(\s*await\s+readFlagStage\(\s*\w+\s*,\s*([^)]+?)\s*\)/g;
+const CALL_RE = /evaluateFlagStage\(\s*await\s+readFlagStage\(\s*\w+\s*,\s*([^),]+?)\s*(?:,[^)]*)?\)/g;
 // SPLIT-formen: `const stage = await readFlagStage(supabase, "noegle")` et sted
 // og `evaluateFlagStage(stage)` et andet. api.js bruger den (isScoutSystemEnabled,
 // resolveFacilitiesEnabled), og CALL_RE alene er blind for den — et nyt
@@ -52,7 +52,8 @@ const CALL_RE = /evaluateFlagStage\(\s*await\s+readFlagStage\(\s*\w+\s*,\s*([^)]
 // ville enhver readFlagStage-laesning taelle med: app_config rummer ogsaa tal
 // (market_value_weekly_cap) og andre tre-tilstande (email_loop_*), som netop
 // IKKE hoerer til i kataloget.
-const SPLIT_RE = /const\s+(\w+)\s*=\s*await\s+readFlagStage\(\s*\w+\s*,\s*([^)]+?)\s*\)/g;
+// Noeglen slutter ved foerste komma: et options-argument ({ now }, { fresh }) er ikke en del af den.
+const SPLIT_RE = /const\s+(\w+)\s*=\s*await\s+readFlagStage\(\s*\w+\s*,\s*([^),]+?)\s*(?:,[^)]*)?\)/g;
 const CONST_RE = /(?:export\s+)?const\s+([A-Z][A-Z0-9_]*)\s*=\s*"([^"]+)"/g;
 // ACADEMY.FLAG_KEY-formen: et objekt-felt der er en strengliteral.
 const FIELD_RE = /\b([A-Z][A-Z0-9_]*)\s*:\s*"([^"]+)"/g;
@@ -112,6 +113,16 @@ test("#5259: hver evaluateFlagStage-noegle i backend staar i STAGE_FLAGS", () =>
 test("#5259: scanneren finder faktisk noegler (guard mod en regex der er holdt op med at matche)", () => {
   const source = readFileSync(join(BACKEND_ROOT, "lib", "boardMandateFlag.js"), "utf8");
   assert.deepEqual(resolveKeysInFile(source), ["board_mandate_model_enabled"]);
+});
+
+test("#5259: SPLIT-formen med options-argument opløser stadig nøglen, og en ukendt nøgle fejler stadig", () => {
+  const withOptions = (key) => [
+    'const KNOWN_FLAG_KEY = "scout_system_enabled";',
+    `const stage = await readFlagStage(supabase, ${key}, { now });`,
+    "if (evaluateFlagStage(stage)) return true;",
+  ].join("\n");
+  assert.deepEqual(resolveKeysInFile(withOptions("KNOWN_FLAG_KEY")), ["scout_system_enabled"]);
+  assert.deepEqual(resolveKeysInFile(withOptions("someVariable")), ["UNRESOLVED:someVariable"]);
 });
 
 test("#5259: SPLIT-formen fanges ogsaa, og kun naar variablen bruges", () => {

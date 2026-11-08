@@ -4,14 +4,15 @@
 // uden egen hentning; al afledt logik bor i lib/roadmapModel.ts.
 //
 // Uændrede beslutninger: spillere ser kun deres egen stemme (11/6, #1599),
-// ingen datoer på planen, EN først og DA under. Admin-kontrollerne (markér
+// EN først og DA under. #7666 (ejer 4/11): planen står nu pr. horisont med
+// datoer på ugerne, og en søgning går på tværs af alle fem faner (#6203). Admin-kontrollerne (markér
 // bygget, opret-formular) er flyttet til /admin/growth?tab=roadmap (spor 3),
 // så den offentlige side ikke bærer admin-kode og ikke kalder is_admin().
 //
 // Ruten er offentlig: udloggede kan læse alt, men ser ingen skalaer og ingen
 // "Affects me too"-knapper.
 
-import { useEffect, useMemo, useState, Suspense } from "react";
+import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase, authHeaders } from "../lib/supabase";
@@ -24,27 +25,37 @@ import {
   isValidScore,
   buildVotePayload,
   buildImportancePayload,
+  buildDontKnowPayload,
   votesByItemId,
 } from "../lib/roadmapVoting.js";
 import {
   parseTab,
   partitionItems,
+  planRanks,
   isRated,
   countUnrated,
   splitIssues,
   buildDoneList,
+  splitRecentDone,
   latestIssueUpdates,
+  patchNotesByIssue,
+  searchRoadmap,
+  normalizeSearch,
+  roadmapRowId,
+  SEARCH_MIN_CHARS,
 } from "../lib/roadmapModel.ts";
+import { loadPatches } from "../lib/patchNotes.js";
 import {
   isRoadmapItemNew, latestRoadmapCreatedAt, readLastSeenRoadmap, writeLastSeenRoadmap,
 } from "../lib/roadmapUnread.ts"; // #5673: gul prik ved nye punkter
-import { PageHeader, Checkbox, Tabs, TabList, Tab, TabPanel } from "../components/ui";
+import { PageHeader, Checkbox, Input, Tabs, TabList, Tab, TabPanel } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import PlanTab from "../components/roadmap/PlanTab.tsx";
 import BetaTab from "../components/roadmap/BetaTab.tsx";
 import VoteTab from "../components/roadmap/VoteTab.tsx";
 import KnownIssuesTab from "../components/roadmap/KnownIssuesTab.tsx";
 import DoneTab from "../components/roadmap/DoneTab.tsx";
+import SearchResults from "../components/roadmap/SearchResults.tsx";
 
 // Feedback-fladen (samme modal som sidebarens "Kontakt") til Known issues'
 // tomme tilstand. Lazy: de fleste besøg åbner den aldrig.
@@ -52,7 +63,21 @@ const FeedbackModal = lazyWithRetry(() => import("../components/FeedbackModal.js
 
 const API = import.meta.env.VITE_API_URL;
 export const ONLY_UNRATED_KEY = "cz_roadmap_only_unrated";
-const KNOWN_ISSUE_COLUMNS = "id, area, status, title_en, title_da, sort_order, created_at, updated_at, closed_at";
+// #7666: issue_ref kobler et færdigt punkt til sin patch note.
+const ITEM_COLUMNS = `${ROADMAP_ITEM_COLUMNS}, issue_ref`;
+const KNOWN_ISSUE_BASE_COLUMNS = "id, area, status, title_en, title_da, sort_order, created_at, updated_at, closed_at, issue_ref";
+// confirmed_at/fixing_at kommer med #7666-migrationen. Indtil den er applied,
+// fejler querien med dem, og så hentes uden (tidslinjen viser trinnet uden dato).
+const KNOWN_ISSUE_COLUMNS = `${KNOWN_ISSUE_BASE_COLUMNS}, confirmed_at, fixing_at`;
+
+/** @returns {Promise<{ data: import("../lib/roadmapModel.ts").KnownIssue[] | null }>} */
+async function fetchKnownIssues() {
+  /** @param {string} columns */
+  const query = (columns) => supabase.from("known_issues").select(columns).eq("published", true).order("sort_order");
+  const result = await query(KNOWN_ISSUE_COLUMNS);
+  // Kolonnelisten er en skabelonstreng, så supabase-js kan ikke udlede rækketypen.
+  return /** @type {any} */ (result.error ? await query(KNOWN_ISSUE_BASE_COLUMNS) : result);
+}
 
 function readOnlyUnrated() {
   try {
@@ -103,6 +128,7 @@ export default function RoadmapPage() {
   const [lastSeenBeforeVisit] = useState(() => readLastSeenRoadmap());
   const [onlyUnratedPref, setOnlyUnratedPref] = useState(() => readOnlyUnrated());
   const [votes, setVotes] = useState(() => new Map());
+  const [votesLoaded, setVotesLoaded] = useState(false);
   const [drafts, setDrafts] = useState({}); // item_id → { idea, importance } (Vote-fanen)
   const [saveState, setSaveState] = useState({}); // item_id → "saving" | "saved" | "error"
   // Punkter spilleren har bedømt i DETTE besøg bliver stående, så "Saved" kan
@@ -111,6 +137,28 @@ export default function RoadmapPage() {
   const [reports, setReports] = useState(() => new Set());
   const [reportError, setReportError] = useState(() => new Set());
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  // ?q= åbner siden med en søgning (et link fra Discord eller Hjælp kan pege på et emne).
+  const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
+  // Det hit spilleren sidst åbnede. Bliver stående, så en fold ikke lukker ved
+  // næste render; revealedNonce sørger for, at der kun scrolles én gang pr. tryk.
+  const [reveal, setReveal] = useState(/** @type {import("../lib/roadmapModel.ts").RoadmapReveal | null} */ (null));
+  const revealedNonce = useRef(0);
+  // #7666: patch notes pr. GitHub-issue. Hentes først når Done åbnes (filen er
+  // stor og caches af CDN'en); null = ikke hentet, tomt Map = fejlede.
+  const [patchIndex, setPatchIndex] = useState(
+    /** @type {Map<number, import("../lib/roadmapModel.ts").PatchNoteRef[]> | null} */ (null),
+  );
+
+  useEffect(() => {
+    if (tab !== "done" || patchIndex) return;
+    let cancelled = false;
+    loadPatches()
+      .then((data) => { if (!cancelled) setPatchIndex(patchNotesByIssue(data)); })
+      .catch(() => { if (!cancelled) setPatchIndex(new Map()); });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, patchIndex]);
 
   useEffect(() => {
     let cancelled = false;
@@ -118,10 +166,9 @@ export default function RoadmapPage() {
       // Fejl på known_issues behandles som tom liste, så en manglende tabel
       // aldrig vælter Plan/Vote.
       const [{ data: itemData }, { data: issueData }, { data: updateData }, { data: auth }] = await Promise.all([
-        supabase.from("roadmap_items").select(ROADMAP_ITEM_COLUMNS)
+        supabase.from("roadmap_items").select(ITEM_COLUMNS)
           .eq("approved", true).in("status", ["active", "planned", "in_progress", "shipped"]).order("sort_order"),
-        supabase.from("known_issues").select(KNOWN_ISSUE_COLUMNS)
-          .eq("published", true).order("sort_order"),
+        fetchKnownIssues(),
         supabase.from("known_issue_updates")
           .select("id, issue_id, body_en, body_da, created_at").order("created_at", { ascending: false }),
         supabase.auth.getUser(),
@@ -150,6 +197,7 @@ export default function RoadmapPage() {
       setDrafts(Object.fromEntries(
         [...byItem].map(([itemId, vote]) => [itemId, { idea: vote.idea_score, importance: vote.importance_score }]),
       ));
+      setVotesLoaded(true);
       setReports(new Set((reportData ?? []).filter((r) => r.user_id === uid).map((r) => r.issue_id)));
     })();
     return () => {
@@ -179,18 +227,56 @@ export default function RoadmapPage() {
 
   const loading = items === null;
   const canVote = !!userId;
+  const showVoteCounts = canVote && votesLoaded;
+  const votingLoading = loading || (canVote && !votesLoaded);
   const onlyUnrated = canVote && onlyUnratedPref;
 
   const parts = useMemo(() => partitionItems(items), [items]);
   const issueParts = useMemo(() => splitIssues(issues), [issues]);
   const updatesByIssue = useMemo(() => latestIssueUpdates(updates), [updates]);
   const doneEntries = useMemo(() => buildDoneList(parts.shipped, issues, Infinity), [parts.shipped, issues]);
+  const recentDoneCount = useMemo(() => splitRecentDone(doneEntries).recent.length, [doneEntries]);
   const counts = countUnrated(items ?? [], votes);
-  const rankById = useMemo(() => new Map(parts.plannedNext.map((it, i) => [it.id, i + 1])), [parts.plannedNext]);
+  const rankById = useMemo(() => planRanks(parts.planGroups), [parts.planGroups]);
+  const searching = normalizeSearch(query).length >= SEARCH_MIN_CHARS;
+  const hits = useMemo(
+    () => (searching ? searchRoadmap(query, items, issues) : []),
+    [searching, query, items, issues],
+  );
 
   const visible = (list) => (onlyUnrated
     ? list.filter((it) => ratedThisVisit.has(it.id) || !isRated(it, votes.get(it.id)))
     : list);
+  // Filteret rammer kun planlagte punkter; det der er i gang, har ingen skala.
+  const planGroups = parts.planGroups
+    .map((g) => ({ ...g, items: g.items.filter((it) => it.status !== "planned" || visible([it]).length > 0) }))
+    .filter((g) => g.items.length > 0);
+  const decidedTotal = parts.planGroups.reduce((n, g) => n + g.items.length, 0);
+  const plannedTotal = parts.planGroups.reduce((n, g) => n + g.items.filter((it) => it.status === "planned").length, 0);
+
+  // Et hit skal kunne findes på fanen: et punkt spilleren allerede har bedømt,
+  // holdes synligt trods "kun ubedømte" (samme greb som et punkt bedømt i dette besøg).
+  // Fanen får id'et og monteres på ny (se revealKey), så dens områdefilter står
+  // på "alle", den rigtige fold er åben, og Done viser langt nok ned.
+  function openFromSearch(hit) {
+    if (hit.where === "planned" || hit.where === "idea") markRated(hit.id);
+    setReveal((prev) => ({ id: hit.id, tab: hit.tab, nonce: (prev?.nonce ?? 0) + 1 }));
+    setQuery("");
+    setTab(hit.tab);
+  }
+
+  const revealId = (panel) => (reveal && reveal.tab === panel ? reveal.id : null);
+  const revealKey = (panel) => (reveal && reveal.tab === panel ? reveal.nonce : panel);
+
+  // Fanen skifter via routeren og kan lande en render senere end reveal, så
+  // effekten venter, til hit'ets fane er den aktive.
+  useEffect(() => {
+    if (!reveal || reveal.tab !== tab || reveal.nonce === revealedNonce.current) return;
+    if (votingLoading && (tab === "plan" || tab === "vote")) return;
+    revealedNonce.current = reveal.nonce;
+    document.getElementById(roadmapRowId(reveal.id))?.scrollIntoView({ block: "center" });
+  }, [reveal, tab, votingLoading]);
+
   const isNew = (item) => isRoadmapItemNew(item.created_at, lastSeenBeforeVisit);
 
   function setOnlyUnrated(value) {
@@ -235,6 +321,20 @@ export default function RoadmapPage() {
     setSaveState((prev) => ({ ...prev, [item.id]: error ? "error" : "saved" }));
   }
 
+  // #7788: Ved ikke gælder hele punktet og gemmes straks, på begge faner.
+  async function markDontKnow(item) {
+    if (!userId) return;
+    markRated(item.id);
+    setSaveState((prev) => ({ ...prev, [item.id]: "saving" }));
+    const { error } = await supabase.from("roadmap_votes")
+      .upsert(buildDontKnowPayload({ itemId: item.id, userId, now: new Date() }), { onConflict: "user_id,item_id" });
+    if (!error) {
+      setVotes((prev) => new Map(prev).set(item.id, { item_id: item.id, idea_score: null, importance_score: null }));
+      setDrafts((prev) => ({ ...prev, [item.id]: { idea: null, importance: null } }));
+    }
+    setSaveState((prev) => ({ ...prev, [item.id]: error ? "error" : "saved" }));
+  }
+
   // Known issues: "Affects me too" / "I see this too". Et nyt tryk fortryder.
   async function toggleReport(issue) {
     if (!userId) return;
@@ -269,7 +369,7 @@ export default function RoadmapPage() {
       <PageHeader
         title={t("page.title")}
         subtitle={t("page.subtitle")}
-        actions={canVote ? (
+        actions={showVoteCounts ? (
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             <Checkbox
               id="roadmap-only-unrated"
@@ -291,22 +391,42 @@ export default function RoadmapPage() {
         </p>
       )}
 
+      {/* #6203: én søgning på tværs af fanerne, som på Patch notes. Fanerne
+          står skjult (ikke afmonteret) mens der søges, så deres tilstand bevares. */}
+      <div className="mb-4">
+        <Input
+          type="search"
+          size="sm"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label={t("search.ariaLabel")}
+          placeholder={t("search.placeholder")}
+          className="w-full sm:max-w-sm"
+        />
+      </div>
+
+      {searching && (
+        <SearchResults query={query} hits={hits} onOpen={openFromSearch} onClear={() => setQuery("")} />
+      )}
+
+      <div className={searching ? "hidden" : undefined}>
       <Tabs value={tab} onChange={setTab}>
         <TabList label={t("tabs.label")} className="mb-4">
-          <Tab value="plan"><TabLabel label={t("tabs.plan")} count={canVote ? counts.plan : 0} /></Tab>
+          <Tab value="plan"><TabLabel label={t("tabs.plan")} count={showVoteCounts ? counts.plan : 0} /></Tab>
           <Tab value="beta"><TabLabel label={t("tabs.beta")} count={parts.inBeta.length} /></Tab>
-          <Tab value="vote"><TabLabel label={t("tabs.vote")} count={canVote ? counts.vote : 0} /></Tab>
+          <Tab value="vote"><TabLabel label={t("tabs.vote")} count={showVoteCounts ? counts.vote : 0} /></Tab>
           <Tab value="issues"><TabLabel label={t("tabs.issues")} count={issueParts.confirmed.length} /></Tab>
-          <Tab value="done"><TabLabel label={t("tabs.done")} count={0} /></Tab>
+          <Tab value="done"><TabLabel label={t("tabs.done")} count={recentDoneCount} /></Tab>
         </TabList>
 
         <TabPanel value="plan">
           <PlanTab
-            loading={loading}
-            inProgress={parts.inProgress}
-            plannedNext={visible(parts.plannedNext)}
-            plannedLater={visible(parts.plannedLater)}
-            plannedTotal={parts.plannedNext.length + parts.plannedLater.length}
+            key={revealKey("plan")}
+            revealId={revealId("plan")}
+            loading={votingLoading}
+            groups={planGroups}
+            decidedTotal={decidedTotal}
+            plannedTotal={plannedTotal}
             rankById={rankById}
             onlyUnrated={onlyUnrated}
             votes={votes}
@@ -314,6 +434,7 @@ export default function RoadmapPage() {
             canVote={canVote}
             isNew={isNew}
             onRate={rateImportance}
+            onDontKnow={markDontKnow}
             onShowAll={() => setOnlyUnrated(false)}
             onGoVote={() => setTab("vote")}
           />
@@ -331,20 +452,26 @@ export default function RoadmapPage() {
         </TabPanel>
         <TabPanel value="vote">
           <VoteTab
-            loading={loading}
+            key={revealKey("vote")}
+            loading={votingLoading}
             ideas={visible(parts.ideas)}
             ideasTotal={parts.ideas.length}
+            unrated={counts.vote}
             onlyUnrated={onlyUnrated}
             drafts={drafts}
+            votes={votes}
             saveState={saveState}
             canVote={canVote}
             isNew={isNew}
             onScore={handleScore}
+            onDontKnow={markDontKnow}
             onShowAll={() => setOnlyUnrated(false)}
           />
         </TabPanel>
         <TabPanel value="issues">
           <KnownIssuesTab
+            key={revealKey("issues")}
+            revealId={revealId("issues")}
             loading={loading}
             confirmed={issueParts.confirmed}
             checking={issueParts.checking}
@@ -359,9 +486,18 @@ export default function RoadmapPage() {
           />
         </TabPanel>
         <TabPanel value="done">
-          <DoneTab loading={loading} entries={doneEntries} onGoPlan={() => setTab("plan")} />
+          <DoneTab
+            key={revealKey("done")}
+            revealId={revealId("done")}
+            loading={loading}
+            entries={doneEntries}
+            patchIndex={patchIndex}
+            onGoPlan={() => setTab("plan")}
+            votes={votes}
+          />
         </TabPanel>
       </Tabs>
+      </div>
 
       {feedbackOpen && (
         <Suspense fallback={null}>

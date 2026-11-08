@@ -65,7 +65,7 @@ import {
   mergedSharedCohorts,
 } from "./groups.ts";
 import type { FinaleGroupTrace, GroupMerge } from "./groups.ts";
-import { carrySplitsWithSourceAdvance, segmentSplitsFromEvents } from "./groups.ts"; // #6440
+import { carrySplitsWithSourceAdvance, isRetiredGroup, segmentSplitsFromEvents } from "./groups.ts"; // #6440, #7639
 import {
   GROUP_DRAFT_EXTRA_TUNING,
   GROUP_TEMPO_EFFORT_EXTRA_TUNING,
@@ -89,14 +89,14 @@ import {
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
 import { isLetGoChaseGroup, ownRidersOnWheelRaw } from "./mechanics/breakaway.ts";
 import { isOfficialTimesV4OrLater, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater, isS5ProfilesV3OrLater, sharedTimeModelGeneration, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
-import { findChaseGroup, isMorningRegroupCatch, noteFormationRiders } from "./mechanics/chaseGroup.ts";
+import { findChaseGroup, isMorningRegroupCatch, noteFormationRiders, teamChase7730On } from "./mechanics/chaseGroup.ts";
 import { annotateExactPlaces } from "./exactPlace.ts";
 import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
 import { finishDescentIndexFor, runInOpenOnlyTempo, timeModelTuningFor, valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
 import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
 import { compareIds } from "../../compareIds.ts";
 import { queenStageGap7236On } from "./mechanics/queenStageGap7236.ts"; // #7236
-import { descentRegroupTempo6486, descentRegroupTuning7236 } from "./mechanics/descentRegroup6486.ts"; // #6486, #7236
+import { descentRegroupCap7644On, descentRegroupTempo6486, descentRegroupTuning7236 } from "./mechanics/descentRegroup6486.ts"; // #6486, #7236, #7644
 import { advanceStagePlan, advanceStagePlanAtFinish, createStagePlanRuntime, stagePlanCurrentTasks, stagePlanEntrants, stagePlanFinalEfforts, stagePlanLoadEfforts } from "../../stagePlanEngine.ts"; // #7003, #7380
 import { applyDayForm6649, dayForm6649Events, dayForm6649On } from "./mechanics/dayForm6649.ts"; // #6649
 import { breakawayCurve6912On } from "./mechanics/breakawayCurve6912.ts"; // #6912
@@ -830,7 +830,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   for (const entrant of startlist) entrantsById[entrant.rider_id] = entrant;
   // #7003 (KUN s5_profiles_v3, slukket): etapeplanen langs ruten (lib/stagePlanEngine.ts). Uden plan: null, loopet uroert.
   const baseEntrantsById = entrantsById;
-  const stagePlan = isS5ProfilesV3OrLater(rulesRevision) ? createStagePlanRuntime(orders, route, baseEntrantsById) : null;
+  const stagePlan = isS5ProfilesV3OrLater(rulesRevision) ? createStagePlanRuntime(orders, route, baseEntrantsById, input.stage_plan_dropped_front_7635 === true ? { droppedFront7635: true } : {}) : null; // #7635 (slukket)
 
   const rngForFn = boundRngFor(seed);
   // #4885: feltets reference-CP pr. terraen — fart-modellens nulpunkt. Regnet
@@ -854,6 +854,10 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   // saa loebsfilmens gab-kurve har noget at tegne. Kun tidslinje-events.
   const pursuitSamples = isS5ProfilesV3OrLater(rulesRevision);
   const lastEmittedSeparation = new Map<string, { sep: number; chaseId: string }>();
+  // #7639 (KUN s5_profiles_v3): en udgaaet rytter forlader tidslinjen ved
+  // uheldet. Aeldre revisioner er frosne og beholder deres tidslinje uaendret.
+  const retiredLeaveTimeline = isS5ProfilesV3OrLater(rulesRevision);
+  const hiddenFromTimeline = (g: Pick<RaceGroup, "rider_ids">): boolean => retiredLeaveTimeline && isRetiredGroup(g, state.riders);
   let frontElapsedSeconds = 0;
 
   pushEvent(timeline, 0, "stage_start", {
@@ -1055,7 +1059,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     else if (ordersGcV3) tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers, loopTimeModel);
     // #6486 (KUN s5_profiles_v3, slukket): grupper samler sig efter sidste top paa bjerg uden topankomst.
     // #7236 (KUN kontakten): greb topgabets loft (kort vej fra sidste top til maal), regrupperer de lidt staerkere.
-    if (isS5ProfilesV3OrLater(rulesRevision)) tempoByGroup = descentRegroupTempo6486(state.groups, tempoByGroup, route, segmentIndex, state.incident_chasers, descentRegroupTuning7236(state.queen_cap_7236 === true && queenStageGap7236On(input), route));
+    if (isS5ProfilesV3OrLater(rulesRevision)) tempoByGroup = descentRegroupTempo6486(state.groups, tempoByGroup, route, segmentIndex, state.incident_chasers, descentRegroupTuning7236(state.queen_cap_7236 === true && queenStageGap7236On(input), route), descentRegroupCap7644On(input)); // #7644 (slukket)
 
     // 4a. Gap-bogfoering: fronten (mindste gap_seconds) er referencen; andre
     // gruppers gap opdateres med (dtGruppe - dtFront), floor 0.
@@ -1128,12 +1132,14 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       // #6748 (KUN s5_profiles_v2, slukket): udbrudsopfoelgningen (breakaway.ts).
       ...(isS5ProfilesV2OrLater(rulesRevision) ? { s5ProfilesV2: true as const } : {}),
       ...(queenStageGap7236On(input) ? { queenStageGap7236: true as const } : {}), // #7236 (slukket)
+      ...(input.split_attack_cause_7640 === true && isS5ProfilesV3OrLater(rulesRevision) ? { splitAttackCause7640: true as const } : {}), // #7640 (slukket)
       // #6804 (KUN s5_profiles_v3, slukket): udbrudspakken trin 2 (breakawayV3_6804.ts).
       // #6938 (KUN s5_profiles_v3, slukket): styrt-udgang pr. terraen (mechanics/incidents.ts).
       // #6937 (KUN s5_profiles_v3, slukket): bjergpoint i favoritgruppen + lead-outens pris.
       ...(isS5ProfilesV3OrLater(rulesRevision) ? { s5ProfilesV3: true as const } : {}),
       ...(dayForm6649On(input) ? { dayForm6649: true as const } : {}), // #6649
       ...(breakawayCurve6912On(input) ? { breakawayCurve6912: true as const } : {}), // #6912
+      ...(teamChase7730On(input) ? { teamChase7730: true as const } : {}), // #7730
       ...(stagePlan ? { stagePlanTasks: stagePlanCurrentTasks(stagePlan) } : {}), // #7380: runtimens opgave ved segmentets start
     };
     const acceptMovement = (result: {state: EngineState; events: TimelineEvent[]}) => {
@@ -1298,18 +1304,26 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // paa jagt-modellens egne praemisser. `group_merged` er den generelle,
     // state-afledte kvittering: den siger kun HVEM der endte HVOR, uden
     // aarsag — aarsagen ejes af den mekanik der flyttede gappet.
+    //
+    // #7639 (KUN s5_profiles_v3): en udgaaet rytters solo-gruppe (isRetiredGroup) er ude af loebet.
+    // Den bliver i motorens state og snapshots (uaendret resultat), men
+    // tidslinjen naevner ham ikke efter uheldet: intet gap_update, intet merge
+    // og aldrig som jagtgruppe. Kun tidslinje-events; ingen tid eller gruppe
+    // aendres.
     for (const merge of merges) {
+      lastEmittedGap.delete(merge.absorbed_group_id);
+      if (hiddenFromTimeline({ rider_ids: merge.rider_ids })) continue;
       pushEvent(timeline, segment.to_km, "group_merged", {
         group_id: merge.absorbed_group_id,
         into_group_id: merge.into_group_id,
         rider_ids: [...merge.rider_ids],
       });
-      lastEmittedGap.delete(merge.absorbed_group_id);
     }
 
-    for (const g of mergedGroups) {
+    const timelineGroups = mergedGroups.filter((g) => !hiddenFromTimeline(g));
+    for (const g of timelineGroups) {
       if (pursuitSamples && isPursuedEscape(g)) {
-        const chase = findChaseGroup(mergedGroups, g);
+        const chase = findChaseGroup(timelineGroups, g);
         if (chase) {
           const sep = round2(chase.gap_seconds - g.gap_seconds);
           const prev = lastEmittedSeparation.get(g.id);

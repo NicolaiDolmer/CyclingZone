@@ -15,7 +15,7 @@ import {
   TRACKS_WITHOUT_STAFF,
   isTrackEffectLive,
 } from "./facilityConstants.js";
-import { isAcademyIntakePullEnabled } from "./academyIntakePullFlag.js";
+import { isAcademyIntakePullEnabled } from "./academyIntakePullFlag.ts";
 import { candidatesForTier, tierRules } from "./academyIntakeProfile.ts";
 import { getUpgradePrice, effectiveBonus, primaryStaff } from "./facilityEngine.js";
 import { generateStaffCandidates } from "./staffCandidates.js";

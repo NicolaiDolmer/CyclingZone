@@ -24,7 +24,7 @@
 import { copenhagenDateString, copenhagenHour, copenhagenWeekdayKey } from "./copenhagenTime.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { currentIntakeWeekKey } from "./academyIntakePull.js";
-import { isAcademyIntakePullEnabled } from "./academyIntakePullFlag.js";
+import { isAcademyIntakePullEnabled } from "./academyIntakePullFlag.ts";
 import { isAcademyPullReminderEnabled } from "./academyReminderFlag.ts";
 import { fetchEligibleTeamIds, fetchPulledTeamIds } from "./academyWeeklyPull.ts";
 import { notifyTeamOwner } from "./notificationService.js";

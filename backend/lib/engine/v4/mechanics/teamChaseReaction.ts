@@ -32,6 +32,22 @@ import { compareIds } from "../../../compareIds.ts";
 export type ReactionStance = "chase" | "neutral" | "let_go";
 
 /**
+ * #7557 (KUN kontakten let_go_order_7557, SLUKKET): broen markerer et holds ordre med
+ * denne parameter, naar manageren selv har gemt "lad gaa" for etapen. Markeringen er
+ * hele kontakten: uden den er motoren uaendret. Med den vinder ordren: holdet jager
+ * ikke, hverken med den forebyggende reaktion eller med sin automatiske etapeinteresse.
+ * En "lad gaa" der kun er holdets standard (rolle/M14), er ikke spillerens valg.
+ */
+export const MANAGER_LET_GO_7557_PARAM = "manager_let_go_7557";
+
+/** #7557: holdene hvis gemte "lad gaa" vinder (tom naar kontakten er slukket). */
+export function letGoOrderTeamIds(orders: readonly { team_id: string; breakaway_stance: string; manager_let_go?: true }[]): Set<string> {
+  const out = new Set<string>();
+  for (const order of orders) if (order.breakaway_stance === "let_go" && order.manager_let_go === true) out.add(order.team_id);
+  return out;
+}
+
+/**
  * START-KANDIDATER (lokal praecedens som breakaway.ts's TEAM_CHASE). Arbejdet
  * maales i samme valuta som jagtens pris: andele af rytternes team_cp_factor.
  */
@@ -124,6 +140,8 @@ export function planTeamReaction(input: {
    * Udeladt = orders_gc_v1/v2, bit-identisk.
    */
   leash?: boolean;
+  /** #7557 (kontakten): spillerens gemte "lad gaa" slaar undtagelsen og snoren fra. Udeladt = som foer. */
+  letGoOrderWins?: boolean;
 }): TeamReactionPlan {
   const prior = input.prior ?? IDLE_TEAM_REACTION;
   const tuning = TEAM_REACTION_TUNING;
@@ -132,6 +150,8 @@ export function planTeamReaction(input: {
 
   // Eksplicit jagt: ordren styrer, undtagelsens budget gaelder ikke.
   if (input.stance === "chase") return none("explicit_chase");
+  // #7557: spillerens eget valg. Intet arbejde, intet event: holdet gjorde det det fik besked paa.
+  if (input.stance === "let_go" && input.letGoOrderWins === true) return none("let_go_order");
   // #5978 (KUN s5_profiles_v1): rivalerne jager haardere jo farligere rytteren er.
   const danger = input.threat.danger;
   if (input.threat.severity === "none") {

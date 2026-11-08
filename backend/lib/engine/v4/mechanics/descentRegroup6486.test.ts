@@ -16,6 +16,8 @@ import { median } from "../../../../scripts/lib/headToHeadStats.js";
 import {
   closingSecondsPerKm,
   cooperationShare,
+  descentRegroupCap7644On,
+  DESCENT_REGROUP_7236_TUNING,
   descentRegroup6486Applies,
   descentRegroup6486OnRoute,
   descentRegroupTempo6486,
@@ -134,6 +136,79 @@ test("#6486: a long chain of groups never sums to an invalid traversal; every gr
     assert.ok(arrival >= prevArrival - 1e-9, `${x.id} never passes the group ahead`);
     prevArrival = arrival;
   }
+});
+
+// ── #7644 (kontakten descent_regroup_cap_7644, SLUKKET): loft pr. km paa samlingens gevinst ──
+
+// En rytter alene foran og en kaede af smaa grupper bag ham, alle huller inden for raekkevidde,
+// paa en lang nedkoersel efter sidste top (prod-billedet fra #7644, syntetisk).
+const longDescent7644 = { profile_type: "mountain" as const, segments: [flat(0, 140), climb(140, 160), descent(160, 184)] };
+const chain7644 = (): RaceGroup[] => {
+  const holes = [60, 20, 15, 35, 20, 45, 50];
+  const sizes = [3, 2, 2, 5, 3, 6, 7];
+  const out = [g("solo", 0, 1, { kind: "peloton" })];
+  let gap = 0;
+  holes.forEach((h, i) => { gap += h; out.push(g(`c${i}`, gap, sizes[i])); });
+  return out;
+};
+
+test("#7644: the switch needs the flag AND s5_profiles_v3 or later", () => {
+  assert.equal(descentRegroupCap7644On({ rules_revision: "s5_profiles_v3", descent_regroup_cap_7644: true }), true);
+  assert.equal(descentRegroupCap7644On({ rules_revision: "s5_profiles_v3" }), false);
+  assert.equal(descentRegroupCap7644On({ rules_revision: "s5_profiles_v3", descent_regroup_cap_7644: null }), false);
+  assert.equal(descentRegroupCap7644On({ rules_revision: "s5_profiles_v2", descent_regroup_cap_7644: true }), false);
+  assert.equal(descentRegroupCap7644On({ rules_revision: null, descent_regroup_cap_7644: true }), false);
+});
+
+test("#7644: the cap sits only on #6486's own tuning; the queen-stage tuning (#7236) has none", () => {
+  assert.ok(Number.isFinite(T.maxClosingSecondsPerKm) && (T.maxClosingSecondsPerKm as number) > 0);
+  assert.equal(Number.isFinite(DESCENT_REGROUP_7236_TUNING.maxClosingSecondsPerKm), false);
+});
+
+test("#7644: with the switch, the rear group of a chain behind a lone rider gains at most the cap per km on its own pace", () => {
+  const groups = chain7644();
+  const own = 1800;
+  const tempo = new Map(groups.map((x) => [x.id, { dtSeconds: own }]));
+  const km = 184 - 160;
+  const off = descentRegroupTempo6486(groups, tempo, longDescent7644, 2, undefined);
+  const on = descentRegroupTempo6486(groups, tempo, longDescent7644, 2, undefined, T, true);
+  const cap = (T.maxClosingSecondsPerKm as number) * km;
+  const rear = groups[groups.length - 1].id;
+  // Without the cap the chain stacks: the rear group gains more than the cap allows (the #7644 bug).
+  assert.ok(own - (off.get(rear)?.dtSeconds ?? own) > cap, "off: the chain stacks beyond the cap");
+  let prevArrival = -Infinity;
+  for (const x of groups) {
+    const dtOn = on.get(x.id)?.dtSeconds ?? NaN;
+    const dtOff = off.get(x.id)?.dtSeconds ?? NaN;
+    assert.ok(own - dtOn <= cap + 1e-9, `${x.id}: gain ${own - dtOn} <= cap`);
+    assert.ok(dtOn >= dtOff - 1e-9, `${x.id}: the cap only slows a group down, never speeds it up`);
+    assert.ok(dtOn <= own + 1e-9, `${x.id}: never slower than its own pace`);
+    const arrival = x.gap_seconds + dtOn;
+    assert.ok(arrival >= prevArrival - 1e-9, `${x.id} never passes the group ahead`);
+    prevArrival = arrival;
+  }
+  assert.ok(own - (on.get(rear)?.dtSeconds ?? own) > 0, "the rear group still closes some of the gap");
+});
+
+test("#7644: switch off = unchanged (default call, explicit off, and the queen-stage tuning with the switch)", () => {
+  const groups = chain7644();
+  const tempo = new Map(groups.map((x) => [x.id, { dtSeconds: 1800 }]));
+  const dflt = descentRegroupTempo6486(groups, tempo, longDescent7644, 2, undefined);
+  assert.deepEqual([...descentRegroupTempo6486(groups, tempo, longDescent7644, 2, undefined, T, false)], [...dflt]);
+  assert.deepEqual([...descentRegroupTempo6486(groups, tempo, longDescent7644, 2, undefined, DESCENT_REGROUP_7236_TUNING, true)], [...descentRegroupTempo6486(groups, tempo, longDescent7644, 2, undefined, DESCENT_REGROUP_7236_TUNING)]);
+  // Nothing to do before the last top, with or without the switch: same Map.
+  assert.equal(descentRegroupTempo6486(groups, tempo, longDescent7644, 0, undefined, T, true), tempo);
+});
+
+test("#7644: whole engine on the descent-finish fixture: the flag does nothing under s5_profiles_v2 and is deterministic under v3", () => {
+  const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
+  const input = JSON.parse(readFileSync(path.join(dir, "nedkoerselsfinale", "input.json"), "utf8"));
+  const v2 = JSON.stringify(simulateStageV4({ ...input, rules_revision: "s5_profiles_v2" }));
+  assert.equal(JSON.stringify(simulateStageV4({ ...input, rules_revision: "s5_profiles_v2", descent_regroup_cap_7644: true })), v2);
+  const v3 = JSON.stringify(simulateStageV4({ ...input, rules_revision: "s5_profiles_v3" }));
+  assert.equal(JSON.stringify(simulateStageV4({ ...input, rules_revision: "s5_profiles_v3", descent_regroup_cap_7644: null })), v3, "null = omitted");
+  const on = JSON.stringify(simulateStageV4({ ...input, rules_revision: "s5_profiles_v3", descent_regroup_cap_7644: true }));
+  assert.equal(JSON.stringify(simulateStageV4({ ...input, rules_revision: "s5_profiles_v3", descent_regroup_cap_7644: true })), on, "deterministic");
 });
 
 // ── Hele motoren: D3-fixturen, foer (s5_profiles_v2) og efter (s5_profiles_v3) ──

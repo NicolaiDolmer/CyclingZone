@@ -18,6 +18,20 @@
     "onlyUnrated": "Alleen wat ik nog niet heb beoordeeld",
     "rated": "{rated} van {total} beoordeeld"
   },
+  "search": {
+    "placeholder": "Zoek in plannen, ideeën, problemen en klaar",
+    "ariaLabel": "Zoek in de roadmap",
+    "title": "Zoekresultaten",
+    "where": {
+      "beta": "In beta",
+      "in_progress": "In uitvoering",
+      "planned": "Gepland",
+      "idea": "Idee",
+      "issue": "Bekend probleem",
+      "done_feature": "Klaar",
+      "done_fix": "Opgelost"
+    }
+  },
   "tabs": {
     "label": "Roadmap-onderdelen",
     "plan": "Plan",
@@ -29,14 +43,22 @@
   "voting": {
     "idea": "Goed idee?",
     "importance": "Belangrijk voor jou?",
+    "dontKnow": "Weet ik niet",
     "saved": "Opgeslagen",
     "error": "Je stem is niet opgeslagen. Probeer het opnieuw."
   },
   "plan": {
-    "inProgress": "In uitvoering",
-    "planned": "Gepland",
+    "title": "Wanneer het komt",
     "plannedHint": "Ongeveer in deze volgorde",
-    "later": "Later · nog {count}"
+    "badgeInProgress": "In uitvoering",
+    "horizon": {
+      "this_week": "Deze week",
+      "next_week": "Volgende week",
+      "season": "Seizoen {season}",
+      "quarter": "Q{quarter} {year}",
+      "year": "{year}",
+      "unscheduled": "Open voor stemmen"
+    }
   },
   "beta": {
     "inBeta": "Nu in beta",
@@ -55,6 +77,7 @@
     "hint": "Jouw beoordelingen bepalen wat naar het plan gaat",
     "areaLabel": "Gebied",
     "all": "Alle",
+    "unrated": "{unrated} van {total} wachten op je antwoord",
     "forum": "Heb je een eigen idee? Plaats het op het forum"
   },
   "issues": {
@@ -78,17 +101,31 @@
     "reported": "Gemeld",
     "reportError": "Dat is niet opgeslagen. Probeer het opnieuw.",
     "updated": "bijgewerkt {date}",
-    "reportedByPlayers": "gemeld door spelers",
     "earlierUpdates": "Eerdere updates · {count}",
     "dismissed": "Gecontroleerd, geen probleem gevonden · laatste 14 dagen",
-    "fixed": "Opgelost in de laatste 14 dagen"
+    "fixed": "Opgelost in de laatste 14 dagen",
+    "reportedOn": "gemeld door spelers op {date}",
+    "timeline": {
+      "label": "Status",
+      "reported": "Gemeld",
+      "confirmed": "Bevestigd",
+      "fixing": "Oplossing in uitvoering",
+      "fixed": "Opgelost",
+      "dismissed": "Geen probleem gevonden",
+      "notYet": "nog niet"
+    }
   },
   "done": {
     "title": "Klaar",
     "hint": "Nieuwste eerst",
     "feature": "Functie",
     "fix": "Fix",
-    "showMore": "Meer tonen"
+    "showMore": "Meer tonen",
+    "recent": "Geleverd in de laatste 7 dagen",
+    "earlier": "Eerder",
+    "patchNote": "Patchnote · {date}",
+    "allPatchNotes": "Alle patchnotes",
+    "youVoted": "Je stemde"
   },
   "empty": {
     "plan": {
@@ -127,6 +164,11 @@
       "title": "Bekijk wat er gepland is",
       "description": "Er is nog niets af.",
       "action": "Naar Plan"
+    },
+    "search": {
+      "title": "Probeer een ander woord",
+      "description": "Niets op de roadmap past bij \"{query}\".",
+      "action": "Zoekopdracht wissen"
     }
   },
   "engines": {

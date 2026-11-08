@@ -16,6 +16,7 @@ import StageTabV2 from "./StageTabV2.tsx";
 import type { CareerEvent } from "./YourDayCard.tsx";
 import { Tab, TabList, Tabs } from "./ui.ts";
 import { useStageTimeline } from "../../../hooks/useStageTimeline.js";
+import { useRaceViewTelemetry } from "../../../lib/useRaceViewTelemetry.ts"; // #7778
 import { asStory, type StoryNarrativeContext } from "./raceStoryModel.ts";
 import StageOrdersRecap from "../../stageOrders/StageOrdersRecap.tsx"; // #6299
 import { fetchTeamOrders } from "../../../lib/tacticsOrdersAdapter.js";
@@ -81,9 +82,10 @@ export default function StagePageV2(props: StagePageV2Props) {
   }, [totalStages, schedule, profileByStage, timeLabelFor, bestByStage]);
 
   const phase = stagePhase(selectedStage, stagesCompleted);
+  useRaceViewTelemetry({ raceId, tab: activeTab, stage: selectedStage, phase });
   // #6570 spor 2 (+ #6512 endagsloeb): loebshistorien for en koert etape. 404 =
   // ingen tidslinje = den nuvaerende visning, uaendret.
-  const { timeline } = useStageTimeline(phase === "after" && activeTab === "stage" ? raceId : null, selectedStage, { story: true });
+  const { timeline, loading: storyLoading, error: storyError } = useStageTimeline(phase === "after" && activeTab === "stage" ? raceId : null, selectedStage, { story: true });
   const story = useMemo(() => asStory((timeline as { story?: unknown } | null)?.story), [timeline]);
   // #6299 (b): egne rytteres laaste ordre paa en koert v4-etape.
   const ranTimeline = timeline as { timeline_version?: number; created_at?: string | null } | null;
@@ -117,6 +119,7 @@ export default function StagePageV2(props: StagePageV2Props) {
     return {
       profileType: profileByStage[selectedStage]?.profile_type ?? null,
       events: (timeline as { events?: StoryNarrativeContext["events"] } | null)?.events ?? [],
+      ranAt: ranTimeline?.created_at ?? null, // #7717
       teamNameById,
       // Wait for the authoritative v4 order read. Failed reads make no order-impact assertion.
       effortByRider: v4Timeline && !knownOrders ? null : effectiveEffortByRider(stageRoles, knownOrders?.value, selectedStage, { v4: v4Timeline, ranAt: ranTimeline?.created_at ?? null }),
@@ -142,7 +145,7 @@ export default function StagePageV2(props: StagePageV2Props) {
   }
 
   return (
-    <div className="flex flex-col gap-[14px]">
+    <div data-race-page className="flex flex-col gap-[14px]">
       <div className="sticky top-0 z-20 -my-2 flex flex-col gap-3 bg-cz-body py-2">
         <Tabs value={activeTab} onChange={(v) => onChangeTab(resolveV2Tab(v))}>
           <TabList label={t("stagePageV2.tabsAria")}>
@@ -159,6 +162,7 @@ export default function StagePageV2(props: StagePageV2Props) {
       {activeTab === "stage" && (
         <StageTabV2
           key={selectedStage}
+          nowMs={nowMs}
           stageNumber={selectedStage}
           stagesCompleted={stagesCompleted}
           isStageRace={isStageRace}
@@ -178,14 +182,16 @@ export default function StagePageV2(props: StagePageV2Props) {
           emptyState={emptyStageSlot}
           story={story}
           narrative={narrative}
+          storyLoading={storyLoading}
+          storyError={storyError}
         />
       )}
       {activeTab === "stage" && phase === "after" && (ranTimeline?.timeline_version ?? 1) >= 2 && (
-        <StageOrdersRecap raceId={raceId} stageNumber={selectedStage} riderIds={ownStageRiders} nameOf={nameOfRider} profileType={profileByStage[selectedStage]?.profile_type ?? null} stageRoles={stageRoles} ranAt={ranTimeline?.created_at ?? null} teamOrders={knownOrders?.value ?? null} />
+        <div data-race-section="orders"><StageOrdersRecap raceId={raceId} stageNumber={selectedStage} riderIds={ownStageRiders} nameOf={nameOfRider} profileType={profileByStage[selectedStage]?.profile_type ?? null} stageRoles={stageRoles} ranAt={ranTimeline?.created_at ?? null} teamOrders={knownOrders?.value ?? null} /></div>
       )}
-      {activeTab === "standings" && standingsSlot}
-      {activeTab === "team" && teamSlot}
-      {activeTab === "tactics" && tacticsSlot}
+      {activeTab === "standings" && <div data-race-section="standings">{standingsSlot}</div>}
+      {activeTab === "team" && <div data-race-section="team">{teamSlot}</div>}
+      {activeTab === "tactics" && <div data-race-section="tactics">{tacticsSlot}</div>}
     </div>
   );
 }

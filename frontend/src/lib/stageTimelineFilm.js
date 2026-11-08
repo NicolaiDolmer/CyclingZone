@@ -30,7 +30,7 @@ export { filmKmValue } from "./stageTimelineKmSpan.ts";
 import { labelBreakawayEvents, breakawayFilmCopy, breakawayLabelOf } from "./breakawayLabels6299.ts"; // #6299: kun udbruddet hedder udbrud
 // #6469: hvorfor udbruddet holdt/blev hentet + spillerens egen "Alt ud" i udfaldet.
 // Ren afledning af tidslinjen; samme modul som backendens kontrakt-tests (G7).
-import { withNarrativeCauses, isTimeTrialNarrative } from "../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts";
+import { withNarrativeCauses, withAttackWording, isTimeTrialNarrative } from "../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts";
 
 // Kategori-skala til stignings-trekanterne på scrubberen — samme rækkefølge/
 // bogstaver som race_stage_passages.climb_category og StageProfileGraph.jsx's
@@ -223,11 +223,15 @@ const NARRATIVE_TYPES = new Set(["breakaway_cause", "order_impact"]);
 /** @param {NonNullable<Parameters<typeof withNarrativeCauses>[1]>} [options] */
 export function storyEventsWithCauses(storyEvents, allEvents, options = {}) {
   const { ownRiderIds = [], effortByRider = null, profileType = null } = options;
-  const picked = new Set(storyEvents || []);
+  // #7707: Angrib-stemplet (withAttackWording) laver nye objekter; udvalget flyttes med over.
+  const source = allEvents || [];
+  const worded = withAttackWording(source, { ownRiderIds, effortByRider, profileType });
+  const swap = new Map(source.map((e, i) => [e, worded[i]]));
+  const picked = new Set([...(storyEvents || [])].map((e) => swap.get(e) ?? e));
   if (!picked.size) return [];
   const out = [];
   let following = false;
-  for (const event of withNarrativeCauses(allEvents || [], { ownRiderIds, effortByRider, profileType })) {
+  for (const event of withNarrativeCauses(worded, { ownRiderIds, effortByRider, profileType })) {
     if (NARRATIVE_TYPES.has(String(event?.type ?? ""))) {
       if (following) out.push(event);
       continue;
@@ -258,6 +262,9 @@ function describeCause(p, riderNameById, teamNameById) {
     case "unchased":
     case "no_chasers":
     case "chase_too_late":
+    case "chase_tired":
+    case "chase_outgunned":
+    case "chase_too_few":
     case "gap_never_closed":
       return { key: `cause.${cause}`, params: {} };
     case "chase_faded":
@@ -276,12 +283,39 @@ function describeCause(p, riderNameById, teamNameById) {
   }
 }
 
+// #7729: flere hold end dette står som et antal.
+const MAX_ATTEMPT_TEAM_NAMES = 3;
+
+/**
+ * #7729: dem der forsøgte at komme med i morgenudbruddet og blev i feltet, og
+ * holdene der arbejdede imod. Kun det motoren skrev på `breakaway_attempt`: mangler
+ * listerne (ældre etaper) eller holdene, er der ingen forklaring og ingen linje.
+ * Ejer 6/11: kun forsøg med egne ryttere får en linje, ellers bliver filmen rodet.
+ * Andre der forsøgte samtidig står som et antal.
+ */
+function describeFailedAttempt(p, riderNameById, teamNameById, ownRiderIds) {
+  const { rider_ids: attempted, escaped_rider_ids: escaped, reacting_team_ids: teamIds } = p;
+  if (!Array.isArray(attempted) || !Array.isArray(escaped) || !Array.isArray(teamIds) || !teamIds.length) return null;
+  const failed = attempted.filter((id) => !escaped.includes(id));
+  if (!failed.length) return null;
+  const own = new Set(Array.from(ownRiderIds ?? [], String));
+  const mine = failed.filter((id) => own.has(String(id)));
+  if (!mine.length) return null;
+  const names = resolvedRiderNames(mine, riderNameById);
+  if (!names.length) return null;
+  const key = escaped.length ? "breakaway_attempt_failed" : "breakaway_attempt_none_clear";
+  const params = { riders: names.join(", "), count: failed.length, others: failed.length - names.length, teamCount: teamIds.length };
+  const teams = teamIds.length <= MAX_ATTEMPT_TEAM_NAMES ? teamListParams(teamIds, teamNameById) : null;
+  return teams?.teamCount === teamIds.length ? { key, params: { ...params, ...teams } } : { key: `${key}_field`, params };
+}
+
 function describeOrderImpact(p, riderNameById) {
   const rider = riderName(p.rider_id, riderNameById);
   if (!rider) return null;
-  if (p.kind === "all_out_stayed_away") return { key: "order.all_out_stayed_away", params: { rider } };
-  if (p.kind === "all_out_held_on") {
-    return p.climb_name ? { key: "order.all_out_held_on_climb", params: { rider, climb: p.climb_name } } : { key: "order.all_out_held_on", params: { rider } };
+  if (p.kind === "all_out_stayed_away" || p.kind === "attack_stayed_away") return { key: `order.${p.kind}`, params: { rider } };
+  // #7707: Angrib (etapeplan) og Alt ud (indsats-ordre, enkeltstart) har hver sin tekst.
+  if (p.kind === "all_out_held_on" || p.kind === "attack_held_on") {
+    return p.climb_name ? { key: `order.${p.kind}_climb`, params: { rider, climb: p.climb_name } } : { key: `order.${p.kind}`, params: { rider } };
   }
   return null;
 }
@@ -384,7 +418,8 @@ export function collectRiderIds(events) {
 // #6649: årsagerne motoren skriver på `bad_day` (vejret som sin type). Ukendt årsag → ingen linje.
 const BAD_DAY_CAUSES = new Set(["fatigue", "form", "illness", "rain", "wind", "heat"]);
 
-export function describeEvent(event, { riderNameById, teamNameById } = {}) {
+/** @param {any} event @param {{riderNameById?: any, teamNameById?: any, ownRiderIds?: Iterable<unknown>|null}} [options] */
+export function describeEvent(event, { riderNameById, teamNameById, ownRiderIds } = {}) {
   if (!event?.type) return null;
   if (event.grouped) {
     return describeGroupedEvent(event, (id) => riderName(id, riderNameById), (member) => describeEvent(member, { riderNameById, teamNameById }));
@@ -404,6 +439,8 @@ export function describeEvent(event, { riderNameById, teamNameById } = {}) {
         key: TIME_TRIAL_STAGE_START_KEY[p.profile_type] ?? "stage_start",
         params: { count: p.field_count ?? 0, distance: p.distance_km ?? 0 },
       };
+    case "breakaway_attempt": // #7729
+      return describeFailedAttempt(p, riderNameById, teamNameById, ownRiderIds);
     case "breakaway_formed": {
       const params = breakawayParams();
       return params ? { key: "breakaway_formed", params } : null;
@@ -438,6 +475,11 @@ export function describeEvent(event, { riderNameById, teamNameById } = {}) {
       return params ? { key: "breakaway_dropped", params } : null;
     }
     case "incident": {
+      // #7727: filmen siger kun styrt, når motoren har et styrt med følger.
+      // Brosten-sektorernes risiko-event (cause "cobbles_sector") er ren
+      // information: det bærer intet udfald og ændrer hverken tid, status
+      // eller skade. Uden udfald er teksten forkert info, så linjen udgår.
+      if (p.outcome == null) return null;
       const rider = riderName(p.rider_id, riderNameById);
       if (!rider) return null;
       return { key: incidentCopyKey(p), params: incidentCopyParams(p, rider) };
@@ -456,7 +498,9 @@ export function describeEvent(event, { riderNameById, teamNameById } = {}) {
     case "all_out_cracked": {
       const rider = riderName(p.rider_id, riderNameById);
       if (!rider) return null;
-      return { key: event.type, params: { rider } };
+      // #7707: withAttackWording stempler `task: "attack"` paa en rytter med opgaven Angrib.
+      const attack = p.task === "attack";
+      return { key: attack ? event.type.replace("all_out_", "attack_") : event.type, params: { rider } };
     }
     case "bad_day": { // #6649 (s5_profiles_v3): "havde en daarlig dag" + aarsagen, skrevet bagefter
       const rider = riderName(p.rider_id, riderNameById);

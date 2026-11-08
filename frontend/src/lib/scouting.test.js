@@ -82,3 +82,12 @@ test("scoutSortValue: `prog` foretrækkes hvis begge `prog` og `ceil` findes", (
   const estimate = { lo: 4.5, hi: 5, prog: { lo: 40, hi: 48 }, ceil: { lo: 10, hi: 12 } };
   assert.equal(scoutSortValue(estimate), 44);
 });
+
+// #6110: tændt flag sorterer på det viste skøn og aldrig på et bånd ved siden af.
+test("scoutSortValue: potentialView slår alle andre felter", () => {
+  const prog = { lo: 40, hi: 48 };
+  assert.equal(scoutSortValue({ prog, potentialView: { hidden: false, value: 74, certainty: "fair" } }), 74);
+  assert.equal(scoutSortValue({ prog, potentialView: { hidden: true, reason: "unscouted" } }), null);
+  assert.equal(scoutSortValue({ prog, potentialView: { hidden: true, reason: "learning", trainings: 2, trainingsNeeded: 5 } }), null);
+  assert.equal(scoutSortValue({ prog }), 44);
+});

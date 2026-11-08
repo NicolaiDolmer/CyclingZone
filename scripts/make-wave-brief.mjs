@@ -260,7 +260,7 @@ function frossenGoldenBlok(wd, scratchDir) {
     `2. Tjek basen ud SEPARAT og read-only i din scratch-mappe: \`git -C "${wd}" worktree add --detach "${base}" <merge-base-sha>\`. Mangler den node_modules, saa lav en junction til dit eget worktree (\`New-Item -ItemType Junction -Path "${base}\\backend\\node_modules" -Target "${wd}\\backend\\node_modules"\`) - aldrig npm install.`,
     "3. Koer samme golden-/digest-generator med samme seeds og input i basen, og gem resultatet som fixture (kun hashes/digests eller kvalitative udfald - ingen balance-tal i repoet, hard rule 17). Fixturen committes; den genereres ALDRIG igen med den nye kode for at faa en test groen.",
     "4. Testen koerer den NYE kode med kontakten off og sammenligner bit for bit med fixturen fra basen. Skriv i PR-body hvilken merge-base-SHA fixturen kommer fra.",
-    `5. Ryd op med repoets script, aldrig raa \`git worktree remove --force\` (den foelger junctionen): fjern foerst junctionen med \`[System.IO.Directory]::Delete("${base}\\backend\\node_modules", $false)\`, derefter \`git -C "${wd}" worktree remove "${base}"\`.`,
+    `5. Ryd op med repoets sikre funktion, aldrig raa \`git worktree remove\` (den foelger junctions, og ignorerede filer arkiveres ikke; hooken blokerer det, #7837): \`pwsh -NoProfile -Command ". '${wd}\\scripts\\lib\\archive-worktree-unversioned.ps1'; if (-not (Remove-WorktreeSafely -WorktreePath '${base}' -RepoRoot '${wd}').Ok) { exit 1 }"\`.`,
   ].join("\n");
 }
 
@@ -371,6 +371,8 @@ export function generateBrief(config) {
     return parts.join("\n") + "\n";
   }
 
+  parts.push("# Maalt foerstatus (#5509)", "",
+    "FOER kode: laes issue-body, labels og seneste kommentarer. Ved player-report: kontroller prod SQL/endpoint + maalt resultat + player-report-evidence efter docs/GITHUB_WORKFLOW.md. Maal foerstatus mod issuets godkendte maal, ikke blot et regressionsgulv. Er foerstatus allerede groen (already-green): STOP og rapporter bevis paa issuet; byg intet. Manglende maaling: needs-repro, kun investigation som bygger intet. Admission erstatter aldrig mandat, SSOT eller byggestop. Publicer kun anonymiserede ufølsomme aggregates eller private evidenspointer, aldrig hemmeligheder, PII eller private balance-tal.", "");
   parts.push(reglerBlok(wd, branch, scratchDir, msgFile, ownNodeModules), "");
   if (needsFrozenGolden(config)) parts.push(frossenGoldenBlok(wd, scratchDir), "");
   parts.push(livstegnBlok(branch), "");

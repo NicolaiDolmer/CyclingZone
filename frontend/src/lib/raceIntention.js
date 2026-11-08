@@ -127,13 +127,16 @@ export function setIntention({ matrix, stageNumber, riderId, effort }) {
  * @param {{ matrix: any, fromStage: any, toStage: any, riders: any, fromProfileType?: string|null, toProfileType?: string|null }} args
  */
 export function copyStageIntentions({ matrix, fromStage, toStage, riders, fromProfileType = null, toProfileType = null }) {
-  const source = matrix?.[fromStage];
-  if (!source || matrix?.[toStage] == null) return matrix;
+  // #7624: en manglende kilde-/maal-etape i matrixen er ALDRIG en lydlos no-op
+  // (knappen "Kopiér til etape N" gjorde intet). Manglende celler regnes som
+  // standard-indsatsen, og maal-etapen oprettes af setCell.
+  const source = matrix?.[fromStage] || {};
   const skip = new Set((riders || []).filter((r) => r.abandoned).map((r) => String(r.rider_id)));
-  let next = matrix;
-  for (const [riderId, cell] of Object.entries(source)) {
-    if (skip.has(String(riderId))) continue;
-    next = setCell(next, toStage, riderId, { effort: effortForStage(effortForStage(cell?.effort || DEFAULT_EFFORT, fromProfileType), toProfileType) });
+  const riderIds = new Set([...Object.keys(source), ...(riders || []).map((r) => String(r.rider_id))]);
+  let next = matrix || {};
+  for (const riderId of riderIds) {
+    if (skip.has(riderId)) continue;
+    next = setCell(next, toStage, riderId, { effort: effortForStage(effortForStage(source[riderId]?.effort || DEFAULT_EFFORT, fromProfileType), toProfileType) });
   }
   return next;
 }

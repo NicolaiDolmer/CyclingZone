@@ -414,3 +414,67 @@ export function planProofComment({ comments, pr, issue, sha, body }) {
   const same = String(existing.body || '').replace(/\r\n/g, '\n') === String(body).replace(/\r\n/g, '\n');
   return { action: same ? 'unchanged' : 'edit', id: existing.id, duplicates };
 }
+
+// ---------------------------------------------------------------- forsinket bevis (PR 4)
+
+export const OVERDUE_HOURS = 24;
+const HOUR_MS = 60 * 60 * 1000;
+
+/** Issues en PR refererer (Refs/Closes/... eller titlens scope), sorteret. */
+export function proofRefIssues(pr) {
+  return [...new Set([...extractRefIssues(`${pr?.title || ''}\n${pr?.body || ''}`), ...titleScopeIssues(pr?.title)])].sort((a, b) => a - b);
+}
+
+function commentsOf(comments, issue) {
+  if (comments instanceof Map) return comments.get(Number(issue)) || [];
+  return comments?.[issue] || [];
+}
+
+/** Har en collaborator allerede lagt en auto-bevis-kommentar for (pr, issue)? Sha'en er ligegyldig. */
+export function hasProofComment(issueComments, pr, issue) {
+  return (issueComments || []).some((c) => {
+    if (!COLLABORATOR_ASSOCIATIONS.has(String(c.author_association || '').toUpperCase())) return false;
+    const m = parseProofMarker(c.body);
+    return Boolean(m) && m.pr === Number(pr) && m.issue === Number(issue);
+  });
+}
+
+/**
+ * Hvilke merge'de PR'er har et aabent issue, hvor auto-beviset burde vaere
+ * koert for mindst `hours` timer siden, men ikke er det? Ren funktion.
+ *
+ * prs:      [{number, title, body, mergedAt, baseRefName?}]  (kun main taeller)
+ * issues:   [{number, state}]                                 (kun aabne taeller)
+ * comments: {issueNummer: [kommentarer]} eller Map            (bruges kun ved en deklaration)
+ *
+ * Tre udfald, som holdes adskilt for at undgaa falske alarmer:
+ *  - overdue:       deklaration findes, men ingen auto-bevis-kommentar: ikke koert.
+ *  - noDeclaration: PR'en erklaerede intet bevis for issuet. Ingen alarm, kun info.
+ *  - proven:        auto-bevis-kommentaren findes (ogsaa et udkast: koerslen skete).
+ * Praecis `hours` timer gammel taeller som forsinket.
+ */
+export function findProofOverdue({ prs, issues, comments, now, hours = OVERDUE_HOURS }) {
+  const nowMs = new Date(now).getTime();
+  if (!Number.isFinite(nowMs)) throw new Error('findProofOverdue kræver en gyldig now');
+  if (!Number.isFinite(Number(hours)) || Number(hours) < 0) throw new Error('findProofOverdue kræver hours >= 0');
+  const open = new Set((issues || []).filter((i) => String(i?.state || '').toLowerCase() === 'open').map((i) => Number(i.number)));
+  const out = { overdue: [], noDeclaration: [], proven: [] };
+  for (const pr of [...(prs || [])].sort((a, b) => Number(a.number) - Number(b.number))) {
+    if (!pr?.mergedAt || (pr.baseRefName && pr.baseRefName !== 'main')) continue;
+    const mergedMs = new Date(pr.mergedAt).getTime();
+    if (!Number.isFinite(mergedMs)) continue;
+    const ageHours = (nowMs - mergedMs) / HOUR_MS;
+    if (ageHours < Number(hours)) continue;
+    const parsed = proofDeclarationsForPr(pr);
+    for (const issue of proofRefIssues(pr)) {
+      if (!open.has(issue)) continue;
+      const row = { pr: Number(pr.number), issue, mergedAt: pr.mergedAt, ageHours: Math.floor(ageHours) };
+      const decl = declarationFor(parsed, issue);
+      if (!decl) out.noDeclaration.push(row);
+      else if (hasProofComment(commentsOf(comments, issue), pr.number, issue)) out.proven.push(row);
+      else out.overdue.push({ ...row, declarationErrors: decl.errors.length });
+    }
+  }
+  out.overdue.sort((a, b) => b.ageHours - a.ageHours || a.pr - b.pr || a.issue - b.issue);
+  return out;
+}

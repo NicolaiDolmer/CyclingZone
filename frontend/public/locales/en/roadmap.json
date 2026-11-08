@@ -18,6 +18,20 @@
     "onlyUnrated": "Only what I have not rated",
     "rated": "Rated {rated} of {total}"
   },
+  "search": {
+    "placeholder": "Search plans, ideas, issues and done",
+    "ariaLabel": "Search the roadmap",
+    "title": "Search results",
+    "where": {
+      "beta": "In beta",
+      "in_progress": "In progress",
+      "planned": "Planned",
+      "idea": "Idea",
+      "issue": "Known issue",
+      "done_feature": "Done",
+      "done_fix": "Fixed"
+    }
+  },
   "tabs": {
     "label": "Roadmap sections",
     "plan": "Plan",
@@ -29,14 +43,22 @@
   "voting": {
     "idea": "Good idea?",
     "importance": "Important to you?",
+    "dontKnow": "Don't know",
     "saved": "Saved",
     "error": "Your vote was not saved. Try again."
   },
   "plan": {
-    "inProgress": "In progress",
-    "planned": "Planned",
+    "title": "When it is coming",
     "plannedHint": "In roughly this order",
-    "later": "Later · {count} more"
+    "badgeInProgress": "In progress",
+    "horizon": {
+      "this_week": "This week",
+      "next_week": "Next week",
+      "season": "Season {season}",
+      "quarter": "Q{quarter} {year}",
+      "year": "{year}",
+      "unscheduled": "Open for votes"
+    }
   },
   "beta": {
     "inBeta": "In beta now",
@@ -55,6 +77,7 @@
     "hint": "Your ratings decide what moves to the plan",
     "areaLabel": "Area",
     "all": "All",
+    "unrated": "{unrated} of {total} still need your answer",
     "forum": "Have an idea of your own? Post it in the forum"
   },
   "issues": {
@@ -78,17 +101,31 @@
     "reported": "Reported",
     "reportError": "That did not save. Try again.",
     "updated": "updated {date}",
-    "reportedByPlayers": "reported by players",
     "earlierUpdates": "Earlier updates · {count}",
     "dismissed": "Checked, no problem found · last 14 days",
-    "fixed": "Fixed in the last 14 days"
+    "fixed": "Fixed in the last 14 days",
+    "reportedOn": "reported by players on {date}",
+    "timeline": {
+      "label": "Status",
+      "reported": "Reported",
+      "confirmed": "Confirmed",
+      "fixing": "Fix in progress",
+      "fixed": "Fixed",
+      "dismissed": "No problem found",
+      "notYet": "not yet"
+    }
   },
   "done": {
     "title": "Done",
     "hint": "Newest first",
     "feature": "Feature",
     "fix": "Fix",
-    "showMore": "Show more"
+    "showMore": "Show more",
+    "recent": "Delivered in the last 7 days",
+    "earlier": "Earlier",
+    "patchNote": "Patch note · {date}",
+    "allPatchNotes": "All patch notes",
+    "youVoted": "You voted"
   },
   "empty": {
     "plan": {
@@ -127,6 +164,11 @@
       "title": "See what is planned",
       "description": "Nothing is finished yet.",
       "action": "Go to Plan"
+    },
+    "search": {
+      "title": "Try a different word",
+      "description": "Nothing on the roadmap matches \"{query}\".",
+      "action": "Clear search"
     }
   },
   "engines": {

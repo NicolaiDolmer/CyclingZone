@@ -28,8 +28,10 @@ Målt i prod 4/10:
 7. **Beta får sin egen fane, og den følger kontakterne automatisk.** Et punkt står under "In beta now", så længe dets kontakt står på beta, og flytter selv til Done, når kontakten slås til for alle. Ejeren markerer kun "For everyone soon" og "Coming to beta". Patch notes får et filter (Beta / Now for everyone), og en beta-note skifter selv mærke, når funktionen er for alle. Billede: `pr-screens/roadmap-4-10/beta-overblik.png`.
 8. **Stemmeskalaen i to trin:** en idé viser kun "Good idea?", og "Important to you?" folder ud, når den første er besvaret.
 9. **Ca. 30 idéer ad gangen** på Vote-fanen. Resten ligger klar bagved, og ejeren skifter 5-10 ud ad gangen.
+10. **Planen viser hvornår (ejer 4/11, #7666).** Plan-fanen grupperes efter horisont, så spillerne kan se og følge, hvad der er planlagt. Afløser "ingen datoer på planen, kun rækkefølge" fra 4/10.
+11. **Godkendte valg fra #6923 (19/10), bygget i #7666:** Done viser leveret-dato og patch note, kendte fejl har en status-tidslinje med datoer, og Plan har et I gang-mærke. #6203: én søgning på tværs af fanerne.
 
-Uændrede, tidligere beslutninger: spillere ser kun deres egen stemme (11/6) · ingen datoer på planen, kun rækkefølge · EN først, DA under · ejeren godkender al spillertekst før den vises.
+Uændrede, tidligere beslutninger: spillere ser kun deres egen stemme (11/6) · EN først, DA under · ejeren godkender al spillertekst før den vises.
 
 ## 3. Spillersiden (`/roadmap`)
 
@@ -37,20 +39,28 @@ Skabelon T1 (max-w-4xl), det kanoniske sidehoved, `Tabs`-primitiven. Ruten forbl
 
 **Sidehoved:** titel "Roadmap" og én linje undertekst. I handlingsklyngen til højre: afkrydsningen "Only what I have not rated" og tælleren "Rated 27 of 42". Afkrydsningen gælder Plan og Vote, er slået til som standard for en indlogget spiller, og valget huskes i `localStorage`. Tælleren dækker planlagte punkter plus idéer.
 
-**Fane-tal:** Plan og Vote viser hvor mange punkter spilleren mangler at svare på. Beta viser antal funktioner i beta nu. Known issues viser antal bekræftede, åbne fejl. Done har intet tal.
+**Søgning:** ét felt over fanerne (§3.7).
+
+**Fane-tal:** Plan og Vote viser hvor mange punkter spilleren mangler at svare på. Beta viser antal funktioner i beta nu. Known issues viser antal bekræftede, åbne fejl. Done viser antal punkter leveret de sidste 7 dage (#7666).
 
 ### 3.1 Plan
 
-To kort:
+Ét kort, grupperet efter horisont (#7666) i rækkefølgen This week, Next week, Coming up, This season, Next season, 2027, Later. Tomme horisonter vises ikke, og hver overskrift har antal punkter. This week og Next week står med datoer (mandag til søndag, dansk tid). "Coming up" er den gamle værdi `next`, som står, til ejeren har flyttet punkterne.
 
-- **In progress:** rækker med titel og en meta-linje (område). Ingen skala. Det, der er i beta, står på Beta-fanen og ikke her.
-- **Planned:** nummererede rækker i ejerens rækkefølge. Titel, område, og én skala til højre (under titlen på telefon). Stemmen gemmes ved tryk. Punkter med `horizon = later` ligger bag en fold ("Later · 9 more").
+Inden for en horisont står først det, der er i gang, og derefter det planlagte:
+
+- **I gang:** mærket "In progress", titel og en meta-linje (område). Ingen skala. Det, der er i beta, står på Beta-fanen og ikke her.
+- **Planlagt:** nummererede rækker i ejerens rækkefølge. Titel, område, og én skala til højre (under titlen på telefon). Stemmen gemmes ved tryk.
+
+2027 og Later ligger hver bag sin egen fold med antal punkter. Numrene tælles på tværs af de nære horisonter; punkter i foldene har intet nummer.
 
 Motorernes "Today"-prosa fra den nuværende side udgår. Done-fanen viser, hvad der findes.
 
 ### 3.2 Vote
 
 Ét kort med `Segmented` pr. område (All, Races, Training, Youth, Market, Club; kun områder med punkter vises, hvert med antal). Hver række har titel og område. Skalaen vises i to trin: først kun "Good idea?"; når den er valgt, folder "Important to you?" ud under den. Et punkt, spilleren allerede har stemt på, viser begge. Stemmen gemmes, når begge skalaer er valgt (som i dag). Fanen viser ca. 30 idéer ad gangen (§8). Nederst en stille handling, der fører til forummet for egne idéer.
+
+**Ved ikke (#7788, ejer 6/11):** ét Ved ikke pr. punkt, ikke pr. skala, både på Plan og Vote. Punktet er dermed besvaret, men svaret tæller ikke i snittene. Det kan ændres til en almindelig stemme, så længe punktet er åbent for stemmer.
 
 ### 3.3 Known issues
 
@@ -63,6 +73,8 @@ Hver række: mærke, titel, meta-linje (område · dato) og knappen (secondary s
 
 Vejen for et punkt: Being checked → Confirmed → Fix in progress → Fixed. Eller: Being checked → lukket med ejerens forklaring ("Checked, no problem found"). Et lukket punkt ligger i en fold under det nederste kort i 14 dage, så spilleren får et svar, også når svaret er, at det virker som det skal.
 
+Bekræftede og lukkede fejl har en status-tidslinje under titlen (#7666): Reported, Confirmed, Fix in progress, Fixed, med dato pr. trin. En lukket fejl uden fund viser kun Reported og lukningen. Et nået trin uden kendt dato vises uden dato; et trin, der ikke er nået, har aldrig dato. Fejl, der stadig tjekkes, viser i stedet datoen for indmeldingen i meta-linjen.
+
 Opdateringer står som en dateret liste under titlen, nyeste først. Den nyeste vises altid, ældre ligger bag en fold pr. fejl.
 
 Nederst en fold: "Fixed in the last 14 days". Rettede fejl står desuden i Done. Fanens tal er antallet af bekræftede, åbne fejl.
@@ -71,7 +83,9 @@ Hjælp-sidens "Known issues"-fane fjernes. `/help?section=knownIssues` videresti
 
 ### 3.4 Done
 
-Én liste, nyeste først: dato, titel og et mærke (Feature eller Fix). Kilder: `roadmap_items` med `status = shipped` og `known_issues` med `status = fixed`. Viser de 30 nyeste, resten bag "Show more".
+To kort, nyeste først (#7666): "Delivered in the last 7 days" øverst og "Earlier" under, hvor rækkerne har dato, titel og et mærke (Feature eller Fix). Står der intet fra de sidste 7 dage, hedder det nederste kort "Done". Kilder: `roadmap_items` med `status = shipped` og `known_issues` med `status = fixed`. Earlier viser de 30 nyeste, resten bag "Show more".
+
+Et punkt med en patch note kan foldes ud til noten (titel, tekst og link til alle patch notes). Koblingen går fra punktets `issue_ref` til patch notens `refs`, kun spillervendte noter tæller, og er der flere, vælges den nærmest leveringsdatoen. Patch notes hentes først, når Done åbnes.
 
 ### 3.5 Beta
 
@@ -91,12 +105,18 @@ Ingen skalaer på denne fane. Når kontakten slås til for alle, står punktet u
 - **Fejl ved gem:** uændret mønster (`aria-live`, tekst i fare-farve, valget står).
 - **Telefon (375 px):** fanerne scroller vandret, skalaknapper er mindst 34 px, skalaen står under titlen. Ingen vandret sidescroll.
 
+### 3.7 Søgning (#6203, #7666)
+
+Ét felt over fanerne søger i både EN- og DA-titlen på alle fem faner, uden hensyn til accenter, fra to tegn. Mens der søges, er fanerne skjult, og ét kort viser hits med et mærke for, hvor punktet står. `?q=` åbner siden med en søgning. Afviste fejl og arkiverede punkter er ikke med, fordi de ikke står på nogen fane.
+
+Et tryk på et hit rydder søgningen, åbner fanen og viser netop punktet: områdefilteret står på alle, et bedømt punkt holdes synligt trods "Only what I have not rated", folden med punktet står åben (2027, Later, de foldede indmeldte fejl), Done viser langt nok ned, og punktet scrolles i syne.
+
 ## 4. Admin (`/admin/growth?tab=roadmap`)
 
 Ny fane "Roadmap" i `AdminGrowthPage` (T2, dansk tekst som resten af admin). Admin-kontrollerne på selve `/roadmap` (markér bygget, opret-formular) flytter hertil, så den offentlige side ikke bærer admin-kode.
 
 - **Nøgletal:** har stemt (af hold med manager) · aktive 14 dage · stemmer i alt · har svaret på alt.
-- **Planen, som spillerne vil have den:** planlagte punkter sorteret efter Ø vigtighed. Kolonner: punkt, vigtighed, stemmer, ejerens rækkefølge. Mærket "Deler spillerne" når spredningen på vigtighed er høj (standardafvigelse ≥ 1,75). Handlinger: flyt op/ned, skift status (idé, planlagt, i gang, færdig, arkiveret), Next/Later, ret titel (EN + DA).
+- **Planen, som spillerne vil have den:** planlagte punkter sorteret efter Ø vigtighed. Kolonner: punkt, vigtighed, stemmer, ejerens rækkefølge. Mærket "Deler spillerne" når spredningen på vigtighed er høj (standardafvigelse ≥ 1,75). Handlinger: flyt op/ned, skift status (idé, planlagt, i gang, færdig, arkiveret), Next/Later, ret titel (EN + DA). Admin-API'et tager alle horisonter (§5.1); admin-fanens knap kender indtil videre kun `next` og `later`.
 - **Idéer:** sorteret efter styringsscore. Kolonner: god idé, vigtighed, score, stemmer. Handling: "Til planen" (status `active` → `planned`; stemmerne følger med).
 - **Kendte fejl:** to tabeller (bekræftet / meldt ind), hver sorteret efter antal tryk. Kolonner: fejl, trin, ramt, åben i dage. Handlinger: ny opdatering (EN + DA), skift trin (tjekkes, bekræftet, rettes, rettet, lukket uden fund), ret titel. "Lukket uden fund" kræver en opdatering med forklaringen.
 - **Opret:** nyt punkt eller ny fejl (EN + DA, område, synlig ja/nej).
@@ -113,7 +133,7 @@ Alt er additivt. Ingen rækker slettes, ingen stemmer ændres.
 ### 5.1 `roadmap_items`
 
 - `status`-CHECK udvides til `active, planned, in_progress, shipped, archived`. `active` beholder sin betydning (idé åben for afstemning), så den nuværende klient virker uændret mellem migration og frontend-deploy.
-- Ny kolonne `horizon TEXT NOT NULL DEFAULT 'next' CHECK (horizon IN ('next','later'))`. Bruges kun for `planned`.
+- Ny kolonne `horizon TEXT NOT NULL DEFAULT 'next' CHECK (horizon IN ('this_week','next_week','next','this_season','next_season','y2027','later'))`. Bruges for `planned` og for `in_progress` uden for beta. #7666 udvidede den fra `next`/`later`. `next` bevares, til ejeren har flyttet punkterne (data-skridt efter merge). En ukendt værdi læses som `next` i klienten.
 - Ny kolonne `issue_ref INTEGER NULL` (GitHub-issue). Bruges af færdig-rutinen (§7). Repoet er offentligt, så nummeret er ikke en hemmelighed.
 - Læse-policies (anon + authenticated): godkendte rækker med status `active, planned, in_progress, shipped`.
 
@@ -123,13 +143,16 @@ Alt er additivt. Ingen rækker slettes, ingen stemmer ændres.
 - Insert/update-policies: punktet skal være godkendt og have status `active` eller `planned`. Stemmer på punkter i gang eller færdige er låst og bevaret.
 - Flyttes en idé til planen, beholder eksisterende rækker begge tal. Nye stemmer på et planlagt punkt skriver kun `importance_score` og rører ikke en eksisterende `idea_score`.
 
+- **Ved ikke (#7788):** en række, hvor `importance_score` og `idea_score` begge er NULL. Rækken findes, så punktet tæller som besvaret og står ikke som ubesvaret. `importance_score` er nullable, og CHECK `roadmap_votes_dont_know_check` forbyder en halv stemme: uden vigtighed er der heller ingen `idea_score`. En idé (`active`) kræver fortsat begge tal, medmindre svaret er Ved ikke.
+
 ### 5.3 `roadmap_item_scores` (view)
 
-Formlen er uændret. Viewet får tilføjet `sort_order`, `horizon`, `title_da`, `importance_votes` og `sd_importance`. Fortsat `security_invoker`, så kun admin ser de samlede tal.
+Formlen er uændret. Viewet får tilføjet `sort_order`, `horizon`, `title_da`, `importance_votes` og `sd_importance`. Fortsat `security_invoker`, så kun admin ser de samlede tal. Ved ikke-rækker (#7788) indgår ikke i snit, spredning eller stemmetal. De tælles for sig i `dont_know`, og admin viser dem som svar uden tal.
 
 ### 5.4 Kendte fejl (nye tabeller)
 
-- `known_issues`: `id`, `area` (`races, training, youth, market, club, other`), `status` (`checking, confirmed, fixing, fixed, dismissed`; default `checking`), `title_en`, `title_da`, `published` (default false), `sort_order`, `issue_ref`, `created_at`, `updated_at`, `closed_at`.
+- `known_issues`: `id`, `area` (`races, training, youth, market, club, other`), `status` (`checking, confirmed, fixing, fixed, dismissed`; default `checking`), `title_en`, `title_da`, `published` (default false), `sort_order`, `issue_ref`, `created_at`, `updated_at`, `closed_at`, `confirmed_at`, `fixing_at` (#7666).
+- Trigger `known_issues_stamp_status` (#7666) stempler `confirmed_at`, `fixing_at` og `closed_at`, når status skifter. Går en fejl et trin tilbage, ryddes de senere stempler, og en genåbnet fejl mister sin `closed_at`. Ingen backfill: datoen for tidligere skift kendes ikke. Klienten tåler, at kolonnerne ikke findes endnu, og henter uden dem.
 - `known_issue_updates`: `id`, `issue_id` (FK, cascade), `body_en`, `body_da`, `created_at`.
 - `known_issue_reports`: `issue_id`, `user_id`, `created_at`, primærnøgle (`issue_id`, `user_id`).
 - RLS: publicerede fejl og deres opdateringer kan læses af anon og authenticated. Skrivning kun `is_admin()`. Reports: spilleren læser, opretter og sletter kun sine egne, og kun på publicerede fejl der hverken er rettet eller lukket. Admin læser alle.
@@ -155,8 +178,8 @@ View eller RPC bag `is_admin()`, der giver de fire nøgletal i §4 i ét kald, s
 Nye frontend-filer er `.ts`/`.tsx`. `RoadmapPage.jsx` (431 linjer i dag) bliver en tynd skal:
 
 - `pages/RoadmapPage.jsx`: sidehoved, faner, hentning, filter-tilstand.
-- `components/roadmap/PlanTab.tsx`, `VoteTab.tsx`, `KnownIssuesTab.tsx`, `DoneTab.tsx`, `ScoreScale.tsx`.
-- `lib/roadmapModel.ts`: ren logik (opdeling pr. status, "mangler svar"-tælling, filter, Done-fletning). `lib/roadmapVoting.js` udvides med payload for én skala.
+- `components/roadmap/PlanTab.tsx`, `VoteTab.tsx`, `KnownIssuesTab.tsx`, `DoneTab.tsx`, `SearchResults.tsx`, `ScoreScale.tsx`.
+- `lib/roadmapModel.ts`: ren logik (opdeling pr. status, horisont-gruppering, ugedatoer, "mangler svar"-tælling, filter, Done-fletning, patch note-kobling, tidslinje, søgning). `lib/roadmapVoting.js` udvides med payload for én skala.
 - `lib/roadmapUnread.ts`: menu-prikken tager også nyeste `known_issues.created_at` med.
 - `components/admin/growth/GrowthRoadmapTab.tsx` + opret/ret-formular (den nuværende `RoadmapAdminCreateForm.jsx` flyttes og udvides).
 - `HelpPage.jsx`: fanen fjernes, viderestilling tilføjes. `RaceControlBanner.jsx`: nyt link.
@@ -206,7 +229,7 @@ Intet feature-flag: siden er offentlig læsning, migrationen er additiv, og den 
 
 ## 10. Test
 
-- `node --test`: `roadmapModel.ts` (opdeling, tælling, filter, Done-fletning), `roadmapVoting` (payload for én og to skalaer), `roadmapUnread`.
+- `node --test`: `roadmapModel.ts` (opdeling, horisonter, tælling, filter, Done-fletning, patch note-kobling, tidslinje, søgning og at et hit når frem til punktet), `roadmapVoting` (payload for én og to skalaer), `roadmapUnread`.
 - RLS-integration (`backend/lib/testdb`): anon læser kun publicerede/godkendte rækker · spiller kan stemme på `active` og `planned`, ikke på `in_progress`/`shipped` · spiller ser kun egne stemmer og egne reports · kun admin skriver punkter, fejl og opdateringer · `audit-rls-coverage` dækker de tre nye tabeller.
 - Kontakt-koblingen: flip til beta og til on flytter koblede punkter; et flip uden koblede punkter virker uændret; kobling af et punkt til en kontakt, der allerede står på beta, sætter punktet i beta.
 - `node --test`: patch notes-mærket følger kontakten (`effectiveRollout`, `filterByRollout`).
@@ -217,6 +240,6 @@ Intet feature-flag: siden er offentlig læsning, migrationen er additiv, og den 
 
 - Spillere kan ikke selv oprette idéer på siden (forummet er vejen).
 - Spillere ser ikke samlede resultater eller andres stemmer.
-- Ingen datoer eller sæsonnavne på planen.
+- Ingen datoer ud over ugerne i This week og Next week, og ingen sæsonnavne: horisonterne This season og Next season står uden dato (#7666).
 - Ingen automatisk synk fra GitHub-issues til roadmappet ud over færdig-rutinen i §7.
 - `ops_notices` og driftsbanneret ændres ikke.

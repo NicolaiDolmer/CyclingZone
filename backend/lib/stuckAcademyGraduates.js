@@ -34,7 +34,7 @@ import { fetchAllRows } from "./supabasePagination.js";
 //      graduerings-sweep har ikke koert endnu (det koerer i 22-24-vinduet).
 //
 // 48 timer daekker begge med god margin. Samme konservative logik som
-// PENDING_TRANSFER_STALE_HOURS i ownershipInvariantWatch.js: en vagt der
+// PENDING_TRANSFER_STALE_HOURS i ownershipInvariantWatch.ts: en vagt der
 // alarmerer paa lovlige, forbigaaende tilstande bliver ignoreret og mister sin
 // vaerdi (CYCLINGZONE-31 / CYCLINGZONE-48 / CYCLINGZONE-4M).
 export const STUCK_GRADUATE_GRACE_HOURS = 48;

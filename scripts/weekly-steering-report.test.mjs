@@ -29,7 +29,146 @@ import {
   parseArgs,
   generateReport,
   main,
+  computePlayerSignal,
+  formatPlayerSignalSection,
 } from './weekly-steering-report.mjs';
+
+// ---------------------------------------------------------------- spillersignal (#7783)
+
+const SIG_NOW = new Date('2026-11-08T18:00:00Z');
+const DAYS_AGO = (d) => new Date(SIG_NOW.getTime() - d * 86400000).toISOString();
+
+// Syntetiske data: 12 aktive managere (u1..u12), 1 inaktiv, 1 admin, 1 AI.
+function buildSignalData() {
+  const users = [];
+  const teams = [];
+  for (let i = 1; i <= 12; i += 1) {
+    users.push({ id: `u${i}`, role: 'manager', last_seen: DAYS_AGO(1) });
+    teams.push({ id: `t${i}`, user_id: `u${i}`, is_ai: false, is_test_account: false, is_bank: false });
+  }
+  users.push({ id: 'old', role: 'manager', last_seen: DAYS_AGO(40) });
+  teams.push({ id: 'told', user_id: 'old', is_ai: false });
+  users.push({ id: 'adm', role: 'admin', last_seen: DAYS_AGO(0) });
+  teams.push({ id: 'tadm', user_id: 'adm', is_ai: false });
+  users.push({ id: 'ai', role: 'manager', last_seen: DAYS_AGO(0) });
+  teams.push({ id: 'tai', user_id: 'ai', is_ai: true });
+
+  const items = [
+    { id: 'hi', issue_ref: 111, title_da: 'Hoej | prioritet #5', title_en: 'High', status: 'active', approved: true, created_at: DAYS_AGO(90) },
+    { id: 'lo', issue_ref: 222, title_da: 'Lav prioritet', title_en: 'Low', status: 'planned', approved: true, created_at: DAYS_AGO(90) },
+    { id: 'new', issue_ref: 333, title_da: 'Nyt punkt', title_en: 'New', status: 'active', approved: true, created_at: DAYS_AGO(2) },
+    { id: 'done', issue_ref: 444, title_da: 'Leveret', title_en: 'Shipped', status: 'shipped', approved: true, created_at: DAYS_AGO(90) },
+    { id: 'draft', issue_ref: 666, title_da: 'Hemmelig kladde', title_en: 'Draft', status: 'active', approved: false, created_at: DAYS_AGO(1) },
+  ];
+
+  // Hver aktiv manager stemmer paa 12 punkter (10 fyldstof + hi + lo) saa de har eget snit.
+  const votes = [];
+  for (let i = 1; i <= 12; i += 1) {
+    for (let f = 0; f < 10; f += 1) {
+      votes.push({ item_id: `filler${f}`, user_id: `u${i}`, importance_score: 3, created_at: DAYS_AGO(30), updated_at: DAYS_AGO(30) });
+    }
+    votes.push({ item_id: 'hi', user_id: `u${i}`, importance_score: 6, created_at: DAYS_AGO(20), updated_at: i <= 3 ? DAYS_AGO(1) : DAYS_AGO(20) });
+    votes.push({ item_id: 'lo', user_id: `u${i}`, importance_score: 1, created_at: DAYS_AGO(20), updated_at: DAYS_AGO(20) });
+  }
+  // 3 stemmer paa det nye punkt (under graensen)
+  for (const u of ['u1', 'u2', 'u3']) {
+    votes.push({ item_id: 'new', user_id: u, importance_score: 5, created_at: DAYS_AGO(1), updated_at: DAYS_AGO(1) });
+  }
+  // stemmer fra inaktiv/admin/AI skal ignoreres
+  for (const u of ['old', 'adm', 'ai']) {
+    for (let f = 0; f < 12; f += 1) votes.push({ item_id: 'hi', user_id: u, importance_score: 1, created_at: DAYS_AGO(5), updated_at: DAYS_AGO(5) });
+  }
+
+  const issues = [
+    { id: 'k1', issue_ref: 555, title_da: 'Aaben fejl', title_en: 'Open bug', status: 'confirmed', published: true },
+    { id: 'k2', issue_ref: 556, title_da: 'Lukket fejl', title_en: 'Fixed bug', status: 'fixed', published: true },
+    { id: 'k3', issue_ref: null, title_da: 'Ikke publiceret', title_en: 'Hidden', status: 'checking', published: false },
+  ];
+  const reports = [
+    { issue_id: 'k1', user_id: 'u1' },
+    { issue_id: 'k1', user_id: 'u2' },
+    { issue_id: 'k1', user_id: 'u2' }, // dublet taelles ikke to gange
+    { issue_id: 'k2', user_id: 'u3' },
+  ];
+  return { users, teams, votes, items, issues, reports, feedbackNew: 7 };
+}
+
+test('computePlayerSignal: daekning taeller kun aktive managere (ikke admin/AI/inaktive)', () => {
+  const s = computePlayerSignal(buildSignalData(), SIG_NOW, new Set());
+  assert.equal(s.coverage.eligible, 13); // 12 + den inaktive; admin og AI er ude
+  assert.equal(s.coverage.active7, 12);
+  assert.equal(s.coverage.voted7, 3); // kun u1-u3 har aendret/afgivet stemmer inden for 7 dage
+  assert.equal(s.coverage.voted30, 12);
+  assert.equal(s.feedbackNew, 7);
+});
+
+test('computePlayerSignal: top/bund rangerer kun punkter med mindst 10 stemmere, nye holdes for sig', () => {
+  const s = computePlayerSignal(buildSignalData(), SIG_NOW, new Set());
+  assert.deepEqual(s.top.map((t) => t.id), ['hi', 'lo']);
+  assert.equal(s.top[0].voters, 12); // inaktiv/admin/AI-stemmer taeller ikke
+  assert.ok(s.top[0].lift > 0 && s.top[1].lift < 0);
+  assert.equal(s.thinCount, 1);
+  assert.equal(s.thin[0].id, 'new');
+  assert.ok(!s.top.some((t) => t.id === 'done'), 'leverede punkter rangeres ikke');
+});
+
+test('computePlayerSignal: flyttet mest sammenligner mod stemmer uaendret siden for 7 dage siden', () => {
+  const s = computePlayerSignal(buildSignalData(), SIG_NOW, new Set());
+  // u1-u3 har aendret i ugen, men alle gav 6, saa snittet er uaendret: ingen flyt.
+  assert.equal(s.movedMost.length, 0);
+});
+
+test('computePlayerSignal: hoeje punkter uden for MASTERPLAN krydstjekkes paa issue_ref', () => {
+  const data = buildSignalData();
+  assert.deepEqual(computePlayerSignal(data, SIG_NOW, new Set()).outsidePlan.map((t) => t.id), ['hi']);
+  assert.deepEqual(computePlayerSignal(data, SIG_NOW, new Set([111])).outsidePlan, []);
+});
+
+test('computePlayerSignal: aabne fejl taeller unikke spillere og ignorerer lukkede/upublicerede', () => {
+  const s = computePlayerSignal(buildSignalData(), SIG_NOW, new Set());
+  assert.equal(s.openIssues.total, 1);
+  assert.equal(s.openIssues.top[0].reports, 2);
+});
+
+test('formatPlayerSignalSection: kun tal og titler, aldrig user_id, og pipe/#N i titler escapes', () => {
+  const out = formatPlayerSignalSection(computePlayerSignal(buildSignalData(), SIG_NOW, new Set()), true);
+  for (const heading of ['### Dækning', '### Top 10', '### Bund 5', '### Flyttet mest', '### Åbne fejl', '### Ubehandlet feedback', '### Høje punkter uden for MASTERPLAN']) {
+    assert.ok(out.includes(heading), `mangler ${heading}`);
+  }
+  assert.ok(!/\bu\d+\b/.test(out), 'user_id lækket');
+  assert.ok(out.includes('Hoej \\| prioritet `#5`'));
+  assert.match(out, /7 feedback-besked/);
+});
+
+test('formatPlayerSignalSection: uden env forklarer og springer over', () => {
+  assert.match(formatPlayerSignalSection(null, false), /ikke sat/);
+});
+
+test('generateReport: sektion 8 bruger injiceret hentning og fanger fejl uden at vaelte rapporten', async () => {
+  const saved = [process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY];
+  process.env.SUPABASE_URL = 'http://test.invalid';
+  process.env.SUPABASE_SERVICE_KEY = 'x';
+  const base = {
+    execGh: () => '[]',
+    execNode: () => 'tal',
+    execPwsh: () => 'Summary: 0 fail',
+    readFile: () => '# MASTERPLAN #111',
+    fetchActiveRoadmapItems: async () => [],
+  };
+  try {
+    const ok = await generateReport({ repo: DEFAULT_REPO, now: SIG_NOW, days: 7, skipNumbers: true }, { ...base, fetchPlayerSignalData: async () => buildSignalData() });
+    assert.ok(ok.includes('## 8. Spillersignal'));
+    assert.ok(ok.includes('### Dækning'));
+    assert.match(ok.split('### Høje punkter uden for MASTERPLAN')[1], /Ingen\. ✅/); // #111 staar i MASTERPLAN
+
+    const bad = await generateReport({ repo: DEFAULT_REPO, now: SIG_NOW, days: 7, skipNumbers: true }, { ...base, fetchPlayerSignalData: async () => { throw new Error('db nede'); } });
+    assert.match(bad, /Spillersignal kunne ikke hentes: db nede/);
+    assert.ok(bad.includes('## 7. Budget'));
+  } finally {
+    if (saved[0] === undefined) delete process.env.SUPABASE_URL; else process.env.SUPABASE_URL = saved[0];
+    if (saved[1] === undefined) delete process.env.SUPABASE_SERVICE_KEY; else process.env.SUPABASE_SERVICE_KEY = saved[1];
+  }
+});
 
 const NOW = new Date('2026-09-20T18:00:00Z'); // en soendag
 
@@ -397,4 +536,12 @@ test('main: --out skriver fil via injiceret writeFile/mkdir', async () => {
   assert.equal(written.path, 'docs/audits/2026-09-20-styringsrapport.md');
   assert.match(written.content, /Styringsrapport/);
   assert.match(logs[0], /Skrev docs\/audits/);
+});
+
+test('computePlayerSignal: ikke-godkendte kladder (fx fra split) vises aldrig i den offentlige rapport', () => {
+  const data = buildSignalData();
+  data.votes.push({ item_id: 'draft', user_id: 'u1', importance_score: 6, created_at: DAYS_AGO(1), updated_at: DAYS_AGO(1) });
+  const out = formatPlayerSignalSection(computePlayerSignal(data, SIG_NOW, new Set()), true);
+  assert.ok(!out.includes('Hemmelig kladde'));
+  assert.ok(!out.includes('666'));
 });

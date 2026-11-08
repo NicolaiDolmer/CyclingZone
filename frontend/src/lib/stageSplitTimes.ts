@@ -23,6 +23,7 @@
 // kun "udbrud" naar den ligger foran feltet og rummer morgenudbruddets ryttere
 // (samme udbrud som resultat-maerkerne, morningBreakawayRiderIds).
 import { morningBreakawayRiderIds } from "./breakawayLabels6299.ts";
+import { withAttackWording } from "../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts"; // #7707
 
 export type TimelineEvent = { km?: number; type?: string; params?: Record<string, unknown> | null } | null | undefined;
 
@@ -68,6 +69,8 @@ const MEMBERSHIP_TYPES = new Set(["breakaway_formed", "peloton_splits", "finale_
 // Bogfoering i motoren (raceStory.js), ingen rytter skifter gruppe.
 const BOOKKEEPING_ATTACK_KINDS = new Set(["stage_decided", "placement_gap", "gap_survived"]);
 const KNOWN_CAUSES = new Set(["climb_deficit", "wprime_depleted", "mixed", "grupetto", "cobbles_sector"]);
+// Hændelser der selv er årsagen til en rytters tidstab, hver med sin egen linje.
+const OWN_LOSS_EVENTS = new Set(["incident", "favorite_crack", "all_out_cracked", "bad_day"]);
 export const DEFAULT_MAX_GROUPS = 5;
 
 function idsOf(value: unknown): string[] {
@@ -327,6 +330,101 @@ export function buildSplitTimes(
   return out;
 }
 
+/**
+ * #7636: sad rytteren forrest i loebet eller i feltet (hovedgruppen, som filmen kalder det) ved
+ * `km` (efter alle events til og med km)? En gruppe mellem fronten og feltet taeller ikke.
+ * null = ukendt (v3-tidslinje, udgaaet rytter, intet gruppe-billede).
+ */
+export function riderInFrontOrFieldAt(events: readonly TimelineEvent[] | null | undefined, riderId: string, km: number): boolean | null {
+  if (!hasGroupGaps(events)) return null;
+  let last = null as ReplayState | null;
+  replay(sortedEvents(events).filter((e) => (e.km ?? 0) <= km), (_e, state) => { last = state; });
+  const own = last ? snapshotGroups(last, [riderId]).find((g) => g.ownRiderIds.includes(riderId)) : undefined;
+  return own ? own.kind === "peloton" || own.gapSeconds === 0 : null;
+}
+
+/**
+ * #7706: hvor skiltes to ryttere inden for strækningen? `toKm` taeller ikke med: et skift der
+ * sker paa selve slut-km er leddets slutning, og maalets finale-grupper er ikke et loebsbillede.
+ * km = den skilning der stod ved magt ved strækningens slut, null = sammen ved slut (en skilning
+ * de samledes fra giver ingen km), undefined = filmen kan ikke svare (v3-tidslinje, ikke sammen
+ * fra start, en af dem forlod loebet undervejs, eller et uheld: motoren flytter ham foerst til
+ * en solo-gruppe naar gabet dukker op, saa filmens gruppe er ikke sikker).
+ */
+export function ridersSplitKm(events: readonly TimelineEvent[] | null | undefined, a: string, b: string, fromKm: number, toKm: number): number | null | undefined {
+  if (!hasGroupGaps(events)) return undefined;
+  // Tilstanden efter det sidste event paa hver km: to events paa samme km er ét loebsbillede.
+  const byKm = new Map<number, { together: boolean; gone: boolean }>();
+  let hurt = false;
+  replay(sortedEvents(events).filter((e) => (e.km ?? 0) < toKm), (event, state) => {
+    const rider = event.params?.rider_id;
+    if (event.type === "incident" && (rider === a || rider === b) && event.params?.outcome !== "protected_three_km_rule") hurt = true;
+    byKm.set(event.km ?? 0, {
+      together: resolveAlias(state, groupOfRider(state, a)) === resolveAlias(state, groupOfRider(state, b)),
+      gone: state.removed.has(a) || state.removed.has(b),
+    });
+  });
+  if (hurt) return undefined;
+  let together = true;
+  let splitKm: number | null = null;
+  for (const [km, at] of [...byKm].sort(([x], [y]) => x - y)) {
+    if (at.gone) return undefined;
+    if (km <= fromKm) together = at.together;
+    else if (at.together) splitKm = null;
+    else splitKm ??= km;
+  }
+  return together ? splitKm : undefined;
+}
+
+/** #7640: et split der koerer FREM (angreb, negativt hul) er aldrig et fald. */
+function isFall(p: Record<string, unknown>): boolean {
+  return p.cause !== "attack" && !(Number(p.gap_seconds) < 0);
+}
+
+/**
+ * #7706: sad rytteren i sin gruppe hele strækningen, slut-km med? Et fald taeller fra faldets km,
+ * til han er tilbage i gruppen han faldt fra, ogsaa et fald fra foer strækningen. En gruppe bag
+ * feltet taeller ligesaa, fald eller ej. Maalets finale-grupper er ikke et loebsbillede.
+ * true = ja, false = nej, null = filmen kan ikke svare (v3-tidslinje, eller han forlod loebet).
+ */
+export function riderHeldContact(events: readonly TimelineEvent[] | null | undefined, riderId: string, fromKm: number, toKm: number): boolean | null {
+  if (!hasGroupGaps(events)) return null;
+  const sorted = sortedEvents(events);
+  const finishKm = sorted.find((e) => e.type === "finish")?.km ?? Infinity;
+  // Tilstanden efter det sidste event paa hver km: to events paa samme km er ét loebsbillede.
+  const byKm = new Map<number, { out: boolean; gone: boolean }>();
+  let fellFrom: string | null = null;
+  replay(sorted.filter((e) => (e.km ?? 0) <= toKm && (e.km ?? 0) < finishKm), (event, state, before) => {
+    const p = event.params || {};
+    const group = resolveAlias(state, groupOfRider(state, riderId));
+    if (event.type === "peloton_splits" && isFall(p) && idsOf(p.rider_ids).includes(riderId)) {
+      fellFrom ??= str(p.source_group_id) ?? before.get(riderId) ?? INITIAL_GROUP;
+    } else if (fellFrom && resolveAlias(state, fellFrom) === group) {
+      fellFrom = null;
+    }
+    const field = fieldGroupOf(state);
+    const behindField = group !== field && (state.gaps.get(group) ?? 0) > (state.gaps.get(field) ?? 0);
+    byKm.set(event.km ?? 0, { out: fellFrom !== null || behindField, gone: state.removed.has(riderId) });
+  });
+  let held = true;
+  for (const [km, at] of byKm) {
+    if (at.gone) return null;
+    if (km <= fromKm) held = !at.out;
+    else if (at.out) held = false;
+  }
+  return held;
+}
+
+/** #7706: filmens svar til etapeplanens udfald (StagePlanOutcomeOptions). */
+export function stagePlanContactFacts(events: readonly TimelineEvent[] | null | undefined, riderId: string) {
+  return {
+    lostContactKm: hasGroupGaps(events)
+      ? buildOwnTimeLoss(events, { ownRiderIds: [riderId] }).find((entry) => entry.type === "drop")?.km ?? null
+      : undefined,
+    heldContact: (fromKm: number, toKm: number) => riderHeldContact(events, riderId, fromKm, toKm),
+  };
+}
+
 function fromKind(state: ReplayState, groupId: string, leaving: readonly string[]): "breakaway" | "peloton" | "group" {
   const kind = groupKind(state, groupId, leaving);
   return kind === "breakaway" || kind === "peloton" ? kind : "group";
@@ -337,7 +435,8 @@ function fromKind(state: ReplayState, groupId: string, leaving: readonly string[
  * - Et fald (peloton_splits) taeller kun hvis rytteren ikke senere kom tilbage
  *   til gruppen han faldt fra (group_merged ind i den). Det foerste fald der
  *   staar ved magt vises.
- * - Styrt/defekt (incident) og favoritknæk vises som deres egne linjer.
+ * - Styrt/defekt (incident), favoritknæk, en rytter der kørte sig tom og en
+ *   dårlig dag (#7705) vises som deres egne linjer.
  * - `effortByRider`: spillerens egen indsats-ordre for etapen ("save" =
  *   Kør roligt, "grupetto"). Kun en ordre spilleren selv gav, aldrig gaettet.
  */
@@ -347,18 +446,21 @@ export function buildOwnTimeLoss(
 ): TimeLossEntry[] {
   if (!hasGroupGaps(events) || !ownRiderIds.length) return [];
   const own = new Set(ownRiderIds);
-  const sorted = sortedEvents(events);
+  // #7707: "kørte sig tom" for en rytter på Angrib hedder "Angrib"-ordene (samme stempel som filmen og referatet).
+  const worded = withAttackWording((events ?? []) as readonly NonNullable<TimelineEvent>[], { ownRiderIds, effortByRider: effortByRider as never }) as TimelineEvent[];
+  const sorted = sortedEvents(worded);
   const komKms = new Map<number, string>();
   for (const e of sorted) {
     const name = e.type === "kom_passage" ? str(e.params?.name) : null;
     if (name) komKms.set(e.km ?? 0, name);
   }
-  const drops = new Map<string, Array<{ entry: Extract<TimeLossEntry, { type: "drop" }>; source: string }>>();
+  const drops = new Map<string, Array<{ entry: Extract<TimeLossEntry, { type: "drop" }>; source: string; lateHalf: boolean }>>();
   const other: TimeLossEntry[] = [];
 
   replay(sorted, (event, state, before) => {
     const p = event.params || {};
     if (event.type === "peloton_splits") {
+      if (!isFall(p)) return;
       for (const riderId of idsOf(p.rider_ids)) {
         if (!own.has(riderId)) continue;
         const source = str(p.source_group_id) ?? before.get(riderId) ?? INITIAL_GROUP;
@@ -378,7 +480,7 @@ export function buildOwnTimeLoss(
           planTask,
         };
         if (!drops.has(riderId)) drops.set(riderId, []);
-        (drops.get(riderId) as Array<{ entry: typeof entry; source: string }>).push({ entry, source });
+        (drops.get(riderId) as Array<{ entry: typeof entry; source: string; lateHalf: boolean }>).push({ entry, source, lateHalf: p.joined_late === true });
       }
     } else if (event.type === "group_merged") {
       const into = str(p.into_group_id);
@@ -390,18 +492,19 @@ export function buildOwnTimeLoss(
         const at = list.findIndex((d) => resolveAlias(state, d.source) === into);
         if (at >= 0) list.splice(at);
       }
-    } else if ((event.type === "incident" || event.type === "favorite_crack") && own.has(str(p.rider_id) ?? "")) {
+    } else if (OWN_LOSS_EVENTS.has(event.type ?? "") && own.has(str(p.rider_id) ?? "")) {
       if (event.type === "incident" && p.outcome === "protected_three_km_rule") return;
       other.push({ type: "event", km: event.km ?? 0, riderId: str(p.rider_id) as string, event });
     }
   });
 
-  // Ryttere der faldt af samme sted af samme grund bliver én linje.
+  // Ryttere der faldt af samme sted af samme grund bliver én linje. Kun halvdelene
+  // af et split (#6350) skilles: de har samme km, men hver sit sted.
   const merged = new Map<string, Extract<TimeLossEntry, { type: "drop" }>>();
   for (const list of drops.values()) {
     if (!list.length) continue;
     const e = list[0].entry;
-    const key = [e.km, e.from, e.reason, e.climbName, e.sectorName, e.order, e.planTask].join("|");
+    const key = [e.km, list[0].lateHalf, e.from, e.reason, e.climbName, e.sectorName, e.order, e.planTask].join("|");
     const hit = merged.get(key);
     if (hit) hit.riderIds.push(e.riderId);
     else merged.set(key, { ...e, riderIds: [e.riderId] });

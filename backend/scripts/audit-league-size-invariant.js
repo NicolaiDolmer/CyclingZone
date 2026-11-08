@@ -42,7 +42,7 @@ import { fileURLToPath } from "node:url";
 import { formatSupabaseAuditError } from "./audit-error-classifier.js";
 import { getStalledInflightRaceIds, teamInflightRaceIds } from '../lib/aiTeamRaceObligations.js';
 import { evaluateFlagStage } from '../lib/featureStage.js';
-import { STAGE_SCHEDULER_FLAG_KEY } from '../lib/stageSchedulerFlag.js';
+import { STAGE_SCHEDULER_FLAG_KEY } from '../lib/stageSchedulerFlag.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..", "..");

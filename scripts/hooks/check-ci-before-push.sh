@@ -40,32 +40,48 @@ CMD=$(printf '%s' "$INPUT" | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\(.*
 
 # Kun match git push-kommandoer (inklusive force/lease/upstream-varianter)
 case "$CMD" in
-  *'git push'*) ;;
+  # Review #7907: alle globale flag (git --no-pager push, git -c x=y push), ikke kun -C.
+  *'git push'*|*'git -'*' push'*) ;;
   *) exit 0 ;;
 esac
 
-# Skip hvis ikke i et git-repo
-if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  exit 0
-fi
+# Ejer 4/11: `cd <dir> && git push` / `git -C <dir> push` pusher fra et andet worktree
+# end sessionens cwd; tjek den branch, der faktisk pushes.
+# Codex P2 (#7660): kommandoen afkodes som JSON, og shell-quoting fjernes (lib/push-target-dir.mjs).
+# Ejer 8/11: destinations-branchen i en eksplicit refspec (`HEAD:wip/x`) er maalet, ikke den lokale branch.
+# Et maal pr. linje, efterfulgt af tab + mappe naar netop det push koerer et andet sted (review #7907).
+DEST=$(printf '%s' "$INPUT" | node "$(dirname "$0")/lib/push-target-dir.mjs" --dest 2>/dev/null)
+# Ejer 8/11: kun undtaget naar HVERT maal er en backup-branch (wip/*, backup/*) eller en sletning:
+# ingen PR at beskytte, intet nyt kode sendes.
+[ "$DEST" = "__ALL_EXEMPT__" ] && exit 0
+# Intet maal fundet (usaedvanlig kommandoform, node fejlede): tjek den lokale branch som foer.
+[ -z "$DEST" ] && DEST="__LOCAL__"
+
+# Eksplicit kvittering: CI_FAIL_ACK="<hvad er koert lokalt>" i kommandoen.
+case "$CMD" in *CI_FAIL_ACK=*) exit 0 ;; esac
 
 # Skip hvis gh CLI mangler eller ikke authentikeret
 command -v gh >/dev/null 2>&1 || exit 0
-gh auth status >/dev/null 2>&1 || exit 0
+gh auth status >/dev/null 2>&1 </dev/null || exit 0
 
-CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
-[ -z "$CURRENT_BRANCH" ] && exit 0
+START_DIR=$(pwd)
+
+# Ejer 8/11: tjek hvert maal for pushet (Codex P2), ikke kun den lokale branch.
+check_branch() {
+CURRENT_BRANCH="$1"
+[ -z "$CURRENT_BRANCH" ] && return 0
 
 # Skip på main/master — disse skal aldrig blokere
 case "$CURRENT_BRANCH" in
-  main|master) exit 0 ;;
+  main|master) return 0 ;;
 esac
 
 # Tjek seneste CI-run på denne branch. Hvis sidste run var failure/cancelled
 # → emit warning. Vi bruger --json conclusion,headSha for at filtrere på
 # faktisk afsluttede runs.
-LATEST=$(gh run list --branch "$CURRENT_BRANCH" --limit 1 --json conclusion,headSha,status 2>/dev/null)
-[ -z "$LATEST" ] && exit 0
+# Ejer 4/11: kun CI (ci.yml); review-gate og andre workflows er ikke testfejl.
+LATEST=$(gh run list --branch "$CURRENT_BRANCH" --workflow ci.yml --limit 1 --json conclusion,headSha,status 2>/dev/null </dev/null)
+[ -z "$LATEST" ] && return 0
 
 # Parse conclusion uden jq (best-effort substring match)
 CONCLUSION=$(printf '%s' "$LATEST" | sed -n 's/.*"conclusion"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
@@ -73,15 +89,38 @@ STATUS=$(printf '%s' "$LATEST" | sed -n 's/.*"status"[[:space:]]*:[[:space:]]*"\
 SHA=$(printf '%s' "$LATEST" | sed -n 's/.*"headSha"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
 
 # Kun warn hvis run er afsluttet OG var failure
-[ "$STATUS" = "completed" ] || exit 0
+[ "$STATUS" = "completed" ] || return 0
 case "$CONCLUSION" in
-  failure|cancelled|timed_out) ;;
-  *) exit 0 ;;
+  # Ejer 4/11: cancelled = afloest af et nyere push (cancel-in-progress paa PR'er), ikke en fejl.
+  failure|timed_out) ;;
+  *) return 0 ;;
 esac
 
 SHORT_SHA=$(printf '%s' "$SHA" | head -c 7)
 
 # Emit warning
-printf '{"systemMessage": "⚠️  CI-FAIL-LOOP-GUARD: Seneste push (%s) på branch %s havde CI-conclusion=%s. Inden du pusher endnu en fix:\\n  1. Har du kørt den fejlende test LOKALT? Specifikt for Playwright: npx playwright test <spec> --project=desktop-chromium\\n  2. Hvis det er 2+ runder på samme symptom → STOP, find rod-årsag, spørg brugeren før push.\\nSe postmortem: .claude/learnings/2026-05-17-symptom-patching-loop-vs-root-cause.md"}\n' "$SHORT_SHA" "$CURRENT_BRANCH" "$CONCLUSION"
+# Ejer 4/11: systemMessage ses kun af ejeren. Pushet afvises nu med en begrundelse, Claude
+# ser; efter lokal koersel kvitteres med CI_FAIL_ACK="<hvad er koert>" foran git push.
+MSG=$(printf '⚠️  CI-FAIL-LOOP-GUARD: Seneste push (%s) på branch %s havde CI-conclusion=%s. Inden du pusher endnu en fix:\\n  1. Har du kørt den fejlende test LOKALT? Specifikt for Playwright: npx playwright test <spec> --project=desktop-chromium\\n  2. Hvis det er 2+ runder på samme symptom → STOP, find rod-årsag, spørg brugeren før push.\\nSe postmortem: .claude/learnings/2026-05-17-symptom-patching-loop-vs-root-cause.md' "$SHORT_SHA" "$CURRENT_BRANCH" "$CONCLUSION")
+# Ejer 8/11: ingen systemMessage; den viste hele teksten i ejerens vindue. Afvisningen naar Claude via begrundelsen.
+printf '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "%s\\nKvittering efter lokal koersel: CI_FAIL_ACK=\\"<hvad er koert>\\" foran git push."}}\n' "$MSG"
+exit 0
+}
+
+TAB=$(printf '\t')
+while IFS="$TAB" read -r TARGET PUSH_DIR; do
+  cd "$START_DIR" 2>/dev/null || exit 0
+  if [ -n "$PUSH_DIR" ]; then cd "$PUSH_DIR" 2>/dev/null || continue; fi
+  # Skip hvis ikke i et git-repo
+  git rev-parse --is-inside-work-tree >/dev/null 2>&1 || continue
+  # Review #7907: main/master har aldrig en loop at bryde, men koden paa vej derop kommer
+  # fra den lokale branch; `git push origin HEAD:main` fra en roed branch skal fanges.
+  case "$TARGET" in
+    __LOCAL__|main|master) TARGET=$(git branch --show-current 2>/dev/null) ;;
+  esac
+  check_branch "$TARGET"
+done <<EOT
+$DEST
+EOT
 
 exit 0

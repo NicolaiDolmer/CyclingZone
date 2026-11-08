@@ -19,6 +19,7 @@ import {
   extractInvestigateVerdict,
   intakeBackoffMinutes,
   needsGracefulStop,
+  planClaudeMarker,
   planIdleLane,
   planReviewAttempt,
   releasesOwnership,
@@ -29,6 +30,7 @@ import {
   trackWeight,
   wipCommitMessage,
 } from "./wave-freeze.mjs";
+import { CLAUDE_MARKER_RE, shaMatchesHead } from "./review-gate.mjs";
 
 const MODULE_PATH = fileURLToPath(new URL("./wave-freeze.mjs", import.meta.url));
 const WAVE_JS_PATH = fileURLToPath(new URL("../.claude/workflows/wave.js", import.meta.url));
@@ -753,7 +755,7 @@ function normalizeFunction(text) {
 test("#5562/#5567: de spejlede funktioner er identiske i wave.js og modulet", () => {
   const waveSrc = readFileSync(WAVE_JS_PATH, "utf8");
   const moduleSrc = readFileSync(MODULE_PATH, "utf8");
-  for (const name of ["trackWeight", "sortHeavyFirst", "planIdleLane", "intakeBackoffMinutes", "releasesOwnership", "applySchemaEvidenceRule", "tailIdleLaneMinutes", "subStepScopeLines", "classifyBuildRecoveryFailure"]) {
+  for (const name of ["trackWeight", "sortHeavyFirst", "planIdleLane", "intakeBackoffMinutes", "releasesOwnership", "applySchemaEvidenceRule", "tailIdleLaneMinutes", "subStepScopeLines", "classifyBuildRecoveryFailure", "planClaudeMarker"]) {
     const inWave = extractFunction(waveSrc, name);
     const inModule = extractFunction(moduleSrc, name);
     assert.ok(inWave, `wave.js mangler den spejlede funktion ${name}()`);
@@ -805,7 +807,7 @@ test("#6058: ALLE boelgens agent-prompts starter med scope-vaernet", () => {
   const src = readFileSync(WAVE_JS_PATH, "utf8");
   const kinds = {
     setupPrompt: "setup", intakePrompt: "setup", intakeCheckPrompt: "setup", probePrompt: "setup", cleanupPrompt: "setup",
-    releasePrompt: "setup",
+    releasePrompt: "setup", markerPrompt: "setup",
     laneBrief: "worker", recoveryBrief: "worker", stopPrompt: "worker", reviewPrompt: "worker", fixPrompt: "worker",
   };
   for (const [name, kind] of Object.entries(kinds)) {
@@ -1055,4 +1057,93 @@ test("wave.js har ikke laengere den gamle 60-minutters frys-model", () => {
     src.includes("branch-aktivitet") || src.includes("branch-stall"),
     "wave.js skal beskrive frys som maalt paa branch-aktivitet",
   );
+});
+
+// ===== #7587: reviewerens dom -> Claude-review-markoer =====
+
+const REVIEWED_SHA = "0123456789abcdef0123456789abcdef01234567";
+
+test("#7587: GODKENDT -> clean og BEMAERKNINGER -> notes paa det reviewede HEAD", () => {
+  const clean = planClaudeMarker({ verdict: "GODKENDT", pr: "7690", headSha: REVIEWED_SHA, findings: [] });
+  assert.equal(clean.post, true);
+  assert.equal(clean.verdict, "clean");
+  assert.equal(clean.pr, 7690);
+  assert.equal(clean.headSha, REVIEWED_SHA, "markoeren bindes til det commit revieweren laeste");
+  assert.ok(clean.note.includes(REVIEWED_SHA.slice(0, 7)), "noten naevner det reviewede commit");
+  // Body'en er review-gates eget markoer-format og binder til det REVIEWEDE commit
+  // (Codex P1: aldrig en gen-hentet HEAD).
+  const m = clean.body.match(CLAUDE_MARKER_RE);
+  assert.ok(m, "body'en skal matche review-gates CLAUDE_MARKER_RE");
+  assert.equal(m[1], "clean");
+  assert.equal(m[2], REVIEWED_SHA);
+  assert.ok(shaMatchesHead(m[2], REVIEWED_SHA) && !shaMatchesHead(m[2], "f".repeat(40)), "markoeren gaelder kun det reviewede HEAD; et nyt commit kraever ny markoer");
+
+  const notes = planClaudeMarker({
+    verdict: "BEMAERKNINGER",
+    pr: "https://github.com/NicolaiDolmer/CyclingZone/pull/7691",
+    headSha: REVIEWED_SHA.toUpperCase(),
+    findings: [{ severity: "bemaerkning", what: "a" }, { severity: "bemaerkning", what: "b" }],
+  });
+  assert.equal(notes.post, true);
+  assert.equal(notes.verdict, "notes");
+  assert.equal(notes.pr, 7691, "PR-URL'en giver PR-nummeret");
+  assert.equal(notes.headSha, REVIEWED_SHA, "SHA normaliseres til smaa bogstaver");
+  assert.ok(notes.note.includes("BEMAERKNINGER (2)"));
+  assert.deepEqual(notes.body.match(CLAUDE_MARKER_RE).slice(1, 3), ["notes", REVIEWED_SHA]);
+  assert.equal(planClaudeMarker({ verdict: "GODKENDT", pr: "#12", headSha: REVIEWED_SHA }).pr, 12);
+});
+
+test("#7587: BLOKERENDE og tvivlstilfaelde giver INGEN markoer (fail-closed)", () => {
+  const base = { pr: "7690", headSha: REVIEWED_SHA, findings: [] };
+  assert.deepEqual(planClaudeMarker({ ...base, verdict: "BLOKERENDE" }), { post: false, reason: "blokerende" });
+  assert.deepEqual(planClaudeMarker({ ...base, verdict: "OK" }), { post: false, reason: "ukendt-dom" });
+  assert.deepEqual(planClaudeMarker(null), { post: false, reason: "ukendt-dom" });
+  assert.deepEqual(
+    planClaudeMarker({ ...base, verdict: "BEMAERKNINGER", findings: [{ severity: "blokerende", what: "x" }] }),
+    { post: false, reason: "blokerende-fund" },
+    "et blokerende fund under en ikke-blokerende dom skriver ingen markoer",
+  );
+  for (const pr of ["ingen", "", undefined, "0", "pull/abc"]) {
+    assert.deepEqual(planClaudeMarker({ ...base, verdict: "GODKENDT", pr }), { post: false, reason: "ingen-pr" }, `pr=${pr}`);
+  }
+  for (const headSha of [undefined, "", "0123456", "HEAD", `${REVIEWED_SHA}0`, "g".repeat(40)]) {
+    assert.deepEqual(planClaudeMarker({ ...base, verdict: "GODKENDT", headSha }), { post: false, reason: "ingen-head-sha" }, `headSha=${headSha}`);
+  }
+});
+
+test("#7587: noten bygges kun af kode, aldrig af reviewerens tekst", () => {
+  const plan = planClaudeMarker({ verdict: "GODKENDT", pr: "7690", headSha: REVIEWED_SHA, summary: "\"; rm -rf / $(x) `y`" });
+  for (const text of [plan.note, plan.body]) {
+    assert.ok(!/["'`$;\\\r\n]/.test(text), "note/body maa ikke indeholde shell-tegn eller linjeskift (body staar i enkelte anfoerselstegn)");
+    assert.ok(!text.includes("rm -rf"));
+  }
+});
+
+test("#7587: wave.js skriver markoeren efter reviewet, paa det reviewede HEAD, aldrig ved BLOKERENDE", () => {
+  const src = readFileSync(WAVE_JS_PATH, "utf8");
+  const run = extractFunction(src, "runTrack");
+  assert.ok(run, "wave.js mangler runTrack()");
+  const evidenceAt = run.indexOf("applySchemaEvidenceRule(review)");
+  const markerAt = run.indexOf("row.claudeMarker = await postClaudeMarkerNow(review, label)");
+  assert.ok(evidenceAt > 0 && markerAt > evidenceAt, "markoeren planlaegges ud fra den ENDELIGE dom (efter skema-bevisreglen)");
+  assert.ok(markerAt < run.indexOf("if (review.verdict === 'BLOKERENDE') {"), "markoer-trinnet ligger foer ret-trinnet");
+  const step = extractFunction(src, "postClaudeMarkerNow");
+  assert.ok(step.includes("const plan = planClaudeMarker(review)") && step.includes("if (!plan.post) {"), "trinnet bruger den spejlede planClaudeMarker() og springer over naar post=false");
+  assert.ok(/agentWithType\(markerPrompt\(plan\), \{ label: stepLabel, phase: 'Review', model: 'sonnet', effort: 'low', agentType: 'wave-marker', schema: MARKER_SCHEMA \}\)/.test(step), "trinnet koerer paa sonnet/low som agentType wave-marker");
+  assert.ok(step.includes("answer.ok === true && answer.posted === true"), "kun et bekraeftet posted=true taeller som skrevet");
+  assert.ok(step.includes("--expect-sha ${plan.headSha}") && step.includes("/HEAD flyttet/i.test("), "haand-kommandoen binder til det reviewede commit, og flyttet HEAD kraever nyt review (#7658 Codex P2)");
+  const prompt = extractFunction(src, "markerPrompt");
+  assert.ok(prompt.includes("WAVE-SETUP: Claude-review-markoer"), "WAVE-SETUP-praefikset, saa guard-agent-spawn.sh lader den passere");
+  assert.ok(prompt.includes("gh api repos/${REPO}/pulls/${plan.pr} --jq .head.sha"), "trin 1 henter PR'ens aktuelle HEAD");
+  assert.ok(prompt.includes("Er outputtet IKKE praecis ${plan.headSha}") && prompt.includes("koer IKKE trin 2"), "markoeren skrives kun hvis HEAD stadig er det reviewede commit");
+  assert.ok(prompt.includes("gh pr comment ${plan.pr} --repo ${REPO} --body '${plan.body}'"), "trin 2 skriver den SHA-bundne markoer ordret");
+  assert.ok(!prompt.includes("post-claude-review --repo"), "post-claude-review henter HEAD igen og maa ikke bruges her (Codex P1)");
+  const review = extractFunction(src, "reviewPrompt");
+  assert.ok(review.includes("--jq .head.sha") && review.includes("headSha"), "revieweren returnerer det reviewede HEAD");
+  assert.ok(review.includes("Skriv ALDRIG selv en claude-review-markoer"), "revieweren er stadig read-only");
+  assert.ok(/headSha: \{ type: 'string'/.test(src), "REVIEW_SCHEMA har headSha");
+  assert.ok(/\n\s*markersPosted,\n/.test(src), "rapporten viser antallet af skrevne markoerer");
+  const agentFile = readFileSync(path.join(path.dirname(WAVE_JS_PATH), "..", "agents", "wave-marker.md"), "utf8");
+  assert.match(agentFile, /^name: wave-marker$/m);
+  assert.equal((agentFile.match(/^tools:\s*(.+)$/m) || [, ""])[1].trim(), "Bash, PowerShell", "markoer-agenten har kun en shell");
 });

@@ -3,12 +3,13 @@ import assert from 'node:assert/strict';
 import express from 'express';
 import { createAdminRoadmapRouter } from './adminRoadmap.js';
 
-async function withApp(run, rpc = async () => ({ data: [], error: null })) {
+async function withApp(run, rpc = async () => ({ data: [], error: null }), extra = {}) {
   const calls = [];
   const app = express();
   app.use(express.json());
   app.use('/api/admin/roadmap', createAdminRoadmapRouter({
     supabase: { rpc: async (...args) => { calls.push(args); return rpc(...args); } },
+    ...extra,
     requireAdmin: (req, res, next) => req.headers.authorization === 'admin'
       ? next() : res.status(req.headers.authorization ? 403 : 401).json({ error: 'Admin only' }),
   }));
@@ -18,7 +19,7 @@ async function withApp(run, rpc = async () => ({ data: [], error: null })) {
   finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
 }
 
-const split = { source: '00000000-0000-0000-0000-000000000001', title_en: 'Next', title_da: 'Næste', status: 'planned', horizon: 'next', issue_ref: 123 };
+const split = { source: '00000000-0000-0000-0000-000000000001', title_en: 'Next', title_da: 'Næste', status: 'planned', horizon: 'season_5', issue_ref: 123 };
 
 test('all roadmap RPC routes reject anonymous and non-admin callers before the database', async () => {
   await withApp(async (base, calls) => {
@@ -43,9 +44,20 @@ test('admin stats and writes call only their fixed service RPCs', async () => {
   });
 });
 
+test('split accepts every player-facing horizon pattern (#7895)', async () => {
+  const horizons = ['this_week', 'next_week', 'season_5', 'season_12', 'q1_2027', 'q4_2028', 'y2027', 'unscheduled'];
+  await withApp(async (base, calls) => {
+    for (const horizon of horizons) {
+      const res = await fetch(base + '/split', { method: 'POST', headers: { authorization: 'admin', 'Content-Type': 'application/json' }, body: JSON.stringify({ ...split, horizon }) });
+      assert.equal(res.status, 200, horizon);
+    }
+    assert.deepEqual(calls.map(([, args]) => args.p_horizon), horizons);
+  });
+});
+
 test('invalid split input is rejected before calling the writer', async () => {
   await withApp(async (base, calls) => {
-    for (const body of [[], {}, { ...split, source: 'invalid' }, { ...split, title_da: '' }, { ...split, status: 'invalid' }, { ...split, horizon: 'invalid' }, { ...split, issue_ref: -1 }]) {
+    for (const body of [[], {}, { ...split, source: 'invalid' }, { ...split, title_da: '' }, { ...split, status: 'invalid' }, { ...split, horizon: 'invalid' }, { ...split, horizon: 'next' }, { ...split, horizon: 'later' }, { ...split, horizon: 'q5_2027' }, { ...split, issue_ref: -1 }]) {
       const res = await fetch(base + '/split', { method: 'POST', headers: { authorization: 'admin', 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       assert.equal(res.status, 400);
     }
@@ -61,4 +73,26 @@ test('database failures and transport failures return fixed errors without raw p
       assert.deepEqual(await res.json(), { error: 'Roadmap request failed' });
     }, rpc);
   }
+});
+
+test('notify-delivered is admin only and returns the sweep summary (#7792)', async () => {
+  let runs = 0;
+  const runDelivered = async () => { runs += 1; return { items: 1, sent: 2 }; };
+  await withApp(async base => {
+    assert.equal((await fetch(base + '/notify-delivered', { method: 'POST' })).status, 401);
+    assert.equal((await fetch(base + '/notify-delivered', { method: 'POST', headers: { authorization: 'player' } })).status, 403);
+    assert.equal(runs, 0);
+    const res = await fetch(base + '/notify-delivered', { method: 'POST', headers: { authorization: 'admin' } });
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), { items: 1, sent: 2 });
+    assert.equal(runs, 1);
+  }, undefined, { runDelivered });
+});
+
+test('notify-delivered failures return a fixed error (#7792)', async () => {
+  await withApp(async base => {
+    const res = await fetch(base + '/notify-delivered', { method: 'POST', headers: { authorization: 'admin' } });
+    assert.equal(res.status, 500);
+    assert.deepEqual(await res.json(), { error: 'Roadmap request failed' });
+  }, undefined, { runDelivered: async () => { throw new Error('PRIVATE_DETAIL'); } });
 });

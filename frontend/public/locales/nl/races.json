@@ -55,6 +55,10 @@
         "end": "De laatste 10 km beginnen in de afdaling naar de finish, dus stap {number} begint pas in de finale.",
         "finale": "De laatste 10 km beginnen in de afdaling naar de finish, dus stap {number} begint pas in de finale."
       },
+      "flat": {
+        "start": "De laatste 10 km beginnen tussen de laatste klim en de finish, dus stap {number} begint op de top.",
+        "finale": "De laatste 10 km beginnen tussen de laatste klim en de finish, dus stap {number} begint pas in de finale."
+      },
       "samePoint": "Stap {first} en stap {second} wisselen op hetzelfde punt, dus stap {first} wordt niet gereden."
     },
     "timeTrial": "Geen etappeplan in een tijdrit.",
@@ -68,7 +72,7 @@
       "ride_for_result": "Rijden voor een uitslag",
       "sprint_train": "Sprinttrein",
       "grupetto": "Gruppetto",
-      "ride_in": "Binnenrijden"
+      "ride_in": "Rustig binnenrijden"
     },
     "from": {
       "kom": "na {climb}",
@@ -88,7 +92,19 @@
       "abandoned": "gaf op bij km {km}",
       "skipped": "overgeslagen, hij was al gelost",
       "notReached": "niet bereikt",
-      "pending": "De koersfilm van deze etappe is nog niet klaar."
+      "pending": "De koersfilm van deze etappe is nog niet klaar.",
+      "outcome": {
+        "failed": "Geprobeerd, zonder succes",
+        "finished": "Gefinisht",
+        "attacked": "Viel aan op km {km}",
+        "inBreak": "In de kopgroep",
+        "keptContact": "Hield contact",
+        "lostContact": "Verloor contact op km {km}",
+        "outOfTime": "Buiten tijdslimiet",
+        "rank": "Nr. {rank} op de finish",
+        "withRider": "Met {name}",
+        "withRiderTo": "Met {name} tot km {km}"
+      }
     }
   },
   "stagePageV2": {
@@ -206,6 +222,7 @@
       "kmAt": "km {km}",
       "kmSpan": "km {from}-{to}",
       "unfolded": "Hoe het verliep",
+      "lossUnknown": "Tijd verloren, oorzaak onbekend: {names}.",
       "source": "Elke tijd, achterstand en zin hier komt uit het koerslogboek van deze etappe.",
       "replay": {
         "play": "Speel de etappe af",
@@ -264,6 +281,8 @@
         "survived": "{names} bleven uit de greep tot de finish.",
         "attack": "{names} viel aan bij km {km}.",
         "attackGain": "{names} viel aan bij km {km} en pakte {gain} op het peloton.",
+        "ownAttackedWith": "{count, plural, one {{mine} viel} other {{mine} vielen}} samen met {others} aan.",
+        "ownAttackedWithMore": "{count, plural, one {{mine} viel} other {{mine} vielen}} samen met {others} en anderen aan.",
         "winner": "{winner} won.",
         "winnerGap": "{winner} won, {gap} voor {second}.",
         "winnerSame": "{winner} won voor {second} op dezelfde tijd.",
@@ -276,7 +295,10 @@
         "third": "{name} werd derde.",
         "thirdGap": "{name} werd derde, {gap} achter.",
         "placed": "{name} finishte op plaats {rank}.",
-        "placedGap": "{name} finishte op plaats {rank}, {gap} achter."
+        "placedGap": "{name} finishte op plaats {rank}, {gap} achter.",
+        "dayGreat": "{name} had een heel goede dag.",
+        "dayGood": "{name} had een goede dag.",
+        "ownOut": "{kind, select, withdrawal {Afgestapt: {names}. Te ver achter de winnaar.} time_limit {Buiten tijd: {names}.} time_limit_fatigue {Buiten tijd door vermoeidheid: {names}.} crash {Afgestapt na een valpartij: {names}.} mechanical {Afgestapt door materiaalpech: {names}.} other {Afgestapt: {names}.}}"
       },
       "final": {
         "aria": "De laatste 5 km: groepen op de weg met resterende afstand, achterstanden en koersklok",
@@ -297,6 +319,76 @@
         "play": "Speel de laatste 5 km af",
         "scrubAria": "Koerstijd in de laatste 5 km",
         "speedAria": "Afspeelsnelheid"
+      }
+    },
+    "why": {
+      "button": "Waarom?",
+      "buttonAria": "Waarom eindigde {name} hier?",
+      "alone": "{main}.",
+      "withLead": "{main}, {lead}.",
+      "attackedWith": "Hij viel samen met {names} aan.",
+      "attackedWithMore": "Hij viel samen met {names} en anderen aan.",
+      "where": {
+        "climb": " op {name}",
+        "sector": " bij {name}",
+        "lastClimb": " op de laatste klim",
+        "someClimb": " op een klim",
+        "finale": " in de finale"
+      },
+      "main": {
+        "unknown": "Niet bekend. Niets in de koers verklaart deze uitslag",
+        "abandonedCrash": "Hij viel{where} en moest opgeven",
+        "abandonedMechanical": "Hij kreeg pech{where} en moest opgeven",
+        "abandoned": "Hij gaf op{where}",
+        "timeLimit": "Hij kwam buiten de tijdslimiet binnen",
+        "timeLimitFatigue": "Hij kwam buiten de tijdslimiet binnen, omdat hij te moe was",
+        "withdrawal": "Hij stapte af, te ver achter de winnaar",
+        "won": "Hij was als eerste op de streep",
+        "wonSprint": "Hij won de sprint",
+        "wonAttack": "Hij viel aan{where} en bereikte de streep alleen",
+        "survived": "Hij zat in de vlucht en die hield stand tot de finish",
+        "front": "Hij bleef bij de kopgroep tot de finish",
+        "frontSprint": "Hij zat in de groep die om de zege sprintte",
+        "dropEmpty": "Hij reed zich leeg{where} en verloor het contact",
+        "dropPace": "Hij kon het tempo niet volgen{where}",
+        "dropGrupetto": "Hij zakte terug naar de grupetto{where}",
+        "dropCobbles": "Hij verloor het contact op de kasseien{where}",
+        "dropGeneric": "Hij verloor het contact{where}",
+        "dropFromBreak": "Hij kon niet bij de vlucht blijven{where}",
+        "crack": "Hij knapte{where} en verloor het contact met de kop",
+        "allOut": "Hij ging volle bak{where} en reed zich leeg",
+        "allOutGain": "Hij ging volle bak{where} en won tijd",
+        "crashLoss": "Hij verloor tijd door een val{where}",
+        "mechanicalLoss": "Hij verloor tijd door pech{where}",
+        "incidentLoss": "Hij verloor tijd door een incident{where}",
+        "caught": "Hij zat in de vlucht en werd ingelopen{where}",
+        "badDayFatigue": "Hij had een slechte dag, de zware dagen ervoor haalden hem in",
+        "badDayForm": "Hij had een slechte dag en miste vorm",
+        "badDayIllness": "Hij had een slechte dag en voelde zich ziek",
+        "badDayRain": "Hij had een slechte dag in de regen",
+        "badDayWind": "Hij had een slechte dag in de wind",
+        "badDayHeat": "Hij had een slechte dag in de hitte",
+        "attackBehind": "Hij viel aan{where}, maar kon niet voorop blijven tot de streep",
+        "bunchBehindSprint": "Hij finishte in het peloton achter de sprint",
+        "pelotonBehindBreak": "Hij finishte in het peloton, achter de vlucht die standhield",
+        "pelotonBehind": "Hij bleef in het peloton toen de groep ervoor wegreed",
+        "ttFastest": "Hij reed de snelste tijd",
+        "ttDayGreat": "Hij had een uitstekende dag op de fiets",
+        "ttDayGood": "Hij had een goede dag op de fiets",
+        "ttRouteGood": "Het parcours lag hem",
+        "ttRouteBad": "Het parcours lag hem niet"
+      },
+      "lead": {
+        "afterBreak": "na een dag in de vlucht",
+        "afterDrop": "nadat hij het contact verloor{where}",
+        "badDayFatigue": "op een slechte dag waarop de zware dagen hem inhaalden",
+        "badDayForm": "op een slechte dag zonder vorm",
+        "badDayIllness": "op een slechte dag waarop hij zich ziek voelde",
+        "badDayRain": "op een slechte dag in de regen",
+        "badDayWind": "op een slechte dag in de wind",
+        "badDayHeat": "op een slechte dag in de hitte",
+        "ttRouteGood": "op een parcours dat hem lag",
+        "ttRouteBad": "op een parcours dat hem niet lag"
       }
     },
     "yourDay": {
@@ -464,7 +556,7 @@
       "fillMissing": "Gaten vullen",
       "clearDay": "Dag wissen",
       "clearAllSeason": "Alles wissen",
-      "bound": "Vergrendelde renners kunnen niet aan een van de koersen van vandaag worden toegevoegd",
+      "bound": "Vergrendelde renners kunnen niet aan een van de getoonde koersen worden toegevoegd",
       "loadShort": "{days}d",
       "loadTitle": "Seizoensbelasting: {races, plural, one {# koers} other {# koersen}}, {days, plural, one {# koersdag} other {# koersdagen}} dit seizoen ingeschreven",
       "clearDayTooltip": "Wist {races, plural, one {# koers} other {# koersen}} en haalt {riders, plural, one {# renner} other {# renners}} voor deze dag weg"
@@ -888,6 +980,10 @@
       "bodyAt": "Je drukte om {time} op Nu trainen. Renners die vandaag hebben getraind, kunnen de koers van vandaag niet rijden.",
       "body": "Renners die vandaag hebben getraind, kunnen de koers van vandaag niet rijden.",
       "rider": "Vandaag getraind",
+      "titleEarlier": "Vergrendeld.",
+      "bodyEarlierAt": "Je drukte {day} om {time} op Nu trainen. Renners die op een van de koersdagen hebben getraind, kunnen de koers niet rijden.",
+      "bodyEarlier": "Renners die op een van de koersdagen hebben getraind, kunnen de koers niet rijden.",
+      "riderEarlier": "Eerder getraind",
       "columnLocked": "Vergrendeld"
     },
     "saving": "Opslaan…",
@@ -1073,7 +1169,7 @@
         "neutral": "De koers lezen",
         "let_go": "Het najagen aan anderen overlaten"
       },
-      "gcNote": "De ploeg kan met haar vrije renners beperkt reageren op een serieuze bedreiging in het klassement.",
+      "gcNote": "De ploeg reageert met haar vrije renners op een serieuze bedreiging in het klassement, tenzij je het najagen aan anderen overlaat.",
       "breakNote": "Kopman, sprintkopman en knecht gaan alleen voor de ochtendontsnapping als Probeer de ontsnapping is geselecteerd."
     },
     "breakaway": {
@@ -1556,6 +1652,9 @@
           "chase_faded_climb": "De achtervolging doofde uit na {climb}, en het gat groeide weer.",
           "chase_faded": "De achtervolging doofde uit, en het gat groeide weer.",
           "chase_too_late": "De achtervolging kwam dichterbij, maar kwam weg tekort.",
+          "chase_tired": "De jagende ploegen hadden te veel verbruikt om het op tijd dicht te rijden.",
+          "chase_outgunned": "De achtervolgers waren niet sterk genoeg om deze vlucht op tijd terug te halen.",
+          "chase_too_few": "Te weinig renners werkten mee in de achtervolging om het op tijd dicht te rijden.",
           "gap_never_closed": "De achtervolging kreeg het gat nooit kleiner.",
           "gc_threat": "{teamCount, plural, =1 {{teamLast} jaagde} other {{teamsHead} en {teamLast} jaagden}} omdat {threats} een gevaar {threatCount, plural, one {was} other {waren}} voor {rider} in het klassement.",
           "closed_on_climb": "Het gat slonk op {climb}."
@@ -1563,9 +1662,16 @@
         "order": {
           "all_out_stayed_away": "{rider} ging volgens jouw opdracht voluit en bleef weg tot aan de streep.",
           "all_out_held_on_climb": "{rider} ging volgens jouw opdracht voluit en kwam met de eersten over {climb}.",
-          "all_out_held_on": "{rider} ging volgens jouw opdracht voluit en bleef bij de kopgroep."
+          "all_out_held_on": "{rider} ging volgens jouw opdracht voluit en bleef bij de kopgroep.",
+          "attack_stayed_away": "{rider} viel aan volgens jouw opdracht en bleef weg tot aan de streep.",
+          "attack_held_on_climb": "{rider} viel aan volgens jouw opdracht en kwam met de eersten over {climb}.",
+          "attack_held_on": "{rider} viel aan volgens jouw opdracht en bleef bij de kopgroep."
         },
         "breakaway_dropped": "{riders} {count, plural, one {moet} other {moeten}} de ontsnapping laten gaan.",
+        "breakaway_attempt_failed": "{riders}{others, plural, =0 {} one { en # andere} other { en # anderen}} {count, plural, one {probeert} other {proberen}} weg te rijden, maar {count, plural, one {komt} other {komen}} niet los. {teamCount, plural, =1 {{teamLast} reageerde} other {{teamsHead} en {teamLast} reageerden}}. De poging kostte kracht voor de rest van de etappe.",
+        "breakaway_attempt_failed_field": "{riders}{others, plural, =0 {} one { en # andere} other { en # anderen}} {count, plural, one {probeert} other {proberen}} weg te rijden, maar {count, plural, one {komt} other {komen}} niet los. {teamCount, plural, one {# ploeg reageerde} other {# ploegen reageerden}}. De poging kostte kracht voor de rest van de etappe.",
+        "breakaway_attempt_none_clear": "{riders}{others, plural, =0 {} one { en # andere} other { en # anderen}} {count, plural, one {probeert} other {proberen}} weg te rijden, maar niemand komt los. {teamCount, plural, =1 {{teamLast} reageerde} other {{teamsHead} en {teamLast} reageerden}}. De poging kostte kracht voor de rest van de etappe.",
+        "breakaway_attempt_none_clear_field": "{riders}{others, plural, =0 {} one { en # andere} other { en # anderen}} {count, plural, one {probeert} other {proberen}} weg te rijden, maar niemand komt los. {teamCount, plural, one {# ploeg reageerde} other {# ploegen reageerden}}. De poging kostte kracht voor de rest van de etappe.",
         "group_ahead_formed": "{riders} {count, plural, one {rijdt} other {rijden}} weg in een groep voor het peloton.",
         "group_ahead_caught": "De groep voor het peloton wordt ingelopen: {riders}.",
         "group_ahead_survived": "De groep voor het peloton houdt stand tot de streep.",
@@ -1581,6 +1687,8 @@
         "favorite_crack_tt": "{rider} zakt in de tweede helft in en verliest tijd.",
         "all_out_gain": "{rider} gaat volle bak op de laatste klim en wint tijd.",
         "all_out_cracked": "{rider} gaat volle bak en rijdt zich leeg op de laatste klim.",
+        "attack_gain": "{rider} valt aan op de laatste klim en wint tijd.",
+        "attack_cracked": "{rider} valt aan en rijdt zich leeg op de laatste klim.",
         "bad_day_fatigue": "{rider} had een slechte dag. De zware dagen ervoor eisten hun tol.",
         "bad_day_form": "{rider} had een slechte dag. Hij miste vorm.",
         "bad_day_illness": "{rider} had een slechte dag. Hij voelde zich ziek.",
@@ -1640,9 +1748,9 @@
       "teamDay": "{team} leidde het ploegenklassement met {count} renners in de top 10.",
       "teamWon": "{team} won het ploegenklassement.",
       "jerseys": "Truidragers: {points} in het puntenklassement, {mountain} in de bergen.",
-      "abandon": "{kind, select, crash {{rider} stapte af na een valpartij.} mechanical {{rider} stapte af door materiaalpech.} injury {{rider} startte niet: geblesseerd.} withdrawal {{rider} stapte af, uitgeput.} time_limit {{rider} kwam buiten tijd binnen.} illness {{rider} startte niet: ziek.} other {{rider} stapte af.}}",
+      "abandon": "{kind, select, crash {{rider} stapte af na een valpartij.} mechanical {{rider} stapte af door materiaalpech.} injury {{rider} startte niet: geblesseerd.} withdrawal {{when, select, stage {{rider} stapte af na de etappe, te ver achter de winnaar.} other {{rider} stapte af, te ver achter de winnaar.}}} time_limit {{rider} kwam buiten tijd binnen.} illness {{rider} startte niet: ziek.} other {{rider} stapte af.}}",
       "notableCrash": "{rider} viel en verloor {marginText}.",
-      "withdrawalGroup": "{when, select, stage {{count} renners stapten na de etappe af, uitgeput en ver achter.} other {{count} renners stapten af, uitgeput en ver achter.}}",
+      "withdrawalGroup": "{when, select, stage {{count} renners stapten na de etappe af, te ver achter de winnaar.} other {{count} renners stapten af, te ver achter de winnaar.}}",
       "seeList": "Bekijk de lijst"
     },
     "incidents": {
@@ -1651,8 +1759,9 @@
       "mechanical": "Materiaalpech",
       "injury": "Niet gestart",
       "illness": "Ziek, niet gestart",
-      "withdrawal": "Afgestapt, uitgeput",
+      "withdrawal": "Afgestapt, te ver achter",
       "time_limit": "Buiten tijd",
+      "time_limit_fatigue": "Buiten tijd, moe",
       "abandoned": "Afgestapt",
       "dnf": "DNF",
       "dnfCollapsed": "{count, plural, one {# renner kwam niet aan} other {# renners kwamen niet aan}}",
@@ -1898,7 +2007,7 @@
         "inBreak": "{rider} zat de hele dag in de ontsnapping.",
         "helperWork": "{count, plural, one {Een ploeggenoot reed} other {# ploeggenoten reden}} in dienst van {captain}.",
         "none": "Geen renners van jouw team zijn in deze etappe gestart.",
-        "out": "{kind, select, withdrawal {{rider} stapte af na etappe {number}.} time_limit {{rider} kwam buiten tijd binnen in etappe {number}.} crash {{rider} stapte af na een valpartij in etappe {number}.} injury {{rider} startte niet in etappe {number}: geblesseerd.} illness {{rider} startte niet in etappe {number}: ziek.} other {{rider} stapte af in etappe {number}.}}",
+        "out": "{kind, select, withdrawal {{rider} stapte af na etappe {number}, te ver achter de winnaar.} time_limit {{rider} kwam buiten tijd binnen in etappe {number}.} crash {{rider} stapte af na een valpartij in etappe {number}.} injury {{rider} startte niet in etappe {number}: geblesseerd.} illness {{rider} startte niet in etappe {number}: ziek.} other {{rider} stapte af in etappe {number}.}}",
         "ridersLeft": "{count, plural, =0 {Je hebt geen renners meer over.} one {Je hebt nog # renner over.} other {Je hebt nog # renners over.}}"
       }
     },
@@ -2110,5 +2219,11 @@
       "hours": "over {count}u",
       "days": "over {count, plural, one {# dag} other {# dagen}}"
     }
+  },
+  "timeLimitRisk": {
+    "short": "Risico op tijdslimiet",
+    "long": "Hij is erg moe en deze rit past slecht bij hem. Hij kan buiten de tijdslimiet vallen. Zet hem op Grupetto of Rustig rijden om hem het extra risico te besparen.",
+    "outShort": "Te moe",
+    "outLong": "Buiten de tijdslimiet. Hij was erg moe en de rit paste slecht bij hem."
   }
 }

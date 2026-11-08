@@ -18,6 +18,7 @@ import {
   planProofComment,
   oneLine,
   flatLine,
+  findProofOverdue,
 } from './til-doers-proof.mjs';
 import { MARKER, MARKER_LINE, parseMarkers } from './til-doers.mjs';
 
@@ -353,4 +354,86 @@ test('flatLine (CodeQL #386): ogsaa --!> neutraliseres, saa en kommentar ikke ka
   }
   assert.equal(flatLine('a --!> b'), 'a --!&gt; b');
   assert.equal(flatLine('a --> b'), 'a --&gt; b');
+});
+
+// ---------------------------------------------------------------- findProofOverdue (PR 4)
+
+const OD_NOW = '2026-11-06T12:00:00Z';
+const BLOCK = (issue) => '```til-doers-proof\nissue: ' + issue + '\nprod: GET https://example.org/api/health -> 200\n```';
+const mkPr = (number, issue, mergedAt, { declared = true, baseRefName = 'main' } = {}) => ({
+  number,
+  title: `feat: noget (#${number})`,
+  body: `Refs #${issue}\n\n${declared ? BLOCK(issue) : ''}`,
+  mergedAt,
+  baseRefName,
+});
+const ownerProof = (pr, issue) => ({
+  author_association: 'OWNER',
+  body: `${PROOF_MARKER_PREFIX} pr=${pr} issue=${issue} sha=abcdef1 -->\n### Til dørs: auto-bevis`,
+});
+
+test('findProofOverdue: praecis 24 timer er forsinket, 23t59 er det ikke', () => {
+  const issues = [{ number: 5, state: 'open' }];
+  const exact = findProofOverdue({ prs: [mkPr(1, 5, '2026-11-05T12:00:00Z')], issues, comments: {}, now: OD_NOW });
+  assert.deepEqual(exact.overdue.map((r) => [r.pr, r.issue, r.ageHours]), [[1, 5, 24]]);
+  const almost = findProofOverdue({ prs: [mkPr(1, 5, '2026-11-05T12:00:01Z')], issues, comments: {}, now: OD_NOW });
+  assert.equal(almost.overdue.length, 0);
+  assert.equal(findProofOverdue({ prs: [mkPr(1, 5, '2026-11-05T12:00:01Z')], issues, comments: {}, now: OD_NOW, hours: 0 }).overdue.length, 1);
+});
+
+test('findProofOverdue: issue med auto-bevis er ikke forsinket (ogsaa et udkast)', () => {
+  const r = findProofOverdue({
+    prs: [mkPr(1, 5, '2026-11-01T00:00:00Z')],
+    issues: [{ number: 5, state: 'open' }],
+    comments: { 5: [ownerProof(1, 5)] },
+    now: OD_NOW,
+  });
+  assert.equal(r.overdue.length, 0);
+  assert.deepEqual(r.proven.map((x) => x.pr), [1]);
+});
+
+test('findProofOverdue: en udenforstaaendes eller andet PRs bevis taeller ikke', () => {
+  const stranger = { author_association: 'NONE', body: ownerProof(1, 5).body };
+  const otherPr = ownerProof(2, 5);
+  const r = findProofOverdue({
+    prs: [mkPr(1, 5, '2026-11-01T00:00:00Z')],
+    issues: [{ number: 5, state: 'open' }],
+    comments: new Map([[5, [stranger, otherPr]]]),
+    now: OD_NOW,
+  });
+  assert.equal(r.overdue.length, 1);
+});
+
+test('findProofOverdue: lukket issue giver ingen alarm', () => {
+  const r = findProofOverdue({ prs: [mkPr(1, 5, '2026-11-01T00:00:00Z')], issues: [{ number: 5, state: 'closed' }], comments: {}, now: OD_NOW });
+  assert.deepEqual(r, { overdue: [], noDeclaration: [], proven: [] });
+});
+
+test('findProofOverdue: ingen deklaration er ikke det samme som ikke koert', () => {
+  const r = findProofOverdue({
+    prs: [mkPr(1, 5, '2026-11-01T00:00:00Z', { declared: false })],
+    issues: [{ number: 5, state: 'open' }],
+    comments: {},
+    now: OD_NOW,
+  });
+  assert.equal(r.overdue.length, 0);
+  assert.deepEqual(r.noDeclaration.map((x) => [x.pr, x.issue]), [[1, 5]]);
+});
+
+test('findProofOverdue: flere PRer pr. issue vurderes hver for sig', () => {
+  const r = findProofOverdue({
+    prs: [mkPr(1, 5, '2026-11-01T00:00:00Z'), mkPr(2, 5, '2026-11-03T00:00:00Z'), mkPr(3, 5, '2026-11-06T00:00:00Z')],
+    issues: [{ number: 5, state: 'open' }],
+    comments: { 5: [ownerProof(1, 5)] },
+    now: OD_NOW,
+  });
+  assert.deepEqual(r.proven.map((x) => x.pr), [1]);
+  assert.deepEqual(r.overdue.map((x) => x.pr), [2]);
+});
+
+test('findProofOverdue: ikke-merget og andre base-branches springes over; ugyldig now kaster', () => {
+  const issues = [{ number: 5, state: 'open' }];
+  const prs = [{ ...mkPr(1, 5, null) }, mkPr(2, 5, '2026-11-01T00:00:00Z', { baseRefName: 'release' })];
+  assert.equal(findProofOverdue({ prs, issues, comments: {}, now: OD_NOW }).overdue.length, 0);
+  assert.throws(() => findProofOverdue({ prs, issues, comments: {}, now: 'ikke en dato' }), /now/);
 });

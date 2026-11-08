@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/node";
-import { normalizeSupabaseErrorMessage } from "./supabaseErrorNormalize.js";
+import { normalizeSupabaseErrorMessage, normalizeSentrySupabaseErrorMessage } from "./supabaseErrorNormalize.js";
 import { shouldReportToSentry } from "./errorMiddleware.js";
 
 let enabled = false;
@@ -215,11 +215,11 @@ const defaultVolumeLimiter = createVolumeLimiter();
 export function normalizeEventMessages(event) {
   if (!event || typeof event !== "object") return event;
   if (typeof event.message === "string") {
-    event.message = normalizeSupabaseErrorMessage(event.message);
+    event.message = normalizeSentrySupabaseErrorMessage(event.message);
   }
   for (const value of event.exception?.values || []) {
     if (typeof value?.value === "string") {
-      value.value = normalizeSupabaseErrorMessage(value.value);
+      value.value = normalizeSentrySupabaseErrorMessage(value.value);
     }
   }
   return event;

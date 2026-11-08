@@ -4,7 +4,7 @@
 // tavst mod holdets faktiske roster (L8). Skriv sker via api.js-endpoint (service_role).
 
 import { TERRAIN_BUCKETS } from "./raceTerrain.js";
-import { terrainScore } from "./raceSimulator.js";
+import { averageRouteVector, routeMatchScore } from "./routeMatch.js";
 
 const VALID_RULES = new Set(["always_captain", "always_sprint_captain_if_present"]);
 
@@ -89,30 +89,23 @@ export async function loadStrategiesForTeams({ supabase, teamIds, rosterByTeam, 
   return out;
 }
 
-// Per-bucket gennemsnits-demand-vector fra sæsonens stage-profiler → per-rytter suitability
-// pr. bucket (0-100). Til kaptajn-board + auto-foreslå. buckets uden løb → udeladt (UI: "—").
-// stageProfiles: [{ bucket, demand_vector }] (kalderen mapper profile_type → bucket).
+// Per-bucket snit af sæsonens etapevektorer → per-rytter rutematch pr. bucket (0-100), samme
+// model som løbets rutematch (#6207). Til kaptajn-board + auto-foreslå. buckets uden løb →
+// udeladt (UI: "—"). stageProfiles: [{ bucket, vector }] (kalderen mapper profile_type →
+// bucket og etapen → stageRouteVector).
 export function bucketSuitabilities({ stageProfiles = [], riders = [] }) {
-  const sums = new Map(); // bucket → { vec:{}, n }
+  const vectorsByBucket = new Map(); // bucket → etapevektorer
   for (const p of stageProfiles) {
-    const bucket = p.bucket;
-    if (!bucket) continue;
-    if (!sums.has(bucket)) sums.set(bucket, { vec: {}, n: 0 });
-    const agg = sums.get(bucket);
-    agg.n += 1;
-    for (const [k, v] of Object.entries(p.demand_vector || {})) agg.vec[k] = (agg.vec[k] || 0) + Number(v || 0);
+    if (!p.bucket || !p.vector) continue;
+    if (!vectorsByBucket.has(p.bucket)) vectorsByBucket.set(p.bucket, []);
+    vectorsByBucket.get(p.bucket).push(p.vector);
   }
-  const avgByBucket = new Map();
-  for (const [bucket, { vec, n }] of sums) {
-    const avg = {};
-    for (const [k, v] of Object.entries(vec)) avg[k] = v / n;
-    avgByBucket.set(bucket, avg);
-  }
+  const avgByBucket = new Map([...vectorsByBucket].map(([bucket, vectors]) => [bucket, averageRouteVector(vectors)]));
   const out = {}; // rider_id → { bucket: 0-100 }
   for (const r of riders) {
     out[r.rider_id] = {};
     for (const [bucket, avg] of avgByBucket) {
-      out[r.rider_id][bucket] = Math.round(terrainScore(r.abilities || {}, avg) * 100);
+      out[r.rider_id][bucket] = routeMatchScore(r.abilities || {}, avg);
     }
   }
   return out;

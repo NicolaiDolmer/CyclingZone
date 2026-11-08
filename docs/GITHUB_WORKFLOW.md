@@ -2,6 +2,43 @@
 
 > Verdens bedste Claude+GitHub-opsætning. Ambition: agent-loop hvor Nicolai åbner et issue, Claude implementerer, GitHub merger, alt logges automatisk.
 
+## Spillerklager: måling før build (#5509)
+
+Bugformen starter i `player-report` + `needs-repro`, aldrig automatisk `claude:todo`.
+En klage om adfærd, balance eller hastighed forbliver `needs-repro`, indtil en maintainer
+har læst en prod-måling, der viser klagen mod det ejer-godkendte mål. Først da må
+`needs-repro` erstattes af `claude:todo`. Er førstatus allerede grøn: stop, rapportér
+beviset og byg intet. Investigation (`kind: investigate`) er undtaget, fordi det bygger intet.
+
+Issue-body skal have præcis én fenced `player-report-evidence` JSON-sektion:
+
+```player-report-evidence
+{
+  "environment": "prod",
+  "measuredAt": "2026-11-02T12:00:00Z",
+  "source": { "kind": "endpoint", "query": "GET /health" },
+  "result": { "status": "reproduces", "summary": "Den observerede tilstand afviger fra det godkendte mål; se privat evidens." },
+  "evidence": { "privatePointer": "balance-internals/report-evidence.md" }
+}
+```
+
+Eksemplet er syntetisk, ikke en prod-måling. `source.kind` er `sql` eller `endpoint`;
+`source.query` indeholder en læsende `SELECT`/`WITH` eller `GET /sti`. Alternativt
+kan `source.privatePointer` pege på den private forespørgsel. `measuredAt` er et UTC-tidspunkt.
+`result.summary` beskriver det målte resultat; `result.status` er `reproduces` eller
+`already-green` (sidstnævnte afvises til build). `evidence.aggregate` er et objekt med
+`metric` (navn), `value` (endeligt tal) og `unit` (enhed) for et anonymiseret,
+ufølsomt måleresultat, eller `evidence.privatePointer` peger på resultatet.
+Private pointere har formen `balance-internals/filnavn.md`, aldrig credentials eller offentlige links til private data.
+Publicér aldrig PII, identifikatorer, hemmeligheder eller private balance-tal; sådanne
+forespørgsler og resultater ligger privat og refereres kun med filnavn.
+
+Fælles admission læser labels og body fra GitHub før reservation/spawn og ved
+rullende optag. Manglende indhold, ugyldig JSON, placeholders og nøgleord alene
+afvises. Dette validerer struktur, ikke målingens sandhed: maintaineren skal læse
+evidensen, og workeren måler førstatus før kode. Øvrige mandat-, design-, SSOT- og
+byggestop-gates gælder stadig. Ikke-`player-report` følger den eksisterende admission.
+
 ## PR klar til review
 
 `check-verification` springer drafts over og lytter derfor paa `ready_for_review`, saa markering som klar genstarter valideringen af PR-body uden et nyt push. `review-gate` lytter allerede paa samme event for baade `pull_request_target` (gaten fra main) og `pull_request` (unit-tests).
@@ -170,7 +207,7 @@ Den anbefalede arbejdsgang er nu beskrevet i [`docs/AGENT_DISPATCH.md`](AGENT_DI
 
 1. Åbn https://github.com/NicolaiDolmer/CyclingZone/issues/new/choose
 2. Vælg template: **Claude task**, **Claude investigation**, eller **Bug report**
-3. Udfyld required-felter — issuet får automatisk `claude:todo` + `priority:*`
+3. Udfyld required-felter. Bugformen giver `player-report` + `needs-repro`; prod-evidens kræves før `claude:todo` (se kontrakten ovenfor). Øvrige skabeloner følger deres labels.
 4. Næste session: bare sig "tjek mine issues" (eller jeg gør det selv ved start). **ELLER** når Lag 1 er live: skriv `@claude` direkte i issue-body, så starter Claude med det samme i cloud.
 
 ### Claude → Dig (jeg åbner issue)
@@ -181,7 +218,8 @@ Den anbefalede arbejdsgang er nu beskrevet i [`docs/AGENT_DISPATCH.md`](AGENT_DI
 
 | Label | Hvem sætter | Betydning |
 |---|---|---|
-| `claude:todo` | Bruger (auto via template) eller Claude | Klar til Claude pick-up |
+| `needs-repro` | Bugform eller maintainer | Spillerklage uden bekræftende prod-evidens; investigation tilladt, intet build |
+| `claude:todo` | Bruger eller Claude efter triage | Klar til pick-up; player-report kræver bekræftende prod-evidens |
 | `claude:in-progress` | Claude | Aktiv arbejdssession |
 | `claude:blocked` | Claude | Venter på input fra bruger (se nyeste comment) |
 | `priority:high\|med\|low` | Bruger | Pick-rækkefølge |
@@ -207,9 +245,19 @@ Den anbefalede arbejdsgang er nu beskrevet i [`docs/AGENT_DISPATCH.md`](AGENT_DI
 
 **Daglig digest:** comment på ledger-issue [#627](https://github.com/NicolaiDolmer/CyclingZone/issues/627) (auto-lukket / reopened / eskaleret / label-drift). Scan den om morgenen; håndtér kun Tier 3. Skip-create ved 0 actions.
 
+## Branches og worktrees (ejer 7/11, #7834)
+
+En branch lever kun, mens den har en åben PR. Undtagelser: rørt de seneste 48 timer (en lane arbejder), eller branchens issue er åbent, og arbejdet ligger ikke på main. Alt andet fjernes, men først efter en bundle i OneDrive, så intet ubrugt arbejde går tabt. GitHub sletter selv ved merge (`delete_branch_on_merge`). Lokalt: én worktree pr. aktiv lane; hver maskine rydder sine egne ved sessionsstart. Arkiv og genskabelse 7/11: OneDrive `private-handoffs/dolmerpc-lokalt-2026-11-07/LÆS-MIG.md`.
+
+**Et worktree fjernes kun med `scripts/remove-worktree.ps1` eller `scripts/prune-merged-worktrees.ps1 -Execute` (#7837, ejer 7/11: intet arbejde må slettes).** Begge kalder `Remove-WorktreeSafely` (`scripts/lib/archive-worktree-unversioned.ps1`): links fjernes uden at blive fulgt, alt ikke-versioneret, også ignorerede filer, arkiveres og verificeres i OneDrive `private-recovery/worktree-archive/<dato>/`, og først derefter fjernes worktreet. Fejler et trin, bliver worktreet stående. En bundle dækker kun commits, og `git status` viser ikke ignorerede filer, så en bundle alene er aldrig nok. Rå `git worktree remove`, `rm -rf`, `Remove-Item -Recurse` og `rmSync` mod worktrees, OneDrive eller de delte caches blokeres af `scripts/hooks/block-unsafe-delete.sh`, også inde i et ad hoc-script. Transcripts i `~/.claude/projects/` slettes aldrig. Hændelsen: `.claude/learnings/2026-11-07-worktree-oprydning-slettede-arbejde.md`.
+
 ## Til dørs: 8 krav pr. issue (#7336)
 
 Færdig = spilleren har det: **1** bygget, **2** merget, **3** tændt, **4** synligt, **5** gammelt væk, **6** Hjælp, **7** patch note, **8** verificeret i prod. [`scripts/til-doers-check.mjs`](../scripts/til-doers-check.mjs) holder én kommentar pr. issue (`<!-- til-doers:v1 -->`) med status `ok`/`na`/`mangler` og udfylder 1, 2, 3, 4, 6 og 7 selv (PR/main-commit, `FEATURE_REGISTRY.yml`, `help.json`, patch note-refs). Resten markerer en collaborator i en kommentar, én linje pr. krav: `Til dørs: 5 ok <evidens>` eller `Til dørs: 4 na <begrundelse>` (na uden tekst tæller ikke, seneste linje vinder). Når alle 8 er ok/na, lukkes issuet som completed, dog aldrig ved `needs-decision`/`auto-close-veto`, et brand-issue uden krav 8 = ok, eller et genåbnet issue uden ny markering. Mandagsrapport på #7336: `claude:done` ældre end 7 dage. Lokalt er alt dry-run: `node scripts/til-doers-check.mjs --issue N`.
+
+**Internt arbejde lukker selv (#7827):** har et `claude:done`-issue ingen åben PR, og har alle dets mergede PR'er kun rørt interne stier (`scripts/`, `.github/`, `.claude/`, `docs/`, `pr-screens/`, rod-`.md`, tests og `backend/scripts/dev/`), sætter scriptet selv krav 3-7 til `na`. Krav 8 bliver `ok`, når merge-køen har skrevet `Verificeret:` for issuets seneste PR. Listen er en positivliste, så en ukendt sti holder issuet åbent. En menneskelig markering vinder altid: skal et internt issue vente på en konkret hændelse, så skriv `Til dørs: 8 mangler <hvad der skal ses>`. Epics og issues uden `claude:done` røres ikke, og et brand-issue kræver stadig en menneskelig krav 8. Issue-flowet (åbne, oprettet og lukket på 7 dage, færdige men åbne) vises ved sessionsstart af `scripts/hooks/session-issue-flow.sh`.
+
+**Forsinket auto-bevis (#7585):** en PR kan i sin body erklære et bevis (kodeblok `til-doers-proof`, se [`scripts/lib/til-doers-proof.mjs`](../scripts/lib/til-doers-proof.mjs)). Er et erklæret bevis ikke lagt som auto-bevis-kommentar på det åbne issue 24 timer efter merge, påminder [`scripts/til-doers-overdue.mjs`](../scripts/til-doers-overdue.mjs) med én kommentar på #7632 (`## Auto-bevis forsinket`, skjult markør pr. PR og issue, så et par kun rapporteres én gang). Den skelner "ikke kørt" (deklaration uden bevis, alarmen) fra "ingen deklaration" (kun en optælling, aldrig en alarm), ignorerer lukkede issues og vurderer hver PR for sig. Kommentaren er aldrig i `Til dørs:`-format og kan hverken markere eller lukke noget. Scriptet er dry-run som standard (`--apply` skriver), exit er altid 0, og det er et signal, aldrig en gate: dagligt sweep i `til-doers.yml` (fail-soft trin). Selve auto-beviset startes af `scripts/merge-queue.ps1`: efter close-out kører køen løsrevet og fail-soft `node scripts/til-doers-proof.mjs run --pr <togets PR'er> --dry-run` (dry-run den første uge; `--apply` er et separat ejer-skridt). Overdue-scriptet kobles ikke på køen.
 
 ## Priority-hygiejne (#5155, ejer-regel 11/9)
 

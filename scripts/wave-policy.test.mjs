@@ -5,10 +5,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { acquireWave, releaseWave, checkCapacity, validateTracks, handleHook, updateWave, withIdleWaveLock, withWaveStateLock, stopWaveWatch,
-  ownershipPrefix, ownershipOverlaps, activeTracks, enqueueTracks, intakeTracks, finishTracks, readTracksFile, assertMergeAllowed, guardedMerge,
+import { acquireWave as acquireWaveLive, releaseWave, checkCapacity, validateTracks, handleHook as handleHookLive, updateWave, withIdleWaveLock, withWaveStateLock, stopWaveWatch,
+  ownershipPrefix, ownershipOverlaps, activeTracks, enqueueTracks as enqueueTracksLive, intakeTracks as intakeTracksLive, finishTracks, readTracksFile, assertMergeAllowed, guardedMerge,
   flattenPrFilePages, findOwnershipConflicts, MAX_PENDING_TRACKS, assertCompatibleWithActive, sharedTouchPlan, trackTouches,
-  requiredModel, designGateHits, assertDesignGate } from './wave-policy.mjs';
+  requiredModel, designGateHits, assertDesignGate, assertPlayerReportEvidence, broadSharedDirectory } from './wave-policy.mjs';
 import { assertWaveOwnership } from './wave-ownership.mjs';
 import { assertLaneCount, currentHost, hostLaneCap, readWaveCapacity } from './wave-capacity.mjs';
 import { normalizeBootId } from './wave-boot-identity.mjs';
@@ -21,8 +21,130 @@ process.env.CZ_BUILD_STOP_FILE = BUILD_STOP_OFF;
 process.env.CZ_BUILD_STOP_LOG = path.join(path.dirname(BUILD_STOP_OFF), 'brand-log.jsonl');
 
 const now = 1790000000000;
+const fixtureIssue = () => ({ labels: [], body: '' });
+const acquireWave = (dir, request, readPrs, readIssue = fixtureIssue) => acquireWaveLive(dir, request, readPrs, readIssue);
+const handleHook = (payload, dir, readPrs, now, boot, owner, limit, readIssue = fixtureIssue) => handleHookLive(payload, dir, readPrs, now, boot, owner, limit, readIssue);
+const enqueueTracks = (dir, id, tracks, snapshot, readIssue = fixtureIssue) => enqueueTracksLive(dir, id, tracks, snapshot, readIssue);
+const intakeTracks = (dir, id, finished, snapshot, options = {}) => intakeTracksLive(dir, id, finished, snapshot, { readIssue: fixtureIssue, ...options });
 const track = (n) => ({ issue: n, branch: `codex/${n}-fixture`, ownership: [`fixtures/${n}.txt`], tier: 'TARGETED' });
+
+test('#6335: broad shared directories are rejected in ownership and touches', () => {
+  for (const raw of ['backend/lib', 'backend/routes', 'frontend/src/pages', 'BACKEND\\LIB\\', 'backend/lib///', 'backend/lib/**', 'backend/li*', 'frontend/src/page*', 'backend', 'frontend/src/*']) {
+    for (const field of ['ownership', 'touches']) {
+      assert.throws(() => validateTracks([{ ...track(1), [field]: [raw] }], { readDiff: () => [] }), /too broad/, `${field}: ${raw}`);
+    }
+  }
+});
+
+test('#6335: branch diff suggests only matching concrete paths and git failures stay rejected', () => {
+  for (const field of ['ownership', 'touches']) {
+    const broad = { ...track(1), [field]: ['backend/lib'] };
+    assert.throws(() => validateTracks([broad], { readDiff: branch => {
+      assert.equal(branch, broad.branch);
+      return ['backend/lib/engine/v4/fixture.ts', 'backend/lib/trainingRunResponse.ts', 'scripts/other.mjs'];
+    } }), error => {
+      assert.match(error.message, /too broad/);
+      assert.match(error.message, /branch diff: \["backend\/lib\/engine\/v4\/fixture.ts","backend\/lib\/trainingRunResponse.ts"\]/);
+      assert.doesNotMatch(error.message, /scripts\/other/);
+      return true;
+    });
+    for (const readDiff of [() => { throw Error('git failed'); }, () => null, () => []]) {
+      assert.throws(() => validateTracks([broad], { readDiff }), /too broad/);
+    }
+    assert.throws(() => validateTracks([broad], { readDiff: () => { throw Error('git failed'); } }), /diff unavailable; declaration remains rejected/);
+  }
+});
+
+test('#6335: workflow declaration mirror rejects the same broad paths', () => {
+  const src = readFileSync(new URL('../.claude/workflows/wave.js', import.meta.url), 'utf8');
+  const start = src.indexOf('const BROAD_SHARED_DIRECTORIES =');
+  const end = src.indexOf('// End #6335 declaration mirror.');
+  const normalizeStart = src.indexOf('function normalizeTrack(');
+  const normalizeEnd = src.indexOf('// #6344: planlinjen');
+  const mirror = new Function(`${src.slice(start, end)}; ${src.slice(normalizeStart, normalizeEnd)}; return { broadSharedDirectory, assertNarrowDeclarations, normalizeTrack };`)();
+  for (const raw of ['backend/lib', 'BACKEND\\ROUTES\\', 'frontend/src/pages/**', 'backend/li*', 'frontend/src/*', 'backend/lib/engine/v4/', 'backend/lib/trainingRunResponse.ts', 'frontend/src/pages/Feature/', 'scripts/wave-*.mjs']) {
+    assert.equal(mirror.broadSharedDirectory(raw), broadSharedDirectory(raw), raw);
+    for (const field of ['ownership', 'touches']) {
+      const run = () => mirror.assertNarrowDeclarations({ ...track(1), [field]: [raw] });
+      if (broadSharedDirectory(raw)) {
+        assert.throws(run, /too broad/);
+        assert.throws(() => mirror.normalizeTrack({ ...track(1), [field]: [raw] }, 0), /too broad/);
+      }
+      else assert.doesNotThrow(run);
+    }
+  }
+});
 const request = (runtime = 'codex') => ({ runtime, owner: 'fixture-owner', pid: process.pid, now, tracks: [track(1)] });
+
+test('#5509: admission reads player-report evidence before reserving either runtime', async (t) => {
+  for (const runtime of ['codex', 'claude']) {
+    const dir = fixture(t);
+    let reads = 0;
+    await assert.rejects(acquireWave(dir, request(runtime), async () => [], () => {
+      reads++;
+      return { labels: [{ name: 'player-report' }], body: 'SQL endpoint measured verified' };
+    }), /Player-report evidence/);
+    assert.equal(reads, 1);
+    assert.equal(existsSync(path.join(dir, 'wave-active.json')), false);
+  }
+});
+
+const measuredReport = (status = 'reproduces') => ({
+  environment: 'prod', measuredAt: '2026-11-02T12:00:00Z',
+  source: { kind: 'endpoint', query: 'GET /health' },
+  result: { status, summary: 'Synthetic health probe differs from the approved expectation.' },
+  evidence: { privatePointer: 'balance-internals/fixture-health.md' },
+});
+const reportIssue = evidence => ({ labels: ['player-report'], body: '### Prod-måling (SQL/endpoint + resultat)\n```player-report-evidence\n' + JSON.stringify(evidence) + '\n```\n' });
+
+test('#5509: evidence contract rejects keywords, incomplete/placeholder evidence and already-green', () => {
+  const check = issue => assertPlayerReportEvidence([track(1)], () => issue);
+  assert.doesNotThrow(() => check(reportIssue(measuredReport())));
+  const privateQuery = measuredReport();
+  privateQuery.source = { kind: 'sql', privatePointer: 'balance-internals/fixture-query.sql' };
+  assert.doesNotThrow(() => check(reportIssue(privateQuery)));
+  const aggregate = measuredReport();
+  aggregate.source = { kind: 'sql', query: 'SELECT count(*) AS failures FROM synthetic_probe' };
+  aggregate.evidence = { aggregate: { metric: 'synthetic failures', value: 1, unit: 'requests' } };
+  assert.doesNotThrow(() => check(reportIssue(aggregate)));
+  for (const evidence of [null, {}, { ...measuredReport(), environment: 'staging' },
+    { ...measuredReport(), source: { kind: 'sql', query: 'SQL endpoint measured verified' } },
+    { ...measuredReport(), measuredAt: 'not measured' },
+    { ...measuredReport(), result: { status: 'reproduces', summary: 'TODO' } },
+    { ...measuredReport(), evidence: { privatePointer: 'balance-internals/../outside' } },
+    { ...measuredReport(), evidence: { aggregate: 'SQL endpoint measured verified' } },
+    { ...measuredReport(), evidence: {} }]) {
+    assert.throws(() => check(reportIssue(evidence)), /Player-report evidence/);
+  }
+  const issue = reportIssue(measuredReport());
+  assert.throws(() => check({ ...issue, body: issue.body + issue.body }), /one.*JSON section/);
+  assert.throws(() => check({ ...issue, body: '```player-report-evidence\n{broken\n```' }), /invalid evidence JSON/);
+  assert.throws(() => check(reportIssue(measuredReport('already-green'))), /already green.*stop/i);
+  assert.throws(() => check(null), /cannot read issue/);
+  assert.doesNotThrow(() => check({ labels: ['type:bug'], body: '' }));
+  assert.doesNotThrow(() => check({ labels: [], body: null }));
+  assert.doesNotThrow(() => assertPlayerReportEvidence([{ ...track(1), kind: 'investigate' }], () => assert.fail('investigation must not require evidence')));
+});
+
+test('#5509: Claude hook rejects missing measurement through shared admission before spawn', async t => {
+  const dir = fixture(t);
+  const payload = { session_id: 'fixture', tool_name: 'Workflow', tool_input: { name: 'wave', args: { tracks: [track(1)] } } };
+  let reads = 0;
+  await assert.rejects(handleHook(payload, dir, async () => [], now, undefined, () => process.pid, undefined,
+    () => { reads++; return { labels: ['player-report'], body: '' }; }), /Player-report evidence/);
+  assert.equal(reads, 1);
+  assert.equal(existsSync(path.join(dir, 'wave-active.json')), false);
+});
+
+test('#5509: rolling intake rechecks issue content and preserves the queue on rejection', t => {
+  const { dir } = runningWave(t);
+  const candidate = trackWith(2, ['docs/two.md']);
+  const missing = () => ({ labels: ['player-report'], body: '' });
+  assert.throws(() => enqueueTracks(dir, 'rolling-wave', [candidate], ownSnapshot, missing), /Player-report evidence/);
+  enqueueTracks(dir, 'rolling-wave', [candidate], ownSnapshot, () => reportIssue(measuredReport()));
+  assert.throws(() => intakeTracks(dir, 'rolling-wave', [], ownSnapshot, { readIssue: missing }), /Player-report evidence/);
+  assert.equal(markerOf(dir).pendingTracks.length, 1);
+});
 function fixture(t) {
   const dir = mkdtempSync(path.join(tmpdir(), 'cz-wave-policy-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
@@ -358,6 +480,36 @@ function runningWave(t, extra = {}) {
   return { dir, file };
 }
 const prFiles = (...names) => names.map(filename => ({ filename }));
+
+test('#6335: admission refuses broad declarations before creating a marker in either runtime', async t => {
+  for (const runtime of ['codex', 'claude']) {
+    for (const field of ['ownership', 'touches']) {
+      const dir = fixture(t);
+      await assert.rejects(acquireWave(dir, { ...request(runtime), tracks: [{ ...track(1), [field]: ['backend/lib'] }] },
+        async () => { assert.fail('broad declaration reached PR lookup'); }), /too broad/);
+      assert.equal(existsSync(path.join(dir, 'wave-active.json')), false);
+    }
+  }
+});
+
+test('#6335: narrow engine scope permits independent admission, enqueue and receipt merge', t => {
+  const engine = trackWith(1, ['backend/lib/engine/v4/', 'backend/routes/raceFixture.ts']);
+  const receipt = trackWith(2, ['backend/lib/trainingRunResponse.ts']);
+  assert.doesNotThrow(() => validateTracks([engine, receipt]));
+  const { dir, file } = runningWave(t, { tracks: [engine] });
+  const before = readFileSync(file, 'utf8');
+  for (const field of ['ownership', 'touches']) {
+    assert.throws(() => enqueueTracks(dir, 'rolling-wave', [{ ...receipt, [field]: ['backend/lib'] }], ownSnapshot), /too broad/);
+    assert.equal(readFileSync(file, 'utf8'), before, 'rejection must not narrow the active lock');
+  }
+  assert.equal(assertMergeAllowed(dir, 42, () => prFiles('backend/lib/trainingRunResponse.ts')).allowed, true);
+  assert.throws(() => assertMergeAllowed(dir, 42, () => prFiles('backend/lib/engine/v4/fixture.ts')), /overlaps/);
+  enqueueTracks(dir, 'rolling-wave', [receipt], ownSnapshot);
+  assert.throws(() => assertMergeAllowed(dir, 42, () => prFiles('backend/lib/trainingRunResponse.ts')), /overlaps/);
+  const legacy = runningWave(t, { tracks: [trackWith(1, ['backend/lib'])] });
+  assert.throws(() => assertMergeAllowed(legacy.dir, 42, () => prFiles('backend/lib/trainingRunResponse.ts')), /overlaps/,
+    'a pre-existing broad marker must keep its lock until explicitly corrected');
+});
 const HEAD = 'a'.repeat(40);
 function mergeIo(overrides = {}) {
   const calls = [];
@@ -552,15 +704,20 @@ test('#5562: readTracksFile accepts {tracks:[...]} and a bare array', t => {
   assert.throws(() => readTracksFile(bad), /array/);
 });
 
-test('#5562: enqueue, intake and release CLIs work in the admitted process tree', async t => {
+test('#5562: enqueue/intake with injected issue reads and release CLI work in the admitted process tree', async t => {
   const dir = fixture(t);
   const wave = await acquireWave(dir, { ...request('claude'), rollingIntake: true }, async () => []);
   const cli = (...args) => spawnSync(process.execPath, [fileURLToPath(new URL('./wave-policy.mjs', import.meta.url)), ...args, '--run-dir', dir], { encoding: 'utf8' });
   const next = path.join(dir, 'wave-next.json');
   writeFileSync(next, JSON.stringify({ tracks: [track(2), track(3)] }));
-  const queued = cli('enqueue', '--wave-id', wave.waveId, '--tracks-file', next);
+  // Network reads are injected in the child, never bypassed by a production env flag.
+  const child = action => spawnSync(process.execPath, ['--input-type=module', '-e',
+    `import { enqueueTracks, intakeTracks, readTracksFile } from ${JSON.stringify(new URL('./wave-policy.mjs', import.meta.url).href)};
+     const readIssue = () => ({ labels: [], body: '' });
+     const result = ${action}; console.log(JSON.stringify(result));`], { encoding: 'utf8' });
+  const queued = child(`enqueueTracks(${JSON.stringify(dir)}, ${JSON.stringify(wave.waveId)}, readTracksFile(${JSON.stringify(next)}), undefined, readIssue)`);
   assert.equal(queued.status, 0, queued.stderr);
-  const taken = cli('intake', '--wave-id', wave.waveId, '--finished', 'codex/1-fixture');
+  const taken = child(`intakeTracks(${JSON.stringify(dir)}, ${JSON.stringify(wave.waveId)}, ['codex/1-fixture'], undefined, { readIssue })`);
   assert.equal(taken.status, 0, taken.stderr);
   assert.deepEqual(JSON.parse(taken.stdout).taken.map(x => x.issue), [2, 3]);
   assert.deepEqual(JSON.parse(taken.stdout).finishedBranches, ['codex/1-fixture']);
@@ -789,7 +946,7 @@ test('#5997: admission matrix - ownership vs ownership and ownership vs touches 
   // own vs other's touches: blocks in both orders, and for directories/globs
   assert.throws(() => validateTracks([trackWith(1, [shared]), withTouches(2, ['b/x.mjs'], [shared])]), /touches/);
   assert.throws(() => validateTracks([withTouches(2, ['b/x.mjs'], [shared]), trackWith(1, [shared])]), /touches/);
-  assert.throws(() => validateTracks([trackWith(1, ['frontend/src/pages']), withTouches(2, ['b/x.mjs'], [shared])]), /touches/);
+  assert.throws(() => validateTracks([trackWith(1, ['frontend/src/pages']), withTouches(2, ['b/x.mjs'], [shared])]), /too broad/);
   assert.throws(() => validateTracks([trackWith(1, ['frontend/src/pages/Sh*']), withTouches(2, ['b/x.mjs'], [shared])]), /touches/);
   // touches vs touches: allowed
   const a = withTouches(1, ['a/x.mjs'], [shared]), b = withTouches(2, ['b/x.mjs'], [shared]);
@@ -864,6 +1021,7 @@ test('#5997: wave.js mirror of sharedTouchPlan gives the same plan as wave-polic
     [trackWith(1, ['a/x.mjs']), trackWith(2, ['b/x.mjs'])],
     [withTouches(3, ['a/1.mjs', 'a/2.mjs'], [shared]), withTouches(7, ['b/1.mjs'], [shared]), withTouches(9, ['c/1.mjs'], ['c/only.mjs']), withTouches(5, ['d/1.mjs'], ['Frontend\\src\\pages'])],
     [withTouches(1, ['a/x'], ['scripts/wave-*.mjs']), withTouches(2, ['b/x'], ['scripts/wave-policy.mjs']), withTouches(4, ['c/x'], ['scripts/wavx.mjs'])],
+    [withTouches(1, ['a/x'], ['fixtures/shared///']), withTouches(2, ['b/x'], ['fixtures/shared/file.mjs'])],
   ];
   for (const set of sets) assert.deepEqual(mirror(set), sharedTouchPlan(set));
 });

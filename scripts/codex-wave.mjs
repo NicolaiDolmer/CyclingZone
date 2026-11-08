@@ -4,8 +4,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { acquireWave, releaseWave, readWave, updateWave, hostBootId, validateTracks, getOpenPrs, sharedRunDir, REPO } from './wave-policy.mjs';
+import { acquireWave, releaseWave, finalizeObservedWave, refreshObservedChildren, LONG_LOCK_ATTEMPTS, readWave, updateWave, hostBootId, validateTracks, getOpenPrs, getIssue, sharedRunDir, REPO } from './wave-policy.mjs';
 import { generateBrief } from './make-wave-brief.mjs';
+import { observeChildClose, persistChildStop, allChildrenObservedStopped } from './wave-child-lifecycle.mjs';
+import { prepareWindowsJob, readJobProof } from './wave-windows-job.mjs';
 import { assertBuildStop } from './lib/build-stop.mjs';
 import { assertLaneCount, hostLaneCap } from './wave-capacity.mjs';
 import { classifyStall, commitAgeMinutes, resolveTrackTimeoutMinutes, WAVE_FREEZE } from './wave-freeze.mjs';
@@ -84,20 +86,56 @@ function resultSchema(role) {
 export async function runWave(options, supplied = {}) {
   const { root, runDir, owner } = options;
   const tracks = validateTracks(options.tracks);
-  const deps = { now: () => Date.now(), bootId: hostBootId, readPrs: getOpenPrs, laneLimit: hostLaneCap, ...supplied };
+  const deps = { now: () => Date.now(), bootId: hostBootId, readPrs: getOpenPrs, readIssue: getIssue, laneLimit: hostLaneCap, ...supplied };
   const execution = executionPlan(options, deps.laneLimit());
-  const wave = await acquireWave(runDir, { runtime: 'codex', owner, pid: process.pid, bootId: deps.bootId(), dispatchStarted: false, processTracking: 'registered', children: [], cwd: root, now: deps.now(), tracks }, deps.readPrs);
+  const wave = await acquireWave(runDir, { runtime: 'codex', owner, pid: process.pid, bootId: deps.bootId(), dispatchStarted: false, processTracking: 'registered', children: [], cwd: root, now: deps.now(), tracks }, deps.readPrs, deps.readIssue);
   const evidence = path.join(runDir, 'waves', wave.waveId);
   fs.mkdirSync(evidence, { recursive: true });
   const report = path.join(evidence, 'report.json');
   const results = [], prepared = [];
+  const outcome = { results, report, waveId: wave.waveId, cleanup: 'pending' };
   let terminationConfirmed = true, stopWave = false;
   const controller = new AbortController();
   const onSignal = () => { stopWave = true; controller.abort(); };
   process.on('SIGINT', onSignal); process.on('SIGTERM', onSignal);
-  const checkpoint = cleanup => save(report, { waveId: wave.waveId, runtime: 'codex', execution, results, cleanup, children: readWave(runDir).children || [],
-    unstarted: tracks.filter(t => !results.some(r => r.issue === t.issue)).map(t => t.issue) });
-  const context = { root, runDir, evidence, wave, signal: controller.signal, now: deps.now };
+  let children = [], draining = false, released = false;
+  const checkpoint = cleanup => {
+    let current;
+    try { current = readWave(runDir); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+    if (current?.waveId === wave.waveId) children = current.children || [];
+    outcome.cleanup = cleanup;
+    save(report, { waveId: wave.waveId, runtime: 'codex', execution, results, cleanup, children,
+      unstarted: tracks.filter(t => !results.some(r => r.issue === t.issue)).map(t => t.issue) });
+  };
+  let completing = null;
+  const complete = () => {
+    if (!draining || released) return Promise.resolve();
+    if (completing) return completing;
+    completing = (async () => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          let current = updateWave(runDir, wave.waveId, row => ({ ...row, state: 'draining', registrationClosed: true,
+            terminationUnaccounted: !terminationConfirmed && !(row.children || []).length }), LONG_LOCK_ATTEMPTS);
+          current = refreshObservedChildren(runDir, wave.waveId, deps.now(), undefined, LONG_LOCK_ATTEMPTS);
+          checkpoint('retained-unconfirmed-child');
+          if (process.platform !== 'win32' && terminationConfirmed && !allChildrenObservedStopped(current)) {
+            // Preserve the existing non-Windows normal-release contract; no new same-boot opt-in.
+            releaseWave(runDir, wave.waveId, true); released = true;
+          } else released = finalizeObservedWave(runDir, wave.waveId, deps.now(), undefined, LONG_LOCK_ATTEMPTS).released;
+          checkpoint(released ? 'owned-marker-only' : 'retained-unconfirmed-child');
+          return;
+        } catch (error) {
+          checkpoint('retained-unconfirmed-child');
+          if (!/Wave state lock busy/.test(error.message) || attempt === 2) return;
+          await new Promise(resolve => setTimeout(resolve, 250));
+        }
+      }
+    })().finally(() => { completing = null; });
+    return completing;
+  };
+  const context = { root, runDir, evidence, wave, signal: controller.signal, now: deps.now,
+    onChildStopped: complete, registrationClosed: () => draining };
   try {
     updateWave(runDir, wave.waveId, current => ({ ...current, dispatchStarted: true }));
     // Setup is serial: Git metadata and dependency setup must not race.
@@ -150,11 +188,11 @@ export async function runWave(options, supplied = {}) {
     // serially with a fresh process. Main session remains the architect.
     const count = execution.lanes;
     await Promise.all(Array.from({ length: count }, lane));
-    return { results, report, waveId: wave.waveId };
+    return outcome;
   } finally {
     process.removeListener('SIGINT', onSignal); process.removeListener('SIGTERM', onSignal);
-    checkpoint(terminationConfirmed ? 'owned-marker-only' : 'retained-unconfirmed-child');
-    if (terminationConfirmed) releaseWave(runDir, wave.waveId, true);
+    draining = true; stopWave = true; controller.abort();
+    await complete();
     // Never remove worktrees: unmerged branches and evidence are retained.
   }
 }
@@ -196,10 +234,21 @@ export async function runAgent(role, track, context) {
     ? `${track.brief}\nCodex runtime: the orchestrator already fetched origin/main into ${track.worktree} and saved the issue with comments in ${path.join(track.scratch, 'issue.md')}; skip git fetch/pull (.git is read-only). Network is on for read-only evidence (gh, prod SELECT). Write evidence only in ${track.scratch}; leave the worktree unchanged or the track fails. No agents.\n`
     : `${role === 'fixer' ? `Fix only these independently found issues: ${JSON.stringify(context.review)}\n` : ''}${writerBrief(track.brief)}\nCodex runtime: work ONLY in ${track.worktree}. No other agents, merge, prod writes, flag flips or changes to main. Keep the PR draft for owner review. Never edit shared coordination files. Use the selected worktree in every shell call. ${WRITER_GIT_RULE} Return blocked if a required command still fails. Refs #${track.issue}, never Closes. Before every push run scripts/preflight-pr.ps1. Do not claim success from shell exit alone: inspect each command.\n`);
   const childKey = `${track.issue}-${label}`;
-  const recordChild = (state, pid) => updateWave(context.runDir, context.wave.waveId, current => ({ ...current,
-    children: [...(current.children || []).filter(c => c.key !== childKey), { key: childKey, state, pid }] }));
+  const args = childArgs(role, track, schema, output);
+  const launch = process.platform === 'win32'
+    ? prepareWindowsJob(command, args, { scratch: track.scratch, label, worktree: track.worktree, wave: context.wave, childKey })
+    : { file: command.file, args: [...command.prefix, ...args], job: undefined };
+  const job = launch.job;
+  const recordChild = (state, pid, observation = {}) => {
+    if (state !== 'stopped' && context.registrationClosed?.()) throw Error('Child registration closed; spawn refused');
+    return updateWave(context.runDir, context.wave.waveId, current => {
+    if (current.registrationClosed && state !== 'stopped') throw Error('Child registration closed; spawn refused');
+    return { ...current, children: [...(current.children || []).filter(c => c.key !== childKey),
+      { key: childKey, state, pid: pid ?? null, job, ...observation }] };
+    }, LONG_LOCK_ATTEMPTS);
+  };
   recordChild('starting', null);
-  const child = spawn(command.file, [...command.prefix, ...childArgs(role, track, schema, output)],
+  const child = spawn(launch.file, launch.args,
     agentSpawnOptions(track.worktree, context.wave.waveId));
   const processRecord = path.join(track.scratch, `${label}-process.json`);
   let completed = false, stopped = false, timedError = null;
@@ -209,9 +258,15 @@ export async function runAgent(role, track, context) {
   let rejectTermination;
   let stopTimer;
   const unconfirmed = new Promise((_, reject) => { rejectTermination = reject; });
-  const closed = new Promise((resolve, reject) => {
-    child.once('error', e => { if (!child.pid) completed = true; log?.end(); reject(e); });
-    child.once('close', code => { completed = true; log?.end(); resolve(code); });
+  child.once('error', () => { if (!child.pid) completed = true; log?.end(); });
+  const closed = observeChildClose(child, async observation => {
+    completed = true; log?.end();
+    const treeProof = job ? readJobProof(job, observation.pid) : null;
+    const stoppedChild = { ...observation, closeObserved: true, closedAt: context.now(), job, treeProof };
+    try {
+      await persistChildStop(processRecord, { key: childKey, role, waveId: context.wave.waveId, state: 'stopped', ...stoppedChild },
+        () => recordChild('stopped', observation.pid, stoppedChild));
+    } finally { await context.onChildStopped?.(); }
   });
   async function stop(reason) {
     if (completed || stopped) return;
@@ -219,13 +274,17 @@ export async function runAgent(role, track, context) {
     stopTimer = setTimeout(() => {
       if (!completed) { const e = Error('Child termination not observed after stop'); e.terminationUnconfirmed = true; rejectTermination(e); }
     }, 15000);
-    if (process.platform === 'win32') {
-      // Only the process tree spawned by this invocation. No name-based kills.
-      await new Promise(resolve => {
-        const killer = spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
-        killer.once('error', resolve); killer.once('close', resolve);
-      });
-    } else child.kill('SIGTERM');
+    try {
+      if (job) fs.writeFileSync(job.stopFile, 'stop', { flag: 'wx' }); // The supervisor attests only after its job is empty.
+      else child.kill('SIGTERM');
+    } catch {
+      // A failed control write is never evidence of stop. Close only our own
+      // supervisor handle; missing kernel attestation keeps the wave blocked.
+      child.kill('SIGTERM');
+      const failure = Error('Stop request could not be persisted; termination unconfirmed');
+      failure.terminationUnconfirmed = true;
+      rejectTermination(failure);
+    }
   }
   const onAbort = () => { void stop(Error('Wave interrupted')); };
   context.signal.addEventListener('abort', onAbort, { once: true });
@@ -252,15 +311,12 @@ export async function runAgent(role, track, context) {
     child.stdin.end(prompt);
     if (context.signal.aborted) onAbort();
     const code = await Promise.race([closed, unconfirmed]);
-    save(processRecord, { pid: child.pid, role, waveId: context.wave.waveId, state: 'stopped', exitCode: code });
-    recordChild('stopped', child.pid);
     if (timedError) throw timedError;
     if (code !== 0) throw Error(`${role} exited ${code}; inspect private log ${track.scratch}`);
     const result = json(output);
     return result;
   } catch (e) {
     if (!completed) { await stop(e); await Promise.race([closed, unconfirmed]); }
-    if (child.pid) recordChild('stopped', child.pid);
     throw e;
   } finally {
     clearInterval(timer); clearTimeout(stopTimer); context.signal.removeEventListener('abort', onAbort);
@@ -357,7 +413,7 @@ async function cli() {
   }
   const result = await runWave({ ...config, root, runDir: sharedRunDir(root), owner: `codex-wave-${process.pid}` }, productionDeps(root, worktreesRoot));
   console.log(JSON.stringify(result, null, 2));
-  if (result.results.some(r => r.state !== 'ready') || result.results.length !== config.tracks.length) process.exitCode = 1;
+  if (result.cleanup !== 'owned-marker-only' || result.results.some(r => r.state !== 'ready') || result.results.length !== config.tracks.length) process.exitCode = 1;
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   cli().catch(e => { console.error(`codex-wave: ${e.message}`); process.exitCode = 1; });

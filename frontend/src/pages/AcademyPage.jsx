@@ -49,6 +49,7 @@ import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { useTableSort } from "../lib/useTableSort.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import { scoutSortValue } from "../lib/scouting.js";
+import { potentialViewOf } from "../lib/potentialEstimateDisplay";
 import { useYouthSquadPages } from "../lib/useYouthSquadPages.ts"; // #5519
 import { academyTargetSquad, isSquadFull, squadCapRows, SQUAD_CAPS } from "../lib/squadCaps.ts"; // #5568
 import { GiftIcon } from "../components/ui/icons/index.jsx";
@@ -60,6 +61,12 @@ import { statPlateStyle } from "../lib/statColor.js";
 const BOARD_GIFT_SOURCE = "board_gift";
 // #6155: kun kandidater hentet med knappen har en symbolsk startværdi.
 const PULL_SOURCE = "pull";
+
+// #6110: skønnet slår prognosen, når serveren sender det.
+function rosterPotentialSort(prognosis, estimate) {
+  if (!prognosis || potentialViewOf(estimate)) return scoutSortValue(estimate);
+  return prognosis.band ? (prognosis.band.lo + prognosis.band.hi) / 2 : null;
+}
 
 // #2796: var hardkodet Intl.NumberFormat("en-US") midt på en side der ellers
 // bruger den locale-bevidste formatNumber — en dansk bruger så "45,000 CZ$" i
@@ -169,9 +176,7 @@ export default function AcademyPage() {
   const rosterRows = useMemo(
     () => roster.map((r) => ({
       ...r,
-      _potMid: r.prognosis
-        ? (r.prognosis.band ? (r.prognosis.band.lo + r.prognosis.band.hi) / 2 : null)
-        : scoutSortValue(scouting.estimateFor(r.id)),
+      _potMid: rosterPotentialSort(r.prognosis, scouting.estimateFor(r.id)),
     })),
     [roster, scouting],
   );
@@ -262,9 +267,10 @@ export default function AcademyPage() {
       sortKey: "potential",
       // #2796: labelAsTitle — stjernerne bærer informationen, den kvalitative
       // tekst ligger i tooltip'en.
-      render: (r) => (r.prognosis
-        ? <AcademyPrognosisCell prognosis={r.prognosis} />
-        : <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle />),
+      render: (r) => (
+        <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle
+          legacy={r.prognosis ? <AcademyPrognosisCell prognosis={r.prognosis} /> : null} />
+      ),
     },
     {
       key: "value",

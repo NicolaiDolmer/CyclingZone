@@ -116,6 +116,9 @@ export function selectStaleEntitlements(rows = [], { now = new Date(), warnDays 
   for (const row of rows) {
     if (!ENTITLING_STATUSES.has(row?.status)) continue;
     if (!row?.current_period_end) {
+      // entitlement.js: cancelled uden periodeslut giver ingen Pro-adgang.
+      // Active/past_due varsles stadig, saa manglende cachedata ikke skjules.
+      if (row.status === "cancelled") continue;
       out.push({ teamId: row?.team_id ?? null, status: row?.status ?? null, currentPeriodEnd: null, state: "missing_period_end" });
       continue;
     }
@@ -255,7 +258,7 @@ export async function runAluntaOverdueWatch({
       // ÉN fortsat sag blev til flere issues (CYCLINGZONE-54 + -5R, "værste 33
       // dage" vs. "værste 31 dage" for samme faktura). Beskeden er nu FAST;
       // dagstal/antal ligger udelukkende i `extra` (samme mønster som
-      // ownershipInvariantWatch.js's `fingerprint: ["stuck-academy-graduate"]`).
+      // ownershipInvariantWatch.ts's `fingerprint: ["stuck-academy-graduate"]`).
       const err = new Error("billing-watch: ubetalte fakturaer og/eller entitlement-afvigelser fundet");
       captureExceptionFn(err, {
         tags: { flow: "billing", stage: "overdue-watch" },

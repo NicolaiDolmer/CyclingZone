@@ -3,6 +3,7 @@
 // referencer (CORS/fulfill bliver i fixtures.js). Datakilden er seedData.js, så
 // begge konsumenter serverer præcis det samme.
 import { previewPlannerBoard } from "./plannerMock.js";
+import { previewPotentialEstimateEnabled, previewProjection, previewReport } from "./potentialEstimateMock.ts";
 import { raceHasReportableResults } from "../lib/raceResultVisibility.js";
 import { FORUM_CATEGORY_ORDER } from "../components/forum/forumCategories.js";
 import {
@@ -398,7 +399,9 @@ export function restRows(table, requestUrl = "") {
         const stageMatch = url.search.match(/stage_number=eq\.([^&]+)/);
         if (stageMatch) {
           const stageNumber = decodeURIComponent(stageMatch[1]);
-          return rows.filter(r => String(r.stage_number ?? 1) === stageNumber);
+          // #7706: etapeplanen beder kun om maalraekkefoelgen (result_type=eq.stage).
+          const typeMatch = url.search.match(/result_type=eq\.([^&]+)/);
+          return rows.filter(r => String(r.stage_number ?? 1) === stageNumber && (!typeMatch || r.result_type === decodeURIComponent(typeMatch[1])));
         }
         return rows;
       }
@@ -1613,7 +1616,10 @@ export function apiResponse(pathname, search = "") {
 
   // #2100 Udvikling-fane: registreret kurve + fuzzy loft-projektion. Projektion-ruten
   // tjekkes FØR /development (endsWith er disjunkt, men rækkefølgen holder intentionen klar).
-  if (pathname.endsWith("/development-projection")) return SEED_PROJECTION;
+  if (pathname.endsWith("/development-projection")) {
+    if (previewPotentialEstimateEnabled()) return previewProjection(pathname.match(/\/api\/riders\/([^/]+)\//)?.[1], SEED_PROJECTION);
+    return SEED_PROJECTION;
+  }
   if (pathname.endsWith("/development")) return SEED_DEVELOPMENT;
 
   // #3708: rytterens egen historik (RiderHistoryTab, "History (Players)").
@@ -1636,6 +1642,7 @@ export function apiResponse(pathname, search = "") {
   if (pathname.endsWith("/scouting-report")) {
     const idMatch = pathname.match(/\/api\/riders\/([^/]+)\/scouting-report$/);
     const rider = idMatch ? RIDERS.find(r => r.id === decodeURIComponent(idMatch[1])) : null;
+    if (previewPotentialEstimateEnabled()) return previewReport(idMatch?.[1], SEED_SCOUTING_REPORT, rider ? rider.team_id === TEST_TEAM.id : true);
     if (rider && rider.team_id !== TEST_TEAM.id) {
       return { hidden: true, level: 0, maxLevel: SEED_SCOUTING_REPORT.maxLevel, own: false };
     }

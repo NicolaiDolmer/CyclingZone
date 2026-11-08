@@ -6,6 +6,13 @@ import path from 'node:path';
 import { runWave, childArgs } from './codex-wave.mjs';
 import * as runner from './codex-wave.mjs';
 import { hostLaneCap } from './wave-capacity.mjs';
+import { updateWave } from './wave-policy.mjs';
+import { spawn, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { ownershipSnapshot } from './wave-ownership.mjs';
+import { EventEmitter } from 'node:events';
+import { randomUUID } from 'node:crypto';
+import { observeChildClose, persistChildStop } from './wave-child-lifecycle.mjs';
 import { generateBrief } from './make-wave-brief.mjs';
 
 // #7336: fixtures bruger opdigtede issues; byggestoppet slaas fra her og testes
@@ -61,12 +68,40 @@ test('non-Windows runner preserves PATH resolution without Windows discovery', (
 });
 
 const now = 1790000000000;
+function observedJob(waveId,key,pid) {
+  const job={type:'windows-job-v1',token:'00000000-0000-4000-8000-000000000001',waveId,childKey:key};
+  return {job,treeProof:{version:1,containment:job.type,activeProcesses:0,token:job.token,waveId,childKey:key,supervisorPid:pid}};
+}
+
 function fixture(t) {
   const root = mkdtempSync(path.join(os.tmpdir(), 'cz-wave-run-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   return root;
 }
 const tracks = [1, 2].map(issue => ({ issue, branch: `codex/${issue}-fixture`, title: 'Fixture', ownership: [`fixtures/${issue}`], tier: 'TARGETED', verifyCommands: ['node --test fixture.test.mjs'] }));
+
+test('#5509: Codex reads issue content before setup or any spawn', async t => {
+  const root = fixture(t);
+  let reads = 0;
+  await assert.rejects(runWave({ root, runDir: root, tracks, owner: 'fixture' }, deps({
+    readIssue: () => { reads++; return { labels: ['player-report'], body: 'SQL endpoint verified' }; },
+    prepare: async () => assert.fail('unmeasured complaint reached setup'),
+    runAgent: async () => assert.fail('unmeasured complaint reached spawn'),
+  })), /Player-report evidence/);
+  assert.equal(reads, 1);
+  assert.equal(existsSync(path.join(root, 'wave-active.json')), false);
+});
+test('#6335: Codex plans reject broad ownership and touches while keeping independent files', () => {
+  for (const field of ['ownership', 'touches']) {
+    for (const raw of ['backend/lib', 'backend/routes/**', 'FRONTEND\\SRC\\PAGES\\']) {
+      assert.throws(() => runner.executionPlan({ tracks: [{ ...tracks[0], [field]: [raw] }] }), /too broad/);
+    }
+  }
+  assert.doesNotThrow(() => runner.executionPlan({ tracks: [
+    { ...tracks[0], ownership: ['backend/lib/engine/v4/', 'backend/routes/raceFixture.ts'] },
+    { ...tracks[1], ownership: ['backend/lib/trainingRunResponse.ts'] },
+  ] }));
+});
 test('reviewer model and effort do not change worker, fixer or permission-probe selection', () => {
   const track = { worktree: '/fixture', scratch: '/scratch', model: 'gpt-6.1-sol', effort: 'medium', reviewerModel: 'gpt-6-astra', reviewerEffort: 'high' };
   for (const role of ['worker', 'fixer', 'permission-probe', 'reviewer']) {
@@ -187,7 +222,7 @@ test('omitted capacity remains two lanes and is visible as a default', async t =
 const unknownHost = () => hostLaneCap('FIXTURE-UNKNOWN-HOST');
 
 function deps(overrides = {}) {
-  return { now: () => now, bootId: () => 'fixture-boot', readPrs: async () => [], prefilter: async () => {}, laneLimit: unknownHost,
+  return { now: () => now, bootId: () => 'fixture-boot', readPrs: async () => [], readIssue: () => ({ labels: [], body: '' }), prefilter: async () => {}, laneLimit: unknownHost,
     prepare: async t => ({ ...t, worktree: `/fixture/${t.issue}` }),
     runAgent: async (role, t) => role === 'reviewer' ? { verdict: 'approved', findings: [] } : { status: 'ready', summary: 'fixture', tests: ['pass'] },
     verifyPermissions: async () => {}, validateResult: async () => {}, ...overrides };
@@ -349,4 +384,147 @@ test('Codex child receives explicit runtime even with a Claude parent and no Cod
   const child = spawnSync(process.execPath, ['-e', 'process.stdout.write(JSON.stringify({runtime:process.env.CZ_VERIFY_RUNTIME,wave:process.env.CZ_WAVE_ID}))'], { ...options, encoding: 'utf8' });
   assert.equal(child.status, 0);
   assert.deepEqual(JSON.parse(child.stdout), { runtime: 'codex', wave: 'fixture-wave' });
+});
+
+test('#7554: late observed close releases a drained wave without changing the failed result', async t => {
+  const root=fixture(t); let closeChild;
+  const result=await runWave({root,runDir:root,tracks:tracks.slice(0,1),owner:'fixture'},deps({
+    runAgent:async (_role,_track,context)=>{
+      const child={key:'fixture-child',pid:2_000_000_000,state:'running'};
+      updateWave(root,context.wave.waveId,w=>({...w,children:[child]}));
+      closeChild=()=>{
+        updateWave(root,context.wave.waveId,w=>({...w,children:[{...child,state:'stopped',closeObserved:true,closedAt:now,exitCode:0,...observedJob(context.wave.waveId,'fixture-child',2_000_000_000)}]}));
+        context.onChildStopped?.();
+      };
+      const error=Error('close not yet observed');error.terminationUnconfirmed=true;throw error;
+    },
+  }));
+  assert.equal(result.results[0].state,'blocked');
+  assert.equal(existsSync(path.join(root,'wave-active.json')),true);
+  closeChild();
+  assert.equal(existsSync(path.join(root,'wave-active.json')),false,'observed late close must trigger automatic release');
+  const report=JSON.parse(readFileSync(result.report));
+  assert.equal(report.cleanup,'owned-marker-only');
+  assert.equal(report.children[0].closeObserved,true);
+  assert.equal(report.results[0].state,'blocked');
+});
+test('#7554: observed close before an unconfirmed-stop rejection still permits safe finalization', async t => {
+  const root=fixture(t);
+  const result=await runWave({root,runDir:root,tracks:tracks.slice(0,1),owner:'fixture'},deps({
+    runAgent:async (_role,_track,context)=>{
+      updateWave(root,context.wave.waveId,w=>({...w,children:[{key:'fixture-child',pid:2_000_000_000,state:'stopped',closeObserved:true,closedAt:now,exitCode:0,...observedJob(context.wave.waveId,'fixture-child',2_000_000_000)}]}));
+      const error=Error('earlier timeout');error.terminationUnconfirmed=true;throw error;
+    },
+  }));
+  assert.equal(result.results[0].state,'blocked');
+  assert.equal(existsSync(path.join(root,'wave-active.json')),false,'all registered children have observed close');
+});
+
+test('#7554: unresolved watch identity is visible as incomplete cleanup',async t=>{
+  const root=fixture(t);
+  const result=await runWave({root,runDir:root,tracks:tracks.slice(0,1),owner:'fixture'},deps({
+    runAgent:async (role,_track,context)=>{
+      updateWave(root,context.wave.waveId,w=>({...w,watchPid:2_000_000_000,watchStarted:'unknown'}));
+      return role==='reviewer'?{verdict:'approved',findings:[]}:{status:'ready',tests:['pass']};
+    },
+  }));
+  assert.equal(existsSync(path.join(root,'wave-active.json')),true);
+  assert.equal(result.cleanup,'retained-unconfirmed-child');
+});
+
+test('#7554: native child close persists even after the caller timeout has won',async t=>{
+  const root=fixture(t), record=path.join(root,'child.json');
+  const child=spawn(process.execPath,['-e',"process.stdin.once('data',()=>process.exit(0))"],{windowsHide:true,stdio:['pipe','ignore','ignore']});
+  t.after(()=>{if(child.exitCode===null&&child.signalCode===null)child.kill();});
+  const closed=observeChildClose(child,observation=>writeFileSync(record,JSON.stringify(observation)));
+  await assert.rejects(Promise.race([closed,Promise.reject(Error('timeout fixture'))]),/timeout fixture/);
+  assert.equal(existsSync(record),false);
+  child.stdin.end('stop');
+  assert.equal(await closed,0);
+  const observation=JSON.parse(readFileSync(record));
+  assert.equal(observation.pid,child.pid);
+  assert.equal(observation.exitCode,0);
+  assert.equal(observation.spawnFailed,false);
+});
+test('#7554: exit and kill-result signals alone never persist close evidence',async t=>{
+  const root=fixture(t), record=path.join(root,'child.json'), child=new EventEmitter();child.pid=123;
+  const closed=observeChildClose(child,observation=>writeFileSync(record,JSON.stringify(observation)));
+  child.emit('exit',0);child.emit('kill-result',0);
+  assert.equal(existsSync(record),false);
+  child.emit('close',null,'SIGTERM');
+  await closed;
+  assert.equal(JSON.parse(readFileSync(record)).signal,'SIGTERM');
+});
+test('#7554: failed native spawn still records the later close after error rejection',async t=>{
+  const root=fixture(t), record=path.join(root,'child.json');
+  const child=spawn(path.join(root,'missing-executable'),[],{windowsHide:true,stdio:'ignore'});
+  const closed=observeChildClose(child,observation=>writeFileSync(record,JSON.stringify(observation)));
+  const closeEvent=new Promise(resolve=>child.once('close',resolve));
+  await assert.rejects(closed,error=>error.code==='ENOENT');
+  await closeEvent;
+  const observation=JSON.parse(readFileSync(record));
+  assert.equal(observation.pid,null);
+  assert.equal(observation.spawnFailed,true);
+});
+test('#7554: failed persistence never reports a successful observed close',async()=>{
+  const child=new EventEmitter();child.pid=123;
+  const closed=observeChildClose(child,()=>{throw Error('persistence failed');});
+  child.emit('close',0);
+  await assert.rejects(closed,/persistence failed/);
+});
+
+function jobSpec(root,arguments_) {
+  const owner=ownershipSnapshot().processes.find(p=>p.pid===process.pid);
+  const spec={file:process.execPath,arguments:arguments_,cwd:root,ownerPid:process.pid,ownerCreatedAt:owner.createdAt,
+    waveId:'job-fixture',childKey:'worker-0',token:randomUUID(),proofFile:path.join(root,'proof.json'),stopFile:path.join(root,'stop')};
+  const file=path.join(root,'spec.json');writeFileSync(file,JSON.stringify(spec));return {file,spec};
+}
+test('#7554: Windows kernel job host preserves arguments and redirected stdin/stdout',{skip:process.platform!=='win32'},t=>{
+  const root=fixture(t),args=['space value','quote"value','trailing\\','', 'זרו','2026-11-03T10:00:00.000Z','a\tb','a\nb','literal$(not-a-command)'];
+  const program="let input='';process.stdin.on('data',c=>input+=c);process.stdin.on('end',()=>process.stdout.write(JSON.stringify({args:process.argv.slice(1),input})))";
+  const {file,spec}=jobSpec(root,['-e',program,'--',...args]);
+  const result=spawnSync('pwsh',['-NoProfile','-File',fileURLToPath(new URL('./wave-job-host.ps1',import.meta.url)),'-SpecPath',file],{input:'fixture input',encoding:'utf8',timeout:30_000,windowsHide:true});
+  assert.equal(result.status,0,result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout),{args,input:'fixture input'});
+  const proof=JSON.parse(readFileSync(spec.proofFile));
+  assert.equal(proof.activeProcesses,0);
+  assert.equal(proof.containment,'windows-job-v1');
+  assert.equal(proof.token,spec.token);
+  assert.equal(proof.supervisorPid,result.pid);
+});
+
+test('#7554: close receipt is durable before a contended mirror and remains reusable',async t=>{
+  const root=fixture(t),record=path.join(root,'receipt.json');let attempts=0;
+  const value={state:'stopped',closeObserved:true,closedAt:now};
+  await persistChildStop(record,value,()=>{
+    assert.deepEqual(JSON.parse(readFileSync(record)),value);
+    if(++attempts<3)throw Error('Wave state lock busy fixture');
+  },{attempts:3,delayMs:0});
+  assert.equal(attempts,3);
+  await assert.rejects(persistChildStop(record,value,()=>{throw Error('Wave state lock busy fixture');},{attempts:1,delayMs:0}),/lock busy/);
+  assert.deepEqual(JSON.parse(readFileSync(record)),value);
+  assert.deepEqual((await import('node:fs')).readdirSync(root),['receipt.json']);
+});
+
+test('#7554: stop requested before job startup prevents payload execution',{skip:process.platform!=='win32'},t=>{
+  const root=fixture(t),sentinel=path.join(root,'payload-ran');
+  const {file,spec}=jobSpec(root,['-e',"require('node:fs').writeFileSync(process.argv[1],'ran')",sentinel]);
+  writeFileSync(spec.stopFile,'stop');
+  const result=spawnSync('pwsh',['-NoProfile','-File',fileURLToPath(new URL('./wave-job-host.ps1',import.meta.url)),'-SpecPath',file],{encoding:'utf8',timeout:30_000,windowsHide:true});
+  assert.equal(existsSync(sentinel),false,'a pre-existing stop must fence resume');
+  assert.notEqual(result.status,0);
+  assert.equal(JSON.parse(readFileSync(spec.proofFile)).activeProcesses,0);
+});
+test('#7554: kernel job stops a deep detached orphan after its parents exit',{skip:process.platform!=='win32'},t=>{
+  const root=fixture(t),record=path.join(root,'orphan.json');
+  const middle="const {spawn}=require('node:child_process');const p=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore',detached:true});p.unref();require('node:fs').writeFileSync(process.argv[1],JSON.stringify({pid:p.pid,parent:process.pid}));";
+  const program="const {spawn}=require('node:child_process');const p=spawn(process.execPath,['-e',"+JSON.stringify(middle)+",process.argv[1]],{stdio:'ignore',detached:true});p.on('exit',()=>process.exit(0));";
+  const {file,spec}=jobSpec(root,['-e',program,record]);
+  const result=spawnSync('pwsh',['-NoProfile','-File',fileURLToPath(new URL('./wave-job-host.ps1',import.meta.url)),'-SpecPath',file],{encoding:'utf8',timeout:30_000,windowsHide:true});
+  assert.equal(result.status,0,result.stderr);
+  const orphan=JSON.parse(readFileSync(record));
+  assert.equal(JSON.parse(readFileSync(spec.proofFile)).activeProcesses,0);
+  const processes=ownershipSnapshot().processes;
+  assert.equal(processes.some(p=>p.pid===orphan.pid),false,'the detached grandchild must be stopped before attestation');
+  assert.equal(processes.some(p=>p.pid===orphan.parent),false);
 });

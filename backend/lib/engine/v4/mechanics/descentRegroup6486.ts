@@ -27,10 +27,18 @@
 // alle profiler uden for bjerg/hoejfjeld. Alle aeldre revisioner kalder aldrig
 // modulet (segmentLoop.ts gater paa isS5ProfilesV3OrLater): bit-identiske.
 //
+// #7644 (KUN kontakten descent_regroup_cap_7644, SLUKKET): paa en lang nedkoersel kunne en
+// kaede af smaa grupper med korte huller imellem accelerere oven i hinanden, saa den
+// bagerste gruppe vandt minutter paa gruppen foran kaeden. Kontakten laegger et loft paa,
+// hvor meget hurtigere end sin egen fart en gruppe samlet kan koere pr. km. Loftet sidder
+// kun paa #6486's egen tuning; #7236's dronningeetape-tuning er uroert. Slukket =
+// bit-identisk. Tal kun privat (balance-internals/7644/, hard rule 17).
+//
 // REN: ingen IO, ingen rng. Returnerer samme Map naar intet aendres.
-import type { ProfileType, RaceGroup, Segment, SegmentKind } from "../types.ts";
+import type { ProfileType, RaceGroup, Segment, SegmentKind, StageInput } from "../types.ts";
 import { compareIds } from "../../../compareIds.ts";
 import { QUEEN_STAGE_GAP_7236_TUNING } from "../tuning.ts"; // #7236
+import { isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts"; // #7644
 
 const deepFreeze = <T>(value: T): T => {
   if (value && typeof value === "object") {
@@ -57,6 +65,11 @@ export type DescentRegroup6486Tuning = {
   stepKm: number;
   /** Hoejeste andel en gruppe kan koere hurtigere end sin egen fart paa segmentet (fysisk loft, < 1). */
   maxSpeedGainShare: number;
+  /**
+   * #7644 (KUN kontakten descent_regroup_cap_7644): hoejeste samlede gevinst (s pr. km) en gruppe
+   * kan hente i forhold til sin egen fart paa segmentet. Udeladt eller Infinity = intet loft.
+   */
+  maxClosingSecondsPerKm?: number;
 };
 
 /** #6486 (KUN s5_profiles_v3, deep-frosset). */
@@ -69,6 +82,7 @@ export const DESCENT_REGROUP_6486_TUNING: DescentRegroup6486Tuning = deepFreeze(
   sizeRatioFloor: 0.4,
   stepKm: 1,
   maxSpeedGainShare: 0.15,
+  maxClosingSecondsPerKm: 2, // #7644: virker kun med kontakten (descentRegroupTempo6486, capOn)
 });
 
 /**
@@ -81,7 +95,13 @@ export const DESCENT_REGROUP_7236_TUNING: DescentRegroup6486Tuning = deepFreeze(
   ...DESCENT_REGROUP_6486_TUNING,
   reachSeconds: 160,
   secondsPerKmByKind: { descent: 4, flat: 5, rolling: 4 },
+  maxClosingSecondsPerKm: Infinity, // #7644: dronningeetaperne faar intet loft
 });
+
+/** #7644: kontakten. Kun s5_profiles_v3 (og senere) OG et eksplicit flag; haandbyggede fixtures og aeldre revisioner: nej. */
+export function descentRegroupCap7644On(input: Pick<StageInput, "rules_revision" | "descent_regroup_cap_7644">): boolean {
+  return input.descent_regroup_cap_7644 === true && isS5ProfilesV3OrLater(input.rules_revision);
+}
 
 /**
  * #7236: regrupperingens tuning paa ruten. Kontakten slukket, eller lang vej fra sidste
@@ -230,10 +250,12 @@ export function descentRegroupTempo6486<T extends { dtSeconds: number }>(
   segmentIndex: number,
   incidentChasers: Readonly<Record<string, unknown>> | undefined,
   t: DescentRegroup6486Tuning = DESCENT_REGROUP_6486_TUNING,
+  capOn = false, // #7644 (slukket): loftet pr. km (t.maxClosingSecondsPerKm) gaelder kun med kontakten
 ): Map<string, T> {
   if (!descentRegroup6486Applies(route, segmentIndex, t)) return tempoByGroup;
   const seg = route.segments[segmentIndex];
   const lengthKm = Number.isFinite(seg.from_km) && Number.isFinite(seg.to_km) ? Math.max(0, (seg.to_km as number) - (seg.from_km as number)) : 0;
+  const capPerKm = capOn === true && Number.isFinite(t.maxClosingSecondsPerKm) ? Math.max(0, t.maxClosingSecondsPerKm as number) : null;
   const inIncident = (g: RaceGroup) => incidentChasers !== undefined && g.rider_ids.some((id) => incidentChasers[id] !== undefined);
   const chainGroups = [...groups]
     .filter((g) => !isMorningBreakawayPiece(g) && !inIncident(g) && g.rider_ids.length > 0 && tempoByGroup.has(g.id))
@@ -251,7 +273,11 @@ export function descentRegroupTempo6486<T extends { dtSeconds: number }>(
       // hoejst `maxSpeedGainShare` hurtigere end sin egen fart (gruppen bag maaler mod den).
       // Loftet er paa FARTEN: v' <= v * (1 + andel) <=> dt' >= dt / (1 + andel). (dt * (1 - andel)
       // ville give mere end andelen i fart; Codex #7175.)
-      const target = Math.max(reference.dt - close, own.dtSeconds / (1 + t.maxSpeedGainShare));
+      let target = Math.max(reference.dt - close, own.dtSeconds / (1 + t.maxSpeedGainShare));
+      // #7644 (kun med kontakten): lukningen summeres ned gennem kaeden (referencen er gruppen
+      // foran EFTER dens egen acceleration), saa gevinsten i forhold til egen fart faar ogsaa et
+      // loft pr. km. Kun langsommere, aldrig hurtigere; raekkefoelgen bevares derfor.
+      if (capPerKm !== null) target = Math.max(target, own.dtSeconds - capPerKm * lengthKm);
       if (close > 0 && own.dtSeconds > target) {
         out ??= new Map(tempoByGroup);
         out.set(group.id, { ...own, dtSeconds: target });

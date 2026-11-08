@@ -37,6 +37,9 @@ import { HISTORY_DAYS } from "../../../lib/useTrainingHistory.js";
 import { chartColor } from "../../../lib/chartPalette.js";
 import { formatDate } from "../../../lib/intl.js";
 import { SkeletonLines } from "../../ui/Skeleton.jsx";
+import PotentialEstimate from "../PotentialEstimate";
+import { estimateLineOf, potentialViewOf } from "../../../lib/potentialEstimateDisplay";
+import I18nReadyGate from "../../I18nReadyGate";
 
 const DATA_FONT = '"Inter Tight", "Inter Tight Fallback", system-ui, sans-serif';
 
@@ -62,12 +65,16 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
   const segments = seasonSegments(snapshots);
   const currentSeason = segments.length > 0 ? segments[segments.length - 1].season : null;
   const hasProj = projectionActive(projection);
+  // #6110: tændt flag giver én linje mod skønnet i stedet for bånd og loft-zone.
+  const estimateLine = estimateLineOf(projection);
+  const hasLine = estimateLine.length > 1;
+  const hasFuture = hasProj || hasLine;
   const primaryColor = chartTypes[0]?.color ?? "rgb(var(--accent-t))";
 
   // X: registreret historik (dato-skaleret — index-baseret x ville lyve om hældningen,
   // fordi daily-snapshots kun skrives på gevinst-dage) fylder venstre del; når en
   // projektion findes reserveres højre ~44% til de fremtidige sæsoner.
-  const xNow = hasProj ? VB.x0 + 0.56 * (VB.x1 - VB.x0) : VB.x1;
+  const xNow = hasFuture ? VB.x0 + 0.56 * (VB.x1 - VB.x0) : VB.x1;
   const ts = snapshots.map((s) => Date.parse(s.snapshot_date));
   const tMin = Math.min(...ts), tMax = Math.max(...ts);
   const xAt = (i) => (tMax === tMin
@@ -82,7 +89,7 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
   // akse der starter i 1 ville skubbe den nederste linje op fra sin egen bund.
   const projVals = hasProj
     ? projection.band.flatMap((p) => [p.lo, p.hi]).concat([projection.ceil.lo, projection.ceil.hi])
-    : [];
+    : estimateLine.map((p) => p.value);
   const allRatings = seriesByKey.flatMap((s) => s.points.map((p) => p.rating)).concat(projVals);
   const lo = Math.max(0, Math.min(...allRatings) - 4);
   const hi = Math.min(99, Math.max(...allRatings) + 4);
@@ -106,6 +113,9 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
     ceilTop = yAt(projection.ceil.hi);
     ceilBot = yAt(projection.ceil.lo);
   }
+
+  const xLine = (i) => xNow + (i / Math.max(1, estimateLine.length - 1)) * (VB.x1 - xNow);
+  const lastEstimate = estimateLine[estimateLine.length - 1];
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
@@ -137,8 +147,22 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
           </g>
         )}
 
+        {/* Kurven mod skønnet (#6110). */}
+        {hasLine && (
+          <g data-testid="development-estimate-line">
+            <polyline
+              points={estimateLine.map((p, i) => `${xLine(i).toFixed(1)},${yAt(p.value).toFixed(1)}`).join(" ")}
+              fill="none" stroke={primaryColor} strokeWidth="1.6" strokeDasharray="3 2.5" opacity="0.85"
+            />
+            <circle cx={VB.x1} cy={yAt(lastEstimate.value).toFixed(1)} r="2.5" fill={primaryColor} />
+            <text x={(VB.x1 - 1).toFixed(1)} y={(yAt(lastEstimate.value) - 5).toFixed(1)} fontSize="10" fill={primaryColor} fontFamily={DATA_FONT} textAnchor="end">
+              {t("scouting:potentialEstimate.chartLabel", { value: lastEstimate.value })}
+            </text>
+          </g>
+        )}
+
         {/* "Nu"-skillelinje. */}
-        {hasProj && (
+        {hasFuture && (
           <g>
             <line x1={xNow.toFixed(1)} y1={VB.y0 - 2} x2={xNow.toFixed(1)} y2={VB.y1} stroke="var(--border)" strokeWidth="1" />
             <text x={(xNow + 2).toFixed(1)} y={(VB.y0 + 4).toFixed(1)} fontSize="10" fill="var(--text-3)" fontFamily={DATA_FONT} textAnchor="start">
@@ -181,7 +205,7 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
         })}
 
         <text x={(VB.x0 + VB.x1) / 2} y="168" fontSize="10" fill="var(--text-3)" fontFamily={DATA_FONT} textAnchor="middle">
-          {t(hasProj ? "profile.development.projection.caption" : "profile.development.chart.caption")}
+          {t(hasLine ? "scouting:potentialEstimate.chartCaption" : hasProj ? "profile.development.projection.caption" : "profile.development.chart.caption")}
         </text>
       </svg>
       <div className="flex gap-3.5 flex-wrap mt-2">
@@ -195,6 +219,12 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
           <span className="inline-flex items-center gap-1.5 text-2xs text-cz-2">
             <span className="w-3.5 h-[3px] rounded-sm border-t-2 border-dashed" style={{ borderColor: primaryColor }} aria-hidden="true" />
             {t("profile.development.projection.legend")}
+          </span>
+        )}
+        {hasLine && (
+          <span className="inline-flex items-center gap-1.5 text-2xs text-cz-2">
+            <span className="w-3.5 h-[3px] rounded-sm border-t-2 border-dashed" style={{ borderColor: primaryColor }} aria-hidden="true" />
+            {t("scouting:potentialEstimate.chartLegend")}
           </span>
         )}
       </div>
@@ -248,6 +278,7 @@ function ceilingRows(projection, t) {
 
 // ── Vækst denne sæson ────────────────────────────────────────────────────────────
 function GrowthCard({ primaryLabel, growth, totalPoints, trackedSince, projection, t }) {
+  const estimateView = potentialViewOf(projection);
   const rows = [
     {
       label: t("profile.development.growth.typeRating", { type: primaryLabel }),
@@ -265,6 +296,10 @@ function GrowthCard({ primaryLabel, growth, totalPoints, trackedSince, projectio
       cls: "text-cz-1",
     },
     ...ceilingRows(projection, t),
+    // #6110: tal + ord erstatter "til målet"-rækkerne, når serveren sender skønnet.
+    ...(estimateView
+      ? [{ label: t("profile.scouting.potentialLabel"), value: <PotentialEstimate view={estimateView} />, cls: "font-normal" }]
+      : []),
   ];
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
@@ -411,7 +446,14 @@ export default function RiderDevelopmentTab({ rider, history = [], types = [], t
   return (
     <div className="flex flex-col gap-[13px]">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-[13px] items-start">
-        <ChartCard snapshots={snapshots} chartTypes={chartTypes} projection={projection} t={t} />
+        {/* #6110: kurvens tekster ligger i det lazy scouting-namespace. */}
+        {estimateLineOf(projection).length > 1 ? (
+          <I18nReadyGate ns="scouting" fallback={<SkeletonLines lines={4} />}>
+            <ChartCard snapshots={snapshots} chartTypes={chartTypes} projection={projection} t={t} />
+          </I18nReadyGate>
+        ) : (
+          <ChartCard snapshots={snapshots} chartTypes={chartTypes} projection={projection} t={t} />
+        )}
         <div className="flex flex-col gap-[13px] min-w-0">
           <GrowthCard
             primaryLabel={primaryLabel}

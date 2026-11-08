@@ -16,6 +16,16 @@
         "hooks": [
           {
             "type": "command",
+            "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/block-unsafe-delete.sh ; exit $LASTEXITCODE",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
             "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/hooks/block-branch-switch-in-main-checkout.sh ; exit $LASTEXITCODE"
           },
           {
@@ -152,6 +162,11 @@
           {
             "type": "command",
             "command": "pwsh -NoProfile -File scripts/hooks/run-codex-hook.ps1 scripts/check-now-md.sh ; exit $LASTEXITCODE"
+          },
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File scripts/hooks/codex-session-claim.ps1 -Mode beat ; exit $LASTEXITCODE",
+            "timeout": 3
           }
         ]
       }

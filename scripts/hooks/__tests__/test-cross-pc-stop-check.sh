@@ -161,6 +161,35 @@ else
   FAIL=$((FAIL + 1)); echo "FAIL  hooken exit'ede != 0 (Stop-hook skal vaere non-blocking)"
 fi
 
+# 10. Samme fund blokerer kun een gang pr. session (ejer 5/11, token-spild).
+seed_pc "EMMAPC" 1
+run_session() {
+  (
+    cd "$REPO" && printf '{"session_id":"%s"}' "$1" | env HOME="$FAKE_HOME" USERPROFILE="$FAKE_HOME"       OneDrive="$WORK/onedrive" COMPUTERNAME="THISPC" bash "$HOOK" 2>/dev/null
+  )
+}
+OUT=$(run_session "s1")
+case "$OUT" in
+  *'"decision": "block"'*) PASS=$((PASS + 1)); echo "PASS  foerste stop i sessionen blokerer" ;;
+  *) FAIL=$((FAIL + 1)); echo "FAIL  foerste stop blokerede ikke: $OUT" ;;
+esac
+OUT=$(run_session "s1")
+assert_silent "samme fund i samme session -> tavs" "$OUT"
+echo more > "$REPO/untracked2.txt"
+OUT=$(run_session "s1")
+assert_silent "flere filer af samme slags -> stadig tavs" "$OUT"
+( cd "$REPO" && git add -A && git stash -q && echo dirt > untracked.txt )
+OUT=$(run_session "s1")
+case "$OUT" in
+  *'"decision": "block"'*) PASS=$((PASS + 1)); echo "PASS  ny slags fund (stash) blokerer igen" ;;
+  *) FAIL=$((FAIL + 1)); echo "FAIL  ny slags fund blev ikke vist: $OUT" ;;
+esac
+OUT=$(run_session "s2")
+case "$OUT" in
+  *'"decision": "block"'*) PASS=$((PASS + 1)); echo "PASS  ny session faar advarslen" ;;
+  *) FAIL=$((FAIL + 1)); echo "FAIL  ny session fik ingen advarsel: $OUT" ;;
+esac
+
 echo ""
 echo "Results: $PASS pass, $FAIL fail"
 [ "$FAIL" = "0" ] && exit 0 || exit 1

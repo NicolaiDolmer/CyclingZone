@@ -1,5 +1,5 @@
 import { GROUP_CLOCK_CONTACT_EPSILON } from "../groupClock.ts";
-import { findFieldChaseGroup, findChaseGroup, isBreakawayPiece, rejoinBreakawayPiece, withBreakawayDrops } from "./chaseGroup.ts";
+import { findFieldChaseGroup, findChaseGroup, floorChaseWanted7730, isBreakawayPiece, judgeFloorChase7730, rejoinBreakawayPiece, withBreakawayDrops } from "./chaseGroup.ts";
 import { pursuitContactKm } from "../exactPlace.ts";
 // backend/lib/engine/v4/mechanics/breakaway.ts
 // Race Engine v4 F3 (#4030, #3855): M5 - udbrud v2, jagt-interesse-modellen
@@ -115,6 +115,8 @@ import {
   brakedLetGoGrowth,
   letGoBrake,
   letGoBrakingTeams,
+  letGoOrderTeamIds, // #7557
+  MANAGER_LET_GO_7557_PARAM, // #7557
   LET_GO_BRAKE_TUNING,
   planTeamReaction,
   type ReactionStance,
@@ -155,6 +157,7 @@ export type BreakawayTeamOrder = {
   // #6912 (KUN kontakten breakawayCurve6912): manageren har selv gemt stancen for etapen
   // (broen saetter MANAGER_CHASE_6912_PARAM). Udeladt = holdets standard (rolle/M14).
   manager_set?: true;
+  manager_let_go?: true; // #7557 (kontakten): se MANAGER_LET_GO_7557_PARAM
 };
 
 /** Konvolut-`kind` M5 fortolker (orders/teamOrdersAdapter.ts's toEngineTeamOrder skriver den). */
@@ -185,7 +188,7 @@ export function parseBreakawayOrders(orders: readonly TeamOrder[] | undefined): 
       .filter((r): r is Record<string, unknown> => typeof r === "object" && r !== null)
       .filter((r) => typeof r["rider_id"] === "string")
       .map((r) => ({ rider_id: r["rider_id"] as string, try_break: r["try_break"] === true }));
-    byTeam.set(order.team_id, { team_id: order.team_id, breakaway_stance: stance, riders, ...(params[MANAGER_CHASE_6912_PARAM] === true ? { manager_set: true as const } : {}) });
+    byTeam.set(order.team_id, { team_id: order.team_id, breakaway_stance: stance, riders, ...(params[MANAGER_CHASE_6912_PARAM] === true ? { manager_set: true as const } : {}), ...(params[MANAGER_LET_GO_7557_PARAM] === true ? { manager_let_go: true as const } : {}) });
   }
   return [...byTeam.values()].sort((a, b) => compareIds(a.team_id, b.team_id));
 }
@@ -1268,6 +1271,8 @@ export type StageWinChaseV3Input = {
   finaleWeightScale?: number;
   /** #7160 (KUN s5_profiles_v3, bjerg i etapeloeb): faktor pr. hold paa etapeinteressen. Udeladt = 1 (bit-identisk). */
   teamInterestScale?: ReadonlyMap<string, number>;
+  /** #7557 (kontakten): hold hvis gemte "lad gaa" vinder; de staar helt uden for etapeinteressen. Udeladt = som foer. */
+  letGoOrderTeams?: ReadonlySet<string>;
 };
 
 /**
@@ -1302,6 +1307,8 @@ export function stageWinChaseForceV3(input: StageWinChaseV3Input & {
   const finaleWeight = input.finaleWeightScale !== undefined ? tableWeight * input.finaleWeightScale : tableWeight;
   const ranked = input.chaseGroupRiderIds
     .filter((id) => input.entrants[id]?.abilities)
+    // #7557: foer udvaelgelsen, saa pladsen gaar til et hold der vil jage, og feltet ikke bremses.
+    .filter((id) => !input.letGoOrderTeams?.has(teamIdOf(input.entrants[id]) ?? ""))
     .map((id) => ({ id, ability: collectiveAbility([id], input.entrants, keys) }))
     .sort((a, b) => b.ability - a.ability || compareIds(a.id, b.id))
     .slice(0, Math.max(0, v3.stageWinTopRiders));
@@ -1667,6 +1674,7 @@ function gcReactionSetup(state: EngineState, ctx: BreakawayHookContext, gcContex
   const racingRiderIds = new Set(Object.values(state.riders).filter((r) => r.status === "racing").map((r) => r.rider_id));
   const stanceByTeam = new Map<string, BreakawayStance>();
   for (const order of parseBreakawayOrders(ctx.orders)) stanceByTeam.set(order.team_id, order.breakaway_stance);
+  const letGoOrderTeams = letGoOrderTeamIds(parseBreakawayOrders(ctx.orders)); // #7557
 
   const teamIds = new Set<string>();
   for (const riderId of racingRiderIds) {
@@ -1704,7 +1712,7 @@ function gcReactionSetup(state: EngineState, ctx: BreakawayHookContext, gcContex
       : [];
     const workers = availableReactionWorkers({ teamId, groupRiderIds, entrants: ctx.entrants, riders: state.riders });
     const prior = state.team_reactions?.[teamId];
-    let plan = planTeamReaction({ prior, threat, stance, availableWorkers: workers, ...(dangerModel ? { leash: true } : {}) });
+    let plan = planTeamReaction({ prior, threat, stance, availableWorkers: workers, ...(dangerModel ? { leash: true } : {}), ...(letGoOrderTeams.has(teamId) ? { letGoOrderWins: true } : {}) });
     if (plan.mode === "preventive") {
       // OEVRE skon paa segmentets pris ved fuld intensitet: alle hjaelpere
       // jager hele segmentet alene (ingen deling). Den faktiske pris er <= den.
@@ -1838,6 +1846,7 @@ function realisticLeadInterest(input: {
   teamInterestScale?: ReadonlyMap<string, number>; // #7160
 }): { interestByTeam: Map<string, number>; teamIds: string[] } {
   const teamSignals = input.chasePlan.teamSignals ?? new Map<string, number>();
+  const letGoOrderTeams = letGoOrderTeamIds(parseBreakawayOrders(input.ctx.orders)); // #7557
   const { interestByTeam } = stageWinChaseForceV3({
     chaseGroupRiderIds: input.chaseGroup.rider_ids,
     entrants: input.ctx.entrants,
@@ -1848,6 +1857,7 @@ function realisticLeadInterest(input: {
     excludedTeamIds: input.excludedTeamIds,
     ...(input.finaleWeightScale !== 1 ? { finaleWeightScale: input.finaleWeightScale } : {}),
     ...(input.teamInterestScale ? { teamInterestScale: input.teamInterestScale } : {}),
+    ...(letGoOrderTeams.size > 0 ? { letGoOrderTeams } : {}),
   });
   return { interestByTeam, teamIds: s5V3InterestedTeamIds({ interestByTeam, teamSignals, excludedTeamIds: input.excludedTeamIds }) };
 }
@@ -2039,6 +2049,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   // selv flytter skalaen den maales paa.
   const fieldRiderIds = state.groups.flatMap((g) => g.rider_ids);
   const parsedOrders = parseBreakawayOrders(ctx.orders);
+  const letGoOrderTeams = letGoOrderTeamIds(parsedOrders); // #7557
   const workByChaseGroup = new Map<string, { plan: ReturnType<typeof teamChasePlan>; km: number }>();
   const pursuitByBreakaway = new Map<string, string[]>();
   const pursuitKey = (breakawayId: string, chaseId: string): string => JSON.stringify([breakawayId, chaseId]);
@@ -2288,7 +2299,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       ...(breakaway.rider_ids.some((id) => wheelSitterIds.has(id)) ? { pullingBreakawayRiderIds: breakaway.rider_ids.filter((id) => !wheelSitterIds.has(id)) } : {}),
       ...(gcAbilityOf ? { gcAbilityOf } : {}),
       // #6441: et hold med egen koerende mand i udbruddet har ingen etapeinteresse i at jage det.
-      ...(chaseV3 ? { officialTimesV3: { profileType: ctx.route.profile_type, teamSignals: plan.teamSignals ?? new Map<string, number>(), excludedTeamIds: ownAheadTeamIds ?? racingTeamIdsIn(breakaway, state.riders, ctx.entrants), ...(p1FinaleWeightScale !== 1 ? { finaleWeightScale: p1FinaleWeightScale } : {}), ...(mountainLetGo ? { teamInterestScale: mountainLetGo } : {}) } } : {}),
+      ...(chaseV3 ? { officialTimesV3: { ...(letGoOrderTeams.size > 0 ? { letGoOrderTeams } : {}), profileType: ctx.route.profile_type, teamSignals: plan.teamSignals ?? new Map<string, number>(), excludedTeamIds: ownAheadTeamIds ?? racingTeamIdsIn(breakaway, state.riders, ctx.entrants), ...(p1FinaleWeightScale !== 1 ? { finaleWeightScale: p1FinaleWeightScale } : {}), ...(mountainLetGo ? { teamInterestScale: mountainLetGo } : {}) } } : {}),
     });
     const netAdvantage = advantageOf(chasePlan);
     // WIRING-GUARD (#4615): jagt-interessen kan KUN lukke et hul, aldrig aabne
@@ -2448,12 +2459,17 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // en beslutning om etapen, og den maa ikke skifte med segmentinddelingen.
     // Streamen genskabes pr. kald, saa lodtraekningen er den samme paa hvert
     // segment i vinduet.
+    // #7730 (KUN kontakten): dommen erstatter lodtraekningen; holdene der arbejder afgoer maalet.
+    const floorVerdict = floorKm > 0 && ctx.teamChase7730 === true
+      ? judgeFloorChase7730({ work: workPlan.chaserWork, teamOf: (id) => teamIdOf(ctx.entrants[id]), engineOf: (id) => collectiveAbility([id], ctx.entrants, CHASE_ENGINE_KEYS), riders: state.riders, breakEngine: collectiveAbility(breakaway.rider_ids, ctx.entrants, CHASE_ENGINE_KEYS), onTimeSeconds: chaseFloorTargetGapSeconds(ctx.route, 1, chaseV3), lateSeconds: BREAKAWAY_EXTRA_TUNING.chaseFloorLateTargetGapSeconds, wanted: floorChaseWanted7730(p2Interest, parsedOrders) })
+      : null;
+    if (floorVerdict?.short && isLastSegment && !events.some((e) => e.type === "breakaway_chase_short" && e.params.group_id === breakaway.id)) events.push({ km: round2(ctx.segment.to_km), type: "breakaway_chase_short", params: { group_id: breakaway.id, reason: floorVerdict.reason, team_ids: floorVerdict.teamIds } });
     const floorClosingSeconds = floorKm > 0
       ? chaseFloorClosingSeconds({
           separationSeconds: beforeFloor,
           floorKm,
           kmToFinish: ctx.route.distance_km - (ctx.segment.to_km - floorKm),
-          targetGapSeconds: chaseFloorTargetGapSeconds(ctx.route, ctx.rngForStage("breakaway_chase_floor")(), chaseV3),
+          targetGapSeconds: floorVerdict ? floorVerdict.targetSeconds : chaseFloorTargetGapSeconds(ctx.route, ctx.rngForStage("breakaway_chase_floor")(), chaseV3),
         })
       : 0;
     // #6912 (KUN kontakten): i jagt-gulvets vindue lukker de jagende hold selv ned mod kurvens maal,

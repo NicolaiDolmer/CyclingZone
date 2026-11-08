@@ -13,20 +13,27 @@
 // ikke spor 1's nye tabeller/kolonner (#6149) før typerne regenereres efter
 // apply, og CI's typecheck mangler @types/react (som ui/Segmented.jsx). Al
 // sortering og alle patches bor i lib/roadmapAdminModel.ts (typet + testet).
+//
+// Fanerne (#6204): Idéer, Planlagt, I gang, Færdigt, Kendte fejl, 2027 og
+// Stemmer. Filtre (område, status, horisont, issue) og sortering på alle
+// kolonner; udvælgelse, filtrering og sortering bor i roadmapAdminModel.ts.
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router";
 import { supabase } from "../../../lib/supabase";
 import { apiFetch } from "../../../lib/apiFetch.ts";
 import { useAdminAuth } from "../shared/useAdminAuth";
 import {
-  IDEA_TARGET, fmtScore, ideaPool, isSplit, latestUpdateByIssue, mergeItemRows, movePatches, nextSortOrder,
-  ownOrder, rankIdeas, rankIssues, rankPlan, statusPatch, visibleIdeaCount, ROADMAP_STATUSES,
+  ADMIN_TABS, DEFAULT_ADMIN_TAB, DEFAULT_SORT, HORIZONS, HORIZON_LABELS, IDEA_TARGET, ISSUE_STATUSES,
+  dontKnowTotal, fmtScore, filterIssueRows, filterItems, isAdminTab, isSplit, latestUpdateByIssue, mergeItemRows, movePatches,
+  nextSort, nextSortOrder, ownOrder, sortRows, statusPatch, tabCounts, tabRows, visibleIdeaCount, ROADMAP_STATUSES,
 } from "../../../lib/roadmapAdminModel.ts";
 import {
   AREA_LABELS, FLAG_STAGE_LABELS, ISSUE_STATUS_LABELS, STATUS_LABELS,
   IssueFormModal, IssueUpdateModal, ItemFormModal, SplitItemModal,
 } from "./RoadmapAdminForms.jsx";
 import {
-  Button, DataTable, ErrorState, HeroStats, Section, SectionHeader, SectionStack, Select, SkeletonLines, StatusBadge,
+  Button, DataTable, ErrorState, HeroStats, Input, Section, SectionHeader, SectionStack, Select, SkeletonLines,
+  StatusBadge, Tab, TabList, TabPanel, Tabs,
   ArrowDownIcon, ArrowUpIcon, PlusIcon, RefreshIcon,
 } from "../../ui";
 
@@ -53,8 +60,10 @@ function IssueStepBadge({ status }) {
   return <Tag>{ISSUE_STATUS_LABELS[status] ?? status}</Tag>;
 }
 
-// Én linje pr. række ved 1440 px: handlingerne ombrydes aldrig (rækkerne blev
-// ellers dobbelt så høje); titel-kolonnen er den, der giver plads.
+// Handlingerne ombrydes aldrig (rækkerne blev ellers dobbelt så høje), så
+// kolonnerne omkring dem skal holde sig smalle: ved 1440 px med sidebar er der
+// ca. 1120 px til hele tabellen. Derfor er horisont og status vælgeren i sin egen
+// kolonne, ikke et mærke plus en vælger, og alle kolonner uden titlen er `compact`.
 function Actions({ children }) {
   return <div className="flex flex-nowrap items-center justify-end gap-1.5 whitespace-nowrap">{children}</div>;
 }
@@ -62,6 +71,13 @@ function Actions({ children }) {
 // Tal og datoer i tal-kolonner ombrydes aldrig ("11 dage" på to linjer).
 function Num({ children }) {
   return <span className="whitespace-nowrap tabular-nums">{children}</span>;
+}
+
+// Kontakt-nøglen er den længste tekst uden mellemrum. Den må bryde efter "_", så
+// kolonnen har en fast bredde i stedet for at tage plads fra titlen.
+function flagKeyParts(key) {
+  const parts = key.split("_");
+  return parts.flatMap((part, i) => (i === parts.length - 1 ? [part] : [`${part}_`, <wbr key={i} />]));
 }
 
 function RowButton({ children, ...rest }) {
@@ -105,7 +121,8 @@ export default function GrowthRoadmapTab() {
       const [statsRes, scoresRes, itemsRes, issuesRes, updatesRes] = await Promise.all([
         apiFetch(`${API}/api/admin/roadmap/stats`, { headers: await getAuth() }, { source: "admin-roadmap-stats" }),
         supabase.from("roadmap_item_scores").select("*"),
-        supabase.from("roadmap_items").select("id, flag_key, beta_since, beta_soon, live_soon"),
+        supabase.from("roadmap_items")
+          .select("id, flag_key, beta_since, beta_soon, live_soon, created_at, updated_at, shipped_at"),
         supabase.from("known_issue_scores").select("*"),
         supabase.from("known_issue_updates").select("issue_id, body_da, created_at")
           .order("created_at", { ascending: false }).limit(500),
@@ -150,16 +167,42 @@ export default function GrowthRoadmapTab() {
 
   const updateItem = (id, patch) => supabase.from("roadmap_items").update({ ...patch, updated_at: nowIso() }).eq("id", id);
 
-  const plan = useMemo(() => rankPlan(rows), [rows]);
   const order = useMemo(() => ownOrder(rows), [rows]);
-  const ideas = useMemo(() => rankIdeas(rows), [rows]);
-  const pool = useMemo(() => ideaPool(rows), [rows]);
-  const inProgress = useMemo(() => rows.filter((r) => r.status === "in_progress")
-    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)), [rows]);
-  const issueGroups = useMemo(() => rankIssues(issues), [issues]);
   const latest = useMemo(() => latestUpdateByIssue(updates), [updates]);
   const flagByKey = useMemo(() => new Map(flags.map((f) => [f.key, f])), [flags]);
   const plannedRows = useMemo(() => rows.filter((r) => r.status === "planned"), [rows]);
+  const counts = useMemo(() => tabCounts(rows, issues), [rows, issues]);
+
+  // Fanen og sorteringen er pr. fane; filtrene nulstilles ved fanevalg, fordi
+  // en status eller horisont fra en anden fane kan give en tom tabel.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const view = searchParams.get("view");
+  const tab = isAdminTab(view) ? view : DEFAULT_ADMIN_TAB;
+  const [sorts, setSorts] = useState({});
+  const [filters, setFilters] = useState({ area: "", status: "", horizon: "", issue: "" });
+  const sort = sorts[tab] ?? DEFAULT_SORT[tab];
+  const onSort = (key) => setSorts((prev) => ({ ...prev, [tab]: nextSort(prev[tab] ?? DEFAULT_SORT[tab], key) }));
+  const setTab = (next) => {
+    setFilters({ area: "", status: "", horizon: "", issue: "" });
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      p.set("view", next);
+      return p;
+    }, { replace: true });
+  };
+  const setFilter = (key, value) => setFilters((prev) => ({ ...prev, [key]: value }));
+  const filtersActive = Object.values(filters).some((v) => v.trim() !== "");
+
+  const isIssues = tab === "issues";
+  const visibleRows = useMemo(() => {
+    if (isIssues) {
+      // Uden trin-filter vises kun de åbne fejl; vælger man Rettet eller
+      // Lukket uden fund, vises de lukkede.
+      const base = filters.status ? issues : issues.filter((r) => !["fixed", "dismissed"].includes(r.status));
+      return sortRows(filterIssueRows(base, filters), sort);
+    }
+    return sortRows(filterItems(tabRows(rows, tab), filters), sort);
+  }, [isIssues, issues, rows, tab, filters, sort]);
 
   const closeModal = () => setModal(null);
   const savedModal = () => { setModal(null); load(); };
@@ -176,12 +219,24 @@ export default function GrowthRoadmapTab() {
     </Select>
   );
 
+  const horizonSelect = (row) => (
+    <Select
+      size="sm"
+      aria-label={`Horisont for ${row.title_da || row.title_en}`}
+      value={row.horizon ?? "unscheduled"}
+      disabled={busy !== null}
+      onChange={(e) => run(`hz-${row.item_id}`, () => updateItem(row.item_id, { horizon: e.target.value }))}
+    >
+      {HORIZONS.map((h) => <option key={h} value={h}>{HORIZON_LABELS[h]}</option>)}
+    </Select>
+  );
+
   const flagCell = (row) => {
     if (!row.flag_key) return <span className="text-cz-3">–</span>;
     const stage = flagByKey.get(row.flag_key)?.stage;
     return (
-      <span className="font-data text-xs text-cz-2">
-        {row.flag_key}{stage ? ` · ${FLAG_STAGE_LABELS[stage] ?? stage}` : ""}
+      <span className="block w-[96px] whitespace-normal font-data text-xs text-cz-2">
+        {flagKeyParts(row.flag_key)}{stage ? ` · ${FLAG_STAGE_LABELS[stage] ?? stage}` : ""}
       </span>
     );
   };
@@ -190,130 +245,154 @@ export default function GrowthRoadmapTab() {
     <>
       <span>{AREA_LABELS[row.engine] ?? row.engine}</span>
       {row.approved === false && <Tag>Skjult</Tag>}
-      {row.horizon === "later" && row.status === "planned" && <Tag>Later</Tag>}
       {row.beta_soon && <Tag>Næste i beta</Tag>}
       {row.live_soon && <Tag>Snart for alle</Tag>}
       {row.issue_ref ? <span className="font-data">#{row.issue_ref}</span> : null}
     </>
   );
 
-  const planColumns = [
-    { key: "rank", header: "", compact: true, render: (_r, i) => <span className="font-data tabular-nums text-cz-3">{i + 1}</span> },
-    {
-      key: "title", header: "Punkt", sticky: true,
+  const move = (r, dir) => run(`${dir < 0 ? "up" : "down"}-${r.item_id}`, () => Promise.all(movePatches(plannedRows, r.item_id, dir)
+    .map((p) => updateItem(p.item_id, { sort_order: p.sort_order }))));
+
+  // Kolonne-ordbog: hver fane sætter sine kolonner sammen af de samme dele, så
+  // overskrifter, tal og sorteringsnøgler er ens på tværs af fanerne.
+  const col = {
+    rank: { key: "rank", header: "", compact: true, render: (_r, i) => <span className="font-data tabular-nums text-cz-3">{i + 1}</span> },
+    title: (header, extra) => ({
+      key: "title", header, sortKey: "title", sticky: true, compact: true,
       render: (r) => (
         <TitleCell title={r.title_da || r.title_en}>
           {itemTags(r)}
-          {isSplit(r.sd_importance) && <StatusBadge state="closing">Deler spillerne</StatusBadge>}
+          {extra && isSplit(r.sd_importance) && <StatusBadge state="closing">Deler spillerne</StatusBadge>}
         </TitleCell>
       ),
+    }),
+    status: { key: "status", header: "Status", sortKey: "status", compact: true, render: (r) => <Tag>{STATUS_LABELS[r.status] ?? r.status}</Tag> },
+    horizon: {
+      key: "horizon", header: "Horisont", sortKey: "horizon", compact: true,
+      render: (r) => <Tag>{HORIZON_LABELS[r.horizon] ?? r.horizon ?? "–"}</Tag>,
     },
-    { key: "importance", header: "Vigtighed", numeric: true, render: (r) => <Num>{fmtScore(r.avg_importance)}</Num> },
-    { key: "votes", header: "Stemmer", numeric: true, render: (r) => <Num>{fmtInt(r.votes)}</Num> },
-    // Pilene står ved nummeret, de flytter: det holder handlingskolonnen smal nok
-    // til, at hele rækken er én linje ved 1440 px.
-    {
-      key: "own", header: "Din rækkefølge", mobileHeader: "Din", numeric: true,
+    // Samme kolonner som vælgere, på de faner hvor man retter dem. `fold`: en
+    // vælger er for bred til 390 px, så på mobil står værdien i navnecellens
+    // underlinje og titlen beholder pladsen.
+    statusEdit: {
+      key: "status", header: "Status", sortKey: "status", compact: true, fold: true,
+      foldValue: (r) => STATUS_LABELS[r.status] ?? r.status,
+      render: (r) => <div className="w-[104px]">{statusSelect(r)}</div>,
+    },
+    horizonEdit: {
+      key: "horizon", header: "Horisont", sortKey: "horizon", compact: true, fold: true,
+      foldValue: (r) => HORIZON_LABELS[r.horizon] ?? r.horizon ?? "",
+      render: (r) => <div className="w-[128px]">{horizonSelect(r)}</div>,
+    },
+    idea: { key: "idea", header: "God idé", sortKey: "idea", numeric: true, compact: true, render: (r) => <Num>{fmtScore(r.avg_idea)}</Num> },
+    importance: { key: "importance", header: "Vigtighed", mobileHeader: "Vigt.", sortKey: "importance", numeric: true, compact: true, render: (r) => <Num>{fmtScore(r.avg_importance)}</Num> },
+    score: { key: "score", header: "Score", sortKey: "score", numeric: true, compact: true, render: (r) => <Num>{fmtScore(r.steering_score, 1)}</Num> },
+    votes: { key: "votes", header: "Stemmer", sortKey: "votes", numeric: true, compact: true, render: (r) => <Num>{fmtInt(r.votes)}</Num> },
+    dontKnow: { key: "dontKnow", header: "Ved ikke", sortKey: "dontKnow", numeric: true, compact: true, render: (r) => <Num>{fmtInt(r.dont_know)}</Num> },
+    own: {
+      key: "own", header: "Din rækkefølge", mobileHeader: "Din", sortKey: "own", numeric: true, compact: true,
       render: (r) => {
         const pos = order.get(r.item_id) ?? 0;
+        if (r.status !== "planned") return <span className="text-cz-3">–</span>;
+        // Pilene står ved nummeret, de flytter: det holder handlingskolonnen
+        // smal. På mobil står de over hinanden; side om side tog de 116 px af
+        // 326 px og knuste titlen til et par tegn pr. linje.
         return (
           <div className="flex flex-nowrap items-center justify-end gap-1.5">
             <Num>{pos || "–"}</Num>
-            <RowButton aria-label="Flyt op" disabled={busy !== null || pos <= 1}
-              onClick={() => run(`up-${r.item_id}`, () => Promise.all(movePatches(plannedRows, r.item_id, -1)
-                .map((p) => updateItem(p.item_id, { sort_order: p.sort_order }))))}>
-              <ArrowUpIcon size={14} aria-hidden="true" />
-            </RowButton>
-            <RowButton aria-label="Flyt ned" disabled={busy !== null || pos >= plannedRows.length}
-              onClick={() => run(`down-${r.item_id}`, () => Promise.all(movePatches(plannedRows, r.item_id, 1)
-                .map((p) => updateItem(p.item_id, { sort_order: p.sort_order }))))}>
-              <ArrowDownIcon size={14} aria-hidden="true" />
-            </RowButton>
+            <div className="flex flex-col gap-1 sm:flex-row sm:gap-1.5">
+              <RowButton aria-label="Flyt op" disabled={busy !== null || pos <= 1} onClick={() => move(r, -1)}>
+                <ArrowUpIcon size={14} aria-hidden="true" />
+              </RowButton>
+              <RowButton aria-label="Flyt ned" disabled={busy !== null || pos >= plannedRows.length} onClick={() => move(r, 1)}>
+                <ArrowDownIcon size={14} aria-hidden="true" />
+              </RowButton>
+            </div>
           </div>
         );
       },
     },
-    { key: "flag", header: "Kontakt", fold: true, foldValue: (r) => r.flag_key ?? "", render: flagCell },
-    {
-      key: "actions", header: "", fold: true, foldValue: () => "",
-      render: (r) => (
-        <Actions>
-          <div className="w-[118px]">{statusSelect(r)}</div>
-          <RowButton disabled={busy !== null}
-            onClick={() => run(`hz-${r.item_id}`, () => updateItem(r.item_id, { horizon: r.horizon === "later" ? "next" : "later" }))}>
-            {r.horizon === "later" ? "Til Next" : "Til Later"}
-          </RowButton>
-          <RowButton onClick={() => setModal({ kind: "item", row: r })}>Ret</RowButton>
-          <RowButton onClick={() => setModal({ kind: "split", row: r })}>Del</RowButton>
-        </Actions>
-      ),
-    },
-  ];
-
-  const progressColumns = [
-    { key: "title", header: "Punkt", sticky: true, render: (r) => <TitleCell title={r.title_da || r.title_en}>{itemTags(r)}</TitleCell> },
-    {
-      key: "beta", header: "I beta siden", numeric: true,
+    flag: { key: "flag", header: "Kontakt", sortKey: "flag", compact: true, fold: true, foldValue: (r) => (r.flag_key ? flagKeyParts(r.flag_key) : ""), render: flagCell },
+    beta: {
+      key: "beta", header: "I beta siden", sortKey: "beta", numeric: true, compact: true,
       render: (r) => (r.beta_since ? <Num>{fmtDate(r.beta_since)}</Num> : <span className="text-cz-3">–</span>),
     },
-    { key: "flag", header: "Kontakt", render: flagCell },
-    {
-      key: "actions", header: "", fold: true, foldValue: () => "",
-      render: (r) => (
-        <Actions>
-          <div className="w-[118px]">{statusSelect(r)}</div>
-          <RowButton onClick={() => setModal({ kind: "item", row: r })}>Ret</RowButton>
-          <RowButton onClick={() => setModal({ kind: "split", row: r })}>Del</RowButton>
-        </Actions>
-      ),
+    date: {
+      key: "date", header: "Dato", sortKey: "date", numeric: true, compact: true,
+      render: (r) => {
+        const d = r.shipped_at ?? r.updated_at ?? r.created_at;
+        return d ? <Num>{fmtDate(d)}</Num> : <span className="text-cz-3">–</span>;
+      },
     },
-  ];
+    issue: {
+      key: "issue", header: "Issue", sortKey: "issue", numeric: true, compact: true,
+      render: (r) => (r.issue_ref ? <Num>#{r.issue_ref}</Num> : <span className="text-cz-3">–</span>),
+    },
+    actions: (render) => ({ key: "actions", header: "", compact: true, fold: true, foldValue: () => "", render: (r) => <Actions>{render(r)}</Actions> }),
+  };
 
-  const ideaColumns = [
-    { key: "rank", header: "", compact: true, render: (_r, i) => <span className="font-data tabular-nums text-cz-3">{i + 1}</span> },
-    { key: "title", header: "Idé", sticky: true, render: (r) => <TitleCell title={r.title_da || r.title_en}>{itemTags(r)}</TitleCell> },
-    { key: "idea", header: "God idé", numeric: true, render: (r) => <Num>{fmtScore(r.avg_idea)}</Num> },
-    { key: "importance", header: "Vigtighed", numeric: true, render: (r) => <Num>{fmtScore(r.avg_importance)}</Num> },
-    { key: "score", header: "Score", numeric: true, render: (r) => <Num>{fmtScore(r.steering_score, 1)}</Num> },
-    { key: "votes", header: "Stemmer", numeric: true, render: (r) => <Num>{fmtInt(r.votes)}</Num> },
-    {
-      key: "actions", header: "", fold: true, foldValue: () => "",
-      render: (r) => (
-        <Actions>
-          <RowButton disabled={busy !== null}
-            onClick={() => run(`plan-${r.item_id}`, () => updateItem(r.item_id,
-              { status: "planned", horizon: "next", sort_order: nextSortOrder(plannedRows) }))}>
-            Til planen
-          </RowButton>
-          <RowButton disabled={busy !== null} onClick={() => run(`hide-${r.item_id}`, () => updateItem(r.item_id, { approved: false }))}>
-            Tag af Vote
-          </RowButton>
-          <RowButton onClick={() => setModal({ kind: "item", row: r })}>Ret</RowButton>
-          <RowButton onClick={() => setModal({ kind: "split", row: r })}>Del</RowButton>
-        </Actions>
-      ),
-    },
-  ];
+  const editSplit = (r) => (
+    <>
+      <RowButton onClick={() => setModal({ kind: "item", row: r })}>Ret</RowButton>
+      <RowButton onClick={() => setModal({ kind: "split", row: r })}>Del</RowButton>
+    </>
+  );
 
-  const poolColumns = [
-    { key: "title", header: "Idé", sticky: true, render: (r) => <TitleCell title={r.title_da || r.title_en}>{itemTags(r)}</TitleCell> },
-    { key: "votes", header: "Spillere bag", numeric: true, render: (r) => <Num>{fmtInt(r.votes)}</Num> },
-    {
-      key: "actions", header: "", fold: true, foldValue: () => "",
-      render: (r) => (
-        <Actions>
-          <RowButton disabled={busy !== null} onClick={() => run(`show-${r.item_id}`, () => updateItem(r.item_id, { approved: true }))}>
-            Vis på Vote
-          </RowButton>
+  const ideaActions = col.actions((r) => (
+    <>
+      <RowButton disabled={busy !== null}
+        onClick={() => run(`plan-${r.item_id}`, () => updateItem(r.item_id,
+          { status: "planned", horizon: "next_week", sort_order: nextSortOrder(plannedRows) }))}>
+        Til planen
+      </RowButton>
+      {r.approved === false ? (
+        <RowButton disabled={busy !== null} onClick={() => run(`show-${r.item_id}`, () => updateItem(r.item_id, { approved: true }))}>
+          Vis på Vote
+        </RowButton>
+      ) : (
+        <RowButton disabled={busy !== null} onClick={() => run(`hide-${r.item_id}`, () => updateItem(r.item_id, { approved: false }))}>
+          Tag af Vote
+        </RowButton>
+      )}
+      {editSplit(r)}
+    </>
+  ));
+
+  const statusActions = col.actions((r) => (
+    <>
+      <div className="w-[104px]">{statusSelect(r)}</div>
+      {editSplit(r)}
+    </>
+  ));
+
+  const horizonActions = col.actions((r) => (
+    <>
+      <div className="w-[128px]">{horizonSelect(r)}</div>
+      {editSplit(r)}
+    </>
+  ));
+
+  const itemColumnsByTab = {
+    ideas: [col.rank, col.title("Idé"), col.horizon, col.idea, col.importance, col.score, col.votes, col.dontKnow, col.issue, ideaActions],
+    planned: [col.rank, col.title("Punkt", true), col.horizonEdit, col.importance, col.votes, col.dontKnow, col.own, col.flag, statusActions],
+    in_progress: [col.title("Punkt"), col.horizonEdit, col.votes, col.beta, col.flag, statusActions],
+    shipped: [col.title("Punkt"), col.date, col.importance, col.votes, col.flag,
+      col.actions((r) => (
+        <>
+          <div className="w-[104px]">{statusSelect(r)}</div>
           <RowButton onClick={() => setModal({ kind: "item", row: r })}>Ret</RowButton>
-        </Actions>
-      ),
-    },
-  ];
+        </>
+      ))],
+    y2027: [col.rank, col.title("Punkt", true), col.statusEdit, col.importance, col.votes, col.dontKnow, col.own, col.flag, horizonActions],
+    votes: [col.rank, col.title("Punkt"), col.status, col.horizon, col.votes, col.dontKnow, col.idea, col.importance, col.score,
+      col.actions((r) => <RowButton onClick={() => setModal({ kind: "item", row: r })}>Ret</RowButton>)],
+  };
 
   const issueColumns = [
+    col.rank,
     {
-      key: "title", header: "Fejl", sticky: true,
+      key: "title", header: "Fejl", sortKey: "title", sticky: true, compact: true,
       render: (r) => {
         const last = latest.get(r.issue_id);
         return (
@@ -326,36 +405,79 @@ export default function GrowthRoadmapTab() {
         );
       },
     },
-    { key: "step", header: "Trin", render: (r) => <IssueStepBadge status={r.status} /> },
-    { key: "reports", header: "Ramt", numeric: true, render: (r) => <Num>{fmtInt(r.reports)}</Num> },
-    { key: "days", header: "Åben i", numeric: true, render: (r) => <Num>{fmtInt(r.days_open)} dage</Num> },
-    {
-      key: "actions", header: "", fold: true, foldValue: () => "",
-      render: (r) => (
-        <Actions>
-          <RowButton onClick={() => setModal({ kind: "update", row: r, focus: "update" })}>Ny opdatering</RowButton>
-          <RowButton onClick={() => setModal({ kind: "update", row: r, focus: "step" })}>Trin</RowButton>
-          <RowButton onClick={() => setModal({ kind: "issue", row: r })}>Ret</RowButton>
-        </Actions>
-      ),
-    },
+    { key: "step", header: "Trin", sortKey: "status", render: (r) => <IssueStepBadge status={r.status} /> },
+    { key: "reports", header: "Ramt", sortKey: "reports", numeric: true, render: (r) => <Num>{fmtInt(r.reports)}</Num> },
+    { key: "days", header: "Åben i", sortKey: "days", numeric: true, render: (r) => <Num>{fmtInt(r.days_open)} dage</Num> },
+    col.actions((r) => (
+      <>
+        <RowButton onClick={() => setModal({ kind: "update", row: r, focus: "update" })}>Ny opdatering</RowButton>
+        <RowButton onClick={() => setModal({ kind: "update", row: r, focus: "step" })}>Trin</RowButton>
+        <RowButton onClick={() => setModal({ kind: "issue", row: r })}>Ret</RowButton>
+      </>
+    )),
   ];
+
+  const MOBILE_DEFAULTS = {
+    ideas: ["idea", "importance", "score"],
+    planned: ["importance", "votes", "own"],
+    in_progress: ["beta", "votes"],
+    shipped: ["date", "votes"],
+    issues: ["step", "reports", "days"],
+    y2027: ["importance", "votes", "own"],
+    votes: ["votes", "importance"],
+  };
+  const EMPTY = {
+    ideas: "Ingen idéer matcher.",
+    planned: "Ingen planlagte punkter matcher.",
+    in_progress: "Intet er i gang lige nu.",
+    shipped: "Intet færdigt matcher.",
+    issues: "Ingen kendte fejl matcher.",
+    y2027: "Intet er sat til 2027 endnu.",
+    votes: "Ingen punkter med stemmer matcher.",
+  };
+  const META = {
+    ideas: `Synlige idéer: ${visibleIdeaCount(rows)} (mål ca. ${IDEA_TARGET})`,
+    planned: "Vigtighed 1-6",
+    in_progress: `${counts.in_progress} punkter`,
+    shipped: `${counts.shipped} punkter`,
+    issues: "Flest ramte først",
+    y2027: `${counts.y2027} punkter`,
+    votes: "Flest stemmer først",
+  };
+  const activeLabel = ADMIN_TABS.find((t) => t.key === tab)?.label ?? "";
 
   const statItems = [
     { label: "Har stemt", value: fmtInt(stats?.voters), sub: stats ? `af ${fmtInt(stats.managed_teams)} hold` : undefined },
     { label: "Aktive 14 dage", value: fmtInt(stats?.voters_14d) },
-    { label: "Stemmer i alt", value: fmtInt(stats?.votes_total) },
+    { label: "Stemmer i alt", value: fmtInt(stats?.votes_total), sub: stats ? `${fmtInt(dontKnowTotal(rows))} Ved ikke` : undefined },
     { label: "Har svaret på alt", value: fmtInt(stats?.voted_all) },
   ];
 
+  // Status-filteret findes kun hvor fanen ikke allerede er afgrænset til én
+  // status: Stemmer og 2027 (alle statusser) og Kendte fejl (trin).
+  const statusOptions = isIssues
+    ? ISSUE_STATUSES.map((s) => [s, ISSUE_STATUS_LABELS[s]])
+    : tab === "votes" || tab === "y2027" ? ROADMAP_STATUSES.map((s) => [s, STATUS_LABELS[s]]) : null;
+
   // DataTable's SCROLLER lægger på desktop et loft på 100dvh - 240px med egen
-  // lodret scroll (#4747), så planen (13 rækker) blev skåret midt i række 7.
-  // Fanen er seks tabeller under hinanden: her scroller SIDEN, aldrig en tabel.
-  // `[&>div>div]` rammer SCROLLER-div'en (className > WRAP > SCROLLER) og vinder
-  // på specificitet over media-query-loftet; vandret scroll er uændret.
-  const table = (props) => (loading ? <TableSkeleton /> : (
-    <DataTable rowKey={(r) => r.item_id ?? r.issue_id} className={UNBOUNDED} {...props} />
-  ));
+  // lodret scroll (#4747), så lange lister blev skåret midt i en række. Her
+  // scroller SIDEN, aldrig tabellen. `[&>div>div]` rammer SCROLLER-div'en
+  // (className > WRAP > SCROLLER) og vinder på specificitet over
+  // media-query-loftet; vandret scroll er uændret.
+  const table = loading ? <TableSkeleton /> : (
+    <DataTable
+      rowKey={(r) => r.item_id ?? r.issue_id}
+      className={UNBOUNDED}
+      label={activeLabel}
+      columns={isIssues ? issueColumns : itemColumnsByTab[tab]}
+      rows={visibleRows}
+      sort={sort.key}
+      sortDir={sort.dir}
+      onSort={onSort}
+      mobileDefaults={MOBILE_DEFAULTS[tab]}
+      empty={filtersActive ? "Ingen rækker matcher filtrene." : EMPTY[tab]}
+    />
+  );
 
   return (
     <div className="space-y-4">
@@ -395,51 +517,49 @@ export default function GrowthRoadmapTab() {
           </Section>
 
           <Section>
-            <SectionHeader title="Planen, som spillerne vil have den" meta="Vigtighed 1-6" />
-            {table({
-              label: "Planen, som spillerne vil have den", columns: planColumns, rows: plan,
-              mobileDefaults: ["importance", "votes", "own"], empty: "Ingen planlagte punkter endnu.",
-            })}
-          </Section>
-
-          <Section>
-            <SectionHeader title="I gang" meta={`${inProgress.length} punkter`} />
-            {table({
-              label: "I gang", columns: progressColumns, rows: inProgress,
-              mobileDefaults: ["beta", "flag"], empty: "Intet er i gang lige nu.",
-            })}
-          </Section>
-
-          <Section>
-            <SectionHeader title="Idéer" meta="God idé × vigtighed" />
-            {table({
-              label: "Idéer", columns: ideaColumns, rows: ideas,
-              mobileDefaults: ["idea", "importance", "score"], empty: "Ingen synlige idéer på Vote.",
-            })}
-          </Section>
-
-          <Section>
-            <SectionHeader title="Idé-pulje" meta={`Synlige idéer: ${visibleIdeaCount(rows)} (mål ca. ${IDEA_TARGET})`} />
-            {table({
-              label: "Idé-pulje", columns: poolColumns, rows: pool,
-              mobileDefaults: ["votes"], empty: "Puljen er tom. Nye idéer oprettes skjult med Nyt punkt.",
-            })}
-          </Section>
-
-          <Section>
-            <SectionHeader title="Kendte fejl: bekræftet" meta="Flest ramte først" />
-            {table({
-              label: "Kendte fejl, bekræftet", columns: issueColumns, rows: issueGroups.confirmed,
-              mobileDefaults: ["step", "reports", "days"], empty: "Ingen bekræftede, åbne fejl.",
-            })}
-          </Section>
-
-          <Section>
-            <SectionHeader title="Kendte fejl: meldt ind, tjekkes" meta="Flest ramte først" />
-            {table({
-              label: "Kendte fejl, meldt ind", columns: issueColumns, rows: issueGroups.checking,
-              mobileDefaults: ["step", "reports", "days"], empty: "Intet meldt ind, der venter på et tjek.",
-            })}
+            <Tabs value={tab} onChange={setTab}>
+              <TabList label="Roadmap-faner">
+                {ADMIN_TABS.map((t) => (
+                  <Tab key={t.key} value={t.key}>
+                    {t.label} <span className="ms-1 font-data text-xs tabular-nums text-cz-3">{loading ? "" : counts[t.key]}</span>
+                  </Tab>
+                ))}
+              </TabList>
+              {ADMIN_TABS.map((t) => (
+                <TabPanel key={t.key} value={t.key} className="space-y-3 pt-4">
+                  <SectionHeader title={t.label} meta={META[t.key]} />
+                  <div className="flex flex-wrap items-end gap-2" role="group" aria-label="Filtre">
+                    <Select size="sm" aria-label="Filtrer på område" value={filters.area} onChange={(e) => setFilter("area", e.target.value)}>
+                      <option value="">Alle områder</option>
+                      {Object.entries(AREA_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </Select>
+                    {statusOptions && (
+                      <Select size="sm" aria-label="Filtrer på status" value={filters.status} onChange={(e) => setFilter("status", e.target.value)}>
+                        <option value="">{isIssues ? "Alle åbne trin" : "Alle statusser"}</option>
+                        {statusOptions.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                      </Select>
+                    )}
+                    {!isIssues && (
+                      <Select size="sm" aria-label="Filtrer på horisont" value={filters.horizon} onChange={(e) => setFilter("horizon", e.target.value)}>
+                        <option value="">Alle horisonter</option>
+                        {HORIZONS.map((h) => <option key={h} value={h}>{HORIZON_LABELS[h]}</option>)}
+                      </Select>
+                    )}
+                    <div className="w-[120px]">
+                      <Input size="sm" inputMode="numeric" aria-label="Filtrer på issue-nummer" placeholder="Issue #"
+                        value={filters.issue} onChange={(e) => setFilter("issue", e.target.value)} />
+                    </div>
+                    {filtersActive && (
+                      <Button variant="secondary" size="sm" type="button"
+                        onClick={() => setFilters({ area: "", status: "", horizon: "", issue: "" })}>
+                        Nulstil filtre
+                      </Button>
+                    )}
+                  </div>
+                  {t.key === tab && table}
+                </TabPanel>
+              ))}
+            </Tabs>
           </Section>
         </SectionStack>
       )}

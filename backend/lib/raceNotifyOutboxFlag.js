@@ -1,7 +1,7 @@
 // #3624: styrer om loebs-afslutningen AFLEVERER den eksterne resultat-notifikation
 // til race_notify_outbox (og lader et selvstaendigt tick sende den) i stedet for at
 // sende den synkront midt i den blokerende afviklingssti. Bor i app_config (samme
-// moenster som raceFinalizeResumableFlag.js/autoPrizeFlag.js) → flippes runtime uden
+// moenster som raceFinalizeResumableFlag.ts/autoPrizeFlag.js) → flippes runtime uden
 // re-deploy, og kan slaas fra igen i samme sekund hvis en besked udebliver.
 //
 // Fail-safe: fejl/fravaer → false. Med flaget OFF skrives der INTET til koen og

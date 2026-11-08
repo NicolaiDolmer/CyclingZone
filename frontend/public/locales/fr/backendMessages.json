@@ -306,6 +306,10 @@
       "title": "L'assistant a rempli ton effectif",
       "message": "Ton assistant a composé ton effectif pour {race}. Tu n'avais aucune sélection. Jette un œil et modifie-la si tu veux."
     },
+    "roadmapDelivered": {
+      "title": "Quelque chose pour lequel tu as voté est en ligne",
+      "message": "Tu as voté haut pour {item}, et c'est en ligne maintenant. Merci de m'aider à choisir ce qu'il faut construire."
+    },
     "riderRetired": {
       "title": "{name} a pris sa retraite",
       "message": "{name} a pris sa retraite du cyclisme professionnel à {age} ans. Sa place dans ton effectif est maintenant libre."
@@ -331,6 +335,7 @@
         "title": "Mission de détection prête",
         "messageSingle": "Ta mission de détection a trouvé {count} coureur. Voir la présélection.",
         "messageMulti": "Ta mission de détection a trouvé {count} coureurs. Voir la présélection.",
+        "messageNoCount": "Ta mission de détection est prête. Voir la présélection.",
         "titleEmpty": "Mission de détection : aucun résultat",
         "messageEmpty": "Ton recruteur a cherché mais n'a trouvé aucun coureur correspondant à tes critères."
       }

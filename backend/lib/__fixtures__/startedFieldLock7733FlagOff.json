@@ -1,0 +1,25 @@
+{
+  "sourceCommit": "eb8c71d3d5d35e0631cc736e0a4972a599cc6318",
+  "note": "#7733: simulateStageByIndex og loadEntrantsForRace med hold og ryttere der har skiftet tilstand midt i loebet, paa et fast ur, skrevet fra merge-basen foer kontakten. Kun hashes og antal. Genereres ALDRIG med den nye kode.",
+  "u23:stage2": {
+    "stageRiders": 7,
+    "stageRidersSha256": "fc1217ce24c7f5dc4ec05b951ff1625c4f2cbed76e0721c98eca23058c2d959e",
+    "resultRowsSha256": "cce4c87cc37cc9828abf835a4594366fc055b88896ee514e37f79d308f01d032",
+    "entrants": 7,
+    "entrantsSha256": "9349cb216579bd714eeb7fe5fbbbe234f34c4f8dbe38aa6f1e001d3319221c74"
+  },
+  "u23:stage3": {
+    "stageRiders": 7,
+    "stageRidersSha256": "fc1217ce24c7f5dc4ec05b951ff1625c4f2cbed76e0721c98eca23058c2d959e",
+    "resultRowsSha256": "61f36ecec0bd8e69d925405834d448c9156421da8c4dd3e3609bcf559b4b8b8f",
+    "entrants": 7,
+    "entrantsSha256": "9349cb216579bd714eeb7fe5fbbbe234f34c4f8dbe38aa6f1e001d3319221c74"
+  },
+  "senior:stage2": {
+    "stageRiders": 7,
+    "stageRidersSha256": "fc1217ce24c7f5dc4ec05b951ff1625c4f2cbed76e0721c98eca23058c2d959e",
+    "resultRowsSha256": "bb7c94dab00b32b381ca0f84a837ae1229f6f5d686e174a9d5ac11ef5a122637",
+    "entrants": 7,
+    "entrantsSha256": "9349cb216579bd714eeb7fe5fbbbe234f34c4f8dbe38aa6f1e001d3319221c74"
+  }
+}

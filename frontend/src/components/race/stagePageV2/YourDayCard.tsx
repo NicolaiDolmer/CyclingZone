@@ -5,10 +5,12 @@
 // Linjen er afledt af resultatet (vinder, margin, din bedste) og ikke af
 // loebsloggen: historien om HVORDAN etapen blev koert venter paa spor A's
 // kontrakt (#6350), indtil da staar den nuvaerende film under Standings.
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DAY_TOP_COUNT, DAY_TOP_COUNT_MOBILE, formatGap, yourDay, type DayRow, type DnfRowInput, type ResultRow } from "./stagePageV2Model.ts";
 import { parseGapSeconds } from "../../../lib/raceLiveStandings.js";
+import type { RiderWhy } from "../../../lib/riderWhyModel.ts";
+import { RiderWhyButton, RiderWhyLine } from "../RiderWhy.tsx";
 import { Button, Flag, RiderLink, Section, Segmented, SkeletonLines } from "./ui.ts";
 
 export interface CareerEvent { id: string | number; event_type: string; rider_id?: string | null; rider_name?: string | null; params?: { stageNumber?: number | null } | null }
@@ -20,13 +22,25 @@ const EVENT_LABEL_KEY: Record<string, string> = {
   club_milestone_win: "clubMilestoneWin",
 };
 
-function Rows({ rows, emptyText, mobileLimit }: { rows: DayRow[]; emptyText?: string; mobileLimit?: number }) {
+/** #7717: Hvorfor?-knappen. Sendes kun ind naar kontakten er taendt; null = ingen knap paa raekken. */
+export interface RowWhy {
+  /** Historien er ikke hentet endnu: saetningen venter, den siger ikke "ikke kendt". */
+  loading: boolean;
+  forRow: (row: DayRow) => RiderWhy | null;
+}
+
+function Rows({ rows, emptyText, mobileLimit, why = null }: { rows: DayRow[]; emptyText?: string; mobileLimit?: number; why?: RowWhy | null }) {
   const { t } = useTranslation("races");
+  const panelBase = useId();
+  const [openKey, setOpenKey] = useState<string | null>(null);
   if (!rows.length) return emptyText ? <p className="border-t border-cz-border py-2.5 text-sm text-cz-3">{emptyText}</p> : null;
   return (
     <ul>
-      {rows.map((r, i) => (
-        <li key={r.key} className={`min-h-11 items-center gap-2.5 border-t border-cz-border px-1 ${mobileLimit != null && i >= mobileLimit ? "hidden md:flex" : "flex"} ${r.mine ? "bg-cz-subtle" : ""}`}>
+      {rows.map((r, i) => {
+        const rowWhy = why?.forRow(r) ?? null;
+        const panelId = `${panelBase}-${r.key}`;
+        return (
+        <li key={r.key} className={`min-h-11 items-center gap-2.5 border-t border-cz-border px-1 ${rowWhy ? "flex-wrap" : ""} ${mobileLimit != null && i >= mobileLimit ? "hidden md:flex" : "flex"} ${r.mine ? "bg-cz-subtle" : ""}`}>
           <span className={`w-9 flex-none text-right font-data font-semibold tabular-nums ${r.status ? "text-2xs text-cz-3" : "text-sm text-cz-1"}`}
             title={r.status === "dns" ? t("detail.incidents.dnsTitle") : undefined}>
             {r.status === "dnf" ? t("detail.incidents.dnf") : r.status === "dns" ? t("detail.incidents.dns") : (r.rank ?? "-")}
@@ -41,8 +55,11 @@ function Rows({ rows, emptyText, mobileLimit }: { rows: DayRow[]; emptyText?: st
             <RiderLink id={r.riderId} className="min-w-0 flex-1 truncate text-sm font-semibold text-cz-1 hover:text-cz-accent-t">{r.name}</RiderLink>
           )}
           {!r.status && <span className="w-16 flex-none text-right font-data text-xs tabular-nums text-cz-2">{r.gap ?? ""}</span>}
+          {rowWhy && <RiderWhyButton open={openKey === r.key} panelId={panelId} name={r.name} onToggle={() => setOpenKey(openKey === r.key ? null : r.key)} />}
+          {rowWhy && openKey === r.key && <RiderWhyLine id={panelId} why={why?.loading ? null : rowWhy} />}
         </li>
-      ))}
+        );
+      })}
     </ul>
   );
 }
@@ -58,15 +75,19 @@ export interface YourDayCardProps {
   careerEvents: CareerEvent[];
   primaryAction: { label: string; onClick: () => void } | null;
   onOpenStandings: () => void;
+  /** #7717: null = kontakten er slukket, kortet er uaendret. */
+  why?: RowWhy | null;
 }
 
-export default function YourDayCard({ results, stageNumber, isStageRace, loaded, myTeamId, careerEvents, primaryAction, onOpenStandings, dnfRows = [] }: YourDayCardProps) {
+export default function YourDayCard({ results, stageNumber, isStageRace, loaded, myTeamId, careerEvents, primaryAction, onOpenStandings, dnfRows = [], why: whyRows = null }: YourDayCardProps) {
   const { t } = useTranslation(["races", "dashboard"]);
   const [cls, setCls] = useState<"stage" | "gc">("stage");
   const stageDay = yourDay(results, stageNumber, myTeamId, "stage", dnfRows);
   // Endagsloeb kan have resultatet som gc-raekker alene.
   const effectiveCls = !isStageRace && !stageDay.top.length ? "gc" : cls;
   const day = effectiveCls === "stage" ? stageDay : yourDay(results, stageNumber, myTeamId, "gc", dnfRows);
+  // #7717: forklaringen handler om etapen, saa den staar ikke ved det samlede klassement.
+  const rowWhy = !isStageRace || effectiveCls === "stage" ? whyRows : null;
   const winner = stageDay.winner ?? day.top[0] ?? null;
   const second = (stageDay.top.length ? stageDay.top : day.top)[1] ?? null;
 
@@ -88,7 +109,7 @@ export default function YourDayCard({ results, stageNumber, isStageRace, loaded,
     .slice(0, 2);
 
   return (
-    <Section aria-label={isStageRace ? t("stagePageV2.yourDay.title", { number: stageNumber }) : t("stagePageV2.yourDay.titleOneDay")}>
+    <Section data-race-section="your_day" aria-label={isStageRace ? t("stagePageV2.yourDay.title", { number: stageNumber }) : t("stagePageV2.yourDay.titleOneDay")}>
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <h2 className="m-0 flex-1 font-data text-[15px] font-semibold text-cz-1">
           {isStageRace ? t("stagePageV2.yourDay.title", { number: stageNumber }) : t("stagePageV2.yourDay.titleOneDay")}
@@ -114,7 +135,7 @@ export default function YourDayCard({ results, stageNumber, isStageRace, loaded,
             </div>
             <div>
               <div className="mb-1 font-data text-2xs font-semibold uppercase tracking-[.14em] text-cz-3">{t("stagePageV2.yourDay.yourRiders")}</div>
-              <Rows rows={day.mine} emptyText={t("stagePageV2.yourDay.noRiders")} />
+              <Rows rows={day.mine} emptyText={t("stagePageV2.yourDay.noRiders")} why={rowWhy} />
             </div>
           </div>
           {isStageRace && day.bestOverall && (

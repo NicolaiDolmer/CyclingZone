@@ -29,6 +29,7 @@ import RiderLink from "../components/RiderLink.jsx";
 import NationCell from "../components/rider/NationCell.jsx";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge.jsx";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale.jsx";
+import { coachInputFromView, potentialViewOf } from "../lib/potentialEstimateDisplay";
 import {
   Button, EmptyState, ErrorState, PageHeader, PageLoader, Section, SectionHeader, SectionStack,
   Segmented, InboxIcon,
@@ -292,10 +293,13 @@ function GraduateRow({ graduate, choice, onChoice, disabled, rowError, scouting,
   const estimate = scouting.estimateFor(g.riderId);
   const academyPrognosis = estimate?.academyPrognosis;
   const band = academyPrognosis ? academyPrognosis.band : (estimate?.hidden ? null : (estimate?.prog ?? estimate?.ceil ?? null));
+  // #6110: med tændt flag bygger trænerens ord på samme tal som rækken viser.
+  const estimateView = potentialViewOf(estimate);
+  const coachInput = estimateView ? coachInputFromView(estimateView) : null;
   const verdict = coachVerdictKey({
     rating: Number.isFinite(rating) ? rating : null,
-    band: band ?? null,
-    knowledgeStage: academyPrognosis?.stage ?? null,
+    band: coachInput ? coachInput.band : band ?? null,
+    knowledgeStage: coachInput ? coachInput.knowledgeStage : academyPrognosis?.stage ?? null,
     level: estimate?.level ?? null,
     maxLevel: scouting.maxLevel ?? null,
   });

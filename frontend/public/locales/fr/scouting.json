@@ -93,5 +93,18 @@
       "description": "Rien n'a été perdu. Les missions en cours de ton recruteur continuent. Réessaie.",
       "retry": "Réessayer"
     }
+  },
+  "potentialEstimate": {
+    "learningBody": "Sa première estimation arrive après ses premiers entraînements dans ton équipe.",
+    "notAFactLong": "Une estimation, pas une certitude. Même une lecture sûre peut tomber un peu à côté.",
+    "builtOnLabel": "Repose sur",
+    "builtOnOwn": "Son entraînement dans ton équipe",
+    "builtOnNamed": "{count, plural, one {# observation} other {# observations}} de {name} (recruteur de palier {tier})",
+    "builtOnDefault": "{count, plural, one {# observation} other {# observations}} du recruteur par défaut de ton équipe (note {overall})",
+    "nextLookLabel": "Une observation de plus",
+    "nextLookValue": "rend l'estimation plus sûre",
+    "chartLabel": "Estimation {value}",
+    "chartCaption": "Note enregistrée, puis la courbe vers l'estimation",
+    "chartLegend": "Courbe vers l'estimation"
   }
 }

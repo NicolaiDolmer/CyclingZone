@@ -183,6 +183,12 @@ export async function loadRaceDayRoleYield({ supabase, log = console, strict = f
   return Object.freeze({ ...params, roleDrivesBaseDay: true });
 }
 
+/** Samme betingelse for "Score B on" som applyDailyTick (devMult endelig og ikke negativ). */
+function scoreBDrivesTick(developmentScore) {
+  const devMult = developmentScore?.devMult;
+  return Number.isFinite(devMult) && devMult >= 0;
+}
+
 /**
  * Off-fokus-vaekst i enheder af en fokus-evnes vaekst (vaegt 1), PRAECIS som
  * applyDailyTick regner i den aktive tilstand:
@@ -190,13 +196,12 @@ export async function loadRaceDayRoleYield({ supabase, log = console, strict = f
  *   · Score B on: fokus-evner normaliseres (haard-multiplikatoren gaar ud) og ganges
  *     med devMult; off-fokus beholder offFocusMult og ganges med offFocusDevMult
  *     (eller devMult, naar den mangler).
- * Samme betingelse for "Score B on" som applyDailyTick (devMult endelig og >= 0).
  */
 export function raceDayBaseOffRatio(trainingCfg = TRAINING_CONFIG, developmentScore = null) {
   const off = Number(trainingCfg.offFocusMult);
   if (!(Number.isFinite(off) && off >= 0)) return 0;
-  const devMult = developmentScore?.devMult;
-  if (Number.isFinite(devMult) && devMult >= 0) {
+  if (scoreBDrivesTick(developmentScore)) {
+    const devMult = developmentScore.devMult;
     const offDev = Number.isFinite(developmentScore.offFocusDevMult) && developmentScore.offFocusDevMult >= 0
       ? developmentScore.offFocusDevMult : devMult;
     // devMult 0: fokus giver intet, vaegtene kan ikke flytte noget (bevar ratio 0).
@@ -286,6 +291,12 @@ export function raceDayRoleBonusWeights(profileType, role, leadShare, { roleDriv
 /**
  * Multiplikatoren pr. evne paa basis-dagens delta, saa rollens tillaeg laegges oven
  * paa haard-dagen. Den praecise model: balance-internals/5950 (privat).
+ *
+ * #7584: tillaegget regnes pr. evne i tick'ets faktiske enhed. Under Score B normaliserer
+ * applyDailyTick kun fokus-evnerne, saa off-fokus-evnerne (lederskab, aggression, en
+ * hjaelpers stoette-evner) skal regnes ud fra samme forhold som basis-dagen
+ * (raceDayBaseOffRatio). Ellers faar de et andet tillaeg end vaegten siger, og roller med
+ * off-fokus-evner faar mere i alt end D3 variant A tillader. Score B off = uaendret regning.
  * @returns {Record<string, number>}
  */
 export function raceDayRoleYieldMultipliers({
@@ -297,11 +308,17 @@ export function raceDayRoleYieldMultipliers({
   const hardFocus = Number(trainingCfg.focusGrowthMult?.[RACE_DAY_ROLE_BASE_INTENSITY]);
   if (!Number.isFinite(hardFocus) || hardFocus <= 0) return {};
   const weights = raceDayRoleBonusWeights(profileType, role, params.leadShare, { roleDrivesBaseDay: params.roleDrivesBaseDay === true });
+  const scoreBOffRatio = scoreBDrivesTick(developmentScore) ? raceDayBaseOffRatio(trainingCfg, developmentScore) : null;
   const out = {};
   for (const [ability, w] of Object.entries(weights)) {
     const baseMult = abilityMult(ability, program, trainingCfg);
     if (!(baseMult > 0) || !(w > 0)) continue;
-    const mult = 1 + (params.stageBonus * w * hardFocus) / baseMult;
+    const scoreBOffFocus = scoreBOffRatio !== null && !program.focusAbilities.includes(ability);
+    // Forhold 0 under Score B: basis-dagen giver intet at gange paa, saa ingen multiplikator.
+    if (scoreBOffFocus && !(scoreBOffRatio > 0)) continue;
+    const mult = scoreBOffFocus
+      ? 1 + (params.stageBonus * w) / scoreBOffRatio
+      : 1 + (params.stageBonus * w * hardFocus) / baseMult;
     if (mult !== 1) out[ability] = mult;
   }
   return out;
@@ -315,10 +332,11 @@ export function raceDayRoleYieldMultipliers({
  */
 export function withRaceDayRoleYield(extraTickArgs, { params = null, profileType = null, role = null } = {}) {
   if (!params) return extraTickArgs;
+  const developmentScore = extraTickArgs?.developmentScore ?? null;
   const program = raceDayRoleBaseProgram(profileType, {
-    role, roleDrivesBaseDay: params.roleDrivesBaseDay === true, developmentScore: extraTickArgs?.developmentScore ?? null,
+    role, roleDrivesBaseDay: params.roleDrivesBaseDay === true, developmentScore,
   });
-  const roleMult = raceDayRoleYieldMultipliers({ params, profileType, role, program });
+  const roleMult = raceDayRoleYieldMultipliers({ params, profileType, role, program, developmentScore });
   const prior = extraTickArgs?.abilityYieldMult ?? null;
   const abilityYieldMult = { ...roleMult };
   for (const [ability, m] of Object.entries(prior ?? {})) {

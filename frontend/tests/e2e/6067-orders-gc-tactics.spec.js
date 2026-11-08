@@ -143,7 +143,7 @@ test("orders_gc_v1-løb: regel-linje, jagt-stance, GC-note og break-note før ge
     await expect(stances.getByRole("button", { name: label, exact: true })).toBeVisible();
   }
   await expect(stances.getByRole("button", { name: "Vurder undervejs", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await expect(panel.getByText("Holdet kan reagere begrænset på en alvorlig GC-trussel med de ledige ryttere.")).toBeVisible();
+  await expect(panel.getByText("Holdet reagerer på en alvorlig GC-trussel med de ledige ryttere, medmindre du overlader jagten til andre.")).toBeVisible();
   await expect(panel.getByTestId("orders-gc-break-note"))
     .toHaveText("Kaptajn, spurt-kaptajn og hjælper går kun i morgenudbrud med Forsøg udbrud valgt.");
 

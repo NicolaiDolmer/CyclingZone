@@ -1,6 +1,6 @@
 // #1099 spec §8: `rider_reputation_enabled` i `app_config` styrer omdømme-
 // systemets udrulning i TRE stadier — samme app_config-mønster som
-// `raceFinalizeResumableFlag.js`, men med et andet mellemstadie:
+// `raceFinalizeResumableFlag.ts`, men med et andet mellemstadie:
 //
 //   off     (default)  intet beregnes, intet skrives, ingen læser.
 //   shadow             hændelser + riders.reputation SKRIVES ved løbsafslutning,

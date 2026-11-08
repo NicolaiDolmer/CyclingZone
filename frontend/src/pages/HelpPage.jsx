@@ -354,8 +354,10 @@ const SECTION_DEFS = [
       { id: "agingV2", kind: "text" },
       { id: "aiRidersV2", kind: "text" },
       { id: "potentialBestRole", kind: "text" },
+      { id: "potentialBestRoleEstimate", kind: "text" }, // #6110 tal + ord (HELP_BLOCK_FLAGS.riders)
       { id: "trainingFocus", kind: "text" },
       { id: "scouting", kind: "text" },
+      { id: "scoutingEstimate", kind: "text" }, // #6110 tal + ord (HELP_BLOCK_FLAGS.riders)
       { id: "u25u23", kind: "text" },
     ],
   },
@@ -443,6 +445,7 @@ const SECTION_DEFS = [
       // først når academy_intake_pull_enabled er tændt.
       { id: "intakeProfile", kind: "text", flag: "academy_intake_pull_enabled" },
       { id: "prognosisTraining", kind: "text", flag: "academy_intake_pull_enabled" },
+      { id: "prognosisTrainingEstimate", kind: "text" }, // #6110 tal + ord (HELP_BLOCK_FLAGS.academy)
       { id: "signingProspects", kind: "steps" },
       { id: "academySize", kind: "text" },
       { id: "dailyTrainingBoost", kind: "text" },
@@ -488,6 +491,7 @@ const SECTION_DEFS = [
       { id: "liveTracksStatus", kind: "text" },
       { id: "staffSynergy", kind: "text" },
       { id: "hireChiefScout", kind: "text" },
+      { id: "hireChiefScoutEstimate", kind: "text" }, // #6110 tal + ord (HELP_BLOCK_FLAGS.facilities)
       { id: "coachingGroups", kind: "text" },
       { id: "costs", kind: "text" },
       { id: "staffOverview", kind: "text" },
@@ -571,9 +575,12 @@ const FAQ_KEYS = [
   "watchlistCounterFaq",
   "scoutVisibilityFaq",
   "scoutNetworkOwnRidersFaq",
+  "scoutNetworkOwnRidersEstimateFaq",
   "scoutChangeRecalcFaq",
+  "scoutChangeEstimateFaq",
   "typeRatingScaleFaq",
   "scoutedBandGuaranteeFaq",
+  "scoutedEstimateGuaranteeFaq",
   "scoutHistoryFaq",
   "watchlistSaleNotificationFaq",
   "riderSalaryView",
@@ -586,6 +593,7 @@ const FAQ_KEYS = [
   "riderAbilities",
   "riderRating",
   "developmentProjectionFaq",
+  "developmentProjectionEstimateFaq",
   "trainingFocusFaq",
   "restForDevelopedFaq",
   // #4261: løb-som-træning-FAQ — svar på fem konkrete spørgsmål fra Discord om
@@ -619,6 +627,8 @@ const FAQ_KEYS = [
   "raceJerseysFaq",
   "raceRouteRealismFaq",
   "dayFormFaq",
+  "dayWordsFaq",
+  "whyButtonFaq", // #7717
   "crashesFaq",
   "newPlayerEconomyFaq",
   "seasonChangeMoneyFaq",

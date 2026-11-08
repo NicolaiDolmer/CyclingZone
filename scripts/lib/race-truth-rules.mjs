@@ -24,6 +24,7 @@
 // tider, km-stempling), ikke motor-tuning.
 
 import { buildRaceStory, checkpointGapForRider } from "../../backend/lib/raceStory.js";
+import { withEventPlaces } from "../../backend/lib/raceTimeline.js";
 
 export const RULES = Object.freeze({
   R1: "En sat rytter er ikke i hovedgruppen eller frontgruppen",
@@ -265,7 +266,8 @@ export function replayTimeline(events = [], startlist = [], visit = () => {}) {
         // Et splits gap_seconds er afstanden til den gruppe det blev splittet fra.
         const delta = finite(p.gap_seconds);
         gaps.set(groupId, sourceGap + (delta ?? 0));
-        form(groupId, index, event, event.type);
+        // #6350: en sen halvdel af et split danner ikke gruppen.
+        if (!p.joined_late) form(groupId, index, event, event.type);
         for (const id of named) joinedAt.set(id, { km: place.km, exact: place.exact, index });
         break;
       }
@@ -368,9 +370,41 @@ export function ruleAbandonedGone(input) {
   return findings;
 }
 
-/** R3 (#6350): hentet før dannet (km/tid), eller en gruppe uden dannelse. */
-export function ruleCatchAfterFormation(input) {
+/**
+ * R3 (#6350): filmen som siden viser den (loggen læst gennem withEventPlaces) må
+ * ikke modsige sig selv. Et split står ikke efter sin gruppes kontakt, og en rytter
+ * står ikke i en gruppe før han er fri af den forrige.
+ */
+export function filmPlaceFindings(placed) {
   const findings = [];
+  const known = (placed ?? []).map((event, index) => ({ event, index, place: placeOf(event) })).filter(({ event, place }) => event && place.exact);
+  const contacts = known.filter(({ event }) => event.type === "breakaway_caught" || event.type === "group_merged");
+  const byPlace = [...contacts].sort((a, b) => a.place.km - b.place.km || a.index - b.index);
+  for (const { event, index, place } of known) {
+    if (event.type !== "peloton_splits") continue;
+    const groupId = str(event.params?.group_id);
+    const own = contacts.filter((c) => c.event.km === event.km && str(c.event.params?.group_id) === groupId);
+    if (own.length > 0) {
+      const contactKm = Math.min(...own.map((c) => c.place.km));
+      if (place.km > contactKm + ORDER_TOLERANCE_KM) findings.push(finding("R3", "split_after_group_contact", { index, km: place.km, group_id: groupId, contact_km: contactKm }));
+    }
+    // Gruppens egen linje: sammenlægninger videre er ikke et skift ud af en anden gruppe.
+    const line = new Set([groupId]);
+    for (const c of byPlace) {
+      if (line.has(str(c.event.params?.group_id)) && str(c.event.params?.into_group_id)) line.add(c.event.params.into_group_id);
+    }
+    for (const riderId of ids(event.params?.rider_ids)) {
+      const left = contacts.find((c) => !line.has(str(c.event.params?.group_id)) && ids(c.event.params?.rider_ids).includes(riderId)
+        && c.place.km > place.km + ORDER_TOLERANCE_KM && c.place.km < event.km);
+      if (left) findings.push(finding("R3", "rider_in_group_before_free", { index, km: place.km, group_id: groupId, rider_id: riderId, left_group_id: str(left.event.params?.group_id), left_km: left.place.km }));
+    }
+  }
+  return findings;
+}
+
+/** R3 (#6350): hentet før dannet (km/tid), en gruppe uden dannelse, eller en film der modsiger sig selv. */
+export function ruleCatchAfterFormation(input) {
+  const findings = filmPlaceFindings(withEventPlaces(input.events));
   const seen = new Set();
   const replay = replayTimeline(input.events, input.startlist, (event, index, view) => {
     if (event.type !== "breakaway_caught" && event.type !== "group_merged") return;
@@ -391,10 +425,10 @@ export function ruleCatchAfterFormation(input) {
     }));
   });
   for (const [groupId, ref] of replay.unformed) {
-    // Et uheldsoffers gruppe har heller ingen dannelse i loggen (#6350), men
-    // er en anden fejl end en helt ukendt gruppe; koden skiller dem ad.
-    const code = replay.incidentGroups.has(groupId) ? "incident_group_without_formation" : "group_without_formation";
-    findings.push(finding("R3", code, { index: ref.index, km: ref.km, group_id: groupId }));
+    // #6350: et uheldsoffers solo-gruppe er dannet af uheldet. Filmen fører den
+    // tilbage dertil (raceStory.js), så den er ikke en gruppe ud af ingenting.
+    if (replay.incidentGroups.has(groupId)) continue;
+    findings.push(finding("R3", "group_without_formation", { index: ref.index, km: ref.km, group_id: groupId }));
   }
   for (const [groupId, ref] of replay.referencedEarly) {
     findings.push(finding("R3", "referenced_before_formed", { index: ref.index, km: ref.km, group_id: groupId, formed_index: ref.formed_index }));
@@ -425,7 +459,10 @@ export function ruleSplitNeverAhead(input) {
 export function buildFilm(input) {
   const results = (input.stageRows ?? [])
     .filter((row) => typeof row.rider_id === "string" && typeof row.rank === "number")
-    .map((row) => ({ rider_id: row.rider_id, rank: row.rank }));
+    .map((row) => {
+      const gap = parseGapSeconds(row.finish_time);
+      return gap == null ? { rider_id: row.rider_id, rank: row.rank } : { rider_id: row.rider_id, rank: row.rank, gap_s: gap };
+    });
   return buildRaceStory({ events: input.events, timelineVersion: input.timelineVersion ?? null, results, startlist: input.startlist });
 }
 

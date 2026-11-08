@@ -23,7 +23,7 @@
 // adskilt) i env. Exit 0 = ok, 1 = afvist.
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { loadBuildStop, classifyWork } from './lib/build-stop.mjs';
+import { loadBuildStop, classifyWork, withIssueMeta, ghIssueMeta } from './lib/build-stop.mjs';
 
 export const REPO = 'NicolaiDolmer/CyclingZone';
 
@@ -81,7 +81,7 @@ export function isDependabot({ author, branch }) {
 }
 
 // -> { ok, rule, issues, message }
-export function evaluatePr({ body, branch, author, files = [], cfg }) {
+export function evaluatePr({ body, branch, author, files = [], cfg, fetchMeta = null }) {
   if (!cfg.active) return { ok: true, rule: 'inactive', issues: [], message: 'Byggestop er ikke aktivt.' };
   if (isDependabot({ author, branch })) return { ok: true, rule: 'dependabot', issues: [], message: 'Dependabot er undtaget.' };
 
@@ -91,7 +91,8 @@ export function evaluatePr({ body, branch, author, files = [], cfg }) {
   }
 
   const issues = [...new Set([...issuesFromBody(body), ...issuesFromBranch(branch)])];
-  const classified = issues.map(n => ({ issue: n, ...classifyWork({ issue: n }, cfg) }));
+  // #7336 loft: label/titel/forælder hentes kun for issues uden for listerne.
+  const classified = withIssueMeta(issues.map(n => ({ issue: n })), cfg, fetchMeta).map(t => ({ issue: t.issue, ...classifyWork(t, cfg) }));
   const allowed = classified.filter(c => c.cls !== 'new');
   if (allowed.length) {
     return { ok: true, rule: 'listed', issues, message: `Tilladt via ${allowed.map(c => `#${c.issue} (${c.cls})`).join(', ')}.` };
@@ -102,7 +103,7 @@ export function evaluatePr({ body, branch, author, files = [], cfg }) {
     ok: false,
     rule: 'blocked',
     issues,
-    message: `Byggestop aktivt siden ${cfg.since}: ${seen} staar paa finishList, cleanupList eller brandList i scripts/build-stop.json. ` +
+    message: `Byggestop aktivt siden ${cfg.since}: ${seen} staar paa finishList, cleanupList eller brandList i scripts/build-stop.json${cfg.loft ? ', hoerer til et loft-omraade eller har en brand-label' : ''}. ` +
       'Er det fase 1-arbejde, sa referer det rigtige issue. Er det brand (live hos spillerne og forkert), sa tilfoej issuet til brandList med en begrundelse. Ellers hoerer det i triage:new.',
   };
 }
@@ -115,6 +116,7 @@ function main() {
     author: process.env.PR_AUTHOR,
     files: String(process.env.CHANGED_FILES || '').split('\n'),
     cfg,
+    fetchMeta: ghIssueMeta,
   });
   console.log(`[build-stop-pr] ${res.ok ? 'OK' : 'AFVIST'} (${res.rule}): ${res.message}`);
   if (!res.ok) {

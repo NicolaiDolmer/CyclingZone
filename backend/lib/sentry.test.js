@@ -352,3 +352,109 @@ test("setupSentryExpressErrorHandler (Sentry disabled) — monterer ingen middle
   setupSentryExpressErrorHandler({ use: () => { used++; } }, { shouldHandleError: () => true });
   assert.equal(used, 0);
 });
+
+// Documentation-derived fixtures, not captured Sentry events (read access unavailable).
+// https://developers.cloudflare.com/fundamentals/reference/error-responses/
+function cloudflareProblem(status = 521, overrides = {}) {
+  return {
+    type: `https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-${status}/`,
+    title: `Error ${status}: provider summary`,
+    status,
+    detail: "Provider explanation",
+    instance: "aaaaaaaaaaaaaaaa",
+    error_code: status,
+    ray_id: "aaaaaaaaaaaaaaaa",
+    timestamp: "2026-10-02T19:26:25Z",
+    cloudflare_error: true,
+    ...overrides,
+  };
+}
+
+
+test("Sentry-only problem-JSON has stable titles with untouched Error diagnostics and frames", () => {
+  for (const [status, label] of [[521, "Web server is down"], [522, "Connection timed out"], [525, "SSL handshake failed"]]) {
+    const events = [];
+    for (const id of ["aaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbb"]) {
+      const raw = JSON.stringify(cloudflareProblem(status, { instance: id, ray_id: id, timestamp: id === "aaaaaaaaaaaaaaaa" ? "2026-10-02T19:26:25Z" : "2026-10-02T19:27:25Z" }));
+      const error = Object.assign(new Error(raw, { cause: new Error(raw) }), { code: 0, details: "private details", hint: "private hint" });
+      const descriptors = Object.getOwnPropertyDescriptors(error);
+      assert.equal(toSentryError(error), error);
+      const frames = [{ filename: "original.js", function: "caller", lineno: 17 }];
+      const event = { message: raw, exception: { values: [
+        { type: "Error", value: raw, stacktrace: { frames } },
+        { type: "Error", value: 'updateStandings: ' + raw, stacktrace: { frames } },
+      ] } };
+      assert.equal(normalizeEventMessages(event), event);
+      const expected = 'Supabase unavailable (' + status + ' ' + label + ')';
+      assert.equal(event.message, expected);
+      assert.equal(event.exception.values[0].value, expected);
+      assert.equal(event.exception.values[1].value, 'updateStandings: ' + expected);
+      assert.equal(event.exception.values[0].stacktrace.frames, frames);
+      assert.deepEqual(Object.getOwnPropertyDescriptors(error), descriptors);
+      assert.equal(error.cause.message, raw);
+      assert.doesNotMatch(JSON.stringify(event), /private|ray_id|timestamp|instance|provider summary/);
+      events.push(event);
+    }
+    assert.equal(getEventGroupKey(events[0]), getEventGroupKey(events[1]));
+  }
+});
+
+test("Sentry-only problem-JSON rejects malformed, unsupported and ordinary application JSON", () => {
+  const valid = cloudflareProblem();
+  for (const raw of [
+    '{}', 'null', '[]', '{"status":521', JSON.stringify([valid]),
+    JSON.stringify({ message: "Application failure", status: 521 }),
+    JSON.stringify({ ...valid, type: "https://example.com/error-521/" }),
+    JSON.stringify({ ...valid, type: valid.type + '?token=private' }),
+    JSON.stringify({ ...valid, status: "521" }),
+    JSON.stringify({ ...valid, error_code: 522 }),
+    JSON.stringify({ ...valid, cloudflare_error: false }),
+    JSON.stringify(cloudflareProblem(523)),
+    JSON.stringify({ ...valid, title: null }),
+    JSON.stringify({ ...valid, detail: null }),
+    JSON.stringify({ ...valid, instance: null }),
+    'https://private.example/token: ' + JSON.stringify(valid),
+  ]) {
+    const event = { message: raw, exception: { values: [{ value: raw }] } };
+    normalizeEventMessages(event);
+    assert.equal(event.message, raw);
+    assert.equal(event.exception.values[0].value, raw);
+  }
+});
+
+test("Sentry-only JSON handles existing colon-separated call-site labels", () => {
+  for (const prefix of [
+    "resolveAuctionConfig: could not read auction_timing_config: ",
+    "contractBatchExtension: could not load active season: ",
+  ]) {
+    const events = [];
+    for (const ray_id of ["aaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbb"]) {
+      const raw = prefix + JSON.stringify(cloudflareProblem(521, { ray_id, instance: ray_id }));
+      const frames = [{ filename: "original.js", function: "caller", lineno: 17 }];
+      const stacktrace = { frames };
+      const event = { message: raw, exception: { values: [{ type: "Error", value: raw, stacktrace }] } };
+      normalizeEventMessages(event);
+      const expected = prefix + "Supabase unavailable (521 Web server is down)";
+      assert.equal(event.message, expected);
+      assert.equal(event.exception.values[0].value, expected);
+      assert.equal(event.exception.values[0].stacktrace, stacktrace);
+      assert.equal(event.exception.values[0].stacktrace.frames, frames);
+      events.push(event);
+    }
+    assert.equal(getEventGroupKey(events[0]), getEventGroupKey(events[1]));
+  }
+  for (const prefix of [
+    "https://private.example/token: ",
+    "resolveAuctionConfig: token=private: ",
+    "resolveAuctionConfig:\ncould not read config: ",
+    "resolveAuctionConfig:\tcould not read config: ",
+    "a".repeat(81) + ": ",
+    "resolveAuctionConfig:: ",
+  ]) {
+    const raw = prefix + JSON.stringify(cloudflareProblem());
+    const event = { message: raw, exception: { values: [{ value: raw }] } };
+    normalizeEventMessages(event);
+    assert.equal(event.message, raw);
+    assert.equal(event.exception.values[0].value, raw);
+  }
+});

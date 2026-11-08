@@ -18,6 +18,20 @@
     "onlyUnrated": "Seulement ce que je n'ai pas noté",
     "rated": "Noté {rated} sur {total}"
   },
+  "search": {
+    "placeholder": "Rechercher plans, idées, problèmes et terminé",
+    "ariaLabel": "Rechercher dans la feuille de route",
+    "title": "Résultats de recherche",
+    "where": {
+      "beta": "En bêta",
+      "in_progress": "En cours",
+      "planned": "Prévu",
+      "idea": "Idée",
+      "issue": "Problème connu",
+      "done_feature": "Terminé",
+      "done_fix": "Corrigé"
+    }
+  },
   "tabs": {
     "label": "Sections de la feuille de route",
     "plan": "Plan",
@@ -29,14 +43,22 @@
   "voting": {
     "idea": "Bonne idée ?",
     "importance": "Important pour toi ?",
+    "dontKnow": "Je ne sais pas",
     "saved": "Enregistré",
     "error": "Ton vote n'a pas été enregistré. Réessaie."
   },
   "plan": {
-    "inProgress": "En cours",
-    "planned": "Prévu",
+    "title": "Quand ça arrive",
     "plannedHint": "À peu près dans cet ordre",
-    "later": "Plus tard · {count} de plus"
+    "badgeInProgress": "En cours",
+    "horizon": {
+      "this_week": "Cette semaine",
+      "next_week": "La semaine prochaine",
+      "season": "Saison {season}",
+      "quarter": "Q{quarter} {year}",
+      "year": "{year}",
+      "unscheduled": "Ouvert au vote"
+    }
   },
   "beta": {
     "inBeta": "En bêta maintenant",
@@ -55,6 +77,7 @@
     "hint": "Tes notes décident de ce qui passe dans le plan",
     "areaLabel": "Domaine",
     "all": "Tout",
+    "unrated": "{unrated} sur {total} attendent ta réponse",
     "forum": "Une idée à toi ? Poste-la dans le forum"
   },
   "issues": {
@@ -78,17 +101,31 @@
     "reported": "Signalé",
     "reportError": "Ça n'a pas été enregistré. Réessaie.",
     "updated": "mis à jour le {date}",
-    "reportedByPlayers": "signalé par des joueurs",
     "earlierUpdates": "Mises à jour précédentes · {count}",
     "dismissed": "Vérifié, aucun problème trouvé · 14 derniers jours",
-    "fixed": "Corrigé ces 14 derniers jours"
+    "fixed": "Corrigé ces 14 derniers jours",
+    "reportedOn": "signalé par des joueurs le {date}",
+    "timeline": {
+      "label": "Statut",
+      "reported": "Signalé",
+      "confirmed": "Confirmé",
+      "fixing": "Correction en cours",
+      "fixed": "Corrigé",
+      "dismissed": "Aucun problème trouvé",
+      "notYet": "pas encore"
+    }
   },
   "done": {
     "title": "Terminé",
     "hint": "Du plus récent au plus ancien",
     "feature": "Fonctionnalité",
     "fix": "Correction",
-    "showMore": "Afficher plus"
+    "showMore": "Afficher plus",
+    "recent": "Livré ces 7 derniers jours",
+    "earlier": "Avant",
+    "patchNote": "Note de mise à jour · {date}",
+    "allPatchNotes": "Toutes les notes de mise à jour",
+    "youVoted": "Tu as voté"
   },
   "empty": {
     "plan": {
@@ -127,6 +164,11 @@
       "title": "Voir ce qui est prévu",
       "description": "Rien n'est encore terminé.",
       "action": "Aller au plan"
+    },
+    "search": {
+      "title": "Essayez un autre mot",
+      "description": "Rien dans la feuille de route ne correspond à \"{query}\".",
+      "action": "Effacer la recherche"
     }
   },
   "engines": {

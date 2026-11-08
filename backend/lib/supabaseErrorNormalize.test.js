@@ -403,3 +403,49 @@ test("giver op efter retries og kaster normaliseret besked", async () => {
   );
   assert.equal(attempts, 3); // 1 initial + 2 retries
 });
+
+// Documentation-derived fixtures, not captured Sentry events (read access unavailable).
+// https://developers.cloudflare.com/fundamentals/reference/error-responses/
+function cloudflareProblem(status = 521, overrides = {}) {
+  return {
+    type: `https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-${status}/`,
+    title: `Error ${status}: provider summary`,
+    status,
+    detail: "Provider explanation",
+    instance: "aaaaaaaaaaaaaaaa",
+    error_code: status,
+    ray_id: "aaaaaaaaaaaaaaaa",
+    timestamp: "2026-10-02T19:26:25Z",
+    cloudflare_error: true,
+    ...overrides,
+  };
+}
+
+
+test("problem-JSON does not change application errors, codes or retry decisions", async () => {
+  const message = JSON.stringify(cloudflareProblem());
+  assert.equal(normalizeSupabaseErrorMessage(message), message);
+  const cause = new Error("original cause");
+  const error = Object.assign(new Error(message, { cause }), { code: 0, details: "private details", hint: "private hint" });
+  const descriptors = Object.getOwnPropertyDescriptors(error);
+  const wrapped = toSupabaseError(error);
+  assert.equal(wrapped.message, message);
+  assert.equal(wrapped.code, 0);
+  assert.equal(wrapped.cause, undefined);
+  assert.equal(wrapped.details, undefined);
+  assert.equal(wrapped.hint, undefined);
+  assert.equal(wrapped.cloudflare, undefined);
+  assert.deepEqual(Object.getOwnPropertyDescriptors(error), descriptors);
+  for (const input of [error, { message, code: 0, details: "private details", hint: "private hint" }]) {
+    let attempts = 0;
+    assert.equal(isTransientSupabaseError(input), false);
+    await assert.rejects(() => withSupabaseRetry(async () => { attempts++; throw input; }), (caught) => {
+      assert.equal(caught.message, message);
+      assert.equal(caught.code, 0);
+      if (input instanceof Error) assert.equal(caught, input);
+      return true;
+    });
+    assert.equal(attempts, 1);
+  }
+  assert.deepEqual(Object.getOwnPropertyDescriptors(error), descriptors);
+});

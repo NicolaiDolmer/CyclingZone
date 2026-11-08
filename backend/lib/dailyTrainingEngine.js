@@ -58,6 +58,8 @@ import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { isTrainingConditionPerDateEnabled, readConditionWriterFlag } from './trainingDateConditionFlag.js';
 import { isConditionModelV2Enabled, isRaceDateTrainingDayEnabled } from './conditionModelV2Flag.js';
 import { loadTeamMedicalBonus } from './medicalEffects.js';
+import { fatigueNowBeforeGameDay, slotFatiguesNow } from './riderFatigueNow.js'; // #7801
+import { isFatigueNow7801Enabled } from './riderFatigueNowFlag.js';
 import { settleTrainingDateCondition, canonicalRaceLoads } from './trainingDateCondition.js';
 import {
   TRAINING_RACE_DAY_CONFIG, resolveRaceDayBudgetDivisor, raceDaySeedKey, resolveTeamRaceDay,
@@ -74,8 +76,10 @@ import { notifyTrainingInjuries } from "./raceAvailabilityNotifications.js"; // 
 import { loadDevelopmentCurveB } from "./developmentCurveBFlag.ts"; // #3564 kurve B
 import { ensureCurveBIgnition, curveBTransitionForDate, loadCurveBTransitionRoster } from "./developmentCurveBTransition7382.ts"; // #7382 blød overgang
 import { loadRaceDayEffortByRider, raceDayIntentionYieldMultiplier } from "./raceDayIntentionYield.js"; // #6641 variant B
-import { loadRaceDayRoleYield, loadRaceDayRoleByRider, withRaceDayRoleYield } from "./raceDayRoleYield5950.js"; // #5950 haard dag + rolle
+import { loadRaceDayRoleYield, loadRaceDayRoleByRider } from "./raceDayRoleYield5950.js"; // #5950 haard dag + rolle (kaldes via withRaceDayRoleYieldXp)
 import { loadDevelopmentScoreB, developmentTickArgs } from "./developmentScoreWiring.js"; // #6950 Udviklingsscore B
+import { loadDevelopmentXp, withRaceDayRoleYieldXp } from "./developmentXpFlag.ts"; // #6110 XP-modellen (slukket)
+import { capXpTickGainsPerDate } from "./developmentXp.ts"; // #6110: maks +1 pr. dato i XP
 import { loadRaceCatchUp } from "./raceCatchUpWiring.js"; // #6950 catch-up via loeb
 import { assessIllness } from "./conditionIllness.js"; // #6938 sygdom af langvarig ekstrem traethed
 import { CURRENT_RACE_RULES_REVISION, isS5ProfilesV3OrLater } from "./raceEngineRulesRevision.ts";
@@ -519,6 +523,8 @@ export async function runTeamTrainingDay({
   // #6984: v2 laeses kun naar dato-modellen ejer tilstanden (ellers ingen ekstra read).
   const conditionModelV2On = conditionPerDate ? await isConditionModelV2Enabled(supabase) : false;
   const raceDateTrainingDayOn = conditionModelV2On ? await isRaceDateTrainingDayEnabled(supabase) : false; // #7536
+  // #7801: reglerne og skaderisikoen på trætheden lige nu. Kun under v2 (ellers ingen read).
+  const fatigueNowOn = conditionModelV2On ? await isFatigueNow7801Enabled(supabase) : false;
   if(conditionPerDate && eligibleRiderIds==null) throw new Error('Normalized training requires an explicit ready-rider list');
   let dateReceipts = [];
   let dateWork = null;
@@ -791,14 +797,16 @@ export async function runTeamTrainingDay({
   ]);
   // #5950: loebsdag = haard dag + rolle-vaegtet tillaeg. null = dagens loebsdag, bit-identisk.
   const raceRoleYield = await loadRaceDayRoleYield({ supabase, strict: conditionPerDate });
+  // #6110: XP-modellen for tick-datoen. null = dagens model, bit-identisk; kaster sammen med Score B/catch-up.
+  const developmentXp = await loadDevelopmentXp({ supabase, tickDate, strict: conditionPerDate, developmentScoreB, raceCatchUp, capPerDateOn, now: () => +now });
 
   // #6500: holdets raekke hentes ÉN gang, og kun naar flaget er taendt. Regel-gate,
   // ikke berigelse: et gaet ville enten give et AI-hold udvikling eller tage den
   // fra en manager. Derfor kastes der (reservationen slettes i catch'en nedenfor),
   // og naeste sweep proever igen. ASCII-only besked (intern ops-fejl).
-  // #6950: D6 gaelder ogsaa naar Udviklingsscore B eller catch-up er taendt.
+  // #6950: D6 gaelder ogsaa naar Udviklingsscore B eller catch-up er taendt. #6110: og under XP.
   let developmentAllowed = true;
-  if (developmentV2On || developmentScoreB || raceCatchUp) {
+  if (developmentV2On || developmentScoreB || raceCatchUp || developmentXp) {
     const { data: teamRow, error: teamError } = await supabase
       .from("teams")
       .select("id, user_id, is_ai, is_bank, is_test_account")
@@ -1083,8 +1091,13 @@ export async function runTeamTrainingDay({
     if (dayProgram.source === "program") program.focus = dayProgram.focus;
     program.intensity = dayProgram.intensity;
     // #4854: reglen vurderes paa traethed ved DATOENS START og retter aldrig planen.
+    // #7801: med kontakten paa trætheden lige nu (aabningen plus datoens koerte etaper).
     const fatigueRuleResult = fatigueRules ? applyFatigueRules({
-      program, rule: fatigueRules.forRider(rider.id), fatigueAtDateStart: Number(conditionBeforeDate.fatigue ?? 0),
+      program, rule: fatigueRules.forRider(rider.id),
+      fatigueAtDateStart: fatigueNowOn ? fatigueNowBeforeGameDay({
+        openingFatigue: Number(conditionBeforeDate.fatigue ?? 0), loadRows: canonicalLoadRows, riderId: rider.id,
+        beforeGameDay: raceDay, recoveryAbility: Number(abRow.recovery ?? 50), medicalBonus: teamMedicalBonus,
+      }) : Number(conditionBeforeDate.fatigue ?? 0),
       slotIndex: programSlot, rodeStagePreviousDate: stageYesterdayRiderIds.has(rider.id),
     }) : null;
     if (fatigueRuleResult?.stamp) {
@@ -1270,6 +1283,7 @@ export async function runTeamTrainingDay({
         // #3564: baade traeningsdagen og loebsdagen (applyDailyTick nedenfor) faar kurven.
         curveB,
         curveBTransition: riderCurveBTransition, // #7382
+        developmentXp, // #6110: null = dagens model
       };
       if (racedToday) {
         // #4850 variant A (ejer 24/9, S1 valgt efter simuleringen i #5640):
@@ -1288,7 +1302,7 @@ export async function runTeamTrainingDay({
           program: raceDayProgram(racedRiderProfileByRider.get(rider.id) ?? RACE_DAY_FALLBACK_PROFILE),
           hardDailyCap: TRAINING_RACE_DAY_CONFIG.abilityGainCapPerRaceDay,
           academyRateMult: raceDayIntentionYieldMultiplier(raceDayEffortByRider.get(rider.id)),
-          ...withRaceDayRoleYield(developmentTickArgs({ developmentScoreB, raceCatchUp, dayKey: seedScope, tickArgs: sharedTickArgs, racedToday: true, profileType: racedRiderProfileByRider.get(rider.id) }), // #6950
+          ...withRaceDayRoleYieldXp(developmentXp, developmentTickArgs({ developmentScoreB, raceCatchUp, dayKey: seedScope, tickArgs: sharedTickArgs, racedToday: true, profileType: racedRiderProfileByRider.get(rider.id) }), // #6950
             { params: raceRoleYield, profileType: racedRiderProfileByRider.get(rider.id), role: raceDayRoleByRiderMap.get(rider.id) }), // #5950
         });
       } else {
@@ -1312,12 +1326,12 @@ export async function runTeamTrainingDay({
             && row.tick_date === tickDate && row.game_day !== raceDay).map((row) => row.report) : []),
           ...sameDateRunReports.filter((row) => row.rider_id === rider.id),
         ]);
-        tickResult = capTickGainsPerDate({ tickResult, abilities, usedGains });
+        tickResult = developmentXp ? capXpTickGainsPerDate({ tickResult, abilities, progress: preProgress, usedGains }, developmentXp) : capTickGainsPerDate({ tickResult, abilities, usedGains });
       } else {
         // #6210 (Codex P1): kalenderdags-stien (flag slukket, rollback eller loebsdags-fallback)
         // faar samme dato-loft, inkl. gevinster fra datoens tidligere loebsdags-ticks.
         const usedGains = sumDateGains(sameDateRunReports.filter((row) => row.rider_id === rider.id));
-        tickResult = capTickGainsPerDate({ tickResult, abilities, usedGains });
+        tickResult = developmentXp ? capXpTickGainsPerDate({ tickResult, abilities, progress: preProgress, usedGains }, developmentXp) : capTickGainsPerDate({ tickResult, abilities, usedGains });
       }
     }
 
@@ -1330,10 +1344,17 @@ export async function runTeamTrainingDay({
     // 57 mod 67 med de gamle tal), ikke mod løbsdags-udviklingen. At slukke
     // udviklingen må ikke rulle dem tilbage — det var netop koblingen der gjorde
     // "sluk udviklingen for S3" umulig før dette split.
+    const settleIntensities = settlesCondition ? [...priorDateReports.map(report=>canonicalLoadRows.some(load=>load.rider_id===rider.id&&load.game_day===report.game_day)?'race':report.intensity),effectiveIntensity] : null;
+    const settleRaceLoads = settlesCondition ? dateDays.map(day => Number(canonicalLoadRows.find(row => row.rider_id === rider.id && row.game_day === day)?.load ?? 0)) : null;
     const dailyCondition = settlesCondition ? settleTrainingDateCondition({
       riderId: rider.id, dateStr: tickDate, condition: conditionBeforeDate,
-      intensities: [...priorDateReports.map(report=>canonicalLoadRows.some(load=>load.rider_id===rider.id&&load.game_day===report.game_day)?'race':report.intensity),effectiveIntensity],
-      raceLoads: dateDays.map(day => Number(canonicalLoadRows.find(row => row.rider_id === rider.id && row.game_day === day)?.load ?? 0)),
+      intensities: settleIntensities,
+      raceLoads: settleRaceLoads,
+      // #7801: skaderisikoen pr. felt paa trætheden lige nu foer feltet (kun med kontakten).
+      riskFatigues: fatigueNowOn ? slotFatiguesNow({
+        openingFatigue: Number(conditionBeforeDate.fatigue ?? 0), intensities: settleIntensities, raceLoads: settleRaceLoads,
+        recoveryAbility: Number(abRow.recovery ?? 50), medicalBonus: teamMedicalBonus,
+      }) : null,
       recoveryAbility: recoveryBeforeDate,
       recoveryConfig: raceDayEngineOn ? RACE_DAY_ENGINE_RECOVERY_CONFIG : {},
       modelV2: conditionModelV2On,

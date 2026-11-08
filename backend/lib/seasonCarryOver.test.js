@@ -161,6 +161,22 @@ test("uden carry-over vælger motoren tavst et auto-program (rod-årsagen i #291
 
 // ─── training_plans (COPY) ────────────────────────────────────────────────────
 
+test("carryTrainingPlans overfører ikke hvile-planer, men tæller dem (#7637)", async () => {
+  const state = baseState();
+  state.riders.push({ id: "rider-rest", team_id: "team-human", is_retired: false });
+  state.training_plans.push({ id: "p6", team_id: "team-human", rider_id: "rider-rest", season_id: S1, focus: "sprint", intensity: "rest" });
+  const supabase = createMockSupabase(state);
+
+  const stats = await carryTrainingPlans({ supabase, fromSeasonId: S1, toSeasonId: S2 });
+
+  assert.equal(stats.skipped_rest_plan, 1);
+  assert.equal(stats.eligible, 1);
+  assert.equal(stats.carried, 1);
+  const carried = state.training_plans.filter((p) => p.season_id === S2);
+  assert.deepEqual(carried.map((p) => p.rider_id), ["rider-stays"], "hvile-rytteren får ingen plan og dermed standardplanen");
+  assert.equal(state.training_plans.filter((p) => p.season_id === S1).length, 6, "kilde-sæsonens planer er urørte");
+});
+
 test("carryTrainingPlans kopierer kun planer for ryttere der stadig er på holdet", async () => {
   const state = baseState();
   const supabase = createMockSupabase(state);

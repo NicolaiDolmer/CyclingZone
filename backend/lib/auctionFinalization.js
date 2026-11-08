@@ -19,7 +19,7 @@ import { notifyIfContractExpiresThisSeason, buildKeyedNotification, notifyAndCle
 import { ACADEMY } from "./academyFlag.js";
 import { resolvePendingGraduationOnSale, resolveUnsoldGraduate } from "./academyGraduation.js";
 import { applySeniorSquadFilter, seniorSquadPatch, academyPlacementSquad, squadCapRpcArgs, isYouthSquad } from "./squads.js";
-import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
+import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.ts";
 import { buildRiderValueSnapshot, updateDealWithValueSnapshot } from "./dealValueSnapshot.js";
 import { safeReconcileOrphanPausedListings, safeResumePausedTransferListings } from "./auctionTransferListPause.ts";
 import {

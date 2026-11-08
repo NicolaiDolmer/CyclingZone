@@ -16,7 +16,7 @@
 // Flag slukket (eller pull-flaget slukket) = ingen læsning af hold og ingen skrivning.
 import { fetchAllRows } from "./supabasePagination.js";
 import { currentIntakeWeekKey, pullWeeklyAcademyIntake } from "./academyIntakePull.js";
-import { isAcademyIntakePullEnabled } from "./academyIntakePullFlag.js";
+import { isAcademyIntakePullEnabled } from "./academyIntakePullFlag.ts";
 import { isAcademyAiWeeklyPullEnabled } from "./academyWeeklyPullFlag.ts";
 
 // Supabase-klienten er utypet i kernen (samme som academyBoardGift.ts); `any` ved grænsen.

@@ -984,7 +984,7 @@ export default function Layout() {
 
         {/* Mobile topbar — bevidst IKKE sticky: den skal scrolle med indholdet
             og ikke "følge med op" og stjæle plads på små skærme (#1007). */}
-        <div className="md:hidden flex items-center justify-between px-4 py-3 bg-cz-sidebar border-b border-cz-sidebar-border">
+        <div className="md:hidden flex items-center justify-between px-4 bg-cz-sidebar border-b border-cz-sidebar-border">
           {/* #4983: prikken ved "Planlægning" bor inde i drawer'en, så på mobil
               ville markeringen først være synlig EFTER at manageren selv åbnede
               menuen — og accept-kriteriet i #4983 er netop "uden at skulle
@@ -998,28 +998,32 @@ export default function Layout() {
             aria-label={selectionReminder.tone === "none"
               ? t("a11y.openMenu")
               : `${t("a11y.openMenu")} (${selectionReminder.tone === "urgent" ? t("a11y.selectionReminderUrgent") : t("a11y.selectionReminder")})`}
-            className="relative text-cz-sidebar-2 hover:text-cz-sidebar-1"
+            className="inline-flex min-h-12 min-w-12 items-center justify-center text-cz-sidebar-2 hover:text-cz-sidebar-1"
           >
-            <MenuIcon aria-hidden="true" className="w-6 h-6" />
-            {selectionReminder.tone !== "none" && (
-              <span
-                aria-hidden="true"
-                className={`absolute -top-0.5 -right-0.5 block w-2 h-2 rounded-full ${NAV_DOT_TONE_CLASS[selectionReminder.tone]}`}
-              />
-            )}
+            <span className="relative">
+              <MenuIcon aria-hidden="true" className="w-6 h-6" />
+              {selectionReminder.tone !== "none" && (
+                <span
+                  aria-hidden="true"
+                  className={`absolute -top-0.5 -right-0.5 block w-2 h-2 rounded-full ${NAV_DOT_TONE_CLASS[selectionReminder.tone]}`}
+                />
+              )}
+            </span>
           </button>
-          <Link to="/dashboard" aria-label={t("nav.item.dashboard")} className="flex items-center gap-2 rounded hover:opacity-80 transition-opacity">
+          <Link to="/dashboard" aria-label={t("nav.item.dashboard")} className="flex min-h-12 items-center gap-2 rounded hover:opacity-80 transition-opacity">
             <Wordmark forceDark className="h-5 w-auto" alt="" />
           </Link>
           <div className="flex items-center gap-2">
             <LanguageSwitcher surface="sidebar" />
-            <NavLink to="/notifications" aria-label={t("a11y.openNotifications")} className="relative">
-              <BellIcon aria-hidden="true" className="w-5 h-5 text-cz-sidebar-2 hover:text-cz-sidebar-1" />
-              {unread > 0 && (
-                <span className="absolute -top-1 -right-1 bg-cz-accent text-cz-on-accent text-3xs font-black min-w-3.5 h-3.5 px-0.5 rounded-full flex items-center justify-center leading-none tabular-nums">
-                  {formatNavBadgeCount(unread)}
-                </span>
-              )}
+            <NavLink to="/notifications" aria-label={t("a11y.openNotifications")} className="inline-flex min-h-12 min-w-12 items-center justify-center">
+              <span className="relative">
+                <BellIcon aria-hidden="true" className="w-5 h-5 text-cz-sidebar-2 hover:text-cz-sidebar-1" />
+                {unread > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-cz-accent text-cz-on-accent text-3xs font-black min-w-3.5 h-3.5 px-0.5 rounded-full flex items-center justify-center leading-none tabular-nums">
+                    {formatNavBadgeCount(unread)}
+                  </span>
+                )}
+              </span>
             </NavLink>
           </div>
         </div>

@@ -140,7 +140,7 @@ function inList(search: string, column: string): string[] | null {
 
 function restOverride(table: string, search: string): unknown[] | null {
   if (table === "races") {
-    if (!/status=eq\.completed/.test(search)) return null;
+    if (!/league_division_id=eq/.test(search)) return null; // #7693: laesningen tager alle udgaver
     const pool = Number((search.match(/league_division_id=eq\.(\d+)/) || [])[1]);
     if (pool !== 2) return [];
     return HISTORY_RACES.map((r) => ({

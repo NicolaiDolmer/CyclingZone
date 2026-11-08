@@ -18,6 +18,20 @@
     "onlyUnrated": "Kun det jeg ikke har bedømt",
     "rated": "Bedømt {rated} af {total}"
   },
+  "search": {
+    "placeholder": "Søg i planer, idéer, fejl og færdigt",
+    "ariaLabel": "Søg i roadmappet",
+    "title": "Søgeresultater",
+    "where": {
+      "beta": "I beta",
+      "in_progress": "I gang",
+      "planned": "Planlagt",
+      "idea": "Idé",
+      "issue": "Kendt fejl",
+      "done_feature": "Færdig",
+      "done_fix": "Rettet"
+    }
+  },
   "tabs": {
     "label": "Roadmappens afsnit",
     "plan": "Plan",
@@ -29,14 +43,22 @@
   "voting": {
     "idea": "God idé?",
     "importance": "Vigtigt for dig?",
+    "dontKnow": "Ved ikke",
     "saved": "Gemt",
     "error": "Din stemme blev ikke gemt. Prøv igen."
   },
   "plan": {
-    "inProgress": "I gang",
-    "planned": "Planlagt",
+    "title": "Hvornår det kommer",
     "plannedHint": "Cirka i denne rækkefølge",
-    "later": "Senere · {count} mere"
+    "badgeInProgress": "I gang",
+    "horizon": {
+      "this_week": "Denne uge",
+      "next_week": "Næste uge",
+      "season": "Sæson {season}",
+      "quarter": "Q{quarter} {year}",
+      "year": "{year}",
+      "unscheduled": "Til afstemning"
+    }
   },
   "beta": {
     "inBeta": "I beta nu",
@@ -55,6 +77,7 @@
     "hint": "Dine bedømmelser afgør, hvad der rykker op på planen",
     "areaLabel": "Område",
     "all": "Alle",
+    "unrated": "{unrated} af {total} mangler dit svar",
     "forum": "Har du selv en idé? Skriv den i forummet"
   },
   "issues": {
@@ -78,17 +101,31 @@
     "reported": "Meldt",
     "reportError": "Det blev ikke gemt. Prøv igen.",
     "updated": "opdateret {date}",
-    "reportedByPlayers": "meldt ind af spillere",
     "earlierUpdates": "Tidligere opdateringer · {count}",
     "dismissed": "Tjekket, intet problem fundet · seneste 14 dage",
-    "fixed": "Rettet de seneste 14 dage"
+    "fixed": "Rettet de seneste 14 dage",
+    "reportedOn": "meldt ind af spillere den {date}",
+    "timeline": {
+      "label": "Status",
+      "reported": "Meldt",
+      "confirmed": "Bekræftet",
+      "fixing": "Rettes nu",
+      "fixed": "Rettet",
+      "dismissed": "Intet problem fundet",
+      "notYet": "ikke endnu"
+    }
   },
   "done": {
     "title": "Færdigt",
     "hint": "Nyeste først",
     "feature": "Funktion",
     "fix": "Rettelse",
-    "showMore": "Vis flere"
+    "showMore": "Vis flere",
+    "recent": "Leveret de sidste 7 dage",
+    "earlier": "Tidligere",
+    "patchNote": "Patch note · {date}",
+    "allPatchNotes": "Alle patch notes",
+    "youVoted": "Du stemte"
   },
   "empty": {
     "plan": {
@@ -127,6 +164,11 @@
       "title": "Se hvad der er planlagt",
       "description": "Der er ikke noget færdigt endnu.",
       "action": "Gå til Plan"
+    },
+    "search": {
+      "title": "Prøv et andet ord",
+      "description": "Intet på roadmappet passer til \"{query}\".",
+      "action": "Ryd søgningen"
     }
   },
   "engines": {

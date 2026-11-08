@@ -96,3 +96,18 @@ export function isKnownExtensionNoise(message) {
   if (!message) return false;
   return EXTENSION_NOISE_MESSAGE_PATTERNS.some((pattern) => pattern.test(message));
 }
+
+// #7677 (CYCLINGZONE-AY/AZ): afbrudte hentninger ved sideskift. Naar spilleren
+// navigerer vaek mens en fetch/AbortController-signal er undervejs, kaster
+// browseren en DOMException med navnet "AbortError" ("signal is aborted without
+// reason" / "The user aborted a request"). Det er forventet adfaerd, ikke en
+// fejl spilleren oplever. Matcher KUN paa fejltypen (det Sentry lægger i
+// exception.values[0].type), ikke paa ordet "aborted" i beskeden, saa aegte
+// fejl der blot nævner ordet stadig naar Sentry.
+export function isAbortNoise(errorType, value) {
+  if (errorType === "AbortError") return true;
+  // Sentry serialiserer en DOMException uden stack med type "Error" og navnet
+  // som besked-praefiks ("AbortError: ..."). Praefikset er ankeret, ikke ordet
+  // "aborted" et vilkaarligt sted i teksten.
+  return /^AbortError\b/.test(value || "");
+}

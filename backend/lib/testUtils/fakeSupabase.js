@@ -207,6 +207,8 @@ export function createFakeSupabase(initialState = {}, options = {}) {
             conflictKeys.every((key) => existingRow[key] === row[key])
           );
           if (existing) {
+            // ON CONFLICT DO NOTHING: rækken røres ikke og kommer ikke med i svaret.
+            if (writeOpts.ignoreDuplicates) continue;
             Object.assign(existing, clone(row));
             result.push(existing);
           } else {

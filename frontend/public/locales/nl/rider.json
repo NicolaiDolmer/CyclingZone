@@ -593,7 +593,6 @@
     "beta": "Beta",
     "disclaimer": "Nieuw fysiologisch model, berekend uit de huidige vaardigheden. Heeft nog geen invloed op koersuitslagen.",
     "powerProfile": "Vermogensprofiel",
-    "derivedAbilities": "Afgeleide vaardigheden",
     "zones": {
       "ftp": "FTP",
       "vo2max": "VO2max-vermogen",
@@ -719,8 +718,7 @@
     },
     "swap": {
       "label": "Ruil",
-      "teamFallback": "Onbekend",
-      "cashAdjustment": "Contante aanpassing: {amount} CZ$"
+      "teamFallback": "Onbekend"
     }
   },
   "auctionPanel": {
@@ -898,6 +896,17 @@
     "loadErrorBody": "Er is niets verloren gegaan. Probeer het opnieuw.",
     "retry": "Probeer opnieuw"
   },
+  "potentialEstimate": {
+    "certainty": {
+      "unsure": "Onzeker",
+      "fair": "Redelijk",
+      "sure": "Zeker"
+    },
+    "learning": "Leert · {trainings} van {needed} trainingen",
+    "learningShort": "Leert · {trainings} van {needed}",
+    "notAFact": "Een schatting, geen feit.",
+    "scoutedTimes": "{count, plural, one {# keer gescout} other {# keer gescout}}"
+  },
   "scouting": {
     "label_worldclass": "Wereldklasse-talent",
     "label_high": "Hoge verwachting",
@@ -946,14 +955,12 @@
   "training": {
     "title": "Trainingsfocus",
     "intro": "Stel een trainingsfocus voor het hele seizoen in voor deze sleutelrenner. Hij duwt de getrainde vaardigheden sneller richting hun doel.",
-    "gatedNote": "Training vormt blijvende vaardigheden en gaat in bij de volgende seizoenswissel.",
-    "slotsLeft": "{remaining}/{total} focusplekken",
     "focus": "Focus",
     "intensity": "Intensiteit",
     "focus_vo2max": "VO2max (gemengde intervallen)",
     "focus_vo2max_climb": "VO2max (klimintervallen)",
     "focus_vo2max_punch": "VO2max (punch-intervallen)",
-    "focus_threshold": "Drempel / TT",
+    "focus_threshold": "Drempel",
     "focus_sprint": "Sprint",
     "focus_tempo": "Tempo",
     "focus_endurance": "Uithoudingsvermogen (Zone 2)",
@@ -980,8 +987,6 @@
     "saving": "Opslaan…",
     "noSlots": "Geen focusplekken meer dit seizoen",
     "current": "Huidige focus",
-    "assistantNoRisk": "Snellere gerichte groei, geen risico op tegenslag.",
-    "assistantRisk": "Snellere gerichte groei, maar ~{risk}% kans op een tegenslag (verloren winst) dit seizoen.",
     "tradeoff": "Andere vaardigheden groeien iets langzamer.",
     "intensity_recovery": "Herstel"
   }

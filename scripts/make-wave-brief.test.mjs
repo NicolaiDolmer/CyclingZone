@@ -24,6 +24,16 @@ const baseConfig = {
   verifyCommands: ["node --test scripts/wave-lane-watch.test.mjs"],
 };
 
+test('#5509: build brief requires measured before-state and stops when already green', () => {
+  const brief = generateBrief(baseConfig);
+  assert.match(brief, /FOER kode:.*prod SQL\/endpoint \+ maalt resultat \+ player-report-evidence/);
+  assert.match(brief, /already-green.*STOP.*byg intet/);
+  assert.match(brief, /Admission erstatter aldrig mandat, SSOT eller byggestop/);
+  const investigation = generateBrief({ ...baseConfig, kind: 'investigate' });
+  assert.doesNotMatch(investigation, /# Maalt foerstatus/);
+  assert.match(investigation, /bygger INTET/);
+});
+
 test("kraever paakraevede felter", () => {
   assert.throws(() => generateBrief({}), /issue/);
   assert.throws(() => generateBrief({ issue: 1 }), /slug/);
@@ -274,7 +284,8 @@ test("#7587 punkt 2: motor/traening faar frossen-golden-blokken mod merge-base, 
     assert.match(brief, /merge-base HEAD origin\/main/);
     assert.match(brief, /worktree add --detach "C:\\Dev\\CyclingZone-worktrees\\\.wave-scratch\\chore-4918-wave-ops\\golden-base"/);
     assert.match(brief, /genereres ALDRIG igen med den nye kode/);
-    assert.match(brief, /aldrig raa `git worktree remove --force`/);
+    assert.match(brief, /aldrig raa `git worktree remove`/);
+    assert.match(brief, /Remove-WorktreeSafely/);
   }
   assert.equal(needsFrozenGolden({ ownership: ["docs/X.md"], scopeText: "doc" }), false);
   assert.equal(needsFrozenGolden({ ownership: ["backend/lib/engine/"] }), true);

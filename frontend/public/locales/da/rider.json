@@ -593,7 +593,6 @@
     "beta": "Beta",
     "disclaimer": "Ny fysiologisk model, beregnet ud fra nuværende evner. Påvirker endnu ikke løbsresultater.",
     "powerProfile": "Effektprofil",
-    "derivedAbilities": "Udledte evner",
     "zones": {
       "ftp": "FTP",
       "vo2max": "VO2max-effekt",
@@ -719,8 +718,7 @@
     },
     "swap": {
       "label": "Bytte",
-      "teamFallback": "Ukendt",
-      "cashAdjustment": "Kontantjustering: {amount} CZ$"
+      "teamFallback": "Ukendt"
     }
   },
   "auctionPanel": {
@@ -898,6 +896,17 @@
     "loadErrorBody": "Intet er gået tabt. Prøv igen.",
     "retry": "Prøv igen"
   },
+  "potentialEstimate": {
+    "certainty": {
+      "unsure": "Usikker",
+      "fair": "Rimelig",
+      "sure": "Sikker"
+    },
+    "learning": "Læres · {trainings} af {needed} træninger",
+    "learningShort": "Læres · {trainings} af {needed}",
+    "notAFact": "Et skøn, ikke et facit.",
+    "scoutedTimes": "{count, plural, one {Scoutet # gang} other {Scoutet # gange}}"
+  },
   "scouting": {
     "label_worldclass": "Verdensklasse-emne",
     "label_high": "Høj prognose",
@@ -946,14 +955,12 @@
   "training": {
     "title": "Træningsfokus",
     "intro": "Sæt et sæson-langt træningsfokus for denne nøglerytter. Det rykker de trænede evner hurtigere mod deres mål.",
-    "gatedNote": "Træning former permanent evne og slår igennem ved næste sæson-skift.",
-    "slotsLeft": "{remaining}/{total} fokus-slots",
     "focus": "Fokus",
     "intensity": "Intensitet",
     "focus_vo2max": "VO2max (blandede intervaller)",
     "focus_vo2max_climb": "VO2max (klatreintervaller)",
     "focus_vo2max_punch": "VO2max (punch-intervaller)",
-    "focus_threshold": "Tærskel / TT",
+    "focus_threshold": "Tærskel",
     "focus_sprint": "Spurt",
     "focus_tempo": "Tempo",
     "focus_endurance": "Udholdenhed (Zone 2)",
@@ -980,8 +987,6 @@
     "saving": "Gemmer…",
     "noSlots": "Ingen fokus-slots tilbage i denne sæson",
     "current": "Nuværende fokus",
-    "assistantNoRisk": "Hurtigere målrettet vækst, ingen risiko for tilbageslag.",
-    "assistantRisk": "Hurtigere målrettet vækst, men ~{risk}% risiko for tilbageslag (tabt fremgang) denne sæson.",
     "tradeoff": "Andre evner vokser en anelse langsommere.",
     "intensity_recovery": "Restitution"
   }

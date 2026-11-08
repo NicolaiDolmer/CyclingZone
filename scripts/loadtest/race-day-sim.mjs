@@ -885,7 +885,7 @@ export async function createLiveRuntime({ env, recorder, faults, als, getPhase, 
     { runAdminSimulateStage }, { makeEnsureSeasonStandings }, { updateStandings },
     { emitRaceResultNotifications, emitStageResultNotifications }, { runAutoPrizeSweep },
     { refreshRankingMatviewsGated }, { runTrainingDayCloseSweep }] = await Promise.all([
-    mod('lib/stageScheduler.js'), mod('lib/stageSchedulerFlag.js'), mod('lib/raceEngineFlag.js'), mod('lib/autoPrizeFlag.js'),
+    mod('lib/stageScheduler.js'), mod('lib/stageSchedulerFlag.ts'), mod('lib/raceEngineFlag.js'), mod('lib/autoPrizeFlag.js'),
     mod('lib/adminSimulateRace.js'), mod('lib/seasonStandingsBootstrap.js'), mod('lib/economyEngine.js'),
     mod('lib/notificationService.js'), mod('lib/autoPrizeSweep.js'),
     mod('lib/refreshRankingMatviews.js'), mod('lib/trainingDayCloseTrigger.js'),

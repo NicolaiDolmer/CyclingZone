@@ -289,7 +289,7 @@ export function extractCodeWrittenTypes(files) {
 // rider_ownership_events (#3582) har NØJAGTIGT samme fejlklasse og er derfor med i
 // registret: tabellen har sine egne reason-, actor_type- og
 // related_entity_type-CHECKs (database/2026-08-18-3582-rider-ownership-audit.sql),
-// og RIDER_OWNERSHIP_REASON i backend/lib/riderOwnershipAudit.js er endnu et frosset
+// og RIDER_OWNERSHIP_REASON i backend/lib/riderOwnershipAudit.ts er endnu et frosset
 // konstant-objekt (10 værdier) som intet håndhævede.
 //
 // MÅLTABEL-ATTRIBUTION (rettet efter review af PR #4458, 2026-08-31): rå-literal-
@@ -321,7 +321,7 @@ export function extractCodeWrittenTypes(files) {
 // ────────────────────────────────────────────────────────────────────────────
 
 const ECONOMY_CONSTANTS_FILE = join(BACKEND_DIR, "lib", "economyConstants.js");
-const RIDER_OWNERSHIP_AUDIT_FILE = join(BACKEND_DIR, "lib", "riderOwnershipAudit.js");
+const RIDER_OWNERSHIP_AUDIT_FILE = join(BACKEND_DIR, "lib", "riderOwnershipAudit.ts");
 
 /** Hvilken fil et frosset konstant-objekt bor i. */
 const CONSTANT_SOURCE_FILES = {

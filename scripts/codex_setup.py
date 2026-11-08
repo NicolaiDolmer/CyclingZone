@@ -29,6 +29,28 @@ def parse_config(text):
         raise ValueError('Invalid TOML; no changes made. Validate config locally.') from None
 
 
+def value_suffix(text):
+    """Keep whitespace, comment and EOL after a validated single-line value."""
+    quote = None
+    escaped = False
+    end = len(text)
+    for index, char in enumerate(text):
+        if quote == '"' and escaped:
+            escaped = False
+        elif quote == '"' and char == '\\':
+            escaped = True
+        elif quote:
+            if char == quote:
+                quote = None
+        elif char in ('"', "'"):
+            quote = char
+        elif char == '#':
+            end = index
+            break
+    end = len(text[:end].rstrip(' \t\r\n'))
+    return text[end:]
+
+
 def update_config(text):
     before = parse_config(text)
     agents = before.get('agents', {})
@@ -58,14 +80,14 @@ def update_config(text):
         end = next((i for i in range(start, len(lines)) if lines[i].lstrip().startswith('[')), len(lines))
         section = lines[start:end]
         for key, value in DEFAULTS.items():
-            pattern = re.compile(r'^(\s*' + key + r'\s*=\s*)(.*?)([ \t]+#.*)?(\r?\n)?$')
+            pattern = re.compile(r'^([ \t]*' + key + r'[ \t]*=[ \t]*)(.*)$', re.DOTALL)
             indices = [i for i, line in enumerate(section) if pattern.match(line)]
             if len(indices) > 1 or (key in agents and not indices):
                 raise ValueError('Ambiguous agents key syntax; no changes made.')
             if indices:
                 index = indices[0]
                 match = pattern.match(section[index])
-                section[index] = match[1] + toml_literal(value) + (match[3] or '') + (match[4] or '')
+                section[index] = match[1] + toml_literal(value) + value_suffix(match[2])
             else:
                 if section and not section[-1].endswith('\n'):
                     section[-1] += eol

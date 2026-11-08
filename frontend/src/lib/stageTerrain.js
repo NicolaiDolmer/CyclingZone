@@ -8,6 +8,8 @@ export const TERRAIN_BUCKETS = ["flat", "hilly", "mountain", "cobbles", "itt"];
 const PROFILE_TO_BUCKET = {
   flat: "flat", rolling: "flat",
   hilly: "hilly", classic: "hilly",
+  // #7693: manglede, saa en S5-mellembjergetape stod som flad paa loebssiden. Samme bucket som backend.
+  medium_mountain: "hilly",
   mountain: "mountain", high_mountain: "mountain",
   cobbles: "cobbles", gravel: "cobbles", // #4105: grus deler bucket med brosten
   itt: "itt", ttt: "itt", itt_hilly: "itt",

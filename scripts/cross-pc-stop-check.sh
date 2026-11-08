@@ -33,6 +33,24 @@
 #
 # Output: systemMessage til Claude Code via JSON paa stdout. Exit altid 0 (non-blocking).
 
+# Ejer 4/11: advarslen skal ogsaa naa Claude (systemMessage ses kun af ejeren). Ved
+# stop_hook_active=true (Claude fortsatte allerede pga. en Stop-hook) blokeres ikke igen.
+#
+# EN GANG PR. SESSION (ejer 5/11): Stop fyrer efter HVER tur, og "decision: block"
+# vaekker Claude igen. En session der var faerdig og havde faaet besked paa at stoppe
+# blev derfor vaekket efter hvert svar af den samme advarsel og brugte tokens paa at
+# svare hooken. Hver slags fund har nu en noegle; en noegle der er vist i sessionen
+# (session_id fra hook-input) giver hverken blokering eller besked igen. Kun en ny
+# slags fund vises. Antal indgaar ikke i noeglen, saa 251 -> 252 filer er ikke nyt.
+# Uden session_id (fx tests med </dev/null) opfoerer hooken sig som foer.
+STOP_ACTIVE=""
+SESSION_ID=""
+if [ ! -t 0 ]; then
+  HOOK_INPUT=$(cat 2>/dev/null || true)
+  if printf '%s' "$HOOK_INPUT" | grep -Eq '"stop_hook_active"[[:space:]]*:[[:space:]]*true'; then STOP_ACTIVE=1; fi
+  SESSION_ID=$(printf '%s' "$HOOK_INPUT" | grep -Eo '"session_id"[[:space:]]*:[[:space:]]*"[^"]+"' | head -1 | cut -d'"' -f4 | tr -cd 'A-Za-z0-9_-')
+fi
+
 # Vaer tolerant overfor at vaere udenfor et git-repo
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   exit 0
@@ -100,12 +118,14 @@ if [ "$mode" != "always" ]; then
 fi
 
 issues=()
+keys=()
 
 # 1. Uncommitted
 porcelain=$(git status --porcelain 2>/dev/null)
 if [ -n "$porcelain" ]; then
   count=$(echo "$porcelain" | wc -l)
   issues+=("$count uncommitted aendring(er)")
+  keys+=("uncommitted")
 fi
 
 # 2. Ahead af upstream
@@ -115,6 +135,7 @@ if [ -n "$upstream" ]; then
   if [ "$ahead" -gt 0 ]; then
     branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
     issues+=("$branch er $ahead commit(s) ahead af $upstream (ikke pushet)")
+    keys+=("ahead")
   fi
 fi
 
@@ -122,6 +143,7 @@ fi
 stash_count=$(git stash list 2>/dev/null | wc -l)
 if [ "$stash_count" -gt 0 ]; then
   issues+=("$stash_count stash-entry/-ies eksisterer (ikke synced)")
+  keys+=("stash")
 fi
 
 # 4. Lokal-only AI-state i .codex.local/ (alt udenfor allow-listen er lokal-only persistent)
@@ -145,11 +167,29 @@ if [ -d ".codex.local" ]; then
   if [ -n "$local_only" ]; then
     count=$(echo "$local_only" | wc -l)
     issues+=("$count fil(er) i .codex.local/ udenfor whitelist (kør 'pwsh -File scripts/cross-pc-forensic-audit.ps1' for detaljer)")
+    keys+=("codex-local")
   fi
 fi
 
 if [ ${#issues[@]} -eq 0 ]; then
   exit 0
+fi
+
+# Allerede vist i denne session: kun en ny slags fund maa vaekke Claude igen.
+if [ -n "$SESSION_ID" ]; then
+  mkdir -p .claude/run 2>/dev/null || true
+  seen_file=".claude/run/cross-pc-stop-$SESSION_ID.seen"
+  find .claude/run -maxdepth 1 -name "cross-pc-stop-*.seen" -mtime +7 -delete 2>/dev/null || true
+  if touch "$seen_file" 2>/dev/null; then
+    new_keys=()
+    for k in "${keys[@]}"; do
+      grep -qxF "$k" "$seen_file" 2>/dev/null || new_keys+=("$k")
+    done
+    if [ ${#new_keys[@]} -eq 0 ]; then
+      exit 0
+    fi
+    for k in "${new_keys[@]}"; do echo "$k" >> "$seen_file" 2>/dev/null || true; done
+  fi
 fi
 
 # Byg besked
@@ -165,5 +205,9 @@ fi
 
 # Escape til JSON (escape backslash og quote)
 msg_json=$(echo "$msg" | sed 's/\\/\\\\/g; s/"/\\"/g')
-echo "{\"systemMessage\": \"$msg_json\"}"
+if [ -z "$STOP_ACTIVE" ]; then
+  echo "{\"systemMessage\": \"$msg_json\", \"decision\": \"block\", \"reason\": \"$msg_json | Push nu, eller skriv kort hvorfor ikke (fx et merge-tog verificerer main).\"}"
+else
+  echo "{\"systemMessage\": \"$msg_json\"}"
+fi
 exit 0

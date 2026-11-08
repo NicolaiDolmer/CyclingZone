@@ -25,11 +25,13 @@
 import { statColor } from "../../lib/statColor.js";
 import { pct } from "../../lib/developmentGlyph.js";
 
-export default function DevelopmentGlyph({ now, progLo, progHi, loft, max = 99 }) {
+// #6110: `estimate` er skønnet, tegnet med samme lodrette mærke som loftet. Med
+// tændt flag er det glyffens eneste mærke; loft og bånd sendes ikke længere.
+export default function DevelopmentGlyph({ now, progLo, progHi, loft, estimate = null, max = 99 }) {
   const nowPct = pct(now, max);
   const loPct = pct(progLo, max);
   const hiPct = pct(progHi, max);
-  const loftPct = pct(loft, max);
+  const loftPct = pct(estimate ?? loft, max);
   const hasBand = loPct != null && hiPct != null && hiPct >= loPct;
 
   return (

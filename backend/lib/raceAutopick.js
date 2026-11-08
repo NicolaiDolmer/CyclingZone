@@ -1,10 +1,12 @@
 // backend/lib/raceAutopick.js
 // #1307: assistent-autopick — fornuftigt 6-8-rytter-hold + kaptajn når manageren
 // ikke selv har udtaget. Ren funktion (ingen DB); raceRunner kalder med beriget data.
-// Egnethed = gennemsnitlig terrain-score over løbets etapeprofiler, let dæmpet af
-// træthed (assistenten skåner smadrede ryttere). Deterministisk (stabil tiebreak).
+// Egnethed = rutematch-tallet fra routeMatch.js (#6207, det samme tal manageren ser),
+// let dæmpet af træthed (assistenten skåner smadrede ryttere). Deterministisk
+// (stabil tiebreak).
 
 import { terrainScore } from "./raceSimulator.js";
+import { raceRouteVector, routeMatchRaw, routeMatchRevisionFor } from "./routeMatch.js";
 
 // Spec 8.1 + race-hub Fase 0a: startfelt-størrelse pr. kategori — 8 (Grand Tours),
 // 7 (WorldTour-niveau), 6 (øvrige). Nøgler = race_class-værdier (database/2026-05-09-race-pool.sql).
@@ -48,15 +50,21 @@ export const MIN_RACE_ENTRIES = 6;
 
 const AUTOPICK_FATIGUE_DAMPING = 0.3; // træthed 100 → egnethed × 0.7
 
-export function suitabilityScore(abilities, stages) {
-  if (!stages?.length) return 0;
-  let sum = 0;
-  for (const s of stages) sum += terrainScore(abilities, s.demand_vector || {});
-  return sum / stages.length;
+// #6207: assistenten rangerer på det rutematch-tal manageren ser i sæsonmatrix og
+// Planlæg dag (urundet, så to ryttere på samme viste tal stadig skilles). Den udtager
+// kun til løb der ikke er startet, og de regnes alle på den aktuelle regel-revision;
+// derfor routeMatchRevisionFor(null). Vektoren regnes én gang pr. løb, ikke pr. rytter.
+export function routeFitScorer(stages) {
+  const vector = stages?.length ? raceRouteVector(stages, routeMatchRevisionFor(null)) : null;
+  return (abilities) => routeMatchRaw(abilities, vector) ?? 0;
 }
 
-// Per-etape egnethed (0-100) — samme terrainScore som suitabilityScore, men ÉT tal
-// pr. etape i stedet for snittet. Til S4 rute-match: rytter mod hver etapes krav.
+export function suitabilityScore(abilities, stages) {
+  return routeFitScorer(stages)(abilities);
+}
+
+// Rå terræn-score pr. etape mod den gemte demand_vector. Kun udviklingsværktøjerne
+// (scripts/dev/v4VisualPack) bruger den; spillet viser rutematch fra routeMatch.js.
 export function stageSuitabilityScores(abilities, stages) {
   if (!Array.isArray(stages)) return [];
   return stages.map((s) => Math.round(terrainScore(abilities, s.demand_vector || {}) * 100));
@@ -80,13 +88,14 @@ export function autopickTeamSelection({ riders = [], stages = [], sizeRule, pref
   const rule = sizeRule || SELECTION_SIZE.default;
 
   // Samlet egnethed (alle etaper) bruges til holdudvælgelsen.
+  const fit = routeFitScorer(stages);
   const scored = riders
     .filter((r) => r?.rider_id && r.abilities)
     .map((r) => {
       const raw = Number(r.fatigue);
       const clampedFatigue = Number.isFinite(raw) ? Math.min(100, Math.max(0, raw)) / 100 : 0;
       const freshness = 1 - clampedFatigue * AUTOPICK_FATIGUE_DAMPING;
-      return { rider_id: r.rider_id, abilities: r.abilities, score: suitabilityScore(r.abilities, stages) * freshness };
+      return { rider_id: r.rider_id, abilities: r.abilities, score: fit(r.abilities) * freshness };
     })
     .sort((a, b) => b.score - a.score || String(a.rider_id).localeCompare(String(b.rider_id)));
 
@@ -136,9 +145,9 @@ function resolveCaptain({ picked, pickedIds, stages, preference }) {
     if (forced.length) return forced[0].rider_id;
     for (const id of preference.captains || []) if (pickedIds.has(id)) return id;
   }
-  const gcStagesToUse = gcStages(stages);
+  const gcFit = routeFitScorer(gcStages(stages));
   return [...picked].sort((a, b) =>
-    suitabilityScore(b.abilities, gcStagesToUse) - suitabilityScore(a.abilities, gcStagesToUse) ||
+    gcFit(b.abilities) - gcFit(a.abilities) ||
     String(a.rider_id).localeCompare(String(b.rider_id))
   )[0].rider_id;
 }

@@ -43,6 +43,7 @@ on:
       - 'scripts/lib/race-truth-rules.test.mjs'
       - 'scripts/__fixtures__/race-truth/**'
       - 'backend/lib/raceStory.js'
+      - 'backend/lib/raceTimeline.js'
       - 'backend/lib/raceParticipationHistory.ts'
       - '.github/workflows/race-truth-guard.yml'
 

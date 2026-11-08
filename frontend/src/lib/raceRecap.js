@@ -71,8 +71,9 @@ function scopedIncidents(incidents, scope) {
 
 // ── #7411: udgaaede synlige ─────────────────────────────────────────────────
 // Aarsags-noeglen under detail.incidents.* pr. incident-art. time_limit er
-// motorens tidsgraense (raceEngineV4Bridge), withdrawal en udkoert hjaelper der
-// steg af (#6938 U3/U4). Ukendt art falder tilbage til "abandoned" (neutral),
+// motorens tidsgraense (raceEngineV4Bridge), withdrawal en rytter for langt efter
+// vinderen der steg af (#6938 U3/U4, teksten #7701: motoren afgoer det
+// paa hullet, saa ordlyden maa ikke paastaa traethed). Ukendt art falder tilbage til "abandoned" (neutral),
 // aldrig til en forkert aarsag.
 const INCIDENT_REASON_KEYS = Object.freeze({
   crash: "crash",
@@ -85,6 +86,36 @@ const INCIDENT_REASON_KEYS = Object.freeze({
 
 export function incidentReasonKey(kind) {
   return INCIDENT_REASON_KEYS[kind] ?? "abandoned";
+}
+
+// #7701: en rytter uden for tidsgraensen fordi han var for traet. Motoren skriver
+// `fatigue_rider_ids` paa outside_time_limit-haendelsen, kun naar kontakten
+// time_limit_fatigue_7715 er bundet til loebet. Uden feltet (kontakten slukket,
+// gamle loeb) er listen tom og teksten er den almindelige.
+export const TIME_LIMIT_FATIGUE_KEY = "time_limit_fatigue";
+
+/** rider_id'er som en outside_time_limit-haendelse peger paa som "for traette". */
+export function fatigueRiderIdsFromEvents(events) {
+  const out = new Set();
+  for (const e of events || []) {
+    if (e?.type !== "outside_time_limit") continue;
+    const ids = e.params?.fatigue_rider_ids;
+    if (!Array.isArray(ids)) continue;
+    for (const id of ids) if (typeof id === "string") out.add(id);
+  }
+  return out;
+}
+
+/**
+ * Etapens udgaaede-raekker (dnfRowsForStage) hvor en tidsgraense-rytter, som
+ * haendelsen kalder for traet, faar aarsagen "time_limit_fatigue". Alt andet
+ * (andre arter, tidsgraense uden traethed, ingen haendelser) returneres uaendret.
+ */
+export function withTimeLimitFatigue(rows, events) {
+  const ids = fatigueRiderIdsFromEvents(events);
+  if (!ids.size) return rows;
+  return rows.map((r) => (r.reasonKey === "time_limit" && r.rider_id != null && ids.has(String(r.rider_id))
+    ? { ...r, reasonKey: TIME_LIMIT_FATIGUE_KEY } : r));
 }
 
 // Skadede/syge ikke-startere (backend persistInjuryWithdrawals) gemmes ogsaa med
@@ -287,7 +318,7 @@ export function buildRaceRecap({ results = [], scope, incidents = [], profileTyp
   const abandons = scoped.filter((inc) => inc.outcome === "abandon" && incidentRiderName(inc)
     && !(group && inc.kind === "withdrawal"));
   for (const inc of abandons.slice(0, ABANDON_MOMENT_LIMIT)) {
-    moments.push({ key: "abandon", params: { rider: incidentRiderName(inc), kind: inc.kind } });
+    moments.push({ key: "abandon", params: { rider: incidentRiderName(inc), kind: inc.kind, when: sc.type === "stage" ? "stage" : "other" } });
   }
 
   const topRiderIds = new Set(finish.slice(0, 3).map((r) => r.rider_id).filter(Boolean));

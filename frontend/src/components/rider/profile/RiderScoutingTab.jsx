@@ -22,6 +22,10 @@ import { statPlateStyle } from "../../../lib/statColor";
 import { useScoutCountdown, scoutReadyClock } from "../../../lib/scoutCountdown";
 import { potentialFromReport, potentialRowFromReport } from "../../../lib/potentialDisplay6853";
 import PotentialRoleBox from "../PotentialRoleBox";
+import PotentialEstimate, { CertaintyMeter } from "../PotentialEstimate";
+import { potentialViewOf } from "../../../lib/potentialEstimateDisplay";
+import I18nReadyGate from "../../I18nReadyGate";
+import { SkeletonLines } from "../../ui/Skeleton.jsx";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -172,6 +176,61 @@ function PrecisionNote({ precision, t, lang }) {
   );
 }
 
+// Teksterne her vises kun på profilen og ligger derfor i det lazy scouting-namespace.
+function EstimateCopyGate({ children }) {
+  return (
+    <I18nReadyGate ns="scouting" fallback={<SectionCard><SkeletonLines lines={4} /></SectionCard>}>
+      {children}
+    </I18nReadyGate>
+  );
+}
+
+// Egen komponent, så teksten først slås op, når gaten har hentet namespacet.
+function LearningCard({ view, t }) {
+  return (
+    <SectionCard>
+      <div data-testid="scouting-estimate-learning">
+        <PotentialEstimate view={view} size="report" />
+        <p className="text-cz-3 text-3xs mt-2 mb-0">{t("scouting:potentialEstimate.learningBody")}</p>
+      </div>
+    </SectionCard>
+  );
+}
+
+// #6110 Udvikling 2.0 (spec §3.6): skønnet er hele kortet. Stort tal + ord, måleren,
+// hvad skønnet bygger på, og en sekundær scout igen-knap. Intet interval pr. type.
+function EstimateCard({ view, report, canLookAgain, scoutAction, t }) {
+  const scoutMeta = report.scout;
+  const looks = report.looks ?? report.level ?? 0;
+  const builtOn = report.own
+    ? t("scouting:potentialEstimate.builtOnOwn")
+    : scoutMeta?.isDefault === false
+      ? t("scouting:potentialEstimate.builtOnNamed", { count: looks, name: scoutMeta.name, tier: scoutMeta.tier })
+      : t("scouting:potentialEstimate.builtOnDefault", { count: looks, overall: scoutMeta?.overall ?? "—" });
+  return (
+    <SectionCard>
+      <div data-testid="scouting-estimate-card">
+        <PotentialEstimate view={view} size="report" />
+        <div className="mt-3.5"><CertaintyMeter certainty={view.certainty} /></div>
+        <dl className="m-0 mt-3">
+          <div className="flex items-baseline justify-between gap-4 border-t border-cz-border py-2.5">
+            <dt className="text-[12.5px] text-cz-2">{t("scouting:potentialEstimate.builtOnLabel")}</dt>
+            <dd className="m-0 text-right text-[12.5px] text-cz-1 tabular-nums">{builtOn}</dd>
+          </div>
+          {canLookAgain && (
+            <div className="flex items-baseline justify-between gap-4 border-t border-cz-border py-2.5">
+              <dt className="text-[12.5px] text-cz-2">{t("scouting:potentialEstimate.nextLookLabel")}</dt>
+              <dd className="m-0 text-right text-[12.5px] text-cz-1">{t("scouting:potentialEstimate.nextLookValue")}</dd>
+            </div>
+          )}
+        </dl>
+        {canLookAgain && <div className="mt-1.5">{scoutAction}</div>}
+        <p className="text-cz-3 text-3xs mt-3 mb-0">{t("scouting:potentialEstimate.notAFactLong")}</p>
+      </div>
+    </SectionCard>
+  );
+}
+
 export default function RiderScoutingTab({ rider, scouting }) {
   const { t, i18n } = useTranslation("rider");
   const { t: tTypes } = useTranslation("riderTypes");
@@ -222,7 +281,8 @@ export default function RiderScoutingTab({ rider, scouting }) {
   useEffect(() => { setReport(null); load(); }, [load]);
   useEffect(() => { if (hookLevel > 0) load(); }, [hookLevel, load]);
 
-  const level = report?.level ?? 0;
+  const estimateView = potentialViewOf(report);
+  const level = report?.level ?? report?.looks ?? 0;
   const remaining = scoutSystemEnabled ? Math.max(0, jobCapacity - jobActiveCount) : (slots?.remaining ?? 0);
   const busy = scoutingId === riderId;
   // #3671: relative gulv (scoutEngine.scoutHalfWidth) betyder at næste niveau
@@ -323,12 +383,40 @@ export default function RiderScoutingTab({ rider, scouting }) {
     );
   }
 
-  if (report.academyPrognosis) {
+  const scoutErrorLine = scoutError && (
+    <p role="alert" className="mt-2 text-2xs text-cz-danger">
+      {t([`profile.scouting.scoutErrors.${scoutError}`, "profile.scouting.scoutFailed"])}
+    </p>
+  );
+
+  if (estimateView && !estimateView.hidden) {
+    return (
+      <EstimateCopyGate>
+        <EstimateCard
+          view={estimateView}
+          report={report}
+          canLookAgain={!report.own && level < maxLevel}
+          scoutAction={<>{scoutButton("scouting.rescout")}{scoutErrorLine}</>}
+          t={t}
+        />
+      </EstimateCopyGate>
+    );
+  }
+
+  if (estimateView?.hidden && estimateView.reason === "learning") {
+    return (
+      <EstimateCopyGate>
+        <LearningCard view={estimateView} t={t} />
+      </EstimateCopyGate>
+    );
+  }
+
+  if (!estimateView && report.academyPrognosis) {
     return <SectionCard><AcademyScoutingPrognosis prognosis={report.academyPrognosis} /></SectionCard>;
   }
 
   // FØR: uscoutet, ikke-egen rytter — intet potentiale, kun invitationen.
-  if (report.hidden) {
+  if (report.hidden || estimateView?.hidden) {
     return (
       <SectionCard>
         <Eyebrow>{t("profile.scouting.eyebrowOther")}</Eyebrow>
@@ -390,7 +478,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
                 personale, aldrig noget om målets skjulte evner. */}
             <p className="text-cz-3 text-3xs font-mono mt-1 mb-0">
               {isDefaultScout
-                ? t("profile.scouting.provenanceDefault", { overall: scoutMeta?.overall ?? 40 })
+                ? t("profile.scouting.provenanceDefault", { overall: scoutMeta?.overall ?? "—" })
                 : t("profile.scouting.provenanceNamed", { name: scoutMeta?.name, tier: scoutMeta?.tier })}
             </p>
             <div className="flex items-center gap-2.5 mt-2 flex-wrap">

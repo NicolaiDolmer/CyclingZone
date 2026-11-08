@@ -1,0 +1,55 @@
+{
+  "sourceCommit": "ec5ccd3407f518b413d7000d3e14571fd26d27de",
+  "note": "Skrevet af merge-basens kode (sourceCommit) med raceRunner7725Scenarios.js. Genereres aldrig med den nye kode. Kun hashes.",
+  "wholeRace:s5_profiles_v3": {
+    "inputChecksums": [
+      611401440,
+      4072152646,
+      827158874
+    ],
+    "inputSha256": [
+      "7d729836213a702d059afb340bbba8e8d28bde68266b06000e6894eb2a05d6ec",
+      "a2305fe3e2d8b23978ba107ac9688b18252d7cf06f03d42a18a27aaf5d5de90e",
+      "020bf51d3e7bd6ebf7575f6c3d9c45798c553438af4bcf9dc93397e9355b08cc"
+    ],
+    "outputSha256": [
+      "cea30c095ae58be40868fccc58fc1c71ec97b8c6f2fc007b56bf1af8b6a356fc",
+      "1be2c95d7ae6a3356910099fd4afad3a912698e59047e062bb356770a7f6a05b",
+      "ca1d6c85e3bd2c4ed972e6bd96f7c9759ff21ade30e03303d561af1457b9e86a"
+    ],
+    "resultRowsSha256": "a46ac450a163406cf70648eedd4585edf0020b5f21e6bf134d2752dcf4f39440",
+    "timelinesSha256": "f02adb378470073a93a8e7676c29caa4c7b263c246b48a5269bd6d9aa10654ee"
+  },
+  "wholeRace:s5_profiles_v2": {
+    "inputChecksums": [
+      2833103683,
+      833317112,
+      3635097234
+    ],
+    "inputSha256": [
+      "57e7e85b1e4dbfbb92a1f56d2d4637e6ebaba841207e0202050395b98dd39b27",
+      "cc1f94f00e2404c46ab6991eeffbdd4b09af4cdd48aab7c98bc2053adcbcd143",
+      "392af602e71806391338eddd7fdef0cdbe56d20d329d08fe9d21fd3c1dff25bc"
+    ],
+    "outputSha256": [
+      "52e64364986baabc1a8ac9f6d601f444f6cb2b6fbf5b7168e7276251c064540e",
+      "6d48f521ed7eaf4e27eb6be827d1efe272dfee95fbbfdbe195693d0482b412e5",
+      "f3c5e92bfacdcac1141415d62c71a3295236992449c9d2305fa3887d4c3fc5b0"
+    ],
+    "resultRowsSha256": "a9c95190283f67a3834b5eb24cc8475281fd3e3e348ecf04892179941e364b02",
+    "timelinesSha256": "fe240026c4fa3dc2f7147e604d18b342ac9f9b3e8227d33c52c188c53c8e8bd6"
+  },
+  "stageByStage:s5_profiles_v3:stage2": {
+    "inputChecksums": [
+      1697469010
+    ],
+    "inputSha256": [
+      "96d614d775dc328da342fadab6577c665904e328df5852233f0ae88c9095222e"
+    ],
+    "outputSha256": [
+      "0492e98d3e47c2e27ee79fb3d3e8147de3338e6303da28addc5f1a661362e74b"
+    ],
+    "resultRowsSha256": "e9e0b07bc9f3cbe47f76c5ad5cce06dc7146618c4182852cfd25be5c2ac67d15",
+    "timelinesSha256": "5f9c67b43c2927a50d341ed9c144159d85917d80d0fbb93830b7bc3b32324a1f"
+  }
+}

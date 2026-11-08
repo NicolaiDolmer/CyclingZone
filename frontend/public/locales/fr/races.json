@@ -55,6 +55,10 @@
         "end": "Les 10 derniers km commencent dans la descente vers l'arrivée, donc l'étape {number} du plan ne démarre que dans le final.",
         "finale": "Les 10 derniers km commencent dans la descente vers l'arrivée, donc l'étape {number} du plan ne démarre que dans le final."
       },
+      "flat": {
+        "start": "Les 10 derniers km commencent entre la dernière montée et l'arrivée, donc l'étape {number} du plan démarre au sommet.",
+        "finale": "Les 10 derniers km commencent entre la dernière montée et l'arrivée, donc l'étape {number} du plan ne démarre que dans le final."
+      },
       "samePoint": "Les étapes {first} et {second} du plan changent au même endroit, donc l'étape {first} n'est pas courue."
     },
     "timeTrial": "Pas de plan d'étape sur un contre-la-montre.",
@@ -68,7 +72,7 @@
       "ride_for_result": "Courir pour un résultat",
       "sprint_train": "Train de sprint",
       "grupetto": "Gruppetto",
-      "ride_in": "Rentrer à l'arrivée"
+      "ride_in": "Rentrer tranquillement"
     },
     "from": {
       "kom": "après {climb}",
@@ -88,7 +92,19 @@
       "abandoned": "abandon au km {km}",
       "skipped": "sautée, il a été lâché avant",
       "notReached": "pas atteinte",
-      "pending": "Le film de l'étape n'est pas encore prêt."
+      "pending": "Le film de l'étape n'est pas encore prêt.",
+      "outcome": {
+        "failed": "Tenté, sans succès",
+        "finished": "Arrivé",
+        "attacked": "A attaqué au km {km}",
+        "inBreak": "Dans l'échappée",
+        "keptContact": "A gardé le contact",
+        "lostContact": "A perdu le contact au km {km}",
+        "outOfTime": "Hors délais",
+        "rank": "N° {rank} à l'arrivée",
+        "withRider": "Avec {name}",
+        "withRiderTo": "Avec {name} jusqu'au km {km}"
+      }
     }
   },
   "stagePageV2": {
@@ -206,6 +222,7 @@
       "kmAt": "km {km}",
       "kmSpan": "km {from}-{to}",
       "unfolded": "Comment ça s'est passé",
+      "lossUnknown": "Temps perdu, cause inconnue : {names}.",
       "source": "Chaque temps, écart et phrase ici vient du journal de course de cette étape.",
       "replay": {
         "play": "Rejouer l'étape",
@@ -264,6 +281,8 @@
         "survived": "{names} sont restés devant jusqu'à l'arrivée.",
         "attack": "{names} a attaqué au km {km}.",
         "attackGain": "{names} a attaqué au km {km} et pris {gain}.",
+        "ownAttackedWith": "{count, plural, one {{mine} a attaqué} other {{mine} ont attaqué}} avec {others}.",
+        "ownAttackedWithMore": "{count, plural, one {{mine} a attaqué} other {{mine} ont attaqué}} avec {others} et d'autres.",
         "winner": "{winner} a gagné.",
         "winnerGap": "{winner} a gagné, {gap} devant {second}.",
         "winnerSame": "{winner} a gagné devant {second}, dans le même temps.",
@@ -276,7 +295,10 @@
         "third": "{name} a pris la troisième place.",
         "thirdGap": "{name} a pris la troisième place, à {gap}.",
         "placed": "{name} a terminé à la position {rank}.",
-        "placedGap": "{name} a terminé à la position {rank}, à {gap}."
+        "placedGap": "{name} a terminé à la position {rank}, à {gap}.",
+        "dayGreat": "{name} a connu une très bonne journée.",
+        "dayGood": "{name} a connu une bonne journée.",
+        "ownOut": "{kind, select, withdrawal {Pied à terre : {names}. Trop loin du vainqueur.} time_limit {Hors délais : {names}.} time_limit_fatigue {Hors délais par fatigue : {names}.} crash {Abandon sur chute : {names}.} mechanical {Abandon sur problème mécanique : {names}.} other {Abandon : {names}.}}"
       },
       "final": {
         "aria": "Les derniers 5 km : groupes sur la route avec distance restante, écarts et chrono de course",
@@ -297,6 +319,76 @@
         "play": "Rejouer les derniers 5 km",
         "scrubAria": "Temps de course dans les derniers 5 km",
         "speedAria": "Vitesse de lecture"
+      }
+    },
+    "why": {
+      "button": "Pourquoi ?",
+      "buttonAria": "Pourquoi {name} a-t-il fini ici ?",
+      "alone": "{main}.",
+      "withLead": "{main}, {lead}.",
+      "attackedWith": "Il a attaqué avec {names}.",
+      "attackedWithMore": "Il a attaqué avec {names} et d'autres.",
+      "where": {
+        "climb": " dans {name}",
+        "sector": " à {name}",
+        "lastClimb": " dans la dernière ascension",
+        "someClimb": " dans une ascension",
+        "finale": " dans le final"
+      },
+      "main": {
+        "unknown": "Inconnu. Rien dans les événements de la course n'explique ce résultat",
+        "abandonedCrash": "Il a chuté{where} et a dû abandonner",
+        "abandonedMechanical": "Il a eu un incident mécanique{where} et a dû abandonner",
+        "abandoned": "Il a abandonné{where}",
+        "timeLimit": "Il a fini hors délais",
+        "timeLimitFatigue": "Il a fini hors délais, car il était trop fatigué",
+        "withdrawal": "Il a mis pied à terre, trop loin du vainqueur",
+        "won": "Il a été le premier sur la ligne",
+        "wonSprint": "Il a gagné le sprint",
+        "wonAttack": "Il a attaqué{where} et a rejoint la ligne seul",
+        "survived": "Il a pris l'échappée et elle est allée au bout",
+        "front": "Il est resté dans le groupe de tête jusqu'à l'arrivée",
+        "frontSprint": "Il était dans le groupe qui a sprinté pour la victoire",
+        "dropEmpty": "Il s'est vidé{where} et a perdu le contact",
+        "dropPace": "Il n'a pas pu tenir le rythme{where}",
+        "dropGrupetto": "Il a reculé dans le gruppetto{where}",
+        "dropCobbles": "Il a perdu le contact sur les pavés{where}",
+        "dropGeneric": "Il a perdu le contact{where}",
+        "dropFromBreak": "Il n'a pas pu rester dans l'échappée{where}",
+        "crack": "Il a craqué{where} et a perdu le contact avec la tête",
+        "allOut": "Il s'est donné à fond{where} et s'est vidé",
+        "allOutGain": "Il s'est donné à fond{where} et a gagné du temps",
+        "crashLoss": "Il a perdu du temps dans une chute{where}",
+        "mechanicalLoss": "Il a perdu du temps sur un incident mécanique{where}",
+        "incidentLoss": "Il a perdu du temps sur un incident{where}",
+        "caught": "Il était dans l'échappée et a été repris{where}",
+        "badDayFatigue": "Il a connu un jour sans, les jours difficiles l'ont rattrapé",
+        "badDayForm": "Il a connu un jour sans et manquait de forme",
+        "badDayIllness": "Il a connu un jour sans et se sentait malade",
+        "badDayRain": "Il a connu un jour sans sous la pluie",
+        "badDayWind": "Il a connu un jour sans dans le vent",
+        "badDayHeat": "Il a connu un jour sans dans la chaleur",
+        "attackBehind": "Il a attaqué{where} mais n'a pas pu rester devant jusqu'à la ligne",
+        "bunchBehindSprint": "Il a fini dans le peloton derrière le sprint",
+        "pelotonBehindBreak": "Il a fini dans le peloton, derrière l'échappée allée au bout",
+        "pelotonBehind": "Il est resté dans le peloton quand le groupe de devant s'est détaché",
+        "ttFastest": "Il a signé le meilleur temps",
+        "ttDayGreat": "Il a connu une excellente journée sur le vélo",
+        "ttDayGood": "Il a connu une bonne journée sur le vélo",
+        "ttRouteGood": "Le parcours lui convenait",
+        "ttRouteBad": "Le parcours ne lui convenait pas"
+      },
+      "lead": {
+        "afterBreak": "après une journée dans l'échappée",
+        "afterDrop": "après avoir perdu le contact{where}",
+        "badDayFatigue": "lors d'un jour sans, rattrapé par les jours difficiles",
+        "badDayForm": "lors d'un jour sans, en manque de forme",
+        "badDayIllness": "lors d'un jour sans, en se sentant malade",
+        "badDayRain": "lors d'un jour sans sous la pluie",
+        "badDayWind": "lors d'un jour sans dans le vent",
+        "badDayHeat": "lors d'un jour sans dans la chaleur",
+        "ttRouteGood": "sur un parcours qui lui convenait",
+        "ttRouteBad": "sur un parcours qui ne lui convenait pas"
       }
     },
     "yourDay": {
@@ -464,7 +556,7 @@
       "fillMissing": "Combler les manques",
       "clearDay": "Vider le jour",
       "clearAllSeason": "Tout vider",
-      "bound": "Les coureurs verrouillés ne peuvent être ajoutés à aucune course affichée aujourd'hui",
+      "bound": "Les coureurs verrouillés ne peuvent être ajoutés à aucune des courses affichées",
       "loadShort": "{days} j",
       "loadTitle": "Charge de la saison : {races, plural, one {# course} other {# courses}}, {days, plural, one {# jour de course engagé} other {# jours de course engagés}} cette saison",
       "clearDayTooltip": "Vide {races, plural, one {# course} other {# courses}} et retire {riders, plural, one {# coureur} other {# coureurs}} pour ce jour"
@@ -888,6 +980,10 @@
       "bodyAt": "Tu as appuyé sur S'entraîner maintenant à {time}. Les coureurs qui se sont entraînés aujourd'hui ne peuvent pas disputer la course du jour.",
       "body": "Les coureurs qui se sont entraînés aujourd'hui ne peuvent pas disputer la course du jour.",
       "rider": "Entraîné aujourd'hui",
+      "titleEarlier": "Verrouillé.",
+      "bodyEarlierAt": "Tu as appuyé sur S'entraîner maintenant {day} à {time}. Les coureurs qui se sont entraînés un des jours de la course ne peuvent pas la disputer.",
+      "bodyEarlier": "Les coureurs qui se sont entraînés un des jours de la course ne peuvent pas la disputer.",
+      "riderEarlier": "Entraîné plus tôt",
       "columnLocked": "Verrouillé"
     },
     "saving": "Enregistrement…",
@@ -1073,7 +1169,7 @@
         "neutral": "Lire la course",
         "let_go": "Laisser la chasse aux autres"
       },
-      "gcNote": "L'équipe peut apporter une réponse limitée à une vraie menace au général avec ses coureurs libres.",
+      "gcNote": "L'équipe réagit à une vraie menace au général avec ses coureurs libres, sauf si tu laisses la chasse aux autres.",
       "breakNote": "Le leader, le leader sprint et l'équipier ne tentent l'échappée du matin que si Tenter l'échappée est sélectionné."
     },
     "breakaway": {
@@ -1556,6 +1652,9 @@
           "chase_faded_climb": "La chasse s'est éteinte après {climb}, et l'écart a de nouveau grandi.",
           "chase_faded": "La chasse s'est éteinte, et l'écart a de nouveau grandi.",
           "chase_too_late": "La chasse s'est rapprochée, mais a manqué de route.",
+          "chase_tired": "Les équipes en chasse en avaient trop fait pour revenir à temps.",
+          "chase_outgunned": "Les poursuivants n'étaient pas assez forts pour reprendre cette échappée à temps.",
+          "chase_too_few": "Trop peu de coureurs roulaient dans la chasse pour revenir à temps.",
           "gap_never_closed": "La chasse n'a jamais fait baisser l'écart.",
           "gc_threat": "{teamCount, plural, =1 {{teamLast} a chassé} other {{teamsHead} et {teamLast} ont chassé}} parce que {threats} {threatCount, plural, one {menaçait} other {menaçaient}} {rider} au général.",
           "closed_on_climb": "L'écart a fondu dans {climb}."
@@ -1563,9 +1662,16 @@
         "order": {
           "all_out_stayed_away": "{rider} a roulé à fond sur ton ordre et a tenu jusqu'à la ligne.",
           "all_out_held_on_climb": "{rider} a roulé à fond sur ton ordre et a passé {climb} avec les premiers.",
-          "all_out_held_on": "{rider} a roulé à fond sur ton ordre et est resté dans le groupe de tête."
+          "all_out_held_on": "{rider} a roulé à fond sur ton ordre et est resté dans le groupe de tête.",
+          "attack_stayed_away": "{rider} a attaqué sur ton ordre et a tenu jusqu'à la ligne.",
+          "attack_held_on_climb": "{rider} a attaqué sur ton ordre et a passé {climb} avec les premiers.",
+          "attack_held_on": "{rider} a attaqué sur ton ordre et est resté dans le groupe de tête."
         },
         "breakaway_dropped": "{riders} {count, plural, one {est lâché} other {sont lâchés}} de l'échappée.",
+        "breakaway_attempt_failed": "{riders}{others, plural, =0 {} one { et # autre} other { et # autres}} {count, plural, one {tente} other {tentent}} de s’échapper, mais {count, plural, one {ne sort} other {ne sortent}} pas du peloton. {teamCount, plural, =1 {{teamLast} a réagi} other {{teamsHead} et {teamLast} ont réagi}}. La tentative a coûté des forces pour le reste de l’étape.",
+        "breakaway_attempt_failed_field": "{riders}{others, plural, =0 {} one { et # autre} other { et # autres}} {count, plural, one {tente} other {tentent}} de s’échapper, mais {count, plural, one {ne sort} other {ne sortent}} pas du peloton. {teamCount, plural, one {# équipe a réagi} other {# équipes ont réagi}}. La tentative a coûté des forces pour le reste de l’étape.",
+        "breakaway_attempt_none_clear": "{riders}{others, plural, =0 {} one { et # autre} other { et # autres}} {count, plural, one {tente} other {tentent}} de s’échapper, mais personne ne sort du peloton. {teamCount, plural, =1 {{teamLast} a réagi} other {{teamsHead} et {teamLast} ont réagi}}. La tentative a coûté des forces pour le reste de l’étape.",
+        "breakaway_attempt_none_clear_field": "{riders}{others, plural, =0 {} one { et # autre} other { et # autres}} {count, plural, one {tente} other {tentent}} de s’échapper, mais personne ne sort du peloton. {teamCount, plural, one {# équipe a réagi} other {# équipes ont réagi}}. La tentative a coûté des forces pour le reste de l’étape.",
         "group_ahead_formed": "{riders} {count, plural, one {s'échappe} other {s'échappent}} dans un groupe devant le peloton.",
         "group_ahead_caught": "Le groupe devant le peloton est repris : {riders}.",
         "group_ahead_survived": "Le groupe devant le peloton tient jusqu'à la ligne.",
@@ -1581,6 +1687,8 @@
         "favorite_crack_tt": "{rider} faiblit dans la seconde moitié et perd du temps.",
         "all_out_gain": "{rider} se donne à fond dans la dernière ascension et gagne du temps.",
         "all_out_cracked": "{rider} se donne à fond et se vide dans la dernière ascension.",
+        "attack_gain": "{rider} attaque dans la dernière ascension et gagne du temps.",
+        "attack_cracked": "{rider} attaque et se vide dans la dernière ascension.",
         "bad_day_fatigue": "{rider} a connu un jour sans. Les jours difficiles précédents ont laissé des traces.",
         "bad_day_form": "{rider} a connu un jour sans. Il manquait de forme.",
         "bad_day_illness": "{rider} a connu un jour sans. Il était malade.",
@@ -1640,9 +1748,9 @@
       "teamDay": "{team} a mené le classement par équipes avec {count} coureurs dans le top 10.",
       "teamWon": "{team} a remporté le classement par équipes.",
       "jerseys": "Leaders des maillots : {points} aux points, {mountain} en montagne.",
-      "abandon": "{kind, select, crash {{rider} a abandonné après une chute.} mechanical {{rider} a abandonné sur problème mécanique.} injury {{rider} n'a pas pris le départ : blessé.} withdrawal {{rider} a mis pied à terre, épuisé.} time_limit {{rider} est arrivé hors délais.} illness {{rider} n'a pas pris le départ : malade.} other {{rider} a abandonné.}}",
+      "abandon": "{kind, select, crash {{rider} a abandonné après une chute.} mechanical {{rider} a abandonné sur problème mécanique.} injury {{rider} n'a pas pris le départ : blessé.} withdrawal {{when, select, stage {{rider} a mis pied à terre après l'étape, trop loin du vainqueur.} other {{rider} a mis pied à terre, trop loin du vainqueur.}}} time_limit {{rider} est arrivé hors délais.} illness {{rider} n'a pas pris le départ : malade.} other {{rider} a abandonné.}}",
       "notableCrash": "{rider} a chuté et perdu {marginText}.",
-      "withdrawalGroup": "{when, select, stage {{count} coureurs ont mis pied à terre après l'étape, épuisés et loin derrière.} other {{count} coureurs ont mis pied à terre, épuisés et loin derrière.}}",
+      "withdrawalGroup": "{when, select, stage {{count} coureurs ont mis pied à terre après l'étape, trop loin du vainqueur.} other {{count} coureurs ont mis pied à terre, trop loin du vainqueur.}}",
       "seeList": "Voir la liste"
     },
     "incidents": {
@@ -1651,8 +1759,9 @@
       "mechanical": "Mécanique",
       "injury": "Non-partant",
       "illness": "Malade, non-partant",
-      "withdrawal": "Pied à terre, épuisé",
+      "withdrawal": "Pied à terre, trop loin derrière",
       "time_limit": "Hors délais",
+      "time_limit_fatigue": "Hors délais, fatigué",
       "abandoned": "Abandon",
       "dnf": "DNF",
       "dnfCollapsed": "{count, plural, one {# coureur n'a pas terminé} other {# coureurs n'ont pas terminé}}",
@@ -1898,7 +2007,7 @@
         "inBreak": "{rider} a passé la journée dans l'échappée.",
         "helperWork": "{count, plural, one {Un coéquipier a roulé} other {# coéquipiers ont roulé}} au service de {captain}.",
         "none": "Aucun coureur de ton équipe n'a pris le départ de cette étape.",
-        "out": "{kind, select, withdrawal {{rider} a mis pied à terre après l'étape {number}.} time_limit {{rider} est arrivé hors délais sur l'étape {number}.} crash {{rider} a abandonné après une chute sur l'étape {number}.} injury {{rider} n'a pas pris le départ de l'étape {number} : blessé.} illness {{rider} n'a pas pris le départ de l'étape {number} : malade.} other {{rider} a abandonné sur l'étape {number}.}}",
+        "out": "{kind, select, withdrawal {{rider} a mis pied à terre après l'étape {number}, trop loin du vainqueur.} time_limit {{rider} est arrivé hors délais sur l'étape {number}.} crash {{rider} a abandonné après une chute sur l'étape {number}.} injury {{rider} n'a pas pris le départ de l'étape {number} : blessé.} illness {{rider} n'a pas pris le départ de l'étape {number} : malade.} other {{rider} a abandonné sur l'étape {number}.}}",
         "ridersLeft": "{count, plural, =0 {Il ne te reste plus aucun coureur.} one {Il te reste # coureur.} other {Il te reste # coureurs.}}"
       }
     },
@@ -2110,5 +2219,11 @@
       "hours": "dans {count} h",
       "days": "dans {count, plural, one {# jour} other {# jours}}"
     }
+  },
+  "timeLimitRisk": {
+    "short": "Risque de hors délai",
+    "long": "Il est très fatigué et cette étape ne lui convient pas. Il pourrait finir hors délai. Mets-le sur Autobus ou Rouler tranquille pour lui éviter ce risque supplémentaire.",
+    "outShort": "Trop fatigué",
+    "outLong": "Hors délai. Il était très fatigué et l'étape ne lui convenait pas."
   }
 }

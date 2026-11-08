@@ -65,6 +65,7 @@ Trin:
 3. **Advisory — Lighthouse:** `vite preview` på localhost → Lighthouse (`@lhci/cli` eller `treosh/lighthouse-ci-action`) mod localhost → scores (perf/SEO/a11y/best-practices) postes som PR-comment. **Aldrig blokerende** (`continue-on-error`/informational) — scores varierer på CI-hardware.
 4. Upload Lighthouse-JSON + budget-rapport som artifact.
 
+**Maale-kontrakt 7/11 (#7170):** totalen taeller al faelles JS (inklusive det statisk indlaeste engelske fallback) plus kun det stoerste valgfrie `i18n-messages-<sprog>`-chunk, uanset beta-status. Alternative sprog summeres ikke. Reglen aendrer ingen runtime-loading; totalen er fortsat et regressionsbudget over alle ruter, ikke foerste indlaesning. Budgettet genmaales lokalt ved modelskift; marginen bevares.
 Initial `bundle-budget.json` sættes fra den faktiske build på `main` ved implementering (Phase 0-baseline), så gaten starter sandt frem for gættet.
 
 ### Del 3 — Ugentlig AI-review (forbedringer + læring)

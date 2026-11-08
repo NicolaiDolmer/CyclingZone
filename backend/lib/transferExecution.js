@@ -12,7 +12,7 @@ import {
 } from "./marketUtils.js";
 import { fetchAtRiskCount } from "./squadRiskGuard.js";
 import { shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
-import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
+import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.ts";
 import { buildRiderValueSnapshot, updateDealWithValueSnapshot } from "./dealValueSnapshot.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
@@ -454,7 +454,7 @@ function issueNotificationMetadata(message, riderId = null) {
 // flushWindowPendingOffers finaliserer kun selve offer-recorden (ingen
 // pengebevægelse — så ingen dobbeltbetaling). `deferRegistration=false` (vinduet
 // åbent) flytter team_id med det samme som hidtil.
-async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notifyTeamOwner = NOOP, notifyDiscordHistory = NOOP, auditCtx = null, deferRegistration = false }) {
+async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notifyTeamOwner = NOOP, notifyDiscordHistory = NOOP, auditCtx = null, deferRegistration = false, now = new Date() }) {
   const price = getTransferPrice(offer);
   // #1309: salary/base_value/prize_earnings_bonus med så contract-on-acquire kan
   // afgøre create-if-missing vs. inherit-if-present.
@@ -506,6 +506,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     cooldownAmount: cooldownConfig.transferCooldownAmountCzk,
     amount: price,
     payingTeamCreatedAt: buyerState.created_at,
+    now,
   });
   if (!cooldown.allowed) {
     await withdrawTransferOffer(supabase, offer.id);
@@ -565,7 +566,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     ? await expectMaybeSingle(
         supabase
           .from("riders")
-          .update({ pending_team_id: offer.buyer_team_id, updated_at: new Date().toISOString(), ...transferContractPatch, ...graduatePatch })
+          .update({ pending_team_id: offer.buyer_team_id, updated_at: now.toISOString(), ...transferContractPatch, ...graduatePatch })
           .eq("id", rider.id)
           .eq("team_id", offer.seller_team_id)
           .is("pending_team_id", null)
@@ -577,12 +578,14 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
           .update({
             team_id: offer.buyer_team_id,
             pending_team_id: null,
-            acquired_at: new Date().toISOString(),
+            acquired_at: now.toISOString(),
             ...transferContractPatch,
             ...graduatePatch,
           })
           .eq("id", rider.id)
           .eq("team_id", offer.seller_team_id)
+          // #6181: en allerede solgt, ventende rytter kan ikke sælges igen.
+          .is("pending_team_id", null)
           .select("id")
       );
 
@@ -1090,6 +1093,7 @@ export async function confirmTransferOffer({
   logActivity = NOOP,
   notifyDiscordHistory = NOOP,
   auditCtx = null,
+  now = new Date(),
 }) {
   const offer = await expectMaybeSingle(
     supabase
@@ -1165,6 +1169,7 @@ export async function confirmTransferOffer({
     notifyDiscordHistory,
     auditCtx,
     deferRegistration,
+    now,
   });
 }
 

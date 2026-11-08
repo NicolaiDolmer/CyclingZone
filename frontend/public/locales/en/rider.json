@@ -593,7 +593,6 @@
     "beta": "Beta",
     "disclaimer": "New physiological model, calculated from current skills. Does not affect race results yet.",
     "powerProfile": "Power profile",
-    "derivedAbilities": "Derived abilities",
     "zones": {
       "ftp": "FTP",
       "vo2max": "VO2max power",
@@ -719,8 +718,7 @@
     },
     "swap": {
       "label": "Swap",
-      "teamFallback": "Unknown",
-      "cashAdjustment": "Cash adjustment: {amount} CZ$"
+      "teamFallback": "Unknown"
     }
   },
   "auctionPanel": {
@@ -898,6 +896,17 @@
     "loadErrorBody": "Nothing was lost. Try again.",
     "retry": "Try again"
   },
+  "potentialEstimate": {
+    "certainty": {
+      "unsure": "Uncertain",
+      "fair": "Fair",
+      "sure": "Confident"
+    },
+    "learning": "Learning · {trainings} of {needed} trainings",
+    "learningShort": "Learning · {trainings} of {needed}",
+    "notAFact": "An estimate, not a fact.",
+    "scoutedTimes": "{count, plural, one {Scouted # time} other {Scouted # times}}"
+  },
   "scouting": {
     "label_worldclass": "World-class prospect",
     "label_high": "High projection",
@@ -946,14 +955,12 @@
   "training": {
     "title": "Training focus",
     "intro": "Set a season-long training focus for this key rider. It nudges the trained abilities faster toward their target.",
-    "gatedNote": "Training shapes permanent ability and applies at the next season change.",
-    "slotsLeft": "{remaining}/{total} focus slots",
     "focus": "Focus",
     "intensity": "Intensity",
     "focus_vo2max": "VO2max (mixed intervals)",
     "focus_vo2max_climb": "VO2max (climbing intervals)",
     "focus_vo2max_punch": "VO2max (punch intervals)",
-    "focus_threshold": "Threshold / TT",
+    "focus_threshold": "Threshold",
     "focus_sprint": "Sprint",
     "focus_tempo": "Tempo",
     "focus_endurance": "Endurance (Zone 2)",
@@ -980,8 +987,6 @@
     "saving": "Saving…",
     "noSlots": "No focus slots left this season",
     "current": "Current focus",
-    "assistantNoRisk": "Faster targeted growth, no setback risk.",
-    "assistantRisk": "Faster targeted growth, but ~{risk}% risk of a setback (lost gains) this season.",
     "tradeoff": "Other abilities grow a little slower.",
     "intensity_recovery": "Recovery"
   }

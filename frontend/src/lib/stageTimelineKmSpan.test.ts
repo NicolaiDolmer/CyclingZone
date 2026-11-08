@@ -6,6 +6,8 @@ import assert from "node:assert/strict";
 import { honestTimelineEvents, honestKmResolver, lossEntriesWithFilmKm, filmKmValue, exactEventKm } from "./stageTimelineKmSpan.ts";
 import { buildFilmTimeline, eventsPlayedUpTo } from "./stageTimelineFilm.js";
 import { catchActorCopy, findMorningCatch } from "./raceCatchActor.ts";
+import { buildOwnTimeLoss } from "./stageSplitTimes.ts";
+import { withEventPlaces } from "../../../backend/lib/raceTimeline.js";
 
 type Ev = { km: number; type: string; params?: Record<string, unknown>; exact_km?: number; recorded_km?: number; km_span?: { from: number; to: number } };
 const fmt = (value: number) => String(value);
@@ -204,4 +206,51 @@ test("#6350 honestKmResolver gives a single event the km its film line shows", (
     assert.ok(line, `${raw.type}@${raw.km}`);
     assert.equal(filmKmValue(resolve(raw), fmt), filmKmValue(line, fmt), `${raw.type}@${raw.km}`);
   }
+});
+
+test("#6350: et split i to halvdele: tabslisten viser hver rytters eget sted", () => {
+  const half = (riderIds: string[], exactKm: number) => ({ type: "peloton_splits", km: 180, params: { group_id: "g", rider_ids: riderIds, exact_km: exactKm } });
+  const events = [{ type: "stage_start", km: 0, params: {} }, half(["set"], 170.47), half(["late"], 180), { type: "finish", km: 180, params: {} }];
+  const shown = lossEntriesWithFilmKm(events, [{ type: "drop", km: 180, riderId: "late" }, { type: "drop", km: 180, riderId: "set" }], V4);
+  assert.deepEqual(shown.map((l) => [l.riderId, filmKmValue(l.shown, fmt)]), [["set", "170.47"], ["late", "180"]]);
+});
+
+test("#6350: hele kæden: egne ryttere fra hver halvdel af et split er to linjer med hver deres sted", () => {
+  const split = (groupId: string, gap: number, exactKm: number, riderIds: string[], exactTime: number) => ({ km: 180, type: "peloton_splits", params: { group_id: groupId, source_group_id: "peloton-0", gap_seconds: gap, rider_ids: riderIds, exact_km: exactKm, exact_time: exactTime } });
+  const log = (contact: boolean) => [
+    { km: 0, type: "stage_start", params: { exact_km: 0, exact_time: 0, field_count: 20 } },
+    { km: 10, type: "breakaway_formed", params: { group_id: "breakaway-1", rider_ids: ["late-own"], exact_km: 10, exact_time: 900 } },
+    { km: 170, type: "gap_update", params: { group_id: "peloton-0", gap_seconds: 91, exact_km: 170, exact_time: 17000 } },
+    { km: 174.07, type: "breakaway_caught", params: { group_id: "breakaway-1", rider_ids: ["late-own"], exact_km: 174.07 } },
+    { km: 174.07, type: "group_merged", params: { group_id: "breakaway-1", into_group_id: "peloton-0", rider_ids: ["late-own"], exact_km: 174.07 } },
+    split("gruppetto-1", 53.09, 170.76, ["a"], 17609),
+    split("gruppetto-2", 62.38, 170.71, ["b"], 17599),
+    split("gruppetto-3", 302.73, 180, ["set-own", "late-own"], 19700),
+    ...(contact ? [{ km: 180, type: "group_merged", params: { group_id: "gruppetto-3", into_group_id: "gruppetto-2", rider_ids: ["set-own", "late-own"], exact_km: 176 } }] : []),
+    { km: 180, type: "finish", params: { exact_km: 180, top: [] } },
+  ];
+  const lines = (contact: boolean) => {
+    const events = withEventPlaces(log(contact)) as Ev[];
+    return lossEntriesWithFilmKm(events, buildOwnTimeLoss(events as never, { ownRiderIds: ["set-own", "late-own"] }), V4)
+      .map((l) => [(l as { riderIds?: string[] }).riderIds, filmKmValue(l.shown, fmt)]);
+  };
+  const [setLine, lateLine] = lines(false);
+  assert.deepEqual(setLine[0], ["set-own"]);
+  assert.ok(Number(setLine[1]) > 170.4 && Number(setLine[1]) < 171, `sat ved km ${setLine[1]}`);
+  assert.deepEqual(lateLine[0], ["late-own"]);
+  assert.ok(Number(lateLine[1]) > 174.07 && Number(lateLine[1]) < 175, `#7734: tabet begynder efter kontakten, fik km ${lateLine[1]}`);
+  assert.equal(lines(false).length, 2);
+  assert.deepEqual(lines(true)[1], [["late-own"], "176"], "med gruppens kontakt står han på kontakten");
+});
+
+test("#6350: ryttere på samme sted er stadig én linje", () => {
+  const events = [
+    { km: 0, type: "stage_start", params: {} },
+    { km: 100, type: "gap_update", params: { group_id: "peloton-0", gap_seconds: 10 } },
+    { km: 180, type: "peloton_splits", params: { group_id: "g", source_group_id: "peloton-0", gap_seconds: 60, rider_ids: ["x", "y"], exact_km: 170.47 } },
+    { km: 180, type: "finish", params: {} },
+  ];
+  const entries = buildOwnTimeLoss(events as never, { ownRiderIds: ["x", "y"] });
+  assert.equal(entries.length, 1);
+  assert.deepEqual((entries[0] as { riderIds: string[] }).riderIds, ["x", "y"]);
 });

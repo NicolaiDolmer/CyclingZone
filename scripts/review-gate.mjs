@@ -23,7 +23,7 @@
 // Alt herunder er rene funktioner; gh-kaldene ligger i main() nederst.
 //
 //   node scripts/review-gate.mjs evaluate --pr 6654 [--repo owner/name]
-//   node scripts/review-gate.mjs post-claude-review --pr 6654 --verdict clean [--note "..."]
+//   node scripts/review-gate.mjs post-claude-review --pr 6654 --verdict clean [--note "..."] [--expect-sha <sha>]
 //   node scripts/review-gate.mjs refresh [--pr 6654]          # genkoer gaten (CI)
 //   node scripts/review-gate.mjs escaped-report [--since 2026-10-01] [--until 2026-11-01]
 //
@@ -725,6 +725,11 @@ export function main(argv = process.argv.slice(2)) {
   if (cmd === "post-claude-review") {
     if (!Number.isInteger(pr) || pr <= 0) { console.error("--pr <N> kraeves"); return 2; }
     const head = ghJson(["api", `repos/${repo}/pulls/${pr}`]).head.sha;
+    // #7658 (Codex P2): --expect-sha binder markoeren til det reviewede commit; flyttet HEAD = ingen markoer.
+    if (typeof args["expect-sha"] === "string" && !shaMatchesHead(args["expect-sha"], head)) {
+      console.error(`HEAD er ${String(head).slice(0, 7)}, ikke det reviewede ${args["expect-sha"].slice(0, 7)}: review det nye commit foer markoeren skrives.`);
+      return 3;
+    }
     const body = buildClaudeMarkerComment(args.verdict, head, typeof args.note === "string" ? args.note : "");
     gh(["pr", "comment", String(pr), "--repo", repo, "--body-file", "-"], { input: body });
     console.log(`Claude-review-markoer (${args.verdict}) skrevet paa #${pr}. Gaten genkoeres af workflowet.`);

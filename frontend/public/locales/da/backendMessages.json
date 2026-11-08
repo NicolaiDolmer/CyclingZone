@@ -306,6 +306,10 @@
       "title": "Assistenten udtog dit hold",
       "message": "Din assistent udtog dit hold til {race}. Du havde ingen udtagelse inde. Kig den igennem, og ret den hvis du vil."
     },
+    "roadmapDelivered": {
+      "title": "Noget du stemte på er live",
+      "message": "Du stemte højt på {itemDa}, og det er live nu. Tak fordi du hjælper mig med at vælge, hvad jeg bygger."
+    },
     "riderRetired": {
       "title": "{name} har indstillet karrieren",
       "message": "{name} har indstillet sin karriere som professionel cykelrytter som {age}-årig. Hans plads i truppen er nu fri."
@@ -331,6 +335,7 @@
         "title": "Spejdermission klar",
         "messageSingle": "Din spejdermission fandt {count} rytter. Se listen.",
         "messageMulti": "Din spejdermission fandt {count} ryttere. Se listen.",
+        "messageNoCount": "Din spejdermission er klar. Se listen.",
         "titleEmpty": "Spejdermission: ingen fund",
         "messageEmpty": "Din spejder har ledt, men fandt ingen ryttere, der matcher dine kriterier."
       }

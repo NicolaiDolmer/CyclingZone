@@ -13,7 +13,7 @@ import {
 import ErrorState from "../components/ui/ErrorState.jsx";
 import Button from "../components/ui/Button.jsx";
 // denyUrls-moenstre i ren .js-fil (unit-testbar uden JSX-import), se #2018.
-import { DENY_URLS, isKnownExtensionNoise, isProxiedOrigin, isTranslateProxyHistoryError } from "./sentryDenyUrls.js";
+import { DENY_URLS, isAbortNoise, isKnownExtensionNoise, isProxiedOrigin, isTranslateProxyHistoryError } from "./sentryDenyUrls.js";
 // #5312: fire browser-ordlyd for "kaldet naaede aldrig frem" — ét sted, i en
 // ren .js-fil uden sidevirkninger (samme begrundelse som DENY_URLS ovenfor).
 import { isBackendUnreachableMessage } from "./backendReachability.js";
@@ -88,6 +88,10 @@ export function initSentry() {
         return null;
       }
       if (/ResizeObserver loop completed/i.test(value)) {
+        return null;
+      }
+      // #7677: afbrudte hentninger ved sideskift (AbortError) er ikke fejl.
+      if (isAbortNoise(errorType, value)) {
         return null;
       }
       // #4499: erstatter den tidligere URL-baserede webkit-masked-url-regel i

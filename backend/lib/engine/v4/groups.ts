@@ -583,6 +583,26 @@ export function carrySplitsWithSourceAdvance(params: {
   return out ?? after;
 }
 
+/**
+ * #7639: en gruppe der KUN bestaar af udgaaede ryttere. M10 (incidents.ts) og
+ * M3's nedkoerselsstyrt (descent.ts) flytter en udgaaet rytter ud i sin egen
+ * solo-gruppe langt bag feltet, saa han hverken traekker tempo, merges ind
+ * igen eller arver nogens maaltid. Gruppen lever videre i motorens state, men
+ * den er ikke en gruppe i loebet: tidslinjen (gap_update, group_merged) maa
+ * ikke tegne ham som en rytter der stadig koerer. Han er ude ved uheldet og
+ * vises kun som DNF.
+ *
+ * Bevidst `=== "abandoned"` og ikke `!== "racing"`: en rytter der er kommet i
+ * maal ("finished") er stadig en rigtig gruppe i tidslinjen. En rytter uden
+ * state taeller som koerende, saa intet skjules ved en fejl. Ren.
+ */
+export function isRetiredGroup(
+  group: Pick<RaceGroup, "rider_ids">,
+  riders: Readonly<Record<string, Pick<RiderState, "status"> | undefined>>,
+): boolean {
+  return group.rider_ids.length > 0 && group.rider_ids.every((id) => riders[id]?.status === "abandoned");
+}
+
 /** Per-segment gruppe-snapshot (beslutning 20) — km rundes til 2 decimaler. */
 export function buildGroupSnapshot(km: number, groups: RaceGroup[]): SegmentGroupSnapshot {
   return {

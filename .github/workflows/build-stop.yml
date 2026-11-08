@@ -22,6 +22,7 @@ on:
 
 permissions:
   contents: read
+  issues: read # #7336 loft: issue-labels/titel/forælder via gh
 
 # #7582: annullér forældede kørsler på samme PR. Ikke-PR-events (push til main,
 # schedule, dispatch, merge queue) får run_id som gruppe og kører altid færdigt.
@@ -58,6 +59,7 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
           PR_BRANCH: ${{ github.event.pull_request.head.ref }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          GH_TOKEN: ${{ github.token }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |

@@ -593,7 +593,6 @@
     "beta": "Beta",
     "disclaimer": "Nuevo modelo fisiológico, calculado a partir de las habilidades actuales. Aún no afecta a los resultados de las carreras.",
     "powerProfile": "Perfil de potencia",
-    "derivedAbilities": "Habilidades derivadas",
     "zones": {
       "ftp": "FTP",
       "vo2max": "Potencia de VO2max",
@@ -719,8 +718,7 @@
     },
     "swap": {
       "label": "Intercambio",
-      "teamFallback": "Desconocido",
-      "cashAdjustment": "Ajuste en efectivo: {amount} CZ$"
+      "teamFallback": "Desconocido"
     }
   },
   "auctionPanel": {
@@ -898,6 +896,17 @@
     "loadErrorBody": "No se ha perdido nada. Inténtalo de nuevo.",
     "retry": "Reintentar"
   },
+  "potentialEstimate": {
+    "certainty": {
+      "unsure": "Incierto",
+      "fair": "Razonable",
+      "sure": "Seguro"
+    },
+    "learning": "Aprendiendo · {trainings} de {needed} entrenamientos",
+    "learningShort": "Aprendiendo · {trainings} de {needed}",
+    "notAFact": "Una estimación, no un hecho.",
+    "scoutedTimes": "{count, plural, one {Ojeado # vez} other {Ojeado # veces}}"
+  },
   "scouting": {
     "label_worldclass": "Promesa de clase mundial",
     "label_high": "Proyección alta",
@@ -946,14 +955,12 @@
   "training": {
     "title": "Enfoque de entrenamiento",
     "intro": "Fija un enfoque de entrenamiento para toda la temporada para este ciclista clave. Acerca más rápido las habilidades entrenadas a su objetivo.",
-    "gatedNote": "El entrenamiento da forma a la habilidad permanente y se aplica en el próximo cambio de temporada.",
-    "slotsLeft": "{remaining}/{total} plazas de enfoque",
     "focus": "Enfoque",
     "intensity": "Intensidad",
     "focus_vo2max": "VO2max (intervalos mixtos)",
     "focus_vo2max_climb": "VO2max (intervalos de escalada)",
     "focus_vo2max_punch": "VO2max (intervalos de punch)",
-    "focus_threshold": "Umbral / CRI",
+    "focus_threshold": "Umbral",
     "focus_sprint": "Sprint",
     "focus_tempo": "Tempo",
     "focus_endurance": "Resistencia (Zona 2)",
@@ -980,8 +987,6 @@
     "saving": "Guardando…",
     "noSlots": "No quedan plazas de enfoque esta temporada",
     "current": "Enfoque actual",
-    "assistantNoRisk": "Crecimiento dirigido más rápido, sin riesgo de retroceso.",
-    "assistantRisk": "Crecimiento dirigido más rápido, pero con un ~{risk} % de riesgo de retroceso (ganancias perdidas) esta temporada.",
     "tradeoff": "Las demás habilidades crecen algo más despacio.",
     "intensity_recovery": "Recuperación"
   }
