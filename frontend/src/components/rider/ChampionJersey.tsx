@@ -195,8 +195,14 @@ function NationalJersey({ size, code }: { size: number; code: string }) {
   return (
     <span className="relative block flex-none" style={{ width: size, height: size }} aria-hidden="true">
       <span
-        className={`fi fi-${code} absolute inset-0`}
+        className={`fi fi-${code}`}
         style={{
+          // Inline, så flag-icons' egen .fi { position: relative; inline-block } ikke
+          // vinder over en utility-klasse og skubber flaget ned under konturen.
+          position: "absolute",
+          top: 0,
+          left: 0,
+          display: "block",
           width: size,
           height: size,
           fontSize: 0,

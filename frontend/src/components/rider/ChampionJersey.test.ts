@@ -83,6 +83,14 @@ test("ingen regnbuebånd: koden tegner ingen regnbuetrøje", () => {
   assert.doesNotMatch(code(jersey) + code(model), /rainbow|regnbue/i);
 });
 
+test("national trøje: flaget ligger inline-absolut over hele trøjen og beskæres ikke", () => {
+  // flag-icons' .fi { position: relative } vinder ellers over en utility-klasse,
+  // og flaget skubbes ned under konturen (fundet på billederne 8/11).
+  assert.match(jersey, /className=\{`fi fi-\$\{code\}`\}/);
+  assert.match(jersey, /position: "absolute",\s*top: 0,\s*left: 0,/);
+  assert.match(jersey, /backgroundSize: "100% 100%"/);
+});
+
 test("kontakten er den samme i frontend, backend, migration og spiller-allowlisten", () => {
   assert.match(model, /CHAMPION_JERSEYS_FLAG_KEY = "champion_jerseys_7824"/);
   assert.match(backend, /CHAMPION_JERSEYS_FLAG_KEY = "champion_jerseys_7824"/);
