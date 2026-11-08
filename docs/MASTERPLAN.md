@@ -11,7 +11,7 @@
 
 Fuld liste med datoer: #7632. "Done" først ved alle 8 krav; fredagskort til ejeren.
 
-- **Status 7/11:** tændt #7733, #7726. #7638 + #7754 i #7778. Bølge: #7715, hover #2009/#7858, #7644/#6912 (måling), #7645, trøjejagt #7855, træningsrapport #7745. Hexagone-generalprøve #7890. Sikkerhed senest 9/11.
+- **Status 8/11:** tændt #7733, #7726; hover #2009 beta. #7638 + #7754 i #7778. Hexagone-generalprøve #7890, #7715. Sikkerhed senest 9/11.
 - **Næste uge (9-15/11):** #7778 v3 (dele #7859-#7868) → plan, sandhedsvagt (8/11), auto-accept #2176, XP #6110, dagsform #7725, fri rolle #7856, trøjejagt #7855, Discord-afstemning #7869, feedback + fair-play #5431 (9/11), forside #6665, graduering #7323, aftentræning #6490, scouting ved salg #7455 (før sæsonskifte), rangliste #6765 (14/11).
 - **Ca. 15-18/11:** catch-up #6950 besluttes (frist 8/11 udgået); spørg igen om "nye managers forstår første løb" (parkeret).
 - **Før S6-kalenderen:** løbstyper U23/junior #7471. **Før S6-start:** U23 del 2 #4620, Planning Workbench #7535.
