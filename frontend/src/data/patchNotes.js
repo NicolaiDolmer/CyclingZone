@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.420",
+    "date": "2026-11-08",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Mobile",
+        "en": {
+          "title": "Bigger buttons on your phone",
+          "body": "Small buttons on the phone, like the language picker, the buttons on the front page and the tabs, are now tall enough to hit with a finger. Pages can be a little longer on the phone. Nothing changes on a computer."
+        },
+        "da": {
+          "title": "Større knapper på telefonen",
+          "body": "Små knapper på telefonen, som sprogvælgeren, knapperne på forsiden og fanerne, er nu høje nok til at ramme med en finger. Siderne kan blive lidt længere på telefonen. Intet ændrer sig på en computer."
+        },
+        "refs": [
+          7877
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.419",
     "date": "2026-11-08",
     "changes": [
