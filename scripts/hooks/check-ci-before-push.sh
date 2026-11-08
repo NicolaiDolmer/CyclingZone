@@ -40,7 +40,8 @@ CMD=$(printf '%s' "$INPUT" | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\(.*
 
 # Kun match git push-kommandoer (inklusive force/lease/upstream-varianter)
 case "$CMD" in
-  *'git push'*|*'git -C '*' push'*) ;;
+  # Review #7907: alle globale flag (git --no-pager push, git -c x=y push), ikke kun -C.
+  *'git push'*|*'git -'*' push'*) ;;
   *) exit 0 ;;
 esac
 
