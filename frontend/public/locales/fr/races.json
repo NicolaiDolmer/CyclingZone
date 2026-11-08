@@ -41,6 +41,8 @@
     "huntOption": "{task} · {price}",
     "price": { "hard": "Dure" },
     "huntNote": "Chasse aux points : il dispute les sprints ou les côtes de son tronçon depuis le groupe où il se trouve. Une échappée devant prend toujours les points en premier. La tâche se court dur et compte dans sa fatigue.",
+
+    "huntOffNote": "La chasse aux points est désactivée sur cette course, il roule donc à l’abri sur cette partie du plan.",
     "rulesNote": "L'échappée ne peut être que la première tâche. Le gruppetto, rentrer et le train de sprint viennent toujours en dernier.",
     "switchNote": {
       "climb": {
@@ -1137,7 +1139,15 @@
       "team_orders_grupetto_with_break": "Un coureur en Gruppetto ne peut pas tenter l’échappée.",
       "team_orders_grupetto_with_train": "Un coureur en Gruppetto ne peut pas rouler dans le train du sprint.",
       "team_orders_work_with_break": "Un coureur qui roule pour le leader ne peut pas tenter l’échappée.",
-      "team_orders_train_with_break": "Un coureur du train du sprint ne peut pas tenter l’échappée."
+      "team_orders_train_with_break": "Un coureur du train du sprint ne peut pas tenter l’échappée.",
+
+      "stage_plan_unknown_task": "L’une des tâches n’est pas disponible sur cette course. Choisis-en une autre et enregistre à nouveau.",
+
+      "stage_plan_hunt_no_sprint": "Aller chercher les points du sprint exige un sprint intermédiaire sur son secteur. Choisis une autre tâche ou déplace le changement.",
+
+      "stage_plan_hunt_no_climb": "Aller chercher les points de la montagne exige une côte catégorisée sur son secteur. Choisis une autre tâche ou déplace le changement.",
+
+      "stage_plan_hunt_after_dropped": "Un coureur lâché ne peut pas aller chercher des points. Choisis une autre tâche pour cette étape du plan."
     }
   },
   "tacticsOrders": {

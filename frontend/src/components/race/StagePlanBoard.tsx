@@ -31,6 +31,7 @@ import {
   isLuxuryHelperRole,
   nextLeg,
   planRole,
+  planWithoutJerseyHunt,
   removeLeg,
   setLegTask,
   setLegTrigger,
@@ -461,13 +462,21 @@ export default function StagePlanBoard({
           </>
         );
       }
-      return <PlanRecap t={t} legs={legs} route={route} events={events} riderId={rider.rider_id} rank={ranks.get(rider.rider_id) ?? null} leader={teamLeaderFor(rider)} crossCheck={crossCheck7636} />;
+      // #7855: motoren koerte planen uden jagt; opsummeringen viser den plan han faktisk koerte.
+      const ranWithoutHunt = events.some((e) => e.type === "stage_plan_hunt_fallback" && e.params?.rider_id === rider.rider_id);
+      return (
+        <>
+          <PlanRecap t={t} legs={ranWithoutHunt ? planWithoutJerseyHunt(legs) : legs} route={route} events={events} riderId={rider.rider_id} rank={ranks.get(rider.rider_id) ?? null} leader={teamLeaderFor(rider)} crossCheck={crossCheck7636} />
+          {ranWithoutHunt && <p className="mt-1 text-3xs text-cz-3">{t("stagePlan.huntOffNote")}</p>}
+        </>
+      );
     }
     if (legs) {
       const fits = validateStagePlanLegs(legs, role, route) === null;
       return (
         <>
           <PlanChain t={t} legs={legs} route={route} compact={compact} />
+          {orderRiderById.get(rider.rider_id)?.hunt_off === true && <p className="mt-1 text-3xs text-cz-warning">{t("stagePlan.huntOffNote")}</p>}
           {!fits && <p className="mt-1 text-3xs text-cz-warning">{t("stagePlan.noFit")}</p>}
           {fits && stagePlanSwitchNotes(legs, route, features).map((note) => stagePlanSwitchNoteText(note)).map(({ key, params }) => (
             <p key={`${key}:${Object.values(params).join(":")}`} className="mt-1 text-3xs text-cz-warning">{t(key, params)}</p>

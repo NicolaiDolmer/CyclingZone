@@ -476,7 +476,25 @@ export function withoutStagePlans<T extends Order>(order: T): T {
 export function setRiderPlan<T extends Order>(order: T, riderId: string, plan: StagePlanLeg[] | null): T {
   return {
     ...order,
-    riders: (order?.riders ?? []).map((r) => (r.rider_id === riderId ? { ...r, plan } : r)),
+    riders: (order?.riders ?? []).map((r) => {
+      if (r.rider_id !== riderId) return r;
+      const { hunt_off: _handled, ...rest } = r as typeof r & { hunt_off?: unknown }; // #7855: et nyt valg er spillerens eget
+      return { ...rest, plan } as typeof r;
+    }),
+  };
+}
+
+/**
+ * #7855 (reviewfund): ordren som loebet kan koere den, naar troejejagten ikke gaelder (kontakten
+ * slukket eller noedstop). Jagt-ledene bliver til planen uden jagt, og rytteren maerkes, saa boardet
+ * kan sige det. Uden jagt-led: samme objekt.
+ */
+export function orderWithoutJerseyHunt<T extends Order>(order: T): T {
+  const riders = order?.riders ?? [];
+  if (!riders.some((r) => Array.isArray(r.plan) && planHasJerseyHunt(r.plan))) return order;
+  return {
+    ...order,
+    riders: riders.map((r) => (Array.isArray(r.plan) && planHasJerseyHunt(r.plan) ? { ...r, plan: planWithoutJerseyHunt(r.plan), hunt_off: true } : r)),
   };
 }
 

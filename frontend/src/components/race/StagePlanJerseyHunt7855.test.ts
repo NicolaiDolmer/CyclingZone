@@ -3,6 +3,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
+  orderWithoutJerseyHunt,
+  setRiderPlan,
   stagePlanOutcomes,
   stagePlanRecap,
   stagePlanRouteFromRaw,
@@ -20,6 +22,34 @@ const RAW = {
 };
 const OFF = stagePlanRouteFromRaw(RAW);
 const ON = withJerseyHunt7855(OFF, true);
+
+test("#7855 reviewfund: en gemt plan med jagt bliver til planen uden jagt, naar jagten ikke gaelder", () => {
+  const order = { riders: [{ rider_id: "a", plan: [{ task: "hunt_points" }, { task: "ride_in", from: { at: "dropped" } }] as StagePlanLeg[] }, { rider_id: "b", plan: [{ task: "tempo" }] as StagePlanLeg[] }] };
+  const out = orderWithoutJerseyHunt(order);
+  assert.deepEqual(out.riders[0].plan, [{ task: "stay_sheltered" }, { task: "ride_in", from: { at: "dropped" } }]);
+  assert.equal((out.riders[0] as { hunt_off?: boolean }).hunt_off, true, "boardet skal kunne sige det");
+  assert.equal(out.riders[1], order.riders[1], "andre ryttere er uroerte");
+  assert.equal(orderWithoutJerseyHunt({ riders: [order.riders[1]] }).riders[0], order.riders[1]);
+  const noJagt = { riders: [order.riders[1]] };
+  assert.equal(orderWithoutJerseyHunt(noJagt), noJagt, "uden jagt: samme objekt");
+  // Saetter spilleren selv en ny plan, er maerket vaek.
+  const edited = setRiderPlan(out, "a", [{ task: "tempo" }]);
+  assert.equal("hunt_off" in edited.riders[0], false);
+});
+
+test("#7855 reviewfund: motorens tilbagefalds-event staar ikke i loebsfilmen", () => {
+  assert.equal(describeEvent({ km: 0, type: "stage_plan_hunt_fallback", params: { rider_id: "a" } }, { riderNameById: new Map() }), null);
+});
+
+test("#7855 reviewfund: alle fem sprog har spillertekst for jagtens fejl og noten", () => {
+  for (const lang of ["en", "da", "es", "fr", "nl"]) {
+    const races = JSON.parse(readFileSync(new URL(`../../../public/locales/${lang}/races.json`, import.meta.url), "utf8"));
+    assert.ok(races.stagePlan.huntOffNote, `${lang} huntOffNote`);
+    for (const code of ["stage_plan_unknown_task", "stage_plan_hunt_no_sprint", "stage_plan_hunt_no_climb", "stage_plan_hunt_after_dropped"]) {
+      assert.ok(races.intention.errors[code], `${lang} ${code}`);
+    }
+  }
+});
 
 test("#7855 valg: slukket findes opgaverne ikke; taendt kun hvor straekningen har passagen", () => {
   const off = taskOptions([{ task: "stay_sheltered" }], 0, "helper", OFF);

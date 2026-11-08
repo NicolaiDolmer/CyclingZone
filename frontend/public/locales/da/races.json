@@ -41,6 +41,8 @@
     "huntOption": "{task} · {price}",
     "price": { "hard": "Hård" },
     "huntNote": "Pointjagt: han kører om spurterne eller stigningerne på sin strækning fra den gruppe, han sidder i. Et udbrud foran tager stadig pointene først. Opgaven køres hårdt og tæller med i hans træthed.",
+
+    "huntOffNote": "Pointjagt er slået fra i dette løb, så han kører i læ på den del af planen.",
     "rulesNote": "Udbrud kan kun være første opgave. Grupetto, kør i mål og sprinttog kommer altid sidst.",
     "switchNote": {
       "climb": {
@@ -1120,7 +1122,15 @@
       "team_orders_grupetto_with_break": "En rytter på Grupetto kan ikke forsøge udbrud.",
       "team_orders_grupetto_with_train": "En rytter på Grupetto kan ikke køre i sprint-toget.",
       "team_orders_work_with_break": "En rytter der arbejder for lederen, kan ikke forsøge udbrud.",
-      "team_orders_train_with_break": "En rytter i sprint-toget kan ikke forsøge udbrud."
+      "team_orders_train_with_break": "En rytter i sprint-toget kan ikke forsøge udbrud.",
+
+      "stage_plan_unknown_task": "En af opgaverne findes ikke i dette løb. Vælg en anden opgave, og gem igen.",
+
+      "stage_plan_hunt_no_sprint": "Hent point kræver en indlagt spurt på hans strækning. Vælg en anden opgave, eller flyt skiftet.",
+
+      "stage_plan_hunt_no_climb": "Hent bjergpoint kræver en kategoriseret stigning på hans strækning. Vælg en anden opgave, eller flyt skiftet.",
+
+      "stage_plan_hunt_after_dropped": "En rytter kan ikke køre efter point, når han er sat. Vælg en anden opgave til det trin."
     }
   },
   "tacticsOrders": {

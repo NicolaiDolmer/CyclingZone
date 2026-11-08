@@ -41,6 +41,8 @@
     "huntOption": "{task} · {price}",
     "price": { "hard": "Dura" },
     "huntNote": "Caza de puntos: disputa los sprints o las subidas de su tramo desde el grupo en el que va. Una fuga por delante se lleva los puntos primero. La tarea se corre fuerte y cuenta en su fatiga.",
+
+    "huntOffNote": "La caza de puntos está desactivada en esta carrera, así que irá protegido en esa parte del plan.",
     "rulesNote": "La fuga solo puede ser la primera tarea. La grupeta, llegar a meta y el tren de sprint siempre van al final.",
     "switchNote": {
       "climb": {
@@ -1137,7 +1139,15 @@
       "team_orders_grupetto_with_break": "Un corredor en la grupeta no puede intentar la fuga.",
       "team_orders_grupetto_with_train": "Un corredor en la grupeta no puede ir en el tren de sprint.",
       "team_orders_work_with_break": "Un corredor que trabaja para el líder no puede intentar la fuga.",
-      "team_orders_train_with_break": "Un corredor del tren de sprint no puede intentar la fuga."
+      "team_orders_train_with_break": "Un corredor del tren de sprint no puede intentar la fuga.",
+
+      "stage_plan_unknown_task": "Una de las tareas no está disponible en esta carrera. Elige otra y guarda de nuevo.",
+
+      "stage_plan_hunt_no_sprint": "Ir a por puntos de sprint requiere un sprint intermedio en su tramo. Elige otra tarea o cambia el punto de cambio.",
+
+      "stage_plan_hunt_no_climb": "Ir a por puntos de montaña requiere una subida categorizada en su tramo. Elige otra tarea o cambia el punto de cambio.",
+
+      "stage_plan_hunt_after_dropped": "Un corredor descolgado no puede ir a por puntos. Elige otra tarea para ese paso."
     }
   },
   "tacticsOrders": {

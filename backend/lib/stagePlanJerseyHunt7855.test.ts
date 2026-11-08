@@ -3,8 +3,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import * as backend from "./stagePlan.ts";
 import * as frontend from "../../frontend/src/components/race/StagePlanModel.ts";
-import { stagePlanRouteFromV4 } from "./stagePlanEngine.ts";
-import type { RouteV2 } from "./engine/v4/types.ts";
+import { STAGE_PLAN_HUNT_FALLBACK_EVENT, STAGE_PLAN_ORDER_KIND, advanceStagePlan, createStagePlanRuntime, stagePlanCurrentTasks, stagePlanHuntWindows7855, stagePlanOrderFromRow, stagePlanRouteFromV4 } from "./stagePlanEngine.ts";
+import { withStagePlan } from "./stagePlanApi.js";
+import { jerseyHuntersForPassage7855 } from "./engine/v4/mechanics/jerseyHunt7855.ts";
+import type { EngineState, Entrant, RouteV2, Segment, TeamOrder } from "./engine/v4/types.ts";
 
 const RAW = {
   distance_km: 170,
@@ -74,6 +76,114 @@ test("#7855 motorens rute: samme spurter og kontakt som API'ets, og slukket uden
   assert.equal("jersey_hunt_7855" in off, false);
   const on = stagePlanRouteFromV4(route, { jerseyHunt7855: true });
   assert.deepEqual(on, ON);
+});
+
+test("#7855 planen uden jagt: resten staar, jagten bliver til laeet, og kaeden er altid gyldig (slukket)", () => {
+  assert.deepEqual(backend.planWithoutJerseyHunt([{ task: "hunt_points" }]), [{ task: "stay_sheltered" }]);
+  assert.deepEqual(
+    backend.planWithoutJerseyHunt([{ task: "tempo" }, { task: "hunt_kom", from: { at: "kom", kom_index: 0 } }, { task: "ride_in", from: { at: "dropped" } }]),
+    [{ task: "tempo" }, { task: "stay_sheltered", from: { at: "kom", kom_index: 0 } }, { task: "ride_in", from: { at: "dropped" } }],
+  );
+  // To ens led i traek bliver til ét (ellers en stage_plan_repeat_task).
+  assert.deepEqual(
+    backend.planWithoutJerseyHunt([{ task: "stay_sheltered" }, { task: "hunt_points", from: { at: "kom", kom_index: 0 } }, { task: "tempo", from: { at: "kom", kom_index: 1 } }]),
+    [{ task: "stay_sheltered" }, { task: "tempo", from: { at: "kom", kom_index: 1 } }],
+  );
+  assert.equal(backend.planHasJerseyHunt([{ task: "tempo" }]), false);
+  // Enhver plan der var gyldig med jagten, er gyldig uden den paa den slukkede rute (samme kode paa frontenden).
+  const roles = ["sprint_captain", "helper", "hunter", "free_role"] as const;
+  const triggers = [...frontend.allTriggers(ON)];
+  for (const role of roles) {
+    for (const a of backend.STAGE_PLAN_TASKS) {
+      for (const b of backend.STAGE_PLAN_TASKS) {
+        for (const from of triggers) {
+          const legs = [{ task: a }, { task: b, from }] as backend.StagePlanLeg[];
+          if (backend.validateStagePlanLegs(legs, role, ON) !== null || !backend.planHasJerseyHunt(legs)) continue;
+          const out = backend.planWithoutJerseyHunt(legs);
+          assert.equal(backend.validateStagePlanLegs(out, role, OFF), null, JSON.stringify([role, legs]));
+          assert.deepEqual(frontend.planWithoutJerseyHunt(legs), out);
+        }
+      }
+    }
+  }
+});
+
+// Et hold med en rytter og en rute hvor spurten ligger inde i et segment.
+const HUNT_ROUTE = { distance_km: 100, profile_type: "flat", waypoints: [{ kind: "sprint", index: 0, name: "S", km: 75 }, { kind: "finish", index: 0, name: "F", km: 100 }] } as unknown as RouteV2;
+const RIDER = { h: { team_id: "t", role: "helper", effort: "normal" } } as unknown as Record<string, Entrant>;
+const ORDER = (legs: unknown, extra: Record<string, unknown> = {}) => [{ team_id: "t", kind: STAGE_PLAN_ORDER_KIND, params: { riders: [{ rider_id: "h", legs, ...extra }] } }] as unknown as TeamOrder[];
+const STATE = { groups: [{ id: "g", rider_ids: ["h"], gap_seconds: 0, kind: "peloton" }], riders: { h: { rider_id: "h", status: "racing" } } } as unknown as EngineState;
+const SEG = (from_km: number, to_km: number) => ({ from_km, to_km, kind: "flat" }) as unknown as Segment;
+const FINAL_LEG = [{ task: "tempo" }, { task: "hunt_points", from: { at: "kom", kom_index: 0 } }];
+
+test("#7855 reviewfund 1: planen med jagt falder tilbage paa planen uden jagt, naar kontakten er slukket", () => {
+  const legs = [{ task: "hunt_points" }, { task: "ride_in", from: { at: "dropped" } }];
+  const fallback = backend.planWithoutJerseyHunt(legs as backend.StagePlanLeg[]);
+  const rt = createStagePlanRuntime(ORDER(legs, { fallback_legs: fallback }), HUNT_ROUTE, RIDER);
+  assert.ok(rt, "planen droppes ikke");
+  assert.equal(stagePlanCurrentTasks(rt)["h"], "stay_sheltered");
+  const events = advanceStagePlan(rt, { state: STATE, segment: SEG(0, 50), segmentIndex: 0, entrants: RIDER });
+  assert.deepEqual(events, [{ km: 0, type: STAGE_PLAN_HUNT_FALLBACK_EVENT, params: { rider_id: "h" } }], "motoren siger det, en gang");
+  assert.deepEqual(advanceStagePlan(rt, { state: STATE, segment: SEG(50, 100), segmentIndex: 1, entrants: RIDER }), []);
+  // Taendt koerer han jagten, og tilbagefaldet roeres ikke.
+  const on = createStagePlanRuntime(ORDER(legs, { fallback_legs: fallback }), HUNT_ROUTE, RIDER, { jerseyHunt7855: true });
+  assert.equal(stagePlanCurrentTasks(on!)["h"], "hunt_points");
+  assert.equal(on!.huntFallback7855, undefined);
+  // Uden gemt tilbagefald (raekker fra foer, en anden ugyldig plan): ignoreres helt, som hidtil.
+  assert.equal(createStagePlanRuntime(ORDER(legs), HUNT_ROUTE, RIDER), null);
+});
+
+test("#7855 reviewfund 1: API'et gemmer tilbagefaldet kun for planer med jagt", () => {
+  const rider = { rider_id: "h", effort: "normal", try_break: false, leadout: false };
+  const hunt = withStagePlan(rider, { plan: [{ task: "hunt_points" }] });
+  assert.deepEqual(hunt.plan_no_hunt, [{ task: "stay_sheltered" }]);
+  assert.equal("plan_no_hunt" in withStagePlan(rider, { plan: [{ task: "tempo" }] }), false, "uden jagt: samme raekke som foer");
+  const order = stagePlanOrderFromRow("t", { riders: [hunt] }, "s5_profiles_v3", () => true);
+  assert.deepEqual((order?.params as { riders: unknown[] }).riders, [{ rider_id: "h", legs: [{ task: "hunt_points" }], fallback_legs: [{ task: "stay_sheltered" }] }]);
+});
+
+test("#7855 reviewfund 2: et jagt-led er aktivt i det segment, hans passage ligger i", () => {
+  const climbRoute = { ...HUNT_ROUTE, waypoints: [{ kind: "kom", index: 0, name: "Top", km: 70, category: "3", summit_finish: false }, ...HUNT_ROUTE.waypoints] } as unknown as RouteV2;
+  const on = () => createStagePlanRuntime(ORDER(FINAL_LEG), climbRoute, RIDER, { jerseyHunt7855: true })!;
+  // Skift-punktet (70) ligger i segmentets anden halvdel, og spurten (75) i samme segment: han starter nu.
+  const rt = on();
+  advanceStagePlan(rt, { state: STATE, segment: SEG(0, 60), segmentIndex: 0, entrants: RIDER });
+  const events = advanceStagePlan(rt, { state: STATE, segment: SEG(60, 76), segmentIndex: 1, entrants: RIDER });
+  assert.equal(stagePlanCurrentTasks(rt)["h"], "hunt_points");
+  assert.deepEqual(events.map((e) => e.params), [{ rider_id: "h", leg: 1, task: "hunt_points", reason: "kom" }]);
+  assert.deepEqual(stagePlanHuntWindows7855(rt), { h: { fromKm: 70, toKm: Infinity } }, "straekningen er stadig fra hans punkt");
+  // Ligger spurten i et senere segment, gaelder den naermeste graense, som for alle andre opgaver.
+  const laterSprint = { ...climbRoute, waypoints: climbRoute.waypoints.map((w) => (w.kind === "sprint" ? { ...w, km: 90 } : w)) } as unknown as RouteV2;
+  const later = createStagePlanRuntime(ORDER(FINAL_LEG), laterSprint, RIDER, { jerseyHunt7855: true })!;
+  advanceStagePlan(later, { state: STATE, segment: SEG(0, 60), segmentIndex: 0, entrants: RIDER });
+  assert.deepEqual(advanceStagePlan(later, { state: STATE, segment: SEG(60, 76), segmentIndex: 1, entrants: RIDER }), []);
+  assert.equal(stagePlanCurrentTasks(later)["h"], "tempo");
+  assert.equal(advanceStagePlan(later, { state: STATE, segment: SEG(76, 100), segmentIndex: 2, entrants: RIDER }).length, 1);
+  assert.equal(stagePlanCurrentTasks(later)["h"], "hunt_points");
+});
+
+test("#7855 reviewfund 2: jagt-leddet slipper ikke foer segmentet med hans passage er koert", () => {
+  const route = { ...HUNT_ROUTE, waypoints: [{ kind: "sprint", index: 0, name: "S", km: 55 }, { kind: "kom", index: 0, name: "Top", km: 58, category: "3", summit_finish: false }, { kind: "finish", index: 0, name: "F", km: 100 }] } as unknown as RouteV2;
+  const legs = [{ task: "hunt_points" }, { task: "tempo", from: { at: "kom", kom_index: 0 } }];
+  const rt = createStagePlanRuntime(ORDER(legs), route, RIDER, { jerseyHunt7855: true })!;
+  advanceStagePlan(rt, { state: STATE, segment: SEG(0, 50), segmentIndex: 0, entrants: RIDER });
+  // Punktet (58) ligger i segmentets foerste halvdel, men spurten (55) kommer foer: han jager segmentet ud.
+  assert.deepEqual(advanceStagePlan(rt, { state: STATE, segment: SEG(50, 100), segmentIndex: 1, entrants: RIDER }), []);
+  assert.equal(stagePlanCurrentTasks(rt)["h"], "hunt_points");
+  assert.deepEqual(stagePlanHuntWindows7855(rt), { h: { fromKm: 0, toKm: 58 } });
+  // Slukket er der ingen jagt-led, og ingen straekninger.
+  const off = createStagePlanRuntime(ORDER([{ task: "tempo" }]), route, RIDER)!;
+  assert.equal(stagePlanHuntWindows7855(off), undefined);
+});
+
+test("#7855 reviewfund 2: jaegeren kaemper kun om passager paa sin egen straekning", () => {
+  const tasks = { a: "hunt_points", b: "hunt_points" } as Record<string, backend.StagePlanTask>;
+  const windows = { a: { fromKm: 50, toKm: Infinity }, b: { fromKm: 0, toKm: 40 } };
+  const hunters = (km: number) => jerseyHuntersForPassage7855(tasks, "sprint", () => true, { km, windows });
+  assert.deepEqual(hunters(30), ["b"]);
+  assert.deepEqual(hunters(60), ["a"]);
+  assert.deepEqual(hunters(45), []);
+  assert.deepEqual(jerseyHuntersForPassage7855(tasks, "sprint", () => true), ["a", "b"], "uden straekninger: som foer");
 });
 
 test("#7855 paritet: frontendens kopi giver samme svar, slukket og taendt", () => {

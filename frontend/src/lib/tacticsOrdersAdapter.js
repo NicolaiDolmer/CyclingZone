@@ -17,7 +17,7 @@
 import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
 import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { defaultTeamOrder, mergeOrderWithRoster, trainDefaultForStage } from "./tacticsPlan.js";
-import { withStagePlanFields } from "../components/race/StagePlanModel.ts"; // #7003
+import { orderWithoutJerseyHunt, withStagePlanFields } from "../components/race/StagePlanModel.ts"; // #7003, #7855
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -89,7 +89,10 @@ export function defaultOrderForStage(context, profileType) {
  */
 export function orderForStage(context, stage, profileType = null) {
   const riderIds = (context?.riders ?? []).map((r) => r.rider_id);
-  const saved = (context?.orders ?? []).find((o) => o.stage_number === stage) ?? null;
+  const stored = (context?.orders ?? []).find((o) => o.stage_number === stage) ?? null;
+  // #7855: gaelder troejejagten ikke (laengere), viser og gemmer etaper der ikke er koert planen
+  // uden jagt, praecis som motoren koerer den. En koert etape staar som den blev gemt.
+  const saved = stored && context?.jerseyHunt7855 !== true && stage > (context?.stagesCompleted ?? 0) ? orderWithoutJerseyHunt(stored) : stored;
   const defaultOrder = defaultOrderForStage(context, profileType);
   // #6067: uden gemt ordre er ROLLENS standard svaret. defaultTeamOrder()'s
   // neutrale rytter-rækker (try_break:false) overskrev før rolledefaulten, så

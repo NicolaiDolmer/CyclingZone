@@ -216,16 +216,16 @@ export function stretchHasHuntPassage(route: StagePlanRoute, kind: "sprint" | "k
   return kms.some((km) => km > fromKm && km <= toKm);
 }
 
-/**
- * #7855 (reviewfund): planen uden troejejagt, til naar loebet alligevel ikke koerer med opgaverne
- * (kontakten slukket foer foerste etape, eller noedstop midt i loebet). Jagt-leddet bliver til
- * "koer i laeet" paa samme rutepunkt, resten af planen staar, og to ens led i traek bliver til ét.
- * Altid en gyldig kaede, naar den oprindelige var det. Bevarer objektet uden jagt-led.
- */
 export function planHasJerseyHunt(legs: readonly StagePlanLeg[]): boolean {
   return legs.some((leg) => JERSEY_HUNT_TASKS[leg.task] !== undefined);
 }
 
+/**
+ * #7855 (reviewfund): planen uden troejejagt, til naar loebet alligevel ikke koerer med opgaverne
+ * (kontakten slukket foer foerste etape, eller noedstop midt i loebet). Jagt-leddet bliver til
+ * "koer i laeet" paa samme rutepunkt, resten af planen staar, og to ens led i traek bliver til ét.
+ * Altid en gyldig kaede, naar den oprindelige var det (testet).
+ */
 export function planWithoutJerseyHunt(legs: readonly StagePlanLeg[]): StagePlanLeg[] {
   const out: StagePlanLeg[] = [];
   for (const leg of legs) {
