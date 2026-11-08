@@ -145,12 +145,12 @@ features:
     area: race-engine
     title_en: Day form in words after the stage
     title_da: Dagsform i ord efter etapen
-    state: dormant
+    state: live
     flag: day_words_7725
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7725
-    verified: 2026-11-06
-    note: "Slukket; kræver day_form_6649."
+    verified: 2026-11-08
+    note: "Tændt 8/11 af dirigenten på ejer-go (#7725); kræver day_form_6649. Hjælp, patch note og første-etape-bevis afventer #7914."
     decision: ejer-beslutning
     decide_by: 2026-11-20
   - id: race-itt-no-day-roll-7726
