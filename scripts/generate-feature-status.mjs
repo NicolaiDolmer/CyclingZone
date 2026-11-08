@@ -62,6 +62,8 @@ export const STATES = ["live", "beta", "dormant", "building", "spec", "idea", "r
 
 const REQUIRED_FIELDS = ["id", "area", "title_en", "title_da", "state", "verified"];
 // roadmap_*: spillerens roadmap-tekst (#6693); se scripts/feature-registry-roadmap-check.mjs.
+// #7895: samme moenster som databasens roadmap_items_horizon_check.
+const ROADMAP_HORIZON_RE = /^(this_week|next_week|unscheduled|season_[0-9]{1,2}|q[1-4]_20[0-9]{2}|y20[0-9]{2})$/;
 const KNOWN_FIELDS = new Set([...REQUIRED_FIELDS, "flag", "ssot", "epic", "note", "roadmap_en", "roadmap_da", "roadmap_horizon", "decision", "decide_by"]);
 // decision/decide_by: udloebsregel for ikke-live poster (#6701); se scripts/feature-registry-flag-expiry.mjs.
 export const DECISIONS = ["taend", "goer-faerdigt", "fjern", "noedbremse", "ejer-beslutning"];
@@ -187,7 +189,7 @@ export function validate(entries) {
     if (e.epic && !/^\d+$/.test(e.epic)) errors.push(`${label}: epic skal vaere et issue-nummer uden #`);
     if (e.note && e.note.includes("|")) errors.push(`${label}: note maa ikke indeholde | (bryder tabellen)`);
     if (!e.roadmap_en !== !e.roadmap_da) errors.push(`${label}: roadmap_en og roadmap_da saettes sammen (#6693)`);
-    if (e.roadmap_horizon && !["next", "later"].includes(e.roadmap_horizon)) errors.push(`${label}: roadmap_horizon skal vaere next eller later`);
+    if (e.roadmap_horizon && !ROADMAP_HORIZON_RE.test(e.roadmap_horizon)) errors.push(`${label}: roadmap_horizon skal vaere this_week, next_week, season_N, qN_YYYY, yYYYY eller unscheduled (#7895)`);
     if (e.roadmap_horizon && !e.roadmap_en) errors.push(`${label}: roadmap_horizon kraever roadmap_en/roadmap_da`);
     if (!e.decision !== !e.decide_by) errors.push(`${label}: decision og decide_by saettes sammen (#6701)`);
     if (e.decision && !DECISIONS.includes(e.decision)) errors.push(`${label}: decision skal vaere en af ${DECISIONS.join(", ")}`);
@@ -245,7 +247,7 @@ function liveEntry(e) {
  * registrets egen nyeste dato, ikke "i dag", saa output er deterministisk og
  * --check ikke driver med kalenderen. Titel/dato/flag staar stadig i registret.
  */
-export const LIVE_ARCHIVE_AFTER_DAYS = 30;
+export const LIVE_ARCHIVE_AFTER_DAYS = 14; // 30 -> 14 (7/11): mange nye poster samme aften ramte 3.000-loftet
 
 function dayNumber(isoDate) {
   const t = Date.parse(`${isoDate}T00:00:00Z`);

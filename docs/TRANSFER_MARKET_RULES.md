@@ -504,7 +504,15 @@ tidspunkt sat mindst ét autobud.
 
 Kontakten seedes **off** af `database/2026-11-07-6181-m3-market-commitment.sql`.
 Off = alt ovenfor gælder uændret (tjekket i JS, så skrevet i flere kald).
-Kun `on` (eller `true`) tænder; `beta` er off her.
+  Kun `on` (eller `true`) tænder; `beta` er off her.
+  Et vellykket opslag uden en række er også off. Fejler selve opslaget, er tilstanden
+  ukendt: operationen stopper før en markedsmutation i stedet for at vælge den gamle
+  sti. Bud og PATCH proxy læser derfor kontakten før den første skrivning.
+
+  Et gennemført manuelt bud er stadig en succes, hvis det valgfrie medsendte autobud
+  afvises af M3. Svaret er HTTP 200 med `bid_placed: true` og en `proxy_rejected`-warning
+  med den eksisterende fejlkode. Den delte frontend-formatter viser den eksisterende
+  lokaliserede fejl som advarsel; den rapporterer ikke det gennemførte bud som fejlet.
 
 Tændt:
 - **Bud, autobud og startbud gates i databasen** under holdlåsen (samme nøgle som

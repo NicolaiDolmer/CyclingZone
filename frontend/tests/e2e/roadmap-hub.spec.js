@@ -173,7 +173,7 @@ test("375 px: fanerækken scroller til Færdigt, og fanerække og områdefilter 
   await loggedIn(page);
   const extra = ["races", "training", "youth", "market", "club"].map((engine, i) => ({
     id: `rm-extra-${i}`, engine, sort_order: 50 + i, title_en: `Idea ${i}.`, title_da: `Idé nummer ${i}.`,
-    approved: true, status: "active", horizon: "next", beta_since: null, beta_soon: false, live_soon: false,
+    approved: true, status: "active", horizon: "unscheduled", beta_since: null, beta_soon: false, live_soon: false,
     created_at: "2026-09-20T00:00:00Z", shipped_at: null,
   }));
   await page.route("**/rest/v1/roadmap_items*", (route) => {

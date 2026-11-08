@@ -6459,7 +6459,7 @@ router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
     const enabled = await isRaceEngineV3ScoringEnabled(supabase);
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, status, stages, stages_completed, squad, scheduled_for, engine_rules_revision")
+      .select("id, status, stages, stages_completed, squad, scheduled_for, engine_rules_revision, season_id")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -6498,7 +6498,7 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
   try {
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, status, stages, stages_completed, engine_rules_revision")
+      .select("id, status, stages, stages_completed, engine_rules_revision, season_id")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -6686,7 +6686,7 @@ router.get("/races/:raceId/timeline", requireAuth, async (req, res) => {
     let story = null; // en fejl i historien må aldrig tage tidslinjen med sig
     if (req.query.story === "1") try {
       // Målresultatet afgør udbrydernes udfald med samme svar som mærkerne (#6350 review).
-      const resultRows = await fetchAllRows(() => supabase.from("race_results").select("rider_id, rank, result_type, stage_number")
+      const resultRows = await fetchAllRows(() => supabase.from("race_results").select("rider_id, rank, result_type, stage_number, finish_time")
         .eq("race_id", req.params.raceId).in("result_type", ["stage", "gc"]).or(`stage_number.eq.${stageNumber},stage_number.is.null`).order("id"));
       story = buildRaceStory({ events, timelineVersion: data.timeline_version, ...storyInputsFromResults(resultRows, stageNumber) });
     } catch (storyErr) { captureException(storyErr); }
@@ -7776,6 +7776,8 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
   if (!Number.isInteger(numericAmount) || numericAmount <= 0) {
     return res.status(400).json({ error: "Bid amount must be a positive whole number", errorCode: "invalid_bid_amount" });
   }
+  // Resolve the money gate before a bid can be committed. Unknown must not select legacy.
+  const marketGateOn = await isMarketCommitment6181On(supabase);
 
   // Fetch auction
   const { data: auction } = await supabase
@@ -7942,8 +7944,6 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
     return res.status(500).json({ error: "Bud kunne ikke gemmes", errorCode: "bid_save_failed" });
   }
   // #6181 PR 5: taendt har M3-triggeren allerede sat pris og foerer under laasen.
-  const marketGateOn = await isMarketCommitment6181On(supabase);
-
   // #3132: identitets-telemetri for værdibærende handling (fair-play-bevis).
   // Fire-and-forget, fail-open — må aldrig blokere resten af bud-flowet.
   recordIdentityEvent(supabase, {
@@ -8078,13 +8078,13 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
     .eq("id", auction.id)
     .single();
 
-  if (proxyGate) return res.status(proxyGate.status).json({ ...proxyGate.body, bid_placed: true, new_price: finalAuction?.current_price ?? numericAmount });
   res.json({
     success: true,
+    bid_placed: proxyGate ? true : undefined,
     new_price: finalAuction?.current_price ?? numericAmount,
     extended: extensionApplied,
     new_end: extensionApplied && extensionEnd ? extensionEnd.toISOString() : undefined,
-    warnings: bidWarnings,
+    warnings: proxyGate ? [...bidWarnings, { code: "proxy_rejected", ...proxyGate.body }] : bidWarnings,
   });
 });
 
@@ -8110,6 +8110,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
   if (!Number.isFinite(numericMax) || numericMax <= 0) {
     return res.status(400).json({ error: "Ugyldigt max-loft", errorCode: "invalid_proxy_max" });
   }
+  const marketGateOn = await isMarketCommitment6181On(supabase);
 
   const { data: auction } = await supabase
     .from("auctions")
@@ -8265,15 +8266,19 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
       return res.status(500).json({ error: "Autobud kunne ikke placeres", errorCode: "proxy_place_failed" });
     }
 
-    const { error: auctionUpdateError } = await supabase
-      .from("auctions")
-      .update({
-        current_price: openingBidAmount,
-        current_bidder_id: req.team.id,
-      })
-      .eq("id", auction.id);
-    if (auctionUpdateError) {
-      return res.status(500).json({ error: "Autobud kunne ikke opdatere auktionen", errorCode: "proxy_update_failed" });
+    if (marketGateOn) {
+      await syncBidLeader6181(supabase, { auctionId: auction.id, amount: openingBidAmount, teamId: req.team.id });
+    } else {
+      const { error: auctionUpdateError } = await supabase
+        .from("auctions")
+        .update({
+          current_price: openingBidAmount,
+          current_bidder_id: req.team.id,
+        })
+        .eq("id", auction.id);
+      if (auctionUpdateError) {
+        return res.status(500).json({ error: "Autobud kunne ikke opdatere auktionen", errorCode: "proxy_update_failed" });
+      }
     }
 
     const riderName = `${auction.rider?.firstname || "Ukendt"} ${auction.rider?.lastname || "rytter"}`.trim();
@@ -8306,7 +8311,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
       // hidtidige fører's proxy-loft, beholder føreren føringen.
       previousLeader,
       actorTeamId: req.team.id, // #5919: ingen DM til holdet der selv sætter autobud
-      ...((await isMarketCommitment6181On(supabase)) ? { canAffordAutoBidFn: canAffordAutoBid6181 } : {}), // #6181 PR 5
+      ...(marketGateOn ? { canAffordAutoBidFn: canAffordAutoBid6181 } : {}), // #6181 PR 5
     });
   } catch (e) {
     console.error("[resolveProxyBids] failed for auction", req.params.id, e);

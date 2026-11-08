@@ -20,7 +20,6 @@
 // Kontakten slukket = bit-identisk: hver funktion her returnerer null/false eller
 // lader tilstanden vaere uroert, foer den laver et eneste opslag ud over selve
 // kontakten. Triggerfejl kan kun opstaa, naar kontakten er taendt i databasen.
-import { readFlagStage } from "./featureStage.js";
 import { fetchAuctionCommitment } from "./availableBalance.js";
 import { getMinimumAuctionBid } from "./auctionRules.ts";
 import { MAX_SQUAD_SIZE } from "./marketUtils.js";
@@ -37,7 +36,12 @@ export function isMarketCommitmentValueOn(value) {
 // Laeses friskt: databasens triggere laeser samme raekke ved hvert bud, og
 // backenden maa ikke koere med en anden tilstand end databasen i et minut.
 export async function isMarketCommitment6181On(supabase) {
-  return isMarketCommitmentValueOn(await readFlagStage(supabase, MARKET_COMMITMENT_FLAG, { fresh: true }));
+  // A failed read is unknown, not proof that the database gate is off.
+  // Missing/off values still preserve the pre-migration legacy path.
+  const { data, error } = await supabase.from("app_config")
+    .select("value").eq("key", MARKET_COMMITMENT_FLAG).maybeSingle();
+  if (error) throw new Error(`marketCommitment6181: flag lookup failed: ${error.message}`);
+  return isMarketCommitmentValueOn(data?.value);
 }
 
 /** Triggerens kode ("insufficient_available_balance" | "squad_full" | "price_changed"), ellers null. */

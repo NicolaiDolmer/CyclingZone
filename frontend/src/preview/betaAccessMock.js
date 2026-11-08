@@ -50,6 +50,7 @@ let flags = [
   { key: "training_fatigue_rules", area: "training", label: "Træthedsgrænse (spillerens regler)", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "season_matrix_mobile", area: "season", label: "Sæsonmatrix på mobil — ny visning", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "rider_why_button", area: "race-day", label: "Hvorfor?-knappen ved rytterne (Your day)", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
+  { key: "rider_hover_card", area: "squad", label: "Hover-miniprofil på ryttere", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
 ];
 
 function readBody(init) {
@@ -80,6 +81,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "potential_single_number", // #6110 Hjaelp
   "potential_estimate_display", // #7684 (flader + Hjaelp i byggetrin 6)
   "rider_why_button", // #7717
+  "rider_hover_card", // #2009
   "ability_cap_per_date_enabled", // #6110 Hjaelp
   "training_decision_card", // #6110 Hjaelp
   "training_catalog_v3", // #5319 vaelgere + Hjaelp

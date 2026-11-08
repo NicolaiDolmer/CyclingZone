@@ -23,6 +23,7 @@ import {
   auctionStartCommitmentResponse6181,
   getAuctionStartCommitmentIssue,
   isMarketCommitmentValueOn,
+  isMarketCommitment6181On,
   marketGateCode,
   marketGateResponse6181,
 } from './marketCommitment6181.js';
@@ -264,14 +265,17 @@ test('rettigheder: kun service_role kan kalde funktionerne', async () => {
 // ── Backend-siden ────────────────────────────────────────────────────────────
 
 // Lille fake-klient: app_config + de opslag helperne laver.
-function fakeSupabase({ flag = 'off', leading = 0, outgoing = 0, commitment = 0, balance = 0, riders = [], calls = [] } = {}) {
+function fakeSupabase({ flag = 'off', flagError = null, flagThrows = false, leading = 0, outgoing = 0, commitment = 0, balance = 0, riders = [], calls = [] } = {}) {
   const builder = (table) => {
     const q = {
       _table: table,
       select() { return q; }, eq() { return q; }, in() { return q; }, lt() { return q; }, update() { return q; },
       maybeSingle: async () => {
         calls.push(table);
-        if (table === 'app_config') return { data: { value: flag }, error: null };
+        if (table === 'app_config') {
+          if (flagThrows) throw new Error('flag transport unavailable');
+          return { data: flagError ? null : { value: flag }, error: flagError };
+        }
         if (table === 'teams') return { data: { balance }, error: null };
         return { data: null, error: null };
       },
@@ -300,6 +304,28 @@ test('kontakt-vaerdier: kun "on" og true taender (beta er slukket her)', () => {
   assert.equal(isMarketCommitmentValueOn('on'), true);
   assert.equal(isMarketCommitmentValueOn(true), true);
   for (const v of ['beta', 'off', false, null, undefined, 'ON']) assert.equal(isMarketCommitmentValueOn(v), false);
+});
+
+test('kontakt-opslagsfejl stopper markedsreglerne uden at mutere tilstanden eller vaelge legacy', async () => {
+  for (const failure of [{ flagError: { message: 'flag query unavailable' } }, { flagThrows: true }]) {
+    const calls = [];
+    const supabase = fakeSupabase({ ...failure, calls, leading: 3, outgoing: 2 });
+    const buyerState = { id: TEAM.B, future_count: 28 };
+    const sellerState = { id: TEAM.A, future_count: 9 };
+    await assert.rejects(() => isMarketCommitment6181On(supabase), /flag|marketCommitment/i);
+    await assert.rejects(() => applyTransferMarketCommitment6181(supabase, { buyerState, sellerState }), /flag|marketCommitment/i);
+    await assert.rejects(() => applySellerOutgoingAuctions6181(supabase, sellerState), /flag|marketCommitment/i);
+    await assert.rejects(() => auctionStartCommitmentResponse6181(supabase, { teamId: TEAM.B, teamState: buyerState, price: 1 }), /flag|marketCommitment/i);
+    assert.deepEqual(buyerState, { id: TEAM.B, future_count: 28 });
+    assert.deepEqual(sellerState, { id: TEAM.A, future_count: 9 });
+    assert.deepEqual([...new Set(calls)], ['app_config']);
+  }
+});
+
+test('bekraeftet manglende eller slukket kontakt beholder legacy-stien', async () => {
+  for (const flag of [null, undefined, 'off', false, 'beta']) {
+    assert.equal(await isMarketCommitment6181On(fakeSupabase({ flag })), false);
+  }
 });
 
 test('marketGateCode genkender kun M3-gatens fejl', () => {
@@ -389,31 +415,35 @@ test('taendt: gatens fejl bliver til de eksisterende fejlkoder', async () => {
 const PG_BIN = process.env.MARKET_GATE_PG_BIN;
 
 function run(cmd, args, opts = {}) {
-  const r = spawnSync(join(PG_BIN, cmd), args, { encoding: 'utf8', ...opts });
+  const r = spawnSync(join(PG_BIN, cmd), args, { encoding: 'utf8', windowsHide: true, ...opts });
   if (r.status !== 0) throw new Error(`${cmd} ${args.join(' ')} failed: ${r.stderr || r.stdout}`);
   return r.stdout;
 }
 function psqlAsync(port, sql) {
   return new Promise((resolve) => {
-    const p = spawn(join(PG_BIN, 'psql'), ['-X', '-q', '-h', '127.0.0.1', '-p', String(port), '-U', 'postgres', '-d', 'gate', '-v', 'ON_ERROR_STOP=1', '-c', sql]);
+    const p = spawn(join(PG_BIN, 'psql'), ['-X', '-q', '-h', '127.0.0.1', '-p', String(port), '-U', 'postgres', '-d', 'gate', '-v', 'ON_ERROR_STOP=1', '-c', sql], { windowsHide: true });
     let err = '';
     p.stderr.on('data', d => { err += d; });
     p.on('close', code => resolve({ ok: code === 0, err }));
   });
 }
 
-test('PG17: 8 samtidige bud fra samme hold mod penge til 1 overbooker aldrig', { skip: !PG_BIN && 'MARKET_GATE_PG_BIN er ikke sat' }, async () => {
+test('PG17: 8 samtidige bud fra samme hold mod penge til 1 overbooker aldrig', { skip: !PG_BIN && 'MARKET_GATE_PG_BIN er ikke sat' }, async (t) => {
+  const version = run('psql', ['--version']).trim();
+  assert.match(version, /PostgreSQL\) 17\./, 'the concurrency evidence requires real PostgreSQL 17');
   const dir = await mkdtemp(join(tmpdir(), 'm3gate-'));
   const data = join(dir, 'data');
   const port = 56000 + Math.floor(Math.random() * 1000);
-  run('initdb', ['-D', data, '-U', 'postgres', '-A', 'trust', '-E', 'UTF8', '--locale=C']);
-  // stdio ignore: serveren arver ellers pipen, og spawnSync venter for evigt (Windows).
-  const started = spawnSync(join(PG_BIN, 'pg_ctl'), ['-D', data, '-o', `-p ${port} -c listen_addresses=127.0.0.1 -c max_connections=40`, '-w', '-l', join(dir, 'pg.log'), 'start'], { stdio: 'ignore' });
-  assert.equal(started.status, 0, 'pg_ctl start failed');
-  // SQL via stdin som UTF-8: kommandolinjen paa Windows mister tegnkodningen.
-  const psql = (sql) => run('psql', ['-X', '-q', '-t', '-A', '-h', '127.0.0.1', '-p', String(port), '-U', 'postgres', '-d', 'gate', '-v', 'ON_ERROR_STOP=1'],
-    { input: sql, env: { ...process.env, PGCLIENTENCODING: 'UTF8' } });
+  let serverStarted = false;
   try {
+    run('initdb', ['-D', data, '-U', 'postgres', '-A', 'trust', '-E', 'UTF8', '--locale=C']);
+    // stdio ignore: serveren arver ellers pipen, og spawnSync venter for evigt (Windows).
+    const started = spawnSync(join(PG_BIN, 'pg_ctl'), ['-D', data, '-o', `-p ${port} -c listen_addresses=127.0.0.1 -c max_connections=40`, '-w', '-l', join(dir, 'pg.log'), 'start'], { stdio: 'ignore', windowsHide: true });
+    assert.equal(started.status, 0, 'pg_ctl start failed');
+    serverStarted = true;
+    // SQL via stdin som UTF-8: kommandolinjen paa Windows mister tegnkodningen.
+    const psql = (sql) => run('psql', ['-X', '-q', '-t', '-A', '-h', '127.0.0.1', '-p', String(port), '-U', 'postgres', '-d', 'gate', '-v', 'ON_ERROR_STOP=1'],
+      { input: sql, env: { ...process.env, PGCLIENTENCODING: 'UTF8' } });
     run('psql', ['-X', '-q', '-h', '127.0.0.1', '-p', String(port), '-U', 'postgres', '-d', 'postgres', '-c', 'CREATE DATABASE gate']);
     psql(SCHEMA);
     psql(await file('2026-05-10-reject-late-auction-bid-trigger.sql'));
@@ -421,6 +451,8 @@ test('PG17: 8 samtidige bud fra samme hold mod penge til 1 overbooker aldrig', {
     const rounds = 10;
     let overbooked = 0;
     let maxLeads = 0;
+    let accepted = 0;
+    let gateRejected = 0;
     for (let round = 0; round < rounds; round++) {
       psql(`TRUNCATE auction_bids, auction_proxy_bids, auctions, riders, teams CASCADE;
         UPDATE app_config SET value = '"on"' WHERE key = 'market_commitment_6181';
@@ -428,7 +460,14 @@ test('PG17: 8 samtidige bud fra samme hold mod penge til 1 overbooker aldrig', {
         INSERT INTO riders(id) SELECT gen_random_uuid() FROM generate_series(1, 8);
         INSERT INTO auctions(rider_id, current_price) SELECT id, 10 FROM riders;`);
       const ids = psql('SELECT id FROM auctions ORDER BY id').trim().split(/\s+/);
-      await Promise.all(ids.map(a => psqlAsync(port, `INSERT INTO auction_bids(auction_id, team_id, amount) VALUES ('${a}', '${TEAM.A}', 60)`)));
+      assert.equal(ids.length, 8);
+      const outcomes = await Promise.all(ids.map(a => psqlAsync(port, `INSERT INTO auction_bids(auction_id, team_id, amount) VALUES ('${a}', '${TEAM.A}', 60)`)));
+      assert.equal(outcomes.filter(result => result.ok).length, 1, `round ${round + 1}: exactly one bid must succeed`);
+      for (const result of outcomes.filter(result => !result.ok)) {
+        assert.match(result.err, /market_gate_6181:insufficient_available_balance/, `round ${round + 1}: unexpected SQL failure`);
+      }
+      accepted += outcomes.filter(result => result.ok).length;
+      gateRejected += outcomes.filter(result => !result.ok).length;
       const leads = Number(psql(`SELECT count(*) FROM auctions WHERE current_bidder_id = '${TEAM.A}'`).trim());
       const committed = Number(psql(`SELECT public.team_market_commitment('${TEAM.A}')`).trim());
       if (leads !== 1 || committed > 100) overbooked++;
@@ -436,8 +475,13 @@ test('PG17: 8 samtidige bud fra samme hold mod penge til 1 overbooker aldrig', {
     }
     assert.equal(overbooked, 0, `overbooket i ${overbooked} af ${rounds} runder (flest foeringer: ${maxLeads})`);
     assert.equal(maxLeads, 1);
+    t.diagnostic(`${version}; rounds=${rounds}; connections_per_round=8; attempted=${rounds * 8}; accepted=${accepted}; gate_rejected=${gateRejected}; overbooked=${overbooked}; max_leads=${maxLeads}`);
   } finally {
-    spawnSync(join(PG_BIN, 'pg_ctl'), ['-D', data, '-m', 'fast', '-w', 'stop'], { stdio: 'ignore' });
+    const stopped = spawnSync(join(PG_BIN, 'pg_ctl'), ['-D', data, '-m', 'fast', '-w', 'stop'], { stdio: 'ignore', windowsHide: true });
     await rm(dir, { recursive: true, force: true });
+    if (serverStarted) {
+      assert.equal(stopped.status, 0, 'temporary PG17 server must have stopped');
+      t.diagnostic('temporary_pg17_server_stopped=true');
+    }
   }
 });

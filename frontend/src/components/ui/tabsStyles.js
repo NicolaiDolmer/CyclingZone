@@ -14,7 +14,8 @@
 // respekterer scroll-margin på DET element, ikke på en forælder
 // (CodeRabbit-fund under denne PR).
 const TAB_BASE =
-  "whitespace-nowrap border-b-2 py-2.5 text-sm font-medium transition-colors duration-150 scroll-mb-14 md:scroll-mb-0";
+  "whitespace-nowrap border-b-2 py-2.5 text-sm font-medium transition-colors duration-150 scroll-mb-14 md:scroll-mb-0 " +
+  "[@media(max-width:640px),(pointer:coarse)]:min-h-11 [@media(max-width:640px),(pointer:coarse)]:min-w-11 [@media(max-width:640px),(pointer:coarse)]:shrink-0";
 
 // #5485 (training, 23/9): `fit` er et OPT-IN for en fanerække der skal staa
 // HELT paa en telefon (360-390 px) uden vandret scroll: faste 4 faner, hvor
