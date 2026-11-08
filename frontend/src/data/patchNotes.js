@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.421",
+    "date": "2026-11-08",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The race film shows the real gaps at the finish",
+          "body": "The race film could show a different gap at the line than the result list, for example the whole bunch level with the winners. At the finish the film now always shows the same gaps as the result. Results and times have not changed."
+        },
+        "da": {
+          "title": "Løbsfilmen viser de rigtige huller ved målet",
+          "body": "Løbsfilmen kunne vise et andet hul ved målstregen end resultatlisten, for eksempel hele feltet på linje med vinderne. Ved målet viser filmen nu altid de samme huller som resultatet. Resultater og tider er ikke ændret."
+        },
+        "refs": [
+          7900
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.420",
     "date": "2026-11-08",
     "changes": [
