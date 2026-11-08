@@ -54,11 +54,10 @@
     "horizon": {
       "this_week": "Denne uge",
       "next_week": "Næste uge",
-      "next": "Snart",
-      "this_season": "Denne sæson",
-      "next_season": "Næste sæson",
-      "y2027": "2027",
-      "later": "Senere"
+      "season": "Sæson {season}",
+      "quarter": "Q{quarter} {year}",
+      "year": "{year}",
+      "unscheduled": "Til afstemning"
     }
   },
   "beta": {

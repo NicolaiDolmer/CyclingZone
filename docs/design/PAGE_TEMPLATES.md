@@ -36,6 +36,9 @@ compose the recipes from that file. One gold primary button per view, hairline b
   - Nothing renders below 10px. Never write `text-[Npx]` under 12px again — if neither step fits, the content is wrong, not the scale.
 
 ## T1 · Standard content page
+
+**P16 mobile interaction floor (owner build-go 7/11, #7877):** at viewport widths up to and including 640 CSS pixels **or with a coarse primary pointer** (including a phone in landscape), shared buttons/buttonClass links, language controls, canonical tabs, column chips, Segmented options and standard fields have real minimum targets of 44 × 44 px. The floor is present on first render and does not toggle on hover, focus or press. Static mobile density can increase; never emulate the floor with overlapping invisible rectangles or viewport-positioned proxy controls. Fine-pointer desktop recipes stay unchanged. Owner screenshot approval is still required before merge.
+
 Reading pages (Board, Training, Finance detail, settings…).
 - Container: **max-w-4xl (896px)**, centered.
 - Body = stacked section cards per the shared recipe. Row lists inside cards: 13.5px/500 title + data-font 11px uppercase meta line (`--text-3`), separated by 1px `--border` top rules, 13px vertical padding.

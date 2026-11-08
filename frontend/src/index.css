@@ -8,6 +8,7 @@
    ────────────────────────────────────────────────────────────────────────── */
 
 @layer theme, base, components, utilities;
+
 /* theme(inline): stock scales (spacing, text sizes, tracking …) are written
    into the utilities as values (`padding: .5rem`, like v3) instead of
    `calc(var(--spacing) * 2)` + a :root block of every variable. Nothing in src
@@ -1063,4 +1064,16 @@ tr:hover .sticky-name-cell {
   outline-offset: 2px;
   border-radius: 4px;
 }
+}
+
+/* P16: native fields keep their DOM/ref/label contracts. Component-layer
+   defaults let explicit larger utility minima (e.g. FilterBar's min-w-36)
+   remain larger instead of a responsive 44px utility replacing them. */
+@layer components {
+  @media (max-width: 640px), (pointer: coarse) {
+    .cz-field-target {
+      min-width: 44px;
+      min-height: 44px;
+    }
+  }
 }
