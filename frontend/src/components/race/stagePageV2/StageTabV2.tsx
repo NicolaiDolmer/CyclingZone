@@ -16,6 +16,7 @@ import ClimbCard from "./ClimbCard.tsx";
 import YourDayCard, { type CareerEvent, type RowWhy } from "./YourDayCard.tsx";
 import { riderWhy } from "../../../lib/riderWhyModel.ts"; // #7717
 import { useRiderWhyEnabled } from "../../../lib/riderWhyFlag.ts"; // #7717
+import { withTimeLimitFatigue } from "../../../lib/raceRecap.js"; // #7701
 import RaceStoryCard from "./RaceStoryCard.tsx";
 import { castFrom, ownOutSentences, type RaceStory, type StoryNarrativeContext } from "./raceStoryModel.ts";
 import { stageWeather, type StageWeather } from "./stageWeather.ts";
@@ -137,7 +138,9 @@ export default function StageTabV2({
   const demands = dayDemands(profile?.demand_vector);
   const climbIndex = Math.min(selectedClimb, Math.max(0, climbs.length - 1));
   const cast = useMemo(() => castFrom(results, riders, stageNumber, myTeamId), [results, riders, stageNumber, myTeamId]);
-  const ownOut = useMemo(() => ownOutSentences(dnfRows, myTeamId, cast), [dnfRows, myTeamId, cast]);
+  // #7701: tidsgraense-rytter som etapens haendelser kalder for traet faar den aarsag; ellers uaendret.
+  const outRows = useMemo<DnfRowInput[]>(() => withTimeLimitFatigue(dnfRows, narrative?.events), [dnfRows, narrative]);
+  const ownOut = useMemo(() => ownOutSentences(outRows, myTeamId, cast), [outRows, myTeamId, cast]);
   const weather = stageWeather(profile, phase, story);
   const whyEnabled = useRiderWhyEnabled(phase === "after");
   const why = useMemo<RowWhy | null>(() => (whyEnabled && !storyError ? {
@@ -157,7 +160,7 @@ export default function StageTabV2({
             loaded={stageLoaded}
             myTeamId={myTeamId}
             careerEvents={careerEvents}
-            dnfRows={dnfRows}
+            dnfRows={outRows}
             primaryAction={tacticsAction}
             onOpenStandings={onOpenStandings}
             why={why}

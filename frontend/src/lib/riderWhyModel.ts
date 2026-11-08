@@ -18,7 +18,7 @@ import { buildOwnTimeLoss, hasGroupGaps, type DropReason, type TimelineEvent } f
 
 export type WhyMain =
   | "unknown"
-  | "abandonedCrash" | "abandonedMechanical" | "abandoned" | "timeLimit" | "withdrawal"
+  | "abandonedCrash" | "abandonedMechanical" | "abandoned" | "timeLimit" | "timeLimitFatigue" | "withdrawal"
   | "won" | "wonSprint" | "wonAttack" | "survived" | "front" | "frontSprint"
   | "dropEmpty" | "dropPace" | "dropGrupetto" | "dropCobbles" | "dropGeneric" | "dropFromBreak"
   | "crack" | "allOut" | "allOutGain" | "crashLoss" | "mechanicalLoss" | "incidentLoss" | "caught"
@@ -195,8 +195,8 @@ function outOfRace(input: RiderWhyInput, story: RaceStory | null, moments: Story
   const kind = (incident?.data.kind as string | undefined) ?? input.reasonKey ?? null;
   if (kind === "crash") return said("abandonedCrash", where);
   if (kind === "mechanical") return said("abandonedMechanical", where);
-  if (input.reasonKey === "time_limit" || input.reasonKey === "withdrawal") {
-    const main = input.reasonKey === "time_limit" ? "timeLimit" : "withdrawal";
+  if (input.reasonKey === "time_limit" || input.reasonKey === "time_limit_fatigue" || input.reasonKey === "withdrawal") {
+    const main = input.reasonKey === "withdrawal" ? "withdrawal" : input.reasonKey === "time_limit_fatigue" ? "timeLimitFatigue" : "timeLimit";
     const setback = story && hasGroupGaps(input.events) ? firstSetback(input, moments) : null;
     return setback ? said(main, NOWHERE, "afterDrop", setbackPlace(setback, story as RaceStory, input.climbs)) : said(main);
   }
