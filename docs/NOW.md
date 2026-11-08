@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** egomadsen #7870 (billeder, form/træthed sløret) · Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (8/11):** Merget nat 7-8/11: #7887, #7853, #7883, #7881, #7849 (hover, kontakt **beta**), #7889 (kladder uden tunge tests), #7894 (masterplan), #7893 (P16), #7835, #7896 (roadmap: sæson 5/6, Q1/Q2 2027; migration verificeret). **Ejer 09-12:** Hexagone-generalprøve #7890 + tænd-kort #7715 (PC1-session), nedkørsels-loft #7644, talentmærker #7882 (rule 17: A/B på #7879 + billede-go), mestertrøjer #7888 (bølge, billede-go), trøjejagt #7857, egomadsen #7870, XP #6110, sandhedsvagt før 15. Efter Hexagone-start: pengelås/auto-accept #7874/#7875/#7878. 9/11: secrets, feedback, #5431.
+> **🎯 Next action (8/11):** **Dirigent-tavle [#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911) er sandheden; start der.** 8/11 live: film #7910; tændt 7725, 7635, hover. **Large kører (målt 8/11 kl. 16.25: shared_buffers 2 GB, 160 forbindelser, #7659).** **Hexagone kl. 15:** 7644 SLUKKET; sandhedsvagt på #7897. **7715-tænding:** #7701 først bag kontakten; #7850 + patch note PÅ tænd-dagen (tjekliste #7715). **Efter løbet:** #6912, #7899, #7902, 7644 tuning vs G19-bånd.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** PC1: merge-session (bølge med #7824) + generalprøve-session #7890 (merger intet). Dolmer PC: slukket, ingen Codex.
+> **🤖 Working agent:** Dirigent på Dolmer PC (Claude, start 8/11 kl. 16.22; PC1 holder pause). Tavle #7911, plan #7659. **Codex (Dolmer PC):** #7875, #7878.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
