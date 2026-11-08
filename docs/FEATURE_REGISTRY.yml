@@ -586,6 +586,8 @@ features:
     epic: 7824
     verified: 2026-11-07
     note: champion_jerseys_7824
+    decision: taend
+    decide_by: 2026-11-22
 
   - id: rider-rating-best-role-display
     area: squad
