@@ -293,6 +293,10 @@
   ],
   "cleanupList": [
     {
+      "issue": 7833,
+      "why": "Intern betalingsvagt: falsk alarm ved opsagt uden periodeslut, ejer-go 7/11 i Codex' prioriterede ops-mandat"
+    },
+    {
       "issue": 7170,
       "why": "Intern bundle-gate: kun stoerste valgfrie sprog, ejer-go 7/11 i Codex' prioriterede ops-mandat"
     },
