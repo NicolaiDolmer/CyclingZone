@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { placeOf, riderWhy, type RiderWhyInput } from "./riderWhyModel.ts";
+import { placeOf, riderWhy, routeFitsAtRaceTime, type RiderWhyInput } from "./riderWhyModel.ts";
 import type { Cast, RaceStory, StoryCheckpoint, StoryMoment } from "../components/race/stagePageV2/raceStoryModel.ts";
 import type { Climb } from "../components/race/stagePageV2/stagePageV2Model.ts";
 
@@ -193,6 +193,14 @@ test("#7717 enkeltstart: ruten sammenlignes med holdkammeraterne og skal passe t
   assert.equal(ittWhy(20, [], [], FITS).known, false, "midt i feltet er ruten ikke forklaringen");
   assert.equal(ittWhy(4, [], [], null).known, false, "uden rute-match siges intet (andre holds ryttere)");
   assert.equal(ittWhy(4, [], [], new Map([["a", 30]])).known, false, "ingen holdkammerater at sammenligne med");
+});
+
+test("#7717 Codex: rute-match er dagens evner, saa et gammelt resultat forklares ikke med det", () => {
+  const now = Date.parse("2026-11-08T12:00:00.000Z");
+  assert.equal(routeFitsAtRaceTime(FITS, "2026-11-07T12:00:00.000Z", now), FITS, "frisk etape");
+  assert.equal(routeFitsAtRaceTime(FITS, "2026-10-20T12:00:00.000Z", now), null, "gammel etape");
+  assert.equal(routeFitsAtRaceTime(FITS, null, now), null, "ukendt tidspunkt");
+  assert.equal(routeFitsAtRaceTime(FITS, "ikke en dato", now), null, "ugyldigt tidspunkt");
 });
 
 test("#7717 enkeltstart: dag og rute i samme saetning; vinderen faar aldrig en daarlig dag", () => {

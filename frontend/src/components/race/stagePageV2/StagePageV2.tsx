@@ -119,6 +119,7 @@ export default function StagePageV2(props: StagePageV2Props) {
     return {
       profileType: profileByStage[selectedStage]?.profile_type ?? null,
       events: (timeline as { events?: StoryNarrativeContext["events"] } | null)?.events ?? [],
+      ranAt: ranTimeline?.created_at ?? null, // #7717
       teamNameById,
       // Wait for the authoritative v4 order read. Failed reads make no order-impact assertion.
       effortByRider: v4Timeline && !knownOrders ? null : effectiveEffortByRider(stageRoles, knownOrders?.value, selectedStage, { v4: v4Timeline, ranAt: ranTimeline?.created_at ?? null }),

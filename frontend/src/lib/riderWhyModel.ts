@@ -216,6 +216,17 @@ const TT_POOR_SHARE = 0.6;
 const TT_ROUTE_SUITED = 1.2;
 const TT_ROUTE_UNSUITED = 0.8;
 
+const TT_ROUTE_FRESH_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Rute-matchet regnes af rytterens evner i dag, ikke paa loebsdagen. Et gammelt
+ * resultat kan derfor ikke forklares med det; uden etapens tidspunkt siges intet.
+ */
+export function routeFitsAtRaceTime<T>(routeFits: T, ranAt: string | null | undefined, now = Date.now()): T | null {
+  const ran = ranAt ? Date.parse(ranAt) : Number.NaN;
+  return Number.isFinite(ran) && now - ran <= TT_ROUTE_FRESH_MS ? routeFits : null;
+}
+
 type TtPlacing = "top" | "mid" | "poor" | null;
 
 function timeTrialPlacing(rank: number | null | undefined, field: number | null): TtPlacing {

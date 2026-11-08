@@ -246,6 +246,8 @@ export interface StoryNarrative { key: string; params: Record<string, unknown> }
 export interface StoryNarrativeContext {
   profileType?: string | null;
   events: readonly NarrativeEvent[];
+  /** #7717: hvornaar etapen koerte (loebsloggens created_at). */
+  ranAt?: string | null;
   effortByRider?: { get(id: string): unknown } | null;
   teamNameById?: ReadonlyMap<string, string>;
 }
