@@ -128,17 +128,21 @@ export function championGroups({
   groups.push({ title: CHAMPION_TITLE.WORLD, scope: "", basis: null, candidates: [...scoring].sort(compareCandidates) });
 
   // U23: sæsonens U23-rangliste først, ellers verdensranglisten blandt ryttere under 23.
-  const u23Ranking = u23Rows
+  const u23All = u23Rows
     .filter((row) => row?.rider_id && isU23(row.rider_id))
-    .map((row) => toCandidate(row, bestRank.u23))
-    .filter((c) => c.points > 0);
+    .map((row) => toCandidate(row, bestRank.u23));
+  const u23Ranking = u23All.filter((c) => c.points > 0);
+  const u23Senior = senior.filter((c) => isU23(c.rider_id));
   if (u23Ranking.length > 0) {
     groups.push({ title: CHAMPION_TITLE.U23_WORLD, scope: "", basis: U23_BASIS.U23_RANKING, candidates: u23Ranking.sort(compareCandidates) });
-  } else {
-    const u23Senior = senior.filter((c) => isU23(c.rider_id));
+  } else if (u23Senior.length > 0) {
     // "Der er altid en": har ingen under 23 point, afgør sejre og placering blandt dem på listen.
     const pool = u23Senior.some((c) => c.points > 0) ? u23Senior.filter((c) => c.points > 0) : u23Senior;
     groups.push({ title: CHAMPION_TITLE.U23_WORLD, scope: "", basis: U23_BASIS.WORLD_RANKING, candidates: pool.sort(compareCandidates) });
+  } else {
+    // Ingen under 23 på verdensranglisten: så afgør sejre og placering blandt
+    // U23-ranglistens ryttere, selv uden point, så titlen aldrig mangler.
+    groups.push({ title: CHAMPION_TITLE.U23_WORLD, scope: "", basis: U23_BASIS.U23_RANKING, candidates: u23All.sort(compareCandidates) });
   }
 
   const byContinent = new Map();
@@ -259,7 +263,9 @@ async function loadBestRanks(supabase, riderIds, seasonId, squad) {
  *
  * @returns {Promise<{ ran: boolean, skipped?: string, seasonNumber?: number, titles?: number }>}
  */
-export async function runChampionTitles({ supabase }) {
+export async function runChampionTitles({ supabase, now }) {
+  // Uret injiceres altid (AGENTS.md regel 16): cron-indgangen giver det, tests et fast.
+  if (!(now instanceof Date) || Number.isNaN(now.getTime())) throw new Error("runChampionTitles: now (Date) mangler");
   const stage = await readFlagStage(supabase, CHAMPION_JERSEYS_FLAG_KEY);
   if (!evaluateFlagStage(stage, { engineWrite: true })) return { ran: false, skipped: "flag_off" };
 
@@ -272,7 +278,7 @@ export async function runChampionTitles({ supabase }) {
   if (await titlesExist(supabase, seasonNumber)) return { ran: false, skipped: "already_computed" };
   // Titlerne skrives én gang og regnes aldrig om, så ranglisten skal være opdateret
   // med alle resultater først. Venter en opdatering, prøver næste time igen.
-  const refresh = await getRankingRefreshWorkState(supabase, new Date());
+  const refresh = await getRankingRefreshWorkState(supabase, now);
   if (refresh.pending) return { ran: false, skipped: "ranking_refresh_pending", seasonNumber };
 
   const [seniorRows, u23Rows, countries] = await Promise.all([
@@ -306,9 +312,9 @@ export async function runChampionTitles({ supabase }) {
 }
 
 /** Cron-indgangen: kørsel + log. En fejl når Sentry; næste time prøver igen. */
-export async function runChampionTitlesTick({ supabase }) {
+export async function runChampionTitlesTick({ supabase, now }) {
   try {
-    const result = await runChampionTitles({ supabase });
+    const result = await runChampionTitles({ supabase, now });
     if (result.ran) console.log(`Champion titles: ${result.titles} titles for season ${result.seasonNumber}`);
     return result;
   } catch (err) {

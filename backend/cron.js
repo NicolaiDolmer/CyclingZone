@@ -2284,7 +2284,7 @@ export function startCron() {
 
   // #7824: mestertitlerne for sæsonen efter den seneste afsluttede (flag-gated,
   // idempotent pr. sæson). Hver time, så titlerne kommer kort efter et sæsonskifte.
-  setInterval(trackedTick("champion-titles", () => runChampionTitlesTick({ supabase })), 60 * 60 * 1000);
+  setInterval(trackedTick("champion-titles", () => runChampionTitlesTick({ supabase, now: new Date() })), 60 * 60 * 1000);
 
   // Søndagens værdi-pipeline (#4419/#5842): præcis søndag kl. 14:00 dansk tid
   // (SUNDAY_VALUE_FROM_HOUR, ejer 18/10), derefter et genforsøg hver hele time til
@@ -2491,7 +2491,7 @@ export function startCron() {
   // ingen af dem kan lave dubletter ved et boot-run lige efter et normalt tick.
   trackedTick("growth snapshot", runGrowthSnapshotCron)();
   trackedTick("global rank weekly snapshot", runGlobalRankWeeklySnapshotCron)();
-  trackedTick("champion-titles", () => runChampionTitlesTick({ supabase }))(); // #7824 boot-run: idempotent pr. sæson
+  trackedTick("champion-titles", () => runChampionTitlesTick({ supabase, now: new Date() }))(); // #7824 boot-run: idempotent pr. sæson
   trackedTick("sunday-intake-drip", runSundayIntakeTickCron)(); // boot-run: claim-idempotent, søndags-gated
   trackedTick("market-value-level-correction-gate", monitorCron("market-value-level-correction-gate", runMarketValueLevelCorrectionGateSweepCron, CRON_MONITOR_SUNDAY_START))(); // boot-run: samme, ren måling
   // #6858: indhentning ved boot. Er søndag kl. 14:00 passeret og dagens claim ikke

@@ -91,6 +91,11 @@ test("kun den igangværende sæsons titler vises (ikke bare den nyeste sæson i 
   assert.doesNotMatch(jersey, /order\("season_number", \{ ascending: false \}\)/);
 });
 
+test("opslaget fornyes også, mens en side står åben (sæsonskifte uden ny montering)", () => {
+  assert.match(jersey, /setInterval\(ensureFresh, CHAMPION_TITLES_REFRESH_MS \/ 4\)/);
+  assert.match(jersey, /clearInterval\(refreshTimer\)/);
+});
+
 test("national trøje: flaget ligger inline-absolut over hele trøjen og beskæres ikke", () => {
   // flag-icons' .fi { position: relative } vinder ellers over en utility-klasse,
   // og flaget skubbes ned under konturen (fundet på billederne 8/11).

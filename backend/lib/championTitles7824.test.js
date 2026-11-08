@@ -16,6 +16,25 @@ import {
 const SEASON = 3;
 const U23_BIRTH = "2006-05-01";
 const SENIOR_BIRTH = "1998-05-01";
+// Fast ur (AGENTS.md regel 16): kørslen læser aldrig væguret.
+const FIXED_NOW = new Date("2026-11-08T12:00:00Z");
+
+test("U23: ingen point nogen steder og ingen under 23 på verdensranglisten = stadig en U23-mester", () => {
+  const titles = computeChampionTitles({
+    seniorRows: [row("s", 100)],
+    u23Rows: [row("u1", 0), row("u2", 0, { stage_wins: 1 }), row("old", 0)],
+    riders: [rider("s", "DK"), rider("u1", "BE", U23_BIRTH), rider("u2", "DK", U23_BIRTH), rider("old", "DK")],
+    continentByCountry: continents,
+    sourceSeasonNumber: SEASON,
+  });
+  const u23 = find(titles, CHAMPION_TITLE.U23_WORLD);
+  assert.equal(u23.rider_id, "u2", "flest sejre afgør, når ingen har point");
+  assert.equal(u23.basis, U23_BASIS.U23_RANKING);
+});
+
+test("kørslen: kræver et injiceret ur", async () => {
+  await assert.rejects(() => runChampionTitles({ supabase: {} }), /now/);
+});
 
 const continents = new Map([["DK", "Europe"], ["BE", "Europe"], ["CO", "Americas"], ["JP", "Asia"], ["XX", null]]);
 
@@ -213,7 +232,7 @@ function fakeSupabase({
 
 test("kørslen: venter til den nye sæson er startet (afslutning og start er to trin)", async () => {
   const supabase = fakeSupabase({ flag: '"on"', active: null });
-  const result = await runChampionTitles({ supabase });
+  const result = await runChampionTitles({ supabase, now: FIXED_NOW });
   assert.equal(result.skipped, "next_season_not_started");
   assert.equal(supabase.writes.length, 0);
   assert.ok(!supabase.reads.includes("rider_rankings_mv"));
@@ -221,7 +240,7 @@ test("kørslen: venter til den nye sæson er startet (afslutning og start er to 
 
 test("kørslen: venter mens ranglisten opdateres, så titlerne aldrig bygger på forældet rangliste", async () => {
   const supabase = fakeSupabase({ flag: '"on"', rankingPending: true });
-  const result = await runChampionTitles({ supabase });
+  const result = await runChampionTitles({ supabase, now: FIXED_NOW });
   assert.equal(result.skipped, "ranking_refresh_pending");
   assert.equal(supabase.writes.length, 0);
   assert.ok(!supabase.reads.includes("rider_rankings_mv"));
@@ -229,7 +248,7 @@ test("kørslen: venter mens ranglisten opdateres, så titlerne aldrig bygger på
 
 test("kørslen: kontakten off = ingen læsning af ranglisten og ingen skrivning", async () => {
   const supabase = fakeSupabase({ flag: '"off"' });
-  const result = await runChampionTitles({ supabase });
+  const result = await runChampionTitles({ supabase, now: FIXED_NOW });
   assert.equal(result.ran, false);
   assert.equal(result.skipped, "flag_off");
   assert.equal(supabase.writes.length, 0);
@@ -238,14 +257,14 @@ test("kørslen: kontakten off = ingen læsning af ranglisten og ingen skrivning"
 
 test("kørslen: findes sæsonens titler allerede, sker intet (idempotent)", async () => {
   const supabase = fakeSupabase({ flag: '"beta"', existing: [{ title: "world" }] });
-  const result = await runChampionTitles({ supabase });
+  const result = await runChampionTitles({ supabase, now: FIXED_NOW });
   assert.equal(result.skipped, "already_computed");
   assert.equal(supabase.writes.length, 0);
 });
 
 test("kørslen: ingen afsluttet sæson = ingen titler", async () => {
   const supabase = fakeSupabase({ flag: '"on"', completed: null });
-  const result = await runChampionTitles({ supabase });
+  const result = await runChampionTitles({ supabase, now: FIXED_NOW });
   assert.equal(result.skipped, "no_completed_season");
   assert.equal(supabase.writes.length, 0);
 });
@@ -259,7 +278,7 @@ test("kørslen: skriver sæsonens titler for sæsonen efter den afsluttede", asy
       countries: [{ iso2: "DK", continent: "Europe" }, { iso2: "BE", continent: "Europe" }],
     },
   });
-  const result = await runChampionTitles({ supabase });
+  const result = await runChampionTitles({ supabase, now: FIXED_NOW });
   assert.equal(result.ran, true);
   assert.equal(result.seasonNumber, 3);
   assert.equal(supabase.writes.length, 1);

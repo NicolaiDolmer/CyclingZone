@@ -118,11 +118,24 @@ function ensureFresh() {
   if (state.status === "ready" && Date.now() - state.loadedAt > CHAMPION_TITLES_REFRESH_MS) startLoad();
 }
 
+// En side der står åben hen over et sæsonskifte skal også se de nye trøjer:
+// mens nogen viser trøjer, tjekkes opslagets alder med jævne mellemrum.
+let refreshTimer: ReturnType<typeof setInterval> | null = null;
+
 function subscribe(fn: () => void) {
   listeners.add(fn);
   watchViewer();
   ensureFresh();
-  return () => { listeners.delete(fn); };
+  if (refreshTimer === null && typeof window !== "undefined") {
+    refreshTimer = setInterval(ensureFresh, CHAMPION_TITLES_REFRESH_MS / 4);
+  }
+  return () => {
+    listeners.delete(fn);
+    if (listeners.size === 0 && refreshTimer !== null) {
+      clearInterval(refreshTimer);
+      refreshTimer = null;
+    }
+  };
 }
 
 const getSnapshot = () => state;
