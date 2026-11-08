@@ -15,6 +15,7 @@ import StageProfileV2, { GradientLegend } from "./StageProfileV2.tsx";
 import ClimbCard from "./ClimbCard.tsx";
 import YourDayCard, { type CareerEvent, type RowWhy } from "./YourDayCard.tsx";
 import { riderWhy } from "../../../lib/riderWhyModel.ts"; // #7717
+import { stageRouteMatch } from "../../../lib/lineupInsight.js"; // #7717
 import { useRiderWhyEnabled } from "../../../lib/riderWhyFlag.ts"; // #7717
 import RaceStoryCard from "./RaceStoryCard.tsx";
 import { castFrom, ownOutSentences, type RaceStory, type StoryNarrativeContext } from "./raceStoryModel.ts";
@@ -140,11 +141,12 @@ export default function StageTabV2({
   const ownOut = useMemo(() => ownOutSentences(dnfRows, myTeamId, cast), [dnfRows, myTeamId, cast]);
   const weather = stageWeather(profile, phase, story);
   const whyEnabled = useRiderWhyEnabled(phase === "after");
+  const routeFits = useMemo(() => new Map<string, number | null>(riders.map((r) => [r.rider_id, stageRouteMatch(r, stageNumber)])), [riders, stageNumber]);
   const why = useMemo<RowWhy | null>(() => (whyEnabled && !storyError ? {
     loading: storyLoading,
     // En ikke-starter har intet loeb at forklare; raekken siger allerede hvorfor.
-    forRow: (r) => (r.status === "dns" ? null : riderWhy({ riderId: r.riderId, rank: r.rank, status: r.status, reasonKey: r.reasonKey, events: narrative?.events, story, climbs, cast })),
-  } : null), [whyEnabled, storyError, storyLoading, narrative, story, climbs, cast]);
+    forRow: (r) => (r.status === "dns" ? null : riderWhy({ riderId: r.riderId, rank: r.rank, status: r.status, reasonKey: r.reasonKey, events: narrative?.events, story, climbs, cast, routeFits })),
+  } : null), [whyEnabled, storyError, storyLoading, narrative, story, climbs, cast, routeFits]);
 
   if (phase === "after") {
     return (

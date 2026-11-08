@@ -353,7 +353,12 @@
         "attackBehind": "Han angreb{where}, men kunne ikke holde sig foran til stregen",
         "bunchBehindSprint": "Han kom i mål i feltet bag spurten",
         "pelotonBehindBreak": "Han kom i mål i feltet, bag udbruddet der holdt hjem",
-        "pelotonBehind": "Han blev i feltet, da gruppen foran kørte væk"
+        "pelotonBehind": "Han blev i feltet, da gruppen foran kørte væk",
+        "ttFastest": "Han satte den hurtigste tid",
+        "ttDayGreat": "Han havde en rigtig god dag på cyklen",
+        "ttDayGood": "Han havde en god dag på cyklen",
+        "ttRouteGood": "Ruten passede ham",
+        "ttRouteBad": "Ruten passede ham ikke"
       },
       "lead": {
         "afterBreak": "efter en dag i udbruddet",
@@ -363,7 +368,9 @@
         "badDayIllness": "på en dårlig dag, hvor han følte sig syg",
         "badDayRain": "på en dårlig dag i regnen",
         "badDayWind": "på en dårlig dag i vinden",
-        "badDayHeat": "på en dårlig dag i varmen"
+        "badDayHeat": "på en dårlig dag i varmen",
+        "ttRouteGood": "på en rute, der passede ham",
+        "ttRouteBad": "på en rute, der ikke passede ham"
       }
     },
     "yourDay": {

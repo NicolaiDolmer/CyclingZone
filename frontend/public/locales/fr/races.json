@@ -370,7 +370,12 @@
         "attackBehind": "Il a attaqué{where} mais n'a pas pu rester devant jusqu'à la ligne",
         "bunchBehindSprint": "Il a fini dans le peloton derrière le sprint",
         "pelotonBehindBreak": "Il a fini dans le peloton, derrière l'échappée allée au bout",
-        "pelotonBehind": "Il est resté dans le peloton quand le groupe de devant s'est détaché"
+        "pelotonBehind": "Il est resté dans le peloton quand le groupe de devant s'est détaché",
+        "ttFastest": "Il a signé le meilleur temps",
+        "ttDayGreat": "Il a connu une excellente journée sur le vélo",
+        "ttDayGood": "Il a connu une bonne journée sur le vélo",
+        "ttRouteGood": "Le parcours lui convenait",
+        "ttRouteBad": "Le parcours ne lui convenait pas"
       },
       "lead": {
         "afterBreak": "après une journée dans l'échappée",
@@ -380,7 +385,9 @@
         "badDayIllness": "lors d'un jour sans, en se sentant malade",
         "badDayRain": "lors d'un jour sans sous la pluie",
         "badDayWind": "lors d'un jour sans dans le vent",
-        "badDayHeat": "lors d'un jour sans dans la chaleur"
+        "badDayHeat": "lors d'un jour sans dans la chaleur",
+        "ttRouteGood": "sur un parcours qui lui convenait",
+        "ttRouteBad": "sur un parcours qui ne lui convenait pas"
       }
     },
     "yourDay": {

@@ -370,7 +370,12 @@
         "attackBehind": "Hij viel aan{where}, maar kon niet voorop blijven tot de streep",
         "bunchBehindSprint": "Hij finishte in het peloton achter de sprint",
         "pelotonBehindBreak": "Hij finishte in het peloton, achter de vlucht die standhield",
-        "pelotonBehind": "Hij bleef in het peloton toen de groep ervoor wegreed"
+        "pelotonBehind": "Hij bleef in het peloton toen de groep ervoor wegreed",
+        "ttFastest": "Hij reed de snelste tijd",
+        "ttDayGreat": "Hij had een uitstekende dag op de fiets",
+        "ttDayGood": "Hij had een goede dag op de fiets",
+        "ttRouteGood": "Het parcours lag hem",
+        "ttRouteBad": "Het parcours lag hem niet"
       },
       "lead": {
         "afterBreak": "na een dag in de vlucht",
@@ -380,7 +385,9 @@
         "badDayIllness": "op een slechte dag waarop hij zich ziek voelde",
         "badDayRain": "op een slechte dag in de regen",
         "badDayWind": "op een slechte dag in de wind",
-        "badDayHeat": "op een slechte dag in de hitte"
+        "badDayHeat": "op een slechte dag in de hitte",
+        "ttRouteGood": "op een parcours dat hem lag",
+        "ttRouteBad": "op een parcours dat hem niet lag"
       }
     },
     "yourDay": {
