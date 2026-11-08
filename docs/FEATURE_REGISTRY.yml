@@ -446,6 +446,8 @@ features:
     title_da: Talentmærker
     state: building
     flag: talent_marks_7879
+    decision: ejer-beslutning
+    decide_by: 2026-11-21
     epic: 7824
     verified: 2026-11-07
     note: "#7879: seedes off, kun visning. Ejeren flytter kontakten til beta; roadmap-tekst følger med."
