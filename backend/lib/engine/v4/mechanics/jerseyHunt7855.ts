@@ -38,11 +38,17 @@ export function jerseyHuntersForPassage7855(
   stagePlanTasks: Readonly<Record<string, StagePlanTask>> | null | undefined,
   kind: "sprint" | "kom",
   isRacing: (riderId: string) => boolean,
+  /** Passagens km og hver jaegers straekning: et jagt-led kaemper kun om passager paa sin egen straekning. */
+  passage?: { km: number; windows: Readonly<Record<string, { fromKm: number; toKm: number }>> | undefined },
 ): string[] {
   if (!stagePlanTasks) return [];
   const task = JERSEY_HUNT_TASK_BY_KIND_7855[kind];
+  const onStretch = (id: string) => {
+    const window = passage?.windows?.[id];
+    return !window || (passage!.km > window.fromKm && passage!.km <= window.toKm);
+  };
   return Object.keys(stagePlanTasks)
-    .filter((id) => stagePlanTasks[id] === task && isRacing(id))
+    .filter((id) => stagePlanTasks[id] === task && isRacing(id) && onStretch(id))
     .sort();
 }
 

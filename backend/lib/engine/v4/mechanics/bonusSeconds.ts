@@ -360,7 +360,7 @@ export const passagesHook = (state: EngineState, ctx: SegmentHookContext): Segme
   for (const wp of waypoints) {
     const isKom = wp.kind === "kom";
     // #7855 (slukket): etapeplanens jaegere paa denne art passage (tom uden kontakten).
-    const hunters7855 = jerseyHuntersForPassage7855(ctx.stagePlanTasks, isKom ? "kom" : "sprint", (id) => state.riders[id] !== undefined && state.riders[id].status !== "abandoned");
+    const hunters7855 = jerseyHuntersForPassage7855(ctx.stagePlanTasks, isKom ? "kom" : "sprint", (id) => state.riders[id] !== undefined && state.riders[id].status !== "abandoned", { km: wp.km, windows: ctx.stagePlanHuntWindows7855 });
     const category = isKom ? (wp.category ?? null) : null;
     const pointScale = isKom ? komPointScale(category, false) : extra.intermediateSprintPoints;
     const qualityWeights = isKom

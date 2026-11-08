@@ -842,6 +842,8 @@ export type SegmentHookContext = {
   // #7380 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 med en etapeplan): etapeplanens aktuelle opgave pr. rytter med plan,
   // som runtimen satte den ved segmentets start (stagePlanEngine.stagePlanCurrentTasks). Udeladt = ingen plan.
   stagePlanTasks?: Readonly<Record<string, import("../../stagePlan.ts").StagePlanTask>>;
+  // #7855 (KUN kontakten jersey_hunt_7855): hver jaegers straekning (stagePlanEngine.stagePlanHuntWindows7855). Udeladt = ingen jaegere.
+  stagePlanHuntWindows7855?: Readonly<Record<string, { fromKm: number; toKm: number }>>;
   // #5978 (ADDITIVT og VALGFRIT, KUN orders_gc_v3): hjulsidderne ud fra tilstanden
   // ved segmentets start, samme saet som tempoet blev regnet paa (breakaway.ts).
   ownRidersOnWheel?: ReadonlyArray<{ team_id: string; group_id: string; rider_ids: string[]; protected_rider_id: string }>;

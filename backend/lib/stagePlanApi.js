@@ -16,6 +16,8 @@ import { isS5ProfilesV3OrLater, surfaceRulesRevision } from "./raceEngineRulesRe
 import {
   legacyOrderFromPlan,
   normalizeStagePlanLegs,
+  planHasJerseyHunt,
+  planWithoutJerseyHunt,
   stagePlanRouteFromRaw,
   validateStagePlanLegs,
   withJerseyHunt7855,
@@ -98,5 +100,8 @@ export function validateRiderPlans(riders, { route, roleByRider, hasRoute = true
 export function withStagePlan(normalizedRider, rawRider) {
   if (!Array.isArray(rawRider?.plan) || rawRider.plan.length === 0) return normalizedRider;
   const plan = normalizeStagePlanLegs(rawRider.plan);
-  return { ...normalizedRider, ...legacyOrderFromPlan(plan), plan };
+  // #7855: planen uden jagt gemmes ved siden af, kun for planer med jagt. Slukkes opgaverne, inden
+  // etapen koeres, falder motoren tilbage paa den i stedet for at droppe hele planen. Feltet kan
+  // ikke sendes af klienten (raceTeamOrdersApi afviser ukendte felter).
+  return { ...normalizedRider, ...legacyOrderFromPlan(plan), plan, ...(planHasJerseyHunt(plan) ? { plan_no_hunt: planWithoutJerseyHunt(plan) } : {}) };
 }

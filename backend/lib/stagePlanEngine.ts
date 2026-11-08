@@ -60,8 +60,10 @@
 
 import type { EffortLevel, EngineState, Entrant, RaceGroup, RouteV2, Segment, TeamOrder, TimelineEvent } from "./engine/v4/types.ts";
 import {
+  JERSEY_HUNT_TASKS,
   STAGE_PLAN_FINAL_KM,
   TASK_EFFORT,
+  stretchHasHuntPassage,
   validateStagePlanLegs,
   type StagePlanLeg,
   type StagePlanRole,
@@ -73,6 +75,8 @@ import { STAGE_PLAN_DROPPED_7635_TUNING } from "./engine/v4/tuning.ts"; // #7635
 
 export const STAGE_PLAN_ORDER_KIND = "stage_plan";
 export const STAGE_PLAN_LEG_EVENT = "stage_plan_leg";
+/** #7855: rytteren koerte planen uden troejejagt, fordi opgaverne ikke gjaldt i dette loeb. */
+export const STAGE_PLAN_HUNT_FALLBACK_EVENT = "stage_plan_hunt_fallback";
 
 /** #7333: opgaver hvis virkning er segmentets holdarbejde, ikke opgoerelsen ved maal. */
 const SEGMENT_WORK_TASKS: ReadonlySet<StagePlanTask> = new Set<StagePlanTask>(["tempo", "shelter_leader"]);
@@ -98,6 +102,10 @@ export type StagePlanRuntime = {
   riderIds: string[];
   /** #7635 (KUN kontakten stage_plan_dropped_front_7635): "sat"-reglens hukommelse. Udeladt = som foer. */
   front7635?: Front7635State;
+  /** #7855 (KUN kontakten): rutens passager, saa et jagt-led er aktivt i de segmenter hans passager ligger i. Udeladt = som foer. */
+  huntRoute7855?: StagePlanRoute;
+  /** #7855: ryttere der koerer planen uden jagt (se createStagePlanRuntime). Udeladt = ingen. */
+  huntFallback7855?: string[];
 };
 
 /**
@@ -168,6 +176,7 @@ export function createStagePlanRuntime(
 ): StagePlanRuntime | null {
   const planRoute = stagePlanRouteFromV4(route, { jerseyHunt7855: opts.jerseyHunt7855 === true }); // #7855 (slukket)
   const legs = new Map<string, ResolvedLeg[]>();
+  const huntFallback: string[] = []; // #7855
   for (const order of orders) {
     if (order.kind !== STAGE_PLAN_ORDER_KIND) continue;
     const riders = order.params?.["riders"];
@@ -181,7 +190,16 @@ export function createStagePlanRuntime(
       // Kun hold-egne ryttere: en ordre kan aldrig styre et andet holds rytter.
       if (!entrant || String(entrant.team_id ?? "") !== String(order.team_id)) continue;
       const role = ROLES.has(entrant.role) ? (entrant.role as StagePlanRole) : "free_role";
-      if (validateStagePlanLegs(plan, role, planRoute) !== null) continue;
+      if (validateStagePlanLegs(plan, role, planRoute) !== null) {
+        // #7855: en plan med troejejagt har sin egen udgave uden jagt med fra gemningen. Den koeres,
+        // naar jagten ikke gaelder (kontakten slukket foer foerste etape, eller "stop"). Andre
+        // ugyldige planer har ingen, og ignoreres helt som hidtil.
+        const fallback = (raw as Record<string, unknown>)["fallback_legs"];
+        if (!Array.isArray(fallback) || validateStagePlanLegs(fallback, role, planRoute) !== null) continue;
+        legs.set(riderId, resolveLegs(fallback as StagePlanLeg[], planRoute));
+        huntFallback.push(riderId);
+        continue;
+      }
       legs.set(riderId, resolveLegs(plan as StagePlanLeg[], planRoute));
     }
   }
@@ -195,6 +213,8 @@ export function createStagePlanRuntime(
   const rt: StagePlanRuntime = { legs, current: new Map(riderIds.map((id) => [id, 0])), everInEscape: new Set(), ridden: new Map(riderIds.map((id) => [id, new Set([0])])), riderIds };
   // #7635: kun med kontakten; slukket har runtime'en praecis de samme felter som foer.
   if (opts.droppedFront7635 === true) rt.front7635 = { prevGroupOf: null, seen: new Set(), attackGroups: new Set(), streak: new Map() };
+  if (opts.jerseyHunt7855 === true) rt.huntRoute7855 = planRoute; // #7855
+  if (huntFallback.length > 0) rt.huntFallback7855 = huntFallback.sort(); // #7855
   return rt;
 }
 
@@ -354,6 +374,10 @@ export function advanceStagePlan(
   // #7635 (KUN kontakten): feltets grupper noteres ved hver graense, ogsaa ved start.
   const front = rt.front7635;
   if (front) observeGroups7635(front, state.groups);
+  // #7855: en gang pr. etape, paa etapens start, saa opsummeringen kan sige det samme som motoren.
+  if (segmentIndex === 0 && rt.huntFallback7855) {
+    for (const riderId of rt.huntFallback7855) events.push({ km: 0, type: STAGE_PLAN_HUNT_FALLBACK_EVENT, params: { rider_id: riderId } });
+  }
   // Foerste segment: intet forrige segment at laese tilstanden af. Er det OGSAA etapens
   // eneste segment (en flad etape kan genereres som ét stykke), skifter et rutepunkt i
   // segmentets foerste halvdel ved start; resten tager finalen (advanceStagePlanAtFinish).
@@ -367,6 +391,21 @@ export function advanceStagePlan(
   // mekanik, ikke i opgoerelsen ved maal. Paa etapens sidste segment skifter det derfor
   // stadig ved segmentets start, saa hjaelperen faktisk koerer det arbejde han faar.
   const switchPointKm = (task: StagePlanTask) => (isLastSegment && SEGMENT_WORK_TASKS.has(task) ? segment.to_km : midKm);
+  // #7855 (reviewfund, KUN kontakten): passager afgoeres pr. segment med opgaven ved segmentets
+  // start. Et jagt-led med en passage paa sin straekning i dette segment skal derfor vaere aktivt
+  // nu: det starter ved segmentets start, ogsaa naar punktet ligger i anden halvdel (ellers er
+  // spurten koert, foer han skifter), og det slipper ikke foer segmentet er forbi. Hvilken
+  // passage han kaemper om, afgoer stadig straekningen (stagePlanHuntWindows7855).
+  const huntRoute = rt.huntRoute7855;
+  const huntHasPassageHere = (leg: ResolvedLeg, fromKm: number, toKm: number) => {
+    const kind = JERSEY_HUNT_TASKS[leg.task];
+    return huntRoute !== undefined && kind !== undefined && stretchHasHuntPassage(huntRoute, kind, Math.max(fromKm, segment.from_km), Math.min(toKm, segment.to_km));
+  };
+  const switchesNow = (next: ResolvedLeg) => {
+    const fromKm = next.fromKm as number;
+    return fromKm <= switchPointKm(next.task) || huntHasPassageHere(next, fromKm, segment.to_km);
+  };
+  const holdsForHunt = (leg: ResolvedLeg, nextFromKm: number) => huntHasPassageHere(leg, leg.fromKm ?? 0, nextFromKm);
   for (const riderId of rt.riderIds) {
     if (state.riders[riderId]?.status !== "racing") continue;
     const legs = rt.legs.get(riderId)!;
@@ -391,7 +430,7 @@ export function advanceStagePlan(
       next = droppedIdx;
       reason = breakawayLeg ? (rt.everInEscape.has(riderId) ? "caught" : "missed_break") : "dropped";
     } else {
-      while (next + 1 < legs.length && legs[next + 1].fromKm !== null && (legs[next + 1].fromKm as number) <= switchPointKm(legs[next + 1].task)) {
+      while (next + 1 < legs.length && legs[next + 1].fromKm !== null && switchesNow(legs[next + 1]) && !holdsForHunt(legs[next], legs[next + 1].fromKm as number)) {
         next += 1;
         reason = legs[next].routeReason;
       }
@@ -465,6 +504,23 @@ export function stagePlanCurrentTasks(rt: StagePlanRuntime): Record<string, Stag
   return out;
 }
 
+/**
+ * #7855: straekningen hver rytter paa et jagt-led kaemper paa (som valideringen: efter leddets
+ * rutepunkt, til og med naeste leds rutepunkt). undefined uden kontakten eller uden jaegere.
+ */
+export function stagePlanHuntWindows7855(rt: StagePlanRuntime): Record<string, { fromKm: number; toKm: number }> | undefined {
+  if (!rt.huntRoute7855) return undefined;
+  let out: Record<string, { fromKm: number; toKm: number }> | undefined;
+  for (const riderId of rt.riderIds) {
+    const legs = rt.legs.get(riderId)!;
+    const cur = rt.current.get(riderId) ?? 0;
+    if (!JERSEY_HUNT_TASKS[legs[cur].task]) continue;
+    out ??= {};
+    out[riderId] = { fromKm: legs[cur].fromKm ?? 0, toKm: legs[cur + 1]?.fromKm ?? Infinity };
+  }
+  return out;
+}
+
 const EFFORT_RANK: Readonly<Record<EffortLevel, number>> = { grupetto: 0, save: 1, normal: 2, protect: 3, all_out: 4 };
 
 /**
@@ -503,12 +559,13 @@ export function stagePlanOrderFromRow(
   isV3: (revision: unknown) => boolean,
 ): TeamOrder | null {
   if (!row || !isV3(rulesRevision) || !Array.isArray(row.riders)) return null;
-  const riders: Array<{ rider_id: string; legs: unknown }> = [];
+  const riders: Array<{ rider_id: string; legs: unknown; fallback_legs?: unknown }> = [];
   for (const r of row.riders) {
     if (!r || typeof r !== "object") continue;
     const rec = r as Record<string, unknown>;
     if (typeof rec["rider_id"] !== "string" || !Array.isArray(rec["plan"])) continue;
-    riders.push({ rider_id: rec["rider_id"], legs: rec["plan"] });
+    // #7855: kun raekker gemt med en jagt-opgave baerer plan_no_hunt; alle andre er uaendrede.
+    riders.push({ rider_id: rec["rider_id"], legs: rec["plan"], ...(Array.isArray(rec["plan_no_hunt"]) ? { fallback_legs: rec["plan_no_hunt"] } : {}) });
   }
   return riders.length ? { team_id: teamId, kind: STAGE_PLAN_ORDER_KIND, params: { riders } } : null;
 }

@@ -164,6 +164,21 @@ export function stretchHasHuntPassage(route: StagePlanRoute, kind: "sprint" | "k
   return kms.some((km) => km > fromKm && km <= toKm);
 }
 
+/** #7855 (reviewfund): samme regel som serveren (stagePlan.ts), holdt ens af paritetstesten. */
+export function planHasJerseyHunt(legs: readonly StagePlanLeg[]): boolean {
+  return legs.some((leg) => JERSEY_HUNT_TASKS[leg.task] !== undefined);
+}
+
+export function planWithoutJerseyHunt(legs: readonly StagePlanLeg[]): StagePlanLeg[] {
+  const out: StagePlanLeg[] = [];
+  for (const leg of legs) {
+    const task: StagePlanTask = JERSEY_HUNT_TASKS[leg.task] ? "stay_sheltered" : leg.task;
+    if (out.length > 0 && out[out.length - 1].task === task) continue;
+    out.push(leg.from ? { task, from: leg.from } : { task });
+  }
+  return out;
+}
+
 export function triggerKm(trigger: StagePlanTrigger | undefined, route: StagePlanRoute): number | null {
   if (!trigger) return null;
   if (trigger.at === "final_km") return Math.max(0, route.distance_km - STAGE_PLAN_FINAL_KM);
