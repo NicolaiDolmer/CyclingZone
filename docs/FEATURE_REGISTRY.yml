@@ -506,8 +506,11 @@ features:
     title_en: Sale escrow
     title_da: Låste salgspenge
     state: building
+    ssot: docs/TRANSFER_MARKET_RULES.md
     epic: 6181
     verified: 2026-11-07
+    decision: goer-faerdigt
+    decide_by: 2026-11-08
     note: Kontakt sale_escrow_enabled.
 
   - id: rider-loans
