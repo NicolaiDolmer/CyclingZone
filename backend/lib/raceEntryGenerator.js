@@ -186,12 +186,13 @@ export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows =
     }
   }
   const out = {};
+  // #7801: valgfri race.fatigueByRider = træthed ved løbets egen etapestart; uden den er rytterne uændrede.
   const availableFor = (race) => riders.filter((r) => {
     // #6139: en rytter der traenede (Train now) paa en af loebets datoer kan ikke udtages hertil.
     if (race.excludedRiderIds?.has(r.rider_id)) return false;
     const windows = busy.get(r.rider_id) || [];
     return !windows.some((w) => windowsOverlap(w, race.window));
-  });
+  }).map((r) => (race.fatigueByRider?.has(r.rider_id) ? { ...r, fatigue: race.fatigueByRider.get(r.rider_id) } : r));
 
   for (let i = 0; i < ordered.length; i += 1) {
     const race = ordered[i];
