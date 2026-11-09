@@ -45,7 +45,11 @@ const RACE_DAY_TICK_ON = Object.freeze({ flag: "training_tick_per_race_day", whe
 // ikke dagligt) foelger flaget, fordi den daglige traening stadig gater paa det.
 // Aldrings-teksten "agingV2" er ugatet (#6499): saesonskiftet kender kun den nye
 // aldring, saa den gamle tekst ("agingAndDecline") er fjernet fra siden.
-const AGING_V2_ON = Object.freeze({ flag: "development_v2_aging_enabled", when: true });
+// #7801: reglen om trætheden lige nu (flader, træningens regler, assistentens udtagelse).
+// Off = dagens tekst om datoens start, on = "<blok>Now"-tvillingen.
+const FATIGUE_NOW_OFF = Object.freeze({ flag: "fatigue_now_7801", when: false });
+const FATIGUE_NOW_ON = Object.freeze({ flag: "fatigue_now_7801", when: true });
+const AGING_V2_ON =Object.freeze({ flag: "development_v2_aging_enabled", when: true });
 
 // #6110 Udvikling 2.0 trin 6: tal + ord. potential_single_number kan ikke bruges her:
 // den staar on i prod og styrer ikke laengere noget, saa teksten ville skifte nu.
@@ -80,6 +84,8 @@ export const HELP_BLOCK_FLAGS = Object.freeze({
     raceDaysPerRaceDay: RACE_DAY_TICK_ON,
     formFatigue: RACE_DAY_TICK_OFF,
     formFatiguePerRaceDay: RACE_DAY_TICK_ON,
+    fatigueLimit: FATIGUE_NOW_OFF,
+    fatigueLimitNow: FATIGUE_NOW_ON,
     longTermGrowth: CURVE_B_OFF,
     longTermGrowthCurveB: CURVE_B_ON,
     typeGating: CURVE_B_OFF,

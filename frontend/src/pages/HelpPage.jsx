@@ -402,6 +402,11 @@ const SECTION_DEFS = [
       { id: "raceDateTrainingDay", kind: "text", flag: "condition_v2_race_date_training_day" },
       // #4854/#5620: spillerens egen traethedsgraense, kun naar flaget er taendt for viewereren.
       { id: "fatigueLimit", kind: "text", flag: "training_fatigue_rules" },
+      // #7801: fatigueLimit' tvilling (reglen vurderes paa traethed lige nu). Kun én af de to
+      // vises ad gangen (HELP_BLOCK_FLAGS), og begge kraever spillerens traethedsgraense.
+      { id: "fatigueLimitNow", kind: "text", flag: "training_fatigue_rules" },
+      // #7801: traethed lige nu (flader + assistentens udtagelse). Vises foerst naar kontakten er taendt.
+      { id: "fatigueNow", kind: "text", flag: "fatigue_now_7801" },
       // #6000: traeningsgrupper, kun naar flaget er taendt for viewereren.
       { id: "trainingGroups", kind: "text", flag: "training_groups" },
       // #5319: traeningskatalog v3, kun naar flaget er taendt for viewereren.

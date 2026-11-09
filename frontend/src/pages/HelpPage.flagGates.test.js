@@ -131,6 +131,20 @@ test("#7536: dailytraining.raceDateTrainingDay vises kun bag condition_v2_race_d
   assert.equal(entry.flag, "condition_v2_race_date_training_day");
 });
 
+test("#7801: fatigueNow vises kun bag fatigue_now_7801, og fatigueLimit har en tvilling der skifter paa samme flag", () => {
+  const entry = sectionDefsBlockFlags().find((b) => b.id === "fatigueNow");
+  assert.ok(entry, "fatigueNow mangler en `flag`-egenskab i SECTION_DEFS");
+  assert.equal(entry.flag, "fatigue_now_7801");
+  const on = { training_fatigue_rules: true, fatigue_now_7801: true };
+  const off = { training_fatigue_rules: true, fatigue_now_7801: false };
+  assert.equal(isHelpBlockVisible("dailytraining", "fatigueLimitNow", on), true);
+  assert.equal(isHelpBlockVisible("dailytraining", "fatigueLimit", on), false);
+  assert.equal(isHelpBlockVisible("dailytraining", "fatigueLimitNow", off), false);
+  assert.equal(isHelpBlockVisible("dailytraining", "fatigueLimit", off), true);
+  const twin = sectionDefsBlockFlags().find((b) => b.id === "fatigueLimitNow");
+  assert.equal(twin?.flag, "training_fatigue_rules", "tvillingen kraever ogsaa spillerens traethedsgraense");
+});
+
 test("hvert flag Hjaelp-siden gater paa staar i backendens allowlist", () => {
   const extraKeys = sectionDefsBlockFlags().map((b) => b.flag);
   const missing = helpGateFlagKeys(extraKeys).filter((key) => !PLAYER_VISIBLE_FLAG_KEYS.includes(key));
