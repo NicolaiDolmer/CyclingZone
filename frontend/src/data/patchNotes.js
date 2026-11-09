@@ -1,5 +1,45 @@
 export const PATCHES = [
   {
+    "version": "7.423",
+    "date": "2026-11-09",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Mobile",
+        "en": {
+          "title": "Bigger buttons in Tactics on your phone",
+          "body": "On mobile, the role and intention buttons in Tactics are now bigger and easier to tap."
+        },
+        "da": {
+          "title": "Større knapper i Taktik på telefonen",
+          "body": "På mobil er rolle- og intentionsknapperne i Taktik nu større og lettere at trykke på."
+        },
+        "refs": [
+          6916
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Mobile",
+        "en": {
+          "title": "Rider names open the profile in Today on your phone",
+          "body": "On mobile, tapping a rider's name in the Today details in Training now opens that rider's profile."
+        },
+        "da": {
+          "title": "Rytternavne åbner profilen i I dag på telefonen",
+          "body": "På mobil åbner et tryk på rytterens navn i I dag-detaljen under Træning nu rytterens profil."
+        },
+        "refs": [
+          6524
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.422",
     "date": "2026-11-08",
     "changes": [
