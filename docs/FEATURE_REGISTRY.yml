@@ -641,7 +641,7 @@ features:
     area: squad
     title_en: Champion jerseys beside rider names
     title_da: Mestertrøjer ved rytternavne
-    state: beta
+    state: live
     flag: champion_jerseys_7824
     roadmap_en: "Champion jerseys: riders who have won a championship show a small jersey next to their name."
     roadmap_da: "Mestertrøjer: ryttere, der har vundet et mesterskab, viser en lille trøje ved deres navn."

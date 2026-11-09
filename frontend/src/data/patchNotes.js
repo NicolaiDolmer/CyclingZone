@@ -7,6 +7,23 @@ export const PATCHES = [
         "category": "improved",
         "audience": "player",
         "rollout": "beta_to_live",
+        "topic": "Riders",
+        "en": {
+          "title": "Champion jerseys are now for everyone",
+          "body": "Riders who have won a championship now show a small jersey next to their name for everyone."
+        },
+        "da": {
+          "title": "Mestertrøjer er nu for alle",
+          "body": "Ryttere, der har vundet et mesterskab, viser nu en lille trøje ved deres navn for alle."
+        },
+        "refs": [
+          7824
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "beta_to_live",
         "topic": "Races",
         "en": {
           "title": "Why? is now for everyone",
