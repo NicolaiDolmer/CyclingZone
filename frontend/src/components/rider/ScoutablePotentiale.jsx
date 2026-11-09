@@ -109,7 +109,7 @@ function PotentialBand({ band, role, loft, pastPeak, label, large, t }) {
 // flag) er alt herunder uændret. `legacy` er kaldstedets egen gamle visning, så en
 // flade kan få estimatet hentet uden at ændre sig, mens flaget er slukket.
 // `estimateSize` og `showLooks` gælder kun tal + ord.
-export default function ScoutablePotentiale({ rider, scouting, showScout = false, large = false, labelAsTitle = true, hideLevel = false, estimateSize = /** @type {"cell" | "hero" | "report"} */ ("cell"), showLooks = false, legacy = /** @type {import("react").ReactNode} */ (null) }) {
+export default function ScoutablePotentiale({ rider, scouting, showScout = false, large = false, labelAsTitle = true, hideLevel = false, estimateSize = /** @type {"cell" | "hero" | "report"} */ ("cell"), showLooks = false, hideNotScouted = false, legacy = /** @type {import("react").ReactNode} */ (null) }) {
   const { t } = useTranslation();
   const {
     maxLevel, scout, scoutingId, slots, requestEstimates, estimateFor,
@@ -223,11 +223,15 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
     </button>
   );
 
+  // #7951: rytterprofilen siger det ikke to gange; Scout-knappen er budskabet.
+  const notScoutedHidden = hideNotScouted && Boolean(scoutButton);
+
   if (view) {
     return (
       <PotentialEstimate
         view={view}
         size={estimateSize}
+        hideUnscoutedLabel={notScoutedHidden}
         sub={showLooks && !view.hidden && level > 0 ? t("rider:potentialEstimate.scoutedTimes", { count: level }) : null}
         action={view.hidden && view.reason === "learning" ? null : <>{pendingBadge}{scoutButton}{scoutErrorBadge}</>}
       />
@@ -237,9 +241,11 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
   if (hidden) {
     return (
       <span className="inline-flex items-center gap-2 flex-wrap">
-        <span className="text-cz-3 text-xs sm:whitespace-nowrap" title={t("rider:scouting.scoutToReveal")}>
-          {t("rider:scouting.notScouted")}
-        </span>
+        {!notScoutedHidden && (
+          <span className="text-cz-3 text-xs sm:whitespace-nowrap" title={t("rider:scouting.scoutToReveal")}>
+            {t("rider:scouting.notScouted")}
+          </span>
+        )}
         {pendingBadge}
         {scoutButton}
         {scoutErrorBadge}

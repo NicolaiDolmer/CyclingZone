@@ -3,7 +3,7 @@
 //
 // Én komponent for alle flader (TASTE P12): navnecellen viser ikonet i 16 px
 // efter navnet og før status-mærkerne, hover-kortet det samme, og rytterprofilen
-// viser ikonet i 24 px med samme sætning. Tooltip ved hover og ved tryk
+// viser ikonet i 24 px med kun navnet (#7951). Tooltip ved hover og ved tryk
 // (fokus), med navnet og én kort sætning. Hjælp siger kun, at mærkerne findes og
 // hvad de betyder; reglerne er private.
 //
@@ -16,7 +16,6 @@
 // (backend/lib/talentMarks7879.js) og hentes her højst én gang i timen, delt af
 // alle celler.
 import { useSyncExternalStore } from "react";
-import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../../lib/supabase.ts";
 import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js";
@@ -215,7 +214,7 @@ const TEXT_KEY: Record<TalentMarkKind, string> = {
 
 export interface TalentMarkProps {
   mark: TalentMarkKind;
-  /** "cell": 16 px ikon med tooltip. "profile": 24 px ikon med teksten. */
+  /** "cell": 16 px ikon med tooltip. "profile": 24 px ikon og navnet med tooltip. */
   variant?: "cell" | "profile";
 }
 
@@ -231,17 +230,18 @@ export function TalentMark({ mark, variant = "cell" }: TalentMarkProps) {
 
   if (variant === "profile") {
     return (
-      <div className="flex items-start gap-2 mt-2.5 max-w-xl" data-testid={`talent-mark-profile-${mark}`}>
-        <Icon size={24} />
-        <p className="text-sm text-cz-2 leading-snug">
-          <span className="font-semibold text-cz-1">{name}</span>
-          {" · "}
-          {text}{" "}
-          <Link to="/help?section=riders" className="text-cz-accent-t hover:underline whitespace-nowrap">
-            {t("talentMark.helpLink")}
-          </Link>
-        </p>
-      </div>
+      <Tooltip label={`${name}: ${text}`} dismissOnEscape id={undefined}>
+        <button
+          type="button"
+          data-testid={`talent-mark-profile-${mark}`}
+          // Safari fokuserer ikke en knap ved tryk, og fokus er det, der åbner tooltippen.
+          onClick={(e) => e.currentTarget.focus()}
+          className="inline-flex min-h-11 items-center gap-2 rounded-cz text-sm font-semibold text-cz-1 focus-visible:outline-2 focus-visible:outline-cz-accent [@media(min-width:640px)_and_(pointer:fine)]:min-h-6"
+        >
+          <Icon size={24} />
+          {name}
+        </button>
+      </Tooltip>
     );
   }
 
