@@ -433,7 +433,7 @@ export default function RiderProfileHero({
           #3622: værdien i Omdømme/Popularitet er bevidst uden ability-farveplade;
           populationen er ikke evne-kalibreret (statColor.js). */}
       <HeroStats
-        className="max-sm:grid-cols-2 max-sm:gap-x-6 sm:flex-wrap sm:gap-y-4 sm:overflow-visible"
+        className="max-sm:grid-cols-2 max-sm:gap-x-3 sm:flex-wrap sm:gap-y-4 sm:overflow-visible"
         items={[
           {
             label: t("profile.hero.bestRoleEyebrow"),
