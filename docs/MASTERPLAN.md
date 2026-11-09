@@ -1,6 +1,6 @@
 # MASTERPLAN: prioriteret rækkefølge (SSOT)
 
-> Ejer-afstemt 4/11, ny kurs 8/11 (#7911, #7495). Intet udskydes uden ejer-aftale. Intention: GDD. Status: [audit 4/11](https://claude.ai/artifact/4ho37bWUTLwNNuGNuyuXpc). Dagligt: tavlen #7911.
+> Ejer-afstemt 4/11, ny kurs 8/11 (#7911, #7495). Intet udskydes uden ejer-aftale. Intention: GDD. Dagligt: tavlen #7911.
 
 ## Kurs (ejer 8/11, 25 valg på #7911)
 
@@ -28,7 +28,7 @@
 ## Tidsplan (ejer 4/11 aften)
 
 
-Fuld liste med datoer: #7632. "Done" først ved alle 8 krav; fredagskort til ejeren.
+"Done" først ved alle 8 krav; fredagskort til ejeren.
 
 - **S6 (dec):** Pro 2.0 + betaling #4514. **Starten af 2027:** TTT #3463, omdømme #4957/#5106, #4630, #5621, #935, #1147. **S6+:** #4621, #6191, #5625, #1154, #5180.
 
