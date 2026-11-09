@@ -149,7 +149,7 @@ import {
 import * as transferNotif from "../lib/transferNotifications.js";
 import { withdrawCounterOffer, claimCounterForAccept, buildCounterOfferWithdrawnNotification } from "../lib/counterOfferWithdraw.js"; // #6463
 import { getParkedRiderReleaseIssue, getParkedRiderTradeIssue } from "../lib/parkedRiderGuard6181.js"; // #6181
-import { countSellerAuctionOutgoing, getOfferAutoAcceptIssue, registerAutoAcceptRoutes, releaseRiderUnderTeamLock } from "../lib/autoAccept2176.js"; // #2176
+import { countSellerAuctionOutgoing, getListingPriceUpdateErrorResponse, getOfferAutoAcceptIssue, registerAutoAcceptRoutes, releaseRiderUnderTeamLock } from "../lib/autoAccept2176.js"; // #2176
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
 import {
   notifyNewAuction,
@@ -8699,7 +8699,8 @@ router.patch("/transfers/:id", requireAuth, marketWriteLimiter, async (req, res)
     .eq("id", req.params.id)
     .select()
     .single();
-  if (error?.code === "23514") return res.status(400).json({ error: "The asking price must stay below the auto-accept price", errorCode: "asking_price_not_below_auto_accept" }); // #2176
+  const listingPriceError = getListingPriceUpdateErrorResponse(error); // #2176
+  if (listingPriceError) return res.status(listingPriceError.status).json(listingPriceError.body);
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
@@ -9291,7 +9292,7 @@ router.post("/transfers/:id/offer", requireAuth, marketWriteLimiter, async (req,
 
 
 // #2176 auto-accept: POST /transfers/:id/auto-accept + PUT /transfers/:id/auto-accept-price (bag auto_accept_enabled).
-registerAutoAcceptRoutes(router, { supabase, requireAuth, marketWriteLimiter, assertMarketOpen, assertTeamNotTransferFrozen, getAuctionConfig, getActiveSeasonNumber, logActivity, buildPriceBandErrorBody });
+registerAutoAcceptRoutes(router, { supabase, requireAuth, marketWriteLimiter, assertMarketOpen, assertTeamNotTransferFrozen, getAuctionConfig, getActiveSeasonNumber, logActivity, buildPriceBandErrorBody, notifyBuilt });
 
 // ── Swap Offers ───────────────────────────────────────────────────────────────
 

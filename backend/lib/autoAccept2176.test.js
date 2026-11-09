@@ -11,6 +11,9 @@ import {
   AUTO_ACCEPT_FLAG_KEY,
   isAutoAcceptEnabled,
   claimTransferUnderTeamLock,
+  claimSwapUnderTeamLock,
+  getListingPriceUpdateErrorResponse,
+  notifyAutoAcceptWatchers,
   autoAcceptAuctionEnd,
   autoAcceptRouteGate,
   countSellerAuctionOutgoing,
@@ -28,7 +31,7 @@ import { calculateAuctionEnd, DEFAULT_AUCTION_CONFIG } from "./auctionEngine.js"
 import { MIN_RIDERS_FOR_RACE } from "./marketUtils.js";
 
 // Optagende fake: hvert opslag gemmes som { table, ops }, svaret kommer fra `respond`.
-function fakeSupabase({ flag = null, flagError = null, respond = () => ({ data: null, error: null }), rpc = () => ({ data: null, error: null }) } = {}) {
+function fakeSupabase({ flag = null, flags = null, flagError = null, respond = () => ({ data: null, error: null }), rpc = () => ({ data: null, error: null }) } = {}) {
   const calls = [];
   const rpcCalls = [];
   const client = {
@@ -37,8 +40,9 @@ function fakeSupabase({ flag = null, flagError = null, respond = () => ({ data: 
     from(table) {
       const entry = { table, ops: [] };
       calls.push(entry);
+      const flagValue = () => (flags ? flags[entry.ops.find((op) => op[0] === "eq" && op[1] === "key")?.[2]] ?? null : flag);
       const result = () => (table === "app_config"
-        ? { data: flag == null ? null : { value: flag }, error: flagError }
+        ? { data: flagValue() == null ? null : { value: flagValue() }, error: flagError }
         : respond(table, entry.ops));
       const builder = new Proxy({}, {
         get(_target, prop) {
@@ -405,6 +409,132 @@ test("start validation applies the existing market band to the stored listing pr
   assert.equal(bandErrors[0].issue.code, "below_price_floor");
   assert.equal(bandErrors[0].options.codePrefix, "auction_start");
   assert.equal(client.rpcCalls.length, 0);
+});
+
+const START_REQ = { params: { id: "L1" }, body: { expected_rider_id: "R1", expected_price: 2, duration_minutes: 60 }, team: { id: "B" }, user: { id: "U-buyer" } };
+
+function startedFixture({ flags = { auto_accept_enabled: "on", market_commitment_6181: "on" } } = {}) {
+  const client = fakeSupabase({ flags, respond: table => ({ data: table === "transfer_listings"
+    ? { id: "L1", rider_id: "R1", seller_team_id: "A", status: "open", auto_accept_price: 2 }
+    : table === "riders" ? { id: "R1", team_id: "A", market_value: 1000000, base_value: 1000000, prize_earnings_bonus: 0 } : null, error: null }),
+    rpc: () => ({ data: { status: "started", auction_id: "AU1", rider_id: "R1", seller_team_id: "A", price: 2 }, error: null }) });
+  const identity = [];
+  const announced = [];
+  const handler = makeStartAutoAcceptHandler({ supabase: client,
+    getAuctionConfig: async () => DEFAULT_AUCTION_CONFIG, getActiveSeasonNumber: async () => 5,
+    now: () => new Date("2026-11-09T10:00:00Z"), marketState: async () => ({ squad_limits: { max: 30 } }),
+    atRiskRiders: async () => [], signingAllowed: async () => null, seasonBoundary: async () => null,
+    priceBandConfig: async () => ({ floorPct: 0, capMultiple: null }),
+    announce: async (args) => { announced.push(args); }, logActivity: async () => {},
+    notifyBuilt: async () => {}, recordIdentity: (_s, event) => { identity.push(event); },
+  });
+  return { client, handler, identity, announced };
+}
+
+test("start afvises, naar pengelaasen er slukket, foer nogen RPC eller opslag ud over kontakterne", async () => {
+  for (const off of ["off", false, null]) {
+    const { client, handler, identity } = startedFixture({ flags: { auto_accept_enabled: "on", market_commitment_6181: off } });
+    const res = fakeRes();
+    await handler(START_REQ, res);
+    assert.equal(res.statusCode, 404);
+    assert.equal(res.body.errorCode, "auto_accept_disabled");
+    assert.equal(client.rpcCalls.length, 0);
+    assert.deepEqual(tablesTouched(client), ["app_config", "app_config"]);
+    assert.equal(identity.length, 0);
+  }
+});
+
+test("start: en fejlet laesning af pengelaasen afviser, og ukendt bliver aldrig til taendt", async () => {
+  let reads = 0;
+  const client = { rpc: async () => { throw new Error("no rpc"); }, from() { return {
+    select() { return this; }, eq() { return this; },
+    async maybeSingle() { reads++; return reads === 1 ? { data: { value: "on" }, error: null } : { data: null, error: new Error("read failed") }; },
+  }; } };
+  await assert.rejects(makeStartAutoAcceptHandler({ supabase: client })(START_REQ, fakeRes()), /flag lookup failed/);
+});
+
+test("start logges i fair play-sporet med koeber, auktion og oprindelse", async () => {
+  const { handler, identity, announced } = startedFixture();
+  const res = fakeRes();
+  await handler(START_REQ, res);
+  assert.equal(res.statusCode, 201);
+  assert.equal(identity.length, 1);
+  const { req, ...event } = identity[0];
+  assert.equal(req, START_REQ);
+  assert.deepEqual(event, { userId: "U-buyer", teamId: "B", eventType: "auction_bid", entityId: "AU1",
+    metadata: { origin: "auto_accept", listing_id: "L1", rider_id: "R1", seller_team_id: "A", price: 2, duration_minutes: 60 } });
+  assert.equal(announced[0].actorUserId, "U-buyer");
+  assert.equal(typeof announced[0].notifyBuilt, "function");
+});
+
+test("start der ikke lykkes logges ikke i fair play-sporet", async () => {
+  const { client, handler, identity } = startedFixture();
+  client.rpc = async () => ({ data: { status: "listing_closed" }, error: null });
+  const res = fakeRes();
+  await handler(START_REQ, res);
+  assert.equal(res.statusCode, 409);
+  assert.equal(identity.length, 0);
+});
+
+test("foelgere faar besked og DM som ved almindelige auktioner, starteren faar ingen", async () => {
+  const client = fakeSupabase({ respond: () => ({ data: [{ user_id: "U-buyer" }, { user_id: "U1" }, { user_id: "U2" }], error: null }) });
+  const built = []; const dms = [];
+  const calculatedEnd = new Date("2026-11-09T12:00:00Z");
+  await notifyAutoAcceptWatchers({ supabase: client, result: { rider_id: "R1", auction_id: "AU1", price: 600000 },
+    riderName: "A Rider", calculatedEnd, actorUserId: "U-buyer",
+    notifyBuilt: async (userId, payload, relatedId) => { built.push({ userId, type: payload.type, relatedId, params: payload.metadata.messageParams }); },
+    watchlistDm: async (args) => { dms.push(args); } });
+  assert.deepEqual(built.map(b => b.userId), ["U1", "U2"]);
+  assert.equal(built[0].type, "watchlist_rider_auction");
+  assert.equal(built[0].relatedId, "AU1");
+  assert.equal(built[0].params.startPrice, 600000);
+  assert.deepEqual(dms, ["U1", "U2"].map(userId => ({ userId, riderName: "A Rider", endsAt: "2026-11-09T12:00:00.000Z" })));
+});
+
+test("foelgere: en fejlet besked til een stopper ikke de andre, en laesefejl kastes til kalderen", async () => {
+  const dms = [];
+  const client = fakeSupabase({ respond: () => ({ data: [{ user_id: "U1" }, { user_id: "U2" }], error: null }) });
+  await notifyAutoAcceptWatchers({ supabase: client, result: { rider_id: "R1", auction_id: "AU1", price: 1 },
+    riderName: "A", calculatedEnd: new Date(), actorUserId: "X",
+    notifyBuilt: async (userId) => { if (userId === "U1") throw new Error("boom"); },
+    watchlistDm: async (args) => { dms.push(args.userId); } });
+  assert.deepEqual(dms, ["U1", "U2"]);
+  const failing = fakeSupabase({ respond: () => ({ data: null, error: new Error("read failed") }) });
+  await assert.rejects(notifyAutoAcceptWatchers({ supabase: failing, result: { rider_id: "R1" } }), /read failed/);
+});
+
+test("fejlteksten paa en listing naevner den rigtige aarsag", () => {
+  const auto = getListingPriceUpdateErrorResponse({ code: "23514", message: 'new row for relation "transfer_listings" violates check constraint "transfer_listings_auto_accept_price_check"' });
+  assert.equal(auto.status, 400);
+  assert.equal(auto.body.errorCode, "asking_price_not_below_auto_accept");
+  const owner = getListingPriceUpdateErrorResponse({ code: "23514", message: "listing_owner_mismatch" });
+  assert.equal(owner.status, 409);
+  assert.equal(owner.body.errorCode, "rider_state_changed");
+  assert.equal(getListingPriceUpdateErrorResponse({ code: "23514", message: "some_other_check" }), null);
+  assert.equal(getListingPriceUpdateErrorResponse({ code: "23505", message: "transfer_listings_auto_accept_price_check" }), null);
+  assert.equal(getListingPriceUpdateErrorResponse(null), null);
+});
+
+test("bytte-claim: slukket laeser kun kontakten; taendt sender begge ben og oversaetter status", async () => {
+  const args = { offeredRiderId: "R1", requestedRiderId: "R2", proposingTeamId: "A", receivingTeamId: "B",
+    deferRegistration: true, now: "2026-11-09T10:00:00.000Z", offeredPatch: { squad: "senior" }, requestedPatch: {} };
+  const off = fakeSupabase({ flag: "off" });
+  assert.equal(await claimSwapUnderTeamLock(off, args), null);
+  assert.deepEqual(tablesTouched(off), ["app_config"]);
+  assert.equal(off.rpcCalls.length, 0);
+
+  const on = fakeSupabase({ flag: "on", rpc: () => ({ data: { status: "claimed", offered_rider_id: "R1" }, error: null }) });
+  assert.deepEqual(await claimSwapUnderTeamLock(on, args), { data: { id: "R1" } });
+  assert.deepEqual(on.rpcCalls, [{ name: "auto_accept_claim_swap", args: {
+    p_offered_rider_id: "R1", p_requested_rider_id: "R2", p_proposing_team_id: "A", p_receiving_team_id: "B",
+    p_defer_registration: true, p_now: "2026-11-09T10:00:00.000Z", p_offered_patch: { squad: "senior" }, p_requested_patch: {},
+  } }]);
+  for (const status of ["rider_on_auction", "rider_state_changed"]) {
+    const client = fakeSupabase({ flag: "on", rpc: () => ({ data: { status }, error: null }) });
+    assert.deepEqual(await claimSwapUnderTeamLock(client, args), { data: null });
+  }
+  const odd = fakeSupabase({ flag: "on", rpc: () => ({ data: { status: "nope" }, error: null }) });
+  await assert.rejects(claimSwapUnderTeamLock(odd, args), /unexpected status/);
 });
 
 test("listing gate uses the current rider owner", async () => {
