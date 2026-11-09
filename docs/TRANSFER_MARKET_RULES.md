@@ -423,9 +423,8 @@ følge kontakten efter apply; den ændrer aldrig en eksisterende værdi. Aktiver
   de samme rytter-id'er til gulv og risiko-deduplikering; JS tæller kun selv som
   fallback. Uden aktiv M3 bevares M2's optælling af auktioner med en anden byder.
   De samme ryttere må ikke tælles to gange.
-- **Forudsætning før tænding:** almindelige bud (`POST /auctions/:id/bid`) tager endnu ikke
-  samme holdlås; den atomiske bud-gate kommer med pengelås PR 5 (#6181). Indtil da kan et
-  samtidigt almindeligt bud og en auto-accept-start se samme ledige penge eller plads.
+- **Forudsætning håndhævet i koden:** med `market_commitment_6181` slukket svarer starten 404 (`auto_accept_disabled`), også med `auto_accept_enabled` tændt, fordi almindelige bud ellers ikke tager samme holdlås. `market_commitment_6181` tændes derfor først.
+- **Bytte:** et bytte gennemføres under samme holdlåse og auktionstjek som transfer og frigivelse (`claimSwapUnderTeamLock`, RPC `auto_accept_claim_swap`).
 
 ---
 
