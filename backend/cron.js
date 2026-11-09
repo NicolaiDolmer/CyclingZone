@@ -84,6 +84,7 @@ import { runSundayIntakeTick } from "./lib/sundayIntakeTick.js";
 import { isAcademyIntakePullEnabled } from "./lib/academyIntakePullFlag.ts";
 import { runAcademyWeeklyPullSweep } from "./lib/academyWeeklyPull.ts";
 import { runAcademyPullReminderSweep } from "./lib/academyReminder.ts";
+import { runChampionTitlesTick } from "./lib/championTitles7824.js"; // #7824
 import { runMarketValueLevelCorrectionGateSweep } from "./lib/marketValueLevelCorrectionGate.js"; // #3449
 import { runSundayValueSweep } from "./lib/sundayValueSweep.js"; // #4419
 import { runSundayPotentialEstimateTick } from "./lib/sundayPotentialEstimateSweep.js"; // #7685
@@ -2282,6 +2283,10 @@ export function startCron() {
     { label: "market-value-level-correction-gate", shouldStop: isCronSchedulingStopped }
   );
 
+  // #7824: mestertitlerne for sæsonen efter den seneste afsluttede (flag-gated,
+  // idempotent pr. sæson). Hver time, så titlerne kommer kort efter et sæsonskifte.
+  setInterval(trackedTick("champion-titles", () => runChampionTitlesTick({ supabase, now: new Date() })), 60 * 60 * 1000);
+
   // Søndagens værdi-pipeline (#4419/#5842): præcis søndag kl. 14:00 dansk tid
   // (SUNDAY_VALUE_FROM_HOUR, ejer 18/10), derefter et genforsøg hver hele time til
   // midnat (fejlet refresh frigiver dagens claim; på skiftedagen venter den på det
@@ -2489,6 +2494,7 @@ export function startCron() {
   // ingen af dem kan lave dubletter ved et boot-run lige efter et normalt tick.
   trackedTick("growth snapshot", runGrowthSnapshotCron)();
   trackedTick("global rank weekly snapshot", runGlobalRankWeeklySnapshotCron)();
+  trackedTick("champion-titles", () => runChampionTitlesTick({ supabase, now: new Date() }))(); // #7824 boot-run: idempotent pr. sæson
   trackedTick("sunday-intake-drip", runSundayIntakeTickCron)(); // boot-run: claim-idempotent, søndags-gated
   trackedTick("market-value-level-correction-gate", monitorCron("market-value-level-correction-gate", runMarketValueLevelCorrectionGateSweepCron, CRON_MONITOR_SUNDAY_START))(); // boot-run: samme, ren måling
   // #6858: indhentning ved boot. Er søndag kl. 14:00 passeret og dagens claim ikke

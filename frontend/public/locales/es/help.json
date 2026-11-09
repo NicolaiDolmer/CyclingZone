@@ -1385,6 +1385,10 @@
       "u25u23": {
         "title": "Ciclistas sub-25 y sub-23",
         "text": "Los ciclistas sub-25 tienen 25 años o menos en el año de referencia de la temporada (la norma de la UCI), y los sub-23 tienen 22 años o menos. Puedes filtrar por sub-25/sub-23 en la base de datos de ciclistas y en la lista de seguimiento."
+      },
+      "championJerseys": {
+        "title": "Maillots de campeón",
+        "text": "Un pequeño maillot junto al nombre de un ciclista indica un campeón del ranking de la temporada pasada. El maillot blanco con una banda azul marino y dorada es el campeón del mundo: más puntos en el ranking mundial. El mismo maillot con un recuadro azul marino con el 23 es el campeón del mundo sub-23: más puntos en el ranking sub-23, o más puntos en el ranking mundial entre los ciclistas sub-23 si ninguna carrera sub-23 dio puntos, así que siempre hay uno. Los campeones continentales de Europa, Asia, América, África y Oceanía llevan un maillot del color de su continente con tres puntos, y un campeón nacional lleva la bandera de su país. Cada título es para el ciclista con más puntos de ranking de su grupo. En caso de empate gana el que tenga más victorias y después la mejor posición. Un ciclista conserva todos los títulos que gana, así que un título nunca pasa al segundo. Las tablas muestran su título más alto y su perfil los muestra todos. La edad se cuenta según el año de la temporada. Los títulos duran toda la temporada siguiente y solo cambian cuando empieza una nueva temporada. Son solo decorativos y no cambian el valor, las carreras ni la directiva. Pasa el ratón o toca un maillot para ver qué significa."
       }
     },
     "dailytraining": {

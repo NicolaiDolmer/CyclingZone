@@ -1385,6 +1385,10 @@
       "u25u23": {
         "title": "U25 og U23 ryttere",
         "text": "U25-ryttere er 25 år og yngre i sæsonens referenceår (UCI-reglen), og U23-ryttere er 22 år og yngre. Du kan filtrere på U25/U23 i rytterdatabasen og ønskelisten."
+      },
+      "championJerseys": {
+        "title": "Mestertrøjer",
+        "text": "En lille trøje ved en rytters navn viser en mester fra sidste sæsons rangliste. Den hvide trøje med et navy og guld bånd er verdensmesteren: flest point på verdensranglisten. Samme trøje med et navy 23-felt er U23-verdensmesteren: flest point på U23-ranglisten, eller flest point på verdensranglisten blandt ryttere under 23, hvis ingen U23-løb har givet point, så der er altid en. Kontinentmestrene for Europa, Asien, Amerika, Afrika og Oceanien kører i en trøje i kontinentets farve med tre prikker, og en national mester kører i sit lands flag. Hver titel går til rytteren med flest ranglistepoint i sin gruppe. Ved lighed vinder den med flest sejre, derefter den bedste placering. En rytter beholder alle de titler, han vinder, så en titel går aldrig videre til nummer to. Tabeller viser hans højeste titel, og profilen viser dem alle. Alder regnes efter sæsonåret. Titlerne gælder hele den efterfølgende sæson og skifter kun, når en ny sæson starter. De er kun til pynt og ændrer ikke værdi, løb eller bestyrelse. Hold musen over eller tryk på en trøje for at se, hvad den betyder."
       }
     },
     "dailytraining": {

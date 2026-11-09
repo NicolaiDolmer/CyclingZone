@@ -51,6 +51,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
+| Champion jerseys beside rider names (`champion-jerseys`) | building | `champion_jerseys_7824` | - | #7824 | 2026-11-07 | champion_jerseys_7824 |
 | Teamwork and Leadership abilities (`mental-abilities-teamwork-leadership`) | building | - | [holdarbejde-og-lederskab-evner-design](superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md) | #1177 | 2026-11-04 | Kun data er bygget (#5268); løbsmotor (#5348) og mentorpar (#5349) mangler, og arbejdet står stille (statusaudit 4/11). |
 | Rider card (`rider-hover-card`) | building | - | - | #2000 | 2026-11-07 | Kontakt rider_hover_card. |
 | New riders' primary type (`rider-primary-type-from-distribution`) | building | - | [RIDER_GENERATION](RIDER_GENERATION.md) | #5327 | 2026-09-23 | Kontakt (off); flip er ejer-gated. |

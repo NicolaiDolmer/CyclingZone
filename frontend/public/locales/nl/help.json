@@ -1385,6 +1385,10 @@
       "u25u23": {
         "title": "U25- en U23-renners",
         "text": "U25-renners zijn 25 jaar en jonger in het referentiejaar van het seizoen (de UCI-regel), en U23-renners zijn 22 jaar en jonger. Je kunt filteren op U25/U23 in de rennersdatabase en de volglijst."
+      },
+      "championJerseys": {
+        "title": "Kampioenstruien",
+        "text": "Een kleine trui naast de naam van een renner toont een kampioen van de ranglijst van vorig seizoen. De witte trui met een marineblauwe en gouden band is de wereldkampioen: de meeste punten op de wereldranglijst. Dezelfde trui met een marineblauw 23-vlak is de wereldkampioen U23: de meeste punten op de U23-ranglijst, of de meeste punten op de wereldranglijst onder renners jonger dan 23 als geen enkele U23-koers punten gaf, dus er is er altijd een. De continentale kampioenen van Europa, Azië, Amerika, Afrika en Oceanië rijden in een trui in de kleur van hun continent met drie stippen, en een nationaal kampioen rijdt in de vlag van zijn land. Elke titel gaat naar de renner met de meeste rankingpunten in zijn groep. Bij een gelijke stand wint wie de meeste overwinningen heeft, daarna de beste plaats. Een renner houdt alle titels die hij wint, dus een titel gaat nooit door naar nummer twee. Tabellen tonen zijn hoogste titel en zijn profiel toont ze allemaal. De leeftijd volgt het seizoensjaar. De titels gelden het hele volgende seizoen en veranderen pas als een nieuw seizoen begint. Ze zijn alleen ter decoratie en veranderen niets aan waarde, koersen of het bestuur. Ga met de muis over een trui of tik erop om te zien wat hij betekent."
       }
     },
     "dailytraining": {

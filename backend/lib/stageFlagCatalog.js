@@ -69,6 +69,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "rider_best_role_display", area: "squad", label: "Rating = bedste rolle nu (visning)" },
   // #5519: kun visning + ét laese-endpoint. Ejeren flipper efter visuelt go.
   { key: "youth_squad_pages", area: "squad", label: "U23 team- og Junior team-sider" },
+  // #7824: mestertrøjer ved rytternavne. Kun visning, seedet off.
+  { key: "champion_jerseys_7824", area: "squad", label: "Mestertrøjer ved rytternavne (verden, U23, kontinent, national)" },
   { key: "facilities_enabled", area: "club", label: "Faciliteter" },
   // Kill-switch for job-modellen (#2244). Semantisk binaer (on/off), men den
   // GAAR gennem evaluateFlagStage, og saa hoerer den hjemme her: bliver den
@@ -275,6 +277,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "potential_single_number",
   // #7684: skønnets flader og Hjaelp skifter paa dette flag (byggetrin 6).
   "potential_estimate_display",
+  // #7824: navnecellen, rytterprofilen og Hjaelp viser mestertroejerne paa dette flag.
+  "champion_jerseys_7824",
   "ability_cap_per_date_enabled",
   "training_decision_card",
   // #5319: sessionsvaelgerne og Hjaelp viser v3-kataloget paa dette flag.

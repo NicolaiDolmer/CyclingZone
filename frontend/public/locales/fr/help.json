@@ -1385,6 +1385,10 @@
       "u25u23": {
         "title": "Coureurs U25 et U23",
         "text": "Les coureurs U25 ont 25 ans et moins dans l'année de référence de la saison (la règle UCI), et les coureurs U23 ont 22 ans et moins. Tu peux filtrer sur U25/U23 dans la base des coureurs et la liste de suivi."
+      },
+      "championJerseys": {
+        "title": "Maillots de champion",
+        "text": "Un petit maillot à côté du nom d'un coureur indique un champion du classement de la saison dernière. Le maillot blanc avec une bande marine et or est le champion du monde : le plus de points au classement mondial. Le même maillot avec un encadré marine portant le 23 est le champion du monde U23 : le plus de points au classement U23, ou le plus de points au classement mondial parmi les coureurs de moins de 23 ans si aucune course U23 n'a donné de points, il y en a donc toujours un. Les champions continentaux d'Europe, d'Asie, des Amériques, d'Afrique et d'Océanie portent un maillot à la couleur de leur continent avec trois points, et un champion national porte le drapeau de son pays. Chaque titre revient au coureur qui a le plus de points au classement dans son groupe. En cas d'égalité, c'est celui qui a le plus de victoires, puis la meilleure place. Un coureur garde tous les titres qu'il gagne, donc un titre ne passe jamais au deuxième. Les tableaux montrent son titre le plus élevé et son profil les montre tous. L'âge suit l'année de la saison. Les titres valent pour toute la saison suivante et ne changent qu'au début d'une nouvelle saison. Ils sont purement décoratifs et ne changent ni la valeur, ni les courses, ni le conseil. Survole ou touche un maillot pour voir ce qu'il signifie."
       }
     },
     "dailytraining": {
