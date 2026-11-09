@@ -32,3 +32,20 @@ GRANT SELECT, INSERT, UPDATE ON teams, riders, transfer_listings, auctions, auct
 GRANT SELECT ON app_config TO service_role;
 GRANT SELECT, INSERT, UPDATE ON transfer_listings TO authenticated;
 `;
+
+// Det ekstra udsnit, escrow-migrationerne roerer (samme form som saleEscrowM1-testen).
+export const ESCROW_SCHEMA = `
+CREATE TABLE finance_transactions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id uuid NOT NULL REFERENCES teams(id),
+  type text NOT NULL CHECK (type IN ('transfer_in', 'transfer_out', 'prize')),
+  amount bigint NOT NULL, description text, season_id uuid, race_id uuid, related_loan_id uuid,
+  actor_type text, actor_id uuid, source_path text, reason_code text,
+  before_balance bigint, after_balance bigint,
+  related_entity_type text CHECK (related_entity_type IS NULL OR related_entity_type IN
+    ('auction','loan','transfer','swap','race','season','manual')),
+  related_entity_id uuid, idempotency_key text, metadata jsonb,
+  created_at timestamptz DEFAULT now());
+CREATE UNIQUE INDEX uniq_finance_idempotency_key ON finance_transactions(idempotency_key) WHERE idempotency_key IS NOT NULL;
+GRANT SELECT, INSERT, UPDATE ON finance_transactions TO service_role;
+`;
