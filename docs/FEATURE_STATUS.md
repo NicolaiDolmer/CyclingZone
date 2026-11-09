@@ -41,6 +41,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
 | Auto-accept price (`market-auto-accept`) | building | `auto_accept_enabled` | [TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md) | #2176 | 2026-11-07 | - |
+| Bid commitment gate (`market-commitment`) | building | - | [TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md) | #6181 | 2026-11-09 | Kontakt market_commitment_6181, off post; ikke flag-bundet her (prod-raekke ikke verificeret), jf. #7923. |
 | Sale escrow (`sale-escrow`) | building | - | [TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md) | #6181 | 2026-11-07 | Kontakt sale_escrow_enabled. |
 | AI and unsolicited bids (`ai-unsolicited-bids`) | idea | - | [TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md) | #1310 | 2026-09-06 | Findes ikke i kode. |
 | Market value blend sweep (`market-value-blend`) | retired | - | [ECONOMY_RULES](ECONOMY_RULES.md) | #3448 | 2026-10-15 | Afløst af v6 (#4449). |
