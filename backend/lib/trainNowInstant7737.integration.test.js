@@ -70,7 +70,8 @@ test("migration: seeds the switch off, is idempotent, adds the stamp column", as
   assert.equal(await scalar(db, "SELECT count(*)::int c FROM information_schema.columns WHERE table_name='training_train_now_locks' AND column_name='instant_at'"), 1);
   await db.exec(await file(MIGRATION));
   assert.equal(await scalar(db, "SELECT count(*)::int c FROM app_config WHERE key='training_train_now_instant'"), 1);
-  await assert.rejects(db.query(`SET ROLE anon; SELECT commit_training_date_tick('${TEAM}','${SEASON}','senior',41,'${DATE}','{${DAYS}}','manager','{}','[]','[]','[]','[]','[]','[]',false,'${AT(1)}')`), /permission denied/);
+  await db.exec("SET ROLE anon");
+  await assert.rejects(db.query(`SELECT commit_training_date_tick('${TEAM}','${SEASON}','senior',41,'${DATE}','{${DAYS}}','manager','{}','[]','[]','[]','[]','[]','[]',false,'${AT(1)}')`), /permission denied/);
   await db.exec("RESET ROLE");
 });
 
@@ -129,9 +130,8 @@ test("a stamped rider fills his race days out of order and keeps his race slot o
 
 test("provisional numbers change form and fatigue only, close nothing, and cannot run before a stamp", async () => {
   const db = await fresh();
-  const { opening_conditions: openings } = await register(db);
   await db.exec(`UPDATE rider_condition SET injured_until='2026-11-20',injury_cause='race_crash' WHERE rider_id='${A}'`);
-  const reopened = { ...openings, [A]: { ...openings[A], injured_until: "2026-11-20", injury_cause: "race_crash" } };
+  const { opening_conditions: reopened } = await register(db);
   const before = await condition(db, A);
   await stamp(db, A);
   for (const day of [41, 42, 44]) await commit(db, day, [A], { openings: reopened });
