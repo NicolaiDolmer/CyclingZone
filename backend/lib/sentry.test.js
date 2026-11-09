@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   monitorCron,
@@ -11,6 +12,7 @@ import {
   getEventGroupKey,
   createVolumeLimiter,
   normalizeEventMessages,
+  applySupabaseUnavailableFingerprint,
   setCronHeartbeatRecorder,
   SENTRY_V10_COMPAT_OPTIONS,
   setupSentryExpressErrorHandler,
@@ -457,4 +459,72 @@ test("Sentry-only JSON handles existing colon-separated call-site labels", () =>
     assert.equal(event.message, raw);
     assert.equal(event.exception.values[0].value, raw);
   }
+});
+
+// ── #7917: ét nedbrud giver én alarm ─────────────────────────────────────────
+
+const OUTAGE_NOW = new Date("2026-11-08T12:00:00.000Z");
+const outageEvent = (value, extra = {}) => ({ exception: { values: [{ type: "Error", value }] }, ...extra });
+
+test("fingerprint — begge nedbrudsbeskeder samles i ét issue på tværs af call-sites", () => {
+  const events = [
+    outageEvent("stall-watchdog seasons: Supabase unavailable (522 Connection timed out)"),
+    outageEvent("updateStandings: Supabase unavailable (503)"),
+    outageEvent("Could not query the database for the schema cache. Retrying."),
+    { message: "load: Supabase unavailable (HTML error page)" },
+  ].map((event) => applySupabaseUnavailableFingerprint(event, OUTAGE_NOW));
+
+  for (const event of events) {
+    assert.deepEqual(event.fingerprint, ["supabase-unavailable", "2026-11-08"]);
+  }
+  assert.equal(new Set(events.map(getEventGroupKey)).size, 1, "volumen-guarden ser også én gruppe");
+});
+
+test("fingerprint — HTML-fejlsiden klassificeres efter normaliseringen", () => {
+  const html = "poll: <!DOCTYPE html><title>supabase.co | 522: Connection timed out</title>";
+  const event = outageEvent(html);
+  assert.equal(applySupabaseUnavailableFingerprint(structuredClone(event), OUTAGE_NOW).fingerprint, undefined);
+  normalizeEventMessages(event);
+  applySupabaseUnavailableFingerprint(event, OUTAGE_NOW);
+  assert.deepEqual(event.fingerprint, ["supabase-unavailable", "2026-11-08"]);
+});
+
+test("fingerprint — datoen er dansk, så et nyt dansk døgn alarmerer igen", () => {
+  // 23:30 UTC er 00:30 næste dag i København om vinteren.
+  const seconds = Date.UTC(2026, 10, 8, 23, 30) / 1000;
+  const event = applySupabaseUnavailableFingerprint(
+    outageEvent("Supabase unavailable (522)", { timestamp: seconds }),
+    OUTAGE_NOW,
+  );
+  assert.deepEqual(event.fingerprint, ["supabase-unavailable", "2026-11-09"]);
+});
+
+test("fingerprint — et eksplicit fingerprint vinder", () => {
+  const explicit = ["discord-webhook-outbox-duplicate-risk"];
+  const event = applySupabaseUnavailableFingerprint(
+    outageEvent("delete fejlede: Supabase unavailable (522)", { fingerprint: explicit }),
+    OUTAGE_NOW,
+  );
+  assert.deepEqual(event.fingerprint, explicit);
+});
+
+test("fingerprint — andre transiente fejl grupperes ikke", () => {
+  for (const value of ["fetch failed", "canceling statement due to statement timeout", "code=57014"]) {
+    const event = applySupabaseUnavailableFingerprint(outageEvent(value), OUTAGE_NOW);
+    assert.equal(event.fingerprint, undefined, value);
+  }
+});
+
+test("fingerprint — tåler events uden besked", () => {
+  assert.deepEqual(applySupabaseUnavailableFingerprint({}, OUTAGE_NOW), {});
+  assert.equal(applySupabaseUnavailableFingerprint(null, OUTAGE_NOW), null);
+});
+
+test("beforeSend sætter fingerprint efter normalisering og før grupperingsnøglen", () => {
+  const source = readFileSync(new URL("./sentry.js", import.meta.url), "utf8");
+  const body = source.slice(source.indexOf("beforeSend(event)"));
+  const normalize = body.indexOf("normalizeEventMessages(event);");
+  const fingerprint = body.indexOf("applySupabaseUnavailableFingerprint(event);");
+  const groupKey = body.indexOf("getEventGroupKey(event);");
+  assert.ok(normalize > -1 && normalize < fingerprint && fingerprint < groupKey);
 });
