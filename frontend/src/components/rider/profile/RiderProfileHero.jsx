@@ -488,7 +488,7 @@ export default function RiderProfileHero({
       />
 
       {/* Action-række: injiceres af parent. #7951: salget står til højre for knapperne. */}
-      {(actions || banner?.kind === "finalSeason") && (
+      {(actions || banner?.kind === "finalSeason" || banner?.kind === "listed") && (
         <div className="mt-5 flex flex-wrap items-start gap-x-6 gap-y-3 border-t border-cz-border pt-5">
           {actions && <div className="min-w-0 flex-1 basis-64">{actions}</div>}
           {banner?.kind === "listed" && <ForSaleStatus price={banner.price} valueDelta={banner.valueDelta} />}
