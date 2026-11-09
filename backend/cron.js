@@ -88,7 +88,7 @@ import { runMarketValueLevelCorrectionGateSweep } from "./lib/marketValueLevelCo
 import { runSundayValueSweep } from "./lib/sundayValueSweep.js"; // #4419
 import { runSundayPotentialEstimateTick } from "./lib/sundayPotentialEstimateSweep.js"; // #7685
 import { runPotentialEstimateTeamChangeTick } from "./lib/potentialEstimateTeamChangeSweep.js"; // #7685
-import { runTalentMarksDailyTick } from "./lib/talentMarks7879.js"; // #7879
+import { runTalentMarksDailyTick, TALENT_MARKS_TICK } from "./lib/talentMarks7879.js"; // #7879
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
 import { runOwnershipInvariantWatch } from "./lib/ownershipInvariantWatch.ts";
 import { runRiderDoubleBookingWatch } from "./lib/riderDoubleBookingWatch.js";
@@ -2301,8 +2301,8 @@ export function startCron() {
     { label: "potential-estimate-sunday", shouldStop: isCronSchedulingStopped }
   );
   setInterval(trackedTick("potential-estimate-team-change", () => runPotentialEstimateTeamChangeTick({ supabase })), 60 * 60 * 1000);
-  // #7879: talentmærkerne, én gang pr. dansk kalenderdag (flag-gated, idempotent pr. dato).
-  setInterval(trackedTick("talent-marks-daily", () => runTalentMarksDailyTick({ supabase })), 60 * 60 * 1000);
+  // #7879: talentmærkerne, i et fast natligt vindue (tikket afgør det uden databasekald). Ingen boot-run.
+  startClockAlignedInterval(trackedTick("talent-marks-daily", () => runTalentMarksDailyTick({ supabase })), { ...TALENT_MARKS_TICK, minFirstDelayMs: DEPLOY_OVERLAP_GRACE_MS });
 
   // Every 60 minutes: entry-generator sweep (#2375) — fylder proaktivt løb for den
   // aktive sæson løbende, ikke kun ved sæson-transition. Generatoren er idempotent
@@ -2496,7 +2496,6 @@ export function startCron() {
   trackedTick("sunday-value-refresh", monitorCron("sunday-value-refresh", runSundayValueSweepCron, CRON_MONITOR_SUNDAY_VALUE))(); // boot-run: claim-idempotent, søndags- + time-gated
   trackedTick("potential-estimate-sunday", () => runSundayPotentialEstimateTick({ supabase }))(); // #7685 boot-run: idempotent, søndags- + time-gated
   trackedTick("potential-estimate-team-change", () => runPotentialEstimateTeamChangeTick({ supabase }))(); // #7685 boot-run: setInterval nulstilles ved hvert deploy
-  trackedTick("talent-marks-daily", () => runTalentMarksDailyTick({ supabase }))(); // #7879 boot-run: idempotent pr. dato
 }
 
 // ── Standalone mode ──────────────────────────────────────────────────────────

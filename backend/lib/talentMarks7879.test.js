@@ -8,8 +8,10 @@ import { fileURLToPath } from "node:url";
 
 import {
   computeTalentMarks, quotaFor, progressScore, progressWindows, shiftDate,
-  runTalentMarksDaily, TALENT_MARK, TALENT_MARKS_FLAG_KEY, TALENT_MARKS_PARAMS_KEY,
+  runTalentMarksDaily, runTalentMarksDailyTick, isInTalentMarksWindow,
+  TALENT_MARK, TALENT_MARKS_FLAG_KEY, TALENT_MARKS_PARAMS_KEY, TALENT_MARKS_TICK,
 } from "./talentMarks7879.js";
+import { nextClockAlignedTickMs } from "./schedulerTick.js";
 import { validateTalentMarksParams } from "./talentMarksParams.js";
 import { clearFlagStageCache } from "./featureStage.js";
 import { clearPrivateConfigCache } from "./privateConfig.ts";
@@ -336,6 +338,107 @@ test("kørslen: skriver dagens mærker med paramsenes vinduer og fjerner gårsda
     ["jun", "next_gen", "2026-11-08"],
   ]);
   assert.deepEqual(sb.writes.deletes, [{ table: "rider_talent_marks", col: "computed_on", val: "2026-11-08" }]);
+});
+
+// ── Det faste vindue (ejer 9/11) ─────────────────────────────────────────────
+
+// Vinter: dansk tid = UTC+1. Sommer: dansk tid = UTC+2.
+const IN_WINDOW_WINTER = new Date("2026-11-08T02:12:00Z"); // 03:12 dansk tid
+const IN_WINDOW_SUMMER = new Date("2026-07-08T01:12:00Z"); // 03:12 dansk tid
+
+test("vinduet: kanterne i dansk tid, vinter og sommer", () => {
+  for (const [iso, expected] of [
+    ["2026-11-08T01:59:59Z", false], // 02:59:59
+    ["2026-11-08T02:00:00Z", true], // 03:00:00
+    ["2026-11-08T02:44:59Z", true], // 03:44:59
+    ["2026-11-08T02:45:00Z", false], // 03:45:00
+    ["2026-07-08T00:59:59Z", false], // 02:59:59
+    ["2026-07-08T01:00:00Z", true], // 03:00:00
+    ["2026-07-08T01:44:59Z", true], // 03:44:59
+    ["2026-07-08T01:45:00Z", false], // 03:45:00
+    ["2026-07-08T02:12:00Z", false], // 04:12, vinterens vindue i UTC
+  ]) {
+    assert.equal(isInTalentMarksWindow(new Date(iso)), expected, iso);
+  }
+});
+
+test("vinduet: findes præcis én gang på begge dage, hvor sommertiden skifter", () => {
+  for (const [day, utcHour] of [["2026-03-29", 1], ["2026-10-25", 2]]) {
+    const start = Date.parse(`${day}T00:00:00Z`);
+    const inWindow = [];
+    for (let m = 0; m < 24 * 60; m += 5) {
+      const at = new Date(start + m * 60 * 1000);
+      if (isInTalentMarksWindow(at)) inWindow.push(at.toISOString());
+    }
+    assert.equal(inWindow.length, 9, day); // 45 min i skridt på 5
+    assert.equal(inWindow[0], `${day}T0${utcHour}:00:00.000Z`);
+  }
+});
+
+test("vinduet: tikket giver faste klokkeslæt, som alle ligger i vinduet", () => {
+  const hits = [];
+  let t = Date.parse("2026-11-08T00:00:00Z");
+  for (let i = 0; i < 12; i++) {
+    t = nextClockAlignedTickMs(t, TALENT_MARKS_TICK);
+    if (isInTalentMarksWindow(new Date(t))) hits.push(new Date(t).toISOString().slice(11, 16));
+  }
+  assert.deepEqual(hits, ["02:12", "02:27", "02:42"]); // 03:12, 03:27 og 03:42 dansk tid
+});
+
+test("tikket: uden for vinduet rører det ikke databasen, heller ikke flaget", async () => {
+  resetCaches();
+  const sb = fakeSupabase({ flag: "on", riders: [rider({ id: "u21", age: 21 })] });
+  for (const iso of ["2026-11-08T10:00:00Z", "2026-11-08T19:30:00Z", "2026-11-08T21:30:00Z", "2026-11-08T23:30:00Z"]) {
+    const result = await runTalentMarksDailyTick({ supabase: sb, now: new Date(iso) });
+    assert.deepEqual(result, { ran: false, skipped: "outside_window" }, iso);
+  }
+  assert.deepEqual(sb.writes.tablesRead, []);
+  assert.equal(sb.writes.rpcCalls.length, 0);
+});
+
+test("tikket: slukket kontakt koster kun flag-opslaget i vinduet", async () => {
+  resetCaches();
+  const sb = fakeSupabase({ flag: "off" });
+  const result = await runTalentMarksDailyTick({ supabase: sb, now: IN_WINDOW_WINTER });
+  assert.deepEqual(result, { ran: false, skipped: "flag_off" });
+  assert.deepEqual(sb.writes.tablesRead, ["app_config"]);
+  assert.equal(sb.writes.upserts.length + sb.writes.deletes.length + sb.writes.sameDayDeletes.length + sb.writes.rpcCalls.length, 0);
+});
+
+test("tikket: i vinduet beregnes mærkerne, vinter og sommer", async () => {
+  for (const [now, yesterday, today] of [
+    [IN_WINDOW_WINTER, "2026-11-07", "2026-11-08"],
+    [IN_WINDOW_SUMMER, "2026-07-07", "2026-07-08"],
+  ]) {
+    resetCaches();
+    const sb = fakeSupabase({ flag: "on", lastComputedOn: yesterday, riders: [rider({ id: "u21", age: 21 })] });
+    const result = await runTalentMarksDailyTick({ supabase: sb, now });
+    assert.equal(result.ran, true);
+    assert.equal(sb.writes.upserts[0].rows[0].computed_on, today);
+  }
+});
+
+test("tikket: dagen er allerede kørt = næste tik i vinduet skriver intet", async () => {
+  resetCaches();
+  const sb = fakeSupabase({ flag: "on", lastComputedOn: "2026-11-08" });
+  const result = await runTalentMarksDailyTick({ supabase: sb, now: new Date("2026-11-08T02:27:00Z") });
+  assert.deepEqual(result, { ran: false, skipped: "already_today" });
+  assert.equal(sb.writes.upserts.length + sb.writes.deletes.length + sb.writes.sameDayDeletes.length, 0);
+});
+
+test("tikket: en misset nat indhentes i næste nats vindue", async () => {
+  resetCaches();
+  const sb = fakeSupabase({ flag: "on", lastComputedOn: "2026-11-05", riders: [rider({ id: "u21", age: 21 })] });
+  const result = await runTalentMarksDailyTick({ supabase: sb, now: IN_WINDOW_WINTER });
+  assert.equal(result.ran, true);
+  assert.deepEqual(sb.writes.deletes, [{ table: "rider_talent_marks", col: "computed_on", val: "2026-11-08" }]);
+});
+
+test("cron.js: ingen boot-kørsel, og tikket ligger på klokken", () => {
+  const src = readFileSync(fileURLToPath(new URL("../cron.js", import.meta.url)), "utf8");
+  assert.doesNotMatch(src, /trackedTick\("talent-marks-daily"[^\n]*\)\(\)/);
+  assert.match(src, /startClockAlignedInterval\(trackedTick\("talent-marks-daily"[^\n]*TALENT_MARKS_TICK[^\n]*DEPLOY_OVERLAP_GRACE_MS/);
+  assert.doesNotMatch(src, /setInterval\(trackedTick\("talent-marks-daily"/);
 });
 
 test("kontaktens og paramsenes nøgler", () => {

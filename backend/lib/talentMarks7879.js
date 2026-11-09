@@ -27,7 +27,7 @@
 
 import { ageForSeason, LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
-import { copenhagenDateString } from "./copenhagenTime.js";
+import { copenhagenDateString, copenhagenWallTimeToUTC } from "./copenhagenTime.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { captureException } from "./sentry.js";
 import { readPrivateConfigEntry } from "./privateConfig.ts";
@@ -159,6 +159,28 @@ export function computeTalentMarks({ riders = [], juniorGains = [], seasonNumber
 
 // ── Den daglige kørsel ────────────────────────────────────────────────────────
 
+// Ejer 9/11: beregningen må ikke køre oveni andre jobs, og tidspunktet må ikke
+// følge deploys. Derfor et fast vindue om natten i dansk tid, efter aftenens
+// sweeps og før morgenens GitHub-tjek mod prod. Timen findes præcis én gang hver
+// dag, også når sommertiden skifter (det gør timen før ikke). Valget er begrundet
+// i PR #7882.
+export const TALENT_MARKS_WINDOW = Object.freeze({ hour: 3, fromMinute: 0, toMinute: 45 });
+
+// Tikket ligger på klokken (startClockAlignedInterval), så første forsøg i vinduet
+// er det samme hver nat. Forskydningen holder det fri af hele timer (søndagens job)
+// og af minutterne, hvor 5-minutters-sweepene starter. De senere tik i vinduet er
+// genforsøg efter en fejl.
+export const TALENT_MARKS_TICK = Object.freeze({ periodMs: 15 * 60 * 1000, offsetMs: 12 * 60 * 1000 });
+
+/** Ligger `now` i det faste vindue? Ren klokkeregning, ingen databasekald. */
+export function isInTalentMarksWindow(now = new Date()) {
+  const { hour, fromMinute, toMinute } = TALENT_MARKS_WINDOW;
+  const today = copenhagenDateString(now);
+  const from = copenhagenWallTimeToUTC(today, hour, fromMinute);
+  const to = copenhagenWallTimeToUTC(today, hour, toMinute);
+  return now >= from && now < to;
+}
+
 async function loadActiveSeasonNumber(supabase) {
   const { data, error } = await supabase
     .from("seasons").select("number").eq("status", "active")
@@ -168,7 +190,7 @@ async function loadActiveSeasonNumber(supabase) {
 }
 
 // Den ældste række, ikke den nyeste: dagen er først færdig, når gårsdagens rækker
-// også er fjernet. Fejler oprydningen efter dagens skrivning, prøver næste time igen.
+// også er fjernet. Fejler oprydningen efter dagens skrivning, prøver næste tik igen.
 async function loadOldestComputedOn(supabase) {
   // schema-columns-ok: rider_talent_marks kommer fra 2026-11-07-7879-talent-marks.sql
   const { data, error } = await supabase
@@ -261,8 +283,14 @@ export async function runTalentMarksDaily({ supabase, now = new Date(), log = co
   };
 }
 
-/** Cron-indgangen: kørsel + log. En fejl når Sentry; næste time prøver igen. */
+/**
+ * Cron-indgangen: vindue + kørsel + log. Uden for vinduet sker der intet, heller
+ * ikke flag-opslaget. En fejl når Sentry; næste tik i vinduet prøver igen. En
+ * misset nat indhentes af næste nats vindue, fordi dagen afgøres af de skrevne
+ * rækkers dato.
+ */
 export async function runTalentMarksDailyTick({ supabase, now = new Date() }) {
+  if (!isInTalentMarksWindow(now)) return { ran: false, skipped: "outside_window" };
   try {
     const result = await runTalentMarksDaily({ supabase, now });
     if (result.ran) console.log(`Talent marks: ${result.topTalent} top talent, ${result.nextGen} next gen`);
