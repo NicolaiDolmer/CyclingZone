@@ -41,7 +41,7 @@ export function createRequireAuth({ supabase, setSentryUserFn = setSentryUser })
     }
 
     // .maybeSingle(): "ingen række endnu" er lovligt (#3722) og giver req.team = null.
-    // En ÆGTE læsefejl må ikke se ud som "intet hold", så den svarer 500.
+    // En ÆGTE læsefejl må ikke se ud som "intet hold", så den svarer 503 (#7917).
     const { data: team, error: teamError } = await supabase
       .from("teams")
       .select("*")
@@ -49,7 +49,8 @@ export function createRequireAuth({ supabase, setSentryUserFn = setSentryUser })
       .maybeSingle();
     if (teamError) {
       captureException(teamError, { tags: { flow: "season_comeback", stage: "auth_team" } });
-      return res.status(500).json({ error: "team_lookup_failed" });
+      const lookupFailed = AUTH_FAILURE_RESPONSES.teamLookupFailed;
+      return res.status(lookupFailed.status).json(lookupFailed.body);
     }
     req.user = verdict.user;
     req.team = team;

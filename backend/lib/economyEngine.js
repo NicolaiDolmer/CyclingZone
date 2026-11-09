@@ -97,6 +97,7 @@ import {
 import { getActiveContract } from "./sponsorContractsService.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { withSupabaseRetry } from "./supabaseErrorNormalize.js";
+import { createSupabaseFetchWithRetry } from "./supabaseFetchRetry.js";
 import { captureException } from "./sentry.js";
 import { applyHumanTeamFilter } from "./humanTeamFilter.js";
 import { DEFAULT_SQUAD, isSquad, withSeniorSquadScope } from "./squads.js";
@@ -107,7 +108,9 @@ let defaultSupabaseClientPromise;
 async function getDefaultSupabaseClient() {
   if (!defaultSupabaseClientPromise) {
     defaultSupabaseClientPromise = import("@supabase/supabase-js").then(({ createClient }) => (
-      createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+      createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
+        global: { fetch: createSupabaseFetchWithRetry() }, // #7917
+      })
     ));
   }
 
