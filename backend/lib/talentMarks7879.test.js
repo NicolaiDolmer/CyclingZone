@@ -434,6 +434,16 @@ test("tikket: en misset nat indhentes i næste nats vindue", async () => {
   assert.deepEqual(sb.writes.deletes, [{ table: "rider_talent_marks", col: "computed_on", val: "2026-11-08" }]);
 });
 
+test("tikket: flag- og params-opslag bruger det indsatte ur, ikke vægur-tiden", async (t) => {
+  resetCaches();
+  const nowMock = t.mock.method(Date, "now", () => { throw new Error("vægur-tiden blev læst"); });
+  const sb = fakeSupabase({ flag: "on", params: null });
+  const { log } = quiet();
+  const result = await runTalentMarksDaily({ supabase: sb, now: IN_WINDOW_WINTER, log });
+  assert.deepEqual(result, { ran: false, skipped: "no_params" });
+  assert.equal(nowMock.mock.callCount(), 0);
+});
+
 test("cron.js: ingen boot-kørsel, og tikket ligger på klokken", () => {
   const src = readFileSync(fileURLToPath(new URL("../cron.js", import.meta.url)), "utf8");
   assert.doesNotMatch(src, /trackedTick\("talent-marks-daily"[^\n]*\)\(\)/);

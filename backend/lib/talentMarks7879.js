@@ -221,7 +221,8 @@ async function loadJuniorGains(supabase, riderIds, { windowStart, recentStart })
  * @returns {Promise<{ ran: boolean, skipped?: string, topTalent?: number, nextGen?: number }>}
  */
 export async function runTalentMarksDaily({ supabase, now = new Date(), log = console }) {
-  const stage = await readFlagStage(supabase, TALENT_MARKS_FLAG_KEY);
+  const clock = () => now.getTime();
+  const stage = await readFlagStage(supabase, TALENT_MARKS_FLAG_KEY, { now: clock });
   if (!evaluateFlagStage(stage, { engineWrite: true })) return { ran: false, skipped: "flag_off" };
 
   const today = copenhagenDateString(now);
@@ -229,7 +230,7 @@ export async function runTalentMarksDaily({ supabase, now = new Date(), log = co
 
   // Uden gyldige private params er adfærden slukket: ingen beregning, ingen skrivning.
   // Advarslen nævner aldrig værdierne.
-  const entry = await readPrivateConfigEntry(supabase, TALENT_MARKS_PARAMS_KEY, { strict: false, log });
+  const entry = await readPrivateConfigEntry(supabase, TALENT_MARKS_PARAMS_KEY, { strict: false, log, now: clock });
   if (entry.status !== "ok" || !entry.value) {
     log?.warn?.(`[talent-marks] ${TALENT_MARKS_FLAG_KEY} is on, but ${TALENT_MARKS_PARAMS_KEY} is missing, invalid or unreadable - no marks computed`);
     return { ran: false, skipped: "no_params" };
