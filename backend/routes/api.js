@@ -129,7 +129,7 @@ import {
   shiftCalculatedEnd,
 } from "../lib/marketPause.js";
 import { resolveProxyBids } from "../lib/proxyBidding.js";
-import { isMarketCommitment6181On, marketGateResponse6181, canAffordAutoBid6181, syncBidLeader6181, applySellerOutgoingAuctions6181, auctionStartCommitmentResponse6181, readBidContext6181 } from "../lib/marketCommitment6181.js"; // #6181 PR 5
+import { isMarketCommitment6181On, marketGateResponse6181, canAffordAutoBid6181, syncBidLeader6181, applySellerOutgoingAuctions6181, auctionStartCommitmentResponse6181, readBidContext6181, isLoweredProxy6181 } from "../lib/marketCommitment6181.js"; // #6181 PR 5
 import {
   createLoan,
   repayLoan,
@@ -8199,7 +8199,8 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     teamBalance: req.team.balance,
     otherCommitment,
   });
-  if (proxyIssue?.code === "insufficient_available_balance") {
+  if (proxyIssue?.code === "insufficient_available_balance"
+      && !isLoweredProxy6181({ marketGateOn, proxies: allMyProxies, auctionId: req.params.id, nextMax: numericMax })) { // #6181: saenket loft frigiver kun penge
     return res.status(400).json({
       error: `Du har ${proxyIssue.availableBalance.toLocaleString("da-DK")} CZ$ tilbage efter eksisterende bud og autobud`,
       errorCode: "insufficient_balance_after_proxy",

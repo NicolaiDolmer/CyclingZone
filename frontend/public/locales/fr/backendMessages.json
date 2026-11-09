@@ -47,6 +47,7 @@
     "intakeExpiryCompensation": "Compensation : offre de recrutement expirée pour {riderName}, vendu aux enchères",
     "transferBuy": "{riderName} acheté par transfert",
     "transferSell": "{riderName} vendu par transfert",
+    "saleEscrowRefund": "Remboursement : le coureur n'a pas changé d'équipe",
     "riderRelease": "{riderName} libéré (indemnité de rachat)",
     "swapCash": "Règlement en cash de l'échange : {offeredName} <-> {requestedName}",
     "scoutTravel": "Frais de déplacement du recruteur",
@@ -77,6 +78,12 @@
     }
   },
   "notif": {
+    "saleEscrowRefund": {
+      "buyerTitle": "Transaction annulée, argent rendu",
+      "buyerMessage": "{riders} n'a pas changé d'équipe, donc {amount} CZ$ reviennent sur ton solde.",
+      "sellerTitle": "Transaction annulée",
+      "sellerMessage": "{riders} n'a pas changé d'équipe, donc les {amount} CZ$ de la transaction sont retournés à l'autre équipe."
+    },
     "admin": {
       "feedbackReply": {
         "title": "Réponse à ton message"

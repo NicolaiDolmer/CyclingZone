@@ -55,6 +55,7 @@
     "cannot_proxy_own_rider": "Du kan ikke sætte autobud på din egen rytter",
     "proxy_below_minimum": "Max-loft skal være mindst {min} CZ$",
     "insufficient_balance_after_proxy": "Du har {available} CZ$ tilbage efter eksisterende bud og autobud",
+    "insufficient_balance_amount_unknown": "Din tilgængelige saldo dækker det ikke efter dine eksisterende bud og autobud.",
     "proxy_save_failed": "Autobud kunne ikke gemmes",
     "proxy_place_failed": "Autobud kunne ikke placeres",
     "proxy_update_failed": "Autobud kunne ikke opdatere auktionen",
