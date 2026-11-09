@@ -514,6 +514,18 @@
     {
       "issue": 7891,
       "why": "CI-koe fyldt af kladde-PR-tests, ejer-go 7/11 i chat"
+    },
+    {
+      "issue": 6066,
+      "why": "Ugentlig lockfile-maintenance, ejer-go 9/11 (PC1-listen, #7911, PR #7933)"
+    },
+    {
+      "issue": 7923,
+      "why": "Intern registrering af slukket market-kontakt, ejer-go 9/11 (PC1-listen, #7911)"
+    },
+    {
+      "issue": 7934,
+      "why": "Internt code scanning-fund, ejer-go 9/11 (PC1-listen, #7911)"
     }
   ],
   "brandList": [
