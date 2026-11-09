@@ -17,13 +17,13 @@
 
 ## Rækkefølge (ejer 9/11, #7911)
 
-1. **Træning:** Træn nu tæller straks på ét klik og 15 %-bonus denne uge (måles, tændes på go, uafhængigt af løb). XP hurtigst muligt derefter, før Pro 2.0. Trøjemål #5573 denne uge. Pengelås #6181 hurtigst muligt.
+1. **Træning:** Træn nu tæller straks på ét klik og 15 %-bonus denne uge (måles, tændes på go, uafhængigt af løb). Enklere træningsvalg #7947 efter Træn nu. XP hurtigst muligt, før Pro 2.0. Trøjemål #5573 denne uge. Pengelås #6181 hurtigst muligt.
 2. **Taktik nemmere:** holdplan og pris i ord #7864, genbrug #7880, Standarder #7535, Hard/Normal/Easy efter måling.
 3. **Løb nemmere:** efter etapen #7865/#5101/#7754, så resten af løbssiden.
 4. **Så:** første dage for nye (efter taktik), forsiden #7626, #7932 (trupper, alder), ranglisten #6765.
 - **Før 28/11:** skiftet afprøves på en kopi #7325, graduering/salg #7323.
 - **Motor:** måling onsdag 11/11 afgør rækkefølgen af #6912, #7899, #7645, #7902.
-- **Senere:** U23 del 2 #4620 senest i S6, ungdomsløbstyper #7471 i S7, mesterskaber #934 uden dato. Ord og scouting efter salg: designes 10/11.
+- **Senere:** U23 del 2 #4620 senest i S6, ungdomsløbstyper #7471 i S7, mesterskaber #934 uden dato. Ord, scouting: 10/11.
 
 ## Tidsplan (ejer 4/11 aften)
 
