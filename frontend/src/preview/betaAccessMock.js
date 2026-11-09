@@ -54,6 +54,7 @@ let flags = [
   { key: "talent_marks_7879", area: "squad", label: "Talentmærker ved rytternavne (Toptalent, Næste generation)", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "rider_hover_card", area: "squad", label: "Hover-miniprofil på ryttere", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "day_words_7725", area: "race-engine", label: "Dagsform i ord efter etapen", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
+  { key: "fatigue_now_7801", area: "training", label: "Træthed lige nu — flader og regler", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
 ];
 
 function readBody(init) {
@@ -94,10 +95,11 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "condition_v2_race_date_training_day", // #7536 Hjaelp
   "stage_plan_dropped_front_7635", // #7636 etapeplanens resume
   "day_words_7725", // #7725 Hjaelp
+  "fatigue_now_7801", // #7801 Hjaelp
 ];
 
 // Spejler PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden: "beta" er off.
-const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725"];
+const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801"];
 
 // #5319: træningskatalog v3 er OFF på preview (som i prod), men kan tændes med
 // ?catalogV3=on for at se de nye sessioner i vælgerne. Huskes i localStorage

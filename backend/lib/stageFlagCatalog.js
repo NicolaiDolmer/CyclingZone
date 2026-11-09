@@ -304,6 +304,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "rider_hover_card",
   // #7725: Hjaelp viser svaret om dagsformen i ord paa dette flag (binaert, som motoren).
   "day_words_7725",
+  // #7801: Hjaelp viser traethed lige nu og regel-teksten paa dette flag (binaert, som motoren).
+  "fatigue_now_7801",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,
@@ -311,4 +313,4 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
 // en flade aldrig beskriver en model motoren ikke koerer for beta-gruppen.
 // #7536: condition_v2_race_date_training_day laeses ogsaa kun som "on" af motoren
 // (conditionModelV2Flag.isRaceDateTrainingDayEnabled).
-export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725"]);
+export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801"]);
