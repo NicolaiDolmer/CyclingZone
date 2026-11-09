@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-138 poster: live 108 · beta 1 · dormant 8 · building 12 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+138 poster: live 109 · beta 2 · dormant 8 · building 10 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -24,13 +24,12 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## race-day
 
-**live:** Stage replay and timeline film (`race-replay`) 2026-11-04 · Stage page 2.0 (`stage-page-v2`) 2026-11-01 · Stage plan along the route (`stage-plan-v1`) 2026-10-27
+**live:** Stage replay and timeline film (`race-replay`) 2026-11-04 · Why? button beside riders in Your day (`rider-why-button`) 2026-11-05 · Stage page 2.0 (`stage-page-v2`) 2026-11-01 · Stage plan along the route (`stage-plan-v1`) 2026-10-27
 
 **arkiv:** `auto-entry-generator` · `race-day-development` · `race-day-engine` · `race-detail-page` · `race-page-tabs-v2` · `role-scope-choice` · `stage-scheduler`
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
-| Why? button beside riders in Your day (`rider-why-button`) | beta | `rider_why_button` | - | #7716 | 2026-11-05 | #7717: seedet off, kun visning. Ejeren flytter flaget efter visuelt go. |
 | Engine breakaway forecast (`race-breakaway-outlook`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6912 | 2026-10-29 | Ingen app_config-række (fravær = off). Ejer-go til tænding. |
 
 ## market
@@ -52,11 +51,11 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
-| Champion jerseys beside rider names (`champion-jerseys`) | building | `champion_jerseys_7824` | - | #7824 | 2026-11-07 | champion_jerseys_7824 |
+| Champion jerseys beside rider names (`champion-jerseys`) | beta | `champion_jerseys_7824` | - | #7824 | 2026-11-07 | champion_jerseys_7824 |
+| Talent marks (`talent-marks`) | beta | `talent_marks_7879` | - | #7824 | 2026-11-07 | #7879: seedes off, kun visning. Ejeren flytter kontakten til beta; roadmap-tekst følger med. |
 | Teamwork and Leadership abilities (`mental-abilities-teamwork-leadership`) | building | - | [holdarbejde-og-lederskab-evner-design](superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md) | #1177 | 2026-11-04 | Kun data er bygget (#5268); motor (#5348) og mentorpar (#5349) mangler, arbejdet står stille. |
 | Rider card (`rider-hover-card`) | building | - | - | #2000 | 2026-11-07 | Kontakt rider_hover_card. |
 | New riders' primary type (`rider-primary-type-from-distribution`) | building | - | [RIDER_GENERATION](RIDER_GENERATION.md) | #5327 | 2026-09-23 | Kontakt (off); flip er ejer-gated. |
-| Talent marks (`talent-marks`) | building | `talent_marks_7879` | - | #7824 | 2026-11-07 | #7879: seedes off, kun visning. Ejeren flytter kontakten til beta; roadmap-tekst følger med. |
 
 ## training
 

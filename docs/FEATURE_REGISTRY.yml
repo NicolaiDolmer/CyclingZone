@@ -427,7 +427,7 @@ features:
     area: race-day
     title_en: Why? button beside riders in Your day
     title_da: Hvorfor?-knap ved rytterne i Din dag
-    state: beta
+    state: live
     flag: rider_why_button
     decision: taend
     decide_by: 2026-11-20
@@ -442,7 +442,7 @@ features:
     area: squad
     title_en: Talent marks
     title_da: Talentmærker
-    state: building
+    state: beta
     flag: talent_marks_7879
     decision: ejer-beslutning
     decide_by: 2026-11-21
@@ -603,7 +603,7 @@ features:
     area: squad
     title_en: Champion jerseys beside rider names
     title_da: Mestertrøjer ved rytternavne
-    state: building
+    state: beta
     flag: champion_jerseys_7824
     epic: 7824
     verified: 2026-11-07
