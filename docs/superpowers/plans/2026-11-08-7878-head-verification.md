@@ -26,3 +26,11 @@ proxy RPC on an auto-started auction, including transactional rejection.
 Repeat combined JS/SQL/PG17, preflight, full verification and HEAD-bound review.
 PR5 stays untouched while dirigenten reviews it. After PR6 handoff, resolve
 PR3's main conflict and verify that separate worktree under the same gates.
+
+9/11 continuation: integrate technically green PR5 ad8872a52 after its final
+handoff. Preserve M2 runtime/migration and the audit-log test correction. Combine
+the key-specific flag fixture/release RPC with locked bid contexts and the real
+notification builders. Match service-role config reads in the SQL fixture and
+exercise the full receipt plus atomic matching on an auto-created auction.
+Run combined JS/SQL/PG17, preflight, independent review and guarded push. Freeze
+the new HEAD for full verification, all three browser projects, CI and Codex.

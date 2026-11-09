@@ -22,3 +22,29 @@
 - A bid already persisted is not reported as failed; a rejected proxy is visibly reported using existing localized text.
 - Route tests exercise the registered handler and relevant money/seat errors.
 - PG17 concurrency permits one valid lead and rejects the other requests specifically through the intended gate; fixture servers are stopped.
+
+## 9/11 owner correction: atomic proxy match
+
+Keep generic equal-price bids subject to the existing-leader rule. A separate
+service-only match RPC validates the exact proxy cap and expected auction price
+and leader under team/advisory and auction/row locks. Validate money and the new
+seat before moving leadership; the CAS and bid insert share one transaction.
+Reject stale expected state without mutation. Preserve the off path.
+The triggering bid/opening bid returns its predecessor from its own locked SQL
+operation; this receipt binds the match context. Keep the earlier void proxy
+signature as an additive wrapper. A rejected defending proxy is excluded from
+both challenger selection and effective winner-proxy selection.
+
+The gated cascade reloads on changed state, skips a money/seat-rejected bidder
+for the current run, stops on inactive/expired state, and throws unknown errors.
+Do not emit success side effects for a rejected write. Add deterministic JS and
+PGlite regressions, and real PG17 equal-price proxy and row-lock CAS cases.
+Run focused checks, preflight, full verification and independent HEAD reviews
+before handoff. PR6 stays frozen until this dependency is pushed and CI clears.
+
+Additional verified review boundary: settle acceptance and eligible matching in
+one transaction. Acquire the extra incumbent lock with try-lock only; contention
+rolls back acceptance rather than waiting in reverse lock order. Catch only
+known counter money/seat rejections in a subtransaction. Receipts preserve match
+outcomes, reject tracking and existing notifications once. Verify concurrent
+repetitions and a held incumbent lock in PG17, then rerun HEAD reviews and CI.

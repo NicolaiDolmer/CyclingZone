@@ -54,6 +54,27 @@ export function marketGateCode(error) {
   return code || null;
 }
 
+/** Context is produced by the accepted SQL bid while holding its auction lock. */
+export function readBidContext6181(data) {
+  const price = Number(data?.expectedPrice);
+  const matchedTeam = data?.matchedTeam ?? null;
+  const matchRejected = data?.matchRejected ?? null;
+  const tieResolved = data?.tieResolved ?? false;
+  if (!data || !Number.isSafeInteger(price) || price < 0 || typeof data.placed !== 'boolean' ||
+      !(data.previousLeader === null || typeof data.previousLeader === 'string') ||
+      !(data.expectedLeader === null || typeof data.expectedLeader === 'string') ||
+      (data.placed && (!data.expectedLeader || price <= 0)) || typeof tieResolved !== 'boolean' ||
+      !(matchedTeam === null || typeof matchedTeam === 'string') ||
+      !(matchRejected === null || ['insufficient_available_balance','squad_full'].includes(matchRejected)) ||
+      (matchedTeam !== null && (!data.placed || !data.expectedLeader || !tieResolved || matchedTeam !== data.previousLeader ||
+        matchedTeam === data.expectedLeader || matchRejected !== null)) ||
+      (matchRejected !== null && (!data.placed || !data.previousLeader || !tieResolved))) {
+    throw new Error('marketCommitment6181: invalid accepted-bid context');
+  }
+  return { previousLeader:data.previousLeader, expectedPrice:price, expectedLeader:data.expectedLeader, placed:data.placed,
+    tieResolved, matchedTeam, matchRejected };
+}
+
 // Disponibelt beloeb til fejlbeskeden: saldo minus forpligtelsen uden denne auktion.
 async function availableExcluding(supabase, teamId, auctionId) {
   const [teamRes, commitRes] = await Promise.all([

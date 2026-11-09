@@ -568,12 +568,29 @@ Tændt:
   Penge = samme worst case-regel som tabellen ovenfor. Et bud tager føringen i samme
   transaktion, og prisen kan ikke falde. Samtidige bud fra ét hold kan derfor ikke
   overbooke.
-- **Proxy-oprettelse:** `set_auction_proxy_6181` gemmer loft og eventuelt åbningsbud i
-  samme transaktion. Fejl bevarer den foregående proxy-tilstand.
+- **Budkontekst:** `place_auction_bid_6181` og `set_auction_proxy_context_6181` returnerer
+  forgænger, accepteret pris og fører fra selve skrivningen under rækkelåsen.
+  Den gatede cascade bruger denne kontekst; en tidligere JS-læsning giver ingen tie-ret.
+  Et berettiget match afsluttes i samme transaktion som det accepterede bud/åbningsbud,
+  før resultatet publiceres. Ikke-stigende gentagelser afvises under låsen.
+  Kvitteringen angiver afsluttet match eller kendt afvisning; JS gentager ikke afgørelsen.
+- **Proxy-oprettelse:** `set_auction_proxy_context_6181` gemmer loft og eventuelt åbningsbud i
+  samme transaktion. `set_auction_proxy_6181` bevarer den eksisterende void-signatur som wrapper.
+  Fejl bevarer den foregående proxy-tilstand.
   Den gatede cascade bruger databasens føreropdatering; legacy-stien synkroniserer fortsat i JS.
-- **Budgrænser:** første bud uden eksisterende fører kan ramme startprisen. Lighed med
-  en eksisterende føring kræver proxy-bud eller samme førende hold. Gyldig auktionsstatus
-  kontrolleres under rækkelåsen; efterfølgende sync gælder kun aktive/forlængede auktioner.
+- **Budgrænser:** første bud uden eksisterende fører kan ramme startprisen. Almindelig
+  lighed med en eksisterende føring kræver samme førende hold, også for proxy-bud.
+  Den særskilte #1091-match bruger `match_auction_proxy_tie_6181`: accepteret budkontekst,
+  præcist proxy-loft samt CAS på forventet pris og fører under rækkelåsen. Penge og den
+  nye plads kontrolleres før førerskiftet; skift og proxy-bud er én transaktion.
+  Gyldig auktionsstatus kontrolleres under rækkelåsen; efterfølgende sync gælder kun aktive/forlængede auktioner.
+  `try_auction_proxy_tie_6181` tager en eventuel ekstra holdlås uden at vente.
+  Optaget lås giver rollback/retry af accepten. Kendt penge-/pladsafvisning af selve
+  match-delen bevarer det accepterede bud; andre fejl ruller hele operationen tilbage.
+- **Cascade-afvisninger:** ændret pris/fører genlæses før næste forsøg. En penge-/pladsafvist
+  proxy udelukkes i denne kørsel, også når den forsvarer føringen; øvrige gyldige bud fortsætter.
+  Inaktiv/udløbet auktion stopper forløbet, ukendte DB-fejl kastes videre. Afvist skrivning
+  giver ingen match-/succesbesked. De nye RPC'er er service-only; off-stien er uændret.
 - **Plads:** fremtidig senior-trup (`future_count`) + førende auktioner + 1 må ikke
   overstige loftet. Et forsvarsbud (holdet fører allerede) blokeres aldrig på plads.
   Et autobud uden føring optager ingen plads (ejer-spørgsmål 7 er ubesvaret).

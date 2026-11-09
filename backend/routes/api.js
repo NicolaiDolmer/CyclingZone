@@ -128,7 +128,7 @@ import {
   shiftCalculatedEnd,
 } from "../lib/marketPause.js";
 import { resolveProxyBids } from "../lib/proxyBidding.js";
-import { isMarketCommitment6181On, marketGateResponse6181, canAffordAutoBid6181, syncBidLeader6181, applySellerOutgoingAuctions6181, auctionStartCommitmentResponse6181 } from "../lib/marketCommitment6181.js"; // #6181 PR 5
+import { isMarketCommitment6181On, marketGateResponse6181, canAffordAutoBid6181, syncBidLeader6181, applySellerOutgoingAuctions6181, auctionStartCommitmentResponse6181, readBidContext6181 } from "../lib/marketCommitment6181.js"; // #6181 PR 5
 import {
   createLoan,
   repayLoan,
@@ -7934,7 +7934,8 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
   // #257: capture leader BEFORE the bid so we can later check whether the
   // bid+cascade actually changed who's leading. Extension is applied once
   // after cascade settles, only if leader changed.
-  const previousLeader = auction.current_bidder_id;
+  let previousLeader = auction.current_bidder_id;
+  let tieBreakContext = null;
   const bidTime = new Date();
   const bidCfg = await getAuctionConfig();
 
@@ -7943,7 +7944,11 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
   // #269: BEFORE INSERT trigger reject_late_auction_bid afviser bids hvor
   // bid_time >= auctions.calculated_end (race-vinduet mellem fetch-expiry-check
   // og INSERT). Oversæt P0001-fejlen til 400 "Auktionen er udløbet".
-  const { error: bidInsertError } = await supabase.from("auction_bids").insert({
+  const { data: acceptedBidContext, error: bidInsertError } = marketGateOn
+    ? await supabase.rpc('place_auction_bid_6181', {
+        p_auction_id:auction.id, p_team_id:req.team.id, p_amount:numericAmount, p_bid_time:bidTime.toISOString(),
+      })
+    : await supabase.from("auction_bids").insert({
     auction_id: auction.id,
     team_id: req.team.id,
     amount: numericAmount,
@@ -7957,6 +7962,10 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
     const bidGate = await marketGateResponse6181(supabase, bidInsertError, { kind: "bid", teamId: req.team.id, auctionId: auction.id }); // #6181 PR 5
     if (bidGate) return res.status(bidGate.status).json(bidGate.body);
     return res.status(500).json({ error: "Bud kunne ikke gemmes", errorCode: "bid_save_failed" });
+  }
+  if (marketGateOn) {
+    tieBreakContext = readBidContext6181(acceptedBidContext);
+    previousLeader = tieBreakContext.previousLeader;
   }
   // #6181 PR 5: taendt har M3-triggeren allerede sat pris og foerer under laasen.
   // #3132: identitets-telemetri for værdibærende handling (fair-play-bevis).
@@ -8026,7 +8035,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
       // føreren føringen (tie-break) — cascaden skal kende lederen før buddet.
       previousLeader,
       actorTeamId: req.team.id, // #5919: ingen DM til holdet der selv byder
-      ...(marketGateOn ? { canAffordAutoBidFn: canAffordAutoBid6181, databaseOwnsLeaderSync: true } : {}), // #6181 PR 5
+      ...(marketGateOn ? { canAffordAutoBidFn: canAffordAutoBid6181, databaseOwnsLeaderSync: true, tieBreakContext } : {}), // #6181 PR 5
     });
   } catch (e) {
     console.error("[resolveProxyBids] failed for auction", auction.id, e);
@@ -8241,8 +8250,8 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
   }
 
   const atomicProxyBidTime = marketGateOn ? new Date() : null;
-  const { error: proxyUpsertError } = marketGateOn
-    ? await supabase.rpc("set_auction_proxy_6181", {
+  const { data: acceptedProxyContext, error: proxyUpsertError } = marketGateOn
+    ? await supabase.rpc("set_auction_proxy_context_6181", {
         p_auction_id: req.params.id, p_team_id: req.team.id, p_max_amount: numericMax,
         p_opening_amount: openingBidAmount, p_bid_time: atomicProxyBidTime.toISOString(),
       })
@@ -8263,7 +8272,8 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
   const proxyBidCfg = await getAuctionConfig();
   // #257: capture leader before opening bid so post-cascade extension check
   // can detect whether this proxy actually disrupted the standing leader.
-  const previousLeader = auction.current_bidder_id;
+  const tieBreakContext = marketGateOn ? readBidContext6181(acceptedProxyContext) : null;
+  const previousLeader = marketGateOn ? tieBreakContext.previousLeader : auction.current_bidder_id;
   let bidWarnings = [];
   if (openingBidAmount !== null) {
     bidWarnings = getAuctionBidWarnings({
@@ -8335,7 +8345,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
       // hidtidige fører's proxy-loft, beholder føreren føringen.
       previousLeader,
       actorTeamId: req.team.id, // #5919: ingen DM til holdet der selv sætter autobud
-      ...(marketGateOn ? { canAffordAutoBidFn: canAffordAutoBid6181, databaseOwnsLeaderSync: true } : {}), // #6181 PR 5
+      ...(marketGateOn ? { canAffordAutoBidFn: canAffordAutoBid6181, databaseOwnsLeaderSync: true, tieBreakContext } : {}), // #6181 PR 5
     });
   } catch (e) {
     console.error("[resolveProxyBids] failed for auction", req.params.id, e);

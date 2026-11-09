@@ -5,6 +5,7 @@ import {
 import { isAuctionExpired, isLateBidTriggerError } from "./auctionEngine.js";
 import { captureException } from "./sentry.js";
 import { buildKeyedNotification } from "./notificationKeys.js";
+import { marketGateCode } from "./marketCommitment6181.js";
 
 // #6801: "dit autobud er stoppet (for lidt balance)" bruges to steder i cascaden;
 // teksten ligger i backendMessages (notif.autoBidStopped), ikke som dansk streng.
@@ -34,12 +35,14 @@ const onProxyNotifFailed = (auctionId) => (e) => {
 // fixer. Derfor: bind fejlen, rapportér til Sentry, og returnér false så
 // kalderen kan lade være med at love noget der ikke skete. Auktionen selv
 // vælter ikke — cascaden skal køre videre for de øvrige budgivere.
-async function cancelProxyRow(supabase, auctionId, teamId) {
-  const { error } = await supabase
+async function cancelProxyRow(supabase, auctionId, teamId, expectedMax = undefined) {
+  let query = supabase
     .from("auction_proxy_bids")
     .delete()
     .eq("auction_id", auctionId)
     .eq("team_id", teamId);
+  if (expectedMax !== undefined) query = query.eq("max_amount", expectedMax).select("id");
+  const { error, data } = await query;
   if (error) {
     console.error("[proxy-cancel] delete failed", { auctionId, teamId, error });
     captureException(error, {
@@ -49,7 +52,7 @@ async function cancelProxyRow(supabase, auctionId, teamId) {
     });
     return false;
   }
-  return true;
+  return expectedMax === undefined || (Array.isArray(data) && data.length > 0);
 }
 
 const MAX_PROXY_ITERATIONS = 30;
@@ -146,6 +149,7 @@ export async function resolveProxyBids({
   // DB-aware impl.
   canAffordAutoBidFn = canAffordAutoBid,
   databaseOwnsLeaderSync = false,
+  tieBreakContext = null,
   now = () => new Date(),
 }) {
   // #44: teams hvis auto-bid blev rejected pga. utilstrækkelig balance i denne
@@ -173,6 +177,36 @@ export async function resolveProxyBids({
         return notifyTeamOwner(teamId, type, ...rest);
       }
     : notifyTeamOwner;
+
+  const handleInsertError = async (error, teamId, auction) => {
+    if (isLateBidTriggerError(error)) return 'stop';
+    const code = databaseOwnsLeaderSync ? marketGateCode(error) : null;
+    if (code === 'price_changed') return 'retry';
+    if (code === 'insufficient_available_balance' || code === 'squad_full') {
+      balanceRejectedTeams.add(teamId);
+      if (notifyTeamOwner) {
+        const notice = buildAutoBidStoppedNotice(`${auction.rider.firstname} ${auction.rider.lastname}`, auction.rider_id);
+        await trackedNotify(teamId, 'auction_proxy_outbid', notice.title, notice.message, auctionId, notice.metadata)
+          .catch(onProxyNotifFailed(auctionId));
+      }
+      return 'retry';
+    }
+    throw error;
+  };
+  const notifyMatch = async (matchedTeam, displacedTeam, auction) => {
+    if (!notifyTeamOwner) return;
+    const { data: leaderTeam, error: leaderTeamError } = await supabase.from('teams').select('name').eq('id', matchedTeam).maybeSingle();
+    if (leaderTeamError) {
+      captureException(leaderTeamError, { tags:{flow:'auction',stage:'proxy-team-name'}, auctionId, teamId:matchedTeam });
+    }
+    const notice=buildKeyedNotification({
+      titleCode:'notif.transfer.auctionOutbid.title',messageCode:'notif.autoBidMatched.message',
+      messageParams:{leaderName:leaderTeam?.name||'Autobud',riderName:`${auction.rider.firstname} ${auction.rider.lastname}`},
+      metadata:{riderId:auction.rider_id},
+    });
+    await trackedNotify(displacedTeam,'auction_outbid',notice.title,notice.message,auctionId,notice.metadata).catch(onProxyNotifFailed(auctionId));
+  };
+  let receiptHandled=false;
 
   for (let i = 0; i < MAX_PROXY_ITERATIONS; i++) {
     // #2997: begge læsninger er cascadens fundament. En tabt fejl på auktionen
@@ -204,6 +238,16 @@ export async function resolveProxyBids({
     }
 
     const allProxies = proxies || [];
+    if (databaseOwnsLeaderSync && !receiptHandled) {
+      receiptHandled=true;
+      if (tieBreakContext?.matchedTeam) await notifyMatch(tieBreakContext.matchedTeam,tieBreakContext.expectedLeader,auction);
+      if (tieBreakContext?.matchRejected && tieBreakContext.previousLeader) {
+        await handleInsertError({code:'P0001',message:`market_gate_6181:${tieBreakContext.matchRejected}`},tieBreakContext.previousLeader,auction);
+      }
+    }
+    const tieLeader = databaseOwnsLeaderSync ? tieBreakContext?.previousLeader : previousLeader;
+    const matchesAcceptedBid = !databaseOwnsLeaderSync || (tieBreakContext?.placed === true && tieBreakContext.tieResolved !== true &&
+      Number(tieBreakContext.expectedPrice) === Number(currentPrice) && tieBreakContext.expectedLeader === currentWinner);
 
     // #1091: tie-break til fordel for den hidtidige fører med autobud. Hvis den
     // nuværende vinders bud lander PRÆCIS på previousLeader's proxy-loft, matcher
@@ -213,10 +257,10 @@ export async function resolveProxyBids({
     // den fortrængte byders egen proxy hæver prisen over loftet, så betingelsen
     // ikke kan gen-fyre.
     const tieBreakProxy =
-      previousLeader && currentWinner && currentWinner !== previousLeader
+      matchesAcceptedBid && tieLeader && currentWinner && currentWinner !== tieLeader
         ? allProxies.find(
             (p) =>
-              p.team_id === previousLeader &&
+              p.team_id === tieLeader &&
               Number(p.max_amount) === Number(currentPrice) &&
               !balanceRejectedTeams.has(p.team_id),
           )
@@ -227,13 +271,13 @@ export async function resolveProxyBids({
 
       // #44-paritet: samme balance-gate som almindelige auto-bids — proxyen kan
       // være sat før en salary-deduction el.lign.
-      const canAffordTie = await canAffordAutoBidFn(supabase, previousLeader, currentPrice, auctionId);
+      const canAffordTie = await canAffordAutoBidFn(supabase, tieLeader, currentPrice, auctionId);
       if (!canAffordTie) {
-        balanceRejectedTeams.add(previousLeader);
+        balanceRejectedTeams.add(tieLeader);
         if (notifyTeamOwner) {
           const stoppedNotice = buildAutoBidStoppedNotice(riderName, auction.rider_id);
           await trackedNotify(
-            previousLeader,
+            tieLeader,
             "auction_proxy_outbid",
             stoppedNotice.title,
             stoppedNotice.message,
@@ -246,58 +290,32 @@ export async function resolveProxyBids({
 
       // #269-paritet: late-bid-trigger kan afvise insert'en hvis auktionen
       // udløb/blev finaliseret mellem iterationerne.
-      const { error: tieInsertError } = await supabase.from("auction_bids").insert({
+      const { error: tieInsertError } = databaseOwnsLeaderSync
+        ? await supabase.rpc('match_auction_proxy_tie_6181', {
+            p_auction_id: auctionId, p_team_id: tieLeader, p_expected_price: currentPrice,
+            p_expected_leader_id: currentWinner, p_bid_time: bidTime.toISOString(),
+          })
+        : await supabase.from("auction_bids").insert({
         auction_id: auctionId,
-        team_id: previousLeader,
+        team_id: tieLeader,
         amount: currentPrice,
         bid_time: bidTime.toISOString(),
         triggered_extension: false,
         is_proxy: true,
       });
       if (tieInsertError) {
-        if (isLateBidTriggerError(tieInsertError)) break;
-        throw tieInsertError;
+        if (await handleInsertError(tieInsertError, tieLeader, auction) === 'stop') break;
+        continue;
       }
 
       // Kun føringen flyttes tilbage — current_price er allerede beløbet.
       if (!databaseOwnsLeaderSync) {
         await supabase.from("auctions").update({
-          current_bidder_id: previousLeader,
+          current_bidder_id: tieLeader,
         }).eq("id", auctionId);
       }
 
-      if (notifyTeamOwner) {
-        // #2997: rent kosmetisk berigelse (holdnavn i beskeden). Rapportér, men
-        // fald tilbage til "Autobud" — en manglende label må aldrig vælte en
-        // cascade der allerede har flyttet føringen i databasen.
-        const { data: leaderTeam, error: leaderTeamError } = await supabase
-          .from("teams")
-          .select("name")
-          .eq("id", previousLeader)
-          .maybeSingle();
-        if (leaderTeamError) {
-          captureException(leaderTeamError, {
-            tags: { flow: "auction", stage: "proxy-team-name" },
-            auctionId,
-            teamId: previousLeader,
-          });
-        }
-        const leaderName = leaderTeam?.name || "Autobud";
-        const matchedNotice = buildKeyedNotification({
-          titleCode: "notif.transfer.auctionOutbid.title",
-          messageCode: "notif.autoBidMatched.message",
-          messageParams: { leaderName, riderName },
-          metadata: { riderId: auction.rider_id },
-        });
-        await trackedNotify(
-          currentWinner,
-          "auction_outbid",
-          matchedNotice.title,
-          matchedNotice.message,
-          auctionId,
-          matchedNotice.metadata,
-        ).catch(onProxyNotifFailed(auctionId));
-      }
+      await notifyMatch(tieLeader,currentWinner,auction);
       // Ingen sælger-notif her: prisen steg ikke, og sælgeren fik allerede
       // bid_received for det udløsende bud på samme beløb.
 
@@ -316,16 +334,16 @@ export async function resolveProxyBids({
         p.team_id !== currentWinner &&
         p.max_amount < minBid &&
         !(
-          previousLeader &&
-          p.team_id === previousLeader &&
+          matchesAcceptedBid && tieLeader &&
+          p.team_id === tieLeader &&
           Number(p.max_amount) === Number(currentPrice)
         ),
     );
-    for (const dead of deadProxies) {
+    const cleanupDeadProxies = async () => { for (const dead of deadProxies) {
       // Fejler sletningen, er saldoen IKKE frigivet — så spring beskeden over
       // i stedet for at love manageren noget der ikke skete. Rækken bliver
       // liggende (status quo ante) og ryddes ved næste cascade-kørsel.
-      const cancelled = await cancelProxyRow(supabase, auctionId, dead.team_id);
+      const cancelled = await cancelProxyRow(supabase, auctionId, dead.team_id, databaseOwnsLeaderSync ? dead.max_amount : undefined);
       if (!cancelled) continue;
       if (cancelNotified.has(dead.team_id)) continue;
       cancelNotified.add(dead.team_id);
@@ -346,7 +364,8 @@ export async function resolveProxyBids({
           },
         ).catch(onProxyNotifFailed(auctionId));
       }
-    }
+    } };
+    if (!databaseOwnsLeaderSync) await cleanupDeadProxies();
 
     const challengers = allProxies
       .filter(
@@ -357,7 +376,10 @@ export async function resolveProxyBids({
       )
       .sort((a, b) => b.max_amount - a.max_amount);
 
-    if (challengers.length === 0) break;
+    if (challengers.length === 0) {
+      if (databaseOwnsLeaderSync) await cleanupDeadProxies();
+      break;
+    }
 
     const topChallenger = challengers[0];
     const winnerProxy = allProxies.find(p => p.team_id === currentWinner);
@@ -365,13 +387,18 @@ export async function resolveProxyBids({
     // #183: slet stale winner-proxy fra DB så UI ikke vildleder manageren med
     // "Autobud loft 60K" når proxyen aldrig fyrer (effectiveWinnerProxy ignorerer
     // den). Silent failure-mode pre-fix.
-    if (winnerProxy && winnerProxy.max_amount < currentPrice) {
+    const cleanupStaleWinner = async () => { if (winnerProxy && winnerProxy.max_amount < currentPrice) {
+      if (databaseOwnsLeaderSync) {
+        await cancelProxyRow(supabase, auctionId, currentWinner, winnerProxy.max_amount);
+        return;
+      }
       await supabase
         .from("auction_proxy_bids")
         .delete()
         .eq("auction_id", auctionId)
         .eq("team_id", currentWinner);
-    }
+    } };
+    if (!databaseOwnsLeaderSync) await cleanupStaleWinner();
 
     let autoBidAmount;
     let autoBidder;
@@ -382,7 +409,8 @@ export async function resolveProxyBids({
     // reelle vilje. Behandl som "ingen proxy" så challenger byder minBid i
     // stedet for et beløb under currentPrice (som ville trigge break på line 78).
     const effectiveWinnerProxy =
-      winnerProxy && winnerProxy.max_amount >= currentPrice ? winnerProxy : null;
+      winnerProxy && winnerProxy.max_amount >= currentPrice &&
+      (!databaseOwnsLeaderSync || !balanceRejectedTeams.has(currentWinner)) ? winnerProxy : null;
 
     if (effectiveWinnerProxy && effectiveWinnerProxy.max_amount >= getMinimumAuctionBid(topChallenger.max_amount)) {
       // Winner's proxy beats top challenger's max — bid just above challenger's max
@@ -449,8 +477,8 @@ export async function resolveProxyBids({
       is_proxy: true,
     });
     if (cascadeInsertError) {
-      if (isLateBidTriggerError(cascadeInsertError)) break;
-      throw cascadeInsertError;
+      if (await handleInsertError(cascadeInsertError, autoBidder, auction) === 'stop') break;
+      continue;
     }
 
     if (!databaseOwnsLeaderSync) {
@@ -459,6 +487,10 @@ export async function resolveProxyBids({
         current_bidder_id: autoBidder,
       }).eq("id", auctionId);
     }
+    if (databaseOwnsLeaderSync) {
+      await cleanupDeadProxies();
+      await cleanupStaleWinner();
+    }
 
     // #230 (ejer-valg A, 11/6): når en proxy er slået over sit loft, annulleres
     // rækken straks så reservationen (worst-case-commitment) frigives — før fixet
@@ -466,7 +498,7 @@ export async function resolveProxyBids({
     // Lykkedes sletningen ikke, er reservationen ikke frigivet — beskeden
     // nedenfor skal så ikke påstå det (se exhaustedCancelled).
     const exhaustedCancelled = exhaustedTeam
-      ? await cancelProxyRow(supabase, auctionId, exhaustedTeam)
+      ? await cancelProxyRow(supabase, auctionId, exhaustedTeam, databaseOwnsLeaderSync ? winnerProxy?.max_amount : undefined)
       : false;
 
     const riderName = `${auction.rider.firstname} ${auction.rider.lastname}`;

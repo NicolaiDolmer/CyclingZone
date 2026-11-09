@@ -14,6 +14,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 import { SCHEMA } from './__fixtures__/autoAccept2176Schema.js';
+import { readBidContext6181 } from './marketCommitment6181.js';
 
 const file = name => readFile(new URL(`../../database/${name}`, import.meta.url), 'utf8');
 const MIGRATION = '2026-11-07-2176-m2-auto-accept.sql';
@@ -194,6 +195,33 @@ test('M2 plus M3 enabled: auto-started auction uses the shared atomic proxy RPC'
   assert.equal(Number(after.commitment), 800_000);
   assert.equal(Number(after.bids), 2);
   assert.equal(Number((await one(db, 'SELECT count(*) AS n FROM auction_proxy_bids')).n), 1);
+});
+
+test('M2 plus M3 enabled: auto-started auction returns the shared context RPC receipt',async()=>{
+  const db=await database({marketGate:true});
+  const [rider]=await squad(db,TEAM.A,12);
+  const listingId=await listing(db,rider,{auto:600_000});
+  const started=await start(db,listingId,{expected:600_000});
+  assert.equal(started.status,'started');
+  await db.exec('SET ROLE service_role');
+  const write=(max,opening)=>one(db,'SELECT public.set_auction_proxy_context_6181($1,$2,$3,$4,$5) AS context',
+    [started.auction_id,TEAM.B,max,opening,NOW]);
+  const noOpening=readBidContext6181((await write(700_000,null)).context);
+  assert.deepEqual(noOpening,{previousLeader:TEAM.B,expectedPrice:600_000,expectedLeader:TEAM.B,placed:false,tieResolved:true,matchedTeam:null,matchRejected:null});
+  const raised=readBidContext6181((await write(800_000,650_000)).context);
+  assert.deepEqual(raised,{previousLeader:TEAM.B,expectedPrice:650_000,expectedLeader:TEAM.B,placed:true,tieResolved:true,matchedTeam:null,matchRejected:null});
+  assert.equal(Number((await one(db,'SELECT count(*) AS n FROM auction_bids')).n),2);
+  assert.equal(Number((await one(db,'SELECT public.team_market_commitment($1) AS n',[TEAM.B])).n),800_000);
+  const matched=readBidContext6181((await one(db,'SELECT public.place_auction_bid_6181($1,$2,$3,$4) AS context',
+    [started.auction_id,TEAM.C,800_000,NOW])).context);
+  assert.deepEqual(matched,{previousLeader:TEAM.B,expectedPrice:800_000,expectedLeader:TEAM.C,placed:true,tieResolved:true,matchedTeam:TEAM.B,matchRejected:null});
+  const auctionState=await one(db,'SELECT current_price,current_bidder_id FROM auctions WHERE id=$1',[started.auction_id]);
+  assert.equal(Number(auctionState.current_price),800_000);
+  assert.equal(auctionState.current_bidder_id,TEAM.B);
+  assert.equal(Number((await one(db,'SELECT count(*) AS n FROM auction_bids')).n),4);
+  assert.equal(Number((await one(db,'SELECT public.team_market_commitment($1) AS n',[TEAM.C])).n),0);
+  assert.equal(Number((await one(db,'SELECT public.team_seat_commitment($1) AS n',[TEAM.B])).n),1);
+  assert.equal(Number((await one(db,'SELECT public.team_seat_commitment($1) AS n',[TEAM.C])).n),0);
 });
 
 test('M3 seller reservation: unbid active auctions also reserve the last departure', async t => {
