@@ -1645,6 +1645,9 @@ export async function runTeamTrainingDay({
       rider_id: rider.id,
       name: `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim(),
       ...(conditionPerDate ? { condition_before_date: conditionBeforeDate,condition_observed:cond,recovery_before_date:recoveryBeforeDate } : {}),
+      ...(instantRider ? { expected_date_receipt_days: dateReceipts
+        .filter(receipt => receipt.rider_id === rider.id && receipt.tick_date === tickDate && dateDays.includes(Number(receipt.game_day)))
+        .map(receipt => Number(receipt.game_day)).sort((a, b) => a - b) } : {}),
       ...(conditionPerDate ? {missing_evidence:missingEvidence,settlement_status:missingEvidence.length?'needs_reconciliation':'complete'} : {}),
       score: tickResult?.score ?? 0,
       gains: tickResult?.gains ?? {},

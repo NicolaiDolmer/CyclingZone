@@ -50,9 +50,10 @@ test("#7737 PG17: double press, sweep and retry never settle twice", { skip: !po
     await sql(`INSERT INTO training_train_now_locks(rider_id,tick_date,season_id,team_id,instant_at) VALUES('${A}','${DATE}','${SEASON}','${TEAM}','${AT(0)}')`);
   };
   const lit = (x) => `'${JSON.stringify(x).replace(/'/g, "''")}'::jsonb`;
-  const commitSql = (day, { conditions = [], loads = [], at = AT(1), intensity = "normal" } = {}) => {
+  const commitSql = (day, { abilities = [], conditions = [], loads = [], at = AT(1), intensity = "normal" } = {}) => {
     const report = { condition_per_date: true, riders: [{ rider_id: A, game_day: day, intensity, condition_before_date: openings[A], condition_observed: openings[A], missing_evidence: [] }] };
-    return `SELECT commit_training_date_tick('${TEAM}','${SEASON}','senior',${day},'${DATE}','{${DAYS}}','manager',${lit(report)},'[]',${lit(conditions)},'[]','[]','[]',${lit(loads)},false,'${at}')`;
+    const snapshotReport = `jsonb_set(${lit(report)},'{riders,0,expected_date_receipt_days}',(SELECT COALESCE(jsonb_agg(game_day ORDER BY game_day),'[]'::jsonb) FROM training_rider_ticks WHERE rider_id='${A}' AND season_id='${SEASON}' AND tick_date='${DATE}'))`;
+    return `SELECT commit_training_date_tick('${TEAM}','${SEASON}','senior',${day},'${DATE}','{${DAYS}}','manager',${snapshotReport},${lit(abilities)},${lit(conditions)},'[]','[]','[]',${lit(loads)},false,'${at}')`;
   };
   const closing = (fatigue) => ({ conditions: [{ rider_id: A, form: 52, fatigue, injured_until: null, injury_cause: null, updated_at: AT(9) }], loads: [{ rider_id: A, race_id: RACE, stage_number: 1, game_day: 43, load: 9.6 }], intensity: "race", at: AT(30) });
   const recordLoad = `SELECT record_training_race_load('${RACE}',1,'[{"rider_id":"${A}","load":9.6}]')`;
@@ -110,7 +111,7 @@ test("#7737 PG17: double press, sweep and retry never settle twice", { skip: !po
     await sql(recordLoad);
     const results = await contend([commitSql(45, { conditions: [{ rider_id: A, form: 50, fatigue: 24, provisional: true }] }), commitSql(43, { intensity: "race" })]);
     assert.equal(results.filter((r) => r.error).length, 1, "the later of the two sees a closing tick it was not built for");
-    assert.match(results.find((r) => r.error).error, /Provisional condition cannot settle|Every final rider receipt/);
+    assert.match(results.find((r) => r.error).error, /Provisional condition cannot settle|Every final rider receipt|Training receipt snapshot changed/);
     assert.equal(await settled(), 0);
     assert.equal(await ticks(), 4);
     const missing = Number(await sql(`SELECT d FROM unnest(ARRAY[${DAYS}]) d WHERE d NOT IN (SELECT game_day FROM training_rider_ticks WHERE rider_id='${A}')`));
@@ -127,6 +128,24 @@ test("#7737 PG17: double press, sweep and retry never settle twice", { skip: !po
     assert.deepEqual(results.filter((r) => r.error), []);
     assert.equal(await count(`SELECT count(*) FROM training_race_loads WHERE rider_id='${A}'`), 1);
     assert.equal(await sql(`SELECT fatigue FROM rider_condition WHERE rider_id='${A}'`), "24");
+    assert.equal(await settled(), 0);
+  });
+
+  await t.test("different slots cannot acknowledge stale nonempty development updates", async () => {
+    await reset();
+    for (const day of [41, 42]) await sql(commitSql(day));
+    const patch = (progress) => [{ riderId: A, patch: { ability_progress: { climbing: progress } } }];
+    const results = await contend([
+      commitSql(44, { abilities: patch(0.25) }),
+      commitSql(43, { abilities: patch(0.5), intensity: "race" }),
+    ]);
+    assert.equal(results.filter((r) => r.error).length, 1);
+    assert.match(results.find((r) => r.error).error, /Training receipt snapshot changed/);
+    assert.equal(await ticks(), 3);
+    const retryDay = results[0].error ? 44 : 43;
+    await sql(commitSql(retryDay, { abilities: patch(0.75), intensity: retryDay === 43 ? "race" : "normal" }));
+    assert.equal(await ticks(), 4);
+    assert.equal(await sql(`SELECT ability_progress->>'climbing' FROM rider_derived_abilities WHERE rider_id='${A}'`), "0.75");
     assert.equal(await settled(), 0);
   });
 

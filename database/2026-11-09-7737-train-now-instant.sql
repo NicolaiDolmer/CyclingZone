@@ -111,6 +111,19 @@ BEGIN
       END IF;
     END LOOP;
   END LOOP;
+  -- Out-of-order slots must be calculated from the receipt state still held
+  -- under this transaction's locks. A stale calculation must be retried, never
+  -- acknowledged after overwriting another slot's development.
+  IF EXISTS(SELECT 1 FROM jsonb_array_elements(p_report->'riders') r
+    WHERE (r->>'rider_id')::uuid=ANY(v_instant)
+      AND (jsonb_typeof(r->'expected_date_receipt_days') IS DISTINCT FROM 'array'
+        OR r->'expected_date_receipt_days' IS DISTINCT FROM (
+          SELECT COALESCE(jsonb_agg(t.game_day ORDER BY t.game_day),'[]'::jsonb)
+          FROM public.training_rider_ticks t
+          WHERE t.rider_id=(r->>'rider_id')::uuid AND t.season_id=p_season_id
+            AND t.tick_date=p_tick_date AND t.game_day=ANY(v_work.game_days)))) THEN
+    RAISE EXCEPTION 'Training receipt snapshot changed; retry with current rider development';
+  END IF;
   -- Mixed retry batches retain only riders whose atomic receipt is absent.
   SELECT COALESCE(jsonb_agg(x),'[]') INTO p_abilities FROM jsonb_array_elements(p_abilities) x WHERE (x->>'riderId')::uuid=ANY(v_new);
   SELECT COALESCE(jsonb_agg(x),'[]') INTO p_conditions FROM jsonb_array_elements(p_conditions) x WHERE (x->>'rider_id')::uuid=ANY(v_new);

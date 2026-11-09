@@ -40,9 +40,10 @@ const cond = (rider, fatigue, form, at = AT(5)) => ({ rider_id: rider, form, fat
 const provisional = (rider, fatigue, form) => ({ rider_id: rider, form, fatigue, provisional: true });
 const LOAD = (rider = A) => ({ rider_id: rider, race_id: RACE, stage_number: 1, game_day: 43, load: 9.6 });
 
-function commit(db, day, riders, { conditions = [], loads = [], at = AT(1), intensity = "normal", openings }) {
-  const report = { condition_per_date: true, riders: riders.map((rider) => ({ rider_id: rider, game_day: day, intensity, condition_before_date: openings[rider], condition_observed: openings[rider], missing_evidence: [] })) };
-  return db.query(`SELECT commit_training_date_tick('${TEAM}','${SEASON}','senior',${day},'${DATE}','{${DAYS}}','manager',${j(report)},'[]',${j(conditions)},'[]','[]','[]',${j(loads)},false,'${at}') AS r`).then((res) => res.rows[0].r);
+async function commit(db, day, riders, { abilities = [], expectedDays, conditions = [], loads = [], at = AT(1), intensity = "normal", openings }) {
+  const observed = expectedDays ?? Object.fromEntries(await Promise.all(riders.map(async (rider) => [rider, await ticks(db, rider)])));
+  const report = { condition_per_date: true, riders: riders.map((rider) => ({ rider_id: rider, game_day: day, intensity, expected_date_receipt_days: observed[rider], condition_before_date: openings[rider], condition_observed: openings[rider], missing_evidence: [] })) };
+  return db.query(`SELECT commit_training_date_tick('${TEAM}','${SEASON}','senior',${day},'${DATE}','{${DAYS}}','manager',${j(report)},${j(abilities)},${j(conditions)},'[]','[]','[]',${j(loads)},false,'${at}') AS r`).then((res) => res.rows[0].r);
 }
 const attempt = async (fn) => { try { return { ok: await fn() }; } catch (e) { return { raised: e.message }; } };
 const scalar = async (db, sql) => Object.values((await db.query(sql)).rows[0])[0];
@@ -63,6 +64,23 @@ let dbs = [];
 const fresh = async (opts) => { const db = await newDb(opts); dbs.push(db); return db; };
 before(() => { dbs = []; });
 after(async () => { for (const db of dbs) await db.close(); });
+
+test("different instant slots reject stale development and retry from the committed snapshot", async () => {
+  const db = await fresh();
+  const openings = (await register(db)).opening_conditions;
+  await stamp(db, A);
+  for (const day of [41, 42]) await commit(db, day, [A], { openings });
+  const expectedDays = { [A]: [41, 42] };
+  const abilities = (progress) => [{ riderId: A, patch: { ability_progress: { climbing: progress } } }];
+  await commit(db, 44, [A], { openings, expectedDays, abilities: abilities(0.25) });
+  await assert.rejects(commit(db, 43, [A], { openings, expectedDays, abilities: abilities(0.5) }), /Training receipt snapshot changed/);
+  assert.deepEqual(await ticks(db, A), [41, 42, 44]);
+  assert.equal(await scalar(db, `SELECT (ability_progress->>'climbing')::double precision FROM rider_derived_abilities WHERE rider_id='${A}'`), 0.25);
+  await commit(db, 43, [A], { openings, abilities: abilities(0.75) });
+  assert.deepEqual(await ticks(db, A), [41, 42, 43, 44]);
+  assert.equal(await scalar(db, `SELECT (ability_progress->>'climbing')::double precision FROM rider_derived_abilities WHERE rider_id='${A}'`), 0.75);
+  assert.equal((await commit(db, 43, [A], { openings, expectedDays, abilities: abilities(0.5) })).already_ran, true);
+});
 
 test("migration: seeds the switch off, is idempotent, adds the stamp column", async () => {
   const db = await fresh();

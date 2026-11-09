@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-141 poster: live 111 · dormant 8 · building 13 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+142 poster: live 111 · dormant 8 · building 14 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -72,6 +72,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 | Race day role base day (`race-day-role-base-day`) | dormant | `race_day_role_base_day_enabled` | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-11-03 | #5950 løsning A (ejer-valg 3/11), underkontakt til race-day-role-yield. Off. |
 | Development XP (`development-xp-model`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-11-07 | Kontakter development_xp_model + development_xp_from_date; tændes efter kalibrering. |
 | Stored potential estimates (`potential-estimate-writes`) | building | - | [6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md) | #6110 | 2026-11-05 | Trin 5 (#7685): søndagsjob, holdskifte og nye kig skriver bag flaget potential_estimate_writes (seedes off). |
+| Train now straight away (`train-now-instant`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #7737 | 2026-11-09 | PR 1: motor/database; training_train_now_instant seedes off ved apply. PR 2-4 og særskilt ejer-go mangler før tænding. |
 | Fatigue now counts today's earlier stages (`training-fatigue-now-7801`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #7801 | 2026-11-07 | Kontakt fatigue_now_7801 (ikke seedet = slukket); ejer tænder. |
 
 ## academy

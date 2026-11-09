@@ -42,6 +42,22 @@ test("golden: only the exact string 'on' turns the switch on", async () => {
   }
 });
 
+test("instant development carries the receipt snapshot used for each calculation", async () => {
+  const state = seedState({ riderIds: ["r2"], flags: { ...V2, ...INSTANT } });
+  enter(state, ["r2"]);
+  const fake = createFake(state);
+  await press(state, fake);
+  const seen = [];
+  const commits = commitsOf(fake.log).filter((commit) => commit.p_report.riders.some((rider) => rider.rider_id === "r2"));
+  assert.equal(commits.length, 4);
+  for (const commit of commits) {
+    const rider = commit.p_report.riders.find((row) => row.rider_id === "r2");
+    assert.deepEqual(rider.expected_date_receipt_days, [...seen].sort((a, b) => a - b));
+    assert.ok(commit.p_abilities.some((row) => row.riderId === "r2"));
+    seen.push(commit.p_game_day);
+  }
+});
+
 function instantDay({ fatigue = 30, intensity = "normal", flags = V2, raceDay = 43 } = {}) {
   const state = seedState({ fatigue, intensity, raceDay, flags: { ...flags, ...INSTANT } });
   enter(state, ["r2"]);
