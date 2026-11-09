@@ -495,7 +495,7 @@ test("foelgere: en fejlet besked til een stopper ikke de andre, en laesefejl kas
   const dms = [];
   const client = fakeSupabase({ respond: () => ({ data: [{ user_id: "U1" }, { user_id: "U2" }], error: null }) });
   await notifyAutoAcceptWatchers({ supabase: client, result: { rider_id: "R1", auction_id: "AU1", price: 1 },
-    riderName: "A", calculatedEnd: new Date(), actorUserId: "X",
+    riderName: "A", calculatedEnd: new Date("2026-11-09T12:00:00Z"), actorUserId: "X",
     notifyBuilt: async (userId) => { if (userId === "U1") throw new Error("boom"); },
     watchlistDm: async (args) => { dms.push(args.userId); } });
   assert.deepEqual(dms, ["U1", "U2"]);
