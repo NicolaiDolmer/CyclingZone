@@ -1378,9 +1378,17 @@
         "title": "Scouting potential",
         "text": "A rider's potential is hidden until you scout them: unscouted riders on other teams show no estimate at all. Every team has a talent scout, a real staff member if you have hired one, otherwise a default scout, who takes on jobs from the Scouting page or a rider's profile. A targeted job investigates one rider and reports back in about 30 minutes, at any scout level; a mission covers a division, a country, U23 riders or a national championship for a shortlist, plus one free report on the best find. When you start a mission you also choose who it targets: free agents (riders without a contract, recommended, sign them straight away) or riders on other teams (talent owned by another manager, where signing them means bidding or negotiating). Jobs cost travel money, and your scout can only run one or two jobs at once depending on his rating. A better scout narrows his estimates further, and his rating sets a precision limit he cannot go past. Every scouting level still buys some precision, and the Scouting tab tells you exactly how much the next one would add. No scout ever knows a rider exactly: even fully scouted riders, and your own squad, show a narrow range rather than an exact number. Estimates are personal to your team, so two managers can read the same talent differently, and race results are what settle who was right. A report can never reference a rider who has since become unavailable (signed elsewhere, or mid-transfer): it always reflects who is actually available right now, and shows each rider's current status. The Scouting tab on the rider profile collects the full report: the verdict, a potential range per rider type, and a value comparison. Overall potential is shown as a rating range and a verdict, in the same unit as the rider rating itself, so you can hold the two up against each other. The per-type rows also show his level today and the role's ceiling: the highest that role allows, the same for every rider in it, never masked. The potential range next to it narrows with a better scout, but it isn't a guarantee: it's a projection built on training outcomes on top of a masked estimate, and for a very well-scouted rider the true value can occasionally sit just outside it, by design."
       },
+      "talentMarks": {
+        "title": "Talent marks",
+        "text": "A small mark next to a rider's name shows a young rider worth watching. The gold star is Top Talent: one of the biggest talents under 23. The diamond is Next Gen: a junior making strong progress. The marks are for display only and don't change value, races or the board. Hover or tap a mark to see what it means."
+      },
       "u25u23": {
         "title": "U25 and U23 riders",
         "text": "U25 riders are 25 and younger in the season's reference year (the UCI rule), and U23 riders are 22 and younger. You can filter on U25/U23 in the rider database and watchlist."
+      },
+      "championJerseys": {
+        "title": "Champion jerseys",
+        "text": "A small jersey next to a rider's name shows a champion from last season's ranking. The white jersey with a navy and gold band is the world champion: the most points on the world ranking. The same jersey with a navy 23 panel is the U23 world champion: the most points on the U23 ranking, or the most points on the world ranking among riders under 23 if no U23 races gave points, so there is always one. The continental champions of Europe, Asia, the Americas, Africa and Oceania wear a jersey in their continent's colour with three dots, and a national champion wears his country's flag. Each title goes to the rider with the most ranking points in his group. A tie goes to the rider with the most wins, then the best placing. A rider keeps every title he wins, so a title never passes to number two. Tables show his highest title, and his profile shows them all. Ages follow the season year. The titles last the whole following season and only change when a new season starts. They are for show only and don't change value, races or the board. Hover or tap a jersey to see what it means."
       }
     },
     "dailytraining": {
@@ -2304,6 +2312,14 @@
     "dayFormFaq": {
       "q": "Why do race results vary from day to day?",
       "a": "Every rider gets a day form for each race day, so the same rider can fly one day and struggle the next. On rare days a rider cracks completely and loses big, and favorites are not immune. Riders in good form crack less often, and form also counts more in the result itself, so form management pays twice. Races use each rider's Form. Over a long stage race the good and bad days largely even out, but a single collapse on a mountain stage can decide a GC, just like in real cycling. Your own riders now tell you how their day went in their own words, a short line under their name on the stage results, but you never see this for other teams' riders."
+    },
+    "dayWordsFaq": {
+      "q": "What does the day form line in the race report mean?",
+      "a": "After a stage, the race report can say how the day went for your own riders who finished. A rider can have a really good day, a good day, or a bad day, and a bad day comes with its reason: tiredness, poor form, illness or the weather. The words only describe the day form the race had already given him, so they never change the result. You only see them for your own riders, not for other teams. A time trial has no report, so the lines sit under the route there."
+    },
+    "whyButtonFaq": {
+      "q": "What does the Why? button next to my riders tell me?",
+      "a": "After a stage, Why? next to your riders gives one short sentence about what decided that rider's result, always in words and never in numbers. It only says what the race actually shows. On the road that is where he lost contact or what went right. In a time trial it is a crash or mechanical, how his day went, the weather when it gave him a bad day, and whether the course suited him. If nothing in the race explains the result, it tells you that instead of guessing."
     },
     "crashesFaq": {
       "q": "What are crashes and abandons?",

@@ -69,6 +69,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "rider_best_role_display", area: "squad", label: "Rating = bedste rolle nu (visning)" },
   // #5519: kun visning + ét laese-endpoint. Ejeren flipper efter visuelt go.
   { key: "youth_squad_pages", area: "squad", label: "U23 team- og Junior team-sider" },
+  // #7824: mestertrøjer ved rytternavne. Kun visning, seedet off.
+  { key: "champion_jerseys_7824", area: "squad", label: "Mestertrøjer ved rytternavne (verden, U23, kontinent, national)" },
   { key: "facilities_enabled", area: "club", label: "Faciliteter" },
   // Kill-switch for job-modellen (#2244). Semantisk binaer (on/off), men den
   // GAAR gennem evaluateFlagStage, og saa hoerer den hjemme her: bliver den
@@ -95,6 +97,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_breakaway_outlook", area: "race-day", label: "Jægerboks — motorens udbrudsbud" },
   // #7717: Hvorfor?-knappen i "Your day". Kun visning, seedet off.
   { key: "rider_why_button", area: "race-day", label: "Hvorfor?-knappen ved rytterne (Your day)" },
+  // #7879: talentmærker ved rytternavne. Kun visning, seedet off.
+  { key: "talent_marks_7879", area: "squad", label: "Talentmærker ved rytternavne (Toptalent, Næste generation)" },
   // #2009: hover-miniprofil på rytternavne. Kun visning, seedet off; beta først (ejer 7/11).
   { key: "rider_hover_card", area: "squad", label: "Hover-miniprofil på ryttere" },
 
@@ -190,6 +194,9 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "ai_team_retire_enabled", area: "ops", label: "AI-hold — pensionering" },
   { key: "ai_pool_retirement_v2_enabled", area: "ops", label: "AI-pulje — pensionering v2" },
   { key: "rider_values_bulk_write_enabled", area: "market", label: "Ryttereværdier — bulk-skrivning" },
+  { key: "auto_accept_enabled", area: "market", label: "Auto-accept-pris starter en åben auktion (kun on; beta = slukket)" }, // #2176
+  // #6181 PR 3: pengelaas. Kun 'on' taender (beta = slukket, det er penge). Flip er ejer-only.
+  { key: "sale_escrow_enabled", area: "market", label: "Pengelås — sælgers penge låses til holdskiftet" },
   { key: "rider_primary_type_from_distribution", area: "squad", label: "Rytter-generator: primær type fra mål-fordelingen" },
   { key: "alunta_reconcile_enabled", area: "billing", label: "Alunta-afstemning" },
 ]);
@@ -273,6 +280,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "potential_single_number",
   // #7684: skønnets flader og Hjaelp skifter paa dette flag (byggetrin 6).
   "potential_estimate_display",
+  // #7824: navnecellen, rytterprofilen og Hjaelp viser mestertroejerne paa dette flag.
+  "champion_jerseys_7824",
   "ability_cap_per_date_enabled",
   "training_decision_card",
   // #5319: sessionsvaelgerne og Hjaelp viser v3-kataloget paa dette flag.
@@ -286,8 +295,12 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "stage_plan_dropped_front_7635",
   // #7717: "Your day" viser Hvorfor?-knappen paa dette flag.
   "rider_why_button",
+  // #7879: navnecellen, rytterprofilen og Hjaelp viser talentmaerkerne paa dette flag.
+  "talent_marks_7879",
   // #2009: rytternavnene viser hover-miniprofilen paa dette flag.
   "rider_hover_card",
+  // #7725: Hjaelp viser svaret om dagsformen i ord paa dette flag (binaert, som motoren).
+  "day_words_7725",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,
@@ -295,4 +308,4 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
 // en flade aldrig beskriver en model motoren ikke koerer for beta-gruppen.
 // #7536: condition_v2_race_date_training_day laeses ogsaa kun som "on" af motoren
 // (conditionModelV2Flag.isRaceDateTrainingDayEnabled).
-export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635"]);
+export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725"]);

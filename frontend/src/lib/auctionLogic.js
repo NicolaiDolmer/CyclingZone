@@ -3,6 +3,7 @@
 // så der er én kilde til sandhed for "hvem leder", "er jeg sælger", warnings osv.
 
 import { formatNumber } from "./intl.js";
+import { resolveApiError } from "./apiError.js";
 
 // #1886: seller_team_id = auktionens INITIATOR (api.js), ikke nødvendigvis den
 // økonomiske sælger. Når man starter en auktion for at KØBE en free agent/AI-
@@ -108,6 +109,9 @@ export function isAuctionTimeExpired(calculatedEnd, now = new Date()) {
 // squadEnforcement-cron auto-sælger + bøder først ved vindue-luk hvis stadig over max.
 // #1170: teksten resolves via i18n (var hardcodet dansk — lækkede i EN-mode).
 export function formatBidWarning(warning, t) {
+  if (warning?.code === "proxy_rejected" && typeof t === "function") {
+    return resolveApiError(warning, t) || null;
+  }
   if (warning?.code === "squad_capacity_exceeded" && typeof t === "function") {
     const fine = warning.finePerRider * warning.exceedBy;
     const points = warning.penaltyPointsPerRider * warning.exceedBy;

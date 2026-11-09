@@ -239,6 +239,16 @@ export function restRows(table, requestUrl = "") {
     // fejlklasse der har bidt før (ejeren skal kunne teste FØR live).
     // Evnerne ligger allerede embeddet på RIDERS; her serveres de som den
     // selvstændige tabel siden faktisk forespørger.
+    // #7824: mestertitler på preview, så navnecellen og profilen kan ses med kontakten i beta.
+    // ?jerseys=off viser siden som med kontakten slukket (betaAccessMock).
+    // rider-2 (den ældste) har tre titler, så profilen viser listen; rider-1 er U23.
+    case "rider_champion_titles":
+      return [
+        { rider_id: "rider-2", title: "world", scope: "", season_number: ACTIVE_SEASON.number },
+        { rider_id: "rider-2", title: "continent", scope: "Europe", season_number: ACTIVE_SEASON.number },
+        { rider_id: "rider-2", title: "national", scope: "DK", season_number: ACTIVE_SEASON.number },
+        { rider_id: "rider-1", title: "u23_world", scope: "", season_number: ACTIVE_SEASON.number },
+      ];
     case "rider_derived_abilities": {
       const rows = RIDERS
         .filter((r) => r.rider_derived_abilities)
@@ -250,6 +260,12 @@ export function restRows(table, requestUrl = "") {
       }
       return rows;
     }
+    // #7879: talentmærker på preview, så navnecellen og profilen kan ses med kontakten i beta.
+    case "rider_talent_marks":
+      return [
+        { rider_id: "rider-1", mark: "top_talent", rider_type: "sprinter" },
+        { rider_id: "rider-2", mark: "next_gen", rider_type: null },
+      ];
     case "auctions":
       // #3401: AuctionHistoryPage forespørger .eq("status","completed") —
       // AuctionsPage's aktive liste (.in("status",["active","extended"])) skal

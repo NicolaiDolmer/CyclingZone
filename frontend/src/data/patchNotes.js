@@ -1,5 +1,114 @@
 export const PATCHES = [
   {
+    "version": "7.423",
+    "date": "2026-11-09",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Mobile",
+        "en": {
+          "title": "Bigger buttons in Tactics on your phone",
+          "body": "On mobile, the role and intention buttons in Tactics are now bigger and easier to tap."
+        },
+        "da": {
+          "title": "Større knapper i Taktik på telefonen",
+          "body": "På mobil er rolle- og intentionsknapperne i Taktik nu større og lettere at trykke på."
+        },
+        "refs": [
+          6916
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Mobile",
+        "en": {
+          "title": "Rider names open the profile in Today on your phone",
+          "body": "On mobile, tapping a rider's name in the Today details in Training now opens that rider's profile."
+        },
+        "da": {
+          "title": "Rytternavne åbner profilen i I dag på telefonen",
+          "body": "På mobil åbner et tryk på rytterens navn i I dag-detaljen under Træning nu rytterens profil."
+        },
+        "refs": [
+          6524
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.422",
+    "date": "2026-11-08",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "Your riders' day in words",
+          "body": "After a stage, the race report now says how your own riders' day went: a really good day, a good day, or a bad day with the reason. You see this for your own riders and not for other teams, and the same goes for bad-day lines in the race film. It describes the day the race already gave him, so results are unchanged."
+        },
+        "da": {
+          "title": "Dine rytteres dag i ord",
+          "body": "Efter en etape siger referatet nu, hvordan dine egne rytteres dag gik: en rigtig god dag, en god dag eller en dårlig dag med årsagen. Du ser det for dine egne ryttere og ikke for andre hold, og det samme gælder linjerne om en dårlig dag i løbsfilmen. Det beskriver den dag, løbet allerede gav ham, så resultaterne er uændrede."
+        },
+        "refs": [
+          7725
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.421",
+    "date": "2026-11-08",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The race film shows the real gaps at the finish",
+          "body": "The race film could show a different gap at the line than the result list, for example the whole bunch level with the winners. At the finish the film now always shows the same gaps as the result. Results and times have not changed."
+        },
+        "da": {
+          "title": "Løbsfilmen viser de rigtige huller ved målet",
+          "body": "Løbsfilmen kunne vise et andet hul ved målstregen end resultatlisten, for eksempel hele feltet på linje med vinderne. Ved målet viser filmen nu altid de samme huller som resultatet. Resultater og tider er ikke ændret."
+        },
+        "refs": [
+          7900
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.420",
+    "date": "2026-11-08",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Mobile",
+        "en": {
+          "title": "Bigger buttons on your phone",
+          "body": "Small buttons on the phone, like the language picker, the buttons on the front page and the tabs, are now tall enough to hit with a finger. Pages can be a little longer on the phone. Nothing changes on a computer."
+        },
+        "da": {
+          "title": "Større knapper på telefonen",
+          "body": "Små knapper på telefonen, som sprogvælgeren, knapperne på forsiden og fanerne, er nu høje nok til at ramme med en finger. Siderne kan blive lidt længere på telefonen. Intet ændrer sig på en computer."
+        },
+        "refs": [
+          7877
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.419",
     "date": "2026-11-08",
     "changes": [

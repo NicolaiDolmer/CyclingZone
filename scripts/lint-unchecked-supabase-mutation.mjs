@@ -187,7 +187,6 @@ const BASELINE = {
   "backend/lib/squadEnforcement.js": 4,
   "backend/cron.js": 3,
   "backend/lib/dailyTrainingEngine.js": 3,
-  "backend/lib/discordDmOutbox.js": 3,
   "backend/lib/marketUtils.js": 3,
   "backend/lib/proxyBidding.js": 3,
   "backend/lib/starterSquadAllocator.js": 3,

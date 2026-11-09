@@ -1,4 +1,15 @@
 {
+  "talentMark": {
+    "topTalent": {
+      "name": "Top Talent",
+      "text": "uno de los mayores talentos sub-23."
+    },
+    "nextGen": {
+      "name": "Next Gen",
+      "text": "un junior con un gran progreso."
+    },
+    "helpLink": "Qué significan las marcas"
+  },
   "badges": {
     "u23": "Menor de 23 (sub-23)",
     "u25": "Menor de 25 (sub-25)",
@@ -989,5 +1000,32 @@
     "current": "Enfoque actual",
     "tradeoff": "Las demás habilidades crecen algo más despacio.",
     "intensity_recovery": "Recuperación"
+  },
+  "championJersey": {
+    "world": {
+      "name": "Campeón del mundo",
+      "short": "más puntos en el ranking mundial la temporada pasada.",
+      "full": "Más puntos en el ranking mundial en la temporada {prev}. Lleva el maillot toda la temporada {season}."
+    },
+    "u23World": {
+      "name": "Campeón del mundo sub-23",
+      "short": "más puntos en el ranking sub-23 de la temporada pasada.",
+      "full": "Más puntos en el ranking sub-23 en la temporada {prev}, o en el ranking mundial entre los ciclistas sub-23 si ninguna carrera sub-23 dio puntos. Lleva el maillot toda la temporada {season}."
+    },
+    "continent": {
+      "europe": "Campeón de Europa",
+      "asia": "Campeón de Asia",
+      "americas": "Campeón panamericano",
+      "africa": "Campeón de África",
+      "oceania": "Campeón de Oceanía",
+      "short": "más puntos de ranking de su continente la temporada pasada.",
+      "full": "Más puntos de ranking entre los ciclistas de su continente en la temporada {prev}. Lleva el maillot toda la temporada {season}."
+    },
+    "national": {
+      "name": "Campeón nacional, {country}",
+      "short": "más puntos de ranking de {country} la temporada pasada.",
+      "full": "Más puntos de ranking entre los ciclistas de {country} en la temporada {prev}. Lleva el maillot toda la temporada {season}."
+    },
+    "helpLink": "Cómo funcionan los maillots de campeón"
   }
 }
