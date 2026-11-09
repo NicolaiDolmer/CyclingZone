@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (9/11 kl. 13.30):** **Tavlen [#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911) er sandheden.** **PC1:** rækkefølge i MASTERPLAN (ejer 9/11). Merge: #7933, #7857, #7936, #7937, #7935 (ejer-go). Bølge: Træn nu + 15 % (design og måling), #7943. Så holdplan #7864, trøjemål #5573, auto-accept-rest #2176. 10/11: ordene, scouting, Discord #7941. 11/11: motormålinger. **Codex på Dolmer PC:** SEO og vækst (#1407, #6583/#6558). 7644 SLUKKET. **Efter løbet:** #6912, #7899, #7902.
+> **🎯 Next action (9/11 kl. 13.30):** **Tavlen [#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911) er sandheden.** **PC1:** rækkefølge i MASTERPLAN (ejer 9/11). Merge: #7933, #7857, #7936, #7937, #7935 (ejer-go). Bølge: Træn nu + 15 % (design og måling), #7943. Så holdplan #7864, trøjemål #5573, auto-accept-rest #2176. Mestertrøjer live; talentmærker i beta, ejeren ser dem. 10/11: ordene, scouting, Discord #7941. 11/11: motormålinger. **Codex på Dolmer PC:** SEO og vækst (#1407, #6583/#6558). 7644 SLUKKET. **Efter løbet:** #6912, #7899, #7902.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling; memory commitment på Large kunne ikke aflæses 9/11.
 >
 > **🤖 Working agent:** Claude Code på PC1, dirigent (9/11): til dørs først, så nyt. Codex på Dolmer PC: SEO og vækst.
