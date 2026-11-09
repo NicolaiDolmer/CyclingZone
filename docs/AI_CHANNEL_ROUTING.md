@@ -30,6 +30,8 @@ Målt 6/10: Codex brugte 4-5 timer på #5692 (25 filer, +2.200 linjer, staging-m
 
 Prompten til Codex har altid en prioriteret liste, tidsgrænsen og stopreglen. Claude reviewer og merger Codex' PR'er.
 
+**Ejer 9/11, de kommende dage:** Codex bygger også spillervendt og større arbejde, bag slukket kontakt, fordi der er mange Codex-tokens og få Claude-tokens. Claude planlægger, reviewer og merger. Køen står på [#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911). Merge kun på ejerens ordrette "merge", når det er spillervendt.
+
 ## Model og effort pr. opgave (ejer 8/10)
 
 Princip: kvaliteten må aldrig afhænge af, at nogen husker at vælge den rigtige model. Risiko styrer modellen; gates fanger det mekaniske, så dyre modeller bruges på dømmekraft.
