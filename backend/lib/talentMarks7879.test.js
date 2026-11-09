@@ -385,15 +385,50 @@ test("vinduet: tikket giver faste klokkeslæt, som alle ligger i vinduet", () =>
   assert.deepEqual(hits, ["02:12", "02:27", "02:42"]); // 03:12, 03:27 og 03:42 dansk tid
 });
 
-test("tikket: uden for vinduet rører det ikke databasen, heller ikke flaget", async () => {
-  resetCaches();
-  const sb = fakeSupabase({ flag: "on", riders: [rider({ id: "u21", age: 21 })] });
-  for (const iso of ["2026-11-08T10:00:00Z", "2026-11-08T19:30:00Z", "2026-11-08T21:30:00Z", "2026-11-08T23:30:00Z"]) {
+const OUTSIDE_WINDOW = ["2026-11-08T10:00:00Z", "2026-11-08T19:30:00Z", "2026-11-08T21:30:00Z", "2026-11-08T23:30:00Z"];
+
+test("tikket: uden for vinduet og kontakten off = kun flag-opslaget, ingen skrivning", async () => {
+  for (const iso of OUTSIDE_WINDOW) {
+    resetCaches();
+    const sb = fakeSupabase({ flag: "off", riders: [rider({ id: "u21", age: 21 })] });
     const result = await runTalentMarksDailyTick({ supabase: sb, now: new Date(iso) });
     assert.deepEqual(result, { ran: false, skipped: "outside_window" }, iso);
+    assert.deepEqual(sb.writes.tablesRead, ["app_config"], iso);
+    assert.equal(sb.writes.upserts.length + sb.writes.deletes.length + sb.writes.sameDayDeletes.length + sb.writes.rpcCalls.length, 0);
   }
-  assert.deepEqual(sb.writes.tablesRead, []);
-  assert.equal(sb.writes.rpcCalls.length, 0);
+});
+
+test("tikket: uden for vinduet og tabellen ikke tom = springes over uden beregning", async () => {
+  for (const iso of OUTSIDE_WINDOW) {
+    resetCaches();
+    const sb = fakeSupabase({ flag: "on", lastComputedOn: "2026-11-07", riders: [rider({ id: "u21", age: 21 })] });
+    const result = await runTalentMarksDailyTick({ supabase: sb, now: new Date(iso) });
+    assert.deepEqual(result, { ran: false, skipped: "outside_window" }, iso);
+    assert.deepEqual(sb.writes.tablesRead, ["app_config", "rider_talent_marks"], iso);
+    assert.equal(sb.writes.upserts.length + sb.writes.deletes.length + sb.writes.sameDayDeletes.length + sb.writes.rpcCalls.length, 0);
+  }
+});
+
+test("tikket: uden for vinduet og tabellen helt tom = kører alligevel (kontakt tændt om dagen)", async () => {
+  resetCaches();
+  const sb = fakeSupabase({ flag: "on", lastComputedOn: null, riders: [rider({ id: "u21", age: 21 })] });
+  const result = await runTalentMarksDailyTick({ supabase: sb, now: new Date("2026-11-08T10:00:00Z") });
+  assert.equal(result.ran, true);
+  assert.equal(sb.writes.upserts[0].rows[0].computed_on, "2026-11-08");
+});
+
+test("tikket: uden for vinduet, tom tabel og en fejl = fanges og melder error", async () => {
+  resetCaches();
+  const sb = fakeSupabase({ flag: "on", lastComputedOn: null });
+  const broken = { ...sb, from(table) { if (table === "rider_talent_marks") throw new Error("db nede"); return sb.from(table); } };
+  const origError = console.error;
+  console.error = () => {};
+  try {
+    const result = await runTalentMarksDailyTick({ supabase: broken, now: new Date("2026-11-08T10:00:00Z") });
+    assert.deepEqual(result, { ran: false, skipped: "error" });
+  } finally {
+    console.error = origError;
+  }
 });
 
 test("tikket: slukket kontakt koster kun flag-opslaget i vinduet", async () => {
