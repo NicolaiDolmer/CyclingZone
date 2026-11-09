@@ -875,7 +875,7 @@ test("tjekliste 2: hans tilmeldinger hos det hold, han bliver paa, bestaar; AI-h
   const race = id(704);
   await db.exec(`INSERT INTO races(id) VALUES ('${race}'); INSERT INTO race_entries VALUES ('${race}', '${RIDER.r1}', '${TEAM.A}');`);
   await db.query("UPDATE riders SET pending_team_id = NULL WHERE id = $1", [RIDER.r1]);
-  assert.equal((await reconcileHeldSaleEscrows({ supabase })).refunded, 1);
+  assert.equal((await reconcileHeldSaleEscrows({ supabase, now: new Date(FLUSHED_AT) })).refunded, 1);
   assert.equal((await one(db, "SELECT count(*)::int AS n FROM race_entries")).n, 1);
   assert.deepEqual(await notifications(db), []);
 });

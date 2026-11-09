@@ -694,10 +694,12 @@ krediteres først når rytteren faktisk skifter hold. Ved øjeblikkeligt skifte 
 |---|---|---|
 | Lås | køberen trækkes og beløbet låses i ét `hold_sale_escrow`-kald (samme finance-nøgler som i dag) | `saleEscrowFlow6181.js` `saleEscrowPayment` |
 | Udbetaling | flush/heal flytter rytteren og krediterer sælgeren i ét `settle_sale_escrow`-kald; et bytte udbetales først når begge ryttere er flyttet | `releaseSaleEscrowForFlush` |
-| Refusion | frigives en solgt, ventende rytter (pension, kontraktudløb), får køberen pengene tilbage | `refundSaleEscrowsForReleasedRiders` |
+| Fejlet lås | fejler låsen efter parkering, fjerner `sale_escrow_undo_failed_hold` parkeringen igen, så rytteren aldrig flyttes uden betaling; gælder transfer, auktion og bytte | `saleEscrowPayment` |
+| Refusion | frigives en solgt, ventende rytter (pension, kontraktudløb), får køberen pengene tilbage. I refusionens transaktion gendannes trup, kontrakt og graduering, tilmeldinger på et andet hold end rytterens ryddes, handlens status sættes (transfer og bytte `withdrawn`, auktion `cancelled`), og begge parter får besked præcis én gang | `refundSaleEscrowsForReleasedRiders`, triggeren `sale_escrow_restore_on_refund` |
 | Sikkerhedsnet | heal-sweepet afregner enhver holdt escrow, der kan afregnes, også efter at kontakten er slukket igen; beta-reset gør det samme | `reconcileHeldSaleEscrows` |
 | Vagter | sæsonskiftet venter på holdte escrows (`no_deferred_transfers`); invariant H i `ownershipInvariantWatch` melder en escrow, der ikke er afregnet efter 48 t uden et aktivt løb | `seasonTransitionReadiness.js`, `ownershipInvariantWatch.ts` |
 | Gentagelse | en handel med en escrow betales aldrig igen af den gamle sti; er escrow'en refunderet, er handlen annulleret (rytteren flyttes ikke, ingen betaler). Databasen afviser en sælger-kredit efter en refusion under holdlåsen | `saleEscrowStatusForDeal`, `2026-11-07-6181-sale-escrow-m2-guards.sql` |
+| Beta-nulstilling | stopper, før noget røres, hvis der findes fastlåste bytter, så en senere refusion ikke lægger gammel betaling oven i den nye startsaldo | `betaResetService.js` |
 | Fastlåst bytte | én rytter leveret, den anden mistet: heal-sweepet kan ikke afregne det. Admin afgør det med `GET /api/admin/sale-escrows` og `POST /api/admin/sale-escrows/:id/resolve` (`release` krediterer modtageren, `refund` giver betaleren beløbet tilbage; ingen rytter flyttes) | `resolveStuckSaleEscrow`, `resolve_stuck_sale_escrow` |
 
 Nuværende parkeringer får ingen tilbagevirkning: sælgeren af en handel fra før kontakten blev
