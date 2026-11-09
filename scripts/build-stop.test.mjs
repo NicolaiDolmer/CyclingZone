@@ -8,7 +8,6 @@ import { loadBuildStop, validateBuildStop, classifyWork, assertBuildStop, logBra
 const cfg = validateBuildStop({
   active: true,
   since: '2026-10-29',
-  areaCap: 3,
   finishList: [
     { issue: 7260, area: 'race-engine' },
     { issue: 7266, area: 'taktik' },
@@ -42,11 +41,6 @@ test('active:false slipper alt igennem', () => {
   assert.doesNotThrow(() => assertBuildStop([{ issue: 9999 }], { ...cfg, active: false }));
 });
 
-test('validateBuildStop: mere end areaCap områder på finishList afvises', () => {
-  const four = { ...cfg, finishList: [...cfg.finishList, { issue: 1, area: 'akademi' }] };
-  assert.throws(() => validateBuildStop(four), /4 områder.*loft 3/);
-});
-
 test('validateBuildStop: brand uden begrundelse og dobbelte issues afvises', () => {
   assert.throws(() => validateBuildStop({ ...cfg, brandList: [{ issue: 5, reason: ' ', since: '2026-10-29' }] }), /begrundelse/);
   assert.throws(() => validateBuildStop({ ...cfg, brandList: [{ issue: 7260, reason: 'x', since: '2026-10-29' }] }), /#7260.*flere lister/);
@@ -55,7 +49,7 @@ test('validateBuildStop: brand uden begrundelse og dobbelte issues afvises', () 
 test('loadBuildStop læser CZ_BUILD_STOP_FILE, og repoets egen fil er gyldig', () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'cz-build-stop-'));
   const file = path.join(dir, 'bs.json');
-  writeFileSync(file, JSON.stringify({ active: false, since: '2026-10-29', areaCap: 3, finishList: [], cleanupList: [], brandList: [] }));
+  writeFileSync(file, JSON.stringify({ active: false, since: '2026-10-29', finishList: [], cleanupList: [], brandList: [] }));
   assert.equal(loadBuildStop(file).active, false);
   const repo = loadBuildStop(new URL('./build-stop.json', import.meta.url));
   assert.equal(repo.active, true);
@@ -148,9 +142,7 @@ test('loft: spor med labels hentes ikke igen', () => {
   assert.equal(classifyWork(items[0], loftCfg).cls, 'loft');
 });
 
-test('loft: validateBuildStop afviser flere områder end areaCap, dubletter og tomme områder', () => {
-  const extra = { area: 'akademi', labels: ['x'], titleKeywords: [], epics: [] };
-  assert.throws(() => validateBuildStop({ ...cfg, loft: { ...loft, areas: [...loft.areas, extra] } }), /loft har 4 områder, loft 3/);
+test('loft: validateBuildStop afviser dubletter og tomme områder', () => {
   assert.throws(() => validateBuildStop({ ...cfg, loft: { ...loft, areas: [loft.areas[0], loft.areas[0]] } }), /står to gange/);
   assert.throws(() => validateBuildStop({ ...cfg, loft: { ...loft, areas: [{ area: 'tom', labels: [], titleKeywords: [], epics: [] }] } }), /matcher intet/);
   assert.throws(() => validateBuildStop({ ...cfg, loft: { ...loft, brandLabels: [] } }), /brandLabels/);

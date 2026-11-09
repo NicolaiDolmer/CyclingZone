@@ -19,7 +19,7 @@ import { generateBrief } from './make-wave-brief.mjs';
 // for sig i build-stop.test.mjs og i '#7336'-testene i wave-policy.test.mjs
 // (acquireWave med runtime 'codex').
 const BUILD_STOP_OFF = path.join(mkdtempSync(path.join(os.tmpdir(), 'cz-build-stop-off-')), 'build-stop.json');
-writeFileSync(BUILD_STOP_OFF, JSON.stringify({ active: false, since: '2026-10-29', areaCap: 3, finishList: [], cleanupList: [], brandList: [] }));
+writeFileSync(BUILD_STOP_OFF, JSON.stringify({ active: false, since: '2026-10-29', finishList: [], cleanupList: [], brandList: [] }));
 process.env.CZ_BUILD_STOP_FILE = BUILD_STOP_OFF;
 process.env.CZ_BUILD_STOP_LOG = path.join(path.dirname(BUILD_STOP_OFF), 'brand-log.jsonl');
 
@@ -480,7 +480,7 @@ function jobSpec(root,arguments_) {
   const file=path.join(root,'spec.json');writeFileSync(file,JSON.stringify(spec));return {file,spec};
 }
 test('#7554: Windows kernel job host preserves arguments and redirected stdin/stdout',{skip:process.platform!=='win32'},t=>{
-  const root=fixture(t),args=['space value','quote"value','trailing\\','', 'æøå','2026-11-03T10:00:00.000Z','a\tb','a\nb','literal$(not-a-command)'];
+  const root=fixture(t),args=['space value','quote"value','trailing\\','', 'ï¿½ï¿½ï¿½','2026-11-03T10:00:00.000Z','a\tb','a\nb','literal$(not-a-command)'];
   const program="let input='';process.stdin.on('data',c=>input+=c);process.stdin.on('end',()=>process.stdout.write(JSON.stringify({args:process.argv.slice(1),input})))";
   const {file,spec}=jobSpec(root,['-e',program,'--',...args]);
   const result=spawnSync('pwsh',['-NoProfile','-File',fileURLToPath(new URL('./wave-job-host.ps1',import.meta.url)),'-SpecPath',file],{input:'fixture input',encoding:'utf8',timeout:30_000,windowsHide:true});
