@@ -525,6 +525,14 @@
     {
       "issue": 7934,
       "why": "Internt code scanning-fund, ejer-go 9/11 (PC1-listen, #7911)"
+    },
+    {
+      "issue": 7737,
+      "why": "Traen nu med det samme og 15 % bonus, ejer-go 9/11 (#7911)"
+    },
+    {
+      "issue": 7943,
+      "why": "Opfoelgning paa #7922, ejer-go 9/11 (#7911)"
     }
   ],
   "brandList": [
