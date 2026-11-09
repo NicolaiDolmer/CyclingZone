@@ -4,14 +4,14 @@
 
 ## Kurs (ejer 8/11, 25 valg på #7911)
 
-**Mål:** en langsigtet bæredygtig forretning: database der virker, lavere udgifter, højere indtjening, nye brugere, brugere der bliver længere. **Ugefordeling:** drift 30 %, forretning 40 %, spillet 30 %, evalueres månedligt. **Til dørs først:** det halvbyggede går altid før nyt. **Fejl** (live og forkert) rettes uden go; alt nyt kræver ejerens go.
+**Mål:** en langsigtet bæredygtig forretning: database der virker, lavere udgifter, højere indtjening, nye brugere, brugere der bliver længere. Drift, forretning og spillet er alle vigtige (ejer 9/11: ingen faste procenter). **Til dørs først:** det halvbyggede går altid før nyt. **Fejl** (live og forkert) rettes uden go; alt nyt kræver ejerens go.
 **Udgivelse januar 2027** (roadbook 5/11), når: 0 alvorlige fejl i 14 dage, et sæsonskifte uden nedbrud, Pro 2.0 live. Præcis dato meldes først da. Afløser "beta slutter ved S6-start" (#6553).
 - **Drift:** plan v3 på #7659 (skridt 1 sat 8/11). Bestyrelsen én gang pr. løbstid med fire krav. Salgsannoncer #7922 (9/11). Databasefejl #7917.
 - **Forretning:** Pro 2.0 (tre pakker med billeder senest 15/11, pris uændret, aldrig styrke). Fornyelser og udløbne kort (design 9/11). Første dage for nye er højeste prioritet under fastholdelse (40 % efter 7 dage senest 31/3). Kampagne ved sæsonstart (ejer godkender og sender). Forside #6665. "Hvor hørte du om os" #3796. Google-sider fra uge 47, delingsknap efter sæsonstart, inviter en ven efter Pro 2.0, ingen annoncer. Mandagstal fra 9/11. Testgruppe på 5-6. Din dag: design uge 47, byg januar.
 - **Spillet:** intet loft på motorarbejdet. Løbssiden må deles op, men alt i denne sæson. U23 og junior senest i S6, inden S7.
 - **Afklares med ejeren:** fakturaer og moms/revisor 9/11; roadmappen punkt for punkt; interne værktøjer. Backup-øvelse og nøgleskift #7029: ikke nu.
 
-**Reglen:** Færdig = bygget, merget, tændt, synligt, gammelt væk, Hjælp + patch note (8 Til dørs-krav). **Loftet afløser byggestoppet (ejer 4/11):** alt inden for de tre loft-områder plus brand og forkert info må bygges uden liste; alt andet kræver ejerens go. Højst 3 områder ad gangen. Nyt prøves bag slukket kontakt før tænding.
+**Reglen:** Færdig = bygget, merget, tændt, synligt, gammelt væk, Hjælp + patch note (8 Til dørs-krav). **Loftet afløser byggestoppet (ejer 4/11):** alt inden for de tre loft-områder plus brand og forkert info må bygges uden liste; alt andet kræver ejerens go. Nyt prøves bag slukket kontakt før tænding.
 
 **Arbejdsdeling (ejer 6/11 aften):** fra 7/11 ejer Claude Code på Dolmer PC motor, taktik, udvikling, løbssiden, spillerkommunikation, merge, flag og prod. Kun én session merger og tænder ad gangen.
 
@@ -42,7 +42,7 @@ Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden f
 2. **Taktik synlig og forståelig:** træthed pr. indstilling på taktiksiden #7638 og indsatskortet #5101 (mockup først), delt kaptajn #7003/#7239/#7326 (krav 8), #7266, spillerfejl #7624/#7557/#7625.
 3. **Udvikling 2.0 #6110 (XP-model, ejer 6/11):** fælles prisliste, FAST potentiale giver XP, intet hårdt loft, mest fokus og lidt i resten, ét tal XP (i dag og 30 dage), Træn nu tæller straks og giver målt bonus (#7801). Bagefter går potentialet ud af prisen og træningshastigheden ind (#2798), og potentialet omregnes til 1-99 (#3564). Løser #7757; rapportens løbsgevinst #7627, evnernes kilde #3813 og formtræning #5238 med. Bagefter: trøjemål #5573.
 
-## Kø (når et loft-område er færdigt)
+## Kø
 
 1. **Dato-løfter #6947:** TTT #3463, U23 del 2 #4620, omdømme #4957/#5106, indstillinger #3984.
 2. **Løbssider:** Planning Workbench #7535 (i bero), løbstyper U23/junior #7471, etapekort #6365.
