@@ -34,6 +34,31 @@ export async function loadTeamTrainNowLocks({ supabase, teamId, tickDate }) {
   return data ?? [];
 }
 
+// #7737: the migration adds instant_at after the backend deploys (auto-migrate, #2642).
+// Until then nobody can have been stamped, so a missing column reads as "no stamp".
+function isMissingInstantColumn(error) {
+  return (error?.code === "42703" || error?.code === "PGRST204") && String(error?.message ?? "").includes("instant_at");
+}
+
+/**
+ * #7737: the riders a press stamped to train their free race days straight away. The
+ * stamp, not the switch, decides how a rider's date runs, so turning the switch off
+ * mid-date is safe. A read error throws: a guess here would misplace a settlement.
+ */
+export async function loadTrainNowInstantRiderIds({ supabase, tickDate, riderIds }) {
+  const ids = [...new Set((riderIds ?? []).filter(Boolean))];
+  if (!ids.length) return new Set();
+  const { data, error } = await supabase.from(TRAIN_NOW_LOCK_TABLE)
+    // pagination-safe: one team's frozen roster on one date, far below the 1000-row cap.
+    // schema-columns-ok: instant_at tilfoejes af database/2026-11-09-7737-train-now-instant.sql, applied post-merge.
+    .select("rider_id, instant_at").eq("tick_date", tickDate).in("rider_id", ids);
+  if (error) {
+    if (isMissingTable(error) || isMissingInstantColumn(error)) return new Set();
+    throw new Error(`train-now instant stamps: ${error.message ?? error}`);
+  }
+  return new Set((data ?? []).filter((row) => row.instant_at != null).map((row) => row.rider_id));
+}
+
 /** PURE (#6006): Copenhagen dates of a race's stages from race_stage_schedule rows. */
 export function raceStageDates(scheduleRows) {
   return [...new Set((scheduleRows ?? []).filter((row) => row?.scheduled_at)

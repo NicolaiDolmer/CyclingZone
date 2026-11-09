@@ -13,6 +13,10 @@
 // (a press-time advantage, I1), and his date's one condition write must follow the
 // race (decision 3, no #3461 trick). Training slots around the race are phase 2,
 // together with the chronological day model of the combined #6984 design (owner 24/10).
+// #7737 (owner 9/11, solution A) lifts this behind `training_train_now_instant`: training
+// gives form, fatigue and development at the press, and a race gives its share when it
+// runs. A stamped rider settles his free race days at the press, gets a provisional form
+// and fatigue, and closes his date (with the one injury and illness roll) after his race.
 //
 // The shared lock (§7 of the design): a whole-date rider's lock row is marked
 // (`whole_day_at`) BEFORE his date is settled, and the entries are read again after
@@ -26,23 +30,51 @@ import { isTrainingReservationHeldError } from "./dailyTrainingEngine.js";
 const sortedDays = (gameDays) => [...new Set(gameDays ?? [])].filter(Number.isInteger).sort((a, b) => a - b);
 const slotsOf = (map, id) => (map instanceof Map ? map.get(id) : map?.[id]) ?? [];
 
+// #7737: a race day is free when no open slot sits on it. A slot without a known race
+// day cannot be placed, so that rider keeps waiting for his race as before.
+function freeDaysOf(days, slots) {
+  if (slots.some((slot) => slot?.gameDay == null || !Number.isInteger(Number(slot.gameDay)))) return [];
+  const taken = new Set(slots.map((slot) => Number(slot.gameDay)));
+  return days.filter((day) => !taken.has(day));
+}
+
 /**
  * PURE: which race days does the press settle for which rider?
+ * `instant` (#7737): a rider with an open race slot also settles his free race days now.
+ * Without it the plan is exactly the #6461 plan: he waits for his whole date.
  * @returns {{ daysByRider: Record<string, number[]>, wholeDateRiderIds: string[],
- *   waitingRiderIds: string[], runs: Array<{ gameDay: number, riderIds: string[] }> }}
+ *   waitingRiderIds: string[], runs: Array<{ gameDay: number, riderIds: string[] }>,
+ *   instantRiderIds?: string[] }}
  */
-export function planWholeDayPress({ gameDays, riderIds, unresolvedSlotsByRider = {} }) {
+export function planWholeDayPress({ gameDays, riderIds, unresolvedSlotsByRider = {}, instant = false }) {
   const days = sortedDays(gameDays);
   const daysByRider = {};
   const wholeDateRiderIds = [];
   const waitingRiderIds = [];
   for (const id of riderIds ?? []) {
-    const open = slotsOf(unresolvedSlotsByRider, id).length > 0;
-    daysByRider[id] = open ? [] : [...days];
+    const slots = slotsOf(unresolvedSlotsByRider, id);
+    const open = slots.length > 0;
+    daysByRider[id] = open ? (instant ? freeDaysOf(days, slots) : []) : [...days];
     (open ? waitingRiderIds : wholeDateRiderIds).push(id);
+  }
+  if (instant) {
+    const instantRiderIds = waitingRiderIds.filter((id) => daysByRider[id].length > 0);
+    const runs = days
+      .map((gameDay) => ({ gameDay, riderIds: [...wholeDateRiderIds, ...instantRiderIds.filter((id) => daysByRider[id].includes(gameDay))] }))
+      .filter((run) => run.riderIds.length > 0);
+    return { daysByRider, wholeDateRiderIds, waitingRiderIds, runs, instantRiderIds };
   }
   const runs = wholeDateRiderIds.length ? days.map((gameDay) => ({ gameDay, riderIds: [...wholeDateRiderIds] })) : [];
   return { daysByRider, wholeDateRiderIds, waitingRiderIds, runs };
+}
+
+// #7737: stamped per rider, first press wins. It goes on before any of his race days
+// settles, because the stamp is what lets the database take them out of order.
+async function setInstantStamp({ supabase, tickDate, riderIds, at }) {
+  if (!riderIds?.length) return;
+  const { error } = await supabase.from(TRAIN_NOW_LOCK_TABLE).update({ instant_at: at })
+    .eq("tick_date", tickDate).is("instant_at", null).in("rider_id", riderIds);
+  if (error) throw new Error(`train-now instant stamp: ${error.message ?? error}`);
 }
 
 async function setWholeDayMark({ supabase, tickDate, riderIds, at }) {
@@ -58,9 +90,9 @@ async function setWholeDayMark({ supabase, tickDate, riderIds, at }) {
  * Returns { status, body } like runTrainNow.
  */
 export async function settleWholeDayPress({
-  supabase, team, season, now, tickDate, work, available, readiness, pressedAt, runDay, readReadiness,
+  supabase, team, season, now, tickDate, work, available, readiness, pressedAt, runDay, readReadiness, instant = false,
 }) {
-  let plan = planWholeDayPress({ gameDays: work.game_days, riderIds: available, unresolvedSlotsByRider: readiness.unresolvedSlotsByRider });
+  let plan = planWholeDayPress({ gameDays: work.game_days, riderIds: available, unresolvedSlotsByRider: readiness.unresolvedSlotsByRider, instant });
 
   // Shared lock: mark first, then read the entries again. An entry committed before
   // the mark is visible now; any later insert is skipped by the database guard.
@@ -71,7 +103,7 @@ export async function settleWholeDayPress({
   if (slipped.length) {
     // Entered in the window: he is a race rider now and waits for his race.
     for (const id of slipped) unresolvedSlotsByRider[id] = slotsOf(after.unresolvedSlotsByRider, id);
-    plan = planWholeDayPress({ gameDays: work.game_days, riderIds: available, unresolvedSlotsByRider });
+    plan = planWholeDayPress({ gameDays: work.game_days, riderIds: available, unresolvedSlotsByRider, instant });
   }
   // Every waiting rider is unmarked, not only the ones caught in this reread: a press
   // that marked a rider and then failed (reread or unmark) leaves a stale mark, and the
@@ -83,6 +115,7 @@ export async function settleWholeDayPress({
       .eq("tick_date", tickDate).in("rider_id", plan.waitingRiderIds);
     if (error) throw new Error(`train-now whole-day unmark: ${error.message ?? error}`);
   }
+  if (instant) await setInstantStamp({ supabase, tickDate, riderIds: plan.instantRiderIds, at: now.toISOString() });
 
   const settledDays = [];
   for (const { gameDay, riderIds } of plan.runs) {
@@ -92,6 +125,7 @@ export async function settleWholeDayPress({
         now, tickDateOverride: tickDate, gameDay, dateGameDays: work.game_days, executedBy: "manager",
         eligibleRiderIds: riderIds, unresolvedSlotsByRider,
         deadlineAt: readiness.deadlineAt.toISOString(), deadlineReached: false,
+        ...(instant ? { instantPress: true } : {}),
       });
     } catch (err) {
       // #6839: the evening run holds this race day; it settles the rest.
@@ -109,6 +143,7 @@ export async function settleWholeDayPress({
       settledRiderIds: plan.wholeDateRiderIds, wholeDayRiderIds: plan.wholeDateRiderIds,
       afterRaceRiderIds: plan.waitingRiderIds,
       settledGameDays: settledDays, gameDays: work.game_days,
+      ...(instant ? { instantRiderIds: plan.instantRiderIds } : {}),
     },
   };
 }
