@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-142 poster: live 109 · beta 2 · dormant 8 · building 14 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+142 poster: live 110 · beta 1 · dormant 8 · building 14 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -49,13 +49,12 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## squad
 
-**live:** Rating shows best role now (`rider-rating-best-role-display`) 2026-10-31
+**live:** Champion jerseys beside rider names (`champion-jerseys`) 2026-11-07 · Rating shows best role now (`rider-rating-best-role-display`) 2026-10-31
 
 **arkiv:** `contracts` · `rider-compare-and-watchlist` · `squad-management` · `youth-squad-pages`
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
-| Champion jerseys beside rider names (`champion-jerseys`) | beta | `champion_jerseys_7824` | - | #7824 | 2026-11-07 | champion_jerseys_7824 |
 | Talent marks (`talent-marks`) | beta | `talent_marks_7879` | - | #7824 | 2026-11-07 | #7879: seedes off, kun visning. Ejeren flytter kontakten til beta; roadmap-tekst følger med. |
 | Teamwork and Leadership abilities (`mental-abilities-teamwork-leadership`) | building | - | [holdarbejde-og-lederskab-evner-design](superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md) | #1177 | 2026-11-04 | Kun data er bygget (#5268); motor (#5348) og mentorpar (#5349) mangler. |
 | Rider card (`rider-hover-card`) | building | - | - | #2000 | 2026-11-07 | Kontakt rider_hover_card. |
