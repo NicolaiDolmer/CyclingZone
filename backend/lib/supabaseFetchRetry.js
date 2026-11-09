@@ -81,6 +81,7 @@ export function createSupabaseFetchWithRetry(baseFetch = globalThis.fetch, {
     let attempt = 0;
     for (;;) {
       let response;
+      /** @type {any} */
       let failure = null;
       try {
         response = await baseFetch(input, init);
