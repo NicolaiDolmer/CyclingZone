@@ -4,10 +4,10 @@
 
 ## Kurs (ejer 8/11, 25 valg på #7911)
 
-**Mål:** en langsigtet bæredygtig forretning: database der virker, lavere udgifter, højere indtjening, nye brugere, brugere der bliver længere. Drift, forretning og spillet er alle vigtige (ejer 9/11: ingen faste procenter). **Til dørs først:** det halvbyggede går altid før nyt. **Fejl** (live og forkert) rettes uden go; alt nyt kræver ejerens go (ejer bekræftet 9/11).
+**Mål:** en langsigtet bæredygtig forretning: database der virker, lavere udgifter, højere indtjening, nye brugere, brugere der bliver længere. Drift, forretning og spillet er alle vigtige. **Til dørs først:** det halvbyggede går altid før nyt. **Fejl** (live og forkert) rettes uden go; alt nyt kræver ejerens go.
 **Udgivelse januar 2027** (roadbook 5/11), når: ingen alvorlige fejl (ejer vurderer, intet fast antal dage, 9/11), et sæsonskifte uden nedbrud, Pro 2.0 live. Præcis dato meldes først da. Afløser "beta slutter ved S6-start" (#6553).
 - **Drift:** plan v3 på #7659 (skridt 1 sat 8/11). Bestyrelsen én gang pr. løbstid med fire krav; tændes, når skyggemålingen viser rigtige tal og ejeren giver go (ingen fast periode, 9/11). Salgsannoncer #7922 (9/11). Databasefejl #7917.
-- **Forretning:** Pro 2.0 (tre pakker med billeder, pris uændret, aldrig styrke). Fornyelser og udløbne kort (design 9/11). Første dage for nye er højeste prioritet under fastholdelse. Kampagne ved sæsonstart (ejer godkender og sender). Forside #6665. "Hvor hørte du om os" #3796. Google-sider fra uge 47, delingsknap efter sæsonstart, inviter en ven efter Pro 2.0, ingen annoncer. Mandagstal fra 9/11 og testgruppe med dem i beta i dag (ejer bekræftet 9/11). Din dag: design uge 47, byg januar.
+- **Forretning:** Pro 2.0 (tre pakker med billeder, pris uændret, aldrig styrke). Fornyelser og udløbne kort (design 9/11). Første dage for nye er højeste prioritet under fastholdelse. Kampagne ved sæsonstart (ejer godkender og sender). Forside #6665. "Hvor hørte du om os" #3796. Google-sider fra uge 47, delingsknap efter sæsonstart, inviter en ven efter Pro 2.0, ingen annoncer. Mandagstal fra 9/11 og testgruppe med dem i beta i dag. Din dag: design uge 47, byg januar.
 - **Spillet:** intet loft på motorarbejdet. Løbssiden må deles op, men alt i denne sæson. U23 og junior senest i S6, inden S7.
 - **Afklares med ejeren:** roadmappen punkt for punkt; interne værktøjer. Backup-øvelse og nøgleskift #7029: ikke nu.
 
