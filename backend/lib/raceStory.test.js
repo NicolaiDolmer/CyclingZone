@@ -16,6 +16,8 @@ import {
   GAP_CHANGE_EXPLAIN_SECONDS, REPLAY_FINALE_KM,
 } from "./raceStory.js";
 
+import { stageInput } from "../../scripts/__fixtures__/race-truth/load.mjs";
+
 const LIVE_REVISION = "official_times_v4";
 const SEED = "6350-story";
 
@@ -236,6 +238,97 @@ test("#6350: ældre v4-tidslinje uden exact_km viser det ærlige km-spænd, aldr
   assert.equal(caught.km, 50);
   assert.equal(caught.race_time_s, null, "ingen opdigtet tid uden exact_time");
   assert.equal(story.precise_times, false);
+});
+
+// #7900: formet efter en rigtig etape (anonymiseret): finalen deler feltet, motoren
+// melder intet hul for hovedfeltet ved målet.
+function finaleWithoutFieldGap() {
+  return [
+    ev(0, "stage_start", { exact_km: 0, exact_time: 0, distance_km: 100, field_count: 8, profile_type: "flat" }),
+    ev(95, "finale_attack", { group_id: "finale-winner-0", source_group_id: "peloton-0", rider_ids: ["a", "b"], exact_km: 100, exact_time: 8200 }),
+    ev(95, "finale_attack", { group_id: "finale-tier-1", source_group_id: "peloton-0", rider_ids: ["c"], exact_km: 100, exact_time: 8214 }),
+    ev(100, "gap_update", { group_id: "finale-tier-1", gap_seconds: 13.6, exact_km: 100, exact_time: 8213.6 }),
+    ev(100, "finish", { win_type: "small_group", exact_km: 100, exact_time: 8200 }),
+  ];
+}
+const finaleRows = [
+  ["a", 1, "+0:00"], ["b", 2, "+0:00"], ["c", 3, "+0:14"], ["d", 4, "+0:16"],
+  ["e", 5, "+0:16"], ["f", 6, "+0:16"], ["g", 7, "+0:16"], ["h", 8, "+2:24"],
+].map(([rider_id, rank, finish_time]) => ({ rider_id, rank, finish_time, result_type: "stage", stage_number: 2 }));
+const finaleStory = (rows = finaleRows) => buildRaceStory({ events: finaleWithoutFieldGap(), timelineVersion: 2, ...storyInputsFromResults(rows, 2) });
+const finishOf = (story) => story.checkpoints.find((c) => c.kind === "finish");
+
+test("#7900: en gruppe uden måling ved målet står på resultatets hul, ikke på vindernes", () => {
+  const before = buildRaceStory({ events: finaleWithoutFieldGap(), timelineVersion: 2, results: finaleRows.map(({ rider_id, rank }) => ({ rider_id, rank })), startlist: finaleRows.map((r) => r.rider_id) });
+  assert.equal(checkpointGapForRider(finishOf(before), "d").gap_s, 0, "uden huller: motorens bårne hul");
+  const finish = finishOf(finaleStory());
+  assert.equal(checkpointGapForRider(finish, "d").gap_s, 16);
+  assert.equal(checkpointGapForRider(finish, "d").group_id, "peloton-0");
+  assert.equal(checkpointGapForRider(finish, "a").gap_s, 0);
+  assert.equal(checkpointGapForRider(finish, "c").gap_s, 14);
+  assert.equal(finish.groups.every((g) => g.gap_source === "result"), true);
+});
+
+test("#7900: en rytter der tabte tid i resultatet står for sig, med resultatets hul", () => {
+  const finish = finishOf(finaleStory());
+  const lost = checkpointGapForRider(finish, "h");
+  assert.equal(lost.gap_s, 144);
+  assert.notEqual(lost.group_id, "peloton-0");
+  assert.equal(lost.via_rest, false);
+  assert.deepEqual(finish.groups.map((g) => g.gap_s), [0, 14, 16, 144]);
+  assert.deepEqual(finish.groups.map((g) => g.size), [2, 1, 4, 1]);
+});
+
+test("#7900: replay slutter på resultatets huller, og den sidste kendte tilstand før målet er urørt", () => {
+  const story = finaleStory();
+  const frames = replayFrames(story);
+  const last = frames[frames.length - 1];
+  assert.deepEqual(last.groups.map((g) => g.gap_s), [0, 14, 16, 144]);
+  assert.equal(story.snapshots[0].km, 0);
+  assert.equal(story.snapshots[0].groups.every((g) => g.gap_source !== "result"), true);
+  // Motorens billede står til lige før stregen: filmen glider ikke mod resultatet.
+  const justBefore = frames.find((f) => f.km === 99);
+  assert.equal(justBefore.groups.find((g) => g.group_id === "peloton-0").gap_s, 0);
+  assert.equal(justBefore.groups.some((g) => g.gap_s === 0), true);
+});
+
+test("#7900: uden hul på alle rækker røres målbilledet ikke; en udgået rytter genopstår aldrig", () => {
+  const partial = finaleRows.map((r, i) => (i === 7 ? { ...r, finish_time: null } : r));
+  assert.equal(finishOf(finaleStory(partial)).groups.every((g) => g.gap_source !== "result"), true);
+  const events = finaleWithoutFieldGap();
+  events.splice(1, 0, ev(50, "incident", { rider_id: "h", kind: "crash", outcome: "abandoned", exact_km: 50 }));
+  const story = buildRaceStory({ events, timelineVersion: 2, ...storyInputsFromResults(finaleRows, 2) });
+  const finish = finishOf(story);
+  assert.equal(finish.out_rider_ids.includes("h"), true);
+  assert.equal(checkpointGapForRider(finish, "h"), null);
+});
+
+test("#7900: replay før stregen er motorens, også når grupper smelter sammen på stregen (Codex)", () => {
+  for (const file of ["giro-stage-2-clean.json", "giro-stage-6.json"]) {
+    const stage = stageInput(file);
+    const rows = stage.raceRows.filter((r) => r.result_type === "stage" && r.stage_number === stage.stageNumber);
+    const inputs = storyInputsFromResults(rows, stage.stageNumber);
+    const base = { events: stage.events, timelineVersion: stage.timelineVersion, startlist: inputs.startlist };
+    const engine = buildRaceStory({ ...base, results: inputs.results.map(({ rider_id, rank }) => ({ rider_id, rank })) });
+    const settled = buildRaceStory({ ...base, results: inputs.results });
+    assert.equal(finishOf(settled).groups.every((g) => g.gap_source === "result"), true, `${file}: målet er bygget af resultatet`);
+    const engineFrames = new Map(replayFrames(engine).map((f) => [f.km, f]));
+    const byId = (frame) => [...frame.groups].sort((a, b) => a.group_id.localeCompare(b.group_id, "en-US"));
+    const before = replayFrames(settled).filter((f) => f.km < settled.distance_km && engineFrames.has(f.km));
+    assert.ok(before.length > 0, `${file}: der er frames at sammenligne`);
+    for (const frame of before) {
+      const want = byId(engineFrames.get(frame.km));
+      assert.deepEqual(byId(frame).map((g) => [g.group_id, g.size]), want.map((g) => [g.group_id, g.size]), `${file} km ${frame.km}`);
+      byId(frame).forEach((g, i) => assert.ok(Math.abs(g.gap_s - want[i].gap_s) <= 0.02, `${file} km ${frame.km} ${g.group_id}`));
+    }
+  }
+});
+
+test("#7900: en enkeltstart har ingen grupper at rette", () => {
+  const events = [ev(0, "stage_start", { exact_km: 0, exact_time: 0, distance_km: 20, field_count: 8, profile_type: "itt" }), ev(20, "finish", { exact_km: 20, exact_time: 1500 })];
+  const story = buildRaceStory({ events, timelineVersion: 2, ...storyInputsFromResults(finaleRows, 2) });
+  assert.equal(story.time_trial, true);
+  assert.equal(story.snapshots.some((s) => s.groups.some((g) => g.gap_source === "result")), false);
 });
 
 test("fog-gate: historien sender aldrig motor-interne nøgler videre", () => {
