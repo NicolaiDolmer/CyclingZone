@@ -249,3 +249,11 @@ test("manglende /assets/-fil går til ren 404-funktion, ikke 404.html (#4545/#65
   assert.match(fn, /text\/plain/);
   assert.doesNotMatch(fn, /text\/html/);
 });
+
+test("forsidens billeder (/landing/*) proxies til marketing-originen (#6665)", () => {
+  const rule = config.rewrites.find((r) => r.source === "/landing/:path(.*)");
+  assert.ok(rule, "mangler rewrite for /landing/*");
+  assert.equal(rule.destination, "https://cycling-zone-marketing.vercel.app/landing/:path");
+  const spaIndex = config.rewrites.indexOf(spaRewrite);
+  assert.ok(config.rewrites.indexOf(rule) < spaIndex, "/landing/* skal ligge foer SPA-fallbacken");
+});
