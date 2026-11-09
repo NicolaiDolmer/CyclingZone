@@ -1,4 +1,5 @@
 import RiderLink from "../RiderLink";
+import RiderTalentMark from "./TalentMark.tsx"; // #7879: efter navnet, før status-mærkerne (TASTE P12)
 import RiderChampionJersey from "./ChampionJersey.tsx"; // #7824: mærke-pladsen efter navnet og ikonet, før status (TASTE P12)
 
 // Rytternavn uden flag (nation har nu sin egen kolonne). Eventuelle badges
@@ -50,6 +51,7 @@ export default function RiderNameCell({
           {shown}
         </RiderLink>
         <RiderChampionJersey riderId={id} />
+        <RiderTalentMark riderId={id} />
       </span>
       {children}
     </span>

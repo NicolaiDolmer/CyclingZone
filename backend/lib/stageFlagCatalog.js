@@ -97,6 +97,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_breakaway_outlook", area: "race-day", label: "Jægerboks — motorens udbrudsbud" },
   // #7717: Hvorfor?-knappen i "Your day". Kun visning, seedet off.
   { key: "rider_why_button", area: "race-day", label: "Hvorfor?-knappen ved rytterne (Your day)" },
+  // #7879: talentmærker ved rytternavne. Kun visning, seedet off.
+  { key: "talent_marks_7879", area: "squad", label: "Talentmærker ved rytternavne (Toptalent, Næste generation)" },
   // #2009: hover-miniprofil på rytternavne. Kun visning, seedet off; beta først (ejer 7/11).
   { key: "rider_hover_card", area: "squad", label: "Hover-miniprofil på ryttere" },
 
@@ -290,6 +292,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "stage_plan_dropped_front_7635",
   // #7717: "Your day" viser Hvorfor?-knappen paa dette flag.
   "rider_why_button",
+  // #7879: navnecellen, rytterprofilen og Hjaelp viser talentmaerkerne paa dette flag.
+  "talent_marks_7879",
   // #2009: rytternavnene viser hover-miniprofilen paa dette flag.
   "rider_hover_card",
   // #7725: Hjaelp viser svaret om dagsformen i ord paa dette flag (binaert, som motoren).

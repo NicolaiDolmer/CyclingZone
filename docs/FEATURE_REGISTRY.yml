@@ -149,10 +149,8 @@ features:
     flag: day_words_7725
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7725
-    verified: 2026-11-06
-    note: "Slukket; kræver day_form_6649."
-    decision: ejer-beslutning
-    decide_by: 2026-11-20
+    verified: 2026-11-08
+    note: "on 8/11 på ejerens ord; kun tekst, kræver day_form_6649."
   - id: race-itt-no-day-roll-7726
     area: race-engine
     title_en: Time trials without the extra day roll
@@ -439,6 +437,18 @@ features:
     roadmap_en: "Why? next to your riders: one tap tells you what decided his result."
     roadmap_da: "Hvorfor? ved dine ryttere: ét tryk fortæller, hvad der afgjorde hans resultat."
     roadmap_horizon: next_week
+
+  - id: talent-marks
+    area: squad
+    title_en: Talent marks
+    title_da: Talentmærker
+    state: building
+    flag: talent_marks_7879
+    decision: ejer-beslutning
+    decide_by: 2026-11-21
+    epic: 7824
+    verified: 2026-11-07
+    note: "#7879: seedes off, kun visning. Ejeren flytter kontakten til beta; roadmap-tekst følger med."
 
   - id: rider-hover-card
     area: squad

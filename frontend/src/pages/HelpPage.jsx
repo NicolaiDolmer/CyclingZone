@@ -358,6 +358,7 @@ const SECTION_DEFS = [
       { id: "trainingFocus", kind: "text" },
       { id: "scouting", kind: "text" },
       { id: "scoutingEstimate", kind: "text" }, // #6110 tal + ord (HELP_BLOCK_FLAGS.riders)
+      { id: "talentMarks", kind: "text", flag: "talent_marks_7879" }, // #7879
       { id: "u25u23", kind: "text" },
       { id: "championJerseys", kind: "text", flag: "champion_jerseys_7824" }, // #7824
     ],

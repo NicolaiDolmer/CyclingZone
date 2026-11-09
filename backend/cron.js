@@ -89,6 +89,7 @@ import { runMarketValueLevelCorrectionGateSweep } from "./lib/marketValueLevelCo
 import { runSundayValueSweep } from "./lib/sundayValueSweep.js"; // #4419
 import { runSundayPotentialEstimateTick } from "./lib/sundayPotentialEstimateSweep.js"; // #7685
 import { runPotentialEstimateTeamChangeTick } from "./lib/potentialEstimateTeamChangeSweep.js"; // #7685
+import { runTalentMarksDailyTick, TALENT_MARKS_TICK } from "./lib/talentMarks7879.js"; // #7879
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
 import { runOwnershipInvariantWatch } from "./lib/ownershipInvariantWatch.ts";
 import { runRiderDoubleBookingWatch } from "./lib/riderDoubleBookingWatch.js";
@@ -2305,6 +2306,8 @@ export function startCron() {
     { label: "potential-estimate-sunday", shouldStop: isCronSchedulingStopped }
   );
   setInterval(trackedTick("potential-estimate-team-change", () => runPotentialEstimateTeamChangeTick({ supabase })), 60 * 60 * 1000);
+  // #7879: talentmærkerne, i et fast natligt vindue (tikket afgør det uden databasekald). Ingen boot-run.
+  startClockAlignedInterval(trackedTick("talent-marks-daily", () => runTalentMarksDailyTick({ supabase })), { ...TALENT_MARKS_TICK, minFirstDelayMs: DEPLOY_OVERLAP_GRACE_MS });
 
   // Every 60 minutes: entry-generator sweep (#2375) — fylder proaktivt løb for den
   // aktive sæson løbende, ikke kun ved sæson-transition. Generatoren er idempotent

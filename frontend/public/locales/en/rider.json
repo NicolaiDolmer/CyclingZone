@@ -1,4 +1,15 @@
 {
+  "talentMark": {
+    "topTalent": {
+      "name": "Top Talent",
+      "text": "one of the biggest talents under 23."
+    },
+    "nextGen": {
+      "name": "Next Gen",
+      "text": "a junior making strong progress."
+    },
+    "helpLink": "What the marks mean"
+  },
   "badges": {
     "u23": "Under 23 (U23)",
     "u25": "Under 25 (U25)",

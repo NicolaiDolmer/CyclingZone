@@ -51,6 +51,7 @@ let flags = [
   { key: "season_matrix_mobile", area: "season", label: "Sæsonmatrix på mobil — ny visning", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "champion_jerseys_7824", area: "squad", label: "Mestertrøjer ved rytternavne (verden, U23, kontinent, national)", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "rider_why_button", area: "race-day", label: "Hvorfor?-knappen ved rytterne (Your day)", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
+  { key: "talent_marks_7879", area: "squad", label: "Talentmærker ved rytternavne (Toptalent, Næste generation)", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "rider_hover_card", area: "squad", label: "Hover-miniprofil på ryttere", stage: "beta", raw_value: "beta", boolean_only: false, configured: true, unknown_value: false },
   { key: "day_words_7725", area: "race-engine", label: "Dagsform i ord efter etapen", stage: "off", raw_value: "off", boolean_only: false, configured: true, unknown_value: false },
 ];
@@ -84,6 +85,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "potential_estimate_display", // #7684 (flader + Hjaelp i byggetrin 6)
   "champion_jerseys_7824", // #7824
   "rider_why_button", // #7717
+  "talent_marks_7879", // #7879
   "rider_hover_card", // #2009
   "ability_cap_per_date_enabled", // #6110 Hjaelp
   "training_decision_card", // #6110 Hjaelp
