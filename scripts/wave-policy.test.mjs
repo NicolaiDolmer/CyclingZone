@@ -16,7 +16,7 @@ import { normalizeBootId } from './wave-boot-identity.mjs';
 // #7336: fixtures bruger opdigtede issues; byggestoppet slaas fra her og testes
 // for sig i build-stop.test.mjs og i '#7336'-testene nedenfor.
 const BUILD_STOP_OFF = path.join(mkdtempSync(path.join(tmpdir(), 'cz-build-stop-off-')), 'build-stop.json');
-writeFileSync(BUILD_STOP_OFF, JSON.stringify({ active: false, since: '2026-10-29', areaCap: 3, finishList: [], cleanupList: [], brandList: [] }));
+writeFileSync(BUILD_STOP_OFF, JSON.stringify({ active: false, since: '2026-10-29', finishList: [], cleanupList: [], brandList: [] }));
 process.env.CZ_BUILD_STOP_FILE = BUILD_STOP_OFF;
 process.env.CZ_BUILD_STOP_LOG = path.join(path.dirname(BUILD_STOP_OFF), 'brand-log.jsonl');
 
@@ -1164,7 +1164,7 @@ test('#6861 (Codex P1): an expected head pins the merge even without a wave, and
 function withBuildStop(t, cfg) {
   const dir = fixture(t);
   const file = path.join(dir, 'build-stop.json');
-  writeFileSync(file, JSON.stringify({ active: true, since: '2026-10-29', areaCap: 3, finishList: [{ issue: 2, area: 'race-engine' }], cleanupList: [], brandList: [{ issue: 3, reason: 'live og forkert', since: '2026-10-29' }], ...cfg }));
+  writeFileSync(file, JSON.stringify({ active: true, since: '2026-10-29', finishList: [{ issue: 2, area: 'race-engine' }], cleanupList: [], brandList: [{ issue: 3, reason: 'live og forkert', since: '2026-10-29' }], ...cfg }));
   const log = path.join(dir, 'brand-log.jsonl');
   const before = { file: process.env.CZ_BUILD_STOP_FILE, log: process.env.CZ_BUILD_STOP_LOG };
   process.env.CZ_BUILD_STOP_FILE = file;

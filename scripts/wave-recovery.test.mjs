@@ -298,7 +298,7 @@ test('#7554: Windows admission automatically releases completed prior registrati
   const bootId=processSnapshot().bootId;
   const {dir}=fixture(t,{pid:owner.pid,bootId,state:'draining',registrationClosed:true,children:[{...stoppedChild,pid:child.pid,...observedJob('fixture-wave','worker',child.pid)}]});
   const stopFile=path.join(dir,'build-stop-fixture.json');
-  fs.writeFileSync(stopFile,JSON.stringify({active:false,since:'2026-10-29',areaCap:3,finishList:[],cleanupList:[],brandList:[]}));
+  fs.writeFileSync(stopFile,JSON.stringify({active:false,since:'2026-10-29',finishList:[],cleanupList:[],brandList:[]}));
   const prior=process.env.CZ_BUILD_STOP_FILE;process.env.CZ_BUILD_STOP_FILE=stopFile;
   t.after(()=>{if(prior===undefined)delete process.env.CZ_BUILD_STOP_FILE;else process.env.CZ_BUILD_STOP_FILE=prior;});
   const next=await acquireWave(dir,{runtime:'codex',owner:'next-owner',pid:process.pid,bootId,dispatchStarted:false,processTracking:'registered',children:[],now,
