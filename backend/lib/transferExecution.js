@@ -11,7 +11,7 @@ import {
   getTeamMarketState,
 } from "./marketUtils.js";
 import { fetchAtRiskCount } from "./squadRiskGuard.js";
-import { countSellerAuctionOutgoing, claimTransferUnderTeamLock } from "./autoAccept2176.js"; // #2176
+import { countSellerAuctionOutgoing, claimTransferUnderTeamLock, claimSwapUnderTeamLock } from "./autoAccept2176.js"; // #2176
 import { applyTransferMarketCommitment6181 } from "./marketCommitment6181.js";
 import { shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.ts";
@@ -909,9 +909,17 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   // (se executeTransferOffer): stale-grenen, intet flyttes, ingen betaler. Kun et
   // bytte med kontanter kan have en escrow.
   const priorSaleEscrow = cash !== 0 ? await saleEscrowStatusForDeal(supabase, { dealType: "swap", dealId: swap.id }) : "none";
+  // #2176: taendt flyttes begge ben her under holdlaasene; slukket = null og den gamle sti.
+  const lockedSwap = priorSaleEscrow === "refunded" ? null : await claimSwapUnderTeamLock(supabase, {
+    offeredRiderId: offered.id, requestedRiderId: requested.id,
+    proposingTeamId: swap.proposing_team_id, receivingTeamId: swap.receiving_team_id,
+    deferRegistration, now: swapTimestamp,
+    offeredPatch: { ...offeredContractPatch, ...offeredGraduatePatch },
+    requestedPatch: { ...requestedContractPatch, ...requestedGraduatePatch },
+  });
   const movedOffered = priorSaleEscrow === "refunded"
     ? null
-    : deferRegistration
+    : lockedSwap ? lockedSwap.data : deferRegistration
     ? await expectMaybeSingle(
         supabase
           .from("riders")
@@ -938,7 +946,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     return failure(409, "The offered rider changed status during confirmation. The swap was cancelled", "stale_offered_rider_state");
   }
 
-  const movedRequested = deferRegistration
+  const movedRequested = lockedSwap ? lockedSwap.data : deferRegistration
     ? await expectMaybeSingle(
         supabase
           .from("riders")

@@ -7,6 +7,7 @@ import express from "express";
 
 import { createComebackRouter, createRequireAuth, isViewerBetaTester } from "./comeback.js";
 import { ComebackError } from "../lib/comebackService.js";
+import { AUTH_FAILURE_RESPONSES } from "../lib/authTokenVerification.js";
 
 const passThrough = (_req, _res, next) => next();
 
@@ -100,6 +101,42 @@ test("uventet fejl → 500 og rapporteres", async (t) => {
   assert.equal(res.status, 500);
   assert.deepEqual(await res.json(), { error: "comeback_failed" });
   assert.equal(calls.reported.length, 1);
+});
+
+function authClient(teamResult) {
+  return {
+    auth: { getUser: async () => ({ data: { user: { id: "user-a" } }, error: null }) },
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => teamResult }) }) }),
+  };
+}
+
+async function postThroughAuth(t, teamResult) {
+  const app = express();
+  let reached = null;
+  app.post("/x", createRequireAuth({ supabase: authClient(teamResult), setSentryUserFn: () => {} }), (req, res) => {
+    reached = { team: req.team };
+    res.json({ ok: true });
+  });
+  const server = app.listen(0);
+  t.after(() => server.close());
+  const res = await fetch(`http://127.0.0.1:${server.address().port}/x`, {
+    method: "POST",
+    headers: { Authorization: "Bearer valid" },
+  });
+  return { res, reached };
+}
+
+test("#7917 createRequireAuth: fejlet holdopslag svarer 503, ikke 'intet hold'", async (t) => {
+  const { res, reached } = await postThroughAuth(t, { data: null, error: { message: "<html>522</html>" } });
+  assert.equal(res.status, 503);
+  assert.deepEqual(await res.json(), AUTH_FAILURE_RESPONSES.teamLookupFailed.body);
+  assert.equal(reached, null);
+});
+
+test("#7917 createRequireAuth: ingen række endnu er lovligt og når ruten med team null", async (t) => {
+  const { res, reached } = await postThroughAuth(t, { data: null, error: null });
+  assert.equal(res.status, 200);
+  assert.deepEqual(reached, { team: null });
 });
 
 test("createRequireAuth: 401 uden Authorization-header", async (t) => {

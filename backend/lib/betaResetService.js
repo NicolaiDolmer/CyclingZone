@@ -5,7 +5,7 @@ import { MANAGER_ENTRY_DIVISION } from "./economyConstants.js";
 import { isPoolRetired, withPoolRetiredColumn } from "./aiTeamGenerator.js";
 import { clearRaceResultsSnapshots } from "./raceResultsSnapshotCache.js";
 import { seniorSquadPatch, withSeniorSquadScope } from "./squads.js";
-import { reconcileHeldSaleEscrows } from "./saleEscrowFlow6181.js";
+import { findSaleEscrowsBlockingBetaReset, reconcileHeldSaleEscrows } from "./saleEscrowFlow6181.js";
 
 export const DEFAULT_BETA_BALANCE = 500000; // #1717: sænket 800000 → 500000 (matcher INITIAL_BALANCE)
 
@@ -629,6 +629,14 @@ export async function resetBetaTrainingHistory(supabase) {
 export async function runFullBetaReset(supabase, options = {}) {
   const resetMode = options.resetMode || "test";
 
+  // #6181: et fastlaast bytte holder en gammel betaling. Nulstilles saldoerne foerst,
+  // kan en senere admin-refusion laegge den oven i den nye startsaldo. Stop foer der
+  // roeres ved noget, og vis admin hvilke der skal afgoeres.
+  const blockingEscrows = await findSaleEscrowsBlockingBetaReset(supabase);
+  if (blockingEscrows.length > 0) {
+    throw new Error(`runFullBetaReset: ${blockingEscrows.length} fastlaast(e) bytte(r) skal afgoeres foerst (admin/sale-escrows): ${blockingEscrows.join(", ")}`);
+  }
+
   const cancelled = await cancelBetaMarket(supabase);
   const rider_history = await resetBetaRiderHistory(supabase);
   const transfer_archive = await resetBetaTransferArchive(supabase);
@@ -636,6 +644,10 @@ export async function runFullBetaReset(supabase, options = {}) {
   const notifications = await resetBetaNotifications(supabase);
   const wishlist = await resetBetaWishlist(supabase);
   const rosters = await resetBetaRosters(supabase);
+  // Sidste vaern, hvis et bytte naaede at sidde fast undervejs.
+  if ((rosters.sale_escrows_stuck ?? 0) > 0) {
+    throw new Error(`runFullBetaReset: ${rosters.sale_escrows_stuck} fastlaast(e) bytte(r) efter rosters; saldoerne er ikke nulstillet`);
+  }
   const balances = await resetBetaBalances(supabase, {
     clearTransactions: Boolean(options.clearTransactions),
   });

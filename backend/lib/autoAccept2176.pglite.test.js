@@ -48,6 +48,9 @@ async function database({ marketGate = false, beforeMigration = null } = {}) {
   if (beforeMigration) await beforeMigration(db);
   await db.exec(migration);
   await db.exec(migration); // idempotent
+  const claimSwapMigration = await file('2026-11-09-2176-m3-auto-accept-claim-swap.sql');
+  await db.exec(claimSwapMigration);
+  await db.exec(claimSwapMigration); // idempotent
   if (marketGate) {
     await db.exec(await file('2026-11-07-6181-m3-market-commitment.sql'));
     await db.exec(`UPDATE app_config SET value='"on"' WHERE key='market_commitment_6181'`);
@@ -685,5 +688,66 @@ test('samtidighed: frigivelse og auto-accept-start kan ikke begge passere saelge
     const left = Number((await one(db, `SELECT count(*) AS n FROM riders x WHERE x.team_id = $1
       AND NOT EXISTS (SELECT 1 FROM auctions a WHERE a.rider_id = x.id AND a.status IN ('active','extended') AND a.current_bidder_id IS NOT NULL)`, [TEAM.A])).n);
     assert.equal(left, FLOOR, order);
+  }
+});
+
+const claimSwap = async (db, offered, requested, { proposing = TEAM.A, receiving = TEAM.B, defer = false, offeredPatch = {}, requestedPatch = {} } = {}) =>
+  (await one(db, 'SELECT public.auto_accept_claim_swap($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb) AS r',
+    [offered, requested, proposing, receiving, defer, NOW, JSON.stringify(offeredPatch), JSON.stringify(requestedPatch)])).r;
+const riderRow = (db, r) => one(db, 'SELECT team_id, pending_team_id, squad, is_academy, salary FROM riders WHERE id=$1', [r]);
+
+test('bytte: begge ben flyttes i een transaktion og patches pr. rytter', async () => {
+  const db = await database();
+  const [a] = await squad(db, TEAM.A, 1);
+  const [b] = await squad(db, TEAM.B, 1);
+  await db.query("UPDATE riders SET is_academy=true, squad='junior' WHERE id=$1", [a]);
+  const r = await claimSwap(db, a, b, { offeredPatch: { is_academy: false, squad: 'senior' }, requestedPatch: { salary: 77 } });
+  assert.deepEqual(r, { status: 'claimed', offered_rider_id: a, requested_rider_id: b });
+  const movedA = await riderRow(db, a);
+  assert.equal(movedA.team_id, TEAM.B);
+  assert.equal(movedA.is_academy, false);
+  assert.equal(movedA.squad, 'senior');
+  const movedB = await riderRow(db, b);
+  assert.equal(movedB.team_id, TEAM.A);
+  assert.equal(movedB.salary, 77);
+});
+
+test('bytte: parkering saetter kun pending paa begge', async () => {
+  const db = await database();
+  const [a] = await squad(db, TEAM.A, 1);
+  const [b] = await squad(db, TEAM.B, 1);
+  assert.equal((await claimSwap(db, a, b, { defer: true })).status, 'claimed');
+  const parkedA = await riderRow(db, a);
+  assert.equal(parkedA.team_id, TEAM.A);
+  assert.equal(parkedA.pending_team_id, TEAM.B);
+  const parkedB = await riderRow(db, b);
+  assert.equal(parkedB.team_id, TEAM.B);
+  assert.equal(parkedB.pending_team_id, TEAM.A);
+  assert.equal((await claimSwap(db, a, b)).status, 'rider_state_changed', 'a parked rider cannot be swapped again');
+});
+
+test('bytte: en rytter paa aktiv auktion eller hos et andet hold flytter ingen af dem', async () => {
+  const db = await database();
+  const [a, a2] = await squad(db, TEAM.A, 2);
+  const [b] = await squad(db, TEAM.B, 1);
+  const [c] = await squad(db, TEAM.C, 1);
+  await db.query('INSERT INTO auctions(rider_id, seller_team_id, calculated_end) VALUES ($1,$2,$3)', [b, TEAM.B, END]);
+  assert.equal((await claimSwap(db, a, b)).status, 'rider_on_auction');
+  assert.equal((await riderRow(db, a)).team_id, TEAM.A);
+  assert.equal((await claimSwap(db, a2, c)).status, 'rider_state_changed');
+  assert.equal((await riderRow(db, a2)).team_id, TEAM.A);
+  assert.equal((await riderRow(db, c)).team_id, TEAM.C);
+});
+
+test('bytte: ugyldige argumenter kastes, og kun service_role maa kalde funktionen', async () => {
+  const db = await database();
+  const [a] = await squad(db, TEAM.A, 1);
+  const [b] = await squad(db, TEAM.B, 1);
+  await assert.rejects(claimSwap(db, a, b, { offeredPatch: { team_id: TEAM.C } }), /invalid patch/);
+  await assert.rejects(claimSwap(db, a, a), /invalid argument/);
+  await assert.rejects(claimSwap(db, a, b, { receiving: TEAM.A }), /invalid argument/);
+  const signature = 'public.auto_accept_claim_swap(uuid,uuid,uuid,uuid,boolean,timestamptz,jsonb,jsonb)';
+  for (const [role, expected] of [['anon', false], ['authenticated', false], ['service_role', true]]) {
+    assert.equal((await one(db, "SELECT has_function_privilege($1, $2, 'EXECUTE') AS ok", [role, signature])).ok, expected, role);
   }
 });

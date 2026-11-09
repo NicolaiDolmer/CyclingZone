@@ -5,6 +5,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { createSupabaseFetchWithRetry } from "./supabaseFetchRetry.js";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { config } from "dotenv";
@@ -30,7 +31,9 @@ import { serializeByUrl } from "./discordWebhookQueue.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, "../.env"), quiet: true });
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
+  global: { fetch: createSupabaseFetchWithRetry() }, // #7917
+});
 
 // ── Live-messaging-guard (incident 18/8-2026, #3961) ─────────────────────────
 // En lokal staging-backend (Supabase-branch hvor discord_settings/webhook-URLs

@@ -76,19 +76,32 @@ export function readBidContext6181(data) {
 }
 
 // Disponibelt beloeb til fejlbeskeden: saldo minus forpligtelsen uden denne auktion.
+// null = ukendt (opslaget fejlede); beskeden maa saa ikke paastaa et tal.
 async function availableExcluding(supabase, teamId, auctionId) {
   const [teamRes, commitRes] = await Promise.all([
     supabase.from("teams").select("balance").eq("id", teamId).maybeSingle(),
     supabase.rpc("team_market_commitment", { p_team_id: teamId, p_exclude_auction_id: auctionId ?? null }),
   ]);
-  if (teamRes?.error || commitRes?.error) {
+  if (teamRes?.error || commitRes?.error || teamRes?.data == null || commitRes?.data == null) {
     console.error("[marketCommitment6181] could not read available balance for message", {
       teamId,
-      error: teamRes?.error?.message || commitRes?.error?.message,
+      error: teamRes?.error?.message || commitRes?.error?.message || "no data",
     });
-    return 0;
+    return null;
   }
-  return Math.max(0, (Number(teamRes?.data?.balance) || 0) - (Number(commitRes?.data) || 0));
+  return Math.max(0, (Number(teamRes.data.balance) || 0) - (Number(commitRes.data) || 0));
+}
+
+/**
+ * PATCH /auctions/:id/proxy, taendt: et saenket loft frigiver kun penge, saa et
+ * overforpligtet hold skal kunne gemme det. Slukket => false (ruten er uaendret).
+ *
+ * @param {{ marketGateOn: boolean, proxies: Array<{ auction_id: string, max_amount: number|string }>, auctionId: string, nextMax: number }} args
+ */
+export function isLoweredProxy6181({ marketGateOn, proxies, auctionId, nextMax }) {
+  if (!marketGateOn) return false;
+  const standing = (proxies || []).find((p) => p.auction_id === auctionId);
+  return standing != null && nextMax <= Number(standing.max_amount);
 }
 
 const SQUAD_FULL_BODY = () => ({
@@ -133,6 +146,15 @@ export async function marketGateResponse6181(supabase, error, { kind, teamId, au
   }
 
   const available = await availableExcluding(supabase, teamId, auctionId);
+  if (available === null) {
+    return {
+      status: 400,
+      body: {
+        error: "Your available balance doesn't cover this after your existing bids and auto-bids.",
+        errorCode: "insufficient_balance_amount_unknown",
+      },
+    };
+  }
   if (kind === "proxy") {
     return {
       status: 400,

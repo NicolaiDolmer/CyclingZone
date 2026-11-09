@@ -203,7 +203,7 @@ export const ALL_CRON_MONITORS = [
   ["starter-squad-heal", CRON_MONITOR_5MIN],
   ["academy-heal", CRON_MONITOR_5MIN],
   ["rider-derive-heal", CRON_MONITOR_5MIN],
-  ["ai-trim-heal", CRON_MONITOR_5MIN],
+  ["ai-trim-heal", CRON_MONITOR_60MIN],
   ["deferred-transfer-heal", CRON_MONITOR_5MIN],
   ["auto-prize", CRON_MONITOR_5MIN],
   ["stage-scheduler", CRON_MONITOR_5MIN],

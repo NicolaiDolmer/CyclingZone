@@ -55,6 +55,7 @@
     "cannot_proxy_own_rider": "No puedes configurar una puja automática por tu propio ciclista",
     "proxy_below_minimum": "El límite máximo debe ser de al menos {min} CZ$",
     "insufficient_balance_after_proxy": "Te quedan {available} CZ$ después de tus pujas y pujas automáticas existentes",
+    "insufficient_balance_amount_unknown": "Tu saldo disponible no cubre esto después de tus pujas y pujas automáticas existentes.",
     "proxy_save_failed": "No se pudo guardar tu puja automática. Inténtalo de nuevo.",
     "proxy_place_failed": "No se pudo realizar tu puja automática. Inténtalo de nuevo.",
     "proxy_update_failed": "Tu puja automática no pudo actualizar la subasta. Inténtalo de nuevo.",
@@ -299,6 +300,7 @@
     "contract_batch_rejected": "Algunos contratos no se pueden ampliar. No se ha cambiado nada",
     "contract_batch_salary_cap": "Estas ampliaciones llevarían tu salario total por encima del tope de la directiva de {cap} CZ$. No se ha cambiado nada",
     "contract_batch_write_failed": "Algo salió mal al guardar un contrato. No se ha cambiado nada",
-    "contract_batch_partial": "Algunos contratos cambiaron durante la ampliación y no todo se pudo deshacer. Revisa los ciclistas de abajo"
+    "contract_batch_partial": "Algunos contratos cambiaron durante la ampliación y no todo se pudo deshacer. Revisa los ciclistas de abajo",
+    "team_lookup_failed": "El servidor devolvió un error. Inténtalo de nuevo en breve"
   }
 }
