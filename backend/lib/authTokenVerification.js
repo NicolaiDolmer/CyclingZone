@@ -31,7 +31,7 @@ export const AUTH_FAILURE_RESPONSES = {
   // #7917: tokenet er gyldigt, men holdopslaget fejlede. Må aldrig ligne "intet hold".
   teamLookupFailed: {
     status: 503,
-    body: { error: "The server returned an error. Try again shortly", errorCode: "team_lookup_failed" },
+    body: { error: "The server returned an error. Try again shortly" },
   },
 };
 
