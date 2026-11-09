@@ -3,7 +3,7 @@
 // HVORFOR: 90 dage målt 29/10 - backloggen voksede 455 -> 942, kun 39 % af
 // de byggbare specs blev afleveret helt, og færdig kode lå slukket i ugevis.
 // Indtil ejerens rangerede fase 1-liste er afsluttet, må der KUN optages:
-//   finish  - issue på finishList (højst areaCap områder ad gangen)
+//   finish  - issue på finishList (ingen øvre grænse på antal områder)
 //   cleanup - issue bag en PR der allerede var åben 29/10 (engangsoprydning, uden for loftet)
 //   brand   - issue på brandList: live hos spillerne og forkert. Claude
 //             klassificerer, ejeren kan nedlægge veto (fjern linjen -> triage:new).
@@ -32,7 +32,6 @@ const isIssue = n => Number.isSafeInteger(n) && n > 0;
 export function validateBuildStop(cfg) {
   if (!cfg || typeof cfg.active !== 'boolean') throw Error('build-stop: "active" skal være true/false');
   if (!isDate(cfg.since)) throw Error('build-stop: "since" skal være YYYY-MM-DD');
-  if (!Number.isSafeInteger(cfg.areaCap) || cfg.areaCap < 1) throw Error('build-stop: "areaCap" skal være et positivt heltal');
   for (const key of ['finishList', 'cleanupList', 'brandList']) {
     if (!Array.isArray(cfg[key])) throw Error(`build-stop: "${key}" skal være en liste`);
   }
@@ -52,17 +51,14 @@ export function validateBuildStop(cfg) {
     if (typeof e.reason !== 'string' || !e.reason.trim()) throw Error(`build-stop: brand #${e.issue} mangler begrundelse ("reason")`);
     if (!isDate(e.since)) throw Error(`build-stop: brand #${e.issue} mangler "since" (YYYY-MM-DD)`);
   }
-  const areas = new Set(cfg.finishList.map(e => e.area));
-  if (areas.size > cfg.areaCap) throw Error(`build-stop: finishList har ${areas.size} områder, loft ${cfg.areaCap} (${[...areas].join(', ')}). Gør et område færdigt før det næste tilføjes.`);
-  if (cfg.loft !== undefined) validateLoft(cfg.loft, cfg.areaCap);
+  if (cfg.loft !== undefined) validateLoft(cfg.loft);
   return cfg;
 }
 
 const isStrList = a => Array.isArray(a) && a.every(s => typeof s === 'string' && s.trim());
 
-function validateLoft(loft, areaCap) {
+function validateLoft(loft) {
   if (!loft || !Array.isArray(loft.areas) || !loft.areas.length) throw Error('build-stop: "loft.areas" skal være en ikke-tom liste');
-  if (loft.areas.length > areaCap) throw Error(`build-stop: loft har ${loft.areas.length} områder, loft ${areaCap}`);
   const names = new Set();
   for (const a of loft.areas) {
     if (typeof a?.area !== 'string' || !a.area.trim()) throw Error('build-stop: loft-område mangler "area"');
