@@ -989,5 +989,32 @@
     "current": "Axe actuel",
     "tradeoff": "Les autres aptitudes progressent un peu plus lentement.",
     "intensity_recovery": "Récupération"
+  },
+  "championJersey": {
+    "world": {
+      "name": "Champion du monde",
+      "short": "le plus de points au classement mondial la saison dernière.",
+      "full": "Le plus de points au classement mondial lors de la saison {prev}. Il porte le maillot toute la saison {season}."
+    },
+    "u23World": {
+      "name": "Champion du monde U23",
+      "short": "le plus de points au classement U23 de la saison dernière.",
+      "full": "Le plus de points au classement U23 lors de la saison {prev}, ou au classement mondial parmi les coureurs de moins de 23 ans si aucune course U23 n'a donné de points. Il porte le maillot toute la saison {season}."
+    },
+    "continent": {
+      "europe": "Champion d'Europe",
+      "asia": "Champion d'Asie",
+      "americas": "Champion panaméricain",
+      "africa": "Champion d'Afrique",
+      "oceania": "Champion d'Océanie",
+      "short": "le meilleur coureur de son continent au classement la saison dernière.",
+      "full": "Le plus de points au classement parmi les coureurs de son continent lors de la saison {prev}. Il porte le maillot toute la saison {season}."
+    },
+    "national": {
+      "name": "Champion national, {country}",
+      "short": "le meilleur coureur de {country} au classement la saison dernière.",
+      "full": "Le plus de points au classement parmi les coureurs de {country} lors de la saison {prev}. Il porte le maillot toute la saison {season}."
+    },
+    "helpLink": "Comment fonctionnent les maillots de champion"
   }
 }

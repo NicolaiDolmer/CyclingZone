@@ -577,6 +577,18 @@ features:
     verified: 2026-11-04
     note: 'Kun data er bygget (#5268); løbsmotor (#5348) og mentorpar (#5349) mangler, og arbejdet står stille (statusaudit 4/11).'
 
+  - id: champion-jerseys
+    area: squad
+    title_en: Champion jerseys beside rider names
+    title_da: Mestertrøjer ved rytternavne
+    state: building
+    flag: champion_jerseys_7824
+    epic: 7824
+    verified: 2026-11-07
+    note: champion_jerseys_7824
+    decision: taend
+    decide_by: 2026-11-22
+
   - id: rider-rating-best-role-display
     area: squad
     title_en: Rating shows best role now
