@@ -9,7 +9,7 @@
 > **🎯 Next action (9/11 kl. 13.30):** **Tavlen [#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911) er sandheden.** Sessionsplan valgt af ejeren: **Claude Code på PC1** tager til dørs først (tjeklister #6181/#2176, #7922, #7923, #7917 PR 2, #7857, `areaCap`, `fatigue_now_7801`, 7715 + #7901, patch notes, #7829) og bygger så taktik/løbsside efter wireframe v5 (#7864). **Codex på Dolmer PC** tager SEO og vækst: #1407, #6583/#6558, forside runde 2. PC1 også: triage (45), code scanning 387, Dependabot #7926, GitHub-audit, #7932. 7644 SLUKKET. **Efter løbet:** #6912, #7899, #7902.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling; memory commitment på Large kunne ikke aflæses 9/11.
 >
-> **🤖 Working agent:** Ingen aktiv session (9/11). Næste: PC1 og Codex jf. Next action.
+> **🤖 Working agent:** Claude Code på PC1, dirigent (9/11): til dørs først, så nyt. Codex på Dolmer PC: SEO og vækst.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
