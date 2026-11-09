@@ -812,6 +812,18 @@ test("tjekliste 1: kan laasen hverken oprettes eller betales, fortrydes parkerin
   assert.equal(await balance(db, TEAM.C), START);
 });
 
+test("tjekliste 1: en konkurrerende handel mellem samme hold fjerner ikke den holdte handels parkering", async () => {
+  const db = await database();
+  await setFlag(db, "on");
+  const supabase = adapter(db);
+  await park(db, RIDER.r1, TEAM.B);
+  await payBoth(supabase, await saleEscrowPayment(supabase, { parked: true, dealType: "transfer", dealId: DEAL.t1, riderIds: [RIDER.r1], targetTeamIds: [TEAM.B] }), transferLegs(DEAL.t1, 10_000));
+  const pay = await saleEscrowPayment(supabase, { parked: true, dealType: "transfer", dealId: DEAL.t2, riderIds: [RIDER.r1], targetTeamIds: [TEAM.B] });
+  await assert.rejects(() => payBoth(supabase, pay, transferLegs(DEAL.t2, 10_000)), /rider_already_escrowed/);
+  assert.equal((await rider(db, RIDER.r1)).pending_team_id, TEAM.B);
+  assert.deepEqual((await escrows(db)).map((e) => e.status), ["held"]);
+});
+
 test("tjekliste 1: naaede laasen at blive oprettet (tabt svar), staar parkeringen og escrow'en urort", async () => {
   const db = await database();
   await setFlag(db, "on");

@@ -131,6 +131,12 @@ BEGIN
        AND r.pending_team_id = t.target_team_id
        AND r.team_id = CASE WHEN t.target_team_id = p_payer_team_id
                             THEN p_payee_team_id ELSE p_payer_team_id END
+       -- Parkeringen tilhoerer en anden holdt handel til samme hold: den er ikke vores at fjerne.
+       AND NOT EXISTS (SELECT 1 FROM public.sale_escrows o
+                        WHERE o.status = 'held'
+                          AND r.id = ANY (o.rider_ids)
+                          AND NOT (r.id = ANY (o.delivered_rider_ids))
+                          AND o.target_team_ids[array_position(o.rider_ids, r.id)] = t.target_team_id)
     RETURNING r.id
   )
   SELECT coalesce(array_agg(id ORDER BY id), '{}') INTO v_unparked FROM unparked;
