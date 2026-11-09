@@ -20,6 +20,7 @@ async function newDb({ migrated = true } = {}) {
   for (const name of ["2026-09-29-5928-training-condition-date.sql", "2026-09-29-5928-training-condition-partial.sql", "2026-09-29-5928-training-condition-recovery.sql", "2026-09-29-5928-training-condition-initialization.sql"]) await db.exec(await file(name));
   await db.exec("ALTER TABLE race_results ADD COLUMN rider_id uuid; ALTER TABLE training_day_runs ADD COLUMN id uuid DEFAULT gen_random_uuid(); ALTER TABLE app_config ADD COLUMN description text");
   for (const name of ["2026-09-30-5860-shared-race-day-recovery.sql", "2026-10-10-6439-training-follows-rider.sql", "2026-10-01-traen-nu-locks.sql"]) await db.exec(await file(name));
+  await db.exec("CREATE TABLE race_entries(race_id uuid,rider_id uuid,team_id uuid,race_role text, PRIMARY KEY(race_id,rider_id))");
   if (migrated) {
     await db.exec(await file(MIGRATION));
     await db.exec(await file(MIGRATION));
@@ -40,10 +41,10 @@ const cond = (rider, fatigue, form, at = AT(5)) => ({ rider_id: rider, form, fat
 const provisional = (rider, fatigue, form) => ({ rider_id: rider, form, fatigue, provisional: true });
 const LOAD = (rider = A) => ({ rider_id: rider, race_id: RACE, stage_number: 1, game_day: 43, load: 9.6 });
 
-async function commit(db, day, riders, { abilities = [], expectedDays, conditions = [], loads = [], at = AT(1), intensity = "normal", openings }) {
+async function commit(db, day, riders, { abilities = [], expectedDays, conditions = [], loads = [], at = AT(1), intensity = "normal", deadlineReached = false, openings }) {
   const observed = expectedDays ?? Object.fromEntries(await Promise.all(riders.map(async (rider) => [rider, await ticks(db, rider)])));
   const report = { condition_per_date: true, riders: riders.map((rider) => ({ rider_id: rider, game_day: day, intensity, expected_date_receipt_days: observed[rider], condition_before_date: openings[rider], condition_observed: openings[rider], missing_evidence: [] })) };
-  return db.query(`SELECT commit_training_date_tick('${TEAM}','${SEASON}','senior',${day},'${DATE}','{${DAYS}}','manager',${j(report)},${j(abilities)},${j(conditions)},'[]','[]','[]',${j(loads)},false,'${at}') AS r`).then((res) => res.rows[0].r);
+  return db.query(`SELECT commit_training_date_tick('${TEAM}','${SEASON}','senior',${day},'${DATE}','{${DAYS}}','manager',${j(report)},${j(abilities)},${j(conditions)},'[]','[]','[]',${j(loads)},${deadlineReached},'${at}') AS r`).then((res) => res.rows[0].r);
 }
 const attempt = async (fn) => { try { return { ok: await fn() }; } catch (e) { return { raised: e.message }; } };
 const scalar = async (db, sql) => Object.values((await db.query(sql)).rows[0])[0];
@@ -215,4 +216,101 @@ test("switch off mid-date: the stamp in the table decides, not app_config", asyn
   const closing = await commit(db, 43, [A], { openings, intensity: "race", conditions: [cond(A, 33, 52)], at: AT(30) });
   assert.equal(closing.already_ran, false);
   assert.equal(await settlements(db, A), 1);
+});
+
+test("instant date eligibility keeps existing entries and reserves its remaining slots", async () => {
+  const db = await fresh();
+  await register(db);
+  await db.exec(`INSERT INTO training_train_now_locks(rider_id,tick_date,season_id,team_id) VALUES('${A}','${DATE}','${SEASON}','${TEAM}');
+    INSERT INTO race_entries(race_id,rider_id,team_id) VALUES('${RACE}','${A}','${TEAM}');`);
+  const freeze = () => db.query(`SELECT freeze_train_now_date_entries('${TEAM}','${SEASON}','${DATE}','{${A}}','${AT(0)}') AS frozen`);
+  const first = (await freeze()).rows[0].frozen;
+  assert.deepEqual(first[0].slots.map(s => s.gameDay), [43]);
+  await db.exec(`DELETE FROM race_entries WHERE rider_id='${A}'; INSERT INTO race_entries(race_id,rider_id,team_id,race_role) VALUES('${RACE}','${A}','${TEAM}','leader');`);
+  assert.equal(await scalar(db, `SELECT race_role FROM race_entries WHERE rider_id='${A}'`), 'leader');
+  assert.deepEqual((await freeze()).rows[0].frozen, first);
+  const secondRace = id(801);
+  await db.exec(`INSERT INTO races(id,season_id) VALUES('${secondRace}','${SEASON}'); INSERT INTO race_stage_schedule VALUES('${secondRace}',1,44,'2026-11-09T16:00:00Z');
+    INSERT INTO race_entries(race_id,rider_id,team_id) VALUES('${secondRace}','${A}','${TEAM}');`);
+  assert.equal(await scalar(db, `SELECT count(*)::int FROM race_entries WHERE race_id='${secondRace}'`), 0);
+});
+
+test("frozen eligibility follows season and binding spans and remains after switch off", async () => {
+  const db = await fresh();
+  await register(db);
+  await db.exec(`INSERT INTO training_train_now_locks(rider_id,tick_date,season_id,team_id) VALUES('${A}','${DATE}','${SEASON}','${TEAM}');
+    SELECT freeze_train_now_date_entries('${TEAM}','${SEASON}','${DATE}','{${A}}','${AT(0)}');
+    UPDATE app_config SET value='"off"' WHERE key='training_train_now_instant';`);
+  const span = id(810), later = id(811), otherSeason = id(812);
+  await db.exec(`INSERT INTO races(id,season_id) VALUES('${span}','${SEASON}'),('${later}','${SEASON}'),('${otherSeason}','${id(901)}');
+    INSERT INTO race_stage_schedule VALUES('${span}',1,40,'2026-11-08T15:00:00Z'),('${span}',2,46,'2026-11-10T15:00:00Z'),('${later}',1,46,'2026-11-10T16:00:00Z'),('${otherSeason}',1,44,'2026-11-09T16:00:00Z');
+    INSERT INTO race_entries(race_id,rider_id,team_id) VALUES('${span}','${A}','${TEAM}'),('${later}','${A}','${TEAM}'),('${otherSeason}','${A}','${TEAM}');`);
+  assert.deepEqual((await db.query("SELECT race_id FROM race_entries ORDER BY race_id")).rows.map(row => row.race_id), [later, otherSeason]);
+  await assert.rejects(db.query(`SELECT freeze_train_now_date_entries('${TEAM}','${SEASON}','${DATE}','{${id(99)}}','${AT(0)}')`), /Registered date roster required/);
+});
+
+test("frozen eligibility uses selected riders when a stored entrant list is incomplete", async () => {
+  const db = await fresh();
+  await register(db);
+  await db.exec(`UPDATE race_simulation_runs SET entrant_snapshot='[{"missing":"rider"}]';
+    INSERT INTO race_entries(race_id,rider_id,team_id) VALUES('${RACE}','${A}','${TEAM}');
+    INSERT INTO training_train_now_locks(rider_id,tick_date,season_id,team_id) VALUES('${A}','${DATE}','${SEASON}','${TEAM}');`);
+  const frozen = await scalar(db, `SELECT freeze_train_now_date_entries('${TEAM}','${SEASON}','${DATE}','{${A}}','${AT(0)}')`);
+  assert.deepEqual(frozen[0].slots.map(slot => slot.gameDay), [43]);
+});
+
+test("frozen pending slots require stage evidence at the commit boundary", async () => {
+  const db = await fresh();
+  const openings = (await register(db)).opening_conditions;
+  await stamp(db, A);
+  await db.exec(`INSERT INTO race_entries(race_id,rider_id,team_id) VALUES('${RACE}','${A}','${TEAM}');
+    SELECT freeze_train_now_date_entries('${TEAM}','${SEASON}','${DATE}','{${A}}','${AT(0)}');
+    DELETE FROM race_entries WHERE rider_id='${A}';`);
+  for (const day of [41,42,44,45]) await commit(db, day, [A], { openings });
+  await assert.rejects(commit(db, 43, [A], { openings, conditions: [cond(A,33,52)] }), /Frozen training slot requires current race evidence/);
+  assert.deepEqual(await ticks(db,A), [41,42,44,45]);
+  assert.equal(await settlements(db,A), 0);
+  await db.exec(`INSERT INTO race_entries(race_id,rider_id,team_id,race_role) VALUES('${RACE}','${A}','${TEAM}','leader');
+    UPDATE races SET stages_completed=1 WHERE id='${RACE}';
+    INSERT INTO race_results(race_id,stage_number,rider_id,result_type) VALUES('${RACE}',1,'${A}','stage');`);
+  await db.query(`SELECT record_training_race_load('${RACE}',1,'[{"rider_id":"${A}","load":9.6}]')`);
+  await commit(db,43,[A],{openings,intensity:"race",conditions:[cond(A,33,52)],loads:[LOAD()],at:AT(30)});
+  assert.equal(await settlements(db,A), 1);
+});
+
+test("frozen slots retain deadline race-load and unknown-activity settlement semantics", async () => {
+  for (const recorded of [false,true]) {
+    const db=await fresh();
+    const openings=(await register(db)).opening_conditions;
+    await stamp(db,A);
+    await db.exec(`INSERT INTO race_entries(race_id,rider_id,team_id) VALUES('${RACE}','${A}','${TEAM}'); SELECT freeze_train_now_date_entries('${TEAM}','${SEASON}','${DATE}','{${A}}','${AT(0)}')`);
+    for(const day of [41,42,44,45]) await commit(db,day,[A],{openings});
+    if(recorded) await db.query(`SELECT record_training_race_load('${RACE}',1,'[{"rider_id":"${A}","load":9.6}]')`);
+    await assert.rejects(commit(db,43,[A],{openings,intensity:recorded?"race":"normal",conditions:[cond(A,33,52)],loads:recorded?[LOAD()]:[]}),/Frozen training slot requires current race evidence/);
+    await commit(db,43,[A],{openings,intensity:recorded?"race":"unknown_pending",conditions:[cond(A,33,52)],loads:recorded?[LOAD()]:[],deadlineReached:true,at:"2026-11-10T03:00:00Z"});
+    assert.equal(await settlements(db,A),1);
+  }
+});
+
+test("frozen slot terminal evidence releases absent entrants and removed stages", async () => {
+  for(const terminal of ["entrant","stage"]) {
+    const db=await fresh();
+    const openings=(await register(db)).opening_conditions;
+    await stamp(db,A);
+    await db.exec(`UPDATE race_simulation_runs SET entrant_snapshot=NULL; INSERT INTO race_entries(race_id,rider_id,team_id) VALUES('${RACE}','${A}','${TEAM}'); SELECT freeze_train_now_date_entries('${TEAM}','${SEASON}','${DATE}','{${A}}','${AT(0)}')`);
+    if(terminal==="entrant") await db.exec("UPDATE race_simulation_runs SET entrant_snapshot='[]'");
+    else await db.exec("DELETE FROM race_stage_schedule");
+    await commit(db,43,[A],{openings});
+    assert.deepEqual(await ticks(db,A),[43]);
+  }
+});
+
+test("a refused migration preserves the previously published training function", async () => {
+  const db=await fresh({migrated:false});
+  const definition=()=>scalar(db,"SELECT pg_get_functiondef('public.commit_training_date_tick(uuid,uuid,text,integer,date,integer[],text,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,boolean,timestamptz)'::regprocedure)");
+  const before=await definition();
+  const migration=(await file(MIGRATION)).replace('CREATE OR REPLACE FUNCTION public.race_entries_train_now_instant_guard()', 'SELECT missing_migration_fixture_function();\nCREATE OR REPLACE FUNCTION public.race_entries_train_now_instant_guard()');
+  await assert.rejects(db.exec(migration),/missing_migration_fixture_function/);
+  await db.exec("ROLLBACK");
+  assert.equal((await definition())===before,true,"the previous function remains published");
 });

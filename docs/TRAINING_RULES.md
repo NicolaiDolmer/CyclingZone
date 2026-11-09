@@ -323,6 +323,15 @@ legacy path without an instant stamp is preserved by the frozen golden tests.
 An eligible instant press stores `training_train_now_locks.instant_at` once per
 rider/date. The durable stamp governs the rest of that date, including after
 the switch is turned off; switching off cannot reinterpret work already started.
+The press freezes date entry membership and remaining stage slots atomically before
+planning work. That immutable rider/date snapshot survives retries and preserves
+existing entries during bulk role replacements. New date bindings use the same
+database serialization. A missing eligibility RPC stops the instant press before growth.
+An OFF retry reuses an existing frozen snapshot only; it cannot create a new freeze
+or add previously unfrozen riders to that press.
+The common sweep and atomic commit retain reserved stage slots until the existing
+entrant, result/load or deadline rules resolve them; a completed press can then close
+its remaining slots. Migration publication is atomic across the dependent functions.
 Stamped riders may fill their available race-day slots out of order. Their
 provisional condition changes form/fatigue only and cannot clear injury state or
 replace a final date settlement. The last missing receipt settles the condition

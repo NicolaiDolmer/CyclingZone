@@ -224,3 +224,39 @@ test("the stamp read: a read error throws, a missing column or table means no st
   }
   await assert.rejects(loadTrainNowInstantRiderIds({ supabase: failing({ code: "42703", message: "column other does not exist" }), tickDate: DATE, riderIds: ["r1"] }), /instant stamps/);
 });
+
+test("switch off retry retains the previously frozen race slot after entry replacement", async () => {
+  const { state, fake } = instantDay();
+  await press(state, fake);
+  state.race_entries.length = 0;
+  state.app_config.find(row => row.key === TRAIN_NOW_INSTANT_FLAG_KEY).value = "off";
+  await press(state, fake);
+  assert.deepEqual(ticksOf(state, "r2"), [41, 42, 44, 45]);
+  assert.equal(settlementsOf(state, "r2"), 0);
+  assert.equal(fake.log.filter(row => row.rpc === "freeze_train_now_date_entries").length, 1);
+});
+
+test("sweep retains frozen pending slots across entry replacement and closes after the stage", async () => {
+  const { state, fake } = instantDay();
+  await press(state, fake);
+  state.race_entries.length = 0;
+  await sweep(state, fake);
+  assert.deepEqual(ticksOf(state, "r2"), [41, 42, 44, 45]);
+  assert.equal(settlementsOf(state, "r2"), 0);
+  enter(state, ["r2"]);
+  finishRace(state, ["r2"]);
+  await sweep(state, fake);
+  assert.deepEqual(ticksOf(state, "r2"), DAYS);
+  assert.equal(settlementsOf(state, "r2"), 1);
+  assert.equal(state.training_rider_ticks.find(row => row.rider_id === "r2" && row.game_day === 43).report.intensity, "race");
+});
+
+test("a repeat press releases frozen slots after authoritative stage completion", async () => {
+  const { state, fake } = instantDay();
+  await press(state, fake);
+  finishRace(state, ["r2"]);
+  await press(state, fake);
+  assert.deepEqual(ticksOf(state, "r2"), DAYS);
+  assert.equal(settlementsOf(state, "r2"), 1);
+  assert.equal(state.training_rider_ticks.find(row => row.rider_id === "r2" && row.game_day === 43).report.intensity, "race");
+});

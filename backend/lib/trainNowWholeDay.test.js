@@ -70,16 +70,17 @@ test("plan #7737: instant off returns exactly the old plan (no extra key)", () =
   assert.equal("instantRiderIds" in planWholeDayPress(args), false);
 });
 
-function lockTable() {
+function lockTable(snapshots = []) {
   const updates = [];
   const supabase = {
     from(table) {
       const q = { patch: null, filters: {} };
       const chain = {
+        select() { return chain; },
         update(patch) { q.patch = patch; return chain; },
         eq(col, val) { q.filters[col] = val; return chain; },
         is(col, val) { q.filters[col] = val; return chain; },
-        in(col, vals) { q.filters[col] = vals; updates.push({ table, ...q }); return Promise.resolve({ error: null }); },
+        in(col, vals) { q.filters[col] = vals; if (!q.patch) return Promise.resolve({ data: snapshots, error: null }); updates.push({ table, ...q }); return Promise.resolve({ error: null }); },
       };
       return chain;
     },
@@ -274,4 +275,37 @@ test("loophole double development: a second B press repeats the same days for th
   const second = await press(state);
   assert.deepEqual(second.calls.map((c) => [c.gameDay, c.ids.join()]), first.calls.map((c) => [c.gameDay, c.ids.join()]));
   assert.ok(second.calls.every((c) => c.ids.join() === "r1,r2"));
+});
+
+test("instant plan retains frozen slots when the later readiness changes", async () => {
+  const { supabase } = lockTable();
+  supabase.rpc = async () => ({ data: [{ rider_id: "racer", slots: [slot(13)] }], error: null });
+  const readiness = { unresolvedSlotsByRider: {}, deadlineAt: new Date("2026-10-27T01:00:00Z") };
+  const runs = [];
+  await settleWholeDayPress(pressArgs({ supabase, instant: true, available: ["racer"], readiness,
+    readReadiness: async () => readiness, runDay: async (args) => runs.push(args.gameDay),
+  }));
+  assert.deepEqual(runs, [11, 12, 14, 15]);
+});
+
+test("instant plan requires the complete migrated eligibility result before growth", async () => {
+  const { supabase } = lockTable();
+  supabase.rpc = async () => ({ data: null, error: { code: "42883", message: "function missing" } });
+  let ran = false;
+  await assert.rejects(settleWholeDayPress(pressArgs({ supabase, instant: true, available: ["racer"],
+    readiness: { unresolvedSlotsByRider: {} }, readReadiness: async () => { throw new Error("unexpected read"); },
+    runDay: async () => { ran = true; },
+  })), /date eligibility: function missing/);
+  assert.equal(ran, false);
+});
+
+test("off retry uses only previously frozen riders and creates no new date freeze", async () => {
+  const { supabase } = lockTable([{ rider_id: "racer", instant_entry_snapshot: { slots: [slot(13)] } }]);
+  supabase.rpc = async () => { throw new Error("unexpected new freeze"); };
+  const readiness = { unresolvedSlotsByRider: {}, deadlineAt: new Date("2026-10-27T01:00:00Z") };
+  const runs = [];
+  await settleWholeDayPress(pressArgs({ supabase, available: ["racer", "unfrozen"], readiness,
+    readReadiness: async () => readiness, runDay: async args => runs.push([args.gameDay, args.eligibleRiderIds]),
+  }));
+  assert.deepEqual(runs, [11, 12, 14, 15].map(day => [day, ["racer"]]));
 });

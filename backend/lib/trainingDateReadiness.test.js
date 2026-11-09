@@ -84,3 +84,32 @@ test('#6536: a parked team is outside the training date, also with a division; r
   assert.equal(isTrainingDateTeam({ id: 'b', is_bank: true }, none, end), false);
   assert.equal(isTrainingDateTeam({ id: 'n', created_at: '2026-10-03T00:00:00Z' }, none, end), false);
 });
+
+test('frozen pending membership survives entry removal and resolves only on existing stage evidence', () => {
+  const input = fixture();
+  input.runs = [];
+  input.frozenEntries = [{ rider_id: 'waiting', slots: [{ raceId: 'race', stageNumber: 1, gameDay: 5 }] }];
+  let result = resolveTrainingDateReadiness(input);
+  assert.deepEqual(result.eligibleRiderIds, ['ready']);
+  assert.deepEqual(result.resolvedFrozenSlotsByRider.waiting, []);
+  input.races[0].stages_completed = 1;
+  assert.deepEqual(resolveTrainingDateReadiness(input).eligibleRiderIds, ['ready']);
+  input.loads = [{ race_id: 'race', stage_number: 1, rider_id: 'waiting', load: 12 }];
+  result = resolveTrainingDateReadiness(input);
+  assert.deepEqual(result.eligibleRiderIds, ['waiting', 'ready']);
+  assert.equal(result.resolvedFrozenSlotsByRider.waiting.length, 1);
+});
+
+test('frozen membership follows entrant proof, removed stages and the existing deadline', () => {
+  const input = fixture();
+  input.frozenEntries = [{ rider_id: 'waiting', slots: [{ raceId: 'race', stageNumber: 1, gameDay: 5 }] }];
+  input.runs = [{ race_id: 'race', stage_number: 1, entrant_snapshot: [] }];
+  assert.deepEqual(resolveTrainingDateReadiness(input).eligibleRiderIds, ['waiting', 'ready']);
+  input.runs = [];
+  input.now = new Date('2026-09-30T00:00:00Z');
+  const deadline = resolveTrainingDateReadiness(input);
+  assert.equal(deadline.unresolvedSlotsByRider.waiting.length, 1);
+  assert.deepEqual(deadline.eligibleRiderIds, ['waiting', 'ready']);
+  input.stages = [];
+  assert.equal(resolveTrainingDateReadiness(input).resolvedFrozenSlotsByRider.waiting.length, 1);
+});

@@ -23,7 +23,7 @@
 // the mark. The database (migration 2026-10-25-6461) serialises the mark and every
 // race_entries insert on the same advisory key per rider + date, and skips an insert
 // for a marked rider into a race with a stage still to run on that date.
-import { TRAIN_NOW_LOCK_TABLE } from "./trainNowLock.js";
+import { TRAIN_NOW_LOCK_TABLE, loadTrainNowFrozenDateEntries } from "./trainNowLock.js";
 import { isTrainingReservationHeldError } from "./dailyTrainingEngine.js";
 
 
@@ -92,12 +92,37 @@ async function setWholeDayMark({ supabase, tickDate, riderIds, at }) {
 export async function settleWholeDayPress({
   supabase, team, season, now, tickDate, work, available, readiness, pressedAt, runDay, readReadiness, instant = false,
 }) {
+  const frozenRetry = instant ? [] : await loadTrainNowFrozenDateEntries({
+    supabase, teamId: team.id, seasonId: season.id, tickDate, riderIds: available,
+  });
+  if (frozenRetry.length) {
+    const frozenIds = new Set(frozenRetry.map(row => row.rider_id));
+    available = available.filter(id => frozenIds.has(id));
+    instant = true;
+  }
   let plan = planWholeDayPress({ gameDays: work.game_days, riderIds: available, unresolvedSlotsByRider: readiness.unresolvedSlotsByRider, instant });
 
+  if (instant) {
+    const { data, error } = frozenRetry.length ? { data: frozenRetry, error: null } : await supabase.rpc("freeze_train_now_date_entries", {
+      p_team_id: team.id, p_season_id: season.id, p_tick_date: tickDate,
+      p_rider_ids: available, p_now: now.toISOString(),
+    });
+    if (error || !Array.isArray(data) || data.length !== available.length
+      || new Set(data.map((row) => row.rider_id)).size !== available.length
+      || data.some((row) => !available.includes(row.rider_id) || !Array.isArray(row.slots))) {
+      throw new Error(`train-now date eligibility: ${error?.message ?? "incomplete frozen roster"}`);
+    }
+    const after = await readReadiness();
+    const frozenSlots = Object.fromEntries(data.map((row) => [row.rider_id, row.slots.filter(slot =>
+      !(after.resolvedFrozenSlotsByRider?.[row.rider_id] ?? []).some(resolved => resolved.raceId === slot.raceId
+        && Number(resolved.stageNumber) === Number(slot.stageNumber)))]));
+    readiness = { ...after, unresolvedSlotsByRider: frozenSlots };
+    plan = planWholeDayPress({ gameDays: work.game_days, riderIds: available, unresolvedSlotsByRider: frozenSlots, instant });
+  }
   // Shared lock: mark first, then read the entries again. An entry committed before
   // the mark is visible now; any later insert is skipped by the database guard.
   await setWholeDayMark({ supabase, tickDate, riderIds: plan.wholeDateRiderIds, at: now.toISOString() });
-  const after = await readReadiness();
+  const after = instant ? readiness : await readReadiness();
   const slipped = plan.wholeDateRiderIds.filter((id) => slotsOf(after.unresolvedSlotsByRider, id).length);
   const unresolvedSlotsByRider = { ...readiness.unresolvedSlotsByRider };
   if (slipped.length) {

@@ -100,6 +100,15 @@ export function createFake(state, { failRead = null } = {}) {
   async function rpc(name, args) {
     log.push({ rpc: name, args });
     const rpcName = name.replace(/^try_/, "");
+    if (name === "freeze_train_now_date_entries") {
+      const readiness = resolveTrainingDateReadiness({ ...contextOf(state), tickDate: args.p_tick_date, now: new Date(args.p_now), riderIds: args.p_rider_ids });
+      const data = args.p_rider_ids.map((rider_id) => {
+        const lock = state.training_train_now_locks.find((row) => row.rider_id === rider_id && row.tick_date === args.p_tick_date);
+        lock.instant_entry_snapshot ??= { slots: structuredClone(readiness.unresolvedSlotsByRider[rider_id] ?? []) };
+        return { rider_id, slots: lock.instant_entry_snapshot.slots };
+      });
+      return { data, error: null };
+    }
     if (rpcName === "register_training_date_work") {
       let work = state.training_date_work.find((row) => row.team_id === args.p_team_id && row.tick_date === args.p_tick_date);
       if (!work) {
@@ -135,6 +144,7 @@ export function contextOf(state, { snapshot = false } = {}) {
   return {
     tickDate: DATE, teams: state.teams, riders: state.riders, races: state.races, stages,
     runs: snapshot ? stages.map((s) => ({ race_id: s.race_id, stage_number: s.stage_number, entrant_snapshot: state.race_entries.filter((e) => e.race_id === s.race_id).map((e) => e.rider_id) })) : [],
+    frozenEntries: state.training_train_now_locks.filter(row => row.tick_date === DATE && row.instant_entry_snapshot != null).map(row => ({ rider_id: row.rider_id, slots: row.instant_entry_snapshot.slots })),
     entries: state.race_entries, results: state.race_results.map((row) => ({ ...row, result_type: "stage" })), incidents: [],
     loads: state.training_race_loads, candidateRiderIdsByRace: new Map(), gameDaysByDivision: new Map([[DIVISION, DAYS]]),
   };

@@ -22,6 +22,7 @@ ON CONFLICT (key) DO NOTHING;
 -- #6342: fail fast instead of queueing behind live traffic. Safe to re-trigger.
 SET lock_timeout = '3s';
 
+BEGIN;
 ALTER TABLE public.training_train_now_locks ADD COLUMN IF NOT EXISTS instant_at timestamptz;
 GRANT UPDATE (instant_at) ON public.training_train_now_locks TO service_role;
 
@@ -124,6 +125,14 @@ BEGIN
             AND t.tick_date=p_tick_date AND t.game_day=ANY(v_work.game_days)))) THEN
     RAISE EXCEPTION 'Training receipt snapshot changed; retry with current rider development';
   END IF;
+  IF EXISTS(SELECT 1 FROM jsonb_array_elements(p_report->'riders') r
+    CROSS JOIN LATERAL (SELECT public.training_frozen_slot_state((r->>'rider_id')::uuid,p_season_id,p_tick_date,p_game_day) AS state) frozen
+    WHERE (r->>'rider_id')::uuid=ANY(v_new)
+      AND ((frozen.state IN('pending','pending_race') AND NOT p_deadline_reached)
+        OR(frozen.state='pending' AND r->>'intensity' IS DISTINCT FROM 'unknown_pending')
+        OR(frozen.state IN('race','pending_race') AND r->>'intensity' IS DISTINCT FROM 'race'))) THEN
+    RAISE EXCEPTION 'Frozen training slot requires current race evidence';
+  END IF;
   -- Mixed retry batches retain only riders whose atomic receipt is absent.
   SELECT COALESCE(jsonb_agg(x),'[]') INTO p_abilities FROM jsonb_array_elements(p_abilities) x WHERE (x->>'riderId')::uuid=ANY(v_new);
   SELECT COALESCE(jsonb_agg(x),'[]') INTO p_conditions FROM jsonb_array_elements(p_conditions) x WHERE (x->>'rider_id')::uuid=ANY(v_new);
@@ -214,7 +223,111 @@ BEGIN
 END;
 $$;
 
-BEGIN;
 REVOKE ALL ON FUNCTION public.commit_training_date_tick(uuid,uuid,text,integer,date,integer[],text,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,boolean,timestamptz) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.commit_training_date_tick(uuid,uuid,text,integer,date,integer[],text,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,boolean,timestamptz) TO service_role;
+-- Freeze date membership and remaining slots before planning its training work.
+ALTER TABLE public.training_train_now_locks ADD COLUMN IF NOT EXISTS instant_entry_snapshot jsonb;
+ALTER TABLE public.training_train_now_locks ADD COLUMN IF NOT EXISTS instant_game_days integer[];
+CREATE OR REPLACE FUNCTION public.freeze_train_now_date_entries(
+  p_team_id uuid,p_season_id uuid,p_tick_date date,p_rider_ids uuid[],p_now timestamptz
+) RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path=public,pg_temp AS $$
+DECLARE v_work public.training_date_work%ROWTYPE; v_rider uuid; v_snapshot jsonb;
+BEGIN
+  PERFORM pg_advisory_xact_lock(hashtext(p_team_id::text));
+  SELECT * INTO STRICT v_work FROM public.training_date_work
+    WHERE team_id=p_team_id AND season_id=p_season_id AND tick_date=p_tick_date;
+  IF p_now IS NULL OR p_rider_ids IS NULL OR EXISTS(
+    SELECT 1 FROM unnest(p_rider_ids) id WHERE NOT id=ANY(v_work.expected_rider_ids)
+  ) THEN RAISE EXCEPTION 'Registered date roster required'; END IF;
+  FOR v_rider IN SELECT DISTINCT id FROM unnest(p_rider_ids) id ORDER BY 1 LOOP
+    PERFORM pg_advisory_xact_lock(hashtextextended('train-now-entry-rider:'||v_rider::text,0));
+  END LOOP;
+  FOR v_rider IN SELECT DISTINCT id FROM unnest(p_rider_ids) id ORDER BY 1 LOOP
+    PERFORM 1 FROM public.training_train_now_locks WHERE rider_id=v_rider AND tick_date=p_tick_date
+      AND team_id=p_team_id AND season_id=p_season_id FOR UPDATE;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Registered press rider required'; END IF;
+    IF (SELECT instant_entry_snapshot IS NOT NULL FROM public.training_train_now_locks WHERE rider_id=v_rider AND tick_date=p_tick_date) THEN CONTINUE; END IF;
+    SELECT jsonb_build_object(
+      'raceIds',COALESCE((SELECT jsonb_agg(e.race_id ORDER BY e.race_id) FROM public.race_entries e WHERE e.rider_id=v_rider),'[]'::jsonb),
+      'slots',COALESCE(jsonb_agg(jsonb_build_object('raceId',s.race_id,'stageNumber',s.stage_number,'gameDay',s.game_day) ORDER BY s.game_day,s.race_id,s.stage_number),'[]'::jsonb)
+    ) INTO v_snapshot
+    FROM public.race_stage_schedule s JOIN public.races r ON r.id=s.race_id
+    LEFT JOIN public.race_simulation_runs run ON run.race_id=s.race_id AND run.stage_number=s.stage_number
+    WHERE r.season_id=p_season_id AND (s.scheduled_at AT TIME ZONE 'Europe/Copenhagen')::date=p_tick_date
+      AND CASE WHEN jsonb_typeof(run.entrant_snapshot)='array' AND NOT EXISTS(
+        SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(run.entrant_snapshot)='array' THEN run.entrant_snapshot ELSE '[]'::jsonb END) x WHERE (CASE jsonb_typeof(x)
+          WHEN 'string' THEN length(x#>>'{}')>0
+          WHEN 'object' THEN jsonb_typeof(x->'rider_id')='string' AND length(x->>'rider_id')>0 ELSE false END) IS NOT TRUE) THEN
+        EXISTS(SELECT 1 FROM jsonb_array_elements(run.entrant_snapshot) x WHERE COALESCE(x->>'rider_id',x#>>'{}')=v_rider::text)
+        ELSE EXISTS(SELECT 1 FROM public.race_entries e WHERE e.race_id=s.race_id AND e.rider_id=v_rider) END
+      AND NOT (EXISTS(SELECT 1 FROM public.training_race_loads l WHERE l.race_id=s.race_id AND l.stage_number=s.stage_number AND l.rider_id=v_rider)
+        AND ((r.stages_completed>=s.stage_number AND r.finalize_state IS NULL)
+          OR EXISTS(SELECT 1 FROM public.race_results z WHERE z.race_id=s.race_id AND z.stage_number=s.stage_number AND z.rider_id=v_rider AND (z.result_type='stage' OR(r.race_type='single' AND z.result_type='gc')))
+          OR EXISTS(SELECT 1 FROM public.race_incidents i WHERE i.race_id=s.race_id AND i.stage_number=s.stage_number AND i.rider_id=v_rider AND i.outcome='abandon')));
+    UPDATE public.training_train_now_locks SET instant_entry_snapshot=v_snapshot,instant_game_days=v_work.game_days
+      WHERE rider_id=v_rider AND tick_date=p_tick_date;
+  END LOOP;
+  RETURN (SELECT COALESCE(jsonb_agg(jsonb_build_object('rider_id',l.rider_id,'slots',l.instant_entry_snapshot->'slots') ORDER BY l.rider_id),'[]'::jsonb)
+    FROM public.training_train_now_locks l WHERE l.team_id=p_team_id AND l.season_id=p_season_id AND l.tick_date=p_tick_date AND l.rider_id=ANY(p_rider_ids));
+END;
+$$;
+CREATE OR REPLACE FUNCTION public.training_frozen_slot_state(p_rider_id uuid,p_season_id uuid,p_tick_date date,p_game_day integer)
+RETURNS text LANGUAGE plpgsql SECURITY INVOKER SET search_path=public,pg_temp AS $$
+DECLARE v_slot record; v_run jsonb; v_ids jsonb; v_state text:='free'; v_has_load boolean;
+BEGIN
+  FOR v_slot IN SELECT s.race_id,s.stage_number,r.stages_completed,r.finalize_state,r.race_type
+    FROM public.training_train_now_locks l CROSS JOIN LATERAL jsonb_array_elements(l.instant_entry_snapshot->'slots') slot
+    JOIN public.race_stage_schedule s ON s.race_id=(slot->>'raceId')::uuid AND s.stage_number=(slot->>'stageNumber')::integer
+      AND s.game_day=p_game_day AND (s.scheduled_at AT TIME ZONE 'Europe/Copenhagen')::date=p_tick_date
+    JOIN public.races r ON r.id=s.race_id AND r.season_id=p_season_id
+    WHERE l.rider_id=p_rider_id AND l.tick_date=p_tick_date AND l.season_id=p_season_id
+  LOOP
+    SELECT entrant_snapshot INTO v_run FROM public.race_simulation_runs WHERE race_id=v_slot.race_id AND stage_number=v_slot.stage_number;
+    IF jsonb_typeof(v_run)='array' THEN
+      SELECT CASE WHEN count(*) FILTER(WHERE id IS NULL OR id='')=0 THEN COALESCE(jsonb_agg(id),'[]'::jsonb) END INTO v_ids
+        FROM (SELECT CASE jsonb_typeof(x) WHEN 'string' THEN x#>>'{}' WHEN 'object' THEN CASE WHEN jsonb_typeof(x->'rider_id')='string' THEN x->>'rider_id' END END id
+          FROM jsonb_array_elements(v_run) x) ids;
+      IF v_ids IS NOT NULL AND NOT(v_ids @> jsonb_build_array(p_rider_id)) THEN CONTINUE; END IF;
+    END IF;
+    v_has_load:=EXISTS(SELECT 1 FROM public.training_race_loads l WHERE l.race_id=v_slot.race_id AND l.stage_number=v_slot.stage_number AND l.rider_id=p_rider_id);
+    IF v_has_load AND ((v_slot.stages_completed>=v_slot.stage_number AND v_slot.finalize_state IS NULL)
+        OR EXISTS(SELECT 1 FROM public.race_results z WHERE z.race_id=v_slot.race_id AND z.stage_number=v_slot.stage_number AND z.rider_id=p_rider_id AND(z.result_type='stage' OR(v_slot.race_type='single' AND z.result_type='gc')))
+        OR EXISTS(SELECT 1 FROM public.race_incidents i WHERE i.race_id=v_slot.race_id AND i.stage_number=v_slot.stage_number AND i.rider_id=p_rider_id AND i.outcome='abandon')) THEN
+      v_state:='race';
+    ELSE RETURN CASE WHEN v_has_load THEN 'pending_race' ELSE 'pending' END; END IF;
+  END LOOP;
+  RETURN v_state;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.training_frozen_slot_state(uuid,uuid,date,integer) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.training_frozen_slot_state(uuid,uuid,date,integer) TO service_role;
+CREATE OR REPLACE FUNCTION public.race_entries_train_now_instant_guard()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
+DECLARE v_rider uuid;
+BEGIN
+  FOR v_rider IN SELECT DISTINCT id FROM unnest(CASE WHEN TG_OP='INSERT' THEN ARRAY[NEW.rider_id]
+    WHEN TG_OP='DELETE' THEN ARRAY[OLD.rider_id] ELSE ARRAY[OLD.rider_id,NEW.rider_id] END) id ORDER BY 1 LOOP
+    PERFORM pg_advisory_xact_lock(hashtextextended('train-now-entry-rider:'||v_rider::text,0));
+  END LOOP;
+  IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+  IF EXISTS(SELECT 1 FROM public.training_train_now_locks l JOIN public.races r ON r.id=NEW.race_id AND r.season_id=l.season_id
+    WHERE l.rider_id=NEW.rider_id AND l.instant_entry_snapshot IS NOT NULL
+      AND NOT (l.instant_entry_snapshot->'raceIds' @> jsonb_build_array(NEW.race_id))
+      AND (EXISTS(SELECT 1 FROM public.race_stage_schedule s WHERE s.race_id=NEW.race_id AND (s.scheduled_at AT TIME ZONE 'Europe/Copenhagen')::date=l.tick_date)
+        OR EXISTS(SELECT 1 FROM unnest(l.instant_game_days) d WHERE d BETWEEN
+          (SELECT min(s.game_day) FROM public.race_stage_schedule s WHERE s.race_id=NEW.race_id)
+          AND (SELECT max(s.game_day) FROM public.race_stage_schedule s WHERE s.race_id=NEW.race_id)))) THEN
+    RETURN NULL;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS race_entries_train_now_instant_guard ON public.race_entries;
+CREATE TRIGGER race_entries_train_now_instant_guard BEFORE INSERT OR UPDATE OR DELETE ON public.race_entries
+  FOR EACH ROW EXECUTE FUNCTION public.race_entries_train_now_instant_guard();
+REVOKE ALL ON FUNCTION public.freeze_train_now_date_entries(uuid,uuid,date,uuid[],timestamptz) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.freeze_train_now_date_entries(uuid,uuid,date,uuid[],timestamptz) TO service_role;
+GRANT UPDATE(instant_entry_snapshot,instant_game_days) ON public.training_train_now_locks TO service_role;
+REVOKE ALL ON FUNCTION public.race_entries_train_now_instant_guard() FROM PUBLIC,anon,authenticated;
+NOTIFY pgrst,'reload schema';
 COMMIT;
