@@ -38,6 +38,38 @@ test("plan: mixed squad - five runs in race-day order with only the whole-date r
   assert.deepEqual(plan.runs, DAYS.map((gameDay) => ({ gameDay, riderIds: ["free"] })));
 });
 
+test("plan #7737: with instant on, a race rider gets his free race days and the runs follow each rider", () => {
+  const plan = planWholeDayPress({
+    gameDays: DAYS, riderIds: ["free", "racer", "gt"], unresolvedSlotsByRider: { racer: [slot(13)], gt: [slot(12), slot(14)] }, instant: true,
+  });
+  assert.deepEqual(plan.daysByRider, { free: DAYS, racer: [11, 12, 14, 15], gt: [11, 13, 15] });
+  assert.deepEqual(plan.waitingRiderIds, ["racer", "gt"]);
+  assert.deepEqual(plan.instantRiderIds, ["racer", "gt"]);
+  assert.deepEqual(plan.runs, [
+    { gameDay: 11, riderIds: ["free", "racer", "gt"] },
+    { gameDay: 12, riderIds: ["free", "racer"] },
+    { gameDay: 13, riderIds: ["free", "gt"] },
+    { gameDay: 14, riderIds: ["free", "racer"] },
+    { gameDay: 15, riderIds: ["free", "racer", "gt"] },
+  ]);
+});
+
+test("plan #7737: a slot without a known race day keeps the rider waiting; a full race date has no free day", () => {
+  const plan = planWholeDayPress({
+    gameDays: DAYS, riderIds: ["odd", "full"], instant: true,
+    unresolvedSlotsByRider: { odd: [{ raceId: "x", stageNumber: 1, gameDay: null }], full: DAYS.map((d) => slot(d)) },
+  });
+  assert.deepEqual(plan.daysByRider, { odd: [], full: [] });
+  assert.deepEqual(plan.instantRiderIds, []);
+  assert.deepEqual(plan.runs, []);
+});
+
+test("plan #7737: instant off returns exactly the old plan (no extra key)", () => {
+  const args = { gameDays: DAYS, riderIds: ["free", "racer"], unresolvedSlotsByRider: { racer: [slot(13)] } };
+  assert.deepEqual(planWholeDayPress({ ...args, instant: false }), planWholeDayPress(args));
+  assert.equal("instantRiderIds" in planWholeDayPress(args), false);
+});
+
 function lockTable() {
   const updates = [];
   const supabase = {
@@ -46,6 +78,7 @@ function lockTable() {
       const chain = {
         update(patch) { q.patch = patch; return chain; },
         eq(col, val) { q.filters[col] = val; return chain; },
+        is(col, val) { q.filters[col] = val; return chain; },
         in(col, vals) { q.filters[col] = vals; updates.push({ table, ...q }); return Promise.resolve({ error: null }); },
       };
       return chain;
