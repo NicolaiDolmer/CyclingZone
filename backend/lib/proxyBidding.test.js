@@ -290,6 +290,37 @@ test('gated tie reloads a rejected CAS without matched notifications or a stale 
   assert.equal(notices.some(([team,type])=>team==='team-b' && type==='auction_outbid'),false);
 });
 
+test('gated cascade emits a committed atomic match receipt once without another match write',async()=>{
+  const notices=[];
+  const supabase=createMockSupabase({
+    auction:{id:'gated',status:'active',calculated_end:FUTURE_END,current_price:100,current_bidder_id:'team-a',
+      rider:{firstname:'Test',lastname:'Rider',team_id:null},seller_team_id:'seller'},
+    proxies:[{team_id:'team-a',max_amount:100}],databaseLeaderSync:true,
+  });
+  const result=await resolveProxyBids({supabase,auctionId:'gated',bidTime:BID_TIME,databaseOwnsLeaderSync:true,
+    tieBreakContext:{previousLeader:'team-a',expectedPrice:100,expectedLeader:'team-b',placed:true,tieResolved:true,matchedTeam:'team-a',matchRejected:null},
+    notifyTeamOwner:async(...args)=>{notices.push(args);}});
+  assert.equal(result.finalLeaderId,'team-a');
+  assert.equal(supabase.state.rpcCalls.length,0);
+  assert.equal(supabase.state.bids.length,0);
+  assert.equal(notices.filter(([team,type])=>team==='team-b'&&type==='auction_outbid').length,1);
+});
+
+test('gated cascade retains the atomic match rejection when continuing with other bidders',async()=>{
+  const notices=[];
+  const supabase=createMockSupabase({
+    auction:{id:'gated',status:'active',calculated_end:FUTURE_END,current_price:100,current_bidder_id:'team-b',
+      rider:{firstname:'Test',lastname:'Rider',team_id:null},seller_team_id:'seller'},
+    proxies:[{team_id:'team-a',max_amount:100},{team_id:'team-c',max_amount:200}],databaseLeaderSync:true,
+  });
+  const result=await resolveProxyBids({supabase,auctionId:'gated',bidTime:BID_TIME,databaseOwnsLeaderSync:true,
+    tieBreakContext:{previousLeader:'team-a',expectedPrice:100,expectedLeader:'team-b',placed:true,tieResolved:true,matchedTeam:null,matchRejected:'insufficient_available_balance'},
+    notifyTeamOwner:async(...args)=>{notices.push(args);}});
+  assert.equal(supabase.state.rpcCalls.length,0);
+  assert.equal(result.finalLeaderId,'team-c');
+  assert.equal(notices.some(([team,type])=>team==='team-a'&&type==='auction_proxy_outbid'),true);
+});
+
 // Fast tidsstempel der falder på lørdag 12:00 CEST — robust mod weekend/weekday
 // vinduer (08-23 CEST på weekend) og uafhængig af test-runner-tidspunkt.
 // Resolverens ur injiceres eksplicit af test-wrapperen ovenfor.

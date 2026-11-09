@@ -193,6 +193,20 @@ export async function resolveProxyBids({
     }
     throw error;
   };
+  const notifyMatch = async (matchedTeam, displacedTeam, auction) => {
+    if (!notifyTeamOwner) return;
+    const { data: leaderTeam, error: leaderTeamError } = await supabase.from('teams').select('name').eq('id', matchedTeam).maybeSingle();
+    if (leaderTeamError) {
+      captureException(leaderTeamError, { tags:{flow:'auction',stage:'proxy-team-name'}, auctionId, teamId:matchedTeam });
+    }
+    const notice=buildKeyedNotification({
+      titleCode:'notif.transfer.auctionOutbid.title',messageCode:'notif.autoBidMatched.message',
+      messageParams:{leaderName:leaderTeam?.name||'Autobud',riderName:`${auction.rider.firstname} ${auction.rider.lastname}`},
+      metadata:{riderId:auction.rider_id},
+    });
+    await trackedNotify(displacedTeam,'auction_outbid',notice.title,notice.message,auctionId,notice.metadata).catch(onProxyNotifFailed(auctionId));
+  };
+  let receiptHandled=false;
 
   for (let i = 0; i < MAX_PROXY_ITERATIONS; i++) {
     // #2997: begge læsninger er cascadens fundament. En tabt fejl på auktionen
@@ -224,8 +238,15 @@ export async function resolveProxyBids({
     }
 
     const allProxies = proxies || [];
+    if (databaseOwnsLeaderSync && !receiptHandled) {
+      receiptHandled=true;
+      if (tieBreakContext?.matchedTeam) await notifyMatch(tieBreakContext.matchedTeam,tieBreakContext.expectedLeader,auction);
+      if (tieBreakContext?.matchRejected && tieBreakContext.previousLeader) {
+        await handleInsertError({code:'P0001',message:`market_gate_6181:${tieBreakContext.matchRejected}`},tieBreakContext.previousLeader,auction);
+      }
+    }
     const tieLeader = databaseOwnsLeaderSync ? tieBreakContext?.previousLeader : previousLeader;
-    const matchesAcceptedBid = !databaseOwnsLeaderSync || (tieBreakContext?.placed === true &&
+    const matchesAcceptedBid = !databaseOwnsLeaderSync || (tieBreakContext?.placed === true && tieBreakContext.tieResolved !== true &&
       Number(tieBreakContext.expectedPrice) === Number(currentPrice) && tieBreakContext.expectedLeader === currentWinner);
 
     // #1091: tie-break til fordel for den hidtidige fører med autobud. Hvis den
@@ -294,38 +315,7 @@ export async function resolveProxyBids({
         }).eq("id", auctionId);
       }
 
-      if (notifyTeamOwner) {
-        // #2997: rent kosmetisk berigelse (holdnavn i beskeden). Rapportér, men
-        // fald tilbage til "Autobud" — en manglende label må aldrig vælte en
-        // cascade der allerede har flyttet føringen i databasen.
-        const { data: leaderTeam, error: leaderTeamError } = await supabase
-          .from("teams")
-          .select("name")
-          .eq("id", tieLeader)
-          .maybeSingle();
-        if (leaderTeamError) {
-          captureException(leaderTeamError, {
-            tags: { flow: "auction", stage: "proxy-team-name" },
-            auctionId,
-            teamId: tieLeader,
-          });
-        }
-        const leaderName = leaderTeam?.name || "Autobud";
-        const matchedNotice = buildKeyedNotification({
-          titleCode: "notif.transfer.auctionOutbid.title",
-          messageCode: "notif.autoBidMatched.message",
-          messageParams: { leaderName, riderName },
-          metadata: { riderId: auction.rider_id },
-        });
-        await trackedNotify(
-          currentWinner,
-          "auction_outbid",
-          matchedNotice.title,
-          matchedNotice.message,
-          auctionId,
-          matchedNotice.metadata,
-        ).catch(onProxyNotifFailed(auctionId));
-      }
+      await notifyMatch(tieLeader,currentWinner,auction);
       // Ingen sælger-notif her: prisen steg ikke, og sælgeren fik allerede
       // bid_received for det udløsende bud på samme beløb.
 

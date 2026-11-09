@@ -108,13 +108,41 @@ test('bid eligibility distinguishes initial, current and proxy leadership',async
   assert.deepEqual(await leader(db,a),{price:10,bidder:TEAM.B});
 });
 
+test('accepted bid settles the eligible incumbent match before returning',async()=>{
+  const db=await database({flag:'on'});
+  const a=await auction(db,{price:49,bidder:TEAM.A});
+  await proxy(db,a,TEAM.A,50);
+  const receipt=(await one(db,'SELECT public.place_auction_bid_6181($1,$2,$3,$4) AS context',[a,TEAM.B,50,FIXED_BID_TIME])).context;
+  assert.deepEqual(await leader(db,a),{price:50,bidder:TEAM.A});
+  assert.equal(receipt.tieResolved,true);
+  assert.equal(receipt.matchedTeam,TEAM.A);
+  assert.equal(Number((await one(db,'SELECT count(*) AS n FROM auction_bids')).n),2);
+});
+
+test('accepted proxy opening settles the eligible incumbent match before returning',async()=>{
+  const db=await database({flag:'on'});
+  const a=await auction(db,{price:49,bidder:TEAM.A});
+  await proxy(db,a,TEAM.A,50);
+  const receipt=(await one(db,'SELECT public.set_auction_proxy_context_6181($1,$2,$3,$4,$5) AS context',[a,TEAM.B,100,50,FIXED_BID_TIME])).context;
+  assert.deepEqual(await leader(db,a),{price:50,bidder:TEAM.A});
+  assert.equal(receipt.tieResolved,true);
+  assert.equal(receipt.matchedTeam,TEAM.A);
+  assert.equal(Number((await one(db,'SELECT count(*) AS n FROM auction_bids')).n),2);
+});
+
+test('write RPC rejects a repeated non-increasing bid under its row lock',async()=>{
+  const db=await database({flag:'on'});
+  const a=await auction(db,{price:40,bidder:TEAM.A});
+  await db.query('SELECT public.place_auction_bid_6181($1,$2,$3,$4)',[a,TEAM.B,50,FIXED_BID_TIME]);
+  assert.equal(await gateError(db.query('SELECT public.place_auction_bid_6181($1,$2,$3,$4)',[a,TEAM.B,50,FIXED_BID_TIME])),'price_changed');
+  assert.equal(Number((await one(db,'SELECT count(*) AS n FROM auction_bids')).n),1);
+});
+
 test('atomic proxy match validates expected price, leader and exact proxy cap',async()=>{
   const db=await database({flag:'on'});
   const a=await auction(db,{price:40,bidder:TEAM.A});
   await proxy(db,a,TEAM.A,50);
-  const context=(await one(db,'SELECT public.place_auction_bid_6181($1,$2,$3,$4) AS context',
-    [a,TEAM.B,50,FIXED_BID_TIME])).context;
-  assert.deepEqual(context,{previousLeader:TEAM.A,expectedPrice:50,expectedLeader:TEAM.B,placed:true});
+  await bid(db,a,TEAM.B,50);
   const match=(price=50,expected=TEAM.B)=>db.query(
     'SELECT public.match_auction_proxy_tie_6181($1,$2,$3,$4,$5)',
     [a,TEAM.A,price,expected,FIXED_BID_TIME]);
@@ -142,7 +170,7 @@ for(const boundary of ['money','seat','late']){
     const db=await database({flag:'on'});
     const a=await auction(db,{price:40,bidder:TEAM.A});
     await proxy(db,a,TEAM.A,50);
-    await db.query('SELECT public.place_auction_bid_6181($1,$2,$3,$4)',[a,TEAM.B,50,FIXED_BID_TIME]);
+    await bid(db,a,TEAM.B,50);
     if(boundary==='money')await db.query('UPDATE teams SET balance=40 WHERE id=$1',[TEAM.A]);
     if(boundary==='seat')for(let i=0;i<MAX_SQUAD_SIZE;i++)await rider(db,{team:TEAM.A});
     if(boundary==='late')await db.query("UPDATE auctions SET calculated_end=$2::timestamptz-interval '1 minute' WHERE id=$1",[a,FIXED_BID_TIME]);
@@ -159,17 +187,44 @@ test('accepted bid and proxy contexts capture the predecessor under the write lo
   const a=await auction(db,{price:40,bidder:TEAM.A});
   await db.query('UPDATE auctions SET current_bidder_id=$2 WHERE id=$1',[a,TEAM.C]);
   const first=(await one(db,'SELECT public.place_auction_bid_6181($1,$2,$3,$4) AS context',[a,TEAM.B,50,FIXED_BID_TIME])).context;
-  assert.deepEqual(first,{previousLeader:TEAM.C,expectedPrice:50,expectedLeader:TEAM.B,placed:true});
+  assert.deepEqual(first,{previousLeader:TEAM.C,expectedPrice:50,expectedLeader:TEAM.B,placed:true,tieResolved:true,matchedTeam:null,matchRejected:null});
   const second=(await one(db,'SELECT public.set_auction_proxy_context_6181($1,$2,$3,$4,$5) AS context',[a,TEAM.C,70,51,FIXED_BID_TIME])).context;
-  assert.deepEqual(second,{previousLeader:TEAM.B,expectedPrice:51,expectedLeader:TEAM.C,placed:true});
+  assert.deepEqual(second,{previousLeader:TEAM.B,expectedPrice:51,expectedLeader:TEAM.C,placed:true,tieResolved:true,matchedTeam:null,matchRejected:null});
   const noOpening=(await one(db,'SELECT public.set_auction_proxy_context_6181($1,$2,$3,$4,$5) AS context',[a,TEAM.C,80,null,FIXED_BID_TIME])).context;
-  assert.deepEqual(noOpening,{previousLeader:TEAM.C,expectedPrice:51,expectedLeader:TEAM.C,placed:false});
-  for(const signature of ['place_auction_bid_6181(uuid,uuid,bigint,timestamptz)','set_auction_proxy_context_6181(uuid,uuid,bigint,integer,timestamptz)']){
+  assert.deepEqual(noOpening,{previousLeader:TEAM.C,expectedPrice:51,expectedLeader:TEAM.C,placed:false,tieResolved:true,matchedTeam:null,matchRejected:null});
+  for(const signature of ['place_auction_bid_6181(uuid,uuid,bigint,timestamptz)','set_auction_proxy_context_6181(uuid,uuid,bigint,integer,timestamptz)','try_auction_proxy_tie_6181(uuid,uuid,bigint,uuid,timestamptz)']){
     for(const role of ['anon','authenticated','service_role']){
       const row=await one(db,'SELECT has_function_privilege($1,$2,\'EXECUTE\') AS allowed',[role,`public.${signature}`]);
       assert.equal(row.allowed,role==='service_role');
     }
   }
+});
+
+for(const boundary of ['money','seat']){
+  test(`accepted bid survives a known incumbent match ${boundary} rejection`,async()=>{
+    const db=await database({flag:'on'});
+    const a=await auction(db,{price:49,bidder:TEAM.A});
+    await proxy(db,a,TEAM.A,50);
+    if(boundary==='money')await db.query('UPDATE teams SET balance=40 WHERE id=$1',[TEAM.A]);
+    else for(let i=0;i<MAX_SQUAD_SIZE;i++)await rider(db,{team:TEAM.A});
+    const receipt=(await one(db,'SELECT public.place_auction_bid_6181($1,$2,$3,$4) AS context',[a,TEAM.B,50,FIXED_BID_TIME])).context;
+    assert.deepEqual(await leader(db,a),{price:50,bidder:TEAM.B});
+    assert.equal(Number((await one(db,'SELECT count(*) AS n FROM auction_bids')).n),1);
+    assert.equal(receipt.tieResolved,true);
+    assert.equal(receipt.matchedTeam,null);
+    assert.equal(receipt.matchRejected,boundary==='money'?'insufficient_available_balance':'squad_full');
+  });
+}
+
+test('stale proxy opening preserves the existing program and bid history',async()=>{
+  const db=await database({flag:'on'});
+  const a=await auction(db,{price:40,bidder:TEAM.A});
+  const write=max=>db.query('SELECT public.set_auction_proxy_context_6181($1,$2,$3,$4,$5)',[a,TEAM.B,max,50,FIXED_BID_TIME]);
+  await write(100);
+  assert.equal(await gateError(write(200)),'price_changed');
+  assert.deepEqual(await leader(db,a),{price:50,bidder:TEAM.B});
+  assert.equal(Number((await one(db,'SELECT max_amount FROM auction_proxy_bids WHERE auction_id=$1 AND team_id=$2',[a,TEAM.B])).max_amount),100);
+  assert.equal(Number((await one(db,'SELECT count(*) AS n FROM auction_bids')).n),1);
 });
 
 test('bid gate validates locked auction state independently',async()=>{
@@ -654,7 +709,7 @@ test('PG17: budget, equal-price and locked-state boundaries', { skip: !PG_BIN &&
         INSERT INTO auction_proxy_bids(auction_id,team_id,max_amount) VALUES('${stateAuction}','${TEAM.A}',50);`);
     };
     resetMatch();
-    psql(`SELECT public.place_auction_bid_6181('${stateAuction}','${TEAM.B}',50,'${FIXED_BID_TIME}');
+    psql(`INSERT INTO auction_bids(auction_id,team_id,amount,bid_time) VALUES('${stateAuction}','${TEAM.B}',50,'${FIXED_BID_TIME}');
       SELECT public.match_auction_proxy_tie_6181('${stateAuction}','${TEAM.A}',50,'${TEAM.B}','${FIXED_BID_TIME}');`);
     assert.equal(psql(`SELECT current_bidder_id FROM auctions WHERE id='${stateAuction}'`).trim(),TEAM.A);
     assert.equal(Number(psql('SELECT count(*) FROM auction_bids WHERE is_proxy=true').trim()),1);
@@ -665,7 +720,7 @@ test('PG17: budget, equal-price and locked-state boundaries', { skip: !PG_BIN &&
       ['leader',`current_bidder_id='${TEAM.C}'`],
     ]){
       resetMatch();
-      psql(`SELECT public.place_auction_bid_6181('${stateAuction}','${TEAM.B}',50,'${FIXED_BID_TIME}')`);
+      psql(`INSERT INTO auction_bids(auction_id,team_id,amount,bid_time) VALUES('${stateAuction}','${TEAM.B}',50,'${FIXED_BID_TIME}')`);
       const ownerName=`m3-match-owner-${boundary}`;const waiterName=`m3-match-wait-${boundary}`;
       const holder=controlledPsql(port,`SET application_name='${ownerName}'; SET statement_timeout='30s'; BEGIN;
         SELECT id FROM auctions WHERE id='${stateAuction}' FOR UPDATE;\n`);
@@ -701,11 +756,43 @@ test('PG17: budget, equal-price and locked-state boundaries', { skip: !PG_BIN &&
       const held=await predecessorOwner.closed;assert.equal(held.code,0,held.err);
       const result=await acceptedBid;assert.equal(result.ok,true,result.err);
       const context=JSON.parse(result.out.trim());
-      assert.deepEqual(context,{previousLeader:TEAM.C,expectedPrice:50,expectedLeader:TEAM.B,placed:true});
+      assert.deepEqual(context,{previousLeader:TEAM.C,expectedPrice:50,expectedLeader:TEAM.B,placed:true,tieResolved:true,matchedTeam:null,matchRejected:null});
       t.diagnostic('accepted_bid_predecessor_captured_under_row_lock=true');
     }finally{
       if(predecessorOwner.child.exitCode===null && !predecessorOwner.child.stdin.writableEnded && !predecessorOwner.child.stdin.destroyed)predecessorOwner.child.stdin.end('ROLLBACK;\n');
       await predecessorOwner.closed;if(acceptedBid)await acceptedBid;
+    }
+
+    for(const operation of ['bid','proxy']){
+      resetMatch();
+      const sql=operation==='bid'
+        ? `SELECT public.place_auction_bid_6181('${stateAuction}','${TEAM.B}',50,'${FIXED_BID_TIME}')`
+        : `SELECT public.set_auction_proxy_context_6181('${stateAuction}','${TEAM.B}',100,50,'${FIXED_BID_TIME}')`;
+      const repeated=await Promise.all(Array.from({length:8},()=>psqlAsync(port,sql)));
+      assert.equal(repeated.filter(result=>result.ok).length,1);
+      for(const result of repeated.filter(outcome=>!outcome.ok))assert.match(result.err,/market_gate_6181:price_changed/);
+      assert.equal(psql(`SELECT current_bidder_id FROM auctions WHERE id='${stateAuction}'`).trim(),TEAM.A);
+      assert.equal(Number(psql('SELECT count(*) FROM auction_bids').trim()),2);
+      assert.equal(Number(psql('SELECT count(*) FROM auction_bids WHERE is_proxy=true AND team_id=\''+TEAM.A+'\'').trim()),1);
+      t.diagnostic(`atomic_${operation}_attempts=8; accepted=1; rejected=7; incumbent_match_committed=true`);
+    }
+
+    resetMatch();
+    const busyOwner=controlledPsql(port,`SET application_name='m3-incumbent-owner'; SET statement_timeout='30s'; BEGIN;
+      SELECT pg_advisory_xact_lock(hashtextextended('${TEAM.A}'::text,0));\n`);
+    try{
+      await busyOwner.sent;
+      awaitPgState(psql,"EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name='m3-incumbent-owner' AND state='idle in transaction' AND query LIKE '%pg_advisory_xact_lock%')");
+      const result=await psqlAsync(port,`SET statement_timeout='2s'; SELECT public.place_auction_bid_6181('${stateAuction}','${TEAM.B}',50,'${FIXED_BID_TIME}')`);
+      assert.equal(result.ok,false);
+      assert.match(result.err,/P0001:.*market_gate_6181:price_changed/s);
+      assert.equal(psql(`SELECT current_bidder_id FROM auctions WHERE id='${stateAuction}'`).trim(),TEAM.A);
+      assert.equal(Number(psql(`SELECT current_price FROM auctions WHERE id='${stateAuction}'`).trim()),40);
+      assert.equal(Number(psql('SELECT count(*) FROM auction_bids').trim()),0);
+      t.diagnostic('incumbent_lock_busy_rejected_without_deadlock=true; acceptance_rolled_back=true');
+    }finally{
+      if(busyOwner.child.exitCode===null && !busyOwner.child.stdin.writableEnded && !busyOwner.child.stdin.destroyed)busyOwner.child.stdin.end('ROLLBACK;\n');
+      const held=await busyOwner.closed;assert.equal(held.code,0,held.err);
     }
 
     resetState();

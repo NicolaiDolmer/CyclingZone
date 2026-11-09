@@ -47,3 +47,10 @@ rejected challenger or defender, stop inactive auctions, and throw unknown
 errors. Defer gated cleanup/success effects until the write succeeds; condition
 proxy deletion on the observed cap. Prove both CAS fields with PG17 lock barriers
 and keep legacy off behavior covered independently.
+## Transaction publication boundary
+
+Finish accepted-bid matching before publishing the transaction. Use a
+non-blocking extra team lock and roll back acceptance on contention; catch only
+known match money/seat rejections in the nested operation. Return the completed
+outcome so JS emits existing notices once and never repeats settled evaluation.
+Real-PG17 repetitions and explicit lock ownership verify this boundary.

@@ -41,3 +41,10 @@ Do not emit success side effects for a rejected write. Add deterministic JS and
 PGlite regressions, and real PG17 equal-price proxy and row-lock CAS cases.
 Run focused checks, preflight, full verification and independent HEAD reviews
 before handoff. PR6 stays frozen until this dependency is pushed and CI clears.
+
+Additional verified review boundary: settle acceptance and eligible matching in
+one transaction. Acquire the extra incumbent lock with try-lock only; contention
+rolls back acceptance rather than waiting in reverse lock order. Catch only
+known counter money/seat rejections in a subtransaction. Receipts preserve match
+outcomes, reject tracking and existing notifications once. Verify concurrent
+repetitions and a held incumbent lock in PG17, then rerun HEAD reviews and CI.

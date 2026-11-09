@@ -58,6 +58,8 @@
 --
 -- Laaseraekkefoelge: holdlaas foerst, saa auktionsraekken. Samme som M1
 -- (sale_escrow_lock_teams) og increment_balance_with_audit.
+-- Acceptens eventuelle incumbent-laas tages kun med try-lock: optaget laas
+-- afviser/rollbacker accepten og venter aldrig i omvendt laaseraekkefoelge.
 --
 -- ADDITIV OG IDEMPOTENT. Applies post-merge af auto-migrate.yml (#2642).
 -- Ingen data roeres ud over seed-raekken i app_config.
@@ -71,13 +73,15 @@
 --        FROM pg_proc p WHERE p.proname IN ('team_market_commitment','team_seat_commitment',
 --          'team_outgoing_auction_count','team_outgoing_auction_rider_ids','market_bid_issue_6181',
 --          'market_commitment_6181_on','market_squad_max','set_auction_proxy_6181',
---          'place_auction_bid_6181','set_auction_proxy_context_6181','match_auction_proxy_tie_6181');
---      -- anon=false, auth=false for alle elleve
+--          'place_auction_bid_6181','set_auction_proxy_context_6181','match_auction_proxy_tie_6181',
+--          'try_auction_proxy_tie_6181');
+--      -- anon=false, auth=false for alle tolv
 --
 -- Rollback:
 --   DROP FUNCTION IF EXISTS public.set_auction_proxy_6181(uuid, uuid, bigint, integer, timestamptz);
 --   DROP FUNCTION IF EXISTS public.set_auction_proxy_context_6181(uuid, uuid, bigint, integer, timestamptz);
 --   DROP FUNCTION IF EXISTS public.place_auction_bid_6181(uuid, uuid, bigint, timestamptz);
+--   DROP FUNCTION IF EXISTS public.try_auction_proxy_tie_6181(uuid, uuid, bigint, uuid, timestamptz);
 --   DROP FUNCTION IF EXISTS public.match_auction_proxy_tie_6181(uuid, uuid, bigint, uuid, timestamptz);
 --   DROP TRIGGER IF EXISTS trg_market_commitment_6181_bid ON public.auction_bids;
 --   DROP TRIGGER IF EXISTS trg_market_commitment_6181_start ON public.auctions;
@@ -398,9 +402,13 @@ BEGIN
   IF NOT FOUND OR a.status IS NULL OR a.status NOT IN ('active','extended') THEN
     RAISE EXCEPTION 'auction_not_active' USING ERRCODE='P0001';
   END IF;
+  IF p_amount<a.current_price OR (p_amount=a.current_price AND a.current_bidder_id IS NOT NULL) THEN
+    RAISE EXCEPTION 'market_gate_6181:price_changed' USING ERRCODE='P0001';
+  END IF;
   INSERT INTO public.auction_bids(auction_id,team_id,amount,bid_time,triggered_extension,is_proxy)
     VALUES(p_auction_id,p_team_id,p_amount,p_bid_time,false,false);
-  RETURN jsonb_build_object('previousLeader',a.current_bidder_id,'expectedPrice',p_amount,'expectedLeader',p_team_id,'placed',true);
+  RETURN jsonb_build_object('previousLeader',a.current_bidder_id,'expectedPrice',p_amount,'expectedLeader',p_team_id,'placed',true)
+    || public.try_auction_proxy_tie_6181(p_auction_id,a.current_bidder_id,p_amount,p_team_id,p_bid_time);
 END;
 $$;
 
@@ -426,6 +434,10 @@ BEGIN
   IF NOT FOUND OR a.status IS NULL OR a.status NOT IN ('active','extended') THEN
     RAISE EXCEPTION 'auction_not_active' USING ERRCODE='P0001';
   END IF;
+  IF p_opening_amount IS NOT NULL AND (p_opening_amount<a.current_price OR
+      (p_opening_amount=a.current_price AND a.current_bidder_id IS NOT NULL)) THEN
+    RAISE EXCEPTION 'market_gate_6181:price_changed' USING ERRCODE='P0001';
+  END IF;
   INSERT INTO public.auction_proxy_bids(auction_id,team_id,max_amount)
     VALUES(p_auction_id,p_team_id,p_max_amount)
     ON CONFLICT(auction_id,team_id) DO UPDATE SET max_amount=EXCLUDED.max_amount;
@@ -436,7 +448,10 @@ BEGIN
   RETURN jsonb_build_object('previousLeader',a.current_bidder_id,
     'expectedPrice',coalesce(p_opening_amount,a.current_price),
     'expectedLeader',CASE WHEN p_opening_amount IS NULL THEN a.current_bidder_id ELSE p_team_id END,
-    'placed',p_opening_amount IS NOT NULL);
+    'placed',p_opening_amount IS NOT NULL)
+    || CASE WHEN p_opening_amount IS NULL
+      THEN jsonb_build_object('tieResolved',true,'matchedTeam',NULL,'matchRejected',NULL)
+      ELSE public.try_auction_proxy_tie_6181(p_auction_id,a.current_bidder_id,p_opening_amount,p_team_id,p_bid_time) END;
 END;
 $$;
 
@@ -502,6 +517,43 @@ REVOKE ALL ON FUNCTION public.set_auction_proxy_context_6181(uuid,uuid,bigint,in
 GRANT EXECUTE ON FUNCTION public.set_auction_proxy_context_6181(uuid,uuid,bigint,integer,timestamptz) TO service_role;
 REVOKE ALL ON FUNCTION public.match_auction_proxy_tie_6181(uuid,uuid,bigint,uuid,timestamptz) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.match_auction_proxy_tie_6181(uuid,uuid,bigint,uuid,timestamptz) TO service_role;
+
+-- Settle an eligible accepted-bid match before publishing the transaction.
+-- Never wait for an additional team's lock while holding the auction row.
+CREATE OR REPLACE FUNCTION public.try_auction_proxy_tie_6181(
+  p_auction_id uuid, p_incumbent_team_id uuid, p_price bigint, p_accepted_team_id uuid, p_bid_time timestamptz
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, pg_catalog
+AS $$
+DECLARE
+  v_cap bigint;
+  v_message text;
+  v_result jsonb:=jsonb_build_object('tieResolved',true,'matchedTeam',NULL,'matchRejected',NULL);
+BEGIN
+  IF p_incumbent_team_id IS NULL OR p_incumbent_team_id=p_accepted_team_id THEN RETURN v_result; END IF;
+  SELECT max_amount INTO v_cap FROM public.auction_proxy_bids WHERE auction_id=p_auction_id AND team_id=p_incumbent_team_id;
+  IF v_cap IS DISTINCT FROM p_price THEN RETURN v_result; END IF;
+  IF NOT pg_try_advisory_xact_lock(hashtextextended(p_incumbent_team_id::text,0)) THEN
+    RAISE EXCEPTION 'market_gate_6181:price_changed' USING ERRCODE='P0001';
+  END IF;
+  BEGIN
+    PERFORM public.match_auction_proxy_tie_6181(p_auction_id,p_incumbent_team_id,p_price,p_accepted_team_id,p_bid_time);
+    RETURN v_result||jsonb_build_object('matchedTeam',p_incumbent_team_id);
+  EXCEPTION WHEN SQLSTATE 'P0001' THEN
+    GET STACKED DIAGNOSTICS v_message=MESSAGE_TEXT;
+    IF v_message='market_gate_6181:insufficient_available_balance' THEN
+      RETURN v_result||jsonb_build_object('matchRejected','insufficient_available_balance');
+    ELSIF v_message='market_gate_6181:squad_full' THEN
+      RETURN v_result||jsonb_build_object('matchRejected','squad_full');
+    END IF;
+    RAISE;
+  END;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.try_auction_proxy_tie_6181(uuid,uuid,bigint,uuid,timestamptz) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.try_auction_proxy_tie_6181(uuid,uuid,bigint,uuid,timestamptz) TO service_role;
 REVOKE ALL ON FUNCTION public.set_auction_proxy_6181(uuid, uuid, bigint, integer, timestamptz) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.set_auction_proxy_6181(uuid, uuid, bigint, integer, timestamptz) TO service_role;
 

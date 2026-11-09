@@ -524,6 +524,9 @@ Tændt:
 - **Budkontekst:** `place_auction_bid_6181` og `set_auction_proxy_context_6181` returnerer
   forgænger, accepteret pris og fører fra selve skrivningen under rækkelåsen.
   Den gatede cascade bruger denne kontekst; en tidligere JS-læsning giver ingen tie-ret.
+  Et berettiget match afsluttes i samme transaktion som det accepterede bud/åbningsbud,
+  før resultatet publiceres. Ikke-stigende gentagelser afvises under låsen.
+  Kvitteringen angiver afsluttet match eller kendt afvisning; JS gentager ikke afgørelsen.
 - **Proxy-oprettelse:** `set_auction_proxy_context_6181` gemmer loft og eventuelt åbningsbud i
   samme transaktion. `set_auction_proxy_6181` bevarer den eksisterende void-signatur som wrapper.
   Fejl bevarer den foregående proxy-tilstand.
@@ -534,6 +537,9 @@ Tændt:
   præcist proxy-loft samt CAS på forventet pris og fører under rækkelåsen. Penge og den
   nye plads kontrolleres før førerskiftet; skift og proxy-bud er én transaktion.
   Gyldig auktionsstatus kontrolleres under rækkelåsen; efterfølgende sync gælder kun aktive/forlængede auktioner.
+  `try_auction_proxy_tie_6181` tager en eventuel ekstra holdlås uden at vente.
+  Optaget lås giver rollback/retry af accepten. Kendt penge-/pladsafvisning af selve
+  match-delen bevarer det accepterede bud; andre fejl ruller hele operationen tilbage.
 - **Cascade-afvisninger:** ændret pris/fører genlæses før næste forsøg. En penge-/pladsafvist
   proxy udelukkes i denne kørsel, også når den forsvarer føringen; øvrige gyldige bud fortsætter.
   Inaktiv/udløbet auktion stopper forløbet, ukendte DB-fejl kastes videre. Afvist skrivning
