@@ -1164,7 +1164,7 @@
     },
     {
       "issue": 7917,
-      "reason": "Ejer-go 8/11 (Claude Code, efter Sentry-gennemgang): backend tåler at databasen er nede; design først, ingen scheduler-deploy før 13/11",
+      "reason": "Ejer-go 8/11 (Claude Code, efter Sentry-gennemgang): backend tåler at databasen er nede; design først",
       "since": "2026-11-08"
     },
     {
