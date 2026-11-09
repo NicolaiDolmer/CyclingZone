@@ -158,8 +158,7 @@ features:
     state: building
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7855
-    verified: 2026-11-07
-    note: "Kontakt jersey_hunt_7855 (off); kun ikke-startede løb. Ejer-go."
+    verified: 2026-11-09
     decision: ejer-beslutning
     decide_by: 2026-11-21
   - id: race-itt-no-day-roll-7726
@@ -646,7 +645,7 @@ features:
     ssot: docs/superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md
     epic: 1177
     verified: 2026-11-04
-    note: 'Kun data er bygget (#5268); motor (#5348) og mentorpar (#5349) mangler, arbejdet står stille.'
+    note: 'Kun data er bygget (#5268); motor (#5348) og mentorpar (#5349) mangler.'
 
   - id: champion-jerseys
     area: squad
@@ -1150,7 +1149,7 @@ features:
     verified: 2026-11-05
     decision: goer-faerdigt
     decide_by: 2026-12-31
-    note: 'Trin 5 (#7685): søndagsjob, holdskifte og nye kig skriver bag flaget potential_estimate_writes (seedes off).'
+    note: 'Trin 5 (#7685): søndagsjob, holdskifte og nye kig; flaget seedes off.'
 
   - id: train-now-whole-day
     area: training
@@ -1170,7 +1169,7 @@ features:
     flag: development_score_v2
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: 'Ejer 31/10 (#6110): parkeret, indtil grundtalentet (spec 23/10, byggetrin 2) er bygget; ingen frist. Forudsætning før tænding: #7584.'
+    note: 'Ejer 31/10 (#6110): parkeret til grundtalentet er bygget. Før tænding: #7584.'
     verified: 2026-11-04
     decision: ejer-beslutning
     decide_by: 2026-11-08
