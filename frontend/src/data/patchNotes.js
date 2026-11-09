@@ -1,5 +1,47 @@
 export const PATCHES = [
   {
+    "version": "7.424",
+    "date": "2026-11-09",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "beta",
+        "topic": "Riders",
+        "flag": "champion_jerseys_7824",
+        "en": {
+          "title": "Champion jerseys",
+          "body": "Riders who have won a championship now show a small jersey next to their name."
+        },
+        "da": {
+          "title": "Mestertrøjer",
+          "body": "Ryttere, der har vundet et mesterskab, viser nu en lille trøje ved deres navn."
+        },
+        "refs": [
+          7824
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "beta",
+        "topic": "Riders",
+        "flag": "talent_marks_7879",
+        "en": {
+          "title": "Talent marks",
+          "body": "A small mark next to a rider's name now shows the biggest talents under 23 and juniors in strong progress."
+        },
+        "da": {
+          "title": "Talentmærker",
+          "body": "Et lille mærke ved rytterens navn viser nu de største talenter under 23 og juniorer i kraftig fremgang."
+        },
+        "refs": [
+          7879
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.423",
     "date": "2026-11-09",
     "changes": [
