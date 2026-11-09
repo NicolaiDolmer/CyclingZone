@@ -61,7 +61,7 @@ test("#7737 PG17: double press, sweep and retry never settle twice", { skip: !po
   const settled = () => count(`SELECT count(*) FROM training_condition_settlements WHERE rider_id='${A}'`);
 
   // Hold the team lock, start every contender, wait until all are queued, then let them go.
-  const contend = async (statements) => {
+  const contend = async (statements, { queued = statements.length } = {}) => {
     const holder = spawn(exe, args, { windowsHide: true });
     const held = new Promise((resolve, reject) => {
       let out = "";
@@ -74,7 +74,7 @@ test("#7737 PG17: double press, sweep and retry never settle twice", { skip: !po
     const running = statements.map((text) => sql(text).then((out) => ({ out }), (error) => ({ error: String(error.stderr ?? error.message) })));
     for (let i = 0; i < 200; i += 1) {
       const waiting = await count("SELECT count(*) FROM pg_locks WHERE locktype='advisory' AND NOT granted");
-      if (waiting >= statements.length) break;
+      if (waiting >= queued) break;
       await new Promise((resolve) => setTimeout(resolve, 25));
     }
     const closed = once(holder, "exit");
@@ -122,7 +122,8 @@ test("#7737 PG17: double press, sweep and retry never settle twice", { skip: !po
   await t.test("a stage load recorded while the press commits: no deadlock, both land", async () => {
     await reset();
     for (const day of [41, 42, 44]) await sql(commitSql(day));
-    const results = await contend([commitSql(45, { conditions: [{ rider_id: A, form: 50, fatigue: 24, provisional: true }] }), recordLoad]);
+    // The load takes no team lock, so only the press queues behind the holder.
+    const results = await contend([commitSql(45, { conditions: [{ rider_id: A, form: 50, fatigue: 24, provisional: true }] }), recordLoad], { queued: 1 });
     assert.deepEqual(results.filter((r) => r.error), []);
     assert.equal(await count(`SELECT count(*) FROM training_race_loads WHERE rider_id='${A}'`), 1);
     assert.equal(await sql(`SELECT fatigue FROM rider_condition WHERE rider_id='${A}'`), "24");
