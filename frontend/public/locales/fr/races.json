@@ -38,6 +38,11 @@
     "useSuggestion": "Utiliser la suggestion",
     "clearPlan": "Retirer le plan",
     "effortNote": "L'effort suit la tâche.",
+    "huntOption": "{task} · {price}",
+    "price": { "hard": "Dure" },
+    "huntNote": "Chasse aux points : il dispute les sprints ou les côtes de son tronçon depuis le groupe où il se trouve. Une échappée devant prend toujours les points en premier. La tâche se court dur et compte dans sa fatigue.",
+
+    "huntOffNote": "La chasse aux points est désactivée sur cette course, il roule donc à l’abri sur cette partie du plan.",
     "rulesNote": "L'échappée ne peut être que la première tâche. Le gruppetto, rentrer et le train de sprint viennent toujours en dernier.",
     "switchNote": {
       "climb": {
@@ -72,7 +77,9 @@
       "ride_for_result": "Courir pour un résultat",
       "sprint_train": "Train de sprint",
       "grupetto": "Gruppetto",
-      "ride_in": "Rentrer tranquillement"
+      "ride_in": "Rentrer tranquillement",
+      "hunt_points": "Chasser les points des sprints",
+      "hunt_kom": "Chasser les points de la montagne"
     },
     "from": {
       "kom": "après {climb}",
@@ -103,7 +110,10 @@
         "outOfTime": "Hors délais",
         "rank": "N° {rank} à l'arrivée",
         "withRider": "Avec {name}",
-        "withRiderTo": "Avec {name} jusqu'au km {km}"
+        "withRiderTo": "Avec {name} jusqu'au km {km}",
+        "sprintPoints": "{points} points de sprint",
+        "komPoints": "{points} points de la montagne",
+        "noPoints": "A tenté, sans points"
       }
     }
   },
@@ -1137,7 +1147,15 @@
       "team_orders_grupetto_with_break": "Un coureur en Gruppetto ne peut pas tenter l’échappée.",
       "team_orders_grupetto_with_train": "Un coureur en Gruppetto ne peut pas rouler dans le train du sprint.",
       "team_orders_work_with_break": "Un coureur qui roule pour le leader ne peut pas tenter l’échappée.",
-      "team_orders_train_with_break": "Un coureur du train du sprint ne peut pas tenter l’échappée."
+      "team_orders_train_with_break": "Un coureur du train du sprint ne peut pas tenter l’échappée.",
+
+      "stage_plan_unknown_task": "L’une des tâches n’est pas disponible sur cette course. Choisis-en une autre et enregistre à nouveau.",
+
+      "stage_plan_hunt_no_sprint": "Aller chercher les points du sprint exige un sprint intermédiaire sur son secteur. Choisis une autre tâche ou déplace le changement.",
+
+      "stage_plan_hunt_no_climb": "Aller chercher les points de la montagne exige une côte catégorisée sur son secteur. Choisis une autre tâche ou déplace le changement.",
+
+      "stage_plan_hunt_after_dropped": "Un coureur lâché ne peut pas aller chercher des points. Choisis une autre tâche pour cette étape du plan."
     }
   },
   "tacticsOrders": {
@@ -1638,6 +1656,8 @@
         "breakaway_formed": "{riders} {count, plural, one {s'échappe} other {s'échappent}} à l'avant.",
         "kom_passage": "{name} (cat. {category}) : {rider} passe en tête au sommet.",
         "intermediate_sprint": "{name} : {rider} remporte le sprint intermédiaire.",
+        "intermediate_sprint_hunted": "{name} : {rider} remporte le sprint intermédiaire. {count, plural, one {{hunters} a chassé} other {{hunters} ont chassé}} les points.",
+        "kom_passage_hunted": "{name} (cat. {category}) : {rider} passe en tête au sommet. {count, plural, one {{hunters} a chassé} other {{hunters} ont chassé}} les points.",
         "breakaway_caught": "{riders} {count, plural, one {est repris} other {sont repris}} par le groupe de poursuite.",
         "breakaway_caught_by_teams": "{riders} {count, plural, one {est repris} other {sont repris}}. {teamCount, plural, =1 {{teamLast} a mené la chasse} other {{teamsHead} et {teamLast} ont mené la chasse}}.",
         "breakaway_caught_by_peloton": "{riders} {count, plural, one {est repris} other {sont repris}} par le peloton.",

@@ -53,6 +53,7 @@ import { komPassageEvent, intermediateSprintEvent } from "../timeline.ts";
 import { BONUS_SECONDS_EXTRA_TUNING } from "../tuning.ts";
 import { komHunterSet } from "./komJersey6937.ts"; // #6937 B1
 import { intermediateSprintLeaderV3 } from "./pointsJersey2757.ts";
+import { jerseyHuntersForPassage7855, passageHuntersField7855, withJerseyHunters7855 } from "./jerseyHunt7855.ts"; // #7855
 import type { BonusSecondsTuning } from "../types.ts";
 import { compareIds } from "../../../compareIds.ts";
 
@@ -358,6 +359,8 @@ export const passagesHook = (state: EngineState, ctx: SegmentHookContext): Segme
   const passages: StagePassage[] = [];
   for (const wp of waypoints) {
     const isKom = wp.kind === "kom";
+    // #7855 (slukket): etapeplanens jaegere paa denne art passage (tom uden kontakten).
+    const hunters7855 = jerseyHuntersForPassage7855(ctx.stagePlanTasks, isKom ? "kom" : "sprint", (id) => state.riders[id] !== undefined && state.riders[id].status !== "abandoned", { km: wp.km, windows: ctx.stagePlanHuntWindows7855 });
     const category = isKom ? (wp.category ?? null) : null;
     const pointScale = isKom ? komPointScale(category, false) : extra.intermediateSprintPoints;
     const qualityWeights = isKom
@@ -377,6 +380,8 @@ export const passagesHook = (state: EngineState, ctx: SegmentHookContext): Segme
         // #6937 B2 (KUN s5_profiles_v3, ejer 24/10 valg A): kun bjergtoppe undervejs;
         // topankomsten afgoeres af maalordenen og er uaendret.
         ...(isKom && ctx.s5ProfilesV3 === true ? { smallGroupRollOverRoles: KOM_FAVOURITE_ROLL_OVER_ROLES, komHunterIds: komHunterSet(ctx.jerseyLeaders, entrants, ctx.gcContext), rollOverBehindGroup: true } : {}),
+        // #7855 (slukket): jaegerne med opgaven kaemper forrest i deres gruppe (jerseyHunt7855.ts).
+        ...(hunters7855.length ? { komHunterIds: withJerseyHunters7855(isKom && ctx.s5ProfilesV3 === true ? komHunterSet(ctx.jerseyLeaders, entrants, ctx.gcContext) : undefined, hunters7855) } : {}),
       },
     });
     const passage = buildPassage({
@@ -391,7 +396,7 @@ export const passagesHook = (state: EngineState, ctx: SegmentHookContext): Segme
       // giver point, aldrig sekunder (#2413's scope).
       bonusScale: isKom ? [] : tuning.bonusSeconds.intermediateSeconds,
     });
-    if (passage) passages.push(passage);
+    if (passage) passages.push({ ...passage, ...passageHuntersField7855(hunters7855) }); // #7855: tom = samme objekt-form
   }
   if (passages.length === 0) return { state, events: [] };
 
@@ -534,22 +539,24 @@ export function passageTotals(passages: readonly StagePassage[]): RiderPassageTo
  */
 export function passagesToTimelineEvents(passages: readonly StagePassage[]): TimelineEvent[] {
   const events: TimelineEvent[] = [];
+  // #7855 (slukket): jaegerne med opgaven staar paa passagen; uden jaegere er eventet uaendret.
+  const withHunters = (p: StagePassage, event: TimelineEvent): TimelineEvent => (p.hunters?.length ? { ...event, params: { ...event.params, hunters: [...p.hunters] } } : event);
   for (const p of passages) {
     if (p.kind === "kom") {
-      events.push(komPassageEvent(p.km, {
+      events.push(withHunters(p, komPassageEvent(p.km, {
         name: p.name,
         category: p.category ?? null,
         top: p.results.map((r) => ({ rider_id: r.rider_id, points: r.points })),
-      }));
+      })));
     } else if (p.kind === "sprint") {
-      events.push(intermediateSprintEvent(p.km, {
+      events.push(withHunters(p, intermediateSprintEvent(p.km, {
         name: p.name,
         top: p.results.map((r) => ({
           rider_id: r.rider_id,
           points: r.points,
           bonus_seconds: r.bonus_seconds,
         })),
-      }));
+      })));
     }
   }
   return events;

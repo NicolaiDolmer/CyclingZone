@@ -291,6 +291,7 @@ import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
 import { resolveSelectionWarnings } from "../lib/selectionWarningResolve.ts"; // #7508
 import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked, sprintTrainFlatOnlyForRace, loadStageRoleByRider } from "../lib/raceTeamOrdersApi.js";
 import { isStagePlanEnabled, loadStagePlanContext, orderHasStagePlan, stagePlanRevisionOk } from "../lib/stagePlanApi.js"; // #7003
+import { jerseyHunt7855OpenForRace } from "../lib/jerseyHunt7855Flag.js"; // #7855
 import { isRaceLineupLocked, isRaceLineupLockedNow, firstStageStartsFromSchedule, loadLockedRaceIds } from "../lib/raceStartLock.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, teamInRaceSquadPool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
@@ -6621,6 +6622,8 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
       // #7003: etapeplanen langs ruten (flag + s5_profiles_v3). Kun en boolean.
       stage_plan_enabled: stagePlanRevisionOk(race)
         && await isStagePlanEnabled(supabase, { isBetaTester: (await isViewerBetaTester(req)) === true }),
+      // #7855: troejejagtens opgaver kan vaelges (kontakten + loebet koerer med dem). Kun en boolean.
+      jersey_hunt_7855: stagePlanRevisionOk(race) && await jerseyHunt7855OpenForRace({ supabase, race }),
     });
   } catch (err) {
     captureException(err);
@@ -6646,7 +6649,7 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
     const stagePlan = orderHasStagePlan(req.body) && stagePlanRevisionOk(race)
       && Number.isInteger(stageNumber) && stageNumber >= 1 && stageNumber <= ctx.stage_count
       && await isStagePlanEnabled(supabase, { isBetaTester: (await isViewerBetaTester(req)) === true })
-      ? await loadStagePlanContext({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider })
+      ? await loadStagePlanContext({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider, jerseyHunt7855: await jerseyHunt7855OpenForRace({ supabase, race }) }) // #7855
       : null;
     const roleByRider = await loadStageRoleByRider({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider }); // #7003
     const result = validateTeamOrder({

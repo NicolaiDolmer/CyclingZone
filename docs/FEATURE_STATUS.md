@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-141 poster: live 111 · dormant 8 · building 13 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+142 poster: live 111 · dormant 8 · building 14 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -20,6 +20,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
 | Long descent chase cap (`race-descent-regroup-cap-7644`) | dormant | `descent_regroup_cap_7644` | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #7644 | 2026-11-04 | Slukket; tændes af ejeren. |
+| Jersey hunt in the stage plan (`race-jersey-hunt-7855`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #7855 | 2026-11-09 | - |
 | Tired riders can miss the time limit, with a warning (`race-time-limit-fatigue-7715`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #7715 | 2026-11-07 | Nøgle time_limit_fatigue_7715 uden række (off). |
 | Official time persistence revision (`race-official-times-v1`) | retired | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6284 | 2026-10-16 | Frosset prototype. |
 
@@ -54,7 +55,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
-| Teamwork and Leadership abilities (`mental-abilities-teamwork-leadership`) | building | - | [holdarbejde-og-lederskab-evner-design](superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md) | #1177 | 2026-11-04 | Kun data er bygget (#5268); motor (#5348) og mentorpar (#5349) mangler, arbejdet står stille. |
+| Teamwork and Leadership abilities (`mental-abilities-teamwork-leadership`) | building | - | [holdarbejde-og-lederskab-evner-design](superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md) | #1177 | 2026-11-04 | Kun data er bygget (#5268); motor (#5348) og mentorpar (#5349) mangler. |
 | Rider card (`rider-hover-card`) | building | - | - | #2000 | 2026-11-07 | Kontakt rider_hover_card. |
 | New riders' primary type (`rider-primary-type-from-distribution`) | building | - | [RIDER_GENERATION](RIDER_GENERATION.md) | #5327 | 2026-09-23 | Kontakt (off); flip er ejer-gated. |
 
@@ -66,12 +67,12 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
-| Development Score B in the engine (`development-score-b-engine`) | dormant | `development_score_v2` | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-11-04 | Ejer 31/10 (#6110): parkeret, indtil grundtalentet (spec 23/10, byggetrin 2) er bygget; ingen frist. Forudsætning før tænding: #7584. |
+| Development Score B in the engine (`development-score-b-engine`) | dormant | `development_score_v2` | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-11-04 | Ejer 31/10 (#6110): parkeret til grundtalentet er bygget. Før tænding: #7584. |
 | One potential source (`potential-estimate-display`) | dormant | `potential_estimate_display` | [6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md) | #6110 | 2026-11-05 | Byggetrin 4 (#7684): fladerne læser potentialEstimateRead.js, når flaget er tændt. |
 | Catch-up via racing (`race-day-catchup`) | dormant | `race_day_catchup_enabled` | [TRAINING_RULES](TRAINING_RULES.md) | #6950 | 2026-10-25 | Ejer, med Udvikling 2.0. |
 | Race day role base day (`race-day-role-base-day`) | dormant | `race_day_role_base_day_enabled` | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-11-03 | #5950 løsning A (ejer-valg 3/11), underkontakt til race-day-role-yield. Off. |
 | Development XP (`development-xp-model`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-11-07 | Kontakter development_xp_model + development_xp_from_date; tændes efter kalibrering. |
-| Stored potential estimates (`potential-estimate-writes`) | building | - | [6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md) | #6110 | 2026-11-05 | Trin 5 (#7685): søndagsjob, holdskifte og nye kig skriver bag flaget potential_estimate_writes (seedes off). |
+| Stored potential estimates (`potential-estimate-writes`) | building | - | [6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md) | #6110 | 2026-11-05 | Trin 5 (#7685): søndagsjob, holdskifte og nye kig; flaget seedes off. |
 | Fatigue now counts today's earlier stages (`training-fatigue-now-7801`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #7801 | 2026-11-07 | Kontakt fatigue_now_7801 (ikke seedet = slukket); ejer tænder. |
 
 ## academy

@@ -38,6 +38,11 @@
     "useSuggestion": "Gebruik het voorstel",
     "clearPlan": "Plan verwijderen",
     "effortNote": "De inspanning volgt de taak.",
+    "huntOption": "{task} · {price}",
+    "price": { "hard": "Zwaar" },
+    "huntNote": "Puntenjacht: hij rijdt om de tussensprints of klimmen op zijn stuk vanuit de groep waarin hij zit. Een vlucht vooruit pakt de punten nog steeds eerst. De taak wordt hard gereden en telt mee in zijn vermoeidheid.",
+
+    "huntOffNote": "Puntenjacht staat uit in deze koers, dus hij rijdt op dat deel van het plan uit de wind.",
     "rulesNote": "De vlucht kan alleen de eerste taak zijn. Gruppetto, binnenrijden en de sprinttrein komen altijd als laatste.",
     "switchNote": {
       "climb": {
@@ -72,7 +77,9 @@
       "ride_for_result": "Rijden voor een uitslag",
       "sprint_train": "Sprinttrein",
       "grupetto": "Gruppetto",
-      "ride_in": "Rustig binnenrijden"
+      "ride_in": "Rustig binnenrijden",
+      "hunt_points": "Punten pakken in de sprints",
+      "hunt_kom": "Bergpunten pakken"
     },
     "from": {
       "kom": "na {climb}",
@@ -103,7 +110,10 @@
         "outOfTime": "Buiten tijdslimiet",
         "rank": "Nr. {rank} op de finish",
         "withRider": "Met {name}",
-        "withRiderTo": "Met {name} tot km {km}"
+        "withRiderTo": "Met {name} tot km {km}",
+        "sprintPoints": "{points} sprintpunten",
+        "komPoints": "{points} bergpunten",
+        "noPoints": "Ging ervoor, geen punten"
       }
     }
   },
@@ -1137,7 +1147,15 @@
       "team_orders_grupetto_with_break": "Een renner in de grupetto kan de vlucht niet proberen.",
       "team_orders_grupetto_with_train": "Een renner in de grupetto kan niet in de sprinttrein rijden.",
       "team_orders_work_with_break": "Een renner die voor de kopman werkt, kan de vlucht niet proberen.",
-      "team_orders_train_with_break": "Een renner in de sprinttrein kan de vlucht niet proberen."
+      "team_orders_train_with_break": "Een renner in de sprinttrein kan de vlucht niet proberen.",
+
+      "stage_plan_unknown_task": "Een van de taken is niet beschikbaar in deze koers. Kies een andere taak en sla opnieuw op.",
+
+      "stage_plan_hunt_no_sprint": "Voor sprintpunten is een tussensprint op zijn stuk nodig. Kies een andere taak of verplaats de wissel.",
+
+      "stage_plan_hunt_no_climb": "Voor bergpunten is een gecategoriseerde klim op zijn stuk nodig. Kies een andere taak of verplaats de wissel.",
+
+      "stage_plan_hunt_after_dropped": "Een gelost renner kan niet voor punten rijden. Kies een andere taak voor die stap."
     }
   },
   "tacticsOrders": {
@@ -1638,6 +1656,8 @@
         "breakaway_formed": "{riders} {count, plural, one {rijdt} other {rijden}} weg aan de kop.",
         "kom_passage": "{name} (cat. {category}): {rider} is als eerste boven.",
         "intermediate_sprint": "{name}: {rider} pakt de tussensprint.",
+        "intermediate_sprint_hunted": "{name}: {rider} pakt de tussensprint. {count, plural, one {{hunters} ging} other {{hunters} gingen}} voor de punten.",
+        "kom_passage_hunted": "{name} (cat. {category}): {rider} is als eerste boven. {count, plural, one {{hunters} ging} other {{hunters} gingen}} voor de punten.",
         "breakaway_caught": "{riders} {count, plural, one {wordt} other {worden}} gegrepen door de achtervolgende groep.",
         "breakaway_caught_by_teams": "{riders} {count, plural, one {wordt} other {worden}} gegrepen. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} en {teamLast}}} deed het achtervolgingswerk.",
         "breakaway_caught_by_peloton": "{riders} {count, plural, one {wordt} other {worden}} gegrepen door het peloton.",

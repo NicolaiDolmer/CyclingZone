@@ -398,6 +398,7 @@ export function collectRiderIds(events) {
     add(p.previous_leader_id);
     add(p.protected_rider_id); // #6067: gc_reaction navngiver holdets GC-rytter
     for (const t of p.top || []) add(t?.rider_id);
+    for (const id of p.hunters || []) add(id); // #7855: passagens jaegere
   }
   return [...out];
 }
@@ -448,11 +449,15 @@ export function describeEvent(event, { riderNameById, teamNameById, ownRiderIds 
     case "kom_passage": {
       const rider = riderName(p.top?.[0]?.rider_id, riderNameById);
       if (!rider) return null;
+      const hunters = resolvedRiderNames(p.hunters, riderNameById); // #7855: dem der koerte efter pointene
+      if (hunters.length) return { key: "kom_passage_hunted", params: { name: p.name || "—", category: p.category || "", rider, hunters: hunters.join(", "), count: hunters.length } };
       return { key: "kom_passage", params: { name: p.name || "—", category: p.category || "", rider } };
     }
     case "intermediate_sprint": {
       const rider = riderName(p.top?.[0]?.rider_id, riderNameById);
       if (!rider) return null;
+      const hunters = resolvedRiderNames(p.hunters, riderNameById); // #7855
+      if (hunters.length) return { key: "intermediate_sprint_hunted", params: { name: p.name || "—", rider, hunters: hunters.join(", "), count: hunters.length } };
       return { key: "intermediate_sprint", params: { name: p.name || "—", rider } };
     }
     case "breakaway_caught": {
