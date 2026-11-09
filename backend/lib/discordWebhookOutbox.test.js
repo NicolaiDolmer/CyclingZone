@@ -208,6 +208,11 @@ test("drain — delete-fejl efter succesfuld levering tælles stadig som sent, m
   assert.equal(deps._captures.length, 1, "delete-fejlen skal være synlig i Sentry (risiko for dobbelt-levering)");
   assert.match(deps._captures[0].err.message, /delete fejlede efter succesfuld levering/);
   assert.match(deps._captures[0].err.message, /row-1/);
+  assert.deepEqual(
+    deps._captures[0].ctx.fingerprint,
+    ["discord-webhook-outbox-duplicate-risk"],
+    "#7917: må ikke forsvinde i nedbrudsklassen",
+  );
 });
 
 test("drain — fortsat 5xx replanlægges med voksende backoff, IKKE dead", async () => {

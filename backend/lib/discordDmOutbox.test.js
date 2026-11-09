@@ -10,7 +10,13 @@ import {
 
 // ── Supabase-mock (chainable, registrerer writes) ────────────────────────────
 
-function makeSupabaseMock({ pendingRows = [], insertError = null, selectError = null } = {}) {
+function makeSupabaseMock({
+  pendingRows = [],
+  insertError = null,
+  selectError = null,
+  updateError = null,
+  deleteError = null,
+} = {}) {
   const writes = { inserts: [], updates: [], deletes: [] };
   const supabase = {
     from(table) {
@@ -36,7 +42,7 @@ function makeSupabaseMock({ pendingRows = [], insertError = null, selectError = 
           return {
             eq: (col, id) => {
               writes.updates.push({ id, values });
-              return Promise.resolve({ error: null });
+              return Promise.resolve({ error: updateError });
             },
           };
         },
@@ -44,7 +50,7 @@ function makeSupabaseMock({ pendingRows = [], insertError = null, selectError = 
           return {
             eq: (col, id) => {
               writes.deletes.push(id);
-              return Promise.resolve({ error: null });
+              return Promise.resolve({ error: deleteError });
             },
           };
         },
@@ -150,6 +156,74 @@ test("drain — succesfuld levering sletter rækken", async () => {
   assert.deepEqual(writes.deletes, ["r1"]);
   assert.deepEqual(delivered, [{ discordId: "u1", payload: { a: 1 } }]);
   assert.equal(deps._webhookCalls.length, 0);
+});
+
+// #7917: de tre skrivninger efter levering var tavse.
+test("drain — delete-fejl efter levering tælles som sent, men captures med eget fingerprint", async () => {
+  const { supabase, writes } = makeSupabaseMock({
+    pendingRows: [{ id: "r1", discord_id: "u1", payload: {}, attempts: 1 }],
+    deleteError: { message: "Supabase unavailable (522 Connection timed out)" },
+  });
+  const deps = makeDrainDeps();
+
+  const result = await processDmOutboxDrain({
+    supabase,
+    deliverFn: async () => ({ ok: true, status: 200 }),
+    ...deps,
+  });
+
+  assert.deepEqual(result, { processed: 1, sent: 1, rescheduled: 0, dead: 0 });
+  assert.deepEqual(writes.deletes, ["r1"]);
+  assert.equal(deps._captures.length, 1);
+  assert.match(deps._captures[0].err.message, /delete fejlede efter succesfuld levering/);
+  assert.deepEqual(deps._captures[0].ctx.fingerprint, ["discord-dm-outbox-duplicate-risk"]);
+});
+
+test("drain — reschedule-fejl captures og tælles ikke som rescheduled", async () => {
+  const { supabase } = makeSupabaseMock({
+    pendingRows: [{ id: "r1", discord_id: "u1", payload: {}, attempts: 2 }],
+    updateError: { message: "connection reset" },
+  });
+  const deps = makeDrainDeps();
+
+  const result = await processDmOutboxDrain({
+    supabase,
+    deliverFn: async () => ({
+      ok: false,
+      status: 429,
+      failure: { kind: "retryable", reason: "rate-limited" },
+      error: "openDm 429",
+    }),
+    ...deps,
+  });
+
+  assert.deepEqual(result, { processed: 1, sent: 0, rescheduled: 0, dead: 0 });
+  assert.equal(deps._captures.length, 1);
+  assert.match(deps._captures[0].err.message, /reschedule-update fejlede \(id=r1\)/);
+});
+
+test("drain — dead-update-fejl captures, og rækken tæller stadig som død i alarmen", async () => {
+  const { supabase } = makeSupabaseMock({
+    pendingRows: [{ id: "r1", discord_id: "u1", payload: {}, attempts: 1 }],
+    updateError: { message: "connection reset" },
+  });
+  const deps = makeDrainDeps();
+
+  const result = await processDmOutboxDrain({
+    supabase,
+    deliverFn: async () => ({
+      ok: false,
+      status: 401,
+      failure: { kind: "permanent", reason: "token-invalid" },
+      error: "openDm 401",
+    }),
+    ...deps,
+  });
+
+  assert.deepEqual(result, { processed: 1, sent: 0, rescheduled: 0, dead: 1 });
+  assert.equal(deps._captures.length, 2, "ét signal for skrivefejlen, ét for den aggregerede alarm");
+  assert.match(deps._captures[0].err.message, /dead-update fejlede \(id=r1\)/);
+  assert.match(deps._captures[1].err.message, /markeret dead/);
 });
 
 test("drain — retryable fejl replanlægger med backoff og bumper attempts", async () => {

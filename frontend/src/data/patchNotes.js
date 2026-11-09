@@ -1,6 +1,6 @@
 export const PATCHES = [
   {
-    "version": "7.423",
+    "version": "7.424",
     "date": "2026-11-09",
     "changes": [
       {
@@ -10,15 +10,55 @@ export const PATCHES = [
         "topic": "Training",
         "en": {
           "title": "A clearer training report",
-          "body": "Whole ability points now stand out in bold, and riders without a whole point are folded into one row you can open. Abilities follow the same order as on the rider profile."
+          "body": "Whole ability points now stand out in bold. Riders stay in the same order whether or not they got a whole point, and those without one say so on their own row. Abilities follow the same order as on the rider profile."
         },
         "da": {
           "title": "En tydeligere træningsrapport",
-          "body": "Hele evnepoint står nu med fed skrift, og ryttere uden et helt point er samlet i én række, du kan folde ud. Evnerne står i samme rækkefølge som på rytterprofilen."
+          "body": "Hele evnepoint står nu med fed skrift. Rytterne står i samme rækkefølge, uanset om de fik et helt point, og dem uden står med det på deres egen række. Evnerne står i samme rækkefølge som på rytterprofilen."
         },
         "refs": [
           7745,
           7746
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.423",
+    "date": "2026-11-09",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Mobile",
+        "en": {
+          "title": "Bigger buttons in Tactics on your phone",
+          "body": "On mobile, the role and intention buttons in Tactics are now bigger and easier to tap."
+        },
+        "da": {
+          "title": "Større knapper i Taktik på telefonen",
+          "body": "På mobil er rolle- og intentionsknapperne i Taktik nu større og lettere at trykke på."
+        },
+        "refs": [
+          6916
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Mobile",
+        "en": {
+          "title": "Rider names open the profile in Today on your phone",
+          "body": "On mobile, tapping a rider's name in the Today details in Training now opens that rider's profile."
+        },
+        "da": {
+          "title": "Rytternavne åbner profilen i I dag på telefonen",
+          "body": "På mobil åbner et tryk på rytterens navn i I dag-detaljen under Træning nu rytterens profil."
+        },
+        "refs": [
+          6524
         ]
       }
     ]

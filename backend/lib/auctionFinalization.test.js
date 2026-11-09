@@ -108,6 +108,7 @@ function createFinalizeAuctionSupabase({
   ownershipEvents = [], // #3582: rider_ownership_events-inserts
   priorOwnershipEvents = [], // #6474: hændelser fra en tidligere, afbrudt finalize-kørsel
   atRiskRiderRowsByTeam = {}, // #2836: fetchAtRiskCount's fetchTeamRiskRows-svar pr. sælger-team-id (default: ingen risiko)
+  saleEscrowStatus = null, // #7871: status på handlens sale_escrow (null = ingen escrow)
 } = {}) {
   const bankTeam = Object.values(teams).find(team => team.is_bank) || null;
 
@@ -581,6 +582,16 @@ function createFinalizeAuctionSupabase({
             };
           },
         };
+      }
+
+      // #7871: saleEscrowStatusForDeal (sale_escrows for denne handel).
+      if (table === "sale_escrows") {
+        const chain = {
+          select: () => chain,
+          eq: () => chain,
+          limit: async () => ({ data: saleEscrowStatus ? [{ status: saleEscrowStatus }] : [], error: null }),
+        };
+        return chain;
       }
 
       throw new Error(`Unexpected table: ${table}`);
@@ -1208,6 +1219,48 @@ test("finalizeAuctionById retirement guard also cancels youth auctions before se
   assert.equal(notifications.length, 1);
   assert.equal(notifications[0][0], "buyer-team");
   assert.equal(notifications[0][1], "auction_cancelled");
+});
+
+test("#7871: en gentaget finalize efter en escrow-refusion lukker auktionen uden at flytte rytteren eller betale", async () => {
+  const auctionUpdates = [];
+  const teamUpdates = [];
+  const riderUpdates = [];
+  const financeInserts = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-refunded",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 150,
+        seller_team_id: "seller-team",
+        rider: { id: "rider-refunded", firstname: "Refunded", lastname: "Sale", team_id: "seller-team" },
+      },
+      teams: {
+        "buyer-team": { id: "buyer-team", name: "Buyer", balance: 500, division: 3, user_id: "user-buyer" },
+        "seller-team": { id: "seller-team", name: "Seller", balance: 250, division: 3, user_id: "user-seller", is_ai: false },
+      },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+        "seller-team": { riderCount: 9, pendingCount: 0, activeLoanCount: 0 },
+      },
+      saleEscrowStatus: "refunded",
+      auctionUpdates,
+      teamUpdates,
+      riderUpdates,
+      financeInserts,
+    }),
+    auctionId: "auction-refunded",
+    notifyTeamOwner: async () => {},
+    now: new Date("2026-04-22T10:00:00.000Z"),
+  });
+
+  assert.equal(result.code, "sale_escrow_refunded");
+  assert.deepEqual(riderUpdates, [], "rytteren flyttes ikke igen");
+  assert.deepEqual(financeInserts, [], "ingen betaler, ingen krediteres");
+  assert.deepEqual(teamUpdates, []);
+  assert.deepEqual(auctionUpdates, [{ status: "cancelled", actual_end: "2026-04-22T10:00:00.000Z", seller_team_id: "seller-team" }]);
 });
 
 test("finalizeAuctionById still pays the human seller for a normal owned-rider auction", async () => {
@@ -3539,6 +3592,10 @@ function makeYouthFinalizeSupabase({
             return Promise.resolve({ error: null });
           },
         };
+      }
+      if (table === "sale_escrows") {
+        const chain = { select: () => chain, eq: () => chain, limit: async () => ({ data: [], error: null }) };
+        return chain;
       }
       throw new Error(`Unexpected table: ${table}`);
     },

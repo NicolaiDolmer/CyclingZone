@@ -48,6 +48,8 @@ export interface ScoreRow {
   created_at?: string | null;
   updated_at?: string | null;
   shipped_at?: string | null;
+  // #7789: admins egen kategori (roadmap_items.category), se mergeCategories.
+  category?: string | null;
 }
 
 export interface IssueScoreRow {
@@ -323,6 +325,7 @@ const ACCESSORS: Record<string, Accessor> = {
   horizon: strAcc("horizon"),
   area: (r) => strAcc("engine")(r) ?? strAcc("area")(r),
   issue: numAcc("issue_ref"),
+  sd: numAcc("sd_importance"),
   reports: numAcc("reports"),
   days: numAcc("days_open"),
   // Færdigt-datoen, ellers sidst ændret, ellers oprettet.
@@ -392,4 +395,267 @@ export function fmtScore(value: Num, digits = 2): string {
   const n = num(value);
   if (n === null) return "–";
   return n.toFixed(digits).replace(".", ",");
+}
+
+// ---------------------------------------------------------------------------
+// Grafen (#7789): vigtighed mod idé-score, boble efter antal stemmere
+// ---------------------------------------------------------------------------
+//
+// Samme spørgsmål som spørgeskema-panelets kvadrant (SurveyIdeasTab): hvad skal
+// bygges først? Tallene kommer fra roadmap_admin_vote_rows() (én stemme pr.
+// række, ingen user_id), så filtrene på aktive managere og division kan regnes
+// her. Findes RPC'en ikke endnu (migrationen applies efter merge), bruger
+// grafen viewets snit, og filtrene er slået fra med en forklaring.
+
+// Skalaen på Stem (1-6 på begge akser, CHECK i roadmap_votes).
+export const SCORE_MIN = 1;
+export const SCORE_MAX = 6;
+
+export type VoterTuple = [number | null, boolean];
+export type VoteTuple = [string, number, number | null, number | null];
+
+export interface VotePayload {
+  voters: VoterTuple[];
+  votes: VoteTuple[];
+}
+
+// Svaret fra /api/admin/roadmap/votes. Alt andet end den forventede form giver
+// null, så grafen hellere falder tilbage til viewet end tegner et forkert tal.
+export function parseVotePayload(raw: unknown): VotePayload | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as { voters?: unknown; votes?: unknown };
+  if (!Array.isArray(r.voters) || !Array.isArray(r.votes)) return null;
+  const score = (v: unknown) => (v === null || (typeof v === "number" && Number.isFinite(v)));
+  const voters = r.voters.filter((v): v is VoterTuple => Array.isArray(v)
+    && (v[0] === null || typeof v[0] === "number") && typeof v[1] === "boolean");
+  if (voters.length !== r.voters.length) return null;
+  const votes = r.votes.filter((v): v is VoteTuple => Array.isArray(v)
+    && typeof v[0] === "string" && Number.isInteger(v[1]) && v[1] >= 0 && v[1] < voters.length
+    && score(v[2]) && score(v[3]));
+  if (votes.length !== r.votes.length) return null;
+  return { voters, votes };
+}
+
+export const UNKNOWN_DIVISION = "unknown";
+
+export interface VoterFilters {
+  activeOnly?: boolean;
+  // "" = alle, ellers divisionsnummeret som tekst eller UNKNOWN_DIVISION.
+  division?: string;
+}
+
+function divisionKey(d: number | null): string {
+  return d === null ? UNKNOWN_DIVISION : String(d);
+}
+
+// Divisionerne blandt stemmerne, i rækkefølge; ukendt sidst.
+export function voterDivisions(payload: VotePayload | null): string[] {
+  if (!payload) return [];
+  const keys = new Set(payload.voters.map((v) => divisionKey(v[0])));
+  return [...keys].sort((a, b) => {
+    if (a === UNKNOWN_DIVISION) return 1;
+    if (b === UNKNOWN_DIVISION) return -1;
+    return Number(a) - Number(b);
+  });
+}
+
+export function filterVotes(payload: VotePayload, f: VoterFilters): VoteTuple[] {
+  const division = clean(f.division);
+  return payload.votes.filter(([, voter]) => {
+    const [d, active] = payload.voters[voter];
+    return (!f.activeOnly || active) && (!division || divisionKey(d) === division);
+  });
+}
+
+// Løbende summer, så både et punkt og en kategori regnes på samme måde.
+interface Acc {
+  voters: Set<number>;
+  n: number;
+  sumImp: number;
+  sumImpSq: number;
+  ideaN: number;
+  sumIdea: number;
+  dontKnow: number;
+}
+
+const newAcc = (): Acc => ({ voters: new Set(), n: 0, sumImp: 0, sumImpSq: 0, ideaN: 0, sumIdea: 0, dontKnow: 0 });
+
+function addVote(acc: Acc, [, voter, imp, idea]: VoteTuple) {
+  if (imp === null) { acc.dontKnow += 1; return; }
+  acc.voters.add(voter);
+  acc.n += 1;
+  acc.sumImp += imp;
+  acc.sumImpSq += imp * imp;
+  if (idea !== null) { acc.ideaN += 1; acc.sumIdea += idea; }
+}
+
+const round2 = (v: number) => Math.round(v * 100) / 100;
+
+// Stikprøve-spredning som i viewet (STDDEV_SAMP): kræver mindst to tal.
+function sampleSd(acc: Acc): number | null {
+  if (acc.n < 2) return null;
+  const variance = (acc.sumImpSq - (acc.sumImp * acc.sumImp) / acc.n) / (acc.n - 1);
+  return round2(Math.sqrt(Math.max(0, variance)));
+}
+
+export interface ChartPoint {
+  key: string;
+  label: string;
+  // Idé-score (x) og vigtighed (y); null = kan ikke tegnes.
+  x: number | null;
+  y: number | null;
+  // Antal stemmere med et tal: boblens størrelse.
+  voters: number;
+  dontKnow: number;
+  sd: number | null;
+  split: boolean;
+  category: string;
+  // Kun for punkter.
+  item?: ScoreRow;
+  // Kun for kategorier: hvor mange punkter der ligger i den.
+  items?: number;
+}
+
+function pointFromAcc(key: string, label: string, category: string, acc: Acc): ChartPoint {
+  const sd = sampleSd(acc);
+  return {
+    key, label, category,
+    x: acc.ideaN > 0 ? round2(acc.sumIdea / acc.ideaN) : null,
+    y: acc.n > 0 ? round2(acc.sumImp / acc.n) : null,
+    voters: acc.voters.size,
+    dontKnow: acc.dontKnow,
+    sd,
+    split: isSplit(sd),
+  };
+}
+
+// Kategorien på grafen: admins egen, ellers punktets område.
+export function categoryOf(row: ScoreRow, areaLabel: (engine: string) => string): string {
+  const own = typeof row.category === "string" ? row.category.trim() : "";
+  if (own) return own;
+  return areaLabel(row.engine ?? "other");
+}
+
+export function mergeCategories<T extends ScoreRow>(
+  rows: T[], items: { id: string; category: string | null }[],
+): (T & { category: string | null })[] {
+  const byId = new Map(items.map((i) => [i.id, i.category]));
+  return rows.map((r) => ({ ...r, category: byId.get(r.item_id) ?? null }));
+}
+
+const titleOf = (r: ScoreRow) => r.title_da || r.title_en;
+
+// Ét punkt pr. række. Med stemme-rækker regnes snittene på de filtrerede
+// stemmer; uden dem bruges viewets tal (ufiltreret).
+export function itemPoints(rows: ScoreRow[], votes: VoteTuple[] | null, areaLabel: (engine: string) => string): ChartPoint[] {
+  if (!votes) {
+    return rows.map((r) => {
+      const sd = num(r.sd_importance);
+      return {
+        key: r.item_id, label: titleOf(r), category: categoryOf(r, areaLabel), item: r,
+        x: num(r.avg_idea), y: num(r.avg_importance),
+        voters: num(r.votes) ?? 0, dontKnow: num(r.dont_know) ?? 0, sd, split: isSplit(sd),
+      };
+    });
+  }
+  const accs = new Map<string, Acc>();
+  for (const v of votes) {
+    const acc = accs.get(v[0]) ?? newAcc();
+    addVote(acc, v);
+    accs.set(v[0], acc);
+  }
+  return rows.map((r) => ({
+    ...pointFromAcc(r.item_id, titleOf(r), categoryOf(r, areaLabel), accs.get(r.item_id) ?? newAcc()),
+    item: r,
+  }));
+}
+
+// Ét punkt pr. kategori. Snittet er over stemmerne (et punkt med mange
+// stemmer vejer mere end et med få), og stemmere tælles én gang pr. kategori.
+// Uden stemme-rækker vægtes viewets snit med punktets antal stemmer, og
+// stemmerne lægges sammen (samme manager kan da tælle flere gange).
+export function categoryPoints(rows: ScoreRow[], votes: VoteTuple[] | null, areaLabel: (engine: string) => string): ChartPoint[] {
+  const cats = new Map<string, { rows: ScoreRow[]; acc: Acc }>();
+  for (const r of rows) {
+    const c = categoryOf(r, areaLabel);
+    const entry = cats.get(c) ?? { rows: [], acc: newAcc() };
+    entry.rows.push(r);
+    cats.set(c, entry);
+  }
+  if (votes) {
+    const catByItem = new Map(rows.map((r) => [r.item_id, categoryOf(r, areaLabel)]));
+    for (const v of votes) {
+      const c = catByItem.get(v[0]);
+      if (c !== undefined) addVote(cats.get(c)!.acc, v);
+    }
+    return [...cats.entries()].map(([c, { rows: rs, acc }]) => ({ ...pointFromAcc(c, c, c, acc), items: rs.length }));
+  }
+  return [...cats.entries()].map(([c, { rows: rs }]) => {
+    let n = 0, imp = 0, ideaN = 0, idea = 0, dontKnow = 0;
+    for (const r of rs) {
+      const k = num(r.votes) ?? 0, ki = num(r.idea_votes) ?? k;
+      const ai = num(r.avg_importance), ad = num(r.avg_idea);
+      if (ai !== null && k > 0) { n += k; imp += ai * k; }
+      if (ad !== null && ki > 0) { ideaN += ki; idea += ad * ki; }
+      dontKnow += num(r.dont_know) ?? 0;
+    }
+    return {
+      key: c, label: c, category: c, items: rs.length,
+      x: ideaN > 0 ? round2(idea / ideaN) : null,
+      y: n > 0 ? round2(imp / n) : null,
+      voters: n, dontKnow, sd: null, split: false,
+    };
+  });
+}
+
+export function plottable(points: ChartPoint[]): ChartPoint[] {
+  return points.filter((p) => p.x !== null && p.y !== null && p.voters > 0);
+}
+
+// Hvilke punkter grafen viser. "open" = alt, der endnu ikke er færdigt.
+export type ChartScope = "open" | "ideas" | "planned";
+export const CHART_SCOPES: { key: ChartScope; label: string }[] = [
+  { key: "open", label: "Alle åbne" },
+  { key: "ideas", label: "Idéer" },
+  { key: "planned", label: "Planlagt" },
+];
+
+export function chartRows<T extends ScoreRow>(rows: T[], scope: ChartScope | string): T[] {
+  if (scope === "ideas") return rows.filter((r) => r.status === "active");
+  if (scope === "planned") return rows.filter((r) => r.status === "planned");
+  return rows.filter((r) => !DONE_STATUSES.includes(r.status));
+}
+
+// Bobler med præcis samme snit ville ligge oven i hinanden, så kun den øverste
+// kunne klikkes. Hver boble får sit nummer blandt dem på samme sted (0 = står
+// stille); grafen skubber de øvrige lidt ud til siden.
+export function coincidentIndex(points: ChartPoint[]): Map<string, number> {
+  const seen = new Map<string, number>();
+  const out = new Map<string, number>();
+  for (const p of [...points].sort((a, b) => a.key.localeCompare(b.key))) {
+    const spot = `${p.x}|${p.y}`;
+    const i = seen.get(spot) ?? 0;
+    seen.set(spot, i + 1);
+    out.set(p.key, i);
+  }
+  return out;
+}
+
+// De stemmer, der hører til punkterne på grafen lige nu (scope og kategori),
+// så "N stemmere" i overskriften ikke tæller stemmer på andre punkter med.
+export function votesForItems(votes: VoteTuple[], itemIds: Iterable<string>): VoteTuple[] {
+  const ids = new Set(itemIds);
+  return votes.filter((v) => ids.has(v[0]));
+}
+
+export function distinctVoters(votes: VoteTuple[]): number {
+  return new Set(votes.filter((v) => v[2] !== null).map((v) => v[1])).size;
+}
+
+// Boblens radius i viewBox-enheder. Den vokser med kvadratroden af antal
+// stemmere, så arealet (det øjet læser) følger antallet og en stor boble ikke
+// dækker hele grafen. Mindsteradius holder en enkelt stemme klikbar.
+export function bubbleRadius(voters: number, maxVoters: number, minR = 1.2, maxR = 4.2): number {
+  if (!(maxVoters > 0) || !(voters > 0)) return minR;
+  return round2(minR + (maxR - minR) * Math.sqrt(Math.min(voters, maxVoters) / maxVoters));
 }

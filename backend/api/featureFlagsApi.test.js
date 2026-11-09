@@ -131,6 +131,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
 
     potential_single_number: false,
     potential_estimate_display: false,
+    champion_jerseys_7824: false,
 
     ability_cap_per_date_enabled: false,
 
@@ -142,6 +143,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     condition_v2_race_date_training_day: false,
     stage_plan_dropped_front_7635: false,
     rider_why_button: false,
+    talent_marks_7879: false,
     rider_hover_card: false,
     day_words_7725: false,
   });
@@ -196,6 +198,7 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
 
     potential_single_number: false,
     potential_estimate_display: false,
+    champion_jerseys_7824: false,
 
     ability_cap_per_date_enabled: false,
 
@@ -207,6 +210,7 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     condition_v2_race_date_training_day: false,
     stage_plan_dropped_front_7635: false,
     rider_why_button: false,
+    talent_marks_7879: false,
     rider_hover_card: false,
     day_words_7725: false,
   });
@@ -269,6 +273,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
 
     potential_single_number: false,
     potential_estimate_display: false,
+    champion_jerseys_7824: false,
 
     ability_cap_per_date_enabled: false,
 
@@ -280,6 +285,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     condition_v2_race_date_training_day: false,
     stage_plan_dropped_front_7635: false,
     rider_why_button: false,
+    talent_marks_7879: false,
     rider_hover_card: false,
     day_words_7725: false,
   });
@@ -303,6 +309,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
 
     potential_single_number: false,
     potential_estimate_display: false,
+    champion_jerseys_7824: false,
 
     ability_cap_per_date_enabled: false,
 
@@ -314,6 +321,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     condition_v2_race_date_training_day: false,
     stage_plan_dropped_front_7635: false,
     rider_why_button: false,
+    talent_marks_7879: false,
     rider_hover_card: false,
     day_words_7725: false,
   });

@@ -1,6 +1,11 @@
 import * as Sentry from "@sentry/node";
-import { normalizeSupabaseErrorMessage, normalizeSentrySupabaseErrorMessage } from "./supabaseErrorNormalize.js";
+import {
+  normalizeSupabaseErrorMessage,
+  normalizeSentrySupabaseErrorMessage,
+  isSupabaseUnavailableMessage,
+} from "./supabaseErrorNormalize.js";
 import { shouldReportToSentry } from "./errorMiddleware.js";
+import { copenhagenDateString } from "./copenhagenTime.js";
 
 let enabled = false;
 
@@ -225,6 +230,26 @@ export function normalizeEventMessages(event) {
   return event;
 }
 
+// #7917: ét databasenedbrud blev til mange Sentry-issues, fordi hvert call-site
+// har sit eget præfiks foran "Supabase unavailable (...)". Alle events i klassen
+// samles her i ét issue pr. dansk døgn: datoen gør, at et nyt nedbrudsdøgn åbner
+// et nyt issue og dermed alarmerer igen, i stedet for at lande i gårsdagens.
+//
+// Et eksplicit fingerprint fra call-site'et vinder altid. Det bruges af de
+// signaler, der ikke må forsvinde i klassen (fx risiko for dobbelt-levering).
+export function applySupabaseUnavailableFingerprint(event, now = new Date()) {
+  if (!event || typeof event !== "object") return event;
+  if (Array.isArray(event.fingerprint) && event.fingerprint.length) return event;
+
+  const messages = [event.message, ...(event.exception?.values || []).map((value) => value?.value)];
+  if (!messages.some(isSupabaseUnavailableMessage)) return event;
+
+  // event.timestamp er sekunder; den rigtige hændelsestid vinder over "nu".
+  const occurredAt = Number.isFinite(event.timestamp) ? new Date(event.timestamp * 1000) : now;
+  event.fingerprint = ["supabase-unavailable", copenhagenDateString(occurredAt)];
+  return event;
+}
+
 export function initSentry() {
   if (enabled || !process.env.SENTRY_DSN) return;
 
@@ -245,6 +270,9 @@ export function initSentry() {
 
       const message = event.message || event.exception?.values?.[0]?.value || "";
       if (/rate limit exceeded/i.test(message)) return null;
+
+      // #7917: efter normaliseringen, før grupperingsnøglen til volumen-guarden.
+      applySupabaseUnavailableFingerprint(event);
 
       // #2900: volumen-guard — se kommentaren ved VOLUME_LIMIT_* ovenfor.
       const groupKey = getEventGroupKey(event);

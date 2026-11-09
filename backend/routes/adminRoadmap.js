@@ -25,6 +25,8 @@ export function createAdminRoadmapRouter({ supabase, requireAdmin, writeLimiter 
   }
 
   router.get('/stats', (req, res) => call(req, res, 'roadmap_admin_stats', undefined, data => ({ stats: data?.[0] ?? null })));
+  // #7789: grafens filtre (aktive managere, division). Ingen user_id i svaret, se migrationen.
+  router.get('/votes', (req, res) => call(req, res, 'roadmap_admin_vote_rows', undefined, data => ({ votes: data ?? null })));
   router.post('/resync', writeLimiter, (req, res) => call(req, res, 'roadmap_resync_flags', undefined, data => ({ updated: data })));
   // #7792: kør leveret-sweepet nu (cron'en tager det ellers inden for få minutter).
   router.post('/notify-delivered', writeLimiter, async (req, res) => {

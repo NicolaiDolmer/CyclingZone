@@ -6,7 +6,7 @@
 
 **Mål:** en langsigtet bæredygtig forretning: database der virker, lavere udgifter, højere indtjening, nye brugere, brugere der bliver længere. **Ugefordeling:** drift 30 %, forretning 40 %, spillet 30 %, evalueres månedligt. **Til dørs først:** det halvbyggede går altid før nyt. **Fejl** (live og forkert) rettes uden go; alt nyt kræver ejerens go.
 **Udgivelse januar 2027** (roadbook 5/11), når: 0 alvorlige fejl i 14 dage, et sæsonskifte uden nedbrud, Pro 2.0 live. Præcis dato meldes først da. Afløser "beta slutter ved S6-start" (#6553).
-- **Drift:** plan v3 på #7659 (skridt 1 sat 8/11). Bestyrelsen én gang pr. løbstid med fire krav, efter 13/11. Salgsannoncer #7922 (9/11). Databasefejl #7917.
+- **Drift:** plan v3 på #7659 (skridt 1 sat 8/11). Bestyrelsen én gang pr. løbstid med fire krav. Salgsannoncer #7922 (9/11). Databasefejl #7917.
 - **Forretning:** Pro 2.0 (tre pakker med billeder senest 15/11, pris uændret, aldrig styrke). Fornyelser og udløbne kort (design 9/11). Første dage for nye er højeste prioritet under fastholdelse (40 % efter 7 dage senest 31/3). Kampagne ved sæsonstart (ejer godkender og sender). Forside #6665. "Hvor hørte du om os" #3796. Google-sider fra uge 47, delingsknap efter sæsonstart, inviter en ven efter Pro 2.0, ingen annoncer. Mandagstal fra 9/11. Testgruppe på 5-6. Din dag: design uge 47, byg januar.
 - **Spillet:** intet loft på motorarbejdet. Løbssiden må deles op, men alt i denne sæson. U23 og junior senest i S6, inden S7.
 - **Afklares med ejeren:** fakturaer og moms/revisor 9/11; roadmappen punkt for punkt; interne værktøjer. Backup-øvelse og nøgleskift #7029: ikke nu.

@@ -500,6 +500,67 @@ med 600K-loft kun accepteres hvis manageren også har råd til 600K.
 Målt 30/8: højeste enkelte proxy-loft i basen er **932.843 CZ$**; 80 hold har på et
 tidspunkt sat mindst ét autobud.
 
+### 8.1 Atomisk bud-gate bag `market_commitment_6181` (#6181 PR 5, #7872)
+
+Kontakten seedes **off** af `database/2026-11-07-6181-m3-market-commitment.sql`.
+Off = alt ovenfor gælder uændret (tjekket i JS, så skrevet i flere kald).
+  Kun `on` (eller `true`) tænder; `beta` er off her.
+  Et vellykket opslag uden en række er også off. Fejler selve opslaget, er tilstanden
+  ukendt: operationen stopper før en markedsmutation i stedet for at vælge den gamle
+  sti. Bud og PATCH proxy læser derfor kontakten før den første skrivning.
+
+  Et gennemført manuelt bud er stadig en succes, hvis det valgfrie medsendte autobud
+  afvises af M3. Svaret er HTTP 200 med `bid_placed: true` og en `proxy_rejected`-warning
+  med den eksisterende fejlkode. Den delte frontend-formatter viser den eksisterende
+  lokaliserede fejl som advarsel; den rapporterer ikke det gennemførte bud som fejlet.
+
+Tændt:
+- **Bud, autobud og startbud gates i databasen** under holdlåsen (samme nøgle som
+  `increment_balance_with_audit`): triggere på `auction_bids` (bud og proxy-cascade),
+  `auctions` (startbyder ved POST /auctions) og `auction_proxy_bids` (nyt/hævet loft).
+  Penge = samme worst case-regel som tabellen ovenfor. Et bud tager føringen i samme
+  transaktion, og prisen kan ikke falde. Samtidige bud fra ét hold kan derfor ikke
+  overbooke.
+- **Budkontekst:** `place_auction_bid_6181` og `set_auction_proxy_context_6181` returnerer
+  forgænger, accepteret pris og fører fra selve skrivningen under rækkelåsen.
+  Den gatede cascade bruger denne kontekst; en tidligere JS-læsning giver ingen tie-ret.
+  Et berettiget match afsluttes i samme transaktion som det accepterede bud/åbningsbud,
+  før resultatet publiceres. Ikke-stigende gentagelser afvises under låsen.
+  Kvitteringen angiver afsluttet match eller kendt afvisning; JS gentager ikke afgørelsen.
+- **Proxy-oprettelse:** `set_auction_proxy_context_6181` gemmer loft og eventuelt åbningsbud i
+  samme transaktion. `set_auction_proxy_6181` bevarer den eksisterende void-signatur som wrapper.
+  Fejl bevarer den foregående proxy-tilstand.
+  Den gatede cascade bruger databasens føreropdatering; legacy-stien synkroniserer fortsat i JS.
+- **Budgrænser:** første bud uden eksisterende fører kan ramme startprisen. Almindelig
+  lighed med en eksisterende føring kræver samme førende hold, også for proxy-bud.
+  Den særskilte #1091-match bruger `match_auction_proxy_tie_6181`: accepteret budkontekst,
+  præcist proxy-loft samt CAS på forventet pris og fører under rækkelåsen. Penge og den
+  nye plads kontrolleres før førerskiftet; skift og proxy-bud er én transaktion.
+  Gyldig auktionsstatus kontrolleres under rækkelåsen; efterfølgende sync gælder kun aktive/forlængede auktioner.
+  `try_auction_proxy_tie_6181` tager en eventuel ekstra holdlås uden at vente.
+  Optaget lås giver rollback/retry af accepten. Kendt penge-/pladsafvisning af selve
+  match-delen bevarer det accepterede bud; andre fejl ruller hele operationen tilbage.
+- **Cascade-afvisninger:** ændret pris/fører genlæses før næste forsøg. En penge-/pladsafvist
+  proxy udelukkes i denne kørsel, også når den forsvarer føringen; øvrige gyldige bud fortsætter.
+  Inaktiv/udløbet auktion stopper forløbet, ukendte DB-fejl kastes videre. Afvist skrivning
+  giver ingen match-/succesbesked. De nye RPC'er er service-only; off-stien er uændret.
+- **Plads:** fremtidig senior-trup (`future_count`) + førende auktioner + 1 må ikke
+  overstige loftet. Et forsvarsbud (holdet fører allerede) blokeres aldrig på plads.
+  Et autobud uden føring optager ingen plads (ejer-spørgsmål 7 er ubesvaret).
+- **Undtagelse, ungdomsauktioner:** pladsen tjekkes kun i ruten (akademi-loftet
+  afhænger af alder); pengene gates altid.
+- **POST /auctions:** startbyderen skal have penge (worst case, også autobud uden
+  føring) og plads, ikke kun en advarsel.
+- **Transfer-bekræftelse** tæller købers førende auktioner som pladser.
+- **Sælgers gulv:** holdets egne ryttere på aktiv auktion tæller som udgående
+  (POST /auctions på egen rytter, frigivelse, transfer-bekræftelse) og udelades af
+  risiko-tællingen, så de ikke tælles to gange.
+- Fejl bruger de eksisterende fejlkoder (`insufficient_balance_after_bids`,
+  `insufficient_balance_after_proxy`, `start_bid_exceeds_balance`, `squad_full_bid`,
+  409 `price_changed`).
+- Andre udgifter (køb, gebyrer) tjekker stadig i JS før låsen; finalize-gaten står
+  som sidste værn.
+
 ---
 
 ## 9. Trup-lofter
@@ -576,6 +637,24 @@ skrive-værn mod kapløb: frigivelsen skriver kun hvis `pending_team_id` stadig 
 `executeTransferOffer` flytter kun en rytter der ikke allerede er parkeret. Et tilbud der blev
 givet før parkeringen, kan altså ikke gennemføres bagefter; det afvises med `stale_rider_state`,
 og ingen penge flyttes.
+
+**Sælgers penge låses til holdskiftet (#6181, pengelås PR 3, bag kontakten `sale_escrow_enabled`, slukket).**
+Med kontakten tændt betaler køberen stadig ved handlen, men ved en parkeret handel (transfer,
+bytte med kontanter, auktion med en sælger) ligger beløbet i `sale_escrows`, og sælgeren
+krediteres først når rytteren faktisk skifter hold. Ved øjeblikkeligt skifte er intet ændret.
+
+| Element | Regel | Fil |
+|---|---|---|
+| Lås | køberen trækkes og beløbet låses i ét `hold_sale_escrow`-kald (samme finance-nøgler som i dag) | `saleEscrowFlow6181.js` `saleEscrowPayment` |
+| Udbetaling | flush/heal flytter rytteren og krediterer sælgeren i ét `settle_sale_escrow`-kald; et bytte udbetales først når begge ryttere er flyttet | `releaseSaleEscrowForFlush` |
+| Refusion | frigives en solgt, ventende rytter (pension, kontraktudløb), får køberen pengene tilbage | `refundSaleEscrowsForReleasedRiders` |
+| Sikkerhedsnet | heal-sweepet afregner enhver holdt escrow, der kan afregnes, også efter at kontakten er slukket igen; beta-reset gør det samme | `reconcileHeldSaleEscrows` |
+| Vagter | sæsonskiftet venter på holdte escrows (`no_deferred_transfers`); invariant H i `ownershipInvariantWatch` melder en escrow, der ikke er afregnet efter 48 t uden et aktivt løb | `seasonTransitionReadiness.js`, `ownershipInvariantWatch.ts` |
+| Gentagelse | en handel med en escrow betales aldrig igen af den gamle sti; er escrow'en refunderet, er handlen annulleret (rytteren flyttes ikke, ingen betaler). Databasen afviser en sælger-kredit efter en refusion under holdlåsen | `saleEscrowStatusForDeal`, `2026-11-07-6181-sale-escrow-m2-guards.sql` |
+| Fastlåst bytte | én rytter leveret, den anden mistet: heal-sweepet kan ikke afregne det. Admin afgør det med `GET /api/admin/sale-escrows` og `POST /api/admin/sale-escrows/:id/resolve` (`release` krediterer modtageren, `refund` giver betaleren beløbet tilbage; ingen rytter flyttes) | `resolveStuckSaleEscrow`, `resolve_stuck_sale_escrow` |
+
+Nuværende parkeringer får ingen tilbagevirkning: sælgeren af en handel fra før kontakten blev
+tændt, er allerede krediteret. Visning af låste penge og hjælpetekster kommer i PR 4.
 
 Målt 30/8: **0 ryttere står parkeret** (`select count(*) from riders where pending_team_id
 is not null`). Heal-sweepen tjekkede sidst ind 20:46:20 UTC med forventet kadence 300 sek.

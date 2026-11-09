@@ -23,7 +23,7 @@ const split = { source: '00000000-0000-0000-0000-000000000001', title_en: 'Next'
 
 test('all roadmap RPC routes reject anonymous and non-admin callers before the database', async () => {
   await withApp(async (base, calls) => {
-    for (const authorization of [undefined, 'player']) for (const [path, method] of [['/stats', 'GET'], ['/split', 'POST'], ['/resync', 'POST']]) {
+    for (const authorization of [undefined, 'player']) for (const [path, method] of [['/stats', 'GET'], ['/votes', 'GET'], ['/split', 'POST'], ['/resync', 'POST']]) {
       const res = await fetch(base + path, { method, headers: authorization ? { authorization } : {} });
       assert.equal(res.status, authorization ? 403 : 401);
     }
@@ -42,6 +42,16 @@ test('admin stats and writes call only their fixed service RPCs', async () => {
       ['roadmap_resync_flags'],
     ]);
   });
+});
+
+test('admin vote rows pass the single jsonb object through unchanged (#7789)', async () => {
+  const votes = { voters: [[2, true]], votes: [[split.source, 0, 5, 4]] };
+  await withApp(async (base, calls) => {
+    const res = await fetch(base + '/votes', { headers: { authorization: 'admin' } });
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), { votes });
+    assert.deepEqual(calls, [['roadmap_admin_vote_rows']]);
+  }, async () => ({ data: votes, error: null }));
 });
 
 test('split accepts every player-facing horizon pattern (#7895)', async () => {

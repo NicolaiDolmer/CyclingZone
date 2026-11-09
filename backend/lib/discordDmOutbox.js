@@ -121,7 +121,26 @@ export async function processDmOutboxDrain({
     const result = await deliverFn({ discordId: row.discord_id, payload: row.payload });
 
     if (result.ok) {
-      await supabase.from("discord_dm_outbox").delete().eq("id", row.id);
+      const { error: deleteError } = await supabase.from("discord_dm_outbox").delete().eq("id", row.id);
+      if (deleteError) {
+        // #7917: DM'en ER leveret og kan ikke fortrydes. Rækken bliver stående som
+        // pending og sendes igen ved næste tick; vi kan kun gøre risikoen synlig.
+        const reason = normalizeSupabaseErrorMessage(deleteError.message);
+        console.error(
+          "[discord-dm:outbox] delete efter succesfuld levering fejlede — risiko for dobbelt-levering",
+          { id: row.id, error: reason }
+        );
+        captureExceptionFn?.(
+          new Error(`Discord DM-outbox delete fejlede efter succesfuld levering (id=${row.id}): ${reason}`),
+          {
+            tags: { component: "discord-dm-outbox" },
+            // Egen gruppe: må ikke samles i nedbrudsklassen, selvom beskeden bærer
+            // "Supabase unavailable".
+            fingerprint: ["discord-dm-outbox-duplicate-risk"],
+            extra: { rowId: row.id },
+          }
+        );
+      }
       sent++;
       continue;
     }
@@ -131,7 +150,7 @@ export async function processDmOutboxDrain({
     const exhausted = attempts >= maxAttempts;
 
     if (isPermanent || exhausted) {
-      await supabase
+      const { error: deadUpdateError } = await supabase
         .from("discord_dm_outbox")
         .update({
           status: "dead",
@@ -141,12 +160,23 @@ export async function processDmOutboxDrain({
           dead_at: now.toISOString(),
         })
         .eq("id", row.id);
+      if (deadUpdateError) {
+        // #7917: rækken forbliver pending med sit gamle attempts-tal, så den kan
+        // prøves igen uden nogensinde at nå loftet. Tælles stadig som død i
+        // alarmen nedenfor: DM'en er opgivet for spilleren.
+        const reason = normalizeSupabaseErrorMessage(deadUpdateError.message);
+        console.error("[discord-dm:outbox] dead-markering fejlede", { id: row.id, error: reason });
+        captureExceptionFn?.(
+          new Error(`Discord DM-outbox dead-update fejlede (id=${row.id}): ${reason}`),
+          { tags: { component: "discord-dm-outbox" }, extra: { rowId: row.id } }
+        );
+      }
       deadRows.push({ id: row.id, status: result.status, reason: result.failure?.reason });
       if (isPermanentRecipientFailure(result.failure?.reason)) {
         await onPermanentRecipientFailure?.(row.discord_id);
       }
     } else {
-      await supabase
+      const { error: rescheduleError } = await supabase
         .from("discord_dm_outbox")
         .update({
           attempts,
@@ -155,7 +185,18 @@ export async function processDmOutboxDrain({
           next_attempt_at: new Date(now.getTime() + nextAttemptDelayMs(attempts)).toISOString(),
         })
         .eq("id", row.id);
-      rescheduled++;
+      if (rescheduleError) {
+        // #7917: backoff'en blev aldrig skrevet, så rækken tages igen ved næste
+        // tick. Tælles derfor ikke som rescheduled.
+        const reason = normalizeSupabaseErrorMessage(rescheduleError.message);
+        console.error("[discord-dm:outbox] reschedule-update fejlede", { id: row.id, error: reason });
+        captureExceptionFn?.(
+          new Error(`Discord DM-outbox reschedule-update fejlede (id=${row.id}): ${reason}`),
+          { tags: { component: "discord-dm-outbox" }, extra: { rowId: row.id } }
+        );
+      } else {
+        rescheduled++;
+      }
     }
   }
 
