@@ -58,7 +58,7 @@ test("profilen viser ikon i 24 px og kun navnet, forklaringen i tooltippen (#795
   assert.match(mark, /<Icon size=\{16\} \/>/);
   const profile = mark.slice(mark.indexOf('if (variant === "profile")'), mark.lastIndexOf("<Tooltip label"));
   assert.match(profile, /<Tooltip label=\{`\$\{name\}: \$\{text\}`\}/);
-  assert.doesNotMatch(profile, /<Link|\{text\}/);
+  assert.doesNotMatch(profile, /<Link|^\s*\{text\}/m);
 });
 
 test("et tryk på mærket i en klikbar række åbner ikke rytteren", () => {

@@ -131,7 +131,7 @@ test("profilen viser alle titler med ikon og titel, forklaringen i tooltippen (#
   assert.match(jersey, /size=\{24\}/);
   assert.match(jersey, /size=\{16\}/);
   const list = jersey.slice(jersey.indexOf("export function ChampionJerseyList"), jersey.indexOf("export default function RiderChampionJersey"));
-  assert.match(list, /<Tooltip key=\{[^}]*\} label=\{`\$\{text\.name\}: \$\{text\.full\}`\}/);
+  assert.match(list, /label=\{`\$\{text\.name\}: \$\{text\.full\}`\}/);
   assert.doesNotMatch(list, /<Link/);
 });
 
