@@ -380,6 +380,53 @@ brugt af nogen. `is_guaranteed_sale` **sættes ingen steder i live kode** - grep
 `teamTransferHistory.js:140`). Hele bank-salgs-grenen i finaliseringen er derfor
 uudløselig i dag.
 
+### 5.1 Auto-accept-auktioner ([#2176](https://github.com/NicolaiDolmer/CyclingZone/issues/2176), bag `auto_accept_enabled`, SLUKKET)
+
+Bygget i PR 6 (backend + migration M2, `database/2026-11-07-2176-m2-auto-accept.sql`); UI og
+tekster kommer i PR 7. Slukket kontakt = adfærden ovenfor er uændret (bevist i
+`backend/lib/autoAccept2176.test.js`). Ejer-beslutninger 6/11 og 7/11 på #2176:
+
+Migrationen opretter en manglende `auto_accept_enabled` som `off`, så registry/liveness kan
+følge kontakten efter apply; den ændrer aldrig en eksisterende værdi. Aktivering er særskilt ejer-gated.
+
+- **Pris:** sælger kan give en listing en auto-pris Y over listeprisen
+  (`transfer_listings.auto_accept_price`, CHECK Y > X). Prisen er synlig for alle. Den sættes
+  kun via `PUT /api/transfers/:id/auto-accept-price` med den pris, klienten så (forskel = 409);
+  klienten kan ikke selv skrive kolonnen (trigger). Alle ændringer på en listing med auto-pris
+  logges i `transfer_listing_price_log` til fair play.
+- **Bud under Y** forhandles som i dag. **Bud på Y eller derover** afvises på begge tilbudsruter
+  og på købers nye bud (`offer_at_auto_accept_price`) og peger på knappen.
+- **Knappen** (`POST /api/transfers/:id/auto-accept`, RPC `start_auto_accept_auction`): køberen
+  vælger 30 min til 24 t **aktiv tid**; sluttidspunktet regnes med `calculateAuctionEnd` (§2),
+  aldrig flash-stien. I én transaktion under holdlåse tjekkes listing, pris (forventet pris,
+  ellers 409), rytterstatus, købers penge (saldo minus førende bud og autobud) og plads
+  (fremtidig trup plus førende auktioner) samt sælgers løbsgulv. Så oprettes auktionen
+  (`origin = 'auto_accept'`, `source_listing_id`, `buyer_duration_minutes`) med købers bud som
+  førende bud, og listingen sættes på pause (#4211). Ingen penge flyttes ved start; buddet
+  binder dem som alle andre førende bud (§8).
+  Kaldet medsender `expected_rider_id` og forventet pris. Listingens rytter er fast efter
+  oprettelse, sælgeren skal være aktuel ejer, og serveren anvender markedets eksisterende prisbånd.
+- **Sælgers gulv:** med kontakten tændt tæller sælgers ryttere på en aktiv auktion med en anden
+  byder som udgående i gulv-tjekket ved frigivelse, ny auktion og transfer, så sælger ikke kan
+  handle sig under gulvet og få auktionen annulleret ved slut.
+  Frigivelse (`auto_accept_release_rider`) og almindelig transfers ejerskabs-/parkeringsclaim
+  (`auto_accept_claim_transfer`) gentjekker gulvet og muterer under de samme holdlåse som
+  auto-accept-start. Transfer-claim gentjekker også køberplads og auktion på selve rytteren;
+  kontraktarv/gradueringspatch og efterfølgende betalingsflow bevares. Claim er ikke en
+  atomisk betalings-RPC: de eksisterende betalingstrin ligger fortsat bagefter.
+- **Kontaktopslag:** bekræftet off/missing bevarer legacy-stien. Opslagsfejl kastes videre
+  før mutation; de må ikke vælge den ulåste frigivelses-/transfersti. Hvert opslag er friskt.
+  SQL-reglerne testes i PGlite; ægte samtidighed testes separat med otte PG17-forbindelser
+  i `backend/lib/autoAccept2176.pg17.test.js` (lokalt opt-in via `AUTO_ACCEPT_PG_BIN`).
+  Når M3 også er tændt, håndterer M3's fælles optælling de udgående auktioner;
+  alle aktive sælgerauktioner reserveres da, også dem uden bud. M2's SQL genbruger
+  de samme rytter-id'er til gulv og risiko-deduplikering; JS tæller kun selv som
+  fallback. Uden aktiv M3 bevares M2's optælling af auktioner med en anden byder.
+  De samme ryttere må ikke tælles to gange.
+- **Forudsætning før tænding:** almindelige bud (`POST /auctions/:id/bid`) tager endnu ikke
+  samme holdlås; den atomiske bud-gate kommer med pengelås PR 5 (#6181). Indtil da kan et
+  samtidigt almindeligt bud og en auto-accept-start se samme ledige penge eller plads.
+
 ---
 
 ## 6. Annullering

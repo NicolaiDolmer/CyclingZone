@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import * as rules from './auctionRules.ts';
 import * as market from './marketCommitment6181.js';
+import * as autoAccept from './autoAccept2176.js';
 import { getSquadRiskViolation } from './marketUtils.js';
 import { computeReleaseBuyoutFee } from './contractSeed.js';
 import { getParkedRiderReleaseIssue } from './parkedRiderGuard6181.js';
@@ -24,12 +25,13 @@ const AUCTION = '00000000-0000-0000-0000-000000000011';
 const RIDER = '00000000-0000-0000-0000-000000000021';
 const moneyError = { code: 'P0001', message: 'market_gate_6181:insufficient_available_balance' };
 
-function fixture({ flag = 'off', flagError = false, proxyError = null, bidError = null, startError = null, futureCount = 10, outgoing = 0, afterBidInsert = null, lockedPreviousLeader = undefined } = {}) {
+function fixture({ flag = 'off', autoFlag = 'off', flagError = false, proxyError = null, bidError = null, startError = null, futureCount = 10, outgoing = 0, afterBidInsert = null, lockedPreviousLeader = undefined } = {}) {
   const auction = { id: AUCTION, rider_id: RIDER, current_price: 100, current_bidder_id: null,
     status: 'active', calculated_end: '2026-11-08T18:00:00Z', seller_team_id: 'other', is_youth: false,
     rider: { id: RIDER, firstname: 'Test', lastname: 'Rider', team_id: null } };
   const rider = { id: RIDER,firstname:'Test',lastname:'Rider',team_id:null,is_retired:false,is_academy:false,pending_team_id:null,salary:0,contract_end_season:5 };
   const bids = []; const proxies = []; const writes = []; const createdAuctions=[];
+  const autoOutgoingReads = [];
   const teamState = { id: TEAM, balance: 10000, total_count: futureCount, future_count: futureCount, squad_limits: { min: 0, max: 30 } };
   const client = {
     from(table) {
@@ -65,7 +67,11 @@ function fixture({ flag = 'off', flagError = false, proxyError = null, bidError 
           if (table==='auctions' && !filters.some(f=>f[0]==='lt' && auction[f[1]]>=f[2])) Object.assign(auction,payload);
           return { data:[], error:null };
         }
-        if (table==='app_config') return { data: flagError ? null : {value:flag}, error:flagError ? {message:'flag unavailable'} : null };
+        if (table==='app_config') {
+          const key = filters.find(([column]) => column === 'key')?.[1];
+          const value = key === 'auto_accept_enabled' ? autoFlag : flag;
+          return { data: flagError ? null : {value}, error:flagError ? {message:'flag unavailable'} : null };
+        }
         if (table==='auctions') return { data:single ? (filters.some(f=>f[0]==='rider_id') ? null : structuredClone(auction)) : [], count:0,error:null };
         if (table==='teams') return {data:single ? teamState : [teamState],error:null};
         if (table==='riders') return {data:single ? rider : [],error:null};
@@ -76,13 +82,18 @@ function fixture({ flag = 'off', flagError = false, proxyError = null, bidError 
       return query;
     },
     async rpc(name,args) {
+      if (name==='auto_accept_release_rider') {
+        Object.assign(rider,{team_id:null,pending_team_id:null});
+        writes.push({table:'riders',action:'release-rpc'});
+        return {data:{status:'released',rider_id:RIDER},error:null};
+      }
       if(name==='place_auction_bid_6181') {
         if(bidError)return {data:null,error:bidError};
         const previousLeader=lockedPreviousLeader===undefined?auction.current_bidder_id:lockedPreviousLeader;
         bids.push({auction_id:args.p_auction_id,team_id:args.p_team_id,amount:args.p_amount,is_proxy:false});
         Object.assign(auction,{current_price:args.p_amount,current_bidder_id:args.p_team_id});
         if(afterBidInsert)Object.assign(auction,afterBidInsert);
-        return {data:{previousLeader,expectedPrice:args.p_amount,expectedLeader:args.p_team_id,placed:true},error:null};
+        return {data:{previousLeader,expectedPrice:args.p_amount,expectedLeader:args.p_team_id,placed:true,tieResolved:true,matchedTeam:null,matchRejected:null},error:null};
       }
       if(name==='set_auction_proxy_6181' || name==='set_auction_proxy_context_6181') {
         if(proxyError || (args.p_opening_amount!==null && bidError))return {data:null,error:proxyError??bidError};
@@ -95,7 +106,7 @@ function fixture({ flag = 'off', flagError = false, proxyError = null, bidError 
           Object.assign(auction,{current_price:args.p_opening_amount,current_bidder_id:args.p_team_id});
           if(afterBidInsert)Object.assign(auction,afterBidInsert);
         }
-        return {data:name==='set_auction_proxy_6181'?null:{previousLeader,expectedPrice,expectedLeader,placed:args.p_opening_amount!==null},error:null};
+        return {data:name==='set_auction_proxy_6181'?null:{previousLeader,expectedPrice,expectedLeader,placed:args.p_opening_amount!==null,tieResolved:true,matchedTeam:null,matchRejected:null},error:null};
       }
       if (name==='team_market_commitment') return {data:0,error:null};
       if (name==='team_outgoing_auction_rider_ids') return {data:Array.from({length:outgoing},(_,i)=>`outgoing-${i}`),error:null};
@@ -105,13 +116,15 @@ function fixture({ flag = 'off', flagError = false, proxyError = null, bidError 
   };
   const cascade = [];
   const context = {
-    ...rules,...market,Date:FixedDate,console,isLateBidTriggerError,buildKeyedNotification,
+    ...rules,...market,...autoAccept,Date:FixedDate,console,isLateBidTriggerError,buildKeyedNotification,
+    countSellerAuctionOutgoing:async()=>{autoOutgoingReads.push(1);return autoFlag==='on' ? outgoing : 0;},
     supabase:client, requireAuth(){},bidLimiter(){},marketWriteLimiter(){},
     assertMarketOpen:async()=>true,assertTeamNotTransferFrozen:()=>true,
     isAuctionExpired:end=>Date.parse(end)<=NOW,
     fetchTeamCommitment:async()=>({leadingAuctions:[],allMyProxies:[]}),
     getTeamMarketState:async()=>structuredClone(teamState),
     assertSigningAllowed:async()=>null, getAuctionConfig:async()=>({}),
+    readTransferPriceBandConfig:async()=>({}),getPriceBandViolation:()=>null,
     recordIdentityEvent(){}, awardXP:async()=>{}, notifyTeamOwnerBuilt:async()=>{},notifyTeamOwner:async()=>{},
     notifyOutbid:async()=>{},transferNotif,
     applyLeaderShiftExtension:async()=>({extensionApplied:false,newEnd:null}),
@@ -126,7 +139,23 @@ function fixture({ flag = 'off', flagError = false, proxyError = null, bidError 
     buildAtRiskErrorParams:issue=>({minRiders:issue.minRiders}),invalidateNamespace(){},
     resolveProxyBids:async args=>{cascade.push(args);return {finalLeaderId:auction.current_bidder_id,outbidNotified:new Set()};},
   };
-  return {client,auction,rider,bids,proxies,writes,context,cascade,teamState,createdAuctions};
+  return {client,auction,rider,bids,proxies,writes,context,cascade,teamState,createdAuctions,autoOutgoingReads};
+}
+
+for (const flag of ['off','on']) {
+  for (const autoFlag of ['off','on']) {
+    for (const path of ['/auctions','/riders/:id/release']) {
+      test(`combined gates ${flag}/${autoFlag} ${path}: one outgoing auction is counted once`,async()=>{
+        const f=fixture({flag,autoFlag,futureCount:10,outgoing:1});
+        f.rider.team_id=TEAM;
+        const out=await route('post',path,f)({rider_id:RIDER,starting_price:100});
+        assert.equal(out.status,path==='/auctions' ? 201 : 200,JSON.stringify(out.body));
+        if(path==='/auctions')assert.equal(f.createdAuctions.length,1);
+        else assert.equal(f.rider.team_id,null);
+        assert.equal(f.autoOutgoingReads.length,flag==='on' ? 0 : 1);
+      });
+    }
+  }
 }
 
 function route(method,path,f,extra={}) {

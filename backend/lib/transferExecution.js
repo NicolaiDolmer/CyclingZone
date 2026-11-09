@@ -11,6 +11,7 @@ import {
   getTeamMarketState,
 } from "./marketUtils.js";
 import { fetchAtRiskCount } from "./squadRiskGuard.js";
+import { countSellerAuctionOutgoing, claimTransferUnderTeamLock } from "./autoAccept2176.js"; // #2176
 import { applyTransferMarketCommitment6181 } from "./marketCommitment6181.js";
 import { shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.ts";
@@ -482,7 +483,11 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     excludeRiderIds: [offer.rider_id],
   });
   // #6181 PR 5: taendt taeller koeberens foerende auktioner som pladser og saelgers ryttere paa auktion som udgaaende.
-  await applyTransferMarketCommitment6181(supabase, { buyerState, sellerState, riderId: offer.rider_id, seasonNumber: activeSeasonNumber });
+  const marketGateApplied = await applyTransferMarketCommitment6181(supabase, { buyerState, sellerState, riderId: offer.rider_id, seasonNumber: activeSeasonNumber });
+  // #2176: saelgers ryttere paa auktion med en byder er ogsaa paa vej vaek.
+  if (!marketGateApplied) {
+    sellerState.at_risk_count += await countSellerAuctionOutgoing(supabase, offer.seller_team_id, { skipRiderIds: [offer.rider_id], atRiskSeasonNumber: activeSeasonNumber });
+  }
 
   // #1748 (a) TOCTOU-guard: hvis rytteren er kommet på en aktiv auktion EFTER
   // tilbuddet blev oprettet (oprettelses-gaten i api.js fanger det ikke), må
@@ -571,9 +576,23 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   // krediteret, mens køberens træk springes over som dublet. Så går handlen i
   // stale-grenen i stedet: intet flyttes, ingen betaler.
   const priorSaleEscrow = await saleEscrowStatusForDeal(supabase, { dealType: "transfer", dealId: offer.id });
+  const lockedClaim = priorSaleEscrow === "refunded" ? null : await claimTransferUnderTeamLock(supabase, {
+    riderId: rider.id, sellerTeamId: offer.seller_team_id, buyerTeamId: offer.buyer_team_id,
+    deferRegistration, now, acquirePatch: { ...transferContractPatch, ...graduatePatch },
+    activeSeasonNumber, maxRiders: buyerState.squad_limits.max,
+  });
+  if (lockedClaim?.issue) {
+    const claimIssue = lockedClaim.issue;
+    const message = describeTransferIssue(claimIssue, { rider, buyerState, sellerState });
+    await withdrawTransferOffer(supabase, offer.id);
+    const issueMeta = issueNotificationMetadata(message, rider.id);
+    await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, offer.id, issueMeta);
+    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, offer.id, issueMeta);
+    return failure(400, message.error, claimIssue.code, "errorParams" in message ? { errorParams: message.errorParams } : {});
+  }
   const movedRider = priorSaleEscrow === "refunded"
     ? null
-    : deferRegistration
+    : lockedClaim ? lockedClaim.data : deferRegistration
     ? await expectMaybeSingle(
         supabase
           .from("riders")
