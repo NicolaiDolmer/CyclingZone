@@ -6,7 +6,7 @@ import { useRiderNameOverlay } from "./rider/RiderNameIcon.tsx";
 // rapporten"). RiderStatsPage læser ?tab= ved mount (fallback "overview"
 // uændret for alle eksisterende kald uden denne prop).
 //
-// #2009/#7858: bag rider_hover_card står et person-ikon efter navnet (TASTE P12) (hover =
+// #2009/#7858: bag rider_hover_card står et person-ikon FORAN navnet (#7879, TASTE P12) (hover =
 // rytterkort, klik = fastlåst kort) og navnet får højreklik-menuen. Slukket =
 // præcis samme link som før. `hoverCard={false}` fravælger det, hvor linket
 // ikke er et navn (fx en ren pil-knap).
@@ -20,7 +20,7 @@ export default function RiderLink({ id, tab = undefined, className = "", stopPro
   return (
     <>
       <Link to={to} onClick={handleClick} className={className} {...rest} {...overlay.linkProps}>
-        {children}{overlay.icon}
+        {overlay.icon}{children}
       </Link>
       {overlay.overlays}
     </>

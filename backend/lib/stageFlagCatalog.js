@@ -194,6 +194,7 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "ai_team_retire_enabled", area: "ops", label: "AI-hold — pensionering" },
   { key: "ai_pool_retirement_v2_enabled", area: "ops", label: "AI-pulje — pensionering v2" },
   { key: "rider_values_bulk_write_enabled", area: "market", label: "Ryttereværdier — bulk-skrivning" },
+  { key: "auto_accept_enabled", area: "market", label: "Auto-accept-pris starter en åben auktion (kun on; beta = slukket)" }, // #2176
   // #6181 PR 3: pengelaas. Kun 'on' taender (beta = slukket, det er penge). Flip er ejer-only.
   { key: "sale_escrow_enabled", area: "market", label: "Pengelås — sælgers penge låses til holdskiftet" },
   { key: "rider_primary_type_from_distribution", area: "squad", label: "Rytter-generator: primær type fra mål-fordelingen" },

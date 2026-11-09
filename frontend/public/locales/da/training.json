@@ -624,7 +624,13 @@
     "sortFirstName": "Fornavn",
     "sortLastName": "Efternavn",
     "previousSeason": "Tidligere sæson",
-    "change": "{from} til {to}"
+    "change": "{from} til {to}",
+    "pointsMeta": "{count, plural, one {# helt point} other {# hele point}}",
+    "progressHeading": "Fremdrift mod næste point",
+    "loadError": "Træningshistorikken kunne ikke hentes",
+    "loadErrorBody": "Intet er ændret. Dine træningsplaner er i sikkerhed.",
+    "retry": "Prøv igen",
+    "emptyAction": "Gå til dagens træning"
   },
   "forecast": {
     "label": "Træthed i aften",

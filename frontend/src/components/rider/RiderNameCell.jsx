@@ -30,7 +30,7 @@ export default function RiderNameCell({
   const fullName = `${firstname ?? ""} ${lastname ?? ""}`.trim();
   const shown = name ?? fullName;
   return (
-    <span className={`inline-flex items-center gap-1.5 flex-wrap ${wrap ? "min-w-0" : ""}`}>
+    <span className={`inline-flex items-center gap-1.5 flex-wrap max-w-full ${wrap ? "min-w-0" : ""}`}>
       {/* #5124: KUN `min-w-0` (bryd ved ordgrænser), ikke `wrap-break-word` — sidstnævnte
           tillader browseren at bryde MIDT i et ord, hvilket i en tabel med
           table-layout:auto (og en `max-w-0`-kolonnehint, se TransfersPage.jsx's
@@ -40,15 +40,18 @@ export default function RiderNameCell({
           fix som TrainingPage.jsx's roster (#5124). */}
       {/* #7824: navn og trøje i én gruppe uden linjeskift imellem, så trøjen aldrig
           ryger ned under navnet, når tabellen giver kolonnen sin mindste bredde. */}
-      <span className={`inline-flex items-center gap-1.5 ${wrap ? "min-w-0" : ""}`}>
+      {/* #7879: hover-ikonet står til venstre for navnet (RiderLink), mærker og trøje lige til
+          højre på samme linje. Et langt navn forkortes med ellipsis (kun når kolonnen er
+          begrænset) i stedet for at skubbe mærkerne ned; mærkerne krymper aldrig. */}
+      <span className={`inline-flex items-center gap-1.5 min-w-0 max-w-full`}>
         <RiderLink
           id={id}
           stopPropagation={stopPropagation}
-          className={`${className} ${wrap ? "min-w-0" : "whitespace-nowrap"}`}
+          className={`${className} inline-flex items-center min-w-0 ${wrap ? "" : "whitespace-nowrap"}`}
           aria-label={fullName && shown !== fullName ? fullName : undefined}
           title={fullName && shown !== fullName ? fullName : undefined}
         >
-          {shown}
+          <span className={wrap ? "" : "min-w-0 truncate"}>{shown}</span>
         </RiderLink>
         <RiderChampionJersey riderId={id} />
         <RiderTalentMark riderId={id} />

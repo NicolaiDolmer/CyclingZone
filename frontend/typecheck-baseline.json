@@ -1250,8 +1250,7 @@
   },
   "src/components/training/TrainingHistory.jsx": {
     "TS2322": 1,
-    "TS2339": 2,
-    "TS2739": 1
+    "TS2339": 2
   },
   "src/components/training/TrainingMoment.jsx": {
     "TS2322": 2

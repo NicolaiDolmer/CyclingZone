@@ -543,6 +543,18 @@ features:
     verified: 2026-09-06
     note: Findes ikke i kode.
 
+  - id: market-auto-accept
+    area: market
+    title_en: Auto-accept price
+    title_da: Auto-accept-pris
+    state: building
+    flag: auto_accept_enabled
+    ssot: docs/TRANSFER_MARKET_RULES.md
+    epic: 2176
+    verified: 2026-11-07
+    decision: taend
+    decide_by: 2026-11-28
+
   - id: market-value-blend
     area: market
     title_en: Market value blend sweep

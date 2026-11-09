@@ -1,6 +1,6 @@
 export const PATCHES = [
   {
-    "version": "7.424",
+    "version": "7.425",
     "date": "2026-11-09",
     "changes": [
       {
@@ -54,6 +54,47 @@ export const PATCHES = [
         },
         "refs": [
           7879
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "Tidier rider names",
+          "body": "The icon that opens the rider card now sits to the left of a rider's name, with jerseys and marks right after the name on the same line."
+        },
+        "da": {
+          "title": "Mere ryddelige rytternavne",
+          "body": "Ikonet, der åbner rytterkortet, står nu til venstre for rytterens navn, og trøjer og mærker står lige efter navnet på samme linje."
+        },
+        "refs": [
+          7879
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.424",
+    "date": "2026-11-09",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "A clearer training report",
+          "body": "Whole ability points now stand out in bold. Riders stay in the same order whether or not they got a whole point, and those without one say so on their own row. Abilities follow the same order as on the rider profile."
+        },
+        "da": {
+          "title": "En tydeligere træningsrapport",
+          "body": "Hele evnepoint står nu med fed skrift. Rytterne står i samme rækkefølge, uanset om de fik et helt point, og dem uden står med det på deres egen række. Evnerne står i samme rækkefølge som på rytterprofilen."
+        },
+        "refs": [
+          7745,
+          7746
         ]
       }
     ]

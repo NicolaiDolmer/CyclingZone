@@ -558,7 +558,7 @@ function matches(row, filters) {
   });
 }
 
-function makeSupabase(db) {
+function makeSupabase(db, { claimTransfer = null, beforeRiderUpdate = null } = {}) {
   const finance = [];
   const seenIdempotencyKeys = new Set();
 
@@ -568,6 +568,7 @@ function makeSupabase(db) {
     function applyMutation() {
       const rows = rowsFor(db, table);
       if (state.op === "update") {
+        if (table === "riders") beforeRiderUpdate?.();
         const hit = rows.filter((r) => matches(r, state.filters));
         hit.forEach((r) => Object.assign(r, state.updateObj));
         return hit;
@@ -611,6 +612,17 @@ function makeSupabase(db) {
     _finance: finance,
     from(table) { return builder(table); },
     rpc(name, params) {
+      if (name === "team_outgoing_auction_rider_ids") {
+        const ids = rowsFor(db,"auctions").filter(auction => ["active","extended"].includes(auction.status)
+          && auction.current_bidder_id && auction.current_bidder_id !== params.p_team_id
+          && auction.rider_id !== params.p_exclude_rider_id
+          && rowsFor(db,"riders").some(rider => rider.id === auction.rider_id && rider.team_id === params.p_team_id && !rider.pending_team_id))
+          .map(auction => auction.rider_id);
+        return Promise.resolve({ data: ids, error: null });
+      }
+      if (name === "auto_accept_claim_transfer" && claimTransfer) {
+        return Promise.resolve({ data: claimTransfer(params), error: null });
+      }
       assert.equal(name, "increment_balance_with_audit");
       const key = params.p_finance_payload?.idempotency_key;
       if (key && seenIdempotencyKeys.has(key)) {
@@ -662,6 +674,92 @@ function putRiderInActiveStageRace(db, riderId, raceId = "race-active") {
   }
   db.race_entries.push({ race_id: raceId, rider_id: riderId });
 }
+
+test("#2176: atomic transfer claim refusing a raced seller floor stops before ownership and payment", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  db.app_config = [{ key: "auto_accept_enabled", value: "on" }];
+  db.riders = db.riders.filter(r => r.id !== "s-rider-8"); // Seller has nine.
+  db.transfer_offers.push({ id: "offer-1", rider_id: "rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
+    offer_amount: 200, status: "awaiting_confirmation", buyer_confirmed: false, seller_confirmed: true });
+  let claimed = false;
+  const client = makeSupabase(db, {
+    beforeRiderUpdate: () => {
+      db.auctions.push({ id: "raced-start", rider_id: "s-rider-0", seller_team_id: "seller",
+        current_bidder_id: "other-buyer", current_price: 200, status: "active" });
+    },
+    claimTransfer: params => {
+      claimed = true;
+      assert.equal(params.p_rider_id, "rider-1");
+      assert.equal(params.p_seller_team_id, "seller");
+      assert.equal(params.p_buyer_team_id, "buyer");
+      assert.equal(params.p_now, "2026-11-09T10:00:00.000Z");
+      return { status: "seller_squad_floor", min_riders: 8 };
+    },
+  });
+  const result = await confirmTransferOffer({ supabase: client, offerId: "offer-1", confirmingTeamId: "buyer",
+    now: new Date("2026-11-09T10:00:00Z") });
+  assert.equal(result.ok, false);
+  assert.equal(result.code, "seller_squad_risk_too_small");
+  assert.deepEqual(result.errorParams, { minRiders: 8 });
+  assert.equal(claimed, true);
+  assert.equal(db.riders.find(r => r.id === "rider-1").team_id, "seller");
+  assert.equal(client._finance.length, 0);
+});
+
+test("#2176: enabled claim preserves transfer wiring for inheritance, new contract, graduation and parking", async () => {
+  for (const mode of ["inherit", "new-contract", "graduate", "parked"]) {
+    const db = baseDb({ windowStatus: "open" });
+    db.app_config = [{ key: "auto_accept_enabled", value: "on" }];
+    const rider = db.riders.find(row => row.id === "rider-1");
+    if (mode === "inherit" || mode === "parked") Object.assign(rider, { salary: 700, contract_length: 2, contract_end_season: 9 });
+    if (mode === "graduate") Object.assign(rider, { is_academy: true, squad: "junior" });
+    if (mode === "parked") putRiderInActiveStageRace(db, rider.id);
+    db.transfer_offers.push({ id: "offer-1", rider_id: rider.id, seller_team_id: "seller", buyer_team_id: "buyer",
+      offer_amount: 200, status: "awaiting_confirmation", buyer_confirmed: false, seller_confirmed: true });
+    let claimCalls = 0;
+    const client = makeSupabase(db, {
+      beforeRiderUpdate: () => { throw new Error("enabled claim must not fall through to legacy ownership update"); },
+      claimTransfer: params => {
+        claimCalls++;
+        assert.equal(params.p_now, "2026-11-09T10:00:00.000Z");
+        assert.equal(params.p_defer_registration, mode === "parked");
+        if (mode === "inherit" || mode === "parked") assert.deepEqual(params.p_acquire_patch, {});
+        if (mode === "graduate") assert.equal(params.p_acquire_patch.squad, "senior");
+        Object.assign(rider, params.p_acquire_patch, mode === "parked"
+          ? { pending_team_id: "buyer", updated_at: params.p_now }
+          : { team_id: "buyer", pending_team_id: null, acquired_at: params.p_now });
+        return { status: "claimed", rider_id: rider.id };
+      },
+    });
+    const result = await confirmTransferOffer({ supabase: client, offerId: "offer-1", confirmingTeamId: "buyer",
+      now: new Date("2026-11-09T10:00:00Z") });
+    assert.equal(result.ok, true, mode);
+    assert.equal(claimCalls, 1, mode);
+    assert.equal(client._finance.length, 2, mode);
+    assert.equal(rider.team_id, mode === "parked" ? "seller" : "buyer", mode);
+    if (mode === "inherit" || mode === "parked") assert.equal(rider.salary, 700, mode);
+    if (mode === "graduate") assert.equal(rider.is_academy, false);
+  }
+});
+
+test("#2176 plus #6181: a transfer counts an outgoing auction once with both gates on", async () => {
+  const db=baseDb({windowStatus:"open"});
+  db.app_config=[{key:"auto_accept_enabled",value:"on"},{key:"market_commitment_6181",value:"on"}];
+  db.auctions.push({id:"existing-outgoing",rider_id:"s-rider-0",current_bidder_id:"other-buyer",current_price:200,status:"active"});
+  db.transfer_offers.push({id:"offer-1",rider_id:"rider-1",seller_team_id:"seller",buyer_team_id:"buyer",
+    offer_amount:200,status:"awaiting_confirmation",buyer_confirmed:false,seller_confirmed:true});
+  let claims=0;
+  const client=makeSupabase(db,{claimTransfer:params=>{
+    claims++;
+    Object.assign(db.riders.find(rider=>rider.id===params.p_rider_id),params.p_acquire_patch,
+      {team_id:params.p_buyer_team_id,pending_team_id:null,acquired_at:params.p_now});
+    return {status:"claimed",rider_id:params.p_rider_id};
+  }});
+  const result=await confirmTransferOffer({supabase:client,offerId:"offer-1",confirmingTeamId:"buyer",now:new Date("2026-11-09T10:00:00Z")});
+  assert.equal(result.ok,true,JSON.stringify(result));
+  assert.equal(claims,1);
+  assert.equal(client._finance.length,2);
+});
 
 test("#16: confirmTransferOffer registrerer med det samme — selv med en 'closed' transfer_windows-række (altid-åben handel)", async () => {
   const db = baseDb({ windowStatus: "closed" }); // ignoreres nu — getTransferWindowOpen er altid true
