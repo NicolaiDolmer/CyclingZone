@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (9/11 kl. 13.30):** **Tavlen [#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911) er sandheden.** Sessionsplan valgt af ejeren: **Claude Code på PC1** tager til dørs først (tjeklister #6181/#2176, #7922, #7923, #7917 PR 2, #7857, `areaCap`, `fatigue_now_7801`, 7715 + #7901, patch notes, #7829) og bygger så taktik/løbsside efter wireframe v5 (#7864). **Codex på Dolmer PC** tager SEO og vækst: #1407, #6583/#6558, forside runde 2. PC1 også: triage (45), code scanning 387, Dependabot #7926, GitHub-audit, #7932. 7644 SLUKKET. **Efter løbet:** #6912, #7899, #7902.
+> **🎯 Next action (9/11 kl. 13.30):** **Tavlen [#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911) er sandheden.** **PC1:** bølge med 8 til-dørs-spor kører; så tænd-kort (`fatigue_now_7801`, 7715 + #7901), triage og audit, derefter taktik/løbsside (wireframe v5, #7864) og #7932. **Codex på Dolmer PC:** SEO og vækst (#1407, #6583/#6558). 7644 SLUKKET. **Efter løbet:** #6912, #7899, #7902.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling; memory commitment på Large kunne ikke aflæses 9/11.
 >
 > **🤖 Working agent:** Claude Code på PC1, dirigent (9/11): til dørs først, så nyt. Codex på Dolmer PC: SEO og vækst.
