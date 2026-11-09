@@ -334,7 +334,7 @@
     },
     {
       "issue": 1369,
-      "why": "åben PR #6665 (ny forside, ejeren bestemmer tidspunktet)"
+      "why": "åben PR #6665 (ny forside); ordret merge 9/11 på billede i Claude Code, runde 2 designes bagefter"
     },
     {
       "issue": 7096,
@@ -1074,7 +1074,7 @@
     },
     {
       "issue": 7789,
-      "reason": "Ejer-go 7/11 (plan på #7495): roadmap-admin med graf",
+      "reason": "Ejer-go 7/11 (plan på #7495): roadmap-admin med graf; ordret merge af PR #7841 9/11 på billede i Claude Code",
       "since": "2026-11-07"
     },
     {

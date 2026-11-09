@@ -183,7 +183,13 @@ export async function processWebhookOutboxDrain({
         );
         captureExceptionFn?.(
           new Error(`Discord webhook-outbox delete fejlede efter succesfuld levering (id=${row.id}): ${reason}`),
-          { tags: { component: "discord-webhook-outbox" }, extra: { rowId: row.id } }
+          {
+            tags: { component: "discord-webhook-outbox" },
+            // #7917: risikoen for dobbelt-levering skal stå for sig selv og ikke
+            // samles i nedbrudsklassen, selvom beskeden bærer "Supabase unavailable".
+            fingerprint: ["discord-webhook-outbox-duplicate-risk"],
+            extra: { rowId: row.id },
+          }
         );
       }
       sent++;

@@ -382,7 +382,13 @@ export async function processRaceNotifyOutboxDrain({
         );
         captureExceptionFn?.(
           new Error(`Race notify-outbox sent-markering fejlede efter levering (id=${row.id}): ${reason}`),
-          { tags: { component: "race-notify-outbox" }, extra: { rowId: row.id } },
+          {
+            tags: { component: "race-notify-outbox" },
+            // #7917: beskeden bærer ofte "Supabase unavailable (...)", men risikoen
+            // for dobbelt-levering skal stå for sig selv og ikke samles i nedbrudsklassen.
+            fingerprint: ["race-notify-outbox-duplicate-risk"],
+            extra: { rowId: row.id },
+          },
         );
       }
       sent++;
