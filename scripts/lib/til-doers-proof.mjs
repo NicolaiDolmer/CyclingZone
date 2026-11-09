@@ -243,7 +243,7 @@ export function flatLine(s, max = 400) {
     .replace(LINE_BREAKS, ' ')
     .replace(/\s+/g, ' ')
     .replace(/<!--/g, '&lt;!--')
-    .replace(/--!?>/g, (end) => end.replace('>', '&gt;')) // ogsaa --!>, som browsere accepterer (CodeQL #386)
+    .replace(/--(!?)>/g, '--$1&gt;') // ogsaa --!>, som browsere accepterer (CodeQL #386)
     .trim();
   return truncate(flat, max);
 }
