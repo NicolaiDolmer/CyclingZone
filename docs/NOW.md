@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** egomadsen #7870 (billeder, form/træthed sløret) · Alunta-faktura (61,25 kr.) · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · forsidens billeder #6665 (ejer retter 2/11) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (8/11):** **Dirigent-tavle [#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911) er sandheden; start der.** **Large kører (målt 8/11, #7659).** **Deploy til 13/11 (ejer 8/11):** merges kun mellem store slots, aldrig i timen før eller under; ændringer i baggrundsjob og motor venter til efter 13/11 (scheduler kører i API-processen). #7913, #7915 live. 7644 SLUKKET under Hexagone; første etape med felt 9/11 kl. 11 (tjek 7635 + #7897). **Efter løbet:** #6912, #7899, #7902, 7644 tuning vs G19-bånd.
+> **🎯 Next action (9/11):** **Dirigent-tavle [#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911) er sandheden; start der.** Til dørs først: pengelås-toget #7874, #7875, #7878 (ejer-go, gate grøn, kontakter slukkede; punkter før tænding på #6181 og #2176), derefter #7841, #6665, #7857, #7870 med billede og "merge". Ingen slot-begrænsning (ejer 9/11). Patch note for #7816, #7825 mangler; #7882 kræver `talent_marks_params` før beta. 7644 SLUKKET; første etape med felt 9/11 kl. 11 (tjek 7635 + #7897). **Efter løbet:** #6912, #7899, #7902, 7644 tuning vs G19-bånd.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Dirigent på Dolmer PC (8/11; PC1 pause). Tavle #7911. **Codex (Dolmer PC):** #7875, #7878.
+> **🤖 Working agent:** Claude dirigent på Dolmer PC (9/11 fra kl. 09.20).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 

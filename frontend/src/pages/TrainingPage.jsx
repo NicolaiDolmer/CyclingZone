@@ -1523,6 +1523,7 @@ export default function TrainingPage() {
       <div className="max-w-[880px] overflow-hidden rounded-cz border border-cz-border">
         <TrainingMobileRiderCard
           id={detailId}
+          riderId={phoneTodayView ? riderId : undefined}
           name={`${rider.firstname} ${rider.lastname}`}
           meta={[riderTypeLine(rider), age != null ? `${t("colAge")} ${age}` : null].filter(Boolean).join(" · ")}
           form={cond.form ?? null}

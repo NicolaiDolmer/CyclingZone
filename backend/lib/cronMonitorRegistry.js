@@ -302,9 +302,15 @@ export const UNMONITORED_CRON_TICKS = [
   // uge. En ny Sentry-cron-monitor er en ny løbende udgift; fejl når Sentry via
   // trackedTick + captureException i cron-funktionen.
   "academy-pull-reminder",
+  // #7824: mestertitlerne er flag-gated (startstadie off) og idempotente pr. sæson.
+  // Samme begrundelse; fejl når Sentry via captureException i tick-funktionen.
+  "champion-titles",
   // #7685: skrivningen af potentiale-skøn er flag-gated (startstadie off) og
   // idempotent. Samme begrundelse som ovenfor; fejl når Sentry via trackedTick og
   // det samlede event i modulernes tick-funktioner.
   "potential-estimate-sunday",
   "potential-estimate-team-change",
+  // #7879: talentmærkerne er flag-gated (startstadie off) og idempotente pr. dato.
+  // Samme begrundelse; fejl når Sentry via captureException i tick-funktionen.
+  "talent-marks-daily",
 ];

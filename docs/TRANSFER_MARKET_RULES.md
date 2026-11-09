@@ -638,6 +638,24 @@ skrive-værn mod kapløb: frigivelsen skriver kun hvis `pending_team_id` stadig 
 givet før parkeringen, kan altså ikke gennemføres bagefter; det afvises med `stale_rider_state`,
 og ingen penge flyttes.
 
+**Sælgers penge låses til holdskiftet (#6181, pengelås PR 3, bag kontakten `sale_escrow_enabled`, slukket).**
+Med kontakten tændt betaler køberen stadig ved handlen, men ved en parkeret handel (transfer,
+bytte med kontanter, auktion med en sælger) ligger beløbet i `sale_escrows`, og sælgeren
+krediteres først når rytteren faktisk skifter hold. Ved øjeblikkeligt skifte er intet ændret.
+
+| Element | Regel | Fil |
+|---|---|---|
+| Lås | køberen trækkes og beløbet låses i ét `hold_sale_escrow`-kald (samme finance-nøgler som i dag) | `saleEscrowFlow6181.js` `saleEscrowPayment` |
+| Udbetaling | flush/heal flytter rytteren og krediterer sælgeren i ét `settle_sale_escrow`-kald; et bytte udbetales først når begge ryttere er flyttet | `releaseSaleEscrowForFlush` |
+| Refusion | frigives en solgt, ventende rytter (pension, kontraktudløb), får køberen pengene tilbage | `refundSaleEscrowsForReleasedRiders` |
+| Sikkerhedsnet | heal-sweepet afregner enhver holdt escrow, der kan afregnes, også efter at kontakten er slukket igen; beta-reset gør det samme | `reconcileHeldSaleEscrows` |
+| Vagter | sæsonskiftet venter på holdte escrows (`no_deferred_transfers`); invariant H i `ownershipInvariantWatch` melder en escrow, der ikke er afregnet efter 48 t uden et aktivt løb | `seasonTransitionReadiness.js`, `ownershipInvariantWatch.ts` |
+| Gentagelse | en handel med en escrow betales aldrig igen af den gamle sti; er escrow'en refunderet, er handlen annulleret (rytteren flyttes ikke, ingen betaler). Databasen afviser en sælger-kredit efter en refusion under holdlåsen | `saleEscrowStatusForDeal`, `2026-11-07-6181-sale-escrow-m2-guards.sql` |
+| Fastlåst bytte | én rytter leveret, den anden mistet: heal-sweepet kan ikke afregne det. Admin afgør det med `GET /api/admin/sale-escrows` og `POST /api/admin/sale-escrows/:id/resolve` (`release` krediterer modtageren, `refund` giver betaleren beløbet tilbage; ingen rytter flyttes) | `resolveStuckSaleEscrow`, `resolve_stuck_sale_escrow` |
+
+Nuværende parkeringer får ingen tilbagevirkning: sælgeren af en handel fra før kontakten blev
+tændt, er allerede krediteret. Visning af låste penge og hjælpetekster kommer i PR 4.
+
 Målt 30/8: **0 ryttere står parkeret** (`select count(*) from riders where pending_team_id
 is not null`). Heal-sweepen tjekkede sidst ind 20:46:20 UTC med forventet kadence 300 sek.
 

@@ -727,6 +727,33 @@ test("#19: confirmTransferOffer flytter team_id med det samme når vinduet er å
   assert.equal(event.related_entity_id, "offer-1");
 });
 
+// #7871 (ejer-krav 1): en gentagelse af en handel, hvis sale_escrow er refunderet,
+// må hverken flytte rytteren igen eller kreditere sælger (køberens træk ville
+// springes over som dublet). Handlen går i stale-grenen.
+test("#7871: confirmTransferOffer efter en escrow-refusion flytter ikke rytteren og betaler intet", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  db.transfer_offers.push({
+    id: "offer-1", rider_id: "rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
+    offer_amount: 200, counter_amount: null, status: "awaiting_confirmation",
+    buyer_confirmed: false, seller_confirmed: true,
+  });
+  db.sale_escrows = [{ deal_type: "transfer", deal_id: "offer-1", status: "refunded" }];
+  const supabase = makeSupabase(db);
+
+  const result = await confirmTransferOffer({
+    supabase, offerId: "offer-1", confirmingTeamId: "buyer", notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.code, "stale_rider_state");
+  const rider = db.riders.find((r) => r.id === "rider-1");
+  assert.equal(rider.team_id, "seller", "rytteren bliver hos sælger");
+  assert.equal(rider.pending_team_id, null);
+  assert.equal(supabase._finance.length, 0, "ingen betaler, ingen krediteres");
+  assert.equal(db.teams.find((t) => t.id === "seller").balance, 500);
+  assert.equal(db.teams.find((t) => t.id === "buyer").balance, 1000);
+});
+
 // ── #3650: akademi-ryttere listes direkte på transfermarkedet (ejer-løfte i
 // Discord 11/8) — salget graduerer atomisk til senior hos køberen ved handlens
 // gennemførelse, samme graduatePatch-mønster som en graduate-sælg-auktion
