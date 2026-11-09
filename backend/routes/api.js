@@ -965,11 +965,22 @@ async function requireAuth(req, res, next) {
   // 14/8, alle fra normal onboarding-timing). .maybeSingle() giver data=null
   // uden fejl når rækken ikke findes endnu — req.team er null i begge
   // tilfælde, så nedstrøms opførsel er uændret.
-  const { data: team } = await supabase
+  const { data: team, error: teamError, status: teamStatus } = await supabase
     .from("teams")
     .select("*")
     .eq("user_id", user.id)
     .maybeSingle();
+
+  // #7917: en fejlet læsning er ikke "intet hold". Uden tjekket blev req.team null,
+  // og ruterne svarede 400 "No team found" under et databasenedbrud. Kun warn, samme
+  // grund som auth_unavailable ovenfor: et nedbrud rammer hvert eneste request.
+  if (teamError) {
+    console.warn(
+      `[auth] 503 team_lookup_failed ${req.method} ${req.originalUrl.split("?")[0]} (${teamError.code || teamStatus})`,
+    );
+    const lookupFailed = AUTH_FAILURE_RESPONSES.teamLookupFailed;
+    return res.status(lookupFailed.status).json(lookupFailed.body);
+  }
 
   req.user = user;
   req.team = team;
@@ -983,7 +994,7 @@ async function requireAuth(req, res, next) {
 router.use("/rankings", createRankingsRouter({
   supabase, requireAuth, reportError: captureException,
   viewerClient: (authorization) => createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
-    global: { headers: { Authorization: authorization } },
+    global: { headers: { Authorization: authorization }, fetch: createSupabaseFetchWithRetry() }, // #7917
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   }),
 }));

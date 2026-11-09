@@ -10,7 +10,9 @@
 // Alt andet (RPC, almindelige inserts, PATCH, DELETE) sendes præcis én gang, så en
 // ikke-idempotent skrivning aldrig kan udføres to gange.
 //
-// Det der prøves igen: Cloudflare-HTML-svar (status 520-525) og netværksfejl (fetch kaster).
+// Det der prøves igen: Cloudflare-svar (status 520-525) og netværksfejl (fetch kaster).
+// #7917: Cloudflare svarer også med JSON, når klienten beder om det, og det gør PostgREST-
+// klienten. Statuskoderne bruges kun af Cloudflare, så indholdstypen er ligegyldig.
 //
 // Undgå gange-effekt: PostgREST-klienten (@supabase/postgrest-js) prøver i forvejen GET/HEAD
 // igen ved netværksfejl og status 520 (op til 3 gange). Ligger vi under den og også prøver
@@ -56,12 +58,9 @@ export function isRetryableRequest(input, init) {
   return /resolution=merge-duplicates/i.test(headerValue(requestHeaders(input, init), "prefer"));
 }
 
-function isCloudflareHtmlResponse(response, isRead) {
+function isCloudflareErrorResponse(response, isRead) {
   if (!response || !CLOUDFLARE_STATUSES.has(response.status)) return false;
-  if (isRead && response.status === SDK_RETRIED_READ_STATUS) return false;
-  const contentType = headerValue(response.headers, "content-type");
-  // Cloudflares fejlside er HTML; en JSON-fejl med samme status er ikke vores tilfælde.
-  return !contentType || /text\/html/i.test(contentType);
+  return !(isRead && response.status === SDK_RETRIED_READ_STATUS);
 }
 
 function isStreamBody(init) {
@@ -93,7 +92,7 @@ export function createSupabaseFetchWithRetry(baseFetch = globalThis.fetch, {
       // Netværksfejl på læsninger prøves allerede igen af PostgREST-klienten.
       const retryable = failure
         ? !isRead && failure?.name !== "AbortError"
-        : isCloudflareHtmlResponse(response, isRead);
+        : isCloudflareErrorResponse(response, isRead);
       if (!retryable || attempt >= delaysMs.length || init?.signal?.aborted) {
         if (failure) throw failure;
         return response;
