@@ -4,16 +4,16 @@
 
 ## Kurs (ejer 8/11, 25 valg på #7911)
 
-**Mål:** en langsigtet bæredygtig forretning: database der virker, lavere udgifter, højere indtjening, nye brugere, brugere der bliver længere. Drift, forretning og spillet er alle vigtige (ejer 9/11: ingen faste procenter). **Til dørs først:** det halvbyggede går altid før nyt. **Fejl** (live og forkert) rettes uden go; alt nyt kræver ejerens go.
-**Udgivelse januar 2027** (roadbook 5/11), når: 0 alvorlige fejl i 14 dage, et sæsonskifte uden nedbrud, Pro 2.0 live. Præcis dato meldes først da. Afløser "beta slutter ved S6-start" (#6553).
-- **Drift:** plan v3 på #7659 (skridt 1 sat 8/11). Bestyrelsen én gang pr. løbstid med fire krav. Salgsannoncer #7922 (9/11). Databasefejl #7917.
-- **Forretning:** Pro 2.0 (tre pakker med billeder senest 15/11, pris uændret, aldrig styrke). Fornyelser og udløbne kort (design 9/11). Første dage for nye er højeste prioritet under fastholdelse (40 % efter 7 dage senest 31/3). Kampagne ved sæsonstart (ejer godkender og sender). Forside #6665. "Hvor hørte du om os" #3796. Google-sider fra uge 47, delingsknap efter sæsonstart, inviter en ven efter Pro 2.0, ingen annoncer. Mandagstal fra 9/11. Testgruppe på 5-6. Din dag: design uge 47, byg januar.
+**Mål:** en langsigtet bæredygtig forretning: database der virker, lavere udgifter, højere indtjening, nye brugere, brugere der bliver længere. Drift, forretning og spillet er alle vigtige (ejer 9/11: ingen faste procenter). **Til dørs først:** det halvbyggede går altid før nyt. **Fejl** (live og forkert) rettes uden go; alt nyt kræver ejerens go (ejer bekræftet 9/11).
+**Udgivelse januar 2027** (roadbook 5/11), når: ingen alvorlige fejl (ejer vurderer, intet fast antal dage, 9/11), et sæsonskifte uden nedbrud, Pro 2.0 live. Præcis dato meldes først da. Afløser "beta slutter ved S6-start" (#6553).
+- **Drift:** plan v3 på #7659 (skridt 1 sat 8/11). Bestyrelsen én gang pr. løbstid med fire krav; tændes, når skyggemålingen viser rigtige tal og ejeren giver go (ingen fast periode, 9/11). Salgsannoncer #7922 (9/11). Databasefejl #7917.
+- **Forretning:** Pro 2.0 (tre pakker med billeder, pris uændret, aldrig styrke). Fornyelser og udløbne kort (design 9/11). Første dage for nye er højeste prioritet under fastholdelse. Kampagne ved sæsonstart (ejer godkender og sender). Forside #6665. "Hvor hørte du om os" #3796. Google-sider fra uge 47, delingsknap efter sæsonstart, inviter en ven efter Pro 2.0, ingen annoncer. Mandagstal fra 9/11 og testgruppe med dem i beta i dag (ejer bekræftet 9/11). Din dag: design uge 47, byg januar.
 - **Spillet:** intet loft på motorarbejdet. Løbssiden må deles op, men alt i denne sæson. U23 og junior senest i S6, inden S7.
 - **Afklares med ejeren:** fakturaer og moms/revisor 9/11; roadmappen punkt for punkt; interne værktøjer. Backup-øvelse og nøgleskift #7029: ikke nu.
 
 **Reglen:** Færdig = bygget, merget, tændt, synligt, gammelt væk, Hjælp + patch note (8 Til dørs-krav). **Loftet afløser byggestoppet (ejer 4/11):** alt inden for de tre loft-områder plus brand og forkert info må bygges uden liste; alt andet kræver ejerens go. Nyt prøves bag slukket kontakt før tænding.
 
-**Arbejdsdeling (ejer 6/11 aften):** fra 7/11 ejer Claude Code på Dolmer PC motor, taktik, udvikling, løbssiden, spillerkommunikation, merge, flag og prod. Kun én session merger og tænder ad gangen.
+**Merge og tænding:** kun én session merger og tænder ad gangen.
 
 ## Tidsplan (ejer 4/11 aften)
 
@@ -53,8 +53,7 @@ Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden f
 
 **Mål 31/12:** 2.000 kr. MRR og 200 aktive/7d (målinger i [GROWTH_STACK](GROWTH_STACK.md)).
 - **Vækst (ejer 4/11, A+C):** fastholdelse først, så nye managers forstår deres første løb (bygger på #5101 og sande løbsdata), parallelt med flere besøgende. Derefter Pro-værdien #2806.
-- **Markedsføring 3 gange om ugen:** mandag tal og plan, onsdag fællesskabsopslag, fredag indhold/SEO (Codex).
-- **Spillerkommunikation:** én patch note og ét Discord-opslag (EN) pr. dag; udkast ca. kl. 17.
+- **Spillerkommunikation:** patch note, hver gang noget er tændt eller ændret for spillerne, og beta får sin samme dag; Discord-opslag på EN.
 - Bogføring, moms EU-privat #4511, billing #4514/#4512/#6062, måling #5305, SEO #5249/#5250.
 
 ## Faste rutiner

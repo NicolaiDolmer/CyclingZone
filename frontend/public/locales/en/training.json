@@ -624,7 +624,13 @@
     "sortFirstName": "First name",
     "sortLastName": "Last name",
     "previousSeason": "Previous season",
-    "change": "{from} to {to}"
+    "change": "{from} to {to}",
+    "pointsMeta": "{count, plural, one {# whole point} other {# whole points}}",
+    "progressHeading": "Progress toward the next point",
+    "loadError": "Training history could not load",
+    "loadErrorBody": "Nothing was changed. Your training plans are safe.",
+    "retry": "Try again",
+    "emptyAction": "Go to today's training"
   },
   "forecast": {
     "label": "Fatigue tonight",

@@ -171,7 +171,7 @@ Nye public-tabeller: følg [DATA_API_GRANTS.md](DATA_API_GRANTS.md) og [migratio
 
 <a id="regel-36"></a>
 
-36. **Teknisk design + måling før byg** (ejer 12/10, #6490): DB/motor/samtidighed/ydelse kræver read-only designgennemgang + målt baseline i lokal PG17 FØR 1. PR; maks 2 stablede drafts; 4 t uden resultat → stop med status; ingen polling. `.claude/learnings/2026-10-12-codex-6490-retro.md`.
+36. **Teknisk design + måling før byg** (ejer 12/10, #6490): DB/motor/samtidighed/ydelse kræver read-only designgennemgang + målt baseline i lokal PG17 FØR 1. PR; ingen polling. `.claude/learnings/2026-10-12-codex-6490-retro.md`.
 
 ### §LOKAL lokal-only-state
 
