@@ -51,7 +51,7 @@ export default function RiderNameCell({
           aria-label={fullName && shown !== fullName ? fullName : undefined}
           title={fullName && shown !== fullName ? fullName : undefined}
         >
-          <span className={`min-w-0 ${wrap ? "" : "truncate"}`}>{shown}</span>
+          <span className={wrap ? "" : "min-w-0 truncate"}>{shown}</span>
         </RiderLink>
         <RiderChampionJersey riderId={id} />
         <RiderTalentMark riderId={id} />

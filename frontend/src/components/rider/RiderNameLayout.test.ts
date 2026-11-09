@@ -31,3 +31,7 @@ test("navn og maerker staar i én gruppe, og navnet forkortes med ellipsis", () 
   assert.ok(after.indexOf("<RiderChampionJersey") < after.indexOf("<RiderTalentMark"));
   assert.match(cell, /truncate/);
 });
+
+test("wrap=true: navnet holder mindst det laengste ords bredde (ingen min-w-0 paa teksten)", () => {
+  assert.match(cell, /wrap \? "" : "min-w-0 truncate"/);
+});
