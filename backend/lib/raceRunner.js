@@ -457,13 +457,12 @@ export function v4IttNoDayRoll7726Arg(v4Engine, rulesRevision) {
   return v4Engine?.ittNoDayRoll7726 === true && isS5ProfilesV3OrLater(rulesRevision) ? { ittNoDayRoll7726: true } : {};
 }
 
-/** #7730: jagten afgoeres af de hold der jager, kun loeb bundet til kontakten ved foerste etape. */
 /** #7855: troejejagten i etapeplanen, kun loeb bundet til kontakten ved foerste etape. */
 export function v4JerseyHunt7855Arg(v4Engine, rulesRevision) {
   return v4Engine?.jerseyHunt7855 === true && isS5ProfilesV3OrLater(rulesRevision) ? { jerseyHunt7855: true } : {};
 }
 
-/** #7730 (se ovenfor). */
+/** #7730: jagten afgoeres af de hold der jager, kun loeb bundet til kontakten ved foerste etape. */
 export function v4TeamChase7730Arg(v4Engine, rulesRevision) {
   return v4Engine?.teamChase7730 === true && isS5ProfilesV3OrLater(rulesRevision) ? { teamChase7730: true } : {};
 }
