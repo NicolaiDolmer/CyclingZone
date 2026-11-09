@@ -427,7 +427,7 @@ features:
     area: race-day
     title_en: Why? button beside riders in Your day
     title_da: Hvorfor?-knap ved rytterne i Din dag
-    state: beta
+    state: live
     flag: rider_why_button
     decision: taend
     decide_by: 2026-11-20
@@ -442,8 +442,10 @@ features:
     area: squad
     title_en: Talent marks
     title_da: Talentmærker
-    state: building
+    state: beta
     flag: talent_marks_7879
+    roadmap_en: "Talent marks: a small mark next to a rider's name shows the biggest talents under 23 and juniors in strong progress."
+    roadmap_da: "Talentmærker: et lille mærke ved rytterens navn viser de største talenter under 23 og juniorer i kraftig fremgang."
     decision: ejer-beslutning
     decide_by: 2026-11-21
     epic: 7824
@@ -615,8 +617,10 @@ features:
     area: squad
     title_en: Champion jerseys beside rider names
     title_da: Mestertrøjer ved rytternavne
-    state: building
+    state: beta
     flag: champion_jerseys_7824
+    roadmap_en: "Champion jerseys: riders who have won a championship show a small jersey next to their name."
+    roadmap_da: "Mestertrøjer: ryttere, der har vundet et mesterskab, viser en lille trøje ved deres navn."
     epic: 7824
     verified: 2026-11-07
     note: champion_jerseys_7824
