@@ -21,6 +21,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import { createClient } from "@supabase/supabase-js";
+import { createSupabaseFetchWithRetry } from "./lib/supabaseFetchRetry.js";
 import { isAllowedOrigin } from "./lib/corsOrigin.js";
 import { createHealthRouter } from "./lib/healthRoutes.ts";
 import { errorMiddleware, shouldReportToSentry } from "./lib/errorMiddleware.js";
@@ -80,6 +81,7 @@ app.use(normalizeRequestBody);
 app.use("/api/season/comeback", createComebackRouter({
   supabase: createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
     auth: { persistSession: false },
+    global: { fetch: createSupabaseFetchWithRetry() }, // #7917
   }),
 }));
 // #5753: GET /api/board/verdict/:seasonId (bestyrelsens dom i saesonrecappen). Samme
@@ -87,6 +89,7 @@ app.use("/api/season/comeback", createComebackRouter({
 app.use("/api/board/verdict", createBoardVerdictRouter({
   supabase: createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
     auth: { persistSession: false },
+    global: { fetch: createSupabaseFetchWithRetry() }, // #7917
   }),
 }));
 // #6574: GET /api/public/stage-route/:stageId (etapens rute til road book-billedet).
@@ -94,6 +97,7 @@ app.use("/api/board/verdict", createBoardVerdictRouter({
 app.use("/api/public/stage-route", createPublicStageRouteRouter({
   supabase: createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
     auth: { persistSession: false },
+    global: { fetch: createSupabaseFetchWithRetry() }, // #7917
   }),
 }));
 app.use("/api", apiRoutes);

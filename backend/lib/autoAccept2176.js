@@ -26,9 +26,12 @@ import { readTransferPriceBandConfig, getPriceBandViolation } from "./transferPr
 import { buildAtRiskErrorParams, fetchAtRiskRiders } from "./squadRiskGuard.js";
 import { assertSigningAllowed } from "./boardConsequences.js";
 import { fetchSeasonTransitionBoundary } from "./seasonTransitionBoundary.js";
-import { notifyNewAuction } from "./discordNotifier.js";
+import { notifyNewAuction, notifyWatchlistRiderAuction } from "./discordNotifier.js";
 import { applySeniorSquadFilter } from "./squads.js";
 import { captureException } from "./sentry.js";
+import { isMarketCommitment6181On } from "./marketCommitment6181.js";
+import { recordIdentityEvent } from "./identityTelemetry.js";
+import { buildWatchlistAuctionNotification } from "./transferNotifications.js";
 
 export const AUTO_ACCEPT_FLAG_KEY = "auto_accept_enabled";
 export const AUTO_ACCEPT_MIN_MINUTES = 30;
@@ -312,6 +315,46 @@ export async function claimTransferUnderTeamLock(supabase, {
   }
 }
 
+// Begge ben af et bytte under samme holdlaase og auktionstjek som transfer og
+// frigivelse. Betalingen foelger bagefter i det eksisterende flow.
+// Slukket kontakt: null efter kun at have laest kontakten.
+export async function claimSwapUnderTeamLock(supabase, {
+  offeredRiderId, requestedRiderId, proposingTeamId, receivingTeamId,
+  deferRegistration, now, offeredPatch, requestedPatch,
+}) {
+  if (!(await isAutoAcceptEnabled(supabase))) return null;
+  const result = await rpc(supabase, "auto_accept_claim_swap", {
+    p_offered_rider_id: offeredRiderId, p_requested_rider_id: requestedRiderId,
+    p_proposing_team_id: proposingTeamId, p_receiving_team_id: receivingTeamId,
+    p_defer_registration: deferRegistration, p_now: now,
+    p_offered_patch: offeredPatch, p_requested_patch: requestedPatch,
+  });
+  switch (result?.status) {
+    case "claimed": return { data: { id: result.offered_rider_id } };
+    case "rider_state_changed":
+    case "rider_on_auction": return { data: null };
+    default: throw new Error(`auto_accept_claim_swap: unexpected status ${result?.status}`);
+  }
+}
+
+/**
+ * PATCH /transfers/:id: en CHECK-fejl kan have flere aarsager. Paa en aeldre
+ * listing er det typisk identitetsvagten (rytteren har forladt saelger), ikke
+ * auto-prisen, saa svaret skal naevne den faktiske aarsag. null = ikke en af de
+ * kendte aarsager, og ruten svarer som ved enhver anden fejl.
+ */
+export function getListingPriceUpdateErrorResponse(error) {
+  if (error?.code !== "23514") return null;
+  const message = String(error.message || "");
+  if (message.includes("transfer_listings_auto_accept_price_check")) {
+    return { status: 400, body: { error: "The asking price must stay below the auto-accept price", errorCode: "asking_price_not_below_auto_accept" } };
+  }
+  if (message.includes("listing_owner_mismatch")) {
+    return { status: 409, body: { error: "This rider is no longer on your team", errorCode: "rider_state_changed" } };
+  }
+  return null;
+}
+
 // null eller et positivt heltal; undefined (feltet mangler) er en fejl, saa
 // klienten altid skal sende den pris, den saa.
 function parseOptionalPrice(value) {
@@ -358,10 +401,15 @@ export function makeStartAutoAcceptHandler({
   marketState = getTeamMarketState, atRiskRiders = fetchAtRiskRiders,
   signingAllowed = assertSigningAllowed, seasonBoundary = fetchSeasonTransitionBoundary,
   priceBandConfig = readTransferPriceBandConfig, buildPriceBandErrorBody,
-  announce = announceAutoAcceptAuction,
+  announce = announceAutoAcceptAuction, notifyBuilt = null, watchlistDm = notifyWatchlistRiderAuction,
+  recordIdentity = recordIdentityEvent,
 }) {
   return async (req, res) => {
     if (!(await isAutoAcceptEnabled(supabase))) return res.status(404).json(DISABLED);
+    // Uden pengelaasen tager almindelige bud ikke holdlaasen, og et samtidigt bud
+    // kan bruge de samme penge eller den samme plads som starten. Kontakterne
+    // skal derfor ikke kunne staa forkert i forhold til hinanden.
+    if (!(await isMarketCommitment6181On(supabase))) return res.status(404).json(DISABLED);
     if (!req.team) return res.status(400).json({ error: "No team found" });
 
     const durationIssue = getAutoAcceptDurationIssue(req.body?.duration_minutes);
@@ -454,14 +502,46 @@ export function makeStartAutoAcceptHandler({
       p_now: startedAt.toISOString(),
     });
     const mapped = mapStartAutoAcceptResult(result);
-    if (result.status === "started") await announce({ supabase, logActivity, result, calculatedEnd });
+    if (result.status === "started") {
+      // Startbuddet er et bud med vaerdi: samme haendelsestype som POST /auctions/:id/bid,
+      // saa fair play-laeserne faar det med. Fail-open og uden await (#3132).
+      recordIdentity(supabase, {
+        userId: req.user?.id,
+        teamId: req.team.id,
+        eventType: "auction_bid",
+        entityId: result.auction_id,
+        req,
+        metadata: { origin: "auto_accept", listing_id: listing.id, rider_id: result.rider_id,
+          seller_team_id: result.seller_team_id, price: Number(result.price), duration_minutes: minutes },
+      });
+      await announce({ supabase, logActivity, result, calculatedEnd, notifyBuilt, watchlistDm, actorUserId: req.user?.id ?? null });
+    }
     return res.status(mapped.status).json(mapped.body);
   };
 }
 
+/**
+ * Foelgere af rytteren faar samme besked og Discord-DM som ved POST /auctions.
+ * Den der starter auktionen faar ingen. Kaster ved en laesefejl; kalderen
+ * sender det til Sentry, saa auktionen aldrig afhaenger af beskederne.
+ */
+export async function notifyAutoAcceptWatchers({ supabase, notifyBuilt, watchlistDm, result, riderName, calculatedEnd, actorUserId }) {
+  // pagination-safe: een rytters foelgere, hoejst een raekke pr. manager.
+  const { data: watchers, error } = await supabase
+    .from("rider_watchlist").select("user_id").eq("rider_id", result.rider_id);
+  if (error) throw error;
+  const report = (step) => (err) => captureException(err, { tags: { route: "POST /transfers/:id/auto-accept", step } });
+  await Promise.all((watchers || []).filter((w) => w.user_id !== actorUserId).map((w) => Promise.all([
+    notifyBuilt(w.user_id, buildWatchlistAuctionNotification({
+      riderName, startPrice: Number(result.price), riderId: result.rider_id,
+    }), result.auction_id).catch(report("watchlist-notify")),
+    watchlistDm({ userId: w.user_id, riderName, endsAt: calculatedEnd.toISOString() }).catch(report("watchlist-dm")),
+  ])));
+}
+
 // Best-effort, som ved POST /auctions: auktionen er startet, uanset om
-// meddelelserne lykkes. Saelgerens egen besked og tekster kommer i PR 7.
-async function announceAutoAcceptAuction({ supabase, logActivity, result, calculatedEnd }) {
+// meddelelserne lykkes.
+async function announceAutoAcceptAuction({ supabase, logActivity, result, calculatedEnd, notifyBuilt, watchlistDm, actorUserId }) {
   try {
     const [{ data: rider }, { data: seller }] = await Promise.all([
       supabase.from("riders").select("id, firstname, lastname, market_value").eq("id", result.rider_id).maybeSingle(),
@@ -485,6 +565,9 @@ async function announceAutoAcceptAuction({ supabase, logActivity, result, calcul
     }).catch((err) => {
       captureException(err, { tags: { route: "POST /transfers/:id/auto-accept", step: "notify" } });
     });
+    notifyAutoAcceptWatchers({ supabase, notifyBuilt, watchlistDm, result, riderName, calculatedEnd, actorUserId }).catch((err) => {
+      captureException(err, { tags: { route: "POST /transfers/:id/auto-accept", step: "watchlist" } });
+    });
   } catch (err) {
     captureException(err, { tags: { route: "POST /transfers/:id/auto-accept", step: "announce" } });
   }
@@ -493,7 +576,7 @@ async function announceAutoAcceptAuction({ supabase, logActivity, result, calcul
 /**
  * Registrerer de to ruter. Kaldes een gang fra api.js (minimal kobling).
  * deps: { supabase, requireAuth, marketWriteLimiter, assertMarketOpen,
- *         assertTeamNotTransferFrozen, getAuctionConfig, getActiveSeasonNumber, logActivity }
+ *         assertTeamNotTransferFrozen, getAuctionConfig, getActiveSeasonNumber, logActivity, notifyBuilt }
  */
 export function registerAutoAcceptRoutes(router, deps) {
   const { supabase, requireAuth, marketWriteLimiter, assertMarketOpen, assertTeamNotTransferFrozen } = deps;

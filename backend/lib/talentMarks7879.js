@@ -284,15 +284,30 @@ export async function runTalentMarksDaily({ supabase, now = new Date(), log = co
   };
 }
 
+// Er tabellen helt tom? Billig kontrol (én række, ingen sortering), brugt uden for
+// vinduet: en kontakt tændt midt på dagen skal ikke vente til næste nat på sine
+// første mærker.
+async function isTalentMarksTableEmpty(supabase) {
+  // schema-columns-ok: rider_talent_marks kommer fra 2026-11-07-7879-talent-marks.sql
+  const { data, error } = await supabase.from("rider_talent_marks").select("rider_id").limit(1);
+  if (error) throw new Error(`rider_talent_marks: ${error.message}`);
+  return !data || data.length === 0;
+}
+
 /**
- * Cron-indgangen: vindue + kørsel + log. Uden for vinduet sker der intet, heller
- * ikke flag-opslaget. En fejl når Sentry; næste tik i vinduet prøver igen. En
- * misset nat indhentes af næste nats vindue, fordi dagen afgøres af de skrevne
- * rækkers dato.
+ * Cron-indgangen: vindue + kørsel + log. Uden for vinduet koster tikket kun det
+ * cachede flag-opslag, og kører først, hvis kontakten ikke er off og tabellen er
+ * helt tom (første tænding); ellers sker der intet. En fejl når Sentry; næste tik
+ * prøver igen. En misset nat indhentes af næste nats vindue, fordi dagen afgøres
+ * af de skrevne rækkers dato.
  */
 export async function runTalentMarksDailyTick({ supabase, now = new Date() }) {
-  if (!isInTalentMarksWindow(now)) return { ran: false, skipped: "outside_window" };
   try {
+    if (!isInTalentMarksWindow(now)) {
+      const stage = await readFlagStage(supabase, TALENT_MARKS_FLAG_KEY, { now: () => now.getTime() });
+      if (!evaluateFlagStage(stage, { engineWrite: true })) return { ran: false, skipped: "outside_window" };
+      if (!(await isTalentMarksTableEmpty(supabase))) return { ran: false, skipped: "outside_window" };
+    }
     const result = await runTalentMarksDaily({ supabase, now });
     if (result.ran) console.log(`Talent marks: ${result.topTalent} top talent, ${result.nextGen} next gen`);
     return result;

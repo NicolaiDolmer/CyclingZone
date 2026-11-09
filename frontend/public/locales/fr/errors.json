@@ -55,6 +55,7 @@
     "cannot_proxy_own_rider": "Tu ne peux pas fixer d'enchère automatique sur ton propre coureur",
     "proxy_below_minimum": "La limite max. doit être d'au moins {min} CZ$",
     "insufficient_balance_after_proxy": "Il te reste {available} CZ$ après tes enchères et enchères automatiques existantes",
+    "insufficient_balance_amount_unknown": "Ton solde disponible ne couvre pas cela après tes enchères et enchères automatiques existantes.",
     "proxy_save_failed": "Ton enchère automatique n'a pas pu être enregistrée. Réessaie.",
     "proxy_place_failed": "Ton enchère automatique n'a pas pu être placée. Réessaie.",
     "proxy_update_failed": "Ton enchère automatique n'a pas pu mettre à jour l'enchère. Réessaie.",
@@ -299,6 +300,7 @@
     "contract_batch_rejected": "Certains contrats ne peuvent pas être prolongés. Rien n'a été modifié",
     "contract_batch_salary_cap": "Ces prolongations feraient passer ton salaire total au-dessus du plafond du conseil de {cap} CZ$. Rien n'a été modifié",
     "contract_batch_write_failed": "Un problème est survenu en enregistrant un contrat. Rien n'a été modifié",
-    "contract_batch_partial": "Certains contrats ont changé pendant la prolongation et tout n'a pas pu être annulé. Vérifie les coureurs ci-dessous"
+    "contract_batch_partial": "Certains contrats ont changé pendant la prolongation et tout n'a pas pu être annulé. Vérifie les coureurs ci-dessous",
+    "team_lookup_failed": "Le serveur a renvoyé une erreur. Réessaie dans un instant"
   }
 }

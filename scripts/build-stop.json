@@ -533,6 +533,18 @@
     {
       "issue": 7943,
       "why": "Opfoelgning paa #7922, ejer-go 9/11 (#7911)"
+    },
+    {
+      "issue": 7951,
+      "why": "Rytterside ryddes op, ejer-go og billede 9/11 (#7911)"
+    },
+    {
+      "issue": 7325,
+      "why": "Sæsonskiftet prøves på en kopi før 28/11, ejer-go 9/11 (MASTERPLAN, #7911)"
+    },
+    {
+      "issue": 6165,
+      "why": "Mindre kode for spilleren at hente, ejer-valg 9/11 ved kodegrænsen 1356 KB (#7911)"
     }
   ],
   "brandList": [

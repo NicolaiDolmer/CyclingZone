@@ -28,6 +28,11 @@ export const AUTH_UNAVAILABLE_ERROR = "auth_unavailable";
 export const AUTH_FAILURE_RESPONSES = {
   rejected: { status: 401, body: { error: "Invalid token" } },
   unavailable: { status: 503, body: { error: AUTH_UNAVAILABLE_ERROR } },
+  // #7917: tokenet er gyldigt, men holdopslaget fejlede. Må aldrig ligne "intet hold".
+  teamLookupFailed: {
+    status: 503,
+    body: { error: "The server returned an error. Try again shortly", errorCode: "team_lookup_failed" },
+  },
 };
 
 // Fejl-navne der ALDRIG er en afvisning af tokenet, uanset hvad de bærer af

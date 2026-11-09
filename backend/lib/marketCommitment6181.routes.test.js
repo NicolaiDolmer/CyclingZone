@@ -262,6 +262,26 @@ for(const [error,status,code] of [
   });
 }
 
+for (const [flag,status] of [['on',200],['off',400]]) {
+  test(`PATCH proxy ${flag}: a lowered cap on an over-committed team answers ${status}`,async()=>{
+    const f=fixture({flag});
+    f.auction.current_bidder_id=TEAM;
+    f.context.fetchTeamCommitment=async()=>({leadingAuctions:[],allMyProxies:[{auction_id:AUCTION,max_amount:20000}]});
+    const out=await route('patch','/auctions/:id/proxy',f)({max_amount:15000});
+    assert.equal(out.status,status,JSON.stringify(out.body));
+    if(flag==='off')assert.equal(out.body.errorCode,'insufficient_balance_after_proxy');
+    else assert.equal(f.proxies.at(-1).max_amount,15000);
+  });
+}
+
+test('PATCH proxy: a raised cap on an over-committed team is still rejected',async()=>{
+  const f=fixture({flag:'on'});
+  f.auction.current_bidder_id=TEAM;
+  f.context.fetchTeamCommitment=async()=>({leadingAuctions:[],allMyProxies:[{auction_id:AUCTION,max_amount:12000}]});
+  const out=await route('patch','/auctions/:id/proxy',f)({max_amount:15000});
+  assert.equal(out.status,400);assert.equal(out.body.errorCode,'insufficient_balance_after_proxy');
+});
+
 test('PATCH proxy translates a DB gate rejection without saving a proxy or placing an opening bid',async()=>{
   const f=fixture({flag:'on',proxyError:moneyError});
   const out=await route('patch','/auctions/:id/proxy',f)({max_amount:200});

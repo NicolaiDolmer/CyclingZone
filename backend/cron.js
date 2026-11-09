@@ -2104,10 +2104,11 @@ export function startCron() {
 
   // AI-trim heal: fuldfør udskudte AI-hold-trims når blokerende løb er kørt færdigt
   // (#2187/#2377). Markør-gatet (pending_removal_at) → idempotent, rører aldrig ægte
-  // hold. Cadence matcher de andre heal-sweeps.
+  // hold. Kører hver time (ikke hvert 5. min som de andre heal-sweeps): jobbet
+  // scanner alle puljer og kostede uforholdsmæssigt meget databasetid (#7659).
   setInterval(
-    trackedTick("ai-trim heal sweep", monitorCron("ai-trim-heal", runAiTeamTrimHealSweepCron, CRON_MONITOR_5MIN)),
-    5 * 60 * 1000
+    trackedTick("ai-trim heal sweep", monitorCron("ai-trim-heal", runAiTeamTrimHealSweepCron, CRON_MONITOR_60MIN)),
+    60 * 60 * 1000
   );
 
   // Udskudt-holdskifte heal: flush parkerede ryttere (pending_team_id) der ikke

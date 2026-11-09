@@ -55,6 +55,7 @@
     "cannot_proxy_own_rider": "You can't set an auto-bid on your own rider",
     "proxy_below_minimum": "Max limit must be at least {min} CZ$",
     "insufficient_balance_after_proxy": "You have {available} CZ$ left after your existing bids and auto-bids",
+    "insufficient_balance_amount_unknown": "Your available balance doesn't cover this after your existing bids and auto-bids.",
     "proxy_save_failed": "Your auto-bid couldn't be saved. Try again.",
     "proxy_place_failed": "Your auto-bid couldn't be placed. Try again.",
     "proxy_update_failed": "Your auto-bid couldn't update the auction. Try again.",
@@ -299,6 +300,7 @@
     "contract_batch_rejected": "Some contracts can't be extended. Nothing was changed",
     "contract_batch_salary_cap": "These extensions would take your total salary over the board's cap of {cap} CZ$. Nothing was changed",
     "contract_batch_write_failed": "Something went wrong saving a contract. Nothing was changed",
-    "contract_batch_partial": "Some contracts changed while extending, and not every change could be undone. Check the riders below"
+    "contract_batch_partial": "Some contracts changed while extending, and not every change could be undone. Check the riders below",
+    "team_lookup_failed": "The server returned an error. Try again shortly"
   }
 }
