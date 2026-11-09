@@ -174,6 +174,7 @@ export function finishRace(state, riderIds, { load = 9, gameDay = 43 } = {}) {
 
 export const enter = (state, riderIds) => { for (const rider_id of riderIds) state.race_entries.push({ race_id: RACE, rider_id, team_id: TEAM }); };
 
+export const SQUAD = Array.from({ length: 40 }, (_, i) => `rider-${String(i).padStart(2, "0")}`);
 const V2 = { condition_model_v2: "on" };
 const V2_RACE_DATE = { condition_model_v2: "on", condition_v2_race_date_training_day: "on" };
 
@@ -183,6 +184,20 @@ export const SCENARIOS = {
   press_no_race_v2: { seed: { flags: V2 }, steps: async (s, f) => { await press(s, f); } },
   press_tired_hard_v2: { seed: { fatigue: 88, intensity: "hard", flags: V2_RACE_DATE }, steps: async (s, f) => { await press(s, f); } },
   press_twice: { seed: {}, steps: async (s, f) => { await press(s, f); await press(s, f); } },
+  // Enough tired riders that the seeded rolls hit: injuries, an illness streak, and injuries that end today.
+  press_injuries_illness_v2: {
+    seed: { fatigue: 96, intensity: "hard", flags: V2_RACE_DATE, riderIds: SQUAD },
+    steps: async (s, f) => {
+      for (const rider_id of SQUAD) for (let back = 1; back <= 14; back += 1) s.training_condition_settlements.push({ rider_id, status: "complete", tick_date: new Date(Date.parse(`${DATE}T12:00:00Z`) - back * 86400000).toISOString().slice(0, 10), fatigue: 96 });
+      Object.assign(s.rider_condition[0], { injured_until: DATE, injury_cause: "training_overload", injury_end_game_day: 42, injury_season_id: SEASON.id, injury_race_days_left: 1 });
+      Object.assign(s.rider_condition[1], { injured_until: "2026-11-20", injury_cause: "training_overload", injury_end_game_day: 90, injury_season_id: SEASON.id, injury_race_days_left: 9 });
+      await press(s, f);
+    },
+  },
+  injuries_old_model_race_day: {
+    seed: { fatigue: 96, intensity: "hard", riderIds: SQUAD },
+    steps: async (s, f) => { enter(s, SQUAD.slice(0, 6)); await press(s, f); finishRace(s, SQUAD.slice(0, 6)); await sweep(s, f); },
+  },
   race_rider_waits: {
     seed: { flags: V2 },
     steps: async (s, f) => { enter(s, ["r2"]); await press(s, f); },

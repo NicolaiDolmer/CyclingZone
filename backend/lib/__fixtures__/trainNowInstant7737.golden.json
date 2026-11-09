@@ -1,6 +1,6 @@
 {
   "issue": 7737,
-  "generatedFrom": "merge-base 5cb90fa4c3a9c16d8ad51b76aaefeffbb50bdafe",
+  "generatedFrom": "merge-base 482dbda6b7ff041af4b4e7a4b68f5081e3ca3817",
   "note": "SHA-256 of everything the engine sends to the database, taken from the frozen merge-base code with the harness in this folder. Never regenerate with new code.",
   "digests": {
     "press_no_race": {
@@ -18,6 +18,14 @@
     "press_twice": {
       "digest": "23ba5ff7bc21fda86f84c81f1a9f35326cca00668a8fd8e88efd16193c4fdb4e",
       "writes": 20
+    },
+    "press_injuries_illness_v2": {
+      "digest": "449e4c21749c0c1a15375e09b31e373dfbf0160a7eee0314bb2f64848fcecf06",
+      "writes": 25
+    },
+    "injuries_old_model_race_day": {
+      "digest": "99eeb18e1729ccd2366f92c571292b07affd93e674b317183a42ecc48b478cdd",
+      "writes": 32
     },
     "race_rider_waits": {
       "digest": "9d1ea1e085b5dfb5fda59f1c6f95dedc81636a173cdd6f2683bde7de9dd0f586",

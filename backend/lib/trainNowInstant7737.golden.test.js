@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 import {
-  SCENARIOS, DATE, DAYS, RACE, SEASON, PRESS_AT, EVENING_AT,
+  SCENARIOS, SQUAD, DATE, DAYS, RACE, SEASON, PRESS_AT, EVENING_AT,
   seedState, createFake, digest, press, sweep, finishRace, enter, runScenario,
 } from "./__fixtures__/trainNowInstant7737Harness.js";
 import { TRAIN_NOW_INSTANT_FLAG_KEY, evaluateTrainNowInstantFlag } from "./trainNow.js";
@@ -113,6 +113,26 @@ test("evening: his race slot closes the date once, and the closing numbers equal
     finishRace(control, ["r2"]);
     await sweep(control, controlFake);
     assert.deepEqual(without(condition(state, "r2"), "updated_at"), without(condition(control, "r2"), "updated_at"), "same close as the evening run");
+  }
+});
+
+test("evening: a seeded injury after an instant press is the same injury as the evening run's, from the date's last race day", async () => {
+  const run = async (flags) => {
+    const state = seedState({ fatigue: 96, intensity: "hard", riderIds: SQUAD, flags: { ...V2, ...flags } });
+    enter(state, SQUAD);
+    const fake = createFake(state);
+    await press(state, fake);
+    assert.ok(state.rider_condition.every((row) => row.injured_until === null), "nothing rolled at the press");
+    finishRace(state, SQUAD);
+    await sweep(state, fake);
+    return state;
+  };
+  const instant = await run(INSTANT);
+  const control = await run({});
+  assert.ok(control.rider_condition.some((row) => row.injury_end_game_day != null), "the scenario must roll at least one injury");
+  for (const row of instant.rider_condition) {
+    const twin = control.rider_condition.find((c) => c.rider_id === row.rider_id);
+    assert.deepEqual(without(row, "updated_at"), without(twin, "updated_at"));
   }
 });
 
