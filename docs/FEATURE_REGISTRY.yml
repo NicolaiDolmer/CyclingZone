@@ -186,6 +186,18 @@ features:
     verified: 2026-11-06
     note: "on 6/11 på ejerens kør; kun løb der ikke er startet."
 
+  - id: race-time-limit-fatigue-7715
+    area: race-engine
+    title_en: Tired riders can miss the time limit, with a warning
+    title_da: Trætte ryttere kan misse tidsgrænsen, med varsel
+    state: building
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 7715
+    verified: 2026-11-07
+    note: "Nøgle time_limit_fatigue_7715 uden række (off)."
+    decision: ejer-beslutning
+    decide_by: 2026-11-20
+
   - id: race-official-times-v1
     area: race-engine
     title_en: Official time persistence revision
