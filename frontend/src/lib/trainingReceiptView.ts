@@ -5,8 +5,8 @@
 //   - whole ability points (gains) are the headline and stand apart from the
 //     progress toward the next point (gain_percent), so a "+1" can never be
 //     mistaken for "+1%" (#7745, follows #6239),
-//   - riders whose development is known but who landed no whole point fold
-//     together into one group instead of a long list of percentages (#7745),
+//   - riders keep one order whether or not they landed a whole point; those
+//     without one say so on their own row (#7745),
 //   - abilities are listed in the rider profile's order, the shared ability
 //     registry (Physical, Mental, Technical), never in storage order (#7746).
 import { ABILITY_KEYS } from "./abilities.js";
@@ -43,14 +43,4 @@ export function progressOnlyEntries(dev: ReceiptDevelopment): Array<{ key: strin
   return orderAbilities(Object.keys(dev.gain_percent ?? {})
     .filter(key => positive(dev.gain_percent[key]) && !positive(dev.gains?.[key])))
     .map(key => ({ key, percent: dev.gain_percent[key] as number }));
-}
-
-/** Splits riders into the main list and the folded group of riders whose
- *  development is known but who landed no whole point. Riders whose development
- *  is not known yet stay in the main list with their status, never folded away
- *  as "no point". Sort order is kept inside both groups. */
-export function splitReceiptRows<T>(rows: T[], known: (row: T) => boolean, wholePoints: (row: T) => number): { main: T[]; quiet: T[] } {
-  const main: T[] = [], quiet: T[] = [];
-  for (const row of rows) (known(row) && !(wholePoints(row) > 0) ? quiet : main).push(row);
-  return { main, quiet };
 }

@@ -99,9 +99,10 @@ test("training report shows day summary, progress and breakthrough jump", async 
   const details = receipt.getByTestId("daily-receipt-rider-details");
   await expect(details.getByLabel("71 til 72")).toBeVisible();
   await expect(receipt.getByLabel("25 til 20")).toBeVisible();
-  // #7745: ryttere uden et helt point (Ming hvilede) er foldet sammen i een raekke.
-  await expect(receipt.getByRole("button", { name: /Ming Zhou/ })).toHaveCount(0);
-  await receipt.getByTestId("daily-receipt-quiet-toggle").click();
+  // #7745: ryttere uden et helt point (Ming hvilede) staar i samme liste og
+  // raekkefoelge som de andre, med teksten paa egen raekke, ikke foldet vaek.
+  await expect(receipt.getByTestId("daily-receipt-quiet-toggle")).toHaveCount(0);
+  await expect(receipt.getByRole("button", { name: /Ming Zhou/ })).toContainText("Intet helt point registreret");
   await receipt.getByRole("button", { name: /Ming Zhou/ }).click();
   // #5915: flere ryttere kan staa foldet ud samtidig (Ada er stadig aaben).
   await expect(receipt.getByTestId("daily-receipt-rider-details")).toHaveCount(2);

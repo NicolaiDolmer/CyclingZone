@@ -47,14 +47,14 @@ const settled = { tick_date:'2026-11-06', receipt_status:'complete', game_days:[
 const render = (props: Record<string, unknown>) => renderToStaticMarkup(createElement(I18nextProvider,{i18n},
   createElement(DailyTrainingReceipt,props as never)));
 
-test('#7745 whole points lead in profile order, riders without one fold together', () => {
+test('#7745 whole points show in profile order, and every rider keeps one shared order', () => {
   const html = render({ run:settled });
   const whole = html.slice(html.indexOf('data-testid="daily-receipt-whole-points"'));
   assert.ok(whole.indexOf('racePreview.derived.climbing') < whole.indexOf('racePreview.derived.positioning'), '#7746 climbing before positioning');
-  assert.match(html,/Ada Pedersen/);
-  assert.match(html,/data-testid="daily-receipt-quiet-toggle"/);
-  assert.match(html,/aria-expanded="false" aria-controls="receipt-2026-11-06-legacy-no-whole-point"/);
-  assert.doesNotMatch(html,/Bo Holm|Cai Berg/, 'riders without a whole point are folded');
+  assert.doesNotMatch(html,/quiet-group|quiet-toggle/, 'no folded group');
+  const at = (name: string) => html.indexOf(name);
+  assert.ok(at('Ada Pedersen') > -1 && at('Ada Pedersen') < at('Bo Holm') && at('Bo Holm') < at('Cai Berg'), 'name order, points or not');
+  assert.equal(html.split('dailyReceipt.noWholePoint').length - 1, 2, 'riders without a whole point say so on their own row');
   assert.doesNotMatch(html,/\+40%|\+12%/, 'progress toward the next point never sits on the summary line');
 });
 
@@ -64,10 +64,9 @@ test('#7745 a folded date still says how many whole points it landed', () => {
   assert.match(html,/data-testid="daily-receipt-status"/);
 });
 
-test('#7745 a date whose development is not known yet folds nobody away', () => {
+test('#7745 a date whose development is not known yet lists everyone', () => {
   const html = render({ run:{ ...settled, receipt_status:'pending',
     report:{ ...settled.report, riders:settled.report.riders.map(row=>({ ...row, receipt_status:'pending' })) } } });
-  assert.doesNotMatch(html,/daily-receipt-quiet-group/);
   assert.match(html,/Bo Holm/);
   assert.doesNotMatch(html,/daily-receipt-points-meta/);
 });

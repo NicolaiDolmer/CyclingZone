@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { DailyTrainingReceipt as DateReceipt, DailyRiderReceipt, TrainingActivity } from "../../lib/trainingDailyReceipt.ts";
 import { averagePassScore, sortReceiptRiders, formatSlotRange, waitingForRace, type ReceiptSort } from "../../lib/trainingDailyReceipt.ts";
-import { progressOnlyEntries, splitReceiptRows, wholePointEntries } from "../../lib/trainingReceiptView.ts";
+import { progressOnlyEntries, wholePointEntries } from "../../lib/trainingReceiptView.ts";
 import Segmented from "../ui/Segmented.jsx";
 import { formatDate, formatNumber } from "../../lib/intl.js";
 import { todayGainTotal } from "../../lib/trainingReport.js";
@@ -36,13 +36,10 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
     return next;
   });
   const [expanded, setExpanded] = useState(defaultExpanded);
-  const [quietOpen, setQuietOpen] = useState(false);
   const [sortBy, setSortBy] = useState<ReceiptSort>("name");
   const avgScore = (row: DailyRiderReceipt) => showsDevelopment(row)
     ? averagePassScore(trainingScore?.[row.rider_id], run.tick_date, run.season_id, row.activities) : null;
   const rows = sortReceiptRiders(run.report.riders, sortBy, avgScore);
-  // #7745: riders with a whole point lead; known riders without one fold together.
-  const { main: mainRows, quiet: quietRows } = splitReceiptRows(rows, showsDevelopment, row => todayGainTotal(development(row)));
   const gameDays = Array.isArray(run.game_days) ? run.game_days : [];
   const trainedNowSlots = run.trained_now_slots ?? [];
   const trainedNow = run.receipt_status === "pending" && trainedNowSlots.length > 0;
@@ -55,7 +52,7 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
   const rowGrid = showScore
     ? "sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_5rem_6rem]"
     : "sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_6rem]";
-  const allOpen = rows.length > 0 && rows.every(row => openRiders.has(row.rider_id)) && (quietRows.length === 0 || quietOpen);
+  const allOpen = rows.length > 0 && rows.every(row => openRiders.has(row.rider_id));
   const known = rows.filter(isKnown);
   const points = (trainedNow ? trainedRows : known).reduce((sum, row) => sum + todayGainTotal(development(row)), 0);
   const wholeDateKnown = run.receipt_status === "complete" || run.receipt_status === "recorded";
@@ -136,7 +133,6 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
       </div>
     );
   };
-  const quietId = `receipt-${run.tick_date}-${run.season_id ?? "legacy"}-no-whole-point`;
   return (
     <Section data-testid="daily-training-receipt" data-date={run.tick_date} data-status={run.receipt_status}>
       <button type="button" className={`flex min-h-[44px] w-full flex-wrap items-center justify-between gap-x-3 gap-y-1 text-left ${expanded ? "mb-4" : ""}`} aria-expanded={expanded} onClick={()=>setExpanded(value=>!value)} data-testid="training-history-day-toggle">
@@ -164,22 +160,14 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
           options={[{value:"name",label:t("dailyReceipt.sortFirstName")},{value:"lastname",label:t("dailyReceipt.sortLastName")},
             ...(showScore ? [{value:"score",label:t("colScore")}] : [])]} />
         <button type="button" className="min-h-[44px] px-1 text-xs font-medium text-cz-accent-t hover:text-cz-1" data-testid="daily-receipt-expand-all"
-          onClick={()=>{ setOpenRiders(allOpen ? new Set() : new Set(rows.map(row=>row.rider_id))); setQuietOpen(!allOpen); }}>
+          onClick={()=>setOpenRiders(allOpen ? new Set() : new Set(rows.map(row=>row.rider_id)))}>
           {t(allOpen ? "dailyReceipt.collapseAll" : "dailyReceipt.expandAll")}
         </button>
       </div>}
       <div className={`grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_4.5rem] gap-2 py-2 font-data text-2xs uppercase tracking-[.06em] text-cz-3 ${rowGrid}`}>
         <span>{t("colRider")}</span><span>{t("dailyReceipt.development")}</span>{showScore && <span className="hidden text-right sm:block">{t("dailyReceipt.latestPassScore")}</span>}<span className="text-right">{t("dailyReceipt.fatigue")}</span>
       </div>
-      {mainRows.map(renderRow)}
-      {quietRows.length > 0 && <div className="border-t border-cz-border" data-testid="daily-receipt-quiet-group">
-        <button type="button" className="flex min-h-[44px] w-full items-center gap-1.5 py-3 text-left hover:bg-cz-subtle" aria-expanded={quietOpen} aria-controls={quietId}
-          onClick={()=>setQuietOpen(value=>!value)} data-testid="daily-receipt-quiet-toggle">
-          <ChevronDownIcon size={13} className={`shrink-0 text-cz-3 ${quietOpen ? "rotate-180" : ""}`} aria-hidden="true" />
-          <span className="text-[13px] font-semibold text-cz-2">{t("dailyReceipt.quietGroup",{count:quietRows.length})}</span>
-        </button>
-        {quietOpen && <div id={quietId}>{quietRows.map(renderRow)}</div>}
-      </div>}
+      {rows.map(renderRow)}
       {waiting.map(rider => <div key={rider.rider_id} className={`grid min-h-[44px] grid-cols-[minmax(0,1fr)_minmax(0,1fr)_4.5rem] items-center gap-2 border-t border-cz-border py-3 ${rowGrid}`} data-testid="daily-receipt-waiting">
         <span className="flex min-w-0 items-start gap-1.5 pl-[19px]"><RiderLink id={rider.rider_id} className="wrap-break-word text-[13px] font-semibold text-cz-1">{rider.name || rider.rider_id}</RiderLink></span>
         <span className="wrap-break-word text-xs text-cz-3">{t("dailyReceipt.waitingForRace")}</span>

@@ -626,7 +626,6 @@
     "previousSeason": "Saison précédente",
     "change": "{from} à {to}",
     "pointsMeta": "{count, plural, one {# point entier} other {# points entiers}}",
-    "quietGroup": "{count, plural, one {# coureur sans point entier} other {# coureurs sans point entier}}",
     "progressHeading": "Progression vers le prochain point",
     "loadError": "Impossible de charger l'historique d'entraînement",
     "loadErrorBody": "Rien n'a été modifié. Vos plans d'entraînement sont en sécurité.",

@@ -626,7 +626,6 @@
     "previousSeason": "Temporada anterior",
     "change": "{from} a {to}",
     "pointsMeta": "{count, plural, one {# punto entero} other {# puntos enteros}}",
-    "quietGroup": "{count, plural, one {# ciclista sin un punto entero} other {# ciclistas sin un punto entero}}",
     "progressHeading": "Progreso hacia el siguiente punto",
     "loadError": "No se pudo cargar el historial de entrenamiento",
     "loadErrorBody": "No se ha cambiado nada. Tus planes de entrenamiento están a salvo.",

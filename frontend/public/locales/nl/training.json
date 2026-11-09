@@ -626,7 +626,6 @@
     "previousSeason": "Vorig seizoen",
     "change": "{from} naar {to}",
     "pointsMeta": "{count, plural, one {# heel punt} other {# hele punten}}",
-    "quietGroup": "{count, plural, one {# renner zonder heel punt} other {# renners zonder heel punt}}",
     "progressHeading": "Voortgang naar het volgende punt",
     "loadError": "Trainingsgeschiedenis kon niet worden geladen",
     "loadErrorBody": "Er is niets gewijzigd. Je trainingsplannen zijn veilig.",

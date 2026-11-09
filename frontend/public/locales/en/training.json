@@ -626,7 +626,6 @@
     "previousSeason": "Previous season",
     "change": "{from} to {to}",
     "pointsMeta": "{count, plural, one {# whole point} other {# whole points}}",
-    "quietGroup": "{count, plural, one {# rider without a whole point} other {# riders without a whole point}}",
     "progressHeading": "Progress toward the next point",
     "loadError": "Training history could not load",
     "loadErrorBody": "Nothing was changed. Your training plans are safe.",

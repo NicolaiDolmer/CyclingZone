@@ -626,7 +626,6 @@
     "previousSeason": "Tidligere sæson",
     "change": "{from} til {to}",
     "pointsMeta": "{count, plural, one {# helt point} other {# hele point}}",
-    "quietGroup": "{count, plural, one {# rytter uden et helt point} other {# ryttere uden et helt point}}",
     "progressHeading": "Fremdrift mod næste point",
     "loadError": "Træningshistorikken kunne ikke hentes",
     "loadErrorBody": "Intet er ændret. Dine træningsplaner er i sikkerhed.",
