@@ -83,6 +83,7 @@ Vi har ét stroke-ikonsæt (16/20/24 px). Emoji, unicode-pile (→ ← ↔ ↑ �
 
 - **Forkert i dag:** `dashboard-desktop-light.png`: "Fuld rangliste → ›" har både en tekst-pil OG et rigtigt chevron-ikon. "← Forrige / Næste →" i pagination. "↔ Sæt til salg" i rytterprofilens knap. 559 forekomster i 153 filer (25/7).
 - **Rigtigt i dag:** `SectionAction`-primitiven med `chevron-right 13px`. Findes, bruges bare ikke overalt.
+- **Undtagelse (ejer 6/11, #7824/#7879):** talentmærkerne (slebet guldstjerne, slebet diamant) og mestertrøjerne er fyldte, flerfarvede symboler og bruger guld uden for rationeringen. Kun disse mærker, 16 px i tabeller og 24 px på profilen.
 - **Spørgsmål:** Er der nul emoji, nul unicode-pile og nul tekst-glyffer brugt som UI-chrome?
 
 ### P8 · Ét sprog for status og prioritet
@@ -122,6 +123,7 @@ Ingen falske tal, ingen mock-ryttere, ingen "Coming soon" som fejl-fallback, ing
 Et rytternavn og et holdnavn er altid et link til profilen, på samme måde på hver side, medmindre der er en relevant undtagelse (fx navnet i profilens egen hero). Tabeller med samme slags indhold ser ens ud i hele spillet: samme kolonnerækkefølge for de samme ting, samme rækkehøjde, samme sortering (§4 spørgsmål 7a).
 
 - **Navnecellens rækkefølge (ejer 7/11):** nation · navn · hover-ikon · mærker (mestertrøje eller talentmærke, højst ét af hver) · status-mærker (U25, AI, LIST, INJ…) · evt. ryttertype, placeret som de typisk står i dag. Mærkerne bruger spillets egne komponenter (`RiderBadges`, `RiderTypeBadge`), aldrig nye pille-stile (P8).
+- **Mestertrøjerne er en undtagelse fra P7 og guld-rationeringen (ejer 6/11, #7824):** de små trøjer ved navnet (verdensmester, U23-verdensmester, kontinentmester, national mester) er fyldte, flerfarvede tegninger med faste farver, og verdensmestertrøjens guldbånd tæller ikke som guld-signal. Undtagelsen gælder kun disse trøjer (`ChampionJersey.tsx`), 16 px i tabeller og 24 px på profilen, aldrig andre ikoner. Ingen regnbuebånd (UCI-varemærke); den nationale trøje er rytterens flag i trøjens form.
 - **Spørgsmål:** Er hvert rytter- og holdnavn et link til profilen med samme udseende som resten af spillet, og følger navnecellen den faste rækkefølge?
 
 ### P13 · Én skrivemåde pr. slags tal (ejer 7/11)
