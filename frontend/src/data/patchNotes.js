@@ -4,6 +4,23 @@ export const PATCHES = [
     "date": "2026-11-09",
     "changes": [
       {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "beta_to_live",
+        "topic": "Races",
+        "en": {
+          "title": "Why? is now for everyone",
+          "body": "Why? next to your riders is now available to everyone. Tap it after a race to see in words what happened to your rider."
+        },
+        "da": {
+          "title": "Hvorfor? er nu for alle",
+          "body": "Hvorfor? ved dine ryttere er nu for alle. Tryk på knappen efter et løb, og se med ord, hvad der skete med din rytter."
+        },
+        "refs": [
+          7717
+        ]
+      },
+      {
         "category": "new",
         "audience": "player",
         "rollout": "beta",
