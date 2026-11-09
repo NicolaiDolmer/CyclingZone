@@ -47,6 +47,7 @@
     "intakeExpiryCompensation": "Compensatie: verlopen instroomaanbieding voor {riderName} verkocht in een veiling",
     "transferBuy": "{riderName} gekocht via een transfer",
     "transferSell": "{riderName} verkocht via een transfer",
+    "saleEscrowRefund": "Terugbetaling: de renner is niet van ploeg gewisseld",
     "riderRelease": "{riderName} vrijgegeven (afkoopsom)",
     "swapCash": "Contante afwikkeling van de ruil: {offeredName} <-> {requestedName}",
     "scoutTravel": "Reiskosten van de scout",
@@ -77,6 +78,12 @@
     }
   },
   "notif": {
+    "saleEscrowRefund": {
+      "buyerTitle": "Deal geannuleerd, geld terug",
+      "buyerMessage": "{riders} is niet van ploeg gewisseld, dus {amount} CZ$ staat weer op je saldo.",
+      "sellerTitle": "Deal geannuleerd",
+      "sellerMessage": "{riders} is niet van ploeg gewisseld, dus de {amount} CZ$ van de deal zijn terug naar de andere ploeg."
+    },
     "admin": {
       "feedbackReply": {
         "title": "Antwoord op je bericht"

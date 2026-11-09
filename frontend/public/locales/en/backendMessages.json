@@ -47,6 +47,7 @@
     "intakeExpiryCompensation": "Compensation: expired intake offer for {riderName} sold at auction",
     "transferBuy": "Bought {riderName} via transfer",
     "transferSell": "Sold {riderName} via transfer",
+    "saleEscrowRefund": "Refund: the rider did not change teams",
     "riderRelease": "Released {riderName} (buyout fee)",
     "swapCash": "Swap cash settlement: {offeredName} <-> {requestedName}",
     "scoutTravel": "Scout travel cost",
@@ -77,6 +78,12 @@
     }
   },
   "notif": {
+    "saleEscrowRefund": {
+      "buyerTitle": "Deal cancelled, money returned",
+      "buyerMessage": "{riders} did not change teams, so {amount} CZ$ is back in your balance.",
+      "sellerTitle": "Deal cancelled",
+      "sellerMessage": "{riders} did not change teams, so the {amount} CZ$ from the deal went back to the other team."
+    },
     "admin": {
       "feedbackReply": {
         "title": "Reply to your message"

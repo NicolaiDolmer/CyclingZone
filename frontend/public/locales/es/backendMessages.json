@@ -47,6 +47,7 @@
     "intakeExpiryCompensation": "Compensación: oferta de cantera caducada de {riderName} vendido en subasta",
     "transferBuy": "{riderName} comprado por fichaje",
     "transferSell": "{riderName} vendido por fichaje",
+    "saleEscrowRefund": "Reembolso: el ciclista no cambió de equipo",
     "riderRelease": "{riderName} liberado (cláusula de rescisión)",
     "swapCash": "Liquidación en efectivo del intercambio: {offeredName} <-> {requestedName}",
     "scoutTravel": "Coste de viaje del ojeador",
@@ -77,6 +78,12 @@
     }
   },
   "notif": {
+    "saleEscrowRefund": {
+      "buyerTitle": "Operación cancelada, dinero devuelto",
+      "buyerMessage": "{riders} no cambió de equipo, así que {amount} CZ$ vuelven a tu saldo.",
+      "sellerTitle": "Operación cancelada",
+      "sellerMessage": "{riders} no cambió de equipo, así que los {amount} CZ$ de la operación volvieron al otro equipo."
+    },
     "admin": {
       "feedbackReply": {
         "title": "Respuesta a tu mensaje"

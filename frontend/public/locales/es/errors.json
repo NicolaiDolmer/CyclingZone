@@ -55,6 +55,7 @@
     "cannot_proxy_own_rider": "No puedes configurar una puja automática por tu propio ciclista",
     "proxy_below_minimum": "El límite máximo debe ser de al menos {min} CZ$",
     "insufficient_balance_after_proxy": "Te quedan {available} CZ$ después de tus pujas y pujas automáticas existentes",
+    "insufficient_balance_amount_unknown": "Tu saldo disponible no cubre esto después de tus pujas y pujas automáticas existentes.",
     "proxy_save_failed": "No se pudo guardar tu puja automática. Inténtalo de nuevo.",
     "proxy_place_failed": "No se pudo realizar tu puja automática. Inténtalo de nuevo.",
     "proxy_update_failed": "Tu puja automática no pudo actualizar la subasta. Inténtalo de nuevo.",

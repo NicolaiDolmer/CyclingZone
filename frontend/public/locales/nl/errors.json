@@ -55,6 +55,7 @@
     "cannot_proxy_own_rider": "Je kunt geen automatisch bod instellen op je eigen renner",
     "proxy_below_minimum": "De maximumlimiet moet minstens {min} CZ$ zijn",
     "insufficient_balance_after_proxy": "Je hebt nog {available} CZ$ over na je bestaande biedingen en automatische biedingen",
+    "insufficient_balance_amount_unknown": "Je beschikbare saldo is hiervoor niet genoeg na je bestaande biedingen en automatische biedingen.",
     "proxy_save_failed": "Je automatische bod kon niet worden opgeslagen. Probeer het opnieuw.",
     "proxy_place_failed": "Je automatische bod kon niet worden geplaatst. Probeer het opnieuw.",
     "proxy_update_failed": "Je automatische bod kon de veiling niet bijwerken. Probeer het opnieuw.",

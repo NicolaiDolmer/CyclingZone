@@ -80,13 +80,52 @@ async function rpcWithLockRetry(client, name, args) {
  * graduerer ham allerede ved parkeringen (seniorSquadPatch). Refunderes handlen,
  * gendanner M2-triggeren det. null, naar handlen ikke aendrer trup-felterne.
  *
- * @param {{ is_academy?: boolean|null, squad?: string|null }} rider  foer handlen
+ * @param {{ is_academy?: boolean|null, squad?: string|null, salary?: number|null, contract_length?: number|null, contract_end_season?: number|null }} rider  foer handlen
  * @param {Record<string, unknown>} patch  den trup-patch, handlen skriver
- * @returns {{ is_academy: boolean, squad?: string } | null}
+ * @returns {{ is_academy?: boolean, squad?: string, salary?: number|null, contract_length?: number|null, contract_end_season?: number|null } | null}
  */
 export function squadRestoreImage(rider, patch) {
-  if (!patch || Object.keys(patch).length === 0) return null;
-  return { is_academy: rider?.is_academy === true, ...(typeof rider?.squad === "string" ? { squad: rider.squad } : {}) };
+  // Tjekliste 9/11: samme betingelse som contractOnAcquirePatch. Handlen skriver en
+  // ny kontrakt paa en kontraktloes rytter, og en refusion skal fjerne den igen.
+  // Uden salary i kalderens SELECT vides intet, og en kontrakt maa aldrig slettes paa gaet.
+  const contractWritten = Boolean(rider) && "salary" in rider && (rider.salary == null || rider.contract_end_season == null);
+  const squadWritten = Boolean(patch) && Object.keys(patch).length > 0;
+  if (!squadWritten && !contractWritten) return null;
+  return {
+    ...(squadWritten ? { is_academy: rider?.is_academy === true, ...(typeof rider?.squad === "string" ? { squad: rider.squad } : {}) } : {}),
+    // contract_length er ikke i handlernes SELECT. Uden loen findes ingen kontrakt, saa
+    // null er det rigtige foer-billede; med loen vides laengden ikke og roeres ikke.
+    ...(contractWritten ? {
+      salary: rider?.salary ?? null,
+      contract_end_season: rider?.contract_end_season ?? null,
+      ...("contract_length" in rider ? { contract_length: rider.contract_length ?? null } : rider.salary == null ? { contract_length: null } : {}),
+    } : {}),
+  };
+}
+
+/**
+ * Tjekliste 9/11: laasen fejlede, efter at handlen parkerede rytterne. Uden dette
+ * stod de parkeret uden betaling, og flushen flyttede dem senere gratis.
+ * Fejler selve fortrydelsen, logges det, og den oprindelige fejl kastes videre.
+ *
+ * @param {any} client
+ * @param {{ dealType: string, dealId: string, payerTeamId: string, payeeTeamId: string, riderIds: string[], targetTeamIds: string[], restore: Record<string, unknown> }} deal
+ */
+async function undoParkingAfterFailedHold(client, { dealType, dealId, payerTeamId, payeeTeamId, riderIds, targetTeamIds, restore }) {
+  const { data, error } = await rpcWithLockRetry(client, "sale_escrow_undo_failed_hold", {
+    p_deal_type: dealType,
+    p_deal_id: dealId,
+    p_payer_team_id: payerTeamId,
+    p_payee_team_id: payeeTeamId,
+    p_rider_ids: riderIds,
+    p_target_team_ids: targetTeamIds,
+    p_rider_restore: restore,
+  });
+  if (error) {
+    console.error(`[saleEscrow] ${dealType} ${dealId}: parkeringen kunne ikke fjernes efter en fejlet laas: ${error.message}`);
+    return;
+  }
+  console.warn(`[saleEscrow] ${dealType} ${dealId}: laasen fejlede, parkering fortrudt (${data?.status})`);
 }
 
 /**
@@ -160,47 +199,65 @@ export async function saleEscrowPayment(supabase, { parked, dealType, dealId, ri
 
     const payer = legs.find((l) => l.leg.delta < 0);
     const payee = legs.find((l) => l.leg.delta > 0);
-    if (!payer || !payee || payer.leg.delta !== -payee.leg.delta) {
-      throw new Error(`saleEscrowPayment: ${dealType} ${dealId} skal have eet traek og een kredit med samme beloeb`);
-    }
-    const keys = FINANCE_KEY_PREFIX[dealType];
-    if (payer.leg.payload?.idempotency_key !== `${keys.payer}${dealId}`
-      || payee.leg.payload?.idempotency_key !== `${keys.payee}${dealId}`) {
-      throw new Error(`saleEscrowPayment: ${dealType} ${dealId} bruger ikke de faste finance-noegler`);
-    }
-
     /** @type {Record<string, unknown>} */
     const restore = {};
     riderIds.forEach((riderId, i) => { if (riderRestore[i]) restore[riderId] = riderRestore[i]; });
-    const { data, error } = await rpcWithLockRetry(client, "hold_sale_escrow", {
-      p_deal_type: dealType,
-      p_deal_id: dealId,
-      p_payer_team_id: payer.leg.teamId,
-      p_payee_team_id: payee.leg.teamId,
-      p_amount: payee.leg.delta,
-      p_rider_ids: riderIds,
-      p_target_team_ids: targetTeamIds,
-      p_payer_payload: payer.leg.payload,
-      p_payee_payload: payee.leg.payload,
-      p_rider_restore: restore,
-    });
-    if (error) throw error;
-    if (HOLD_HANDLED.has(data?.status)) {
-      return { skipped: false, balance: null, escrow: data };
-    }
 
-    // Uden escrow maa der kun betales, naar det er sikkert: den gamle sti har allerede
-    // krediteret saelger (gentagelse), eller alle ryttere er faktisk leveret. Ellers
-    // (parkeringen forsvandt, eller rytteren er i en anden laast handel) flyttes ingen
-    // penge, og handlen fejler hoejt i stedet for at betale for en rytter, der ikke kom.
-    if (data?.status !== "payee_already_credited") {
-      const states = await loadRiderStates(client, riderIds);
-      const delivered = riderIds.every((rid, i) => states.get(rid)?.team_id === targetTeamIds[i]);
-      if (data?.status !== "not_parked" || !delivered) {
-        throw new Error(`saleEscrowPayment: ${dealType} ${dealId} kan hverken laases eller betales (${data?.status ?? "ukendt"})`);
+    // Svaret paa laasen: et resultat, eller "pay" naar den gamle sti skal betale. Alt,
+    // der kaster herinde, betyder at ingen penge er flyttet, mens rytterne er parkeret.
+    const lockLegs = async () => {
+      if (!payer || !payee || payer.leg.delta !== -payee.leg.delta) {
+        throw new Error(`saleEscrowPayment: ${dealType} ${dealId} skal have eet traek og een kredit med samme beloeb`);
       }
+      const keys = FINANCE_KEY_PREFIX[dealType];
+      if (payer.leg.payload?.idempotency_key !== `${keys.payer}${dealId}`
+        || payee.leg.payload?.idempotency_key !== `${keys.payee}${dealId}`) {
+        throw new Error(`saleEscrowPayment: ${dealType} ${dealId} bruger ikke de faste finance-noegler`);
+      }
+      const { data, error } = await rpcWithLockRetry(client, "hold_sale_escrow", {
+        p_deal_type: dealType,
+        p_deal_id: dealId,
+        p_payer_team_id: payer.leg.teamId,
+        p_payee_team_id: payee.leg.teamId,
+        p_amount: payee.leg.delta,
+        p_rider_ids: riderIds,
+        p_target_team_ids: targetTeamIds,
+        p_payer_payload: payer.leg.payload,
+        p_payee_payload: payee.leg.payload,
+        p_rider_restore: restore,
+      });
+      if (error) throw error;
+      if (HOLD_HANDLED.has(data?.status)) {
+        return { skipped: false, balance: null, escrow: data };
+      }
+
+      // Uden escrow maa der kun betales, naar det er sikkert: den gamle sti har allerede
+      // krediteret saelger (gentagelse), eller alle ryttere er faktisk leveret. Ellers
+      // (parkeringen forsvandt, eller rytteren er i en anden laast handel) flyttes ingen
+      // penge, og handlen fejler hoejt i stedet for at betale for en rytter, der ikke kom.
+      if (data?.status !== "payee_already_credited") {
+        const states = await loadRiderStates(client, riderIds);
+        const delivered = riderIds.every((rid, i) => states.get(rid)?.team_id === targetTeamIds[i]);
+        if (data?.status !== "not_parked" || !delivered) {
+          throw new Error(`saleEscrowPayment: ${dealType} ${dealId} kan hverken laases eller betales (${data?.status ?? "ukendt"})`);
+        }
+      }
+      console.warn(`[saleEscrow] ${dealType} ${dealId}: ${data?.status}, betales uden escrow`);
+      return "pay";
+    };
+
+    let locked;
+    try {
+      locked = await lockLegs();
+    } catch (err) {
+      await undoParkingAfterFailedHold(client, {
+        dealType, dealId, riderIds, targetTeamIds, restore,
+        payerTeamId: payer?.leg.teamId ?? legs[0].leg.teamId,
+        payeeTeamId: payee?.leg.teamId ?? legs[1].leg.teamId,
+      });
+      throw err;
     }
-    console.warn(`[saleEscrow] ${dealType} ${dealId}: ${data?.status}, betales uden escrow`);
+    if (locked !== "pay") return locked;
     await incrementBalanceWithAudit(client, payer.leg, payer.options);
     return incrementBalanceWithAudit(client, payee.leg, payee.options);
   } };
@@ -467,6 +524,26 @@ export async function reconcileHeldSaleEscrows({ supabase, now = new Date(), sou
     }
   }
   return result;
+}
+
+/**
+ * Codex P1 (#7874, tjekliste 9/11): de holdte escrows, der ville sidde fast efter
+ * en fuld beta-nulstilling. Nulstillingen fjerner parkeringerne, saa et bytte med
+ * een leveret rytter ikke laengere kan afregnes automatisk. Tomt Map = den tilstand,
+ * hvor kun det varige leveringsbevis staar tilbage. Fail-closed: en laesefejl kaster.
+ *
+ * @param {any} supabase
+ * @returns {Promise<string[]>} escrow-id'er
+ */
+export async function findSaleEscrowsBlockingBetaReset(supabase) {
+  const { rows, error } = await fetchHeldSaleEscrows(supabase);
+  if (error) throw new Error(`sale_escrows-opslag fejlede: ${error.message}`);
+  if (rows.length === 0) return [];
+  const states = await loadRiderStates(supabase, rows.flatMap((e) => e.rider_ids));
+  const afterReset = new Map();
+  return rows
+    .filter((e) => classifyHeldEscrow(e, states) === "stuck" || classifyHeldEscrow(e, afterReset) === "stuck")
+    .map((e) => e.id);
 }
 
 /**

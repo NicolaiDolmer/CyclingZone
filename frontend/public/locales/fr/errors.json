@@ -55,6 +55,7 @@
     "cannot_proxy_own_rider": "Tu ne peux pas fixer d'enchère automatique sur ton propre coureur",
     "proxy_below_minimum": "La limite max. doit être d'au moins {min} CZ$",
     "insufficient_balance_after_proxy": "Il te reste {available} CZ$ après tes enchères et enchères automatiques existantes",
+    "insufficient_balance_amount_unknown": "Ton solde disponible ne couvre pas cela après tes enchères et enchères automatiques existantes.",
     "proxy_save_failed": "Ton enchère automatique n'a pas pu être enregistrée. Réessaie.",
     "proxy_place_failed": "Ton enchère automatique n'a pas pu être placée. Réessaie.",
     "proxy_update_failed": "Ton enchère automatique n'a pas pu mettre à jour l'enchère. Réessaie.",
