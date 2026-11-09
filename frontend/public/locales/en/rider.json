@@ -7,8 +7,7 @@
     "nextGen": {
       "name": "Next Gen",
       "text": "a junior making strong progress."
-    },
-    "helpLink": "What the marks mean"
+    }
   },
   "badges": {
     "u23": "Under 23 (U23)",
@@ -220,7 +219,8 @@
       "ratingTrendRising": "Rising this season",
       "ratingTrendSteady": "Steady this season",
       "ratingTrendDeclining": "Declining this season",
-      "ratingTrendTitle": "Rating {value} since {date}"
+      "ratingTrendTitle": "Rating {value} since {date}",
+      "forSale": "For sale"
     },
     "reputation": {
       "whyTitle": "Why his reputation moved",
@@ -254,18 +254,7 @@
         "fallback": "Reputation event"
       }
     },
-    "levelCorrectionReceipt": {
-      "developmentLine": "Development: no change from training this week.",
-      "marketLine": "Market: one-time level adjustment, all riders. Values now match what riders actually trade for. Your rider is not getting worse.",
-      "detailsToggle": "Show numbers",
-      "detailsHide": "Hide numbers",
-      "anchorBefore": "Value before",
-      "anchorAfter": "Value after",
-      "factor": "Correction factor",
-      "appliedAt": "Applied {date}"
-    },
     "banner": {
-      "listed": "On the transfer list · price {price}",
       "auction": "In auction · ends in {endsIn} · highest bid {highBid}",
       "finalSeasonTitle": "Final season",
       "finalSeason": "Announced his retirement at the season start. He retires when season {season} ends."
@@ -1022,10 +1011,10 @@
       "full": "Most ranking points among riders from his continent in season {prev}. He wears the jersey all of season {season}."
     },
     "national": {
+      "title": "National champion",
       "name": "National champion, {country}",
       "short": "most ranking points from {country} last season.",
       "full": "Most ranking points among riders from {country} in season {prev}. He wears the jersey all of season {season}."
-    },
-    "helpLink": "How champion jerseys work"
+    }
   }
 }

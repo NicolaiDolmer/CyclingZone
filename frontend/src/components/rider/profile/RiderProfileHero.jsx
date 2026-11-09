@@ -41,44 +41,15 @@ import { useRiderReputation } from "../../../lib/useRiderReputation.ts";
 import { riderReputationBand, riderReputationProgress, riderReputationValue } from "../../../lib/riderReputationView.ts";
 import { formatNumber } from "../../../lib/intl.js";
 import { squadBadgeKey } from "../../../lib/squadBadge.ts";
-import { AlertTriangleIcon, CategoryTag, StarIcon, ChevronRightIcon, Portal } from "../../ui";
+import { AlertTriangleIcon, CategoryTag, HeroStats, StarIcon, ChevronRightIcon, Portal } from "../../ui";
 
 // Division-chip — ENESTE rå-hex-undtagelse (spec): brand-uafhængig divisions-blå.
 const DIVISION_CHIP = "rgb(96 165 250)";
 
-// T3 hero stat-blok (PAGE_TEMPLATES.md T3): label 10px uppercase tracking .1em
-// text-3 · value data-font 20px/650 tabular · optional sub-linje. Grid (ikke
-// RaceDetailPage's overflow-x-auto-række): rytter-hero'en har 5 blokke og et
-// variabelt-bredt POTENTIAL-widget (stjerner+scout-knap) — en flex-scroll-række
-// ville kunne skubbe den testede VALUE-blok uden for viewport på mobil
-// (core-smoke.spec.js måler dens bounding-rect). Grid'en giver samme label/
-// value-anatomi men wrapper sikkert i stedet for at skuble bredde ud af syne.
-/**
- * @param {{ label: import("react").ReactNode, value: import("react").ReactNode, sub?: import("react").ReactNode, popover?: import("react").ReactNode, valueClassName?: string, valueProps?: Record<string, unknown>, interactive?: boolean }} props
- */
-function HeroStat({ label, value, sub = null, popover = null, valueClassName = "text-[20px] font-[650]", valueProps = {}, interactive = false }) {
-  return (
-    <div className={`min-w-0 ${interactive ? "relative" : ""}`}>
-      <p className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3 mb-1">{label}</p>
-      {interactive ? (
-        <button type="button" className={`block min-h-11 cursor-pointer rounded-cz text-left font-data leading-tight text-cz-1 tabular-nums transition-colors hover:text-cz-2 hover:underline hover:decoration-cz-border hover:underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cz-2 ${valueClassName}`} {...valueProps}>
-          {value ?? "—"}
-          {sub}
-        </button>
-      ) : (
-        <div className={`font-data leading-tight text-cz-1 tabular-nums ${valueClassName}`} {...valueProps}>
-          {value ?? "—"}
-        </div>
-      )}
-      {!interactive && sub}
-      {popover}
-    </div>
-  );
-}
-
 // Status-banner (betinget). `banner` = { kind, ...data } fra parent. Gold-tonet for
-// markeds-tilstande. #6934: kontrakt-udløb og akademi har ikke længere bjælke
-// (kontrakt-feltet og U23/Junior-mærket i chip-rækken bærer dem).
+// auktion. #6934: kontrakt-udløb og akademi har ikke længere bjælke
+// (kontrakt-feltet og U23/Junior-mærket i chip-rækken bærer dem). #7951: "listed"
+// er heller ikke en bjælke; salget står ved handlingen (ForSaleStatus).
 //
 // #2748: "finalSeason" er DEFINITIVT (motoren har allerede besluttet pensionen,
 // bare ikke anvendt den endnu), til forskel fra retirementRiskBadgeKey-badget
@@ -103,27 +74,31 @@ function StatusBanner({ banner }) {
     );
   }
 
-  const TONES = {
-    listed:  "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t",
-    auction: "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t",
-  };
-  const tone = TONES[banner.kind];
-  if (!tone) return null;
-
-  let text = null;
-  if (banner.kind === "listed")  text = t("profile.banner.listed", { price: banner.price });
-  if (banner.kind === "auction") text = t("profile.banner.auction", { endsIn: banner.endsIn, highBid: banner.highBid });
-  if (!text) return null;
+  if (banner.kind !== "auction") return null;
 
   return (
-    <div className={`mt-4 flex items-center gap-2 rounded-cz border px-3.5 py-2.5 text-sm tabular-nums ${tone}`}>
-      <span>{text}</span>
-      {/* #3490: samme "X% under/over vurdering"-indikator som Transferlisten/
-          Auktioner (ValueDeltaBadge) — kun for "listed" og kun når rytterens
-          markedsværdi kunne beregnes (computeBidValueDelta → null skjuler den). */}
-      {banner.kind === "listed" && (
-        <ValueDeltaBadge valueDelta={banner.valueDelta} ns="transfers" className="text-xs" />
-      )}
+    <div className="mt-4 flex items-center gap-2 rounded-cz border border-cz-accent/30 bg-cz-accent/10 px-3.5 py-2.5 text-sm tabular-nums text-cz-accent-t">
+      <span>{t("profile.banner.auction", { endsIn: banner.endsIn, highBid: banner.highBid })}</span>
+    </div>
+  );
+}
+
+// #7951: salgsstatus ved købshandlingen, aldrig en bjælke i toppen (T3). #3490:
+// samme "X% under/over vurdering"-indikator som Transferlisten; null skjuler den.
+// Over vurdering er fare her, ikke advarsel: advarslens ravgul læses som guld (TASTE P3).
+function ForSaleStatus({ price, valueDelta }) {
+  const { t } = useTranslation("rider");
+  return (
+    <div className="w-full font-data tabular-nums sm:ms-auto sm:w-auto sm:text-right" data-testid="rider-for-sale">
+      <p className="text-sm text-cz-2 sm:whitespace-nowrap">
+        {t("profile.hero.forSale")} <span className="font-[650] text-cz-1">{price}</span>
+      </p>
+      <ValueDeltaBadge
+        valueDelta={valueDelta}
+        ns="transfers"
+        as="p"
+        className={`mt-0.5 text-xs font-data! ${valueDelta?.direction === "over" ? "text-cz-danger!" : ""}`}
+      />
     </div>
   );
 }
@@ -200,9 +175,8 @@ export default function RiderProfileHero({
   seasonYear = null,        // #3071: sæson-referenceår (useActiveSeasonYear) — retirementRiskBadgeKey
   typeLabel,
   divisionLabel,                  // fx "DIV 2" (null hvis ukendt)
-  valueAmount,                    // "4.366" (uden CZ$-suffix)
-  valueLabel,                     // fuld label til title
-  salaryText,                     // præ-formateret løn, fx "CZ$ 293/år"
+  valueLabel,                     // fuldt beløb med CZ$, fx "4.366 CZ$"
+  salaryText,                     // præ-formateret løn, fx "293 CZ$"
   isAiTeam = false,
   pendingTeam = null,             // kommende hold (handel til næste sæson) | null
   banner = null,                  // { kind, ...data }
@@ -396,8 +370,11 @@ export default function RiderProfileHero({
                   en spærre. Uafhængig af U23-tagget ovenfor (aldrig begge). */}
               <RiderBadges badges={[retirementRiskBadgeKey(rider, seasonYear)]} />
             </div>
-            <RiderChampionJersey riderId={rider.id} variant="profile" /> {/* #7824: alle titler med fuld tekst */}
-            <RiderTalentMark riderId={rider.id} variant="profile" /> {/* #7879 */}
+            {/* #7951: mærker er ikon + ét ord; forklaringen står i tooltippen og i Hjælp. */}
+            <div className="mt-1 flex flex-wrap items-center gap-x-4 empty:hidden sm:mt-2.5 sm:gap-y-1" data-testid="rider-hero-marks">
+              <RiderChampionJersey riderId={rider.id} variant="profile" />
+              <RiderTalentMark riderId={rider.id} variant="profile" />
+            </div>
 
             {/* Hold (+ AI-tag) — kun når switcher-baren ikke allerede bærer
                 holdnavnet i toppen (ejer-runde 3: navnet må aldrig stå dobbelt) */}
@@ -451,84 +428,85 @@ export default function RiderProfileHero({
 
       <StatusBanner banner={banner} />
 
-      {/* Stat-række — HeroStat-anatomien (T3), grid så den wrapper sikkert på mobil.
-          #3622: popularitet var kun synlig i bestyrelsen (star-score-blandingen,
-          boardIdentity.calculateRiderStarScore); den rå værdi (samme kolonne, 0-100)
-          vises nu som 6. hero-stat — plain tal, samme anatomi som Value/Salary/
-          Kontrakt (ingen ability-farveplade — populationen er ikke evne-kalibreret,
-          jf. statColor.js's fire-skala-advarsel). */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-6 gap-y-4 mt-5 pt-4 border-t border-cz-border">
-        <HeroStat
-          label={t("profile.hero.bestRoleEyebrow")}
-          value={hasRating ? (
-            /* Farveplade (ejer-feedback): samme statColor-skala som ability-tallene
-               — genindfører det gamle designs instant-signal i systemets sprog.
-               #2888/#2906: selve style-udtrykket er nu den delte statPlateStyle,
-               så heroen, personale-heroen og trup-tabellen ikke kan drifte fra
-               hinanden (samme 16%-alpha-plade var kopieret tre steder).
-               #5435 (D-049): rollenavnet står ved tallet ("54 Climber") —
-               tallet er hans rating i DEN rolle.
-               #5435 opfølgning 2 (ejer 22/9): rollenavnet er samme neutrale
-               chip-badge som i tabellerne (BestRoleTag, variant "full") —
-               ikke sin egen løse span, så anatomien er ens overalt. */
-            bestRoleKey ? (
-              <span className="inline-flex items-center gap-2 min-w-0 max-w-full">
-                {ratingPlate}
-                <BestRoleTag role={bestRoleKey} variant="full" className="truncate" testId="rider-hero-best-role" />
+      {/* Stat-række: T3's HeroStats. To kolonner på mobil (seks tal = tre rækker, ingen
+          klippede beløb), og fra sm brydes rækken hellere end at scrolle inde i kortet.
+          #3622: værdien i Omdømme/Popularitet er bevidst uden ability-farveplade;
+          populationen er ikke evne-kalibreret (statColor.js). */}
+      <HeroStats
+        className="max-sm:grid-cols-2 max-sm:gap-x-6 sm:flex-wrap sm:gap-y-4 sm:overflow-visible"
+        items={[
+          {
+            label: t("profile.hero.bestRoleEyebrow"),
+            /* Farveplade (statColor) + rollenavnet som samme chip som i tabellerne (#5435). */
+            value: hasRating ? (
+              bestRoleKey ? (
+                <span className="inline-flex items-center gap-2 min-w-0 max-w-full">
+                  {ratingPlate}
+                  <BestRoleTag role={bestRoleKey} variant="full" className="truncate" testId="rider-hero-best-role" />
+                </span>
+              ) : ratingPlate
+            ) : "—",
+          },
+          {
+            label: potentialEyebrow,
+            value: scouting ? (
+              <span className="inline-block max-w-56 whitespace-normal text-[15px] font-semibold">
+                <ScoutablePotentiale rider={rider} scouting={scouting} showScout={viewer === "scouting"} labelAsTitle hideLevel hideNotScouted estimateSize="hero" showLooks={viewer === "scouting"} />
               </span>
-            ) : ratingPlate
-          ) : "—"}
-        />
-        <HeroStat
-          label={potentialEyebrow}
-          value={scouting
-            ? <ScoutablePotentiale rider={rider} scouting={scouting} showScout={viewer === "scouting"} labelAsTitle hideLevel estimateSize="hero" showLooks={viewer === "scouting"} />
-            : "—"}
-          valueClassName="text-[15px] font-semibold"
-          /* #5435 (ejer 21/9): intet loft-tal under prognosen — taget er ens
-             for alle med samme anlæg, og badget viser allerede anlægget. */
-        />
-        <HeroStat
-          label={t("profile.hero.valueEyebrow")}
-          value={valueAmount}
-          valueClassName="text-[20px] font-[650] truncate"
-          valueProps={{ title: valueLabel, "data-testid": "rider-value-amount" }}
-        />
-        <HeroStat label={t("profile.hero.salary")} value={salaryText ?? "—"} valueClassName="text-[20px] font-[650] truncate" />
-        <HeroStat
-          label={t(reputationOn ? "profile.hero.reputationEyebrow" : "profile.hero.popularityEyebrow")}
-          value={reputationOn && reputationBand ? t(`profile.reputation.band.${reputationBand}`) : reputationValue == null ? "—" : Math.round(reputationValue)}
-          valueClassName="text-[20px] font-[650]"
-          sub={reputationSub}
-          popover={reputationOn && <ReputationEventList events={reputationEvents} open={reputationOpen} onClose={() => { setReputationOpen(false); setReputationPosition(null); }} dialogRef={reputationDetailsRef} position={reputationPosition} />}
-          interactive={reputationOn}
-          valueProps={reputationOn ? {
-            ref: reputationTriggerRef,
-            onClick: () => setReputationOpen((isOpen) => {
-              if (isOpen) setReputationPosition(null);
-              return !isOpen;
-            }),
-            onKeyDown: (event) => {
-              if (event.key === "Escape" && reputationOpen) {
-                setReputationOpen(false);
-                setReputationPosition(null);
-              }
-            },
-            "aria-expanded": reputationOpen,
-            "aria-controls": "rider-reputation-details",
-            "aria-haspopup": "dialog",
-          } : {}}
-        />
-        <HeroStat
-          label={t("profile.hero.contract")}
-          value={<span className={hasContractSeason && !contractOffer.awaitingRelease ? "text-cz-accent-t" : undefined}>{contractText}</span>}
-          valueClassName="text-[20px] font-[650] wrap-break-word"
-          sub={contractSub}
-        />
-      </div>
+            ) : "—",
+          },
+          {
+            label: t("profile.hero.valueEyebrow"),
+            value: <span className="block wrap-break-word" title={valueLabel} data-testid="rider-value-amount">{valueLabel}</span>,
+          },
+          {
+            label: t("profile.hero.salary"),
+            value: <span className="block wrap-break-word">{salaryText ?? "—"}</span>,
+          },
+          {
+            label: t(reputationOn ? "profile.hero.reputationEyebrow" : "profile.hero.popularityEyebrow"),
+            value: reputationOn ? (
+              <>
+                <button
+                  type="button"
+                  ref={reputationTriggerRef}
+                  className="block min-h-11 cursor-pointer whitespace-normal rounded-cz text-left transition-colors hover:text-cz-2 hover:underline hover:decoration-cz-border hover:underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cz-2"
+                  onClick={() => setReputationOpen((isOpen) => {
+                    if (isOpen) setReputationPosition(null);
+                    return !isOpen;
+                  })}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape" && reputationOpen) {
+                      setReputationOpen(false);
+                      setReputationPosition(null);
+                    }
+                  }}
+                  aria-expanded={reputationOpen}
+                  aria-controls="rider-reputation-details"
+                  aria-haspopup="dialog"
+                >
+                  {reputationBand ? t(`profile.reputation.band.${reputationBand}`) : reputationValue == null ? "—" : Math.round(reputationValue)}
+                  {reputationSub}
+                </button>
+                <ReputationEventList events={reputationEvents} open={reputationOpen} onClose={() => { setReputationOpen(false); setReputationPosition(null); }} dialogRef={reputationDetailsRef} position={reputationPosition} />
+              </>
+            ) : reputationValue == null ? "—" : Math.round(reputationValue),
+          },
+          {
+            label: t("profile.hero.contract"),
+            value: contractText,
+            sub: contractSub,
+          },
+        ]}
+      />
 
-      {/* Action-række — injiceres af parent (genbruger eksisterende handlinger). */}
-      {actions && <div className="mt-5 pt-5 border-t border-cz-border">{actions}</div>}
+      {/* Action-række: injiceres af parent. #7951: salget står til højre for knapperne. */}
+      {actions && (
+        <div className="mt-5 flex flex-wrap items-start gap-x-6 gap-y-3 border-t border-cz-border pt-5">
+          <div className="min-w-0 flex-1 basis-64">{actions}</div>
+          {banner?.kind === "listed" && <ForSaleStatus price={banner.price} valueDelta={banner.valueDelta} />}
+        </div>
+      )}
     </>
   );
 }

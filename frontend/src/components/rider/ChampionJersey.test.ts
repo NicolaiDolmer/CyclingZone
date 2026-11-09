@@ -126,10 +126,13 @@ test("navnecellen: navn (med hover-ikon), trøje, status (TASTE P12)", () => {
   assert.ok(link > 0 && champion > link && status > champion);
 });
 
-test("profilen viser alle titler med fuld tekst", () => {
+test("profilen viser alle titler med ikon og titel, forklaringen i tooltippen (#7951)", () => {
   assert.match(hero, /<RiderChampionJersey riderId=\{rider\.id\} variant="profile" \/>/);
   assert.match(jersey, /size=\{24\}/);
   assert.match(jersey, /size=\{16\}/);
+  const list = jersey.slice(jersey.indexOf("export function ChampionJerseyList"), jersey.indexOf("export default function RiderChampionJersey"));
+  assert.match(list, /<Tooltip key=\{[^}]*\} label=\{`\$\{text\.name\}: \$\{text\.full\}`\}/);
+  assert.doesNotMatch(list, /<Link/);
 });
 
 test("Hjælp: blokken står bag kontakten og findes på alle fem sprog", () => {

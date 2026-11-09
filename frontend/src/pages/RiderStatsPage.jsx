@@ -45,7 +45,6 @@ import { useActionSummary } from "../hooks/useActionSummary.js";
 import { AmountInput, BlockedNote, Button, Card, CheckIcon, ChevronLeftIcon, ErrorState, ExchangeIcon, PageLoader, XIcon } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import RiderProfileHero from "../components/rider/profile/RiderProfileHero.jsx";
-import RiderLevelCorrectionReceipt from "../components/rider/RiderLevelCorrectionReceipt.jsx";
 import RiderSwitcherBar from "../components/rider/profile/RiderSwitcherBar.jsx";
 import RiderProfileTabs from "../components/rider/profile/RiderProfileTabs.jsx";
 import RiderAbilityColumns from "../components/rider/profile/RiderAbilityColumns.jsx";
@@ -930,7 +929,6 @@ export default function RiderStatsPage() {
   const [history, setHistory]               = useState(null);
   const [statHistory, setStatHistory]       = useState(null); // null = loader endnu
   const [projection, setProjection]         = useState(null); // #2100 fuzzy loft-projektion
-  const [levelCorrectionReceipt, setLevelCorrectionReceipt] = useState(null); // #3733 trin 1: { old_value, new_value, c, applied_at } | null
   const [physBenchmark, setPhysBenchmark]   = useState(null);
   const [ddActive, setDdActive]             = useState(false);
   // #195: live bud-timeline for seneste auktion (aktiv eller completed).
@@ -950,7 +948,6 @@ export default function RiderStatsPage() {
   // #2000 stykke 5: stale-guard for development-fetchen (hurtig prev/next-switch).
   const developmentFetchIdRef = useRef(null);
   const projectionFetchIdRef = useRef(null); // #2100 samme stale-guard for projektionen
-  const levelCorrectionReceiptFetchIdRef = useRef(null); // #3733 trin 1 samme stale-guard
   // #2000 sidste faner: samme stale-guards for historik + interesse + de
   // datastroemme fanerne konsumerer (bid-timeline, visits, watchlist-count,
   // rider/seasonRows) — review-fund: uden guards kan hurtig prev/next i
@@ -1222,24 +1219,6 @@ export default function RiderStatsPage() {
     }
   }, [id]);
 
-  const loadLevelCorrectionReceipt = useCallback(async () => {
-    // #3733 trin 1: den seneste niveau-korrektions-kvittering for DENNE rytter,
-    // eller null (ingen korrektion har kørt for ham endnu) — non-critical,
-    // samme stale-guard-mønster som de andre sekundære profil-fetches.
-    const fetchId = id;
-    levelCorrectionReceiptFetchIdRef.current = fetchId;
-    try {
-      const h = await authHeaders();
-      if (!h) { if (levelCorrectionReceiptFetchIdRef.current === fetchId) setLevelCorrectionReceipt(null); return; }
-      const res = await apiFetch(`${API}/api/riders/${fetchId}/level-correction-receipt`, { headers: h });
-      const data = res.ok ? res.data : null;
-      if (levelCorrectionReceiptFetchIdRef.current !== fetchId) return; // stale svar
-      setLevelCorrectionReceipt(data?.receipt || null);
-    } catch {
-      if (levelCorrectionReceiptFetchIdRef.current === fetchId) setLevelCorrectionReceipt(null);
-    }
-  }, [id]);
-
   const loadMyTeam = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
@@ -1469,11 +1448,11 @@ export default function RiderStatsPage() {
   // den holder hero'ens live-pris op med at opdatere under en auktion.
   useEffect(() => {
     loadRider(); loadMyTeam(); loadWatchlistStatus();
-    loadLevelCorrectionReceipt(); loadDdStatus(); loadBidTimeline();
+    loadDdStatus(); loadBidTimeline();
     loadRetirementStatus();
   }, [
     loadRider, loadMyTeam, loadWatchlistStatus,
-    loadLevelCorrectionReceipt, loadDdStatus, loadBidTimeline, loadRetirementStatus,
+    loadDdStatus, loadBidTimeline, loadRetirementStatus,
   ]);
 
   // #5089: fane-gatede datastroemme. Hver fane har allerede sin egen
@@ -1819,7 +1798,6 @@ export default function RiderStatsPage() {
     return key ? t(`racePreview.derived.${key}`) : t("header.typeDefault");
   })();
   const riderValueLabel = formatCz(getRiderMarketValue(rider));
-  const riderValueAmount = riderValueLabel.replace(" CZ$", "");
   // #2006: Overall 1-99-rating. Evnerne ligger på rider.abilities (rå rad fra
   // rider_derived_abilities) — riderOverallRating læser rider.climbing osv., så
   // vi fladter abilities ind sammen med den lagrede primary_type (ejer-direktiv:
@@ -1872,7 +1850,7 @@ export default function RiderStatsPage() {
   } else if (transferListing) {
     statusBanner = {
       kind: "listed",
-      price: formatNumber(transferListing.asking_price),
+      price: formatCz(transferListing.asking_price),
       // #3191-mønster: unsigned pct+direction til VISNING (ValueDeltaBadge),
       // samme indikator som Transferlisten/Auktioner — null (rytter mangler
       // markedsværdi) skjuler badget stille i stedet for at vise noget forkert.
@@ -1959,7 +1937,6 @@ export default function RiderStatsPage() {
             seasonYear={seasonYear}
             typeLabel={typeLabel}
             divisionLabel={divisionLabel}
-            valueAmount={riderValueAmount}
             valueLabel={riderValueLabel}
             salaryText={salaryText}
             isAiTeam={isAiRider}
@@ -2064,9 +2041,6 @@ export default function RiderStatsPage() {
             </div>
           }
         />
-        {levelCorrectionReceipt && (
-          <RiderLevelCorrectionReceipt receipt={levelCorrectionReceipt} className="mt-4" />
-        )}
         </section>
 
         <RiderProfileTabs
