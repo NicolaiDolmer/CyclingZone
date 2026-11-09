@@ -58,6 +58,7 @@ test("#7917 fejlet holdopslag svarer 503 og når aldrig ruten", async (t) => {
   assert.equal(response.statusCode, 503);
   assert.deepEqual(response.body, AUTH_FAILURE_RESPONSES.teamLookupFailed.body);
   assert.notEqual(response.body.error, "No team found");
+  assert.equal(response.body.errorCode, "team_lookup_failed"); // uden den kan danske spillere ikke få teksten
   assert.equal(nextCalls, 0);
   assert.equal(req.team, undefined);
 
