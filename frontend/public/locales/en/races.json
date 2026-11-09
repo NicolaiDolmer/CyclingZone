@@ -38,6 +38,11 @@
     "useSuggestion": "Use the suggestion",
     "clearPlan": "Remove the plan",
     "effortNote": "The effort follows the task.",
+    "huntOption": "{task} · {price}",
+    "price": { "hard": "Hard" },
+    "huntNote": "Going for points: he contests the sprints or climbs on his stretch from the group he is in. A break ahead still takes the points first. The task is ridden hard and counts in his fatigue.",
+
+    "huntOffNote": "Going for points is off in this race, so he rides sheltered on that part of the plan.",
     "rulesNote": "The break can only be the first task. Grupetto, riding in and the sprint train always come last.",
     "switchNote": {
       "climb": {
@@ -72,7 +77,9 @@
       "ride_for_result": "Ride for a result",
       "sprint_train": "Sprint train",
       "grupetto": "Grupetto",
-      "ride_in": "Ride in easy"
+      "ride_in": "Ride in easy",
+      "hunt_points": "Go for sprint points",
+      "hunt_kom": "Go for KOM points"
     },
     "from": {
       "kom": "after {climb}",
@@ -103,7 +110,10 @@
         "outOfTime": "Outside the time limit",
         "rank": "Finished no. {rank}",
         "withRider": "With {name}",
-        "withRiderTo": "With {name} to km {km}"
+        "withRiderTo": "With {name} to km {km}",
+        "sprintPoints": "{points} sprint points",
+        "komPoints": "{points} KOM points",
+        "noPoints": "Went for it, no points"
       }
     }
   },
@@ -1120,7 +1130,15 @@
       "team_orders_grupetto_with_break": "A rider on Grupetto cannot try the break.",
       "team_orders_grupetto_with_train": "A rider on Grupetto cannot ride in the sprint train.",
       "team_orders_work_with_break": "A rider who works for the leader cannot try the break.",
-      "team_orders_train_with_break": "A rider in the sprint train cannot try the break."
+      "team_orders_train_with_break": "A rider in the sprint train cannot try the break.",
+
+      "stage_plan_unknown_task": "One of the tasks isn't available in this race. Pick another task and save again.",
+
+      "stage_plan_hunt_no_sprint": "Going for sprint points needs an intermediate sprint on his stretch. Pick another task or change the switch point.",
+
+      "stage_plan_hunt_no_climb": "Going for KOM points needs a categorised climb on his stretch. Pick another task or change the switch point.",
+
+      "stage_plan_hunt_after_dropped": "A rider can't go for points once he is dropped. Pick another task for that step."
     }
   },
   "tacticsOrders": {
@@ -1621,6 +1639,8 @@
         "breakaway_formed": "{riders} {count, plural, one {goes} other {go}} clear off the front.",
         "kom_passage": "{name} (cat. {category}): {rider} leads over the top.",
         "intermediate_sprint": "{name}: {rider} takes the intermediate sprint.",
+        "intermediate_sprint_hunted": "{name}: {rider} takes the intermediate sprint. {count, plural, one {{hunters} went} other {{hunters} went}} for the points.",
+        "kom_passage_hunted": "{name} (cat. {category}): {rider} leads over the top. {count, plural, one {{hunters} went} other {{hunters} went}} for the points.",
         "breakaway_caught": "{riders} {count, plural, one {is} other {are}} caught by the pursuing group.",
         "breakaway_caught_by_teams": "{riders} {count, plural, one {is} other {are}} caught. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} and {teamLast}}} did the chasing.",
         "breakaway_caught_by_peloton": "{riders} {count, plural, one {is} other {are}} caught by the peloton.",

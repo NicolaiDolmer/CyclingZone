@@ -248,6 +248,9 @@ export type StageInput = {
   breakaway_curve_6912?: true | null;
   // #7730 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): jagt-gulvets maal afgoeres af de hold der jager (mechanics/chaseGroup.ts). Udeladt = som foer.
   team_chase_7730?: true | null;
+  // #7855 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): troejejagten i etapeplanen (Hent point / Hent bjergpoint,
+  // mechanics/jerseyHunt7855.ts). Udeladt = opgaverne findes ikke, som foer.
+  jersey_hunt_7855?: true | null;
 };
 
 /** #5955: taktisk regel-revision. Kun "orders_gc_v1" aktiverer ordrestyret morgenudbrud. */
@@ -481,6 +484,9 @@ export type StagePassage = {
   km: number;
   category: ClimbCategory | null; // kun kom-passager
   results: PassageResult[];
+  // #7855 (ADDITIVT og VALGFRIT, kun kontakten jersey_hunt_7855): ryttere der koerte efter netop denne passage
+  // som etapeplanens opgave. Udeladt = ingen (som foer). Skrives ikke til race_stage_passages.
+  hunters?: string[];
 };
 
 /** Etapens samlede udbytte pr. rytter — spejler racePassages' `perRider`-map. */
@@ -836,6 +842,8 @@ export type SegmentHookContext = {
   // #7380 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 med en etapeplan): etapeplanens aktuelle opgave pr. rytter med plan,
   // som runtimen satte den ved segmentets start (stagePlanEngine.stagePlanCurrentTasks). Udeladt = ingen plan.
   stagePlanTasks?: Readonly<Record<string, import("../../stagePlan.ts").StagePlanTask>>;
+  // #7855 (KUN kontakten jersey_hunt_7855): hver jaegers straekning (stagePlanEngine.stagePlanHuntWindows7855). Udeladt = ingen jaegere.
+  stagePlanHuntWindows7855?: Readonly<Record<string, { fromKm: number; toKm: number }>>;
   // #5978 (ADDITIVT og VALGFRIT, KUN orders_gc_v3): hjulsidderne ud fra tilstanden
   // ved segmentets start, samme saet som tempoet blev regnet paa (breakaway.ts).
   ownRidersOnWheel?: ReadonlyArray<{ team_id: string; group_id: string; rider_ids: string[]; protected_rider_id: string }>;

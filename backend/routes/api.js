@@ -129,7 +129,7 @@ import {
   shiftCalculatedEnd,
 } from "../lib/marketPause.js";
 import { resolveProxyBids } from "../lib/proxyBidding.js";
-import { isMarketCommitment6181On, marketGateResponse6181, canAffordAutoBid6181, syncBidLeader6181, applySellerOutgoingAuctions6181, auctionStartCommitmentResponse6181, readBidContext6181 } from "../lib/marketCommitment6181.js"; // #6181 PR 5
+import { isMarketCommitment6181On, marketGateResponse6181, canAffordAutoBid6181, syncBidLeader6181, applySellerOutgoingAuctions6181, auctionStartCommitmentResponse6181, readBidContext6181, isLoweredProxy6181 } from "../lib/marketCommitment6181.js"; // #6181 PR 5
 import {
   createLoan,
   repayLoan,
@@ -149,7 +149,7 @@ import {
 import * as transferNotif from "../lib/transferNotifications.js";
 import { withdrawCounterOffer, claimCounterForAccept, buildCounterOfferWithdrawnNotification } from "../lib/counterOfferWithdraw.js"; // #6463
 import { getParkedRiderReleaseIssue, getParkedRiderTradeIssue } from "../lib/parkedRiderGuard6181.js"; // #6181
-import { countSellerAuctionOutgoing, getOfferAutoAcceptIssue, registerAutoAcceptRoutes, releaseRiderUnderTeamLock } from "../lib/autoAccept2176.js"; // #2176
+import { countSellerAuctionOutgoing, getListingPriceUpdateErrorResponse, getOfferAutoAcceptIssue, registerAutoAcceptRoutes, releaseRiderUnderTeamLock } from "../lib/autoAccept2176.js"; // #2176
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
 import {
   notifyNewAuction,
@@ -291,6 +291,7 @@ import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
 import { resolveSelectionWarnings } from "../lib/selectionWarningResolve.ts"; // #7508
 import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked, sprintTrainFlatOnlyForRace, loadStageRoleByRider } from "../lib/raceTeamOrdersApi.js";
 import { isStagePlanEnabled, loadStagePlanContext, orderHasStagePlan, stagePlanRevisionOk } from "../lib/stagePlanApi.js"; // #7003
+import { jerseyHunt7855OpenForRace } from "../lib/jerseyHunt7855Flag.js"; // #7855
 import { isRaceLineupLocked, isRaceLineupLockedNow, firstStageStartsFromSchedule, loadLockedRaceIds } from "../lib/raceStartLock.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, teamInRaceSquadPool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
@@ -965,11 +966,22 @@ async function requireAuth(req, res, next) {
   // 14/8, alle fra normal onboarding-timing). .maybeSingle() giver data=null
   // uden fejl når rækken ikke findes endnu — req.team er null i begge
   // tilfælde, så nedstrøms opførsel er uændret.
-  const { data: team } = await supabase
+  const { data: team, error: teamError, status: teamStatus } = await supabase
     .from("teams")
     .select("*")
     .eq("user_id", user.id)
     .maybeSingle();
+
+  // #7917: en fejlet læsning er ikke "intet hold". Uden tjekket blev req.team null,
+  // og ruterne svarede 400 "No team found" under et databasenedbrud. Kun warn, samme
+  // grund som auth_unavailable ovenfor: et nedbrud rammer hvert eneste request.
+  if (teamError) {
+    console.warn(
+      `[auth] 503 team_lookup_failed ${req.method} ${req.originalUrl.split("?")[0]} (${teamError.code || teamStatus})`,
+    );
+    const lookupFailed = AUTH_FAILURE_RESPONSES.teamLookupFailed;
+    return res.status(lookupFailed.status).json(lookupFailed.body);
+  }
 
   req.user = user;
   req.team = team;
@@ -983,7 +995,7 @@ async function requireAuth(req, res, next) {
 router.use("/rankings", createRankingsRouter({
   supabase, requireAuth, reportError: captureException,
   viewerClient: (authorization) => createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
-    global: { headers: { Authorization: authorization } },
+    global: { headers: { Authorization: authorization }, fetch: createSupabaseFetchWithRetry() }, // #7917
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   }),
 }));
@@ -6610,6 +6622,8 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
       // #7003: etapeplanen langs ruten (flag + s5_profiles_v3). Kun en boolean.
       stage_plan_enabled: stagePlanRevisionOk(race)
         && await isStagePlanEnabled(supabase, { isBetaTester: (await isViewerBetaTester(req)) === true }),
+      // #7855: troejejagtens opgaver kan vaelges (kontakten + loebet koerer med dem). Kun en boolean.
+      jersey_hunt_7855: stagePlanRevisionOk(race) && await jerseyHunt7855OpenForRace({ supabase, race }),
     });
   } catch (err) {
     captureException(err);
@@ -6635,7 +6649,7 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
     const stagePlan = orderHasStagePlan(req.body) && stagePlanRevisionOk(race)
       && Number.isInteger(stageNumber) && stageNumber >= 1 && stageNumber <= ctx.stage_count
       && await isStagePlanEnabled(supabase, { isBetaTester: (await isViewerBetaTester(req)) === true })
-      ? await loadStagePlanContext({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider })
+      ? await loadStagePlanContext({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider, jerseyHunt7855: await jerseyHunt7855OpenForRace({ supabase, race }) }) // #7855
       : null;
     const roleByRider = await loadStageRoleByRider({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider }); // #7003
     const result = validateTeamOrder({
@@ -8199,7 +8213,8 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     teamBalance: req.team.balance,
     otherCommitment,
   });
-  if (proxyIssue?.code === "insufficient_available_balance") {
+  if (proxyIssue?.code === "insufficient_available_balance"
+      && !isLoweredProxy6181({ marketGateOn, proxies: allMyProxies, auctionId: req.params.id, nextMax: numericMax })) { // #6181: saenket loft frigiver kun penge
     return res.status(400).json({
       error: `Du har ${proxyIssue.availableBalance.toLocaleString("da-DK")} CZ$ tilbage efter eksisterende bud og autobud`,
       errorCode: "insufficient_balance_after_proxy",
@@ -8699,7 +8714,8 @@ router.patch("/transfers/:id", requireAuth, marketWriteLimiter, async (req, res)
     .eq("id", req.params.id)
     .select()
     .single();
-  if (error?.code === "23514") return res.status(400).json({ error: "The asking price must stay below the auto-accept price", errorCode: "asking_price_not_below_auto_accept" }); // #2176
+  const listingPriceError = getListingPriceUpdateErrorResponse(error); // #2176
+  if (listingPriceError) return res.status(listingPriceError.status).json(listingPriceError.body);
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
@@ -9291,7 +9307,7 @@ router.post("/transfers/:id/offer", requireAuth, marketWriteLimiter, async (req,
 
 
 // #2176 auto-accept: POST /transfers/:id/auto-accept + PUT /transfers/:id/auto-accept-price (bag auto_accept_enabled).
-registerAutoAcceptRoutes(router, { supabase, requireAuth, marketWriteLimiter, assertMarketOpen, assertTeamNotTransferFrozen, getAuctionConfig, getActiveSeasonNumber, logActivity, buildPriceBandErrorBody });
+registerAutoAcceptRoutes(router, { supabase, requireAuth, marketWriteLimiter, assertMarketOpen, assertTeamNotTransferFrozen, getAuctionConfig, getActiveSeasonNumber, logActivity, buildPriceBandErrorBody, notifyBuilt });
 
 // ── Swap Offers ───────────────────────────────────────────────────────────────
 

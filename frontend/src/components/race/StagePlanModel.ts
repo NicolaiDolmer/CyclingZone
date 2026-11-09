@@ -22,9 +22,18 @@ export const STAGE_PLAN_TASKS = Object.freeze([
   "sprint_train",
   "grupetto",
   "ride_in",
+  // #7855 (kun med kontakten jersey_hunt_7855): troejejagt.
+  "hunt_points",
+  "hunt_kom",
 ] as const);
 
 export type StagePlanTask = (typeof STAGE_PLAN_TASKS)[number];
+
+/** #7855: troejejagten, kun naar ruten baerer `jersey_hunt_7855` (samme som serveren). */
+export const JERSEY_HUNT_TASKS: Readonly<Partial<Record<StagePlanTask, "sprint" | "kom">>> = Object.freeze({
+  hunt_points: "sprint",
+  hunt_kom: "kom",
+});
 // #7239: delt kaptajn (#5981) er en leder som kaptajnen, ikke en fri rolle.
 export type StagePlanRole = "captain" | "co_captain" | "sprint_captain" | "helper" | "hunter" | "free_role";
 export type StagePlanEffort = "grupetto" | "save" | "normal" | "protect" | "all_out";
@@ -36,7 +45,12 @@ export type StagePlanRoute = {
   profile_type: string | null;
   climbs: readonly StagePlanClimb[];
   summit_finish?: boolean;
+  /** #7855: de indlagte spurter. Kun naar kilden har dem. */
+  sprints?: readonly StagePlanSprint[];
+  /** #7855: troejejagten er slaaet til for loebet. */
+  jersey_hunt_7855?: true;
 };
+export type StagePlanSprint = { index: number; km: number; name: string | null };
 
 export const TASK_EFFORT: Readonly<Record<StagePlanTask, StagePlanEffort>> = Object.freeze({
   breakaway: "normal",
@@ -49,6 +63,8 @@ export const TASK_EFFORT: Readonly<Record<StagePlanTask, StagePlanEffort>> = Obj
   sprint_train: "normal",
   grupetto: "grupetto",
   ride_in: "save",
+  hunt_points: "protect", // #7855
+  hunt_kom: "protect",
 });
 
 const ALL_ROLES: StagePlanRole[] = ["captain", "co_captain", "sprint_captain", "helper", "hunter", "free_role"];
@@ -65,6 +81,8 @@ export const TASK_ROLES: Readonly<Record<StagePlanTask, readonly StagePlanRole[]
   sprint_train: ["helper", "hunter"],
   grupetto: ["sprint_captain", "helper", "hunter", "free_role"],
   ride_in: ALL_ROLES,
+  hunt_points: ["sprint_captain", "helper", "hunter", "free_role"], // #7855
+  hunt_kom: ["helper", "hunter", "free_role"],
 });
 
 export const TERMINAL_TASKS: ReadonlySet<StagePlanTask> = new Set<StagePlanTask>(["sprint_train", "grupetto", "ride_in"]);
@@ -107,7 +125,22 @@ export function stagePlanClimbsFromRaw(rawClimbs: unknown, distanceKm: number): 
   return out.sort((a, b) => a.km - b.km || a.index - b.index);
 }
 
-export function stagePlanRouteFromRaw(raw: { distance_km?: unknown; profile_type?: unknown; climbs?: unknown } | null | undefined): StagePlanRoute {
+/** #7855: de indlagte spurter (samme regel som serveren og motorens vejpunkter). */
+export function stagePlanSprintsFromRaw(rawSprints: unknown, distanceKm: number): StagePlanSprint[] {
+  const list: unknown[] = Array.isArray(rawSprints) ? rawSprints : [];
+  const out: StagePlanSprint[] = [];
+  let index = 0;
+  for (const s of list) {
+    if (!s || typeof s !== "object" || (s as Rec).kind !== "intermediate") continue;
+    const sprint = s as Rec;
+    const km = Number(sprint.km);
+    if (Number.isFinite(km) && km > 0 && km < distanceKm) out.push({ index, km, name: typeof sprint.name === "string" ? sprint.name : null });
+    index += 1;
+  }
+  return out.sort((a, b) => a.km - b.km || a.index - b.index);
+}
+
+export function stagePlanRouteFromRaw(raw: { distance_km?: unknown; profile_type?: unknown; climbs?: unknown; sprints?: unknown } | null | undefined): StagePlanRoute {
   const distance = Number(raw?.distance_km);
   const distanceKm = Number.isFinite(distance) && distance > 0 ? distance : 0;
   const rawClimbs: unknown[] = Array.isArray(raw?.climbs) ? (raw?.climbs as unknown[]) : [];
@@ -116,7 +149,34 @@ export function stagePlanRouteFromRaw(raw: { distance_km?: unknown; profile_type
     profile_type: typeof raw?.profile_type === "string" ? raw.profile_type : null,
     climbs: stagePlanClimbsFromRaw(rawClimbs, distanceKm),
     summit_finish: rawClimbs.some((c) => !!c && typeof c === "object" && (c as Rec).summit_finish === true),
+    ...(Array.isArray(raw?.sprints) ? { sprints: stagePlanSprintsFromRaw(raw?.sprints, distanceKm) } : {}), // #7855
   };
+}
+
+/** #7855: ruten med troejejagten slaaet til. Slukket = samme objekt. */
+export function withJerseyHunt7855(route: StagePlanRoute, on: boolean): StagePlanRoute {
+  return on === true ? { ...route, jersey_hunt_7855: true } : route;
+}
+
+/** #7855: har straekningen (fromKm, toKm] en passage af artens slags? */
+export function stretchHasHuntPassage(route: StagePlanRoute, kind: "sprint" | "kom", fromKm: number, toKm: number): boolean {
+  const kms = kind === "kom" ? route.climbs.map((c) => c.km) : (route.sprints ?? []).map((s) => s.km);
+  return kms.some((km) => km > fromKm && km <= toKm);
+}
+
+/** #7855 (reviewfund): samme regel som serveren (stagePlan.ts), holdt ens af paritetstesten. */
+export function planHasJerseyHunt(legs: readonly StagePlanLeg[]): boolean {
+  return legs.some((leg) => JERSEY_HUNT_TASKS[leg.task] !== undefined);
+}
+
+export function planWithoutJerseyHunt(legs: readonly StagePlanLeg[]): StagePlanLeg[] {
+  const out: StagePlanLeg[] = [];
+  for (const leg of legs) {
+    const task: StagePlanTask = JERSEY_HUNT_TASKS[leg.task] ? "stay_sheltered" : leg.task;
+    if (out.length > 0 && out[out.length - 1].task === task) continue;
+    out.push(leg.from ? { task, from: leg.from } : { task });
+  }
+  return out;
 }
 
 export function triggerKm(trigger: StagePlanTrigger | undefined, route: StagePlanRoute): number | null {
@@ -134,12 +194,14 @@ export function validateStagePlanLegs(legs: unknown, role: StagePlanRole, route:
   if (!Array.isArray(legs) || legs.length === 0) return "stage_plan_empty";
   if (legs.length > STAGE_PLAN_MAX_LEGS) return "stage_plan_too_many_legs";
   let lastKm = -Infinity;
+  const legKms: Array<number | null> = []; // #7855
   for (let i = 0; i < legs.length; i++) {
     const leg = legs[i] as Rec | null;
     if (!leg || typeof leg !== "object" || Array.isArray(leg)) return "stage_plan_invalid_leg";
     if (Object.keys(leg).some((k) => k !== "task" && k !== "from")) return "stage_plan_invalid_leg";
     const task = leg.task;
     if (!isStagePlanTask(task)) return "stage_plan_unknown_task";
+    if (JERSEY_HUNT_TASKS[task] && route.jersey_hunt_7855 !== true) return "stage_plan_unknown_task"; // #7855 (slukket)
     if (!TASK_ROLES[task].includes(role)) return "stage_plan_task_not_for_role";
     if (task === "breakaway" && i > 0) return "stage_plan_breakaway_not_first";
     if (TERMINAL_TASKS.has(task) && i < legs.length - 1) return "stage_plan_terminal_not_last";
@@ -148,6 +210,7 @@ export function validateStagePlanLegs(legs: unknown, role: StagePlanRole, route:
     const from = leg.from;
     if (i === 0) {
       if (from !== undefined) return "stage_plan_first_has_trigger";
+      legKms.push(0);
       continue;
     }
     if (!from || typeof from !== "object" || Array.isArray(from)) return "stage_plan_missing_trigger";
@@ -156,6 +219,8 @@ export function validateStagePlanLegs(legs: unknown, role: StagePlanRole, route:
       if (Object.keys(trig).length !== 1) return "stage_plan_unknown_trigger";
       if (i < legs.length - 1) return "stage_plan_dropped_not_last";
       if (task === "sprint_train") return "stage_plan_train_after_dropped";
+      if (JERSEY_HUNT_TASKS[task]) return "stage_plan_hunt_after_dropped"; // #7855
+      legKms.push(null);
       continue;
     }
     let km: number | null;
@@ -171,6 +236,15 @@ export function validateStagePlanLegs(legs: unknown, role: StagePlanRole, route:
     }
     if (km === null || !(km > lastKm) || !(km > 0)) return "stage_plan_not_chronological";
     lastKm = km;
+    legKms.push(km);
+  }
+  // #7855: en jagt-opgave skal have mindst én passage af sin art paa sin straekning.
+  for (let i = 0; i < legs.length; i++) {
+    const kind = JERSEY_HUNT_TASKS[(legs[i] as StagePlanLeg).task];
+    if (!kind) continue;
+    const next = legKms[i + 1];
+    const toKm = typeof next === "number" ? next : route.distance_km;
+    if (!stretchHasHuntPassage(route, kind, legKms[i] as number, toKm)) return kind === "kom" ? "stage_plan_hunt_no_climb" : "stage_plan_hunt_no_sprint";
   }
   return null;
 }
@@ -402,7 +476,25 @@ export function withoutStagePlans<T extends Order>(order: T): T {
 export function setRiderPlan<T extends Order>(order: T, riderId: string, plan: StagePlanLeg[] | null): T {
   return {
     ...order,
-    riders: (order?.riders ?? []).map((r) => (r.rider_id === riderId ? { ...r, plan } : r)),
+    riders: (order?.riders ?? []).map((r) => {
+      if (r.rider_id !== riderId) return r;
+      const { hunt_off: _handled, ...rest } = r as typeof r & { hunt_off?: unknown }; // #7855: et nyt valg er spillerens eget
+      return { ...rest, plan } as typeof r;
+    }),
+  };
+}
+
+/**
+ * #7855 (reviewfund): ordren som loebet kan koere den, naar troejejagten ikke gaelder (kontakten
+ * slukket eller noedstop). Jagt-ledene bliver til planen uden jagt, og rytteren maerkes, saa boardet
+ * kan sige det. Uden jagt-led: samme objekt.
+ */
+export function orderWithoutJerseyHunt<T extends Order>(order: T): T {
+  const riders = order?.riders ?? [];
+  if (!riders.some((r) => Array.isArray(r.plan) && planHasJerseyHunt(r.plan))) return order;
+  return {
+    ...order,
+    riders: riders.map((r) => (Array.isArray(r.plan) && planHasJerseyHunt(r.plan) ? { ...r, plan: planWithoutJerseyHunt(r.plan), hunt_off: true } : r)),
   };
 }
 
@@ -736,6 +828,24 @@ export function stagePlanOutcomes(
 
     // Kun en raekke i maalresultatet beviser at han kom i maal: at filmen intet siger, goer ikke.
     if (RIDE_HOME_TASKS.has(item.task)) return toFinish && finishRank !== null ? outcomeOf("done", "finished") : NOTHING_TO_SHOW;
+
+    // #7855: troejejagten. Beviset er filmens passager paa leddets straekning, hvor motoren
+    // navngiver ham som jaeger; pointene er dem klassementet ogsaa viser. Uden en saadan passage
+    // staar der intet.
+    const huntKind = JERSEY_HUNT_TASKS[item.task];
+    if (huntKind) {
+      const type = huntKind === "kom" ? "kom_passage" : "intermediate_sprint";
+      const from = item.fromKm ?? 0;
+      const to = item.endKm ?? Infinity;
+      const hunted = list.filter((e) => e?.type === type && Number(e.km) > from && Number(e.km) <= to && eventRiderIds(e.params, "hunters").includes(riderId));
+      if (!hunted.length) return NOTHING_TO_SHOW;
+      const points = hunted.reduce((sum, e) => {
+        const top = Array.isArray(e.params?.top) ? (e.params?.top as Rec[]) : [];
+        const row = top.find((r) => r?.rider_id === riderId);
+        return sum + (typeof row?.points === "number" ? row.points : 0);
+      }, 0);
+      return points > 0 ? outcomeOf("done", huntKind === "kom" ? "komPoints" : "sprintPoints", { points }) : outcomeOf("failed", "noPoints");
+    }
 
     const behind = typeof lostContactKm === "number" && lostContactKm <= (item.endKm ?? Infinity);
     const lost = () => ({ km: roundKm(lostContactKm as number) });

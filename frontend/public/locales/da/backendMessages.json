@@ -47,6 +47,7 @@
     "intakeExpiryCompensation": "Kompensation: udløbet intake-tilbud for {riderName} solgt på auktion",
     "transferBuy": "Købt {riderName} via transfer",
     "transferSell": "Solgt {riderName} via transfer",
+    "saleEscrowRefund": "Refusion af handel, rytteren skiftede ikke hold",
     "riderRelease": "Fyrede {riderName} (buyout-gebyr)",
     "swapCash": "Byttehandel kontantbetaling: {offeredName} <-> {requestedName}",
     "scoutTravel": "Rejseomkostning for spejder",
@@ -77,6 +78,12 @@
     }
   },
   "notif": {
+    "saleEscrowRefund": {
+      "buyerTitle": "Handlen er annulleret, pengene er tilbage",
+      "buyerMessage": "{riders} skiftede ikke hold, så {amount} CZ$ er tilbage på din saldo.",
+      "sellerTitle": "Handlen er annulleret",
+      "sellerMessage": "{riders} skiftede ikke hold, så de {amount} CZ$ fra handlen gik tilbage til det andet hold."
+    },
     "admin": {
       "feedbackReply": {
         "title": "Svar på din besked"

@@ -146,6 +146,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     talent_marks_7879: false,
     rider_hover_card: false,
     day_words_7725: false,
+    fatigue_now_7801: false,
   });
   assert.equal(f.betaLookups(), 0, "en anonym forespoergsel maa ikke slaa en bruger op");
 });
@@ -213,6 +214,7 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     talent_marks_7879: false,
     rider_hover_card: false,
     day_words_7725: false,
+    fatigue_now_7801: false,
   });
 });
 
@@ -288,6 +290,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     talent_marks_7879: false,
     rider_hover_card: false,
     day_words_7725: false,
+    fatigue_now_7801: false,
   });
   assert.deepEqual(await readPlayerFeatureFlags(supabase, { isBetaTester: true }), {
     race_engine_v4: true,
@@ -324,6 +327,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     talent_marks_7879: false,
     rider_hover_card: false,
     day_words_7725: false,
+    fatigue_now_7801: false,
   });
 });
 
@@ -418,6 +422,31 @@ test("#7536: Hjaelp-flaget er off naar condition_model_v2 eller dens forudsaetni
     fakeSupabase({ condition_v2_race_date_training_day: "on" }, { failKeys: ["condition_model_v2"] }),
   );
   assert.equal(readFails.condition_v2_race_date_training_day, false, "en DB-fejl giver aldrig adgang");
+});
+
+test("#7801: fatigue_now_7801 er binaert, strengt og foelger condition_model_v2 (Hjaelp beskriver kun et tal, der vises)", async () => {
+  assert.ok(PLAYER_VISIBLE_BINARY_FLAG_KEYS.includes("fatigue_now_7801"));
+  for (const value of ["beta", "off", true, false, undefined]) {
+    const rows = value === undefined ? {} : { fatigue_now_7801: value };
+    const flags = await readPlayerFeatureFlags(fakeSupabase(rows), { isBetaTester: true });
+    assert.equal(flags.fatigue_now_7801, false, `vaerdi ${String(value)}`);
+  }
+  const chain = { training_tick_per_race_day: "on", training_condition_per_date: "on", condition_model_v2: "on" };
+  const on = await readPlayerFeatureFlags(fakeSupabase({ ...chain, fatigue_now_7801: "on" }));
+  assert.equal(on.fatigue_now_7801, true);
+  const parentOff = await readPlayerFeatureFlags(fakeSupabase({ fatigue_now_7801: "on", condition_model_v2: "off" }));
+  assert.equal(parentOff.fatigue_now_7801, false, "uden condition_model_v2 er live-tallet aabningen");
+  const reported = [];
+  const brokenChain = await readPlayerFeatureFlags(
+    fakeSupabase({ fatigue_now_7801: "on", condition_model_v2: "on", training_condition_per_date: "off" }),
+    { reportError: (error) => reported.push(error) },
+  );
+  assert.equal(brokenChain.fatigue_now_7801, false, "en ugyldig kaede er off");
+  assert.equal(reported.length, 1);
+  const readFails = await readPlayerFeatureFlags(
+    fakeSupabase({ fatigue_now_7801: "on" }, { failKeys: ["condition_model_v2"] }),
+  );
+  assert.equal(readFails.fatigue_now_7801, false, "en DB-fejl giver aldrig adgang");
 });
 
 // Syntetiske testparams (ikke kalibreringen, hard rule 17).

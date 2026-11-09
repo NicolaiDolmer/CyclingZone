@@ -1,0 +1,60 @@
+{
+  "sourceCommit": "191020b12ee2de45c055226dcfe7ba44a20b126c",
+  "note": "Skrevet af merge-basens kode. Genereres aldrig med den nye kode (#7587).",
+  "wholeRace:s5_profiles_v3": {
+    "inputChecksums": [
+      3990561179,
+      797036318,
+      3840994666
+    ],
+    "inputSha256": [
+      "37c4dbb9c89e0f67b14736af62de54ae5089e504a8483d1e8c4a940d2bf00422",
+      "274bc4b2b6635c3ef6d47f353dc59bec3d7532dd5fe3e068e0ba9dae2e187249",
+      "f2bffee95d638e1d6a8fb13623b9091c35ca1f914c5bc6868ac57039c4029ed4"
+    ],
+    "outputSha256": [
+      "d82f08c180791206c4118a9df2e74ceea9be1187b69b4a8502424005f44d8b3e",
+      "e91d127a2973855795ec48c2c68ff25e0357583e29eeecf5e74c6a54d85cfc7d",
+      "01f77825e889ac70b34c6a4c8b6ab08e1156231795ededd5f8f6fd23bc204245"
+    ]
+  },
+  "wholeRace:s5_profiles_v2": {
+    "inputChecksums": [
+      3990561179,
+      3310491400,
+      3081275577
+    ],
+    "inputSha256": [
+      "4765f210d30f0f839c67643ef0ef70f7465199f7615471780b1459b9289588e3",
+      "f07a88333754ee49948ffdf336cdbe90d54169c092ed56c973f118854c624b8c",
+      "43f08534bc840b6bc8312fb7d30f115e35d0e987c3cf8eba2b1179ee24b4974a"
+    ],
+    "outputSha256": [
+      "2f44abdef82a71621ff251e14d7b18b6475f8386666b44d5bde69c6cebd00ad6",
+      "5636d5527218c7d7274509e5e16eea684a20abcb176bc71bc674c385686bf114",
+      "a56b0955130b53aaaa51552e0e449539748898d0cbdde5b709d9804d382e84f2"
+    ]
+  },
+  "stageByStage:s5_profiles_v3:stage1": {
+    "inputChecksums": [
+      3990561179
+    ],
+    "inputSha256": [
+      "bdea745c9e418d558a3a45c3a8d86248281eddfa22693e175c87173c565a0bbe"
+    ],
+    "outputSha256": [
+      "d82f08c180791206c4118a9df2e74ceea9be1187b69b4a8502424005f44d8b3e"
+    ]
+  },
+  "stageByStage:s5_profiles_v3:stage3": {
+    "inputChecksums": [
+      2611303317
+    ],
+    "inputSha256": [
+      "db03264fc9ce2209920b09f8dad1242f8d2447460132b21792bce433d8826046"
+    ],
+    "outputSha256": [
+      "e98472269665b798ac4f0ed0eac554170299bd2299fafd44f72133a301d1c608"
+    ]
+  }
+}

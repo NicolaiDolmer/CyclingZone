@@ -54,8 +54,21 @@ export const STAGE_PLAN_TASKS = Object.freeze([
   "sprint_train",
   "grupetto",
   "ride_in",
+  // #7855 (kun med kontakten jersey_hunt_7855, se JERSEY_HUNT_TASKS): troejejagt.
+  "hunt_points",
+  "hunt_kom",
 ] as const);
 export type StagePlanTask = (typeof STAGE_PLAN_TASKS)[number];
+
+/**
+ * #7855: troejejagten. Opgaverne findes kun naar ruten baerer `jersey_hunt_7855` (kontakten,
+ * kun loeb der ikke var startet). Uden den er de ukendte, praecis som foer opgaverne fandtes.
+ * Hver opgave kraever mindst én passage af sin art paa leddets straekning.
+ */
+export const JERSEY_HUNT_TASKS: Readonly<Partial<Record<StagePlanTask, "sprint" | "kom">>> = Object.freeze({
+  hunt_points: "sprint",
+  hunt_kom: "kom",
+});
 
 /** Indsatsen foelger opgaven (enum -> enum; ingen tal). */
 export const TASK_EFFORT: Readonly<Record<StagePlanTask, StagePlanEffort>> = Object.freeze({
@@ -69,6 +82,9 @@ export const TASK_EFFORT: Readonly<Record<StagePlanTask, StagePlanEffort>> = Obj
   sprint_train: "normal",
   grupetto: "grupetto",
   ride_in: "save",
+  // #7855: at koere efter pointene er arbejde i front (samme trin som tempo); prisen er "Hård".
+  hunt_points: "protect",
+  hunt_kom: "protect",
 });
 
 const ALL_ROLES: readonly StagePlanRole[] = ["captain", "co_captain", "sprint_captain", "helper", "hunter", "free_role"];
@@ -86,6 +102,9 @@ export const TASK_ROLES: Readonly<Record<StagePlanTask, readonly StagePlanRole[]
   sprint_train: ["helper", "hunter"],
   grupetto: ["sprint_captain", "helper", "hunter", "free_role"],
   ride_in: ALL_ROLES,
+  // #7855: klassementsfolkene koerer for klassementet, ikke for troejerne (#2757 G18, #6937).
+  hunt_points: ["sprint_captain", "helper", "hunter", "free_role"],
+  hunt_kom: ["helper", "hunter", "free_role"],
 });
 
 /** Slut-opgaver: kun sidste led. */
@@ -107,7 +126,14 @@ export type StagePlanRoute = {
   climbs: readonly StagePlanClimb[];
   /** Etapen ender paa en stigning (den staar ikke i `climbs`: toppen er maal). */
   summit_finish?: boolean;
+  /** #7855: de indlagte spurter (km). Kun naar kilden har dem; udeladt = ingen kendt spurt. */
+  sprints?: readonly StagePlanSprint[];
+  /** #7855: kontakten for troejejagten er taendt for dette loeb. Udeladt = opgaverne findes ikke. */
+  jersey_hunt_7855?: true;
 };
+
+/** #7855: en indlagt spurt (rutens `sprints` med kind "intermediate", samme index som motorens vejpunkt). */
+export type StagePlanSprint = { index: number; km: number; name: string | null };
 
 const CATEGORIES = new Set(["HC", "1", "2", "3", "4"]);
 const TIME_TRIAL_PROFILES = new Set(["itt", "itt_hilly", "ttt"]);
@@ -141,8 +167,27 @@ export function stagePlanClimbsFromRaw(rawClimbs: unknown, distanceKm: number): 
   return out.sort((a, b) => a.km - b.km || a.index - b.index);
 }
 
+/**
+ * #7855: de indlagte spurter fra en etapes raa `sprints` (race_stage_profiles.sprints). Index er
+ * placeringen blandt rutens "intermediate"-spurter, samme regel som motorens vejpunkter
+ * (engine/v4/adapters/routeAdapter.ts). Kun spurter foer maal.
+ */
+export function stagePlanSprintsFromRaw(rawSprints: unknown, distanceKm: number): StagePlanSprint[] {
+  const list = Array.isArray(rawSprints) ? rawSprints : [];
+  const out: StagePlanSprint[] = [];
+  let index = 0;
+  for (const s of list) {
+    if (!s || typeof s !== "object" || (s as Record<string, unknown>)["kind"] !== "intermediate") continue;
+    const sprint = s as Record<string, unknown>;
+    const km = Number(sprint["km"]);
+    if (Number.isFinite(km) && km > 0 && km < distanceKm) out.push({ index, km, name: typeof sprint["name"] === "string" ? (sprint["name"] as string) : null });
+    index += 1;
+  }
+  return out.sort((a, b) => a.km - b.km || a.index - b.index);
+}
+
 /** Hele planens rute fra en etapes raa felter (race_stage_profiles-raekke eller frontendens profil). */
-export function stagePlanRouteFromRaw(raw: { distance_km?: unknown; profile_type?: unknown; climbs?: unknown } | null | undefined): StagePlanRoute {
+export function stagePlanRouteFromRaw(raw: { distance_km?: unknown; profile_type?: unknown; climbs?: unknown; sprints?: unknown } | null | undefined): StagePlanRoute {
   const distance = Number(raw?.distance_km);
   const distanceKm = Number.isFinite(distance) && distance > 0 ? distance : 0;
   const rawClimbs = Array.isArray(raw?.climbs) ? (raw?.climbs as unknown[]) : [];
@@ -151,7 +196,44 @@ export function stagePlanRouteFromRaw(raw: { distance_km?: unknown; profile_type
     profile_type: typeof raw?.profile_type === "string" ? raw.profile_type : null,
     climbs: stagePlanClimbsFromRaw(rawClimbs, distanceKm),
     summit_finish: rawClimbs.some((c) => !!c && typeof c === "object" && (c as Record<string, unknown>)["summit_finish"] === true),
+    // #7855: kun naar kilden har spurterne (ellers samme form som foer).
+    ...(Array.isArray(raw?.sprints) ? { sprints: stagePlanSprintsFromRaw(raw?.sprints, distanceKm) } : {}),
   };
+}
+
+/** #7855: ruten med troejejagten slaaet til (kontakten + loebet er bundet til den). Slukket = samme objekt. */
+export function withJerseyHunt7855(route: StagePlanRoute, on: boolean): StagePlanRoute {
+  return on === true ? { ...route, jersey_hunt_7855: true } : route;
+}
+
+/**
+ * #7855: har straekningen (fromKm, toKm] en passage af artens slags? Bjergpoint = en
+ * kategoriseret stigning med top foer maal (topankomsten afgoeres af maalordenen og er ikke
+ * en passage man jager undervejs); point = en indlagt spurt.
+ */
+export function stretchHasHuntPassage(route: StagePlanRoute, kind: "sprint" | "kom", fromKm: number, toKm: number): boolean {
+  const kms = kind === "kom" ? route.climbs.map((c) => c.km) : (route.sprints ?? []).map((s) => s.km);
+  return kms.some((km) => km > fromKm && km <= toKm);
+}
+
+export function planHasJerseyHunt(legs: readonly StagePlanLeg[]): boolean {
+  return legs.some((leg) => JERSEY_HUNT_TASKS[leg.task] !== undefined);
+}
+
+/**
+ * #7855 (reviewfund): planen uden troejejagt, til naar loebet alligevel ikke koerer med opgaverne
+ * (kontakten slukket foer foerste etape, eller noedstop midt i loebet). Jagt-leddet bliver til
+ * "koer i laeet" paa samme rutepunkt, resten af planen staar, og to ens led i traek bliver til ét.
+ * Altid en gyldig kaede, naar den oprindelige var det (testet).
+ */
+export function planWithoutJerseyHunt(legs: readonly StagePlanLeg[]): StagePlanLeg[] {
+  const out: StagePlanLeg[] = [];
+  for (const leg of legs) {
+    const task: StagePlanTask = JERSEY_HUNT_TASKS[leg.task] ? "stay_sheltered" : leg.task;
+    if (out.length > 0 && out[out.length - 1].task === task) continue;
+    out.push(leg.from ? { task, from: leg.from } : { task });
+  }
+  return out;
 }
 
 /** Skift-punktets km paa ruten; null for "naar han er sat" eller et ukendt punkt. */
@@ -175,12 +257,14 @@ export function validateStagePlanLegs(legs: unknown, role: StagePlanRole, route:
   if (!Array.isArray(legs) || legs.length === 0) return "stage_plan_empty";
   if (legs.length > STAGE_PLAN_MAX_LEGS) return "stage_plan_too_many_legs";
   let lastKm = -Infinity;
+  const legKms: Array<number | null> = []; // #7855: hvert leds rutepunkt (0 for foerste led, null for "sat")
   for (let i = 0; i < legs.length; i++) {
     const leg = legs[i] as Record<string, unknown> | null;
     if (!leg || typeof leg !== "object" || Array.isArray(leg)) return "stage_plan_invalid_leg";
     if (Object.keys(leg).some((k) => k !== "task" && k !== "from")) return "stage_plan_invalid_leg";
     const task = leg["task"];
     if (!isStagePlanTask(task)) return "stage_plan_unknown_task";
+    if (JERSEY_HUNT_TASKS[task] && route.jersey_hunt_7855 !== true) return "stage_plan_unknown_task"; // #7855 (slukket)
     if (!TASK_ROLES[task].includes(role)) return "stage_plan_task_not_for_role";
     if (task === "breakaway" && i > 0) return "stage_plan_breakaway_not_first";
     if (TERMINAL_TASKS.has(task) && i < legs.length - 1) return "stage_plan_terminal_not_last";
@@ -189,6 +273,7 @@ export function validateStagePlanLegs(legs: unknown, role: StagePlanRole, route:
     const from = leg["from"];
     if (i === 0) {
       if (from !== undefined) return "stage_plan_first_has_trigger";
+      legKms.push(0);
       continue;
     }
     if (!from || typeof from !== "object" || Array.isArray(from)) return "stage_plan_missing_trigger";
@@ -197,6 +282,8 @@ export function validateStagePlanLegs(legs: unknown, role: StagePlanRole, route:
       if (Object.keys(trig).length !== 1) return "stage_plan_unknown_trigger";
       if (i < legs.length - 1) return "stage_plan_dropped_not_last";
       if (task === "sprint_train") return "stage_plan_train_after_dropped";
+      if (JERSEY_HUNT_TASKS[task]) return "stage_plan_hunt_after_dropped"; // #7855: en sat rytter koerer ikke om point
+      legKms.push(null);
       continue;
     }
     let km: number | null = null;
@@ -212,6 +299,16 @@ export function validateStagePlanLegs(legs: unknown, role: StagePlanRole, route:
     }
     if (km === null || !(km > lastKm) || !(km > 0)) return "stage_plan_not_chronological";
     lastKm = km;
+    legKms.push(km);
+  }
+  // #7855: en jagt-opgave skal have mindst én passage af sin art paa sin straekning: fra leddets
+  // rutepunkt til naeste leds rutepunkt (eller maal, naar der ikke kommer et rutepunkt efter).
+  for (let i = 0; i < legs.length; i++) {
+    const kind = JERSEY_HUNT_TASKS[(legs[i] as StagePlanLeg).task];
+    if (!kind) continue;
+    const next = legKms[i + 1];
+    const toKm = typeof next === "number" ? next : route.distance_km;
+    if (!stretchHasHuntPassage(route, kind, legKms[i] as number, toKm)) return kind === "kom" ? "stage_plan_hunt_no_climb" : "stage_plan_hunt_no_sprint";
   }
   return null;
 }

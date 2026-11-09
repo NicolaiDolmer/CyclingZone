@@ -151,6 +151,16 @@ features:
     epic: 7725
     verified: 2026-11-08
     note: "on 8/11 på ejerens ord; kun tekst, kræver day_form_6649."
+  - id: race-jersey-hunt-7855
+    area: race-engine
+    title_en: Jersey hunt in the stage plan
+    title_da: Trøjejagt i etapeplanen
+    state: building
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 7855
+    verified: 2026-11-09
+    decision: ejer-beslutning
+    decide_by: 2026-11-21
   - id: race-itt-no-day-roll-7726
     area: race-engine
     title_en: Time trials without the extra day roll
@@ -635,7 +645,7 @@ features:
     ssot: docs/superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md
     epic: 1177
     verified: 2026-11-04
-    note: 'Kun data er bygget (#5268); motor (#5348) og mentorpar (#5349) mangler, arbejdet står stille.'
+    note: 'Kun data er bygget (#5268); motor (#5348) og mentorpar (#5349) mangler.'
 
   - id: champion-jerseys
     area: squad
@@ -1139,7 +1149,7 @@ features:
     verified: 2026-11-05
     decision: goer-faerdigt
     decide_by: 2026-12-31
-    note: 'Trin 5 (#7685): søndagsjob, holdskifte og nye kig skriver bag flaget potential_estimate_writes (seedes off).'
+    note: 'Trin 5 (#7685): søndagsjob, holdskifte og nye kig; flaget seedes off.'
 
   - id: train-now-instant
     area: training
@@ -1151,7 +1161,7 @@ features:
     verified: 2026-11-09
     decision: goer-faerdigt
     decide_by: 2026-11-16
-    note: 'PR 1: motor/database; training_train_now_instant seedes off ved apply. PR 2-4 og særskilt ejer-go mangler før tænding.'
+    note: 'PR1 off: training_train_now_instant seed; PR2-4 and owner activation pending.'
 
   - id: train-now-whole-day
     area: training
@@ -1171,7 +1181,7 @@ features:
     flag: development_score_v2
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: 'Ejer 31/10 (#6110): parkeret, indtil grundtalentet (spec 23/10, byggetrin 2) er bygget; ingen frist. Forudsætning før tænding: #7584.'
+    note: 'Ejer 31/10 (#6110): parkeret til grundtalentet er bygget. Før tænding: #7584.'
     verified: 2026-11-04
     decision: ejer-beslutning
     decide_by: 2026-11-08

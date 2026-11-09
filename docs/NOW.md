@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (9/11 kl. 13.30):** **Tavlen [#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911) er sandheden.** **PC1:** rækkefølge i MASTERPLAN (ejer 9/11). Merge: #7933, #7857, #7936, #7937, #7935 (ejer-go). Bølge: Træn nu + 15 % (design og måling), #7943. Så holdplan #7864, trøjemål #5573, auto-accept-rest #2176. Mestertrøjer live; talentmærker i beta, ejeren ser dem. 10/11: ordene, scouting, Discord #7941. 11/11: motormålinger. **Codex på Dolmer PC:** SEO og vækst (#1407, #6583/#6558). 7644 SLUKKET. **Efter løbet:** #6912, #7899, #7902.
+> **🎯 Next action (9/11 kl. 21.40):** **Tavlen [#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911) er sandheden.** **Codex bygger de kommende dage, Claude planlægger, reviewer og merger (ejer 9/11).** Køen står i kommentaren "Codex-sporet" på tavlen. Merget 9/11 aften: #7935, #7936, #7937, #7945, #7946. Klar til toget: #7857, #7944, #7949. Så tænd-kort: fatigue_now_7801 og time_limit_fatigue_7715. Pengelås trin for trin på go. 10/11: ordene, scouting, Discord #7941. 11/11: motormålinger. Bølgen døde 9/11 kl. 19.35 ved afbrudt session; arbejdet er bevaret.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling; memory commitment på Large kunne ikke aflæses 9/11.
 >
-> **🤖 Working agent:** Claude Code på PC1, dirigent (9/11): til dørs først, så nyt. Codex på Dolmer PC: SEO og vækst.
+> **🤖 Working agent:** Claude Code på PC1, dirigent og merge (9/11). Codex på Dolmer PC: køen på #7911.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 

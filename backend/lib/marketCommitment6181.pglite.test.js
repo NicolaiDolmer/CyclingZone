@@ -26,11 +26,15 @@ import {
   isMarketCommitment6181On,
   marketGateCode,
   marketGateResponse6181,
+  isLoweredProxy6181,
 } from './marketCommitment6181.js';
 import { clearFlagStageCache } from './featureStage.js';
 
 const file = name => readFile(new URL(`../../database/${name}`, import.meta.url), 'utf8');
 const MIGRATION = '2026-11-07-6181-m3-market-commitment.sql';
+// Tjeklisten erstatter proxy-gaten og omdoeber start-triggeren; den bygger paa M1 og M2.
+const ESCROW_MIGRATIONS = ['2026-11-07-6181-sale-escrow-m1.sql', '2026-11-07-6181-sale-escrow-m2-guards.sql'];
+const CHECKLIST_MIGRATION = '2026-11-09-6181-tjekliste.sql';
 const id = n => `00000000-0000-0000-0000-${String(n).padStart(12, '0')}`;
 const TEAM = { A: id(1), B: id(2), C: id(3) };
 const FUTURE = '2099-01-01T12:00:00Z';
@@ -55,6 +59,7 @@ CREATE TABLE auction_bids (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), auctio
 CREATE TABLE auction_proxy_bids (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), auction_id uuid NOT NULL REFERENCES auctions(id),
   team_id uuid NOT NULL REFERENCES teams(id), max_amount bigint NOT NULL, created_at timestamptz DEFAULT '${FIXED_BID_TIME}',
   UNIQUE (auction_id, team_id));
+CREATE TABLE finance_transactions (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), idempotency_key text);
 GRANT SELECT,INSERT,UPDATE,DELETE ON teams,riders,auctions,auction_bids,auction_proxy_bids TO service_role;
 GRANT SELECT ON app_config TO service_role;
 `;
@@ -69,6 +74,10 @@ async function database({ flag = null } = {}) {
   const migration = await file(MIGRATION);
   await db.exec(migration);
   await db.exec(migration); // idempotent
+  for (const name of ESCROW_MIGRATIONS) await db.exec(await file(name));
+  const checklist = await file(CHECKLIST_MIGRATION);
+  await db.exec(checklist);
+  await db.exec(checklist); // idempotent
   if (flag !== null) await setFlag(db, flag);
   await db.exec(`INSERT INTO teams(id, balance) VALUES ('${TEAM.A}', 100), ('${TEAM.B}', 1000), ('${TEAM.C}', 1000);`);
   return db;
@@ -584,6 +593,55 @@ test('taendt: gatens fejl bliver til de eksisterende fejlkoder', async () => {
     errorCode: 'squad_full_bid', errorParams: { maxRiders: MAX_SQUAD_SIZE } } });
 });
 
+test('tjekliste: start-gaten koerer foer AI-vagten, og det gamle navn er vaek', async () => {
+  const db = await database({ flag: 'on' });
+  const names = (await db.query(`SELECT tgname FROM pg_trigger WHERE tgrelid = 'auctions'::regclass AND NOT tgisinternal ORDER BY tgname`)).rows.map(r => r.tgname);
+  assert.ok(names.includes('a_market_commitment_6181_start'), names.join());
+  assert.ok(!names.includes('trg_market_commitment_6181_start'), names.join());
+  assert.ok('a_market_commitment_6181_start' < 'trg_ai_drain_auctions', 'Postgres koerer triggere i navneorden');
+});
+
+test('tjekliste: et saenket autobud kan gemmes via upsert, ogsaa naar holdet er overforpligtet', async () => {
+  const db = await database({ flag: 'on' });
+  const a = await auction(db, { price: 10 });
+  const b = await auction(db, { price: 10 });
+  assert.equal(await gateError(proxy(db, a, TEAM.A, 80)), null);
+  await db.query(`UPDATE teams SET balance = 10 WHERE id = $1`, [TEAM.A]); // nu overforpligtet
+  assert.equal(await gateError(proxy(db, a, TEAM.A, 50)), null, 'saenket loft via upsert');
+  assert.equal(await gateError(proxy(db, a, TEAM.A, 50)), null, 'uaendret loft');
+  assert.equal(Number((await one(db, 'SELECT max_amount FROM auction_proxy_bids WHERE auction_id = $1', [a])).max_amount), 50);
+  assert.equal(await gateError(proxy(db, a, TEAM.A, 60)), 'insufficient_available_balance', 'haevet loft tjekkes stadig');
+  assert.equal(await gateError(proxy(db, b, TEAM.A, 5)), 'insufficient_available_balance', 'et nyt autobud tjekkes stadig');
+  // Samme vej som PATCH /auctions/:id/proxy, naar kontakten er taendt.
+  const viaRpc = await db.query(`SELECT public.set_auction_proxy_context_6181($1, $2, 40, NULL, now()) AS r`, [a, TEAM.A]);
+  assert.equal(viaRpc.rows[0].r.placed, false);
+  assert.equal(Number((await one(db, 'SELECT max_amount FROM auction_proxy_bids WHERE auction_id = $1', [a])).max_amount), 40);
+});
+
+test('tjekliste: isLoweredProxy6181 kraever taendt kontakt og et staaende hoejere loft', () => {
+  const proxies = [{ auction_id: 'a', max_amount: '500' }];
+  assert.equal(isLoweredProxy6181({ marketGateOn: true, proxies, auctionId: 'a', nextMax: 400 }), true);
+  assert.equal(isLoweredProxy6181({ marketGateOn: true, proxies, auctionId: 'a', nextMax: 500 }), true);
+  assert.equal(isLoweredProxy6181({ marketGateOn: true, proxies, auctionId: 'a', nextMax: 501 }), false);
+  assert.equal(isLoweredProxy6181({ marketGateOn: true, proxies, auctionId: 'b', nextMax: 1 }), false);
+  assert.equal(isLoweredProxy6181({ marketGateOn: false, proxies, auctionId: 'a', nextMax: 400 }), false);
+});
+
+test('tjekliste: fejlbeskeden viser ikke 0 CZ$, naar beloebet er ukendt', async () => {
+  const money = { code: 'P0001', message: 'market_gate_6181:insufficient_available_balance' };
+  const failing = {
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: { message: 'nede' } }) }) }) }),
+    rpc: async () => ({ data: null, error: { message: 'nede' } }),
+  };
+  for (const kind of ['bid', 'proxy']) {
+    const out = await marketGateResponse6181(failing, money, { kind, teamId: TEAM.B, auctionId: id(5) });
+    assert.equal(out.status, 400);
+    assert.equal(out.body.errorCode, 'insufficient_balance_amount_unknown');
+    assert.equal('errorParams' in out.body, false);
+    assert.doesNotMatch(out.body.error, /\d/);
+  }
+});
+
 // ── Aegte samtidighed (lokal Postgres) ───────────────────────────────────────
 
 const PG_BIN = process.env.MARKET_GATE_PG_BIN;
@@ -651,6 +709,8 @@ test('PG17: budget, equal-price and locked-state boundaries', { skip: !PG_BIN &&
     psql(SCHEMA);
     psql(await file('2026-05-10-reject-late-auction-bid-trigger.sql'));
     psql(await file(MIGRATION));
+    for (const name of ESCROW_MIGRATIONS) psql(await file(name));
+    psql(await file(CHECKLIST_MIGRATION));
     const rounds = 10;
     let overbooked = 0;
     let maxLeads = 0;

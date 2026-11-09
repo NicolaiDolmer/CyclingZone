@@ -15,6 +15,7 @@ import {
   FINANCE_RELATED_ENTITY,
 } from "./economyConstants.js";
 import { evaluateLoanGate, getTeamRaceDaysRun, readNewAccountGateConfig } from "./newAccountGates.js";
+import { createSupabaseFetchWithRetry } from "./supabaseFetchRetry.js";
 
 // #44: hent manager's worst-case commitment fra aktive auktioner (leading +
 // proxies). Bruges af repayLoan + andre lån-paths så manageren ikke kan betale
@@ -46,7 +47,9 @@ let defaultSupabaseClientPromise;
 async function getDefaultSupabaseClient() {
   if (!defaultSupabaseClientPromise) {
     defaultSupabaseClientPromise = import("@supabase/supabase-js").then(({ createClient }) => (
-      createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+      createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
+        global: { fetch: createSupabaseFetchWithRetry() }, // #7917
+      })
     ));
   }
 

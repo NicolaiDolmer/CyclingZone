@@ -1121,6 +1121,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
           stageCompleted={activeStage <= stagesCompleted}
           saving={saving}
           teamHasSprintCaptain={teamHasSprintCaptain}
+          jerseyHunt7855={orders?.jerseyHunt7855 === true}
           renderRoleCell={renderRoleCell}
           rolePickerFor={(rider) => (openRoleRiderId === rider.rider_id && !rider.abandoned && !stageLocked
             ? <RolePicker t={t} riderName={rider.name} {...rolePickerScope} value={roleFor(rider)} disabled={saving} onPick={(role) => pickRole(rider.rider_id, role)} />

@@ -33,6 +33,7 @@ import { PLAYER_VISIBLE_BINARY_FLAG_KEYS, PLAYER_VISIBLE_FLAG_KEYS } from "../li
 import { DEVELOPMENT_CURVE_B_FLAG_KEY, readDevelopmentCurveBParams } from "../lib/developmentCurveBFlag.ts";
 import { isConditionModelV2Enabled, RACE_DATE_TRAINING_DAY_FLAG_KEY } from "../lib/conditionModelV2Flag.js";
 import { DAY_WORDS_7725_FLAG_KEY, evaluateDayWords7725Flag } from "../lib/dayWords7725Flag.js";
+import { FATIGUE_NOW_7801_FLAG_KEY, evaluateFatigueNow7801Flag } from "../lib/riderFatigueNowFlag.js";
 
 /**
  * { <noegle>: boolean } for hver noegle i allowlisten. En fejlet batch lukker
@@ -84,6 +85,21 @@ export async function readPlayerFeatureFlags(supabase, { isBetaTester = false, r
   // skema), og Hjaelp foelger motoren, saa teksten aldrig beskriver ord der ikke kommer.
   if (flags[DAY_WORDS_7725_FLAG_KEY] && !evaluateDayWords7725Flag(stages.get(DAY_WORDS_7725_FLAG_KEY))) {
     flags[DAY_WORDS_7725_FLAG_KEY] = false;
+  }
+  // #7801: motoren tager kun den eksakte streng "on", og live-tallet er kun et andet tal end
+  // åbningen under condition_model_v2. Hjaelp foelger samme kaede, saa teksten aldrig
+  // beskriver et tal, der ikke vises. En fejlet kaede er off.
+  if (flags[FATIGUE_NOW_7801_FLAG_KEY]) {
+    if (!evaluateFatigueNow7801Flag(stages.get(FATIGUE_NOW_7801_FLAG_KEY))) {
+      flags[FATIGUE_NOW_7801_FLAG_KEY] = false;
+    } else {
+      try {
+        if (!(await isConditionModelV2Enabled(supabase))) flags[FATIGUE_NOW_7801_FLAG_KEY] = false;
+      } catch (error) {
+        flags[FATIGUE_NOW_7801_FLAG_KEY] = false;
+        reportError(error, { tags: { route: "/feature-flags", read: "condition_model_v2" } });
+      }
+    }
   }
   return flags;
 }

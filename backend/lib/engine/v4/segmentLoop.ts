@@ -97,7 +97,7 @@ import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
 import { compareIds } from "../../compareIds.ts";
 import { queenStageGap7236On } from "./mechanics/queenStageGap7236.ts"; // #7236
 import { descentRegroupCap7644On, descentRegroupTempo6486, descentRegroupTuning7236 } from "./mechanics/descentRegroup6486.ts"; // #6486, #7236, #7644
-import { advanceStagePlan, advanceStagePlanAtFinish, createStagePlanRuntime, stagePlanCurrentTasks, stagePlanEntrants, stagePlanFinalEfforts, stagePlanLoadEfforts } from "../../stagePlanEngine.ts"; // #7003, #7380
+import { advanceStagePlan, advanceStagePlanAtFinish, createStagePlanRuntime, stagePlanCurrentTasks, stagePlanEntrants, stagePlanFinalEfforts, stagePlanHuntWindows7855, stagePlanLoadEfforts } from "../../stagePlanEngine.ts"; // #7003, #7380, #7855
 import { applyDayForm6649, dayForm6649Events, dayForm6649On } from "./mechanics/dayForm6649.ts"; // #6649
 import { breakawayCurve6912On } from "./mechanics/breakawayCurve6912.ts"; // #6912
 import { finalKmTerrainPiece7383, routeWithFinalKmBoundary7383 } from "./adapters/finalKmBoundary7383.ts"; // #7383
@@ -830,7 +830,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   for (const entrant of startlist) entrantsById[entrant.rider_id] = entrant;
   // #7003 (KUN s5_profiles_v3, slukket): etapeplanen langs ruten (lib/stagePlanEngine.ts). Uden plan: null, loopet uroert.
   const baseEntrantsById = entrantsById;
-  const stagePlan = isS5ProfilesV3OrLater(rulesRevision) ? createStagePlanRuntime(orders, route, baseEntrantsById, input.stage_plan_dropped_front_7635 === true ? { droppedFront7635: true } : {}) : null; // #7635 (slukket)
+  const stagePlan = isS5ProfilesV3OrLater(rulesRevision) ? createStagePlanRuntime(orders, route, baseEntrantsById, { ...(input.stage_plan_dropped_front_7635 === true ? { droppedFront7635: true } : {}), ...(input.jersey_hunt_7855 === true ? { jerseyHunt7855: true } : {}) }) : null; // #7635, #7855 (slukket)
 
   const rngForFn = boundRngFor(seed);
   // #4885: feltets reference-CP pr. terraen — fart-modellens nulpunkt. Regnet
@@ -1141,6 +1141,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       ...(breakawayCurve6912On(input) ? { breakawayCurve6912: true as const } : {}), // #6912
       ...(teamChase7730On(input) ? { teamChase7730: true as const } : {}), // #7730
       ...(stagePlan ? { stagePlanTasks: stagePlanCurrentTasks(stagePlan) } : {}), // #7380: runtimens opgave ved segmentets start
+      ...(stagePlan && stagePlanHuntWindows7855(stagePlan) ? { stagePlanHuntWindows7855: stagePlanHuntWindows7855(stagePlan)! } : {}), // #7855 (slukket = udeladt)
     };
     const acceptMovement = (result: {state: EngineState; events: TimelineEvent[]}) => {
       state = result.state;

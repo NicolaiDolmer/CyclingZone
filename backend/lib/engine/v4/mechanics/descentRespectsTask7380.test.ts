@@ -245,7 +245,7 @@ test("#7380 etapeplan gennem descentHook: runtimens laee-opgave spaerrer, ogsaa 
 
 // ── descentAttackBarredByTask7380: opgaven afgoer det ───────────────────────
 
-test("#7380: hver opgave for sig: laee/hjaelper/grupetto/koer i maal spaerrer, resten maa (uanset indsats)", () => {
+test("#7380: hver opgave for sig: laee/hjaelper/grupetto/koer i maal (og #7855 troejejagt) spaerrer, resten maa (uanset indsats)", () => {
   const allowed = new Set<StagePlanTask>(["breakaway", "follow_moves", "attack", "ride_for_result"]);
   for (const task of STAGE_PLAN_TASKS) {
     assert.equal(descentAttackBarredByTask7380({ effort: TASK_EFFORT[task], task }), !allowed.has(task), task);

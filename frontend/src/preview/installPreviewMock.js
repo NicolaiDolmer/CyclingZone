@@ -187,6 +187,12 @@ export function installPreviewMock() {
       // fetch mod sentinel-URL'en og fejler i preview.
       if (/\/auth\/v1\//.test(url)) return jsonResponse({ message: "ok" });
 
+      // #7855: med `?stagePlan=1` koerer preview-loebet paa den revision, hvor etapeplanen findes.
+      // Seedet har ingen revision, saa boardet ellers aldrig kan ses paa et startet loeb.
+      if (method === "GET" && stagePlanPreviewActive() && /\/rest\/v1\/races\?/.test(url) && /select=engine_rules_revision/.test(url)) {
+        return jsonResponse({ engine_rules_revision: "s5_profiles_v3", stages_completed: 2 });
+      }
+
       // #4997 · NPS-bundbaren. Gaten er "holdet har mindst NPS_MIN_RACE_DAYS
       // afsluttede løbsdage", læst som head+count på team_race_points_mv.
       // Det delte seed giver testholdet 2 løbsdage, så baren ville aldrig
