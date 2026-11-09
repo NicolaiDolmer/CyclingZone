@@ -6,6 +6,22 @@ export const PATCHES = [
       {
         "category": "improved",
         "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "A cleaner rider page",
+          "body": "The top of the rider page is easier to read. Marks are shorter with details on tap, and a rider for sale takes one line."
+        },
+        "da": {
+          "title": "En mere overskuelig rytterside",
+          "body": "Toppen af ryttersiden er nemmere at læse. Mærkerne er kortere med forklaring ved tryk, og en rytter til salg fylder én linje."
+        },
+        "refs": [
+          7951
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
         "rollout": "beta_to_live",
         "topic": "Riders",
         "en": {
