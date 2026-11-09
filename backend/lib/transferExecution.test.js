@@ -558,7 +558,7 @@ function matches(row, filters) {
   });
 }
 
-function makeSupabase(db, { claimTransfer = null, beforeRiderUpdate = null } = {}) {
+function makeSupabase(db, { claimTransfer = null, claimSwap = null, beforeRiderUpdate = null } = {}) {
   const finance = [];
   const seenIdempotencyKeys = new Set();
 
@@ -622,6 +622,9 @@ function makeSupabase(db, { claimTransfer = null, beforeRiderUpdate = null } = {
       }
       if (name === "auto_accept_claim_transfer" && claimTransfer) {
         return Promise.resolve({ data: claimTransfer(params), error: null });
+      }
+      if (name === "auto_accept_claim_swap" && claimSwap) {
+        return Promise.resolve({ data: claimSwap(params), error: null });
       }
       assert.equal(name, "increment_balance_with_audit");
       const key = params.p_finance_payload?.idempotency_key;
@@ -850,6 +853,85 @@ test("#7871: confirmTransferOffer efter en escrow-refusion flytter ikke rytteren
   assert.equal(supabase._finance.length, 0, "ingen betaler, ingen krediteres");
   assert.equal(db.teams.find((t) => t.id === "seller").balance, 500);
   assert.equal(db.teams.find((t) => t.id === "buyer").balance, 1000);
+});
+
+// #2176: en refunderet handel er annulleret, også med kontakten tændt: ingen claim.
+test("#2176: refunderet handel med auto_accept_enabled tændt springer claim over", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  db.app_config = [{ key: "auto_accept_enabled", value: "on" }];
+  db.transfer_offers.push({
+    id: "offer-1", rider_id: "rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
+    offer_amount: 200, counter_amount: null, status: "awaiting_confirmation",
+    buyer_confirmed: false, seller_confirmed: true,
+  });
+  db.sale_escrows = [{ deal_type: "transfer", deal_id: "offer-1", status: "refunded" }];
+  const supabase = makeSupabase(db, {
+    claimTransfer: () => { throw new Error("a refunded deal must not reach the claim"); },
+    beforeRiderUpdate: () => { throw new Error("a refunded deal must not move the rider"); },
+  });
+  const result = await confirmTransferOffer({ supabase, offerId: "offer-1", confirmingTeamId: "buyer", notifyTeamOwner: async () => {} });
+  assert.equal(result.code, "stale_rider_state");
+  assert.equal(db.riders.find((r) => r.id === "rider-1").team_id, "seller");
+  assert.equal(supabase._finance.length, 0);
+});
+
+function lockedSwapDb() {
+  const db = baseDb({ windowStatus: "open" });
+  db.app_config = [{ key: "auto_accept_enabled", value: "on" }];
+  db.swap_offers.push({
+    id: "swap-1", offered_rider_id: "rider-1", requested_rider_id: "buyer-rider-1",
+    proposing_team_id: "seller", receiving_team_id: "buyer", cash_adjustment: 100, counter_cash: null,
+    status: "awaiting_confirmation", proposing_confirmed: true, receiving_confirmed: false,
+  });
+  return db;
+}
+
+test("#2176: tændt flyttes begge ben af et bytte i ét låst kald, aldrig i den gamle sti", async () => {
+  const db = lockedSwapDb();
+  let claims = 0;
+  const supabase = makeSupabase(db, {
+    beforeRiderUpdate: () => { throw new Error("enabled swap must not fall through to the unlocked update"); },
+    claimSwap: (params) => {
+      claims++;
+      assert.equal(params.p_offered_rider_id, "rider-1");
+      assert.equal(params.p_requested_rider_id, "buyer-rider-1");
+      assert.equal(params.p_proposing_team_id, "seller");
+      assert.equal(params.p_receiving_team_id, "buyer");
+      assert.equal(params.p_defer_registration, false);
+      db.riders.find((r) => r.id === "rider-1").team_id = "buyer";
+      db.riders.find((r) => r.id === "buyer-rider-1").team_id = "seller";
+      return { status: "claimed", offered_rider_id: "rider-1", requested_rider_id: "buyer-rider-1" };
+    },
+  });
+  const result = await confirmSwapOffer({ supabase, swapId: "swap-1", confirmingTeamId: "buyer", notifyTeamOwner: async () => {} });
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.equal(claims, 1);
+  assert.equal(supabase._finance.length, 2);
+});
+
+test("#2176: en auktion der starter under byttet stopper det før betaling", async () => {
+  const db = lockedSwapDb();
+  const supabase = makeSupabase(db, {
+    beforeRiderUpdate: () => { throw new Error("enabled swap must not fall through to the unlocked update"); },
+    claimSwap: () => ({ status: "rider_on_auction" }),
+  });
+  const result = await confirmSwapOffer({ supabase, swapId: "swap-1", confirmingTeamId: "buyer", notifyTeamOwner: async () => {} });
+  assert.equal(result.ok, false);
+  assert.equal(result.code, "stale_offered_rider_state");
+  assert.equal(db.riders.find((r) => r.id === "rider-1").team_id, "seller");
+  assert.equal(supabase._finance.length, 0);
+  assert.equal(db.swap_offers[0].status, "withdrawn");
+});
+
+test("#2176: refunderet bytte med kontanter springer claim over, også tændt", async () => {
+  const db = lockedSwapDb();
+  db.sale_escrows = [{ deal_type: "swap", deal_id: "swap-1", status: "refunded" }];
+  const supabase = makeSupabase(db, {
+    claimSwap: () => { throw new Error("a refunded swap must not reach the claim"); },
+  });
+  const result = await confirmSwapOffer({ supabase, swapId: "swap-1", confirmingTeamId: "buyer", notifyTeamOwner: async () => {} });
+  assert.equal(result.code, "stale_offered_rider_state");
+  assert.equal(supabase._finance.length, 0);
 });
 
 // ── #3650: akademi-ryttere listes direkte på transfermarkedet (ejer-løfte i
