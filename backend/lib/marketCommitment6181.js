@@ -54,6 +54,18 @@ export function marketGateCode(error) {
   return code || null;
 }
 
+/** Context is produced by the accepted SQL bid while holding its auction lock. */
+export function readBidContext6181(data) {
+  const price = Number(data?.expectedPrice);
+  if (!data || !Number.isSafeInteger(price) || price < 0 || typeof data.placed !== 'boolean' ||
+      !(data.previousLeader === null || typeof data.previousLeader === 'string') ||
+      !(data.expectedLeader === null || typeof data.expectedLeader === 'string') ||
+      (data.placed && (!data.expectedLeader || price <= 0))) {
+    throw new Error('marketCommitment6181: invalid accepted-bid context');
+  }
+  return { previousLeader:data.previousLeader, expectedPrice:price, expectedLeader:data.expectedLeader, placed:data.placed };
+}
+
 // Disponibelt beloeb til fejlbeskeden: saldo minus forpligtelsen uden denne auktion.
 async function availableExcluding(supabase, teamId, auctionId) {
   const [teamRes, commitRes] = await Promise.all([

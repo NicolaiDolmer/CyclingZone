@@ -35,3 +35,15 @@ The follow-up uses the actual cascade, executable handlers, SQL transaction
 boundaries and a real PG17 lock barrier. Off-mode remains covered separately.
 Review mapping and detailed evidence are kept in the owner's private context;
 public PR communication contains aggregate status only.
+## Accepted-bid context and gated proxy continuation (9/11)
+
+Produce match context under the accepted bid's lock. Match only that exact
+price/leader snapshot through the service RPC, with money/new-seat validation
+before the transactional leader update and bid insert. Keep generic equality
+subject to the same-team rule. Preserve old RPC signatures with wrappers.
+
+Known gate rejections are loop outcomes: reload changed state, exclude a
+rejected challenger or defender, stop inactive auctions, and throw unknown
+errors. Defer gated cleanup/success effects until the write succeeds; condition
+proxy deletion on the observed cap. Prove both CAS fields with PG17 lock barriers
+and keep legacy off behavior covered independently.

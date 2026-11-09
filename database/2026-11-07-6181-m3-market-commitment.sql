@@ -39,7 +39,10 @@
 --      reject_late_auction_bid_trigger, saa et for sent bud stadig afvises med
 --      sin egen fejl foerst.
 --   8. Kontakten seedes 'off' (ON CONFLICT DO NOTHING).
---   9. set_auction_proxy_6181: loft og eventuelt aabningsbud i samme transaktion.
+--   9. place_auction_bid_6181 / set_auction_proxy_context_6181: accepteret bud
+--      og dets forgænger under samme laas. Den tidligere void-signatur bevares.
+--  10. match_auction_proxy_tie_6181: service-only proxy-match med forventet pris
+--      og foerer, valideret forpligtelse og atomisk foererskift/bud.
 --
 -- Fejlform: RAISE 'market_gate_6181:<kode>' med ERRCODE P0001. Koder:
 -- insufficient_available_balance, squad_full, price_changed.
@@ -67,11 +70,15 @@
 --             has_function_privilege('authenticated', p.oid, 'EXECUTE') AS auth
 --        FROM pg_proc p WHERE p.proname IN ('team_market_commitment','team_seat_commitment',
 --          'team_outgoing_auction_count','team_outgoing_auction_rider_ids','market_bid_issue_6181',
---          'market_commitment_6181_on','market_squad_max','set_auction_proxy_6181');
---      -- anon=false, auth=false for alle otte
+--          'market_commitment_6181_on','market_squad_max','set_auction_proxy_6181',
+--          'place_auction_bid_6181','set_auction_proxy_context_6181','match_auction_proxy_tie_6181');
+--      -- anon=false, auth=false for alle elleve
 --
 -- Rollback:
 --   DROP FUNCTION IF EXISTS public.set_auction_proxy_6181(uuid, uuid, bigint, integer, timestamptz);
+--   DROP FUNCTION IF EXISTS public.set_auction_proxy_context_6181(uuid, uuid, bigint, integer, timestamptz);
+--   DROP FUNCTION IF EXISTS public.place_auction_bid_6181(uuid, uuid, bigint, timestamptz);
+--   DROP FUNCTION IF EXISTS public.match_auction_proxy_tie_6181(uuid, uuid, bigint, uuid, timestamptz);
 --   DROP TRIGGER IF EXISTS trg_market_commitment_6181_bid ON public.auction_bids;
 --   DROP TRIGGER IF EXISTS trg_market_commitment_6181_start ON public.auctions;
 --   DROP TRIGGER IF EXISTS trg_market_commitment_6181_proxy ON public.auction_proxy_bids;
@@ -252,7 +259,7 @@ BEGIN
   -- En anden byder naaede foerst (laest under raekkelaasen): prisen falder aldrig.
   IF NEW.amount < a.current_price OR
      (NEW.amount = a.current_price AND a.current_bidder_id IS NOT NULL
-      AND a.current_bidder_id IS DISTINCT FROM NEW.team_id AND NOT coalesce(NEW.is_proxy, false)) THEN
+      AND a.current_bidder_id IS DISTINCT FROM NEW.team_id) THEN
     RAISE EXCEPTION 'market_gate_6181:price_changed' USING ERRCODE = 'P0001';
   END IF;
 
@@ -370,22 +377,53 @@ REVOKE ALL ON FUNCTION public.market_commitment_6181_on() FROM PUBLIC, anon, aut
 GRANT EXECUTE ON FUNCTION public.market_commitment_6181_on() TO service_role;
 REVOKE ALL ON FUNCTION public.market_squad_max() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.market_squad_max() TO service_role;
--- Gated proxy-program write and optional opening bid share one transaction.
-CREATE OR REPLACE FUNCTION public.set_auction_proxy_6181(
-  p_auction_id uuid, p_team_id uuid, p_max_amount bigint, p_opening_amount integer, p_bid_time timestamptz
-) RETURNS void
+-- Return the predecessor captured under the same row lock as the accepted bid.
+CREATE OR REPLACE FUNCTION public.place_auction_bid_6181(
+  p_auction_id uuid, p_team_id uuid, p_amount bigint, p_bid_time timestamptz
+) RETURNS jsonb
 LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, pg_catalog
+AS $$
+DECLARE a public.auctions%ROWTYPE;
+BEGIN
+  IF p_auction_id IS NULL OR p_team_id IS NULL OR p_amount IS NULL OR p_amount<=0 OR p_bid_time IS NULL THEN
+    RAISE EXCEPTION 'place_auction_bid_6181: invalid argument' USING ERRCODE='22023';
+  END IF;
+  IF NOT public.market_commitment_6181_on() THEN
+    RAISE EXCEPTION 'market_gate_6181:price_changed' USING ERRCODE='P0001';
+  END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended(p_team_id::text,0));
+  SELECT * INTO a FROM public.auctions WHERE id=p_auction_id FOR UPDATE;
+  IF NOT FOUND OR a.status IS NULL OR a.status NOT IN ('active','extended') THEN
+    RAISE EXCEPTION 'auction_not_active' USING ERRCODE='P0001';
+  END IF;
+  INSERT INTO public.auction_bids(auction_id,team_id,amount,bid_time,triggered_extension,is_proxy)
+    VALUES(p_auction_id,p_team_id,p_amount,p_bid_time,false,false);
+  RETURN jsonb_build_object('previousLeader',a.current_bidder_id,'expectedPrice',p_amount,'expectedLeader',p_team_id,'placed',true);
+END;
+$$;
+
+-- Proxy program and opening bid retain one transaction and its locked context.
+CREATE OR REPLACE FUNCTION public.set_auction_proxy_context_6181(
+  p_auction_id uuid, p_team_id uuid, p_max_amount bigint, p_opening_amount integer, p_bid_time timestamptz
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY INVOKER
 SET search_path = public, pg_catalog
 AS $$
 DECLARE
-  v_status text;
+  a public.auctions%ROWTYPE;
 BEGIN
   IF p_auction_id IS NULL OR p_team_id IS NULL OR p_max_amount IS NULL OR p_max_amount <= 0 OR p_bid_time IS NULL THEN
     RAISE EXCEPTION 'set_auction_proxy_6181: invalid argument' USING ERRCODE='22023';
   END IF;
+  IF NOT public.market_commitment_6181_on() THEN
+    RAISE EXCEPTION 'market_gate_6181:price_changed' USING ERRCODE='P0001';
+  END IF;
   PERFORM pg_advisory_xact_lock(hashtextextended(p_team_id::text,0));
-  SELECT status INTO v_status FROM public.auctions WHERE id=p_auction_id FOR UPDATE;
-  IF NOT FOUND OR v_status IS NULL OR v_status NOT IN ('active','extended') THEN
+  SELECT * INTO a FROM public.auctions WHERE id=p_auction_id FOR UPDATE;
+  IF NOT FOUND OR a.status IS NULL OR a.status NOT IN ('active','extended') THEN
     RAISE EXCEPTION 'auction_not_active' USING ERRCODE='P0001';
   END IF;
   INSERT INTO public.auction_proxy_bids(auction_id,team_id,max_amount)
@@ -395,8 +433,75 @@ BEGIN
     INSERT INTO public.auction_bids(auction_id,team_id,amount,bid_time,triggered_extension,is_proxy)
       VALUES(p_auction_id,p_team_id,p_opening_amount,p_bid_time,false,true);
   END IF;
+  RETURN jsonb_build_object('previousLeader',a.current_bidder_id,
+    'expectedPrice',coalesce(p_opening_amount,a.current_price),
+    'expectedLeader',CASE WHEN p_opening_amount IS NULL THEN a.current_bidder_id ELSE p_team_id END,
+    'placed',p_opening_amount IS NOT NULL);
 END;
 $$;
+
+-- Keep the original service RPC signature for existing callers.
+CREATE OR REPLACE FUNCTION public.set_auction_proxy_6181(
+  p_auction_id uuid, p_team_id uuid, p_max_amount bigint, p_opening_amount integer, p_bid_time timestamptz
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, pg_catalog
+AS $$
+BEGIN
+  PERFORM public.set_auction_proxy_context_6181(p_auction_id,p_team_id,p_max_amount,p_opening_amount,p_bid_time);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.match_auction_proxy_tie_6181(
+  p_auction_id uuid, p_team_id uuid, p_expected_price bigint, p_expected_leader_id uuid, p_bid_time timestamptz
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, pg_catalog
+AS $$
+DECLARE
+  a public.auctions%ROWTYPE;
+  v_cap bigint;
+  v_issue text;
+  v_rows integer;
+BEGIN
+  IF p_auction_id IS NULL OR p_team_id IS NULL OR p_expected_price IS NULL OR p_expected_price<=0
+     OR p_expected_leader_id IS NULL OR p_expected_leader_id=p_team_id OR p_bid_time IS NULL THEN
+    RAISE EXCEPTION 'match_auction_proxy_tie_6181: invalid argument' USING ERRCODE='22023';
+  END IF;
+  IF NOT public.market_commitment_6181_on() THEN
+    RAISE EXCEPTION 'market_gate_6181:price_changed' USING ERRCODE='P0001';
+  END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended(p_team_id::text,0));
+  SELECT * INTO a FROM public.auctions WHERE id=p_auction_id FOR UPDATE;
+  IF NOT FOUND OR a.status IS NULL OR a.status NOT IN ('active','extended') THEN
+    RAISE EXCEPTION 'auction_not_active' USING ERRCODE='P0001';
+  END IF;
+  SELECT max_amount INTO v_cap FROM public.auction_proxy_bids WHERE auction_id=p_auction_id AND team_id=p_team_id;
+  IF a.current_price IS DISTINCT FROM p_expected_price OR a.current_bidder_id IS DISTINCT FROM p_expected_leader_id
+     OR v_cap IS DISTINCT FROM p_expected_price THEN
+    RAISE EXCEPTION 'market_gate_6181:price_changed' USING ERRCODE='P0001';
+  END IF;
+  v_issue:=public.market_bid_issue_6181(p_team_id,p_auction_id,p_expected_price,NOT coalesce(a.is_youth,false));
+  IF v_issue IS NOT NULL THEN
+    RAISE EXCEPTION 'market_gate_6181:%',v_issue USING ERRCODE='P0001';
+  END IF;
+  UPDATE public.auctions SET current_bidder_id=p_team_id
+    WHERE id=p_auction_id AND status IN ('active','extended') AND current_price=p_expected_price
+      AND current_bidder_id IS NOT DISTINCT FROM p_expected_leader_id;
+  GET DIAGNOSTICS v_rows=ROW_COUNT;
+  IF v_rows<>1 THEN RAISE EXCEPTION 'market_gate_6181:price_changed' USING ERRCODE='P0001'; END IF;
+  INSERT INTO public.auction_bids(auction_id,team_id,amount,bid_time,triggered_extension,is_proxy)
+    VALUES(p_auction_id,p_team_id,p_expected_price,p_bid_time,false,true);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.place_auction_bid_6181(uuid,uuid,bigint,timestamptz) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.place_auction_bid_6181(uuid,uuid,bigint,timestamptz) TO service_role;
+REVOKE ALL ON FUNCTION public.set_auction_proxy_context_6181(uuid,uuid,bigint,integer,timestamptz) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.set_auction_proxy_context_6181(uuid,uuid,bigint,integer,timestamptz) TO service_role;
+REVOKE ALL ON FUNCTION public.match_auction_proxy_tie_6181(uuid,uuid,bigint,uuid,timestamptz) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.match_auction_proxy_tie_6181(uuid,uuid,bigint,uuid,timestamptz) TO service_role;
 REVOKE ALL ON FUNCTION public.set_auction_proxy_6181(uuid, uuid, bigint, integer, timestamptz) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.set_auction_proxy_6181(uuid, uuid, bigint, integer, timestamptz) TO service_role;
 

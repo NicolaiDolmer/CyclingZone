@@ -8,6 +8,8 @@ import { getSquadRiskViolation } from './marketUtils.js';
 import { computeReleaseBuyoutFee } from './contractSeed.js';
 import { getParkedRiderReleaseIssue } from './parkedRiderGuard6181.js';
 import { isLateBidTriggerError } from './auctionEngine.js';
+import { buildKeyedNotification } from './notificationKeys.js';
+import * as transferNotif from './transferNotifications.js';
 
 // Execute the registered production handlers, with the real M3 helpers and a
 // database boundary double. SQL transaction/concurrency is tested separately.
@@ -22,7 +24,7 @@ const AUCTION = '00000000-0000-0000-0000-000000000011';
 const RIDER = '00000000-0000-0000-0000-000000000021';
 const moneyError = { code: 'P0001', message: 'market_gate_6181:insufficient_available_balance' };
 
-function fixture({ flag = 'off', flagError = false, proxyError = null, bidError = null, startError = null, futureCount = 10, outgoing = 0, afterBidInsert = null } = {}) {
+function fixture({ flag = 'off', flagError = false, proxyError = null, bidError = null, startError = null, futureCount = 10, outgoing = 0, afterBidInsert = null, lockedPreviousLeader = undefined } = {}) {
   const auction = { id: AUCTION, rider_id: RIDER, current_price: 100, current_bidder_id: null,
     status: 'active', calculated_end: '2026-11-08T18:00:00Z', seller_team_id: 'other', is_youth: false,
     rider: { id: RIDER, firstname: 'Test', lastname: 'Rider', team_id: null } };
@@ -64,7 +66,7 @@ function fixture({ flag = 'off', flagError = false, proxyError = null, bidError 
           return { data:[], error:null };
         }
         if (table==='app_config') return { data: flagError ? null : {value:flag}, error:flagError ? {message:'flag unavailable'} : null };
-        if (table==='auctions') return { data:single ? (filters.some(f=>f[0]==='rider_id') ? null : auction) : [], count:0,error:null };
+        if (table==='auctions') return { data:single ? (filters.some(f=>f[0]==='rider_id') ? null : structuredClone(auction)) : [], count:0,error:null };
         if (table==='teams') return {data:single ? teamState : [teamState],error:null};
         if (table==='riders') return {data:single ? rider : [],error:null};
         if (table==='seasons') return {data:{id:'season',number:5},error:null};
@@ -74,15 +76,26 @@ function fixture({ flag = 'off', flagError = false, proxyError = null, bidError 
       return query;
     },
     async rpc(name,args) {
-      if(name==='set_auction_proxy_6181') {
+      if(name==='place_auction_bid_6181') {
+        if(bidError)return {data:null,error:bidError};
+        const previousLeader=lockedPreviousLeader===undefined?auction.current_bidder_id:lockedPreviousLeader;
+        bids.push({auction_id:args.p_auction_id,team_id:args.p_team_id,amount:args.p_amount,is_proxy:false});
+        Object.assign(auction,{current_price:args.p_amount,current_bidder_id:args.p_team_id});
+        if(afterBidInsert)Object.assign(auction,afterBidInsert);
+        return {data:{previousLeader,expectedPrice:args.p_amount,expectedLeader:args.p_team_id,placed:true},error:null};
+      }
+      if(name==='set_auction_proxy_6181' || name==='set_auction_proxy_context_6181') {
         if(proxyError || (args.p_opening_amount!==null && bidError))return {data:null,error:proxyError??bidError};
+        const previousLeader=lockedPreviousLeader===undefined?auction.current_bidder_id:lockedPreviousLeader;
+        const expectedPrice=args.p_opening_amount??auction.current_price;
+        const expectedLeader=args.p_opening_amount===null?previousLeader:args.p_team_id;
         proxies.push({auction_id:args.p_auction_id,team_id:args.p_team_id,max_amount:args.p_max_amount});
         if(args.p_opening_amount!==null){
           bids.push({auction_id:args.p_auction_id,team_id:args.p_team_id,amount:args.p_opening_amount,is_proxy:true});
           Object.assign(auction,{current_price:args.p_opening_amount,current_bidder_id:args.p_team_id});
           if(afterBidInsert)Object.assign(auction,afterBidInsert);
         }
-        return {data:null,error:null};
+        return {data:name==='set_auction_proxy_6181'?null:{previousLeader,expectedPrice,expectedLeader,placed:args.p_opening_amount!==null},error:null};
       }
       if (name==='team_market_commitment') return {data:0,error:null};
       if (name==='team_outgoing_auction_rider_ids') return {data:Array.from({length:outgoing},(_,i)=>`outgoing-${i}`),error:null};
@@ -92,7 +105,7 @@ function fixture({ flag = 'off', flagError = false, proxyError = null, bidError 
   };
   const cascade = [];
   const context = {
-    ...rules,...market,Date:FixedDate,console,isLateBidTriggerError,
+    ...rules,...market,Date:FixedDate,console,isLateBidTriggerError,buildKeyedNotification,
     supabase:client, requireAuth(){},bidLimiter(){},marketWriteLimiter(){},
     assertMarketOpen:async()=>true,assertTeamNotTransferFrozen:()=>true,
     isAuctionExpired:end=>Date.parse(end)<=NOW,
@@ -100,7 +113,7 @@ function fixture({ flag = 'off', flagError = false, proxyError = null, bidError 
     getTeamMarketState:async()=>structuredClone(teamState),
     assertSigningAllowed:async()=>null, getAuctionConfig:async()=>({}),
     recordIdentityEvent(){}, awardXP:async()=>{}, notifyTeamOwnerBuilt:async()=>{},notifyTeamOwner:async()=>{},
-    notifyOutbid:async()=>{},transferNotif:{},
+    notifyOutbid:async()=>{},transferNotif,
     applyLeaderShiftExtension:async()=>({extensionApplied:false,newEnd:null}),
     getActiveSeasonNumber:async()=>5,fetchSeasonTransitionBoundary:async()=>null,
     calculateRiderMarketValue:()=>100,calculateAuctionEnd:()=>new FixedDate('2026-11-09T15:00:00Z'),
@@ -138,6 +151,22 @@ for (const flag of ['off','on']) {
     assert.equal(f.bids.length,1);assert.equal(f.auction.current_bidder_id,TEAM);
     assert.equal(f.cascade[0].canAffordAutoBidFn===market.canAffordAutoBid6181,flag==='on');
     assert.equal(Boolean(f.cascade[0].databaseOwnsLeaderSync),flag==='on');
+  });
+}
+
+for(const [method,path,body] of [
+  ['post','/auctions/:id/bid',{amount:150}],
+  ['patch','/auctions/:id/proxy',{max_amount:200}],
+]){
+  test(`${method} ${path} uses the predecessor captured by the accepted SQL bid`,async()=>{
+    const f=fixture({flag:'on',lockedPreviousLeader:'locked-predecessor'});
+    f.auction.current_bidder_id='earlier-read';
+    const out=await route(method,path,f)(body);
+    assert.equal(out.status,200);
+    assert.equal(f.cascade[0].previousLeader,'locked-predecessor');
+    assert.equal(f.cascade[0].tieBreakContext.previousLeader,'locked-predecessor');
+    assert.equal(f.cascade[0].tieBreakContext.expectedLeader,TEAM);
+    assert.equal(f.cascade[0].tieBreakContext.placed,true);
   });
 }
 
