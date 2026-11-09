@@ -24,7 +24,16 @@ import { validateDevelopmentCurveBParams, type DevelopmentCurveBParams } from ".
 import { validateDevelopmentXpParams, type DevelopmentXpParams } from "./developmentXp.ts";
 import { validateParams as validatePotentialEstimateParams } from "./potentialEstimate.js";
 import { validateRaceDayRoleYieldParams } from "./raceDayRoleYieldParams.js";
+import { validateTalentMarksParams } from "./talentMarksParams.js";
 import { parseWeeklyEngineDriftThresholds, type WeeklyEngineDriftThresholds } from "./weeklyEngineDriftThresholds.ts";
+
+export interface TalentMarksParams {
+  topTalentShare: number;
+  nextGenShare: number;
+  windowDays: number;
+  recentDays: number;
+  recentWeight: number;
+}
 
 export const PRIVATE_CONFIG_TABLE = "private_config";
 export const PRIVATE_CONFIG_CACHE_MS = 60_000;
@@ -72,6 +81,15 @@ export const PRIVATE_CONFIG_KEYS = Object.freeze({
       return params;
     },
   }) as PrivateConfigKeySpec<DevelopmentXpParams>,
+  talent_marks_params: Object.freeze({
+    description: "Talentmærkernes tærskler og vægte (#7879). Læses af talentMarks7879.js.",
+    private: true,
+    parse: (raw: unknown): TalentMarksParams => {
+      const params = validateTalentMarksParams(raw);
+      if (!params) throw new Error("opfylder ikke validateTalentMarksParams");
+      return params;
+    },
+  }) as PrivateConfigKeySpec<TalentMarksParams>,
   potential_estimate_params: Object.freeze({
     description: "Potentiale-skønnets kalibrering (#6110). Læses af potentialEstimateWriter.js.",
     private: true,
