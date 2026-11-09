@@ -769,6 +769,8 @@ test("squadRestoreImage: kontrakten kommer kun med, naar handlen skriver en, og 
   assert.equal(squadRestoreImage(full, {}), null);
   assert.deepEqual(squadRestoreImage({ ...full, salary: null, contract_end_season: null }, {}), { salary: null, contract_length: null, contract_end_season: null });
   assert.equal(squadRestoreImage({ is_academy: false, squad: "senior" }, {}), null, "uden salary i SELECT'en er intet kendt");
+  assert.deepEqual(squadRestoreImage({ ...full, contract_end_season: null }, {}), { salary: 10, contract_end_season: null }, "ukendt laengde roeres ikke (Codex P1)");
+  assert.deepEqual(squadRestoreImage({ ...full, contract_end_season: null, contract_length: 3 }, {}), { salary: 10, contract_end_season: null, contract_length: 3 });
   assert.deepEqual(squadRestoreImage({ ...full, is_academy: true, squad: "u23" }, seniorSquadPatch()), { is_academy: true, squad: "u23" });
 });
 

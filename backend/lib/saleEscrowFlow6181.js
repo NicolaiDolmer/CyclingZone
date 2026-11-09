@@ -93,7 +93,13 @@ export function squadRestoreImage(rider, patch) {
   if (!squadWritten && !contractWritten) return null;
   return {
     ...(squadWritten ? { is_academy: rider?.is_academy === true, ...(typeof rider?.squad === "string" ? { squad: rider.squad } : {}) } : {}),
-    ...(contractWritten ? { salary: rider?.salary ?? null, contract_length: rider?.contract_length ?? null, contract_end_season: rider?.contract_end_season ?? null } : {}),
+    // contract_length er ikke i handlernes SELECT. Uden loen findes ingen kontrakt, saa
+    // null er det rigtige foer-billede; med loen vides laengden ikke og roeres ikke.
+    ...(contractWritten ? {
+      salary: rider?.salary ?? null,
+      contract_end_season: rider?.contract_end_season ?? null,
+      ...("contract_length" in rider ? { contract_length: rider.contract_length ?? null } : rider.salary == null ? { contract_length: null } : {}),
+    } : {}),
   };
 }
 
