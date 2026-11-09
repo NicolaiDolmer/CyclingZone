@@ -1845,7 +1845,7 @@ export default function RiderStatsPage() {
     statusBanner = {
       kind: "auction",
       endsIn: diff > 0 ? (h > 0 ? `${h}t ${m}m` : `${m}m`) : "—",
-      highBid: formatNumber(activeAuction.current_price),
+      highBid: formatCz(activeAuction.current_price),
     };
   } else if (transferListing) {
     statusBanner = {

@@ -307,13 +307,13 @@ export function ChampionJerseyList({ titles }: { titles: readonly ChampionTitleR
   return (
     <>
       {items.map(({ row, text }) => (
-        <Tooltip key={`${row.title}-${row.scope}`} label={`${text.name}: ${text.full}`} id={undefined}>
+        <Tooltip key={`${row.title}-${row.scope}`} label={`${text.name}: ${text.full}`} dismissOnEscape id={undefined}>
           <button
             type="button"
             data-testid={`champion-jersey-profile-${row.title}`}
             // Safari fokuserer ikke en knap ved tryk, og fokus er det, der åbner tooltippen.
             onClick={(e) => e.currentTarget.focus()}
-            className="inline-flex min-h-11 items-center gap-2 rounded-cz text-sm font-semibold text-cz-1 focus-visible:outline-2 focus-visible:outline-cz-accent sm:min-h-6"
+            className="inline-flex min-h-11 items-center gap-2 rounded-cz text-sm font-semibold text-cz-1 focus-visible:outline-2 focus-visible:outline-cz-accent [@media(min-width:640px)_and_(pointer:fine)]:min-h-6"
           >
             <JerseyIcon row={row} size={24} />
             {text.label}

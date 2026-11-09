@@ -230,13 +230,13 @@ export function TalentMark({ mark, variant = "cell" }: TalentMarkProps) {
 
   if (variant === "profile") {
     return (
-      <Tooltip label={`${name}: ${text}`} id={undefined}>
+      <Tooltip label={`${name}: ${text}`} dismissOnEscape id={undefined}>
         <button
           type="button"
           data-testid={`talent-mark-profile-${mark}`}
           // Safari fokuserer ikke en knap ved tryk, og fokus er det, der åbner tooltippen.
           onClick={(e) => e.currentTarget.focus()}
-          className="inline-flex min-h-11 items-center gap-2 rounded-cz text-sm font-semibold text-cz-1 focus-visible:outline-2 focus-visible:outline-cz-accent sm:min-h-6"
+          className="inline-flex min-h-11 items-center gap-2 rounded-cz text-sm font-semibold text-cz-1 focus-visible:outline-2 focus-visible:outline-cz-accent [@media(min-width:640px)_and_(pointer:fine)]:min-h-6"
         >
           <Icon size={24} />
           {name}

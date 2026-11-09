@@ -46,41 +46,29 @@ import { AlertTriangleIcon, CategoryTag, HeroStats, StarIcon, ChevronRightIcon, 
 // Division-chip — ENESTE rå-hex-undtagelse (spec): brand-uafhængig divisions-blå.
 const DIVISION_CHIP = "rgb(96 165 250)";
 
-// Status-banner (betinget). `banner` = { kind, ...data } fra parent. Gold-tonet for
-// auktion. #6934: kontrakt-udløb og akademi har ikke længere bjælke
-// (kontrakt-feltet og U23/Junior-mærket i chip-rækken bærer dem). #7951: "listed"
-// er heller ikke en bjælke; salget står ved handlingen (ForSaleStatus).
-//
-// #2748: "finalSeason" er DEFINITIVT (motoren har allerede besluttet pensionen,
-// bare ikke anvendt den endnu), til forskel fra retirementRiskBadgeKey-badget
-// (RiderBadges, se navnetagget ovenfor) der kun viser SANDSYNLIGHED. Den får
-// derfor sin egen visning — eyebrow-titel + brødtekst, guld venstre-kant, samme
-// mønster som RiderDevelopmentTab.jsx's ReadingCard — i stedet for den delte
-// TONES/tekst-linje resten af banner-kinds bruger.
+/** @typedef {{ top: number, left: number, maxHeight?: number }} ReputationPosition */
+/** @typedef {{ kind: string, price?: string, valueDelta?: ReturnType<typeof import("../../../lib/marketValues.js").computeBidValueDelta> }} HeroBanner */
+
+// The definitive retirement warning remains next to the actions. Market state
+// belongs to ForSaleStatus or the existing auction panel, without a second banner.
 function StatusBanner({ banner }) {
   const { t } = useTranslation("rider");
   if (!banner) return null;
 
   if (banner.kind === "finalSeason") {
     return (
-      <div className="mt-4 bg-cz-card border border-cz-border border-l-2 border-l-cz-accent rounded-cz py-[15px] px-[17px]">
-        <span className="font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-accent-t">
+      <div className="w-full text-sm text-cz-2">
+        <span className="font-data font-semibold text-cz-1">
           {t("profile.banner.finalSeasonTitle")}
         </span>
-        <p className="mt-[7px] mb-0 text-[12.5px] text-cz-2 leading-[1.55]">
+        <p className="mt-1 text-sm text-cz-2">
           {t("profile.banner.finalSeason", { season: banner.season })}
         </p>
       </div>
     );
   }
 
-  if (banner.kind !== "auction") return null;
-
-  return (
-    <div className="mt-4 flex items-center gap-2 rounded-cz border border-cz-accent/30 bg-cz-accent/10 px-3.5 py-2.5 text-sm tabular-nums text-cz-accent-t">
-      <span>{t("profile.banner.auction", { endsIn: banner.endsIn, highBid: banner.highBid })}</span>
-    </div>
-  );
+  return null;
 }
 
 // #7951: salgsstatus ved købshandlingen, aldrig en bjælke i toppen (T3). #3490:
@@ -105,7 +93,7 @@ function ForSaleStatus({ price, valueDelta }) {
 
 function ReputationEventList({ events = [], open, onClose, dialogRef, position }) {
   const { t } = useTranslation("rider");
-  const closeButtonRef = useRef(null);
+  const closeButtonRef = useRef(/** @type {HTMLButtonElement | null} */ (null));
   const focusSetRef = useRef(false);
   const rows = Array.isArray(events) ? events : [];
   const desktop = typeof window !== "undefined" && window.innerWidth >= 640;
@@ -178,8 +166,8 @@ export default function RiderProfileHero({
   valueLabel,                     // fuldt beløb med CZ$, fx "4.366 CZ$"
   salaryText,                     // præ-formateret løn, fx "293 CZ$"
   isAiTeam = false,
-  pendingTeam = null,             // kommende hold (handel til næste sæson) | null
-  banner = null,                  // { kind, ...data }
+  pendingTeam = /** @type {{ id: string, name: string } | null} */ (null),
+  banner = /** @type {HeroBanner | null} */ (null),
   scouting,
   onWatchlist = false,
   onToggleWatchlist,
@@ -189,9 +177,9 @@ export default function RiderProfileHero({
 }) {
   const { t } = useTranslation("rider");
   const [reputationOpen, setReputationOpen] = useState(false);
-  const [reputationPosition, setReputationPosition] = useState(null);
-  const reputationTriggerRef = useRef(null);
-  const reputationDetailsRef = useRef(null);
+  const [reputationPosition, setReputationPosition] = useState(/** @type {ReputationPosition | null} */ (null));
+  const reputationTriggerRef = useRef(/** @type {HTMLButtonElement | null} */ (null));
+  const reputationDetailsRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const reputationWasOpenRef = useRef(false);
   useEffect(() => {
     if (reputationOpen) {
@@ -251,7 +239,7 @@ export default function RiderProfileHero({
       ? belowTop
       : Math.max(margin, anchor.top - panelHeight - gap);
     const maxHeight = Math.max(160, window.innerHeight - top - margin);
-    setReputationPosition((current) => current && current.top === top && current.maxHeight === maxHeight
+    setReputationPosition((current) => !current || (current.top === top && current.maxHeight === maxHeight)
       ? current
       : { ...current, top, maxHeight });
   }, [reputationOpen, reputationPosition]);
@@ -426,7 +414,6 @@ export default function RiderProfileHero({
         </div>
       </div>
 
-      <StatusBanner banner={banner} />
 
       {/* Stat-række: T3's HeroStats. To kolonner på mobil (seks tal = tre rækker, ingen
           klippede beløb), og fra sm brydes rækken hellere end at scrolle inde i kortet.
@@ -501,10 +488,11 @@ export default function RiderProfileHero({
       />
 
       {/* Action-række: injiceres af parent. #7951: salget står til højre for knapperne. */}
-      {actions && (
+      {(actions || banner?.kind === "finalSeason") && (
         <div className="mt-5 flex flex-wrap items-start gap-x-6 gap-y-3 border-t border-cz-border pt-5">
-          <div className="min-w-0 flex-1 basis-64">{actions}</div>
+          {actions && <div className="min-w-0 flex-1 basis-64">{actions}</div>}
           {banner?.kind === "listed" && <ForSaleStatus price={banner.price} valueDelta={banner.valueDelta} />}
+          <StatusBanner banner={banner} />
         </div>
       )}
     </>
