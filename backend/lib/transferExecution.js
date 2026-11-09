@@ -11,6 +11,7 @@ import {
   getTeamMarketState,
 } from "./marketUtils.js";
 import { fetchAtRiskCount } from "./squadRiskGuard.js";
+import { applyTransferMarketCommitment6181 } from "./marketCommitment6181.js";
 import { shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.ts";
 import { buildRiderValueSnapshot, updateDealWithValueSnapshot } from "./dealValueSnapshot.js";
@@ -480,6 +481,8 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   sellerState.at_risk_count = await fetchAtRiskCount(supabase, offer.seller_team_id, activeSeasonNumber, {
     excludeRiderIds: [offer.rider_id],
   });
+  // #6181 PR 5: taendt taeller koeberens foerende auktioner som pladser og saelgers ryttere paa auktion som udgaaende.
+  await applyTransferMarketCommitment6181(supabase, { buyerState, sellerState, riderId: offer.rider_id, seasonNumber: activeSeasonNumber });
 
   // #1748 (a) TOCTOU-guard: hvis rytteren er kommet på en aktiv auktion EFTER
   // tilbuddet blev oprettet (oprettelses-gaten i api.js fanger det ikke), må

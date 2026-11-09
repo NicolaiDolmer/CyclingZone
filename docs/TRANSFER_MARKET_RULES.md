@@ -500,6 +500,67 @@ med 600K-loft kun accepteres hvis manageren også har råd til 600K.
 Målt 30/8: højeste enkelte proxy-loft i basen er **932.843 CZ$**; 80 hold har på et
 tidspunkt sat mindst ét autobud.
 
+### 8.1 Atomisk bud-gate bag `market_commitment_6181` (#6181 PR 5, #7872)
+
+Kontakten seedes **off** af `database/2026-11-07-6181-m3-market-commitment.sql`.
+Off = alt ovenfor gælder uændret (tjekket i JS, så skrevet i flere kald).
+  Kun `on` (eller `true`) tænder; `beta` er off her.
+  Et vellykket opslag uden en række er også off. Fejler selve opslaget, er tilstanden
+  ukendt: operationen stopper før en markedsmutation i stedet for at vælge den gamle
+  sti. Bud og PATCH proxy læser derfor kontakten før den første skrivning.
+
+  Et gennemført manuelt bud er stadig en succes, hvis det valgfrie medsendte autobud
+  afvises af M3. Svaret er HTTP 200 med `bid_placed: true` og en `proxy_rejected`-warning
+  med den eksisterende fejlkode. Den delte frontend-formatter viser den eksisterende
+  lokaliserede fejl som advarsel; den rapporterer ikke det gennemførte bud som fejlet.
+
+Tændt:
+- **Bud, autobud og startbud gates i databasen** under holdlåsen (samme nøgle som
+  `increment_balance_with_audit`): triggere på `auction_bids` (bud og proxy-cascade),
+  `auctions` (startbyder ved POST /auctions) og `auction_proxy_bids` (nyt/hævet loft).
+  Penge = samme worst case-regel som tabellen ovenfor. Et bud tager føringen i samme
+  transaktion, og prisen kan ikke falde. Samtidige bud fra ét hold kan derfor ikke
+  overbooke.
+- **Budkontekst:** `place_auction_bid_6181` og `set_auction_proxy_context_6181` returnerer
+  forgænger, accepteret pris og fører fra selve skrivningen under rækkelåsen.
+  Den gatede cascade bruger denne kontekst; en tidligere JS-læsning giver ingen tie-ret.
+  Et berettiget match afsluttes i samme transaktion som det accepterede bud/åbningsbud,
+  før resultatet publiceres. Ikke-stigende gentagelser afvises under låsen.
+  Kvitteringen angiver afsluttet match eller kendt afvisning; JS gentager ikke afgørelsen.
+- **Proxy-oprettelse:** `set_auction_proxy_context_6181` gemmer loft og eventuelt åbningsbud i
+  samme transaktion. `set_auction_proxy_6181` bevarer den eksisterende void-signatur som wrapper.
+  Fejl bevarer den foregående proxy-tilstand.
+  Den gatede cascade bruger databasens føreropdatering; legacy-stien synkroniserer fortsat i JS.
+- **Budgrænser:** første bud uden eksisterende fører kan ramme startprisen. Almindelig
+  lighed med en eksisterende føring kræver samme førende hold, også for proxy-bud.
+  Den særskilte #1091-match bruger `match_auction_proxy_tie_6181`: accepteret budkontekst,
+  præcist proxy-loft samt CAS på forventet pris og fører under rækkelåsen. Penge og den
+  nye plads kontrolleres før førerskiftet; skift og proxy-bud er én transaktion.
+  Gyldig auktionsstatus kontrolleres under rækkelåsen; efterfølgende sync gælder kun aktive/forlængede auktioner.
+  `try_auction_proxy_tie_6181` tager en eventuel ekstra holdlås uden at vente.
+  Optaget lås giver rollback/retry af accepten. Kendt penge-/pladsafvisning af selve
+  match-delen bevarer det accepterede bud; andre fejl ruller hele operationen tilbage.
+- **Cascade-afvisninger:** ændret pris/fører genlæses før næste forsøg. En penge-/pladsafvist
+  proxy udelukkes i denne kørsel, også når den forsvarer føringen; øvrige gyldige bud fortsætter.
+  Inaktiv/udløbet auktion stopper forløbet, ukendte DB-fejl kastes videre. Afvist skrivning
+  giver ingen match-/succesbesked. De nye RPC'er er service-only; off-stien er uændret.
+- **Plads:** fremtidig senior-trup (`future_count`) + førende auktioner + 1 må ikke
+  overstige loftet. Et forsvarsbud (holdet fører allerede) blokeres aldrig på plads.
+  Et autobud uden føring optager ingen plads (ejer-spørgsmål 7 er ubesvaret).
+- **Undtagelse, ungdomsauktioner:** pladsen tjekkes kun i ruten (akademi-loftet
+  afhænger af alder); pengene gates altid.
+- **POST /auctions:** startbyderen skal have penge (worst case, også autobud uden
+  føring) og plads, ikke kun en advarsel.
+- **Transfer-bekræftelse** tæller købers førende auktioner som pladser.
+- **Sælgers gulv:** holdets egne ryttere på aktiv auktion tæller som udgående
+  (POST /auctions på egen rytter, frigivelse, transfer-bekræftelse) og udelades af
+  risiko-tællingen, så de ikke tælles to gange.
+- Fejl bruger de eksisterende fejlkoder (`insufficient_balance_after_bids`,
+  `insufficient_balance_after_proxy`, `start_bid_exceeds_balance`, `squad_full_bid`,
+  409 `price_changed`).
+- Andre udgifter (køb, gebyrer) tjekker stadig i JS før låsen; finalize-gaten står
+  som sidste værn.
+
 ---
 
 ## 9. Trup-lofter
