@@ -533,6 +533,10 @@
     {
       "issue": 7943,
       "why": "Opfoelgning paa #7922, ejer-go 9/11 (#7911)"
+    },
+    {
+      "issue": 7951,
+      "why": "Rytterside ryddes op, ejer-go og billede 9/11 (#7911)"
     }
   ],
   "brandList": [
