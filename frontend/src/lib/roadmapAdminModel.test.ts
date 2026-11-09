@@ -5,10 +5,12 @@ import {
   issueStatusPatch, ownOrder, movePatches, ideaPool, visibleIdeaCount, mergeItemRows,
   latestUpdateByIssue, validateTitles, fmtScore, ADMIN_TABS, HORIZONS, HORIZON_LABELS, DEFAULT_SORT, isAdminTab,
   tabRows, filterItems, filterIssueRows, sortRows, nextSort, tabCounts, dontKnowTotal,
+  parseVotePayload, voterDivisions, filterVotes, itemPoints, categoryPoints, plottable, chartRows, categoryOf,
+  mergeCategories, bubbleRadius, coincidentIndex, votesForItems, distinctVoters, CHART_SCOPES, SCORE_MIN, SCORE_MAX, UNKNOWN_DIVISION,
 } from "./roadmapAdminModel.ts";
 
 const row = (over = {}) => ({ item_id: "a", status: "planned", title_en: "A", title_da: "A", votes: 10,
-  avg_idea: 5, avg_importance: 4, steering_score: 14, sort_order: 10, horizon: "next", sd_importance: 1, ...over });
+  avg_idea: 5, avg_importance: 4, steering_score: 14, sort_order: 10, horizon: "next_week", sd_importance: 1, ...over });
 
 test("Ved ikke (#7788): Stemmer-fanen viser punktet, totalen lægges sammen, og kolonnen kan sorteres", () => {
   const rows = [
@@ -222,4 +224,127 @@ test("mergeItemRows tager datoerne med fra roadmap_items", () => {
     [{ id: "a", flag_key: null, beta_since: null, beta_soon: false, live_soon: false, shipped_at: "2026-10-09T00:00:00Z" }]);
   assert.equal(m[0].shipped_at, "2026-10-09T00:00:00Z");
   assert.equal(m[0].created_at, null);
+});
+
+// ── Grafen (#7789) ───────────────────────────────────────────────────────────
+const area = (e: string) => ({ races: "Løb", training: "Træning" } as Record<string, string>)[e] ?? e;
+// Tre stemmere: 0 = div 1 aktiv, 1 = div 2 inaktiv, 2 = uden hold (ukendt) aktiv.
+const payload = {
+  voters: [[1, true], [2, false], [null, true]],
+  votes: [
+    ["a", 0, 6, 5], ["a", 1, 2, 1], ["a", 2, null, null],
+    ["b", 0, 4, null], ["b", 2, 5, 3],
+  ],
+};
+
+test("parseVotePayload godtager RPC-formen og afviser alt andet", () => {
+  const p = parseVotePayload(payload);
+  assert.ok(p);
+  assert.equal(p.votes.length, 5);
+  for (const bad of [null, [], {}, { voters: [], votes: {} }, { voters: [[1, "ja"]], votes: [] },
+    { voters: [[1, true]], votes: [["a", 3, 4, 4]] }, { voters: [[1, true]], votes: [["a", 0, "4", 4]] }]) {
+    assert.equal(parseVotePayload(bad), null, JSON.stringify(bad));
+  }
+});
+
+test("voterDivisions sorterer tal og lægger ukendt sidst", () => {
+  assert.deepEqual(voterDivisions(parseVotePayload(payload)), ["1", "2", UNKNOWN_DIVISION]);
+  assert.deepEqual(voterDivisions(null), []);
+});
+
+test("filterVotes: aktive managere og division, hver for sig og sammen", () => {
+  const p = parseVotePayload(payload)!;
+  assert.equal(filterVotes(p, {}).length, 5);
+  assert.deepEqual(filterVotes(p, { activeOnly: true }).map((v) => v[1]), [0, 2, 0, 2]);
+  assert.deepEqual(filterVotes(p, { division: "2" }).map((v) => v[1]), [1]);
+  assert.deepEqual(filterVotes(p, { division: UNKNOWN_DIVISION }).map((v) => v[1]), [2, 2]);
+  assert.equal(filterVotes(p, { activeOnly: true, division: "2" }).length, 0);
+});
+
+test("itemPoints regner snit, stemmere, Ved ikke og uenighed på de filtrerede stemmer", () => {
+  const rows = [row({ item_id: "a", engine: "races" }), row({ item_id: "b", engine: "training", category: "Træningsuge" }),
+    row({ item_id: "c", engine: "races" })];
+  const pts = itemPoints(rows, parseVotePayload(payload)!.votes, area);
+  const a = pts.find((p) => p.key === "a")!;
+  assert.deepEqual([a.x, a.y, a.voters, a.dontKnow], [3, 4, 2, 1]);
+  assert.equal(a.sd, 2.83);
+  assert.equal(a.split, true);
+  const b = pts.find((p) => p.key === "b")!;
+  assert.deepEqual([b.x, b.y, b.voters, b.category], [3, 4.5, 2, "Træningsuge"]);
+  // Uden stemmer kan punktet ikke tegnes, men listen beholder det.
+  const c = pts.find((p) => p.key === "c")!;
+  assert.deepEqual([c.x, c.y, c.voters, c.sd], [null, null, 0, null]);
+  assert.deepEqual(plottable(pts).map((p) => p.key), ["a", "b"]);
+  // Kun aktive: stemmer 1 (2/1) falder ud.
+  const active = itemPoints(rows, filterVotes(parseVotePayload(payload)!, { activeOnly: true }), area);
+  assert.deepEqual([active[0].x, active[0].y, active[0].voters, active[0].sd], [5, 6, 1, null]);
+});
+
+test("itemPoints uden stemme-rækker bruger viewets tal (før migrationen er applied)", () => {
+  const [p] = itemPoints([row({ item_id: "a", avg_idea: "4.5", avg_importance: 3, votes: 7, sd_importance: 2, dont_know: 1 })], null, area);
+  assert.deepEqual([p.x, p.y, p.voters, p.dontKnow, p.split], [4.5, 3, 7, 1, true]);
+});
+
+test("categoryPoints: egen kategori ellers område, stemmere tælles én gang pr. kategori", () => {
+  const rows = [row({ item_id: "a", engine: "races" }), row({ item_id: "b", engine: "races" }),
+    row({ item_id: "c", engine: "training", category: "  " })];
+  const cats = categoryPoints(rows, parseVotePayload(payload)!.votes, area);
+  const races = cats.find((c) => c.key === "Løb")!;
+  // a: 6, 2 (+ Ved ikke); b: 4, 5. Stemmer 0 og 2 stemte på begge.
+  assert.deepEqual([races.y, races.x, races.voters, races.dontKnow, races.items], [4.25, 3, 3, 1, 2]);
+  const training = cats.find((c) => c.key === "Træning")!;
+  assert.deepEqual([training.voters, training.items, training.x], [0, 1, null]);
+});
+
+test("categoryPoints uden stemme-rækker vægter viewets snit med antal stemmer", () => {
+  const rows = [row({ item_id: "a", engine: "races", avg_importance: 6, avg_idea: 6, votes: 3, idea_votes: 1 }),
+    row({ item_id: "b", engine: "races", avg_importance: 2, avg_idea: 2, votes: 1, idea_votes: 1 })];
+  const [c] = categoryPoints(rows, null, area);
+  assert.deepEqual([c.y, c.x, c.voters], [5, 4, 4]);
+});
+
+test("chartRows og categoryOf", () => {
+  const rows = [row({ item_id: "a", status: "active" }), row({ item_id: "b", status: "planned" }),
+    row({ item_id: "c", status: "shipped" }), row({ item_id: "d", status: "in_progress" })];
+  assert.deepEqual(chartRows(rows, "open").map((r) => r.item_id), ["a", "b", "d"]);
+  assert.deepEqual(chartRows(rows, "ideas").map((r) => r.item_id), ["a"]);
+  assert.deepEqual(chartRows(rows, "planned").map((r) => r.item_id), ["b"]);
+  assert.equal(CHART_SCOPES.length, 3);
+  assert.equal(categoryOf(row({ engine: "races", category: " Live " }), area), "Live");
+  assert.equal(categoryOf(row({ engine: "races", category: null }), area), "Løb");
+});
+
+test("mergeCategories henter kategorien fra roadmap_items", () => {
+  const m = mergeCategories([row({ item_id: "a" }), row({ item_id: "b" })], [{ id: "a", category: "Live" }]);
+  assert.deepEqual(m.map((r) => r.category), ["Live", null]);
+});
+
+test("bubbleRadius: mindst klikbar, størst ved flest stemmere, aldrig over loftet", () => {
+  assert.equal(bubbleRadius(0, 10), 1.2);
+  assert.equal(bubbleRadius(10, 10), 4.2);
+  assert.equal(bubbleRadius(40, 10), 4.2);
+  assert.ok(bubbleRadius(3, 10) < bubbleRadius(6, 10));
+  assert.equal(bubbleRadius(5, 0), 1.2);
+  assert.deepEqual([SCORE_MIN, SCORE_MAX], [1, 6]);
+});
+
+test("stemmere tælles kun på de punkter, grafen viser", () => {
+  const votes = parseVotePayload(payload)!.votes;
+  assert.equal(distinctVoters(votes), 3);
+  // Kun b: stemmer 0 og 2 (stemmer 1 stemte kun på a).
+  assert.equal(distinctVoters(votesForItems(votes, ["b"])), 2);
+  // Ved ikke alene gør ingen til stemmer.
+  assert.equal(distinctVoters(votesForItems(votes, ["a"])), 2);
+  assert.equal(distinctVoters(votesForItems(votes, [])), 0);
+});
+
+test("coincidentIndex: bobler på samme sted får hvert sit nummer, andre står stille", () => {
+  const p = (key: string, x: number | null, y: number | null) => ({ key, label: key, x, y, voters: 1, dontKnow: 0, sd: null, split: false, category: "c" });
+  const m = coincidentIndex([p("b", 4, 4), p("a", 4, 4), p("c", 3, 4), p("d", 4, 4)]);
+  assert.deepEqual([m.get("a"), m.get("b"), m.get("d"), m.get("c")], [0, 1, 2, 0]);
+});
+
+test("sortering på uenighed (sd)", () => {
+  const rows = [row({ item_id: "a", sd_importance: 1 }), row({ item_id: "b", sd_importance: 2.5 }), row({ item_id: "c", sd_importance: null })];
+  assert.deepEqual(sortRows(rows, { key: "sd", dir: "desc" }).map((r) => r.item_id), ["b", "a", "c"]);
 });

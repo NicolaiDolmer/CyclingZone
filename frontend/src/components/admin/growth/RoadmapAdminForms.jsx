@@ -59,7 +59,7 @@ const nowIso = () => new Date().toISOString();
 // ── Punkt: opret / ret ──────────────────────────────────────────────────────
 const EMPTY_ITEM = {
   engine: "races", title_en: "", title_da: "", status: "planned", horizon: "next_week",
-  issue_ref: "", approved: false, flag_key: "", beta_soon: false, live_soon: false,
+  issue_ref: "", approved: false, flag_key: "", beta_soon: false, live_soon: false, category: "",
 };
 
 function itemDraft(item) {
@@ -75,6 +75,7 @@ function itemDraft(item) {
     flag_key: item.flag_key ?? "",
     beta_soon: Boolean(item.beta_soon),
     live_soon: Boolean(item.live_soon),
+    category: item.category ?? "",
   };
 }
 
@@ -113,6 +114,8 @@ export function ItemFormModal({ open, item, flags, planned, onClose, onSaved }) 
     // Status skrives kun når den er ændret, så shipped_at ikke nulstilles ved
     // en titelrettelse. Er punktet koblet til en kontakt, overtager triggeren.
     if (!item || item.status !== form.status) Object.assign(payload, statusPatch(form.status, now));
+    // #7789: kun når den er ændret, så en gem virker, også før kolonnen findes.
+    if ((item?.category ?? "") !== form.category.trim()) payload.category = form.category.trim() || null;
     const query = item
       ? supabase.from("roadmap_items").update(payload).eq("id", item.item_id)
       : supabase.from("roadmap_items").insert({ ...payload, sort_order: nextSortOrder(planned ?? []) });
@@ -154,6 +157,9 @@ export function ItemFormModal({ open, item, flags, planned, onClose, onSaved }) 
         </Field>
         <Field label="Titel (DA)" htmlFor={`${uid}-da`}>
           <Input id={`${uid}-da`} size="sm" value={form.title_da} onChange={(e) => set("title_da", e.target.value)} />
+        </Field>
+        <Field label="Kategori" htmlFor={`${uid}-category`} helper="Grupperer punktet i admin-grafen. Ikke hemmelig. Tom = området." error={undefined}>
+          <Input id={`${uid}-category`} size="sm" maxLength={40} value={form.category} onChange={(e) => set("category", e.target.value)} />
         </Field>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="GitHub-issue" htmlFor={`${uid}-ref`} helper="Bruges af færdig-rutinen.">
