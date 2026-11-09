@@ -59,6 +59,10 @@
 //      stuckAcademyGraduates.js — SAMME funktion som reparations-scriptet
 //      bruger, saa vagt og reparation aldrig kan divergere.
 //
+//   H. (#6181) Et LAAST SALG (sale_escrows, status held), der er aeldre end
+//      samme graense som E og ikke venter paa et aktivt etapeloeb. Flush,
+//      heal-sweep og reconcile (saleEscrowFlow6181.js) skulle have afregnet det.
+//
 // READ-ONLY: ingen DB-writes, ingen ny tabel, ingen migration. Én Sentry-
 // capture pr. invariant pr. tick med FAST fingerprint (mirror ai-trim-
 // invariant-guard #2407/#2434-mønstret i cron.js) — ét Sentry-issue pr.
@@ -70,6 +74,7 @@ import { findStaleOfferedIntake } from "./academyIntakeReconcile.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 import { TEAM_BOARD_MEMBERS_COUNT } from "./boardMembers.js";
 import { findStuckAcademyGraduates } from "./stuckAcademyGraduates.js";
+import { findStaleHeldSaleEscrows } from "./saleEscrowFlow6181.js";
 
 type WatchClient = { from(table: string): { select: unknown } };
 type Query = ReturnType<SupabaseClient["from"]>;
@@ -476,6 +481,16 @@ export async function runOwnershipInvariantWatch({
   // PRAECIS de samme ryttere.
   const stuckGraduates = (await findStuckAcademyGraduates(supabase, { now })).stuck;
 
+  // Invariant H (#6181): et laast salg (sale_escrows, status held), der er aeldre end
+  // samme graense som E og ikke venter paa et loeb, der stadig koerer. Flush,
+  // heal-sweep og reconcile skulle have afregnet det; 'stuck' (et halvt leveret
+  // bytte) kraever et menneske. Samme diskriminator som E.
+  const staleSaleEscrows = await findStaleHeldSaleEscrows(supabase, {
+    now,
+    staleHours: pendingTransferStaleHours,
+    getRidersInActiveStageRaceFn,
+  });
+
   let alerted = false;
 
   if (youthOwned.length > 0) {
@@ -620,6 +635,25 @@ export async function runOwnershipInvariantWatch({
     );
   }
 
+  if (staleSaleEscrows.length > 0) {
+    alerted = true;
+    captureExceptionFn?.(
+      new Error(
+        `Ownership-invariant-brud: ${staleSaleEscrows.length} låst salg (sale_escrows) er ikke afregnet efter ${pendingTransferStaleHours}t og venter ikke på et aktivt etapeløb (#6181)`
+      ),
+      {
+        tags: { cron: "ownership-invariant-watch" },
+        fingerprint: ["stale-held-sale-escrow"],
+        extra: {
+          count: staleSaleEscrows.length,
+          sample: staleSaleEscrows.slice(0, SAMPLE_LIMIT).map(
+            (e) => `escrow=${e.id} deal=${e.deal_type} action=${e.action} createdAt=${e.created_at}`
+          ),
+        },
+      }
+    );
+  }
+
   return {
     checked: activeAuctions.length,
     findings: {
@@ -631,6 +665,7 @@ export async function runOwnershipInvariantWatch({
       teamsMissingBoardMembers: teamsMissingBoardMembers.length,
       stuckAcademyGraduates: stuckGraduates.length,
       teamsAwaitingDnaChoice: teamsAwaitingDnaChoice.length,
+      staleSaleEscrows: staleSaleEscrows.length,
     },
     alerted,
   };

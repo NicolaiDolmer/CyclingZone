@@ -286,6 +286,11 @@ const FLAG_GATED_EMPTY_TABLES = new Map([
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)
 // Match-form: HTTP method + path-pattern (samme som routes-listen).
 const WHITELIST_ORPHANED_ENDPOINTS = new Set([
+  // #6181/#7874: requireAdmin-gated manual triage for stuck sale escrows.
+  // Used by ops through the API, intentionally no player/frontend caller.
+  // Remove these entries if the routes are removed or an admin UI is wired.
+  "GET /admin/sale-escrows",
+  "POST /admin/sale-escrows/:id/resolve",
   // Bulk-gem til saesonmatrixens kladde-model (#1146, PR #4316): API-first.
   // UI-kalderen (Save plan i SeasonMatrix.jsx) lander i matrix-PR'en paa
   // feat/1146-season-matrix-grid, der reviewes sammen med denne. Fjern entry'en

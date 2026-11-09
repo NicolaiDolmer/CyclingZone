@@ -217,6 +217,16 @@ test("#3069 Detector A: forum_category_mutes er permanent-suppresset — også n
   assert.equal(evaluateDetectorARow(row("forum_category_mutes", 4), { insertPaths, flags }), null);
 });
 
+test("#7874 Detector B: manuel escrow-triage har bevidst ingen frontend-kalder", () => {
+  for (const endpoint of [
+    { method: "GET", path: "/admin/sale-escrows" },
+    { method: "POST", path: "/admin/sale-escrows/:id/resolve" },
+  ]) {
+    assert.equal(evaluateDetectorBEndpoint(endpoint, []), null);
+  }
+  assert.ok(evaluateDetectorBEndpoint({ method: "POST", path: "/admin/unwired-sale-action" }, []));
+});
+
 test("#3069 Detector B: whitelistet resend-webhook er intet fund, men et nyt orphan flages", () => {
   const callTokens = [];
 

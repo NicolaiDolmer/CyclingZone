@@ -17,6 +17,7 @@ import { createFeatureFlagsRouter } from "../api/featureFlagsApi.js"; // #4948
 import { createTrainingProgramsRouter } from "./trainingPrograms.js"; // #4629
 import { createTrainingGroupsRouter } from "./trainingGroups.js"; // #6000
 import { createAdminRoadmapRouter } from "./adminRoadmap.js";
+import { createAdminSaleEscrowsRouter } from "./adminSaleEscrows.js";
 import { createTrainingFatigueRulesRouter } from "./trainingFatigueRules.js"; // #4854
 import { stripProgramFromWeekDays } from "../lib/trainingPrograms.js"; // #4629
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -1036,6 +1037,10 @@ async function requireAdmin(req, res, next) {
 }
 
 router.use("/admin/roadmap", createAdminRoadmapRouter({
+  supabase, requireAdmin, writeLimiter: adminWriteLimiter, captureExceptionFn: captureException,
+}));
+// #6181/#7871: låste salg og den manuelle vej for et fastlåst bytte.
+router.use("/admin/sale-escrows", createAdminSaleEscrowsRouter({
   supabase, requireAdmin, writeLimiter: adminWriteLimiter, captureExceptionFn: captureException,
 }));
 
