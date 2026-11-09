@@ -375,7 +375,7 @@ export default function StagePlanBoard({
   teamHasSprintCaptain: boolean;
   /** #7855: troejejagtens opgaver kan vaelges i dette loeb (serverens jersey_hunt_7855). */
   jerseyHunt7855?: boolean;
-  renderRoleCell: (rider: PlanRider) => React.ReactNode;
+  renderRoleCell: (rider: PlanRider, options?: { mobile?: boolean }) => React.ReactNode;
   rolePickerFor?: (rider: PlanRider) => React.ReactNode;
   onEditorOpen?: () => void;
   roleDefaultFor?: (riderId: string) => Record<string, unknown> | null;
@@ -625,7 +625,7 @@ export default function StagePlanBoard({
                   </span>
                 )}
               </div>
-              <div className="mt-0.5">{renderRoleCell(rider)}</div>
+              <div className="mt-0.5">{renderRoleCell(rider, { mobile: true })}</div>
               {routeMatch?.renderMark?.(rider)}
               {editable(rider) && !stageCompleted ? (
                 <button

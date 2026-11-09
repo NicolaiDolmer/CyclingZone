@@ -334,7 +334,7 @@
     },
     {
       "issue": 1369,
-      "why": "åben PR #6665 (ny forside, ejeren bestemmer tidspunktet)"
+      "why": "åben PR #6665 (ny forside); ordret merge 9/11 på billede i Claude Code, runde 2 designes bagefter"
     },
     {
       "issue": 7096,
@@ -514,6 +514,18 @@
     {
       "issue": 7891,
       "why": "CI-koe fyldt af kladde-PR-tests, ejer-go 7/11 i chat"
+    },
+    {
+      "issue": 6066,
+      "why": "Ugentlig lockfile-maintenance, ejer-go 9/11 (PC1-listen, #7911, PR #7933)"
+    },
+    {
+      "issue": 7923,
+      "why": "Intern registrering af slukket market-kontakt, ejer-go 9/11 (PC1-listen, #7911)"
+    },
+    {
+      "issue": 7934,
+      "why": "Internt code scanning-fund, ejer-go 9/11 (PC1-listen, #7911)"
     }
   ],
   "brandList": [
@@ -1074,7 +1086,7 @@
     },
     {
       "issue": 7789,
-      "reason": "Ejer-go 7/11 (plan på #7495): roadmap-admin med graf",
+      "reason": "Ejer-go 7/11 (plan på #7495): roadmap-admin med graf; ordret merge af PR #7841 9/11 på billede i Claude Code",
       "since": "2026-11-07"
     },
     {
@@ -1104,12 +1116,12 @@
     },
     {
       "issue": 7745,
-      "reason": "Ejer-go 7/11 (Discord): træningsrapporten, hæv standarden meget",
+      "reason": "Ejer-go 7/11 (Discord): træningsrapporten, hæv standarden meget; ordret merge af PR #7870 9/11",
       "since": "2026-11-07"
     },
     {
       "issue": 7746,
-      "reason": "Ejer-go 7/11 (Discord): træningsrapporten, hæv standarden meget",
+      "reason": "Ejer-go 7/11 (Discord): træningsrapporten, hæv standarden meget; ordret merge af PR #7870 9/11",
       "since": "2026-11-07"
     },
     {
@@ -1144,7 +1156,7 @@
     },
     {
       "issue": 7879,
-      "reason": "Ejer 7/11 19:49: talentmaerker laast, live i dag (beta)",
+      "reason": "Ejer 7/11 19:49: talentmaerker laast, live i dag (beta); ordret merge af PR #7931 9/11 (ikoner)",
       "since": "2026-11-07"
     },
     {
@@ -1164,12 +1176,17 @@
     },
     {
       "issue": 7917,
-      "reason": "Ejer-go 8/11 (Claude Code, efter Sentry-gennemgang): backend tåler at databasen er nede; design først, ingen scheduler-deploy før 13/11",
+      "reason": "Ejer-go 8/11 (Claude Code, efter Sentry-gennemgang): backend tåler at databasen er nede; design først",
       "since": "2026-11-08"
     },
     {
       "issue": 7908,
       "reason": "Ejer 8/11: push-vagterne, PR #7907 gøres færdig efter uafhængigt review",
+      "since": "2026-11-08"
+    },
+    {
+      "issue": 7922,
+      "reason": "Ejer-go 8/11: stram reglerne for salgsannoncer, planlagt til 9/11",
       "since": "2026-11-08"
     }
   ]

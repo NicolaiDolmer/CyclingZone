@@ -308,7 +308,7 @@
         "placedGap": "{name} finishte op plaats {rank}, {gap} achter.",
         "dayGreat": "{name} had een heel goede dag.",
         "dayGood": "{name} had een goede dag.",
-        "ownOut": "{kind, select, withdrawal {Afgestapt: {names}. Te ver achter de winnaar.} time_limit {Buiten tijd: {names}.} crash {Afgestapt na een valpartij: {names}.} mechanical {Afgestapt door materiaalpech: {names}.} other {Afgestapt: {names}.}}"
+        "ownOut": "{kind, select, withdrawal {Afgestapt: {names}. Te ver achter de winnaar.} time_limit {Buiten tijd: {names}.} time_limit_fatigue {Buiten tijd door vermoeidheid: {names}.} crash {Afgestapt na een valpartij: {names}.} mechanical {Afgestapt door materiaalpech: {names}.} other {Afgestapt: {names}.}}"
       },
       "final": {
         "aria": "De laatste 5 km: groepen op de weg met resterende afstand, achterstanden en koersklok",
@@ -351,6 +351,7 @@
         "abandonedMechanical": "Hij kreeg pech{where} en moest opgeven",
         "abandoned": "Hij gaf op{where}",
         "timeLimit": "Hij kwam buiten de tijdslimiet binnen",
+        "timeLimitFatigue": "Hij kwam buiten de tijdslimiet binnen, omdat hij te moe was",
         "withdrawal": "Hij stapte af, te ver achter de winnaar",
         "won": "Hij was als eerste op de streep",
         "wonSprint": "Hij won de sprint",
@@ -380,7 +381,12 @@
         "attackBehind": "Hij viel aan{where}, maar kon niet voorop blijven tot de streep",
         "bunchBehindSprint": "Hij finishte in het peloton achter de sprint",
         "pelotonBehindBreak": "Hij finishte in het peloton, achter de vlucht die standhield",
-        "pelotonBehind": "Hij bleef in het peloton toen de groep ervoor wegreed"
+        "pelotonBehind": "Hij bleef in het peloton toen de groep ervoor wegreed",
+        "ttFastest": "Hij reed de snelste tijd",
+        "ttDayGreat": "Hij had een uitstekende dag op de fiets",
+        "ttDayGood": "Hij had een goede dag op de fiets",
+        "ttRouteGood": "Het parcours lag hem",
+        "ttRouteBad": "Het parcours lag hem niet"
       },
       "lead": {
         "afterBreak": "na een dag in de vlucht",
@@ -390,7 +396,9 @@
         "badDayIllness": "op een slechte dag waarop hij zich ziek voelde",
         "badDayRain": "op een slechte dag in de regen",
         "badDayWind": "op een slechte dag in de wind",
-        "badDayHeat": "op een slechte dag in de hitte"
+        "badDayHeat": "op een slechte dag in de hitte",
+        "ttRouteGood": "op een parcours dat hem lag",
+        "ttRouteBad": "op een parcours dat hem niet lag"
       }
     },
     "yourDay": {
@@ -1773,6 +1781,7 @@
       "illness": "Ziek, niet gestart",
       "withdrawal": "Afgestapt, te ver achter",
       "time_limit": "Buiten tijd",
+      "time_limit_fatigue": "Buiten tijd, moe",
       "abandoned": "Afgestapt",
       "dnf": "DNF",
       "dnfCollapsed": "{count, plural, one {# renner kwam niet aan} other {# renners kwamen niet aan}}",
@@ -2233,7 +2242,7 @@
   },
   "timeLimitRisk": {
     "short": "Risico op tijdslimiet",
-    "long": "Hij is erg moe en deze rit past slecht bij hem. Hij kan buiten de tijdslimiet vallen. Zet hem op Grupetto of Rustig rijden om hem het extra risico te besparen.",
+    "long": "Hij is erg moe en deze rit past slecht bij hem. Hij kan buiten de tijdslimiet vallen. Zet hem op Gruppetto of Rustig binnenrijden, en geef hem dezelfde dag geen zwaardere taak.",
     "outShort": "Te moe",
     "outLong": "Buiten de tijdslimiet. Hij was erg moe en de rit paste slecht bij hem."
   }

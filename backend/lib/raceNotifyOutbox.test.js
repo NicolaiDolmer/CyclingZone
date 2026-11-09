@@ -75,7 +75,8 @@ function makeStore({ rows = [], errors = {} } = {}) {
           const filters = [];
           const apply = () => {
             state.calls.updates++;
-            if (errors.update) return { data: null, error: errors.update };
+            const updateFailure = errors.update ?? errors.updateWhen?.(values);
+            if (updateFailure) return { data: null, error: updateFailure };
             const hits = state.rows.filter((r) => matches(r, filters));
             for (const row of hits) Object.assign(row, values);
             return { data: hits.map((r) => ({ id: r.id })), error: null };
@@ -302,6 +303,29 @@ function pendingRow(overrides = {}) {
     ...overrides,
   };
 }
+
+test("drain — fejlet sent-markering har eget fingerprint og forsvinder ikke i nedbrudsklassen (#7917)", async () => {
+  const { supabase } = makeStore({
+    rows: [pendingRow()],
+    errors: {
+      updateWhen: (values) =>
+        values.status === "sent" ? { message: "Supabase unavailable (522 Connection timed out)" } : null,
+    },
+  });
+  const captures = [];
+
+  const result = await processRaceNotifyOutboxDrain({
+    supabase,
+    deliverFn: okDelivery,
+    captureExceptionFn: (err, ctx) => captures.push({ err, ctx }),
+    now: NOW,
+  });
+
+  assert.equal(result.sent, 1, "beskeden ER leveret");
+  assert.equal(captures.length, 1);
+  assert.match(captures[0].err.message, /Supabase unavailable/);
+  assert.deepEqual(captures[0].ctx.fingerprint, ["race-notify-outbox-duplicate-risk"]);
+});
 
 test("drain — leveret raekke markeres sent og forsoeges ikke igen", async () => {
   const { supabase, state } = makeStore({ rows: [pendingRow()] });

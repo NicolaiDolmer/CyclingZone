@@ -1,5 +1,168 @@
 export const PATCHES = [
   {
+    "version": "7.425",
+    "date": "2026-11-09",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "beta_to_live",
+        "topic": "Races",
+        "en": {
+          "title": "Why? is now for everyone",
+          "body": "Why? next to your riders is now available to everyone. Tap it after a race to see in words what happened to your rider."
+        },
+        "da": {
+          "title": "Hvorfor? er nu for alle",
+          "body": "Hvorfor? ved dine ryttere er nu for alle. Tryk på knappen efter et løb, og se med ord, hvad der skete med din rytter."
+        },
+        "refs": [
+          7717
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "beta",
+        "topic": "Riders",
+        "flag": "champion_jerseys_7824",
+        "en": {
+          "title": "Champion jerseys",
+          "body": "Riders who have won a championship now show a small jersey next to their name."
+        },
+        "da": {
+          "title": "Mestertrøjer",
+          "body": "Ryttere, der har vundet et mesterskab, viser nu en lille trøje ved deres navn."
+        },
+        "refs": [
+          7824
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "beta",
+        "topic": "Riders",
+        "flag": "talent_marks_7879",
+        "en": {
+          "title": "Talent marks",
+          "body": "A small mark next to a rider's name now shows the biggest talents under 23 and juniors in strong progress."
+        },
+        "da": {
+          "title": "Talentmærker",
+          "body": "Et lille mærke ved rytterens navn viser nu de største talenter under 23 og juniorer i kraftig fremgang."
+        },
+        "refs": [
+          7879
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "Tidier rider names",
+          "body": "The icon that opens the rider card now sits to the left of a rider's name, with jerseys and marks right after the name on the same line."
+        },
+        "da": {
+          "title": "Mere ryddelige rytternavne",
+          "body": "Ikonet, der åbner rytterkortet, står nu til venstre for rytterens navn, og trøjer og mærker står lige efter navnet på samme linje."
+        },
+        "refs": [
+          7879
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.424",
+    "date": "2026-11-09",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "A clearer training report",
+          "body": "Whole ability points now stand out in bold. Riders stay in the same order whether or not they got a whole point, and those without one say so on their own row. Abilities follow the same order as on the rider profile."
+        },
+        "da": {
+          "title": "En tydeligere træningsrapport",
+          "body": "Hele evnepoint står nu med fed skrift. Rytterne står i samme rækkefølge, uanset om de fik et helt point, og dem uden står med det på deres egen række. Evnerne står i samme rækkefølge som på rytterprofilen."
+        },
+        "refs": [
+          7745,
+          7746
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.423",
+    "date": "2026-11-09",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Mobile",
+        "en": {
+          "title": "Bigger buttons in Tactics on your phone",
+          "body": "On mobile, the role and intention buttons in Tactics are now bigger and easier to tap."
+        },
+        "da": {
+          "title": "Større knapper i Taktik på telefonen",
+          "body": "På mobil er rolle- og intentionsknapperne i Taktik nu større og lettere at trykke på."
+        },
+        "refs": [
+          6916
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Mobile",
+        "en": {
+          "title": "Rider names open the profile in Today on your phone",
+          "body": "On mobile, tapping a rider's name in the Today details in Training now opens that rider's profile."
+        },
+        "da": {
+          "title": "Rytternavne åbner profilen i I dag på telefonen",
+          "body": "På mobil åbner et tryk på rytterens navn i I dag-detaljen under Træning nu rytterens profil."
+        },
+        "refs": [
+          6524
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.422",
+    "date": "2026-11-08",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "Your riders' day in words",
+          "body": "After a stage, the race report now says how your own riders' day went: a really good day, a good day, or a bad day with the reason. You see this for your own riders and not for other teams, and the same goes for bad-day lines in the race film. It describes the day the race already gave him, so results are unchanged."
+        },
+        "da": {
+          "title": "Dine rytteres dag i ord",
+          "body": "Efter en etape siger referatet nu, hvordan dine egne rytteres dag gik: en rigtig god dag, en god dag eller en dårlig dag med årsagen. Du ser det for dine egne ryttere og ikke for andre hold, og det samme gælder linjerne om en dårlig dag i løbsfilmen. Det beskriver den dag, løbet allerede gav ham, så resultaterne er uændrede."
+        },
+        "refs": [
+          7725
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.421",
     "date": "2026-11-08",
     "changes": [

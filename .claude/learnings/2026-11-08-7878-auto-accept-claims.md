@@ -1,0 +1,48 @@
+# #7878: distinguish flag failure and close cross-path ownership races
+
+Independent review of 484f908e6 plus main 00805056e found two P1s: a failed
+generic flag read selected the unlocked legacy release path, and an ordinary
+transfer could pass its seller-floor read before an auto-accept start and move
+ownership afterwards. The prior release/start race was already fixed.
+
+Regression-first evidence: all flag-error entry points rejected the old code;
+the transfer race test observed a successful deal where refusal was required.
+The module now reads the flag freshly and propagates lookup errors. Confirmed
+off/missing still selects legacy behavior. The service-only transfer claim RPC
+locks teams in the existing order, then the rider, rechecks seller floor,
+buyer seats and same-rider auction state before ownership/parking. An explicit
+contract/graduate whitelist preserves omitted fields and existing update shape.
+Refusal stops before payment and downstream cleanup. This is ownership/floor/
+seat atomicity; the existing later payment flow has not become one transaction.
+
+PGlite proves actual SQL and both serial orders, not concurrent connections.
+The old PR-body pgbench claim had no reproducible harness in the located
+artifacts. Replace it with measured command/output from the committed opt-in
+PG17 test, which checks every returned status and final state and observes
+server shutdown. CI without AUTO_ACCEPT_PG_BIN explicitly skips that proof.
+
+Registry now links market-auto-accept to its flag and SSOT. No flag activation,
+production SQL, new player copy, merge or relaxed verification baseline.
+M2 seeds the missing gate off idempotently, without changing existing values;
+PR registry validation treats that unapplied migration as pending. Otherwise a
+tracked but deliberately absent flag is a genuine registry failure.
+
+Integration with PR5 e8efd5b5e found a concrete overlap: retaining both counters
+rejected a valid release with both gates on. The regression observed HTTP409
+instead of success. Prefer M3's completed count; M2 is a fallback only. Test all
+four flag combinations for release/start and the transfer boundary, and run the
+real M2 RPCs together with enabled M3 triggers in PGlite/PG17, including ordinary
+bids racing auto-accept starts for the same available money.
+
+Second integration boundary: M3 reserves active auctions even before a bidder
+arrives. M2's bidder-only SQL count allowed a second departure while the JS
+routes blocked it. Reproduced RED for start/release/claim at the seller floor.
+The three locked paths now share M3's outgoing rider IDs when M3 is installed
+and enabled, and retain the bidder-only fallback otherwise. The same ID set
+deduplicates risk; its read helper is service-only with a fixed search path.
+
+CI audit-log test: a timestamp plus random UUID orders equal-time records
+deterministically but does not establish the action sequence. Assert the full
+multiset of audit contents when chronology is outside the test's contract.
+Force equal explicit timestamps and reversed UUID order to cover the boundary;
+do not add sleeps or depend on the runner's clock resolution.

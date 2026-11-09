@@ -6,9 +6,43 @@ import {
   isTransientSupabaseError,
   isLockTimeoutError,
   isRaceCountLockTimeoutError,
+  isSupabaseUnavailableMessage,
   toSupabaseError,
   withSupabaseRetry,
 } from "./supabaseErrorNormalize.js";
+
+// ── isSupabaseUnavailableMessage (#7917) ─────────────────────────────────────
+
+test("isSupabaseUnavailableMessage — kun de to nedbrudsbeskeder, også bag et præfiks", () => {
+  assert.equal(isSupabaseUnavailableMessage("Supabase unavailable (522 Connection timed out)"), true);
+  assert.equal(isSupabaseUnavailableMessage("stall-watchdog seasons: Supabase unavailable (HTML error page)"), true);
+  assert.equal(isSupabaseUnavailableMessage("Could not query the database for the schema cache. Retrying."), true);
+});
+
+test("isSupabaseUnavailableMessage — andre upstreams' HTML-sider er ikke et databasenedbrud", () => {
+  for (const raw of [
+    `Alunta POST /customers -> 502: ${CF_522}`,
+    `openDm 503: ${CF_522}`,
+    `postDm 502: ${CF_522}`,
+  ]) {
+    const normalized = normalizeSupabaseErrorMessage(raw);
+    assert.match(normalized, /Supabase unavailable/, "forudsætning: normaliseringen kender ikke afsenderen");
+    assert.equal(isSupabaseUnavailableMessage(normalized), false, raw);
+  }
+  // En Discord-outbox, der ikke kan læse databasen, ER et databasenedbrud.
+  assert.equal(
+    isSupabaseUnavailableMessage("Discord DM-outbox drain-select fejlede: Supabase unavailable (522 Connection timed out)"),
+    true,
+  );
+});
+
+test("isSupabaseUnavailableMessage — er snævrere end de transiente fejl", () => {
+  for (const message of ["fetch failed", "socket hang up", "canceling statement due to statement timeout", "code=57014"]) {
+    assert.equal(isSupabaseUnavailableMessage(message), false, message);
+  }
+  assert.equal(isTransientSupabaseError({ message: "fetch failed" }), true, "forudsætning: den er transient");
+  assert.equal(isSupabaseUnavailableMessage(undefined), false);
+});
 
 // Realistiske Cloudflare-fejlsider (forkortet) som de lander i error.message når
 // PostgREST/supabase-js får et non-JSON-svar fra gatewayen og text()'er det rå body.

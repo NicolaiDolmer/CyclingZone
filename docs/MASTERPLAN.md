@@ -1,28 +1,31 @@
 # MASTERPLAN: prioriteret rækkefølge (SSOT)
 
-> Ejer-afstemt 4/11, opdateret 7/11 (#7495, roadmap #7892). Intet udskydes uden ejer-aftale. Intention: GDD. Status: [audit 4/11](https://claude.ai/artifact/4ho37bWUTLwNNuGNuyuXpc). Release-gate: #6553 ved S6-start.
+> Ejer-afstemt 4/11, ny kurs 8/11 (#7911, #7495). Intet udskydes uden ejer-aftale. Intention: GDD. Status: [audit 4/11](https://claude.ai/artifact/4ho37bWUTLwNNuGNuyuXpc). Dagligt: tavlen #7911.
 
-**Reglen:** Færdig = bygget, merget, tændt, synligt, gammelt væk, Hjælp + patch note (8 Til dørs-krav). **Loftet afløser byggestoppet (ejer 4/11):** alt inden for de tre loft-områder plus brand og forkert info må bygges uden liste; alt andet kræver ejerens go. Højst 3 områder ad gangen. Nyt prøves bag slukket kontakt før tænding.
+## Kurs (ejer 8/11, 25 valg på #7911)
 
-**Arbejdsdeling (ejer 6/11 aften):** fra 7/11 ejer Claude Code på Dolmer PC motor, taktik, udvikling, løbssiden, spillerkommunikation, merge, flag og prod. Ingen aktiv Codex-session. Kun én session merger og tænder ad gangen.
+**Mål:** en langsigtet bæredygtig forretning: database der virker, lavere udgifter, højere indtjening, nye brugere, brugere der bliver længere. Drift, forretning og spillet er alle vigtige (ejer 9/11: ingen faste procenter). **Til dørs først:** det halvbyggede går altid før nyt. **Fejl** (live og forkert) rettes uden go; alt nyt kræver ejerens go (ejer bekræftet 9/11).
+**Udgivelse januar 2027** (roadbook 5/11), når: ingen alvorlige fejl (ejer vurderer, intet fast antal dage, 9/11), et sæsonskifte uden nedbrud, Pro 2.0 live. Præcis dato meldes først da. Afløser "beta slutter ved S6-start" (#6553).
+- **Drift:** plan v3 på #7659 (skridt 1 sat 8/11). Bestyrelsen én gang pr. løbstid med fire krav; tændes, når skyggemålingen viser rigtige tal og ejeren giver go (ingen fast periode, 9/11). Salgsannoncer #7922 (9/11). Databasefejl #7917.
+- **Forretning:** Pro 2.0 (tre pakker med billeder, pris uændret, aldrig styrke). Fornyelser og udløbne kort (design 9/11). Første dage for nye er højeste prioritet under fastholdelse. Kampagne ved sæsonstart (ejer godkender og sender). Forside #6665. "Hvor hørte du om os" #3796. Google-sider fra uge 47, delingsknap efter sæsonstart, inviter en ven efter Pro 2.0, ingen annoncer. Mandagstal fra 9/11 og testgruppe med dem i beta i dag (ejer bekræftet 9/11). Din dag: design uge 47, byg januar.
+- **Spillet:** intet loft på motorarbejdet. Løbssiden må deles op, men alt i denne sæson. U23 og junior senest i S6, inden S7.
+- **Afklares med ejeren:** fakturaer og moms/revisor 9/11; roadmappen punkt for punkt; interne værktøjer. Backup-øvelse og nøgleskift #7029: ikke nu.
+
+**Reglen:** Færdig = bygget, merget, tændt, synligt, gammelt væk, Hjælp + patch note (8 Til dørs-krav). **Loftet afløser byggestoppet (ejer 4/11):** alt inden for de tre loft-områder plus brand og forkert info må bygges uden liste; alt andet kræver ejerens go. Nyt prøves bag slukket kontakt før tænding.
+
+**Merge og tænding:** kun én session merger og tænder ad gangen.
 
 ## Tidsplan (ejer 4/11 aften)
 
 
 Fuld liste med datoer: #7632. "Done" først ved alle 8 krav; fredagskort til ejeren.
 
-- **Status 8/11:** tændt #7733, #7726; hover #2009 beta. #7638 + #7754 i #7778. Hexagone-generalprøve #7890, #7715. Sikkerhed senest 9/11.
-- **Næste uge (9-15/11):** #7778 v3 (dele #7859-#7868) → plan, sandhedsvagt (8/11), auto-accept #2176, XP #6110, dagsform #7725, fri rolle #7856, trøjejagt #7855, Discord-afstemning #7869, feedback + fair-play #5431 (9/11), forside #6665, graduering #7323, aftentræning #6490, scouting ved salg #7455 (før sæsonskifte), rangliste #6765 (14/11).
-- **Ca. 15-18/11:** catch-up #6950 besluttes (frist 8/11 udgået); spørg igen om "nye managers forstår første løb" (parkeret).
 - **Før S6-kalenderen:** løbstyper U23/junior #7471. **Før S6-start:** U23 del 2 #4620, Planning Workbench #7535.
-- **S6 (dec):** Pro-værdien + betaling #2806/#4514. **Starten af 2027:** TTT #3463, omdømme #4957/#5106, #4630, #5621, #935, #1147. **S6+:** #4621, #6191, #5625, #1154, #5180.
-- **Roadmap efter karakterer (ejer 7/11):** op #7892 (næste uge), #1177, #3813, #5238; laves ikke #3147/#2840/#6194/#7747/#6126 ([beslutninger](investigations/2026-11-07-roadmap-omprioritering-forslag.md)).
+- **S6 (dec):** Pro 2.0 + betaling #4514. **Starten af 2027:** TTT #3463, omdømme #4957/#5106, #4630, #5621, #935, #1147. **S6+:** #4621, #6191, #5625, #1154, #5180.
 
 ## 0. Merge og til dørs først (ejer 4/11, skarpt)
 
-Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden for 24 timer. Værktøj frem for disciplin:
-- **Reviewer sætter markøren selv**, **main-CI afbrydes ikke**, **auto-tog** hvert 20. min. Billede-go sendes med det samme.
-- **Til dørs-tavlen #7632** er ejerens overblik; auto-beviset #7585 melder manglende bevis efter 24 timer.
+Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden for 24 timer.
 
 ## Brand (løbende, uden for loftet)
 
@@ -39,9 +42,8 @@ Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden f
 2. **Taktik synlig og forståelig:** træthed pr. indstilling på taktiksiden #7638 og indsatskortet #5101 (mockup først), delt kaptajn #7003/#7239/#7326 (krav 8), #7266, spillerfejl #7624/#7557/#7625.
 3. **Udvikling 2.0 #6110 (XP-model, ejer 6/11):** fælles prisliste, FAST potentiale giver XP, intet hårdt loft, mest fokus og lidt i resten, ét tal XP (i dag og 30 dage), Træn nu tæller straks og giver målt bonus (#7801). Bagefter går potentialet ud af prisen og træningshastigheden ind (#2798), og potentialet omregnes til 1-99 (#3564). Løser #7757; rapportens løbsgevinst #7627, evnernes kilde #3813 og formtræning #5238 med. Bagefter: trøjemål #5573.
 
-## Kø (når et loft-område er færdigt)
+## Kø
 
-0. **Mestertrøjer og talentmærker #7824 (ejer 6/11, kun design, intet byg uden go):** trøjer efter Forstå løbet og løbsside A, talentmærker efter XP og spillernes afstemning.
 1. **Dato-løfter #6947:** TTT #3463, U23 del 2 #4620, omdømme #4957/#5106, indstillinger #3984.
 2. **Løbssider:** Planning Workbench #7535 (i bero), løbstyper U23/junior #7471, etapekort #6365.
 3. **Kaptajner og mentorer #1177.**
@@ -51,11 +53,8 @@ Klare PR'er merges samme dag, og hvert merget issue får Til dørs-bevis inden f
 
 **Mål 31/12:** 2.000 kr. MRR og 200 aktive/7d (målinger i [GROWTH_STACK](GROWTH_STACK.md)).
 - **Vækst (ejer 4/11, A+C):** fastholdelse først, så nye managers forstår deres første løb (bygger på #5101 og sande løbsdata), parallelt med flere besøgende. Derefter Pro-værdien #2806.
-- **Markedsføring 3 gange om ugen:** mandag tal og plan, onsdag fællesskabsopslag, fredag indhold/SEO (Codex).
-- **Spillerkommunikation:** én patch note og ét Discord-opslag (EN) pr. dag; udkast ca. kl. 17.
+- **Spillerkommunikation:** patch note, hver gang noget er tændt eller ændret for spillerne, og beta får sin samme dag; Discord-opslag på EN.
 - Bogføring, moms EU-privat #4511, billing #4514/#4512/#6062, måling #5305, SEO #5249/#5250.
-- **Vækstpakken PR #7652:** retning afstemmes med ejeren, så wireframes før byg. Catch-up #6950 besluttes ca. 15-18/11.
-- **Del B, varig motivation (#7661):** find et dokumenteret spillerbehov med ejeren; intet build-go.
 
 ## Faste rutiner
 

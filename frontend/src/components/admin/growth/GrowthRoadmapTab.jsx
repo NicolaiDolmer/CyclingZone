@@ -17,6 +17,10 @@
 // Fanerne (#6204): Idéer, Planlagt, I gang, Færdigt, Kendte fejl, 2027 og
 // Stemmer. Filtre (område, status, horisont, issue) og sortering på alle
 // kolonner; udvælgelse, filtrering og sortering bor i roadmapAdminModel.ts.
+//
+// Grafen (#7789) står mellem nøgletallene og fanerne: vigtighed mod idé-score,
+// boble efter antal stemmere, pr. punkt eller kategori, med filter på aktive
+// managere og division. Horisonten flyttes med ét klik fra panelet ved grafen.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { supabase } from "../../../lib/supabase";
@@ -26,13 +30,16 @@ import {
   ADMIN_TABS, DEFAULT_ADMIN_TAB, DEFAULT_SORT, HORIZONS, HORIZON_LABELS, IDEA_TARGET, ISSUE_STATUSES,
   dontKnowTotal, fmtScore, filterIssueRows, filterItems, isAdminTab, isSplit, latestUpdateByIssue, mergeItemRows, movePatches,
   nextSort, nextSortOrder, ownOrder, sortRows, statusPatch, tabCounts, tabRows, visibleIdeaCount, ROADMAP_STATUSES,
+  CHART_SCOPES, UNKNOWN_DIVISION, categoryPoints, chartRows, filterVotes, itemPoints, mergeCategories, parseVotePayload,
+  plottable, voterDivisions, votesForItems, distinctVoters, categoryOf,
 } from "../../../lib/roadmapAdminModel.ts";
+import RoadmapAdminChart from "./RoadmapAdminChart.tsx";
 import {
   AREA_LABELS, FLAG_STAGE_LABELS, ISSUE_STATUS_LABELS, STATUS_LABELS,
   IssueFormModal, IssueUpdateModal, ItemFormModal, SplitItemModal,
 } from "./RoadmapAdminForms.jsx";
 import {
-  Button, DataTable, ErrorState, HeroStats, Input, Section, SectionHeader, SectionStack, Select, SkeletonLines,
+  Button, DataTable, ErrorState, HeroStats, Input, Section, SectionHeader, SectionStack, Segmented, Select, SkeletonLines,
   StatusBadge, Tab, TabList, TabPanel, Tabs,
   ArrowDownIcon, ArrowUpIcon, PlusIcon, RefreshIcon,
 } from "../../ui";
@@ -100,10 +107,231 @@ function TableSkeleton() {
   return <div className="py-2"><SkeletonLines lines={4} /></div>;
 }
 
+// ── Grafen (#7789) ──────────────────────────────────────────────────────────
+// Som spørgeskema-panelets idé-kvadrant: idé-score mod vigtighed, boble efter
+// antal stemmere, pr. punkt eller pr. kategori. Filtrene på aktive managere og
+// division regnes på stemme-rækkerne (lib/roadmapAdminModel.ts). Vælg en boble
+// for tallene og for at flytte horisonten med ét klik.
+const CHART_VIEWS = [{ value: "items", label: "Punkter" }, { value: "categories", label: "Kategorier" }];
+const EMPTY_CHART_FILTERS = { scope: "open", activeOnly: false, division: "", category: "" };
+const areaLabel = (engine) => AREA_LABELS[engine] ?? engine;
+const divisionLabel = (d) => (d === UNKNOWN_DIVISION ? "Uden hold" : `Division ${d}`);
+
+function ChartStat({ label, value }) {
+  return (
+    <div>
+      <dt className="text-3xs uppercase tracking-[.08em] text-cz-3">{label}</dt>
+      <dd className="mt-0.5 font-data text-sm font-semibold tabular-nums text-cz-1">{value}</dd>
+    </div>
+  );
+}
+
+function PointStats({ point, votersLabel = "Stemmere" }) {
+  return (
+    <dl className="grid grid-cols-3 gap-x-4 gap-y-3">
+      <ChartStat label="God idé" value={fmtScore(point.x)} />
+      <ChartStat label="Vigtighed" value={fmtScore(point.y)} />
+      <ChartStat label={votersLabel} value={fmtInt(point.voters)} />
+      <ChartStat label="Ved ikke" value={fmtInt(point.dontKnow)} />
+      <ChartStat label="Uenighed" value={fmtScore(point.sd)} />
+      {point.items !== undefined && <ChartStat label="Punkter" value={fmtInt(point.items)} />}
+    </dl>
+  );
+}
+
+function RoadmapChartSection({ rows, votePayload, loading, busy, onMoveHorizon, onToPlan, onEdit }) {
+  const [view, setView] = useState("items");
+  const [f, setF] = useState(EMPTY_CHART_FILTERS);
+  const [selected, setSelected] = useState(/** @type {string | null} */ (null));
+  const setFilter = (key, value) => { setF((prev) => ({ ...prev, [key]: value })); setSelected(null); };
+  const canSegment = votePayload !== null;
+
+  const divisions = useMemo(() => voterDivisions(votePayload), [votePayload]);
+  const votes = useMemo(
+    () => (votePayload ? filterVotes(votePayload, { activeOnly: f.activeOnly, division: f.division }) : null),
+    [votePayload, f.activeOnly, f.division],
+  );
+  const scopeRows = useMemo(() => chartRows(rows, f.scope), [rows, f.scope]);
+  const points = useMemo(() => {
+    if (view === "categories") return categoryPoints(scopeRows, votes, areaLabel);
+    const all = itemPoints(scopeRows, votes, areaLabel);
+    return f.category ? all.filter((p) => p.category === f.category) : all;
+  }, [view, scopeRows, votes, f.category]);
+  const shown = useMemo(() => plottable(points), [points]);
+  const hidden = points.length - shown.length;
+  // Kun stemmer på de punkter, grafen viser (scope og kategori), tæller med.
+  const shownItemIds = useMemo(() => {
+    const inView = view === "categories" || !f.category
+      ? scopeRows
+      : scopeRows.filter((r) => categoryOf(r, areaLabel) === f.category);
+    return inView.map((r) => r.item_id);
+  }, [view, scopeRows, f.category]);
+  const voterCount = votes ? distinctVoters(votesForItems(votes, shownItemIds)) : null;
+  const point = shown.find((p) => p.key === selected) ?? null;
+  const filtersActive = f.scope !== EMPTY_CHART_FILTERS.scope || f.activeOnly || f.division !== "" || f.category !== "";
+
+  const switchView = (next) => { setView(next); setSelected(null); if (next === "categories") setF((prev) => ({ ...prev, category: "" })); };
+  const showCategory = (category) => { setView("items"); setF((prev) => ({ ...prev, category })); setSelected(null); };
+
+  const unit = view === "categories" ? "kategorier" : "punkter";
+  const meta = loading ? "" : [
+    `${fmtInt(shown.length)} ${unit}`,
+    voterCount !== null ? `${fmtInt(voterCount)} stemmere` : null,
+  ].filter(Boolean).join(" · ");
+
+  // Kategorierne nummereres efter vigtighed; nummeret står i boblen og i listen.
+  const ranked = useMemo(
+    () => (view === "categories" ? [...shown].sort((a, b) => (b.y ?? 0) - (a.y ?? 0) || a.key.localeCompare(b.key, "da")) : []),
+    [view, shown],
+  );
+  const labels = useMemo(() => new Map(ranked.map((p, i) => [p.key, String(i + 1)])), [ranked]);
+
+  const row = point?.item;
+  const panel = !point ? (
+    view === "categories" && ranked.length > 0 ? (
+      <ol className="divide-y divide-cz-border" aria-label="Kategorier efter vigtighed">
+        {ranked.map((p, i) => (
+          <li key={p.key}>
+            <button type="button" onClick={() => setSelected(p.key)}
+              className="flex w-full items-baseline gap-3 py-2 text-left hover:text-cz-1">
+              <span className="w-4 shrink-0 font-data text-2xs tabular-nums text-cz-3">{i + 1}</span>
+              <span className="min-w-0 grow text-sm text-cz-1">{p.label}</span>
+              <span className="shrink-0 font-data text-xs tabular-nums text-cz-2">
+                {fmtScore(p.y)} / {fmtScore(p.x)} · {fmtInt(p.voters)}
+              </span>
+            </button>
+          </li>
+        ))}
+        {/* Uden stemme-rækker lægges punkternes stemmer sammen, så samme manager kan tælle flere gange. */}
+        <li className="pt-2 text-2xs text-cz-3">
+          Vigtighed / god idé · {canSegment ? "stemmere" : "stemmer"}. Vælg en kategori for detaljer.
+        </li>
+      </ol>
+    ) : (
+      <p className="text-sm text-cz-3">Vælg en boble for at se tallene og flytte horisonten.</p>
+    )
+  ) : (
+    <div className="space-y-4">
+      <div>
+        <p className="text-sm font-semibold text-cz-1">{point.label}</p>
+        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-3xs uppercase tracking-[.06em] text-cz-3">
+          {row ? (
+            <>
+              <span>{point.category}</span>
+              <Tag>{STATUS_LABELS[row.status] ?? row.status}</Tag>
+              {row.issue_ref ? <span className="font-data">#{row.issue_ref}</span> : null}
+            </>
+          ) : <span>Kategori</span>}
+          {point.split && <StatusBadge state="closing">Deler spillerne</StatusBadge>}
+        </div>
+      </div>
+      <PointStats point={point} votersLabel={!canSegment && !point.item ? "Stemmer" : "Stemmere"} />
+      {row ? (
+        <div className="space-y-2">
+          <p className="text-3xs uppercase tracking-[.08em] text-cz-3">Flyt horisont</p>
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label={`Horisont for ${point.label}`}>
+            {HORIZONS.map((h) => {
+              const current = (row.horizon ?? "unscheduled") === h;
+              return (
+                <Button key={h} variant="secondary" size="sm" type="button" aria-pressed={current}
+                  className={current ? "border-cz-accent text-cz-accent-t" : ""}
+                  disabled={busy !== null || current}
+                  onClick={() => onMoveHorizon(row, h)}>
+                  {HORIZON_LABELS[h]}
+                </Button>
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {row.status === "active" && (
+              <Button variant="secondary" size="sm" type="button" disabled={busy !== null} onClick={() => onToPlan(row)}>
+                Til planen
+              </Button>
+            )}
+            <Button variant="secondary" size="sm" type="button" onClick={() => onEdit(row)}>Ret punkt og kategori</Button>
+          </div>
+        </div>
+      ) : (
+        <Button variant="secondary" size="sm" type="button" onClick={() => showCategory(point.key)}>
+          Vis punkterne i {point.label}
+        </Button>
+      )}
+    </div>
+  );
+
+  return (
+    <Section>
+      <SectionHeader title="Vigtighed mod idé" meta={/** @type {any} */ (meta)} />
+      <div className="mb-4 flex flex-wrap items-end gap-2" role="group" aria-label="Grafens filtre">
+        <Segmented label="Vis" value={view} onChange={switchView} options={CHART_VIEWS} />
+        <Select size="sm" aria-label="Hvilke punkter" value={f.scope} onChange={(e) => setFilter("scope", e.target.value)}>
+          {CHART_SCOPES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+        </Select>
+        <Select size="sm" aria-label="Managere" value={f.activeOnly ? "active" : ""} disabled={!canSegment}
+          onChange={(e) => setFilter("activeOnly", e.target.value === "active")}>
+          <option value="">Alle managere</option>
+          <option value="active">Aktive (set de seneste 7 dage)</option>
+        </Select>
+        <Select size="sm" aria-label="Division" value={f.division} disabled={!canSegment}
+          onChange={(e) => setFilter("division", e.target.value)}>
+          <option value="">Alle divisioner</option>
+          {divisions.map((d) => <option key={d} value={d}>{divisionLabel(d)}</option>)}
+        </Select>
+        {f.category && (
+          <Button variant="secondary" size="sm" type="button" onClick={() => setFilter("category", "")}>
+            Alle kategorier (nu {f.category})
+          </Button>
+        )}
+        {filtersActive && (
+          <Button variant="secondary" size="sm" type="button" onClick={() => { setF(EMPTY_CHART_FILTERS); setSelected(null); }}>
+            Nulstil
+          </Button>
+        )}
+      </div>
+      {loading ? <TableSkeleton /> : (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,600px)_minmax(0,1fr)]">
+          <div>
+            {shown.length === 0 ? (
+              <div className="flex flex-col items-start gap-2 py-6">
+                <p className="text-sm text-cz-3">Ingen {unit} med stemmer matcher.</p>
+                {filtersActive && (
+                  <Button variant="secondary" size="sm" type="button" onClick={() => { setF(EMPTY_CHART_FILTERS); setSelected(null); }}>
+                    Nulstil filtrene
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <RoadmapAdminChart
+                points={shown}
+                selectedKey={selected}
+                onSelect={(key) => setSelected((prev) => (prev === key ? null : key))}
+                axisXLabel="God idé"
+                axisYLabel="Vigtighed"
+                cornerLabel="Byg først"
+                labels={labels}
+              />
+            )}
+            <p className="mt-2 text-xs text-cz-3">
+              Boblens størrelse er antal stemmere. Stiplet kant: spillerne er uenige om vigtigheden.
+              {hidden > 0 ? ` ${fmtInt(hidden)} ${unit} uden idé-score eller stemmer vises ikke.` : ""}
+              {!canSegment ? " Filtrene på managere og division virker, når stemme-rækkerne kan hentes." : ""}
+            </p>
+          </div>
+          <div className="border-t border-cz-border pt-4 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">{panel}</div>
+        </div>
+      )}
+    </Section>
+  );
+}
+
 export default function GrowthRoadmapTab() {
   const { getAuth } = useAdminAuth();
   const [stats, setStats] = useState(null);
-  const [rows, setRows] = useState([]);
+  const [baseRows, setRows] = useState([]);
+  // #7789: kategorien og stemme-rækkerne til grafen. Begge er null/tomme, indtil
+  // migrationen er applied; så viser grafen viewets tal uden filtre.
+  const [categories, setCategories] = useState(/** @type {{ id: string, category: string | null }[]} */ ([]));
+  const [votePayload, setVotePayload] = useState(/** @type {import("../../../lib/roadmapAdminModel.ts").VotePayload | null} */ (null));
   const [issues, setIssues] = useState([]);
   const [updates, setUpdates] = useState([]);
   const [flags, setFlags] = useState([]);
@@ -112,7 +340,7 @@ export default function GrowthRoadmapTab() {
   const [actionError, setActionError] = useState("");
   const [busy, setBusy] = useState(null);
   // { kind: "item" | "split" | "issue" | "update", row, focus? }
-  const [modal, setModal] = useState(null);
+  const [modal, setModal] = useState(/** @type {any} */ (null));
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -145,6 +373,19 @@ export default function GrowthRoadmapTab() {
       const res = await apiFetch(`${API}/api/admin/feature-flags`, { headers: await getAuth() }, { source: "admin-roadmap-flags" });
       if (res.ok) setFlags(res.data?.flags ?? []);
     } catch { /* ignoreret, se ovenfor */ }
+    // Grafens ekstra data (#7789) er også en bonus: før migrationen findes
+    // hverken kolonnen eller RPC'en, og tabellerne skal virke alligevel.
+    try {
+      const [catRes, votesRes] = await Promise.all([
+        supabase.from("roadmap_items").select("id, category"),
+        apiFetch(`${API}/api/admin/roadmap/votes`, { headers: await getAuth() }, { source: "admin-roadmap-votes" }),
+      ]);
+      setCategories(catRes.error ? [] : /** @type {any} */ (catRes.data) ?? []);
+      setVotePayload(votesRes.ok ? parseVotePayload(/** @type {any} */ (votesRes.data)?.votes) : null);
+    } catch {
+      setCategories([]);
+      setVotePayload(null);
+    }
   }, [getAuth]);
 
   useEffect(() => { load(); }, [load]);
@@ -167,6 +408,7 @@ export default function GrowthRoadmapTab() {
 
   const updateItem = (id, patch) => supabase.from("roadmap_items").update({ ...patch, updated_at: nowIso() }).eq("id", id);
 
+  const rows = useMemo(() => mergeCategories(baseRows, categories), [baseRows, categories]);
   const order = useMemo(() => ownOrder(rows), [rows]);
   const latest = useMemo(() => latestUpdateByIssue(updates), [updates]);
   const flagByKey = useMemo(() => new Map(flags.map((f) => [f.key, f])), [flags]);
@@ -244,12 +486,16 @@ export default function GrowthRoadmapTab() {
   const itemTags = (row) => (
     <>
       <span>{AREA_LABELS[row.engine] ?? row.engine}</span>
+      {row.category && <span className="normal-case tracking-normal">{row.category}</span>}
       {row.approved === false && <Tag>Skjult</Tag>}
       {row.beta_soon && <Tag>Næste i beta</Tag>}
       {row.live_soon && <Tag>Snart for alle</Tag>}
       {row.issue_ref ? <span className="font-data">#{row.issue_ref}</span> : null}
     </>
   );
+
+  const toPlan = (r) => run(`plan-${r.item_id}`, () => updateItem(r.item_id,
+    { status: "planned", horizon: "next_week", sort_order: nextSortOrder(plannedRows) }));
 
   const move = (r, dir) => run(`${dir < 0 ? "up" : "down"}-${r.item_id}`, () => Promise.all(movePatches(plannedRows, r.item_id, dir)
     .map((p) => updateItem(p.item_id, { sort_order: p.sort_order }))));
@@ -290,6 +536,8 @@ export default function GrowthRoadmapTab() {
     score: { key: "score", header: "Score", sortKey: "score", numeric: true, compact: true, render: (r) => <Num>{fmtScore(r.steering_score, 1)}</Num> },
     votes: { key: "votes", header: "Stemmer", sortKey: "votes", numeric: true, compact: true, render: (r) => <Num>{fmtInt(r.votes)}</Num> },
     dontKnow: { key: "dontKnow", header: "Ved ikke", sortKey: "dontKnow", numeric: true, compact: true, render: (r) => <Num>{fmtInt(r.dont_know)}</Num> },
+    // #7789: spredningen på vigtighed; over SPLIT_SD står "Deler spillerne" ved titlen.
+    sd: { key: "sd", header: "Uenighed", mobileHeader: "Uenig.", sortKey: "sd", numeric: true, compact: true, render: (r) => <Num>{fmtScore(r.sd_importance)}</Num> },
     own: {
       key: "own", header: "Din rækkefølge", mobileHeader: "Din", sortKey: "own", numeric: true, compact: true,
       render: (r) => {
@@ -341,9 +589,7 @@ export default function GrowthRoadmapTab() {
 
   const ideaActions = col.actions((r) => (
     <>
-      <RowButton disabled={busy !== null}
-        onClick={() => run(`plan-${r.item_id}`, () => updateItem(r.item_id,
-          { status: "planned", horizon: "next_week", sort_order: nextSortOrder(plannedRows) }))}>
+      <RowButton disabled={busy !== null} onClick={() => toPlan(r)}>
         Til planen
       </RowButton>
       {r.approved === false ? (
@@ -385,7 +631,7 @@ export default function GrowthRoadmapTab() {
         </>
       ))],
     y2027: [col.rank, col.title("Punkt", true), col.statusEdit, col.importance, col.votes, col.dontKnow, col.own, col.flag, horizonActions],
-    votes: [col.rank, col.title("Punkt"), col.status, col.horizon, col.votes, col.dontKnow, col.idea, col.importance, col.score,
+    votes: [col.rank, col.title("Punkt", true), col.status, col.horizon, col.votes, col.dontKnow, col.idea, col.importance, col.sd, col.score,
       col.actions((r) => <RowButton onClick={() => setModal({ kind: "item", row: r })}>Ret</RowButton>)],
   };
 
@@ -515,6 +761,16 @@ export default function GrowthRoadmapTab() {
           <Section>
             <HeroStats items={statItems} className="mt-0 border-t-0 pt-0" />
           </Section>
+
+          <RoadmapChartSection
+            rows={rows}
+            votePayload={votePayload}
+            loading={loading}
+            busy={busy}
+            onMoveHorizon={(r, horizon) => run(`hz-${r.item_id}`, () => updateItem(r.item_id, { horizon }))}
+            onToPlan={toPlan}
+            onEdit={(r) => setModal({ kind: "item", row: r })}
+          />
 
           <Section>
             <Tabs value={tab} onChange={setTab}>

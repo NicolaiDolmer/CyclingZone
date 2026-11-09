@@ -782,10 +782,12 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     }
     : { scopeNote: roleScopeNote, coCaptainOn, luxuryHelperOn };
 
+  const mobileTacticsAction = "inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center px-2";
+
   // Rene render-funktioner, IKKE nestede komponenter: en komponent defineret
   // inde i render remountes ved hver tastetryk-render (React ser en ny type),
   // hvilket ville lukke den udfoldede vaelger under fingeren.
-  function renderRoleCell(rider) {
+  function renderRoleCell(rider, { mobile = false } = {}) {
     const role = roleFor(rider);
     const open = openRoleRiderId === rider.rider_id;
     // Låst etape og udgåede ryttere er ren visning: serveren afviser dem
@@ -793,11 +795,17 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     // en knap der ikke kan bruges er værre end ingen knap. Uden en eneste
     // ulåst etape (sidste dag kørt) er der intet tilbage at sætte rollen på.
     const canEdit = !stageLocked && !rider.abandoned && editableStages.length > 0;
-    return (
+    const summary = (
       <>
         <div className="text-cz-1 text-xs">{t(`tacticsOrders.roleLabel.${roleKey(role)}`)}</div>
         {/* #6095: med etape-valget kan rollen afvige pr. etape; "hele løbet" ville lyve. */}
         {!scopeChoice && <div className="text-3xs uppercase tracking-wider text-cz-3 mt-0.5">{roleScope}</div>}
+      </>
+    );
+    const compact = mobile && canEdit;
+    const content = (
+      <>
+        {compact ? <div className="min-w-0">{summary}</div> : summary}
         {canEdit && (
           <button
             type="button"
@@ -805,13 +813,14 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
             aria-expanded={open}
             aria-label={t("racePage.tactics.changeRoleAria", { name: rider.name || "—" })}
             onClick={() => { setOpenRoleRiderId(open ? null : rider.rider_id); setOpenRiderId(null); setRoleScopeChoice("rest"); }}
-            className="mt-1 text-xs font-medium text-cz-accent-t hover:underline disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            className={`text-xs font-medium text-cz-accent-t hover:underline disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap ${compact ? mobileTacticsAction : "mt-1"}`}
           >
             {open ? t("intention.close") : t("intention.change")}
           </button>
         )}
       </>
     );
+    return compact ? <div className="flex items-center justify-between gap-2">{content}</div> : content;
   }
 
   // #4992: rute-match for den ÅBNE etape. Desktop bruger den delte FitBar
@@ -842,7 +851,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     return showsTimeLimitRisk(rider, activeStage, effort) ? <TimeLimitRiskMark /> : null;
   }
 
-  function renderIntentionCell(rider) {
+  function renderIntentionCell(rider, { mobile = false } = {}) {
     if (rider.abandoned) {
       return (
         <span className="inline-flex items-center gap-1 text-xs text-cz-3">
@@ -870,28 +879,40 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         </>
       );
     }
+    const chip = <IntentionChip t={t} effort={effort} isDefault={isDefault} role={role} />;
+    const action = (
+      <button
+        type="button"
+        disabled={saving}
+        aria-expanded={open}
+        onClick={() => { setOpenRiderId(open ? null : rider.rider_id); setOpenRoleRiderId(null); }}
+        className={`text-xs font-medium text-cz-accent-t hover:underline disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap ${mobile ? mobileTacticsAction : ""}`}
+      >
+        {open ? t("intention.close") : t(isDefault ? "intention.setIntention" : "intention.change")}
+      </button>
+    );
+    const description = (
+      <p className="mt-1 text-3xs text-cz-3">
+        {isDefault
+          ? t("intention.nothingSet")
+          : t("intention.line", {
+              role: t(`intention.roleWord.${role}`),
+              today: todayText,
+            })}
+      </p>
+    );
+    if (mobile) {
+      return (
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">{chip}{description}</div>
+          {action}
+        </div>
+      );
+    }
     return (
       <>
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <IntentionChip t={t} effort={effort} isDefault={isDefault} role={role} />
-          <button
-            type="button"
-            disabled={saving}
-            aria-expanded={open}
-            onClick={() => { setOpenRiderId(open ? null : rider.rider_id); setOpenRoleRiderId(null); }}
-            className="text-xs font-medium text-cz-accent-t hover:underline disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-          >
-            {open ? t("intention.close") : t(isDefault ? "intention.setIntention" : "intention.change")}
-          </button>
-        </div>
-        <p className="mt-1 text-3xs text-cz-3">
-          {isDefault
-            ? t("intention.nothingSet")
-            : t("intention.line", {
-                role: t(`intention.roleWord.${role}`),
-                today: todayText,
-              })}
-        </p>
+        <div className="flex items-center gap-2.5 flex-wrap">{chip}{action}</div>
+        {description}
       </>
     );
   }
@@ -1213,9 +1234,9 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                   {renderRouteMatchCell(rider, { numberOnly: true })}
                 </span>
               </div>
-              <div className="mt-0.5">{renderRoleCell(rider)}</div>
+              <div className="mt-0.5">{renderRoleCell(rider, { mobile: true })}</div>
               {renderTimeLimitMark(rider) && <div className="mt-1.5">{renderTimeLimitMark(rider)}</div>}
-              <div className="mt-2">{renderIntentionCell(rider)}</div>
+              <div className="mt-2">{renderIntentionCell(rider, { mobile: true })}</div>
               {showOrders && <div className="mt-2">{renderOrdersCell(rider)}</div>}
               {openRole && (
                 <div className="mt-2.5">

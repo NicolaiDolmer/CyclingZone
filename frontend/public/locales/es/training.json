@@ -624,7 +624,13 @@
     "sortFirstName": "Nombre",
     "sortLastName": "Apellido",
     "previousSeason": "Temporada anterior",
-    "change": "{from} a {to}"
+    "change": "{from} a {to}",
+    "pointsMeta": "{count, plural, one {# punto entero} other {# puntos enteros}}",
+    "progressHeading": "Progreso hacia el siguiente punto",
+    "loadError": "No se pudo cargar el historial de entrenamiento",
+    "loadErrorBody": "No se ha cambiado nada. Tus planes de entrenamiento están a salvo.",
+    "retry": "Reintentar",
+    "emptyAction": "Ir al entrenamiento de hoy"
   },
   "forecast": {
     "label": "Fatiga esta noche",

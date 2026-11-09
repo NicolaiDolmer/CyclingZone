@@ -223,6 +223,27 @@ export async function withSupabaseRetry(fn, { retries = 2, delayMs = 250, sleepF
   throw toSupabaseError(lastError);
 }
 
+// #7917: ét nedbrud skal give én alarm. Klassen er bevidst snævrere end
+// isTransientSupabaseError, som også dækker netværksfejl mod Discord og
+// statement-timeouts: de to beskeder her betyder, at selve databasen eller
+// gatewayen foran den er utilgængelig. Kaldes efter normaliseringen, så en
+// HTML-fejlside allerede er blevet til "Supabase unavailable (...)".
+const SUPABASE_UNAVAILABLE_MARKERS = [
+  "Supabase unavailable (",
+  "Could not query the database for the schema cache",
+];
+
+// normalizeSupabaseErrorMessage kender ikke afsenderen og koger enhver HTML-fejlside
+// ned til "Supabase unavailable". Alunta og Discords DM-kald lægger svar-body'en
+// direkte i beskeden, så deres egne udfald skal holdes uden for klassen.
+const OTHER_UPSTREAM_RESPONSE_RE = /\bAlunta [A-Z]+ \S+ -> \d{3}:|\b(?:openDm|postDm) \d{3}:/;
+
+export function isSupabaseUnavailableMessage(message) {
+  if (typeof message !== "string") return false;
+  if (OTHER_UPSTREAM_RESPONSE_RE.test(message)) return false;
+  return SUPABASE_UNAVAILABLE_MARKERS.some((marker) => message.includes(marker));
+}
+
 // #6105: telemetry-only helper. General application error/retry APIs above stay unchanged.
 const CF_PROBLEM_LABELS = new Map([
   [521, "Web server is down"],

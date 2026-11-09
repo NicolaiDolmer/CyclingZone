@@ -291,7 +291,7 @@
         "placedGap": "{name} blev nr. {rank}, {gap} efter.",
         "dayGreat": "{name} havde en rigtig god dag.",
         "dayGood": "{name} havde en god dag.",
-        "ownOut": "{kind, select, withdrawal {Steg af: {names}. For langt efter vinderen.} time_limit {Uden for tidsgrænsen: {names}.} crash {Udgik efter styrt: {names}.} mechanical {Udgik med mekanisk defekt: {names}.} other {Udgik: {names}.}}"
+        "ownOut": "{kind, select, withdrawal {Steg af: {names}. For langt efter vinderen.} time_limit {Uden for tidsgrænsen: {names}.} time_limit_fatigue {Uden for tidsgrænsen på grund af træthed: {names}.} crash {Udgik efter styrt: {names}.} mechanical {Udgik med mekanisk defekt: {names}.} other {Udgik: {names}.}}"
       },
       "final": {
         "aria": "De sidste 5 km: grupperne på vejen med afstand til mål, huller og løbsur",
@@ -334,6 +334,7 @@
         "abandonedMechanical": "Han fik defekt{where} og måtte udgå",
         "abandoned": "Han udgik{where}",
         "timeLimit": "Han kom i mål uden for tidsgrænsen",
+        "timeLimitFatigue": "Han kom i mål uden for tidsgrænsen, fordi han var for træt",
         "withdrawal": "Han stod af, for langt efter vinderen",
         "won": "Han var først på stregen",
         "wonSprint": "Han vandt spurten",
@@ -363,7 +364,12 @@
         "attackBehind": "Han angreb{where}, men kunne ikke holde sig foran til stregen",
         "bunchBehindSprint": "Han kom i mål i feltet bag spurten",
         "pelotonBehindBreak": "Han kom i mål i feltet, bag udbruddet der holdt hjem",
-        "pelotonBehind": "Han blev i feltet, da gruppen foran kørte væk"
+        "pelotonBehind": "Han blev i feltet, da gruppen foran kørte væk",
+        "ttFastest": "Han satte den hurtigste tid",
+        "ttDayGreat": "Han havde en rigtig god dag på cyklen",
+        "ttDayGood": "Han havde en god dag på cyklen",
+        "ttRouteGood": "Ruten passede ham",
+        "ttRouteBad": "Ruten passede ham ikke"
       },
       "lead": {
         "afterBreak": "efter en dag i udbruddet",
@@ -373,7 +379,9 @@
         "badDayIllness": "på en dårlig dag, hvor han følte sig syg",
         "badDayRain": "på en dårlig dag i regnen",
         "badDayWind": "på en dårlig dag i vinden",
-        "badDayHeat": "på en dårlig dag i varmen"
+        "badDayHeat": "på en dårlig dag i varmen",
+        "ttRouteGood": "på en rute, der passede ham",
+        "ttRouteBad": "på en rute, der ikke passede ham"
       }
     },
     "yourDay": {
@@ -1756,6 +1764,7 @@
       "illness": "Syg, startede ikke",
       "withdrawal": "Steg af, for langt efter",
       "time_limit": "Uden for tidsgrænsen",
+      "time_limit_fatigue": "Uden for tidsgrænsen, træt",
       "abandoned": "Udgik",
       "dnf": "DNF",
       "dnfCollapsed": "{count, plural, one {# rytter udgik} other {# ryttere udgik}}",
@@ -2216,7 +2225,7 @@
   },
   "timeLimitRisk": {
     "short": "Tidsgrænse i fare",
-    "long": "Meget træt, og etapen passer ham dårligt. Han kan ryge uden for tidsgrænsen. Sæt ham til Grupetto eller Kør roligt, så slipper han for den ekstra risiko.",
+    "long": "Meget træt, og etapen passer ham dårligt. Han kan ryge uden for tidsgrænsen. Sæt ham på Grupetto eller Kør roligt i mål, og giv ham ikke en hårdere opgave samme dag.",
     "outShort": "For træt",
     "outLong": "Uden for tidsgrænsen. Han var meget træt, og etapen passede ham dårligt."
   }

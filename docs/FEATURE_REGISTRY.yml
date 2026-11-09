@@ -149,10 +149,8 @@ features:
     flag: day_words_7725
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7725
-    verified: 2026-11-06
-    note: "Slukket; kræver day_form_6649."
-    decision: ejer-beslutning
-    decide_by: 2026-11-20
+    verified: 2026-11-08
+    note: "on 8/11 på ejerens ord; kun tekst, kræver day_form_6649."
   - id: race-jersey-hunt-7855
     area: race-engine
     title_en: Jersey hunt in the stage plan
@@ -198,6 +196,18 @@ features:
     epic: 7730
     verified: 2026-11-06
     note: "on 6/11 på ejerens kør; kun løb der ikke er startet."
+
+  - id: race-time-limit-fatigue-7715
+    area: race-engine
+    title_en: Tired riders can miss the time limit, with a warning
+    title_da: Trætte ryttere kan misse tidsgrænsen, med varsel
+    state: building
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 7715
+    verified: 2026-11-07
+    note: "Nøgle time_limit_fatigue_7715 uden række (off)."
+    decision: ejer-beslutning
+    decide_by: 2026-11-20
 
   - id: race-official-times-v1
     area: race-engine
@@ -440,7 +450,7 @@ features:
     area: race-day
     title_en: Why? button beside riders in Your day
     title_da: Hvorfor?-knap ved rytterne i Din dag
-    state: beta
+    state: live
     flag: rider_why_button
     decision: taend
     decide_by: 2026-11-20
@@ -450,6 +460,20 @@ features:
     roadmap_en: "Why? next to your riders: one tap tells you what decided his result."
     roadmap_da: "Hvorfor? ved dine ryttere: ét tryk fortæller, hvad der afgjorde hans resultat."
     roadmap_horizon: next_week
+
+  - id: talent-marks
+    area: squad
+    title_en: Talent marks
+    title_da: Talentmærker
+    state: beta
+    flag: talent_marks_7879
+    roadmap_en: "Talent marks: a small mark next to a rider's name shows the biggest talents under 23 and juniors in strong progress."
+    roadmap_da: "Talentmærker: et lille mærke ved rytterens navn viser de største talenter under 23 og juniorer i kraftig fremgang."
+    decision: ejer-beslutning
+    decide_by: 2026-11-21
+    epic: 7824
+    verified: 2026-11-07
+    note: "#7879: seedes off, kun visning. Ejeren flytter kontakten til beta; roadmap-tekst følger med."
 
   - id: rider-hover-card
     area: squad
@@ -512,6 +536,18 @@ features:
     verified: 2026-09-06
     note: Knap på profilen, ikke egen fane.
 
+  - id: sale-escrow
+    area: market
+    title_en: Sale escrow
+    title_da: Låste salgspenge
+    state: building
+    ssot: docs/TRANSFER_MARKET_RULES.md
+    epic: 6181
+    verified: 2026-11-07
+    decision: goer-faerdigt
+    decide_by: 2026-11-08
+    note: Kontakt sale_escrow_enabled.
+
   - id: rider-loans
     area: market
     title_en: Rider loans
@@ -531,6 +567,18 @@ features:
     epic: 1310
     verified: 2026-09-06
     note: Findes ikke i kode.
+
+  - id: market-auto-accept
+    area: market
+    title_en: Auto-accept price
+    title_da: Auto-accept-pris
+    state: building
+    flag: auto_accept_enabled
+    ssot: docs/TRANSFER_MARKET_RULES.md
+    epic: 2176
+    verified: 2026-11-07
+    decision: taend
+    decide_by: 2026-11-28
 
   - id: market-value-blend
     area: market
@@ -586,7 +634,21 @@ features:
     ssot: docs/superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md
     epic: 1177
     verified: 2026-11-04
-    note: 'Kun data er bygget (#5268); løbsmotor (#5348) og mentorpar (#5349) mangler, og arbejdet står stille (statusaudit 4/11).'
+    note: 'Kun data er bygget (#5268); motor (#5348) og mentorpar (#5349) mangler, arbejdet står stille.'
+
+  - id: champion-jerseys
+    area: squad
+    title_en: Champion jerseys beside rider names
+    title_da: Mestertrøjer ved rytternavne
+    state: beta
+    flag: champion_jerseys_7824
+    roadmap_en: "Champion jerseys: riders who have won a championship show a small jersey next to their name."
+    roadmap_da: "Mestertrøjer: ryttere, der har vundet et mesterskab, viser en lille trøje ved deres navn."
+    epic: 7824
+    verified: 2026-11-07
+    note: champion_jerseys_7824
+    decision: taend
+    decide_by: 2026-11-22
 
   - id: rider-rating-best-role-display
     area: squad
@@ -882,7 +944,7 @@ features:
     ssot: docs/YOUTH_RULES.md
     epic: 2911
     verified: 2026-10-15
-    note: Sikkerhedsventil efter ejer-beslutning (#2911); off i prod (læst 15/10), kun ejeren flipper.
+    note: Sikkerhedsventil efter ejer-beslutning (#2911); off i prod, kun ejeren flipper.
 
   - id: three-squads
     area: academy
@@ -970,7 +1032,7 @@ features:
     state: live
     flag: ai_pool_retirement_v2_enabled
     verified: 2026-10-15
-    note: On i prod siden 9/9 (læst 15/10).
+    note: On i prod siden 9/9.
 
   - id: season-documentary-llm
     area: season
@@ -1096,7 +1158,7 @@ features:
     flag: development_score_v2
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: 'Ejer 31/10 (#6110): parkeret, indtil grundtalentet (spec 23/10, byggetrin 2) er bygget; ny frist ikke sat. Forudsætning før tænding: #7584. Statusaudit 4/11.'
+    note: 'Ejer 31/10 (#6110): parkeret, indtil grundtalentet (spec 23/10, byggetrin 2) er bygget; ingen frist. Forudsætning før tænding: #7584.'
     verified: 2026-11-04
     decision: ejer-beslutning
     decide_by: 2026-11-08

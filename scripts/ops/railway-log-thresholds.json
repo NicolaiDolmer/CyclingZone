@@ -21,6 +21,7 @@
     "academyHealSweep": 10,
     "aiTeamTrimHealSweep": 10,
     "applyLeaderShiftExtension": 10,
+    "marketCommitment6181": 3,
     "attribution": 5,
     "board-dm-mirror": 5,
     "collect": 5,
@@ -29,6 +30,7 @@
     "cronHeartbeat": 10,
     "dashboard": 10,
     "deferredTransferHealSweep": 10,
+    "saleEscrow": 3,
     "discord-config": 5,
     "discord-dm:auto-disconnect": 5,
     "discord-dm:error": 5,
@@ -74,6 +76,7 @@
     "outage-monitor": 1,
     "cron-heartbeat": 1
   },
+    "saleEscrow": "#6181 (backend/lib/saleEscrowFlow6181.js): pengelaasens kaldere. console.warn naar en parkeret handel betales uden escrow (rytteren var allerede flyttet) eller escrow-opslaget fejlede i flushen; console.error naar en refusion eller reconcile-afregning fejlede (heal-sweepet proever igen hvert 5. min). Penge-kode og bag en kontakt, der er slukket, saa enhver linje er vaerd at se: lav taerskel.",
   "_tagNotes": {
     "(untagged)": "Error-niveau-linjer uden [tag]-praefiks, fx 'graduation sweep failed (<id>): not_pending'. Objekt-fortsaettelseslinjer filtreres fra i classifyLine.",
     "fatal": "Findes 30/8 KUN i backend/scripts/ (verify-invariants.js, dev/repairGameDayAxis4161.mjs) og naar derfor ikke Railways logstroem. Issue #4453 listede den som runtime-signal - maalt forkert. Entry beholdt som nul-tolerance hvis den nogensinde flyttes ind i runtime.",

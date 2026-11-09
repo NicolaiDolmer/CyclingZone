@@ -5,6 +5,7 @@ import { MANAGER_ENTRY_DIVISION } from "./economyConstants.js";
 import { isPoolRetired, withPoolRetiredColumn } from "./aiTeamGenerator.js";
 import { clearRaceResultsSnapshots } from "./raceResultsSnapshotCache.js";
 import { seniorSquadPatch, withSeniorSquadScope } from "./squads.js";
+import { reconcileHeldSaleEscrows } from "./saleEscrowFlow6181.js";
 
 export const DEFAULT_BETA_BALANCE = 500000; // #1717: sænket 800000 → 500000 (matcher INITIAL_BALANCE)
 
@@ -192,11 +193,20 @@ export async function resetBetaRosters(supabase) {
 
   (await Promise.all(updates)).forEach(ensureOk);
 
+  // #6181: parkeringerne er nu vaek, saa en holdt escrow kan ikke leveres. Afregn
+  // dem her (refusion til koeber, eller kredit hvis rytteren naaede frem), FOER en
+  // efterfoelgende resetBetaBalances, saa reconcile ikke refunderer oven i nye saldi.
+  const saleEscrows = await reconcileHeldSaleEscrows({ supabase, sourcePath: "betaResetService.resetBetaRosters" });
+  if (saleEscrows.failed > 0) {
+    throw new Error(`resetBetaRosters: ${saleEscrows.failed} sale_escrow-afregning(er) fejlede: ${saleEscrows.errors.map((e) => e.message).join("; ")}`);
+  }
+
   return {
     moved: riders.length,
     to_ai: riders.length - withoutAi.length,
     to_null: withoutAi.length,
     pending_cleared: countRows(pendingCleared),
+    ...(saleEscrows.checked > 0 ? { sale_escrows_settled: saleEscrows.released + saleEscrows.refunded, sale_escrows_stuck: saleEscrows.stuck } : {}),
   };
 }
 

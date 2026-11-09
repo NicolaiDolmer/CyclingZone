@@ -1,12 +1,12 @@
 // Fair-play prisbånd (#3133): gulv OG loft på hvad en rytter må skifte hænder
-// for mellem to spillere. Dækker tre håndhævelsespunkter (alle server-side,
-// alle i routes/api.js):
+// for mellem to spillere. Server-side håndhævelsespunkter:
 //   - PATCH /api/transfers/offers/:id  action=accept / accept_counter
 //   - PATCH /api/transfers/swaps/:id   action=accept / accept_counter (SAMLET
 //     værdi inkl. cash_adjustment/counter_cash)
 //   - POST  /api/auctions              starting_price ved oprettelse (kun
 //     EGEN rytter — bank/AI-salg har sit eget gulv, se
 //     auctionRules.getAuctionStartPriceIssue, og er ikke spiller-til-spiller)
+//   - autoAccept2176.makeStartAutoAcceptHandler ved auktionsoprettelse.
 //
 // #2803 lærte os at UI-checks ikke er nok: køberen kunne selv sætte
 // seller_confirmed, og swaps havde slet ingen værdikontrol. Begge kendte

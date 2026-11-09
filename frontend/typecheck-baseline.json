@@ -858,9 +858,8 @@
     "TS18046": 2,
     "TS18047": 1,
     "TS2322": 7,
-    "TS2339": 26,
-    "TS2345": 4,
-    "TS2353": 9
+    "TS2339": 13,
+    "TS2345": 4
   },
   "src/components/admin/growth/RoadmapAdminForms.jsx": {
     "TS2339": 1,
@@ -1251,8 +1250,7 @@
   },
   "src/components/training/TrainingHistory.jsx": {
     "TS2322": 1,
-    "TS2339": 2,
-    "TS2739": 1
+    "TS2339": 2
   },
   "src/components/training/TrainingMoment.jsx": {
     "TS2322": 2

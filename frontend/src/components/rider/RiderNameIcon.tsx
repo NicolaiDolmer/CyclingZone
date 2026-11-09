@@ -3,7 +3,7 @@
 // Bygget ÉN gang og koblet paa RiderLink, saa det slaar igennem overalt hvor
 // spillet viser et rytternavn (resultater, startlister, marked, trup, taktik).
 // RiderLink kalder useRiderNameOverlay(id) og faar tre ting tilbage:
-//   - icon:     et lille stroke-person-ikon (aldrig emoji) der staar foran navnet.
+//   - icon:     et lille stroke-person-ikon (aldrig emoji) der staar til venstre for navnet.
 //   - linkProps: hoejreklik/langt tryk/Shift+F10 paa navnet, og tastatur-fokus.
 //   - overlays: kortet og menuen (portal), kun naar de er aabne.
 //
@@ -300,7 +300,7 @@ export function useRiderNameOverlay(riderId: string | number | null | undefined,
       }}
       onMouseLeave={() => { if (hoverDevice()) scheduleClose(); }}
       // Mobil: et bredere trykfelt end selve ikonet, uden at flytte navnet.
-      className="relative -my-1 ms-1 inline-flex shrink-0 cursor-pointer items-center justify-center py-1 align-[-2px] text-cz-3 transition-colors hover:text-cz-accent-t before:absolute before:-inset-x-1.5 before:-inset-y-1 before:content-[''] pointer-coarse:before:-inset-2.5"
+      className="relative -my-1 me-1.5 inline-flex shrink-0 cursor-pointer items-center justify-center py-1 align-[-2px] text-cz-3 transition-colors hover:text-cz-accent-t before:absolute before:-inset-x-1.5 before:-inset-y-1 before:content-[''] pointer-coarse:before:-inset-2.5"
     >
       <UserIcon size={12} strokeWidth={2} />
     </span>

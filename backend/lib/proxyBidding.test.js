@@ -8,13 +8,13 @@ import { resolveProxyBids as resolveProxyBidsRaw } from "./proxyBidding.js";
 // canAffordAutoBidFn eksplicit.
 const ALWAYS_AFFORD = async () => true;
 const resolveProxyBids = (args) =>
-  resolveProxyBidsRaw({ canAffordAutoBidFn: ALWAYS_AFFORD, ...args });
+  resolveProxyBidsRaw({ canAffordAutoBidFn: ALWAYS_AFFORD, now: () => new Date('2030-05-04T10:00:00Z'), ...args });
 
 // Allowed eq() columns per table — resolver må ikke filtrere på andet
 const ALLOWED_EQ_COLUMNS = {
   auctions: ["id"],
   // #183: auction_id på select, auction_id+team_id på delete af stale winner-proxy
-  auction_proxy_bids: ["auction_id", "team_id"],
+  auction_proxy_bids: ["auction_id", "team_id", "max_amount"],
   teams: ["id"],
 };
 
@@ -23,7 +23,7 @@ const ALLOWED_EQ_COLUMNS = {
 // #230: proxyDeleteError lader en test simulere at DELETE på auction_proxy_bids
 // fejler. supabase-js kaster ikke — den returnerer { error } — så det er den
 // eneste måde at dække "sletningen mislykkedes"-grenen på.
-function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = null, proxyDeleteError = null }) {
+function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = null, proxyDeleteError = null, databaseLeaderSync = false, afterBidInsert = null, beforeBidInsert = null }) {
   const auctionState = { ...auction };
   // #183: muterbar kopi så delete på auction_proxy_bids reflekteres i efterfølgende selects.
   const proxiesState = [...proxies];
@@ -31,6 +31,7 @@ function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = nu
   const updateLog = [];
   const teamLookups = [];
   const proxyDeleteLog = [];
+  const rpcCalls = [];
 
   function assertColumn(table, column) {
     const allowed = ALLOWED_EQ_COLUMNS[table];
@@ -40,7 +41,22 @@ function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = nu
   }
 
   return {
-    state: { auction: auctionState, bids: bidLog, updates: updateLog, teamLookups, proxies: proxiesState, proxyDeletes: proxyDeleteLog },
+    state: { auction: auctionState, bids: bidLog, updates: updateLog, teamLookups, proxies: proxiesState, proxyDeletes: proxyDeleteLog, rpcCalls },
+    async rpc(name,args) {
+      assert.equal(name,'match_auction_proxy_tie_6181');
+      rpcCalls.push({...args});
+      const candidate=proxiesState.find(row=>row.team_id===args.p_team_id);
+      if(auctionState.current_price!==args.p_expected_price || auctionState.current_bidder_id!==args.p_expected_leader_id || candidate?.max_amount!==args.p_expected_price){
+        return {data:null,error:{code:'P0001',message:'market_gate_6181:price_changed'}};
+      }
+      const payload={auction_id:args.p_auction_id,team_id:args.p_team_id,amount:args.p_expected_price,bid_time:args.p_bid_time,triggered_extension:false,is_proxy:true};
+      const error=beforeBidInsert?.(payload,auctionState);
+      if(error)return {data:null,error};
+      bidLog.push(payload);
+      Object.assign(auctionState,{current_price:payload.amount,current_bidder_id:payload.team_id});
+      afterBidInsert?.(auctionState,payload);
+      return {data:null,error:null};
+    },
     from(table) {
       if (table === "auctions") {
         return {
@@ -88,17 +104,19 @@ function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = nu
               // #230: fejlende delete rører IKKE state — rækken bliver liggende,
               // præcis som i Postgres når skrivningen afvises.
               if (proxyDeleteError) return { data: null, error: proxyDeleteError };
+              const removed=[];
               for (let i = proxiesState.length - 1; i >= 0; i--) {
                 const row = proxiesState[i];
                 let matches = true;
                 for (const [col, val] of Object.entries(filters)) {
                   if (row[col] !== val) { matches = false; break; }
                 }
-                if (matches) proxiesState.splice(i, 1);
+                if (matches) removed.push(...proxiesState.splice(i, 1));
               }
-              return { data: null, error: null };
+              return { data: removed.map(row=>({id:row.id??row.team_id})), error: null };
             };
             const chain = {
+              select() { return chain; },
               eq(col, val) {
                 assertColumn("auction_proxy_bids", col);
                 filters[col] = val;
@@ -115,7 +133,11 @@ function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = nu
       if (table === "auction_bids") {
         return {
           insert(payload) {
+            const error = beforeBidInsert?.(payload, auctionState);
+            if (error) return Promise.resolve({ data: null, error });
             bidLog.push({ ...payload });
+            if (databaseLeaderSync) Object.assign(auctionState, { current_price: payload.amount, current_bidder_id: payload.team_id });
+            afterBidInsert?.(auctionState, payload);
             return Promise.resolve({ data: null, error: null });
           },
         };
@@ -143,13 +165,165 @@ function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = nu
   };
 }
 
-const FUTURE_END = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // +1h
-const BID_TIME = new Date();
+const FUTURE_END = '2030-05-04T11:00:00.000Z';
+const BID_TIME = new Date('2030-05-04T10:00:00Z');
+
+for (const code of ['insufficient_available_balance', 'squad_full']) {
+  test(`gated cascade continues after atomic ${code} rejection`, async () => {
+    const attempts = [];
+    const supabase = createMockSupabase({
+      auction: { id: 'gated', status: 'active', calculated_end: FUTURE_END, current_price: 100,
+        current_bidder_id: 'leader', rider: { firstname: 'Test', lastname: 'Rider', team_id: null }, seller_team_id: 'seller' },
+      proxies: [{ team_id: 'first', max_amount: 200 }, { team_id: 'next', max_amount: 150 }],
+      databaseLeaderSync: true,
+      beforeBidInsert: payload => {
+        attempts.push(payload.team_id);
+        return payload.team_id === 'first' ? { code: 'P0001', message: `market_gate_6181:${code}` } : null;
+      },
+    });
+    const result = await resolveProxyBids({ supabase, auctionId: 'gated', bidTime: BID_TIME,
+      databaseOwnsLeaderSync: true });
+    assert.deepEqual(attempts, ['first', 'next']);
+    assert.equal(supabase.state.bids.length, 1);
+    assert.equal(result.finalLeaderId, 'next');
+  });
+}
+
+test('gated cascade reloads stale state before cleanup or success notices', async () => {
+  const attempts = [];
+  const notices = [];
+  let supabase;
+  supabase = createMockSupabase({
+    auction: { id: 'gated', status: 'active', calculated_end: FUTURE_END, current_price: 100,
+      current_bidder_id: 'leader', rider: { firstname: 'Test', lastname: 'Rider', team_id: null }, seller_team_id: 'seller' },
+    proxies: [{ team_id: 'first', max_amount: 200 }, { team_id: 'dead', max_amount: 80 }, { team_id: 'leader', max_amount: 90 }],
+    databaseLeaderSync: true,
+    beforeBidInsert: (payload, state) => {
+      attempts.push(payload.amount);
+      if (attempts.length === 1) {
+        assert.equal(supabase.state.proxyDeletes.length, 0);
+        assert.equal(notices.length, 0);
+        Object.assign(state, { current_price: 120, current_bidder_id: 'racer' });
+        return { code: 'P0001', message: 'market_gate_6181:price_changed' };
+      }
+      return null;
+    },
+  });
+  const result = await resolveProxyBids({ supabase, auctionId: 'gated', bidTime: BID_TIME,
+    databaseOwnsLeaderSync: true, notifyTeamOwner: async (...args) => { notices.push(args); } });
+  assert.deepEqual(attempts, [101, 121]);
+  assert.equal(result.finalLeaderId, 'first');
+  assert.equal(supabase.state.auction.current_price, 121);
+  assert.equal(notices.some(([team, type]) => team === 'leader' && type === 'auction_outbid'), false);
+});
+
+test('gated cascade excludes a rejected defending proxy before trying the challenger', async () => {
+  const attempts = [];
+  const supabase = createMockSupabase({
+    auction: { id: 'gated', status: 'active', calculated_end: FUTURE_END, current_price: 100,
+      current_bidder_id: 'leader', rider: { firstname: 'Test', lastname: 'Rider', team_id: null }, seller_team_id: 'seller' },
+    proxies: [{ team_id: 'leader', max_amount: 300 }, { team_id: 'challenger', max_amount: 200 }],
+    databaseLeaderSync: true,
+    beforeBidInsert: payload => {
+      attempts.push(payload.team_id);
+      return payload.team_id === 'leader' ? { code: 'P0001', message: 'market_gate_6181:insufficient_available_balance' } : null;
+    },
+  });
+  const result = await resolveProxyBids({ supabase, auctionId: 'gated', bidTime: BID_TIME,
+    databaseOwnsLeaderSync: true });
+  assert.deepEqual(attempts, ['leader', 'challenger']);
+  assert.equal(supabase.state.bids.length, 1);
+  assert.equal(result.finalLeaderId, 'challenger');
+});
+
+for (const tie of [false, true]) {
+  test(`database-owned cascade ${tie ? 'tie' : 'raise'} preserves authoritative state`, async () => {
+    const fixedNow = new Date('2030-05-04T10:00:00Z');
+    const supabase = createMockSupabase({
+      auction: { id: 'gated', status: 'active', calculated_end: '2030-05-04T11:00:00Z', current_price: 100,
+        current_bidder_id: 'team-b', rider: { firstname: 'Test', lastname: 'Rider', team_id: null }, seller_team_id: 'seller' },
+      proxies: [{ team_id: 'team-a', max_amount: tie ? 100 : 150 }], databaseLeaderSync: true,
+      afterBidInsert: state => Object.assign(state, { current_price: 500, current_bidder_id: 'later-team' }),
+    });
+    const result = await resolveProxyBids({ supabase, auctionId: 'gated', bidTime: fixedNow, now: () => fixedNow,
+      databaseOwnsLeaderSync: true, previousLeader: tie ? 'team-a' : null,
+      tieBreakContext: tie ? {previousLeader:'team-a',expectedPrice:100,expectedLeader:'team-b',placed:true} : null });
+    assert.equal(supabase.state.bids.length, 1);
+    assert.equal(supabase.state.updates.length, 0);
+    assert.equal(supabase.state.auction.current_price, 500);
+    assert.equal(supabase.state.auction.current_bidder_id, 'later-team');
+    assert.equal(result.finalLeaderId, 'later-team');
+  });
+}
+
+test('gated tie uses the accepted-bid context rather than an earlier caller read',async()=>{
+  const supabase=createMockSupabase({
+    auction:{id:'gated',status:'active',calculated_end:FUTURE_END,current_price:100,current_bidder_id:'team-b',
+      rider:{firstname:'Test',lastname:'Rider',team_id:null},seller_team_id:'seller'},
+    proxies:[{team_id:'stale-predecessor',max_amount:100},{team_id:'locked-predecessor',max_amount:100}],
+    databaseLeaderSync:true,
+  });
+  const result=await resolveProxyBids({supabase,auctionId:'gated',bidTime:BID_TIME,databaseOwnsLeaderSync:true,
+    previousLeader:'stale-predecessor',tieBreakContext:{previousLeader:'locked-predecessor',expectedPrice:100,expectedLeader:'team-b',placed:true}});
+  assert.equal(supabase.state.rpcCalls.length,1);
+  assert.equal(supabase.state.rpcCalls[0].p_team_id,'locked-predecessor');
+  assert.equal(result.finalLeaderId,'locked-predecessor');
+});
+
+test('gated tie reloads a rejected CAS without matched notifications or a stale retry',async()=>{
+  const notices=[];
+  const supabase=createMockSupabase({
+    auction:{id:'gated',status:'active',calculated_end:FUTURE_END,current_price:100,current_bidder_id:'team-b',
+      rider:{firstname:'Test',lastname:'Rider',team_id:null},seller_team_id:'seller'},
+    proxies:[{team_id:'team-a',max_amount:100}],databaseLeaderSync:true,
+    beforeBidInsert:(_,state)=>{
+      Object.assign(state,{current_bidder_id:'racer'});
+      return {code:'P0001',message:'market_gate_6181:price_changed'};
+    },
+  });
+  const result=await resolveProxyBids({supabase,auctionId:'gated',bidTime:BID_TIME,databaseOwnsLeaderSync:true,
+    previousLeader:'team-a',tieBreakContext:{previousLeader:'team-a',expectedPrice:100,expectedLeader:'team-b',placed:true},
+    notifyTeamOwner:async(...args)=>{notices.push(args);}});
+  assert.equal(supabase.state.rpcCalls.length,1);
+  assert.equal(supabase.state.bids.length,0);
+  assert.equal(result.finalLeaderId,'racer');
+  assert.equal(notices.some(([team,type])=>team==='team-b' && type==='auction_outbid'),false);
+});
+
+test('gated cascade emits a committed atomic match receipt once without another match write',async()=>{
+  const notices=[];
+  const supabase=createMockSupabase({
+    auction:{id:'gated',status:'active',calculated_end:FUTURE_END,current_price:100,current_bidder_id:'team-a',
+      rider:{firstname:'Test',lastname:'Rider',team_id:null},seller_team_id:'seller'},
+    proxies:[{team_id:'team-a',max_amount:100}],databaseLeaderSync:true,
+  });
+  const result=await resolveProxyBids({supabase,auctionId:'gated',bidTime:BID_TIME,databaseOwnsLeaderSync:true,
+    tieBreakContext:{previousLeader:'team-a',expectedPrice:100,expectedLeader:'team-b',placed:true,tieResolved:true,matchedTeam:'team-a',matchRejected:null},
+    notifyTeamOwner:async(...args)=>{notices.push(args);}});
+  assert.equal(result.finalLeaderId,'team-a');
+  assert.equal(supabase.state.rpcCalls.length,0);
+  assert.equal(supabase.state.bids.length,0);
+  assert.equal(notices.filter(([team,type])=>team==='team-b'&&type==='auction_outbid').length,1);
+});
+
+test('gated cascade retains the atomic match rejection when continuing with other bidders',async()=>{
+  const notices=[];
+  const supabase=createMockSupabase({
+    auction:{id:'gated',status:'active',calculated_end:FUTURE_END,current_price:100,current_bidder_id:'team-b',
+      rider:{firstname:'Test',lastname:'Rider',team_id:null},seller_team_id:'seller'},
+    proxies:[{team_id:'team-a',max_amount:100},{team_id:'team-c',max_amount:200}],databaseLeaderSync:true,
+  });
+  const result=await resolveProxyBids({supabase,auctionId:'gated',bidTime:BID_TIME,databaseOwnsLeaderSync:true,
+    tieBreakContext:{previousLeader:'team-a',expectedPrice:100,expectedLeader:'team-b',placed:true,tieResolved:true,matchedTeam:null,matchRejected:'insufficient_available_balance'},
+    notifyTeamOwner:async(...args)=>{notices.push(args);}});
+  assert.equal(supabase.state.rpcCalls.length,0);
+  assert.equal(result.finalLeaderId,'team-c');
+  assert.equal(notices.some(([team,type])=>team==='team-a'&&type==='auction_proxy_outbid'),true);
+});
 
 // Fast tidsstempel der falder på lørdag 12:00 CEST — robust mod weekend/weekday
 // vinduer (08-23 CEST på weekend) og uafhængig af test-runner-tidspunkt.
-// Bevidst valgt langt i fremtiden: isAuctionExpired bruger real Date.now() og
-// ville få resolver til at bail før checkBidExtension hvis datoen var i fortiden.
+// Resolverens ur injiceres eksplicit af test-wrapperen ovenfor.
 const SAT_NOON_UTC = new Date("2030-05-04T10:00:00.000Z");
 // Standard auction-config så windowCloseTime kan beregnes deterministisk
 const FULL_CFG = {
@@ -381,7 +555,7 @@ test("resolver: ekspireret auktion → no-op", async () => {
   const auction = {
     id: "auc-5",
     status: "active",
-    calculated_end: new Date(Date.now() - 60_000).toISOString(), // -1 min
+    calculated_end: new Date(BID_TIME.getTime() - 60_000).toISOString(), // -1 min
     current_price: 50000,
     current_bidder_id: "team-b",
     rider: { firstname: "Test", lastname: "Rider", team_id: null },
