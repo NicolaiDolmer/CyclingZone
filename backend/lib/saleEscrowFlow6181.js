@@ -87,7 +87,8 @@ async function rpcWithLockRetry(client, name, args) {
 export function squadRestoreImage(rider, patch) {
   // Tjekliste 9/11: samme betingelse som contractOnAcquirePatch. Handlen skriver en
   // ny kontrakt paa en kontraktloes rytter, og en refusion skal fjerne den igen.
-  const contractWritten = rider?.salary == null || rider?.contract_end_season == null;
+  // Uden salary i kalderens SELECT vides intet, og en kontrakt maa aldrig slettes paa gaet.
+  const contractWritten = Boolean(rider) && "salary" in rider && (rider.salary == null || rider.contract_end_season == null);
   const squadWritten = Boolean(patch) && Object.keys(patch).length > 0;
   if (!squadWritten && !contractWritten) return null;
   return {

@@ -450,7 +450,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.sale_escrow_restore_riders(uuid[], uuid[], uuid, uuid, uuid[], jsonb, timestamptz) FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.sale_escrow_restore_riders(uuid[], uuid[], uuid, uuid, uuid[], jsonb, timestamptz) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.sale_escrow_undo_failed_hold(text, uuid, uuid, uuid, uuid[], uuid[], jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.sale_escrow_undo_failed_hold(text, uuid, uuid, uuid, uuid[], uuid[], jsonb) TO service_role;
 GRANT EXECUTE ON FUNCTION public.sale_escrow_restore_riders(uuid[], uuid[], uuid, uuid, uuid[], jsonb, timestamptz) TO service_role;
