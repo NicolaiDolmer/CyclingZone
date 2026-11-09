@@ -6,6 +6,7 @@ export const PATCHES = [
       {
         "category": "improved",
         "audience": "player",
+        "rollout": "live",
         "topic": "Riders",
         "en": {
           "title": "A cleaner rider page",
