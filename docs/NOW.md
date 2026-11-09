@@ -9,7 +9,7 @@
 > **🎯 Next action (9/11):** **Dirigent-tavle [#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911) er sandheden; start der.** Til dørs først: pengelås-toget #7874, #7875, #7878 (ejer-go, gate grøn, kontakter slukkede; punkter før tænding på #6181 og #2176), derefter #7841, #6665, #7857, #7870 med billede og "merge". Ingen slot-begrænsning (ejer 9/11). Patch note for #7816, #7825 mangler; #7882 kræver `talent_marks_params` før beta. 7644 SLUKKET; første etape med felt 9/11 kl. 11 (tjek 7635 + #7897). **Efter løbet:** #6912, #7899, #7902, 7644 tuning vs G19-bånd.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Ingen aktiv session (9/11). Ny session overtager.
+> **🤖 Working agent:** Claude dirigent på Dolmer PC (9/11 fra kl. 09.20).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
