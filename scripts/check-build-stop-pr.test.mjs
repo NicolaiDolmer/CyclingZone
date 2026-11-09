@@ -7,7 +7,6 @@ import { loadBuildStop } from './lib/build-stop.mjs';
 const cfg = {
   active: true,
   since: '2026-10-29',
-  areaCap: 3,
   finishList: [{ issue: 6110, area: 'udvikling-2' }],
   cleanupList: [{ issue: 6514, why: 'aaben PR' }],
   brandList: [{ issue: 7316, reason: 'forkert live', since: '2026-10-29' }],
