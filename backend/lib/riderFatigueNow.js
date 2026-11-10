@@ -244,7 +244,14 @@ async function liveFatigueMap({ supabase, conditions, base, abilityByRider, team
  */
 export async function fatigueByRiderForRaces({ supabase, conditions, abilityByRider = null, teamIdByRider = null, teamId = null, races = [] }) {
   const base = sameMap(conditions);
-  if (!base.size || !races.length || !await isFatigueNow7801Enabled(supabase)) return { fatById: base, byRace: null };
+  if (!base.size || !races.length) return { fatById: base, byRace: null };
+  if (!await isFatigueNow7801Enabled(supabase)) {
+    // #7737 (foer taending): samme tal som fatigueByRiderNow med 7801 slukket, saa
+    // udtagelsen og assistenten viser det samme for en rytter med et Traen nu-stempel.
+    const instant = await loadInstantConditions({ supabase, riderIds: [...base.keys()], tickDate: copenhagenDateString(new Date()), failOpenWhenOff: true });
+    for (const [id, condition] of instant) base.set(id, condition.fatigue);
+    return { fatById: base, byRace: null };
+  }
   const byRace = new Map();
   const byStart = new Map();
   let recovery = abilityByRider;

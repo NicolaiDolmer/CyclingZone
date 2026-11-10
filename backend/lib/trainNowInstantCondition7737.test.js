@@ -161,3 +161,14 @@ test("#7737: stage-schedule evidence failure cannot return a stamped provisional
   await assert.rejects(fatigueByRiderNow({ supabase, conditions: [{ rider_id: "r", fatigue: counted().fatigue }],
     now: at, atStage: { raceId: "race", stageNumber: 2 } }), InstantConditionEvidenceError);
 });
+
+test("#7737 foer taending: udtagelsen med 7801 slukket viser samme tal som fatigueByRiderNow for en stemplet rytter", async () => {
+  const loads = [{ game_day: 43, load: 24 }];
+  const supabase = instantDatabase({ loads, flags: { fatigue_now_7801: "off" } });
+  const conditions = [{ rider_id: "r", fatigue: 22 }];
+  const { fatigueByRiderForRaces } = await import("./riderFatigueNow.js");
+  const now = await fatigueByRiderNow({ supabase, conditions, now: new Date() });
+  const forRaces = await fatigueByRiderForRaces({ supabase, conditions, races: [{ id: "race", stages: [{ stage_number: 2 }] }] });
+  assert.equal(forRaces.byRace, null);
+  assert.equal(forRaces.fatById.get("r"), now.get("r"));
+});

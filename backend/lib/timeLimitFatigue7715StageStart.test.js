@@ -126,7 +126,7 @@ function stub({ scheduleError = null, orders = [], loads = [], loadsError = null
 }
 
 const RACE = { id: "race-x", season_id: "s1", stages_completed: 0, engine_rules_revision: REV };
-const V2 = { checkConditionV2: async () => true, loadSeasonRaceDays: async () => new Map() };
+const V2 = { checkConditionV2: async () => true, loadInstant: async () => new Map(), loadSeasonRaceDays: async () => new Map() };
 
 test("#7890 loadStageStartFatigues7715: kun under condition_model_v2", async () => {
   assert.equal(await loadStageStartFatigues7715({ supabase: stub(), race: RACE, riders: [RIDER], stages: STAGES, ...V2, checkConditionV2: async () => false }), null);
@@ -157,9 +157,9 @@ test("#7890 loadStageStartFatigues7715: fejl i raekkerne = prognose for den koer
 });
 
 test("#7890 loadStageStartFatigues7715: saesonens loebsdage hentes og bruges; fejl = som saesonens foerste dag", async () => {
-  const late = await loadStageStartFatigues7715({ supabase: stub(), race: RACE, riders: [RIDER], stages: STAGES, checkConditionV2: async () => true, loadSeasonRaceDays: async () => new Map([["r1", 60]]) });
+  const late = await loadStageStartFatigues7715({ supabase: stub(), race: RACE, riders: [RIDER], stages: STAGES, checkConditionV2: async () => true, loadInstant: async () => new Map(), loadSeasonRaceDays: async () => new Map([["r1", 60]]) });
   assert.equal(late.get(16).get("r1"), enteringFatigueV2({ openingFatigue: 70, priorLoadsToday: [forecast15({ seasonRaceDays: 61 })], recoveryAbility: 40 }));
-  const failed = await loadStageStartFatigues7715({ supabase: stub(), race: RACE, riders: [RIDER], stages: STAGES, checkConditionV2: async () => true, loadSeasonRaceDays: async () => { throw new Error("x"); } });
+  const failed = await loadStageStartFatigues7715({ supabase: stub(), race: RACE, riders: [RIDER], stages: STAGES, checkConditionV2: async () => true, loadInstant: async () => new Map(), loadSeasonRaceDays: async () => { throw new Error("x"); } });
   assert.equal(failed.get(16).get("r1"), enteringFatigueV2({ openingFatigue: 70, priorLoadsToday: [forecast15()], recoveryAbility: 40 }));
 });
 
@@ -167,9 +167,9 @@ test("#7890 loadStageStartFatigues7715: saesonens ledger laeses kun, naar en eta
   let calls = 0;
   const count = async () => { calls += 1; return new Map(); };
   // Etape 15 koert og dens raekker kendt; 16 har kun den koerte etape foran sig; 17 er alene paa sin dato.
-  await loadStageStartFatigues7715({ supabase: stub({ loads: [] }), race: { ...RACE, stages_completed: 15 }, riders: [RIDER], stages: STAGES, checkConditionV2: async () => true, loadSeasonRaceDays: count });
+  await loadStageStartFatigues7715({ supabase: stub({ loads: [] }), race: { ...RACE, stages_completed: 15 }, riders: [RIDER], stages: STAGES, checkConditionV2: async () => true, loadInstant: async () => new Map(), loadSeasonRaceDays: count });
   assert.equal(calls, 0);
-  await loadStageStartFatigues7715({ supabase: stub(), race: RACE, riders: [RIDER], stages: STAGES, checkConditionV2: async () => true, loadSeasonRaceDays: count });
+  await loadStageStartFatigues7715({ supabase: stub(), race: RACE, riders: [RIDER], stages: STAGES, checkConditionV2: async () => true, loadInstant: async () => new Map(), loadSeasonRaceDays: count });
   assert.equal(calls, 1, "etape 16 faar en prognose for etape 15");
 });
 
@@ -178,4 +178,28 @@ test("#7890 loadDateStageLoads7715: fejl = null (ukendt), aldrig en undtagelse",
   assert.equal(await loadDateStageLoads7715({ supabase: stub({ throwOn: "training_race_loads" }), riderIds: ["r1"], tickDate: DATE }), null);
   const ok = await loadDateStageLoads7715({ supabase: stub({ loads: [{ rider_id: "r1", game_day: 80, load: 3 }] }), riderIds: ["r1"], tickDate: DATE });
   assert.deepEqual(ok.get("r1"), [{ game_day: 80, load: 3 }]);
+});
+
+test("#7737 foer taending: en stemplet rytter faar motorens rekonstruktion, og koerte etaper laegges ikke oveni igen", () => {
+  const recorded = new Map([[DATE, new Map([["r1", [{ game_day: 80, load: 30 }]]])]]);
+  // Etape 15 er koert; etape 16 samme dato. Rekonstruktionen (52) indeholder allerede etape 15.
+  const stamped = run({ stagesCompleted: 15, recordedLoadsByDate: recorded, instantByStage: new Map([[16, new Map([["r1", 52]])]]) });
+  assert.equal(stamped.get(16).get("r1"), 52);
+  // Uden stempel: uaendret adfaerd (aabningen plus den registrerede belastning).
+  const legacy = run({ stagesCompleted: 15, recordedLoadsByDate: recorded });
+  assert.equal(legacy.get(16).get("r1"), enteringFatigueV2({ openingFatigue: 70, priorLoadsToday: [30], recoveryAbility: 40 }));
+  // Etape 17 (ny dato, intet stempel der) er urørt.
+  assert.equal(stamped.get(17).get("r1"), 70);
+});
+
+test("#7737 foer taending: loaderen henter rekonstruktionen pr. kommende etape med etapens dato og loebsdag", async () => {
+  const asked = [];
+  const loadInstant = async ({ tickDate, beforeGameDay, failOpenWhenOff }) => {
+    asked.push([tickDate, beforeGameDay, failOpenWhenOff]);
+    return beforeGameDay === 82 ? new Map([["r1", { fatigue: 52, form: 60 }]]) : new Map();
+  };
+  const out = await loadStageStartFatigues7715({ supabase: stub(), race: RACE, riders: [RIDER], stages: STAGES, ...V2, loadInstant });
+  // Etape 15 er ikke koert endnu: rekonstruktionen (52) plus prognosen for etape 15, som motoren.
+  assert.equal(out.get(16).get("r1"), enteringFatigueV2({ openingFatigue: 52, priorLoadsToday: [forecast15()], recoveryAbility: 40 }));
+  assert.deepEqual(asked, [[DATE, 80, true], [DATE, 82, true], ["2026-11-14", 84, true]]);
 });
