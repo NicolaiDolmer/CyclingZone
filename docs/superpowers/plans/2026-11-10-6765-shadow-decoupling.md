@@ -35,3 +35,11 @@ Synthetic timings are a local before/after observation, not a production SLA or 
 - Review fix: post-publication shadow retains the local queue slot until complete. A blocked-shadow follow-up regression was observed RED then GREEN; independent re-review found no remaining P0/P1. Final paired PG17 publication median 7291.17 -> 4185.07 ms, four-output parity zero.
 
 - Clean-tick follow-up of the same review finding: route ON clean state through queued coordinator admission; parity only after an authoritative clean claim. Regression RED then GREEN, 90 targeted tests pass and independent focused re-review is clean.
+
+## Afternoon review correction, owner mandate 10 November
+
+Claude P1: the outer finally fallback can run outside queue ownership after deferred/unavailable/admission-skip legacy outcomes. The shared SQL writer lock can then reject a concurrent legacy refresh. Related P2: two fallback callers can both observe the same attempt marker before one starts.
+
+Plan: add atomic idle-only admission to the existing per-client queue. The fallback takes that queue slot only when idle; it never creates/replaces shared pending legacy work. Check the attempt marker again inside the admitted callback. Busy queue means skip this best-effort fallback and leave durable shadow backlog for later ticks. Normal post-publication maintenance continues under its existing queue slot. OFF and RPC/schema/lease contracts remain unchanged.
+
+Verification: freeze a6136437c source; native PG17 synthetic baseline before edits; deterministic blocked-legacy/deferred/unavailable and simultaneous-fallback regressions RED then GREEN; queue primitive tests including pending legacy preservation and release on rejection; targeted ranking suite, native PG17 frozen/updated comparison, FULL, preflight and independent delta review. No polling, new coordinator, migration, activation or production write.

@@ -90,3 +90,30 @@ test('expiry at actual admission overrides a normal training deferral', async ()
   assert.equal(await delayed, true);
   assert.equal(await expired, true);
 });
+
+test('idle-only work owns the slot synchronously and never replaces pending legacy work', async () => {
+  const run = createRankingRefreshQueue<number>();
+  const client = {}, release = Promise.withResolvers<void>();
+  const events: string[] = [];
+  const first = run.runIfIdle(client, async () => { events.push('reserve'); await release.promise; return 1; });
+  const legacy = run(client, async () => { events.push('legacy'); return 2; });
+  assert.equal(run.runIfIdle(client, async () => { events.push('duplicate'); return 3; }), null);
+  release.resolve();
+  assert.equal(await first, 1);
+  assert.equal(await legacy, 2);
+  assert.deepEqual(events, ['reserve', 'legacy']);
+  assert.equal(await run.runIfIdle(client, async () => 4), 4);
+});
+
+test('idle-only work skips active legacy and releases its slot after rejection', async () => {
+  const run = createRankingRefreshQueue<number>();
+  const client = {}, release = Promise.withResolvers<void>();
+  const active = run(client, async () => { await release.promise; return 1; });
+  assert.equal(run.runIfIdle(client, async () => 2), null);
+  release.resolve();
+  assert.equal(await active, 1);
+  const rejected = run.runIfIdle(client, async () => { throw new Error('reserve failure'); });
+  assert.ok(rejected);
+  await assert.rejects(rejected, /reserve failure/);
+  assert.equal(await run.runIfIdle(client, async () => 3), 3);
+});

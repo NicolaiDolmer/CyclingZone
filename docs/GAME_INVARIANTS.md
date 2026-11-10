@@ -177,7 +177,9 @@ Den særskilte `ranking_shadow_decoupled_6765` seedes off. Off, manglende
 konfiguration eller opslagsfejl bevarer den hidtidige rækkefølge. On forsøger
 skyggepasset efter legacy-publicering og coordinatorens finish, også efter
 legacy-fejl. Cooldown, træningsudskydelse eller manglende claim tillader ligeledes
-et begrænset skyggepas. Clean-ticks med on bruger samme coordinator-kø og
+et begrænset skyggepas. Returnerer kaldet uden en køplads, starter reservepasset
+kun atomisk i en ledig lokal kø; en aktiv kø springer det over til et senere tick.
+Reservearbejde erstatter aldrig ventende legacy-arbejde. Clean-ticks med on bruger samme coordinator-kø og
 paritet kræver et autoritativt clean-claim. Den afsluttede lease/token/version genbruges aldrig;
 Den lokale køplads beholdes under skyggepasset, så næste legacy-pas ikke
 konkurrerer om writerlåsen. SQL-writerlåsen og `ranking_shadow_enabled` gælder stadig.

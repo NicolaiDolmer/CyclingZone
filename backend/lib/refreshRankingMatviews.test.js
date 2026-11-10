@@ -1010,3 +1010,63 @@ test("#7664 PGlite — migrationen er idempotent, saetter indstillingerne og ref
     await db.close();
   }
 });
+
+test('#6765 fallback cannot enter the writer while a legacy pass owns the queue', async () => {
+  for (const mode of ['training-deferred', 'gated-deferred', 'unavailable']) {
+    const now = new Date('2026-10-04T18:30:00Z');
+    const client = createMockSupabase({ independent: true, workRows: [{ tick_date: '2026-10-04', status: 'pending' }] });
+    const control = client._controlRpc;
+    const entered = Promise.withResolvers();
+    const release = Promise.withResolvers();
+    let activeWriter = false, batches = 0, overlaps = 0;
+    client._controlRpc = async (name, args) => {
+      if (name === 'refresh_rider_rankings_mv') {
+        activeWriter = true; entered.resolve();
+        await release.promise; activeWriter = false;
+        return { error: null };
+      }
+      if (name === 'apply_ranking_deltas') {
+        batches++; if (activeWriter) overlaps++;
+      }
+      if (mode === 'unavailable' && name === 'get_ranking_refresh_work_state') return { data: null, error: { message: 'state unavailable' } };
+      return control(name, args) ?? { error: null };
+    };
+    const options = { now, testNowFn: () => now, clock: () => 0, logger: { warn() {}, info() {} } };
+    const active = refreshRankingMatviewsSafe(client, options);
+    await entered.promise;
+    let fallbackResult, batchesWhileActive;
+    try {
+      fallbackResult = mode === 'training-deferred'
+        ? await refreshRankingsAfterTrainingSettlement({ supabase: client, ...options })
+        : await refreshRankingMatviewsGated(client, options);
+      batchesWhileActive = batches;
+    } finally { release.resolve(); }
+    assert.equal(await active, true, mode);
+    assert.equal(fallbackResult, mode === 'unavailable' ? false : 'deferred', mode);
+    assert.equal(batchesWhileActive, 0, mode + ': fallback must not acquire the writer outside queue ownership');
+    assert.equal(overlaps, 0, mode);
+    assert.equal(batches, 1, 'active publication supplies the bounded maintenance attempt');
+  }
+});
+
+test('#6765 a deferred caller during reserve shadow cannot duplicate its admission', async () => {
+  const now = new Date('2026-10-04T18:30:00Z');
+  const client = createMockSupabase({ independent: true, workRows: [{ tick_date: '2026-10-04', status: 'pending' }] });
+  const control = client._controlRpc;
+  const entered = Promise.withResolvers(), release = Promise.withResolvers();
+  let batches = 0;
+  client._controlRpc = (name, args) => {
+    if (name === 'apply_ranking_deltas') { batches++; entered.resolve(); return release.promise; }
+    return control(name, args) ?? { error: null };
+  };
+  const options = { now, testNowFn: () => now, clock: () => 0, logger: { info() {} } };
+  const first = refreshRankingsAfterTrainingSettlement({ supabase: client, ...options });
+  await entered.promise;
+  const second = refreshRankingsAfterTrainingSettlement({ supabase: client, ...options });
+  await new Promise(resolve => setImmediate(resolve));
+  const attemptedBeforeRelease = batches;
+  release.resolve({ data: { pending: false }, error: null });
+  assert.deepEqual(await Promise.all([first, second]), ['deferred', 'deferred']);
+  assert.equal(attemptedBeforeRelease, 1, 'only one reserve caller owns the writer slot');
+  assert.equal(batches, 1);
+});

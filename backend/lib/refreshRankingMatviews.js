@@ -305,7 +305,14 @@ async function withIndependentShadow(supabase, options, runLegacy) {
     // Publish/finish legacy work before shadow maintenance, including failures.
     // Its lease has been released: use the unleased budget and leave backlog queued.
     // Shared callers reuse an attempt observed since their own admission.
-    if (!attempted && shadowAttempts.get(supabase) === attemptAtStart) await independentShadow();
+    if (!attempted && shadowAttempts.get(supabase) === attemptAtStart) {
+      await runRefreshQueued.runIfIdle(supabase, async () => {
+        // Recheck after admission: another caller may already have maintained it.
+        // A busy queue skips this fallback; durable backlog waits for a later tick.
+        if (shadowAttempts.get(supabase) === attemptAtStart) await independentShadow();
+        return true;
+      });
+    }
   }
 }
 

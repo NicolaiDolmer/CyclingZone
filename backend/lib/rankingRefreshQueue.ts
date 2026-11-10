@@ -50,6 +50,14 @@ export function createRankingRefreshQueue<T = boolean | 'deferred'>() {
     result.then(finish, finish);
     return result;
   }
-  return (client: object, work: Work<T>, priority: 0 | 1 = 0, admission?: Admission<T>) =>
+  const queued = (client: object, work: Work<T>, priority: 0 | 1 = 0, admission?: Admission<T>) =>
     run(client, work, priority, admission ? new Map([[admission.key, admission]]) : new Map());
+  // Best-effort maintenance must never replace shared pending snapshot work.
+  // Both the idle check and slot acquisition happen before the first await.
+  return Object.assign(queued, {
+    runIfIdle(client: object, work: Work<T>): Promise<T> | null {
+      if (states.get(client)?.running) return null;
+      return run(client, work, 0, new Map());
+    },
+  });
 }
