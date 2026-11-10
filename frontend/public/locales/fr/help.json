@@ -243,7 +243,7 @@
       },
       "autoAcceptPrice": {
         "title": "Prix d'acceptation automatique : une offre à ton prix lance une enchère",
-        "text": "Quand tu mets un coureur en vente, tu peux fixer un prix d'acceptation automatique facultatif, au moins égal au prix demandé. Les offres en dessous se négocient comme d'habitude. Une offre à ce prix ou plus lance aussitôt une enchère publique : l'acheteur choisit la durée (de 30 minutes à 24 heures de temps actif, 08-24) et voit l'heure de fin exacte, et les autres managers peuvent enchérir. La vente t'engage, et le prix est visible par tous sur la liste des transferts. Tant qu'une offre mène, son argent est réservé, donc le gagnant peut toujours payer. Un nouveau prix ne vaut que pour les nouvelles offres."
+        "text": "Quand tu mets un coureur en vente, tu peux fixer un prix d'acceptation automatique facultatif, au moins égal au prix demandé. Les offres en dessous se négocient comme d'habitude. Une offre à ce prix ou plus lance aussitôt une enchère publique : l'acheteur choisit la durée (de 30 minutes à 24 heures de temps actif, 08-24) et voit l'heure de fin exacte, et les autres managers peuvent enchérir. La vente t'engage, et le prix est visible par tous sur la liste des transferts. Tant qu'une offre mène, son argent est réservé, donc le gagnant peut toujours payer. Changer le prix ne transforme jamais les offres existantes en enchère, mais une négociation en cours au nouveau prix ou plus ne peut plus être acceptée : l'acheteur doit lancer l'enchère depuis l'annonce."
       },
       "bulkEditPrices": {
         "title": "Modifier plusieurs prix d'un coup",

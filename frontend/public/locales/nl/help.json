@@ -243,7 +243,7 @@
       },
       "autoAcceptPrice": {
         "title": "Auto-accepteerprijs: een bod op jouw prijs start een veiling",
-        "text": "Als je een renner te koop zet, kun je ook een optionele auto-accepteerprijs instellen, minstens even hoog als de vraagprijs. Biedingen daaronder worden zoals altijd onderhandeld. Een bod op die prijs of hoger start meteen een openbare veiling: de koper kiest de duur (30 minuten tot 24 uur actieve tijd, 08-24) en ziet het exacte eindtijdstip, en andere managers kunnen meebieden. De verkoop is bindend voor jou, en de prijs is voor iedereen zichtbaar op de transferlijst. Zolang een bod leidt, is het geld gereserveerd, zodat de winnaar altijd kan betalen. Een nieuwe prijs geldt alleen voor nieuwe biedingen."
+        "text": "Als je een renner te koop zet, kun je ook een optionele auto-accepteerprijs instellen, minstens even hoog als de vraagprijs. Biedingen daaronder worden zoals altijd onderhandeld. Een bod op die prijs of hoger start meteen een openbare veiling: de koper kiest de duur (30 minuten tot 24 uur actieve tijd, 08-24) en ziet het exacte eindtijdstip, en andere managers kunnen meebieden. De verkoop is bindend voor jou, en de prijs is voor iedereen zichtbaar op de transferlijst. Zolang een bod leidt, is het geld gereserveerd, zodat de winnaar altijd kan betalen. Een gewijzigde prijs maakt bestaande biedingen nooit tot een veiling, maar een lopende onderhandeling op of boven de nieuwe prijs kan niet meer worden geaccepteerd: de koper moet de veiling vanaf de advertentie starten."
       },
       "bulkEditPrices": {
         "title": "Veel prijzen tegelijk aanpassen",
