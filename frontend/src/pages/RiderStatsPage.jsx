@@ -305,7 +305,7 @@ function TransferListButton({ rider, onChanged }) {
   // #5917: U23-/Junior-tabellens Sælg-handling linker hertil med ?sell=1.
   const [searchParams] = useSearchParams();
   const [show, setShow]       = useState(() => searchParams.get("sell") === "1");
-  const [listing, setListing] = useState(null);
+  const [listing, setListing] = useState(/** @type {any} */ (null));
   const [price, setPrice]     = useState(getRiderMarketValue(rider));
   const [loading, setLoading] = useState(false);
   const [result, setResult]   = useState(null);
@@ -369,6 +369,7 @@ function TransferListButton({ rider, onChanged }) {
     setTimeout(() => setResult(null), 4000);
   }
 
+  const autoApiError = (data) => resolveApiError(data || {}, (key, params) => String(t(key, /** @type {any} */ (params))), t("errors:generic.unknown"));
   // #2176: PUT /api/transfers/:id/auto-accept-price. null fjerner auto-prisen.
   function putAutoPrice(listingId, token, expected) {
     return apiFetch(`${API}/api/transfers/${listingId}/auto-accept-price`, {
@@ -387,10 +388,10 @@ function TransferListButton({ rider, onChanged }) {
       // udbudsprisen overstiger den gamle auto-pris. Ellers PATCH foerst.
       const autoFirst = !!listing && autoChanged && price > listing.asking_price;
       if (autoFirst) {
-        const autoRes = await putAutoPrice(listing.id, session.access_token, savedAutoPrice);
+        const autoRes = await putAutoPrice(listing.id, session?.access_token, savedAutoPrice);
         if (autoRes.networkError) { flashResult(false, t("auth:error.connectionFailed")); return; }
         if (!autoRes.ok) {
-          flashResult(false, `${t("sellRider.toast.autoNotSaved")} ${resolveApiError(autoRes.data || {}, t, t("errors:generic.unknown"))}`);
+          flashResult(false, `${t("sellRider.toast.autoNotSaved")} ${autoApiError(autoRes.data)}`);
           return;
         }
         sharedRequestCache.invalidate(SHARED_KEYS.transferListings);
@@ -416,12 +417,12 @@ function TransferListButton({ rider, onChanged }) {
         // profil-mount ser den nye/ændrede listing i stedet for TTL-kopien.
         sharedRequestCache.invalidate(SHARED_KEYS.transferListings);
         let nextListing = listing ? { ...listing, asking_price: price, ...(autoFirst ? { auto_accept_price: autoPrice } : {}) } : data;
-        let autoError = null;
+        let autoError = /** @type {string | null} */ (null);
         if (autoChanged && !autoFirst) {
           // Listingen staar, selv hvis auto-prisen fejler: vis fejlen, ret bagefter.
-          const autoRes = await putAutoPrice(nextListing.id, session.access_token, listing ? savedAutoPrice : null);
+          const autoRes = await putAutoPrice(nextListing.id, session?.access_token, listing ? savedAutoPrice : null);
           if (autoRes.ok) nextListing = { ...nextListing, auto_accept_price: autoPrice };
-          else autoError = autoRes.networkError ? t("auth:error.connectionFailed") : resolveApiError(autoRes.data || {}, t, t("errors:generic.unknown"));
+          else autoError = autoRes.networkError ? t("auth:error.connectionFailed") : autoApiError(autoRes.data);
         }
         setListing(nextListing);
         setShow(false);
@@ -538,7 +539,7 @@ function TransferListButton({ rider, onChanged }) {
               <AmountInput value={autoPrice}
                 id="transfer-list-auto-price-input"
                 onValueChange={(v, meta) => { setAutoPrice(v); setAutoFormatBad(!meta.isValid); }}
-                data-testid="transfer-list-auto-price-input"
+                data-testid="transfer-list-auto-price-input" placeholder={undefined} errorMessage={undefined}
                 aria-describedby="transfer-list-auto-price-help"
                 aria-invalid={autoInvalid || undefined}
                 className={`w-full min-h-[44px] bg-cz-subtle border rounded-cz px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-hidden ${autoBelowAsking ? "border-cz-danger focus:border-cz-danger" : "border-cz-border focus:border-cz-accent"}`} />
