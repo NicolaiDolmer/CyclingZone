@@ -476,6 +476,7 @@ function TransferListButton({ rider, onChanged }) {
         sharedRequestCache.invalidate(SHARED_KEYS.transferListings); // #5089
         setListing(null);
         setAutoPrice(null);
+        setAutoFormatBad(false); // Codex P2: en ugyldig auto-pris maa ikke blokere den naeste formular
         setPrice(getRiderMarketValue(rider));
         setShow(false);
         flashResult(true, t("sellRider.toast.removed"));
