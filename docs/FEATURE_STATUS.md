@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-144 poster: live 111 · dormant 8 · building 16 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+145 poster: live 111 · dormant 8 · building 17 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -32,7 +32,8 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
-| Engine breakaway forecast (`race-breakaway-outlook`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6912 | 2026-10-29 | Ingen app_config-række (fravær = off). Ejer-go til tænding. |
+| Engine breakaway forecast (`race-breakaway-outlook`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6912 | 2026-10-29 | Uden app_config-række = off; ejer tænder. |
+| Team plans (`tactics-ready`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #7864 | 2026-11-10 | tactics_ready_7864: ikke seedet, off. |
 
 ## market
 
@@ -75,7 +76,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 | Stored potential estimates (`potential-estimate-writes`) | building | - | [6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md) | #6110 | 2026-11-05 | Trin 5 (#7685): søndagsjob, holdskifte og nye kig; flaget seedes off. |
 | Train now bonus (`train-now-bonus`) | building | `training_train_now_bonus` | [TRAINING_RULES](TRAINING_RULES.md) | #7737 | 2026-11-10 | OFF seed; owner 10/11: own activation card after Train now is proven alone. |
 | Train now straight away (`train-now-instant`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #7737 | 2026-11-09 | PR1+PR2 merged OFF (#7948, #7967); PR3 screen ships with the owner activation. |
-| Fatigue now counts today's earlier stages (`training-fatigue-now-7801`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #7801 | 2026-11-07 | Kontakt fatigue_now_7801 (ikke seedet = slukket); ejer tænder. |
+| Fatigue now counts today's earlier stages (`training-fatigue-now-7801`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #7801 | 2026-11-07 | fatigue_now_7801: ikke seedet = off; ejer tænder. |
 
 ## academy
 

@@ -4,6 +4,7 @@ import StageProfileGraph from "./StageProfileGraph.jsx";
 import StageWaypointReadout from "./StageWaypointReadout.jsx";
 import { hasRouteData, routeReadKeys, waypointsFor } from "../../lib/stageRouteProfile.js";
 import { formatNumber } from "../../lib/intl.js";
+import { Button } from "../ui/index.js";
 
 // Sub-4 (#2448): kortet der samler stat-linje + race-read + graf + readout.
 // GATEN: uden rutedata renderer den INTET — kaldstedet falder tilbage til
@@ -23,7 +24,7 @@ const READ_TONE_CLASS = { technical: "border-cz-accent/50 text-cz-accent-t" };
 // blev de to kort tegnet oven paa hinanden paa kommende-fladen (samme profil to
 // gange, 1.754 px foer holdudtagelsen — audit 2026-09 raekke #4) og et kort-i-kort
 // var alternativet (PAGE_TEMPLATES: "never wrap in another Card").
-export default function StageProfileCard({ profile, stageLabel, passages = [], tier = "full", hasClassifications = true, asCard = true }) {
+export default function StageProfileCard({ profile, stageLabel, passages = [], tier = "full", hasClassifications = true, asCard = true, showClimbChoices = false }) {
   const { t } = useTranslation("races");
   const waypoints = useMemo(() => waypointsFor(profile), [profile]);
   const reads = useMemo(() => routeReadKeys(profile), [profile]);
@@ -95,6 +96,18 @@ export default function StageProfileCard({ profile, stageLabel, passages = [], t
       />
 
       <StageWaypointReadout waypoint={selected} passages={passages} stageNumber={stageNumber} hasClassifications={hasClassifications} />
+      {showClimbChoices && waypoints.some((waypoint) => waypoint.kind === "kom") && (
+        <ul data-testid="tactics-climb-names" className="flex flex-wrap gap-1.5 mt-3">
+          {waypoints.filter((waypoint) => waypoint.kind === "kom").map((climb) => (
+            <li key={climb.index} className="min-w-0 max-w-full">
+              <Button variant="secondary" size="sm" className="max-w-full whitespace-normal text-start" aria-pressed={selected?.kind === "kom" && selected.index === climb.index} onClick={() => setSelected(climb)}>
+                <span className="break-words">{climb.name || t("stagePlan.climbFallback", { category: climb.category })}</span>
+                <span className="font-data tabular-nums whitespace-nowrap text-cz-2">{formatNumber(climb.km)} {t("detail.route.stats.km")}</span>
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   );
 

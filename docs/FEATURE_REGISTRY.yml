@@ -128,7 +128,7 @@ features:
     verified: 2026-10-29
     decision: ejer-beslutning
     decide_by: 2026-11-08
-    note: Ingen app_config-række (fravær = off). Ejer-go til tænding.
+    note: Uden app_config-række = off; ejer tænder.
 
   - id: race-day-form-6649
     area: race-engine
@@ -350,7 +350,7 @@ features:
     verified: 2026-11-07
     decision: taend
     decide_by: 2026-11-21
-    note: Kontakt fatigue_now_7801 (ikke seedet = slukket); ejer tænder.
+    note: fatigue_now_7801: ikke seedet = off; ejer tænder.
 
   - id: luxury-helper-role
     area: race-engine
@@ -444,6 +444,16 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     verified: 2026-10-27
     note: On 27/10 13:48 efter ejer-go (#7281), læst tilbage i prod.
+
+  - id: tactics-ready
+    area: race-day
+    title_en: Team plans
+    title_da: Taktik gjort klar del 1
+    state: building
+    epic: 7864
+    ssot: docs/RACE_ENGINE_RULES.md
+    verified: 2026-11-10
+    note: "tactics_ready_7864: ikke seedet, off."
 
   - id: rider-why-button
     area: race-day
