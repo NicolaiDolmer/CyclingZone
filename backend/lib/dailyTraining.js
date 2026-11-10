@@ -14,7 +14,8 @@ import { computeTrainingScore, TRAINING_SCORE_CONFIG } from "./trainingScore.js"
 // Under kurven skal `riderQualityMult` vaere alders-neutral; applyDailyTick/applyRaceDevelopmentTick sikrer det.
 import { curveBBase, curveBCapSoftness, curveBSoftCeiling } from "./developmentCurveB.ts";
 import { blendCurveBTransition } from "./developmentCurveBTransition7382.ts"; // #7382 blød overgang
-import { developmentXpAbilityDelta, developmentXpTick } from "./developmentXp.ts"; // #6110 XP, kun med `developmentXp`
+import { developmentXpAbilityDelta, developmentXpTick, XP_RACE_DAY_FOCUS } from "./developmentXp.ts"; // #6110 XP, kun med `developmentXp`
+import { TRAIN_NOW_BONUS_FACTOR } from './trainNowBonus7737.ts';
 
 export const DAILY_TRAINING_CONFIG = Object.freeze({
   daysPerSeason: 28,        // budget-konvertering; kalibreres i sim (Task A10)
@@ -278,8 +279,11 @@ export function applyDailyTick({
   // catch-up via loeb ({ evne: multiplikator }, raceCatchUpWiring.js). Udeladt = bit-identisk.
   developmentScore = null, abilityYieldMult = null,
   developmentXp = null, // #6110: XP-modellen erstatter evne-loopet. Udeladt/null = bit-identisk.
+  trainNowBonus = false,
 }) {
   const cfg = DAILY_TRAINING_CONFIG;
+  const trainNowBonusFactor = trainNowBonus === true && program?.intensity !== 'rest'
+    && program?.focus !== XP_RACE_DAY_FOCUS ? TRAIN_NOW_BONUS_FACTOR : 1;
   const seedScope = tickSeedKey ?? dateStr;
   // #4987: seededUnitMixed (avalanche-finaliseret), IKKE rå seededUnit — rå FNV-1a
   // blandede for lidt når kun dato-halen skiftede, så samme rytter sad fast i
@@ -321,7 +325,8 @@ export function applyDailyTick({
   // #6110: XP-grenen. Scoren og stoejen ovenfor er uaendrede; loebsdagens tillaeg ganges paa XP'en.
   if (developmentXp) return { ...developmentXpTick({ abilities, progress, maxPointsPerTick: Number.isFinite(hardDailyCap) ? hardDailyCap : Infinity,
     xpFor: (ability) => dailyAbilityDelta({ ability, age, program, potentiale, staff, facilityTier, riderLevel, academyRateMult, primaryType, secondaryType, trainingCfg, budgetDivisor, developmentXp })
-      * (abilityYieldMult?.[ability] > 0 ? abilityYieldMult[ability] : 1) }, developmentXp),
+      * (abilityYieldMult?.[ability] > 0 ? abilityYieldMult[ability] : 1)
+      * trainNowBonusFactor }, developmentXp),
   trainingScore, noise, status: noise > 1.05 ? "over" : noise < 0.95 ? "under" : "normal" };
 
   for (const ability of VISIBLE_ABILITIES) {
@@ -338,7 +343,8 @@ export function applyDailyTick({
       ability, curveBDelta: dailyAbilityDelta(deltaArgs), transition: curveBTransition,
       oldDelta: () => dailyAbilityDelta({ ...deltaArgs, curveB: null, riderQualityMult: scoreB ? deltaArgs.riderQualityMult : trainingScore?.deltaQualityMult ?? null }),
     }) : dailyAbilityDelta(deltaArgs);
-    const rawDelta = scoreBInFocus ? tickDelta * scoreBScale : tickDelta;
+    const rawDelta = (scoreBInFocus ? tickDelta * scoreBScale : tickDelta)
+      * trainNowBonusFactor;
     // #6950: catch-up-tillaegget ganges paa delta'en, uden for scorekoblingen (del 2 §5).
     const delta = abilityYieldMult?.[ability] > 0 ? rawDelta * abilityYieldMult[ability] : rawDelta;
     if (delta <= 0) continue;
