@@ -310,7 +310,7 @@ test("seller edits and removes the auto-price on an existing listing", async ({ 
   await page.getByRole("button", { name: "Redigér priser", exact: true }).click();
   const auto = page.getByTestId("transfer-list-auto-price-input");
   await expect(auto).toHaveValue("600000");
-  await expect(page.getByText("En ny auto-pris gælder kun nye bud.")).toBeVisible();
+  await expect(page.getByText("Eksisterende bud bliver aldrig til en auktion, men åbne forhandlinger på eller over den nye pris kan ikke længere accepteres.")).toBeVisible();
   // Raising the asking price sets the auto-price first, so the asking price never passes the old one.
   await page.getByTestId("transfer-list-price-input").fill("250000");
   await auto.fill("700000");
