@@ -199,20 +199,37 @@ $$;
 REVOKE ALL ON FUNCTION public.start_auto_accept_auction_bid(uuid,uuid,uuid,uuid,jsonb,bigint,integer,timestamptz,integer,integer,uuid[],timestamptz,bigint) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.start_auto_accept_auction_bid(uuid,uuid,uuid,uuid,jsonb,bigint,integer,timestamptz,integer,integer,uuid[],timestamptz,bigint) TO service_role;
 
-CREATE OR REPLACE FUNCTION public.auto_accept_direct_price_issue(p_rider uuid, p_seller uuid, p_buyer uuid, p_price bigint)
-RETURNS jsonb LANGUAGE plpgsql SET search_path = public, pg_catalog AS $$
+-- Read-only check, no locks. The offer trigger uses this directly: an offer UPDATE already
+-- holds its transfer_offers row lock, so taking team/rider locks here would invert the lock
+-- order used by auto_accept_claim_transfer (teams -> rider -> offers) and could deadlock
+-- (Codex P1 on PR #7956). The claim path re-checks under the full lock order below.
+CREATE OR REPLACE FUNCTION public.auto_accept_direct_price_issue_unlocked(p_rider uuid, p_seller uuid, p_price bigint)
+RETURNS jsonb LANGUAGE plpgsql STABLE SET search_path = public, pg_catalog AS $$
 DECLARE l public.transfer_listings; v_owner uuid;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM app_config WHERE key='auto_accept_enabled' AND value IN ('"on"'::jsonb,'true'::jsonb)) THEN RETURN NULL; END IF;
-  PERFORM public.auto_accept_lock_teams(p_seller,p_buyer);
-  SELECT team_id INTO v_owner FROM riders WHERE id=p_rider FOR UPDATE;
+  SELECT team_id INTO v_owner FROM riders WHERE id=p_rider;
   IF v_owner IS DISTINCT FROM p_seller THEN RETURN NULL; END IF;
   SELECT * INTO l FROM transfer_listings WHERE rider_id=p_rider AND seller_team_id=p_seller
-    AND status IN ('open','negotiating') FOR UPDATE;
+    AND status IN ('open','negotiating');
   IF l.auto_accept_price IS NOT NULL AND p_price >= l.auto_accept_price THEN
     RETURN jsonb_build_object('status','offer_at_auto_accept_price','auto_accept_price',l.auto_accept_price,'listing_id',l.id);
   END IF;
   RETURN NULL;
+END; $$;
+REVOKE ALL ON FUNCTION public.auto_accept_direct_price_issue_unlocked(uuid,uuid,bigint) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.auto_accept_direct_price_issue_unlocked(uuid,uuid,bigint) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.auto_accept_direct_price_issue(p_rider uuid, p_seller uuid, p_buyer uuid, p_price bigint)
+RETURNS jsonb LANGUAGE plpgsql SET search_path = public, pg_catalog AS $$
+DECLARE v_owner uuid;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM app_config WHERE key='auto_accept_enabled' AND value IN ('"on"'::jsonb,'true'::jsonb)) THEN RETURN NULL; END IF;
+  PERFORM public.auto_accept_lock_teams(p_seller,p_buyer);
+  SELECT team_id INTO v_owner FROM riders WHERE id=p_rider FOR UPDATE;
+  PERFORM 1 FROM transfer_listings WHERE rider_id=p_rider AND seller_team_id=p_seller
+    AND status IN ('open','negotiating') FOR UPDATE;
+  RETURN public.auto_accept_direct_price_issue_unlocked(p_rider,p_seller,p_price);
 END; $$;
 REVOKE ALL ON FUNCTION public.auto_accept_direct_price_issue(uuid,uuid,uuid,bigint) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.auto_accept_direct_price_issue(uuid,uuid,uuid,bigint) TO service_role;
@@ -222,7 +239,7 @@ RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_c
 DECLARE v_issue jsonb;
 BEGIN
   IF NEW.status NOT IN ('pending','countered','awaiting_confirmation','window_pending','accepted') THEN RETURN NEW; END IF;
-  v_issue := public.auto_accept_direct_price_issue(NEW.rider_id,NEW.seller_team_id,NEW.buyer_team_id,coalesce(NEW.counter_amount,NEW.offer_amount));
+  v_issue := public.auto_accept_direct_price_issue_unlocked(NEW.rider_id,NEW.seller_team_id,coalesce(NEW.counter_amount,NEW.offer_amount));
   IF v_issue IS NOT NULL THEN RAISE EXCEPTION 'offer_at_auto_accept_price' USING ERRCODE='P0001', DETAIL=v_issue::text; END IF;
   RETURN NEW;
 END; $$;

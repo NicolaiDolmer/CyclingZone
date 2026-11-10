@@ -142,7 +142,7 @@ test("rapid submissions reserve the editable bid once and cannot dismiss pending
     await json(route, { status: "started", auction_id: "auction-test" }, 201);
   });
   await dialog.getByLabel("Dit bud (CZ$)").fill("800000");
-  await dialog.locator("form").evaluate((form) => {
+  await dialog.locator("form").evaluate((form: HTMLFormElement) => {
     form.requestSubmit();
     form.requestSubmit();
   });
