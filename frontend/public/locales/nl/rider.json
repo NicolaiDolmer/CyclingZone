@@ -7,8 +7,7 @@
     "nextGen": {
       "name": "Next Gen",
       "text": "een junior met sterke vooruitgang."
-    },
-    "helpLink": "Wat de markeringen betekenen"
+    }
   },
   "badges": {
     "u23": "Onder 23 (U23)",
@@ -220,7 +219,8 @@
       "ratingTrendRising": "Stijgend dit seizoen",
       "ratingTrendSteady": "Stabiel dit seizoen",
       "ratingTrendDeclining": "Dalend dit seizoen",
-      "ratingTrendTitle": "Rating {value} sinds {date}"
+      "ratingTrendTitle": "Rating {value} sinds {date}",
+      "forSale": "Te koop"
     },
     "reputation": {
       "whyTitle": "Waarom zijn reputatie veranderde",
@@ -254,18 +254,7 @@
         "fallback": "Reputatiegebeurtenis"
       }
     },
-    "levelCorrectionReceipt": {
-      "developmentLine": "Ontwikkeling: geen verandering door training deze week.",
-      "marketLine": "Markt: eenmalige niveaucorrectie voor alle renners. Waarden komen nu overeen met waarvoor renners echt worden verhandeld. Je renner wordt niet slechter.",
-      "detailsToggle": "Getallen tonen",
-      "detailsHide": "Getallen verbergen",
-      "anchorBefore": "Waarde vooraf",
-      "anchorAfter": "Waarde achteraf",
-      "factor": "Correctiefactor",
-      "appliedAt": "Toegepast op {date}"
-    },
     "banner": {
-      "listed": "Op de transferlijst · prijs {price}",
       "auction": "In veiling · eindigt over {endsIn} · hoogste bod {highBid}",
       "finalSeasonTitle": "Laatste seizoen",
       "finalSeason": "Heeft bij de start van het seizoen zijn pensioen aangekondigd. Hij stopt wanneer seizoen {season} eindigt."
@@ -1022,10 +1011,10 @@
       "full": "De meeste rankingpunten onder renners van zijn continent in seizoen {prev}. Hij draagt de trui het hele seizoen {season}."
     },
     "national": {
+      "title": "Nationaal kampioen",
       "name": "Nationaal kampioen, {country}",
       "short": "de meeste rankingpunten uit {country} vorig seizoen.",
       "full": "De meeste rankingpunten onder renners uit {country} in seizoen {prev}. Hij draagt de trui het hele seizoen {season}."
-    },
-    "helpLink": "Zo werken de kampioenstruien"
+    }
   }
 }

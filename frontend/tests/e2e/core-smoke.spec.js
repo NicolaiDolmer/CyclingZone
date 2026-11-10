@@ -398,7 +398,7 @@ test("rider profile value header stays contained on mobile", async ({ page }) =>
   const value = page.getByTestId("rider-value-amount");
   await expect(page.getByRole("heading", { name: "Ada Pedersen" })).toBeVisible();
   await expect(value).toBeVisible();
-  await expect(value).toHaveText("123.456.789.012");
+  await expect(value).toHaveText("123.456.789.012 CZ$");
   await expect(value).toHaveAttribute("title", "123.456.789.012 CZ$");
 
   const layout = await value.evaluate((el) => {
@@ -421,12 +421,13 @@ test("rider profile value header stays contained on mobile", async ({ page }) =>
   expect(layout.left).toBeGreaterThanOrEqual(0);
   expect(layout.width).toBeGreaterThan(0);
   expect(layout.clientWidth).toBeLessThanOrEqual(layout.viewportWidth);
-  expect(layout.textOverflow).toBe("ellipsis");
-  expect(layout.whiteSpace).toBe("nowrap");
+  // #7951: beløbet klippes aldrig; det brydes hellere over to linjer.
+  expect(layout.textOverflow).not.toBe("ellipsis");
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth + 1);
   expect(layout.wordBreak).not.toBe("break-all");
 
   await page.evaluate(() => window.__i18n.changeLanguage("en"));
-  await expect(value).toHaveText("123,456,789,012");
+  await expect(value).toHaveText("123,456,789,012 CZ$");
   await expect(value).toHaveAttribute("title", "123,456,789,012 CZ$");
 });
 

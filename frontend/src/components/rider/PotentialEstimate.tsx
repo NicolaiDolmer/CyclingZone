@@ -62,17 +62,21 @@ type Props = {
   action?: ReactNode;
   /** Dæmpet linje under tallet, fx "Scoutet 1 gang". */
   sub?: ReactNode;
+  /** Skjuler "Ikke scoutet", når Scout-knappen står lige ved siden af. */
+  hideUnscoutedLabel?: boolean;
 };
 
-export default function PotentialEstimate({ view, size = "cell", action = null, sub = null }: Props) {
+export default function PotentialEstimate({ view, size = "cell", action = null, sub = null, hideUnscoutedLabel = false }: Props) {
   const { t } = useTranslation();
 
   if (view.hidden && view.reason === "unscouted") {
     return (
       <span className="inline-flex items-center gap-2 flex-wrap" data-testid="potential-estimate-unscouted">
-        <span className="text-cz-3 text-xs sm:whitespace-nowrap" title={t("rider:scouting.scoutToReveal")}>
-          {t("rider:scouting.notScouted")}
-        </span>
+        {!hideUnscoutedLabel && (
+          <span className="text-cz-3 text-xs sm:whitespace-nowrap" title={t("rider:scouting.scoutToReveal")}>
+            {t("rider:scouting.notScouted")}
+          </span>
+        )}
         {action}
       </span>
     );

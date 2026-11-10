@@ -1207,6 +1207,11 @@
       "issue": 7922,
       "reason": "Ejer-go 8/11: stram reglerne for salgsannoncer, planlagt til 9/11",
       "since": "2026-11-08"
+    },
+    {
+      "issue": 3797,
+      "reason": "Ejer-go 9/11 i SEO-sessionen: GSC-servicekonto, scripts/gsc-report.mjs og privat ugentlig rapport. Maaling foerst jf. #7911; ingen spillertekst, UI, DB eller merge-go. https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6739961826",
+      "since": "2026-11-09"
     }
   ]
 }

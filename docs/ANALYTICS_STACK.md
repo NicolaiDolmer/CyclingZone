@@ -327,14 +327,14 @@ Alt herunder er noget der **aktivt gør et tal forkert i dag**. Læs listen før
 
 | Script | Hvad | Kør |
 |---|---|---|
-| `scripts/gsc-report.mjs` | Search Console: top 25 queries, top 10 sider, totaler mod forrige periode | `infisical run --env=dev -- node scripts/gsc-report.mjs --days=28 [--site=<url>] [--json]` |
+| `scripts/gsc-report.mjs` | Search Console: separate ejendomstotaler, top queries/sider/lande/enheder og daglig serie. Endelige web-data, Pacific-datoer, tre dages forsinkelse; ingen indekseringsmåling | `infisical run --env=dev -- node scripts/gsc-report.mjs --weekly --out=<privat-sti>/seo-uge.md` (eller `--days=28`, `--json`, `--site=<url>`, `--now=<ISO>`) |
 | `scripts/check-event-catalog.mjs` | Forward-guard: hvert `player_events`-navn skal stå i §3 OG i `KNOWN_EVENTS`. Kører i CI (`frontend-build`) + preflight | `node scripts/check-event-catalog.mjs` |
 | `scripts/sentry-issues.mjs` | Uresolvede prod-fejl uden MCP | `infisical run --env=dev -- node scripts/sentry-issues.mjs --period=24h` |
 | `scripts/monday-numbers.mjs` | Ugens tal (`docs/GROWTH_STACK.md`) | ❓ skrives i søster-PR i samme bølge |
 | `backend/scripts/snapshot-sprint-metrics.mjs` | Manuelt snapshot af sprint-metrics | Workflowen er `.disabled`, se §6 punkt 9 |
 | `backend/scripts/backfill-growth-snapshots.js` | Genskaber historiske `growth_metric_snapshots` | Engangs, ejer-gated |
 
-**GSC-adgang:** service-konto med `webmasters.readonly`, JSON-nøglen i Infisical som `GSC_SERVICE_ACCOUNT_JSON`. Kun ejeren kan oprette den. Trin for trin: `docs/runbooks/GSC_SERVICE_ACCOUNT.md` (ca. 10 min).
+**GSC-adgang:** servicekonto med Begrænset adgang til GSC-ejendommen og scope `webmasters.readonly`; JSON-nøglen i Infisical som `GSC_SERVICE_ACCOUNT_JSON` (dev/prod). Opsætning kræver ejerens login og mandat. Trin for trin: `docs/runbooks/GSC_SERVICE_ACCOUNT.md`. Rapporter gemmes kun privat, aldrig i GitHub/Actions-artifacts. `--out` afviser Git-mapper og overskrivning. Ugerapporten er rullende syv dage, ikke kalenderuge. Top-queries må aldrig bruges som ejendomstotaler; tomt svar er manglende data.
 
 **Admin-fladen:** `frontend/src/pages/AdminGrowthPage.jsx` (7 faner) mod `GET /api/admin/{metrics, attribution, retention, growth/snapshots, growth/sprint-metrics, growth/customers, growth/nps}` (`backend/routes/api.js:8863-9142`). Alle bag `requireAdmin` med service-role-klienten. 📄
 

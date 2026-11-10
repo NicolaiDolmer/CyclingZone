@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (9/11 kl. 21.40):** **Tavlen [#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911) er sandheden.** **Codex bygger de kommende dage, Claude planlægger, reviewer og merger (ejer 9/11).** Køen står i kommentaren "Codex-sporet" på tavlen. Merget 9/11 aften: #7935, #7936, #7937, #7945, #7946. Klar til toget: #7857, #7944, #7949. Så tænd-kort: fatigue_now_7801 og time_limit_fatigue_7715. Pengelås trin for trin på go. 10/11: ordene, scouting, Discord #7941. 11/11: motormålinger. Bølgen døde 9/11 kl. 19.35 ved afbrudt session; arbejdet er bevaret.
+> **🎯 Next action (10/11):** Mandatet står i "Dagens plan 10/11" på tavlen #7911. PC1: Træn nu #7737 + auto-accept #2176 til beta, merger selv bag slukket kontakt; oprydning 7955/7961/7958. Codex: #6765, #6490, #7947, #7627.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling; memory commitment på Large kunne ikke aflæses 9/11.
 >
-> **🤖 Working agent:** Claude Code på PC1, dirigent og merge (9/11). Codex på Dolmer PC: køen på #7911.
+> **🤖 Working agent:** Claude PC1 primær session 10/11 (Opus 5.5): Træn nu #7737 → auto-accept #2176 → oprydning, efter "Dagens plan 10/11". #7948 merget `828e78e4`, migration verificeret, `training_train_now_instant` = off; del 3-mockup hos ejeren. Codex på Dolmer PC: fire spor efter "Dagens plan 10/11" på #7911.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 

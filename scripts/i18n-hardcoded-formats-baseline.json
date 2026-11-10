@@ -1,6 +1,6 @@
 {
   "$comment": "Kendte hardcodede format-fund (ratchet, maa kun skrumpe). Genereret af scripts/i18n-check-hardcoded-formats.mjs --update-baseline. Refs #6785. Nye fund maa IKKE tilfoejes her: fix dem via lib/intl.js eller lib/intlLocale.ts.",
-  "total": 26,
+  "total": 25,
   "files": {
     "frontend/src/components/race/FinalKilometrePlayback.jsx": [
       "display-toFixed|if (m >= 1000) return t(\"detail.finalKm.distanceKm\", { value: (m / 1000).toFixed(1) });"
@@ -19,9 +19,6 @@
     ],
     "frontend/src/components/rider/profile/RiderPhysiologyTab.jsx": [
       "display-toFixed|const fmtWkg = (wkg) => Number(wkg).toFixed(1);"
-    ],
-    "frontend/src/components/rider/RiderLevelCorrectionReceipt.jsx": [
-      "display-toFixed|const factorText = Number.isFinite(receipt.c) ? receipt.c.toFixed(3) : \"—\";"
     ],
     "frontend/src/components/SeasonFinanceReportPanel.jsx": [
       "display-toFixed|const pct = total > 0 ? ((d.value / total) * 100).toFixed(1) : \"0\";",

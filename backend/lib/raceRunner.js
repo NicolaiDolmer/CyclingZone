@@ -136,6 +136,7 @@ import { POOL_TARGET_SIZE } from "./economyConstants.js";
 import { loadWithdrawnTeamIds, releaseTeamsThatDidNotStart, reconcileDidNotStartReleases } from "./raceWithdrawal.js";
 import { loadClearedTeamIds } from "./raceEntryClears.js";
 import { floorAwareRescueCap, loadSameDaySiblingNeeds } from "./raceDayFloorPlan.js"; // #7339
+import { recoverInstantTrainingBeforeStage } from "./trainNowInstantRecovery7737.js";
 import { loadRaceTrainNowLock } from "./trainNowLock.js"; // #6006/#6139
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
 import { captureException } from "./sentry.js";
@@ -3402,6 +3403,7 @@ export async function simulateStageByIndex({
   supabase,
   race,
   stageIndex,
+  now = new Date(),
   dryRun = false,
   runSource = null,
   // #1598: result-write (counter + race_results delete+insert) går nu via den atomære
@@ -3659,6 +3661,11 @@ export async function simulateStageByIndex({
   if (!finalizationPending) {
     // #7733: kun et loeb stemplet ved start har det laaste felt. En laesefejl kaster, saa etapen venter.
     const startedFieldLock = stageIndex > 0 && await readStartedFieldLock7733({ supabase, race }) === true;
+    // Finish a durably interrupted press before entrants/abilities are loaded.
+    if (trainingOwnsRecovery && !dryRun) await recoverInstantTrainingBeforeStage({
+      supabase, raceId: race.id, stageNumber, seasonId: race.season_id,
+      seasonNumber: seasonBefore?.number, now,
+    });
     // #1844: auto-fyld KUN ved etape 1. Senere etaper må ikke tilføje nye ryttere.
     entrants = await loadEntrantsForRace({
       supabase, race, stages, persist: persistEntries, allowAutofill: stageIndex === 0,
@@ -3791,6 +3798,9 @@ export async function simulateStageByIndex({
     if (trainingOwnsRecovery && isS5ProfilesV2OrLater(rulesRevision) && await isConditionModelV2Enabled(supabase)) {
       const medicalBonusByTeam = await loadMedicalBonusByTeam(supabase, entrants.map((e) => e.team_id), { retryOnTransient: true });
       await applySameDateEnteringFatigueV2({ supabase, raceId: race.id, stageNumber, entrants, medicalBonusByTeam });
+    } else if (trainingOwnsRecovery) {
+      // A durable instant press keeps its date semantics across switch changes.
+      await applySameDateEnteringFatigueV2({ supabase, raceId: race.id, stageNumber, entrants, instantOnly: true });
     }
 
     const engineInputRecorder = dryRun ? null : createEngineInputRecorder({ raceId: race.id }); // #1857
