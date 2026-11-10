@@ -2077,7 +2077,7 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
     });
   }
   // #6181: pengelåsen tændt => gebyret må ikke bruge penge låst i førende bud. Slukket = null.
-  const releaseLockedFunds = await releaseFeeAvailableResponse6181(supabase, { teamId: req.team.id, balance, fee, errorCode: "insufficient_balance_after_bids" });
+  const releaseLockedFunds = await releaseFeeAvailableResponse6181(supabase, { teamId: req.team.id, balance, fee });
   if (releaseLockedFunds) return res.status(releaseLockedFunds.status).json(releaseLockedFunds.body);
 
   // #2748 · sælgeren (her: frigiveren) må ikke handle sig under løbs-minimummet
@@ -2229,7 +2229,7 @@ router.post("/riders/:id/academy-release", requireAuth, marketWriteLimiter, asyn
     });
   }
   // #6181: samme disponibel-saldo-gate som senior-fyringen. Slukket = null.
-  const academyLockedFunds = await releaseFeeAvailableResponse6181(supabase, { teamId: req.team.id, balance, fee, errorCode: "insufficient_available_balance" });
+  const academyLockedFunds = await releaseFeeAvailableResponse6181(supabase, { teamId: req.team.id, balance, fee });
   if (academyLockedFunds) return res.status(academyLockedFunds.status).json(academyLockedFunds.body);
 
   // Frigør rytteren først (concurrency-guard: kun hvis stadig på vores hold og

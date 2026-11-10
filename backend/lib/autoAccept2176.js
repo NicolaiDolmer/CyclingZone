@@ -251,8 +251,9 @@ export function mapSetAutoAcceptPriceResult(result) {
       return { status: 400, body: { error: "This listing is already closed", errorCode: "listing_already_closed" } };
     case "price_changed":
       return PRICE_CHANGED(result.auto_accept_price);
+    case "below_asking": // #2176 ejer 10/11: Y >= X; "not_above_asking" er den gamle SQL-status før migrationen
     case "not_above_asking":
-      return { status: 400, body: { error: "The auto-accept price must be above the asking price", errorCode: "auto_accept_not_above_asking", errorParams: { askingPrice: Number(result.asking_price) } } };
+      return { status: 400, body: { error: "The auto-accept price must be at least the asking price", errorCode: "auto_accept_below_asking", errorParams: { askingPrice: Number(result.asking_price) } } };
     case "price_too_high":
       return { status: 400, body: { error: "Invalid auto-accept price", errorCode: "auto_accept_invalid_price" } };
     case "rider_not_with_seller":
@@ -344,6 +345,7 @@ export async function claimTransferUnderTeamLock(supabase, {
     case "claimed": return { data: { id: result.rider_id } };
     case "seller_squad_floor": return { issue: { code: "seller_squad_risk_too_small", minRiders: result.min_riders } };
     case "squad_full": return { issue: { code: "buyer_squad_full", maxRiders: result.max_riders } };
+    case "buyer_insufficient_balance": return { issue: { code: "buyer_insufficient_balance" } }; // #6181: pengetjek under holdlåsen
     case "offer_at_auto_accept_price": return { boundary: { status: 409, body: { errorCode: "offer_at_auto_accept_price", errorParams: { autoAcceptPrice: Number(result.auto_accept_price), listingId: result.listing_id } } } };
     case "rider_state_changed":
     case "rider_on_auction": return { data: null };
@@ -383,7 +385,7 @@ export function getListingPriceUpdateErrorResponse(error) {
   if (error?.code !== "23514") return null;
   const message = String(error.message || "");
   if (message.includes("transfer_listings_auto_accept_price_check")) {
-    return { status: 400, body: { error: "The asking price must stay below the auto-accept price", errorCode: "asking_price_not_below_auto_accept" } };
+    return { status: 400, body: { error: "The asking price can't be above the auto-accept price", errorCode: "asking_price_above_auto_accept" } };
   }
   if (message.includes("listing_owner_mismatch")) {
     return { status: 409, body: { error: "This rider is no longer on your team", errorCode: "rider_state_changed" } };

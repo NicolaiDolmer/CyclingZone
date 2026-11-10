@@ -29,36 +29,36 @@ const LEADING = [{ id: "a1", current_price: 600000 }];
 
 test("tændt: køber fører med hele saldoen => fyring med gebyr afvises", async () => {
   const sb = mockSupabase({ flag: "on", leading: LEADING });
-  const res = await releaseFeeAvailableResponse6181(sb, { teamId: "t1", balance: 600000, fee: 50000, errorCode: "insufficient_balance_after_bids" });
+  const res = await releaseFeeAvailableResponse6181(sb, { teamId: "t1", balance: 600000, fee: 50000 });
   assert.equal(res?.status, 400);
-  assert.equal(res.body.errorCode, "insufficient_balance_after_bids");
+  assert.equal(res.body.errorCode, "insufficient_available_balance");
   assert.equal(res.body.errorParams.available, 0);
   assert.equal(res.body.errorParams.fee, 50000);
 });
 
 test("tændt: disponibel saldo dækker gebyret => null", async () => {
   const sb = mockSupabase({ flag: "on", leading: [{ id: "a1", current_price: 100000 }] });
-  assert.equal(await releaseFeeAvailableResponse6181(sb, { teamId: "t1", balance: 600000, fee: 50000, errorCode: "x" }), null);
+  assert.equal(await releaseFeeAvailableResponse6181(sb, { teamId: "t1", balance: 600000, fee: 50000 }), null);
 });
 
 test("tændt: proxy-loftet tæller også som låst", async () => {
   const sb = mockSupabase({ flag: true, proxies: [{ auction_id: "a2", max_amount: 580000, auction: { status: "active" } }] });
-  const res = await releaseFeeAvailableResponse6181(sb, { teamId: "t1", balance: 600000, fee: 50000, errorCode: "insufficient_available_balance" });
+  const res = await releaseFeeAvailableResponse6181(sb, { teamId: "t1", balance: 600000, fee: 50000 });
   assert.equal(res?.body.errorCode, "insufficient_available_balance");
 });
 
 test("slukket (off/manglende): uændret, ingen opslag ud over kontakten", async () => {
   for (const flag of [null, "off", false]) {
     const sb = mockSupabase({ flag, leading: LEADING });
-    assert.equal(await releaseFeeAvailableResponse6181(sb, { teamId: "t1", balance: 600000, fee: 50000, errorCode: "x" }), null);
+    assert.equal(await releaseFeeAvailableResponse6181(sb, { teamId: "t1", balance: 600000, fee: 50000 }), null);
     assert.deepEqual(sb.calls, ["app_config"]);
   }
 });
 
 test("gebyr 0 eller rå saldo for lav: ingen opslag (rutens eget tjek tager det)", async () => {
   const sb = mockSupabase({ flag: "on", leading: LEADING });
-  assert.equal(await releaseFeeAvailableResponse6181(sb, { teamId: "t1", balance: 600000, fee: 0, errorCode: "x" }), null);
-  assert.equal(await releaseFeeAvailableResponse6181(sb, { teamId: "t1", balance: 10, fee: 50000, errorCode: "x" }), null);
+  assert.equal(await releaseFeeAvailableResponse6181(sb, { teamId: "t1", balance: 600000, fee: 0 }), null);
+  assert.equal(await releaseFeeAvailableResponse6181(sb, { teamId: "t1", balance: 10, fee: 50000 }), null);
   assert.deepEqual(sb.calls, []);
 });
 

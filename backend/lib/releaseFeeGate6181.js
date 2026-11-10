@@ -11,14 +11,13 @@ import { checkAvailableSpend, INSUFFICIENT_AVAILABLE_BALANCE } from "./available
 import { isMarketCommitment6181On } from "./marketCommitment6181.js";
 
 /**
+ * Senior- og akademi-fyring (POST /riders/:id/release og /academy-release).
+ *
  * @param {any} supabase
- * @param {{ teamId: string, balance: number, fee: number, errorCode: string }} args
- *   errorCode: den eksisterende fejlkode, ruten skal svare med (senior-fyringens
- *   UI oversætter `insufficient_balance_after_bids`, akademiets oversætter
- *   `insufficient_available_balance`), så der ikke kræves ny spillertekst.
+ * @param {{ teamId: string, balance: number, fee: number }} args
  * @returns {Promise<{ status: number, body: Record<string, unknown> } | null>}
  */
-export async function releaseFeeAvailableResponse6181(supabase, { teamId, balance, fee, errorCode }) {
+export async function releaseFeeAvailableResponse6181(supabase, { teamId, balance, fee }) {
   if (!(Number(fee) > 0) || (Number(balance) || 0) < Number(fee)) return null;
   if (!(await isMarketCommitment6181On(supabase))) return null;
   const issue = await checkAvailableSpend(supabase, { teamId, balance, cost: fee });
@@ -26,8 +25,8 @@ export async function releaseFeeAvailableResponse6181(supabase, { teamId, balanc
   return {
     status: 400,
     body: {
-      error: `You have ${issue.available.toLocaleString("da-DK")} CZ$ left after your existing bids`,
-      errorCode,
+      error: "Not enough available money: part of your balance is locked in auction bids.",
+      errorCode: "insufficient_available_balance",
       errorParams: { fee, available: issue.available, locked: issue.locked },
     },
   };

@@ -34,6 +34,7 @@
  *   Bid 22:50 → ends 23:00      (lands at cap, no overflow)
  *   Bid 22:55 → ends next-open + 05  (e.g. Fri 22:55 → Sat 08:05)
  */
+import { fetchSeasonTransitionBoundary } from "./seasonTransitionBoundary.js";
 
 const GAME_TIMEZONE = "Europe/Copenhagen";
 
@@ -329,6 +330,45 @@ export function isLateBidTriggerError(error) {
   return msg.includes("auction_expired_at_insert") || msg.includes("auction_not_active");
 }
 
+// #6181 dommer-fund (10/11): oprettelsen afviser en auktion, der slutter på/efter
+// sæsonskiftet (getAuctionSeasonBoundaryIssue), men en forlængelse kunne stadig
+// skubbe slutningen derover. Med pengelåsen eller auto-accept tændt holdes en
+// forlængelse under grænsen; begge slukket = uændret (kun kontakt-opslaget).
+const EXTENSION_BOUNDARY_FLAGS_6181 = ["market_commitment_6181", "auto_accept_enabled"];
+// Sidste hele minut før grænsen, så slutningen aldrig lander på selve skiftet.
+const SEASON_BOUNDARY_MARGIN_MS = 60 * 1000;
+
+async function isExtensionBoundaryGateOn6181(supabase) {
+  try {
+    const { data, error } = await supabase
+      .from("app_config").select("key, value").in("key", EXTENSION_BOUNDARY_FLAGS_6181);
+    if (error) throw new Error(error.message);
+    return (data || []).some((row) => row?.value === true || row?.value === "on");
+  } catch (e) {
+    // Ukendt kontakt-tilstand: hold grænsen. Det rammer kun en forlængelse, der
+    // ellers ville krydse sæsonskiftet; grænse-opslaget selv er fail-open.
+    console.error("[auctionEngine] extension boundary flag lookup failed", e?.message || e);
+    return true;
+  }
+}
+
+/**
+ * Ren regel: forlængelsens sluttid holdt under sæsonskiftet. null = ingen
+ * forlængelse (den holdte sluttid ville ikke ligge efter den nuværende).
+ */
+export function capExtendedEndAtBoundary(extendedEnd, currentEnd, seasonTransitionBoundary) {
+  if (!getAuctionSeasonBoundaryIssue(extendedEnd, seasonTransitionBoundary)) return extendedEnd;
+  const boundary = new Date(seasonTransitionBoundary);
+  const capped = new Date(Math.floor((boundary.getTime() - 1) / SEASON_BOUNDARY_MARGIN_MS) * SEASON_BOUNDARY_MARGIN_MS);
+  return capped > new Date(currentEnd) ? capped : null;
+}
+
+async function capExtensionAtSeasonBoundary6181(supabase, { extendedEnd, currentEnd, bidTime }) {
+  if (!(await isExtensionBoundaryGateOn6181(supabase))) return extendedEnd;
+  const boundary = await fetchSeasonTransitionBoundary(supabase, { now: new Date(bidTime) });
+  return capExtendedEndAtBoundary(extendedEnd, currentEnd, boundary);
+}
+
 /**
  * Apply auction-extension if and only if the leader actually changed (#257).
  *
@@ -366,8 +406,11 @@ export async function applyLeaderShiftExtension({
     return { extensionApplied: false, newEnd: null };
   }
 
-  const { shouldExtend, newEnd } = checkBidExtension(bidTime, current.calculated_end, bidCfg);
+  const { shouldExtend, newEnd: extendedEnd } = checkBidExtension(bidTime, current.calculated_end, bidCfg);
   if (!shouldExtend) return { extensionApplied: false, newEnd: null };
+  // #6181 dommer-fund: et sent bud må ikke trække auktionen forbi sæsonskiftet.
+  const newEnd = await capExtensionAtSeasonBoundary6181(supabase, { extendedEnd, currentEnd: current.calculated_end, bidTime });
+  if (!newEnd) return { extensionApplied: false, newEnd: null };
 
   await supabase
     .from("auctions")
