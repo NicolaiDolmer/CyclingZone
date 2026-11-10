@@ -80,6 +80,7 @@ import SortableTh from "../ui/SortableTh.jsx";
 import FitBar from "../racehub/FitBar.jsx";
 import RaceStageProfileRow from "./RaceStageProfileRow.jsx";
 import { stageRouteMatch, routeMatchComparator } from "../../lib/lineupInsight.js";
+import { tacticsRoleAvailability } from "../../lib/tacticsRoleAvailability.ts";
 import TimeLimitRiskMark from "./TimeLimitRiskMark.tsx"; // #7715
 import { showsTimeLimitOut, showsTimeLimitRisk } from "../../lib/timeLimitRisk7715.ts"; // #7715
 import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
@@ -764,12 +765,9 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // #6095 (beta): manageren vælger selv "etape N og løbet ud" / "kun etape N".
   // Endagsløb har kun én etape, så valget giver ingen mening dér.
   const scopeChoice = roles.role_scope_choice === true && !isOneDay;
-  // #7239: delt kaptajn tilbydes kun når holdet har en i udtagelsen. Udtagelsen er
-  // gated til løb der kender rollen (sprint_leader_allowed), så det samme gælder her,
-  // og en etape-rolle kan altid sættes tilbage til delt kaptajn.
-  const coCaptainOn = riders.some((r) => baseRoleForRider(r) === "co_captain");
-  // #5982: luksushjaelperen paa samme maade (holdet har en i udtagelsen = loebet kender rollen).
-  const luxuryHelperOn = riders.some((r) => baseRoleForRider(r) === "luxury_helper");
+  // #7977: capability follows the same server gate as lineup and PUT validation.
+  // An older response without the field retains the previous roster fallback.
+  const { coCaptainOn, luxuryHelperOn } = tacticsRoleAvailability(roles, riders);
   const rolePickerScope = scopeChoice
     ? {
       scopeNote: t("intention.stage", { number: activeStage }),
