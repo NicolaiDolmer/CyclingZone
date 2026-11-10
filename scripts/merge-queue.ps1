@@ -22,7 +22,9 @@
 #      en koerende boelge = SKIP. Aldrig masseopdatering af alle PR'er: 23/10 fyldte
 #      12 samtidige opdateringer Actions-koeen i over en time. -StopOnRedPr = gammel
 #      adfaerd (en ikke-groen PR stopper hele koeen). Roed main stopper altid.
-#   3. Merger med `gh pr merge <N> --squash --delete-branch --admin`.
+#   3. Flytter aabne stablede PR'ers base til main og genlaeser dem FOER
+#      merge/sletning af deres base-branch (#7911). Ukendt/fejl stopper koeen.
+#      Merger med `gh pr merge <N> --squash --delete-branch --admin`.
 #   4. Venter paa at hovedrepoets CI-workflow (ci.yml) er groent for den nye
 #      main-HEAD (den commit merges skabte).
 #   5. Roerer PR'en backend-PRODUKTIONSKODE (scripts/merge-queue-files.mjs;
@@ -131,6 +133,8 @@ $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot 'lib\gh-retry.ps1')
 . (Join-Path $PSScriptRoot 'lib\league-check.ps1')
+. (Join-Path $PSScriptRoot 'lib\stacked-prs.ps1')
+$script:stackedPreviewBases = @{}
 # #7587 punkt 6: close-out-modulet (scriptniveau, saa funktionen kan testes udtrukket).
 $script:CloseOutScript = Join-Path $PSScriptRoot 'merge-queue-closeout.mjs'
 $script:ActiveMarkerScript = Join-Path $PSScriptRoot 'merge-queue-active-marker.mjs'
@@ -1134,6 +1138,11 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   if ($entryDeploys) { $script:trainDeploys++ }
 
   if ($DryRun) {
+    try { Protect-StackedPullRequests -Number $n -Repo $Repo -ExpectedHead $fresh.headSha -Preview -PreviewBases $script:stackedPreviewBases }
+    catch {
+      Write-Host "STOP: Stablede PR'er kunne ikke kontrolleres for #$n. Ingen merge; kontroller base-relationerne." -ForegroundColor Red
+      Exit-Queue 1
+    }
     Write-Host "  [dry-run] ville merge nu: gh pr merge $n --squash --delete-branch --admin" -ForegroundColor DarkGray
     # #7587: forhaandsvisning af close-out efter verifikation (read-only, --dry-run).
     try { Invoke-TrainCloseOut -Entries @([pscustomobject]@{ number = $n; sha = $null }) }
@@ -1158,6 +1167,13 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   if ($script:queueStall) { Stop-QueueStall }
   if ($failedRuns.Count -gt 0) {
     Write-Host "STOP: en tidligere overdraget Deploy verify-koersel er ikke groen: $($failedRuns -join ', '). Se koerslen og PR-kommentaren foer naeste merge." -ForegroundColor Red
+    Exit-Queue 1
+  }
+  # #7911: preserve children before the parent branch can be deleted. Final
+  # tick-window/HEAD/check guards below also cover time spent retargeting.
+  try { Protect-StackedPullRequests -Number $n -Repo $Repo -ExpectedHead $fresh.headSha }
+  catch {
+    Write-Host "STOP: Stablede PR'er kunne ikke sikres for #$n. Intet parent-merge; genlaes boernenes baser foer genforsoeg." -ForegroundColor Red
     Exit-Queue 1
   }
   # Codex P2 (#6861 runde 3): ventetiden paa release checks kan flytte merget
