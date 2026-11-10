@@ -361,25 +361,33 @@ async function isExtensionBoundaryGateOn6181(supabase) {
  * @param {Date} extendedEnd
  * @param {Date|string} currentEnd
  * @param {Date|string|null} seasonTransitionBoundary
+ * @param {any} [cfg]
  * @returns {Date|null}
  */
-export function capExtendedEndAtBoundary(extendedEnd, currentEnd, seasonTransitionBoundary) {
+export function capExtendedEndAtBoundary(extendedEnd, currentEnd, seasonTransitionBoundary, cfg = DEFAULT_AUCTION_CONFIG) {
   if (!getAuctionSeasonBoundaryIssue(extendedEnd, seasonTransitionBoundary)) return extendedEnd;
   const boundary = new Date(/** @type {Date|string} */ (seasonTransitionBoundary));
-  const capped = new Date(Math.floor((boundary.getTime() - 1) / SEASON_BOUNDARY_MARGIN_MS) * SEASON_BOUNDARY_MARGIN_MS);
+  let capped = new Date(Math.floor((boundary.getTime() - 1) / SEASON_BOUNDARY_MARGIN_MS) * SEASON_BOUNDARY_MARGIN_MS);
+  // Codex-review 10/11: the capped end must stay inside the active window, so nobody
+  // can be outbid while the window is closed (TRANSFER_MARKET_RULES aktiv tid). A cap
+  // in closed hours moves back to the last whole minute before that window's close.
+  const { close } = windowForEnd(capped, cfg);
+  if (capped >= close) {
+    capped = new Date(Math.floor((close.getTime() - 1) / SEASON_BOUNDARY_MARGIN_MS) * SEASON_BOUNDARY_MARGIN_MS);
+  }
   return capped > new Date(currentEnd) ? capped : null;
 }
 
 /**
  * @param {any} supabase
- * @param {{ extendedEnd: Date|null, currentEnd: Date|string, bidTime: Date|string }} args
+ * @param {{ extendedEnd: Date|null, currentEnd: Date|string, bidTime: Date|string, cfg?: any }} args
  * @returns {Promise<Date|null>}
  */
-async function capExtensionAtSeasonBoundary6181(supabase, { extendedEnd, currentEnd, bidTime }) {
+async function capExtensionAtSeasonBoundary6181(supabase, { extendedEnd, currentEnd, bidTime, cfg = DEFAULT_AUCTION_CONFIG }) {
   if (!extendedEnd) return null;
   if (!(await isExtensionBoundaryGateOn6181(supabase))) return extendedEnd;
   const boundary = await fetchSeasonTransitionBoundary(supabase, { now: new Date(bidTime) });
-  return capExtendedEndAtBoundary(extendedEnd, currentEnd, boundary);
+  return capExtendedEndAtBoundary(extendedEnd, currentEnd, boundary, cfg);
 }
 
 /**
@@ -422,7 +430,7 @@ export async function applyLeaderShiftExtension({
   const { shouldExtend, newEnd: extendedEnd } = checkBidExtension(bidTime, current.calculated_end, bidCfg);
   if (!shouldExtend) return { extensionApplied: false, newEnd: null };
   // #6181 dommer-fund: et sent bud må ikke trække auktionen forbi sæsonskiftet.
-  const newEnd = await capExtensionAtSeasonBoundary6181(supabase, { extendedEnd, currentEnd: current.calculated_end, bidTime });
+  const newEnd = await capExtensionAtSeasonBoundary6181(supabase, { extendedEnd, currentEnd: current.calculated_end, bidTime, cfg: bidCfg ?? DEFAULT_AUCTION_CONFIG });
   if (!newEnd) return { extensionApplied: false, newEnd: null };
 
   await supabase
