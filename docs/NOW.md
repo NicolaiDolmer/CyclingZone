@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (10/11 aften):** Træn nu #7737: merget (#7966), migration verificeret, kontakt off; tænd `training_train_now_instant`="beta" på ejerens "tænd" (dommer: klar). Auto-accept #2176: #7978 (Hjælp + patch note 7.427) venter Codex/CI, så tænd-kort for `auto_accept_enabled`+`market_commitment_6181` (A7 kendt rest). Codex (#7911): A7, #7959-P1, #7977, #7864, #7627.
+> **🎯 Next action (10/11 aften):** Træn nu #7737: BETA tændt 10/11 ~17:20 (ejer-go); næste = `on` for alle efter beta-feedback. Auto-accept #2176: #7978 (Hjælp + patch note 7.427) venter Codex/CI, så tænd-kort for `auto_accept_enabled`+`market_commitment_6181` (A7 kendt rest). Codex (#7911): A7, #7959-P1, #7977, #7864, #7627.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling; memory commitment på Large kunne ikke aflæses 9/11.
 >
 > **🤖 Working agent:** Claude PC1 primær 10/11 (Opus 5.5). Merget i dag bl.a. #7948, #7966-#7970, #7973, #7975, #7976 (alt bag slukket kontakt). Dommer-trin før tænd-kort (ejer 10/11). Codex maksimeres 2 dage efter #7911.
