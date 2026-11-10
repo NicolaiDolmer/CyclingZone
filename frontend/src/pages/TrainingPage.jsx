@@ -1530,6 +1530,7 @@ export default function TrainingPage() {
           meta={[riderTypeLine(rider), age != null ? `${t("colAge")} ${age}` : null].filter(Boolean).join(" · ")}
           form={cond.form ?? null}
           fatigue={cond.fatigue ?? null}
+          fatigueAtStart={phoneTodayView ? cond.fatigue_at_start ?? null : null}
           injuryLabel={injuryMsg ? t(injuryMsg.key, { days: injuryMsg.days, ...(injuryMsg.date ? { date: formatDate(injuryMsg.date, "short") } : {}) }) : null}
           dayLabel={planFor(riderId)?.focus ? dayLabel(planFor(riderId), t) : t("dayPanel.chooseDay")}
           receiptRows={receiptRowsFor(riderId)}
