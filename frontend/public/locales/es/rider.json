@@ -833,7 +833,7 @@
     "autoHelp": "Si alguien ofrece este precio o más, una subasta pública empieza de inmediato. El comprador elige la duración (de 30 min a 24 horas de tiempo activo). El precio es visible para todos y la venta es vinculante para ti.",
     "autoInvalid": "El precio automático debe ser al menos el precio pedido.",
     "autoStatus": "Precio automático {amount} CZ$",
-    "autoEditHint": "Un nuevo precio automático solo se aplica a las ofertas nuevas."
+    "autoEditHint": "Las ofertas existentes nunca pasan a subasta, pero las negociaciones abiertas al nuevo precio o más ya no se pueden aceptar."
   },
   "manage": {
     "extend": {

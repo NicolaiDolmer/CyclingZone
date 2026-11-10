@@ -833,7 +833,7 @@
     "autoHelp": "If someone bids this price or more, a public auction starts straight away. The buyer chooses the length (30 min to 24 hours of active time). The price is visible to everyone, and the sale is binding for you.",
     "autoInvalid": "The auto-accept price must be at least the asking price.",
     "autoStatus": "Auto-accept price {amount} CZ$",
-    "autoEditHint": "A new auto-accept price only applies to new bids."
+    "autoEditHint": "Existing bids never become an auction, but open negotiations at or above the new price can no longer be accepted."
   },
   "manage": {
     "extend": {

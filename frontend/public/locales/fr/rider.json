@@ -833,7 +833,7 @@
     "autoHelp": "Si quelqu'un offre ce prix ou plus, une enchère publique démarre aussitôt. L'acheteur choisit la durée (de 30 min à 24 heures de temps actif). Le prix est visible par tous et la vente est ferme pour toi.",
     "autoInvalid": "Le prix automatique doit être au moins égal au prix demandé.",
     "autoStatus": "Prix automatique {amount} CZ$",
-    "autoEditHint": "Un nouveau prix automatique ne s'applique qu'aux nouvelles offres."
+    "autoEditHint": "Les offres existantes ne deviennent jamais une enchère, mais les négociations en cours au nouveau prix ou plus ne peuvent plus être acceptées."
   },
   "manage": {
     "extend": {
