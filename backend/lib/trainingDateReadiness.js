@@ -3,7 +3,7 @@ import { fetchAllRows } from './supabasePagination.js';
 import { resolveCalendarRaceDayTarget } from './trainingRaceDayTick.js';
 import { isEligibleRider, raceSquadOf, ANY_SQUAD } from './riderEligibility.js';
 import { teamPoolIdForSquad } from './raceBinding.js';
-import { loadTrainNowLockedRidersByDate } from './trainNowLock.js';
+import { loadTrainNowLockedRidersByDate, loadTrainNowFrozenDateSlots } from './trainNowLock.js';
 
 // #6006/#6139: a rider locked by a "Train now" press for the date is decided (I3).
 // The assistant cannot add him afterwards, so only a real entry can still hold him
@@ -78,7 +78,7 @@ function snapshotIds(run) {
 
 export function resolveTrainingDateReadiness({
   tickDate, now, riderIds, stages = [], races = [], runs = [], entries = [],
-  results = [], incidents = [], loads = [], candidateRiderIdsByRace = new Map(),
+  results = [], incidents = [], loads = [], candidateRiderIdsByRace = new Map(), frozenEntries = [],
 }) {
   const unresolvedSlotsByRider = {};
   const owned = new Set(riderIds);
@@ -87,7 +87,8 @@ export function resolveTrainingDateReadiness({
     const match = row => row.race_id === stage.race_id && Number(row.stage_number) === Number(stage.stage_number);
     const snapshot = snapshotIds(runs.find(match));
     const selected = entries.filter(row => row.race_id === stage.race_id).map(row => row.rider_id);
-    const candidates = snapshot ?? [...new Set([...selected, ...(candidateRiderIdsByRace.get(stage.race_id) ?? [])])];
+    const reserved = frozenEntries.filter(row => row.slots.some(slot => slot.raceId === stage.race_id && Number(slot.stageNumber) === Number(stage.stage_number))).map(row => row.rider_id);
+    const candidates = snapshot ?? [...new Set([...selected, ...(candidateRiderIdsByRace.get(stage.race_id) ?? []), ...reserved])];
     const closed = race && Number(race.stages_completed) >= Number(stage.stage_number) && race.finalize_state == null;
     for (const riderId of candidates) {
       if (!owned.has(riderId)) continue;
@@ -99,9 +100,15 @@ export function resolveTrainingDateReadiness({
       (unresolvedSlotsByRider[riderId] ??= []).push({ raceId: stage.race_id, stageNumber: Number(stage.stage_number), gameDay: stage.game_day });
     }
   }
+  const resolvedFrozenSlotsByRider = {};
+  for (const row of frozenEntries) {
+    if (!owned.has(row.rider_id)) continue;
+    resolvedFrozenSlotsByRider[row.rider_id] = row.slots.filter(slot => !(unresolvedSlotsByRider[row.rider_id] ?? [])
+      .some(open => open.raceId === slot.raceId && Number(open.stageNumber) === Number(slot.stageNumber)));
+  }
   const deadlineAt = trainingDateDeadline(tickDate);
   const deadlineReached = now.getTime() >= deadlineAt.getTime();
-  return { deadlineAt, deadlineReached, unresolvedSlotsByRider,
+  return { deadlineAt, deadlineReached, unresolvedSlotsByRider, resolvedFrozenSlotsByRider,
     eligibleRiderIds: riderIds.filter(id => deadlineReached || !unresolvedSlotsByRider[id]) };
 }
 
@@ -148,13 +155,14 @@ export async function loadTrainingDateTeams(supabase) {
 
 export async function loadTrainingDateContext({ supabase, season, tickDate, loadDaySpans, registeredTeamIds = [] }) {
   const { start, end } = trainingDateBounds(tickDate);
-  const [races, allTeams, riders, stageRows, loads] = await Promise.all([
+  const [races, allTeams, riders, stageRows, loads, frozenEntries] = await Promise.all([
     fetchAllRows(() => supabase.from('races').select('id,league_division_id,race_type,squad,stages_completed,finalize_state').eq('season_id', season.id).order('id')),
     loadTrainingDateTeams(supabase),
     fetchAllRows(() => supabase.from('riders').select('id,team_id,squad,is_academy,is_retired,pending_team_id,created_at,acquired_at').eq('is_retired', false).not('team_id', 'is', null).order('id')),
     // pagination-safe: one calendar date; season is filtered inside PostgREST.
     must(supabase.from('race_stage_schedule').select('race_id,stage_number,game_day,scheduled_at,races!inner(season_id)').eq('races.season_id', season.id).gte('scheduled_at', start.toISOString()).lt('scheduled_at', end.toISOString()), 'stage schedule'),
     fetchAllRows(() => supabase.from('training_race_loads').select('rider_id,race_id,stage_number,game_day,load').eq('season_id', season.id).eq('tick_date', tickDate).order('rider_id').order('game_day')),
+    loadTrainNowFrozenDateSlots({ supabase, seasonId: season.id, tickDate }),
   ]);
   const registered = new Set(registeredTeamIds);
   const teams = allTeams.filter(team => isTrainingDateTeam(team, registered, end));
@@ -193,6 +201,6 @@ export async function loadTrainingDateContext({ supabase, season, tickDate, load
       for (const team of teams) if (team.league_division_id) gameDaysByDivision.set(team.league_division_id, bridgeDays);
     }
   }
-  return { tickDate, races, teams, riders, stages, runs, entries: validEntries, results, incidents, loads, candidateRiderIdsByRace,
+  return { tickDate, races, teams, riders, stages, runs, entries: validEntries, results, incidents, loads, candidateRiderIdsByRace, frozenEntries,
     gameDaysByDivision };
 }

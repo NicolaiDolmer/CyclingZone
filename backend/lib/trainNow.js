@@ -49,6 +49,14 @@ import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
 import { settleWholeDayPress } from "./trainNowWholeDay.js"; // #6461 B
 
 export const TRAIN_NOW_FLAG_KEY = "training_train_now";
+// #7737: the press trains a race rider's free race days straight away. Only the exact
+// string "on" turns it on: no beta stage, and a failed read is off. Read fresh, not from
+// the flag cache, because it changes training results. PR 1 of 4; the owner flips it.
+export const TRAIN_NOW_INSTANT_FLAG_KEY = "training_train_now_instant";
+export const evaluateTrainNowInstantFlag = (value) => value === "on";
+export async function isTrainNowInstantEnabled(supabase) {
+  return evaluateTrainNowInstantFlag(await readFlagStage(supabase, TRAIN_NOW_INSTANT_FLAG_KEY, { fresh: true }));
+}
 export { TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks };
 const SETTLED_STATUSES = new Set(["complete", "needs_reconciliation"]);
 const OPEN_STATUSES = ["pending", "partial"];
@@ -385,7 +393,9 @@ export async function runTrainNow({
     && (work.opening_conditions === undefined || work.opening_conditions?.[id]));
   const readiness = resolveTrainingDateReadiness({ ...locked, tickDate, now, riderIds: available });
   // #6461 B: the press always settles the whole known date per rider.
-  return settleWholeDayPress({ supabase, team, season, now, tickDate, work, available, readiness, pressedAt, runDay,
+  // #7737: with the switch on, a race rider's free race days settle now as well.
+  const instant = await isTrainNowInstantEnabled(supabase);
+  return settleWholeDayPress({ supabase, team, season, now, tickDate, work, available, readiness, pressedAt, runDay, instant,
     readReadiness: async () => resolveTrainingDateReadiness({ ...await loadContext({ supabase, season, tickDate, loadDaySpans, registeredTeamIds: [team.id] }), tickDate, now, riderIds: available }) });
 }
 

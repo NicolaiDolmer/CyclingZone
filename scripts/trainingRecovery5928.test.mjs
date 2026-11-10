@@ -84,3 +84,14 @@ test('fatigue/group rules created after the work are not historical input; earli
   const old=fixture();delete old.tables.team_training_rules;
   assert.throws(()=>validateSnapshot(old,scope),/Missing snapshot table team_training_rules/);
 });
+
+test('historical replay rejects later train-now lock evidence instead of using it',async()=>{
+  const s=fixture();
+  s.tables.training_train_now_locks=[{rider_id:'r',instant_at:'2026-11-09T12:00:00Z'}];
+  assert.throws(()=>validateSnapshot(s,scope),/postdate approved historical work/);
+  s.tables.training_train_now_locks=[];
+  const a=await replaySnapshot(s,scope);
+  const b=await replaySnapshot(fixture(),scope);
+  assert.deepEqual(a.commits,b.commits);
+  assert.deepEqual(a.riders,b.riders);
+});

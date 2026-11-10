@@ -313,6 +313,40 @@ Evner, historik, score, rapport, belastningsforbrug og tilstandsændring committ
 
 ---
 
+## Instant train-now PR 1 (#7737, owner build-go 9/11)
+
+`training_train_now_instant` is seeded off. This PR adds database/engine support;
+stage consumers, player screens and the separately controlled bonus remain later
+PRs. Activation requires their completion and a separate owner decision. The
+legacy path without an instant stamp is preserved by the frozen golden tests.
+
+An eligible instant press stores `training_train_now_locks.instant_at` once per
+rider/date. The durable stamp governs the rest of that date, including after
+the switch is turned off; switching off cannot reinterpret work already started.
+The press freezes date entry membership and remaining stage slots atomically before
+planning work. That immutable rider/date snapshot survives retries and preserves
+existing entries during bulk role replacements. New date bindings use the same
+database serialization. A missing eligibility RPC stops the instant press before growth.
+An OFF retry reuses an existing frozen snapshot only; it cannot create a new freeze
+or add previously unfrozen riders to that press.
+The common sweep and atomic commit retain reserved stage slots until the existing
+entrant, result/load or deadline rules resolve them; a completed press can then close
+its remaining slots. Migration publication is atomic across the dependent functions.
+Stamped riders may fill their available race-day slots out of order. Their
+provisional condition changes form/fatigue only and cannot clear injury state or
+replace a final date settlement. The last missing receipt settles the condition
+once from frozen opening factors and the race-load ledger. Other riders retain
+the existing ordered receipt/settlement rules.
+
+Each stamped rider's report includes the exact previously observed receipt-day
+set. Under the existing transaction locks, `commit_training_date_tick` checks
+that snapshot before any writes and rejects stale or missing evidence for retry
+from current development. Duplicate current-slot retries remain no-ops. This
+prevents two different slots from acknowledging absolute ability patches based
+on the same earlier state. The existing RPC signatures and try-lock forwarding
+are unchanged. Local native PG17 concurrency and PGlite/golden evidence belong
+in the PR; this contract does not claim production activation or verification.
+
 ## Aktuel S4-status (read-only prodmåling 28/9)
 
 `training_tick_per_race_day` og `race_day_development_enabled` er begge `on`.

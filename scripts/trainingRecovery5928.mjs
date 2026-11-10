@@ -33,6 +33,8 @@ export function validateSnapshot(snapshot, scope=approvedScope) {
     if(key!=='training_programs') check(flags[0].value==='on' || flags[0].value===true,`Unexpected historical flag ${key}`);
   }
   check(t.training_date_work.length===scope.teams,'Recovery scope team count changed');
+  // Instant training did not exist on the sole approved historical date.
+  check(t.training_train_now_locks == null || (Array.isArray(t.training_train_now_locks) && t.training_train_now_locks.length===0),'Instant training locks postdate approved historical work');
   const eligible=[],excluded=[],seen=new Set();
   for(const w of t.training_date_work) {
     check(w.tick_date===snapshot.tick_date && Number.isFinite(Date.parse(w.created_at)),'Invalid frozen date');
@@ -148,6 +150,8 @@ export async function replaySnapshot(snapshot, scope=approvedScope, {engineRevis
     return {...w,expected_rider_ids:ids,quarantined_rider_ids:[],opening_conditions:Object.fromEntries(ids.map(id=>[id,neutral(id)])),status:'partial'};
   }).filter(w=>w.expected_rider_ids.length);
   t.rider_condition=[...t.rider_condition,...validation.eligible.map(r=>neutral(r.rider_id))];
+  // validateSnapshot restricts this replay to the date before train-now locks existed.
+  t.training_train_now_locks=[];
   const client=createOfflineClient(t);
   for(const w of t.training_date_work) {
     for(const gameDay of w.game_days) {

@@ -34,6 +34,31 @@ export async function loadTeamTrainNowLocks({ supabase, teamId, tickDate }) {
   return data ?? [];
 }
 
+// #7737: the migration adds instant_at after the backend deploys (auto-migrate, #2642).
+// Until then nobody can have been stamped, so a missing column reads as "no stamp".
+function isMissingInstantColumn(error) {
+  return (error?.code === "42703" || error?.code === "PGRST204") && String(error?.message ?? "").includes("instant_at");
+}
+
+/**
+ * #7737: the riders a press stamped to train their free race days straight away. The
+ * stamp, not the switch, decides how a rider's date runs, so turning the switch off
+ * mid-date is safe. A read error throws: a guess here would misplace a settlement.
+ */
+export async function loadTrainNowInstantRiderIds({ supabase, tickDate, riderIds }) {
+  const ids = [...new Set((riderIds ?? []).filter(Boolean))];
+  if (!ids.length) return new Set();
+  const { data, error } = await supabase.from(TRAIN_NOW_LOCK_TABLE)
+    // pagination-safe: one team's frozen roster on one date, far below the 1000-row cap.
+    // schema-columns-ok: instant_at tilfoejes af database/2026-11-09-7737-train-now-instant.sql, applied post-merge.
+    .select("rider_id, instant_at").eq("tick_date", tickDate).in("rider_id", ids);
+  if (error) {
+    if (isMissingTable(error) || isMissingInstantColumn(error)) return new Set();
+    throw new Error(`train-now instant stamps: ${error.message ?? error}`);
+  }
+  return new Set((data ?? []).filter((row) => row.instant_at != null).map((row) => row.rider_id));
+}
+
 /** PURE (#6006): Copenhagen dates of a race's stages from race_stage_schedule rows. */
 export function raceStageDates(scheduleRows) {
   return [...new Set((scheduleRows ?? []).filter((row) => row?.scheduled_at)
@@ -131,4 +156,41 @@ export function trainNowSelectionViolations({ lockedRiderIds, currentRiderIds = 
   const current = new Set(currentRiderIds);
   const next = new Set(nextRiderIds);
   return [...(lockedRiderIds ?? [])].filter((id) => current.has(id) !== next.has(id)).sort();
+}
+
+/** Continue only an already frozen date when the instant switch is off. */
+export async function loadTrainNowFrozenDateEntries({ supabase, teamId, seasonId, tickDate, riderIds }) {
+  if (!riderIds.length) return [];
+  const { data, error } = await supabase.from(TRAIN_NOW_LOCK_TABLE)
+    // pagination-safe: a single registered team roster is below the row cap.
+    // schema-columns-ok: instant_entry_snapshot is added by the pending #7737 migration.
+    .select("rider_id, instant_entry_snapshot").eq("team_id", teamId).eq("season_id", seasonId)
+    .eq("tick_date", tickDate).in("rider_id", riderIds);
+  if (error) {
+    if (isMissingTable(error) || ((error.code === "42703" || error.code === "PGRST204")
+      && String(error.message ?? "").includes("instant_entry_snapshot"))) return [];
+    throw new Error(`train-now date eligibility: ${error.message ?? error}`);
+  }
+  return (data ?? []).filter(row => row.instant_entry_snapshot != null).map(row => {
+    if (!Array.isArray(row.instant_entry_snapshot.slots)) throw new Error("train-now date eligibility: invalid frozen slots");
+    return { rider_id: row.rider_id, slots: row.instant_entry_snapshot.slots };
+  });
+}
+
+/** Frozen slot membership for the common date sweep, independent of the switch. */
+export async function loadTrainNowFrozenDateSlots({ supabase, seasonId, tickDate }) {
+  let rows;
+  try {
+    // schema-columns-ok: instant_entry_snapshot is added by the pending #7737 migration.
+    rows = await fetchAllRows(() => supabase.from(TRAIN_NOW_LOCK_TABLE)
+      .select("rider_id, instant_entry_snapshot").eq("season_id", seasonId).eq("tick_date", tickDate).order("rider_id"));
+  } catch (error) {
+    if (isMissingTable(error) || ((error.code === "42703" || error.code === "PGRST204")
+      && String(error.message ?? "").includes("instant_entry_snapshot"))) return [];
+    throw new Error(`train-now date eligibility: ${error.message ?? error}`, { cause: error });
+  }
+  return rows.filter(row => row.instant_entry_snapshot != null).map(row => {
+    if (!Array.isArray(row.instant_entry_snapshot.slots)) throw new Error("train-now date eligibility: invalid frozen slots");
+    return { rider_id: row.rider_id, slots: row.instant_entry_snapshot.slots };
+  });
 }

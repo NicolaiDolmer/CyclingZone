@@ -83,6 +83,7 @@ import { capXpTickGainsPerDate } from "./developmentXp.ts"; // #6110: maks +1 pr
 import { loadRaceCatchUp } from "./raceCatchUpWiring.js"; // #6950 catch-up via loeb
 import { assessIllness } from "./conditionIllness.js"; // #6938 sygdom af langvarig ekstrem traethed
 import { CURRENT_RACE_RULES_REVISION, isS5ProfilesV3OrLater } from "./raceEngineRulesRevision.ts";
+import { loadTrainNowInstantRiderIds } from "./trainNowLock.js"; // #7737
 
 // #4847: standard-truppen paa training_day_runs.squad. Kolonnen har DEFAULT 'senior'
 // i skemaet (database/2026-09-15-4847-training-day-close-trigger.sql); konstanten her
@@ -474,6 +475,8 @@ export async function runTeamTrainingDay({
   dateGameDays = null,
   tickDateOverride = null, eligibleRiderIds = null, unresolvedSlotsByRider = {},
   deadlineAt = null, deadlineReached = false,
+  // #7737: this call is a press with training_train_now_instant on (provisional condition).
+  instantPress = false,
 }) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!teamId) throw new Error("teamId required");
@@ -547,7 +550,7 @@ export async function runTeamTrainingDay({
     if((workRows??[]).length>1) throw new Error('training date work: duplicate primary key rows');
     dateWork=workRows?.[0] ?? null;
   }
-  const settlesCondition = conditionPerDate && raceDay === dateDays.at(-1);
+  const lastSlotSettles = conditionPerDate && raceDay === dateDays.at(-1);
   // ── #4847 (ejer-beslutning 15/9, §13.3 beslutning 3): INGEN BONUS paa loebsdags-
   // stien. Den frivillige knap "Koer dagens traening nu" giver kun utaalmodighed, ikke
   // fordel — beslutning 2 (6/9) fjerner de 25 %. Bonussen lever videre PRAECIS saa
@@ -626,6 +629,9 @@ export async function runTeamTrainingDay({
   let abilityUpdates, conditionUpserts, reportRiders, historyRows, raceDayHistoryRows, scoreRows;
   let raceLoadRows = [];
   let canonicalLoadRows = [];
+  // #7737: riders stamped by an instant press, and who closes his date on this tick.
+  let instantRiderIds = new Set();
+  const settlingRiderIds = new Set();
   try {
   // ── 2) Load riders (ikke-pensionerede, dette hold) ──────────────────────────
   const riderColumns = "id, primary_type, secondary_type, potentiale, birthdate, firstname, lastname, team_id, is_academy, is_retired";
@@ -690,7 +696,13 @@ export async function runTeamTrainingDay({
     }
     const eligible=new Set(eligibleRiderIds??dateWork.expected_rider_ids);
     riders=riders.filter(rider=>eligible.has(rider.id)&&dateWork.expected_rider_ids.includes(rider.id)&&!(dateWork.quarantined_rider_ids??[]).includes(rider.id));
-    if(!deadlineReached) riders=riders.filter(rider=>(unresolvedSlotsByRider instanceof Map ? unresolvedSlotsByRider.get(rider.id) : unresolvedSlotsByRider[rider.id])?.length ? false : true);
+    instantRiderIds = await loadTrainNowInstantRiderIds({ supabase, tickDate, riderIds: riders.map(rider=>rider.id) });
+    // #7737: a stamped rider only waits on the race day his open slot sits on.
+    if(!deadlineReached) riders=riders.filter(rider=>{
+      const open=(unresolvedSlotsByRider instanceof Map ? unresolvedSlotsByRider.get(rider.id) : unresolvedSlotsByRider[rider.id]);
+      if(!open?.length) return true;
+      return instantRiderIds.has(rider.id)&&!open.some(slot=>slot?.gameDay==null||Number(slot.gameDay)===raceDay);
+    });
     const {data:receipts,error:receiptError}=await supabase.from('training_rider_ticks').select('*')
       .eq('season_id',seasonId).in('game_day',dateDays).in('rider_id',riders.map(rider=>rider.id));
     if(receiptError) throw new Error(`training rider receipts: ${receiptError.message}`);
@@ -705,7 +717,7 @@ export async function runTeamTrainingDay({
     };
     if (conditionPerDate) {
       emptyReport.condition_per_date = true;
-      emptyReport.condition_settled = settlesCondition;
+      emptyReport.condition_settled = lastSlotSettles;
       const { data, error } = await trainingDateRpc(supabase, 'commit_training_date_tick', {
         p_team_id: teamId, p_season_id: seasonId, p_squad: squadKey,
         p_game_day: raceDay, p_tick_date: tickDate, p_date_game_days: dateDays,
@@ -1046,11 +1058,22 @@ export async function runTeamTrainingDay({
   scoreRows = [];
 
   for (const rider of riders) {
-    const priorDateReports=conditionPerDate ? dateDays.filter(day=>day<raceDay).map(day=>{
+    // #7737: a stamped rider fills his race days out of order, so his date reports are
+    // whatever is already on the date, and he closes it on his last missing race day.
+    const instantRider=conditionPerDate&&instantRiderIds.has(rider.id);
+    const dateReceiptOn=(day)=>dateReceipts.find(row=>row.rider_id===rider.id&&row.game_day===day);
+    const priorDateReports=conditionPerDate ? (instantRider ? dateDays.filter(day=>day!==raceDay&&dateReceiptOn(day)).map(day=>{
+      if(dateReceiptOn(day).tick_date!==tickDate) throw new Error('Daily condition receipt belongs to another date');
+      return dateReceiptOn(day).report;
+    }) : dateDays.filter(day=>day<raceDay).map(day=>{
       const receipt=dateReceipts.find(row=>row.rider_id===rider.id&&row.game_day===day);
       if(!receipt||receipt.tick_date!==tickDate) throw new Error('Daily condition requires completed earlier game days in order for each rider');
       return receipt.report;
-    }) : [];
+    })) : [];
+    const settlesCondition=instantRider ? priorDateReports.length===dateDays.length-1 : lastSlotSettles;
+    // #7737: his date closes on the race day the evening run would have closed it on, so
+    // the injury horizon and the seeds do not depend on when he pressed (I1).
+    const settleGameDay=instantRider ? dateDays.at(-1) : raceDay;
     const abRow = abilityByRider.get(rider.id);
     if (!abRow) {
       // Ingen abilities-række: spring over stille (spec: same guard as L0).
@@ -1195,11 +1218,14 @@ export async function runTeamTrainingDay({
     // #5267 A (ejer-valg 28/9): bundet, men koerte ikke PAA DENNE loebsdag, og har en
     // etape paa en anden af datoens loebsdage ⇒ datoens frie loebsdag er traening.
     // Koerte han paa denne loebsdag (rodeToday), gaelder reglen ovenfor uaendret.
-    const freeSlotOnStageDate = !rodeToday && !raceLoadToday && stageOnDateRiderIds.has(rider.id);
+    // #7737: at a press his stage has not run yet, so an open slot on the date counts too.
+    const freeSlotOnStageDate = !rodeToday && !raceLoadToday && (stageOnDateRiderIds.has(rider.id) || (instantRider && unresolvedSlots.length > 0));
     const boundRestToday = !injuredToday && !racedToday && boundToday && !freeSlotOnStageDate;
 
     // Pre-tick træthed til skaderisiko-beregning (brug den aktuelle, ikke den næste).
-    const preFatigue = Number(cond.fatigue ?? 0);
+    // #7737: for a stamped rider rider_condition is provisional, the opening state is the source.
+    const preFatigue = instantRider ? Number(conditionBeforeDate.fatigue ?? 0) : Number(cond.fatigue ?? 0);
+    const preForm = instantRider ? Number(conditionBeforeDate.form ?? 50) : Number(cond.form ?? 50);
     // #3924 trin 2: pre-tick fremdrift, snapshottet FØR tickResult muterer den —
     // rapport-linjen bærer den videre (progress_before) så frontend kan udlede
     // hvor meget af DAGENS bar der kom fra netop dette pas (mørkere segment på
@@ -1344,9 +1370,17 @@ export async function runTeamTrainingDay({
     // 57 mod 67 med de gamle tal), ikke mod løbsdags-udviklingen. At slukke
     // udviklingen må ikke rulle dem tilbage — det var netop koblingen der gjorde
     // "sluk udviklingen for S3" umulig før dette split.
-    const settleIntensities = settlesCondition ? [...priorDateReports.map(report=>canonicalLoadRows.some(load=>load.rider_id===rider.id&&load.game_day===report.game_day)?'race':report.intensity),effectiveIntensity] : null;
-    const settleRaceLoads = settlesCondition ? dateDays.map(day => Number(canonicalLoadRows.find(row => row.rider_id === rider.id && row.game_day === day)?.load ?? 0)) : null;
-    const dailyCondition = settlesCondition ? settleTrainingDateCondition({
+    // #7737: on the last free race day of an instant press every missing race day is an open
+    // race slot. His form and fatigue are then counted now, with the stage load still to come.
+    const provisionalNow = instantRider && instantPress && !settlesCondition
+      && dateDays.every(day => day === raceDay || dateReceiptOn(day) || unresolvedSlots.some(slot => Number(slot.gameDay) === day));
+    const conditionCounted = settlesCondition || provisionalNow;
+    const hasLoadOn = (day) => canonicalLoadRows.some(load=>load.rider_id===rider.id&&load.game_day===day);
+    const settleIntensities = !conditionCounted ? null : instantRider
+      ? dateDays.map(day => day === raceDay ? effectiveIntensity : hasLoadOn(day) ? 'race' : dateReceiptOn(day)?.report?.intensity ?? 'race')
+      : [...priorDateReports.map(report=>canonicalLoadRows.some(load=>load.rider_id===rider.id&&load.game_day===report.game_day)?'race':report.intensity),effectiveIntensity];
+    const settleRaceLoads = conditionCounted ? dateDays.map(day => Number(canonicalLoadRows.find(row => row.rider_id === rider.id && row.game_day === day)?.load ?? 0)) : null;
+    const countedCondition = conditionCounted ? settleTrainingDateCondition({
       riderId: rider.id, dateStr: tickDate, condition: conditionBeforeDate,
       intensities: settleIntensities,
       raceLoads: settleRaceLoads,
@@ -1361,13 +1395,16 @@ export async function runTeamTrainingDay({
       medicalBonus: teamMedicalBonus,
       raceDateTrainingDay: raceDateTrainingDayOn,
     }) : null;
+    // A provisional count carries only form and fatigue; its injury roll is never used.
+    const dailyCondition = settlesCondition ? countedCondition : null;
+    const provisionalCondition = provisionalNow ? countedCondition : null;
     const newFatigue = conditionPerDate ? (dailyCondition?.fatigue ?? preFatigue) : nextFatigue({
       fatigue: preFatigue,
       intensity: effectiveIntensity,
       recoveryAbility: abilities.recovery ?? 50,
       ...(raceDayEngineOn ? RACE_DAY_ENGINE_RECOVERY_CONFIG : {}),
     });
-    const newForm = conditionPerDate ? (dailyCondition?.form ?? Number(cond.form ?? 50)) : nextForm({ form: Number(cond.form ?? 50), fatigue: newFatigue });
+    const newForm = conditionPerDate ? (dailyCondition?.form ?? preForm) : nextForm({ form: Number(cond.form ?? 50), fatigue: newFatigue });
 
     // Ny skade? (kun for raske ryttere, baseret på PRE-tick træthed)
     let newInjuredUntil = cond.injured_until ?? null;
@@ -1385,7 +1422,10 @@ export async function runTeamTrainingDay({
       newInjurySeasonId = null;
     }
 
-    if (!injuredToday) {
+    // #7737: injury and illness are only rolled when the date closes, never at the press,
+    // and from the race day the date closes on: a stamped rider's race slot can be earlier.
+    const injuredAtSettlement = instantRider ? isInjuredOnRaceDay({ condition: cond, seasonId, gameDay: settleGameDay, tickDate }) : injuredToday;
+    if (!injuredAtSettlement) {
       const risk = conditionPerDate ? (dailyCondition?.risk ?? 0) : injuryRisk({ intensity: effectiveIntensity, fatigue: preFatigue });
       if (risk > 0) {
         // #4846 A3: skade-rullet seedes paa SAMME scope som traenings-stoejen.
@@ -1407,7 +1447,7 @@ export async function runTeamTrainingDay({
           newInjuredUntil = addDaysToDate(tickDate, roll.days);
           newInjuryCause = "training_overload";
           if (useRaceDayKey) {
-            newInjuryEndGameDay = injuryEndGameDay({ gameDay: raceDay, days: roll.days, seasonNumber });
+            newInjuryEndGameDay = injuryEndGameDay({ gameDay: settleGameDay, days: roll.days, seasonNumber });
             newInjurySeasonId = newInjuryEndGameDay == null ? null : seasonId;
           }
         }
@@ -1427,7 +1467,7 @@ export async function runTeamTrainingDay({
       // end #5462 — se slutrapportens out-of-scope-fund). Flag off skal vaere
       // bit-identisk, saa den bliver staaende som den er.
       if (!newlyInjured && cond.injured_until
-        && !isInjuredOnRaceDay({ condition: cond, seasonId, gameDay: raceDay, tickDate })) {
+        && !isInjuredOnRaceDay({ condition: cond, seasonId, gameDay: settleGameDay, tickDate })) {
         newInjuredUntil = null;
         newInjuryCause = null;
         newInjuryEndGameDay = null;
@@ -1444,15 +1484,15 @@ export async function runTeamTrainingDay({
     let illnessDays = 0;
     // Codex #7178: kun paa datoens afregnende tick (samme gate som conditionUpserts), ellers
     // skrives en sygdom i rapporten paa et tick hvor tilstanden ikke afregnes.
-    if (illnessOn && (!conditionPerDate || settlesCondition) && !injuredToday && !newlyInjured) {
-      const illness = assessIllness({ riderId: rider.id, dateStr: seedScope, fatigues: [newFatigue, ...(illnessHistoryByRider.get(rider.id) ?? [])], medicalBonus: teamMedicalBonus });
+    if (illnessOn && (!conditionPerDate || settlesCondition) && !injuredAtSettlement && !newlyInjured) {
+      const illness = assessIllness({ riderId: rider.id, dateStr: instantRider ? raceDaySeedKey({ seasonId, gameDay: settleGameDay }) : seedScope, fatigues: [newFatigue, ...(illnessHistoryByRider.get(rider.id) ?? [])], medicalBonus: teamMedicalBonus });
       if (illness.ill) {
         illnessDays = illness.days;
         newlyInjured = true;
         newInjuredUntil = addDaysToDate(tickDate, illness.days);
         newInjuryCause = "illness";
         if (useRaceDayKey) {
-          newInjuryEndGameDay = injuryEndGameDay({ gameDay: raceDay, days: illness.days, seasonNumber });
+          newInjuryEndGameDay = injuryEndGameDay({ gameDay: settleGameDay, days: illness.days, seasonNumber });
           newInjurySeasonId = newInjuryEndGameDay == null ? null : seasonId;
         }
       }
@@ -1577,6 +1617,8 @@ export async function runTeamTrainingDay({
     // #5462: de tre loebsdags-kolonner sendes KUN paa loebsdags-aksen. Flag off er
     // dermed bit-identisk helt ned i payloaden — upsert-stien roerer kun de kolonner
     // den faar med, saa en eksisterende raekkes loebsdags-felter er ogsaa urørte.
+    if (conditionPerDate && settlesCondition) settlingRiderIds.add(rider.id);
+    if (provisionalCondition) conditionUpserts.push({ rider_id: rider.id, form: provisionalCondition.form, fatigue: provisionalCondition.fatigue, provisional: true });
     if (!conditionPerDate || settlesCondition) conditionUpserts.push({
       rider_id: rider.id,
       form: newForm,
@@ -1593,7 +1635,7 @@ export async function runTeamTrainingDay({
           // naeste; feltet er aldrig en nedtaelling der kan drive.
           injury_race_days_left: newInjuryEndGameDay == null
             ? null
-            : injuryRaceDaysLeft({ endGameDay: newInjuryEndGameDay, currentGameDay: raceDay }),
+            : injuryRaceDaysLeft({ endGameDay: newInjuryEndGameDay, currentGameDay: settleGameDay }),
         }
         : {}),
     });
@@ -1603,6 +1645,9 @@ export async function runTeamTrainingDay({
       rider_id: rider.id,
       name: `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim(),
       ...(conditionPerDate ? { condition_before_date: conditionBeforeDate,condition_observed:cond,recovery_before_date:recoveryBeforeDate } : {}),
+      ...(instantRider ? { expected_date_receipt_days: dateReceipts
+        .filter(receipt => receipt.rider_id === rider.id && receipt.tick_date === tickDate && dateDays.includes(Number(receipt.game_day)))
+        .map(receipt => Number(receipt.game_day)).sort((a, b) => a - b) } : {}),
       ...(conditionPerDate ? {missing_evidence:missingEvidence,settlement_status:missingEvidence.length?'needs_reconciliation':'complete'} : {}),
       score: tickResult?.score ?? 0,
       gains: tickResult?.gains ?? {},
@@ -1714,19 +1759,20 @@ export async function runTeamTrainingDay({
 
   // ── Phase 2: Writes ───────────────────────────────────────────────────────────
   if (conditionPerDate) {
-    if(settlesCondition && raceLoadRows.some(load=>!conditionUpserts.some(condition=>condition.rider_id===load.rider_id))) {
+    if(lastSlotSettles && raceLoadRows.some(load=>!instantRiderIds.has(load.rider_id)&&!conditionUpserts.some(condition=>condition.rider_id===load.rider_id))) {
       throw new Error('Date race loads include a rider without a condition settlement');
     }
     const report = { riders: reportRiders, bonus_applied: bonus, executed_by: executedBy,
       tick_date: tickDate, game_day: raceDay, date_game_days: dateDays, condition_per_date: true,
-      condition_settled: settlesCondition };
+      condition_settled: lastSlotSettles };
     const { data, error } = await trainingDateRpc(supabase, 'commit_training_date_tick', {
       p_team_id: teamId, p_season_id: seasonId, p_squad: squadKey,
       p_game_day: raceDay, p_tick_date: tickDate, p_date_game_days: dateDays,
       p_executed_by: executedBy, p_report: report,
       p_abilities: abilityUpdates, p_conditions: conditionUpserts,
       p_history: historyRows, p_race_history: raceDayHistoryRows, p_scores: scoreRows,
-      p_race_loads: settlesCondition ? raceLoadRows : [],
+      // #7737: with stamped riders in the batch, only the riders closing their date now.
+      p_race_loads: instantRiderIds.size ? raceLoadRows.filter(load => settlingRiderIds.has(load.rider_id)) : lastSlotSettles ? raceLoadRows : [],
       p_deadline_reached:deadlineReached,p_now:now.toISOString(),
     }, executedBy === 'manager');
     if (error) throw new Error(`daily condition commit: ${error.message}`);
