@@ -6505,6 +6505,8 @@ router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
       enabled,
       // #6095: "kun denne etape / resten af løbet" i rollevælgeren (beta først).
       role_scope_choice: evaluateFlagStage(roleScopeStage, { isBetaTester }),
+      // #7977: same capability as lineup selection and PUT validation, not roster presence.
+      special_roles_allowed: raceAllowsCoCaptain(race),
       // #6095: pr. etape; klienten sender dem retur som base_versions ved gem.
       stage_versions: ctx.stage_versions,
       // #4632: fladen skal kunne rendre de rigtige trin uden at kende
