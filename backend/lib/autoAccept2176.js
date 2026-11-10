@@ -83,7 +83,7 @@ export function getOfferAutoAcceptConflict(listing, offerAmount) {
  * Et bud paa Y eller derover afvises og peger paa knappen, der starter auktionen.
  * Slukket kontakt: kun kontakten laeses, intet andet opslag.
  *
- * @returns {Promise<{status: number, body: object} | null>}
+ * @returns {Promise<{status: number, body: {error: string, errorCode: string, errorParams: {autoAcceptPrice: number, listingId: string}}} | null>}
  */
 export async function getOfferAutoAcceptIssue(supabase, { riderId, listing = null, offerAmount }) {
   if (!(await isAutoAcceptEnabled(supabase))) return null;
@@ -115,6 +115,21 @@ export async function getOfferAutoAcceptIssue(supabase, { riderId, listing = nul
       errorParams: { autoAcceptPrice: conflict.autoAcceptPrice, listingId: conflict.listingId },
     },
   };
+}
+
+// Supabase mutations return errors instead of throwing. A rejected trigger
+// must never be followed by success notifications or confirmation/payment.
+export async function checkAutoAcceptMutation(query) {
+  const { error } = await query;
+  if (!error) return null;
+  if (error.message !== "offer_at_auto_accept_price") throw error;
+  let detail;
+  try { detail = JSON.parse(error.details); } catch {
+    // best-effort: optional database detail may be absent; preserve the authoritative boundary rejection below.
+    detail = {};
+  }
+  return { status: 409, body: { error: error.message, errorCode: "offer_at_auto_accept_price",
+    errorParams: { autoAcceptPrice: Number(detail.auto_accept_price), listingId: detail.listing_id } } };
 }
 
 /**
@@ -295,20 +310,21 @@ export async function releaseRiderUnderTeamLock(supabase, { riderId, teamId, atR
 // Payment remains in the existing transfer flow; this is not a payment RPC.
 export async function claimTransferUnderTeamLock(supabase, {
   riderId, sellerTeamId, buyerTeamId, deferRegistration, now, acquirePatch,
-  activeSeasonNumber, maxRiders,
+  activeSeasonNumber, maxRiders, price,
 }) {
   if (!(await isAutoAcceptEnabled(supabase))) return null;
   const atRisk = await fetchAtRiskRiders(supabase, sellerTeamId, activeSeasonNumber, { excludeRiderIds: [riderId] });
-  const result = await rpc(supabase, "auto_accept_claim_transfer", {
+  const result = await rpc(supabase, "auto_accept_claim_transfer_at_price", {
     p_rider_id: riderId, p_seller_team_id: sellerTeamId, p_buyer_team_id: buyerTeamId,
     p_defer_registration: deferRegistration, p_now: now.toISOString(),
     p_acquire_patch: acquirePatch, p_min_seller_riders: MIN_RIDERS_FOR_RACE,
-    p_seller_at_risk_rider_ids: atRisk.map(rider => rider.id), p_max_riders: maxRiders,
+    p_seller_at_risk_rider_ids: atRisk.map(rider => rider.id), p_max_riders: maxRiders, p_price: price,
   });
   switch (result?.status) {
     case "claimed": return { data: { id: result.rider_id } };
     case "seller_squad_floor": return { issue: { code: "seller_squad_risk_too_small", minRiders: result.min_riders } };
     case "squad_full": return { issue: { code: "buyer_squad_full", maxRiders: result.max_riders } };
+    case "offer_at_auto_accept_price": return { boundary: { status: 409, body: { errorCode: "offer_at_auto_accept_price", errorParams: { autoAcceptPrice: Number(result.auto_accept_price), listingId: result.listing_id } } } };
     case "rider_state_changed":
     case "rider_on_auction": return { data: null };
     default: throw new Error(`auto_accept_claim_transfer: unexpected status ${result?.status}`);
@@ -423,6 +439,8 @@ export function makeStartAutoAcceptHandler({
     const minutes = Number(req.body.duration_minutes);
     const expected = parseOptionalPrice(req.body?.expected_price);
     if (!expected.ok || expected.value === null) return res.status(400).json(INVALID_PRICE);
+    const bid = req.body?.bid_amount === undefined ? expected : parseOptionalPrice(req.body.bid_amount);
+    if (!bid.ok || bid.value === null || bid.value < expected.value) return res.status(400).json(INVALID_PRICE);
 
     // schema-columns-ok: auto_accept_price is added by database/2026-11-07-2176-m2-auto-accept.sql; this read is behind the enabled gate after apply.
     const { data: listing, error: listingError } = await supabase
@@ -450,14 +468,14 @@ export function makeStartAutoAcceptHandler({
     if (riderError) throw riderError;
     if (!rider || rider.team_id !== listing.seller_team_id) return res.status(409).json(RIDER_UNAVAILABLE.body);
     const band = await priceBandConfig(supabase);
-    const bandIssue = getPriceBandViolation({ price: Number(listing.auto_accept_price),
+    const bandIssue = getPriceBandViolation({ price: bid.value,
       marketValue: Math.max(calculateRiderMarketValue(rider), 1), ...band });
     if (bandIssue) return res.status(400).json(buildPriceBandErrorBody(bandIssue,
       { codePrefix: "auction_start", label: "auction starting price" }));
 
     // Samme loftsregel som board-konsekvenserne paa alle andre koeb.
     const signingBlock = await signingAllowed({
-      supabase, buyerTeamId: req.team.id, riderId: listing.rider_id, purchasePrice: expected.value,
+      supabase, buyerTeamId: req.team.id, riderId: listing.rider_id, purchasePrice: bid.value,
     });
     if (signingBlock) {
       return res.status(403).json({ error: signingBlock.reason, code: signingBlock.code, layer: signingBlock.layer });
@@ -486,7 +504,7 @@ export function makeStartAutoAcceptHandler({
       excludeRiderIds: [listing.rider_id],
     });
 
-    const result = await rpc(supabase, "start_auto_accept_auction", {
+    const result = await rpc(supabase, "start_auto_accept_auction_bid", {
       p_listing_id: listing.id,
       p_buyer_team_id: req.team.id,
       p_expected_rider_id: expectedRiderId,
@@ -494,6 +512,7 @@ export function makeStartAutoAcceptHandler({
       p_expected_rider_value: { market_value: rider.market_value ?? null,
         base_value: rider.base_value ?? null, prize_earnings_bonus: rider.prize_earnings_bonus ?? null },
       p_expected_price: expected.value,
+      p_bid_amount: bid.value,
       p_duration_minutes: minutes,
       p_calculated_end: calculatedEnd.toISOString(),
       p_max_riders: buyerState.squad_limits.max,
@@ -580,6 +599,15 @@ async function announceAutoAcceptAuction({ supabase, logActivity, result, calcul
  */
 export function registerAutoAcceptRoutes(router, deps) {
   const { supabase, requireAuth, marketWriteLimiter, assertMarketOpen, assertTeamNotTransferFrozen } = deps;
+  router.get("/market/auto-accept-config", autoAcceptRouteGate(supabase), requireAuth, async (_req, res) => {
+    if (!(await isMarketCommitment6181On(supabase))) return res.status(404).json(DISABLED);
+    const { data, error } = await supabase.from("auction_timing_config")
+      .select("weekday_open_hour,weekday_close_hour,weekend_open_hour,weekend_close_hour").eq("id", 1).single();
+    if (error) throw error;
+    if (!data) return res.status(503).json({ errorCode: "auto_accept_rider_unavailable" });
+    res.set("Cache-Control", "no-store");
+    return res.json(data);
+  });
   const start = makeStartAutoAcceptHandler(deps);
   const setPrice = makeSetAutoAcceptPriceHandler(deps);
   router.post("/transfers/:id/auto-accept", autoAcceptRouteGate(supabase), requireAuth, marketWriteLimiter, async (req, res) => {

@@ -9,6 +9,8 @@ import assert from "node:assert/strict";
 
 import {
   AUTO_ACCEPT_FLAG_KEY,
+  registerAutoAcceptRoutes,
+  checkAutoAcceptMutation,
   isAutoAcceptEnabled,
   claimTransferUnderTeamLock,
   claimSwapUnderTeamLock,
@@ -330,13 +332,14 @@ test("taendt: start-handleren sender aktiv-tid-sluttid, trup-loft, gulv og risik
   assert.equal(res.statusCode, 409);
   assert.equal(res.body.errorCode, "auto_accept_price_changed");
   assert.equal(announced, false);
-  assert.deepEqual(client.rpcCalls, [{ name: "start_auto_accept_auction", args: {
+  assert.deepEqual(client.rpcCalls, [{ name: "start_auto_accept_auction_bid", args: {
     p_listing_id: "L1",
     p_buyer_team_id: "B",
     p_expected_rider_id: "R1",
     p_expected_seller_team_id: "A",
     p_expected_rider_value: { market_value: 1000000, base_value: 1000000, prize_earnings_bonus: 0 },
     p_expected_price: 500000,
+    p_bid_amount: 500000,
     p_duration_minutes: 60,
     p_calculated_end: "2026-11-10T07:30:00.000Z",
     p_max_riders: 30,
@@ -541,4 +544,54 @@ test("listing gate uses the current rider owner", async () => {
   const client = fakeSupabase({ flag: "on", respond: table => ({ data: table === "riders" ? { id: "R1", team_id: "C" } : null, error: null }) });
   const issue = await getOfferAutoAcceptIssue(client, { listing: { id: "L1", rider_id: "R1", seller_team_id: "A", status: "open", auto_accept_price: 2 }, offerAmount: 2 });
   assert.equal(issue, null);
+});
+
+
+test("editable bid is separate from expected listing price and reaches atomic reservation", async () => {
+  const { client, handler } = startedFixture();
+  const res = fakeRes();
+  await handler({ ...START_REQ, body: { ...START_REQ.body, bid_amount: 7 } }, res);
+  assert.equal(res.statusCode, 201);
+  assert.equal(client.rpcCalls[0].name, "start_auto_accept_auction_bid");
+  assert.equal(client.rpcCalls[0].args.p_expected_price, 2);
+  assert.equal(client.rpcCalls[0].args.p_bid_amount, 7);
+});
+
+test("editable bid rejects invalid and below-minimum amounts before mutation", async () => {
+  for (const bid of [0, 1, -1, 2.5, "", null, 2147483648]) {
+    const { client, handler } = startedFixture();
+    const res = fakeRes();
+    await handler({ ...START_REQ, body: { ...START_REQ.body, bid_amount: bid } }, res);
+    assert.equal(res.statusCode, 400, String(bid));
+    assert.equal(res.body.errorCode, "auto_accept_invalid_price");
+    assert.equal(client.rpcCalls.length, 0);
+  }
+});
+
+
+test("trigger boundary errors return conflict before callers send success", async () => {
+  const issue = await checkAutoAcceptMutation(Promise.resolve({error:{message:"offer_at_auto_accept_price",details:JSON.stringify({auto_accept_price:600000,listing_id:"L"})}}));
+  assert.equal(issue.status,409);
+  assert.deepEqual(issue.body.errorParams,{autoAcceptPrice:600000,listingId:"L"});
+  assert.equal(await checkAutoAcceptMutation(Promise.resolve({error:null})),null);
+  await assert.rejects(checkAutoAcceptMutation(Promise.resolve({error:new Error("unrelated failure")})),/unrelated failure/);
+});
+
+
+test("enabled market config exposes only timing fields; prerequisite off performs no timing read", async () => {
+  for (const prerequisite of ["off","on"]) {
+    let readConfig;
+    const timing = { weekday_open_hour:8,weekday_close_hour:24,weekend_open_hour:10,weekend_close_hour:22 };
+    const client = fakeSupabase({ flags:{auto_accept_enabled:"on",market_commitment_6181:prerequisite},respond:()=>({data:timing,error:null}) });
+    registerAutoAcceptRoutes({get:(_path,...handlers)=>{readConfig=handlers.at(-1);},post:()=>{},put:()=>{}},{supabase:client});
+    const res = {...fakeRes(),set:()=>{}};
+    await readConfig({},res);
+    assert.equal(res.statusCode,prerequisite === "on" ? 200 : 404);
+    const configReads=client.calls.filter(call=>call.table === "auction_timing_config");
+    assert.equal(configReads.length,prerequisite === "on" ? 1 : 0);
+    if (prerequisite === "on") {
+      assert.deepEqual(res.body,timing);
+      assert.equal(configReads[0].ops[0][1],"weekday_open_hour,weekday_close_hour,weekend_open_hour,weekend_close_hour");
+    }
+  }
 });

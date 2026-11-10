@@ -246,6 +246,7 @@ export function isUnknownStageValue(value) {
 // evaluateFlagStage. Tilfoej kun et flag her naar en spillerflade skal kunne
 // spoerge om det uden en mere specifik route at spoerge.
 export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
+  "auto_accept_enabled",
   "race_engine_v4",
   "board_mandate_model_enabled",
   "training_tick_per_race_day",
@@ -313,4 +314,4 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
 // en flade aldrig beskriver en model motoren ikke koerer for beta-gruppen.
 // #7536: condition_v2_race_date_training_day laeses ogsaa kun som "on" af motoren
 // (conditionModelV2Flag.isRaceDateTrainingDayEnabled).
-export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801"]);
+export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["auto_accept_enabled", "development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801"]);

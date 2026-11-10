@@ -342,5 +342,23 @@
     "over": "{pct} % au-dessus de la valeur est.",
     "at": "Proche de la valeur est.",
     "title": "Valeur de marché estimée : {amount} CZ$. Une estimation du modèle, pas un prix garanti."
+  },
+  "autoAccept": {
+    "listPrice": "Prix affiché",
+    "autoPrice": "Prix automatique",
+    "buyerOffer": "Offre de l'acheteur",
+    "counterBoundary": "Les offres à partir de {price} passent par une enchère ouverte.",
+    "onlyBuyer": "Seul l'acheteur peut la lancer.",
+    "start": "Lancer l'enchère",
+    "bid": "Ton enchère (CZ$)",
+    "minimum": "Au moins {price}",
+    "duration": "Durée",
+    "durationHint": "De 30 min à 24 heures. Le temps compte de {open} à {close}.",
+    "ends": "Fin",
+    "binding": "Ton enchère bloque l'argent tant que tu es en tête.",
+    "cancel": "Annuler",
+    "hours": "heures",
+    "minutes": "min",
+    "sendCounter": "Envoyer"
   }
 }

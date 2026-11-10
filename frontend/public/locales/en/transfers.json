@@ -342,5 +342,23 @@
     "over": "{pct}% above est. value",
     "at": "Near est. value",
     "title": "Estimated market value: {amount} CZ$. A model estimate, not a guaranteed price."
+  },
+  "autoAccept": {
+    "start": "Start auction",
+    "bid": "Your bid (CZ$)",
+    "minimum": "At least {price}",
+    "duration": "Duration",
+    "hours": "hours",
+    "minutes": "min",
+    "durationHint": "30 min to 24 hours. Time counts {open}-{close}.",
+    "ends": "Ends",
+    "binding": "Your bid ties up the money while you lead.",
+    "cancel": "Cancel",
+    "counterBoundary": "Offers from {price} and up go through an open auction.",
+    "onlyBuyer": "Only the buyer can start it.",
+    "listPrice": "List price",
+    "autoPrice": "Auto price",
+    "buyerOffer": "Buyer's offer",
+    "sendCounter": "Send"
   }
 }

@@ -751,3 +751,45 @@ test('bytte: ugyldige argumenter kastes, og kun service_role maa kalde funktione
     assert.equal((await one(db, "SELECT has_function_privilege($1, $2, 'EXECUTE') AS ok", [role, signature])).ok, expected, role);
   }
 });
+
+
+async function boundaryDatabase() {
+  const db = await database({marketGate:true});
+  await db.exec(`CREATE TABLE transfer_offers(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),rider_id uuid,seller_team_id uuid,buyer_team_id uuid,
+    offer_amount bigint,counter_amount bigint,status text,buyer_confirmed boolean DEFAULT false,seller_confirmed boolean DEFAULT false);`);
+  const migration = await file('2026-11-09-2176-counter-auction-boundary.sql');
+  await db.exec(migration); await db.exec(migration);
+  return db;
+}
+test('approved UI boundary: editable opening bid reserves its actual amount, stale price creates nothing',async()=>{
+  const db=await boundaryDatabase(); const riders=await squad(db,TEAM.A,12);
+  const l=await listing(db,riders[0],{auto:500000});
+  const args=await startArgs(db,l);
+  const sql=START_SQL.replace('start_auto_accept_auction(', 'start_auto_accept_auction_bid(').replace('$12)', '$12,$13)');
+  const result=(await one(db,sql,[...args,800000])).r;
+  assert.equal(Number(result.price),800000);
+  assert.equal(Number((await one(db,'SELECT team_market_commitment($1) AS n',[TEAM.B])).n),800000);
+  const second=await listing(db,riders[1],{auto:600000});
+  assert.equal((await one(db,sql,[...await startArgs(db,second,{expected:500000}),800000])).r.status,'price_changed');
+  assert.equal(Number((await one(db,"SELECT count(*) AS n FROM auctions WHERE origin='auto_accept'")).n),1);
+  for(const role of ['anon','authenticated','service_role']) {
+    const signature='public.start_auto_accept_auction_bid(uuid,uuid,uuid,uuid,jsonb,bigint,integer,timestamptz,integer,integer,uuid[],timestamptz,bigint)';
+    assert.equal((await one(db,"SELECT has_function_privilege($1,$2,'EXECUTE') AS ok",[role,signature])).ok,role==='service_role');
+  }
+});
+test('approved UI boundary: counter and final claim recheck current price; OFF and stale owners are unchanged',async()=>{
+  const db=await boundaryDatabase(); const [r]=await squad(db,TEAM.A,12);
+  const l=await listing(db,r,{auto:500000});
+  await db.exec(`UPDATE app_config SET value='"on"' WHERE key='auto_accept_enabled'`);
+  await db.query("INSERT INTO transfer_offers(rider_id,seller_team_id,buyer_team_id,offer_amount,status) VALUES($1,$2,$3,200000,'pending')",[r,TEAM.A,TEAM.B]);
+  await db.exec("UPDATE transfer_offers SET counter_amount=499999,status='countered'");
+  for(const price of [500000,600000]) await assert.rejects(db.query('UPDATE transfer_offers SET counter_amount=$1',[price]),/offer_at_auto_accept_price/);
+  await db.query('UPDATE transfer_listings SET auto_accept_price=400000 WHERE id=$1',[l]);
+  await assert.rejects(db.exec("UPDATE transfer_offers SET status='awaiting_confirmation'"),/offer_at_auto_accept_price/);
+  const claim=(await one(db,"SELECT auto_accept_claim_transfer_at_price($1,$2,$3,false,$4,'{}',8,'{}',30,499999) AS r",[r,TEAM.A,TEAM.B,NOW])).r;
+  assert.equal(claim.status,'offer_at_auto_accept_price');
+  assert.equal((await riderRow(db,r)).team_id,TEAM.A);
+  await db.exec(`UPDATE app_config SET value='"off"' WHERE key='auto_accept_enabled'; UPDATE transfer_offers SET counter_amount=600000`);
+  await db.query('UPDATE riders SET team_id=$2 WHERE id=$1',[r,TEAM.C]);
+  await db.exec(`UPDATE app_config SET value='"on"' WHERE key='auto_accept_enabled'; UPDATE transfer_offers SET counter_amount=700000`);
+});
