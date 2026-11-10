@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { authHeaders } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import {
-  TRAIN_NOW_OFF, parseTrainNowStatus, parseShortRaces,
+  TRAIN_NOW_OFF, parseTrainNowStatus, parseShortRaces, trainNowPressDropped, trainNowPressLanded,
   type TrainNowPressResult, type TrainNowStatus,
 } from "./TrainNowState.ts";
 
@@ -91,6 +91,14 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
   // The server re-checks today's races on every first press and answers 409
   // short_races_confirm with the fresh list when a race is not covered by that yes;
   // the page then asks again (no error line: nothing failed).
+  // #7982: the press landed although its answer never arrived. Counts are unknown,
+  // so the note shows the locked line without them; the page data is refreshed.
+  const landedAfterDrop = useCallback(async (): Promise<{ ok: true }> => {
+    setResult(null);
+    try { await onSettled?.(); } catch { /* best-effort: the next visit shows it */ }
+    return { ok: true };
+  }, [onSettled]);
+
   const press = useCallback(async ({ confirmedShortRaceIds = [] }: { confirmedShortRaceIds?: string[] } = {}): Promise<{ ok: boolean; error?: string }> => {
     if (inFlight.current) return { ok: false, error: "in_flight" };
     inFlight.current = true;
@@ -118,8 +126,10 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
       }
       if (!res.ok) {
         const code = data.error || "failed";
+        const next = await load();
+        // #7982: the phone gave up waiting, but the server may have finished the press.
+        if (trainNowPressDropped(res) && trainNowPressLanded(next)) return await landedAfterDrop();
         setError(code);
-        await load();
         return { ok: false, error: code };
       }
       // The press succeeded: show the locked state now, independent of the refresh.
@@ -140,6 +150,10 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
       }
       return { ok: true };
     } catch {
+      // #7982: same as a dropped answer above: ask before calling it an error.
+      try {
+        if (trainNowPressLanded(await load())) return await landedAfterDrop();
+      } catch { /* status unavailable too: show the error */ }
       setError("network");
       return { ok: false, error: "network" };
     } finally {
