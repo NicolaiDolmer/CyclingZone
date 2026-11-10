@@ -30,6 +30,7 @@ export function isValidFlagStage(stage) {
  *    oversaettes derfor ikke (samme valg som resten af /admin).
  */
 export const STAGE_FLAGS = Object.freeze([
+  { key: "ranking_shadow_decoupled_6765", area: "race-day", label: "Rangliste: uafhængigt skyggepas" },
   // ── Spiller-vendte funktioner ─────────────────────────────────────────────
   { key: "academy_enabled", area: "academy", label: "Akademi" },
   { key: "academy_intake_pull_enabled", area: "academy", label: "Akademi — træk af nye talenter" },

@@ -52,6 +52,7 @@ import { copenhagenDateString, copenhagenHour } from "./copenhagenTime.js";
 import { createRankingRefreshQueue } from "./rankingRefreshQueue.ts";
 import { getRankingRefreshWorkState, runRankingRefreshWork } from "./rankingRefreshWork.ts";
 import { runRankingShadowPass } from "./rankingShadowPass.ts";
+import { rankingShadowDecoupled6765Enabled } from "./rankingShadowDecoupled6765Flag.ts";
 
 export const SETTLEMENT_WINDOW_START_HOUR = 20;
 export const SETTLEMENT_OVERNIGHT_END_HOUR = 3;
@@ -75,6 +76,10 @@ const runRefreshQueued = createRankingRefreshQueue();
 // #5900: all entry points (cron/finalization/training/recovery) share admission.
 // Requests during a pass share one fresh follow-up, preserving later DB writes.
 export function refreshRankingMatviewsSafe(supabase, options = {}) {
+  return withIndependentShadow(supabase, options, opts => refreshRankingMatviewsSafeLegacy(supabase, opts));
+}
+
+function refreshRankingMatviewsSafeLegacy(supabase, options = {}) {
   return runRefreshQueued(supabase, async () => (await runRankingRefreshWork(supabase,
     (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, {
       ...options, now: options.now ?? options.nowFn?.() ?? options.testNowFn?.() ?? new Date(),
@@ -82,9 +87,11 @@ export function refreshRankingMatviewsSafe(supabase, options = {}) {
     }), { ...options, force: true })) === true, 1);
 }
 
-async function refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion, now, clock=()=>performance.now(), logger=console } = {}) {
+async function refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion, now, clock=()=>performance.now(), logger=console, independentShadow } = {}) {
   const legacyStarted=clock();
   const failures = [];
+
+  if (independentShadow) await independentShadow({ renewLease, ownerToken, targetVersion });
 
   for (const { rpc, label } of REFRESH_RPCS) {
     try {
@@ -111,7 +118,7 @@ async function refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewL
   }
 
   // The fenced database acknowledgement atomically updates generation + heartbeat.
-  await runRankingShadowPass(supabase, { ownerToken, targetVersion, captureExceptionFn, renewLease, now: now.getTime()+Math.max(0,clock()-legacyStarted), clock, logger });
+  if (!independentShadow) await runRankingShadowPass(supabase, { ownerToken, targetVersion, captureExceptionFn, renewLease, now: now.getTime()+Math.max(0,clock()-legacyStarted), clock, logger });
   return true;
 }
 
@@ -141,6 +148,7 @@ export function settlementDatesToCheck(now = new Date()) {
 
 export function __resetRankingRefreshStateForTests() {
   coalesceState = new WeakMap();
+  shadowAttempts = new WeakMap();
 }
 
 // Gate for cron + finalisering. Returnerer "deferred" når refreshen holdes
@@ -179,9 +187,13 @@ async function rankingRefreshGateState(
   return "ready";
 }
 
-export async function refreshRankingMatviewsGated(
+export function refreshRankingMatviewsGated(supabase, options = {}) {
+  return withIndependentShadow(supabase, options, opts => refreshRankingMatviewsGatedLegacy(supabase, opts));
+}
+
+async function refreshRankingMatviewsGatedLegacy(
   supabase,
-  { captureExceptionFn, now = new Date(), clock = () => Date.now(), maxDeferMs = MAX_DEFER_MS, logger = console, heartbeatNowFn = () => new Date(), testNowFn } = {},
+  { captureExceptionFn, now = new Date(), clock = () => Date.now(), maxDeferMs = MAX_DEFER_MS, logger = console, heartbeatNowFn = () => new Date(), testNowFn, independentShadow } = {},
 ) {
   const requestedAt = clock();
   void heartbeatNowFn; // Completion time is authoritative in SQL; retain option compatibility.
@@ -191,13 +203,14 @@ export async function refreshRankingMatviewsGated(
   if (gateState === 'clean') {
     // Clean one-minute ticks also drain additive backfill/corrections. Shadow
     // failures are reported independently; they do not age the legacy heartbeat.
-    await runRankingShadowPass(supabase, { now: now.getTime()+Math.max(0,clock()-requestedAt), captureExceptionFn, clock, logger });
+    if (independentShadow) await independentShadow({ checkParity: true });
+    else await runRankingShadowPass(supabase, { now: now.getTime()+Math.max(0,clock()-requestedAt), captureExceptionFn, clock, logger });
     return true;
   }
   if (gateState === "deferred") return "deferred";
   return runRefreshQueued(supabase,
     () => runRankingRefreshWork(supabase,
-      (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion, now, clock, logger }), { captureExceptionFn, testNowFn }),
+      (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion, now, clock, logger, independentShadow }), { captureExceptionFn, testNowFn }),
     gateState === "expired" ? 1 : 0, {
       key: `gated:${copenhagenDateString(now)}:${maxDeferMs}`,
       check: async () => {
@@ -214,7 +227,11 @@ export async function refreshRankingMatviewsGated(
 // Træningslukningen kalder denne efter et sweep der afregnede dagens hold. Er
 // sidste hold færdigt (ingen pending/partial for i dag), refreshes straks og
 // ubetinget; ellers venter den på næste sweep/cron. Kaster aldrig.
-export async function refreshRankingsAfterTrainingSettlement({ supabase, now = new Date(), captureExceptionFn, logger = console, heartbeatNowFn = () => new Date(), clock = () => Date.now(), testNowFn } = {}) {
+export function refreshRankingsAfterTrainingSettlement(options = {}) {
+  return withIndependentShadow(options.supabase, options, refreshRankingsAfterTrainingSettlementLegacy);
+}
+
+async function refreshRankingsAfterTrainingSettlementLegacy({ supabase, now = new Date(), captureExceptionFn, logger = console, heartbeatNowFn = () => new Date(), clock = () => Date.now(), testNowFn, independentShadow } = {}) {
   void heartbeatNowFn;
   const requestedAt = clock();
   try {
@@ -228,7 +245,7 @@ export async function refreshRankingsAfterTrainingSettlement({ supabase, now = n
     if (settling) return "deferred";
     return await runRefreshQueued(supabase,
       () => runRankingRefreshWork(supabase,
-        (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion, now, clock, logger }), { captureExceptionFn, testNowFn }),
+        (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion, now, clock, logger, independentShadow }), { captureExceptionFn, testNowFn }),
       0, {
         key: `training-close:${copenhagenDateString(now)}`,
         check: async () => {
@@ -248,6 +265,32 @@ export async function refreshRankingsAfterTrainingSettlement({ supabase, now = n
     // best-effort: en refresh-fejl må aldrig vælte træningsafregningen.
     logger.warn?.(`⚠️  ranking refresh after training failed (cron catches it): ${err.message}`);
     return false;
+  }
+}
+
+let shadowAttempts = new WeakMap();
+
+async function withIndependentShadow(supabase, options, runLegacy) {
+  if (!await rankingShadowDecoupled6765Enabled(supabase, options.captureExceptionFn)) return runLegacy(options);
+  const attemptAtStart = shadowAttempts.get(supabase);
+  const now = options.now ?? options.nowFn?.() ?? options.testNowFn?.() ?? new Date();
+  const clock = options.clock ?? (() => performance.now());
+  const started = clock();
+  let attempted = false;
+  const independentShadow = async (lease = {}) => {
+    attempted = true;
+    shadowAttempts.set(supabase, {});
+    return runRankingShadowPass(supabase, {
+      checkParity: false, ...lease, now: now.getTime() + Math.max(0, clock() - started), clock,
+      captureExceptionFn: options.captureExceptionFn, logger: options.logger,
+    });
+  };
+  try {
+    return await runLegacy({ ...options, independentShadow });
+  } finally {
+    // Admission can finish without a callback (cooldown, deferred, busy or clean).
+    // This attempt owns no legacy version and cannot acknowledge publication.
+    if (!attempted && shadowAttempts.get(supabase) === attemptAtStart) await independentShadow();
   }
 }
 

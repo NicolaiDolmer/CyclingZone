@@ -173,6 +173,17 @@ rulles tilbage. Det er ikke en fuld løbsdagsmåling.
 
 **Inkrementel M1-skygge (#6765, design PR #6849, build-mandat 19/10):**
 De eksisterende matviews serverer fortsat; dette er ingen M2-aktivering.
+Den særskilte `ranking_shadow_decoupled_6765` seedes off. Off, manglende
+konfiguration eller opslagsfejl bevarer den hidtidige rækkefølge. On forsøger
+skyggepasset før legacy-refresh under samme claim/token/version; cooldown,
+træningsudskydelse eller manglende claim tillader et begrænset skyggepas uden
+legacy-token. SQL-writerlåsen og `ranking_shadow_enabled` gælder stadig.
+Skyggearbejde kvitterer aldrig legacy-versionen eller heartbeatet. Returværdien
+beskriver fortsat legacy-publicering; skyggefejl rapporteres særskilt. Et
+selvstændigt pas sammenligner først med legacy på en senere clean tick, så
+forventet legacy-lag ikke rapporteres som paritetsfejl. Versionens eksisterende
+watermark-drain, lease-fornyelse og hårde budgetter bevares. Delte queued callers
+genbruger et allerede forsøgt pas frem for hver at starte et ekstra drain.
 ranking_race_contrib aggregerer pr. løb/rytter/registreret hold. Summarierne
 bevarer alle kolonner, NULL-summer og nullable sæsonnøgler. Senior/ungdom følger
 løbets trup. Holdpoint følger fortsat rytterens nuværende hold; holdenes ekstra

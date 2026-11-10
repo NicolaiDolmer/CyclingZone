@@ -39,6 +39,148 @@ const ALL_RPCS = [
   "refresh_youth_rider_rankings_mv", // #5647: sidst, efter de fire seniorviews
 ];
 
+test('#6765 independent shadow precedes failed/timed-out legacy and never acknowledges its version', async () => {
+  for (const message of ['legacy failed', 'canceling statement due to statement timeout']) {
+    const client = createMockSupabase({ independent: true, rpcErrors: { refresh_rider_rankings_mv: message } });
+    const events = [], captured = [];
+    const control = client._controlRpc;
+    client._controlRpc = (name, args) => {
+      events.push({ name, args });
+      return control(name, args);
+    };
+    assert.equal(await refreshRankingMatviewsSafe(client, { captureExceptionFn: (e, c) => captured.push({ e, c }) }), false);
+    assert.ok(events.findIndex(e => e.name === 'apply_ranking_deltas') < events.findIndex(e => e.name === 'refresh_rider_rankings_mv'));
+    assert.equal(events.filter(e => e.name === 'apply_ranking_deltas').length, 1);
+    assert.equal(events.find(e => e.name === 'finish_ranking_refresh_work').args.p_success, false);
+    assert.equal(client.upsertCalls.length, 0);
+    assert.ok(captured.some(e => e.c.tags.lib === 'refreshRankingMatviews'));
+  }
+});
+
+test('#6765 cooldown and both deferred paths attempt shadow without borrowing a legacy lease', async () => {
+  const evening = new Date('2026-10-04T18:30:00Z');
+  for (const mode of ['cooldown', 'gated-deferred', 'training-deferred']) {
+    const client = createMockSupabase({ independent: true, workRows: mode.endsWith('deferred') ? [{ tick_date: '2026-10-04', status: 'pending' }] : [] });
+    const calls = [], control = client._controlRpc;
+    client._controlRpc = (name, args) => {
+      calls.push({ name, args });
+      if (mode === 'cooldown' && name === 'claim_ranking_refresh_work') return { data: { status: 'cooldown' }, error: null };
+      return control(name, args);
+    };
+    const options = { now: evening, clock: () => 0, logger: { log() {}, info() {} } };
+    const result = mode === 'training-deferred'
+      ? await refreshRankingsAfterTrainingSettlement({ supabase: client, ...options })
+      : await refreshRankingMatviewsGated(client, options);
+    assert.equal(result, mode === 'cooldown' ? 'cooldown' : 'deferred');
+    const apply = calls.filter(c => c.name === 'apply_ranking_deltas');
+    assert.equal(apply.length, 1, mode);
+    assert.equal(apply[0].args.p_owner_token, null);
+    assert.equal(apply[0].args.p_target_version, null);
+    assert.equal(client.rpcCalls.length, 0);
+    assert.equal(client.upsertCalls.length, 0);
+  }
+});
+
+test('#6765 shadow has already drained while a legacy RPC is still unresolved', async () => {
+  const client = createMockSupabase({ independent: true });
+  const control = client._controlRpc;
+  let shadowDrained = false, release;
+  let entered;
+  const legacyEntered = new Promise(resolve => { entered = resolve; });
+  client._controlRpc = (name, args) => {
+    if (name === 'apply_ranking_deltas') shadowDrained = true;
+    if (name === 'refresh_rider_rankings_mv') {
+      assert.equal(shadowDrained, true);
+      entered();
+      return new Promise(resolve => { release = resolve; });
+    }
+    return control(name, args);
+  };
+  const running = refreshRankingMatviewsSafe(client, { clock: () => 0, logger: { info() {} } });
+  await legacyEntered;
+  try { assert.equal(client.upsertCalls.length, 0); assert.equal(shadowDrained, true); }
+  finally { release({ error: { message: 'statement timeout' } }); }
+  assert.equal(await running, false);
+});
+
+test('#6765 leased shadow keeps version watermark drain, defers parity and does not repeat after legacy', async () => {
+  const client = createMockSupabase({ independent: true });
+  const control = client._controlRpc, calls = [], logs = [];
+  let batch = 0, elapsed = 0;
+  client._controlRpc = (name, args) => {
+    calls.push({ name, args });
+    if (name === 'apply_ranking_deltas') {
+      elapsed += 5000;
+      assert.equal(args.p_target_version, '3');
+      assert.equal(args.p_owner_token, '00000000-0000-4000-8000-000000000001');
+      return { data: ++batch < 3 ? { pending: true, next_id: String(batch * 200 + 1) } : { pending: false }, error: null };
+    }
+    return control(name, args);
+  };
+  assert.equal(await refreshRankingMatviewsSafe(client, { clock: () => elapsed, logger: { info: (_m, d) => logs.push(d) } }), true);
+  assert.equal(batch, 3, 'version drain passes the soft budget without repeating after publication');
+  assert.equal(logs[0].version_drained, true);
+  assert.equal(logs[0].status, 'parity-deferred-legacy');
+  assert.equal(calls.some(c => c.name === 'check_ranking_shadow_parity'), false);
+  assert.equal(calls.find(c => c.name === 'finish_ranking_refresh_work').args.p_success, true);
+});
+
+test('#6765 shadow failure is captured independently of successful legacy publication; lost lease cannot acknowledge', async () => {
+  for (const lostLease of [false, true]) {
+    const client = createMockSupabase({ independent: true }), captured = [];
+    const control = client._controlRpc;
+    client._controlRpc = (name, args) => {
+      if (name === 'apply_ranking_deltas') return { data: null, error: { message: 'shadow batch failed' } };
+      if (lostLease && name === 'renew_ranking_refresh_work') return { data: false, error: null };
+      return control(name, args);
+    };
+    assert.equal(await refreshRankingMatviewsSafe(client, { captureExceptionFn: (e, c) => captured.push({ e, c }), logger: { info() {} } }), !lostLease);
+    assert.ok(captured.some(c => c.c.tags.lib === 'rankingShadowPass'));
+    assert.equal(client.upsertCalls.length, lostLease ? 0 : 1);
+  }
+});
+
+test('#6765 shared follow-up callers do not each run an extra heavy fallback', async () => {
+  const client = createMockSupabase({ independent: true }), control = client._controlRpc;
+  let batches = 0, first = true, release, entered;
+  const legacyEntered = new Promise(resolve => { entered = resolve; });
+  client._controlRpc = (name, args) => {
+    if (name === 'apply_ranking_deltas') batches++;
+    if (name === 'refresh_rider_rankings_mv' && first) {
+      first = false; entered();
+      return new Promise(resolve => { release = resolve; });
+    }
+    return control(name, args);
+  };
+  const options = { clock: () => 0, logger: { info() {} } };
+  const active = refreshRankingMatviewsSafe(client, options);
+  await legacyEntered;
+  const second = refreshRankingMatviewsSafe(client, options);
+  const third = refreshRankingMatviewsSafe(client, options);
+  // Let the fresh flag reads admit both callers to the existing local queue.
+  await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+  release({ error: null });
+  assert.deepEqual(await Promise.all([active, second, third]), [true, true, true]);
+  assert.equal(batches, 2, 'one active pass and one shared follow-up');
+});
+
+test('#6765 missing migration/config errors preserve the OFF RPC trace and legacy result', async () => {
+  for (const failure of ['missing', 'error', 'throw']) {
+    const client = createMockSupabase(), control = client._controlRpc, from = client.from.bind(client);
+    const calls = [], captures = [];
+    client._controlRpc = (name, args) => { calls.push({ name, args }); return control(name, args); };
+    client.from = table => table !== 'app_config' ? from(table) : { select: () => ({ eq: (_col, key) => ({ maybeSingle: async () => {
+      if (key !== 'ranking_shadow_decoupled_6765') return { data: { value: 'on' }, error: null };
+      if (failure === 'throw') throw new Error('configuration failed');
+      return { data: null, error: failure === 'error' ? { message: 'configuration failed' } : null };
+    } }) }) };
+    assert.equal(await refreshRankingMatviewsSafe(client, { captureExceptionFn: (e, c) => captures.push({ e, c }), logger: { info() {} } }), true);
+    assert.deepEqual(calls.filter(c => c.name.startsWith('refresh_')).map(c => c.name), ALL_RPCS);
+    assert.ok(calls.findIndex(c => c.name === 'get_ranking_shadow_metrics') > calls.findIndex(c => c.name === ALL_RPCS.at(-1)));
+    assert.equal(captures.filter(c => c.c.tags.lib === 'rankingShadowDecoupled6765Flag').length, failure === 'missing' ? 0 : 1);
+  }
+});
+
 test("#5692: every refresh explicitly selects the reader-safe RPC overload", async () => {
   const supabase = createMockSupabase();
   const requests = [];
@@ -70,14 +212,15 @@ test("#5692: an unavailable concurrent overload never falls back to a blocking r
   assert.equal(captured.length, 1);
 });
 
-function createMockSupabase({ rpcErrors = {}, heartbeatError = null, workRows = [], workError = null } = {}) {
+function createMockSupabase({ rpcErrors = {}, heartbeatError = null, workRows = [], workError = null, independent = false } = {}) {
   const rpcCalls = [];
   const upsertCalls = [];
   const workQueries = [];
   let requested = 1, completed = 0, target = null, clock = () => 0, dirtyAt = 0, clockInitialized = false, lastCompleted = null, onComplete = () => {};
   const control = (name, args) => {
-    if (name === 'get_ranking_shadow_metrics') return { data: { queue_length: 0 }, error: null };
-    if (name === 'apply_ranking_deltas') return { data: null, error: { code: 'PGRST202', message: 'M1 schema not installed in legacy fixture' } };
+    if (name === 'get_ranking_shadow_metrics') return { data: { queue_length: 0, ...(independent ? { max_id: '450' } : {}) }, error: null };
+    if (name === 'apply_ranking_deltas') return independent ? { data: { pending: false }, error: null } : { data: null, error: { code: 'PGRST202', message: 'M1 schema not installed in legacy fixture' } };
+    if (independent && name === 'check_ranking_shadow_parity') return { data: { status: 'equal' }, error: null };
     if (name === 'get_ranking_refresh_work_state') return { data: { pending: requested > completed,
       pending_age_ms: Math.max(0, clock() - dirtyAt), last_completed_at: lastCompleted }, error: null };
     if (name === 'claim_ranking_refresh_work') {
@@ -112,7 +255,7 @@ function createMockSupabase({ rpcErrors = {}, heartbeatError = null, workRows = 
       return { error: null };
     },
     from(table) {
-      if (table === 'app_config') return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { value: 'on' }, error: null }) }) }) };
+      if (table === 'app_config') return { select: () => ({ eq: (_column, key) => ({ maybeSingle: async () => ({ data: { value: key === 'ranking_shadow_decoupled_6765' ? independent : 'on' }, error: null }) }) }) };
       if (table === "training_date_work") {
         // #5911: statusopslaget select().eq(tick_date).in(status).limit(1).
         const q = { filters: [] };

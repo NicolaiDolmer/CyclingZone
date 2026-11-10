@@ -1542,3 +1542,16 @@ features:
     epic: 2467
     verified: 2026-10-15
     note: SurveyBanner.jsx slettet (#2467).
+
+  - id: ranking-shadow-decoupled
+    area: stats
+    title_en: Independent ranking shadow pass
+    title_da: Uafhængigt rangliste-skyggepas
+    state: building
+    flag: ranking_shadow_decoupled_6765
+    ssot: docs/GAME_INVARIANTS.md
+    epic: 6765
+    verified: 2026-11-10
+    decision: goer-faerdigt
+    decide_by: 2026-11-16
+    note: 'OFF seed; owner activation pending.'
