@@ -389,8 +389,8 @@ PR 7 følger skærm-go 9/11: https://github.com/NicolaiDolmer/CyclingZone/issues
 Migrationen opretter en manglende `auto_accept_enabled` som `off`, så registry/liveness kan
 følge kontakten efter apply; den ændrer aldrig en eksisterende værdi. Aktivering er særskilt ejer-gated.
 
-- **Pris:** sælger kan give en listing en auto-pris Y over listeprisen
-  (`transfer_listings.auto_accept_price`, CHECK Y > X). Prisen er synlig for alle. Den sættes
+- **Pris:** sælger kan give en listing en auto-pris Y på mindst listeprisen
+  (`transfer_listings.auto_accept_price`, CHECK Y >= X; Y = X tilladt fra ejer 10/11). Prisen er synlig for alle. Den sættes
   kun via `PUT /api/transfers/:id/auto-accept-price` med den pris, klienten så (forskel = 409);
   klienten kan ikke selv skrive kolonnen (trigger). Alle ændringer på en listing med auto-pris
   logges i `transfer_listing_price_log` til fair play.
@@ -611,7 +611,13 @@ Tændt:
   afhænger af alder); pengene gates altid.
 - **POST /auctions:** startbyderen skal have penge (worst case, også autobud uden
   føring) og plads, ikke kun en advarsel.
-- **Transfer-bekræftelse** tæller købers førende auktioner som pladser.
+- **Transfer-bekræftelse** tæller købers førende auktioner som pladser. Med auto-accept også tændt gentager
+  transfer-claimet købers disponible saldo under holdlåsen (`auto_accept_claim_transfer_at_price`),
+  så et samtidigt startbud og et direkte køb ikke begge kan bruge de samme penge.
+- **Fyring** (senior og akademi): frikøbsgebyret tjekkes mod disponibel saldo
+  (`insufficient_available_balance`), som de andre faste køb.
+- **Forlængelse** (også med kun auto-accept tændt): et sent bud forlænger aldrig auktionen forbi
+  sæsonskiftet (`fetchSeasonTransitionBoundary`); sluttiden holdes på sidste hele minut før grænsen.
 - **Sælgers gulv:** holdets egne ryttere på aktiv auktion tæller som udgående
   (POST /auctions på egen rytter, frigivelse, transfer-bekræftelse) og udelades af
   risiko-tællingen, så de ikke tælles to gange.
