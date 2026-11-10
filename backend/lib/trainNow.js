@@ -50,13 +50,16 @@ import { settleWholeDayPress } from "./trainNowWholeDay.js"; // #6461 B
 import { TRAIN_NOW_BONUS_FLAG_KEY } from './trainNowBonus7737.ts';
 
 export const TRAIN_NOW_FLAG_KEY = "training_train_now";
-// #7737: the press trains a race rider's free race days straight away. Only the exact
-// string "on" turns it on: no beta stage, and a failed read is off. Read fresh, not from
-// the flag cache, because it changes training results. PR 1 of 4; the owner flips it.
+// #7737: the press trains a race rider's free race days straight away. "on" turns it on for
+// everyone; "beta" (owner 10/11) only for beta testers' own presses. A failed read is off.
+// Read fresh, not from the flag cache, because it changes training results. The engine and
+// readers follow the durable stamp of each press, so a beta press is settled the same way
+// for every viewer. The owner flips it.
 export const TRAIN_NOW_INSTANT_FLAG_KEY = "training_train_now_instant";
-export const evaluateTrainNowInstantFlag = (value) => value === "on";
-export async function isTrainNowInstantEnabled(supabase) {
-  return evaluateTrainNowInstantFlag(await readFlagStage(supabase, TRAIN_NOW_INSTANT_FLAG_KEY, { fresh: true }));
+export const evaluateTrainNowInstantFlag = (value, { isBetaTester = false } = {}) =>
+  value === "on" || (value === "beta" && isBetaTester === true);
+export async function isTrainNowInstantEnabled(supabase, { isBetaTester = false } = {}) {
+  return evaluateTrainNowInstantFlag(await readFlagStage(supabase, TRAIN_NOW_INSTANT_FLAG_KEY, { fresh: true }), { isBetaTester });
 }
 export async function isTrainNowBonusEnabled(supabase) {
   return await readFlagStage(supabase, TRAIN_NOW_BONUS_FLAG_KEY, { fresh: true }) === 'on';
@@ -161,10 +164,14 @@ async function filterRacesTeamCanJoin({ supabase, team, races }) {
 export async function loadTodayRacesForTeam({ supabase, team, tickDate, strict = false }) {
   try {
     const { start, end } = trainingDateBounds(tickDate);
-    const stages = await checked(supabase.from("race_stage_schedule").select("race_id")
+    const stages = await checked(supabase.from("race_stage_schedule").select("race_id, stage_number")
       // pagination-safe: one date's stages across all pools (low hundreds at most).
       .gte("scheduled_at", start.toISOString()).lt("scheduled_at", end.toISOString()), "today's stages");
     const raceIds = [...new Set((stages ?? []).map((row) => row.race_id).filter(Boolean))];
+    // #7737: a race whose stage(s) today already ran (stage number within stages_completed) is marked
+    // `stageRun`, so the Train now dialog does not warn about a race that can no longer carry fatigue.
+    const stageNumbersByRace = new Map();
+    for (const row of stages ?? []) stageNumbersByRace.set(row.race_id, [...(stageNumbersByRace.get(row.race_id) ?? []), Number(row.stage_number)]);
     if (!raceIds.length) return [];
     const races = await checked(supabase.from("races").select("id, name, squad, league_division_id, stages_completed")
       .in("id", raceIds), "today's races");
@@ -172,7 +179,10 @@ export async function loadTodayRacesForTeam({ supabase, team, tickDate, strict =
       && race.league_division_id === teamPoolIdForSquad(team, race.squad ?? "senior"));
     const reachable = await filterRacesTeamCanJoin({ supabase, team, races: inPool });
     return reachable
-      .map((race) => ({ id: race.id, name: race.name ?? null }))
+      .map((race) => ({
+        id: race.id, name: race.name ?? null,
+        ...((stageNumbersByRace.get(race.id) ?? []).every((n) => Number.isFinite(n) && n <= (Number(race.stages_completed) || 0)) ? { stageRun: true } : {}),
+      }))
       .sort((a, b) => String(a.name).localeCompare(String(b.name)));
   } catch (err) {
     // best-effort for the GET: the race names only decorate the button line, a failed
@@ -273,21 +283,22 @@ async function defaultLoadShortRaces({ supabase, team, tickDate }) {
 
 /**
  * Read-only state for the panel. Cheap: no roster scan; one small read of today's races.
- * @returns {Promise<{enabled:boolean, available:boolean, reason:string|null, tickDate:string, locked:boolean, lockedAt:string|null, settled:boolean, todayRaces:Array<{id:string,name:string|null}>}>}
+ * @returns {Promise<{enabled:boolean, available:boolean, reason:string|null, tickDate:string, locked:boolean, lockedAt:string|null, settled:boolean, todayRaces:Array<{id:string,name:string|null}>, instant:boolean}>}
  */
 export async function loadTrainNowStatus({ supabase, team, seasonId, isBetaTester = false, now = new Date() }) {
   const tickDate = copenhagenDateString(now);
-  const base = { enabled: false, available: false, reason: "flag_off", tickDate, locked: false, lockedAt: null, settled: false };
+  const base = { enabled: false, available: false, reason: "flag_off", tickDate, locked: false, lockedAt: null, settled: false, instant: false };
   if (!await isTrainNowEnabled(supabase, { isBetaTester })) return base;
   if (!await isTrainingConditionPerDateEnabled(supabase)) return base;
   const enabled = { ...base, enabled: true, reason: null };
   if (!seasonId) return { ...enabled, reason: "no_active_season" };
   if (!team?.league_division_id) return { ...enabled, reason: "no_race_day_today" };
-  const [locks, work, earlierOpen, todayRaces] = await Promise.all([
+  const [locks, work, earlierOpen, todayRaces, instant] = await Promise.all([
     loadTeamTrainNowLocks({ supabase, teamId: team.id, tickDate }),
     loadTeamDateWork({ supabase, teamId: team.id, seasonId, tickDate }),
     hasOpenEarlierDate({ supabase, teamId: team.id, seasonId, tickDate }),
     loadTodayRacesForTeam({ supabase, team, tickDate }),
+    isTrainNowInstantEnabled(supabase, { isBetaTester }), // #7737 part 3: the screen copy follows the switch
   ]);
   const locked = locks.length > 0;
   const lockedAt = locked ? locks.map((row) => row.pressed_at).filter(Boolean).sort()[0] ?? null : null;
@@ -295,7 +306,7 @@ export async function loadTrainNowStatus({ supabase, team, seasonId, isBetaTeste
   const reason = settled ? "date_settled" : locked ? "locked" : earlierOpen ? "previous_date_open" : null;
   // #6740: only while the press is still possible; afterwards there is nothing to warn about.
   const shortRaces = reason === null ? await loadTrainNowShortRaces({ supabase, team, todayRaces, tickDate }) : [];
-  return { ...enabled, available: reason === null, reason, locked, lockedAt, settled, todayRaces, shortRaces };
+  return { ...enabled, available: reason === null, reason, locked, lockedAt, settled, todayRaces, shortRaces, instant };
 }
 
 /**
@@ -378,7 +389,7 @@ export async function runTrainNow({
   //    are frozen (#6139: per rider). Idempotent per rider + date (I2); a repeated
   //    press keeps the first time. A failure after this point keeps the lock; a retry resumes.
   const pressedAt = now.toISOString();
-  const instant = await isTrainNowInstantEnabled(supabase);
+  const instant = await isTrainNowInstantEnabled(supabase, { isBetaTester });
   const bonusChoice = instant && await isTrainNowBonusEnabled(supabase);
   if (bonusChoice && !existingLocks.length) {
     const quarantined = new Set(work.quarantined_rider_ids ?? []);

@@ -33,7 +33,7 @@ export default function TrainNowNote({
         role={error ? "alert" : undefined}
       >
         {decided && !error && <LockIcon size={12} aria-hidden="true" className="mt-px flex-none" />}
-        <span>{keys.map((key) => t(key, { ...(trainNowPressCounts(result) ?? {}), race: trainNowRaceNames(status) })).join(" ")}</span>
+        <span>{keys.map((key) => t(key, { ...(trainNowPressCounts(result, status.instant) ?? {}), race: trainNowRaceNames(status) })).join(" ")}</span>
       </div>
       {warnings.map((w) => (
         <p key={`${w.key}:${w.params.race}`} data-testid="training-train-now-warning"

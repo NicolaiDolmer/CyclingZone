@@ -106,3 +106,15 @@ test("tændt uden kendt grænse: forlængelsen er uændret", async () => {
   const res = await applyLeaderShiftExtension({ supabase: sb, auctionId: "a1", previousLeader: "A", bidTime, bidCfg: cfg });
   assert.equal(res.newEnd.toISOString(), new Date(bidTime.getTime() + cfg.extension_minutes * 60 * 1000).toISOString());
 });
+
+test("Codex 10/11: en holdt sluttid i lukket tid flyttes til sidste hele minut før vinduets lukning", () => {
+  const win = { ...DEFAULT_AUCTION_CONFIG, weekday_open_hour: 8, weekday_close_hour: 24, weekend_open_hour: 8, weekend_close_hour: 24 };
+  // Sæsonskifte kl. 08:00 dansk tid 13/11 (07:00Z); auktionen sluttede 23:58 (22:58Z) og blev forlænget til 08:07.
+  const boundary = "2026-11-13T07:00:00.000Z";
+  const extended = new Date("2026-11-13T07:07:00.000Z");
+  assert.equal(capExtendedEndAtBoundary(extended, "2026-11-12T22:58:00.000Z", boundary, win).toISOString(), "2026-11-12T22:59:00.000Z");
+  // Ingen ledig tid før lukningen: ingen forlængelse.
+  assert.equal(capExtendedEndAtBoundary(extended, "2026-11-12T22:59:30.000Z", boundary, win), null);
+  // Grænse midt i vinduet: uændret regel (sidste hele minut før grænsen).
+  assert.equal(capExtendedEndAtBoundary(new Date("2026-11-12T17:05:00.000Z"), "2026-11-12T16:50:00.000Z", "2026-11-12T17:00:00.000Z", win).toISOString(), "2026-11-12T16:59:00.000Z");
+});

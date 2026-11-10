@@ -11,10 +11,13 @@
     "running": "En cours…",
     "helper": "Verrouille l'entraînement du jour et la sélection de course du jour. Le résultat est le même que si tu attends.",
     "helperRace": "Verrouille l'entraînement du jour et la sélection de course du jour ({race}). Le résultat est le même que si tu attends.",
+    "helperInstant": "Applique l'entraînement du jour maintenant. La forme et la fatigue sont mises à jour immédiatement.",
     "locked": "L'entraînement et les engagements du jour sont verrouillés. La fatigue et la forme se mettent à jour au règlement du soir.",
+    "lockedInstant": "La forme et la fatigue sont à jour. Les coureurs qui courent aujourd'hui sont réglés après leur étape.",
     "afterRace": "Les coureurs qui courent aujourd'hui sont réglés après leur étape.",
     "pressResult": "{trained, plural, one {# coureur entraîné maintenant} other {# coureurs entraînés maintenant}}, {waiting, plural, one {# attend sa course} other {# attendent leur course}}.",
     "pressResultAll": "{trained, plural, one {# coureur entraîné maintenant.} other {# coureurs entraînés maintenant.}}",
+    "pressResultInstant": "{trained, plural, one {# coureur entraîné} other {# coureurs entraînés}} maintenant.{waiting, plural, =0 {} one { # d'entre eux court aujourd'hui ; la course est réglée après l'étape.} other { # d'entre eux courent aujourd'hui ; la course est réglée après l'étape.}}",
     "settled": "L'entraînement du jour est réglé.",
     "previousOpen": "L'entraînement d'hier est encore en cours de règlement. Réessaie dans un instant.",
     "noRaceDay": "Il n'y a pas de jour de course aujourd'hui, donc rien à verrouiller.",
@@ -27,7 +30,10 @@
       "title": "Ton équipe ne prendra pas le départ",
       "titleShort": "Ton équipe prend le départ avec moins de coureurs",
       "go": "S'entraîner quand même",
-      "cancel": "Annuler"
+      "cancel": "Annuler",
+      "titleInstant": "S'entraîner avant les courses du jour ?",
+      "bodyInstant": "L'entraînement modifie dès maintenant la forme et la fatigue de tes coureurs. Cette fatigue passe dans les courses du jour. Les coureurs inclus dans cet entraînement ne peuvent pas être inscrits à de nouvelles courses aujourd'hui. Tes sélections de course existantes sont conservées.",
+      "goNow": "S'entraîner maintenant"
     }
   },
   "trainedToday_you": "Entraîné aujourd'hui (par toi)",

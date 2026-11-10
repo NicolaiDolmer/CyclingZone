@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import StageProfileGraph from "./StageProfileGraph.jsx";
-import StageProfileCard from "./StageProfileCard.jsx";
 import TerrainTypeGlyph from "./TerrainTypeGlyph.jsx";
 import { hasRouteData, waypointsFor } from "../../lib/stageRouteProfile.js";
 import { profileLabelKey } from "../../lib/stageProfileConfig.js";
@@ -25,21 +24,13 @@ import { formatNumber } from "../../lib/intl.js";
 //
 // Uden rutedata renderer den INTET (samme gate som StageProfileCard) — ingen
 // syntetisk profil, og fanen står som før.
-export default function RaceStageProfileRow({ profile, stageLabel = null, hasClassifications = true, showClimbNames = false }) {
+export default function RaceStageProfileRow({ profile, stageLabel = null, hasClassifications = true }) {
   const { t } = useTranslation("races");
-  const climbs = useMemo(
-    () => waypointsFor(profile).filter((w) => w.kind === "kom"),
+  const climbCount = useMemo(
+    () => waypointsFor(profile).filter((w) => w.kind === "kom").length,
     [profile],
   );
   if (!profile || !hasRouteData(profile)) return null;
-
-  // #7864 / v5: reuse the full profile and waypoint details while setting tactics.
-  // Other consumers retain the compact strip.
-  if (showClimbNames) return (
-    <div data-testid="race-stage-profile-row">
-      <StageProfileCard profile={profile} stageLabel={stageLabel} hasClassifications={hasClassifications} showClimbChoices />
-    </div>
-  );
 
   const terrainKey = profileLabelKey(profile.profile_type);
   const stageNumber = profile.stage_number ?? 1;
@@ -60,7 +51,7 @@ export default function RaceStageProfileRow({ profile, stageLabel = null, hasCla
         <p className="font-data text-3xs uppercase tracking-wider text-cz-3 tabular-nums">
           {formatNumber(profile.distance_km)} {t("detail.route.stats.km")}
           {profile.elevation_gain_m > 0 && ` · ${formatNumber(profile.elevation_gain_m)} ${t("detail.route.stats.elevation")}`}
-          {climbs.length > 0 && ` · ${climbs.length} ${t("detail.route.stats.climbs")}`}
+          {climbCount > 0 && ` · ${climbCount} ${t("detail.route.stats.climbs")}`}
         </p>
       </div>
       <StageProfileGraph

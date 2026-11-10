@@ -79,6 +79,7 @@ import { LockIcon, CheckIcon, Button, Section, SectionHeader, SkeletonLines } fr
 import SortableTh from "../ui/SortableTh.jsx";
 import FitBar from "../racehub/FitBar.jsx";
 import RaceStageProfileRow from "./RaceStageProfileRow.jsx";
+import StageProfileCard from "./StageProfileCard.jsx";
 import { stageRouteMatch, routeMatchComparator } from "../../lib/lineupInsight.js";
 import { tacticsRoleAvailability } from "../../lib/tacticsRoleAvailability.ts";
 import TimeLimitRiskMark from "./TimeLimitRiskMark.tsx"; // #7715
@@ -1011,12 +1012,15 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     <>
       {/* #4979: profilen for den ABNE etape, over kortet. Rykker med etape-
           vaelgeren nedenfor, saa man ser hvad man saetter taktik til. */}
-      <RaceStageProfileRow
+      {ready7864 && stagePlanOn ? (
+        <div data-testid="race-stage-profile-row">
+          <StageProfileCard profile={profileByStage[activeStage]} stageLabel={isOneDay ? null : t("intention.stage", { number: activeStage })} hasClassifications={!isOneDay} showClimbChoices />
+        </div>
+      ) : <RaceStageProfileRow
         profile={profileByStage[activeStage]}
         stageLabel={isOneDay ? null : t("intention.stage", { number: activeStage })}
         hasClassifications={!isOneDay}
-        showClimbNames={ready7864 && stagePlanOn}
-      />
+      />}
     <section data-testid="race-tactics-tab" className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
       <div className="px-4 py-3 border-b border-cz-border flex flex-wrap items-baseline justify-between gap-2">
         <div className="min-w-0">

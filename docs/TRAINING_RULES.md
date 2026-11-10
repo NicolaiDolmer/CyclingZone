@@ -397,6 +397,31 @@ extra training. The old legacy bonus boolean remains inert. No-click training an
 calendar training retain their previous yield. Claude PR3 owns player copy/help
 and patch notes before activation; parent owns registry publication and review.
 
+### Open race slot before the race (#7970, owner rule 10/11)
+
+Example date: slots 1 training, 2 training, 3 race, 4 training, 5 training. A press before
+the race applies training and fatigue from ALL training slots (1, 2, 4, 5) at once. The race
+slot gives neither load nor recovery until the race has been run (`pendingRaceSlots` in
+`settleDateFatigueV2`; used by the provisional count at the press and by the reconstruction).
+Rest on the training slots may make the rider fresher; the open race slot never does. The
+evening settlement has no open slots and is unchanged. Only condition_model_v2 (prod = on)
+implements this; v1 settles the date as one block.
+
+### Switch stages and the player screen, PR3 (#7737, owner 10/11)
+
+`training_train_now_instant`: `"on"` = every manager's press is instant; `"beta"` = only beta
+testers' own presses (`evaluateTrainNowInstantFlag(value, { isBetaTester })`); anything else =
+off. Every reader after the press follows the durable stamp, not the switch. The database
+entry guard and the bonus choice treat `"beta"` like `"on"`
+(`database/2026-11-10-7737-train-now-instant-beta.sql`).
+
+`status()` returns `instant` (for this viewer) and, per today's race, `stageRun: true` when
+today's stage is already run. With `instant`, the page shows the instant copy and a
+confirmation "Train before today's races?" only when at least one of today's races is not yet
+run (`trainNowInstantConfirm`). Short-race warnings (#6740) are unchanged; when both apply,
+the instant body is shown above the short-race warnings and the existing short-race title and
+"Train anyway" button are kept. With `instant` off nothing on the page changes.
+
 ## Aktuel S4-status (read-only prodmåling 28/9)
 
 `training_tick_per_race_day` og `race_day_development_enabled` er begge `on`.
