@@ -242,13 +242,13 @@ async function liveFatigueMap({ supabase, conditions, base, abilityByRider, team
  * læsefejl giver åbningen for det løb, som i motoren.
  * @returns {Promise<{ fatById: Map<string, number|null>, byRace: Map<string, Map<string, number|null>>|null }>}
  */
-export async function fatigueByRiderForRaces({ supabase, conditions, abilityByRider = null, teamIdByRider = null, teamId = null, races = [] }) {
+export async function fatigueByRiderForRaces({ supabase, conditions, abilityByRider = null, teamIdByRider = null, teamId = null, races = [], now = new Date() }) {
   const base = sameMap(conditions);
   if (!base.size || !races.length) return { fatById: base, byRace: null };
   if (!await isFatigueNow7801Enabled(supabase)) {
     // #7737 (foer taending): samme tal som fatigueByRiderNow med 7801 slukket, saa
     // udtagelsen og assistenten viser det samme for en rytter med et Traen nu-stempel.
-    const instant = await loadInstantConditions({ supabase, riderIds: [...base.keys()], tickDate: copenhagenDateString(new Date()), failOpenWhenOff: true });
+    const instant = await loadInstantConditions({ supabase, riderIds: [...base.keys()], tickDate: copenhagenDateString(now), failOpenWhenOff: true });
     for (const [id, condition] of instant) base.set(id, condition.fatigue);
     return { fatById: base, byRace: null };
   }

@@ -34,7 +34,11 @@ async function rows(query, source) {
 }
 
 /** Read-only reconstruction of PR1's provisional date; the durable stamp survives OFF. */
-export async function loadInstantConditions({ supabase, riderIds, tickDate, beforeGameDay = null, failOpenWhenOff = false }) {
+// `projectedLoad(riderId, gameDay)` (kun tidsgraense-varslet, #7715): en prognose for en
+// reserveret loebsplads foer `beforeGameDay`, hvis etapen ikke er koert endnu. Den laegges i
+// pladsen i datoens opgoerelse, praecis hvor motoren laegger den rigtige belastning, naar
+// etapen er koert. Ledgerens belastning vinder altid; uden funktion er alt som foer.
+export async function loadInstantConditions({ supabase, riderIds, tickDate, beforeGameDay = null, failOpenWhenOff = false, projectedLoad = null }) {
   const out = new Map();
   out.openingByRider = new Map();
   out.incompleteRiderIds = new Set();
@@ -99,6 +103,12 @@ export async function loadInstantConditions({ supabase, riderIds, tickDate, befo
           throw new Error("Unresolved instant race receipt evidence");
         }
         const recoveryAbility = receipts.find(r => r.report?.recovery_before_date != null)?.report.recovery_before_date;
+        const projectedFor = day => {
+          if (!projectedLoad || beforeGameDay == null || day >= beforeGameDay || !reserved.has(day)
+            || ledger.some(l => Number(l.game_day) === day)) return null;
+          const value = projectedLoad(id, day);
+          return value == null ? null : Number(value);
+        };
         const incomplete = days.some(day => !reserved.has(day) && !receipts.some(r => Number(r.game_day) === day));
         if (incomplete) {
           // PR1 writes the provisional condition only with the final free receipt.
@@ -109,7 +119,9 @@ export async function loadInstantConditions({ supabase, riderIds, tickDate, befo
           if (current.length !== 1 || !Number.isFinite(current[0].fatigue) || !Number.isFinite(current[0].form)) {
             throw new Error("Missing incomplete instant condition");
           }
-          const priorLoads = ledger.filter(l => beforeGameDay == null || Number(l.game_day) < beforeGameDay).map(l => Number(l.load));
+          const priorLoads = [...ledger.filter(l => beforeGameDay == null || Number(l.game_day) < beforeGameDay).map(l => ({ day: Number(l.game_day), load: Number(l.load) })),
+            ...days.map(day => ({ day, load: projectedFor(day) })).filter(p => p.load != null)]
+            .sort((a, b) => a.day - b.day).map(p => p.load);
           if (priorLoads.some(load => !Number.isFinite(load) || load < 0)) throw new Error("Invalid instant race load");
           let recovery = recoveryAbility;
           if (priorLoads.length && !Number.isFinite(recovery)) {
@@ -136,7 +148,9 @@ export async function loadInstantConditions({ supabase, riderIds, tickDate, befo
         const raceLoads = days.map(day => {
           const load = ledger.find(l => Number(l.game_day) === day && (beforeGameDay == null || day < beforeGameDay));
           if (load && (!Number.isFinite(Number(load.load)) || Number(load.load) < 0)) throw new Error("Invalid instant race load");
-          return Number(load?.load ?? 0);
+          const projected = load ? null : projectedFor(day);
+          if (projected != null && (!Number.isFinite(projected) || projected < 0)) throw new Error("Invalid projected race load");
+          return Number(load?.load ?? projected ?? 0);
         });
         const condition = settleTrainingDateCondition({ riderId: id, dateStr: tickDate, condition: opening,
           intensities, raceLoads, recoveryAbility, recoveryConfig, modelV2,

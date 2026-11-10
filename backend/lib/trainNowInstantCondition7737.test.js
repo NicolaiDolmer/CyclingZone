@@ -167,8 +167,25 @@ test("#7737 foer taending: udtagelsen med 7801 slukket viser samme tal som fatig
   const supabase = instantDatabase({ loads, flags: { fatigue_now_7801: "off" } });
   const conditions = [{ rider_id: "r", fatigue: 22 }];
   const { fatigueByRiderForRaces } = await import("./riderFatigueNow.js");
-  const now = await fatigueByRiderNow({ supabase, conditions, now: new Date() });
-  const forRaces = await fatigueByRiderForRaces({ supabase, conditions, races: [{ id: "race", stages: [{ stage_number: 2 }] }] });
+  const now = await fatigueByRiderNow({ supabase, conditions, now: at });
+  const forRaces = await fatigueByRiderForRaces({ supabase, conditions, races: [{ id: "race", stages: [{ stage_number: 2 }] }], now: at });
   assert.equal(forRaces.byRace, null);
-  assert.equal(forRaces.fatById.get("r"), now.get("r"));
+  // Rekonstruktionen, ikke inputtet (22): et ustemplet fallback kan ikke bestå testen.
+  assert.equal(now.get("r"), counted(loads).fatigue);
+  assert.equal(forRaces.fatById.get("r"), counted(loads).fatigue);
+});
+
+test("#7737 foer taending: en prognose i pladsen giver praecis motorens tal, naar etapen senere koeres med samme belastning", async () => {
+  const L = 24;
+  const ran = await loadInstantConditions({ supabase: instantDatabase({ loads: [{ game_day: 43, load: L }] }), riderIds: ["r"], tickDate: DATE, beforeGameDay: 44 });
+  const projected = await loadInstantConditions({ supabase: instantDatabase({ loads: [] }), riderIds: ["r"], tickDate: DATE, beforeGameDay: 44,
+    projectedLoad: (id, day) => (id === "r" && day === 43 ? L : null) });
+  assert.equal(projected.get("r").fatigue, ran.get("r").fatigue);
+  // Ledgeren vinder over prognosen, og pladser fra etapens egen loebsdag og frem faar ingen prognose.
+  const both = await loadInstantConditions({ supabase: instantDatabase({ loads: [{ game_day: 43, load: L }] }), riderIds: ["r"], tickDate: DATE, beforeGameDay: 44,
+    projectedLoad: () => 99 });
+  assert.equal(both.get("r").fatigue, ran.get("r").fatigue);
+  const none = await loadInstantConditions({ supabase: instantDatabase({ loads: [] }), riderIds: ["r"], tickDate: DATE, beforeGameDay: 43, projectedLoad: () => 99 });
+  const plain = await loadInstantConditions({ supabase: instantDatabase({ loads: [] }), riderIds: ["r"], tickDate: DATE, beforeGameDay: 43 });
+  assert.equal(none.get("r").fatigue, plain.get("r").fatigue);
 });

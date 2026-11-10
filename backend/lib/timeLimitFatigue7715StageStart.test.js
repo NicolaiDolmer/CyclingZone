@@ -192,14 +192,18 @@ test("#7737 foer taending: en stemplet rytter faar motorens rekonstruktion, og k
   assert.equal(stamped.get(17).get("r1"), 70);
 });
 
-test("#7737 foer taending: loaderen henter rekonstruktionen pr. kommende etape med etapens dato og loebsdag", async () => {
+test("#7737 foer taending: loaderen henter rekonstruktionen pr. kommende etape med prognosen i pladsen", async () => {
   const asked = [];
-  const loadInstant = async ({ tickDate, beforeGameDay, failOpenWhenOff }) => {
-    asked.push([tickDate, beforeGameDay, failOpenWhenOff]);
-    return beforeGameDay === 82 ? new Map([["r1", { fatigue: 52, form: 60 }]]) : new Map();
+  const loadInstant = async ({ tickDate, beforeGameDay, failOpenWhenOff, projectedLoad }) => {
+    asked.push([tickDate, beforeGameDay, failOpenWhenOff, projectedLoad("r1", 80)]);
+    if (tickDate !== DATE) return new Map();
+    return new Map([["r1", { fatigue: beforeGameDay === 82 ? 52 : 50, form: 60 }]]);
   };
   const out = await loadStageStartFatigues7715({ supabase: stub(), race: RACE, riders: [RIDER], stages: STAGES, ...V2, loadInstant });
-  // Etape 15 er ikke koert endnu: rekonstruktionen (52) plus prognosen for etape 15, som motoren.
-  assert.equal(out.get(16).get("r1"), enteringFatigueV2({ openingFatigue: 52, priorLoadsToday: [forecast15()], recoveryAbility: 40 }));
-  assert.deepEqual(asked, [[DATE, 80, true], [DATE, 82, true], ["2026-11-14", 84, true]]);
+  // Rekonstruktionen er motorens tal; prognosen for etape 15 ligger allerede i sin plads (dag 80).
+  assert.equal(out.get(15).get("r1"), 50);
+  assert.equal(out.get(16).get("r1"), 52);
+  assert.equal(out.get(17).get("r1"), 70);
+  // Etape 15 faar ingen prognose for sig selv; etape 16 faar prognosen for dag 80; den nye dato intet.
+  assert.deepEqual(asked, [[DATE, 80, true, null], [DATE, 82, true, forecast15()], ["2026-11-14", 84, true, null]]);
 });
