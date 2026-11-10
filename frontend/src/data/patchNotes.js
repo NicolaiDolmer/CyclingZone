@@ -1,5 +1,29 @@
 export const PATCHES = [
   {
+    "version": "7.427",
+    "date": "2026-11-10",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Transfers",
+        "en": {
+          "title": "Auto-accept price: bids at your price start an auction",
+          "body": "When you list a rider, you can set an auto-accept price. A bid at that price or above starts a public auction where the buyer picks the length and others can bid. The leading bid's money is reserved, so the winner can always pay."
+        },
+        "da": {
+          "title": "Auto-pris: bud på din pris starter en auktion",
+          "body": "Når du sætter en rytter til salg, kan du sætte en auto-pris. Et bud på den pris eller derover starter en offentlig auktion, hvor køberen vælger længden, og andre kan byde med. Pengene for det førende bud er reserveret, så vinderen altid kan betale."
+        },
+        "refs": [
+          2176,
+          6181
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.425",
     "date": "2026-11-09",
     "changes": [

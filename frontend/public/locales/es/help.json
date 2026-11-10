@@ -241,6 +241,10 @@
         "title": "Vender mediante la lista de fichajes",
         "text": "Puedes poner a tus propios ciclistas a la venta a un precio pedido fijo, ya sea desde Mi equipo o directamente desde la página de perfil del ciclista. Mientras un ciclista está anunciado, puedes editar el precio pedido o quitar el anuncio en cualquier momento, tanto desde la página de Fichajes como desde el perfil del ciclista. Los compradores pueden ordenar o filtrar el mercado por precio pedido, además de ordenar por los anuncios más recientes."
       },
+      "autoAcceptPrice": {
+        "title": "Precio de aceptación automática: las pujas a tu precio inician una subasta",
+        "text": "Al poner un corredor en venta puedes fijar un precio de aceptación automática opcional, al menos igual al precio de venta. Las pujas por debajo se negocian como siempre. Una puja a ese precio o más inicia al instante una subasta pública: el comprador elige la duración (de 30 minutos a 24 horas de tiempo activo, 08-24) y ve la hora exacta de cierre, y otros mánagers pueden pujar. La venta es vinculante para ti y el precio es visible para todos en la lista de traspasos. Mientras una puja va en cabeza, su dinero queda reservado, así que el ganador siempre puede pagar. Un nuevo precio solo se aplica a pujas nuevas."
+      },
       "bulkEditPrices": {
         "title": "Editar muchos precios a la vez",
         "text": "En la pestaña Mercado puedes marcar varios de tus propios anuncios a la vez y aplicar un único cambio de precio a todos: fijar cada ciclista marcado a un precio exacto, sumar o restar un importe fijo en CZ$, o ajustarlos todos con un porcentaje (por ejemplo +10 %). La vista previa muestra el precio antiguo y el nuevo de cada ciclista antes de que apliques nada."
