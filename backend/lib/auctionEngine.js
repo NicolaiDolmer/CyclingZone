@@ -338,17 +338,18 @@ const EXTENSION_BOUNDARY_FLAGS_6181 = ["market_commitment_6181", "auto_accept_en
 // Sidste hele minut før grænsen, så slutningen aldrig lander på selve skiftet.
 const SEASON_BOUNDARY_MARGIN_MS = 60 * 1000;
 
+/** @param {any} supabase @returns {Promise<boolean>} */
 async function isExtensionBoundaryGateOn6181(supabase) {
   try {
     const { data, error } = await supabase
       .from("app_config").select("key, value").in("key", EXTENSION_BOUNDARY_FLAGS_6181);
     if (error) throw new Error(error.message);
-    return (data || []).some((row) => row?.value === true || row?.value === "on");
+    return (data || []).some((/** @type {{ value?: unknown }} */ row) => row?.value === true || row?.value === "on");
   } catch (e) {
     // best-effort: ukendt kontakt-tilstand => hold grænsen (fejlen logges). Det
     // rammer kun en forlængelse, der ellers ville krydse sæsonskiftet; grænse-
     // opslaget selv er fail-open.
-    console.error("[applyLeaderShiftExtension] boundary flag lookup failed", e?.message || e);
+    console.error("[applyLeaderShiftExtension] boundary flag lookup failed", e instanceof Error ? e.message : e);
     return true;
   }
 }
@@ -356,15 +357,26 @@ async function isExtensionBoundaryGateOn6181(supabase) {
 /**
  * Ren regel: forlængelsens sluttid holdt under sæsonskiftet. null = ingen
  * forlængelse (den holdte sluttid ville ikke ligge efter den nuværende).
+ *
+ * @param {Date} extendedEnd
+ * @param {Date|string} currentEnd
+ * @param {Date|string|null} seasonTransitionBoundary
+ * @returns {Date|null}
  */
 export function capExtendedEndAtBoundary(extendedEnd, currentEnd, seasonTransitionBoundary) {
   if (!getAuctionSeasonBoundaryIssue(extendedEnd, seasonTransitionBoundary)) return extendedEnd;
-  const boundary = new Date(seasonTransitionBoundary);
+  const boundary = new Date(/** @type {Date|string} */ (seasonTransitionBoundary));
   const capped = new Date(Math.floor((boundary.getTime() - 1) / SEASON_BOUNDARY_MARGIN_MS) * SEASON_BOUNDARY_MARGIN_MS);
   return capped > new Date(currentEnd) ? capped : null;
 }
 
+/**
+ * @param {any} supabase
+ * @param {{ extendedEnd: Date|null, currentEnd: Date|string, bidTime: Date|string }} args
+ * @returns {Promise<Date|null>}
+ */
 async function capExtensionAtSeasonBoundary6181(supabase, { extendedEnd, currentEnd, bidTime }) {
+  if (!extendedEnd) return null;
   if (!(await isExtensionBoundaryGateOn6181(supabase))) return extendedEnd;
   const boundary = await fetchSeasonTransitionBoundary(supabase, { now: new Date(bidTime) });
   return capExtendedEndAtBoundary(extendedEnd, currentEnd, boundary);
