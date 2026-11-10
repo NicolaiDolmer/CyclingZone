@@ -3241,9 +3241,9 @@ router.get("/training/me", requireAuth, async (req, res) => {
       const fatigue = outlook ? outlook.fatigue : row.fatigue;
       const risk = injuryRisk({ intensity: program.intensity, fatigue: Number(fatigue ?? 0) });
       condition[row.rider_id] = {
-        form: row.form,
+        form: outlook?.form ?? row.form,
         fatigue,
-        ...(fatigueOutlook ? { fatigue_at_start: outlook?.fatigueAtStart ?? null } : {}),
+        ...(outlook ? { fatigue_at_start: outlook.fatigueAtStart ?? null } : {}),
         injured_until: row.injured_until ?? null,
         // #5462: resterende LOEBSDAGE inkl. i dag. null = skaden ejes af
         // kalenderdagen (flag off, eller skrevet foer flippet).

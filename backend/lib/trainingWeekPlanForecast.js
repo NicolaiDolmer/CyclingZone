@@ -23,6 +23,7 @@
 // for baandet er de eksisterende konstanter i riderCondition.js (skadegraensen og
 // formzonens top), ikke nye balance-tal.
 
+import { loadInstantConditions } from "./trainNowInstantCondition7737.js";
 import { settleTrainingDateCondition } from "./trainingDateCondition.js";
 import { CONDITION_CONFIG, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
 import { raceConditionLoads } from "./raceFatigue.js";
@@ -250,10 +251,16 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     catalogV3GateForTeam(supabase, team.id),
   ]);
 
+  const instant = await loadInstantConditions({ supabase, riderIds, tickDate });
+  const openingByRider = new Map(Object.entries(workRows[0]?.opening_conditions ?? {}));
+  for (const [id, opening] of instant.openingByRider) openingByRider.set(id, opening);
   const work = workRows[0] ?? null;
   const conditionByRider = new Map(conditions.map((row) => [row.rider_id, row]));
   const dateReceipts = receipts.filter((row) => row.tick_date === tickDate);
-  const settled = work?.status === "complete" || riderIds.every((id) => dateGameDays.every((day) => dateReceipts.some((row) => row.rider_id === id && row.game_day === day)));
+  // A completed current-team roster says nothing about an acquired rider's
+  // still-open date under the original team's durable stamp.
+  const hasUnsettledInstant = [...instant.keys()].some(id => !instant.settledRiderIds.has(id));
+  const settled = !hasUnsettledInstant && (work?.status === "complete" || riderIds.every((id) => dateGameDays.every((day) => dateReceipts.some((row) => row.rider_id === id && row.game_day === day))));
   if (settled) {
     const actual = {};
     for (const id of riderIds) {
@@ -293,9 +300,9 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     raceDateTrainingDay,
     fatigueRules,
     stageYesterdayRiderIds,
-    tickDate, seasonId, dateGameDays, riders,
+    tickDate, seasonId, dateGameDays, riders: riders.filter(r => !instant.incompleteRiderIds.has(r.id)),
     conditionByRider,
-    openingByRider: new Map(Object.entries(work?.opening_conditions ?? {})),
+    openingByRider,
     recoveryByRider: new Map(abilities.map((row) => [row.rider_id, row.recovery])),
     planByRider: new Map(plans.map((row) => [row.rider_id, row])),
     teamWeekDays: weekRows.find((row) => row.rider_id == null)?.days ?? null,
