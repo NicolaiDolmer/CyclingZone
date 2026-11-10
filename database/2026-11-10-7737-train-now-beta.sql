@@ -73,6 +73,11 @@ BEGIN
   RETURN NEW;
 END $$;
 
+-- CREATE OR REPLACE bevarer rettighederne; gentages eksplicit som i den oprindelige migration (#2858).
+REVOKE ALL ON FUNCTION public.race_entries_train_now_instant_guard() FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.training_train_now_bonus_choice() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.training_train_now_bonus_choice() TO service_role;
+
 UPDATE public.app_config
    SET description = 'Switch for Train now straight away (#7737): a rider with a race later today trains his free race days at the press and gets provisional form and fatigue. "on" = everyone, "beta" = only beta testers'' own presses, anything else = off. Owner-only flip.'
  WHERE key = 'training_train_now_instant';
