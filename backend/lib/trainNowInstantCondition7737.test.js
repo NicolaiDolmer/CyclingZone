@@ -107,10 +107,27 @@ test("#7737: durable stamps still govern current and next-stage displays with sw
 });
 
 test("#7737: authoritative read errors cannot silently fall back", async () => {
-  for (const options of [{ fail: "training_race_loads" }, { fail: "training_train_now_locks" }, { fail: "training_date_work" }]) {
+  for (const options of [{ fail: "training_race_loads" }, { fail: "training_date_work" },
+    { fail: "training_train_now_locks", flags: { training_train_now_instant: "on" } }]) {
     const supabase = instantDatabase(options);
     await assert.rejects(fatigueByRiderNow({ supabase, conditions: [{ rider_id: "r", fatigue: 22 }], now: at }), InstantConditionEvidenceError);
   }
+});
+
+test("#7737 review: with the switch off a failed stamp lookup keeps the pre-#7737 behaviour", async () => {
+  const supabase = instantDatabase({ fail: "training_train_now_locks", flags: { training_train_now_instant: "off" } });
+  const instant = await loadInstantConditions({ supabase, riderIds: ["r"], tickDate: DATE });
+  assert.equal(instant.size, 0);
+  await assert.doesNotReject(fatigueByRiderNow({ supabase, conditions: [{ rider_id: "r", fatigue: 22 }], now: at }));
+});
+
+test("#7737 review: an unreadable switch after a failed stamp lookup still refuses to guess", async () => {
+  const supabase = instantDatabase({ fail: "training_train_now_locks" });
+  const from = supabase.from.bind(supabase);
+  supabase.from = (table) => table === "app_config"
+    ? { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: { message: "down" } }) }) }) }
+    : from(table);
+  await assert.rejects(loadInstantConditions({ supabase, riderIds: ["r"], tickDate: DATE }), InstantConditionEvidenceError);
 });
 
 test("#7737: the instant-only runner seam leaves unstamped entrants unchanged", async () => {

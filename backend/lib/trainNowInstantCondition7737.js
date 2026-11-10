@@ -10,6 +10,21 @@ import { fetchAllRows, SUPABASE_IN_CHUNK_SIZE } from "./supabasePagination.js";
 
 export class InstantConditionEvidenceError extends Error {}
 
+// Review 10/11: med kontakten slukket maa en kort fejl i selve stempel-opslaget ikke vaelte
+// etape-autofyld, /training/me eller prognosen; foer #7737 laeste de slet ikke stempler.
+// Kun naar kontakten laeses som slukket, behandles fejlen som "ingen stempler". Taendt
+// eller ulaeselig kontakt kaster stadig, saa en stemplet rytter aldrig faar den forkerte tilstand.
+async function stampedOrOffFallback({ supabase, tickDate, riderIds }) {
+  try {
+    return [...await loadTrainNowInstantRiderIds({ supabase, tickDate, riderIds })];
+  } catch (lookupError) {
+    const { data, error } = await supabase.from("app_config")
+      .select("value").eq("key", "training_train_now_instant").maybeSingle();
+    if (!error && data?.value !== "on") return [];
+    throw lookupError;
+  }
+}
+
 async function rows(query, source) {
   const { data, error } = await query;
   if (error || !Array.isArray(data)) throw new Error(`${source}: ${error?.message ?? "missing rows"}`);
@@ -24,7 +39,7 @@ export async function loadInstantConditions({ supabase, riderIds, tickDate, befo
   out.settledRiderIds = new Set();
   try {
     for (let i = 0; i < riderIds.length; i += SUPABASE_IN_CHUNK_SIZE) {
-      const stamped = [...await loadTrainNowInstantRiderIds({ supabase, tickDate, riderIds: riderIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE) })];
+      const stamped = await stampedOrOffFallback({ supabase, tickDate, riderIds: riderIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE) });
       if (!stamped.length) continue;
       // pagination-safe: one stamp per rider/date, bounded rider chunk.
       // schema-columns-ok: instant_entry_snapshot is added by stacked PR1 migration database/2026-11-09-7737-train-now-instant.sql.
