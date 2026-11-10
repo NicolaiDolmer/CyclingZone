@@ -241,6 +241,10 @@
         "title": "Vendre via la liste des transferts",
         "text": "Tu peux mettre tes propres coureurs en vente à un prix demandé fixe, soit depuis Mon équipe, soit directement depuis la page de profil du coureur. Tant qu'un coureur est en vente, tu peux modifier le prix demandé ou retirer l'annonce à tout moment, depuis la page Transferts comme depuis le profil du coureur. Les acheteurs peuvent trier ou filtrer le marché par prix demandé, en plus de trier par annonces les plus récentes."
       },
+      "autoAcceptPrice": {
+        "title": "Prix d'acceptation automatique : une offre à ton prix lance une enchère",
+        "text": "Quand tu mets un coureur en vente, tu peux fixer un prix d'acceptation automatique facultatif, au moins égal au prix demandé. Les offres en dessous se négocient comme d'habitude. Une offre à ce prix ou plus lance aussitôt une enchère publique : l'acheteur choisit la durée (de 30 minutes à 24 heures de temps actif, 08-24) et voit l'heure de fin exacte, et les autres managers peuvent enchérir. La vente t'engage, et le prix est visible par tous sur la liste des transferts. Tant qu'une offre mène, son argent est réservé, donc le gagnant peut toujours payer. Un nouveau prix ne vaut que pour les nouvelles offres."
+      },
       "bulkEditPrices": {
         "title": "Modifier plusieurs prix d'un coup",
         "text": "Dans l'onglet Marché, tu peux cocher plusieurs de tes propres annonces à la fois et appliquer une seule modification de prix à toutes : fixer chaque coureur coché à un prix exact, ajouter ou retirer un montant fixe en CZ$, ou ajuster tout le monde d'un pourcentage (par exemple +10 %). L'aperçu montre l'ancien et le nouveau prix de chaque coureur avant que tu n'appliques quoi que ce soit."

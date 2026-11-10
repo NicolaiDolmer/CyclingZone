@@ -241,6 +241,10 @@
         "title": "Sell via the transfer list",
         "text": "You can list your own riders for sale at a fixed asking price, either from My Squad or directly from the rider's profile page. While a rider is listed, you can edit the asking price or remove the listing at any time, both from the Transfers page and from the rider's profile. Buyers can sort or filter the market by asking price, in addition to sorting by newest listings."
       },
+      "autoAcceptPrice": {
+        "title": "Auto-accept price: bids at your price start an auction",
+        "text": "When you list a rider, you can also set an optional auto-accept price, at least as high as the asking price. Bids below it are negotiated as usual. A bid at that price or above starts a public auction straight away: the buyer chooses the length (30 minutes to 24 hours of active time, 08-24) and sees the exact end time, and other managers can bid. The sale is binding for you, and the price is visible to everyone on the transfer list. While a bid leads, its money is reserved, so the winner can always pay. A new auto-accept price only applies to new bids."
+      },
       "bulkEditPrices": {
         "title": "Editing many prices at once",
         "text": "On the Market tab you can tick several of your own listings at once and apply one price change to all of them: set every ticked rider to an exact price, add or subtract a flat CZ$ amount, or adjust all of them by a percentage (for example +10%). The preview shows the old and new price for each rider before you apply anything."
