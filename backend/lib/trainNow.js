@@ -269,21 +269,22 @@ async function defaultLoadShortRaces({ supabase, team, tickDate }) {
 
 /**
  * Read-only state for the panel. Cheap: no roster scan; one small read of today's races.
- * @returns {Promise<{enabled:boolean, available:boolean, reason:string|null, tickDate:string, locked:boolean, lockedAt:string|null, settled:boolean, todayRaces:Array<{id:string,name:string|null}>}>}
+ * @returns {Promise<{enabled:boolean, available:boolean, reason:string|null, tickDate:string, locked:boolean, lockedAt:string|null, settled:boolean, todayRaces:Array<{id:string,name:string|null}>, instant:boolean}>}
  */
 export async function loadTrainNowStatus({ supabase, team, seasonId, isBetaTester = false, now = new Date() }) {
   const tickDate = copenhagenDateString(now);
-  const base = { enabled: false, available: false, reason: "flag_off", tickDate, locked: false, lockedAt: null, settled: false };
+  const base = { enabled: false, available: false, reason: "flag_off", tickDate, locked: false, lockedAt: null, settled: false, instant: false };
   if (!await isTrainNowEnabled(supabase, { isBetaTester })) return base;
   if (!await isTrainingConditionPerDateEnabled(supabase)) return base;
   const enabled = { ...base, enabled: true, reason: null };
   if (!seasonId) return { ...enabled, reason: "no_active_season" };
   if (!team?.league_division_id) return { ...enabled, reason: "no_race_day_today" };
-  const [locks, work, earlierOpen, todayRaces] = await Promise.all([
+  const [locks, work, earlierOpen, todayRaces, instant] = await Promise.all([
     loadTeamTrainNowLocks({ supabase, teamId: team.id, tickDate }),
     loadTeamDateWork({ supabase, teamId: team.id, seasonId, tickDate }),
     hasOpenEarlierDate({ supabase, teamId: team.id, seasonId, tickDate }),
     loadTodayRacesForTeam({ supabase, team, tickDate }),
+    isTrainNowInstantEnabled(supabase), // #7737 part 3: the screen copy follows the switch
   ]);
   const locked = locks.length > 0;
   const lockedAt = locked ? locks.map((row) => row.pressed_at).filter(Boolean).sort()[0] ?? null : null;
@@ -291,7 +292,7 @@ export async function loadTrainNowStatus({ supabase, team, seasonId, isBetaTeste
   const reason = settled ? "date_settled" : locked ? "locked" : earlierOpen ? "previous_date_open" : null;
   // #6740: only while the press is still possible; afterwards there is nothing to warn about.
   const shortRaces = reason === null ? await loadTrainNowShortRaces({ supabase, team, todayRaces, tickDate }) : [];
-  return { ...enabled, available: reason === null, reason, locked, lockedAt, settled, todayRaces, shortRaces };
+  return { ...enabled, available: reason === null, reason, locked, lockedAt, settled, todayRaces, shortRaces, instant };
 }
 
 /**

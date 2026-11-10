@@ -17,6 +17,8 @@ export type TrainNowStatus = {
   todayRaces: Array<{ id: string; name: string | null }>;
   // #6740: today's races where a press leaves the team below the start floor (fit = fit riders selected).
   shortRaces: TrainNowShortRace[];
+  // #7737 part 3: the instant switch is on, so the press trains now and the copy says so.
+  instant: boolean;
 };
 
 // startsShort (#6740 rule B): the team had the floor, injuries took it below; it still starts with `fit`.
@@ -43,7 +45,7 @@ export function trainNowPressCounts(result: TrainNowPressResult | null): { train
 
 export const TRAIN_NOW_OFF: TrainNowStatus = {
   enabled: false, available: false, reason: "flag_off", tickDate: null, locked: false, lockedAt: null, settled: false,
-  todayRaces: [], shortRaces: [],
+  todayRaces: [], shortRaces: [], instant: false,
 };
 
 // `=== true` everywhere: an older backend without the route gives the old page.
@@ -65,6 +67,7 @@ export function parseTrainNowStatus(data: unknown): TrainNowStatus {
         .map((r) => ({ id: r.id, name: typeof r.name === "string" ? r.name : null }))
       : [],
     shortRaces: parseShortRaces(d.shortRaces),
+    instant: d.instant === true,
   };
 }
 
@@ -97,7 +100,12 @@ export function trainNowWarnings(status: TrainNowStatus): Array<{ key: string; p
 
 /** #6740: ask before pressing when the press costs a race start. */
 export function trainNowNeedsConfirm(status: TrainNowStatus): boolean {
-  return trainNowWarnings(status).length > 0;
+  return trainNowWarnings(status).length > 0 || trainNowInstantConfirm(status);
+}
+
+/** #7737 part 3: an instant press with a race later today: its fatigue carries into that race, so ask once. */
+export function trainNowInstantConfirm(status: TrainNowStatus): boolean {
+  return status.enabled && status.available && status.instant && status.todayRaces.length > 0;
 }
 
 type DayClose = { open?: boolean | null; opensAtHour?: number } | null | undefined;
@@ -134,13 +142,15 @@ export function trainNowNoteKeys(
   if (status.settled) return ["trainNow.settled"];
   if (status.locked) {
     const counts = trainNowPressCounts(result);
-    if (counts) return [counts.waiting > 0 ? "trainNow.pressResult" : "trainNow.pressResultAll", "trainNow.locked"];
+    const lockedKey = status.instant ? "trainNow.lockedInstant" : "trainNow.locked";
+    if (counts) return [counts.waiting > 0 ? "trainNow.pressResult" : "trainNow.pressResultAll", lockedKey];
     return result && result.afterRaceRiderIds.length > 0
-      ? ["trainNow.locked", "trainNow.afterRace"]
-      : ["trainNow.locked"];
+      ? [lockedKey, ...(status.instant ? [] : ["trainNow.afterRace"])]
+      : [lockedKey];
   }
   if (status.reason === "previous_date_open") return ["trainNow.previousOpen"];
   if (status.reason === "no_race_day_today") return ["trainNow.noRaceDay"];
+  if (status.instant) return ["trainNow.helperInstant"];
   return [status.todayRaces.some((r) => r.name) ? "trainNow.helperRace" : "trainNow.helper"];
 }
 

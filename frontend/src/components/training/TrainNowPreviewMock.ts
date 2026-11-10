@@ -24,12 +24,14 @@ function mode(): string | null {
 }
 
 function status() {
-  const forcedLocked = mode() === "locked";
+  // #7737 part 3: ?trainNow=instant / instantLocked show the screen with the instant switch on.
+  const instant = mode() === "instant" || mode() === "instantLocked";
+  const forcedLocked = mode() === "locked" || mode() === "instantLocked";
   const lockedAt = pressedAt ?? (forcedLocked ? `${TICK_DATE}T06:00:00.000Z` : null);
   const locked = lockedAt != null;
   return {
     enabled: true, available: !locked, reason: locked ? "locked" : null, tickDate: TICK_DATE,
-    locked, lockedAt, settled: false,
+    locked, lockedAt, settled: false, instant,
     // #6139: the preview seed's race ("race-up-1" in seedData.js).
     todayRaces: [{ id: "race-up-1", name: "Tour de Preview" }],
     // #6740: ?trainNow=short shows the warning + confirm (5 fit riders selected, needs 6).

@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import {
   runTrainNow, loadTrainNowStatus,
   createTrainNowPlanLock, sameWeekdayCell, TRAIN_NOW_FLAG_KEY, trainNowShortRaces, loadTrainNowShortRaces,
-  loadTodayRacesForTeam,
+  loadTodayRacesForTeam, TRAIN_NOW_INSTANT_FLAG_KEY,
 } from "./trainNow.js";
 import {
   TRAIN_NOW_LOCK_TABLE, loadRaceTrainNowLock, loadTrainNowLockedRidersByDate, lockedRidersOnDates, raceStageDates,
@@ -244,6 +244,20 @@ test("status: available before the press, locked after, settled in the evening",
   state.training_date_work[0].status = "complete";
   const evening = await loadTrainNowStatus({ supabase: deps.supabase, team: TEAM, seasonId: SEASON.id, now: MORNING });
   assert.deepEqual([evening.settled, evening.reason], [true, "date_settled"]);
+});
+
+test("status (#7737): instant follows the instant switch, only the exact value on", async () => {
+  const read = async (value) => {
+    const state = baseState();
+    if (value !== undefined) state.app_config.push({ key: TRAIN_NOW_INSTANT_FLAG_KEY, value });
+    return loadTrainNowStatus({ supabase: fakeSupabase(state), team: TEAM, seasonId: SEASON.id, now: MORNING });
+  };
+  assert.equal((await read(undefined)).instant, false, "no row is off");
+  assert.equal((await read("off")).instant, false);
+  assert.equal((await read("beta")).instant, false);
+  assert.equal((await read("on")).instant, true);
+  const flagOff = await loadTrainNowStatus({ supabase: fakeSupabase(baseState("off")), team: TEAM, seasonId: SEASON.id, now: MORNING });
+  assert.equal(flagOff.instant, false, "no press, no instant copy");
 });
 
 test("status: beta flag is visible to beta testers only", async () => {

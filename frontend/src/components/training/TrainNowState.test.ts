@@ -2,13 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   TRAIN_NOW_OFF, parseTrainNowStatus, trainNowNoteKeys, trainNowPressCounts, trainNowRunGate,
-  trainNowRaceNames, trainNowSaveErrorKey, trainNowWarnings, trainNowNeedsConfirm, type TrainNowStatus,
+  trainNowRaceNames, trainNowSaveErrorKey, trainNowWarnings, trainNowNeedsConfirm, trainNowInstantConfirm, type TrainNowStatus,
 } from "./TrainNowState.ts";
 import { trainNowClock } from "./trainNowClock.ts";
 
 const available: TrainNowStatus = {
   enabled: true, available: true, reason: null, tickDate: "2026-10-01", locked: false, lockedAt: null, settled: false,
-  todayRaces: [], shortRaces: [],
+  todayRaces: [], shortRaces: [], instant: false,
 };
 const locked: TrainNowStatus = { ...available, available: false, reason: "locked", locked: true, lockedAt: "2026-10-01T06:00:00Z" };
 
@@ -120,4 +120,52 @@ test("warnings: a team that still starts short (rule B) gets its own sentence", 
   assert.deepEqual(trainNowWarnings(status), [{ key: "trainNow.shortRaceStarts", params: { race: "Tour du Léman", fit: 5, min: 6 } }]);
   assert.equal(trainNowNeedsConfirm(status), true);
   assert.equal(parseTrainNowStatus({ enabled: true, shortRaces: [{ id: "a", fit: 5, entered: 6, min: 6, startsShort: true }] }).shortRaces[0].startsShort, true);
+});
+
+// #7737 part 3: the screen copy with the instant switch on. Off stays exactly as it was.
+const instantRace = { ...available, instant: true, todayRaces: [{ id: "r1", name: "Tour A" }] };
+
+test("instant (#7737): parse reads only an exact true, off keeps the old page", () => {
+  assert.equal(parseTrainNowStatus({ enabled: true, instant: true }).instant, true);
+  assert.equal(parseTrainNowStatus({ enabled: true, instant: "on" }).instant, false);
+  assert.equal(parseTrainNowStatus({ enabled: true }).instant, false);
+  assert.equal(TRAIN_NOW_OFF.instant, false);
+});
+
+test("instant (#7737): the line under the button replaces the lock helper, also with a named race", () => {
+  assert.deepEqual(trainNowNoteKeys(instantRace, null, null), ["trainNow.helperInstant"]);
+  assert.deepEqual(trainNowNoteKeys({ ...available, instant: true }, null, null), ["trainNow.helperInstant"]);
+  assert.deepEqual(trainNowNoteKeys({ ...instantRace, instant: false }, null, null), ["trainNow.helperRace"], "off is unchanged");
+});
+
+test("instant (#7737): after the press the locked line is replaced, the press result stays", () => {
+  const done = { ...instantRace, available: false, reason: "locked", locked: true, lockedAt: "2026-10-01T06:00:00Z" };
+  assert.deepEqual(trainNowNoteKeys(done, null, null), ["trainNow.lockedInstant"]);
+  assert.deepEqual(
+    trainNowNoteKeys(done, { settledRiderIds: ["a"], afterRaceRiderIds: ["b"], settledGameDays: [15] }, null),
+    ["trainNow.pressResult", "trainNow.lockedInstant"],
+  );
+  assert.deepEqual(
+    trainNowNoteKeys(done, { settledRiderIds: ["a", "b"], afterRaceRiderIds: [], settledGameDays: [15] }, null),
+    ["trainNow.pressResultAll", "trainNow.lockedInstant"],
+  );
+  // The new line already says racing riders settle after their stage: no second sentence about it.
+  assert.deepEqual(
+    trainNowNoteKeys(done, { settledRiderIds: ["a"], afterRaceRiderIds: ["b"], settledGameDays: [] }, null),
+    ["trainNow.lockedInstant"],
+  );
+  assert.deepEqual(trainNowNoteKeys({ ...done, instant: false }, null, null), ["trainNow.locked"], "off is unchanged");
+});
+
+test("instant (#7737): the new dialog only when instant, available and a race is later today", () => {
+  assert.equal(trainNowInstantConfirm(instantRace), true);
+  assert.equal(trainNowNeedsConfirm(instantRace), true);
+  assert.equal(trainNowInstantConfirm({ ...instantRace, todayRaces: [] }), false, "no race today, nothing to carry");
+  assert.equal(trainNowInstantConfirm({ ...instantRace, instant: false }), false);
+  assert.equal(trainNowNeedsConfirm({ ...instantRace, instant: false }), false, "off asks nothing new");
+  assert.equal(trainNowInstantConfirm({ ...instantRace, available: false, reason: "locked", locked: true }), false);
+  assert.equal(trainNowInstantConfirm(TRAIN_NOW_OFF), false);
+  // The short-race warnings stay as they were, next to the new body.
+  const short = { ...instantRace, shortRaces: [{ id: "r1", name: "Tour A", fit: 5, entered: 6, min: 6 }] };
+  assert.equal(trainNowWarnings(short).length, 1);
 });
