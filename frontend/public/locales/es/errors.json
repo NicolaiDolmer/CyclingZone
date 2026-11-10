@@ -97,7 +97,7 @@
     "listing_not_found": "Anuncio no encontrado",
     "listing_not_owner": "Este anuncio no es tuyo",
     "listing_already_closed": "Este anuncio ya está cerrado",
-    "offer_at_auto_accept_price": "El vendedor acepta {autoAcceptPrice} CZ$ automáticamente. Una oferta a ese precio o superior inicia una subasta abierta, así que usa el botón de aceptación automática del anuncio",
+    "offer_at_auto_accept_price": "El vendedor acepta {autoAcceptPrice} CZ$ automáticamente. Una oferta a ese precio o superior inicia una subasta abierta, así que usa el botón Iniciar subasta del anuncio",
     "asking_price_above_auto_accept": "El precio de venta no puede superar tu precio de aceptación automática",
     "auto_accept_disabled": "La aceptación automática no está disponible",
     "auto_accept_invalid_duration": "Elige entre {minMinutes} minutos y {maxHours} horas de tiempo activo",

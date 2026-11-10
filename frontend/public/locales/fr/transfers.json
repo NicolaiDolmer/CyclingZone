@@ -359,6 +359,8 @@
     "cancel": "Annuler",
     "hours": "heures",
     "minutes": "min",
-    "sendCounter": "Envoyer"
+    "sendCounter": "Envoyer",
+    "endUpdated": "L'heure de fin a été mise à jour. Vérifie-la et appuie à nouveau.",
+    "listingAutoPrice": "Prix automatique (lance une enchère)"
   }
 }

@@ -824,8 +824,16 @@
       "listed": "✅ Te koop gezet!",
       "priceUpdated": "✅ Vraagprijs bijgewerkt",
       "removed": "✅ Van de transferlijst gehaald",
-      "errorPrefix": "❌"
-    }
+      "errorPrefix": "❌",
+      "autoNotSaved": "De autoprijs is niet opgeslagen:"
+    },
+    "editPrices": "Prijzen aanpassen",
+    "submitUpdatePrices": "Prijzen bijwerken",
+    "autoLabel": "Autoprijs (CZ$), optioneel",
+    "autoHelp": "Als iemand deze prijs of meer biedt, start meteen een openbare veiling. De koper kiest de duur (30 min tot 24 uur actieve tijd). De prijs is voor iedereen zichtbaar en de verkoop is bindend voor jou.",
+    "autoInvalid": "De autoprijs moet minstens de vraagprijs zijn.",
+    "autoStatus": "Autoprijs {amount} CZ$",
+    "autoEditHint": "Een nieuwe autoprijs geldt alleen voor nieuwe biedingen."
   },
   "manage": {
     "extend": {

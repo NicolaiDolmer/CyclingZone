@@ -97,7 +97,7 @@
     "listing_not_found": "Annonce introuvable",
     "listing_not_owner": "Ce n'est pas ton annonce",
     "listing_already_closed": "Cette annonce est déjà clôturée",
-    "offer_at_auto_accept_price": "Le vendeur accepte {autoAcceptPrice} CZ$ automatiquement. Une offre à ce prix ou plus lance une enchère ouverte, utilise donc le bouton d'acceptation automatique de l'annonce",
+    "offer_at_auto_accept_price": "Le vendeur accepte {autoAcceptPrice} CZ$ automatiquement. Une offre à ce prix ou plus lance une enchère ouverte, utilise donc le bouton Lancer l'enchère de l'annonce",
     "asking_price_above_auto_accept": "Le prix demandé ne peut pas dépasser ton prix d'acceptation automatique",
     "auto_accept_disabled": "L'acceptation automatique n'est pas disponible",
     "auto_accept_invalid_duration": "Choisis entre {minMinutes} minutes et {maxHours} heures de temps actif",

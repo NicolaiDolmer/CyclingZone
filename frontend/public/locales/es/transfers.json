@@ -359,6 +359,8 @@
     "cancel": "Cancelar",
     "hours": "horas",
     "minutes": "min",
-    "sendCounter": "Enviar"
+    "sendCounter": "Enviar",
+    "endUpdated": "La hora de cierre se ha actualizado. Compruébala y pulsa de nuevo.",
+    "listingAutoPrice": "Precio automático (inicia una subasta)"
   }
 }

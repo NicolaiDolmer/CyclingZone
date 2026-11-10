@@ -97,7 +97,7 @@
     "listing_not_found": "Aanbieding niet gevonden",
     "listing_not_owner": "Dit is niet jouw aanbieding",
     "listing_already_closed": "Deze aanbieding is al gesloten",
-    "offer_at_auto_accept_price": "De verkoper accepteert {autoAcceptPrice} CZ$ automatisch. Een bod op die prijs of hoger start een open veiling, dus gebruik de knop voor automatisch accepteren bij de aanbieding",
+    "offer_at_auto_accept_price": "De verkoper accepteert {autoAcceptPrice} CZ$ automatisch. Een bod op die prijs of hoger start een open veiling, dus gebruik de knop Veiling starten bij de aanbieding",
     "asking_price_above_auto_accept": "De vraagprijs mag niet boven je prijs voor automatisch accepteren liggen",
     "auto_accept_disabled": "Automatisch accepteren is niet beschikbaar",
     "auto_accept_invalid_duration": "Kies tussen {minMinutes} minuten en {maxHours} uur actieve tijd",

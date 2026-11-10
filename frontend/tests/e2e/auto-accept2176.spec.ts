@@ -71,6 +71,7 @@ test("OFF preserves direct negotiations and shows no start dialog", async ({ pag
   await setup(page, { enabled: false });
   await page.getByRole("button", { name: /Ada Pedersen/ }).click();
   await expect(page.getByRole("button", { name: "Start auktion", exact: true })).toHaveCount(0);
+  await expect(page.getByTestId("listing-auto-price")).toHaveCount(0);
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 test("seller cannot send a counter at or above the current auto-price", async ({ page }) => {
@@ -174,6 +175,9 @@ test("crossing closing time refreshes Ends before a binding submit", async ({ pa
   await page.clock.setFixedTime(new Date("2026-11-09T22:30:05Z"));
   await dialog.getByRole("button", { name: "Start auktion", exact: true }).click();
   await expect(dialog).toContainText("08.00");
+  await expect(dialog.getByTestId("auto-accept-end-updated")).toHaveText(
+    "Sluttiden er opdateret. Tjek den, og tryk igen."
+  );
   expect(requests).toBe(0);
   await dialog.getByRole("button", { name: "Start auktion", exact: true }).click();
   await expect.poll(() => requests).toBe(1);
@@ -199,4 +203,143 @@ test("owner 10/11: a changed end time shows the server's time and needs a second
   await dialog.getByRole("button", { name: "Start auktion", exact: true }).click();
   await expect.poll(() => bodies.length).toBe(2);
   expect(bodies[1]).toMatchObject({ duration_minutes: 30, expected_end_at: serverEnd });
+});
+
+type Call = { method: string; url: string; body: Record<string, unknown> | null };
+async function setupSeller(
+  page: Page,
+  { enabled = true, listed = false, autoPrice = 600000, putStatus = 200 } = {}
+) {
+  const calls: Call[] = [];
+  await installNetworkMocks(page);
+  await stabilizePage(page);
+  await page.route("**/api/feature-flags", (route) =>
+    json(route, { flags: { auto_accept_enabled: enabled } })
+  );
+  const existing = {
+    id: "own-listing",
+    rider: { id: "rider-1" },
+    seller: TEST_TEAM,
+    asking_price: 200000,
+    auto_accept_price: autoPrice,
+    status: "open",
+  };
+  await page.route("**/api/transfers", (route) => {
+    const request = route.request();
+    if (request.method() === "GET") return json(route, listed ? [existing] : []);
+    if (request.method() !== "POST") return route.fallback();
+    const body = request.postDataJSON();
+    calls.push({ method: "POST", url: request.url(), body });
+    return json(
+      route,
+      { id: "new-listing", rider: { id: "rider-1" }, asking_price: body.asking_price, status: "open" },
+      201
+    );
+  });
+  await page.route("**/api/transfers/*", (route) => {
+    const request = route.request();
+    if (request.method() !== "PATCH") return route.fallback();
+    calls.push({ method: "PATCH", url: request.url(), body: request.postDataJSON() });
+    return json(route, { id: "own-listing", status: "open" });
+  });
+  await page.route("**/api/transfers/*/auto-accept-price", (route) => {
+    const request = route.request();
+    const body = request.postDataJSON();
+    calls.push({ method: "PUT", url: request.url(), body });
+    if (putStatus !== 200) {
+      return json(route, { errorCode: "auto_accept_price_changed", errorParams: { autoAcceptPrice: 650000 } }, putStatus);
+    }
+    return json(route, { listing_id: "x", auto_accept_price: body.auto_accept_price, status: "updated" });
+  });
+  await login(page);
+  await page.goto(listed ? "/riders/rider-1" : "/riders/rider-1?sell=1");
+  return calls;
+}
+test("seller sets an optional auto-price, validated against the asking price", async ({ page }) => {
+  const calls = await setupSeller(page);
+  const price = page.getByTestId("transfer-list-price-input");
+  const auto = page.getByTestId("transfer-list-auto-price-input");
+  await expect(auto).toBeVisible({ timeout: 20000 });
+  await expect(page.getByText(/Byder nogen denne pris eller mere/)).toBeVisible();
+  const submit = page.getByRole("button", { name: "Sæt til salg", exact: true }).last();
+  await price.fill("200000");
+  await auto.fill("199999");
+  await expect(page.getByTestId("transfer-list-auto-price-error")).toHaveText(
+    "Auto-prisen skal være mindst prisen."
+  );
+  await expect(auto).toHaveAttribute("aria-invalid", "true");
+  await expect(submit).toBeDisabled();
+  await auto.fill("200000");
+  await expect(submit).toBeEnabled();
+  await auto.fill("600000");
+  await submit.click();
+  await expect(page.getByText(/På transferlisten for 200\.000/)).toBeVisible();
+  await expect(page.getByTestId("seller-auto-price-status")).toContainText(/Auto-pris 600\.000/);
+  expect(calls.map((c) => c.method)).toEqual(["POST", "PUT"]);
+  expect(calls[0].body).toMatchObject({ asking_price: 200000 });
+  expect(calls[1].url).toContain("/api/transfers/new-listing/auto-accept-price");
+  expect(calls[1].body).toEqual({ auto_accept_price: 600000, expected_auto_accept_price: null });
+});
+test("a failed auto-price save keeps the listing and shows the error", async ({ page }) => {
+  await setupSeller(page, { putStatus: 409 });
+  const auto = page.getByTestId("transfer-list-auto-price-input");
+  await expect(auto).toBeVisible({ timeout: 20000 });
+  await page.getByTestId("transfer-list-price-input").fill("200000");
+  await auto.fill("600000");
+  await page.getByRole("button", { name: "Sæt til salg", exact: true }).last().click();
+  await expect(page.getByText(/Auto-prisen blev ikke gemt/)).toBeVisible();
+  await expect(page.getByText(/På transferlisten for 200\.000/)).toBeVisible();
+});
+test("a changed auto-price from another tab is adopted and needs a second explicit save", async ({ page }) => {
+  const calls = await setupSeller(page, { listed: true, putStatus: 409 });
+  await expect(page.getByText(/På transferlisten for 200.000/)).toBeVisible({ timeout: 20000 });
+  await page.getByRole("button", { name: "Redigér priser", exact: true }).click();
+  await page.getByTestId("transfer-list-auto-price-input").fill("700000");
+  await page.getByRole("button", { name: "Opdatér priser", exact: true }).click();
+  await expect(page.getByText(/Auto-prisen blev ikke gemt/)).toBeVisible();
+  await expect(page.getByTestId("seller-auto-price-status")).toContainText(/Auto-pris 650.000/);
+  await expect(page.getByTestId("transfer-list-auto-price-input")).toBeVisible();
+  await page.getByRole("button", { name: "Opdatér priser", exact: true }).click();
+  await expect.poll(() => calls.filter((c) => c.method === "PUT").length).toBe(2);
+  expect(calls.filter((c) => c.method === "PUT")[1].body).toEqual({ auto_accept_price: 700000, expected_auto_accept_price: 650000 });
+});
+test("seller edits and removes the auto-price on an existing listing", async ({ page }) => {
+  const calls = await setupSeller(page, { listed: true });
+  await expect(page.getByText(/På transferlisten for 200\.000/)).toBeVisible({ timeout: 20000 });
+  await expect(page.getByTestId("seller-auto-price-status")).toContainText(/Auto-pris 600\.000/);
+  await page.getByRole("button", { name: "Redigér priser", exact: true }).click();
+  const auto = page.getByTestId("transfer-list-auto-price-input");
+  await expect(auto).toHaveValue("600000");
+  await expect(page.getByText("En ny auto-pris gælder kun nye bud.")).toBeVisible();
+  // Raising the asking price sets the auto-price first, so the asking price never passes the old one.
+  await page.getByTestId("transfer-list-price-input").fill("250000");
+  await auto.fill("700000");
+  await page.getByRole("button", { name: "Opdatér priser", exact: true }).click();
+  await expect(page.getByTestId("seller-auto-price-status")).toContainText(/Auto-pris 700\.000/);
+  expect(calls.map((c) => c.method)).toEqual(["PUT", "PATCH"]);
+  expect(calls[0].body).toEqual({ auto_accept_price: 700000, expected_auto_accept_price: 600000 });
+  // Empty field removes the auto-price.
+  await page.getByRole("button", { name: "Redigér priser", exact: true }).click();
+  await auto.fill("");
+  await page.getByRole("button", { name: "Opdatér priser", exact: true }).click();
+  await expect(page.getByTestId("seller-auto-price-status")).toHaveCount(0);
+  const last = calls[calls.length - 1];
+  expect(last.method).toBe("PUT");
+  expect(last.body).toEqual({ auto_accept_price: null, expected_auto_accept_price: 700000 });
+});
+test("OFF: the seller form has no auto-price field and the old button label", async ({ page }) => {
+  const calls = await setupSeller(page, { enabled: false, listed: true });
+  await expect(page.getByRole("button", { name: "Redigér pris", exact: true })).toBeVisible({ timeout: 20000 });
+  await page.getByRole("button", { name: "Redigér pris", exact: true }).click();
+  await expect(page.getByTestId("transfer-list-price-input")).toBeVisible();
+  await expect(page.getByTestId("transfer-list-auto-price-input")).toHaveCount(0);
+  await expect(page.getByTestId("seller-auto-price-status")).toHaveCount(0);
+  expect(calls).toHaveLength(0);
+});
+test("the listing shows the auto-price row to everyone when the price is set", async ({ page }) => {
+  await setup(page);
+  await page.getByRole("button", { name: /Ada Pedersen/ }).click();
+  const row = page.getByTestId("listing-auto-price");
+  await expect(row).toContainText("Auto-pris (starter auktion)");
+  await expect(row).toContainText(/600\.000/);
 });
