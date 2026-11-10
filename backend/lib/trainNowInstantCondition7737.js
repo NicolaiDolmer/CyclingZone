@@ -105,7 +105,8 @@ export async function loadInstantConditions({ supabase, riderIds, tickDate, befo
         const recoveryAbility = receipts.find(r => r.report?.recovery_before_date != null)?.report.recovery_before_date;
         const projectedFor = day => {
           if (!projectedLoad || beforeGameDay == null || day >= beforeGameDay || !reserved.has(day)
-            || ledger.some(l => Number(l.game_day) === day)) return null;
+            || ledger.some(l => Number(l.game_day) === day)
+            || receipts.some(r => Number(r.game_day) === day)) return null;
           const value = projectedLoad(id, day);
           return value == null ? null : Number(value);
         };
