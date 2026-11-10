@@ -162,11 +162,15 @@ export function nextFormV2({ form, fatigue, cfg = CONDITION_V2_CONFIG }) {
  * end hvile). Regnet som det højeste udfald over alle roligere udgaver af de frie
  * pladser, så reglen er monoton i hver plads.
  */
-export function settleDateFatigueV2({ fatigue, intensities, raceLoads, recoveryAbility = 50, medicalBonus = 0, raceDateTrainingDay = false, cfg = CONDITION_V2_CONFIG }) {
+// #7737 (ejer 10/11): `pendingRaceSlots[i] === true` = et loebsfelt, hvis loeb endnu ikke er koert.
+// Feltet giver hverken belastning eller restitution, foer loebet er koert; de frie felters
+// andele regnes stadig af alle fem felter, saa aftenens opgoerelse (uden pending) er uaendret.
+export function settleDateFatigueV2({ fatigue, intensities, raceLoads, recoveryAbility = 50, medicalBonus = 0, raceDateTrainingDay = false, cfg = CONDITION_V2_CONFIG, pendingRaceSlots = null }) {
   let f = clamp(finiteOr(fatigue, 0), 0, 100);
   const freeLoads = [];
   intensities.forEach((intensity, index) => {
     if (intensity === "race") {
+      if (pendingRaceSlots?.[index] === true) return;
       f = clamp(f + raceLoads[index] - recoveryV2({ fatigue: f, recoveryAbility, medicalBonus, cfg }), 0, 100);
     } else {
       freeLoads.push(DAILY_TRAINING_CONFIG.fatigueLoad[intensity] ?? 0);
@@ -198,9 +202,9 @@ export function settleDateFatigueV2({ fatigue, intensities, raceLoads, recoveryA
 }
 
 /** v2-udgaven af trainingDateCondition.settleTrainingDateCondition (samme signatur og retur). */
-export function settleTrainingDateConditionV2({ riderId, dateStr, condition, intensities, raceLoads, recoveryAbility = 50, medicalBonus = 0, raceDateTrainingDay = false, riskFatigues = null, cfg = CONDITION_V2_CONFIG }) {
+export function settleTrainingDateConditionV2({ riderId, dateStr, condition, intensities, raceLoads, recoveryAbility = 50, medicalBonus = 0, raceDateTrainingDay = false, riskFatigues = null, cfg = CONDITION_V2_CONFIG, pendingRaceSlots = null }) {
   const preFatigue = Number(condition.fatigue ?? 0);
-  const fatigue = settleDateFatigueV2({ fatigue: preFatigue, intensities, raceLoads, recoveryAbility, medicalBonus, raceDateTrainingDay, cfg });
+  const fatigue = settleDateFatigueV2({ fatigue: preFatigue, intensities, raceLoads, recoveryAbility, medicalBonus, raceDateTrainingDay, cfg, pendingRaceSlots });
   const form = nextFormV2({ form: Number(condition.form ?? 50), fatigue, cfg });
   // Skaderisiko som i v1 (kun hård træning over skadegrænsen, på åbningstrætheden);
   // M2 sænker risikoen, M3 forkorter en skade.

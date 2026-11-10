@@ -25,7 +25,7 @@ export function canonicalRaceLoads(rows) {
   return originals;
 }
 
-export function settleTrainingDateCondition({ riderId, dateStr, condition, intensities, raceLoads = [0, 0, 0, 0, 0], recoveryAbility = 50, recoveryConfig = RACE_DAY_ENGINE_RECOVERY_CONFIG, modelV2 = false, medicalBonus = 0, raceDateTrainingDay = false, riskFatigues = null }) {
+export function settleTrainingDateCondition({ riderId, dateStr, condition, intensities, raceLoads = [0, 0, 0, 0, 0], recoveryAbility = 50, recoveryConfig = RACE_DAY_ENGINE_RECOVERY_CONFIG, modelV2 = false, medicalBonus = 0, raceDateTrainingDay = false, riskFatigues = null, pendingRaceSlots = null }) {
   if (!Array.isArray(intensities) || intensities.length !== 5 || intensities.some((value) => value !== 'race' && value !== 'unknown_pending' && !DAILY_TRAINING_CONFIG.intensities.includes(value))) {
     throw new Error('Daily condition requires five valid activity intensities');
   }
@@ -35,7 +35,8 @@ export function settleTrainingDateCondition({ riderId, dateStr, condition, inten
   // #6984: v2 (condition_model_v2) deler valideringen ovenfor og har samme retur.
   // #7536: raceDateTrainingDay (flag condition_v2_race_date_training_day) virker kun under v2.
   // #7801: riskFatigues (trætheden lige nu før hvert felt) gives kun med fatigue_now_7801; null = åbningen.
-  if (modelV2) return settleTrainingDateConditionV2({ riderId, dateStr, condition, intensities, raceLoads, recoveryAbility, medicalBonus, raceDateTrainingDay, riskFatigues });
+  // #7737: pendingRaceSlots virker kun under v2 (prod); v1 regner datoen samlet og ignorerer den.
+  if (modelV2) return settleTrainingDateConditionV2({ riderId, dateStr, condition, intensities, raceLoads, recoveryAbility, medicalBonus, raceDateTrainingDay, riskFatigues, pendingRaceSlots });
   const preFatigue = Number(condition.fatigue ?? 0);
   const meanLoad = intensities.reduce((total, intensity, index) => total + (DAILY_TRAINING_CONFIG.fatigueLoad[intensity] ?? 0) + raceLoads[index], 0) / intensities.length;
   // Both training and recorded stage load occupy one of the five date slots.
