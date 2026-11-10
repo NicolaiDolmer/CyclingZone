@@ -345,9 +345,10 @@ async function isExtensionBoundaryGateOn6181(supabase) {
     if (error) throw new Error(error.message);
     return (data || []).some((row) => row?.value === true || row?.value === "on");
   } catch (e) {
-    // Ukendt kontakt-tilstand: hold grænsen. Det rammer kun en forlængelse, der
-    // ellers ville krydse sæsonskiftet; grænse-opslaget selv er fail-open.
-    console.error("[auctionEngine] extension boundary flag lookup failed", e?.message || e);
+    // best-effort: ukendt kontakt-tilstand => hold grænsen (fejlen logges). Det
+    // rammer kun en forlængelse, der ellers ville krydse sæsonskiftet; grænse-
+    // opslaget selv er fail-open.
+    console.error("[applyLeaderShiftExtension] boundary flag lookup failed", e?.message || e);
     return true;
   }
 }
