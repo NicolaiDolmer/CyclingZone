@@ -102,6 +102,7 @@
     "auto_accept_invalid_duration": "Choisis entre {minMinutes} minutes et {maxHours} heures de temps actif",
     "auto_accept_invalid_price": "Prix d'acceptation automatique non valide",
     "auto_accept_price_changed": "Le prix d'acceptation automatique a changé. Vérifie le nouveau prix et réessaie",
+    "auto_accept_end_changed": "L'heure de fin de l'enchère a changé. Vérifie la nouvelle heure et confirme à nouveau",
     "auto_accept_not_above_asking": "Le prix d'acceptation automatique doit être supérieur au prix demandé ({askingPrice} CZ$)",
     "auto_accept_squad_full": "Ton équipe n'a aucune place libre ({maxRiders} coureurs, en comptant les enchères que tu mènes)",
     "auto_accept_seller_squad_floor": "Le vendeur ne peut pas descendre sous {minRiders} coureurs pour le moment, le coureur ne peut donc pas partir aux enchères",

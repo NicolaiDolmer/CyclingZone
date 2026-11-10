@@ -11,7 +11,7 @@ import {
   getTeamMarketState,
 } from "./marketUtils.js";
 import { fetchAtRiskCount } from "./squadRiskGuard.js";
-import { countSellerAuctionOutgoing, claimTransferUnderTeamLock, claimSwapUnderTeamLock } from "./autoAccept2176.js"; // #2176
+import { countSellerAuctionOutgoing, claimTransferUnderTeamLock, claimSwapUnderTeamLock, checkAutoAcceptMutation, getOfferAutoAcceptIssue } from "./autoAccept2176.js"; // #2176
 import { applyTransferMarketCommitment6181 } from "./marketCommitment6181.js";
 import { shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.ts";
@@ -579,8 +579,9 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   const lockedClaim = priorSaleEscrow === "refunded" ? null : await claimTransferUnderTeamLock(supabase, {
     riderId: rider.id, sellerTeamId: offer.seller_team_id, buyerTeamId: offer.buyer_team_id,
     deferRegistration, now, acquirePatch: { ...transferContractPatch, ...graduatePatch },
-    activeSeasonNumber, maxRiders: buyerState.squad_limits.max,
+    activeSeasonNumber, maxRiders: buyerState.squad_limits.max, price,
   });
+  if (lockedClaim?.boundary) return failure(409, undefined, "offer_at_auto_accept_price", { errorParams: lockedClaim.boundary.body.errorParams });
   if (lockedClaim?.issue) {
     const claimIssue = lockedClaim.issue;
     const message = describeTransferIssue(claimIssue, { rider, buyerState, sellerState });
@@ -1171,13 +1172,17 @@ export async function confirmTransferOffer({
     return failure(400, "Du har allerede bekræftet", "already_confirmed");
   }
 
+  const boundaryIssue = await getOfferAutoAcceptIssue(supabase, { riderId: offer.rider_id, offerAmount: getTransferPrice(offer) });
+  if (boundaryIssue) return failure(boundaryIssue.status, boundaryIssue.body.error, boundaryIssue.body.errorCode, { errorParams: boundaryIssue.body.errorParams });
+
   const updatedFields = isSeller
     ? { seller_confirmed: true }
     : { buyer_confirmed: true };
 
-  await expectMutation(
+  const boundaryWrite = await checkAutoAcceptMutation(
     supabase.from("transfer_offers").update(updatedFields).eq("id", offer.id)
   );
+  if (boundaryWrite) return failure(409, boundaryWrite.body.error, boundaryWrite.body.errorCode, { errorParams: boundaryWrite.body.errorParams });
 
   const confirmedOffer = { ...offer, ...updatedFields };
   const nowSellerConfirmed = Boolean(confirmedOffer.seller_confirmed);
@@ -1211,7 +1216,7 @@ export async function confirmTransferOffer({
   // fleretape-løb; så parkeres selve holdskiftet på pending_team_id og flushes
   // når løbet finaliseres (attribution: hele det aktive løb tilhører sælgeren).
   const deferRegistration = await shouldDeferTeamChange(supabase, [offer.rider_id]);
-  return executeTransferOffer(supabase, confirmedOffer, {
+  const result = await executeTransferOffer(supabase, confirmedOffer, {
     logActivity,
     notifyTeamOwner,
     notifyDiscordHistory,
@@ -1219,6 +1224,22 @@ export async function confirmTransferOffer({
     deferRegistration,
     now,
   });
+  if (!result.ok && result.code === "offer_at_auto_accept_price") {
+    // Reuse the existing terminal withdrawal semantics. This single conditional
+    // UPDATE is a transaction/CAS: only the exact confirmed financial terms
+    // rejected above may be withdrawn. Never overwrite a concurrent new counter,
+    // cancellation, execution, ownership context or confirmation change.
+    let recovery = supabase.from("transfer_offers").update({status:"withdrawn"})
+      .eq("id",confirmedOffer.id).eq("status","awaiting_confirmation")
+      .eq("buyer_confirmed",true).eq("seller_confirmed",true)
+      .eq("rider_id",confirmedOffer.rider_id)
+      .eq("seller_team_id",confirmedOffer.seller_team_id).eq("buyer_team_id",confirmedOffer.buyer_team_id)
+      .eq("offer_amount",confirmedOffer.offer_amount);
+    recovery = confirmedOffer.counter_amount == null ? recovery.is("counter_amount",null)
+      : recovery.eq("counter_amount",confirmedOffer.counter_amount);
+    await expectMutation(recovery);
+  }
+  return result;
 }
 
 export async function confirmSwapOffer({

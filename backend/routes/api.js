@@ -149,7 +149,7 @@ import {
 import * as transferNotif from "../lib/transferNotifications.js";
 import { withdrawCounterOffer, claimCounterForAccept, buildCounterOfferWithdrawnNotification } from "../lib/counterOfferWithdraw.js"; // #6463
 import { getParkedRiderReleaseIssue, getParkedRiderTradeIssue } from "../lib/parkedRiderGuard6181.js"; // #6181
-import { countSellerAuctionOutgoing, getListingPriceUpdateErrorResponse, getOfferAutoAcceptIssue, registerAutoAcceptRoutes, releaseRiderUnderTeamLock } from "../lib/autoAccept2176.js"; // #2176
+import { countSellerAuctionOutgoing, checkAutoAcceptMutation, isAutoAcceptEnabled, getListingPriceUpdateErrorResponse, getOfferAutoAcceptIssue, registerAutoAcceptRoutes, releaseRiderUnderTeamLock } from "../lib/autoAccept2176.js"; // #2176
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
 import {
   notifyNewAuction,
@@ -3241,9 +3241,9 @@ router.get("/training/me", requireAuth, async (req, res) => {
       const fatigue = outlook ? outlook.fatigue : row.fatigue;
       const risk = injuryRisk({ intensity: program.intensity, fatigue: Number(fatigue ?? 0) });
       condition[row.rider_id] = {
-        form: row.form,
+        form: outlook?.form ?? row.form,
         fatigue,
-        ...(fatigueOutlook ? { fatigue_at_start: outlook?.fatigueAtStart ?? null } : {}),
+        ...(outlook ? { fatigue_at_start: outlook.fatigueAtStart ?? null } : {}),
         injured_until: row.injured_until ?? null,
         // #5462: resterende LOEBSDAGE inkl. i dag. null = skaden ejes af
         // kalenderdagen (flag off, eller skrevet foer flippet).
@@ -8492,13 +8492,14 @@ router.get("/transfers/feed", requireAuth, presencePulseLimiter, async (req, res
 // GET /api/transfers — market listings + my offers
 router.get("/transfers", requireAuth, async (req, res) => {
   const { status = "open" } = req.query;
+  const autoAccept = await isAutoAcceptEnabled(supabase);
   const { data, error } = await supabase
     .from("transfer_listings")
-    .select(`id, asking_price, status, created_at,
+    .select(`id, asking_price, status, created_at, ${autoAccept ? "auto_accept_price," : ""}
       rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, current_production_value, is_u25, nationality_code, birthdate, salary, primary_type, secondary_type,
         rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
       seller:seller_team_id(id, name)`)
-    .eq("status", status)
+    .in("status", autoAccept && status === "open" ? ["open", "negotiating"] : [status])
     .order("created_at", { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
@@ -8977,6 +8978,13 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
     return res.json({ success: true, action: "archived" });
   }
 
+  // The SQL trigger and final claim repeat this current boundary under locks.
+  if (["counter", "accept", "accept_counter"].includes(action)) {
+    const boundaryAmount = action === "counter" ? counter_amount : offer.counter_amount || offer.offer_amount;
+    const boundaryIssue = await getOfferAutoAcceptIssue(supabase, { riderId: offer.rider_id, offerAmount: boundaryAmount });
+    if (boundaryIssue) return res.status(boundaryIssue.status).json(boundaryIssue.body);
+  }
+
   // ACCEPT — seller accepts buyer's offer → awaiting buyer confirmation
   if (action === "accept" && isSeller && offer.status === "pending") {
     const price = offer.counter_amount || offer.offer_amount;
@@ -9003,11 +9011,12 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
     if (!buyer || buyer.balance < price)
       return res.status(400).json({ error: "The buyer can't afford this", errorCode: "buyer_cannot_afford" });
 
-    await supabase.from("transfer_offers").update({
+    const boundaryWrite = await checkAutoAcceptMutation(supabase.from("transfer_offers").update({
       status: "awaiting_confirmation",
       seller_confirmed: true,
       buyer_confirmed: false,
-    }).eq("id", offer.id);
+    }).eq("id", offer.id));
+    if (boundaryWrite) return res.status(boundaryWrite.status).json(boundaryWrite.body);
 
     await notifyTeamOwnerBuilt(offer.buyer_team_id, transferNotif.buildTransferOfferAcceptedNotification({
       sellerName: req.team.name, riderName: `${offer.rider.firstname} ${offer.rider.lastname}`,
@@ -9052,12 +9061,13 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
 
   // COUNTER — seller sends counteroffer
   if (action === "counter" && isSeller && counter_amount) {
-    await supabase.from("transfer_offers").update({
+    const boundaryWrite = await checkAutoAcceptMutation(supabase.from("transfer_offers").update({
       status: "countered",
       counter_amount,
       message: message || offer.message,
       round: (offer.round || 1) + 1,
-    }).eq("id", offer.id);
+    }).eq("id", offer.id));
+    if (boundaryWrite) return res.status(boundaryWrite.status).json(boundaryWrite.body);
     await notifyTeamOwnerBuilt(offer.buyer_team_id, transferNotif.buildTransferCounterNotification({
       counterName: req.team.name, riderName: `${offer.rider.firstname} ${offer.rider.lastname}`,
       counterAmount: counter_amount, riderId: offer.rider.id,
@@ -9112,7 +9122,11 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
       buyer_confirmed: true,
       seller_confirmed: false,
     } });
-    if (!claim.ok) return res.status(claim.status).json({ error: claim.error, errorCode: claim.errorCode });
+    if (!claim.ok) {
+      const boundaryIssue = await getOfferAutoAcceptIssue(supabase, { riderId: offer.rider_id, offerAmount: price });
+      if (boundaryIssue) return res.status(boundaryIssue.status).json(boundaryIssue.body);
+      return res.status(claim.status).json({ error: claim.error, errorCode: claim.errorCode });
+    }
 
     await notifyTeamOwnerBuilt(offer.seller_team_id, transferNotif.buildTransferCounterAcceptedNotification({
       buyerName: req.team.name, riderName: `${offer.rider.firstname} ${offer.rider.lastname}`,

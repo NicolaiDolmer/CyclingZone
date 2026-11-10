@@ -161,6 +161,7 @@ test("preview-mocken svarer med praecis backendens allowlist (ingen drift i kopi
   assert.ok(res, "preview-mocken svarer ikke paa GET /api/feature-flags");
   const body = await res.json();
   assert.deepEqual(Object.keys(body.flags).sort(), [...PLAYER_VISIBLE_FLAG_KEYS].sort());
+  assert.equal(body.flags.auto_accept_enabled, false, "auto-accept stays off in the default preview");
   for (const value of Object.values(body.flags)) assert.equal(typeof value, "boolean");
   // Admin-ruten maa ikke fanges af spiller-ruten.
   const admin = await betaAccessMockRoute("https://preview.example/api/admin/feature-flags", "GET").json();

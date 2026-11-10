@@ -43,6 +43,15 @@ Et løbs taktiske regler bindes ved løbets første etape-claim og ændres aldri
 
 Når `condition_model_v2` er on OG løbet er bundet til `s5_profiles_v2` eller senere, starter en rytter en etape med trætheden efter datoens tidligere etaper: åbningen (`rider_condition`) plus datoens endnu ikke afregnede belastninger fra ledgeren (`training_race_loads`, samme `tick_date`, tidligere `game_day`, `consumed_at` null), regnet med v2's døgnregnestykke. Kode: `raceFatigue.applySameDateEnteringFatigueV2`, kaldt i stage-runneren før simuleringen. Kun motorens input ændres; afregningen om aftenen er uændret (TRAINING_RULES §5.3b). Andre revisioner og flag off = uændret.
 
+Stamped-date exception (#7737 PR2): a durable instant Train now stamp uses
+the frozen date opening, completed training receipts and canonical prior-stage
+loads for both form and fatigue, independently of the old revision/model gate
+above and even after the instant switch is turned off. Before entrant abilities
+are loaded, the automatic stage path resumes any interrupted free-slot writes
+through the existing training engine and receipt CAS. It never trains a reserved
+stage slot or creates a new freeze. Existing simulation snapshots remain frozen.
+Unstamped riders retain the gate above. See [TRAINING_RULES, Instant train-now PR2](TRAINING_RULES.md#instant-train-now-pr2-stage-input-and-existing-displays).
+
 ### Medicin på etapens styrtskader (#6984 M2/M3, **slukket**)
 
 Under `condition_model_v2` ændrer holdets medicinske afdeling motorens skadeudfald, ikke motoren: når etapens belastnings-snapshot fryses, fryses holdets medicin-bonus med (`medical_bonus` pr. rytter), og et seedet rul pr. rytter og etape gør en styrtskade til et styrt uden skade eller forkorter den. Ét skridt på hele outputtet, så `race_incidents`, `rider_condition`-skaden og tidslinjens `incident`-events bærer samme skadelængde; et genoptaget trin genbruger den frosne bonus. Styrtet og udfaldet (udgået) bevares. Kode: `raceRunner.applyFrozenMedical`, `medicalEffects.applyMedicalToStageOutputs`. Flag off eller hold uden afdeling = uændret.

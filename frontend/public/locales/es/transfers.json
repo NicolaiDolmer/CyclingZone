@@ -342,5 +342,23 @@
     "over": "{pct} % por encima del valor est.",
     "at": "Cerca del valor est.",
     "title": "Valor de mercado estimado: {amount} CZ$. Es una estimación de un modelo, no un precio garantizado."
+  },
+  "autoAccept": {
+    "listPrice": "Precio de lista",
+    "autoPrice": "Precio automático",
+    "buyerOffer": "Oferta del comprador",
+    "counterBoundary": "Las ofertas desde {price} pasan por una subasta abierta.",
+    "onlyBuyer": "Solo el comprador puede iniciarla.",
+    "start": "Iniciar subasta",
+    "bid": "Tu puja (CZ$)",
+    "minimum": "Al menos {price}",
+    "duration": "Duración",
+    "durationHint": "De 30 min a 24 horas. El tiempo cuenta de {open} a {close}.",
+    "ends": "Termina",
+    "binding": "Tu puja bloquea el dinero mientras vayas en cabeza.",
+    "cancel": "Cancelar",
+    "hours": "horas",
+    "minutes": "min",
+    "sendCounter": "Enviar"
   }
 }

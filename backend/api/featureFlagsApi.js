@@ -26,6 +26,7 @@
 // Evalueringen er featureStage.js' evaluateFlagStage, praecis
 // som de tre *Flag.js-moduler bag noeglerne, saa svaret ikke kan afvige fra
 // det serveren selv beslutter for den samme viewer.
+import { isMarketCommitment6181On } from "../lib/marketCommitment6181.js";
 import express from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { evaluateFlagStage } from "../lib/featureStage.js";
@@ -100,6 +101,10 @@ export async function readPlayerFeatureFlags(supabase, { isBetaTester = false, r
         reportError(error, { tags: { route: "/feature-flags", read: "condition_model_v2" } });
       }
     }
+  }
+  if (flags.auto_accept_enabled) {
+    try { flags.auto_accept_enabled = await isMarketCommitment6181On(supabase); }
+    catch (error) { flags.auto_accept_enabled = false; reportError(error, { tags: { route: "/feature-flags", read: "market_commitment_6181" } }); }
   }
   return flags;
 }

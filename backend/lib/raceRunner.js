@@ -93,7 +93,7 @@ import { buildStageTimeline, buildStageTimelineV4 } from "./raceTimeline.js";
 import { raceSeedInput, activeSaltVersion } from "./raceSeedSalt.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRaceFatigue, attachConditionWork, conditionWorkForRun, raceConditionLoads, stageConditionWork, stageEnteringFatigues, loadSeasonRaceDaysByRider, applySameDateEnteringFatigueV2, applyGrandTourRestDayFatigue as applyGrandTourRestDayFatigueShared } from "./raceFatigue.js";
-import { fatigueByRiderNow, firstStageNumber } from "./riderFatigueNow.js"; // #7801
+import { fatigueByRiderNow, firstStageNumber, loadStageStartAt } from "./riderFatigueNow.js"; // #7801, #7737
 import { isConditionModelV2Enabled } from "./conditionModelV2Flag.js";
 import { applyMedicalToStageOutputs, loadMedicalBonusByTeam, loadMedicalBonusForRiders } from "./medicalEffects.js";
 import {
@@ -136,7 +136,8 @@ import { POOL_TARGET_SIZE } from "./economyConstants.js";
 import { loadWithdrawnTeamIds, releaseTeamsThatDidNotStart, reconcileDidNotStartReleases } from "./raceWithdrawal.js";
 import { loadClearedTeamIds } from "./raceEntryClears.js";
 import { floorAwareRescueCap, loadSameDaySiblingNeeds } from "./raceDayFloorPlan.js"; // #7339
-import { loadRaceTrainNowLock } from "./trainNowLock.js"; // #6006/#6139
+import { recoverInstantTrainingBeforeStage } from "./trainNowInstantRecovery7737.js";
+import { loadRaceTrainNowLock, loadTrainNowInstantRiderIds } from "./trainNowLock.js"; // #6006/#6139, #7737
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
 import { captureException } from "./sentry.js";
 import { createEngineInputRecorder, runRecordedEngineCall, persistEngineInputSnapshots } from "./engineInputSnapshot1857.js"; // #1857
@@ -145,7 +146,7 @@ import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivi
   addRidersByTeam, startDayOverlapRiderIds, teamStartsShortOnOverlap, overlapShortTeamIds, overlapRuleApplies, startDaySpentRiderIds } from "./raceFieldIntegrity.js"; // #6739
 import { loadStartDaySpentRiderIds } from "./raceStartOutlook.js"; // #6739
 import { applyRiderEligibilityFilter, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury, raceSquadOf, ANY_SQUAD, loadRaceSeasonNumber } from "./riderEligibility.js";
-import { fetchAllRows } from "./supabasePagination.js";
+import { fetchAllRows, SUPABASE_IN_CHUNK_SIZE } from "./supabasePagination.js";
 import { loadSpentRaceDays } from './raceSpentDays.js';
 import { isMissingSquadColumnError } from "./racePoolCatalog.js";
 // #5675 (Y7-opfølgning): ungdomsstillingen genberegnes samme sted som senior-
@@ -2709,6 +2710,19 @@ export async function simulateRace({
     supabase, race, stages, persist: !dryRun, onTeamsDropped: (ids) => droppedAtStart.push(...ids),
   });
   if (!entrants.length) throw new Error(`No start list for race ${race.id}`);
+  // #7737 (foer taending): den fulde kørsel har hverken genoptagelse af et afbrudt tryk eller
+  // motorens rekonstruktion af en stemplet rytters tilstand. Fail-closed som ved flere etaper
+  // under condition_model_v2: kør løbet etape for etape, som håndterer begge.
+  if (trainingOwnsRecovery) {
+    const start = await loadStageStartAt({ supabase, raceId: race.id, stageNumber: firstStageNumber(stages) });
+    const tickDate = copenhagenDateString(start?.now ?? new Date());
+    const ids = entrants.map((e) => e.rider_id);
+    let stamped = 0;
+    for (let i = 0; i < ids.length; i += SUPABASE_IN_CHUNK_SIZE) {
+      stamped += (await loadTrainNowInstantRiderIds({ supabase, tickDate, riderIds: ids.slice(i, i + SUPABASE_IN_CHUNK_SIZE) })).size;
+    }
+    if (stamped) throw new Error('train-now instant: full simulation is not supported for riders who pressed Train now; run the race stage by stage');
+  }
 
   const racePoints = await loadRacePoints(supabase, race.race_class);
   const pointsLookup = buildRacePointsLookup({ racePoints, raceType: race.race_type });
@@ -3402,6 +3416,7 @@ export async function simulateStageByIndex({
   supabase,
   race,
   stageIndex,
+  now = new Date(),
   dryRun = false,
   runSource = null,
   // #1598: result-write (counter + race_results delete+insert) går nu via den atomære
@@ -3659,6 +3674,11 @@ export async function simulateStageByIndex({
   if (!finalizationPending) {
     // #7733: kun et loeb stemplet ved start har det laaste felt. En laesefejl kaster, saa etapen venter.
     const startedFieldLock = stageIndex > 0 && await readStartedFieldLock7733({ supabase, race }) === true;
+    // Finish a durably interrupted press before entrants/abilities are loaded.
+    if (trainingOwnsRecovery && !dryRun) await recoverInstantTrainingBeforeStage({
+      supabase, raceId: race.id, stageNumber, seasonId: race.season_id,
+      seasonNumber: seasonBefore?.number, now,
+    });
     // #1844: auto-fyld KUN ved etape 1. Senere etaper må ikke tilføje nye ryttere.
     entrants = await loadEntrantsForRace({
       supabase, race, stages, persist: persistEntries, allowAutofill: stageIndex === 0,
@@ -3791,6 +3811,9 @@ export async function simulateStageByIndex({
     if (trainingOwnsRecovery && isS5ProfilesV2OrLater(rulesRevision) && await isConditionModelV2Enabled(supabase)) {
       const medicalBonusByTeam = await loadMedicalBonusByTeam(supabase, entrants.map((e) => e.team_id), { retryOnTransient: true });
       await applySameDateEnteringFatigueV2({ supabase, raceId: race.id, stageNumber, entrants, medicalBonusByTeam });
+    } else if (trainingOwnsRecovery) {
+      // A durable instant press keeps its date semantics across switch changes.
+      await applySameDateEnteringFatigueV2({ supabase, raceId: race.id, stageNumber, entrants, instantOnly: true });
     }
 
     const engineInputRecorder = dryRun ? null : createEngineInputRecorder({ raceId: race.id }); // #1857

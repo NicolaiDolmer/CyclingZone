@@ -102,6 +102,7 @@
     "auto_accept_invalid_duration": "Choose between {minMinutes} minutes and {maxHours} hours of active time",
     "auto_accept_invalid_price": "Invalid auto-accept price",
     "auto_accept_price_changed": "The auto-accept price has changed. Check the new price and try again",
+    "auto_accept_end_changed": "The auction end time changed. Check the new time and confirm again",
     "auto_accept_not_above_asking": "The auto-accept price must be above the asking price ({askingPrice} CZ$)",
     "auto_accept_squad_full": "Your squad has no free place ({maxRiders} riders, counting the auctions you lead)",
     "auto_accept_seller_squad_floor": "The seller can't drop below {minRiders} riders right now, so the rider can't go to auction",

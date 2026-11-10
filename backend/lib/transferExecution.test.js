@@ -620,7 +620,7 @@ function makeSupabase(db, { claimTransfer = null, claimSwap = null, beforeRiderU
           .map(auction => auction.rider_id);
         return Promise.resolve({ data: ids, error: null });
       }
-      if (name === "auto_accept_claim_transfer" && claimTransfer) {
+      if (name === "auto_accept_claim_transfer_at_price" && claimTransfer) {
         return Promise.resolve({ data: claimTransfer(params), error: null });
       }
       if (name === "auto_accept_claim_swap" && claimSwap) {
@@ -1711,4 +1711,49 @@ test("#4619: confirmSwapOffer sætter squad='senior' på BEGGE byttede ungdomsry
   assert.equal(movedOffered.squad, "senior", "junior-rytteren lander som senior hos modtageren");
   assert.equal(movedRequested.is_academy, false);
   assert.equal(movedRequested.squad, "senior", "U23-rytteren lander som senior hos den oprindelige ejer");
+});
+
+
+test("#2176: current auto-price conflict at atomic execution moves no rider and pays no money", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  db.app_config = [{ key: "auto_accept_enabled", value: "on" }];
+  db.transfer_offers.push({ id: "boundary", rider_id: "rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
+    offer_amount: 200, status: "awaiting_confirmation", buyer_confirmed: false, seller_confirmed: true });
+  const client = makeSupabase(db, { claimTransfer: params => {
+    assert.equal(params.p_price, 200);
+    return { status: "offer_at_auto_accept_price", auto_accept_price: 200, listing_id: "listing" };
+  } });
+  const result = await confirmTransferOffer({ supabase: client, offerId: "boundary", confirmingTeamId: "buyer",
+    now: new Date("2026-11-09T10:00:00Z") });
+  assert.equal(result.ok, false);
+  assert.equal(result.code, "offer_at_auto_accept_price");
+  assert.equal(db.riders.find(r => r.id === "rider-1").team_id, "seller");
+  assert.equal(client._finance.length, 0);
+  assert.equal(db.transfer_offers.find(row => row.id === "boundary").status,"withdrawn");
+  const retry = await confirmTransferOffer({supabase:client,offerId:"boundary",confirmingTeamId:"buyer",now:new Date("2026-11-09T10:00:01Z")});
+  assert.equal(retry.code,"not_awaiting_confirmation");
+  assert.equal(client._finance.length,0);
+});
+
+
+test("#2176: boundary recovery preserves a concurrently changed negotiation",async()=>{
+  for (const changed of [
+    {status:"countered",counter_amount:150,buyer_confirmed:false,seller_confirmed:false},
+    {status:"awaiting_confirmation",counter_amount:150,buyer_confirmed:true,seller_confirmed:true},
+    {status:"awaiting_confirmation",offer_amount:201,buyer_confirmed:true,seller_confirmed:true},
+  ]) {
+    const db=baseDb({windowStatus:"open"});
+    db.app_config=[{key:"auto_accept_enabled",value:"on"}];
+    const offer={id:"boundary-race",rider_id:"rider-1",seller_team_id:"seller",buyer_team_id:"buyer",offer_amount:200,counter_amount:null,status:"awaiting_confirmation",buyer_confirmed:false,seller_confirmed:true};
+    db.transfer_offers.push(offer);
+    const client=makeSupabase(db,{claimTransfer:()=>{
+      Object.assign(offer,changed);
+      return {status:"offer_at_auto_accept_price",auto_accept_price:200,listing_id:"listing"};
+    }});
+    const result=await confirmTransferOffer({supabase:client,offerId:offer.id,confirmingTeamId:"buyer",now:new Date("2026-11-09T10:00:00Z")});
+    assert.equal(result.code,"offer_at_auto_accept_price");
+    for (const [key,value] of Object.entries(changed)) assert.equal(offer[key],value);
+    assert.equal(client._finance.length,0);
+    assert.equal(db.riders.find(row=>row.id==="rider-1").team_id,"seller");
+  }
 });

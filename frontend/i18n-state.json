@@ -33084,6 +33084,70 @@
         "valueDelta.title": {
           "srcHash": "82663995aeeceba3",
           "status": "reviewed"
+        },
+        "autoAccept.start": {
+          "srcHash": "0444fa52558fbf56",
+          "status": "reviewed"
+        },
+        "autoAccept.bid": {
+          "srcHash": "22b7ffd7a678f3a8",
+          "status": "reviewed"
+        },
+        "autoAccept.minimum": {
+          "srcHash": "993c760ec6439ac2",
+          "status": "reviewed"
+        },
+        "autoAccept.duration": {
+          "srcHash": "4fc52a3c4c558b51",
+          "status": "reviewed"
+        },
+        "autoAccept.hours": {
+          "srcHash": "404314b1f4bd8fa2",
+          "status": "reviewed"
+        },
+        "autoAccept.minutes": {
+          "srcHash": "1f6fa6f69d185e60",
+          "status": "reviewed"
+        },
+        "autoAccept.durationHint": {
+          "srcHash": "43e8743f8f9c4572",
+          "status": "reviewed"
+        },
+        "autoAccept.ends": {
+          "srcHash": "e98982c9f2ba3332",
+          "status": "reviewed"
+        },
+        "autoAccept.binding": {
+          "srcHash": "50106bdafa1c7b52",
+          "status": "reviewed"
+        },
+        "autoAccept.cancel": {
+          "srcHash": "19766ed6ccb2f4a3",
+          "status": "reviewed"
+        },
+        "autoAccept.counterBoundary": {
+          "srcHash": "21dbe1f131748ecb",
+          "status": "reviewed"
+        },
+        "autoAccept.onlyBuyer": {
+          "srcHash": "9ed8fc2799ddf738",
+          "status": "reviewed"
+        },
+        "autoAccept.listPrice": {
+          "srcHash": "5d5835fd6adc9d36",
+          "status": "reviewed"
+        },
+        "autoAccept.autoPrice": {
+          "srcHash": "f2a7eeb30a94e72d",
+          "status": "reviewed"
+        },
+        "autoAccept.buyerOffer": {
+          "srcHash": "5e194239ce7d38de",
+          "status": "reviewed"
+        },
+        "autoAccept.sendCounter": {
+          "srcHash": "f6f4688ff23d50c6",
+          "status": "reviewed"
         }
       },
       "watchlist": {
@@ -33213,6 +33277,210 @@
         },
         "auctionStarted": {
           "srcHash": "eac1e6a9368f4ffe",
+          "status": "reviewed"
+        }
+      }
+    },
+    "es": {
+      "transfers": {
+        "autoAccept.start": {
+          "srcHash": "0444fa52558fbf56",
+          "status": "reviewed"
+        },
+        "autoAccept.bid": {
+          "srcHash": "22b7ffd7a678f3a8",
+          "status": "reviewed"
+        },
+        "autoAccept.minimum": {
+          "srcHash": "993c760ec6439ac2",
+          "status": "reviewed"
+        },
+        "autoAccept.duration": {
+          "srcHash": "4fc52a3c4c558b51",
+          "status": "reviewed"
+        },
+        "autoAccept.hours": {
+          "srcHash": "404314b1f4bd8fa2",
+          "status": "reviewed"
+        },
+        "autoAccept.minutes": {
+          "srcHash": "1f6fa6f69d185e60",
+          "status": "reviewed"
+        },
+        "autoAccept.durationHint": {
+          "srcHash": "43e8743f8f9c4572",
+          "status": "reviewed"
+        },
+        "autoAccept.ends": {
+          "srcHash": "e98982c9f2ba3332",
+          "status": "reviewed"
+        },
+        "autoAccept.binding": {
+          "srcHash": "50106bdafa1c7b52",
+          "status": "reviewed"
+        },
+        "autoAccept.cancel": {
+          "srcHash": "19766ed6ccb2f4a3",
+          "status": "reviewed"
+        },
+        "autoAccept.counterBoundary": {
+          "srcHash": "21dbe1f131748ecb",
+          "status": "reviewed"
+        },
+        "autoAccept.onlyBuyer": {
+          "srcHash": "9ed8fc2799ddf738",
+          "status": "reviewed"
+        },
+        "autoAccept.listPrice": {
+          "srcHash": "5d5835fd6adc9d36",
+          "status": "reviewed"
+        },
+        "autoAccept.autoPrice": {
+          "srcHash": "f2a7eeb30a94e72d",
+          "status": "reviewed"
+        },
+        "autoAccept.buyerOffer": {
+          "srcHash": "5e194239ce7d38de",
+          "status": "reviewed"
+        },
+        "autoAccept.sendCounter": {
+          "srcHash": "f6f4688ff23d50c6",
+          "status": "reviewed"
+        }
+      }
+    },
+    "fr": {
+      "transfers": {
+        "autoAccept.start": {
+          "srcHash": "0444fa52558fbf56",
+          "status": "reviewed"
+        },
+        "autoAccept.bid": {
+          "srcHash": "22b7ffd7a678f3a8",
+          "status": "reviewed"
+        },
+        "autoAccept.minimum": {
+          "srcHash": "993c760ec6439ac2",
+          "status": "reviewed"
+        },
+        "autoAccept.duration": {
+          "srcHash": "4fc52a3c4c558b51",
+          "status": "reviewed"
+        },
+        "autoAccept.hours": {
+          "srcHash": "404314b1f4bd8fa2",
+          "status": "reviewed"
+        },
+        "autoAccept.minutes": {
+          "srcHash": "1f6fa6f69d185e60",
+          "status": "reviewed"
+        },
+        "autoAccept.durationHint": {
+          "srcHash": "43e8743f8f9c4572",
+          "status": "reviewed"
+        },
+        "autoAccept.ends": {
+          "srcHash": "e98982c9f2ba3332",
+          "status": "reviewed"
+        },
+        "autoAccept.binding": {
+          "srcHash": "50106bdafa1c7b52",
+          "status": "reviewed"
+        },
+        "autoAccept.cancel": {
+          "srcHash": "19766ed6ccb2f4a3",
+          "status": "reviewed"
+        },
+        "autoAccept.counterBoundary": {
+          "srcHash": "21dbe1f131748ecb",
+          "status": "reviewed"
+        },
+        "autoAccept.onlyBuyer": {
+          "srcHash": "9ed8fc2799ddf738",
+          "status": "reviewed"
+        },
+        "autoAccept.listPrice": {
+          "srcHash": "5d5835fd6adc9d36",
+          "status": "reviewed"
+        },
+        "autoAccept.autoPrice": {
+          "srcHash": "f2a7eeb30a94e72d",
+          "status": "reviewed"
+        },
+        "autoAccept.buyerOffer": {
+          "srcHash": "5e194239ce7d38de",
+          "status": "reviewed"
+        },
+        "autoAccept.sendCounter": {
+          "srcHash": "f6f4688ff23d50c6",
+          "status": "reviewed"
+        }
+      }
+    },
+    "nl": {
+      "transfers": {
+        "autoAccept.start": {
+          "srcHash": "0444fa52558fbf56",
+          "status": "reviewed"
+        },
+        "autoAccept.bid": {
+          "srcHash": "22b7ffd7a678f3a8",
+          "status": "reviewed"
+        },
+        "autoAccept.minimum": {
+          "srcHash": "993c760ec6439ac2",
+          "status": "reviewed"
+        },
+        "autoAccept.duration": {
+          "srcHash": "4fc52a3c4c558b51",
+          "status": "reviewed"
+        },
+        "autoAccept.hours": {
+          "srcHash": "404314b1f4bd8fa2",
+          "status": "reviewed"
+        },
+        "autoAccept.minutes": {
+          "srcHash": "1f6fa6f69d185e60",
+          "status": "reviewed"
+        },
+        "autoAccept.durationHint": {
+          "srcHash": "43e8743f8f9c4572",
+          "status": "reviewed"
+        },
+        "autoAccept.ends": {
+          "srcHash": "e98982c9f2ba3332",
+          "status": "reviewed"
+        },
+        "autoAccept.binding": {
+          "srcHash": "50106bdafa1c7b52",
+          "status": "reviewed"
+        },
+        "autoAccept.cancel": {
+          "srcHash": "19766ed6ccb2f4a3",
+          "status": "reviewed"
+        },
+        "autoAccept.counterBoundary": {
+          "srcHash": "21dbe1f131748ecb",
+          "status": "reviewed"
+        },
+        "autoAccept.onlyBuyer": {
+          "srcHash": "9ed8fc2799ddf738",
+          "status": "reviewed"
+        },
+        "autoAccept.listPrice": {
+          "srcHash": "5d5835fd6adc9d36",
+          "status": "reviewed"
+        },
+        "autoAccept.autoPrice": {
+          "srcHash": "f2a7eeb30a94e72d",
+          "status": "reviewed"
+        },
+        "autoAccept.buyerOffer": {
+          "srcHash": "5e194239ce7d38de",
+          "status": "reviewed"
+        },
+        "autoAccept.sendCounter": {
+          "srcHash": "f6f4688ff23d50c6",
           "status": "reviewed"
         }
       }

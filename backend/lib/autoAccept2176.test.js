@@ -9,12 +9,15 @@ import assert from "node:assert/strict";
 
 import {
   AUTO_ACCEPT_FLAG_KEY,
+  registerAutoAcceptRoutes,
+  checkAutoAcceptMutation,
   isAutoAcceptEnabled,
   claimTransferUnderTeamLock,
   claimSwapUnderTeamLock,
   getListingPriceUpdateErrorResponse,
   notifyAutoAcceptWatchers,
   autoAcceptAuctionEnd,
+  autoAcceptEndMatches,
   autoAcceptRouteGate,
   countSellerAuctionOutgoing,
   getAutoAcceptDurationIssue,
@@ -326,17 +329,19 @@ test("taendt: start-handleren sender aktiv-tid-sluttid, trup-loft, gulv og risik
     announce: async () => { announced = true; },
   });
   const res = fakeRes();
-  await handler({ params: { id: "L1" }, body: { expected_rider_id: "R1", expected_price: 500_000, duration_minutes: 60 }, team: { id: "B" } }, res);
+  await handler({ params: { id: "L1" }, body: { expected_rider_id: "R1", expected_price: 500_000, duration_minutes: 60,
+    expected_end_at: autoAcceptAuctionEnd(fixedNow, cfg, 60).toISOString() }, team: { id: "B" } }, res);
   assert.equal(res.statusCode, 409);
   assert.equal(res.body.errorCode, "auto_accept_price_changed");
   assert.equal(announced, false);
-  assert.deepEqual(client.rpcCalls, [{ name: "start_auto_accept_auction", args: {
+  assert.deepEqual(client.rpcCalls, [{ name: "start_auto_accept_auction_bid", args: {
     p_listing_id: "L1",
     p_buyer_team_id: "B",
     p_expected_rider_id: "R1",
     p_expected_seller_team_id: "A",
     p_expected_rider_value: { market_value: 1000000, base_value: 1000000, prize_earnings_bonus: 0 },
     p_expected_price: 500000,
+    p_bid_amount: 500000,
     p_duration_minutes: 60,
     p_calculated_end: "2026-11-10T07:30:00.000Z",
     p_max_riders: 30,
@@ -382,7 +387,7 @@ function startValidationFixture({ floorPct = 0 } = {}) {
   const bandErrors = [];
   const handler = makeStartAutoAcceptHandler({ supabase: client,
     getAuctionConfig: async () => DEFAULT_AUCTION_CONFIG, getActiveSeasonNumber: async () => 5,
-    now: () => new Date("2026-11-09T10:00:00Z"), marketState: async () => ({ squad_limits: { max: 30 } }),
+    now: () => START_NOW, marketState: async () => ({ squad_limits: { max: 30 } }),
     atRiskRiders: async () => [], signingAllowed: async () => null, seasonBoundary: async () => null,
     priceBandConfig: async () => ({ floorPct, capMultiple: null }),
     buildPriceBandErrorBody: (issue, options) => { bandErrors.push({ issue, options }); return { errorCode: "auction_start_price_below_floor" }; },
@@ -411,7 +416,9 @@ test("start validation applies the existing market band to the stored listing pr
   assert.equal(client.rpcCalls.length, 0);
 });
 
-const START_REQ = { params: { id: "L1" }, body: { expected_rider_id: "R1", expected_price: 2, duration_minutes: 60 }, team: { id: "B" }, user: { id: "U-buyer" } };
+const START_NOW = new Date("2026-11-09T10:00:00Z");
+const START_REQ = { params: { id: "L1" }, body: { expected_rider_id: "R1", expected_price: 2, duration_minutes: 60,
+  expected_end_at: autoAcceptAuctionEnd(START_NOW, DEFAULT_AUCTION_CONFIG, 60).toISOString() }, team: { id: "B" }, user: { id: "U-buyer" } };
 
 function startedFixture({ flags = { auto_accept_enabled: "on", market_commitment_6181: "on" } } = {}) {
   const client = fakeSupabase({ flags, respond: table => ({ data: table === "transfer_listings"
@@ -541,4 +548,76 @@ test("listing gate uses the current rider owner", async () => {
   const client = fakeSupabase({ flag: "on", respond: table => ({ data: table === "riders" ? { id: "R1", team_id: "C" } : null, error: null }) });
   const issue = await getOfferAutoAcceptIssue(client, { listing: { id: "L1", rider_id: "R1", seller_team_id: "A", status: "open", auto_accept_price: 2 }, offerAmount: 2 });
   assert.equal(issue, null);
+});
+
+
+test("editable bid is separate from expected listing price and reaches atomic reservation", async () => {
+  const { client, handler } = startedFixture();
+  const res = fakeRes();
+  await handler({ ...START_REQ, body: { ...START_REQ.body, bid_amount: 7 } }, res);
+  assert.equal(res.statusCode, 201);
+  assert.equal(client.rpcCalls[0].name, "start_auto_accept_auction_bid");
+  assert.equal(client.rpcCalls[0].args.p_expected_price, 2);
+  assert.equal(client.rpcCalls[0].args.p_bid_amount, 7);
+});
+
+test("editable bid rejects invalid and below-minimum amounts before mutation", async () => {
+  for (const bid of [0, 1, -1, 2.5, "", null, 2147483648]) {
+    const { client, handler } = startedFixture();
+    const res = fakeRes();
+    await handler({ ...START_REQ, body: { ...START_REQ.body, bid_amount: bid } }, res);
+    assert.equal(res.statusCode, 400, String(bid));
+    assert.equal(res.body.errorCode, "auto_accept_invalid_price");
+    assert.equal(client.rpcCalls.length, 0);
+  }
+});
+
+
+test("trigger boundary errors return conflict before callers send success", async () => {
+  const issue = await checkAutoAcceptMutation(Promise.resolve({error:{message:"offer_at_auto_accept_price",details:JSON.stringify({auto_accept_price:600000,listing_id:"L"})}}));
+  assert.equal(issue.status,409);
+  assert.deepEqual(issue.body.errorParams,{autoAcceptPrice:600000,listingId:"L"});
+  assert.equal(await checkAutoAcceptMutation(Promise.resolve({error:null})),null);
+  await assert.rejects(checkAutoAcceptMutation(Promise.resolve({error:new Error("unrelated failure")})),/unrelated failure/);
+});
+
+
+test("enabled market config exposes only timing fields; prerequisite off performs no timing read", async () => {
+  for (const prerequisite of ["off","on"]) {
+    let readConfig;
+    const timing = { weekday_open_hour:8,weekday_close_hour:24,weekend_open_hour:10,weekend_close_hour:22 };
+    const client = fakeSupabase({ flags:{auto_accept_enabled:"on",market_commitment_6181:prerequisite},respond:()=>({data:timing,error:null}) });
+    registerAutoAcceptRoutes({get:(_path,...handlers)=>{readConfig=handlers.at(-1);},post:()=>{},put:()=>{}},{supabase:client});
+    const res = {...fakeRes(),set:()=>{}};
+    await readConfig({},res);
+    assert.equal(res.statusCode,prerequisite === "on" ? 200 : 404);
+    const configReads=client.calls.filter(call=>call.table === "auction_timing_config");
+    assert.equal(configReads.length,prerequisite === "on" ? 1 : 0);
+    if (prerequisite === "on") {
+      assert.deepEqual(res.body,timing);
+      assert.equal(configReads[0].ops[0][1],"weekday_open_hour,weekday_close_hour,weekend_open_hour,weekend_close_hour");
+    }
+  }
+});
+
+test("ejer 10/11 'Bekraeft igen': en aendret sluttid afvises foer RPC'en og sender den nye tid", async () => {
+  const { client, handler } = startedFixture();
+  const shown = new Date(autoAcceptAuctionEnd(START_NOW, DEFAULT_AUCTION_CONFIG, 60).getTime() - 60_000);
+  for (const expected_end_at of [shown.toISOString(), undefined, "ikke en dato"]) {
+    const res = fakeRes();
+    await handler({ ...START_REQ, body: { ...START_REQ.body, expected_end_at } }, res);
+    assert.equal(res.statusCode, 409);
+    assert.equal(res.body.errorCode, "auto_accept_end_changed");
+    assert.equal(res.body.errorParams.endsAt, autoAcceptAuctionEnd(START_NOW, DEFAULT_AUCTION_CONFIG, 60).toISOString());
+    assert.equal(res.body.errorParams.serverNow, START_NOW.toISOString());
+  }
+  assert.equal(client.rpcCalls.length, 0);
+});
+
+test("sluttiden sammenlignes paa minuttet, som dialogen viser den", () => {
+  const end = new Date("2026-11-09T11:00:40Z");
+  assert.equal(autoAcceptEndMatches("2026-11-09T11:00:00.000Z", end), true);
+  assert.equal(autoAcceptEndMatches("2026-11-09T11:01:00.000Z", end), false);
+  assert.equal(autoAcceptEndMatches("2026-11-09T10:59:59.999Z", end), false);
+  assert.equal(autoAcceptEndMatches(null, end), false);
 });
