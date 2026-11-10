@@ -168,6 +168,25 @@ export async function countSellerAuctionOutgoing(supabase, teamId, { skipRiderId
   return new Set((auctions || []).map((a) => a.rider_id)).size;
 }
 
+// Ejer 10/11 ("Bekraeft igen"): koeberen binder penge mod det sluttidspunkt, dialogen viste.
+// Regner serveren et andet minut (ur-forskel, minutskifte, aktiv tid der lukker), afvises
+// buddet, og dialogen viser den nye tid. Intet bud og ingen reservation mod en uset sluttid.
+const END_CHANGED = (calculatedEnd) => ({
+  status: 409,
+  body: {
+    error: "The auction end time changed. Check the new time and confirm again",
+    errorCode: "auto_accept_end_changed",
+    errorParams: { endsAt: calculatedEnd.toISOString() },
+  },
+});
+
+/** PURE: samme minut som den viste sluttid? Dialogen viser minutter, ikke sekunder. */
+export function autoAcceptEndMatches(expectedEndAt, calculatedEnd) {
+  const expected = typeof expectedEndAt === "string" ? new Date(expectedEndAt) : null;
+  if (!expected || !Number.isFinite(expected.getTime())) return false;
+  return Math.floor(expected.getTime() / 60000) === Math.floor(calculatedEnd.getTime() / 60000);
+}
+
 const PRICE_CHANGED = (autoAcceptPrice) => ({
   status: 409,
   body: {
@@ -407,7 +426,8 @@ export function makeSetAutoAcceptPriceHandler({ supabase }) {
 
 /**
  * POST /api/transfers/:id/auto-accept
- * body: { expected_rider_id: string, expected_price: number, duration_minutes: number }
+ * body: { expected_rider_id: string, expected_price: number, duration_minutes: number,
+ *         expected_end_at: string (ISO; sluttiden dialogen viste) }
  *
  * deps fra api.js: getAuctionConfig, getActiveSeasonNumber, logActivity. De
  * resterende (opslag i andre moduler) kan erstattes i tests.
@@ -489,6 +509,10 @@ export function makeStartAutoAcceptHandler({
       getActiveSeasonNumber(),
     ]);
     const calculatedEnd = autoAcceptAuctionEnd(startedAt, cfg, minutes);
+    if (!autoAcceptEndMatches(req.body?.expected_end_at, calculatedEnd)) {
+      const changed = END_CHANGED(calculatedEnd);
+      return res.status(changed.status).json(changed.body);
+    }
     const boundaryIssue = getAuctionSeasonBoundaryIssue(calculatedEnd, boundary);
     if (boundaryIssue) {
       const boundaryText = new Intl.DateTimeFormat("en-GB", {

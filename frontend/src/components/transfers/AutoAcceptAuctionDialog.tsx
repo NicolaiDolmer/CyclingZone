@@ -38,6 +38,7 @@ type Props = {
     expected_price: number;
     bid_amount: number;
     duration_minutes: number;
+    expected_end_at: string;
   }) => Promise<Result>;
   onRefresh: () => Promise<AutoListing | null>;
 };
@@ -64,10 +65,15 @@ export default function AutoAcceptAuctionDialog({
   const minimum = Number(current?.auto_accept_price);
   const validBid = validAutoBid(bid, minimum);
   const valid = !!current && validTiming(timingConfig) && duration !== null && validBid;
-  const end =
+  // Owner 10/11 ("confirm again"): when the server computed another end minute, the
+  // dialog shows the server's time until the duration changes, and the next click binds to it.
+  const [serverEnd, setServerEnd] = useState<{ at: Date; duration: number } | null>(null);
+  const localEnd =
     duration !== null && validTiming(timingConfig)
       ? autoAcceptEnd(previewNow, timingConfig, duration)
       : null;
+  const fromServer = serverEnd !== null && serverEnd.duration === duration;
+  const end = fromServer ? serverEnd.at : localEnd;
   const { openHour, closeHour } = windowHoursForWallClock(
     utcToGameWallClock(previewNow),
     timingConfig
@@ -79,7 +85,8 @@ export default function AutoAcceptAuctionDialog({
     event.preventDefault();
     if (latch.current || !valid || !current || bid === null || duration === null) return;
     const submittedAt = getNow();
-    if (end && reviewAutoAcceptEnd(end, submittedAt, timingConfig, duration).changed) {
+    if (!end) return;
+    if (!fromServer && reviewAutoAcceptEnd(end, submittedAt, timingConfig, duration).changed) {
       // Refresh the visible Ends line, then require another explicit click.
       // No request or money commitment is made against an unseen end time.
       setReviewedNow(submittedAt);
@@ -94,6 +101,7 @@ export default function AutoAcceptAuctionDialog({
         expected_price: minimum,
         bid_amount: bid,
         duration_minutes: duration,
+        expected_end_at: end.toISOString(),
       });
       if (result.ok) {
         onCancel();
@@ -107,6 +115,13 @@ export default function AutoAcceptAuctionDialog({
           t("auth:error.connectionFailed")
         )
       );
+      if (errorBody.errorCode === "auto_accept_end_changed") {
+        // Show the server's end time; no retry happens behind the player.
+        const params = errorBody.errorParams as { endsAt?: unknown } | undefined;
+        const at = typeof params?.endsAt === "string" ? new Date(params.endsAt) : null;
+        if (at && Number.isFinite(at.getTime())) setServerEnd({ at, duration });
+        else setReviewedNow(getNow());
+      }
       if (errorBody.errorCode === "auto_accept_price_changed") {
         // Refresh every displayed listing field. Another explicit submit is
         // required; never retry a changed money amount behind the player.
