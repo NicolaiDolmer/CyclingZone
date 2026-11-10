@@ -101,7 +101,11 @@ export function timeLimitRiskByRider7715({ riders, stages, race, fatigueAtStage 
  * hellere kommer én gang for meget end for lidt. REN.
  * @returns {Map<number, Map<string, number>>}
  */
-export function stageStartFatigues7715({ riders, stages, schedule, stagesCompleted = 0, recordedLoadsByDate = new Map(), seasonRaceDaysByRider = new Map(), effortFor = () => "normal", revision = null }) {
+// #7737 (foer taending): `instantByStage` (etape -> rytter -> traethed) er motorens rekonstruktion
+// for en rytter med et Traen nu-stempel ved etapens start: datoens koerte etaper fra ledgeren og
+// prognosen for de endnu ikke koerte ligger allerede i deres pladser i datoens opgoerelse
+// (loadInstantConditions projectedLoad). Intet laegges oveni; rider_condition er foreloebig.
+export function stageStartFatigues7715({ riders, stages, schedule, stagesCompleted = 0, recordedLoadsByDate = new Map(), seasonRaceDaysByRider = new Map(), effortFor = () => "normal", revision = null, instantByStage = new Map() }) {
   const out = new Map();
   const slot = new Map();
   for (const row of schedule ?? []) {
@@ -120,10 +124,12 @@ export function stageStartFatigues7715({ riders, stages, schedule, stagesComplet
     const dateRows = own ? recordedLoadsByDate.get(own.date) : undefined;
     const projected = before.filter((p) => Number(p.stage_number) > done || dateRows === undefined);
     const byRider = new Map();
+    const instantFatigue = instantByStage.get(n);
     for (const rider of riders ?? []) {
-      const opening = Number(rider?.fatigue);
-      if (rider?.fatigue == null || !Number.isFinite(opening)) continue;
-      const recorded = dateRows === undefined ? [] : (dateRows.get(String(rider.rider_id)) ?? [])
+      const stamped = instantFatigue?.get(rider.rider_id);
+      const opening = Number(stamped ?? rider?.fatigue);
+      if ((stamped ?? rider?.fatigue) == null || !Number.isFinite(opening)) continue;
+      const recorded = stamped != null || dateRows === undefined ? [] : (dateRows.get(String(rider.rider_id)) ?? [])
         .filter((r) => Number(r.game_day) < own.gameDay)
         .sort((x, y) => Number(x.game_day) - Number(y.game_day))
         .map((r) => Number(r.load) || 0);
@@ -133,7 +139,7 @@ export function stageStartFatigues7715({ riders, stages, schedule, stagesComplet
         profileType: p.profile_type, distanceKm: p.distance_km ?? null, stageNumber: Number(p.stage_number),
         effort: effortFor(rider.rider_id, Number(p.stage_number)) ?? "normal", seasonRaceDays: baseDays + k + 1, rulesRevision: revision,
       }));
-      const loads = [...recorded, ...forecast];
+      const loads = stamped != null ? [] : [...recorded, ...forecast];
       byRider.set(rider.rider_id, loads.length ? enteringFatigueV2({ openingFatigue: opening, priorLoadsToday: loads, recoveryAbility: Number(rider.abilities?.recovery ?? 50) }) : opening);
     }
     out.set(n, byRider);
@@ -148,7 +154,7 @@ export function stageStartFatigues7715({ riders, stages, schedule, stagesComplet
  * normal. Best-effort: en fejl eller slukket model = null, og varslet bruger aabningen
  * som foer. Kaldes kun, naar reglen gaelder loebet (raceTimeLimitFatigue7715Applies).
  */
-export async function loadStageStartFatigues7715({ supabase, race, teamId = null, riders, stages, checkConditionV2 = isConditionModelV2Enabled, loadSeasonRaceDays = null }) {
+export async function loadStageStartFatigues7715({ supabase, race, teamId = null, riders, stages, checkConditionV2 = isConditionModelV2Enabled, loadSeasonRaceDays = null, loadInstant = null }) {
   try {
     if (await checkConditionV2(supabase) !== true) return null;
     const { data: schedule, error } = await supabase.from("race_stage_schedule")
@@ -189,8 +195,33 @@ export async function loadStageStartFatigues7715({ supabase, race, teamId = null
       // best-effort: uden loebsdagene regnes prognosen som saesonens foerste dag.
       seasonRaceDaysByRider = new Map();
     }
+    // #7737: stemplede ryttere faar motorens rekonstruktion ved hver kommende etapes start, med
+    // prognosen for datoens endnu ikke koerte etaper lagt i deres egne pladser (som motoren
+    // goer med den rigtige belastning). En dato uden stempler springes over efter ét opslag.
+    const instantByStage = new Map();
+    const loadInstantConditions = loadInstant ?? (await import("./trainNowInstantCondition7737.js")).loadInstantConditions;
+    const revision = routeMatchRevisionFor(race);
+    const datesWithoutStamps = new Set();
+    for (const [n, s] of [...dateOf].sort((a, b) => a[0] - b[0])) {
+      if (n <= done || datesWithoutStamps.has(s.date)) continue;
+      const pending = [...dateOf].filter(([m, t]) => m > done && t.date === s.date && t.gameDay < s.gameDay).sort((a, b) => a[1].gameDay - b[1].gameDay);
+      const projectedLoad = (riderId, gameDay) => {
+        const k = pending.findIndex(([, t]) => t.gameDay === gameDay);
+        if (k < 0) return null;
+        const stage = (stages ?? []).find((st) => Number(st.stage_number) === pending[k][0]);
+        if (!stage) return null;
+        return stageLoadV2({
+          profileType: stage.profile_type, distanceKm: stage.distance_km ?? null, stageNumber: pending[k][0],
+          effort: effortByStage.get(pending[k][0])?.get(String(riderId)) ?? "normal",
+          seasonRaceDays: (Number(seasonRaceDaysByRider.get(String(riderId))) || 0) + k + 1, rulesRevision: revision,
+        });
+      };
+      const instant = await loadInstantConditions({ supabase, riderIds, tickDate: s.date, beforeGameDay: s.gameDay, failOpenWhenOff: true, projectedLoad });
+      if (instant.size) instantByStage.set(n, new Map([...instant].map(([id, c]) => [id, c.fatigue])));
+      else datesWithoutStamps.add(s.date);
+    }
     return stageStartFatigues7715({
-      riders, stages, schedule, stagesCompleted: done, recordedLoadsByDate, seasonRaceDaysByRider,
+      riders, stages, schedule, stagesCompleted: done, recordedLoadsByDate, seasonRaceDaysByRider, instantByStage,
       effortFor: (riderId, stageNumber) => effortByStage.get(stageNumber)?.get(String(riderId)) ?? "normal",
       revision: routeMatchRevisionFor(race),
     });
