@@ -153,9 +153,14 @@ export async function loadInstantConditions({ supabase, riderIds, tickDate, befo
           if (projected != null && (!Number.isFinite(projected) || projected < 0)) throw new Error("Invalid projected race load");
           return Number(load?.load ?? projected ?? 0);
         });
+        // #7737 (ejer 10/11): et reserveret loebsfelt uden koert (eller forudsagt) belastning giver
+        // hverken belastning eller restitution, foer loebet er koert. Samme regel som trykket.
+        const pendingRaceSlots = days.map((day, i) => intensities[i] === "race"
+          && !ledger.some(l => Number(l.game_day) === day && (beforeGameDay == null || day < beforeGameDay))
+          && projectedFor(day) == null);
         const condition = settleTrainingDateCondition({ riderId: id, dateStr: tickDate, condition: opening,
           intensities, raceLoads, recoveryAbility, recoveryConfig, modelV2,
-          medicalBonus: medical.get(lock.team_id) ?? 0, raceDateTrainingDay });
+          medicalBonus: medical.get(lock.team_id) ?? 0, raceDateTrainingDay, pendingRaceSlots });
         out.set(id, { fatigue: condition.fatigue, form: condition.form });
       }
     }

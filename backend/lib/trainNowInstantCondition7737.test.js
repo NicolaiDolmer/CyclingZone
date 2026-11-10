@@ -46,6 +46,8 @@ export function counted(loads = [], intensity = "normal", reservedDays = [43]) {
   return settleTrainingDateCondition({ riderId: "r", dateStr: DATE, condition: opening,
     intensities: days.map(d => reservedDays.includes(d) ? "race" : intensity),
     raceLoads: days.map(d => loads.find(l => l.game_day === d)?.load ?? 0),
+    // Ejer 10/11: et reserveret loebsfelt uden koert belastning giver hverken belastning eller restitution.
+    pendingRaceSlots: days.map(d => reservedDays.includes(d) && !loads.some(l => l.game_day === d)),
     recoveryAbility: 61, medicalBonus: 0, modelV2: true, raceDateTrainingDay: true });
 }
 
@@ -188,4 +190,21 @@ test("#7737 foer taending: en prognose i pladsen giver praecis motorens tal, naa
   const none = await loadInstantConditions({ supabase: instantDatabase({ loads: [] }), riderIds: ["r"], tickDate: DATE, beforeGameDay: 43, projectedLoad: () => 99 });
   const plain = await loadInstantConditions({ supabase: instantDatabase({ loads: [] }), riderIds: ["r"], tickDate: DATE, beforeGameDay: 43 });
   assert.equal(none.get("r").fatigue, plain.get("r").fatigue);
+});
+
+test("#7737 ejer 10/11: loebsfeltet giver hverken belastning eller restitution, foer loebet er koert", async () => {
+  const { settleDateFatigueV2, recoveryV2 } = await import("./conditionModelV2.js");
+  for (const opening of [20, 50, 80]) for (const kind of ["hard", "normal", "easy", "rest"]) {
+    const intensities = [kind, kind, "race", kind, kind];
+    const base = { fatigue: opening, intensities, recoveryAbility: 50, raceDateTrainingDay: true };
+    const pending = settleDateFatigueV2({ ...base, raceLoads: [0, 0, 0, 0, 0], pendingRaceSlots: [false, false, true, false, false] });
+    // Et neutralt loebsfelt (belastning = dets egen restitution) er det samme som et felt, der intet goer.
+    const neutral = settleDateFatigueV2({ ...base, raceLoads: [0, 0, recoveryV2({ fatigue: opening, recoveryAbility: 50 }), 0, 0] });
+    assert.equal(pending, neutral, `opening=${opening} ${kind}`);
+    // Den gamle regel (restitution paa forhaand) gav altid et friskere tal.
+    assert.ok(pending >= settleDateFatigueV2({ ...base, raceLoads: [0, 0, 0, 0, 0] }));
+  }
+  // Aftenens opgoerelse (loebet koert) er uaendret: pending paavirker kun aabne felter.
+  const evening = { fatigue: 50, intensities: ["hard", "hard", "race", "hard", "hard"], raceLoads: [0, 0, 20, 0, 0], recoveryAbility: 50, raceDateTrainingDay: true };
+  assert.equal(settleDateFatigueV2({ ...evening, pendingRaceSlots: null }), settleDateFatigueV2(evening));
 });
