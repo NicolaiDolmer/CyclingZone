@@ -243,7 +243,7 @@
       },
       "autoAcceptPrice": {
         "title": "Precio de aceptación automática: las pujas a tu precio inician una subasta",
-        "text": "Al poner un corredor en venta puedes fijar un precio de aceptación automática opcional, al menos igual al precio de venta. Las pujas por debajo se negocian como siempre. Una puja a ese precio o más inicia al instante una subasta pública: el comprador elige la duración (de 30 minutos a 24 horas de tiempo activo, 08-24) y ve la hora exacta de cierre, y otros mánagers pueden pujar. La venta es vinculante para ti y el precio es visible para todos en la lista de traspasos. Mientras una puja va en cabeza, su dinero queda reservado, así que el ganador siempre puede pagar. Un nuevo precio solo se aplica a pujas nuevas."
+        "text": "Al poner un corredor en venta puedes fijar un precio de aceptación automática opcional, al menos igual al precio de venta. Las pujas por debajo se negocian como siempre. Una puja a ese precio o más inicia al instante una subasta pública: el comprador elige la duración (de 30 minutos a 24 horas de tiempo activo, 08-24) y ve la hora exacta de cierre, y otros mánagers pueden pujar. La venta es vinculante para ti y el precio es visible para todos en la lista de traspasos. Mientras una puja va en cabeza, su dinero queda reservado, así que el ganador siempre puede pagar. Cambiar el precio nunca convierte las pujas existentes en una subasta, pero una negociación abierta a ese nuevo precio o más ya no se puede aceptar: el comprador debe iniciar la subasta desde el anuncio."
       },
       "bulkEditPrices": {
         "title": "Editar muchos precios a la vez",
