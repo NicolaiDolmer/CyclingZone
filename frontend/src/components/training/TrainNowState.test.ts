@@ -143,11 +143,11 @@ test("instant (#7737): after the press the locked line is replaced, the press re
   assert.deepEqual(trainNowNoteKeys(done, null, null), ["trainNow.lockedInstant"]);
   assert.deepEqual(
     trainNowNoteKeys(done, { settledRiderIds: ["a"], afterRaceRiderIds: ["b"], settledGameDays: [15] }, null),
-    ["trainNow.pressResult", "trainNow.lockedInstant"],
+    ["trainNow.pressResultInstant", "trainNow.lockedInstant"],
   );
   assert.deepEqual(
     trainNowNoteKeys(done, { settledRiderIds: ["a", "b"], afterRaceRiderIds: [], settledGameDays: [15] }, null),
-    ["trainNow.pressResultAll", "trainNow.lockedInstant"],
+    ["trainNow.pressResultInstant", "trainNow.lockedInstant"],
   );
   // The new line already says racing riders settle after their stage: no second sentence about it.
   assert.deepEqual(
@@ -155,6 +155,20 @@ test("instant (#7737): after the press the locked line is replaced, the press re
     ["trainNow.lockedInstant"],
   );
   assert.deepEqual(trainNowNoteKeys({ ...done, instant: false }, null, null), ["trainNow.locked"], "off is unchanged");
+  assert.deepEqual(
+    trainNowNoteKeys({ ...done, instant: false }, { settledRiderIds: ["a"], afterRaceRiderIds: ["b"], settledGameDays: [15] }, null),
+    ["trainNow.pressResult", "trainNow.locked"], "off keeps the old result line",
+  );
+});
+
+test("instant (#7737): the result counts racing riders who trained their free fields, off counts as before", () => {
+  const body = { settledRiderIds: ["a"], afterRaceRiderIds: ["b", "c", "d"], settledGameDays: [15], instantRiderIds: ["b", "c"] };
+  assert.deepEqual(trainNowPressCounts(body, true), { trained: 3, waiting: 2 }, "a, b, c trained; b and c still race");
+  assert.deepEqual(trainNowPressCounts(body, false), { trained: 1, waiting: 3 }, "off ignores instantRiderIds");
+  assert.deepEqual(trainNowPressCounts({ ...body, settledRiderIds: [] }, true), { trained: 2, waiting: 2 }, "only racing riders trained");
+  assert.deepEqual(trainNowPressCounts({ ...body, instantRiderIds: [] , settledRiderIds: [] }, true), null, "nobody trained");
+  assert.deepEqual(trainNowPressCounts({ ...body, settledGameDays: [] }, true), null, "nothing settled now");
+  assert.deepEqual(trainNowPressCounts({ settledRiderIds: ["a"], afterRaceRiderIds: ["b"] }, true), { trained: 1, waiting: 1 }, "an older body without instantRiderIds");
 });
 
 test("instant (#7737): the new dialog only when instant, available and a race is later today", () => {
@@ -165,6 +179,13 @@ test("instant (#7737): the new dialog only when instant, available and a race is
   assert.equal(trainNowNeedsConfirm({ ...instantRace, instant: false }), false, "off asks nothing new");
   assert.equal(trainNowInstantConfirm({ ...instantRace, available: false, reason: "locked", locked: true }), false);
   assert.equal(trainNowInstantConfirm(TRAIN_NOW_OFF), false);
+  // Only a race with a stage still to run carries the fatigue: a race already run today asks nothing.
+  const done = { ...instantRace, todayRaces: [{ id: "r1", name: "Tour A", stageRun: true }] };
+  assert.equal(trainNowInstantConfirm(done), false, "today's stage already ran");
+  assert.equal(trainNowNeedsConfirm(done), false);
+  assert.equal(trainNowInstantConfirm({ ...done, todayRaces: [...done.todayRaces, { id: "r2", name: "Tour B" }] }), true, "one race still to run");
+  assert.deepEqual(parseTrainNowStatus({ enabled: true, todayRaces: [{ id: "r1", name: "A", stageRun: true }, { id: "r2", name: "B", stageRun: "yes" }] }).todayRaces,
+    [{ id: "r1", name: "A", stageRun: true }, { id: "r2", name: "B" }]);
   // The short-race warnings stay as they were, next to the new body.
   const short = { ...instantRace, shortRaces: [{ id: "r1", name: "Tour A", fit: 5, entered: 6, min: 6 }] };
   assert.equal(trainNowWarnings(short).length, 1);

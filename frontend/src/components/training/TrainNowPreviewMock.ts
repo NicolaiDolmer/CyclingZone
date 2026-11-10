@@ -125,6 +125,8 @@ export function trainNowPreviewRoute(method: string): MockResponse | null {
         settledRiderIds: Array.from({ length: 35 }, (_, i) => `preview-free-${i}`),
         afterRaceRiderIds: Array.from({ length: 10 }, (_, i) => `preview-racing-${i}`),
         settledGameDays: [15, 16, 17, 18], gameDays: [15, 16, 17, 18, 19],
+        // #7737: with instant on the racing riders also trained their free fields now.
+        ...(status().instant ? { instantRiderIds: Array.from({ length: 10 }, (_, i) => `preview-racing-${i}`) } : {}),
       },
     };
   }

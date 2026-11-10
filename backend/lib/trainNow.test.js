@@ -344,6 +344,19 @@ test("#7505 a started stage race the team has entries in, and a U23 race with a 
   assert.deepEqual(status.todayRaces.map((race) => race.id), ["u23", "started", "single"]);
 });
 
+test("#7737 a race whose stage today already ran is marked stageRun, a race with the stage still to run is not", async () => {
+  const state = scenario7505();
+  state.race_entries.push({ race_id: "started", rider_id: "r2", team_id: TEAM.id });
+  state.race_stage_schedule = [
+    { race_id: "single", stage_number: 1, scheduled_at: "2026-10-01T12:00:00Z" },
+    { race_id: "started", stage_number: 3, scheduled_at: "2026-10-01T12:00:00Z" },
+  ];
+  const run = async () => (await loadTrainNowStatus({ supabase: fakeSupabase(state), team: TEAM_7505, seasonId: SEASON.id, now: MORNING })).todayRaces;
+  assert.deepEqual(await run(), [{ id: "started", name: "Ronde", stageRun: true }, { id: "single", name: "Trofeo" }]);
+  state.races.find((r) => r.id === "started").stages_completed = 2; // stage 3 is still to run
+  assert.deepEqual(await run(), [{ id: "started", name: "Ronde" }, { id: "single", name: "Trofeo" }]);
+});
+
 test("#7505 another team's entries in a started race do not make it reachable", async () => {
   const state = scenario7505();
   state.race_entries.push({ race_id: "started", rider_id: "x9", team_id: "team-b" });

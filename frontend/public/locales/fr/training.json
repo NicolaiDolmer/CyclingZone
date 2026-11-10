@@ -17,6 +17,7 @@
     "afterRace": "Les coureurs qui courent aujourd'hui sont réglés après leur étape.",
     "pressResult": "{trained, plural, one {# coureur entraîné maintenant} other {# coureurs entraînés maintenant}}, {waiting, plural, one {# attend sa course} other {# attendent leur course}}.",
     "pressResultAll": "{trained, plural, one {# coureur entraîné maintenant.} other {# coureurs entraînés maintenant.}}",
+    "pressResultInstant": "{trained, plural, one {# coureur entraîné} other {# coureurs entraînés}} maintenant.{waiting, plural, =0 {} one { # d'entre eux court aujourd'hui ; la course est réglée après l'étape.} other { # d'entre eux courent aujourd'hui ; la course est réglée après l'étape.}}",
     "settled": "L'entraînement du jour est réglé.",
     "previousOpen": "L'entraînement d'hier est encore en cours de règlement. Réessaie dans un instant.",
     "noRaceDay": "Il n'y a pas de jour de course aujourd'hui, donc rien à verrouiller.",

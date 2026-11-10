@@ -14,7 +14,8 @@ export type TrainNowStatus = {
   lockedAt: string | null;
   settled: boolean;
   // #6139: the team's races with a stage today, so the button can say which race selection it locks.
-  todayRaces: Array<{ id: string; name: string | null }>;
+  // #7737: stageRun = today's stage already ran, so the race can no longer carry fatigue from a press.
+  todayRaces: Array<{ id: string; name: string | null; stageRun?: boolean }>;
   // #6740: today's races where a press leaves the team below the start floor (fit = fit riders selected).
   shortRaces: TrainNowShortRace[];
   // #7737 part 3: the instant switch is on, so the press trains now and the copy says so.
@@ -28,16 +29,29 @@ export type TrainNowPressResult = {
   settledRiderIds: string[];
   afterRaceRiderIds: string[];
   settledGameDays?: number[];
+  // #7737: with instant on, racing riders who also trained their free fields now.
+  instantRiderIds?: string[];
 };
 
 /**
  * #6006: the press's immediate effect, for "X riders trained now, Y waiting for
  * their race". Null when nothing could settle now (a date with one race day keeps
  * that day for the evening, I4), so the line never claims training that did not run.
+ * #7737: with instant on, a racing rider who trained his free fields counts as trained,
+ * and "waiting" is only those trained riders who still race today.
  */
-export function trainNowPressCounts(result: TrainNowPressResult | null): { trained: number; waiting: number } | null {
+export function trainNowPressCounts(
+  result: TrainNowPressResult | null,
+  instant = false,
+): { trained: number; waiting: number } | null {
   if (!result) return null;
   if (Array.isArray(result.settledGameDays) && result.settledGameDays.length === 0) return null;
+  if (instant && Array.isArray(result.instantRiderIds)) {
+    const racing = new Set(result.afterRaceRiderIds);
+    const trainedNow = new Set([...result.settledRiderIds, ...result.instantRiderIds]);
+    if (!trainedNow.size) return null;
+    return { trained: trainedNow.size, waiting: result.instantRiderIds.filter((id) => racing.has(id)).length };
+  }
   const trained = result.settledRiderIds.length;
   if (!trained) return null;
   return { trained, waiting: result.afterRaceRiderIds.length };
@@ -62,9 +76,9 @@ export function parseTrainNowStatus(data: unknown): TrainNowStatus {
     lockedAt: typeof d.lockedAt === "string" ? d.lockedAt : null,
     settled: d.settled === true,
     todayRaces: Array.isArray(d.todayRaces)
-      ? d.todayRaces.filter((r): r is { id: string; name: string | null } =>
+      ? d.todayRaces.filter((r): r is { id: string; name: string | null; stageRun?: boolean } =>
         !!r && typeof (r as { id?: unknown }).id === "string")
-        .map((r) => ({ id: r.id, name: typeof r.name === "string" ? r.name : null }))
+        .map((r) => ({ id: r.id, name: typeof r.name === "string" ? r.name : null, ...(r.stageRun === true ? { stageRun: true } : {}) }))
       : [],
     shortRaces: parseShortRaces(d.shortRaces),
     instant: d.instant === true,
@@ -103,9 +117,9 @@ export function trainNowNeedsConfirm(status: TrainNowStatus): boolean {
   return trainNowWarnings(status).length > 0 || trainNowInstantConfirm(status);
 }
 
-/** #7737 part 3: an instant press with a race later today: its fatigue carries into that race, so ask once. */
+/** #7737 part 3: an instant press with a race still to run today: its fatigue carries into that race, so ask once. */
 export function trainNowInstantConfirm(status: TrainNowStatus): boolean {
-  return status.enabled && status.available && status.instant && status.todayRaces.length > 0;
+  return status.enabled && status.available && status.instant && status.todayRaces.some((r) => !r.stageRun);
 }
 
 type DayClose = { open?: boolean | null; opensAtHour?: number } | null | undefined;
@@ -143,7 +157,10 @@ export function trainNowNoteKeys(
   if (status.locked) {
     const counts = trainNowPressCounts(result);
     const lockedKey = status.instant ? "trainNow.lockedInstant" : "trainNow.locked";
-    if (counts) return [counts.waiting > 0 ? "trainNow.pressResult" : "trainNow.pressResultAll", lockedKey];
+    if (counts) {
+      const resultKey = status.instant ? "trainNow.pressResultInstant" : counts.waiting > 0 ? "trainNow.pressResult" : "trainNow.pressResultAll";
+      return [resultKey, lockedKey];
+    }
     return result && result.afterRaceRiderIds.length > 0
       ? [lockedKey, ...(status.instant ? [] : ["trainNow.afterRace"])]
       : [lockedKey];

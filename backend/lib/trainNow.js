@@ -161,10 +161,14 @@ async function filterRacesTeamCanJoin({ supabase, team, races }) {
 export async function loadTodayRacesForTeam({ supabase, team, tickDate, strict = false }) {
   try {
     const { start, end } = trainingDateBounds(tickDate);
-    const stages = await checked(supabase.from("race_stage_schedule").select("race_id")
+    const stages = await checked(supabase.from("race_stage_schedule").select("race_id, stage_number")
       // pagination-safe: one date's stages across all pools (low hundreds at most).
       .gte("scheduled_at", start.toISOString()).lt("scheduled_at", end.toISOString()), "today's stages");
     const raceIds = [...new Set((stages ?? []).map((row) => row.race_id).filter(Boolean))];
+    // #7737: a race whose stage(s) today already ran (stage number within stages_completed) is marked
+    // `stageRun`, so the Train now dialog does not warn about a race that can no longer carry fatigue.
+    const stageNumbersByRace = new Map();
+    for (const row of stages ?? []) stageNumbersByRace.set(row.race_id, [...(stageNumbersByRace.get(row.race_id) ?? []), Number(row.stage_number)]);
     if (!raceIds.length) return [];
     const races = await checked(supabase.from("races").select("id, name, squad, league_division_id, stages_completed")
       .in("id", raceIds), "today's races");
@@ -172,7 +176,10 @@ export async function loadTodayRacesForTeam({ supabase, team, tickDate, strict =
       && race.league_division_id === teamPoolIdForSquad(team, race.squad ?? "senior"));
     const reachable = await filterRacesTeamCanJoin({ supabase, team, races: inPool });
     return reachable
-      .map((race) => ({ id: race.id, name: race.name ?? null }))
+      .map((race) => ({
+        id: race.id, name: race.name ?? null,
+        ...((stageNumbersByRace.get(race.id) ?? []).every((n) => Number.isFinite(n) && n <= (Number(race.stages_completed) || 0)) ? { stageRun: true } : {}),
+      }))
       .sort((a, b) => String(a.name).localeCompare(String(b.name)));
   } catch (err) {
     // best-effort for the GET: the race names only decorate the button line, a failed

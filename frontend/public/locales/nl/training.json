@@ -17,6 +17,7 @@
     "afterRace": "Renners die vandaag koersen, worden na hun etappe verwerkt.",
     "pressResult": "{trained, plural, one {# renner nu getraind} other {# renners nu getraind}}, {waiting, plural, one {# wacht op zijn koers} other {# wachten op hun koers}}.",
     "pressResultAll": "{trained, plural, one {# renner nu getraind.} other {# renners nu getraind.}}",
+    "pressResultInstant": "{trained, plural, one {# renner} other {# renners}} nu getraind.{waiting, plural, =0 {} one { # van hen rijdt vandaag een koers; de koers wordt na de etappe afgerekend.} other { # van hen rijden vandaag een koers; de koers wordt na de etappe afgerekend.}}",
     "settled": "De training van vandaag is verwerkt.",
     "previousOpen": "De training van gisteren wordt nog verwerkt. Probeer het over een moment opnieuw.",
     "noRaceDay": "Er is vandaag geen koersdag, dus er valt niets te vergrendelen.",

@@ -17,6 +17,7 @@
     "afterRace": "Riders racing today are settled after their stage.",
     "pressResult": "{trained, plural, one {# rider trained now} other {# riders trained now}}, {waiting, plural, one {# waiting for his race} other {# waiting for their race}}.",
     "pressResultAll": "{trained, plural, one {# rider trained now.} other {# riders trained now.}}",
+    "pressResultInstant": "{trained, plural, one {# rider trained} other {# riders trained}} now.{waiting, plural, =0 {} one { # of them races today; the race is settled after the stage.} other { # of them race today; the race is settled after the stage.}}",
     "settled": "Today's training is settled.",
     "previousOpen": "Yesterday's training is still being settled. Try again in a moment.",
     "noRaceDay": "There is no race day today, so there is nothing to lock.",
