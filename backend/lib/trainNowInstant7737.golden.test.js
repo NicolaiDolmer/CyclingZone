@@ -30,9 +30,13 @@ test("golden: every scenario with the switch off equals the frozen merge-base di
   }
 });
 
-test("golden: only the exact string 'on' turns the switch on", async () => {
+test("golden: 'on' turns the switch on for everyone; 'beta' only for beta testers (owner 10/11)", async () => {
   for (const value of ["off", "beta", true, "ON", 1, null]) assert.equal(evaluateTrainNowInstantFlag(value), false, String(value));
   assert.equal(evaluateTrainNowInstantFlag("on"), true);
+  assert.equal(evaluateTrainNowInstantFlag("on", { isBetaTester: false }), true);
+  assert.equal(evaluateTrainNowInstantFlag("beta", { isBetaTester: true }), true);
+  assert.equal(evaluateTrainNowInstantFlag("beta", { isBetaTester: false }), false);
+  for (const value of ["off", true, "ON", 1, null]) assert.equal(evaluateTrainNowInstantFlag(value, { isBetaTester: true }), false, `beta tester ${value}`);
   const scenario = SCENARIOS.race_rider_full_day;
   for (const value of ["off", "beta", true]) {
     const state = seedState({ ...scenario.seed, flags: { ...scenario.seed.flags, [TRAIN_NOW_INSTANT_FLAG_KEY]: value } });

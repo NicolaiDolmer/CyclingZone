@@ -246,15 +246,17 @@ test("status: available before the press, locked after, settled in the evening",
   assert.deepEqual([evening.settled, evening.reason], [true, "date_settled"]);
 });
 
-test("status (#7737): instant follows the instant switch, only the exact value on", async () => {
-  const read = async (value) => {
+test("status (#7737): instant follows the instant switch; beta only for beta testers (owner 10/11)", async () => {
+  const read = async (value, isBetaTester = false) => {
     const state = baseState();
     if (value !== undefined) state.app_config.push({ key: TRAIN_NOW_INSTANT_FLAG_KEY, value });
-    return loadTrainNowStatus({ supabase: fakeSupabase(state), team: TEAM, seasonId: SEASON.id, now: MORNING });
+    return loadTrainNowStatus({ supabase: fakeSupabase(state), team: TEAM, seasonId: SEASON.id, now: MORNING, isBetaTester });
   };
   assert.equal((await read(undefined)).instant, false, "no row is off");
   assert.equal((await read("off")).instant, false);
-  assert.equal((await read("beta")).instant, false);
+  assert.equal((await read("beta")).instant, false, "beta, not a beta tester");
+  assert.equal((await read("beta", true)).instant, true, "beta tester");
+  assert.equal((await read("off", true)).instant, false);
   assert.equal((await read("on")).instant, true);
   const flagOff = await loadTrainNowStatus({ supabase: fakeSupabase(baseState("off")), team: TEAM, seasonId: SEASON.id, now: MORNING });
   assert.equal(flagOff.instant, false, "no press, no instant copy");

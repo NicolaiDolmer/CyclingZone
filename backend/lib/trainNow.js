@@ -50,13 +50,16 @@ import { settleWholeDayPress } from "./trainNowWholeDay.js"; // #6461 B
 import { TRAIN_NOW_BONUS_FLAG_KEY } from './trainNowBonus7737.ts';
 
 export const TRAIN_NOW_FLAG_KEY = "training_train_now";
-// #7737: the press trains a race rider's free race days straight away. Only the exact
-// string "on" turns it on: no beta stage, and a failed read is off. Read fresh, not from
-// the flag cache, because it changes training results. PR 1 of 4; the owner flips it.
+// #7737: the press trains a race rider's free race days straight away. "on" turns it on for
+// everyone; "beta" (owner 10/11) only for beta testers' own presses. A failed read is off.
+// Read fresh, not from the flag cache, because it changes training results. The engine and
+// readers follow the durable stamp of each press, so a beta press is settled the same way
+// for every viewer. The owner flips it.
 export const TRAIN_NOW_INSTANT_FLAG_KEY = "training_train_now_instant";
-export const evaluateTrainNowInstantFlag = (value) => value === "on";
-export async function isTrainNowInstantEnabled(supabase) {
-  return evaluateTrainNowInstantFlag(await readFlagStage(supabase, TRAIN_NOW_INSTANT_FLAG_KEY, { fresh: true }));
+export const evaluateTrainNowInstantFlag = (value, { isBetaTester = false } = {}) =>
+  value === "on" || (value === "beta" && isBetaTester === true);
+export async function isTrainNowInstantEnabled(supabase, { isBetaTester = false } = {}) {
+  return evaluateTrainNowInstantFlag(await readFlagStage(supabase, TRAIN_NOW_INSTANT_FLAG_KEY, { fresh: true }), { isBetaTester });
 }
 export async function isTrainNowBonusEnabled(supabase) {
   return await readFlagStage(supabase, TRAIN_NOW_BONUS_FLAG_KEY, { fresh: true }) === 'on';
@@ -295,7 +298,7 @@ export async function loadTrainNowStatus({ supabase, team, seasonId, isBetaTeste
     loadTeamDateWork({ supabase, teamId: team.id, seasonId, tickDate }),
     hasOpenEarlierDate({ supabase, teamId: team.id, seasonId, tickDate }),
     loadTodayRacesForTeam({ supabase, team, tickDate }),
-    isTrainNowInstantEnabled(supabase), // #7737 part 3: the screen copy follows the switch
+    isTrainNowInstantEnabled(supabase, { isBetaTester }), // #7737 part 3: the screen copy follows the switch
   ]);
   const locked = locks.length > 0;
   const lockedAt = locked ? locks.map((row) => row.pressed_at).filter(Boolean).sort()[0] ?? null : null;
@@ -386,7 +389,7 @@ export async function runTrainNow({
   //    are frozen (#6139: per rider). Idempotent per rider + date (I2); a repeated
   //    press keeps the first time. A failure after this point keeps the lock; a retry resumes.
   const pressedAt = now.toISOString();
-  const instant = await isTrainNowInstantEnabled(supabase);
+  const instant = await isTrainNowInstantEnabled(supabase, { isBetaTester });
   const bonusChoice = instant && await isTrainNowBonusEnabled(supabase);
   if (bonusChoice && !existingLocks.length) {
     const quarantined = new Set(work.quarantined_rider_ids ?? []);
