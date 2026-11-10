@@ -39,6 +39,10 @@ const ALL_RPCS = [
   "refresh_youth_rider_rankings_mv", // #5647: sidst, efter de fire seniorviews
 ];
 
+const FIXED_6765 = new Date('2026-10-04T10:00:00Z');
+// Rule 16: the #6765 regressions never read the wall clock.
+const T6765 = { now: FIXED_6765, testNowFn: () => FIXED_6765, heartbeatNowFn: () => FIXED_6765 };
+
 test('#6765 independent shadow precedes failed/timed-out legacy and never acknowledges its version', async () => {
   for (const message of ['legacy failed', 'canceling statement due to statement timeout']) {
     const client = createMockSupabase({ independent: true, rpcErrors: { refresh_rider_rankings_mv: message } });
@@ -48,7 +52,7 @@ test('#6765 independent shadow precedes failed/timed-out legacy and never acknow
       events.push({ name, args });
       return control(name, args);
     };
-    assert.equal(await refreshRankingMatviewsSafe(client, { captureExceptionFn: (e, c) => captured.push({ e, c }) }), false);
+    assert.equal(await refreshRankingMatviewsSafe(client, { ...T6765, clock: () => 0, captureExceptionFn: (e, c) => captured.push({ e, c }) }), false);
     assert.ok(events.findIndex(e => e.name === 'apply_ranking_deltas') < events.findIndex(e => e.name === 'refresh_rider_rankings_mv'));
     assert.equal(events.filter(e => e.name === 'apply_ranking_deltas').length, 1);
     assert.equal(events.find(e => e.name === 'finish_ranking_refresh_work').args.p_success, false);
@@ -67,7 +71,7 @@ test('#6765 cooldown and both deferred paths attempt shadow without borrowing a 
       if (mode === 'cooldown' && name === 'claim_ranking_refresh_work') return { data: { status: 'cooldown' }, error: null };
       return control(name, args);
     };
-    const options = { now: evening, clock: () => 0, logger: { log() {}, info() {} } };
+    const options = { now: evening, testNowFn: () => evening, heartbeatNowFn: () => evening, clock: () => 0, logger: { log() {}, info() {} } };
     const result = mode === 'training-deferred'
       ? await refreshRankingsAfterTrainingSettlement({ supabase: client, ...options })
       : await refreshRankingMatviewsGated(client, options);
@@ -96,7 +100,7 @@ test('#6765 shadow has already drained while a legacy RPC is still unresolved', 
     }
     return control(name, args);
   };
-  const running = refreshRankingMatviewsSafe(client, { clock: () => 0, logger: { info() {} } });
+  const running = refreshRankingMatviewsSafe(client, { ...T6765, clock: () => 0, logger: { info() {} } });
   await legacyEntered;
   try { assert.equal(client.upsertCalls.length, 0); assert.equal(shadowDrained, true); }
   finally { release({ error: { message: 'statement timeout' } }); }
@@ -117,7 +121,7 @@ test('#6765 leased shadow keeps version watermark drain, defers parity and does 
     }
     return control(name, args);
   };
-  assert.equal(await refreshRankingMatviewsSafe(client, { clock: () => elapsed, logger: { info: (_m, d) => logs.push(d) } }), true);
+  assert.equal(await refreshRankingMatviewsSafe(client, { ...T6765, clock: () => elapsed, logger: { info: (_m, d) => logs.push(d) } }), true);
   assert.equal(batch, 3, 'version drain passes the soft budget without repeating after publication');
   assert.equal(logs[0].version_drained, true);
   assert.equal(logs[0].status, 'parity-deferred-legacy');
@@ -134,7 +138,7 @@ test('#6765 shadow failure is captured independently of successful legacy public
       if (lostLease && name === 'renew_ranking_refresh_work') return { data: false, error: null };
       return control(name, args);
     };
-    assert.equal(await refreshRankingMatviewsSafe(client, { captureExceptionFn: (e, c) => captured.push({ e, c }), logger: { info() {} } }), !lostLease);
+    assert.equal(await refreshRankingMatviewsSafe(client, { ...T6765, clock: () => 0, captureExceptionFn: (e, c) => captured.push({ e, c }), logger: { info() {} } }), !lostLease);
     assert.ok(captured.some(c => c.c.tags.lib === 'rankingShadowPass'));
     assert.equal(client.upsertCalls.length, lostLease ? 0 : 1);
   }
@@ -152,7 +156,7 @@ test('#6765 shared follow-up callers do not each run an extra heavy fallback', a
     }
     return control(name, args);
   };
-  const options = { clock: () => 0, logger: { info() {} } };
+  const options = { ...T6765, clock: () => 0, logger: { info() {} } };
   const active = refreshRankingMatviewsSafe(client, options);
   await legacyEntered;
   const second = refreshRankingMatviewsSafe(client, options);
@@ -174,7 +178,7 @@ test('#6765 missing migration/config errors preserve the OFF RPC trace and legac
       if (failure === 'throw') throw new Error('configuration failed');
       return { data: null, error: failure === 'error' ? { message: 'configuration failed' } : null };
     } }) }) };
-    assert.equal(await refreshRankingMatviewsSafe(client, { captureExceptionFn: (e, c) => captures.push({ e, c }), logger: { info() {} } }), true);
+    assert.equal(await refreshRankingMatviewsSafe(client, { ...T6765, clock: () => 0, captureExceptionFn: (e, c) => captures.push({ e, c }), logger: { info() {} } }), true);
     assert.deepEqual(calls.filter(c => c.name.startsWith('refresh_')).map(c => c.name), ALL_RPCS);
     assert.ok(calls.findIndex(c => c.name === 'get_ranking_shadow_metrics') > calls.findIndex(c => c.name === ALL_RPCS.at(-1)));
     assert.equal(captures.filter(c => c.c.tags.lib === 'rankingShadowDecoupled6765Flag').length, failure === 'missing' ? 0 : 1);
