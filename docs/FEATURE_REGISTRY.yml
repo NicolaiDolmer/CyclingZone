@@ -1155,14 +1155,13 @@ features:
     area: training
     title_en: Train now straight away
     title_da: Træn nu med det samme
-    state: beta
-    flag: training_train_now_instant
+    state: building
     ssot: docs/TRAINING_RULES.md
     epic: 7737
     verified: 2026-11-10
     decision: goer-faerdigt
     decide_by: 2026-11-16
-    note: 'Beta 10/11 (ejer-go, Fable-dommer klar): PR1-3 merged (#7948, #7967, #7966); kun beta-testeres egne tryk. Næste: on for alle.'
+    note: 'Flag på beta i prod 10/11; state beta når roadmap-tekst er godkendt.'
 
   - id: train-now-whole-day
     area: training
