@@ -130,6 +130,7 @@ import {
 } from "../lib/marketPause.js";
 import { resolveProxyBids } from "../lib/proxyBidding.js";
 import { isMarketCommitment6181On, marketGateResponse6181, canAffordAutoBid6181, syncBidLeader6181, applySellerOutgoingAuctions6181, auctionStartCommitmentResponse6181, readBidContext6181, isLoweredProxy6181 } from "../lib/marketCommitment6181.js"; // #6181 PR 5
+import { releaseFeeAvailableResponse6181 } from "../lib/releaseFeeGate6181.js"; // #6181 dommer-fund
 import {
   createLoan,
   repayLoan,
@@ -2075,6 +2076,9 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
       errorParams: { fee, balance },
     });
   }
+  // #6181: pengelåsen tændt => gebyret må ikke bruge penge låst i førende bud. Slukket = null.
+  const releaseLockedFunds = await releaseFeeAvailableResponse6181(supabase, { teamId: req.team.id, balance, fee });
+  if (releaseLockedFunds) return res.status(releaseLockedFunds.status).json(releaseLockedFunds.body);
 
   // #2748 · sælgeren (her: frigiveren) må ikke handle sig under løbs-minimummet
   // (MIN_RIDERS_FOR_RACE) når kontraktudløb + pensionsrisiko ved næste sæsonskifte
@@ -2224,6 +2228,9 @@ router.post("/riders/:id/academy-release", requireAuth, marketWriteLimiter, asyn
       errorParams: { fee, balance },
     });
   }
+  // #6181: samme disponibel-saldo-gate som senior-fyringen. Slukket = null.
+  const academyLockedFunds = await releaseFeeAvailableResponse6181(supabase, { teamId: req.team.id, balance, fee });
+  if (academyLockedFunds) return res.status(academyLockedFunds.status).json(academyLockedFunds.body);
 
   // Frigør rytteren først (concurrency-guard: kun hvis stadig på vores hold og
   // stadig i akademiet — spejler senior-release), samme fulde kontrakt-nulstilling

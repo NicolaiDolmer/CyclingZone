@@ -8,6 +8,7 @@ import * as autoAccept from './autoAccept2176.js';
 import { getSquadRiskViolation } from './marketUtils.js';
 import { computeReleaseBuyoutFee } from './contractSeed.js';
 import { getParkedRiderReleaseIssue } from './parkedRiderGuard6181.js';
+import { releaseFeeAvailableResponse6181 } from './releaseFeeGate6181.js';
 import { isLateBidTriggerError } from './auctionEngine.js';
 import { buildKeyedNotification } from './notificationKeys.js';
 import * as transferNotif from './transferNotifications.js';
@@ -133,7 +134,7 @@ function fixture({ flag = 'off', autoFlag = 'off', flagError = false, proxyError
     getAuctionSeasonBoundaryIssue:()=>null,FREE_AGENT_MIN_DURATION_HOURS:12,
     fetchOwnProxiesByAuctionId:async()=>new Map(),
     safePauseTransferListingsForAuction:async()=>{},logActivity:async()=>{},notifyNewAuction:async()=>{},
-    loadOwnedSeniorRiderForAction:async()=>({rider}),getParkedRiderReleaseIssue,
+    loadOwnedSeniorRiderForAction:async()=>({rider}),getParkedRiderReleaseIssue,releaseFeeAvailableResponse6181,
     assertRiderNotOnActiveAuction:async()=>({}),computeReleaseBuyoutFee,
     fetchAtRiskRiders:async()=>[],getSquadRiskViolation,
     buildAtRiskErrorParams:issue=>({minRiders:issue.minRiders}),invalidateNamespace(){},
