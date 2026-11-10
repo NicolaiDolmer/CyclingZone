@@ -22,6 +22,7 @@
     "previousOpen": "El entrenamiento de ayer todavía se está liquidando. Inténtalo de nuevo en un momento.",
     "noRaceDay": "Hoy no hay día de carrera, así que no hay nada que bloquear.",
     "error": "No se pudo bloquear hoy. Inténtalo de nuevo.",
+    "errorInstant": "Entrenar ahora no se completó. Inténtalo de nuevo.",
     "planLocked": "Los campos de hoy están bloqueados. Todavía puedes cambiar mañana.",
     "shortRace": "{race}: solo hay {fit} de {min} ciclistas en forma seleccionados. Después de Entrenar ahora no se puede añadir ningún ciclista, así que tu equipo no saldrá.",
     "shortRaceEmpty": "{race}: no hay ciclistas seleccionados. Después de Entrenar ahora el asistente no puede elegir ninguno, así que tu equipo no saldrá.",

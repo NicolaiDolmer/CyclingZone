@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.427",
+    "date": "2026-11-10",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "beta",
+        "topic": "Training",
+        "en": {
+          "title": "Train now no longer shows a false error",
+          "body": "If your phone stopped waiting for the answer, Train now could say it failed even though training had run. The page now checks and shows the trained day."
+        },
+        "da": {
+          "title": "Træn nu viser ikke længere en falsk fejl",
+          "body": "Hvis din telefon holdt op med at vente på svaret, kunne Træn nu sige, at det fejlede, selvom træningen var kørt. Siden tjekker nu og viser den trænede dag."
+        },
+        "refs": [
+          7982
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.426",
     "date": "2026-11-10",
     "changes": [
