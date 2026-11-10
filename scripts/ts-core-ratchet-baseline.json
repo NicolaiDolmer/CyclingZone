@@ -16,7 +16,7 @@
     "en fil under 'konverter naar du roerer'. Raekkefoelge + opskrift:",
     "docs/TYPESCRIPT_DIRECTION.md."
   ],
-  "generatedAt": "2026-11-05",
+  "generatedAt": "2026-11-10",
   "tsconfig": "backend/tsconfig.core.json",
   "areas": {
     "economy": {
@@ -43,10 +43,10 @@
         "lib/auction*"
       ],
       "jsFileCount": 3,
-      "tsErrorCount": 124,
+      "tsErrorCount": 123,
       "files": {
         "lib/auctionCancellation.js": 10,
-        "lib/auctionEngine.js": 28,
+        "lib/auctionEngine.js": 27,
         "lib/auctionFinalization.js": 86,
         "lib/auctionRules.ts": 0,
         "lib/auctionTransferListPause.ts": 0
@@ -138,6 +138,6 @@
   },
   "totals": {
     "jsFileCount": 20,
-    "tsErrorCount": 750
+    "tsErrorCount": 749
   }
 }
