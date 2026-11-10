@@ -342,5 +342,23 @@
     "over": "{pct}% boven de gesch. waarde",
     "at": "Dicht bij de gesch. waarde",
     "title": "Geschatte marktwaarde: {amount} CZ$. Een modelschatting, geen gegarandeerde prijs."
+  },
+  "autoAccept": {
+    "listPrice": "Vraagprijs",
+    "autoPrice": "Autoprijs",
+    "buyerOffer": "Bod van koper",
+    "counterBoundary": "Biedingen vanaf {price} gaan via een open veiling.",
+    "onlyBuyer": "Alleen de koper kan die starten.",
+    "start": "Veiling starten",
+    "bid": "Jouw bod (CZ$)",
+    "minimum": "Minstens {price}",
+    "duration": "Duur",
+    "durationHint": "30 min tot 24 uur. De tijd telt van {open} tot {close}.",
+    "ends": "Eindigt",
+    "binding": "Jouw bod zet het geld vast zolang je leidt.",
+    "cancel": "Annuleren",
+    "hours": "uur",
+    "minutes": "min",
+    "sendCounter": "Versturen"
   }
 }

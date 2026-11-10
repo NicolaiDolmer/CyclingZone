@@ -102,6 +102,7 @@
     "auto_accept_invalid_duration": "Elige entre {minMinutes} minutos y {maxHours} horas de tiempo activo",
     "auto_accept_invalid_price": "Precio de aceptación automática no válido",
     "auto_accept_price_changed": "El precio de aceptación automática ha cambiado. Revisa el nuevo precio e inténtalo de nuevo",
+    "auto_accept_end_changed": "La hora de cierre de la subasta ha cambiado. Revisa la nueva hora y confirma de nuevo",
     "auto_accept_not_above_asking": "El precio de aceptación automática debe ser superior al precio de venta ({askingPrice} CZ$)",
     "auto_accept_squad_full": "Tu equipo no tiene plazas libres ({maxRiders} ciclistas, contando las subastas que lideras)",
     "auto_accept_seller_squad_floor": "El vendedor no puede bajar de {minRiders} ciclistas ahora mismo, así que el ciclista no puede salir a subasta",

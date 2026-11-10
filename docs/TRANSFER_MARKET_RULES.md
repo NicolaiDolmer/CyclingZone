@@ -382,8 +382,8 @@ uudløselig i dag.
 
 ### 5.1 Auto-accept-auktioner ([#2176](https://github.com/NicolaiDolmer/CyclingZone/issues/2176), bag `auto_accept_enabled`, SLUKKET)
 
-Bygget i PR 6 (backend + migration M2, `database/2026-11-07-2176-m2-auto-accept.sql`); UI og
-tekster kommer i PR 7. Slukket kontakt = adfærden ovenfor er uændret (bevist i
+Bygget i PR 6 (backend + migration M2, `database/2026-11-07-2176-m2-auto-accept.sql`).
+PR 7 følger skærm-go 9/11: https://github.com/NicolaiDolmer/CyclingZone/issues/2176#issuecomment-6752452233. Slukket kontakt = adfærden ovenfor er uændret (bevist i
 `backend/lib/autoAccept2176.test.js`). Ejer-beslutninger 6/11 og 7/11 på #2176:
 
 Migrationen opretter en manglende `auto_accept_enabled` som `off`, så registry/liveness kan
@@ -396,7 +396,12 @@ følge kontakten efter apply; den ændrer aldrig en eksisterende værdi. Aktiver
   logges i `transfer_listing_price_log` til fair play.
 - **Bud under Y** forhandles som i dag. **Bud på Y eller derover** afvises på begge tilbudsruter
   og på købers nye bud (`offer_at_auto_accept_price`) og peger på knappen.
-- **Knappen** (`POST /api/transfers/:id/auto-accept`, RPC `start_auto_accept_auction`): køberen
+- **Modbud:** på/over den aktuelle auto-pris afvises også modbud, accept og bekræftelse.
+  En database-trigger gentager grænsen under hold-/rytter-/listing-låse; den endelige transfer-claim
+  gentager den før ejerskab og betaling. Afvises den endelige claim efter bekræftelse, afsluttes
+  kun det uændrede, bekræftede tilbud som withdrawn via én betinget UPDATE; samtidige nye vilkår bevares. Under grænsen og med kontakten slukket er forhandlingen uændret.
+  Sælger ser listepris, auto-pris og købers bud; modbud på/over grænsen får fejlmarkering og kan ikke sendes.
+- **Knappen** (`POST /api/transfers/:id/auto-accept`, RPC `start_auto_accept_auction_bid`): køberen
   vælger 30 min til 24 t **aktiv tid**; sluttidspunktet regnes med `calculateAuctionEnd` (§2),
   aldrig flash-stien. I én transaktion under holdlåse tjekkes listing, pris (forventet pris,
   ellers 409), rytterstatus, købers penge (saldo minus førende bud og autobud) og plads
@@ -404,7 +409,16 @@ følge kontakten efter apply; den ændrer aldrig en eksisterende værdi. Aktiver
   (`origin = 'auto_accept'`, `source_listing_id`, `buyer_duration_minutes`) med købers bud som
   førende bud, og listingen sættes på pause (#4211). Ingen penge flyttes ved start; buddet
   binder dem som alle andre førende bud (§8).
-  Kaldet medsender `expected_rider_id` og forventet pris. Listingens rytter er fast efter
+  Kaldet medsender `expected_rider_id`, forventet auto-pris (`expected_price`) og det redigerbare
+  åbningsbud (`bid_amount`, mindst auto-prisen). Forventet pris er kun konfliktkontrol; hele buddet
+  bruges til prisbånd, købsbegrænsninger og atomisk pengereservation. Legacy RPC-signaturer bevares.
+  Dialogens to frie felter vælger timer/minutter; preview læser kun de fire offentlige vinduestimer
+  fra `GET /api/market/auto-accept-config` og følger `calculateAuctionEnd`, inklusive nat og DST.
+  Både spillerflag og konfigurationsrute kræver `market_commitment_6181`; fejl skjuler startstien.
+  Dobbelt-submit, intern rytternavigation og dismiss under request blokeres. Ved submit genberegnes
+  sluttiden med et frisk, eksplicit ur; ændres det viste minut/dato, opdateres preview uden request,
+  og køberen skal klikke igen. Ændret pris kræver tilsvarende refresh og et nyt eksplicit submit.
+  Listingens rytter er fast efter
   oprettelse, sælgeren skal være aktuel ejer, og serveren anvender markedets eksisterende prisbånd.
 - **Sælgers gulv:** med kontakten tændt tæller sælgers ryttere på en aktiv auktion med en anden
   byder som udgående i gulv-tjekket ved frigivelse, ny auktion og transfer, så sælger ikke kan

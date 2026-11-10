@@ -15,6 +15,7 @@ const FILENAME_ORDER = [
   '2026-11-07-6181-sale-escrow-m1.sql',
   '2026-11-07-6181-sale-escrow-m2-guards.sql',
   '2026-11-09-2176-m3-auto-accept-claim-swap.sql',
+  '2026-11-09-2176-counter-auction-boundary.sql',
 ];
 // Escrow foerst: filerne maa ikke afhaenge af hinandens raekkefoelge.
 const ESCROW_FIRST_ORDER = [
@@ -23,6 +24,7 @@ const ESCROW_FIRST_ORDER = [
   '2026-11-07-2176-m2-auto-accept.sql',
   '2026-11-07-6181-m3-market-commitment.sql',
   '2026-11-09-2176-m3-auto-accept-claim-swap.sql',
+  '2026-11-09-2176-counter-auction-boundary.sql',
 ];
 let database = 'auto_accept';
 
@@ -111,6 +113,9 @@ test('PG17: auto-accept serializes listing, money, seats, seller floor and relea
     const prepare = async (order, { roles }) => {
       psql(roles ? SCHEMA : SCHEMA.replace(/CREATE ROLE[^\n]*\n/, ''));
       psql(ESCROW_SCHEMA);
+      psql(`CREATE TABLE transfer_offers (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), rider_id uuid,
+        seller_team_id uuid, buyer_team_id uuid, offer_amount bigint, counter_amount bigint,
+        status text, buyer_confirmed boolean DEFAULT false, seller_confirmed boolean DEFAULT false);`);
       psql(`${balanceRpcSource[0]}\nGRANT EXECUTE ON FUNCTION increment_balance_with_audit(UUID, BIGINT, JSONB) TO service_role;`);
       psql(await sqlFile('2026-05-10-reject-late-auction-bid-trigger.sql'));
       for (const name of order) {
@@ -147,6 +152,53 @@ test('PG17: auto-accept serializes listing, money, seats, seller floor and relea
           ('00000000-0000-0000-0000-'||lpad((n-900)::text,12,'0'))::uuid,
           '${SELLER}',100000,${PRICE} FROM generate_series(1000,1007) n;`);
     };
+    reset();
+    const bidStart = start(id(1000)).replace('start_auto_accept_auction(', 'start_auto_accept_auction_bid(')
+      .replace(`,'${NOW}');`, `,'${NOW}',900000);`);
+    assert.equal(json(bidStart).price, 900000);
+    assert.equal(Number(psql('SELECT current_price FROM auctions').trim()), 900000);
+    assert.equal(Number(psql('SELECT amount FROM auction_bids').trim()), 900000);
+    reset({ buyerBalance: 800000 });
+    assert.equal(json(bidStart).status, 'insufficient_funds');
+    reset();
+    psql(`UPDATE app_config SET value='"on"' WHERE key='auto_accept_enabled';
+      INSERT INTO transfer_offers(id,rider_id,seller_team_id,buyer_team_id,offer_amount,status)
+      VALUES('${id(9000)}','${id(100)}','${SELLER}','${BUYER}',200000,'pending');`);
+    psql(`UPDATE transfer_offers SET status='countered',counter_amount=599999`);
+    assert.throws(() => psql(`UPDATE transfer_offers SET counter_amount=600000`), /offer_at_auto_accept_price/);
+    assert.throws(() => psql(`UPDATE transfer_offers SET counter_amount=700000`), /offer_at_auto_accept_price/);
+    psql(`UPDATE app_config SET value='"off"' WHERE key='auto_accept_enabled';
+      UPDATE transfer_offers SET counter_amount=700000;
+      UPDATE app_config SET value='"on"' WHERE key='auto_accept_enabled';`);
+    assert.throws(() => psql(`UPDATE transfer_offers SET status='awaiting_confirmation'`), /offer_at_auto_accept_price/);
+    psql('TRUNCATE transfer_offers');
+    reset();
+    psql(`INSERT INTO transfer_offers(id,rider_id,seller_team_id,buyer_team_id,offer_amount,status)
+      VALUES('${id(9000)}','${id(100)}','${SELLER}','${BUYER}',200000,'pending');
+      CREATE FUNCTION test_counter_boundary() RETURNS jsonb LANGUAGE plpgsql AS $$ BEGIN
+        UPDATE transfer_offers SET counter_amount=500000,status='countered';
+        RETURN '{"status":"written"}'::jsonb;
+      EXCEPTION WHEN SQLSTATE 'P0001' THEN
+        IF SQLERRM <> 'offer_at_auto_accept_price' THEN RAISE; END IF;
+        RETURN '{"status":"blocked"}'::jsonb;
+      END; $$;`);
+    // The writer obtains the SAME seller lock first, then deliberately holds it
+    // while the independent counter connection arrives with a formerly valid price.
+    const changingPrice = connection(port, `DO $$ BEGIN
+      PERFORM auto_accept_lock_teams('${SELLER}',NULL);
+      PERFORM pg_sleep(0.3);
+      UPDATE transfer_listings SET auto_accept_price=400000 WHERE id='${id(1000)}';
+      END; $$; SELECT '{"status":"changed"}'::jsonb;`);
+    const counterRace = await connection(port, 'SELECT test_counter_boundary()');
+    await changingPrice;
+    // Either lock ordering is valid. A counter that runs after the changed
+    // price must refuse; a counter that wins is rechecked before final execution.
+    assert.ok(['written','blocked'].includes(counterRace.status));
+    const priceClaim = `SELECT auto_accept_claim_transfer_at_price('${id(100)}','${SELLER}','${BUYER}',false,'${NOW}','{}',8,'{}',30,500000)`;
+    assert.equal(json(priceClaim).status,'offer_at_auto_accept_price');
+    assert.equal(psql(`SELECT team_id FROM riders WHERE id='${id(100)}'`).trim(),SELLER);
+    psql('TRUNCATE transfer_offers');
+    reset();
     const assertRace = async (commands, success, rejected) => {
       const results = await Promise.all(commands.map(sql => connection(port, sql)));
       assert.equal(results.filter(row => success.includes(row.status)).length, 1, JSON.stringify(results));
@@ -305,8 +357,10 @@ test('PG17: auto-accept serializes listing, money, seats, seller floor and relea
     failures.push(error);
   } finally {
     try {
-      const stopped = spawnSync(join(PG_BIN, 'pg_ctl'), ['-D', data, '-m', 'fast', '-w', 'stop'],
-        { windowsHide: true, stdio: 'ignore', timeout: 30000 });
+      const stopped = spawnSync(join(PG_BIN, 'pg_ctl'), ['-D', data, '-m', 'fast', '-w', '-t', '120', 'stop'],
+        // Checkpoint sync exceeded 30s while another lane verified in parallel.
+        // Wait for the same graceful stop; never delete a still-running cluster.
+        { windowsHide: true, stdio: 'ignore', timeout: 150000 });
       // Preserve cluster evidence if stopping fails; never delete a running cluster.
       if (started) assert.equal(stopped.status, 0, 'temporary PG17 server must stop');
       if (started) {

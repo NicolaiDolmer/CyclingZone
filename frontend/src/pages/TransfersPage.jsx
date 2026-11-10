@@ -3,6 +3,9 @@ import { useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
+import AutoAcceptAuctionDialog from "../components/transfers/AutoAcceptAuctionDialog.js";
+import { fetchPlayerFeatureFlags } from "../lib/playerFeatureFlags.js";
+import { validTiming, readAutoListing, findCounterAutoListing } from "../lib/autoAccept2176.ts";
 import RiderLink from "../components/RiderLink";
 import MessageManagerButton from "../components/messages/MessageManagerButton.jsx"; // #3200
 import TeamLink from "../components/TeamLink";
@@ -244,7 +247,7 @@ function OfferMessageButton({ offer, counterparty }) {
 }
 
 // ── Modtaget tilbud ──────────────────────────────────────────────────────────
-function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
+function ReceivedOfferCard({ offer, onAction, showArchive = true, autoListing = /** @type {{ asking_price: number, auto_accept_price: number } | null} */ (null) }) {
   const { t } = useTranslation("transfers");
   const timeAgo = useTimeAgo();
   const [counterAmt, setCounterAmt] = useState(offer.offer_amount || 0);
@@ -252,6 +255,8 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
   const [mode, setMode] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  const autoPrice = Number(autoListing?.auto_accept_price);
+  const counterBlocked = autoPrice > 0 && counterAmt >= autoPrice;
   const isPending = offer.status === "pending";
   const isAwaiting = offer.status === "awaiting_confirmation";
   // #6463: sælgerens eget modbud står åbent → sælgeren kan trække det tilbage.
@@ -361,18 +366,28 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
 
           {mode === "counter" && (
             <div className="bg-cz-subtle rounded-cz p-3 flex flex-col gap-2">
-              <label className="text-cz-3 text-xs uppercase tracking-wider">{t("offerCard.form.counterLabel")}</label>
+              {autoListing && autoPrice > 0 && t("autoAccept.listPrice",{defaultValue:""}) && t("autoAccept.autoPrice",{defaultValue:""}) && t("autoAccept.buyerOffer",{defaultValue:""}) && <dl className="text-xs space-y-1" data-testid="auto-counter-prices">
+                {[["listPrice",autoListing.asking_price],["autoPrice",autoPrice],["buyerOffer",offer.offer_amount]].map(([key,amount]) => (
+                  <div key={key} className="flex justify-between gap-3"><dt>{t(`autoAccept.${key}`,{defaultValue:""})}</dt><dd className="font-mono tabular-nums">{formatCz(amount)}</dd></div>
+                ))}
+              </dl>}
+              <label htmlFor={`counter-${offer.id}`} className="text-cz-3 text-xs uppercase tracking-wider">{t("offerCard.form.counterLabel")}</label>
               <div className="flex flex-col sm:flex-row gap-2">
-                <AmountInput value={counterAmt}
+                <AmountInput id={`counter-${offer.id}`} value={counterAmt}
+                  aria-invalid={counterBlocked || undefined}
+                  aria-describedby={counterBlocked ? `counter-boundary-${offer.id}` : undefined}
                   onValueChange={v => setCounterAmt(v ?? 0)}
                   wrapperClassName="min-w-0 flex-1"
-                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-hidden focus:border-cz-accent" />
+                  className={`w-full bg-cz-subtle border ${counterBlocked ? "border-cz-danger" : "border-cz-border"} rounded-cz px-3 py-2 text-cz-1 font-mono focus-visible:outline-2 focus-visible:outline-cz-accent`} />
                 <button onClick={() => doAction("counter", { counter_amount: counterAmt, message: msg })}
-                  disabled={loading || counterAmt <= 0}
+                  disabled={loading || counterAmt <= 0 || counterBlocked}
                   className="min-h-[44px] w-full sm:w-auto px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
-                  {t("offerCard.buttons.send")}
+                  {autoPrice > 0 ? t("autoAccept.sendCounter",{defaultValue:t("offerCard.buttons.send")}) : t("offerCard.buttons.send")}
                 </button>
               </div>
+              {counterBlocked && <div id={`counter-boundary-${offer.id}`} role="alert" className="text-xs text-cz-danger">
+                <p>{t("autoAccept.counterBoundary",{price:formatCz(autoPrice)})}</p><p>{t("autoAccept.onlyBuyer")}</p>
+              </div>}
               <input type="text" value={msg} onChange={e => setMsg(e.target.value)}
                 placeholder={t("offerCard.form.messageBuyer")}
                 className="bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden" />
@@ -911,7 +926,7 @@ function MarketStatBar({ value }) {
 }
 
 // Bud-form (ikke-egen listing) — samme felter/validering som TransferCard.
-function MarketOfferForm({ listing, onOffer, seasonYear }) {
+function MarketOfferForm({ listing, onOffer, seasonYear, onStartAuction }) {
   const { t } = useTranslation("transfers");
   const [offerAmt, setOfferAmt] = useState(listing.asking_price || 0);
   const [msg, setMsg] = useState("");
@@ -941,9 +956,12 @@ function MarketOfferForm({ listing, onOffer, seasonYear }) {
           wrapperClassName="min-w-0 flex-1"
           className="w-full min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden focus:border-cz-accent" />
         <Button variant="primary" size="sm"
-          onClick={offerBlock.guard(() => setConfirmOpen(true))}
+          onClick={offerBlock.guard(() => {
+            if (onStartAuction && Number(listing.auto_accept_price) > 0 && offerAmt >= Number(listing.auto_accept_price)) onStartAuction(listing);
+            else setConfirmOpen(true);
+          })}
           loading={loading} disabled={loading} {...offerBlock.blockedProps}>
-          {t("transferCard.send")}
+          {onStartAuction && Number(listing.auto_accept_price) > 0 && offerAmt >= Number(listing.auto_accept_price) ? t("autoAccept.start") : t("transferCard.send")}
         </Button>
       </div>
       {offerBlock.blocked && (
@@ -954,6 +972,7 @@ function MarketOfferForm({ listing, onOffer, seasonYear }) {
       <input type="text" value={msg} onChange={e => setMsg(e.target.value)}
         placeholder={t("transferCard.messagePlaceholder")}
         className="bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-xs focus:outline-hidden focus:border-cz-accent" />
+      {onStartAuction && Number(listing.auto_accept_price) > 0 && offerAmt < Number(listing.auto_accept_price) && <Button variant="secondary" size="sm" onClick={() => onStartAuction(listing)}>{t("autoAccept.start")}</Button>}
       <BidConfirmModal
         show={confirmOpen}
         mode="transfer"
@@ -970,7 +989,7 @@ function MarketOfferForm({ listing, onOffer, seasonYear }) {
 
 // Én listing = én rytterrække (+ optionel action-expander-række under).
 function MarketRow({
-  listing, myTeamId, statCols, showStatCols = true, isMobile = false, expanded, onToggleExpand, onOffer, onRemove, onUpdatePrice,
+  listing, myTeamId, statCols, showStatCols = true, isMobile = false, expanded, onToggleExpand, onOffer, onRemove, onUpdatePrice, onStartAuction,
   selected, onToggleSelect, seasonYear,
 }) {
   const { t } = useTranslation("transfers");
@@ -1108,7 +1127,7 @@ function MarketRow({
                   onUpdatePrice={onUpdatePrice}
                 />
               ) : (
-                <MarketOfferForm listing={listing} onOffer={onOffer} seasonYear={seasonYear} />
+                <MarketOfferForm listing={listing} onOffer={onOffer} seasonYear={seasonYear} onStartAuction={onStartAuction} />
               )}
             </div>
           </td>
@@ -1255,6 +1274,10 @@ export default function TransfersPage() {
   // og alle handels-faner er tomme — og manageren ikke selv har deep-linket en
   // fane — defaulter vi ÉN gang til 'market'-fanen, hvor der faktisk er ryttere.
   const didDefaultTabRef = useRef(false);
+  const [autoAccept, setAutoAccept] = useState(false);
+  const [auctionTiming, setAuctionTiming] = useState(/** @type {import("../lib/autoAccept2176.ts").AuctionTiming | null} */ (null));
+  const [auctionListing, setAuctionListing] = useState(/** @type {import("../components/transfers/AutoAcceptAuctionDialog.tsx").AutoListing | null} */ (null));
+  const [auctionNow, setAuctionNow] = useState(/** @type {Date | null} */ (null));
   const [listings, setListings] = useState([]);
   const [sentOffers, setSentOffers] = useState([]);
   const [receivedOffers, setReceivedOffers] = useState([]);
@@ -1359,6 +1382,43 @@ export default function TransfersPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  useEffect(() => {
+    let active = true;
+    fetchPlayerFeatureFlags().then(async flags => {
+      if (!active || flags.auto_accept_enabled !== true) return;
+      const response = await apiFetch(`${API}/api/market/auto-accept-config`, { headers: await getHeaders() });
+      if (active && response.ok && validTiming(response.data)) { setAuctionTiming(response.data); setAutoAccept(true); }
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
+    if (!auctionListing) return;
+    const timer = setInterval(() => setAuctionNow(new Date()), 30000);
+    return () => clearInterval(timer);
+  }, [auctionListing]);
+  function openAutoAuction(listing) {
+    const current = readAutoListing(listing);
+    if (!current) return;
+    setAuctionNow(new Date());
+    setAuctionListing(current);
+  }
+  async function refreshAutoListing() {
+    const response = await apiFetch(`${API}/api/transfers`, { headers: await getHeaders() });
+    if (!response.ok || !Array.isArray(response.data)) return null;
+    const current = response.data.find(row => row.id === auctionListing?.id);
+    await loadAll();
+    return readAutoListing(current);
+  }
+  async function startAutoAuction(request) {
+    const current = auctionListing;
+    if (!current) return { ok: false, data: null };
+    const response = await apiFetch(`${API}/api/transfers/${current.id}/auto-accept`, {
+      method: "POST", headers: await getHeaders(), body: JSON.stringify(request),
+    });
+    if (response.ok) { sharedRequestCache.invalidate(SHARED_KEYS.transferListings); loadAll(); }
+    return response;
   }
 
   useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- loadAll er lokal funktion (ny ref hver render) — kun mount-fetch
@@ -1788,7 +1848,7 @@ export default function TransfersPage() {
                 </Section>
               ) : (
                 receivedOffers.map(o => (
-                  <ReceivedOfferCard key={o.id} offer={o} onAction={handleOfferAction} />
+                  <ReceivedOfferCard key={o.id} offer={o} onAction={handleOfferAction} autoListing={autoAccept ? findCounterAutoListing(listings, o, myTeamId) : null} />
                 ))
               )}
               {/* #2358: swap-fanen er fjernet — modtagne bytteforslag vises her, så de
@@ -2055,6 +2115,7 @@ export default function TransfersPage() {
                             onToggleExpand={toggleExpandedListing}
                             onOffer={(riderId, amt, msg) => handleOffer(riderId, amt, msg)}
                             onRemove={handleRemoveListing}
+                            onStartAuction={autoAccept ? openAutoAuction : undefined}
                             onUpdatePrice={handleUpdateListingPrice}
                             seasonYear={seasonYear}
                             selected={selectedListingIds.has(l.id)}
@@ -2077,6 +2138,8 @@ export default function TransfersPage() {
           )}
         </div>
       )}
+      {auctionListing && auctionTiming && auctionNow && <AutoAcceptAuctionDialog listing={auctionListing} timingConfig={auctionTiming} now={auctionNow} getNow={() => new Date()}
+        onCancel={() => setAuctionListing(null)} onSubmit={startAutoAuction} onRefresh={refreshAutoListing} />}
     </div>
   );
 }
