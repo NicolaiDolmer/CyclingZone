@@ -1,4 +1,35 @@
 {
+  "stagePlanReady": {
+    "gc": {
+      "name": "Kør for klassementet",
+      "description": "Alle kører for klassementsrytteren og holder ham ude af problemer.",
+      "named": "Kør for klassementet med {name}"
+    },
+    "stage": {
+      "name": "Etapesejr",
+      "description": "Holdet kører for den rytter, der passer bedst til dagens rute.",
+      "named": "Etapesejr til {name}"
+    },
+    "sprint": {
+      "name": "Spurt",
+      "description": "Holdet sparer spurteren til målet og kører spurttog den sidste kilometer.",
+      "named": "Spurt til {name}"
+    },
+    "break": {
+      "name": "Gå i udbrud",
+      "description": "To ryttere prøver at komme i udbrud. Resten kører roligt."
+    },
+    "save": {
+      "name": "Spar benene",
+      "description": "Alle kører roligt i mål. Mindst træthed i aften."
+    },
+    "price": {
+      "easy": "Let",
+      "medium": "Middel",
+      "hard": "Hård",
+      "veryHard": "Meget hård"
+    }
+  },
   "stagePlan": {
     "title": "Etapeplan",
     "help": "Hver rytter får en kort plan langs ruten. Opgaven skifter ved en stigning, på de sidste 10 km eller når han er sat.",

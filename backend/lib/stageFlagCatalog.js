@@ -96,6 +96,7 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_library_v2", area: "race-day", label: "Kalender-løbskort + Løbshistorik" },
   // #7003: etapeplan langs ruten (taktik), seedet off. Virker kun i løb på s5_profiles_v3.
   { key: "stage_plan_v1", area: "race-day", label: "Taktik — etapeplan langs ruten" },
+  { key: "tactics_ready_7864", area: "race-day", label: "Taktik gjort klar del 1: holdplaner og ordre-pris" },
   // #6912 B: motorens udbrudsbud i jægerboksen (kort prognose i dryRun). Ikke seedet = off; beta først.
   { key: "race_breakaway_outlook", area: "race-day", label: "Jægerboks — motorens udbrudsbud" },
   // #7717: Hvorfor?-knappen i "Your day". Kun visning, seedet off.
@@ -300,6 +301,7 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "condition_v2_race_date_training_day",
   // #7636: etapeplanens resumé krydstjekker filmen paa dette flag (binaert, som motoren).
   "stage_plan_dropped_front_7635",
+  "tactics_ready_7864",
   // #7717: "Your day" viser Hvorfor?-knappen paa dette flag.
   "rider_why_button",
   // #7879: navnecellen, rytterprofilen og Hjaelp viser talentmaerkerne paa dette flag.

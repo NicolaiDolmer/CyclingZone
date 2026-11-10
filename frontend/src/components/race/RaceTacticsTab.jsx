@@ -123,6 +123,10 @@ import { roadOrdersAvailable, withoutRoadOrders } from "../../lib/tacticsProfile
 import { isStageLockedForTactics } from "../../lib/racePageTabs.js";
 import { tacticsStartStage } from "./stagePageV2/stagePageV2Model.ts"; // #6570
 import StagePlanBoard from "./StagePlanBoard.tsx"; // #7003
+import { applyTeamPlanRoles, buildTeamPlan, TEAM_PLAN_KINDS, teamPlanFingerprint, teamPlanRouteFromProfile } from "./tacticsReady7864.ts";
+import { planRole } from "./StagePlanModel.ts";
+import TeamPlanChoices7864 from "./TeamPlanChoices7864.tsx";
+import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js";
 import { hardestPlanEffort, stagePlanReplacesControls, withStagePlanFields, withoutStagePlans } from "./StagePlanModel.ts"; // #7003
 import { blockedReasonKey, oppositeOrderError } from "../../lib/oppositeOrders.js"; // #7003 spec §3
 import { advanceBaseline, keepMineAfterConflict, runTacticsSave, withConfirmedVersions } from "../../lib/tacticsSaveFlow.ts"; // #7327
@@ -371,6 +375,13 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // "stage" = kun den åbne etape. Nulstilles til "rest" når en vælger åbnes.
   const [roleScopeChoice, setRoleScopeChoice] = useState("rest");
   const [status, setStatus] = useState("idle"); // idle | saving | saved | error | partial | conflict (#7327)
+  const [ready7864, setReady7864] = useState(false);
+  const [readyChoice, setReadyChoice] = useState(/** @type {import("./tacticsReady7864.ts").TeamPlanChoice | null} */ (null));
+  useEffect(() => {
+    let alive = true;
+    fetchPlayerFeatureFlags().then((flags) => { if (alive) setReady7864(flags?.tactics_ready_7864 === true); });
+    return () => { alive = false; };
+  }, []);
   const [errorKey, setErrorKey] = useState(/** @type {string | null} */ (null));
   const [saveOutcome, setSaveOutcome] = useState(/** @type {any} */ (null)); // #7327: udfaldet pr. del
   // #4992: rute-match-sorteringen. null = ingen sortering valgt → holdets
@@ -565,6 +576,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // er netop de etaper vælgeren må røre. Gemmes af fanens eksisterende
   // "Gem etape N" sammen med intentionen (samme PUT, samme diff).
   function pickRole(riderId, role) {
+    setReadyChoice(null);
     // #6095 (beta): med etape-valget rammer et rollevalg aldrig etaper FØR den
     // åbne. Uden flaget: uændret #4980-adfærd (alle ulåste etaper).
     const stages = roles?.role_scope_choice === true && stageCount > 1
@@ -732,6 +744,23 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // #7003: etapeplanen langs ruten (serverens svar: flag + femtrins-indsats + s5_profiles_v3).
   // Enkeltstart/holdtidskoersel beholder de almindelige indsats-kontroller.
   const stagePlanOn = showOrders && stagePlanReplacesControls(orders?.stagePlanEnabled === true, stageProfileType);
+  const readyRiders = riders.map((rider) => ({ ...rider, role: roleFor(rider), baseRole: rider.race_role, routeMatch: stageRouteMatch(rider, activeStage) }));
+  const readyRoute = teamPlanRouteFromProfile(profileByStage[activeStage]);
+  const readySourceRoles = readyChoice && readyChoice.raceId === raceId && readyChoice.stage === activeStage ? readyChoice.sourceRoles : undefined;
+  const readyPlans = /** @type {Record<import("./tacticsReady7864.ts").TeamPlanKind, import("./tacticsReady7864.ts").TeamPlanResult | null>} */ (Object.fromEntries(
+    TEAM_PLAN_KINDS.map((kind) => [kind, ready7864 && stagePlanOn ? buildTeamPlan(kind, { riders: readyRiders, route: readyRoute, order, locked: stageLocked, sourceRoles: readySourceRoles }) : null]),
+  ));
+  const readyRoles = Object.fromEntries(riders.map((rider) => [rider.rider_id, planRole(roleFor(rider))]));
+  const selectedTeamPlan = readyChoice && readyChoice.raceId === raceId && readyChoice.stage === activeStage && readyChoice.fingerprint === teamPlanFingerprint(order, readyRoles) ? readyChoice.kind : null;
+  /** @param {import("./tacticsReady7864.ts").TeamPlanResult} plan */
+  function applyReadyPlan(plan) {
+    const stage = activeStage;
+    if (!ready7864 || saving || stageLocked || stage == null || stage <= stagesCompleted) return;
+    setDraftMatrix((matrix) => applyTeamPlanRoles(matrix, stage, plan.roleChanges, plan.editableRiderIds));
+    updateOrder(() => plan.order);
+    setOpenRoleRiderId(null);
+    setReadyChoice({ raceId, stage, kind: plan.kind, fingerprint: teamPlanFingerprint(plan.order, plan.roles), sourceRoles: plan.sourceRoles });
+  }
   const leadoutCount = ((stagePlanOn ? withStagePlanFields(order) : order).riders ?? []).filter((r) => r.leadout).length; // #7003: planens tog
 
   // Én rytters intention på den åbne etape. Låste etaper har ingen draft-celle
@@ -1056,6 +1085,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       {/* Holdplanen for den åbne etape: hvem kører der ledes for, hvad gør
           holdet med udbruddet, og hvor mange kører sprint-tog. Vises
           sammen med ordre-kolonnen (regel-revisionen afgør, se ordersVisible). */}
+      {ready7864 && stagePlanOn && <TeamPlanChoices7864 t={t} plans={readyPlans} active={selectedTeamPlan} disabled={saving || stageLocked} onApply={applyReadyPlan} />}
       {showOrders && !roadOrdersAvailable(stageProfileType) && (
         <p data-testid="time-trial-no-road-orders" className="px-4 py-3 border-b border-cz-border text-xs text-cz-2">{t("tacticsOrders.timeTrialNoRoadOrders")}</p>
       )}
@@ -1122,6 +1152,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
           saving={saving}
           teamHasSprintCaptain={teamHasSprintCaptain}
           jerseyHunt7855={orders?.jerseyHunt7855 === true}
+          ready7864={ready7864}
           renderRoleCell={renderRoleCell}
           rolePickerFor={(rider) => (openRoleRiderId === rider.rider_id && !rider.abandoned && !stageLocked
             ? <RolePicker t={t} riderName={rider.name} {...rolePickerScope} value={roleFor(rider)} disabled={saving} onPick={(role) => pickRole(rider.rider_id, role)} />
@@ -1280,7 +1311,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         <div className="px-4 py-3 border-t border-cz-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-0.5">
             <p className="text-xs text-cz-3 tabular-nums">
-              {untouchedLine ? `${footerLine} · ${untouchedLine}` : footerLine}
+              {ready7864 && stagePlanOn ? untouchedLine : untouchedLine ? `${footerLine} · ${untouchedLine}` : footerLine}
             </p>
             {status === "error" && errorKey && (
               <p className="text-xs text-cz-danger">
