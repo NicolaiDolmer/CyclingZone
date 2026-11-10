@@ -63,3 +63,11 @@ test("#6839 (Codex P2): a competing press that locks the date ends the wait", ()
   assert.match(client, /next\?\.settled === true \|\| \(next\?\.locked === true && !heldWhileLocked\.current\)/,
     "a lock that appears while waiting is another tab's finished press");
 });
+
+test("#7982: a dropped-but-landed press refreshes again after the server's remaining work", () => {
+  const fn = client.slice(client.indexOf("const landedAfterDrop"), client.indexOf("const press = useCallback"));
+  assert.match(fn, /TRAIN_NOW_DROP_FOLLOW_UP_MS\.map\(\(ms\) => setTimeout\(refresh, ms\)\)/, "follow-up refreshes are scheduled");
+  assert.match(fn, /load\(\), onSettled\?\.\(\)/, "each refresh reloads status and page data");
+  assert.match(client, /useEffect\(\(\) => \(\) => \{ followUps\.current\.forEach\(clearTimeout\); \}, \[\]\)/, "timers are cleared on unmount");
+  assert.match(client, /TRAIN_NOW_DROP_FOLLOW_UP_MS = \[15_000, 45_000\]/);
+});

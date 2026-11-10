@@ -22,6 +22,7 @@
     "previousOpen": "De training van gisteren wordt nog verwerkt. Probeer het over een moment opnieuw.",
     "noRaceDay": "Er is vandaag geen koersdag, dus er valt niets te vergrendelen.",
     "error": "Vandaag kon niet worden vergrendeld. Probeer het opnieuw.",
+    "errorInstant": "Nu trainen is niet gelukt. Probeer het opnieuw.",
     "planLocked": "De velden van vandaag zijn vergrendeld. Je kunt morgen nog wel wijzigen.",
     "shortRace": "{race}: slechts {fit} van de {min} fitte renners geselecteerd. Na Nu trainen kan er geen renner meer worden toegevoegd, dus je team start niet.",
     "shortRaceEmpty": "{race}: geen renners geselecteerd. Na Nu trainen kan de assistent er geen meer kiezen, dus je team start niet.",
