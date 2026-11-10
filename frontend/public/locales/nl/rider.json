@@ -833,7 +833,7 @@
     "autoHelp": "Als iemand deze prijs of meer biedt, start meteen een openbare veiling. De koper kiest de duur (30 min tot 24 uur actieve tijd). De prijs is voor iedereen zichtbaar en de verkoop is bindend voor jou.",
     "autoInvalid": "De autoprijs moet minstens de vraagprijs zijn.",
     "autoStatus": "Autoprijs {amount} CZ$",
-    "autoEditHint": "Een nieuwe autoprijs geldt alleen voor nieuwe biedingen."
+    "autoEditHint": "Bestaande biedingen worden nooit een veiling, maar lopende onderhandelingen op of boven de nieuwe prijs kunnen niet meer worden geaccepteerd."
   },
   "manage": {
     "extend": {
