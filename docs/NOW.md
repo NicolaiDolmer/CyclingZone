@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (10/11):** Mandatet står i "Dagens plan 10/11" på tavlen #7911. PC1: Træn nu #7737 + auto-accept #2176 til beta, merger selv bag slukket kontakt; oprydning 7955/7961/7958. Codex: #6765, #6490, #7947, #7627.
+> **🎯 Next action (10/11 eftermiddag):** Træn nu #7737: merge #7966 (del 3 + beta + Hjælp-forbehold + patch note), kør migrationen, tænd `training_train_now_instant`="beta" på ejerens "tænd" (dommer: klar). Auto-accept #2176: merge #7975 + #7976, gendøm, tænd-kort med pengelåsen. Roadmap #7971: SQL køres (ejer-go), 7 idé/periode-valg noteret. Codex: #7959-P1, #7977 (Taktik-fanen delt kaptajn), Taktik del 1 #7864, #7627, #7947.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling; memory commitment på Large kunne ikke aflæses 9/11.
 >
-> **🤖 Working agent:** Claude PC1 primær session 10/11 (Opus 5.5) efter "Dagens plan 10/11". Træn nu #7737: del 1, 2, 4 + rettelser (#7969, #7970 `d386e582`) merget, kontakt off; Fable-dommer bevist; del 3 (#7966) tekstrettes, merges med tændingen. Auto-accept #2176: `625f1f8f` merget off; sælgers auto-pris + dommerfund bygges. Roadmap-gennemgang #7971. Codex: #7627, #7947, merge-kø; PR 7959 tilbage til Codex (P1).
+> **🤖 Working agent:** Claude PC1 primær 10/11 (Opus 5.5). Merget i dag: #7948, #7967, #7968, #7969, #7970 (Træn nu, kontakt off), #7956, #7973 (auto-accept, off), #7974 (roadmap-admin), #7961. Dommer-trin før tænd-kort (ejer 10/11). Claude-tokens næsten opbrugt: Codex maksimeres 2 dage efter #7911.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
