@@ -47,6 +47,7 @@ import { loadEligibleEntries } from "./raceEntriesLoader.js"; // #6740
 import { loadSpentRaceDays } from "./raceSpentDays.js"; // #6740
 import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
 import { settleWholeDayPress } from "./trainNowWholeDay.js"; // #6461 B
+import { TRAIN_NOW_BONUS_FLAG_KEY } from './trainNowBonus7737.ts';
 
 export const TRAIN_NOW_FLAG_KEY = "training_train_now";
 // #7737: the press trains a race rider's free race days straight away. Only the exact
@@ -56,6 +57,9 @@ export const TRAIN_NOW_INSTANT_FLAG_KEY = "training_train_now_instant";
 export const evaluateTrainNowInstantFlag = (value) => value === "on";
 export async function isTrainNowInstantEnabled(supabase) {
   return evaluateTrainNowInstantFlag(await readFlagStage(supabase, TRAIN_NOW_INSTANT_FLAG_KEY, { fresh: true }));
+}
+export async function isTrainNowBonusEnabled(supabase) {
+  return await readFlagStage(supabase, TRAIN_NOW_BONUS_FLAG_KEY, { fresh: true }) === 'on';
 }
 export { TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks };
 const SETTLED_STATUSES = new Set(["complete", "needs_reconciliation"]);
@@ -374,6 +378,18 @@ export async function runTrainNow({
   //    are frozen (#6139: per rider). Idempotent per rider + date (I2); a repeated
   //    press keeps the first time. A failure after this point keeps the lock; a retry resumes.
   const pressedAt = now.toISOString();
+  const instant = await isTrainNowInstantEnabled(supabase);
+  const bonusChoice = instant && await isTrainNowBonusEnabled(supabase);
+  if (bonusChoice && !existingLocks.length) {
+    const quarantined = new Set(work.quarantined_rider_ids ?? []);
+    const initialAvailable = work.expected_rider_ids.filter(id => currentIds.includes(id)
+      && !quarantined.has(id) && (work.opening_conditions === undefined || work.opening_conditions?.[id]));
+    const { data, error } = await supabase.rpc('publish_train_now_bonus_press', {
+      p_team_id: team.id, p_season_id: season.id, p_tick_date: tickDate,
+      p_rider_ids: work.expected_rider_ids, p_eligible_rider_ids: initialAvailable, p_now: pressedAt,
+    });
+    if (error || data?.published !== true) throw new Error(`train-now bonus publication: ${error?.message ?? 'publication not confirmed'}`);
+  } else {
   const { error: lockError } = await supabase.from(TRAIN_NOW_LOCK_TABLE).upsert(
     work.expected_rider_ids.map((riderId) => ({
       rider_id: riderId, tick_date: tickDate, season_id: season.id, team_id: team.id, pressed_at: pressedAt,
@@ -381,6 +397,7 @@ export async function runTrainNow({
     { onConflict: "rider_id,tick_date", ignoreDuplicates: true },
   );
   if (lockError) throw new Error(`train-now lock: ${lockError.message ?? lockError}`);
+  }
 
   // 3) Who can settle now? Read the entries AGAIN after the lock, so a selection
   //    saved during the press cannot make an entered rider look free. Then the
@@ -394,7 +411,6 @@ export async function runTrainNow({
   const readiness = resolveTrainingDateReadiness({ ...locked, tickDate, now, riderIds: available });
   // #6461 B: the press always settles the whole known date per rider.
   // #7737: with the switch on, a race rider's free race days settle now as well.
-  const instant = await isTrainNowInstantEnabled(supabase);
   return settleWholeDayPress({ supabase, team, season, now, tickDate, work, available, readiness, pressedAt, runDay, instant,
     readReadiness: async () => resolveTrainingDateReadiness({ ...await loadContext({ supabase, season, tickDate, loadDaySpans, registeredTeamIds: [team.id] }), tickDate, now, riderIds: available }) });
 }

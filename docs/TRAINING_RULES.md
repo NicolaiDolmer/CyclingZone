@@ -347,6 +347,27 @@ on the same earlier state. The existing RPC signatures and try-lock forwarding
 are unchanged. Local native PG17 concurrency and PGlite/golden evidence belong
 in the PR; this contract does not claim production activation or verification.
 
+### Independent bonus control, PR4 (#7737, owner build-go 10/11)
+
+`training_train_now_bonus` is independently seeded OFF and requires instant mode
+and normalized date settlement at the first press. The first rider/date lock
+stores an immutable choice; an existing press or an earlier tick cannot be
+upgraded. Both all-free riders and riders waiting for reserved race slots keep
+that choice through partial failures, flag changes and automatic continuations.
+The bonus-ON first press publishes its initial roster locks, eligible frozen entry
+snapshots and instant stamps in one service-only transaction. A lost response leaves
+complete work for automatic continuation with both controls OFF, without another
+manager request. An internal failure rolls back the initial locks and decision.
+Bonus riders receive the instant stamp only after frozen eligibility exists and
+reuse the existing exact receipt snapshot CAS. A receipt trigger rejects a stale
+choice inside the atomic transaction, rolling back development writes as well.
+
+The bonus scales normal training raw growth and XP before rounding, point purchase
+and existing caps. Race development, rest, injured and unknown ticks receive no
+extra training. The old legacy bonus boolean remains inert. No-click training and
+calendar training retain their previous yield. Claude PR3 owns player copy/help
+and patch notes before activation; parent owns registry publication and review.
+
 ## Aktuel S4-status (read-only prodmåling 28/9)
 
 `training_tick_per_race_day` og `race_day_development_enabled` er begge `on`.

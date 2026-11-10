@@ -80,6 +80,7 @@ import { loadRaceDayRoleYield, loadRaceDayRoleByRider } from "./raceDayRoleYield
 import { loadDevelopmentScoreB, developmentTickArgs } from "./developmentScoreWiring.js"; // #6950 Udviklingsscore B
 import { loadDevelopmentXp, withRaceDayRoleYieldXp } from "./developmentXpFlag.ts"; // #6110 XP-modellen (slukket)
 import { capXpTickGainsPerDate } from "./developmentXp.ts"; // #6110: maks +1 pr. dato i XP
+import { loadTrainNowBonusRiderIds } from './trainNowBonus7737.ts';
 import { loadRaceCatchUp } from "./raceCatchUpWiring.js"; // #6950 catch-up via loeb
 import { assessIllness } from "./conditionIllness.js"; // #6938 sygdom af langvarig ekstrem traethed
 import { CURRENT_RACE_RULES_REVISION, isS5ProfilesV3OrLater } from "./raceEngineRulesRevision.ts";
@@ -631,6 +632,7 @@ export async function runTeamTrainingDay({
   let canonicalLoadRows = [];
   // #7737: riders stamped by an instant press, and who closes his date on this tick.
   let instantRiderIds = new Set();
+  let trainNowBonusRiderIds = new Set();
   const settlingRiderIds = new Set();
   try {
   // ── 2) Load riders (ikke-pensionerede, dette hold) ──────────────────────────
@@ -697,6 +699,10 @@ export async function runTeamTrainingDay({
     const eligible=new Set(eligibleRiderIds??dateWork.expected_rider_ids);
     riders=riders.filter(rider=>eligible.has(rider.id)&&dateWork.expected_rider_ids.includes(rider.id)&&!(dateWork.quarantined_rider_ids??[]).includes(rider.id));
     instantRiderIds = await loadTrainNowInstantRiderIds({ supabase, tickDate, riderIds: riders.map(rider=>rider.id) });
+    trainNowBonusRiderIds = await loadTrainNowBonusRiderIds({ supabase, teamId, seasonId, tickDate, riderIds: riders.map(rider => rider.id) });
+    if ([...trainNowBonusRiderIds].some(id => !instantRiderIds.has(id))) {
+      throw new Error('Train-now bonus publication incomplete; retry the original press');
+    }
     // #7737: a stamped rider only waits on the race day his open slot sits on.
     if(!deadlineReached) riders=riders.filter(rider=>{
       const open=(unresolvedSlotsByRider instanceof Map ? unresolvedSlotsByRider.get(rider.id) : unresolvedSlotsByRider[rider.id]);
@@ -1332,7 +1338,8 @@ export async function runTeamTrainingDay({
             { params: raceRoleYield, profileType: racedRiderProfileByRider.get(rider.id), role: raceDayRoleByRiderMap.get(rider.id) }), // #5950
         });
       } else {
-        tickResult = applyDailyTick({ ...sharedTickArgs, ...developmentTickArgs({ developmentScoreB, raceCatchUp, dayKey: seedScope, tickArgs: sharedTickArgs }) }); // #6950
+        tickResult = applyDailyTick({ ...sharedTickArgs, ...developmentTickArgs({ developmentScoreB, raceCatchUp, dayKey: seedScope, tickArgs: sharedTickArgs }),
+          ...(trainNowBonusRiderIds.has(rider.id) ? { trainNowBonus: true } : {}) }); // #6950
       }
       // #6500 D6: ikke-managerhold beholder tick'ets score, status og
       // traeningsscore-detalje, men evnerne og fremdriften staar stille. Ved at
@@ -1643,6 +1650,7 @@ export async function runTeamTrainingDay({
     // Rapport-linje pr. rytter.
     reportRiders.push({
       rider_id: rider.id,
+      ...(trainNowBonusRiderIds.has(rider.id) ? { train_now_bonus: true } : {}),
       name: `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim(),
       ...(conditionPerDate ? { condition_before_date: conditionBeforeDate,condition_observed:cond,recovery_before_date:recoveryBeforeDate } : {}),
       ...(instantRider ? { expected_date_receipt_days: dateReceipts

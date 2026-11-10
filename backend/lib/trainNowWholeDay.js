@@ -25,6 +25,7 @@
 // for a marked rider into a race with a stage still to run on that date.
 import { TRAIN_NOW_LOCK_TABLE, loadTrainNowFrozenDateEntries } from "./trainNowLock.js";
 import { isTrainingReservationHeldError } from "./dailyTrainingEngine.js";
+import { loadTrainNowBonusRiderIds } from './trainNowBonus7737.ts';
 
 
 const sortedDays = (gameDays) => [...new Set(gameDays ?? [])].filter(Number.isInteger).sort((a, b) => a - b);
@@ -140,7 +141,10 @@ export async function settleWholeDayPress({
       .eq("tick_date", tickDate).in("rider_id", plan.waitingRiderIds);
     if (error) throw new Error(`train-now whole-day unmark: ${error.message ?? error}`);
   }
-  if (instant) await setInstantStamp({ supabase, tickDate, riderIds: plan.instantRiderIds, at: now.toISOString() });
+  if (instant) {
+    const bonusIds = await loadTrainNowBonusRiderIds({ supabase, teamId: team.id, seasonId: season.id, tickDate, riderIds: available });
+    await setInstantStamp({ supabase, tickDate, riderIds: [...new Set([...plan.instantRiderIds, ...bonusIds])], at: now.toISOString() });
+  }
 
   const settledDays = [];
   for (const { gameDay, riderIds } of plan.runs) {

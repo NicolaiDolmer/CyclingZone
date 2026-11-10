@@ -1161,7 +1161,7 @@ features:
     verified: 2026-11-09
     decision: goer-faerdigt
     decide_by: 2026-11-16
-    note: 'PR1 off: training_train_now_instant seed; PR2-4 and owner activation pending.'
+    note: 'OFF seed.'
 
   - id: train-now-whole-day
     area: training
@@ -1542,3 +1542,16 @@ features:
     epic: 2467
     verified: 2026-10-15
     note: SurveyBanner.jsx slettet (#2467).
+
+  - id: train-now-bonus
+    area: training
+    title_en: Train now bonus
+    title_da: Træn nu-bonus
+    state: building
+    flag: training_train_now_bonus
+    ssot: docs/TRAINING_RULES.md
+    epic: 7737
+    verified: 2026-11-10
+    decision: goer-faerdigt
+    decide_by: 2026-11-16
+    note: 'OFF seed; PR3 and owner activation pending.'
