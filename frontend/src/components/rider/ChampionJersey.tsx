@@ -4,8 +4,8 @@
 // Én komponent for alle flader (TASTE P12): navnecellen viser den højeste titel
 // som en 16 px trøje efter navnet og hover-ikonet, i mærke-pladsen før
 // status-mærkerne (talentmærket, #7879, står lige efter). Rytterprofilen viser
-// alle titler i 24 px med den fulde tekst. Tooltip ved hover og ved tryk
-// (fokus), med titlen og én sætning. Resten bor i Hjælp (P9).
+// alle titler i 24 px med kun titlen (#7951). Tooltip ved hover og ved tryk
+// (fokus), med titlen og forklaringen. Resten bor i Hjælp (P9).
 //
 // Trøjerne er en bevidst undtagelse fra stroke-reglen og guld-rationeringen
 // (TASTE P7, ejer 6/11): fyldte, flerfarvede trøjer, der kun bruges her. Egne
@@ -17,7 +17,6 @@
 // intet synligt, og titlerne hentes slet ikke. Titlerne skifter kun ved
 // sæsonskifte; de hentes her én gang pr. sidevisning, delt af alle celler.
 import { useId, useSyncExternalStore } from "react";
-import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import "flag-icons/css/flag-icons.min.css";
 import { supabase } from "../../lib/supabase.ts";
@@ -256,20 +255,21 @@ function titleText(row: ChampionTitleRow, t: T, lang: string) {
   if (row.title === "continent") {
     const key = continentKey(row.scope);
     if (!key) return null;
-    return { name: t(`championJersey.continent.${key}`), short: t("championJersey.continent.short"), full: t("championJersey.continent.full", { prev: row.season_number - 1, season: row.season_number }) };
+    return { label: t(`championJersey.continent.${key}`), name: t(`championJersey.continent.${key}`), short: t("championJersey.continent.short"), full: t("championJersey.continent.full", { prev: row.season_number - 1, season: row.season_number }) };
   }
   if (row.title === "national") {
     const code = nationCode(row.scope);
     if (!code) return null;
     const country = getCountryName(code.toUpperCase(), lang);
     return {
+      label: t("championJersey.national.title"),
       name: t("championJersey.national.name", { country }),
       short: t("championJersey.national.short", { country }),
       full: t("championJersey.national.full", { country, prev: row.season_number - 1, season: row.season_number }),
     };
   }
   const base = row.title === "world" ? "championJersey.world" : "championJersey.u23World";
-  return { name: t(`${base}.name`), short: t(`${base}.short`), full: t(`${base}.full`, { prev: row.season_number - 1, season: row.season_number }) };
+  return { label: t(`${base}.name`), name: t(`${base}.name`), short: t(`${base}.short`), full: t(`${base}.full`, { prev: row.season_number - 1, season: row.season_number }) };
 }
 
 // ── Visningen ────────────────────────────────────────────────────────────────
@@ -298,29 +298,29 @@ export function ChampionJerseyMark({ titles }: { titles: readonly ChampionTitleR
   );
 }
 
-/** Ren visning af alle titler i 24 px med den fulde tekst (rytterprofilen). */
+/** Ren visning af alle titler i 24 px + titel-ordet; forklaringen ved hover og tryk (rytterprofilen). */
 export function ChampionJerseyList({ titles }: { titles: readonly ChampionTitleRow[] }) {
   const { t, i18n } = useTranslation("rider");
   const items = titles
     .map((row) => ({ row, text: titleText(row, t as T, i18n.language) }))
     .filter((item): item is { row: ChampionTitleRow; text: NonNullable<ReturnType<typeof titleText>> } => item.text !== null);
-  if (items.length === 0) return null;
   return (
-    <div className="mt-2.5 flex max-w-xl flex-col gap-1.5" data-testid="champion-jerseys-profile">
+    <>
       {items.map(({ row, text }) => (
-        <div key={`${row.title}-${row.scope}`} className="flex items-start gap-2">
-          <JerseyIcon row={row} size={24} />
-          <p className="text-sm leading-snug text-cz-2">
-            <span className="font-semibold text-cz-1">{text.name}</span>
-            {" · "}
-            {text.full}
-          </p>
-        </div>
+        <Tooltip key={`${row.title}-${row.scope}`} label={`${text.name}: ${text.full}`} dismissOnEscape id={undefined}>
+          <button
+            type="button"
+            data-testid={`champion-jersey-profile-${row.title}`}
+            // Safari fokuserer ikke en knap ved tryk, og fokus er det, der åbner tooltippen.
+            onClick={(e) => e.currentTarget.focus()}
+            className="inline-flex min-h-11 items-center gap-2 rounded-cz text-sm font-semibold text-cz-1 focus-visible:outline-2 focus-visible:outline-cz-accent [@media(min-width:640px)_and_(pointer:fine)]:min-h-6"
+          >
+            <JerseyIcon row={row} size={24} />
+            {text.label}
+          </button>
+        </Tooltip>
       ))}
-      <Link to="/help?section=riders" className="text-sm text-cz-accent-t hover:underline">
-        {t("championJersey.helpLink")}
-      </Link>
-    </div>
+    </>
   );
 }
 

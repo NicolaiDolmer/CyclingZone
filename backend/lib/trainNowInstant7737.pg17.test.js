@@ -54,6 +54,8 @@ test("#7737 PG17: double press, sweep and retry never settle twice", { skip: !po
     const work = JSON.parse(await sql(`SELECT register_training_date_work('${TEAM}','${SEASON}','${DATE}','{${DAYS}}','{${A}}',NULL,'${AT(0)}')`));
     openings = work.opening_conditions;
     await sql(`INSERT INTO training_train_now_locks(rider_id,tick_date,season_id,team_id,instant_at) VALUES('${A}','${DATE}','${SEASON}','${TEAM}','${AT(0)}')`);
+    // The concurrency cases below describe the switched-on state; the off fast path has its own case.
+    await sql(`UPDATE app_config SET value='"on"'::jsonb WHERE key='training_train_now_instant'`);
   };
   const lit = (x) => `'${JSON.stringify(x).replace(/'/g, "''")}'::jsonb`;
   const commitSql = (day, { abilities = [], conditions = [], loads = [], at = AT(1), intensity = "normal", deadlineReached = false } = {}) => {
@@ -280,5 +282,30 @@ test("#7737 PG17: double press, sweep and retry never settle twice", { skip: !po
     await sql(commitSql(43,{...closing(33),deadlineReached:true,at:"2026-11-10T03:00:00Z"}));
     assert.equal(await settled(),1);
     assert.equal(await ticks(),5);
+  });
+
+  await t.test("switch off and no frozen snapshot: a selection write takes no rider lock", async () => {
+    await reset();
+    await sql(`UPDATE app_config SET value='"off"'::jsonb WHERE key='training_train_now_instant'`);
+    const holder = spawn(exe, args, { windowsHide: true });
+    const held = new Promise((resolve, reject) => {
+      let out = "";
+      holder.stdout.on("data", (chunk) => { out += chunk; if (out.includes("HELD")) resolve(); });
+      holder.once("error", reject);
+    });
+    holder.stdin.write(`BEGIN; SELECT pg_advisory_xact_lock(hashtextextended('train-now-entry-rider:${A}',0));\n\\echo HELD\n`);
+    await held;
+    try {
+      // Advisory locks ignore lock_timeout; statement_timeout turns a wait into a failure.
+      const quick = (text) => sql(`SET statement_timeout='2s'; ${text}`);
+      await quick(entry());
+      await quick(`UPDATE race_entries SET race_role='helper' WHERE rider_id='${A}'`);
+      await quick(`DELETE FROM race_entries WHERE rider_id='${A}'`);
+    } finally {
+      const closed = once(holder, "exit");
+      holder.stdin.end("COMMIT;\n\\q\n");
+      await closed;
+    }
+    assert.equal(await count("SELECT count(*) FROM race_entries"), 0);
   });
 });

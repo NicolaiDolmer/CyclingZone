@@ -7,8 +7,7 @@
     "nextGen": {
       "name": "Next Gen",
       "text": "un junior en forte progression."
-    },
-    "helpLink": "Ce que signifient les marques"
+    }
   },
   "badges": {
     "u23": "Moins de 23 ans (U23)",
@@ -220,7 +219,8 @@
       "ratingTrendRising": "En hausse cette saison",
       "ratingTrendSteady": "Stable cette saison",
       "ratingTrendDeclining": "En baisse cette saison",
-      "ratingTrendTitle": "Note {value} depuis le {date}"
+      "ratingTrendTitle": "Note {value} depuis le {date}",
+      "forSale": "En vente"
     },
     "reputation": {
       "whyTitle": "Pourquoi sa réputation a bougé",
@@ -254,18 +254,7 @@
         "fallback": "Événement de réputation"
       }
     },
-    "levelCorrectionReceipt": {
-      "developmentLine": "Progression : aucun changement dû à l'entraînement cette semaine.",
-      "marketLine": "Marché : ajustement de niveau unique, tous les coureurs. Les valeurs correspondent maintenant à ce pour quoi les coureurs s'échangent vraiment. Ton coureur ne devient pas moins bon.",
-      "detailsToggle": "Afficher les chiffres",
-      "detailsHide": "Masquer les chiffres",
-      "anchorBefore": "Valeur avant",
-      "anchorAfter": "Valeur après",
-      "factor": "Facteur de correction",
-      "appliedAt": "Appliqué le {date}"
-    },
     "banner": {
-      "listed": "Sur la liste des transferts · prix {price}",
       "auction": "Aux enchères · se termine dans {endsIn} · enchère la plus haute {highBid}",
       "finalSeasonTitle": "Dernière saison",
       "finalSeason": "A annoncé sa retraite au début de la saison. Il prend sa retraite à la fin de la saison {season}."
@@ -1022,10 +1011,10 @@
       "full": "Le plus de points au classement parmi les coureurs de son continent lors de la saison {prev}. Il porte le maillot toute la saison {season}."
     },
     "national": {
+      "title": "Champion national",
       "name": "Champion national, {country}",
       "short": "le meilleur coureur de {country} au classement la saison dernière.",
       "full": "Le plus de points au classement parmi les coureurs de {country} lors de la saison {prev}. Il porte le maillot toute la saison {season}."
-    },
-    "helpLink": "Comment fonctionnent les maillots de champion"
+    }
   }
 }

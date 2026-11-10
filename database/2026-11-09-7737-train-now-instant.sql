@@ -305,6 +305,17 @@ CREATE OR REPLACE FUNCTION public.race_entries_train_now_instant_guard()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
 DECLARE v_rider uuid;
 BEGIN
+  -- Fast path (same shape as the #6461 guard): switch off and no frozen snapshot for the
+  -- rider(s) this row touches. Snapshots exist only after an instant press, so with the
+  -- switch off every selection save, withdrawal, cascade and season reset takes no lock.
+  IF COALESCE((SELECT value #>> '{}' FROM public.app_config WHERE key='training_train_now_instant'),'off')<>'on'
+    AND NOT EXISTS(SELECT 1 FROM public.training_train_now_locks l
+      WHERE l.instant_entry_snapshot IS NOT NULL
+        AND l.rider_id IN (CASE WHEN TG_OP='INSERT' THEN NULL ELSE OLD.rider_id END,
+                           CASE WHEN TG_OP='DELETE' THEN NULL ELSE NEW.rider_id END)) THEN
+    IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+    RETURN NEW;
+  END IF;
   FOR v_rider IN SELECT DISTINCT id FROM unnest(CASE WHEN TG_OP='INSERT' THEN ARRAY[NEW.rider_id]
     WHEN TG_OP='DELETE' THEN ARRAY[OLD.rider_id] ELSE ARRAY[OLD.rider_id,NEW.rider_id] END) id ORDER BY 1 LOOP
     PERFORM pg_advisory_xact_lock(hashtextextended('train-now-entry-rider:'||v_rider::text,0));

@@ -7,8 +7,7 @@
     "nextGen": {
       "name": "Næste generation",
       "text": "en junior i kraftig fremgang."
-    },
-    "helpLink": "Hvad mærkerne betyder"
+    }
   },
   "badges": {
     "u23": "Under 23 (U23)",
@@ -220,7 +219,8 @@
       "ratingTrendRising": "Stigende denne sæson",
       "ratingTrendSteady": "Stabil denne sæson",
       "ratingTrendDeclining": "Faldende denne sæson",
-      "ratingTrendTitle": "Rating {value} siden {date}"
+      "ratingTrendTitle": "Rating {value} siden {date}",
+      "forSale": "Til salg"
     },
     "reputation": {
       "whyTitle": "Hvorfor omdømmet flyttede sig",
@@ -254,18 +254,7 @@
         "fallback": "Omdømme-event"
       }
     },
-    "levelCorrectionReceipt": {
-      "developmentLine": "Udvikling: ingen ændring fra træning denne uge.",
-      "marketLine": "Marked: engangs niveau-korrektion, alle ryttere. Værdier matcher nu hvad ryttere reelt handles for. Din rytter bliver ikke dårligere.",
-      "detailsToggle": "Vis tal",
-      "detailsHide": "Skjul tal",
-      "anchorBefore": "Værdi før",
-      "anchorAfter": "Værdi efter",
-      "factor": "Korrektionsfaktor",
-      "appliedAt": "Anvendt {date}"
-    },
     "banner": {
-      "listed": "På transferlisten · pris {price}",
       "auction": "I auktion · slutter om {endsIn} · højeste bud {highBid}",
       "finalSeasonTitle": "Sidste sæson",
       "finalSeason": "Meldte sin pension ved sæsonstart. Han stopper når sæson {season} slutter."
@@ -1022,10 +1011,10 @@
       "full": "Flest ranglistepoint blandt ryttere fra hans kontinent i sæson {prev}. Han bærer trøjen hele sæson {season}."
     },
     "national": {
+      "title": "National mester",
       "name": "National mester, {country}",
       "short": "flest ranglistepoint fra {country} sidste sæson.",
       "full": "Flest ranglistepoint blandt ryttere fra {country} i sæson {prev}. Han bærer trøjen hele sæson {season}."
-    },
-    "helpLink": "Sådan virker mestertrøjerne"
+    }
   }
 }

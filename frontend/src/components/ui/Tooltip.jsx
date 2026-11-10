@@ -10,7 +10,7 @@ import { placeTooltip, tooltipMaxWidth } from "./tooltipPlacement.ts";
 // inde fra kanten. Samme greb som MarkerTip i RaceDetailPage.jsx (#6185).
 // Hover viser den, fokus (tryk på mobil) viser den, `open` tvinger den åben
 // (kitchen-sink/snapshot).
-export default function Tooltip({ label, side = "top", open = false, id, className = "", children }) {
+export default function Tooltip({ label, side = "top", open = false, dismissOnEscape = false, id, className = "", children }) {
   const anchorRef = useRef(null);
   const bubbleRef = useRef(null);
   // Hover og fokus holdes hver for sig, som group-hover/group-focus-within
@@ -18,8 +18,9 @@ export default function Tooltip({ label, side = "top", open = false, id, classNa
   // og blur må ikke lukke den, mens musen stadig er over (Codex-review #6734).
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   const [pos, setPos] = useState(null);
-  const visible = hovered || focused || open;
+  const visible = (!dismissOnEscape || !dismissed) && (hovered || focused || open);
   // Codex-review #6734: boblen findes kun, mens den er åben, så skærmlæsere
   // får teksten fra en altid tilstedeværende sr-only-kopi, som ankeret peger
   // på via aria-describedby.
@@ -56,8 +57,15 @@ export default function Tooltip({ label, side = "top", open = false, id, classNa
 
   return (
     <span ref={anchorRef} className="group relative inline-flex"
-      onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
-      onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}>
+      onMouseEnter={() => { setDismissed(false); setHovered(true); }} onMouseLeave={() => setHovered(false)}
+      onFocus={() => { setDismissed(false); setFocused(true); }} onBlur={() => setFocused(false)}
+      onClick={() => { if (dismissOnEscape) setDismissed(false); }}
+      onKeyDown={(event) => {
+        if (!dismissOnEscape || event.key !== "Escape" || !visible) return;
+        event.preventDefault();
+        event.stopPropagation();
+        setDismissed(true);
+      }}>
       {trigger}
       <span id={descId} className="sr-only">{label}</span>
       {visible && (

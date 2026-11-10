@@ -7,8 +7,7 @@
     "nextGen": {
       "name": "Next Gen",
       "text": "un junior con un gran progreso."
-    },
-    "helpLink": "Qué significan las marcas"
+    }
   },
   "badges": {
     "u23": "Menor de 23 (sub-23)",
@@ -220,7 +219,8 @@
       "ratingTrendRising": "En ascenso esta temporada",
       "ratingTrendSteady": "Estable esta temporada",
       "ratingTrendDeclining": "En descenso esta temporada",
-      "ratingTrendTitle": "Valoración {value} desde el {date}"
+      "ratingTrendTitle": "Valoración {value} desde el {date}",
+      "forSale": "En venta"
     },
     "reputation": {
       "whyTitle": "Por qué se ha movido su reputación",
@@ -254,18 +254,7 @@
         "fallback": "Evento de reputación"
       }
     },
-    "levelCorrectionReceipt": {
-      "developmentLine": "Desarrollo: sin cambios por el entrenamiento esta semana.",
-      "marketLine": "Mercado: ajuste de nivel único, para todos los ciclistas. Los valores ahora coinciden con lo que realmente se paga por los ciclistas. Tu ciclista no está empeorando.",
-      "detailsToggle": "Mostrar números",
-      "detailsHide": "Ocultar números",
-      "anchorBefore": "Valor antes",
-      "anchorAfter": "Valor después",
-      "factor": "Factor de corrección",
-      "appliedAt": "Aplicado el {date}"
-    },
     "banner": {
-      "listed": "En la lista de fichajes · precio {price}",
       "auction": "En subasta · termina en {endsIn} · puja más alta {highBid}",
       "finalSeasonTitle": "Última temporada",
       "finalSeason": "Anunció su retirada al inicio de la temporada. Se retira cuando termine la temporada {season}."
@@ -1022,10 +1011,10 @@
       "full": "Más puntos de ranking entre los ciclistas de su continente en la temporada {prev}. Lleva el maillot toda la temporada {season}."
     },
     "national": {
+      "title": "Campeón nacional",
       "name": "Campeón nacional, {country}",
       "short": "más puntos de ranking de {country} la temporada pasada.",
       "full": "Más puntos de ranking entre los ciclistas de {country} en la temporada {prev}. Lleva el maillot toda la temporada {season}."
-    },
-    "helpLink": "Cómo funcionan los maillots de campeón"
+    }
   }
 }
