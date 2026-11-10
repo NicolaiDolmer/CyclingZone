@@ -102,6 +102,7 @@
     "auto_accept_invalid_duration": "Vælg mellem {minMinutes} minutter og {maxHours} timers aktiv tid",
     "auto_accept_invalid_price": "Ugyldig auto-accept-pris",
     "auto_accept_price_changed": "Auto-accept-prisen er ændret. Se den nye pris, og prøv igen",
+    "auto_accept_end_changed": "Auktionens sluttid er ændret. Tjek den nye tid, og bekræft igen",
     "auto_accept_not_above_asking": "Auto-accept-prisen skal ligge over listeprisen ({askingPrice} CZ$)",
     "auto_accept_squad_full": "Dit hold har ingen ledig plads ({maxRiders} ryttere, når auktionerne du fører, tælles med)",
     "auto_accept_seller_squad_floor": "Sælgeren må ikke komme under {minRiders} ryttere lige nu, så rytteren kan ikke komme på auktion",

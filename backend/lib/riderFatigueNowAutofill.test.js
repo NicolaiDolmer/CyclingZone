@@ -141,15 +141,17 @@ function routeState(flag) {
 const stagesOf = (n) => [{ stage_number: n }, { stage_number: n + 1 }];
 const RACES = [{ id: "R1", stages: stagesOf(1) }, { id: "R2", stages: stagesOf(1) }, { id: "R3", stages: stagesOf(1) }, { id: "R4", stages: stagesOf(2) }, { id: "R5", stages: stagesOf(1) }];
 
-test("slukket: de tre ruter er bit-identiske med merge-basen (frossen digest), og kun kontakten læses", async () => {
+test("slukket: de tre ruter er bit-identiske med merge-basen (frossen digest); kun kontakten og Træn nu-stemplerne læses", async () => {
   // Scenarierne leverer abilities som `abById`; ruterne sender samme map videre som abilityByRider.
   const now = await runScenarios({
     resolve: ({ supabase, conditions: conds, abById, teamId, races }) => fatigueByRiderForRaces({ supabase, conditions: conds, abilityByRider: abById, teamId, races }),
   });
   assert.equal(now.scenarioCount, BASE.scenarioCount);
   assert.equal(now.picksTotal, BASE.picksTotal);
-  assert.deepEqual(now.tablesRead, BASE.tablesRead, "slukket læser intet ud over kontakten");
-  assert.equal(now.readCount, BASE.readCount, "samme antal kontakt-læsninger som merge-basen");
+  // #7737: med 7801 slukket læses også Træn nu-stemplerne (ét opslag), som i fatigueByRiderNow.
+  // Uden stempler er udtagelsen bit-identisk med merge-basen.
+  assert.deepEqual(now.tablesRead, [...BASE.tablesRead, "training_train_now_locks"], "slukket læser kun kontakten og stemplerne");
+  assert.equal(now.readCount, BASE.readCount * 2, "én kontakt-læsning og ét stempel-opslag pr. scenarie");
   assert.equal(now.picks, BASE.picks, "assistentens udtagelse ændret med kontakten slukket");
 });
 
@@ -164,15 +166,15 @@ test("scenarierne rammer trætheden: en anden træthed pr. løb giver en anden u
   assert.notEqual(shifted.picks, BASE.picks);
 });
 
-test("slukket: åbningen og intet pr. løb; kun kontakten læses, også med mange løb", async () => {
+test("slukket: åbningen og intet pr. løb; kun kontakten og stemplerne læses, også med mange løb", async () => {
   for (const flag of [undefined, "off", "beta"]) {
     const log = [];
     const state = routeState(flag);
     const out = await fatigueByRiderForRaces({ supabase: makeSupabase(state, log), conditions, abilityByRider, teamId: "t1", races: RACES });
     assert.equal(out.byRace, null, `flag=${flag}`);
     assert.deepEqual([...out.fatById], [...openingFatigueMap(conditions)]);
-    assert.deepEqual([...new Set(log.map((q) => q.table))], ["app_config"], `flag=${flag}`);
-    assert.equal(log.length, 1, "én læsning af kontakten, ikke én pr. løb");
+    assert.deepEqual([...new Set(log.map((q) => q.table))], ["app_config", "training_train_now_locks"], `flag=${flag}`);
+    assert.equal(log.length, 2, "én læsning af kontakten og ét stempel-opslag, ikke ét pr. løb");
   }
 });
 

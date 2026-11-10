@@ -342,5 +342,23 @@
     "over": "{pct}% over vurdering",
     "at": "Tæt på vurdering",
     "title": "Estimeret markedsværdi: {amount} CZ$. Et modelestimat, ikke en garanteret pris."
+  },
+  "autoAccept": {
+    "start": "Start auktion",
+    "bid": "Dit bud (CZ$)",
+    "minimum": "Mindst {price}",
+    "duration": "Varighed",
+    "hours": "timer",
+    "minutes": "min",
+    "durationHint": "30 min til 24 timer. Tiden tæller kl. {open}-{close}.",
+    "ends": "Slutter",
+    "binding": "Dit bud binder pengene, så længe du fører.",
+    "cancel": "Annuller",
+    "counterBoundary": "Bud fra {price} og op går gennem åben auktion.",
+    "onlyBuyer": "Kun køberen kan starte den.",
+    "listPrice": "Listepris",
+    "autoPrice": "Auto-pris",
+    "buyerOffer": "Bud fra køber",
+    "sendCounter": "Send modbud"
   }
 }

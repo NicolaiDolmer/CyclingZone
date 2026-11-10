@@ -20,6 +20,11 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BACKEND_ROOT = join(__dirname, "..");
 
+test('train-now bonus is independently registered for the operator', () => {
+  assert.ok(isStageFlagKey('training_train_now_bonus'));
+  assert.equal(findStageFlag('training_train_now_bonus').area,'training');
+});
+
 // Bevar kildedækning for bølgens flyttede wrappers. Bred TS-scanning afventer #5271.
 const MIGRATED_FLAG_SOURCES = new Set([
   "academyIntakeExpiryFlag.ts",

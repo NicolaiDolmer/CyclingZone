@@ -11,11 +11,22 @@ import { buildScenario, digestScenarios, fakeSupabase, modelFingerprint, runScen
 
 const frozen = JSON.parse(readFileSync(new URL("./__fixtures__/riderFatigueNow7801Base.json", import.meta.url), "utf8"));
 
+// The frozen fixture predates stamps. Model that absent table explicitly; its
+// generic fake otherwise returns race-ledger rows/errors for every new table.
+const unstamped = (apply = applyStageStartFatigue) => args => apply({ ...args, supabase: {
+  from(table) {
+    if (table !== "training_train_now_locks") return args.supabase.from(table);
+    const q = { select() { return q; }, eq() { return q; }, in() { return q; },
+      then(resolve, reject) { return Promise.resolve({ data: [], error: null }).then(resolve, reject); } };
+    return q;
+  },
+} });
+
 test("#7801: motorens indgang er bit-identisk med merge-basen", async (t) => {
   // Facit er skrevet med basens regnestykke. Er modellen kalibreret om siden, siger facit
   // ikke længere noget om denne omlægning; generér det ikke om, men fjern fixturen.
   if (modelFingerprint() !== frozen.modelFingerprint) return t.skip("condition v2 er ændret efter facit blev skrevet");
-  const digest = await digestScenarios();
+  const digest = await digestScenarios(unstamped());
   for (const key of ["scenarios", "entrants", "returned", "thrown", "reads", "empty"]) {
     assert.equal(digest[key], frozen[key], `${key} afviger fra merge-basen ${frozen.sourceCommit}`);
   }
@@ -23,12 +34,12 @@ test("#7801: motorens indgang er bit-identisk med merge-basen", async (t) => {
 
 test("#7801: scenarierne rammer motorens forskellige veje", async () => {
   const results = [];
-  for (let seed = 1; seed <= 200; seed++) results.push(await runScenario(seed));
+  for (let seed = 1; seed <= 200; seed++) results.push(await runScenario(seed, unstamped()));
   assert.ok(results.some((r) => r.returned > 0), "nogen ryttere ændres");
   assert.ok(results.some((r) => r.returned === 0), "nogen ryttere ændres ikke");
   assert.ok(results.some((r) => r.thrown?.startsWith("race_stage_schedule")), "plan-fejl kastes");
   assert.ok(results.some((r) => r.thrown?.startsWith("training_race_loads")), "ledger-fejl kastes");
-  const chunked = await runScenario(97);
+  const chunked = await runScenario(97, unstamped());
   assert.equal(chunked.log.filter(([table, method]) => table === "training_race_loads" && method === "await").length, 3, "felt over chunk-størrelsen læses i bidder");
 });
 
@@ -141,6 +152,6 @@ test("#7801: uden condition_model_v2 er rider_condition sandt og ledgeren læses
   const riders = [{ rider_id: "a", team_id: "t", fatigue: 30 }];
   const out = await ridersWithFatigueNow({ supabase: flaggedSupabase("off", { ledger: [] }, log), riders, now: new Date("2026-10-31T23:30:00Z") });
   assert.deepEqual(out, riders);
-  assert.deepEqual(log, []);
+  assert.ok(log.every(([table]) => table === "training_train_now_locks"), "durable stamps are checked even with the model off");
   assert.deepEqual(await ridersWithFatigueNow({ supabase: { from() { throw new Error("må ikke læse"); } }, riders: null, now: new Date("2026-10-31T23:30:00Z") }), []);
 });

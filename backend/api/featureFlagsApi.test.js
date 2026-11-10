@@ -112,6 +112,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
   assert.deepEqual(Object.keys(body).sort(), ["flags"]);
   assert.deepEqual(Object.keys(body.flags).sort(), [...PLAYER_VISIBLE_FLAG_KEYS].sort());
   assert.deepEqual(body.flags, {
+    auto_accept_enabled: false,
     race_engine_v4: false,
     board_mandate_model_enabled: false,
     training_tick_per_race_day: false,
@@ -180,6 +181,7 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.deepEqual(body.flags, {
+    auto_accept_enabled: false,
     race_engine_v4: false,
     board_mandate_model_enabled: false,
     training_tick_per_race_day: false,
@@ -256,6 +258,7 @@ test("fejl i beta-opslaget: 500 uden flag-vaerdier, og fejlen rapporteres", asyn
 test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
   const supabase = fakeSupabase({ race_engine_v4: "beta", training_tick_per_race_day: "on" });
   assert.deepEqual(await readPlayerFeatureFlags(supabase), {
+    auto_accept_enabled: false,
     race_engine_v4: false,
     board_mandate_model_enabled: false,
     training_tick_per_race_day: true,
@@ -293,6 +296,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     fatigue_now_7801: false,
   });
   assert.deepEqual(await readPlayerFeatureFlags(supabase, { isBetaTester: true }), {
+    auto_accept_enabled: false,
     race_engine_v4: true,
     board_mandate_model_enabled: false,
     training_tick_per_race_day: true,
@@ -503,4 +507,17 @@ test("batch-laesning: null er en ugyldig besvarelse, ikke en vellykket tom liste
   assert.ok(Object.values(flags).every((value) => value === false));
   assert.equal(failures.length, 1);
   assert.match(failures[0].message, /invalid app_config response/);
+});
+
+
+test("#2176: binary auto-accept requires the money reservation prerequisite", async () => {
+  for (const stage of ["off","beta",null]) {
+    const flags = await readPlayerFeatureFlags(fakeSupabase({ auto_accept_enabled: stage, market_commitment_6181: "on" }), { isBetaTester: true });
+    assert.equal(flags.auto_accept_enabled,false);
+  }
+  for (const prerequisite of ["off","beta",null]) {
+    const flags = await readPlayerFeatureFlags(fakeSupabase({ auto_accept_enabled: "on", market_commitment_6181: prerequisite }));
+    assert.equal(flags.auto_accept_enabled,false);
+  }
+  assert.equal((await readPlayerFeatureFlags(fakeSupabase({auto_accept_enabled:"on",market_commitment_6181:"on"}))).auto_accept_enabled,true);
 });
