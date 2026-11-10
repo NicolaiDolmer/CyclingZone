@@ -824,8 +824,16 @@
       "listed": "¡Puesto a la venta!",
       "priceUpdated": "Precio pedido actualizado",
       "removed": "Quitado de la lista de fichajes",
-      "errorPrefix": "Error:"
-    }
+      "errorPrefix": "Error:",
+      "autoNotSaved": "No se guardó el precio automático:"
+    },
+    "editPrices": "Editar precios",
+    "submitUpdatePrices": "Actualizar precios",
+    "autoLabel": "Precio automático (CZ$), opcional",
+    "autoHelp": "Si alguien ofrece este precio o más, una subasta pública empieza de inmediato. El comprador elige la duración (de 30 min a 24 horas de tiempo activo). El precio es visible para todos y la venta es vinculante para ti.",
+    "autoInvalid": "El precio automático debe ser al menos el precio pedido.",
+    "autoStatus": "Precio automático {amount} CZ$",
+    "autoEditHint": "Un nuevo precio automático solo se aplica a las ofertas nuevas."
   },
   "manage": {
     "extend": {

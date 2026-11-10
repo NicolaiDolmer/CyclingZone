@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (10/11):** Mandatet står i "Dagens plan 10/11" på tavlen #7911. PC1: Træn nu #7737 + auto-accept #2176 til beta, merger selv bag slukket kontakt; oprydning 7955/7961/7958. Codex: #6765, #6490, #7947, #7627.
+> **🎯 Next action (Dolmer PC 10/11 aften, primært Codex):** A7 merget (#7981, RPC verificeret, kontakter off). Codex: beta-trin efter valg A (M3 kun auto-accept-deltagere, PG17-tests), #7980/#7864, #7959-konflikt, #7627. Claude: review + Fable-dommer før tænd. Træn nu beta; #7982 del 2 (22 s) kræver måling. #7979 i merge-kø (7.428); #7978 → 7.429. Graduation Day (#7960) torsdag.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling; memory commitment på Large kunne ikke aflæses 9/11.
 >
-> **🤖 Working agent:** Claude PC1 primær session 10/11 (Opus 5.5) efter "Dagens plan 10/11". Træn nu #7737: del 1 `828e78e4` + del 2 `389a1311` merget, kontakt off; del 3 (#7966, ejer-godkendt) merges med tændingen; del 4 + før-tænding-rettelser (#7968/#7969) i merge-kø; bonus tændes separat senere (ejer). Auto-accept #2176: `625f1f8f` merget, kontakter off. Næste: Fable-dommere, så tænd-kort. Codex på Dolmer PC: fire spor på #7911.
+> **🤖 Working agent:** Ingen aktiv session (PC1 lukket 10/11 aften).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 

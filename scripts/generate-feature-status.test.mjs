@@ -183,9 +183,9 @@ test("render sorterer area -> state -> id og markerer filen som genereret", () =
   assert.ok(markdown.indexOf("## race-engine") < markdown.indexOf("## market"));
   // live-poster (#5430): kompakt linje, ingen 7-kolonne tabelraekke.
   assert.match(markdown, /\*\*live:\*\* Alpha \(`alpha-feature`\) 2026-09-06/);
-  assert.doesNotMatch(markdown, /\| Alpha \(`alpha-feature`\) \|/);
+  assert.doesNotMatch(markdown, /\|Alpha \(`alpha-feature`\)\|/);
   // ikke-live-poster (building) faar stadig en fuld tabelraekke.
-  assert.match(markdown, /\| Beta \(`beta-feature`\) \| building \| - \|/);
+  assert.match(markdown, /\|Beta \(`beta-feature`\)\|building\|-\|/);
 });
 
 test("live-poster faar kompakt liste, ikke-live faar fuld tabel i samme area (#5430)", () => {
@@ -205,9 +205,9 @@ test("live-poster faar kompakt liste, ikke-live faar fuld tabel i samme area (#5
 `);
   const markdown = render(entries);
   assert.match(markdown, /\*\*live:\*\* Live X \(`live-x`\) 2026-09-07/);
-  assert.match(markdown, /\| Building X \(`building-x`\) \| building \| - \|/);
+  assert.match(markdown, /\|Building X \(`building-x`\)\|building\|-\|/);
   // "live:"-linjen staar foer tabellen for samme area.
-  assert.ok(markdown.indexOf("**live:**") < markdown.indexOf("| Building X"));
+  assert.ok(markdown.indexOf("**live:**") < markdown.indexOf("|Building X"));
 });
 
 test("gamle live-poster arkiveres til kun id; reference = registrets nyeste dato (#5319)", () => {
@@ -236,7 +236,7 @@ test("gamle live-poster arkiveres til kun id; reference = registrets nyeste dato
   assert.match(markdown, /\*\*arkiv:\*\* `old-live`/);
   assert.doesNotMatch(markdown, /Old Live/);
   // Kun live arkiveres; en gammel ikke-live-post beholder sin fulde raekke.
-  assert.match(markdown, /\| Old Building \(`old-building`\) \| building \|/);
+  assert.match(markdown, /\|Old Building \(`old-building`\)\|building\|/);
 });
 
 test("render er stabil (samme input giver samme output)", () => {

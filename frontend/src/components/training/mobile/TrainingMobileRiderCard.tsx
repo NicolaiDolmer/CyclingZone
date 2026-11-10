@@ -28,6 +28,7 @@ import AbilityReceiptRow from "../AbilityReceiptRow.jsx";
 import TrainingScoreSparkline, { type TrainingScorePoint } from "../TrainingScoreSparkline.tsx";
 import RiderLink from "../../RiderLink.jsx";
 import type { CountsForRow, MobileScoreCell } from "../../../lib/trainingMobileModel.ts";
+import { FatigueAtStartLine } from "../TrainingTodayTable.tsx";
 
 export type ReceiptRow = {
   ability: string;
@@ -45,6 +46,7 @@ export default function TrainingMobileRiderCard({
   meta,
   form,
   fatigue,
+  fatigueAtStart = null,
   injuryLabel = null,
   dayLabel,
   receiptRows,
@@ -70,6 +72,7 @@ export default function TrainingMobileRiderCard({
   meta: string;
   form: number | null;
   fatigue: number | null;
+  fatigueAtStart?: number | null;
   /** #5462: faerdig skade-tekst ("Skadet: 3 loebsdage tilbage (ca. 4. okt.)") eller null. */
   injuryLabel?: string | null;
   dayLabel: string;
@@ -123,6 +126,7 @@ export default function TrainingMobileRiderCard({
           <div>
             <div className="font-data text-3xs font-semibold uppercase tracking-[.08em] text-cz-3">{t("fatigue")}</div>
             <div className="font-data text-sm font-semibold leading-tight tabular-nums text-cz-1">{fatigue ?? "—"}</div>
+            <FatigueAtStartLine now={fatigue} atStart={fatigueAtStart} />
           </div>
         </div>
       </div>

@@ -359,6 +359,8 @@
     "listPrice": "List price",
     "autoPrice": "Auto price",
     "buyerOffer": "Buyer's offer",
-    "sendCounter": "Send"
+    "sendCounter": "Send",
+    "endUpdated": "The end time was updated. Check it and press again.",
+    "listingAutoPrice": "Auto-accept price (starts an auction)"
   }
 }

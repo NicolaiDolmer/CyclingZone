@@ -22,7 +22,8 @@ async function stampedIds({ supabase, tickDate, riderIds, failOpenWhenOff }) {
     if (!failOpenWhenOff) throw lookupError;
     const { data, error } = await supabase.from("app_config")
       .select("value").eq("key", "training_train_now_instant").maybeSingle();
-    if (!error && data?.value !== "on") return [];
+    // "beta" (owner 10/11) can leave stamps too, so it fails closed like "on".
+    if (!error && data?.value !== "on" && data?.value !== "beta") return [];
     throw lookupError;
   }
 }
@@ -153,9 +154,14 @@ export async function loadInstantConditions({ supabase, riderIds, tickDate, befo
           if (projected != null && (!Number.isFinite(projected) || projected < 0)) throw new Error("Invalid projected race load");
           return Number(load?.load ?? projected ?? 0);
         });
+        // #7737 (ejer 10/11): et reserveret loebsfelt uden koert (eller forudsagt) belastning giver
+        // hverken belastning eller restitution, foer loebet er koert. Samme regel som trykket.
+        const pendingRaceSlots = days.map((day, i) => intensities[i] === "race"
+          && !ledger.some(l => Number(l.game_day) === day && (beforeGameDay == null || day < beforeGameDay))
+          && projectedFor(day) == null);
         const condition = settleTrainingDateCondition({ riderId: id, dateStr: tickDate, condition: opening,
           intensities, raceLoads, recoveryAbility, recoveryConfig, modelV2,
-          medicalBonus: medical.get(lock.team_id) ?? 0, raceDateTrainingDay });
+          medicalBonus: medical.get(lock.team_id) ?? 0, raceDateTrainingDay, pendingRaceSlots });
         out.set(id, { fatigue: condition.fatigue, form: condition.form });
       }
     }

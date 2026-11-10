@@ -359,6 +359,8 @@
     "cancel": "Annuleren",
     "hours": "uur",
     "minutes": "min",
-    "sendCounter": "Versturen"
+    "sendCounter": "Versturen",
+    "endUpdated": "De eindtijd is bijgewerkt. Controleer hem en druk opnieuw.",
+    "listingAutoPrice": "Autoprijs (start een veiling)"
   }
 }

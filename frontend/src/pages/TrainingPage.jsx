@@ -76,7 +76,7 @@ import { useTrainingGroups } from "../components/training/groups/useTrainingGrou
 import { planForWithGroups, groupNameByRider, groupIdOf, groupValue, NEW_GROUP_VALUE } from "../components/training/groups/trainingGroupsModel.ts";
 // #4847: "Train now" uden bonus (egne filer, minimal indsaettelse her).
 import { useTrainNow } from "../components/training/TrainNowClient.ts";
-import { trainNowRunGate, trainNowSaveErrorKey, trainNowNeedsConfirm, trainNowWarnings } from "../components/training/TrainNowState.ts";
+import { trainNowRunGate, trainNowSaveErrorKey, trainNowNeedsConfirm, trainNowWarnings, trainNowInstantConfirm } from "../components/training/TrainNowState.ts";
 import TrainNowNote from "../components/training/TrainNowNote.tsx";
 import FatigueForecast from "../components/training/FatigueForecast.tsx";
 import { useFatigueForecast, raceSlotsFor } from "../components/training/FatigueForecastData.ts";
@@ -605,6 +605,8 @@ export default function TrainingPage() {
   const [runError, setRunError] = useState(null);
   // #6740: ask before a Train now press that costs one of today's race starts.
   const [confirmTrainNow, setConfirmTrainNow] = useState(false);
+  // #7737 part 3: the instant dialog on its own (no short-race warning), so it gets its own title and button.
+  const instantOnly = trainNowInstantConfirm(trainNow.status) && trainNow.status.shortRaces.length === 0;
 
   // #2465: roster-radens Fokus-select/clear-knap/intensitet-knapper kaldte tidligere
   // setPlan/clearPlan uden await og uden at læse {ok,error} — en fejl (session,
@@ -1528,6 +1530,7 @@ export default function TrainingPage() {
           meta={[riderTypeLine(rider), age != null ? `${t("colAge")} ${age}` : null].filter(Boolean).join(" · ")}
           form={cond.form ?? null}
           fatigue={cond.fatigue ?? null}
+          fatigueAtStart={phoneTodayView ? cond.fatigue_at_start ?? null : null}
           injuryLabel={injuryMsg ? t(injuryMsg.key, { days: injuryMsg.days, ...(injuryMsg.date ? { date: formatDate(injuryMsg.date, "short") } : {}) }) : null}
           dayLabel={planFor(riderId)?.focus ? dayLabel(planFor(riderId), t) : t("dayPanel.chooseDay")}
           receiptRows={receiptRowsFor(riderId)}
@@ -2478,7 +2481,7 @@ export default function TrainingPage() {
         open={confirmTrainNow}
         onClose={() => setConfirmTrainNow(false)}
         size="sm"
-        title={t(trainNow.status.shortRaces.every((r) => r.startsShort) ? "trainNow.confirm.titleShort" : "trainNow.confirm.title")}
+        title={t(instantOnly ? "trainNow.confirm.titleInstant" : trainNow.status.shortRaces.every((r) => r.startsShort) ? "trainNow.confirm.titleShort" : "trainNow.confirm.title")}
         closeLabel={t("trainNow.confirm.cancel")}
         footer={(
           <>
@@ -2491,11 +2494,14 @@ export default function TrainingPage() {
                 const pressed = await trainNow.press({ confirmedShortRaceIds: trainNow.status.shortRaces.map((r) => r.id) });
                 if (pressed?.error === "short_races_confirm") setConfirmTrainNow(true);
               }}>
-              {t("trainNow.confirm.go")}
+              {t(instantOnly ? "trainNow.confirm.goNow" : "trainNow.confirm.go")}
             </Button>
           </>
         )}
       >
+        {trainNowInstantConfirm(trainNow.status) && (
+          <p className={trainNow.status.shortRaces.length ? "mb-2" : ""} data-testid="training-train-now-confirm-instant">{t("trainNow.confirm.bodyInstant")}</p>
+        )}
         <ul className="space-y-1.5" data-testid="training-train-now-confirm-list">
           {trainNowWarnings(trainNow.status).map((w) => (
             <li key={`${w.key}:${w.params.race}`}>{t(w.key, w.params)}</li>

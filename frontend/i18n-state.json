@@ -12130,6 +12130,10 @@
         "api.session_expired": {
           "srcHash": "5ad1b2a7bca2dd7e",
           "status": "reviewed"
+        },
+        "api.offer_at_auto_accept_price": {
+          "srcHash": "3ac32c1b3a8c65ab",
+          "status": "reviewed"
         }
       },
       "feedback": {
@@ -27212,6 +27216,38 @@
         "training.intensity_recovery": {
           "srcHash": "48f6a8d5688b0cf5",
           "status": "reviewed"
+        },
+        "sellRider.toast.autoNotSaved": {
+          "srcHash": "187b6eea658489e9",
+          "status": "reviewed"
+        },
+        "sellRider.editPrices": {
+          "srcHash": "dde53752c4ecb3a1",
+          "status": "reviewed"
+        },
+        "sellRider.submitUpdatePrices": {
+          "srcHash": "5ec21a953b46f9c3",
+          "status": "reviewed"
+        },
+        "sellRider.autoLabel": {
+          "srcHash": "9a5c57476f7f9897",
+          "status": "reviewed"
+        },
+        "sellRider.autoHelp": {
+          "srcHash": "37ba06fee33db2cf",
+          "status": "reviewed"
+        },
+        "sellRider.autoInvalid": {
+          "srcHash": "d7ef2a69ffdd096b",
+          "status": "reviewed"
+        },
+        "sellRider.autoStatus": {
+          "srcHash": "1b7d460e35c2c53e",
+          "status": "reviewed"
+        },
+        "sellRider.autoEditHint": {
+          "srcHash": "c2a96e0a1c20fb6e",
+          "status": "reviewed"
         }
       },
       "riderFilters": {
@@ -33148,6 +33184,14 @@
         "autoAccept.sendCounter": {
           "srcHash": "f6f4688ff23d50c6",
           "status": "reviewed"
+        },
+        "autoAccept.endUpdated": {
+          "srcHash": "97309a5164b4a7f4",
+          "status": "reviewed"
+        },
+        "autoAccept.listingAutoPrice": {
+          "srcHash": "25c1afe69e026a1e",
+          "status": "reviewed"
         }
       },
       "watchlist": {
@@ -33346,6 +33390,54 @@
         "autoAccept.sendCounter": {
           "srcHash": "f6f4688ff23d50c6",
           "status": "reviewed"
+        },
+        "autoAccept.endUpdated": {
+          "srcHash": "97309a5164b4a7f4",
+          "status": "reviewed"
+        },
+        "autoAccept.listingAutoPrice": {
+          "srcHash": "25c1afe69e026a1e",
+          "status": "reviewed"
+        }
+      },
+      "rider": {
+        "sellRider.toast.autoNotSaved": {
+          "srcHash": "187b6eea658489e9",
+          "status": "reviewed"
+        },
+        "sellRider.editPrices": {
+          "srcHash": "dde53752c4ecb3a1",
+          "status": "reviewed"
+        },
+        "sellRider.submitUpdatePrices": {
+          "srcHash": "5ec21a953b46f9c3",
+          "status": "reviewed"
+        },
+        "sellRider.autoLabel": {
+          "srcHash": "9a5c57476f7f9897",
+          "status": "reviewed"
+        },
+        "sellRider.autoHelp": {
+          "srcHash": "37ba06fee33db2cf",
+          "status": "reviewed"
+        },
+        "sellRider.autoInvalid": {
+          "srcHash": "d7ef2a69ffdd096b",
+          "status": "reviewed"
+        },
+        "sellRider.autoStatus": {
+          "srcHash": "1b7d460e35c2c53e",
+          "status": "reviewed"
+        },
+        "sellRider.autoEditHint": {
+          "srcHash": "c2a96e0a1c20fb6e",
+          "status": "reviewed"
+        }
+      },
+      "errors": {
+        "api.offer_at_auto_accept_price": {
+          "srcHash": "3ac32c1b3a8c65ab",
+          "status": "reviewed"
         }
       }
     },
@@ -33414,6 +33506,54 @@
         "autoAccept.sendCounter": {
           "srcHash": "f6f4688ff23d50c6",
           "status": "reviewed"
+        },
+        "autoAccept.endUpdated": {
+          "srcHash": "97309a5164b4a7f4",
+          "status": "reviewed"
+        },
+        "autoAccept.listingAutoPrice": {
+          "srcHash": "25c1afe69e026a1e",
+          "status": "reviewed"
+        }
+      },
+      "rider": {
+        "sellRider.toast.autoNotSaved": {
+          "srcHash": "187b6eea658489e9",
+          "status": "reviewed"
+        },
+        "sellRider.editPrices": {
+          "srcHash": "dde53752c4ecb3a1",
+          "status": "reviewed"
+        },
+        "sellRider.submitUpdatePrices": {
+          "srcHash": "5ec21a953b46f9c3",
+          "status": "reviewed"
+        },
+        "sellRider.autoLabel": {
+          "srcHash": "9a5c57476f7f9897",
+          "status": "reviewed"
+        },
+        "sellRider.autoHelp": {
+          "srcHash": "37ba06fee33db2cf",
+          "status": "reviewed"
+        },
+        "sellRider.autoInvalid": {
+          "srcHash": "d7ef2a69ffdd096b",
+          "status": "reviewed"
+        },
+        "sellRider.autoStatus": {
+          "srcHash": "1b7d460e35c2c53e",
+          "status": "reviewed"
+        },
+        "sellRider.autoEditHint": {
+          "srcHash": "c2a96e0a1c20fb6e",
+          "status": "reviewed"
+        }
+      },
+      "errors": {
+        "api.offer_at_auto_accept_price": {
+          "srcHash": "3ac32c1b3a8c65ab",
+          "status": "reviewed"
         }
       }
     },
@@ -33481,6 +33621,54 @@
         },
         "autoAccept.sendCounter": {
           "srcHash": "f6f4688ff23d50c6",
+          "status": "reviewed"
+        },
+        "autoAccept.endUpdated": {
+          "srcHash": "97309a5164b4a7f4",
+          "status": "reviewed"
+        },
+        "autoAccept.listingAutoPrice": {
+          "srcHash": "25c1afe69e026a1e",
+          "status": "reviewed"
+        }
+      },
+      "rider": {
+        "sellRider.toast.autoNotSaved": {
+          "srcHash": "187b6eea658489e9",
+          "status": "reviewed"
+        },
+        "sellRider.editPrices": {
+          "srcHash": "dde53752c4ecb3a1",
+          "status": "reviewed"
+        },
+        "sellRider.submitUpdatePrices": {
+          "srcHash": "5ec21a953b46f9c3",
+          "status": "reviewed"
+        },
+        "sellRider.autoLabel": {
+          "srcHash": "9a5c57476f7f9897",
+          "status": "reviewed"
+        },
+        "sellRider.autoHelp": {
+          "srcHash": "37ba06fee33db2cf",
+          "status": "reviewed"
+        },
+        "sellRider.autoInvalid": {
+          "srcHash": "d7ef2a69ffdd096b",
+          "status": "reviewed"
+        },
+        "sellRider.autoStatus": {
+          "srcHash": "1b7d460e35c2c53e",
+          "status": "reviewed"
+        },
+        "sellRider.autoEditHint": {
+          "srcHash": "c2a96e0a1c20fb6e",
+          "status": "reviewed"
+        }
+      },
+      "errors": {
+        "api.offer_at_auto_accept_price": {
+          "srcHash": "3ac32c1b3a8c65ab",
           "status": "reviewed"
         }
       }

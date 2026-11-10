@@ -58,6 +58,8 @@ export default function AutoAcceptAuctionDialog({
     [minutes, setMinutes] = useState("30");
   const [pending, setPending] = useState(false),
     [error, setError] = useState("");
+  // Shown when the end time moved under the player's first click (no request is sent).
+  const [endUpdated, setEndUpdated] = useState(false);
   const latch = useRef(false);
   // Owner 10/11 ("confirm again"): after a rejected end time the server's clock is adopted,
   // so the shown end keeps moving with real time and the next click matches the server.
@@ -89,11 +91,13 @@ export default function AutoAcceptAuctionDialog({
       // Refresh the visible Ends line, then require another explicit click.
       // No request or money commitment is made against an unseen end time.
       setReviewedNow(submittedAt);
+      setEndUpdated(true);
       return;
     }
     latch.current = true;
     setPending(true);
     setError("");
+    setEndUpdated(false);
     try {
       const result = await onSubmit({
         expected_rider_id: current.rider.id,
@@ -249,6 +253,11 @@ export default function AutoAcceptAuctionDialog({
           </dd>
         </dl>
         <p className="text-xs text-cz-2">{t("autoAccept.binding")}</p>
+        {endUpdated && !error && (
+          <p role="status" className="text-sm text-cz-2" data-testid="auto-accept-end-updated">
+            {t("autoAccept.endUpdated")}
+          </p>
+        )}
         {error && (
           <p role="alert" className="text-sm text-cz-danger">
             {error}

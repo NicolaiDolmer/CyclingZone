@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="da"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Roadmap-admin, foer og efter (#7971)</title>
+<style>
+body{margin:0;padding:24px;background:#0f1115;color:#d9dce3;font:13px system-ui,sans-serif}
+h1{font-size:14px;margin:0 0 12px;color:#9aa0ab;font-weight:600}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.card{border:1px solid #2a2e37;border-radius:5px;padding:14px}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#c9a54b;margin:0 0 10px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:5px 6px;border-bottom:1px solid #2a2e37;text-align:left;font-variant-numeric:tabular-nums}
+th{color:#9aa0ab;font-weight:500;font-size:11px}td.n,th.n{text-align:right}
+th.sorted{color:#c9a54b}
+.note{color:#9aa0ab;font-size:11px;margin-top:8px}
+svg{display:block;width:100%;max-width:260px;margin:10px 0}
+</style></head><body>
+<h1>Admin-fanen /admin/growth?tab=roadmap, Idéer og grafen. Illustration med eksempeldata (Idé A-D); fanen kræver admin-login.</h1>
+<div class="cols">
+<div class="card"><h2>Før</h2>
+<svg viewBox="0 0 100 100"><rect x="12" y="12" width="76" height="76" fill="none" stroke="#2a2e37"/><rect x="50" y="12" width="38" height="38" fill="#c9a54b" fill-opacity=".08"/>
+<circle cx="70" cy="30" r="5" fill="#c9a54b" fill-opacity=".3" stroke="#c9a54b"/><circle cx="40" cy="60" r="3" fill="#c9a54b" fill-opacity=".3" stroke="#c9a54b"/>
+<text x="88" y="97" font-size="3.2" text-anchor="end" fill="#9aa0ab">God idé</text><text x="6" y="12" font-size="3.2" text-anchor="end" fill="#9aa0ab" transform="rotate(-90 6 12)">Vigtighed</text></svg>
+<table><tr><th>Idé</th><th class="n">God idé</th><th class="n">Vigtighed</th><th class="n sorted">Score</th><th class="n">Stemmer</th></tr>
+<tr><td>Idé A</td><td class="n">4,50</td><td class="n">5,10</td><td class="n">9,3</td><td class="n">12</td></tr>
+<tr><td>Idé B</td><td class="n">5,20</td><td class="n">3,00</td><td class="n">8,9</td><td class="n">9</td></tr>
+<tr><td>Idé C</td><td class="n">3,10</td><td class="n">4,20</td><td class="n">6,1</td><td class="n">7</td></tr></table>
+<p class="note">Efter hver ændring skiftes tabellen ud med en skeleton, og siden hopper til toppen.</p></div>
+<div class="card"><h2>Efter</h2>
+<svg viewBox="0 0 100 100"><rect x="12" y="12" width="76" height="76" fill="none" stroke="#2a2e37"/><rect x="50" y="12" width="38" height="38" fill="#c9a54b" fill-opacity=".08"/>
+<circle cx="76" cy="26" r="5" fill="#c9a54b" fill-opacity=".3" stroke="#c9a54b"/><circle cx="58" cy="60" r="3" fill="#c9a54b" fill-opacity=".3" stroke="#c9a54b"/>
+<text x="88" y="97" font-size="3.2" text-anchor="end" fill="#9aa0ab">Vigtighed</text><text x="6" y="12" font-size="3.2" text-anchor="end" fill="#9aa0ab" transform="rotate(-90 6 12)">God idé</text></svg>
+<table><tr><th>Idé</th><th class="n">Vigtighed</th><th class="n">God idé</th><th class="n sorted">Samlet ▼</th><th class="n">Stemmer</th></tr>
+<tr><td>Idé A<br><small style="color:#9aa0ab">Træning</small></td><td class="n">5,10</td><td class="n">4,50</td><td class="n">22,9</td><td class="n">12</td></tr>
+<tr><td>Idé B<br><small style="color:#9aa0ab">Transfermarked</small></td><td class="n">3,00</td><td class="n">5,20</td><td class="n">15,6</td><td class="n">9</td></tr>
+<tr><td>Idé C<br><small style="color:#9aa0ab">Ingen kategori</small></td><td class="n">4,20</td><td class="n">3,10</td><td class="n">13,0</td><td class="n">7</td></tr>
+<tr><td>Idé D</td><td class="n">4,00</td><td class="n">–</td><td class="n">–</td><td class="n">2</td></tr></table>
+<p class="note">Alle kolonner kan sorteres. Skeleton kun første gang; ændringer opdaterer på plads uden scroll-hop.</p></div>
+</div></body></html>

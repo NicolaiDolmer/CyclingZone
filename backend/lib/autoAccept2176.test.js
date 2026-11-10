@@ -172,6 +172,12 @@ test("slukket: transfer-claim er null uden RPC, risikolaesning eller ejerskabssk
   }
 });
 
+test("#6181: claimets pengeafvisning under holdlaasen bliver koeberens eksisterende fejlkode", async () => {
+  const client = fakeSupabase({ flag: "on", respond: () => ({ data: [], error: null }), rpc: () => ({ data: { status: "buyer_insufficient_balance" }, error: null }) });
+  const out = await claimTransferUnderTeamLock(client, { riderId: "R1", sellerTeamId: "A", buyerTeamId: "B", deferRegistration: false, now: new Date("2026-11-10T10:00:00Z"), acquirePatch: {}, activeSeasonNumber: 5, maxRiders: 30, price: 500 });
+  assert.deepEqual(out, { issue: { code: "buyer_insufficient_balance" } });
+});
+
 // ── Taendt kontakt ──────────────────────────────────────────────────────────
 
 test("tilbuds-reglen: bud paa Y eller derover afvises, bud under Y gaar igennem", () => {
@@ -271,6 +277,7 @@ test("RPC-status oversaettes til HTTP-svar med kendte fejlkoder", () => {
   assert.equal(mapSetAutoAcceptPriceResult({ status: "price_changed", auto_accept_price: 5 }).status, 409);
   assert.equal(mapSetAutoAcceptPriceResult({ status: "not_owner" }).status, 403);
   assert.equal(mapSetAutoAcceptPriceResult({ status: "not_above_asking", asking_price: 4 }).body.errorParams.askingPrice, 4);
+  for (const status of ["below_asking", "not_above_asking"]) assert.equal(mapSetAutoAcceptPriceResult({ status, asking_price: 4 }).body.errorCode, "auto_accept_below_asking"); // #2176 ejer 10/11
   assert.throws(() => mapSetAutoAcceptPriceResult({ status: "nope" }), /unexpected status/);
 });
 
@@ -513,7 +520,7 @@ test("foelgere: en fejlet besked til een stopper ikke de andre, en laesefejl kas
 test("fejlteksten paa en listing naevner den rigtige aarsag", () => {
   const auto = getListingPriceUpdateErrorResponse({ code: "23514", message: 'new row for relation "transfer_listings" violates check constraint "transfer_listings_auto_accept_price_check"' });
   assert.equal(auto.status, 400);
-  assert.equal(auto.body.errorCode, "asking_price_not_below_auto_accept");
+  assert.equal(auto.body.errorCode, "asking_price_above_auto_accept");
   const owner = getListingPriceUpdateErrorResponse({ code: "23514", message: "listing_owner_mismatch" });
   assert.equal(owner.status, 409);
   assert.equal(owner.body.errorCode, "rider_state_changed");

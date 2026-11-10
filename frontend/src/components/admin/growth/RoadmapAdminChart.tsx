@@ -1,4 +1,4 @@
-// Roadmap-admin, grafen (#7789): idé-score på x, vigtighed på y, én boble pr.
+// Roadmap-admin, grafen (#7789, akserne byttet i #7971): vigtighed vandret, idé-score lodret (ChartPoint.y er vigtighed, .x er idé-score), én boble pr.
 // punkt eller pr. kategori, og boblens størrelse er antal stemmere.
 //
 // Samme anatomi som spørgeskema-panelets kvadrant (QuadrantChart i
@@ -39,8 +39,8 @@ const TICKS = [1, 2, 3, 4, 5, 6];
 function describe(p: ChartPoint, axisXLabel: string, axisYLabel: string): string {
   const parts = [
     p.label,
-    `${axisXLabel} ${fmtScore(p.x)}`,
-    `${axisYLabel} ${fmtScore(p.y)}`,
+    `${axisXLabel} ${fmtScore(p.y)}`,
+    `${axisYLabel} ${fmtScore(p.x)}`,
     `${p.voters} stemmere`,
   ];
   if (p.dontKnow > 0) parts.push(`${p.dontKnow} Ved ikke`);
@@ -97,8 +97,8 @@ export default function RoadmapAdminChart({
         // Samme snit: skub boblen en radius ud i sin egen retning, så den kan klikkes.
         const nth = spread.get(p.key) ?? 0;
         const angle = nth * 2.4;
-        const cx = toX(clamp(p.x ?? SCORE_MIN)) + (nth ? Math.cos(angle) * r : 0);
-        const cy = toY(clamp(p.y ?? SCORE_MIN)) + (nth ? Math.sin(angle) * r : 0);
+        const cx = toX(clamp(p.y ?? SCORE_MIN)) + (nth ? Math.cos(angle) * r : 0);
+        const cy = toY(clamp(p.x ?? SCORE_MIN)) + (nth ? Math.sin(angle) * r : 0);
         const selected = p.key === selectedKey;
         const label = describe(p, axisXLabel, axisYLabel);
         return (

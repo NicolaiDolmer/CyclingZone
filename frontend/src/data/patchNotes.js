@@ -1,5 +1,51 @@
 export const PATCHES = [
   {
+    "version": "7.427",
+    "date": "2026-11-10",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "beta",
+        "topic": "Training",
+        "en": {
+          "title": "Train now no longer shows a false error",
+          "body": "If your phone stopped waiting for the answer, Train now could say it failed even though training had run. The page now checks and shows the trained day."
+        },
+        "da": {
+          "title": "Træn nu viser ikke længere en falsk fejl",
+          "body": "Hvis din telefon holdt op med at vente på svaret, kunne Træn nu sige, at det fejlede, selvom træningen var kørt. Siden tjekker nu og viser den trænede dag."
+        },
+        "refs": [
+          7982
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.426",
+    "date": "2026-11-10",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "beta",
+        "topic": "Training",
+        "en": {
+          "title": "Train now takes effect immediately (beta)",
+          "body": "Press Train now to apply today's free training straight away. Form and fatigue update at once and carry into today's races. Riders in the press cannot be entered in new races today."
+        },
+        "da": {
+          "title": "Træn nu virker med det samme (beta)",
+          "body": "Tryk på Træn nu for at udføre dagens ledige træning med det samme. Form og træthed opdateres straks og tæller med i dagens løb. Ryttere i trykket kan ikke tilmeldes nye løb i dag."
+        },
+        "refs": [
+          7737
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.425",
     "date": "2026-11-09",
     "changes": [

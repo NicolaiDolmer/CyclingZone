@@ -824,8 +824,16 @@
       "listed": "✅ Sat på transferlisten!",
       "priceUpdated": "✅ Pris opdateret",
       "removed": "✅ Fjernet fra transferlisten",
-      "errorPrefix": "❌"
-    }
+      "errorPrefix": "❌",
+      "autoNotSaved": "Auto-prisen blev ikke gemt:"
+    },
+    "editPrices": "Redigér priser",
+    "submitUpdatePrices": "Opdatér priser",
+    "autoLabel": "Auto-pris (CZ$), valgfri",
+    "autoHelp": "Byder nogen denne pris eller mere, starter en offentlig auktion med det samme. Køberen vælger længden (30 min til 24 timer aktiv tid). Prisen er synlig for alle, og salget er bindende for dig.",
+    "autoInvalid": "Auto-prisen skal være mindst prisen.",
+    "autoStatus": "Auto-pris {amount} CZ$",
+    "autoEditHint": "En ny auto-pris gælder kun nye bud."
   },
   "manage": {
     "extend": {

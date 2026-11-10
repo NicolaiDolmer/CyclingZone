@@ -251,8 +251,9 @@ export function mapSetAutoAcceptPriceResult(result) {
       return { status: 400, body: { error: "This listing is already closed", errorCode: "listing_already_closed" } };
     case "price_changed":
       return PRICE_CHANGED(result.auto_accept_price);
+    case "below_asking": // #2176 ejer 10/11: Y >= X; "not_above_asking" er den gamle SQL-status før migrationen
     case "not_above_asking":
-      return { status: 400, body: { error: "The auto-accept price must be above the asking price", errorCode: "auto_accept_not_above_asking", errorParams: { askingPrice: Number(result.asking_price) } } };
+      return { status: 400, body: { error: "The auto-accept price must be at least the asking price", errorCode: "auto_accept_below_asking", errorParams: { askingPrice: Number(result.asking_price) } } };
     case "price_too_high":
       return { status: 400, body: { error: "Invalid auto-accept price", errorCode: "auto_accept_invalid_price" } };
     case "rider_not_with_seller":
@@ -327,23 +328,26 @@ export async function releaseRiderUnderTeamLock(supabase, { riderId, teamId, atR
 }
 
 // Claim ownership/parking under the same team locks as an auto-accept start.
-// Payment remains in the existing transfer flow; this is not a payment RPC.
+// With the money gate on, ownership and payment share one transaction (A7).
 export async function claimTransferUnderTeamLock(supabase, {
   riderId, sellerTeamId, buyerTeamId, deferRegistration, now, acquirePatch,
-  activeSeasonNumber, maxRiders, price,
+  activeSeasonNumber, maxRiders, price, dealId, buyerPayload, sellerPayload, riderRestore,
 }) {
   if (!(await isAutoAcceptEnabled(supabase))) return null;
   const atRisk = await fetchAtRiskRiders(supabase, sellerTeamId, activeSeasonNumber, { excludeRiderIds: [riderId] });
-  const result = await rpc(supabase, "auto_accept_claim_transfer_at_price", {
+  const result = await rpc(supabase, "auto_accept_claim_transfer_paid", {
     p_rider_id: riderId, p_seller_team_id: sellerTeamId, p_buyer_team_id: buyerTeamId,
     p_defer_registration: deferRegistration, p_now: now.toISOString(),
     p_acquire_patch: acquirePatch, p_min_seller_riders: MIN_RIDERS_FOR_RACE,
     p_seller_at_risk_rider_ids: atRisk.map(rider => rider.id), p_max_riders: maxRiders, p_price: price,
+    p_deal_id: dealId, p_buyer_payload: buyerPayload, p_seller_payload: sellerPayload,
+    p_rider_restore: riderRestore,
   });
   switch (result?.status) {
-    case "claimed": return { data: { id: result.rider_id } };
+    case "claimed": return { data: { id: result.rider_id }, paymentHandled: result.payment_handled === true };
     case "seller_squad_floor": return { issue: { code: "seller_squad_risk_too_small", minRiders: result.min_riders } };
     case "squad_full": return { issue: { code: "buyer_squad_full", maxRiders: result.max_riders } };
+    case "buyer_insufficient_balance": return { issue: { code: "buyer_insufficient_balance" } }; // #6181: pengetjek under holdlåsen
     case "offer_at_auto_accept_price": return { boundary: { status: 409, body: { errorCode: "offer_at_auto_accept_price", errorParams: { autoAcceptPrice: Number(result.auto_accept_price), listingId: result.listing_id } } } };
     case "rider_state_changed":
     case "rider_on_auction": return { data: null };
@@ -383,7 +387,7 @@ export function getListingPriceUpdateErrorResponse(error) {
   if (error?.code !== "23514") return null;
   const message = String(error.message || "");
   if (message.includes("transfer_listings_auto_accept_price_check")) {
-    return { status: 400, body: { error: "The asking price must stay below the auto-accept price", errorCode: "asking_price_not_below_auto_accept" } };
+    return { status: 400, body: { error: "The asking price can't be above the auto-accept price", errorCode: "asking_price_above_auto_accept" } };
   }
   if (message.includes("listing_owner_mismatch")) {
     return { status: 409, body: { error: "This rider is no longer on your team", errorCode: "rider_state_changed" } };

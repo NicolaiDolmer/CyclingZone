@@ -18,10 +18,10 @@
 // Stemmer. Filtre (område, status, horisont, issue) og sortering på alle
 // kolonner; udvælgelse, filtrering og sortering bor i roadmapAdminModel.ts.
 //
-// Grafen (#7789) står mellem nøgletallene og fanerne: vigtighed mod idé-score,
+// Grafen (#7789) står mellem nøgletallene og fanerne: vigtighed (vandret) mod idé-score (lodret),
 // boble efter antal stemmere, pr. punkt eller kategori, med filter på aktive
 // managere og division. Horisonten flyttes med ét klik fra panelet ved grafen.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { supabase } from "../../../lib/supabase";
 import { apiFetch } from "../../../lib/apiFetch.ts";
@@ -29,9 +29,9 @@ import { useAdminAuth } from "../shared/useAdminAuth";
 import {
   ADMIN_TABS, DEFAULT_ADMIN_TAB, DEFAULT_SORT, HORIZONS, HORIZON_LABELS, IDEA_TARGET, ISSUE_STATUSES,
   dontKnowTotal, fmtScore, filterIssueRows, filterItems, isAdminTab, isSplit, latestUpdateByIssue, mergeItemRows, movePatches,
-  nextSort, nextSortOrder, ownOrder, sortRows, statusPatch, tabCounts, tabRows, visibleIdeaCount, ROADMAP_STATUSES,
+  nextSort, nextSortOrder, ownOrder, patchRows, sortRows, statusPatch, tabCounts, tabRows, visibleIdeaCount, ROADMAP_STATUSES,
   CHART_SCOPES, UNKNOWN_DIVISION, categoryPoints, chartRows, filterVotes, itemPoints, mergeCategories, parseVotePayload,
-  plottable, voterDivisions, votesForItems, distinctVoters, categoryOf,
+  plottable, voterDivisions, votesForItems, distinctVoters, categoryOf, categoryLabel, isCategoryKey, totalScore,
 } from "../../../lib/roadmapAdminModel.ts";
 import RoadmapAdminChart from "./RoadmapAdminChart.tsx";
 import {
@@ -108,13 +108,12 @@ function TableSkeleton() {
 }
 
 // ── Grafen (#7789) ──────────────────────────────────────────────────────────
-// Som spørgeskema-panelets idé-kvadrant: idé-score mod vigtighed, boble efter
+// Som spørgeskema-panelets idé-kvadrant: vigtighed (vandret) mod idé-score (lodret), boble efter
 // antal stemmere, pr. punkt eller pr. kategori. Filtrene på aktive managere og
 // division regnes på stemme-rækkerne (lib/roadmapAdminModel.ts). Vælg en boble
 // for tallene og for at flytte horisonten med ét klik.
 const CHART_VIEWS = [{ value: "items", label: "Punkter" }, { value: "categories", label: "Kategorier" }];
 const EMPTY_CHART_FILTERS = { scope: "open", activeOnly: false, division: "", category: "" };
-const areaLabel = (engine) => AREA_LABELS[engine] ?? engine;
 const divisionLabel = (d) => (d === UNKNOWN_DIVISION ? "Uden hold" : `Division ${d}`);
 
 function ChartStat({ label, value }) {
@@ -129,8 +128,8 @@ function ChartStat({ label, value }) {
 function PointStats({ point, votersLabel = "Stemmere" }) {
   return (
     <dl className="grid grid-cols-3 gap-x-4 gap-y-3">
-      <ChartStat label="God idé" value={fmtScore(point.x)} />
       <ChartStat label="Vigtighed" value={fmtScore(point.y)} />
+      <ChartStat label="God idé" value={fmtScore(point.x)} />
       <ChartStat label={votersLabel} value={fmtInt(point.voters)} />
       <ChartStat label="Ved ikke" value={fmtInt(point.dontKnow)} />
       <ChartStat label="Uenighed" value={fmtScore(point.sd)} />
@@ -153,8 +152,8 @@ function RoadmapChartSection({ rows, votePayload, loading, busy, onMoveHorizon, 
   );
   const scopeRows = useMemo(() => chartRows(rows, f.scope), [rows, f.scope]);
   const points = useMemo(() => {
-    if (view === "categories") return categoryPoints(scopeRows, votes, areaLabel);
-    const all = itemPoints(scopeRows, votes, areaLabel);
+    if (view === "categories") return categoryPoints(scopeRows, votes);
+    const all = itemPoints(scopeRows, votes);
     return f.category ? all.filter((p) => p.category === f.category) : all;
   }, [view, scopeRows, votes, f.category]);
   const shown = useMemo(() => plottable(points), [points]);
@@ -163,7 +162,7 @@ function RoadmapChartSection({ rows, votePayload, loading, busy, onMoveHorizon, 
   const shownItemIds = useMemo(() => {
     const inView = view === "categories" || !f.category
       ? scopeRows
-      : scopeRows.filter((r) => categoryOf(r, areaLabel) === f.category);
+      : scopeRows.filter((r) => categoryOf(r) === f.category);
     return inView.map((r) => r.item_id);
   }, [view, scopeRows, f.category]);
   const voterCount = votes ? distinctVoters(votesForItems(votes, shownItemIds)) : null;
@@ -305,8 +304,8 @@ function RoadmapChartSection({ rows, votePayload, loading, busy, onMoveHorizon, 
                 points={shown}
                 selectedKey={selected}
                 onSelect={(key) => setSelected((prev) => (prev === key ? null : key))}
-                axisXLabel="God idé"
-                axisYLabel="Vigtighed"
+                axisXLabel="Vigtighed"
+                axisYLabel="God idé"
                 cornerLabel="Byg først"
                 labels={labels}
               />
@@ -327,7 +326,7 @@ function RoadmapChartSection({ rows, votePayload, loading, busy, onMoveHorizon, 
 export default function GrowthRoadmapTab() {
   const { getAuth } = useAdminAuth();
   const [stats, setStats] = useState(null);
-  const [baseRows, setRows] = useState([]);
+  const [baseRows, setRows] = useState(/** @type {any[]} */ ([]));
   // #7789: kategorien og stemme-rækkerne til grafen. Begge er null/tomme, indtil
   // migrationen er applied; så viser grafen viewets tal uden filtre.
   const [categories, setCategories] = useState(/** @type {{ id: string, category: string | null }[]} */ ([]));
@@ -335,7 +334,13 @@ export default function GrowthRoadmapTab() {
   const [issues, setIssues] = useState([]);
   const [updates, setUpdates] = useState([]);
   const [flags, setFlags] = useState([]);
+  // #7971: skeleton kun ved første indlæsning. Senere genindlæsninger beholder de
+  // gamle data på skærmen og opdaterer på plads, så siden ikke bliver kort og
+  // scrollposition og åbne rækker bevares.
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const loadedRef = useRef(false);
   const [loadError, setLoadError] = useState("");
   const [actionError, setActionError] = useState("");
   const [busy, setBusy] = useState(null);
@@ -343,7 +348,7 @@ export default function GrowthRoadmapTab() {
   const [modal, setModal] = useState(/** @type {any} */ (null));
 
   const load = useCallback(async () => {
-    setLoading(true);
+    if (loadedRef.current) setRefreshing(true); else setLoading(true);
     setLoadError("");
     try {
       const [statsRes, scoresRes, itemsRes, issuesRes, updatesRes] = await Promise.all([
@@ -362,10 +367,13 @@ export default function GrowthRoadmapTab() {
       setRows(mergeItemRows(scoresRes.data ?? [], itemsRes.data ?? []));
       setIssues(issuesRes.data ?? []);
       setUpdates(updatesRes.data ?? []);
+      loadedRef.current = true;
+      setLoaded(true);
     } catch (e) {
       setLoadError(e.message || "Forbindelsen fejlede");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
     // Kontakterne er en bonus til Kontakt-kolonnen og formularen; fejler de,
     // virker resten af fanen stadig.
@@ -391,15 +399,20 @@ export default function GrowthRoadmapTab() {
   useEffect(() => { load(); }, [load]);
 
   // Én skrivning ad gangen; fejl vises over tabellerne, succes genhenter alt.
-  async function run(key, fn) {
+  // `optimistic` (#7971): rækkeændringer, der lægges på skærmen med det samme, så
+  // rækken ikke springer; fejler skrivningen, rulles de tilbage.
+  async function run(key, fn, optimistic = []) {
+    const before = baseRows;
     setBusy(key);
     setActionError("");
+    if (optimistic.length > 0) setRows((prev) => patchRows(prev, optimistic));
     try {
       const results = await fn();
       const failed = (Array.isArray(results) ? results : [results]).find((r) => r?.error);
       if (failed) throw new Error(failed.error.message);
       await load();
     } catch (e) {
+      if (optimistic.length > 0) setRows(before);
       setActionError(`Kunne ikke gemme: ${e.message || "ukendt fejl"}`);
     } finally {
       setBusy(null);
@@ -455,7 +468,10 @@ export default function GrowthRoadmapTab() {
       aria-label={`Status for ${row.title_da || row.title_en}`}
       value={row.status}
       disabled={busy !== null}
-      onChange={(e) => run(`status-${row.item_id}`, () => updateItem(row.item_id, statusPatch(e.target.value, nowIso())))}
+      onChange={(e) => {
+        const patch = statusPatch(e.target.value, nowIso());
+        run(`status-${row.item_id}`, () => updateItem(row.item_id, patch), [{ item_id: row.item_id, ...patch }]);
+      }}
     >
       {ROADMAP_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
     </Select>
@@ -467,7 +483,7 @@ export default function GrowthRoadmapTab() {
       aria-label={`Horisont for ${row.title_da || row.title_en}`}
       value={row.horizon ?? "unscheduled"}
       disabled={busy !== null}
-      onChange={(e) => run(`hz-${row.item_id}`, () => updateItem(row.item_id, { horizon: e.target.value }))}
+      onChange={(e) => moveHorizon(row, e.target.value)}
     >
       {HORIZONS.map((h) => <option key={h} value={h}>{HORIZON_LABELS[h]}</option>)}
     </Select>
@@ -486,7 +502,7 @@ export default function GrowthRoadmapTab() {
   const itemTags = (row) => (
     <>
       <span>{AREA_LABELS[row.engine] ?? row.engine}</span>
-      {row.category && <span className="normal-case tracking-normal">{row.category}</span>}
+      {isCategoryKey(row.category) && <span className="normal-case tracking-normal">{categoryLabel(row.category)}</span>}
       {row.approved === false && <Tag>Skjult</Tag>}
       {row.beta_soon && <Tag>Næste i beta</Tag>}
       {row.live_soon && <Tag>Snart for alle</Tag>}
@@ -494,11 +510,22 @@ export default function GrowthRoadmapTab() {
     </>
   );
 
-  const toPlan = (r) => run(`plan-${r.item_id}`, () => updateItem(r.item_id,
-    { status: "planned", horizon: "next_week", sort_order: nextSortOrder(plannedRows) }));
+  const toPlan = (r) => {
+    const patch = { status: "planned", horizon: "next_week", sort_order: nextSortOrder(plannedRows) };
+    return run(`plan-${r.item_id}`, () => updateItem(r.item_id, patch), [{ item_id: r.item_id, ...patch }]);
+  };
 
-  const move = (r, dir) => run(`${dir < 0 ? "up" : "down"}-${r.item_id}`, () => Promise.all(movePatches(plannedRows, r.item_id, dir)
-    .map((p) => updateItem(p.item_id, { sort_order: p.sort_order }))));
+  const moveHorizon = (r, horizon) =>
+    run(`hz-${r.item_id}`, () => updateItem(r.item_id, { horizon }), [{ item_id: r.item_id, horizon }]);
+
+  const setApproved = (r, approved) =>
+    run(`${approved ? "show" : "hide"}-${r.item_id}`, () => updateItem(r.item_id, { approved }), [{ item_id: r.item_id, approved }]);
+
+  const move = (r, dir) => {
+    const patches = movePatches(plannedRows, r.item_id, dir);
+    return run(`${dir < 0 ? "up" : "down"}-${r.item_id}`,
+      () => Promise.all(patches.map((p) => updateItem(p.item_id, { sort_order: p.sort_order }))), patches);
+  };
 
   // Kolonne-ordbog: hver fane sætter sine kolonner sammen af de samme dele, så
   // overskrifter, tal og sorteringsnøgler er ens på tværs af fanerne.
@@ -533,7 +560,8 @@ export default function GrowthRoadmapTab() {
     },
     idea: { key: "idea", header: "God idé", sortKey: "idea", numeric: true, compact: true, render: (r) => <Num>{fmtScore(r.avg_idea)}</Num> },
     importance: { key: "importance", header: "Vigtighed", mobileHeader: "Vigt.", sortKey: "importance", numeric: true, compact: true, render: (r) => <Num>{fmtScore(r.avg_importance)}</Num> },
-    score: { key: "score", header: "Score", sortKey: "score", numeric: true, compact: true, render: (r) => <Num>{fmtScore(r.steering_score, 1)}</Num> },
+    // #7971: samlet vurdering som i spørgeskemaet (God idé x Vigtighed), 1 decimal.
+    total: { key: "total", header: "Samlet", sortKey: "total", numeric: true, compact: true, render: (r) => <Num>{fmtScore(totalScore(r.avg_idea, r.avg_importance), 1)}</Num> },
     votes: { key: "votes", header: "Stemmer", sortKey: "votes", numeric: true, compact: true, render: (r) => <Num>{fmtInt(r.votes)}</Num> },
     dontKnow: { key: "dontKnow", header: "Ved ikke", sortKey: "dontKnow", numeric: true, compact: true, render: (r) => <Num>{fmtInt(r.dont_know)}</Num> },
     // #7789: spredningen på vigtighed; over SPLIT_SD står "Deler spillerne" ved titlen.
@@ -593,11 +621,11 @@ export default function GrowthRoadmapTab() {
         Til planen
       </RowButton>
       {r.approved === false ? (
-        <RowButton disabled={busy !== null} onClick={() => run(`show-${r.item_id}`, () => updateItem(r.item_id, { approved: true }))}>
+        <RowButton disabled={busy !== null} onClick={() => setApproved(r, true)}>
           Vis på Vote
         </RowButton>
       ) : (
-        <RowButton disabled={busy !== null} onClick={() => run(`hide-${r.item_id}`, () => updateItem(r.item_id, { approved: false }))}>
+        <RowButton disabled={busy !== null} onClick={() => setApproved(r, false)}>
           Tag af Vote
         </RowButton>
       )}
@@ -620,9 +648,9 @@ export default function GrowthRoadmapTab() {
   ));
 
   const itemColumnsByTab = {
-    ideas: [col.rank, col.title("Idé"), col.horizon, col.idea, col.importance, col.score, col.votes, col.dontKnow, col.issue, ideaActions],
-    planned: [col.rank, col.title("Punkt", true), col.horizonEdit, col.importance, col.votes, col.dontKnow, col.own, col.flag, statusActions],
-    in_progress: [col.title("Punkt"), col.horizonEdit, col.votes, col.beta, col.flag, statusActions],
+    ideas: [col.rank, col.title("Idé"), col.horizon, col.importance, col.idea, col.total, col.votes, col.dontKnow, col.issue, ideaActions],
+    planned: [col.rank, col.title("Punkt", true), col.horizonEdit, col.importance, col.idea, col.total, col.votes, col.dontKnow, col.own, col.flag, statusActions],
+    in_progress: [col.title("Punkt"), col.horizonEdit, col.importance, col.idea, col.total, col.votes, col.beta, col.flag, statusActions],
     shipped: [col.title("Punkt"), col.date, col.importance, col.votes, col.flag,
       col.actions((r) => (
         <>
@@ -630,8 +658,8 @@ export default function GrowthRoadmapTab() {
           <RowButton onClick={() => setModal({ kind: "item", row: r })}>Ret</RowButton>
         </>
       ))],
-    y2027: [col.rank, col.title("Punkt", true), col.statusEdit, col.importance, col.votes, col.dontKnow, col.own, col.flag, horizonActions],
-    votes: [col.rank, col.title("Punkt", true), col.status, col.horizon, col.votes, col.dontKnow, col.idea, col.importance, col.sd, col.score,
+    y2027: [col.rank, col.title("Punkt", true), col.statusEdit, col.importance, col.idea, col.total, col.votes, col.dontKnow, col.own, col.flag, horizonActions],
+    votes: [col.rank, col.title("Punkt", true), col.status, col.horizon, col.votes, col.dontKnow, col.importance, col.idea, col.total, col.sd,
       col.actions((r) => <RowButton onClick={() => setModal({ kind: "item", row: r })}>Ret</RowButton>)],
   };
 
@@ -664,7 +692,7 @@ export default function GrowthRoadmapTab() {
   ];
 
   const MOBILE_DEFAULTS = {
-    ideas: ["idea", "importance", "score"],
+    ideas: ["importance", "idea", "total"],
     planned: ["importance", "votes", "own"],
     in_progress: ["beta", "votes"],
     shipped: ["date", "votes"],
@@ -740,7 +768,7 @@ export default function GrowthRoadmapTab() {
             onClick={() => setModal({ kind: "issue", row: null })}>
             Ny fejl
           </Button>
-          <Button variant="secondary" size="sm" loading={loading} onClick={load}
+          <Button variant="secondary" size="sm" loading={loading || refreshing} onClick={load}
             iconLeft={<RefreshIcon size={14} aria-hidden="true" />}>
             Genindlæs
           </Button>
@@ -756,7 +784,7 @@ export default function GrowthRoadmapTab() {
       )}
       <p aria-live="polite" className="text-xs text-cz-danger empty:hidden">{actionError}</p>
 
-      {!loadError && (
+      {(!loadError || loaded) && (
         <SectionStack>
           <Section>
             <HeroStats items={statItems} className="mt-0 border-t-0 pt-0" />
@@ -767,7 +795,7 @@ export default function GrowthRoadmapTab() {
             votePayload={votePayload}
             loading={loading}
             busy={busy}
-            onMoveHorizon={(r, horizon) => run(`hz-${r.item_id}`, () => updateItem(r.item_id, { horizon }))}
+            onMoveHorizon={moveHorizon}
             onToPlan={toPlan}
             onEdit={(r) => setModal({ kind: "item", row: r })}
           />

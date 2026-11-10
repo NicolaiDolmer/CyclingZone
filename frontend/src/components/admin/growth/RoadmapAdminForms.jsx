@@ -17,7 +17,7 @@ import { apiFetch } from "../../../lib/apiFetch.ts";
 import { useAdminAuth } from "../shared/useAdminAuth";
 import { ENGINE_ORDER } from "../../../lib/roadmapVoting.js";
 import {
-  HORIZONS, HORIZON_LABELS, ISSUE_AREAS, ISSUE_STATUSES, ROADMAP_STATUSES, issueStatusPatch, nextSortOrder, statusPatch, validateTitles,
+  HORIZONS, HORIZON_LABELS, ISSUE_AREAS, NO_CATEGORY, ROADMAP_CATEGORIES, isCategoryKey, ISSUE_STATUSES, ROADMAP_STATUSES, issueStatusPatch, nextSortOrder, statusPatch, validateTitles,
 } from "../../../lib/roadmapAdminModel.ts";
 import { Button, Checkbox, Field, Input, Modal, Select, Textarea } from "../../ui";
 
@@ -75,7 +75,7 @@ function itemDraft(item) {
     flag_key: item.flag_key ?? "",
     beta_soon: Boolean(item.beta_soon),
     live_soon: Boolean(item.live_soon),
-    category: item.category ?? "",
+    category: isCategoryKey(item.category) ? item.category : "",
   };
 }
 
@@ -115,7 +115,7 @@ export function ItemFormModal({ open, item, flags, planned, onClose, onSaved }) 
     // en titelrettelse. Er punktet koblet til en kontakt, overtager triggeren.
     if (!item || item.status !== form.status) Object.assign(payload, statusPatch(form.status, now));
     // #7789: kun når den er ændret, så en gem virker, også før kolonnen findes.
-    if ((item?.category ?? "") !== form.category.trim()) payload.category = form.category.trim() || null;
+    if ((isCategoryKey(item?.category) ? item.category : "") !== form.category) payload.category = form.category || null;
     const query = item
       ? supabase.from("roadmap_items").update(payload).eq("id", item.item_id)
       : supabase.from("roadmap_items").insert({ ...payload, sort_order: nextSortOrder(planned ?? []) });
@@ -158,8 +158,11 @@ export function ItemFormModal({ open, item, flags, planned, onClose, onSaved }) 
         <Field label="Titel (DA)" htmlFor={`${uid}-da`}>
           <Input id={`${uid}-da`} size="sm" value={form.title_da} onChange={(e) => set("title_da", e.target.value)} />
         </Field>
-        <Field label="Kategori" htmlFor={`${uid}-category`} helper="Grupperer punktet i admin-grafen. Ikke hemmelig. Tom = området." error={undefined}>
-          <Input id={`${uid}-category`} size="sm" maxLength={40} value={form.category} onChange={(e) => set("category", e.target.value)} />
+        <Field label="Kategori" htmlFor={`${uid}-category`} helper="Grupperer punktet i admin-grafen og tabellerne. Ikke hemmelig." error={undefined}>
+          <Select id={`${uid}-category`} size="sm" value={form.category} onChange={(e) => set("category", e.target.value)}>
+            <option value="">{NO_CATEGORY}</option>
+            {ROADMAP_CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+          </Select>
         </Field>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="GitHub-issue" htmlFor={`${uid}-ref`} helper="Bruges af færdig-rutinen.">

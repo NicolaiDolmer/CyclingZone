@@ -7,6 +7,7 @@ import { getAuthedUser } from "../lib/getAuthedUser.js";
 import { apiFetch } from "../lib/apiFetch.ts"; // #5089: Retry-After-respekt for development-historik
 import { formatCz, getRiderMarketValue, getRiderSalary, detectStartPriceTypo, computeBidValueDelta } from "../lib/marketValues.js";
 import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS } from "../lib/sharedRequestCache.js";
+import { fetchPlayerFeatureFlags } from "../lib/playerFeatureFlags.js";
 import { riderBestRole, riderOverallRating } from "../lib/riderRating";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys.js";
 import { chartColor } from "../lib/chartPalette.js";
@@ -304,11 +305,22 @@ function TransferListButton({ rider, onChanged }) {
   // #5917: U23-/Junior-tabellens Sælg-handling linker hertil med ?sell=1.
   const [searchParams] = useSearchParams();
   const [show, setShow]       = useState(() => searchParams.get("sell") === "1");
-  const [listing, setListing] = useState(null);
+  const [listing, setListing] = useState(/** @type {any} */ (null));
   const [price, setPrice]     = useState(getRiderMarketValue(rider));
   const [loading, setLoading] = useState(false);
   const [result, setResult]   = useState(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  // #2176: saelgerens valgfri auto-pris. Alt nedenfor er bag auto_accept_enabled;
+  // slukket = formularen er uaendret.
+  const [autoEnabled, setAutoEnabled] = useState(false);
+  const [autoPrice, setAutoPrice] = useState(/** @type {number | null} */ (null));
+  const [autoFormatBad, setAutoFormatBad] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetchPlayerFeatureFlags().then(flags => { if (active && flags.auto_accept_enabled === true) setAutoEnabled(true); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -336,7 +348,10 @@ function TransferListButton({ rider, onChanged }) {
         if (!cancelled && Array.isArray(data)) {
           const own = data.find(l => l.rider?.id === rider.id) || null;
           setListing(own);
-          if (own) setPrice(own.asking_price);
+          if (own) {
+            setPrice(own.asking_price);
+            setAutoPrice(Number(own.auto_accept_price) > 0 ? Number(own.auto_accept_price) : null);
+          }
         }
       } catch { /* bevidst stille — se kommentar ovenfor */ }
     })();
@@ -344,16 +359,54 @@ function TransferListButton({ rider, onChanged }) {
   }, [rider.id]);
 
   const priceInvalid = !Number.isInteger(price) || price <= 0;
+  const savedAutoPrice = listing && Number(listing.auto_accept_price) > 0 ? Number(listing.auto_accept_price) : null;
+  // Auto-prisen skal vaere mindst udbudsprisen (lig med er tilladt).
+  const autoBelowAsking = autoEnabled && autoPrice !== null && !priceInvalid && autoPrice < price;
+  const autoInvalid = autoEnabled && (autoFormatBad || autoBelowAsking);
 
   function flashResult(ok, msg) {
     setResult({ ok, msg });
     setTimeout(() => setResult(null), 4000);
   }
 
+  const autoApiError = (data) => resolveApiError(data || {}, (key, params) => String(t(key, /** @type {any} */ (params))), t("errors:generic.unknown"));
+  // Optimistisk lås: en anden fane har ændret auto-prisen. Adoptér serverens pris, så næste forsøg
+  // sender den rigtige forventede pris; ingen automatisk gentagelse.
+  function serverAutoConflict(data) {
+    if (data?.errorCode !== "auto_accept_price_changed") return null;
+    const next = Number(data.errorParams?.autoAcceptPrice);
+    sharedRequestCache.invalidate(SHARED_KEYS.transferListings);
+    return { price: next > 0 ? next : null };
+  }
+  // #2176: PUT /api/transfers/:id/auto-accept-price. null fjerner auto-prisen.
+  function putAutoPrice(listingId, token, expected) {
+    return apiFetch(`${API}/api/transfers/${listingId}/auto-accept-price`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ auto_accept_price: autoPrice, expected_auto_accept_price: expected }),
+    });
+  }
+
   async function submit() {
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      const autoChanged = autoEnabled && autoPrice !== (listing ? savedAutoPrice : null);
+      // Hæves udbudsprisen, saettes auto-prisen foerst, ellers afviser PATCH at
+      // udbudsprisen overstiger den gamle auto-pris. Ellers PATCH foerst.
+      const autoFirst = !!listing && autoChanged && price > listing.asking_price;
+      if (autoFirst) {
+        const autoRes = await putAutoPrice(listing.id, session?.access_token, savedAutoPrice);
+        if (autoRes.networkError) { flashResult(false, t("auth:error.connectionFailed")); return; }
+        if (!autoRes.ok) {
+          const conflict = serverAutoConflict(autoRes.data);
+          if (conflict) setListing((l) => (l ? { ...l, auto_accept_price: conflict.price } : l));
+          flashResult(false, `${t("sellRider.toast.autoNotSaved")} ${autoApiError(autoRes.data)}`);
+          return;
+        }
+        sharedRequestCache.invalidate(SHARED_KEYS.transferListings);
+        setListing({ ...listing, auto_accept_price: autoPrice });
+      }
       const res = await apiFetch(
         listing ? `${API}/api/transfers/${listing.id}` : `${API}/api/transfers`,
         {
@@ -373,9 +426,23 @@ function TransferListButton({ rider, onChanged }) {
         // #5089: den delte transferliste er nu stale — ryd den, saa naeste
         // profil-mount ser den nye/ændrede listing i stedet for TTL-kopien.
         sharedRequestCache.invalidate(SHARED_KEYS.transferListings);
-        setListing(listing ? { ...listing, asking_price: price } : data);
-        setShow(false);
-        flashResult(true, listing ? t("sellRider.toast.priceUpdated") : t("sellRider.toast.listed"));
+        let nextListing = listing ? { ...listing, asking_price: price, ...(autoFirst ? { auto_accept_price: autoPrice } : {}) } : data;
+        let autoError = /** @type {string | null} */ (null);
+        let keepOpen = false;
+        if (autoChanged && !autoFirst) {
+          // Listingen staar, selv hvis auto-prisen fejler: vis fejlen, ret bagefter.
+          const autoRes = await putAutoPrice(nextListing.id, session?.access_token, listing ? savedAutoPrice : null);
+          if (autoRes.ok) nextListing = { ...nextListing, auto_accept_price: autoPrice };
+          else {
+            const conflict = serverAutoConflict(autoRes.data);
+            if (conflict) { keepOpen = true; nextListing = { ...nextListing, auto_accept_price: conflict.price }; }
+            autoError = autoRes.networkError ? t("auth:error.connectionFailed") : autoApiError(autoRes.data);
+          }
+        }
+        setListing(nextListing);
+        setShow(keepOpen);
+        if (autoError) flashResult(false, `${t("sellRider.toast.autoNotSaved")} ${autoError}`);
+        else flashResult(true, listing ? t("sellRider.toast.priceUpdated") : t("sellRider.toast.listed"));
         // #3490: siden viser nu udbudsprisen i hero-banneret uanset ejerskab —
         // hold det i sync med det man lige listede/ændrede, uden at vente på et
         // fuldt loadRider() (som TransferListButton ellers ikke selv trigger'er).
@@ -408,6 +475,8 @@ function TransferListButton({ rider, onChanged }) {
       if (res.ok) {
         sharedRequestCache.invalidate(SHARED_KEYS.transferListings); // #5089
         setListing(null);
+        setAutoPrice(null);
+        setAutoFormatBad(false); // Codex P2: en ugyldig auto-pris maa ikke blokere den naeste formular
         setPrice(getRiderMarketValue(rider));
         setShow(false);
         flashResult(true, t("sellRider.toast.removed"));
@@ -437,6 +506,11 @@ function TransferListButton({ rider, onChanged }) {
           <p className="text-cz-2 text-sm">
             {t("sellRider.listedStatus", { amount: formatNumber(listing.asking_price) })}
           </p>
+          {autoEnabled && savedAutoPrice !== null && (
+            <p className="text-cz-2 text-sm" data-testid="seller-auto-price-status">
+              {t("sellRider.autoStatus", { amount: formatNumber(savedAutoPrice) })}
+            </p>
+          )}
           {confirmRemove ? (
             <div className="flex gap-2">
               <button onClick={removeListing} disabled={loading}
@@ -452,7 +526,7 @@ function TransferListButton({ rider, onChanged }) {
             <div className="flex gap-2">
               <button onClick={() => setShow(!show)}
                 className="flex-1 min-h-[44px] py-2 bg-cz-card text-cz-2 border border-cz-border rounded-cz text-sm font-medium hover:text-cz-1 hover:border-cz-accent/40 transition-all">
-                {show ? t("sellRider.hideEdit") : t("sellRider.editPrice")}
+                {show ? t("sellRider.hideEdit") : t(autoEnabled ? "sellRider.editPrices" : "sellRider.editPrice")}
               </button>
               <button onClick={() => { setShow(false); setConfirmRemove(true); }}
                 className="flex-1 min-h-[44px] py-2 bg-cz-card text-cz-2 border border-cz-border rounded-cz text-sm font-medium hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all">
@@ -475,9 +549,24 @@ function TransferListButton({ rider, onChanged }) {
             placeholder={t("sellRider.pricePlaceholder")}
             data-testid="transfer-list-price-input"
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-hidden focus:border-cz-accent" />
-          <button onClick={submit} disabled={loading || priceInvalid}
+          {autoEnabled && (
+            <div className="flex flex-col gap-1">
+              <label htmlFor="transfer-list-auto-price-input" className="text-cz-2 text-xs">{t("sellRider.autoLabel")}</label>
+              <AmountInput value={autoPrice}
+                id="transfer-list-auto-price-input"
+                onValueChange={(v, meta) => { setAutoPrice(v); setAutoFormatBad(!meta.isValid); }}
+                data-testid="transfer-list-auto-price-input" placeholder={undefined} errorMessage={undefined}
+                aria-describedby="transfer-list-auto-price-help"
+                aria-invalid={autoInvalid || undefined}
+                className={`w-full min-h-[44px] bg-cz-subtle border rounded-cz px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-hidden ${autoBelowAsking ? "border-cz-danger focus:border-cz-danger" : "border-cz-border focus:border-cz-accent"}`} />
+              {autoBelowAsking && <p role="alert" className="text-cz-danger text-xs" data-testid="transfer-list-auto-price-error">{t("sellRider.autoInvalid")}</p>}
+              <p id="transfer-list-auto-price-help" className="text-cz-3 text-xs">{t("sellRider.autoHelp")}</p>
+              {listing && <p className="text-cz-3 text-xs">{t("sellRider.autoEditHint")}</p>}
+            </div>
+          )}
+          <button onClick={submit} disabled={loading || priceInvalid || autoInvalid}
             className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50 transition-all">
-            {loading ? t("sellRider.sending") : listing ? t("sellRider.submitUpdate") : t("sellRider.submit")}
+            {loading ? t("sellRider.sending") : listing ? t(autoEnabled ? "sellRider.submitUpdatePrices" : "sellRider.submitUpdate") : t("sellRider.submit")}
           </button>
         </div>
       )}

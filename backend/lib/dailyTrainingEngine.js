@@ -1387,10 +1387,16 @@ export async function runTeamTrainingDay({
       ? dateDays.map(day => day === raceDay ? effectiveIntensity : hasLoadOn(day) ? 'race' : dateReceiptOn(day)?.report?.intensity ?? 'race')
       : [...priorDateReports.map(report=>canonicalLoadRows.some(load=>load.rider_id===rider.id&&load.game_day===report.game_day)?'race':report.intensity),effectiveIntensity];
     const settleRaceLoads = conditionCounted ? dateDays.map(day => Number(canonicalLoadRows.find(row => row.rider_id === rider.id && row.game_day === day)?.load ?? 0)) : null;
+    // #7737 (ejer 10/11): et aabent loebsfelt i den foreloebige opgoerelse giver hverken
+    // belastning eller restitution, foer loebet er koert. Aftenens opgoerelse har ingen aabne felter.
+    const pendingRaceSlots = provisionalNow && !settlesCondition
+      ? dateDays.map((day, i) => settleIntensities[i] === 'race' && day !== raceDay && !hasLoadOn(day))
+      : null;
     const countedCondition = conditionCounted ? settleTrainingDateCondition({
       riderId: rider.id, dateStr: tickDate, condition: conditionBeforeDate,
       intensities: settleIntensities,
       raceLoads: settleRaceLoads,
+      pendingRaceSlots,
       // #7801: skaderisikoen pr. felt paa trætheden lige nu foer feltet (kun med kontakten).
       riskFatigues: fatigueNowOn ? slotFatiguesNow({
         openingFatigue: Number(conditionBeforeDate.fatigue ?? 0), intensities: settleIntensities, raceLoads: settleRaceLoads,

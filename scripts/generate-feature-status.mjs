@@ -314,7 +314,7 @@ export function render(entries) {
       out.push("");
     }
     if (nonLiveRows.length > 0) {
-      out.push("| Feature | State | Flag | SSOT | Epic | Verified | Note |");
+      out.push("|Feature|State|Flag|SSOT|Epic|Verified|Note|");
       // Kort delimiter-raekke (gyldig GFM): ~6 tok pr. tabel under 3.000-loftet (#7003).
       out.push("|-|-|-|-|-|-|-|");
       out.push(...nonLiveRows);
@@ -340,7 +340,7 @@ export function render(entries) {
     }
     const flag = e.flag ? `\`${e.flag}\`` : "-";
     nonLiveRows.push(
-      `| ${e.title_en} (\`${e.id}\`) | ${e.state} | ${flag} | ${ssotCell(e.ssot)} | ${epicCell(e.epic)} | ${e.verified} | ${cell(e.note)} |`,
+      `|${e.title_en} (\`${e.id}\`)|${e.state}|${flag}|${ssotCell(e.ssot)}|${epicCell(e.epic)}|${e.verified}|${cell(e.note)}|`,
     );
   }
   flushArea();
