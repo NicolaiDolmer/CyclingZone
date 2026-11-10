@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { Cell } from "recharts/es6/component/Cell.js";
+import { Pie } from "recharts/es6/polar/Pie.js";
+import { PieChart } from "recharts/es6/chart/PieChart.js";
+import { ResponsiveContainer } from "recharts/es6/component/ResponsiveContainer.js";
+import { Tooltip } from "recharts/es6/component/Tooltip.js";
 import { supabase } from "../lib/supabase";
 import { formatNumber, formatDate as formatDateIntl } from "../lib/intl";
 import { Card, Button, Spinner, ChevronLeftIcon } from "./ui";

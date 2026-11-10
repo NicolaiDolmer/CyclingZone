@@ -217,6 +217,11 @@ export default defineConfig({
     port: explicitPort,
     strictPort: Boolean(explicitPort),
   },
+  ssr: {
+    // Recharts' ESM files have extensionless internal imports. Bundle them for
+    // prerendering so Node never has to resolve those package-internal paths.
+    noExternal: ["recharts"],
+  },
   build: {
     // #5160: source maps følger PLUGINET, ikke uploadet. De ændrer de hashede
     // assets (hver chunk får en `//# sourceMappingURL=`-linje), så et build der

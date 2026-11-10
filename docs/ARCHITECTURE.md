@@ -25,7 +25,13 @@ registreret i prod. En konkret kompensationskørsel kræver separat ejer-go.
 | UCI sync (manuel) | Fjernet 2026-06-12 (#1207): sync-uci-endpoint + sheetsSync.js slettet — uci_points er frossen | — |
 | Stats sync (dyn_cyclist) | Fjernet 2026-06-12 (#1180 pkt 4): endpoint + dynCyclistSync.js slettet — spillet ejer selv stats efter #677 | — |
 
-`recharts` er installeret i frontend og bruges til rytterens `Udvikling`-tab.
+`recharts` bruges af `admin/growth/TrendLineChart.jsx` og
+`SeasonFinanceReportPanel.jsx`. De importerer de eksisterende ESM-komponenter
+direkte fra `recharts/es6/`; survey-diagrammerne bruger allerede SVG/CSS.
+Importvalget reducerer det målte client-build uden at udskifte diagrammerne
+eller ændre dependencies. SSR-buildet bundler Recharts (`ssr.noExternal`), fordi
+de interne ESM-imports mangler filendelser. Se
+[#6165-målingen](investigations/2026-11-10-6165-before-after.md).
 
 ---
 

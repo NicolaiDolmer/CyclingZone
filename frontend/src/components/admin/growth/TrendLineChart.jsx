@@ -1,6 +1,13 @@
-import {
-  Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-} from "recharts";
+// Import the same ESM implementations directly; the package barrel retains
+// additional chart initialization in the measured client build (#6165).
+import { Line } from "recharts/es6/cartesian/Line.js";
+import { LineChart } from "recharts/es6/chart/LineChart.js";
+import { XAxis } from "recharts/es6/cartesian/XAxis.js";
+import { YAxis } from "recharts/es6/cartesian/YAxis.js";
+import { CartesianGrid } from "recharts/es6/cartesian/CartesianGrid.js";
+import { Tooltip } from "recharts/es6/component/Tooltip.js";
+import { Legend } from "recharts/es6/component/Legend.js";
+import { ResponsiveContainer } from "recharts/es6/component/ResponsiveContainer.js";
 
 // Delt linjediagram-komponent til vækst-dashboardets trend-visninger (DAU/WAU/
 // MAU, D1/D7/D30, NPS-score over tid). recharts er allerede en frontend-dep
