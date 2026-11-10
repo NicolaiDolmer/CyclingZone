@@ -45,7 +45,6 @@
     "TS2339": 5
   },
   "../backend/lib/auctionEngine.js": {
-    "TS18047": 1,
     "TS2339": 4
   },
   "../backend/lib/availableBalance.js": {

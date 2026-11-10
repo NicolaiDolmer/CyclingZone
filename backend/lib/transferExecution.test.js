@@ -709,6 +709,20 @@ test("#2176: atomic transfer claim refusing a raced seller floor stops before ow
   assert.equal(client._finance.length, 0);
 });
 
+test("#6181: claim refusing the buyer money under the team lock stops before ownership and payment", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  db.app_config = [{ key: "auto_accept_enabled", value: "on" }];
+  db.transfer_offers.push({ id: "offer-1", rider_id: "rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
+    offer_amount: 200, status: "awaiting_confirmation", buyer_confirmed: false, seller_confirmed: true });
+  const client = makeSupabase(db, { claimTransfer: () => ({ status: "buyer_insufficient_balance" }) });
+  const result = await confirmTransferOffer({ supabase: client, offerId: "offer-1", confirmingTeamId: "buyer",
+    now: new Date("2026-11-09T10:00:00Z") });
+  assert.equal(result.ok, false);
+  assert.equal(result.code, "buyer_insufficient_balance");
+  assert.equal(db.riders.find(r => r.id === "rider-1").team_id, "seller");
+  assert.equal(client._finance.length, 0);
+});
+
 test("#2176: enabled claim preserves transfer wiring for inheritance, new contract, graduation and parking", async () => {
   for (const mode of ["inherit", "new-contract", "graduate", "parked"]) {
     const db = baseDb({ windowStatus: "open" });
