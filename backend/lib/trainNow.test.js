@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import {
   runTrainNow, loadTrainNowStatus,
   createTrainNowPlanLock, sameWeekdayCell, TRAIN_NOW_FLAG_KEY, trainNowShortRaces, loadTrainNowShortRaces,
-  loadTodayRacesForTeam,
+  loadTodayRacesForTeam, TRAIN_NOW_INSTANT_FLAG_KEY,
 } from "./trainNow.js";
 import {
   TRAIN_NOW_LOCK_TABLE, loadRaceTrainNowLock, loadTrainNowLockedRidersByDate, lockedRidersOnDates, raceStageDates,
@@ -246,6 +246,22 @@ test("status: available before the press, locked after, settled in the evening",
   assert.deepEqual([evening.settled, evening.reason], [true, "date_settled"]);
 });
 
+test("status (#7737): instant follows the instant switch; beta only for beta testers (owner 10/11)", async () => {
+  const read = async (value, isBetaTester = false) => {
+    const state = baseState();
+    if (value !== undefined) state.app_config.push({ key: TRAIN_NOW_INSTANT_FLAG_KEY, value });
+    return loadTrainNowStatus({ supabase: fakeSupabase(state), team: TEAM, seasonId: SEASON.id, now: MORNING, isBetaTester });
+  };
+  assert.equal((await read(undefined)).instant, false, "no row is off");
+  assert.equal((await read("off")).instant, false);
+  assert.equal((await read("beta")).instant, false, "beta, not a beta tester");
+  assert.equal((await read("beta", true)).instant, true, "beta tester");
+  assert.equal((await read("off", true)).instant, false);
+  assert.equal((await read("on")).instant, true);
+  const flagOff = await loadTrainNowStatus({ supabase: fakeSupabase(baseState("off")), team: TEAM, seasonId: SEASON.id, now: MORNING });
+  assert.equal(flagOff.instant, false, "no press, no instant copy");
+});
+
 test("status: beta flag is visible to beta testers only", async () => {
   const state = baseState("beta");
   const supabase = fakeSupabase(state);
@@ -328,6 +344,19 @@ test("#7505 a started stage race the team has entries in, and a U23 race with a 
   const status = await loadTrainNowStatus({ supabase: fakeSupabase(state), team: TEAM_7505, seasonId: SEASON.id, now: MORNING });
   // sorted by name: Espoirs, Ronde, Trofeo
   assert.deepEqual(status.todayRaces.map((race) => race.id), ["u23", "started", "single"]);
+});
+
+test("#7737 a race whose stage today already ran is marked stageRun, a race with the stage still to run is not", async () => {
+  const state = scenario7505();
+  state.race_entries.push({ race_id: "started", rider_id: "r2", team_id: TEAM.id });
+  state.race_stage_schedule = [
+    { race_id: "single", stage_number: 1, scheduled_at: "2026-10-01T12:00:00Z" },
+    { race_id: "started", stage_number: 3, scheduled_at: "2026-10-01T12:00:00Z" },
+  ];
+  const run = async () => (await loadTrainNowStatus({ supabase: fakeSupabase(state), team: TEAM_7505, seasonId: SEASON.id, now: MORNING })).todayRaces;
+  assert.deepEqual(await run(), [{ id: "started", name: "Ronde", stageRun: true }, { id: "single", name: "Trofeo" }]);
+  state.races.find((r) => r.id === "started").stages_completed = 2; // stage 3 is still to run
+  assert.deepEqual(await run(), [{ id: "started", name: "Ronde" }, { id: "single", name: "Trofeo" }]);
 });
 
 test("#7505 another team's entries in a started race do not make it reachable", async () => {
