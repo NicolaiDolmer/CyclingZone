@@ -132,7 +132,7 @@ export async function applyStageStartFatigue({ supabase, raceId, stageNumber, en
  */
 export async function ridersWithFatigueNow({ supabase, riders, now = new Date(), beforeGameDay = null, medicalBonusByTeam = new Map() }) {
   const copies = (riders ?? []).map((r) => ({ ...r }));
-  const instant = await loadInstantConditions({ supabase, riderIds: copies.map(r => r.rider_id), tickDate: copenhagenDateString(now), beforeGameDay });
+  const instant = await loadInstantConditions({ supabase, riderIds: copies.map(r => r.rider_id), tickDate: copenhagenDateString(now), beforeGameDay, failOpenWhenOff: true });
   for (const rider of copies) if (instant.has(rider.rider_id)) Object.assign(rider, instant.get(rider.rider_id));
   const known = withCondition(copies).filter(r => !instant.has(r.rider_id));
   if (!known.length || !await isConditionModelV2Enabled(supabase)) return copies;
@@ -288,7 +288,7 @@ export async function fatigueByRiderNow({ supabase, conditions, abilityByRider =
   const base = sameMap(conditions);
   if (!base.size) return base;
   if (!await isFatigueNow7801Enabled(supabase)) {
-    const instant = await loadInstantConditions({ supabase, riderIds: [...base.keys()], tickDate: copenhagenDateString(now) });
+    const instant = await loadInstantConditions({ supabase, riderIds: [...base.keys()], tickDate: copenhagenDateString(now), failOpenWhenOff: true });
     for (const [id, condition] of instant) base.set(id, condition.fatigue);
     return base;
   }
@@ -304,7 +304,7 @@ export async function fatigueByRiderNow({ supabase, conditions, abilityByRider =
     return await liveFatigueMap({ supabase, conditions, base, abilityByRider, teamIdByRider, teamId, at, beforeGameDay });
   } catch (err) {
     if (err instanceof InstantConditionEvidenceError) throw err;
-    const instant = await loadInstantConditions({ supabase, riderIds: [...base.keys()], tickDate: copenhagenDateString(now) });
+    const instant = await loadInstantConditions({ supabase, riderIds: [...base.keys()], tickDate: copenhagenDateString(now), failOpenWhenOff: true });
     if (instant.size) throw new InstantConditionEvidenceError(`instant stage evidence: ${err.message}`, { cause: err });
     // best-effort: visningen og udtagelsen falder tilbage til dagens tal (åbningen).
     console.warn(`[fatigue-now-7801] fell back to opening fatigue: ${err.message}`);
@@ -392,7 +392,7 @@ export async function loadNextStageByRider({ supabase, riderIds, seasonId, now =
 export async function fatigueOutlookForTeam({ supabase, team, seasonId, conditions, abilityByRider = null, now = new Date() }) {
   if (!(conditions ?? []).length) return null;
   const enabled = await isFatigueNow7801Enabled(supabase);
-  const instant = await loadInstantConditions({ supabase, riderIds: conditions.map(c => c.rider_id), tickDate: copenhagenDateString(now) });
+  const instant = await loadInstantConditions({ supabase, riderIds: conditions.map(c => c.rider_id), tickDate: copenhagenDateString(now), failOpenWhenOff: true });
   if (!enabled && !instant.size) return null;
   const legacy = conditions.filter(c => !instant.has(c.rider_id));
   const fatigueNow = enabled

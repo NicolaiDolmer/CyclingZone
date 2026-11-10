@@ -251,7 +251,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     catalogV3GateForTeam(supabase, team.id),
   ]);
 
-  const instant = await loadInstantConditions({ supabase, riderIds, tickDate });
+  const instant = await loadInstantConditions({ supabase, riderIds, tickDate, failOpenWhenOff: true });
   const openingByRider = new Map(Object.entries(workRows[0]?.opening_conditions ?? {}));
   for (const [id, opening] of instant.openingByRider) openingByRider.set(id, opening);
   const work = workRows[0] ?? null;

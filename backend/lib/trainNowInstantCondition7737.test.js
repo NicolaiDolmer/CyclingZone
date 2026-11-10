@@ -114,11 +114,19 @@ test("#7737: authoritative read errors cannot silently fall back", async () => {
   }
 });
 
-test("#7737 review: with the switch off a failed stamp lookup keeps the pre-#7737 behaviour", async () => {
+test("#7737 review: with the switch off a failed stamp lookup keeps the pre-#7737 behaviour for displays", async () => {
   const supabase = instantDatabase({ fail: "training_train_now_locks", flags: { training_train_now_instant: "off" } });
-  const instant = await loadInstantConditions({ supabase, riderIds: ["r"], tickDate: DATE });
+  const instant = await loadInstantConditions({ supabase, riderIds: ["r"], tickDate: DATE, failOpenWhenOff: true });
   assert.equal(instant.size, 0);
   await assert.doesNotReject(fatigueByRiderNow({ supabase, conditions: [{ rider_id: "r", fatigue: 22 }], now: at }));
+});
+
+test("#7737 Codex-review: the stage stays fail-closed on a failed stamp lookup even with the switch off", async () => {
+  // A stamp survives the switch being turned off on the same date, so "off" proves nothing.
+  const supabase = instantDatabase({ fail: "training_train_now_locks", flags: { training_train_now_instant: "off" } });
+  await assert.rejects(loadInstantConditions({ supabase, riderIds: ["r"], tickDate: DATE }), InstantConditionEvidenceError);
+  const entrants = [{ rider_id: "r", fatigue: 48, form: 57 }];
+  await assert.rejects(applyStageStartFatigue({ supabase, raceId: "race", stageNumber: 2, entrants, instantOnly: true }));
 });
 
 test("#7737 review: an unreadable switch after a failed stamp lookup still refuses to guess", async () => {
@@ -127,7 +135,7 @@ test("#7737 review: an unreadable switch after a failed stamp lookup still refus
   supabase.from = (table) => table === "app_config"
     ? { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: { message: "down" } }) }) }) }
     : from(table);
-  await assert.rejects(loadInstantConditions({ supabase, riderIds: ["r"], tickDate: DATE }), InstantConditionEvidenceError);
+  await assert.rejects(loadInstantConditions({ supabase, riderIds: ["r"], tickDate: DATE, failOpenWhenOff: true }), InstantConditionEvidenceError);
 });
 
 test("#7737: the instant-only runner seam leaves unstamped entrants unchanged", async () => {

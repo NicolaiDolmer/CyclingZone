@@ -11,13 +11,15 @@ import { fetchAllRows, SUPABASE_IN_CHUNK_SIZE } from "./supabasePagination.js";
 export class InstantConditionEvidenceError extends Error {}
 
 // Review 10/11: med kontakten slukket maa en kort fejl i selve stempel-opslaget ikke vaelte
-// etape-autofyld, /training/me eller prognosen; foer #7737 laeste de slet ikke stempler.
-// Kun naar kontakten laeses som slukket, behandles fejlen som "ingen stempler". Taendt
-// eller ulaeselig kontakt kaster stadig, saa en stemplet rytter aldrig faar den forkerte tilstand.
-async function stampedOrOffFallback({ supabase, tickDate, riderIds }) {
+// visninger og udtagelse (/training/me, prognosen, assistentens autofyld); foer #7737 laeste
+// de slet ikke stempler. KUN de kaldere slaar failOpenWhenOff til. Etapen (applyStageStartFatigue)
+// skriver resultater og forbliver fail-closed: et stempel overlever, at kontakten slukkes
+// samme dato, saa "slukket" beviser ikke, at der ingen stempler er (Codex-review 10/11).
+async function stampedIds({ supabase, tickDate, riderIds, failOpenWhenOff }) {
   try {
     return [...await loadTrainNowInstantRiderIds({ supabase, tickDate, riderIds })];
   } catch (lookupError) {
+    if (!failOpenWhenOff) throw lookupError;
     const { data, error } = await supabase.from("app_config")
       .select("value").eq("key", "training_train_now_instant").maybeSingle();
     if (!error && data?.value !== "on") return [];
@@ -32,14 +34,14 @@ async function rows(query, source) {
 }
 
 /** Read-only reconstruction of PR1's provisional date; the durable stamp survives OFF. */
-export async function loadInstantConditions({ supabase, riderIds, tickDate, beforeGameDay = null }) {
+export async function loadInstantConditions({ supabase, riderIds, tickDate, beforeGameDay = null, failOpenWhenOff = false }) {
   const out = new Map();
   out.openingByRider = new Map();
   out.incompleteRiderIds = new Set();
   out.settledRiderIds = new Set();
   try {
     for (let i = 0; i < riderIds.length; i += SUPABASE_IN_CHUNK_SIZE) {
-      const stamped = await stampedOrOffFallback({ supabase, tickDate, riderIds: riderIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE) });
+      const stamped = await stampedIds({ supabase, tickDate, riderIds: riderIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE), failOpenWhenOff });
       if (!stamped.length) continue;
       // pagination-safe: one stamp per rider/date, bounded rider chunk.
       // schema-columns-ok: instant_entry_snapshot is added by stacked PR1 migration database/2026-11-09-7737-train-now-instant.sql.
