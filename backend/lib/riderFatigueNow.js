@@ -1,12 +1,12 @@
 // #7801: én kilde til en rytters træthed "lige nu" og "ved start af næste etape".
 //
-// Under dato-opgørelsen er rider_condition åbningen fra aftenen før; datoens etaper står i
+// Uden et instant-stempel er rider_condition åbningen fra aftenen før; datoens etaper står i
 // ledgeren, indtil datoen afregnes. Motoren lægger dem oveni ved etapestart, mens fladerne
 // har vist åbningen. Derfor regner motor og flader her gennem samme funktioner: motoren
 // (raceFatigue.applySameDateEnteringFatigueV2) og de tal, spilleren skal se, kan ikke skilles ad.
 //
 // Modulet kender kun det, motoren kender i dag: åbningen og datoens registrerede belastninger.
-// Dagens træningspas tæller først med ved datoens opgørelse, både her og i motoren.
+// Stemplede datoer bruger PR1's frosne åbning og receipts gennem instant-readeren.
 
 import { enteringFatigueV2, settleDateFatigueV2 } from "./conditionModelV2.js";
 import { isConditionModelV2Enabled } from "./conditionModelV2Flag.js";
@@ -15,6 +15,7 @@ import { loadMedicalBonusByTeam } from "./medicalEffects.js";
 import { isFatigueNow7801Enabled } from "./riderFatigueNowFlag.js";
 import { fetchAllRows, SUPABASE_IN_CHUNK_SIZE } from "./supabasePagination.js";
 import { dropBindingsAfterRaceExit, loadRaceExitGameDays } from "./trainingRaceDayTick.js";
+import { loadInstantConditions, InstantConditionEvidenceError } from "./trainNowInstantCondition7737.js";
 
 /**
  * Træthed lige nu: åbningen plus datoens etaper, der er kørt og endnu ikke afregnet.
@@ -99,29 +100,41 @@ function applyDateLoads(riders, loadsByRider, medicalBonusByTeam) {
 }
 
 /**
- * Motorens indgang: sætter `entrant.fatigue` til trætheden ved etapens start, når rytteren
- * allerede har kørt etaper samme dato.
+ * Motorens indgang: datoens tidligere etaper samt stemplet træning.
+ * Stemplede ryttere får også form fra den fælles dato-opgørelse.
  * @returns {Promise<number>} antal ryttere hvis træthed blev ændret
  */
-export async function applyStageStartFatigue({ supabase, raceId, stageNumber, entrants, medicalBonusByTeam = new Map() }) {
+export async function applyStageStartFatigue({ supabase, raceId, stageNumber, entrants, medicalBonusByTeam = new Map(), instantOnly = false }) {
   const riders = withCondition(entrants);
   if (!riders.length) return 0;
   const start = await loadStageStart({ supabase, raceId, stageNumber });
   if (!start) return 0;
+  const instant = await loadInstantConditions({ supabase, riderIds: riders.map(r => r.rider_id), tickDate: start.tickDate, beforeGameDay: start.gameDay });
+  let changed = 0;
+  for (const rider of riders) {
+    const condition = instant.get(rider.rider_id);
+    if (!condition) continue;
+    if (condition.fatigue !== rider.fatigue) changed++;
+    Object.assign(rider, condition);
+  }
+  const legacy = riders.filter(r => !instant.has(r.rider_id));
+  if (instantOnly || !legacy.length) return changed;
   const loadsByRider = await loadUnsettledDateLoads({
-    supabase, riderIds: riders.map((r) => r.rider_id), tickDate: start.tickDate, beforeGameDay: start.gameDay,
+    supabase, riderIds: legacy.map((r) => r.rider_id), tickDate: start.tickDate, beforeGameDay: start.gameDay,
   });
-  return applyDateLoads(riders, loadsByRider, medicalBonusByTeam);
+  return changed + applyDateLoads(legacy, loadsByRider, medicalBonusByTeam);
 }
 
 /**
  * Fladernes indgang: kopier af `riders` med trætheden lige nu. Samme rækkeform som motorens
  * entrants ({ rider_id, team_id, fatigue, abilities: { recovery } }). Uden condition_model_v2
- * er rider_condition selv det sande tal, og ledgeren læses ikke.
+ * er rider_condition selv det sande tal for ryttere uden et instant-stempel.
  */
 export async function ridersWithFatigueNow({ supabase, riders, now = new Date(), beforeGameDay = null, medicalBonusByTeam = new Map() }) {
   const copies = (riders ?? []).map((r) => ({ ...r }));
-  const known = withCondition(copies);
+  const instant = await loadInstantConditions({ supabase, riderIds: copies.map(r => r.rider_id), tickDate: copenhagenDateString(now), beforeGameDay, failOpenWhenOff: true });
+  for (const rider of copies) if (instant.has(rider.rider_id)) Object.assign(rider, instant.get(rider.rider_id));
+  const known = withCondition(copies).filter(r => !instant.has(r.rider_id));
   if (!known.length || !await isConditionModelV2Enabled(supabase)) return copies;
   const loadsByRider = await loadUnsettledDateLoads({
     supabase, riderIds: known.map((r) => r.rider_id), tickDate: copenhagenDateString(now), beforeGameDay,
@@ -131,8 +144,8 @@ export async function ridersWithFatigueNow({ supabase, riders, now = new Date(),
 }
 
 // ── #7801 PR 2: kalderne bag kontakten fatigue_now_7801 ─────────────────────────────
-// Slukket: hver funktion herunder giver præcis dagens tal (åbningen) og læser intet andet
-// end kontakten. Tændt: samme kerne som motoren ovenfor.
+// Uden instant-stempel giver slukket kontakt dagens tal uændret. Et holdbart stempel
+// læses også efter OFF; tændt bruger fladerne samme kerne som motoren ovenfor.
 
 /**
  * Træthed lige nu før et felt på datoen: åbningen plus rytterens kørte etaper på tidligere
@@ -208,7 +221,7 @@ async function liveFatigueMap({ supabase, conditions, base, abilityByRider, team
   };
   const teamOf = (id) => teamIdByRider?.get(id) ?? teamId;
   const riders = (conditions ?? []).map((c) => ({
-    rider_id: c.rider_id, team_id: teamOf(c.rider_id), fatigue: c.fatigue,
+    rider_id: c.rider_id, team_id: teamOf(c.rider_id), fatigue: c.fatigue, form: c.form,
     abilities: { recovery: Number.isFinite(recoveryOf(c.rider_id)) ? recoveryOf(c.rider_id) : 50 },
   }));
   const medicalBonusByTeam = await isConditionModelV2Enabled(supabase)
@@ -248,6 +261,7 @@ export async function fatigueByRiderForRaces({ supabase, conditions, abilityByRi
       }
       byRace.set(race.id, byStart.get(key));
     } catch (err) {
+      if (err instanceof InstantConditionEvidenceError) throw err;
       // best-effort, som fatigueByRiderNow: udtagelsen falder tilbage til åbningen.
       console.warn(`[fatigue-now-7801] fell back to opening fatigue: ${err.message}`);
       byRace.set(race.id, base);
@@ -258,7 +272,7 @@ export async function fatigueByRiderForRaces({ supabase, conditions, abilityByRi
 
 /**
  * Træthed pr. rytter til fladerne og assistentens udtagelse. `conditions` = rider_condition-
- * rækker ({ rider_id, fatigue }). Slukket: præcis `new Map(rider_id → fatigue)` som i dag.
+ * rækker ({ rider_id, fatigue }). Slukket uden instant-stempel: dagens map uændret.
  * Tændt: trætheden lige nu. `abilityByRider` (rider_id → { recovery }) læses selv, hvis den
  * ikke gives; holdet findes via `teamIdByRider` eller `teamId`.
  *
@@ -267,12 +281,17 @@ export async function fatigueByRiderForRaces({ supabase, conditions, abilityByRi
  * Assistenten udtager til en bestemt etape, så dens tal må ikke afhænge af, hvornår koden kører.
  * Planen læses først efter kontakten, så slukket læser intet nyt.
  *
- * En læsefejl på tændt kontakt giver dagens tal frem for en væltet side eller udtagelse:
- * live-tallet er en forbedring af visningen, ikke en forudsætning for den.
+ * Legacy-fejl kan give åbningen. Fejl i instant-evidens kastes altid, fordi den
+ * gemte foreløbige tilstand ikke kan bruges som erstatning for en verificeret åbning.
  */
 export async function fatigueByRiderNow({ supabase, conditions, abilityByRider = null, teamIdByRider = null, teamId = null, now = new Date(), atStage = null }) {
   const base = sameMap(conditions);
-  if (!base.size || !await isFatigueNow7801Enabled(supabase)) return base;
+  if (!base.size) return base;
+  if (!await isFatigueNow7801Enabled(supabase)) {
+    const instant = await loadInstantConditions({ supabase, riderIds: [...base.keys()], tickDate: copenhagenDateString(now), failOpenWhenOff: true });
+    for (const [id, condition] of instant) base.set(id, condition.fatigue);
+    return base;
+  }
   try {
     let at = now;
     let beforeGameDay = null;
@@ -284,6 +303,9 @@ export async function fatigueByRiderNow({ supabase, conditions, abilityByRider =
     }
     return await liveFatigueMap({ supabase, conditions, base, abilityByRider, teamIdByRider, teamId, at, beforeGameDay });
   } catch (err) {
+    if (err instanceof InstantConditionEvidenceError) throw err;
+    const instant = await loadInstantConditions({ supabase, riderIds: [...base.keys()], tickDate: copenhagenDateString(now), failOpenWhenOff: true });
+    if (instant.size) throw new InstantConditionEvidenceError(`instant stage evidence: ${err.message}`, { cause: err });
     // best-effort: visningen og udtagelsen falder tilbage til dagens tal (åbningen).
     console.warn(`[fatigue-now-7801] fell back to opening fatigue: ${err.message}`);
     return base;
@@ -359,8 +381,8 @@ export async function loadNextStageByRider({ supabase, riderIds, seasonId, now =
 }
 
 /**
- * Træningsfladens tal: rider_id → { fatigue, fatigueAtStart }. Null, når kontakten er slukket
- * (fladen er da præcis som i dag). `fatigueAtStart` er skønnet ved start af rytterens næste
+ * Træningsfladens tal: rider_id → { fatigue, fatigueAtStart }, med form for stemplede datoer.
+ * Null ved slukket kontakt uden instant-stempler. `fatigueAtStart` er skønnet ved start af rytterens næste
  * etape, eller null uden en etape i dag eller i morgen.
  *
  * Næste etape i dag: datoens kørte etaper ligger alle før den, så skønnet er tallet lige nu.
@@ -368,9 +390,16 @@ export async function loadNextStageByRider({ supabase, riderIds, seasonId, now =
  * rytterens første etape i morgen har ingen etaper før sig på datoen.
  */
 export async function fatigueOutlookForTeam({ supabase, team, seasonId, conditions, abilityByRider = null, now = new Date() }) {
-  if (!(conditions ?? []).length || !await isFatigueNow7801Enabled(supabase)) return null;
-  const fatigueNow = await fatigueByRiderNow({ supabase, conditions, abilityByRider, teamId: team?.id ?? null, now });
-  const out = new Map([...fatigueNow].map(([id, fatigue]) => [id, { fatigue, fatigueAtStart: null }]));
+  if (!(conditions ?? []).length) return null;
+  const enabled = await isFatigueNow7801Enabled(supabase);
+  const instant = await loadInstantConditions({ supabase, riderIds: conditions.map(c => c.rider_id), tickDate: copenhagenDateString(now), failOpenWhenOff: true });
+  if (!enabled && !instant.size) return null;
+  const legacy = conditions.filter(c => !instant.has(c.rider_id));
+  const fatigueNow = enabled
+    ? await fatigueByRiderNow({ supabase, conditions: legacy, abilityByRider, teamId: team?.id ?? null, now })
+    : new Map();
+  for (const [id, condition] of instant) fatigueNow.set(id, condition.fatigue);
+  const out = new Map([...fatigueNow].map(([id, fatigue]) => [id, { fatigue, ...instant.get(id), fatigueAtStart: null }]));
   try {
     const next = await loadNextStageByRider({ supabase, riderIds: [...out.keys()], seasonId, now });
     const today = copenhagenDateString(now);
@@ -382,11 +411,12 @@ export async function fatigueOutlookForTeam({ supabase, team, seasonId, conditio
     }
     for (const [id, n] of next) {
       const row = out.get(id);
-      if (!row) continue;
+      if (!row || instant.incompleteRiderIds.has(id)) continue;
       if (n.tickDate === today) row.fatigueAtStart = Number.isFinite(Number(row.fatigue)) ? Number(row.fatigue) : null;
       else if (tonight?.available) row.fatigueAtStart = tonight.riders?.[id]?.fatigue ?? null;
     }
   } catch (err) {
+    if (err instanceof InstantConditionEvidenceError) throw err;
     // best-effort: uden skøn viser fladen kun tallet lige nu.
     console.warn(`[fatigue-now-7801] stage-start estimate omitted: ${err.message}`);
   }

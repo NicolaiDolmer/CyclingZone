@@ -110,12 +110,12 @@ test("slotFatiguesNow: hvert felt ser kun etaperne i felterne før sig", () => {
 
 const CONDITIONS = [{ rider_id: "a", fatigue: 55 }, { rider_id: "b", fatigue: null }, { rider_id: "c", fatigue: 80 }];
 
-test("fatigueByRiderNow slukket: præcis dagens map, og intet læses ud over kontakten", async () => {
+test("fatigueByRiderNow slukket: præcis dagens map uden et durable stamp", async () => {
   for (const flag of [undefined, "off", "beta"]) {
     const log = [];
     const got = await fatigueByRiderNow({ supabase: fakeSupabase({ flag, log, ledger: [{ rider_id: "a", tick_date: "2026-11-04", game_day: 41, load: 30, consumed_at: null, duplicate_of_race_id: null }] }), conditions: CONDITIONS, teamId: "t", now: new Date("2026-11-04T15:00:00Z") });
     assert.deepEqual([...got], [...new Map(CONDITIONS.map((c) => [c.rider_id, c.fatigue]))]);
-    assert.deepEqual([...new Set(log)], ["app_config"], `flag=${flag}`);
+    assert.deepEqual([...new Set(log)], ["app_config", "training_train_now_locks"], `flag=${flag}`);
   }
   const empty = await fatigueByRiderNow({ supabase: { from() { throw new Error("må ikke læse"); } }, conditions: [], now: new Date("2026-11-04T15:00:00Z") });
   assert.equal(empty.size, 0);
@@ -229,7 +229,7 @@ test("fatigueByRiderNow atStage: etapens planlagte start er nu, og kun løbsdage
   const log = [];
   const off = await fatigueByRiderNow({ supabase: fakeSupabase({ flag: "off", ledger, schedule, log }), ...args });
   assert.deepEqual([...off], [...new Map(CONDITIONS.map((c) => [c.rider_id, c.fatigue]))]);
-  assert.deepEqual([...new Set(log)], ["app_config"], "slukket læser ikke planen");
+  assert.deepEqual([...new Set(log)], ["app_config", "training_train_now_locks"], "slukket læser kun kontakten og durable stamps");
 });
 
 test("firstStageNumber: laveste etapenummer; tom liste = etape 1", () => {

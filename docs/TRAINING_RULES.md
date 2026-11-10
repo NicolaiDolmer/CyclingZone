@@ -347,6 +347,35 @@ on the same earlier state. The existing RPC signatures and try-lock forwarding
 are unchanged. Local native PG17 concurrency and PGlite/golden evidence belong
 in the PR; this contract does not claim production activation or verification.
 
+### Instant train-now PR2: stage input and existing displays
+
+For a stamped, unsettled rider/date, `trainNowInstantCondition7737.js` reconstructs
+form and fatigue from `training_date_work.opening_conditions`, completed slot
+receipts, frozen remaining race slots and canonical race-load evidence. It calls
+the same date-condition settlement helper as PR1, including its reserved-slot
+representation and receipt recovery factor. The provisional `rider_condition`
+is never used as another opening, and stage input excludes loads from the current
+or later slot. No extra date recovery or new balance model is introduced.
+
+Stage entrants and existing live/next-stage displays use this shared reader.
+An existing settlement makes the persisted final condition authoritative; the
+date is not applied again. Injury state is preserved. Stamp/evidence failures
+raise an error instead of presenting a guessed condition. Durable stamps remain
+effective when switches are off; an unstamped rider keeps the legacy output.
+An interrupted press has no provisional condition until its final free-slot
+receipt commits. Read-only consumers return its persisted condition plus prior
+canonical race loads and omit the next-stage estimate while free slots remain;
+they never project uncommitted training or write during GET. Before loading
+entrant abilities, the automatic stage path resumes missing free slots using
+the original frozen roster/slots and the common engine/receipt CAS, including
+after OFF. A retry never creates a freeze or trains a reserved stage slot.
+The normal post-race date sweep closes the remaining stage receipts.
+The existing next-date forecast carries the original frozen opening through the
+full loader, including when a stamped rider has changed teams. With
+fatigue_now_7801 OFF, only stamped riders receive outlook fields; unstamped
+teammates keep the previous response with those fields absent. PR2 adds no UI or text. Claude's PR3 owns player text, Help and
+patch notes before any activation. No switch is activated by this change.
+
 ## Aktuel S4-status (read-only prodmåling 28/9)
 
 `training_tick_per_race_day` og `race_day_development_enabled` er begge `on`.
