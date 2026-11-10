@@ -1155,13 +1155,16 @@ features:
     area: training
     title_en: Train now straight away
     title_da: Træn nu med det samme
-    state: building
+    state: beta
+    flag: training_train_now_instant
     ssot: docs/TRAINING_RULES.md
     epic: 7737
-    verified: 2026-11-09
+    verified: 2026-11-10
     decision: goer-faerdigt
     decide_by: 2026-11-16
-    note: 'PR1+PR2 merged OFF (#7948, #7967); PR3 screen ships with the owner activation.'
+    note: 'Beta i prod 10/11; on for alle efter beta-feedback (ejer-go).'
+    roadmap_en: "Train now takes effect immediately: today's free training applies at once, and form and fatigue carry into today's races."
+    roadmap_da: "Træn nu virker med det samme: dagens ledige træning udføres straks, og form og træthed tæller med i dagens løb."
 
   - id: train-now-whole-day
     area: training
