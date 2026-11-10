@@ -370,6 +370,14 @@ function TransferListButton({ rider, onChanged }) {
   }
 
   const autoApiError = (data) => resolveApiError(data || {}, (key, params) => String(t(key, /** @type {any} */ (params))), t("errors:generic.unknown"));
+  // Optimistisk lås: en anden fane har ændret auto-prisen. Adoptér serverens pris, så næste forsøg
+  // sender den rigtige forventede pris; ingen automatisk gentagelse.
+  function serverAutoConflict(data) {
+    if (data?.errorCode !== "auto_accept_price_changed") return null;
+    const next = Number(data.errorParams?.autoAcceptPrice);
+    sharedRequestCache.invalidate(SHARED_KEYS.transferListings);
+    return { price: next > 0 ? next : null };
+  }
   // #2176: PUT /api/transfers/:id/auto-accept-price. null fjerner auto-prisen.
   function putAutoPrice(listingId, token, expected) {
     return apiFetch(`${API}/api/transfers/${listingId}/auto-accept-price`, {
@@ -391,6 +399,8 @@ function TransferListButton({ rider, onChanged }) {
         const autoRes = await putAutoPrice(listing.id, session?.access_token, savedAutoPrice);
         if (autoRes.networkError) { flashResult(false, t("auth:error.connectionFailed")); return; }
         if (!autoRes.ok) {
+          const conflict = serverAutoConflict(autoRes.data);
+          if (conflict) setListing((l) => (l ? { ...l, auto_accept_price: conflict.price } : l));
           flashResult(false, `${t("sellRider.toast.autoNotSaved")} ${autoApiError(autoRes.data)}`);
           return;
         }
@@ -418,14 +428,19 @@ function TransferListButton({ rider, onChanged }) {
         sharedRequestCache.invalidate(SHARED_KEYS.transferListings);
         let nextListing = listing ? { ...listing, asking_price: price, ...(autoFirst ? { auto_accept_price: autoPrice } : {}) } : data;
         let autoError = /** @type {string | null} */ (null);
+        let keepOpen = false;
         if (autoChanged && !autoFirst) {
           // Listingen staar, selv hvis auto-prisen fejler: vis fejlen, ret bagefter.
           const autoRes = await putAutoPrice(nextListing.id, session?.access_token, listing ? savedAutoPrice : null);
           if (autoRes.ok) nextListing = { ...nextListing, auto_accept_price: autoPrice };
-          else autoError = autoRes.networkError ? t("auth:error.connectionFailed") : autoApiError(autoRes.data);
+          else {
+            const conflict = serverAutoConflict(autoRes.data);
+            if (conflict) { keepOpen = true; nextListing = { ...nextListing, auto_accept_price: conflict.price }; }
+            autoError = autoRes.networkError ? t("auth:error.connectionFailed") : autoApiError(autoRes.data);
+          }
         }
         setListing(nextListing);
-        setShow(false);
+        setShow(keepOpen);
         if (autoError) flashResult(false, `${t("sellRider.toast.autoNotSaved")} ${autoError}`);
         else flashResult(true, listing ? t("sellRider.toast.priceUpdated") : t("sellRider.toast.listed"));
         // #3490: siden viser nu udbudsprisen i hero-banneret uanset ejerskab —

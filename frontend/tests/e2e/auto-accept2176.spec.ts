@@ -247,7 +247,7 @@ async function setupSeller(
     const body = request.postDataJSON();
     calls.push({ method: "PUT", url: request.url(), body });
     if (putStatus !== 200) {
-      return json(route, { errorCode: "auto_accept_price_changed", errorParams: {} }, putStatus);
+      return json(route, { errorCode: "auto_accept_price_changed", errorParams: { autoAcceptPrice: 650000 } }, putStatus);
     }
     return json(route, { listing_id: "x", auto_accept_price: body.auto_accept_price, status: "updated" });
   });
@@ -289,6 +289,19 @@ test("a failed auto-price save keeps the listing and shows the error", async ({ 
   await page.getByRole("button", { name: "Sæt til salg", exact: true }).last().click();
   await expect(page.getByText(/Auto-prisen blev ikke gemt/)).toBeVisible();
   await expect(page.getByText(/På transferlisten for 200\.000/)).toBeVisible();
+});
+test("a changed auto-price from another tab is adopted and needs a second explicit save", async ({ page }) => {
+  const calls = await setupSeller(page, { listed: true, putStatus: 409 });
+  await expect(page.getByText(/På transferlisten for 200.000/)).toBeVisible({ timeout: 20000 });
+  await page.getByRole("button", { name: "Redigér priser", exact: true }).click();
+  await page.getByTestId("transfer-list-auto-price-input").fill("700000");
+  await page.getByRole("button", { name: "Opdatér priser", exact: true }).click();
+  await expect(page.getByText(/Auto-prisen blev ikke gemt/)).toBeVisible();
+  await expect(page.getByTestId("seller-auto-price-status")).toContainText(/Auto-pris 650.000/);
+  await expect(page.getByTestId("transfer-list-auto-price-input")).toBeVisible();
+  await page.getByRole("button", { name: "Opdatér priser", exact: true }).click();
+  await expect.poll(() => calls.filter((c) => c.method === "PUT").length).toBe(2);
+  expect(calls.filter((c) => c.method === "PUT")[1].body).toEqual({ auto_accept_price: 700000, expected_auto_accept_price: 650000 });
 });
 test("seller edits and removes the auto-price on an existing listing", async ({ page }) => {
   const calls = await setupSeller(page, { listed: true });
