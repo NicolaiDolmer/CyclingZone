@@ -175,14 +175,19 @@ rulles tilbage. Det er ikke en fuld løbsdagsmåling.
 De eksisterende matviews serverer fortsat; dette er ingen M2-aktivering.
 Den særskilte `ranking_shadow_decoupled_6765` seedes off. Off, manglende
 konfiguration eller opslagsfejl bevarer den hidtidige rækkefølge. On forsøger
-skyggepasset før legacy-refresh under samme claim/token/version; cooldown,
-træningsudskydelse eller manglende claim tillader et begrænset skyggepas uden
-legacy-token. SQL-writerlåsen og `ranking_shadow_enabled` gælder stadig.
+skyggepasset efter legacy-publicering og coordinatorens finish, også efter
+legacy-fejl. Cooldown, træningsudskydelse eller manglende claim tillader ligeledes
+et begrænset skyggepas. Clean-ticks med on bruger samme coordinator-kø og
+paritet kræver et autoritativt clean-claim. Den afsluttede lease/token/version genbruges aldrig;
+Den lokale køplads beholdes under skyggepasset, så næste legacy-pas ikke
+konkurrerer om writerlåsen. SQL-writerlåsen og `ranking_shadow_enabled` gælder stadig.
 Skyggearbejde kvitterer aldrig legacy-versionen eller heartbeatet. Returværdien
 beskriver fortsat legacy-publicering; skyggefejl rapporteres særskilt. Et
 selvstændigt pas sammenligner først med legacy på en senere clean tick, så
 forventet legacy-lag ikke rapporteres som paritetsfejl. Versionens eksisterende
-watermark-drain, lease-fornyelse og hårde budgetter bevares. Delte queued callers
+watermark-drain under lease bevares i off-stien. On bruger det eksisterende
+uleasede batch-/tidsbudget og efterlader restarbejde til senere ticks; legacy
+kan derfor være publiceret, mens skyggen stadig har kø. Delte queued callers
 genbruger et allerede forsøgt pas frem for hver at starte et ekstra drain.
 ranking_race_contrib aggregerer pr. løb/rytter/registreret hold. Summarierne
 bevarer alle kolonner, NULL-summer og nullable sæsonnøgler. Senior/ungdom følger

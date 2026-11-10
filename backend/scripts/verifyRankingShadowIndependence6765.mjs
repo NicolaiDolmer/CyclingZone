@@ -50,7 +50,8 @@ export async function verifyIndependence({sql,definitions,names,tables,refresh,d
   });
   const options={now:NOW,nowFn:()=>NOW,testNowFn:()=>NOW,clock:()=>0,tokenFn:()=>TOKEN,logger:{info(){},warn(){},log(){}}};
   function client({mode='success',flag='off',batchClockStep=0}={}) {
-    let completed=7,elapsed=0;
+    let completed=7,elapsed=0,publicationMs=null;
+    let started=performance.now();
     const trace=[],captures=[],logs=[];
     sql("UPDATE app_config SET value="+literal(JSON.stringify(flag))+"::jsonb WHERE key='ranking_shadow_decoupled_6765'; UPDATE ranking_refresh_work_state SET requested_version=8,completed_version=7,lease_token=NULL,leased_version=NULL,lease_expires_at=NULL;");
     const c={
@@ -69,7 +70,7 @@ export async function verifyIndependence({sql,definitions,names,tables,refresh,d
         }
         if(name==='renew_ranking_refresh_work') return {data:sql('SELECT coalesce(lease_token='+literal(args.p_token)+'::uuid AND lease_expires_at>clock_timestamp(),false) FROM ranking_refresh_work_state;')==='t',error:null};
         if(name==='finish_ranking_refresh_work') {
-          if(args.p_success) {completed=8;sql('UPDATE ranking_refresh_work_state SET completed_version=8;');}
+          if(args.p_success) {completed=8;sql('UPDATE ranking_refresh_work_state SET completed_version=8;');publicationMs=+(performance.now()-started).toFixed(2);}
           sql('UPDATE ranking_refresh_work_state SET lease_token=NULL,leased_version=NULL,lease_expires_at=NULL;');
           return {data:true,error:null};
         }
@@ -89,17 +90,17 @@ export async function verifyIndependence({sql,definitions,names,tables,refresh,d
         } catch(error) {return {data:null,error:{message:error.message}};}
       },
     };
-    return {c,trace,captures,logs,get completed(){return completed;},options:{...options,clock:()=>elapsed,logger:{info:(_m,d)=>logs.push(d)},captureExceptionFn:(e,context)=>captures.push({message:e.message,context})}};
+    return {c,trace,captures,logs,start(){started=performance.now();},get completed(){return completed;},get publicationMs(){return publicationMs;},options:{...options,clock:()=>elapsed,logger:{info:(_m,d)=>logs.push(d)},captureExceptionFn:(e,context)=>captures.push({message:e.message,context})}};
   }
   sql('CREATE TABLE fixture_original6765 AS SELECT id,points_earned FROM race_results WHERE race_id=fid(100004);');
   const measurements=[];
-  for(const mode of ['success','failure','timeout','cooldown','deferred']) {
-    for(const [label,entry,flag] of [['before',frozen.entry,'off'],['after',after,'on']]) {
+  for(const mode of ['success','success','success','failure','timeout','cooldown','deferred']) {
+    for(const [label,entry,flag] of [['before',frozen.entry,'on'],['after',after,'on']]) {
       sql(refresh);drain();
       const f=client({mode,flag});
       sql('UPDATE race_results SET points_earned=coalesce(points_earned,0)+1 WHERE race_id=fid(100004);');
       const opts=mode==='deferred'?{...f.options,now:new Date('2040-01-04T19:30:00Z')}:f.options;
-      const started=performance.now();
+      const started=performance.now();f.start();
       const result=mode==='success'||mode==='failure'||mode==='timeout'
         ?await entry.refreshRankingMatviewsSafe(f.c,opts):await entry.refreshRankingMatviewsGated(f.c,opts);
       const passMs=+(performance.now()-started).toFixed(2);
@@ -107,10 +108,10 @@ export async function verifyIndependence({sql,definitions,names,tables,refresh,d
       const remaining=Number(sql('SELECT count(*) FROM ranking_dirty_log;'));
       assert.equal(result,mode==='success'?true:mode==='cooldown'?'cooldown':mode==='deferred'?'deferred':false);
       assert.equal(f.completed,mode==='success'?8:7,'shadow does not acknowledge legacy failure/deferral');
-      if(label==='after'||mode==='success') {assert.equal(remaining,0);assert.equal(applies,1);parity(mode==='success');}
-      else {assert.ok(remaining>0);assert.equal(applies,0);}
-      if(label==='after'&&mode==='success') assert.ok(f.trace.findIndex(c=>c.name==='apply_ranking_deltas')<f.trace.findIndex(c=>c.name==='refresh_rider_rankings_mv'));
-      measurements.push({phase:label,mode,pass_ms:passMs,applies,remaining,completed:f.completed});
+      assert.equal(remaining,0);assert.equal(applies,1);parity(mode==='success');
+      if(label==='after') assert.ok(f.trace.filter(c=>c.name==='apply_ranking_deltas').every(c=>c.args.p_owner_token===null&&c.args.p_target_version===null));
+      if(mode==='success') assert.equal(f.trace.findIndex(c=>c.name==='apply_ranking_deltas')>f.trace.findIndex(c=>c.name==='finish_ranking_refresh_work'),label==='after');
+      measurements.push({phase:label,mode,pass_ms:passMs,publication_ms:f.publicationMs,applies,remaining,completed:f.completed});
       drain();
       sql('UPDATE race_results r SET points_earned=b.points_earned FROM fixture_original6765 b WHERE r.id=b.id;');
       drain();sql(refresh);
@@ -131,14 +132,18 @@ export async function verifyIndependence({sql,definitions,names,tables,refresh,d
   const burst=client({flag:'on',batchClockStep:5000});
   sql("INSERT INTO ranking_dirty_log(kind,race_id) SELECT 'race',id FROM races ORDER BY id LIMIT 450;");
   assert.equal(await after.refreshRankingMatviewsSafe(burst.c,burst.options),true);
-  assert.equal(burst.trace.filter(c=>c.name==='apply_ranking_deltas').length,3);
+  assert.equal(burst.trace.filter(c=>c.name==='apply_ranking_deltas').length,1);
+  assert.equal(Number(sql('SELECT count(*) FROM ranking_dirty_log;')),250);
+  assert.equal(burst.logs[0].version_drained,undefined);
+  assert.equal(burst.logs[0].status,'pending');
+  assert.equal(burst.completed,8,'publication is complete while shadow backlog remains');
+  const recovery=client({flag:'on'});
+  assert.equal(await after.refreshRankingMatviewsSafe(recovery.c,recovery.options),true);
   assert.equal(Number(sql('SELECT count(*) FROM ranking_dirty_log;')),0);
-  assert.equal(burst.logs[0].version_drained,true);
-  assert.equal(burst.logs[0].status,'parity-deferred-legacy');
   sql("UPDATE app_config SET value='\"on\"'::jsonb WHERE key='ranking_shadow_decoupled_6765';");sql(seed);
   assert.equal(sql("SELECT value #>> '{}' FROM app_config WHERE key='ranking_shadow_decoupled_6765'"),'on','seed replay preserves existing choice');
   sql(refresh);drain();
-  const report={rows:Number(sql('SELECT count(*) FROM race_results')),clock:NOW.toISOString(),frozen_sha256:frozen.sha256,frozen_shadow_sha256:frozen.shadowSha256,measurements,version_drain:{items:450,batches:3,version_drained:burst.logs[0].version_drained},parity:parity(true)};
+  const report={rows:Number(sql('SELECT count(*) FROM race_results')),clock:NOW.toISOString(),frozen_sha256:frozen.sha256,frozen_shadow_sha256:frozen.shadowSha256,measurements,unleased_drain:{items:450,first_pass_batches:1,remaining_after_publication:250,recovery_batches:recovery.trace.filter(c=>c.name==='apply_ranking_deltas').length},parity:parity(true)};
   writeFileSync(join(dir,'independence-report.json'),JSON.stringify(report,null,2));
   console.log(JSON.stringify(report));
 }

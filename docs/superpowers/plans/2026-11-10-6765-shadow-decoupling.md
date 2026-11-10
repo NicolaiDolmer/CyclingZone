@@ -5,9 +5,9 @@ Refs #6765. Scope: first PR agreed in issue comment 6655002664; owner night mand
 ## Design and failure modes before implementation
 
 - A fresh, separately seeded OFF control selects independence. Missing row, invalid value, thrown query or query error selects the existing path; query failures are captured. No successful ON cache survives a failed lookup.
-- With a coordinator claim, attempt shadow maintenance before legacy RPCs, retaining owner token, target version, renewals and the existing bounded version drain. Legacy failure/timeout therefore cannot prevent this attempt.
+- Owner correction 10 November: finish legacy publication and its acknowledgement first, then attempt shadow maintenance even after legacy failure/timeout. Never reuse the released token/version. The existing unleased budget leaves remaining shadow work queued; no reader switch is included.
 - Without a claim (cooldown, clean, deferred, admission failure), attempt the existing bounded shadow pass without a coordinator token/version. SQL remains authoritative for writer contention and shadow enablement. Do not invent or acknowledge a legacy version.
-- Each admitted pass attempts shadow once. A fallback is used only if the callback did not attempt it. Avoid a second heavy drain after legacy failure. Multiple callers retain the existing local queue; SQL retains cross-process serialization.
+- The wrapper attempts shadow once after legacy settles; overlapping callers reuse a maintenance attempt observed since admission. Existing local legacy queue and SQL cross-process serialization remain. Clean ticks may check parity; dirty/failure paths defer it.
 - Return values continue to describe legacy publication. Shadow failure is captured/logged separately and cannot mark a failed legacy refresh complete; shadow success cannot advance legacy heartbeat. Legacy success does not conceal shadow failure in its diagnostics.
 - Independent dirty work postpones legacy parity until a clean tick. Shared follow-up callers reuse an attempt observed since their admission rather than each falling back to another heavy drain.
 - OFF retains the old shadow position and return values, including missing migration/config lookup errors. No SQL planner configuration is added; #7697 rollback remains intact.
@@ -23,3 +23,15 @@ Refs #6765. Scope: first PR agreed in issue comment 6655002664; owner night mand
 ## Limits
 
 Synthetic timings are a local before/after observation, not a production SLA or a 10x capacity claim. No staging/prod writes, migration apply, flag activation, merge or deploy. Targeted tests do not replace the parent's complete verification and independent review.
+
+## Inline execution ledger, owner continuation 10 November
+
+- Runtime failure is out of scope; owner explicitly authorized sequential execution in existing worktrees.
+- Ruling: after-publication maintenance cannot retain the released legacy lease. Use the existing unleased budget; do not invent a second coordinator or change SQL acknowledgement. This permits temporary shadow backlog after public ranking completion.
+- Frozen PR HEAD 5f94da8498a85f563ecff535873132ec9887a25b; fresh PG17 baseline, 2,304,000 synthetic rows: 5295.73 / 2765.62 / 2631.09 ms (median 2765.62).
+- RED: four regressions failed on the frozen behavior. GREEN: all ten targeted 6765 tests pass, including blocked-shadow publication for Safe/Gated/training, failed legacy, cooldown/deferred and bounded backlog.
+- Full measured results and verification are recorded in the investigation report; no production improvement is inferred from local timing.
+
+- Review fix: post-publication shadow retains the local queue slot until complete. A blocked-shadow follow-up regression was observed RED then GREEN; independent re-review found no remaining P0/P1. Final paired PG17 publication median 7291.17 -> 4185.07 ms, four-output parity zero.
+
+- Clean-tick follow-up of the same review finding: route ON clean state through queued coordinator admission; parity only after an authoritative clean claim. Regression RED then GREEN, 90 targeted tests pass and independent focused re-review is clean.

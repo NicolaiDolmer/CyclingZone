@@ -43,7 +43,7 @@ const FIXED_6765 = new Date('2026-10-04T10:00:00Z');
 // Rule 16: the #6765 regressions never read the wall clock.
 const T6765 = { now: FIXED_6765, testNowFn: () => FIXED_6765, heartbeatNowFn: () => FIXED_6765 };
 
-test('#6765 independent shadow precedes failed/timed-out legacy and never acknowledges its version', async () => {
+test('#6765 independent shadow follows failed/timed-out legacy and never acknowledges its version', async () => {
   for (const message of ['legacy failed', 'canceling statement due to statement timeout']) {
     const client = createMockSupabase({ independent: true, rpcErrors: { refresh_rider_rankings_mv: message } });
     const events = [], captured = [];
@@ -53,7 +53,7 @@ test('#6765 independent shadow precedes failed/timed-out legacy and never acknow
       return control(name, args);
     };
     assert.equal(await refreshRankingMatviewsSafe(client, { ...T6765, clock: () => 0, captureExceptionFn: (e, c) => captured.push({ e, c }) }), false);
-    assert.ok(events.findIndex(e => e.name === 'apply_ranking_deltas') < events.findIndex(e => e.name === 'refresh_rider_rankings_mv'));
+    assert.ok(events.findIndex(e => e.name === 'apply_ranking_deltas') > events.findIndex(e => e.name === 'finish_ranking_refresh_work'));
     assert.equal(events.filter(e => e.name === 'apply_ranking_deltas').length, 1);
     assert.equal(events.find(e => e.name === 'finish_ranking_refresh_work').args.p_success, false);
     assert.equal(client.upsertCalls.length, 0);
@@ -85,29 +85,37 @@ test('#6765 cooldown and both deferred paths attempt shadow without borrowing a 
   }
 });
 
-test('#6765 shadow has already drained while a legacy RPC is still unresolved', async () => {
-  const client = createMockSupabase({ independent: true });
-  const control = client._controlRpc;
-  let shadowDrained = false, release;
-  let entered;
-  const legacyEntered = new Promise(resolve => { entered = resolve; });
-  client._controlRpc = (name, args) => {
-    if (name === 'apply_ranking_deltas') shadowDrained = true;
-    if (name === 'refresh_rider_rankings_mv') {
-      assert.equal(shadowDrained, true);
-      entered();
-      return new Promise(resolve => { release = resolve; });
-    }
-    return control(name, args);
-  };
-  const running = refreshRankingMatviewsSafe(client, { ...T6765, clock: () => 0, logger: { info() {} } });
-  await legacyEntered;
-  try { assert.equal(client.upsertCalls.length, 0); assert.equal(shadowDrained, true); }
-  finally { release({ error: { message: 'statement timeout' } }); }
-  assert.equal(await running, false);
+test('#6765 publication completes before a blocked shadow batch for every entry point', async () => {
+  for (const entry of ['safe', 'gated', 'training']) {
+    const client = createMockSupabase({ independent: true });
+    const control = client._controlRpc;
+    let release, entered, completedBeforeShadow = false, applyArgs;
+    const shadowEntered = new Promise(resolve => { entered = resolve; });
+    client._controlRpc = (name, args) => {
+      if (name === 'apply_ranking_deltas') {
+        completedBeforeShadow = client.upsertCalls.length === 1;
+        applyArgs = args;
+        entered();
+        return new Promise(resolve => { release = resolve; });
+      }
+      return control(name, args);
+    };
+    const options = { ...T6765, clock: () => 0, logger: { info() {} } };
+    const running = entry === 'safe' ? refreshRankingMatviewsSafe(client, options)
+      : entry === 'gated' ? refreshRankingMatviewsGated(client, options)
+      : refreshRankingsAfterTrainingSettlement({ supabase: client, ...options });
+    await shadowEntered;
+    try {
+      assert.equal(completedBeforeShadow, true, entry + ': publication must not await shadow');
+      assert.equal(applyArgs.p_owner_token, null, 'released legacy token cannot be reused');
+      assert.equal(applyArgs.p_target_version, null);
+    } finally { release({ data: { pending: false }, error: null }); }
+    assert.equal(await running, true);
+    assert.equal(client.upsertCalls.length, 1);
+  }
 });
 
-test('#6765 leased shadow keeps version watermark drain, defers parity and does not repeat after legacy', async () => {
+test('#6765 after-publication shadow keeps its unleased budget and leaves slow backlog queued', async () => {
   const client = createMockSupabase({ independent: true });
   const control = client._controlRpc, calls = [], logs = [];
   let batch = 0, elapsed = 0;
@@ -115,18 +123,19 @@ test('#6765 leased shadow keeps version watermark drain, defers parity and does 
     calls.push({ name, args });
     if (name === 'apply_ranking_deltas') {
       elapsed += 5000;
-      assert.equal(args.p_target_version, '3');
-      assert.equal(args.p_owner_token, '00000000-0000-4000-8000-000000000001');
-      return { data: ++batch < 3 ? { pending: true, next_id: String(batch * 200 + 1) } : { pending: false }, error: null };
+      assert.equal(args.p_target_version, null);
+      assert.equal(args.p_owner_token, null);
+      batch++;
+      return { data: { pending: true, next_id: '201' }, error: null };
     }
     return control(name, args);
   };
   assert.equal(await refreshRankingMatviewsSafe(client, { ...T6765, clock: () => elapsed, logger: { info: (_m, d) => logs.push(d) } }), true);
-  assert.equal(batch, 3, 'version drain passes the soft budget without repeating after publication');
-  assert.equal(logs[0].version_drained, true);
-  assert.equal(logs[0].status, 'parity-deferred-legacy');
+  assert.equal(batch, 1, 'next slow batch stays queued for a later tick');
+  assert.equal(logs[0].version_drained, undefined);
+  assert.equal(logs[0].status, 'pending');
   assert.equal(calls.some(c => c.name === 'check_ranking_shadow_parity'), false);
-  assert.equal(calls.find(c => c.name === 'finish_ranking_refresh_work').args.p_success, true);
+  assert.ok(calls.findIndex(c => c.name === 'finish_ranking_refresh_work') < calls.findIndex(c => c.name === 'apply_ranking_deltas'));
 });
 
 test('#6765 shadow failure is captured independently of successful legacy publication; lost lease cannot acknowledge', async () => {
@@ -165,7 +174,61 @@ test('#6765 shared follow-up callers do not each run an extra heavy fallback', a
   await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
   release({ error: null });
   assert.deepEqual(await Promise.all([active, second, third]), [true, true, true]);
-  assert.equal(batches, 2, 'one active pass and one shared follow-up');
+  assert.equal(batches, 2, 'one active pass and one shared follow-up, each under the queue slot');
+});
+
+test('#6765 queued legacy cannot overlap an unfinished post-publication shadow', async () => {
+  const client = createMockSupabase({ independent: true }), control = client._controlRpc;
+  let claims = 0, batches = 0, entered, release;
+  const shadowEntered = new Promise(resolve => { entered = resolve; });
+  client._controlRpc = (name, args) => {
+    if (name === 'claim_ranking_refresh_work') claims++;
+    if (name === 'apply_ranking_deltas' && ++batches === 1) {
+      entered();
+      return new Promise(resolve => { release = resolve; });
+    }
+    return control(name, args);
+  };
+  const options = { ...T6765, clock: () => 0, logger: { info() {} } };
+  const active = refreshRankingMatviewsSafe(client, options);
+  await shadowEntered;
+  const pending = refreshRankingMatviewsSafe(client, options);
+  await new Promise(resolve => setImmediate(resolve));
+  const claimsWhileShadowBlocked = claims;
+  release({ data: { pending: false }, error: null });
+  assert.deepEqual(await Promise.all([active, pending]), [true, true]);
+  assert.equal(claimsWhileShadowBlocked, 1, 'queue retains its slot until shadow releases the writer');
+  assert.equal(claims, 2);
+});
+
+test('#6765 clean ticks serialize shadow with active and pending legacy passes', async () => {
+  const client = createMockSupabase({ independent: true }), control = client._controlRpc;
+  let claims = 0, batches = 0;
+  const entered = [Promise.withResolvers(), Promise.withResolvers()];
+  const release = [Promise.withResolvers(), Promise.withResolvers()];
+  client._controlRpc = (name, args) => {
+    if (name === 'claim_ranking_refresh_work') claims++;
+    if (name === 'apply_ranking_deltas') {
+      const index = batches++;
+      if (index < 2) { entered[index].resolve(); return release[index].promise; }
+    }
+    return control(name, args);
+  };
+  const options = { ...T6765, clock: () => 0, logger: { info() {} } };
+  const active = refreshRankingMatviewsSafe(client, options);
+  await entered[0].promise;
+  const clean = rawGated(client, options);
+  await new Promise(resolve => setImmediate(resolve));
+  const batchesBeforeRelease = batches;
+  release[0].resolve({ data: { pending: false }, error: null });
+  await entered[1].promise;
+  const pending = refreshRankingMatviewsSafe(client, options);
+  await new Promise(resolve => setImmediate(resolve));
+  const claimsDuringCleanShadow = claims;
+  release[1].resolve({ data: { pending: false }, error: null });
+  assert.deepEqual(await Promise.all([active, clean, pending]), [true, true, true]);
+  assert.equal(batchesBeforeRelease, 1, 'clean tick cannot start shadow outside active queue slot');
+  assert.equal(claimsDuringCleanShadow, 2, 'new legacy claim waits for clean shadow slot');
 });
 
 test('#6765 missing migration/config errors preserve the OFF RPC trace and legacy result', async () => {
@@ -830,10 +893,10 @@ test('#6765: unchanged ticks drain shadow work without a legacy refresh', async 
   const calls = [];
   const db = {
     from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { value: 'on' }, error: null }) }) }) }),
-    async rpc(name) { calls.push(name); return { data: name==='get_ranking_shadow_metrics'?{queue_length:0}:name==='check_ranking_shadow_parity'?{status:'equal'}:{ pending: false, pending_age_ms: 0, last_completed_at: FIXED_NOW.toISOString() }, error: null }; },
+    async rpc(name) { calls.push(name); return { data: name==='claim_ranking_refresh_work'?{status:'clean'}:name==='get_ranking_shadow_metrics'?{queue_length:0}:name==='check_ranking_shadow_parity'?{status:'equal'}:{ pending: false, pending_age_ms: 0, last_completed_at: FIXED_NOW.toISOString() }, error: null }; },
   };
   assert.equal(await rawGated(db, { now: FIXED_NOW, clock: () => 0, heartbeatNowFn: () => FIXED_NOW, logger: quietLogger }), true);
-  assert.deepEqual(calls, ['get_ranking_refresh_work_state','get_ranking_shadow_metrics','apply_ranking_deltas','check_ranking_shadow_parity']);
+  assert.deepEqual(calls, ['get_ranking_refresh_work_state','claim_ranking_refresh_work','get_ranking_shadow_metrics','apply_ranking_deltas','check_ranking_shadow_parity']);
 });
 test('#6765: Safe forwards its injected nowFn into daily shadow cadence', async () => {
   const db=createMockSupabase();

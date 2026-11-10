@@ -1,11 +1,11 @@
-# Ranking shadow liveness behind an independent OFF control
+# Ranking shadow must not delay legacy publication
 
-Refs #6765. Root cause: the legacy callback returned false before shadow maintenance when any refresh RPC failed. Cooldown and training-deferred admission returned without entering that callback. Shadow enablement alone could not provide liveness.
+Refs #6765, PR #7959. Initial failure: legacy errors, cooldown and training deferral skipped shadow maintenance. The first decoupling placed shadow before legacy under its claim, which could postpone the visible ranking and heartbeat by the shadow version-drain budget.
 
-The new control attempts shadow first under a claimed version, or without a legacy lease when admission skips the callback. The legacy return/acknowledgement/heartbeat contract remains authoritative. Existing SQL fences, version watermarks and bounded drains remain in use. Configuration errors are captured and retain the old path.
+Owner correction 10 November: attempt maintenance after legacy publication/finish, including legacy failures. Never reuse its released token/version. The existing unleased budget leaves remaining work queued for later ticks; the existing SQL writer fence remains authoritative. OFF retains its frozen RPC order and lease/version drain. No reader change or planner setting.
 
-Two secondary failure modes matter: shadow can legitimately precede stale legacy views, so parity waits for a clean tick; and superseded callers sharing one queued follow-up must not each start another heavy fallback. Regression tests cover both. Separate shadow failures remain captured without disguising a failed legacy publication.
+Four regression requirements failed before the correction and pass afterward: all entry points publish while shadow is blocked; failed legacy still gets shadow; slow unleased backlog remains pending; overlapping callers share maintenance. Tests also cover lost legacy lease, independent shadow failure, cooldown, both deferred paths and fail-closed configuration.
 
-Before implementation, both liveness regressions failed because no apply was attempted. The targeted ranking suite now passes, including an unresolved legacy RPC, lost lease, version drain beyond the soft budget, cooldown, both deferred paths, configuration failures and shared callers. Native PG17 evidence and its limits are recorded in `docs/investigations/2026-11-10-6765-before-after.md`.
+Fresh native PG17 baseline and paired before/after/parity evidence are in the investigation report. A local fixture is not a production SLA or proof of 10x capacity. Player text/patch note exception: invisible technical work behind an OFF control; Claude owns release communication. No merge, activation or production writes.
 
-No reader change, planner setting, production write, activation or acknowledgement redesign. Parent owns independent review, broader verification and publication. No player text or patch note: invisible technical work behind a newly OFF control.
+Independent review found and reproduced an overlapping follow-up when maintenance ran outside the queue slot. The coordinator wrapper now finishes publication and then maintenance before releasing that slot; the regression was RED then GREEN and re-review was clean.

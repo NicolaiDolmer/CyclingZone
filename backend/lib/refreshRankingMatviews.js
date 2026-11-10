@@ -80,18 +80,33 @@ export function refreshRankingMatviewsSafe(supabase, options = {}) {
 }
 
 function refreshRankingMatviewsSafeLegacy(supabase, options = {}) {
-  return runRefreshQueued(supabase, async () => (await runRankingRefreshWork(supabase,
+  return runRefreshQueued(supabase, async () => (await runRankingWorkBeforeShadow(supabase,
     (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, {
       ...options, now: options.now ?? options.nowFn?.() ?? options.testNowFn?.() ?? new Date(),
       renewLease, ownerToken, targetVersion,
     }), { ...options, force: true })) === true, 1);
 }
 
+// Keep maintenance in the queue slot, but outside the completed legacy lease.
+async function runRankingWorkBeforeShadow(supabase, pass, options) {
+  let ranLegacyPass = false, result;
+  try {
+    result = await runRankingRefreshWork(supabase, (...args) => {
+      ranLegacyPass = true;
+      return pass(...args);
+    }, options);
+    return result;
+  } finally {
+    // Only an authoritative clean claim permits the daily parity check.
+    if (options.independentShadow) await options.independentShadow({
+      checkParity: result === true && !ranLegacyPass,
+    });
+  }
+}
+
 async function refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion, now, clock=()=>performance.now(), logger=console, independentShadow } = {}) {
   const legacyStarted=clock();
   const failures = [];
-
-  if (independentShadow) await independentShadow({ renewLease, ownerToken, targetVersion });
 
   for (const { rpc, label } of REFRESH_RPCS) {
     try {
@@ -200,24 +215,23 @@ async function refreshRankingMatviewsGatedLegacy(
   const gateOptions = { now, clock, maxDeferMs, logger };
   const gateState = await rankingRefreshGateState(supabase, gateOptions);
   if (gateState === 'unavailable') return false;
-  if (gateState === 'clean') {
+  if (gateState === 'clean' && !independentShadow) {
     // Clean one-minute ticks also drain additive backfill/corrections. Shadow
     // failures are reported independently; they do not age the legacy heartbeat.
-    if (independentShadow) await independentShadow({ checkParity: true });
-    else await runRankingShadowPass(supabase, { now: now.getTime()+Math.max(0,clock()-requestedAt), captureExceptionFn, clock, logger });
+    await runRankingShadowPass(supabase, { now: now.getTime()+Math.max(0,clock()-requestedAt), captureExceptionFn, clock, logger });
     return true;
   }
   if (gateState === "deferred") return "deferred";
   return runRefreshQueued(supabase,
-    () => runRankingRefreshWork(supabase,
-      (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion, now, clock, logger, independentShadow }), { captureExceptionFn, testNowFn }),
+    () => runRankingWorkBeforeShadow(supabase,
+      (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion, now, clock, logger, independentShadow }), { captureExceptionFn, testNowFn, independentShadow }),
     gateState === "expired" ? 1 : 0, {
       key: `gated:${copenhagenDateString(now)}:${maxDeferMs}`,
       check: async () => {
       const admittedAt = new Date(now.getTime() + Math.max(0, clock() - requestedAt));
       const state = await rankingRefreshGateState(supabase, { ...gateOptions, now: admittedAt });
       if (state === 'unavailable') return { kind: 'skip', result: false };
-      if (state === 'clean') return { kind: 'skip', result: true };
+      if (state === 'clean' && !independentShadow) return { kind: 'skip', result: true };
       if (state === "deferred") return { kind: "skip", result: "deferred" };
       return { kind: state === "expired" ? "force" : "proceed" };
       },
@@ -244,8 +258,8 @@ async function refreshRankingsAfterTrainingSettlementLegacy({ supabase, now = ne
     }
     if (settling) return "deferred";
     return await runRefreshQueued(supabase,
-      () => runRankingRefreshWork(supabase,
-        (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion, now, clock, logger, independentShadow }), { captureExceptionFn, testNowFn }),
+      () => runRankingWorkBeforeShadow(supabase,
+        (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion, now, clock, logger, independentShadow }), { captureExceptionFn, testNowFn, independentShadow }),
       0, {
         key: `training-close:${copenhagenDateString(now)}`,
         check: async () => {
@@ -288,8 +302,9 @@ async function withIndependentShadow(supabase, options, runLegacy) {
   try {
     return await runLegacy({ ...options, independentShadow });
   } finally {
-    // Admission can finish without a callback (cooldown, deferred, busy or clean).
-    // This attempt owns no legacy version and cannot acknowledge publication.
+    // Publish/finish legacy work before shadow maintenance, including failures.
+    // Its lease has been released: use the unleased budget and leave backlog queued.
+    // Shared callers reuse an attempt observed since their own admission.
     if (!attempted && shadowAttempts.get(supabase) === attemptAtStart) await independentShadow();
   }
 }
