@@ -359,6 +359,8 @@
     "listPrice": "Listepris",
     "autoPrice": "Auto-pris",
     "buyerOffer": "Bud fra køber",
-    "sendCounter": "Send modbud"
+    "sendCounter": "Send modbud",
+    "endUpdated": "Sluttiden er opdateret. Tjek den, og tryk igen.",
+    "listingAutoPrice": "Auto-pris (starter auktion)"
   }
 }

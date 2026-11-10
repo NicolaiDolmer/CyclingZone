@@ -1119,6 +1119,12 @@ function MarketRow({
         <tr className="border-b border-cz-border bg-cz-subtle">
           <td colSpan={8 + (showStatCols ? statCols.length : 0) + 1} className="px-3 pb-4 pt-1">
             <div className="max-w-xl rounded-cz border border-cz-border bg-cz-card p-3">
+              {onStartAuction && Number(listing.auto_accept_price) > 0 && (
+                <dl className="flex justify-between gap-3 text-sm mb-3" data-testid="listing-auto-price">
+                  <dt className="text-cz-2">{t("autoAccept.listingAutoPrice")}</dt>
+                  <dd className="font-mono tabular-nums">{formatCz(Number(listing.auto_accept_price))}</dd>
+                </dl>
+              )}
               {isOwn ? (
                 <OwnListingActions
                   listing={listing}

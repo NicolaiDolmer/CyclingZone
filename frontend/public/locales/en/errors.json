@@ -96,7 +96,7 @@
     "listing_not_found": "Listing not found",
     "listing_not_owner": "This isn't your listing",
     "listing_already_closed": "This listing is already closed",
-    "offer_at_auto_accept_price": "The seller accepts {autoAcceptPrice} CZ$ automatically. A bid at that price or above starts an open auction, so use the auto-accept button on the listing",
+    "offer_at_auto_accept_price": "The seller accepts {autoAcceptPrice} CZ$ automatically. A bid at that price or above starts an open auction, so use the Start auction button on the listing",
     "asking_price_not_below_auto_accept": "The asking price must stay below your auto-accept price",
     "auto_accept_disabled": "Auto-accept isn't available",
     "auto_accept_invalid_duration": "Choose between {minMinutes} minutes and {maxHours} hours of active time",

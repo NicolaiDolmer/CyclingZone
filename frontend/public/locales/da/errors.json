@@ -96,7 +96,7 @@
     "listing_not_found": "Listing findes ikke",
     "listing_not_owner": "Ikke din liste",
     "listing_already_closed": "Listingen er allerede lukket",
-    "offer_at_auto_accept_price": "Sælgeren accepterer {autoAcceptPrice} CZ$ automatisk. Et bud på den pris eller derover starter en åben auktion, så brug auto-accept-knappen på listingen",
+    "offer_at_auto_accept_price": "Sælgeren accepterer {autoAcceptPrice} CZ$ automatisk. Et bud på den pris eller derover starter en åben auktion, så brug knappen Start auktion på listingen",
     "asking_price_not_below_auto_accept": "Listeprisen skal ligge under din auto-accept-pris",
     "auto_accept_disabled": "Auto-accept er ikke tilgængelig",
     "auto_accept_invalid_duration": "Vælg mellem {minMinutes} minutter og {maxHours} timers aktiv tid",
