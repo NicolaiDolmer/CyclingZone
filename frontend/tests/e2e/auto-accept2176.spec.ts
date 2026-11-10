@@ -9,6 +9,8 @@ import {
   RIDERS,
 } from "./fixtures.js";
 import type { Page } from "@playwright/test";
+import { mkdir } from "node:fs/promises";
+import { resolve } from "node:path";
 const timing = {
   weekday_open_hour: 8,
   weekday_close_hour: 24,
@@ -32,7 +34,7 @@ function listing(own = false, price = 600000) {
     status: "open",
   };
 }
-async function setup(page: Page, { enabled = true, seller = false } = {}) {
+async function setup(page: Page, { enabled = true, seller = false, listingEligible = true, offerEligible = true } = {}) {
   await installNetworkMocks(page);
   await stabilizePage(page);
   await page.clock.setFixedTime(new Date("2026-11-09T10:00:00Z"));
@@ -40,7 +42,11 @@ async function setup(page: Page, { enabled = true, seller = false } = {}) {
     json(route, { flags: { auto_accept_enabled: enabled } })
   );
   await page.route("**/api/market/auto-accept-config", (route) => json(route, timing));
-  await page.route("**/api/transfers", (route) => json(route, [listing(seller)]));
+  await page.route("**/api/transfers", (route) => {
+    const row: Partial<ReturnType<typeof listing>> = listing(seller);
+    if (!listingEligible) delete row.auto_accept_price;
+    return json(route, [row]);
+  });
   await page.route("**/api/transfers/my-offers", (route) =>
     json(route, {
       sent: [],
@@ -53,6 +59,7 @@ async function setup(page: Page, { enabled = true, seller = false } = {}) {
               offer_amount: 300000,
               status: "pending",
               round: 1,
+              auto_accept_eligible: offerEligible,
             },
           ]
         : [],
@@ -60,6 +67,7 @@ async function setup(page: Page, { enabled = true, seller = false } = {}) {
   );
   await login(page);
   await page.goto(`/transfers?tab=${seller ? "received" : "market"}`);
+  await expect(page.getByRole("button", { name: seller ? "Modbud" : /Ada Pedersen/, exact: seller })).toBeVisible({ timeout: 20000 });
 }
 async function openBuyer(page: Page) {
   await setup(page);
@@ -336,10 +344,54 @@ test("OFF: the seller form has no auto-price field and the old button label", as
   await expect(page.getByTestId("seller-auto-price-status")).toHaveCount(0);
   expect(calls).toHaveLength(0);
 });
-test("the listing shows the auto-price row to everyone when the price is set", async ({ page }) => {
+test("an eligible buyer sees the approved auto-price row", async ({ page }, info) => {
   await setup(page);
   await page.getByRole("button", { name: /Ada Pedersen/ }).click();
   const row = page.getByTestId("listing-auto-price");
   await expect(row).toContainText("Auto-pris (starter auktion)");
   await expect(row).toContainText(/600\.000/);
+  if (process.env.BETA2176_SCREENSHOTS) {
+    // Clicking a far-right action scrolls the existing wide table. Bring its
+    // first columns back into view, as a user can, before capturing evidence.
+    await row.evaluate((element) => {
+      for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+        if (parent.scrollWidth > parent.clientWidth) parent.scrollLeft = 0;
+      }
+    });
+    await expect(row).toBeInViewport();
+    const directory = resolve("../pr-screens/2176-beta");
+    await mkdir(directory, { recursive: true });
+    await page.screenshot({ path: resolve(directory, `${info.project.name}-eligible.png`), fullPage: true });
+  }
+});
+
+for (const enabled of [false, true]) test(`beta-ineligible pair, viewer flag=${enabled}: ordinary negotiation without auto-price`, async ({ page }, info) => {
+  await setup(page, { enabled, listingEligible: false });
+  await page.getByRole("button", { name: /Ada Pedersen/ }).click();
+  await expect(page.getByTestId("listing-auto-price")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Start auktion", exact: true })).toHaveCount(0);
+  if (process.env.BETA2176_SCREENSHOTS) {
+    await page.getByRole("button", { name: /Ada Pedersen/ }).evaluate((element) => {
+      for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+        if (parent.scrollWidth > parent.clientWidth) parent.scrollLeft = 0;
+      }
+    });
+    const directory = resolve("../pr-screens/2176-beta");
+    await mkdir(directory, { recursive: true });
+    await page.screenshot({ path: resolve(directory, `${info.project.name}-ineligible-${enabled}.png`), fullPage: true });
+  }
+});
+
+test("beta seller and non-beta counterparty can negotiate above the hidden auto-price", async ({ page }, info) => {
+  await setup(page, { seller: true, offerEligible: false });
+  await page.getByRole("button", { name: "Modbud", exact: true }).click();
+  const amount = page.getByLabel("Dit modbud (CZ$)");
+  await amount.fill("700000");
+  await expect(page.getByTestId("auto-counter-prices")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Send", exact: true })).toBeEnabled();
+  if (process.env.BETA2176_SCREENSHOTS) {
+    const directory = resolve("../pr-screens/2176-beta");
+    await mkdir(directory, { recursive: true });
+    await page.screenshot({ path: resolve(directory, `${info.project.name}-ordinary-counter.png`), fullPage: true });
+  }
 });

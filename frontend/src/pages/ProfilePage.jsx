@@ -1,3 +1,4 @@
+import { invalidateTransferListings2176 } from "../lib/sharedRequestCache.js";
 import { useState, useEffect } from "react";
 import { Link, useLocation, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -186,11 +187,12 @@ export default function ProfilePage() {
       if (!res.ok) {
         // 409 baerer den FRISKE tilstand med: fladen var uenig med serveren,
         // og serverens svar er den der vinder.
-        if (data?.state) setBetaAccess(data);
+        if (data?.state) { setBetaAccess(data); invalidateTransferListings2176(); }
         showMsg(data.error || t("errors:generic.serverError"), "error");
         return;
       }
       setBetaAccess(data);
+      invalidateTransferListings2176();
       if (action === "request") showMsg(t("beta.requested"));
       else showMsg(wasMember ? t("beta.left") : t("beta.cancelled"));
     } catch (cause) {

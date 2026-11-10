@@ -129,7 +129,8 @@ import {
   shiftCalculatedEnd,
 } from "../lib/marketPause.js";
 import { resolveProxyBids } from "../lib/proxyBidding.js";
-import { isMarketCommitment6181On, marketGateResponse6181, canAffordAutoBid6181, syncBidLeader6181, applySellerOutgoingAuctions6181, auctionStartCommitmentResponse6181, readBidContext6181, isLoweredProxy6181 } from "../lib/marketCommitment6181.js"; // #6181 PR 5
+import { marketGateResponse6181, canAffordAutoBid6181, canAffordAutoBidScoped2176, syncBidLeader6181, applySellerOutgoingAuctions6181, auctionStartCommitmentResponse6181, readBidContext6181, isLoweredProxy6181 } from "../lib/marketCommitment6181.js"; // #6181 PR 5
+import { projectAutoAcceptListings2176, projectAutoAcceptOffers2176, readMarketFlag2176, isMarketProtectionEnabled2176, isMarketBetaMode2176 } from "../lib/marketBeta2176.ts";
 import { releaseFeeAvailableResponse6181 } from "../lib/releaseFeeGate6181.js"; // #6181 dommer-fund
 import {
   createLoan,
@@ -496,6 +497,7 @@ import {
   getIncomingSquadViolation,
   getSquadRiskViolation,
   getTeamMarketState,
+  MIN_RIDERS_FOR_RACE,
 } from "../lib/marketUtils.js";
 import { buildAtRiskErrorParams, fetchAtRiskRiders } from "../lib/squadRiskGuard.js";
 import {
@@ -2105,7 +2107,27 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
 
   // Frigør rytteren først (concurrency-guard: kun hvis stadig på vores hold) — så
   // vi ikke debiterer gebyret for en rytter en parallel handel allerede flyttede.
-  const lockedRelease = await releaseRiderUnderTeamLock(supabase, { riderId: rider.id, teamId: req.team.id, atRiskRiders: releaseAtRiskRiders }); // #2176: under holdlåsen, slukket = null
+  const releaseFeePayment2176 = {
+    teamId: req.team.id,
+    delta: -fee,
+    payload: {
+      type: "transfer_out",
+      amount: -fee,
+      description: `Released ${rider.firstname} ${rider.lastname} (buyout fee)`,
+      metadata: {
+        code: "tx.riderRelease",
+        params: { riderName: `${rider.firstname} ${rider.lastname}` },
+      },
+      season_id: season?.id ?? null,
+      actor_type: FINANCE_ACTOR_TYPE.API,
+      actor_id: req.user.id,
+      source_path: "api.riders.release",
+      reason_code: FINANCE_REASON.RIDER_RELEASE_BUYOUT,
+      related_entity_type: FINANCE_RELATED_ENTITY.TRANSFER,
+      related_entity_id: rider.id,
+    },
+  };
+  const lockedRelease = await releaseRiderUnderTeamLock(supabase, { riderId: rider.id, teamId: req.team.id, atRiskRiders: releaseAtRiskRiders, marketBeta: await isMarketBetaMode2176(supabase), fee, feePayload: releaseFeePayment2176.payload }); // #2176: under holdlåsen, slukket = null
   if (lockedRelease?.error) return res.status(lockedRelease.error.status).json(lockedRelease.error.body);
   const { data: released } = lockedRelease ?? await supabase
     .from("riders")
@@ -2126,27 +2148,8 @@ router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, 
   }
 
   // Træk gebyret (kun hvis > 0 — en gratis-kontrakt koster intet). Atomisk RPC.
-  if (fee > 0) {
-    await incrementBalanceWithAudit(supabase, {
-      teamId: req.team.id,
-      delta: -fee,
-      payload: {
-        type: "transfer_out",
-        amount: -fee,
-        description: `Released ${rider.firstname} ${rider.lastname} (buyout fee)`,
-        metadata: {
-          code: "tx.riderRelease",
-          params: { riderName: `${rider.firstname} ${rider.lastname}` },
-        },
-        season_id: season?.id ?? null,
-        actor_type: FINANCE_ACTOR_TYPE.API,
-        actor_id: req.user.id,
-        source_path: "api.riders.release",
-        reason_code: FINANCE_REASON.RIDER_RELEASE_BUYOUT,
-        related_entity_type: FINANCE_RELATED_ENTITY.TRANSFER,
-        related_entity_id: rider.id,
-      },
-    });
+  if (fee > 0 && !lockedRelease?.paymentHandled) {
+    await incrementBalanceWithAudit(supabase, releaseFeePayment2176);
   }
 
   // Luk evt. aktive transfer-listings for den frigjorte rytter (zombie-guard).
@@ -2237,7 +2240,29 @@ router.post("/riders/:id/academy-release", requireAuth, marketWriteLimiter, asyn
   // (inkl. pending_team_id/acquired_at) som resolveGraduation's release-gren
   // IKKE nulstiller (den antager en allerede-afklaret ejerstatus) men senior-
   // release gør — mest forsigtige valg her.
-  const { data: released, error: releaseErr } = await supabase
+  const academyReleaseFeePayment2176 = {
+    teamId: req.team.id,
+    delta: -fee,
+    payload: {
+      type: "transfer_out",
+      amount: -fee,
+      description: `Released ${rider.firstname} ${rider.lastname} (academy buyout fee)`,
+      metadata: {
+        code: "tx.riderRelease",
+        params: { riderName: `${rider.firstname} ${rider.lastname}` },
+      },
+      season_id: season?.id ?? null,
+      actor_type: FINANCE_ACTOR_TYPE.API,
+      actor_id: req.user.id,
+      source_path: "api.academy.release",
+      reason_code: FINANCE_REASON.RIDER_RELEASE_BUYOUT,
+      related_entity_type: FINANCE_RELATED_ENTITY.TRANSFER,
+      related_entity_id: rider.id,
+    },
+  };
+  const lockedAcademyRelease = await releaseRiderUnderTeamLock(supabase, { riderId: rider.id, teamId: req.team.id, academy: true, marketBeta: await isMarketBetaMode2176(supabase), fee, feePayload: academyReleaseFeePayment2176.payload });
+  if (lockedAcademyRelease?.error) return res.status(lockedAcademyRelease.error.status).json(lockedAcademyRelease.error.body);
+  const { data: released, error: releaseErr } = lockedAcademyRelease ?? await supabase
     .from("riders")
     .update({
       team_id: null,
@@ -2260,27 +2285,8 @@ router.post("/riders/:id/academy-release", requireAuth, marketWriteLimiter, asyn
     return res.status(409).json({ error: "This rider is no longer in your academy", errorCode: "rider_state_changed" });
   }
 
-  if (fee > 0) {
-    await incrementBalanceWithAudit(supabase, {
-      teamId: req.team.id,
-      delta: -fee,
-      payload: {
-        type: "transfer_out",
-        amount: -fee,
-        description: `Released ${rider.firstname} ${rider.lastname} (academy buyout fee)`,
-        metadata: {
-          code: "tx.riderRelease",
-          params: { riderName: `${rider.firstname} ${rider.lastname}` },
-        },
-        season_id: season?.id ?? null,
-        actor_type: FINANCE_ACTOR_TYPE.API,
-        actor_id: req.user.id,
-        source_path: "api.academy.release",
-        reason_code: FINANCE_REASON.RIDER_RELEASE_BUYOUT,
-        related_entity_type: FINANCE_RELATED_ENTITY.TRANSFER,
-        related_entity_id: rider.id,
-      },
-    });
+  if (fee > 0 && !lockedAcademyRelease?.paymentHandled) {
+    await incrementBalanceWithAudit(supabase, academyReleaseFeePayment2176);
   }
 
   // #1906 defense-in-depth (samme mønster som academyGraduation.js's release):
@@ -7555,6 +7561,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   // under løbs-minimummet (MIN_RIDERS_FOR_RACE). Tjekkes ved OPRETTELSE (ikke ved
   // finalisering) — pengene er ikke flyttet endnu, og det er her manageren reelt
   // kan fortryde.
+  let auctionAtRiskRiders2176 = [];
   if (isOwnRider) {
     const auctionSeasonNumber = await getActiveSeasonNumber();
     const auctionSellerState = await getTeamMarketState(supabase, req.team.id);
@@ -7564,6 +7571,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
     const auctionAtRiskRiders = await fetchAtRiskRiders(supabase, req.team.id, auctionSeasonNumber, {
       excludeRiderIds: [rider.id],
     });
+    auctionAtRiskRiders2176 = auctionAtRiskRiders;
     auctionSellerState.at_risk_count = auctionAtRiskRiders.length;
     const auctionMarketGateApplied = await applySellerOutgoingAuctions6181(supabase, auctionSellerState, rider.id, { seasonNumber: auctionSeasonNumber }); // #6181 PR 5
 
@@ -7712,9 +7720,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
     });
   }
 
-  const { data: auction, error } = await supabase
-    .from("auctions")
-    .insert({
+  const auctionData2176 = {
       rider_id,
       // Active auction UI/history still uses seller_team_id as the initiator.
       // The shared finalizer resolves the actual economic seller from rider.team_id.
@@ -7725,9 +7731,18 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
       min_increment,
       calculated_end: calculatedEnd.toISOString(),
       is_flash: flash_auction,
-    })
-    .select()
-    .single();
+    };
+  let created2176 = null;
+  if (await isMarketBetaMode2176(supabase)) {
+    const attempt = await supabase.rpc("create_market_auction_2176", { p_auction: auctionData2176, p_expected_owner: rider.team_id ?? null, p_min_riders: MIN_RIDERS_FOR_RACE, p_at_risk_rider_ids: auctionAtRiskRiders2176.map(row => row.id) });
+    if (attempt.error) created2176 = { data: null, error: attempt.error };
+    else if (attempt.data?.status === "created") created2176 = { data: attempt.data.auction, error: null };
+    else if (attempt.data?.status === "seller_squad_floor") return res.status(409).json({ error: `You can't drop below ${MIN_RIDERS_FOR_RACE} riders once contract expiry and retirement risk at the next season change are counted`, errorCode: "cannot_auction_squad_risk", errorParams: buildAtRiskErrorParams({ minRiders: MIN_RIDERS_FOR_RACE }, auctionAtRiskRiders2176) });
+    else if (attempt.data?.status === "rider_state_changed") return res.status(409).json({ error: "This rider is no longer on your team", errorCode: "rider_state_changed" });
+    else if (attempt.data?.status !== "legacy") throw new Error("create_market_auction_2176: invalid receipt");
+  }
+  const { data: auction, error } = created2176 ?? await supabase.from("auctions").insert(auctionData2176).select().single();
+
 
   if (error) {
     // Unique-violation på uniq_auctions_one_active_per_rider betyder en parallel
@@ -7818,7 +7833,9 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
     return res.status(400).json({ error: "Bid amount must be a positive whole number", errorCode: "invalid_bid_amount" });
   }
   // Resolve the money gate before a bid can be committed. Unknown must not select legacy.
-  const marketGateOn = await isMarketCommitment6181On(supabase);
+  const marketStage = await readMarketFlag2176(supabase, "market_commitment_6181");
+  const marketScopedBeta = marketStage === "beta";
+  const marketGateOn = marketScopedBeta || marketStage === "on" || marketStage === true;
 
   // Fetch auction
   const { data: auction } = await supabase
@@ -8061,7 +8078,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
       // føreren føringen (tie-break) — cascaden skal kende lederen før buddet.
       previousLeader,
       actorTeamId: req.team.id, // #5919: ingen DM til holdet der selv byder
-      ...(marketGateOn ? { canAffordAutoBidFn: canAffordAutoBid6181, databaseOwnsLeaderSync: true, tieBreakContext } : {}), // #6181 PR 5
+      ...(marketGateOn ? { canAffordAutoBidFn: marketScopedBeta ? canAffordAutoBidScoped2176 : canAffordAutoBid6181, databaseOwnsLeaderSync: true, tieBreakContext } : {}), // #6181 PR 5
     });
   } catch (e) {
     console.error("[resolveProxyBids] failed for auction", auction.id, e);
@@ -8160,7 +8177,9 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
   if (!Number.isFinite(numericMax) || numericMax <= 0) {
     return res.status(400).json({ error: "Ugyldigt max-loft", errorCode: "invalid_proxy_max" });
   }
-  const marketGateOn = await isMarketCommitment6181On(supabase);
+  const marketStage = await readMarketFlag2176(supabase, "market_commitment_6181");
+  const marketScopedBeta = marketStage === "beta";
+  const marketGateOn = marketScopedBeta || marketStage === "on" || marketStage === true;
 
   const { data: auction } = await supabase
     .from("auctions")
@@ -8221,7 +8240,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     otherCommitment,
   });
   if (proxyIssue?.code === "insufficient_available_balance"
-      && !isLoweredProxy6181({ marketGateOn, proxies: allMyProxies, auctionId: req.params.id, nextMax: numericMax })) { // #6181: saenket loft frigiver kun penge
+      && !isLoweredProxy6181({ marketGateOn: marketGateOn && (!marketScopedBeta || await isMarketProtectionEnabled2176(supabase, { teamId: req.team.id, auctionId: auction.id })), proxies: allMyProxies, auctionId: req.params.id, nextMax: numericMax })) { // #6181: saenket loft frigiver kun penge
     return res.status(400).json({
       error: `Du har ${proxyIssue.availableBalance.toLocaleString("da-DK")} CZ$ tilbage efter eksisterende bud og autobud`,
       errorCode: "insufficient_balance_after_proxy",
@@ -8372,7 +8391,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
       // hidtidige fører's proxy-loft, beholder føreren føringen.
       previousLeader,
       actorTeamId: req.team.id, // #5919: ingen DM til holdet der selv sætter autobud
-      ...(marketGateOn ? { canAffordAutoBidFn: canAffordAutoBid6181, databaseOwnsLeaderSync: true, tieBreakContext } : {}), // #6181 PR 5
+      ...(marketGateOn ? { canAffordAutoBidFn: marketScopedBeta ? canAffordAutoBidScoped2176 : canAffordAutoBid6181, databaseOwnsLeaderSync: true, tieBreakContext } : {}), // #6181 PR 5
     });
   } catch (e) {
     console.error("[resolveProxyBids] failed for auction", req.params.id, e);
@@ -8499,7 +8518,7 @@ router.get("/transfers/feed", requireAuth, presencePulseLimiter, async (req, res
 // GET /api/transfers — market listings + my offers
 router.get("/transfers", requireAuth, async (req, res) => {
   const { status = "open" } = req.query;
-  const autoAccept = await isAutoAcceptEnabled(supabase);
+  const autoAccept = await isAutoAcceptEnabled(supabase, { userId: req.user.id });
   const { data, error } = await supabase
     .from("transfer_listings")
     .select(`id, asking_price, status, created_at, ${autoAccept ? "auto_accept_price," : ""}
@@ -8509,7 +8528,9 @@ router.get("/transfers", requireAuth, async (req, res) => {
     .in("status", autoAccept && status === "open" ? ["open", "negotiating"] : [status])
     .order("created_at", { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+  res.set("Cache-Control", "private, no-store");
+  res.vary("Authorization");
+  res.json(autoAccept ? await projectAutoAcceptListings2176(supabase, data || [], { userId: req.user.id }) : data);
 });
 
 // POST /api/transfers — list own rider for sale
@@ -8824,7 +8845,7 @@ router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res
     });
   }
 
-  const autoAcceptOfferIssue = await getOfferAutoAcceptIssue(supabase, { riderId: rider_id, offerAmount: offer_amount }); // #2176
+  const autoAcceptOfferIssue = await getOfferAutoAcceptIssue(supabase, { riderId: rider_id, offerAmount: offer_amount, buyerTeamId: req.team.id }); // #2176
   if (autoAcceptOfferIssue) return res.status(autoAcceptOfferIssue.status).json(autoAcceptOfferIssue.body);
 
   // Check buyer balance
@@ -8944,12 +8965,15 @@ router.get("/transfers/my-offers", requireAuth, async (req, res) => {
     return min > 0 && (riderCounts[teamId] || 0) <= min;
   };
 
-  res.json({
+  const offerGroups = {
     sent: (sentRes.data || []).map(o => ({ ...o, seller_squad_critical: squadCritical(o.seller?.id) })),
     received: (receivedRes.data || []).map(o => ({ ...o, seller_squad_critical: squadCritical(req.team.id) })),
     archivedSent: (archivedSentRes.data || []).map(o => ({ ...o, seller_squad_critical: squadCritical(o.seller?.id) })),
     archivedReceived: (archivedReceivedRes.data || []).map(o => ({ ...o, seller_squad_critical: squadCritical(req.team.id) })),
-  });
+  };
+  res.set("Cache-Control", "private, no-store");
+  res.vary("Authorization");
+  res.json(await projectAutoAcceptOffers2176(supabase, offerGroups, req.team.id));
 });
 
 // PATCH /api/transfers/offers/:id — accept, reject, counter, confirm, cancel, or withdraw
@@ -8988,7 +9012,7 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
   // The SQL trigger and final claim repeat this current boundary under locks.
   if (["counter", "accept", "accept_counter"].includes(action)) {
     const boundaryAmount = action === "counter" ? counter_amount : offer.counter_amount || offer.offer_amount;
-    const boundaryIssue = await getOfferAutoAcceptIssue(supabase, { riderId: offer.rider_id, offerAmount: boundaryAmount });
+    const boundaryIssue = await getOfferAutoAcceptIssue(supabase, { riderId: offer.rider_id, offerAmount: boundaryAmount, buyerTeamId: offer.buyer_team_id });
     if (boundaryIssue) return res.status(boundaryIssue.status).json(boundaryIssue.body);
   }
 
@@ -9130,7 +9154,7 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
       seller_confirmed: false,
     } });
     if (!claim.ok) {
-      const boundaryIssue = await getOfferAutoAcceptIssue(supabase, { riderId: offer.rider_id, offerAmount: price });
+      const boundaryIssue = await getOfferAutoAcceptIssue(supabase, { riderId: offer.rider_id, offerAmount: price, buyerTeamId: offer.buyer_team_id });
       if (boundaryIssue) return res.status(boundaryIssue.status).json(boundaryIssue.body);
       return res.status(claim.status).json({ error: claim.error, errorCode: claim.errorCode });
     }
@@ -9216,7 +9240,7 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
     if (offer.status !== "countered") {
       return res.status(409).json({ error: "The counter offer is no longer open", errorCode: "counter_offer_not_open" });
     }
-    const newOfferAutoAcceptIssue = await getOfferAutoAcceptIssue(supabase, { riderId: offer.rider_id, offerAmount: counter_amount }); // #2176
+    const newOfferAutoAcceptIssue = await getOfferAutoAcceptIssue(supabase, { riderId: offer.rider_id, offerAmount: counter_amount, buyerTeamId: offer.buyer_team_id }); // #2176
     if (newOfferAutoAcceptIssue) return res.status(newOfferAutoAcceptIssue.status).json(newOfferAutoAcceptIssue.body);
     const { data: reopened, error: reopenError } = await supabase.from("transfer_offers").update({
       offer_amount: counter_amount,
@@ -9293,7 +9317,7 @@ router.post("/transfers/:id/offer", requireAuth, marketWriteLimiter, async (req,
       error: "This rider is on an active auction. Bid on the auction instead of making a transfer offer.",
       errorCode: "rider_on_auction_transfer",
     });
-  const listingAutoAcceptIssue = await getOfferAutoAcceptIssue(supabase, { listing, offerAmount: offer_amount }); // #2176
+  const listingAutoAcceptIssue = await getOfferAutoAcceptIssue(supabase, { listing, offerAmount: offer_amount, buyerTeamId: req.team.id }); // #2176
   if (listingAutoAcceptIssue) return res.status(listingAutoAcceptIssue.status).json(listingAutoAcceptIssue.body);
   const listingBuyerState = await getTeamMarketState(supabase, req.team.id);
   if (offer_amount > listingBuyerState.balance)

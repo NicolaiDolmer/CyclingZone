@@ -100,7 +100,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
 ];
 
 // Spejler PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden: "beta" er off.
-const BINARY_FLAG_KEYS = ["auto_accept_enabled", "development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801"];
+const BINARY_FLAG_KEYS = ["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801"];
 
 // #5319: træningskatalog v3 er OFF på preview (som i prod), men kan tændes med
 // ?catalogV3=on for at se de nye sessioner i vælgerne. Huskes i localStorage

@@ -8,6 +8,7 @@
 import { DEFAULT_SCOUT, SCOUT_JOB_CONFIG, scoutCapacity, travelCostFor, readyDateFor, targetReadyAt, missionReadyAt, canStartAssignment } from "./scoutEngine.js";
 import { debitTeam } from "./economyEngine.js";
 import { checkAvailableSpend } from "./availableBalance.js";
+import { createScoutAssignmentBeta2176 } from "./marketPurchase2176.ts";
 import { FINANCE_REASON } from "./economyConstants.js";
 import { hydrateCompletedVisibility } from "./scoutReportVisibility.js";
 import { lazyCompleteDueTargetAssignments } from "./scoutTargetMaturation.js";
@@ -245,19 +246,27 @@ export async function startTargetAssignment({ teamId, riderId, seasonId }, supab
   const startedOn = now.toISOString().slice(0, 10);
   const readyOn = readyDateFor("target", now, { fromLevel, toLevel }).toISOString().slice(0, 10);
 
-  const { data: inserted, error: insertError } = await supabaseClient
+  /** @type {import("./marketPurchase2176.ts").ScoutAssignment2176} */
+  const assignment2176 = {
+    team_id: teamId,
+    staff_id: scout.isDefault ? null : scout.id,
+    kind: "target",
+    rider_id: riderId,
+    target_level: toLevel,
+    travel_cost: cost,
+    started_on: startedOn,
+    ready_on: readyOn,
+    season_id: seasonId ?? null,
+  };
+  const travelMetadata2176 = { code: "tx.scoutTravel", params: { kind: "target", riderId, targetLevel: toLevel } };
+  const atomic2176 = await createScoutAssignmentBeta2176(supabaseClient, {
+    assignment: assignment2176, sourcePath: "scoutAssignmentService.startTargetAssignment", metadata: travelMetadata2176,
+  });
+  if (atomic2176?.status === "refused") return { ok: false, ...atomic2176.issue };
+  const { data: inserted, error: insertError } = atomic2176?.status === "created"
+    ? { data: atomic2176.assignment, error: null } : await supabaseClient
     .from("scout_assignments")
-    .insert({
-      team_id: teamId,
-      staff_id: scout.isDefault ? null : scout.id,
-      kind: "target",
-      rider_id: riderId,
-      target_level: toLevel,
-      travel_cost: cost,
-      started_on: startedOn,
-      ready_on: readyOn,
-      season_id: seasonId ?? null,
-    })
+    .insert(assignment2176)
     // #3548: created_at læses tilbage fra DB'en (ikke fra `now`), så det
     // klar-tidspunkt klienten viser er udledt af PRÆCIS den timestamp
     // lazyCompleteDueTargetAssignments senere måler deadline'en mod.
@@ -265,9 +274,9 @@ export async function startTargetAssignment({ teamId, riderId, seasonId }, supab
     .single();
   if (insertError) throw new Error(`scoutAssignmentService: target insert failed for ${teamId}/${riderId}: ${insertError.message}`);
 
-  const debit = await debitTeam(teamId, cost, "scout_travel", null, seasonId, supabaseClient, {
+  const debit = atomic2176?.status === "created" ? atomic2176.debit : await debitTeam(teamId, cost, "scout_travel", null, seasonId, supabaseClient, {
     idempotent: true,
-    metadata: { code: "tx.scoutTravel", params: { kind: "target", riderId, targetLevel: toLevel } },
+    metadata: travelMetadata2176,
     audit: {
       sourcePath: "scoutAssignmentService.startTargetAssignment",
       // #3198-fund-8: se facilityService.purchaseFacilityUpgrade for baggrund.
@@ -323,18 +332,26 @@ export async function startMission({ teamId, criteria, seasonId }, supabaseClien
   const startedOn = now.toISOString().slice(0, 10);
   const readyOn = readyDateFor("mission", now).toISOString().slice(0, 10);
 
-  const { data: inserted, error: insertError } = await supabaseClient
+  /** @type {import("./marketPurchase2176.ts").ScoutAssignment2176} */
+  const assignment2176 = {
+    team_id: teamId,
+    staff_id: scout.isDefault ? null : scout.id,
+    kind: "mission",
+    mission_criteria: normalizedCriteria,
+    travel_cost: cost,
+    started_on: startedOn,
+    ready_on: readyOn,
+    season_id: seasonId ?? null,
+  };
+  const travelMetadata2176 = { code: "tx.scoutTravel", params: { kind: "mission", criteria: normalizedCriteria } };
+  const atomic2176 = await createScoutAssignmentBeta2176(supabaseClient, {
+    assignment: assignment2176, sourcePath: "scoutAssignmentService.startMission", metadata: travelMetadata2176,
+  });
+  if (atomic2176?.status === "refused") return { ok: false, ...atomic2176.issue };
+  const { data: inserted, error: insertError } = atomic2176?.status === "created"
+    ? { data: atomic2176.assignment, error: null } : await supabaseClient
     .from("scout_assignments")
-    .insert({
-      team_id: teamId,
-      staff_id: scout.isDefault ? null : scout.id,
-      kind: "mission",
-      mission_criteria: normalizedCriteria,
-      travel_cost: cost,
-      started_on: startedOn,
-      ready_on: readyOn,
-      season_id: seasonId ?? null,
-    })
+    .insert(assignment2176)
     // #3997: created_at læses tilbage fra DB'en (samme mønster som
     // startTargetAssignment) — readyAt i svaret er udledt af PRÆCIS den
     // timestamp completeDueMissionAssignments senere måler deadline'en mod.
@@ -342,9 +359,9 @@ export async function startMission({ teamId, criteria, seasonId }, supabaseClien
     .single();
   if (insertError) throw new Error(`scoutAssignmentService: mission insert failed for ${teamId}: ${insertError.message}`);
 
-  const debit = await debitTeam(teamId, cost, "scout_travel", null, seasonId, supabaseClient, {
+  const debit = atomic2176?.status === "created" ? atomic2176.debit : await debitTeam(teamId, cost, "scout_travel", null, seasonId, supabaseClient, {
     idempotent: true,
-    metadata: { code: "tx.scoutTravel", params: { kind: "mission", criteria: normalizedCriteria } },
+    metadata: travelMetadata2176,
     audit: {
       sourcePath: "scoutAssignmentService.startMission",
       // #3198-fund-8: se facilityService.purchaseFacilityUpgrade for baggrund.

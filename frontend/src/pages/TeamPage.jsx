@@ -7,7 +7,7 @@ import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { ABILITY_STATS as STATS, ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
 import { CONDITION_SELECT, flattenCondition, isRiderInjured } from "../lib/training.js";
 import { supabase } from "../lib/supabase";
-import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS } from "../lib/sharedRequestCache.js";
+import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS, invalidateTransferListings2176 } from "../lib/sharedRequestCache.js";
 import { statStyle, statPlateStyle } from "../lib/statColor";
 import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
@@ -257,7 +257,7 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onMoveSqua
       const data = await res.json().catch(() => ({}));
       // #5089: den delte GET /api/transfers-kopi (RiderStatsPage's salgs-knap)
       // er stale efter en ny listing — ryd den uanset udfald.
-      sharedRequestCache.invalidate(SHARED_KEYS.transferListings);
+      invalidateTransferListings2176();
       if (res.ok) { setMsgOk(true); setMsg(t("actionModal.transfer.successMsg")); setTimeout(() => { onAction(); onClose(); }, 1500); }
       else { setMsgOk(false); setMsg(`${t("actionModal.errorPrefix")}${resolveApiError(data, t)}`); }
     } catch {

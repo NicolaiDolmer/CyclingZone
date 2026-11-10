@@ -552,12 +552,13 @@ features:
     title_en: Bid commitment gate
     title_da: Bud-forpligtelsesgate
     state: building
+    flag: market_commitment_6181
     ssot: docs/TRANSFER_MARKET_RULES.md
     epic: 6181
     verified: 2026-11-09
     decision: goer-faerdigt
     decide_by: 2026-11-30
-    note: Kontakt market_commitment_6181, off post; ikke flag-bundet her (prod-raekke ikke verificeret), jf. #7923.
+    note: M3 beta følger A (#2176, ejer 10/11). Ingen aktivering; prod-status ikke verificeret her.
 
   - id: rider-loans
     area: market
@@ -590,6 +591,7 @@ features:
     verified: 2026-11-07
     decision: taend
     decide_by: 2026-11-28
+    note: Beta-par kraeves; offentlige auktioner (#2176).
 
   - id: market-value-blend
     area: market

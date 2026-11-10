@@ -8,7 +8,7 @@
 // tjekkes stadig først i ruten (cannot_afford_release), så denne gate ser kun
 // tilfældet "saldoen rækker, men en del af den er låst".
 import { checkAvailableSpend, INSUFFICIENT_AVAILABLE_BALANCE } from "./availableBalance.js";
-import { isMarketCommitment6181On } from "./marketCommitment6181.js";
+import { isMarketProtectionEnabled2176 } from "./marketBeta2176.ts";
 
 /**
  * Senior- og akademi-fyring (POST /riders/:id/release og /academy-release).
@@ -19,7 +19,7 @@ import { isMarketCommitment6181On } from "./marketCommitment6181.js";
  */
 export async function releaseFeeAvailableResponse6181(supabase, { teamId, balance, fee }) {
   if (!(Number(fee) > 0) || (Number(balance) || 0) < Number(fee)) return null;
-  if (!(await isMarketCommitment6181On(supabase))) return null;
+  if (!(await isMarketProtectionEnabled2176(supabase, { teamId }))) return null;
   const issue = await checkAvailableSpend(supabase, { teamId, balance, cost: fee });
   if (issue?.error !== INSUFFICIENT_AVAILABLE_BALANCE) return null;
   return {

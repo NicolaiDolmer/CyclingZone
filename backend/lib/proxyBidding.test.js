@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { resolveProxyBids as resolveProxyBidsRaw } from "./proxyBidding.js";
+import { canAffordAutoBidScoped2176 } from "./marketCommitment6181.js";
 
 // #44: balance-gate er injectable. Eksisterende tests stuber den til "altid råd"
 // så vi kan teste cascade-logikken isoleret. Tests for selve gaten passerer
@@ -1170,6 +1171,41 @@ test("#1091 + #44: tie-match balance-gates — fører uden råd mister tie-fortr
 // =============================================================================
 // #44 — balance-gate på auto-bid (canAffordAutoBidFn)
 // =============================================================================
+
+test("beta transport preserves an affordable ordinary non-beta autobid", async () => {
+  const supabase = createMockSupabase({
+    auction: { id: "ordinary", origin: "standard", status: "active", calculated_end: FUTURE_END,
+      current_price: 199, current_bidder_id: "team-a", seller_team_id: "seller", is_youth: false,
+      rider: { firstname: "Test", lastname: "Rider", team_id: null } },
+    proxies: [{ auction_id: "ordinary", team_id: "team-b", max_amount: 1000 }],
+    teams: { "team-b": { name: "Buyer", balance: 500 } }, databaseLeaderSync: true,
+  });
+  const from=supabase.from.bind(supabase),rpc=supabase.rpc.bind(supabase),checks=[],notices=[];
+  const single=read=>{const query={eq(){return query;},async maybeSingle(){return {data:read(),error:null};}};return query;};
+  supabase.from=table=>{
+    if(table==='app_config')return {select:()=>single(()=>({value:'beta'}))};
+    const original=from(table);
+    if(table==='auctions'||table==='auction_proxy_bids')return {...original,select(columns){
+      if(columns==='current_bidder_id, is_youth')return single(()=>({...supabase.state.auction}));
+      if(columns==='max_amount')return single(()=>supabase.state.proxies[0]);
+      return original.select(columns);
+    }};
+    return original;
+  };
+  supabase.rpc=async(name,args)=>{
+    if(name==='market_scope_2176')return {data:false,error:null};
+    if(name==='market_bid_issue_6181'){checks.push(args);return {data:args.p_amount>500?'insufficient_available_balance':null,error:null};}
+    return rpc(name,args);
+  };
+  const result=await resolveProxyBidsRaw({supabase,auctionId:'ordinary',bidTime:BID_TIME,now:()=>BID_TIME,
+    databaseOwnsLeaderSync:true,canAffordAutoBidFn:canAffordAutoBidScoped2176,
+    notifyTeamOwner:async(...args)=>{notices.push(args);}});
+  assert.equal(result.finalLeaderId,'team-b');
+  assert.deepEqual(supabase.state.bids.map(row=>[row.team_id,row.amount]),[['team-b',200]]);
+  assert.deepEqual(checks.map(row=>[row.p_amount,row.p_seat]),[[200,false]]);
+  assert.equal(supabase.state.proxies[0].max_amount,1000);
+  assert.equal(notices.some(row=>row[5]?.messageCode==='notif.autoBidStopped.message'),false);
+});
 
 test("#44: challenger med proxy > balance behandles som udmattet, næste challenger overtager", async () => {
   // A leder cp=50K, ingen proxy. B har proxy 200K men kun 100K balance (kan ikke afford 200K).

@@ -427,9 +427,11 @@ const START_NOW = new Date("2026-11-09T10:00:00Z");
 const START_REQ = { params: { id: "L1" }, body: { expected_rider_id: "R1", expected_price: 2, duration_minutes: 60,
   expected_end_at: autoAcceptAuctionEnd(START_NOW, DEFAULT_AUCTION_CONFIG, 60).toISOString() }, team: { id: "B" }, user: { id: "U-buyer" } };
 
-function startedFixture({ flags = { auto_accept_enabled: "on", market_commitment_6181: "on" } } = {}) {
+function startedFixture({ flags = { auto_accept_enabled: "on", market_commitment_6181: "on" }, sellerBeta = true, buyerBeta = true } = {}) {
   const client = fakeSupabase({ flags, respond: table => ({ data: table === "transfer_listings"
     ? { id: "L1", rider_id: "R1", seller_team_id: "A", status: "open", auto_accept_price: 2 }
+    : table === "teams" ? [{ id: "A", user_id: "UA" }, { id: "B", user_id: "UB" }]
+    : table === "users" ? [{ id: "UA", role: "user", is_beta_tester: sellerBeta }, { id: "UB", role: "user", is_beta_tester: buyerBeta }]
     : table === "riders" ? { id: "R1", team_id: "A", market_value: 1000000, base_value: 1000000, prize_earnings_bonus: 0 } : null, error: null }),
     rpc: () => ({ data: { status: "started", auction_id: "AU1", rider_id: "R1", seller_team_id: "A", price: 2 }, error: null }) });
   const identity = [];
@@ -445,6 +447,17 @@ function startedFixture({ flags = { auto_accept_enabled: "on", market_commitment
   return { client, handler, identity, announced };
 }
 
+for (const [sellerBeta,buyerBeta] of [[true,true],[true,false],[false,true],[false,false]]) {
+  test(`beta handler pair ${sellerBeta}/${buyerBeta}: start and negotiation gate match`, async () => {
+    const { client,handler } = startedFixture({ flags:{auto_accept_enabled:"beta",market_commitment_6181:"beta"},sellerBeta,buyerBeta });
+    const issue = await getOfferAutoAcceptIssue(client,{listing:{id:"L1",rider_id:"R1",seller_team_id:"A",status:"open",auto_accept_price:2},buyerTeamId:"B",offerAmount:2});
+    assert.equal(issue?.body.errorCode ?? null,sellerBeta && buyerBeta ? "offer_at_auto_accept_price" : null);
+    const res = fakeRes(); await handler(START_REQ,res);
+    assert.equal(res.statusCode,sellerBeta && buyerBeta ? 201 : 404);
+    assert.equal(client.rpcCalls.filter(call=>call.name==="start_auto_accept_auction_bid").length,sellerBeta && buyerBeta ? 1 : 0);
+  });
+}
+
 test("start afvises, naar pengelaasen er slukket, foer nogen RPC eller opslag ud over kontakterne", async () => {
   for (const off of ["off", false, null]) {
     const { client, handler, identity } = startedFixture({ flags: { auto_accept_enabled: "on", market_commitment_6181: off } });
@@ -456,6 +469,34 @@ test("start afvises, naar pengelaasen er slukket, foer nogen RPC eller opslag ud
     assert.deepEqual(tablesTouched(client), ["app_config", "app_config"]);
     assert.equal(identity.length, 0);
   }
+});
+
+test("beta membership revoked inside SQL returns the existing disabled response", () => {
+  assert.equal(mapStartAutoAcceptResult({status:"disabled"}).status,404);
+  assert.equal(mapSetAutoAcceptPriceResult({status:"disabled"}).status,404);
+  assert.equal(mapStartAutoAcceptResult({status:"disabled"}).body.errorCode,"auto_accept_disabled");
+});
+
+test("beta market transport preserves existing public obligations after auto-price is hidden", async () => {
+  const now = new Date("2026-11-10T10:00:00Z");
+  const client = fakeSupabase({flags:{auto_accept_enabled:"off",market_commitment_6181:"beta"},
+    rpc:name=>({data:name==="auto_accept_release_paid_2176"?{status:"released",rider_id:"R1",payment_handled:true}
+      :{status:"claimed",rider_id:"R1",offered_rider_id:"R1",payment_handled:true},error:null})});
+  const release=await releaseRiderUnderTeamLock(client,{riderId:"R1",teamId:"A",marketBeta:true,fee:30,feePayload:{type:"transfer_out",amount:-30}});
+  assert.equal(release.paymentHandled,true);
+  const claim=await claimTransferUnderTeamLock(client,{riderId:"R1",sellerTeamId:"A",buyerTeamId:"B",now,activeSeasonNumber:null,marketBeta:true});
+  assert.equal(claim.paymentHandled,true);
+  const swap=await claimSwapUnderTeamLock(client,{offeredRiderId:"R1",requestedRiderId:"R2",proposingTeamId:"A",receivingTeamId:"B",now:now.toISOString(),
+    marketBeta:true,dealId:"S1",cash:30,payment:{amount:30}});
+  assert.equal(swap.paymentHandled,true);
+  assert.deepEqual(client.rpcCalls.map(call=>call.name),["auto_accept_release_paid_2176","auto_accept_claim_transfer_paid","auto_accept_claim_swap_paid"]);
+  assert.equal(client.rpcCalls[2].args.p_cash,30);
+});
+
+test("beta final cash refusal is attributed to the existing payer-side error", async()=>{
+  const client=fakeSupabase({flag:"off",rpc:()=>({data:{status:"payer_insufficient_balance",payer_team_id:"B"},error:null})});
+  const result=await claimSwapUnderTeamLock(client,{offeredRiderId:"R1",requestedRiderId:"R2",proposingTeamId:"A",receivingTeamId:"B",marketBeta:true,cash:-30,payment:{amount:30}});
+  assert.equal(result.issue.code,"receiving_insufficient_balance");
 });
 
 test("start: en fejlet laesning af pengelaasen afviser, og ukendt bliver aldrig til taendt", async () => {

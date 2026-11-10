@@ -510,14 +510,18 @@ test("batch-laesning: null er en ugyldig besvarelse, ikke en vellykket tom liste
 });
 
 
-test("#2176: binary auto-accept requires the money reservation prerequisite", async () => {
-  for (const stage of ["off","beta",null]) {
+test("#2176: staged auto-accept requires eligible viewer and money transport", async () => {
+  for (const stage of ["off",null]) {
     const flags = await readPlayerFeatureFlags(fakeSupabase({ auto_accept_enabled: stage, market_commitment_6181: "on" }), { isBetaTester: true });
     assert.equal(flags.auto_accept_enabled,false);
   }
-  for (const prerequisite of ["off","beta",null]) {
+  for (const prerequisite of ["off",null]) {
     const flags = await readPlayerFeatureFlags(fakeSupabase({ auto_accept_enabled: "on", market_commitment_6181: prerequisite }));
     assert.equal(flags.auto_accept_enabled,false);
   }
   assert.equal((await readPlayerFeatureFlags(fakeSupabase({auto_accept_enabled:"on",market_commitment_6181:"on"}))).auto_accept_enabled,true);
+  for (const isBetaTester of [false,true]) {
+    const flags = await readPlayerFeatureFlags(fakeSupabase({auto_accept_enabled:"beta",market_commitment_6181:"beta"}),{isBetaTester});
+    assert.equal(flags.auto_accept_enabled,isBetaTester);
+  }
 });

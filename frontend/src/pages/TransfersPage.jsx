@@ -22,7 +22,7 @@ import { resolveApiError } from "../lib/apiError";
 // #5089: rytterprofilens salgs-knap laeser GET /api/transfers gennem en delt
 // TTL-kopi (15 s). Hver listing-mutation HER skal rydde den noegle, ellers kan
 // profilen vise en listing spilleren lige har fjernet/omprissat.
-import { sharedRequestCache, SHARED_KEYS } from "../lib/sharedRequestCache.js";
+import { invalidateTransferListings2176 } from "../lib/sharedRequestCache.js";
 import { sortRows } from "../lib/useTableSort.js";
 import { previewBulkPriceAdjust } from "../lib/bulkPriceAdjust.js";
 import { parseAmountInput, parseAdjustmentValue } from "../lib/amountInput.js";
@@ -1423,7 +1423,7 @@ export default function TransfersPage() {
     const response = await apiFetch(`${API}/api/transfers/${current.id}/auto-accept`, {
       method: "POST", headers: await getHeaders(), body: JSON.stringify(request),
     });
-    if (response.ok) { sharedRequestCache.invalidate(SHARED_KEYS.transferListings); loadAll(); }
+    if (response.ok) { invalidateTransferListings2176(); loadAll(); }
     return response;
   }
 
@@ -1481,7 +1481,7 @@ export default function TransfersPage() {
       const data = res.data || {};
       // #5089: ryd den delte GET /api/transfers-kopi uanset udfald — rytter-
       // profilens salgs-knap maa aldrig vise en listing der er fjernet her.
-      sharedRequestCache.invalidate(SHARED_KEYS.transferListings);
+      invalidateTransferListings2176();
       if (res.ok) {
         showMsg(t("toast.listingRemoved"));
         loadAll();
@@ -1503,7 +1503,7 @@ export default function TransfersPage() {
         body: JSON.stringify({ asking_price: askingPrice }),
       });
       const data = res.data || {};
-      sharedRequestCache.invalidate(SHARED_KEYS.transferListings); // #5089, se handleRemoveListing
+      invalidateTransferListings2176(); // #5089, se handleRemoveListing
       if (res.ok) {
         showMsg(t("toast.priceUpdated"));
         loadAll();
@@ -1715,7 +1715,7 @@ export default function TransfersPage() {
       const data = res.data || {};
       // #5089: bulk-endpointet svarer 200 selv med delvise fejl (`failed[]`),
       // saa noeglen ryddes uanset udfald — se handleRemoveListing.
-      sharedRequestCache.invalidate(SHARED_KEYS.transferListings);
+      invalidateTransferListings2176();
       if (res.ok) {
         const updatedCount = data.updated?.length || 0;
         const failedCount = data.failed?.length || 0;

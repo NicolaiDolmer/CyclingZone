@@ -16,6 +16,7 @@ import { applyTransferMarketCommitment6181 } from "./marketCommitment6181.js";
 import { shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.ts";
 import { buildRiderValueSnapshot, updateDealWithValueSnapshot } from "./dealValueSnapshot.js";
+import { isMarketBetaMode2176 } from "./marketBeta2176.ts";
 import { saleEscrowPayment, saleEscrowStatusForDeal, squadRestoreImage } from "./saleEscrowFlow6181.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
 import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
@@ -628,6 +629,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     deferRegistration, now, acquirePatch: { ...transferContractPatch, ...graduatePatch },
     activeSeasonNumber, maxRiders: buyerState.squad_limits.max, price, dealId: offer.id,
     buyerPayload: transferBuyerPayment.payload, sellerPayload: transferSellerPayment.payload,
+    marketBeta: await isMarketBetaMode2176(supabase),
     riderRestore: riderRestore ? { [rider.id]: riderRestore } : {},
   });
   if (lockedClaim?.boundary) return failure(409, undefined, "offer_at_auto_accept_price", { errorParams: lockedClaim.boundary.body.errorParams });
@@ -917,6 +919,57 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   // #6181 ejer-krav 1 (#7871): et bytte, hvis escrow er refunderet, er annulleret
   // (se executeTransferOffer): stale-grenen, intet flyttes, ingen betaler. Kun et
   // bytte med kontanter kan have en escrow.
+  const swapDescription = `Byttehandel kontantbetaling: ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname}`;
+  const swapMetadata = {
+    code: "tx.swapCash",
+    params: {
+      offeredName: `${offered.firstname} ${offered.lastname}`,
+      requestedName: `${requested.firstname} ${requested.lastname}`,
+    },
+  };
+  const payerId = cash > 0 ? swap.proposing_team_id : swap.receiving_team_id;
+  const receiverId = cash > 0 ? swap.receiving_team_id : swap.proposing_team_id;
+  const absCash = Math.abs(cash);
+  const swapActorType = auditCtx?.actorType || FINANCE_ACTOR_TYPE.CRON;
+  const swapActorId = auditCtx?.actorId || null;
+  const swapSeasonId = cash !== 0 ? await fetchActiveSeasonId(supabase) : null;
+  const swapPayerPayment = {
+    teamId: payerId,
+    delta: -absCash,
+    payload: {
+      type: "transfer_out",
+      amount: -absCash,
+      description: swapDescription,
+      metadata: swapMetadata,
+      season_id: swapSeasonId,
+      actor_type: swapActorType,
+      actor_id: swapActorId,
+      source_path: "transferExecution.executeSwapOffer.payer",
+      reason_code: FINANCE_REASON.SWAP_CASH_DELTA,
+      related_entity_type: FINANCE_RELATED_ENTITY.SWAP,
+      related_entity_id: swap.id,
+      idempotency_key: `swap_payer:${swap.id}`,
+    },
+  };
+  const swapReceiverPayment = {
+    teamId: receiverId,
+    delta: absCash,
+    payload: {
+      type: "transfer_in",
+      amount: absCash,
+      description: swapDescription,
+      metadata: swapMetadata,
+      season_id: swapSeasonId,
+      actor_type: swapActorType,
+      actor_id: swapActorId,
+      source_path: "transferExecution.executeSwapOffer.receiver",
+      reason_code: FINANCE_REASON.SWAP_CASH_DELTA,
+      related_entity_type: FINANCE_RELATED_ENTITY.SWAP,
+      related_entity_id: swap.id,
+      idempotency_key: `swap_receiver:${swap.id}`,
+    },
+  };
+  const swapRiderRestore = [squadRestoreImage(offered, offeredGraduatePatch), squadRestoreImage(requested, requestedGraduatePatch)];
   const priorSaleEscrow = cash !== 0 ? await saleEscrowStatusForDeal(supabase, { dealType: "swap", dealId: swap.id }) : "none";
   // #2176: taendt flyttes begge ben her under holdlaasene; slukket = null og den gamle sti.
   const lockedSwap = priorSaleEscrow === "refunded" ? null : await claimSwapUnderTeamLock(supabase, {
@@ -925,7 +978,25 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     deferRegistration, now: swapTimestamp,
     offeredPatch: { ...offeredContractPatch, ...offeredGraduatePatch },
     requestedPatch: { ...requestedContractPatch, ...requestedGraduatePatch },
+    marketBeta: await isMarketBetaMode2176(supabase), dealId: swap.id, cash,
+    payment: cash === 0 ? null : { payer_team_id: payerId, payee_team_id: receiverId, amount: absCash,
+      payer_payload: swapPayerPayment.payload, payee_payload: swapReceiverPayment.payload,
+      rider_restore: Object.fromEntries([offered.id, requested.id].flatMap((id, index) => swapRiderRestore[index] ? [[id, swapRiderRestore[index]]] : [])) },
   });
+  if (lockedSwap?.issue) {
+    const claimIssue = lockedSwap.issue;
+    const affectedProposing = "teamId" in claimIssue && claimIssue.teamId === swap.proposing_team_id;
+    const incomingRider = affectedProposing ? requested : offered;
+    const message = claimIssue.code === "buyer_squad_full"
+      ? { ...describeTransferIssue(claimIssue, { rider: incomingRider, buyerState: affectedProposing ? proposingState : receivingState, sellerState: affectedProposing ? receivingState : proposingState }),
+        notificationTitle: "Swap cancelled", notificationTitleCode: "notif.transfer.issue.swapTitle" }
+      : describeSwapIssue(claimIssue, { offered, requested });
+    await withdrawSwapOffer(supabase, swap.id);
+    const meta = issueNotificationMetadata(message, incomingRider.id);
+    await notifyTeamOwner(swap.proposing_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, swap.id, meta);
+    await notifyTeamOwner(swap.receiving_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, swap.id, meta);
+    return failure(400, message.error, claimIssue.code, "errorParams" in message ? { errorParams: message.errorParams } : {});
+  }
   const movedOffered = priorSaleEscrow === "refunded"
     ? null
     : lockedSwap ? lockedSwap.data : deferRegistration
@@ -1031,63 +1102,10 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     });
   }
 
-  if (cash !== 0) {
-    // Slice 07c: balance + finance_transactions atomic via RPC.
-    // 07d Fase B / #240: actor via auditCtx (api/cron afhængigt af caller),
-    // season_id eksplicit fra activeSeason.
-    const swapDescription = `Byttehandel kontantbetaling: ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname}`;
-    const swapMetadata = {
-      code: "tx.swapCash",
-      params: {
-        offeredName: `${offered.firstname} ${offered.lastname}`,
-        requestedName: `${requested.firstname} ${requested.lastname}`,
-      },
-    };
-    const payerId = cash > 0 ? swap.proposing_team_id : swap.receiving_team_id;
-    const receiverId = cash > 0 ? swap.receiving_team_id : swap.proposing_team_id;
-    const absCash = Math.abs(cash);
-    const swapActorType = auditCtx?.actorType || FINANCE_ACTOR_TYPE.CRON;
-    const swapActorId = auditCtx?.actorId || null;
-    const swapSeasonId = await fetchActiveSeasonId(supabase);
-    // #6181: parkeret + sale_escrow_enabled → kontanterne laases, til begge ryttere er flyttet.
-    const swapPayment = await saleEscrowPayment(supabase, { parked: deferRegistration, dealType: "swap", dealId: swap.id, riderIds: [offered.id, requested.id], targetTeamIds: [swap.receiving_team_id, swap.proposing_team_id], priorEscrow: priorSaleEscrow, riderRestore: [squadRestoreImage(offered, offeredGraduatePatch), squadRestoreImage(requested, requestedGraduatePatch)] });
-
-    await swapPayment.incrementBalanceWithAudit(supabase, {
-      teamId: payerId,
-      delta: -absCash,
-      payload: {
-        type: "transfer_out",
-        amount: -absCash,
-        description: swapDescription,
-        metadata: swapMetadata,
-        season_id: swapSeasonId,
-        actor_type: swapActorType,
-        actor_id: swapActorId,
-        source_path: "transferExecution.executeSwapOffer.payer",
-        reason_code: FINANCE_REASON.SWAP_CASH_DELTA,
-        related_entity_type: FINANCE_RELATED_ENTITY.SWAP,
-        related_entity_id: swap.id,
-        idempotency_key: `swap_payer:${swap.id}`,
-      },
-    }, { allowDuplicate: true });
-    await swapPayment.incrementBalanceWithAudit(supabase, {
-      teamId: receiverId,
-      delta: absCash,
-      payload: {
-        type: "transfer_in",
-        amount: absCash,
-        description: swapDescription,
-        metadata: swapMetadata,
-        season_id: swapSeasonId,
-        actor_type: swapActorType,
-        actor_id: swapActorId,
-        source_path: "transferExecution.executeSwapOffer.receiver",
-        reason_code: FINANCE_REASON.SWAP_CASH_DELTA,
-        related_entity_type: FINANCE_RELATED_ENTITY.SWAP,
-        related_entity_id: swap.id,
-        idempotency_key: `swap_receiver:${swap.id}`,
-      },
-    }, { allowDuplicate: true });
+  if (cash !== 0 && !lockedSwap?.paymentHandled) {
+    const swapPayment = await saleEscrowPayment(supabase, { parked: deferRegistration, dealType: "swap", dealId: swap.id, riderIds: [offered.id, requested.id], targetTeamIds: [swap.receiving_team_id, swap.proposing_team_id], priorEscrow: priorSaleEscrow, riderRestore: swapRiderRestore });
+    await swapPayment.incrementBalanceWithAudit(supabase, swapPayerPayment, { allowDuplicate: true });
+    await swapPayment.incrementBalanceWithAudit(supabase, swapReceiverPayment, { allowDuplicate: true });
   }
 
   await closeTransferListingsForRiders(
