@@ -22,7 +22,8 @@ async function stampedIds({ supabase, tickDate, riderIds, failOpenWhenOff }) {
     if (!failOpenWhenOff) throw lookupError;
     const { data, error } = await supabase.from("app_config")
       .select("value").eq("key", "training_train_now_instant").maybeSingle();
-    if (!error && data?.value !== "on") return [];
+    // "beta" (owner 10/11) can leave stamps too, so it fails closed like "on".
+    if (!error && data?.value !== "on" && data?.value !== "beta") return [];
     throw lookupError;
   }
 }

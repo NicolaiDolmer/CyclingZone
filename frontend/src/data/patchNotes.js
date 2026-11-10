@@ -24,6 +24,29 @@ export const PATCHES = [
     ]
   },
   {
+    "version": "7.426",
+    "date": "2026-11-10",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "beta",
+        "topic": "Training",
+        "en": {
+          "title": "Train now takes effect immediately (beta)",
+          "body": "Press Train now to apply today's free training straight away. Form and fatigue update at once and carry into today's races. Riders in the press cannot be entered in new races today."
+        },
+        "da": {
+          "title": "Træn nu virker med det samme (beta)",
+          "body": "Tryk på Træn nu for at udføre dagens ledige træning med det samme. Form og træthed opdateres straks og tæller med i dagens løb. Ryttere i trykket kan ikke tilmeldes nye løb i dag."
+        },
+        "refs": [
+          7737
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.425",
     "date": "2026-11-09",
     "changes": [

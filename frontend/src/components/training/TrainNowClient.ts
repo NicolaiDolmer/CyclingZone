@@ -103,7 +103,7 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
         method: "POST", headers, body: JSON.stringify({ confirmedShortRaceIds }),
       }, { source: "training-train-now" });
       const data = (res.data ?? {}) as {
-        error?: string; locked?: boolean; lockedAt?: string; settledRiderIds?: string[]; afterRaceRiderIds?: string[]; settledGameDays?: number[];
+        error?: string; locked?: boolean; lockedAt?: string; settledRiderIds?: string[]; afterRaceRiderIds?: string[]; settledGameDays?: number[]; instantRiderIds?: string[];
         shortRaces?: unknown;
       };
       if (!res.ok && data.error === "training_in_progress") {
@@ -130,6 +130,7 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
         settledRiderIds: Array.isArray(data.settledRiderIds) ? data.settledRiderIds : [],
         afterRaceRiderIds: Array.isArray(data.afterRaceRiderIds) ? data.afterRaceRiderIds : [],
         ...(Array.isArray(data.settledGameDays) ? { settledGameDays: data.settledGameDays } : {}),
+        ...(Array.isArray(data.instantRiderIds) ? { instantRiderIds: data.instantRiderIds } : {}),
       });
       try {
         await Promise.all([load(), onSettled?.()]);
