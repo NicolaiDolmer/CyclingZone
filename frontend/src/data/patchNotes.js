@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.428",
+    "date": "2026-11-10",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Tactics",
+        "en": {
+          "title": "Shared captain and luxury helper on the Tactics tab",
+          "body": "You can now pick Shared captain and Luxury helper on the Tactics tab in races that allow them, even if no rider had the role when you selected the team."
+        },
+        "da": {
+          "title": "Delt kaptajn og luksushjælper på Taktik-fanen",
+          "body": "Du kan nu vælge Delt kaptajn og Luksushjælper på Taktik-fanen i løb, der tillader dem, også selvom ingen rytter havde rollen, da du udtog holdet."
+        },
+        "refs": [
+          7977
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.427",
     "date": "2026-11-10",
     "changes": [
