@@ -1161,7 +1161,7 @@ features:
     verified: 2026-11-09
     decision: goer-faerdigt
     decide_by: 2026-11-16
-    note: 'OFF seed.'
+    note: 'PR1+PR2 merged OFF (#7948, #7967); PR3 screen ships with the owner activation.'
 
   - id: train-now-whole-day
     area: training
@@ -1554,4 +1554,4 @@ features:
     verified: 2026-11-10
     decision: goer-faerdigt
     decide_by: 2026-11-16
-    note: 'OFF seed; PR3 and owner activation pending.'
+    note: 'OFF seed; owner 10/11: own activation card after Train now is proven alone.'
