@@ -28,7 +28,7 @@
 ## Tidsplan (ejer 4/11 aften)
 
 
-- **S6 (dec):** Pro 2.0 + betaling #4514, TTT #3463. **Starten af 2027:** omdømme #4957/#5106, #4630, #5621, #935, #1147. **S6+:** #4621, #6191, #5625, #1154, #5180.
+- **S6 (dec):** Pro 2.0 + betaling #4514, TTT #3463. **Starten af 2027:** omdømme #4957/#5106 (#4630, #5621, #935, #1147 er idéer, ejer 10/11). **S6+:** #4621, #6191, #5625, #1154, #5180.
 
 ## 0. Merge og til dørs først (ejer 4/11, skarpt)
 
