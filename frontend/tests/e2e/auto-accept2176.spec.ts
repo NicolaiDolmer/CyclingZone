@@ -181,11 +181,12 @@ test("crossing closing time refreshes Ends before a binding submit", async ({ pa
 test("owner 10/11: a changed end time shows the server's time and needs a second click", async ({ page }) => {
   const bodies: Record<string, unknown>[] = [];
   const dialog = await openBuyer(page);
+  // The server's clock is 5 minutes ahead of the browser's fixed 10:00:00Z.
   const serverEnd = "2026-11-09T10:35:00.000Z";
   await page.route("**/api/transfers/auto-listing/auto-accept", async (route) => {
     bodies.push(route.request().postDataJSON());
     if (bodies.length === 1) {
-      await json(route, { errorCode: "auto_accept_end_changed", errorParams: { endsAt: serverEnd } }, 409);
+      await json(route, { errorCode: "auto_accept_end_changed", errorParams: { endsAt: serverEnd, serverNow: "2026-11-09T10:05:00.000Z" } }, 409);
     } else {
       await json(route, { ok: true }, 200);
     }

@@ -171,12 +171,13 @@ export async function countSellerAuctionOutgoing(supabase, teamId, { skipRiderId
 // Ejer 10/11 ("Bekraeft igen"): koeberen binder penge mod det sluttidspunkt, dialogen viste.
 // Regner serveren et andet minut (ur-forskel, minutskifte, aktiv tid der lukker), afvises
 // buddet, og dialogen viser den nye tid. Intet bud og ingen reservation mod en uset sluttid.
-const END_CHANGED = (calculatedEnd) => ({
+const END_CHANGED = (calculatedEnd, serverNow) => ({
   status: 409,
   body: {
     error: "The auction end time changed. Check the new time and confirm again",
     errorCode: "auto_accept_end_changed",
-    errorParams: { endsAt: calculatedEnd.toISOString() },
+    // serverNow lader dialogen rette sit ur, saa den viste tid foelger serverens (review 10/11).
+    errorParams: { endsAt: calculatedEnd.toISOString(), serverNow: serverNow.toISOString() },
   },
 });
 
@@ -510,7 +511,7 @@ export function makeStartAutoAcceptHandler({
     ]);
     const calculatedEnd = autoAcceptAuctionEnd(startedAt, cfg, minutes);
     if (!autoAcceptEndMatches(req.body?.expected_end_at, calculatedEnd)) {
-      const changed = END_CHANGED(calculatedEnd);
+      const changed = END_CHANGED(calculatedEnd, startedAt);
       return res.status(changed.status).json(changed.body);
     }
     const boundaryIssue = getAuctionSeasonBoundaryIssue(calculatedEnd, boundary);

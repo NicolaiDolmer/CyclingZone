@@ -59,21 +59,20 @@ export default function AutoAcceptAuctionDialog({
   const [pending, setPending] = useState(false),
     [error, setError] = useState("");
   const latch = useRef(false);
+  // Owner 10/11 ("confirm again"): after a rejected end time the server's clock is adopted,
+  // so the shown end keeps moving with real time and the next click matches the server.
+  const [clockOffsetMs, setClockOffsetMs] = useState(0);
+  const serverNow = () => new Date(getNow().getTime() + clockOffsetMs);
   const [reviewedNow, setReviewedNow] = useState(now);
-  const previewNow = new Date(Math.max(now.getTime(), reviewedNow.getTime()));
+  const previewNow = new Date(Math.max(now.getTime() + clockOffsetMs, reviewedNow.getTime()));
   const duration = durationMinutes(hours, minutes);
   const minimum = Number(current?.auto_accept_price);
   const validBid = validAutoBid(bid, minimum);
   const valid = !!current && validTiming(timingConfig) && duration !== null && validBid;
-  // Owner 10/11 ("confirm again"): when the server computed another end minute, the
-  // dialog shows the server's time until the duration changes, and the next click binds to it.
-  const [serverEnd, setServerEnd] = useState<{ at: Date; duration: number } | null>(null);
-  const localEnd =
+  const end =
     duration !== null && validTiming(timingConfig)
       ? autoAcceptEnd(previewNow, timingConfig, duration)
       : null;
-  const fromServer = serverEnd !== null && serverEnd.duration === duration;
-  const end = fromServer ? serverEnd.at : localEnd;
   const { openHour, closeHour } = windowHoursForWallClock(
     utcToGameWallClock(previewNow),
     timingConfig
@@ -84,9 +83,9 @@ export default function AutoAcceptAuctionDialog({
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (latch.current || !valid || !current || bid === null || duration === null) return;
-    const submittedAt = getNow();
+    const submittedAt = serverNow();
     if (!end) return;
-    if (!fromServer && reviewAutoAcceptEnd(end, submittedAt, timingConfig, duration).changed) {
+    if (reviewAutoAcceptEnd(end, submittedAt, timingConfig, duration).changed) {
       // Refresh the visible Ends line, then require another explicit click.
       // No request or money commitment is made against an unseen end time.
       setReviewedNow(submittedAt);
@@ -116,11 +115,13 @@ export default function AutoAcceptAuctionDialog({
         )
       );
       if (errorBody.errorCode === "auto_accept_end_changed") {
-        // Show the server's end time; no retry happens behind the player.
-        const params = errorBody.errorParams as { endsAt?: unknown } | undefined;
-        const at = typeof params?.endsAt === "string" ? new Date(params.endsAt) : null;
-        if (at && Number.isFinite(at.getTime())) setServerEnd({ at, duration });
-        else setReviewedNow(getNow());
+        // Adopt the server's clock and show the new end; no retry happens behind the player.
+        const params = errorBody.errorParams as { serverNow?: unknown } | undefined;
+        const at = typeof params?.serverNow === "string" ? new Date(params.serverNow) : null;
+        if (at && Number.isFinite(at.getTime())) {
+          setClockOffsetMs(at.getTime() - getNow().getTime());
+          setReviewedNow(at);
+        } else setReviewedNow(serverNow());
       }
       if (errorBody.errorCode === "auto_accept_price_changed") {
         // Refresh every displayed listing field. Another explicit submit is

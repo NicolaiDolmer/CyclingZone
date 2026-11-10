@@ -609,6 +609,7 @@ test("ejer 10/11 'Bekraeft igen': en aendret sluttid afvises foer RPC'en og send
     assert.equal(res.statusCode, 409);
     assert.equal(res.body.errorCode, "auto_accept_end_changed");
     assert.equal(res.body.errorParams.endsAt, autoAcceptAuctionEnd(START_NOW, DEFAULT_AUCTION_CONFIG, 60).toISOString());
+    assert.equal(res.body.errorParams.serverNow, START_NOW.toISOString());
   }
   assert.equal(client.rpcCalls.length, 0);
 });
