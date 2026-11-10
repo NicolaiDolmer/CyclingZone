@@ -1158,10 +1158,10 @@ features:
     state: building
     ssot: docs/TRAINING_RULES.md
     epic: 7737
-    verified: 2026-11-09
+    verified: 2026-11-10
     decision: goer-faerdigt
     decide_by: 2026-11-16
-    note: 'PR1+PR2 merged OFF (#7948, #7967); PR3 screen ships with the owner activation.'
+    note: 'Flag på beta i prod 10/11; state beta når roadmap-tekst er godkendt.'
 
   - id: train-now-whole-day
     area: training

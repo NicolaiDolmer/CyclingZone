@@ -74,7 +74,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 | Development XP (`development-xp-model`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-11-07 | Kontakter development_xp_model + development_xp_from_date; tændes efter kalibrering. |
 | Stored potential estimates (`potential-estimate-writes`) | building | - | [6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md) | #6110 | 2026-11-05 | Trin 5 (#7685): søndagsjob, holdskifte og nye kig; flaget seedes off. |
 | Train now bonus (`train-now-bonus`) | building | `training_train_now_bonus` | [TRAINING_RULES](TRAINING_RULES.md) | #7737 | 2026-11-10 | OFF seed; owner 10/11: own activation card after Train now is proven alone. |
-| Train now straight away (`train-now-instant`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #7737 | 2026-11-09 | PR1+PR2 merged OFF (#7948, #7967); PR3 screen ships with the owner activation. |
+| Train now straight away (`train-now-instant`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #7737 | 2026-11-10 | Flag på beta i prod 10/11; state beta når roadmap-tekst er godkendt. |
 | Fatigue now counts today's earlier stages (`training-fatigue-now-7801`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #7801 | 2026-11-07 | Kontakt fatigue_now_7801 (ikke seedet = slukket); ejer tænder. |
 
 ## academy
