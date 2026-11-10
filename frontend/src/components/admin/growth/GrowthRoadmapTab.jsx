@@ -326,7 +326,7 @@ function RoadmapChartSection({ rows, votePayload, loading, busy, onMoveHorizon, 
 export default function GrowthRoadmapTab() {
   const { getAuth } = useAdminAuth();
   const [stats, setStats] = useState(null);
-  const [baseRows, setRows] = useState([]);
+  const [baseRows, setRows] = useState(/** @type {any[]} */ ([]));
   // #7789: kategorien og stemme-rækkerne til grafen. Begge er null/tomme, indtil
   // migrationen er applied; så viser grafen viewets tal uden filtre.
   const [categories, setCategories] = useState(/** @type {{ id: string, category: string | null }[]} */ ([]));
