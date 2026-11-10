@@ -575,11 +575,60 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   // ellers bestå igen (refusionen fjerner parkeringen), og sælger ville blive
   // krediteret, mens køberens træk springes over som dublet. Så går handlen i
   // stale-grenen i stedet: intet flyttes, ingen betaler.
+  const actorType = auditCtx?.actorType || FINANCE_ACTOR_TYPE.CRON;
+  const actorId = auditCtx?.actorId || null;
+  const transferSeasonId = await fetchActiveSeasonId(supabase);
+  const transferBuyerPayment = {
+    teamId: offer.buyer_team_id,
+    delta: -price,
+    payload: {
+      type: "transfer_out",
+      amount: -price,
+      description: `Købt ${rider.firstname} ${rider.lastname} via transfer`,
+      metadata: {
+        code: "tx.transferBuy",
+        params: { riderName: `${rider.firstname} ${rider.lastname}` },
+      },
+      season_id: transferSeasonId,
+      actor_type: actorType,
+      actor_id: actorId,
+      source_path: "transferExecution.executeTransferOffer.buyer",
+      reason_code: FINANCE_REASON.TRANSFER_PURCHASE,
+      related_entity_type: FINANCE_RELATED_ENTITY.TRANSFER,
+      related_entity_id: offer.id,
+      idempotency_key: `transfer_buyer:${offer.id}`,
+    },
+  };
+  const transferSellerPayment = {
+    teamId: offer.seller_team_id,
+    delta: price,
+    payload: {
+      type: "transfer_in",
+      amount: price,
+      description: `Solgt ${rider.firstname} ${rider.lastname} via transfer`,
+      metadata: {
+        code: "tx.transferSell",
+        params: { riderName: `${rider.firstname} ${rider.lastname}` },
+      },
+      season_id: transferSeasonId,
+      actor_type: actorType,
+      actor_id: actorId,
+      source_path: "transferExecution.executeTransferOffer.seller",
+      reason_code: FINANCE_REASON.TRANSFER_SALE,
+      related_entity_type: FINANCE_RELATED_ENTITY.TRANSFER,
+      related_entity_id: offer.id,
+      idempotency_key: `transfer_seller:${offer.id}`,
+    },
+  };
+
+  const riderRestore = squadRestoreImage(rider, graduatePatch);
   const priorSaleEscrow = await saleEscrowStatusForDeal(supabase, { dealType: "transfer", dealId: offer.id });
   const lockedClaim = priorSaleEscrow === "refunded" ? null : await claimTransferUnderTeamLock(supabase, {
     riderId: rider.id, sellerTeamId: offer.seller_team_id, buyerTeamId: offer.buyer_team_id,
     deferRegistration, now, acquirePatch: { ...transferContractPatch, ...graduatePatch },
-    activeSeasonNumber, maxRiders: buyerState.squad_limits.max, price,
+    activeSeasonNumber, maxRiders: buyerState.squad_limits.max, price, dealId: offer.id,
+    buyerPayload: transferBuyerPayment.payload, sellerPayload: transferSellerPayment.payload,
+    riderRestore: riderRestore ? { [rider.id]: riderRestore } : {},
   });
   if (lockedClaim?.boundary) return failure(409, undefined, "offer_at_auto_accept_price", { errorParams: lockedClaim.boundary.body.errorParams });
   if (lockedClaim?.issue) {
@@ -674,53 +723,12 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   // cron fra flushWindowPendingOffers). season_id sættes eksplicit fra activeSeason.
   // #19: idempotency_key + allowDuplicate så betalingen aldrig bogføres to gange,
   // uanset hvor mange gange recorden behandles.
-  const actorType = auditCtx?.actorType || FINANCE_ACTOR_TYPE.CRON;
-  const actorId = auditCtx?.actorId || null;
-  const transferSeasonId = await fetchActiveSeasonId(supabase);
-  // #6181: parkeret + sale_escrow_enabled → saelgers penge laases til holdskiftet.
-  const transferPayment = await saleEscrowPayment(supabase, { parked: deferRegistration, dealType: "transfer", dealId: offer.id, riderIds: [rider.id], targetTeamIds: [offer.buyer_team_id], priorEscrow: priorSaleEscrow, riderRestore: [squadRestoreImage(rider, graduatePatch)] });
-  await transferPayment.incrementBalanceWithAudit(supabase, {
-    teamId: offer.buyer_team_id,
-    delta: -price,
-    payload: {
-      type: "transfer_out",
-      amount: -price,
-      description: `Købt ${rider.firstname} ${rider.lastname} via transfer`,
-      metadata: {
-        code: "tx.transferBuy",
-        params: { riderName: `${rider.firstname} ${rider.lastname}` },
-      },
-      season_id: transferSeasonId,
-      actor_type: actorType,
-      actor_id: actorId,
-      source_path: "transferExecution.executeTransferOffer.buyer",
-      reason_code: FINANCE_REASON.TRANSFER_PURCHASE,
-      related_entity_type: FINANCE_RELATED_ENTITY.TRANSFER,
-      related_entity_id: offer.id,
-      idempotency_key: `transfer_buyer:${offer.id}`,
-    },
-  }, { allowDuplicate: true });
-  await transferPayment.incrementBalanceWithAudit(supabase, {
-    teamId: offer.seller_team_id,
-    delta: price,
-    payload: {
-      type: "transfer_in",
-      amount: price,
-      description: `Solgt ${rider.firstname} ${rider.lastname} via transfer`,
-      metadata: {
-        code: "tx.transferSell",
-        params: { riderName: `${rider.firstname} ${rider.lastname}` },
-      },
-      season_id: transferSeasonId,
-      actor_type: actorType,
-      actor_id: actorId,
-      source_path: "transferExecution.executeTransferOffer.seller",
-      reason_code: FINANCE_REASON.TRANSFER_SALE,
-      related_entity_type: FINANCE_RELATED_ENTITY.TRANSFER,
-      related_entity_id: offer.id,
-      idempotency_key: `transfer_seller:${offer.id}`,
-    },
-  }, { allowDuplicate: true });
+  // A7: the RPC explicitly reports payment; legacy/off still uses the original adapter.
+  if (!lockedClaim?.paymentHandled) {
+    const transferPayment = await saleEscrowPayment(supabase, { parked: deferRegistration, dealType: "transfer", dealId: offer.id, riderIds: [rider.id], targetTeamIds: [offer.buyer_team_id], priorEscrow: priorSaleEscrow, riderRestore: [riderRestore] });
+    await transferPayment.incrementBalanceWithAudit(supabase, transferBuyerPayment, { allowDuplicate: true });
+    await transferPayment.incrementBalanceWithAudit(supabase, transferSellerPayment, { allowDuplicate: true });
+  }
 
   await closeTransferListingsForRiders(supabase, [rider.id], "sold");
   await withdrawTransferOffersForRiders(supabase, [rider.id], offer.id);

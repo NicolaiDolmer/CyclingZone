@@ -620,7 +620,7 @@ function makeSupabase(db, { claimTransfer = null, claimSwap = null, beforeRiderU
           .map(auction => auction.rider_id);
         return Promise.resolve({ data: ids, error: null });
       }
-      if (name === "auto_accept_claim_transfer_at_price" && claimTransfer) {
+      if (name === "auto_accept_claim_transfer_paid" && claimTransfer) {
         return Promise.resolve({ data: claimTransfer(params), error: null });
       }
       if (name === "auto_accept_claim_swap" && claimSwap) {
@@ -721,6 +721,28 @@ test("#6181: claim refusing the buyer money under the team lock stops before own
   assert.equal(result.code, "buyer_insufficient_balance");
   assert.equal(db.riders.find(r => r.id === "rider-1").team_id, "seller");
   assert.equal(client._finance.length, 0);
+});
+
+test("A7: a paid claim sends canonical audit payloads and skips both later payment calls", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  db.app_config = [{ key: "auto_accept_enabled", value: "on" }];
+  db.transfer_offers.push({ id: "offer-1", rider_id: "rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
+    offer_amount: 200, status: "awaiting_confirmation", buyer_confirmed: false, seller_confirmed: true });
+  const client = makeSupabase(db, { claimTransfer: params => {
+    assert.equal(params.p_deal_id, "offer-1");
+    assert.equal(params.p_buyer_payload.amount, -200);
+    assert.equal(params.p_buyer_payload.idempotency_key, "transfer_buyer:offer-1");
+    assert.equal(params.p_seller_payload.amount, 200);
+    assert.equal(params.p_seller_payload.idempotency_key, "transfer_seller:offer-1");
+    assert.equal(params.p_buyer_payload.source_path, "transferExecution.executeTransferOffer.buyer");
+    assert.equal(params.p_seller_payload.source_path, "transferExecution.executeTransferOffer.seller");
+    Object.assign(db.riders.find(r => r.id === "rider-1"), { team_id: "buyer", pending_team_id: null });
+    return { status: "claimed", rider_id: "rider-1", payment_handled: true };
+  } });
+  const result = await confirmTransferOffer({ supabase: client, offerId: "offer-1", confirmingTeamId: "buyer",
+    now: new Date("2026-11-10T10:00:00Z") });
+  assert.equal(result.ok, true);
+  assert.equal(client._finance.length, 0, "JavaScript must not pay after the atomic RPC");
 });
 
 test("#2176: enabled claim preserves transfer wiring for inheritance, new contract, graduation and parking", async () => {

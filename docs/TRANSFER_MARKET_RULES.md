@@ -426,8 +426,14 @@ følge kontakten efter apply; den ændrer aldrig en eksisterende værdi. Aktiver
   Frigivelse (`auto_accept_release_rider`) og almindelig transfers ejerskabs-/parkeringsclaim
   (`auto_accept_claim_transfer`) gentjekker gulvet og muterer under de samme holdlåse som
   auto-accept-start. Transfer-claim gentjekker også køberplads og auktion på selve rytteren;
-  kontraktarv/gradueringspatch og efterfølgende betalingsflow bevares. Claim er ikke en
-  atomisk betalings-RPC: de eksisterende betalingstrin ligger fortsat bagefter.
+  kontraktarv/gradueringspatch bevares. Med pengelåsen tændt bruger kalderen
+  `auto_accept_claim_transfer_paid`: ejerskab/parkering og begge betalingsben
+  gennemføres i samme transaktion under holdlåsene (A7, #2176). Parkeret salg med
+  `sale_escrow_enabled` bruger den eksisterende escrow i samme transaktion, så
+  sælger først får pengene ved levering. Betalingsfejl ruller også ejerskabet tilbage.
+  De eksisterende audit-felter og finance-nøgler bevares. Kun RPC'ens eksplicitte
+  `payment_handled` springer den efterfølgende JS-betaling over. Slukket pengelås
+  bevarer det hidtidige claim og efterfølgende betalingsflow.
 - **Kontaktopslag:** bekræftet off/missing bevarer legacy-stien. Opslagsfejl kastes videre
   før mutation; de må ikke vælge den ulåste frigivelses-/transfersti. Hvert opslag er friskt.
   SQL-reglerne testes i PGlite; ægte samtidighed testes separat med otte PG17-forbindelser
@@ -612,8 +618,10 @@ Tændt:
 - **POST /auctions:** startbyderen skal have penge (worst case, også autobud uden
   føring) og plads, ikke kun en advarsel.
 - **Transfer-bekræftelse** tæller købers førende auktioner som pladser. Med auto-accept også tændt gentager
-  transfer-claimet købers disponible saldo under holdlåsen (`auto_accept_claim_transfer_at_price`),
-  så et samtidigt startbud og et direkte køb ikke begge kan bruge de samme penge.
+  transfer-claimet købers disponible saldo under holdlåsen og betaler, før låsen
+  slippes (`auto_accept_claim_transfer_paid`). Det gælder både direkte og parkeret
+  salg, med og uden escrow, så et samtidigt startbud og et direkte køb ikke begge
+  kan bruge de samme penge. Refunderede eller allerede betalte handler genoptages ikke.
 - **Fyring** (senior og akademi): frikøbsgebyret tjekkes mod disponibel saldo
   (`insufficient_available_balance`), som de andre faste køb.
 - **Forlængelse** (også med kun auto-accept tændt): et sent bud forlænger aldrig auktionen forbi
