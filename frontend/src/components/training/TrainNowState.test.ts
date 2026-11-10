@@ -161,6 +161,14 @@ test("instant (#7737): after the press the locked line is replaced, the press re
   );
 });
 
+test("instant (#7737): only racing riders, all trained their free fields, still gets the result line", () => {
+  const done = { ...instantRace, available: false, reason: "locked", locked: true };
+  assert.deepEqual(
+    trainNowNoteKeys(done, { settledRiderIds: [], afterRaceRiderIds: ["b"], settledGameDays: [15], instantRiderIds: ["b"] }, null),
+    ["trainNow.pressResultInstant", "trainNow.lockedInstant"],
+  );
+});
+
 test("instant (#7737): the result counts racing riders who trained their free fields, off counts as before", () => {
   const body = { settledRiderIds: ["a"], afterRaceRiderIds: ["b", "c", "d"], settledGameDays: [15], instantRiderIds: ["b", "c"] };
   assert.deepEqual(trainNowPressCounts(body, true), { trained: 3, waiting: 2 }, "a, b, c trained; b and c still race");

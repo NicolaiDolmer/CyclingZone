@@ -155,7 +155,7 @@ export function trainNowNoteKeys(
   }
   if (status.settled) return ["trainNow.settled"];
   if (status.locked) {
-    const counts = trainNowPressCounts(result);
+    const counts = trainNowPressCounts(result, status.instant);
     const lockedKey = status.instant ? "trainNow.lockedInstant" : "trainNow.locked";
     if (counts) {
       const resultKey = status.instant ? "trainNow.pressResultInstant" : counts.waiting > 0 ? "trainNow.pressResult" : "trainNow.pressResultAll";
