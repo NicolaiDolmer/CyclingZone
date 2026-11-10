@@ -545,6 +545,10 @@
     {
       "issue": 6165,
       "why": "Mindre kode for spilleren at hente, ejer-valg 9/11 ved kodegrænsen 1356 KB (#7911)"
+    },
+    {
+      "issue": 7984,
+      "why": "Merge-koe: beskyt stablede PR'er foer base-branch slettes (#7972), ejer-go 10/11 i Claude-session (cleanupList i samme PR)"
     }
   ],
   "brandList": [
