@@ -171,6 +171,18 @@ export function movePatches(planned: ScoreRow[], itemId: string, dir: -1 | 1) {
     .sort((x, y) => (x.item_id === itemId ? -1 : y.item_id === itemId ? 1 : 0));
 }
 
+// Optimistisk opdatering på stedet (#7971): læg ændringen oven på de rækker, der
+// allerede står på skærmen, så en række ikke skifter plads, mens skrivningen
+// kører. Kun de nævnte rækker får en ny værdi; resten er det samme objekt.
+export function patchRows<T extends ScoreRow>(rows: T[], patches: ({ item_id: string } & Partial<ScoreRow>)[]): T[] {
+  if (patches.length === 0) return rows;
+  const byId = new Map(patches.map((p) => [p.item_id, p]));
+  return rows.map((r) => {
+    const p = byId.get(r.item_id);
+    return p ? { ...r, ...p } : r;
+  });
+}
+
 export function mergeItemRows<T extends ScoreRow>(rows: T[], items: ItemFlagRow[]) {
   const byId = new Map(items.map((i) => [i.id, i]));
   return rows.map((r) => {
@@ -293,9 +305,18 @@ export function filterIssueRows<T extends IssueScoreRow>(rows: T[], f: RowFilter
 export type SortDir = "asc" | "desc";
 export interface SortState { key: string; dir: SortDir }
 
+// Samlet vurdering som i spørgeskemaet (prioritetsscoren): gennemsnitlig God idé
+// gange gennemsnitlig Vigtighed, på 1 decimal. Mangler den ene, er der ingen
+// samlet vurdering (null, som sorteres sidst og vises som tankestreg).
+export function totalScore(idea: Num, importance: Num): number | null {
+  const a = num(idea), b = num(importance);
+  if (a === null || b === null) return null;
+  return Math.round(a * b * 10) / 10;
+}
+
 // Standardsortering pr. fane: det samme som tabellerne havde før fanerne.
 export const DEFAULT_SORT: Record<AdminTab, SortState> = {
-  ideas: { key: "score", dir: "desc" },
+  ideas: { key: "total", dir: "desc" },
   planned: { key: "importance", dir: "desc" },
   in_progress: { key: "own", dir: "asc" },
   shipped: { key: "date", dir: "desc" },
@@ -320,6 +341,7 @@ const ACCESSORS: Record<string, Accessor> = {
   importance: numAcc("avg_importance"),
   idea: numAcc("avg_idea"),
   score: numAcc("steering_score"),
+  total: (r) => totalScore(r.avg_idea as Num, r.avg_importance as Num),
   own: numAcc("sort_order"),
   status: strAcc("status"),
   horizon: strAcc("horizon"),
@@ -529,11 +551,43 @@ function pointFromAcc(key: string, label: string, category: string, acc: Acc): C
   };
 }
 
-// Kategorien på grafen: admins egen, ellers punktets område.
-export function categoryOf(row: ScoreRow, areaLabel: (engine: string) => string): string {
-  const own = typeof row.category === "string" ? row.category.trim() : "";
-  if (own) return own;
-  return areaLabel(row.engine ?? "other");
+// De faste kategorier (#7971, ejer 10/11). Der gemmes den stabile nøgle i
+// roadmap_items.category (fritekst-kolonnen, 1-40 tegn); admin viser dansk navn.
+export const ROADMAP_CATEGORIES: { key: string; label: string }[] = [
+  { key: "race_film", label: "Løbsfilm & løbsside" },
+  { key: "race_engine", label: "Race engine" },
+  { key: "tactics", label: "Taktik" },
+  { key: "selection", label: "Holdudtagelse & planlægning" },
+  { key: "training", label: "Træning" },
+  { key: "development", label: "Udvikling" },
+  { key: "form", label: "Form, træthed & skader" },
+  { key: "academy", label: "Akademi & ungdom" },
+  { key: "scouting", label: "Scouting" },
+  { key: "market", label: "Transfermarked" },
+  { key: "club", label: "Klub & økonomi" },
+  { key: "rider_profile", label: "Rytterprofil & historik" },
+  { key: "calendar", label: "Kalender & mesterskaber" },
+  { key: "social", label: "Socialt & forum" },
+  { key: "messages", label: "Beskeder" },
+  { key: "onboarding", label: "Onboarding & hjælp" },
+  { key: "app", label: "App & navigation" },
+];
+export const NO_CATEGORY = "Ingen kategori";
+
+const CATEGORY_LABELS = new Map(ROADMAP_CATEGORIES.map((c) => [c.key, c.label]));
+
+export function isCategoryKey(value: unknown): value is string {
+  return typeof value === "string" && CATEGORY_LABELS.has(value);
+}
+
+// Gammel fritekst eller tom værdi = ingen kategori.
+export function categoryLabel(value: string | null | undefined): string {
+  return (isCategoryKey(value) ? CATEGORY_LABELS.get(value) : undefined) ?? NO_CATEGORY;
+}
+
+// Kategorien på grafen og i tabellerne: det faste navn, ellers "Ingen kategori".
+export function categoryOf(row: ScoreRow): string {
+  return categoryLabel(row.category);
 }
 
 export function mergeCategories<T extends ScoreRow>(
@@ -547,12 +601,12 @@ const titleOf = (r: ScoreRow) => r.title_da || r.title_en;
 
 // Ét punkt pr. række. Med stemme-rækker regnes snittene på de filtrerede
 // stemmer; uden dem bruges viewets tal (ufiltreret).
-export function itemPoints(rows: ScoreRow[], votes: VoteTuple[] | null, areaLabel: (engine: string) => string): ChartPoint[] {
+export function itemPoints(rows: ScoreRow[], votes: VoteTuple[] | null): ChartPoint[] {
   if (!votes) {
     return rows.map((r) => {
       const sd = num(r.sd_importance);
       return {
-        key: r.item_id, label: titleOf(r), category: categoryOf(r, areaLabel), item: r,
+        key: r.item_id, label: titleOf(r), category: categoryOf(r), item: r,
         x: num(r.avg_idea), y: num(r.avg_importance),
         voters: num(r.votes) ?? 0, dontKnow: num(r.dont_know) ?? 0, sd, split: isSplit(sd),
       };
@@ -565,7 +619,7 @@ export function itemPoints(rows: ScoreRow[], votes: VoteTuple[] | null, areaLabe
     accs.set(v[0], acc);
   }
   return rows.map((r) => ({
-    ...pointFromAcc(r.item_id, titleOf(r), categoryOf(r, areaLabel), accs.get(r.item_id) ?? newAcc()),
+    ...pointFromAcc(r.item_id, titleOf(r), categoryOf(r), accs.get(r.item_id) ?? newAcc()),
     item: r,
   }));
 }
@@ -574,16 +628,16 @@ export function itemPoints(rows: ScoreRow[], votes: VoteTuple[] | null, areaLabe
 // stemmer vejer mere end et med få), og stemmere tælles én gang pr. kategori.
 // Uden stemme-rækker vægtes viewets snit med punktets antal stemmer, og
 // stemmerne lægges sammen (samme manager kan da tælle flere gange).
-export function categoryPoints(rows: ScoreRow[], votes: VoteTuple[] | null, areaLabel: (engine: string) => string): ChartPoint[] {
+export function categoryPoints(rows: ScoreRow[], votes: VoteTuple[] | null): ChartPoint[] {
   const cats = new Map<string, { rows: ScoreRow[]; acc: Acc }>();
   for (const r of rows) {
-    const c = categoryOf(r, areaLabel);
+    const c = categoryOf(r);
     const entry = cats.get(c) ?? { rows: [], acc: newAcc() };
     entry.rows.push(r);
     cats.set(c, entry);
   }
   if (votes) {
-    const catByItem = new Map(rows.map((r) => [r.item_id, categoryOf(r, areaLabel)]));
+    const catByItem = new Map(rows.map((r) => [r.item_id, categoryOf(r)]));
     for (const v of votes) {
       const c = catByItem.get(v[0]);
       if (c !== undefined) addVote(cats.get(c)!.acc, v);

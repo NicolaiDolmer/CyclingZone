@@ -857,8 +857,8 @@
     "TS18046": 2,
     "TS18047": 1,
     "TS2322": 7,
-    "TS2339": 13,
-    "TS2345": 4
+    "TS2339": 12,
+    "TS2345": 3
   },
   "src/components/admin/growth/RoadmapAdminForms.jsx": {
     "TS2339": 1,
