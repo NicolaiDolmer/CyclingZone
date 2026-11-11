@@ -105,5 +105,6 @@ test('axe ratchet removes a repaired real DOM finding and rejects recurrence', a
   const reduced = reduceBaseline(seed, reports);
   expect(compareFindings(seed.cases[key], reduced.cases[key]).removed.length).toBeGreaterThan(0);
   expect(compareFindings(reduced.cases[key], fingerprints(before.violations)).added.length).toBeGreaterThan(0);
+  writeFileSync(testInfo.outputPath('axe-ratchet-proof.json'), JSON.stringify({ project: testInfo.project.name, revision, runId, inputHash, before: seed.cases[key], after: reduced.cases[key] }, null, 2));
   await testInfo.attach('axe-ratchet-proof', { body: JSON.stringify({ before: seed.cases[key], after: reduced.cases[key] }), contentType: 'application/json' });
 });

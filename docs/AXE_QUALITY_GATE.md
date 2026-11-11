@@ -13,15 +13,17 @@ Initial 11/11 measurement (axe 4.14.0, unchanged product base 76006e998): 229 ru
 ## Normal workflow
 
 1. Run all axe cases against the E2E build, through `scripts/verify-lock.ps1 -Max 2`: from frontend, `npx playwright test tests/e2e/axe-quality.spec.ts --retries=0`. Normal tests never update the committed baseline.
-2. New findings fail and must be fixed. If only debt was repaired, run `node scripts/update-axe-baseline.mjs` from the root. It requires one fresh report for every case from the same run, rejects duplicates/missing cases, stale revisions/builds/gate inputs, version changes and all new findings, then writes only the reduced baseline. Reports carry a shared run identifier plus a SHA-256 fingerprint of the compiled application and gate inputs; uncommitted changes at the same HEAD cannot masquerade as fresh measurements.
+2. New findings fail and must be fixed. If only debt was repaired, run `node scripts/update-axe-baseline.mjs` from the root. It requires one fresh report for every case from the same run, rejects duplicates/missing cases, stale revisions/builds/gate inputs, version changes and all new findings, then writes only the reduced baseline. Reports carry a shared run identifier plus a SHA-256 fingerprint of the compiled application, frontend source, shared fixtures and gate inputs; uncommitted changes at the same HEAD cannot masquerade as fresh measurements.
 3. Review and commit that generated diff. Rerun the affected cases. CI runs the same test through the existing required `frontend-smoke` collector, and script-only changes trigger it too. Its immutable base SHA is fetched explicitly with failure propagation.
 
 First bootstrap only: local `AXE_CAPTURE=1` produces scan artifacts; `node scripts/update-axe-baseline.mjs --initialize` creates a previously absent baseline. Both refuse bootstrap in GitHub Actions, and initialization cannot overwrite existing debt. Ordinary CI cannot use this escape hatch.
 
-Reports are test attachments and `testInfo.outputPath('axe-scan.json')`, under ignored test results by default. Collect all shard artifacts before using a combined reports directory (`--reports=<directory>`); a partial shard cannot reduce debt. No automatic bot commits or write credentials are needed: generation is automatic, the resulting diff must enter the reviewed PR.
+Reports are test attachments and `testInfo.outputPath('axe-scan.json')`, under ignored test results by default. CI retains scan/proof JSON as `axe-scans-<lane>` artifacts on both success and failure. Collect all shard artifacts before using a combined reports directory (`--reports=<directory>`); a partial shard cannot reduce debt. No automatic bot commits or write credentials are needed: generation is automatic, the resulting diff must enter the reviewed PR.
 
 ## Proof
 
 Pure tests cover new rules/targets/counts, complete-matrix reduction, malformed/missing reports and no-growth. A real browser fixture scans an unnamed button, repairs its accessible name, automatically reduces the synthetic baseline, and proves the original finding is then rejected. This runs in each of the three browser projects, independently of the application's existing debt. Initial capture and normal gate each passed 27/27 on 11/11; later verification is recorded in the PR.
 
 Sources: [Playwright accessibility testing](https://playwright.dev/docs/accessibility-testing), [axe API](https://github.com/dequelabs/axe-core/blob/develop/doc/API.md). Axe supplements manual checks; a clean automated result does not establish that information never relies on color alone.
+
+Final local verification: 2,053 full browser tests passed, 191 skipped, zero failures (no retries); final axe-only run 27/27 and pure unit tests 7/7. Raw scan fingerprints and real-DOM reduction proofs are committed in [7993-axe-verification.json](metrics/7993-axe-verification.json). The updater accepted all 24 fresh reports and left the 229-occurrence baseline unchanged.
