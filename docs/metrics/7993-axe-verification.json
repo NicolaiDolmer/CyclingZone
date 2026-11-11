@@ -20,9 +20,9 @@
   "scans": [
     {
       "key": "desktop-chromium/calendar",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"color-contrast\",[\".gap-1\\\\.5.inline-flex.items-center > .text-cz-sidebar-3.text-3xs\"]]": 1,
@@ -43,9 +43,9 @@
     },
     {
       "key": "mobile-chromium/calendar",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"color-contrast\",[\"a[href=\\\"/races/cal-2?stage=1\\\"] > .text-cz-accent-t.mt-0\\\\.5.break-words\"]]": 1,
@@ -56,9 +56,9 @@
     },
     {
       "key": "mobile-webkit/calendar",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"color-contrast\",[\"a[href=\\\"/races/cal-2?stage=1\\\"] > .text-cz-accent-t.mt-0\\\\.5.break-words\"]]": 1,
@@ -69,9 +69,9 @@
     },
     {
       "key": "desktop-chromium/dashboard",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"color-contrast\",[\".bg-cz-accent\\\\/8 > .w-4.text-right.font-mono\"]]": 1,
@@ -110,9 +110,9 @@
     },
     {
       "key": "mobile-chromium/dashboard",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"color-contrast\",[\".bg-cz-accent\\\\/8 > .w-4.text-right.font-mono\"]]": 1,
@@ -141,9 +141,9 @@
     },
     {
       "key": "mobile-webkit/dashboard",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"color-contrast\",[\".bg-cz-accent\\\\/8 > .w-4.text-right.font-mono\"]]": 1,
@@ -172,9 +172,9 @@
     },
     {
       "key": "desktop-chromium/market",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"color-contrast\",[\".bg-cz-accent\\\\/10 > .text-3xs:nth-child(1)\"]]": 1,
@@ -195,9 +195,9 @@
     },
     {
       "key": "mobile-chromium/market",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"heading-order\",[\"h3\"]]": 1,
@@ -206,9 +206,9 @@
     },
     {
       "key": "mobile-webkit/market",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"heading-order\",[\"h3\"]]": 1,
@@ -217,9 +217,9 @@
     },
     {
       "key": "desktop-chromium/race",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"color-contrast\",[\".gap-1\\\\.5.inline-flex.items-center > .text-cz-sidebar-3.text-3xs\"]]": 1,
@@ -239,9 +239,9 @@
     },
     {
       "key": "mobile-chromium/race",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"label-content-name-mismatch\",[\".border-cz-1\"]]": 1,
@@ -252,9 +252,9 @@
     },
     {
       "key": "mobile-webkit/race",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"label-content-name-mismatch\",[\".border-cz-1\"]]": 1,
@@ -265,9 +265,9 @@
     },
     {
       "key": "desktop-chromium/rider",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"color-contrast\",[\".-my-1\"]]": 1,
@@ -287,9 +287,9 @@
     },
     {
       "key": "mobile-chromium/rider",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"color-contrast\",[\".-my-1\"]]": 1,
@@ -299,9 +299,9 @@
     },
     {
       "key": "mobile-webkit/rider",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"color-contrast\",[\".-my-1\"]]": 1,
@@ -311,9 +311,9 @@
     },
     {
       "key": "desktop-chromium/riders",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"color-contrast\",[\".border-b.border-cz-sidebar-border.py-3 > .mt-0\\\\.5\"]]": 1,
@@ -336,9 +336,9 @@
     },
     {
       "key": "mobile-chromium/riders",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"color-contrast\",[\".text-cz-accent-t\\\\/80\"]]": 1,
@@ -350,9 +350,9 @@
     },
     {
       "key": "mobile-webkit/riders",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"color-contrast\",[\".text-cz-accent-t\\\\/80\"]]": 1,
@@ -364,9 +364,9 @@
     },
     {
       "key": "desktop-chromium/tactics",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"color-contrast\",[\".bg-cz-accent\\\\/10.disabled\\\\:opacity-60.border-s\"]]": 1,
@@ -391,9 +391,9 @@
     },
     {
       "key": "mobile-chromium/tactics",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"color-contrast\",[\".bg-cz-accent\\\\/10.disabled\\\\:opacity-60.border-s\"]]": 1,
@@ -409,9 +409,9 @@
     },
     {
       "key": "mobile-webkit/tactics",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"color-contrast\",[\".bg-cz-accent\\\\/10.disabled\\\\:opacity-60.border-s\"]]": 1,
@@ -427,9 +427,9 @@
     },
     {
       "key": "desktop-chromium/training",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {
         "[\"color-contrast\",[\".gap-1\\\\.5.inline-flex.items-center > .text-cz-sidebar-3.text-3xs\"]]": 1,
@@ -447,17 +447,17 @@
     },
     {
       "key": "mobile-chromium/training",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {}
     },
     {
       "key": "mobile-webkit/training",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "engineVersion": "4.14.0",
       "findings": {}
     }
@@ -465,9 +465,9 @@
   "ratchetProofs": [
     {
       "project": "desktop-chromium",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "before": {
         "[\"button-name\",[\"#save\"]]": 1
       },
@@ -475,9 +475,9 @@
     },
     {
       "project": "mobile-chromium",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "before": {
         "[\"button-name\",[\"#save\"]]": 1
       },
@@ -485,13 +485,20 @@
     },
     {
       "project": "mobile-webkit",
-      "revision": "e2d9de9866dbcd249468b24c19031ecafa26682a",
-      "runId": "60f9e8d2-c7ac-4aa1-8346-f5e81d2ff7fd",
-      "inputHash": "8ce90c0abb545bcb77589e6455a68b3b57c5c2a437433e398d53089208d6f0e8",
+      "revision": "14717e5ffc239b8061ab89326925b9d17876e2c9",
+      "runId": "7b8b4943-1cb1-4432-8770-b64f27f80f07",
+      "inputHash": "3ebe4be0c17a4bb420ed74f4b23ec869bb99aa3f1938828ef78f9769f1b7b387",
       "before": {
         "[\"button-name\",[\"#save\"]]": 1
       },
       "after": {}
     }
-  ]
+  ],
+  "freshCheckoutDiscovery": {
+    "afterTests": 27,
+    "method": "Temporarily moved only own dist directory out of the build path; ran Playwright --list; restored in finally.",
+    "beforeExit": 1,
+    "afterExit": 0,
+    "beforeTests": 0
+  }
 }

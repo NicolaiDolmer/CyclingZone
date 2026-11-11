@@ -27,3 +27,5 @@ Pure tests cover new rules/targets/counts, complete-matrix reduction, malformed/
 Sources: [Playwright accessibility testing](https://playwright.dev/docs/accessibility-testing), [axe API](https://github.com/dequelabs/axe-core/blob/develop/doc/API.md). Axe supplements manual checks; a clean automated result does not establish that information never relies on color alone.
 
 Final local verification: 2,053 full browser tests passed, 191 skipped, zero failures (no retries); final axe-only run 27/27 and pure unit tests 7/7. Raw scan fingerprints and real-DOM reduction proofs are committed in [7993-axe-verification.json](metrics/7993-axe-verification.json). The updater accepted all 24 fresh reports and left the 229-occurrence baseline unchanged.
+
+Fresh-checkout regression check: without dist, Playwright test discovery initially failed before its automatic build could start. Fingerprinting now runs in beforeAll after webServer setup. The same no-dist discovery lists all 27 tests, and all 27 browser checks pass. The file-level hook also initializes replacement workers.

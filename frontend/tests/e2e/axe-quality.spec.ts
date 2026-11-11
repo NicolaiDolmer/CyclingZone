@@ -10,7 +10,9 @@ import { axeInputHash } from '../../../scripts/lib/axe-inputs.mjs';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
-const inputHash = axeInputHash(root);
+let inputHash: string;
+// Collection also runs before the local webServer has produced dist.
+test.beforeAll(() => { inputHash = axeInputHash(root); });
 const runId = process.env.AXE_RUN_ID;
 const capture = process.env.AXE_CAPTURE === '1';
 if (capture && process.env.GITHUB_ACTIONS === 'true') throw Error('AXE_CAPTURE cannot bypass CI');
