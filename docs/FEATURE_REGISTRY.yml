@@ -478,12 +478,13 @@ features:
     area: squad
     title_en: Rider card
     title_da: Rytterkort
-    state: building
-    decision: ejer-beslutning
-    decide_by: 2026-11-14
+    state: live
+    flag: rider_hover_card
     epic: 2000
-    verified: 2026-11-07
-    note: "Kontakt rider_hover_card."
+    verified: 2026-11-11
+    note: "Kontakt rider_hover_card on for alle siden 8/11 (laest i prod 11/11); patch note 7.429."
+    roadmap_en: "Rider card: the small icon next to every rider name opens his card with abilities, value, contract and how he is doing in the race."
+    roadmap_da: "Rytterkort: det lille ikon ved hvert rytternavn åbner rytterens kort med evner, værdi, kontrakt og hvordan han klarer sig i løbet."
 
   - id: race-library-v2
     area: stats

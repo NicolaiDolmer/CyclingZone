@@ -1,5 +1,46 @@
 export const PATCHES = [
   {
+    "version": "7.429",
+    "date": "2026-11-11",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "beta_to_live",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider card is now for everyone",
+          "body": "The small icon next to every rider name now opens his card for everyone: abilities, value, contract and how he is doing in the race."
+        },
+        "da": {
+          "title": "Rytterkortet er nu for alle",
+          "body": "Det lille ikon ved hvert rytternavn åbner nu rytterens kort for alle: evner, værdi, kontrakt og hvordan han klarer sig i løbet."
+        },
+        "refs": [
+          2009,
+          7858
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "An attack no longer counts as the bunch being dropped",
+          "body": "When a rider attacked a few seconds ahead, the stage plan could mark the whole bunch behind him as dropped. Now only a real split counts, and the summary matches the race film."
+        },
+        "da": {
+          "title": "Et angreb tæller ikke længere som at feltet er sat",
+          "body": "Når en rytter angreb få sekunder foran, kunne etapeplanen markere hele feltet bag ham som sat. Nu tæller kun en rigtig opdeling, og resuméet passer med løbsfilmen."
+        },
+        "refs": [
+          7635
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.428",
     "date": "2026-11-10",
     "changes": [
