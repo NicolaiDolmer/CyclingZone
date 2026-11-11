@@ -1,0 +1,7 @@
+# #2230: placeholder geometry and conditional presence
+
+An exploratory 11 November browser run exposed the TodayStages placeholder collapsing after its response produced no visible cards. The generic calendar fixture ignored `scheduled_at` filters, so its CLS values are not the final comparison. Protocol 2 explicitly models a real empty day and a day with a stage, plus delayed five-row results, against an isolated baseline build. Short three-line skeletons do not reserve the height of the bounded lists replacing them. A shimmer removal alone does not fix that problem.
+
+Use a shared reserved body that retains bounded row capacity once a placeholder was visible; already-ready cards need no speculative whitespace. Keep card chrome mounted and split independent reads from the page barrier. Resolve every response branch, including throttled requests, so loading cannot persist forever. Conditional presence is distinct from content readiness: the initial presence wait for the stage strip and selection CTA is bounded to 500 ms after core readiness and permanently releases the page. An unusually late empty/error response can still collapse the conditional strip; do not promise zero CLS for that case. Keep known content during refresh and reject stale responses.
+
+Evidence: `pr-screens/2230/*-measurements.json`, `scripts/measure-loading-cls.mjs`, `frontend/tests/e2e/dashboard-stable-loading.spec.ts`. These are LAB measurements, not production field percentiles. Clarity follows players after release; Search Console provides delayed grouped field data.

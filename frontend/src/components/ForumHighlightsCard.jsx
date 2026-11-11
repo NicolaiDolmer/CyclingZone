@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, SectionAction, EmptyState, InboxIcon } from "./ui";
 import { formatRelativeTime } from "../lib/intl";
 import useForumHighlights from "../hooks/useForumHighlights.js";
+import ReservedBody from "./ui/ReservedBody.tsx";
 
 // Forum-synlighed (#3199, variant B — design låst, ejer-godkendt mockup):
 // dashboardets "From the forum"-kort. ALMINDELIGT Card (ikke en nudge-banner,
@@ -34,12 +35,8 @@ export default function ForumHighlightsCard() {
           </SectionAction>
         }
       />
-      {status === "loading" ? (
-        <div className="animate-pulse space-y-2" aria-hidden="true">
-          <div className="h-4 w-3/4 rounded-cz bg-cz-subtle" />
-          <div className="h-4 w-2/3 rounded-cz bg-cz-subtle" />
-        </div>
-      ) : threads.length === 0 ? (
+      <ReservedBody name="forum" loading={status === "loading"} rows={2} rowHeight={72}>
+      {threads.length === 0 ? (
         <EmptyState
           icon={<InboxIcon size={22} aria-hidden="true" />}
           title={t("dashboard:forumHighlights.emptyTitle")}
@@ -86,6 +83,7 @@ export default function ForumHighlightsCard() {
           ))}
         </ul>
       )}
+      </ReservedBody>
     </Section>
   );
 }

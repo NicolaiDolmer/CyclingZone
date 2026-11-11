@@ -99,7 +99,7 @@ export default function RaceSignature() {
         </svg>
 
         {/* Profil-metadata */}
-        <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 border-t border-cz-border pt-3">
+        <dl className="mt-3 grid min-h-[45px] grid-cols-2 gap-x-6 gap-y-1 border-t border-cz-border pt-3">
           <div className="flex items-center justify-between">
             <dt className="text-2xs uppercase tracking-wider text-cz-3">{t("signature.distanceLabel")}</dt>
             <dd className="font-data text-xs font-semibold text-cz-1">{t("signature.distanceValue")}</dd>
