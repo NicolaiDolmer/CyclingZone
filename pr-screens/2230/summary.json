@@ -1,0 +1,66 @@
+[
+  {
+    "scenario": "landing",
+    "profile": "desktop",
+    "beforeCLS": 0.05429335006078084,
+    "afterCLS": 0.0009560914781358506,
+    "beforeLCP": 172,
+    "afterLCP": 148
+  },
+  {
+    "scenario": "landing",
+    "profile": "mobile",
+    "beforeCLS": 0.038686835112629166,
+    "afterCLS": 0.0021931099392670235,
+    "beforeLCP": 100,
+    "afterLCP": 144
+  },
+  {
+    "scenario": "dashboard-empty",
+    "profile": "desktop",
+    "beforeCLS": 0.20738396271599663,
+    "afterCLS": 0.06344876810709636,
+    "beforeLCP": 1472,
+    "afterLCP": 1912
+  },
+  {
+    "scenario": "dashboard-empty",
+    "profile": "mobile",
+    "beforeCLS": 0.05390471431722415,
+    "afterCLS": 0,
+    "beforeLCP": 1456,
+    "afterLCP": 1884
+  },
+  {
+    "scenario": "dashboard-race",
+    "profile": "desktop",
+    "beforeCLS": 0.08850512759950425,
+    "afterCLS": 0.04126615091959636,
+    "beforeLCP": 1472,
+    "afterLCP": 536
+  },
+  {
+    "scenario": "dashboard-race",
+    "profile": "mobile",
+    "beforeCLS": 0.002434025816110411,
+    "afterCLS": 0,
+    "beforeLCP": 2060,
+    "afterLCP": 2148
+  },
+  {
+    "scenario": "dashboard-results",
+    "profile": "desktop",
+    "beforeCLS": 0.04236974830627441,
+    "afterCLS": 0.04126615091959636,
+    "beforeLCP": 1460,
+    "afterLCP": 1936
+  },
+  {
+    "scenario": "dashboard-results",
+    "profile": "mobile",
+    "beforeCLS": 0.2932783118017358,
+    "afterCLS": 0,
+    "beforeLCP": 1492,
+    "afterLCP": 1844
+  }
+]
