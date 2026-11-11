@@ -307,6 +307,10 @@
   ],
   "cleanupList": [
     {
+      "issue": 8001,
+      "why": "Intern Discord-formatter: bevar eksisterende patchnote-tekst ved indlejret spoergsmaalstegn; ejer-go 11/11 i Codex-koeen, plan paa #8001 kommentar 6798588808"
+    },
+    {
       "issue": 7833,
       "why": "Intern betalingsvagt: falsk alarm ved opsagt uden periodeslut, ejer-go 7/11 i Codex' prioriterede ops-mandat"
     },

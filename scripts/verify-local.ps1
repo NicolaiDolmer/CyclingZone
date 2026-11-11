@@ -48,7 +48,11 @@ if ($normalizedResolvedRoot -ne $repoRoot) {
   throw "Scriptet kores ikke fra den forventede repo-root. Forventet: $repoRoot. Git siger: $resolvedRoot."
 }
 
-# Pure read-only staging precheck tests require no dependencies or credentials.
+# Pure ops regressions require no dependencies or credentials.
+& $nodePath --test (Join-Path $repoRoot "scripts/patch-notes-discord.test.mjs")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# Read-only staging prechecks also run before dependency-backed suites.
 & $nodePath --test (Join-Path $repoRoot "scripts/loadtest/check-staging-prerequisites.test.mjs")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
