@@ -1,5 +1,5 @@
-export default function Skeleton({ className = "h-4 w-full", rounded = "rounded-cz" }) {
-  return <span aria-hidden="true" className={`block cz-skeleton ${rounded} ${className}`} />;
+export default function Skeleton({ className = "h-4 w-full", rounded = "rounded-cz", staticMotion = false }) {
+  return <span aria-hidden="true" className={`block ${staticMotion ? "cz-skeleton-static" : "cz-skeleton"} ${rounded} ${className}`} />;
 }
 
 // #2849 bølge 0 — kanonisk card-loading (states-sheet): 12px-høje linjer, 12px gap,

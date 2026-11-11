@@ -1,3 +1,4 @@
+import { authLandingPlugin } from "./vite-plugins/auth-landing.ts";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -145,6 +146,7 @@ export default defineConfig({
     __CZ_SKEW_BUILD_TIME__: JSON.stringify(skewBuildTime),
   },
   plugins: [
+    authLandingPlugin(),
     react(),
     // #6271: Tailwind 4 via its Vite plugin (replaces the PostCSS plugin +
     // autoprefixer + postcss.config.js). Config lives in src/index.css @theme.

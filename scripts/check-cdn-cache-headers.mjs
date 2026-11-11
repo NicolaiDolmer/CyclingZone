@@ -12,17 +12,8 @@
 // LEVENDE headers efter deploy, ikke konfigurationen — en regel i vercel.json der ikke
 // matcher (forkert glob, ændret output-mappe) ser korrekt ud i review men virker ikke.
 //
-// #5251/#5239 — anonym '/' viser nu marketing-sitet, ikke SPA'en:
-// frontend/middleware.ts (#4067) proxy'er anonyme besøg på '/' videre til
-// cycling-zone-marketing.vercel.app, når klienten ikke sender markør-cookien
-// `cz_session=1` (sat af frontend/src/lib/sessionCookie.ts ved login). Marketing-HTML'en
-// har ingen '/assets/*.js|css'-referencer, så et anonymt GET '/' kan ikke længere bruges
-// til at finde et hashet build-asset at teste immutable-cache på. Derfor sender vi
-// `cookie: cz_session=1` med når vi henter HTML'en for at finde et asset — det får
-// middleware.ts til at lade requesten passere igennem til appens egen index.html/app.html,
-// præcis som en logget-ind spiller. SPA-entry-tjekket på '/' forbliver et ÆGTE anonymt
-// kald (uden cookie), fordi det skal måle det marketing-svaret (eller SPA-fallbacket)
-// som en rigtig anonym besøgende rent faktisk får.
+// #5250: app-shell probes use /dashboard without synthetic session cookies.
+// Anonymous / is measured independently to cover marketing cache behavior.
 //
 // Kør: node scripts/check-cdn-cache-headers.mjs [origin]
 //   origin default https://cyclingzone.org
@@ -72,7 +63,7 @@ async function head(path, extraHeaders = {}) {
 }
 
 // Find en rigtig hashet asset-URL i den serverede HTML i stedet for at hardcode et filnavn
-// (hashen skifter ved hvert build). Hentes MED cz_session-cookien (#5251) så vi altid får
+// (hashen skifter ved hvert build). Hentes fra /dashboard så vi altid får
 // appens egen SPA-HTML, uanset om '/' for anonyme lige nu proxy'er marketing-sitet ind.
 async function pickHashedAsset(fetchHtml) {
   return extractHashedAssetPath(await fetchHtml());
@@ -174,14 +165,12 @@ async function main() {
     evaluateRuleResult(rule, path, headResult, failures, lines);
   }
 
-  // Omvendt krav: SPA-entry må IKKE cache længe. Sendes MED cz_session-cookien (#5251)
-  // så vi rent faktisk måler appens egen index.html/app.html og ikke — siden #4067/#5239 —
-  // marketing-originens svar, som middleware.ts nu proxy'er ind for anonyme på '/'.
+  // App HTML must revalidate; anonymous marketing is checked separately below.
   {
-    const { status, cc } = await head("/", appShellHeaders());
+    const { status, cc } = await head("/dashboard", appShellHeaders());
     const maxAge = parseMaxAge(cc);
     if (status === 200 && maxAge !== null && maxAge > ENTRY_MAX_MAX_AGE) {
-      failures.push(`SPA-entry (/): max-age=${maxAge} > ${ENTRY_MAX_MAX_AGE} — nye deploys når ikke ud til brugerne`);
+      failures.push(`SPA-entry (/dashboard): max-age=${maxAge} > ${ENTRY_MAX_MAX_AGE} — nye deploys når ikke ud til brugerne`);
       lines.push(`  ✗ ${"SPA-entry".padEnd(20)} ${cc}`);
     } else {
       lines.push(`  ✓ ${"SPA-entry".padEnd(20)} ${cc}`);

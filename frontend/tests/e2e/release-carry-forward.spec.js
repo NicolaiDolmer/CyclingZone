@@ -63,7 +63,7 @@ async function frontendId(request, origin) {
 test.describe("release carry-forward A -> B (#5162, manuel)", () => {
   test.skip(!A_URL || !B_URL, "Manuel proeve: saet CZ_CARRY_FORWARD_A_URL og CZ_CARRY_FORWARD_B_URL (to rigtige deploys).");
 
-  test("en fane fra A henter en ny route-chunk fra B uden reload", async ({ page, context, request }) => {
+  test("en fane fra A henter en ny route-chunk fra B uden reload", async ({ page, request }) => {
     const a = new URL(A_URL);
     const b = new URL(B_URL);
     const bOrigin = b.origin;
@@ -75,8 +75,7 @@ test.describe("release carry-forward A -> B (#5162, manuel)", () => {
       expect(idA, "A og B har samme frontend-id: deler alle chunks, saa proeven beviser intet om carry-forward").not.toBe(idB);
     }
 
-    // Markoer-cookien (#4067) saa "/" aldrig proxy'es til marketing-sitet.
-    await context.addCookies([{ name: "cz_session", value: "1", url: a.origin }]);
+    // Use the public app entry (/login by default), without synthetic auth cookies.
 
     const pageErrors = [];
     // e2e-error-collector-exempt: uncaught fejl fanges af e2e-base.js' auto-fixture.

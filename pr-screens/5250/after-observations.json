@@ -1,0 +1,22 @@
+[
+  {
+    "stage": "after",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "pathname": "/dashboard",
+    "observed": "[data-auth-loading=\"static\"]",
+    "auth": "refresh held pending; deterministic fixture, no production account"
+  },
+  {
+    "stage": "after",
+    "viewport": {
+      "width": 393,
+      "height": 852
+    },
+    "pathname": "/dashboard",
+    "observed": "[data-auth-loading=\"static\"]",
+    "auth": "refresh held pending; deterministic fixture, no production account"
+  }
+]

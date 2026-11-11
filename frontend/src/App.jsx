@@ -20,7 +20,7 @@ import { logSessionStart } from "./lib/logEvent";
 import { setSentryUser, clearSentryUser, AnalyticsBoundary } from "./lib/sentry.jsx";
 import { sharedRequestCache } from "./lib/sharedRequestCache.js";
 import { safeNextPath } from "./lib/safeNextPath.js";
-import { setSessionCookie, clearSessionCookie } from "./lib/sessionCookie.js";
+import AuthLoading from "./components/ui/AuthLoading.tsx";
 
 // Layout + analytics integrations lazy-loaded for #479: public routes
 // (/founder-supporter, /login, /privacy-*) ikke betaler for app-shell + Clarity/Vercel
@@ -149,27 +149,19 @@ function PlannerLegacyRedirect() {
 }
 
 function LoadingScreen() {
-  return (
-    <div className="min-h-screen bg-cz-body flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-cz-accent border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  return <AuthLoading fullPage />;
 }
 
 function RouteFallback() {
-  return (
-    <div className="min-h-[50vh] flex items-center justify-center">
-      <div className="w-7 h-7 border-2 border-cz-accent border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  return <AuthLoading />;
 }
 
 function ProtectedRoute({ children, session }) {
   const location = useLocation();
   // #1347: session === undefined = endnu ukendt (getSession kører). Vis loader frem
   // for straks at redirecte, så en allerede indlogget bruger ikke blinker forbi login.
-  // Var tidligere en GLOBAL gate i App; flyttet hertil så de offentlige ruter
-  // (landing/login) kan males straks — forudsætning for ren prerender-hydration på "/".
+  // Root/login har også en ukendt-auth-gate; anonym root-hydration får først
+  // en afklaret initialSession fra main.jsx (#5250).
   if (session === undefined) return <LoadingScreen />;
   if (!session) {
     // #2042: bevar deep-link-destinationen så cold trafik der opretter en konto
@@ -184,14 +176,16 @@ function ProtectedRoute({ children, session }) {
 // oprettet konto / logget ind) sendes til sin oprindelige ?next-destination.
 function LoginRoute({ session }) {
   const [params] = useSearchParams();
+  if (session === undefined) return <LoadingScreen />;
   if (session) {
     return <Navigate to={safeNextPath(params.get("next")) || "/dashboard"} replace />;
   }
   return <LoginPage />;
 }
 
-export default function App() {
-  const [session, setSession] = useState(undefined);
+/** @param {{ initialSession?: import("@supabase/supabase-js").Session | null }} props */
+export default function App({ initialSession = undefined }) {
+  const [session, setSession] = useState(initialSession);
   // Client-only mount-flag: holder lazy/analytics-Suspense ude af prerenderens
   // server-render (renderToString kan ikke fuldføre en lazy boundary → React #419).
   const [mounted, setMounted] = useState(false);
@@ -228,12 +222,6 @@ export default function App() {
         // "Affected users"-counter virker. Initial session-restore-path.
         setSentryUser(session.user?.id);
         logSessionStart();
-        // #4067 — forny markør-cookien ved hvert vellykket session-restore, så
-        // Vercel-rewriten på "/" ikke sender en aktiv spiller til marketing
-        // efter en periode uden besøg.
-        setSessionCookie();
-      } else {
-        clearSessionCookie();
       }
     }).catch((err) => {
       // #1347 — getSession() kan reject ved offline/network-fejl eller en
@@ -243,22 +231,18 @@ export default function App() {
       // login-flowet i stedet for at strande på en uendelig spinner.
       console.warn("[auth] initial getSession() fejlede — falder tilbage til unauthenticated", err);
       setSession(null);
-      clearSessionCookie();
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       if (event === "SIGNED_IN") {
         setSentryUser(session?.user?.id);
         logSessionStart();
-        setSessionCookie();
       } else if (event === "TOKEN_REFRESHED" && session?.user?.id) {
         // Token-refresh kan ske efter cold-start uden SIGNED_IN — sørg for at
         // user-context aldrig taber sig pga. en refresh.
         setSentryUser(session.user.id);
-        setSessionCookie();
       } else if (event === "SIGNED_OUT") {
         clearSentryUser();
-        clearSessionCookie();
         // #5089: det delte request-cache holder holdbunden tilstand
         // (scout-slots, egne transferlistings). Naeste bruger paa samme
         // enhed maa ALDRIG kunne se en TTL-kopi af den forriges data.
@@ -272,10 +256,7 @@ export default function App() {
     setMounted(true);
   }, []);
 
-  // Ingen global session-gate længere: offentlige ruter (/, /login, ...) renderer
-  // straks (session === undefined → falsy → landing/login). Beskyttede ruter venter
-  // på session i ProtectedRoute. Forudsætning for at den prerendrede landing kan
-  // hydreres rent — klientens første render på "/" giver LandingPage.
+  // Unknown auth never renders marketing or the login form.
   return (
     // Routeren leveres af entry'et (BrowserRouter i main.jsx, StaticRouter i
     // entry-server.jsx). #969 v7_startTransition bor nu på den BrowserRouter.
@@ -318,7 +299,8 @@ export default function App() {
           )}
           {/* Bart domæne (#672): ikke-loggede-ind ser den offentlige landing,
               loggede-ind ryger til appen. */}
-          <Route path="/" element={session ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
+          <Route path="/da" element={<Navigate to="/" replace />} />
+          <Route path="/" element={session === undefined ? <LoadingScreen /> : session ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
 
           {/* App-flader: pathless protected layout-route — URL'erne (/dashboard, /riders ...)
               er uændrede, men "/" er ikke længere forælder, så landing kan eje roden. */}

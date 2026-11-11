@@ -1,4 +1,27 @@
 export const PATCHES = [
+{
+  "version": "7.430",
+  "date": "2026-11-11",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "en": {
+        "title": "Straight to your dashboard",
+        "body": "What changed: When you are logged in, opening Cycling Zone takes you straight to your dashboard without briefly showing the public front page.\n\nWhat it means for you: While your login is checked, you see quiet grey placeholders."
+      },
+      "da": {
+        "title": "Direkte til dit dashboard",
+        "body": "Hvad er ændret: Når du er logget ind, åbner Cycling Zone direkte på dit dashboard uden kort at vise den offentlige forside.\n\nHvad betyder det for dig: Mens dit login bliver tjekket, ser du stille grå pladsholdere."
+      },
+      "refs": [
+        5250
+      ]
+    }
+  ]
+},
   {
     "version": "7.429",
     "date": "2026-11-11",
