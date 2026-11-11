@@ -36,7 +36,7 @@ export function seedPreviewSession(
   const key = previewSessionStorageKey(supabaseUrl);
   if (!key) return false;
   try {
-    if (storage.getItem(key)) return false;
+    if (storage.getItem(key) || storage.getItem(`${key}:cookie-migrated`)) return false;
     storage.setItem(key, JSON.stringify(buildPreviewSession(nowMs)));
     return true;
   } catch {

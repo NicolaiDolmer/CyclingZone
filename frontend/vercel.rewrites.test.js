@@ -202,6 +202,10 @@ test("hver top-level rute i App.jsx serveres af SPA-fallback (#6557)", () => {
     if (!first || first === "*") continue;
     segments.add(first);
   }
+  // #5250: /da is normally marketing, not a generic SPA namespace. Middleware
+  // explicitly rewrites its failed upstream response to app.html; the behavioral
+  // fallback assertion lives in middleware.test.ts. Keep /da/unknown a real 404.
+  segments.delete("da");
   // Børn af <Route path="admin"> staar uden "admin/"-praefiks i App.jsx.
   for (const nested of ["season", "economy", "users", "feedback", "data", "system"]) segments.delete(nested);
   assert.ok(segments.size > 40, "forventede at finde de ~58 top-level ruter i App.jsx");

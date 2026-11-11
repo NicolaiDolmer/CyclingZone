@@ -12,9 +12,9 @@ import { beginSsrHeadCapture, endSsrHeadCapture } from "./hooks/useDocumentHead.
 // Vi renderer det SAMME <App/> som klienten (main.jsx), bare med StaticRouter i
 // stedet for BrowserRouter. Det er afgørende for "/": hydration kræver at
 // server- og client-træet er strukturelt identiske (samme komponent-dybde →
-// samme useId osv.). På "/" har App ingen session endnu (getSession kører kun i
-// en useEffect, som renderToString ikke eksekverer), så App renderer
-// LandingPage — præcis som klientens første render gør.
+// samme useId osv.). Build-time prerender giver eksplicit initialSession=null:
+// kun anonym offentlig markup. Klienten afklarer session før root-hydration;
+// HEAD-vagten sender gemte sessioner til appen inden marketing kan males.
 //
 // "/" hydreres (main.jsx: `hydratingLanding` kræver pathname === "/"); de
 // øvrige prerendrede ruter gør IKKE — main.jsx rydder #root og laver en frisk
@@ -141,7 +141,7 @@ export async function render(url = "/", lng = "en") {
   const tree = (
     <AppProviders>
       <StaticRouter location={url}>
-        <App />
+        <App initialSession={null} />
       </StaticRouter>
     </AppProviders>
   );

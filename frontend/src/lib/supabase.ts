@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 // #7081: tsconfig.json (typecheck) trækker denne fil ind via type-overloads i squadCaps.ts og
 // stageProfilesQuery.ts; referencen gør import.meta.env kendt uanset hvilken tsconfig der tjekker.
+import { authStorageKey } from "./authLanding.ts";
+import { browserAuthStorage } from "./authCookieStorage.ts";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "../types/database.types";
 
@@ -14,6 +16,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
+    storage: browserAuthStorage(authStorageKey(supabaseUrl)),
     autoRefreshToken: true,
     detectSessionInUrl: true,
   },

@@ -1,3 +1,4 @@
+import { authLandingPlugin } from "./vite-plugins/auth-landing.ts";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -145,6 +146,7 @@ export default defineConfig({
     __CZ_SKEW_BUILD_TIME__: JSON.stringify(skewBuildTime),
   },
   plugins: [
+    authLandingPlugin(),
     react(),
     // #6271: Tailwind 4 via its Vite plugin (replaces the PostCSS plugin +
     // autoprefixer + postcss.config.js). Config lives in src/index.css @theme.
@@ -294,6 +296,14 @@ export default defineConfig({
         // kalder det eksplicit en ejer-beslutning, ikke en ren gevinst.
         codeSplitting: {
           groups: [
+            {
+              // These primitives already share the entry preload graph. Grouping
+              // preserves lazy page boundaries while sharing their gzip dictionary.
+              name: "ui-primitives",
+              test: /src[\\/]components[\\/]ui[\\/](Button|buttonStyles|fieldStyles|SortableTh|DataTable|Segmented|Section|Tabs|Textarea|EmptyState|Modal)\.[jt]sx?$/,
+              includeDependenciesRecursively: false,
+              priority: 25,
+            },
             {
               name: "react-vendor",
               test: /node_modules[\\/](react|react-dom|scheduler|react-is)[\\/]/,
