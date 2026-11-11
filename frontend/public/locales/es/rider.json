@@ -830,10 +830,10 @@
     "editPrices": "Editar precios",
     "submitUpdatePrices": "Actualizar precios",
     "autoLabel": "Precio automático (CZ$), opcional",
-    "autoHelp": "Si alguien ofrece este precio o más, una subasta pública empieza de inmediato. El comprador elige la duración (de 30 min a 24 horas de tiempo activo). El precio es visible para todos y la venta es vinculante para ti.",
+    "autoHelp": "Un comprador que pueda ver el precio de aceptación automática puede iniciar una subasta pública pujando ese precio o más. El comprador elige la duración (de 30 min a 24 horas de tiempo activo). La venta es vinculante para ti. Durante la beta, el precio solo se muestra a compradores con acceso a la beta y tú también debes tener acceso.",
     "autoInvalid": "El precio automático debe ser al menos el precio pedido.",
     "autoStatus": "Precio automático {amount} CZ$",
-    "autoEditHint": "Las ofertas existentes nunca pasan a subasta, pero las negociaciones abiertas al nuevo precio o más ya no se pueden aceptar."
+    "autoEditHint": "Las ofertas existentes nunca pasan a subasta. Las negociaciones abiertas al nuevo precio o más ya no se pueden aceptar si el comprador puede ver el precio de aceptación automática."
   },
   "manage": {
     "extend": {

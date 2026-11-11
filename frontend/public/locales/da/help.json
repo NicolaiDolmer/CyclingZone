@@ -243,7 +243,7 @@
       },
       "autoAcceptPrice": {
         "title": "Auto-pris: bud på din pris starter en auktion",
-        "text": "Når du sætter en rytter til salg, kan du også sætte en valgfri auto-pris, mindst lige så høj som listeprisen. Bud under den forhandles som i dag. Et bud på den pris eller derover starter straks en offentlig auktion: køberen vælger længden (30 minutter til 24 timer aktiv tid, 08-24) og ser det præcise sluttidspunkt, og andre managere kan byde med. Salget er bindende for dig, og prisen er synlig for alle på transferlisten. Mens et bud fører, er pengene reserveret, så vinderen altid kan betale. En ændret auto-pris gør aldrig eksisterende bud til en auktion, men en åben forhandling på eller over den nye pris kan ikke længere accepteres: køberen skal starte auktionen fra listingen."
+        "text": "Når du sætter en rytter til salg, kan du også sætte en valgfri auto-pris, mindst lige så høj som listeprisen. Når du kan se en auto-pris, kan du forhandle under den eller starte en offentlig auktion med et bud på den pris eller derover: køberen vælger længden (30 minutter til 24 timer aktiv tid, 08-24) og ser det præcise sluttidspunkt, og andre managere kan byde med. Salget er bindende for dig. Under betaen vises auto-prisen kun på transferlisten, når både du og sælgeren har beta-adgang. Ellers forhandler du som normalt. Mens et bud fører, er beløbet reserveret og trukket fra det, du kan bruge på andre køb. En ændret auto-pris gør aldrig eksisterende bud til en auktion, men når auto-prisen er synlig for køberen, kan en åben forhandling på eller over den nye pris ikke længere accepteres: køberen skal starte auktionen fra listingen."
       },
       "bulkEditPrices": {
         "title": "Redigér mange priser på én gang",

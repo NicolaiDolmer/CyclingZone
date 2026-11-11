@@ -830,10 +830,10 @@
     "editPrices": "Redigér priser",
     "submitUpdatePrices": "Opdatér priser",
     "autoLabel": "Auto-pris (CZ$), valgfri",
-    "autoHelp": "Byder nogen denne pris eller mere, starter en offentlig auktion med det samme. Køberen vælger længden (30 min til 24 timer aktiv tid). Prisen er synlig for alle, og salget er bindende for dig.",
+    "autoHelp": "En køber, der kan se auto-prisen, kan starte en offentlig auktion ved at byde den pris eller mere. Køberen vælger længden (30 min til 24 timer aktiv tid). Salget er bindende for dig. Under betaen vises prisen kun for købere med beta-adgang, og du skal også selv have beta-adgang.",
     "autoInvalid": "Auto-prisen skal være mindst prisen.",
     "autoStatus": "Auto-pris {amount} CZ$",
-    "autoEditHint": "Eksisterende bud bliver aldrig til en auktion, men åbne forhandlinger på eller over den nye pris kan ikke længere accepteres."
+    "autoEditHint": "Eksisterende bud bliver aldrig til en auktion. Åbne forhandlinger på eller over den nye pris kan ikke længere accepteres, hvis køberen kan se auto-prisen."
   },
   "manage": {
     "extend": {

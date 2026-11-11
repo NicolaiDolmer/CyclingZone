@@ -10,11 +10,11 @@ export const PATCHES = [
       "topic": "Transfers",
       "en": {
         "title": "Auto-accept price: bids at your price start an auction (beta)",
-        "body": "When you list a rider, you can set an auto-accept price. A bid at that price or above starts a public auction where the buyer picks the length and others can bid. The leading bid's money is reserved, so the winner can always pay."
+        "body": "When you list a rider, you can set an auto-accept price. A bid at that price or above starts a public auction where the buyer picks the length and others can bid. The leading bid's money is reserved and reduces what you can spend on other purchases."
       },
       "da": {
         "title": "Auto-pris: bud på din pris starter en auktion (beta)",
-        "body": "Når du sætter en rytter til salg, kan du sætte en auto-pris. Et bud på den pris eller derover starter en offentlig auktion, hvor køberen vælger længden, og andre kan byde med. Pengene for det førende bud er reserveret, så vinderen altid kan betale."
+        "body": "Når du sætter en rytter til salg, kan du sætte en auto-pris. Et bud på den pris eller derover starter en offentlig auktion, hvor køberen vælger længden, og andre kan byde med. Beløbet for det førende bud er reserveret og trukket fra det, du kan bruge på andre køb."
       },
       "refs": [
         2176,
