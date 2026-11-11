@@ -7,6 +7,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { classifyChannel, LOST_IN_MARKETING } from "./monday-numbers.mjs";
+import { readWeeklySeoDrops, renderWeeklySeoDrops } from "./weekly-seo-report.mjs";
 
 test("AI-assistenter samles i én gruppe (#4322)", () => {
   for (const host of ["https://chatgpt.com/", "https://www.perplexity.ai/x", "https://claude.ai/"]) {
@@ -133,4 +134,94 @@ test("Google-soegedomaener er forankret til hele hostname, ikke en substring (#5
   assert.equal(classifyChannel({ referrer: "https://google.evil.com/" }), "google.evil.com");
   assert.equal(classifyChannel({ referrer: "https://evil-google.com/" }), "evil-google.com");
   assert.equal(classifyChannel({ referrer: "https://google.com.evil.com/" }), "google.com.evil.com");
+});
+
+const SEO_NOW = new Date('2026-11-11T12:00:00.000Z');
+const SEO_SINCE = '2026-11-04T12:00:00.000Z';
+const seoIssue = (number, createdAt = '2026-11-10T12:00:00.000Z', state = 'OPEN') => ({
+  number, createdAt, state, url: `https://github.com/NicolaiDolmer/CyclingZone/issues/${number}`,
+});
+const readSeoFixture = (rows) => readWeeklySeoDrops({ now: SEO_NOW, runGh: async () => JSON.stringify(rows) });
+
+test('weekly SEO report keeps open/closed issues in the exact dated period and deduplicates them', async () => {
+  let query;
+  const result = await readWeeklySeoDrops({ now: SEO_NOW, runGh: async (args) => {
+    query = args;
+    return JSON.stringify([
+      seoIssue(1, SEO_SINCE), seoIssue(2, '2026-11-10T12:00:00.000Z', 'CLOSED'),
+      seoIssue(1, SEO_SINCE), seoIssue(3, '2026-11-04T11:59:59.999Z'),
+      seoIssue(4, '2026-11-11T12:00:00.001Z'),
+    ]);
+  } });
+  assert.equal(result?.status, 'complete');
+  assert.equal(result?.since, SEO_SINCE);
+  assert.equal(result?.until, SEO_NOW.toISOString());
+  assert.deepEqual(result?.issues?.map((issue) => issue.number), [2, 1]);
+  assert.equal(query?.[query.indexOf('--repo') + 1], 'NicolaiDolmer/CyclingZone');
+  assert.equal(query?.[query.indexOf('--label') + 1], 'perf-seo-drop');
+  assert.equal(query?.[query.indexOf('--state') + 1], 'all');
+  assert.equal(query?.[query.indexOf('--search') + 1], 'created:>=2026-11-04');
+});
+
+test('weekly SEO report distinguishes a complete empty issue list from unavailable evidence', async () => {
+  const result = await readSeoFixture([]);
+  assert.equal(result?.status, 'complete');
+  assert.deepEqual(result?.issues, []);
+  assert.match(renderWeeklySeoDrops(result), /0 oprettede issues/);
+});
+
+test('weekly SEO report contains reader failures without leaking raw errors or claiming zero', async () => {
+  const result = await readWeeklySeoDrops({ now: SEO_NOW, runGh: async () => { throw new Error('raw fixture failure'); } });
+  assert.equal(result?.status, 'unavailable');
+  assert.equal(result?.issues, null);
+  assert.ok(!JSON.stringify(result).includes('raw fixture failure'));
+  assert.match(renderWeeklySeoDrops(result), /ukendt/);
+  assert.doesNotMatch(renderWeeklySeoDrops(result), /0 oprettede issues/);
+});
+
+for (const [name, output] of [['invalid JSON', '{'], ['non-array JSON', '{}']]) {
+  test(`weekly SEO report marks ${name} unavailable`, async () => {
+    const result = await readWeeklySeoDrops({ now: SEO_NOW, runGh: async () => output });
+    assert.equal(result?.status, 'unavailable');
+    assert.equal(result?.issues, null);
+  });
+}
+
+for (const [name, row] of [
+  ['null row', null],
+  ['non-integer issue number', { ...seoIssue(1), number: 1.5 }],
+  ['foreign repository URL', { ...seoIssue(1), url: 'https://github.com/example/other/issues/1' }],
+  ['mismatched issue URL', { ...seoIssue(1), url: 'https://github.com/NicolaiDolmer/CyclingZone/issues/2' }],
+  ['invalid date', { ...seoIssue(1), createdAt: 'not-a-date' }],
+  ['invalid state', { ...seoIssue(1), state: 'UNKNOWN' }],
+]) {
+  test(`weekly SEO report rejects ${name} rather than silently undercounting`, async () => {
+    const result = await readSeoFixture([row]);
+    assert.equal(result?.status, 'unavailable');
+    assert.equal(result?.issues, null);
+  });
+}
+
+test('weekly SEO report marks a full page incomplete rather than reporting a complete count', async () => {
+  const result = await readSeoFixture(Array.from({ length: 100 }, (_, index) => seoIssue(index + 1)));
+  assert.equal(result?.status, 'incomplete');
+  assert.equal(result?.issues, null);
+  assert.match(renderWeeklySeoDrops(result), /ufuldstændig/);
+  assert.doesNotMatch(renderWeeklySeoDrops(result), /0 oprettede issues/);
+});
+
+test('weekly SEO report renders links and closed issues from complete evidence', () => {
+  const text = renderWeeklySeoDrops({ status: 'complete', since: SEO_SINCE, until: SEO_NOW.toISOString(), issues: [seoIssue(2, SEO_SINCE, 'CLOSED')] });
+  assert.match(text, /1 oprettede issues/);
+  assert.ok(text.includes('[#2](https://github.com/NicolaiDolmer/CyclingZone/issues/2)'));
+  assert.ok(text.includes('CLOSED'));
+  assert.ok(text.includes(SEO_SINCE));
+});
+
+test('weekly SEO report requires an explicit valid date before invoking the GitHub reader', async () => {
+  let reads = 0;
+  const runGh = async () => { reads++; return '[]'; };
+  await assert.rejects(readWeeklySeoDrops({ runGh }), TypeError);
+  await assert.rejects(readWeeklySeoDrops({ now: new Date('invalid'), runGh }), TypeError);
+  assert.equal(reads, 0);
 });

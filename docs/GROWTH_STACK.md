@@ -40,6 +40,7 @@ infisical run --env=prod -- node scripts/monday-numbers.mjs
 
 - Outputtet skrives som **én linje i §12 "Log"** nedenfor. Nyeste øverst.
 - MRR hentes særskilt via Alunta MCP `get_business_overview` (REST-API'et eksponerer ikke MRR) og skrives ind i samme log-linje.
+- Rapportens tekst og JSON medtager også `perf-seo-drop`-issues oprettet i de seneste syv døgn, med links og både åbne/lukkede issues (#7440). GitHub læses via den eksisterende `gh`-autentificering. Uaflæselig eller afkortet kilde markeres ukendt/ufuldstændig; et komplet nul er et issue-antal, ikke en måling af Lighthouse-sundhed.
 
 > **Tal hører til i Log, ikke i prosa.** MRR er tidligere hardkodet tre forskellige steder (pengeplanen 188 kr., `NOW.md` 436 kr., Alunta 659 kr.) og alle tre var forældede samtidig. Dokumentet bærer formlen og proceduren; tallet bor i loggen.
 
