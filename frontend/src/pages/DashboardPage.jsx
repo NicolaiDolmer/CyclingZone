@@ -1,5 +1,8 @@
 ﻿import { useState, useEffect, Fragment } from "react";
 import { useTranslation } from "react-i18next";
+import { useRef } from "react";
+import ReservedBody from "../components/ui/ReservedBody.tsx";
+import AuthLoading from "../components/ui/AuthLoading.tsx";
 import { supabase } from "../lib/supabase";
 import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { isNetworkError } from "../lib/networkErrorGuards.ts"; // #5312/#5322
@@ -91,8 +94,8 @@ import { readCachedAcademyNav } from "../lib/academyNavVisibility";
 import { buildRiderRankingLink } from "../lib/riderRankingDivisionLink";
 import {
   Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ChevronRightIcon, DiscordIcon,
-  PageLoader, PageHeader, Section, SectionHeader, SectionAction, Button, ErrorState,
-  SkeletonLines, EmptyState, ProgressMeter, StatusBadge,
+  PageHeader, Section, SectionHeader, SectionAction, Button, ErrorState,
+  EmptyState, ProgressMeter, StatusBadge,
 } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import { flushPendingSignup, logFirstEvent, logTeamCreated, logTeamDrafted } from "../lib/logEvent";
@@ -203,6 +206,9 @@ export default function DashboardPage() {
   const [activeOffers, setActiveOffers] = useState([]);
   const [forecast, setForecast] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [cardReady, setCardReady] = useState({ auctions: false, transfers: false });
+  const loadGeneration = useRef(0);
+  useEffect(() => () => { loadGeneration.current += 1; }, []);
   // #3510 — eksplicit fejl-tilstand med retry frem for et tomt, "ingen data"-
   // udseende dashboard: loadAll fangede tidligere fejl med console.error alene
   // og faldt igennem til finally { setLoading(false) } → et fuldt tomt dashboard
@@ -401,6 +407,7 @@ export default function DashboardPage() {
   }
 
   async function loadAll() {
+    const generation = ++loadGeneration.current;
     setError(null);
     try {
     // #4160: getSession() laeser den lokale (auto-refreshede) session UDEN en
@@ -438,7 +445,31 @@ export default function DashboardPage() {
         .single(),
     ]);
     if (!teamData) { return; }
+    if (generation !== loadGeneration.current) return;
     setTeam(teamData);
+
+    // Fixed cards reveal independently. Refresh keeps the previous content;
+    // older responses must not overwrite a newer load or an unmounted page.
+    const reveal = (name, request, apply) => {
+      void Promise.resolve(request).then(apply).catch(() => { /* best-effort: retain known data; initial empty state settles below */ }).finally(() => {
+        if (generation === loadGeneration.current) setCardReady(ready => ({ ...ready, [name]: true }));
+      });
+    };
+    reveal("auctions", supabase.from("auctions")
+      .select("id, current_price, calculated_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id, rider:rider_id(firstname, lastname, team_id)")
+      .in("status", ["active", "extended"]), result => {
+        if (generation === loadGeneration.current) setAllAuctions(result.data || []);
+      });
+    reveal("transfers", token
+      ? apiFetch(`${API}/api/transfers/my-offers`, { headers: { Authorization: `Bearer ${token}` } })
+      : Promise.resolve(null), result => {
+        if (generation !== loadGeneration.current) return;
+        const offers = result?.ok ? result.data : null;
+        setActiveOffers([
+          ...(offers?.received || []).map(offer => ({ ...offer, _dir: "received" })),
+          ...(offers?.sent || []).map(offer => ({ ...offer, _dir: "sent" })),
+        ]);
+      });
 
     const boardStatusPromise = token
       ? apiFetch(`${API}/api/board/status`, {
@@ -454,7 +485,7 @@ export default function DashboardPage() {
           .eq("season_id", activeSeason.id).eq("league_division_id", teamData.league_division_id)
       : Promise.resolve({ data: [] });
 
-    const [teamsRes, ridersRes, squadCountInputs, auctionsRes, racesRes, standingsRes, boardStatus, offersRes, poolRacesRes, poolsRes, reservedBalanceValue] = await Promise.all([
+    const [teamsRes, ridersRes, squadCountInputs, racesRes, standingsRes, boardStatus, poolRacesRes, poolsRes, reservedBalanceValue] = await Promise.all([
       // #2182: league_division_id + is_frozen-udelukkelse med — samme
       // "rigtige hold"-diskriminator (test/frosne, IKKE AI) og select-
       // udvidelse som StandingsPage.jsx's teamsPromise, så rangliste-modulet
@@ -482,9 +513,6 @@ export default function DashboardPage() {
       // samme diskriminatorer som backend getTeamMarketState — se
       // fetchSquadCountInputs i lib/dashboardSquadStats.js.
       fetchSquadCountInputs(supabase, teamData.id),
-      supabase.from("auctions")
-        .select("id, current_price, calculated_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id, rider:rider_id(firstname, lastname, team_id)")
-        .in("status", ["active", "extended"]),
       activeSeason
         ? // #1906: filtrér på holdets egen pulje (league_division_id), så Dashboards
           // "næste løb" matcher holdudtagelse (RaceHub /api/races/distribution bruger
@@ -507,15 +535,6 @@ export default function DashboardPage() {
             .order("total_points", { ascending: false })
         : Promise.resolve({ data: [] }),
       boardStatusPromise,
-      token
-        // #5242 (CodeRabbit-fund): fald tilbage til den tomme facit for ETHVERT
-        // ikke-ok svar, ikke kun limited/unauthorized — apiFetch giver data:null
-        // for et tomt/ikke-JSON 5xx-svar, og offersRes.received nedenfor ville
-        // ellers kaste på en null-læsning i stedet for at falde tilbage.
-        ? apiFetch(`${API}/api/transfers/my-offers`, { headers: { Authorization: `Bearer ${token}` } })
-            .then(failOnUnreachable)
-            .then((r) => (r.ok ? (r.data ?? { sent: [], received: [] }) : { sent: [], received: [] }))
-        : Promise.resolve({ sent: [], received: [] }),
       poolRacesPromise,
       // #2182: alle puljer — samme reference-query som StandingsPage/ResultaterPage.
       // #5648 (Y2): kun senior + ikke-pensionerede puljer (spec-s4-struktur risiko 3).
@@ -540,6 +559,7 @@ export default function DashboardPage() {
     // raekker EFTER foerste maling skubber alt nedenunder. Maalt paa den lokale
     // harness gav fri hydrering CLS 0,130 mod 0,064 paa main, mod ca. 300 ms
     // LCP. Skreddet vejer tungere end de 300 ms.
+    if (generation !== loadGeneration.current) return;
     const racesForTeamCheck = (racesRes.data || []).map((r) => r.id);
     const dependentRowsPromise = loadDependentRows(teamData.id, racesForTeamCheck);
 
@@ -550,7 +570,6 @@ export default function DashboardPage() {
     setRiders(ridersRes.data || []);
     setSeniorRosterReady(!ridersRes.error);
     setPendingIncomingCount(squadCountInputs.pendingIncomingCount);
-    setAllAuctions(auctionsRes.data || []);
     // #2328: hold ALLE holdets kommende puljeløb i state (ikke kun top-3) — både
     // "Kommende løb"-kortets faktiske dagsordning (pickUpcomingRaces nedenfor,
     // som kræver den ægte race_stage_schedule-tid for hele listen) og holdudtagelses-
@@ -570,10 +589,6 @@ export default function DashboardPage() {
     const hasNegotiatedPlan = hasSignedBoardPlan(boardStatus?.plans);
     setBoardPlanMissing(Boolean(boardStatus) && !boardStatus.is_baseline_phase && !hasNegotiatedPlan);
     setBoardStatusLoaded(Boolean(boardStatus));
-    setActiveOffers([
-      ...(offersRes.received || []).map(offer => ({ ...offer, _dir: "received" })),
-      ...(offersRes.sent || []).map(offer => ({ ...offer, _dir: "sent" })),
-    ]);
 
     // #3506: AI-hold var tidligere filtreret væk her (før mergeStandings), så
     // de aldrig indgik i rangberegningen — deraf placerings-mismatchet mod
@@ -601,9 +616,9 @@ export default function DashboardPage() {
 
     } catch (e) {
       console.error("Dashboard load failed:", e);
-      setError(e);
+      if (generation === loadGeneration.current) setError(e);
     } finally {
-      setLoading(false);
+      if (generation === loadGeneration.current) setLoading(false);
     }
   }
 
@@ -611,6 +626,17 @@ export default function DashboardPage() {
   useRealtimeRefetch("dashboard-live", REALTIME_TABLES, loadAll);
   // #6569: paa topniveau (foer early-return) saa stribens fetch starter naar team er kendt.
   const todayStages = withoutPausedUpcoming(useTodayStages(team?.id), Boolean(racePause)); // #6970
+  const [initialLayoutReady, setInitialLayoutReady] = useState(false);
+  const [presenceWaitExpired, setPresenceWaitExpired] = useState(false);
+  useEffect(() => {
+    if (loading || initialLayoutReady) return undefined;
+    // A secondary query may hang. Never hold ready cards indefinitely for it.
+    const timer = setTimeout(() => setPresenceWaitExpired(true), 300);
+    return () => clearTimeout(timer);
+  }, [loading, initialLayoutReady]);
+  useEffect(() => {
+    if (!loading && (!todayStages.loading || presenceWaitExpired)) setInitialLayoutReady(true);
+  }, [loading, todayStages.loading, presenceWaitExpired]);
 
   // #4557 (S-M2d) · dashboard-genvej til aarsmoedet — udenfor loadAll'ens
   // Promise.all med vilje (progressiv, aldrig blokerende for resten af
@@ -904,7 +930,7 @@ export default function DashboardPage() {
         recentResultsVisible && (async () => {
           try {
             const r = await apiFetch(`${API}/api/dashboard/recent-results`, { headers });
-            if (cancelled || r.limited || r.unauthorized) return;
+            if (cancelled) return;
             // #3510 — svaret er nu SANDHEDEN uanset ok/fejl: r.ok → de rigtige
             // resultater (evt. []); ellers eksplicit [] så modulet falder tilbage
             // til empty-state fremfor at blive hængende i skeleton for evigt.
@@ -914,7 +940,7 @@ export default function DashboardPage() {
         riderRankingVisible && (async () => {
           try {
             const r = await apiFetch(`${API}/api/dashboard/rider-ranking`, { headers });
-            if (cancelled || r.limited || r.unauthorized) return;
+            if (cancelled) return;
             setRiderRanking(r.ok ? r.data.riders || [] : []);
           } catch { if (!cancelled) setRiderRanking([]); }
         })(),
@@ -1017,21 +1043,9 @@ export default function DashboardPage() {
     setCompletionDismissed(true);
   }
 
-  // #4160 — MAALT, ikke antaget: et sidehoved- + kort-skelet blev proevet her
-  // (fire Section-skeletter i en SectionStack) og ROLLET TILBAGE igen. Det
-  // koeber ingen LCP: skelet-flader er ikke "contentful", saa LCP afventer
-  // stadig den foerste rigtige tekstblok, og hele gevinsten paa denne side
-  // kommer fra at vandfaldet i loadAll er skaaret ned. Til gengaeld koster det
-  // CLS: dashboardets kort er betingede og varierer i hoejde, saa skelettets
-  // geometri kan ikke ramme indholdets, og indhold der ERSTATTER et placeret
-  // skelet taeller som skred, hvor indhold der bare dukker op ikke goer.
-  // Maalt paa den lokale harness (median af 5, 300 ms kunstig latenstid):
-  // CLS 0,064 -> 0,197 desktop og 0,000 -> 0,154 mobil, med LCP uaendret.
-  // Derfor bliver PageLoader staaende indtil dashboardets kort kan levere en
-  // hoejde foer deres data (hoerer hjemme i CLS-sporet, #2230).
-  if (loading) return (
-    <PageLoader />
-  );
+  // #2230: resolve conditional top-strip presence before placing the dashboard.
+  // Once revealed, background refresh never replaces it with a page loader.
+  if (loading || (!initialLayoutReady && !presenceWaitExpired && todayStages.loading && !error)) return <AuthLoading />;
 
   // #3510 — kanonisk ErrorState (docs/design/PAGE_TEMPLATES.md) i stedet for at
   // falde igennem til et fuldt tomt dashboard. Retry gen-kalder loadAll direkte
@@ -1432,7 +1446,7 @@ export default function DashboardPage() {
               <NextActionsCard
                 pending={actionSummary}
                 urgentAuctionCount={urgentAuctionCount}
-                loading={actionLoading}
+                loading={actionLoading || !cardReady.auctions}
                 squadSelectionMissingRace={squadSelectionMissingRace}
                 notTrainedToday={notTrainedToday}
                 boardPlanMissing={boardPlanMissing}
@@ -1660,6 +1674,7 @@ export default function DashboardPage() {
             title={t("dashboard:cards.auctions.title")}
             action={<SectionAction as={Link} to="/auctions">{t("dashboard:cards.auctions.linkAll")}</SectionAction>}
           />
+          <ReservedBody name="auctions" loading={!cardReady.auctions} rows={5} rowHeight={60}>
           {myActiveAuctions.length === 0 ? (
             <EmptyState
               title={t("dashboard:cards.auctions.empty")}
@@ -1704,6 +1719,7 @@ export default function DashboardPage() {
                 })}
             </div>
           )}
+                  </ReservedBody>
         </Section>
         )}
 
@@ -1714,6 +1730,7 @@ export default function DashboardPage() {
             title={t("dashboard:cards.transfers.title")}
             action={<SectionAction as={Link} to="/transfers">{t("dashboard:cards.transfers.linkAll")}</SectionAction>}
           />
+          <ReservedBody name="transfers" loading={!cardReady.transfers} rows={5} rowHeight={56}>
           {activeMarketOffers.length === 0 && pendingIncoming === 0 ? (
             <EmptyState
               title={t("dashboard:cards.transfers.empty")}
@@ -1758,6 +1775,7 @@ export default function DashboardPage() {
               })}
             </div>
           )}
+                  </ReservedBody>
         </Section>
         )}
 
@@ -1768,13 +1786,8 @@ export default function DashboardPage() {
             title={t("dashboard:cards.races.title")}
             action={<SectionAction as={Link} to="/planning">{t("dashboard:cards.races.linkAll")}</SectionAction>}
           />
-          {!teamRaceIdsLoaded ? (
-            // #4160 — race_entries-filteret hydrerer efter foerste maling.
-            // Skelet, ikke et falsk "ingen kommende loeb"-empty-state (samme
-            // false-empty-regel som #3510 ovenfor). Tre linjer = samme hoejde
-            // som de tre loebsraekker kortet viser, saa hydreringen ikke skubber.
-            <SkeletonLines lines={3} />
-          ) : displayedRaces.length === 0 ? (
+          <ReservedBody name="races" loading={!teamRaceIdsLoaded} rows={3} rowHeight={64}>
+          {displayedRaces.length === 0 ? (
             <EmptyState
               title={t("dashboard:cards.races.empty")}
               description={t("dashboard:cards.races.emptyHint")}
@@ -1822,6 +1835,7 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
+                  </ReservedBody>
         </Section>
         )}
 
@@ -1943,11 +1957,8 @@ export default function DashboardPage() {
             title={t("dashboard:cards.recentResults.title")}
             action={<SectionAction as={Link} to="/resultater">{t("dashboard:cards.recentResults.linkAll")}</SectionAction>}
           />
-          {recentResults === null ? (
-            // #3510 — post-first-paint fetch endnu ikke landet: skeleton, ikke
-            // et falsk "ingen resultater"-empty-state (false-empty flash).
-            <SkeletonLines lines={3} />
-          ) : recentResults.length === 0 ? (
+          <ReservedBody name="recentResults" loading={recentResults === null} rows={5} rowHeight={64}>
+          {!recentResults?.length ? (
             <EmptyState
               title={t("dashboard:cards.recentResults.empty")}
               action={
@@ -2001,6 +2012,7 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
+                  </ReservedBody>
         </Section>
         )}
 
@@ -2026,9 +2038,8 @@ export default function DashboardPage() {
               </SectionAction>
             }
           />
-          {riderRanking === null ? (
-            <SkeletonLines lines={3} />
-          ) : riderRanking.length === 0 ? (
+          <ReservedBody name="riderRanking" loading={riderRanking === null} rows={5} rowHeight={56}>
+          {!riderRanking?.length ? (
             <EmptyState
               title={t("dashboard:cards.riderRanking.empty")}
               action={
@@ -2060,6 +2071,7 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
+                  </ReservedBody>
         </Section>
         )}
 

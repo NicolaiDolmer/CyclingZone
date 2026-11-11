@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { fetchActiveOpsNotices, pickNoticeCopy, pickSeasonChangeNotice } from "../lib/opsNotices.js";
 import { formatDate } from "../lib/intl.js";
 import { Card, ExchangeIcon, TagIcon, CheckIcon, FlagIcon, BikeIcon, BriefcaseIcon, ChevronRightIcon } from "./ui";
+import ReservedBody from "./ui/ReservedBody.tsx";
 
 /**
  * "Næste træk" — prioriteret liste over hvad der venter på manageren, samlet
@@ -88,9 +89,8 @@ export default function NextActionsCard({
         )}
       </div>
 
-      {loading && items.length === 0 ? (
-        <p className="text-cz-3 text-sm">{t("nextActions.loading")}</p>
-      ) : items.length === 0 ? (
+      <ReservedBody name="nextActions" loading={loading} rows={6} rowHeight={52}>
+      {items.length === 0 ? (
         <p className="text-cz-3 text-sm flex items-center gap-2">
           <CheckIcon size={14} className="text-cz-success" />
           {t("nextActions.allClear")}
@@ -124,6 +124,7 @@ export default function NextActionsCard({
           {intakeWhen && <p>{t("nextActions.nextAcademyIntake", { when: intakeWhen })}</p>}
         </div>
       )}
+      </ReservedBody>
     </Card>
   );
 }

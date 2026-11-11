@@ -58,6 +58,11 @@
   },
   "finishList": [
     {
+      "issue": 2230,
+      "area": "web-experience",
+      "why": "Ejerens build-go 11/11: valg A, stille fælles skeletons og reserveret plads; sammenlignelige browsermålinger og preview-go før merge. https://github.com/NicolaiDolmer/CyclingZone/issues/2230#issuecomment-6795797186"
+    },
+    {
       "issue": 5250,
       "area": "web-experience",
       "why": "Ejerens eksplicitte build-go 11/11: login-landing med stille skeleton, testplan og preview-go før merge. https://github.com/NicolaiDolmer/CyclingZone/issues/5250#issuecomment-6791717299"
