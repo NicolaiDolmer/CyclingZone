@@ -69,6 +69,25 @@ async function publicAuction(db) {
 const bid = async (db, team, amount, auction = AUCTION) => (await one(db,
   'SELECT place_auction_bid_6181($1,$2,$3,$4) AS r',[auction,team,amount,NOW])).r;
 
+for (const mode of ['beta','on']) for (const team of [A,B]) {
+  test(`M3 ${mode}: an overcommitted ${team === A ? 'beta' : 'public'} bidder can lower its proxy through the real upsert RPC`, async t => {
+    const db = await database(t); await publicAuction(db);
+    await db.query('UPDATE app_config SET value=$1::jsonb WHERE key=\'market_commitment_6181\'', [JSON.stringify(mode)]);
+    const proxy = amount => one(db, 'SELECT set_auction_proxy_context_6181($1,$2,$3,NULL,$4) AS r', [AUCTION,team,amount,NOW]);
+    await proxy(500000);
+    await db.query('UPDATE teams SET balance=100000 WHERE id=$1', [team]);
+    assert.equal((await one(db,'SELECT market_bid_issue_scoped_2176($1,$2,300000,false) AS issue',[team,AUCTION])).issue,'insufficient_available_balance',
+      'the lowered ceiling is deliberately still unaffordable; only the existing release-only exemption permits it');
+    assert.equal((await proxy(300000)).r.placed,false);
+    assert.equal((await proxy(300000)).r.placed,false,'same-ceiling retry also releases no new money');
+    assert.equal((await one(db,'SELECT max_amount::int AS amount FROM auction_proxy_bids WHERE auction_id=$1 AND team_id=$2',[AUCTION,team])).amount,300000);
+    await assert.rejects(proxy(400000),/market_gate_6181:insufficient_available_balance/,'raising the ceiling retains the affordability gate');
+    assert.equal((await one(db,'SELECT max_amount::int AS amount FROM auction_proxy_bids WHERE auction_id=$1 AND team_id=$2',[AUCTION,team])).amount,300000);
+    assert.equal((await one(db,'SELECT balance::int AS balance FROM teams WHERE id=$1',[team])).balance,100000);
+    assert.equal((await one(db,'SELECT current_bidder_id,current_price::int AS price FROM auctions WHERE id=$1',[AUCTION])).current_bidder_id,C);
+  });
+}
+
 test('M3 beta: public non-beta first bid succeeds, and its other commitments are honored', async t => {
   const db = await database(t); await publicAuction(db);
   assert.equal((await bid(db,B,400000)).placed,true);

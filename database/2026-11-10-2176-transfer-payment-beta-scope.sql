@@ -212,6 +212,7 @@ AS $$
 DECLARE
   a public.auctions;
   v_issue text;
+  v_standing bigint;
 BEGIN
   IF TG_OP = 'UPDATE' AND NEW.max_amount <= OLD.max_amount
      AND NEW.team_id = OLD.team_id AND NEW.auction_id = OLD.auction_id THEN
@@ -222,6 +223,16 @@ BEGIN
   END IF;
 
   PERFORM pg_advisory_xact_lock(hashtextextended(NEW.team_id::text, 0));
+  -- An upsert fires BEFORE INSERT before its UPDATE branch. Preserve the
+  -- existing release-only exemption, reading the standing ceiling under lock.
+  IF TG_OP = 'INSERT' THEN
+    SELECT max_amount INTO v_standing FROM public.auction_proxy_bids
+     WHERE auction_id = NEW.auction_id AND team_id = NEW.team_id;
+    IF FOUND AND NEW.max_amount <= v_standing THEN
+      RETURN NEW;
+    END IF;
+  END IF;
+
   SELECT * INTO a FROM public.auctions WHERE id = NEW.auction_id;
   IF NOT FOUND OR a.status NOT IN ('active', 'extended') THEN
     RETURN NEW;

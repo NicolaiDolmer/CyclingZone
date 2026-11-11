@@ -47,3 +47,11 @@ must follow profile/bootstrap synchronization. For fixed mobile navigation,
 scroll the real control into view and retain normal hit-testing; never force
 the click or widen the budget. Position screenshots on the expanded form and
 state that camera choice in their evidence notes.
+
+When replacing a trigger function, compare against later migrations as well as
+its original definition. A proxy upsert executes BEFORE INSERT before reaching
+ON CONFLICT's UPDATE path. The UPDATE-only lowered-ceiling shortcut therefore
+does not preserve the release-only exception on its own. Read the standing
+ceiling under the team advisory lock and retain that INSERT shortcut. Test the
+real proxy RPC with an already overcommitted team, an equal-ceiling retry and
+a rejected increase in both global and beta M3 scope.

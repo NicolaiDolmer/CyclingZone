@@ -104,6 +104,22 @@ test('PG17 beta: first public participation serializes every discretionary write
         if(name==='scouting'&&end.scouts)assert.equal(end.finance,1);
       }
     }
+    // The real RPC uses INSERT ... ON CONFLICT, so its BEFORE INSERT trigger
+    // must retain the standing-ceiling exemption before affordability checks.
+    for (const mode of ['beta','on']) for (const isBeta of [true,false]) {
+      reset();
+      sql(`UPDATE app_config SET value=${json(mode)} WHERE key='market_commitment_6181';
+        UPDATE users SET is_beta_tester=${isBeta} WHERE id='${B}';`);
+      const ceiling=amount=>`SELECT set_auction_proxy_context_6181('${id(700)}','${B}',${amount},NULL,'${NOW}')`;
+      one(ceiling(500000));
+      sql(`UPDATE teams SET balance=100000 WHERE id='${B}';`);
+      assert.equal(one(ceiling(300000)).placed,false);
+      assert.equal(one(ceiling(300000)).placed,false);
+      assert.equal(one(attempt(ceiling(400000))).status,'insufficient_available_balance');
+      assert.equal(one(`SELECT to_jsonb(max_amount::int) FROM auction_proxy_bids WHERE auction_id='${id(700)}' AND team_id='${B}'`),300000);
+      assert.equal(one(`SELECT to_jsonb(balance::int) FROM teams WHERE id='${B}'`),100000);
+    }
+    console.log('PG17 lowered-proxy upsert: four M3/cohort combinations passed; increases remain refused.');
     // AA beta also supports an already-global M3. The same payment envelope
     // must remain selected for both accepted global representations.
     for(const stage of ['"on"','true'])for(const name of ['transfer','cashSwap','release']) {
