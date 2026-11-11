@@ -12,9 +12,6 @@
 //   3. kalder scripts/merge-queue.ps1 -Pr "<N>" -Repo <repo>, een PR ad gangen
 //      efter en frisk vurdering (hovedet maa ikke have flyttet sig), og kun hvis
 //      ingen anden koe koerer (tog-markoeren fra #7633: levende markoer = goer intet);
-//   4. melder i Discord-ops (DISCORD_OPS_WEBHOOK_URL, fail-soft) naar en PR har
-//      vaeret klar i over READY_ALERT_AFTER_MS uden at blive merget, hoejst een
-//      besked pr. PR pr. ALERT_THROTTLE_MS. Tilstand: .claude/run/ (gitignoreret).
 //
 // Ejerens merge-markoer: EJER-GO-PR'er (ogsaa dem med den klaebende
 // klassifikator-markoer "merge-queue-category: ejer-go") medtages KUN naar en
@@ -30,7 +27,7 @@
 //
 // CLI (exit altid 0, fail-soft):
 //   node scripts/merge-autotrain.mjs [--dry-run] [--log] [--repo owner/name]
-//   --dry-run  laeser og viser beslutningerne; ingen koe, ingen Discord, ingen tilstand.
+//   --dry-run  laeser og viser beslutningerne; ingen koe eller tilstand.
 //   --log      skriver ogsaa til .claude/run/merge-autotrain.log (bruges af den planlagte opgave).
 //
 // Tests: node --test scripts/merge-autotrain.test.mjs
@@ -44,15 +41,11 @@ import { CATEGORY, DEFAULT_REPO, classifyPr, fetchMigrationFacts, formatClassifi
 import { gitCommonRoot, markerFilePath, readActiveMarker } from './merge-queue-active-marker.mjs';
 import { deploymentAttemptState, handedOffRunVerdict } from './ci/deploy-verification-state.mjs';
 
-export const READY_ALERT_AFTER_MS = 2 * 60 * 60 * 1000;
-export const ALERT_THROTTLE_MS = 6 * 60 * 60 * 1000;
-export const STATE_RELATIVE = join('.claude', 'run', 'merge-autotrain-state.json');
 export const LOG_RELATIVE = join('.claude', 'run', 'merge-autotrain.log');
 // Codex P1 (#7657): en koe der sluttede uden exit 0 (main-CI/deploy roed eller uverificeret)
 // laaser toget paa tvaers af koersler, til main's HEAD er positivt verificeret.
 export const BLOCK_RELATIVE = join('.claude', 'run', 'merge-autotrain-block.json');
 const LOG_ROTATE_BYTES = 5 * 1024 * 1024;
-const HTTP_TIMEOUT_MS = 15_000;
 
 // Labels der altid holder en PR ude af toget.
 export const HOLD_LABELS = Object.freeze(['claude:blocked', 'codex:blocked-access', 'do-not-merge', 'hold']);
@@ -108,7 +101,7 @@ function labelNames(labels) {
 }
 
 /**
- * Vurderer een PR. `ready` = alt groent (bruges ogsaa til alarmen);
+ * Vurderer een PR. `ready` = alt groent;
  * `eligible` = ready og maa koere i toget uden ejeren (eller med ejerens markoer).
  */
 /** Afslag der ikke kraever check- eller klassifikationskald. null = gaa videre. */
@@ -160,78 +153,7 @@ export function decideAction({ activeMarker, train }) {
   return { run: true, reason: `${train.length} PR'er klar: ${train.map((n) => `#${n}`).join(', ')}` };
 }
 
-function emptyState() {
-  return { version: 1, prs: {} };
-}
-
-/**
- * Opdaterer "klar siden"-uret. En PR der ikke er klar (eller fik nyt hoved)
- * starter forfra; lukkede/mergede PR'er falder ud, fordi de ikke er listet.
- * Alarm-tidspunktet bevares, saa throttlen overlever et kort roedt mellemspil.
- */
-export function updateReadyState(prev, evaluations, now) {
-  const prevPrs = prev?.prs && typeof prev.prs === 'object' ? prev.prs : {};
-  const next = emptyState();
-  for (const e of evaluations) {
-    if (!e.ready) {
-      if (prevPrs[e.number]?.lastAlertAt) next.prs[e.number] = { lastAlertAt: prevPrs[e.number].lastAlertAt };
-      continue;
-    }
-    const old = prevPrs[e.number];
-    const sameHead = old?.readySince && old.headSha === e.headSha;
-    next.prs[e.number] = {
-      headSha: e.headSha,
-      readySince: sameHead ? old.readySince : now.toISOString(),
-      ...(old?.lastAlertAt ? { lastAlertAt: old.lastAlertAt } : {}),
-    };
-  }
-  return next;
-}
-
-/** PR'er der har vaeret klar for laenge og ikke er meldt inden for throttle-vinduet. */
-export function dueAlerts(state, evaluations, now) {
-  const due = [];
-  for (const e of evaluations) {
-    if (!e.ready) continue;
-    const s = state?.prs?.[e.number];
-    const since = Date.parse(String(s?.readySince ?? ''));
-    if (!Number.isFinite(since) || now.getTime() - since < READY_ALERT_AFTER_MS) continue;
-    const last = Date.parse(String(s?.lastAlertAt ?? ''));
-    if (Number.isFinite(last) && now.getTime() - last < ALERT_THROTTLE_MS) continue;
-    due.push({ ...e, readySince: s.readySince, waitedMs: now.getTime() - since });
-  }
-  return due;
-}
-
-export function markAlerted(state, numbers, now) {
-  const next = { ...state, prs: { ...(state?.prs ?? {}) } };
-  for (const n of numbers) next.prs[n] = { ...(next.prs[n] ?? {}), lastAlertAt: now.toISOString() };
-  return next;
-}
-
-function hours(ms) {
-  return `${Math.floor(ms / 3_600_000)} t ${Math.floor((ms % 3_600_000) / 60_000)} min`;
-}
-
-/** Discord-ops-besked (ingen spillertekst; kun PR-nummer, titel og status). */
-export function buildAlertMessage(alerts, repo = DEFAULT_REPO) {
-  const lines = alerts.map((a) => {
-    const why = a.eligible ? 'staaende kategori, men ikke merget' : 'venter paa ejer-go';
-    return `- #${a.number} ${a.title.slice(0, 90)} (klar i ${hours(a.waitedMs)}; ${why}) https://github.com/${repo}/pull/${a.number}`;
-  });
-  return { content: `Merge-auto-tog: ${alerts.length} klar(e) PR(er) har ventet over 2 timer.\n${lines.join('\n')}`.slice(0, 1900) };
-}
-
-// ── IO ─────────────────────────────────────────────────────────────────────
-
-export function readState(file) {
-  try {
-    const parsed = JSON.parse(readFileSync(file, 'utf8'));
-    return parsed && typeof parsed === 'object' && parsed.prs && typeof parsed.prs === 'object' ? parsed : emptyState();
-  } catch {
-    return emptyState();
-  }
-}
+// IO og vedvarende sikkerhedslaas.
 
 export function writeState(file, state) {
   mkdirSync(dirname(file), { recursive: true });
@@ -346,20 +268,6 @@ export function confirmBeforeQueue(selected, fresh) {
   return { ok: true, reason: 'uaendret og klar' };
 }
 
-async function postDiscord(fetchFn, url, payload) {
-  try {
-    const res = await fetchFn(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
-    });
-    return Boolean(res?.ok);
-  } catch {
-    return false;
-  }
-}
-
 export function readBlock(file) {
   try {
     const parsed = JSON.parse(readFileSync(file, 'utf8'));
@@ -453,13 +361,12 @@ export function parseArgs(argv) {
 
 /**
  * Een koersel. Alle IO-afhaengigheder kan injiceres (tests).
- * Raekkefoelge: tog-markoer -> vurdering -> alarm -> tilstand -> koe (een PR ad gangen, frisk tjek foer hver).
+ * Raekkefoelge: tog-markoer -> vurdering -> koe (een PR ad gangen, frisk tjek foer hver).
  */
 export async function run({
   argv = process.argv.slice(2),
-  env = process.env,
   now = new Date(),
-  // Tilstand og log ligger hos hoved-checkoutet (som tog-markoeren), ogsaa fra et worktree.
+  // Sikkerhedslaas og log ligger hos hoved-checkoutet (som tog-markoeren), ogsaa fra et worktree.
   repoRoot = gitCommonRoot(SCRIPT_ROOT) ?? SCRIPT_ROOT,
   readMarker = () => readActiveMarker(markerFilePath({ cwd: SCRIPT_ROOT })),
   evaluate = (opts) => collectEvaluations(opts),
@@ -467,8 +374,6 @@ export async function run({
   runQueue = defaultRunQueue,
   checkMain = defaultCheckMain,
   blockFile = null,
-  fetchFn = globalThis.fetch,
-  stateFile = null,
   out = (line) => process.stdout.write(`${line}\n`),
 } = {}) {
   const opts = parseArgs(argv);
@@ -478,14 +383,13 @@ export async function run({
     out(line);
     if (logFile) { try { appendFileSync(logFile, `${line}\n`, 'utf8'); } catch { /* fail-soft */ } }
   };
-  const file = stateFile ?? join(repoRoot, STATE_RELATIVE);
   const ownerLogin = opts.repo.split('/')[0];
   log(`[${now.toISOString()}] merge-auto-tog${opts.dryRun ? ' (DRY-RUN)' : ''}`);
 
   const activeMarker = readMarker();
   if (activeMarker) {
     log(`  Goer intet: ${decideAction({ activeMarker, train: [] }).reason}.`);
-    return { action: 'skip-active', train: [], alerts: [] };
+    return { action: 'skip-active', train: [] };
   }
   const blockPath = blockFile ?? join(repoRoot, BLOCK_RELATIVE);
   let block = readBlock(blockPath);
@@ -505,44 +409,23 @@ export async function run({
     evaluations = evaluate({ repo: opts.repo, ownerLogin, log });
   } catch (err) {
     log(`  Kunne ikke liste PR'er (${err?.message ?? err}); proever igen naeste koersel.`);
-    return { action: 'error', train: [], alerts: [] };
+    return { action: 'error', train: [] };
   }
   log(`  ${evaluations.length} aabne PR'er vurderet, ${evaluations.filter((x) => x.ready).length} klar.`);
   for (const e of evaluations.filter((x) => x.ready)) log(`  #${e.number} klar: ${e.reason}${e.classification ? ` [${e.classification}]` : ''}`);
   const train = selectTrain(evaluations);
   const decision = decideAction({ activeMarker: null, train });
 
-  const prev = readState(file);
-  let state = updateReadyState(prev, evaluations, now);
-  // Ogsaa eligible PR'er meldes: er en PR stadig klar efter 2 timer, har toget fejlet for den.
-  const alerts = dueAlerts(state, evaluations, now);
-  if (alerts.length) {
-    const payload = buildAlertMessage(alerts, opts.repo);
-    if (opts.dryRun) {
-      log(`  DRY-RUN: ville melde ${alerts.map((a) => `#${a.number}`).join(', ')} i Discord-ops.`);
-    } else if (!String(env.DISCORD_OPS_WEBHOOK_URL ?? '').trim()) {
-      log(`  ALARM (DISCORD_OPS_WEBHOOK_URL ikke sat, kun her): ${payload.content}`);
-    } else if (await postDiscord(fetchFn, env.DISCORD_OPS_WEBHOOK_URL, payload)) {
-      log(`  Discord-ops meldt om ${alerts.map((a) => `#${a.number}`).join(', ')}.`);
-      state = markAlerted(state, alerts.map((a) => a.number), now);
-    } else {
-      log('  Discord-ops-beskeden kunne ikke sendes; proever igen naeste koersel.');
-    }
-  }
-  if (!opts.dryRun) {
-    try { writeState(file, state); } catch (err) { log(`  ADVARSEL: tilstand ikke gemt (${err?.message ?? err}).`); }
-  }
-
   if (block) {
-    return { action: 'blocked', train, alerts };
+    return { action: 'blocked', train };
   }
   if (!decision.run) {
     log(`  Ingen koe: ${decision.reason}.`);
-    return { action: 'none', train, alerts };
+    return { action: 'none', train };
   }
   if (opts.dryRun) {
     log(`  DRY-RUN: ville koere merge-queue.ps1 -Repo ${opts.repo} een PR ad gangen: ${train.map((n) => `-Pr "${n}"`).join(', ')} (${decision.reason}).`);
-    return { action: 'dry-run', train, alerts };
+    return { action: 'dry-run', train };
   }
   // Een PR pr. koe-koersel, og frisk vurdering lige foer: merge-queue.ps1 binder ikke
   // merget til det hoved der blev vurderet her, saa et push efter udvaelgelsen maa
@@ -574,7 +457,7 @@ export async function run({
       break;
     }
   }
-  return { action: 'queue', train, alerts, queued, results };
+  return { action: 'queue', train, queued, results };
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
