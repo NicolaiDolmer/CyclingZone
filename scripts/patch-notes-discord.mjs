@@ -30,7 +30,7 @@ const TOPIC_DA = { Races: "Løb", Training: "Træning", Riders: "Ryttere", Acade
 const MONTHS = { en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], da: ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"] };
 
 const cmp = (a, b) => { const [x1, y1] = a.split(".").map(Number); const [x2, y2] = b.split(".").map(Number); return x1 - x2 || y1 - y2; };
-const firstSentence = (text) => { const m = String(text ?? "").match(/^(.+?[.!?])(?:\s+(?=\p{Lu})|\s*$)/su); return (m ? m[1] : String(text ?? "")).trim(); };
+const firstSentence = (text) => { const m = String(text ?? "").match(/^(.+?(?:[.!]|\?(?!\s+\p{Ll})))(?:\s|$)/su); return (m ? m[1] : String(text ?? "")).trim(); };
 const fmtDate = (iso, lang) => { const d = new Date(`${iso}T12:00:00Z`); return `${d.getUTCDate()} ${MONTHS[lang][d.getUTCMonth()]}`; };
 
 export function buildDiscordText(patches, { from, to, lang = "en" }) {
