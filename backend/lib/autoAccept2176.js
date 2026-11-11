@@ -328,21 +328,23 @@ export async function releaseRiderUnderTeamLock(supabase, { riderId, teamId, atR
 }
 
 // Claim ownership/parking under the same team locks as an auto-accept start.
-// Payment remains in the existing transfer flow; this is not a payment RPC.
+// With the money gate on, ownership and payment share one transaction (A7).
 export async function claimTransferUnderTeamLock(supabase, {
   riderId, sellerTeamId, buyerTeamId, deferRegistration, now, acquirePatch,
-  activeSeasonNumber, maxRiders, price,
+  activeSeasonNumber, maxRiders, price, dealId, buyerPayload, sellerPayload, riderRestore,
 }) {
   if (!(await isAutoAcceptEnabled(supabase))) return null;
   const atRisk = await fetchAtRiskRiders(supabase, sellerTeamId, activeSeasonNumber, { excludeRiderIds: [riderId] });
-  const result = await rpc(supabase, "auto_accept_claim_transfer_at_price", {
+  const result = await rpc(supabase, "auto_accept_claim_transfer_paid", {
     p_rider_id: riderId, p_seller_team_id: sellerTeamId, p_buyer_team_id: buyerTeamId,
     p_defer_registration: deferRegistration, p_now: now.toISOString(),
     p_acquire_patch: acquirePatch, p_min_seller_riders: MIN_RIDERS_FOR_RACE,
     p_seller_at_risk_rider_ids: atRisk.map(rider => rider.id), p_max_riders: maxRiders, p_price: price,
+    p_deal_id: dealId, p_buyer_payload: buyerPayload, p_seller_payload: sellerPayload,
+    p_rider_restore: riderRestore,
   });
   switch (result?.status) {
-    case "claimed": return { data: { id: result.rider_id } };
+    case "claimed": return { data: { id: result.rider_id }, paymentHandled: result.payment_handled === true };
     case "seller_squad_floor": return { issue: { code: "seller_squad_risk_too_small", minRiders: result.min_riders } };
     case "squad_full": return { issue: { code: "buyer_squad_full", maxRiders: result.max_riders } };
     case "buyer_insufficient_balance": return { issue: { code: "buyer_insufficient_balance" } }; // #6181: pengetjek under holdlåsen

@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { authHeaders } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import {
-  TRAIN_NOW_OFF, parseTrainNowStatus, parseShortRaces,
+  TRAIN_NOW_OFF, parseTrainNowStatus, parseShortRaces, trainNowPressDropped, trainNowPressLanded,
   type TrainNowPressResult, type TrainNowStatus,
 } from "./TrainNowState.ts";
 
@@ -16,6 +16,9 @@ const PATH = "/api/training/train-now";
 export const TRAIN_NOW_RUNNING_POLL_MS = 10_000;
 export const TRAIN_NOW_RUNNING_MAX_MS = 15 * 60_000;
 export const TRAIN_NOW_STATUS_TIMEOUT_MS = 8_000;
+// #7982: after a dropped-but-landed press, refresh the page again at these delays,
+// so form, fatigue and the receipt catch up once the server's training finishes.
+export const TRAIN_NOW_DROP_FOLLOW_UP_MS = [15_000, 45_000] as const;
 
 export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> | void } = {}) {
   const [status, setStatus] = useState<TrainNowStatus>(TRAIN_NOW_OFF);
@@ -91,6 +94,23 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
   // The server re-checks today's races on every first press and answers 409
   // short_races_confirm with the fresh list when a race is not covered by that yes;
   // the page then asks again (no error line: nothing failed).
+  // #7982: the press landed although its answer never arrived. Counts are unknown,
+  // so the note shows the locked line without them. The lock is written BEFORE the
+  // server finishes training, so one refresh now can be too early: refresh again
+  // after the server's remaining work (a press takes ~20 s; the drop comes late).
+  const followUps = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(() => () => { followUps.current.forEach(clearTimeout); }, []);
+  const landedAfterDrop = useCallback(async (): Promise<{ ok: true }> => {
+    setResult(null);
+    const refresh = async () => {
+      try { await Promise.all([load(), onSettled?.()]); } catch { /* best-effort: the next visit shows it */ }
+    };
+    await refresh();
+    followUps.current.forEach(clearTimeout);
+    followUps.current = TRAIN_NOW_DROP_FOLLOW_UP_MS.map((ms) => setTimeout(refresh, ms));
+    return { ok: true };
+  }, [load, onSettled]);
+
   const press = useCallback(async ({ confirmedShortRaceIds = [] }: { confirmedShortRaceIds?: string[] } = {}): Promise<{ ok: boolean; error?: string }> => {
     if (inFlight.current) return { ok: false, error: "in_flight" };
     inFlight.current = true;
@@ -118,8 +138,10 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
       }
       if (!res.ok) {
         const code = data.error || "failed";
+        const next = await load();
+        // #7982: the phone gave up waiting, but the server may have finished the press.
+        if (trainNowPressDropped(res) && trainNowPressLanded(next)) return await landedAfterDrop();
         setError(code);
-        await load();
         return { ok: false, error: code };
       }
       // The press succeeded: show the locked state now, independent of the refresh.
@@ -140,6 +162,10 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
       }
       return { ok: true };
     } catch {
+      // #7982: same as a dropped answer above: ask before calling it an error.
+      try {
+        if (trainNowPressLanded(await load())) return await landedAfterDrop();
+      } catch { /* status unavailable too: show the error */ }
       setError("network");
       return { ok: false, error: "network" };
     } finally {

@@ -140,6 +140,22 @@ export function trainNowRunGate(
   };
 }
 
+/**
+ * #7982: did the press get lost on the way back? A press takes ~20 s on the server
+ * and a phone can give up (tab in background, connection dropped) while the server
+ * finishes. Then there is no HTTP answer at all, or no error code from our backend.
+ */
+export function trainNowPressDropped(res: { networkError?: boolean; status: number; data: unknown }): boolean {
+  if (res.networkError || res.status === 0) return true;
+  const code = (res.data as { error?: unknown } | null)?.error;
+  return res.status >= 500 && typeof code !== "string";
+}
+
+/** #7982: after a dropped press, the fresh status says whether it landed (the lock is written early). */
+export function trainNowPressLanded(next: TrainNowStatus | null): boolean {
+  return next?.locked === true || next?.settled === true;
+}
+
 /** Which short line sits under the button. Keys live in training.json `trainNow.*`. */
 export function trainNowNoteKeys(
   status: TrainNowStatus,
@@ -151,7 +167,8 @@ export function trainNowNoteKeys(
     if (error === "previous_date_open") return ["trainNow.previousOpen"];
     if (error === "no_race_day_today") return ["trainNow.noRaceDay"];
     if (error === "date_settled") return ["trainNow.settled"];
-    return ["trainNow.error"];
+    // #7982: "could not be locked" is the old lock model; the instant press trains.
+    return [status.instant ? "trainNow.errorInstant" : "trainNow.error"];
   }
   if (status.settled) return ["trainNow.settled"];
   if (status.locked) {

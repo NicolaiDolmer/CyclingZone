@@ -1,0 +1,25 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{margin:0;padding:28px;background:#f3f1ec;font-family:system-ui,Segoe UI,sans-serif;color:#151a24;width:1300px}
+h1{font-size:22px;margin:0 0 4px}p.sub{margin:0 0 20px;color:#5a6070;font-size:14px}
+.row{display:flex;gap:20px}.col{flex:1}.lab{font-size:12px;font-weight:700;letter-spacing:.06em;margin:0 0 8px}
+.before .lab{color:#9a3b3b}.after .lab{color:#2f7a4c}
+img{width:100%;border:1px solid #d6d2c8;border-radius:5px;display:block}
+.mock{background:#0f1117;border-radius:5px;border:1px solid #d6d2c8;padding:28px 36px;color:#e8e9ee;height:250px;box-sizing:border-box}
+.mock h2{font-size:34px;margin:0 0 10px;font-weight:700}.ok{color:#5fbf7f;font-size:20px;margin:0 0 30px}
+.note{font-size:17px;color:#9aa0ad;display:flex;gap:8px;align-items:flex-start}.err{color:#e28b84}
+.tabs{display:flex;gap:56px;margin-top:30px;font-size:20px;color:#9aa0ad}.tabs b{color:#e8e9ee;font-weight:500}
+.cap{font-size:13px;color:#5a6070;margin-top:8px}.second{margin-top:22px}
+</style></head><body>
+<h1>#7982 Train now: false error when the phone stops waiting</h1>
+<p class="sub">The server finishes the press in ~22 s; a phone that gives up first used to show an error. After: the page checks status and shows the trained day.</p>
+<div class="row">
+<div class="col before"><p class="lab">BEFORE (beta tester's screenshot, 10/11)</p><img src="before-player.jpg"><p class="cap">Training had run, but the page said it failed and still looked untrained.</p></div>
+<div class="col after"><p class="lab">AFTER (mock of the same dropped answer)</p><div class="mock"><h2>Daily training</h2><p class="ok">Trained today (by you)</p>
+<div class="note"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-top:3px"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Form and fatigue are updated. Riders racing today are settled after their stage.</span></div>
+<div class="tabs"><b>Today</b><span>Program</span><span>Development</span><span>Report</span></div></div>
+<p class="cap">Status is checked again; the press landed, so the normal trained state is shown.</p></div>
+</div>
+<div class="row second">
+<div class="col before"><p class="lab">BEFORE: real failure, instant mode</p><div class="mock" style="height:auto;padding:18px 36px"><div class="note err">Today could not be locked. Try again.</div></div></div>
+<div class="col after"><p class="lab">AFTER (mock): real failure, instant mode</p><div class="mock" style="height:auto;padding:18px 36px"><div class="note err">Train now did not go through. Try again.</div></div></div>
+</div></body></html>

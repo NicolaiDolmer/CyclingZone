@@ -22,6 +22,7 @@
     "previousOpen": "L'entraînement d'hier est encore en cours de règlement. Réessaie dans un instant.",
     "noRaceDay": "Il n'y a pas de jour de course aujourd'hui, donc rien à verrouiller.",
     "error": "Impossible de verrouiller aujourd'hui. Réessaie.",
+    "errorInstant": "S'entraîner maintenant n'a pas abouti. Réessaie.",
     "planLocked": "Les champs du jour sont verrouillés. Tu peux encore modifier demain.",
     "shortRace": "{race} : seulement {fit} coureurs aptes sélectionnés sur {min}. Après S'entraîner maintenant, aucun coureur ne peut être ajouté, ton équipe ne prendra donc pas le départ.",
     "shortRaceEmpty": "{race} : aucun coureur sélectionné. Après S'entraîner maintenant, l'assistant ne peut plus en choisir, ton équipe ne prendra donc pas le départ.",

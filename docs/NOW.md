@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (10/11 aften):** Træn nu #7737: BETA tændt 10/11 ~17:20 (ejer-go); næste = `on` for alle efter beta-feedback. Auto-accept #2176: #7978 (Hjælp + patch note 7.427) venter Codex/CI, så tænd-kort for `auto_accept_enabled`+`market_commitment_6181` (A7 kendt rest). Codex (#7911): A7, #7959-P1, #7977, #7864, #7627.
+> **🎯 Next action (Dolmer PC 10/11 aften, primært Codex):** A7 merget (#7981, RPC verificeret, kontakter off). Codex: beta-trin efter valg A (M3 kun auto-accept-deltagere, PG17-tests), #7980/#7864, #7959-konflikt, #7627. Claude: review + Fable-dommer før tænd. Træn nu beta; #7982 del 2 (22 s) kræver måling. #7979 merget (`8cc2c44e`, Taktik-fanen får Delt kaptajn + Luksushjælper, 7.428); #7978 → 7.429. Graduation Day (#7960) torsdag.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling; memory commitment på Large kunne ikke aflæses 9/11.
 >
-> **🤖 Working agent:** Claude PC1 primær 10/11 (Opus 5.5). Merget i dag bl.a. #7948, #7966-#7970, #7973, #7975, #7976 (alt bag slukket kontakt). Dommer-trin før tænd-kort (ejer 10/11). Codex maksimeres 2 dage efter #7911.
+> **🤖 Working agent:** Ingen aktiv session (PC1 lukket 10/11 aften).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 

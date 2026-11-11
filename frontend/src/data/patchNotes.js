@@ -1,6 +1,6 @@
 export const PATCHES = [
   {
-    "version": "7.427",
+    "version": "7.430",
     "date": "2026-11-10",
     "changes": [
       {
@@ -19,6 +19,93 @@ export const PATCHES = [
         "refs": [
           2176,
           6181
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.429",
+    "date": "2026-11-11",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "beta_to_live",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider card is now for everyone",
+          "body": "The small icon next to every rider name now opens his card for everyone: abilities, value, contract and how he is doing in the race."
+        },
+        "da": {
+          "title": "Rytterkortet er nu for alle",
+          "body": "Det lille ikon ved hvert rytternavn åbner nu rytterens kort for alle: evner, værdi, kontrakt og hvordan han klarer sig i løbet."
+        },
+        "refs": [
+          2009,
+          7858
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "An attack no longer counts as the bunch being dropped",
+          "body": "When a rider attacked a few seconds ahead, the stage plan could mark the whole bunch behind him as dropped. Now only a real split counts, and the summary matches the race film."
+        },
+        "da": {
+          "title": "Et angreb tæller ikke længere som at feltet er sat",
+          "body": "Når en rytter angreb få sekunder foran, kunne etapeplanen markere hele feltet bag ham som sat. Nu tæller kun en rigtig opdeling, og resuméet passer med løbsfilmen."
+        },
+        "refs": [
+          7635
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.428",
+    "date": "2026-11-10",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Tactics",
+        "en": {
+          "title": "Shared captain and luxury helper on the Tactics tab",
+          "body": "You can now pick Shared captain and Luxury helper on the Tactics tab in races that allow them, even if no rider had the role when you selected the team."
+        },
+        "da": {
+          "title": "Delt kaptajn og luksushjælper på Taktik-fanen",
+          "body": "Du kan nu vælge Delt kaptajn og Luksushjælper på Taktik-fanen i løb, der tillader dem, også selvom ingen rytter havde rollen, da du udtog holdet."
+        },
+        "refs": [
+          7977
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.427",
+    "date": "2026-11-10",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "beta",
+        "topic": "Training",
+        "en": {
+          "title": "Train now no longer shows a false error",
+          "body": "If your phone stopped waiting for the answer, Train now could say it failed even though training had run. The page now checks and shows the trained day."
+        },
+        "da": {
+          "title": "Træn nu viser ikke længere en falsk fejl",
+          "body": "Hvis din telefon holdt op med at vente på svaret, kunne Træn nu sige, at det fejlede, selvom træningen var kørt. Siden tjekker nu og viser den trænede dag."
+        },
+        "refs": [
+          7982
         ]
       }
     ]
