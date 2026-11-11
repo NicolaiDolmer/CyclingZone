@@ -1,0 +1,169 @@
+[
+  {
+    "stage": "before",
+    "view": "desktop",
+    "width": 1280,
+    "height": 900,
+    "rider": "rider-1",
+    "identity": "cz-worktree-root:c:/dev/cyclingzone-worktrees/codex-6765-queue-baseline-20261109/frontend",
+    "screenshot": "C:/Dev/CyclingZone-worktrees/feat-7951-rytterside-top/pr-screens/7952-static/before-desktop-rider-1-baseline-auction.png",
+    "flagAssets": [
+      {
+        "url": "http://127.0.0.1:51951/assets/dk-DmS9BCZB.svg",
+        "status": 200
+      }
+    ],
+    "text": "Tilbage\nE2E RACING\n1 / 2\nPILETASTER SKIFTER RYTTER\nM. Hansen\nAP\nFOTO\nADA PEDERSEN\nNATURLIG\nSprinter\n/\nRouleur\ndk\n24 ÅR\n\nU23-verdensmester · Flest point på U23-ranglisten i sæson 0, eller på verdensranglisten blandt ryttere under 23, hvis ingen U23-løb har givet point. Han bærer trøjen hele sæson 1.\n\nSådan virker mestertrøjerne\n\nToptalent · et af de største talenter under 23. Hvad mærkerne betyder\n\n⇄ Sammenlign\nI auktion · slutter om 5t 59m · højeste bud 50.000\n\nBEDSTE ROLLE NU\n\n29\nSprinter\n\nFORVENTET NIVEAU\n\n40–48\n\nMARKEDSVÆRDI\n\n1.680.000\n\nLØN\n\n42.000 CZ$\n\nOMDØMME\n\n—\n\nKONTRAKT\n\nSæson 4\n\n⚡ AKTIV AUKTION\n\nHØJESTE BUD\n\n50.000 CZ$\n\nTID TILBAGE\n\n5t 59m\n\nSælger: AI\n\n-\n\nForlæng kontrakt\nSæt til salg\nFyr rytter\nOverblik\nFysiologi\nTræning\nUdvikling\nScouting\nHistorik\nResultater\nPalmarès\nInteresse\nFYSISKE\n10 evner\nKlatring\n19\nTempo\n23\nPunch\n26\nSprint\n31\nAcceleration\n29\nFladt\n29\nEnkeltstart\n22\nUdholdenhed\n24\nModstandskraft\n26\nRestitution\n25\nMENTALE\n4 evner\nAngrebslyst\n22\nTaktik\n25\nHoldarbejde\n18\nLederskab\n26\nTEKNISKE\n3 evner\nNedkørsel\n23\nBrosten\n21\nPositionering\n27\nRYTTERTYPER\nrating pr. type\n10\n30\n60\n85\nSpurt\nPunch\nBrosten\nBaroud\nRouleur\nITT\nGC\nKlatrer\nNu\nNATURLIG ROLLE\nSprinter\nAlle typer"
+  },
+  {
+    "stage": "before",
+    "view": "mobile",
+    "width": 390,
+    "height": 844,
+    "rider": "rider-1",
+    "identity": "cz-worktree-root:c:/dev/cyclingzone-worktrees/codex-6765-queue-baseline-20261109/frontend",
+    "screenshot": "C:/Dev/CyclingZone-worktrees/feat-7951-rytterside-top/pr-screens/7952-static/before-mobile-rider-1-baseline-auction.png",
+    "flagAssets": [
+      {
+        "url": "http://127.0.0.1:51951/assets/dk-DmS9BCZB.svg",
+        "status": 200
+      }
+    ],
+    "text": " \nTilbage\nE2E RACING\n1 / 2\nM. Hansen\nAP\nFOTO\nADA PEDERSEN\nNATURLIG\nSprinter\n/\nRouleur\ndk\n24 ÅR\n\nU23-verdensmester · Flest point på U23-ranglisten i sæson 0, eller på verdensranglisten blandt ryttere under 23, hvis ingen U23-løb har givet point. Han bærer trøjen hele sæson 1.\n\nSådan virker mestertrøjerne\n\nToptalent · et af de største talenter under 23. Hvad mærkerne betyder\n\n⇄ Sammenlign\nI auktion · slutter om 5t 59m · højeste bud 50.000\n\nBEDSTE ROLLE NU\n\n29\nSprinter\n\nFORVENTET NIVEAU\n\n40–48\n\nMARKEDSVÆRDI\n\n1.680.000\n\nLØN\n\n42.000 CZ$\n\nOMDØMME\n\n—\n\nKONTRAKT\n\nSæson 4\n\n⚡ AKTIV AUKTION\n\nHØJESTE BUD\n\n50.000 CZ$\n\nTID TILBAGE\n\n5t 59m\n\nSælger: AI\n\n-\n\nForlæng kontrakt\nSæt til salg\nFyr rytter\nOverblik\nFysiologi\nTræning\nUdvikling\nScouting\nHistorik\nResultater\nPalmarès\nInteresse\nFYSISKE\n10 evner\nKlatring\n19\nTempo\n23\nPunch\n26\nSprint\n31\nAcceleration\n29\nFladt\n29\nEnkeltstart\n22\nUdholdenhed\n24\nModstandskraft\n26\nRestitution\n25\nMENTALE\n4 evner\nAngrebslyst\n22\nTaktik\n25\nHoldarbejde\n18\nLederskab\n26\nTEKNISKE\n3 evner\nNedkørsel\n23\nBrosten\n21\nPositionering\n27\nRYTTERTYPER\nrating pr. type\n10\n30\n60\n85\nSpurt\nPunch\nBrosten\nBaroud\nRouleur\nITT\nGC\nKlatrer\nNu\nNATURLIG ROLLE\nSprinter\nAlle typer"
+  },
+  {
+    "stage": "after",
+    "view": "desktop",
+    "width": 1280,
+    "height": 900,
+    "rider": "rider-1",
+    "identity": "cz-worktree-root:c:/dev/cyclingzone-worktrees/feat-7951-rytterside-top/frontend",
+    "screenshot": "C:/Dev/CyclingZone-worktrees/feat-7951-rytterside-top/pr-screens/7952-static/after-desktop-rider-1-final-auction.png",
+    "flagAssets": [
+      {
+        "url": "http://127.0.0.1:51952/assets/dk-DmS9BCZB.svg",
+        "status": 200
+      }
+    ],
+    "text": "Tilbage\nE2E RACING\n1 / 2\nPILETASTER SKIFTER RYTTER\nM. Hansen\nAP\nFOTO\nADA PEDERSEN\nNATURLIG\nSprinter\n/\nRouleur\ndk\n24 ÅR\nU23-verdensmester\nU23-verdensmester: Flest point på U23-ranglisten i sæson 0, eller på verdensranglisten blandt ryttere under 23, hvis ingen U23-løb har givet point. Han bærer trøjen hele sæson 1.\nToptalent\nToptalent: et af de største talenter under 23.\n⇄ Sammenlign\nBEDSTE ROLLE NU\n29\nSprinter\nFORVENTET NIVEAU\n40–48\nMARKEDSVÆRDI\n1.680.000 CZ$\nLØN\n42.000 CZ$\nOMDØMME\n—\nKONTRAKT\nSæson 4\n\n⚡ AKTIV AUKTION\n\nHØJESTE BUD\n\n50.000 CZ$\n\nTID TILBAGE\n\n5t 59m\n\nSælger: AI\n\n-\n\nForlæng kontrakt\nSæt til salg\nFyr rytter\nOverblik\nFysiologi\nTræning\nUdvikling\nScouting\nHistorik\nResultater\nPalmarès\nInteresse\nFYSISKE\n10 evner\nKlatring\n19\nTempo\n23\nPunch\n26\nSprint\n31\nAcceleration\n29\nFladt\n29\nEnkeltstart\n22\nUdholdenhed\n24\nModstandskraft\n26\nRestitution\n25\nMENTALE\n4 evner\nAngrebslyst\n22\nTaktik\n25\nHoldarbejde\n18\nLederskab\n26\nTEKNISKE\n3 evner\nNedkørsel\n23\nBrosten\n21\nPositionering\n27\nRYTTERTYPER\nrating pr. type\n10\n30\n60\n85\nSpurt\nPunch\nBrosten\nBaroud\nRouleur\nITT\nGC\nKlatrer\nNu\nNATURLIG ROLLE\nSprinter\nAlle typer",
+    "marks": [
+      {
+        "name": "U23-verdensmester",
+        "box": {
+          "x": 405,
+          "y": 235.296875,
+          "width": 168.015625,
+          "height": 24
+        },
+        "opened": 1,
+        "afterEscape": 0,
+        "reopened": 1,
+        "focused": true
+      },
+      {
+        "name": "Toptalent",
+        "box": {
+          "x": 589.015625,
+          "y": 235.296875,
+          "width": 96.328125,
+          "height": 24
+        },
+        "opened": 1,
+        "afterEscape": 0,
+        "reopened": 1,
+        "focused": true
+      }
+    ],
+    "scrollWidth": 1280
+  },
+  {
+    "stage": "after",
+    "view": "mobile",
+    "width": 390,
+    "height": 844,
+    "rider": "rider-1",
+    "identity": "cz-worktree-root:c:/dev/cyclingzone-worktrees/feat-7951-rytterside-top/frontend",
+    "screenshot": "C:/Dev/CyclingZone-worktrees/feat-7951-rytterside-top/pr-screens/7952-static/after-mobile-rider-1-final-auction.png",
+    "flagAssets": [
+      {
+        "url": "http://127.0.0.1:51952/assets/dk-DmS9BCZB.svg",
+        "status": 200
+      }
+    ],
+    "text": " \nTilbage\nE2E RACING\n1 / 2\nM. Hansen\nAP\nFOTO\nADA PEDERSEN\nNATURLIG\nSprinter\n/\nRouleur\ndk\n24 ÅR\nU23-verdensmester\nU23-verdensmester: Flest point på U23-ranglisten i sæson 0, eller på verdensranglisten blandt ryttere under 23, hvis ingen U23-løb har givet point. Han bærer trøjen hele sæson 1.\nToptalent\nToptalent: et af de største talenter under 23.\n⇄ Sammenlign\nBEDSTE ROLLE NU\n29\nSprinter\nFORVENTET NIVEAU\n40–48\nMARKEDSVÆRDI\n1.680.000 CZ$\nLØN\n42.000 CZ$\nOMDØMME\n—\nKONTRAKT\nSæson 4\n\n⚡ AKTIV AUKTION\n\nHØJESTE BUD\n\n50.000 CZ$\n\nTID TILBAGE\n\n5t 59m\n\nSælger: AI\n\n-\n\nForlæng kontrakt\nSæt til salg\nFyr rytter\nOverblik\nFysiologi\nTræning\nUdvikling\nScouting\nHistorik\nResultater\nPalmarès\nInteresse\nFYSISKE\n10 evner\nKlatring\n19\nTempo\n23\nPunch\n26\nSprint\n31\nAcceleration\n29\nFladt\n29\nEnkeltstart\n22\nUdholdenhed\n24\nModstandskraft\n26\nRestitution\n25\nMENTALE\n4 evner\nAngrebslyst\n22\nTaktik\n25\nHoldarbejde\n18\nLederskab\n26\nTEKNISKE\n3 evner\nNedkørsel\n23\nBrosten\n21\nPositionering\n27\nRYTTERTYPER\nrating pr. type\n10\n30\n60\n85\nSpurt\nPunch\nBrosten\nBaroud\nRouleur\nITT\nGC\nKlatrer\nNu\nNATURLIG ROLLE\nSprinter\nAlle typer",
+    "marks": [
+      {
+        "name": "U23-verdensmester",
+        "box": {
+          "x": 129,
+          "y": 292.140625,
+          "width": 168.015625,
+          "height": 44
+        },
+        "opened": 1,
+        "afterEscape": 0,
+        "reopened": 1,
+        "focused": true
+      },
+      {
+        "name": "Toptalent",
+        "box": {
+          "x": 129,
+          "y": 336.140625,
+          "width": 96.328125,
+          "height": 44
+        },
+        "opened": 1,
+        "afterEscape": 0,
+        "reopened": 1,
+        "focused": true
+      }
+    ],
+    "scrollWidth": 390
+  },
+  {
+    "stage": "after",
+    "view": "landscape",
+    "width": 844,
+    "height": 390,
+    "rider": "rider-1",
+    "identity": "cz-worktree-root:c:/dev/cyclingzone-worktrees/feat-7951-rytterside-top/frontend",
+    "screenshot": "C:/Dev/CyclingZone-worktrees/feat-7951-rytterside-top/pr-screens/7952-static/after-landscape-rider-1-final-auction.png",
+    "flagAssets": [
+      {
+        "url": "http://127.0.0.1:51952/assets/dk-DmS9BCZB.svg",
+        "status": 200
+      }
+    ],
+    "text": "Tilbage\nE2E RACING\n1 / 2\nPILETASTER SKIFTER RYTTER\nM. Hansen\nAP\nFOTO\nADA PEDERSEN\nNATURLIG\nSprinter\n/\nRouleur\ndk\n24 ÅR\nU23-verdensmester\nU23-verdensmester: Flest point på U23-ranglisten i sæson 0, eller på verdensranglisten blandt ryttere under 23, hvis ingen U23-løb har givet point. Han bærer trøjen hele sæson 1.\nToptalent\nToptalent: et af de største talenter under 23.\n⇄ Sammenlign\nBEDSTE ROLLE NU\n29\nSprinter\nFORVENTET NIVEAU\n40–48\nMARKEDSVÆRDI\n1.680.000 CZ$\nLØN\n42.000 CZ$\nOMDØMME\n—\nKONTRAKT\nSæson 4\n\n⚡ AKTIV AUKTION\n\nHØJESTE BUD\n\n50.000 CZ$\n\nTID TILBAGE\n\n5t 59m\n\nSælger: AI\n\n-\n\nForlæng kontrakt\nSæt til salg\nFyr rytter\nOverblik\nFysiologi\nTræning\nUdvikling\nScouting\nHistorik\nResultater\nPalmarès\nInteresse\nFYSISKE\n10 evner\nKlatring\n19\nTempo\n23\nPunch\n26\nSprint\n31\nAcceleration\n29\nFladt\n29\nEnkeltstart\n22\nUdholdenhed\n24\nModstandskraft\n26\nRestitution\n25\nMENTALE\n4 evner\nAngrebslyst\n22\nTaktik\n25\nHoldarbejde\n18\nLederskab\n26\nTEKNISKE\n3 evner\nNedkørsel\n23\nBrosten\n21\nPositionering\n27\nRYTTERTYPER\nrating pr. type\n10\n30\n60\n85\nSpurt\nPunch\nBrosten\nBaroud\nRouleur\nITT\nGC\nKlatrer\nNu\nNATURLIG ROLLE\nSprinter\nAlle typer",
+    "marks": [
+      {
+        "name": "U23-verdensmester",
+        "box": {
+          "x": 381,
+          "y": 258.140625,
+          "width": 168.015625,
+          "height": 44
+        },
+        "opened": 1,
+        "afterEscape": 0,
+        "reopened": 1,
+        "focused": true
+      },
+      {
+        "name": "Toptalent",
+        "box": {
+          "x": 381,
+          "y": 306.140625,
+          "width": 96.328125,
+          "height": 44
+        },
+        "opened": 1,
+        "afterEscape": 0,
+        "reopened": 1,
+        "focused": true
+      }
+    ],
+    "scrollWidth": 844
+  }
+]
