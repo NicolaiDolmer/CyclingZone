@@ -1,6 +1,7 @@
 -- Refs #7864. Atomic stage saves; no flag seed or activation.
 -- data-api-access: {"table":"public.race_tactics_stage_state","roles":{"anon":[],"authenticated":[],"service_role":["SELECT","INSERT","UPDATE","DELETE"]},"reason":"Backend-only saved-stage markers preserve manual exceptions including empty resets"}
 BEGIN;
+SET LOCAL lock_timeout = '5s';
 
 CREATE TABLE IF NOT EXISTS public.race_tactics_stage_state (
   team_id uuid NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,

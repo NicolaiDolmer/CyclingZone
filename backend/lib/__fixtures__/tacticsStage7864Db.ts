@@ -1,6 +1,6 @@
 import {readFile} from 'node:fs/promises';
 export const tacticsId7864=(n:number)=>`00000000-0000-0000-0000-${String(n).padStart(12,'0')}`;
-export async function prepareTacticsDatabase7864({exec}:{exec:(source:string)=>Promise<unknown>}){
+export async function prepareTacticsDatabase7864({exec,riderEntries}:{exec:(source:string)=>Promise<unknown>;riderEntries?:Array<{rider_id:string;race_role:string}>}){
  const team=tacticsId7864(1),race=tacticsId7864(2),rider=tacticsId7864(3),other=tacticsId7864(4);
  await exec(`CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
  CREATE TABLE teams(id uuid PRIMARY KEY); CREATE TABLE riders(id uuid PRIMARY KEY);
@@ -14,8 +14,9 @@ export async function prepareTacticsDatabase7864({exec}:{exec:(source:string)=>P
   const ddl=source.match(/CREATE TABLE IF NOT EXISTS public\.race_(?:stage_roles|team_orders)\s*\([\s\S]*?\n\);/);
   if(!ddl)throw new Error(`Missing real table DDL: ${file}`);await exec(ddl[0]);
  }
- await exec(`INSERT INTO teams VALUES('${team}'),('${other}'); INSERT INTO riders VALUES('${rider}');
- INSERT INTO races VALUES('${race}','scheduled',3,0); INSERT INTO race_entries VALUES('${race}','${team}','${rider}','captain');
+ const entries=riderEntries??[{rider_id:rider,race_role:'captain'}];
+ await exec(`INSERT INTO teams VALUES('${team}'),('${other}'); INSERT INTO riders VALUES ${entries.map(row=>`('${row.rider_id}')`).join(',')};
+ INSERT INTO races VALUES('${race}','scheduled',3,0); INSERT INTO race_entries VALUES ${entries.map(row=>`('${race}','${team}','${row.rider_id}','${row.race_role}')`).join(',')};
  INSERT INTO race_stage_schedule SELECT '${race}',n,'2026-11-12T10:00:00Z' FROM generate_series(1,3)n;
  INSERT INTO race_stage_profiles SELECT '${race}',n,160,'flat','[]','[]' FROM generate_series(1,3)n;
  GRANT SELECT,UPDATE ON races,race_entries,race_incidents,race_stage_schedule,race_stage_profiles TO service_role;

@@ -58,3 +58,13 @@ Verification: RED unit coverage for fresh route-specific generation, exact-type 
 - Fresh synthetic desktop/mobile viewport comparisons and numbered callouts are in `pr-screens/7864`; the visual re-review found no new mismatch. A stale academy Scouting test selector now targets its dedicated existing forecast component; no academy behavior changes.
 - The current Review-gate contract (#6654) makes CodeRabbit optional. Codex review must match final HEAD; Claude owns the subsequent high-risk review.
 - Patch notes/help remain Claude-owned before release. All feature gates remain unseeded/off; no merge, production apply or activation.
+
+## Claude follow-up, 11/11
+
+Owner prioritizes the blocking marker 6803820273 before the separate #7884 design.
+- OFF selects legacy manual writes before marker access, including after migration; beta/on retains shared atomic writes.
+- All three write handlers capture server failures with a neutral error code; expected client conflicts remain unchanged.
+- GET team-orders degrades only optional new metadata and retains existing orders/defaults.
+- Migration DDL has transaction-local lock_timeout; native PG17 checks eight riders, UUID snapshots and an actual held DDL lock.
+- The three P1 regressions were observed RED; focused/native checks pass. Current FULL/preflight and final HEAD CI/review receipts are recorded in PR #7980.
+- Other P2s are deferred to #8013. Claude's blocking marker is retained; no merge, apply or activation. #7884 remains design-only after this handoff.

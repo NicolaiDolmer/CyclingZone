@@ -11,7 +11,15 @@ export type Receipt7864={applied:number[];preserved:number[];locked:number[]};
 
 export class TacticsSaveError7864 extends Error {
  status:number;
- constructor(code:string,status=500){super(code);this.status=status;}
+ constructor(code:string,status=500,cause?:unknown){super(code,cause===undefined?undefined:{cause});this.status=status;}
+}
+const SAVE_FAILED='tactics_save_failed';
+/** Server failures are observable without exposing storage details to players. */
+export function tacticsSaveFailure7864(error:unknown,report:(error:unknown)=>unknown){
+ const status=error instanceof TacticsSaveError7864?error.status:500;
+ if(status>=500)report(error);
+ const code=status>=500?SAVE_FAILED:(error as TacticsSaveError7864).message;
+ return {status,body:{error:code,errors:[code]}};
 }
 const object=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const query=(client:ReadClient,table:string)=>client.from(table) as Query;
@@ -19,16 +27,17 @@ const query=(client:ReadClient,table:string)=>client.from(table) as Query;
 /** A read failure must never authorize the non-atomic compatibility writer. */
 export async function loadTacticsStageCapability7864({supabase,teamId,raceId}:{supabase:ReadClient;teamId:string;raceId:string}){
  const flag=await query(supabase,'app_config').select('value').eq('key','tactics_ready_7864').maybeSingle();
- if(flag.error)throw new TacticsSaveError7864('team_orders_invalid_body');
+ if(flag.error)throw new TacticsSaveError7864(SAVE_FAILED,500,flag.error);
  const value=object(flag.data)?flag.data.value:null;
  const stage=value===null||value===undefined||value===false||value==='off'?'off':value===true||value==='on'?'on':value==='beta'?'beta':null;
- if(!stage)throw new TacticsSaveError7864('team_orders_invalid_body');
+ if(!stage)throw new TacticsSaveError7864(SAVE_FAILED);
+ // OFF must restore the original writers even after the migration is installed.
+ if(stage==='off')return {available:false,savedStages:[] as number[],stage};
  const saved=await query(supabase,'race_tactics_stage_state').select('stage_number').eq('team_id',teamId).eq('race_id',raceId);
  if(saved.error){
-  if(stage==='off'&&['42P01','PGRST205'].includes(saved.error.code??''))return {available:false,savedStages:[] as number[],stage};
-  throw new TacticsSaveError7864('team_orders_invalid_body');
+  throw new TacticsSaveError7864(SAVE_FAILED,500,saved.error);
  }
- if(!Array.isArray(saved.data)||saved.data.some(row=>!object(row)||!Number.isInteger(row.stage_number)||Number(row.stage_number)<1))throw new TacticsSaveError7864('team_orders_invalid_body');
+ if(!Array.isArray(saved.data)||saved.data.some(row=>!object(row)||!Number.isInteger(row.stage_number)||Number(row.stage_number)<1))throw new TacticsSaveError7864(SAVE_FAILED);
  return {available:true,savedStages:saved.data.map(row=>Number(row.stage_number)),stage};
 }
 
@@ -45,12 +54,12 @@ export async function writeTacticsStages7864({supabase,teamId,raceId,mode,plans,
  if(error){
   const code=error.message??'';
   if(['stage_roles_conflict','stage_roles_stage_locked','team_orders_stage_locked','tactics_context_changed'].includes(code))throw new TacticsSaveError7864(code==='tactics_context_changed'?'stage_roles_conflict':code,409);
-  throw new TacticsSaveError7864('team_orders_invalid_body');
+  throw new TacticsSaveError7864(SAVE_FAILED,500,error);
  }
  const requested=new Set(plans.map(p=>p.stage_number));
- if(!object(data)||!['applied','preserved','locked'].every(key=>Array.isArray(data[key])&&(data[key] as unknown[]).every(n=>Number.isInteger(n)&&requested.has(Number(n)))))throw new TacticsSaveError7864('team_orders_invalid_body');
+ if(!object(data)||!['applied','preserved','locked'].every(key=>Array.isArray(data[key])&&(data[key] as unknown[]).every(n=>Number.isInteger(n)&&requested.has(Number(n)))))throw new TacticsSaveError7864(SAVE_FAILED);
  const receipt=data as unknown as Receipt7864;
  const all=[...receipt.applied,...receipt.preserved,...receipt.locked];
- if(all.length!==requested.size||new Set(all).size!==requested.size||(mode!=='fill'&&receipt.applied.length!==requested.size))throw new TacticsSaveError7864('team_orders_invalid_body');
+ if(all.length!==requested.size||new Set(all).size!==requested.size||(mode!=='fill'&&receipt.applied.length!==requested.size))throw new TacticsSaveError7864(SAVE_FAILED);
  return receipt;
 }

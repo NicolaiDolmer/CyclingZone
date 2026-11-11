@@ -1,17 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn,spawnSync} from 'node:child_process';
-import {mkdtemp} from 'node:fs/promises';
+import {mkdtemp,readFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {prepareTacticsDatabase7864,tacticsId7864 as id} from './__fixtures__/tacticsStage7864Db.ts';
+import {entrySnapshot7864,roleSnapshot7864} from './tacticsStageSave7864.ts';
 
 const PG=process.env.TACTICS_PG_BIN;
 const team=id(1),race=id(2),rider=id(3),now='2026-11-11T10:00:00Z';
 const quote=(s:string)=>`'${s.replaceAll("'","''")}'`;
 const entry={rider_id:rider,race_role:'captain'};
-const role={rider_id:rider,race_role:'captain',effort:'normal'};
-const plan=(stage=1)=>({stage_number:stage,expected_entries:[entry],expected_roles:[],roles:[role],order:{breakaway_stance:'chase',riders:[]},expected_profile:{distance_km:160,profile_type:'flat',climbs:[],sprints:[]}});
+const riderEntries=[entry,...['ff000000','10000000','0f000000','aa000000','09000000','ee000000','01000000'].map(prefix=>({rider_id:`${prefix}-0000-0000-0000-000000000001`,race_role:'helper'}))];
+const entries=entrySnapshot7864(new Map(riderEntries.map(row=>[row.rider_id,row.race_role])));
+const roles=roleSnapshot7864(riderEntries.map(row=>({...row,effort:'normal'})),1);
+const neutralRiders=entries.map(({rider_id})=>({rider_id,effort:'normal',try_break:false,leadout:false}));
+const plan=(stage=1)=>({stage_number:stage,expected_entries:entries,expected_roles:[],roles,order:{breakaway_stance:'chase',riders:neutralRiders},expected_profile:{distance_km:160,profile_type:'flat',climbs:[],sprints:[]}});
 const call=(mode:string,plans:unknown[])=>`public.save_race_tactics_7864('${team}','${race}',${quote(mode)},${quote(JSON.stringify(plans))}::jsonb,'${now}')`;
 
 test('PG17 tactics: shared locks serialize manual and batch saves without loss or deadlocks',{skip:!PG&&'TACTICS_PG_BIN not set',timeout:120000},async()=>{
@@ -34,17 +38,34 @@ test('PG17 tactics: shared locks serialize manual and batch saves without loss o
  try{
   checked('initdb',['-D',data,'-U','postgres','-A','trust','-E','UTF8','--locale=C']);
   const start=spawnSync(join(bin,'pg_ctl'),['-D',data,'-o',`-h 127.0.0.1 -p ${port}`,'-l',join(scratch,'pg.log'),'-w','start'],{windowsHide:true,stdio:'ignore',timeout:30000});assert.equal(start.status,0);started=true;
-  await prepareTacticsDatabase7864({exec:async source=>sql(source)});
+  await prepareTacticsDatabase7864({exec:async source=>sql(source),riderEntries});
+  assert.equal(sql('SELECT count(*) FROM race_entries;').trim(),'8');
+  // A real held DDL lock must fail at lock_timeout rather than statement_timeout.
+  const holder=spawn(join(bin,'psql'),args,{windowsHide:true});let holderText='';
+  const holderClosed=new Promise<number|null>(resolve=>holder.on('close',resolve));
+  const holderReady=new Promise<void>((resolve,reject)=>{
+   holder.on('error',reject);holder.stderr.on('data',d=>{holderText+=d;});
+   holder.stdout.on('data',d=>{holderText+=d;if(holderText.includes('lock-holder-ready'))resolve();});
+   holder.on('close',code=>{if(!holderText.includes('lock-holder-ready'))reject(new Error(`holder exit ${code}: ${holderText}`));});
+  });
+  holder.stdin.write("BEGIN; LOCK TABLE race_tactics_stage_state IN ACCESS EXCLUSIVE MODE; SELECT 'lock-holder-ready';\n");
+  try{
+   await holderReady;
+   const migration=await readFile(new URL('../../database/2026-11-11-7864-atomic-stage-tactics.sql',import.meta.url),'utf8');
+   const blocked=run('psql',args,"SET statement_timeout='10s';"+migration);
+   assert.notEqual(blocked.status,0);assert.match(blocked.stderr,/lock timeout/);
+  }finally{holder.stdin.end('ROLLBACK;\n');assert.equal(await holderClosed,0);}
   sql(`CREATE FUNCTION test_attempt(p_statement text) RETURNS jsonb LANGUAGE plpgsql AS $$ DECLARE result jsonb; BEGIN EXECUTE p_statement INTO result; RETURN result;
    EXCEPTION WHEN SQLSTATE 'P0001' THEN IF SQLERRM<>'stage_roles_conflict' THEN RAISE; END IF; RETURN '{"conflict":true}'::jsonb; END; $$;`);
-  const manual={...plan(),roles:[{...role,race_role:'helper'}]};
+  const manual={...plan(),roles:roles.map(row=>row.rider_id===rider?{...row,race_role:'helper'}:row)};
   assert.deepEqual(one(call('roles',[manual])),{applied:[1],preserved:[],locked:[]});
   assert.deepEqual(one(call('fill',[plan()])),{applied:[],preserved:[1],locked:[]});
-  assert.equal(sql('SELECT race_role FROM race_stage_roles;').trim(),'helper');
+  assert.equal(sql(`SELECT race_role FROM race_stage_roles WHERE rider_id='${rider}';`).trim(),'helper');
+  assert.equal(sql('SELECT count(*) FROM race_stage_roles;').trim(),'8');
   reset();one(call('roles',[{...plan(),roles:[]}])) ;assert.deepEqual(one(call('fill',[plan()])),{applied:[],preserved:[1],locked:[]});
   reset();one(call('fill',[plan()]));
   assert.deepEqual(one(`test_attempt(${quote('SELECT '+call('roles',[manual]))})`),{conflict:true});
-  one(call('orders',[{...plan(),expected_roles:[role],order:{breakaway_stance:'let_go',riders:[]}}]));
+  one(call('orders',[{...plan(),expected_roles:roles,order:{breakaway_stance:'let_go',riders:neutralRiders}}]));
   assert.equal(sql('SELECT breakaway_stance FROM race_team_orders;').trim(),'let_go');
   const manualOrder={...plan(),order:{breakaway_stance:'let_go',riders:[]}};
   reset();one(call('orders',[manualOrder]));
@@ -53,7 +74,7 @@ test('PG17 tactics: shared locks serialize manual and batch saves without loss o
   let attempts=0;
   for(let n=0;n<16;n++){
    reset();const [a,b]=await Promise.all([concurrent(`test_attempt(${quote('SELECT '+call('roles',[manual]))})`),concurrent(call('fill',[plan()]))]);attempts+=2;
-   const current=sql('SELECT race_role FROM race_stage_roles;').trim();
+   const current=sql(`SELECT race_role FROM race_stage_roles WHERE rider_id='${rider}';`).trim();
    if(current==='helper'){assert.deepEqual(a,{applied:[1],preserved:[],locked:[]});assert.deepEqual(b,{applied:[],preserved:[1],locked:[]});}
    else{assert.equal(current,'captain');assert.deepEqual(a,{conflict:true});assert.deepEqual(b,{applied:[1],preserved:[],locked:[]});}
   }
@@ -77,7 +98,7 @@ test('PG17 tactics: shared locks serialize manual and batch saves without loss o
    assert.notEqual(run('psql',args,`SET ROLE ${roleName}; SELECT * FROM race_tactics_stage_state;`).status,0);
    assert.notEqual(run('psql',args,`SET ROLE ${roleName}; SELECT ${call('fill',[plan()])};`).status,0);
   }
-  console.log(JSON.stringify({version,concurrentAttempts:attempts,deterministicOrderings:5,serviceAndClientAcl:true,noDeadlocks:true}));
+  console.log(JSON.stringify({version,riders:entries.length,ddlLockTimeout:true,concurrentAttempts:attempts,deterministicOrderings:5,serviceAndClientAcl:true,noDeadlocks:true}));
  }finally{
   if(started){checked('pg_ctl',['-D',data,'-m','fast','-w','stop']);assert.equal(run('pg_ctl',['-D',data,'status']).status,3);console.log('Local PG17 positively stopped (status=3).');}
  }

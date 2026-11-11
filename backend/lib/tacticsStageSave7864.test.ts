@@ -10,7 +10,7 @@ test('atomic writer sends explicit time and accepts only a complete disjoint rec
  assert.deepEqual(await writeTacticsStages7864({supabase,teamId:'t',raceId:'r',mode:'roles',plans:[plan],now}),{applied:[2],preserved:[],locked:[]});
  assert.equal((sent as {p_now:string}).p_now,now.toISOString());
  for(const receipt of [null,{}, {applied:[],preserved:[],locked:[]},{applied:[2],preserved:[2],locked:[]},{applied:[99],preserved:[],locked:[]}]){
-  await assert.rejects(writeTacticsStages7864({supabase:{rpc:async()=>({data:receipt,error:null})},teamId:'t',raceId:'r',mode:'fill',plans:[plan],now}),/team_orders_invalid_body/);
+  await assert.rejects(writeTacticsStages7864({supabase:{rpc:async()=>({data:receipt,error:null})},teamId:'t',raceId:'r',mode:'fill',plans:[plan],now}),/tactics_save_failed/);
  }
 });
 test('atomic RPC errors never fall back to legacy writes',async()=>{

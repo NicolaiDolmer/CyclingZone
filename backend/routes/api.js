@@ -292,7 +292,7 @@ import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverride
 import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
 import { resolveSelectionWarnings } from "../lib/selectionWarningResolve.ts"; // #7508
 import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, normalizeTeamOrder, isStageLocked, sprintTrainFlatOnlyForRace, loadStageRoleByRider, loadStageRoleRows } from "../lib/raceTeamOrdersApi.js";
-import { loadTacticsStageCapability7864, writeTacticsStages7864, roleSnapshot7864, entrySnapshot7864, TacticsSaveError7864 } from "../lib/tacticsStageSave7864.ts";
+import { loadTacticsStageCapability7864, writeTacticsStages7864, roleSnapshot7864, entrySnapshot7864, tacticsSaveFailure7864 } from "../lib/tacticsStageSave7864.ts";
 import { fillRaceTactics7864 } from "../lib/raceTacticsBulk7864.js";
 import { isStagePlanEnabled, loadStagePlanContext, orderHasStagePlan, stagePlanRevisionOk } from "../lib/stagePlanApi.js"; // #7003
 import { jerseyHunt7855OpenForRace } from "../lib/jerseyHunt7855Flag.js"; // #7855
@@ -6543,7 +6543,7 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
       .select("id, status, stages, stages_completed, engine_rules_revision, season_id")
       .eq("id", req.params.raceId)
       .maybeSingle();
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) throw error;
     if (!race) return res.status(404).json({ error: "race_not_found" });
 
     const { overrides = [], stages, base_versions: baseVersions } = req.body || {};
@@ -6591,9 +6591,8 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
     }
     res.json({ ok: true });
   } catch (err) {
-    if (err instanceof TacticsSaveError7864) return res.status(err.status).json({ error: err.message, errors: [err.message] });
-    captureException(err);
-    res.status(500).json({ error: err.message });
+    const failure = tacticsSaveFailure7864(err, captureException);
+    res.status(failure.status).json(failure.body);
   }
 });
 
@@ -6619,7 +6618,13 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
     if (!race) return res.status(404).json({ error: "race_not_found" });
 
     const ctx = await getTeamOrdersContext({ supabase, race, teamId: req.team.id });
-    const capability = await loadTacticsStageCapability7864({ supabase, teamId: req.team.id, raceId: race.id });
+    let capability = { available: false, savedStages: [] };
+    try {
+      capability = await loadTacticsStageCapability7864({ supabase, teamId: req.team.id, raceId: race.id });
+    } catch (err) {
+      // Optional metadata must not remove existing orders from any read surface.
+      captureException(err);
+    }
     const now = new Date();
     const stages = [];
     for (let sn = 1; sn <= ctx.stage_count; sn++) {
@@ -6672,7 +6677,7 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
       .select("id, status, stages, stages_completed, engine_rules_revision")
       .eq("id", req.params.raceId)
       .maybeSingle();
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) throw error;
     if (!race) return res.status(404).json({ error: "race_not_found" });
 
     const ctx = await getTeamOrdersContext({ supabase, race, teamId: req.team.id });
@@ -6715,9 +6720,8 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
     }
     res.json({ ok: true, order: saved });
   } catch (err) {
-    if (err instanceof TacticsSaveError7864) return res.status(err.status).json({ error: err.message, errors: [err.message] });
-    captureException(err);
-    res.status(500).json({ error: err.message });
+    const failure = tacticsSaveFailure7864(err, captureException);
+    res.status(failure.status).json(failure.body);
   }
 });
 
@@ -6734,9 +6738,8 @@ router.post("/races/:raceId/tactics-fill", requireAuth, marketWriteLimiter, asyn
       isBetaTester: (await isViewerBetaTester(req)) === true, now, writeNow: null });
     res.json({ ok: true, ...receipt });
   } catch (err) {
-    if (err instanceof TacticsSaveError7864) return res.status(err.status).json({ error: err.message, errors: [err.message] });
-    captureException(err);
-    res.status(500).json({ error: "team_orders_invalid_body" });
+    const failure = tacticsSaveFailure7864(err, captureException);
+    res.status(failure.status).json(failure.body);
   }
 });
 
