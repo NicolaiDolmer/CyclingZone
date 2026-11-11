@@ -59,7 +59,9 @@ for (const width of [1440, 375]) {
             if (await chip.getAttribute("aria-pressed") !== "true") await chip.click();
           }
           if (!before || surface === "academy") {
-            const cells = page.getByTestId(stage.band ? "academy-prognosis-band" : "academy-prognosis-learning");
+            const cells = page.getByTestId(surface === "scouting"
+              ? "academy-scouting-band"
+              : stage.band ? "academy-prognosis-band" : "academy-prognosis-learning");
             if (surface === "scouting") await expect(cells).toHaveCount(1);
             const cell = cells.first();
             await expect(cell).toBeVisible();

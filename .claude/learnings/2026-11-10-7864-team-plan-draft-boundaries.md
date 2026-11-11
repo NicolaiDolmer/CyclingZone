@@ -11,3 +11,12 @@ The browser regression reproduced the stale captain after a conflict, then passe
 Named decisive points reuse existing route suggestions and validation. Generated plans must be checked against the destination route before any future multi-stage application; copying raw climb indices between routes is not a valid shortcut.
 
 CI integration exposed three contracts: the shared compact profile must remain compact (the tactics parent selects the full card); the preview's public flag allowlist must match the server; and a building registry entry needs its decision and deadline even without a seeded flag. Existing guards were retained and the owning inputs corrected. Bundle comparisons must use matching production builds, because E2E uses mock environment inputs. The measured feature growth is recorded under the budget file's existing policy with its margin unchanged.
+
+Final verification exposed three brittle source assertions rather than runtime
+failures: a fixed character window around the save label, `MULT` matching the
+multi-stage helper name, and an exact manual-save filter without the new batch
+exclusion. The checks now inspect the complete primary button, preserve the
+cost/multiplier prohibition, and explicitly require batch destinations to stay
+out of the ordinary overwrite path. All 21 contracts pass. Mobile release
+evidence uses actual viewport captures so sticky navigation is represented at
+its real screen position rather than stitched across a tall element capture.
