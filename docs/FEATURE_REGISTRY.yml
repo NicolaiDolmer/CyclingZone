@@ -478,12 +478,13 @@ features:
     area: squad
     title_en: Rider card
     title_da: Rytterkort
-    state: building
-    decision: ejer-beslutning
-    decide_by: 2026-11-14
+    state: live
+    flag: rider_hover_card
     epic: 2000
-    verified: 2026-11-07
-    note: "Kontakt rider_hover_card."
+    verified: 2026-11-11
+    note: "Kontakt rider_hover_card on for alle siden 8/11 (laest i prod 11/11); patch note 7.429."
+    roadmap_en: "Rider card: the small icon next to every rider name opens his card with abilities, value, contract and how he is doing in the race."
+    roadmap_da: "Rytterkort: det lille ikon ved hvert rytternavn åbner rytterens kort med evner, værdi, kontrakt og hvordan han klarer sig i løbet."
 
   - id: race-library-v2
     area: stats
@@ -548,17 +549,17 @@ features:
     note: Kontakt sale_escrow_enabled.
 
   - id: market-commitment
+    # #2176: beta scope follows owner A, 10/11; no activation or new prod verification here.
     area: market
     title_en: Bid commitment gate
     title_da: Bud-forpligtelsesgate
     state: building
-    flag: market_commitment_6181
     ssot: docs/TRANSFER_MARKET_RULES.md
     epic: 6181
     verified: 2026-11-09
     decision: goer-faerdigt
     decide_by: 2026-11-30
-    note: M3 beta følger A (#2176, ejer 10/11). Ingen aktivering; prod-status ikke verificeret her.
+    note: Kontakt market_commitment_6181, off post; ikke flag-bundet her (prod-raekke ikke verificeret), jf. #7923.
 
   - id: rider-loans
     area: market
@@ -581,6 +582,7 @@ features:
     note: Findes ikke i kode.
 
   - id: market-auto-accept
+    # #2176: code requires a beta pair; started auctions remain public.
     area: market
     title_en: Auto-accept price
     title_da: Auto-accept-pris
@@ -591,7 +593,6 @@ features:
     verified: 2026-11-07
     decision: taend
     decide_by: 2026-11-28
-    note: Beta-par kraeves; offentlige auktioner (#2176).
 
   - id: market-value-blend
     area: market
@@ -1547,6 +1548,19 @@ features:
     epic: 2467
     verified: 2026-10-15
     note: SurveyBanner.jsx slettet (#2467).
+
+  - id: ranking-shadow-decoupled
+    area: stats
+    title_en: Independent ranking shadow pass
+    title_da: Uafhængigt rangliste-skyggepas
+    state: building
+    flag: ranking_shadow_decoupled_6765
+    ssot: docs/GAME_INVARIANTS.md
+    epic: 6765
+    verified: 2026-11-10
+    decision: goer-faerdigt
+    decide_by: 2026-11-16
+    note: 'OFF seed.'
 
   - id: train-now-bonus
     area: training
