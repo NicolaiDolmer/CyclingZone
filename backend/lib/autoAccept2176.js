@@ -22,7 +22,7 @@
 import { evaluateFlagStage } from "./featureStage.js";
 import { isAutoAcceptActorEnabled2176, isAutoAcceptPairEnabled2176, isMarketTransportEnabled2176, readMarketFlag2176, readMarketSpendIssue2176 } from "./marketBeta2176.ts";
 import { calculateAuctionEnd, getAuctionSeasonBoundaryIssue } from "./auctionEngine.js";
-import { getTeamMarketState, MIN_RIDERS_FOR_RACE, calculateRiderMarketValue } from "./marketUtils.js";
+import { getTeamMarketState, SELLER_SQUAD_FLOOR, sellerFloorRiskIds, calculateRiderMarketValue } from "./marketUtils.js";
 import { readTransferPriceBandConfig, getPriceBandViolation } from "./transferPriceBand.js";
 import { buildAtRiskErrorParams, fetchAtRiskRiders } from "./squadRiskGuard.js";
 import { assertSigningAllowed } from "./boardConsequences.js";
@@ -324,8 +324,8 @@ export async function releaseRiderUnderTeamLock(supabase, { riderId, teamId, atR
   if (marketBeta) {
     try {
       const result = await rpc(supabase, "auto_accept_release_paid_2176", {
-        p_rider_id: riderId, p_team_id: teamId, p_min_riders: MIN_RIDERS_FOR_RACE,
-        p_at_risk_rider_ids: atRiskRiders.map(rider => rider.id), p_academy: academy, p_fee: fee, p_finance_payload: feePayload,
+        p_rider_id: riderId, p_team_id: teamId, p_min_riders: SELLER_SQUAD_FLOOR,
+        p_at_risk_rider_ids: sellerFloorRiskIds(atRiskRiders), p_academy: academy, p_fee: fee, p_finance_payload: feePayload,
       });
       if (result?.status !== "legacy") return mapReleaseUnderTeamLockResult(result, atRiskRiders);
     } catch (error) {
@@ -339,8 +339,8 @@ export async function releaseRiderUnderTeamLock(supabase, { riderId, teamId, atR
   const result = await rpc(supabase, "auto_accept_release_rider", {
     p_rider_id: riderId,
     p_team_id: teamId,
-    p_min_riders: MIN_RIDERS_FOR_RACE,
-    p_at_risk_rider_ids: (atRiskRiders || []).map((r) => r.id),
+    p_min_riders: SELLER_SQUAD_FLOOR,
+    p_at_risk_rider_ids: sellerFloorRiskIds(atRiskRiders),
   });
   return mapReleaseUnderTeamLockResult(result, atRiskRiders);
 }
@@ -356,8 +356,8 @@ export async function claimTransferUnderTeamLock(supabase, {
   const result = await rpc(supabase, "auto_accept_claim_transfer_paid", {
     p_rider_id: riderId, p_seller_team_id: sellerTeamId, p_buyer_team_id: buyerTeamId,
     p_defer_registration: deferRegistration, p_now: now.toISOString(),
-    p_acquire_patch: acquirePatch, p_min_seller_riders: MIN_RIDERS_FOR_RACE,
-    p_seller_at_risk_rider_ids: atRisk.map(rider => rider.id), p_max_riders: maxRiders, p_price: price,
+    p_acquire_patch: acquirePatch, p_min_seller_riders: SELLER_SQUAD_FLOOR,
+    p_seller_at_risk_rider_ids: sellerFloorRiskIds(atRisk), p_max_riders: maxRiders, p_price: price,
     p_deal_id: dealId, p_buyer_payload: buyerPayload, p_seller_payload: sellerPayload,
     p_rider_restore: riderRestore,
   });
@@ -583,8 +583,8 @@ export function makeStartAutoAcceptHandler({
       p_duration_minutes: minutes,
       p_calculated_end: calculatedEnd.toISOString(),
       p_max_riders: buyerState.squad_limits.max,
-      p_min_seller_riders: MIN_RIDERS_FOR_RACE,
-      p_seller_at_risk_rider_ids: atRisk.map((r) => r.id),
+      p_min_seller_riders: SELLER_SQUAD_FLOOR,
+      p_seller_at_risk_rider_ids: sellerFloorRiskIds(atRisk),
       p_now: startedAt.toISOString(),
     });
     const mapped = mapStartAutoAcceptResult(result);

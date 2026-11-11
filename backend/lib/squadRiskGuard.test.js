@@ -163,7 +163,7 @@ test("fetchAtRiskCount: pending_team_id sat til DETTE hold selv (pending-IND, ik
 // konkrete rytter-fixtures/team-states — ikke hardkodede arrays med manuel
 // aritmetik ved siden af koden. `activeSeasonNumber = 1` matcher S1→S2.
 
-test("#2748 Hovedtest: Guinness Cycling Team (10 ryttere, 2 kombineret risiko) — den FAKTISKE spærre blokerer et salg oveni", () => {
+test("#2748 Hovedtest: Guinness Cycling Team (10 ryttere, 2 kombineret risiko) — risiko oplyser, men spærrer ikke salg", () => {
   const activeSeasonNumber = 1;
   // 10 ejede senior-ryttere: 2 rammer risikoen (én via alder, matcher det verificerede
   // mønster hvor den ENESTE menneske-kontraktudløber (contract_end_season=1) OGSÅ var
@@ -193,9 +193,7 @@ test("#2748 Hovedtest: Guinness Cycling Team (10 ryttere, 2 kombineret risiko) �
     { future_count: riders.length, at_risk_count: atRisk },
     { outgoingCount: 1 }
   );
-  assert.ok(issue, "salget SKAL blokeres af den faktiske spærre — 10-2-1=7 < MIN_RIDERS_FOR_RACE");
-  assert.equal(issue.projected, 7);
-  assert.equal(issue.minRiders, MIN_RIDERS_FOR_RACE);
+  assert.equal(issue, null, "#8015: contract expiry and retirement risk do not block departure");
 });
 
 test("#2748 Hovedtest: et hold med 15 ryttere/2 kombineret risiko KAN sælge én ekstra — den FAKTISKE spærre tillader det", () => {

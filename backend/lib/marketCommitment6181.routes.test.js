@@ -7,7 +7,7 @@ import * as market from './marketCommitment6181.js';
 import * as autoAccept from './autoAccept2176.js';
 import * as betaMarket from './marketBeta2176.ts';
 import { FINANCE_ACTOR_TYPE, FINANCE_REASON, FINANCE_RELATED_ENTITY } from './economyConstants.js';
-import { getSquadRiskViolation, MIN_RIDERS_FOR_RACE } from './marketUtils.js';
+import { getSquadRiskViolation, MIN_RIDERS_FOR_RACE, SELLER_SQUAD_FLOOR, sellerFloorRiskIds } from './marketUtils.js';
 import { computeReleaseBuyoutFee } from './contractSeed.js';
 import { getParkedRiderReleaseIssue } from './parkedRiderGuard6181.js';
 import { releaseFeeAvailableResponse6181 } from './releaseFeeGate6181.js';
@@ -133,7 +133,7 @@ function fixture({ flag = 'off', autoFlag = 'off', flagError = false, proxyError
   const cascade = [];
   const context = {
     ...rules,...market,...autoAccept,...betaMarket,Date:FixedDate,console,isLateBidTriggerError,buildKeyedNotification,
-    FINANCE_ACTOR_TYPE,FINANCE_REASON,FINANCE_RELATED_ENTITY,MIN_RIDERS_FOR_RACE,
+    FINANCE_ACTOR_TYPE,FINANCE_REASON,FINANCE_RELATED_ENTITY,MIN_RIDERS_FOR_RACE,SELLER_SQUAD_FLOOR,sellerFloorRiskIds,
     countSellerAuctionOutgoing:async()=>{autoOutgoingReads.push(1);return autoFlag==='on' ? outgoing : 0;},
     supabase:client, requireAuth(){},bidLimiter(){},marketWriteLimiter(){},
     assertMarketOpen:async()=>true,assertTeamNotTransferFrozen:()=>true,
@@ -218,7 +218,8 @@ for(const owned of [false,true])test(`beta ordinary auction creation owned=${own
   assert.equal(out.status,201,JSON.stringify(out.body));
   const call=f.rpcCalls.find(row=>row.name==='create_market_auction_2176');
   assert.ok(call);assert.equal(call.args.p_expected_owner,owned?TEAM:null);
-  assert.equal(call.args.p_min_riders,MIN_RIDERS_FOR_RACE);
+  assert.equal(call.args.p_min_riders,0);
+  assert.deepEqual(Array.from(call.args.p_at_risk_rider_ids),[]);
   assert.equal(f.writes.some(row=>row.table==='auctions'&&row.action==='insert'),false);
 });
 
@@ -319,13 +320,15 @@ for (const flag of ['off','on']) {
     if(flag==='on') {assert.equal(out.body.errorCode,'squad_full_bid');assert.equal(f.createdAuctions.length,0);}
     else {assert.equal(f.createdAuctions.length,1);assert.equal(f.bids.length,1);}
   });
-  test(`POST release ${flag}: outgoing auctions affect the seller floor only when enabled`,async()=>{
-    const f=fixture({flag,futureCount:10,outgoing:2});f.rider.team_id=TEAM;
-    const out=await route('post','/riders/:id/release',f)({});
-    assert.equal(out.status,flag==='on'?409:200);
-    if(flag==='on') {assert.equal(out.body.errorCode,'cannot_release_squad_risk');assert.equal(f.rider.team_id,TEAM);}
-    else {assert.equal(out.body.success,true);assert.equal(f.rider.team_id,null);}
-  });
+  for (const [futureCount,outgoing] of [[1,0],[3,2]]) {
+    test(`POST release ${flag}: final available rider can leave with ${outgoing} outgoing auctions (#8015)`,async()=>{
+      const f=fixture({flag,futureCount,outgoing});f.rider.team_id=TEAM;
+      const out=await route('post','/riders/:id/release',f)({});
+      assert.equal(out.status,200);
+      assert.equal(out.body.success,true);
+      assert.equal(f.rider.team_id,null);
+    });
+  }
 }
 
 for (const [path,body] of [['/auctions',{rider_id:RIDER,starting_price:150}],['/riders/:id/release',{}]]) {

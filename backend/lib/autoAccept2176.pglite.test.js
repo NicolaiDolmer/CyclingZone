@@ -51,6 +51,9 @@ async function database({ marketGate = false, beforeMigration = null } = {}) {
   const claimSwapMigration = await file('2026-11-09-2176-m3-auto-accept-claim-swap.sql');
   await db.exec(claimSwapMigration);
   await db.exec(claimSwapMigration); // idempotent
+  const academyMigration = await file('2026-11-11-8015-auto-accept-academy-riders.sql');
+  await db.exec(academyMigration);
+  await db.exec(academyMigration);
   if (marketGate) {
     await db.exec(await file('2026-11-07-6181-m3-market-commitment.sql'));
     await db.exec(`UPDATE app_config SET value='"on"' WHERE key='market_commitment_6181'`);
@@ -434,12 +437,29 @@ test('saelger saetter, aendrer og fjerner Y med forventet pris; alt logges med a
   assert.deepEqual(await setPrice(db, l, { price: 500_000 }), { status: 'listing_closed' });
 });
 
-test('akademiryttere kan ikke faa en auto-pris', async () => {
+test('academy and youth-only teams can set auto-price, start and sell their last rider (#8015)', async () => {
   const db = await database();
-  const r = id(next++);
-  await db.query('INSERT INTO riders(id, team_id, is_academy) VALUES ($1, $2, true)', [r, TEAM.A]);
-  const l = await listing(db, r);
-  assert.deepEqual(await setPrice(db, l, { price: 500_000 }), { status: 'rider_is_academy' });
+  for (const squadName of ['junior', 'u23', 'senior']) {
+    const r = id(next++);
+    await db.query('INSERT INTO riders(id, team_id, is_academy, squad) VALUES ($1,$2,true,$3)', [r, TEAM.A, squadName]);
+    const l = await listing(db, r);
+    assert.equal((await setPrice(db, l, { price: 500_000 })).status, 'updated');
+    const started = await start(db, l, { floor: 0 });
+    assert.equal(started.status, 'started');
+    assert.deepEqual(await riderRow(db, r), { team_id: TEAM.A, pending_team_id: null, squad: squadName, is_academy: true, salary: 1000 });
+    // Finalization's ownership RPC applies the graduation patch atomically.
+    await db.query("UPDATE auctions SET status='completed' WHERE id=$1", [started.auction_id]);
+    assert.equal((await claim(db, r, { floor: 0, patch: { is_academy: false, squad: 'senior' } })).status, 'claimed');
+    assert.deepEqual(await riderRow(db, r), { team_id: TEAM.B, pending_team_id: null, squad: 'senior', is_academy: false, salary: 1000 });
+    assert.equal(Number((await one(db,'SELECT count(*) AS n FROM riders WHERE team_id=$1',[TEAM.A])).n),0);
+  }
+});
+
+test('floor zero disables departure restrictions even with outgoing or expiring riders (#8015)', async () => {
+  const db = await database();
+  const riders = await squad(db, TEAM.A, 2);
+  await db.query('UPDATE riders SET pending_team_id=$2 WHERE id=$1', [riders[0],TEAM.C]);
+  assert.equal((await release(db, riders[1], { floor: 0, atRisk: [riders[0]] })).status, 'released');
 });
 
 test('klienten kan aldrig selv aendre auto-prisen (RLS-politikken tillader ellers ejeren at opdatere)', async () => {

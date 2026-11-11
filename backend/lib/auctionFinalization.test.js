@@ -1521,13 +1521,8 @@ test("finalizeAuctionById throws BEFORE any money moves if the ownership transfe
   assert.deepEqual(auctionUpdates, []);
 });
 
-// #2836: sælger-gulvet (MIN_RIDERS_FOR_RACE=8, samme diskriminator som
-// auktions-OPRETTELSEN i api.js #2748/#2834) tjekkes hidtil kun ved
-// oprettelse, aldrig ved finalisering. Sælgeren har kun 8 senior-ryttere
-// TILBAGE (efter denne auktion ville han falde til 7) — finaliseringen skal
-// annullere overdragelsen i stedet for at lade holdet falde under
-// løbs-minimummet. INGEN penge må flytte, og rytteren bliver hos sælgeren.
-test("finalizeAuctionById annullerer overdragelsen hvis sælgeren ville falde under løbs-minimummet (8) (#2836)", async () => {
+// #8015: selling the last owned rider still settles ownership and both payment legs.
+test("finalizeAuctionById sells the final rider and settles payment (#8015)", async () => {
   const auctionUpdates = [];
   const teamUpdates = [];
   const riderUpdates = [];
@@ -1555,8 +1550,8 @@ test("finalizeAuctionById annullerer overdragelsen hvis sælgeren ville falde un
       },
       teamMarketCounts: {
         "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
-        // Sælgeren har PRÆCIST 8 (løbs-minimum) — denne auktion ville tage ham til 7.
-        "seller-team": { riderCount: 8, pendingCount: 0, activeLoanCount: 0 },
+        // The final senior rider may leave; race entry rules do not block a sale.
+        "seller-team": { riderCount: 1, pendingCount: 0, activeLoanCount: 0 },
       },
       auctionUpdates,
       teamUpdates,
@@ -1571,21 +1566,10 @@ test("finalizeAuctionById annullerer overdragelsen hvis sælgeren ville falde un
   });
 
   assert.equal(result.ok, true);
-  assert.equal(result.code, "seller_squad_floor");
-  // Ejerskabet rørt ikke, ingen penge flyttede, auktionen lukkes uden vinder.
-  assert.deepEqual(riderUpdates, []);
-  assert.deepEqual(financeInserts, []);
-  assert.deepEqual(teamUpdates, []);
-  assert.deepEqual(auctionUpdates, [{
-    status: "completed",
-    actual_end: "2026-08-17T10:00:00.000Z",
-    seller_team_id: "seller-team",
-  }]);
-  // Begge parter informeres.
-  assert.ok(notifications.some((n) => n.teamId === "buyer-team"));
-  const sellerNotif = notifications.find((n) => n.teamId === "seller-team");
-  assert.ok(sellerNotif, "sælgeren skal have besked om hvorfor salget blev annulleret");
-  assert.match(sellerNotif.message, /8/);
+  assert.equal(result.code, "completed");
+  assert.equal(riderUpdates.length, 1);
+  assert.equal(riderUpdates[0].team_id, "buyer-team");
+  assert.equal(financeInserts.length, 2, "buyer debit and seller credit still settle");
 });
 
 // #2836 kontrol: sælgeren har PLADS (9 → 8 efter salget, stadig ≥ minimum) —
@@ -3123,9 +3107,10 @@ test("finalizeAuctionById inherits an existing contract unchanged on a won aucti
 // createGraduateAuction fra academyGraduation.js). Finalization-koden er
 // UÆNDRET generisk (#932-graduatePatch), så det samme is_academy=false-flip
 // skal ske ved handlens gennemførelse uanset hvordan auktionen blev oprettet.
-test("finalizeAuctionById graduates an own-team academy rider to senior for the buyer and inherits the existing contract unchanged (#3650)", async () => {
+test("finalizeAuctionById graduates an own-team academy rider to senior for the buyer and inherits the existing contract unchanged with zero seniors (#3650, #8015)", async () => {
   const auctionUpdates = [];
   const riderUpdates = [];
+  const financeInserts = [];
 
   const result = await finalizeAuctionById({
     supabase: createFinalizeAuctionSupabase({
@@ -3168,10 +3153,11 @@ test("finalizeAuctionById graduates an own-team academy rider to senior for the 
       },
       teamMarketCounts: {
         "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
-        "seller-team": { riderCount: 9, pendingCount: 0, activeLoanCount: 0 },
+        "seller-team": { riderCount: 0, pendingCount: 0, activeLoanCount: 0 },
       },
       auctionUpdates,
       riderUpdates,
+      financeInserts,
     }),
     auctionId: "auction-academy-own",
     notifyTeamOwner: async () => {},
@@ -3180,6 +3166,7 @@ test("finalizeAuctionById graduates an own-team academy rider to senior for the 
 
   assert.equal(result.ok, true);
   assert.equal(result.code, "completed");
+  assert.equal(financeInserts.length,2,"buyer debit and seller credit still settle");
   // Graduerer til senior (is_academy=false) — kontrakten arves UÆNDRET, samme
   // #2881/#3620-invariant som transfer-delen (#3650, PR #3845).
   // #4619: squad skrives SAMMEN med is_academy. Uden den ville en solgt
