@@ -286,7 +286,7 @@ test("seller sets an optional auto-price, validated against the asking price", a
   const price = page.getByTestId("transfer-list-price-input");
   const auto = page.getByTestId("transfer-list-auto-price-input");
   await expect(auto).toBeVisible({ timeout: 20000 });
-  await expect(page.getByText(/Byder nogen denne pris eller mere/)).toBeVisible();
+  await expect(page.getByText(/En køber, der kan se auto-prisen/)).toBeVisible();
   const submit = page.getByRole("button", { name: "Sæt til salg", exact: true }).last();
   await price.fill("200000");
   await auto.fill("199999");
