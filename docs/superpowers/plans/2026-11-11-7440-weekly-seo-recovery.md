@@ -32,7 +32,7 @@
 - [x] Verify current source, owner scope, prior merged #7442 and failing weekly run 42627528452.
 - [x] Create isolated worktree from main ef5cdbe2e; bootstrap behind the single heavy slot.
 - [x] Baseline existing Monday/SEO tests: 17/17 passed.
-- [ ] Independent read-only plan review, guarded commit, push and immediate draft PR.
+- [x] Independent read-only plan review, guarded commit, push and immediate draft PR #8010.
 
 ## Task 2: Reproduce and implement
 
@@ -40,10 +40,10 @@
 
 **Interfaces:** `readWeeklySeoDrops({ now, runGh })` returns a complete, unavailable or incomplete issue-source result; `renderWeeklySeoDrops(result)` renders only that evidence. The CLI passes its captured `now` explicitly and includes the result in JSON and text.
 
-- [ ] Add tests to the existing Monday CI entry: period boundaries, open/closed issues, deduplication, empty complete input, unavailable/invalid/capped input and rendering.
-- [ ] Observe meaningful RED against a minimal adapter, then implement the read-only adapter and observe GREEN.
-- [ ] Wire the adapter into the report; pass `secrets.GITHUB_TOKEN` through the action's documented `github_token` input.
-- [ ] Update GROWTH_STACK and add a bug learning. Database queries and dependencies are unchanged.
+- [x] Add tests to the existing Monday CI entry: period boundaries, open/closed issues, deduplication, empty complete input, unavailable/invalid/capped input and rendering.
+- [x] Observe meaningful RED against a minimal adapter, then implement the read-only adapter and observe GREEN (17 existing passed/14 failed, then 31/31).
+- [x] Wire the adapter into the report; pass `secrets.GITHUB_TOKEN` through the action's documented `github_token` input.
+- [x] Update GROWTH_STACK and add a bug learning. Database queries and dependencies are unchanged.
 - [ ] Review and push the meaningful implementation checkpoint; keep the draft body current.
 
 ## Task 3: Verify and hand off

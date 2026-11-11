@@ -25,6 +25,7 @@
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 import { createClient } from "@supabase/supabase-js";
+import { readWeeklySeoDrops, renderWeeklySeoDrops } from "./weekly-seo-report.mjs";
 
 const TZ = "Europe/Copenhagen";
 const PAGE = 1000;
@@ -391,6 +392,7 @@ async function main() {
   out.dormant_with_email_consent = dormantConsent.length;
   out.email_marketing_consent_total = consentTotal;
 
+  out.seo_drop_issues_7d = await readWeeklySeoDrops({ now });
   out.notes = notes;
 
   if (args.json) {
@@ -445,6 +447,8 @@ async function main() {
     lines.push("|---|---:|---:|---:|");
     for (const c of out.cohort_all) lines.push(`| ${c.cohort_week} | ${c.cohort_size ?? "—"} | ${c.d7_eligible ?? "—"} | ${c.d7_pct ?? "—"} |`);
   }
+  lines.push("");
+  lines.push(renderWeeklySeoDrops(out.seo_drop_issues_7d));
   lines.push("");
   lines.push("Forbehold:");
   for (const n of notes) lines.push(`- ${n}`);
