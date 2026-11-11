@@ -1,5 +1,5 @@
 import { test, expect } from "./e2e-base.js";
-import { installNetworkMocks, stabilizePage, TEST_USER, json, login } from "./fixtures.js";
+import { installNetworkMocks, stabilizePage, TEST_USER, json, login, evidenceShotPath } from "./fixtures.js";
 const NOW = new Date("2026-11-11T12:00:00Z");
 const key = "sb-cycling-zone-e2e-auth-token";
 const session = {
@@ -69,7 +69,7 @@ test("expired refresh resolves to login with a quiet static transition and no ma
         .first()
         .evaluate((el) => getComputedStyle(el).animationName)
     ).toBe("none");
-    await page.screenshot({ path: `../pr-screens/5250/after-${info.project.name}.png` });
+    await page.screenshot({ path: evidenceShotPath(`pr-screens/5250/after-${info.project.name}.png`) });
   } finally {
     release();
   }
@@ -162,7 +162,7 @@ test("expired access token with working refresh reaches dashboard", async ({ pag
   expect(
     await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).access_token, key)
   ).toBe("e2e-access-token");
-  await page.screenshot({ path: `../pr-screens/5250/dashboard-${info.project.name}.png` });
+  await page.screenshot({ path: evidenceShotPath(`pr-screens/5250/dashboard-${info.project.name}.png`) });
 });
 
 test('implicit email callback reaches the app without marketing and clears the token fragment', async ({ page }) => {
