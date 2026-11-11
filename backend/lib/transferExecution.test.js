@@ -63,8 +63,7 @@ test("getTransferExecutionIssue rejects a seller that would fall below the squad
   assert.equal(issue?.minRiders, 20);
 });
 
-// #2748 · sælgeren må ikke handle sig under løbs-minimummet (8) når kontraktudløb
-// + pensionsrisiko ved næste sæsonskifte tælles med (sellerState.at_risk_count).
+// #8015: contract expiry and retirement risk remain informational during sales.
 test("getTransferExecutionIssue permits the last rider sale despite expiring contracts", () => {
   const issue = getTransferExecutionIssue({
     rider: { team_id: "seller-team" },
@@ -85,8 +84,7 @@ test("getTransferExecutionIssue permits the last rider sale despite expiring con
     price: 50,
   });
 
-  // 9 (future_count) - 1 (denne handel) - 1 (risiko) = 7 < 8 → blokeret, selvom
-  // division-min (0) i sig selv ikke ville blokere (dækket af testen ovenfor).
+  // The final owned rider may leave even when other contracts are expiring.
   assert.equal(issue, null);
 });
 

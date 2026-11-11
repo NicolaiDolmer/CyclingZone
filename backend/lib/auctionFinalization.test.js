@@ -1521,12 +1521,7 @@ test("finalizeAuctionById throws BEFORE any money moves if the ownership transfe
   assert.deepEqual(auctionUpdates, []);
 });
 
-// #2836: sælger-gulvet (MIN_RIDERS_FOR_RACE=8, samme diskriminator som
-// auktions-OPRETTELSEN i api.js #2748/#2834) tjekkes hidtil kun ved
-// oprettelse, aldrig ved finalisering. Sælgeren har kun 8 senior-ryttere
-// TILBAGE (efter denne auktion ville han falde til 7) — finaliseringen skal
-// annullere overdragelsen i stedet for at lade holdet falde under
-// løbs-minimummet. INGEN penge må flytte, og rytteren bliver hos sælgeren.
+// #8015: selling the last owned rider still settles ownership and both payment legs.
 test("finalizeAuctionById sells the final rider and settles payment (#8015)", async () => {
   const auctionUpdates = [];
   const teamUpdates = [];
@@ -1555,7 +1550,7 @@ test("finalizeAuctionById sells the final rider and settles payment (#8015)", as
       },
       teamMarketCounts: {
         "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
-        // Sælgeren har PRÆCIST 8 (løbs-minimum) — denne auktion ville tage ham til 7.
+        // The final senior rider may leave; race entry rules do not block a sale.
         "seller-team": { riderCount: 1, pendingCount: 0, activeLoanCount: 0 },
       },
       auctionUpdates,
