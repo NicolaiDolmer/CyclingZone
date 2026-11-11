@@ -341,6 +341,20 @@
       "env": {
         "VITE_PREVIEW_MOCK": "1"
       }
+    },
+    {
+      "name": "marketing-1369",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "start",
+        "--prefix",
+        "C:/Dev/CyclingZone-worktrees/feat-1369-landing-v2/marketing",
+        "--",
+        "-p",
+        "3369"
+      ],
+      "port": 3369
     }
   ]
 }
