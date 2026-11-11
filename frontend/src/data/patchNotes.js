@@ -1,5 +1,46 @@
 export const PATCHES = [
 {
+  "version": "7.434",
+  "date": "2026-11-12",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Transfers",
+      "en": {
+        "title": "Sell down to an empty squad",
+        "body": "You can now sell, auction or release riders all the way down to an empty squad. Warnings still show, but they no longer block you."
+      },
+      "da": {
+        "title": "Sælg helt ned til en tom trup",
+        "body": "Du kan nu sælge, sætte på auktion eller frigive ryttere helt ned til en tom trup. Advarsler vises stadig, men de spærrer ikke længere."
+      },
+      "refs": [
+        8015
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "beta",
+      "topic": "Transfers",
+      "en": {
+        "title": "Auto-price for academy riders (beta)",
+        "body": "Academy, U23 and junior riders can now get an auto-price. A rider sold this way joins the buyer's senior squad."
+      },
+      "da": {
+        "title": "Auto-pris til akademiryttere (beta)",
+        "body": "Akademi-, U23- og juniorryttere kan nu få en auto-pris. En rytter, der sælges på den måde, kommer på køberens seniortrup."
+      },
+      "refs": [
+        8015,
+        2176
+      ]
+    }
+  ]
+},
+{
   "version": "7.433",
   "date": "2026-11-11",
   "changes": [
