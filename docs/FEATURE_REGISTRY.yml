@@ -128,7 +128,7 @@ features:
     verified: 2026-10-29
     decision: ejer-beslutning
     decide_by: 2026-11-08
-    note: Uden app_config-række = off; ejer tænder.
+    note: Ingen app_config-række (fravær = off). Ejer-go til tænding.
 
   - id: race-day-form-6649
     area: race-engine
@@ -350,7 +350,7 @@ features:
     verified: 2026-11-07
     decision: taend
     decide_by: 2026-11-21
-    note: fatigue_now_7801: ikke seedet = off; ejer tænder.
+    note: Kontakt fatigue_now_7801 (ikke seedet = slukket); ejer tænder.
 
   - id: luxury-helper-role
     area: race-engine
@@ -452,10 +452,10 @@ features:
     state: building
     epic: 7864
     ssot: docs/RACE_ENGINE_RULES.md
-    verified: 2026-11-10
+    verified: 2026-11-11
     decision: goer-faerdigt
     decide_by: 2026-11-12
-    note: "Off; ingen seed."
+    note: "Ingen seed/aktivering; fler-etape kræver atomisk DB-kapabilitet."
 
   - id: rider-why-button
     area: race-day
@@ -490,12 +490,13 @@ features:
     area: squad
     title_en: Rider card
     title_da: Rytterkort
-    state: building
-    decision: ejer-beslutning
-    decide_by: 2026-11-14
+    state: live
+    flag: rider_hover_card
     epic: 2000
-    verified: 2026-11-07
-    note: "Kontakt rider_hover_card."
+    verified: 2026-11-11
+    note: "Kontakt rider_hover_card on for alle siden 8/11 (laest i prod 11/11); patch note 7.429."
+    roadmap_en: "Rider card: the small icon next to every rider name opens his card with abilities, value, contract and how he is doing in the race."
+    roadmap_da: "Rytterkort: det lille ikon ved hvert rytternavn åbner rytterens kort med evner, værdi, kontrakt og hvordan han klarer sig i løbet."
 
   - id: race-library-v2
     area: stats
@@ -560,6 +561,7 @@ features:
     note: Kontakt sale_escrow_enabled.
 
   - id: market-commitment
+    # #2176: beta scope follows owner A, 10/11; no activation or new prod verification here.
     area: market
     title_en: Bid commitment gate
     title_da: Bud-forpligtelsesgate
@@ -592,6 +594,7 @@ features:
     note: Findes ikke i kode.
 
   - id: market-auto-accept
+    # #2176: code requires a beta pair; started auctions remain public.
     area: market
     title_en: Auto-accept price
     title_da: Auto-accept-pris
@@ -1557,6 +1560,19 @@ features:
     epic: 2467
     verified: 2026-10-15
     note: SurveyBanner.jsx slettet (#2467).
+
+  - id: ranking-shadow-decoupled
+    area: stats
+    title_en: Independent ranking shadow pass
+    title_da: Uafhængigt rangliste-skyggepas
+    state: building
+    flag: ranking_shadow_decoupled_6765
+    ssot: docs/GAME_INVARIANTS.md
+    epic: 6765
+    verified: 2026-11-10
+    decision: goer-faerdigt
+    decide_by: 2026-11-16
+    note: 'OFF seed.'
 
   - id: train-now-bonus
     area: training

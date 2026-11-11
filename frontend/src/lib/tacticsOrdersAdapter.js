@@ -18,20 +18,10 @@ import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
 import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { defaultTeamOrder, mergeOrderWithRoster, trainDefaultForStage } from "./tacticsPlan.js";
 import { orderWithoutJerseyHunt, withStagePlanFields } from "../components/race/StagePlanModel.ts"; // #7003, #7855
+import { tacticsOrderPayload7864 } from "./tacticsOrderPayload7864.ts";
 
 const API = import.meta.env.VITE_API_URL;
 
-/** Kun de fire kontraktfelter — se filens hoved-kommentar. */
-function toContractRider(rider, withPlan = false) {
-  return {
-    rider_id: rider.rider_id,
-    effort: rider.effort,
-    try_break: rider.try_break === true,
-    leadout: rider.leadout === true,
-    // #7003: etapeplanen sendes kun naar den er slaaet til og rytteren har en (serveren gater feltet).
-    ...(withPlan && Array.isArray(rider.plan) && rider.plan.length ? { plan: rider.plan } : {}),
-  };
-}
 
 /**
  * Hent HELE holdets ordre-kontekst for løbet: alle etapers lås-meta, alle gemte
@@ -67,6 +57,8 @@ export async function fetchTeamOrders({ raceId }) {
     orders: body.orders ?? [],
     effortKeys: body.valid_efforts ?? null,
     stagePlanEnabled: body.stage_plan_enabled === true, // #7003
+    atomicStageSave: body.atomic_stage_save === true,
+    savedStageNumbers: Array.isArray(body.saved_stage_numbers) ? body.saved_stage_numbers.filter(sn => Number.isInteger(sn) && sn > 0) : [],
     jerseyHunt7855: body.jersey_hunt_7855 === true, // #7855: troejejagtens opgaver kan vaelges
   };
 }
@@ -116,10 +108,7 @@ export async function saveTacticsCard({ raceId, stage, order: rawOrder, stagePla
   const res = await apiFetch(`${API}/api/races/${raceId}/team-orders/${stage}`, { // catch-ok: TacticsCard.handleSave()
     method: "PUT",
     headers,
-    body: JSON.stringify({
-      breakaway_stance: order.breakaway_stance,
-      riders: (order.riders ?? []).map((r) => toContractRider(r, stagePlan)),
-    }),
+    body: JSON.stringify(tacticsOrderPayload7864(order, stagePlan)),
   });
   if (!res.ok) { // #5242, se fetchTeamOrders()
     const body = res.data || {};

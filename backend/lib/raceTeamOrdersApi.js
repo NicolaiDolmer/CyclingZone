@@ -107,18 +107,20 @@ export function oppositeOrderError(rider, role, opts) {
  * (race_stage_roles) ellers basis-rollen fra holdudtagelsen. Fladen gemmer
  * rollerne foer ordren, saa et rolleskift i samme gem er med her.
  */
-export async function loadStageRoleByRider({ supabase, raceId, stageNumber, baseRoleByRider }) {
+export async function loadStageRoleRows({ supabase, raceId, stageNumber, baseRoleByRider }) {
+  const riderIds = [...baseRoleByRider.keys()];
+  if (!riderIds.length || !Number.isInteger(stageNumber)) return [];
+  const { data, error } = await supabase.from("race_stage_roles")
+    .select("rider_id, race_role, effort").eq("race_id", raceId).eq("stage_number", stageNumber).in("rider_id", riderIds);
+  if (error) throw new Error(`race_stage_roles: ${error.message}`);
+  return data || [];
+}
+export async function loadStageRoleByRider({ supabase, raceId, stageNumber, baseRoleByRider, overrideRows }) {
   const roleByRider = new Map(baseRoleByRider);
   const riderIds = [...baseRoleByRider.keys()];
   if (!riderIds.length || !Number.isInteger(stageNumber)) return roleByRider;
-  const { data, error } = await supabase
-    .from("race_stage_roles")
-    .select("rider_id, race_role")
-    .eq("race_id", raceId)
-    .eq("stage_number", stageNumber)
-    .in("rider_id", riderIds); // pagination-safe: eet holds ryttere paa EN etape (maks 8 raekker)
-  if (error) throw new Error(`race_stage_roles: ${error.message}`);
-  for (const row of data || []) {
+  const rows = overrideRows ?? await loadStageRoleRows({ supabase, raceId, stageNumber, baseRoleByRider });
+  for (const row of rows) {
     if (row?.race_role) roleByRider.set(row.rider_id, row.race_role);
   }
   return roleByRider;
@@ -330,7 +332,7 @@ export async function getTeamOrdersContext({ supabase, race, teamId }) {
  * rækken — riders-arrayet erstattes helt (én række ER hele etapens taktik).
  * Låste rækker afvises af validateTeamOrder FØR dette kald.
  */
-export async function saveTeamOrder({ supabase, teamId, raceId, stageNumber, order }) {
+export async function saveTeamOrder({ supabase, teamId, raceId, stageNumber, order, now = new Date() }) {
   const normalized = normalizeTeamOrder(order);
   const { error } = await supabase.from("race_team_orders").upsert(
     {
@@ -339,7 +341,7 @@ export async function saveTeamOrder({ supabase, teamId, raceId, stageNumber, ord
       stage_number: stageNumber,
       breakaway_stance: normalized.breakaway_stance,
       riders: normalized.riders,
-      updated_at: new Date().toISOString(),
+      updated_at: now.toISOString(),
     },
     { onConflict: "team_id,race_id,stage_number" },
   );

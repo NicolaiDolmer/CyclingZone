@@ -290,7 +290,9 @@ import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
 import { resolveSelectionWarnings } from "../lib/selectionWarningResolve.ts"; // #7508
-import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked, sprintTrainFlatOnlyForRace, loadStageRoleByRider } from "../lib/raceTeamOrdersApi.js";
+import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, normalizeTeamOrder, isStageLocked, sprintTrainFlatOnlyForRace, loadStageRoleByRider, loadStageRoleRows } from "../lib/raceTeamOrdersApi.js";
+import { loadTacticsStageCapability7864, writeTacticsStages7864, roleSnapshot7864, entrySnapshot7864, TacticsSaveError7864 } from "../lib/tacticsStageSave7864.ts";
+import { fillRaceTactics7864 } from "../lib/raceTacticsBulk7864.js";
 import { isStagePlanEnabled, loadStagePlanContext, orderHasStagePlan, stagePlanRevisionOk } from "../lib/stagePlanApi.js"; // #7003
 import { jerseyHunt7855OpenForRace } from "../lib/jerseyHunt7855Flag.js"; // #7855
 import { isRaceLineupLocked, isRaceLineupLockedNow, firstStageStartsFromSchedule, loadLockedRaceIds } from "../lib/raceStartLock.js";
@@ -6529,6 +6531,7 @@ router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
 router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
+    const now = new Date();
     const { data: race, error } = await supabase
       .from("races")
       .select("id, status, stages, stages_completed, engine_rules_revision, season_id")
@@ -6541,7 +6544,7 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
     if (!Array.isArray(overrides)) return res.status(400).json({ error: "stage_roles_invalid_body" });
     if (race.status === "completed") return res.status(409).json({ error: "stage_roles_race_completed", errors: ["stage_roles_race_completed"] });
 
-    const ctx = await getStageRolesContext({ supabase, race, teamId: req.team.id });
+    const ctx = await getStageRolesContext({ supabase, race, teamId: req.team.id, now });
     // #6095: skriv kun de etaper klienten har ændret, aldrig en startet etape, og
     // aldrig hvis etapen er ændret et andet sted siden klienten indlæste den.
     const scope = resolveWriteScope({
@@ -6568,12 +6571,21 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
       return res.status(status).json({ error: result.errors[0], errors: result.errors });
     }
 
-    await saveStageRoleOverrides({
-      supabase, raceId: race.id, teamRiderIds: ctx.teamRiderIds,
-      stages: scope.stages, overrides: scope.overrides,
-    });
+    const capability = await loadTacticsStageCapability7864({ supabase, teamId: req.team.id, raceId: race.id });
+    if (capability.available && scope.stages.length) {
+      await writeTacticsStages7864({ supabase, teamId: req.team.id, raceId: race.id, mode: "roles", now: null,
+        plans: scope.stages.map((stage_number) => ({ stage_number,
+          expected_entries: entrySnapshot7864(ctx.baseRoleByRider),
+          expected_roles: roleSnapshot7864(ctx.overrides, stage_number),
+          roles: roleSnapshot7864(scope.overrides, stage_number),
+        })),
+      });
+    } else if (!capability.available) {
+      await saveStageRoleOverrides({ supabase, raceId: race.id, teamRiderIds: ctx.teamRiderIds, stages: scope.stages, overrides: scope.overrides, now });
+    }
     res.json({ ok: true });
   } catch (err) {
+    if (err instanceof TacticsSaveError7864) return res.status(err.status).json({ error: err.message, errors: [err.message] });
     captureException(err);
     res.status(500).json({ error: err.message });
   }
@@ -6601,6 +6613,7 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
     if (!race) return res.status(404).json({ error: "race_not_found" });
 
     const ctx = await getTeamOrdersContext({ supabase, race, teamId: req.team.id });
+    const capability = await loadTacticsStageCapability7864({ supabase, teamId: req.team.id, raceId: race.id });
     const now = new Date();
     const stages = [];
     for (let sn = 1; sn <= ctx.stage_count; sn++) {
@@ -6621,6 +6634,8 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
       // T4 på læsesiden: fraværende etaper i `orders` betyder neutral default —
       // frontend rendrer selv neutralTeamOrder()-formen for dem.
       orders: ctx.orders,
+      atomic_stage_save: capability.available,
+      saved_stage_numbers: capability.savedStages,
       riders: [...ctx.baseRoleByRider].map(([rider_id, race_role]) => ({ rider_id, race_role })),
       // #4246: rollens standardordre. Kortet viser "Standard: <rolle>. I dag:
       // <afvigelse>" ved at sammenholde en gemt etape-ordre med denne.
@@ -6644,6 +6659,7 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
 router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
+    const now = new Date();
     const stageNumber = Number(req.params.stageNumber);
     const { data: race, error } = await supabase
       .from("races")
@@ -6654,13 +6670,14 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
     if (!race) return res.status(404).json({ error: "race_not_found" });
 
     const ctx = await getTeamOrdersContext({ supabase, race, teamId: req.team.id });
+    const overrideRows = await loadStageRoleRows({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider });
     // #7003: planen tages kun imod naar flag og revision tillader den.
     const stagePlan = orderHasStagePlan(req.body) && stagePlanRevisionOk(race)
       && Number.isInteger(stageNumber) && stageNumber >= 1 && stageNumber <= ctx.stage_count
       && await isStagePlanEnabled(supabase, { isBetaTester: (await isViewerBetaTester(req)) === true })
-      ? await loadStagePlanContext({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider, jerseyHunt7855: await jerseyHunt7855OpenForRace({ supabase, race }) }) // #7855
+      ? await loadStagePlanContext({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider, jerseyHunt7855: await jerseyHunt7855OpenForRace({ supabase, race }), overrideRows }) // #7855
       : null;
-    const roleByRider = await loadStageRoleByRider({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider }); // #7003
+    const roleByRider = await loadStageRoleByRider({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider, overrideRows }); // #7003
     const result = validateTeamOrder({
       order: req.body || {},
       stagePlan,
@@ -6672,6 +6689,7 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
       scheduledAt: ctx.scheduleByStage.get(stageNumber) ?? null,
       teamRiderIds: ctx.teamRiderIds,
       profileType: ctx.profileTypeByStage.get(stageNumber) ?? null, // #7317
+      now,
     });
     if (!result.ok) {
       const code = result.errors[0];
@@ -6679,13 +6697,40 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
       return res.status(status).json({ error: code, errors: result.errors });
     }
 
-    const saved = await saveTeamOrder({
-      supabase, teamId: req.team.id, raceId: race.id, stageNumber, order: req.body,
-    });
+    const capability = await loadTacticsStageCapability7864({ supabase, teamId: req.team.id, raceId: race.id });
+    let saved;
+    if (capability.available) {
+      saved = normalizeTeamOrder(req.body);
+      await writeTacticsStages7864({ supabase, teamId: req.team.id, raceId: race.id, mode: "orders", now: null,
+        plans: [{ stage_number: stageNumber, expected_entries: entrySnapshot7864(ctx.baseRoleByRider), expected_roles: roleSnapshot7864(overrideRows, stageNumber), order: saved }],
+      });
+    } else {
+      saved = await saveTeamOrder({ supabase, teamId: req.team.id, raceId: race.id, stageNumber, order: req.body, now });
+    }
     res.json({ ok: true, order: saved });
   } catch (err) {
+    if (err instanceof TacticsSaveError7864) return res.status(err.status).json({ error: err.message, errors: [err.message] });
     captureException(err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// #7864: authenticated team scope, route-specific drafts; no overwrite of saved exceptions.
+router.post("/races/:raceId/tactics-fill", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const now = new Date();
+    const { data: race, error } = await supabase.from("races")
+      .select("id, status, stages, stages_completed, engine_rules_revision, season_id").eq("id", req.params.raceId).maybeSingle();
+    if (error) throw error;
+    if (!race) return res.status(404).json({ error: "race_not_found" });
+    const receipt = await fillRaceTactics7864({ supabase, race, teamId: req.team.id, body: req.body,
+      isBetaTester: (await isViewerBetaTester(req)) === true, now, writeNow: null });
+    res.json({ ok: true, ...receipt });
+  } catch (err) {
+    if (err instanceof TacticsSaveError7864) return res.status(err.status).json({ error: err.message, errors: [err.message] });
+    captureException(err);
+    res.status(500).json({ error: "team_orders_invalid_body" });
   }
 });
 
