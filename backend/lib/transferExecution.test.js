@@ -965,14 +965,28 @@ test("beta cash-swap committed receipt prevents either legacy payment leg",async
   let claims=0;
   const client=makeSupabase(db,{claimSwap:params=>{
     claims++;assert.equal(params.p_deal_id,"swap-1");assert.equal(params.p_cash,100);
+    assert.equal(params.p_now,"2026-11-10T10:00:00.000Z");
     assert.equal(params.p_payment.payer_payload.idempotency_key,"swap_payer:swap-1");
     assert.equal(params.p_payment.payee_payload.idempotency_key,"swap_receiver:swap-1");
     db.riders.find(row=>row.id==="rider-1").team_id="buyer";
     db.riders.find(row=>row.id==="buyer-rider-1").team_id="seller";
     return{status:"claimed",offered_rider_id:"rider-1",payment_handled:true};
   }});
-  const result=await confirmSwapOffer({supabase:client,swapId:"swap-1",confirmingTeamId:"buyer",now:new Date("2026-11-10T10:00:00Z")});
-  assert.equal(result.ok,true);assert.equal(claims,1);assert.equal(client._finance.length,0);
+  const fixedNow = new Date("2026-11-10T10:00:00Z");
+  const RealDate = globalThis.Date;
+  let wallClockReads = 0;
+  globalThis.Date = class extends RealDate {
+    constructor(...args) {
+      if (!args.length) wallClockReads++;
+      super(...(args.length ? args : [fixedNow.getTime()]));
+    }
+    static now() { wallClockReads++; return fixedNow.getTime(); }
+  };
+  try {
+    const result=await confirmSwapOffer({supabase:client,swapId:"swap-1",confirmingTeamId:"buyer",now:fixedNow});
+    assert.equal(result.ok,true);assert.equal(claims,1);assert.equal(client._finance.length,0);
+    assert.equal(wallClockReads,0,"the injected swap clock must reach all time-dependent helpers");
+  } finally { globalThis.Date = RealDate; }
 });
 
 test("#2176: refunderet bytte med kontanter springer claim over, også tændt", async () => {

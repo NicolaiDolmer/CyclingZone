@@ -782,7 +782,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
 // #19: samme "betal nu, registrér ved åbning"-model som executeTransferOffer.
 // `deferRegistration=true` (vinduet lukket) parkerer begge ryttere på
 // pending_team_id; den generiske pending-flush registrerer dem ved vindue-åbning.
-async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notifyDiscordHistory = NOOP, auditCtx = null, deferRegistration = false }) {
+async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notifyDiscordHistory = NOOP, auditCtx = null, deferRegistration = false, now = new Date() }) {
   const cash = getSwapCash(swap);
   // #1309: salary/base_value/prize_earnings_bonus med så contract-on-acquire kan
   // afgøre create-if-missing vs. inherit-if-present for BEGGE ryttere.
@@ -852,6 +852,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
       cooldownAmount: swapCooldownConfig.transferCooldownAmountCzk,
       amount: Math.abs(cash),
       payingTeamCreatedAt: payerState.created_at,
+      now,
     });
     if (!cooldown.allowed) {
       await withdrawSwapOffer(supabase, swap.id);
@@ -886,7 +887,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     return failure(400, message.error, issue.code);
   }
 
-  const swapTimestamp = new Date().toISOString();
+  const swapTimestamp = now.toISOString();
   // #1309 kontrakt-on-acquire: hver rytter erhverves af modparten → opret
   // standard-kontrakt hvis kontraktløs; ellers arves den uændret. Ejede swap-
   // ryttere har normalt allerede en kontrakt (→ {}), men patchen er korrekt og
@@ -1088,6 +1089,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
       relatedEntityType: "swap",
       relatedEntityId: swap.id,
       actorType: "api",
+      occurredAt: swapTimestamp,
     });
     await recordRiderOwnershipEvent(supabase, {
       riderId: requested.id,
@@ -1099,6 +1101,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
       relatedEntityType: "swap",
       relatedEntityId: swap.id,
       actorType: "api",
+      occurredAt: swapTimestamp,
     });
   }
 
@@ -1141,7 +1144,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     [requested, requestedContractPatch, requestedGraduatePatch, swap.proposing_team_id],
   ]) {
     await notifyIfContractExpiresThisSeason({
-      supabase, teamId, seasonNumber: swapSeasonNumber,
+      supabase, teamId, seasonNumber: swapSeasonNumber, now,
       rider: { ...acquired, ...patch, ...squadPatch },
       notify: ({ teamId, type, title, message, relatedId, metadata }) =>
         notifyTeamOwner(teamId, type, title, message, relatedId, metadata),
@@ -1275,6 +1278,7 @@ export async function confirmSwapOffer({
   notifyTeamOwner,
   notifyDiscordHistory = NOOP,
   auditCtx = null,
+  now = new Date(),
 }) {
   const swap = await expectMaybeSingle(
     supabase
@@ -1346,6 +1350,7 @@ export async function confirmSwapOffer({
     notifyDiscordHistory,
     auditCtx,
     deferRegistration,
+    now,
   });
 }
 

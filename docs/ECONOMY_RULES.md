@@ -363,4 +363,6 @@ sponsorvisning: `SPONSOR_RULES.md`.
 
 M3-beta følger TRANSFER_MARKET_RULES §5.1/8.1. Beta-hold og hold med binding fra en aktiv auto-accept-auktion beskyttes ved øvrige køb og gebyrer, også når deltageren ikke er beta. Første deltagelse og øvrige markedsbetalinger serialiseres under den eksisterende hold-/balancelås, og rækkevidden gentjekkes i transaktionen. Almindelige ikke-beta-hold uden binding får ingen nye finansielle gates.
 
+Ungdomsauktionens kanoniske vinderbetaling afregner en eksisterende forpligtelse og beholder sin hidtidige betalingsregel i begge placeringer. Posteringstypen deles med intake, men en ny intake-betaling er fortsat et diskretionært køb under bindingsbeskyttelsen.
+
 Transfer, kontantbytte, frigivelse med gebyr og scouting-oprettelse flytter aktiv og betaling atomisk i beta. En endelig betalingsafvisning efterlader intet gratis aktiv; audit-nøgler, escrow og refusion bevares. Anlæg og staff-fratrædelse ændrer først aktivet efter accepteret debit. Obligatoriske løn-/driftsbetalinger er uændrede, og staff-ansættelse får ingen ny betaling. Off/on-kontrakten og kontaktværdier ændres ikke.

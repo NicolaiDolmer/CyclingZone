@@ -847,6 +847,11 @@ RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_cata
 DECLARE v_balance bigint; v_locked bigint;
 BEGIN
  IF NOT public.market_beta_mode_2176() OR NEW.amount>=0 THEN RETURN NEW; END IF;
+ -- Youth-auction settlement shares academy_signing with optional intake. It
+ -- pays an existing obligation; applying the purchase guard would count that
+ -- same auction twice and could reject payment after senior placement.
+ IF NEW.type='academy_signing' AND NEW.reason_code='auction_winner_payment'
+    AND NEW.related_entity_type='auction' THEN RETURN NEW; END IF;
  IF NOT (NEW.type IN ('facility_purchase','scout_travel','staff_severance','academy_signing')
      OR coalesce(NEW.reason_code,'') IN ('transfer_purchase','swap_cash_delta','rider_release_buyout')) THEN RETURN NEW; END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended(NEW.team_id::text,0));
@@ -1039,5 +1044,14 @@ REVOKE ALL ON FUNCTION public.market_commitment_6181_proxy_gate() FROM PUBLIC,an
 REVOKE ALL ON FUNCTION public.auto_accept_offer_boundary_guard() FROM PUBLIC,anon,authenticated,service_role;
 REVOKE ALL ON FUNCTION public.auto_accept_seller_outgoing_rider_ids(uuid,uuid) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.auto_accept_seller_outgoing_rider_ids(uuid,uuid) TO service_role;
+
+-- Signed-in clients read ordinary listing fields directly. Auto-prices are projected by
+-- the server for the current viewer; an RLS row policy cannot hide a column.
+REVOKE SELECT ON public.transfer_listings FROM PUBLIC,anon,authenticated;
+REVOKE SELECT(id,rider_id,seller_team_id,asking_price,status,created_at,auto_accept_price)
+ ON public.transfer_listings FROM PUBLIC,anon,authenticated;
+GRANT SELECT(id,rider_id,seller_team_id,asking_price,status,created_at)
+ ON public.transfer_listings TO authenticated;
+GRANT SELECT ON public.transfer_listings TO service_role;
 NOTIFY pgrst, 'reload schema';
 COMMIT;

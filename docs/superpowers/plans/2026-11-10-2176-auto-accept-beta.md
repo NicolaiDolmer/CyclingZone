@@ -4,6 +4,7 @@
 
 **Goal:** implement the five approved beta rules and approved A scope, without merge, production apply or activation.
 **Owner's revised night mandate, 11/11:** investigate the scouting/facility FULL failure, push a draft PR, post status on #2176 and stop. At most one heavy verification at a time. Unfinished FULL/E2E/visual/release items below are a handoff, not authorization to keep running after draft/status.
+**Owner's day mandate, 11/11:** resume #7985, fix the red security check, run fresh FULL and complete E2E, finish independent Codex review and mark ready. Post status on #2176. This replaces the night stop for this session; at most one heavy run, no merge, apply or activation.
 **Spec/build-go:** [five rules](https://github.com/NicolaiDolmer/CyclingZone/issues/2176#issuecomment-6773218237), [A decision card](https://github.com/NicolaiDolmer/CyclingZone/issues/2176#issuecomment-6774810345), [owner's direct build-go recorded 10/11](https://github.com/NicolaiDolmer/CyclingZone/issues/2176#issuecomment-6778060269).
 **SSOT:** `docs/TRANSFER_MARKET_RULES.md` sections 5.1/8.1, `docs/ECONOMY_RULES.md`; preserve existing PAGE_TEMPLATES/TASTE components and approved copy.
 **Architecture:** fresh server/database cohort checks; per-listing price projection; a shared transaction envelope for M3 beta with financial restrictions applied to the effective cohort/auction/standing obligations under the existing ordered team locks. No flag/config value is changed by the migration.
@@ -60,6 +61,8 @@ File: new beta PG17 harness reusing actual schemas/migrations and independent co
 
 ### 6. Verification, visuals and handoff
 - [x] Update market/economy SSOT where contracts change, flag registry metadata without a state/flag flip, generate FEATURE_STATUS and add technical learning. Help/patch note player copy remains Claude-owned (#7978).
-- [ ] Required FULL, full frontend E2E (all projects), unit/lint/type budgets and foreground preflight under verify semaphore. Isolate the known EMAIL_UNSUB_SECRET test-environment issue without changing email code; never report partial passes as a full green run.
-- [ ] Synthetic browser screenshots of cohort on/off states on desktop/mobile; no HTTP fetching of dev/preview modules and no production writes. Check TASTE with the existing components.
-- [ ] Independent whole-diff reviewer, fix/retest findings, guarded commit + immediate push, separate reviewable PR `Refs #2176`, follow real CI and review, private log archive and <=15-line issue handoff. No merge/apply/activation; Claude owns NOW/MASTERPLAN and Fable/release.
+- [x] Required FULL: backend 18,015 pass, 15 skip, 12 TODO, no failures; frontend 5,534 pass and build. Lint/type budgets and preflight green. EMAIL_UNSUB_SECRET is removed only from the test process; email code is unchanged.
+- [x] Complete frontend E2E in all three projects: 1,987 passed, 191 existing skips, no failures/retries/flaky. Four test-fixture races from the first full run were corrected without raising budgets/timeouts or adding skips; focused verification passed 86 cases with 43 existing skips.
+- [x] Synthetic cohort screenshots refreshed on desktop/mobile in all three projects, with real form actions visible above mobile navigation. Image review found no beta-specific P0/P1; shared style and WebKit evidence limitations are documented. No HTTP fetching of dev/preview modules or production writes.
+- [x] Independent whole-diff and subsequent delta reviews completed with no remaining P0/P1, including the final test-only changes. Native PG17 additionally verifies both youth placements and the final listing role/column boundary.
+- [ ] Guarded commit + immediate push, observe real CI/Vercel/Codex review, mark the existing PR ready, archive final proof and post <=15-line status on #2176. No merge/apply/activation; Claude owns NOW/MASTERPLAN and Fable/release.

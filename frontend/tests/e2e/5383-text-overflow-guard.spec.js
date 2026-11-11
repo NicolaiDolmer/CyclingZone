@@ -163,6 +163,9 @@ test.describe("#5383 · tekst holder sig inde i sin boks og kan laeses", () => {
       await page.setViewportSize(viewport.size);
       for (const lang of LANGS) {
         await page.goto(target.path);
+        // The authenticated profile may still apply its stored language after
+        // navigation. Finish that bootstrap before the test's explicit choice.
+        await settle(page);
         await setLanguage(page, lang);
         await settle(page);
         if (target.prepare) {

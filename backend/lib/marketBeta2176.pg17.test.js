@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { prepareBetaDatabase2176 } from './__fixtures__/marketBeta2176Db.js';
@@ -136,6 +136,47 @@ test('PG17 beta: first public participation serializes every discretionary write
     reset();one(attempt(bid()));sql(`UPDATE riders SET team_id=NULL WHERE id='${id(401)}'`);
     assert.equal(one(attempt(`SELECT to_jsonb(increment_balance_with_audit('${B}',-600000,${json({type:'transfer_out',amount:-600000,reason_code:'rider_release_buyout'})}))`)).status,'insufficient_available_balance');
     assert.equal(state().released,true);assert.equal(state().finance,0);
+    // Real PG17 settlement compatibility: both youth placements pay an
+    // existing obligation, including for a non-beta public participant.
+    sql(`ALTER TABLE riders ADD COLUMN pending_academy_signing boolean DEFAULT false;
+      CREATE TABLE races(id uuid PRIMARY KEY,race_type text,status text,stages_completed integer);
+      CREATE TABLE race_entries(rider_id uuid,race_id uuid,team_id uuid);`);
+    const academySource=await readFile(new URL('../../database/2026-09-24-5432-squad-caps-rpc.sql',import.meta.url),'utf8');
+    for(const name of ['count_team_squad_members','finalize_academy_acquisition']) {
+      const fn=academySource.match(new RegExp(`CREATE OR REPLACE FUNCTION public\\.${name}\\([\\s\\S]*?\\$\\$;`));
+      assert.ok(fn);sql(fn[0]);
+    }
+    for(const team of [A,B])for(const placement of ['senior','academy']) {
+      reset();
+      sql(`UPDATE auctions SET current_bidder_id='${team}',current_price=400000 WHERE id='${id(700)}';
+        INSERT INTO riders(id,team_id,acquired_at) VALUES('${id(990)}',NULL,'${NOW}');
+        INSERT INTO auctions(id,rider_id,current_bidder_id,current_price,requested_start,calculated_end,is_youth)
+          VALUES('${id(991)}','${id(990)}','${team}',600000,'${NOW}','${END}',true);`);
+      const payment={type:'academy_signing',amount:-600000,reason_code:'auction_winner_payment',
+        related_entity_type:'auction',related_entity_id:id(991),idempotency_key:`youth_auction_winner:${id(991)}`};
+      if(placement==='senior') {
+        sql(`UPDATE riders SET team_id='${team}',acquired_at='${NOW}' WHERE id='${id(990)}'`);
+        assert.equal(one(`SELECT increment_balance_with_audit('${team}',-600000,${json(payment)})`),400000);
+      } else {
+        assert.equal(one(`SELECT finalize_academy_acquisition('${team}','${id(990)}',600000,1000,2,4,'${NOW}',${json(payment)},'junior',10)`).ok,true);
+      }
+      assert.equal(one(`SELECT balance FROM teams WHERE id='${team}'`),400000);
+      assert.equal(one(`SELECT to_jsonb(team_id) FROM riders WHERE id='${id(990)}'`),team);
+      assert.equal(one('SELECT count(*) FROM finance_transactions'),1);
+      sql(`UPDATE auctions SET status='completed',actual_end='${END}' WHERE id='${id(991)}'`);
+      assert.equal(one(`SELECT team_market_commitment('${team}',NULL)`),400000);
+    }
+    // Prove the final column boundary on native PG17 as well as PGlite,
+    // including legacy PUBLIC and explicit column grants before reapplication.
+    sql('GRANT SELECT ON transfer_listings TO PUBLIC,anon,authenticated; GRANT SELECT(id,auto_accept_price) ON transfer_listings TO PUBLIC,anon,authenticated;');
+    const betaMigration=await readFile(new URL('../../database/2026-11-10-2176-transfer-payment-beta-scope.sql',import.meta.url),'utf8');
+    sql(betaMigration);sql(betaMigration);
+    assert.throws(()=>sql('SET ROLE anon; SELECT id FROM transfer_listings LIMIT 1'),/permission denied/);
+    assert.equal(one('SET ROLE authenticated; SELECT to_jsonb(id) FROM transfer_listings ORDER BY id LIMIT 1'),id(700));
+    assert.throws(()=>sql('SET ROLE authenticated; SELECT auto_accept_price FROM transfer_listings LIMIT 1'),/permission denied/);
+    assert.equal(one("SET ROLE service_role; SELECT jsonb_build_object('readable',true,'price',auto_accept_price) FROM transfer_listings LIMIT 1").readable,true);
+    t.diagnostic('listing_acl=authenticated_public_columns_only; anonymous_denied=true; direct_price_denied=true; service_price_read=true');
+    t.diagnostic('youth_settlement_placements=4; beta_and_public_nonbeta=passed');
     assert.equal(one("SELECT deadlocks FROM pg_stat_database WHERE datname='postgres'"),0);
     t.diagnostic(`${version}; deterministic_orders=28; concurrent_attempts=${attempts}; seller_floor_race=passed; connections=8; overbooked=0; deadlocks=0; old_release_negative_control=reproduced`);
   } finally {

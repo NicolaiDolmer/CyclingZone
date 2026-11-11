@@ -8,9 +8,27 @@ import {
   RIVAL_TEAM,
   RIDERS,
 } from "./fixtures.js";
-import type { Page } from "@playwright/test";
+import type { Page, TestInfo } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
+
+async function captureBeta2176(page: Page, info: TestInfo, name: string) {
+  const send = page.getByRole("button", { name: "Send", exact: true });
+  // Keep the real form action above the fixed mobile navigation in evidence.
+  await send.evaluate(element => element.scrollIntoView({ block: "center", inline: "nearest" }));
+  await expect(send).toBeInViewport({ ratio: 1 });
+  await expect(send).toBeEnabled();
+  const navigation = page.locator("[data-mobile-quick-nav]");
+  if (await navigation.isVisible()) {
+    const [actionBox, navigationBox] = await Promise.all([send.boundingBox(), navigation.boundingBox()]);
+    if (!actionBox || !navigationBox) throw new Error("Screenshot actions must have layout boxes");
+    expect(actionBox.y + actionBox.height).toBeLessThanOrEqual(navigationBox.y);
+  }
+  const directory = resolve("../pr-screens/2176-beta");
+  await mkdir(directory, { recursive: true });
+  await page.screenshot({ path: resolve(directory, `${info.project.name}-${name}.png`), fullPage: true });
+}
+
 const timing = {
   weekday_open_hour: 8,
   weekday_close_hour: 24,
@@ -359,9 +377,7 @@ test("an eligible buyer sees the approved auto-price row", async ({ page }, info
       }
     });
     await expect(row).toBeInViewport();
-    const directory = resolve("../pr-screens/2176-beta");
-    await mkdir(directory, { recursive: true });
-    await page.screenshot({ path: resolve(directory, `${info.project.name}-eligible.png`), fullPage: true });
+    await captureBeta2176(page, info, "eligible");
   }
 });
 
@@ -376,9 +392,7 @@ for (const enabled of [false, true]) test(`beta-ineligible pair, viewer flag=${e
         if (parent.scrollWidth > parent.clientWidth) parent.scrollLeft = 0;
       }
     });
-    const directory = resolve("../pr-screens/2176-beta");
-    await mkdir(directory, { recursive: true });
-    await page.screenshot({ path: resolve(directory, `${info.project.name}-ineligible-${enabled}.png`), fullPage: true });
+    await captureBeta2176(page, info, `ineligible-${enabled}`);
   }
 });
 
@@ -390,8 +404,6 @@ test("beta seller and non-beta counterparty can negotiate above the hidden auto-
   await expect(page.getByTestId("auto-counter-prices")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Send", exact: true })).toBeEnabled();
   if (process.env.BETA2176_SCREENSHOTS) {
-    const directory = resolve("../pr-screens/2176-beta");
-    await mkdir(directory, { recursive: true });
-    await page.screenshot({ path: resolve(directory, `${info.project.name}-ordinary-counter.png`), fullPage: true });
+    await captureBeta2176(page, info, "ordinary-counter");
   }
 });
