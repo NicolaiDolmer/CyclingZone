@@ -20,6 +20,7 @@
 // springes over). Flash-stien (vaegur) bruges aldrig.
 
 import { evaluateFlagStage } from "./featureStage.js";
+import { isAutoAcceptActorEnabled2176, isAutoAcceptPairEnabled2176, isMarketTransportEnabled2176, readMarketFlag2176, readMarketSpendIssue2176 } from "./marketBeta2176.ts";
 import { calculateAuctionEnd, getAuctionSeasonBoundaryIssue } from "./auctionEngine.js";
 import { getTeamMarketState, MIN_RIDERS_FOR_RACE, calculateRiderMarketValue } from "./marketUtils.js";
 import { readTransferPriceBandConfig, getPriceBandViolation } from "./transferPriceBand.js";
@@ -29,7 +30,6 @@ import { fetchSeasonTransitionBoundary } from "./seasonTransitionBoundary.js";
 import { notifyNewAuction, notifyWatchlistRiderAuction } from "./discordNotifier.js";
 import { applySeniorSquadFilter } from "./squads.js";
 import { captureException } from "./sentry.js";
-import { isMarketCommitment6181On } from "./marketCommitment6181.js";
 import { recordIdentityEvent } from "./identityTelemetry.js";
 import { buildWatchlistAuctionNotification } from "./transferNotifications.js";
 
@@ -40,13 +40,8 @@ export const AUTO_ACCEPT_MAX_MINUTES = 24 * 60;
 const MAX_PRICE = 2147483647;
 
 /** Kun "on" (eller true) taender. Ingen beta-stage: reglen skal gaelde ens for koeber og saelger. */
-export async function isAutoAcceptEnabled(supabase) {
-  // An unknown state must not select the unlocked release/legacy offer path.
-  // Read freshly: cached on/off must not outlive an operational flag change.
-  const { data, error } = await supabase.from("app_config").select("value")
-    .eq("key", AUTO_ACCEPT_FLAG_KEY).maybeSingle();
-  if (error) throw error;
-  return evaluateFlagStage(data?.value ?? null);
+export async function isAutoAcceptEnabled(supabase, actor = {}) {
+  return isAutoAcceptActorEnabled2176(supabase, actor);
 }
 
 const isWholePrice = (value) => Number.isInteger(value) && value > 0 && value <= MAX_PRICE;
@@ -85,8 +80,10 @@ export function getOfferAutoAcceptConflict(listing, offerAmount) {
  *
  * @returns {Promise<{status: number, body: {error: string, errorCode: string, errorParams: {autoAcceptPrice: number, listingId: string}}} | null>}
  */
-export async function getOfferAutoAcceptIssue(supabase, { riderId, listing = null, offerAmount }) {
-  if (!(await isAutoAcceptEnabled(supabase))) return null;
+export async function getOfferAutoAcceptIssue(supabase, { riderId, listing = null, offerAmount, buyerTeamId = null }) {
+  const stage = await readMarketFlag2176(supabase, AUTO_ACCEPT_FLAG_KEY);
+  if (stage !== "beta" && !evaluateFlagStage(stage)) return null;
+  if (stage === "beta" && !buyerTeamId) return null;
   let row = listing;
   if (!row) {
     // schema-columns-ok: auto_accept_price kommer med database/2026-11-07-2176-m2-auto-accept.sql og laeses kun med kontakten taendt (efter apply).
@@ -99,6 +96,7 @@ export async function getOfferAutoAcceptIssue(supabase, { riderId, listing = nul
     if (error) throw error;
     row = data;
   }
+  if (stage === "beta" && row && !(await isAutoAcceptPairEnabled2176(supabase, { sellerTeamId: row.seller_team_id, buyerTeamId }))) return null;
   const conflict = getOfferAutoAcceptConflict(row, offerAmount);
   if (!conflict) return null;
   const listingRiderId = row?.rider_id ?? riderId;
@@ -147,7 +145,7 @@ export async function checkAutoAcceptMutation(query) {
  * @returns {Promise<number>}
  */
 export async function countSellerAuctionOutgoing(supabase, teamId, { skipRiderIds = [], atRiskSeasonNumber = null } = {}) {
-  if (!teamId || !(await isAutoAcceptEnabled(supabase))) return 0;
+  if (!teamId || !(await isAutoAcceptEnabled(supabase, { teamId }))) return 0;
   // pagination-safe: eet holds senior-trup, begraenset af trup-loftet.
   const { data: riders, error: riderError } = await applySeniorSquadFilter(
     supabase.from("riders").select("id").eq("team_id", teamId)
@@ -205,6 +203,7 @@ const RIDER_UNAVAILABLE = {
 /** Oversaetter start_auto_accept_auction's status til et HTTP-svar. */
 export function mapStartAutoAcceptResult(result) {
   switch (result?.status) {
+    case "disabled": return { status: 404, body: DISABLED };
     case "started":
       return { status: 201, body: result };
     case "listing_not_found":
@@ -240,6 +239,7 @@ export function mapStartAutoAcceptResult(result) {
 /** Oversaetter set_listing_auto_accept_price's status til et HTTP-svar. */
 export function mapSetAutoAcceptPriceResult(result) {
   switch (result?.status) {
+    case "disabled": return { status: 404, body: DISABLED };
     case "updated":
     case "unchanged":
       return { status: 200, body: { listing_id: result.listing_id, auto_accept_price: result.auto_accept_price ?? null, status: result.status } };
@@ -278,7 +278,11 @@ async function rpc(supabase, name, args) {
 export function mapReleaseUnderTeamLockResult(result, atRiskRiders = []) {
   switch (result?.status) {
     case "released":
-      return { data: [{ id: result.rider_id }] };
+      return { data: [{ id: result.rider_id }], ...(result.payment_handled === true ? { paymentHandled: true } : {}) };
+    case "cannot_afford_release":
+      return { error: { status: 400, body: { errorCode: "cannot_afford_release", errorParams: { fee: result.fee, balance: result.balance } } } };
+    case "insufficient_available_balance":
+      return { error: { status: 400, body: { errorCode: "insufficient_available_balance", errorParams: { fee: result.fee, available: result.available, locked: result.locked } } } };
     case "rider_state_changed":
       return { error: { status: 409, body: { error: "This rider is no longer on your team", errorCode: "rider_state_changed" } } };
     case "rider_on_auction":
@@ -316,7 +320,21 @@ export function mapReleaseUnderTeamLockResult(result, atRiskRiders = []) {
  * egen opdatering uaendret. Taendt: { data: [{ id }] } (frigivet) eller
  * { error: { status, body } }.
  */
-export async function releaseRiderUnderTeamLock(supabase, { riderId, teamId, atRiskRiders = [] }) {
+export async function releaseRiderUnderTeamLock(supabase, { riderId, teamId, atRiskRiders = [], marketBeta = false, fee = 0, feePayload = null, academy = false }) {
+  if (marketBeta) {
+    try {
+      const result = await rpc(supabase, "auto_accept_release_paid_2176", {
+        p_rider_id: riderId, p_team_id: teamId, p_min_riders: MIN_RIDERS_FOR_RACE,
+        p_at_risk_rider_ids: atRiskRiders.map(rider => rider.id), p_academy: academy, p_fee: fee, p_finance_payload: feePayload,
+      });
+      if (result?.status !== "legacy") return mapReleaseUnderTeamLockResult(result, atRiskRiders);
+    } catch (error) {
+      const issue = readMarketSpendIssue2176(error);
+      if (issue) return { error: { status: 400, body: { errorCode: issue.error, errorParams: { fee, ...issue } } } };
+      throw error;
+    }
+  }
+  if (academy) return null; // Its existing on/off path has no senior roster floor.
   if (!(await isAutoAcceptEnabled(supabase))) return null;
   const result = await rpc(supabase, "auto_accept_release_rider", {
     p_rider_id: riderId,
@@ -328,21 +346,23 @@ export async function releaseRiderUnderTeamLock(supabase, { riderId, teamId, atR
 }
 
 // Claim ownership/parking under the same team locks as an auto-accept start.
-// Payment remains in the existing transfer flow; this is not a payment RPC.
+// With the money gate on, ownership and payment share one transaction (A7).
 export async function claimTransferUnderTeamLock(supabase, {
   riderId, sellerTeamId, buyerTeamId, deferRegistration, now, acquirePatch,
-  activeSeasonNumber, maxRiders, price,
+  activeSeasonNumber, maxRiders, price, dealId, buyerPayload, sellerPayload, riderRestore, marketBeta = false,
 }) {
-  if (!(await isAutoAcceptEnabled(supabase))) return null;
+  if (!marketBeta && !(await isAutoAcceptEnabled(supabase))) return null;
   const atRisk = await fetchAtRiskRiders(supabase, sellerTeamId, activeSeasonNumber, { excludeRiderIds: [riderId] });
-  const result = await rpc(supabase, "auto_accept_claim_transfer_at_price", {
+  const result = await rpc(supabase, "auto_accept_claim_transfer_paid", {
     p_rider_id: riderId, p_seller_team_id: sellerTeamId, p_buyer_team_id: buyerTeamId,
     p_defer_registration: deferRegistration, p_now: now.toISOString(),
     p_acquire_patch: acquirePatch, p_min_seller_riders: MIN_RIDERS_FOR_RACE,
     p_seller_at_risk_rider_ids: atRisk.map(rider => rider.id), p_max_riders: maxRiders, p_price: price,
+    p_deal_id: dealId, p_buyer_payload: buyerPayload, p_seller_payload: sellerPayload,
+    p_rider_restore: riderRestore,
   });
   switch (result?.status) {
-    case "claimed": return { data: { id: result.rider_id } };
+    case "claimed": return { data: { id: result.rider_id }, paymentHandled: result.payment_handled === true };
     case "seller_squad_floor": return { issue: { code: "seller_squad_risk_too_small", minRiders: result.min_riders } };
     case "squad_full": return { issue: { code: "buyer_squad_full", maxRiders: result.max_riders } };
     case "buyer_insufficient_balance": return { issue: { code: "buyer_insufficient_balance" } }; // #6181: pengetjek under holdlåsen
@@ -358,8 +378,27 @@ export async function claimTransferUnderTeamLock(supabase, {
 // Slukket kontakt: null efter kun at have laest kontakten.
 export async function claimSwapUnderTeamLock(supabase, {
   offeredRiderId, requestedRiderId, proposingTeamId, receivingTeamId,
-  deferRegistration, now, offeredPatch, requestedPatch,
+  deferRegistration, now, offeredPatch, requestedPatch, marketBeta = false, dealId = null, cash = 0,
+  payment = /** @type {import('./marketBeta2176.ts').MarketSwapPayment2176 | null} */ (null),
 }) {
+  if (marketBeta) {
+    try {
+      const result = await rpc(supabase, "auto_accept_claim_swap_paid", {
+        p_offered_rider_id: offeredRiderId, p_requested_rider_id: requestedRiderId,
+        p_proposing_team_id: proposingTeamId, p_receiving_team_id: receivingTeamId,
+        p_defer_registration: deferRegistration, p_now: now, p_offered_patch: offeredPatch, p_requested_patch: requestedPatch,
+        p_deal_id: dealId, p_cash: cash, p_payment: payment,
+      });
+      if (result?.status === "claimed") return { data: { id: result.offered_rider_id }, paymentHandled: result.payment_handled === true };
+      if (["rider_state_changed", "rider_on_auction"].includes(result?.status)) return { data: null };
+      if (result?.status === "payer_insufficient_balance") return { issue: { code: result.payer_team_id === proposingTeamId ? "proposing_insufficient_balance" : "receiving_insufficient_balance" } };
+      if (result?.status === "swap_squad_full") return { issue: { code: "buyer_squad_full", teamId: result.team_id, maxRiders: result.max_riders } };
+      if (result?.status !== "legacy") throw new Error(`auto_accept_claim_swap_paid: unexpected status ${result?.status}`);
+    } catch (error) {
+      if (readMarketSpendIssue2176(error)) return { issue: { code: cash > 0 ? "proposing_insufficient_balance" : "receiving_insufficient_balance" } };
+      throw error;
+    }
+  }
   if (!(await isAutoAcceptEnabled(supabase))) return null;
   const result = await rpc(supabase, "auto_accept_claim_swap", {
     p_offered_rider_id: offeredRiderId, p_requested_rider_id: requestedRiderId,
@@ -410,7 +449,7 @@ const INVALID_PRICE = { error: "Invalid auto-accept price", errorCode: "auto_acc
  */
 export function makeSetAutoAcceptPriceHandler({ supabase }) {
   return async (req, res) => {
-    if (!(await isAutoAcceptEnabled(supabase))) return res.status(404).json(DISABLED);
+    if (!(await isAutoAcceptEnabled(supabase, { teamId: req.team?.id, userId: req.user?.id }))) return res.status(404).json(DISABLED);
     if (!req.team) return res.status(400).json({ error: "No team found" });
     const price = parseOptionalPrice(req.body?.auto_accept_price);
     const expected = parseOptionalPrice(req.body?.expected_auto_accept_price);
@@ -444,11 +483,11 @@ export function makeStartAutoAcceptHandler({
   recordIdentity = recordIdentityEvent,
 }) {
   return async (req, res) => {
-    if (!(await isAutoAcceptEnabled(supabase))) return res.status(404).json(DISABLED);
+    if (!(await isAutoAcceptEnabled(supabase, { teamId: req.team?.id, userId: req.user?.id }))) return res.status(404).json(DISABLED);
     // Uden pengelaasen tager almindelige bud ikke holdlaasen, og et samtidigt bud
     // kan bruge de samme penge eller den samme plads som starten. Kontakterne
     // skal derfor ikke kunne staa forkert i forhold til hinanden.
-    if (!(await isMarketCommitment6181On(supabase))) return res.status(404).json(DISABLED);
+    if (!(await isMarketTransportEnabled2176(supabase))) return res.status(404).json(DISABLED);
     if (!req.team) return res.status(400).json({ error: "No team found" });
 
     const durationIssue = getAutoAcceptDurationIssue(req.body?.duration_minutes);
@@ -473,6 +512,7 @@ export function makeStartAutoAcceptHandler({
       .maybeSingle();
     if (listingError) throw listingError;
     if (!listing) return res.status(404).json({ error: "Listing not found", errorCode: "listing_not_found" });
+    if (!(await isAutoAcceptPairEnabled2176(supabase, { sellerTeamId: listing.seller_team_id, buyerTeamId: req.team.id }))) return res.status(404).json(DISABLED);
     if (listing.seller_team_id === req.team.id) {
       return res.status(400).json({ error: "You can't bid on your own listing", errorCode: "cannot_bid_own_listing" });
     }
@@ -626,8 +666,9 @@ async function announceAutoAcceptAuction({ supabase, logActivity, result, calcul
  */
 export function registerAutoAcceptRoutes(router, deps) {
   const { supabase, requireAuth, marketWriteLimiter, assertMarketOpen, assertTeamNotTransferFrozen } = deps;
-  router.get("/market/auto-accept-config", autoAcceptRouteGate(supabase), requireAuth, async (_req, res) => {
-    if (!(await isMarketCommitment6181On(supabase))) return res.status(404).json(DISABLED);
+  router.get("/market/auto-accept-config", autoAcceptRouteGate(supabase), requireAuth, async (req, res) => {
+    if (!(await isAutoAcceptEnabled(supabase, { teamId: req.team?.id, userId: req.user?.id }))) return res.status(404).json(DISABLED);
+    if (!(await isMarketTransportEnabled2176(supabase))) return res.status(404).json(DISABLED);
     const { data, error } = await supabase.from("auction_timing_config")
       .select("weekday_open_hour,weekday_close_hour,weekend_open_hour,weekend_close_hour").eq("id", 1).single();
     if (error) throw error;
@@ -654,7 +695,9 @@ export function registerAutoAcceptRoutes(router, deps) {
  */
 export function autoAcceptRouteGate(supabase) {
   return async (req, res, next) => {
-    if (await isAutoAcceptEnabled(supabase)) return next();
+    const value = await readMarketFlag2176(supabase, AUTO_ACCEPT_FLAG_KEY);
+    // Resolve a beta actor after requireAuth; never trust client-side claims.
+    if (value === "beta" || evaluateFlagStage(value)) return next();
     return next("route");
   };
 }

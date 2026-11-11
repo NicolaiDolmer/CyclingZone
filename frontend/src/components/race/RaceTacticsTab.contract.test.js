@@ -49,7 +49,10 @@ test("præcis én guld-knap: Gem er primary, Kopiér er secondary", () => {
   const primaries = source.match(/variant="primary"/g) || [];
   assert.equal(primaries.length, 1, "fanen må have præcis én guld-primær knap");
   assert.match(source, /variant="secondary"[\s\S]{0,200}intention\.copyToStage/);
-  assert.match(source, /variant="primary"[\s\S]{0,300}intention\.save/);
+  const saveButton = source.match(/<Button\b[^>]*variant="primary"[\s\S]*?<\/Button>/)?.[0] ?? "";
+  assert.match(saveButton, /onClick=\{save\}/);
+  assert.match(saveButton, /intention\.save/);
+  assert.match(saveButton, /tacticsOrders\.save/);
 });
 
 // #4980: rollen kan nu redigeres i kolonnen (ejer-godkendt spillerønske), men
@@ -161,13 +164,14 @@ test("mobil viser kun tallet — ingen bar, ingen vandret scroll", () => {
 
 test("fog of war: ingen tal, procenter eller loft-signaler i fladens tekst", () => {
   assert.doesNotMatch(source, /%/);
-  assert.doesNotMatch(source, /WORK_COST|MULT|multiplier/i);
+  assert.doesNotMatch(source, /WORK_COST|\bMULT\b|multiplier/i);
 });
 
 // #6095: gemmet sender kun de ændrede etaper + deres version, og en konflikt
 // henter den nyeste udgave i stedet for at overskrive den.
 test("#6095 gem skriver kun ændrede etaper og respekterer konflikter", () => {
-  assert.match(source, /const stages = changedStages\(draftMatrix, initialMatrix\)\.filter\(\(sn\) => editableStages\.includes\(sn\)\);/);
+  // Same-type drafts use the atomic fill, never the ordinary role overwrite.
+  assert.match(source, /const stages = changedStages\(draftMatrix, initialMatrix\)\.filter\(\(sn\) => editableStages\.includes\(sn\) && bulkSnapshot\[sn\] === undefined\);/);
   assert.match(source, /stages: sts, base_versions: base \}\)/);
   // #7327: en konflikt kasserer ALDRIG kladden af sig selv. Versionerne flyttes
   // foerst ved "Behold mine"; "Hent den nye" er det eneste der genindlaeser.

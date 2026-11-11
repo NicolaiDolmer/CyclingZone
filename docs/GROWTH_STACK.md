@@ -90,7 +90,7 @@ Tre kanaler man kunne tro vi har. Vi har dem ikke:
 |---|---|---|
 | **Referral / invitér en ven** | Findes ikke i kode 📄 | Ejer-beslutning 23/7 (#1173): trappet belønning, 7 dages Pro for en ven der bliver aktiv, 1 måneds Pro hvis vennen betaler. Afhængighed: Pro skal låse noget op, ellers er belønningen tom. Uafklaret: hvad "bliver aktiv" betyder, og hvordan selv-referral med flere konti forhindres |
 | **Betalte annoncer** | Ikke startet 📄 | Ejer-direktiv 20/7 (#2759). **Ejer-beslutning 8/9:** én lille test på 500 til 1.000 kr. (Reddit/Facebook, UTM-tagget) i ugen op til S4 (starter 28/9). Claude leverer udkast og målgruppe, ejeren godkender budget. **Betinget af G4-princippet, se §4.3** |
-| **SEO-site** | Rewrites bygget, afventer ejer-go + merge 🔧 | `marketing/` (Next.js App Router) er merget 2/9 (#4659) med `/`, `/how-it-works`, `/pro-cycling-manager-alternative` + `/da/...`. Vercel-projektet `cycling-zone-marketing` er git-koblet og bygger fra main; sitet er live på https://cycling-zone-marketing.vercel.app. **#4067 (14/9):** PR med `frontend/vercel.json`-rewrites for de 5 stier (undtagen forsiden) + `_next/`-assets, robots-noindex på selve vercel.app-domænet (undgår dubletindeksering) og udvidet sitemap.xml er klar til ejer-review — ikke merget endnu. Forsiden er fortsat `LandingPage.jsx` prerenderet på engelsk (rørt ikke i #4067; kræver egen beslutning at flytte). Google-indeks: 1 side (målt 21/8, #4067) |
+| **SEO-site** | Live, med betinget forside-routing | `marketing/` serveres under cyclingzone.org via eksterne rewrites. Anonym `/` proxyes af `frontend/middleware.ts` med DA efter første Accept-Language; lokal prerender er fallback. Runtime-kilde kontrolleret 11/11/2026: #5239 er leveret. Login-kontrakten er beskrevet i §3.6 (#5250). |
 
 ### 2.3 Kanaler vi bevidst ikke bruger
 
@@ -177,6 +177,17 @@ Reglen fra #2236 er en del af konventionen: **UTM pr. community**, ikke pr. plat
 En egen-site-referrer vises heller aldrig som referrer-kanal i Attribution-fanen. "Self-referral" bruges nu kun når `utm_source` selv er vores domæne. Rækkerne i `signup_attribution` er uændrede: ingen backfill, ingen UPDATE.
 
 **Hvad der ikke kan genskabes:** den eksterne referrer for signups mellem 14/9 og deployet af rettelsen. Læs "ukendt (tabt i marketing)" som ukendt, aldrig som direct. Marketing-sidernes traffic-beacon-dækning er ikke en del af rettelsen.
+
+
+### 3.6 Login og offentlig forside (#5250, ejer-go 11/11)
+
+Kontrakt: en indlogget spiller åbner `/` eller `/da` direkte på dashboard uden marketing-frame. Ukendt login viser den fælles statiske grå loading-komponent. Anonyme bevarer marketing; udløbet app-session går til login. Query/UTM og auth-callback-fragmenter bevares.
+
+Implementeringen bruger Supabase-kompatible chunkede sessionscookies med Secure på HTTPS, SameSite=Lax og Path=/. Cookie-tilstedeværelse vælger kun app-indgangen; API/RLS foretager stadig autorisation. Middleware sender private/no-store på de betingede forsidesvar og fjerner Cookie/Authorization før **alle** eksterne rewrites. Sessioner må ikke ende hos analytics eller marketing-origin.
+
+**Overgangsbegrænsning:** localStorage-spejlet beholdes i browseren i denne kompatibilitetsudrulning, også efter logout, hvor begge sessionskopier slettes men bridge-markeringen bevares. En allerede åben gammel fane skal kunne logge ind/ud og forny på samme delte kilde som den nye version. Storage-events genlæser aktuel state; event-payload afspilles aldrig tilbage. Fuld fjernelse af legacy-lageret kræver en senere verificeret pensionering af gamle klienter; #5250 lukkes ikke som fuld storage-pensionering med denne PR. Den gamle `cz_session`-markør bruges ikke længere og ryddes ved boot.
+
+En inline HEAD-vagt håndterer eksisterende localStorage-sessioner før både proxy-marketing og lokal prerender kan males. Ingen tokens eller brugerdata indsættes i HTML. Eksisterende implicit email/OAuth-flow og Supabase-API bevares. Playwright-fixtures tester denne overgang med syntetiske data; prod/preview-routing skal verificeres separat før release.
 
 ## 4. Tragten og dag 1
 
@@ -373,7 +384,7 @@ Kort oversigt. Ansvarsfordelingen mellem værktøjerne bor i ANALYTICS_STACK.
 |---|---|---|
 | [#3796](https://github.com/NicolaiDolmer/CyclingZone/issues/3796) | UTM-disciplin + "hvor hørte du om os" | Konventionen står nu her (§3.4). Mangler: tagning af mails og Discord-kanaler, samt onboarding-dropdown |
 | [#4322](https://github.com/NicolaiDolmer/CyclingZone/issues/4322) | AI-assistenter som kanal | Gruppen er defineret (§2.1). Mangler: baseline-måling af hvad assistenterne svarer, og verifikation af at AI-crawlere ikke er blokeret |
-| [#4067](https://github.com/NicolaiDolmer/CyclingZone/issues/4067) | Marketing-site | Live på cycling-zone-marketing.vercel.app; mangler rewrites fra cyclingzone.org (separat PR med ejer-go) ✅ |
+| [#4067](https://github.com/NicolaiDolmer/CyclingZone/issues/4067) | Marketing-site | Rewrites og anonym forside-routing er leveret (#5239); login-overgang følges i #5250, §3.6. |
 | [#3797](https://github.com/NicolaiDolmer/CyclingZone/issues/3797) | GSC + funnel pr. kanal | Service-konto og `scripts/gsc-report.mjs` ikke bygget |
 | [#1173](https://github.com/NicolaiDolmer/CyclingZone/issues/1173) | Referral | Belønningsmodellen er besluttet; intet er bygget. Afventer at Pro låser noget op |
 | [#2759](https://github.com/NicolaiDolmer/CyclingZone/issues/2759) | Betalte annoncer | Testen er godkendt i princippet; udkast, målgruppe og budget mangler |

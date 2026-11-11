@@ -4,13 +4,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { hasSessionCookie } from "./installPwa.ts";
 
-test("reads the cz_session marker cookie exactly", () => {
-  assert.equal(hasSessionCookie("cz_session=1"), true);
-  assert.equal(hasSessionCookie("a=b; cz_session=1; c=d"), true);
-  assert.equal(hasSessionCookie(""), false);
-  assert.equal(hasSessionCookie("cz_session=0"), false);
-  assert.equal(hasSessionCookie("cz_session=10"), false);
-  assert.equal(hasSessionCookie("xcz_session=1"), false);
+test("reads the actual project session cookie exactly", () => {
+  const key = "sb-test-auth-token";
+  assert.equal(hasSessionCookie(`${key}=token`, key), true);
+  assert.equal(hasSessionCookie(`a=b; ${key}.0=chunk; c=d`, key), true);
+  assert.equal(hasSessionCookie("", key), false);
+  assert.equal(hasSessionCookie("cz_session=1", key), false);
+  assert.equal(hasSessionCookie(`x${key}=token`, key), false);
+  assert.equal(hasSessionCookie(`${key}.1=orphan`, key), false);
 });
 
 test("main.jsx boots the PWA layer; Layout feeds the icon badge from the nav unread count", () => {

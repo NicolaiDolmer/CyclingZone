@@ -612,6 +612,7 @@ function makeSupabase(db, { claimTransfer = null, claimSwap = null, beforeRiderU
     _finance: finance,
     from(table) { return builder(table); },
     rpc(name, params) {
+      if (name === "market_scope_2176") return Promise.resolve({data:(db.market_scope || []).includes(params.p_team_id),error:null});
       if (name === "team_outgoing_auction_rider_ids") {
         const ids = rowsFor(db,"auctions").filter(auction => ["active","extended"].includes(auction.status)
           && auction.current_bidder_id && auction.current_bidder_id !== params.p_team_id
@@ -620,10 +621,10 @@ function makeSupabase(db, { claimTransfer = null, claimSwap = null, beforeRiderU
           .map(auction => auction.rider_id);
         return Promise.resolve({ data: ids, error: null });
       }
-      if (name === "auto_accept_claim_transfer_at_price" && claimTransfer) {
+      if (name === "auto_accept_claim_transfer_paid" && claimTransfer) {
         return Promise.resolve({ data: claimTransfer(params), error: null });
       }
-      if (name === "auto_accept_claim_swap" && claimSwap) {
+      if (["auto_accept_claim_swap","auto_accept_claim_swap_paid"].includes(name) && claimSwap) {
         return Promise.resolve({ data: claimSwap(params), error: null });
       }
       assert.equal(name, "increment_balance_with_audit");
@@ -721,6 +722,28 @@ test("#6181: claim refusing the buyer money under the team lock stops before own
   assert.equal(result.code, "buyer_insufficient_balance");
   assert.equal(db.riders.find(r => r.id === "rider-1").team_id, "seller");
   assert.equal(client._finance.length, 0);
+});
+
+test("A7: a paid claim sends canonical audit payloads and skips both later payment calls", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  db.app_config = [{ key: "auto_accept_enabled", value: "on" }];
+  db.transfer_offers.push({ id: "offer-1", rider_id: "rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
+    offer_amount: 200, status: "awaiting_confirmation", buyer_confirmed: false, seller_confirmed: true });
+  const client = makeSupabase(db, { claimTransfer: params => {
+    assert.equal(params.p_deal_id, "offer-1");
+    assert.equal(params.p_buyer_payload.amount, -200);
+    assert.equal(params.p_buyer_payload.idempotency_key, "transfer_buyer:offer-1");
+    assert.equal(params.p_seller_payload.amount, 200);
+    assert.equal(params.p_seller_payload.idempotency_key, "transfer_seller:offer-1");
+    assert.equal(params.p_buyer_payload.source_path, "transferExecution.executeTransferOffer.buyer");
+    assert.equal(params.p_seller_payload.source_path, "transferExecution.executeTransferOffer.seller");
+    Object.assign(db.riders.find(r => r.id === "rider-1"), { team_id: "buyer", pending_team_id: null });
+    return { status: "claimed", rider_id: "rider-1", payment_handled: true };
+  } });
+  const result = await confirmTransferOffer({ supabase: client, offerId: "offer-1", confirmingTeamId: "buyer",
+    now: new Date("2026-11-10T10:00:00Z") });
+  assert.equal(result.ok, true);
+  assert.equal(client._finance.length, 0, "JavaScript must not pay after the atomic RPC");
 });
 
 test("#2176: enabled claim preserves transfer wiring for inheritance, new contract, graduation and parking", async () => {
@@ -935,6 +958,35 @@ test("#2176: en auktion der starter under byttet stopper det før betaling", asy
   assert.equal(db.riders.find((r) => r.id === "rider-1").team_id, "seller");
   assert.equal(supabase._finance.length, 0);
   assert.equal(db.swap_offers[0].status, "withdrawn");
+});
+
+test("beta cash-swap committed receipt prevents either legacy payment leg",async()=>{
+  const db=lockedSwapDb();db.app_config=[{key:"auto_accept_enabled",value:"beta"},{key:"market_commitment_6181",value:"beta"}];
+  let claims=0;
+  const client=makeSupabase(db,{claimSwap:params=>{
+    claims++;assert.equal(params.p_deal_id,"swap-1");assert.equal(params.p_cash,100);
+    assert.equal(params.p_now,"2026-11-10T10:00:00.000Z");
+    assert.equal(params.p_payment.payer_payload.idempotency_key,"swap_payer:swap-1");
+    assert.equal(params.p_payment.payee_payload.idempotency_key,"swap_receiver:swap-1");
+    db.riders.find(row=>row.id==="rider-1").team_id="buyer";
+    db.riders.find(row=>row.id==="buyer-rider-1").team_id="seller";
+    return{status:"claimed",offered_rider_id:"rider-1",payment_handled:true};
+  }});
+  const fixedNow = new Date("2026-11-10T10:00:00Z");
+  const RealDate = globalThis.Date;
+  let wallClockReads = 0;
+  globalThis.Date = class extends RealDate {
+    constructor(...args) {
+      if (!args.length) wallClockReads++;
+      super(...(args.length ? args : [fixedNow.getTime()]));
+    }
+    static now() { wallClockReads++; return fixedNow.getTime(); }
+  };
+  try {
+    const result=await confirmSwapOffer({supabase:client,swapId:"swap-1",confirmingTeamId:"buyer",now:fixedNow});
+    assert.equal(result.ok,true);assert.equal(claims,1);assert.equal(client._finance.length,0);
+    assert.equal(wallClockReads,0,"the injected swap clock must reach all time-dependent helpers");
+  } finally { globalThis.Date = RealDate; }
 });
 
 test("#2176: refunderet bytte med kontanter springer claim over, også tændt", async () => {

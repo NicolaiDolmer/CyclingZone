@@ -1,3 +1,4 @@
+import { readMarketSpendIssue2176 } from "./marketBeta2176.ts";
 // Akademi-intake (#1308) — genererer kandidat-kuld pr. menneske-hold og
 // indsætter dem i riders + academy_intake. Flag-gated via academyFlag.js;
 // opkalderen (relaunchOrchestrator) checker flaget FØR kald. Idempotent
@@ -583,6 +584,8 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   });
 
   if (acqErr) {
+    const issue = readMarketSpendIssue2176(acqErr);
+    if (issue) throw Object.assign(new Error(issue.error), issue);
     // 23505 = denne rytter er allerede optaget (cron-/dobbeltklik-retry). Behandl
     // som idempotent no-op snarere end hård fejl.
     if (acqErr.code === DUPLICATE_VIOLATION_CODE) throw new Error("already_assigned");

@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   TRAIN_NOW_OFF, parseTrainNowStatus, trainNowNoteKeys, trainNowPressCounts, trainNowRunGate,
-  trainNowRaceNames, trainNowSaveErrorKey, trainNowWarnings, trainNowNeedsConfirm, trainNowInstantConfirm, type TrainNowStatus,
+  trainNowRaceNames, trainNowSaveErrorKey, trainNowWarnings, trainNowNeedsConfirm, trainNowInstantConfirm,
+  trainNowPressDropped, trainNowPressLanded, type TrainNowStatus,
 } from "./TrainNowState.ts";
 import { trainNowClock } from "./trainNowClock.ts";
 
@@ -197,4 +198,24 @@ test("instant (#7737): the new dialog only when instant, available and a race is
   // The short-race warnings stay as they were, next to the new body.
   const short = { ...instantRace, shortRaces: [{ id: "r1", name: "Tour A", fit: 5, entered: 6, min: 6 }] };
   assert.equal(trainNowWarnings(short).length, 1);
+});
+
+test("#7982: a press whose answer never arrived counts as dropped, a real backend error does not", () => {
+  assert.equal(trainNowPressDropped({ networkError: true, status: 0, data: null }), true);
+  assert.equal(trainNowPressDropped({ status: 0, data: null }), true);
+  assert.equal(trainNowPressDropped({ status: 502, data: null }), true);
+  assert.equal(trainNowPressDropped({ status: 500, data: { error: "train_now_failed" } }), false);
+  assert.equal(trainNowPressDropped({ status: 409, data: { error: "previous_date_open" } }), false);
+});
+
+test("#7982: after a drop, a locked or settled status means the press landed", () => {
+  assert.equal(trainNowPressLanded(locked), true);
+  assert.equal(trainNowPressLanded({ ...available, settled: true }), true);
+  assert.equal(trainNowPressLanded(available), false);
+  assert.equal(trainNowPressLanded(null), false);
+});
+
+test("#7982: the instant press never says 'could not be locked'", () => {
+  assert.deepEqual(trainNowNoteKeys({ ...available, instant: true }, null, "network"), ["trainNow.errorInstant"]);
+  assert.deepEqual(trainNowNoteKeys(available, null, "network"), ["trainNow.error"]);
 });

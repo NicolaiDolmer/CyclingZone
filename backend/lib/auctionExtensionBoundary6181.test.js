@@ -7,10 +7,11 @@ import { SEASON_TRANSITION_PLANNED_AT_KEY } from "./seasonTransitionBoundary.js"
 
 const BOUNDARY = "2026-11-12T17:00:00.000Z";
 
-function mockSupabase({ flags = {}, flagError = false, auction, plannedAt = BOUNDARY }) {
+function mockSupabase({ flags = {}, flagError = false, protectedTeam = false, auction, plannedAt = BOUNDARY }) {
   const state = { auction: { ...auction }, auctionUpdates: [] };
   return {
     state,
+    async rpc(name) { assert.equal(name,"market_scope_2176"); return {data:protectedTeam,error:null}; },
     from(table) {
       const filters = [];
       let action = "select";
@@ -117,4 +118,10 @@ test("Codex 10/11: en holdt sluttid i lukket tid flyttes til sidste hele minut f
   assert.equal(capExtendedEndAtBoundary(extended, "2026-11-12T22:59:30.000Z", boundary, win), null);
   // Grænse midt i vinduet: uændret regel (sidste hele minut før grænsen).
   assert.equal(capExtendedEndAtBoundary(new Date("2026-11-12T17:05:00.000Z"), "2026-11-12T16:50:00.000Z", "2026-11-12T17:00:00.000Z", win).toISOString(), "2026-11-12T16:59:00.000Z");
+});
+
+for(const [origin,protectedTeam,expected]of [['auto_accept',false,true],['ordinary',false,false],['ordinary',true,true]])test(`beta extension scope ${origin}/protected=${protectedTeam}`,async()=>{
+ const sb=mockSupabase({flags:{market_commitment_6181:'beta',auto_accept_enabled:'beta'},protectedTeam,auction:{...auction,origin,seller_team_id:'seller'}});
+ const result=await applyLeaderShiftExtension({supabase:sb,auctionId:'a1',previousLeader:'A',bidTime,bidCfg:cfg});
+ assert.equal(result.newEnd<new Date(BOUNDARY),expected);
 });

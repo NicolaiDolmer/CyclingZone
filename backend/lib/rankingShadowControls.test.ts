@@ -16,6 +16,14 @@ function fixture({stage='on',queue=0,flagError=false,missing=false}={}){
   return {client,calls};
 }
 const options={now:MORNING,clock:()=>0,logger:quiet};
+
+test('independent dirty work defers legacy parity without consuming the next clean check',async()=>{
+  const {client,calls}=fixture();
+  await runRankingShadowPass(client,{...options,checkParity:false});
+  assert.equal(calls.some(c=>c.name==='check_ranking_shadow_parity'),false);
+  await runRankingShadowPass(client,options);
+  assert.equal(calls.filter(c=>c.name==='check_ranking_shadow_parity').length,1);
+});
 test('off/missing/invalid/read failure block apply and parity while retaining queue monitoring',async()=>{
   for(const settings of [{stage:'off'},{missing:true},{stage:'invalid'},{flagError:true}]){
     const {client,calls}=fixture(settings); await runRankingShadowPass(client,options);

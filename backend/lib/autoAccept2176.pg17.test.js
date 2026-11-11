@@ -349,6 +349,62 @@ test('PG17: auto-accept serializes listing, money, seats, seller floor and relea
     await prepare(ESCROW_FIRST_ORDER, { roles: false });
     for (let round = 0; round < 3; round++) await escrowRound();
     assert.equal(Number(psql("SELECT deadlocks FROM pg_stat_database WHERE datname='auto_accept_escrow_first'").trim()), 0);
+
+    // A7 negative control on the deployed claim: ownership commits, a separate
+    // connection reserves the still-visible balance, and only then JS pays.
+    psql(await sqlFile('2026-11-10-2176-autopris-ved-listepris.sql'));
+    reset({ buyerBalance: 1000000 });
+    psql(`UPDATE app_config SET value='"on"' WHERE key='auto_accept_enabled'`);
+    const purchase = (paid, parked = false) => {
+      const buyerPayload = JSON.stringify({ type:'transfer_out',amount:-500000,description:'buy',
+        source_path:'transferExecution.executeTransferOffer.buyer',reason_code:'transfer_purchase',
+        related_entity_type:'transfer',related_entity_id:id(9000),idempotency_key:`transfer_buyer:${id(9000)}` });
+      const sellerPayload = JSON.stringify({ type:'transfer_in',amount:500000,description:'sell',
+        source_path:'transferExecution.executeTransferOffer.seller',reason_code:'transfer_sale',
+        related_entity_type:'transfer',related_entity_id:id(9000),idempotency_key:`transfer_seller:${id(9000)}` });
+      return `SELECT public.${paid ? 'auto_accept_claim_transfer_paid' : 'auto_accept_claim_transfer_at_price'}(
+        '${id(107)}','${SELLER}','${BUYER}',${parked},'${NOW}','{}',8,'{}',30,500000
+        ${paid ? `,'${id(9000)}','${buyerPayload}','${sellerPayload}','{}'` : ''});`;
+    };
+    assert.equal((await connection(port,purchase(false))).status,'claimed');
+    assert.equal((await connection(port,start(id(1000)))).status,'started');
+    psql(`SELECT increment_balance_with_audit('${BUYER}',-500000,
+      '{"type":"transfer_out","amount":-500000,"description":"legacy buy"}');`);
+    assert.equal(teamBalance(BUYER),500000);
+    assert.equal(Number(value(`SELECT team_market_commitment('${BUYER}')`)),600000);
+    t.diagnostic('legacy_a7_overbook_reproduced=true; balance=500000; commitment=600000; separate_connections=true');
+
+    const a7Migration = await sqlFile('2026-11-10-2176-transfer-payment-atomic.sql');
+    psql(a7Migration); psql(a7Migration);
+    for (const mode of ['immediate','parked','escrow']) {
+      const parked = mode !== 'immediate';
+      const resetA7 = () => {
+        reset({ buyerBalance:1000000 });
+        psql(`INSERT INTO app_config(key,value) VALUES('sale_escrow_enabled','"${mode === 'escrow' ? 'on' : 'off'}"')
+          ON CONFLICT(key) DO UPDATE SET value=excluded.value;`);
+      };
+      // Both deterministic orderings exercise independent committed connections.
+      resetA7();
+      assert.equal((await connection(port,purchase(true,parked))).payment_handled,true);
+      assert.equal((await connection(port,start(id(1000)))).status,'insufficient_funds');
+      resetA7();
+      assert.equal((await connection(port,start(id(1000)))).status,'started');
+      assert.equal((await connection(port,purchase(true,parked))).status,'buyer_insufficient_balance');
+      for (let round=0; round<10; round++) {
+        resetA7();
+        const results = await assertRace([
+          ...Array.from({length:4},() => purchase(true,parked)),
+          ...Array.from({length:4},(_,n) => start(id(1000+n))),
+        ],['claimed','started'],['rider_state_changed','buyer_insufficient_balance','insufficient_funds']);
+        const bought = results.some(row => row.status === 'claimed');
+        assert.equal(teamBalance(BUYER),bought ? 500000 : 1000000);
+        assert.equal(teamBalance(SELLER),bought && mode !== 'escrow' ? 10500000 : 10000000);
+        assert.ok(teamBalance(BUYER) >= Number(value(`SELECT team_market_commitment('${BUYER}')`)));
+        assert.equal(Number(value('SELECT count(*) FROM finance_transactions')),bought ? (mode === 'escrow' ? 1 : 2) : 0);
+      }
+    }
+    assert.equal(Number(value("SELECT deadlocks FROM pg_stat_database WHERE datname='auto_accept_escrow_first'")),0);
+    t.diagnostic('a7_modes=3; deterministic_orderings_per_mode=2; concurrent_attempted=240; overbooked=0; deadlocks=0');
     t.diagnostic(`${version}; m3_enabled=true; migrations=${FILENAME_ORDER.length}; orders=2; scenarios=10; ` +
       `escrow_scenarios=${escrowScenarios}; rounds_per_scenario=${rounds}; connections_per_round=8; ` +
       `attempted=${rounds * 10 * 8}; accepted=${rounds * 10}; rejected=${rounds * 10 * 7}; ` +

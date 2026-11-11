@@ -1,0 +1,22 @@
+[
+  {
+    "stage": "before",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "pathname": "/",
+    "observed": "#main > section h1",
+    "auth": "refresh held pending; deterministic fixture, no production account"
+  },
+  {
+    "stage": "before",
+    "viewport": {
+      "width": 393,
+      "height": 852
+    },
+    "pathname": "/",
+    "observed": "#main > section h1",
+    "auth": "refresh held pending; deterministic fixture, no production account"
+  }
+]

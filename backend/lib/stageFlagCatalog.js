@@ -30,6 +30,7 @@ export function isValidFlagStage(stage) {
  *    oversaettes derfor ikke (samme valg som resten af /admin).
  */
 export const STAGE_FLAGS = Object.freeze([
+  { key: "ranking_shadow_decoupled_6765", area: "race-day", label: "Rangliste: uafhængigt skyggepas" },
   // ── Spiller-vendte funktioner ─────────────────────────────────────────────
   { key: "academy_enabled", area: "academy", label: "Akademi" },
   { key: "academy_intake_pull_enabled", area: "academy", label: "Akademi — træk af nye talenter" },
@@ -201,7 +202,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "ai_team_retire_enabled", area: "ops", label: "AI-hold — pensionering" },
   { key: "ai_pool_retirement_v2_enabled", area: "ops", label: "AI-pulje — pensionering v2" },
   { key: "rider_values_bulk_write_enabled", area: "market", label: "Ryttereværdier — bulk-skrivning" },
-  { key: "auto_accept_enabled", area: "market", label: "Auto-accept-pris starter en åben auktion (kun on; beta = slukket)" }, // #2176
+  { key: "auto_accept_enabled", area: "market", label: "Auto-accept-pris starter en åben auktion" }, // #2176: beta requires both parties.
+  { key: "market_commitment_6181", area: "market", label: "Bud-forpligtelsesgate" }, // #2176: scoped beta, global on; no activation.
   // #6181 PR 3: pengelaas. Kun 'on' taender (beta = slukket, det er penge). Flip er ejer-only.
   { key: "sale_escrow_enabled", area: "market", label: "Pengelås — sælgers penge låses til holdskiftet" },
   { key: "rider_primary_type_from_distribution", area: "squad", label: "Rytter-generator: primær type fra mål-fordelingen" },
@@ -319,4 +321,4 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
 // en flade aldrig beskriver en model motoren ikke koerer for beta-gruppen.
 // #7536: condition_v2_race_date_training_day laeses ogsaa kun som "on" af motoren
 // (conditionModelV2Flag.isRaceDateTrainingDayEnabled).
-export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["auto_accept_enabled", "development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801"]);
+export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "condition_v2_race_date_training_day", "stage_plan_dropped_front_7635", "day_words_7725", "fatigue_now_7801"]);

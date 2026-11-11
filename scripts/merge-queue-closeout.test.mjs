@@ -451,6 +451,8 @@ test('-DryRun preview passes --dry-run and carries no merge SHA', () => {
   const args = res.data.calls[0];
   assert.ok(args.includes('--dry-run'));
   assert.deepEqual(JSON.parse(args[args.indexOf('--train') + 1]), [{ number: 7, sha: null }]);
-  const dryBranch = queue.slice(queue.indexOf('  if ($DryRun) {\n    Write-Host "  [dry-run] ville merge nu'), queue.indexOf('    continue\n  }\n\n  $failedRuns'));
+  const mergePreview = queue.indexOf('    Write-Host "  [dry-run] ville merge nu');
+  assert.ok(mergePreview >= 0, 'merge preview exists');
+  const dryBranch = queue.slice(queue.lastIndexOf('  if ($DryRun) {', mergePreview), queue.indexOf('    continue\n  }\n\n  $failedRuns'));
   assert.match(dryBranch, /Invoke-TrainCloseOut -Entries @\(\[pscustomobject\]@\{ number = \$n; sha = \$null \}\)/, 'dry-run branch previews close-out without SHA');
 });

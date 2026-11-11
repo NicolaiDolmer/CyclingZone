@@ -6,7 +6,7 @@ import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { getAuthedUser } from "../lib/getAuthedUser.js";
 import { apiFetch } from "../lib/apiFetch.ts"; // #5089: Retry-After-respekt for development-historik
 import { formatCz, getRiderMarketValue, getRiderSalary, detectStartPriceTypo, computeBidValueDelta } from "../lib/marketValues.js";
-import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS } from "../lib/sharedRequestCache.js";
+import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS, invalidateTransferListings2176, transferListingsKeyForHeaders2176 } from "../lib/sharedRequestCache.js";
 import { fetchPlayerFeatureFlags } from "../lib/playerFeatureFlags.js";
 import { riderBestRole, riderOverallRating } from "../lib/riderRating";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys.js";
@@ -328,6 +328,7 @@ function TransferListButton({ rider, onChanged }) {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
+        const headers = { Authorization: `Bearer ${session.access_token}` };
         // GET /api/transfers returnerer åbne listings — find rytterens egen.
         // Fejler kaldet, virker salgs-knappen stadig (POST svarer 409 hvis
         // rytteren allerede er listet).
@@ -335,11 +336,11 @@ function TransferListButton({ rider, onChanged }) {
         // forfra ved hvert eneste profil-mount. Nu deles den via
         // sharedRequestCache med kort TTL; hver mutation nedenfor invaliderer.
         const data = await sharedRequestCache.get(
-          SHARED_KEYS.transferListings,
+          await transferListingsKeyForHeaders2176(headers),
           async () => {
             // catch-ok: bobler ud gennem sharedRequestCache.get() til effektens
             // egen try/catch (salgs-knappen virker stadig, se kommentar ovenfor).
-            const res = await apiFetch(`${API}/api/transfers`, { headers: { Authorization: `Bearer ${session.access_token}` } }); // catch-ok
+            const res = await apiFetch(`${API}/api/transfers`, { headers }); // catch-ok
             if (!res.ok) throw new Error("transfer_listings_failed"); // apiFetch: ok:false ogsaa ved networkError, saa uaendret
             return res.data;
           },
@@ -375,7 +376,7 @@ function TransferListButton({ rider, onChanged }) {
   function serverAutoConflict(data) {
     if (data?.errorCode !== "auto_accept_price_changed") return null;
     const next = Number(data.errorParams?.autoAcceptPrice);
-    sharedRequestCache.invalidate(SHARED_KEYS.transferListings);
+    invalidateTransferListings2176();
     return { price: next > 0 ? next : null };
   }
   // #2176: PUT /api/transfers/:id/auto-accept-price. null fjerner auto-prisen.
@@ -404,7 +405,7 @@ function TransferListButton({ rider, onChanged }) {
           flashResult(false, `${t("sellRider.toast.autoNotSaved")} ${autoApiError(autoRes.data)}`);
           return;
         }
-        sharedRequestCache.invalidate(SHARED_KEYS.transferListings);
+        invalidateTransferListings2176();
         setListing({ ...listing, auto_accept_price: autoPrice });
       }
       const res = await apiFetch(
@@ -425,7 +426,7 @@ function TransferListButton({ rider, onChanged }) {
       if (res.ok) {
         // #5089: den delte transferliste er nu stale — ryd den, saa naeste
         // profil-mount ser den nye/ændrede listing i stedet for TTL-kopien.
-        sharedRequestCache.invalidate(SHARED_KEYS.transferListings);
+        invalidateTransferListings2176();
         let nextListing = listing ? { ...listing, asking_price: price, ...(autoFirst ? { auto_accept_price: autoPrice } : {}) } : data;
         let autoError = /** @type {string | null} */ (null);
         let keepOpen = false;
@@ -473,7 +474,7 @@ function TransferListButton({ rider, onChanged }) {
       }
       const data = res.data || {};
       if (res.ok) {
-        sharedRequestCache.invalidate(SHARED_KEYS.transferListings); // #5089
+        invalidateTransferListings2176(); // #5089
         setListing(null);
         setAutoPrice(null);
         setAutoFormatBad(false); // Codex P2: en ugyldig auto-pris maa ikke blokere den naeste formular

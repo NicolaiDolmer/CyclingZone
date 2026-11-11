@@ -97,6 +97,10 @@ for(const language of ['en','da']){
     await expect(page.getByTestId('team-plan-choices')).toHaveCount(0);
     await expect(page.getByTestId('stage-plan-task-cost')).toHaveCount(0);
     await page.getByTestId('race-tactics-tab').screenshot({path:evidenceShotPath(`pr-screens/7864/${language}-${testInfo.project.name}-before.png`),scale:'css'});
+    await page.getByTestId('race-tactics-tab').evaluate(el=>el.scrollIntoView({block:'start'}));
+    await page.screenshot({path:evidenceShotPath(`pr-screens/7864/${language}-${testInfo.project.name}-choices-before-viewport.png`),scale:'css'});
+    await visible(page.getByTestId('stage-plan-board').getByText('Rytter Tre',{exact:true})).scrollIntoViewIfNeeded();
+    await page.screenshot({path:evidenceShotPath(`pr-screens/7864/${language}-${testInfo.project.name}-plan-before-viewport.png`),scale:'css'});
     f.setFlag(true);await page.reload();
     const choices=page.getByTestId('team-plan-choices');await expect(choices).toBeVisible();
     await expect(choices.getByRole('button')).toHaveCount(5);

@@ -20,6 +20,7 @@ function clone(value) {
 function createScoutSupabase({
   team, staff = [], abilities = [], assignments = [], scoutActions = [],
   riders = [], academyIntake = [], leadingAuctions = [], proxies = [],
+  marketStage = 'off', marketRPCError = null,
 }) {
   const state = {
     leadingAuctions,
@@ -38,6 +39,7 @@ function createScoutSupabase({
   return {
     state,
     rpc(name, params) {
+      if (name === 'market_scout_assignment_2176') return Promise.resolve({data:null,error:marketRPCError});
       assert.equal(name, "increment_balance_with_audit");
       assert.equal(params.p_team_id, state.team.id);
       state.team.balance = (state.team.balance ?? 0) + params.p_delta;
@@ -45,6 +47,7 @@ function createScoutSupabase({
       return Promise.resolve({ data: state.team.balance, error: null });
     },
     from(table) {
+      if (table === 'app_config') return {select(){return this;},eq(){return this;},maybeSingle:async()=>({data:{value:marketStage},error:null})};
       if (isAuctionCommitmentTable(table)) {
         return auctionCommitmentTable(table, { leading: state.leadingAuctions, proxies: state.proxies });
       }
@@ -247,6 +250,14 @@ function createScoutSupabase({
 }
 
 const NOW = new Date("2026-07-10T12:00:00Z");
+
+test('beta scouting final money refusal creates no legacy assignment or debit',async()=>{
+  const db=createScoutSupabase({team:{id:'team-1',balance:1000000},marketStage:'beta',
+    marketRPCError:{code:'P0001',message:'market_gate_6181:insufficient_available_balance',details:'{"available":0,"locked":1000000}'}});
+  const result=await startMission({teamId:'team-1',criteria:{scope:'country',value:'DK'},seasonId:'season-1'},db,NOW);
+  assert.equal(result.ok,false);assert.equal(result.error,'insufficient_available_balance');
+  assert.equal(db.state.assignments.length,0);assert.equal(db.state.finance_transactions.length,0);assert.equal(db.state.team.balance,1000000);
+});
 
 // ─── getScoutState ────────────────────────────────────────────────────────────
 

@@ -969,6 +969,9 @@ tr:hover .sticky-name-cell {
 @keyframes cz-shimmer {
   100% { transform: translateX(100%); }
 }
+.cz-skeleton-static {
+  background-color: var(--bg-subtle);
+}
 .cz-skeleton {
   position: relative;
   overflow: hidden;

@@ -12,6 +12,7 @@ import React from "react";
 import { hydrateRoot, createRoot } from "react-dom/client";
 import * as Sentry from "@sentry/react";
 import App from "./App.jsx";
+import { supabase } from "./lib/supabase.ts";
 import { AppProviders } from "./AppProviders.jsx";
 import { initSentry } from "./lib/sentry.jsx";
 import {
@@ -128,7 +129,10 @@ installPwa();
   // gaten ville React forsøge at hydrere landing-markup mod en app-side → mismatch
   // (#418/#422). Vi rydder stale markup før createRoot, så app-ruten ikke arver et
   // glimt af landing.
-  const hydratingLanding = Boolean(rootEl.firstElementChild) && window.location.pathname === "/";
+  const initialSession = window.location.pathname === "/"
+    ? await supabase.auth.getSession().then(({ data }) => data.session).catch(() => null)
+    : undefined;
+  const hydratingLanding = !initialSession && Boolean(rootEl.firstElementChild) && window.location.pathname === "/";
 
   // Den prerendrede landing i dist/index.html renderes ALTID på engelsk
   // (prerender.mjs → render("/", "en")). i18next's LanguageDetector har allerede
@@ -161,7 +165,7 @@ installPwa();
             client-træet er identisk med prerenderens (entry-server bruger
             StaticRouter om samme <App/>) → ren hydration. */}
         <BrowserRouter>
-          <App />
+          <App initialSession={initialSession} />
         </BrowserRouter>
       </AppProviders>
     </React.StrictMode>

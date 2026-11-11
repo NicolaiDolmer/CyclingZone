@@ -20,7 +20,7 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function createFacilitySupabase({ team, facilities = [], staff = [], leadingAuctions = [], proxies = [] }) {
+function createFacilitySupabase({ team, facilities = [], staff = [], leadingAuctions = [], proxies = [], debitError = null }) {
   const state = {
     leadingAuctions,
     proxies,
@@ -38,6 +38,7 @@ function createFacilitySupabase({ team, facilities = [], staff = [], leadingAuct
     state,
     rpc(name, params) {
       assert.equal(name, "increment_balance_with_audit");
+      if (debitError) return Promise.resolve({data:null,error:debitError});
       assert.equal(params.p_team_id, state.team.id);
       state.team.balance = (state.team.balance ?? 0) + params.p_delta;
       state.finance_transactions.push({
@@ -959,4 +960,11 @@ test("#6261-#6264 release: ulåste penge kan stadig bruges på fratrædelse", as
   assert.equal(result.ok, true);
   assert.equal(result.severance, 8_000);
   assert.equal(supabase.state.team.balance, 50_000 - 8_000);
+});
+
+for (const operation of ["facility","fire","release"]) test(`final market refusal leaves ${operation} asset unchanged`,async()=>{
+ const sb=createFacilitySupabase({team:{id:"team-1",balance:10000000},staff:[{id:"staff-1",team_id:"team-1",name:"Fixture",role:"scouting",tier:1,salary:100,status:"active",slot:1}],debitError:{code:"P0001",message:"market_gate_6181:insufficient_available_balance",details:JSON.stringify({available:20,locked:9999980})}});
+ const args={teamId:"team-1",track:"scouting",role:"scouting",staffId:"staff-1",seasonId:"season-1",seasonNumber:1};
+ const result=await(operation==="facility"?purchaseFacilityUpgrade:operation==="fire"?fireStaff:releaseStaff)(args,sb,ENABLED);
+ assert.equal(result.ok,false);assert.equal(result.error,"insufficient_available_balance");assert.equal(sb.state.upserts.length,0);assert.equal(sb.state.staffUpdates.length,0);assert.equal(sb.state.finance_transactions.length,0);
 });

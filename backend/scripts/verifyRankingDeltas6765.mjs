@@ -1,15 +1,15 @@
-import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir, homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync, spawn } from 'node:child_process';
 import assert from 'node:assert/strict';
 const root = resolve(import.meta.dirname, '../..');
 const bin = process.env.PG_BIN ?? join(homedir(), 'scoop/apps/postgresql17/current/bin');
-const dir = mkdtempSync(join(tmpdir(), 'cz-6765-'));
+const dir = mkdtempSync(join(process.env.RANKING_VERIFY_SCRATCH ?? tmpdir(), 'cz-6765-'));
 const port = process.env.PG_PORT ?? '55675';
 const exe = name => join(bin, name + (process.platform === 'win32' ? '.exe' : ''));
 function run(name, args) {
-  const r = spawnSync(exe(name), args, {encoding:'utf8', windowsHide:true, ...(name==='pg_ctl'?{stdio:'ignore'}:{})});
+  const r = spawnSync(exe(name), args, {encoding:'utf8', windowsHide:true, timeout:name==='pg_ctl'?150000:120000, ...(name==='pg_ctl'?{stdio:'ignore'}:{})});
   if(r.status !== 0) throw Error(r.stderr || r.stdout || String(r.error));
   return r.stdout ?? '';
 }
@@ -55,6 +55,10 @@ try {
     sql(migration);
     sql("UPDATE app_config SET value='true'::jsonb WHERE key='ranking_shadow_enabled';");
     const tables=['ranking_rider_season','ranking_team_season_ext','ranking_team_race_points','ranking_youth_rider_season'];
+    if(process.argv.includes('--independence')) {
+      const { verifyIndependence }=await import('./verifyRankingShadowIndependence6765.mjs');
+      await verifyIndependence({sql,definitions,names,tables,refresh,dir});
+    } else {
     function drain() {
       const batchMs=[];
       for(let i=0;i<100;i++) {
@@ -150,8 +154,11 @@ try {
     sql('TRUNCATE race_results;'); drain(); parity('truncate/rebuild removes orphan contributions');
     console.log('ALL PARITY AND IDEMPOTENCY CHECKS PASSED');
     }
+    }
   }
 } finally {
-  try { console.log(run('pg_ctl',['-D',join(dir,'data'),'-m','fast','-w','stop']).trim()); }
-  finally { rmSync(dir,{recursive:true,force:true}); }
+  console.log(run('pg_ctl',['-D',join(dir,'data'),'-m','fast','-t','120','-w','stop']).trim());
+  const stopped=spawnSync(exe('pg_ctl'),['-D',join(dir,'data'),'status'],{encoding:'utf8',windowsHide:true});
+  assert.equal(stopped.status,3,'native cluster must be observed stopped');
+  console.log(JSON.stringify({cluster:dir,pg_ctl_status:stopped.status,preserved:true}));
 }

@@ -33,10 +33,9 @@ import { registerServiceWorker } from "./serviceWorker.ts";
 // foerste der sker naar appen aabner.
 export const OFFER_DELAY_MS = 20_000;
 
-/** Samme markoer-cookie som middleware.ts bruger (lib/sessionCookie.ts). */
-export function hasSessionCookie(cookie: string): boolean {
-  return /(^|;\s*)cz_session=1(;|$)/.test(cookie);
-}
+/** Session presence only gates installation UX, never authorization. */
+export { hasAuthCookie as hasSessionCookie } from '../lib/authLanding.ts';
+import { hasAuthCookie, authStorageKey } from '../lib/authLanding.ts';
 
 function safeLocalStorage(win: Window): Storage | null {
   try {
@@ -61,7 +60,7 @@ export function installPwa(win: Window = window): void {
     captureInstallPrompt(win, () => update(recordInstalled));
     registerServiceWorker(win);
 
-    if (hasSessionCookie(win.document.cookie)) update((s) => recordVisit(s, Date.now()));
+    if (hasAuthCookie(win.document.cookie, authStorageKey(import.meta.env.VITE_SUPABASE_URL))) update((s) => recordVisit(s, Date.now()));
 
     let delayPassed = false;
     let mounted = false;
@@ -78,7 +77,7 @@ export function installPwa(win: Window = window): void {
         now: Date.now(),
         platform,
         standalone: isStandalone(win),
-        hasSession: hasSessionCookie(win.document.cookie),
+        hasSession: hasAuthCookie(win.document.cookie, authStorageKey(import.meta.env.VITE_SUPABASE_URL)),
         pathname: win.location.pathname,
       });
       if (decision !== "offer" || platform === "none") return;

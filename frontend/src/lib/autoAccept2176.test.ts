@@ -129,6 +129,7 @@ test("listing and error boundaries validate unknown API payloads", () => {
   assert.deepEqual(findCounterAutoListing([listing], { rider: { id: "rider-a" } }, "seller-a"), { asking_price: 100, auto_accept_price: 200 });
   assert.equal(findCounterAutoListing([listing], { rider: { id: "rider-a" } }, "another-seller"), null);
   assert.equal(findCounterAutoListing([listing], { rider: { id: "another-rider" } }, "seller-a"), null);
+  assert.equal(findCounterAutoListing([listing], { rider: { id: "rider-a" }, auto_accept_eligible: false }, "seller-a"), null);
   assert.deepEqual(readAutoAcceptErrorBody("invalid"), {});
   assert.deepEqual(readAutoAcceptErrorBody({ errorCode: "auto_accept_price_changed", errorParams: { autoAcceptPrice: 250 }, unexpected: true }),
     { errorCode: "auto_accept_price_changed", errorParams: { autoAcceptPrice: 250 } });

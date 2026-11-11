@@ -10,6 +10,7 @@ type Options = {
   clock: () => number;
   logger?: {info?:(message:string,details:Record<string,unknown>)=>void};
   parityEveryPass?: boolean;
+  checkParity?: boolean;
   renewLease?: () => Promise<boolean>;
   captureExceptionFn?: (error: Error, context: { tags: Record<string,string>; extra: Record<string,unknown> }) => void;
 };
@@ -45,7 +46,7 @@ const lastStallAlarm = new WeakMap<object,number>();
 export async function runRankingShadowPass(client: Client, {
   ownerToken, targetVersion, now,
   clock, logger=console,
-  parityEveryPass=process.env.RANKING_SHADOW_PARITY_EVERY_PASS==='true',
+  parityEveryPass=process.env.RANKING_SHADOW_PARITY_EVERY_PASS==='true', checkParity=true,
   captureExceptionFn, renewLease,
 }: Options): Promise<boolean> {
   const started=clock();
@@ -111,6 +112,9 @@ export async function runRankingShadowPass(client: Client, {
     drained=true;
     if(versionThrough!==null) versionDrained=true;
     status='processed';
+    // Independent work may precede legacy publication. Compare only when the
+    // caller has established a clean legacy snapshot on a later tick.
+    if (!checkParity) {status='parity-deferred-legacy';return true;}
     if(renewLease && !await renewLease()) throw new Error('Ranking refresh claim lost before shadow parity');
     const executionNow=now+Math.max(0,clock()-started);
     const last=lastParity.get(client);
