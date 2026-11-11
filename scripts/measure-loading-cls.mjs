@@ -50,7 +50,7 @@ try {
           new PerformanceObserver(list => {
             for (const entry of list.getEntries()) {
               if (entry.hadRecentInput) continue;
-              if (entry.startTime - last > 1000 || entry.startTime - sessionStart > 5000) { sessionStart = entry.startTime; sum = 0; }
+              if (sum === 0 || entry.startTime - last > 1000 || entry.startTime - sessionStart > 5000) { sessionStart = entry.startTime; sum = 0; }
               sum += entry.value;
               last = entry.startTime;
               window.__loadingEvidence.cls = Math.max(window.__loadingEvidence.cls, sum);

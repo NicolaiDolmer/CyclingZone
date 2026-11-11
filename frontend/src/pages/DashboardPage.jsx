@@ -278,6 +278,7 @@ export default function DashboardPage() {
   // holdet endnu ikke har lavet en manuel udtagelse til det (samme kilde som
   // RaceSelectionPanel/saveSelection skriver til: race_entries.is_auto_filled=false).
   const [squadSelectionMissingRace, setSquadSelectionMissingRace] = useState(null);
+  const [selectionReady, setSelectionReady] = useState(false);
   const [notTrainedToday, setNotTrainedToday] = useState(false);
   // D3: "bestyrelsesplan mangler" = forhandling er ÅBEN (ikke sæson-1 baseline-lås)
   // og ingen plan er forhandlet færdig (negotiation_status='completed' — planer
@@ -631,12 +632,12 @@ export default function DashboardPage() {
   useEffect(() => {
     if (loading || initialLayoutReady) return undefined;
     // A secondary query may hang. Never hold ready cards indefinitely for it.
-    const timer = setTimeout(() => setPresenceWaitExpired(true), 300);
+    const timer = setTimeout(() => setPresenceWaitExpired(true), 500);
     return () => clearTimeout(timer);
   }, [loading, initialLayoutReady]);
   useEffect(() => {
-    if (!loading && (!todayStages.loading || presenceWaitExpired)) setInitialLayoutReady(true);
-  }, [loading, todayStages.loading, presenceWaitExpired]);
+    if (!loading && ((!todayStages.loading && selectionReady) || presenceWaitExpired)) setInitialLayoutReady(true);
+  }, [loading, todayStages.loading, selectionReady, presenceWaitExpired]);
 
   // #4557 (S-M2d) · dashboard-genvej til aarsmoedet — udenfor loadAll'ens
   // Promise.all med vilje (progressiv, aldrig blokerende for resten af
@@ -704,8 +705,10 @@ export default function DashboardPage() {
     let cancelled = false;
     // #7296: holdets egne løb først (race_entries), kalenderen som fallback med eget loft.
     const candidates = teamNudgeCandidates(nextRaces, teamRaceIds, SQUAD_NUDGE_LOOKAHEAD);
-    if (!teamRaceIdsLoaded || !candidates.length || !team?.id) { setSquadSelectionMissingRace(null); return undefined; }
+    if (!teamRaceIdsLoaded || !team?.id) { setSquadSelectionMissingRace(null); return undefined; }
+    if (!candidates.length) { setSquadSelectionMissingRace(null); setSelectionReady(true); return undefined; }
     (async () => {
+      try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) return;
@@ -727,6 +730,9 @@ export default function DashboardPage() {
       }
       // Alle kandidater inden for loftet er afmeldt: intet at minde om.
       if (!cancelled) setSquadSelectionMissingRace(null);
+      } finally {
+        if (!cancelled) setSelectionReady(true);
+      }
     })();
     return () => { cancelled = true; };
   }, [nextRaces, team?.id, teamRaceIds, teamRaceIdsLoaded]);
@@ -1045,7 +1051,7 @@ export default function DashboardPage() {
 
   // #2230: resolve conditional top-strip presence before placing the dashboard.
   // Once revealed, background refresh never replaces it with a page loader.
-  if (loading || (!initialLayoutReady && !presenceWaitExpired && todayStages.loading && !error)) return <AuthLoading />;
+  if (loading || (!initialLayoutReady && !presenceWaitExpired && (todayStages.loading || !selectionReady) && !error)) return <AuthLoading />;
 
   // #3510 — kanonisk ErrorState (docs/design/PAGE_TEMPLATES.md) i stedet for at
   // falde igennem til et fuldt tomt dashboard. Retry gen-kalder loadAll direkte
@@ -1446,7 +1452,7 @@ export default function DashboardPage() {
               <NextActionsCard
                 pending={actionSummary}
                 urgentAuctionCount={urgentAuctionCount}
-                loading={actionLoading || !cardReady.auctions}
+                loading={actionLoading || !cardReady.auctions || !selectionReady}
                 squadSelectionMissingRace={squadSelectionMissingRace}
                 notTrainedToday={notTrainedToday}
                 boardPlanMissing={boardPlanMissing}
