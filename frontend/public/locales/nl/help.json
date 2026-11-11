@@ -241,6 +241,10 @@
         "title": "Verkopen via de transferlijst",
         "text": "Je kunt je eigen renners voor een vaste vraagprijs te koop zetten, vanuit Mijn team of rechtstreeks vanaf de profielpagina van de renner. Zolang een renner op de lijst staat, kun je de vraagprijs op elk moment aanpassen of de aanbieding verwijderen, zowel vanaf de pagina Transfers als vanaf het profiel van de renner. Kopers kunnen de markt sorteren of filteren op vraagprijs, naast sorteren op nieuwste aanbiedingen."
       },
+      "autoAcceptPrice": {
+        "title": "Auto-accepteerprijs: een bod op jouw prijs start een veiling",
+        "text": "Als je een renner te koop zet, kun je ook een optionele auto-accepteerprijs instellen, minstens even hoog als de vraagprijs. Als je een auto-accepteerprijs ziet, kun je daaronder onderhandelen of een openbare veiling starten door die prijs of meer te bieden: de koper kiest de duur (30 minuten tot 24 uur actieve tijd, 08-24) en ziet het exacte eindtijdstip, en andere managers kunnen meebieden. De verkoop is bindend voor jou. Tijdens de bèta wordt de auto-accepteerprijs alleen op de transferlijst getoond als jij en de verkoper allebei toegang tot de bèta hebben. Anders onderhandel je zoals gewoonlijk. Zolang een bod leidt, wordt het bedrag gereserveerd en afgetrokken van wat je aan andere aankopen kunt besteden. Een gewijzigde prijs maakt bestaande biedingen nooit tot een veiling, maar als de auto-accepteerprijs voor de koper zichtbaar is, kan een lopende onderhandeling op of boven de nieuwe prijs niet meer worden geaccepteerd: de koper moet de veiling vanaf de advertentie starten."
+      },
       "bulkEditPrices": {
         "title": "Veel prijzen tegelijk aanpassen",
         "text": "Op het tabblad Markt kun je meerdere van je eigen aanbiedingen tegelijk aanvinken en één prijswijziging op allemaal toepassen: stel elke aangevinkte renner in op een exacte prijs, tel een vast CZ$-bedrag op of trek het af, of pas ze allemaal aan met een percentage (bijvoorbeeld +10%). Het voorbeeld toont de oude en nieuwe prijs van elke renner voordat je iets toepast."

@@ -830,10 +830,10 @@
     "editPrices": "Edit prices",
     "submitUpdatePrices": "Update prices",
     "autoLabel": "Auto-accept price (CZ$), optional",
-    "autoHelp": "If someone bids this price or more, a public auction starts straight away. The buyer chooses the length (30 min to 24 hours of active time). The price is visible to everyone, and the sale is binding for you.",
+    "autoHelp": "A buyer who can see the auto-accept price can start a public auction by bidding that price or more. The buyer chooses the length (30 min to 24 hours of active time). The sale is binding for you. During the beta, the price is only shown to buyers with beta access, and you also need beta access.",
     "autoInvalid": "The auto-accept price must be at least the asking price.",
     "autoStatus": "Auto-accept price {amount} CZ$",
-    "autoEditHint": "A new auto-accept price only applies to new bids."
+    "autoEditHint": "Existing bids never become an auction. Open negotiations at or above the new price can no longer be accepted if the buyer can see the auto-accept price."
   },
   "manage": {
     "extend": {

@@ -241,6 +241,10 @@
         "title": "Sælg via transferlisten",
         "text": "Du kan sætte dine egne ryttere til salg til en fast pris, enten fra Min trup eller direkte fra rytterens profilside. Mens en rytter er på listen, kan du til enhver tid redigere prisen eller fjerne listingen, både fra Transfers-siden og fra rytterens profil. Købere kan sortere OG filtrere markedet efter udbudspris, ud over at sortere efter nyeste."
       },
+      "autoAcceptPrice": {
+        "title": "Auto-pris: bud på din pris starter en auktion",
+        "text": "Når du sætter en rytter til salg, kan du også sætte en valgfri auto-pris, mindst lige så høj som listeprisen. Når du kan se en auto-pris, kan du forhandle under den eller starte en offentlig auktion med et bud på den pris eller derover: køberen vælger længden (30 minutter til 24 timer aktiv tid, 08-24) og ser det præcise sluttidspunkt, og andre managere kan byde med. Salget er bindende for dig. Under betaen vises auto-prisen kun på transferlisten, når både du og sælgeren har beta-adgang. Ellers forhandler du som normalt. Mens et bud fører, er beløbet reserveret og trukket fra det, du kan bruge på andre køb. En ændret auto-pris gør aldrig eksisterende bud til en auktion, men når auto-prisen er synlig for køberen, kan en åben forhandling på eller over den nye pris ikke længere accepteres: køberen skal starte auktionen fra listingen."
+      },
       "bulkEditPrices": {
         "title": "Redigér mange priser på én gang",
         "text": "På Marked-fanen kan du markere flere af dine egne listinger og anvende én prisændring på dem alle: sæt alle markerede ryttere til en præcis pris, læg et fast CZ$-beløb til eller fra, eller justér dem alle med en procentsats (fx +10%). Forhåndsvisningen viser den gamle og nye pris for hver rytter, før du anvender noget."

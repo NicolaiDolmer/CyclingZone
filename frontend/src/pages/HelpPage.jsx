@@ -139,6 +139,7 @@ const SECTION_DEFS = [
       // nås fra siden).
       { id: "allTrades", kind: "text" },
       { id: "sellOnTransferList", kind: "text" },
+      { id: "autoAcceptPrice", kind: "text", flag: "auto_accept_enabled" }, // #2176
       // #4066: wired in — the copy already lived in help.json (translated,
       // en+da) but was never listed here, so the Market tab's bulk price
       // edit had no reachable documentation.
