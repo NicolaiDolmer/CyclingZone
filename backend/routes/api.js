@@ -498,6 +498,8 @@ import {
   getSquadRiskViolation,
   getTeamMarketState,
   MIN_RIDERS_FOR_RACE,
+  SELLER_SQUAD_FLOOR,
+  sellerFloorRiskIds,
 } from "../lib/marketUtils.js";
 import { buildAtRiskErrorParams, fetchAtRiskRiders } from "../lib/squadRiskGuard.js";
 import {
@@ -7736,7 +7738,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
     };
   let created2176 = null;
   if (await isMarketBetaMode2176(supabase)) {
-    const attempt = await supabase.rpc("create_market_auction_2176", { p_auction: auctionData2176, p_expected_owner: rider.team_id ?? null, p_min_riders: MIN_RIDERS_FOR_RACE, p_at_risk_rider_ids: auctionAtRiskRiders2176.map(row => row.id) });
+    const attempt = await supabase.rpc("create_market_auction_2176", { p_auction: auctionData2176, p_expected_owner: rider.team_id ?? null, p_min_riders: SELLER_SQUAD_FLOOR, p_at_risk_rider_ids: sellerFloorRiskIds(auctionAtRiskRiders2176) });
     if (attempt.error) created2176 = { data: null, error: attempt.error };
     else if (attempt.data?.status === "created") created2176 = { data: attempt.data.auction, error: null };
     else if (attempt.data?.status === "seller_squad_floor") return res.status(409).json({ error: `You can't drop below ${MIN_RIDERS_FOR_RACE} riders once contract expiry and retirement risk at the next season change are counted`, errorCode: "cannot_auction_squad_risk", errorParams: buildAtRiskErrorParams({ minRiders: MIN_RIDERS_FOR_RACE }, auctionAtRiskRiders2176) });
