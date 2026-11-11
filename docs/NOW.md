@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (Dolmer PC 10/11 aften, primært Codex):** Dolmer PC-Codex: #8001, #7440, #7489, #7980/#7864. Træn nu beta; #7982 del 2 (22 s) kræver måling. 11/11 merget: #7989, #7959, #7991 login (7.430), #7985 beta-kode (migration verificeret, off; tænd-kort efter #7978), #8002 auto-tog skjult; #7978 → 7.431. PC1: #2230 → #7993 → #7999. PC1-Codex: web-oplevelse (#5250 login-landing godkendt). Graduation Day (#7960) torsdag.
+> **🎯 Next action (11/11, én opgave pr. session; Claude reviewer/merger):** **Dolmer PC-Codex S1:** #7978 (Hjælp + note 7.431, merges på tænd-dagen) → #8001 → #7440 → #7489 → #7982 del 2 (Træn nu 25-29 s; bliver i beta). **Dolmer PC-Codex S2 (ny, efter #7978):** #7980 → #7884 tidlige angreb (ejer-valg A, design+baseline før byg). **PC1-Codex:** #2230 → #7993 → #7999; S2 #8000 færdig. **Claude:** tænd-kort auto-accept efter #7978; rangliste-måling 12/11; #7810-tjek efter etape 9. 11/11 merget: #7989, #7959, #7991 (7.430), #7985 (off), #8002. Graduation Day (#7960) 12/11.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling; memory commitment på Large kunne ikke aflæses 9/11.
 >
 > **🤖 Working agent:** Ingen aktiv session (PC1 lukket 10/11 aften).
