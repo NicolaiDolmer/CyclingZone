@@ -45,3 +45,7 @@ fa572f73006572659bbb76050b5b65aa78b9c1ef:frontend/src/preview/mockHandlers.js:di
 # guard-test i posthogIntegration.test.js fejler hvis nogen genindfoerer en
 # token-literal. Kun historikken matcher, og squash-merge baerer den ikke til main:
 3f79b317ea49c6eabb277062082803f3c5748ab4:frontend/src/lib/posthogClient.js:generic-api-key:29
+# Falsk positiv (11/11, #7325): syntetiske pladsholder-env-værdier ('synthetic-…') mod 127.0.0.1 i lokal sæsonskifte-prøve. Ingen hemmeligheder.
+scripts/seasonTransitionRehearsal7325.mjs:generic-api-key:257
+scripts/seasonTransitionRehearsal7325.mjs:generic-api-key:258
+scripts/seasonTransitionRehearsal7325.mjs:generic-api-key:259
