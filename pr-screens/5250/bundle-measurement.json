@@ -1,0 +1,29 @@
+{
+  "results": [
+    {
+      "dir": "5250-bundle-before",
+      "bytes": 1462133,
+      "KiB": 1427.8642578125,
+      "initialKiB": 333.63671875,
+      "cookieBanner": []
+    },
+    {
+      "dir": "5250-bundle-consent",
+      "bytes": 1459631,
+      "KiB": 1425.4208984375,
+      "initialKiB": 330.875,
+      "cookieBanner": [
+        {
+          "file": "CookieBanner-CNStlR0W.js",
+          "bytes": 1468,
+          "preloaded": false
+        }
+      ]
+    }
+  ],
+  "savedBytes": 2502,
+  "savedKiB": 2.443359375,
+  "budgetKiB": 1359,
+  "marginPct": 5,
+  "ceilingKiB": 1426.95
+}

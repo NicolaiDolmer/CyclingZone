@@ -1,4 +1,14 @@
-import { combineChunks, createChunks, stringFromBase64URL, stringToBase64URL } from "@supabase/ssr";
+import { combineChunks, createChunks } from "@supabase/ssr";
+
+// Native UTF-8/Base64 avoids shipping a second codec. SSR cookie wire format
+// and malformed-input handling are covered by interoperability tests.
+const stringToBase64URL = (value: string) =>
+  btoa(Array.from(new TextEncoder().encode(value), (byte) => String.fromCharCode(byte)).join(""))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const stringFromBase64URL = (value: string) =>
+  new TextDecoder("utf-8", { fatal: true }).decode(
+    Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), (char) => char.charCodeAt(0))
+  );
 
 type CookiePort = { read(): string; write(value: string): void; secure: boolean };
 type LegacyPort = Pick<Storage, "getItem" | "setItem" | "removeItem">;

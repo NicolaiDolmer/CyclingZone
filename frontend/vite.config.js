@@ -297,6 +297,14 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             {
+              // These primitives already share the entry preload graph. Grouping
+              // preserves lazy page boundaries while sharing their gzip dictionary.
+              name: "ui-primitives",
+              test: /src[\\/]components[\\/]ui[\\/](Button|buttonStyles|fieldStyles|SortableTh|DataTable|Segmented|Section|Tabs|Textarea|EmptyState|Modal)\.[jt]sx?$/,
+              includeDependenciesRecursively: false,
+              priority: 25,
+            },
+            {
               name: "react-vendor",
               test: /node_modules[\\/](react|react-dom|scheduler|react-is)[\\/]/,
               priority: 30,

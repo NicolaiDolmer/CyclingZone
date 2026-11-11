@@ -5,7 +5,7 @@ import { parseAuthErrorHash, isExpiredOrDeniedAuthError } from "./lib/authErrorH
 // recoverable (retry + genkendelig ChunkLoadError -> auto-reload via SentryBoundary).
 import { lazyWithRetry as lazy } from "./lib/lazyWithRetry.js";
 import { supabase } from "./lib/supabase";
-import CookieBanner from "./components/CookieBanner.jsx";
+import DeferredCookieBanner from "./components/DeferredCookieBanner.tsx";
 // #5033/#5159: opdag et nyt frontend-deploy mens fanen er aaben, og genindlaes
 // paa et sikkert punkt — aldrig oven i ugemt arbejde. Banneret er den manuelle
 // udvej naar det sikre punkt ikke er kommet endnu.
@@ -464,7 +464,7 @@ export default function App({ initialSession = undefined }) {
             EN-prerendrede landing til dansk. Se lib/prerenderHydration.ts. */}
         <PrerenderHydrationMarker />
       </Suspense>
-      <CookieBanner />
+      {mounted && <DeferredCookieBanner />}
       {/* #5159 (review-fund 5): de to stacking-gates — cookie-banneret og "anonym
           paa forsiden" — ligger inde i banneret selv, ikke her. App er roden, og
           et abonnement dér (samtykke-contexten, useLocation) gen-renderer HELE

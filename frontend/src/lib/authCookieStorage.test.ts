@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { combineChunks, createChunks, stringToBase64URL, stringFromBase64URL } from "@supabase/ssr";
 import { createAuthCookieStorage } from "./authCookieStorage.ts";
 const key = "sb-fixture-auth-token";
 const value = JSON.stringify({
@@ -175,4 +176,23 @@ test("logout removes session even if bridge metadata cannot be written", async (
   await storage.removeItem(key);
   assert.equal(values.has(key), false);
   assert.equal(await storage.getItem(key), null);
+});
+
+test("cookie codec interoperates with SSR cookies in both directions, without legacy storage", async () => {
+  const values = [value, "", "a", "ab", "abc", "æøå🚴漢字\u0000".repeat(2500)];
+  for (const text of values) {
+    const f = fixture();
+    await f.storage.setItem(key, text);
+    const encoded = await combineChunks(key, (name) => f.jar.get(name) ?? null);
+    assert.equal(encoded, `base64-${stringToBase64URL(text)}`);
+    assert.equal(stringFromBase64URL(encoded!.slice(7)), text);
+    f.old.clear();
+    f.jar.clear();
+    for (const chunk of createChunks(key, `base64-${stringToBase64URL(text)}`))
+      f.jar.set(chunk.name, chunk.value);
+    assert.equal(await f.storage.getItem(key), text);
+  }
+  const malformed = fixture();
+  malformed.jar.set(key, "base64-_w"); // Invalid UTF-8 must fail closed.
+  assert.equal(await malformed.storage.getItem(key), null);
 });
