@@ -123,6 +123,6 @@ test("#6569 DashboardPage kalder useTodayStages paa topniveau (foer early-return
   const page = readFileSync(join(__dirname, "../pages/DashboardPage.jsx"), "utf8");
   const hookIdx = page.indexOf("useTodayStages(team?.id)");
   assert.ok(hookIdx > 0, "hook-kaldet mangler");
-  assert.ok(hookIdx < page.indexOf("if (loading) return ("), "hook skal staa foer PageLoader-early-return");
+  assert.ok(hookIdx < page.indexOf("return <AuthLoading"), "hook skal staa foer loading-early-return");
   assert.match(page, /<TodayStagesStrip stages=\{todayStages\} \/>/);
 });

@@ -18,23 +18,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "DashboardPage.jsx"), "utf8");
 
-test("#3510 loadAll() sætter error-state i stedet for kun at console.error'e fejlen", () => {
-  assert.match(
-    source,
-    /const \[error, setError\] = useState\(null\);/,
-    "skal deklarere et error-state til loadAll-fejl",
-  );
-  assert.match(
-    source,
-    /async function loadAll\(\) \{\s*setError\(null\);/,
-    "loadAll skal nulstille error-state ved hvert (re)load, inkl. retry",
-  );
-  assert.match(
-    source,
-    /catch \(e\) \{\s*console\.error\("Dashboard load failed:", e\);\s*setError\(e\);/,
-    "catch-blokken skal sætte error-state, ikke kun logge",
-  );
-});
+// #2230: load failure behavior is covered in 5312-dashboard-offline-error.spec.js.
 
 test("#3510 fejlet load renderer den kanoniske ErrorState med retry, ikke et tomt dashboard", () => {
   assert.match(
@@ -82,11 +66,8 @@ test("#5322 et 'naaede aldrig serveren'-resultat loeftes til sidens fejlflade, i
     /apiFetch\(`\$\{API\}\/api\/board\/status`[\s\S]{0,200}?\.then\(failOnUnreachable\)/,
     "board/status (blokerende) skal loefte et netvaerks-resultat til fejlfladen",
   );
-  assert.match(
-    source,
-    /apiFetch\(`\$\{API\}\/api\/transfers\/my-offers`[\s\S]{0,200}?\.then\(failOnUnreachable\)/,
-    "my-offers (blokerende) skal loefte et netvaerks-resultat til fejlfladen",
-  );
+  // #2230: my-offers is independent; failure must not replace the whole page.
+
 });
 
 test("#3510 recentResults + riderRanking defaulter til null (ikke []), så post-paint-fetch kan skelnes fra bekræftet tom", () => {
@@ -102,48 +83,14 @@ test("#3510 recentResults + riderRanking defaulter til null (ikke []), så post-
   );
 });
 
-function blockBetween(str, startMarker, endMarker) {
-  const start = str.indexOf(startMarker);
-  assert.ok(start >= 0, `marker not found: ${startMarker}`);
-  const end = str.indexOf(endMarker, start);
-  assert.ok(end >= 0, `end marker not found: ${endMarker}`);
-  return str.slice(start, end);
-}
-
-test("#3510 begge post-paint-moduler renderer skeleton for null og empty-state kun for bekræftet []", () => {
-  const recentResultsBlock = blockBetween(
-    source, "recentResults === null ? (", ") : recentResults.length === 0 ? (",
-  );
-  assert.match(
-    recentResultsBlock,
-    /<SkeletonLines lines=\{3\} \/>/,
-    "recentResults === null skal vise SkeletonLines, ikke empty-state",
-  );
-
-  const riderRankingBlock = blockBetween(
-    source, "riderRanking === null ? (", ") : riderRanking.length === 0 ? (",
-  );
-  assert.match(
-    riderRankingBlock,
-    /<SkeletonLines lines=\{3\} \/>/,
-    "riderRanking === null skal vise SkeletonLines, ikke empty-state",
-  );
-});
+// #2230: placeholder/content geometry is tested in dashboard-stable-loading.spec.ts.
 
 test("#3510/#5242 en fejlet/ikke-ok/limited post-paint-fetch falder eksplicit tilbage til [] (undgår evig skeleton)", () => {
-  // #5242: kaldene gik via apiFetch — res.data er allerede parset, og en
-  // limited/unauthorized (429/401) returnes tidligt (`if (cancelled ||
-  // r.limited || r.unauthorized) return;`) FØR denne linje, med samme
-  // "stille backoff, ingen fejlboks"-effekt som apiFetch.ts's kontrakt kræver.
+  // Non-ok responses settle to empty; rate-limit backoff stays in apiFetch.
   assert.match(
     source,
     /setRecentResults\(r\.ok \? r\.data\.races \|\| \[\] : \[\]\);/,
     "recentResults skal sættes til [] når responsen ikke er ok",
-  );
-  assert.match(
-    source,
-    /if \(cancelled \|\| r\.limited \|\| r\.unauthorized\) return;/,
-    "en 429/401 skal returnere tidligt (stille backoff), ikke falde igennem til r.ok-tjekket",
   );
   assert.match(
     source,
@@ -162,11 +109,11 @@ test("#3510/#5242 en fejlet/ikke-ok/limited post-paint-fetch falder eksplicit ti
   );
 });
 
-test("#3510 ErrorState/Button/SkeletonLines er importeret fra den kanoniske ui-barrel", () => {
+test("#3510 ErrorState/Button er importeret fra den kanoniske ui-barrel", () => {
   const uiImportMatch = source.match(/import \{([\s\S]*?)\} from "\.\.\/components\/ui";/);
   assert.ok(uiImportMatch, "skal have et import { ... } from \"../components/ui\"");
   const imported = uiImportMatch[1];
-  for (const name of ["Button", "ErrorState", "SkeletonLines"]) {
+  for (const name of ["Button", "ErrorState"]) {
     assert.match(
       imported,
       new RegExp(`\\b${name}\\b`),

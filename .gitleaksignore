@@ -1,4 +1,7 @@
 # gitleaks allowlist — én linje pr. fingerprint, med kommentar om hvorfor
+# #2230 false positive: README protocol prose (API latency / heading readiness),
+# synthetic browser measurements only; no credential. Exact historical match.
+dc92681e8bf8d6536c09797751c61b53ac723e35:pr-screens/2230/README.md:generic-api-key:10
 # Format: <commit-sha>:<file>:<rule-id>:<line>
 #
 # Find fingerprint ved at køre lokalt:
@@ -45,3 +48,5 @@ fa572f73006572659bbb76050b5b65aa78b9c1ef:frontend/src/preview/mockHandlers.js:di
 # guard-test i posthogIntegration.test.js fejler hvis nogen genindfoerer en
 # token-literal. Kun historikken matcher, og squash-merge baerer den ikke til main:
 3f79b317ea49c6eabb277062082803f3c5748ab4:frontend/src/lib/posthogClient.js:generic-api-key:29
+# Falsk positiv (11/11, #8004): testprotokol-linje i pr-screens/2230/README.md (Chromium-version, viewport, fast ur). Ingen hemmelighed.
+pr-screens/2230/README.md:generic-api-key:10

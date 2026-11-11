@@ -122,7 +122,7 @@ jobs:
           FILES=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq '.[].filename')
           # Ikke `grep -q`: tidlig exit + pipefail kan SIGPIPE printf og vende
           # svaret til falsk "ingen frontend-ændringer". >/dev/null læser alt.
-          if printf '%s\n' "$FILES" | grep -E '^(frontend/|scripts/(check-e2e-shard-budget|extract-e2e-flakes)\.mjs$|\.github/workflows/playwright-smoke\.yml$)' > /dev/null; then
+          if printf '%s\n' "$FILES" | grep -E '^(frontend/|scripts/(check-e2e-shard-budget|extract-e2e-flakes|update-axe-baseline|lib/axe-(ratchet|inputs)|tests/axe-ratchet\.test)\.mjs$|\.github/workflows/playwright-smoke\.yml$)' > /dev/null; then
             echo "frontend=true" >> "$GITHUB_OUTPUT"
           else
             echo "frontend=false" >> "$GITHUB_OUTPUT"
@@ -169,6 +169,8 @@ jobs:
   # ikke sige HVAD der var galt.
   e2e-shard:
     needs: [changes, plan]
+    env:
+      AXE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
     if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.frontend == 'true'
     # Uden en `name:` ville GitHub navngive jobbet efter ALLE matrix-værdier
     # ("e2e-shard (chromium, desktop-chromium-1of2, ...)"). Lanens key er den
@@ -203,6 +205,15 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
+
+      - name: Obtain immutable accessibility baseline base
+        shell: pwsh
+        run: |
+          git fetch --no-tags --depth=1 origin $env:AXE_BASE_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot verify accessibility baseline against base commit' }
+
+      - name: Test accessibility ratchet
+        run: node --test ../scripts/tests/axe-ratchet.test.mjs
 
       # #3429: CI kører alle tre projekter (desktop-chromium, mobile-chromium,
       # mobile-webkit). Webkit var droppet siden #1342 og var dermed den eneste
@@ -280,6 +291,16 @@ jobs:
           PW_PROJECT: ${{ matrix.project }}
           PW_KEY: ${{ matrix.key }}
         run: node scripts/extract-e2e-flakes.mjs --report frontend/playwright-report/results.json --project "$PW_PROJECT" --out "e2e-shard-metrics/flakes-$PW_KEY.json"
+
+      - name: Upload axe scan evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: axe-scans-${{ matrix.key }}
+          path: |
+            frontend/test-results/**/axe-scan.json
+            frontend/test-results/**/axe-ratchet-proof.json
+          if-no-files-found: ignore
 
       # Karantæne-kørslen: `@flaky`-tagede tests KØRER, men blokerer ikke.
       # `--pass-with-no-tests` fordi listen normalt er tom - og den skal være tom

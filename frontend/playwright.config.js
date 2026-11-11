@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
 import { resolveRuntimePort } from "./playwright.ports.js";
 
 // Port pr. worktree: main-checkout = 4173 (CI uændret), linked worktrees får en
@@ -8,6 +9,9 @@ import { resolveRuntimePort } from "./playwright.ports.js";
 // for hvorfor (false-green via delt port, bidt 2026-05-31 + 2026-06-10).
 const FRONTEND_ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = resolveRuntimePort(FRONTEND_ROOT);
+// Parent sets this before workers inherit the environment. CI shards share one run.
+process.env.AXE_RUN_ID ||= process.env.GITHUB_RUN_ID
+  ? `${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}` : randomUUID();
 
 // #3429: mobile-webkit kører i CI igen. Historikken, fordi den forklarer hvorfor
 // den var væk og hvad der skal holdes i live for at den bliver:

@@ -101,6 +101,35 @@ export default function useTodayStages(teamId) {
         (profilesRes.data || []).map((p) => [`${p.race_id}:${p.stage_number}`, p])
       );
 
+      // #2230: decide whether a strip exists before fetching optional result
+      // enrichment. An empty strip must not wait for winner/standing queries.
+      const slots = ownSlotRows
+        .map((row) => {
+          const race = raceById.get(row.race_id);
+          if (!race) return null;
+          const profile = profileByKey.get(`${race.id}:${row.stage_number}`) || null;
+          return {
+            raceId: race.id,
+            raceName: race.name,
+            raceType: race.race_type,
+            isStageRace: race.race_type === "stage_race",
+            stageNumber: row.stage_number,
+            totalStages: race.stages ?? 1,
+            stagesCompleted: race.stages_completed ?? 0,
+            scheduledMs: Date.parse(row.scheduled_at),
+            profileType: profile?.profile_type || null,
+            // #3958: den FULDE profil-række, så miniaturen kan tegne StageProfileGraph
+            // (ægte rutedata) i stedet for kun at kende profile_type.
+            profile,
+          };
+        })
+        .filter(Boolean);
+
+      // Genbruger Race Centres tilstandsmaskine (scheduled/live/finished) i
+      // stedet for en parallel afledning — se lib/raceCentre.js.
+      const built = buildRaceCentreCards(slots, { nowMs: now });
+      if (!built.length) { setState({ loading: false, cards: [] }); return; }
+
       // 2a) Vinderen af hver af MINE etaper i dag (#5589/#5601). Etapeløb
       // står under result_type 'stage' på etapens nummer, endagsløb under
       // 'gc' på stage_number 1 (motoren skriver aldrig 'stage' for endagsløb,
@@ -165,33 +194,6 @@ export default function useTodayStages(teamId) {
       for (const res of standingResults) if (res.error) throw res.error;
       const winnerRows = winnerResults.flatMap((res) => res.data || []);
       const standingRowsByRace = mergeStandingRowsByRace(standingRaces, standingResults);
-
-      const slots = ownSlotRows
-        .map((row) => {
-          const race = raceById.get(row.race_id);
-          if (!race) return null;
-          const profile = profileByKey.get(`${race.id}:${row.stage_number}`) || null;
-          return {
-            raceId: race.id,
-            raceName: race.name,
-            raceType: race.race_type,
-            isStageRace: race.race_type === "stage_race",
-            stageNumber: row.stage_number,
-            totalStages: race.stages ?? 1,
-            stagesCompleted: race.stages_completed ?? 0,
-            scheduledMs: Date.parse(row.scheduled_at),
-            profileType: profile?.profile_type || null,
-            // #3958: den FULDE profil-række, så miniaturen kan tegne StageProfileGraph
-            // (ægte rutedata) i stedet for kun at kende profile_type.
-            profile,
-          };
-        })
-        .filter(Boolean);
-
-      // Genbruger Race Centres tilstandsmaskine (scheduled/live/finished) i
-      // stedet for en parallel afledning — se lib/raceCentre.js.
-      const built = buildRaceCentreCards(slots, { nowMs: now });
-      if (!built.length) { setState({ loading: false, cards: [] }); return; }
 
       // 3) "antal ryttere tilmeldt" for endagsløb — ALLE holds entries (ikke
       // kun mine). pagination-safe: afgrænset til MINE dagens endagsløb (0-2).

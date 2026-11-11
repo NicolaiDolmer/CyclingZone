@@ -1,0 +1,944 @@
+{
+  "root": "C:\\dev\\CyclingZone-worktrees\\codex-2230-stable-dashboard-pc1",
+  "dist": "C:\\dev\\CyclingZone-worktrees\\codex-2230-stable-dashboard-pc1\\frontend\\dist",
+  "origin": "http://127.0.0.1:52529",
+  "fixedTime": "2026-11-11T12:00:00Z",
+  "evidence": [
+    {
+      "name": "desktop-en-light-landing",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "pending": [],
+      "settled": [],
+      "overflow": {
+        "width": 1280,
+        "document": 1280,
+        "main": 1280,
+        "lang": "en"
+      }
+    },
+    {
+      "name": "desktop-en-light-dashboard",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "pending": [
+        {
+          "name": "nextActions",
+          "busy": "false",
+          "height": 38,
+          "animation": 0
+        },
+        {
+          "name": "auctions",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "transfers",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "races",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "forum",
+          "busy": "false",
+          "height": 144,
+          "animation": 0
+        },
+        {
+          "name": "recentResults",
+          "busy": "true",
+          "height": 320,
+          "animation": 0
+        },
+        {
+          "name": "riderRanking",
+          "busy": "true",
+          "height": 280,
+          "animation": 0
+        }
+      ],
+      "settled": [
+        {
+          "name": "nextActions",
+          "busy": "false",
+          "height": 38,
+          "animation": 0
+        },
+        {
+          "name": "auctions",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "transfers",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "races",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "forum",
+          "busy": "false",
+          "height": 144,
+          "animation": 0
+        },
+        {
+          "name": "recentResults",
+          "busy": "false",
+          "height": 320,
+          "animation": 0
+        },
+        {
+          "name": "riderRanking",
+          "busy": "false",
+          "height": 280,
+          "animation": 0
+        }
+      ],
+      "overflow": {
+        "width": 1280,
+        "document": 1280,
+        "main": 1072,
+        "lang": "en"
+      }
+    },
+    {
+      "name": "desktop-en-dark-landing",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "pending": [],
+      "settled": [],
+      "overflow": {
+        "width": 1280,
+        "document": 1280,
+        "main": 1280,
+        "theme": "dark",
+        "lang": "en"
+      }
+    },
+    {
+      "name": "desktop-en-dark-dashboard",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "pending": [
+        {
+          "name": "nextActions",
+          "busy": "false",
+          "height": 38,
+          "animation": 0
+        },
+        {
+          "name": "auctions",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "transfers",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "races",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "forum",
+          "busy": "false",
+          "height": 144,
+          "animation": 0
+        },
+        {
+          "name": "recentResults",
+          "busy": "true",
+          "height": 320,
+          "animation": 0
+        },
+        {
+          "name": "riderRanking",
+          "busy": "true",
+          "height": 280,
+          "animation": 0
+        }
+      ],
+      "settled": [
+        {
+          "name": "nextActions",
+          "busy": "false",
+          "height": 38,
+          "animation": 0
+        },
+        {
+          "name": "auctions",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "transfers",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "races",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "forum",
+          "busy": "false",
+          "height": 144,
+          "animation": 0
+        },
+        {
+          "name": "recentResults",
+          "busy": "false",
+          "height": 320,
+          "animation": 0
+        },
+        {
+          "name": "riderRanking",
+          "busy": "false",
+          "height": 280,
+          "animation": 0
+        }
+      ],
+      "overflow": {
+        "width": 1280,
+        "document": 1280,
+        "main": 1072,
+        "theme": "dark",
+        "lang": "en"
+      }
+    },
+    {
+      "name": "desktop-da-light-landing",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "pending": [],
+      "settled": [],
+      "overflow": {
+        "width": 1280,
+        "document": 1280,
+        "main": 1280,
+        "lang": "da"
+      }
+    },
+    {
+      "name": "desktop-da-light-dashboard",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "pending": [
+        {
+          "name": "nextActions",
+          "busy": "false",
+          "height": 38,
+          "animation": 0
+        },
+        {
+          "name": "auctions",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "transfers",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "races",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "forum",
+          "busy": "false",
+          "height": 144,
+          "animation": 0
+        },
+        {
+          "name": "recentResults",
+          "busy": "true",
+          "height": 320,
+          "animation": 0
+        },
+        {
+          "name": "riderRanking",
+          "busy": "true",
+          "height": 280,
+          "animation": 0
+        }
+      ],
+      "settled": [
+        {
+          "name": "nextActions",
+          "busy": "false",
+          "height": 38,
+          "animation": 0
+        },
+        {
+          "name": "auctions",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "transfers",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "races",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "forum",
+          "busy": "false",
+          "height": 144,
+          "animation": 0
+        },
+        {
+          "name": "recentResults",
+          "busy": "false",
+          "height": 320,
+          "animation": 0
+        },
+        {
+          "name": "riderRanking",
+          "busy": "false",
+          "height": 280,
+          "animation": 0
+        }
+      ],
+      "overflow": {
+        "width": 1280,
+        "document": 1280,
+        "main": 1072,
+        "lang": "da"
+      }
+    },
+    {
+      "name": "desktop-da-dark-landing",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "pending": [],
+      "settled": [],
+      "overflow": {
+        "width": 1280,
+        "document": 1280,
+        "main": 1280,
+        "theme": "dark",
+        "lang": "da"
+      }
+    },
+    {
+      "name": "desktop-da-dark-dashboard",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "pending": [
+        {
+          "name": "nextActions",
+          "busy": "false",
+          "height": 38,
+          "animation": 0
+        },
+        {
+          "name": "auctions",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "transfers",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "races",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "forum",
+          "busy": "false",
+          "height": 144,
+          "animation": 0
+        },
+        {
+          "name": "recentResults",
+          "busy": "true",
+          "height": 320,
+          "animation": 0
+        },
+        {
+          "name": "riderRanking",
+          "busy": "true",
+          "height": 280,
+          "animation": 0
+        }
+      ],
+      "settled": [
+        {
+          "name": "nextActions",
+          "busy": "false",
+          "height": 38,
+          "animation": 0
+        },
+        {
+          "name": "auctions",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "transfers",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "races",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "forum",
+          "busy": "false",
+          "height": 144,
+          "animation": 0
+        },
+        {
+          "name": "recentResults",
+          "busy": "false",
+          "height": 320,
+          "animation": 0
+        },
+        {
+          "name": "riderRanking",
+          "busy": "false",
+          "height": 280,
+          "animation": 0
+        }
+      ],
+      "overflow": {
+        "width": 1280,
+        "document": 1280,
+        "main": 1072,
+        "theme": "dark",
+        "lang": "da"
+      }
+    },
+    {
+      "name": "mobile-en-light-landing",
+      "viewport": {
+        "width": 393,
+        "height": 852
+      },
+      "pending": [],
+      "settled": [],
+      "overflow": {
+        "width": 393,
+        "document": 393,
+        "main": 393,
+        "lang": "en"
+      }
+    },
+    {
+      "name": "mobile-en-light-dashboard",
+      "viewport": {
+        "width": 393,
+        "height": 852
+      },
+      "pending": [
+        {
+          "name": "nextActions",
+          "busy": "false",
+          "height": 58,
+          "animation": 0
+        },
+        {
+          "name": "auctions",
+          "busy": "false",
+          "height": 206,
+          "animation": 0
+        },
+        {
+          "name": "transfers",
+          "busy": "false",
+          "height": 206,
+          "animation": 0
+        },
+        {
+          "name": "races",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "forum",
+          "busy": "false",
+          "height": 144,
+          "animation": 0
+        },
+        {
+          "name": "recentResults",
+          "busy": "true",
+          "height": 320,
+          "animation": 0
+        },
+        {
+          "name": "riderRanking",
+          "busy": "true",
+          "height": 280,
+          "animation": 0
+        }
+      ],
+      "settled": [
+        {
+          "name": "nextActions",
+          "busy": "false",
+          "height": 58,
+          "animation": 0
+        },
+        {
+          "name": "auctions",
+          "busy": "false",
+          "height": 206,
+          "animation": 0
+        },
+        {
+          "name": "transfers",
+          "busy": "false",
+          "height": 206,
+          "animation": 0
+        },
+        {
+          "name": "races",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "forum",
+          "busy": "false",
+          "height": 144,
+          "animation": 0
+        },
+        {
+          "name": "recentResults",
+          "busy": "false",
+          "height": 320,
+          "animation": 0
+        },
+        {
+          "name": "riderRanking",
+          "busy": "false",
+          "height": 280,
+          "animation": 0
+        }
+      ],
+      "overflow": {
+        "width": 393,
+        "document": 393,
+        "main": 393,
+        "lang": "en"
+      }
+    },
+    {
+      "name": "mobile-en-dark-landing",
+      "viewport": {
+        "width": 393,
+        "height": 852
+      },
+      "pending": [],
+      "settled": [],
+      "overflow": {
+        "width": 393,
+        "document": 393,
+        "main": 393,
+        "theme": "dark",
+        "lang": "en"
+      }
+    },
+    {
+      "name": "mobile-en-dark-dashboard",
+      "viewport": {
+        "width": 393,
+        "height": 852
+      },
+      "pending": [
+        {
+          "name": "nextActions",
+          "busy": "false",
+          "height": 58,
+          "animation": 0
+        },
+        {
+          "name": "auctions",
+          "busy": "false",
+          "height": 206,
+          "animation": 0
+        },
+        {
+          "name": "transfers",
+          "busy": "false",
+          "height": 206,
+          "animation": 0
+        },
+        {
+          "name": "races",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "forum",
+          "busy": "false",
+          "height": 144,
+          "animation": 0
+        },
+        {
+          "name": "recentResults",
+          "busy": "true",
+          "height": 320,
+          "animation": 0
+        },
+        {
+          "name": "riderRanking",
+          "busy": "true",
+          "height": 280,
+          "animation": 0
+        }
+      ],
+      "settled": [
+        {
+          "name": "nextActions",
+          "busy": "false",
+          "height": 58,
+          "animation": 0
+        },
+        {
+          "name": "auctions",
+          "busy": "false",
+          "height": 206,
+          "animation": 0
+        },
+        {
+          "name": "transfers",
+          "busy": "false",
+          "height": 206,
+          "animation": 0
+        },
+        {
+          "name": "races",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "forum",
+          "busy": "false",
+          "height": 144,
+          "animation": 0
+        },
+        {
+          "name": "recentResults",
+          "busy": "false",
+          "height": 320,
+          "animation": 0
+        },
+        {
+          "name": "riderRanking",
+          "busy": "false",
+          "height": 280,
+          "animation": 0
+        }
+      ],
+      "overflow": {
+        "width": 393,
+        "document": 393,
+        "main": 393,
+        "theme": "dark",
+        "lang": "en"
+      }
+    },
+    {
+      "name": "mobile-da-light-landing",
+      "viewport": {
+        "width": 393,
+        "height": 852
+      },
+      "pending": [],
+      "settled": [],
+      "overflow": {
+        "width": 393,
+        "document": 393,
+        "main": 393,
+        "lang": "da"
+      }
+    },
+    {
+      "name": "mobile-da-light-dashboard",
+      "viewport": {
+        "width": 393,
+        "height": 852
+      },
+      "pending": [
+        {
+          "name": "nextActions",
+          "busy": "false",
+          "height": 58,
+          "animation": 0
+        },
+        {
+          "name": "auctions",
+          "busy": "false",
+          "height": 206,
+          "animation": 0
+        },
+        {
+          "name": "transfers",
+          "busy": "false",
+          "height": 206,
+          "animation": 0
+        },
+        {
+          "name": "races",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "forum",
+          "busy": "false",
+          "height": 144,
+          "animation": 0
+        },
+        {
+          "name": "recentResults",
+          "busy": "true",
+          "height": 320,
+          "animation": 0
+        },
+        {
+          "name": "riderRanking",
+          "busy": "true",
+          "height": 280,
+          "animation": 0
+        }
+      ],
+      "settled": [
+        {
+          "name": "nextActions",
+          "busy": "false",
+          "height": 58,
+          "animation": 0
+        },
+        {
+          "name": "auctions",
+          "busy": "false",
+          "height": 206,
+          "animation": 0
+        },
+        {
+          "name": "transfers",
+          "busy": "false",
+          "height": 206,
+          "animation": 0
+        },
+        {
+          "name": "races",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "forum",
+          "busy": "false",
+          "height": 144,
+          "animation": 0
+        },
+        {
+          "name": "recentResults",
+          "busy": "false",
+          "height": 320,
+          "animation": 0
+        },
+        {
+          "name": "riderRanking",
+          "busy": "false",
+          "height": 280,
+          "animation": 0
+        }
+      ],
+      "overflow": {
+        "width": 393,
+        "document": 393,
+        "main": 393,
+        "lang": "da"
+      }
+    },
+    {
+      "name": "mobile-da-dark-landing",
+      "viewport": {
+        "width": 393,
+        "height": 852
+      },
+      "pending": [],
+      "settled": [],
+      "overflow": {
+        "width": 393,
+        "document": 393,
+        "main": 393,
+        "theme": "dark",
+        "lang": "da"
+      }
+    },
+    {
+      "name": "mobile-da-dark-dashboard",
+      "viewport": {
+        "width": 393,
+        "height": 852
+      },
+      "pending": [
+        {
+          "name": "nextActions",
+          "busy": "false",
+          "height": 58,
+          "animation": 0
+        },
+        {
+          "name": "auctions",
+          "busy": "false",
+          "height": 206,
+          "animation": 0
+        },
+        {
+          "name": "transfers",
+          "busy": "false",
+          "height": 206,
+          "animation": 0
+        },
+        {
+          "name": "races",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "forum",
+          "busy": "false",
+          "height": 144,
+          "animation": 0
+        },
+        {
+          "name": "recentResults",
+          "busy": "true",
+          "height": 320,
+          "animation": 0
+        },
+        {
+          "name": "riderRanking",
+          "busy": "true",
+          "height": 280,
+          "animation": 0
+        }
+      ],
+      "settled": [
+        {
+          "name": "nextActions",
+          "busy": "false",
+          "height": 58,
+          "animation": 0
+        },
+        {
+          "name": "auctions",
+          "busy": "false",
+          "height": 206,
+          "animation": 0
+        },
+        {
+          "name": "transfers",
+          "busy": "false",
+          "height": 206,
+          "animation": 0
+        },
+        {
+          "name": "races",
+          "busy": "false",
+          "height": 192,
+          "animation": 0
+        },
+        {
+          "name": "forum",
+          "busy": "false",
+          "height": 144,
+          "animation": 0
+        },
+        {
+          "name": "recentResults",
+          "busy": "false",
+          "height": 320,
+          "animation": 0
+        },
+        {
+          "name": "riderRanking",
+          "busy": "false",
+          "height": 280,
+          "animation": 0
+        }
+      ],
+      "overflow": {
+        "width": 393,
+        "document": 393,
+        "main": 393,
+        "theme": "dark",
+        "lang": "da"
+      }
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 export const PATCHES = [
 {
-  "version": "7.431",
+  "version": "7.433",
   "date": "2026-11-11",
   "changes": [
     {
@@ -22,6 +22,25 @@ export const PATCHES = [
       ]
     }
   ]
+},
+{
+  "version": "7.432",
+  "date": "2026-11-11",
+  "changes": [{
+    "category": "improved",
+    "audience": "player",
+    "rollout": "live",
+    "topic": "Interface",
+    "en": {
+      "title": "Quieter loading",
+      "body": "Dashboard cards use still grey placeholders while their content loads. Ready cards can appear while others are still loading, with space kept for the lists. The public front page also moves less as it opens."
+    },
+    "da": {
+      "title": "Roligere indlæsning",
+      "body": "Dashboardets kort viser stille grå pladsholdere, mens indholdet hentes. Færdige kort kan vises, mens andre stadig indlæses, og der er reserveret plads til listerne. Den offentlige forside flytter sig også mindre, når den åbnes."
+    },
+    "refs": [2230]
+  }]
 },
 {
   "version": "7.430",
