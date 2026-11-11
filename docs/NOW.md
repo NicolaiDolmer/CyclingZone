@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (Dolmer PC 10/11 aften, primært Codex):** A7 merget (#7981, RPC verificeret, kontakter off). Codex: beta-trin efter valg A (M3 kun auto-accept-deltagere, PG17-tests), #7980/#7864, #7959-konflikt, #7627. Claude: review + Fable-dommer før tænd. Træn nu beta; #7982 del 2 (22 s) kræver måling. #7979 i merge-kø (7.428); #7978 → 7.429. Graduation Day (#7960) torsdag.
+> **🎯 Next action (Dolmer PC 10/11 aften, primært Codex):** A7 merget (#7981, RPC verificeret, kontakter off). Codex: beta-trin efter valg A (M3 kun auto-accept-deltagere, PG17-tests), #7980/#7864, #7959-konflikt, #7627. Claude: review + Fable-dommer før tænd. Træn nu beta; #7982 del 2 (22 s) kræver måling. #7979 merget (`8cc2c44e`, Taktik-fanen får Delt kaptajn + Luksushjælper, 7.428); #7978 → 7.429. Graduation Day (#7960) torsdag.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling; memory commitment på Large kunne ikke aflæses 9/11.
 >
 > **🤖 Working agent:** Ingen aktiv session (PC1 lukket 10/11 aften).
