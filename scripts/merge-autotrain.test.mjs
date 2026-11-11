@@ -8,23 +8,17 @@ import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
 
 import {
-  ALERT_THROTTLE_MS,
-  READY_ALERT_AFTER_MS,
-  buildAlertMessage,
   completeFileList,
   confirmBeforeQueue,
   decideAction,
-  dueAlerts,
   evaluatePr,
   hasOwnerMergeApproval,
   mainVerifiedFromRuns,
-  markAlerted,
   parseArgs,
   requiredChecksStatus,
   reviewGateStatus,
   run,
   selectTrain,
-  updateReadyState,
 } from './merge-autotrain.mjs';
 
 const HEAD = 'a'.repeat(40);
@@ -107,7 +101,7 @@ describe('evaluatePr (udvaelgelse)', () => {
     assert.equal(evalWith({}, { requiredChecks: [{ name: 'ci', bucket: 'fail' }] }).ready, false);
     assert.equal(evalWith({}, { allChecks: [] }).ready, false);
   });
-  it('ejer-go er klar (til alarmen) men ikke med i toget uden markoer', () => {
+  it('ejer-go er klar men ikke med i toget uden markoer', () => {
     const e = evalWith({}, { classification: OWNER_GO });
     assert.equal(e.ready, true);
     assert.equal(e.eligible, false);
@@ -166,70 +160,6 @@ describe('decideAction (koe koerer allerede)', () => {
   });
 });
 
-describe('alarm: klar-ur og throttle', () => {
-  const t0 = new Date('2026-11-04T08:00:00Z');
-  const at = (ms) => new Date(t0.getTime() + ms);
-  const ready = evalWith({ number: 7 }, { classification: OWNER_GO });
-
-  it('ingen alarm foer 2 timer, alarm efter', () => {
-    let state = updateReadyState(null, [ready], t0);
-    assert.equal(dueAlerts(state, [ready], at(READY_ALERT_AFTER_MS - 60_000)).length, 0);
-    state = updateReadyState(state, [ready], at(READY_ALERT_AFTER_MS + 1));
-    const due = dueAlerts(state, [ready], at(READY_ALERT_AFTER_MS + 1));
-    assert.deepEqual(due.map((d) => d.number), [7]);
-  });
-
-  it('hoejst een besked pr. PR pr. 6 timer', () => {
-    let state = updateReadyState(null, [ready], t0);
-    const first = at(READY_ALERT_AFTER_MS + 1);
-    state = markAlerted(updateReadyState(state, [ready], first), [7], first);
-    const soon = at(READY_ALERT_AFTER_MS + ALERT_THROTTLE_MS - 60_000);
-    assert.equal(dueAlerts(updateReadyState(state, [ready], soon), [ready], soon).length, 0);
-    const later = at(READY_ALERT_AFTER_MS + ALERT_THROTTLE_MS + 1);
-    assert.equal(dueAlerts(updateReadyState(state, [ready], later), [ready], later).length, 1);
-  });
-
-  it('throttlen overlever et kort roedt mellemspil; klar-uret starter forfra', () => {
-    let state = updateReadyState(null, [ready], t0);
-    const first = at(READY_ALERT_AFTER_MS + 1);
-    state = markAlerted(updateReadyState(state, [ready], first), [7], first);
-    const red = { ...ready, ready: false };
-    state = updateReadyState(state, [red], at(READY_ALERT_AFTER_MS + 60_000));
-    assert.ok(state.prs[7].lastAlertAt);
-    assert.equal(state.prs[7].readySince, undefined);
-    const back = at(READY_ALERT_AFTER_MS + 120_000);
-    state = updateReadyState(state, [ready], back);
-    assert.equal(state.prs[7].readySince, back.toISOString());
-  });
-
-  it('nyt hoved nulstiller klar-uret', () => {
-    let state = updateReadyState(null, [ready], t0);
-    const moved = { ...ready, headSha: 'c'.repeat(40) };
-    state = updateReadyState(state, [moved], at(READY_ALERT_AFTER_MS + 1));
-    assert.equal(dueAlerts(state, [moved], at(READY_ALERT_AFTER_MS + 1)).length, 0);
-  });
-
-  it('lukkede PRer falder ud af tilstanden', () => {
-    const state = updateReadyState(updateReadyState(null, [ready], t0), [], at(1000));
-    assert.deepEqual(state.prs, {});
-  });
-
-  it('en eligible PR der stadig er klar efter 2 timer meldes (toget har fejlet for den)', () => {
-    const eligible = evalWith({ number: 8 });
-    const state = updateReadyState(updateReadyState(null, [eligible], t0), [eligible], at(READY_ALERT_AFTER_MS + 1));
-    const due = dueAlerts(state, [eligible], at(READY_ALERT_AFTER_MS + 1));
-    assert.deepEqual(due.map((d) => d.number), [8]);
-    assert.match(buildAlertMessage(due).content, /staaende kategori, men ikke merget/);
-  });
-
-  it('beskeden naevner PR, ventetid og grund', () => {
-    const msg = buildAlertMessage([{ ...ready, title: 'feat: x', waitedMs: READY_ALERT_AFTER_MS + 5 * 60_000 }], 'o/r');
-    assert.match(msg.content, /#7 feat: x/);
-    assert.match(msg.content, /venter paa ejer-go/);
-    assert.match(msg.content, /github\.com\/o\/r\/pull\/7/);
-  });
-});
-
 describe('run (IO injiceret)', () => {
   const dir = mkdtempSync(join(tmpdir(), 'merge-autotrain-'));
   after(() => rmSync(dir, { recursive: true, force: true }));
@@ -242,7 +172,7 @@ describe('run (IO injiceret)', () => {
     let evaluated = false;
     let queued = false;
     const res = await run({
-      argv: [], now: NOW, repoRoot: dir, stateFile: join(dir, 's1.json'), out: quiet,
+      argv: [], now: NOW, repoRoot: dir, out: quiet,
       readMarker: () => ({ pid: 42, startedAt: '2026-11-04T11:50:00Z', prs: [1], merged: [] }),
       evaluate: () => { evaluated = true; return []; },
       runQueue: () => { queued = true; return 0; },
@@ -270,42 +200,23 @@ describe('run (IO injiceret)', () => {
     assert.throws(() => readFileSync(stateFile, 'utf8'));
   });
 
-  it('koerer koeen een PR ad gangen med -Repo og melder ventende ejer-go-PR (fail-soft ved Discord-fejl)', async () => {
-    const stateFile = join(dir, 's3.json');
-    const t0 = new Date('2026-11-04T08:00:00Z');
-    let current = [evalWith({ number: 21 }), evalWith({ number: 23 }), evalWith({ number: 22 }, { classification: OWNER_GO })];
+  it('koerer koeen een PR ad gangen med -Repo og lader ejer-go vente', async () => {
+    const selected = [evalWith({ number: 21 }), evalWith({ number: 23 }), evalWith({ number: 22 }, { classification: OWNER_GO })];
     const calls = [];
-    const base = {
-      argv: ['--repo', 'o/r'],
-      env: { DISCORD_OPS_WEBHOOK_URL: 'https://example.invalid/hook' }, repoRoot: dir, stateFile, out: quiet,
-      readMarker: () => null, evaluate: () => current, reevaluate: (n) => current.find((e) => e.number === n),
+    const result = await run({
+      argv: ['--repo', 'o/r'], now: NOW, repoRoot: dir, out: quiet,
+      readMarker: () => null, evaluate: () => selected, reevaluate: sameAgain(selected),
       runQueue: ({ train, repo }) => { calls.push({ train, repo }); return 0; },
-    };
-    const first = await run({ ...base, now: t0, fetchFn: async () => ({ ok: true }) });
+    });
     assert.deepEqual(calls, [{ train: [21], repo: 'o/r' }, { train: [23], repo: 'o/r' }]);
-    assert.deepEqual(first.queued, [21, 23]);
-    // De to er merget; kun ejer-go-PR'en er tilbage.
-    current = [current[2]];
-    // Discord fejler: ingen markering, saa naeste koersel proever igen.
-    const late = new Date(t0.getTime() + READY_ALERT_AFTER_MS + 1);
-    const failed = await run({ ...base, now: late, fetchFn: async () => { throw new Error('net'); } });
-    assert.deepEqual(failed.alerts.map((a) => a.number), [22]);
-    assert.equal(JSON.parse(readFileSync(stateFile, 'utf8')).prs[22].lastAlertAt, undefined);
-    let bodies = [];
-    const sent = await run({ ...base, now: late, fetchFn: async (_u, init) => { bodies.push(init.body); return { ok: true }; } });
-    assert.deepEqual(sent.alerts.map((a) => a.number), [22]);
-    assert.equal(bodies.length, 1);
-    assert.equal(JSON.parse(readFileSync(stateFile, 'utf8')).prs[22].lastAlertAt, late.toISOString());
-    bodies = [];
-    await run({ ...base, now: new Date(late.getTime() + 20 * 60_000), fetchFn: async (_u, init) => { bodies.push(init.body); return { ok: true }; } });
-    assert.equal(bodies.length, 0, 'throttlet inden for 6 timer');
+    assert.deepEqual(result.queued, [21, 23]);
   });
 
   it('nyt hoved efter udvaelgelsen: PR\'en springes over (arver ikke kategori eller ejer-go)', async () => {
     const selected = [evalWith({ number: 31 }), evalWith({ number: 32 })];
     const calls = [];
     const res = await run({
-      argv: [], now: NOW, repoRoot: dir, stateFile: join(dir, 's5.json'), out: quiet,
+      argv: [], now: NOW, repoRoot: dir, out: quiet,
       readMarker: () => null, evaluate: () => selected,
       reevaluate: (n) => (n === 31 ? { ...selected[0], headSha: 'd'.repeat(40) } : selected[1]),
       runQueue: ({ train }) => { calls.push(train); return 0; },
@@ -319,7 +230,7 @@ describe('run (IO injiceret)', () => {
     let markerReads = 0;
     const calls = [];
     await run({
-      argv: [], now: NOW, repoRoot: dir, stateFile: join(dir, 's6.json'), out: quiet,
+      argv: [], now: NOW, repoRoot: dir, out: quiet,
       // 1. laesning: ingen koe. 2. (foer #41): ingen. 3. (foer #42): en anden koe koerer.
       readMarker: () => (++markerReads >= 3 ? { pid: 7, startedAt: '2026-11-04T11:59:00Z', prs: [], merged: [] } : null),
       evaluate: () => selected, reevaluate: sameAgain(selected),
@@ -332,7 +243,7 @@ describe('run (IO injiceret)', () => {
     const selected = [evalWith({ number: 51 })];
     const calls = [];
     await run({
-      argv: [], now: NOW, repoRoot: dir, stateFile: join(dir, 's7.json'), blockFile: join(dir, 'b7.json'), out: quiet,
+      argv: [], now: NOW, repoRoot: dir, blockFile: join(dir, 'b7.json'), out: quiet,
       readMarker: () => null, evaluate: () => selected, reevaluate: sameAgain(selected),
       runQueue: ({ train, expectHead }) => { calls.push({ train, expectHead }); return 0; },
     });
@@ -347,7 +258,7 @@ describe('run (IO injiceret)', () => {
     const selected = [evalWith({ number: 61 }), evalWith({ number: 62 })];
     const calls = [];
     const base = {
-      argv: [], now: NOW, repoRoot: dir, stateFile: join(dir, 's8.json'), blockFile, out: quiet,
+      argv: [], now: NOW, repoRoot: dir, blockFile, out: quiet,
       readMarker: () => null, evaluate: () => selected, reevaluate: sameAgain(selected),
     };
     const first = await run({ ...base, runQueue: ({ train }) => { calls.push(train); return 75; } });
@@ -387,7 +298,7 @@ describe('run (IO injiceret)', () => {
 
   it('fejl i PR-listningen er fail-soft', async () => {
     const res = await run({
-      argv: [], now: NOW, repoRoot: dir, stateFile: join(dir, 's4.json'), out: quiet,
+      argv: [], now: NOW, repoRoot: dir, out: quiet,
       readMarker: () => null, evaluate: () => { throw new Error('gh nede'); }, runQueue: () => { throw new Error('maa ikke kaldes'); },
     });
     assert.equal(res.action, 'error');
@@ -395,5 +306,26 @@ describe('run (IO injiceret)', () => {
 
   it('parseArgs', () => {
     assert.deepEqual(parseArgs(['--dry-run', '--log', '--repo', 'o/r']), { dryRun: true, log: true, repo: 'o/r' });
+  });
+});
+
+
+describe('#8000 no ready notifications', () => {
+  it('merges eligible PRs without reading webhook configuration or sending HTTP', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'autotrain-no-alert-'));
+    try {
+      const selected = [evalWith({ number: 81 })];
+      const calls = [];
+      const result = await run({
+        argv: [], now: new Date('2026-11-11T12:00:00Z'), repoRoot: dir,
+        env: new Proxy({}, { get() { throw new Error('must not read webhook env'); } }),
+        fetchFn: () => { throw new Error('must not send HTTP'); },
+        readMarker: () => null, evaluate: () => selected, reevaluate: () => selected[0],
+        runQueue: ({ train }) => { calls.push(train); return 0; }, out: () => {},
+      });
+      assert.deepEqual(calls, [[81]]);
+      assert.equal(result.action, 'queue');
+      assert.equal(existsSync(join(dir, '.claude/run/merge-autotrain-state.json')), false);
+    } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 });
