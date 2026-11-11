@@ -60,7 +60,12 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("cold rider profile stays inside the api-baseline budget (#5089)", async ({ page }) => {
-  await login(page);
+  // Login changes the URL before the dashboard's effects issue their requests.
+  // A load-state wait alone can therefore still refer to the login document.
+  await Promise.all([
+    page.waitForResponse((response) => new URL(response.url()).pathname === "/api/scouting/me" && response.request().method() === "GET" && response.ok()),
+    login(page),
+  ]);
   // Dashboard'et mounter selv app-skallen (Layout -> useScoutingCentral). Lad den
   // falde til ro FOER taelleren saettes paa, ellers lander dashboardets egne kald
   // i profilens regnskab og tallet bliver stoej-afhaengigt.

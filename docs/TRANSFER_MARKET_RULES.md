@@ -390,7 +390,7 @@ Migrationen opretter en manglende `auto_accept_enabled` som `off`, så registry/
 følge kontakten efter apply; den ændrer aldrig en eksisterende værdi. Aktivering er særskilt ejer-gated.
 
 - **Pris:** sælger kan give en listing en auto-pris Y på mindst listeprisen
-  (`transfer_listings.auto_accept_price`, CHECK Y >= X; Y = X tilladt fra ejer 10/11). Prisen er synlig for alle. Den sættes
+  (`transfer_listings.auto_accept_price`, CHECK Y >= X; Y = X tilladt fra ejer 10/11). Med `on` er prisen synlig for alle; beta-afgrænsningen nedenfor gælder før visning og forhandling. Den sættes
   kun via `PUT /api/transfers/:id/auto-accept-price` med den pris, klienten så (forskel = 409);
   klienten kan ikke selv skrive kolonnen (trigger). Alle ændringer på en listing med auto-pris
   logges i `transfer_listing_price_log` til fair play.
@@ -445,6 +445,22 @@ følge kontakten efter apply; den ændrer aldrig en eksisterende værdi. Aktiver
   De samme ryttere må ikke tælles to gange.
 - **Forudsætning håndhævet i koden:** med `market_commitment_6181` slukket svarer starten 404 (`auto_accept_disabled`), også med `auto_accept_enabled` tændt, fordi almindelige bud ellers ikke tager samme holdlås. `market_commitment_6181` tændes derfor først.
 - **Bytte:** et bytte gennemføres under samme holdlåse og auktionstjek som transfer og frigivelse (`claimSwapUnderTeamLock`, RPC `auto_accept_claim_swap`).
+
+**Beta-kontrakt, ejer 10/11:** [fem regler](https://github.com/NicolaiDolmer/CyclingZone/issues/2176#issuecomment-6773218237), [A og build-go](https://github.com/NicolaiDolmer/CyclingZone/issues/2176#issuecomment-6778060269).
+
+- Beta betyder administrator eller `users.is_beta_tester=true`, knyttet til holdet via `teams.user_id`. Serveren læser medlemskab friskt; SQL gentager kontrollen under lås.
+- I auto-accept-beta kan en beta-sælger sætte prisen. Kun en beta-køber hos en beta-sælger modtager auto-prisen og kan starte. Andre par ser ingen auto-pris og bruger almindelige bud, modbud, accept og bekræftelse, også på/over den skjulte pris.
+- Startede auto-accept-auktioner forbliver offentlige. Beta-rettigheder kræves ikke for bud/autobud dér; samme penge-/pladsregler gælder alle deltagere.
+- M3-beta beskytter beta-hold samt sælger, førende hold og hold med positivt autobud i aktive/forlængede auto-accept-auktioner. Den aktuelle auto-auktion er også omfattet før første deltagelse. Bindingen består efter udtræden af beta eller slukning af auto-accept-oprettelse; den ophører ved ophørt føring/autobud eller inaktiv auktion, hvis holdet ikke har anden binding.
+- En ikke-beta-deltagers binding respekteres ved holdets øvrige køb og gebyrer. Beta bruger samme transaktionelle holdlås for markeds-skrivere før første deltagelse og gentjekker rækkevidden under låsen. Almindelige ikke-beta-hold uden binding får ingen nye finansielle gates.
+- Et eksisterende autobud må sænkes eller genindsendes med samme loft, også hvis holdet nu er overforpligtet. Det bevarer den eksisterende frigivelsesregel i både M3-beta og global M3, også gennem upsert-RPC'ens BEFORE INSERT-sti. Det stående loft læses under holdlåsen; forhøjelser får fortsat pengetjekket.
+- Transfer (A7), kontantbytte, senior-/akademifrigivelse med gebyr og scouting-oprettelse gennemføres atomisk med betalingen i beta. Kun en udtrykkelig betalingskvittering springer den gamle betaling over. Afvist betaling ruller rytter-/opgaveændringen tilbage. Almindelig auktionsoprettelse gentjekker ejerskab og et beskyttet sælgergulv under samme lås.
+- Den beta-afgrænsede finance-trigger stopper diskretionære debiteringer, der ville bruge en eksisterende auktionsbinding. Anlæg og staff-fratrædelse debiterer før aktivændringen; obligatoriske løn-/driftsbetalinger beholder deres regler. Ansættelse får intet nyt køb/gebyr.
+- Ungdomsauktionens betaling er afregning af en eksisterende binding, ikke et nyt akademikøb. Dens kanoniske auktionspostering er derfor undtaget fra den diskretionære guard i både senior- og akademiplaceringen; ny intake er stadig beskyttet.
+- Direkte Data API-læsning af `transfer_listings` kræver login og er begrænset til de hidtidige seks offentlige kolonner. Anonyme har ingen læseadgang; appens direkte forbrugere ligger bag login. `auto_accept_price` læses kun af serverrollen og vises gennem den brugerafhængige API-projektion, også hvis en klient selv vælger kolonner eller filtre.
+- `on` beholder den globale M3-kontrakt; `off`/manglende beholder de gamle stier. Ingen migration ændrer kontaktværdier. Auto-accept kræver M3-transport (`on`/`true`/`beta`); escrow er fortsat sin egen binære kontakt.
+- Liste-/tilbudsdata projiceres pr. bruger med private HTTP-cache-headere. Listing-cachen bruger præcis samme auth-header som requesten og invalideres ved ændringer; gamle requests kan ikke genfylde en ryddet cache.
+- Bevis: faktiske migrationer i `marketBeta2176*.pglite.test.js`; uafhængige PG17-forbindelser i `marketBeta2176.pg17.test.js`. Lokal test er opt-in med `AUTO_ACCEPT_PG_BIN`, ikke produktionsevidens.
 
 ---
 
@@ -570,7 +586,7 @@ tidspunkt sat mindst ét autobud.
 
 Kontakten seedes **off** af `database/2026-11-07-6181-m3-market-commitment.sql`.
 Off = alt ovenfor gælder uændret (tjekket i JS, så skrevet i flere kald).
-  Kun `on` (eller `true`) tænder; `beta` er off her.
+  `on` (eller `true`) bruger den globale gate. `beta` følger ejer-godkendt A i §5.1.
   Et vellykket opslag uden en række er også off. Fejler selve opslaget, er tilstanden
   ukendt: operationen stopper før en markedsmutation i stedet for at vælge den gamle
   sti. Bud og PATCH proxy læser derfor kontakten før den første skrivning.

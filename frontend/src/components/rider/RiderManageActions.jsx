@@ -30,7 +30,7 @@ import { useAcademy } from "../../lib/useAcademy.js";
 import { reportActionFailure } from "../../lib/actionTelemetry.js";
 // #5089: backend lukker rytterens aabne transfer-listing som zombie-guard ved
 // release (api.js:1834), saa den delte GET /api/transfers-kopi bliver stale.
-import { sharedRequestCache, SHARED_KEYS } from "../../lib/sharedRequestCache.js";
+import { invalidateTransferListings2176 } from "../../lib/sharedRequestCache.js";
 import MoveSquadDialog from "../MoveSquadDialog.tsx";
 import { buttonClass } from "../ui/buttonStyles.js";
 
@@ -325,7 +325,7 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
     try {
       const { ok, data } = await postRiderContractAction(rider.id, releaseActionPath);
       if (ok) {
-        sharedRequestCache.invalidate(SHARED_KEYS.transferListings); // #5089
+        invalidateTransferListings2176(); // #5089
         setReleaseOpen(false);
         setReleaseQuote(null);
         flashResult(true, t("manage.release.success"));

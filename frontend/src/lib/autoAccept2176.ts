@@ -39,6 +39,7 @@ export function readAutoListing(value: unknown): AutoListing | null {
       ...(typeof rider.nationality_code === "string" ? { nationality_code: rider.nationality_code } : {}) } };
 }
 export function findCounterAutoListing(rows: unknown, offer: unknown, sellerId: unknown) {
+  if (isRecord(offer) && offer.auto_accept_eligible === false) return null;
   const riderId = isRecord(offer) && isRecord(offer.rider) ? offer.rider.id : null;
   if (!Array.isArray(rows) || typeof riderId !== "string" || typeof sellerId !== "string") return null;
   for (const value of rows as unknown[]) {

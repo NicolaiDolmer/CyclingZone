@@ -525,7 +525,7 @@ function extractIncrementCalls(source) {
   while ((match = callRegex.exec(source)) !== null) {
     // A7 prepares transfer legs before the atomic claim and reuses those exact
     // payloads in the legacy payment calls. Inspect the named leg's declaration.
-    const namedLeg = source.slice(match.index).match(/^incrementBalanceWithAudit\s*\(supabase,\s*(transfer(?:Buyer|Seller)Payment)\s*,/);
+    const namedLeg = source.slice(match.index).match(/^incrementBalanceWithAudit\s*\(supabase,\s*(transfer(?:Buyer|Seller)Payment|swap(?:Payer|Receiver)Payment|releaseFeePayment2176|academyReleaseFeePayment2176)\s*(?:,|\))/);
     const callStart = namedLeg ? source.lastIndexOf(`const ${namedLeg[1]} =`, match.index) : match.index;
     assert.ok(callStart >= 0, 'prepared finance leg must have a declaration');
     const payloadKeyIdx = source.indexOf("payload:", callStart);

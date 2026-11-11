@@ -338,13 +338,23 @@ const EXTENSION_BOUNDARY_FLAGS_6181 = ["market_commitment_6181", "auto_accept_en
 // Sidste hele minut før grænsen, så slutningen aldrig lander på selve skiftet.
 const SEASON_BOUNDARY_MARGIN_MS = 60 * 1000;
 
-/** @param {any} supabase @returns {Promise<boolean>} */
-async function isExtensionBoundaryGateOn6181(supabase) {
+/** @param {any} supabase @param {string} auctionId @param {any} auction @returns {Promise<boolean>} */
+async function isExtensionBoundaryGateOn6181(supabase, auctionId, auction) {
   try {
     const { data, error } = await supabase
       .from("app_config").select("key, value").in("key", EXTENSION_BOUNDARY_FLAGS_6181);
     if (error) throw new Error(error.message);
-    return (data || []).some((/** @type {{ value?: unknown }} */ row) => row?.value === true || row?.value === "on");
+    const stages = /** @type {Array<{key: string, value: unknown}>} */ (data || []);
+    if (stages.some(row => row?.value === true || row?.value === "on")) return true;
+    if (!stages.some(row => row.value === "beta")) return false;
+    if (auction.origin === "auto_accept") return true;
+    if (!stages.some(row => row.key === "market_commitment_6181" && row.value === "beta")) return false;
+    for (const teamId of new Set([auction.seller_team_id, auction.current_bidder_id].filter(Boolean))) {
+      const scope = await supabase.rpc("market_scope_2176", { p_team_id: teamId, p_auction_id: auctionId });
+      if (scope.error || typeof scope.data !== "boolean") throw new Error("invalid market scope");
+      if (scope.data) return true;
+    }
+    return false;
   } catch (e) {
     // best-effort: ukendt kontakt-tilstand => hold grænsen (fejlen logges). Det
     // rammer kun en forlængelse, der ellers ville krydse sæsonskiftet; grænse-
@@ -380,12 +390,12 @@ export function capExtendedEndAtBoundary(extendedEnd, currentEnd, seasonTransiti
 
 /**
  * @param {any} supabase
- * @param {{ extendedEnd: Date|null, currentEnd: Date|string, bidTime: Date|string, cfg?: any }} args
+ * @param {{ extendedEnd: Date|null, currentEnd: Date|string, bidTime: Date|string, auctionId: string, auction: any, cfg?: any }} args
  * @returns {Promise<Date|null>}
  */
-async function capExtensionAtSeasonBoundary6181(supabase, { extendedEnd, currentEnd, bidTime, cfg = DEFAULT_AUCTION_CONFIG }) {
+async function capExtensionAtSeasonBoundary6181(supabase, { extendedEnd, currentEnd, bidTime, auctionId, auction, cfg = DEFAULT_AUCTION_CONFIG }) {
   if (!extendedEnd) return null;
-  if (!(await isExtensionBoundaryGateOn6181(supabase))) return extendedEnd;
+  if (!(await isExtensionBoundaryGateOn6181(supabase, auctionId, auction))) return extendedEnd;
   const boundary = await fetchSeasonTransitionBoundary(supabase, { now: new Date(bidTime) });
   return capExtendedEndAtBoundary(extendedEnd, currentEnd, boundary, cfg);
 }
@@ -414,8 +424,9 @@ export async function applyLeaderShiftExtension({
   bidCfg,
 }) {
   const { data: current } = await supabase
+    // schema-columns-ok: origin is added by database/2026-11-07-2176-m2-auto-accept.sql; the snapshot predates M2.
     .from("auctions")
-    .select("current_bidder_id, calculated_end, extension_count, status")
+    .select("current_bidder_id, calculated_end, extension_count, status, origin, seller_team_id")
     .eq("id", auctionId)
     .single();
 
@@ -430,7 +441,7 @@ export async function applyLeaderShiftExtension({
   const { shouldExtend, newEnd: extendedEnd } = checkBidExtension(bidTime, current.calculated_end, bidCfg);
   if (!shouldExtend) return { extensionApplied: false, newEnd: null };
   // #6181 dommer-fund: et sent bud må ikke trække auktionen forbi sæsonskiftet.
-  const newEnd = await capExtensionAtSeasonBoundary6181(supabase, { extendedEnd, currentEnd: current.calculated_end, bidTime, cfg: bidCfg ?? DEFAULT_AUCTION_CONFIG });
+  const newEnd = await capExtensionAtSeasonBoundary6181(supabase, { extendedEnd, currentEnd: current.calculated_end, bidTime, auctionId, auction: current, cfg: bidCfg ?? DEFAULT_AUCTION_CONFIG });
   if (!newEnd) return { extensionApplied: false, newEnd: null };
 
   await supabase

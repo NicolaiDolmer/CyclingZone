@@ -24,6 +24,7 @@ import { fetchAuctionCommitment } from "./availableBalance.js";
 import { getMinimumAuctionBid } from "./auctionRules.ts";
 import { MAX_SQUAD_SIZE } from "./marketUtils.js";
 import { fetchAtRiskCount } from "./squadRiskGuard.js";
+import { isMarketProtectionEnabled2176, marketProtectedTeamIds2176 } from "./marketBeta2176.ts";
 
 export const MARKET_COMMITMENT_FLAG = "market_commitment_6181";
 export const MARKET_GATE_PREFIX = "market_gate_6181:";
@@ -197,10 +198,10 @@ export async function syncBidLeader6181(supabase, { auctionId, amount, teamId })
  * tjek goer bare, at et autobud uden plads behandles som udtoemt i stedet for at
  * vaelte cascaden. Pengesti: en laesefejl kastes (#2997).
  */
-export async function canAffordAutoBid6181(supabase, teamId, autoBidAmount, auctionId) {
+export async function canAffordAutoBid6181(supabase, teamId, autoBidAmount, auctionId, { checkSeat = true, checkProxyCap = true } = {}) {
   const [auctionRes, proxyRes] = await Promise.all([
     supabase.from("auctions").select("current_bidder_id, is_youth").eq("id", auctionId).maybeSingle(),
-    supabase.from("auction_proxy_bids").select("max_amount").eq("auction_id", auctionId).eq("team_id", teamId).maybeSingle(),
+    checkProxyCap ? supabase.from("auction_proxy_bids").select("max_amount").eq("auction_id", auctionId).eq("team_id", teamId).maybeSingle() : Promise.resolve({ data: null, error: null }),
   ]);
   if (auctionRes?.error) throw new Error(`canAffordAutoBid6181: could not load auction ${auctionId}: ${auctionRes.error.message}`);
   if (proxyRes?.error) throw new Error(`canAffordAutoBid6181: could not load proxy for ${teamId}: ${proxyRes.error.message}`);
@@ -211,10 +212,15 @@ export async function canAffordAutoBid6181(supabase, teamId, autoBidAmount, auct
     p_team_id: teamId,
     p_auction_id: auctionId,
     p_amount: amount,
-    p_seat: !auction.is_youth && auction.current_bidder_id !== teamId,
+    p_seat: checkSeat && !auction.is_youth && auction.current_bidder_id !== teamId,
   });
   if (error) throw new Error(`canAffordAutoBid6181: market_bid_issue_6181 failed for ${teamId}: ${error.message}`);
   return issue == null;
+}
+
+export async function canAffordAutoBidScoped2176(supabase, teamId, amount, auctionId) {
+  const checkSeat = await isMarketProtectionEnabled2176(supabase, { teamId, auctionId });
+  return canAffordAutoBid6181(supabase, teamId, amount, auctionId, { checkSeat, checkProxyCap: checkSeat });
 }
 
 /**
@@ -271,11 +277,14 @@ async function applySellerOutgoing(supabase, sellerState, excludeRiderId, season
  * Slukket => ingen opslag, ingen mutation.
  */
 export async function applyTransferMarketCommitment6181(supabase, { buyerState, sellerState, riderId = null, seasonNumber = null }) {
-  if (!(await isMarketCommitment6181On(supabase))) return false;
-  const buyerLeading = buyerState?.id ? await countLeadingAuctions(supabase, buyerState.id) : 0;
+  const protectedTeams = await marketProtectedTeamIds2176(supabase, [buyerState?.id, sellerState?.id].filter(Boolean));
+  const buyerLeading = buyerState?.id && protectedTeams.has(buyerState.id) ? await countLeadingAuctions(supabase, buyerState.id) : 0;
   applyMarketSeatCounts({ buyerState, buyerLeading });
-  if (sellerState?.id) await applySellerOutgoing(supabase, sellerState, riderId, seasonNumber);
-  return true;
+  if (sellerState?.id && protectedTeams.has(sellerState.id)) {
+    await applySellerOutgoing(supabase, sellerState, riderId, seasonNumber);
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -283,7 +292,7 @@ export async function applyTransferMarketCommitment6181(supabase, { buyerState, 
  * andre ryttere paa auktion taeller som udgaaende. Slukket => uroert.
  */
 export async function applySellerOutgoingAuctions6181(supabase, sellerState, excludeRiderId = null, { seasonNumber = null } = {}) {
-  if (!sellerState?.id || !(await isMarketCommitment6181On(supabase))) return false;
+  if (!sellerState?.id || !(await isMarketProtectionEnabled2176(supabase, { teamId: sellerState.id }))) return false;
   await applySellerOutgoing(supabase, sellerState, excludeRiderId, seasonNumber);
   return true;
 }
@@ -311,7 +320,7 @@ export function getAuctionStartCommitmentIssue({ balance, commitment, price, sea
  * @returns {Promise<{ status: number, body: Record<string, unknown> } | null>}
  */
 export async function auctionStartCommitmentResponse6181(supabase, { teamId, teamState, price }) {
-  if (!teamId || !(await isMarketCommitment6181On(supabase))) return null;
+  if (!teamId || !(await isMarketProtectionEnabled2176(supabase, { teamId }))) return null;
   const [commitment, leading] = await Promise.all([
     fetchAuctionCommitment(supabase, teamId),
     countLeadingAuctions(supabase, teamId),

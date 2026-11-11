@@ -9,6 +9,7 @@ import { generateStaffCandidates } from "./staffCandidates.js";
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
 import { debitTeam } from "./economyEngine.js";
 import { checkAvailableSpend } from "./availableBalance.js";
+import { readMarketSpendIssue2176 } from "./marketBeta2176.ts";
 import { FINANCE_REASON } from "./economyConstants.js";
 import { notifyScoutChanged } from "./notificationService.js"; // #3334
 
@@ -121,7 +122,9 @@ export async function purchaseFacilityUpgrade(
   const spendIssue = await checkAvailableSpend(supabaseClient, { teamId, balance, cost: price });
   if (spendIssue) return { ok: false, ...spendIssue };
 
-  const debit = await debitTeam(teamId, price, "facility_purchase", null, seasonId, supabaseClient, {
+  let debit;
+  try {
+    debit = await debitTeam(teamId, price, "facility_purchase", null, seasonId, supabaseClient, {
     idempotent: true,
     metadata: { code: "tx.facilityPurchase", params: { track, tier: nextTier } },
     audit: {
@@ -132,7 +135,12 @@ export async function purchaseFacilityUpgrade(
       reasonCode: FINANCE_REASON.FACILITY_PURCHASE,
       idempotencyKey: `facility_purchase:${teamId}:${track}:${nextTier}`,
     },
-  });
+    });
+  } catch (error) {
+    const issue = readMarketSpendIssue2176(error);
+    if (issue) return { ok: false, ...issue };
+    throw error;
+  }
 
   // NB: updated_at er APP-VEDLIGEHOLDT (ingen DB-trigger) — sæt den ved hver UPDATE.
   const { error: upsertError } = await supabaseClient
@@ -303,14 +311,21 @@ export async function fireStaff(
   // negativ (negative-interest håndterer det) — severance er sink + friktion.
   const cost = severanceCost(staff);
 
-  const debit = await debitTeam(teamId, cost, "staff_severance", null, seasonId, supabaseClient, {
+  let debit;
+  try {
+    debit = await debitTeam(teamId, cost, "staff_severance", null, seasonId, supabaseClient, {
     idempotent: true,
     metadata: { code: "tx.staffSeverance", params: { role } },
     audit: {
       sourcePath: "facilityService.fireStaff",
       idempotencyKey: `staff_severance:${teamId}:${role}:${staff.id}`,
     },
-  });
+    });
+  } catch (error) {
+    const issue = readMarketSpendIssue2176(error);
+    if (issue) return { ok: false, ...issue };
+    throw error;
+  }
 
   const { error: updateError } = await supabaseClient
     .from("team_staff")
@@ -351,7 +366,9 @@ export async function releaseStaff(
   const severanceIssue = await checkAvailableSpend(supabaseClient, { teamId, balance, cost: severance });
   if (severanceIssue) return { ok: false, ...severanceIssue, severance, balance };
 
-  const debit = await debitTeam(teamId, severance, "staff_severance", null, seasonId, supabaseClient, {
+  let debit;
+  try {
+    debit = await debitTeam(teamId, severance, "staff_severance", null, seasonId, supabaseClient, {
     idempotent: true,
     metadata: { code: "tx.staffRelease", params: { role: staff.role, staffName: staff.name } },
     audit: {
@@ -359,7 +376,12 @@ export async function releaseStaff(
       reasonCode: FINANCE_REASON.STAFF_RELEASE_SEVERANCE,
       idempotencyKey: `staff_release_severance:${teamId}:${staff.id}`,
     },
-  });
+    });
+  } catch (error) {
+    const issue = readMarketSpendIssue2176(error);
+    if (issue) return { ok: false, ...issue };
+    throw error;
+  }
 
   const { error: updateError } = await supabaseClient
     .from("team_staff")

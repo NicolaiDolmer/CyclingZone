@@ -549,6 +549,7 @@ features:
     note: Kontakt sale_escrow_enabled.
 
   - id: market-commitment
+    # #2176: beta scope follows owner A, 10/11; no activation or new prod verification here.
     area: market
     title_en: Bid commitment gate
     title_da: Bud-forpligtelsesgate
@@ -581,6 +582,7 @@ features:
     note: Findes ikke i kode.
 
   - id: market-auto-accept
+    # #2176: code requires a beta pair; started auctions remain public.
     area: market
     title_en: Auto-accept price
     title_da: Auto-accept-pris

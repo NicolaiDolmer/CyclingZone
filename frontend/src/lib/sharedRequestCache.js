@@ -35,6 +35,9 @@ export function createRequestCache({ now = () => Date.now() } = {}) {
   const entries = new Map();
   /** @type {Map<string, Promise<unknown>>} */
   const inflight = new Map();
+  /** @type {Map<string, number>} */
+  const versions = new Map();
+  let generation = 0;
   let hits = 0;
   let misses = 0;
 
@@ -55,18 +58,22 @@ export function createRequestCache({ now = () => Date.now() } = {}) {
         return running;
       }
       misses += 1;
+      const startedGeneration = generation;
+      const startedVersion = versions.get(key) ?? 0;
       const pending = (async () => loader())();
       inflight.set(key, pending);
       try {
         const value = await pending;
-        entries.set(key, { value, expiresAt: now() + ttlMs });
+        if (generation === startedGeneration && (versions.get(key) ?? 0) === startedVersion) {
+          entries.set(key, { value, expiresAt: now() + ttlMs });
+        }
         return value;
       } catch (err) {
         // Fejl caches ALDRIG: den naeste kalder skal have lov at proeve igen.
-        entries.delete(key);
+        if (generation === startedGeneration && (versions.get(key) ?? 0) === startedVersion) entries.delete(key);
         throw err;
       } finally {
-        inflight.delete(key);
+        if (inflight.get(key) === pending) inflight.delete(key);
       }
     },
 
@@ -74,12 +81,22 @@ export function createRequestCache({ now = () => Date.now() } = {}) {
     invalidate(key) {
       entries.delete(key);
       inflight.delete(key);
+      versions.set(key, (versions.get(key) ?? 0) + 1);
+    },
+
+    /** @param {string} prefix Invalidate a scoped family without touching other endpoints. */
+    invalidatePrefix(prefix) {
+      for (const key of new Set([...entries.keys(), ...inflight.keys()])) {
+        if (key.startsWith(prefix)) this.invalidate(key);
+      }
     },
 
     /** Ryd alt (logud, holdskift, test-opsaetning). */
     clear() {
       entries.clear();
       inflight.clear();
+      versions.clear();
+      generation += 1;
     },
 
     /** Kun til tests og fejlsoegning. */
@@ -115,3 +132,24 @@ export const SHARED_TTL_MS = {
   // mounts, den udskyder ikke opdateringen gul -> roed.
   selectionReminder: 60_000,
 };
+
+/** @param {string | null | undefined} viewerTeamId */
+export function transferListingsCacheKey2176(viewerTeamId) {
+  return `${SHARED_KEYS.transferListings}:viewer:${viewerTeamId || "anonymous"}`;
+}
+
+/** Use the exact request snapshot, not potentially stale component/team state.
+ * @param {HeadersInit} headers
+ */
+export async function transferListingsKeyForHeaders2176(headers) {
+  const authorization = new Headers(headers).get("Authorization") || "anonymous";
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(authorization));
+  const identity = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+  return transferListingsCacheKey2176(identity);
+}
+
+/** @param {ReturnType<typeof createRequestCache>} [cache] */
+export function invalidateTransferListings2176(cache = sharedRequestCache) {
+  cache.invalidate(SHARED_KEYS.transferListings);
+  cache.invalidatePrefix(`${SHARED_KEYS.transferListings}:viewer:`);
+}

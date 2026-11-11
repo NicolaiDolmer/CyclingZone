@@ -5,7 +5,9 @@ import vm from 'node:vm';
 import * as rules from './auctionRules.ts';
 import * as market from './marketCommitment6181.js';
 import * as autoAccept from './autoAccept2176.js';
-import { getSquadRiskViolation } from './marketUtils.js';
+import * as betaMarket from './marketBeta2176.ts';
+import { FINANCE_ACTOR_TYPE, FINANCE_REASON, FINANCE_RELATED_ENTITY } from './economyConstants.js';
+import { getSquadRiskViolation, MIN_RIDERS_FOR_RACE } from './marketUtils.js';
 import { computeReleaseBuyoutFee } from './contractSeed.js';
 import { getParkedRiderReleaseIssue } from './parkedRiderGuard6181.js';
 import { releaseFeeAvailableResponse6181 } from './releaseFeeGate6181.js';
@@ -26,13 +28,14 @@ const AUCTION = '00000000-0000-0000-0000-000000000011';
 const RIDER = '00000000-0000-0000-0000-000000000021';
 const moneyError = { code: 'P0001', message: 'market_gate_6181:insufficient_available_balance' };
 
-function fixture({ flag = 'off', autoFlag = 'off', flagError = false, proxyError = null, bidError = null, startError = null, futureCount = 10, outgoing = 0, afterBidInsert = null, lockedPreviousLeader = undefined } = {}) {
+function fixture({ flag = 'off', autoFlag = 'off', flagError = false, proxyError = null, bidError = null, startError = null, futureCount = 10, outgoing = 0, afterBidInsert = null, lockedPreviousLeader = undefined, scopeProtected = false } = {}) {
   const auction = { id: AUCTION, rider_id: RIDER, current_price: 100, current_bidder_id: null,
     status: 'active', calculated_end: '2026-11-08T18:00:00Z', seller_team_id: 'other', is_youth: false,
     rider: { id: RIDER, firstname: 'Test', lastname: 'Rider', team_id: null } };
   const rider = { id: RIDER,firstname:'Test',lastname:'Rider',team_id:null,is_retired:false,is_academy:false,pending_team_id:null,salary:0,contract_end_season:5 };
   const bids = []; const proxies = []; const writes = []; const createdAuctions=[];
   const autoOutgoingReads = [];
+  const rpcCalls = [];
   const teamState = { id: TEAM, balance: 10000, total_count: futureCount, future_count: futureCount, squad_limits: { min: 0, max: 30 } };
   const client = {
     from(table) {
@@ -83,6 +86,18 @@ function fixture({ flag = 'off', autoFlag = 'off', flagError = false, proxyError
       return query;
     },
     async rpc(name,args) {
+      rpcCalls.push({name,args});
+      if (name==='market_scope_2176') return {data:scopeProtected,error:null};
+      if (name==='create_market_auction_2176') {
+        if(startError)return {data:null,error:startError};
+        const created={id:AUCTION,...args.p_auction};createdAuctions.push(created);
+        return {data:{status:'created',auction:created},error:null};
+      }
+      if (name==='auto_accept_release_paid_2176') {
+        Object.assign(rider,{team_id:null,pending_team_id:null});
+        writes.push({table:'riders',action:'release-paid-rpc'});
+        return {data:{status:'released',rider_id:RIDER,payment_handled:true},error:null};
+      }
       if (name==='auto_accept_release_rider') {
         Object.assign(rider,{team_id:null,pending_team_id:null});
         writes.push({table:'riders',action:'release-rpc'});
@@ -117,7 +132,8 @@ function fixture({ flag = 'off', autoFlag = 'off', flagError = false, proxyError
   };
   const cascade = [];
   const context = {
-    ...rules,...market,...autoAccept,Date:FixedDate,console,isLateBidTriggerError,buildKeyedNotification,
+    ...rules,...market,...autoAccept,...betaMarket,Date:FixedDate,console,isLateBidTriggerError,buildKeyedNotification,
+    FINANCE_ACTOR_TYPE,FINANCE_REASON,FINANCE_RELATED_ENTITY,MIN_RIDERS_FOR_RACE,
     countSellerAuctionOutgoing:async()=>{autoOutgoingReads.push(1);return autoFlag==='on' ? outgoing : 0;},
     supabase:client, requireAuth(){},bidLimiter(){},marketWriteLimiter(){},
     assertMarketOpen:async()=>true,assertTeamNotTransferFrozen:()=>true,
@@ -140,7 +156,7 @@ function fixture({ flag = 'off', autoFlag = 'off', flagError = false, proxyError
     buildAtRiskErrorParams:issue=>({minRiders:issue.minRiders}),invalidateNamespace(){},
     resolveProxyBids:async args=>{cascade.push(args);return {finalLeaderId:auction.current_bidder_id,outbidNotified:new Set()};},
   };
-  return {client,auction,rider,bids,proxies,writes,context,cascade,teamState,createdAuctions,autoOutgoingReads};
+  return {client,auction,rider,bids,proxies,writes,context,cascade,teamState,createdAuctions,autoOutgoingReads,rpcCalls};
 }
 
 for (const flag of ['off','on']) {
@@ -158,6 +174,76 @@ for (const flag of ['off','on']) {
     }
   }
 }
+
+for (const [method,path,body,rpcName] of [['post','/auctions/:id/bid',{amount:150},'place_auction_bid_6181'],
+  ['patch','/auctions/:id/proxy',{max_amount:200},'set_auction_proxy_context_6181']]) {
+  test(`beta ${path}: scope transition uses atomic transport even before public participation`,async()=>{
+    const f=fixture({flag:'beta',scopeProtected:false});
+    const out=await route(method,path,f)(body);
+    assert.equal(out.status,200);
+    assert.ok(f.rpcCalls.some(call=>call.name===rpcName));
+    assert.equal(f.writes.some(write=>['auction_bids','auction_proxy_bids'].includes(write.table)),false);
+    assert.equal(f.cascade[0].databaseOwnsLeaderSync,true);
+    assert.equal(typeof f.cascade[0].canAffordAutoBidFn,'function');
+  });
+}
+
+test('beta senior release includes its fee in the RPC and never charges again',async()=>{
+  const f=fixture({flag:'beta',autoFlag:'off'});f.rider.team_id=TEAM;
+  let legacyPayments=0;
+  const out=await route('post','/riders/:id/release',f,{computeReleaseBuyoutFee:()=>100,incrementBalanceWithAudit:async()=>{legacyPayments++;}})();
+  assert.equal(out.status,200);
+  const call=f.rpcCalls.find(row=>row.name==='auto_accept_release_paid_2176');
+  assert.ok(call);assert.equal(call.args.p_fee,100);assert.equal(call.args.p_finance_payload.amount,-100);
+  assert.equal(legacyPayments,0);assert.equal(f.writes.some(row=>row.table==='riders'&&row.action==='update'),false);
+});
+
+test('beta academy release includes the same fee/reset in its atomic RPC',async()=>{
+  const f=fixture({flag:'beta'});Object.assign(f.rider,{team_id:TEAM,is_academy:true});
+  const out=await route('post','/riders/:id/academy-release',f,{
+    loadOwnedAcademyRiderForAction:async()=>({rider:f.rider}),computeReleaseBuyoutFee:()=>100,
+    incrementBalanceWithAudit:async()=>{throw new Error('duplicate payment');},
+    clearFutureRaceEntriesSafe:async()=>{},closeTransferListingsForRiders:async()=>{},findPendingGraduation:async()=>null,
+  })();
+  assert.equal(out.status,200);
+  const call=f.rpcCalls.find(row=>row.name==='auto_accept_release_paid_2176');
+  assert.equal(call.args.p_academy,true);assert.equal(call.args.p_fee,100);
+  assert.equal(call.args.p_finance_payload.source_path,'api.academy.release');
+  assert.equal(f.writes.some(row=>row.table==='riders'&&row.action==='update'),false);
+});
+
+for(const owned of [false,true])test(`beta ordinary auction creation owned=${owned} uses the shared transaction`,async()=>{
+  const f=fixture({flag:'beta',scopeProtected:owned});if(owned)f.rider.team_id=TEAM;
+  const out=await route('post','/auctions',f)({rider_id:RIDER,starting_price:owned?50:150});
+  assert.equal(out.status,201,JSON.stringify(out.body));
+  const call=f.rpcCalls.find(row=>row.name==='create_market_auction_2176');
+  assert.ok(call);assert.equal(call.args.p_expected_owner,owned?TEAM:null);
+  assert.equal(call.args.p_min_riders,MIN_RIDERS_FOR_RACE);
+  assert.equal(f.writes.some(row=>row.table==='auctions'&&row.action==='insert'),false);
+});
+
+for(const flag of ['on',true])test(`AA beta with global M3=${flag} uses atomic release/payment`,async()=>{
+  const f=fixture({flag,autoFlag:'beta'});f.rider.team_id=TEAM;
+  const out=await route('post','/riders/:id/release',f,{computeReleaseBuyoutFee:()=>100,incrementBalanceWithAudit:async()=>{throw new Error('duplicate release payment');}})();
+  assert.equal(out.status,200);
+  assert.ok(f.rpcCalls.some(row=>row.name==='auto_accept_release_paid_2176'));
+});
+
+test('unprotected ordinary autobid checks its next amount, not an exhausted old proxy ceiling',async()=>{
+  const f=fixture({flag:'beta',scopeProtected:false});
+  let amount;
+  const from=f.client.from.bind(f.client);
+  f.client.from=table=>table==='auction_proxy_bids'?{
+    select(){return this;},eq(){return this;},maybeSingle:async()=>({data:{max_amount:1000},error:null}),
+  }:from(table);
+  const rpc=f.client.rpc.bind(f.client);
+  f.client.rpc=async(name,args)=>{
+    if(name==='market_bid_issue_6181'){amount=args.p_amount;return {data:args.p_amount>500?'insufficient_available_balance':null,error:null};}
+    return rpc(name,args);
+  };
+  assert.equal(await market.canAffordAutoBidScoped2176(f.client,TEAM,200,AUCTION),true);
+  assert.equal(amount,200);
+});
 
 function route(method,path,f,extra={}) {
   let handler; const marker=`router.${method}("${path}"`;

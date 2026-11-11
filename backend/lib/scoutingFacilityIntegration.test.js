@@ -49,6 +49,15 @@ function createChainSupabase({ team }) {
       return Promise.resolve({ data: state.team.balance, error: null });
     },
     from(table) {
+      // This integration scenario verifies the unchanged off-mode service path.
+      if (table === "app_config") {
+        const query = {
+          select() { return query; },
+          eq(column, key) { assert.equal(column, "key"); assert.equal(key, "market_commitment_6181"); return query; },
+          maybeSingle: async () => ({ data: { value: "off" }, error: null }),
+        };
+        return query;
+      }
       if (isAuctionCommitmentTable(table)) return auctionCommitmentTable(table);
       if (table === "teams") {
         return {

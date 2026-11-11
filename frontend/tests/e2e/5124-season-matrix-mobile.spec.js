@@ -86,6 +86,9 @@ test("beta: mobil 393px viser tre løbsdage uden vandret scroll, og dag-headeren
   await expect(dayHeaderButton).toBeVisible();
   const box = await dayHeaderButton.boundingBox();
   expect(box?.height ?? 0).toBeGreaterThanOrEqual(24);
+  // Explicitly scroll the real control above the fixed mobile navigation.
+  // WebKit's nearest-edge auto-scroll can leave it underneath that navigation.
+  await dayHeaderButton.evaluate((element) => element.scrollIntoView({ block: "center", inline: "nearest" }));
   await dayHeaderButton.click();
   await expect.poll(noPageScroll).toBe(true);
 });
