@@ -289,7 +289,7 @@ test("taendt: frigivelsen sender gulv og risiko-ryttere til RPC'en og svarer som
   assert.deepEqual(await releaseRiderUnderTeamLock(client, { riderId: "R1", teamId: "A", atRiskRiders }), { data: [{ id: "R1" }] });
   assert.deepEqual(client.rpcCalls, [{
     name: "auto_accept_release_rider",
-    args: { p_rider_id: "R1", p_team_id: "A", p_min_riders: MIN_RIDERS_FOR_RACE, p_at_risk_rider_ids: ["R2"] },
+    args: { p_rider_id: "R1", p_team_id: "A", p_min_riders: 0, p_at_risk_rider_ids: [] },
   }]);
 
   answer = { status: "squad_floor", min_riders: MIN_RIDERS_FOR_RACE };
@@ -352,8 +352,8 @@ test("taendt: start-handleren sender aktiv-tid-sluttid, trup-loft, gulv og risik
     p_duration_minutes: 60,
     p_calculated_end: "2026-11-10T07:30:00.000Z",
     p_max_riders: 30,
-    p_min_seller_riders: 8,
-    p_seller_at_risk_rider_ids: ["R9"],
+    p_min_seller_riders: 0,
+    p_seller_at_risk_rider_ids: [],
     p_now: "2026-11-09T22:30:00.000Z",
   } }]);
 });

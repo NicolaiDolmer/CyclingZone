@@ -312,6 +312,7 @@ export function getOutgoingSquadViolation(teamState, outgoingCount = 1) {
   // division-defaulten — 0 er en gyldig (og nu normal) floor.
   const minRiders = teamState?.squad_limits?.min ?? getSquadLimits(teamState?.division).min;
 
+  if (minRiders <= 0) return null; // #8015: zero disables the departure floor, including youth-only teams.
   if (totalAfter < minRiders) {
     return { totalAfter, minRiders };
   }
@@ -319,22 +320,8 @@ export function getOutgoingSquadViolation(teamState, outgoingCount = 1) {
   return null;
 }
 
-// #2748 · Kombineret squad-risiko-spærre (pension + kontraktudløb rammer S1→S2
-// SAMME dag, 27/7, for FØRSTE gang nogensinde). Ryttere der VIL forlade holdet AF
-// SIG SELV ved næste sæsonskifte (kontraktudløb, #2744 — ELLER pensionsrisiko,
-// #1137, worst-case alder ≥ 36) tælles som "allerede væk", så en manager ikke kan
-// sælge/frigive/auktionere/bytte sig under løbs-minimummet (MIN_RIDERS_FOR_RACE)
-// uden at systemet siger fra FØRST. teamState.at_risk_count sættes af kalderen via
-// squadRiskGuard.fetchAtRiskCount (DB-fetch, derfor ikke inline her — se dén fils
-// header for hvorfor den ikke importeres direkte i denne fil).
-//
-// outgoingCount = antal ryttere DENNE handel fjerner (normalt 1). at_risk_count
-// SKAL være beregnet med den rytter ekskluderet (excludeRiderIds) så han ikke
-// tælles dobbelt som både "outgoing" og "risiko".
-//
-// Dette er en NY, strammere floor end getOutgoingSquadViolation (som stadig
-// respekterer division-min, pt. 0 i prod) — begge kan gælde samtidig; kalderen
-// tjekker typisk begge og returnerer den første violation.
+// #8015: contract-expiry/retirement risk remains available for information.
+// It does not restrict sales, auctions, swaps or release under a disabled floor.
 export function getSquadRiskViolation(teamState, { outgoingCount = 1 } = {}) {
   // #8015: intet sælger-gulv (SELLER_SQUAD_FLOOR = 0) -> ingen spærre.
   if (SELLER_SQUAD_FLOOR <= 0) return null;

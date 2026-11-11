@@ -142,6 +142,17 @@ test("frigiver PRÆCIS de kandidater fetchExpiredContractRiders returnerer — t
   assert.equal(calls[0].relatedId, null);
 });
 
+test("#8015: an entire human roster can expire to zero without a minimum check", async () => {
+  const { supabase, riderUpdates } = makeMockSupabase();
+  const candidates = ['senior','u23','junior'].map((squad,i)=>({ id: `last-${i}`, firstname:'Last',lastname:squad,
+    team_id:'human-team-1',squad,is_academy:i>0,contract_end_season:1,team:{user_id:'u1',is_ai:false,is_frozen:false} }));
+  const stats=await releaseExpiredContractRiders({ now:new Date('2026-11-11T12:00:00Z'),supabase,seasonNumber:1,
+    notify:async()=>{},fetchExpiredContractRiders:async()=>candidates });
+  assert.equal(stats.released,3);
+  assert.equal(riderUpdates.length,3);
+  for(const row of riderUpdates) assert.equal(row.patch.team_id,null);
+});
+
 test("ryttere midt i et AKTIVT fleretape-løb udskydes (kan ikke parkeres, samme #1995/#2617-begrænsning som squadEnforcement)", async () => {
   const { supabase, riderUpdates } = makeMockSupabase({ activeStageRaceRiderIds: ["r-racing"] });
   const { notify } = makeNotifyRecorder();

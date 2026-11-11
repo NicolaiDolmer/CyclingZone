@@ -380,7 +380,7 @@ brugt af nogen. `is_guaranteed_sale` **sættes ingen steder i live kode** - grep
 `teamTransferHistory.js:140`). Hele bank-salgs-grenen i finaliseringen er derfor
 uudløselig i dag.
 
-### 5.1 Auto-accept-auktioner ([#2176](https://github.com/NicolaiDolmer/CyclingZone/issues/2176), bag `auto_accept_enabled`, SLUKKET)
+### 5.1 Auto-accept-auktioner ([#2176](https://github.com/NicolaiDolmer/CyclingZone/issues/2176), bag `auto_accept_enabled`, beta fra 11/11)
 
 Bygget i PR 6 (backend + migration M2, `database/2026-11-07-2176-m2-auto-accept.sql`).
 PR 7 følger skærm-go 9/11: https://github.com/NicolaiDolmer/CyclingZone/issues/2176#issuecomment-6752452233. Slukket kontakt = adfærden ovenfor er uændret (bevist i
@@ -405,7 +405,7 @@ følge kontakten efter apply; den ændrer aldrig en eksisterende værdi. Aktiver
   vælger 30 min til 24 t **aktiv tid**; sluttidspunktet regnes med `calculateAuctionEnd` (§2),
   aldrig flash-stien. I én transaktion under holdlåse tjekkes listing, pris (forventet pris,
   ellers 409), rytterstatus, købers penge (saldo minus førende bud og autobud) og plads
-  (fremtidig trup plus førende auktioner) samt sælgers løbsgulv. Så oprettes auktionen
+  (fremtidig trup plus førende auktioner). Sælgers afgang har intet minimum (#8015). Så oprettes auktionen
   (`origin = 'auto_accept'`, `source_listing_id`, `buyer_duration_minutes`) med købers bud som
   førende bud, og listingen sættes på pause (#4211). Ingen penge flyttes ved start; buddet
   binder dem som alle andre førende bud (§8).
@@ -420,12 +420,9 @@ følge kontakten efter apply; den ændrer aldrig en eksisterende værdi. Aktiver
   og køberen skal klikke igen. Ændret pris kræver tilsvarende refresh og et nyt eksplicit submit.
   Listingens rytter er fast efter
   oprettelse, sælgeren skal være aktuel ejer, og serveren anvender markedets eksisterende prisbånd.
-- **Sælgers gulv:** med kontakten tændt tæller sælgers ryttere på en aktiv auktion med en anden
-  byder som udgående i gulv-tjekket ved frigivelse, ny auktion og transfer, så sælger ikke kan
-  handle sig under gulvet og få auktionen annulleret ved slut.
-  Frigivelse (`auto_accept_release_rider`) og almindelig transfers ejerskabs-/parkeringsclaim
-  (`auto_accept_claim_transfer`) gentjekker gulvet og muterer under de samme holdlåse som
-  auto-accept-start. Transfer-claim gentjekker også køberplads og auktion på selve rytteren;
+- **Fri trupafgang (ejer 11/11, #8015):** salg, auktion, auto-accept, bytte, fyring og kontraktudløb må føre truppen til nul, også med andre udgående handler eller udløbende kontrakter. `SELLER_SQUAD_FLOOR=0` deaktiverer afgangstjekket i både JS og SQL; et senior-antal på nul må heller ikke blokere en ungdomsrytter. Løbsminimum og varsler er information, ikke handelskrav.
+  Alle egne senior-, U23-, junior- og akademiryttere kan få auto-pris i beta. Akademirytteren beholder sin status ved listing/start og graduerer atomisk til senior hos køber ved salg (#3650).
+  Frigivelse og transfer muterer fortsat under de samme holdlåse som auto-accept-start. Transfer-claim gentjekker køberplads, ejerskab og auktion på selve rytteren;
   kontraktarv/gradueringspatch bevares. Med pengelåsen tændt bruger kalderen
   `auto_accept_claim_transfer_paid`: ejerskab/parkering og begge betalingsben
   gennemføres i samme transaktion under holdlåsene (A7, #2176). Parkeret salg med
@@ -454,7 +451,7 @@ følge kontakten efter apply; den ændrer aldrig en eksisterende værdi. Aktiver
 - M3-beta beskytter beta-hold samt sælger, førende hold og hold med positivt autobud i aktive/forlængede auto-accept-auktioner. Den aktuelle auto-auktion er også omfattet før første deltagelse. Bindingen består efter udtræden af beta eller slukning af auto-accept-oprettelse; den ophører ved ophørt føring/autobud eller inaktiv auktion, hvis holdet ikke har anden binding.
 - En ikke-beta-deltagers binding respekteres ved holdets øvrige køb og gebyrer. Beta bruger samme transaktionelle holdlås for markeds-skrivere før første deltagelse og gentjekker rækkevidden under låsen. Almindelige ikke-beta-hold uden binding får ingen nye finansielle gates.
 - Et eksisterende autobud må sænkes eller genindsendes med samme loft, også hvis holdet nu er overforpligtet. Det bevarer den eksisterende frigivelsesregel i både M3-beta og global M3, også gennem upsert-RPC'ens BEFORE INSERT-sti. Det stående loft læses under holdlåsen; forhøjelser får fortsat pengetjekket.
-- Transfer (A7), kontantbytte, senior-/akademifrigivelse med gebyr og scouting-oprettelse gennemføres atomisk med betalingen i beta. Kun en udtrykkelig betalingskvittering springer den gamle betaling over. Afvist betaling ruller rytter-/opgaveændringen tilbage. Almindelig auktionsoprettelse gentjekker ejerskab og et beskyttet sælgergulv under samme lås.
+- Transfer (A7), kontantbytte, senior-/akademifrigivelse med gebyr og scouting-oprettelse gennemføres atomisk med betalingen i beta. Kun en udtrykkelig betalingskvittering springer den gamle betaling over. Afvist betaling ruller rytter-/opgaveændringen tilbage. Almindelig auktionsoprettelse gentjekker ejerskab under samme lås; afgangsgulvet er deaktiveret (#8015).
 - Den beta-afgrænsede finance-trigger stopper diskretionære debiteringer, der ville bruge en eksisterende auktionsbinding. Anlæg og staff-fratrædelse debiterer før aktivændringen; obligatoriske løn-/driftsbetalinger beholder deres regler. Ansættelse får intet nyt køb/gebyr.
 - Ungdomsauktionens betaling er afregning af en eksisterende binding, ikke et nyt akademikøb. Dens kanoniske auktionspostering er derfor undtaget fra den diskretionære guard i både senior- og akademiplaceringen; ny intake er stadig beskyttet.
 - Direkte Data API-læsning af `transfer_listings` kræver login og er begrænset til de hidtidige seks offentlige kolonner. Anonyme har ingen læseadgang; appens direkte forbrugere ligger bag login. `auto_accept_price` læses kun af serverrollen og vises gennem den brugerafhængige API-projektion, også hvis en klient selv vælger kolonner eller filtre.
@@ -500,7 +497,7 @@ guards ligger bevidst før pengeflytning.
 | 4 | `cancelled_stale_owner` | rytteren skiftede ejer bag om auktionen | `:947-983` |
 | 5 | `cancelled_insufficient_balance` | vinderen har ikke råd ved hammerslag | `:996-1030` |
 | 6 | `squad_full` | vinderens trup er fuld ved tildeling (hard cap, ingen buffer) | `:1037-1077` |
-| 7 | `seller_squad_floor` | salget ville bringe **sælgeren** under løbs-minimum (#2836) | `:1132` |
+| 7 | `seller_squad_floor` | historisk kompatibilitet for eksplicit positivt RPC-gulv; normale kald sender nul (#8015) | `marketUtils.js` |
 | 8 | `completed` / `no_bids` / `guaranteed_sale` | normalen | `:1392`, `:1510` |
 
 **Ungdomsgrenen, senior-først (ejer-regel 19/7, #2701):** har vinderen plads på
@@ -642,9 +639,7 @@ Tændt:
   (`insufficient_available_balance`), som de andre faste køb.
 - **Forlængelse** (også med kun auto-accept tændt): et sent bud forlænger aldrig auktionen forbi
   sæsonskiftet (`fetchSeasonTransitionBoundary`); sluttiden holdes på sidste hele minut før grænsen.
-- **Sælgers gulv:** holdets egne ryttere på aktiv auktion tæller som udgående
-  (POST /auctions på egen rytter, frigivelse, transfer-bekræftelse) og udelades af
-  risiko-tællingen, så de ikke tælles to gange.
+- **Sælgers afgang:** intet minimum (#8015). Udgående auktioner tælles fortsat til køberplads og markedets øvrige reservationer.
 - Fejl bruger de eksisterende fejlkoder (`insufficient_balance_after_bids`,
   `insufficient_balance_after_proxy`, `start_bid_exceeds_balance`, `squad_full_bid`,
   409 `price_changed`).
@@ -676,10 +671,7 @@ ekstra plads, så et forsvar blokeres aldrig.
 ikke mod senior-cap (#1308/#2748). **Samme tæller bruges i bud-gaten og i finalize-gaten** -
 det er hele pointen efter divergensen 22/6 (§12).
 
-**Sælger-gulvet (#2748/#2836):** en manager kan ikke auktionere/sælge sig under
-`MIN_RIDERS_FOR_RACE = 8`, når kontraktudløb og pensionsrisiko ved næste sæsonskifte er
-talt med (`getSquadRiskViolation`, `marketUtils.js:325-335`). Tjekkes både ved oprettelse
-(`api.js:6359-6377`) og ved finalisering (`auctionFinalization.js:1132`).
+**Sælgers afgang (#8015, ejer 11/11):** intet minimum. `MIN_RIDERS_FOR_RACE` tilhører løb og information; `SELLER_SQUAD_FLOOR=0` slår handelsgulvet fra. Salg, auktion, auto-accept, bytte, fyring og kontraktudløb må efterlade nul ryttere. Akademi/U23/junior må handles uden seniorryttere. Køberlofter, penge, ejerskab, etapeløbsparkering og gebyrer er uændrede.
 
 **Restrisiko der bevidst ikke er dækket** (`auctionRules.js:354-357`): fyldes truppen via en
 **anden** kanal (akademi-graduering) efter manageren allerede fører en auktion, kan finalize
