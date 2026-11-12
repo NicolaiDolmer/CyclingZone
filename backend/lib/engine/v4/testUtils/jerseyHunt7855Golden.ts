@@ -20,6 +20,8 @@ import type { GcContext, JerseyLeaders, StageInput } from "../types.ts";
 export const GOLDEN_7855_SEEDS = ["7855-golden-a", "7855-golden-b"] as const;
 const REVISION = "s5_profiles_v3";
 const HUMAN = new Set(["team-0", "team-1"]);
+// raceFatigue.js er JS (JSDoc-typer); kun formen vi bruger.
+const exposureOf = stageWorkExposure as unknown as (output: unknown, profileType: string | null) => Map<string, unknown>;
 
 /** Planer uden troejejagt paa menneskeholdene (udbrud, tempo, tog, laeet, sat-led). */
 const PLANS: Readonly<Record<string, readonly StagePlanLeg[]>> = Object.freeze({
@@ -54,7 +56,7 @@ export function golden7855Digests(jerseyHunt: boolean): Record<string, { output:
   const rows = frozenStages();
   // En flad etape med to indlagte spurter (som dommens), saa spurt-passagerne ogsaa er flere.
   const flatTwo = { ...rows.find((r) => r.profile_type === "flat")!, sprints: [{ name: "Sprint A", km: 60, kind: "intermediate" }, { name: "Sprint B", km: 120, kind: "intermediate" }] };
-  (flatTwo as { sprints: unknown[] }).sprints.push({ name: "Finish", km: (flatTwo as { distance_km: number }).distance_km, kind: "finish" });
+  (flatTwo as { sprints: unknown[] }).sprints.push({ name: "Finish", km: (flatTwo as unknown as { distance_km: number }).distance_km, kind: "finish" });
   const stageRows = [...rows.filter((_, i) => i % 2 === 0), { ...flatTwo, profile_type: "flat", __key: "flat2sprints" }];
   for (const row of stageRows) {
     const route = routeFromStageProfileRow(row as Parameters<typeof routeFromStageProfileRow>[0]);
@@ -86,7 +88,7 @@ export function golden7855Digests(jerseyHunt: boolean): Record<string, { output:
             ...(jerseyHunt ? { jersey_hunt_7855: true } : {}),
           } as StageInput;
           const output = simulateStageV4(input);
-          const exposure = stageWorkExposure(output, route.profile_type) as Map<string, unknown>;
+          const exposure = exposureOf(output, route.profile_type);
           const key = `${(row as { __key?: string }).__key ?? `${row.profile_type}#${row.stage_number ?? 1}`}:${ctx.key}:${withPlans ? "plans" : "ai"}@${seed}`;
           out[key] = { output: digestOf(output), exposure: digestOf([...exposure.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))) };
         }

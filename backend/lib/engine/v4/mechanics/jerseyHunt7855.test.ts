@@ -130,10 +130,14 @@ function runStage(row: Record<string, unknown>, seed: string, plans: Record<stri
   return { output: simulateStageV4(input), profile: route.profile_type, distanceKm: route.distance_km };
 }
 
+// raceFatigue.js / conditionModelV2.js er JS (JSDoc-typer); kun formen vi bruger.
+const exposureOf = stageWorkExposure as unknown as (output: unknown, profileType: string | null) => Map<string, { front: number; shelter: number }>;
+const caughtOf = stageCaughtBreakaway as unknown as (output: unknown, profileType: string | null) => Set<string>;
+const loadV2 = stageLoadV2 as unknown as (args: Record<string, unknown>) => number;
 const fatigueOf = (run: Run, id: string, effort?: string) => {
-  const exposure = stageWorkExposure(run.output, run.profile).get(id) ?? null;
-  const caught = stageCaughtBreakaway(run.output, run.profile).has(id);
-  return stageLoadV2({ profileType: run.profile, distanceKm: run.distanceKm, stageNumber: 1, effort: effort ?? run.output.stage_plan_load_efforts?.[id] ?? "normal", exposure: exposure ? { ...exposure, caught } : null, rulesRevision: REV });
+  const exposure = exposureOf(run.output, run.profile).get(id) ?? null;
+  const caught = caughtOf(run.output, run.profile).has(id);
+  return loadV2({ profileType: run.profile, distanceKm: run.distanceKm, stageNumber: 1, effort: effort ?? run.output.stage_plan_load_efforts?.[id] ?? "normal", exposure: exposure ? { ...exposure, caught } : null, rulesRevision: REV });
 };
 const passagesOf = (run: Run, kind: "sprint" | "kom") => (run.output.passages ?? []).filter((p: StagePassage) => p.kind === kind && p.km < run.distanceKm);
 const timesOf = (run: Run) => run.output.results.map((r) => [r.rider_id, r.time_seconds, r.rank]);
@@ -175,7 +179,7 @@ function hunterTempoTask(id: string): StagePlanLeg["task"] {
 
 test("#7855 C i motoren: jagt oven paa et tempo-led er aldrig gratis", () => {
   const row = stageRow("mountain") as Record<string, unknown>;
-  const tops = ((row["climbs"] as Array<Record<string, unknown>>) ?? []).map((c, i) => ({ ...c, i })).filter((c) => !c["summit_finish"] && ["HC", "1", "2", "3", "4"].includes(String(c["category"])));
+  const tops = ((row["climbs"] as Array<Record<string, unknown>>) ?? []).map((c, i): Record<string, unknown> & { i: number } => ({ ...c, i })).filter((c) => !c["summit_finish"] && ["HC", "1", "2", "3", "4"].includes(String(c["category"])));
   const late = { at: "kom", kom_index: tops[1].i } as const;
   let paid = 0;
   for (const seed of SEEDS) {
