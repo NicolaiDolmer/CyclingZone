@@ -714,11 +714,11 @@ const SUMMIT_CLIMBS = [{ crest_km: 182, length_km: 11 }];
 
 test("#7965: filmen viser angrebet som km A-B foer maalgangen, og teksten er stadig Angrib", () => {
   const built = buildFilmTimeline({ events: SUMMIT_EVENTS, distanceKm: 182, timelineVersion: 2, climbs: SUMMIT_CLIMBS });
-  const line = built.events.find((e) => e.type === "all_out_gain");
+  const line = /** @type {any} */ (built.events.find((e) => e.type === "all_out_gain"));
   assert.deepEqual(line.km_span, { from: 171, to: 182 });
   assert.equal(line.km, 171);
   assert.ok(built.events.indexOf(line) < built.events.findIndex((e) => e.type === "finish"));
-  const feed = built.feedEvents.find((e) => e.type === "all_out_gain");
+  const feed = /** @type {any} */ (built.feedEvents.find((e) => e.type === "all_out_gain"));
   assert.equal(describeEvent(feed, { riderNameById: riderNameByIdFixture() })?.key, "attack_gain");
 });
 
@@ -727,7 +727,7 @@ test("#7965: opgaven slaas stadig op ved toppen (recorded_km), ikke ved foden", 
   const looked = [];
   const effortByRider = { get: () => "all_out", taskAt: (_events, _id, km) => { looked.push(km); return km >= 175 ? "attack" : "tempo"; } };
   const built = buildFilmTimeline({ events: SUMMIT_EVENTS, distanceKm: 182, timelineVersion: 2, climbs: SUMMIT_CLIMBS, ownRiderIds: ["rider-1"], effortByRider });
-  const feed = built.feedEvents.find((e) => e.type === "all_out_gain");
+  const feed = /** @type {any} */ (built.feedEvents.find((e) => e.type === "all_out_gain"));
   assert.equal(describeEvent(feed, { riderNameById: riderNameByIdFixture() })?.key, "attack_gain");
   assert.deepEqual(looked, [182]);
 });
