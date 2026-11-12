@@ -182,6 +182,24 @@ BEGIN
   -- B. Status rettes
   -- ===========================================================================
   -- Auto-pris #2176: beta siden 11/11 (kontaktens flip-tid). Kobles til kontakten.
+  --
+  -- Dublet fra registry-sync (rodaarsag til den fejlede foerste koersel 12/11):
+  -- da registret fik roadmap-tekst paa market-auto-accept (#8058), oprettede
+  -- scripts/roadmap-sync-registry.mjs en NY raekke med flag_key =
+  -- 'auto_accept_enabled', fordi ingen raekke bar noeglen endnu. Den raekke har
+  -- ingen stemmer; den stemte raekke er 00006149-...-25. Dubletten slipper noeglen
+  -- og arkiveres (samme moenster som Traen nu-dubletten ovenfor), saa den stemte
+  -- raekke kan baere kontakten. Har dubletten faaet stemmer, stopper koerslen.
+  IF EXISTS (SELECT 1 FROM public.roadmap_votes v
+             JOIN public.roadmap_items o ON o.id = v.item_id
+             WHERE o.flag_key = 'auto_accept_enabled'
+               AND o.id <> '00006149-0000-4000-8000-000000000025') THEN
+    RAISE EXCEPTION 'roadmap-pakke #8051: sync-dubletten for auto_accept_enabled har faaet stemmer, vurder paa ny';
+  END IF;
+  UPDATE public.roadmap_items SET flag_key = NULL, status = 'archived', beta_soon = false, live_soon = false, updated_at = now()
+  WHERE flag_key = 'auto_accept_enabled'
+    AND id <> '00006149-0000-4000-8000-000000000025';
+
   UPDATE public.roadmap_items SET
     flag_key = 'auto_accept_enabled', status = 'in_progress',
     beta_since = COALESCE(beta_since, '2026-11-11 19:56:39.440618+00'::timestamptz),
