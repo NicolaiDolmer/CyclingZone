@@ -17,13 +17,12 @@ import { hasRouteData } from "../../../lib/stageRouteProfile.js";
 import { useRaceViewTelemetry } from "../../../lib/useRaceViewTelemetry.ts";
 import { useUiPref } from "../../../lib/userUiPrefs.ts";
 import { STAGE_SCOPED_TABS, v6Tabs, type RacePageV6Tab } from "./racePageV6Model.ts";
-import RouteLine from "./RouteLine.tsx";
 import V6RouteProfile from "./V6RouteProfile.tsx";
 import V6YourDay from "./V6YourDay.tsx";
 import { Button, EmptyState, FlagIcon } from "./v6Ui.ts";
 
 export interface RacePageV6ResultsSlots {
-  /** Ruteprofilen, eller null når den er skjult eller mangler rutedata. */
+  /** Rutekortet (profilen kan være skjult), eller null når etapen ingen profil har. */
   profileSlot: ReactNode;
   /** "Din dag" under profilen. */
   sideSlot: ReactNode;
@@ -92,24 +91,20 @@ export default function RacePageV6(props: RacePageV6Props) {
       />
     );
   } else {
-    body = (
-      <div className="flex flex-col gap-3">
-        {profile && (
-          <RouteLine
-            profile={profile}
-            canShow={canShowRoute}
-            shown={routeShown}
-            onToggle={() => setRouteHidden(!routeHidden)}
-            saveState={routeSaveState}
-            controlsId={profileId}
-          />
-        )}
-        {renderResults(selectedStage, {
-          profileSlot: routeShown && profile ? <V6RouteProfile id={profileId} profile={profile} hasClassifications={isStageRace} /> : null,
-          sideSlot: <V6YourDay results={results} stageNumber={selectedStage} myTeamId={myTeamId} dnfRows={dnfRows} loaded={stageLoaded} />,
-        })}
-      </div>
-    );
+    body = renderResults(selectedStage, {
+      profileSlot: profile ? (
+        <V6RouteProfile
+          id={profileId}
+          profile={profile}
+          hasClassifications={isStageRace}
+          canShow={canShowRoute}
+          shown={routeShown}
+          onToggle={() => setRouteHidden(!routeHidden)}
+          saveState={routeSaveState}
+        />
+      ) : null,
+      sideSlot: <V6YourDay results={results} stageNumber={selectedStage} myTeamId={myTeamId} dnfRows={dnfRows} loaded={stageLoaded} />,
+    });
   }
 
   return (

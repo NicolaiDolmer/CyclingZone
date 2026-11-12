@@ -1112,7 +1112,6 @@ export default function RaceDetailPage() {
         sub: t(phase === "during" ? "racePage.hero.squadFrozen" : "racePage.hero.squadLockedIn"),
       }] : []),
       ...(nextStart ? [{
-        lock: true, // #7778: v6 viser fristen i handlingsrækken i stedet (intet tal to gange)
         label: race.race_type === "stage_race"
           ? t("racePage.hero.stageLocks", { number: nextStart.stageNumber })
           : t("racePage.hero.locks"),
@@ -1362,7 +1361,6 @@ export default function RaceDetailPage() {
     overrides: stageRoles ? (stageRoles.overrides ?? []) : [],
     nowMs,
   }) : null;
-  const heroBlocks = v6Cta ? statBlocks.filter((b) => !b.lock) : statBlocks;
   // Resultatlisten for en kørt etape: den eksisterende tabel (StageTab) i v6-layoutet.
   const renderV6Results = (n, { profileSlot, sideSlot }) => (
     stageFetchState(n, { loaded: loadedStages, failed: failedStages }) === "failed"
@@ -1420,7 +1418,8 @@ export default function RaceDetailPage() {
                 så "Hop til resultater"/"Gennemgå taktik" var to knapper der
                 pegede på noget der nu er ét klik væk. Chippen er ren visning —
                 sidens ENE guld-primær bor i den aktive fane. */}
-            <span
+            {/* #7778: med v6's handlingsrække står fristen dér; chippen ville gentage den. */}
+            {!v6Cta && <span
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-data text-2xs font-semibold uppercase tracking-[.08em] whitespace-nowrap flex-none ${
                 statusChip.live
                   ? "border-cz-danger/30 bg-cz-danger/10 text-cz-danger"
@@ -1429,17 +1428,20 @@ export default function RaceDetailPage() {
             >
               {statusChip.live && <span className="inline-block w-1.5 h-1.5 rounded-full bg-cz-danger" aria-hidden="true" />}
               {statusChip.text}
-            </span>
+            </span>}
           </div>
-          <div className="flex mt-5 pt-4 border-t border-cz-border overflow-x-auto">
-            {heroBlocks.map((b, i) => (
-              <HeroStatBlock key={b.label} label={b.label} value={b.value} sub={b.sub} last={i === heroBlocks.length - 1} />
-            ))}
-          </div>
-          {/* #7778 (valg 8): ingen bannere. Låse-fristen og sidens ene guld-knap står i
-              hovedets handlingsrække, efter en hairline (PAGE_TEMPLATES T3). */}
+          {/* #7778 (valg 8, wireframe v6 B): ingen bannere. Med v6 og en åben taktik er
+              hovedets bund handlingsrækken (låse-frist + sidens ene guld-knap) i stedet
+              for tal-rækken; fristen ville ellers stå to gange. Ellers tal-rækken som i dag. */}
+          {!v6Cta && (
+            <div className="flex mt-5 pt-4 border-t border-cz-border overflow-x-auto">
+              {statBlocks.map((b, i) => (
+                <HeroStatBlock key={b.label} label={b.label} value={b.value} sub={b.sub} last={i === statBlocks.length - 1} />
+              ))}
+            </div>
+          )}
           {v6Cta && (
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 mt-4 pt-4 border-t border-cz-border">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 mt-5 pt-4 border-t border-cz-border">
               <p className="m-0 font-data text-sm tabular-nums text-cz-2">
                 {v6Cta.locksAt
                   ? t(race.race_type === "stage_race" ? "racePageV6.hero.stageLocks" : "racePageV6.hero.locks", {
@@ -2362,7 +2364,8 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
   const showAllButton = collapsible && (
     <button type="button" onClick={() => setExpanded(e => !e)}
       aria-pressed={expanded}
-      className="inline-flex items-center gap-0.5 text-xs font-medium text-cz-accent-t hover:underline shrink-0">
+      // #7778: i v6 (headerControl) får knappen samme 44 px-trykflade på touch som holdfilteret.
+      className={`inline-flex items-center gap-0.5 text-xs font-medium text-cz-accent-t hover:underline shrink-0${headerControl ? " [@media(max-width:640px),(pointer:coarse)]:min-h-11" : ""}`}>
       {expanded ? t("detail.showLess") : t("detail.showAll", { count: totalCount })}
       <ChevronDownIcon size={13} aria-hidden="true"
         className={`transition-transform duration-150 ${expanded ? "rotate-180" : ""}`} />
