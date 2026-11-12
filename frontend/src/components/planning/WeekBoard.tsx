@@ -1,13 +1,26 @@
-// @ts-nocheck: nye komponenter (#7535) bygget paa de eksisterende JS-primitiver, hvis default-null-props checkJs-budgettet ikke kan udtrykke; logikken er i planningWorkbench.ts (strict).
 // #7535 · Ugeoversigten (week board): ugen paa tvaers af loebsdage. Loeb der deler loebsdage
 // ligger i hver sin bane, saa overlap er synligt med det samme. Hver bar viser loebets korte navn,
 // etape-striben og "x/6" valgte; klik vaelger loebet. Et gitter med 7 kolonner skalerer ned til
 // 375 px uden vandret scroll (en bar kan blive smal, navnet afkortes).
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronLeftIcon, ChevronRightIcon, Button } from "../ui";
-import { layoutWeek, raceReadiness, isoWeekNumber, addDays } from "../../lib/planningWorkbench.ts";
-import { StageStrip, ReadinessMark, formatShortDate, formatDayHeader } from "./planningUi.jsx";
+import { ChevronLeftIcon, ChevronRightIcon, Button } from "./primitives.ts";
+import { layoutWeek, raceReadiness, isoWeekNumber, addDays, type SeasonRace } from "../../lib/planningWorkbench.ts";
+import { StageStrip, ReadinessMark, formatShortDate, formatDayHeader } from "./planningUi.tsx";
+
+interface WeekBoardProps {
+  races: SeasonRace[];
+  dates: Map<number, string>;
+  monday: string;
+  counts: Map<string, number>;
+  withdrawn: Set<string>;
+  terrain: Map<string, string[]>;
+  selectedId?: string | null;
+  onSelect: (id: string) => void;
+  onWeekChange: (direction: -1 | 1) => void;
+  canPrev: boolean;
+  canNext: boolean;
+}
 
 export default function WeekBoard({
   races,
@@ -21,7 +34,7 @@ export default function WeekBoard({
   onWeekChange,
   canPrev,
   canNext,
-}) {
+}: WeekBoardProps) {
   const { t, i18n } = useTranslation("planning");
   const layout = useMemo(() => layoutWeek(races, dates, monday), [races, dates, monday]);
   const week = isoWeekNumber(monday);

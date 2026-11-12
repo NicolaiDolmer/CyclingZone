@@ -1,18 +1,14 @@
-// @ts-nocheck: nye komponenter (#7535) bygget paa de eksisterende JS-primitiver, hvis default-null-props checkJs-budgettet ikke kan udtrykke; logikken er i planningWorkbench.ts (strict).
 // #7535 · Loebs-arbejdsfladen: loebshoved, ruteprofil og trup-tabellen for ET valgt loeb.
 // Alt gemmes gennem det EKSISTERENDE udtagelses-endpoint (PUT /api/races/:id/selection), med
 // samme klient-validering og samme serverfejl som udtagelsespanelet. Intet gemmes af sig selv:
 // "Suggest squad" og "Copy squad from" fylder en kladde som spilleren gennemgaar og selv gemmer.
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, EmptyState, ErrorState, SkeletonLines, FlagIcon } from "../ui";
-import RouteProfile from "./RouteProfile.jsx";
-import SquadTable from "./SquadTable.jsx";
-import { ReadinessMark } from "./planningUi.jsx";
-import { validateSelectionClient } from "../../lib/raceSelectionLogic.js";
-import { riderBestRole } from "../../lib/riderRating.js";
-import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
-import { loadRaceSelection, saveRaceSelection, loadStageProfiles } from "../../lib/planningWorkbenchData.js";
+import { Button, EmptyState, ErrorState, SkeletonLines, FlagIcon, validateSelectionClient, riderBestRole, useReloadBlock, RELOAD_BLOCK_REASONS } from "./primitives.ts";
+import RouteProfile from "./RouteProfile.tsx";
+import SquadTable from "./SquadTable.tsx";
+import { ReadinessMark } from "./planningUi.tsx";
+import { loadRaceSelection, saveRaceSelection, loadStageProfiles, type StageProfileRow } from "../../lib/planningWorkbenchData.ts";
 import {
   DEFAULT_SQUAD_SORT,
   EMPTY_SELECTION,
@@ -28,9 +24,14 @@ import {
   sortSquadRows,
   suggestSquad,
   toPutBody,
+  type RoleKey,
+  type Selection,
+  type SeasonEntry,
+  type SeasonRace,
+  type SquadSortKey,
 } from "../../lib/planningWorkbench.ts";
 
-function formatStart(iso, language) {
+function formatStart(iso: string | null | undefined, language: string): string | null {
   if (!iso) return null;
   try {
     return new Intl.DateTimeFormat(language, {
@@ -46,25 +47,49 @@ function formatStart(iso, language) {
   }
 }
 
-const RaceWorkbench = forwardRef(function RaceWorkbench(
+export interface RaceWorkbenchHandle {
+  save: () => Promise<boolean>;
+  discard: () => void;
+}
+
+interface RaceWorkbenchProps {
+  race: SeasonRace;
+  allRaces: SeasonRace[];
+  entries: SeasonEntry[];
+  withdrawn: Set<string>;
+  profileHidden: boolean;
+  onToggleProfileHidden: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
+  onSaved?: (raceId: string, entries: SeasonEntry[]) => void;
+}
+
+interface SaveError {
+  code: string;
+  params: Record<string, unknown>;
+}
+
+// Serverens svar fra GET /api/races/:id/selection; siden laeser kun de felter den kender.
+type SelectionResponse = any;
+
+const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(function RaceWorkbench(
   { race, allRaces, entries, withdrawn, profileHidden, onToggleProfileHidden, onDirtyChange, onSaved },
   ref,
 ) {
   const { t, i18n } = useTranslation("planning");
   const { t: tr } = useTranslation("races");
-  const [state, setState] = useState("loading"); // loading | error | ready
-  const [data, setData] = useState(null);
-  const [saved, setSaved] = useState(EMPTY_SELECTION);
-  const [sel, setSel] = useState(EMPTY_SELECTION);
+  const [state, setState] = useState<"loading" | "error" | "ready">("loading");
+  const [data, setData] = useState<SelectionResponse>(null);
+  const [saved, setSaved] = useState<Selection>(EMPTY_SELECTION);
+  const [sel, setSel] = useState<Selection>(EMPTY_SELECTION);
   const [sort, setSort] = useState(DEFAULT_SQUAD_SORT);
-  const [saveState, setSaveState] = useState("idle"); // idle | saving | saved | error
-  const [saveError, setSaveError] = useState(null); // { code, params }
-  const [note, setNote] = useState(null);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveError, setSaveError] = useState<SaveError | null>(null);
+  const [note, setNote] = useState<string | null>(null);
   const [copyOpen, setCopyOpen] = useState(false);
-  const [profiles, setProfiles] = useState([]);
+  const [profiles, setProfiles] = useState<StageProfileRow[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(true);
   const generation = useRef(0);
-  const latest = useRef({});
+  const latest = useRef<{ sel: Selection; saved: Selection; readOnly: boolean; clientErrors: string[]; sprintLeaderAllowed: boolean; size: { min: number; max: number } } | null>(null);
 
   const dirty = state === "ready" && selectionDirty(sel, saved);
   useReloadBlock(dirty || saveState === "saving", RELOAD_BLOCK_REASONS.DIRTY);
@@ -116,7 +141,10 @@ const RaceWorkbench = forwardRef(function RaceWorkbench(
     onDirtyChange?.(dirty);
   }, [dirty, onDirtyChange]);
 
-  const stageTypes = useMemo(() => profiles.map((p) => p.profile_type).filter(Boolean), [profiles]);
+  const stageTypes = useMemo(
+    () => profiles.map((p) => p.profile_type).filter((type): type is string => typeof type === "string" && type.length > 0),
+    [profiles],
+  );
   const rows = useMemo(
     () => (data?.riders ? buildSquadRows(data, stageTypes, (flat) => riderBestRole(flat)) : []),
     [data, stageTypes],
@@ -139,14 +167,14 @@ const RaceWorkbench = forwardRef(function RaceWorkbench(
     : [];
   const blockReason = dirty && clientErrors.length ? tr(`selection.errors.${clientErrors[0]}`, { min: size.min, max: size.max }) : null;
 
-  const edit = (next) => {
+  const edit = (next: Selection) => {
     setSel(next);
     setSaveState("idle");
     setSaveError(null);
     setNote(null);
   };
 
-  const toggle = (riderId) => {
+  const toggle = (riderId: string) => {
     const has = sel.riderIds.includes(riderId);
     if (!has && sel.riderIds.length >= size.max) return;
     const base = has ? setRiderRole(sel, riderId, "rider") : sel;
@@ -158,11 +186,11 @@ const RaceWorkbench = forwardRef(function RaceWorkbench(
     });
   };
 
-  const setRole = (riderId, role) => edit(setRiderRole(sel, riderId, role));
+  const setRole = (riderId: string, role: RoleKey) => edit(setRiderRole(sel, riderId, role));
 
   const save = useCallback(async () => {
     const current = latest.current;
-    if (current.readOnly || current.clientErrors?.length) return false;
+    if (!current || current.readOnly || current.clientErrors.length > 0) return false;
     setSaveState("saving");
     setSaveError(null);
     try {
@@ -190,6 +218,7 @@ const RaceWorkbench = forwardRef(function RaceWorkbench(
   }, [race.id, onSaved]);
 
   const discard = useCallback(() => {
+    if (!latest.current) return;
     setSel(latest.current.saved);
     setSaveState("idle");
     setSaveError(null);
@@ -213,7 +242,7 @@ const RaceWorkbench = forwardRef(function RaceWorkbench(
     setNote(t("race.suggested"));
   };
 
-  const copyFrom = (source) => {
+  const copyFrom = (source: { race: SeasonRace; riders: SeasonEntry[] }) => {
     const { selection, skipped } = copySquadFrom({ source: source.riders, rows, max: size.max, sprintLeaderAllowed });
     setCopyOpen(false);
     edit(selection);
@@ -285,7 +314,7 @@ const RaceWorkbench = forwardRef(function RaceWorkbench(
               rows={sortedRows}
               selection={sel}
               sort={sort}
-              onSort={(key) => setSort((s) => nextSort(s, key))}
+              onSort={(key: SquadSortKey) => setSort((current) => nextSort(current, key))}
               profileCols={profileCols}
               max={size.max}
               readOnly={readOnly}

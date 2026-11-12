@@ -3,7 +3,7 @@
 // referencer (CORS/fulfill bliver i fixtures.js). Datakilden er seedData.js, så
 // begge konsumenter serverer præcis det samme.
 import { previewPlannerBoard } from "./plannerMock.js";
-import { isWorkbenchPreview, PLANNING_SEASON_SEED, PLANNING_STAGE_PROFILES, planningSelectionSeed } from "./planningWorkbenchMock.js"; // #7535
+import { isWorkbenchPreview, PLANNING_SEASON_SEED, PLANNING_STAGE_PROFILES, planningSelectionSeed } from "./planningWorkbenchMock.ts"; // #7535
 import { previewPotentialEstimateEnabled, previewProjection, previewReport } from "./potentialEstimateMock.ts";
 import { raceHasReportableResults } from "../lib/raceResultVisibility.js";
 import { FORUM_CATEGORY_ORDER } from "../components/forum/forumCategories.js";

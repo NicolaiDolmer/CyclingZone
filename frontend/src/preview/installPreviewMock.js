@@ -17,7 +17,7 @@ import { trainingProgramsMockRoute, previewSingleRaceDay, PREVIEW_TRAINING_PROGR
 import { trainingGroupsMockRoute } from "../components/training/groups/trainingGroupsPreviewMock.ts"; // #6000
 import { trainingFatigueRulesMockRoute } from "./trainingFatigueRulesMock.js"; // #4854
 import { trainingReceiptMock } from "./trainingReceiptMock.ts";
-import { isWorkbenchPreview } from "./planningWorkbenchMock.js"; // #7535
+import { isWorkbenchPreview } from "./planningWorkbenchMock.ts"; // #7535
 import { trainNowPreviewRoute, trainNowSelectionPreview, trainNowBoardPreview, trainNowSeasonPreview } from "../components/training/TrainNowPreviewMock.ts"; // #4847/#6139/#6383
 import { raceStartBoardPreview, raceStartPreviewNotifications } from "./raceStartPreviewMock.ts"; // #6740
 import {

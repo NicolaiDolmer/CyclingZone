@@ -1,9 +1,23 @@
 // #7535 · Bjaelken for ugemte aendringer. Vises naar spilleren vil skifte loeb med en ugemt trup:
 // "Ugemte aendringer i X: Bliv her / Kassér / Gem og aabn". Intet gaar tabt tavst.
 import { useTranslation } from "react-i18next";
-import { Button } from "../ui";
+import { Button } from "./primitives.ts";
 
-export default function UnsavedBar({ raceName, nextName, busy, onStay, onDiscard, onSaveAndOpen }) {
+export default function UnsavedBar({
+  raceName,
+  nextName,
+  busy,
+  onStay,
+  onDiscard,
+  onSaveAndOpen,
+}: {
+  raceName: string;
+  nextName?: string;
+  busy: boolean;
+  onStay: () => void;
+  onDiscard: () => void;
+  onSaveAndOpen: () => void;
+}) {
   const { t } = useTranslation("planning");
   return (
     <div

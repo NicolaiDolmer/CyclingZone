@@ -3,19 +3,22 @@
 // klasse, etapeantal, etape-stribe, advarsel om faelles loebsdage og klar-maerke.
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronDownIcon, ChevronRightIcon, Button, EmptyState, FlagIcon } from "../ui";
+import { ChevronDownIcon, ChevronRightIcon, Button, EmptyState, FlagIcon } from "./primitives.ts";
 import {
   groupRacesByWeek,
   overlappingRaces,
   raceReadiness,
   raceStartDate,
   mondayOf,
+  type RaceScope,
+  type Readiness,
+  type SeasonRace,
 } from "../../lib/planningWorkbench.ts";
-import { StageStrip, ReadinessBadge, formatShortDate } from "./planningUi.jsx";
+import { StageStrip, ReadinessBadge, formatShortDate } from "./planningUi.tsx";
 
-function ScopeSwitch({ scope, onScope }) {
+function ScopeSwitch({ scope, onScope }: { scope: RaceScope; onScope: (scope: RaceScope) => void }) {
   const { t } = useTranslation("planning");
-  const options = [
+  const options: Array<{ value: RaceScope; label: string }> = [
     { value: "next7", label: t("raceList.scopeNext7") },
     { value: "season", label: t("raceList.scopeSeason") },
   ];
@@ -41,7 +44,23 @@ function ScopeSwitch({ scope, onScope }) {
   );
 }
 
-function RaceRow({ race, readiness, overlaps, types, selected, dates, onSelect }) {
+function RaceRow({
+  race,
+  readiness,
+  overlaps,
+  types,
+  selected,
+  dates,
+  onSelect,
+}: {
+  race: SeasonRace;
+  readiness: Readiness;
+  overlaps: SeasonRace[];
+  types: string[];
+  selected: boolean;
+  dates: Map<number, string>;
+  onSelect: (id: string) => void;
+}) {
   const { t, i18n } = useTranslation("planning");
   const { t: tr } = useTranslation("races");
   const start = raceStartDate(race, dates);
@@ -79,6 +98,22 @@ function RaceRow({ race, readiness, overlaps, types, selected, dates, onSelect }
   );
 }
 
+interface RaceListProps {
+  races: SeasonRace[];
+  allRaces: SeasonRace[];
+  dates: Map<number, string>;
+  counts: Map<string, number>;
+  withdrawn: Set<string>;
+  terrain: Map<string, string[]>;
+  selectedId?: string | null;
+  onSelect: (id: string) => void;
+  scope: RaceScope;
+  onScope: (scope: RaceScope) => void;
+  showPast: boolean;
+  onShowPast: (value: boolean) => void;
+  today: string;
+}
+
 export default function RaceList({
   races,
   allRaces,
@@ -93,14 +128,14 @@ export default function RaceList({
   showPast,
   onShowPast,
   today,
-}) {
+}: RaceListProps) {
   const { t } = useTranslation("planning");
   const groups = useMemo(() => groupRacesByWeek(races, dates), [races, dates]);
   const thisMonday = mondayOf(today);
   // Ugen med dagens dato er aaben; findes den ikke i listen, er den foerste uge aaben.
   const defaultOpen = groups.some((g) => g.monday === thisMonday) ? thisMonday : groups[0]?.monday;
-  const [toggled, setToggled] = useState({});
-  const isOpen = (monday) => (monday in toggled ? toggled[monday] : monday === defaultOpen);
+  const [toggled, setToggled] = useState<Record<string, boolean>>({});
+  const isOpen = (monday: string) => (monday in toggled ? toggled[monday] : monday === defaultOpen);
 
   return (
     <aside aria-label={t("raceList.title")} data-testid="planning-race-list" className="rounded-cz border border-cz-border bg-cz-card">

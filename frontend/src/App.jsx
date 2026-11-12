@@ -126,7 +126,7 @@ const ScoutingCentralPage = lazy(() => import("./pages/ScoutingCentralPage"));
 const PlanningHubPage = lazy(() => import("./pages/PlanningHubPage"));
 // #7535: den nye planlaegningsside. Egen lazy chunk; ruten sender videre til /planning, naar kontakten
 // planning_workbench er slukket (standard), saa den nuvaerende side er uaendret.
-const PlanningWorkbenchPage = lazy(() => import("./pages/PlanningWorkbenchPage"));
+const PlanningWorkbenchPage = lazy(() => import("./pages/PlanningWorkbenchPage.js"));
 const StaffProfilePage = lazy(() => import("./pages/StaffProfilePage"));
 
 // #3102 etape 3: /races er opløst — kalender-fanen (holdudtagelses-boardet) bor

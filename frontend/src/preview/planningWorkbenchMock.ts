@@ -1,4 +1,3 @@
-// @ts-nocheck: nye komponenter (#7535) bygget paa de eksisterende JS-primitiver, hvis default-null-props checkJs-budgettet ikke kan udtrykke; logikken er i planningWorkbench.ts (strict).
 // #7535 · Preview-seed til planlaegningssiden (/planning/workbench). KUN til lokal/preview-mocken
 // (VITE_PREVIEW_MOCK), aldrig til prod. Datoerne er relative til i dag, saa siden altid har et
 // "naeste 7 dage" at vise; loebsdage deles bevidst mellem nogle loeb, saa overlap og ugeoversigtens
@@ -16,7 +15,7 @@ export function isWorkbenchPreview() {
 function copenhagenToday() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Copenhagen", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 }
-function addDays(date, n) {
+function addDays(date: string, n: number): string {
   const d = new Date(`${date}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
@@ -24,10 +23,11 @@ function addDays(date, n) {
 
 const TODAY = copenhagenToday();
 const G0 = 200; // loebsdag for i dag
-const gd = (offset) => G0 + offset;
+const gd = (offset: number) => G0 + offset;
 
 // [id, navn, klasse, etapetyper, startOffset, slutOffset]
-const RACE_DEFS = [
+type RaceDef = [string, string, string, string[], number, number];
+const RACE_DEFS: RaceDef[] = [
   ["wb-piceno", "Giro del Piceno", "Class1", ["flat"], 0, 0],
   ["wb-dender", "Omloop van de Denderstreek", "Class2", ["rolling"], 1, 1],
   ["wb-preview", "Tour de Preview", "ProSeries", ["flat", "mountain", "high_mountain", "itt"], 1, 4],
@@ -60,7 +60,7 @@ const RACES = RACE_DEFS.map(([id, name, raceClass, types, start, end]) => ({
 }));
 
 // Ruteprofiler: kopier af seedets egne etaper (samme felter som race_stage_profiles) pr. rutetype.
-const TEMPLATE = {
+const TEMPLATE: Record<string, Record<string, unknown> | undefined> = {
   flat: SEED_STAGE_PROFILES.find((p) => p.race_id === "race-up-1" && p.stage_number === 1),
   mountain: SEED_STAGE_PROFILES.find((p) => p.race_id === "race-up-1" && p.stage_number === 2),
   high_mountain: SEED_STAGE_PROFILES.find((p) => p.race_id === "race-up-1" && p.stage_number === 3),
@@ -68,17 +68,19 @@ const TEMPLATE = {
   rolling: SEED_STAGE_PROFILES.find((p) => p.race_id === "race-live-1"),
 };
 
-export const PLANNING_STAGE_PROFILES = RACE_DEFS.flatMap(([id, , , types]) =>
+// Raekkerne spredes ind i seedets egen liste i mockHandlers.js; en lav, loes type holder dens udledte typer uroerte.
+export const PLANNING_STAGE_PROFILES: any[] = RACE_DEFS.flatMap(([id, , , types]) =>
   types.map((type, i) => ({ ...TEMPLATE[type], race_id: id, stage_number: i + 1, profile_type: type })),
 );
 
 export const PLANNING_RACE_IDS = new Set(RACE_DEFS.map((d) => d[0]));
 
 const ABILITY_KEYS = ["climbing", "time_trial", "sprint", "punch", "endurance", "cobblestone", "acceleration", "recovery", "tactics", "positioning", "flat", "tempo", "durability", "aggression", "descending"];
-const abilities = (over) => Object.fromEntries(ABILITY_KEYS.map((k) => [k, over[k] ?? 52]));
+const abilities = (over: Record<string, number>) => Object.fromEntries(ABILITY_KEYS.map((k) => [k, over[k] ?? 52]));
 
 // [id, navn, type, evner, form, traethed, skadet]
-const RIDER_DEFS = [
+type RiderDef = [string, string, string, Record<string, number>, number, number, boolean];
+const RIDER_DEFS: RiderDef[] = [
   ["wb-r01", "Nebiyu Berhane", "climber", { climbing: 78, endurance: 70, recovery: 66 }, 72, 30, false],
   ["wb-r02", "Wilson Maldonado", "sprinter", { sprint: 76, acceleration: 74, flat: 70 }, 64, 29, false],
   ["wb-r03", "Fei Fu", "sprinter", { sprint: 79, acceleration: 72, positioning: 68 }, 72, 26, false],
@@ -97,17 +99,17 @@ const RIDER_DEFS = [
   ["wb-r16", "Nicolas Sanz", "climber", { climbing: 76, endurance: 72, recovery: 64 }, 62, 18, false],
 ];
 
-const FIT = { flat: ["sprint", "flat"], rolling: ["flat", "punch"], mountain: ["climbing", "endurance"], high_mountain: ["climbing", "endurance", "recovery"], itt: ["time_trial", "tempo"] };
-const fitFor = (ab, type) => {
+const FIT: Record<string, string[]> = { flat: ["sprint", "flat"], rolling: ["flat", "punch"], mountain: ["climbing", "endurance"], high_mountain: ["climbing", "endurance", "recovery"], itt: ["time_trial", "tempo"] };
+const fitFor = (ab: Record<string, number>, type: string) => {
   const keys = FIT[type] ?? ["flat"];
   return Math.round(keys.reduce((s, k) => s + (ab[k] ?? 50), 0) / keys.length);
 };
 
-const day = (offset) => addDays(TODAY, offset);
-const ISO_START = (offset) => `${day(offset)}T11:00:00Z`;
+const day = (offset: number) => addDays(TODAY, offset);
+const ISO_START = (offset: number) => `${day(offset)}T11:00:00Z`;
 
 // Gemte udtagelser: nogle loeb er klar, nogle mangler ryttere, nogle er tomme.
-const PICKS = {
+const PICKS: Record<string, string[]> = {
   "wb-piceno": ["wb-r02", "wb-r03", "wb-r04", "wb-r06", "wb-r11", "wb-r13"],
   "wb-dender": ["wb-r05", "wb-r09", "wb-r12"],
   "wb-preview": ["wb-r01", "wb-r07", "wb-r08", "wb-r10", "wb-r15", "wb-r16", "wb-r04", "wb-r11"],
@@ -119,7 +121,7 @@ const entries = Object.entries(PICKS).flatMap(([raceId, ids]) =>
   ids.map((riderId, i) => ({ raceId, riderId, raceRole: i === 0 ? "captain" : null })),
 );
 
-const overlaps = (a, b) => a.id !== b.id && a.gameDayStart <= b.gameDayEnd && b.gameDayStart <= a.gameDayEnd;
+const overlaps = (a: { id: string; gameDayStart: number; gameDayEnd: number }, b: { id: string; gameDayStart: number; gameDayEnd: number }) => a.id !== b.id && a.gameDayStart <= b.gameDayEnd && b.gameDayStart <= a.gameDayEnd;
 
 export const PLANNING_SEASON_SEED = {
   enabled: true,
@@ -136,7 +138,7 @@ export const PLANNING_SEASON_SEED = {
 };
 
 /** Svar for GET /api/races/:id/selection paa de seedede loeb, ellers null. */
-export function planningSelectionSeed(raceId) {
+export function planningSelectionSeed(raceId: string) {
   const idx = RACE_DEFS.findIndex((d) => d[0] === raceId);
   if (idx < 0) return null;
   const [, name, , types, start] = RACE_DEFS[idx];
@@ -164,7 +166,7 @@ export function planningSelectionSeed(raceId) {
         name: riderName,
         primaryType: type,
         secondaryType: null,
-        suitability: Math.round(stageSuitability.reduce((s, v) => s + v, 0) / stageSuitability.length),
+        suitability: Math.round(stageSuitability.reduce((s: number, v: number) => s + v, 0) / stageSuitability.length),
         stageSuitability,
         form,
         fatigue,

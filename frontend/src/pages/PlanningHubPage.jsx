@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { PageHeader, Tabs, TabList, Tab, ChevronLeftIcon } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
-import { usePlanningWorkbenchFlag } from "../lib/usePlanningWorkbenchFlag.js"; // #7535
+import { usePlanningWorkbenchFlag } from "../lib/usePlanningWorkbenchFlag.ts"; // #7535
 import RaceHubBoard from "../components/racehub/RaceHubBoard.jsx";
 import SeasonView from "../components/racehub/SeasonView.jsx";
 import SeasonDayToggle from "../components/racehub/SeasonDayToggle.jsx";

@@ -1,16 +1,42 @@
-// @ts-nocheck: nye komponenter (#7535) bygget paa de eksisterende JS-primitiver, hvis default-null-props checkJs-budgettet ikke kan udtrykke; logikken er i planningWorkbench.ts (strict).
 // #7535 · Ruteprofilen i planlaegningssiden: SAMME tegning som loebssiden (StageProfileCard med den
 // rigtige hoejdeserie og kategoriserede stigninger). Aabner altid paa etape 1. Pile og prikker
 // bladrer mellem etaper; et endagsloeb har hverken pile eller prikker, kun profilen og "Skjul".
 // "Skjul profil" folder den til etape-linjen, og valget huskes af siden.
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, ChevronDownIcon, SkeletonLines } from "../ui";
-import StageProfileCard from "../race/StageProfileCard.jsx";
-import LegacyStageProfileCard from "../race/LegacyStageProfileCard.jsx";
-import { hasRouteData } from "../../lib/stageRouteProfile.js";
+import {
+  Button,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  SkeletonLines,
+  StageProfileCard,
+  LegacyStageProfileCard,
+  hasRouteData,
+} from "./primitives.ts";
 
-export default function RouteProfile({ raceId, profiles, loading, hidden, onToggleHidden, hasClassifications }) {
+interface StageProfileRow {
+  stage_number?: number | null;
+  profile_type?: string | null;
+  [key: string]: unknown;
+}
+
+export default function RouteProfile({
+  raceId,
+  profiles,
+  loading,
+  hidden,
+  onToggleHidden,
+  hasClassifications,
+}: {
+  raceId: string;
+  profiles: StageProfileRow[];
+  loading: boolean;
+  hidden: boolean;
+  onToggleHidden: () => void;
+  hasClassifications: boolean;
+}) {
   const { t } = useTranslation("planning");
   const [index, setIndex] = useState(0);
   useEffect(() => setIndex(0), [raceId]); // altid etape 1 ved nyt loeb

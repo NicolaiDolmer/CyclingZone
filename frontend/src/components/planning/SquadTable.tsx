@@ -1,24 +1,29 @@
-// @ts-nocheck: nye komponenter (#7535) bygget paa de eksisterende JS-primitiver, hvis default-null-props checkJs-budgettet ikke kan udtrykke; logikken er i planningWorkbench.ts (strict).
 // #7535 · Trup-tabellen (Squad-visningen). En raekke pr. rytter: vaelg, rolle, status, rating,
 // form, traethed, rute-match for hele loebet og en kolonne pr. rutetype i loebet. Hver kolonne
 // sorterer (cybersimon 2/11). Standardsortering er rute-match for hele loebet.
 //
 // Mobil (D-047, 640 px og smalere): navnecellen (med afkrydsning og rolle) + de tre kolonner
 // rute-match, form og traethed. Resten staar i desktop-tabellen. Ingen vandret scroll paa mobil.
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import SortableTh from "../ui/SortableTh.jsx";
-import { Select } from "../ui";
-import RiderNameCell from "../rider/RiderNameCell.jsx";
-import RiderBadges from "../rider/RiderBadges.jsx";
-import BestRoleTag from "../rider/BestRoleTag.jsx";
-import TerrainTypeGlyph from "../race/TerrainTypeGlyph.jsx";
-import { availableRoles, roleOf, bestOf } from "../../lib/planningWorkbench.ts";
+import { SortableTh, Select, RiderNameCell, RiderBadges, BestRoleTag, TerrainTypeGlyph } from "./primitives.ts";
+import {
+  availableRoles,
+  roleOf,
+  bestOf,
+  type ProfileColumn,
+  type RoleKey,
+  type Selection,
+  type SquadRow,
+  type SquadSort,
+  type SquadSortKey,
+} from "../../lib/planningWorkbench.ts";
 
 const CHIP =
   "inline-flex items-center justify-center text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded shrink-0";
 const NEUTRAL = "bg-cz-subtle text-cz-2 border border-cz-border";
 
-function StatusCell({ row }) {
+function StatusCell({ row }: { row: SquadRow }) {
   const { t } = useTranslation("planning");
   const badges = [row.injured && "injured", row.outgoing && "outgoing"];
   return (
@@ -35,7 +40,7 @@ function StatusCell({ row }) {
   );
 }
 
-function FatigueCell({ value }) {
+function FatigueCell({ value }: { value: number | null }) {
   if (value == null) return <span className="text-cz-3">-</span>;
   return (
     <span className="inline-flex items-center justify-end gap-1.5">
@@ -43,6 +48,19 @@ function FatigueCell({ value }) {
       <span className="tabular-nums">{value}</span>
     </span>
   );
+}
+
+interface SquadTableProps {
+  rows: SquadRow[];
+  selection: Selection;
+  sort: SquadSort;
+  onSort: (key: SquadSortKey) => void;
+  profileCols: ProfileColumn[];
+  max: number;
+  readOnly: boolean;
+  sprintLeaderAllowed: boolean;
+  onToggle: (riderId: string) => void;
+  onRole: (riderId: string, role: RoleKey) => void;
 }
 
 export default function SquadTable({
@@ -56,7 +74,7 @@ export default function SquadTable({
   sprintLeaderAllowed,
   onToggle,
   onRole,
-}) {
+}: SquadTableProps) {
   const { t } = useTranslation("planning");
   const picked = new Set(selection.riderIds);
   const atMax = selection.riderIds.length >= max;
@@ -64,7 +82,11 @@ export default function SquadTable({
   const bestMatch = bestOf(rows, (r) => r.routeMatch);
   const bestByProfile = Object.fromEntries(profileCols.map((c) => [c.profileType, bestOf(rows, (r) => r.byProfile[c.profileType] ?? null)]));
 
-  const th = (key, label, { numeric = true, hideMobile = true, title } = {}) => (
+  const th = (
+    key: SquadSortKey,
+    label: ReactNode,
+    { numeric = true, hideMobile = true, title }: { numeric?: boolean; hideMobile?: boolean; title?: string } = {},
+  ) => (
     <SortableTh
       key={key}
       sortKey={key}
@@ -93,7 +115,7 @@ export default function SquadTable({
             {th("form", t("squad.form"), { hideMobile: false })}
             {th("fatigue", t("squad.fatigue"), { hideMobile: false })}
             {profileCols.map((c) =>
-              th(`profile:${c.profileType}`, (
+              th(`profile:${c.profileType}` as SquadSortKey, (
                 <span className="inline-flex flex-col items-end gap-0.5">
                   <TerrainTypeGlyph profileType={c.profileType} size={14} showLabel labelClassName="text-3xs" />
                   <span className="tabular-nums">{`×${c.count}`}</span>
@@ -202,13 +224,23 @@ export default function SquadTable({
   );
 }
 
-function RoleSelect({ row, selection, roles, onRole }) {
+function RoleSelect({
+  row,
+  selection,
+  roles,
+  onRole,
+}: {
+  row: SquadRow;
+  selection: Selection;
+  roles: RoleKey[];
+  onRole: (riderId: string, role: RoleKey) => void;
+}) {
   const { t } = useTranslation("planning");
   return (
     <Select
       size="sm"
       value={roleOf(selection, row.id)}
-      onChange={(e) => onRole(row.id, e.target.value)}
+      onChange={(e: { target: { value: string } }) => onRole(row.id, e.target.value as RoleKey)}
       aria-label={t("squad.roleFor", { name: row.name })}
       className="min-w-[8.5rem]"
     >

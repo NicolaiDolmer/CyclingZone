@@ -11,37 +11,48 @@ import { fetchStageProfiles } from "../components/race/stagePageV2/stageProfiles
 
 const API = import.meta.env.VITE_API_URL;
 
-/** @returns {Promise<{ ok: boolean, status?: number, data?: any }>} */
-async function authed(path, init = {}) {
+// Svarets krop er serverens JSON; siden laeser kun de felter den kender.
+export interface ApiResult {
+  ok: boolean;
+  status?: number;
+  data?: any;
+}
+
+async function authed(path: string, init: RequestInit = {}): Promise<ApiResult> {
   const headers = await authHeaders();
   if (!headers) return { ok: false, status: 401 };
-  return apiFetch(`${API}${path}`, { ...init, headers });
+  return apiFetch(`${API}${path}`, { ...init, headers }) as unknown as Promise<ApiResult>;
 }
 
 export async function loadSeasonOverview() {
   return authed("/api/races/selection/season");
 }
 
-export async function loadRaceSelection(raceId) {
+export async function loadRaceSelection(raceId: string) {
   return authed(`/api/races/${encodeURIComponent(raceId)}/selection`);
 }
 
-export async function saveRaceSelection(raceId, body) {
+export async function saveRaceSelection(raceId: string, body: unknown) {
   return authed(`/api/races/${encodeURIComponent(raceId)}/selection`, { method: "PUT", body: JSON.stringify(body) });
 }
 
 // Etapeprofilerne aendrer sig ikke mens siden er aaben; ét opslag pr. loeb er nok.
-/** @type {Map<string, Promise<any[]>>} */
-const profileCache = new Map();
+const profileCache = new Map<string, Promise<StageProfileRow[]>>();
 
 /** Alle etapers profil for ét loeb (inkl. hoejdeserie og stigninger). Fejl giver en tom liste. */
-export function loadStageProfiles(raceId) {
+export interface StageProfileRow {
+  stage_number?: number | null;
+  profile_type?: string | null;
+  [key: string]: unknown;
+}
+
+export function loadStageProfiles(raceId: string): Promise<StageProfileRow[]> {
   let hit = profileCache.get(raceId);
   if (!hit) {
     hit = Promise.resolve(fetchStageProfiles(supabase, raceId))
-      .then((res) => (res.error ? [] : /** @type {any[]} */ (res.data ?? [])))
+      .then((res) => (res.error ? [] : ((res.data ?? []) as StageProfileRow[])))
       .catch(() => []);
-    hit.then((rows) => {
+    void hit.then((rows) => {
       if (!rows.length) profileCache.delete(raceId); // prøv igen næste gang, hvis opslaget fejlede
     });
     profileCache.set(raceId, hit);
@@ -53,11 +64,9 @@ const TERRAIN_CHUNK = 25; // 25 loeb x op til 21 etaper holder sig under PostgRE
 
 /**
  * Rutetyperne (profile_type pr. etape) for en liste loeb, til etape-striben i listen og ugeoversigten.
- * @returns {Promise<Map<string, string[]>>} loeb-id -> typer i etape-orden
  */
-export async function loadRaceTerrain(raceIds) {
-  /** @type {Map<string, string[]>} */
-  const out = new Map();
+export async function loadRaceTerrain(raceIds: string[]): Promise<Map<string, string[]>> {
+  const out = new Map<string, string[]>();
   for (let i = 0; i < raceIds.length; i += TERRAIN_CHUNK) {
     const chunk = raceIds.slice(i, i + TERRAIN_CHUNK);
     try {

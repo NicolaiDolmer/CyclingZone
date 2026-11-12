@@ -1,4 +1,3 @@
-// @ts-nocheck: nye komponenter (#7535) bygget paa de eksisterende JS-primitiver, hvis default-null-props checkJs-budgettet ikke kan udtrykke; logikken er i planningWorkbench.ts (strict).
 // #7535 · Planlaegningssiden (Planning Workbench), trin 1. Erstatter paa sigt de fire faner
 // (Udtagelse, Form, Strategi, Kalender) med én side: loebsliste, ugeoversigt, ruteprofil og
 // trup-tabel, med en bjaelke for ugemte aendringer. Taktik (trin 2) og Peak form + mobil-ark
@@ -6,20 +5,20 @@
 //
 // Findes KUN bag kontakten planning_workbench (off|beta|on, standard off). Slukket: ruten sender
 // videre til den nuvaerende planlaegningsside, som er uroert. Siden henter og gemmer gennem de
-// eksisterende endpoints (se lib/planningWorkbenchData.js); der er ingen nye skrive-endpoints.
+// eksisterende endpoints (se lib/planningWorkbenchData.ts); der er ingen nye skrive-endpoints.
 //
 // Layout: T2 wide data (cap 1600 px). Spec: docs/superpowers/specs/2026-11-02-planning-workbench-design.md
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { Link, Navigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { PageHeader, Button, EmptyState, ErrorState, SkeletonLines, PageLoader, CalendarIcon, FlagIcon } from "../components/ui";
-import { buttonClass } from "../components/ui/buttonStyles.js";
-import WeekBoard from "../components/planning/WeekBoard.jsx";
-import RaceList from "../components/planning/RaceList.jsx";
-import RaceWorkbench from "../components/planning/RaceWorkbench.jsx";
-import UnsavedBar from "../components/planning/UnsavedBar.jsx";
-import { usePlanningWorkbenchFlag } from "../lib/usePlanningWorkbenchFlag.js";
-import { loadSeasonOverview, loadRaceTerrain } from "../lib/planningWorkbenchData.js";
+import { PageHeader, Button, EmptyState, ErrorState, SkeletonLines, PageLoader, CalendarIcon, FlagIcon, buttonClass } from "../components/planning/primitives.ts";
+import WeekBoard from "../components/planning/WeekBoard.tsx";
+import RaceList from "../components/planning/RaceList.tsx";
+import RaceWorkbench, { type RaceWorkbenchHandle } from "../components/planning/RaceWorkbench.tsx";
+import UnsavedBar from "../components/planning/UnsavedBar.tsx";
+import { usePlanningWorkbenchFlag } from "../lib/usePlanningWorkbenchFlag.ts";
+import { loadSeasonOverview, loadRaceTerrain } from "../lib/planningWorkbenchData.ts";
 import {
   addDays,
   copenhagenToday,
@@ -32,10 +31,24 @@ import {
   raceStartDate,
   replaceRaceEntries,
   visibleRaces,
+  type DayDate,
+  type RaceScope,
+  type SeasonEntry,
+  type SeasonRace,
 } from "../lib/planningWorkbench.ts";
 
+// Saesonmatrixens svar (GET /api/races/selection/season); siden laeser kun de felter den kender.
+interface SeasonResponse {
+  enabled?: boolean;
+  season?: { number?: number } | null;
+  races?: SeasonRace[];
+  entries?: SeasonEntry[];
+  dayDates?: DayDate[];
+  withdrawnRaceIds?: string[];
+}
+
 // Det spilleren sidst valgte huskes pr. browser (aldrig noget der skal overleve en ny enhed).
-function readPref(key, fallback) {
+function readPref<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(`cz-planning-${key}`);
     return raw === null ? fallback : JSON.parse(raw);
@@ -43,7 +56,7 @@ function readPref(key, fallback) {
     return fallback;
   }
 }
-function writePref(key, value) {
+function writePref(key: string, value: unknown) {
   try {
     localStorage.setItem(`cz-planning-${key}`, JSON.stringify(value));
   } catch {
@@ -51,7 +64,7 @@ function writePref(key, value) {
   }
 }
 
-function Toggle({ pressed, onClick, children }) {
+function Toggle({ pressed, onClick, children }: { pressed: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <Button variant="secondary" size="sm" aria-pressed={pressed} onClick={onClick} className={pressed ? "border-cz-3 bg-cz-subtle" : ""}>
       {children}
@@ -71,20 +84,20 @@ function Workbench() {
   const [searchParams, setSearchParams] = useSearchParams();
   const today = useMemo(() => copenhagenToday(), []);
 
-  const [load, setLoad] = useState({ state: "loading", payload: null });
-  const [entries, setEntries] = useState([]);
-  const [terrain, setTerrain] = useState(() => new Map());
+  const [load, setLoad] = useState<{ state: "loading" | "error" | "ready"; payload: SeasonResponse | null }>({ state: "loading", payload: null });
+  const [entries, setEntries] = useState<SeasonEntry[]>([]);
+  const [terrain, setTerrain] = useState<Map<string, string[]>>(() => new Map());
   const [showWeek, setShowWeek] = useState(() => readPref("week", false));
   const [showList, setShowList] = useState(() => readPref("list", true));
   const [profileHidden, setProfileHidden] = useState(() => readPref("profileHidden", false));
-  const [scope, setScope] = useState("next7");
+  const [scope, setScope] = useState<RaceScope>("next7");
   const [showPast, setShowPast] = useState(false);
-  const [weekMonday, setWeekMonday] = useState(null);
+  const [weekMonday, setWeekMonday] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
-  const [pendingId, setPendingId] = useState(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
   const [barBusy, setBarBusy] = useState(false);
-  const workbenchRef = useRef(null);
-  const anchorRef = useRef(null);
+  const workbenchRef = useRef<RaceWorkbenchHandle>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
   const userPicked = useRef(false);
 
   const fetchSeason = useCallback(async () => {
@@ -107,9 +120,9 @@ function Workbench() {
   }, [fetchSeason]);
 
   const payload = load.payload;
-  const allRaces = useMemo(() => payload?.races ?? [], [payload]);
+  const allRaces = useMemo<SeasonRace[]>(() => payload?.races ?? [], [payload]);
   const dates = useMemo(() => dateIndex(payload?.dayDates ?? []), [payload]);
-  const withdrawn = useMemo(() => new Set(payload?.withdrawnRaceIds ?? []), [payload]);
+  const withdrawn = useMemo(() => new Set<string>(payload?.withdrawnRaceIds ?? []), [payload]);
   const counts = useMemo(() => pickedCounts(entries), [entries]);
 
   // Etape-striben i listen og ugeoversigten hentes for de kommende loeb (forbi-loeb vises ikke som standard).
@@ -130,14 +143,23 @@ function Workbench() {
 
   // Det valgte loeb: ?race= i adressen, ellers det foerste kommende loeb der mangler en trup.
   const requestedId = searchParams.get("race");
-  const selected = useMemo(() => {
-    const byId = allRaces.find((r) => r.id === requestedId);
-    if (byId) return byId;
+  const fallback = useMemo(() => {
     const upcoming = listRaces.length ? listRaces : allRaces.filter((r) => !isRacePast(r));
     return upcoming.find((r) => raceReadiness(r, counts.get(r.id) ?? 0, withdrawn).state === "missing") ?? upcoming[0] ?? null;
-    // counts er bevidst ikke en afhaengighed: valget maa ikke hoppe naar en trup gemmes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allRaces, requestedId, listRaces, withdrawn]);
+  }, [allRaces, listRaces, counts, withdrawn]);
+  const selected: SeasonRace | null = allRaces.find((r) => r.id === requestedId) ?? fallback;
+  // Foerste gang lander spilleren paa fallback-loebet; derefter staar valget i adressen og hopper aldrig, naar en trup gemmes.
+  useEffect(() => {
+    if (load.state !== "ready" || requestedId || !fallback) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("race", fallback.id);
+        return next;
+      },
+      { replace: true },
+    );
+  }, [load.state, requestedId, fallback, setSearchParams]);
 
   // Ugeoversigten starter i ugen for det valgte loeb (ellers dagens uge).
   const weekGroups = useMemo(() => groupRacesByWeek(boardRaces, dates), [boardRaces, dates]);
@@ -150,7 +172,7 @@ function Workbench() {
   }, [weekMonday, selected, dates, today]);
 
   const selectRace = useCallback(
-    (id) => {
+    (id: string) => {
       userPicked.current = true;
       setSearchParams(
         (prev) => {
@@ -168,7 +190,7 @@ function Workbench() {
   );
 
   // Et klik paa et andet loeb med ugemte aendringer aabner bjaelken i stedet for at miste dem.
-  const requestSelect = (id) => {
+  const requestSelect = (id: string) => {
     if (selected && id === selected.id) return;
     if (dirty) {
       setPendingId(id);
@@ -189,7 +211,7 @@ function Workbench() {
   // Browserens egen advarsel ved luk/genindlaes, saa en ugemt trup aldrig forsvinder tavst.
   useEffect(() => {
     if (!dirty) return undefined;
-    const handler = (e) => {
+    const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = "";
     };
@@ -216,7 +238,7 @@ function Workbench() {
     }
   };
 
-  const onSaved = useCallback((raceId, next) => setEntries((cur) => replaceRaceEntries(cur, raceId, next)), []);
+  const onSaved = useCallback((raceId: string, next: SeasonEntry[]) => setEntries((cur) => replaceRaceEntries(cur, raceId, next)), []);
   const toggleWeek = () => {
     setShowWeek(!showWeek);
     writePref("week", !showWeek);
@@ -316,7 +338,7 @@ function Workbench() {
             terrain={terrain}
             selectedId={selected?.id}
             onSelect={requestSelect}
-            onWeekChange={(dir) => setWeekMonday(addDays(activeMonday, dir * 7))}
+            onWeekChange={(dir: -1 | 1) => setWeekMonday(addDays(activeMonday, dir * 7))}
             canPrev={firstMonday != null && activeMonday > firstMonday}
             canNext={lastMonday != null && activeMonday < lastMonday}
           />

@@ -12,7 +12,7 @@ export const PLANNING_WORKBENCH_FLAG_KEY = "planning_workbench";
 
 /** @returns {boolean | null} null = hentes endnu, true = tilsluttet for denne spiller, false = slukket */
 export function usePlanningWorkbenchFlag() {
-  const [enabled, setEnabled] = useState(/** @type {boolean | null} */ (null));
+  const [enabled, setEnabled] = useState<boolean | null>(null);
   useEffect(() => {
     let cancelled = false;
     fetchPlayerFeatureFlags().then((flags) => {
