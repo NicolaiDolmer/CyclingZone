@@ -15,6 +15,8 @@
 //
 //   node docs/app/play-listing/tools/take-screenshots.mjs --mode=fixtures [--base=http://127.0.0.1:4173] [--out=<mappe>]
 //   node docs/app/play-listing/tools/take-screenshots.mjs --mode=live [--lang=en|da] [--out=<mappe>] [--no-mask]
+//     live skriver intet til kontoen: sproget er kontoens eget (--lang er kun en kontrol), og
+//     billederne lægges i <mappe>/<sprog>/.
 //   node docs/app/play-listing/tools/take-screenshots.mjs --dry-run      (viser planen, åbner ingen browser)
 import { createRequire } from "node:module";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -48,12 +50,12 @@ export const MASK_SELECTOR = [
 ].join(", ");
 
 export function parseArgs(argv) {
-  const flags = { mode: "fixtures", lang: "en", base: "http://127.0.0.1:4173", mask: true, dryRun: false, out: null };
+  const flags = { mode: "fixtures", lang: "en", langGiven: false, base: "http://127.0.0.1:4173", mask: true, dryRun: false, out: null };
   for (const raw of argv) {
     if (raw === "--dry-run") flags.dryRun = true;
     else if (raw === "--no-mask") flags.mask = false;
     else if (raw.startsWith("--mode=")) flags.mode = raw.slice(7);
-    else if (raw.startsWith("--lang=")) flags.lang = raw.slice(7);
+    else if (raw.startsWith("--lang=")) { flags.lang = raw.slice(7); flags.langGiven = true; }
     else if (raw.startsWith("--base=")) flags.base = raw.slice(7);
     else if (raw.startsWith("--out=")) flags.out = raw.slice(6);
     else throw new Error(`Ukendt flag: ${raw}`);
@@ -65,7 +67,7 @@ export function parseArgs(argv) {
 
 function defaultOut(mode, lang) {
   const root = process.env.LOCALAPPDATA || process.env.HOME || ".";
-  return join(root, "CyclingZone", "play-listing-shots", `${mode}-${lang}`);
+  return join(root, "CyclingZone", "play-listing-shots", mode === "live" ? "live" : `${mode}-${lang}`);
 }
 
 /** Afviser alt Play ville afvise: forkerte mål, mere end 2:1, eller alfa-kanal. */
@@ -154,12 +156,23 @@ async function main() {
     }
   }
 
+  // Live: intet skrives til ejerens konto. Hverken samtykke eller sprog sættes af scriptet, for
+  // appen synkroniserer begge med kontoen, og en syntetisk værdi ville blive gemt i produktion
+  // (Codex-review 12/11). Billederne tages på kontoens eget sprog; skift sprog i appen selv for
+  // at få det andet, og kør scriptet igen.
   const { withOwnerContext } = await import(pathToFileURL(resolve(repo, "scripts/shots/owner-session.mjs")).href);
   flags.base = "https://cyclingzone.org";
-  return withOwnerContext(context, async (ctx) => {
-    await ctx.addInitScript(stabilize, flags.lang);
+  return withOwnerContext({ ...context, locale: undefined }, async (ctx) => {
     const page = await ctx.newPage();
-    return report(await shoot(page, sharp, flags, outDir), outDir, "live") ? 1 : 0;
+    await page.goto(new URL("/dashboard", flags.base).href, { waitUntil: "domcontentloaded" });
+    await page.waitForLoadState("networkidle").catch(() => {});
+    const rendered = (await page.evaluate(() => document.documentElement.lang || "")).slice(0, 2).toLowerCase();
+    console.log(`Appen vises på sprog: ${rendered || "ukendt"}`);
+    if (flags.langGiven && rendered !== flags.lang) {
+      console.error(`--lang=${flags.lang} ønskes, men kontoen vises på "${rendered}". Skift sprog i appen først (scriptet ændrer aldrig kontoen).`);
+      return 1;
+    }
+    return report(await shoot(page, sharp, flags, join(outDir, rendered || "unknown")), outDir, "live") ? 1 : 0;
   });
 }
 

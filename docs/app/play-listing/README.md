@@ -61,15 +61,14 @@ Luk serveren bagefter (Ctrl+C). Resultatet er seks filer på 1080x2160, og scrip
 
 ### 2. Butiksbillederne fra den rigtige app (ejerens egen konto)
 
-Det er rigtige data og dermed rigtige spillere, så billederne gemmes uden for repoet (standard: `%LOCALAPPDATA%\CyclingZone\play-listing-shots\live-en`). Scriptet genbruger ejerens logind-profil fra billedstationen (`scripts/shots/owner-session.mjs`) og ser aldrig adgangskoden.
+Det er rigtige data og dermed rigtige spillere, så billederne gemmes uden for repoet (standard: `%LOCALAPPDATA%\CyclingZone\play-listing-shots\live`). Scriptet genbruger ejerens logind-profil fra billedstationen (`scripts/shots/owner-session.mjs`) og ser aldrig adgangskoden.
 
 ```
 node scripts/shots/owner-session.mjs login
-node docs/app/play-listing/tools/take-screenshots.mjs --mode=live --lang=en
-node docs/app/play-listing/tools/take-screenshots.mjs --mode=live --lang=da
+node docs/app/play-listing/tools/take-screenshots.mjs --mode=live
 ```
 
-Første linje åbner et vindue, hvor ejeren logger ind én gang. Scriptet maskerer links til andre managere og hold med en grå flade. **Det er en hjælp, ikke en garanti.** Før upload åbnes hvert billede, og der tjekkes manuelt at ingen managernavn, holdnavn eller e-mail fra andre spillere er synlig. Auktionssiden er den mest udsatte (bydere og sælgere). Er et navn synligt alligevel: tag billedet om på en tid, hvor siden ikke viser andre, eller beskær.
+Første linje åbner et vindue, hvor ejeren logger ind én gang. Scriptet skriver intet til din konto: hverken sprog eller samtykke bliver ændret, så billederne tages på kontoens eget sprog og lægges i en undermappe med sprogets navn (`...\live\en` eller `...\live\da`). Vil du have begge sprog, så skift sprog i appen selv (Min profil), kør scriptet igen, og skift tilbage bagefter. Tilføj `--lang=da` for at få scriptet til at stoppe, hvis kontoen ikke vises på dansk. Scriptet maskerer links til andre managere og hold med en grå flade. **Det er en hjælp, ikke en garanti.** Før upload åbnes hvert billede, og der tjekkes manuelt at ingen managernavn, holdnavn eller e-mail fra andre spillere er synlig. Auktionssiden er den mest udsatte (bydere og sælgere). Er et navn synligt alligevel: tag billedet om på en tid, hvor siden ikke viser andre, eller beskær.
 
 Ønsker du at stille billederne ind (fx vælge en bestemt rytter eller et bestemt løb), så tag dem med telefonens egen skærmbilledefunktion fra den installerede app og følg reglen om 2:1 ovenfor.
 
