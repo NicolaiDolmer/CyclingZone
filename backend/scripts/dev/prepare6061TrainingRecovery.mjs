@@ -47,10 +47,30 @@ export function buildRecoveryManifest(state) {
  return {issue:6061,as_of:asOf.toISOString(),through:state.through,apply_ready:false,source_fingerprint,summary,candidates,source_snapshot:state};
 }
 
-export async function loadRecoveryInputs(supabase,{through,asOf}){
+// #7832: one approved case is one team-date. The filter narrows the work rows
+// BEFORE the rider list is built, so other dates (already paid or not yet
+// approved) never reach the inventory, the source hashes or the payload.
+export function selectCaseWork(work,{team,tickDate}={}){
+ const quarantined=work.filter(w=>w.quarantined_rider_ids?.length);
+ if(!team)return quarantined;
+ const selected=quarantined.filter(w=>w.team_id===team&&w.tick_date===tickDate);
+ if(!selected.length)throw new Error('No quarantined work row matches --team and --tick-date');
+ // A rider quarantined on the same date by another team is an ownership
+ // ambiguity the unfiltered inventory would flag; a filtered run must not hide it.
+ const riders=new Set(selected.flatMap(w=>w.quarantined_rider_ids));
+ const keys=new Set(selected.map(w=>`${w.season_id}:${w.tick_date}`));
+ if(quarantined.some(w=>w.team_id!==team&&keys.has(`${w.season_id}:${w.tick_date}`)&&w.quarantined_rider_ids.some(id=>riders.has(id))))throw new Error('Another team quarantined a selected rider on the same date; run the unfiltered review');
+ return selected;
+}
+export async function loadRecoveryInputs(supabase,{through,asOf,team,tickDate}){
  // schema-columns-ok: date-work/settlement/tick columns come from the tested #5928 migrations and were checked through information_schema on 3/10.
- const work=await fetchAllRows(()=>supabase.from('training_date_work').select('team_id,season_id,tick_date,game_days,quarantined_rider_ids,opening_conditions,quarantine_evidence,updated_at').lte('tick_date',through).order('season_id').order('tick_date').order('team_id'));
- const relevant=work.filter(w=>w.quarantined_rider_ids?.length);const ids=[...new Set(relevant.flatMap(w=>w.quarantined_rider_ids))];const teamIds=[...new Set(relevant.map(w=>w.team_id))];
+ const work=await fetchAllRows(()=>{
+  let q=supabase.from('training_date_work').select('team_id,season_id,tick_date,game_days,quarantined_rider_ids,opening_conditions,quarantine_evidence,updated_at').lte('tick_date',through);
+  // Date only, not team: the ambiguity check above needs the other owners of that date.
+  if(team)q=q.eq('tick_date',tickDate);
+  return q.order('season_id').order('tick_date').order('team_id');
+ });
+ const relevant=selectCaseWork(work,{team,tickDate});const ids=[...new Set(relevant.flatMap(w=>w.quarantined_rider_ids))];const teamIds=[...new Set(relevant.map(w=>w.team_id))];
  const read=(table,columns,inColumn,wanted,orders)=>fetchAllRowsChunkedIn(wanted,chunk=>{
   let q=supabase.from(table).select(columns).in(inColumn,chunk);for(const col of orders)q=q.order(col);return q;
  });
@@ -84,9 +104,29 @@ export async function loadRecoveryInputs(supabase,{through,asOf}){
  const legacyReports=[...byId.values()].filter(r=>reportRiders(r).some(entry=>wanted.has(entry?.rider_id)));
  return {through,asOf,work:relevant,riders,conditions,ticks,settlements,loads,plans,weekPlans,legacyReports};
 }
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isCalendarDate=s=>/^\d{4}-\d{2}-\d{2}$/.test(s)&&new Date(`${s}T00:00:00Z`).toISOString().slice(0,10)===s;
 export function parseArgs(argv){
- const opts={};for(const arg of argv){if(arg.startsWith('--through='))opts.through=arg.slice(10);else if(arg.startsWith('--as-of='))opts.asOf=arg.slice(8);else throw new Error(`Unsupported argument: ${arg}; this tool is read-only`);}
- if(!opts.through||!opts.asOf)throw new Error('Use --through=YYYY-MM-DD --as-of=ISO_TIMESTAMP');return opts;
+ const opts={};for(const arg of argv){if(arg.startsWith('--through='))opts.through=arg.slice(10);else if(arg.startsWith('--as-of='))opts.asOf=arg.slice(8);
+  else if(arg.startsWith('--team='))opts.team=arg.slice(7);else if(arg.startsWith('--tick-date='))opts.tickDate=arg.slice(12);else if(arg.startsWith('--case='))opts.caseId=arg.slice(7);
+  else throw new Error(`Unsupported argument: ${arg}; this tool is read-only`);}
+ if(!opts.through||!opts.asOf)throw new Error('Use --through=YYYY-MM-DD --as-of=ISO_TIMESTAMP');
+ if(!opts.team!==!opts.tickDate)throw new Error('--team and --tick-date must be given together');
+ if(opts.caseId!==undefined&&!opts.team)throw new Error('--case requires --team and --tick-date');
+ if(opts.team){
+  if(!UUID.test(opts.team))throw new Error('--team must be a team uuid');
+  if(!isCalendarDate(opts.tickDate))throw new Error('--tick-date must be YYYY-MM-DD');
+  if(opts.tickDate>opts.through)throw new Error('--tick-date must not be after --through');
+  if(opts.caseId!==undefined&&!/^[a-z0-9][a-z0-9-]{0,63}$/.test(opts.caseId))throw new Error('--case must be lowercase letters, digits and dashes');
+  opts.team=opts.team.toLowerCase();
+ }
+ return opts;
+}
+// Without a filter the shared directory and fixed names stay as before. A
+// filtered run writes into its own case folder so two cases never overwrite.
+export function outputDirectory(repoRoot,{team,tickDate,caseId}={}){
+ const base=resolve(repoRoot,'balance-internals','6061');
+ return team?resolve(base,caseId??`${tickDate}-${team.slice(0,8)}`):base;
 }
 async function main(){
  const opts=parseArgs(process.argv.slice(2));
@@ -97,7 +137,8 @@ async function main(){
  const supabase=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_KEY,{auth:{persistSession:false}});
  const result=buildRecoveryManifest(await loadRecoveryInputs(supabase,opts));
  result.captured_at=new Date().toISOString(); // observation time, distinct from the explicit cutoff evaluation clock
- const directory=resolve(fileURLToPath(new URL('../../..',import.meta.url)),'balance-internals','6061');mkdirSync(directory,{recursive:true});
+ if(opts.team)result.case_filter={team_id:opts.team,tick_date:opts.tickDate};
+ const directory=outputDirectory(fileURLToPath(new URL('../../..',import.meta.url)),opts);mkdirSync(directory,{recursive:true});
  writeFileSync(resolve(directory,`recovery-${opts.through}.json`),JSON.stringify(result,null,2));
  console.log(JSON.stringify({through:result.through,as_of:result.as_of,...result.summary}));
 }
