@@ -53,6 +53,7 @@ export async function surfaceFatigueNow7801({ supabase, race, stages, conditions
       supabase, conditions, abilityByRider, teamId, now, atStage: today ? { raceId: race.id, stageNumber } : null,
     });
   } catch (err) {
+    // best-effort: visningen må aldrig vælte Udtagelsen/Holdfanen; tom map = "—", ikke morgenens tal.
     console.warn(`[fatigue-now-7801] surface fatigue omitted: ${err?.message ?? err}`);
     return new Map();
   }
