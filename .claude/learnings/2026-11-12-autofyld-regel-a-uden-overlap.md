@@ -1,0 +1,9 @@
+# #7339: sen udfyldning brugte regel A uden overlap
+
+**Symptom.** Assistentens sene udfyldning (late_fill) satte et hold med for få egnede ryttere på et etapeløb, under gulvet, og sendte "assistenten udtog dit hold". Samme dag blev holdet taget ud ved start (`did_not_start`), og det fik også beskeden om, at truppen var under gulvet. De to beskeder modsagde hinanden. Ramte var små, inaktive menneskehold i senior- og juniorløb.
+
+**Rodårsag.** `viableMinimum()` i `backend/lib/raceEntryGenerator.js` sænkede gulvet til regel A's minimum (#6739) for alle etapeløb uden betingelser. Ved start gælder regel A kun, når holdet er kort fordi ryttere kører et andet løb på løbets startdag (`overlapStartsShort` i `raceFieldIntegrity.js`). Generatoren og startreglen var altså ikke enige. En eksisterende test låste fejlen fast: den forventede, at et etapeløb uden noget overlap beholdt fyldet under gulvet.
+
+**Rettelse.** Sweepen (`dropBelowFloor`) bruger nu samme regel som starten. Et etapeløb under gulvet beholdes kun, når holdets ryttere er optaget af et andet løb på startdagen (låste vinduer, tidligere picks, eller et medtaget senere løb samme startdag), og når picks plus de optagne når gulvet. Kun startdagen tæller, ikke senere dage i vinduet. Løbets egne manuelle ryttere tæller ikke som overlap. Det gælder både i drop-tjekket og i `floorAwareCap`. Managerens egne knapper (`dropBelowFloor=false`) er uændrede.
+
+**Forebyggelse.** Når en lempelse af en regel er defineret ét sted (her ved start), skal en anden kodevej, der forudsiger samme udfald, kalde den samme rene funktion i stedet for at genopfinde en forenklet udgave. Testen skal dække både "lempelsen gælder" og "lempelsen gælder ikke", ikke kun det første. Nye tests dækker intet overlap, overlap kun på en senere dag, manuelle ryttere, junior-etapeløb og sweepen med og uden besked.

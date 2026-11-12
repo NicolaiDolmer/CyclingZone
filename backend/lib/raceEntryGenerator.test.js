@@ -2866,13 +2866,51 @@ test("#7339 B: gulvet tæller manuelle ryttere med; et etapeløb følger regel A
   }).A.length;
   assert.equal(topUp(3), 3);
   assert.equal(topUp(2), 0);
-  // Etapeløb: 4 ledige må stå (#6739 regel A), 3 må ikke.
-  const stage = (n) => assignTeamAcrossRaces({
-    riders: ridersN(n), dropBelowFloor: true,
-    races: [{ race_id: "S", window: { start: 1, end: 3 }, stages: [flat, flat, flat], sizeRule: { min: 8, max: 8 } }],
-  }).S.length;
-  assert.equal(stage(4), 4);
+  // #7339 (12/11): et etapeløb under gulvet må kun stå, når #6739 regel A lader holdet
+  // starte: ryttere optaget af et andet løb på startdagen. Uden overlap gælder gulvet.
+  const stageRace = { race_id: "S", window: { start: 1, end: 3 }, stages: [flat, flat, flat], sizeRule: { min: 8, max: 8 } };
+  const stage = (n, lockedWindows = []) => {
+    const riders = [...ridersN(n), ...ridersN(lockedWindows.length ? 2 : 0, "busy")];
+    return assignTeamAcrossRaces({ riders, races: [stageRace], lockedWindows, dropBelowFloor: true }).S.length;
+  };
+  const busyIds = ["busy00", "busy01"];
+  assert.equal(stage(4), 0, "4 ledige uden overlap: holdet tages ud ved start, så 0");
+  assert.equal(stage(4, [{ window: { start: 1, end: 1 }, riderIds: busyIds }]), 4, "4 ledige + 2 optaget på startdagen: regel A");
+  assert.equal(stage(3, [{ window: { start: 1, end: 1 }, riderIds: busyIds }]), 0, "3 er under regel A's minimum");
   assert.equal(stage(3), 0);
+  // Managerens egne knapper (dropBelowFloor=false) er uændrede.
+  assert.equal(assignTeamAcrossRaces({ riders: ridersN(4), races: [stageRace] }).S.length, 4);
+});
+
+test("#7339 (12/11): ryttere optaget kun på en SENERE dag i etapeløbets vindue er ikke regel A-overlap", () => {
+  const riders = [...ridersN(4), ...ridersN(2, "busy")];
+  const out = assignTeamAcrossRaces({
+    riders, dropBelowFloor: true,
+    races: [{ race_id: "S", window: { start: 1, end: 3, days: [1, 2, 3] }, stages: [flat, flat, flat], sizeRule: { min: 8, max: 8 } }],
+    lockedWindows: [{ window: { start: 2, end: 2, days: [2] }, riderIds: ["busy00", "busy01"] }],
+  });
+  assert.deepEqual(out.S, [], "start-reglen godtager heller ikke det overlap");
+});
+
+test("#7339 (12/11): løbets egne manuelle ryttere tæller ikke som overlap på startdagen", () => {
+  // 2 manuelle (låst i løbets eget vindue) + 3 ledige: 5 i alt, intet andet løb → 0 auto.
+  const riders = [...ridersN(3), ...ridersN(2, "man")];
+  const window = { start: 1, end: 3, days: [1, 2, 3] };
+  const out = assignTeamAcrossRaces({
+    riders, dropBelowFloor: true,
+    races: [{ race_id: "S", window, stages: [flat, flat, flat], sizeRule: { min: 6, max: 6 }, floor: 4, manualRiderIds: ["man00", "man01"] }],
+    lockedWindows: [{ window, riderIds: ["man00", "man01"] }],
+  });
+  assert.deepEqual(out.S, []);
+});
+
+test("#7339 (12/11): et etapeløb efter et mål-løb samme startdag beholder regel A-fyldet", () => {
+  // B (etapeløb) behandles før A (endagsløb, mål-løb) samme startdag. A binder 6 på
+  // startdagen, så B kan starte med 4 efter regel A.
+  const strategy = { aChain: [], captainPriorities: {}, roleRules: {}, targetRaceIds: new Set(["B"]) };
+  const stageRace = { race_id: "A", window: { start: 10, end: 12, days: [10, 11, 12] }, stages: [flat, flat, flat], sizeRule: { min: 6, max: 6 } };
+  const out = assignTeamAcrossRaces({ riders: ridersN(10), races: [stageRace, dayRace("B", 6)], strategy, dropBelowFloor: true });
+  assert.deepEqual(sizes(out, ["B", "A"]), [6, 4]);
 });
 
 test("#7339 B: sweepen (runRaceEntryGenerator) skriver ingen 1-5 ryttere ind i et løb under gulvet", async () => {
@@ -2898,6 +2936,64 @@ test("#7339 B: sweepen (runRaceEntryGenerator) skriver ingen 1-5 ryttere ind i e
   assert.equal(result.failed_units, 0, result.errors.join("; "));
   assert.deepEqual(state.race_entries.filter((e) => e.race_id === "O"), []);
   assert.equal(state.race_entries.filter((e) => e.race_id === "GT").length, 5, "etapeløbet er urørt");
+});
+
+// #7339 (12/11): late_fill satte 4-5 ryttere på et etapeløb hos hold med kun 4-5 egnede
+// ryttere og intet overlap. Holdet blev taget ud ved start, efter beskeden "assistenten
+// udtog dit hold". Nu skrives 0 rækker og sendes ingen besked.
+function nearStageRaceState({ squad = null, seniors = 4, juniors = 0 } = {}) {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.seasons = [{ id: seasonId, number: 4 }];
+  const division = squad === "junior" ? 20 : 1;
+  state.races = [{ id: "ST", season_id: seasonId, race_class: "Class2", league_division_id: division, ...(squad ? { squad } : {}) }];
+  state.race_stage_schedule = [1, 2, 3].map((n) => ({
+    race_id: "ST", stage_number: n, game_day: 9 + n, scheduled_at: `2026-07-${String(9 + n).padStart(2, "0")}T12:00:00Z`,
+  }));
+  state.race_stage_profiles = [1, 2, 3].map((n) => ({ race_id: "ST", ...flatProfile(n) }));
+  state.teams = [{
+    id: "mgr", is_test_account: false, is_frozen: false, league_division_id: 1, user_id: "u1",
+    ...(squad === "junior" ? { junior_league_division_id: 20 } : {}),
+  }];
+  seedTeamRiders(state, "mgr", seniors);
+  if (juniors) seedSquadRiders(state, "mgr", "junior", juniors, { birthdate: "2012-05-01" });
+  return { state, seasonId };
+}
+
+test("#7339 (12/11) late_fill: menneskehold med 4 seniorer og intet overlap får 0 rækker i etapeløbet og ingen besked", async () => {
+  const { state, seasonId } = nearStageRaceState({ seniors: 4 });
+  const calls = [];
+  const notify = async ({ teamId, raceId }) => { calls.push({ teamId, raceId }); return { delivered: true }; };
+  const res = await runRaceEntryGenerator({
+    supabase: makeSupabase(state), seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T02:00:00Z"), notify,
+  });
+  assert.equal(res.failed_units ?? 0, 0, (res.errors || []).join("; "));
+  assert.deepEqual(state.race_entries.filter((e) => e.race_id === "ST"), []);
+  assert.deepEqual(notifyCalls(calls), [], "ingen falsk 'assistenten udtog dit hold'");
+});
+
+test("#7339 (12/11) late_fill: junior-etapeløb med 4 juniorer uden overlap får 0 rækker og ingen assistant_filled_squad", async () => {
+  const { state, seasonId } = nearStageRaceState({ squad: "junior", seniors: 8, juniors: 4 });
+  const res = await runRaceEntryGenerator({
+    supabase: makeSupabase(state), seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T02:00:00Z"),
+  });
+  assert.equal(res.failed_units ?? 0, 0, (res.errors || []).join("; "));
+  assert.deepEqual(state.race_entries.filter((e) => e.race_id === "ST"), []);
+  assert.deepEqual((state.notifications || []).filter((n) => n.type === "assistant_filled_squad"), []);
+});
+
+test("#7339 (12/11) late_fill kontrol: 6 juniorer fyldes stadig, og holdet får beskeden", async () => {
+  const { state, seasonId } = nearStageRaceState({ squad: "junior", seniors: 8, juniors: 6 });
+  await runRaceEntryGenerator({
+    supabase: makeSupabase(state), seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T02:00:00Z"),
+  });
+  const rows = state.race_entries.filter((e) => e.race_id === "ST");
+  assert.equal(rows.length, 6);
+  assert.ok(rows.every((e) => e.rider_id.startsWith("mgr-junior")), "kun juniorer i juniorløbet");
+  assert.equal((state.notifications || []).filter((n) => n.type === "assistant_filled_squad").length, 1);
 });
 
 test("#7339: mål-løb fra strategien vinder pladsen når ikke alle kan stilles op", () => {
@@ -2944,6 +3040,9 @@ test("#7339: etapeløb med ryttere nok til regel A (#6739) tømmes ikke", () => 
   const stageRace = { race_id: "B", window: { start: 10, end: 12, days: [10, 11, 12] }, stages: [flat, flat, flat], sizeRule: { min: 6, max: 6 } };
   const out = assignTeamAcrossRaces({ riders: ridersN(10), races: [dayRace("A", 6), stageRace] });
   assert.deepEqual(sizes(out, ["A", "B"]), [6, 4]);
+  // #7339 (12/11): sweepen giver samme resultat, fordi A binder 6 på B's startdag.
+  const sweep = assignTeamAcrossRaces({ riders: ridersN(10), races: [dayRace("A", 6), stageRace], dropBelowFloor: true });
+  assert.deepEqual(sizes(sweep, ["A", "B"]), [6, 4]);
 });
 
 function sameDayGeneratorState({ riders = 14, started = false } = {}) {
