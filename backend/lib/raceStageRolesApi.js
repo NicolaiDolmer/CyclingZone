@@ -28,6 +28,7 @@ import {
   applyRiderEligibilityFilter, raceSquadOf, isRiderInjured, raceSelectionReferenceDateStr,
 } from "./riderEligibility.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
+import { surfaceFatigueNow7801 } from "./raceSelection.js"; // #7801
 
 // #5945: stiller holdet op i løbet? Samme regel som trænings-badget og frontendens
 // partialSquadOutlook (raceStartOutlook.teamWillStart): udtagne + frie egnede ryttere i
@@ -308,6 +309,8 @@ export async function getStageRolesContext({ supabase, race, teamId, now = new D
   // #7715: maerket foer etapen (kun kommende etaper) og forklaringen efter den.
   let timeLimitRiskByRider = {};
   let fatigueOutStageByRider = new Map();
+  /** @type {Map<string, number|null>|null} */
+  let liveFatigue = null; // #7801
   if (riderIds.length) {
     const [abilitiesRes, conditionRes, profileRows] = await Promise.all([
       supabase.from("rider_derived_abilities").select(["rider_id", ...ABILITY_KEYS].join(", ")).in("rider_id", riderIds),
@@ -350,11 +353,21 @@ export async function getStageRolesContext({ supabase, race, teamId, now = new D
       });
     }
     fatigueOutStageByRider = await loadFatigueOutStages7715({ supabase, race, riderIds: riderIds.filter((id) => abandonedRiderIds.has(id)) });
+    // #7801: samme tal som Træningssiden og Udtagelsen, ved løbets næste etape. Slukket: null.
+    // Maerket ovenfor regner selv datoens etaper oveni og bruger derfor stadig aabningen.
+    if (!conditionRes.error) {
+      liveFatigue = await surfaceFatigueNow7801({
+        supabase, race, stages, conditions: conditionRes.data || [], teamId, now,
+        abilityByRider: abilitiesRes.error ? null : new Map((abilitiesRes.data || []).map((ab) => [ab.rider_id, ab])),
+      });
+    }
   }
 
   const riders = (entries || []).map((e) => {
     const r = ridersById.get(e.rider_id);
-    const cond = conditionByRider.get(e.rider_id);
+    const cond = liveFatigue && conditionByRider.has(e.rider_id)
+      ? { ...conditionByRider.get(e.rider_id), fatigue: liveFatigue.get(e.rider_id) ?? null }
+      : conditionByRider.get(e.rider_id);
     return {
       rider_id: e.rider_id,
       name: [r?.firstname, r?.lastname].filter(Boolean).join(" ") || null,
