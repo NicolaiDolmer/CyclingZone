@@ -1,3 +1,4 @@
+// @ts-nocheck: nye komponenter (#7535) bygget paa de eksisterende JS-primitiver, hvis default-null-props checkJs-budgettet ikke kan udtrykke; logikken er i planningWorkbench.ts (strict).
 // #7535 · Ruteprofilen i planlaegningssiden: SAMME tegning som loebssiden (StageProfileCard med den
 // rigtige hoejdeserie og kategoriserede stigninger). Aabner altid paa etape 1. Pile og prikker
 // bladrer mellem etaper; et endagsloeb har hverken pile eller prikker, kun profilen og "Skjul".

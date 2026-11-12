@@ -17,6 +17,7 @@ import { trainingProgramsMockRoute, previewSingleRaceDay, PREVIEW_TRAINING_PROGR
 import { trainingGroupsMockRoute } from "../components/training/groups/trainingGroupsPreviewMock.ts"; // #6000
 import { trainingFatigueRulesMockRoute } from "./trainingFatigueRulesMock.js"; // #4854
 import { trainingReceiptMock } from "./trainingReceiptMock.ts";
+import { isWorkbenchPreview } from "./planningWorkbenchMock.js"; // #7535
 import { trainNowPreviewRoute, trainNowSelectionPreview, trainNowBoardPreview, trainNowSeasonPreview } from "../components/training/TrainNowPreviewMock.ts"; // #4847/#6139/#6383
 import { raceStartBoardPreview, raceStartPreviewNotifications } from "./raceStartPreviewMock.ts"; // #6740
 import {
@@ -558,6 +559,10 @@ export function installPreviewMock() {
       if (/\/api\//.test(url)) {
         if (method !== "GET") return jsonResponse({ ok: true });
         const parsed = new URL(url, window.location.origin);
+        // #7535: planlaegningssiden har sit eget seed og foelger ikke Train now-/luksushjaelper-tilstandene.
+        if (isWorkbenchPreview() && /\/api\/races\/(selection\/season|[^/]+\/selection)$/.test(parsed.pathname)) {
+          return jsonResponse(apiResponse(parsed.pathname, parsed.search));
+        }
         // #6139: udtagelsen foelger Train now-tilstanden (?trainNow=locked eller et tryk).
         if (/\/api\/races\/[^/]+\/selection$/.test(parsed.pathname)) {
           const selection = trainNowSelectionPreview(apiResponse(parsed.pathname, parsed.search));

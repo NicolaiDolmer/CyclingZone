@@ -126,6 +126,7 @@ export default function PlanningHubPage() {
       {/* #7535: knappen findes kun naar kontakten planning_workbench er taendt for spilleren (beta foerst). */}
       <PageHeader
         title={t("hub.title")}
+        // @ts-ignore: PageHeader udleder actions som null-only fra sin default
         actions={workbenchEnabled === true ? (
           <Link to="/planning/workbench" className={buttonClass({ variant: "secondary", size: "sm" })}>
             {t("hub.tryWorkbench")}

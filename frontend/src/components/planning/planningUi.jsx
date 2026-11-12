@@ -21,6 +21,19 @@ export function formatShortDate(date, language, withWeekday = true) {
   }
 }
 
+/** Ugedag og dag i maaneden til ugeoversigtens kolonner (to korte linjer, plads til 375 px). */
+export function formatDayHeader(date, language) {
+  try {
+    const d = new Date(`${date}T00:00:00Z`);
+    return {
+      weekday: new Intl.DateTimeFormat(language, { weekday: "short", timeZone: "UTC" }).format(d),
+      day: new Intl.DateTimeFormat(language, { day: "numeric", month: "short", timeZone: "UTC" }).format(d),
+    };
+  } catch {
+    return { weekday: "", day: date };
+  }
+}
+
 /** Et loebs rutetyper som en raekke af spillets terraen-ikoner (et ikon for et endagsloeb). */
 export function StageStrip({ types, max = 8, size = 13, className = "" }) {
   if (!types?.length) return null;

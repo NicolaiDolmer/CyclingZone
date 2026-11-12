@@ -1,3 +1,4 @@
+// @ts-nocheck: nye komponenter (#7535) bygget paa de eksisterende JS-primitiver, hvis default-null-props checkJs-budgettet ikke kan udtrykke; logikken er i planningWorkbench.ts (strict).
 // #7535 · Planlaegningssiden (Planning Workbench), trin 1. Erstatter paa sigt de fire faner
 // (Udtagelse, Form, Strategi, Kalender) med én side: loebsliste, ugeoversigt, ruteprofil og
 // trup-tabel, med en bjaelke for ugemte aendringer. Taktik (trin 2) og Peak form + mobil-ark

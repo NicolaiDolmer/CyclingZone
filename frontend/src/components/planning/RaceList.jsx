@@ -74,7 +74,7 @@ function RaceRow({ race, readiness, overlaps, types, selected, dates, onSelect }
           </span>
         )}
       </span>
-      <ReadinessBadge readiness={readiness} />
+      <span className="self-start"><ReadinessBadge readiness={readiness} /></span>
     </button>
   );
 }

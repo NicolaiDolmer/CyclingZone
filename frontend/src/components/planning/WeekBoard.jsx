@@ -1,3 +1,4 @@
+// @ts-nocheck: nye komponenter (#7535) bygget paa de eksisterende JS-primitiver, hvis default-null-props checkJs-budgettet ikke kan udtrykke; logikken er i planningWorkbench.ts (strict).
 // #7535 · Ugeoversigten (week board): ugen paa tvaers af loebsdage. Loeb der deler loebsdage
 // ligger i hver sin bane, saa overlap er synligt med det samme. Hver bar viser loebets korte navn,
 // etape-striben og "x/6" valgte; klik vaelger loebet. Et gitter med 7 kolonner skalerer ned til
@@ -6,7 +7,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronLeftIcon, ChevronRightIcon, Button } from "../ui";
 import { layoutWeek, raceReadiness, isoWeekNumber, addDays } from "../../lib/planningWorkbench.ts";
-import { StageStrip, ReadinessMark, formatShortDate } from "./planningUi.jsx";
+import { StageStrip, ReadinessMark, formatShortDate, formatDayHeader } from "./planningUi.jsx";
 
 export default function WeekBoard({
   races,
@@ -68,7 +69,8 @@ export default function WeekBoard({
               style={{ gridColumn: i + 1, gridRow: 1 }}
               className="truncate border-s border-cz-border ps-1.5 font-data text-3xs uppercase tracking-wide text-cz-3"
             >
-              {formatShortDate(day, i18n.language)}
+              <span className="block truncate">{formatDayHeader(day, i18n.language).weekday}</span>
+              <span className="block truncate tabular-nums">{formatDayHeader(day, i18n.language).day}</span>
             </div>
           ))}
           {layout.bars.map(({ race, lane, startCol, endCol }) => {

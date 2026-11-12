@@ -1,3 +1,4 @@
+// @ts-nocheck: nye komponenter (#7535) bygget paa de eksisterende JS-primitiver, hvis default-null-props checkJs-budgettet ikke kan udtrykke; logikken er i planningWorkbench.ts (strict).
 // #7535 · Preview-seed til planlaegningssiden (/planning/workbench). KUN til lokal/preview-mocken
 // (VITE_PREVIEW_MOCK), aldrig til prod. Datoerne er relative til i dag, saa siden altid har et
 // "naeste 7 dage" at vise; loebsdage deles bevidst mellem nogle loeb, saa overlap og ugeoversigtens

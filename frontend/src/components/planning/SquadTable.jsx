@@ -1,3 +1,4 @@
+// @ts-nocheck: nye komponenter (#7535) bygget paa de eksisterende JS-primitiver, hvis default-null-props checkJs-budgettet ikke kan udtrykke; logikken er i planningWorkbench.ts (strict).
 // #7535 · Trup-tabellen (Squad-visningen). En raekke pr. rytter: vaelg, rolle, status, rating,
 // form, traethed, rute-match for hele loebet og en kolonne pr. rutetype i loebet. Hver kolonne
 // sorterer (cybersimon 2/11). Standardsortering er rute-match for hele loebet.
@@ -7,7 +8,6 @@
 import { useTranslation } from "react-i18next";
 import SortableTh from "../ui/SortableTh.jsx";
 import { Select } from "../ui";
-import { cellClass } from "../ui/tableStyles.js";
 import RiderNameCell from "../rider/RiderNameCell.jsx";
 import RiderBadges from "../rider/RiderBadges.jsx";
 import BestRoleTag from "../rider/BestRoleTag.jsx";
@@ -27,7 +27,7 @@ function StatusCell({ row }) {
       {row.overAge && <span className={`${CHIP} ${NEUTRAL}`}>{t("status.overAge")}</span>}
       {row.trainNowLocked && <span className={`${CHIP} ${NEUTRAL}`}>{t("status.trainNow")}</span>}
       {row.busyIn && (
-        <span className={`${CHIP} ${NEUTRAL} max-w-[11rem] truncate normal-case`} title={t("status.busyTitle", { race: row.busyIn })}>
+        <span className={`${CHIP} ${NEUTRAL} max-w-[8rem] truncate normal-case`} title={t("status.busyTitle", { race: row.busyIn })}>
           {t("status.busy", { race: row.busyIn })}
         </span>
       )}
@@ -66,12 +66,13 @@ export default function SquadTable({
 
   const th = (key, label, { numeric = true, hideMobile = true, title } = {}) => (
     <SortableTh
+      key={key}
       sortKey={key}
       sort={sort.key}
       sortDir={sort.dir}
       onSort={onSort}
       title={title}
-      className={`${cellClass({ numeric, header: true })} bg-cz-subtle ${hideMobile ? "hidden sm:table-cell" : ""}`}
+      className={`px-2 py-2 font-data text-2xs font-semibold uppercase tracking-widest text-cz-3 ${numeric ? "text-right" : "text-left"} bg-cz-subtle ${hideMobile ? "hidden sm:table-cell" : ""}`}
     >
       {label}
     </SortableTh>
@@ -81,6 +82,7 @@ export default function SquadTable({
     <div className="overflow-x-clip sm:overflow-x-auto" data-testid="planning-squad-table">
       <table data-sortable className="w-full border-collapse">
         <thead>
+          {/* Hver kolonne sorterer: th() bygger en SortableTh med onSort (guard: tableSortIntent.test.js). */}
           <tr>
             {th("pick", t("squad.pick"), { numeric: false, hideMobile: true })}
             {th("name", t("squad.rider"), { numeric: false, hideMobile: false })}
@@ -111,7 +113,7 @@ export default function SquadTable({
                 data-testid="planning-squad-row"
                 className={`border-t border-cz-border ${checked ? "bg-cz-subtle" : ""} ${dim ? "text-cz-3" : ""}`}
               >
-                <td className="hidden px-3 py-[7px] sm:table-cell">
+                <td className="hidden px-2 py-[7px] sm:table-cell">
                   <label className={`flex h-11 w-11 items-center justify-center sm:h-auto sm:w-auto ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
                     <input
                       type="checkbox"
@@ -123,7 +125,7 @@ export default function SquadTable({
                     />
                   </label>
                 </td>
-                <td className="px-3 py-[7px] text-left">
+                <td className="px-2 py-[7px] text-left">
                   <div className="flex items-start gap-1 sm:block">
                     <label className={`-ms-2 flex h-11 w-11 shrink-0 items-center justify-center sm:hidden ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
                       <input
@@ -148,10 +150,10 @@ export default function SquadTable({
                     </div>
                   </div>
                 </td>
-                <td className="hidden px-3 py-[7px] text-left sm:table-cell">
+                <td className="hidden px-2 py-[7px] text-left sm:table-cell">
                   <StatusCell row={row} />
                 </td>
-                <td className="hidden px-3 py-[7px] text-left sm:table-cell">
+                <td className="hidden px-2 py-[7px] text-left sm:table-cell">
                   {checked ? (
                     readOnly ? (
                       <span className="text-[13px] text-cz-2">{t(`role.${roleOf(selection, row.id)}`)}</span>
@@ -162,7 +164,7 @@ export default function SquadTable({
                     <span className="text-cz-3">-</span>
                   )}
                 </td>
-                <td className="hidden px-3 py-[7px] text-right font-data text-[13px] tabular-nums sm:table-cell">
+                <td className="hidden px-2 py-[7px] text-right font-data text-[13px] tabular-nums sm:table-cell">
                   {row.rating != null ? (
                     <span className="inline-flex items-center justify-end gap-1.5">
                       <span>{row.rating}</span>
@@ -172,11 +174,11 @@ export default function SquadTable({
                     <span className="text-cz-3">-</span>
                   )}
                 </td>
-                <td className={`px-3 py-[7px] text-right font-data text-[13px] tabular-nums ${row.selectable && row.routeMatch != null && row.routeMatch === bestMatch ? "font-semibold text-cz-accent-t" : ""}`}>
+                <td className={`px-2 py-[7px] text-right font-data text-[13px] tabular-nums ${row.selectable && row.routeMatch != null && row.routeMatch === bestMatch ? "font-semibold text-cz-accent-t" : ""}`}>
                   {row.routeMatch ?? <span className="text-cz-3">-</span>}
                 </td>
-                <td className="px-3 py-[7px] text-right font-data text-[13px] tabular-nums">{row.form ?? <span className="text-cz-3">-</span>}</td>
-                <td className="px-3 py-[7px] text-right font-data text-[13px]">
+                <td className="px-2 py-[7px] text-right font-data text-[13px] tabular-nums">{row.form ?? <span className="text-cz-3">-</span>}</td>
+                <td className="px-2 py-[7px] text-right font-data text-[13px]">
                   <FatigueCell value={row.fatigue} />
                 </td>
                 {profileCols.map((c) => {
@@ -185,7 +187,7 @@ export default function SquadTable({
                   return (
                     <td
                       key={c.profileType}
-                      className={`hidden px-3 py-[7px] text-right font-data text-[13px] tabular-nums sm:table-cell ${best ? "font-semibold text-cz-accent-t" : ""}`}
+                      className={`hidden px-2 py-[7px] text-right font-data text-[13px] tabular-nums sm:table-cell ${best ? "font-semibold text-cz-accent-t" : ""}`}
                     >
                       {v ?? <span className="text-cz-3">-</span>}
                     </td>
@@ -208,7 +210,7 @@ function RoleSelect({ row, selection, roles, onRole }) {
       value={roleOf(selection, row.id)}
       onChange={(e) => onRole(row.id, e.target.value)}
       aria-label={t("squad.roleFor", { name: row.name })}
-      className="min-w-[9.5rem]"
+      className="min-w-[8.5rem]"
     >
       {roles.map((r) => (
         <option key={r} value={r}>

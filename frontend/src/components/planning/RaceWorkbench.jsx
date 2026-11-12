@@ -1,3 +1,4 @@
+// @ts-nocheck: nye komponenter (#7535) bygget paa de eksisterende JS-primitiver, hvis default-null-props checkJs-budgettet ikke kan udtrykke; logikken er i planningWorkbench.ts (strict).
 // #7535 · Loebs-arbejdsfladen: loebshoved, ruteprofil og trup-tabellen for ET valgt loeb.
 // Alt gemmes gennem det EKSISTERENDE udtagelses-endpoint (PUT /api/races/:id/selection), med
 // samme klient-validering og samme serverfejl som udtagelsespanelet. Intet gemmes af sig selv:
