@@ -19,3 +19,6 @@ Review 2 found that the new request deadlines called AbortSignal.timeout directl
 
 
 The second review also found that signup, onboarding and Discord presence no longer participated in the initial layout decision after those requests moved off the core load path. Their generation-safe settled flag now joins initialDataReady within the existing single 1500 ms mount cap. Known responses from an older refresh cannot publish or settle a newer one; errors and missing auth settle without inventing card data. Requests beyond the cap still reveal ready dashboard content, and valid late cards remain visible under their existing rules.
+
+
+A failed finished-stage enrichment is not proof that no result exists. The existing status line now stays empty at its existing minimum height when detailsUnavailable is set. A browser regression waits for enrichment settlement and reproduced the previous false no-results text before checking the empty18px line. Confirmed no-winner responses keep their established no-results behavior.

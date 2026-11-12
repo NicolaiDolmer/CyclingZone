@@ -612,3 +612,31 @@ test('#8022 optional presence cannot extend the total mount budget or suppress l
     await expect(page.getByTestId('season-signup-card')).toBeVisible();
   } finally { release(); }
 });
+
+
+test('#8022 failed finished-stage details keep the reserved status line empty', async ({ page }) => {
+  await page.route('**/rest/v1/race_stage_schedule?**', route => {
+    if (!new URL(route.request().url()).searchParams.has('scheduled_at')) return route.fallback();
+    return json(route, [{ race_id: 'race-live-1', stage_number: 4, scheduled_at: '2026-11-11T11:00:00Z' }]);
+  });
+  await page.route('**/rest/v1/races?**', route => {
+    if (new URL(route.request().url()).searchParams.get('select') !== 'id,name,race_type,stages,stages_completed,status') return route.fallback();
+    return json(route, [{ id: 'race-live-1', name: 'Finished fixture', race_type: 'stage_race', stages: 4, stages_completed: 4, status: 'completed' }]);
+  });
+  let failed = false;
+  await page.route('**/rest/v1/race_results?**', route => {
+    if (new URL(route.request().url()).searchParams.get('rank') !== 'eq.1') return route.fallback();
+    failed = true;
+    return json(route, { message: 'unavailable' }, 503);
+  });
+  await page.goto('/dashboard');
+  const stage = page.locator('a[href="/races/race-live-1?stage=4"]');
+  await expect(stage).toBeVisible();
+  await expect.poll(() => failed).toBe(true);
+  // Enrichment has settled when the pending skeleton disappears.
+  await expect(stage.locator('.cz-skeleton-static')).toHaveCount(0);
+  await expect.poll(() => stage.evaluate(el => {
+    const line = Array.from(el.querySelectorAll('div')).find(node => node.classList.contains('min-h-[18px]'))!;
+    return { text: line.textContent?.trim(), minHeight: getComputedStyle(line).minHeight };
+  })).toEqual({ text: '', minHeight: '18px' });
+});

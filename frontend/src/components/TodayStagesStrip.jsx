@@ -101,7 +101,7 @@ function TodayStageCard({ card, t }) {
             </span>
           )}
           {state === "finished" && (
-            card.enriching ? <Skeleton className="h-3 w-3/4" /> : winnerName ? (
+            card.enriching ? <Skeleton className="h-3 w-3/4" /> : card.detailsUnavailable ? null : winnerName ? (
               <>
                 <TrophyIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
                 <span className="truncate">{t("dashboard:todayStages.winner", { name: winnerName })}</span>
