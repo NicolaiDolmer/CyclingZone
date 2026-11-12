@@ -5,7 +5,7 @@
     "ridersCount": "{count}/{cap} senior riders",
     "youthSquadCounts": "+{u23} U23 · +{junior} juniors",
     "seniorCapTooltip": "Squad cap is {cap} senior riders. Academy riders don't count toward it.",
-    "youthSquadCountsTooltip": "U23 and junior riders have their own squad caps (12 and 10) and do not count toward the senior cap.",
+    "youthSquadCountsTooltip": "U23 and junior riders have their own squad caps and do not count toward the senior cap.",
     "incomingCount": "+{count} incoming",
     "outgoingCount": "-{count} outgoing",
     "salaryPerSeason": "Salary/season: {value} CZ$",
@@ -45,9 +45,7 @@
   "development": {
     "headers": {
       "projected": "Projected",
-      "projectedTitle": "Projected rating range for his primary role, based on your training. Sorted on the upper bound.",
-      "ceiling": "Ceiling",
-      "ceilingTitle": "The theoretical highest rating his role could reach. Not adjusted for how you train him."
+      "projectedTitle": "Projected rating range for his primary role, based on your training. Sorted on the upper bound."
     },
     "noForecast": "No forecast yet"
   },
@@ -88,7 +86,7 @@
       "value": "Value",
       "salary": "Salary",
       "potential": "Potential",
-      "potentialTitle": "The projected rating range he's realistically heading toward with your training. Not the same as the role's ceiling (the theoretical highest for his role) - hover the number for both.",
+      "potentialTitle": "The projected rating range he's realistically heading toward with your training.",
       "badges": "Status",
       "age": "Age",
       "popularity": "Popularity",

@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { compareDevRows } from "../lib/teamDevelopmentSort.js";
 
 // #3979/#3721 (ejer-beslutning 19/8) — holdsidens sorterbare udviklings-
-// status-tabel: Rider/Age/Rating/Projected/Ceiling. node --test har ingen DOM
+// status-tabel: Rider/Age/Rating/Projected (#7932: ingen Loft-kolonne). node --test har ingen DOM
 // (samme mønster som TeamPage.squadTable/RidersPage.columns-testene) —
 // compareDevRows er en ren funktion og testes direkte; resten er kilde-tekst-
 // guards mod kolonne-config og i18n-nøgler.
@@ -31,12 +31,12 @@ test("compareDevRows: numeriske felter sorterer højst-først i desc", () => {
   assert.ok(compareDevRows(a, b, "_ovr", "asc") > 0, "asc skal vende rækkefølgen");
 });
 
-test("compareDevRows: null (intet bånd/loft) placeres SIDST uanset retning (#3787-mønsteret)", () => {
+test("compareDevRows: null (intet bånd) placeres SIDST uanset retning (#3787-mønsteret)", () => {
   const withBand = { _progHi: 55 };
   const noBand = { _progHi: null };
   assert.ok(compareDevRows(withBand, noBand, "_progHi", "desc") < 0, "rytter MED bånd skal stå før i desc");
   assert.ok(compareDevRows(withBand, noBand, "_progHi", "asc") < 0, "rytter MED bånd skal stå før i asc (null altid sidst)");
-  assert.equal(compareDevRows({ _loft: null }, { _loft: null }, "_loft", "desc"), 0, "to null'er er ligestillede");
+  assert.equal(compareDevRows({ _progHi: null }, { _progHi: null }, "_progHi", "desc"), 0, "to null'er er ligestillede");
 });
 
 test("komponenten bruger den DELTE komparator fra teamDevelopmentSort.js, ikke en lokal kopi", () => {
@@ -55,11 +55,15 @@ test("Rider-kolonnen er klikbar til profilen og sortérbar på navn", () => {
   assert.match(src, /<RiderLink id=\{r\.id\}/, "navnet skal linke til rytterprofilen");
 });
 
-test("Age/Rating/Projected/Ceiling er alle numeriske og sortérbare", () => {
+test("Age/Rating/Projected er alle numeriske og sortérbare", () => {
   assert.match(src, /key: "age"[\s\S]{0,200}?sortKey: "_age"[\s\S]{0,80}?numeric: true/);
   assert.match(src, /key: "rating"[\s\S]{0,200}?sortKey: "_ovr"[\s\S]{0,80}?numeric: true/);
   assert.match(src, /key: "projected"[\s\S]{0,200}?sortKey: "_progHi"[\s\S]{0,80}?numeric: true/, "Projected skal sortere på hi (_progHi), ikke lo eller midtpunktet");
-  assert.match(src, /key: "ceiling"[\s\S]{0,200}?sortKey: "_loft"[\s\S]{0,80}?numeric: true/);
+});
+
+test("rytteres lofter vises ikke: ingen Loft-kolonne og intet loft-felt i rækkerne (#7932)", () => {
+  assert.doesNotMatch(src, /key: "ceiling"/, "Loft-kolonnen er fjernet");
+  assert.doesNotMatch(src, /_loft|_pastPeak|loftPastPeak/, "ingen loft-data skal bæres ind i tabellen");
 });
 
 test("Rating rendres som farveplade via den DELTE statPlateStyle (samme sprog som Squad-fanen)", () => {
@@ -90,7 +94,7 @@ test("team.json har development-nøglerne i BÅDE en og da", () => {
     const teamJson = JSON.parse(readFileSync(join(localesDir, lng, "team.json"), "utf8"));
     assert.equal(typeof teamJson?.tabs?.development, "string", `${lng}: tabs.development mangler`);
     assert.equal(typeof teamJson?.development?.headers?.projected, "string", `${lng}: development.headers.projected mangler`);
-    assert.equal(typeof teamJson?.development?.headers?.ceiling, "string", `${lng}: development.headers.ceiling mangler`);
+    assert.equal(teamJson?.development?.headers?.ceiling, undefined, `${lng}: development.headers.ceiling er fjernet (#7932)`);
     assert.equal(typeof teamJson?.development?.noForecast, "string", `${lng}: development.noForecast mangler`);
   }
 });
