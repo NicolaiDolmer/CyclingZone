@@ -2220,11 +2220,9 @@
     "TS2810": 1
   },
   "src/pages/AcademyPage.jsx": {
-    "TS2322": 5,
-    "TS2339": 16,
+    "TS2322": 4,
+    "TS2339": 2,
     "TS2345": 1,
-    "TS2353": 2,
-    "TS2698": 2,
     "TS2741": 2
   },
   "src/pages/ActivityPage.jsx": {

@@ -318,6 +318,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "fatigue_now_7801",
   // #7535: den nye planlaegningsside (/planning/workbench) findes kun paa dette flag.
   "planning_workbench",
+  // #8031: beta-noten om Træn nu-kvitteringen skifter til "Now for everyone", naar kontakten er on for alle.
+  "training_train_now_instant",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,

@@ -565,13 +565,12 @@ features:
     area: market
     title_en: Bid commitment gate
     title_da: Bud-forpligtelsesgate
-    state: building
+    state: live
+    flag: market_commitment_6181
     ssot: docs/TRANSFER_MARKET_RULES.md
     epic: 6181
-    verified: 2026-11-09
-    decision: goer-faerdigt
-    decide_by: 2026-11-30
-    note: Kontakt market_commitment_6181, off post; ikke flag-bundet her (prod-raekke ikke verificeret), jf. #7923.
+    verified: 2026-11-12
+    note: "Beta 11/11 kl. 20:56; on for alle 12/11 (læst i prod 12/11). Patch note 7.435."
 
   - id: rider-loans
     area: market
@@ -598,13 +597,15 @@ features:
     area: market
     title_en: Auto-accept price
     title_da: Auto-accept-pris
-    state: building
+    state: beta
     flag: auto_accept_enabled
     ssot: docs/TRANSFER_MARKET_RULES.md
     epic: 2176
-    verified: 2026-11-07
+    verified: 2026-11-12
     decision: taend
     decide_by: 2026-11-28
+    roadmap_en: "Set an auto-accept price on a listed rider: when someone hits it, a short public auction starts at once."
+    roadmap_da: "Sæt en auto-accept-pris på en listet rytter: rammer nogen den, starter en kort offentlig auktion med det samme."
 
   - id: market-value-blend
     area: market

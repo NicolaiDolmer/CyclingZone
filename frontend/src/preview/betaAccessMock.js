@@ -100,6 +100,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "stage_plan_dropped_front_7635", // #7636 etapeplanens resume
   "day_words_7725", // #7725 Hjaelp
   "fatigue_now_7801", // #7801 Hjaelp
+  "training_train_now_instant", // #8031 (kun patch-noten om Traen nu-kvitteringen)
 ];
 
 // Spejler PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden: "beta" er off.
