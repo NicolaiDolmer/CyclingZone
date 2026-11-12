@@ -41,6 +41,14 @@
 // Planer: negotiation_status='completed' — inkl. is_baseline=true fra og med #2521
 // (se nedenfor), is_baseline=false uændret (samme som sæson-slut).
 //
+// #5902 · Parkerede hold (#4592) er HELT ude af kørslen: ingen ny tilfredshed,
+// ingen budget_modifier, ingen løbs-events, ingen mandat-sync, ingen hårde
+// konsekvens-lag og ingen beskeder. Ejer-regel 23/9 (#4592) + ejer-beslutning
+// 4/10 (#5902, A): bestyrelsen fryses, mens holdet er parkeret, og en manager
+// der vender tilbage finder den, som han forlod den. Sandheden er den samme som
+// sæson-slutningens (managerParking.isParkedTeam på teams.parked_at), se
+// kommentaren ved hold-hentningen nedenfor.
+//
 // #2521 · Baseline-bestyrelsen lever. Sæson 1/baseline-boards (createBaselineProfile,
 // boardGoals.js) sprang tidligere denne opdatering helt over (satisfaction låst på
 // 50). Fra og med #2521 deltager de OGSÅ i weekend-opdateringen, men mod et
@@ -75,6 +83,7 @@ import { sumRiderSalaries } from "./boardUtils.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { isYouthSquad } from "./squads.js";
+import { isParkedTeam } from "./managerParking.js";
 
 function toFiniteOr(value, fallback) {
   if (value === null || value === undefined) return fallback;
@@ -203,6 +212,8 @@ export async function processBoardWeekendFinalization({
     // #3514 fase 1-rest: kun >0 når kill-switchen er 'on' — 0 er den korrekte
     // værdi for hele populationen indtil flip.
     mandate_relations_synced: 0,
+    // #5902 · parkerede hold der er sprunget helt over i denne kørsel.
+    parked_teams_skipped: 0,
   };
 
   if (!season?.id) {
@@ -247,12 +258,14 @@ export async function processBoardWeekendFinalization({
     });
 
   // 1. Rigtige human-hold (match-UI-filter: ikke-AI/bank/test/frosne).
-  const teams = await withPaginationErrorLabel(
+  const humanTeams = await withPaginationErrorLabel(
     fetchAllRows(() => supabase
       .from("teams")
       // #2521 · `balance` er tilføjet til selectet: baseline-boards' økonomi-signal
       // (positiv saldo, ingen nødlån) i computeBaselineWeekendUpdate.
-      .select("id, user_id, name, division, sponsor_income, balance, season_1_identity_basis, team_dna_key, created_at")
+      // #5902 · `parked_at` SKAL med: isParkedTeam læser et manglende felt som
+      // "ikke parkeret", så uden kolonnen ville filteret nedenfor åbne igen.
+      .select("id, user_id, name, division, sponsor_income, balance, season_1_identity_basis, team_dna_key, created_at, parked_at")
       .eq("is_ai", false)
       .eq("is_bank", false)
       .eq("is_frozen", false)
@@ -260,7 +273,22 @@ export async function processBoardWeekendFinalization({
       .order("id", { ascending: true })),
     "teams"
   );
-  if (!teams?.length) {
+  // #5902 · Parkerede hold sorteres fra HER, før alt andet: de får hverken
+  // planer, standings, ryttere eller lån hentet, og når aldrig hold-løkken
+  // (tilfredshed, events, mandat-sync, mid-season-konsekvenser, beskeder).
+  //
+  // Hvilken sandhed: samme som sæson-slutningen, managerParking.isParkedTeam
+  // på det aktuelle teams.parked_at. Sæson-slutningen må ikke stole blindt på
+  // feltet, fordi parkerings-sweepen ved sæsonskiftet ændrer det (repair-stien
+  // afbryder derfor, når sweepen har kørt for sæsonen). Denne kørsel sker kun
+  // for en AKTIV sæson (tjekket ovenfor), og sweepen kører kun inde i
+  // sæsonafslutningen, så i hele sæsonen er det aktuelle felt præcis "parkeret
+  // lige nu". Den eneste anden skriver er comeback (tilmelding midt i sæsonen),
+  // som nulstiller feltet i det øjeblik holdet er tilbage i en pulje og kører
+  // løb igen; fra da af dømmes holdet som alle andre.
+  const teams = (humanTeams || []).filter((team) => !isParkedTeam(team));
+  summary.parked_teams_skipped = (humanTeams || []).length - teams.length;
+  if (!teams.length) {
     summary.skipped_reason = "no_human_teams";
     return summary;
   }
