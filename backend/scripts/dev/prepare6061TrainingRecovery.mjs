@@ -111,9 +111,12 @@ export function parseArgs(argv){
   else if(arg.startsWith('--team='))opts.team=arg.slice(7);else if(arg.startsWith('--tick-date='))opts.tickDate=arg.slice(12);else if(arg.startsWith('--case='))opts.caseId=arg.slice(7);
   else throw new Error(`Unsupported argument: ${arg}; this tool is read-only`);}
  if(!opts.through||!opts.asOf)throw new Error('Use --through=YYYY-MM-DD --as-of=ISO_TIMESTAMP');
- if(!opts.team!==!opts.tickDate)throw new Error('--team and --tick-date must be given together');
- if(opts.caseId!==undefined&&!opts.team)throw new Error('--case requires --team and --tick-date');
- if(opts.team){
+ // Presence, not truthiness: an empty value (an unset shell variable) must
+ // fail validation instead of silently becoming an unfiltered run.
+ const hasTeam=opts.team!==undefined,hasDate=opts.tickDate!==undefined;
+ if(hasTeam!==hasDate)throw new Error('--team and --tick-date must be given together');
+ if(opts.caseId!==undefined&&!hasTeam)throw new Error('--case requires --team and --tick-date');
+ if(hasTeam){
   if(!UUID.test(opts.team))throw new Error('--team must be a team uuid');
   if(!isCalendarDate(opts.tickDate))throw new Error('--tick-date must be YYYY-MM-DD');
   if(opts.tickDate>opts.through)throw new Error('--tick-date must not be after --through');

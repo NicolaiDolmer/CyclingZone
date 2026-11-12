@@ -151,7 +151,7 @@ test('#7832 filter arguments are validated together before any network',async()=
  assert.deepEqual(parseArgs(['--through=2026-11-11','--as-of=2026-11-12T09:00:00Z']),{through:'2026-11-11',asOf:'2026-11-12T09:00:00Z'});
  const upper=TEAM_A.toUpperCase().replace('4000','4ABC');
  assert.deepEqual(parseArgs(['--through=2026-11-11','--as-of=x',`--team=${upper}`,'--tick-date=2026-11-05','--case=7832-hold-a']),{through:'2026-11-11',asOf:'x',team:upper.toLowerCase(),tickDate:'2026-11-05',caseId:'7832-hold-a'});
- const bad=[['--team='+TEAM_A],['--tick-date=2026-11-05'],['--team=not-a-uuid','--tick-date=2026-11-05'],['--team='+TEAM_A,'--tick-date=2026-11-31'],['--team='+TEAM_A,'--tick-date=2026-11-12'],['--team='+TEAM_A,'--tick-date=2026-11-05','--case=../x'],['--case=x']];
+ const bad=[['--team='+TEAM_A],['--tick-date=2026-11-05'],['--team=not-a-uuid','--tick-date=2026-11-05'],['--team='+TEAM_A,'--tick-date=2026-11-31'],['--team='+TEAM_A,'--tick-date=2026-11-12'],['--team='+TEAM_A,'--tick-date=2026-11-05','--case=../x'],['--case=x'],['--team=','--tick-date='],['--team=','--tick-date=2026-11-05'],['--team='+TEAM_A,'--tick-date=']];
  for(const extra of bad)assert.throws(()=>parseArgs(['--through=2026-11-11','--as-of=x',...extra]),undefined,extra.join(' '));
  const root='/repo';
  assert.equal(outputDirectory(root,{}).replaceAll('\\','/').replace(/^[A-Z]:/,''),'/repo/balance-internals/6061');
