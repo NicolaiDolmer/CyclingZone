@@ -19,6 +19,8 @@ import { ENGINE_VERSION_V4, loadRaceEngineV4 } from "./raceEngineV4Bridge.js";
 import { FRESH_FLAG_KEYS } from "./featureStage.js";
 import { findStageFlag, isStageFlagKey } from "./stageFlagCatalog.js";
 import { buildSnapshotRows, decodeSnapshot, replayEngineInput } from "./engineInputSnapshot1857.js";
+import { stageWorkExposure } from "./raceFatigue.js";
+import { jerseyHuntFrontWork7855 } from "./engine/v4/mechanics/jerseyHunt7855.ts";
 import { OFF_DIGEST_CASES_7855, RACE_7855, computeOffDigests7855Runner, digests7855, wholeRace7855 } from "./__fixtures__/raceRunner7855Scenarios.js";
 
 const FROZEN = JSON.parse(readFileSync(new URL("./__fixtures__/raceRunner7855FlagOff.json", import.meta.url), "utf8"));
@@ -194,16 +196,22 @@ test("#7855 taendt: jaegeren kaemper om passagen paa sin straekning, og kun dér
   const engine = await loadRaceEngineV4();
   const off = inRacePassages(wholeRace7855(engine, "s5_profiles_v3").outputs);
   const on = inRacePassages(wholeRace7855({ ...engine, jerseyHunt7855: true }, "s5_profiles_v3").outputs);
-  // Etape 1: hjaelperen r001 kaemper ikke om spurten i feltet uden opgaven; med den gaar han forrest i sin gruppe.
+  // Etape 1: hjaelperen r001 kaemper ikke om spurten i feltet uden opgaven; med den koerer han med i
+  // sin gruppe (opgaven fik ham med: hunt_work_7855), men slaar kun dem, der ikke koerer med (ejer
+  // 12/11 valg B). Her er alle pointpladser taget af ryttere der kaemper i forvejen, saa pladserne er
+  // de samme som uden opgaven.
   assert.equal(off[0].get("sprint0").hunters, undefined, "slukket: ingen jaegere paa passagen");
-  assert.ok(!ridersOf(off[0].get("sprint0")).slice(0, 3).includes("r001"));
-  assert.ok(ridersOf(on[0].get("sprint0")).slice(0, 3).includes("r001"), "med opgaven er han blandt de forreste");
   assert.ok(on[0].get("sprint0").hunters.includes("r001"));
+  assert.deepEqual(on[0].get("sprint0").hunt_work_7855, ["r001"], "kun hjaelperen fik opgaven til at koere med");
+  assert.deepEqual(ridersOf(on[0].get("sprint0")), ridersOf(off[0].get("sprint0")), "evnen afgoer mod de kaempende");
   // r007's plan har point kun i de sidste km (ingen spurt dér): ugyldig, han jager aldrig.
   for (const stage of on) for (const p of stage.values()) assert.ok(!(p.hunters ?? []).includes("r007"));
   // Etape 2: sprinterkaptajnen r003 jager point; bjergpoint kun paa topankomsten (r009) er ugyldigt.
   assert.ok(on[1].get("sprint0").hunters.includes("r003"));
-  assert.equal(ridersOf(on[1].get("sprint0"))[0], "r003");
+  // Valg B: sprinterkaptajnen koerer med i forvejen, saa opgaven giver ham ingen plads foran andre
+  // kaempende; passagen er den samme som uden opgaven, og opgaven fik ham ikke til at koere med.
+  assert.deepEqual(ridersOf(on[1].get("sprint0")), ridersOf(off[1].get("sprint0")));
+  assert.equal(on[1].get("sprint0").hunt_work_7855, undefined);
   assert.equal(on[1].get("kom0").hunters, undefined, "topankomsten afgoeres af maalordenen, ingen jagt");
   // Etape 3: r002 jager bjergpoint EFTER Col B (ikke paa den); r013 jager point frem til Col C.
   assert.ok(!(on[2].get("kom0").hunters ?? []).includes("r002"), "ikke foer sit skift-punkt");
@@ -226,13 +234,17 @@ test("#7855 taendt: gruppen afgoer foerst; jagten flytter kun pladser inden for 
   }
 });
 
-test("#7855 taendt: leddet koster traethed (haardeste indsats), og run-identiteten + genafspilningen holder", async () => {
+test("#7855 taendt: passagerne koster traethed (valg C), og run-identiteten + genafspilningen holder", async () => {
   const engine = await loadRaceEngineV4();
   const off = wholeRace7855(engine, "s5_profiles_v3");
   const on = wholeRace7855({ ...engine, jerseyHunt7855: true }, "s5_profiles_v3");
   assert.equal(off.outputs[0].v4Output.stage_plan_load_efforts?.r001, undefined, "slukket: planen ignoreres som i merge-basen");
-  assert.equal(on.outputs[0].v4Output.stage_plan_load_efforts.r001, "protect");
-  assert.equal(on.outputs[1].v4Output.stage_plan_load_efforts.r003, "protect");
+  // Ejer 12/11 valg C: jagt-leddet taeller som Middel; prisen er passagerne opgaven fik ham til at koere med.
+  assert.equal(on.outputs[0].v4Output.stage_plan_load_efforts.r001, "normal");
+  assert.equal(on.outputs[1].v4Output.stage_plan_load_efforts.r003, "normal");
+  const frontOf = (o, id) => stageWorkExposure(o.v4Output, null).get(id)?.front ?? 0;
+  assert.ok(frontOf(on.outputs[0], "r001") > frontOf(off.outputs[0], "r001"), "hjaelperens spurt koster arbejde i front");
+  assert.equal(jerseyHuntFrontWork7855(on.outputs[1].v4Output.passages).has("r003"), false, "sprinterkaptajnen koerte med alligevel: intet ekstra");
   const digests = await digests7855(on);
   assert.notDeepEqual(digests.inputChecksums, FROZEN["wholeRace:s5_profiles_v3"].inputChecksums);
   const rows = await buildSnapshotRows({ raceId: RACE_7855.id, recorder: on.recorder });
