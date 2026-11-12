@@ -545,7 +545,7 @@ export function buildRiderRows({ riders, stages, abilityByRider, conditionByRide
 // Holdet har maks ~30 ryttere, så plain .in() er tilstrækkeligt her
 // (ingen chunking nødvendig — i modsætning til raceRunner's full-field-opslag).
 // #7801: `fatigueNow: false` springer visningens træthed lige nu over (gem-stien viser intet).
-// `now` gælder kun trætheden lige nu (injicérbart for tests, AGENTS.md regel 16).
+// `now` er injicérbart (AGENTS.md regel 16): skadesdatoen og trætheden lige nu regnes mod det.
 export async function getSelectionContext({ supabase, race, teamId, fatigueNow = true, now = new Date() }) {
   // #5645 (Y4): truppen der må udtages til løbet. Senior = uændret select + filter.
   const raceSquad = raceSquadOf(race);
@@ -591,7 +591,7 @@ export async function getSelectionContext({ supabase, race, teamId, fatigueNow =
   // afvises af validateSelection's injuredRiderIds (begge udledes af riderRows.injured
   // nedenfor). Engine-laget (raceRunner/filterOutInjuredEntries) forbliver den
   // uafhængige, afgørende bagstopper på selve løbsdagen — se dets egen kommentar.
-  const todayStr = raceSelectionReferenceDateStr(race, copenhagenDateString());
+  const todayStr = raceSelectionReferenceDateStr(race, copenhagenDateString(now));
 
   // #7715: maerket i udtagelsen, samme regel som motoren. Slukket kontakt = intet felt.
   let timeLimitRisk = {};

@@ -150,7 +150,8 @@ export async function surfaceOffDigests() {
   for (let seed = 1; seed <= SCENARIO_COUNT; seed++) {
     for (const flag of OFF_FLAGS) {
       const { state, race, teamId } = buildScenario(seed);
-      const selection = await getSelectionContext({ supabase: tableFake(withFlag(state, flag)), race, teamId });
+      // `now` findes ikke i basens signatur (den læste uret); data er valgt, så svaret er det samme.
+      const selection = await getSelectionContext({ supabase: tableFake(withFlag(state, flag)), race, teamId, now: FIXED_NOW });
       const roles = await getStageRolesContext({ supabase: tableFake(withFlag(state, flag)), race, teamId, now: FIXED_NOW });
       out.push({ seed, flag: String(flag), selection: sha(jsonSafe(selection)), roles: sha(jsonSafe(roles)) });
     }
