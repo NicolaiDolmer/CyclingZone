@@ -270,6 +270,19 @@ grunden til at bonustilbuddets timing føles tilfældig for spillerne.
 Lag 2-3 håndhæves i transfer- og auktions-routes via `assertSigningAllowed`. Lag 5 hookes ind i
 `processSeasonStart`s modifier-stak og udløber automatisk ved sæsonskifte.
 
+**Regel: parkerede hold har en frosset bestyrelse (ejer 23/9 #4592, ejer 4/10 + 12/11 #5902).**
+Et hold med `teams.parked_at` sat får ingen bestyrelsesdom og ingen konsekvenser, hverken i den
+ugentlige kørsel efter et løb (tilfredshed, budget-modifier, løbs-events, mandat-sync,
+mid-season-checkpointets lag 2-6 og beskeder) eller ved sæson-slut. Sandheden er
+`managerParking.isParkedTeam` i begge stier; `evaluateAndApplyConsequences` afviser desuden selv
+et parkeret hold, så ingen anden kalder kan give det en konsekvens eller en tvangssalgsliste.
+Frosset betyder urørt, ikke nulstillet: aktive rækker fra før parkeringen står, som de stod. Når
+holdet vender tilbage (comeback nulstiller `parked_at`), dømmes det igen fra næste kørsel som
+alle andre: lag 2-3 udløber ved den næste evaluering, hvis tilfredsheden er over tærsklen, lag
+4 står, til rytteren er solgt (koden har intet andet udløb for den række), lag 5 udløber ved næste sæsonstart
+for alle hold, og lag 6 udløber med sin sæson. Rækker, der blev skabt ved en fejl, mens holdet
+var parkeret, ryddes af ejeren som dataoprydning, ikke af koden.
+
 **Rytteromdømme (#4956/#5828):** Ved `rider_reputation_enabled=on` viser
 rytterfladerne mindst den gamle popularitet: `max(popularity, reputation)`.
 Den aktuelle stjerneprofil, tvangslistning og nye mål bruger det samme tal.
