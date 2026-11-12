@@ -20,12 +20,14 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "DashboardPage.jsx"), "utf8");
 
-test("#1488 board-kortet er gated på BÅDE modul-synlighed OG en etableret board", () => {
+// #8022: only the pending desktop frame is exempt from confirmed board absence.
+test("#1488/#8022 board visibility permits only a pending desktop frame before confirmation", () => {
   assert.match(
     source,
-    /\{isVisible\("board"\)\s*&&\s*board\s*&&\s*\(/,
-    'board-kortet skal gates på `isVisible("board") && board` — ellers vises det tomt i baseline-fasen',
+    /\{isVisible\("board"\)\s*&&\s*\(board\s*\|\|\s*loading\)\s*&&\s*\(/,
+    "confirmed board absence must hide the card; only core loading permits a pending frame",
   );
+  assert.match(source, /className=\{board \? undefined : "hidden lg:block"\}/);
 });
 
 test("#1488 board udledes fra activePlan (kun non-null når en plan findes)", () => {

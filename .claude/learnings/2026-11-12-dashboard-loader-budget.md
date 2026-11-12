@@ -21,10 +21,18 @@ Review 2 found that the new request deadlines called AbortSignal.timeout directl
 The second review also found that signup, onboarding and Discord presence no longer participated in the initial layout decision after those requests moved off the core load path. Their generation-safe settled flag now joins initialDataReady within the existing single 1500 ms mount cap. Known responses from an older refresh cannot publish or settle a newer one; errors and missing auth settle without inventing card data. Requests beyond the cap still reveal ready dashboard content, and valid late cards remain visible under their existing rules.
 
 
-A failed finished-stage enrichment is not proof that no result exists. The existing status line now stays empty at its existing minimum height when detailsUnavailable is set. A browser regression waits for enrichment settlement and reproduced the previous false no-results text before checking the empty18px line. Confirmed no-winner responses keep their established no-results behavior.
+A failed finished-stage enrichment is not proof that no result exists. The existing status line now stays empty at its existing minimum height when detailsUnavailable is set. A browser regression waits for enrichment settlement and reproduced the previous false no-results text before checking the empty 18px line. Confirmed no-winner responses keep their established no-results behavior.
 
 
 Known stage details are reusable only while the card state and completed-stage count match. A changed base card now clears its previous standing/winner and marks enrichment pending; unchanged cards still retain their confirmed details during refresh. Fixed-clock browser regressions independently change state and progress at the minute refresh, hold the replacement enrichment and verify old values disappear before new server values settle.
 
 
 Confirmed no-team reads previously left dependent race/selection and fixed-card readiness pending forever, while the header used a skeleton for every missing team name. The no-team branch now settles those skipped reads; the title uses the existing navigation label after loading. Team read errors remain distinct from confirmed null and use the existing page ErrorState, so failed core data cannot become false confirmed absence. Browser regressions cover both paths.
+
+
+### Historical geometry measurement note
+
+The unknown header identity uses compact, capped skeleton widths so it does not force the action cluster onto an extra mobile row. While balance is pending, its existing optional locked-balance line holds a local skeleton; confirmed zero still removes that line. Undefined latest-result data renders the existing Card/header and quiet pending body matching the measured synthetic fixture anatomy (355px desktop / 394px mobile; other histories and first-race variants can differ): five 58px rows, plus two mobile wrapping lines. Null/error and confirmed-empty behavior remain unchanged. This reserves genuine pending data only; late conditional content and a confirmed-empty stage strip still follow their established visibility rules, and their remaining CLS must be reported separately.
+
+
+The final desktop regression measured the existing selection/season row at 113px at 1440px and 145px at 1024px; the season card stretches to its selection partner. Its unknown desktop cell now reserves that bounded canonical row capacity only while pending, and known selection still uses natural stretch. The board placeholder reuses the exact Section/header/stat labels and 20px value slots: the fixture is 123.34375px at 1440px and 138.1875px at 1024px because the existing labels wrap. The fixture has no outlook/history/categories; no invented blocks are reserved. Longer race names, locales, feedback categories and confirmed absence can still differ and remain part of the explicitly reported conditional-layout limit. Mobile gets no new season/board placeholder slots.

@@ -77,8 +77,8 @@ test("[TeamSelectionCtaCard|Sæsonstatus]-parret står FØR DevTransitionCard og
   // Kollaps-mønster: hver halvdel af parret får lg:col-span-2 når partneren mangler.
   assert.match(src, /className=\{nextActionsVisible \? undefined : "lg:col-span-2"\}/);
   assert.match(src, /className=\{myLatestResultPaired \? undefined : "lg:col-span-2"\}/);
-  assert.match(src, /className=\{seasonInfo \? undefined : "lg:col-span-2"\}/);
-  assert.match(src, /className=\{showTeamSelectionCta \? undefined : "lg:col-span-2"\}/);
+  assert.match(src, /className=\{seasonInfo \|\| seasonBannerPending \? undefined : "lg:col-span-2"\}/);
+  assert.match(src, /className=\{seasonBannerPending \? "hidden lg:block lg:col-start-2" : showTeamSelectionCta \? undefined : "lg:col-span-2"\}/);
 });
 
 // #3310 — første-løbs-øjeblikket ejer toppen ALENE og deltager ikke i parringen.
