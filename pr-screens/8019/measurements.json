@@ -1,0 +1,218 @@
+{
+  "baselineSha": "2b0af720fbfca81ea8ac70fb933c68904cffc91b",
+  "afterSha": "db78ea6e3a12117bf1ebd638a07eafe4d38f5ed1",
+  "lighthouseVersion": "13.6.0",
+  "runsPerProfile": 3,
+  "method": "Synthetic local LAB,375x812/1440x900. Lighthouse navigation medians; INP separately native trusted click/keyboard with650ms API delay. Native initialCLS captured before interaction; empty09/29 and stage09/30,650ms delay6500ms settle; slowstagecase1200ms delay12000ms settle. Canonical auction LH ?tab=all. No field-performance claim; ancillary Lantern insights sometimeswarn while primary metrics have no runtimeError.",
+  "rows": [
+    {
+      "profile": "mobile",
+      "route": "/dashboard",
+      "before": {
+        "performance": 65,
+        "CLS": 0.1642611693718807,
+        "LCPms": 16734.4862,
+        "CLSRange": [
+          0.1642611693718807,
+          0.1642611693718807
+        ],
+        "INPms": 16
+      },
+      "after": {
+        "performance": 71,
+        "CLS": 0,
+        "LCPms": 16765.459300000017,
+        "CLSRange": [
+          0,
+          0
+        ],
+        "INPms": 16
+      }
+    },
+    {
+      "profile": "mobile",
+      "route": "/transfers?tab=market",
+      "before": {
+        "performance": 64,
+        "CLS": 0.001731272294887039,
+        "LCPms": 14322.127200000004,
+        "CLSRange": [
+          0,
+          0.01522978596908442
+        ],
+        "INPms": 16
+      },
+      "after": {
+        "performance": 68,
+        "CLS": 0.001731272294887039,
+        "LCPms": 14305.410600000017,
+        "CLSRange": [
+          0.001731272294887039,
+          0.01522978596908442
+        ],
+        "INPms": 16
+      }
+    },
+    {
+      "profile": "mobile",
+      "route": "/auctions?tab=all",
+      "before": {
+        "performance": 96,
+        "CLS": 0.07148282737589685,
+        "LCPms": 1506.7588,
+        "CLSRange": [
+          0.07148282737589685,
+          0.07148282737589685
+        ],
+        "INPms": 16
+      },
+      "after": {
+        "performance": 92,
+        "CLS": 0.009007198948247553,
+        "LCPms": 1507.6151,
+        "CLSRange": [
+          0.008291376479248061,
+          0.009007198948247553
+        ],
+        "INPms": 16
+      }
+    },
+    {
+      "profile": "desktop",
+      "route": "/dashboard",
+      "before": {
+        "performance": 80,
+        "CLS": 0.04985055271562071,
+        "LCPms": 3689.048750000003,
+        "CLSRange": [
+          0.03237731829775377,
+          0.0501825309177812
+        ],
+        "INPms": 24
+      },
+      "after": {
+        "performance": 80,
+        "CLS": 0.03237731829775377,
+        "LCPms": 3698.8616999999967,
+        "CLSRange": [
+          0.03237731829775377,
+          0.04985055271562071
+        ],
+        "INPms": 16
+      }
+    },
+    {
+      "profile": "desktop",
+      "route": "/transfers?tab=market",
+      "before": {
+        "performance": 83,
+        "CLS": 0.01941536377957819,
+        "LCPms": 2884.0136,
+        "CLSRange": [
+          0.01797973090277778,
+          0.019747341981738685
+        ],
+        "INPms": 16
+      },
+      "after": {
+        "performance": 83,
+        "CLS": 0.01941536377957819,
+        "LCPms": 2873.6155000000063,
+        "CLSRange": [
+          0.01941536377957819,
+          0.019747341981738685
+        ],
+        "INPms": 16
+      }
+    },
+    {
+      "profile": "desktop",
+      "route": "/auctions?tab=all",
+      "before": {
+        "performance": 84,
+        "CLS": 0.021192691504710006,
+        "LCPms": 2697.800500000001,
+        "CLSRange": [
+          0.021179638521170913,
+          0.029189767125342936
+        ],
+        "INPms": 16
+      },
+      "after": {
+        "performance": 84,
+        "CLS": 0.021179638521170913,
+        "LCPms": 2719.4159999999997,
+        "CLSRange": [
+          0.021179638521170913,
+          0.029189767125342936
+        ],
+        "INPms": 16
+      }
+    }
+  ],
+  "native": [
+    {
+      "profile": "mobile",
+      "route": "/dashboard",
+      "emptyBefore": 0.32954515409760815,
+      "emptyAfter": 0,
+      "stagesBefore": 0.0862743455363715,
+      "stagesAfter": 0,
+      "slowAfter": 0
+    },
+    {
+      "profile": "mobile",
+      "route": "/transfers?tab=market",
+      "emptyBefore": 0.015229785969084423,
+      "emptyAfter": 0.015229785969084423,
+      "stagesBefore": 0.015229785969084423,
+      "stagesAfter": 0.015229785969084423,
+      "slowAfter": 0.015229785969084423
+    },
+    {
+      "profile": "mobile",
+      "route": "/auctions",
+      "emptyBefore": 0.12539870310490428,
+      "emptyAfter": 0.008974813413028708,
+      "stagesBefore": 0.12539822004901843,
+      "stagesAfter": 0.00897325498273031,
+      "slowAfter": 0.008453188826065505
+    },
+    {
+      "profile": "desktop",
+      "route": "/dashboard",
+      "emptyBefore": 0.15287420187114198,
+      "emptyAfter": 0.02799246024091221,
+      "stagesBefore": 0.03505252834576474,
+      "stagesAfter": 0.02799246024091221,
+      "slowAfter": 0.02045216049382716
+    },
+    {
+      "profile": "desktop",
+      "route": "/transfers?tab=market",
+      "emptyBefore": 0.016350249967849794,
+      "emptyAfter": 0.016350249967849794,
+      "stagesBefore": 0.016350249967849794,
+      "stagesAfter": 0.016350249967849794,
+      "slowAfter": 0.010343197016460906
+    },
+    {
+      "profile": "desktop",
+      "route": "/auctions",
+      "emptyBefore": 0.016350249967849794,
+      "emptyAfter": 0.016350249967849794,
+      "stagesBefore": 0.016350249967849794,
+      "stagesAfter": 0.016350249967849794,
+      "slowAfter": 0.010343197016460906
+    }
+  ],
+  "acceptance": {
+    "targetCLS": 0.05,
+    "nativeRuns": 18,
+    "nativeMax": 0.02799246024091221,
+    "nativeAllBelowTarget": true,
+    "lighthouseRuns": 18,
+    "lighthouseMax": 0.04985055271562071,
+    "lighthouseAllBelowTarget": true
+  }
+}
