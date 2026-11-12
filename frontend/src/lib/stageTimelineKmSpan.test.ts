@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { honestTimelineEvents, honestKmResolver, lossEntriesWithFilmKm, filmKmValue, exactEventKm } from "./stageTimelineKmSpan.ts";
 import { buildFilmTimeline, eventsPlayedUpTo } from "./stageTimelineFilm.js";
 import { catchActorCopy, findMorningCatch } from "./raceCatchActor.ts";
-import { buildOwnTimeLoss } from "./stageSplitTimes.ts";
+import { buildOwnTimeLoss, buildSplitTimes } from "./stageSplitTimes.ts";
 import { withEventPlaces } from "../../../backend/lib/raceTimeline.js";
 
 type Ev = { km: number; type: string; params?: Record<string, unknown>; exact_km?: number; recorded_km?: number; km_span?: { from: number; to: number } };
@@ -267,22 +267,24 @@ const climbFinish: Ev[] = [
 ];
 const finalClimb = [{ crest_km: 182, length_km: 11 }];
 
-test("#7965 an all-out line stamped on a summit finish shows the climb as a span, before the finish", () => {
+test("#7965 an all-out line stamped on a summit finish shows ONE point at the foot of the climb (never a span), before the finish", () => {
   const shown = honestTimelineEvents(climbFinish, { ...V4, climbs: finalClimb }) as Ev[];
   for (const type of ["all_out_gain", "all_out_cracked"]) {
     const line = shown.find((e) => e.type === type)!;
-    assert.deepEqual(line.km_span, { from: 171, to: 182 });
-    assert.equal(line.km, 171);
-    assert.equal(line.recorded_km, 182);
-    assert.equal(filmKmValue(line, fmt), "171-182");
+    assert.equal(line.km_span, undefined, "no interval (owner 12/11)");
+    assert.equal(line.km, 171, "km = foot = crest_km - length_km");
+    assert.equal(line.recorded_km, 182, "the engine's summit km is kept for the task lookup");
+    assert.equal(filmKmValue(line, fmt), "171");
     assert.ok(shown.indexOf(line) < shown.findIndex((e) => e.type === "finish"));
   }
 });
 
-test("#7965 without the climb in the profile the previous known point opens the span", () => {
+test("#7965 without the climb in the profile the previous known point is the single point", () => {
   const shown = honestTimelineEvents(climbFinish, V4) as Ev[];
   const line = shown.find((e) => e.type === "all_out_gain")!;
-  assert.deepEqual(line.km_span, { from: 150, to: 182 });
+  assert.equal(line.km_span, undefined);
+  assert.equal(line.km, 150);
+  assert.equal(filmKmValue(line, fmt), "150");
 });
 
 test("#7965 a stage whose profile has no climb ending at the finish is unchanged", () => {
@@ -316,10 +318,22 @@ test("#7965 other event types and the rest of a summit finish stay as they were"
 test("#7965 the resolver (split times, story) gives the same km as the film line", () => {
   const resolve = honestKmResolver(climbFinish, { ...V4, climbs: finalClimb });
   const shown = resolve(climbFinish[4]);
-  assert.deepEqual(shown.km_span, { from: 171, to: 182 });
+  assert.equal(shown.km_span, undefined);
+  assert.equal(shown.km, 171);
 });
 
-test("#7965 the loss list shows the same span as the film line", () => {
+test("#7965 the loss list shows the same single point as the film line", () => {
   const entries = lossEntriesWithFilmKm(climbFinish, [{ type: "event", km: 182, riderId: "r2", event: climbFinish[4] }], { ...V4, climbs: finalClimb });
-  assert.deepEqual(entries[0].shown.km_span, { from: 171, to: 182 });
+  assert.equal(entries[0].shown.km_span, undefined);
+  assert.equal(entries[0].shown.km, 171);
+});
+
+test("#7965 split times (mellemtider) are unchanged: the display change never touches the raw timeline", () => {
+  const before = JSON.parse(JSON.stringify(buildSplitTimes(climbFinish as never, { ownRiderIds: [] })));
+  const snapshot = JSON.parse(JSON.stringify(climbFinish));
+  honestTimelineEvents(climbFinish, { ...V4, climbs: finalClimb });
+  honestKmResolver(climbFinish, { ...V4, climbs: finalClimb })(climbFinish[3]);
+  assert.deepEqual(climbFinish, snapshot, "raw events are not mutated");
+  assert.deepEqual(buildSplitTimes(climbFinish as never, { ownRiderIds: [] }), before);
+  assert.ok(before.every((p: { km: number }) => p.km !== 171), "no split point at the foot");
 });

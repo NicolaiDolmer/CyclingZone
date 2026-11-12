@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   kmToX, xToKm, buildFilmTimeline, eventsPlayedUpTo, describeEvent, climbMarkerHeight, altitudeAtKm,
-  collectRiderIds, storyEventsWithCauses,
+  collectRiderIds, storyEventsWithCauses, filmKmValue,
 } from "./stageTimelineFilm.js";
 import { buildProfileSeries } from "./stageRouteProfile.js";
 import {
@@ -712,11 +712,12 @@ const SUMMIT_EVENTS = [
 ];
 const SUMMIT_CLIMBS = [{ crest_km: 182, length_km: 11 }];
 
-test("#7965: filmen viser angrebet som km A-B foer maalgangen, og teksten er stadig Angrib", () => {
+test("#7965: filmen viser angrebet paa ET punkt (foden) foer maalgangen, aldrig som interval, og teksten er stadig Angrib", () => {
   const built = buildFilmTimeline({ events: SUMMIT_EVENTS, distanceKm: 182, timelineVersion: 2, climbs: SUMMIT_CLIMBS });
   const line = /** @type {any} */ (built.events.find((e) => e.type === "all_out_gain"));
-  assert.deepEqual(line.km_span, { from: 171, to: 182 });
+  assert.equal(line.km_span, undefined);
   assert.equal(line.km, 171);
+  assert.equal(filmKmValue(line, (v) => String(v)), "171");
   assert.ok(built.events.indexOf(line) < built.events.findIndex((e) => e.type === "finish"));
   const feed = /** @type {any} */ (built.feedEvents.find((e) => e.type === "all_out_gain"));
   assert.equal(describeEvent(feed, { riderNameById: riderNameByIdFixture() })?.key, "attack_gain");

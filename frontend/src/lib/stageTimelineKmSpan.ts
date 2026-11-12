@@ -12,7 +12,9 @@
 // #7965: motoren stempler "alt ud"/angreb på en stigning (all_out_gain,
 // all_out_cracked) ved stigningens SLUT. Ved en topankomst er det målstregen,
 // så linjen stod på stregen, selv om angrebet skete op ad stigningen. Filmen
-// viser den som et ærligt spænd fra foden til toppen. Kun visning.
+// viser den på ÉT punkt, stigningens fod (aldrig som interval, ejer 12/11):
+// der hvor handlingen starter. Kendes foden ikke, bruges forrige kendte punkt.
+// Filmen har ingen løbstid pr. km, så der vises intet nyt klokkeslæt. Kun visning.
 //
 // #6294: samme indgang fjerner de "indhentninger" som var en samling af
 // udbruddet (withoutRegroupCatches), så film, mærker og gemte flag fortæller
@@ -134,7 +136,8 @@ function spanResolver(kept: readonly SpanTimelineEvent[], { timelineVersion = nu
       if (stamped != null && stamped >= finishKm) {
         // Kender profilen stigninger, kræves en der slutter her (ellers er det ikke en topankomst).
         const from = climbs ? climbFoot(stamped) : previousAnchor(stamped);
-        if (from != null && from < stamped) return { event: { ...event, km: from, recorded_km: stamped, km_span: { from, to: stamped } }, spanned: true };
+        // Ét punkt: km = foden, INTET km_span. recorded_km (toppen) bevares til opgave-opslaget.
+        if (from != null && from < stamped) return { event: { ...event, km: from, recorded_km: stamped }, spanned: true };
       }
     }
     const exact = exactEventKm(event);
