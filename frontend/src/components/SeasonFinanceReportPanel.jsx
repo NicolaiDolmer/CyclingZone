@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { donutSegments } from "../lib/svgChartGeometry";
 import { supabase } from "../lib/supabase";
 import { formatNumber, formatDate as formatDateIntl } from "../lib/intl";
 import { Card, Button, Spinner, ChevronLeftIcon } from "./ui";
@@ -45,17 +45,79 @@ function formatDate(iso) {
   });
 }
 
-function DonutTooltip({ active, payload, total }) {
-  if (!active || !payload?.length) return null;
-  const p = payload[0].payload;
-  const pct = total > 0 ? ((p.value / total) * 100).toFixed(1) : "0";
+// #6165: egen SVG-donut i stedet for recharts. Samme ring (indre 50, ydre 80 i et
+// 200 x 200 koordinatsystem) og samme farver. Hover og tastaturfokus viser
+// label, beløb og procent; hvert stykke har en aria-label.
+const DONUT_SIZE = 200;
+const DONUT_C = DONUT_SIZE / 2;
+
+function DonutChart({ data, total, title }) {
+  const [activeIdx, setActiveIdx] = useState(null);
+  const segments = donutSegments(
+    data.map((d) => d.value),
+    DONUT_C, DONUT_C, 50, 80, 2,
+  );
+  const active = activeIdx != null ? segments[activeIdx] : null;
+  const activeItem = active ? data[activeIdx] : null;
+  let tip = null;
+  if (active && activeItem && active.path) {
+    const mid = (active.startAngle + active.endAngle) / 2;
+    const r = 80;
+    const dx = Math.max(-60, Math.min(60, Math.sin(mid) * r));
+    const dy = -Math.cos(mid) * r;
+    tip = { dx, dy };
+  }
   return (
-    <div className="bg-cz-card border border-cz-border rounded-cz shadow-xs px-3 py-2">
-      <p className="text-cz-1 text-sm font-bold">{p.label}</p>
-      <p className="text-cz-2 text-xs font-mono">
-        {formatCZ(p.value)} · {pct}%
-      </p>
-    </div>
+    <>
+      <svg
+        viewBox={`0 0 ${DONUT_SIZE} ${DONUT_SIZE}`}
+        width="100%"
+        height="100%"
+        role="group"
+        aria-label={title}
+        style={{ display: "block" }}
+      >
+        {segments.map((seg, i) => {
+          if (!seg.path) return null;
+          const d = data[i];
+          const pct = seg.pct.toFixed(1);
+          return (
+            <path
+              key={d.reason_code ?? i}
+              d={seg.path}
+              style={{ fill: chartColor(i), opacity: activeIdx != null && activeIdx !== i ? 0.55 : 1, outline: "none" }}
+              tabIndex={0}
+              role="img"
+              aria-label={`${d.label}: ${formatCZ(d.value)}, ${pct}%`}
+              onMouseEnter={() => setActiveIdx(i)}
+              onMouseLeave={() => setActiveIdx(null)}
+              onFocus={() => setActiveIdx(i)}
+              onBlur={() => setActiveIdx(null)}
+              onClick={() => setActiveIdx(activeIdx === i ? null : i)}
+            />
+          );
+        })}
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+        <span className="text-cz-3 text-xs uppercase tracking-wide">{total.label}</span>
+        <span className="text-cz-1 font-mono font-bold tabular-nums">{formatCZ(total.value)}</span>
+      </div>
+      {tip && (
+        <div
+          className="absolute pointer-events-none z-10 bg-cz-card border border-cz-border rounded-cz px-3 py-2 whitespace-nowrap"
+          style={{
+            left: `calc(50% + ${tip.dx}px)`,
+            top: `${DONUT_C + tip.dy}px`,
+            transform: "translate(-50%, -110%)",
+          }}
+        >
+          <p className="text-cz-1 text-sm font-bold">{activeItem.label}</p>
+          <p className="text-cz-2 text-xs font-mono tabular-nums">
+            {formatCZ(activeItem.value)} · {active.pct.toFixed(1)}%
+          </p>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -80,28 +142,7 @@ function Donut({ title, data: rawData, emptyLabel }) {
       <h3 className="text-cz-1 font-semibold mb-4">{title}</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
         <div className="h-[200px] relative">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={data}
-                dataKey="value"
-                nameKey="label"
-                innerRadius={50}
-                outerRadius={80}
-                paddingAngle={2}
-                isAnimationActive={false}
-              >
-                {data.map((_, i) => (
-                  <Cell key={i} fill={chartColor(i)} />
-                ))}
-              </Pie>
-              <Tooltip content={<DonutTooltip total={total} />} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-cz-3 text-xs uppercase tracking-wide">{t("report.total")}</span>
-            <span className="text-cz-1 font-mono font-bold">{formatCZ(total)}</span>
-          </div>
+          <DonutChart data={data} total={{ label: t("report.total"), value: total }} title={title} />
         </div>
         <ul className="space-y-1.5 text-sm">
           {data.map((d, i) => {
