@@ -385,9 +385,9 @@ export function selectPlanCycleSnapshots(rows, planStartSeasonNumber = null) {
  * Ren funktion (ingen I/O), så begge læse-stier (prefetch + pr. board) bruger
  * præcis samme regel.
  *
- * @param {object} args
- * @param {Map<string, number>} args.sponsorBySeasonId — sponsorsum pr. season_id
- * @param {Array<string|null|undefined>} args.planSeasonIds — afsluttede plan-sæsoner i rækkefølge
+ * @param {object} [args]
+ * @param {Map<string, number>|null} [args.sponsorBySeasonId] sponsorsum pr. season_id
+ * @param {Array<string|null|undefined>} [args.planSeasonIds] afsluttede plan-sæsoner i rækkefølge
  * @param {string|null} [args.currentSeasonId]
  * @returns {{ seasonId: string|null, income: number|null }}
  */
@@ -485,6 +485,7 @@ export async function loadGoalContextForBoard({
   // tidligere sæson med tal) forbliver den null: samme "evaluerer først når der
   // er et målegrundlag"-princip som u25_development_delta ovenfor.
   let sponsorGrowthCurrentIncome = null;
+  /** @type {number|null} */
   let sponsorGrowthBaselineIncome = null;
 
   if (planSeasonIds.length > 0) {
