@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (12/11):** **PC1 storsession v3 (Fable 5.2, måles på til dørs; først de 5 åbne PR'er):** startprompt på [#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6818122648): træning (#7982 → #7741 → #6110), taktik (#7980 billede-go → #7884 A → #7638), løbssiden #7778, Web 5x (A/B bundle-loft #6494/#8020, så #8012 → #8008). PC1 ejer merge-køen. **Dolmer PC Codex:** #8022 P1 (dashboard-loader-loft) + #8023. 12/11 merget: #8017 (migration verificeret), #8021 PWA. Til dørs: #8015 live, #6584 Android; opfølgning #8018.
+> **🎯 Next action (12/11):** **PC1 storsession v3 (Fable 5.2, måles på til dørs; først de 5 åbne PR'er):** startprompt på [#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6818122648): træning (#7982 → #7741 → #6110), taktik (#7980 billede-go → #7884 A → #7638), løbssiden #7778, Web 5x (A/B bundle-loft #6494/#8020, så #8012 → #8008). PC1 ejer merge-køen. **Dolmer PC Codex:** #8022 P1 (dashboard-loader-loft) + #8023. Til dørs: #8015 live, #6584 Android; opfølgning #8018.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; #7277 (off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
 > **🤖 Working agent:** Claude Fable 5.2 på PC1, storsession v3 (12/11); ejer merge-kø og tænding. Codex på Dolmer PC: #8022.
