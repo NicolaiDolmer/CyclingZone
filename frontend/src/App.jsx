@@ -124,6 +124,9 @@ const YouthRacesPage = lazy(() => import("./pages/YouthRacesPage.js"));
 const KlubPage = lazy(() => import("./pages/KlubPage"));
 const ScoutingCentralPage = lazy(() => import("./pages/ScoutingCentralPage"));
 const PlanningHubPage = lazy(() => import("./pages/PlanningHubPage"));
+// #7535: den nye planlaegningsside. Egen lazy chunk; ruten sender videre til /planning, naar kontakten
+// planning_workbench er slukket (standard), saa den nuvaerende side er uaendret.
+const PlanningWorkbenchPage = lazy(() => import("./pages/PlanningWorkbenchPage"));
 const StaffProfilePage = lazy(() => import("./pages/StaffProfilePage"));
 
 // #3102 etape 3: /races er opløst — kalender-fanen (holdudtagelses-boardet) bor
@@ -358,6 +361,7 @@ export default function App({ initialSession = undefined }) {
                 Strategi · Kalender). De fire gamle ruter redirecter med
                 fane-mapping. */}
             <Route path="planning" element={<PlanningHubPage />} />
+            <Route path="planning/workbench" element={<I18nReadyGate ns="planning"><PlanningWorkbenchPage /></I18nReadyGate>} />
             <Route path="races" element={<RacesLegacyRedirect />} />
             <Route path="races/strategy" element={<Navigate to="/planning?tab=strategy" replace />} />
             <Route path="races/:raceId" element={<RaceDetailPage />} />

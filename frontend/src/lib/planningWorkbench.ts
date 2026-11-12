@@ -432,6 +432,65 @@ export function routeMatchByProfile(stageSuitability: Array<number | null> | nul
   return out;
 }
 
+/** Rytter-raekken som GET /api/races/:id/selection sender den (kun de felter siden bruger). */
+export interface SelectionRider {
+  id: string;
+  name: string;
+  primaryType?: string | null;
+  secondaryType?: string | null;
+  suitability?: number | null;
+  stageSuitability?: Array<number | null> | null;
+  form?: number | null;
+  fatigue?: number | null;
+  injured?: boolean;
+  outgoing?: boolean;
+  overAge?: boolean;
+  abilities?: Record<string, number | null> | null;
+}
+
+export interface SelectionPayload {
+  riders?: SelectionRider[];
+  bound_riders?: Array<{ rider_id: string; bound_race_name?: string | null }>;
+  trainNowLock?: { riderIds?: string[] } | null;
+}
+
+/**
+ * Raekkerne til trup-tabellen. Rute-match, form, traethed og skade kommer rent fra serveren;
+ * ratingen er rytterens bedste rolle lige nu (samme beregning som resten af spillet).
+ */
+export function buildSquadRows(
+  payload: SelectionPayload,
+  stageTypes: string[],
+  bestRole: (flat: Record<string, unknown>) => { rating: number | null; role: string | null },
+): SquadRow[] {
+  const bound = new Map((payload.bound_riders ?? []).map((b) => [b.rider_id, b.bound_race_name ?? ""]));
+  const locked = new Set(payload.trainNowLock?.riderIds ?? []);
+  return (payload.riders ?? []).map((r) => {
+    const busyIn = bound.has(r.id) ? bound.get(r.id) || "-" : null;
+    const trainNowLocked = locked.has(r.id);
+    const injured = r.injured === true;
+    const overAge = r.overAge === true;
+    const outgoing = r.outgoing === true;
+    const best = r.abilities ? bestRole({ ...r.abilities, primary_type: r.primaryType ?? null, secondary_type: r.secondaryType ?? null }) : null;
+    return {
+      id: r.id,
+      name: r.name,
+      selectable: !injured && !overAge && !outgoing && !busyIn && !trainNowLocked,
+      injured,
+      overAge,
+      outgoing,
+      trainNowLocked,
+      busyIn,
+      rating: best?.rating ?? null,
+      ratingRole: best?.role ?? null,
+      form: r.form ?? null,
+      fatigue: r.fatigue ?? null,
+      routeMatch: r.suitability ?? null,
+      byProfile: routeMatchByProfile(r.stageSuitability, stageTypes),
+    };
+  });
+}
+
 export type SquadSortKey =
   | "pick"
   | "name"

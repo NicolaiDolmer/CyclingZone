@@ -1,0 +1,132 @@
+{
+  "title": "Planification",
+  "subtitle": {
+    "season": "Saison {number}",
+    "needSquad": "{count, plural, one {# course a besoin d'une équipe dans les 8 prochains jours} other {# courses ont besoin d'une équipe dans les 8 prochains jours}}",
+    "allReady": "Toutes les courses des 8 prochains jours ont une équipe complète"
+  },
+  "toggles": {
+    "weekBoard": "Vue semaine",
+    "raceList": "Liste des courses"
+  },
+  "monthCalendar": "Calendrier du mois",
+  "weekBoard": {
+    "title": "Vue semaine",
+    "prev": "Semaine précédente",
+    "next": "Semaine suivante",
+    "week": "Semaine {week}",
+    "empty": "Aucune course cette semaine. Utilise les flèches pour trouver la suivante."
+  },
+  "raceList": {
+    "title": "Liste des courses",
+    "scopeLabel": "Afficher les courses",
+    "scopeNext7": "7 prochains jours",
+    "scopeSeason": "Toute la saison",
+    "showPast": "Afficher les passées",
+    "weekLabel": "Semaine {week}",
+    "weekSummary": "Semaine {week} · {count, plural, one {# course} other {# courses}} · {missing, plural, =0 {tout est prêt} other {# à compléter}}",
+    "raceDay": "Jour de course {day}",
+    "stages": "{count, plural, one {# étape} other {# étapes}}",
+    "oneDay": "Course d'un jour",
+    "sharesDays": "Partage des jours de course avec {races}",
+    "empty": {
+      "title": "Affiche toute la saison",
+      "description": "Aucune course à venir dans cette vue. Avec toute la saison, tu peux planifier à l'avance.",
+      "action": "Afficher toute la saison"
+    }
+  },
+  "status": {
+    "ready": "Prêt",
+    "missing": "{count, plural, one {# manquant} other {# manquants}}",
+    "locked": "Verrouillé",
+    "withdrawn": "Retiré",
+    "busy": "Dans {race}",
+    "busyTitle": "Sélectionné pour {race}, qui partage des jours de course",
+    "overAge": "Hors limite d'âge",
+    "trainNow": "S'est entraîné aujourd'hui"
+  },
+  "race": {
+    "unsaved": "Non enregistré",
+    "starts": "Départ {when}",
+    "picked": "{picked} sur {max} choisis",
+    "copyFrom": "Copier l'équipe de…",
+    "suggest": "Proposer une équipe",
+    "discard": "Annuler les modifications",
+    "save": "Enregistrer l'équipe",
+    "saved": "Équipe enregistrée.",
+    "suggested": "Équipe proposée. Relis-la et enregistre-la quand elle te convient.",
+    "copied": "Copié depuis {name}. {skipped, plural, one {# coureur a été ignoré (occupé, blessé ou indisponible).} other {# coureurs ont été ignorés (occupés, blessés ou indisponibles).}}",
+    "copiedAll": "Copié depuis {name}. Relis et enregistre.",
+    "locked": "La course a commencé, l'équipe est donc verrouillée.",
+    "withdrawn": "Ton équipe s'est retirée de cette course, l'équipe ne peut donc plus être modifiée."
+  },
+  "copy": {
+    "title": "Copier l'équipe de",
+    "none": "Aucune autre course n'a encore d'équipe.",
+    "riders": "{count, plural, one {# coureur} other {# coureurs}}"
+  },
+  "squad": {
+    "pick": "Choisir",
+    "rider": "Coureur",
+    "status": "Statut",
+    "role": "Rôle",
+    "rating": "Note",
+    "routeMatch": "Adéquation au parcours",
+    "form": "Forme",
+    "fatigue": "Fatigue",
+    "pickRider": "Choisir {name}",
+    "roleFor": "Rôle de {name}",
+    "count": "{shown} coureurs affichés · {selected} sur {max} choisis",
+    "empty": {
+      "title": "Recharge les coureurs",
+      "description": "Aucun coureur de ton équipe n'est disponible pour cette course pour le moment."
+    }
+  },
+  "role": {
+    "captain": "Leader",
+    "co_captain": "Co-leader",
+    "sprint_captain": "Leader sprint",
+    "hunter": "Chasseur d'échappée",
+    "free_role": "Rôle libre",
+    "luxury_helper": "Équipier de luxe",
+    "rider": "Coureur seul"
+  },
+  "profile": {
+    "title": "Profil du parcours",
+    "prevStage": "Étape précédente",
+    "nextStage": "Étape suivante",
+    "stageOf": "Étape {n} sur {total}",
+    "oneDay": "Course d'un jour",
+    "stages": "Étapes",
+    "showStage": "Afficher l'étape {n}",
+    "hide": "Masquer le profil",
+    "show": "Afficher le profil",
+    "unavailable": "Pas encore de données de parcours pour cette étape."
+  },
+  "unsavedBar": {
+    "label": "Modifications non enregistrées",
+    "text": "Modifications non enregistrées dans {race}.",
+    "next": "Ouverture de {race}.",
+    "stay": "Rester ici",
+    "discard": "Annuler",
+    "saveAndOpen": "Enregistrer et ouvrir"
+  },
+  "error": {
+    "title": "La planification n'a pas pu se charger",
+    "description": "Rien n'a été perdu. Tes équipes enregistrées sont en sécurité.",
+    "retry": "Réessayer"
+  },
+  "notOpen": {
+    "title": "Ouvre la page de planification",
+    "description": "La planification des courses s'ouvre quand la saison a commencé.",
+    "action": "Retour à la planification"
+  },
+  "noRaces": {
+    "title": "Consulte le calendrier",
+    "description": "Cette saison n'a pas encore de courses pour ta division."
+  },
+  "noSelection": {
+    "title": "Choisis une course à planifier",
+    "description": "Choisis une course dans la liste pour composer son équipe."
+  }
+}

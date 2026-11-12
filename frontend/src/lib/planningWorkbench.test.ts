@@ -27,6 +27,7 @@ import {
   DEFAULT_SQUAD_SORT,
   suggestSquad,
   copySquadFrom,
+  buildSquadRows,
   availableRoles,
   EMPTY_SELECTION,
   type SeasonRace,
@@ -229,6 +230,32 @@ test("rutekolonner: en pr. rutetype med antal, og rute-match er gennemsnit pr. t
   ]);
   assert.deepEqual(routeMatchByProfile([60, 40, 70, null], types), { hilly: 65, flat: 40, mountain: null });
   assert.deepEqual(routeMatchByProfile(null, ["flat"]), { flat: null });
+});
+
+test("raekker: skadet, for gammel, udgaaende, optaget og Train now-laast rytter kan ikke vaelges; resten kan", () => {
+  const rows = buildSquadRows(
+    {
+      riders: [
+        { id: "ok", name: "Ok", suitability: 70, form: 55, fatigue: 12, stageSuitability: [60, 80], abilities: { climbing: 70 } },
+        { id: "inj", name: "Inj", injured: true },
+        { id: "old", name: "Old", overAge: true },
+        { id: "out", name: "Out", outgoing: true },
+        { id: "bus", name: "Bus" },
+        { id: "trn", name: "Trn" },
+      ],
+      bound_riders: [{ rider_id: "bus", bound_race_name: "Race x" }],
+      trainNowLock: { riderIds: ["trn"] },
+    },
+    ["hilly", "flat"],
+    (flat) => ({ rating: flat.climbing === 70 ? 64 : null, role: "climber" }),
+  );
+  const by = Object.fromEntries(rows.map((r) => [r.id, r]));
+  assert.equal(by.ok.selectable, true);
+  assert.deepEqual([by.inj, by.old, by.out, by.bus, by.trn].map((r) => r.selectable), [false, false, false, false, false]);
+  assert.equal(by.bus.busyIn, "Race x");
+  assert.deepEqual([by.ok.rating, by.ok.routeMatch, by.ok.form, by.ok.fatigue], [64, 70, 55, 12]);
+  assert.deepEqual(by.ok.byProfile, { hilly: 60, flat: 80 });
+  assert.equal(by.inj.rating, null, "uden evner er der ingen rating at vise");
 });
 
 test("sortering: standard er rute-match faldende, tal uden vaerdi ligger nederst i begge retninger", () => {
