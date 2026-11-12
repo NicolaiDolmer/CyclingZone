@@ -1,0 +1,35 @@
+{
+  "testedRuntimeSha": "ad3a362cfa414a617fa80c6c95b963a21d91d88f",
+  "full": {
+    "exit": 0,
+    "tests": 23861,
+    "pass": 23832,
+    "fail": 0,
+    "skipped": 17,
+    "todo": 12
+  },
+  "e2e": {
+    "exit": 0,
+    "passed": 2071,
+    "skipped": 191,
+    "failed": 0,
+    "flaky": 0,
+    "retryAttempts": 0,
+    "projects": [
+      "desktop-chromium",
+      "mobile-chromium",
+      "mobile-webkit"
+    ],
+    "durationMs": 1860458.16
+  },
+  "productionBuild": {
+    "reactVendorGzip9Bytes": 67757,
+    "developmentWarning": false
+  },
+  "excludedAttempt": "Initial NODE_ENV=test Vite build selected development React; its browser run is excluded, not treated as product regression or CI failure",
+  "coverageLimits": [
+    "Synthetic fixture navigation and interaction measurements, not field data",
+    "Automatic online recovery did not complete on baseline or after; cause not isolated; manual retry verified",
+    "Owner real-device installation/standalone check remains before release"
+  ]
+}

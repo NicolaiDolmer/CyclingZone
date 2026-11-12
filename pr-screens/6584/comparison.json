@@ -1,0 +1,121 @@
+{
+  "baselineSha": "2b0af720fbfca81ea8ac70fb933c68904cffc91b",
+  "afterSha": "ad3a362cfa414a617fa80c6c95b963a21d91d88f",
+  "lighthouseVersion": "13.6.0",
+  "runsPerProfile": 3,
+  "method": "Synthetic local navigation LAB; webdriver skips SW registration. Active SW installability/offline/auth measured separately. Native INP uses click/filter with650ms fixture delay; no field-speedup claim. Auction navigation uses canonical ?tab=all in a matched bounded rerun; original redirected probes retained privately. No causal speedup claim.",
+  "rows": [
+    {
+      "profile": "mobile",
+      "route": "/dashboard",
+      "before": {
+        "performance": 65,
+        "CLS": 0.1642611693718807,
+        "LCPms": 16734.4862,
+        "INPms": 16
+      },
+      "after": {
+        "performance": 64,
+        "CLS": 0.1642611693718807,
+        "LCPms": 16728.676100000008,
+        "INPms": 16
+      }
+    },
+    {
+      "profile": "mobile",
+      "route": "/transfers?tab=market",
+      "before": {
+        "performance": 64,
+        "CLS": 0.001731272294887039,
+        "LCPms": 14322.127200000004,
+        "INPms": 16
+      },
+      "after": {
+        "performance": 70,
+        "CLS": 0.001731272294887039,
+        "LCPms": 14457.911200000019,
+        "INPms": 16
+      }
+    },
+    {
+      "profile": "mobile",
+      "route": "/auctions?tab=all",
+      "before": {
+        "performance": 96,
+        "CLS": 0.07148282737589685,
+        "LCPms": 1506.7588,
+        "INPms": 16,
+        "LCPRangeMs": [
+          1506.748,
+          1506.9105
+        ]
+      },
+      "after": {
+        "performance": 96,
+        "CLS": 0.07148282737589685,
+        "LCPms": 1506.7045,
+        "INPms": 16,
+        "LCPRangeMs": [
+          1506.4212,
+          1507.4364
+        ]
+      }
+    },
+    {
+      "profile": "desktop",
+      "route": "/dashboard",
+      "before": {
+        "performance": 80,
+        "CLS": 0.04985055271562071,
+        "LCPms": 3689.048750000003,
+        "INPms": 16
+      },
+      "after": {
+        "performance": 80,
+        "CLS": 0.0501825309177812,
+        "LCPms": 3661.7104999999974,
+        "INPms": 16
+      }
+    },
+    {
+      "profile": "desktop",
+      "route": "/transfers?tab=market",
+      "before": {
+        "performance": 83,
+        "CLS": 0.01941536377957819,
+        "LCPms": 2884.0136,
+        "INPms": 16
+      },
+      "after": {
+        "performance": 83,
+        "CLS": 0.019747341981738685,
+        "LCPms": 2878.7474999999968,
+        "INPms": 16
+      }
+    },
+    {
+      "profile": "desktop",
+      "route": "/auctions?tab=all",
+      "before": {
+        "performance": 84,
+        "CLS": 0.021192691504710006,
+        "LCPms": 2697.800500000001,
+        "INPms": 16,
+        "LCPRangeMs": [
+          2674.4845000000014,
+          2998.3600499999984
+        ]
+      },
+      "after": {
+        "performance": 84,
+        "CLS": 0.021179638521170913,
+        "LCPms": 2695.9900000000034,
+        "INPms": 24,
+        "LCPRangeMs": [
+          2694.4827999999984,
+          2706.279199999999
+        ]
+      }
+    }
+  ]
+}

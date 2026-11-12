@@ -1,0 +1,107 @@
+{
+  "source": "2b0af720fbfca81ea8ac70fb933c68904cffc91b",
+  "fixture": "Synthetic local LAB; no production accounts or field data",
+  "lighthouseVersion": "13.6.0",
+  "runsPerRoute": 3,
+  "profiles": {
+    "mobile": "375x812, standard mobile Lighthouse simulation",
+    "desktop": "1440x900, RTT40ms,10240Kbps,CPU1"
+  },
+  "pages": [
+    {
+      "profile": "mobile",
+      "route": "/dashboard",
+      "performance": 65,
+      "CLS": 0.1642611693718807,
+      "LCPms": 16734.4862,
+      "INPms": 16
+    },
+    {
+      "profile": "mobile",
+      "route": "/transfers?tab=market",
+      "performance": 64,
+      "CLS": 0.001731272294887039,
+      "LCPms": 14322.127200000004,
+      "INPms": 16
+    },
+    {
+      "profile": "mobile",
+      "route": "/auctions?tab=all",
+      "performance": 96,
+      "CLS": 0.07148282737589685,
+      "LCPms": 1506.7588,
+      "INPms": 16,
+      "LCPRangeMs": [
+        1506.748,
+        1506.9105
+      ]
+    },
+    {
+      "profile": "desktop",
+      "route": "/dashboard",
+      "performance": 80,
+      "CLS": 0.04985055271562071,
+      "LCPms": 3689.048750000003,
+      "INPms": 16
+    },
+    {
+      "profile": "desktop",
+      "route": "/transfers?tab=market",
+      "performance": 83,
+      "CLS": 0.01941536377957819,
+      "LCPms": 2884.0136,
+      "INPms": 16
+    },
+    {
+      "profile": "desktop",
+      "route": "/auctions?tab=all",
+      "performance": 84,
+      "CLS": 0.021192691504710006,
+      "LCPms": 2697.800500000001,
+      "INPms": 16,
+      "LCPRangeMs": [
+        2674.4845000000014,
+        2998.3600499999984
+      ]
+    }
+  ],
+  "pwa": [
+    {
+      "profile": "mobile",
+      "installabilityErrors": [],
+      "manifestErrors": [],
+      "loggedInAfterControlledReload": true,
+      "offlineLogoLoaded": false,
+      "retryButtonHeight": 33.5,
+      "cache": [
+        {
+          "name": "cz-sw-offline-2026-10-13.1",
+          "urls": [
+            "/__cz-offline",
+            "/__cz-offline",
+            "/favicon.svg"
+          ]
+        }
+      ]
+    },
+    {
+      "profile": "desktop",
+      "installabilityErrors": [],
+      "manifestErrors": [],
+      "loggedInAfterControlledReload": true,
+      "offlineLogoLoaded": false,
+      "retryButtonHeight": 33.5,
+      "cache": [
+        {
+          "name": "cz-sw-offline-2026-10-13.1",
+          "urls": [
+            "/__cz-offline",
+            "/__cz-offline",
+            "/favicon.svg"
+          ]
+        }
+      ]
+    }
+  ],
+  "method": "Synthetic local navigation LAB; webdriver skips SW registration. Active SW installability/offline/auth measured separately. Native INP uses click/filter with650ms fixture delay; no field-speedup claim. Auction navigation uses canonical ?tab=all in a matched bounded rerun; original redirected probes retained privately. No causal speedup claim."
+}

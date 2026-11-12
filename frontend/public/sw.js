@@ -1,6 +1,6 @@
 /* Cycling Zone service worker (#6584, spor 1).
  *
- * KONTRAKT: denne worker serverer ALDRIG app-kode. Ingen HTML, ingen JS, ingen
+ * KONTRAKT: denne worker serverer ALDRIG app-kode. Ingen app-HTML, ingen JS, ingen
  * CSS og intet API-svar kommer nogensinde fra en SW-cache. Det er hele den
  * sikre opdateringsstrategi, og den er valgt med vilje frem for "precache
  * app-skallen" (Workbox-standarden):
@@ -16,13 +16,13 @@
  *   - Hashede assets (/assets/*) gaar uroert gennem browserens HTTP-cache,
  *     som allerede er `immutable` (scripts/check-cdn-cache-headers.mjs).
  *     chunk-selfheal.js' `cache: "reload"`-refetch rammer dermed stadig
- *     netvaerket, fordi workeren slet ikke svarer paa subresources.
+ *     netvaerket, fordi workeren ikke svarer paa appens subresources.
  *
  * Hvad den goer:
  *   1. Navigationer: netvaerk foerst (med navigation preload, saa workerens
  *      opstart ikke koster tid). Fejler netvaerket, vises en aerlig offline-
  *      side i stedet for browserens dinosaur. Den side viser ingen tal.
- *   2. Versionerede caches: kun offline-siden caches, under et navn med
+ *   2. Versionerede caches: kun offline-siden og dens logo caches, under et navn med
  *      SW_VERSION. activate sletter alt andet med vores praefiks.
  *   3. Ny worker-version: aktiverer med det samme (skipWaiting + claim).
  *      Det er sikkert NETOP fordi workeren ikke serverer app-kode: en ny
@@ -36,7 +36,7 @@
  */
 "use strict";
 
-const SW_VERSION = "2026-10-13.1";
+const SW_VERSION = "2026-11-12.1";
 const CACHE_PREFIX = "cz-sw-";
 const OFFLINE_CACHE = `${CACHE_PREFIX}offline-${SW_VERSION}`;
 // Kun en cache-noegle: ingen rute hedder dette, workeren slaar den selv op.
@@ -81,6 +81,7 @@ function offlineHtml(copy) {
   h1 { margin: 0 0 6px; font-size: 20px; font-weight: 700; }
   p { margin: 0 0 16px; color: var(--t2); }
   button { font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 5px; border: 1px solid var(--line); background: transparent; color: var(--t1); cursor: pointer; }
+  @media (max-width: 640px), (pointer: coarse) { button { min-height: 44px; min-width: 44px; } }
 </style>
 </head>
 <body>
@@ -148,9 +149,7 @@ async function offlineResponse(request) {
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
-  // Kun top-level navigationer. Alt andet (assets, API, Supabase, analytics)
-  // haandteres ikke af workeren og gaar direkte til netvaerk/HTTP-cache.
-  if (request.mode !== "navigate" || request.method !== "GET") return;
+  if (request.method !== "GET") return;
   let url;
   try {
     url = new URL(request.url);
@@ -159,11 +158,32 @@ self.addEventListener("fetch", (event) => {
   }
   if (url.origin !== self.location.origin) return;
 
+  // Offline-sidens ene billede: frisk fra netvaerket, ellers den kendte logo-cache.
+  // Ingen andre billeder, bundles eller spildata faar en cache-rute.
+  if (request.destination === "image" && url.pathname === "/favicon.svg" && !url.search) {
+    event.respondWith((async () => {
+      try {
+        return await fetch(request);
+      } catch {
+        const cache = await caches.open(OFFLINE_CACHE);
+        return (await cache.match("/favicon.svg")) || Response.error();
+      }
+    })());
+    return;
+  }
+  // Alt andet end navigationer (assets, API, Supabase, analytics) gaar direkte
+  // til browserens normale netvaerk/HTTP-cache, uden en worker-response.
+  if (request.mode !== "navigate") return;
+
   event.respondWith(
     (async () => {
       try {
         const preloaded = await event.preloadResponse;
         if (preloaded) return preloaded;
+      } catch {
+        // Preload er kun en genvej; en fejl maa ikke springe netvaerksforsoeget over.
+      }
+      try {
         return await fetch(request);
       } catch {
         return offlineResponse(request);
