@@ -66,6 +66,8 @@ export async function loadEstimateDevelopmentXp(supabase, { now = new Date(), lo
     }
     return params;
   } catch (err) {
+    // best-effort: en fejlet læsning er dagens sande tal (fail-safe off), og skønnet
+    // skrives igen ved næste kig eller søndag. Motoren læser kontakten strengt selv.
     log?.warn?.(`[potential-estimate] ${DEVELOPMENT_XP_FLAG_KEY} read failed - estimates keep talent_ceiling: ${err?.message ?? err}`);
     return null;
   }
