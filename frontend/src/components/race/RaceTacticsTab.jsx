@@ -649,12 +649,21 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     // #6095: serveren erstatter KUN `stages` og kun mod `base_versions`; hele kladden
     // sendes stadig i `overrides` (deploy-vinduet). "empty" = EMPTY_STAGE_VERSION.
     const stages = changedStages(draftMatrix, initialMatrix).filter((sn) => editableStages.includes(sn) && bulkSnapshot[sn] === undefined);
+    // #8013 g: paa en kopi-etape ejer fill etapens egen ordre. Kildeetapens ordre er
+    // stadig kun lokal, saa den sendes her (samme PUT som fra kilden); ellers ville
+    // "Gemt" staa, mens kildens nye ordrer aldrig blev sendt.
+    const fillSource = bulkSnapshot[stage];
+    const ordersStage = fillSource ?? stage;
+    const ordersStageSnapshot = fillSource === undefined ? orderSnapshot : ordersSnapshot[fillSource] ?? orderForStage(orders, fillSource, profileTypeOfStage(fillSource));
+    const ordersNeeded = showOrders && (fillSource === undefined
+      ? ordersDirty || stages.length > 0
+      : JSON.stringify(ordersStageSnapshot) !== JSON.stringify(initialOrdersByStage[fillSource]) || stages.includes(fillSource));
     const outcome = await runTacticsSave({
       stages,
       baseVersions: Object.fromEntries(stages.map((sn) => [sn, roles?.stage_versions?.[sn] ?? "empty"])),
       sentMatrix: normalize(draftSnapshot),
       baselineMatrix: normalize(initialMatrix),
-      ordersNeeded: bulkSnapshot[stage] === undefined && showOrders && (ordersDirty || stages.length > 0),
+      ordersNeeded,
     }, {
       putRoles: async (sts, base) => {
         const res = await apiFetch(`${API}/api/races/${raceId}/stage-roles`, { method: "PUT", headers, body: JSON.stringify({ overrides: diffToOverrides({ matrix: normalize(draftSnapshot), riders }), stages: sts, base_versions: base }) });
@@ -668,7 +677,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       // Ordren for DEN ÅBNE etape (én-etape-scopet). #6647: bærer intentionens indsats;
       // #7003: med etapeplanen foelger indsatsen opgaven.
       // #7317: ingen vej-ordrer paa enkeltstart/holdtidskoersel.
-      putOrders: () => saveTacticsCard({ raceId, stage, order: withoutRoadOrders(withIntentionEfforts(orderSnapshot, (riderId) => effortForStage(intentionFor({ matrix: draftSnapshot, stageNumber: stage, riderId }), profileTypeOfStage(stage))), profileTypeOfStage(stage)), stagePlan: orders?.stagePlanEnabled === true }),
+      putOrders: () => saveTacticsCard({ raceId, stage: ordersStage, order: withoutRoadOrders(withIntentionEfforts(ordersStageSnapshot, (riderId) => effortForStage(intentionFor({ matrix: draftSnapshot, stageNumber: ordersStage, riderId }), profileTypeOfStage(ordersStage))), profileTypeOfStage(ordersStage)), stagePlan: orders?.stagePlanEnabled === true }),
     });
     if (outcome.status !== "conflict") {
       // Konflikt: versionerne flyttes FØRST ved "Behold mine" (overskrivningsbeskyttelsen).
@@ -677,8 +686,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       setInitialMatrix((prev) => advanceBaseline(prev, draftSnapshot, outcome.confirmedStages));
     }
     // En ordre der ikke blev bekræftet har ingen kvittering (null = stadig ugemt).
-    if (outcome.parts.orders !== "notNeeded") setInitialOrdersByStage((prev) => ({ ...prev, [stage]: outcome.parts.orders === "saved" ? orderSnapshot : null }));
-    const savedNow = [...outcome.confirmedStages, ...(outcome.parts.orders === "saved" ? [stage] : [])];
+    if (outcome.parts.orders !== "notNeeded") setInitialOrdersByStage((prev) => ({ ...prev, [ordersStage]: outcome.parts.orders === "saved" ? ordersStageSnapshot : null }));
+    const savedNow = [...outcome.confirmedStages, ...(outcome.parts.orders === "saved" ? [ordersStage] : [])];
     if (savedNow.length) setOrders(prev => prev ? { ...prev, savedStageNumbers: [...new Set([...prev.savedStageNumbers, ...savedNow])] } : prev);
     if (outcome.status !== "saved" || !Object.keys(bulkSnapshot).length) {
       setSaveOutcome(outcome);
@@ -730,7 +739,9 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     const pending = Object.keys(bulkSnapshot).length - confirmedBulk.length;
     const someSaved = confirmedBulk.length > 0 || outcome.parts.roles === "saved" || outcome.parts.orders === "saved";
     const combined = pending ? (someSaved ? "partial" : "failed") : "saved";
-    setSaveOutcome({ ...outcome, status: combined, parts: pending ? { roles: "failed", orders: "failed" } : outcome.parts });
+    // #8013 b: delstatus viser de faktiske kvitteringer. Gemte roller/ordrer staar som
+    // gemt; de manglende kopier staar allerede som "ikke gemt" i kopi-linjen.
+    setSaveOutcome({ ...outcome, status: combined });
     setErrorKey(pending ? bulkError ?? "generic" : null);
     setStatus(combined === "failed" ? "error" : combined);
     if (!pending) { setOpenRiderId(null); setOpenRoleRiderId(null); }
@@ -1174,7 +1185,9 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       {ready7864 && stagePlanOn && orders?.atomicStageSave === true && (sameTypePlans.length > 0 || Object.keys(bulkDrafts).length > 0) && (
         <div data-testid="team-plan-multi-stage" className="flex flex-wrap items-center gap-2 border-b border-cz-border px-4 py-3 text-xs text-cz-2">
           {!Object.keys(bulkDrafts).length && <Button data-testid="team-plan-same-type" variant="secondary" size="sm" disabled={saving || stageLocked} onClick={applySameTypePlans}>
-            {t("intention.copyToStage", { number: sameTypePlans.map(item => item.stage).join(", ") })}
+            {sameTypePlans.length === 1
+              ? t("intention.copyToStage", { number: sameTypePlans[0].stage })
+              : t("intention.copyToStages", { numbers: sameTypePlans.map(item => item.stage).join(", ") })}
           </Button>}
           <span>{t(`detail.${profileLabelKey(stageProfileType)}`)}</span>
           {Object.keys(bulkDrafts).map(Number).sort((a,b) => a-b).map(sn => <span key={sn} className="font-data tabular-nums">{t("intention.stage", { number: sn })}: {t("racePage.tactics.saveStatus.notSaved")}</span>)}

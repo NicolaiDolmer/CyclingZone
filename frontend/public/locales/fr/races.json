@@ -1,33 +1,33 @@
 {
   "stagePlanReady": {
     "gc": {
-      "name": "Ride for GC",
-      "description": "Everyone rides for your GC leader and keeps him out of trouble.",
-      "named": "Ride for GC with {name}"
+      "name": "Rouler pour le général",
+      "description": "Tout le monde roule pour ton leader au général et le tient à l'abri des ennuis.",
+      "named": "Rouler pour le général avec {name}"
     },
     "stage": {
-      "name": "Stage win",
-      "description": "The team works for the rider who suits today's route best.",
-      "named": "Stage win for {name}"
+      "name": "Victoire d'étape",
+      "description": "L'équipe travaille pour le coureur à qui le parcours du jour convient le mieux.",
+      "named": "Victoire d'étape pour {name}"
     },
     "sprint": {
-      "name": "Sprint",
-      "description": "The team saves him for the finish, with a train in the last km.",
-      "named": "Sprint for {name}"
+      "name": "Pour le sprint",
+      "description": "L'équipe l'économise pour l'arrivée, avec un train dans les 10 derniers km.",
+      "named": "Sprint pour {name}"
     },
     "break": {
-      "name": "Go for the break",
-      "description": "Two riders try the break. The rest ride easy."
+      "name": "Tenter l'échappée",
+      "description": "Deux coureurs tentent de prendre l'échappée. Les autres roulent tranquillement."
     },
     "save": {
-      "name": "Save the legs",
-      "description": "Everyone rides in. Lowest fatigue tonight."
+      "name": "Économiser les jambes",
+      "description": "Tout le monde rentre tranquillement. La fatigue la plus faible ce soir."
     },
     "price": {
-      "easy": "Easy",
-      "medium": "Medium",
-      "hard": "Hard",
-      "veryHard": "Very hard"
+      "easy": "Facile",
+      "medium": "Moyenne",
+      "hard": "Dure",
+      "veryHard": "Très dure"
     }
   },
   "stagePlan": {
@@ -1110,6 +1110,7 @@
     "line": "Par défaut {role}. Aujourd'hui : {today}.",
     "riderAbandoned": "Hors course",
     "copyToStage": "Copier vers l'étape {number}",
+    "copyToStages": "Copier vers les étapes {numbers}",
     "save": "Enregistrer l'étape {number}",
     "saveRaceDay": "Enregistrer le jour de course",
     "saving": "Enregistrement…",
