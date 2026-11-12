@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 import { getSelectionContext, nextStageForFatigue7801, ridersAtOpeningFatigue, surfaceFatigueNow7801 } from "./raceSelection.js";
 import { getStageRolesContext } from "./raceStageRolesApi.js";
 import { riderCardFatigueNow7801 } from "./riderCardFatigueNow7801.js";
-import { riderFatigueNow } from "./riderFatigueNow.js";
+import { fatigueByRiderNow, fatigueOutlookForTeam, FatigueNowUnavailableError, riderFatigueNow } from "./riderFatigueNow.js";
 import { buildScenario, FIXED_NOW, surfaceOffDigests, tableFake } from "./__fixtures__/fatigueNow7801SurfacesOffScenarios.js";
 
 const BASE = JSON.parse(readFileSync(new URL("./__fixtures__/fatigueNow7801SurfacesOffBase.json", import.meta.url), "utf8"));
@@ -136,6 +136,68 @@ test("#7801 tændt: kan tallet ikke regnes, viser fladen intet tal frem for morg
   } finally {
     console.warn = warn;
   }
+});
+
+// Codex P2 (#8054): fejler læsningen af datoens belastninger for en rytter uden Træn nu-stempel,
+// fangede kernen selv fejlen og gav åbningen (morgenens tal), så fladen aldrig viste "—".
+const FAILING = new Proxy({}, {
+  get(_t, prop) {
+    if (prop === "then") return (resolve) => resolve({ data: null, error: { message: "boom" } });
+    if (prop === "maybeSingle" || prop === "single") return () => Promise.resolve({ data: null, error: { message: "boom" } });
+    return () => FAILING;
+  },
+});
+const ledgerFails = (state) => {
+  const fake = tableFake(state);
+  return { from: (table) => (table === "training_race_loads" ? FAILING : fake.from(table)) };
+};
+async function quietly(fn) {
+  const warn = console.warn;
+  console.warn = () => {};
+  try { return await fn(); } finally { console.warn = warn; }
+}
+
+test("#7801 tændt, ledger-læsning fejler: Udtagelsen viser \"—\", ikke morgenens tal", async () => {
+  const s = liveScenario();
+  const ctx = await quietly(() => getSelectionContext({ supabase: ledgerFails(withConfig(s.state, ON_CONFIG)), race: s.race, teamId: s.teamId, now: FIXED_NOW }));
+  assert.ok(ctx.riders.length > 0);
+  for (const row of ctx.riders) assert.equal(row.fatigue, null, row.id);
+});
+
+test("#7801 tændt, ledger-læsning fejler: Holdfanen viser \"—\", ikke morgenens tal", async () => {
+  const s = liveScenario();
+  const ctx = await quietly(() => getStageRolesContext({ supabase: ledgerFails(withConfig(s.state, ON_CONFIG)), race: s.race, teamId: s.teamId, now: FIXED_NOW }));
+  assert.ok(ctx.riders.length > 0);
+  for (const row of ctx.riders) assert.equal(row.fatigue, null, row.rider_id);
+});
+
+const cardState = () => ({
+  app_config: ON_CONFIG,
+  riders: [{ id: "a", team_id: "t1" }],
+  rider_condition: [{ rider_id: "a", form: 50, fatigue: 40 }],
+  rider_derived_abilities: [{ rider_id: "a", recovery: 55 }],
+});
+
+test("#7801 tændt, ledger-læsning fejler: rytterkortet giver null (\"—\"), ikke morgenens tal", async () => {
+  const out = await quietly(() => riderCardFatigueNow7801({ supabase: ledgerFails(cardState()), riderId: "a", teamId: "t1", now: FIXED_NOW }));
+  assert.deepEqual(out, { enabled: true, own: true, fatigue: null });
+});
+
+test("#7801 tændt, ledger-læsning fejler: Træningssiden giver null (\"—\"), ikke morgenens tal", async () => {
+  const state = cardState();
+  const out = await quietly(() => fatigueOutlookForTeam({ supabase: ledgerFails(state), team: { id: "t1" }, seasonId: "s1", conditions: state.rider_condition, now: FIXED_NOW }));
+  assert.equal(out.get("a").fatigue, null);
+  assert.equal(out.get("a").fatigueAtStart, null);
+});
+
+test("#7801 tændt, ledger-læsning fejler: motorens standard (onError opening) giver stadig åbningen", async () => {
+  const state = cardState();
+  const live = await quietly(() => fatigueByRiderNow({ supabase: ledgerFails(state), conditions: state.rider_condition, teamId: "t1", now: FIXED_NOW }));
+  assert.equal(live.get("a"), 40);
+  await assert.rejects(
+    quietly(() => fatigueByRiderNow({ supabase: ledgerFails(state), conditions: state.rider_condition, teamId: "t1", now: FIXED_NOW, onError: "throw" })),
+    FatigueNowUnavailableError,
+  );
 });
 
 test("#7801 nextStageForFatigue7801: første etape før start, ellers næste ikke-kørte, null efter sidste", () => {

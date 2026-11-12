@@ -208,6 +208,9 @@ export async function loadStageStartAt({ supabase, raceId, stageNumber }) {
   return { now: at, gameDay };
 }
 
+/** Tallet lige nu kunne ikke regnes (fatigueByRiderNow med onError: "throw"); fladen viser "—". */
+export class FatigueNowUnavailableError extends Error {}
+
 /** Åbningen pr. rytter, præcis som rider_condition har den (kontakten slukket, eller intet at lægge oveni). */
 export const openingFatigueMap = sameMap;
 
@@ -290,8 +293,12 @@ export async function fatigueByRiderForRaces({ supabase, conditions, abilityByRi
  *
  * Legacy-fejl kan give åbningen. Fejl i instant-evidens kastes altid, fordi den
  * gemte foreløbige tilstand ikke kan bruges som erstatning for en verificeret åbning.
+ *
+ * `onError` (kun med kontakten tændt): "opening" (standard, motoren og assistenten) falder
+ * tilbage til åbningen. "throw" (fladerne) kaster FatigueNowUnavailableError, så kalderen kan
+ * vise "—" frem for morgenens tal, der ellers ikke kan skelnes fra et beregnet tal.
  */
-export async function fatigueByRiderNow({ supabase, conditions, abilityByRider = null, teamIdByRider = null, teamId = null, now = new Date(), atStage = null }) {
+export async function fatigueByRiderNow({ supabase, conditions, abilityByRider = null, teamIdByRider = null, teamId = null, now = new Date(), atStage = null, onError = "opening" }) {
   const base = sameMap(conditions);
   if (!base.size) return base;
   if (!await isFatigueNow7801Enabled(supabase)) {
@@ -313,7 +320,8 @@ export async function fatigueByRiderNow({ supabase, conditions, abilityByRider =
     if (err instanceof InstantConditionEvidenceError) throw err;
     const instant = await loadInstantConditions({ supabase, riderIds: [...base.keys()], tickDate: copenhagenDateString(now), failOpenWhenOff: true });
     if (instant.size) throw new InstantConditionEvidenceError(`instant stage evidence: ${err.message}`, { cause: err });
-    // best-effort: visningen og udtagelsen falder tilbage til dagens tal (åbningen).
+    if (onError === "throw") throw new FatigueNowUnavailableError(`fatigue now unavailable: ${err.message}`, { cause: err });
+    // best-effort: udtagelsen falder tilbage til dagens tal (åbningen).
     console.warn(`[fatigue-now-7801] fell back to opening fatigue: ${err.message}`);
     return base;
   }
@@ -402,9 +410,17 @@ export async function fatigueOutlookForTeam({ supabase, team, seasonId, conditio
   const instant = await loadInstantConditions({ supabase, riderIds: conditions.map(c => c.rider_id), tickDate: copenhagenDateString(now), failOpenWhenOff: true });
   if (!enabled && !instant.size) return null;
   const legacy = conditions.filter(c => !instant.has(c.rider_id));
-  const fatigueNow = enabled
-    ? await fatigueByRiderNow({ supabase, conditions: legacy, abilityByRider, teamId: team?.id ?? null, now })
-    : new Map();
+  let fatigueNow = new Map();
+  if (enabled) {
+    try {
+      fatigueNow = await fatigueByRiderNow({ supabase, conditions: legacy, abilityByRider, teamId: team?.id ?? null, now, onError: "throw" });
+    } catch (err) {
+      if (!(err instanceof FatigueNowUnavailableError)) throw err;
+      // Tallet kunne ikke regnes: fladen viser "—" (null), ikke morgenens tal.
+      console.warn(`[fatigue-now-7801] training fatigue omitted: ${err.message}`);
+      fatigueNow = new Map(legacy.map((c) => [c.rider_id, null]));
+    }
+  }
   for (const [id, condition] of instant) fatigueNow.set(id, condition.fatigue);
   const out = new Map([...fatigueNow].map(([id, fatigue]) => [id, { fatigue, ...instant.get(id), fatigueAtStart: null }]));
   try {

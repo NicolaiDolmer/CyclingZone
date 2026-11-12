@@ -49,8 +49,9 @@ export async function surfaceFatigueNow7801({ supabase, race, stages, conditions
     const stageNumber = nextStageForFatigue7801({ race, stages });
     const start = stageNumber == null ? null : await loadStageStartAt({ supabase, raceId: race.id, stageNumber });
     const today = start && copenhagenDateString(start.now) === copenhagenDateString(now);
+    // onError "throw": en fejlet læsning når catch'en nedenfor i stedet for at blive til åbningen.
     return await fatigueByRiderNow({
-      supabase, conditions, abilityByRider, teamId, now, atStage: today ? { raceId: race.id, stageNumber } : null,
+      supabase, conditions, abilityByRider, teamId, now, atStage: today ? { raceId: race.id, stageNumber } : null, onError: "throw",
     });
   } catch (err) {
     // best-effort: visningen må aldrig vælte Udtagelsen/Holdfanen; tom map = "—", ikke morgenens tal.
