@@ -34,7 +34,7 @@ import TradeListPage from "./TradeListPage.js"; // #5257: "Alle handler"-fanens 
 import {
   AmountInput, EmptyState, ErrorState, ExchangeIcon, InboxIcon, PageLoader,
   PageHeader, Section, Button, Select, Tabs, TabList, Tab, BlockedNote,
-  ArrowUpIcon, ArrowDownIcon, BikeIcon, ChevronRightIcon,
+  ArrowUpIcon, ArrowDownIcon, BikeIcon, ChevronRightIcon, SkeletonLines,
 } from "../components/ui";
 import { useBlockedAction } from "../lib/useBlockedAction.js";
 // #2849 bølge 2: markeds-tabellens wrap/border deles med cz-table-recipen (T2),
@@ -1285,7 +1285,7 @@ export default function TransfersPage() {
   const [auctionTiming, setAuctionTiming] = useState(/** @type {import("../lib/autoAccept2176.ts").AuctionTiming | null} */ (null));
   const [auctionListing, setAuctionListing] = useState(/** @type {import("../components/transfers/AutoAcceptAuctionDialog.tsx").AutoListing | null} */ (null));
   const [auctionNow, setAuctionNow] = useState(/** @type {Date | null} */ (null));
-  const { listings, sentOffers, receivedOffers, archivedSentOffers, archivedReceivedOffers, sentSwaps, receivedSwaps, archivedSentSwaps, archivedReceivedSwaps, myTeamId, myBalance, loading, hasData, error: dataError, loadAll, request: apiFetch, getHeaders, refreshListings } = useMarketData();
+  const { listings, sentOffers, receivedOffers, archivedSentOffers, archivedReceivedOffers, sentSwaps, receivedSwaps, archivedSentSwaps, archivedReceivedSwaps, myTeamId, myBalance, loading, hasData, failurePresentation, error: dataError, loadAll, request: apiFetch, getHeaders, refreshListings } = useMarketData();
   const [celebration, setCelebration] = useState(null);
   const [msg, setMsg] = useState({ text: "", type: "success" });
   // #2329: markedstabellens ÉN kanoniske sort-state — delt af header-klik
@@ -1336,7 +1336,7 @@ export default function TransfersPage() {
     setSelectedListingIds(new Set());
   }
 
-  useEffect(() => { if (dataError && dataError.kind !== "limited" && dataError.kind !== "unauthorized") showMsg(t("auth:error.connectionFailed"), "error"); }, [dataError, t]);
+  useEffect(() => { if (dataError && failurePresentation === "error") showMsg(t("auth:error.connectionFailed"), "error"); }, [dataError, failurePresentation, t]);
   useEffect(() => {
     let active = true;
     fetchPlayerFeatureFlags().then(async flags => {
@@ -1763,6 +1763,11 @@ export default function TransfersPage() {
 
       {loading ? (
         <PageLoader />
+      ) : failurePresentation === "waiting" && !hasData ? (
+        <Section data-testid="market-read-waiting">
+          <SkeletonLines lines={5} />
+          <Button size="sm" variant="secondary" className="mt-4" onClick={loadAll}>{t("tradeList.retry")}</Button>
+        </Section>
       ) : dataError && !hasData ? (
         <ErrorState title={t("auth:error.connectionFailed")} action={<Button size="sm" variant="secondary" onClick={loadAll}>{t("tradeList.retry")}</Button>} />
       ) : (

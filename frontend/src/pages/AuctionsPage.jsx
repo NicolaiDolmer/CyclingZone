@@ -67,7 +67,7 @@ import { riderReputationBandKey, riderReputationValue } from "../lib/riderReputa
 import {
   AmountInput, Card, Button, TagIcon, EyeIcon, StarIcon, PageLoader,
   PageHeader, Section, EmptyState, ErrorState, BlockedNote, XIcon,
-  Select, ArrowUpIcon, ArrowDownIcon, FilterBar, Tabs, TabList, Tab,
+  Skeleton, Select, ArrowUpIcon, ArrowDownIcon, FilterBar, Tabs, TabList, Tab,
 } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 // #2849 bølge 1: tabel-wrap-radius/border deles med cz-table-recipen (T2), men
@@ -213,7 +213,7 @@ function AuctionLeaderLine({ auction, t, className = "" }) {
   const leaderName = getAuctionLeaderName(auction);
   return (
     <span className={`block truncate text-3xs leading-tight text-cz-3 ${className}`}>
-      {leaderName ? t("auctions:leader.line", { name: leaderName }) : t("auctions:leader.none")}
+      {leaderName ? t("auctions:leader.line", { name: leaderName }) : getAuctionLeaderId(auction) ? <Skeleton className="h-3 w-20" /> : t("auctions:leader.none")}
     </span>
   );
 }
@@ -932,7 +932,7 @@ export default function AuctionsPage() {
   const scouting = useScouting();
   // #3071: sæson-referenceår til alders-visning/badges (se riderAge.js).
   const seasonYear = useActiveSeasonYear();
-  const { auctions, myTeamId, userId, watchlist, myBalance, currentRiderCount, academySquadCounts, loading, loadError, loadAll, request: apiFetch, getHeaders, setWatchlist, saveWatchlist, recentBids } = useAuctionData();
+  const { auctions, myTeamId, userId, watchlist, myBalance, currentRiderCount, academySquadCounts, loading, loadError, loadAll, request: apiFetch, getHeaders, setWatchlist, saveWatchlist, recentBids, teamNamesById, moneyPending, realtime } = useAuctionData();
   // #1351: lokaliseret feedback når en optimistisk watchlist-toggle rulles tilbage
   // efter en fejlet Supabase-write. { text } | null, auto-dismisses.
   const [watchlistError, setWatchlistError] = useState(null);
@@ -1066,14 +1066,8 @@ export default function AuctionsPage() {
   // Refs så channel-callback kan se nyeste auctions/myTeamId uden at re-subscribe.
   // tRef tilføjet i Fase 3b så i18n-strings inde i channel-callback opdateres
   // uden at tear-down + recreate supabase-subscription ved language-skift.
-  const auctionsRef = useRef(/** @type {import("../data/auctionData.ts").AuctionView[]} */ ([]));
   const myTeamIdRef = useRef(/** @type {string | null} */ (null));
   const tRef = useRef(t);
-  // Cache af holdnavn pr. team-id. Realtime-payloaden for auctions-UPDATE indeholder
-  // kun rå kolonner (current_bidder_id), ikke det joinede current_bidder-objekt, så
-  // fører-NAVNET skal slås op herfra (eller hentes) når en ny byder overtager føringen.
-  const teamNameCacheRef = useRef(new Map());
-  useEffect(() => { auctionsRef.current = auctions; }, [auctions]);
   useEffect(() => { myTeamIdRef.current = myTeamId; }, [myTeamId]);
   useEffect(() => { tRef.current = t; }, [t]);
 
@@ -1226,23 +1220,16 @@ export default function AuctionsPage() {
   }, [scrollToAuctionId, filter, auctionSort]);
 
   useEffect(() => {
-    for (const auction of auctions) {
-      if (auction.seller?.id) teamNameCacheRef.current.set(auction.seller.id, auction.seller.name);
-      if (auction.current_bidder?.id) teamNameCacheRef.current.set(auction.current_bidder.id, auction.current_bidder.name);
-    }
-  }, [auctions]);
-  useEffect(() => {
     if (!recentBids.length) return;
     setRecentBidEvents(previous => {
       const known = new Set(previous.map(event => event.id));
       const backfilled = recentBids.filter(bid => !known.has(bid.id)).map(bid => ({
-        id: bid.id, auction_id: bid.auction_id, team_id: bid.team_id, amount: bid.amount, ts: Date.parse(bid.bid_time),
+        id: bid.id, auction_id: bid.auction_id, team_id: bid.team_id, amount: bid.amount, ts: Date.parse(bid.bid_time ?? ""),
       }));
       return pruneStaleBidEvents([...backfilled, ...previous], Date.now(), BID_FEED_WINDOW_MS);
     });
   }, [recentBids]);
-  useAuctionEvents(updated => {
-    const previous = auctionsRef.current.find(auction => auction.id === updated.id);
+  useAuctionEvents(realtime, (updated, previous) => {
     const myTeam = myTeamIdRef.current;
     if (!previous) return;
     if (shouldFlashPrice(previous, updated)) flashAuctionPrice(updated.id);
@@ -1259,13 +1246,13 @@ export default function AuctionsPage() {
   }, bid => {
     const timestamp = Date.now();
     setRecentBidEvents(previous => pruneStaleBidEvents([...previous, {
-      id: bid.id, auction_id: bid.auction_id, team_id: bid.team_id, amount: bid.amount, ts: timestamp,
+      id: bid.id, auction_id: bid.auction_id, team_id: bid.team_id, amount: bid.amount, ts: Date.parse(bid.bid_time ?? ""),
     }], timestamp, BID_FEED_WINDOW_MS));
-  }, loadAll);
+  });
 
   async function handleBid(auctionId, amount, { skipExpectedPrice = false } = {}) {
     const headers = await getHeaders();
-    
+
     const auction = auctions.find(a => a.id === auctionId);
     const body = { amount };
     if (!skipExpectedPrice && auction) {
@@ -1323,7 +1310,7 @@ export default function AuctionsPage() {
 
   async function handleSetProxy(auctionId, maxAmount) {
     const headers = await getHeaders();
-    
+
     const res = await apiFetch(`/api/auctions/${auctionId}/proxy`, {
       method: "PATCH",
       headers,
@@ -1340,7 +1327,7 @@ export default function AuctionsPage() {
   // succes indtil næste reload, hvor autobud-badget dukkede op igen.
   async function handleRemoveProxy(auctionId) {
     const headers = await getHeaders();
-    
+
     const res = await apiFetch(`/api/auctions/${auctionId}/proxy`, {
       method: "DELETE",
       headers,
@@ -1552,7 +1539,7 @@ export default function AuctionsPage() {
         title={t("auctions:page.title")}
         subtitle={
           <span className="font-data tabular-nums text-cz-2">
-            {!loading && myTeamId && (
+            {!loading && myTeamId && (moneyPending ? <Skeleton className="inline-block h-3 w-48 align-middle" /> :
               <>
                 {t("auctions:stats.balance")} {formatNumber(myBalance)} CZ$
                 {reservedBalance > 0 && (
@@ -1714,7 +1701,7 @@ export default function AuctionsPage() {
           // #3401: best-effort navne-snapshot til post-hammerslag-berigelse af
           // "Modbud"-labels for auktioner der er lukket (ingen ekstra fetch —
           // genbruger cachen der allerede bygges til fører-navnet, #196/#910).
-          teamNamesById={Object.fromEntries(teamNameCacheRef.current)}
+          teamNamesById={teamNamesById}
           reputationOn={reputationOn}
         />
       )}
