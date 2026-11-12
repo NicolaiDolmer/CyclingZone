@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11 · slet `backup_5902_20261112_*` ~26/11.
 >
-> **🎯 Next action (12/11 nat):** følg Dolmer PC's overdragelse på #7911 (nyeste). **Tændt i dag:** pengelås for alle 12:52 (#6181); **holdplaner beta 19:02 (#7864): første gem set og gode 22:40; mangler tjek 6 (motoren læser planerne) 13/11 kl. 11:10.** **Merget i aften:** #8054 træthed lige nu `785568c6` (slukket; tænding = ejerens "kør"); designregler #8070; registret `tactics-ready` beta. **Rækkefølge:** forsiden #8022 → dommer trøjejagt #8052 → Træn nu trin 1 #8066, trin 2-5 #7982 → datacache #6494. **Design på PC1 13/11 (ejers valg):** tabel #8071 (ikke valgt), app-rammen er tegnet (se #7911). **Åbne PR'er:** #8062, #8068, #8061, #8056, #8059. **Ejer-kort:** se #7911.
+> **🎯 Next action (13/11 nat):** følg NATTENS PLAN i Dolmer PC's overdragelse på #7911 (ejer-godkendt rækkefølge, 4 baner, til kl. 08:00; morgenens dagsorden står samme sted). **Tændt:** pengelås for alle (#6181); holdplaner beta (#7864): første gem gode, tjek 6 13/11 kl. 11:10. **Merget 12/11 aften:** #8054 træthed lige nu (slukket; tænding = ejerens "kør"), #8022 forsiden, #8068 parkerede hold, #8061, #8092, #8093, designregler #8070, regel 40 og 41. **Ejer har sagt merge:** #8098, #8096, #8094 (nattens første tog). **Ikke merget:** trøjejagt #8052 (dom 2 fandt frikort). **Design på PC1 13/11:** tabel #8071, app-rammen (tegnet). **Ejer-kort:** se #7911.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; #7277 (off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Claude Code på Dolmer PC er LEDER 12/11 aften, til overdragelsen står på #7911; derefter natsession på PC1.
+> **🤖 Working agent:** Natsessionen på PC1 er LEDER til 13/11 kl. 08:00 (plan på #7911). Dolmer PC er færdig.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 

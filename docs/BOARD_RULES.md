@@ -315,6 +315,9 @@ alle andre: lag 2-3 udløber ved den næste evaluering, hvis tilfredsheden er ov
 4 står, til rytteren er solgt (koden har intet andet udløb for den række), lag 5 udløber ved næste sæsonstart
 for alle hold, og lag 6 udløber med sin sæson. Rækker, der blev skabt ved en fejl, mens holdet
 var parkeret, ryddes af ejeren som dataoprydning, ikke af koden.
+**Forbehold (uafhængig dom 12/11):** "dømmes igen som alle andre" beskriver koden i dag, ikke en
+ejer-regel. Ejerens regel 24/9 (#4592, punkt 3) er ingen bestyrelsesdom i comeback-sæsonen; den er
+ikke bygget (#8100). Halvsæson-cronen (`boardMidSeason.js`) filtrerer endnu ikke parkerede hold (#8099).
 
 **Rytteromdømme (#4956/#5828):** Ved `rider_reputation_enabled=on` viser
 rytterfladerne mindst den gamle popularitet: `max(popularity, reputation)`.
