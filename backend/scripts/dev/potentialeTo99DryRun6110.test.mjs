@@ -53,7 +53,9 @@ test("OUT_DIR skal ligge under balance-internals", () => {
   const root = path.resolve("/tmp/repo");
   assert.equal(resolveOutDir(undefined, root), path.join(root, "balance-internals", "6110"));
   assert.equal(resolveOutDir(path.join(root, "balance-internals", "6110", "x")), path.join(root, "balance-internals", "6110", "x"));
-  assert.throws(() => resolveOutDir(path.join(root, "docs")), /balance-internals/);
+  // Navnet her må ikke være en rigtig topmappe i repoet: CI's backend-klassifikator
+  // (scripts/ci/backend-test-shards.mjs) ville ellers læse det som en afhængighed.
+  assert.throws(() => resolveOutDir(path.join(root, "offentlig-mappe")), /balance-internals/);
   assert.throws(() => resolveOutDir(path.join(root, "balance-internals-public")), /balance-internals/);
 });
 
