@@ -28,6 +28,15 @@
 // ejer rytteren i morgen?). Prognosen beskriver RYTTEREN, ikke hans nuværende
 // arbejdsgiver. developmentProjectionHarness måler at ægte trajektorier ligger
 // i båndet (coverage-gate) — det er dér udeladelsen bevises harmløs.
+//
+// ═══ UNDER XP-MODELLEN (#6110, #7684) ═══════════════════════════════════════
+// Gives `developmentXp` (XP-params, kun når development_xp_model gælder for
+// datoen), regnes prognosen på samme kilde som potentiale-skønnet:
+// standardkarrieren i developmentXpExpectedTop.ts. Endpointet er evnerne i den
+// sæson, rytteren topper, og båndets to kanter er den karriere ved potentiale-
+// intervallets bund og top. Envelopes er en kurve B-størrelse og bruges ikke under
+// XP: én standardkarriere, så skøn og prognose siger det samme om samme rytter
+// (ejer 9/11). Uden `developmentXp` er alt som før, bit for bit.
 
 import {
   PROGRESSION_CONFIG, YOUTH_PROGRESSION_CONFIG, ROLE_CLASS_RATE,
@@ -37,6 +46,7 @@ import { TRAINING_CONFIG } from "./training.js";
 import { youthMultiplier } from "./academyFlag.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { DAILY_TRAINING_CONFIG } from "./dailyTraining.js";
+import { expectedCareer } from "./developmentXpExpectedTop.ts";
 
 // Trænings-envelopes (beslutning C). SPREDT: rytteren får fokus ca. hver
 // fjerde dag på normal intensitet, resten af dagene er evnen off-fokus.
@@ -79,10 +89,31 @@ export function prognoseAbilityEndpoint({ current, cap, age, peakAge, roleRate, 
   return clamp(cur, 0, 99);
 }
 
+// Under XP: evnerne i den sæson, standardkarrieren topper (samme kilde som skønnet).
+// `riderId` seeder sæsonskiftet som i motoren. Uden evner eller alder: evnerne nu.
+// Som før viser prognosen aldrig en evne under dens nu: topper rytteren først efter
+// et sæsonfald, står den faldne evne på sit nu.
+function xpPrognoseAbilities({ nowAbilities, age, primaryType, secondaryType, potentiale, riderId }, developmentXp) {
+  const career = expectedCareer({
+    id: riderId ?? "prognosis", abilities: nowAbilities, age, potentiale, primaryType, secondaryType,
+  }, developmentXp);
+  const out = {};
+  for (const ability of VISIBLE_ABILITIES) {
+    const current = Number(nowAbilities?.[ability]);
+    if (!Number.isFinite(current)) continue;
+    out[ability] = clamp(Math.max(current, career?.abilities?.[ability] ?? current), 0, 99);
+  }
+  return out;
+}
+
 // Fremskriv ALLE synlige evner for én rytter under (potentiale, envelope).
 // caps beregnes med motorens egen buildCapsForRider (fladt tag + taper).
 // Returnerer { <ability>: endpoint } — RÅ tal; maskering er kalderens ansvar.
-export function prognoseAbilities({ nowAbilities, age, primaryType, secondaryType, potentiale, envelope }) {
+// `developmentXp` (valgfri): XP-params, se toppen af filen.
+export function prognoseAbilities({ nowAbilities, age, primaryType, secondaryType, potentiale, envelope, riderId = null, developmentXp = null }) {
+  if (developmentXp) {
+    return xpPrognoseAbilities({ nowAbilities, age, primaryType, secondaryType, potentiale, riderId }, developmentXp);
+  }
   const caps = buildCapsForRider(nowAbilities, { potentiale, age }, primaryType, secondaryType);
   const peakAge = peakAgeForType(primaryType);
   const potRate = youthRateForPotential(potentiale);
@@ -112,14 +143,16 @@ export function prognoseAbilities({ nowAbilities, age, primaryType, secondaryTyp
 //   lo = spredt træning ved potLo   (bunden: langsomste plausible rytter, spredt)
 //   hi = dedikeret træning ved potHi (toppen: hurtigste plausible, dedikeret)
 // Returnerer { <ability>: { lo, hi } }, heltal, lo <= hi.
-export function prognoseAbilityBands({ nowAbilities, age, primaryType, secondaryType, potLo, potHi }) {
+// Under XP (`developmentXp`): standardkarrieren ved potLo og ved potHi.
+export function prognoseAbilityBands({ nowAbilities, age, primaryType, secondaryType, potLo, potHi, riderId = null, developmentXp = null }) {
+  const xp = developmentXp ? { riderId, developmentXp } : {};
   const lo = prognoseAbilities({
     nowAbilities, age, primaryType, secondaryType,
-    potentiale: potLo, envelope: PROGNOSIS_ENVELOPES.spredt,
+    potentiale: potLo, envelope: PROGNOSIS_ENVELOPES.spredt, ...xp,
   });
   const hi = prognoseAbilities({
     nowAbilities, age, primaryType, secondaryType,
-    potentiale: potHi, envelope: PROGNOSIS_ENVELOPES.dedikeret,
+    potentiale: potHi, envelope: PROGNOSIS_ENVELOPES.dedikeret, ...xp,
   });
   const out = {};
   for (const ability of Object.keys(lo)) {

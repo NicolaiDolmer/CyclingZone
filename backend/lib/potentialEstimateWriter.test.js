@@ -3,6 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 
 import { knowledgeLevel, planEstimateWrite } from "./potentialEstimate.js";
 import { PRIVATE_CONFIG_KEYS, privateConfigHash, validatePrivateConfigValue } from "./privateConfig.ts";
@@ -547,6 +548,27 @@ test("XP slukket: ingen evner, sæsoner eller XP-params læses, og rytter uden t
   assert.equal(sb.state[POTENTIAL_ESTIMATES_TABLE].length, 0);
   assert.equal(tables.includes("rider_derived_abilities"), false);
   assert.equal(tables.includes("seasons"), false);
+});
+
+// Frossen golden (#7587): hashen er regnet på merge-base-koden (9ad395c7c) før XP-
+// grenen kom ind. Uden truthByRider skal planen være bit-identisk med den.
+const FROZEN_PLAN_HASH = "ba0458c1ef3ecc6224b9dd605d527b822ae93d9da0a6adb098e6dd23f8a55883";
+
+test("uden XP er planen bit-identisk med merge-base (frossen golden)", () => {
+  const out = [];
+  for (const trigger of ["new_knowledge", "sunday", "team_change", "backfill"]) {
+    const riders = [];
+    const looks = new Map(), dates = new Map(), stored = new Map();
+    for (let i = 0; i < 30; i++) {
+      const id = `r${i}`;
+      riders.push({ id, team_id: i % 2 ? "t1" : "t2", talent_ceiling: i % 7 === 0 ? null : 40 + (i * 3) % 55, is_retired: false });
+      looks.set(id, i % 4);
+      dates.set(id, (i * 5) % 30);
+      if (i % 5 === 0) stored.set(id, { rider_id: id, value: 60, certainty: "unsure", uncertainty: 7, knowledge_key: "own0", ceiling_at_write: 61, previous_value: null, previous_certainty: null, changed_at: null });
+    }
+    out.push(planTeamEstimates({ teamId: "t1", riders, storedByRider: stored, looksByRider: looks, datesByRider: dates, staffSpeed: 0.4, scoutTier: 3, trigger, params: PARAMS, paramsVersion: "v1", now: NOW }));
+  }
+  assert.equal(createHash("sha256").update(JSON.stringify(out)).digest("hex"), FROZEN_PLAN_HASH);
 });
 
 // ── Krogpunkter for ejervalget 12/11 ───────────────────────────────────────
