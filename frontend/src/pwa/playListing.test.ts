@@ -34,3 +34,23 @@ for (const lang of ["en", "da"] as const) {
     assert.match(all, lang === "en" ? /never gives strength/ : /aldrig styrke/, "Pro giver aldrig styrke");
   });
 }
+
+// Codex P2 (#8059): live-tilstanden skriver til <out>/<sprog>/, som main() ikke opretter.
+// Første writeFileSync fejlede med ENOENT; writeShot opretter mappen, også for et andet sprog
+// første gang.
+test("screenshot tool creates the language folder before the first shot", async () => {
+  const { mkdtempSync, existsSync, readFileSync: readBack, unlinkSync, rmdirSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { writeShot } = await import("../../../docs/app/play-listing/tools/take-screenshots.mjs");
+  const out = mkdtempSync(join(tmpdir(), "play-shots-"));
+  for (const lang of ["en", "da"]) {
+    const dir = join(out, lang);
+    assert.equal(existsSync(dir), false);
+    const path = writeShot(dir, "01-dashboard", Buffer.from("png"));
+    assert.equal(readBack(path, "utf8"), "png", `${lang}: billedet blev skrevet`);
+    unlinkSync(path);
+    rmdirSync(dir);
+  }
+  rmdirSync(out);
+});

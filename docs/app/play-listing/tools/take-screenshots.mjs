@@ -87,6 +87,17 @@ async function finalize(sharp, pngBuffer) {
   return { flat, meta: { width: meta.width, height: meta.height, hasAlpha: Boolean(meta.hasAlpha) } };
 }
 
+/**
+ * Skriver ét billede. Mappen oprettes rekursivt her, ikke kun i main(): live-tilstanden giver
+ * shoot() en sprogmappe (<out>/en), der ikke findes første gang (Codex P2, #8059).
+ */
+export function writeShot(outDir, file, data) {
+  mkdirSync(outDir, { recursive: true });
+  const path = join(outDir, `${file}.png`);
+  writeFileSync(path, data);
+  return path;
+}
+
 async function shoot(page, sharp, flags, outDir) {
   const results = [];
   for (const screen of SCREENS) {
@@ -97,7 +108,7 @@ async function shoot(page, sharp, flags, outDir) {
     const raw = await page.screenshot({ type: "png", mask, maskColor: "#2b2d36", animations: "disabled" });
     const { flat, meta } = await finalize(sharp, raw);
     const problems = validateShot(meta);
-    writeFileSync(join(outDir, `${screen.file}.png`), flat);
+    writeShot(outDir, screen.file, flat);
     results.push({ ...screen, ...meta, problems, landedOn: new URL(page.url()).pathname });
   }
   return results;
