@@ -107,7 +107,8 @@
     "discord-dm:test-channel",
     "discord-dm:no-recipient",
     "discord-dm:muted",
-    "discord-dm:stdout"
+    "discord-dm:stdout",
+    "train-now-timing"
   ],
   "_ignoreNotes": {
     "shutdown": "SIGTERM-forloeb ved hver deploy. Tilstandsbesked, ikke fejl.",
@@ -117,6 +118,7 @@
     "discord-dm:test-channel": "Kun i test-opsaetning.",
     "discord-dm:no-recipient": "discordNotifier.js: console.info naar et hold ikke har en bruger knyttet (#449). Forventet, men fylder prod-loggen (65 linjer/doegn maalt 30/8).",
     "discord-dm:muted": "discordNotifier.js: console.info naar spilleren har slaaet den paagaeldende DM-type fra. Bevidst spiller-valg, ikke en fejl.",
-    "discord-dm:stdout": "discordNotifier.js: console.log-dump af DM'en naar resolveDmTarget siger 'stdout' (#203 test-konti/staging-routing). Tilstandsbesked, ikke fejl."
+    "discord-dm:stdout": "discordNotifier.js: console.log-dump af DM'en naar resolveDmTarget siger 'stdout' (#203 test-konti/staging-routing). Tilstandsbesked, ikke fejl.",
+    "train-now-timing": "#7982 (backend/lib/trainNow.js): console.info med trinvis tidsmaaling for hvert Traen nu-tryk (request-id, trinnavne, ms; ingen spiller-id). Maaledata, ikke fejl; fejl ved trykket gaar til Sentry via ruten."
   }
 }
