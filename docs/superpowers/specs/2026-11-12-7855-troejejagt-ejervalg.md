@@ -43,7 +43,7 @@ Reglen "udbrud kan kun være første opgave" består. Jagten bliver en **tilføj
 - Et jagt-led tæller selv som Middel i "dagens hårdeste indsats"; passagerne bærer prisen. Kalibreret, så en hel dags jagt alene på en typisk etape svarer til prisordet Hård som i dag (spurt og bjergtop har hver sin størrelse, fordi en typisk dag har én spurt, men flere toppe).
 - Passager, han ville have kæmpet om alligevel (i udbruddet, i en lille gruppe, eller fordi rollen kæmper), koster intet ekstra: opgaven ændrede intet dér.
 - Indsatsen i løbet er uændret (`TASK_EFFORT.hunt_* = protect`; prisordet Hård står).
-- Kanalen: passagen bærer `hunt_work_7855` (ryttere opgaven fik til at køre med). Trætheden lægger det til rytterens andel i front (`raceFatigue.stageWorkExposure`). Uden feltet er belastningen bit-identisk.
+- Kanalen: passagen bærer `hunt_work_7855` (ryttere opgaven fik til at køre med). Trætheden lægger det oveni som arbejde i front (`raceFatigue.stageWorkExposure` → `hunt7855`), holdt uden for loftet på andelen i front og arbejdsfaktoren, så en passage aldrig bliver gratis for en rytter, der allerede har kørt meget i front (Codex-review). Uden feltet er belastningen bit-identisk.
 
 ## Kendt konsekvens (til ejeren)
 
