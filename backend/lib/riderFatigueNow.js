@@ -327,6 +327,11 @@ export async function fatigueByRiderNow({ supabase, conditions, abilityByRider =
   }
 }
 
+/** Et kendt træthedstal: null/undefined/"" er ukendt ("—"), ikke 0. */
+export function isKnownFatigue(value) {
+  return value != null && value !== "" && Number.isFinite(Number(value));
+}
+
 function nextDateString(dateStr) {
   const d = new Date(`${dateStr}T12:00:00Z`);
   d.setUTCDate(d.getUTCDate() + 1);
@@ -435,7 +440,10 @@ export async function fatigueOutlookForTeam({ supabase, team, seasonId, conditio
     for (const [id, n] of next) {
       const row = out.get(id);
       if (!row || instant.incompleteRiderIds.has(id)) continue;
-      if (n.tickDate === today) row.fatigueAtStart = Number.isFinite(Number(row.fatigue)) ? Number(row.fatigue) : null;
+      // Codex P2 (#8054): ukendt træthed lige nu (null, "—") giver også et ukendt skøn ved
+      // start. Number(null) er 0, så tallet må ikke tvinges gennem Number() først.
+      if (!isKnownFatigue(row.fatigue)) continue;
+      if (n.tickDate === today) row.fatigueAtStart = Number(row.fatigue);
       else if (tonight?.available) row.fatigueAtStart = tonight.riders?.[id]?.fatigue ?? null;
     }
   } catch (err) {

@@ -3269,7 +3269,11 @@ router.get("/training/me", requireAuth, async (req, res) => {
       const program = resolveProgram(plan, primaryTypeByRider.get(row.rider_id) ?? null);
       const outlook = fatigueOutlook?.get(row.rider_id) ?? null;
       const fatigue = outlook ? outlook.fatigue : row.fatigue;
-      const risk = injuryRisk({ intensity: program.intensity, fatigue: Number(fatigue ?? 0) });
+      // #8054: ukendt træthed lige nu ("—") giver ingen skadesrisiko frem for risikoen ved 0.
+      // Fladerne tåler null (højrisiko-markering og dagens beslutning springer rytteren over).
+      const risk = outlook && fatigue == null
+        ? null
+        : injuryRisk({ intensity: program.intensity, fatigue: Number(fatigue ?? 0) });
       condition[row.rider_id] = {
         form: outlook?.form ?? row.form,
         fatigue,
