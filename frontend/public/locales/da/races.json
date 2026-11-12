@@ -2,12 +2,12 @@
   "stagePlanReady": {
     "gc": {
       "name": "Kør for klassementet",
-      "description": "Alle kører for klassementsrytteren og holder ham ude af problemer.",
+      "description": "Hjælperne kører for klassementsrytteren. En delt kaptajn kører samme plan, en fri rolle sit eget løb.",
       "named": "Kør for klassementet med {name}"
     },
     "stage": {
       "name": "Etapesejr",
-      "description": "Holdet kører for den rytter, der passer bedst til dagens rute.",
+      "description": "Hjælperne kører for den rytter, der passer bedst til dagens rute.",
       "named": "Etapesejr til {name}"
     },
     "sprint": {
@@ -21,7 +21,7 @@
     },
     "save": {
       "name": "Spar benene",
-      "description": "Alle kører roligt i mål. Mindst træthed i aften."
+      "description": "Alle kører roligt i mål. Den letteste af de fem planer."
     },
     "price": {
       "easy": "Let",
@@ -1094,7 +1094,7 @@
     "line": "Standard: {role}. I dag: {today}.",
     "riderAbandoned": "Udgået af løbet",
     "copyToStage": "Kopiér til etape {number}",
-    "copyToStages": "Kopiér til etape {numbers}",
+    "copyToStages": "Kopiér til etaperne {numbers}",
     "save": "Gem etape {number}",
     "saveRaceDay": "Gem løbsdagen",
     "saving": "Gemmer…",

@@ -2,12 +2,12 @@
   "stagePlanReady": {
     "gc": {
       "name": "Rouler pour le général",
-      "description": "Tout le monde roule pour ton leader au général et le tient à l'abri des ennuis.",
+      "description": "Les équipiers roulent pour ton leader au général. Le co-leader suit le même plan, le rôle libre fait sa propre course.",
       "named": "Rouler pour le général avec {name}"
     },
     "stage": {
       "name": "Victoire d'étape",
-      "description": "L'équipe travaille pour le coureur à qui le parcours du jour convient le mieux.",
+      "description": "Les équipiers travaillent pour le coureur à qui le parcours du jour convient le mieux.",
       "named": "Victoire d'étape pour {name}"
     },
     "sprint": {
@@ -21,7 +21,7 @@
     },
     "save": {
       "name": "Économiser les jambes",
-      "description": "Tout le monde rentre tranquillement. La fatigue la plus faible ce soir."
+      "description": "Tout le monde rentre tranquillement. Le plus léger des cinq plans."
     },
     "price": {
       "easy": "Facile",
