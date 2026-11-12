@@ -18,6 +18,8 @@ import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 
 const T = CONSEQUENCE_CONSTANTS.SATISFACTION_THRESHOLDS;
 const CRISIS = T.SPONSOR_PULLOUT - 1;
+// Fast ur (AGENTS.md hard rule 16): lønloftets nybegynder-grace regnes mod `now`.
+const NOW = new Date("2026-11-12T14:00:00.000Z");
 
 /** @param {Record<string, any>} [extra] */
 function makeTeam(extra = {}) {
@@ -50,6 +52,7 @@ function run({ team, supabase, notify, satisfaction = CRISIS, goalsMet = 0, goal
     seasonId: "season-5",
     consecutiveLowExpirations,
     notify,
+    now: NOW,
   });
 }
 

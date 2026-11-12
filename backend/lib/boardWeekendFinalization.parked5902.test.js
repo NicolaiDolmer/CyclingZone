@@ -34,6 +34,8 @@ const WEEKEND_SEASON = { id: "season-5", number: 5, status: "active", race_days_
 // Krydser midten (previousRaceDaysCompleted = 24 → 30 af 60): halvsæsonens tjek.
 const MIDSEASON_SEASON = { ...WEEKEND_SEASON, race_days_completed: 30 };
 const RACE = { id: "race-1", name: "Testløb", league_division_id: "pool-a" };
+// Fast ur (AGENTS.md hard rule 16): lønloftets nybegynder-grace regnes mod `now`.
+const NOW = new Date("2026-11-12T14:00:00.000Z");
 
 /** @param {string} id @param {Record<string, any>} [extra] */
 function makeTeam(id, extra = {}) {
@@ -181,6 +183,7 @@ test("#5902 · almindelig weekend: parkeret hold får ingen ny tilfredshed, inge
     season: WEEKEND_SEASON,
     previousRaceDaysCompleted: 6,
     race: RACE,
+    now: NOW,
     deps,
   });
 
@@ -216,6 +219,7 @@ test("#5902 · halvsæson-tjek: konsekvens-motoren kaldes aldrig for et parkeret
     season: MIDSEASON_SEASON,
     previousRaceDaysCompleted: 24,
     race: RACE,
+    now: NOW,
     deps,
   });
 
@@ -232,6 +236,7 @@ test("#5902 · halvsæson-tjek med ægte konsekvens-motor: parkeret hold får 0 
     season: MIDSEASON_SEASON,
     previousRaceDaysCompleted: 24,
     race: RACE,
+    now: NOW,
     deps,
   });
 
@@ -280,6 +285,7 @@ test("#5902 · halvsæson-tjek: et parkeret holds eksisterende aktive rækker st
     season: MIDSEASON_SEASON,
     previousRaceDaysCompleted: 24,
     race: RACE,
+    now: NOW,
     deps,
   });
 
@@ -303,6 +309,7 @@ test("#5902 · et hold der er vendt tilbage (parked_at nulstillet af comeback) d
     season: MIDSEASON_SEASON,
     previousRaceDaysCompleted: 24,
     race: RACE,
+    now: NOW,
     deps,
   });
 
@@ -321,6 +328,7 @@ test("#5902 · kun parkerede hold → ingen kørsel, ingen skrivning", async () 
     season: MIDSEASON_SEASON,
     previousRaceDaysCompleted: 24,
     race: RACE,
+    now: NOW,
     deps,
   });
 
