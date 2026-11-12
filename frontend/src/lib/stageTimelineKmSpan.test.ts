@@ -255,44 +255,112 @@ test("#6350: ryttere på samme sted er stadig én linje", () => {
   assert.deepEqual((entries[0] as { riderIds: string[] }).riderIds, ["x", "y"]);
 });
 
-// ── #7965: angrebet på sidste stigning vises på stigningen, ikke på målstregen ──
+/// ── #7965: angrebet på sidste stigning er to linjer: angrebet ved foden, udfaldet hvor motoren stemplede det ──
 
+// Prod-form (Tour de l'Hexagone etape 11, mål ved km 170): all_out_gain stemplet ved toppen med
+// ægte sluttid, all_out_cracked med det ÆGTE km og den ægte løbstid for knækket.
 const climbFinish: Ev[] = [
-  { km: 0, type: "stage_start", params: { distance_km: 182 } },
+  { km: 0, type: "stage_start", params: { distance_km: 170 } },
   { km: 60, type: "gap_update", params: { group_id: "peloton-0", gap_seconds: 90 } },
-  { km: 150, type: "gap_update", params: { group_id: "peloton-0", gap_seconds: 60 } },
-  { km: 182, type: "all_out_gain", params: { rider_id: "r1" }, exact_km: 182 },
-  { km: 182, type: "all_out_cracked", params: { rider_id: "r2" } },
-  { km: 182, type: "finish", params: { top: [{ rider_id: "r1", rank: 1 }] } },
+  { km: 140, type: "gap_update", params: { group_id: "peloton-0", gap_seconds: 60 } },
+  { km: 170, type: "all_out_gain", params: { rider_id: "r1", exact_km: 170, exact_time: 17441.78 } },
+  { km: 170, type: "all_out_cracked", params: { rider_id: "r2", exact_km: 160.05, exact_time: 15490.94 } },
+  { km: 170, type: "finish", params: { top: [{ rider_id: "r1", rank: 1 }] } },
 ];
-const finalClimb = [{ crest_km: 182, length_km: 11 }];
+const finalClimb = [{ crest_km: 170, length_km: 14, name: "Col du Test" }];
+type Part = Ev & { climb_phase?: "attack" | "outcome"; climb_name?: string; race_time_s?: number };
+const part = (list: Ev[], type: string, phase: string) => (list as Part[]).find((e) => e.type === type && e.climb_phase === phase);
 
-test("#7965 an all-out line stamped on a summit finish shows ONE point at the foot of the climb (never a span), before the finish", () => {
+test("#7965 each all-out line on a summit finish becomes TWO lines: the attack at the foot, the outcome where the engine stamped it", () => {
   const shown = honestTimelineEvents(climbFinish, { ...V4, climbs: finalClimb }) as Ev[];
   for (const type of ["all_out_gain", "all_out_cracked"]) {
-    const line = shown.find((e) => e.type === type)!;
-    assert.equal(line.km_span, undefined, "no interval (owner 12/11)");
-    assert.equal(line.km, 171, "km = foot = crest_km - length_km");
-    assert.equal(line.recorded_km, 182, "the engine's summit km is kept for the task lookup");
-    assert.equal(filmKmValue(line, fmt), "171");
-    assert.ok(shown.indexOf(line) < shown.findIndex((e) => e.type === "finish"));
+    assert.equal(shown.filter((e) => e.type === type).length, 2, `${type}: two lines`);
+    const attack = part(shown, type, "attack")!;
+    assert.equal(attack.km, 156, "attack = foot = crest_km - length_km");
+    assert.equal(attack.km_span, undefined, "no interval (owner 12/11)");
+    assert.equal(attack.race_time_s, undefined, "the film has no true time for the foot: none is invented");
+    assert.equal(attack.climb_name, "Col du Test");
+    assert.equal(attack.recorded_km, 170, "the engine's stamp is kept for the task lookup");
+    assert.equal(filmKmValue(attack, fmt), "156");
   }
 });
 
-test("#7965 without the climb in the profile the previous known point is the single point", () => {
-  const shown = honestTimelineEvents(climbFinish, V4) as Ev[];
-  const line = shown.find((e) => e.type === "all_out_gain")!;
-  assert.equal(line.km_span, undefined);
-  assert.equal(line.km, 150);
-  assert.equal(filmKmValue(line, fmt), "150");
+test("#7965 the attack line carries none of the engine's exact contact data", () => {
+  const shown = honestTimelineEvents(climbFinish, { ...V4, climbs: finalClimb }) as Ev[];
+  for (const type of ["all_out_gain", "all_out_cracked"]) {
+    const attack = part(shown, type, "attack")!;
+    assert.equal(attack.exact_km, undefined);
+    assert.equal(attack.params?.exact_km, undefined);
+    assert.equal(attack.params?.exact_time, undefined);
+    assert.equal(attack.params?.rider_id, type === "all_out_gain" ? "r1" : "r2");
+  }
 });
 
-test("#7965 a stage whose profile has no climb ending at the finish is unchanged", () => {
-  const flat = honestTimelineEvents(climbFinish, { ...V4, climbs: [] });
-  const wrongClimb = honestTimelineEvents(climbFinish, { ...V4, climbs: [{ crest_km: 120, length_km: 8 }] });
+test("#7965 cracked: the outcome stands at the engine's true km with its true race time", () => {
+  const shown = honestTimelineEvents(climbFinish, { ...V4, climbs: finalClimb }) as Ev[];
+  const cracked = part(shown, "all_out_cracked", "outcome")!;
+  assert.equal(cracked.km, 160.05);
+  assert.equal(cracked.race_time_s, 15490.94);
+  assert.equal(cracked.km_span, undefined);
+  assert.equal(filmKmValue(cracked, fmt), "160.05");
+});
+
+test("#7965 held: the outcome stands at the top with the engine's true finish time", () => {
+  const shown = honestTimelineEvents(climbFinish, { ...V4, climbs: finalClimb }) as Ev[];
+  const gain = part(shown, "all_out_gain", "outcome")!;
+  assert.equal(gain.km, 170);
+  assert.equal(gain.race_time_s, 17441.78);
+  assert.equal(gain.km_span, undefined);
+});
+
+test("#7965 chronological: attack before outcome, outcome at or before the finish line, never an interval", () => {
+  const shown = honestTimelineEvents(climbFinish, { ...V4, climbs: finalClimb }) as Ev[];
+  const at = (type: string, phase: string) => shown.indexOf(part(shown, type, phase)!);
+  assert.ok(at("all_out_cracked", "attack") < at("all_out_cracked", "outcome"));
+  assert.ok(at("all_out_gain", "attack") < at("all_out_gain", "outcome"));
+  assert.ok(at("all_out_gain", "outcome") < shown.findIndex((e) => e.type === "finish"));
+  assert.ok(at("all_out_cracked", "outcome") < at("all_out_gain", "outcome"));
+  const kms = shown.map((e) => e.km);
+  assert.deepEqual(kms, [...kms].sort((a, b) => a - b), "km never goes backwards");
+  assert.ok(shown.every((e) => !e.km_span), "no line is shown as an interval");
+});
+
+test("#7965 a cracked line without exact km/time stands at the top with no invented time", () => {
+  const old: Ev[] = climbFinish.map((e) => (e.type === "all_out_cracked" ? { km: 170, type: e.type, params: { rider_id: "r2" } } : e));
+  const shown = honestTimelineEvents(old, { ...V4, climbs: finalClimb }) as Ev[];
+  const cracked = part(shown, "all_out_cracked", "outcome")!;
+  assert.equal(cracked.km, 170);
+  assert.equal(cracked.race_time_s, undefined);
+  assert.equal(part(shown, "all_out_cracked", "attack")!.km, 156);
+});
+
+test("#7965 an exact km at or before the foot is not trusted: the outcome stands at the top", () => {
+  const odd: Ev[] = climbFinish.map((e) => (e.type === "all_out_cracked" ? { km: 170, type: e.type, params: { rider_id: "r2", exact_km: 150, exact_time: 1 } } : e));
+  const cracked = part(honestTimelineEvents(odd, { ...V4, climbs: finalClimb }) as Ev[], "all_out_cracked", "outcome")!;
+  assert.equal(cracked.km, 170);
+  assert.equal(cracked.race_time_s, undefined);
+});
+
+test("#7965 the climb name falls back to the timeline's own summit marker, then to none", () => {
+  const withKom: Ev[] = [...climbFinish.slice(0, 3), { km: 170, type: "kom_passage", params: { name: "Col Marker", category: "1" } }, ...climbFinish.slice(3)];
+  assert.equal(part(honestTimelineEvents(withKom, { ...V4, climbs: [{ crest_km: 170, length_km: 14 }] }) as Ev[], "all_out_gain", "attack")!.climb_name, "Col Marker");
+  assert.equal(part(honestTimelineEvents(climbFinish, { ...V4, climbs: [{ crest_km: 170, length_km: 14 }] }) as Ev[], "all_out_gain", "attack")!.climb_name, undefined);
+});
+
+test("#7965 without the climb in the profile the previous known point is the attack point (still two lines)", () => {
+  const shown = honestTimelineEvents(climbFinish, V4) as Ev[];
+  const attack = part(shown, "all_out_gain", "attack")!;
+  assert.equal(attack.km, 140);
+  assert.equal(attack.km_span, undefined);
+  assert.equal(part(shown, "all_out_gain", "outcome")!.km, 170);
+});
+
+test("#7965 a stage whose profile has no climb ending at the finish is unchanged (one line each, as before)", () => {
+  const flat = honestTimelineEvents(climbFinish, { ...V4, climbs: [] }) as Ev[];
+  const wrongClimb = honestTimelineEvents(climbFinish, { ...V4, climbs: [{ crest_km: 120, length_km: 8 }] }) as Ev[];
   assert.deepEqual(wrongClimb, flat);
-  assert.deepEqual((flat as Ev[]).find((e) => e.type === "all_out_cracked"), climbFinish[4]);
-  assert.equal((flat as Ev[]).find((e) => e.type === "all_out_gain")!.km_span, undefined);
+  assert.equal(flat.filter((e) => e.type.startsWith("all_out")).length, 2);
+  assert.ok(flat.every((e) => !(e as Part).climb_phase));
 });
 
 test("#7965 an all-out line before a descent finish (not at the finish) and v3 timelines are unchanged", () => {
@@ -305,7 +373,7 @@ test("#7965 an all-out line before a descent finish (not at the finish) and v3 t
   const shown = honestTimelineEvents(descent, { ...V4, climbs: [{ crest_km: 160, length_km: 9 }] }) as Ev[];
   assert.deepEqual(shown.find((e) => e.type === "all_out_gain"), descent[2]);
   const v3 = honestTimelineEvents(climbFinish, { timelineVersion: 1, climbs: finalClimb }) as Ev[];
-  assert.equal(v3.find((e) => e.type === "all_out_cracked")!.km_span, undefined);
+  assert.equal(v3.filter((e) => e.type === "all_out_cracked").length, 1);
 });
 
 test("#7965 other event types and the rest of a summit finish stay as they were", () => {
@@ -315,25 +383,25 @@ test("#7965 other event types and the rest of a summit finish stay as they were"
   assert.deepEqual(rest(withClimbs), rest(without));
 });
 
-test("#7965 the resolver (split times, story) gives the same km as the film line", () => {
+test("#7965 the resolver and the loss list give the outcome line (the knock), not the attack", () => {
   const resolve = honestKmResolver(climbFinish, { ...V4, climbs: finalClimb });
-  const shown = resolve(climbFinish[4]);
-  assert.equal(shown.km_span, undefined);
-  assert.equal(shown.km, 171);
-});
-
-test("#7965 the loss list shows the same single point as the film line", () => {
-  const entries = lossEntriesWithFilmKm(climbFinish, [{ type: "event", km: 182, riderId: "r2", event: climbFinish[4] }], { ...V4, climbs: finalClimb });
+  const shown = resolve(climbFinish[4]) as Part;
+  assert.equal(shown.km, 160.05);
+  assert.equal(shown.climb_phase, "outcome");
+  assert.equal(shown.race_time_s, 15490.94);
+  const entries = lossEntriesWithFilmKm(climbFinish, [{ type: "event", km: 170, riderId: "r2", event: climbFinish[4] }], { ...V4, climbs: finalClimb });
   assert.equal(entries[0].shown.km_span, undefined);
-  assert.equal(entries[0].shown.km, 171);
+  assert.equal(entries[0].shown.km, 160.05);
+  assert.equal((entries[0].event as Part).climb_phase, "outcome");
 });
 
-test("#7965 split times (mellemtider) are unchanged: the display change never touches the raw timeline", () => {
+test("#7965 split times (mellemtider) are unchanged and the raw timeline is never mutated", () => {
   const before = JSON.parse(JSON.stringify(buildSplitTimes(climbFinish as never, { ownRiderIds: [] })));
   const snapshot = JSON.parse(JSON.stringify(climbFinish));
   honestTimelineEvents(climbFinish, { ...V4, climbs: finalClimb });
   honestKmResolver(climbFinish, { ...V4, climbs: finalClimb })(climbFinish[3]);
+  lossEntriesWithFilmKm(climbFinish, [{ type: "event", km: 170, riderId: "r2", event: climbFinish[4] }], { ...V4, climbs: finalClimb });
   assert.deepEqual(climbFinish, snapshot, "raw events are not mutated");
   assert.deepEqual(buildSplitTimes(climbFinish as never, { ownRiderIds: [] }), before);
-  assert.ok(before.every((p: { km: number }) => p.km !== 171), "no split point at the foot");
+  assert.ok(before.every((p: { km: number }) => p.km !== 156 && p.km !== 160.05), "no split point at the foot or at the knock");
 });

@@ -130,7 +130,7 @@ function isTimeTrialStage(events, profileType = null) {
  * stignings-markører, catch-punkt (km for `breakaway_caught`, findes ikke i alle
  * etaper) og gap-kurve-punkter.
  */
-/** @param {{events?: Array<{km?: number, type: string, params?: Record<string, unknown>}>, distanceKm?: number|null, ownRiderIds?: Iterable<unknown>|null, effortByRider?: {get(id: string): unknown}|null, profileType?: string|null, timelineVersion?: number|null, startlist?: readonly string[]|null, climbs?: ReadonlyArray<{crest_km?: number|string|null, length_km?: number|string|null}>|null}} input */
+/** @param {{events?: Array<{km?: number, type: string, params?: Record<string, unknown>}>, distanceKm?: number|null, ownRiderIds?: Iterable<unknown>|null, effortByRider?: {get(id: string): unknown}|null, profileType?: string|null, timelineVersion?: number|null, startlist?: readonly string[]|null, climbs?: ReadonlyArray<{crest_km?: number|string|null, length_km?: number|string|null, name?: string|null}>|null}} input */
 export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds = [], effortByRider = null, profileType = null, timelineVersion = null, startlist = null, climbs = null } = {}) {
   // #6294/#6350: uden samlinger forklædt som indhentninger, og (v4-tidslinjer)
   // med ærlige km-spænd for hændelser motoren stemplede ved et tjekpunkt.
@@ -503,6 +503,16 @@ export function describeEvent(event, { riderNameById, teamNameById, ownRiderIds 
     case "all_out_cracked": {
       const rider = riderName(p.rider_id, riderNameById);
       if (!rider) return null;
+      // #7965: paa en topankomst er opsummeringen to linjer: angrebet ved foden (uden resultat)
+      // og udfaldet dér hvor motoren stemplede det. Intet tal og ingen tid, som motoren ikke har.
+      if (event.climb_phase === "attack") {
+        return event.climb_name
+          ? { key: "climb_attack_start_named", params: { rider, climb: event.climb_name } }
+          : { key: "climb_attack_start", params: { rider } };
+      }
+      if (event.climb_phase === "outcome") {
+        return { key: event.type === "all_out_gain" ? "climb_attack_held" : "climb_attack_cracked", params: { rider } };
+      }
       // #7707: withAttackWording stempler `task: "attack"` paa en rytter med opgaven Angrib.
       const attack = p.task === "attack";
       return { key: attack ? event.type.replace("all_out_", "attack_") : event.type, params: { rider } };

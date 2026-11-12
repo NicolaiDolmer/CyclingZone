@@ -816,10 +816,10 @@ const lossOf = (events = summitFinish(), results = LOSS_RESULTS) => {
 test("#7705: dine ryttere får den sande årsag, ukendt årsag står, og intet opdigtes", () => {
   const loss = lossOf();
   assert.deepEqual(loss.entries.map((e) => (e.type === "drop" ? ["drop", e.riderIds, e.reason, e.climbName] : [e.event.type, e.riderId])), [
-    // #7965: alt ud stemplet paa topankomsten staar op ad stigningen, foer faldet ved stregen.
+    // #7965: knaekket uden ægte km/tid i loggen staar ved toppen (udfaldet), ikke som interval og ikke ved foden.
+    ["drop", ["a", "b"], "mixed", "Top"],
     ["all_out_cracked", "a"],
     ["all_out_cracked", "b"],
-    ["drop", ["a", "b"], "mixed", "Top"],
     ["bad_day", "b"],
   ]);
   assert.equal(loss.unknown, "Lost", "efter feltet uden årsag i loggen");
