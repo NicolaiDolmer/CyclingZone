@@ -52,7 +52,7 @@ function useContainerWidth(ref) {
 export default function TrendLineChart({ data, lines, xKey = "snapshot_date", height = 260, yFormatter }) {
   const wrapRef = useRef(null);
   const width = useContainerWidth(wrapRef);
-  const [active, setActive] = useState(null);
+  const [active, setActive] = useState(/** @type {number | null} */ (null));
 
   const rows = Array.isArray(data) ? data : [];
   const series = Array.isArray(lines) ? lines : [];
@@ -77,9 +77,14 @@ export default function TrendLineChart({ data, lines, xKey = "snapshot_date", he
   const xAt = (i) => (n <= 1 ? MARGIN.left + plotW / 2 : MARGIN.left + (i / (n - 1)) * plotW);
   const xs = rows.map((_, i) => xAt(i));
   const xTicks = xTickIndices(n, plotW, 56);
+  const yOf = (row, key) => {
+    const v = toNumber(row[key]);
+    return v === null ? null : yScale(v);
+  };
   const fmtY = (v) => (yFormatter ? yFormatter(v) : String(v));
 
-  const activeRow = active != null && rows[active] ? rows[active] : null;
+  const activeRow = active !== null && rows[active] ? rows[active] : null;
+  const activeX = active !== null ? xs[active] : 0;
 
   const onPointerMove = (e) => {
     if (!n) return;
@@ -101,7 +106,7 @@ export default function TrendLineChart({ data, lines, xKey = "snapshot_date", he
     }
   };
 
-  const tooltipLeft = activeRow ? xs[active] : 0;
+  const tooltipLeft = activeX;
   const flip = activeRow && tooltipLeft > width / 2;
 
   const summary = activeRow
@@ -161,7 +166,7 @@ export default function TrendLineChart({ data, lines, xKey = "snapshot_date", he
           {series.map((line) => (
             <path
               key={line.key}
-              d={linePath(rows.map((row, i) => ({ x: xs[i], y: toNumber(row[line.key]) == null ? null : yScale(toNumber(row[line.key])) })), true)}
+              d={linePath(rows.map((row, i) => ({ x: xs[i], y: yOf(row, line.key) })), true)}
               fill="none" stroke={line.color} strokeWidth={2}
               strokeLinejoin="round" strokeLinecap="round"
             />
@@ -169,7 +174,7 @@ export default function TrendLineChart({ data, lines, xKey = "snapshot_date", he
           {activeRow && (
             <g pointerEvents="none">
               <line
-                x1={xs[active]} x2={xs[active]} y1={MARGIN.top} y2={MARGIN.top + plotH}
+                x1={activeX} x2={activeX} y1={MARGIN.top} y2={MARGIN.top + plotH}
                 stroke="var(--text-3)" strokeWidth={1}
               />
               {series.map((line) => {
@@ -177,7 +182,7 @@ export default function TrendLineChart({ data, lines, xKey = "snapshot_date", he
                 if (v == null) return null;
                 return (
                   <circle
-                    key={line.key} cx={xs[active]} cy={yScale(v)} r={4}
+                    key={line.key} cx={activeX} cy={yScale(v)} r={4}
                     fill={line.color} stroke="var(--bg-card)" strokeWidth={2}
                   />
                 );

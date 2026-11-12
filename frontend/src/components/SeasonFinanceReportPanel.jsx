@@ -52,13 +52,14 @@ const DONUT_SIZE = 200;
 const DONUT_C = DONUT_SIZE / 2;
 
 function DonutChart({ data, total, title }) {
-  const [activeIdx, setActiveIdx] = useState(null);
+  const [activeIdx, setActiveIdx] = useState(/** @type {number | null} */ (null));
   const segments = donutSegments(
     data.map((d) => d.value),
     DONUT_C, DONUT_C, 50, 80, 2,
   );
-  const active = activeIdx != null ? segments[activeIdx] : null;
-  const activeItem = active ? data[activeIdx] : null;
+  const active = activeIdx !== null ? segments[activeIdx] : null;
+  const activeItem = activeIdx !== null ? data[activeIdx] : null;
+  /** @type {{ dx: number, dy: number } | null} */
   let tip = null;
   if (active && activeItem && active.path) {
     const mid = (active.startAngle + active.endAngle) / 2;
@@ -102,7 +103,7 @@ function DonutChart({ data, total, title }) {
         <span className="text-cz-3 text-xs uppercase tracking-wide">{total.label}</span>
         <span className="text-cz-1 font-mono font-bold tabular-nums">{formatCZ(total.value)}</span>
       </div>
-      {tip && (
+      {tip && active && activeItem && (
         <div
           className="absolute pointer-events-none z-10 bg-cz-card border border-cz-border rounded-cz px-3 py-2 whitespace-nowrap"
           style={{
