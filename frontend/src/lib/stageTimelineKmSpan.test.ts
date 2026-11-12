@@ -254,3 +254,72 @@ test("#6350: ryttere på samme sted er stadig én linje", () => {
   assert.equal(entries.length, 1);
   assert.deepEqual((entries[0] as { riderIds: string[] }).riderIds, ["x", "y"]);
 });
+
+// ── #7965: angrebet på sidste stigning vises på stigningen, ikke på målstregen ──
+
+const climbFinish: Ev[] = [
+  { km: 0, type: "stage_start", params: { distance_km: 182 } },
+  { km: 60, type: "gap_update", params: { group_id: "peloton-0", gap_seconds: 90 } },
+  { km: 150, type: "gap_update", params: { group_id: "peloton-0", gap_seconds: 60 } },
+  { km: 182, type: "all_out_gain", params: { rider_id: "r1" }, exact_km: 182 },
+  { km: 182, type: "all_out_cracked", params: { rider_id: "r2" } },
+  { km: 182, type: "finish", params: { top: [{ rider_id: "r1", rank: 1 }] } },
+];
+const finalClimb = [{ crest_km: 182, length_km: 11 }];
+
+test("#7965 an all-out line stamped on a summit finish shows the climb as a span, before the finish", () => {
+  const shown = honestTimelineEvents(climbFinish, { ...V4, climbs: finalClimb }) as Ev[];
+  for (const type of ["all_out_gain", "all_out_cracked"]) {
+    const line = shown.find((e) => e.type === type)!;
+    assert.deepEqual(line.km_span, { from: 171, to: 182 });
+    assert.equal(line.km, 171);
+    assert.equal(line.recorded_km, 182);
+    assert.equal(filmKmValue(line, fmt), "171-182");
+    assert.ok(shown.indexOf(line) < shown.findIndex((e) => e.type === "finish"));
+  }
+});
+
+test("#7965 without the climb in the profile the previous known point opens the span", () => {
+  const shown = honestTimelineEvents(climbFinish, V4) as Ev[];
+  const line = shown.find((e) => e.type === "all_out_gain")!;
+  assert.deepEqual(line.km_span, { from: 150, to: 182 });
+});
+
+test("#7965 a stage whose profile has no climb ending at the finish is unchanged", () => {
+  const flat = honestTimelineEvents(climbFinish, { ...V4, climbs: [] });
+  const wrongClimb = honestTimelineEvents(climbFinish, { ...V4, climbs: [{ crest_km: 120, length_km: 8 }] });
+  assert.deepEqual(wrongClimb, flat);
+  assert.deepEqual((flat as Ev[]).find((e) => e.type === "all_out_cracked"), climbFinish[4]);
+  assert.equal((flat as Ev[]).find((e) => e.type === "all_out_gain")!.km_span, undefined);
+});
+
+test("#7965 an all-out line before a descent finish (not at the finish) and v3 timelines are unchanged", () => {
+  const descent: Ev[] = [
+    { km: 0, type: "stage_start", params: { distance_km: 182 } },
+    { km: 150, type: "gap_update", params: { group_id: "peloton-0", gap_seconds: 60 } },
+    { km: 160, type: "all_out_gain", params: { rider_id: "r1" } },
+    { km: 182, type: "finish", params: {} },
+  ];
+  const shown = honestTimelineEvents(descent, { ...V4, climbs: [{ crest_km: 160, length_km: 9 }] }) as Ev[];
+  assert.deepEqual(shown.find((e) => e.type === "all_out_gain"), descent[2]);
+  const v3 = honestTimelineEvents(climbFinish, { timelineVersion: 1, climbs: finalClimb }) as Ev[];
+  assert.equal(v3.find((e) => e.type === "all_out_cracked")!.km_span, undefined);
+});
+
+test("#7965 other event types and the rest of a summit finish stay as they were", () => {
+  const withClimbs = honestTimelineEvents(climbFinish, { ...V4, climbs: finalClimb }) as Ev[];
+  const without = honestTimelineEvents(climbFinish, { ...V4, climbs: [] }) as Ev[];
+  const rest = (list: Ev[]) => list.filter((e) => !e.type.startsWith("all_out"));
+  assert.deepEqual(rest(withClimbs), rest(without));
+});
+
+test("#7965 the resolver (split times, story) gives the same km as the film line", () => {
+  const resolve = honestKmResolver(climbFinish, { ...V4, climbs: finalClimb });
+  const shown = resolve(climbFinish[4]);
+  assert.deepEqual(shown.km_span, { from: 171, to: 182 });
+});
+
+test("#7965 the loss list shows the same span as the film line", () => {
+  const entries = lossEntriesWithFilmKm(climbFinish, [{ type: "event", km: 182, riderId: "r2", event: climbFinish[4] }], { ...V4, climbs: finalClimb });
+  assert.deepEqual(entries[0].shown.km_span, { from: 171, to: 182 });
+});

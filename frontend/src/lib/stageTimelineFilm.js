@@ -130,12 +130,12 @@ function isTimeTrialStage(events, profileType = null) {
  * stignings-markører, catch-punkt (km for `breakaway_caught`, findes ikke i alle
  * etaper) og gap-kurve-punkter.
  */
-/** @param {{events?: Array<{km?: number, type: string, params?: Record<string, unknown>}>, distanceKm?: number|null, ownRiderIds?: Iterable<unknown>|null, effortByRider?: {get(id: string): unknown}|null, profileType?: string|null, timelineVersion?: number|null, startlist?: readonly string[]|null}} input */
-export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds = [], effortByRider = null, profileType = null, timelineVersion = null, startlist = null } = {}) {
+/** @param {{events?: Array<{km?: number, type: string, params?: Record<string, unknown>}>, distanceKm?: number|null, ownRiderIds?: Iterable<unknown>|null, effortByRider?: {get(id: string): unknown}|null, profileType?: string|null, timelineVersion?: number|null, startlist?: readonly string[]|null, climbs?: ReadonlyArray<{crest_km?: number|string|null, length_km?: number|string|null}>|null}} input */
+export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds = [], effortByRider = null, profileType = null, timelineVersion = null, startlist = null, climbs = null } = {}) {
   // #6294/#6350: uden samlinger forklædt som indhentninger, og (v4-tidslinjer)
   // med ærlige km-spænd for hændelser motoren stemplede ved et tjekpunkt.
   // #6469: årsagslinjer (og egne "Alt ud"-linjer) lige efter det udfald de forklarer.
-  const sorted = withNarrativeCauses(labelBreakawayEvents(honestTimelineEvents(events, { timelineVersion, startlist }), events), { ownRiderIds, effortByRider, profileType });
+  const sorted = withNarrativeCauses(labelBreakawayEvents(honestTimelineEvents(events, { timelineVersion, startlist, climbs }), events), { ownRiderIds, effortByRider, profileType });
   const feedEvents = groupRepeatedFeedEvents(sorted.filter((e) => !NON_FEED_TYPES.has(e?.type) && !(e?.type === "finale_attack" && e.params?.kind === "stage_decided")), { ownRiderIds });
   const climbMarkers = sorted
     .filter((e) => e?.type === "kom_passage")

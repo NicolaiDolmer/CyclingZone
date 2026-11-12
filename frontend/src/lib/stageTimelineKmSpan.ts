@@ -9,6 +9,11 @@
 // den skete op til. Nye etaper der bærer et præcist kontakt-km (`exact_km`,
 // på eventet eller i params) vises præcist og aldrig som spænd.
 //
+// #7965: motoren stempler "alt ud"/angreb på en stigning (all_out_gain,
+// all_out_cracked) ved stigningens SLUT. Ved en topankomst er det målstregen,
+// så linjen stod på stregen, selv om angrebet skete op ad stigningen. Filmen
+// viser den som et ærligt spænd fra foden til toppen. Kun visning.
+//
 // #6294: samme indgang fjerner de "indhentninger" som var en samling af
 // udbruddet (withoutRegroupCatches), så film, mærker og gemte flag fortæller
 // det samme. Kun visning: den gemte tidslinje er uændret. Ren afledning.
@@ -56,7 +61,21 @@ function finishKmOf(events: readonly SpanTimelineEvent[]): number | null {
   return finite(events.find((event) => event.type === "stage_start")?.params?.distance_km);
 }
 
-type TimelineOptions = { timelineVersion?: number | null; /** #6400: etapens startliste (rider_id), som broen bruger. */ startlist?: readonly string[] | null };
+/** Stigning fra etapeprofilen (kun de felter foden udledes af). */
+export type SpanClimb = { crest_km?: number | string | null; length_km?: number | string | null };
+
+type TimelineOptions = {
+  timelineVersion?: number | null;
+  /** #6400: etapens startliste (rider_id), som broen bruger. */
+  startlist?: readonly string[] | null;
+  /** #7965: etapeprofilens stigninger (foden = crest_km - length_km). Ukendt (null/udeladt): forrige kendte punkt bruges. */
+  climbs?: readonly SpanClimb[] | null;
+};
+
+// Hændelser motoren stempler når en stigning er slut (opsummering over hele stigningen).
+const CLIMB_STAMPED = new Set(["all_out_gain", "all_out_cracked"]);
+// En top inden for denne afstand af hændelsens km er stigningen hændelsen hører til.
+const CREST_TOLERANCE_KM = 1;
 
 /** Stabil km-sortering af de hændelser der har en type (samme km: input-rækkefølgen). */
 export function kmSortedEvents<T extends SpanTimelineEvent>(events: readonly (T | null | undefined)[] | null | undefined): T[] {
@@ -78,7 +97,7 @@ function keptEvents<T extends SpanTimelineEvent>(events: readonly (T | null | un
  * motoren har skrevet et (aldrig spænd), ellers det ærlige spænd for en
  * tjekpunkt-stemplet hændelse på en v4-tidslinje, ellers eventets egen km.
  */
-function spanResolver(kept: readonly SpanTimelineEvent[], { timelineVersion = null }: TimelineOptions) {
+function spanResolver(kept: readonly SpanTimelineEvent[], { timelineVersion = null, climbs = null }: TimelineOptions) {
   // Kun v4-tidslinjer (timeline_version >= 2) stempler ved tjekpunkter; v3's
   // tidslinje (version 1) har sine egne km og får aldrig spænd.
   const checkpointEngine = typeof timelineVersion === "number" && timelineVersion >= 2;
@@ -97,7 +116,27 @@ function spanResolver(kept: readonly SpanTimelineEvent[], { timelineVersion = nu
     for (const anchor of sortedAnchors) { if (anchor < km) best = anchor; else break; }
     return best;
   };
+  // #7965: foden af stigningen hvis top ligger ved km; null hvis profilen ikke har den.
+  const climbFoot = (km: number): number | null => {
+    let best: { crest: number; foot: number } | null = null;
+    for (const climb of climbs ?? []) {
+      const crest = finite(climb?.crest_km);
+      const length = finite(climb?.length_km);
+      if (crest == null || length == null || !(length > 0) || Math.abs(crest - km) > CREST_TOLERANCE_KM) continue;
+      if (!best || Math.abs(crest - km) < Math.abs(best.crest - km)) best = { crest, foot: Math.max(0, crest - length) };
+    }
+    return best && best.foot < km ? best.foot : null;
+  };
   return <T extends SpanTimelineEvent>(event: T): { event: T; spanned: boolean } => {
+    // #7965: stigningens opsummering stemplet på målstregen (topankomst) vises op ad stigningen.
+    if (checkpointEngine && CLIMB_STAMPED.has(event.type ?? "") && finishKm != null) {
+      const stamped = exactEventKm(event) ?? finite(event.km);
+      if (stamped != null && stamped >= finishKm) {
+        // Kender profilen stigninger, kræves en der slutter her (ellers er det ikke en topankomst).
+        const from = climbs ? climbFoot(stamped) : previousAnchor(stamped);
+        if (from != null && from < stamped) return { event: { ...event, km: from, recorded_km: stamped, km_span: { from, to: stamped } }, spanned: true };
+      }
+    }
     const exact = exactEventKm(event);
     if (exact != null) return { event: { ...event, km: exact }, spanned: false };
     const km = finite(event.km);
