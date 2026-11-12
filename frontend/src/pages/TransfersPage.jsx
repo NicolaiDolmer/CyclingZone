@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { supabase } from "../lib/supabase";
-import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
+import { useMarketData } from "../data/marketData.ts";
+
 import AutoAcceptAuctionDialog from "../components/transfers/AutoAcceptAuctionDialog.js";
 import { fetchPlayerFeatureFlags } from "../lib/playerFeatureFlags.js";
 import { validTiming, readAutoListing, findCounterAutoListing } from "../lib/autoAccept2176.ts";
@@ -32,9 +32,9 @@ import SortableTh from "../components/ui/SortableTh.jsx";
 // ReportTradeDialog.js i TeamTransferHistoryTab.jsx).
 import TradeListPage from "./TradeListPage.js"; // #5257: "Alle handler"-fanens krop
 import {
-  AmountInput, EmptyState, ExchangeIcon, InboxIcon, PageLoader,
+  AmountInput, EmptyState, ErrorState, ExchangeIcon, InboxIcon, PageLoader,
   PageHeader, Section, Button, Select, Tabs, TabList, Tab, BlockedNote,
-  ArrowUpIcon, ArrowDownIcon, BikeIcon, ChevronRightIcon,
+  ArrowUpIcon, ArrowDownIcon, BikeIcon, ChevronRightIcon, SkeletonLines,
 } from "../components/ui";
 import { useBlockedAction } from "../lib/useBlockedAction.js";
 // #2849 bølge 2: markeds-tabellens wrap/border deles med cz-table-recipen (T2),
@@ -44,7 +44,7 @@ import { useBlockedAction } from "../lib/useBlockedAction.js";
 import { WRAP } from "../components/ui/dataTableStyles.js";
 import { useIsMobileViewport } from "../hooks/useMediaQuery.ts";
 import { FullTableToggle } from "../components/ui/MobileTableChips.jsx";
-import { ABILITY_STATS as LISTING_STATS, ABILITY_KEYS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities";
+import { ABILITY_STATS as LISTING_STATS, ABILITY_KEYS, ABILITY_SHORT } from "../lib/abilities";
 import { getRiderAge, retirementBidWarningTier } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import NationCell from "../components/rider/NationCell";
@@ -91,7 +91,7 @@ const MARKET_SORT_ACCESSORS = {
   ),
 };
 
-const API = import.meta.env.VITE_API_URL;
+
 
 // #987: faner kan deep-linkes via ?tab= (fx /transfers?tab=market fra nav'ens
 // "Transferliste"-genvej). Ukendte værdier falder tilbage til "received".
@@ -1150,12 +1150,13 @@ function MarketRow({
 // relative justering ("+10% på alle markerede") er dét der gør bulk hurtigere
 // end at redigere sekventielt (ejer-direktiv, #2451). Kun synlig når mindst én
 // egen listing er markeret — resten af tiden er tabellen uændret.
+/** @type {Array<"percent" | "amount" | "set">} */
 const BULK_MODES = ["percent", "amount", "set"];
 const BULK_PREVIEW_VISIBLE = 5;
 
 function BulkPriceEditor({ selectedListings, onApply, onClear, busy }) {
   const { t } = useTranslation("transfers");
-  const [mode, setMode] = useState("percent");
+  const [mode, setMode] = useState(/** @type {"percent" | "amount" | "set"} */ ("percent"));
   const [rawValue, setRawValue] = useState("");
 
   // #3495: parseFloat("150.000", "set") ville have samme faktor-1000-fejl
@@ -1164,7 +1165,7 @@ function BulkPriceEditor({ selectedListings, onApply, onClear, busy }) {
   const parsedValue = parseAdjustmentValue(rawValue, mode);
   const hasValue = rawValue.trim() !== "" && parsedValue.valid;
   const value = parsedValue.valid ? parsedValue.value : null;
-  const preview = hasValue
+  const preview = hasValue && value !== null
     ? previewBulkPriceAdjust(selectedListings, { mode, value })
     : [];
   const changedCount = preview.filter(p => p.changed).length;
@@ -1284,18 +1285,7 @@ export default function TransfersPage() {
   const [auctionTiming, setAuctionTiming] = useState(/** @type {import("../lib/autoAccept2176.ts").AuctionTiming | null} */ (null));
   const [auctionListing, setAuctionListing] = useState(/** @type {import("../components/transfers/AutoAcceptAuctionDialog.tsx").AutoListing | null} */ (null));
   const [auctionNow, setAuctionNow] = useState(/** @type {Date | null} */ (null));
-  const [listings, setListings] = useState([]);
-  const [sentOffers, setSentOffers] = useState([]);
-  const [receivedOffers, setReceivedOffers] = useState([]);
-  const [archivedSentOffers, setArchivedSentOffers] = useState([]);
-  const [archivedReceivedOffers, setArchivedReceivedOffers] = useState([]);
-  const [sentSwaps, setSentSwaps] = useState([]);
-  const [receivedSwaps, setReceivedSwaps] = useState([]);
-  const [archivedSentSwaps, setArchivedSentSwaps] = useState([]);
-  const [archivedReceivedSwaps, setArchivedReceivedSwaps] = useState([]);
-  const [myTeamId, setMyTeamId] = useState(null);
-  const [myBalance, setMyBalance] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const { listings, sentOffers, receivedOffers, archivedSentOffers, archivedReceivedOffers, sentSwaps, receivedSwaps, archivedSentSwaps, archivedReceivedSwaps, myTeamId, myBalance, loading, hasData, failurePresentation, error: dataError, loadAll, request: apiFetch, getHeaders, refreshListings } = useMarketData();
   const [celebration, setCelebration] = useState(null);
   const [msg, setMsg] = useState({ text: "", type: "success" });
   // #2329: markedstabellens ÉN kanoniske sort-state — delt af header-klik
@@ -1346,59 +1336,16 @@ export default function TransfersPage() {
     setSelectedListingIds(new Set());
   }
 
-  async function loadAll() {
-    setLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      // #1792: udløbet/ugyldig session → user=null; stop før user.id (finally rydder loading)
-      if (!user) return;
-      const { data: team } = await supabase.from("teams").select("id, balance").eq("user_id", user.id).maybeSingle();
-      if (!team) return;
-      setMyTeamId(team.id);
-      setMyBalance(team.balance);
-
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = { Authorization: `Bearer ${session.access_token}` };
-
-      // #5242 (CodeRabbit-fund): fald tilbage til den tomme facit for ETHVERT
-      // ikke-ok svar, ikke kun limited/unauthorized — apiFetch giver data:null
-      // for et tomt/ikke-JSON 5xx-svar, og .sent/.received-læsningerne nedenfor
-      // ville ellers kaste på en null-læsning i stedet for at falde tilbage.
-      const [listingsRes, offersRes, swapsRes] = await Promise.all([
-        apiFetch(`${API}/api/transfers`, { headers }).then((r) => (r.ok ? (r.data ?? []) : [])),
-        apiFetch(`${API}/api/transfers/my-offers`, { headers }).then((r) => (r.ok ? (r.data ?? {}) : {})),
-        apiFetch(`${API}/api/transfers/swaps`, { headers }).then((r) => (r.ok ? (r.data ?? {}) : {})),
-      ]);
-
-      // #1529: backend leverer rider.rider_derived_abilities (nested) — flad evnerne op
-      // på rytter-objektet så ${key}-opslag i kortene virker som med de gamle stat_*.
-      const flatRider = (o) => (o && o.rider ? { ...o, rider: flattenAbilities(o.rider) } : o);
-      const flatSwap = (s) => (s ? { ...s, offered: flattenAbilities(s.offered), requested: flattenAbilities(s.requested) } : s);
-      setListings(Array.isArray(listingsRes) ? listingsRes.map(flatRider) : []);
-      setSentOffers((offersRes.sent || []).map(flatRider));
-      setReceivedOffers((offersRes.received || []).map(flatRider));
-      setArchivedSentOffers((offersRes.archivedSent || []).map(flatRider));
-      setArchivedReceivedOffers((offersRes.archivedReceived || []).map(flatRider));
-      setSentSwaps((swapsRes.sent || []).map(flatSwap));
-      setReceivedSwaps((swapsRes.received || []).map(flatSwap));
-      setArchivedSentSwaps((swapsRes.archivedSent || []).map(flatSwap));
-      setArchivedReceivedSwaps((swapsRes.archivedReceived || []).map(flatSwap));
-    } catch {
-      showMsg(t("auth:error.connectionFailed"), "error");
-    } finally {
-      setLoading(false);
-    }
-  }
-
+  useEffect(() => { if (dataError && failurePresentation === "error") showMsg(t("auth:error.connectionFailed"), "error"); }, [dataError, failurePresentation, t]);
   useEffect(() => {
     let active = true;
     fetchPlayerFeatureFlags().then(async flags => {
       if (!active || flags.auto_accept_enabled !== true) return;
-      const response = await apiFetch(`${API}/api/market/auto-accept-config`, { headers: await getHeaders() });
+      const response = await apiFetch(`/api/market/auto-accept-config`, { headers: await getHeaders() });
       if (active && response.ok && validTiming(response.data)) { setAuctionTiming(response.data); setAutoAccept(true); }
     }).catch(() => {});
     return () => { active = false; };
-  }, []);
+  }, [apiFetch, getHeaders]);
   useEffect(() => {
     if (!auctionListing) return;
     const timer = setInterval(() => setAuctionNow(new Date()), 30000);
@@ -1411,29 +1358,28 @@ export default function TransfersPage() {
     setAuctionListing(current);
   }
   async function refreshAutoListing() {
-    const response = await apiFetch(`${API}/api/transfers`, { headers: await getHeaders() });
-    if (!response.ok || !Array.isArray(response.data)) return null;
-    const current = response.data.find(row => row.id === auctionListing?.id);
+    const listingRows = await refreshListings();
+    if (!listingRows) return null;
+    const current = listingRows.find(row => row.id === auctionListing?.id);
     await loadAll();
     return readAutoListing(current);
   }
   async function startAutoAuction(request) {
     const current = auctionListing;
     if (!current) return { ok: false, data: null };
-    const response = await apiFetch(`${API}/api/transfers/${current.id}/auto-accept`, {
+    const response = await apiFetch(`/api/transfers/${current.id}/auto-accept`, {
       method: "POST", headers: await getHeaders(), body: JSON.stringify(request),
     });
     if (response.ok) { invalidateTransferListings2176(); loadAll(); }
     return response;
   }
 
-  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- loadAll er lokal funktion (ny ref hver render) — kun mount-fetch
 
   // #1569: én-skuds default-til-'market' når alle handels-faner er tomme.
   // Gates på: data loadet, intet eksplicit ?tab= i URL'en, og alle handels-
   // arrays tomme. Ref'en sikrer at vi kun gør det én gang.
   useEffect(() => {
-    if (loading || didDefaultTabRef.current || tabParam) return;
+    if (loading || !hasData || dataError || didDefaultTabRef.current || tabParam) return;
     const allTradeTabsEmpty =
       receivedOffers.length === 0 &&
       sentOffers.length === 0 &&
@@ -1445,12 +1391,7 @@ export default function TransfersPage() {
       archivedSentSwaps.length === 0;
     didDefaultTabRef.current = true;
     if (allTradeTabsEmpty) setTab("market");
-  }, [loading, tabParam, receivedOffers, sentOffers, archivedReceivedOffers, archivedSentOffers, receivedSwaps, sentSwaps, archivedReceivedSwaps, archivedSentSwaps]); // eslint-disable-line react-hooks/exhaustive-deps -- setTab er en lokal funktion, ikke en useState-setter; effekten er én-skuds via didDefaultTabRef
-
-  async function getHeaders() {
-    const { data: { session } } = await supabase.auth.getSession();
-    return { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` };
-  }
+  }, [loading, hasData, dataError, tabParam, receivedOffers, sentOffers, archivedReceivedOffers, archivedSentOffers, receivedSwaps, sentSwaps, archivedReceivedSwaps, archivedSentSwaps]); // eslint-disable-line react-hooks/exhaustive-deps -- setTab er en lokal funktion, ikke en useState-setter; effekten er én-skuds via didDefaultTabRef
 
   function showMsg(text, type = "success") {
     setMsg({ text, type });
@@ -1459,7 +1400,7 @@ export default function TransfersPage() {
 
   async function handleOffer(riderId, amount, message) {
     try {
-      const res = await apiFetch(`${API}/api/transfers/offer`, {
+      const res = await apiFetch(`/api/transfers/offer`, {
         method: "POST",
         headers: await getHeaders(),
         body: JSON.stringify({ rider_id: riderId, offer_amount: amount, message }),
@@ -1474,7 +1415,7 @@ export default function TransfersPage() {
 
   async function handleRemoveListing(listingId) {
     try {
-      const res = await apiFetch(`${API}/api/transfers/${listingId}`, {
+      const res = await apiFetch(`/api/transfers/${listingId}`, {
         method: "DELETE",
         headers: await getHeaders(),
       });
@@ -1497,7 +1438,7 @@ export default function TransfersPage() {
   // Returnerer true ved succes så OwnListingActions kun lukker edit-formen da.
   async function handleUpdateListingPrice(listingId, askingPrice) {
     try {
-      const res = await apiFetch(`${API}/api/transfers/${listingId}`, {
+      const res = await apiFetch(`/api/transfers/${listingId}`, {
         method: "PATCH",
         headers: await getHeaders(),
         body: JSON.stringify({ asking_price: askingPrice }),
@@ -1519,7 +1460,7 @@ export default function TransfersPage() {
 
   async function handleOfferAction(offerId, action, extra = {}) {
     try {
-      const res = await apiFetch(`${API}/api/transfers/offers/${offerId}`, {
+      const res = await apiFetch(`/api/transfers/offers/${offerId}`, {
         method: "PATCH",
         headers: await getHeaders(),
         body: JSON.stringify({ action, ...extra }),
@@ -1533,7 +1474,7 @@ export default function TransfersPage() {
             amount: data.price || 0,
             icon: <ExchangeIcon size={56} className="text-cz-accent-t" aria-hidden="true" />,
           });
-          apiFetch(`${API}/api/achievements/check`, {
+          apiFetch(`/api/achievements/check`, {
             method: "POST",
             headers: await getHeaders(),
             body: JSON.stringify({ context: "transfer_done", data: {} }),
@@ -1564,7 +1505,7 @@ export default function TransfersPage() {
 
   async function handleSwapAction(swapId, action, extra = {}) {
     try {
-      const res = await apiFetch(`${API}/api/transfers/swaps/${swapId}`, {
+      const res = await apiFetch(`/api/transfers/swaps/${swapId}`, {
         method: "PATCH",
         headers: await getHeaders(),
         body: JSON.stringify({ action, ...extra }),
@@ -1707,7 +1648,7 @@ export default function TransfersPage() {
     }
     setBulkBusy(true);
     try {
-      const res = await apiFetch(`${API}/api/transfers/bulk-price`, {
+      const res = await apiFetch(`/api/transfers/bulk-price`, {
         method: "PATCH",
         headers: await getHeaders(),
         body: JSON.stringify({ updates: preview.map(p => ({ id: p.id, asking_price: p.to })) }),
@@ -1822,6 +1763,13 @@ export default function TransfersPage() {
 
       {loading ? (
         <PageLoader />
+      ) : failurePresentation === "waiting" && !hasData ? (
+        <Section data-testid="market-read-waiting">
+          <SkeletonLines lines={5} />
+          <Button size="sm" variant="secondary" className="mt-4" onClick={loadAll}>{t("tradeList.retry")}</Button>
+        </Section>
+      ) : dataError && !hasData ? (
+        <ErrorState title={t("auth:error.connectionFailed")} action={<Button size="sm" variant="secondary" onClick={loadAll}>{t("tradeList.retry")}</Button>} />
       ) : (
         <div>
           {/* #5257 — Alle handler: hele spillets handelsaktivitet, nyeste øverst.

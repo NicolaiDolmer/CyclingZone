@@ -947,3 +947,7 @@ transferliste- og byttehandels-flowets egen livscyklus (`transferExecution.js`,
 udvælgelse, `academyIntake.js`s tilbuds-udløb, samt `squadEnforcement.js`s bøder
 (`SQUAD_FINE_AMOUNT`, `SQUAD_PENALTY_POINTS`) - sidstnævnte refereres i
 `getAuctionBidWarnings` men er ikke verificeret mod prod her.
+
+## Frontend realtime ownership (#8020 / #6494)
+
+The auction data layer applies committed server price, end, leader and terminal state synchronously to its canonical cache. It preserves unchanged joined identities and private own fields; changed relationship IDs require joined rehydration. Price/end-only events and unrelated public bids do not refetch resources. Public bid amounts do not establish proxy ceilings. Own bid events reconcile the auction-owned snapshot; own settlement also refreshes the exact viewer-team bootstrap. No optimistic balance deduction is performed. Spendable-cash context stays pending until actual fresh reads confirm the new balance and reservation/squad context, including after a failed reconcile/remount. Scope-wide invalidation for existing manual writes remains outside this realtime correction. The detailed client ownership and bounded-read journal contract is in FRONTEND_DATA_RULES.md.

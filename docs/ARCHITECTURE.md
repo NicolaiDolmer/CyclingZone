@@ -35,6 +35,10 @@ registreret i prod. En konkret kompensationskørsel kræver separat ejer-go.
 
 The offline retry button follows PAGE_TEMPLATES/TASTE P16's mobile/coarse-pointer target floor. Installation remains a progressive enhancement through the existing stable manifest, icons and browser-controlled consent. No offline game data or write queue is provided.
 
+## Frontend server data
+
+The incremental TanStack Query migration is specified in [FRONTEND_DATA_RULES.md](FRONTEND_DATA_RULES.md). Market hooks own migrated server data; other routes retain their existing owners until migrated.
+
 ## Frontend Routes
 
 ```
