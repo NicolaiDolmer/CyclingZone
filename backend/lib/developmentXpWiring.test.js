@@ -5,6 +5,8 @@
 //   · loaderen: kontakt, startdato (tick-datoen afgoer), params, strict og de ugyldige par
 //   · grenen: intet loft, prisen bremser, maks +1 pr. dato uden XP-tab, kurve B taber
 //   · loebsdagens rolletillaeg laegger det samme oven i, uanset off-fokus-andelen
+//   · loebsdags-gulvet: mindst en haard traeningsdag med traener, for alle roller (ejer 7/11)
+//   · dagsvariationen ganges paa hele dagen pr. (rytter, dato), og noeglen slipper aldrig ud
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -25,6 +27,7 @@ import {
   DEVELOPMENT_XP_FLAG_KEY, DEVELOPMENT_XP_FROM_DATE_KEY, DEVELOPMENT_XP_PARAMS_KEY,
   developmentXpFromDateValue, loadDevelopmentXp, withRaceDayRoleYieldXp,
 } from "./developmentXpFlag.ts";
+import { developmentXpDayVariation } from "./developmentXpVariation.ts";
 import {
   XP_TEST_PARAMS, ENGINE_SCENARIOS, allOffDigests, engineSeed, gameState, runEngine,
 } from "./__fixtures__/developmentXpOffScenarios.js";
@@ -227,17 +230,128 @@ test("#6110 gren: dailyAbilityDelta under XP er XP pr. tick, og en dato paa loeb
   assert.equal(dailyAbilityDelta({ ...base, developmentXp: null }), 0, "dagens model: paa taget = 0");
 });
 
-test("#6110 gren: traener og facilitet kun paa traeningsdage (S13)", () => {
+test("#6110 gren: traener og facilitet paa traeningsdage (S13); paa loebsdage kun gennem gulvet (ejer 7/11)", () => {
   const staff = { training_staff: [{ dimension: "physical", level: 5 }] };
+  const coached = { staff, facilityTier: 3, riderLevel: "senior" };
   const args = { ability: "climbing", age: 24, potentiale: 4, primaryType: "climber" };
   const train = { focus: "vo2max_climb", intensity: "hard" };
   const race = { ...raceDayProgram("mountain"), intensity: "hard" };
   const t0 = developmentXpAbilityDelta({ ...args, program: train }, XP);
-  const t1 = developmentXpAbilityDelta({ ...args, program: train, staff, facilityTier: 3, riderLevel: "senior" }, XP);
+  const t1 = developmentXpAbilityDelta({ ...args, program: train, ...coached }, XP);
   const r0 = developmentXpAbilityDelta({ ...args, program: race }, XP);
-  const r1 = developmentXpAbilityDelta({ ...args, program: race, staff, facilityTier: 3, riderLevel: "senior" }, XP);
-  assert.ok(t1 >= t0);
-  assert.equal(r1, r0);
+  const r1 = developmentXpAbilityDelta({ ...args, program: race, ...coached }, XP);
+  assert.ok(t1 > t0, "traeneren loefter en traeningsdag");
+  // Hard loebsdag uden traener er praecis en haard dag; med traener loefter gulvet den til traeningsdagen.
+  const hardTrain = (extra) => developmentXpAbilityDelta({ ...args, program: { ...race, focus: "x_floor_probe" }, ...extra }, XP);
+  assert.equal(r0, hardTrain({}));
+  assert.equal(r1, hardTrain(coached));
+  assert.ok(r1 > r0);
+});
+
+// ── Loebsdags-gulvet (ejer 7/11, bekraeftet 12/11, gate X8) ──────────────────
+
+const PROFILES = ["flat", "hilly", "mountain", "cobbles", "itt", "ttt"];
+const RIDERS = [
+  { age: 19, potentiale: 1.5, primaryType: "sprinter", secondaryType: "rouleur" },
+  { age: 24, potentiale: 4, primaryType: "climber", secondaryType: "puncheur" },
+  { age: 33, potentiale: 6, primaryType: "rouleur", secondaryType: null },
+];
+const STAFFS = [
+  {},
+  { staff: { training_staff: [{ dimension: "physical", level: 5 }, { dimension: "mental", level: 3 }] }, facilityTier: 3, riderLevel: "senior" },
+  { staff: { training_staff: [{ dimension: "physical", level: 2 }] }, facilityTier: 1, riderLevel: "u23" },
+];
+
+// Den haarde traeningsdag i loebsdagens evner, med rytterens traener og facilitet.
+const hardTrainingDayXp = (ability, program, rider, staffArgs, budgetDivisor = null) => developmentXpAbilityDelta({
+  ability, ...rider, ...staffArgs, budgetDivisor,
+  program: { ...program, focus: "x_floor_probe", intensity: "hard" },
+}, XP);
+
+test("#6110 gulv: en loebsdag giver i hver evne mindst en haard traeningsdag med traener, for alle roller", () => {
+  let checks = 0;
+  let lifted = 0;
+  for (const roleParams of [ROLE_PARAMS, { ...ROLE_PARAMS, roleDrivesBaseDay: true }]) {
+    for (const role of [...VALID_RACE_ROLES, null]) {
+      for (const profile of PROFILES) {
+        const day = withRaceDayRoleYieldXp(XP, {}, { params: roleParams, profileType: profile, role });
+        for (const rider of RIDERS) {
+          for (const staffArgs of STAFFS) {
+            // Intentionen kan saenke dagen (grupetto); gulvet holder alligevel.
+            for (const academyRateMult of [0.5, 1, 1.25]) {
+              for (const budgetDivisor of [null, 126]) {
+                for (const ability of VISIBLE_ABILITIES) {
+                  const yieldMult = day.abilityYieldMult?.[ability] ?? 1;
+                  const race = developmentXpAbilityDelta({ ability, ...rider, ...staffArgs, academyRateMult, budgetDivisor, program: day.program, yieldMult }, XP);
+                  const floor = hardTrainingDayXp(ability, day.program, rider, staffArgs, budgetDivisor);
+                  assert.ok(race >= floor - 1e-12, `${role} ${profile} ${ability}: ${race} < ${floor}`);
+                  const raw = developmentXpAbilityDelta({ ability, ...rider, academyRateMult, budgetDivisor, program: day.program }, XP);
+                  if (floor > raw) lifted += 1;
+                  checks += 1;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  assert.ok(checks > 1000 && lifted > 0, "gulvet bliver faktisk sat paa prove");
+});
+
+test("#6110 gulv: ogsaa loebsdagen uden rolletillaeg (mellem-passet) faar mindst en haard dag", () => {
+  for (const profile of PROFILES) {
+    const program = raceDayProgram(profile);
+    for (const ability of VISIBLE_ABILITIES) {
+      const race = developmentXpAbilityDelta({ ability, ...RIDERS[1], ...STAFFS[1], program }, XP);
+      assert.ok(race >= hardTrainingDayXp(ability, program, RIDERS[1], STAFFS[1]) - 1e-12, `${profile} ${ability}`);
+    }
+  }
+});
+
+test("#6110 gulv: tillaegget laegges oven paa gulvet, og traeningsdage er uroert", () => {
+  const program = withRaceDayRoleYieldXp(XP, {}, { params: ROLE_PARAMS, profileType: "mountain", role: "captain" }).program;
+  const args = { ability: "climbing", ...RIDERS[1], ...STAFFS[1], program };
+  const floored = developmentXpAbilityDelta(args, XP);
+  const unfloored = developmentXpAbilityDelta({ ...args, staff: null, facilityTier: null }, XP);
+  assert.ok(floored > unfloored, "scenariet: gulvet binder");
+  // Tillaegget er det samme i XP, uanset om gulvet loefter dagen.
+  const bonus = (a) => developmentXpAbilityDelta({ ...a, yieldMult: 1.5 }, XP) - developmentXpAbilityDelta(a, XP);
+  assert.ok(Math.abs(bonus(args) - bonus({ ...args, staff: null, facilityTier: null })) < 1e-9);
+  // Paa en traeningsdag er yieldMult en ren multiplikator, og 1 er bit-identisk.
+  const train = { ...args, program: { focus: "vo2max_climb", intensity: "hard" } };
+  assert.equal(developmentXpAbilityDelta({ ...train, yieldMult: 1 }, XP), developmentXpAbilityDelta(train, XP));
+  assert.equal(developmentXpAbilityDelta({ ...train, yieldMult: 2 }, XP), developmentXpAbilityDelta(train, XP) * 2);
+});
+
+// ── Dagsvariationen i tick'et (§5.2, ejer 7/11) ───────────────────────────────
+
+const VAR_RAW = Object.freeze({ ...XP_TEST_PARAMS, variation: { key: "synthetic-test-key-not-a-secret-0123456789", span: 0.4, memory: 0.6 } });
+const XP_VAR = validateDevelopmentXpParams(VAR_RAW);
+
+test("#6110 variation: ganges paa hele dagens XP, pr. (rytter, dato) og ens for alle ticks paa datoen", () => {
+  assert.ok(XP_VAR?.variation);
+  const plain = applyDailyTick(tickArgs());
+  const varied = applyDailyTick(tickArgs({ developmentXp: XP_VAR }));
+  const factor = developmentXpDayVariation({ riderId: "r1", dateStr: "2026-11-15" }, XP_VAR.variation);
+  assert.notEqual(factor, 1);
+  assert.deepEqual(Object.keys(varied.xp).sort(), Object.keys(plain.xp).sort());
+  for (const [a, xp] of Object.entries(plain.xp)) assert.ok(Math.abs(varied.xp[a] - xp * factor) < 1e-9, a);
+  // Samme dato, anden tick-noegle (loebsdags-aksen): samme faktor.
+  const otherTick = applyDailyTick(tickArgs({ developmentXp: XP_VAR, tickSeedKey: "s1#gd7" }));
+  assert.deepEqual(otherTick.xp, varied.xp);
+  // Anden dato eller rytter: en anden faktor, og samme input giver samme tal igen.
+  const nextDay = applyDailyTick(tickArgs({ developmentXp: XP_VAR, dateStr: "2026-11-16" }));
+  assert.notEqual(nextDay.xp.climbing, varied.xp.climbing);
+  assert.deepEqual(applyDailyTick(tickArgs({ developmentXp: XP_VAR })), varied);
+});
+
+test("#6110 variation: uden variationsfelter er tick'et uaendret, og noeglen kommer aldrig med i resultatet", () => {
+  const plain = applyDailyTick(tickArgs());
+  assert.equal(XP.variation, undefined);
+  assert.deepEqual(applyDailyTick(tickArgs({ developmentXp: XP })), plain);
+  const varied = applyDailyTick(tickArgs({ developmentXp: XP_VAR }));
+  assert.ok(!JSON.stringify(varied).includes(VAR_RAW.variation.key));
 });
 
 // ── Maks +1 pr. dato i XP ─────────────────────────────────────────────────────
@@ -284,8 +398,9 @@ test("#6110 rolletillaeg: tillaegget er det samme, uanset loebsdagens off-fokus-
       const b = withRaceDayRoleYieldXp(other, {}, { params, profileType: "mountain", role });
       assert.equal(a.program.focus, RACE_DAY_FOCUS);
       for (const ability of VISIBLE_ABILITIES) {
-        const xpOf = (xp, args) => developmentXpAbilityDelta({ ability, age: 24, potentiale: 4, primaryType: "climber", program: args.program }, xp)
-          * (args.abilityYieldMult?.[ability] ?? 1);
+        const xpOf = (xp, args) => developmentXpAbilityDelta({
+          ability, age: 24, potentiale: 4, primaryType: "climber", program: args.program, yieldMult: args.abilityYieldMult?.[ability] ?? 1,
+        }, xp);
         const inFocus = a.program.focusAbilities.includes(ability);
         if (!inFocus && (a.abilityYieldMult[ability] ?? 1) !== 1 && !params.roleDrivesBaseDay) {
           // Off-fokus: XP = basis(andel) + tillaeg. Forskellen mellem to andele er kun basis-forskellen.
