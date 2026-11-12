@@ -10032,7 +10032,7 @@ router.get("/teams/:id", requireAuth, async (req, res) => {
 
   const { data: riders } = await supabase
     .from("riders")
-    .select("id, firstname, lastname, market_value, salary, is_u25, rider_derived_abilities(${REGISTRY_ABILITY_KEYS.join(", ")})")
+    .select(`id, firstname, lastname, market_value, salary, is_u25, rider_derived_abilities(${REGISTRY_ABILITY_KEYS.join(", ")})`)
     .eq("team_id", req.params.id)
     .order("market_value", { ascending: false });
 
@@ -17065,7 +17065,7 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
         .select("id, username, last_seen, login_streak, discord_handle, discord_id")
         .eq("id", team.user_id).single(),
       supabase.from("riders")
-        .select("id, firstname, lastname, birthdate, market_value, is_u25, rider_derived_abilities(${REGISTRY_ABILITY_KEYS.join(", ")})")
+        .select(`id, firstname, lastname, birthdate, market_value, is_u25, rider_derived_abilities(${REGISTRY_ABILITY_KEYS.join(", ")})`)
         .eq("team_id", teamId).order("market_value", { ascending: false }),
       supabase.from("season_standings")
         // #1095: status med i join, så frontend kan markere igangværende sæson i historikken.

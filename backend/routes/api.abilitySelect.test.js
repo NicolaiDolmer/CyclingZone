@@ -23,6 +23,15 @@ test("rider_derived_abilities embeds use REGISTRY_ABILITY_KEYS, never a literal 
   assert.deepEqual(offenders, [], `Handwritten ability lists found: ${offenders.join(", ")}`);
 });
 
+test("interpolated ability lists are never inside a double-quoted string", () => {
+  const bad = source
+    .split("\n")
+    .map((line, i) => ({ line, n: i + 1 }))
+    .filter(({ line }) => line.includes("${REGISTRY_ABILITY_KEYS") && /\.select\("/.test(line))
+    .map(({ n }) => `api.js:${n}`);
+  assert.deepEqual(bad, [], `Template placeholder inside a plain string: ${bad.join(", ")}`);
+});
+
 test("registry ability keys include teamwork and leadership", async () => {
   const { REGISTRY_ABILITY_KEYS } = await import("../lib/abilityRegistry.js");
   assert.ok(REGISTRY_ABILITY_KEYS.includes("teamwork"));
