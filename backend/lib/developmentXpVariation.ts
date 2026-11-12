@@ -39,10 +39,12 @@ export interface XpVariation {
 // En kort nøgle kan gættes; kravet er beskedent, og nøglen sættes af ejeren.
 const MIN_KEY_LENGTH = 32;
 // Hvor mange datoer tilbage hukommelsen regnes over. Resten af fortiden står i ét
-// samlet træk, så variansen er den samme uanset vinduet; vinduet bestemmer kun,
-// hvor præcist sammenhængen mellem datoerne følger den uendelige proces.
-const MAX_WINDOW = 400;
-const WINDOW_TAIL = 1e-3;
+// samlet træk, så variansen er den samme uanset vinduet. Det træk skifter frit fra
+// dato til dato, så vinduet skal være langt nok til, at det vejer lidt; ellers
+// ville en høj hukommelse give MINDRE sammenhæng mellem datoerne (Codex-fund).
+// En hukommelse, der kræver mere end det største vindue, afvises i valideringen.
+const MAX_WINDOW = 1000;
+const WINDOW_TAIL = 0.05;
 // Hver HMAC giver 32 byte = otte træk, så en hukommelse over mange datoer koster få kald.
 const DRAWS_PER_BLOCK = 8;
 const DOMAIN = "cz-xp-variation-v1";
@@ -66,6 +68,8 @@ export function validateXpVariation(raw: unknown): XpVariation | null | undefine
   if (typeof v.key !== "string" || v.key.length < MIN_KEY_LENGTH) return null;
   if (!isNum(v.span) || !(v.span > 0 && v.span < 1)) return null;
   if (!isNum(v.memory) || !(v.memory >= 0 && v.memory < 1)) return null;
+  // Hukommelsen skal kunne regnes inden for vinduet, ellers forsvinder perioderne.
+  if (fullWindow(v.memory) > MAX_WINDOW) return null;
   const variation: XpVariation = Object.freeze({ span: v.span, memory: v.memory });
   KEYS.set(variation, v.key);
   return variation;
@@ -81,10 +85,15 @@ function dayIndex(dateStr: unknown): number | null {
   return Math.round(t / DAY_MS);
 }
 
-/** Antal datoer, hukommelsen regnes over. */
-function windowFor(memory: number): number {
+/** Antal datoer, hukommelsen skal regnes over, før fortidens samlede træk vejer lidt. */
+function fullWindow(memory: number): number {
   if (!(memory > 0)) return 0;
-  return Math.min(MAX_WINDOW, Math.ceil(Math.log(WINDOW_TAIL) / Math.log(memory)));
+  return Math.ceil(Math.log(WINDOW_TAIL) / Math.log(memory));
+}
+
+/** Antal datoer, hukommelsen regnes over (valideringen sikrer, at loftet ikke binder). */
+function windowFor(memory: number): number {
+  return Math.min(MAX_WINDOW, fullWindow(memory));
 }
 
 /**

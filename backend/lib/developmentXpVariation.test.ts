@@ -154,6 +154,21 @@ test("hukommelse giver gode og dårlige perioder; uden hukommelse er dagene uafh
   assert.ok(Math.abs(sd(withMemory) - sd(dayByDay)) < 0.03, `${sd(withMemory)} mod ${sd(dayByDay)}`);
 });
 
+test("højeste tilladte hukommelse bevarer perioderne; en hukommelse uden for vinduet afvises (Codex-fund)", () => {
+  // Over grænsen ville fortidens frie træk dominere og fjerne perioderne i stedet for at forlænge dem.
+  assert.equal(validateXpVariation({ key: KEY, span: SPAN, memory: 0.998 }), null);
+  assert.equal(validateXpVariation({ key: KEY, span: SPAN, memory: 0.9999 }), null);
+  const edge = make({ key: KEY, span: SPAN, memory: 0.997 });
+  let num = 0;
+  let den = 0;
+  for (const r of RIDERS.slice(0, 30)) {
+    const s = series(edge, r, SEASON.slice(0, 20)).map((x) => x - 1);
+    for (let i = 1; i < s.length; i++) num += s[i] * s[i - 1];
+    for (const x of s.slice(1)) den += x * x;
+  }
+  assert.ok(num / den > 0.95, `sammenhæng ved grænsen: ${num / den}`);
+});
+
 test("høj hukommelse holder sig inden for bredden og er stadig neutral", () => {
   const sticky = make({ key: KEY, span: SPAN, memory: 0.99 });
   // Med høj hukommelse ligner en rytters datoer hinanden, så neutraliteten måles på tværs af ryttere.
