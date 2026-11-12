@@ -604,6 +604,8 @@ features:
     verified: 2026-11-12
     decision: taend
     decide_by: 2026-11-28
+    roadmap_en: "Set an auto-accept price on a listed rider: when someone hits it, a short public auction starts at once."
+    roadmap_da: "Sæt en auto-accept-pris på en listet rytter: rammer nogen den, starter en kort offentlig auktion med det samme."
 
   - id: market-value-blend
     area: market
