@@ -55,6 +55,7 @@ import { raceConditionLoads, stageConditionWork } from "../../lib/raceFatigue.js
 import { validateTeamOrder } from "../../lib/raceTeamOrdersApi.js";
 import { validateRiderPlans } from "../../lib/stagePlanApi.js";
 import { legacyOrderFromPlan, stagePlanRouteFromRaw } from "../../lib/stagePlan.ts";
+import { forwardSplitRiders } from "./longAttackBaseline7884.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(here, "..", "..", "..");
@@ -71,7 +72,7 @@ export const BASELINE_EXPERIMENTS = Object.freeze(["longattack"]);
 /** B1-armene: angreb fra toppen af sidste, naestsidste og foerste stigning paa planens liste. */
 export const LONG_ATTACK_ARMS = Object.freeze(["last", "prev", "early"]);
 /** B1-maalingerne og deres forventede fortegn (kun til retning/stoej, ikke en gate). */
-export const LONG_ATTACK_METRICS = Object.freeze({ time: -1, time_sign: -1, rank: -1, switch_fired: 1 });
+export const LONG_ATTACK_METRICS = Object.freeze({ time: -1, time_sign: -1, rank: -1, switch_fired: 1, front_split: 1 });
 /** Etapeklasserne B1 opdeles i; flad og tidskoersel er den negative kontrol. */
 export const LONG_ATTACK_CLASSES = Object.freeze(["flat", "hilly", "mountain", "tt"]);
 export const LONG_ATTACK_CONTROL_CLASSES = Object.freeze(["flat", "tt"]);
@@ -433,6 +434,8 @@ function runLongAttackDay(ctx) {
   }
   const res = simulate(v4, data, stages, profile, entrants, rows, `la7884-${seed}`, revision);
   const o = outcome(res);
+  // Frem-split hvor som helst paa etapen (motoren giver det kun paa den afgoerende stigning).
+  const front = forwardSplitRiders(o.out?.timeline?.events ?? [], { foot: -Infinity, crest: Infinity });
   const bit = (b) => (b ? 1 : 0);
   const last = entrants.length + 1;
   for (const [level] of levels) {
@@ -446,6 +449,7 @@ function runLongAttackDay(ctx) {
       rec({ ...base, metric: "time_sign", dOn: sgn(dt(on)), dCtrl: sgn(dt(ctrl)) });
       rec({ ...base, metric: "rank", dOn: dr(on), dCtrl: dr(ctrl) });
       rec({ ...base, metric: "switch_fired", dOn: fired(on) - fired(off), dCtrl: fired(ctrl) - fired(off) });
+      rec({ ...base, metric: "front_split", dOn: bit(front.has(on)) - bit(front.has(off)), dCtrl: bit(front.has(ctrl)) - bit(front.has(off)) });
     }
   }
 }
