@@ -15,3 +15,7 @@ Owner build-go: 2026-11-11, [issue record](https://github.com/NicolaiDolmer/Cycl
 **Evidence boundary:** Clarity 9–11 November all-page p75 CLS 0.48 (1,330 page views), not a route baseline. Speed Insights reports no events. Comparable LAB measurements are the before/after evidence available before merge; do not label them production percentiles. Search Console uses delayed grouped field data.
 
 **Risks:** unknown conditional cards cannot reserve an invented permanent cell; keep presence prerequisites. Reserve bounded-list capacity without clipping or inner scrolling. Slow/failed secondary queries must not block unrelated cards. Distinguish an empty success from still pending. No production writes or merge authorized.
+
+## Review correction (#8019 / #8022, owner go 12 November)
+
+Presence prerequisites may delay the first dashboard layout only within 1500 ms from mount, including core identity requests. After that, show ready fixed cards and honest skeletons for unresolved core values. Optional modules and dependent rows hydrate independently; dependent rows and the complete selection loop each have an 8 s background budget. Keep unknown strip geometry until its real presence resolves, then collapse a confirmed-empty strip or show valid late data. Report late presence shifts explicitly. Compare one slow request at a time and measure frame release, actual visible useful content and FCP separately against the frozen reviewed build. Parent owns final asymmetric measurement, screenshots and full E2E; no production or merge authorization.

@@ -316,6 +316,20 @@ Otte forks blev vist som mockup-varianter (A/B/C) og afgjort af ejeren 2/9 2026.
 
 Åben: rettelsen af række 6 ovenfor (mobil-tabeller, D-047) afventer svar. Hele spillet gennemgås side for side mod TASTE (eget issue), og rettes løbende, når vi kommer forbi siderne.
 
+### Ejer-beslutninger 12/11 (løbssiden, gælder hele spillet; ordlyd godkendt 12/11, #8070)
+
+| # | Regel | Ordlyd |
+|---|---|---|
+| 1 | Bred detaljeside | En detaljeside, hvis faner har tabeller, bruger bredden op til 1600 px. Uden tabeller bliver den på 1024 px |
+| 2 | Ét breddesystem | Bredden vælges efter indholdet på alle sider: læsetekst 896 px, profil uden tabeller 1024 px, alt med tabeller op til 1600 px. Siderne gennemgås én ad gangen |
+| 3 | Frist og guld-knap | Frist og sidens ene guld-knap står i hovedets handlingsrække. Ingen bannere øverst på nogen side |
+| 4 | Tidsakse på mobil | Tabeller, hvis kolonner er dage eller etaper, er undtaget fra "navn + tre tal" på mobil og viser én kolonne pr. dag eller etape |
+| 5 | "Gemt" | Når noget er gemt, hedder det "Gemt" overalt, aldrig "bekræftet" |
+| 6 | Huskede valg | Et visningsvalg som "Skjul rute" huskes på brugeren, på tværs af sider og enheder |
+| 7 | Løbshovedet | Et kort med guld-streg øverst, ikke en mørk blok |
+
+De tekniske opskrifter står i `PAGE_TEMPLATES.md` (Shared rules, T2-undtagelsen og T3). Åben: hoved plus etapestribe fylder ca. 310 px mod de 250 px i spørgsmål 2 (#8070).
+
 ## 7. Kilder
 
 `ELEVATION_2849.md` (25/7, de syv løft) · `PAGE_TEMPLATES.md` (23/7, bindende) · `../audits/design-composition-audit-2026-07-23.md` (52 sider, F1-F10) · `../brand/BRAND_BRIEF.md` (§3 personlighed, §4 anti-patterns, §9 inspiration) · `../brand/GUIDELINES.md` (marks, kontrast) · `../TONE_OF_VOICE.md` · `README.md` (Claude Design-spejlet, drift-punkter) · memory `feedback_anti_ai_slop_design_taste` (#672, 14/6) · #481 (brand) · #2849 (lukket, bølge 0-6) · #4622 (epic).

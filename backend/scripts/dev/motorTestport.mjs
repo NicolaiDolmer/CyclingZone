@@ -49,15 +49,20 @@
 //                            giver G17 realistisk traethed mellem etaperne (og sygdom, naar den bygges). #6938
 //   --time-budget=<min>      start ingen nye opgaver efter <min> minutter; koer samme kommando
 //                            igen for at genoptage (lange koersler i korte, forgrunds-bidder). #6909
+//   --candidate-switch=<CZ_KONTAKT>  en kontakt er kandidaten (#7884 B8): samme revision
+//                            (--baseline) paa begge sider, kandidaten med kontakten taendt
+//                            (<KONTAKT>=1), baseline med den slukket. Pr. loeb to koersler i
+//                            raekkefoelge (switch-off/, switch-on/); benchen ogsaa med og uden.
+//                            Kortet viser kandidaten som "<revision>+<KONTAKT>".
 //
-// Refs #6750 #6909
+// Refs #6750 #6909 #7884
 import { spawn } from "node:child_process";
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { benchView, buildTestportCard, copenhagenDate, raceResultFromDryRun, renderTestportHtml, renderTestportMarkdown } from "./lib/motorTestportReport.mjs";
 import { SYNTHETIC_KINDS, assertRoutesCover, createProdSource, loadRoutesDir, prepareInputs } from "./lib/motorTestportInputs.mjs";
-import { raceContextFromCache } from "./lib/v3Gates.mjs";
+import { raceContextFromCache, v3GatesApply } from "./lib/v3Gates.mjs";
 import { isMountainNonSummit } from "./lib/tourScorecard.mjs";
 import { INTENT_MODES, ratesSignature, validateRates } from "./lib/breakawayIntent.mjs";
 import { raceGroupOf, routeFavourites } from "./lib/raceGroupGates.mjs"; // #7214
@@ -90,9 +95,18 @@ export function parseArgs(argv, { defaultBaseline = null, now = new Date(), defa
     return v;
   };
   const benchWorker = flag("bench-worker");
-  const candidate = get("candidate");
-  if (!benchWorker && !candidate && !flag("report-only")) throw new Error("--candidate=<revision> kraeves");
+  // #7884 (B8): en kontakt kan vaere kandidaten. Samme revision paa begge sider; kandidaten koerer
+  // med kontakten taendt, baseline med den slukket. Kandidatens navn paa kortet er "<revision>+<KONTAKT>".
+  const candidateSwitch = get("candidate-switch");
+  if (candidateSwitch !== null && !SWITCH_NAME.test(candidateSwitch)) throw new Error("--candidate-switch skal vaere en CZ_-kontakt (store bogstaver, tal og _), fx CZ_LONG_ATTACK_7884");
   const baseline = get("baseline", defaultBaseline);
+  let candidate = get("candidate");
+  if (candidateSwitch !== null && !benchWorker) {
+    if (!baseline) throw new Error("--candidate-switch kraever en baseline-revision (--baseline=<revision>)");
+    if (candidate !== null && candidate !== baseline) throw new Error("--candidate-switch maaler kontakten paa SAMME revision; udelad --candidate eller giv samme som --baseline");
+    candidate = switchCandidateLabel(baseline, candidateSwitch);
+  }
+  if (!benchWorker && !candidate && !flag("report-only")) throw new Error("--candidate=<revision> kraeves");
   if (!benchWorker && !baseline && !flag("report-only")) throw new Error("--baseline=<revision> kraeves (den aktuelle revision kunne ikke laeses)");
   const issue = get("issue", "6750");
   if (!/^[\w-]+$/.test(issue)) throw new Error("--issue maa kun indeholde bogstaver, tal, - og _");
@@ -138,7 +152,28 @@ export function parseArgs(argv, { defaultBaseline = null, now = new Date(), defa
     season,
     timeBudgetMin: get("time-budget") === null ? null : int("time-budget", 1),
     trackFatigue: flag("track-fatigue"),
+    candidateSwitch,
   };
+}
+
+/** #7884 (B8): en kontakts navn (miljoevariabel), som de eksisterende CZ_*-kontakter. */
+export const SWITCH_NAME = /^CZ_[A-Z0-9_]+$/;
+
+/** #7884 (B8): kandidatens navn naar en kontakt er kandidaten. */
+export function switchCandidateLabel(revision, switchName) {
+  return `${revision}+${switchName}`;
+}
+
+/**
+ * #7884 (B8): miljoeet for et barn. Kontakten SLUKKES altid for baseline (ogsaa naar den er sat
+ * i den kaldende shell) og taendes ("1") kun for kandidaten. Uden kontakt: miljoeet uaendret.
+ */
+export function childEnv(baseEnv, switchName, on) {
+  const env = { ...baseEnv };
+  if (!switchName) return env;
+  delete env[switchName];
+  if (on) env[switchName] = "1";
+  return env;
 }
 
 /** Unikke, ikke-tomme id'er i raekkefoelge, evt. begraenset til `limit`. */
@@ -245,16 +280,46 @@ export function planTasks({ raceIds, opts, outDir, fromDir = null, prebuilt = ne
       const exported = fromDir && !isPrebuilt ? path.join(fromDir, raceId, "cache.json") : null;
       const fromExport = Boolean(exported && existsSync(exported));
       const cachePath = fromExport ? exported : path.join(dir, "cache.json");
-      tasks.push({ kind: "race", id: raceId, dir, args: tourDryRunArgs({ raceId, candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, raceDir: dir, cachePath, saveCache: !fromExport && !isPrebuilt, trackFatigue: opts.trackFatigue === true }) });
+      const common = { raceId, seeds: opts.seeds, cachePath, trackFatigue: opts.trackFatigue === true };
+      if (opts.candidateSwitch) {
+        // #7884 (B8): to koersler af samme revision i raekkefoelge (slukket, saa taendt) i hver sin
+        // undermappe. Den foerste gemmer cachen; den anden laeser den kun, saa de koerer samme loeb.
+        const rev = opts.baseline;
+        const steps = [
+          { args: tourDryRunArgs({ ...common, candidate: rev, baseline: rev, raceDir: path.join(dir, SWITCH_DIRS.off), saveCache: !fromExport && !isPrebuilt }), env: { switchName: opts.candidateSwitch, on: false } },
+          { args: tourDryRunArgs({ ...common, candidate: rev, baseline: rev, raceDir: path.join(dir, SWITCH_DIRS.on), saveCache: false }), env: { switchName: opts.candidateSwitch, on: true } },
+        ];
+        tasks.push({ kind: "race", id: raceId, dir, steps });
+        continue;
+      }
+      tasks.push({ kind: "race", id: raceId, dir, args: tourDryRunArgs({ ...common, candidate: opts.candidate, baseline: opts.baseline, raceDir: dir, saveCache: !fromExport && !isPrebuilt }) });
     }
   }
   if (opts.bench) {
     for (const revision of [...new Set([opts.baseline, opts.candidate])]) {
       const dir = path.join(outDir, "bench", revision);
-      tasks.push({ kind: "bench", id: `bench:${revision}`, dir, args: [SELF, "--bench-worker", `--revision=${revision}`, `--scope=${opts.benchScope}`, `--out=${dir}`] });
+      // #7884 (B8): med en kontakt som kandidat koerer begge bench-opgaver baseline-revisionen;
+      // kun kandidatens har kontakten taendt.
+      const on = Boolean(opts.candidateSwitch) && revision === opts.candidate;
+      const runRevision = opts.candidateSwitch ? opts.baseline : revision;
+      tasks.push({ kind: "bench", id: `bench:${revision}`, dir, args: [SELF, "--bench-worker", `--revision=${runRevision}`, `--scope=${opts.benchScope}`, `--out=${dir}`], ...(opts.candidateSwitch ? { env: { switchName: opts.candidateSwitch, on } } : {}) });
     }
   }
   return tasks.map((t) => ({ ...t, done: existsSync(path.join(t.dir, "done")) }));
+}
+
+/** #7884 (B8): undermapperne for slukket og taendt kontakt i en loebsmappe. */
+export const SWITCH_DIRS = Object.freeze({ off: "switch-off", on: "switch-on" });
+
+/**
+ * #7884 (B8): ét loebs scorecard naar en kontakt er kandidaten (ren). De to koersler (slukket og
+ * taendt) laegges sammen til én dry-run-JSON; den taendte koersels revision omdoebes til
+ * kandidatens navn, saa kortet sammenligner dem som to revisioner.
+ */
+export function mergeSwitchDryRuns(offJson, onJson, candidateLabel) {
+  if (!offJson?.race || !onJson?.race) return null;
+  const onRuns = (onJson.runs ?? []).map((r) => ({ ...r, revision: candidateLabel }));
+  return { ...offJson, runs: [...(offJson.runs ?? []), ...onRuns] };
 }
 
 /**
@@ -279,19 +344,35 @@ export async function runPool(tasks, parallel, run, { onDone = null, shouldStop 
   return { ok, failed, pending: queue.map((t) => t.id) };
 }
 
-/** Child-proces med log til <dir>/log.txt og `done` ved exit 0. */
-function runChild(task) {
+/**
+ * #7884 (B8): en opgaves trin. En almindelig opgave er ét trin (args, kaldende miljoe); en
+ * kontakt-opgave kan have flere trin, der koeres i raekkefoelge, hver med sit miljoe.
+ */
+export function taskSteps(task, baseEnv = process.env) {
+  const steps = task.steps ?? [{ args: task.args, env: task.env }];
+  return steps.map((s) => ({ args: s.args, env: s.env ? childEnv(baseEnv, s.env.switchName, s.env.on) : baseEnv }));
+}
+
+/** Child-proces(er) med log til <dir>/log.txt og `done` naar alle trin gav exit 0. */
+async function runChild(task) {
   mkdirSync(task.dir, { recursive: true });
   const fd = openSync(path.join(task.dir, "log.txt"), "w");
-  return new Promise((resolve) => {
-    const child = spawn(process.execPath, task.args, { cwd: REPO_ROOT, env: process.env, stdio: ["ignore", fd, fd] });
-    child.on("error", () => { closeSync(fd); resolve(1); });
-    child.on("close", (code) => {
-      closeSync(fd);
-      if (code === 0) writeFileSync(path.join(task.dir, "done"), `${new Date().toISOString()}\n`);
-      resolve(code ?? 1);
-    });
+  const once = (step) => new Promise((resolve) => {
+    const child = spawn(process.execPath, step.args, { cwd: REPO_ROOT, env: step.env, stdio: ["ignore", fd, fd] });
+    child.on("error", () => resolve(1));
+    child.on("close", (code) => resolve(code ?? 1));
   });
+  let code = 0;
+  try {
+    for (const step of taskSteps(task)) {
+      code = await once(step);
+      if (code !== 0) break;
+    }
+  } finally {
+    closeSync(fd);
+  }
+  if (code === 0) writeFileSync(path.join(task.dir, "done"), `${new Date().toISOString()}\n`);
+  return code;
 }
 
 /** Den nyeste tourDryRun-JSON i en loebsmappe (navnene ender paa -YYYY-MM-DD-HH-MM.json). */
@@ -394,7 +475,9 @@ export function assertSameRun(prev, opts, outDir) {
     && (prev.routesSignature ?? null) === (opts.routesSignature ?? null)
     && (prev.season ?? null) === (opts.season ?? null)
     // #6938 (Codex P2): med/uden traethed mellem etaperne er to forskellige koersler; aeldre meta = uden.
-    && (prev.trackFatigue === true) === (opts.trackFatigue === true);
+    && (prev.trackFatigue === true) === (opts.trackFatigue === true)
+    // #7884 (B8): en kontakt som kandidat er en anden koersel end en revision som kandidat.
+    && (prev.candidateSwitch ?? null) === (opts.candidateSwitch ?? null);
   if (!same) {
     const input = [prev.syntheticField ? `syntetisk felt ${prev.syntheticField}` : null, prev.routesFrom ? `ruter ${prev.routesFrom}` : null, prev.season ? `saeson ${prev.season}` : null, prev.trackFatigue === true ? "med traethed" : null].filter(Boolean);
     throw new Error(`${outDir} er en anden koersel (${prev.baseline} -> ${prev.candidate}, ${prev.seeds} seeds, bench ${prev.benchScope}${input.length ? `, ${input.join(", ")}` : ""}). Brug en ny --out.`);
@@ -437,7 +520,22 @@ export function collectCard({ outDir, baseline, candidate, meta, benchScope = me
   const present = existsSync(racesDir) ? readdirSync(racesDir).sort() : [];
   const raceResults = [];
   const missingScorecards = [];
+  const switchName = meta?.candidateSwitch ?? null;
   for (const id of [...new Set([...expected, ...present])]) {
+    if (switchName) {
+      // #7884 (B8): slukket og taendt ligger i hver sin undermappe og laegges sammen.
+      const off = latestDryRunJson(path.join(racesDir, id, SWITCH_DIRS.off));
+      const on = latestDryRunJson(path.join(racesDir, id, SWITCH_DIRS.on));
+      if (!off || !on) { missingScorecards.push(`${id} (${!off ? "intet scorecard slukket" : "intet scorecard taendt"})`); continue; }
+      try {
+        const rr = raceResultFromDryRun(mergeSwitchDryRuns(JSON.parse(readFileSync(off, "utf8")), JSON.parse(readFileSync(on, "utf8")), candidate));
+        if (rr) raceResults.push(rr);
+        else missingScorecards.push(`${id} (tomt scorecard)`);
+      } catch (err) {
+        missingScorecards.push(`${id} (${err.message})`);
+      }
+      continue;
+    }
     const file = latestDryRunJson(path.join(racesDir, id));
     if (!file) { missingScorecards.push(`${id} (intet scorecard)`); continue; }
     try {
@@ -454,7 +552,18 @@ export function collectCard({ outDir, baseline, candidate, meta, benchScope = me
     if (existsSync(file)) benchByRevision[revision] = benchView(JSON.parse(readFileSync(file, "utf8")));
   }
   const contexts = loadRaceContexts({ outDir, raceIds: raceResults.map((r) => r.raceId).filter(Boolean), cacheDir: meta?.cacheDir ?? null });
-  return buildTestportCard({ raceResults, baseline, candidate, benchByRevision, meta: { ...meta, missingScorecards }, thresholds, contexts });
+  const card = buildTestportCard({ raceResults, baseline, candidate, benchByRevision, meta: { ...meta, missingScorecards }, thresholds, contexts });
+  return switchName ? withSwitchGateScope(card, baseline) : card;
+}
+
+/**
+ * #7884 (B8): en kontakt paa en v3-revision er en v3-kandidat, saa v3-gaterne blokerer som for
+ * revisionen selv (navnet "<revision>+<KONTAKT>" matcher ikke revisionsmoenstret). Loebsgruppe-
+ * gaten blokerer allerede, fordi kandidaten ikke er en undtaget revision (ren, strengest).
+ */
+export function withSwitchGateScope(card, baselineRevision) {
+  if (!card?.v3Gates) return card;
+  return { ...card, v3Gates: { ...card.v3Gates, applies: card.v3Gates.applies || v3GatesApply(baselineRevision) } };
 }
 
 /** PNG af kortets overblik via Playwright fra frontend/node_modules. Best-effort. */
@@ -617,6 +726,7 @@ export async function main(argv = process.argv.slice(2), { now, clock, monotonic
     // #6912: forspringskurven er en kontakt, ikke en revision; kortet skal vise om den var taendt.
     ...(process.env.CZ_BREAKAWAY_CURVE_6912 === "1" ? { breakawayCurve6912: true } : {}),
     ...(process.env.CZ_TEAM_CHASE_7730 === "1" ? { teamChase7730: true } : {}), // #7730: kortet viser om jagten efter holdene var taendt
+    ...(opts.candidateSwitch ? { candidateSwitch: opts.candidateSwitch } : {}), // #7884 (B8): kontakten er kandidaten
   };
   if (prev && (prev.breakawayCurve6912 === true) !== (meta.breakawayCurve6912 === true)) throw new Error(`${outDir} er koert ${prev.breakawayCurve6912 ? "med" : "uden"} forspringskurven (CZ_BREAKAWAY_CURVE_6912). Brug en ny --out.`);
   if (prev && (prev.teamChase7730 === true) !== (meta.teamChase7730 === true)) throw new Error(`${outDir} er koert ${prev.teamChase7730 ? "med" : "uden"} jagten efter holdene (#7730); brug en ny --out`);
