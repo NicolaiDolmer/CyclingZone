@@ -15,14 +15,13 @@ import { isTeamSquadTrainOnly, TRAIN_ONLY_SELECTION_ERROR } from "./youthRaceOpt
 import { loadRidersAlreadyRacedInSpan } from "./raceDayRiddenGuard.js";
 import { isRiderDayInvariantViolation, teamInRacePool, teamInRaceSquadPool, findRiderBindingConflicts, windowsOverlap } from "./raceBinding.js";
 import { isS5ProfilesV3OrLater, surfaceRulesRevision } from "./raceEngineRulesRevision.ts";
-import { fatigueByRiderNow, firstStageNumber } from "./riderFatigueNow.js"; // #7801
+import { fatigueByRiderNow, firstStageNumber, loadStageStartAt } from "./riderFatigueNow.js"; // #7801
 import { isFatigueNow7801Enabled } from "./riderFatigueNowFlag.js"; // #7801
 
 // ── #7801: trætheden lige nu på Udtagelsen og Holdfanen ─────────────────────────────
 // Træningssiden, assistenten og motoren regner allerede på samme tal (riderFatigueNow.js).
-// Med kontakten fatigue_now_7801 viser Udtagelsen og Holdfanen det også, ved løbets næste
-// etape, så tallet ikke afhænger af hvornår siden åbnes (ejer 7/11). Slukket: intet ud over
-// kontakten læses, og fladerne viser rider_condition præcis som før.
+// Med kontakten fatigue_now_7801 viser Udtagelsen og Holdfanen det også. Slukket: intet ud
+// over kontakten læses, og fladerne viser rider_condition præcis som før.
 
 /** Løbets næste ikke-kørte etape (den, rytteren skal stille op til). Null når løbet er kørt. */
 export function nextStageForFatigue7801({ race, stages }) {
@@ -36,18 +35,23 @@ export function nextStageForFatigue7801({ race, stages }) {
 
 /**
  * Trætheden pr. rytter, som fladen skal vise den, eller null = vis rider_condition som før.
- * Tændt: fatigueByRiderNow ved løbets næste etape (samme kerne som Træningssiden og
- * assistenten). Kan tallet ikke regnes, er svaret et tomt map, så fladen viser "—" frem for
- * morgenens tal, der ville sige noget andet end Træningssiden.
+ * Tændt: samme kerne som Træningssiden og assistenten (fatigueByRiderNow). Ligger løbets
+ * næste etape i dag, er tallet trætheden ved dens start (= tallet nu, for etaperne før den er
+ * kørt), uafhængigt af hvornår siden åbnes. Ellers er det tallet nu, som Træningssidens
+ * hovedtal: morgenens tal ville ignorere de etaper, rytteren allerede har kørt i dag.
+ * Kan tallet ikke regnes, er svaret et tomt map, så fladen viser "—" frem for morgenens tal.
  * @returns {Promise<Map<string, number|null>|null>}
  */
-export async function surfaceFatigueNow7801({ supabase, race, stages, conditions, teamId, abilityByRider = null }) {
+export async function surfaceFatigueNow7801({ supabase, race, stages, conditions, teamId, abilityByRider = null, now = new Date() }) {
   if (!(conditions ?? []).length) return null;
   if (!await isFatigueNow7801Enabled(supabase)) return null;
-  const stageNumber = nextStageForFatigue7801({ race, stages });
-  if (stageNumber == null) return null;
   try {
-    return await fatigueByRiderNow({ supabase, conditions, abilityByRider, teamId, atStage: { raceId: race.id, stageNumber } });
+    const stageNumber = nextStageForFatigue7801({ race, stages });
+    const start = stageNumber == null ? null : await loadStageStartAt({ supabase, raceId: race.id, stageNumber });
+    const today = start && copenhagenDateString(start.now) === copenhagenDateString(now);
+    return await fatigueByRiderNow({
+      supabase, conditions, abilityByRider, teamId, now, atStage: today ? { raceId: race.id, stageNumber } : null,
+    });
   } catch (err) {
     console.warn(`[fatigue-now-7801] surface fatigue omitted: ${err?.message ?? err}`);
     return new Map();

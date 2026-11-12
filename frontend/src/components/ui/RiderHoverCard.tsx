@@ -40,7 +40,8 @@ import { stageOrdersRecap } from "../stageOrders/stageOrdersRecap.ts";
 import type { TeamOrdersContext } from "../stageOrders/stageOrdersRecap.ts";
 import { reportActionFailure } from "../../lib/actionTelemetry.js";
 import { deriveRaceStatus } from "../../lib/raceHubLogic.js";
-import { supabase } from "../../lib/supabase.ts";
+import { authHeaders, supabase } from "../../lib/supabase.ts";
+import { apiFetch } from "../../lib/apiFetch.ts";
 import {
   RECENT_WINDOW_DAYS, buildRiderHoverCardModel, canHover, placeHoverCard, summarizeRecentResults,
 } from "../../lib/riderHoverCardModel.ts";
@@ -104,6 +105,32 @@ async function loadPlan(raceId: string, riderId: string, nextStage: number): Pro
   }
 }
 
+const API = import.meta.env.VITE_API_URL;
+
+/**
+ * #7801: med kontakten fatigue_now_7801 kommer en egen rytters traethed fra serveren, samme
+ * tal som Traeningssiden (GET /api/riders/:id/fatigue-now). undefined = slukket eller ukendt:
+ * kortet viser rider_condition som foer. null = taendt, men tallet kunne ikke regnes: kortet
+ * viser "-" frem for morgenens tal.
+ */
+async function loadFatigueNow(riderId: string): Promise<{ fatigue: number | null } | undefined> {
+  try {
+    const headers = await authHeaders({ json: false });
+    if (!headers) return undefined;
+    const res = await apiFetch(`${API}/api/riders/${riderId}/fatigue-now`, { headers });
+    const body = (res.data ?? null) as { enabled?: boolean; own?: boolean; fatigue?: number | null } | null;
+    if (res.ok) {
+      if (body?.enabled !== true || body.own !== true) return undefined;
+      return { fatigue: typeof body.fatigue === "number" && Number.isFinite(body.fatigue) ? body.fatigue : null };
+    }
+    // Kun serveren kan svare 5xx, og den goer det kun med kontakten taendt.
+    return res.status >= 500 ? { fatigue: null } : undefined;
+  } catch {
+    // catch-ok: uden svar vises kortet som foer.
+    return undefined;
+  }
+}
+
 async function fetchRiderCard(riderId: string, viewerTeamId: string | null): Promise<RiderCardData | null> {
   let userId: string | null = null;
   try {
@@ -139,6 +166,9 @@ async function fetchRiderCard(riderId: string, viewerTeamId: string | null): Pro
 
   const condEmbed = (row as Record<string, unknown>).rider_condition as Loose;
   const cond = (Array.isArray(condEmbed) ? condEmbed[0] : condEmbed) ?? null;
+  // #7801: kun egne ryttere viser traethed; hentes mens loebsdata hentes nedenfor.
+  const ownRider = viewerTeamId !== null && String(row.team_id ?? "") === String(viewerTeamId);
+  const fatigueNowPromise = ownRider ? loadFatigueNow(String(row.id)) : Promise.resolve(undefined);
   const entry = (entries ?? []).find((e) => e?.race
     && deriveRaceStatus(e.race.status, Number(e.race.stages_completed), Number(e.race.stages)) === "live");
   const race = entry?.race ?? null;
@@ -165,6 +195,7 @@ async function fetchRiderCard(riderId: string, viewerTeamId: string | null): Pro
     const nextStage = completed + 1;
     if (isOwn && nextStage <= (Number(race.stages) || 1)) plan = await loadPlan(String(race.id), String(row.id), nextStage);
   }
+  const fatigueNow = await fatigueNowPromise;
 
   return {
     row: { ...row, rider_condition: undefined },
@@ -172,7 +203,7 @@ async function fetchRiderCard(riderId: string, viewerTeamId: string | null): Pro
     market: { inAuction: (auctions ?? []).length > 0, listed: (listings ?? []).length > 0 },
     condition: {
       form: cond?.form ?? null,
-      fatigue: cond?.fatigue ?? null,
+      fatigue: fatigueNow ? fatigueNow.fatigue : cond?.fatigue ?? null,
       injured: cond?.injured_until ? injuryTimeLeft(cond).count > 0 : false,
     },
     race: raceInput,

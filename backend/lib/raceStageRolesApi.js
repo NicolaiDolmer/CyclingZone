@@ -357,7 +357,7 @@ export async function getStageRolesContext({ supabase, race, teamId, now = new D
     // Maerket ovenfor regner selv datoens etaper oveni og bruger derfor stadig aabningen.
     if (!conditionRes.error) {
       liveFatigue = await surfaceFatigueNow7801({
-        supabase, race, stages, conditions: conditionRes.data || [], teamId,
+        supabase, race, stages, conditions: conditionRes.data || [], teamId, now,
         abilityByRider: abilitiesRes.error ? null : new Map((abilitiesRes.data || []).map((ab) => [ab.rider_id, ab])),
       });
     }

@@ -586,6 +586,7 @@ import {
 import { selectionSizeForRace, MIN_RACE_ENTRIES } from "../lib/raceAutopick.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
 import { fatigueByRiderNow, fatigueByRiderForRaces, fatigueOutlookForTeam, openingFatigueMap } from "../lib/riderFatigueNow.js"; // #7801
+import { riderCardFatigueNow7801 } from "../lib/riderCardFatigueNow7801.js"; // #7801
 import { REGISTRY_ABILITY_KEYS } from "../lib/abilityRegistry.js";
 import { selectInChunks } from "../lib/dbChunk.js";
 import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
@@ -1575,6 +1576,18 @@ router.get("/riders/:id/history", requireAuth, async (req, res) => {
     res.json(events);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/riders/:id/fatigue-now — #7801: rytterkortets træthed lige nu (egne ryttere,
+// samme kerne som Træningssiden). Slukket kontakt: { enabled: false }.
+router.get("/riders/:id/fatigue-now", requireAuth, async (req, res) => {
+  if (!UUID_RE.test(req.params.id)) return res.status(400).json({ error: "Ugyldigt rytter-id" });
+  try {
+    res.json(await riderCardFatigueNow7801({ supabase, riderId: req.params.id, teamId: req.team?.id ?? null }));
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: "fatigue_now_failed" });
   }
 });
 
