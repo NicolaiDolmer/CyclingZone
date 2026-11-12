@@ -19,6 +19,7 @@ import {
   renderBenchMarkdown,
   summarize7884,
   summarizeB11,
+  winTypesOf,
   winnerOf,
 } from "./longAttackBaseline7884.mjs";
 import {
@@ -203,6 +204,14 @@ test("#7884 b2Of/b6Of/summarize7884: andele med de rigtige naevnere, faste seeds
   const md = renderBenchMarkdown(sum, { revision: "r", scope: "all", genSeeds: 1, simSeeds: 1, races: 2 });
   assert.ok(md.includes("## B2") && md.includes("## B6") && md.includes("## B10") && md.includes("PRIVAT"));
   assert.ok(renderBenchMarkdown(sum, { revision: "r", scope: "export", genSeeds: 0, simSeeds: 1, races: 2 }).includes("prod-eksporten"));
+});
+
+test("#7884 B4: sejrstypen laeses fra maal-haendelsen og taelles", () => {
+  const ev = [{ type: "finish", km: 160, params: { top: [], win_type: "solo" } }];
+  assert.equal(measureStage7884({ profile: PROFILE, out: out(ev, { a: 1 }) }).winType, "solo");
+  assert.equal(measureStage7884({ profile: PROFILE, out: out([], { a: 1 }) }).winType, null);
+  assert.deepEqual(winTypesOf([{ winType: "sprint" }, { winType: "solo" }, { winType: "solo" }, { winType: null }]), { solo: 2, sprint: 1, ukendt: 1 });
+  assert.deepEqual(Object.keys(summarize7884([{ winType: "solo", profile_type: "hilly", group: "gt" }]).b4.byGroup), ["gt"]);
 });
 
 test("#7884 benchRaceGroup: samme inddeling som #7266 for seniorer", () => {

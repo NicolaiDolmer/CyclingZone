@@ -120,9 +120,12 @@ export function measureStage7884({ profile, out, breakIds = new Set(), ms = null
     const t = fin.get(attacker);
     ahead = [...fin].every(([id, ti]) => id === attacker || breakIds.has(id) || ti > t);
   }
+  // B4: motorens sejrstype (engine/v4/winType.ts), som maal-hændelsen bærer den.
+  const finish = events.find((e) => e?.type === "finish");
   return {
     profile_type: pt,
     tt,
+    winType: finish?.params?.win_type ?? null,
     hasClimb: Boolean(window),
     forwardSplit: fwd.size > 0,
     wonFromForwardSplit: Boolean(winner && fwd.has(winner.riderId)),
@@ -163,13 +166,24 @@ export function b6Of(rows) {
   return { stages: road.length, attacks: att.length, shareStagesWithAttack: share(att.length, road.length), heldWin: win, heldAhead: ahead, shareHeldWin: share(win, att.length), shareHeldAhead: share(ahead, att.length) };
 }
 
-/** B2, B6 og B10 samlet og opdelt (ren). `group` paa raekken er loebsgruppen. */
+/** B4: antal etaper pr. sejrstype (ren); etaper uden sejrstype taelles som "ukendt". */
+export function winTypesOf(rows) {
+  const out = {};
+  for (const r of rows) {
+    const k = r.winType ?? "ukendt";
+    out[k] = (out[k] ?? 0) + 1;
+  }
+  return Object.fromEntries(Object.entries(out).sort(([a], [b]) => a.localeCompare(b)));
+}
+
+/** B2, B4, B6 og B10 samlet og opdelt (ren). `group` paa raekken er loebsgruppen. */
 export function summarize7884(rows) {
   const ms = (rs) => rs.map((r) => r.ms).filter((v) => Number.isFinite(v));
   return {
     n: rows.length,
     b2: { all: b2Of(rows), byProfile: Object.fromEntries(groupRows(rows, (r) => r.profile_type).map(([k, v]) => [k, b2Of(v)])), byGroup: Object.fromEntries(groupRows(rows, (r) => r.group).map(([k, v]) => [k, b2Of(v)])) },
     b6: { all: b6Of(rows), byProfile: Object.fromEntries(groupRows(rows, (r) => r.profile_type).map(([k, v]) => [k, b6Of(v)])), byGroup: Object.fromEntries(groupRows(rows, (r) => r.group).map(([k, v]) => [k, b6Of(v)])) },
+    b4: { all: winTypesOf(rows), byProfile: Object.fromEntries(groupRows(rows, (r) => r.profile_type).map(([k, v]) => [k, winTypesOf(v)])), byGroup: Object.fromEntries(groupRows(rows, (r) => r.group).map(([k, v]) => [k, winTypesOf(v)])) },
     b10: { all: timeStats(ms(rows)), byProfile: Object.fromEntries(groupRows(rows, (r) => r.profile_type).map(([k, v]) => [k, timeStats(ms(v))])), byGroup: Object.fromEntries(groupRows(rows, (r) => r.group).map(([k, v]) => [k, timeStats(ms(v))])) },
   };
 }
@@ -285,6 +299,11 @@ export function renderBenchMarkdown(sum, config) {
   b6("alle", sum.b6.all);
   for (const [k, x] of Object.entries(sum.b6.byProfile)) b6(`type ${k}`, x);
   for (const [k, x] of Object.entries(sum.b6.byGroup)) b6(`loebsgruppe ${k}`, x);
+  L.push("", "## B4: sejrstyper (antal etaper)", "", "| gruppe | sejrstyper |", "|---|---|");
+  const b4 = (k, x) => L.push(`| ${k} | ${Object.entries(x).map(([t, c]) => `${t} ${c}`).join(", ")} |`);
+  b4("alle", sum.b4.all);
+  for (const [k, x] of Object.entries(sum.b4.byProfile)) b4(`type ${k}`, x);
+  for (const [k, x] of Object.entries(sum.b4.byGroup)) b4(`loebsgruppe ${k}`, x);
   L.push("", "## B10: motorens tid pr. etape (simulering + klassement)", "", "| gruppe | n | median | p95 | max |", "|---|---|---|---|---|");
   const b10 = (k, x) => L.push(`| ${k} | ${x.n} | ${sec(x.median)} | ${sec(x.p95)} | ${sec(x.max)} |`);
   b10("alle", sum.b10.all);
