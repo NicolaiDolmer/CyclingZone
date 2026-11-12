@@ -591,7 +591,9 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
 
   const placementSquads = academyIntakePlacementSquads(rider.birthdate, seasonNumber);
   let placedSquad = placementSquads[0];
+  /** @type {any} */
   let acq = null;
+  /** @type {any} */
   let acqErr = null;
   for (const squad of placementSquads) {
     placedSquad = squad;
