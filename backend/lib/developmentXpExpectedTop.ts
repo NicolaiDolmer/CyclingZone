@@ -39,6 +39,7 @@ import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { bestRoleForAbilities } from "./riderBestRoleCache.js";
 import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
 import { TRAINING_RACE_DAY_CONFIG } from "./trainingRaceDayTick.js";
+import { abilityValue } from "./weights/displayRecipes.js";
 
 const MENTAL_ABILITIES: ReadonlySet<string> = new Set(
   (VISIBLE_ABILITIES as readonly string[]).filter((a) => abilityMeta(a)?.category === "mental"),
@@ -143,11 +144,14 @@ export function expectedCareer(
   const primaryType = rider.primaryType ?? null;
   const secondaryType = rider.secondaryType ?? null;
 
+  // Fælles normalisering (displayRecipes.abilityValue): SQL NULL forbliver en manglende
+  // evne, aldrig et opdigtet nul. Er ingen brugbare evner tilbage, findes intet skøn.
   let state: Record<string, number> = {};
   for (const ability of VISIBLE_ABILITIES as readonly string[]) {
-    const value = Number(rider.abilities[ability]);
-    if (Number.isFinite(value)) state[ability] = value;
+    const value = abilityValue(rider.abilities[ability]);
+    if (value !== null) state[ability] = value;
   }
+  if (Object.keys(state).length === 0) return null;
   const ratingNow = ratingOf(state, primaryType, secondaryType);
   if (ratingNow == null) return null;
 

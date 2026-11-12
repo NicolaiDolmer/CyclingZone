@@ -160,6 +160,18 @@ test("XP: prognosen er standardkarrierens top, samme kilde som skønnets sande t
   assert.equal(rating, expectedTopRating({ id: "r1", abilities: NOW, age: 20, potentiale: 4, primaryType: "climber", secondaryType: "puncheur" }, XP));
 });
 
+test("XP: NULL-evner forbliver manglende i prognosen, ingen opdigtet nul-prognose (Codex-fund PR #8044)", () => {
+  const missing = REGISTRY_ABILITY_KEYS.filter((_, i) => i % 3 === 0);
+  const withNulls = { ...NOW, ...Object.fromEntries(missing.map((a) => [a, null])) };
+  const present = Object.fromEntries(Object.entries(NOW).filter(([a]) => !missing.includes(a)));
+  const args = { ...XP_RIDER, potentiale: 4, envelope: PROGNOSIS_ENVELOPES.spredt, developmentXp: XP };
+  const out = prognoseAbilities({ ...args, nowAbilities: withNulls });
+  for (const a of missing) assert.equal(a in out, false, `${a} fik en prognose`);
+  assert.deepEqual(out, prognoseAbilities({ ...args, nowAbilities: present }));
+  const allNull = Object.fromEntries(REGISTRY_ABILITY_KEYS.map((a) => [a, null]));
+  assert.deepEqual(prognoseAbilities({ ...args, nowAbilities: allNull }), {});
+});
+
 test("XP: envelopen flytter intet, kun potentialet", () => {
   const spredt = prognoseAbilities({ ...XP_RIDER, potentiale: 4, envelope: PROGNOSIS_ENVELOPES.spredt, developmentXp: XP });
   const dedikeret = prognoseAbilities({ ...XP_RIDER, potentiale: 4, envelope: PROGNOSIS_ENVELOPES.dedikeret, developmentXp: XP });

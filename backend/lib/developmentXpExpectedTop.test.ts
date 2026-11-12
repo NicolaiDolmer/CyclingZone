@@ -128,6 +128,39 @@ test("manglende evner, alder eller rating giver intet sandt tal", () => {
   assert.equal(expectedTopRating(rider({ abilities: {} }), params), null);
 });
 
+// Codex-fund (PR #8044): SQL NULL er en manglende evne, aldrig et opdigtet nul.
+const nullAll = () => Object.fromEntries((VISIBLE_ABILITIES as readonly string[]).map((a) => [a, null]));
+
+test("NULL-evner: lutter NULL giver intet sandt tal", () => {
+  const r = rider({ abilities: nullAll() as unknown as Record<string, number> });
+  assert.equal(expectedCareer(r, params), null);
+  assert.equal(expectedTopRating(r, params), null);
+  // Også tomme strenge og ikke-tal er manglende, som i displayRecipes.abilityValue.
+  const junk = Object.fromEntries((VISIBLE_ABILITIES as readonly string[]).map((a, i) => [a, i % 2 ? "" : "x"]));
+  assert.equal(expectedTopRating(rider({ abilities: junk as unknown as Record<string, number> }), params), null);
+});
+
+test("NULL-evner: delvist NULL regner kun på de rigtige evner", () => {
+  const keys = VISIBLE_ABILITIES as readonly string[];
+  const missing = keys.filter((_, i) => i % 3 === 0);
+  const present = Object.fromEntries(keys.filter((a) => !missing.includes(a)).map((a) => [a, 50]));
+  const withNulls = { ...present, ...Object.fromEntries(missing.map((a) => [a, null])) };
+  const withZeros = { ...present, ...Object.fromEntries(missing.map((a) => [a, 0])) };
+  const base = { age: 20, potentiale: 4 };
+  const fromNulls = expectedCareer(rider({ ...base, abilities: withNulls as unknown as Record<string, number> }), params);
+  const fromPresent = expectedCareer(rider({ ...base, abilities: present }), params);
+  assert.ok(fromNulls);
+  assert.deepEqual(fromNulls, fromPresent, "NULL og en udeladt evne er det samme");
+  for (const a of missing) assert.equal(a in fromNulls.abilities, false, `${a} er opdigtet`);
+  assert.notDeepEqual(fromNulls, expectedCareer(rider({ ...base, abilities: withZeros }), params), "NULL er ikke nul");
+});
+
+test("NULL-evner: en fuld række giver samme resultat som før (tal og talstrenge ens)", () => {
+  const r = rider({ age: 20, abilities: flat(42) });
+  const asStrings = Object.fromEntries(Object.entries(flat(42)).map(([a, v]) => [a, String(v)]));
+  assert.deepEqual(expectedCareer({ ...r, abilities: asStrings as unknown as Record<string, number> }, params), expectedCareer(r, params));
+});
+
 test("samme sande tal som 10-sæsoners-kørslen måler sine gates på", async () => {
   // Kørslen (spec §8) genkører H1-H3 og H6 mod dette tal. Driver de to fra hinanden,
   // måler gaterne et andet tal end det, skønnet viser.

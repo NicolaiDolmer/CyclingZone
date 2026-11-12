@@ -539,6 +539,27 @@ test("XP tændt uden aktiv sæson eller evner: intet gættet skøn", async () =>
   assert.equal(noAbilities.state[POTENTIAL_ESTIMATES_TABLE].length, 0);
 });
 
+test("XP tændt med lutter NULL-evner: intet opdigtet skøn gemmes (Codex-fund PR #8044)", async () => {
+  const nulls = Object.fromEntries(VISIBLE_ABILITIES.map((a) => [a, null]));
+  const sb = xpClient({ rider_derived_abilities: [{ rider_id: "r1", ...nulls }] });
+  await recordScoutLooks({ supabase: sb, teamId: "t1", riderIds: ["r1"], now: new Date(NOW) });
+  assert.equal(sb.state[POTENTIAL_ESTIMATES_TABLE].length, 0);
+});
+
+test("XP tændt med delvist NULL: skønnet bygger kun på de rigtige evner", async () => {
+  const missing = VISIBLE_ABILITIES.filter((_, i) => i % 3 === 0);
+  const present = Object.fromEntries(VISIBLE_ABILITIES.filter((a) => !missing.includes(a)).map((a) => [a, 45]));
+  const sb = xpClient({ rider_derived_abilities: [{ rider_id: "r1", ...present, ...Object.fromEntries(missing.map((a) => [a, null])) }] });
+  await recordScoutLooks({ supabase: sb, teamId: "t1", riderIds: ["r1"], now: new Date(NOW) });
+  const [row] = sb.state[POTENTIAL_ESTIMATES_TABLE];
+  const expected = expectedTopRating({
+    id: "r1", abilities: present, age: ageForSeason(XP_RIDER.birthdate, XP_SEASON),
+    potentiale: XP_RIDER.potentiale, primaryType: XP_RIDER.primary_type, secondaryType: XP_RIDER.secondary_type,
+  }, XP);
+  assert.ok(expected != null);
+  assert.equal(row.ceiling_at_write, expected);
+});
+
 test("XP slukket: ingen evner, sæsoner eller XP-params læses, og rytter uden talent_ceiling skrives ikke", async () => {
   const sb = xpClient({ xpFlag: "off" });
   const tables = [];

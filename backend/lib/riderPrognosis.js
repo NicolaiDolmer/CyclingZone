@@ -47,6 +47,7 @@ import { youthMultiplier } from "./academyFlag.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { DAILY_TRAINING_CONFIG } from "./dailyTraining.js";
 import { expectedCareer } from "./developmentXpExpectedTop.ts";
+import { abilityValue } from "./weights/displayRecipes.js";
 
 // Trænings-envelopes (beslutning C). SPREDT: rytteren får fokus ca. hver
 // fjerde dag på normal intensitet, resten af dagene er evnen off-fokus.
@@ -99,8 +100,9 @@ function xpPrognoseAbilities({ nowAbilities, age, primaryType, secondaryType, po
   }, developmentXp);
   const out = {};
   for (const ability of VISIBLE_ABILITIES) {
-    const current = Number(nowAbilities?.[ability]);
-    if (!Number.isFinite(current)) continue;
+    // NULL er en manglende evne (displayRecipes.abilityValue), ikke et nul.
+    const current = abilityValue(nowAbilities?.[ability]);
+    if (current === null) continue;
     out[ability] = clamp(Math.max(current, career?.abilities?.[ability] ?? current), 0, 99);
   }
   return out;
