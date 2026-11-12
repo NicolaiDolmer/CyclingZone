@@ -566,3 +566,49 @@ test('#8022 an early empty stage read aborts pending profile enrichment', async 
     await expect(page.getByRole('heading', { name: 'E2E Racing', exact: true })).toBeVisible();
   } finally { release(); }
 });
+
+
+for (const module of ['signup', 'onboarding', 'discord']) {
+  test(`#8022 initial layout includes resolved ${module} presence within the mount budget`, async ({ page }) => {
+    let release!: () => void;
+    let held = false;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    const path = module === 'signup' ? '/api/season/signup-status' : `/api/me/${module === 'discord' ? 'discord-status' : 'onboarding-progress'}`;
+    await page.route('**/api/me/onboarding-progress', route => json(route, { established: true, completed_count: 4, total_count: 4, steps: [] }));
+    await page.route(`**${path}`, async route => {
+      held = true;
+      await gate;
+      await json(route, module === 'signup'
+        ? { enabled: true, eligible: true, parked: false, signed_up: false, next_season_number: 4 }
+        : module === 'discord' ? { discord_id: null }
+          : { completed_count: 0, total_count: 4, steps: [] });
+    });
+    await page.goto('/dashboard');
+    try {
+      await expect.poll(() => held).toBe(true);
+      await page.waitForTimeout(700);
+      await expect(page.getByRole('heading', { name: 'E2E Racing', exact: true })).not.toBeVisible();
+      release();
+      await expect(page.getByRole('heading', { name: 'E2E Racing', exact: true })).toBeVisible();
+      if (module === 'signup') await expect(page.getByTestId('season-signup-card')).toBeVisible();
+      if (module === 'onboarding') await expect(page.getByText(/Kom i gang.*0\/4/)).toBeVisible();
+      if (module === 'discord') await expect(page.locator('a[href="/profile?tab=notifications#discord"]')).toBeVisible();
+    } finally { release(); }
+  });
+}
+
+test('#8022 optional presence cannot extend the total mount budget or suppress late valid signup', async ({ page }) => {
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/season/signup-status', async route => {
+    await gate;
+    await json(route, { enabled: true, eligible: true, parked: false, signed_up: false, next_season_number: 4 });
+  });
+  await page.goto('/dashboard');
+  try {
+    await expect(page.getByRole('heading', { name: 'E2E Racing', exact: true })).toBeVisible({ timeout: 2500 });
+    await expect(page.getByTestId('season-signup-card')).toHaveCount(0);
+    release();
+    await expect(page.getByTestId('season-signup-card')).toBeVisible();
+  } finally { release(); }
+});

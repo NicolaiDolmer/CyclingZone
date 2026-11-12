@@ -16,3 +16,6 @@ The first integrated full E2E attempt was stopped incomplete after #452's active
 
 
 Review 2 found that the new request deadlines called AbortSignal.timeout directly, which is absent in supported Chrome 90 and iOS 15. Selection created it outside its try block, allowing the whole dashboard to crash. A shared AbortController/timer helper now provides the deadline without newer static AbortSignal APIs. Request settlement disposes timers; effect cleanup, superseded stage loads and dashboard refresh/unmount abort owned requests. The browser regression deletes AbortSignal.timeout before dashboard mount and checks real stage, selection and latest-result content. No player copy is changed; the patch-note proposal remains parent-owned.
+
+
+The second review also found that signup, onboarding and Discord presence no longer participated in the initial layout decision after those requests moved off the core load path. Their generation-safe settled flag now joins initialDataReady within the existing single 1500 ms mount cap. Known responses from an older refresh cannot publish or settle a newer one; errors and missing auth settle without inventing card data. Requests beyond the cap still reveal ready dashboard content, and valid late cards remain visible under their existing rules.

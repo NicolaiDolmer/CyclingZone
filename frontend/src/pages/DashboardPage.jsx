@@ -209,6 +209,7 @@ export default function DashboardPage() {
   const [activeOffers, setActiveOffers] = useState([]);
   const [forecast, setForecast] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [optionalModulesSettled, setOptionalModulesSettled] = useState(false);
   // #2444/#8022: one mount budget includes core and secondary requests.
   // Ready data latches this same release state early; refresh never re-gates.
   const [initialWaitExpired, setInitialWaitExpired] = useState(false);
@@ -388,7 +389,8 @@ export default function DashboardPage() {
   // Ingen af dem gate'r noget hovedindhold (hver styrer sit eget lille kort),
   // men fordi de laa inde i loadAll'ets try-blok forsinkede de `setLoading(false)`
   // med fire fulde tur/retur. Nu: parallelt, uden for den blokerende sti.
-  async function loadOptionalModules(token) {
+  async function loadOptionalModules(token, generation) {
+    try {
     if (!token) return;
     const headers = { Authorization: `Bearer ${token}` };
     const getJson = async (path) => {
@@ -398,7 +400,7 @@ export default function DashboardPage() {
         // opfører sig som "intet nyt" (samme som en anden fejl her: modulet
         // udebliver stille).
         const res = await apiFetch(`${API}${path}`, { headers });
-        if (res.limited || res.unauthorized) return null;
+        if (generation !== loadGeneration.current || res.limited || res.unauthorized) return null;
         return res.ok ? res.data : null;
       } catch {
         return null; // best-effort
@@ -406,12 +408,12 @@ export default function DashboardPage() {
     };
     await Promise.all([
       // Slice 07g · Forecast-widget.
-      getJson("/api/me/finance-forecast").then((data) => { if (data) setForecast(data); }),
+      getJson("/api/me/finance-forecast").then((data) => { if (data && generation === loadGeneration.current) setForecast(data); }),
       // Discord nudge — vises hvis brugeren ikke har discord_id (og ikke har dismissed).
       discordNudgeDismissed
         ? Promise.resolve()
         : getJson("/api/me/discord-status").then((dm) => {
-          if (dm && !dm.discord_id) setShowDiscordNudge(true);
+          if (dm && !dm.discord_id && generation === loadGeneration.current) setShowDiscordNudge(true);
         }),
       // Onboarding progress — hentes hvis enten progress- eller completion-kortet
       // kan blive vist. (Eksisterende managers der har dismisset progress skal
@@ -419,7 +421,7 @@ export default function DashboardPage() {
       (onboardingDismissed && completionDismissed)
         ? Promise.resolve()
         : getJson("/api/me/onboarding-progress").then((prog) => {
-          if (!prog) return;
+          if (!prog || generation !== loadGeneration.current) return;
           setOnboardingProgress(prog);
           // #2439: server er sandheden — et tidligere dismiss (andet device/
           // session) eller et "etableret hold"-flag skal skjule kortet uden at
@@ -428,8 +430,11 @@ export default function DashboardPage() {
         }),
       // [epic #4592 del 3] "Tilmeld dig naeste saeson" (#452) — fejler kaldet,
       // forbliver seasonSignupStatus null og kortet renderer intet.
-      getJson("/api/season/signup-status").then((data) => { if (data) setSeasonSignupStatus(data); }),
+      getJson("/api/season/signup-status").then((data) => { if (data && generation === loadGeneration.current) setSeasonSignupStatus(data); }),
     ]);
+    } finally {
+      if (generation === loadGeneration.current) setOptionalModulesSettled(true);
+    }
   }
 
   async function loadAll() {
@@ -437,6 +442,8 @@ export default function DashboardPage() {
     for (const request of dependentRequests.current) request.abort();
     dependentRequests.current.clear();
     setError(null);
+    setOptionalModulesSettled(false);
+    let optionalStarted = false;
     try {
     // #4160: getSession() laeser den lokale (auto-refreshede) session UDEN en
     // netvaerkstur; getUser() lavede en ekstra GET /auth/v1/user foran ALT
@@ -445,6 +452,7 @@ export default function DashboardPage() {
     // vi stopper foer user.id. RLS validerer stadig hvert eneste opslag
     // server-side, saa den fjernede tur var ren latenstid, ikke et vaern.
     const { data: { session } } = await supabase.auth.getSession();
+    if (generation !== loadGeneration.current) return;
     const user = session?.user ?? null;
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (finally rydder loading)
     if (!user) { return; }
@@ -453,9 +461,10 @@ export default function DashboardPage() {
     // #4160: de fire valgfrie modul-kald afhaenger KUN af tokenet, ikke af hold
     // eller saeson. De startes derfor med det samme, side om side med resten.
     //
-    // These independent modules publish their own results; they never extend
-    // the mount budget. A late valid module still follows its visibility rules.
-    void loadOptionalModules(token);
+    // Resolve optional card presence within the same total mount budget.
+    // A late valid module still follows its established visibility rules.
+    optionalStarted = true;
+    void loadOptionalModules(token, generation);
 
     // #4160: hold-opslaget og saeson-opslaget afhaenger ikke af hinanden, men
     // laa i serie (teams -> seasons). Parallelt sparer de en hel tur/retur paa
@@ -628,7 +637,10 @@ export default function DashboardPage() {
       console.error("Dashboard load failed:", e);
       if (generation === loadGeneration.current) setError(e);
     } finally {
-      if (generation === loadGeneration.current) setLoading(false);
+      if (generation === loadGeneration.current) {
+        setLoading(false);
+        if (!optionalStarted) setOptionalModulesSettled(true);
+      }
     }
   }
 
@@ -636,7 +648,7 @@ export default function DashboardPage() {
   useRealtimeRefetch("dashboard-live", REALTIME_TABLES, loadAll);
   // #6569: paa topniveau (foer early-return) saa stribens fetch starter naar team er kendt.
   const todayStages = withoutPausedUpcoming(useTodayStages(team?.id), Boolean(racePause)); // #6970
-  const initialDataReady = !loading && (!team || (!todayStages.loading && selectionReady && (!myLatestResultVisible || myLatestResultSettled)));
+  const initialDataReady = !loading && optionalModulesSettled && (!team || (!todayStages.loading && selectionReady && (!myLatestResultVisible || myLatestResultSettled)));
   useEffect(() => {
     if (initialDataReady) setInitialWaitExpired(true);
   }, [initialDataReady]);
