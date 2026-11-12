@@ -28,6 +28,7 @@ import {
   mondayOf,
   pickedCounts,
   raceReadiness,
+  raceEndDate,
   raceStartDate,
   replaceRaceEntries,
   visibleRaces,
@@ -122,7 +123,12 @@ function Workbench() {
   const payload = load.payload;
   const allRaces = useMemo<SeasonRace[]>(() => payload?.races ?? [], [payload]);
   const dates = useMemo(() => dateIndex(payload?.dayDates ?? []), [payload]);
-  const withdrawn = useMemo(() => new Set<string>(payload?.withdrawnRaceIds ?? []), [payload]);
+  // Et loeb holdet er meldt til igen ved at gemme en trup, staar ikke laengere som afmeldt.
+  const [rejoined, setRejoined] = useState<Set<string>>(() => new Set());
+  const withdrawn = useMemo(
+    () => new Set<string>((payload?.withdrawnRaceIds ?? []).filter((id) => !rejoined.has(id))),
+    [payload, rejoined],
+  );
   const counts = useMemo(() => pickedCounts(entries), [entries]);
 
   // Etape-striben i listen og ugeoversigten hentes for de kommende loeb (forbi-loeb vises ikke som standard).
@@ -164,7 +170,9 @@ function Workbench() {
   // Ugeoversigten starter i ugen for det valgte loeb (ellers dagens uge).
   const weekGroups = useMemo(() => groupRacesByWeek(boardRaces, dates), [boardRaces, dates]);
   const firstMonday = weekGroups[0]?.monday ?? null;
-  const lastMonday = weekGroups[weekGroups.length - 1]?.monday ?? null;
+  // Sidste uge man kan bladre til afgoeres af det seneste SLUTDATO (et etapeloeb kan fortsaette ind i en senere uge).
+  const lastEnd = boardRaces.map((r) => raceEndDate(r, dates)).filter((d): d is string => !!d).sort().pop();
+  const lastMonday = lastEnd ? mondayOf(lastEnd) : null;
   const activeMonday = useMemo(() => {
     if (weekMonday) return weekMonday;
     const start = selected ? raceStartDate(selected, dates) : null;
@@ -238,7 +246,10 @@ function Workbench() {
     }
   };
 
-  const onSaved = useCallback((raceId: string, next: SeasonEntry[]) => setEntries((cur) => replaceRaceEntries(cur, raceId, next)), []);
+  const onSaved = useCallback((raceId: string, next: SeasonEntry[]) => {
+    setEntries((cur) => replaceRaceEntries(cur, raceId, next));
+    setRejoined((cur) => new Set(cur).add(raceId));
+  }, []);
   const toggleWeek = () => {
     setShowWeek(!showWeek);
     writePref("week", !showWeek);

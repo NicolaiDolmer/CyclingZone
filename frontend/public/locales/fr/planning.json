@@ -58,7 +58,8 @@
     "copied": "Copié depuis {name}. {skipped, plural, one {# coureur a été ignoré (occupé, blessé ou indisponible).} other {# coureurs ont été ignorés (occupés, blessés ou indisponibles).}}",
     "copiedAll": "Copié depuis {name}. Relis et enregistre.",
     "locked": "La course a commencé, l'équipe est donc verrouillée.",
-    "withdrawn": "Ton équipe s'est retirée de cette course, l'équipe ne peut donc plus être modifiée."
+    "withdrawn": "Ton équipe s'est retirée de cette course. Enregistrer une équipe la réinscrit.",
+    "restored": "Tes modifications non enregistrées ont été rétablies."
   },
   "copy": {
     "title": "Copier l'équipe de",

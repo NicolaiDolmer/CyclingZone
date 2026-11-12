@@ -237,19 +237,21 @@ export function layoutWeek(races: SeasonRace[], dates: Map<number, string>, mond
     .filter((r): r is { race: SeasonRace; start: string; end: string } => !!r.start && !!r.end && r.end >= monday && r.start <= sunday)
     .sort((a, b) => a.race.gameDayStart - b.race.gameDayStart || a.race.gameDayEnd - b.race.gameDayEnd || a.race.name.localeCompare(b.race.name));
 
-  const laneEnds: number[] = []; // sidste loebsdag pr. bane
+  // En bane er kun fri, naar baade loebsdagen og kalenderkolonnen er ledig: to loeb paa forskellige
+  // loebsdage men samme kalenderdato (komprimerede dage) maa ikke ligge oven paa hinanden.
+  const laneEnds: Array<{ gameDay: number; col: number }> = [];
   const bars: WeekBar[] = [];
   for (const r of inWeek) {
-    let lane = laneEnds.findIndex((end) => end < r.race.gameDayStart);
-    if (lane === -1) {
-      lane = laneEnds.length;
-      laneEnds.push(r.race.gameDayEnd);
-    } else {
-      laneEnds[lane] = r.race.gameDayEnd;
-    }
     const startCol = Math.max(0, days.indexOf(r.start < monday ? monday : r.start));
     const endDate = r.end > sunday ? sunday : r.end;
     const endCol = Math.max(startCol, days.indexOf(endDate));
+    let lane = laneEnds.findIndex((end) => end.gameDay < r.race.gameDayStart && end.col < startCol);
+    if (lane === -1) {
+      lane = laneEnds.length;
+      laneEnds.push({ gameDay: r.race.gameDayEnd, col: endCol });
+    } else {
+      laneEnds[lane] = { gameDay: r.race.gameDayEnd, col: endCol };
+    }
     bars.push({ race: r.race, lane, startCol, endCol });
   }
   return { days, bars, laneCount: laneEnds.length };
@@ -583,11 +585,13 @@ export function suggestSquad(args: {
   current?: Selection;
 }): Selection {
   const { rows, max, sprintLeaderAllowed } = args;
+  // Ryttere laast af Train now kan hverken tages ind eller ud (serveren afviser begge): de bliver.
+  const lockedIds = lockedPicks(rows, args.current);
   const pool = rows
     .filter((r) => r.selectable)
     .sort((a, b) => (b.routeMatch ?? -1) - (a.routeMatch ?? -1) || (b.form ?? -1) - (a.form ?? -1) || a.id.localeCompare(b.id))
-    .slice(0, Math.max(0, max));
-  const riderIds = pool.map((r) => r.id);
+    .slice(0, Math.max(0, max - lockedIds.length));
+  const riderIds = [...lockedIds, ...pool.map((r) => r.id)];
   const byId = new Map(rows.map((r) => [r.id, r]));
   const roles = resolveBoardRoles({
     riderIds,
@@ -595,7 +599,7 @@ export function suggestSquad(args: {
     suitabilityOf: (id: string) => byId.get(id)?.routeMatch ?? null,
     ...(sprintLeaderAllowed ? { luxuryHelperId: null } : {}),
   });
-  return {
+  let proposal: Selection = {
     riderIds,
     captainId: roles.captain_id ?? null,
     sprintCaptainId: roles.sprint_captain_id ?? null,
@@ -604,6 +608,20 @@ export function suggestSquad(args: {
     coCaptainId: roles.co_captain_id ?? null,
     luxuryHelperId: null,
   };
+  if (args.current) {
+    for (const id of lockedIds) {
+      const role = roleOf(args.current, id);
+      if (role !== "rider") proposal = setRiderRole(proposal, id, role);
+    }
+  }
+  return proposal;
+}
+
+/** De allerede valgte ryttere der er laast af Train now (de maa hverken tages ind eller ud). */
+function lockedPicks(rows: SquadRow[], current?: Selection): string[] {
+  if (!current) return [];
+  const locked = new Set(rows.filter((r) => r.trainNowLocked).map((r) => r.id));
+  return current.riderIds.filter((id) => locked.has(id));
 }
 
 /**
@@ -616,11 +634,20 @@ export function copySquadFrom(args: {
   rows: SquadRow[];
   max: number;
   sprintLeaderAllowed: boolean;
+  current?: Selection;
 }): { selection: Selection; skipped: number } {
   const { source, rows, max, sprintLeaderAllowed } = args;
   const byId = new Map(rows.map((r) => [r.id, r]));
-  const kept = source.filter((e) => byId.get(e.riderId)?.selectable).slice(0, Math.max(0, max));
-  let sel: Selection = { ...EMPTY_SELECTION, riderIds: kept.map((e) => e.riderId), freeRoleIds: [] };
+  const lockedIds = lockedPicks(rows, args.current);
+  const candidates = source.filter((e) => !lockedIds.includes(e.riderId));
+  const kept = candidates.filter((e) => byId.get(e.riderId)?.selectable).slice(0, Math.max(0, max - lockedIds.length));
+  let sel: Selection = { ...EMPTY_SELECTION, riderIds: [...lockedIds, ...kept.map((e) => e.riderId)], freeRoleIds: [] };
+  if (args.current) {
+    for (const id of lockedIds) {
+      const role = roleOf(args.current, id);
+      if (role !== "rider") sel = setRiderRole(sel, id, role);
+    }
+  }
   for (const e of kept) {
     const role = e.raceRole ? ROLE_FROM_ENTRY[e.raceRole] : undefined;
     if (!role) continue;
@@ -628,5 +655,5 @@ export function copySquadFrom(args: {
     if (role === "luxury_helper" && !sprintLeaderAllowed) continue;
     sel = setRiderRole(sel, e.riderId, role);
   }
-  return { selection: sel, skipped: source.length - kept.length };
+  return { selection: sel, skipped: candidates.length - kept.length };
 }

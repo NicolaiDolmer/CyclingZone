@@ -4,7 +4,22 @@
 // "Suggest squad" og "Copy squad from" fylder en kladde som spilleren gennemgaar og selv gemmer.
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, EmptyState, ErrorState, SkeletonLines, FlagIcon, validateSelectionClient, riderBestRole, useReloadBlock, RELOAD_BLOCK_REASONS } from "./primitives.ts";
+import {
+  Button,
+  EmptyState,
+  ErrorState,
+  SkeletonLines,
+  FlagIcon,
+  validateSelectionClient,
+  riderBestRole,
+  useReloadBlock,
+  RELOAD_BLOCK_REASONS,
+  partialSquadOutlook,
+  rememberSelectionDraft,
+  readSelectionDraft,
+  forgetSelectionDraft,
+  reconcileSelectionDraft,
+} from "./primitives.ts";
 import RouteProfile from "./RouteProfile.tsx";
 import SquadTable from "./SquadTable.tsx";
 import { ReadinessMark } from "./planningUi.tsx";
@@ -121,14 +136,19 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
       // En tilbagetrukket trup er ikke holdets udtagelse: samme regel som udtagelsespanelet.
       const server = body.withdrawn && !body.did_not_start && !body.lineup_locked ? null : body.selection;
       const initial = selectionFromServer(server);
+      // Et ugemt udkast overlever en navigation vaek fra siden (kladden er ikke gemt, men heller ikke tabt).
+      const draft = readSelectionDraft(race.id);
+      const restored: Selection = draft ? reconcileSelectionDraft(draft, body.riders) : initial;
+      const wasRestored = draft != null && selectionDirty(restored, initial);
       setData(body);
       setSaved(initial);
-      setSel(initial);
+      setSel(wasRestored ? restored : initial);
+      if (wasRestored) setNote(t("race.restored"));
       setState("ready");
     } catch {
       if (gen === generation.current) setState("error");
     }
-  }, [race.id]);
+  }, [race.id, t]);
 
   useEffect(() => {
     load();
@@ -140,6 +160,12 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
   useEffect(() => {
     onDirtyChange?.(dirty);
   }, [dirty, onDirtyChange]);
+
+  useEffect(() => {
+    if (state !== "ready") return;
+    if (dirty) rememberSelectionDraft(race.id, sel);
+    else forgetSelectionDraft(race.id);
+  }, [state, dirty, sel, race.id]);
 
   const stageTypes = useMemo(
     () => profiles.map((p) => p.profile_type).filter((type): type is string => typeof type === "string" && type.length > 0),
@@ -160,11 +186,28 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
     data?.eligible === false ||
     data?.did_not_start === true ||
     data?.lineup_locked === true ||
-    data?.withdrawn === true || // serveren afviser et gem for et afmeldt hold (409), saa fladen er laest
     data?.race?.status !== "scheduled";
   const clientErrors = state === "ready" && data?.size
     ? validateSelectionClient({ ...sel, size: data.size, sprintLeaderAllowed })
     : [];
+  const selectedRows = rows.filter((r) => sel.riderIds.includes(r.id));
+  const fitSelected = selectedRows.filter((r) => !r.injured).length;
+  const freeLeft = rows.filter((r) => r.selectable && !sel.riderIds.includes(r.id)).length;
+  // Samme regel og samme tekster som udtagelsespanelet: hvad sker der med de tomme pladser?
+  const outlook =
+    state === "ready" && !readOnly
+      ? partialSquadOutlook({ selected: fitSelected, injured: selectedRows.length - fitSelected, free: freeLeft, fieldMax: size.max })
+      : null;
+  const outlookWarns = outlook?.kind === "willNotStart" || outlook?.kind === "startsShort";
+  const outlookText = !outlook
+    ? null
+    : outlook.kind === "willNotStart"
+      ? tr(outlook.emptySelection ? "selection.willNotStartEmpty" : "selection.willNotStart", { min: outlook.min })
+      : outlook.kind === "startsShort"
+        ? tr("selection.startsShort", { injured: outlook.injured, starters: outlook.starters })
+        : sel.riderIds.length > 0
+          ? tr(outlook.kind === "assistantFills" ? "selection.partialHint" : "selection.partialHintShort", { open: outlook.open, free: outlook.free })
+          : null;
   const blockReason = dirty && clientErrors.length ? tr(`selection.errors.${clientErrors[0]}`, { min: size.min, max: size.max }) : null;
 
   const edit = (next: Selection) => {
@@ -207,6 +250,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
         return false;
       }
       setSaved(current.sel);
+      setData((d: SelectionResponse) => (d ? { ...d, withdrawn: false } : d)); // et gem melder holdet til igen
       setSaveState("saved");
       onSaved?.(race.id, entriesFromSelection(race.id, current.sel));
       return true;
@@ -219,11 +263,12 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
 
   const discard = useCallback(() => {
     if (!latest.current) return;
+    forgetSelectionDraft(race.id);
     setSel(latest.current.saved);
     setSaveState("idle");
     setSaveError(null);
     setNote(null);
-  }, []);
+  }, [race.id]);
 
   latest.current = { sel, saved, readOnly, clientErrors, sprintLeaderAllowed, size };
   useImperativeHandle(ref, () => ({ save, discard }), [save, discard]);
@@ -237,13 +282,13 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
   const cls = tr(`classOption.${race.raceClass}`, { defaultValue: String(race.raceClass ?? "") });
 
   const suggest = () => {
-    const proposal = suggestSquad({ rows, max: size.max, sprintLeaderAllowed });
+    const proposal = suggestSquad({ rows, max: size.max, sprintLeaderAllowed, current: sel });
     edit(proposal);
     setNote(t("race.suggested"));
   };
 
   const copyFrom = (source: { race: SeasonRace; riders: SeasonEntry[] }) => {
-    const { selection, skipped } = copySquadFrom({ source: source.riders, rows, max: size.max, sprintLeaderAllowed });
+    const { selection, skipped } = copySquadFrom({ source: source.riders, rows, max: size.max, sprintLeaderAllowed, current: sel });
     setCopyOpen(false);
     edit(selection);
     setNote(skipped > 0 ? t("race.copied", { name: source.race.name, skipped }) : t("race.copiedAll", { name: source.race.name }));
@@ -317,7 +362,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
               onSort={(key: SquadSortKey) => setSort((current) => nextSort(current, key))}
               profileCols={profileCols}
               max={size.max}
-              readOnly={readOnly}
+              readOnly={readOnly || saveState === "saving"}
               sprintLeaderAllowed={sprintLeaderAllowed}
               onToggle={toggle}
               onRole={setRole}
@@ -408,11 +453,12 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
         )}
       </header>
 
-      {(blockReason || note || saveState === "saved" || saveError || data?.lineup_locked || data?.withdrawn) && (
+      {(blockReason || note || outlookText || saveState === "saved" || saveError || data?.lineup_locked || data?.withdrawn) && (
         <div className="border-b border-cz-border px-4 py-2 text-xs" role="status">
           {data?.lineup_locked && <p className="text-cz-2">{t("race.locked")}</p>}
           {data?.withdrawn && !data?.lineup_locked && <p className="text-cz-2">{t("race.withdrawn")}</p>}
           {blockReason && <p className="text-cz-danger">{blockReason}</p>}
+          {outlookText && <p className={outlookWarns ? "text-cz-warning" : "text-cz-2"}>{outlookText}</p>}
           {saveError && (
             <p className="text-cz-danger" role="alert">
               {tr([`selection.errors.${saveError.code}`, "selection.errors.generic"], saveError.params)}

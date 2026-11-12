@@ -127,7 +127,8 @@ export default function SquadTable({
         <tbody>
           {rows.map((row) => {
             const checked = picked.has(row.id);
-            const disabled = readOnly || (!checked && (!row.selectable || atMax));
+            // En Train now-laast rytter kan hverken tages ind eller ud (serveren afviser begge).
+            const disabled = readOnly || row.trainNowLocked || (!checked && (!row.selectable || atMax));
             const dim = !row.selectable && !checked;
             return (
               <tr

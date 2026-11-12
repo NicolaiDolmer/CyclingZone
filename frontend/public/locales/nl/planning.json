@@ -58,7 +58,8 @@
     "copied": "Gekopieerd van {name}. {skipped, plural, one {# renner is overgeslagen (bezet, geblesseerd of niet beschikbaar).} other {# renners zijn overgeslagen (bezet, geblesseerd of niet beschikbaar).}}",
     "copiedAll": "Gekopieerd van {name}. Bekijk en sla op.",
     "locked": "De koers is gestart, dus de selectie is vergrendeld.",
-    "withdrawn": "Je team heeft zich afgemeld voor deze koers, dus de selectie kan niet worden gewijzigd."
+    "withdrawn": "Je team heeft zich afgemeld voor deze koers. Een selectie opslaan meldt het weer aan.",
+    "restored": "Je niet-opgeslagen wijzigingen zijn hersteld."
   },
   "copy": {
     "title": "Selectie kopiëren van",

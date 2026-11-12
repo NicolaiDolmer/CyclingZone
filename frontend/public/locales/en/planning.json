@@ -58,7 +58,8 @@
     "copied": "Copied from {name}. {skipped, plural, one {# rider was skipped (busy, injured or unavailable).} other {# riders were skipped (busy, injured or unavailable).}}",
     "copiedAll": "Copied from {name}. Review it and save.",
     "locked": "This race has started, so the squad is locked.",
-    "withdrawn": "Your team has withdrawn from this race, so the squad can't be changed."
+    "withdrawn": "Your team has withdrawn from this race. Saving a squad enters it again.",
+    "restored": "Restored your unsaved changes."
   },
   "copy": {
     "title": "Copy squad from",

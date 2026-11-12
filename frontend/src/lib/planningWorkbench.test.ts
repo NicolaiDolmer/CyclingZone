@@ -301,6 +301,28 @@ test("forslag: kun ledige ryttere, bedst rute-match foerst, op til feltet, med e
   assert.deepEqual(suggestSquad({ rows: [], max: 6, sprintLeaderAllowed: false }).riderIds, []);
 });
 
+test("ugeoversigt: to loeb paa forskellige loebsdage men samme kalenderdato ligger i hver sin bane", () => {
+  const same = dateIndex([
+    { gameDay: 1, date: "2026-11-12" },
+    { gameDay: 2, date: "2026-11-12" },
+  ]);
+  const layout = layoutWeek([race("a", 1, 1), race("b", 2, 2)], same, "2026-11-09");
+  const byId = Object.fromEntries(layout.bars.map((b) => [b.race.id, b]));
+  assert.notEqual(byId.a.lane, byId.b.lane);
+  assert.equal(layout.laneCount, 2);
+});
+
+test("forslag og kopier: en Train now-laast rytter der allerede er valgt bliver i truppen og beholder sin rolle", () => {
+  const rows = [row("a", { routeMatch: 90 }), row("lock", { routeMatch: 10, trainNowLocked: true, selectable: false }), row("c", { routeMatch: 70 })];
+  const current = sel({ riderIds: ["lock"], captainId: "lock" });
+  const suggested = suggestSquad({ rows, max: 2, sprintLeaderAllowed: false, current });
+  assert.deepEqual(suggested.riderIds, ["lock", "a"]);
+  assert.equal(suggested.captainId, "lock");
+  const copied = copySquadFrom({ source: [{ raceId: "x", riderId: "c", raceRole: "captain" }], rows, max: 2, sprintLeaderAllowed: false, current });
+  assert.deepEqual(copied.selection.riderIds, ["lock", "c"]);
+  assert.equal(copied.selection.captainId, "c");
+});
+
 test("kopiér trup: optagne og skadede ryttere springes over, roller foelger med de der bliver", () => {
   const rows = [row("a"), row("b", { busyIn: "Race x", selectable: false }), row("c"), row("d", { injured: true, selectable: false })];
   const { selection, skipped } = copySquadFrom({

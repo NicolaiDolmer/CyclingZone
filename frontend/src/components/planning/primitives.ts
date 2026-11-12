@@ -16,7 +16,13 @@ import { buttonClass as buttonClassBase } from "../ui/buttonStyles.js";
 import { statusBadgeClass as statusBadgeClassBase } from "../ui/badgeStyles.js";
 import { hasRouteData as hasRouteDataBase } from "../../lib/stageRouteProfile.js";
 import { riderBestRole as riderBestRoleBase } from "../../lib/riderRating.js";
-import { validateSelectionClient as validateSelectionClientBase } from "../../lib/raceSelectionLogic.js";
+import { validateSelectionClient as validateSelectionClientBase, partialSquadOutlook as partialSquadOutlookBase } from "../../lib/raceSelectionLogic.js";
+import {
+  rememberSelectionDraft as rememberSelectionDraftBase,
+  readSelectionDraft as readSelectionDraftBase,
+  forgetSelectionDraft as forgetSelectionDraftBase,
+  reconcileSelectionDraft as reconcileSelectionDraftBase,
+} from "../../lib/raceSelectionDraft.js";
 import { useReloadBlock as useReloadBlockBase, RELOAD_BLOCK_REASONS as RELOAD_BLOCK_REASONS_BASE } from "../../lib/reloadGate.js";
 
 type AnyComponent = (props: any) => any;
@@ -49,3 +55,17 @@ export const riderBestRole: (flat: Record<string, unknown>) => { rating: number 
 export const validateSelectionClient: (args: Record<string, unknown>) => string[] = validateSelectionClientBase as any;
 export const useReloadBlock: (active: boolean, reason?: string) => void = useReloadBlockBase as any;
 export const RELOAD_BLOCK_REASONS: { DIRTY: string } = RELOAD_BLOCK_REASONS_BASE as any;
+
+export const partialSquadOutlook: (args: Record<string, unknown>) => {
+  kind: string;
+  open: number;
+  free: number;
+  min: number;
+  injured?: number;
+  starters?: number;
+  emptySelection?: boolean;
+} | null = partialSquadOutlookBase as any;
+export const rememberSelectionDraft: (raceId: string, sel: unknown) => void = rememberSelectionDraftBase as any;
+export const readSelectionDraft: (raceId: string) => unknown = readSelectionDraftBase as any;
+export const forgetSelectionDraft: (raceId: string) => void = forgetSelectionDraftBase as any;
+export const reconcileSelectionDraft: (draft: unknown, riders: unknown) => any = reconcileSelectionDraftBase as any;

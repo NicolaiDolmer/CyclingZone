@@ -58,7 +58,8 @@
     "copied": "Copiado de {name}. {skipped, plural, one {Se omitió # corredor (ocupado, lesionado o no disponible).} other {Se omitieron # corredores (ocupados, lesionados o no disponibles).}}",
     "copiedAll": "Copiado de {name}. Revísalo y guárdalo.",
     "locked": "La carrera ya ha empezado, así que el equipo está bloqueado.",
-    "withdrawn": "Tu equipo se ha retirado de esta carrera, así que no se puede cambiar el equipo."
+    "withdrawn": "Tu equipo se ha retirado de esta carrera. Al guardar un equipo se vuelve a inscribir.",
+    "restored": "Se han recuperado tus cambios sin guardar."
   },
   "copy": {
     "title": "Copiar equipo de",

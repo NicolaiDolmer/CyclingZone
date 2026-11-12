@@ -58,7 +58,8 @@
     "copied": "Kopieret fra {name}. {skipped, plural, one {# rytter blev sprunget over (optaget, skadet eller ikke tilgængelig).} other {# ryttere blev sprunget over (optaget, skadet eller ikke tilgængelige).}}",
     "copiedAll": "Kopieret fra {name}. Gennemgå og gem.",
     "locked": "Løbet er startet, så truppen er låst.",
-    "withdrawn": "Dit hold har meldt fra til dette løb, så truppen kan ikke ændres."
+    "withdrawn": "Dit hold har meldt fra til dette løb. At gemme en trup melder det til igen.",
+    "restored": "Dine ikke gemte ændringer er genskabt."
   },
   "copy": {
     "title": "Kopiér trup fra",
