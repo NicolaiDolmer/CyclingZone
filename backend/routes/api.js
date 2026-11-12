@@ -7449,7 +7449,7 @@ router.get("/auctions", requireAuth, async (req, res) => {
       status, extension_count, created_at, is_guaranteed_sale,
       rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, is_u25,
         best_role, best_role_rating,
-        rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
+        rider_derived_abilities(${REGISTRY_ABILITY_KEYS.join(", ")})),
       seller:seller_team_id(id, name),
       current_bidder:current_bidder_id(id, name)
     `)
@@ -8575,7 +8575,7 @@ router.get("/transfers", requireAuth, async (req, res) => {
     .from("transfer_listings")
     .select(`id, asking_price, status, created_at, ${autoAccept ? "auto_accept_price," : ""}
       rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, current_production_value, is_u25, nationality_code, birthdate, salary, primary_type, secondary_type,
-        rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
+        rider_derived_abilities(${REGISTRY_ABILITY_KEYS.join(", ")})),
       seller:seller_team_id(id, name)`)
     .in("status", autoAccept && status === "open" ? ["open", "negotiating"] : [status])
     .order("created_at", { ascending: false });
@@ -8964,14 +8964,14 @@ router.get("/transfers/my-offers", requireAuth, async (req, res) => {
   const [sentRes, receivedRes] = await Promise.all([
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, current_production_value, nationality_code, salary, contract_length, contract_end_season, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
+        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, current_production_value, nationality_code, salary, contract_length, contract_end_season, rider_derived_abilities(${REGISTRY_ABILITY_KEYS.join(", ")})),
         seller:seller_team_id(id, name)`)
       .eq("buyer_team_id", req.team.id)
       .is("buyer_archived_at", null)
       .order("updated_at", { ascending: false }),
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, current_production_value, nationality_code, salary, contract_length, contract_end_season, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
+        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, current_production_value, nationality_code, salary, contract_length, contract_end_season, rider_derived_abilities(${REGISTRY_ABILITY_KEYS.join(", ")})),
         buyer:buyer_team_id(id, name)`)
       .eq("seller_team_id", req.team.id)
       .is("seller_archived_at", null)
@@ -8980,14 +8980,14 @@ router.get("/transfers/my-offers", requireAuth, async (req, res) => {
   const [archivedSentRes, archivedReceivedRes] = await Promise.all([
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, current_production_value, nationality_code, salary, contract_length, contract_end_season, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
+        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, current_production_value, nationality_code, salary, contract_length, contract_end_season, rider_derived_abilities(${REGISTRY_ABILITY_KEYS.join(", ")})),
         seller:seller_team_id(id, name)`)
       .eq("buyer_team_id", req.team.id)
       .not("buyer_archived_at", "is", null)
       .order("buyer_archived_at", { ascending: false }),
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, current_production_value, nationality_code, salary, contract_length, contract_end_season, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
+        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, current_production_value, nationality_code, salary, contract_length, contract_end_season, rider_derived_abilities(${REGISTRY_ABILITY_KEYS.join(", ")})),
         buyer:buyer_team_id(id, name)`)
       .eq("seller_team_id", req.team.id)
       .not("seller_archived_at", "is", null)
@@ -9413,8 +9413,8 @@ router.get("/transfers/swaps", requireAuth, async (req, res) => {
   const fields = `id, cash_adjustment, counter_cash, status, message,
     proposing_confirmed, receiving_confirmed, created_at, updated_at,
     proposing_archived_at, receiving_archived_at,
-    offered:offered_rider_id(id, firstname, lastname, market_value, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
-    requested:requested_rider_id(id, firstname, lastname, market_value, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
+    offered:offered_rider_id(id, firstname, lastname, market_value, rider_derived_abilities(${REGISTRY_ABILITY_KEYS.join(", ")})),
+    requested:requested_rider_id(id, firstname, lastname, market_value, rider_derived_abilities(${REGISTRY_ABILITY_KEYS.join(", ")})),
     proposing:proposing_team_id(id, name),
     receiving:receiving_team_id(id, name)`;
 
@@ -10032,7 +10032,7 @@ router.get("/teams/:id", requireAuth, async (req, res) => {
 
   const { data: riders } = await supabase
     .from("riders")
-    .select("id, firstname, lastname, market_value, salary, is_u25, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)")
+    .select(`id, firstname, lastname, market_value, salary, is_u25, rider_derived_abilities(${REGISTRY_ABILITY_KEYS.join(", ")})`)
     .eq("team_id", req.params.id)
     .order("market_value", { ascending: false });
 
@@ -17065,7 +17065,7 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
         .select("id, username, last_seen, login_streak, discord_handle, discord_id")
         .eq("id", team.user_id).single(),
       supabase.from("riders")
-        .select("id, firstname, lastname, birthdate, market_value, is_u25, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)")
+        .select(`id, firstname, lastname, birthdate, market_value, is_u25, rider_derived_abilities(${REGISTRY_ABILITY_KEYS.join(", ")})`)
         .eq("team_id", teamId).order("market_value", { ascending: false }),
       supabase.from("season_standings")
         // #1095: status med i join, så frontend kan markere igangværende sæson i historikken.
