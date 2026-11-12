@@ -1,33 +1,33 @@
 {
   "stagePlanReady": {
     "gc": {
-      "name": "Ride for GC",
-      "description": "Everyone rides for your GC leader and keeps him out of trouble.",
-      "named": "Ride for GC with {name}"
+      "name": "Rijden voor het klassement",
+      "description": "Iedereen rijdt voor je klassementskopman en houdt hem uit de problemen.",
+      "named": "Rijden voor het klassement met {name}"
     },
     "stage": {
-      "name": "Stage win",
-      "description": "The team works for the rider who suits today's route best.",
-      "named": "Stage win for {name}"
+      "name": "Ritzege",
+      "description": "De ploeg werkt voor de renner die het best past bij de route van vandaag.",
+      "named": "Ritzege voor {name}"
     },
     "sprint": {
-      "name": "Sprint",
-      "description": "The team saves him for the finish, with a train in the last km.",
-      "named": "Sprint for {name}"
+      "name": "Voor de sprint",
+      "description": "De ploeg spaart hem voor de finish, met een trein in de laatste 10 km.",
+      "named": "Sprint voor {name}"
     },
     "break": {
-      "name": "Go for the break",
-      "description": "Two riders try the break. The rest ride easy."
+      "name": "De vlucht zoeken",
+      "description": "Twee renners proberen mee te gaan in de vlucht. De rest rijdt rustig."
     },
     "save": {
-      "name": "Save the legs",
-      "description": "Everyone rides in. Lowest fatigue tonight."
+      "name": "Benen sparen",
+      "description": "Iedereen rijdt rustig binnen. De minste vermoeidheid vanavond."
     },
     "price": {
-      "easy": "Easy",
-      "medium": "Medium",
-      "hard": "Hard",
-      "veryHard": "Very hard"
+      "easy": "Licht",
+      "medium": "Gemiddeld",
+      "hard": "Zwaar",
+      "veryHard": "Heel zwaar"
     }
   },
   "stagePlan": {
@@ -1110,6 +1110,7 @@
     "line": "Standaard {role}. Vandaag: {today}.",
     "riderAbandoned": "Uit de koers",
     "copyToStage": "Kopiëren naar etappe {number}",
+    "copyToStages": "Kopiëren naar etappes {numbers}",
     "save": "Etappe {number} opslaan",
     "saveRaceDay": "Koersdag opslaan",
     "saving": "Opslaan…",

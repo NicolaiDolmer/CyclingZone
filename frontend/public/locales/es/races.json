@@ -1,33 +1,33 @@
 {
   "stagePlanReady": {
     "gc": {
-      "name": "Ride for GC",
-      "description": "Everyone rides for your GC leader and keeps him out of trouble.",
-      "named": "Ride for GC with {name}"
+      "name": "Correr para la general",
+      "description": "Todos corren para tu líder de la general y lo mantienen lejos de problemas.",
+      "named": "Correr para la general con {name}"
     },
     "stage": {
-      "name": "Stage win",
-      "description": "The team works for the rider who suits today's route best.",
-      "named": "Stage win for {name}"
+      "name": "Victoria de etapa",
+      "description": "El equipo trabaja para el corredor al que mejor le va la ruta de hoy.",
+      "named": "Victoria de etapa para {name}"
     },
     "sprint": {
-      "name": "Sprint",
-      "description": "The team saves him for the finish, with a train in the last km.",
-      "named": "Sprint for {name}"
+      "name": "Al sprint",
+      "description": "El equipo lo guarda para la llegada, con un tren en los últimos 10 km.",
+      "named": "Al sprint con {name}"
     },
     "break": {
-      "name": "Go for the break",
-      "description": "Two riders try the break. The rest ride easy."
+      "name": "Buscar la fuga",
+      "description": "Dos corredores intentan meterse en la fuga. El resto va tranquilo."
     },
     "save": {
-      "name": "Save the legs",
-      "description": "Everyone rides in. Lowest fatigue tonight."
+      "name": "Guardar las piernas",
+      "description": "Todos llegan tranquilos a meta. La menor fatiga esta noche."
     },
     "price": {
-      "easy": "Easy",
-      "medium": "Medium",
-      "hard": "Hard",
-      "veryHard": "Very hard"
+      "easy": "Suave",
+      "medium": "Media",
+      "hard": "Dura",
+      "veryHard": "Muy dura"
     }
   },
   "stagePlan": {
@@ -1110,6 +1110,7 @@
     "line": "Predeterminado: {role}. Hoy: {today}.",
     "riderAbandoned": "Fuera de la carrera",
     "copyToStage": "Copiar a la etapa {number}",
+    "copyToStages": "Copiar a las etapas {numbers}",
     "save": "Guardar etapa {number}",
     "saveRaceDay": "Guardar día de carrera",
     "saving": "Guardando…",
