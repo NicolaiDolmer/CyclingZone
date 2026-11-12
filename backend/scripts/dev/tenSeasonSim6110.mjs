@@ -1118,9 +1118,10 @@ export function inflationCheck(xpResult, curveBResult, requirements) {
   const xp = pts(xpResult)[season - 1];
   const b = pts(curveBResult)[season - 1];
   if (xp == null || b == null) return { season, perSeason, verdict: null, reason: `kørslen når ikke sæson ${season}` };
-  const extraPct = b > 0 ? round((100 * (xp - b)) / b, 2) : null;
+  // Dommen på det uafrundede tal (Codex P2): lige over grænsen må aldrig rundes ned til at holde.
+  const rawPct = b > 0 ? (100 * (xp - b)) / b : null;
   const limit = requirements.inflation.maxExtraPct;
-  return { season, xp, curveB: b, extraPct, limit, perSeason, verdict: extraPct != null && extraPct <= limit };
+  return { season, xp, curveB: b, extraPct: round(rawPct, 2), limit, perSeason, verdict: rawPct != null && rawPct <= limit };
 }
 
 /** Top-tabet: kohortens ryttere, hvis XP-karrieretop ligger under deres egen kurve B-top. */
@@ -1136,12 +1137,13 @@ export function topLossCheck(xpCohort, curveBCohort, requirements) {
     if (xpPeak < bPeak) losses.push(bPeak - xpPeak);
   }
   const below = losses.length;
-  const belowPct = n ? round((100 * below) / n, 2) : null;
+  const rawPct = n ? (100 * below) / n : 0;
+  const belowPct = n ? round(rawPct, 2) : null;
   const loss = statsOf(losses);
   const limit = requirements?.topLoss ?? null;
   if (!limit) return { n, below, belowPct, loss, verdict: null, reason: "krav mangler (privat)" };
   const okCount = limit.maxBelow == null || below <= limit.maxBelow;
-  const okPct = limit.maxBelowPct == null || (belowPct ?? 0) <= limit.maxBelowPct;
+  const okPct = limit.maxBelowPct == null || rawPct <= limit.maxBelowPct;
   return { n, below, belowPct, loss, limit, verdict: n > 0 && okCount && okPct };
 }
 
@@ -1190,7 +1192,7 @@ export function xpGateKey({ fingerprint, opts, estimateParams = null, knowledge 
   const inputs = [fingerprint, gateVariant.xpParams, curveBRunInputs(opts), opts.curveB ?? null,
     opts.xpVariationSpan ?? null, opts.xpAttackSpans ?? null, opts.xpAttackMemories ?? null, estimateParams, knowledge,
     // #7757: gulvet flytter X8; hukommelse og motorens kilde flytter kørslen.
-    gateVariant.raceDayFloor, opts.xpVariationMemory ?? null, engineHooks(opts).source];
+    gateVariant.raceDayFloor, gateVariant.plan, opts.xpVariationMemory ?? null, engineHooks(opts).source];
   return createHash("sha256").update(JSON.stringify(inputs)).digest("hex");
 }
 
@@ -1411,7 +1413,14 @@ export function dayXpFloor(world, seasonNumber, xp) {
 }
 
 /** X8: løbsdag mod hård dag i etapens evner for samme rytter, og mod løbsdagen i dag (kurve B). */
-export function raceVsTraining(world, seasonNumber, xp, opts, { sample = 1200, floor = false } = {}) {
+/** Gulvets hårde dage for en plan: standardplanen er én, rotationen er hver af dens sessioner. */
+export function floorHardPrograms(primaryType, secondaryType, plan = "standard") {
+  if (plan !== "rotate") return [assistantProgram(primaryType, secondaryType, { intensity: "hard" })];
+  const length = (V3_RIDER_TYPE_HARD_PAIRS[primaryType] ?? []).length + 2;
+  return Array.from({ length }, (_, i) => rotatingProgram(primaryType, secondaryType, i, { intensity: "hard" }));
+}
+
+export function raceVsTraining(world, seasonNumber, xp, opts, { sample = 1200, floor = false, plan = "standard" } = {}) {
   const hooks = engineHooks(opts);
   const ratios = { leader: [], helper: [], free: [] };
   const roles = { leader: "captain", helper: "helper", free: "free_role" };
@@ -1430,14 +1439,17 @@ export function raceVsTraining(world, seasonNumber, xp, opts, { sample = 1200, f
     const rates = riderXpRates({ potentiale: r.potentiale, age }, xp);
     const caps = opts.curveB ? buildCapsForRider(r.abilities, { potentiale: r.potentiale, age }, r.primary_type, r.secondary_type) : null;
     const ctx = { primaryType: r.primary_type, secondaryType: r.secondary_type, xp };
-    // Gulvets hårde dag er rytterens egen plan på hård intensitet, som i sæsonløkken.
-    const ownHard = floor ? xpProgramShares(assistantProgram(r.primary_type, r.secondary_type, { intensity: "hard" }), ctx) : null;
+    // Gulvets hårde dag er rytterens egen plan på hård intensitet, som i sæsonløkken. Med
+    // rotationen måles hver session, fordi gulvet skifter fra dato til dato (Codex P2).
+    const ownHards = floor
+      ? floorHardPrograms(r.primary_type, r.secondary_type, plan).map((p) => xpProgramShares(p, ctx))
+      : [null];
     for (const profile of RACE_PROFILES) {
       const focusAbilities = RACE_PROFILE_ABILITY_MAP[profile];
       const hardShares = xpProgramShares({ focus: "race_day", intensity: "hard", focusAbilities }, ctx);
       const hardBare = focusAbilities.reduce((s, a) => s + (hardShares[a] ?? 0) * (MENTAL_ABILITIES.has(a) ? rates.mental : rates.physical), 0);
       const hard = focusAbilities.reduce((s, a) => s + (hardShares[a] ?? 0) * staffMults[a] * (MENTAL_ABILITIES.has(a) ? rates.mental : rates.physical), 0);
-      for (const [group, role] of Object.entries(roles)) {
+      for (const [group, role] of Object.entries(roles)) for (const ownHard of ownHards) {
         const { program, mults: roleMults } = xpRaceDay(profile, role, { xp, raceRoleYield: opts.raceRoleYield });
         const raceShares = xpProgramShares(program, { ...ctx, raceDay: true });
         // Med gulvet (#7757) er løbsdagens andel allerede mindst den hårde dags med træner.
@@ -1611,7 +1623,8 @@ export function runXpGates(snapshot, opts, { estimateParams = null, knowledge = 
     "klatrer trænet til bakker, punch": { primaryType: "climber", secondaryType: null, session: "vo2max_punch", ability: "punch" },
     "puncheur, punch": { primaryType: "puncheur", secondaryType: null, session: "vo2max_punch", ability: "punch" },
   };
-  const out = { x4: {}, x5: dayXpFloor(world, season, xp), x8: raceVsTraining(world, season, xp, opts, { floor: gateVariant.raceDayFloor }) };
+  const out = { x4: {}, x5: dayXpFloor(world, season, xp),
+    x8: raceVsTraining(world, season, xp, opts, { floor: gateVariant.raceDayFloor, plan: gateVariant.plan }) };
   for (const potentiale of [6, 4]) {
     for (const [name, spec] of Object.entries(types)) {
       out.x4[`${name}, pot ${potentiale}`] = typeCareer({ ...spec, potentiale, startLevel: 20, seasons: 16 }, xp, opts);

@@ -12,7 +12,7 @@ import {
   orderResults, potentialPeakStats, quantile, raceRoleFor, raceShareForAge, raceSlot, raceVsTraining, renderXpGates,
   riderXpRates, rotatingProgram, runFingerprint, runVariant, runXpGates, talentAttack, typeCareer, variantList,
   variationSeries, veteranStats, xpDayVariation, xpProgramShares, xpRunInputs, xpVariant,
-  XP_ENGINE_HOOKS, assertPrivateOutDir, cohortFingerprint, dateGainBucket, inflationCheck, localDayVariationStep,
+  XP_ENGINE_HOOKS, assertPrivateOutDir, cohortFingerprint, dateGainBucket, floorHardPrograms, inflationCheck, localDayVariationStep,
   localRaceDayFloorShares, renderMotorpakke, renderX7, runCohort, topLossCheck, validateRequirements,
 } from "./tenSeasonSim6110.mjs";
 import { validateDevelopmentXpParams, xpPriceForNextPoint } from "../../lib/developmentXp.ts";
@@ -629,6 +629,30 @@ test("renderMotorpakke og renderX7: kravene, dagsloftet, kohorten og X7 særskil
   assert.ok(x7.includes("Taktik") && x7.includes("tactics") && x7.includes("Kohorten pr. alder"));
   const bare = renderMotorpakke(snap, results, [], { ...opts, requirements: null }, "test");
   assert.match(bare, /Grænserne mangler/);
+});
+
+test("Codex P2: dommen falder på det uafrundede tal, lige over grænsen holder ikke", () => {
+  const world = (pts) => ({ gates: { pointsPerSeason: pts } });
+  const req = validateRequirements({ inflation: { season: 1, maxExtraPct: 5 }, topLoss: { maxBelowPct: 33.33 } });
+  const inf = inflationCheck(world([105004]), world([100000]), req);
+  assert.equal(inf.extraPct, 5, "visningen er afrundet");
+  assert.equal(inf.verdict, false, "men 5,004 % er over 5 %");
+  const top = topLossCheck({ riderPeaks: { a: 1, b: 2, c: 3 } }, { riderPeaks: { a: 2, b: 2, c: 3 } }, req);
+  assert.equal(top.belowPct, 33.33);
+  assert.equal(top.verdict, false, "en tredjedel er over 33,33 %");
+});
+
+test("Codex P2: X8 måler gulvet med variantens egen plan, rotationen med hver session", () => {
+  assert.equal(floorHardPrograms("sprinter", null).length, 1);
+  const rot = floorHardPrograms("sprinter", null, "rotate");
+  assert.ok(rot.length > 1 && rot.every((p) => p.intensity === "hard"));
+  assert.notEqual(rot[0].focus, rot[1].focus);
+  const world = buildWorld(syntheticSnapshot());
+  const std = raceVsTraining(world, 4, XP, XP_OPTS, { sample: 3, floor: true });
+  const rotX8 = raceVsTraining(world, 4, XP, XP_OPTS, { sample: 3, floor: true, plan: "rotate" });
+  assert.ok(rotX8.checks > std.checks);
+  const opts = { ...XP_OPTS, xpGateVariant: "xp_gulv" };
+  assert.notEqual(xpGateKey({ fingerprint: "f", opts }), xpGateKey({ fingerprint: "f", opts: { ...opts, xpGateVariant: "xp_rot_gulv" } }), "planen er en del af gate-nøglen");
 });
 
 test("assertPrivateOutDir: kun balance-internals/6110", () => {
