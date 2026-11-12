@@ -1,6 +1,6 @@
 import { apiResponse } from "../../src/preview/mockHandlers.js";
 import { test, expect } from './e2e-base.js';
-import { installNetworkMocks, TEST_USER, TEST_TEAM, AUCTIONS, json } from './fixtures.js';
+import { installNetworkMocks, TEST_USER, TEST_TEAM, AUCTIONS, json, evidenceShotPath } from './fixtures.js';
 
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-11-11T12:00:00Z'));
@@ -715,3 +715,47 @@ test('#8022 a failed team read uses the existing error state instead of confirme
   await expect(page.getByRole('alert').filter({ hasText: /^Kunne ikke indl/ })).toBeVisible();
   await expect(page.locator('main header a[href="/finance"]')).toHaveCount(0);
 });
+
+
+for (const scenario of [{ width: 1440, hold: 'board' }, { width: 1024, hold: 'board' }, { width: 1440, hold: 'team' }, { width: 375, hold: 'board' }]) {
+  test(`#8022 pending desktop season and board match settled anatomy at ${scenario.width}px with ${scenario.hold} held`, async ({ page }) => {
+    await page.setViewportSize({ width: scenario.width, height: 900 });
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    let held = false;
+    const path = scenario.hold === 'board' ? '**/api/board/status' : '**/rest/v1/teams?**';
+    await page.route(path, async route => {
+      if (scenario.hold === 'team' && !new URL(route.request().url()).searchParams.has('user_id')) return route.fallback();
+      held = true;
+      await gate;
+      await route.fallback();
+    });
+    await page.goto('/dashboard');
+    const slot = page.locator('[data-loading-region="seasonBanner"]');
+    const boardHeading = page.getByRole('heading', { name: 'Bestyrelsens status', exact: true });
+    try {
+      await expect.poll(() => held).toBe(true);
+      await expect(page.locator('main header')).toBeVisible({ timeout: 2500 });
+      const pendingSeason = await slot.count() ? await slot.boundingBox() : null;
+      const pendingBoard = await boardHeading.count() ? await boardHeading.locator('xpath=../..').boundingBox() : null;
+      await page.screenshot({ path: evidenceShotPath(`pr-screens/8019-review2-${test.info().project.name}-${scenario.width}-${scenario.hold}-pending.png`), fullPage: true });
+      release();
+      const seasonLink = page.locator('main a[href="/planning?tab=calendar"].group.block.h-full');
+      await expect(seasonLink).toBeVisible();
+      await expect(boardHeading).toBeVisible();
+      const settledSeason = await seasonLink.boundingBox();
+      const settledBoard = await boardHeading.locator('xpath=../..').boundingBox();
+      await test.info().attach('canonical-season-board-geometry', { body: JSON.stringify({ scenario, pendingSeason, settledSeason, pendingBoard, settledBoard }), contentType: 'application/json' });
+      await page.screenshot({ path: evidenceShotPath(`pr-screens/8019-review2-${test.info().project.name}-${scenario.width}-${scenario.hold}-settled.png`), fullPage: true });
+      if (scenario.width >= 1024) {
+        expect(pendingSeason).not.toBeNull();
+        expect(pendingBoard).not.toBeNull();
+        expect(Math.abs(pendingSeason!.height - settledSeason!.height)).toBeLessThanOrEqual(1);
+        expect(Math.abs(pendingBoard!.height - settledBoard!.height)).toBeLessThanOrEqual(1);
+      } else {
+        expect(pendingSeason).toBeNull();
+        expect(pendingBoard).toBeNull();
+      }
+    } finally { release(); }
+  });
+}

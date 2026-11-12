@@ -1223,6 +1223,7 @@ export default function DashboardPage() {
   const boardPlanExpired = /** @type {any} */ (boardOutlook)?.feedback?.headline_key === "feedback.expired.headline";
   // "Pick your race squad" skjules MENS kortet vises (ingen to guldknapper); "Next move" er uroert.
   const showTeamSelectionCta = Boolean(squadSelectionMissingRace) && !firstRaceCardModel;
+  const seasonBannerPending = loading && !seasonInfo;
   // #1140: det TOMME "How your team did" (race: null) skjules mens "Your first race" vises,
   // saa budskabet ikke staar to gange. Har holdet et resultat (preview), er kortet uaendret.
   const myLatestResultEmptyHidden = Boolean(firstRaceCardModel) && myLatestResult?.race === null;
@@ -1490,10 +1491,10 @@ export default function DashboardPage() {
           begge kort afgør selv om de renderer intet (TeamSelectionCtaCard uden
           nextRace, sæsonbanneret uden seasonInfo), så vi spejler den samme
           betingelse her for at vide hvornår kollaps-col-span skal på. */}
-      {(showTeamSelectionCta || seasonInfo) && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-[14px] mb-4">
+      {(showTeamSelectionCta || seasonInfo || seasonBannerPending) && (
+        <div className={`${showTeamSelectionCta || seasonInfo ? "grid" : "hidden lg:grid"} grid-cols-1 lg:grid-cols-2 gap-[14px] mb-4`}>
           {showTeamSelectionCta && (
-            <div className={seasonInfo ? undefined : "lg:col-span-2"}>
+            <div className={seasonInfo || seasonBannerPending ? undefined : "lg:col-span-2"}>
               {/* #1681: holdudtagelse-CTA — synlig genvej direkte til det løb der
                   reelt MANGLER udtagelse (squadSelectionMissingRace, #2328).
                   #3243: startAtMs/nowMs giver kortet en ægte countdown til
@@ -1506,11 +1507,21 @@ export default function DashboardPage() {
               />
             </div>
           )}
-          {seasonInfo && (
-            <div className={showTeamSelectionCta ? undefined : "lg:col-span-2"}>
-              {/* Season Status Banner — links to the race calendar (#1421: was a
+          {(seasonInfo || seasonBannerPending) && (
+            <div data-loading-region="seasonBanner" aria-busy={seasonBannerPending}
+              className={seasonBannerPending ? "hidden lg:block lg:col-start-2" : showTeamSelectionCta ? undefined : "lg:col-span-2"}>
+              {seasonBannerPending ? (
+                // Measured canonical row at 1024/1440px, including the existing
+                // selection-card border/wrapping. Known selection stretches
+                // naturally; unknown presence gets a bounded pending slot only.
+                <Card className={`px-5 py-3.5 h-full flex flex-col justify-center gap-2 ${showTeamSelectionCta ? "" : "min-h-[145px] xl:min-h-[113px]"}`}>
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-3 w-3/4" />
+                </Card>
+              ) : seasonInfo && (
+              /* Season Status Banner — links to the race calendar (#1421: was a
                   dead Card). #2328: rettet fra /races (RaceHub) til /calendar.
-                  #3102 etape 3 (PR 3): kalenderen er en fane i Planlægnings-hubben. */}
+                  #3102 etape 3 (PR 3): kalenderen er en fane i Planlægnings-hubben. */
               <Link to="/planning?tab=calendar" className="group block h-full">
                 <Card
                   borderClass="border-cz-border group-hover:border-cz-accent/30"
@@ -1566,6 +1577,7 @@ export default function DashboardPage() {
                   </div>
                 </Card>
               </Link>
+              )}
             </div>
           )}
         </div>
@@ -2113,8 +2125,8 @@ export default function DashboardPage() {
             gridets sidste plads, parret med Global Rank-widget'en (docs/
             DASHBOARD_RULES.md §4 — /board har 959 sessions mod Mit Holds 5.955,
             så den fyldte mest og blev brugt mindst). */}
-        {isVisible("board") && board && (
-        <Section>
+        {isVisible("board") && (board || loading) && (
+        <Section className={board ? undefined : "hidden lg:block"} data-loading-region="board" aria-busy={!board}>
           <SectionHeader
             title={t("dashboard:cards.board.title")}
             action={<SectionAction as={Link} to="/board">{t("dashboard:cards.board.linkAll")}</SectionAction>}
@@ -2124,6 +2136,7 @@ export default function DashboardPage() {
                 <div>
                   <p className="font-data text-2xs uppercase tracking-[.08em] text-cz-3 mb-2">{t("dashboard:cards.board.satisfaction")}</p>
                   <div className="flex items-center gap-3">
+                    {board ? <>
                     <ProgressMeter
                       value={displaySatisfaction}
                       max={100}
@@ -2132,17 +2145,20 @@ export default function DashboardPage() {
                       ariaLabel={t("dashboard:cards.board.satisfaction")}
                     />
                     <span className={`font-mono font-bold text-sm ${satisfactionColor}`}>{displaySatisfaction}%</span>
+                    </> : <Skeleton className="h-5 w-full" />}
                   </div>
                 </div>
                 <div>
                   <p className="font-data text-2xs uppercase tracking-[.08em] text-cz-3 mb-2">{t("dashboard:cards.board.focus")}</p>
-                  <p className="text-cz-1 text-sm">{board.focus ? t(`dashboard:board.focus.${board.focus}`, { defaultValue: board.focus }) : "—"}</p>
+                  <p className="text-cz-1 text-sm">{board ? (board.focus ? t(`dashboard:board.focus.${board.focus}`, { defaultValue: board.focus }) : "—") : <Skeleton className="h-5 w-3/4" />}</p>
                 </div>
                 <div>
                   <p className="font-data text-2xs uppercase tracking-[.08em] text-cz-3 mb-2">{t("dashboard:cards.board.budgetMultiplier")}</p>
+                  {board ? (
                   <p className={`font-mono font-bold text-sm ${board.budget_modifier >= 1 ? "text-cz-success" : "text-cz-danger"}`}>
                     ×{board.budget_modifier?.toFixed(2) || "1.00"}
                   </p>
+                  ) : <Skeleton className="h-5 w-3/4" />}
                 </div>
               </div>
               {/* #7507: en plan der aldrig er underskrevet (nyt hold) har intet at evaluere — vis
