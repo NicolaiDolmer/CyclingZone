@@ -269,8 +269,8 @@ aldrig et fald på 100 %.
 **Overgangsregel (#7964 b):** er grundlaget flyttet af rettelsen (`sponsorGrowthBaselineShifted`:
 den valgte sæson er ikke planens første snapshot-sæson, som var den gamle regels grundlag og
 her havde 0, så den gamle regel gav `awaiting_data`), holdes et `behind`-udfald i
-`evaluateGoalProgress` på præcis det neutrale udfald fra før (`awaiting_data`, score 0.6,
-`actual` null). `on_track` og `ahead` tæller som målt. Rettelsen kan derfor aldrig sænke
+`evaluateGoalProgress` på præcis det neutrale udfald fra før (`awaiting_data`, samme neutrale
+score som før rettelsen, `actual` null). `on_track` og `ahead` tæller som målt. Rettelsen kan derfor aldrig sænke
 tilfredsheden, sponsor-modifieren eller udløse tvungen salgsliste for de hold, den flytter.
 Milepælens dom ved forfald er uændret (en målbar milepæl under målet er misset, som den også
 var før rettelsen). Halv-sæsonens tjek (`boardMidSeason.js`) får ingen sponsortal i sin kontekst
