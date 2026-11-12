@@ -19,7 +19,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { evaluateGoal, evaluateGoalProgress } from "./boardGoals.js";
+import { loadGoalContextForBoard } from "./boardGoalContext.js";
 import { scoreHigherBetter } from "./boardUtils.js";
+import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 
 const GOAL = { type: "sponsor_growth", target: 12, cumulative: true };
 
@@ -181,6 +183,56 @@ test("#3494 · no-punishment: den gamle målings evige 0%-gulv matcher scoreHigh
     assert.equal(scoreHigherBetter(actual, 12), 0,
       `actual=${actual} skal give samme gulv-score (0) som den gamle altid-0-måling`);
   }
+});
+
+// ─── #7964 · grundlag = holdets første afsluttede plan-sæson MED sponsortal ───
+
+test("#7964 · plan fra sæson 1, tal først fra sæson 2: +20% mod sæson 2 giver met=true", async () => {
+  const supabase = createFakeSupabase({
+    board_plan_snapshots: [
+      { board_id: "b1", season_id: "s1", season_within_plan: 1, season_number: 1, u25_stat_sum: null, u25_count: null },
+      { board_id: "b1", season_id: "s2", season_within_plan: 2, season_number: 2, u25_stat_sum: null, u25_count: null },
+      { board_id: "b1", season_id: "s3", season_within_plan: 3, season_number: 3, u25_stat_sum: null, u25_count: null },
+      { board_id: "b1", season_id: "s4", season_within_plan: 4, season_number: 4, u25_stat_sum: null, u25_count: null },
+    ],
+    finance_transactions: [
+      { team_id: "t1", season_id: "s2", reason_code: "season_start_sponsor", amount: 400_000 },
+      { team_id: "t1", season_id: "s3", reason_code: "season_start_sponsor", amount: 430_000 },
+      { team_id: "t1", season_id: "s4", reason_code: "season_start_sponsor", amount: 460_000 },
+      { team_id: "t1", season_id: "s5", reason_code: "season_start_sponsor", amount: 480_000 }, // +20% mod s2
+    ],
+    race_results: [],
+  });
+  const context = await loadGoalContextForBoard({
+    supabase, teamId: "t1", boardId: "b1", currentSeasonId: "s5", planStartSeasonNumber: 1,
+  });
+
+  const goal = { ...GOAL, target: 20 };
+  const progress = evaluateGoalProgress(goal, null, TEAM_WITH_DEAD_FIELD, { ...context, isFinalSeason: true });
+  assert.equal(progress.met, true);
+  assert.equal(progress.status, "ahead");
+  assert.equal(progress.actual, 20);
+  assert.equal(evaluateGoal(goal, null, TEAM_WITH_DEAD_FIELD, { ...context, isFinalSeason: true }), true);
+});
+
+test("#7964 · ingen plan-sæson med tal: målet står stadig som awaiting_data (ikke fejlet)", async () => {
+  const supabase = createFakeSupabase({
+    board_plan_snapshots: [
+      { board_id: "b1", season_id: "s1", season_within_plan: 1, season_number: 1, u25_stat_sum: null, u25_count: null },
+    ],
+    finance_transactions: [
+      { team_id: "t1", season_id: "s2", reason_code: "season_start_sponsor", amount: 400_000 },
+    ],
+    race_results: [],
+  });
+  const context = await loadGoalContextForBoard({
+    supabase, teamId: "t1", boardId: "b1", currentSeasonId: "s2", planStartSeasonNumber: 1,
+  });
+
+  assert.equal(context.sponsorGrowthBaselineIncome, null);
+  const progress = evaluateGoalProgress({ ...GOAL, target: 20 }, null, TEAM_WITH_DEAD_FIELD, { ...context, isFinalSeason: true });
+  assert.equal(progress.status, "awaiting_data");
+  assert.notEqual(progress.met, true);
 });
 
 test("#3494 · no-punishment: `met` kan kun blive true efter fixet, aldrig regrediere fra sandt til falsk", () => {

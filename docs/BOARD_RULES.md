@@ -247,6 +247,20 @@ begge sider læste `teams.sponsor_income` — en kolonne der aldrig opdateres ef
 `boardGoalContext.js`), med baseline = planens første afsluttede sæson. Ingen baseline (plan-sæson
 1) eller ingen måling → `awaiting_data`, aldrig et fallback til det døde felt.
 
+**Baseline pr. hold (#7964, ejer 12/11):** grundlaget er holdets **første afsluttede sæson i
+planvinduet MED sponsor-udbetalinger** (sum af `SPONSOR_GROWTH_REASON_CODES` > 0,
+`pickSponsorGrowthBaseline` i `boardGoalContext.js`), ikke blindt planens første sæson. Planer der
+startede i en sæson uden udbetalinger fik før baseline 0, så målet stod evigt som `awaiting_data`
+og vision-milepælen blev dømt misset ved forfald. Et hold der først fik sponsortal senere i planen
+måles fra sin egen første sæson med tal. Den indeværende sæson er aldrig sit eget grundlag.
+Målprocenten og spillerteksten er uændrede. Gælder både plan-målet på BoardPage og
+vision-milepælene (samme kontekst-loader).
+
+**Uden målegrundlag aldrig misset (#7964):** findes der intet grundlag (ingen afsluttet plan-sæson
+med tal, eller ingen måling af indeværende sæson), får en forfalden `sponsor_growth`-milepæl ingen
+afgørelse i `evaluateDueMilestones` (`boardMandateEngine.js`): ingen status, intet tillidsslag. Den
+står som `pending`. "Kan ikke måles" er ikke "fejlet". Andre måltyper er uændrede.
+
 ---
 
 ## 4. De seks konsekvens-lag
