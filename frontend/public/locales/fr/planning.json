@@ -15,7 +15,8 @@
     "prev": "Semaine précédente",
     "next": "Semaine suivante",
     "week": "Semaine {week}",
-    "empty": "Aucune course cette semaine. Utilise les flèches pour trouver la suivante."
+    "empty": "Aucune course cette semaine. Utilise les flèches pour trouver la suivante.",
+    "raceDaysShort": "JC {days}"
   },
   "raceList": {
     "title": "Liste des courses",
@@ -26,6 +27,7 @@
     "weekLabel": "Semaine {week}",
     "weekSummary": "Semaine {week} · {count, plural, one {# course} other {# courses}} · {missing, plural, =0 {tout est prêt} other {# à compléter}}",
     "raceDay": "Jour de course {day}",
+    "raceDays": "Jours de course {days}",
     "stages": "{count, plural, one {# étape} other {# étapes}}",
     "oneDay": "Course d'un jour",
     "sharesDays": "Partage des jours de course avec {races}",

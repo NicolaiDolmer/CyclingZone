@@ -15,7 +15,8 @@
     "prev": "Previous week",
     "next": "Next week",
     "week": "Week {week}",
-    "empty": "No races this week. Use the arrows to find the next one."
+    "empty": "No races this week. Use the arrows to find the next one.",
+    "raceDaysShort": "RD {days}"
   },
   "raceList": {
     "title": "Race list",
@@ -26,6 +27,7 @@
     "weekLabel": "Week {week}",
     "weekSummary": "Week {week} · {count, plural, one {# race} other {# races}} · {missing, plural, =0 {all ready} other {# missing}}",
     "raceDay": "Race day {day}",
+    "raceDays": "Race days {days}",
     "stages": "{count, plural, one {# stage} other {# stages}}",
     "oneDay": "One-day",
     "sharesDays": "Shares race days with {races}",

@@ -15,7 +15,8 @@
     "prev": "Forrige uge",
     "next": "Næste uge",
     "week": "Uge {week}",
-    "empty": "Ingen løb i denne uge. Brug pilene til at finde det næste."
+    "empty": "Ingen løb i denne uge. Brug pilene til at finde det næste.",
+    "raceDaysShort": "LD {days}"
   },
   "raceList": {
     "title": "Løbsliste",
@@ -26,6 +27,7 @@
     "weekLabel": "Uge {week}",
     "weekSummary": "Uge {week} · {count, plural, one {# løb} other {# løb}} · {missing, plural, =0 {alle klar} other {# mangler}}",
     "raceDay": "Løbsdag {day}",
+    "raceDays": "Løbsdage {days}",
     "stages": "{count, plural, one {# etape} other {# etaper}}",
     "oneDay": "Endagsløb",
     "sharesDays": "Deler løbsdage med {races}",

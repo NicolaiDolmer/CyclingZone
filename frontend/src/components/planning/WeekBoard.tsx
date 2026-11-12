@@ -5,7 +5,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronLeftIcon, ChevronRightIcon, Button } from "./primitives.ts";
-import { layoutWeek, raceReadiness, isoWeekNumber, addDays, type SeasonRace } from "../../lib/planningWorkbench.ts";
+import { layoutWeek, raceReadiness, isoWeekNumber, addDays, gameDaysOnDate, gameDaySpan, raceDayLabelKey, type SeasonRace } from "../../lib/planningWorkbench.ts";
 import { StageStrip, ReadinessMark, formatShortDate, formatDayHeader } from "./planningUi.tsx";
 
 interface WeekBoardProps {
@@ -84,6 +84,14 @@ export default function WeekBoard({
             >
               <span className="block truncate">{formatDayHeader(day, i18n.language).weekday}</span>
               <span className="block truncate tabular-nums">{formatDayHeader(day, i18n.language).day}</span>
+              {/* Loebsdags-aksen under datoen (PLANNING_CENTER_RULES §3). */}
+              {gameDaysOnDate(dates, day) && (
+                <span className="block truncate tabular-nums" title={t("raceList.raceDays", { days: gameDaysOnDate(dates, day) })}>
+                  {/* Smal kolonne paa mobil: kun tallene; titlen siger "Loebsdage". */}
+                  <span className="sm:hidden">{gameDaysOnDate(dates, day)}</span>
+                  <span className="hidden sm:inline">{t("weekBoard.raceDaysShort", { days: gameDaysOnDate(dates, day) })}</span>
+                </span>
+              )}
             </div>
           ))}
           {layout.bars.map(({ race, lane, startCol, endCol }) => {
@@ -96,7 +104,7 @@ export default function WeekBoard({
                 type="button"
                 onClick={() => onSelect(race.id)}
                 aria-pressed={selected}
-                title={race.name}
+                title={`${race.name} · ${t(raceDayLabelKey(race), { day: gameDaySpan(race.gameDayStart, race.gameDayEnd), days: gameDaySpan(race.gameDayStart, race.gameDayEnd) })}`}
                 style={{ gridColumn: `${startCol + 1} / ${endCol + 2}`, gridRow: lane + 2 }}
                 className={`flex min-w-0 items-center gap-2 rounded-cz border px-2 py-1.5 text-left text-xs transition-colors ${
                   selected ? "border-cz-3 bg-cz-subtle" : "border-cz-border bg-cz-card hover:bg-cz-subtle"

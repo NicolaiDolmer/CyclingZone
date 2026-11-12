@@ -9,6 +9,8 @@ import {
   overlappingRaces,
   raceReadiness,
   raceStartDate,
+  raceDayLabelKey,
+  gameDaySpan,
   mondayOf,
   type RaceScope,
   type Readiness,
@@ -78,7 +80,9 @@ function RaceRow({
       <span className="min-w-0">
         <span className="block truncate text-[13.5px] font-medium text-cz-1">{race.name}</span>
         <span className="mt-0.5 block font-data text-2xs uppercase tracking-wide text-cz-3">
-          {start ? formatShortDate(start, i18n.language) : t("raceList.raceDay", { day: race.gameDayStart })}
+          {/* Begge akser (PLANNING_CENTER_RULES §3): kalenderdatoen og loebsdagene. */}
+          {start ? `${formatShortDate(start, i18n.language)} · ` : ""}
+          {t(raceDayLabelKey(race), { day: gameDaySpan(race.gameDayStart, race.gameDayEnd), days: gameDaySpan(race.gameDayStart, race.gameDayEnd) })}
           {cls ? ` · ${cls}` : ""}
           {" · "}
           {race.stages > 1 ? t("raceList.stages", { count: race.stages }) : t("raceList.oneDay")}

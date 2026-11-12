@@ -43,8 +43,8 @@ function StatusCell({ row }: { row: SquadRow }) {
 function FatigueCell({ value }: { value: number | null }) {
   if (value == null) return <span className="text-cz-3">-</span>;
   return (
-    <span className="inline-flex items-center justify-end gap-1.5">
-      <span aria-hidden="true" className="block h-1 bg-cz-3/50" style={{ width: `${Math.max(2, Math.min(36, value * 0.36))}px` }} />
+    <span className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
+      <span aria-hidden="true" className="hidden h-1 bg-cz-3/50 sm:block" style={{ width: `${Math.max(2, Math.min(36, value * 0.36))}px` }} />
       <span className="tabular-nums">{value}</span>
     </span>
   );
@@ -94,7 +94,7 @@ export default function SquadTable({
       sortDir={sort.dir}
       onSort={onSort}
       title={title}
-      className={`px-2 py-2 font-data text-2xs font-semibold uppercase tracking-widest text-cz-3 ${numeric ? "text-right" : "text-left"} bg-cz-subtle ${hideMobile ? "hidden sm:table-cell" : ""}`}
+      className={`px-1.5 py-2 font-data text-2xs font-semibold uppercase tracking-normal text-cz-3 sm:px-2 sm:tracking-widest ${numeric ? "text-right" : "text-left"} bg-cz-subtle ${hideMobile ? "hidden sm:table-cell" : ""}`}
     >
       {label}
     </SortableTh>
@@ -148,7 +148,7 @@ export default function SquadTable({
                     />
                   </label>
                 </td>
-                <td className="px-2 py-[7px] text-left">
+                <td className="w-full px-1.5 py-[7px] text-left sm:w-auto sm:px-2">
                   <div className="flex items-start gap-1 sm:block">
                     <label className={`-ms-2 flex h-11 w-11 shrink-0 items-center justify-center sm:hidden ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
                       <input
@@ -167,7 +167,7 @@ export default function SquadTable({
                       </div>
                       {checked && !readOnly && (
                         <div className="mt-1.5 sm:hidden">
-                          <RoleSelect row={row} selection={selection} roles={roles} onRole={onRole} />
+                          <RoleSelect row={row} selection={selection} roles={roles} onRole={onRole} className="w-full min-w-0" />
                         </div>
                       )}
                     </div>
@@ -197,11 +197,11 @@ export default function SquadTable({
                     <span className="text-cz-3">-</span>
                   )}
                 </td>
-                <td className={`px-2 py-[7px] text-right font-data text-[13px] tabular-nums ${row.selectable && row.routeMatch != null && row.routeMatch === bestMatch ? "font-semibold text-cz-accent-t" : ""}`}>
+                <td className={`whitespace-nowrap px-1.5 py-[7px] text-right font-data text-[13px] tabular-nums sm:px-2 ${row.selectable && row.routeMatch != null && row.routeMatch === bestMatch ? "font-semibold text-cz-accent-t" : ""}`}>
                   {row.routeMatch ?? <span className="text-cz-3">-</span>}
                 </td>
-                <td className="px-2 py-[7px] text-right font-data text-[13px] tabular-nums">{row.form ?? <span className="text-cz-3">-</span>}</td>
-                <td className="px-2 py-[7px] text-right font-data text-[13px]">
+                <td className="whitespace-nowrap px-1.5 py-[7px] text-right font-data text-[13px] tabular-nums sm:px-2">{row.form ?? <span className="text-cz-3">-</span>}</td>
+                <td className="whitespace-nowrap px-1.5 py-[7px] text-right font-data text-[13px] tabular-nums sm:px-2">
                   <FatigueCell value={row.fatigue} />
                 </td>
                 {profileCols.map((c) => {
@@ -230,11 +230,13 @@ function RoleSelect({
   selection,
   roles,
   onRole,
+  className = "min-w-[8.5rem]",
 }: {
   row: SquadRow;
   selection: Selection;
   roles: RoleKey[];
   onRole: (riderId: string, role: RoleKey) => void;
+  className?: string;
 }) {
   const { t } = useTranslation("planning");
   return (
@@ -243,7 +245,7 @@ function RoleSelect({
       value={roleOf(selection, row.id)}
       onChange={(e: { target: { value: string } }) => onRole(row.id, e.target.value as RoleKey)}
       aria-label={t("squad.roleFor", { name: row.name })}
-      className="min-w-[8.5rem]"
+      className={className}
     >
       {roles.map((r) => (
         <option key={r} value={r}>

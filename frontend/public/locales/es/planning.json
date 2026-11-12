@@ -15,7 +15,8 @@
     "prev": "Semana anterior",
     "next": "Semana siguiente",
     "week": "Semana {week}",
-    "empty": "No hay carreras esta semana. Usa las flechas para buscar la siguiente."
+    "empty": "No hay carreras esta semana. Usa las flechas para buscar la siguiente.",
+    "raceDaysShort": "DC {days}"
   },
   "raceList": {
     "title": "Lista de carreras",
@@ -26,6 +27,7 @@
     "weekLabel": "Semana {week}",
     "weekSummary": "Semana {week} · {count, plural, one {# carrera} other {# carreras}} · {missing, plural, =0 {todo listo} other {# por completar}}",
     "raceDay": "Día de carrera {day}",
+    "raceDays": "Días de carrera {days}",
     "stages": "{count, plural, one {# etapa} other {# etapas}}",
     "oneDay": "Clásica",
     "sharesDays": "Comparte días de carrera con {races}",

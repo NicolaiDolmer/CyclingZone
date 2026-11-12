@@ -15,7 +15,8 @@
     "prev": "Vorige week",
     "next": "Volgende week",
     "week": "Week {week}",
-    "empty": "Geen koersen deze week. Gebruik de pijlen om de volgende te vinden."
+    "empty": "Geen koersen deze week. Gebruik de pijlen om de volgende te vinden.",
+    "raceDaysShort": "KD {days}"
   },
   "raceList": {
     "title": "Koerslijst",
@@ -26,6 +27,7 @@
     "weekLabel": "Week {week}",
     "weekSummary": "Week {week} · {count, plural, one {# koers} other {# koersen}} · {missing, plural, =0 {alles klaar} other {# ontbreken}}",
     "raceDay": "Koersdag {day}",
+    "raceDays": "Koersdagen {days}",
     "stages": "{count, plural, one {# rit} other {# ritten}}",
     "oneDay": "Eendagskoers",
     "sharesDays": "Deelt koersdagen met {races}",

@@ -5,7 +5,7 @@
 // GET /api/races/selection/season og udtagelsen GET/PUT /api/races/:id/selection);
 // modellen finder aldrig paa sine egne tal. Rute-match, form og traethed kommer
 // fra serveren, og rollereglerne genbruger raceSelectionLogic.js.
-import { resolveBoardRoles } from "./raceSelectionLogic.js";
+import { pickFallbackCaptain, resolveBoardRoles } from "./raceSelectionLogic.js";
 
 // ── Typer (spejler wire-formen fra de eksisterende endpoints) ───────────────
 
@@ -123,6 +123,27 @@ export function raceStartDate(race: SeasonRace, dates: Map<number, string>): str
 
 export function raceEndDate(race: SeasonRace, dates: Map<number, string>): string | null {
   return dates.get(race.gameDayEnd) ?? dates.get(race.gameDayStart) ?? null;
+}
+
+/**
+ * Loebsdags-aksen (PLANNING_CENTER_RULES §3): "41" eller "41-43". Vises altid sammen med
+ * kalenderdatoen, for en loebsdag kan ikke udledes af datoen.
+ */
+export function gameDaySpan(from: number, to: number = from): string {
+  const a = Math.min(from, to);
+  const b = Math.max(from, to);
+  return a === b ? String(a) : `${a}-${b}`;
+}
+
+/** Oversaettelsesnoeglen til et loebs loebsdage: ental for en enkelt dag, ellers spaendet. */
+export function raceDayLabelKey(race: SeasonRace): "raceList.raceDay" | "raceList.raceDays" {
+  return race.gameDayEnd > race.gameDayStart ? "raceList.raceDays" : "raceList.raceDay";
+}
+
+/** Loebsdagene der ligger paa en kalenderdato, som spaend ("41-42"), eller null. */
+export function gameDaysOnDate(dates: Map<number, string>, date: string): string | null {
+  const days = [...dates].filter(([, d]) => d === date).map(([day]) => day).sort((x, y) => x - y);
+  return days.length ? gameDaySpan(days[0], days[days.length - 1]) : null;
 }
 
 // ── Loeb: overlap, status, uger ─────────────────────────────────────────────
@@ -593,10 +614,26 @@ export function suggestSquad(args: {
     .slice(0, Math.max(0, max - lockedIds.length));
   const riderIds = [...lockedIds, ...pool.map((r) => r.id)];
   const byId = new Map(rows.map((r) => [r.id, r]));
+  // Codex P2 (#8056): de laaste rytteres roller afgoeres FOER resten, saa en laast jaeger med
+  // hoejest rute-match ikke bliver kaptajn og derefter faar sin rolle tilbage uden kaptajn.
+  const lockedRole = new Map<string, RoleKey>();
+  if (args.current) {
+    for (const id of lockedIds) {
+      const role = roleOf(args.current, id);
+      if (role !== "rider") lockedRole.set(id, role);
+    }
+  }
+  const lockedWith = (role: RoleKey) => [...lockedRole].find(([, r]) => r === role)?.[0] ?? null;
+  const suitabilityOf = (id: string) => (lockedRole.has(id) ? null : byId.get(id)?.routeMatch ?? null);
   const roles = resolveBoardRoles({
     riderIds,
     sprintLeaderAllowed,
-    suitabilityOf: (id: string) => byId.get(id)?.routeMatch ?? null,
+    captainId: lockedWith("captain"),
+    coCaptainId: lockedWith("co_captain"),
+    sprintCaptainId: lockedWith("sprint_captain"),
+    hunterId: lockedWith("hunter"),
+    freeRoleIds: [...lockedRole].filter(([, r]) => r === "free_role").map(([id]) => id),
+    suitabilityOf,
     ...(sprintLeaderAllowed ? { luxuryHelperId: null } : {}),
   });
   let proposal: Selection = {
@@ -608,11 +645,13 @@ export function suggestSquad(args: {
     coCaptainId: roles.co_captain_id ?? null,
     luxuryHelperId: null,
   };
-  if (args.current) {
-    for (const id of lockedIds) {
-      const role = roleOf(args.current, id);
-      if (role !== "rider") proposal = setRiderRole(proposal, id, role);
-    }
+  for (const [id, role] of lockedRole) proposal = setRiderRole(proposal, id, role);
+  // Fik en laast rolle alligevel kaptajnen fjernet (fx en laast delt kaptajn, der rykkede op),
+  // vaelges kaptajnen igen blandt rytterne uden rolle, som resolveBoardRoles ville.
+  if (!proposal.captainId && proposal.riderIds.length && !(proposal.sprintCaptainId && sprintLeaderAllowed)) {
+    const plain = proposal.riderIds.filter((id) => roleOf(proposal, id) === "rider");
+    const captain = pickFallbackCaptain({ riderIds: plain, suitabilityOf });
+    if (captain != null) proposal = setRiderRole(proposal, captain, "captain");
   }
   return proposal;
 }

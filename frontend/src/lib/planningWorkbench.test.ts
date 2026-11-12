@@ -26,6 +26,9 @@ import {
   nextSort,
   DEFAULT_SQUAD_SORT,
   suggestSquad,
+  gameDaySpan,
+  gameDaysOnDate,
+  raceDayLabelKey,
   copySquadFrom,
   buildSquadRows,
   availableRoles,
@@ -321,6 +324,44 @@ test("forslag og kopier: en Train now-laast rytter der allerede er valgt bliver 
   const copied = copySquadFrom({ source: [{ raceId: "x", riderId: "c", raceRole: "captain" }], rows, max: 2, sprintLeaderAllowed: false, current });
   assert.deepEqual(copied.selection.riderIds, ["lock", "c"]);
   assert.equal(copied.selection.captainId, "c");
+});
+
+test("begge akser: loebsdags-spaendet vises ved siden af datoen, ogsaa naar datoen findes", () => {
+  assert.equal(gameDaySpan(41), "41");
+  assert.equal(gameDaySpan(41, 43), "41-43");
+  assert.equal(gameDaySpan(43, 41), "41-43");
+  const dates = dateIndex([
+    { gameDay: 41, date: "2026-11-12" },
+    { gameDay: 42, date: "2026-11-12" },
+    { gameDay: 43, date: "2026-11-13" },
+  ]);
+  assert.equal(gameDaysOnDate(dates, "2026-11-12"), "41-42");
+  assert.equal(gameDaysOnDate(dates, "2026-11-13"), "43");
+  assert.equal(gameDaysOnDate(dates, "2026-11-14"), null);
+  assert.equal(raceDayLabelKey(race("a", 41, 41)), "raceList.raceDay");
+  assert.equal(raceDayLabelKey(race("a", 41, 43)), "raceList.raceDays");
+});
+
+test("forslag: en Train now-laast jaeger med hoejest rute-match beholder rollen, og truppen faar stadig en kaptajn", () => {
+  // Codex P2 (#8056): resolveBoardRoles gjorde den laaste jaeger til kaptajn, og loekken der
+  // gendanner hans rolle nulstillede derefter kaptajnen, saa Gem var slaaet fra.
+  const rows = [
+    row("lock", { routeMatch: 95, trainNowLocked: true, selectable: false }),
+    row("cap", { routeMatch: 80 }),
+    row("c", { routeMatch: 60 }),
+  ];
+  const current = sel({ riderIds: ["lock"], hunterId: "lock" });
+  for (const sprintLeaderAllowed of [false, true]) {
+    const s = suggestSquad({ rows, max: 3, sprintLeaderAllowed, current });
+    assert.deepEqual(s.riderIds, ["lock", "cap", "c"]);
+    assert.equal(s.hunterId, "lock");
+    assert.equal(s.captainId, "cap");
+    assert.equal(roleOf(s, "lock"), "hunter");
+  }
+  // En laast delt kaptajn rykker ikke op og efterlader ikke truppen uden kaptajn.
+  const co = suggestSquad({ rows, max: 3, sprintLeaderAllowed: true, current: sel({ riderIds: ["lock"], coCaptainId: "lock" }) });
+  assert.equal(co.coCaptainId, "lock");
+  assert.equal(co.captainId, "cap");
 });
 
 test("kopiér trup: optagne og skadede ryttere springes over, roller foelger med de der bliver", () => {

@@ -352,6 +352,16 @@ features:
     decide_by: 2026-11-21
     note: Kontakt fatigue_now_7801 (ikke seedet = slukket); ejer tænder.
 
+  - id: planning-workbench
+    area: season
+    title_en: One planning page (week board, race list, squad)
+    title_da: Én planlægningsside (ugeoversigt, løbsliste, trup)
+    state: building
+    ssot: docs/PLANNING_CENTER_RULES.md
+    epic: 7535
+    verified: 2026-11-12
+    note: Kontakt planning_workbench (ikke seedet = slukket, /planning/workbench); ejer tænder.
+
   - id: luxury-helper-role
     area: race-engine
     title_en: Luxury helper
