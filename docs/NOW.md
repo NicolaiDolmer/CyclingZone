@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (12/11):** **PC1 storsession v3** ([#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6819749354)). Merget: #7980 taktik `8e84a21a` (slukket), #7960. **Bølge 1:** #7864 klar til beta, #7339, #7962, #7965, #8025, #7982, #7964. **Ejer 12/11:** #6110 bygges færdig hurtigst muligt (14/11 er kun tænd-gulv); akademi-punkter (Discord 9/11) planlægges ind; #7832 efterbetales efter kort; motor-måling 13/11; #8020: loftet står. Taktik-beta: dommer + tænd-kort (beta flytter ALLE holds gem). #7963 venter på #8022.
+> **🎯 Next action (12/11):** **PC1 storsession v3** ([#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6820233824)). Merget: #7980 (slukket), #7960. **Bølgen (16 spor):** #7864, #7339, #7962, #7965, #8025, #7982, #7964, #7832-filter, #6165, **#6110-trin** (#6110, #7739, #7757, #7684, #3564), #6155, #7932. **Ejer 12/11:** #6110 færdig hurtigst muligt (tænd-gulv 15/11); Potentiale overalt; trupper 30/30/30 maks 60 (#8034); #7832 efterbetales efter kort; motor-måling 13/11; #8020: loftet står. Taktik-beta: dommer + tænd-kort.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; #7277 (off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
 > **🤖 Working agent:** Claude Fable 5.2 på PC1, storsession v3 (12/11); ejer merge-kø og tænding. Codex på Dolmer PC: #8022, #8020, #8014.
