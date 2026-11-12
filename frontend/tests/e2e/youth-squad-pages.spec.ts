@@ -91,6 +91,9 @@ test.describe("U23 team- og Junior team-siderne (#5519)", () => {
     await page.goto("/academy");
     await expect(page.getByRole("heading", { name: /Academy|Akademi/i }).first()).toBeVisible();
     await expect(page.locator("main")).not.toContainText(COMING_SOON);
+    // #6155: akademisiden peger på de to trupsider i stedet for sin egen rytterliste.
+    await expect(page.getByTestId("academy-squad-link-u23")).toHaveAttribute("href", "/squads/u23");
+    await expect(page.getByTestId("academy-squad-link-junior")).toHaveAttribute("href", "/squads/junior");
   });
 
   test("U23 team: Squad-fanen viser truppen fra serveren, Development de samme ryttere", async ({ page }, testInfo) => {
