@@ -316,6 +316,59 @@ export function xpDayVariation(riderId, seasonNumber, dateIndex, span) {
   return 1 - span + 2 * span * seededUnitMixed(`xpvar:${riderId}:${seasonNumber}:${dateIndex}`);
 }
 
+// ── Motorens pakke (#6110 §4.2, §4.9, §5.2; #7757) ──────────────────────────────
+// Dagsvariationen med hukommelse og løbsdags-gulvet med træner bygges i motoren
+// (backend/lib/developmentXp.ts) af sporet "motor-rest" under #6110. Indtil det er
+// merget, er de her lokale gengivelser bag ÉT hook. Den opfølgende commit skifter
+// hookets funktioner til import fra developmentXp.ts og retter `source`; sæsonløkken
+// røres ikke. `source` står på kortet og i kørslens identitet, så en lokal gengivelse
+// aldrig læses som motorens egen, og to kilder aldrig havner på samme kort.
+
+/** Startilstanden for en rytters variation med hukommelse: neutral og seedet. */
+export function xpVariationStart(riderId) {
+  return 2 * seededUnitMixed(`xpvar:${riderId}:s`) - 1;
+}
+
+/**
+ * Ét skridt i dagsvariationen. Uden hukommelse er udfaldet præcis `xpDayVariation`, så
+ * kørsler uden hukommelse er uændrede. Med hukommelse trækker gode og dårlige perioder
+ * ud over flere datoer; spredningen pr. dato er den samme, og over tid er den neutral.
+ */
+export function localDayVariationStep({ riderId, seasonNumber, dateIndex, span, memory = 0, state = null }) {
+  const u = seededUnitMixed(`xpvar:${riderId}:${seasonNumber}:${dateIndex}`);
+  // Samme regning som xpDayVariation, så en kørsel uden hukommelse er bit for bit den gamle.
+  if (!(memory > 0)) return { state: 2 * u - 1, mult: 1 - span + 2 * span * u };
+  const prev = Number.isFinite(state) ? state : xpVariationStart(riderId);
+  const next = memory * prev + Math.sqrt(1 - memory ** 2) * (2 * u - 1);
+  return { state: next, mult: 1 + span * Math.max(-1, Math.min(1, next)) };
+}
+
+/**
+ * Løbsdags-gulvet (ejer 7/11, G1/X8): en løbsdag giver i hver evne mindst det, en hård
+ * træningsdag med rytterens træner og facilitet giver, og mere i det, etapen kræver.
+ * Returnerer evnens samlede andel (session gange type gange led), klar til tick'et.
+ */
+export function localRaceDayFloorShares({ raceShares, raceMults = null, hardShares, staffMults = null }) {
+  const out = {};
+  for (const ability of new Set([...Object.keys(raceShares ?? {}), ...Object.keys(hardShares ?? {})])) {
+    const race = (raceShares?.[ability] ?? 0) * (raceMults?.[ability] ?? 1);
+    const hard = (hardShares?.[ability] ?? 0) * (staffMults?.[ability] ?? 1);
+    const share = Math.max(race, hard);
+    if (share > 0) out[ability] = share;
+  }
+  return out;
+}
+
+export const XP_ENGINE_HOOKS = Object.freeze({
+  source: "lokal gengivelse (afventer #6110 motor-rest)",
+  dayVariationStep: localDayVariationStep,
+  raceDayFloorShares: localRaceDayFloorShares,
+});
+
+function engineHooks(opts) {
+  return opts?.engineHooks ?? XP_ENGINE_HOOKS;
+}
+
 /** Hvert andet managerhold (seedet) trykker Træn nu. Aldrig AI-hold. */
 export function isTrainNowTeam(team) {
   return !!team && !team.isAi && seededUnitMixed(`s25press:${team.id}`) < 0.5;
@@ -424,14 +477,45 @@ function fillMissingRaceShares(riders, seasonNumber, table = null) {
 
 // ── Én sæson ─────────────────────────────────────────────────────────────────────
 
+/** Spand for en evnes stigning på én dato: 1, 2 eller 3+ (ejervalg 12/11 på #6110). */
+export function dateGainBucket(n) {
+  return n >= 3 ? "3+" : String(n);
+}
+
+export function emptyDateGains() {
+  return { all: {}, firstWeek: {}, raceDate: {}, trainingDate: {}, byAge: {}, byPotential: {}, max: 0 };
+}
+
+export function cohortAgeBand(age) {
+  return age <= 18 ? "16-18" : age <= 22 ? "19-22" : age <= 28 ? "23-28" : "29+";
+}
+
+/** Hvor tit stiger en evne 1, 2 eller 3+ på samme dato, fordelt på dato-type, alder og potentiale. */
+function addDateGain(h, n, { firstWeek, raced, age, potentiale }) {
+  if (!(n > 0)) return;
+  const b = dateGainBucket(n);
+  const bump = (bucket) => { bucket[b] = (bucket[b] ?? 0) + 1; };
+  bump(h.all);
+  if (firstWeek) bump(h.firstWeek);
+  bump(raced ? h.raceDate : h.trainingDate);
+  if (Number.isFinite(age)) bump(h.byAge[cohortAgeBand(age)] ??= {});
+  if (Number.isFinite(potentiale)) bump(h.byPotential[Math.floor(potentiale)] ??= {});
+  if (n > h.max) h.max = n;
+}
+
 /** Tæller datoens køb: pr. evne, pr. sæson, første sæsons uger, og brud på +1-loftet. */
-function trackDate(world, r, dateIndex, used, firstSeason, cap) {
+function trackDate(world, r, dateIndex, used, firstSeason, cap, { age = null, raced = false } = {}) {
   let total = 0;
+  let mental = 0;
   for (const [ability, n] of Object.entries(used)) {
     total += n;
+    if (MENTAL_ABILITIES.has(ability)) mental += n;
     world.abilityPoints[ability] = (world.abilityPoints[ability] ?? 0) + n;
     if (n > cap) world.capViolations += 1;
+    if (world.dateGains) addDateGain(world.dateGains, n, { firstWeek: firstSeason && dateIndex < 7, raced, age, potentiale: r.potentiale });
   }
+  r.seasonPointsBought = (r.seasonPointsBought ?? 0) + total;
+  r.seasonMentalPoints = (r.seasonMentalPoints ?? 0) + mental;
   world.seasonPoints += total;
   if (firstSeason) {
     r.firstSeasonPoints = (r.firstSeasonPoints ?? 0) + total;
@@ -487,6 +571,20 @@ function simulateSeasonXp(world, seasonNumber, variant, opts) {
   const staffCache = new Map();
   const shareCache = new Map();
   const raceCaches = new Map();
+  const hooks = engineHooks(opts);
+  // Intet dagsloft (#7739): kun prisen bremser. Med loft: maks +1 pr. evne pr. dato.
+  const cap = variant.capPerDate === false ? Infinity : opts.abilityCapPerDate;
+  const span = variant.variationSpan ?? opts.xpVariationSpan;
+  const memory = variant.variationMemory ?? opts.xpVariationMemory ?? 0;
+  const sharesFor = (program, ctx, typeKey) => {
+    const key = `${typeKey}|${program.focus}|${program.intensity}`;
+    let hit = shareCache.get(key);
+    if (!hit) { hit = xpProgramShares(program, ctx); shareCache.set(key, hit); }
+    return hit;
+  };
+  const programFor = (r, d, intensity) => (variant.plan === "rotate"
+    ? rotatingProgram(r.primary_type, r.secondary_type, d, { intensity })
+    : assistantProgram(r.primary_type, r.secondary_type, { intensity }));
   for (const r of world.riders) {
     if (r.retired) continue;
     r.seasonRaceDays = 0;
@@ -504,13 +602,13 @@ function simulateSeasonXp(world, seasonNumber, variant, opts) {
     let gameDay = 0;
     for (let d = 0; d < dates; d++) {
       const usedToday = {};
-      const variation = xpDayVariation(r.id, seasonNumber, d, opts.xpVariationSpan);
-      const program = variant.plan === "rotate"
-        ? rotatingProgram(r.primary_type, r.secondary_type, d, { intensity: variant.intensity })
-        : assistantProgram(r.primary_type, r.secondary_type, { intensity: variant.intensity });
-      const shareKey = `${typeKey}|${program.focus}|${program.intensity}`;
-      let trainShares = shareCache.get(shareKey);
-      if (!trainShares) { trainShares = xpProgramShares(program, ctx); shareCache.set(shareKey, trainShares); }
+      let raced = false;
+      // Hukommelsen bæres fra dato til dato og over sæsonskiftet (perioder kender ikke kalenderen).
+      const step = hooks.dayVariationStep({ riderId: r.id, seasonNumber, dateIndex: d, span, memory, state: r.xpVarState });
+      r.xpVarState = step.state;
+      const variation = step.mult;
+      const program = programFor(r, d, variant.intensity);
+      const trainShares = sharesFor(program, ctx, typeKey);
       for (let slot = 0; slot < opts.raceDaysPerDate; slot++) {
         gameDay += 1;
         if (gameDay > opts.raceDaysPerSeason) break;
@@ -518,23 +616,27 @@ function simulateSeasonXp(world, seasonNumber, variant, opts) {
         let tick;
         if (profile) {
           r.seasonRaceDays += 1;
+          raced = true;
           const role = raceRoleFor(r.id, seasonNumber, gameDay, opts.raceRoles);
           const race = xpRaceDayFor(profile, role, ctx, raceCaches.get(typeKey));
-          tick = { shares: race.shares, abilityMults: race.mults, dayMult: variation };
+          tick = variant.raceDayFloor
+            ? { shares: hooks.raceDayFloorShares({ raceShares: race.shares, raceMults: race.mults,
+              hardShares: sharesFor(programFor(r, d, "hard"), ctx, typeKey), staffMults }), abilityMults: null, dayMult: variation }
+            : { shares: race.shares, abilityMults: race.mults, dayMult: variation };
         } else {
           if (program.intensity === "hard") r.seasonHardDays += 1;
           tick = { shares: trainShares, abilityMults: staffMults, dayMult: variation * bonus };
         }
         const res = applyTickXp({
           abilities: r.abilities, progress: r.progress, rates, xp, ...tick,
-          ticksPerDate: opts.raceDaysPerDate, usedGains: usedToday, cap: opts.abilityCapPerDate,
+          ticksPerDate: opts.raceDaysPerDate, usedGains: usedToday, cap,
         });
         for (const [k, n] of Object.entries(res.gains)) usedToday[k] = (usedToday[k] ?? 0) + n;
         r.seasonXp = (r.seasonXp ?? 0) + res.earned;
         r.abilities = res.abilities;
         r.progress = res.progress;
       }
-      trackDate(world, r, d, usedToday, firstSeason, opts.abilityCapPerDate);
+      trackDate(world, r, d, usedToday, firstSeason, cap, { age, raced });
     }
   }
 }
@@ -559,11 +661,12 @@ function simulateSeason(world, seasonNumber, variant, opts) {
     for (let d = 0; d < dates; d++) {
       const usedToday = {};
       let anyGain = false;
+      let raced = false;
       for (let slot = 0; slot < opts.raceDaysPerDate; slot++) {
         gameDay += 1;
         if (gameDay > opts.raceDaysPerSeason) break;
         const profile = raceSlot(r.id, seasonNumber, gameDay, raceShare);
-        if (profile) r.seasonRaceDays += 1;
+        if (profile) { r.seasonRaceDays += 1; raced = true; }
         // Kurve B får løbsdagens rolletillæg som i dag, når de private params er med.
         const raceArgs = profile && variant.kind === "curveB" && opts.raceRoleYield
           ? withRaceDayRoleYield({}, { params: opts.raceRoleYield, profileType: profile, role: raceRoleFor(r.id, seasonNumber, gameDay, opts.raceRoles) })
@@ -604,7 +707,7 @@ function simulateSeason(world, seasonNumber, variant, opts) {
       }
       // Hvor tit ville datoen give mere end +1 i en evne (uden dato-loftet)?
       for (const n of Object.values(usedToday)) if (n > opts.abilityCapPerDate) world.dateCap.over += n - opts.abilityCapPerDate;
-      trackDate(world, r, d, usedToday, firstSeason, variant.capPerDate ? opts.abilityCapPerDate : Infinity);
+      trackDate(world, r, d, usedToday, firstSeason, variant.capPerDate ? opts.abilityCapPerDate : Infinity, { age, raced });
       if (anyGain) {
         caps = buildCapsForRider(r.abilities, { potentiale: r.potentiale, age }, r.primary_type, r.secondary_type);
       }
@@ -614,7 +717,7 @@ function simulateSeason(world, seasonNumber, variant, opts) {
 
 // ── Sæsonskiftet: aldring (#6499), pension, nye unge ────────────────────────────
 
-function transition(world, endingSeason, opts, { firstTransition = false, loadOverride = null } = {}) {
+function transition(world, endingSeason, opts, { firstTransition = false, loadOverride = null, inflow = true } = {}) {
   const newSeason = endingSeason + 1;
   const retiredByTeam = new Map();
   const out = { season: newSeason, retired: 0, retireAges: [], ratingDrops: 0, inflow: 0, agingPoints: 0 };
@@ -641,7 +744,8 @@ function transition(world, endingSeason, opts, { firstTransition = false, loadOv
     }
   }
   // Nye unge: hvert hold erstatter sine pensionister (produktionens generator).
-  for (const [teamId, n] of retiredByTeam) {
+  // Kohorten (#7757) følger kun sine egne ryttere, så den får ingen erstatninger.
+  for (const [teamId, n] of inflow ? retiredByTeam : []) {
     const team = world.teams.get(teamId);
     const rng = makeRng(Math.floor(seededUnitMixed(`s25inflow:${teamId}:${newSeason}`) * 2 ** 31));
     const kuld = generateAcademyCandidates({
@@ -798,6 +902,7 @@ export function runVariant(snapshot, variant, opts = SIM_DEFAULTS) {
   world.firstSeasonByDate = [];
   world.capViolations = 0;
   world.seasonPoints = 0;
+  world.dateGains = emptyDateGains();
   const seasonPoints = [];
   let inSeasonRatingDrops = 0;
   for (const r of world.riders) {
@@ -837,6 +942,7 @@ export function runVariant(snapshot, variant, opts = SIM_DEFAULTS) {
   }
   result.bNorm = world.bNorm;
   result.dateCap = world.dateCap;
+  result.dateGains = world.dateGains;
   result.params = { raceDaysPerSeason: opts.raceDaysPerSeason, bNoiseSpan: opts.bNoiseSpan, bReferenceAge: opts.bReferenceAge,
     curveB: variant.kind === "curveB" ? opts.curveB ?? null : null, // #3564: kortet blander aldrig to kalibreringer
     curveBRun: variant.kind === "curveB" ? curveBRunInputs(opts) : null,
@@ -861,7 +967,11 @@ export function variantList(opts = SIM_DEFAULTS) {
 
 /** Alt andet end XP-tallene, der flytter en XP-kørsel. To kørsler må kun på samme kort, hvis det er ens. */
 export function xpRunInputs(variant, opts) {
-  return { plan: variant.plan, intensity: variant.intensity, trainNowBonus: variant.trainNowBonus, variationSpan: opts.xpVariationSpan,
+  return { plan: variant.plan, intensity: variant.intensity, trainNowBonus: variant.trainNowBonus,
+    variationSpan: variant.variationSpan ?? opts.xpVariationSpan,
+    variationMemory: variant.variationMemory ?? opts.xpVariationMemory ?? 0,
+    capPerDate: variant.capPerDate !== false, raceDayFloor: variant.raceDayFloor === true,
+    engine: engineHooks(opts).source,
     raceRoles: opts.raceRoles ?? null, raceRoleYield: opts.raceRoleYield ?? null };
 }
 
@@ -883,23 +993,55 @@ export function sameCurveBRun(result, opts) {
  * ikke står i klar tekst i nøglen.
  */
 export function xpGateKey({ fingerprint, opts, estimateParams = null, knowledge = null }) {
-  const inputs = [fingerprint, xpVariant(opts.xpGateVariant ?? "xp", opts).xpParams, curveBRunInputs(opts), opts.curveB ?? null,
-    opts.xpVariationSpan ?? null, opts.xpAttackSpans ?? null, opts.xpAttackMemories ?? null, estimateParams, knowledge];
+  const gateVariant = xpVariant(opts.xpGateVariant ?? "xp", opts);
+  const inputs = [fingerprint, gateVariant.xpParams, curveBRunInputs(opts), opts.curveB ?? null,
+    opts.xpVariationSpan ?? null, opts.xpAttackSpans ?? null, opts.xpAttackMemories ?? null, estimateParams, knowledge,
+    // #7757: gulvet flytter X8; hukommelse og motorens kilde flytter kørslen.
+    gateVariant.raceDayFloor, opts.xpVariationMemory ?? null, engineHooks(opts).source];
   return createHash("sha256").update(JSON.stringify(inputs)).digest("hex");
 }
 
-/** En xp-variant: navnet vælger plan og Træn nu-bonus. Private varianter lægger tal ovenpå. */
+// Led i et xp-navn, der vælger en del af motorens pakke (#7757). De kan kombineres, fx
+// xp_bonus15_gulv_nocap. Resten af navnet er den private variant, tallene kommer fra.
+const XP_NAME_TOKENS = Object.freeze({
+  rot: { plan: "rotate" },
+  hard: { intensity: "hard" },
+  nocap: { capPerDate: false }, // intet dagsloft (#7739): kun prisen bremser
+  gulv: { raceDayFloor: true }, // løbsdag mindst en hård dag med træner (ejer 7/11)
+});
+
+/**
+ * En xp-variant: navnet vælger plan, Træn nu-bonus, dagsloft og løbsdags-gulv. Private
+ * varianter lægger tal ovenpå, også under et navn med led (xp_cal_nocap bruger xp_cal).
+ */
 export function xpVariant(name, opts) {
-  const custom = opts.xpVariants?.[name] ?? {};
-  const bonus = /^xp_bonus(\d+)$/.exec(name);
+  const parts = name.split("_");
+  const flags = {};
+  let bonusPct = null;
+  const base = [];
+  for (const part of parts) {
+    const bonus = /^bonus(\d+)$/.exec(part);
+    if (bonus && parts[0] === "xp") bonusPct = Number(bonus[1]);
+    else if (XP_NAME_TOKENS[part] && part !== parts[0]) Object.assign(flags, XP_NAME_TOKENS[part]);
+    else base.push(part);
+  }
+  const custom = opts.xpVariants?.[name] ?? opts.xpVariants?.[base.join("_")] ?? {};
   const raw = { ...(opts.xp ?? {}), ...(custom.xp ?? {}) };
   const xpParams = validateDevelopmentXpParams(raw);
   if (!xpParams) throw new Error(`XP-params mangler eller er ugyldige for ${name}: læg den private fil ${PRIVATE_XP_PATH.join("/")} (hard rule 17)`);
+  const variationMemory = custom.variationMemory ?? null;
+  if (variationMemory != null && !(variationMemory >= 0 && variationMemory < 1)) {
+    throw new Error(`Hukommelsen i dagsvariationen skal ligge i [0, 1) for ${name}`);
+  }
   return {
-    name, kind: "xp", capPerDate: true, xpParams,
-    plan: custom.plan ?? (name === "xp_rot" ? "rotate" : "standard"),
-    intensity: custom.intensity ?? (name === "xp_hard" ? "hard" : null),
-    trainNowBonus: custom.trainNowBonus ?? (bonus ? Number(bonus[1]) / 100 : 0),
+    name, kind: "xp", xpParams,
+    capPerDate: custom.capPerDate ?? flags.capPerDate ?? true,
+    raceDayFloor: custom.raceDayFloor ?? flags.raceDayFloor ?? false,
+    plan: custom.plan ?? flags.plan ?? "standard",
+    intensity: custom.intensity ?? flags.intensity ?? null,
+    trainNowBonus: custom.trainNowBonus ?? (bonusPct != null ? bonusPct / 100 : 0),
+    variationSpan: custom.variationSpan ?? null,
+    variationMemory,
   };
 }
 
@@ -1076,7 +1218,8 @@ export function dayXpFloor(world, seasonNumber, xp) {
 }
 
 /** X8: løbsdag mod hård dag i etapens evner for samme rytter, og mod løbsdagen i dag (kurve B). */
-export function raceVsTraining(world, seasonNumber, xp, opts, { sample = 1200 } = {}) {
+export function raceVsTraining(world, seasonNumber, xp, opts, { sample = 1200, floor = false } = {}) {
+  const hooks = engineHooks(opts);
   const ratios = { leader: [], helper: [], free: [] };
   const roles = { leader: "captain", helper: "helper", free: "free_role" };
   let underHard = 0;
@@ -1094,6 +1237,8 @@ export function raceVsTraining(world, seasonNumber, xp, opts, { sample = 1200 } 
     const rates = riderXpRates({ potentiale: r.potentiale, age }, xp);
     const caps = opts.curveB ? buildCapsForRider(r.abilities, { potentiale: r.potentiale, age }, r.primary_type, r.secondary_type) : null;
     const ctx = { primaryType: r.primary_type, secondaryType: r.secondary_type, xp };
+    // Gulvets hårde dag er rytterens egen plan på hård intensitet, som i sæsonløkken.
+    const ownHard = floor ? xpProgramShares(assistantProgram(r.primary_type, r.secondary_type, { intensity: "hard" }), ctx) : null;
     for (const profile of RACE_PROFILES) {
       const focusAbilities = RACE_PROFILE_ABILITY_MAP[profile];
       const hardShares = xpProgramShares({ focus: "race_day", intensity: "hard", focusAbilities }, ctx);
@@ -1101,8 +1246,10 @@ export function raceVsTraining(world, seasonNumber, xp, opts, { sample = 1200 } 
       const hard = focusAbilities.reduce((s, a) => s + (hardShares[a] ?? 0) * staffMults[a] * (MENTAL_ABILITIES.has(a) ? rates.mental : rates.physical), 0);
       for (const [group, role] of Object.entries(roles)) {
         const { program, mults: roleMults } = xpRaceDay(profile, role, { xp, raceRoleYield: opts.raceRoleYield });
-        const shares = xpProgramShares(program, { ...ctx, raceDay: true });
-        const mults = roleMults ?? {};
+        const raceShares = xpProgramShares(program, { ...ctx, raceDay: true });
+        // Med gulvet (#7757) er løbsdagens andel allerede mindst den hårde dags med træner.
+        const shares = floor ? hooks.raceDayFloorShares({ raceShares, raceMults: roleMults, hardShares: ownHard, staffMults }) : raceShares;
+        const mults = floor ? {} : (roleMults ?? {});
         const race = focusAbilities.reduce((s, a) => s + (shares[a] ?? 0) * (mults[a] ?? 1) * (MENTAL_ABILITIES.has(a) ? rates.mental : rates.physical), 0);
         if (hard > 0) ratios[group].push(race / hard);
         checks += 1;
@@ -1260,7 +1407,8 @@ export function estimateGates(rows, knowledge, params) {
 
 /** Gates uden for sæsonløkken: X4, X5, X8, X9 og H. Kører på billedet, ikke på simuleringen. */
 export function runXpGates(snapshot, opts, { estimateParams = null, knowledge = null, sampleRiders = 800 } = {}) {
-  const xp = xpVariant(opts.xpGateVariant ?? "xp", opts).xpParams;
+  const gateVariant = xpVariant(opts.xpGateVariant ?? "xp", opts);
+  const xp = gateVariant.xpParams;
   const world = buildWorld(snapshot);
   const season = world.startSeason;
   const types = {
@@ -1270,7 +1418,7 @@ export function runXpGates(snapshot, opts, { estimateParams = null, knowledge = 
     "klatrer trænet til bakker, punch": { primaryType: "climber", secondaryType: null, session: "vo2max_punch", ability: "punch" },
     "puncheur, punch": { primaryType: "puncheur", secondaryType: null, session: "vo2max_punch", ability: "punch" },
   };
-  const out = { x4: {}, x5: dayXpFloor(world, season, xp), x8: raceVsTraining(world, season, xp, opts) };
+  const out = { x4: {}, x5: dayXpFloor(world, season, xp), x8: raceVsTraining(world, season, xp, opts, { floor: gateVariant.raceDayFloor }) };
   for (const potentiale of [6, 4]) {
     for (const [name, spec] of Object.entries(types)) {
       out.x4[`${name}, pot ${potentiale}`] = typeCareer({ ...spec, potentiale, startLevel: 20, seasons: 16 }, xp, opts);
