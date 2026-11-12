@@ -45,9 +45,7 @@
   "development": {
     "headers": {
       "projected": "Projeté",
-      "projectedTitle": "Fourchette de note projetée pour son rôle principal, selon ton entraînement. Trié sur la borne haute.",
-      "ceiling": "Plafond",
-      "ceilingTitle": "La note théorique la plus haute que son rôle pourrait atteindre. Non ajustée à la façon dont tu l'entraînes."
+      "projectedTitle": "Fourchette de note projetée pour son rôle principal, selon ton entraînement. Trié sur la borne haute."
     },
     "noForecast": "Pas encore de prévision"
   },
