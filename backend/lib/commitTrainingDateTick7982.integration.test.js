@@ -34,6 +34,22 @@ async function frozenFunctionSql() {
   return source.slice(start, end).replace("public.commit_training_date_tick(", "public.commit_training_date_tick_frozen(");
 }
 
+// The migration the way auto-migrate's `psql -f` runs it: the function transaction, then the
+// self-healing DO block and CREATE INDEX CONCURRENTLY as separate top-level statements.
+// CONCURRENTLY refuses to run inside a multi-statement string, so each part is its own exec;
+// nothing in the file is rewritten.
+async function applyMigration(db) {
+  const sql = await file(MIGRATION);
+  const commit = sql.indexOf("\nCOMMIT;\n") + "\nCOMMIT;\n".length;
+  const heal = sql.indexOf("END $$;", commit) + "END $$;".length;
+  assert.ok(commit > 9 && heal > commit, "migration parts found");
+  const index = sql.slice(heal).replace(/^\s*--.*$/gm, "").trim();
+  assert.match(index, /^CREATE INDEX CONCURRENTLY IF NOT EXISTS [^;]+;$/);
+  await db.exec(sql.slice(0, commit));
+  await db.exec(sql.slice(commit, heal));
+  await db.exec(index);
+}
+
 async function newDb() {
   const db = new PGlite();
   await db.exec(await readFile(new URL("./__fixtures__/trainingHeldSchema.sql", import.meta.url), "utf8"));
@@ -43,8 +59,8 @@ async function newDb() {
   await db.exec("CREATE TABLE race_entries(race_id uuid,rider_id uuid,team_id uuid,race_role text, PRIMARY KEY(race_id,rider_id))");
   await db.exec(await file(FROZEN_SOURCE));
   await db.exec(await frozenFunctionSql());
-  await db.exec(await file(MIGRATION));
-  await db.exec(await file(MIGRATION)); // idempotent
+  await applyMigration(db);
+  await applyMigration(db); // idempotent
   await db.exec(`INSERT INTO riders(id,team_id) VALUES ${RIDERS.map((r) => `('${r}','${TEAM}')`).join(",")},('${OUTSIDER}','${OTHER_TEAM}');
     INSERT INTO rider_derived_abilities VALUES ${[...RIDERS, OUTSIDER].map((r) => `('${r}',50,'{}')`).join(",")};
     INSERT INTO rider_condition(rider_id,form,fatigue,updated_at) VALUES ${[...RIDERS, OUTSIDER].map((r) => `('${r}',50,32,'2026-11-08T20:00:00Z')`).join(",")};`);
@@ -137,13 +153,33 @@ test("rights: service_role only, SECURITY INVOKER, fixed search_path, no RLS cha
   assert.match(await scalar(db, "SELECT indexdef FROM pg_indexes WHERE indexname='training_date_work_expected_rider_ids_gin'"), /USING gin \(expected_rider_ids\)/);
 });
 
+// Run twice (newDb already did) the migration leaves one valid index and the same function. An
+// interrupted CONCURRENTLY build (simulated by marking the index invalid) heals on the next run
+// instead of being skipped by IF NOT EXISTS.
+test("the migration is idempotent and heals an invalid index left by an interrupted build", async () => {
+  const db = await fresh();
+  const state = async () => ({
+    src: await scalar(db, `SELECT md5(prosrc) FROM pg_proc WHERE oid='public.commit_training_date_tick${SIGNATURE}'::regprocedure`),
+    indexes: (await db.query(`SELECT c.relname,i.indisvalid,pg_get_indexdef(c.oid) AS def FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
+      WHERE i.indrelid='public.training_date_work'::regclass AND c.relname LIKE 'training_date_work_expected%' ORDER BY 1`)).rows,
+  });
+  const first = await state();
+  assert.deepEqual(first.indexes.map((i) => [i.relname, i.indisvalid]), [["training_date_work_expected_rider_ids_gin", true]]);
+  await applyMigration(db);
+  assert.deepEqual(await state(), first);
+  await db.exec("UPDATE pg_index SET indisvalid=false WHERE indexrelid='public.training_date_work_expected_rider_ids_gin'::regclass");
+  await applyMigration(db);
+  assert.deepEqual(await state(), first);
+});
+
 // A prod-sized table (about 12 000 dates: many teams, a season of dates, 40 riders each). The
-// planner picks the new index for a 40-rider call without any planner settings.
+// planner picks the new index for a 40-rider call without any planner settings. Every value is
+// derived from the fixed fixture dates, never the database clock (AGENTS.md rule 16).
 test("on a prod-sized table the lookup uses the new index", async () => {
   const db = await fresh();
   await db.exec(`INSERT INTO training_date_work(team_id,season_id,tick_date,game_days,expected_rider_ids,deadline_at,status)
     SELECT md5('team'||t)::uuid,'${SEASON}',DATE '2026-11-08'-d,'{1,2,3,4,5}',
-      ARRAY(SELECT md5('rider'||t||':'||r)::uuid FROM generate_series(1,40) r),now(),'complete'
+      ARRAY(SELECT md5('rider'||t||':'||r)::uuid FROM generate_series(1,40) r),((DATE '2026-11-08'-d)+TIME '01:00') AT TIME ZONE 'UTC','complete'
     FROM generate_series(1,300) t, generate_series(0,39) d; ANALYZE training_date_work;`);
   const plan = (await db.query(`EXPLAIN SELECT member.rider_id FROM training_date_work older CROSS JOIN LATERAL unnest(older.expected_rider_ids) member(rider_id)
     WHERE older.season_id='${SEASON}' AND older.tick_date<'${DATE}'

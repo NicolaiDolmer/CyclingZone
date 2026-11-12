@@ -1,7 +1,7 @@
 -- #7982 trin 1: "Træn nu" er for langsom. Det langsomme tjek i commit_training_date_tick
 -- ("mangler en tidligere dato afregning for rytteren?") som ét samlet opslag, plus et indeks
 -- på rytterlisten i training_date_work. Kun hastighed: samme svar og samme fejl som før.
--- Additiv og idempotent (CREATE OR REPLACE, CREATE INDEX IF NOT EXISTS). Køres post-merge
+-- Additiv og idempotent (CREATE OR REPLACE, CREATE INDEX CONCURRENTLY IF NOT EXISTS). Køres post-merge
 -- af auto-migrate.yml (#2642).
 --
 -- Hvorfor: det gamle tjek kørte én forespørgsel pr. rytter med `rytter = ANY(liste)`, som intet
@@ -15,19 +15,19 @@
 -- vinder, er præcis som før. Opslaget tager ingen låse; låserækkefølgen er uændret.
 --
 -- Indeks: GIN på expected_rider_ids, så `liste && v_new` finder de få tidligere datoer, hvor
--- kaldets ryttere er med. Almindelig CREATE INDEX (ikke CONCURRENTLY) i samme transaktion som
--- funktionen: tabellen er lille, så bygget er kort, og funktion og indeks lander sammen eller
--- slet ikke. CONCURRENTLY kan ikke stå i en transaktion og efterlader et INVALID indeks ved
--- afbrydelse, som IF NOT EXISTS så springer tavst over. lock_timeout får filen til at fejle
--- hurtigt i stedet for at stå i kø bag trafik; den kan køres igen.
+-- kaldets ryttere er med. Det bygges CONCURRENTLY efter funktionens transaktion (#6342: et
+-- indeks på en eksisterende tabel må ikke blokere skrivninger under bygget), som en top-level
+-- sætning, fordi CONCURRENTLY ikke kan stå i en transaktion. Funktionen giver samme svar med
+-- og uden indekset, kun hastigheden afhænger af det, så de to behøver ikke lande sammen.
+-- Et afbrudt CONCURRENTLY-byg efterlader et INVALID indeks, som IF NOT EXISTS ellers ville
+-- springe tavst over ved næste kørsel; DO-blokken lige før dropper det først, så filen
+-- helbreder sig selv. lock_timeout får filen til at fejle hurtigt i stedet for at stå i kø
+-- bag trafik; den kan køres igen.
 
 -- #6342: fail fast instead of queueing behind live traffic. Safe to re-trigger.
 SET lock_timeout = '3s';
 
 BEGIN;
-CREATE INDEX IF NOT EXISTS training_date_work_expected_rider_ids_gin
-  ON public.training_date_work USING gin (expected_rider_ids);
-
 CREATE OR REPLACE FUNCTION public.commit_training_date_tick(
   p_team_id uuid,p_season_id uuid,p_squad text,p_game_day integer,p_tick_date date,p_date_game_days integer[],p_executed_by text,
   p_report jsonb,p_abilities jsonb,p_conditions jsonb,p_history jsonb,p_race_history jsonb,p_scores jsonb,
@@ -237,3 +237,24 @@ REVOKE ALL ON FUNCTION public.commit_training_date_tick(uuid,uuid,text,integer,d
 GRANT EXECUTE ON FUNCTION public.commit_training_date_tick(uuid,uuid,text,integer,date,integer[],text,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,boolean,timestamptz) TO service_role;
 NOTIFY pgrst,'reload schema';
 COMMIT;
+
+-- Self-healing: an interrupted CONCURRENTLY build leaves an INVALID index that IF NOT EXISTS
+-- would skip on the next run. Drop it first (2026-08-19-2677 pattern).
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_class c
+    JOIN pg_index i ON i.indexrelid = c.oid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relname = 'training_date_work_expected_rider_ids_gin' AND NOT i.indisvalid
+  ) THEN
+    EXECUTE 'DROP INDEX public.training_date_work_expected_rider_ids_gin';
+  END IF;
+END $$;
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS training_date_work_expected_rider_ids_gin
+  ON public.training_date_work USING gin (expected_rider_ids);
+
+-- Post-verify (efter auto-migrate):
+--   SELECT i.indisvalid FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
+--   WHERE c.relname = 'training_date_work_expected_rider_ids_gin';  -- forventet: true
