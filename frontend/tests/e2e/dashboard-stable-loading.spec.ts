@@ -224,3 +224,100 @@ test('#8019 an absent team cannot leave the secondary-presence loader running', 
   await page.goto('/dashboard');
   await expect(page.locator('main header')).toBeVisible();
 });
+
+
+test('#8019 the first auction content frame uses the resolved default tab', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.addInitScript(() => {
+    const observed = window as Window & { firstAuctionFrame?: { cards: number; tab: string | null } };
+    function sample() {
+      if (document.querySelector('[data-testid="auctions-sidebar-feed"]')) {
+        observed.firstAuctionFrame = {
+          cards: document.querySelectorAll('[data-auction-row]').length,
+          tab: document.querySelector('[role="tab"][aria-selected="true"]')?.textContent ?? null,
+        };
+        return;
+      }
+      requestAnimationFrame(sample);
+    }
+    requestAnimationFrame(sample);
+  });
+  await page.route(/\/rest\/v1\//, async route => {
+    await new Promise(resolve => setTimeout(resolve, 650));
+    await route.fallback();
+  });
+  await page.goto('/auctions');
+  await expect(page.locator('[data-auction-row]').first()).toBeVisible();
+  const first = await page.evaluate(() => (window as Window & { firstAuctionFrame?: { cards: number; tab: string | null } }).firstAuctionFrame);
+  expect(first?.tab).toMatch(/^Alle /);
+  expect(first?.cards).toBeGreaterThan(0);
+});
+
+
+test('#8019 the resolved default preserves an explicit or manually selected empty tab', async ({ page }) => {
+  await page.goto('/auctions?tab=my-situation');
+  const mine = page.getByRole('tab', { name: /^Mine auktioner/ });
+  await expect(mine).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('[data-testid="auctions-sidebar-feed"]')).toBeVisible();
+  await expect(mine).toHaveAttribute('aria-selected', 'true');
+  await page.getByRole('tab', { name: /^Alle / }).click();
+  await expect(page.getByRole('tab', { name: /^Alle / })).toHaveAttribute('aria-selected', 'true');
+  await mine.click();
+  await expect(mine).toHaveAttribute('aria-selected', 'true');
+  await page.waitForTimeout(300);
+  await expect(mine).toHaveAttribute('aria-selected', 'true');
+});
+
+test('#8019 a long balance wraps honestly without horizontal page overflow', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.route('**/rest/v1/teams?**', route => {
+    if (new URL(route.request().url()).searchParams.get('select')?.replaceAll(' ', '') !== 'id,balance,division') return route.fallback();
+    return json(route, { ...TEST_TEAM, balance: 123456789012345 });
+  });
+  await page.goto('/auctions?tab=all');
+  await expect(page.locator('main header')).toContainText('123.456.789.012.345');
+  await expect(page.locator('main header a[href="/auctions/history"]')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+});
+
+
+test('#8019 completing the last owned auction preserves the initial Mine tab', async ({ page }) => {
+  await page.addInitScript(() => {
+    const key = 'sb-cycling-zone-e2e-auth-token';
+    const session = JSON.parse(localStorage.getItem(key)!);
+    // A synthetic JWT arms the real session-gated realtime client; the socket is local-mocked.
+    session.access_token = `${btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))}.${btoa(JSON.stringify({ exp: 1893456000, role: 'authenticated' }))}.fixture-signature`;
+    localStorage.setItem(key, JSON.stringify(session));
+  });
+  const owned = { ...AUCTIONS[0], seller_team_id: TEST_TEAM.id, current_bidder_id: 'fixture-rival', is_guaranteed_sale: false,
+    rider: { ...AUCTIONS[0].rider, team_id: TEST_TEAM.id } };
+  await page.route('**/rest/v1/auctions?**', route => json(route, [owned]));
+  let complete: (() => void) | undefined;
+  await page.routeWebSocket(/realtime\/v1\/websocket/, socket => {
+    socket.onMessage(message => {
+      if (typeof message !== 'string') return;
+      const [joinRef, ref, topic, event, payload] = JSON.parse(message);
+      if (event === 'phx_join') {
+        const changes = (payload.config?.postgres_changes ?? []).map((change: Record<string, unknown>, i: number) => ({ ...change, id: i + 1 }));
+        socket.send(JSON.stringify([joinRef, ref, topic, 'phx_reply', { status: 'ok', response: { postgres_changes: changes } }]));
+        if (topic === 'realtime:auctions-live') {
+          const auctionChange = changes.find((change: { table: string; event: string }) => change.table === 'auctions' && change.event === 'UPDATE');
+          complete = () => socket.send(JSON.stringify([joinRef, null, topic, 'postgres_changes', {
+            ids: [auctionChange.id], data: { schema: 'public', table: 'auctions', type: 'UPDATE',
+              commit_timestamp: '2026-11-11T12:01:00Z', columns: [], old_record: owned, record: { ...owned, status: 'completed' } },
+          }]));
+        }
+      } else if (event === 'heartbeat' || event === 'phx_leave') {
+        socket.send(JSON.stringify([joinRef, ref, topic, 'phx_reply', { status: 'ok', response: {} }]));
+      }
+    });
+  });
+  await page.goto('/auctions');
+  const mine = page.getByRole('tab', { name: /^Mine auktioner/ });
+  await expect(mine).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('[data-auction-row]:visible').first()).toBeVisible();
+  await expect.poll(() => typeof complete).toBe('function');
+  complete!();
+  await expect(page.locator('[data-auction-row]')).toHaveCount(0);
+  await expect(mine).toHaveAttribute('aria-selected', 'true');
+});
