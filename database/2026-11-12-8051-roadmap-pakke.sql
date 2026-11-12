@@ -38,7 +38,9 @@
 -- =============================================================================
 
 SET lock_timeout = '3s';
-BEGIN;
+-- REPEATABLE READ: stemmetallet foer og efter laeses i samme snapshot, saa en
+-- spiller, der stemmer paa et andet punkt imens, ikke vaelter pakken (Codex P2).
+BEGIN ISOLATION LEVEL REPEATABLE READ;
 
 DO $rm$
 DECLARE
