@@ -445,6 +445,18 @@ features:
     verified: 2026-10-27
     note: On 27/10 13:48 efter ejer-go (#7281), læst tilbage i prod.
 
+  - id: tactics-ready
+    area: race-day
+    title_en: Team plans
+    title_da: Taktik gjort klar del 1
+    state: building
+    epic: 7864
+    ssot: docs/RACE_ENGINE_RULES.md
+    verified: 2026-11-11
+    decision: goer-faerdigt
+    decide_by: 2026-11-12
+    note: "Ingen seed/aktivering; fler-etape kræver atomisk DB-kapabilitet."
+
   - id: rider-why-button
     area: race-day
     title_en: Why? button beside riders in Your day

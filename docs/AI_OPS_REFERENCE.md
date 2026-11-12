@@ -120,7 +120,11 @@ Migrationer der lukker advisor-fund kører som alle andre: idempotent fil i
 
 ## CodeRabbit — review-allowance (målt 7/9)
 
-CodeRabbit (plan Essentials, `.coderabbit.yaml` `auto_review.enabled=true`) tæller hvert push til en **ikke-draft** PR som ét review-forsøg; allowance skrumper med antal forsøg over de seneste 7 dage (108 forsøg over 7 dage → 1 review/time). Derfor: PR'er oprettes som **draft** ved første push (`gh pr create --draft`), wip-commits pushes mod draften uden at trigge review, FØR PR'en markeres klar kører workeren desuden CodeRabbit CLI (`coderabbit review --base main --committed`, egen kvote adskilt fra sky-reviewet, ~2,5 min) og retter ægte fund; finder reviewet noget, commit + push + kør reviewet igen på den endelige diff. PR'en må ikke markeres klar før et rent (eller kun-støj) CLI-review foreligger. Først derefter sidste handling: `gh pr ready <N>` — se `scripts/make-wave-brief.mjs` og `docs/NIGHT_WAVE_RUNBOOK.md`. `@coderabbitai review` i en PR-kommentar er en manuel trigger og tæller separat fra draft/ready-flowet. Spending cap og plan-valg styres af ejeren i CodeRabbits eget billing-fane — ikke noget Claude ændrer.
+**CodeRabbit er valgfri** jf. [den gældende review-gate](GITHUB_WORKFLOW.md#review-gate-6654) og hard rule 35 (#6654). Den tidligere kvotemåling fra 7/9 forklarer historikken bag draft-flowet; den er hverken et ekstra review-krav eller dokumentation for den aktuelle kvote.
+
+PR'er oprettes som draft ved første push, og WIP-commits pushes løbende, jf. regel 39. `gh pr ready <N>` starter fuld CI og automatisk Codex-review. Før merge skal review-gaten være opfyldt på aktuelt HEAD: Codex på alle PR'er og også Claudes markør ved høj risiko.
+
+Hvis valgfri CodeRabbit CLI-review bruges, kan det fx køres med `coderabbit review --base main --committed`; ret ægte fund på den endelige diff. CLI-login eller manglende CLI-review blokerer ikke ready. Spending cap og planvalg tilhører ejeren; agenten ændrer dem ikke.
 
 ---
 

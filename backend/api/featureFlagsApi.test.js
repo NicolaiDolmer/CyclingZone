@@ -20,6 +20,16 @@ const BASE_ROWS = {
   stage_scheduler_enabled: "on",
 };
 
+test('#7864 team plans are off when absent, respect the viewer stage, and fail closed', async () => {
+  assert.equal((await readPlayerFeatureFlags(fakeSupabase({}))).tactics_ready_7864, false);
+  for (const [stage, betaTester, expected] of [['off', false, false], ['beta', false, false], ['beta', true, true], ['on', false, true]]) {
+    const flags = await readPlayerFeatureFlags(fakeSupabase({ tactics_ready_7864: stage }), { isBetaTester: betaTester });
+    assert.equal(flags.tactics_ready_7864, expected);
+  }
+  const failed = await readPlayerFeatureFlags(fakeSupabase({}, { failKeys: ['tactics_ready_7864'] }));
+  assert.equal(failed.tactics_ready_7864, false);
+});
+
 function fakeSupabase(rows, { failKeys = [] } = {}) {
   const reads = [];
   return {
@@ -143,6 +153,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     race_library_v2: false,
     condition_v2_race_date_training_day: false,
     stage_plan_dropped_front_7635: false,
+    tactics_ready_7864: false,
     rider_why_button: false,
     talent_marks_7879: false,
     rider_hover_card: false,
@@ -212,6 +223,7 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     race_library_v2: false,
     condition_v2_race_date_training_day: false,
     stage_plan_dropped_front_7635: false,
+    tactics_ready_7864: false,
     rider_why_button: false,
     talent_marks_7879: false,
     rider_hover_card: false,
@@ -289,6 +301,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     race_library_v2: false,
     condition_v2_race_date_training_day: false,
     stage_plan_dropped_front_7635: false,
+    tactics_ready_7864: false,
     rider_why_button: false,
     talent_marks_7879: false,
     rider_hover_card: false,
@@ -327,6 +340,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     race_library_v2: false,
     condition_v2_race_date_training_day: false,
     stage_plan_dropped_front_7635: false,
+    tactics_ready_7864: false,
     rider_why_button: false,
     talent_marks_7879: false,
     rider_hover_card: false,

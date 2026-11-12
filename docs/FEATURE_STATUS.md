@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-145 poster: live 112 · beta 1 · dormant 8 · building 15 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+146 poster: live 112 · beta 1 · dormant 8 · building 16 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -33,6 +33,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
 |Engine breakaway forecast (`race-breakaway-outlook`)|building|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#6912|2026-10-29|Ingen app_config-række (fravær = off). Ejer-go til tænding.|
+|Team plans (`tactics-ready`)|building|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7864|2026-11-11|Ingen seed/aktivering; fler-etape kræver atomisk DB-kapabilitet.|
 
 ## market
 

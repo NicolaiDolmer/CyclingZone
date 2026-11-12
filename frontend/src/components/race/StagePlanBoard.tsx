@@ -20,10 +20,10 @@ import { useEffect, useMemo, useState } from "react";
 import { authHeaders, supabase } from "../../lib/supabase";
 import { fetchAllRows } from "../../lib/supabasePagination";
 import { apiFetch } from "../../lib/apiFetch.ts";
-import { waypointsFor } from "../../lib/stageRouteProfile.js";
 import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js"; // #7636
 import { riderInFrontOrFieldAt, ridersSplitKm, stagePlanContactFacts, type TimelineEvent as SplitTimelineEvent } from "../../lib/stageSplitTimes.ts"; // #7636, #7706
 import SortableTh from "../ui/SortableTh.jsx";
+import { taskCostKey, teamPlanRouteFromProfile } from "./tacticsReady7864.ts";
 import { Button, CheckIcon, ChevronRightIcon, InfoIcon, LockIcon, MessageIcon, MinusIcon, PlusIcon, Select, XIcon } from "../ui/index.js";
 import {
   clearRiderPlan,
@@ -39,7 +39,6 @@ import {
   stagePlanFeaturesFromRaw,
   stagePlanOutcomes,
   stagePlanRecap,
-  stagePlanRouteFromRaw,
   stagePlanSwitchNotes,
   stagePlanSwitchNoteText,
   suggestStagePlan,
@@ -64,14 +63,7 @@ const API = import.meta.env.VITE_API_URL;
 
 /** Etapens rute til planen: profilens egne felter (samme som serveren laeser). */
 function routeForProfile(profile: StageProfile | null | undefined): StagePlanRoute {
-  if (!profile) return stagePlanRouteFromRaw(null);
-  if (Array.isArray(profile.climbs)) return stagePlanRouteFromRaw(profile);
-  // Uden raa climbs: bygget af profilens vejpunkter (samme index-regel).
-  const climbs: unknown[] = [];
-  for (const w of (waypointsFor(profile) as Array<Record<string, unknown>>).filter((p) => p.kind === "kom")) {
-    climbs[w.index as number] = { name: w.name, crest_km: w.km, category: w.category, summit_finish: w.summit_finish };
-  }
-  return stagePlanRouteFromRaw({ distance_km: profile.distance_km, profile_type: profile.profile_type, climbs });
+  return teamPlanRouteFromProfile(profile);
 }
 
 function climbLabel(t: TFn, route: StagePlanRoute, komIndex: number): string {
@@ -87,14 +79,15 @@ function triggerLabel(t: TFn, route: StagePlanRoute, from: StagePlanTrigger | un
   return t(`stagePlan.from.${from.at}`);
 }
 
-function TaskChip({ t, task, dashed = false, compact = false }: { t: TFn; task: StagePlanTask; dashed?: boolean; compact?: boolean }) {
+function TaskChip({ t, task, dashed = false, compact = false, showCost = false }: { t: TFn; task: StagePlanTask; dashed?: boolean; compact?: boolean; showCost?: boolean }) {
   return (
     <span
       className={`inline-flex items-center rounded-cz border px-2 py-0.5 text-2xs font-medium whitespace-nowrap ${
-        compact ? "min-w-0 truncate" : ""
+        compact && !showCost ? "min-w-0 truncate" : "min-w-0 max-w-full"
       } ${dashed ? "border-dashed border-cz-border text-cz-3" : "border-cz-border bg-cz-subtle text-cz-1"}`}
     >
-      {compact ? <span className="truncate">{t(`stagePlan.task.${task}`)}</span> : t(`stagePlan.task.${task}`)}
+      {compact && !showCost ? <span className="truncate">{t(`stagePlan.task.${task}`)}</span> : <span className="min-w-0 whitespace-normal">{t(`stagePlan.task.${task}`)}</span>}
+      {showCost && <span className="ml-1 text-cz-2" data-testid="stage-plan-task-cost">{t(taskCostKey(task))}</span>}
     </span>
   );
 }
@@ -113,16 +106,16 @@ function SuggestionBadge({ t }: { t: TFn }) {
 }
 
 /** Kaeden som chips. `compact` = mobil: én linje, kun opgaverne. */
-function PlanChain({ t, legs, route, dashed = false, compact = false }: { t: TFn; legs: StagePlanLeg[]; route: StagePlanRoute; dashed?: boolean; compact?: boolean }) {
+function PlanChain({ t, legs, route, dashed = false, compact = false, showCost = false }: { t: TFn; legs: StagePlanLeg[]; route: StagePlanRoute; dashed?: boolean; compact?: boolean; showCost?: boolean }) {
   return (
-    <span className={`flex items-center gap-1.5 ${compact ? "min-w-0 overflow-hidden" : "flex-wrap"}`}>
+    <span className={`flex items-center gap-1.5 ${compact && !showCost ? "min-w-0 overflow-hidden" : "min-w-0 flex-wrap"}`}>
       {legs.map((leg, i) => (
         <span key={i} className={`inline-flex items-center gap-1.5 ${compact ? "min-w-0" : ""}`}>
           {i > 0 && <ChevronRightIcon size={12} aria-hidden="true" className="shrink-0 text-cz-3" />}
           {i > 0 && !compact && (
             <span className="text-3xs text-cz-3 whitespace-nowrap">{triggerLabel(t, route, leg.from, legs[i - 1].task)}</span>
           )}
-          <TaskChip t={t} task={leg.task} dashed={dashed} compact={compact} />
+          <TaskChip t={t} task={leg.task} dashed={dashed} compact={compact} showCost={showCost} />
         </span>
       ))}
     </span>
@@ -191,9 +184,9 @@ function PlanRecap({ t, legs, route, events, riderId, rank = null, leader = null
 }
 
 /** Editoren for én rytter: ét trin pr. linje, kun gyldige valg. */
-function PlanEditor({ t, riderName, legs, role, route, suggestion, showsSuggestion = false, reasonKey = null, disabled, onChange, onClear }: {
+function PlanEditor({ t, riderName, legs, role, route, suggestion, showsSuggestion = false, reasonKey = null, disabled, onChange, onClear, showCost = false }: {
   t: TFn; riderName?: string | null; legs: StagePlanLeg[]; role: StagePlanRole; route: StagePlanRoute;
-  suggestion: StagePlanLeg[] | null; showsSuggestion?: boolean; reasonKey?: string | null; disabled: boolean; onChange: (legs: StagePlanLeg[]) => void; onClear: () => void;
+  suggestion: StagePlanLeg[] | null; showsSuggestion?: boolean; reasonKey?: string | null; disabled: boolean; onChange: (legs: StagePlanLeg[]) => void; onClear: () => void; showCost?: boolean;
 }) {
   const addable = nextLeg(legs, role, route);
   return (
@@ -247,7 +240,7 @@ function PlanEditor({ t, riderName, legs, role, route, suggestion, showsSuggesti
                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onChange(setLegTask(legs, i, e.target.value as StagePlanTask, role, route))}
                 >
                   {tasks.map((task) => (
-                    <option key={task} value={task}>{JERSEY_HUNT_TASKS[task] ? t("stagePlan.huntOption", { task: t(`stagePlan.task.${task}`), price: t("stagePlan.price.hard") }) : t(`stagePlan.task.${task}`)}</option>
+                    <option key={task} value={task}>{showCost ? t("stagePlan.huntOption", { task: t(`stagePlan.task.${task}`), price: t(taskCostKey(task)) }) : JERSEY_HUNT_TASKS[task] ? t("stagePlan.huntOption", { task: t(`stagePlan.task.${task}`), price: t("stagePlan.price.hard") }) : t(`stagePlan.task.${task}`)}</option>
                   ))}
                 </Select>
               </label>
@@ -359,6 +352,7 @@ export default function StagePlanBoard({
   roleDefaultFor,
   effortFor,
   routeMatch,
+  ready7864 = false,
 }: {
   t: TFn;
   raceId: string;
@@ -391,6 +385,7 @@ export default function StagePlanBoard({
     renderCell: (rider: PlanRider, opts?: { numberOnly?: boolean }) => React.ReactNode;
     renderMark?: (rider: PlanRider) => React.ReactNode;
   };
+  ready7864?: boolean;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const route = useMemo(() => withJerseyHunt7855(routeForProfile(profile), jerseyHunt7855 === true), [profile, jerseyHunt7855]); // #7855
@@ -453,11 +448,11 @@ export default function StagePlanBoard({
     const role = planRole(roleFor(rider));
     if (timeTrial) return <span className="text-xs text-cz-3">{t("stagePlan.timeTrial")}</span>;
     if (legs && stageCompleted) {
-      if (events === null) return <PlanChain t={t} legs={legs} route={route} compact={compact} />;
+      if (events === null) return <PlanChain t={t} legs={legs} route={route} compact={compact} showCost={ready7864} />;
       if (!events.length) {
         return (
           <>
-            <PlanChain t={t} legs={legs} route={route} compact={compact} />
+            <PlanChain t={t} legs={legs} route={route} compact={compact} showCost={ready7864} />
             <p className="mt-1 text-3xs text-cz-3">{t("stagePlan.recap.pending")}</p>
           </>
         );
@@ -475,7 +470,7 @@ export default function StagePlanBoard({
       const fits = validateStagePlanLegs(legs, role, route) === null;
       return (
         <>
-          <PlanChain t={t} legs={legs} route={route} compact={compact} />
+          <PlanChain t={t} legs={legs} route={route} compact={compact} showCost={ready7864} />
           {orderRiderById.get(rider.rider_id)?.hunt_off === true && <p className="mt-1 text-3xs text-cz-warning">{t("stagePlan.huntOffNote")}</p>}
           {!fits && <p className="mt-1 text-3xs text-cz-warning">{t("stagePlan.noFit")}</p>}
           {fits && stagePlanSwitchNotes(legs, route, features).map((note) => stagePlanSwitchNoteText(note)).map(({ key, params }) => (
@@ -502,7 +497,7 @@ export default function StagePlanBoard({
           <span className={compact ? "flex min-w-0 flex-col items-start gap-1" : "flex flex-wrap items-center gap-1.5"}>
             <SuggestionBadge t={t} />
             <span className={compact ? "flex w-full min-w-0" : "contents"}>
-              <PlanChain t={t} legs={suggestion} route={route} dashed compact={compact} />
+              <PlanChain t={t} legs={suggestion} route={route} dashed compact={compact} showCost={ready7864} />
             </span>
           </span>
         )}
@@ -530,6 +525,7 @@ export default function StagePlanBoard({
         showsSuggestion={!saved}
         reasonKey={suggestionReasonKey(suggestion, role, isLuxuryHelperRole(roleFor(rider)))}
         disabled={saving}
+        showCost={ready7864}
         onChange={(next) => setPlan(rider.rider_id, next)}
         onClear={() => { onChangeOrder((o) => clearRiderPlan(o, rider.rider_id, roleDefaultFor?.(rider.rider_id))); setOpenId(null); }}
       />

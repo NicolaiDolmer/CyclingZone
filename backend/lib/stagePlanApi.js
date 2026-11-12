@@ -43,7 +43,7 @@ const VALID_ROLES = new Set(["captain", "co_captain", "sprint_captain", "helper"
  * effektive rolle. Kaldes kun naar PUT-kroppen faktisk baerer en plan.
  */
 // #7855: `jerseyHunt7855` = loebet tager imod troejejagtens opgaver (jerseyHunt7855Flag.jerseyHunt7855OpenForRace).
-export async function loadStagePlanContext({ supabase, raceId, stageNumber, baseRoleByRider, jerseyHunt7855 = false }) {
+export async function loadStagePlanContext({ supabase, raceId, stageNumber, baseRoleByRider, jerseyHunt7855 = false, overrideRows }) {
   const riderIds = [...baseRoleByRider.keys()];
   const [profileRes, rolesRes] = await Promise.all([
     supabase
@@ -52,7 +52,7 @@ export async function loadStagePlanContext({ supabase, raceId, stageNumber, base
       .eq("race_id", raceId)
       .eq("stage_number", stageNumber)
       .maybeSingle(),
-    riderIds.length
+    overrideRows !== undefined ? Promise.resolve({ data: overrideRows, error: null }) : riderIds.length
       ? supabase
         .from("race_stage_roles")
         .select("rider_id, race_role")

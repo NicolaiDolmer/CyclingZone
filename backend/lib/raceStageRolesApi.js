@@ -430,7 +430,7 @@ export async function getStageRolesContext({ supabase, race, teamId, now = new D
  *
  * @param {{supabase, raceId, teamRiderIds: Set<string>, stages: number[], overrides: Array}} args
  */
-export async function saveStageRoleOverrides({ supabase, raceId, teamRiderIds, stages, overrides }) {
+export async function saveStageRoleOverrides({ supabase, raceId, teamRiderIds, stages, overrides, now = new Date() }) {
   const riderIds = [...teamRiderIds];
   if (!Array.isArray(stages) || stages.length === 0) return;
   if (riderIds.length) {
@@ -443,14 +443,13 @@ export async function saveStageRoleOverrides({ supabase, raceId, teamRiderIds, s
     if (delErr) throw new Error(`race_stage_roles delete: ${delErr.message}`);
   }
   if (overrides.length) {
-    const now = new Date().toISOString();
     const rows = overrides.map((o) => ({
       race_id: raceId,
       stage_number: o.stage_number,
       rider_id: o.rider_id,
       race_role: o.race_role,
       effort: o.effort,
-      updated_at: now,
+      updated_at: now.toISOString(),
     }));
     const { error: insErr } = await supabase.from("race_stage_roles").insert(rows);
     if (insErr) throw new Error(`race_stage_roles insert: ${insErr.message}`);
