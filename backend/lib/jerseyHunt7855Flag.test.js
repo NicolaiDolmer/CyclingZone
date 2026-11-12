@@ -242,7 +242,7 @@ test("#7855 taendt: passagerne koster traethed (valg C), og run-identiteten + ge
   // Ejer 12/11 valg C: jagt-leddet taeller som Middel; prisen er passagerne opgaven fik ham til at koere med.
   assert.equal(on.outputs[0].v4Output.stage_plan_load_efforts.r001, "normal");
   assert.equal(on.outputs[1].v4Output.stage_plan_load_efforts.r003, "normal");
-  const frontOf = (o, id) => stageWorkExposure(o.v4Output, null).get(id)?.front ?? 0;
+  const frontOf = (o, id) => { const e = stageWorkExposure(o.v4Output, null).get(id); return (e?.front ?? 0) + (e?.hunt7855 ?? 0); };
   assert.ok(frontOf(on.outputs[0], "r001") > frontOf(off.outputs[0], "r001"), "hjaelperens spurt koster arbejde i front");
   assert.equal(jerseyHuntFrontWork7855(on.outputs[1].v4Output.passages).has("r003"), false, "sprinterkaptajnen koerte med alligevel: intet ekstra");
   const digests = await digests7855(on);

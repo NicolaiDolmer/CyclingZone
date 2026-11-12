@@ -88,7 +88,11 @@ export function workMultiplierV2(exposure, { profileType = null, cfg = CONDITION
   const front = clamp(finiteOr(exposure.front, 0), 0, 1);
   const shelter = clamp(finiteOr(exposure.shelter, 0), 0, 1);
   const caught = exposure.caught === true && front > 0 ? cfg.caughtBreakawaySurcharge : 0;
-  return clamp(1 + cfg.frontWork * front - cfg.shelterRelief * shelter + caught, cfg.workFactorMin, cfg.workFactorMax);
+  const work = clamp(1 + cfg.frontWork * front - cfg.shelterRelief * shelter + caught, cfg.workFactorMin, cfg.workFactorMax);
+  // #7855 valg C (kun kontakten jersey_hunt_7855): hver passage troejejagten fik ham til at koere med om,
+  // koster oveni, ogsaa naar andelen i front og loftet allerede er naaet (aldrig gratis).
+  const hunt = Math.max(0, finiteOr(exposure.hunt7855, 0));
+  return hunt > 0 ? work + cfg.frontWork * hunt : work;
 }
 
 /**

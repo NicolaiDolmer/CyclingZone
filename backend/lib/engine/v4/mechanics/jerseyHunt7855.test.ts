@@ -93,6 +93,17 @@ test("#7855 C: kun dem opgaven fik til at koere med betaler; passagens felter", 
   assert.equal(jerseyHuntFrontWork7855(undefined).size, 0);
 });
 
+test("#7855 C (Codex-review): loftet paa arbejdet i front goer aldrig en passage gratis", () => {
+  const sprints = (n: number) => ({ groupSnapshots: [{ km: 100, groups: [{ kind: "breakaway", rider_ids: ["h"] }] }], passages: Array.from({ length: n }, () => ({ kind: "sprint", hunt_work_7855: ["h"] })) });
+  const exp = (n: number) => exposureOf(sprints(n), "flat").get("h")!;
+  assert.equal(exp(0).front, exp(4).front, "andelen i front er rytterens egen; jagten holdes for sig");
+  const load = (n: number, caught: boolean) => loadV2({ profileType: "flat", distanceKm: 150, stageNumber: 1, effort: "normal", exposure: { ...exp(n), caught }, rulesRevision: REV });
+  for (const caught of [false, true]) {
+    assert.ok(load(3, caught) > load(2, caught) && load(4, caught) > load(3, caught), `hver ekstra passage koster, ogsaa ved fuld front (caught=${caught})`);
+  }
+  assert.equal(exposureOf({ groupSnapshots: [{ km: 100, groups: [{ kind: "breakaway", rider_ids: ["h"] }] }] }, "flat").get("h")!.hunt7855, undefined, "uden jagt: samme form som foer");
+});
+
 // ── Motoren: dommens scenarier ──────────────────────────────────────────────
 
 const REV = "s5_profiles_v3";
@@ -131,7 +142,7 @@ function runStage(row: Record<string, unknown>, seed: string, plans: Record<stri
 }
 
 // raceFatigue.js / conditionModelV2.js er JS (JSDoc-typer); kun formen vi bruger.
-const exposureOf = stageWorkExposure as unknown as (output: unknown, profileType: string | null) => Map<string, { front: number; shelter: number }>;
+const exposureOf = stageWorkExposure as unknown as (output: unknown, profileType: string | null) => Map<string, { front: number; shelter: number; hunt7855?: number }>;
 const caughtOf = stageCaughtBreakaway as unknown as (output: unknown, profileType: string | null) => Set<string>;
 const loadV2 = stageLoadV2 as unknown as (args: Record<string, unknown>) => number;
 const fatigueOf = (run: Run, id: string, effort?: string) => {

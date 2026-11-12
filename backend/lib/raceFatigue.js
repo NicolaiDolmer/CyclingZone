@@ -236,7 +236,10 @@ export function workExposureMultiplier(exposure, { profileType = null, tuning = 
   const front = clamp01(exposure.front);
   const shelter = clamp01(exposure.shelter);
   const raw = 1 + tuning.frontWork * front - tuning.shelterRelief * shelter;
-  return Math.max(tuning.workFactorMin, Math.min(tuning.workFactorMax, raw));
+  const work = Math.max(tuning.workFactorMin, Math.min(tuning.workFactorMax, raw));
+  // #7855 valg C (kun kontakten): troejejagtens passager koster oveni loftet (se conditionModelV2.workMultiplierV2).
+  const hunt = Math.max(0, Number(exposure.hunt7855) || 0);
+  return hunt > 0 ? work + tuning.frontWork * hunt : work;
 }
 
 /**
@@ -256,7 +259,8 @@ export function stageRaceConditionLoad({ profileType, stageNumber = 1, effort = 
  * i grupettoen, fra motorens egne gruppe-snapshots (v4Output.groupSnapshots). Et snapshot
  * gælder strækningen fra forrige snapshot til dets eget km. Enkeltstarter og manglende
  * snapshots giver et tomt kort (= intet arbejdstillæg).
- * @returns {Map<string, {front:number, shelter:number}>}
+ * #7855: `hunt7855` (kun kontakten) er trøjejagtens arbejde, holdt uden for loftet på andelen i front.
+ * @returns {Map<string, {front:number, shelter:number, hunt7855?:number}>}
  */
 export function stageWorkExposure(v4Output, profileType = null) {
   const out = new Map();
@@ -284,14 +288,15 @@ export function stageWorkExposure(v4Output, profileType = null) {
       }
     }
   }
+  for (const e of out.values()) { e.front = round3(clamp01(e.front)); e.shelter = round3(clamp01(e.shelter)); }
   // #7855 (ejer 12/11 valg C, kun kontakten jersey_hunt_7855): hver passage troejejagten fik rytteren
-  // til at koere med om, er et stykke arbejde i front oveni. Uden jagt er kortet tomt (bit-identisk).
+  // til at koere med om, er et stykke arbejde i front oveni. Holdt for sig (`hunt7855`), saa loftet paa
+  // andelen i front aldrig goer en passage gratis. Uden jagt er feltet udeladt (bit-identisk).
   for (const [key, work] of jerseyHuntFrontWork7855(v4Output?.passages)) {
     const e = out.get(key) ?? { front: 0, shelter: 0 };
-    e.front += work;
+    e.hunt7855 = round3(work);
     out.set(key, e);
   }
-  for (const e of out.values()) { e.front = round3(clamp01(e.front)); e.shelter = round3(clamp01(e.shelter)); }
   return out;
 }
 
