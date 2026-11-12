@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import { supabase } from "../lib/supabase";
 import TeamLink from "../components/TeamLink";
 import { formatNumber } from "../lib/intl";
-import { useGlobalRank } from "../hooks/useGlobalRank";
+// #6494: første side på det fælles datalag (TanStack Query) — ingen direkte databasekald i UI'et.
+import { DataProvider } from "../data/DataProvider.tsx";
+import { useGlobalRankData } from "../data/useGlobalRankData.ts";
 import {
   Card, EmptyState, ErrorState, Input, Select, Button, DataTable, SkeletonLines, PodiumIcon, ArrowUpIcon, ArrowDownIcon,
 } from "../components/ui";
@@ -67,22 +68,20 @@ function SidePanel({ title, rows, emptyLabel, unitLabel, valueKey, valueSuffix, 
 }
 
 export default function GlobalRankPage() {
+  return (
+    <DataProvider>
+      <GlobalRankBody />
+    </DataProvider>
+  );
+}
+
+function GlobalRankBody() {
   const navigate = useNavigate();
   const { t } = useTranslation("globalRank");
-  const { teams, climbers, bestNewManagers, loading, error, reload } = useGlobalRank();
-  const [myTeamId, setMyTeamId] = useState(null);
+  const { teams, climbers, bestNewManagers, myTeamId, loading, error, reload } = useGlobalRankData();
   const [divFilter, setDivFilter] = useState(DIV_ALL);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
-
-  useEffect(() => {
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: mine } = await supabase.from("teams").select("id").eq("user_id", user.id).maybeSingle();
-      setMyTeamId(mine?.id || null);
-    })();
-  }, []);
 
   useEffect(() => { setPage(0); }, [divFilter, search]);
 

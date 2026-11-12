@@ -33,21 +33,7 @@ function harness(name: string, apiRows: unknown[], fail = false) {
   return { hook: hook(), states };
 }
 
-test("global hook joins API aggregates with snapshots and hides inactive teams", async () => {
-  const f = harness("useGlobalRank", [
-    { team_id: "team", name: "Team", division: 1, global_rank: "2", global_points: "100", active_recent: true },
-    { team_id: "inactive", active_recent: false },
-  ]);
-  await f.hook.reload();
-  const rows = f.states[0] as Record<string, unknown>[];
-  assert.equal(rows.length, 1);
-  assert.equal(rows[0].global_rank, 2);
-  assert.equal(rows[0].movement, 3);
-  assert.equal(rows[0].places_gained, 6);
-  assert.equal(f.states[3], false);
-  assert.equal(f.states[4], null);
-});
-
+// #6494: Global Rank læser nu via frontend/src/data (globalRankData.test.ts dækker sammenføjningen).
 test("rider hook preserves numeric stats, names and wins from API data", async () => {
   const f = harness("useRiderRankings", [{ rider_id: "rider", points: "80", stage_wins: "2", gc_wins: "1" }]);
   await f.hook.reload();
@@ -59,7 +45,7 @@ test("rider hook preserves numeric stats, names and wins from API data", async (
   assert.equal(f.states[2], false);
 });
 
-for (const name of ["useGlobalRank", "useRiderRankings"]) {
+for (const name of ["useRiderRankings"]) {
   test(`${name}: API failures clear results and finish loading`, async () => {
     const f = harness(name, [], true);
     await f.hook.reload();
