@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (12/11, regel 39):** **Claude (PC1 eller Dolmer PC):** 1) #8017 merget 12/11 (`8482f823`), migration verificeret i prod; tjek Wessel Bos får auto-pris. 2) Review Codex-natbølgens Web 5x-draft-PR'er (#6494 TanStack, #6584 PWA, CLS under #1602); review #6494-spec før merge. 3) #7980 (ejerens billed-go), GD #7960, #7982 A/B, #8016 mockups. Opfølgning #8018; til dørs #2176 (første ægte bud). Uge 47: ranglisten.
+> **🎯 Next action (12/11):** **PC1 storsession (Fable 5.2, wave.js, til ejeren siger stop):** startprompt på [#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6817728199): træning (#7982 → #7741 → #6110), taktik (#7980 billede-go → #7884 A → #7638), løbssiden #7778, Web 5x (A/B bundle-loft #6494/#8020, så #8012 → #8008). PC1 ejer merge-køen. **Dolmer PC Codex:** #8022 P1 (dashboard-loader-loft) + #8023. 12/11 merget: #8017 (migration verificeret), #8021 PWA. Åbne tjek: akademirytter får auto-pris live (#8015); GD #7960; #8016 mockups; opfølgning #8018.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; #7277 (off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Ingen aktiv Claude-session (lukket 12/11 ~00:45). Codex natopgave Web 5x på Dolmer PC (draft-PR'er, intet merges).
+> **🤖 Working agent:** Ingen aktiv Claude-session (Dolmer PC lukket 12/11 formiddag). Codex på Dolmer PC: #8022.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
