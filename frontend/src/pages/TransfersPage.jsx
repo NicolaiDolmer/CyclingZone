@@ -1285,7 +1285,7 @@ export default function TransfersPage() {
   const [auctionTiming, setAuctionTiming] = useState(/** @type {import("../lib/autoAccept2176.ts").AuctionTiming | null} */ (null));
   const [auctionListing, setAuctionListing] = useState(/** @type {import("../components/transfers/AutoAcceptAuctionDialog.tsx").AutoListing | null} */ (null));
   const [auctionNow, setAuctionNow] = useState(/** @type {Date | null} */ (null));
-  const { listings, sentOffers, receivedOffers, archivedSentOffers, archivedReceivedOffers, sentSwaps, receivedSwaps, archivedSentSwaps, archivedReceivedSwaps, myTeamId, myBalance, loading, hasData, error: dataError, loadAll, request: apiFetch, getHeaders, refreshListings } = useMarketData();
+  const { listings, sentOffers, receivedOffers, archivedSentOffers, archivedReceivedOffers, sentSwaps, receivedSwaps, archivedSentSwaps, archivedReceivedSwaps, myTeamId, myBalance, loading, hasData, failurePresentation, error: dataError, loadAll, request: apiFetch, getHeaders, refreshListings } = useMarketData();
   const [celebration, setCelebration] = useState(null);
   const [msg, setMsg] = useState({ text: "", type: "success" });
   // #2329: markedstabellens ÉN kanoniske sort-state — delt af header-klik
@@ -1336,7 +1336,7 @@ export default function TransfersPage() {
     setSelectedListingIds(new Set());
   }
 
-  useEffect(() => { if (dataError && dataError.kind !== "limited" && dataError.kind !== "unauthorized") showMsg(t("auth:error.connectionFailed"), "error"); }, [dataError, t]);
+  useEffect(() => { if (dataError && failurePresentation === "error") showMsg(t("auth:error.connectionFailed"), "error"); }, [dataError, failurePresentation, t]);
   useEffect(() => {
     let active = true;
     fetchPlayerFeatureFlags().then(async flags => {

@@ -29,3 +29,10 @@ export function rows(value: unknown): DataRecord[] {
   if (!Array.isArray(value)) throw new DataError("invalid");
   return value.map(record);
 }
+
+export function readFailurePresentation(error: unknown, hasData: boolean): "none" | "retain" | "waiting" | "error" {
+  if (!error) return "none";
+  if (hasData) return "retain";
+  if (error instanceof DataError && (error.kind === "limited" || error.kind === "unauthorized")) return "waiting";
+  return "error";
+}

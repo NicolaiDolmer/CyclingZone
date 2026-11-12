@@ -17,3 +17,11 @@ test("rate limit metadata is preserved without automatic retry", () => {
   try { parseApiResult({ ok: false, status: 429, limited: true, data: null, retryAt: 9000 }, rows); }
   catch (error) { assert.ok(error instanceof DataError); assert.equal(error.retryAt, 9000); assert.equal(error.kind, "limited"); }
 });
+
+test("initial rate limits remain silent while ordinary failures expose retry and cached data stays visible", async () => {
+  const { readFailurePresentation } = await import("./apiQuery.ts");
+  assert.equal(readFailurePresentation(new DataError("limited", 429, 9000), false), "waiting");
+  assert.equal(readFailurePresentation(new DataError("unauthorized", 401), false), "waiting");
+  assert.equal(readFailurePresentation(new DataError("http", 503), false), "error");
+  assert.equal(readFailurePresentation(new DataError("limited", 429, 9000), true), "retain");
+});

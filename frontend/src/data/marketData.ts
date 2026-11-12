@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch, type ApiFetchResult } from "../lib/apiFetch.ts";
 import { flattenAbilities } from "../lib/abilities.js";
-import { record, rows, parseApiResult, type DataRecord, DataError } from "./apiQuery.ts";
+import { record, rows, parseApiResult, type DataRecord, DataError, readFailurePresentation } from "./apiQuery.ts";
 import { privateKey } from "./queryRuntime.ts";
 import { useDataScope, scopedHeaders, invalidateScope } from "./useDataScope.ts";
 
@@ -114,6 +114,9 @@ export function useMarketData() {
     }
   }, [runtime, scope]);
   const loadAll = useCallback(() => invalidateScope(runtime, scope), [runtime, scope]);
+  const hasData = ready && [listingsQuery, offersQuery, swapsQuery].every(query => query.data !== undefined);
+  const error = context.error ?? listingsQuery.error ?? offersQuery.error ?? swapsQuery.error;
+  const failurePresentation = readFailurePresentation(error, hasData);
   return {
     listings: ready ? listingsQuery.data ?? EMPTY_ROWS : EMPTY_ROWS,
     sentOffers: offers.sent, receivedOffers: offers.received,
@@ -121,9 +124,9 @@ export function useMarketData() {
     sentSwaps: swaps.sent, receivedSwaps: swaps.received,
     archivedSentSwaps: swaps.archivedSent, archivedReceivedSwaps: swaps.archivedReceived,
     myTeamId: team?.id ?? null, myBalance: team?.balance ?? 0,
-    loading: context.bootstrapLoading || (ready && !!team && [listingsQuery, offersQuery, swapsQuery].some(query => query.isPending)),
-    hasData: ready && [listingsQuery, offersQuery, swapsQuery].every(query => query.data !== undefined),
-    error: context.error ?? listingsQuery.error ?? offersQuery.error ?? swapsQuery.error,
+    loading: context.bootstrapLoading || (ready && !!team && [listingsQuery, offersQuery, swapsQuery].some(query => query.isPending)) || failurePresentation === "waiting",
+    hasData, failurePresentation,
+    error,
     loadAll,
     request,
     refreshListings: async () => { const result = await listingsQuery.refetch(); return result.data ?? null; },

@@ -1265,7 +1265,7 @@ export default function AuctionsPage() {
 
   async function handleBid(auctionId, amount, { skipExpectedPrice = false } = {}) {
     const headers = await getHeaders();
-    
+
     const auction = auctions.find(a => a.id === auctionId);
     const body = { amount };
     if (!skipExpectedPrice && auction) {
@@ -1323,7 +1323,7 @@ export default function AuctionsPage() {
 
   async function handleSetProxy(auctionId, maxAmount) {
     const headers = await getHeaders();
-    
+
     const res = await apiFetch(`/api/auctions/${auctionId}/proxy`, {
       method: "PATCH",
       headers,
@@ -1340,7 +1340,7 @@ export default function AuctionsPage() {
   // succes indtil næste reload, hvor autobud-badget dukkede op igen.
   async function handleRemoveProxy(auctionId) {
     const headers = await getHeaders();
-    
+
     const res = await apiFetch(`/api/auctions/${auctionId}/proxy`, {
       method: "DELETE",
       headers,
