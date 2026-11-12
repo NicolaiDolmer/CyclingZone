@@ -2,12 +2,12 @@
   "stagePlanReady": {
     "gc": {
       "name": "Ride for GC",
-      "description": "Everyone rides for your GC leader and keeps him out of trouble.",
+      "description": "The domestiques ride for your GC leader. A shared captain rides the same plan, a free role rides his own race.",
       "named": "Ride for GC with {name}"
     },
     "stage": {
       "name": "Stage win",
-      "description": "The team works for the rider who suits today's route best.",
+      "description": "The domestiques work for the rider who suits today's route best.",
       "named": "Stage win for {name}"
     },
     "sprint": {
@@ -21,7 +21,7 @@
     },
     "save": {
       "name": "Save the legs",
-      "description": "Everyone rides in. Lowest fatigue tonight."
+      "description": "Everyone rides in. The lightest of the five plans."
     },
     "price": {
       "easy": "Easy",
