@@ -1,14 +1,14 @@
 ﻿import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { supabase } from "../lib/supabase";
-import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
-import { subscribeAuthedChannel } from "../lib/realtimeChannel";
+import { useAuctionData, useAuctionEvents } from "../data/auctionData.ts";
+
+
 import { NavLink, useSearchParams } from "react-router";
 import RiderLink from "../components/RiderLink";
 import MessageManagerButton from "../components/messages/MessageManagerButton.jsx"; // #3200
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
-import { ABILITY_STATS, ABILITY_SHORT, ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
+import { ABILITY_STATS, ABILITY_SHORT } from "../lib/abilities";
 import { statStyle } from "../lib/statColor";
 import { ConfettiModal } from "../components/ConfettiModal";
 import { RacePriceModal } from "../components/RacePriceModal";
@@ -33,7 +33,7 @@ import StatsToggle from "../components/StatsToggle";
 import useStatsToggle from "../lib/useStatsToggle";
 import { logEvent } from "../lib/logEvent";
 import { computeBidRoom } from "../lib/auctionBidRoom";
-import { fetchAcademySquadCounts, EMPTY_SQUAD_COUNTS } from "../lib/squadCaps.ts"; // #5568
+
 import { BidRoomBlockNotice, BidDestinationHint } from "../components/AuctionBidRoomNotice";
 import {
   isOverbidEvent,
@@ -74,7 +74,7 @@ import { buttonClass } from "../components/ui/buttonStyles.js";
 // selve tabellen konverteres IKKE til DataTable — se kommentar ved AuctionList.
 import { WRAP } from "../components/ui/dataTableStyles.js";
 
-const API = import.meta.env.VITE_API_URL;
+
 
 function ReputationValue({ rider, enabled, t, inline = false }) {
   const value = riderReputationValue(rider, enabled);
@@ -932,19 +932,7 @@ export default function AuctionsPage() {
   const scouting = useScouting();
   // #3071: sæson-referenceår til alders-visning/badges (se riderAge.js).
   const seasonYear = useActiveSeasonYear();
-  const [auctions, setAuctions] = useState([]);
-  const [myTeamId, setMyTeamId] = useState(null);
-  const [userId, setUserId] = useState(null);
-  const [watchlist, setWatchlist] = useState(() => new Set());
-  const [myBalance, setMyBalance] = useState(0);
-  const [currentRiderCount, setCurrentRiderCount] = useState(null);
-  // #2701: akademi-tal til bud-gaten (ung rytter egnet til både senior og akademi).
-  // #5568: pr. ungdomstrup (U23 / junior), ikke hele akademiet mod et fladt loft.
-  const [academySquadCounts, setAcademySquadCounts] = useState(EMPTY_SQUAD_COUNTS);
-  const [loading, setLoading] = useState(true);
-  // #1350: terminal load-fejl-state — uden den kunne en rejected request efterlade
-  // en evig spinner, og en Supabase-fejl ligne et tomt auktionsmarked.
-  const [loadError, setLoadError] = useState(false);
+  const { auctions, myTeamId, userId, watchlist, myBalance, currentRiderCount, academySquadCounts, loading, loadError, loadAll, request: apiFetch, getHeaders, setWatchlist, saveWatchlist, recentBids } = useAuctionData();
   // #1351: lokaliseret feedback når en optimistisk watchlist-toggle rulles tilbage
   // efter en fejlet Supabase-write. { text } | null, auto-dismisses.
   const [watchlistError, setWatchlistError] = useState(null);
@@ -1078,8 +1066,8 @@ export default function AuctionsPage() {
   // Refs så channel-callback kan se nyeste auctions/myTeamId uden at re-subscribe.
   // tRef tilføjet i Fase 3b så i18n-strings inde i channel-callback opdateres
   // uden at tear-down + recreate supabase-subscription ved language-skift.
-  const auctionsRef = useRef([]);
-  const myTeamIdRef = useRef(null);
+  const auctionsRef = useRef(/** @type {import("../data/auctionData.ts").AuctionView[]} */ ([]));
+  const myTeamIdRef = useRef(/** @type {string | null} */ (null));
   const tRef = useRef(t);
   // Cache af holdnavn pr. team-id. Realtime-payloaden for auctions-UPDATE indeholder
   // kun rå kolonner (current_bidder_id), ikke det joinede current_bidder-objekt, så
@@ -1163,125 +1151,14 @@ export default function AuctionsPage() {
     return riderFilters.filters.sort_dir;
   }
 
-  async function loadAll() {
-    setLoadError(false);
-    try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user?.id) setUserId(user.id);
-    const { data: team } = await supabase.from("teams").select("id, balance, division").eq("user_id", user.id).maybeSingle();
-    if (team) { setMyTeamId(team.id); setMyBalance(team.balance); }
-    // Load watchlist for clickable star på rytter-celle
-    if (user?.id) {
-      const { data: wl } = await supabase.from("rider_watchlist").select("rider_id").eq("user_id", user.id);
-      if (wl) setWatchlist(new Set(wl.map(w => w.rider_id)));
-    }
-
-    const [auctionsRes, myBidsRes, riderCountRes, myProxiesRes, academySquadCountsRes] = await Promise.all([
-      supabase.from("auctions")
-        .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale, is_flash, is_youth,
-          seller_team_id, current_bidder_id,
-          rider:rider_id(id, firstname, lastname, market_value, is_u25, team_id, birthdate, nationality_code,
-            prize_earnings_bonus, salary, current_production_value, primary_type, secondary_type, contract_length, contract_end_season, popularity, reputation, ${ABILITY_SELECT}),
-          seller:seller_team_id(id, name),
-          current_bidder:current_bidder_id(id, name)`)
-        .in("status", ["active", "extended"])
-        .order("calculated_end", { ascending: true }),
-      team ? supabase.from("auction_bids").select("auction_id, amount").eq("team_id", team.id)
-           : Promise.resolve({ data: [] }),
-      // #1308: akademiryttere tæller ikke mod senior-cap
-      // #2748: pensionerede heller ikke — spejler backend getTeamMarketState.
-      team ? supabase.from("riders").select("id", { count: "exact", head: true }).eq("team_id", team.id).eq("is_academy", false).eq("is_retired", false)
-           : Promise.resolve({ count: 0 }),
-      team ? supabase.from("auction_proxy_bids").select("auction_id, max_amount").eq("team_id", team.id)
-           : Promise.resolve({ data: [] }),
-      // #2701/#5568: akademi-tal pr. ungdomstrup til youth-bud-gaten.
-      team ? fetchAcademySquadCounts(supabase, team.id)
-           : Promise.resolve(EMPTY_SQUAD_COUNTS),
-    ]);
-
-    // #1350: en Supabase-fejl returnerer { data: null, error } i stedet for at
-    // reject — uden denne guard ville et fejlet auktions-kald ligne et tomt marked.
-    // Behandl det som en (retry-bar) load-fejl.
-    if (auctionsRes.error) {
-      setLoadError(true);
-      return;
-    }
-
-    if (riderCountRes.count !== null) setCurrentRiderCount(riderCountRes.count);
-    if (academySquadCountsRes) setAcademySquadCounts(academySquadCountsRes);
-
-    if (auctionsRes.data) {
-      const myBidMap = {};
-      (myBidsRes.data || []).forEach(b => {
-        if (!myBidMap[b.auction_id] || b.amount > myBidMap[b.auction_id]) {
-          myBidMap[b.auction_id] = b.amount;
-        }
-      });
-      const myProxyMap = {};
-      (myProxiesRes.data || []).forEach(p => { myProxyMap[p.auction_id] = p.max_amount; });
-      // Seed holdnavn-cachen så live fører-opdatering kan slå navne op uden ekstra fetch.
-      auctionsRes.data.forEach(a => {
-        if (a.seller?.id) teamNameCacheRef.current.set(a.seller.id, a.seller.name);
-        if (a.current_bidder?.id) teamNameCacheRef.current.set(a.current_bidder.id, a.current_bidder.name);
-      });
-      setAuctions(auctionsRes.data.map(a => ({
-        ...a,
-        // #1529: løft de joinede rider_derived_abilities-felter op på rider, så
-        // rider.climbing osv. virker direkte i render/sort/klient-filter.
-        rider: flattenAbilities(a.rider),
-        myHighestBid: myBidMap[a.id] || null,
-        myProxyMax: myProxyMap[a.id] || null,
-      })));
-
-      // Backfill: fyld feed-bufferen med de seneste bud på de auktioner manageren
-      // deltager i, så "Live bud"-panelet ikke er tomt ved frisk load (#1510406001751363584).
-      const participatingIds = [...new Set([...Object.keys(myBidMap), ...Object.keys(myProxyMap)])];
-      if (participatingIds.length) {
-        const cutoff = new Date(Date.now() - BID_FEED_WINDOW_MS).toISOString();
-        const { data: recentBids } = await supabase
-          .from("auction_bids")
-          .select("id, auction_id, team_id, amount, bid_time")
-          .in("auction_id", participatingIds)
-          .gte("bid_time", cutoff)
-          .order("bid_time", { ascending: true })
-          .limit(60);
-        if (recentBids?.length) {
-          setRecentBidEvents(prev => {
-            const seen = new Set(prev.map(e => e.id));
-            const backfilled = recentBids
-              .filter(b => !seen.has(b.id))
-              .map(b => ({
-                id: b.id,
-                auction_id: b.auction_id,
-                team_id: b.team_id,
-                amount: b.amount,
-                ts: new Date(b.bid_time).getTime(),
-              }));
-            return pruneStaleBidEvents([...backfilled, ...prev], Date.now(), BID_FEED_WINDOW_MS);
-          });
-        }
-      }
-    }
-    } catch (e) {
-      // #1350: rejected request (netværk/auth) — vis retry-bar fejl i stedet for
-      // en evig spinner.
-      console.error("AuctionsPage loadAll failed", e);
-      setLoadError(true);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   // Onboarding v2 Slice 1b — vis first-bid hint indtil manager har afgivet et bud (eller dismissed)
   useEffect(() => {
     if (firstBidDismissed) return;
     async function checkFirstBid() {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) return;
       try {
-        const res = await apiFetch(`${API}/api/me/onboarding-progress`, {
-          headers: { Authorization: `Bearer ${token}` },
+        const headers = await getHeaders();
+        const res = await apiFetch(`/api/me/onboarding-progress`, {
+          headers,
         });
         if (!res.ok) return; // dækker også limited/unauthorized (begge sætter ok:false)
         const prog = res.data;
@@ -1292,7 +1169,7 @@ export default function AuctionsPage() {
       }
     }
     checkFirstBid();
-  }, [firstBidDismissed]);
+  }, [firstBidDismissed, apiFetch, getHeaders]);
 
   // #3007: kun beregnet mens hintet rent faktisk vises (manageren har ikke
   // budt endnu) — ingen grund til at gennemløbe auktionslisten hvert sekund
@@ -1349,99 +1226,46 @@ export default function AuctionsPage() {
   }, [scrollToAuctionId, filter, auctionSort]);
 
   useEffect(() => {
-    loadAll();
-    // #4010: session-gatet realtime. Denne effekt kørte ved mount uden nogen
-    // session-check, så den connectede med den opake api-nøgle og blev afvist
-    // med MalformedJWT. Se lib/realtimeChannel.js.
-    return subscribeAuthedChannel("auctions-live", channel => channel
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "auctions" },
-        payload => {
-          const updated = payload.new;
-          // #196: pulse + overbid-toast bygger på SAMME prev som auctions-listen,
-          // men læses fra ref så closuren ikke ser stale state efter re-render.
-          const prevFromRef = auctionsRef.current.find(a => a.id === updated.id);
-          const myTeam = myTeamIdRef.current;
-          if (prevFromRef) {
-            if (shouldFlashPrice(prevFromRef, updated)) {
-              flashAuctionPrice(updated.id);
-            }
-            if (isOverbidEvent(prevFromRef, updated, myTeam)) {
-              const r = prevFromRef.rider;
-              pushOverbidToast({
-                riderName: r ? `${r.firstname} ${r.lastname}` : tRef.current("auctions:fallback.rider"),
-                amount: updated.current_price,
-              });
-            }
-          }
-          setAuctions(prev => {
-            const prevAuction = prev.find(a => a.id === updated.id);
-            if (updated.status === "completed" && prevAuction?.status !== "completed") {
-              setMyTeamId(tid => {
-                if (getAuctionLeaderId({ ...prevAuction, ...updated }) === tid) {
-                  setCelebration({
-                    title: tRef.current("auctions:celebration.title"),
-                    subtitle: tRef.current("auctions:celebration.subtitle"),
-                    amount: updated.current_price,
-                  });
-                }
-                return tid;
-              });
-              return prev.filter(a => a.id !== updated.id);
-            }
-            return prev.map(a => {
-              if (a.id !== updated.id) return a;
-              const merged = { ...a, ...updated };
-              // Realtime-payloaden mangler det joinede current_bidder-objekt, så fører-
-              // navnet ville ellers forblive stale. Genopbyg det fra raw current_bidder_id.
-              if (updated.current_bidder_id == null) {
-                merged.current_bidder = null;
-              } else if (a.current_bidder?.id !== updated.current_bidder_id) {
-                merged.current_bidder = {
-                  id: updated.current_bidder_id,
-                  name: teamNameCacheRef.current.get(updated.current_bidder_id) || null,
-                };
-              }
-              return merged;
-            });
-          });
-          // Ny fører hvis navn ikke er cachet → hent det og flet ind, så føringen
-          // opdateres live uden manuel reload (#1511441112815108157).
-          const newBidderId = updated.current_bidder_id;
-          if (newBidderId && !teamNameCacheRef.current.has(newBidderId)) {
-            supabase.from("teams").select("id, name").eq("id", newBidderId).maybeSingle()
-              .then(({ data }) => {
-                if (!data) return;
-                teamNameCacheRef.current.set(data.id, data.name);
-                setAuctions(prev => prev.map(a =>
-                  a.id === updated.id && a.current_bidder_id === data.id
-                    ? { ...a, current_bidder: { id: data.id, name: data.name } }
-                    : a));
-              });
-          }
-        })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "auction_bids" },
-        payload => {
-          // #196: nye bud feeder både aggregat-tickeren og sidebar-feeden.
-          // Buffer prunes til 30s rolling vindue.
-          const bid = payload.new;
-          const t = Date.now();
-          setRecentBidEvents(prev => pruneStaleBidEvents([
-            ...prev,
-            {
-              id: bid.id,
-              auction_id: bid.auction_id,
-              team_id: bid.team_id,
-              amount: bid.amount,
-              ts: t,
-            },
-          ], t, BID_FEED_WINDOW_MS));
-        })
-    );
-  }, []);
+    for (const auction of auctions) {
+      if (auction.seller?.id) teamNameCacheRef.current.set(auction.seller.id, auction.seller.name);
+      if (auction.current_bidder?.id) teamNameCacheRef.current.set(auction.current_bidder.id, auction.current_bidder.name);
+    }
+  }, [auctions]);
+  useEffect(() => {
+    if (!recentBids.length) return;
+    setRecentBidEvents(previous => {
+      const known = new Set(previous.map(event => event.id));
+      const backfilled = recentBids.filter(bid => !known.has(bid.id)).map(bid => ({
+        id: bid.id, auction_id: bid.auction_id, team_id: bid.team_id, amount: bid.amount, ts: Date.parse(bid.bid_time),
+      }));
+      return pruneStaleBidEvents([...backfilled, ...previous], Date.now(), BID_FEED_WINDOW_MS);
+    });
+  }, [recentBids]);
+  useAuctionEvents(updated => {
+    const previous = auctionsRef.current.find(auction => auction.id === updated.id);
+    const myTeam = myTeamIdRef.current;
+    if (!previous) return;
+    if (shouldFlashPrice(previous, updated)) flashAuctionPrice(updated.id);
+    if (isOverbidEvent(previous, updated, myTeam)) {
+      const rider = previous.rider;
+      pushOverbidToast({
+        riderName: rider ? `${rider.firstname} ${rider.lastname}` : tRef.current("auctions:fallback.rider"),
+        amount: updated.current_price,
+      });
+    }
+    if (updated.status === "completed" && previous.status !== "completed" && getAuctionLeaderId({ ...previous, ...updated }) === myTeam) {
+      setCelebration({ title: tRef.current("auctions:celebration.title"), subtitle: tRef.current("auctions:celebration.subtitle"), amount: updated.current_price });
+    }
+  }, bid => {
+    const timestamp = Date.now();
+    setRecentBidEvents(previous => pruneStaleBidEvents([...previous, {
+      id: bid.id, auction_id: bid.auction_id, team_id: bid.team_id, amount: bid.amount, ts: timestamp,
+    }], timestamp, BID_FEED_WINDOW_MS));
+  }, loadAll);
 
   async function handleBid(auctionId, amount, { skipExpectedPrice = false } = {}) {
-    const { data: { session } } = await supabase.auth.getSession();
-    const API = import.meta.env.VITE_API_URL;
+    const headers = await getHeaders();
+    
     const auction = auctions.find(a => a.id === auctionId);
     const body = { amount };
     if (!skipExpectedPrice && auction) {
@@ -1452,9 +1276,9 @@ export default function AuctionsPage() {
     // Retry-After-vindue i stedet for at hamre bid-endpointet igen og igen; et
     // 401 afleveres én gang til networkErrorGuards i stedet for at give en
     // forvirrende bidFailed-besked oven i login-redirectet.
-    const res = await apiFetch(`${API}/api/auctions/${auctionId}/bid`, {
+    const res = await apiFetch(`/api/auctions/${auctionId}/bid`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      headers,
       body: JSON.stringify(body),
     });
     // #5242/#3619: apiFetch returnerer networkError i stedet for at kaste. Uden
@@ -1475,9 +1299,9 @@ export default function AuctionsPage() {
       }
     }
     if (res.ok) {
-      apiFetch(`${API}/api/achievements/check`, {
+      apiFetch(`/api/achievements/check`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        headers,
         body: JSON.stringify({ context: "auction_bid", data: { amount } }),
       }).catch(() => {});
       loadAll();
@@ -1498,11 +1322,11 @@ export default function AuctionsPage() {
   }
 
   async function handleSetProxy(auctionId, maxAmount) {
-    const { data: { session } } = await supabase.auth.getSession();
-    const API = import.meta.env.VITE_API_URL;
-    const res = await apiFetch(`${API}/api/auctions/${auctionId}/proxy`, {
+    const headers = await getHeaders();
+    
+    const res = await apiFetch(`/api/auctions/${auctionId}/proxy`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      headers,
       body: JSON.stringify({ max_amount: maxAmount }),
     });
     if (res.networkError) throw res.error ?? new Error("Network request failed"); // #5242/#3619, se handleBid
@@ -1515,11 +1339,11 @@ export default function AuctionsPage() {
   // Tidligere blev responsen kastet væk: en fejlet DELETE så præcis ud som en
   // succes indtil næste reload, hvor autobud-badget dukkede op igen.
   async function handleRemoveProxy(auctionId) {
-    const { data: { session } } = await supabase.auth.getSession();
-    const API = import.meta.env.VITE_API_URL;
-    const res = await apiFetch(`${API}/api/auctions/${auctionId}/proxy`, {
+    const headers = await getHeaders();
+    
+    const res = await apiFetch(`/api/auctions/${auctionId}/proxy`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${session.access_token}` },
+      headers,
     });
     if (res.networkError) throw res.error ?? new Error("Network request failed"); // #5242/#3619, se handleBid
     if (res.ok) { loadAll(); return { ok: true }; }
@@ -1556,10 +1380,7 @@ export default function AuctionsPage() {
     }
 
     try {
-      const { error } = inList
-        ? await supabase.from("rider_watchlist").delete().eq("user_id", userId).eq("rider_id", riderId)
-        : await supabase.from("rider_watchlist").insert({ user_id: userId, rider_id: riderId });
-      if (error) rollback();
+      await saveWatchlist(riderId, inList);
     } catch {
       // Netværks-/uventet fejl — behandl som fejlet write.
       rollback();

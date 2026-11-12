@@ -29,6 +29,10 @@ registreret i prod. En konkret kompensationskørsel kræver separat ejer-go.
 
 ---
 
+## Frontend server data
+
+The incremental TanStack Query migration is specified in [FRONTEND_DATA_RULES.md](FRONTEND_DATA_RULES.md). Market hooks own migrated server data; other routes retain their existing owners until migrated.
+
 ## Frontend Routes
 
 ```
