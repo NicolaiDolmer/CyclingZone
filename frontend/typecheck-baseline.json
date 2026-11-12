@@ -1309,10 +1309,6 @@
     "TS2322": 1,
     "TS2339": 3
   },
-  "src/hooks/useGlobalRank.js": {
-    "TS18047": 2,
-    "TS2345": 4
-  },
   "src/hooks/useHeroAgonyMoment.js": {
     "TS2322": 3,
     "TS2339": 1,
@@ -2370,8 +2366,6 @@
   },
   "src/pages/GlobalRankPage.jsx": {
     "TS2322": 3,
-    "TS2339": 9,
-    "TS2345": 2,
     "TS2739": 1,
     "TS2741": 2
   },

@@ -79,7 +79,7 @@ function GlobalRankBody() {
   const navigate = useNavigate();
   const { t } = useTranslation("globalRank");
   const { teams, climbers, bestNewManagers, myTeamId, loading, error, reload } = useGlobalRankData();
-  const [divFilter, setDivFilter] = useState(DIV_ALL);
+  const [divFilter, setDivFilter] = useState(/** @type {number | typeof DIV_ALL} */ (DIV_ALL));
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
 
