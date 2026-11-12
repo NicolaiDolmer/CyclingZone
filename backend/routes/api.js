@@ -287,7 +287,7 @@ import { buildYouthSquadsPayload, YOUTH_SQUAD_ROSTER_COLUMNS } from "../lib/yout
 import { buildTrainingScoreView, TRAINING_SCORE_VIEW } from "../lib/trainingScore.js";
 import { loadRacingTodayByRider } from "../lib/racingTodayLookup.js";
 import { computeRiderValueTrend } from "../lib/riderValueTrend.js";
-import { saveSelection, getSelectionContext, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts, roleFor as selectionRoleFor, raceAllowsCoCaptain } from "../lib/raceSelection.js";
+import { saveSelection, getSelectionContext, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts, roleFor as selectionRoleFor, raceAllowsCoCaptain, ridersAtOpeningFatigue } from "../lib/raceSelection.js";
 import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
@@ -587,6 +587,7 @@ import {
 import { selectionSizeForRace, MIN_RACE_ENTRIES } from "../lib/raceAutopick.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
 import { fatigueByRiderNow, fatigueByRiderForRaces, fatigueOutlookForTeam, openingFatigueMap } from "../lib/riderFatigueNow.js"; // #7801
+import { riderCardFatigueNow7801 } from "../lib/riderCardFatigueNow7801.js"; // #7801
 import { REGISTRY_ABILITY_KEYS } from "../lib/abilityRegistry.js";
 import { selectInChunks } from "../lib/dbChunk.js";
 import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
@@ -1576,6 +1577,18 @@ router.get("/riders/:id/history", requireAuth, async (req, res) => {
     res.json(events);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/riders/:id/fatigue-now — #7801: rytterkortets træthed lige nu (egne ryttere,
+// samme kerne som Træningssiden). Slukket kontakt: { enabled: false }.
+router.get("/riders/:id/fatigue-now", requireAuth, presencePulseLimiter, async (req, res) => {
+  if (!UUID_RE.test(req.params.id)) return res.status(400).json({ error: "Ugyldigt rytter-id" });
+  try {
+    res.json(await riderCardFatigueNow7801({ supabase, riderId: req.params.id, teamId: req.team?.id ?? null }));
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: "fatigue_now_failed" });
   }
 });
 
@@ -3257,7 +3270,11 @@ router.get("/training/me", requireAuth, async (req, res) => {
       const program = resolveProgram(plan, primaryTypeByRider.get(row.rider_id) ?? null);
       const outlook = fatigueOutlook?.get(row.rider_id) ?? null;
       const fatigue = outlook ? outlook.fatigue : row.fatigue;
-      const risk = injuryRisk({ intensity: program.intensity, fatigue: Number(fatigue ?? 0) });
+      // #8054: ukendt træthed lige nu ("—") giver ingen skadesrisiko frem for risikoen ved 0.
+      // Fladerne tåler null (højrisiko-markering og dagens beslutning springer rytteren over).
+      const risk = outlook && fatigue == null
+        ? null
+        : injuryRisk({ intensity: program.intensity, fatigue: Number(fatigue ?? 0) });
       condition[row.rider_id] = {
         form: outlook?.form ?? row.form,
         fatigue,
@@ -4943,7 +4960,8 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
       }
     }
     // #6984 M4 + M8: holdlægens ord (kun condition_model_v2; null = intet vises).
-    const doctor = eligible ? await loadDoctorReportForSelection({ supabase, race, teamId: req.team.id, riders: ctx.riders }) : null;
+    // #7801: lægen lægger selv datoens etaper oveni, så den får morgenens træthed.
+    const doctor = eligible ? await loadDoctorReportForSelection({ supabase, race, teamId: req.team.id, riders: ridersAtOpeningFatigue(ctx) }) : null;
     // #6959: trup-låsen (samme regel som taktikken) så panelet kan vise den, også i en pause.
     const lineupLocked = await isRaceLineupLockedNow({ supabase, race, now: new Date() });
     // #6321: klienten skal kende v3-gaten, saa den aldrig afviser et gem serveren accepterer (#4295).

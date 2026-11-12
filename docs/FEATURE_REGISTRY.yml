@@ -449,13 +449,16 @@ features:
     area: race-day
     title_en: Team plans
     title_da: Taktik gjort klar del 1
-    state: building
+    state: beta
+    flag: tactics_ready_7864
     epic: 7864
     ssot: docs/RACE_ENGINE_RULES.md
-    verified: 2026-11-11
-    decision: goer-faerdigt
-    decide_by: 2026-11-12
-    note: "Ingen seed/aktivering; fler-etape kræver atomisk DB-kapabilitet."
+    verified: 2026-11-12
+    decision: taend
+    decide_by: 2026-11-26
+    roadmap_en: "Tactics made clear: every race order in one place, with its cost in plain words"
+    roadmap_da: "Taktik gjort klar: alle løbsordrer ét sted, med prisen i klare ord"
+    note: "Beta siden 12/11 kl. 19:02 (ejerens kør). Første gem set 12/11: 8 ordrer og 14 roller, alle med markør."
 
   - id: rider-why-button
     area: race-day

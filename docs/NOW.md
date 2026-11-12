@@ -4,12 +4,12 @@
 
 ## Aktiv styring
 
-> **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
+> **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11 · slet `backup_5902_20261112_*` ~26/11.
 >
-> **🎯 Next action (12/11 aften):** **PC1 storsession v3** (#7911). **Tændt:** pengelås for alle 12:52 (#6181, første bud mangler). **Merget i dag:** 17 PR (sidst #8057). **🔴 Roadmap-pakken #8057 fejlede i auto-migrate** (rullet tilbage): #8064 merges ved grøn CI, post-verify straks; #8065. **Bølge kører:** langt angreb trin 0 (#7884), løbssiden v6 trin 1 (#7778), Træn nu trin 1 (#7982). **Rettes, så dommer:** #8054, #8037. **Kø:** holdplaner beta efter 19:05 (#8063) → Træn nu for alle ved svartid under 3 s (#7982, målt 9,5 til 16,7 s) → bonus derefter (#7741) → trøjejagt #8052 → planlægningssiden #7535. **Op:** første dage for nye, assistenten, Pro 2.0, akademi-design (#8060).
+> **🎯 Next action (13/11 nat):** følg NATTENS PLAN i Dolmer PC's overdragelse på #7911 (ejer-godkendt rækkefølge, 4 baner, til kl. 08:00; morgenens dagsorden står samme sted). **Tændt:** pengelås for alle (#6181); holdplaner beta (#7864): første gem gode, tjek 6 13/11 kl. 11:10. **Merget 12/11 aften:** #8054 træthed lige nu (slukket; tænding = ejerens "kør"), #8022 forsiden, #8068 parkerede hold, #8061, #8092, #8093, designregler #8070, regel 40 og 41. **Ejer har sagt merge:** #8098, #8096, #8094 (nattens første tog). **Ikke merget:** trøjejagt #8052 (dom 2 fandt frikort). **Design på PC1 13/11:** tabel #8071, app-rammen (tegnet). **Ejer-kort:** se #7911.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; #7277 (off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Claude Fable 5.2 på PC1, storsession v3 (12/11); ejer merge-kø og tænding. Dolmer PC: Codex afslutter på fast stopliste (kun #8022, overdragelse på #7911), derefter Claude Code på Træning og XP (brief på #7911).
+> **🤖 Working agent:** Natsessionen på PC1 er LEDER til 13/11 kl. 08:00 (plan på #7911). Dolmer PC er færdig.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 

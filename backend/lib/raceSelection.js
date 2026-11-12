@@ -15,6 +15,67 @@ import { isTeamSquadTrainOnly, TRAIN_ONLY_SELECTION_ERROR } from "./youthRaceOpt
 import { loadRidersAlreadyRacedInSpan } from "./raceDayRiddenGuard.js";
 import { isRiderDayInvariantViolation, teamInRacePool, teamInRaceSquadPool, findRiderBindingConflicts, windowsOverlap } from "./raceBinding.js";
 import { isS5ProfilesV3OrLater, surfaceRulesRevision } from "./raceEngineRulesRevision.ts";
+import { fatigueByRiderNow, firstStageNumber, loadStageStartAt } from "./riderFatigueNow.js"; // #7801
+import { isFatigueNow7801Enabled } from "./riderFatigueNowFlag.js"; // #7801
+
+// ── #7801: trætheden lige nu på Udtagelsen og Holdfanen ─────────────────────────────
+// Træningssiden, assistenten og motoren regner allerede på samme tal (riderFatigueNow.js).
+// Med kontakten fatigue_now_7801 viser Udtagelsen og Holdfanen det også. Slukket: intet ud
+// over kontakten læses, og fladerne viser rider_condition præcis som før.
+
+/** Løbets næste ikke-kørte etape (den, rytteren skal stille op til). Null når løbet er kørt. */
+export function nextStageForFatigue7801({ race, stages }) {
+  const done = Number(race?.stages_completed) || 0;
+  // Ikke startet: samme etape som assistentens udtagelse (raceRunner, fatigueByRiderForRaces).
+  if (done === 0) return firstStageNumber(stages);
+  const upcoming = (stages ?? []).map((s) => Number(s?.stage_number)).filter((n) => Number.isFinite(n) && n > done);
+  if (upcoming.length) return Math.min(...upcoming);
+  return done < (Number(race?.stages) || 0) ? done + 1 : null;
+}
+
+/**
+ * Trætheden pr. rytter, som fladen skal vise den, eller null = vis rider_condition som før.
+ * Tændt: samme kerne som Træningssiden og assistenten (fatigueByRiderNow). Ligger løbets
+ * næste etape i dag, er tallet trætheden ved dens start (= tallet nu, for etaperne før den er
+ * kørt), uafhængigt af hvornår siden åbnes. Ellers er det tallet nu, som Træningssidens
+ * hovedtal: morgenens tal ville ignorere de etaper, rytteren allerede har kørt i dag.
+ * Kan tallet ikke regnes, er svaret et tomt map, så fladen viser "—" frem for morgenens tal.
+ * @returns {Promise<Map<string, number|null>|null>}
+ */
+export async function surfaceFatigueNow7801({ supabase, race, stages, conditions, teamId, abilityByRider = null, now = new Date() }) {
+  if (!(conditions ?? []).length) return null;
+  if (!await isFatigueNow7801Enabled(supabase)) return null;
+  try {
+    const stageNumber = nextStageForFatigue7801({ race, stages });
+    const start = stageNumber == null ? null : await loadStageStartAt({ supabase, raceId: race.id, stageNumber });
+    const today = start && copenhagenDateString(start.now) === copenhagenDateString(now);
+    // onError "throw": en fejlet læsning når catch'en nedenfor i stedet for at blive til åbningen.
+    return await fatigueByRiderNow({
+      supabase, conditions, abilityByRider, teamId, now, atStage: today ? { raceId: race.id, stageNumber } : null, onError: "throw",
+    });
+  } catch (err) {
+    // best-effort: visningen må aldrig vælte Udtagelsen/Holdfanen; tom map = "—", ikke morgenens tal.
+    console.warn(`[fatigue-now-7801] surface fatigue omitted: ${err?.message ?? err}`);
+    return new Map();
+  }
+}
+
+/** Kondition-rækkerne med trætheden lige nu; uden `live` uændret (samme Map). */
+function conditionsWithLiveFatigue(conditionByRider, live) {
+  if (!live) return conditionByRider;
+  return new Map([...conditionByRider].map(([id, c]) => [id, { ...c, fatigue: live.get(id) ?? null }]));
+}
+
+/**
+ * Udtagelsens rytterrækker med morgenens træthed (rider_condition), til kaldere der selv
+ * lægger datoens etaper oveni, som lægens vurdering (doctorReport.ridersAtNextStageStart).
+ * Slukket kontakt: præcis `ctx.riders`.
+ */
+export function ridersAtOpeningFatigue(ctx) {
+  const opening = ctx?.openingFatigueByRider;
+  if (!opening) return ctx?.riders;
+  return ctx.riders.map((r) => (opening.has(r.id) ? { ...r, fatigue: opening.get(r.id) } : r));
+}
 
 // #5981: kender loebets regel-revision den delte kaptajn (s5_profiles_v3+)? Et loeb uden
 // bundet revision faar den aktuelle (surfaceRulesRevision). Fail-closed: ukendt = nej.
@@ -243,7 +304,7 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
     return { ok: false, status: 409, error: TRAIN_ONLY_SELECTION_ERROR };
   }
 
-  const ctx = await getSelectionContext({ supabase, race, teamId });
+  const ctx = await getSelectionContext({ supabase, race, teamId, fatigueNow: false });
   const coCaptainId = keptCoCaptainId({ body, current: ctx.selection, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, allowed: raceAllowsCoCaptain(race) }) ?? coCaptainBody; // #7239
   // #5982: luksushjaelperen; uden feltet i kroppen beholdes den gemte (samme regel som delt kaptajn).
   const luxuryHelperId = keptLuxuryHelperId({ body, current: ctx.selection, riderIds, roleIds: [captainId, sprintCaptainId, hunterId, coCaptainId, ...freeRoleIds].filter(Boolean), allowed: raceAllowsCoCaptain(race) });
@@ -484,7 +545,9 @@ export function buildRiderRows({ riders, stages, abilityByRider, conditionByRide
 // pr. løbets profiler), nuværende udtagelse, størrelses-regel.
 // Holdet har maks ~30 ryttere, så plain .in() er tilstrækkeligt her
 // (ingen chunking nødvendig — i modsætning til raceRunner's full-field-opslag).
-export async function getSelectionContext({ supabase, race, teamId }) {
+// #7801: `fatigueNow: false` springer visningens træthed lige nu over (gem-stien viser intet).
+// `now` er injicérbart (AGENTS.md regel 16): skadesdatoen og trætheden lige nu regnes mod det.
+export async function getSelectionContext({ supabase, race, teamId, fatigueNow = true, now = new Date() }) {
   // #5645 (Y4): truppen der må udtages til løbet. Senior = uændret select + filter.
   const raceSquad = raceSquadOf(race);
   const riderColumns = "id, firstname, lastname, primary_type, secondary_type, pending_team_id, birthdate";
@@ -529,7 +592,7 @@ export async function getSelectionContext({ supabase, race, teamId }) {
   // afvises af validateSelection's injuredRiderIds (begge udledes af riderRows.injured
   // nedenfor). Engine-laget (raceRunner/filterOutInjuredEntries) forbliver den
   // uafhængige, afgørende bagstopper på selve løbsdagen — se dets egen kommentar.
-  const todayStr = raceSelectionReferenceDateStr(race, copenhagenDateString());
+  const todayStr = raceSelectionReferenceDateStr(race, copenhagenDateString(now));
 
   // #7715: maerket i udtagelsen, samme regel som motoren. Slukket kontakt = intet felt.
   let timeLimitRisk = {};
@@ -542,7 +605,13 @@ export async function getSelectionContext({ supabase, race, teamId }) {
   }
   const stageNumbers = stages.map((s) => s.stage_number).sort((a, b) => (a ?? 0) - (b ?? 0));
 
-  const riderRows = buildRiderRows({ riders, stages, abilityByRider, conditionByRider, todayStr, race })
+  // #7801: samme tal som Træningssiden og assistenten (null = slukket, rider_condition som før).
+  // Maerket ovenfor regner selv datoens etaper oveni og bruger derfor stadig aabningen.
+  const liveFatigue = fatigueNow
+    ? await surfaceFatigueNow7801({ supabase, race, stages, conditions: conditionRes.data || [], teamId, abilityByRider, now })
+    : null;
+
+  const riderRows = buildRiderRows({ riders, stages, abilityByRider, conditionByRider: conditionsWithLiveFatigue(conditionByRider, liveFatigue), todayStr, race })
     .map((row) => (timeLimitRisk[row.id] ? { ...row, stageTimeLimitRisk: stageNumbers.map((n) => timeLimitRisk[row.id][n] === true) } : row))
     // #6139: panelet graaner en laast rytter op-front (han kan hverken ind eller ud).
     .map((row) => ({ ...row, trainNowLocked: trainNowLock.riderIds.has(row.id) }))
@@ -577,7 +646,7 @@ export async function getSelectionContext({ supabase, race, teamId }) {
       }
     : null;
 
-  return {
+  const ctx = {
     size: selectionSizeForRace(race),
     riders: riderRows,
     selection,
@@ -587,4 +656,12 @@ export async function getSelectionContext({ supabase, race, teamId }) {
     // #6139: laasen for UI'et (banner med tidspunkt + graa ryttere) og for prepareSelectionChange.
     trainNowLock: { riderIds: [...trainNowLock.riderIds].sort(), pressedAt: trainNowLock.pressedAt },
   };
+  // #7801: aabningen til ridersAtOpeningFatigue. Ikke-enumerabel, saa svaret (res.json(...ctx))
+  // er uaendret i formen; kun med kontakten taendt.
+  if (liveFatigue) {
+    Object.defineProperty(ctx, "openingFatigueByRider", {
+      value: new Map([...conditionByRider].map(([id, c]) => [id, c?.fatigue ?? null])), enumerable: false,
+    });
+  }
+  return ctx;
 }

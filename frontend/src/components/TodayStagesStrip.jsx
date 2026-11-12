@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Card, Section, SectionHeader, SectionAction, StatusBadge, ClockIcon, TrophyIcon, SkeletonLines } from "./ui/index.js";
+import { Card, Section, SectionHeader, SectionAction, StatusBadge, ClockIcon, TrophyIcon, Skeleton, SkeletonLines } from "./ui/index.js";
 import TerrainTypeGlyph from "./race/TerrainTypeGlyph.jsx";
 import StageProfileGraph from "./race/StageProfileGraph.jsx";
 import { hasRouteData } from "../lib/stageRouteProfile.js";
@@ -101,7 +101,7 @@ function TodayStageCard({ card, t }) {
             </span>
           )}
           {state === "finished" && (
-            winnerName ? (
+            card.enriching ? <Skeleton className="h-3 w-3/4" /> : card.detailsUnavailable ? null : winnerName ? (
               <>
                 <TrophyIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
                 <span className="truncate">{t("dashboard:todayStages.winner", { name: winnerName })}</span>
@@ -114,7 +114,7 @@ function TodayStageCard({ card, t }) {
 
         {/* Sekundær linje: samlet placering (etapeløb) eller antal tilmeldte (endagsløb). */}
         <p className="mt-2 font-data text-2xs uppercase tracking-[.08em] tabular-nums text-cz-3">
-          {isStageRace
+          {card.enriching ? <Skeleton className="h-3 w-3/4" /> : card.detailsUnavailable ? t("dashboard:todayStages.standingPending") : isStageRace
             ? (standing
               ? t("dashboard:todayStages.standing", { rank: standing.rank, total: standing.total })
               : t("dashboard:todayStages.standingPending"))

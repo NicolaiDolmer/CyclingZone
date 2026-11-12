@@ -145,7 +145,7 @@
     "signature_rider": "Cuenta los ciclistas que la directiva reconoce como estrellas. Con la reputación activada, lee el mismo valor de reputación ganada que se muestra en las vistas de ciclista.",
     "top_n_finish": "Se evalúa según tu puesto final en la última temporada del plan, no según una media de las temporadas del plan.",
     "u25_development_delta": "La ganancia media de puntos de estadística por ciclista sub-25 y temporada. Desarrolla a los jóvenes para que sus estadísticas suban a lo largo de la temporada.",
-    "sponsor_growth": "Compara el pago de tu patrocinador por temporada (base del contrato, prorrateada si tu equipo se incorporó a mitad de temporada, más los ingresos por día de carrera) entre esta temporada y la primera temporada del plan. Las primas puntuales (firma, resultados, objetivos) no se cuentan. Solo se muestra a partir de la segunda temporada del plan, cuando existe una temporada de referencia real."
+    "sponsor_growth": "Compara el pago de tu patrocinador por temporada (base del contrato, prorrateada si tu equipo se incorporó a mitad de temporada, más los ingresos por día de carrera) entre esta temporada y la primera temporada terminada del plan en la que tu equipo tuvo ingresos de patrocinio. Las primas puntuales (firma, resultados, objetivos) no se cuentan. Solo se muestra cuando existe esa temporada, y una temporada sin ingresos de patrocinio no se mide."
   },
   "drivers": {
     "heading": "¿Qué mueve a esta directiva?",
@@ -2026,7 +2026,7 @@
       "min_national_riders": "ciclistas del país del objetivo que tienes ahora en tu equipo.",
       "min_riders": "ciclistas que tienes ahora en tu equipo.",
       "no_outstanding_debt": "tu saldo menos los préstamos activos. El objetivo se cumple si eso es cero o más al final de la temporada.",
-      "sponsor_growth": "el aumento del pago de tu patrocinador por temporada desde la primera temporada del plan, en porcentaje.",
+      "sponsor_growth": "el aumento del pago de tu patrocinador por temporada desde la primera temporada del plan en la que tu equipo tuvo ingresos de patrocinio, en porcentaje.",
       "monument_podium": "top 3 en Monuments, o en clásicas cuando el objetivo las nombra. Un objetivo de bonus cuenta desde la aceptación.",
       "signature_rider": "ciclistas de gran renombre en tu equipo. Un objetivo de bonus cuenta desde la aceptación.",
       "jersey_wins": "maillots de puntos, de la montaña y de jóvenes ganados en carreras por etapas.",

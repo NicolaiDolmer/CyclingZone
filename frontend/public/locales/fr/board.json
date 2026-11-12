@@ -145,7 +145,7 @@
     "signature_rider": "Compte les coureurs que la direction reconnaît comme des stars. Avec la réputation activée, cela lit la même valeur de réputation acquise que celle affichée sur les surfaces des coureurs.",
     "top_n_finish": "Évalué sur ta place finale lors de la dernière saison du plan, pas sur une moyenne des saisons du plan.",
     "u25_development_delta": "Le gain moyen de points de stat par coureur U25 et par saison. Fais progresser les jeunes coureurs pour que leurs stats montent au cours de la saison.",
-    "sponsor_growth": "Compare le versement de saison de ton sponsor (base du contrat, au prorata si ton équipe a rejoint en cours de saison, plus le revenu des jours de course) entre cette saison et la première saison du plan. Les primes uniques (signature, résultats, objectifs) ne sont pas comptées. Affiché seulement à partir de la deuxième saison du plan, une fois qu'une vraie saison de référence existe."
+    "sponsor_growth": "Compare le versement de saison de ton sponsor (base du contrat, au prorata si ton équipe a rejoint en cours de saison, plus le revenu des jours de course) entre cette saison et la première saison terminée du plan où ton équipe a eu des revenus de sponsor. Les primes uniques (signature, résultats, objectifs) ne sont pas comptées. Affiché seulement une fois qu'une telle saison existe, et une saison sans revenus de sponsor n'est pas mesurée."
   },
   "drivers": {
     "heading": "Qu'est-ce qui pilote cette direction ?",
@@ -2026,7 +2026,7 @@
       "min_national_riders": "coureurs du pays de l'objectif dans ton équipe en ce moment.",
       "min_riders": "coureurs dans ton équipe en ce moment.",
       "no_outstanding_debt": "ton solde moins les emprunts actifs. L'objectif est atteint si c'est zéro ou plus en fin de saison.",
-      "sponsor_growth": "la hausse du versement de saison de ton sponsor depuis la première saison du plan, en pourcentage.",
+      "sponsor_growth": "la hausse du versement de saison de ton sponsor depuis la première saison du plan où ton équipe a eu des revenus de sponsor, en pourcentage.",
       "monument_podium": "places dans le top 3 en Monument, ou en classique quand l'objectif les nomme. Un objectif de prime compte à partir de l'acceptation.",
       "signature_rider": "coureurs de grande renommée dans ton équipe. Un objectif de prime compte à partir de l'acceptation.",
       "jersey_wins": "maillots des points, de la montagne et des jeunes gagnés en courses par étapes.",

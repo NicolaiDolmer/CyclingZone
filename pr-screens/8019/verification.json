@@ -1,0 +1,103 @@
+{
+  "runtimeSha": "db78ea6e3a12117bf1ebd638a07eafe4d38f5ed1",
+  "productionE2E": {
+    "exitCode": 0,
+    "configured": 2298,
+    "passed": 2107,
+    "skipped": 191,
+    "failed": 0,
+    "flaky": 0,
+    "retryAttempts": 0,
+    "durationMinutes": 30.9,
+    "projects": {
+      "desktop-chromium": {
+        "passed": 739,
+        "skipped": 27
+      },
+      "mobile-chromium": {
+        "passed": 691,
+        "skipped": 75
+      },
+      "mobile-webkit": {
+        "passed": 677,
+        "skipped": 89
+      }
+    }
+  },
+  "reusedNightlyFull": {
+    "backendTree": "b890f4dca2573d56cb0cc6a5e4c6582d5337ce91",
+    "passed": 23832,
+    "skipped": 17,
+    "todo": 12,
+    "failed": 0,
+    "repeated": false,
+    "scope": "Unchanged backend/shared/root package source; not a new FULL run."
+  },
+  "progressiveLoading": {
+    "before": [
+      {
+        "profile": "mobile",
+        "held": [
+          "race_stage_profiles",
+          "recent-results",
+          "rider-ranking"
+        ],
+        "teamVisible": true,
+        "pendingRegions": [
+          "recentResults",
+          "riderRanking"
+        ],
+        "overflow": false
+      },
+      {
+        "profile": "desktop",
+        "held": [
+          "race_stage_profiles",
+          "recent-results",
+          "rider-ranking"
+        ],
+        "teamVisible": true,
+        "pendingRegions": [
+          "recentResults",
+          "riderRanking"
+        ],
+        "overflow": false
+      }
+    ],
+    "after": [
+      {
+        "profile": "mobile",
+        "held": [
+          "race_stage_profiles",
+          "recent-results",
+          "rider-ranking"
+        ],
+        "teamVisible": true,
+        "pendingRegions": [
+          "recentResults",
+          "riderRanking"
+        ],
+        "overflow": false
+      },
+      {
+        "profile": "desktop",
+        "held": [
+          "race_stage_profiles",
+          "recent-results",
+          "rider-ranking"
+        ],
+        "teamVisible": true,
+        "pendingRegions": [
+          "recentResults",
+          "riderRanking"
+        ],
+        "overflow": false
+      }
+    ]
+  },
+  "nativeClock": {
+    "empty": "2026-09-29T21:00:00Z",
+    "filled": "2026-09-30T10:00:00Z",
+    "slowFilled": "2026-09-30T10:00:00Z"
+  }
+}

@@ -1,5 +1,53 @@
 export const PATCHES = [
 {
+  "version": "7.438",
+  "date": "2026-11-12",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "topic": "Tactics",
+      "flag": "tactics_ready_7864",
+      "en": {
+        "title": "Team plans (beta)",
+        "body": "On the Tactics tab, pick Ride for GC, Stage win, Sprint, Go for the break or Save the legs, adjust it, then save. Every task shows a price word (Easy, Medium, Hard or Very hard) that matches what it costs the legs, and a plan can be copied to the coming stages of the same type. Help explains it all."
+      },
+      "da": {
+        "title": "Holdplaner (beta)",
+        "body": "På Taktik-fanen kan du vælge Kør for klassementet, Etapesejr, Spurt, Gå i udbrud eller Spar benene, rette til og gemme. Hver opgave viser et prisord (Let, Middel, Hård eller Meget hård), der passer til det, den koster i benene, og en plan kan kopieres til de kommende etaper af samme type. Hjælp forklarer det hele."
+      },
+      "refs": [
+        7864,
+        8027
+      ]
+    }
+  ]
+},
+{
+  "version": "7.437",
+  "date": "2026-11-12",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Board",
+      "en": {
+        "title": "The board's sponsor growth target can now be reached",
+        "body": "It is measured from your team's first season in the plan with sponsor income, so seasons without payouts no longer block it. A season without sponsor income is not measured."
+      },
+      "da": {
+        "title": "Bestyrelsens mål om sponsorvækst kan nu nås",
+        "body": "Det måles fra holdets første sæson i planen med sponsorindtægt, så sæsoner uden udbetalinger ikke længere blokerer det. En sæson uden sponsorindtægt bliver ikke målt."
+      },
+      "refs": [
+        7964
+      ]
+    }
+  ]
+},
+{
   "version": "7.436",
   "date": "2026-11-12",
   "changes": [
