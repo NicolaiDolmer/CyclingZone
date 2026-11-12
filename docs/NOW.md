@@ -6,25 +6,25 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (12/11):** **PC1 storsession v3** ([#7911](https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6820233824)). Merget: #7980 (slukket), #7960. **Bølgen (16 spor):** #7864, #7339, #7962, #7965, #8025, #7982, #7964, #7832-filter, #6165, **#6110-trin** (#6110, #7739, #7757, #7684, #3564), #6155, #7932. **Ejer 12/11:** #6110 færdig hurtigst muligt (tænd-gulv 15/11); Potentiale overalt; trupper 30/30/30 maks 60 (#8034); #7832 efterbetales efter kort; motor-måling 13/11; #8020: loftet står. Taktik-beta: dommer + tænd-kort.
+> **🎯 Next action (12/11 eftermiddag):** **PC1 storsession v3** (#7911). **Tændt:** pengelås for alle 12:52 (#6181, første bud mangler). **Merget i dag:** 9 PR (sidst #8038); #8033 i toget. **Kø (ejer 12/11, løbsdagen først):** holdplaner beta efter 19:05 (#8053, #8050, ejerens kør) → Træn nu for alle → trøjejagt (tre ejervalg, #8052) → træthed lige nu (#8054) → tidsgrænse-design #7715 → løbssiden v6 (#7778) og planlægningssiden (#7535) denne uge. **Op (ejer 12/11):** nye spilleres første dage, assistenten, Pro 2.0-design, akademi-designvalg. **Dommer FØR merge** for motor, træning og penge (ejer 12/11). Roadmap #8051, patch notes #8049, motor-måling 13/11.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; #7277 (off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Claude Fable 5.2 på PC1, storsession v3 (12/11); ejer merge-kø og tænding. Codex på Dolmer PC: #8022, #8020, #8014.
+> **🤖 Working agent:** Claude Fable 5.2 på PC1, storsession v3 (12/11); ejer merge-kø og tænding. Dolmer PC: Codex retter #8022 (review 2), derefter Claude Code på træning og XP (ejer 12/11).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
 > **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; `ratingGolden.5321.json` KUN m. ejer-go.
 
-> **🔴 Åbne fund:** #7832 sent hold mister første træningsdato (ejer: aldrig mistet dato) · #6490 aftenspids · #7139 ranglisten halter · #6504 frigivelse (ny forekomst 16/10, CYCLINGZONE-9B). **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`.
+> **🔴 Åbne fund:** #7832 sent hold mister træningsdato (efterbetales) · #6490 aftenspids · #7139 ranglisten halter · #6504 frigivelse. **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`.
 
 ## Standing context (forever-relaunch)
 
 - **Liga:** pyramide 1/2/4/4 fra S4 (ejer 24/9: D3+D4 samles ved skiftet, script #5669). **Styrke straffes ALDRIG; balance = struktur** (ejer 4/8).
 - **Overlap intended**; 1 rytter = 1 løb pr. **løbsdag** (#4209). Pension: afsluttet sæsons alder (`riderSeasonAge.js`, S3=2028). Akademi-nedrykning følger truppens aldersgrænse (#5547; #5145 lukket som overhalet 8/10). **Graduation Day ved 23** (live 15/9).
-- **Race engine:** ÉN v4 (`backend/lib/engine/v4`), flag `race_engine_v4` ON (prod læst 1/10); v4 kører officielle etaper. Flip-rapport forældet (#5515). Kalender-gaten blokerende (#4123 + #5707); `calendarGoldenDiff.mjs` FØR S4-generering.
+- **Race engine:** ÉN v4 (`backend/lib/engine/v4`), flag `race_engine_v4` ON; v4 kører officielle etaper. Kalender-gaten blokerende (#4123 + #5707); `calendarGoldenDiff.mjs` FØR S4-generering.
 - **Træning (ejer 15/9, §13.3):** løbsdag som tick, sweep ≥ kl. 20 + knap uden bonus. Prod-måling 30/9: `training_tick_per_race_day`, `training_condition_per_date`, `race_day_development_enabled` og `race_day_engine_enabled` on. Dato-modellen aktiveret 29/9; B3 #5281 er IKKE bag flag.
 - **Evner (live):** `teamwork`/`leadership` er data, **ikke i rating-opskriften** (17/9). Lofter `{tactics 55, teamwork 70, leadership 70}`, `aggression` UDE (#5297). Point-flyt (#5268) ejer-gated.
-- **Trupper (15/9):** `riders.squad` + `backend/lib/squads.js` live; senior-læserne bruger ÉT delt prædikat (#5396). Loft U23 12/junior 10 (#5626). Ungdomsdrift: 0 ved S3-skiftet (#5741, ejer 25/9), sats fra S4 åben. Spec `2026-09-15-u23-kalender-og-trup-datamodel-design.md`.
+- **Trupper (15/9):** `riders.squad` + `backend/lib/squads.js` live; senior-læserne bruger ÉT delt prædikat (#5396). Loft U23 12/junior 10 (#5626). Ungdomsdrift: 0 ved S3-skiftet (#5741, ejer 25/9), sats fra S4 åben.
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
