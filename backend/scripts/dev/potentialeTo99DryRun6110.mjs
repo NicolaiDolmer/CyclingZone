@@ -12,6 +12,8 @@
 // Kør (offline, snapshot fra snapshot-6110-potential-estimate.mjs):
 //   SNAP_DIR=<snapshot> PARAMS=<privat params.json> \
 //     node backend/scripts/dev/potentialeTo99DryRun6110.mjs
+//   Snapshot'et skal have birthdate pr. rytter og season_number i meta.json
+//   (eller SEASON=<nummer>); ældre snapshots med kun kalenderalder afvises.
 //
 // PARAMS: de private kalibreringstal (se PotentialeScale99Params). Filen kan
 // enten VÆRE params-objektet eller have det under nøglen "potentialeScale99".
@@ -51,20 +53,42 @@ export function parseParams(json) {
 }
 
 /**
- * DB-rækker -> funktionens input. Alderen er spillets sæson-alder
- * (riderSeasonAge.ageForSeason, aldrig kalenderalder). En snapshot-række der
- * allerede har `age`, bruges som den er. Ryttere uden potentiale tælles, men
- * omregnes ikke.
+ * DB- eller snapshot-rækker -> funktionens input. Alderen er ALTID spillets
+ * sæson-alder (riderSeasonAge.ageForSeason) regnet af birthdate og sæsonnummer,
+ * ens i live- og snapshot-tilstand. Et færdigt `age`-felt bruges aldrig: i
+ * snapshots fra snapshot-6110-potential-estimate.mjs er det kalenderalder, som
+ * grupperer rytterne i andre aldersbånd end live. Rækker uden birthdate-feltet
+ * (ældre snapshots) afvises derfor med en klar fejl i stedet for at regne videre.
+ * birthdate = null (rytter uden fødselsdato) er gyldigt og giver missing_age.
+ * Ryttere uden potentiale tælles, men omregnes ikke.
  */
 export function toRiderInputs(rows, seasonNumber) {
+  if (!Number.isFinite(seasonNumber)) {
+    throw new Error("Sæsonnummer mangler: sæson-alderen kræver det (SEASON=<nummer> eller season_number i snapshot'ets meta.json)");
+  }
   const riders = [];
   let missingPotentiale = 0;
   for (const r of rows) {
     if (r.potentiale == null) { missingPotentiale++; continue; }
-    const age = r.age !== undefined ? r.age : ageForSeason(r.birthdate, seasonNumber);
-    riders.push({ id: r.id, potentiale: Number(r.potentiale), age });
+    if (!Object.hasOwn(r, "birthdate")) {
+      throw new Error(`Rytter ${r.id} mangler birthdate: snapshot'et er fra før sæson-alderen (kun kalenderalder). Tag et nyt snapshot med snapshot-6110-potential-estimate.mjs`);
+    }
+    riders.push({ id: r.id, potentiale: Number(r.potentiale), age: ageForSeason(r.birthdate, seasonNumber) });
   }
   return { riders, missingPotentiale };
+}
+
+/**
+ * Sæsonnummeret for et snapshot: SEASON vinder, ellers season_number fra
+ * snapshot'ets meta.json. Mangler begge, stopper scriptet.
+ */
+export function snapshotSeasonNumber(seasonEnv, meta) {
+  if (seasonEnv !== undefined) return seasonEnv;
+  const n = meta?.season_number;
+  if (!Number.isFinite(n)) {
+    throw new Error("Snapshot'et har intet season_number i meta.json; sæt SEASON=<nummer> eller tag et nyt snapshot");
+  }
+  return n;
 }
 
 function quantiles(values) {
@@ -143,7 +167,7 @@ export function renderMarkdown(report) {
   const lines = [
     `# Dry-run: potentiale 1-6 -> 1-99 (#3564)`,
     "",
-    `- Målt: ${report.measuredAt} (kilde: ${report.source}, sæson-alder fra sæson ${report.seasonNumber ?? "snapshot"})`,
+    `- Målt: ${report.measuredAt} (kilde: ${report.source}, sæson-alder fra sæson ${report.seasonNumber})`,
     `- Skrivninger: ${report.writes}`,
     `- Læst: ${c.rowsRead} · omregnet: ${c.scaled} · sprunget over: ${c.skipped} · uden potentiale: ${c.missingPotentiale}`,
     `- Toptalent-klassen: ${c.topClass}, heraf presset under gammelt trin-center: ${c.topClassPressedDown}`,
@@ -212,6 +236,9 @@ async function main() {
   let source;
   if (SNAP_DIR) {
     rows = JSON.parse(fs.readFileSync(path.join(SNAP_DIR, "riders.json"), "utf8"));
+    const metaPath = path.join(SNAP_DIR, "meta.json");
+    const meta = fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, "utf8")) : null;
+    seasonNumber = snapshotSeasonNumber(seasonNumber, meta);
     source = `snapshot ${path.basename(path.resolve(SNAP_DIR))}`;
   } else {
     const sb = await liveClient();

@@ -295,3 +295,68 @@ test("targetShareAtOrAbove er en aftagende andel fra 1 til 0", () => {
     prev = s;
   }
 });
+
+// ── Codex-fund PR #8046: rang efter afrunding ved første hale-anker ──────────
+
+function twoTierBand(lowerPot: number, upperPot: number, n: number): RiderPotentialeInput[] {
+  const out: RiderPotentialeInput[] = [];
+  for (let i = 0; i < n; i++) out.push({ id: `lo-${i}`, potentiale: lowerPot, age: 20 });
+  for (let i = 0; i < n; i++) out.push({ id: `hi-${i}`, potentiale: upperPot, age: 20 });
+  return out;
+}
+
+test("Codex-fund: første anker tæt på en klassegrænse med decimaler afvises (fundets eksempel)", () => {
+  const params: PotentialeScale99Params = {
+    tierStep: 9.2,
+    tierHalfWidth: 4.6,
+    tierDecay: 0.6,
+    compressFromPotentiale: 4,
+    tailAnchors: [51.7, 80, 90],
+    floors: [],
+    ageBands: [{ key: "all", lo: 15, hi: 45 }],
+  };
+  assert.throws(() => validateParams(params), /første tailAnchor.*rangen ville vendes/);
+  assert.throws(() => scalePotentialeTo99(twoTierBand(3.5, 4, 1000), params), /første tailAnchor/);
+  // Det første anker et heltal højere er rang-sikkert og giver ingen brud.
+  const ok = { ...params, tailAnchors: [52.7, 80, 90] };
+  validateParams(ok);
+  assert.equal(scalePotentialeTo99(twoTierBand(3.5, 4, 1000), ok).rankViolations.length, 0);
+});
+
+test("egenskab: accepterede params vender aldrig rangen efter afrunding (net af params)", () => {
+  let accepted = 0;
+  let rejected = 0;
+  let tight = 0;
+  for (const tierStep of [7, 8.3, 9.2, 9.7]) {
+    for (const halfFrac of [0.3, 0.45, 0.5]) {
+      const tierHalfWidth = Math.round(tierStep * halfFrac * 1000) / 1000;
+      for (const tierDecay of [0.5, 0.6, 0.85]) {
+        for (const compressFromPotentiale of [3.5, 4, 4.5, 5]) {
+          const compressIdx = POTENTIALE_STEPS.indexOf(compressFromPotentiale);
+          const tailStart = SCALE_MIN + compressIdx * tierStep - tierHalfWidth;
+          for (const d of [0.05, 0.1, 0.4, 0.6, 0.95, 1.3, 2.5]) {
+            const a1 = Math.round((tailStart + d) * 100) / 100;
+            const params: PotentialeScale99Params = {
+              tierStep, tierHalfWidth, tierDecay, compressFromPotentiale,
+              tailAnchors: [a1, Math.min(97.5, a1 + 8), Math.min(98.5, a1 + 14)],
+              floors: [],
+              ageBands: [{ key: "all", lo: 15, hi: 45 }],
+            };
+            try { validateParams(params); } catch { rejected++; continue; }
+            accepted++;
+            const belowHi = tierInterval(params, compressIdx - 1)[1];
+            if (Math.ceil(a1) - 1 === Math.min(SCALE_MAX, Math.ceil(belowHi + 0.5) - 1)) tight++;
+            const lower = POTENTIALE_STEPS[compressIdx - 1];
+            for (const pop of [twoTierBand(lower, compressFromPotentiale, 1000), population(7, 3000, 0.8)]) {
+              const res = scalePotentialeTo99(pop.map((r) => ({ ...r, age: 20 })), params);
+              assert.deepEqual(res.rankViolations, [], JSON.stringify({ tierStep, tierHalfWidth, compressFromPotentiale, a1 }));
+            }
+          }
+        }
+      }
+    }
+  }
+  assert.ok(accepted > 50, `for få accepterede params (${accepted})`);
+  assert.ok(rejected > 0, "nettet skal også ramme afviste params");
+  assert.ok(tight > 0, "nettet skal ramme grænsetilfældet, hvor første segment netop er rang-sikkert");
+});

@@ -164,6 +164,18 @@ export function validateParams(params: PotentialeScale99Params): void {
     }
     prev = a;
   }
+  // Rang-sikkerhed efter afrunding (Codex-fund PR #8046): det første hale-segment
+  // slutter på sidste heltal under første anker. Det må aldrig ligge under den
+  // højeste afrundede værdi, trinnet under toptalent-klassen kan nå (værdierne dér
+  // er < trinnets øvre grænse hi, så Math.round når højst ceil(hi + 0,5) - 1).
+  // Ellers lander toptalenter under ryttere med lavere gammelt potentiale.
+  if (tailAnchors.length) {
+    const belowHi = tierInterval(params, compressIdx - 1)[1];
+    const belowMaxInt = Math.min(SCALE_MAX, Math.ceil(belowHi + 0.5) - 1);
+    if (Math.ceil(tailAnchors[0]) - 1 < belowMaxInt) {
+      throw new Error("potentialeScale99: første tailAnchor ligger så tæt på toptalent-klassens start, at det første hale-segment efter afrunding ender under trinnet før (rangen ville vendes)");
+    }
+  }
 
   if (!Array.isArray(floors)) throw new Error("potentialeScale99: floors skal være en liste");
   const sortedFloors = [...floors].sort((a, b) => a.potentiale - b.potentiale);

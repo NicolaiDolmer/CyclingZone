@@ -10,6 +10,7 @@ import {
   parseParams,
   renderMarkdown,
   resolveOutDir,
+  snapshotSeasonNumber,
   toRiderInputs,
 } from "./potentialeTo99DryRun6110.mjs";
 
@@ -31,10 +32,14 @@ const SYNTH = {
 
 const SCRIPT = path.join(import.meta.dirname, "potentialeTo99DryRun6110.mjs");
 
+// Sæson 1: sæson-alder = 2026 - fødselsår (riderSeasonAge.ageForSeason).
+const SEASON = 1;
+const born = (age) => `${2026 - age}-06-01`;
+
 function rows(n) {
   const out = [];
   for (let i = 0; i < n; i++) {
-    out.push({ id: `r${i}`, age: 15 + (i % 25), potentiale: 1 + (i % 11) * 0.5 });
+    out.push({ id: `r${i}`, birthdate: born(15 + (i % 25)), potentiale: 1 + (i % 11) * 0.5 });
   }
   return out;
 }
@@ -70,7 +75,6 @@ test("toRiderInputs bruger sæson-alder (ikke kalenderalder) og tæller manglend
   const season = 4;
   const { riders, missingPotentiale } = toRiderInputs(
     [
-      { id: "a", age: 22, potentiale: 3 },
       { id: "b", birthdate: "2008-12-01", potentiale: "4.5" },
       { id: "c", birthdate: "2004-01-01", potentiale: null },
       { id: "d", birthdate: null, potentiale: 2 },
@@ -79,19 +83,47 @@ test("toRiderInputs bruger sæson-alder (ikke kalenderalder) og tæller manglend
   );
   assert.equal(missingPotentiale, 1);
   assert.deepEqual(riders, [
-    { id: "a", potentiale: 3, age: 22 },
     // Samme tal som spillets egen SSOT, uanset fødselsdag i året.
     { id: "b", potentiale: 4.5, age: ageForSeason("2008-12-01", season) },
     { id: "d", potentiale: 2, age: null },
   ]);
-  assert.equal(toRiderInputs([{ id: "e", birthdate: "2008-12-01", potentiale: 2 }], undefined).riders[0].age, null);
+});
+
+test("Codex-fund PR #8046: et snapshots kalenderalder vinder aldrig over sæson-alderen", () => {
+  // Snapshot-række (snapshot-6110-potential-estimate.mjs): age er kalenderalder.
+  const snap = { id: "s", age: 19, birthdate: "2006-12-31", potentiale: 3 };
+  const live = { id: "s", birthdate: "2006-12-31", potentiale: 3 };
+  for (const season of [1, 3]) {
+    const fromSnap = toRiderInputs([snap], season).riders[0];
+    assert.equal(fromSnap.age, ageForSeason("2006-12-31", season));
+    assert.deepEqual(fromSnap, toRiderInputs([live], season).riders[0], "snapshot og live giver samme input");
+  }
+  // Og dermed samme aldersbånd og samme omregning i begge tilstande.
+  const asOf = new Date("2026-11-12T00:00:00Z");
+  const snapRows = rows(400).map((r, i) => ({ ...r, age: 99 - (i % 30) }));
+  const a = buildDryRunReport(snapRows, SYNTH, { asOf, source: "snapshot", seasonNumber: SEASON });
+  const b = buildDryRunReport(rows(400), SYNTH, { asOf, source: "live", seasonNumber: SEASON });
+  assert.deepEqual(a.riders, b.riders);
+  assert.deepEqual(a.perBand, b.perBand);
+});
+
+test("Codex-fund PR #8046: snapshots uden birthdate eller sæsonnummer afvises med klar fejl", () => {
+  assert.throws(() => toRiderInputs([{ id: "old", age: 22, potentiale: 3 }], 1), /mangler birthdate.*nyt snapshot/);
+  assert.throws(() => toRiderInputs([{ id: "b", birthdate: "2004-01-01", potentiale: 3 }], undefined), /Sæsonnummer mangler/);
+  // Rytter uden potentiale tælles stadig, selv uden birthdate.
+  assert.equal(toRiderInputs([{ id: "c", age: 22, potentiale: null }], 1).missingPotentiale, 1);
+  // Sæsonnummeret: SEASON vinder, ellers meta.json, ellers stop.
+  assert.equal(snapshotSeasonNumber(5, { season_number: 2 }), 5);
+  assert.equal(snapshotSeasonNumber(undefined, { season_number: 2 }), 2);
+  assert.throws(() => snapshotSeasonNumber(undefined, null), /season_number/);
+  assert.throws(() => snapshotSeasonNumber(undefined, { season_number: null }), /season_number/);
 });
 
 test("rapporten: alle omregnet, ingen rang- eller gulv-brud, writes=none, deterministisk", () => {
   const asOf = new Date("2026-11-12T00:00:00Z");
   const input = rows(2000);
-  const a = buildDryRunReport(input, SYNTH, { asOf, source: "syntetisk" });
-  const b = buildDryRunReport([...input].reverse(), SYNTH, { asOf, source: "syntetisk" });
+  const a = buildDryRunReport(input, SYNTH, { asOf, source: "syntetisk", seasonNumber: SEASON });
+  const b = buildDryRunReport([...input].reverse(), SYNTH, { asOf, source: "syntetisk", seasonNumber: SEASON });
   assert.equal(a.writes, "none");
   assert.equal(a.counts.scaled, 2000);
   assert.equal(a.counts.skipped, 0);
@@ -109,12 +141,12 @@ test("rapporten tæller ryttere der springes over", () => {
   const asOf = new Date("2026-11-12T00:00:00Z");
   const report = buildDryRunReport(
     [
-      { id: "ok", age: 20, potentiale: 2 },
-      { id: "kid", age: 10, potentiale: 2 },
-      { id: "odd", age: 20, potentiale: 2.2 },
+      { id: "ok", birthdate: born(20), potentiale: 2 },
+      { id: "kid", birthdate: born(10), potentiale: 2 },
+      { id: "odd", birthdate: born(20), potentiale: 2.2 },
     ],
     SYNTH,
-    { asOf, source: "syntetisk" },
+    { asOf, source: "syntetisk", seasonNumber: SEASON },
   );
   assert.equal(report.counts.scaled, 1);
   assert.deepEqual(report.counts.skippedByReason, { no_age_band: 1, invalid_potentiale: 1 });
