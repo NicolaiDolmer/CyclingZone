@@ -119,3 +119,7 @@ No gradients · no drop shadows (overlay shadow is for modals/popovers only) · 
 
 ## Migration order (suggested)
 Dashboard → Standings → Riders → the rest of Marked → Season & results → League → settings pages. One template per PR batch; check each page against the artboards in `Manager Page Templates (standalone).html`.
+
+### PageHeader asynchronous mobile actions (#8022)
+
+`PageHeader` owns the opt-in `mobileActionsBelow` prop: below `sm`, place the action cluster on its own row and align the header to the start. Use it when asynchronous action content could otherwise change wrapping (Auctions). Other consumers retain the existing flex-wrap layout.
