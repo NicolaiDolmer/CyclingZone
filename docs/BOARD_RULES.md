@@ -253,7 +253,8 @@ planvinduet MED sponsor-udbetalinger** (sum af `SPONSOR_GROWTH_REASON_CODES` > 0
 startede i en sæson uden udbetalinger fik før baseline 0, så målet stod evigt som `awaiting_data`
 og vision-milepælen blev dømt misset ved forfald. Et hold der først fik sponsortal senere i planen
 måles fra sin egen første sæson med tal. Den indeværende sæson er aldrig sit eget grundlag.
-Målprocenten og spillerteksten er uændrede. Gælder både plan-målet på BoardPage og
+Målprocenten er uændret; spillerteksten for målet (`goalHelp.sponsor_growth` og
+`goalReceipt.counted.sponsor_growth`) er ændret i alle fem sprog, så den beskriver det nye grundlag. Gælder både plan-målet på BoardPage og
 vision-milepælene (samme kontekst-loader).
 
 **Uden målegrundlag aldrig misset (#7964):** findes der intet grundlag (ingen afsluttet plan-sæson
@@ -273,8 +274,11 @@ her havde 0, så den gamle regel gav `awaiting_data`), holdes et `behind`-udfald
 score som før rettelsen, `actual` null). `on_track` og `ahead` tæller som målt. Rettelsen kan derfor aldrig sænke
 tilfredsheden, sponsor-modifieren eller udløse tvungen salgsliste for de hold, den flytter.
 Milepælens dom ved forfald er uændret (en målbar milepæl under målet er misset, som den også
-var før rettelsen). Halv-sæsonens tjek (`boardMidSeason.js`) får ingen sponsortal i sin kontekst
-og står derfor uændret som `awaiting_data` for målet.
+var før rettelsen). Overgangsreglen gælder resten af holdets nuværende plan, ikke kun den første
+vurdering (ejerens valg 12/11); den falder først væk, når holdet får en ny plan. Halv-sæsonens
+tjek (`boardMidSeason.js`) får ingen sponsortal i sin kontekst og står derfor uændret som
+`awaiting_data` for målet. Der findes også et halv-sæson-tjek i den ugentlige kørsel
+(`boardWeekendFinalization.js`), og det bruger sponsortallene.
 
 ---
 
