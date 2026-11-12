@@ -28,7 +28,8 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
   const { t: tRider } = useTranslation("rider");
   const change = (from: number | null | undefined, to: number | null | undefined, tone?: (value: number) => string) =>
     typeof from === "number" && typeof to === "number"
-      ? <span className="inline-flex items-center gap-1" aria-label={t("dailyReceipt.change",{from:formatNumber(from),to:formatNumber(to)})}><span className={tone?.(from)}>{formatNumber(from)}</span><ChevronRightIcon size={12} className="text-cz-3" aria-hidden="true" /><span className={tone?.(to)}>{formatNumber(to)}</span></span> : "—";
+      ? <span className="inline-flex items-center gap-1" aria-label={t("dailyReceipt.change",{from:formatNumber(from),to:formatNumber(to)})}><span className={tone?.(from)}>{formatNumber(from)}</span><ChevronRightIcon size={12} className="text-cz-3" aria-hidden="true" /><span className={tone?.(to)}>{formatNumber(to)}</span></span>
+      : <span title={t("dailyReceipt.conditionLater")} aria-label={t("dailyReceipt.conditionLater")} data-testid="daily-receipt-condition-later">—</span>;
   const [openRiders, setOpenRiders] = useState<Set<string>>(() => new Set());
   const toggleRider = (id: string) => setOpenRiders(prev => {
     const next = new Set(prev);
