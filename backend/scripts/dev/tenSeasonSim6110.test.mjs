@@ -12,6 +12,8 @@ import {
   orderResults, potentialPeakStats, quantile, raceRoleFor, raceShareForAge, raceSlot, raceVsTraining, renderXpGates,
   riderXpRates, rotatingProgram, runFingerprint, runVariant, runXpGates, talentAttack, typeCareer, variantList,
   variationSeries, veteranStats, xpDayVariation, xpProgramShares, xpRunInputs, xpVariant,
+  XP_ENGINE_HOOKS, assertPrivateOutDir, cohortFingerprint, dateGainBucket, inflationCheck, localDayVariationStep,
+  localRaceDayFloorShares, renderMotorpakke, renderX7, runCohort, topLossCheck, validateRequirements,
 } from "./tenSeasonSim6110.mjs";
 import { validateDevelopmentXpParams, xpPriceForNextPoint } from "../../lib/developmentXp.ts";
 
@@ -460,6 +462,179 @@ test("xpGateKey: alle gate-input ugyldiggør de gemte tal", () => {
   assert.notEqual(xpGateKey({ ...args, estimateParams: { e: 2 } }), base);
   assert.notEqual(xpGateKey({ ...args, knowledge: { k: 2 } }), base);
   assert.notEqual(xpGateKey({ ...args, fingerprint: "g" }), base);
+});
+
+// ── #7757: kørslen på motorens pakke. Alle tal er syntetiske (hard rule 17). ──
+
+// Stor XP, så en dato kan købe flere point i samme evne, når intet loft bremser.
+const XP_BIG = { xp_stor: { xp: { potentialXp: [{ at: 1, value: 2000 }, { at: 6, value: 9000 }] } } };
+
+test("runCohort: kun nye 16-årige på aktive hold, fulgt år for år, deterministisk", () => {
+  const opts = { ...XP_OPTS, cohortEndAge: 20 };
+  const res = runCohort(syntheticSnapshot(), xpVariant("xp", opts), opts);
+  assert.equal(res.mode, "cohort");
+  assert.equal(res.cohortSize, 4, "2 pr. aktivt hold, banken tæller ikke");
+  assert.ok(Object.keys(res.riderPeaks).every((id) => id.startsWith("coh-")), "ingen ryttere fra billedet");
+  assert.deepEqual(Object.keys(res.byAge).map(Number), [16, 17, 18, 19, 20]);
+  assert.equal(res.byAge[16].n, 4);
+  assert.ok(res.byAge[20].rating.mean >= res.byAge[16].rating.mean, "de unge udvikler sig");
+  assert.deepEqual(runCohort(syntheticSnapshot(), xpVariant("xp", opts), opts).riderPeaks, res.riderPeaks, "samme seeds, samme udfald");
+  assert.notEqual(cohortFingerprint(syntheticSnapshot(), opts), cohortFingerprint(syntheticSnapshot(), { ...opts, cohortPerTeam: 3 }));
+});
+
+test("runCohort: følges til 40 år eller pension, og kurve B-sammenligningen har samme ryttere", () => {
+  const opts = { ...XP_OPTS, cohortPerTeam: 1 };
+  const xp = runCohort(syntheticSnapshot(), xpVariant("xp", opts), opts);
+  const ages = Object.keys(xp.byAge).map(Number);
+  assert.equal(ages[0], 16);
+  assert.ok(ages.every((a) => a >= 16 && a <= 40));
+  const retired = Object.values(xp.retiredAt).reduce((s, n) => s + n, 0);
+  assert.ok(ages.at(-1) === 40 || retired === xp.cohortSize, "enten 40 år eller alle pensioneret");
+  const other = runCohort(syntheticSnapshot(), { name: "kurveB", kind: "nu", capPerDate: true }, opts);
+  assert.deepEqual(Object.keys(other.riderPeaks).sort(), Object.keys(xp.riderPeaks).sort(), "samme kohorte i begge modeller");
+});
+
+test("inflationCheck: ekstra købte point i kravets sæson mod kurve B, grænsen kommer udefra", () => {
+  const world = (pts) => ({ gates: { pointsPerSeason: pts } });
+  const req = validateRequirements({ inflation: { season: 3, maxExtraPct: 5 }, topLoss: { maxBelow: 1 } });
+  const ok = inflationCheck(world([100, 100, 104]), world([100, 100, 100]), req);
+  assert.equal(ok.extraPct, 4);
+  assert.equal(ok.verdict, true);
+  assert.deepEqual(ok.perSeason, [0, 0, 4]);
+  assert.equal(inflationCheck(world([100, 100, 106]), world([100, 100, 100]), req).verdict, false);
+  const short = inflationCheck(world([100]), world([100]), req);
+  assert.equal(short.verdict, null);
+  assert.match(short.reason, /når ikke sæson 3/);
+  const none = inflationCheck(world([100, 100, 106]), world([100, 100, 100]), null);
+  assert.equal(none.verdict, null, "uden private grænser ingen dom");
+  assert.match(none.reason, /privat/);
+});
+
+test("topLossCheck: kun ryttere i begge kohorter, antal og andel under egen kurve B-top", () => {
+  const xp = { riderPeaks: { a: 50, b: 40, c: 60 } };
+  const b = { riderPeaks: { a: 50, b: 45, c: 55, d: 70 } };
+  const req = (topLoss) => validateRequirements({ inflation: { season: 1, maxExtraPct: 0 }, topLoss });
+  const one = topLossCheck(xp, b, req({ maxBelow: 1 }));
+  assert.equal(one.n, 3, "d findes kun i kurve B");
+  assert.equal(one.below, 1);
+  assert.equal(one.loss.max, 5);
+  assert.equal(one.verdict, true);
+  assert.equal(topLossCheck(xp, b, req({ maxBelow: 0 })).verdict, false);
+  assert.equal(topLossCheck(xp, b, req({ maxBelowPct: 30 })).verdict, false, "en tredjedel er over 30 %");
+  assert.equal(topLossCheck(xp, b, null).verdict, null);
+});
+
+test("validateRequirements: intet er null, ugyldigt kaster, gyldigt fryses", () => {
+  assert.equal(validateRequirements(null), null);
+  assert.throws(() => validateRequirements({ inflation: { season: 0, maxExtraPct: 1 }, topLoss: { maxBelow: 1 } }), /inflation/);
+  assert.throws(() => validateRequirements({ inflation: { season: 15, maxExtraPct: 1 }, topLoss: {} }), /top-tab/);
+  const ok = validateRequirements({ inflation: { season: 15, maxExtraPct: 1 }, topLoss: { maxBelowPct: 2 } });
+  assert.ok(Object.isFrozen(ok) && ok.topLoss.maxBelow === null);
+  const opts = applyPrivateXp({ ...SIM_DEFAULTS }, { xp: XP_RAW, sim: { variationMemory: 0.5, requirements: { inflation: { season: 2, maxExtraPct: 3 }, topLoss: { maxBelow: 4 } } } });
+  assert.equal(opts.xpVariationMemory, 0.5);
+  assert.equal(opts.requirements.inflation.season, 2);
+  assert.throws(() => applyPrivateXp({ ...SIM_DEFAULTS }, { xp: XP_RAW, sim: { variationMemory: 1 } }), /hukommelsen/);
+});
+
+test("xpVariant: led i navnet vælger intet dagsloft, gulv og bonus, også oven på en privat variant", () => {
+  assert.equal(xpVariant("xp", XP_OPTS).capPerDate, true);
+  assert.equal(xpVariant("xp_nocap", XP_OPTS).capPerDate, false);
+  const full = xpVariant("xp_bonus15_gulv_nocap", XP_OPTS);
+  assert.deepEqual([full.trainNowBonus, full.raceDayFloor, full.capPerDate, full.plan], [0.15, true, false, "standard"]);
+  const big = xpVariant("xp_stor_nocap", { ...XP_OPTS, xpVariants: XP_BIG });
+  assert.equal(big.xpParams.potentialXp[0].value, 2000, "tallene kommer fra den private variant");
+  assert.equal(xpVariant("xp_rot_hard", XP_OPTS).plan, "rotate");
+  assert.throws(() => xpVariant("xp_m", { ...XP_OPTS, xpVariants: { xp_m: { variationMemory: 1 } } }), /hukommelsen/i);
+  assert.notDeepEqual(xpRunInputs(xpVariant("xp", XP_OPTS), XP_OPTS), xpRunInputs(xpVariant("xp_nocap", XP_OPTS), XP_OPTS), "intet loft er en anden kørsel");
+});
+
+test("intet dagsloft: uden loft kan en evne stige mere end 1 på en dato, med loft aldrig", () => {
+  const opts = { ...XP_OPTS, seasons: 1, xpVariants: XP_BIG };
+  const capped = runVariant(syntheticSnapshot(), xpVariant("xp_stor", opts), opts);
+  const free = runVariant(syntheticSnapshot(), xpVariant("xp_stor_nocap", opts), opts);
+  const over = (h) => (h["2"] ?? 0) + (h["3+"] ?? 0);
+  assert.equal(over(capped.dateGains.all), 0);
+  assert.equal(capped.dateGains.max, 1);
+  assert.ok(over(free.dateGains.all) > 0, "kun prisen bremser");
+  assert.ok(free.dateGains.max >= 2);
+  assert.equal(free.gates.capViolations, 0, "uden loft er der intet at bryde");
+  assert.ok(free.gates.pointsPerSeason[0] > capped.gates.pointsPerSeason[0], "loftet holdt point tilbage");
+  assert.ok(over(free.dateGains.firstWeek) > 0, "X6: første uge måles for sig");
+  assert.ok(Object.keys(free.dateGains.byAge).length > 0 && Object.keys(free.dateGains.byPotential).length > 0);
+  assert.equal(dateGainBucket(5), "3+");
+});
+
+test("dagsvariation med hukommelse: uden hukommelse er den den gamle, med hukommelse er den rolig og neutral", () => {
+  for (let d = 0; d < 20; d++) {
+    assert.equal(localDayVariationStep({ riderId: "r", seasonNumber: 5, dateIndex: d, span: 0.4 }).mult, xpDayVariation("r", 5, d, 0.4));
+  }
+  const series = (memory) => {
+    let state = null;
+    return Array.from({ length: 4000 }, (_, d) => {
+      const s = localDayVariationStep({ riderId: "r", seasonNumber: 5, dateIndex: d, span: 0.4, memory, state });
+      state = s.state;
+      return s.mult;
+    });
+  };
+  const free = series(0);
+  const sticky = series(0.9);
+  const jump = (s) => s.slice(1).reduce((sum, x, i) => sum + Math.abs(x - s[i]), 0);
+  assert.ok(jump(sticky) < jump(free) / 2, "gode og dårlige perioder");
+  assert.ok(Math.abs(sticky.reduce((s, x) => s + x, 0) / sticky.length - 1) < 0.05, "neutral over tid");
+  assert.ok(sticky.every((x) => x >= 0.6 && x <= 1.4));
+  assert.deepEqual(series(0.9).slice(0, 10), sticky.slice(0, 10));
+});
+
+test("løbsdags-gulv: hver evne får mindst en hård dag med træner, og gulvet tager aldrig noget", () => {
+  const out = localRaceDayFloorShares({
+    raceShares: { climbing: 2, sprint: 0.1 }, raceMults: { climbing: 1.5 }, hardShares: { climbing: 1, sprint: 0.5, tempo: 0.2 }, staffMults: { sprint: 1.2 },
+  });
+  assert.deepEqual(out, { climbing: 3, sprint: 0.6, tempo: 0.2 });
+  const opts = { ...XP_OPTS, raceShareByAge: [{ maxAge: 99, share: 1 }] };
+  const base = runVariant(syntheticSnapshot(), xpVariant("xp", opts), opts);
+  const floor = runVariant(syntheticSnapshot(), xpVariant("xp_gulv", opts), opts);
+  const sum = (r) => r.gates.pointsPerSeason.reduce((s, x) => s + x, 0);
+  assert.ok(sum(floor) >= sum(base));
+  const world = buildWorld(syntheticSnapshot());
+  const x8 = raceVsTraining(world, 4, XP, XP_OPTS, { sample: 5, floor: true });
+  assert.ok(x8.checks > 0);
+});
+
+test("motorens hook: kørslen bruger de injicerede funktioner, og kilden står i kørslens identitet", () => {
+  let calls = 0;
+  const engineHooks = {
+    ...XP_ENGINE_HOOKS, source: "test",
+    dayVariationStep: (args) => { calls += 1; return XP_ENGINE_HOOKS.dayVariationStep(args); },
+  };
+  const opts = { ...XP_OPTS, seasons: 1, engineHooks };
+  const res = runVariant(syntheticSnapshot(), xpVariant("xp", opts), opts);
+  assert.ok(calls > 0);
+  assert.equal(res.params.xpRun.engine, "test");
+  assert.notEqual(xpRunInputs(xpVariant("xp", XP_OPTS), XP_OPTS).engine, "test");
+  assert.match(XP_ENGINE_HOOKS.source, /#6110/, "den lokale gengivelse siger, hvad den venter på");
+});
+
+test("renderMotorpakke og renderX7: kravene, dagsloftet, kohorten og X7 særskilt på private kort", () => {
+  const req = { inflation: { season: 2, maxExtraPct: 5 }, topLoss: { maxBelow: 1 } };
+  const opts = { ...XP_OPTS, seasons: 2, cohortEndAge: 18, requirements: validateRequirements(req) };
+  const snap = syntheticSnapshot();
+  const b = { name: "kurveB", kind: "nu", capPerDate: true };
+  const results = [runVariant(snap, b, opts), runVariant(snap, xpVariant("xp_nocap", opts), opts)];
+  const cohorts = [runCohort(snap, b, opts), runCohort(snap, xpVariant("xp_nocap", opts), opts)];
+  const card = renderMotorpakke(snap, results, cohorts, opts, "test");
+  for (const heading of ["De to faste krav", "Intet dagsloft", "X6 første uge", "Kohorten: X1", "Kohorten pr. alder", "IKKE dækker"]) assert.ok(card.includes(heading), heading);
+  assert.match(card, /\| xp_nocap \|.*\| holder( IKKE)? \|/);
+  assert.ok(!card.includes("undefined") && !card.includes("NaN"));
+  const x7 = renderX7(snap, results, cohorts, opts, "test");
+  assert.ok(x7.includes("Taktik") && x7.includes("tactics") && x7.includes("Kohorten pr. alder"));
+  const bare = renderMotorpakke(snap, results, [], { ...opts, requirements: null }, "test");
+  assert.match(bare, /Grænserne mangler/);
+});
+
+test("assertPrivateOutDir: kun balance-internals/6110", () => {
+  assert.ok(assertPrivateOutDir("C:/x/balance-internals/6110/s25").endsWith("s25"));
+  assert.throws(() => assertPrivateOutDir("C:/x/tmp"), /balance-internals\/6110/);
+  assert.throws(() => assertPrivateOutDir("C:/x/balance-internals/7000"), /6110/);
 });
 
 test("limitSnapshotTeams: beholder kun de første aktive hold og deres ryttere", () => {
