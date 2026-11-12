@@ -263,11 +263,12 @@ export default function DashboardPage() {
   // "ingen resultater"-empty-state i round-trip-vinduet ved HVERT load (false-
   // empty flash) — samme distinktion som MyLatestResultCard allerede laver
   // korrekt for sit eget null-default (se datakontrakt-kommentaren i den fil).
-  const [recentResults, setRecentResults] = useState(null);
-  const [riderRanking, setRiderRanking] = useState(null);
+  const [recentResults, setRecentResults] = useState(/** @type {Array<Record<string, any>> | null} */ (null));
+  const [riderRanking, setRiderRanking] = useState(/** @type {Array<Record<string, any>> | null} */ (null));
   // #2466: resultat-push — null = ikke hentet endnu/fejlet (kortet renderer intet),
   // { race: null } = ingen finaliserede løb (empty state), ellers payload.
   const [myLatestResult, setMyLatestResult] = useState(null);
+  const [myLatestResultSettled, setMyLatestResultSettled] = useState(false);
   const recentResultsVisible = isVisible("recentResults");
   const riderRankingVisible = isVisible("riderRanking");
   const myLatestResultVisible = isVisible("myLatestResult");
@@ -628,16 +629,9 @@ export default function DashboardPage() {
   // #6569: paa topniveau (foer early-return) saa stribens fetch starter naar team er kendt.
   const todayStages = withoutPausedUpcoming(useTodayStages(team?.id), Boolean(racePause)); // #6970
   const [initialLayoutReady, setInitialLayoutReady] = useState(false);
-  const [presenceWaitExpired, setPresenceWaitExpired] = useState(false);
   useEffect(() => {
-    if (loading || initialLayoutReady) return undefined;
-    // A secondary query may hang. Never hold ready cards indefinitely for it.
-    const timer = setTimeout(() => setPresenceWaitExpired(true), 500);
-    return () => clearTimeout(timer);
-  }, [loading, initialLayoutReady]);
-  useEffect(() => {
-    if (!loading && ((!todayStages.loading && selectionReady) || presenceWaitExpired)) setInitialLayoutReady(true);
-  }, [loading, todayStages.loading, selectionReady, presenceWaitExpired]);
+    if (!loading && !todayStages.loading && selectionReady && (!myLatestResultVisible || myLatestResultSettled)) setInitialLayoutReady(true);
+  }, [loading, todayStages.loading, selectionReady, myLatestResultVisible, myLatestResultSettled]);
 
   // #4557 (S-M2d) · dashboard-genvej til aarsmoedet — udenfor loadAll'ens
   // Promise.all med vilje (progressiv, aldrig blokerende for resten af
@@ -715,7 +709,7 @@ export default function DashboardPage() {
       for (const race of candidates) {
         if (cancelled) return;
         try {
-          const r = await apiFetch(`${API}/api/races/${race.id}/selection`, { headers: { Authorization: `Bearer ${token}` } });
+          const r = await apiFetch(`${API}/api/races/${race.id}/selection`, { signal: AbortSignal.timeout(8000), headers: { Authorization: `Bearer ${token}` } });
           // Fejl/ukendt svar må ikke udløse et falsk "udtagelse mangler" — samme
           // forsigtighed som den tidligere count===0-only-regel (#2296-regression).
           // #5242: limited/unauthorized behandles som "ukendt svar" — samme gren.
@@ -918,16 +912,15 @@ export default function DashboardPage() {
 
   // #1005: hent de tre push-moduler fra deres aggregat-endpoints — kun når modulet
   // er synligt, så managere der har skjult dem ikke betaler omkostningen. Endpoints
-  // er cachede server-side (60s), så toggle on→off→on rammer cachen. Effekten
-  // kører EFTER first paint (#2444: intet af dette blokerer dashboardets critical
-  // path — kortene fylder ud når svarene lander).
+  // Cached server-side. Fixed cards reveal independently; only the conditional
+  // latest-result presence participates in the first-layout decision.
   useEffect(() => {
     let cancelled = false;
     async function loadExtras() {
       if (!recentResultsVisible && !riderRankingVisible && !myLatestResultVisible) return;
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
-      if (!token) return;
+      if (!token) { setMyLatestResultSettled(true); return; }
       const headers = { Authorization: `Bearer ${token}` };
       // Parallelt (ikke sekventielt) — hvert kort fylder ud så snart dets eget
       // svar lander; især resultat-pushet (#2466) skal ikke vente bag to andre
@@ -937,29 +930,28 @@ export default function DashboardPage() {
           try {
             const r = await apiFetch(`${API}/api/dashboard/recent-results`, { headers });
             if (cancelled) return;
-            // #3510 — svaret er nu SANDHEDEN uanset ok/fejl: r.ok → de rigtige
-            // resultater (evt. []); ellers eksplicit [] så modulet falder tilbage
-            // til empty-state fremfor at blive hængende i skeleton for evigt.
-            setRecentResults(r.ok ? r.data.races || [] : []);
-          } catch { if (!cancelled) setRecentResults([]); }
+            // Failures settle an initial placeholder but preserve a known list.
+            setRecentResults(previous => r.ok ? r.data?.races || [] : previous ?? []);
+          } catch { if (!cancelled) setRecentResults(previous => previous ?? []); }
         })(),
         riderRankingVisible && (async () => {
           try {
             const r = await apiFetch(`${API}/api/dashboard/rider-ranking`, { headers });
             if (cancelled) return;
-            setRiderRanking(r.ok ? r.data.riders || [] : []);
-          } catch { if (!cancelled) setRiderRanking([]); }
+            setRiderRanking(previous => r.ok ? r.data?.riders || [] : previous ?? []);
+          } catch { if (!cancelled) setRiderRanking(previous => previous ?? []); }
         })(),
         // #2466: "How your team did" — holdets eget seneste løbsresultat.
         myLatestResultVisible && (async () => {
           try {
-            const r = await apiFetch(`${API}/api/dashboard/my-latest-result`, { headers });
+            const r = await apiFetch(`${API}/api/dashboard/my-latest-result`, { headers, signal: AbortSignal.timeout(8000) });
             if (r.ok && !r.limited && !r.unauthorized && !cancelled) {
               // race === undefined (fx mock-fallback {}) normaliseres til null →
               // kortets empty state i stedet for en død boks.
               setMyLatestResult({ ...r.data, race: r.data.race ?? null });
             }
-          } catch { /* best-effort — kortet renderer intet ved fejl */ }
+          } catch { /* best-effort: retain an existing result */ }
+          finally { if (!cancelled) setMyLatestResultSettled(true); }
         })(),
       ]);
     }
@@ -1051,7 +1043,7 @@ export default function DashboardPage() {
 
   // #2230: resolve conditional top-strip presence before placing the dashboard.
   // Once revealed, background refresh never replaces it with a page loader.
-  if (loading || (!initialLayoutReady && !presenceWaitExpired && (todayStages.loading || !selectionReady) && !error)) return <AuthLoading />;
+  if (loading || (team && !initialLayoutReady && (todayStages.loading || !selectionReady || (myLatestResultVisible && !myLatestResultSettled)) && !error)) return <AuthLoading />;
 
   // #3510 — kanonisk ErrorState (docs/design/PAGE_TEMPLATES.md) i stedet for at
   // falde igennem til et fuldt tomt dashboard. Retry gen-kalder loadAll direkte

@@ -1728,9 +1728,10 @@ export default function AuctionsPage() {
           Ingen guld-tint paa knapperne: guld er rationeret til leder-markoerer
           og den aktive fanes underline. */}
       <PageHeader
+        className="max-sm:flex-col max-sm:items-start"
         title={t("auctions:page.title")}
         subtitle={
-          <span className="font-data tabular-nums text-cz-2">
+          <span className="block min-h-[2lh] sm:min-h-0 font-data tabular-nums text-cz-2">
             {!loading && myTeamId && (
               <>
                 {t("auctions:stats.balance")} {formatNumber(myBalance)} CZ$

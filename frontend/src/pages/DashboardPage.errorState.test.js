@@ -73,40 +73,29 @@ test("#5322 et 'naaede aldrig serveren'-resultat loeftes til sidens fejlflade, i
 test("#3510 recentResults + riderRanking defaulter til null (ikke []), så post-paint-fetch kan skelnes fra bekræftet tom", () => {
   assert.match(
     source,
-    /const \[recentResults, setRecentResults\] = useState\(null\);/,
+    /const \[recentResults, setRecentResults\] = useState\([^;\n]*\(null\)\);/,
     "recentResults skal default til null (loading), ikke [] (empty)",
   );
   assert.match(
     source,
-    /const \[riderRanking, setRiderRanking\] = useState\(null\);/,
+    /const \[riderRanking, setRiderRanking\] = useState\([^;\n]*\(null\)\);/,
     "riderRanking skal default til null (loading), ikke [] (empty)",
   );
 });
 
 // #2230: placeholder/content geometry is tested in dashboard-stable-loading.spec.ts.
 
-test("#3510/#5242 en fejlet/ikke-ok/limited post-paint-fetch falder eksplicit tilbage til [] (undgår evig skeleton)", () => {
-  // Non-ok responses settle to empty; rate-limit backoff stays in apiFetch.
-  assert.match(
-    source,
-    /setRecentResults\(r\.ok \? r\.data\.races \|\| \[\] : \[\]\);/,
-    "recentResults skal sættes til [] når responsen ikke er ok",
-  );
-  assert.match(
-    source,
-    /catch \{ if \(!cancelled\) setRecentResults\(\[\]\); \}/,
-    "netværksfejl skal også falde tilbage til [] for recentResults",
-  );
-  assert.match(
-    source,
-    /setRiderRanking\(r\.ok \? r\.data\.riders \|\| \[\] : \[\]\);/,
-    "riderRanking skal sættes til [] når responsen ikke er ok",
-  );
-  assert.match(
-    source,
-    /catch \{ if \(!cancelled\) setRiderRanking\(\[\]\); \}/,
-    "netværksfejl skal også falde tilbage til [] for riderRanking",
-  );
+test("#8019 failed result fetches settle initial placeholders and preserve known lists", () => {
+  for (const setter of ["setRecentResults", "setRiderRanking"]) {
+    const callbacks = [...source.matchAll(new RegExp(`${setter}\\((previous => [^;]+)\\);`, "g"))];
+    assert.equal(callbacks.length, 2, `${setter}: response and catch both preserve known data`);
+    for (const [, callback] of callbacks) {
+      const update = new Function("r", `return (${callback});`)({ ok: false });
+      assert.deepEqual(update(null), []);
+      const known = [{ id: "known-result" }];
+      assert.equal(update(known), known);
+    }
+  }
 });
 
 test("#3510 ErrorState/Button er importeret fra den kanoniske ui-barrel", () => {

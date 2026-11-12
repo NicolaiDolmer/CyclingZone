@@ -51,6 +51,8 @@
 - Design i øvrigt: `docs/design/PAGE_TEMPLATES.md`. Hairline-borders, 5px radius, tabular figures, stroke-ikoner, ingen emoji, farver kun via cz-tokens.
 - **Indlæsning (ejer 11/11, #2230, valg A):** hvert fast kort viser indhold, når det er klart; resten beholder stille grå pladsholdere. Den fælles `ReservedBody` reserverer kortets listekapacitet gennem loading/content/empty. Ramme og overskrift bliver stående. Refresh beholder de kendte data. Betingede kort skal stadig følge synlighedsreglerne ovenfor; en midlertidig stribe må ikke skubbe resten af siden, når den viser sig at være tom.
 
+**#8019 initial layout:** resolve conditional base data before first content layout; stage profiles, winners and standings enrich real fixed-height cards independently. Keep published cards if enrichment fails. Presence requests have bounded timeout/error paths. Derive the result badge from server state on its first render; retain known lists and action links during refresh.
+
 ---
 
 ## 4. Modulrækkefølgen (efter omlægningen 25/8, PR [#4249](https://github.com/NicolaiDolmer/CyclingZone/pull/4249))

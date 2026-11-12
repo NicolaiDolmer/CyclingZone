@@ -93,12 +93,11 @@ function breakdownRiderRows({ group, keyPrefix, label }) {
 // endnu (før ejer anvender migrationen) → undefined → behandles som usét
 // (samme adfærd som badgen altid havde ved allerførste besøg).
 function useSeenBadge(race) {
-  const [isNew, setIsNew] = useState(false);
+  const isNew = Boolean(race?.id && !race.seen);
   const markedRef = useRef(null);
   useEffect(() => {
     const raceId = race?.id;
     if (!raceId) return;
-    setIsNew(!race.seen);
     if (race.seen || markedRef.current === raceId) return;
     markedRef.current = raceId;
     // #3243 — funnel-event: dashboardet EKSPONERER hermed et usét løbsresultat.

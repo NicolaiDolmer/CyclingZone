@@ -104,3 +104,123 @@ test('a late urgent auction keeps the action-card footprint and avoids false all
     expect((await region.boundingBox())!.height).toBe(before!.height);
   } finally { release(); }
 });
+
+
+test('#8019 an empty stage response after 500ms never collapses a visible strip', async ({ page }) => {
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/rest/v1/race_stage_schedule?**', async route => {
+    if (!new URL(route.request().url()).searchParams.has('scheduled_at')) return route.fallback();
+    await gate;
+    await json(route, []);
+  });
+  await page.goto('/dashboard');
+  try {
+    await page.waitForTimeout(900);
+    await expect(page.getByRole('heading', { name: 'E2E Racing', exact: true })).not.toBeVisible();
+  } finally { release(); }
+  await expect(page.getByRole('heading', { name: 'E2E Racing', exact: true })).toBeVisible();
+  await expect(page.locator('a[href="/races/race-live-1?stage=4"]')).toHaveCount(0);
+});
+
+test('#8019 real stage cards and fixed modules reveal before slow profile enrichment', async ({ page }) => {
+  await page.route('**/rest/v1/race_stage_schedule?**', route => {
+    if (!new URL(route.request().url()).searchParams.has('scheduled_at')) return route.fallback();
+    return json(route, [{ race_id: 'race-live-1', stage_number: 4, scheduled_at: '2026-11-11T11:00:00Z' }]);
+  });
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/rest/v1/race_stage_profiles?**', async route => { await gate; await route.fallback(); });
+  await page.goto('/dashboard');
+  try {
+    await expect(page.locator('a[href="/races/race-live-1?stage=4"]')).toBeVisible();
+    await expect(page.locator('[data-loading-region="transfers"]')).toHaveAttribute('aria-busy', 'false');
+    const before = await page.locator('a[href="/races/race-live-1?stage=4"]').boundingBox();
+    release();
+    await expect(page.locator('a[href="/races/race-live-1?stage=4"]')).toHaveCount(1);
+    await page.waitForTimeout(200);
+    expect((await page.locator('a[href="/races/race-live-1?stage=4"]').boundingBox())!.height).toBe(before!.height);
+  } finally { release(); }
+});
+
+
+test('#8019 latest-result presence settles before the initial dashboard layout', async ({ page }) => {
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/dashboard/my-latest-result', async route => { await gate; await route.fallback(); });
+  await page.goto('/dashboard');
+  try {
+    await page.waitForTimeout(900);
+    await expect(page.getByRole('heading', { name: 'E2E Racing', exact: true })).not.toBeVisible();
+  } finally { release(); }
+  await expect(page.getByRole('heading', { name: 'E2E Racing', exact: true })).toBeVisible();
+  await expect(page.locator('[data-loading-region="auctions"]')).toHaveAttribute('aria-busy', 'false');
+});
+
+test('#8019 failed stage enrichment retains the real base card', async ({ page }) => {
+  await page.route('**/rest/v1/race_stage_schedule?**', route => {
+    if (!new URL(route.request().url()).searchParams.has('scheduled_at')) return route.fallback();
+    return json(route, [{ race_id: 'race-live-1', stage_number: 4, scheduled_at: '2026-11-11T11:00:00Z' }]);
+  });
+  await page.route('**/rest/v1/race_stage_profiles?**', route => json(route, { message: 'unavailable' }, 503));
+  await page.goto('/dashboard');
+  await expect(page.locator('a[href="/races/race-live-1?stage=4"]')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'E2E Racing', exact: true })).toBeVisible();
+  await page.waitForTimeout(300);
+  await expect(page.locator('a[href="/races/race-live-1?stage=4"]')).toBeVisible();
+});
+
+for (const width of [375, 1440]) {
+  test(`#8019 auction actions keep their row while balance arrives at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    await page.route('**/rest/v1/auctions?**', async route => { await gate; await route.fallback(); });
+    await page.goto('/auctions?tab=all');
+    const history = page.locator('main header a[href="/auctions/history"]');
+    try {
+      await expect(history).toBeVisible();
+      const before = await history.boundingBox();
+      release();
+      await expect(page.locator('main [role="status"][aria-label]')).toHaveCount(0);
+      await expect.poll(async () => (await history.boundingBox())!.y).toBe(before!.y);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+    } finally { release(); }
+  });
+}
+
+
+test('#8019 a failed optional profile does not discard a known winner or entry count', async ({ page }) => {
+  const raceId = 'race-one-day-8019';
+  await page.route('**/rest/v1/race_stage_schedule?**', route => {
+    if (!new URL(route.request().url()).searchParams.has('scheduled_at')) return route.fallback();
+    return json(route, [{ race_id: raceId, stage_number: 1, scheduled_at: '2026-11-11T09:00:00Z' }]);
+  });
+  await page.route('**/rest/v1/races?**', route => {
+    if (!decodeURIComponent(route.request().url()).includes(raceId)) return route.fallback();
+    return json(route, [{ id: raceId, name: 'Fixture one-day race', race_type: 'single', stages: 1, stages_completed: 1, status: 'completed' }]);
+  });
+  await page.route('**/rest/v1/race_entries?**', route => {
+    if (!decodeURIComponent(route.request().url()).includes(raceId)) return route.fallback();
+    return json(route, Array.from({ length: 3 }, () => ({ race_id: raceId })));
+  });
+  await page.route('**/rest/v1/race_results?**', route => {
+    if (!decodeURIComponent(route.request().url()).includes(raceId)) return route.fallback();
+    return json(route, [{ race_id: raceId, stage_number: 1, result_type: 'gc', rank: 1, rider_name: 'Fixture winner' }]);
+  });
+  await page.route('**/rest/v1/race_stage_profiles?**', route => json(route, { message: 'unavailable' }, 503));
+  await page.goto('/dashboard');
+  const card = page.locator(`a[href="/races/${raceId}?stage=1"]`);
+  await expect(card).toContainText('Fixture winner');
+  await expect(card).toContainText('3');
+  await expect(card).not.toContainText('Ingen resultater');
+});
+
+test('#8019 an absent team cannot leave the secondary-presence loader running', async ({ page }) => {
+  await page.route('**/rest/v1/teams?**', route => {
+    if (!new URL(route.request().url()).searchParams.has('user_id')) return route.fallback();
+    return json(route, null);
+  });
+  await page.goto('/dashboard');
+  await expect(page.locator('main header')).toBeVisible();
+});
