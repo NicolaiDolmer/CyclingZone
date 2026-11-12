@@ -1,5 +1,28 @@
 export const PATCHES = [
 {
+  "version": "7.439",
+  "date": "2026-11-12",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Dashboard",
+      "en": {
+        "title": "Dashboard and auctions load more smoothly",
+        "body": "The dashboard and auctions show content sooner and jump around less while loading."
+      },
+      "da": {
+        "title": "Dashboard og auktioner loader roligere",
+        "body": "Dashboard og auktioner viser indhold hurtigere og hopper mindre under indlæsning."
+      },
+      "refs": [
+        8019
+      ]
+    }
+  ]
+},
+{
   "version": "7.438",
   "date": "2026-11-12",
   "changes": [
