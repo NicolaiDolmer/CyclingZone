@@ -1736,7 +1736,7 @@ export default function AuctionsPage() {
           Ingen guld-tint paa knapperne: guld er rationeret til leder-markoerer
           og den aktive fanes underline. */}
       <PageHeader
-        className="max-sm:flex-col max-sm:items-start"
+        mobileActionsBelow
         title={t("auctions:page.title")}
         subtitle={
           <span className="block font-data tabular-nums text-cz-2">

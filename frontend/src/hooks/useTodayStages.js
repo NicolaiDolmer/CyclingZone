@@ -39,7 +39,9 @@ export default function useTodayStages(teamId) {
   const [state, setState] = useState(/** @type {{loading: boolean, cards: Array<{raceId: string, stageNumber: number, profile: object | null, profileType: string | null, enriching?: boolean, detailsUnavailable?: boolean}>}} */ ({ loading: true, cards: [] }));
 
   const load = useCallback(async () => {
-    if (!teamId) { setState({ loading: false, cards: [] }); return; }
+    // No identity is not evidence of an empty day. Dashboard owns confirmed
+    // no-team visibility; keep presence pending across the identity handoff.
+    if (!teamId) { setState({ loading: true, cards: [] }); return; }
     // #6569: stale-while-revalidate — skelettet vises kun foer foerste kort er
     // hentet; minut-tick og realtime-refetch beholder de eksisterende kort.
     setState((s) => (s.cards.length ? s : { ...s, loading: true }));

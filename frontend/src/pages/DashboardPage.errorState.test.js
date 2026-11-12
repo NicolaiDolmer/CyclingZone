@@ -85,19 +85,6 @@ test("#3510 recentResults + riderRanking defaulter til null (ikke []), så post-
 
 // #2230: placeholder/content geometry is tested in dashboard-stable-loading.spec.ts.
 
-test("#8019 failed result fetches settle initial placeholders and preserve known lists", () => {
-  for (const setter of ["setRecentResults", "setRiderRanking"]) {
-    const callbacks = [...source.matchAll(new RegExp(`${setter}\\((previous => [^;]+)\\);`, "g"))];
-    assert.equal(callbacks.length, 2, `${setter}: response and catch both preserve known data`);
-    for (const [, callback] of callbacks) {
-      const update = new Function("r", `return (${callback});`)({ ok: false });
-      assert.deepEqual(update(null), []);
-      const known = [{ id: "known-result" }];
-      assert.equal(update(known), known);
-    }
-  }
-});
-
 test("#3510 ErrorState/Button er importeret fra den kanoniske ui-barrel", () => {
   const uiImportMatch = source.match(/import \{([\s\S]*?)\} from "\.\.\/components\/ui";/);
   assert.ok(uiImportMatch, "skal have et import { ... } from \"../components/ui\"");

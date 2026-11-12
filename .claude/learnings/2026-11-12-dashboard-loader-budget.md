@@ -1,0 +1,11 @@
+# Dashboard presence wait exceeded the page budget (#8019 / #8022)
+
+The CLS patch waited for core data, strip presence, dependent race rows, up to five selection requests and the latest result before showing any dashboard content. Equal endpoint latency in the original benchmark concealed the asymmetric case: one slow secondary request held every ready card. A regression test holding only my-latest-result reproduced the missing team heading after 2500 ms on the reviewed build.
+
+The correction uses a single 1500 ms budget from component mount, keeps unknown core values as skeletons and reveals ready fixed cards. Optional modules/dependent rows no longer extend loadAll; dependent entries have an abort signal and selection candidates share one 8 s signal. Stage details reuse localized pending/no-results text. PageHeader owns the opt-in mobile action-row contract. State tests import production helpers rather than executing extracted source.
+
+A late confirmed-empty strip still collapses and valid late conditional data still appears: this trades possible late CLS for bounded access to ready content. Measure one delayed request at a time, actual useful content separately from frame/FCP, and report that tradeoff. Parent owns asymmetric before/after timings, screenshots and full E2E. Patch notes remain an owner-approved proposal in the draft PR, not a published release entry.
+
+Independent review also caught two presence edges: useTodayStages(null) reports an empty settled strip before identity resolves, so the page must pass pending presence while the first team/season lookup is outstanding. PostgREST resolves abort/network errors as error/data:null instead of throwing; check that error before replacing known registrations. Browser regressions reproduced the missing strip and disappearing ongoing race after a network timeout refresh (including the SDK retry settlement).
+
+A caller-only pending override still dropped the strip for one identity-to-hook commit. Frame/DOM sampling reproduced it while the schedule request remained held. The sole hook consumer is Dashboard: the hook now keeps no-identity presence pending/empty, and Dashboard hides the strip only for confirmed no-team. Known refresh data is retained. This removes the transient empty state without a render-time ref or invented data.

@@ -1,3 +1,4 @@
+import { apiResponse } from "../../src/preview/mockHandlers.js";
 import { test, expect } from './e2e-base.js';
 import { installNetworkMocks, TEST_USER, TEST_TEAM, AUCTIONS, json } from './fixtures.js';
 
@@ -223,6 +224,7 @@ test('#8019 an absent team cannot leave the secondary-presence loader running', 
   });
   await page.goto('/dashboard');
   await expect(page.locator('main header')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Dagens etaper', exact: true })).toHaveCount(0);
 });
 
 
@@ -321,3 +323,157 @@ test('#8019 completing the last owned auction preserves the initial Mine tab', a
   await expect(page.locator('[data-auction-row]')).toHaveCount(0);
   await expect(mine).toHaveAttribute('aria-selected', 'true');
 });
+
+// Each case holds exactly one request while other modules can finish.
+for (const endpoint of [
+  '**/api/dashboard/my-latest-result',
+  '**/api/me/onboarding-progress',
+  '**/api/races/*/selection',
+  '**/rest/v1/race_entries?**',
+  '**/rest/v1/season_standings?**',
+]) {
+  test(`#8022 ready cards render within the mount budget with ${endpoint} stalled`, async ({ page }) => {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    let held = false;
+    await page.route(endpoint, async route => {
+      // Only the dependent presence query, not squad-count inputs or strip enrichment.
+      if (endpoint.includes('race_entries') && new URL(route.request().url()).searchParams.get('select') !== 'race_id') return route.fallback();
+      held = true;
+      await gate;
+      await route.fallback();
+    });
+    await page.goto('/dashboard');
+    try {
+      await expect.poll(() => held).toBe(true);
+      await expect(page.getByRole('heading', { name: 'E2E Racing', exact: true })).toBeVisible({ timeout: 2500 });
+      const auctions = page.locator('[data-loading-region="auctions"]');
+      await expect(auctions).toHaveAttribute('aria-busy', 'false', { timeout: 500 });
+      await expect(auctions.locator('a').first()).toBeVisible();
+      if (endpoint.includes('season_standings')) {
+        await expect(page.locator('[data-loading-region="standings"]')).toHaveAttribute('aria-busy', 'true');
+        await expect(page.locator('main header a[href="/finance"]')).not.toContainText('0 CZ$');
+      }
+    } finally { release(); }
+  });
+}
+
+for (const identity of ['teams', 'seasons']) {
+  for (const empty of [false, true]) {
+    test(`#8022 unresolved ${identity} reserves the strip until identity settles, empty=${empty}`, async ({ page }) => {
+      let release!: () => void;
+      const gate = new Promise<void>(resolve => { release = resolve; });
+      let releaseStages!: () => void;
+      const stageGate = new Promise<void>(resolve => { releaseStages = resolve; });
+      let held = false;
+      await page.route(`**/rest/v1/${identity}?**`, async route => {
+        const params = new URL(route.request().url()).searchParams;
+        if (identity === 'teams' ? !params.has('user_id') : params.get('status') !== 'eq.active') return route.fallback();
+        held = true;
+        await gate;
+        await route.fallback();
+      });
+      await page.route('**/rest/v1/race_stage_schedule?**', async route => {
+        if (!new URL(route.request().url()).searchParams.has('scheduled_at')) return route.fallback();
+        await stageGate;
+        return json(route, empty ? [] : [{ race_id: 'race-live-1', stage_number: 4, scheduled_at: '2026-11-11T11:00:00Z' }]);
+      });
+      await page.goto('/dashboard');
+      try {
+        await expect.poll(() => held).toBe(true);
+        await expect(page.locator('main header')).toBeVisible({ timeout: 2500 });
+        await expect(page.getByRole('heading', { name: 'Dagens etaper', exact: true })).toBeVisible();
+        await expect(page.locator('main header a[href="/finance"]')).not.toContainText('0 CZ$');
+        await page.evaluate(() => {
+          const samples: boolean[] = [];
+          Reflect.set(window, '__stripPresence', samples);
+          const sample = () => samples.push([...document.querySelectorAll('main h2')].some(el => el.textContent === 'Dagens etaper'));
+          new MutationObserver(sample).observe(document.querySelector('main')!, { childList: true, subtree: true });
+          let remaining = 30;
+          const frame = () => { sample(); if (--remaining) requestAnimationFrame(frame); };
+          requestAnimationFrame(frame);
+        });
+        release();
+        await expect(page.getByRole('heading', { name: 'E2E Racing', exact: true })).toBeVisible();
+        await page.waitForTimeout(300);
+        const samples: boolean[] = await page.evaluate(() => Reflect.get(window, '__stripPresence'));
+        expect(samples.length).toBeGreaterThan(0);
+        expect(samples.every(Boolean)).toBe(true);
+        releaseStages();
+        if (empty) await expect(page.getByRole('heading', { name: 'Dagens etaper', exact: true })).toHaveCount(0);
+        else await expect(page.locator('a[href="/races/race-live-1?stage=4"]')).toBeVisible();
+      } finally { release(); releaseStages(); }
+    });
+  }
+}
+
+test('#8022 a dependent-row timeout on realtime refresh retains a known ongoing race', async ({ page }) => {
+  await page.addInitScript(() => {
+    const key = 'sb-cycling-zone-e2e-auth-token';
+    const session = JSON.parse(localStorage.getItem(key)!);
+    session.access_token = `${btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))}.${btoa(JSON.stringify({ exp: 1893456000, role: 'authenticated' }))}.fixture-signature`;
+    localStorage.setItem(key, JSON.stringify(session));
+  });
+  let refresh: (() => void) | undefined;
+  await page.routeWebSocket(/realtime\/v1\/websocket/, socket => {
+    socket.onMessage(message => {
+      if (typeof message !== 'string') return;
+      const [joinRef, ref, topic, event, payload] = JSON.parse(message);
+      if (event === 'phx_join') {
+        const changes = (payload.config?.postgres_changes ?? []).map((change: Record<string, unknown>, i: number) => ({ ...change, id: i + 1 }));
+        socket.send(JSON.stringify([joinRef, ref, topic, 'phx_reply', { status: 'ok', response: { postgres_changes: changes } }]));
+        if (topic === 'realtime:dashboard-live') {
+          const raceChange = changes.find((change: { table: string }) => change.table === 'races');
+          refresh = () => socket.send(JSON.stringify([joinRef, null, topic, 'postgres_changes', {
+            ids: [raceChange.id], data: { schema: 'public', table: 'races', type: 'UPDATE',
+              commit_timestamp: '2026-11-11T12:01:00Z', columns: [], old_record: { id: 'race-live-1' }, record: { id: 'race-live-1', stages_completed: 3 } },
+          }]));
+        }
+      } else if (event === 'heartbeat' || event === 'phx_leave') {
+        socket.send(JSON.stringify([joinRef, ref, topic, 'phx_reply', { status: 'ok', response: {} }]));
+      }
+    });
+  });
+  // Isolate the dependent loader: the strip has no slots and makes no
+  // membership request, even if fixtures normally return all race IDs.
+  await page.route('**/rest/v1/race_stage_schedule?**', route => {
+    if (!new URL(route.request().url()).searchParams.has('scheduled_at')) return route.fallback();
+    return json(route, []);
+  });
+  let dependentReads = 0;
+  await page.route('**/rest/v1/race_entries?**', async route => {
+    const params = new URL(route.request().url()).searchParams;
+    if (params.get('select') !== 'race_id' || !params.get('race_id')?.includes('race-live-1')) return route.fallback();
+    // The strip's membership request is separately scoped to today's slots.
+    if (!params.get('race_id')?.includes('race-up-1')) return route.fallback();
+    dependentReads += 1;
+    if (dependentReads === 1) return json(route, [{ race_id: 'race-live-1' }]);
+    return route.abort("timedout");
+  });
+  await page.goto('/dashboard');
+  const known = page.locator('[data-loading-region="races"] a[href="/races/race-live-1"]');
+  await expect(known).toBeVisible();
+  await expect.poll(() => typeof refresh).toBe('function');
+  refresh!();
+  await expect.poll(() => dependentReads).toBe(2);
+  // Exhaust the SDK's three retries, then observe its error/data:null result.
+  await expect.poll(() => dependentReads).toBe(5);
+  await page.waitForTimeout(100);
+  await expect(known).toBeVisible();
+});
+
+for (const seen of [false, true]) {
+  test(`#8022 result badge matches server state on its first DOM commit, seen=${seen}`, async ({ page }) => {
+    const payload = apiResponse('/api/dashboard/my-latest-result') as { race: Record<string, unknown> };
+    await page.route('**/api/dashboard/my-latest-result', route => json(route, { ...payload, race: { ...payload.race, seen } }));
+    await page.addInitScript(() => {
+      new MutationObserver(() => {
+        if (Reflect.get(window, '__firstResultBadge') !== undefined) return;
+        const title = [...document.querySelectorAll('main h2')].find(el => el.textContent === 'Sådan gik det for dit hold');
+        if (title) Reflect.set(window, '__firstResultBadge', [...title.parentElement!.querySelectorAll('span')].some(el => el.textContent === 'Nyt'));
+      }).observe(document, { childList: true, subtree: true });
+    });
+    await page.goto('/dashboard');
+    await expect.poll(() => page.evaluate(() => Reflect.get(window, '__firstResultBadge'))).toBe(!seen);
+  });
+}

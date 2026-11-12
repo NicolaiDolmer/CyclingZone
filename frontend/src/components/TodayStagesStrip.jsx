@@ -101,7 +101,7 @@ function TodayStageCard({ card, t }) {
             </span>
           )}
           {state === "finished" && (
-            card.enriching ? <Skeleton className="h-3 w-3/4" /> : card.detailsUnavailable ? <span className="text-cz-3">—</span> : winnerName ? (
+            card.enriching ? <Skeleton className="h-3 w-3/4" /> : winnerName ? (
               <>
                 <TrophyIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
                 <span className="truncate">{t("dashboard:todayStages.winner", { name: winnerName })}</span>
@@ -114,7 +114,7 @@ function TodayStageCard({ card, t }) {
 
         {/* Sekundær linje: samlet placering (etapeløb) eller antal tilmeldte (endagsløb). */}
         <p className="mt-2 font-data text-2xs uppercase tracking-[.08em] tabular-nums text-cz-3">
-          {card.enriching ? <Skeleton className="h-3 w-3/4" /> : card.detailsUnavailable ? "—" : isStageRace
+          {card.enriching ? <Skeleton className="h-3 w-3/4" /> : card.detailsUnavailable ? t("dashboard:todayStages.standingPending") : isStageRace
             ? (standing
               ? t("dashboard:todayStages.standing", { rank: standing.rank, total: standing.total })
               : t("dashboard:todayStages.standingPending"))
