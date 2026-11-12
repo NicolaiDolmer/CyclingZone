@@ -1351,14 +1351,16 @@ export default function RaceDetailPage() {
   // #7778: v6-rammen. En kørt etape åbner på Resultater (valg 5); ?tab= vinder, når den er gyldig.
   const v6Tab = resolveV6Tab(searchParams.get("tab"), { ridden: v2SelectedStage <= ridden, isStageRace: v2IsStageRace });
   // Hovedets ene guld-knap og låse-fristen (valg 8): samme regel som etapeside 2.0's knap.
+  // stageRoles er null (henter), false (fejlede) eller svaret; kun svaret har ryttere.
+  const v6Roles = /** @type {{ riders?: any[], overrides?: any[] } | null | false} */ (stageRoles);
   const v6Cta = v6 ? tacticsCta({
     selectedStage: v2SelectedStage,
     stagesCompleted: ridden,
     totalStages,
     raceFinished: phase === "after",
     schedule,
-    riders: stageRoles ? (stageRoles.riders ?? []) : [],
-    overrides: stageRoles ? (stageRoles.overrides ?? []) : [],
+    riders: v6Roles ? (v6Roles.riders ?? []) : [],
+    overrides: v6Roles ? (v6Roles.overrides ?? []) : [],
     nowMs,
   }) : null;
   // Resultatlisten for en kørt etape: den eksisterende tabel (StageTab) i v6-layoutet.
