@@ -58,6 +58,11 @@
   },
   "finishList": [
     {
+      "issue": 6584,
+      "area": "web-experience",
+      "why": "Ejerens eksplicitte natmandat 12/11: installerbar PWA trin 1, offline/netvaerksrettelser som draft uden merge eller prod. https://github.com/NicolaiDolmer/CyclingZone/issues/6584#issuecomment-6810434974"
+    },
+    {
       "issue": 8015,
       "area": "transfer-market",
       "why": "Ejerens eksplicitte build-go 11/11: auto-pris for alle egne ryttere og fri trupafgang til nul. https://github.com/NicolaiDolmer/CyclingZone/issues/8015#issuecomment-6806314390"

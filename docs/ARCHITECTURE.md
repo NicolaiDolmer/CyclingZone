@@ -29,6 +29,12 @@ registreret i prod. En konkret kompensationskørsel kræver separat ejer-go.
 
 ---
 
+## Frontend PWA contract (#6584)
+
+`frontend/public/sw.js` serves navigation responses from the network, using navigation preload when available and falling through to the original request if preload rejects. Network failure returns only the standalone offline document. The worker never caches app HTML, bundles or API/Supabase data. Its versioned cache contains only EN/DA offline documents and their favicon; only the exact same-origin favicon image has a network-first cache fallback. Activation removes older caches with the worker's own prefix. Authentication and release-update behavior remain with their existing owners.
+
+The offline retry button follows PAGE_TEMPLATES/TASTE P16's mobile/coarse-pointer target floor. Installation remains a progressive enhancement through the existing stable manifest, icons and browser-controlled consent. No offline game data or write queue is provided.
+
 ## Frontend Routes
 
 ```
