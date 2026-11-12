@@ -10,16 +10,26 @@
 --   A2. Traen nu #7737: den stemte raekke overtager beta-koblingen (flag_key,
 --       beta_since) fra den tomme beta-raekke, som arkiveres.
 --   B.  Auto-pris #2176 kobles til kontakten auto_accept_enabled (beta 11/11).
---       Pengelaasen #6181 kobles til market_commitment_6181 og staar som leveret:
---       tændt for alle 12/11 kl. 12:52 dansk tid (11:52:25 UTC), samme moenster
---       som tidligere taendinger (status shipped, shipped_at = flip-tidspunktet).
+--       Salgspengene #6181 ("Pengene for et salg kommer foerst, naar rytteren
+--       forlader dit hold"): "i gang", IKKE leveret og UDEN kobling. Kontakten
+--       market_commitment_6181 (on 12/11) er bud-laasen, ikke det, punktet lover.
+--       Saelgerens penge ligger bag sale_escrow_enabled, som er slukket og ikke
+--       har en raekke i app_config; ingen roadmap-raekke kobler i dag til en
+--       noegle uden app_config-raekke, saa punktet kobles ikke (ingen falsk
+--       "leveret" eller "beta"). Bud-laasen har ingen egen raekke (kun patch notes).
 --       Holdplaner, troejejagt, bjergudbrud, Traen nu-bonus, ranglister,
 --       tidsgraense-varsel og traethed lige nu: "i gang".
 --   C.  Fire nye punkter (faste id'er, ON CONFLICT DO NOTHING).
+--   D.  Ejerens tillaeg 12/11 eftermiddag (#8051): fem ideer arkiveres (stemmerne
+--       bevares), "Ny besked-knap i indbakken" (#5266) flyttes fra naeste uge til
+--       uden dato. Vaerksted for traeningsprogrammer, Dashboard markerer nyt
+--       resultat, Handl direkte fra indbakken, Telefon som topapp, Se etape live,
+--       Filtrer rytterdatabasen paa division og Kalenderspor (#3471) roeres ikke.
 --   E.  Valgfrie punkter staar udkommenteret og koeres IKKE.
 --
--- Konsekvens at kende: shipped paa pengelaasen goer, at roadmapDeliveredNotify
--- sender "leveret"-beskeden til de managere, der gav 5-6 paa punktet (en gang).
+-- Ingen raekke i filen bliver shipped, medmindre dens kontakt er on (slutkontrollen
+-- haandhaever det). 12/11 er begge pakkens kontakter beta, saa pakken sender ingen
+-- "leveret"-besked.
 --
 -- Kontakterne flytter selv koblede punkter (triggerne fra
 -- 2026-10-05-5387-roadmap-hub.sql). Filen laeser derfor kontaktens stadie og
@@ -50,7 +60,6 @@ DECLARE
   v_bad           text;
   v_stage_train   text;
   v_stage_accept  text;
-  v_stage_money   text;
   v_cfg_train     timestamptz;
   v_cfg_accept    timestamptz;
   v_old_beta      timestamptz;
@@ -67,14 +76,21 @@ BEGIN
     FROM public.app_config WHERE key = 'training_train_now_instant';
   SELECT value #>> '{}', updated_at INTO v_stage_accept, v_cfg_accept
     FROM public.app_config WHERE key = 'auto_accept_enabled';
-  SELECT value #>> '{}' INTO v_stage_money
-    FROM public.app_config WHERE key = 'market_commitment_6181';
   IF v_stage_train IS NULL OR v_stage_train NOT IN ('beta', 'on', 'true')
      OR v_stage_accept IS NULL OR v_stage_accept NOT IN ('beta', 'on', 'true') THEN
     RAISE EXCEPTION 'roadmap-pakke #8051: Traen nu- eller auto-pris-kontakten er ikke beta/on, vurder paa ny';
   END IF;
-  IF v_stage_money IS DISTINCT FROM 'on' AND v_stage_money IS DISTINCT FROM 'true' THEN
-    RAISE EXCEPTION 'roadmap-pakke #8051: pengelaasen (market_commitment_6181) er ikke on, vurder paa ny';
+  -- Salgspenge-raekken (#6181) maa ikke vaere koblet eller leveret af andre siden 12/11.
+  IF EXISTS (SELECT 1 FROM public.roadmap_items WHERE id = 'c48ac7be-f2de-45e9-959c-b75d89568a16'
+             AND (flag_key IS NOT NULL OR shipped_at IS NOT NULL)) THEN
+    RAISE EXCEPTION 'roadmap-pakke #8051: salgspenge-raekken (#6181) er koblet eller leveret siden 12/11, vurder paa ny';
+  END IF;
+  -- Besked-knappen (#5266) skal staa paa naeste uge (foer) eller uden dato (efter).
+  IF (SELECT horizon FROM public.roadmap_items WHERE id = '00fdbc09-b2e6-401c-a6d1-99a6bd62d4f0')
+       IS DISTINCT FROM 'next_week'
+     AND (SELECT horizon FROM public.roadmap_items WHERE id = '00fdbc09-b2e6-401c-a6d1-99a6bd62d4f0')
+       IS DISTINCT FROM 'unscheduled' THEN
+    RAISE EXCEPTION 'roadmap-pakke #8051: besked-knappen (#5266) staar ikke paa naeste uge eller uden dato, vurder paa ny';
   END IF;
 
   -- ---------------------------------------------------------------------------
@@ -94,7 +110,7 @@ BEGIN
     ('9e332238-99b0-499a-968a-ad92eedca374', '7737 Traen nu',    ARRAY['planned', 'in_progress', 'shipped']),
     ('6c187e69-8893-4345-8848-19abb1d445cd', '7737 dublet',      ARRAY['in_progress', 'shipped', 'archived']),
     ('00006149-0000-4000-8000-000000000025', '2176 auto-pris',   ARRAY['planned', 'in_progress', 'shipped']),
-    ('c48ac7be-f2de-45e9-959c-b75d89568a16', '6181 pengelaas',   ARRAY['planned', 'in_progress', 'shipped']),
+    ('c48ac7be-f2de-45e9-959c-b75d89568a16', '6181 salgspenge',  ARRAY['planned', 'in_progress']),
     ('d8d17a3d-0fd4-42e7-b6b0-e1916c7e02cc', '7864 holdplaner',  ARRAY['planned', 'in_progress']),
     ('00005387-0000-4000-8000-000000000202', '5573 troejejagt',  ARRAY['planned', 'in_progress']),
     ('925aa478-2038-4ef8-8063-e03024501911', '6912 bjergudbrud', ARRAY['planned', 'in_progress']),
@@ -103,7 +119,14 @@ BEGIN
     ('32c69b8f-71a9-4a0c-844f-31fb92e60cba', '7715 tidsgraense', ARRAY['planned', 'in_progress']),
     ('213788b8-e450-4d00-9c05-50af274c464e', '6984 traethed',    ARRAY['planned', 'in_progress']),
     ('d78b3b0c-0eaf-4bb5-a32d-c485e2dc71ee', '7778 loebsside',   ARRAY['planned']),
-    ('2e314b44-132d-4817-8d84-d1c15cc54bf3', '7535 planlaegning', ARRAY['planned'])
+    ('2e314b44-132d-4817-8d84-d1c15cc54bf3', '7535 planlaegning', ARRAY['planned']),
+    -- D. Tillaeg 12/11 eftermiddag
+    ('00006149-0000-4000-8000-000000000026', '2161 Discord-login',   ARRAY['active', 'archived']),
+    ('c225994c-9f84-4780-8308-46544cd9e1a4', '6193 udstyr',          ARRAY['active', 'archived']),
+    ('397ce9e6-a8dd-40f6-9659-30fd7adc3048', '6422 dobbelt nat.',    ARRAY['active', 'archived']),
+    ('966cfbc5-0786-44d5-aa06-14c12c7710ec', '4612 spejd loeb/hold', ARRAY['active', 'archived']),
+    ('b6d03c2b-0004-4870-a755-a373b776b4c1', '5385 online-taeller',  ARRAY['active', 'archived']),
+    ('00fdbc09-b2e6-401c-a6d1-99a6bd62d4f0', '5266 besked-knap',     ARRAY['planned'])
   ) AS e(id, label, ok)
   LOOP
     SELECT status INTO v_found FROM public.roadmap_items WHERE id = r.id::uuid FOR UPDATE;
@@ -170,18 +193,11 @@ BEGIN
     AND NOT EXISTS (SELECT 1 FROM public.roadmap_items o WHERE o.flag_key = 'auto_accept_enabled'
                     AND o.id <> '00006149-0000-4000-8000-000000000025');
 
-  -- Pengelaas #6181: beta 11/11, tændt for alle 12/11 12:52 dansk tid -> leveret.
-  -- shipped_at saettes eksplicit, saa triggeren ikke stempler apply-tidspunktet.
-  UPDATE public.roadmap_items SET
-    flag_key = 'market_commitment_6181', status = 'shipped',
-    beta_since = COALESCE(beta_since, '2026-11-11 19:53:07+00'::timestamptz),
-    shipped_at = COALESCE(shipped_at, '2026-11-12 11:52:25.584128+00'::timestamptz),
-    beta_soon = false, live_soon = false, updated_at = now()
-  WHERE id = 'c48ac7be-f2de-45e9-959c-b75d89568a16'
-    AND flag_key IS DISTINCT FROM 'market_commitment_6181'
-    AND status IN ('planned', 'in_progress')
-    AND NOT EXISTS (SELECT 1 FROM public.roadmap_items o WHERE o.flag_key = 'market_commitment_6181'
-                    AND o.id <> 'c48ac7be-f2de-45e9-959c-b75d89568a16');
+  -- Salgspenge #6181: "i gang", horisonten bliver (this_week). Ingen flag_key og
+  -- ingen shipped_at: saelgerens penge ligger bag sale_escrow_enabled (slukket),
+  -- ikke bag bud-laasen market_commitment_6181.
+  UPDATE public.roadmap_items SET status = 'in_progress', updated_at = now()
+  WHERE id = 'c48ac7be-f2de-45e9-959c-b75d89568a16' AND status = 'planned' AND flag_key IS NULL;
 
   -- Holdplaner #7864: i gang, beta snart.
   UPDATE public.roadmap_items SET status = 'in_progress', beta_soon = true, updated_at = now()
@@ -223,6 +239,22 @@ BEGIN
   ON CONFLICT (id) DO NOTHING;
 
   -- ===========================================================================
+  -- D. Ejerens tillaeg 12/11 eftermiddag. Fundet entydigt paa titel (og issue_ref).
+  --    Stemmerne bevares; arkiverede punkter vises ikke laengere paa roadmappet.
+  -- ===========================================================================
+  -- Log ind med Discord (#2161), Udstyr og holdbiler (#6193), Dobbelt nationalitet
+  -- (#6422), Spejd et loeb eller et rivalhold (#4612), Online-taeller (#5385).
+  UPDATE public.roadmap_items SET status = 'archived', beta_soon = false, live_soon = false, updated_at = now()
+  WHERE id IN ('00006149-0000-4000-8000-000000000026', 'c225994c-9f84-4780-8308-46544cd9e1a4',
+               '397ce9e6-a8dd-40f6-9659-30fd7adc3048', '966cfbc5-0786-44d5-aa06-14c12c7710ec',
+               'b6d03c2b-0004-4870-a755-a373b776b4c1')
+    AND status = 'active';
+
+  -- Ny besked-knap i indbakken (#5266): fra naeste uge til uden dato, status uroert.
+  UPDATE public.roadmap_items SET horizon = 'unscheduled', updated_at = now()
+  WHERE id = '00fdbc09-b2e6-401c-a6d1-99a6bd62d4f0' AND horizon = 'next_week';
+
+  -- ===========================================================================
   -- E. VALGFRIT, KOERES IKKE (fjern kommentarerne kun efter eget ejer-ja pr. punkt)
   -- ===========================================================================
   -- E1. Kun hvis den nye nedkoersel-raekke (#7644) beholdes: tag nedkoersel-leddet
@@ -256,7 +288,7 @@ BEGIN
     ('9e332238-99b0-499a-968a-ad92eedca374', CASE WHEN v_stage_train IN ('on', 'true') THEN 'shipped' ELSE 'in_progress' END, 'this_week'),
     ('6c187e69-8893-4345-8848-19abb1d445cd', 'archived',    'unscheduled'),
     ('00006149-0000-4000-8000-000000000025', CASE WHEN v_stage_accept IN ('on', 'true') THEN 'shipped' ELSE 'in_progress' END, 'this_week'),
-    ('c48ac7be-f2de-45e9-959c-b75d89568a16', 'shipped',     'this_week'),
+    ('c48ac7be-f2de-45e9-959c-b75d89568a16', 'in_progress', 'this_week'),
     ('d8d17a3d-0fd4-42e7-b6b0-e1916c7e02cc', 'in_progress', 'this_week'),
     ('00005387-0000-4000-8000-000000000202', 'in_progress', 'this_week'),
     ('925aa478-2038-4ef8-8063-e03024501911', 'in_progress', 'next_week'),
@@ -269,7 +301,13 @@ BEGIN
     ('f0427fcb-97ec-49f9-b8bd-7f13d29aa956', 'planned',     'next_week'),
     ('5cd73cc7-0ec5-466d-8e45-200331487027', 'planned',     'next_week'),
     ('edf177c7-dbb0-45e6-85e6-0d63b9d4dca0', 'planned',     'next_week'),
-    ('136efc1d-7aca-4e85-9c7d-f11b88639198', 'in_progress', 'this_week')
+    ('136efc1d-7aca-4e85-9c7d-f11b88639198', 'in_progress', 'this_week'),
+    ('00006149-0000-4000-8000-000000000026', 'archived',    'unscheduled'),
+    ('c225994c-9f84-4780-8308-46544cd9e1a4', 'archived',    'unscheduled'),
+    ('397ce9e6-a8dd-40f6-9659-30fd7adc3048', 'archived',    'unscheduled'),
+    ('966cfbc5-0786-44d5-aa06-14c12c7710ec', 'archived',    'unscheduled'),
+    ('b6d03c2b-0004-4870-a755-a373b776b4c1', 'archived',    'unscheduled'),
+    ('00fdbc09-b2e6-401c-a6d1-99a6bd62d4f0', 'planned',     'unscheduled')
   ) AS e(id, st, hz)
   LEFT JOIN public.roadmap_items i ON i.id = e.id::uuid
   WHERE i.id IS NULL OR i.status <> e.st OR i.horizon <> e.hz;
@@ -280,12 +318,38 @@ BEGIN
   -- Koblingerne: rigtig kontakt paa rigtig raekke, med dato.
   IF (SELECT flag_key FROM public.roadmap_items WHERE id = '9e332238-99b0-499a-968a-ad92eedca374') IS DISTINCT FROM 'training_train_now_instant'
      OR (SELECT flag_key FROM public.roadmap_items WHERE id = '00006149-0000-4000-8000-000000000025') IS DISTINCT FROM 'auto_accept_enabled'
-     OR (SELECT flag_key FROM public.roadmap_items WHERE id = 'c48ac7be-f2de-45e9-959c-b75d89568a16') IS DISTINCT FROM 'market_commitment_6181'
      OR (SELECT flag_key FROM public.roadmap_items WHERE id = '6c187e69-8893-4345-8848-19abb1d445cd') IS NOT NULL
      OR (SELECT beta_since FROM public.roadmap_items WHERE id = '9e332238-99b0-499a-968a-ad92eedca374') IS NULL
-     OR (SELECT beta_since FROM public.roadmap_items WHERE id = '00006149-0000-4000-8000-000000000025') IS NULL
-     OR (SELECT shipped_at FROM public.roadmap_items WHERE id = 'c48ac7be-f2de-45e9-959c-b75d89568a16') IS NULL THEN
+     OR (SELECT beta_since FROM public.roadmap_items WHERE id = '00006149-0000-4000-8000-000000000025') IS NULL THEN
     RAISE EXCEPTION 'roadmap-pakke #8051: en kobling eller dato mangler';
+  END IF;
+
+  -- Salgspenge (#6181): ingen kobling, ingen leveret-dato, ingen beta-dato.
+  IF EXISTS (SELECT 1 FROM public.roadmap_items WHERE id = 'c48ac7be-f2de-45e9-959c-b75d89568a16'
+             AND (flag_key IS NOT NULL OR shipped_at IS NOT NULL OR beta_since IS NOT NULL)) THEN
+    RAISE EXCEPTION 'roadmap-pakke #8051: salgspenge-raekken (#6181) er koblet eller dateret';
+  END IF;
+
+  -- Ingen raekke, filen roerer, er shipped, medmindre dens kontakt er on.
+  SELECT string_agg(i.id::text, ', ') INTO v_bad
+  FROM public.roadmap_items i
+  LEFT JOIN public.app_config c ON c.key = i.flag_key
+  WHERE i.id IN ('1fdf9eef-3df4-430a-850a-5e76f149e4c6', '9c44fee0-e081-45ec-b325-08eddcc638d4',
+                 '9e332238-99b0-499a-968a-ad92eedca374', '6c187e69-8893-4345-8848-19abb1d445cd',
+                 '00006149-0000-4000-8000-000000000025', 'c48ac7be-f2de-45e9-959c-b75d89568a16',
+                 'd8d17a3d-0fd4-42e7-b6b0-e1916c7e02cc', '00005387-0000-4000-8000-000000000202',
+                 '925aa478-2038-4ef8-8063-e03024501911', 'ca91c33a-4e11-40f8-a7f9-b61513e67642',
+                 '391b0555-b234-4bcb-a422-1edbbf024433', '32c69b8f-71a9-4a0c-844f-31fb92e60cba',
+                 '213788b8-e450-4d00-9c05-50af274c464e', 'f0427fcb-97ec-49f9-b8bd-7f13d29aa956',
+                 '5cd73cc7-0ec5-466d-8e45-200331487027', 'edf177c7-dbb0-45e6-85e6-0d63b9d4dca0',
+                 '136efc1d-7aca-4e85-9c7d-f11b88639198', '00006149-0000-4000-8000-000000000026',
+                 'c225994c-9f84-4780-8308-46544cd9e1a4', '397ce9e6-a8dd-40f6-9659-30fd7adc3048',
+                 '966cfbc5-0786-44d5-aa06-14c12c7710ec', 'b6d03c2b-0004-4870-a755-a373b776b4c1',
+                 '00fdbc09-b2e6-401c-a6d1-99a6bd62d4f0')
+    AND i.status = 'shipped'
+    AND (c.key IS NULL OR (c.value #>> '{}') NOT IN ('on', 'true'));
+  IF v_bad IS NOT NULL THEN
+    RAISE EXCEPTION 'roadmap-pakke #8051: leveret uden taendt kontakt paa %', v_bad;
   END IF;
 END
 $rm$;
@@ -297,17 +361,24 @@ COMMIT;
 --   1. SELECT (SELECT count(*) FROM public.roadmap_items) AS items,
 --             (SELECT count(*) FROM public.roadmap_votes) AS votes;          -- 312 / 2984 (eller dagens tal, stemmer uaendret)
 --   2. SELECT flag_key, status, beta_since, shipped_at FROM public.roadmap_items
---        WHERE flag_key IN ('training_train_now_instant', 'auto_accept_enabled', 'market_commitment_6181');
---        -- Traen nu + auto-pris: in_progress + beta_since; pengelaas: shipped, shipped_at 2026-11-12 11:52:25 UTC
---   3. SELECT status, horizon FROM public.roadmap_items
+--        WHERE flag_key IN ('training_train_now_instant', 'auto_accept_enabled');
+--        -- Traen nu + auto-pris: in_progress + beta_since
+--   3. SELECT status, horizon, flag_key, shipped_at FROM public.roadmap_items
+--        WHERE id = 'c48ac7be-f2de-45e9-959c-b75d89568a16';  -- in_progress, this_week, NULL, NULL
+--   4. SELECT status, horizon FROM public.roadmap_items
 --        WHERE id IN ('d78b3b0c-0eaf-4bb5-a32d-c485e2dc71ee', '2e314b44-132d-4817-8d84-d1c15cc54bf3');  -- planned, this_week (uroert)
---   4. node scripts/roadmap-drift.mjs (read-only): Beta-drift tom for de tre kontakter.
+--   5. SELECT id, status, horizon FROM public.roadmap_items WHERE id IN (
+--        '00006149-0000-4000-8000-000000000026', 'c225994c-9f84-4780-8308-46544cd9e1a4',
+--        '397ce9e6-a8dd-40f6-9659-30fd7adc3048', '966cfbc5-0786-44d5-aa06-14c12c7710ec',
+--        'b6d03c2b-0004-4870-a755-a373b776b4c1', '00fdbc09-b2e6-401c-a6d1-99a6bd62d4f0');
+--        -- fem archived/unscheduled; besked-knappen planned/unscheduled
+--   6. node scripts/roadmap-drift.mjs (read-only): Beta-drift tom for de to kontakter.
 --
 -- Rollback: staar med vilje ikke som koerbar SQL her (auto-migrate koerer database/2026-*.sql).
 -- Skal pakken fortrydes: et ejer-gated script i database/manual/ med de modsatte
 -- saetninger (slet de fire nye raekker, hvis de stadig er uden stemmer; status
--- tilbage til planned; flag_key af auto-pris og pengelaas; Traen nu-koblingen
--- tilbage paa 6c187e69; XP-titlen tilbage og 9c44fee0 tilbage til in_progress).
--- Foer-tilstanden staar i PR-body'en paa #8051. NB: en "leveret"-besked, der
--- allerede er sendt for pengelaasen, kan ikke kaldes tilbage. Stemmer roeres aldrig.
+-- tilbage til planned; flag_key af auto-pris; Traen nu-koblingen tilbage paa
+-- 6c187e69; XP-titlen tilbage og 9c44fee0 tilbage til in_progress; de fem
+-- arkiverede tilbage til active; besked-knappen tilbage til next_week).
+-- Foer-tilstanden staar i PR-body'en paa #8051. Stemmer roeres aldrig.
 -- =============================================================================
