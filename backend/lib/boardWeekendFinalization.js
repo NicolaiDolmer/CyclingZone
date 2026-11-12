@@ -286,7 +286,7 @@ export async function processBoardWeekendFinalization({
   // lige nu". Den eneste anden skriver er comeback (tilmelding midt i sæsonen),
   // som nulstiller feltet i det øjeblik holdet er tilbage i en pulje og kører
   // løb igen; fra da af dømmes holdet som alle andre.
-  const teams = (humanTeams || []).filter((team) => !isParkedTeam(team));
+  const teams = (humanTeams || []).filter((/** @type {{ parked_at?: string|null }} */ team) => !isParkedTeam(team));
   summary.parked_teams_skipped = (humanTeams || []).length - teams.length;
   if (!teams.length) {
     summary.skipped_reason = "no_human_teams";
