@@ -147,6 +147,41 @@ test("fredningsgulve: et fredet trin lander aldrig under sit gulv, og rangen hol
   }
 });
 
+test("hale-kvoter holder efter afrunding, også med hele og skæve ankre", () => {
+  for (const tailAnchors of [[69, 79, 89], [69.2, 79.7, 88.1]]) {
+    const params: PotentialeScale99Params = { ...SYNTH, tailAnchors, floors: [] };
+    const riders: RiderPotentialeInput[] = [];
+    for (let i = 0; i < 10000; i++) riders.push({ id: `q${i}`, potentiale: 4, age: 20 });
+    const { byId } = scalePotentialeTo99(riders, params);
+    let cap = riders.length;
+    for (const anchor of tailAnchors) {
+      const expected = Math.min(cap, Math.round(riders.length * targetShareAtOrAbove(params, anchor)));
+      const actual = riders.filter((r) => byId.get(r.id)!.pot99 >= anchor).length;
+      assert.equal(actual, expected, `ankre ${tailAnchors.join("/")} anker ${anchor}`);
+      cap = expected;
+    }
+  }
+});
+
+test("et gulv med decimaler holder efter afrunding", () => {
+  const params: PotentialeScale99Params = {
+    ...SYNTH,
+    floors: [
+      { potentiale: 5.5, floor: 72.4, hardCap: 78.1 },
+      { potentiale: 6, floor: 78.1, hardCap: 85 },
+    ],
+  };
+  const riders: RiderPotentialeInput[] = [];
+  for (let i = 0; i < 1000; i++) riders.push({ id: `f${i}`, potentiale: 6, age: 20 });
+  for (let i = 0; i < 1000; i++) riders.push({ id: `g${i}`, potentiale: 5.5, age: 20 });
+  const { byId, rankViolations } = scalePotentialeTo99(riders, params);
+  assert.equal(rankViolations.length, 0);
+  for (const r of riders) {
+    const { floor } = params.floors.find((f) => f.potentiale === r.potentiale)!;
+    assert.ok(byId.get(r.id)!.pot99 >= floor, `${r.id} under gulv`);
+  }
+});
+
 test("fredningsgulve gør en forskel: uden gulve lander nogen under, med gulve ingen", () => {
   const riders = population(17, 3000, 0.9);
   const without = scalePotentialeTo99(riders, { ...SYNTH, floors: [] });
@@ -215,6 +250,11 @@ test("ingen standardtal: manglende eller ugyldige params afvises", () => {
   assert.throws(() => validateParams({ ...SYNTH, tierHalfWidth: SYNTH.tierStep }), /overlappe/);
   assert.throws(() => validateParams({ ...SYNTH, compressFromPotentiale: 4.2 }), /compressFromPotentiale/);
   assert.throws(() => validateParams({ ...SYNTH, tailAnchors: [80, 70] }), /tailAnchors/);
+  assert.throws(() => validateParams({ ...SYNTH, tailAnchors: [69.2, 69.8, 89.5] }), /heltal mellem to tailAnchors/);
+  assert.throws(
+    () => validateParams({ ...SYNTH, floors: [{ potentiale: 5.5, floor: 72.2, hardCap: 72.8 }, SYNTH.floors[1]] }),
+    /heltal mellem et gulv/,
+  );
   assert.throws(() => validateParams({ ...SYNTH, ageBands: [] }), /ageBands/);
   assert.throws(
     () => validateParams({ ...SYNTH, ageBands: [{ key: "a", lo: 15, hi: 25 }, { key: "b", lo: 25, hi: 40 }] }),

@@ -17,6 +17,11 @@
  *     Løftet er rang-sikkert, så ingen løftet rytter overhaler en rytter med
  *     samme eller højere gammelt potentiale.
  *
+ * Én bevidst forskel fra harnessens udgave: hale-ankre og gulve håndhæves
+ * efter afrundingen til heltal (et segment over et anker starter på første
+ * heltal på eller over ankeret). Ellers kunne afrundingen flytte ryttere over
+ * eller under en tærskel og bryde kvoten eller gulvet.
+ *
  * Alle kalibreringstal (trin-afstand, bredde, vægt-henfald, hvor toptalent-
  * klassen starter, hale-ankre, gulve, aldersbånd) er PRIVATE params, der
  * sendes ind udefra. Der findes med vilje ingen standardværdier her: de
@@ -153,6 +158,10 @@ export function validateParams(params: PotentialeScale99Params): void {
     if (!isFiniteNumber(a) || a <= prev || a >= SCALE_MAX) {
       throw new Error("potentialeScale99: tailAnchors skal være strengt stigende og ligge over toptalent-klassens start og under skalaens top");
     }
+    // Hvert hale-segment skal rumme mindst ét heltal, ellers kan dets kvote ikke opfyldes.
+    if (prev !== tailStart && Math.ceil(a) <= Math.ceil(prev)) {
+      throw new Error("potentialeScale99: der skal ligge mindst ét heltal mellem to tailAnchors");
+    }
     prev = a;
   }
 
@@ -164,6 +173,9 @@ export function validateParams(params: PotentialeScale99Params): void {
     if (idx < compressIdx) throw new Error("potentialeScale99: gulve gælder kun trin i toptalent-klassen");
     if (!isFiniteNumber(f.floor) || !isFiniteNumber(f.hardCap) || f.floor < tailStart || f.hardCap < f.floor || f.hardCap > SCALE_MAX) {
       throw new Error("potentialeScale99: et gulv skal opfylde klassens start <= floor <= hardCap <= skalaens top");
+    }
+    if (Math.ceil(f.floor) > Math.floor(f.hardCap)) {
+      throw new Error("potentialeScale99: der skal ligge mindst ét heltal mellem et gulv og dets hardCap");
     }
     if (i > 0) {
       const below = sortedFloors[i - 1];
@@ -230,10 +242,27 @@ function clampRound(x: number): number {
   return Math.max(SCALE_MIN, Math.min(SCALE_MAX, Math.round(x)));
 }
 
-/** Rang-ordnet ensformig spredning over (lo, hi) via (i + 0,5)/n-kvantiler, afrundet. */
-function spreadInto(sorted: RiderPotentialeInput[], lo: number, hi: number, assign: (r: RiderPotentialeInput, v: number) => void): void {
+/** Mindste heltal >= x. Bruges hvor x er en tærskel ("på eller over"). */
+const intAtOrAbove = (x: number): number => Math.ceil(x);
+/** Største heltal < x. Bruges for et segment der skal ligge helt under tærsklen x. */
+const intBelow = (x: number): number => Math.ceil(x) - 1;
+
+/**
+ * Rang-ordnet ensformig spredning over (lo, hi) via (i + 0,5)/n-kvantiler,
+ * afrundet og derefter holdt inden for [minInt, maxInt]. Klemningen sikrer at
+ * en tærskel (hale-anker eller gulv) også holder EFTER afrundingen til heltal.
+ * Afrunding og klemning er begge monotone, så rangen bevares.
+ */
+function spreadInto(
+  sorted: RiderPotentialeInput[],
+  lo: number,
+  hi: number,
+  assign: (r: RiderPotentialeInput, v: number) => void,
+  minInt: number = SCALE_MIN,
+  maxInt: number = SCALE_MAX,
+): void {
   const n = sorted.length;
-  sorted.forEach((r, i) => assign(r, clampRound(lo + ((i + 0.5) / n) * (hi - lo))));
+  sorted.forEach((r, i) => assign(r, Math.max(minInt, Math.min(maxInt, clampRound(lo + ((i + 0.5) / n) * (hi - lo))))));
 }
 
 export function bandFor(ageBands: AgeBand[], age: number): AgeBand | undefined {
@@ -303,7 +332,12 @@ export function scalePotentialeTo99(riders: RiderPotentialeInput[], params: Pote
     let cursor = 0;
     segmentSizes.forEach((n, j) => {
       if (n <= 0) return;
-      spreadInto(high.slice(cursor, cursor + n), bounds[j], bounds[j + 1], set);
+      // Et segment over et anker starter på første heltal >= ankeret, og et
+      // segment under et anker slutter på sidste heltal < ankeret, så antallet
+      // "på eller over ankeret" også passer efter afrundingen.
+      const minInt = j === 0 ? SCALE_MIN : intAtOrAbove(bounds[j]);
+      const maxInt = j === segmentSizes.length - 1 ? SCALE_MAX : intBelow(bounds[j + 1]);
+      spreadInto(high.slice(cursor, cursor + n), bounds[j], bounds[j + 1], set, minInt, maxInt);
       cursor += n;
     });
 
@@ -319,7 +353,8 @@ export function scalePotentialeTo99(riders: RiderPotentialeInput[], params: Pote
         .filter((r) => (r.potentiale === potentiale && value(r) >= floor) || r.potentiale > potentiale)
         .map(value);
       const liftHi = ceilings.length ? Math.min(hardCap, ...ceilings) : hardCap;
-      spreadInto(liftees, floor, liftHi, set);
+      // Heltals-sikkert: aldrig under gulvet og aldrig over loftet efter afrunding.
+      spreadInto(liftees, floor, liftHi, set, intAtOrAbove(floor), Math.floor(liftHi));
     }
   }
 

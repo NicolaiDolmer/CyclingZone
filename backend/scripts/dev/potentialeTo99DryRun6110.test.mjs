@@ -4,8 +4,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 
+import { ageForSeason } from "../../lib/riderSeasonAge.js";
 import {
-  ageOn,
   buildDryRunReport,
   parseParams,
   renderMarkdown,
@@ -44,8 +44,8 @@ test("scriptet skriver aldrig til databasen: ingen skrive-kald i kilden", () => 
   for (const call of [".insert(", ".update(", ".upsert(", ".delete(", ".rpc("]) {
     assert.ok(!src.includes(call), `forbudt kald ${call}`);
   }
-  // Den eneste tabel der læses er riders, og kun via select.
-  assert.deepEqual([...src.matchAll(/\.from\("([^"]+)"\)/g)].map((m) => m[1]), ["riders"]);
+  // Kun seasons (aktivt sæsonnummer) og riders læses, og kun via select.
+  assert.deepEqual([...src.matchAll(/\.from\("([^"]+)"\)/g)].map((m) => m[1]).sort(), ["riders", "seasons"]);
   assert.ok(!/base_talent/.test(src.replace(/^\s*\/\/.*$/gm, "")), "base_talent må ikke optræde i koden");
 });
 
@@ -66,29 +66,25 @@ test("params uden standardtal: tom eller ugyldig fil afvises, indlejret nøgle a
   assert.deepEqual(parseParams({ potentialeScale99: SYNTH, note: "x" }), SYNTH);
 });
 
-test("ageOn regner hele år og tåler manglende dato", () => {
-  const asOf = new Date("2026-11-12T00:00:00Z");
-  assert.equal(ageOn("2000-11-12", asOf), 26);
-  assert.equal(ageOn("2000-11-13", asOf), 25);
-  assert.equal(ageOn(null, asOf), null);
-  assert.equal(ageOn("ikke-en-dato", asOf), null);
-});
-
-test("toRiderInputs bruger snapshot-alder eller fødselsdato og tæller manglende potentiale", () => {
-  const asOf = new Date("2026-11-12T00:00:00Z");
+test("toRiderInputs bruger sæson-alder (ikke kalenderalder) og tæller manglende potentiale", () => {
+  const season = 4;
   const { riders, missingPotentiale } = toRiderInputs(
     [
       { id: "a", age: 22, potentiale: 3 },
-      { id: "b", birthdate: "2004-01-01", potentiale: "4.5" },
+      { id: "b", birthdate: "2008-12-01", potentiale: "4.5" },
       { id: "c", birthdate: "2004-01-01", potentiale: null },
+      { id: "d", birthdate: null, potentiale: 2 },
     ],
-    asOf,
+    season,
   );
   assert.equal(missingPotentiale, 1);
   assert.deepEqual(riders, [
     { id: "a", potentiale: 3, age: 22 },
-    { id: "b", potentiale: 4.5, age: 22 },
+    // Samme tal som spillets egen SSOT, uanset fødselsdag i året.
+    { id: "b", potentiale: 4.5, age: ageForSeason("2008-12-01", season) },
+    { id: "d", potentiale: 2, age: null },
   ]);
+  assert.equal(toRiderInputs([{ id: "e", birthdate: "2008-12-01", potentiale: 2 }], undefined).riders[0].age, null);
 });
 
 test("rapporten: alle omregnet, ingen rang- eller gulv-brud, writes=none, deterministisk", () => {

@@ -26,6 +26,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { POTENTIALE_STEPS, scalePotentialeTo99, tierInterval, validateParams } from "../../lib/potentialeScale99.ts";
+import { ageForSeason } from "../../lib/riderSeasonAge.js";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../..");
 const PRIVATE_DIR_NAME = "balance-internals";
@@ -49,23 +50,19 @@ export function parseParams(json) {
   return params;
 }
 
-/** Alder i hele år på en given dato (UTC). */
-export function ageOn(birthdate, asOf) {
-  if (!birthdate) return null;
-  const b = new Date(birthdate);
-  if (Number.isNaN(b.getTime())) return null;
-  let age = asOf.getUTCFullYear() - b.getUTCFullYear();
-  if (asOf.getUTCMonth() < b.getUTCMonth() || (asOf.getUTCMonth() === b.getUTCMonth() && asOf.getUTCDate() < b.getUTCDate())) age -= 1;
-  return age;
-}
-
-/** DB-rækker -> funktionens input. Ryttere uden potentiale tælles, ikke omregnes. */
-export function toRiderInputs(rows, asOf) {
+/**
+ * DB-rækker -> funktionens input. Alderen er spillets sæson-alder
+ * (riderSeasonAge.ageForSeason, aldrig kalenderalder). En snapshot-række der
+ * allerede har `age`, bruges som den er. Ryttere uden potentiale tælles, men
+ * omregnes ikke.
+ */
+export function toRiderInputs(rows, seasonNumber) {
   const riders = [];
   let missingPotentiale = 0;
   for (const r of rows) {
     if (r.potentiale == null) { missingPotentiale++; continue; }
-    riders.push({ id: r.id, potentiale: Number(r.potentiale), age: r.age !== undefined ? r.age : ageOn(r.birthdate, asOf) });
+    const age = r.age !== undefined ? r.age : ageForSeason(r.birthdate, seasonNumber);
+    riders.push({ id: r.id, potentiale: Number(r.potentiale), age });
   }
   return { riders, missingPotentiale };
 }
@@ -81,8 +78,8 @@ function quantiles(values) {
  * Selve dry-runnet som ren funktion: omregner og opsummerer. Rører hverken
  * DB eller filer. `source` beskriver hvor rytterne kom fra (til rapporten).
  */
-export function buildDryRunReport(rows, params, { asOf, source }) {
-  const { riders, missingPotentiale } = toRiderInputs(rows, asOf);
+export function buildDryRunReport(rows, params, { asOf, source, seasonNumber }) {
+  const { riders, missingPotentiale } = toRiderInputs(rows, seasonNumber);
   const { byId, skipped, rankViolations } = scalePotentialeTo99(riders, params);
   const compressIdx = POTENTIALE_STEPS.indexOf(params.compressFromPotentiale);
 
@@ -120,6 +117,7 @@ export function buildDryRunReport(rows, params, { asOf, source }) {
     issue: "#3564",
     measuredAt: asOf.toISOString(),
     source,
+    seasonNumber: seasonNumber ?? null,
     writes: "none",
     counts: {
       rowsRead: rows.length,
@@ -145,7 +143,7 @@ export function renderMarkdown(report) {
   const lines = [
     `# Dry-run: potentiale 1-6 -> 1-99 (#3564)`,
     "",
-    `- Målt: ${report.measuredAt} (kilde: ${report.source})`,
+    `- Målt: ${report.measuredAt} (kilde: ${report.source}, sæson-alder fra sæson ${report.seasonNumber ?? "snapshot"})`,
     `- Skrivninger: ${report.writes}`,
     `- Læst: ${c.rowsRead} · omregnet: ${c.scaled} · sprunget over: ${c.skipped} · uden potentiale: ${c.missingPotentiale}`,
     `- Toptalent-klassen: ${c.topClass}, heraf presset under gammelt trin-center: ${c.topClassPressedDown}`,
@@ -165,11 +163,22 @@ export function renderMarkdown(report) {
 
 // ── I/O (kun når scriptet køres direkte) ───────────────────────────────────
 
-async function selectLiveRiders() {
+async function liveClient() {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) throw new Error("Mangler SUPABASE secrets (infisical run --env=prod), eller brug SNAP_DIR");
   const { createClient } = await import("@supabase/supabase-js");
-  const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+}
+
+/** Den aktive sæsons nummer (SELECT), til sæson-alderen. */
+async function selectActiveSeasonNumber(sb) {
+  const { data, error } = await sb.from("seasons").select("number").eq("status", "active").maybeSingle();
+  if (error) throw new Error(`seasons: ${error.message}`);
+  if (!data || !Number.isFinite(data.number)) throw new Error("Ingen aktiv sæson fundet; sæt SEASON=<nummer>");
+  return data.number;
+}
+
+async function selectLiveRiders(sb) {
   const out = [];
   const PAGE = 1000;
   for (let from = 0; ; from += PAGE) {
@@ -188,14 +197,16 @@ async function selectLiveRiders() {
 }
 
 async function main() {
-  const { PARAMS, SNAP_DIR, OUT_DIR } = process.env;
+  const { PARAMS, SNAP_DIR, OUT_DIR, SEASON } = process.env;
   if (!PARAMS) {
-    console.error("Brug: PARAMS=<privat params.json> [SNAP_DIR=<snapshot>] [OUT_DIR=<balance-internals/...>] node backend/scripts/dev/potentialeTo99DryRun6110.mjs");
+    console.error("Brug: PARAMS=<privat params.json> [SNAP_DIR=<snapshot>] [SEASON=<nummer>] [OUT_DIR=<balance-internals/...>] node backend/scripts/dev/potentialeTo99DryRun6110.mjs");
     process.exit(1);
   }
   const outDir = resolveOutDir(OUT_DIR);
   const params = parseParams(JSON.parse(fs.readFileSync(PARAMS, "utf8")));
   const asOf = new Date();
+  let seasonNumber = SEASON ? Number(SEASON) : undefined;
+  if (SEASON && !Number.isFinite(seasonNumber)) throw new Error(`SEASON skal være et tal, fik ${SEASON}`);
 
   let rows;
   let source;
@@ -203,11 +214,13 @@ async function main() {
     rows = JSON.parse(fs.readFileSync(path.join(SNAP_DIR, "riders.json"), "utf8"));
     source = `snapshot ${path.basename(path.resolve(SNAP_DIR))}`;
   } else {
-    rows = await selectLiveRiders();
+    const sb = await liveClient();
+    if (seasonNumber === undefined) seasonNumber = await selectActiveSeasonNumber(sb);
+    rows = await selectLiveRiders(sb);
     source = "live SELECT riders";
   }
 
-  const report = buildDryRunReport(rows, params, { asOf, source });
+  const report = buildDryRunReport(rows, params, { asOf, source, seasonNumber });
   fs.mkdirSync(outDir, { recursive: true });
   const stamp = asOf.toISOString().replace(/[:.]/g, "-");
   const jsonPath = path.join(outDir, `potentiale-to-99-dryrun-${stamp}.json`);
