@@ -16,6 +16,7 @@ import { stageLoadV2 } from "./conditionModelV2.js";
 import { fetchAllRows, SUPABASE_IN_CHUNK_SIZE } from "./supabasePagination.js";
 import { applyStageStartFatigue } from "./riderFatigueNow.js";
 import { deriveParticipationHistory } from "./raceParticipationHistory.ts";
+import { jerseyHuntFrontWork7855 } from "./engine/v4/mechanics/jerseyHunt7855.ts"; // #7855 valg C
 
 const RACE_FATIGUE_BY_PROFILE = {
   flat:          10,
@@ -282,6 +283,13 @@ export function stageWorkExposure(v4Output, profileType = null) {
         out.set(key, e);
       }
     }
+  }
+  // #7855 (ejer 12/11 valg C, kun kontakten jersey_hunt_7855): hver passage troejejagten fik rytteren
+  // til at koere med om, er et stykke arbejde i front oveni. Uden jagt er kortet tomt (bit-identisk).
+  for (const [key, work] of jerseyHuntFrontWork7855(v4Output?.passages)) {
+    const e = out.get(key) ?? { front: 0, shelter: 0 };
+    e.front += work;
+    out.set(key, e);
   }
   for (const e of out.values()) { e.front = round3(clamp01(e.front)); e.shelter = round3(clamp01(e.shelter)); }
   return out;

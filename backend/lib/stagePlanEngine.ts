@@ -63,6 +63,7 @@ import {
   JERSEY_HUNT_TASKS,
   STAGE_PLAN_FINAL_KM,
   TASK_EFFORT,
+  legHuntTask,
   stretchHasHuntPassage,
   validateStagePlanLegs,
   type StagePlanLeg,
@@ -86,6 +87,14 @@ export type StagePlanSwitchReason = "kom" | "final_km" | "dropped" | "caught" | 
 type ResolvedLeg = {
   task: StagePlanTask;
   effort: EffortLevel;
+  /** #7855: den jagt-opgave leddet koerer (et jagt-led, eller et udbrudsled med jagt, valg A), ellers null. */
+  hunt: StagePlanTask | null;
+  /**
+   * #7855 valg C: leddets indsats i etapens belastning (traethed). Lig `effort`, undtagen et
+   * jagt-led: det taeller som Middel, fordi prisen ligger paa passagerne han koerte med om
+   * (mechanics/jerseyHunt7855.ts, jerseyHuntFrontWork7855). Indsatsen i loebet er stadig `effort`.
+   */
+  loadEffort: EffortLevel;
   /** Rutepunktets km, eller null for foerste led og sat-leddet. */
   fromKm: number | null;
   fromDropped: boolean;
@@ -160,7 +169,9 @@ function resolveLegs(legs: readonly StagePlanLeg[], route: StagePlanRoute): Reso
       fromKm = route.climbs.find((c) => c.index === from.kom_index)?.km ?? null;
       routeReason = "kom";
     }
-    return { task: leg.task, effort: TASK_EFFORT[leg.task] as EffortLevel, fromKm, fromDropped: from?.at === "dropped", routeReason };
+    const effort = TASK_EFFORT[leg.task] as EffortLevel;
+    const loadEffort: EffortLevel = JERSEY_HUNT_TASKS[leg.task] !== undefined ? "normal" : effort; // #7855 valg C
+    return { task: leg.task, effort, hunt: legHuntTask(leg), loadEffort, fromKm, fromDropped: from?.at === "dropped", routeReason };
   });
 }
 
@@ -398,7 +409,7 @@ export function advanceStagePlan(
   // passage han kaemper om, afgoer stadig straekningen (stagePlanHuntWindows7855).
   const huntRoute = rt.huntRoute7855;
   const huntHasPassageHere = (leg: ResolvedLeg, fromKm: number, toKm: number) => {
-    const kind = JERSEY_HUNT_TASKS[leg.task];
+    const kind = leg.hunt ? JERSEY_HUNT_TASKS[leg.hunt] : undefined; // #7855: ogsaa udbrudsleddets jagt (valg A)
     return huntRoute !== undefined && kind !== undefined && stretchHasHuntPassage(huntRoute, kind, Math.max(fromKm, segment.from_km), Math.min(toKm, segment.to_km));
   };
   const switchesNow = (next: ResolvedLeg) => {
@@ -514,9 +525,27 @@ export function stagePlanHuntWindows7855(rt: StagePlanRuntime): Record<string, {
   for (const riderId of rt.riderIds) {
     const legs = rt.legs.get(riderId)!;
     const cur = rt.current.get(riderId) ?? 0;
-    if (!JERSEY_HUNT_TASKS[legs[cur].task]) continue;
+    if (!legs[cur].hunt) continue;
     out ??= {};
     out[riderId] = { fromKm: legs[cur].fromKm ?? 0, toKm: legs[cur + 1]?.fromKm ?? Infinity };
+  }
+  return out;
+}
+
+/**
+ * #7855: den jagt-opgave hver rytter koerer segmentet med (et jagt-led, eller udbrudsleddets jagt,
+ * valg A). Passagerne laeser den i stedet for selve opgaven, saa en udbrudsrytter med jagt bade
+ * proever udbruddet (opgaven er stadig "breakaway") og koerer om pointene. undefined uden
+ * kontakten eller uden jaegere (samme betingelse som stagePlanHuntWindows7855).
+ */
+export function stagePlanHuntTasks7855(rt: StagePlanRuntime): Record<string, StagePlanTask> | undefined {
+  if (!rt.huntRoute7855) return undefined;
+  let out: Record<string, StagePlanTask> | undefined;
+  for (const riderId of rt.riderIds) {
+    const hunt = rt.legs.get(riderId)![rt.current.get(riderId) ?? 0].hunt;
+    if (!hunt) continue;
+    out ??= {};
+    out[riderId] = hunt;
   }
   return out;
 }
@@ -532,8 +561,9 @@ export function stagePlanLoadEfforts(rt: StagePlanRuntime): Record<string, Effor
   const out: Record<string, EffortLevel> = {};
   for (const riderId of rt.riderIds) {
     const legs = rt.legs.get(riderId)!;
-    let best: EffortLevel = legs[0].effort;
-    for (const idx of rt.ridden.get(riderId) ?? []) if (EFFORT_RANK[legs[idx].effort] > EFFORT_RANK[best]) best = legs[idx].effort;
+    // #7855 valg C: et jagt-leds pris er passagerne, ikke leddet (loadEffort; lig effort for alt andet).
+    let best: EffortLevel = legs[0].loadEffort;
+    for (const idx of rt.ridden.get(riderId) ?? []) if (EFFORT_RANK[legs[idx].loadEffort] > EFFORT_RANK[best]) best = legs[idx].loadEffort;
     out[riderId] = best;
   }
   return out;
