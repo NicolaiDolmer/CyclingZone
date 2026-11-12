@@ -104,6 +104,7 @@ for(const language of ['en','da']){
     f.setFlag(true);await page.reload();
     const choices=page.getByTestId('team-plan-choices');await expect(choices).toBeVisible();
     await expect(choices.getByRole('button')).toHaveCount(5);
+    await expect(page.getByTestId('team-plan-sprint')).toContainText(language==='en'?'in the last 10 km':'de sidste 10 km');
     await page.getByTestId('team-plan-gc').click();
     await expect(page.getByTestId('team-plan-gc')).toHaveAttribute('aria-pressed','true');
     await page.getByTestId('team-plan-sprint').click();
@@ -195,7 +196,7 @@ test('#7864 same-type stages rebuild their own plan and preserve a saved empty r
   await multiPlanShot(page,`pr-screens/7864/multi-${testInfo.project.name}-before.png`);
   await panel.getByRole('button',{name:'Intentions for stage 2',exact:true}).click();
   await page.getByTestId('team-plan-stage').click();
-  const copy=page.getByTestId('team-plan-same-type');await expect(copy).toContainText('3, 6');
+  const copy=page.getByTestId('team-plan-same-type');await expect(copy).toHaveText('Copy to stages 3, 6');
   await copy.evaluate(el=>el.scrollIntoView({block:'center',inline:'nearest'}));
   await expect(copy).toBeInViewport();
   expect(await copy.evaluate(el=>{const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2));})).toBe(true);
@@ -225,11 +226,59 @@ test('#7864 failed atomic fill retains drafts and retries no confirmed manual wr
   await page.getByTestId('team-plan-stage').click();await page.getByTestId('team-plan-same-type').click();
   const panel=page.getByTestId('race-tactics-tab');await panel.getByRole('button',{name:'Save tactics',exact:true}).click();
   await expect(panel.getByTestId('tactics-save-status')).toBeVisible();expect(f.fills).toHaveLength(1);
+  // #8013 b: the source stage's roles and orders were saved; only the copies are missing.
+  await expect(panel.getByTestId('tactics-save-part-roles')).toHaveAttribute('data-saved','true');
+  await expect(panel.getByTestId('tactics-save-part-orders')).toHaveAttribute('data-saved','true');
+  await expect(page.getByTestId('team-plan-multi-stage')).toContainText('Stage 3: Not saved');
   await panel.getByRole('button',{name:'Save the rest',exact:true}).click();
   await expect(page.getByTestId('team-plan-multi-stage')).toHaveCount(0);
   expect(f.fills).toHaveLength(2);expect(f.rolesPuts).toHaveLength(1);expect(f.ordersPuts).toHaveLength(1);
   expect(f.fills[1]).toEqual(f.fills[0]);
 });
+
+test('#7864 polish evidence: sprint card, price words and the plural copy button',async({page},testInfo)=>{
+  const width=testInfo.project.use.hasTouch?375:1280;await page.setViewportSize({width,height:900});
+  await setup(page,{multi:true,language:'en'});
+  await page.getByTestId('team-plan-sprint').click();
+  const choices=page.getByTestId('team-plan-choices'),multi=page.getByTestId('team-plan-multi-stage');
+  await expect(multi).toBeVisible();
+  await choices.evaluate(el=>el.scrollIntoView({block:'start'}));
+  const a=await choices.boundingBox(),b=await multi.boundingBox();
+  if(!a||!b)throw new Error('missing layout');
+  await page.screenshot({path:evidenceShotPath(`pr-screens/7864-polish/${testInfo.project.name}-choices.png`),scale:'css',clip:{x:0,y:a.y,width,height:b.y+b.height-a.y}});
+  const train=visible(page.getByTestId('stage-plan-board').getByText('Rytter Tre',{exact:true}));
+  await train.evaluate(el=>el.scrollIntoView({block:'center'}));
+  await page.screenshot({path:evidenceShotPath(`pr-screens/7864-polish/${testInfo.project.name}-plan.png`),scale:'css'});
+});
+
+for(const failOrder of [false,true]){
+  test(`#8013 g: saving from a copied stage also sends the source stage orders${failOrder?' (order fails: partial)':''}`,async({page})=>{
+    const f=await setup(page,{multi:true,failOrder,language:'en'}),panel=page.getByTestId('race-tactics-tab');
+    await page.getByTestId('team-plan-stage').click();await page.getByTestId('team-plan-same-type').click();
+    await panel.getByRole('button',{name:'Intentions for stage 3',exact:true}).click();
+    await panel.getByRole('button',{name:'Save tactics',exact:true}).click();
+    await expect.poll(()=>f.ordersPuts.length).toBe(1);
+    expect(f.rolesPuts).toHaveLength(1);expect(f.rolesPuts[0].stages).toEqual([2]);
+    if(!failOrder){
+      await expect.poll(()=>f.fills.length).toBe(1);
+      expect(f.orders().has(2)).toBe(true);
+      expect(f.orders().get(2)?.riders.find(r=>r.rider_id==='r3')?.plan.some(l=>l.task==='attack')).toBe(true);
+      await expect(page.getByTestId('team-plan-multi-stage')).toHaveCount(0);
+      await expect(panel.getByText('Intentions saved.',{exact:true})).toBeVisible();
+      return;
+    }
+    // A failed source order is never shown as saved; the draft and the copies stay.
+    await expect(panel.getByTestId('tactics-save-part-orders')).toHaveAttribute('data-saved','false');
+    await expect(panel.getByTestId('tactics-save-part-roles')).toHaveAttribute('data-saved','true');
+    expect(f.fills).toHaveLength(0);expect(f.orders().has(2)).toBe(false);
+    await expect(page.getByTestId('team-plan-multi-stage')).toContainText('Stage 3: Not saved');
+    await panel.getByRole('button',{name:'Save the rest',exact:true}).click();
+    await expect.poll(()=>f.fills.length).toBe(1);
+    expect(f.ordersPuts).toHaveLength(2);expect(f.rolesPuts).toHaveLength(1);
+    expect(f.orders().has(2)).toBe(true);
+    await expect(page.getByTestId('team-plan-multi-stage')).toHaveCount(0);
+  });
+}
 
 test('#7864 lost fill response is confirmed by matching role and order readback',async({page})=>{
   const f=await setup(page,{multi:true,lostFillResponse:true,language:'en'});

@@ -12,7 +12,7 @@
     },
     "sprint": {
       "name": "Sprint",
-      "description": "The team saves him for the finish, with a train in the last km.",
+      "description": "The team saves him for the finish, with a train in the last 10 km.",
       "named": "Sprint for {name}"
     },
     "break": {
@@ -1093,6 +1093,7 @@
     "line": "Default {role}. Today: {today}.",
     "riderAbandoned": "Out of the race",
     "copyToStage": "Copy to stage {number}",
+    "copyToStages": "Copy to stages {numbers}",
     "save": "Save stage {number}",
     "saveRaceDay": "Save race day",
     "saving": "Saving…",

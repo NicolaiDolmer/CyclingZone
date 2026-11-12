@@ -12,7 +12,7 @@
     },
     "sprint": {
       "name": "Spurt",
-      "description": "Holdet sparer spurteren til målet og kører spurttog den sidste kilometer.",
+      "description": "Holdet sparer spurteren til målet og kører spurttog de sidste 10 km.",
       "named": "Spurt til {name}"
     },
     "break": {
@@ -1093,6 +1093,7 @@
     "line": "Standard: {role}. I dag: {today}.",
     "riderAbandoned": "Udgået af løbet",
     "copyToStage": "Kopiér til etape {number}",
+    "copyToStages": "Kopiér til etape {numbers}",
     "save": "Gem etape {number}",
     "saveRaceDay": "Gem løbsdagen",
     "saving": "Gemmer…",

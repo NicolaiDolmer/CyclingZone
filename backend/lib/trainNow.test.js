@@ -787,3 +787,36 @@ test("#7282: bridge dates the team was not eligible for are no prerequisite", as
   const pressed = await runTrainNow({ ...h.deps, now: new Date("2026-10-28T09:00:00Z"), loadContext: async () => later });
   assert.equal(pressed.status, 200);
 });
+
+// #7982 part 1: one private timing line per press, with every step and no ids or payload.
+test("#7982 timing: one line per press with each step, the readers, no team or rider id", async () => {
+  const state = baseState();
+  const { deps } = harness(state);
+  const lines = [];
+  let reads = 0;
+  const result = await runTrainNow({
+    ...deps, logger: { info: (line) => lines.push(line) },
+    loadContext: async ({ onReader }) => { reads += 1; onReader?.("rpc"); return fakeContext(); },
+  });
+  assert.equal(result.status, 200);
+  assert.equal(reads, 3, "the three fresh reads stay three");
+  assert.equal(lines.length, 1);
+  const [line] = lines;
+  assert.match(line, /^\[train-now-timing\] req=[0-9a-f]{8} status=200 total_ms=\d+ /);
+  for (const step of ["gates", "date_work", "earlier_date", "locks_read", "short_races", "context_1", "bridge_check", "register",
+    "instant_flags", "lock_write", "context_2", "frozen_retry", "context_3", "whole_day_mark", "run_day_1", "run_day_5"]) {
+    assert.match(line, new RegExp(` ${step}_ms=\\d+`), step);
+  }
+  assert.match(line, / reader_1=rpc reader_2=rpc reader_3=rpc /);
+  for (const secret of [TEAM.id, SEASON.id, "r1", "r2", TODAY]) assert.ok(!line.includes(secret), secret);
+});
+
+test("#7982 timing: a failed press still logs its steps; a broken logger never changes the answer", async () => {
+  const state = baseState();
+  const { deps } = harness(state);
+  const lines = [];
+  await assert.rejects(runTrainNow({ ...deps, logger: { info: (line) => lines.push(line) }, loadContext: async () => { throw new Error("read down"); } }), /read down/);
+  assert.match(lines[0], /status=error .* context_1_ms=\d+/);
+  const result = await runTrainNow({ ...harness(baseState()).deps, logger: { info: () => { throw new Error("log down"); } } });
+  assert.equal(result.status, 200);
+});

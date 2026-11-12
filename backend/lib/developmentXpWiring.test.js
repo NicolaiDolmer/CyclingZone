@@ -91,14 +91,13 @@ function fakeDb({ app = {}, priv = {}, failApp = [], failPriv = false } = {}) {
 const ON = { [DEVELOPMENT_XP_FLAG_KEY]: "on", [DEVELOPMENT_XP_FROM_DATE_KEY]: "2026-11-15" };
 const PRIV = { [DEVELOPMENT_XP_PARAMS_KEY]: XP_TEST_PARAMS };
 const quiet = () => { const warnings = []; return { warnings, log: { warn: (m) => warnings.push(String(m)) } }; };
-const load = (db, extra = {}) => loadDevelopmentXp({ supabase: db, tickDate: "2026-11-15", now: FIXED_NOW, capPerDateOn: true, ...extra });
+const load = (db, extra = {}) => loadDevelopmentXp({ supabase: db, tickDate: "2026-11-15", now: FIXED_NOW, ...extra });
 
-test("#6110 loader: XP kraever maks +1 pr. dato; uden dato-loftet er det dagens model + advarsel", async () => {
+test("#7739 loader: XP kraever ikke dato-loftet (ejer 7/11); ingen advarsel om ability_cap_per_date_enabled", async () => {
   const { warnings, log } = quiet();
   const db = fakeDb({ app: ON, priv: PRIV });
-  assert.equal(await load(db, { capPerDateOn: false, log }), null);
-  assert.ok(warnings.some((w) => w.includes("ability_cap_per_date_enabled")));
-  assert.ok(!db.reads.some((r) => r.table === "private_config"), "ingen params-opslag");
+  assert.deepEqual(await load(db, { log }), XP);
+  assert.ok(!warnings.some((w) => w.includes("ability_cap_per_date_enabled")));
 });
 
 test("#6110 loader: slukket, beta og false er null uden at laese params", async () => {
@@ -419,7 +418,7 @@ test("#6110 rolletillaeg: tillaegget er det samme, uanset loebsdagens off-fokus-
 const XP_ON = { app: [[DEVELOPMENT_XP_FLAG_KEY, "on"], [DEVELOPMENT_XP_FROM_DATE_KEY, "2026-06-12"]], params: XP_TEST_PARAMS };
 const NONE = { app: [], params: undefined };
 
-test("#6110 motor: taendt paa datoen skifter model, holder maks +1 pr. dato og laeser ingen tal i loggen", async () => {
+test("#6110 motor: taendt paa datoen skifter model; evner falder aldrig (intet dato-loft, #7739)", async () => {
   for (const raced of [false, true]) {
     const today = engineSeed({ flags: ENGINE_SCENARIOS.cap.flags, raced, overlay: NONE, plan: "vo2max" });
     await runEngine(today);
@@ -428,17 +427,17 @@ test("#6110 motor: taendt paa datoen skifter model, holder maks +1 pr. dato og l
     const result = await runEngine(on);
     assert.notDeepEqual(gameState(on, result).rider_derived_abilities, gameState(today).rider_derived_abilities, "XP aendrer udviklingen");
     for (const [i, row] of on.rider_derived_abilities.entries()) {
-      for (const k of VISIBLE_ABILITIES) assert.ok(row[k] - before[i][k] <= 1 && row[k] >= before[i][k], `${k}: 0 eller +1`);
+      for (const k of VISIBLE_ABILITIES) assert.ok(row[k] >= before[i][k], `${k}: aldrig ned`);
     }
   }
 });
 
-test("#6110 motor: XP taendt uden maks +1 pr. dato = dagens model (Codex-fund)", async () => {
+test("#7739 motor: XP taendt uden dato-loft-kontakten koerer XP, ikke dagens model", async () => {
   const today = engineSeed({ flags: ENGINE_SCENARIOS.noCap.flags, raced: false, overlay: NONE, plan: "vo2max" });
   const r0 = await runEngine(today);
   const on = engineSeed({ flags: ENGINE_SCENARIOS.noCap.flags, raced: false, overlay: XP_ON, plan: "vo2max" });
   const r1 = await runEngine(on);
-  assert.deepEqual(gameState(on, r1), gameState(today, r0));
+  assert.notDeepEqual(gameState(on, r1).rider_derived_abilities, gameState(today, r0).rider_derived_abilities);
 });
 
 test("#6110 motor: D6 under XP, et AI-hold udvikler sig ikke (ogsaa uden aldrings-flaget)", async () => {

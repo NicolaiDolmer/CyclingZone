@@ -34,7 +34,7 @@ import { copenhagenDateString, copenhagenWeekdayKey } from "./copenhagenTime.js"
 import { evaluateFlagStage, readFlagStage } from "./featureStage.js";
 import { isTrainingConditionPerDateEnabled } from "./trainingDateConditionFlag.js";
 import {
-  loadTrainingDateContext, resolveTrainingDateReadiness, trainingDateBounds, loadSeasonBridgeBounds, nextCivilDate, isTrainingDateTeam,
+  resolveTrainingDateReadiness, trainingDateBounds, loadSeasonBridgeBounds, nextCivilDate, isTrainingDateTeam,
 } from "./trainingDateReadiness.js";
 import { registerTrainingDateWork } from "./trainingDateClose.js";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
@@ -48,6 +48,8 @@ import { loadSpentRaceDays } from "./raceSpentDays.js"; // #6740
 import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
 import { settleWholeDayPress } from "./trainNowWholeDay.js"; // #6461 B
 import { TRAIN_NOW_BONUS_FLAG_KEY } from './trainNowBonus7737.ts';
+import { loadTrainNowDateContext } from "./trainNowDateContext.js"; // #7982
+import { randomUUID } from "node:crypto";
 
 export const TRAIN_NOW_FLAG_KEY = "training_train_now";
 // #7737: the press trains a race rider's free race days straight away. "on" turns it on for
@@ -310,13 +312,56 @@ export async function loadTrainNowStatus({ supabase, team, seasonId, isBetaTeste
 }
 
 /**
- * The press. Returns { status, body } so the route stays a thin adapter.
- * DI hooks keep it testable without Postgres; defaults are the sweep's own functions.
+ * #7982 part 1: wall time of every step of one press, for the private server log. The
+ * line carries a random request id, step names and milliseconds only: no token, no
+ * team or rider id, no payload. Nothing is switched on for it (no tracing, no flag).
  */
-export async function runTrainNow({
+export function createTrainNowTiming({ clock = () => performance.now(), requestId = randomUUID().slice(0, 8) } = {}) {
+  const startedAt = clock();
+  const steps = [];
+  const notes = [];
+  return {
+    async step(name, fn) {
+      const at = clock();
+      try {
+        return await fn();
+      } finally {
+        steps.push([name, Math.round(clock() - at)]);
+      }
+    },
+    note(name, value) { notes.push([name, value]); },
+    line(status) {
+      const parts = [`req=${requestId}`, `status=${status}`, `total_ms=${Math.round(clock() - startedAt)}`,
+        ...notes.map(([name, value]) => `${name}=${value}`), ...steps.map(([name, ms]) => `${name}_ms=${ms}`)];
+      return `[train-now-timing] ${parts.join(" ")}`;
+    },
+  };
+}
+
+// A no-op stand-in so the settle step can time itself without knowing whether it is timed.
+export const NO_TRAIN_NOW_TIMING = Object.freeze({ step: (_name, fn) => fn(), note: () => {}, line: () => "" });
+
+/**
+ * The press. Returns { status, body } so the route stays a thin adapter.
+ * DI hooks keep it testable without Postgres; defaults are the sweep's own functions,
+ * except the context reader (#7982: the press's own one-team reader).
+ */
+export async function runTrainNow({ timing = createTrainNowTiming(), logger = console, ...args }) {
+  let status = "error";
+  try {
+    const result = await runTrainNowSteps({ ...args, timing });
+    status = result?.status ?? "error";
+    return result;
+  } finally {
+    // Logging must never change the press's answer.
+    try { logger?.info?.(timing.line(status)); } catch { /* best-effort: a log line never fails a press */ }
+  }
+}
+
+async function runTrainNowSteps({
   supabase, team, season, now = new Date(), isBetaTester = false,
   runDay = runTeamTrainingDay,
-  loadContext = loadTrainingDateContext,
+  loadContext = loadTrainNowDateContext,
   registerWork = registerTrainingDateWork,
   loadDaySpans,
   // #6740 (review #6742): the warning is re-checked HERE on every first press, not only
@@ -324,10 +369,15 @@ export async function runTrainNow({
   // races it showed: a race that fell below the floor since then is asked about again.
   confirmedShortRaceIds = [],
   loadShortRaces = defaultLoadShortRaces,
+  timing,
 }) {
   if (!team?.id) return { status: 400, body: { error: "no_team" } };
-  if (!await isTrainNowEnabled(supabase, { isBetaTester })) return { status: 404, body: { error: "not_found" } };
-  if (!await isTrainingConditionPerDateEnabled(supabase)) return { status: 409, body: { error: "train_now_requires_date_settlement" } };
+  const gate = await timing.step("gates", async () => {
+    if (!await isTrainNowEnabled(supabase, { isBetaTester })) return { status: 404, body: { error: "not_found" } };
+    if (!await isTrainingConditionPerDateEnabled(supabase)) return { status: 409, body: { error: "train_now_requires_date_settlement" } };
+    return null;
+  });
+  if (gate) return gate;
   if (!season?.id) return { status: 409, body: { error: "no_active_season" } };
   // #6536 (Codex): et parkeret hold traener ikke, heller ikke paa managerens tryk.
   if (team.parked_at != null) return { status: 409, body: { error: "team_parked" } };
@@ -335,33 +385,42 @@ export async function runTrainNow({
   if (typeof loadDaySpans !== "function") throw new Error("loadDaySpans required");
 
   const tickDate = copenhagenDateString(now);
-  const existingWork = await loadTeamDateWork({ supabase, teamId: team.id, seasonId: season.id, tickDate });
+  const existingWork = await timing.step("date_work", () => loadTeamDateWork({ supabase, teamId: team.id, seasonId: season.id, tickDate }));
   if (SETTLED_STATUSES.has(existingWork?.status)) {
     return { status: 409, body: { error: "date_settled", tickDate } };
   }
-  if (await hasOpenEarlierDate({ supabase, teamId: team.id, seasonId: season.id, tickDate })) {
+  if (await timing.step("earlier_date", () => hasOpenEarlierDate({ supabase, teamId: team.id, seasonId: season.id, tickDate }))) {
     return { status: 409, body: { error: "previous_date_open", tickDate } };
   }
 
   // #6740: a first press with a race below the floor needs the explicit yes for exactly
   // the races below the floor NOW. A repeated press (locks already written) decides
   // nothing new and is never asked again.
-  const existingLocks = await loadTeamTrainNowLocks({ supabase, teamId: team.id, tickDate });
+  const existingLocks = await timing.step("locks_read", () => loadTeamTrainNowLocks({ supabase, teamId: team.id, tickDate }));
   if (!existingLocks.length) {
-    const shortRaces = await loadShortRaces({ supabase, team, tickDate });
+    const shortRaces = await timing.step("short_races", () => loadShortRaces({ supabase, team, tickDate }));
     const confirmed = new Set(Array.isArray(confirmedShortRaceIds) ? confirmedShortRaceIds : []);
     if (shortRaces.some((race) => !confirmed.has(race.id))) {
       return { status: 409, body: { error: "short_races_confirm", tickDate, shortRaces } };
     }
   }
 
-  const context = await loadContext({ supabase, season, tickDate, loadDaySpans, registeredTeamIds: [team.id] });
+  // #7982: the three fresh reads stay three reads, each timed; the reader says which one answered.
+  let reads = 0;
+  const readContext = () => {
+    const n = ++reads;
+    return timing.step(`context_${n}`, () => loadContext({
+      supabase, season, tickDate, loadDaySpans, registeredTeamIds: [team.id],
+      onReader: (reader) => timing.note(`reader_${n}`, reader),
+    }));
+  };
+  const context = await readContext();
   const days = existingWork?.game_days ?? context.gameDaysByDivision.get(team.league_division_id);
   if (!days?.length) return { status: 409, body: { error: "no_race_day_today", tickDate } };
   // #7282: an earlier bridge date without registered work is still to be caught up by
   // the sweep. Registering any later date first (a bridge date or a race date) would stop
   // it keeping that date's opening snapshot.
-  if (!existingWork && await hasUnregisteredEarlierBridgeDate({ supabase, team, season, tickDate, context })) {
+  if (!existingWork && await timing.step("bridge_check", () => hasUnregisteredEarlierBridgeDate({ supabase, team, season, tickDate, context }))) {
     return { status: 409, body: { error: "previous_date_open", tickDate } };
   }
 
@@ -377,9 +436,9 @@ export async function runTrainNow({
 
   // 1) Register the date exactly as the sweep does (frozen roster + opening
   //    condition). Before the lock, so a failed registration leaves no lock behind.
-  const work = existingWork ?? await registerWork({
+  const work = existingWork ?? await timing.step("register", () => registerWork({
     supabase, teamId: team.id, seasonId: season.id, tickDate, gameDays: days, riderIds: currentIds, now, nonBlocking: true,
-  });
+  }));
 
   if (work?.held === true) {
     return { status: 409, body: { error: "training_in_progress", tickDate, settledGameDays: [], locked: false } };
@@ -389,8 +448,30 @@ export async function runTrainNow({
   //    are frozen (#6139: per rider). Idempotent per rider + date (I2); a repeated
   //    press keeps the first time. A failure after this point keeps the lock; a retry resumes.
   const pressedAt = now.toISOString();
-  const instant = await isTrainNowInstantEnabled(supabase, { isBetaTester });
-  const bonusChoice = instant && await isTrainNowBonusEnabled(supabase);
+  const { instant, bonusChoice } = await timing.step("instant_flags", async () => {
+    const on = await isTrainNowInstantEnabled(supabase, { isBetaTester });
+    return { instant: on, bonusChoice: on && await isTrainNowBonusEnabled(supabase) };
+  });
+  await timing.step("lock_write", () => writePressLocks({ supabase, team, season, tickDate, work, currentIds, pressedAt, bonusChoice, existingLocks }));
+
+  // 3) Who can settle now? Read the entries AGAIN after the lock, so a selection
+  //    saved during the press cannot make an entered rider look free. Then the
+  //    sweep's own readiness rule, before the deadline.
+  const locked = await readContext();
+  const lockedIds = new Set(locked.riders.filter((rider) => rider.team_id === team.id).map((rider) => rider.id));
+  const quarantined = new Set(work.quarantined_rider_ids ?? []);
+  const available = work.expected_rider_ids.filter((id) => !quarantined.has(id)
+    && currentIds.includes(id) && lockedIds.has(id)
+    && (work.opening_conditions === undefined || work.opening_conditions?.[id]));
+  const readiness = resolveTrainingDateReadiness({ ...locked, tickDate, now, riderIds: available });
+  // #6461 B: the press always settles the whole known date per rider.
+  // #7737: with the switch on, a race rider's free race days settle now as well.
+  return settleWholeDayPress({ supabase, team, season, now, tickDate, work, available, readiness, pressedAt, runDay, instant, timing,
+    readReadiness: async () => resolveTrainingDateReadiness({ ...await readContext(), tickDate, now, riderIds: available }) });
+}
+
+// 2) of the press, unchanged (#7982 only moved it out to time it as one step).
+async function writePressLocks({ supabase, team, season, tickDate, work, currentIds, pressedAt, bonusChoice, existingLocks }) {
   if (bonusChoice && !existingLocks.length) {
     const quarantined = new Set(work.quarantined_rider_ids ?? []);
     const initialAvailable = work.expected_rider_ids.filter(id => currentIds.includes(id)
@@ -409,21 +490,6 @@ export async function runTrainNow({
   );
   if (lockError) throw new Error(`train-now lock: ${lockError.message ?? lockError}`);
   }
-
-  // 3) Who can settle now? Read the entries AGAIN after the lock, so a selection
-  //    saved during the press cannot make an entered rider look free. Then the
-  //    sweep's own readiness rule, before the deadline.
-  const locked = await loadContext({ supabase, season, tickDate, loadDaySpans, registeredTeamIds: [team.id] });
-  const lockedIds = new Set(locked.riders.filter((rider) => rider.team_id === team.id).map((rider) => rider.id));
-  const quarantined = new Set(work.quarantined_rider_ids ?? []);
-  const available = work.expected_rider_ids.filter((id) => !quarantined.has(id)
-    && currentIds.includes(id) && lockedIds.has(id)
-    && (work.opening_conditions === undefined || work.opening_conditions?.[id]));
-  const readiness = resolveTrainingDateReadiness({ ...locked, tickDate, now, riderIds: available });
-  // #6461 B: the press always settles the whole known date per rider.
-  // #7737: with the switch on, a race rider's free race days settle now as well.
-  return settleWholeDayPress({ supabase, team, season, now, tickDate, work, available, readiness, pressedAt, runDay, instant,
-    readReadiness: async () => resolveTrainingDateReadiness({ ...await loadContext({ supabase, season, tickDate, loadDaySpans, registeredTeamIds: [team.id] }), tickDate, now, riderIds: available }) });
 }
 
 // Stable comparison of one weekday cell (key order independent).
