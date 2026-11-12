@@ -286,7 +286,7 @@ import { buildYouthSquadsPayload, YOUTH_SQUAD_ROSTER_COLUMNS } from "../lib/yout
 import { buildTrainingScoreView, TRAINING_SCORE_VIEW } from "../lib/trainingScore.js";
 import { loadRacingTodayByRider } from "../lib/racingTodayLookup.js";
 import { computeRiderValueTrend } from "../lib/riderValueTrend.js";
-import { saveSelection, getSelectionContext, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts, roleFor as selectionRoleFor, raceAllowsCoCaptain } from "../lib/raceSelection.js";
+import { saveSelection, getSelectionContext, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts, roleFor as selectionRoleFor, raceAllowsCoCaptain, ridersAtOpeningFatigue } from "../lib/raceSelection.js";
 import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
@@ -4942,7 +4942,8 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
       }
     }
     // #6984 M4 + M8: holdlægens ord (kun condition_model_v2; null = intet vises).
-    const doctor = eligible ? await loadDoctorReportForSelection({ supabase, race, teamId: req.team.id, riders: ctx.riders }) : null;
+    // #7801: lægen lægger selv datoens etaper oveni, så den får morgenens træthed.
+    const doctor = eligible ? await loadDoctorReportForSelection({ supabase, race, teamId: req.team.id, riders: ridersAtOpeningFatigue(ctx) }) : null;
     // #6959: trup-låsen (samme regel som taktikken) så panelet kan vise den, også i en pause.
     const lineupLocked = await isRaceLineupLockedNow({ supabase, race, now: new Date() });
     // #6321: klienten skal kende v3-gaten, saa den aldrig afviser et gem serveren accepterer (#4295).
