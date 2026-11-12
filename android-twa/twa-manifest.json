@@ -1,0 +1,63 @@
+{
+  "packageId": "org.cyclingzone.app",
+  "host": "cyclingzone.org",
+  "name": "Cycling Zone",
+  "launcherName": "Cycling Zone",
+  "display": "standalone",
+  "themeColor": "#0e0f15",
+  "themeColorDark": "#0e0f15",
+  "navigationColor": "#0e0f15",
+  "navigationColorDark": "#0e0f15",
+  "navigationDividerColor": "#0e0f15",
+  "navigationDividerColorDark": "#0e0f15",
+  "backgroundColor": "#0e0f15",
+  "enableNotifications": false,
+  "startUrl": "/dashboard",
+  "iconUrl": "https://cyclingzone.org/icons/icon-512.png",
+  "maskableIconUrl": "https://cyclingzone.org/icons/maskable-512.png",
+  "monochromeIconUrl": "https://cyclingzone.org/icons/monochrome-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./upload-key.jks",
+    "alias": "upload"
+  },
+  "appVersionCode": 1,
+  "appVersion": "1.0.0",
+  "shortcuts": [
+    {
+      "name": "Auctions",
+      "shortName": "Auctions",
+      "url": "https://cyclingzone.org/auctions",
+      "chosenIconUrl": "https://cyclingzone.org/icons/shortcut-auctions.png"
+    },
+    {
+      "name": "Today's stages",
+      "shortName": "Today",
+      "url": "https://cyclingzone.org/race-centre",
+      "chosenIconUrl": "https://cyclingzone.org/icons/shortcut-race-centre.png"
+    },
+    {
+      "name": "My team",
+      "shortName": "My team",
+      "url": "https://cyclingzone.org/team",
+      "chosenIconUrl": "https://cyclingzone.org/icons/shortcut-team.png"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://cyclingzone.org/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://cyclingzone.org/",
+  "minSdkVersion": 21,
+  "orientation": "default",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "protocolHandlers": []
+}
