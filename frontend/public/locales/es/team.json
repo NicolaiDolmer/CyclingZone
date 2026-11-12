@@ -45,9 +45,7 @@
   "development": {
     "headers": {
       "projected": "Proyectada",
-      "projectedTitle": "Rango de valoración proyectado para su rol principal, según tu entrenamiento. Ordenado por el límite superior.",
-      "ceiling": "Techo",
-      "ceilingTitle": "La valoración más alta teórica que podría alcanzar su rol. No se ajusta a cómo lo entrenas."
+      "projectedTitle": "Rango de valoración proyectado para su rol principal, según tu entrenamiento. Ordenado por el límite superior."
     },
     "noForecast": "Aún sin pronóstico"
   },
