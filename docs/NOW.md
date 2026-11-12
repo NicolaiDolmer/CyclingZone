@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
 >
-> **🎯 Next action (11/11, én opgave pr. session, regel 39; Claude reviewer/merger):** **Dolmer PC S1:** #8001 → #6494 TanStack (MWG 1.0.0) → #7489 → #7982 (Træn nu 25-29 s, beta). **Dolmer PC S2:** #7980 P1-rettelser → #7884 design (valg A) → stashes til wip. **PC1:** synk og stop 11/11; i morgen Web 5x. **Claude:** auto-accept beta-tænding trin 2-5 (#2176); GD #7960 12/11. 11/11 merget: #7989, #7959, #7991, #7985, #8002, #8006, #8004, #8011, #8010, #7978 (7.433), #8007. Auto-accept + pengelås tændt beta 20:56 (#2176). #8015 (alle ryttere + gulv 0) hos Codex. Uge 47: ranglisten.
-> **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling; memory commitment på Large kunne ikke aflæses 9/11.
+> **🎯 Next action (12/11, regel 39):** **Claude (PC1 eller Dolmer PC):** 1) #8017 merget 12/11 (`8482f823`), migration verificeret i prod; tjek Wessel Bos får auto-pris. 2) Review Codex-natbølgens Web 5x-draft-PR'er (#6494 TanStack, #6584 PWA, CLS under #1602); review #6494-spec før merge. 3) #7980 (ejerens billed-go), GD #7960, #7982 A/B, #8016 mockups. Opfølgning #8018; til dørs #2176 (første ægte bud). Uge 47: ranglisten.
+> **Åbent:** `backup_7153_wander_*` må ikke slettes; #7277 (off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Ingen aktiv session (PC1 lukket 10/11 aften).
+> **🤖 Working agent:** Ingen aktiv Claude-session (lukket 12/11 ~00:45). Codex natopgave Web 5x på Dolmer PC (draft-PR'er, intet merges).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
