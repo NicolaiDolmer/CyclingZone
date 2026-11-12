@@ -1245,8 +1245,8 @@ export default function DashboardPage() {
           bevares; action-cluster-kontrakten på maks 1 select + 1 primary håndhæves
           ikke retroaktivt her). */}
       <PageHeader
-        title={team?.name || <Skeleton className="h-6 w-40" />}
-        subtitle={loading ? <Skeleton className="h-4 w-48" /> :
+        title={team?.name || <Skeleton className="h-7 w-28 max-w-full" />}
+        subtitle={loading ? <Skeleton className="h-4 w-28 max-w-full" /> :
           <>
             {t("dashboard:header.subtitle", { division: team?.division, count: ownedNow })}
             {pendingIncomingCount > 0 && <span className="text-cz-success"> {t("dashboard:header.incoming", { count: pendingIncomingCount })}</span>}
@@ -1267,6 +1267,7 @@ export default function DashboardPage() {
                   {loading ? <Skeleton className="h-7 w-28" /> : <>{formatNumber(computeAvailableBalance(team?.balance, reservedBalance))} CZ$</>}
                 </p>
                 <p className="text-cz-3 text-xs">{t("common:sidebar.balance")}</p>
+                {loading && <Skeleton className="h-4 w-28" />}
                 {!loading && reservedBalance > 0 && (
                   <p className="text-cz-2 text-xs">
                     {t("dashboard:header.lockedInBids", { value: formatNumber(reservedBalance) })}

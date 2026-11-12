@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
-import { Card, ChevronRightIcon } from "./ui";
+import { Card, ChevronRightIcon, SkeletonLines } from "./ui";
+import ReservedBody from "./ui/ReservedBody.tsx";
 import { buttonClass } from "./ui/buttonStyles.js";
 import RiderLink from "./RiderLink";
 import { Flag } from "./Flag";
@@ -27,7 +28,8 @@ import { ConfettiModal } from "./ConfettiModal";
 // (dashboard_my_team_season_races), ikke her.
 //
 // data-kontrakt (GET /api/dashboard/my-latest-result):
-//   null      → fetch ikke landet (eller fejlet) → render intet (ingen død boks)
+//   undefined = request pending: render the existing card frame and quiet skeleton.
+//   null = failed request: render nothing.
 //   race:null → holdet har ingen finaliserede løb endnu → empty state m. kalender-CTA
 //   ellers    → { race: { ..., seen }, placements, stage_wins, totals,
 //                 history: [{ race_id, name, best_rank, points, prize_money }],
@@ -206,7 +208,7 @@ export default function MyLatestResultCard({ data, nextRace = null, nextRaceStar
     return moments[0] || null;
   }, [data]);
 
-  if (!data) return null;
+  if (data === null) return null;
 
   const {
     race,
@@ -217,7 +219,7 @@ export default function MyLatestResultCard({ data, nextRace = null, nextRaceStar
     season_totals: seasonTotals = null,
     prize_breakdown: prizeBreakdown = null,
     sponsor_payout: sponsorPayout = null,
-  } = data;
+  } = data || {};
   const visibleHistory = historyExpanded ? history : history.slice(0, COLLAPSED_HISTORY_ROWS);
   // #4697: kun tilbyd fold-ud når der reelt ER en sammensætning at vise —
   // et løb uden nogen placeringspræmie (kun deltagelse) skal ikke have en
@@ -264,7 +266,15 @@ export default function MyLatestResultCard({ data, nextRace = null, nextRaceStar
         )}
       </div>
 
-      {!race ? (
+      {data === undefined ? (
+        <>
+          {/* Measured synthetic fixture: 355px desktop / 394px mobile. Shared
+              chrome plus five 58px rows and mobile wrapping lines match it.
+              Empty, first-race and variable-history cards can differ. */}
+          <ReservedBody name="myLatestResult" loading rows={COLLAPSED_HISTORY_ROWS} rowHeight={58}>{null}</ReservedBody>
+          <SkeletonLines lines={2} className="sm:hidden" />
+        </>
+      ) : !race ? (
         <div className="text-center py-4">
           <p className="text-cz-3 text-sm">{t("dashboard:cards.myResult.empty")}</p>
           <Link to="/planning?tab=calendar" className="inline-flex items-center gap-0.5 text-cz-accent-t text-xs hover:underline mt-1">

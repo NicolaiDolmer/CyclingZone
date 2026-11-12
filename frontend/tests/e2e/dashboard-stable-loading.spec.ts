@@ -470,10 +470,49 @@ for (const seen of [false, true]) {
       new MutationObserver(() => {
         if (Reflect.get(window, '__firstResultBadge') !== undefined) return;
         const title = [...document.querySelectorAll('main h2')].find(el => el.textContent === 'Sådan gik det for dit hold');
+        if (title?.parentElement?.parentElement?.parentElement?.querySelector('[data-loading-region="myLatestResult"]')) return;
         if (title) Reflect.set(window, '__firstResultBadge', [...title.parentElement!.querySelectorAll('span')].some(el => el.textContent === 'Nyt'));
       }).observe(document, { childList: true, subtree: true });
     });
     await page.goto('/dashboard');
     await expect.poll(() => page.evaluate(() => Reflect.get(window, '__firstResultBadge'))).toBe(!seen);
+  });
+}
+
+for (const width of [375, 1440]) {
+  test(`#8022 pending core header keeps its settled row geometry at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    await page.route('**/api/board/status', async route => { await gate; await route.fallback(); });
+    await page.goto('/dashboard');
+    const header = page.locator('main header').first();
+    try {
+      await expect(header).toBeVisible();
+      const before = await header.boundingBox();
+      release();
+      await expect(page.locator('[data-loading-region="standings"]')).toHaveAttribute('aria-busy', 'false');
+      const after = await header.boundingBox();
+      expect(Math.abs(after!.height - before!.height)).toBeLessThanOrEqual(1);
+    } finally { release(); }
+  });
+
+  test(`#8022 pending latest result matches measured card anatomy at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    await page.route('**/api/dashboard/my-latest-result', async route => { await gate; await route.fallback(); });
+    await page.goto('/dashboard');
+    const heading = page.getByRole('heading', { name: 'Sådan gik det for dit hold', exact: true });
+    const card = heading.locator('..').locator('..').locator('..');
+    try {
+      await expect(page.locator('[data-loading-region="myLatestResult"]')).toHaveAttribute('aria-busy', 'true');
+      const before = await card.boundingBox();
+      release();
+      await expect(page.locator('[data-loading-region="myLatestResult"]')).toHaveCount(0);
+      await expect(card).toContainText('Giro di Preview');
+      const after = await card.boundingBox();
+      expect(Math.abs(after!.height - before!.height)).toBeLessThanOrEqual(8);
+    } finally { release(); }
   });
 }
