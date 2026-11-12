@@ -245,6 +245,8 @@ export type LineKind =
 export interface StoryNarrative { key: string; params: Record<string, unknown> }
 export interface StoryNarrativeContext {
   profileType?: string | null;
+  /** #7965: etapeprofilens stigninger, saa et angreb paa sidste stigning faar sin fod. */
+  climbs?: readonly { crest_km?: number | string | null; length_km?: number | string | null }[] | null;
   events: readonly NarrativeEvent[];
   /** #7717: hvornaar etapen koerte (loebsloggens created_at). */
   ranAt?: string | null;
@@ -720,7 +722,7 @@ export function ownTimeLoss(story: RaceStory, cast: Cast, narrative: StoryNarrat
   const fellWithoutReason = new Set(found.filter(noReason).flatMap(ridersOf));
   const behindField = new Set(ridersBehindField(rows, unexplained));
   return {
-    entries: lossEntriesWithFilmKm(events as readonly SpanTimelineEvent[], found, { timelineVersion: story.timeline_version }),
+    entries: lossEntriesWithFilmKm(events as readonly SpanTimelineEvent[], found, { timelineVersion: story.timeline_version, climbs: narrative.climbs }),
     unknown: namesList(unexplained.filter((id) => fellWithoutReason.has(id) || behindField.has(id)), cast, 3),
   };
 }

@@ -104,14 +104,14 @@ export function LossRow({ entry, kmLabel, riderNameById, teamNameById, t }) {
 // `timelineVersion`: listen vises kun for v4's gruppe-gab (hasGroupGaps), så
 // standarden er v4 (2); kaldere med tidslinjen sender den eksplicit.
 export default function StageSplitTimes({
-  events, ownRiderIds = [], effortByRider = null, riderNameById, teamNameById, uptoKm = null, variant = "section", timelineVersion = 2, t,
+  events, ownRiderIds = [], effortByRider = null, riderNameById, teamNameById, uptoKm = null, variant = "section", timelineVersion = 2, climbs = null, t,
 }) {
   const splits = useMemo(() => buildSplitTimes(events, { ownRiderIds }), [events, ownRiderIds]);
   // #6350: samme km som filmens linje ("km A-B" for et fald stemplet ved
   // tjekpunktet), og linjen dukker op når filmen viser den.
   const losses = useMemo(
-    () => lossEntriesWithFilmKm(events, buildOwnTimeLoss(events, { ownRiderIds, effortByRider }), { timelineVersion }),
-    [events, ownRiderIds, effortByRider, timelineVersion],
+    () => lossEntriesWithFilmKm(events, buildOwnTimeLoss(events, { ownRiderIds, effortByRider }), { timelineVersion, climbs }),
+    [events, ownRiderIds, effortByRider, timelineVersion, climbs],
   );
   const shownSplits = uptoKm == null ? splits : splits.filter((p) => p.km <= uptoKm);
   const shownLosses = uptoKm == null ? losses : losses.filter((l) => (l.shown.km ?? 0) <= uptoKm);
