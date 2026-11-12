@@ -544,7 +544,8 @@ export function buildRiderRows({ riders, stages, abilityByRider, conditionByRide
 // Holdet har maks ~30 ryttere, så plain .in() er tilstrækkeligt her
 // (ingen chunking nødvendig — i modsætning til raceRunner's full-field-opslag).
 // #7801: `fatigueNow: false` springer visningens træthed lige nu over (gem-stien viser intet).
-export async function getSelectionContext({ supabase, race, teamId, fatigueNow = true }) {
+// `now` gælder kun trætheden lige nu (injicérbart for tests, AGENTS.md regel 16).
+export async function getSelectionContext({ supabase, race, teamId, fatigueNow = true, now = new Date() }) {
   // #5645 (Y4): truppen der må udtages til løbet. Senior = uændret select + filter.
   const raceSquad = raceSquadOf(race);
   const riderColumns = "id, firstname, lastname, primary_type, secondary_type, pending_team_id, birthdate";
@@ -605,7 +606,7 @@ export async function getSelectionContext({ supabase, race, teamId, fatigueNow =
   // #7801: samme tal som Træningssiden og assistenten (null = slukket, rider_condition som før).
   // Maerket ovenfor regner selv datoens etaper oveni og bruger derfor stadig aabningen.
   const liveFatigue = fatigueNow
-    ? await surfaceFatigueNow7801({ supabase, race, stages, conditions: conditionRes.data || [], teamId, abilityByRider })
+    ? await surfaceFatigueNow7801({ supabase, race, stages, conditions: conditionRes.data || [], teamId, abilityByRider, now })
     : null;
 
   const riderRows = buildRiderRows({ riders, stages, abilityByRider, conditionByRider: conditionsWithLiveFatigue(conditionByRider, liveFatigue), todayStr, race })
