@@ -692,3 +692,26 @@ for (const change of ['progress', 'state']) {
     } finally { release(); }
   });
 }
+
+
+test('#8022 confirmed no-team settles the title and dependent card placeholders', async ({ page }) => {
+  await page.route('**/rest/v1/teams?**', route => {
+    if (!new URL(route.request().url()).searchParams.has('user_id')) return route.fallback();
+    return json(route, null);
+  });
+  await page.goto('/dashboard');
+  await expect(page.locator('main header h1')).toHaveText('Dashboard');
+  await expect(page.locator('main header h1 .cz-skeleton-static')).toHaveCount(0);
+  await expect(page.locator('main [data-loading-region][aria-busy="true"]')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Dagens etaper', exact: true })).toHaveCount(0);
+});
+
+test('#8022 a failed team read uses the existing error state instead of confirmed absence', async ({ page }) => {
+  await page.route('**/rest/v1/teams?**', route => {
+    if (!new URL(route.request().url()).searchParams.has('user_id')) return route.fallback();
+    return json(route, { code: 'fixture-error', message: 'team read unavailable' }, 400);
+  });
+  await page.goto('/dashboard');
+  await expect(page.getByRole('alert').filter({ hasText: /^Kunne ikke indl/ })).toBeVisible();
+  await expect(page.locator('main header a[href="/finance"]')).toHaveCount(0);
+});

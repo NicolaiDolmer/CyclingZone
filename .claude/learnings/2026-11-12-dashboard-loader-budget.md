@@ -25,3 +25,6 @@ A failed finished-stage enrichment is not proof that no result exists. The exist
 
 
 Known stage details are reusable only while the card state and completed-stage count match. A changed base card now clears its previous standing/winner and marks enrichment pending; unchanged cards still retain their confirmed details during refresh. Fixed-clock browser regressions independently change state and progress at the minute refresh, hold the replacement enrichment and verify old values disappear before new server values settle.
+
+
+Confirmed no-team reads previously left dependent race/selection and fixed-card readiness pending forever, while the header used a skeleton for every missing team name. The no-team branch now settles those skipped reads; the title uses the existing navigation label after loading. Team read errors remain distinct from confirmed null and use the existing page ErrorState, so failed core data cannot become false confirmed absence. Browser regressions cover both paths.

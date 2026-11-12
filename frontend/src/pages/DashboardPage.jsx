@@ -469,15 +469,22 @@ export default function DashboardPage() {
     // #4160: hold-opslaget og saeson-opslaget afhaenger ikke af hinanden, men
     // laa i serie (teams -> seasons). Parallelt sparer de en hel tur/retur paa
     // den blokerende sti foran foerste maling.
-    const [{ data: teamData }, { data: activeSeason }] = await Promise.all([
+    const [teamResult, { data: activeSeason }] = await Promise.all([
       supabase.from("teams").select("*").eq("user_id", user.id).maybeSingle(),
       supabase.from("seasons")
         .select("id, number, status, start_date, end_date, race_days_total, race_days_completed")
         .eq("status", "active")
         .single(),
     ]);
-    if (!teamData) { return; }
     if (generation !== loadGeneration.current) return;
+    if (teamResult.error) throw teamResult.error;
+    const teamData = teamResult.data;
+    if (!teamData) {
+      setTeamRaceIdsLoaded(true);
+      setSelectionReady(true);
+      setCardReady({ auctions: true, transfers: true });
+      return;
+    }
     setTeam(teamData);
 
     // Fixed cards reveal independently. Refresh keeps the previous content;
@@ -1275,7 +1282,7 @@ export default function DashboardPage() {
           bevares; action-cluster-kontrakten på maks 1 select + 1 primary håndhæves
           ikke retroaktivt her). */}
       <PageHeader
-        title={team?.name || <Skeleton className="h-7 w-28 max-w-full" />}
+        title={team?.name || (loading ? <Skeleton className="h-7 w-28 max-w-full" /> : t("common:nav.item.dashboard"))}
         subtitle={loading ? <Skeleton className="h-4 w-28 max-w-full" /> :
           <>
             {t("dashboard:header.subtitle", { division: team?.division, count: ownedNow })}
