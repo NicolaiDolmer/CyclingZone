@@ -14,8 +14,9 @@
 // sponsor_growth-målet fra det døde teams.sponsor_income-felt (altid
 // SPONSOR_INCOME_BASE for alle hold, se docs/BOARD_RULES.md §3) til ægte
 // sponsor_contracts-udbetalinger (finance_transactions, SPONSOR_GROWTH_REASON_CODES
-// herunder). Baseline = planens FØRSTE afsluttede sæson (samme
-// firstSnapshot-mekanik som E1/U25 ovenfor) — ikke en gemt DB-snapshot-værdi,
+// herunder). Baseline = planens første afsluttede sæson MED sponsortal (#7964,
+// pickSponsorGrowthBaseline; før: blindt første snapshot, som gav 0 når den
+// sæson ingen udbetalinger havde) — ikke en gemt DB-snapshot-værdi,
 // da board_profiles.plan_start_sponsor_income er den samme dødte kilde.
 //
 // #1238 · Podie-queryen dækker hele den kanoniske klassiker-kategori
@@ -365,6 +366,46 @@ export function selectPlanCycleSnapshots(rows, planStartSeasonNumber = null) {
 }
 
 /**
+ * #7964 · Vælg sponsor_growth-målets sammenligningsgrundlag pr. hold (ejer 12/11).
+ *
+ * Grundlaget er holdets FØRSTE afsluttede sæson i planvinduet der faktisk har
+ * sponsor-udbetalinger (sum af SPONSOR_GROWTH_REASON_CODES > 0). Tidligere var
+ * det blindt planens første snapshot-sæson; manglede den sæson tal (fx de
+ * tidligste sæsoner før sponsorkontrakterne udbetalte, eller et hold der kom
+ * ind senere i planen), blev grundlaget 0 → målet stod evigt som "afventer
+ * data" og kunne aldrig nås, og en vision-milepæl blev dømt misset ved forfald.
+ *
+ * - `planSeasonIds`: de AFSLUTTEDE plan-sæsoner i plan-rækkefølge (snapshots
+ *   sorteret efter season_within_plan). Den indeværende sæson springes altid
+ *   over, så væksten aldrig måles mod sig selv.
+ * - Ingen sæson med tal → `{ seasonId: null, income: null }`: "kan ikke måles",
+ *   aldrig et falsk 0 (evaluator giver awaiting_data, og en milepæl uden
+ *   grundlag dømmes ikke misset, se boardMandateEngine.evaluateDueMilestones).
+ *
+ * Ren funktion (ingen I/O), så begge læse-stier (prefetch + pr. board) bruger
+ * præcis samme regel.
+ *
+ * @param {object} args
+ * @param {Map<string, number>} args.sponsorBySeasonId — sponsorsum pr. season_id
+ * @param {Array<string|null|undefined>} args.planSeasonIds — afsluttede plan-sæsoner i rækkefølge
+ * @param {string|null} [args.currentSeasonId]
+ * @returns {{ seasonId: string|null, income: number|null }}
+ */
+export function pickSponsorGrowthBaseline({
+  sponsorBySeasonId,
+  planSeasonIds = [],
+  currentSeasonId = null,
+} = {}) {
+  if (!(sponsorBySeasonId instanceof Map)) return { seasonId: null, income: null };
+  for (const seasonId of planSeasonIds || []) {
+    if (seasonId == null || seasonId === currentSeasonId) continue;
+    const income = Number(sponsorBySeasonId.get(seasonId) ?? 0);
+    if (Number.isFinite(income) && income > 0) return { seasonId, income };
+  }
+  return { seasonId: null, income: null };
+}
+
+/**
  * @param {object} [args.prefetched] — #5182. Valgfri prefetch:
  *   { snapshots: board_plan_snapshots-rækker for DETTE board (ufiltrerede),
  *     sources: selectGoalContextSourcesForTeam(...) for DETTE hold }.
@@ -438,10 +479,11 @@ export async function loadGoalContextForBoard({
   let seasonOneDayWins = null;
   // #3494 · sponsor_growth-kontekst. null = "kunne ikke måles" (query-fejl),
   // så evaluator returnerer awaiting_data i stedet for at regne på et forkert
-  // tal. sponsorGrowthBaselineIncome læses fra PLANENS FØRSTE (allerede
-  // afsluttede) sæson via firstSnapshot herunder — findes ingen tidligere
-  // snapshot (plan-sæson 1) forbliver den null: samme "evaluerer først fra
-  // sæson 2"-princip som u25_development_delta ovenfor.
+  // tal. #7964 · sponsorGrowthBaselineIncome læses fra planens første
+  // AFSLUTTEDE sæson der faktisk HAR sponsor-udbetalinger
+  // (pickSponsorGrowthBaseline) — findes ingen (plan-sæson 1, eller ingen
+  // tidligere sæson med tal) forbliver den null: samme "evaluerer først når der
+  // er et målegrundlag"-princip som u25_development_delta ovenfor.
   let sponsorGrowthCurrentIncome = null;
   let sponsorGrowthBaselineIncome = null;
 
@@ -538,7 +580,7 @@ export async function loadGoalContextForBoard({
       // #3494 · Sponsor-udbetalinger (kontrakt-base + løbsdags-indtægt, se
       // SPONSOR_GROWTH_REASON_CODES) for hele plan-cyklussens sæson-vindue.
       // Summeres pr. sæson i JS herunder — nuværende sæson = "actual",
-      // planens FØRSTE (afsluttede) sæson = baseline.
+      // planens første afsluttede sæson MED tal = baseline (#7964).
       // pagination-safe: bounded by season count in the plan window (max 5),
       // ~3-4 payout rows/season/team (base + prorata + per-race-day-batches),
       // far under the 1000-row cap (same reasoning as the other queries above).
@@ -576,10 +618,13 @@ export async function loadGoalContextForBoard({
         sponsorBySeasonId.set(key, (sponsorBySeasonId.get(key) || 0) + Number(row.amount || 0));
       }
       sponsorGrowthCurrentIncome = sponsorBySeasonId.get(currentSeasonId) ?? 0;
-      const baselineSeasonId = firstSnapshot?.season_id ?? null;
-      sponsorGrowthBaselineIncome = baselineSeasonId != null
-        ? (sponsorBySeasonId.get(baselineSeasonId) ?? 0)
-        : null;
+      // #7964 · baseline = holdets FØRSTE afsluttede plan-sæson MED sponsortal,
+      // ikke blindt planens første snapshot (se pickSponsorGrowthBaseline).
+      sponsorGrowthBaselineIncome = pickSponsorGrowthBaseline({
+        sponsorBySeasonId,
+        planSeasonIds: (prevSnapshots || []).map((s) => s.season_id),
+        currentSeasonId,
+      }).income;
     }
     if (!monErr) {
       const podiumRows = classicResults || [];
