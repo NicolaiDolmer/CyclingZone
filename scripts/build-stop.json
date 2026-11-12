@@ -58,6 +58,16 @@
   },
   "finishList": [
     {
+      "issue": 6494,
+      "area": "web-experience",
+      "why": "Ejer-go 12/11 i PC1-storsessionen (AskUserQuestion: Ja, sæt den på): fælles datalag er første skridt i Web 5x, masterplanen 11/11. Bundle-loftet hæves ikke (valg A). https://github.com/NicolaiDolmer/CyclingZone/pull/8020#issuecomment-6819489721"
+    },
+    {
+      "issue": 7982,
+      "area": "udvikling-2",
+      "why": "Ejerens valg A 12/11: ret Træn nu-svartiden nu (tidsmåling + smal læser), storsession v3 punkt 3. https://github.com/NicolaiDolmer/CyclingZone/issues/7982#issuecomment-6819486504"
+    },
+    {
       "issue": 6584,
       "area": "web-experience",
       "why": "Ejerens eksplicitte natmandat 12/11: installerbar PWA trin 1, offline/netvaerksrettelser som draft uden merge eller prod. https://github.com/NicolaiDolmer/CyclingZone/issues/6584#issuecomment-6810434974"
