@@ -532,6 +532,8 @@ const SECTION_DEFS = [
       { id: "stageTactics", kind: "text" },
       // #6746: ét sandt afsnit om indsatstrinnene (fem trin; kontakten fjernet, #6641).
       { id: "effortSteps", kind: "text" },
+      // #7864: holdplaner og prisord; vises foerst med samme kontakt som holdplanerne selv.
+      { id: "teamPlans", kind: "text", flag: "tactics_ready_7864" },
       { id: "strategy", kind: "text" },
       { id: "breakaway", kind: "text" },
       { id: "ordersGc", kind: "text" }, // #6067: orders_gc_v1
