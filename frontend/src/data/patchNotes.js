@@ -1,6 +1,6 @@
 export const PATCHES = [
 {
-  "version": "7.437",
+  "version": "7.438",
   "date": "2026-11-12",
   "changes": [
     {
@@ -20,6 +20,29 @@ export const PATCHES = [
       "refs": [
         7864,
         8027
+      ]
+    }
+  ]
+},
+{
+  "version": "7.437",
+  "date": "2026-11-12",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Board",
+      "en": {
+        "title": "The board's sponsor growth target can now be reached",
+        "body": "It is measured from your team's first season in the plan with sponsor income, so seasons without payouts no longer block it. A season without sponsor income is not measured."
+      },
+      "da": {
+        "title": "Bestyrelsens mål om sponsorvækst kan nu nås",
+        "body": "Det måles fra holdets første sæson i planen med sponsorindtægt, så sæsoner uden udbetalinger ikke længere blokerer det. En sæson uden sponsorindtægt bliver ikke målt."
+      },
+      "refs": [
+        7964
       ]
     }
   ]

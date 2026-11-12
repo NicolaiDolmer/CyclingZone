@@ -145,7 +145,7 @@
     "signature_rider": "Counts riders the board recognizes as star riders. With reputation enabled, this reads the same earned reputation value shown on rider surfaces.",
     "top_n_finish": "Evaluated on your final standing in the last season of the plan, not an average across the plan's seasons.",
     "u25_development_delta": "The average stat-point gain per U25 rider per season. Develop young riders so their stats rise over the season.",
-    "sponsor_growth": "Compares your sponsor's season payout (contract base, prorated if your team joined mid-season, plus race-day income) between this season and the plan's first season. One-time bonuses (signing, results, objectives) are not counted. Only shown from the plan's second season onward, once a real baseline season exists."
+    "sponsor_growth": "Compares your sponsor's season payout (contract base, prorated if your team joined mid-season, plus race-day income) between this season and your team's first finished season in the plan with sponsor income. One-time bonuses (signing, results, objectives) are not counted. Only shown once such a season exists, and a season with no sponsor income is not measured."
   },
   "drivers": {
     "heading": "What drives this board?",
@@ -2026,7 +2026,7 @@
       "min_national_riders": "riders from the goal's country on your team right now.",
       "min_riders": "riders on your team right now.",
       "no_outstanding_debt": "your balance minus active loans. The goal is met if that's zero or more at season end.",
-      "sponsor_growth": "the rise in your sponsor's season payout since the plan's first season, in percent.",
+      "sponsor_growth": "the rise in your sponsor's season payout since your team's first season in the plan with sponsor income, in percent.",
       "monument_podium": "top-3 finishes in Monuments, or in classics when the goal names them. A bonus target counts from acceptance.",
       "signature_rider": "high-renown riders on your team. A bonus target counts from acceptance.",
       "jersey_wins": "points, mountains and young-rider jerseys won in stage races.",

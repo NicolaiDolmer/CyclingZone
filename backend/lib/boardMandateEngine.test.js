@@ -155,6 +155,87 @@ test("ugyldigt sæsonnummer evaluerer ingenting frem for at evaluere alt", () =>
   assert.deepEqual(evaluateDueMilestones({ milestones: [milestone()], seasonNumber: null }), []);
 });
 
+// ── #7964 · sponsor-vækst-milepælen: "kan ikke måles" er ikke "fejlet" ──────
+
+const sponsorMilestone = (over) => milestone({
+  id: "m-sponsor",
+  milestone_key: "5yr:s5:sponsor_growth:20:0",
+  target_season_number: 5,
+  goal: {
+    type: "sponsor_growth", target: 20, cumulative: true, weight: 1, category: "economy",
+    importance: "required", satisfaction_bonus: 10, satisfaction_penalty: 8,
+  },
+  ...over,
+});
+
+test("#7964 · forfalden sponsor-milepæl UDEN målegrundlag dømmes ikke misset (ingen afgørelse, intet slag)", () => {
+  for (const context of [
+    {},
+    { sponsorGrowthBaselineIncome: null, sponsorGrowthCurrentIncome: 500000 },
+    { sponsorGrowthBaselineIncome: 0, sponsorGrowthCurrentIncome: 500000 },
+    { sponsorGrowthBaselineIncome: 400000, sponsorGrowthCurrentIncome: null },
+  ]) {
+    const outcomes = evaluateDueMilestones({
+      milestones: [sponsorMilestone()],
+      seasonNumber: 5,
+      standing: {},
+      team: teamWithRiders,
+      context,
+    });
+    assert.deepEqual(outcomes, [], `ingen afgørelse for context=${JSON.stringify(context)}`);
+  }
+});
+
+test("#7964 · vagten rammer kun sponsor-milepælen: en anden forfalden milepæl dømmes stadig", () => {
+  const outcomes = evaluateDueMilestones({
+    milestones: [sponsorMilestone(), milestone({ id: "m-stage", target_season_number: 5 })],
+    seasonNumber: 5,
+    standing: { stage_wins: 0 },
+    team: teamWithRiders,
+    context: { cumulativeStats: { stageWins: 0 } },
+  });
+  assert.equal(outcomes.length, 1);
+  assert.equal(outcomes[0].milestone_id, "m-stage");
+  assert.equal(outcomes[0].status, "missed");
+});
+
+test("#7964 · målbar sponsor-milepæl: +20% mod grundlaget er nået, for lidt vækst er stadig misset", () => {
+  const hit = evaluateDueMilestones({
+    milestones: [sponsorMilestone()],
+    seasonNumber: 5,
+    standing: {},
+    team: teamWithRiders,
+    context: { sponsorGrowthBaselineIncome: 400000, sponsorGrowthCurrentIncome: 480000 },
+  });
+  assert.equal(hit.length, 1);
+  assert.equal(hit[0].status, "achieved");
+  assert.ok(hit[0].confidence_delta > 0);
+
+  const miss = evaluateDueMilestones({
+    milestones: [sponsorMilestone()],
+    seasonNumber: 5,
+    standing: {},
+    team: teamWithRiders,
+    context: { sponsorGrowthBaselineIncome: 400000, sponsorGrowthCurrentIncome: 420000 },
+  });
+  assert.equal(miss.length, 1);
+  assert.equal(miss[0].status, "missed", "målbar men for lav vækst er fortsat et reelt miss");
+  assert.ok(miss[0].confidence_delta < 0);
+});
+
+test("#7964 · sponsor-milepælen kan nås tidligt når grundlaget findes", () => {
+  const early = evaluateEarlyMilestones({
+    milestones: [sponsorMilestone()],
+    seasonNumber: 4,
+    standing: {},
+    team: teamWithRiders,
+    context: { sponsorGrowthBaselineIncome: 400000, sponsorGrowthCurrentIncome: 500000 },
+  });
+  assert.equal(early.length, 1);
+  assert.equal(early[0].status, "achieved");
+  assert.equal(early[0].achieved_early, true);
+});
+
 // ── Clamp + kvittering ───────────────────────────────────────────────────────
 
 test("kvitteringen viser det FAKTISKE slag efter clamp, ikke det teoretiske", () => {
@@ -1564,4 +1645,16 @@ test("#6773 advanceMandateAtSeasonEnd: næste sæson mangler → heller ikke gam
   });
   await advanceMandateAtSeasonEnd(supabase, { teamId: "t1", seasonId: "s4", currentSeasonNumber: 4, now: ROLLOVER_NOW });
   assert.ok(supabase._state.mandates.every((m) => m.status === "active"));
+});
+
+test("#7964 (a) · forfalden sponsor-milepæl for et hold uden indtægt i målesæsonen får ingen afgørelse", () => {
+  // Loaderen giver current = null når målesæsonen har 0 (boardGoalContext.js).
+  const outcomes = evaluateDueMilestones({
+    milestones: [sponsorMilestone()],
+    seasonNumber: 5,
+    standing: {},
+    team: teamWithRiders,
+    context: { sponsorGrowthBaselineIncome: 400000, sponsorGrowthCurrentIncome: null, sponsorGrowthBaselineShifted: true },
+  });
+  assert.deepEqual(outcomes, []);
 });
