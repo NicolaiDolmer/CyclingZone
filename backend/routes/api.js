@@ -1581,7 +1581,7 @@ router.get("/riders/:id/history", requireAuth, async (req, res) => {
 
 // GET /api/riders/:id/fatigue-now — #7801: rytterkortets træthed lige nu (egne ryttere,
 // samme kerne som Træningssiden). Slukket kontakt: { enabled: false }.
-router.get("/riders/:id/fatigue-now", requireAuth, async (req, res) => {
+router.get("/riders/:id/fatigue-now", requireAuth, presencePulseLimiter, async (req, res) => {
   if (!UUID_RE.test(req.params.id)) return res.status(400).json({ error: "Ugyldigt rytter-id" });
   try {
     res.json(await riderCardFatigueNow7801({ supabase, riderId: req.params.id, teamId: req.team?.id ?? null }));
