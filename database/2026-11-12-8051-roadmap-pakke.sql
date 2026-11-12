@@ -223,7 +223,8 @@ BEGIN
   ('f0427fcb-97ec-49f9-b8bd-7f13d29aa956', 'races', 1501,
    'Attack after any climb you choose, not only the last one, picked by the climb''s name.',
    'Angrib efter den stigning, du vælger, ikke kun den sidste, valgt ved stigningens navn.',
-   true, 'planned', 'next_week', 7884, 'tactics'),
+   -- Ejer 12/11 (valg B paa roadmap-kortet): langt angreb staar paa DENNE uge.
+   true, 'planned', 'this_week', 7884, 'tactics'),
   ('5cd73cc7-0ec5-466d-8e45-200331487027', 'races', 1502,
    'The race film tells an attack as it happens: the attack, the gap along the way, and whether he is caught or stays away, each at the time it really happened.',
    'Løbsfilmen fortæller et angreb, mens det sker: angrebet, forspringet undervejs, og om han bliver hentet eller holder, hver ting på det tidspunkt, det rent faktisk skete.',
@@ -298,7 +299,7 @@ BEGIN
     ('213788b8-e450-4d00-9c05-50af274c464e', 'in_progress', 'this_week'),
     ('d78b3b0c-0eaf-4bb5-a32d-c485e2dc71ee', 'planned',     'this_week'),
     ('2e314b44-132d-4817-8d84-d1c15cc54bf3', 'planned',     'this_week'),
-    ('f0427fcb-97ec-49f9-b8bd-7f13d29aa956', 'planned',     'next_week'),
+    ('f0427fcb-97ec-49f9-b8bd-7f13d29aa956', 'planned',     'this_week'),
     ('5cd73cc7-0ec5-466d-8e45-200331487027', 'planned',     'next_week'),
     ('edf177c7-dbb0-45e6-85e6-0d63b9d4dca0', 'planned',     'next_week'),
     ('136efc1d-7aca-4e85-9c7d-f11b88639198', 'in_progress', 'this_week'),
