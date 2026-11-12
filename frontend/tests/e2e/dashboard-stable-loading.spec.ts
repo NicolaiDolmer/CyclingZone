@@ -516,3 +516,53 @@ for (const width of [375, 1440]) {
     } finally { release(); }
   });
 }
+
+
+test('#8022 dashboard works when AbortSignal.timeout is unavailable', async ({ page }) => {
+  await page.addInitScript(() => { Reflect.deleteProperty(AbortSignal, 'timeout'); });
+  await page.route('**/rest/v1/race_stage_schedule?**', route => {
+    if (!new URL(route.request().url()).searchParams.has('scheduled_at')) return route.fallback();
+    return json(route, [{ race_id: 'race-live-1', stage_number: 4, scheduled_at: '2026-11-11T11:00:00Z' }]);
+  });
+  const selections: string[] = [];
+  page.on('request', request => {
+    if (/\/api\/races\/[^/]+\/selection/.test(request.url())) selections.push(request.url());
+  });
+  await page.goto('/dashboard');
+  await expect(page.getByRole('heading', { name: 'E2E Racing', exact: true })).toBeVisible();
+  await expect(page.locator('a[href="/races/race-live-1?stage=4"]')).toBeVisible();
+  await expect.poll(() => selections.length).toBeGreaterThan(0);
+  await expect(page.locator('[data-loading-region="myLatestResult"]')).toHaveCount(0);
+  await expect(page.locator('a[href="/races/race-done-2"]').first()).toBeVisible();
+});
+
+
+test('#8022 an early empty stage read aborts pending profile enrichment', async ({ page }) => {
+  let release!: () => void;
+  let profileStarted!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const started = new Promise<void>(resolve => { profileStarted = resolve; });
+  let profileAborted = false;
+  page.on('requestfailed', request => {
+    if (request.url().includes('/rest/v1/race_stage_profiles?')) profileAborted = true;
+  });
+  await page.route('**/rest/v1/race_stage_schedule?**', route => {
+    if (!new URL(route.request().url()).searchParams.has('scheduled_at')) return route.fallback();
+    return json(route, [{ race_id: 'race-live-1', stage_number: 4, scheduled_at: '2026-11-11T11:00:00Z' }]);
+  });
+  await page.route('**/rest/v1/race_stage_profiles?**', async route => {
+    profileStarted();
+    await gate;
+    await route.fallback();
+  });
+  await page.route('**/rest/v1/races?**', async route => {
+    if (new URL(route.request().url()).searchParams.get('select') !== 'id,name,race_type,stages,stages_completed,status') return route.fallback();
+    await started;
+    await json(route, []);
+  });
+  await page.goto('/dashboard');
+  try {
+    await expect.poll(() => profileAborted).toBe(true);
+    await expect(page.getByRole('heading', { name: 'E2E Racing', exact: true })).toBeVisible();
+  } finally { release(); }
+});

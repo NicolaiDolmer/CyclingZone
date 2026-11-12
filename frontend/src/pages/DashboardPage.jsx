@@ -1,3 +1,4 @@
+import { timeoutSignal } from "../lib/timeoutSignal.ts";
 import { retainKnownList } from "../lib/dashboardState.ts";
 import { Skeleton } from "../components/ui/index.js";
 import { useState, useEffect, Fragment } from "react";
@@ -217,7 +218,12 @@ export default function DashboardPage() {
   }, []);
   const [cardReady, setCardReady] = useState({ auctions: false, transfers: false });
   const loadGeneration = useRef(0);
-  useEffect(() => () => { loadGeneration.current += 1; }, []);
+  const dependentRequests = useRef(new Set());
+  useEffect(() => () => {
+    loadGeneration.current += 1;
+    for (const request of dependentRequests.current) request.abort();
+    dependentRequests.current.clear();
+  }, []);
   // #3510 — eksplicit fejl-tilstand med retry frem for et tomt, "ingen data"-
   // udseende dashboard: loadAll fangede tidligere fejl med console.error alene
   // og faldt igennem til finally { setLoading(false) } → et fuldt tomt dashboard
@@ -348,7 +354,10 @@ export default function DashboardPage() {
   // RULES.md §3 ("et modul maa aldrig kunne vaelte dashboardet") — en fejl her
   // maa ikke saette sidens error-state.
   async function loadDependentRows(teamId, raceIds, generation) {
+    let request;
     try {
+      request = timeoutSignal(8000);
+      dependentRequests.current.add(request);
       // #3751: holdets EGNE race_entries — kun for de loeb Dashboard rent
       // faktisk viser. pagination-safe: dobbelt afgraenset — eet hold
       // (RLS-scoped team_id) OG hoejst 50 race_id'er (racesRes' .limit(50)),
@@ -356,7 +365,7 @@ export default function DashboardPage() {
       const teamRaceEntriesRes = raceIds.length
         ? await supabase.from("race_entries").select("race_id")
             .eq("team_id", teamId).in("race_id", raceIds)
-            .abortSignal(AbortSignal.timeout(8000))
+            .abortSignal(request.signal)
         : { data: [] };
       if (teamRaceEntriesRes.error) return; // Retain known registrations on timeout/error.
       // #3751: distinkte race_id'er holdet har mindst een entry i.
@@ -365,6 +374,8 @@ export default function DashboardPage() {
       // best-effort: filteret forbliver ufyldt.
       // Ingen af delene vaelter siden (DASHBOARD_RULES.md §3).
     } finally {
+      request?.dispose();
+      dependentRequests.current.delete(request);
       // Flaget skal saettes OGSAA paa fejlstien: ellers ville "Kommende loeb"
       // staa med sit skelet for evigt i stedet for at falde tilbage til sin
       // empty-state, naar opslaget fejlede.
@@ -423,6 +434,8 @@ export default function DashboardPage() {
 
   async function loadAll() {
     const generation = ++loadGeneration.current;
+    for (const request of dependentRequests.current) request.abort();
+    dependentRequests.current.clear();
     setError(null);
     try {
     // #4160: getSession() laeser den lokale (auto-refreshede) session UDEN en
@@ -694,18 +707,19 @@ export default function DashboardPage() {
     let cancelled = false;
     // #7296: holdets egne løb først (race_entries), kalenderen som fallback med eget loft.
     const candidates = teamNudgeCandidates(nextRaces, teamRaceIds, SQUAD_NUDGE_LOOKAHEAD);
-    const selectionSignal = AbortSignal.timeout(8000);
+    let selectionRequest;
     if (!teamRaceIdsLoaded || !team?.id) { setSquadSelectionMissingRace(null); return undefined; }
     if (!candidates.length) { setSquadSelectionMissingRace(null); setSelectionReady(true); return undefined; }
     (async () => {
       try {
+      selectionRequest = timeoutSignal(8000);
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) return;
       for (const race of candidates) {
         if (cancelled) return;
         try {
-          const r = await apiFetch(`${API}/api/races/${race.id}/selection`, { signal: selectionSignal, headers: { Authorization: `Bearer ${token}` } });
+          const r = await apiFetch(`${API}/api/races/${race.id}/selection`, { signal: selectionRequest.signal, headers: { Authorization: `Bearer ${token}` } });
           // Fejl/ukendt svar må ikke udløse et falsk "udtagelse mangler" — samme
           // forsigtighed som den tidligere count===0-only-regel (#2296-regression).
           // #5242: limited/unauthorized behandles som "ukendt svar" — samme gren.
@@ -721,10 +735,11 @@ export default function DashboardPage() {
       // Alle kandidater inden for loftet er afmeldt: intet at minde om.
       if (!cancelled) setSquadSelectionMissingRace(null);
       } finally {
+        selectionRequest?.dispose();
         if (!cancelled) setSelectionReady(true);
       }
     })();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; selectionRequest?.abort(); };
   }, [nextRaces, team?.id, teamRaceIds, teamRaceIdsLoaded]);
 
   // #2288 D2 — trænede holdet i dag? Letvægts-endpoint, kun training_day_runs.
@@ -912,10 +927,12 @@ export default function DashboardPage() {
   // latest-result presence participates in the first-layout decision.
   useEffect(() => {
     let cancelled = false;
+    let latestRequest;
     async function loadExtras() {
       if (!recentResultsVisible && !riderRankingVisible && !myLatestResultVisible) return;
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
+      if (cancelled) return;
       if (!token) { setMyLatestResult(previous => previous ?? null); return; }
       const headers = { Authorization: `Bearer ${token}` };
       // Each request settles its own fixed card and retains known data.
@@ -937,19 +954,20 @@ export default function DashboardPage() {
         // #2466: "How your team did" — holdets eget seneste løbsresultat.
         myLatestResultVisible && (async () => {
           try {
-            const r = await apiFetch(`${API}/api/dashboard/my-latest-result`, { headers, signal: AbortSignal.timeout(8000) });
+            latestRequest = timeoutSignal(8000);
+            const r = await apiFetch(`${API}/api/dashboard/my-latest-result`, { headers, signal: latestRequest.signal });
             if (r.ok && !r.limited && !r.unauthorized && !cancelled) {
               // race === undefined (fx mock-fallback {}) normaliseres til null →
               // kortets empty state i stedet for en død boks.
               setMyLatestResult({ ...r.data, race: r.data.race ?? null });
             }
           } catch { /* best-effort: retain an existing result */ }
-          finally { if (!cancelled) setMyLatestResult(previous => previous ?? null); }
+          finally { latestRequest?.dispose(); if (!cancelled) setMyLatestResult(previous => previous ?? null); }
         })(),
       ]);
     }
     loadExtras();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; latestRequest?.abort(); };
   }, [recentResultsVisible, riderRankingVisible, myLatestResultVisible]);
 
   function dismissDiscordNudge() {

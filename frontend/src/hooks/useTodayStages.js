@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { timeoutSignal } from "../lib/timeoutSignal.ts";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { buildRaceCentreCards, copenhagenDayRange } from "../lib/raceCentre.js";
 import {
@@ -36,17 +37,27 @@ const TODAY_PROFILE_COLUMNS = `${TODAY_PROFILE_BASE_COLUMNS}, elevation_profile`
 // dokumenterer sin egen grænse nedenfor. Samme forsigtighed som
 // RaceCentrePage.jsx.
 export default function useTodayStages(teamId) {
-  const [state, setState] = useState(/** @type {{loading: boolean, cards: Array<{raceId: string, stageNumber: number, profile: object | null, profileType: string | null, enriching?: boolean, detailsUnavailable?: boolean}>}} */ ({ loading: true, cards: [] }));
+  const [state, commitState] = useState(/** @type {{loading: boolean, cards: Array<{raceId: string, stageNumber: number, profile: object | null, profileType: string | null, enriching?: boolean, detailsUnavailable?: boolean}>}} */ ({ loading: true, cards: [] }));
 
+  const activeRequest = useRef(/** @type {ReturnType<typeof timeoutSignal> | null} */ (null));
+  const generation = useRef(0);
   const load = useCallback(async () => {
+    const currentGeneration = ++generation.current;
+    activeRequest.current?.abort();
+    let request;
+    const setState = (next) => {
+      if (generation.current === currentGeneration) commitState(next);
+    };
     // No identity is not evidence of an empty day. Dashboard owns confirmed
     // no-team visibility; keep presence pending across the identity handoff.
     if (!teamId) { setState({ loading: true, cards: [] }); return; }
     // #6569: stale-while-revalidate — skelettet vises kun foer foerste kort er
     // hentet; minut-tick og realtime-refetch beholder de eksisterende kort.
     setState((s) => (s.cards.length ? s : { ...s, loading: true }));
-    const signal = AbortSignal.timeout(8000);
     try {
+      request = timeoutSignal(8000);
+      activeRequest.current = request;
+      const { signal } = request;
       const now = Date.now();
       const range = copenhagenDayRange(now);
       if (!range) { setState({ loading: false, cards: [] }); return; }
@@ -223,10 +234,16 @@ export default function useTodayStages(teamId) {
       // rød suite. Refs #4309/#4305.
       console.warn("useTodayStages failed:", e?.message || e);
       setState((s) => ({ loading: false, cards: s.cards.map(card => ({ ...card, detailsUnavailable: card.enriching || card.detailsUnavailable, enriching: false })) }));
+    } finally {
+      request?.abort();
+      if (activeRequest.current === request) activeRequest.current = null;
     }
   }, [teamId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    return () => { generation.current += 1; activeRequest.current?.abort(); };
+  }, [load]);
   // Minut-tick: samme idiom som RaceCentrePage/DashboardPage — holder
   // scheduled → live → finished-overgangen frisk uden en hård reload.
   useEffect(() => {
