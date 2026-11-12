@@ -57,6 +57,10 @@ export interface StagePageV2Props {
   nowMs: number;
   /** #6570 spor 2: loebet, saa siden selv kan hente loebshistorien for en koert etape. */
   raceId?: string | null;
+  /** #7778: loebssiden v6 tegner selv faner og etapestribe; default false = uaendret. */
+  hideNav?: boolean;
+  /** #7778: v6 har taktik-knappen i loebshovedet (valg 8); default false = uaendret. */
+  hideTacticsAction?: boolean;
 }
 
 export default function StagePageV2(props: StagePageV2Props) {
@@ -64,6 +68,7 @@ export default function StagePageV2(props: StagePageV2Props) {
     isStageRace, totalStages, stagesCompleted, raceFinished, selectedStage, todayStage, onSelectStage,
     activeTab, onChangeTab, onOpenTactics, profileByStage, schedule, timeLabelFor, results, stagePointRows, stageLoaded, stageErrorSlot,
     myTeamId, stageRoles, careerEvents, dnfRows = [], standingsSlot, teamSlot, tacticsSlot, emptyStageSlot, nowMs, raceId = null,
+    hideNav = false, hideTacticsAction = false,
   } = props;
   const { t } = useTranslation("races");
 
@@ -134,7 +139,7 @@ export default function StagePageV2(props: StagePageV2Props) {
   // Kun ryttere der stadig er i loebet: er hele holdet udgaaet, er der ingen taktik at saette.
   const hasOpenTactics = !raceFinished && !started && tacticsStage <= totalStages && tacticsStage > stagesCompleted && activeRiders(riders).length > 0;
   let tacticsAction: { label: string; onClick: () => void } | null = null;
-  if (hasOpenTactics) {
+  if (hasOpenTactics && !hideTacticsAction) {
     const progress = tacticsProgress(riders, overrides, tacticsStage);
     const at = tacticsAt;
     const label = !isStageRace
@@ -146,8 +151,8 @@ export default function StagePageV2(props: StagePageV2Props) {
   }
 
   return (
-    <div data-race-page className="flex flex-col gap-[14px]">
-      <div className="sticky top-0 z-20 -my-2 flex flex-col gap-3 bg-cz-body py-2">
+    <div data-race-page={hideNav ? undefined : true} className="flex flex-col gap-[14px]">
+      {!hideNav && <div className="sticky top-0 z-20 -my-2 flex flex-col gap-3 bg-cz-body py-2">
         <Tabs value={activeTab} onChange={(v) => onChangeTab(resolveV2Tab(v))}>
           <TabList label={t("stagePageV2.tabsAria")}>
             {STAGE_PAGE_V2_TABS.map((key) => (
@@ -158,7 +163,7 @@ export default function StagePageV2(props: StagePageV2Props) {
         {activeTab === "stage" && isStageRace && (
           <StageStripV2 stages={stripStages} selected={selectedStage} today={todayStage} ridden={stagesCompleted} onSelect={onSelectStage} />
         )}
-      </div>
+      </div>}
 
       {activeTab === "stage" && (
         <StageTabV2
