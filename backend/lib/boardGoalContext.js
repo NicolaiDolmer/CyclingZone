@@ -484,6 +484,7 @@ export async function loadGoalContextForBoard({
   // (pickSponsorGrowthBaseline) — findes ingen (plan-sæson 1, eller ingen
   // tidligere sæson med tal) forbliver den null: samme "evaluerer først når der
   // er et målegrundlag"-princip som u25_development_delta ovenfor.
+  /** @type {number|null} */
   let sponsorGrowthCurrentIncome = null;
   /** @type {number|null} */
   let sponsorGrowthBaselineIncome = null;
