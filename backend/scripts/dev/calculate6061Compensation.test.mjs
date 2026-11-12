@@ -84,6 +84,29 @@ test('apply payload carries plans and hashes only and passes the writer contract
  const {raw,sha256}=serializeApplyPayload(payload);
  assert.equal(validateApprovedFile(raw,sha256,'2026-10-03T13:00:00Z').plans.length,1);
 });
+// #7832: a paid earlier date makes the writer reject the whole run, so the
+// case filter must keep it (and every unapproved team-date) out of the plans.
+test('#7832 filtered state compensates only the one team-date: 12 riders, 60 slots',async()=>{
+ const {selectCaseWork}=await import('./prepare6061TrainingRecovery.mjs');
+ const riders=Array.from({length:12},(_,i)=>uuid(100+i)),other=uuid(200),team=uuid(1),otherTeam=uuid(2),season=uuid(9);
+ const work=[
+  {team_id:team,season_id:season,tick_date:'2026-10-20',game_days:[5,6,7,8,9],quarantined_rider_ids:riders.slice(0,4),opening_conditions:{}},
+  {team_id:team,season_id:season,tick_date:'2026-11-05',game_days:[40,41,42,43,44],quarantined_rider_ids:riders,opening_conditions:{}},
+  {team_id:otherTeam,season_id:season,tick_date:'2026-11-01',game_days:[20,21,22,23,24],quarantined_rider_ids:[other],opening_conditions:{}},
+ ];
+ const build=selected=>{const ids=[...new Set(selected.flatMap(w=>w.quarantined_rider_ids))];const owner=id=>id===other?otherTeam:team;
+  return {state:{asOf:'2026-11-12T09:00:00Z',through:'2026-11-11',work:selected,riders:ids.map(id=>({id,team_id:owner(id)})),conditions:ids.map(rider_id=>({rider_id,form:55,fatigue:10,injured_until:null})),ticks:[],settlements:[],legacyReports:[],loads:[],plans:ids.map(rider_id=>({rider_id,team_id:owner(rider_id),focus:'climbing',intensity:'normal'})),weekPlans:[]},
+   fullRiders:ids.map(id=>({id,team_id:owner(id),birthdate:'2000-06-01',potentiale:80,primary_type:'climber',secondary_type:'puncheur'})),
+   abilityRows:ids.map(rider_id=>({rider_id,...Object.fromEntries(VISIBLE_ABILITIES.map(k=>[k,50])),ability_progress:{}})),
+   seasons:[{id:season,number:5}],teamContexts:{[team]:{staff:null,facilityTier:0,programsOn:false},[otherTeam]:{staff:null,facilityTier:0,programsOn:false}},stageBySlot:{}};};
+ const filtered=await calculateCompensation(build(selectCaseWork(work,{team,tickDate:'2026-11-05'})));
+ assert.equal(filtered.summary.riders,12);assert.equal(filtered.summary.rider_days,60);assert.equal(filtered.summary.blocked_riders,0);
+ assert.ok(filtered.plans.every(p=>p.team_id===team&&p.days.every(d=>d.tickDate==='2026-11-05'&&d.gameDay>=40&&d.gameDay<=44)));
+ // Unfiltered keeps today's behaviour: the earlier date and the other team come along.
+ const all=await calculateCompensation(build(selectCaseWork(work)));
+ assert.equal(all.summary.riders,13);assert.equal(all.summary.rider_days,85);
+ assert.ok(all.plans.some(p=>p.days.some(d=>d.tickDate==='2026-10-20')));
+});
 test('payload for a plan of the current size stays far below 1 MB',async()=>{
  const one=(await calculateCompensation(input())).plans[0];const plans=[];let day=0;
  for(let i=0;i<28;i++){const rider=uuid(i+1),team=uuid(100+(i%9)),season=uuid(999);const days=[];
