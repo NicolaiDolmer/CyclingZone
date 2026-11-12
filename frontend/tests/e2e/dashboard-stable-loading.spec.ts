@@ -640,3 +640,55 @@ test('#8022 failed finished-stage details keep the reserved status line empty', 
     return { text: line.textContent?.trim(), minHeight: getComputedStyle(line).minHeight };
   })).toEqual({ text: '', minHeight: '18px' });
 });
+
+
+for (const change of ['progress', 'state']) {
+  test(`#8022 changed stage ${change} drops stale enrichment while refreshing`, async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-11-11T12:00:00Z') });
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    let scheduleReads = 0;
+    let winnerReads = 0;
+    await page.route('**/rest/v1/race_stage_schedule?**', route => {
+      if (!new URL(route.request().url()).searchParams.has('scheduled_at')) return route.fallback();
+      scheduleReads += 1;
+      const scheduled_at = change === 'state' && scheduleReads > 1 ? '2026-11-11T13:00:00Z' : '2026-11-11T11:00:00Z';
+      return json(route, [{ race_id: 'race-live-1', stage_number: 4, scheduled_at }]);
+    });
+    await page.route('**/rest/v1/races?**', route => {
+      if (new URL(route.request().url()).searchParams.get('select') !== 'id,name,race_type,stages,stages_completed,status') return route.fallback();
+      return json(route, [{ id: 'race-live-1', name: 'Refresh fixture', race_type: 'stage_race', stages: 6,
+        stages_completed: change === 'progress' && scheduleReads > 1 ? 5 : 4, status: 'active' }]);
+    });
+    await page.route('**/rest/v1/race_results?**', async route => {
+      const params = new URL(route.request().url()).searchParams;
+      if (params.get('rank') === 'eq.1') {
+        winnerReads += 1;
+        const refreshed = winnerReads > 1;
+        if (refreshed) await gate;
+        return json(route, [{ race_id: 'race-live-1', stage_number: 4, result_type: 'stage', rank: 1,
+          rider_name: refreshed ? 'Current Winner' : 'Previous Winner' }]);
+      }
+      if (params.get('race_id') !== 'eq.race-live-1') return route.fallback();
+      const refreshed = scheduleReads > 1;
+      return json(route, [
+        { race_id: 'race-live-1', stage_number: refreshed && change === 'progress' ? 5 : 4, result_type: 'team', team_id: TEST_TEAM.id, rank: refreshed ? 1 : 2 },
+        { race_id: 'race-live-1', stage_number: refreshed && change === 'progress' ? 5 : 4, result_type: 'team', team_id: 'other-team', rank: refreshed ? 2 : 1 },
+      ]);
+    });
+    await page.goto('/dashboard');
+    const stage = page.locator('a[href="/races/race-live-1?stage=4"]');
+    try {
+      await expect(stage.getByText(/Previous Winner/)).toBeVisible();
+      await expect(stage.getByText('#2 af 2 samlet', { exact: true })).toBeVisible();
+      await page.clock.fastForward(60_000);
+      await expect.poll(() => winnerReads).toBe(2);
+      await expect(stage.locator('.cz-skeleton-static')).toHaveCount(change === 'progress' ? 2 : 1);
+      await expect(stage.getByText(/Previous Winner/)).toHaveCount(0);
+      await expect(stage.getByText('#2 af 2 samlet', { exact: true })).toHaveCount(0);
+      release();
+      await expect(stage.getByText('#1 af 2 samlet', { exact: true })).toBeVisible();
+      if (change === 'progress') await expect(stage.getByText(/Current Winner/)).toBeVisible();
+    } finally { release(); }
+  });
+}

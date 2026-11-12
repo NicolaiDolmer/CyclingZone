@@ -22,3 +22,6 @@ The second review also found that signup, onboarding and Discord presence no lon
 
 
 A failed finished-stage enrichment is not proof that no result exists. The existing status line now stays empty at its existing minimum height when detailsUnavailable is set. A browser regression waits for enrichment settlement and reproduced the previous false no-results text before checking the empty18px line. Confirmed no-winner responses keep their established no-results behavior.
+
+
+Known stage details are reusable only while the card state and completed-stage count match. A changed base card now clears its previous standing/winner and marks enrichment pending; unchanged cards still retain their confirmed details during refresh. Fixed-clock browser regressions independently change state and progress at the minute refresh, hold the replacement enrichment and verify old values disappear before new server values settle.

@@ -129,7 +129,9 @@ export default function useTodayStages(teamId) {
       if (!built.length) { setState({ loading: false, cards: [] }); return; }
       setState(previous => ({ loading: false, cards: built.map(card => {
         const known = previous.cards.find(c => c.raceId === card.raceId && c.stageNumber === card.stageNumber);
-        return { ...known, ...card, profile: known?.profile ?? null, profileType: known?.profileType ?? null, enriching: !known };
+        const enriching = !known || known.state !== card.state || known.stagesCompleted !== card.stagesCompleted;
+        return { ...known, ...card, profile: known?.profile ?? null, profileType: known?.profileType ?? null,
+          standing: enriching ? null : known.standing, winnerName: enriching ? null : known.winnerName, enriching };
       }) }));
 
       // 2a) Vinderen af hver af MINE etaper i dag (#5589/#5601). Etapeløb
