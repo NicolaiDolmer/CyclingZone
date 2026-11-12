@@ -71,16 +71,18 @@ export function isMissingUiPrefsTable(error) {
  * @returns {Promise<{ prefs: Record<string, unknown>, available: boolean }>}
  */
 export async function readUiPrefs(supabase, userId) {
+  // user_id er tabellens primærnøgle, så der er højst én række.
   const { data, error } = await supabase
     .from("user_ui_prefs")
     .select("prefs")
     .eq("user_id", userId)
-    .maybeSingle();
+    .limit(1);
   if (error) {
     if (isMissingUiPrefsTable(error)) return { prefs: {}, available: false };
     throw error;
   }
-  return { prefs: publicUiPrefs(data?.prefs), available: true };
+  const row = Array.isArray(data) ? data[0] : null;
+  return { prefs: publicUiPrefs(row?.prefs), available: true };
 }
 
 /**

@@ -11041,7 +11041,7 @@ router.patch("/me/discord-dm-prefs", requireAuth, marketWriteLimiter, async (req
 // valget foelger spilleren paa tvaers af etaper, sider og enheder. Kun noegler paa
 // allowlisten i lib/userUiPrefs.js. `available: false` = tabellen er ikke
 // migreret endnu; klienten bruger saa sin lokale kopi.
-router.get("/me/ui-prefs", requireAuth, async (req, res) => {
+router.get("/me/ui-prefs", requireAuth, presencePulseLimiter, async (req, res) => {
   try {
     const out = await readUiPrefs(supabase, req.user.id);
     res.json(out);

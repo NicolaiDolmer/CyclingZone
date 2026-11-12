@@ -12,7 +12,7 @@ function fakeSupabase({ row = null, readError = null, writeError = null } = {}) 
       return {
         select() { return this; },
         eq() { return this; },
-        maybeSingle: async () => ({ data: row, error: readError }),
+        limit: async () => ({ data: readError ? null : (row ? [row] : []), error: readError }),
         upsert: async (value, opts) => {
           calls.upserts.push({ value, opts });
           return { error: writeError };
