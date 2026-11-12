@@ -34,7 +34,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 |-|-|-|-|-|-|-|
 |Team plans (`tactics-ready`)|beta|`tactics_ready_7864`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7864|2026-11-12|Beta siden 12/11 kl. 19:02 (ejerens kør). Første gem set 12/11: 8 ordrer og 14 roller, alle med markør.|
 |Engine breakaway forecast (`race-breakaway-outlook`)|building|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#6912|2026-10-29|Ingen app_config-række (fravær = off). Ejer-go til tænding.|
-|Race page v6, step 1 (results for a ridden stage) (`race-page-v6`)|building|-|-|#7778|2026-11-12|#7778: kontakt race_page_v6 seedes off (migration 2026-11-12), kun visning; flag-feltet sættes når rækken findes i prod.|
+|Race page v6, step 1 (results for a ridden stage) (`race-page-v6`)|building|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7778|2026-11-12|#7778: kontakt race_page_v6 seedes off (migration 2026-11-12), kun visning; flag-feltet sættes når rækken findes i prod.|
 
 ## market
 

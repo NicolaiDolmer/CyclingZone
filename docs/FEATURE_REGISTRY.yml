@@ -497,6 +497,7 @@ features:
     decision: ejer-beslutning
     decide_by: 2026-11-26
     epic: 7778
+    ssot: docs/RACE_ENGINE_RULES.md
     verified: 2026-11-12
     note: "#7778: kontakt race_page_v6 seedes off (migration 2026-11-12), kun visning; flag-feltet sættes når rækken findes i prod."
 

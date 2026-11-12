@@ -1,6 +1,8 @@
 # Løbssiden og taktik: redesign med ejer og spillere (Discord, 7/11)
 
-Status: design i gang i #build-a-feature (Discord). Intet bygget. Wireframes ligger som PNG i Discord-tråden; kilde-HTML ligger privat i OneDrive `private-handoffs/race-page-2026-11-07/`.
+Status 12/11: trin 1 (Resultater for en kørt etape) er bygget bag kontakten `race_page_v6`, der er slukket (#7778, PR #8062). Den byggede kontrakt står i [`RACE_ENGINE_RULES.md`](../../RACE_ENGINE_RULES.md), afsnittet "Løbssiden v6, trin 1"; ejerens afgjorte valg står i beslutningslisten øverst på #7778, og nyeste wireframe er v6. Resten af dette dokument er designhistorikken fra 7/11: åbne spørgsmål og forslag herunder er ikke afgjort, medmindre beslutningslisten siger det, og de er ikke bygget, medmindre RACE_ENGINE_RULES siger det. Taktik (trin 2) er ikke bygget.
+
+Oprindelig status 7/11: design i gang i #build-a-feature (Discord). Wireframes ligger som PNG i Discord-tråden; kilde-HTML ligger privat i OneDrive `private-handoffs/race-page-2026-11-07/`.
 
 Mål (ejer): ingen hoppen mellem faner, alt om én ting ét sted, intet modsigende, intet der bruges i dag forsvinder. Desktop først, mobil bagefter i separate billeder. Wireframes skal være "levende" med ægte løbsdata (se memory `feedback_living_wireframes`).
 
