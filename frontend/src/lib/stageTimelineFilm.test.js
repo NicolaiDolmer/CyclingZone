@@ -719,7 +719,7 @@ const describeSummit = (/** @type {any} */ e) => describeEvent(e, { riderNameByI
 test("#7965: filmen viser angrebet ved foden UDEN resultat og navngiver stigningen", () => {
   const built = buildFilmTimeline({ events: SUMMIT_EVENTS, distanceKm: 170, timelineVersion: 2, climbs: SUMMIT_CLIMBS });
   for (const [type, rider] of [["all_out_gain", "Ada Pedersen"], ["all_out_cracked", "Bo Hansen"]]) {
-    const line = /** @type {any} */ (built.feedEvents.find((e) => e.type === type && e.climb_phase === "attack"));
+    const line = /** @type {any} */ (/** @type {any[]} */ (built.feedEvents).find((e) => e.type === type && e.climb_phase === "attack"));
     assert.equal(line.km_span, undefined);
     assert.equal(line.km, 156);
     assert.equal(filmKmValue(line, (v) => String(v)), "156");
@@ -729,7 +729,7 @@ test("#7965: filmen viser angrebet ved foden UDEN resultat og navngiver stigning
 
 test("#7965: uden kendt stigningsnavn staar der 'den sidste stigning'", () => {
   const built = buildFilmTimeline({ events: SUMMIT_EVENTS, distanceKm: 170, timelineVersion: 2, climbs: [{ crest_km: 170, length_km: 14 }] });
-  const line = /** @type {any} */ (built.feedEvents.find((e) => e.type === "all_out_gain" && e.climb_phase === "attack"));
+  const line = /** @type {any} */ (/** @type {any[]} */ (built.feedEvents).find((e) => e.type === "all_out_gain" && e.climb_phase === "attack"));
   assert.deepEqual(describeSummit(line), { key: "climb_attack_start", params: { rider: "Ada Pedersen" } });
 });
 
@@ -755,7 +755,7 @@ test("#7965: knaekket staar ved motorens ægte km og tid, 'holdt' ved toppen, be
 
 test("#7965: ingen af de nye tekster siger et antal sekunder eller en tid", () => {
   const built = buildFilmTimeline({ events: SUMMIT_EVENTS, distanceKm: 170, timelineVersion: 2, climbs: SUMMIT_CLIMBS });
-  for (const e of built.feedEvents.filter((x) => x.climb_phase)) {
+  for (const e of /** @type {any[]} */ (built.feedEvents).filter((x) => x.climb_phase)) {
     const described = describeSummit(e);
     assert.deepEqual(Object.keys(described.params).sort(), described.params.climb ? ["climb", "rider"] : ["rider"]);
   }
@@ -766,7 +766,7 @@ test("#7965: Angrib-teksten er den samme for angreb og udfald (opgaven slaas op 
   const looked = [];
   const effortByRider = { get: () => "all_out", taskAt: (_events, _id, km) => { looked.push(km); return km >= 165 ? "attack" : "tempo"; } };
   const built = buildFilmTimeline({ events: SUMMIT_EVENTS, distanceKm: 170, timelineVersion: 2, climbs: SUMMIT_CLIMBS, ownRiderIds: ["rider-1", "rider-2"], effortByRider });
-  const lines = /** @type {any[]} */ (built.feedEvents.filter((e) => e.climb_phase));
+  const lines = /** @type {any[]} */ (/** @type {any[]} */ (built.feedEvents).filter((e) => e.climb_phase));
   assert.equal(lines.length, 4);
   assert.ok(lines.every((e) => e.params.task === "attack"));
   assert.ok(looked.every((km) => km === 170), `opslag ved toppen: ${looked}`);
@@ -802,7 +802,7 @@ test("#7965: etape uden topankomst giver bit-identisk film", () => {
   const withClimbs = buildFilmTimeline({ events: flat, distanceKm: 182, timelineVersion: 2, climbs: [{ crest_km: 160, length_km: 9 }] });
   const without = buildFilmTimeline({ events: flat, distanceKm: 182, timelineVersion: 2 });
   assert.deepEqual(withClimbs, without);
-  assert.ok(withClimbs.events.every((e) => !e.climb_phase));
+  assert.ok(/** @type {any[]} */ (withClimbs.events).every((e) => !e.climb_phase));
 });
 
 test("#7965: de fire nye tekstnoegler findes paa alle fem sprog og indeholder kun {rider}/{climb}", async () => {
