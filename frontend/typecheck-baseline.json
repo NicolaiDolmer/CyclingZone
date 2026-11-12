@@ -711,8 +711,7 @@
   "src/components/SeasonFinanceReportPanel.jsx": {
     "TS2322": 2,
     "TS2339": 11,
-    "TS2345": 5,
-    "TS2739": 1
+    "TS2345": 5
   },
   "src/components/SeasonHonours.jsx": {
     "TS18047": 2,
