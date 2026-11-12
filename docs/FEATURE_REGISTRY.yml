@@ -449,13 +449,13 @@ features:
     area: race-day
     title_en: Team plans
     title_da: Taktik gjort klar del 1
-    state: beta
+    state: building
     epic: 7864
     ssot: docs/RACE_ENGINE_RULES.md
-    verified: 2026-11-12
+    verified: 2026-11-11
     decision: goer-faerdigt
-    decide_by: 2026-11-19
-    note: "Beta tændes 12/11 aften via kontakten tactics_ready_7864 (rækken seedes ved tænding; derfor ingen flag-nøgle her). Patch note 7.435."
+    decide_by: 2026-11-12
+    note: "Ingen seed/aktivering; fler-etape kræver atomisk DB-kapabilitet."
 
   - id: rider-why-button
     area: race-day
