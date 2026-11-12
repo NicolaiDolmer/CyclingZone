@@ -29,9 +29,10 @@ const academyMeBlock = (() => {
   return apiSource.slice(start, end);
 })();
 
-test("akademi-rosterets backend-select bærer felterne kolonnerne renderer (#2796)", () => {
-  // Type-kolonnen, Værdi-kolonnen og promote-dialogens løn-projektion hænger på
-  // disse felter. Uden dem er cellerne tomme / lønnen bliver fallback-konstanten.
+test("/academy/me's backend-select bærer rytterfelterne (#2796)", () => {
+  // #6155: akademisidens egen rytterliste er væk, men /academy/me sender stadig
+  // rosteret (useAcademy deles med rytterprofilens "Move squad"), så felterne
+  // skal fortsat være med.
   for (const field of [
     "primary_type",
     "secondary_type",
@@ -65,19 +66,18 @@ test("intake-payloaden bærer pris og udløbsfrist (#2796)", () => {
   );
 });
 
-test("AcademyPage bruger den kanoniske DataTable og er sorterbar (#2796, migreret #3045)", () => {
-  // #3045: rosteret migreret fra de hånd-rullede Table/Tr/Th/Td (ingen sticky
-  // navnekolonne, ingen fold-mekanisme) til den kanoniske DataTable — samme
-  // T2-recipe som RidersPage/TeamPage/WatchlistPage. DataTable erklærer
-  // data-sortable internt på sit eget <table>-element, så AcademyPage.jsx
-  // behøver ikke længere den literale streng selv.
-  assert.doesNotMatch(
-    pageSource,
-    /data-sort-exempt/,
-    "akademi-rosteret er ikke længere sorterings-undtaget (Discord 22/7)",
-  );
-  assert.match(pageSource, /useTableSort/, "sortering skal bruge den delte useTableSort");
-  assert.match(pageSource, /\bDataTable\b/, "roster-tabellen skal bruge den kanoniske DataTable (T2), ikke en hånd-rullet variant");
+test("#6155: intet akademihold, akademisiden peger på U23- og Juniorsiden med antal/plads", () => {
+  // Ejer 4/10 + 9/11 (#7932): en rytter hører kun til senior, U23 eller junior.
+  // Akademiets egen rytterliste (DataTable + Promovér/Fyr) er fjernet; flyt og
+  // fyring sker på rytterprofilen som for alle andre ryttere.
+  for (const gone of [/\bDataTable\b/, /useTableSort/, /rosterColumns/, /rosterPotentialSort/, /rosterHeading/,
+    /emptyRoster/, /AcademyTransferConfirmModal/, /AcademyReleaseConfirmModal/, /AcademyPrognosisCell/]) {
+    assert.doesNotMatch(pageSource, gone, `${gone} hører til den fjernede rytterliste`);
+  }
+  assert.match(pageSource, /u23: "\/squads\/u23", junior: "\/squads\/junior"/, "links til de to trupsider");
+  assert.match(pageSource, /squadRows\.map\(\(row\) => \(\s*<Link/, "én link-række pr. ungdomstrup fra squadCapRows");
+  assert.match(pageSource, /t\("squadLinks\.count", \{ used: row\.used, max: row\.max \}\)/, "antal/plads pr. trup");
+  assert.match(pageSource, /\{youthSquadPagesOn && \(\s*<Section data-testid="academy-squad-links">/, "links kun når trupsiderne findes");
   for (const comp of ["NationCell", "RiderTypeBadge"]) {
     assert.match(
       pageSource,
@@ -108,23 +108,11 @@ test("AcademyPage skelner backend-fejl fra slukket flag (#2796)", () => {
   );
 });
 
-test("promote-dialogen projicerer lønnen fra rytteren selv (#2796/#3989)", () => {
-  // #3989 fjernede division-parameteren: satsen er global, så halvdelen af
-  // #2796's fejlklasse er væk strukturelt. Tilbage står den anden halvdel —
-  // et rytter-objekt uden current_production_value giver base-fallbacken 1000
-  // og dermed samme plausible, forkerte løn for ENHVER rytter. Vagten kræver
-  // derfor at kaldet sender rytteren selv (ikke et literal-objekt), og at
-  // AcademyPage aldrig igen sender en division ind.
-  assert.match(
-    pageSource,
-    /projectSeniorSalary\(rider\)/,
-    "promote-dialogen skal projicere fra rytter-objektet, så current_production_value følger med",
-  );
-  assert.doesNotMatch(
-    pageSource,
-    /projectSeniorSalary\([^)]*division/,
-    "løn må ikke skalere med division (#3989) — parameteren findes ikke længere",
-  );
+test("#6155: fuld juniortrup spærrer ikke, når U23 har plads; kortet siger hvor han kommer hen", () => {
+  assert.match(pageSource, /const landing = academyLandingSquad\(targetSquad, ageForSeason\(rider\.birthdate, seasonYear\), squadCounts\);/);
+  assert.match(pageSource, /const isFull = landing\.full;/, "spærringen afgøres af ALLE mulige trupper, ikke kun aldersplaceringen");
+  assert.match(pageSource, /landing\.movedToU23 && \(\s*<p[^>]*data-testid="intake-lands-u23">\{t\("landsOnU23"\)\}/);
+  assert.match(pageSource, /blockedBoth \? t\("fullNoteBoth"\)/);
 });
 
 test("intake-kandidat-navnet linker ALDRIG til rytterprofilen (#3142)", () => {
@@ -133,12 +121,10 @@ test("intake-kandidat-navnet linker ALDRIG til rytterprofilen (#3142)", () => {
   // #1743) — is_offered_intake_rider() gør /riders/:id "rytter ikke fundet" for
   // NETOP denne rytter, uanset hvilket hold der klikker. Et RiderLink her ville
   // derfor altid være en dødsende. Isolér INTAKE-sektionen (mellem sektions-
-  // kommentarerne) og assertér at den ikke bruger RiderLink — roster- og
-  // graduerings-sektionerne (allerede ejede/signerede ryttere, ikke 'offered')
-  // beholder deres RiderLink uændret.
+  // kommentarerne) og assertér at den ikke bruger RiderLink.
   const start = pageSource.indexOf("INTAKE-sektion");
   assert.ok(start > 0, "kunne ikke finde INTAKE-sektionen i AcademyPage.jsx");
-  const end = pageSource.indexOf("ROSTER-sektion", start);
+  const end = pageSource.indexOf("UNGDOMSTRUP-links", start);
   assert.ok(end > start, "kunne ikke finde slutningen af INTAKE-sektionen");
   const intakeSection = pageSource.slice(start, end);
   assert.doesNotMatch(
@@ -153,17 +139,17 @@ test("intake-kandidat-navnet linker ALDRIG til rytterprofilen (#3142)", () => {
 // synligt når roster-grenen renderer (academy_enabled=true). Isolér den
 // slukkede-flag-gren (mellem "Flag slukket" og den efterfølgende T2-kommentar)
 // og den aktiverede hoved-retur (fra samme T2-kommentar til filens slutning)
-// samme mønster som INTAKE/ROSTER-isolationen ovenfor.
+// samme mønster som INTAKE-isolationen ovenfor.
 const disabledBranch = (() => {
   const start = pageSource.indexOf("// Flag slukket");
   assert.ok(start > 0, "kunne ikke finde !enabled-grenen (\"Flag slukket\")");
-  const end = pageSource.indexOf("// #3454: T1 (max-w-4xl)", start);
+  const end = pageSource.indexOf("// #3454: T2", start);
   assert.ok(end > start, "kunne ikke finde slutningen af !enabled-grenen");
   return pageSource.slice(start, end);
 })();
 
 const enabledBranch = (() => {
-  const start = pageSource.indexOf("// #3454: T1 (max-w-4xl)");
+  const start = pageSource.indexOf("// #3454: T2");
   assert.ok(start > 0, "kunne ikke finde den aktiverede hoved-retur");
   return pageSource.slice(start);
 })();
@@ -257,9 +243,21 @@ test("hentede kandidater viser nuværende evner, som SSOT og copy lover (#6666 p
   assert.match(pageSource, /font-data text-3xs tabular-nums/);
 });
 
-test("rosterets prognose læres gennem træning når Optag 2.0 er tændt (#6666 punkt 2)", () => {
-  assert.match(pageSource, /legacy=\{r\.prognosis \? <AcademyPrognosisCell/);
-  assert.match(pageSource, /<ScoutablePotentiale rider=\{r\}/, "flag off: uændret scouting-visning");
+test("#6155: teksterne antyder ingen akademitrup; EN og DA har samme nye nøgler, ingen em-dash", () => {
+  const en = academyLocale("en");
+  const da = academyLocale("da");
+  for (const [lng, json] of [["en", en], ["da", da]]) {
+    for (const key of ["rosterHeading", "emptyRoster", "emptyRosterTitle"]) {
+      assert.equal(json[key], undefined, `${lng}: ${key} hører til den fjernede rytterliste`);
+    }
+    for (const text of [json.subtitle, json.pnl.subtitle, json.pnl.currentHeading, json.pnl.currentCaption, json.landsOnU23,
+      json.fullNoteBoth, json.fullTooltipBoth, ...Object.values(json.squadLinks)]) {
+      assert.equal(typeof text, "string", `${lng}: en ny tekst mangler`);
+      assert.doesNotMatch(text, /—/, `${lng}: ingen em-dash ("${text}")`);
+      assert.doesNotMatch(text, /academy roster|akademihold|in your academy|i akademiet|\bloft\b/i, `${lng}: "${text}" antyder en akademitrup`);
+    }
+  }
+  assert.deepEqual(Object.keys(en.squadLinks), Object.keys(da.squadLinks));
 });
 
 test("profil-kortet vises kun med Optag 2.0 og har ingen guld-knap (#6666 punkt 4-5)", () => {

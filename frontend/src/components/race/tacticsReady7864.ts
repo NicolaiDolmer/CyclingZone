@@ -1,4 +1,4 @@
-import { isTimeTrialProfile, legacyOrderFromPlan, planRole, setRiderPlan, stagePlanRouteFromRaw, suggestStagePlan, validateStagePlanLegs, STAGE_PLAN_FINAL_KM, type StagePlanLeg, type StagePlanRole, type StagePlanRoute, type StagePlanTask } from './StagePlanModel.ts';
+import { isTimeTrialProfile, legacyOrderFromPlan, planRole, setRiderPlan, stagePlanRouteFromRaw, suggestStagePlan, validateStagePlanLegs, STAGE_PLAN_FINAL_KM, TASK_EFFORT, type StagePlanEffort, type StagePlanLeg, type StagePlanRole, type StagePlanRoute, type StagePlanTask } from './StagePlanModel.ts';
 import { applyRoleForRest } from '../../lib/stageRoleMatrixLogic.js';
 import { waypointsFor } from '../../lib/stageRouteProfile.js';
 export type TeamPlanKind = 'gc' | 'stage' | 'sprint' | 'break' | 'save';
@@ -88,6 +88,11 @@ export function buildTeamPlan(kind: TeamPlanKind, { riders, route, order, locked
           : suggested ?? save();
       } else if (supports.has(role)) {
         plan = suggestStagePlan({role:'helper',route,teamHasSprintCaptain:false,luxuryHelper:desiredRoles[rider.rider_id]==='luxury_helper'}) ?? [{task:'shelter_leader'}];
+      } else {
+        // Same rule as the suggestion engine: a co-captain rides the captain's suggested
+        // plan, and a free role rides his own role suggestion. Nobody outside the helpers
+        // is quietly told to ride in (#7864).
+        plan = suggestStagePlan({role,route,teamHasSprintCaptain:false}) ?? save();
       }
     }
     if (validateStagePlanLegs(plan,role,route) !== null) return null;
@@ -97,14 +102,20 @@ export function buildTeamPlan(kind: TeamPlanKind, { riders, route, order, locked
   return {kind,target,order:next,roles,roleChanges,editableRiderIds:available.map(r=>r.rider_id),sourceRoles};
 }
 
-/** Literal qualitative v5 categories, not a numerical fatigue prediction. */
-const COST: Record<StagePlanTask, 'easy' | 'medium' | 'hard' | 'veryHard'> = {
-  stay_sheltered:'easy', grupetto:'easy', ride_in:'easy',
-  shelter_leader:'medium', follow_moves:'medium', ride_for_result:'medium',
-  breakaway:'hard', tempo:'hard', sprint_train:'hard', hunt_points:'hard', hunt_kom:'hard',
-  attack:'veryHard',
-};
-export function taskCostKey(task: StagePlanTask): string { return `stagePlanReady.price.${COST[task]}`; }
+export type TaskCostWord = 'easy' | 'medium' | 'hard' | 'veryHard';
+/** Qualitative price word per engine effort step, never a numerical fatigue prediction. */
+export const EFFORT_COST_WORD: Readonly<Record<StagePlanEffort, TaskCostWord>> = Object.freeze({
+  grupetto:'easy', save:'easy', normal:'medium', protect:'hard', all_out:'veryHard',
+});
+/**
+ * The one named exception to "the word follows TASK_EFFORT": a breakaway runs on the
+ * normal effort step, but the engine's condition model adds extra work for time spent
+ * in a front group and for being caught (backend/lib/conditionModelV2.js). The legs
+ * pay more than the step alone says, so the word stays Hard (owner choice A, #7864).
+ */
+export const TASK_COST_EXCEPTIONS: Readonly<Partial<Record<StagePlanTask, TaskCostWord>>> = Object.freeze({ breakaway:'hard' });
+export function taskCostWord(task: StagePlanTask): TaskCostWord { return TASK_COST_EXCEPTIONS[task] ?? EFFORT_COST_WORD[TASK_EFFORT[task]]; }
+export function taskCostKey(task: StagePlanTask): string { return `stagePlanReady.price.${taskCostWord(task)}`; }
 type Matrix = Record<number, Record<string, {race_role:string;effort:string}>>;
 export function applyTeamPlanRoles<T extends Matrix>(matrix: T, stage: number, changes: TeamPlanRoleChange[], editableIds?: string[]): T {
   const ordered=[...changes].sort((a,b)=>Number(leaders.has(planRole(a.role)))-Number(leaders.has(planRole(b.role))));

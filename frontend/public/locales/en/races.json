@@ -2,17 +2,17 @@
   "stagePlanReady": {
     "gc": {
       "name": "Ride for GC",
-      "description": "Everyone rides for your GC leader and keeps him out of trouble.",
+      "description": "The domestiques ride for your GC leader. A shared captain rides the same plan, a free role rides his own race.",
       "named": "Ride for GC with {name}"
     },
     "stage": {
       "name": "Stage win",
-      "description": "The team works for the rider who suits today's route best.",
+      "description": "The domestiques work for the rider who suits today's route best.",
       "named": "Stage win for {name}"
     },
     "sprint": {
       "name": "Sprint",
-      "description": "The team saves him for the finish, with a train in the last km.",
+      "description": "The team saves him for the finish, with a train in the last 10 km.",
       "named": "Sprint for {name}"
     },
     "break": {
@@ -21,7 +21,7 @@
     },
     "save": {
       "name": "Save the legs",
-      "description": "Everyone rides in. Lowest fatigue tonight."
+      "description": "Everyone rides in. The lightest of the five plans."
     },
     "price": {
       "easy": "Easy",
@@ -1093,6 +1093,7 @@
     "line": "Default {role}. Today: {today}.",
     "riderAbandoned": "Out of the race",
     "copyToStage": "Copy to stage {number}",
+    "copyToStages": "Copy to stages {numbers}",
     "save": "Save stage {number}",
     "saveRaceDay": "Save race day",
     "saving": "Saving…",
@@ -1723,6 +1724,10 @@
         "all_out_cracked": "{rider} goes all out and runs empty on the last climb.",
         "attack_gain": "{rider} attacks on the last climb and gains time.",
         "attack_cracked": "{rider} attacks and runs empty on the last climb.",
+        "climb_attack_start": "{rider} attacks at the foot of the last climb.",
+        "climb_attack_start_named": "{rider} attacks at the foot of {climb}.",
+        "climb_attack_held": "{rider} holds the attack to the top and has gained time on the climb.",
+        "climb_attack_cracked": "{rider} has run empty after the attack and is dropped.",
         "bad_day_fatigue": "{rider} had a bad day. The hard days before caught up with him.",
         "bad_day_form": "{rider} had a bad day. He was short of form.",
         "bad_day_illness": "{rider} had a bad day. He was feeling ill.",

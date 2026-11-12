@@ -118,6 +118,7 @@ export default function StagePageV2(props: StagePageV2Props) {
     }
     return {
       profileType: profileByStage[selectedStage]?.profile_type ?? null,
+      climbs: profileByStage[selectedStage]?.climbs ?? null, // #7965: stigningens fod
       events: (timeline as { events?: StoryNarrativeContext["events"] } | null)?.events ?? [],
       ranAt: ranTimeline?.created_at ?? null, // #7717
       teamNameById,

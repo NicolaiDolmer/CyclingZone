@@ -28,6 +28,9 @@ import { isTrainingReservationHeldError } from "./dailyTrainingEngine.js";
 import { loadTrainNowBonusRiderIds } from './trainNowBonus7737.ts';
 
 
+// #7982: the press times its steps; without a timer every step just runs.
+const UNTIMED = { step: (_name, fn) => fn() };
+
 const sortedDays = (gameDays) => [...new Set(gameDays ?? [])].filter(Number.isInteger).sort((a, b) => a - b);
 const slotsOf = (map, id) => (map instanceof Map ? map.get(id) : map?.[id]) ?? [];
 
@@ -92,10 +95,11 @@ async function setWholeDayMark({ supabase, tickDate, riderIds, at }) {
  */
 export async function settleWholeDayPress({
   supabase, team, season, now, tickDate, work, available, readiness, pressedAt, runDay, readReadiness, instant = false,
+  timing = UNTIMED,
 }) {
-  const frozenRetry = instant ? [] : await loadTrainNowFrozenDateEntries({
+  const frozenRetry = instant ? [] : await timing.step("frozen_retry", () => loadTrainNowFrozenDateEntries({
     supabase, teamId: team.id, seasonId: season.id, tickDate, riderIds: available,
-  });
+  }));
   if (frozenRetry.length) {
     const frozenIds = new Set(frozenRetry.map(row => row.rider_id));
     available = available.filter(id => frozenIds.has(id));
@@ -104,10 +108,10 @@ export async function settleWholeDayPress({
   let plan = planWholeDayPress({ gameDays: work.game_days, riderIds: available, unresolvedSlotsByRider: readiness.unresolvedSlotsByRider, instant });
 
   if (instant) {
-    const { data, error } = frozenRetry.length ? { data: frozenRetry, error: null } : await supabase.rpc("freeze_train_now_date_entries", {
+    const { data, error } = frozenRetry.length ? { data: frozenRetry, error: null } : await timing.step("freeze", () => supabase.rpc("freeze_train_now_date_entries", {
       p_team_id: team.id, p_season_id: season.id, p_tick_date: tickDate,
       p_rider_ids: available, p_now: now.toISOString(),
-    });
+    }));
     if (error || !Array.isArray(data) || data.length !== available.length
       || new Set(data.map((row) => row.rider_id)).size !== available.length
       || data.some((row) => !available.includes(row.rider_id) || !Array.isArray(row.slots))) {
@@ -122,7 +126,7 @@ export async function settleWholeDayPress({
   }
   // Shared lock: mark first, then read the entries again. An entry committed before
   // the mark is visible now; any later insert is skipped by the database guard.
-  await setWholeDayMark({ supabase, tickDate, riderIds: plan.wholeDateRiderIds, at: now.toISOString() });
+  await timing.step("whole_day_mark", () => setWholeDayMark({ supabase, tickDate, riderIds: plan.wholeDateRiderIds, at: now.toISOString() }));
   const after = instant ? readiness : await readReadiness();
   const slipped = plan.wholeDateRiderIds.filter((id) => slotsOf(after.unresolvedSlotsByRider, id).length);
   const unresolvedSlotsByRider = { ...readiness.unresolvedSlotsByRider };
@@ -142,20 +146,22 @@ export async function settleWholeDayPress({
     if (error) throw new Error(`train-now whole-day unmark: ${error.message ?? error}`);
   }
   if (instant) {
-    const bonusIds = await loadTrainNowBonusRiderIds({ supabase, teamId: team.id, seasonId: season.id, tickDate, riderIds: available });
-    await setInstantStamp({ supabase, tickDate, riderIds: [...new Set([...plan.instantRiderIds, ...bonusIds])], at: now.toISOString() });
+    await timing.step("instant_stamp", async () => {
+      const bonusIds = await loadTrainNowBonusRiderIds({ supabase, teamId: team.id, seasonId: season.id, tickDate, riderIds: available });
+      await setInstantStamp({ supabase, tickDate, riderIds: [...new Set([...plan.instantRiderIds, ...bonusIds])], at: now.toISOString() });
+    });
   }
 
   const settledDays = [];
-  for (const { gameDay, riderIds } of plan.runs) {
+  for (const [index, { gameDay, riderIds }] of plan.runs.entries()) {
     try {
-      await runDay({
+      await timing.step(`run_day_${index + 1}`, () => runDay({
         supabase, teamId: team.id, seasonId: season.id, seasonNumber: season.number,
         now, tickDateOverride: tickDate, gameDay, dateGameDays: work.game_days, executedBy: "manager",
         eligibleRiderIds: riderIds, unresolvedSlotsByRider,
         deadlineAt: readiness.deadlineAt.toISOString(), deadlineReached: false,
         ...(instant ? { instantPress: true } : {}),
-      });
+      }));
     } catch (err) {
       // #6839: the evening run holds this race day; it settles the rest.
       if (isTrainingReservationHeldError(err)) {

@@ -1,20 +1,26 @@
 {
   "title": "Akademi",
-  "subtitle": "Signér unge talenter, udvikl dem, og bestem hvornår de skal rykke op eller sælges.",
+  "subtitle": "Signér unge talenter til dit U23-hold og dit juniorhold, og følg hvad ungdomsarbejdet giver.",
   "slotsU23": "U23 {used}/{max}",
   "slotsJunior": "Junior {used}/{max}",
   "balance": "Saldo: {amount} CZ$",
   "disabledTitle": "Følg akademiet på roadmap'et",
   "disabledNote": "Akademiet er ikke åbnet på din konto endnu.",
   "disabledAction": "Se roadmap'et",
-  "graduationHeading": "Ryttere der forlader akademiet",
+  "graduationHeading": "Ryttere der skifter trup",
   "intakeHeading": "Kandidater",
-  "rosterHeading": "Akademihold",
   "emptyIntake": "Ingen kandidater lige nu. Nye kandidater kommer hver søndag.",
   "emptyAction": "Gå til auktioner",
   "emptyIntakeTitle": "Find en ung rytter i auktionerne",
-  "emptyRoster": "Unge ryttere dukker også op i de live auktioner, og signerede kandidater lander her.",
-  "emptyRosterTitle": "Signér din første akademirytter",
+  "squadLinks": {
+    "title": "Dine ungdomshold",
+    "description": "Alle talenter, du signerer, kommer på dit U23-hold eller dit juniorhold. Der ser og styrer du dem.",
+    "u23": "U23-hold",
+    "junior": "Juniorhold",
+    "count": "{used}/{max}",
+    "full": "Fuldt"
+  },
+  "landsOnU23": "Dit juniorhold er fuldt, så han kommer på dit U23-hold.",
   "youthSquads": {
     "title": "Ungdomshold",
     "roadmap": "Roadmap",
@@ -34,14 +40,12 @@
   "ageLabel": "{age} år",
   "signBtn": "Signér",
   "rejectBtn": "Afvis",
-  "promoteBtn": "Ryk op",
   "sellBtn": "Sælg",
   "youthSell": {
     "sell": "Sælg",
     "edit": "Ret salg",
     "title": "Åbner rytterens side, hvor du sætter prisen."
   },
-  "releaseBtn": "Fyr",
   "graduationDeadline": "{days}d tilbage",
   "graduationOverdue": "Frist overskredet",
   "signingFee": "Signeringspris",
@@ -56,7 +60,7 @@
     "pulling": "Henter...",
     "provisionalValue": "Provisorisk værdi",
     "wageOneSeason": "Løn (1 sæson)",
-    "valuationNote": "Markedsværdien opdateres søndag. Prognosen for potentialet læres gennem træning og løb.",
+    "valuationNote": "Markedsværdien opdateres søndag. Potentialet lærer du gennem træning og løb.",
     "abilitiesNow": "Evner nu",
     "emptyAfterPull": "Ingen kandidater tilbage at tage stilling til. Næste uges kuld åbner søndag.",
     "errorFailed": "Kunne ikke hente ugens kandidater. Prøv igen."
@@ -130,19 +134,12 @@
   "fullTooltipJunior": "Dit juniorhold er fuldt ({max}/{max}). Frigør en plads først.",
   "fullNoteU23": "Han skal på dit U23-hold, og det er fuldt. Signér når en plads bliver ledig.",
   "fullNoteJunior": "Han skal på dit juniorhold, og det er fuldt. Signér når en plads bliver ledig.",
-  "contractUntil": "Til sæson {season}",
-  "colNation": "Nation",
-  "colRider": "Rytter",
-  "colType": "Type",
-  "colAge": "Alder",
+  "fullTooltipBoth": "Både dit juniorhold og dit U23-hold er fulde. Frigør en plads først.",
+  "fullNoteBoth": "Han kan stå på dit juniorhold eller dit U23-hold, og begge er fulde. Signér når en plads bliver ledig.",
   "colValue": "Værdi",
-  "colSalary": "Løn",
-  "colContract": "Kontrakt",
-  "colAction": "Handling",
-  "promoteSeniorFullTooltip": "Din senior-trup er fuld. Frigør en senior-plads først.",
   "transferModal": {
     "promoteTitle": "Ryk op i senior-truppen",
-    "promoteQuestion": "Ryk denne akademi-rytter op i din senior-trup:",
+    "promoteQuestion": "Ryk denne rytter op i din senior-trup:",
     "promoteConfirm": "Ryk op",
     "promoteNote": "Rytteren optager en senior-plads og får en senior-kontrakt. Ungdomslønnen erstattes af senior-lønnen vist ovenfor.",
     "promoteNoteKeepsContract": "Rytteren optager en senior-plads. Den nuværende kontrakt og løn fortsætter uændret.",
@@ -194,23 +191,19 @@
     }
   },
   "error": {
-    "academyFull": "Akademiet er fuldt. Kan ikke signere endnu en rytter.",
+    "academyFull": "Der er ingen ledig plads på det hold, han skal på. Frigør en plads først.",
     "notOffered": "Denne rytter har ikke fået tilbudt en plads.",
     "insufficientBalance": "Du har ikke råd til signeringsprisen.",
     "insufficientAvailableBalance": "Ikke nok disponible penge: en del af din saldo er låst i auktionsbud.",
-    "alreadyAssigned": "Rytteren er allerede optaget i et akademi.",
+    "alreadyAssigned": "Rytteren er allerede kommet på et hold.",
     "riderOwned": "Rytteren er lige nu på et andet hold, så tilbuddet kan ikke gennemføres endnu. Jeg er i gang med at rette det, og dit tilbud bliver stående.",
-    "squadFull": "Senior-truppen er fuld. Frigør en plads for at rykke op, eller sælg eller fyr i stedet.",
-    "riderOnAuction": "Rytteren er på en aktiv auktion og kan ikke fyres, før den slutter.",
-    "cannotAffordRelease": "Du har ikke råd til fyrings-gebyret for denne rytter.",
-    "riderStateChanged": "Rytteren er ikke længere i dit akademi.",
     "generic": "Noget gik galt. Prøv igen.",
     "loadTitle": "Kunne ikke hente dit akademi",
     "loadBody": "Akademi-data kom ikke igennem. Genindlæs siden, og sig til hvis det bliver ved."
   },
   "releaseModal": {
-    "title": "Fyr akademi-rytter",
-    "question": "Afslut denne akademi-rytters kontrakt:",
+    "title": "Fyr ungdomsrytter",
+    "question": "Afslut denne rytters kontrakt:",
     "feeLabel": "Fyrings-gebyr",
     "balanceLabel": "Din saldo",
     "feeHint": "Fyrings-gebyret er en halv sæsons løn af den resterende kontrakt, samme som for senior-ryttere.",
@@ -220,7 +213,7 @@
   },
   "pnl": {
     "heading": "Akademi-regnskab",
-    "subtitle": "Kun realiserede salg tæller. Ryttere der stadig er i akademiet, viser ingen værdi her, før de sælges.",
+    "subtitle": "Kun realiserede salg tæller. Dine U23- og juniorryttere viser ingen værdi her, før de sælges.",
     "loadingNote": "Henter akademi-regnskab...",
     "cumulativeHeading": "Samlet pengestrøm",
     "driftPaid": "Betalt drift",
@@ -229,17 +222,17 @@
     "valueCreation": "Salgspræmie",
     "netCashFlow": "Netto pengestrøm",
     "premiumCaption": "Salgspræmie er beløbet hentet ud over rytterens markedsværdi på det tidspunkt, rytteren blev sat til salg.",
-    "currentHeading": "Nuværende trup",
+    "currentHeading": "U23- og juniorhold nu",
     "slotsLabel": "Brugte pladser",
     "payrollLabel": "Nuværende løn (pr. sæson)",
-    "currentCaption": "Et øjebliksbillede af akademiet lige nu, ikke en del af pengestrøms-summerne til venstre.",
-    "salesHeading": "Seneste akademisalg",
-    "emptySales": "Ingen akademi-ryttere solgt endnu.",
+    "currentCaption": "Et øjebliksbillede af dit U23-hold og dit juniorhold lige nu, ikke en del af pengestrøms-summerne til venstre.",
+    "salesHeading": "Seneste ungdomssalg",
+    "emptySales": "Ingen ungdomsryttere solgt endnu.",
     "colRider": "Rytter",
     "colDate": "Dato",
     "colPrice": "Salgspris",
     "colPremium": "Præmie",
-    "unknownRider": "Tidligere akademirytter"
+    "unknownRider": "Tidligere ungdomsrytter"
   },
   "graduationBanner": {
     "title": "{count, plural, one {1 rytter er vokset ud af sin trup} other {# ryttere er vokset ud af deres trup}}",
@@ -272,7 +265,7 @@
       "junior": "Juniorholdet",
       "u23": "U23-holdet",
       "senior": "Seniorholdet",
-      "unknown": "Akademiet"
+      "unknown": "Ungdomshold"
     },
     "transition": {
       "junior_u23": "Fra juniorholdet til U23-holdet",
@@ -298,14 +291,14 @@
     "rowError": {
       "not_pending": "Hans vindue er allerede lukket. Genindlæs siden.",
       "squad_cap_violation": "Der er ikke plads i den trup han skulle flyttes til.",
-      "rider_not_found": "Rytteren er ikke længere i dit akademi.",
+      "rider_not_found": "Rytteren er ikke længere på dine ungdomshold.",
       "failed": "Det gik ikke igennem. Prøv igen."
     }
   },
   "boardGift": {
     "heading": "Tak fra bestyrelsen",
     "meta": "{count} åbne",
-    "context": "Bestyrelsen har lagt disse talenter i dit akademi som tak. Det er gratis at signe dem, normal ungdomsløn gælder, og trupgrænserne tæller stadig. Tilbuddene gælder i 14 dage, og dem, du ikke vælger, forsvinder stille.",
+    "context": "Bestyrelsen har fundet disse talenter til dig som tak. Det er gratis at signe dem, normal ungdomsløn gælder, og trupgrænserne tæller stadig. Tilbuddene gælder i 14 dage, og dem, du ikke vælger, forsvinder stille.",
     "free": "Gratis"
   }
 }

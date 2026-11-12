@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 
 import {
   SQUAD_CAPS,
+  U23_MAX_SEASON_AGE,
+  academyLandingSquad,
   academyTargetSquad,
   isSquadFull,
   squadCapRows,
@@ -35,6 +37,39 @@ test("isSquadFull: ukendt antal eller trup er aldrig fuld", () => {
   assert.equal(isSquadFull("u23", { u23: null, junior: null }), false);
   assert.equal(isSquadFull(null, { u23: 99, junior: 99 }), false);
   assert.equal(isSquadFull("u23", null), false);
+});
+
+test("#6155 academyLandingSquad: aldersplaceringen først, når den har plads", () => {
+  assert.deepEqual(academyLandingSquad("junior", 17, { u23: 0, junior: 0 }),
+    { squad: "junior", full: false, movedToU23: false, options: ["junior", "u23"] });
+  assert.deepEqual(academyLandingSquad("u23", 20, { u23: 0, junior: SQUAD_CAPS.junior }),
+    { squad: "u23", full: false, movedToU23: false, options: ["u23"] });
+});
+
+test("#6155 academyLandingSquad: fuld juniortrup → talentet lander på U23, når U23 har plads", () => {
+  const r = academyLandingSquad("junior", 16, { u23: SQUAD_CAPS.u23 - 1, junior: SQUAD_CAPS.junior });
+  assert.equal(r.squad, "u23");
+  assert.equal(r.movedToU23, true);
+  assert.equal(r.full, false);
+  assert.equal(academyLandingSquad("junior", U23_MAX_SEASON_AGE, { u23: 0, junior: SQUAD_CAPS.junior }).squad, "u23",
+    "grænsen er inklusiv: højst U23_MAX_SEASON_AGE");
+});
+
+test("#6155 academyLandingSquad: spærret kun når begge mulige trupper er fulde", () => {
+  const both = academyLandingSquad("junior", 17, { u23: SQUAD_CAPS.u23, junior: SQUAD_CAPS.junior });
+  assert.equal(both.full, true);
+  assert.equal(both.squad, null);
+  // U23-alder har kun U23: fuld U23 spærrer, aldrig ned i junior.
+  assert.equal(academyLandingSquad("u23", 20, { u23: SQUAD_CAPS.u23, junior: 0 }).full, true);
+});
+
+test("#6155 academyLandingSquad: ukendt alder → ingen U23-mulighed; ukendt trup/antal spærrer aldrig", () => {
+  assert.deepEqual(academyLandingSquad("junior", null, { u23: 0, junior: SQUAD_CAPS.junior }),
+    { squad: null, full: true, movedToU23: false, options: ["junior"] });
+  assert.equal(academyLandingSquad("junior", U23_MAX_SEASON_AGE + 1, { u23: 0, junior: SQUAD_CAPS.junior }).full, true);
+  assert.deepEqual(academyLandingSquad(null, 17, { u23: 99, junior: 99 }),
+    { squad: null, full: false, movedToU23: false, options: [] });
+  assert.equal(academyLandingSquad("junior", 17, { u23: null, junior: null }).squad, "junior");
 });
 
 test("squadCapRows: 'U23 5/12 · Junior 3/10' i fast rækkefølge", () => {
