@@ -101,7 +101,7 @@ Form og træthed er ikke led i XP (S29). Træthed koster gennem form og skadesri
 
 - Bjælken gemmes **fortsat som en andel** i `ability_progress`. Vist XP = andel gange prisen for næste point.
 - Når et point købes, regnes overskuddet om til den nye pris, så ingen XP går tabt eller opstår. Dagens `bar -= 1` kan ikke genbruges, fordi prisen skifter mellem to point.
-- Maks +1 pr. evne pr. dato står uændret. Det, der klippes, bæres videre på bjælken.
+- **Intet +1-loft pr. evne pr. dato under XP** (ejer 7/11, #7739): kun prisen bremser. `ability_cap_per_date_enabled` gælder fortsat kurve B og dagens model. Løbsdagens eget loft pr. tick står. Undtagelse: overgangsvinduet i §7.3.
 - Fremdrift gemmes altid (S8). Falder en evne ved sæsonskiftet, står andelen uændret.
 - XP-tallet skrives i tick-rapporten (`training_rider_ticks.report`), som også kan bære løbsdage. Ny tabel er ikke nødvendig.
 
@@ -215,7 +215,7 @@ Tændes **kun mellem to datoer**. En dato må aldrig afregnes med to modeller, h
 
 - **Ingen evne ændres, og ingen rating falder ved tænding.** Der køres ingen massemutation og ingen omregning.
 - Bjælken bevarer sin andel. Ingen data skal migreres.
-- Evner, der står fast ved det gamle hårde tag eller i klippet lige under et point, begynder at købe point igen. Baren over 1 betales ud med højst +1 pr. dato. Gate X6 måler den første uge, så det ikke bliver et spring, spillerne oplever som en fejl.
+- Evner, der står fast ved det gamle hårde tag eller i klippet lige under et point, begynder at købe point igen. Baren over 1 betales som standard ud straks, til prisen. Overgangsvinduet (#7739): `development_xp_transition_cap_dates` i app_config giver højst +1 pr. evne pr. dato i de første datoer fra startdatoen; mangler nøglen, er der intet loft. Det kræver, at `ability_cap_per_date_enabled` er on. Ejeren vælger værdien før tænding. Gate X6 måler den første uge, så det ikke bliver et spring, spillerne oplever som en fejl.
 - **Ingen ny glidende overgang og intet nyt øjebliksbillede.** #7382 og D5 fandtes, fordi evner over et loft ellers ville bremse brat. Uden loft findes gruppen ikke. Tabellen fra #7382 røres ikke.
 - Ryttere med lavt potentiale og lave evner får lidt mindre pr. dag, og ryttere over det gamle bløde loft får mere. Kørslen viser hvor meget. Er ændringen synlig for en gruppe, får ejeren et kort før tænding.
 
@@ -240,7 +240,7 @@ Kørslen er `backend/scripts/dev/tenSeasonSim6110.mjs` (read-only, kopi af prod,
 | X3 Veteraner | Etablerede ryttere over ca. 29 år stiger ikke bredt |
 | X4 Type | En ren sprinter bliver ikke topklatrer på en hel karriere. En bjergrytter kan blive bakkerytter |
 | X5 Aldrig nul | En hel træningsdag giver altid synligt XP (#7757) |
-| X6 Tændingen | 0 ratingfald, +1 pr. dato holder, ingen unormal første uge |
+| X6 Tændingen | 0 ratingfald, ingen unormal første uge (med eller uden overgangsvinduet, #7739) |
 | X7 Mentale evner | Mentale evner vokser længere end de fysiske, men ingen mental evne løber fra dem. Taktik vurderes særskilt |
 | X8 Løb | G1, G2, G6 og G8 fra del 2 holder i XP |
 | X9 Talentet | H6b holder på XP-historikken, også mod en spiller, der kender koden (§5.2) |
@@ -263,7 +263,7 @@ Trinnene er fra §11, §13.1 og §13.2 i designet 23/10. "Falder væk" med stjer
 | 5 | Søndagsjob og skrivning | Står | |
 | 6 | Tal og ord på alle flader | Står | Loft-linjer udgår |
 | 7 | Udviklingsscore B | **Falder væk** som motorkobling | XP er udviklingen, ét tal (B11) |
-| 8 | +1 pr. dato | Står | Live |
+| 8 | +1 pr. dato | Står for kurve B | Live. Gælder ikke under XP (#7739) |
 | 9 | #7084 kvittering | Står | |
 | 10 | Train now hele dagen | Står | Live |
 | 11 | #2798 værdien | Ændres, først | Potentialet går ud af værdien, træningshastigheden (XP over tid) går ind (B15) |

@@ -78,8 +78,8 @@ import { ensureCurveBIgnition, curveBTransitionForDate, loadCurveBTransitionRost
 import { loadRaceDayEffortByRider, raceDayIntentionYieldMultiplier } from "./raceDayIntentionYield.js"; // #6641 variant B
 import { loadRaceDayRoleYield, loadRaceDayRoleByRider } from "./raceDayRoleYield5950.js"; // #5950 haard dag + rolle (kaldes via withRaceDayRoleYieldXp)
 import { loadDevelopmentScoreB, developmentTickArgs } from "./developmentScoreWiring.js"; // #6950 Udviklingsscore B
-import { loadDevelopmentXp, withRaceDayRoleYieldXp } from "./developmentXpFlag.ts"; // #6110 XP-modellen (slukket)
-import { capXpTickGainsPerDate } from "./developmentXp.ts"; // #6110: maks +1 pr. dato i XP
+import { loadDevelopmentXp, loadDevelopmentXpDateCap, withRaceDayRoleYieldXp } from "./developmentXpFlag.ts"; // #6110 XP-modellen (slukket)
+import { capXpTickGainsPerDate } from "./developmentXp.ts"; // #7739: kun i overgangsvinduet (slukket som standard)
 import { loadTrainNowBonusRiderIds } from './trainNowBonus7737.ts';
 import { loadRaceCatchUp } from "./raceCatchUpWiring.js"; // #6950 catch-up via loeb
 import { assessIllness } from "./conditionIllness.js"; // #6938 sygdom af langvarig ekstrem traethed
@@ -816,7 +816,12 @@ export async function runTeamTrainingDay({
   // #5950: loebsdag = haard dag + rolle-vaegtet tillaeg. null = dagens loebsdag, bit-identisk.
   const raceRoleYield = await loadRaceDayRoleYield({ supabase, strict: conditionPerDate });
   // #6110: XP-modellen for tick-datoen. null = dagens model, bit-identisk; kaster sammen med Score B/catch-up.
-  const developmentXp = await loadDevelopmentXp({ supabase, tickDate, strict: conditionPerDate, developmentScoreB, raceCatchUp, capPerDateOn, now: () => +now });
+  const developmentXp = await loadDevelopmentXp({ supabase, tickDate, strict: conditionPerDate, developmentScoreB, raceCatchUp, now: () => +now });
+  // #7739: under XP intet +1-loft pr. dato. Krogpunkt: overgangsvinduet (null = intet loft).
+  // Det bruger datoens tidligere gevinster, som kun laeses med dato-loft-kontakten on.
+  const xpDateCap = developmentXp && capPerDateOn
+    ? await loadDevelopmentXpDateCap({ supabase, tickDate, strict: conditionPerDate })
+    : null;
 
   // #6500: holdets raekke hentes ÉN gang, og kun naar flaget er taendt. Regel-gate,
   // ikke berigelse: et gaet ville enten give et AI-hold udvikling eller tage den
@@ -1346,25 +1351,30 @@ export async function runTeamTrainingDay({
       // nulstille DET HER (i stedet for at springe tick'et over) er form, traethed,
       // skade og scoren bit-identiske med et managerhold, og alle nedstroems
       // forbrugere (patch, historik, rapport) ser automatisk "ingen gevinst".
+      // #6210: datoens tidligere gevinster for rytteren, paa tvaers af datoens loebsdage og
+      // stier. Paa loebsdags-aksen ogsaa dato-kvitteringerne; kalenderdags-stien (flag slukket,
+      // rollback eller loebsdags-fallback, Codex P1) kun datoens tidligere tick-rapporter.
+      const dateUsedGains = () => sumDateGains([
+        ...(useRaceDayKey && conditionPerDate ? dateReceipts.filter((row) => row.rider_id === rider.id
+          && row.tick_date === tickDate && row.game_day !== raceDay).map((row) => row.report) : []),
+        ...sameDateRunReports.filter((row) => row.rider_id === rider.id),
+      ]);
       if (!developmentAllowed) {
         tickResult = { ...tickResult, abilities: { ...abilities }, gains: {}, progress: preProgress };
+      } else if (developmentXp) {
+        // #7739 (ejer 7/11): under XP er der intet +1-loft pr. evne pr. dato; kun prisen
+        // bremser, og intet dato-loft betyder ingen kvittering for det. Undtagelse:
+        // overgangsvinduet (xpDateCap, slukket som standard), der koeber tick'et om fra
+        // tilstanden foer tick'et, saa ingen XP gaar tabt.
+        if (xpDateCap != null) {
+          tickResult = capXpTickGainsPerDate({ tickResult, abilities, progress: preProgress, usedGains: dateUsedGains(), cap: xpDateCap }, developmentXp);
+        }
       } else if (!capPerDateOn) {
         // #6210-flaget slukket: ingen dato-loft (bit-identisk med foer #7075).
-      } else if (useRaceDayKey) {
-        // #6210: maks +1 pr. evne pr. dato, paa tvaers af datoens loebsdage og stier.
-        // Kalenderdags-stien faar samme loft i else-grenen nedenfor. Et
-        // ikke-managerhold (ovenfor) faar ingen gevinst, saa vaernet er kun noedvendigt her.
-        const usedGains = sumDateGains([
-          ...(conditionPerDate ? dateReceipts.filter((row) => row.rider_id === rider.id
-            && row.tick_date === tickDate && row.game_day !== raceDay).map((row) => row.report) : []),
-          ...sameDateRunReports.filter((row) => row.rider_id === rider.id),
-        ]);
-        tickResult = developmentXp ? capXpTickGainsPerDate({ tickResult, abilities, progress: preProgress, usedGains }, developmentXp) : capTickGainsPerDate({ tickResult, abilities, usedGains });
       } else {
-        // #6210 (Codex P1): kalenderdags-stien (flag slukket, rollback eller loebsdags-fallback)
-        // faar samme dato-loft, inkl. gevinster fra datoens tidligere loebsdags-ticks.
-        const usedGains = sumDateGains(sameDateRunReports.filter((row) => row.rider_id === rider.id));
-        tickResult = developmentXp ? capXpTickGainsPerDate({ tickResult, abilities, progress: preProgress, usedGains }, developmentXp) : capTickGainsPerDate({ tickResult, abilities, usedGains });
+        // #6210: maks +1 pr. evne pr. dato for dagens model og kurve B. Et ikke-managerhold
+        // (ovenfor) faar ingen gevinst, saa vaernet er kun noedvendigt her.
+        tickResult = capTickGainsPerDate({ tickResult, abilities, usedGains: dateUsedGains() });
       }
     }
 
