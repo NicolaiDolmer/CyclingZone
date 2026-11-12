@@ -2,12 +2,12 @@
   "stagePlanReady": {
     "gc": {
       "name": "Rijden voor het klassement",
-      "description": "Iedereen rijdt voor je klassementskopman en houdt hem uit de problemen.",
+      "description": "De knechten rijden voor je klassementskopman. De gedeelde kopman rijdt hetzelfde plan, de vrije rol rijdt zijn eigen koers.",
       "named": "Rijden voor het klassement met {name}"
     },
     "stage": {
       "name": "Ritzege",
-      "description": "De ploeg werkt voor de renner die het best past bij de route van vandaag.",
+      "description": "De knechten werken voor de renner die het best past bij de route van vandaag.",
       "named": "Ritzege voor {name}"
     },
     "sprint": {
@@ -21,7 +21,7 @@
     },
     "save": {
       "name": "Benen sparen",
-      "description": "Iedereen rijdt rustig binnen. De minste vermoeidheid vanavond."
+      "description": "Iedereen rijdt rustig binnen. Het lichtste van de vijf plannen."
     },
     "price": {
       "easy": "Licht",
