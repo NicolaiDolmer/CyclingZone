@@ -5,7 +5,7 @@ import { isAuctionCommitmentTable, auctionCommitmentTable } from "./availableBal
 import { getTeamAcademyCount, runAcademyIntake, runAcademyIntakeForTeam, signAcademyCandidate, rejectAcademyCandidate, seedAcademyCohortForTeam, referenceYearForSeason } from "./academyIntake.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { generateAcademyCandidates } from "./academyGenerator.js";
-import { ageForSeason } from "./riderSeasonAge.js";
+import { ageForSeason, LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
 import { ACADEMY } from "./academyFlag.js";
 import { computeFrozenSalary } from "./contractSeed.js";
 
@@ -564,6 +564,8 @@ function makeSignRejectSupabase({
   sourceColumnMissing = false, // #5844: select af `source` giver 42703
   teamBalance, // #6261-#6264: holdets rå saldo (undefined = ikke sat; så er fee > saldo)
   leadingAuctions = [], // #6261-#6264: førende bud der låser penge
+  riderBirthdate, // #6155: undefined = ingen fødselsdato (ukendt alder)
+  fullSquads = [], // #6155: trupper hvor RPC'en svarer academy_full
 } = {}) {
   const riderUpdates = [];
   const intakeUpdates = [];
@@ -618,6 +620,7 @@ function makeSignRejectSupabase({
                   data: {
                     id: "rider-X", firstname: "Sander", lastname: "Akademi",
                     team_id: riderTeamId, // #4213: ejerskabs-precheck læser feltet
+                    ...(riderBirthdate !== undefined ? { birthdate: riderBirthdate } : {}),
                     market_value: riderBaseValue, base_value: riderBaseValue, prize_earnings_bonus: 0,
                     ...(currentProductionValue !== undefined ? { current_production_value: currentProductionValue } : {}),
                   },
@@ -681,7 +684,7 @@ function makeSignRejectSupabase({
         return Promise.resolve({ data: { ok: false, code: rpcCode }, error: null });
       }
       const price = Number(_args.p_price);
-      if (teamAcademyCount >= 8) {
+      if (teamAcademyCount >= 8 || fullSquads.includes(_args.p_squad)) {
         return Promise.resolve({ data: { ok: false, code: "academy_full" }, error: null });
       }
       if (price > 0 && 500000 < price) {
@@ -1197,5 +1200,74 @@ test("signAcademyCandidate (#6261-#6264): præcis nok disponibelt efter bud → 
     leadingAuctions: [{ id: "a1", current_price: 10 }],
   });
   await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: 1 });
+  assert.equal(supabase._rpcCalls.length, 1);
+});
+
+// ─── #6155: et hentet talent lander på U23, når juniortruppen er fuld ─────────
+const SIGN_SEASON = 4;
+const birthdateForSeasonAge = (age) => `${LAUNCH_REFERENCE_YEAR + (SIGN_SEASON - 1) - age}-06-01`;
+
+test("signAcademyCandidate (#6155): junior-alder + plads i junior → junior, ét RPC-kald", async () => {
+  const supabase = makeSignRejectSupabase({ riderBirthdate: birthdateForSeasonAge(17) });
+  const r = await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: SIGN_SEASON });
+  assert.equal(r.squad, "junior");
+  assert.deepEqual(supabase._rpcCalls.map((c) => c._args.p_squad), ["junior"]);
+});
+
+test("signAcademyCandidate (#6155): juniortruppen fuld → talentet lander på U23 (samme pris, én debitering)", async () => {
+  const supabase = makeSignRejectSupabase({ riderBirthdate: birthdateForSeasonAge(17), fullSquads: ["junior"], riderBaseValue: 200_000 });
+  const r = await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: SIGN_SEASON });
+  assert.equal(r.squad, "u23");
+  assert.deepEqual(supabase._rpcCalls.map((c) => c._args.p_squad), ["junior", "u23"]);
+  const [first, second] = supabase._rpcCalls;
+  assert.equal(second._args.p_squad_cap, 12, "U23-forsøget tælles mod U23-loftet");
+  assert.deepEqual({ ...second._args, p_squad: first._args.p_squad, p_squad_cap: first._args.p_squad_cap }, first._args,
+    "andet forsøg er samme køb (pris, løn, idempotency_key); kun truppen skifter");
+  assert.equal(supabase._riderUpdates.length, 1, "rytteren optages én gang");
+  assert.equal(supabase._intakeUpdates.at(-1).status, "signed");
+});
+
+test("signAcademyCandidate (#6155): bestyrelsens gave-kuld følger samme regel (fuld junior → U23, stadig gratis)", async () => {
+  const supabase = makeSignRejectSupabase({ intakeSource: "board_gift", riderBirthdate: birthdateForSeasonAge(16), fullSquads: ["junior"] });
+  const r = await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: SIGN_SEASON });
+  assert.equal(r.squad, "u23");
+  assert.equal(r.fee, 0);
+  assert.ok(supabase._rpcCalls.every((c) => c._args.p_price === 0));
+});
+
+test("signAcademyCandidate (#6155): begge trupper fulde → academy_full, tilbuddet står urørt", async () => {
+  const supabase = makeSignRejectSupabase({ riderBirthdate: birthdateForSeasonAge(17), fullSquads: ["junior", "u23"] });
+  await assert.rejects(
+    () => signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: SIGN_SEASON }),
+    /academy_full/,
+  );
+  assert.deepEqual(supabase._rpcCalls.map((c) => c._args.p_squad), ["junior", "u23"]);
+  assert.equal(supabase._intakeUpdates.length, 0);
+});
+
+test("signAcademyCandidate (#6155): U23-alder og fuld U23 → academy_full, aldrig ned i junior", async () => {
+  const supabase = makeSignRejectSupabase({ riderBirthdate: birthdateForSeasonAge(20), fullSquads: ["u23"] });
+  await assert.rejects(
+    () => signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: SIGN_SEASON }),
+    /academy_full/,
+  );
+  assert.deepEqual(supabase._rpcCalls.map((c) => c._args.p_squad), ["u23"]);
+});
+
+test("signAcademyCandidate (#6155): ukendt alder + fuld junior → academy_full uden gæt op på U23", async () => {
+  const supabase = makeSignRejectSupabase({ fullSquads: ["junior"] });
+  await assert.rejects(
+    () => signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: SIGN_SEASON }),
+    /academy_full/,
+  );
+  assert.deepEqual(supabase._rpcCalls.map((c) => c._args.p_squad), ["junior"]);
+});
+
+test("signAcademyCandidate (#6155): andre afvisninger end academy_full prøver ikke en ny trup", async () => {
+  const supabase = makeSignRejectSupabase({ riderBirthdate: birthdateForSeasonAge(17), rpcCode: "insufficient_balance" });
+  await assert.rejects(
+    () => signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: SIGN_SEASON }),
+    /insufficient_balance/,
+  );
   assert.equal(supabase._rpcCalls.length, 1);
 });
