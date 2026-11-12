@@ -7,8 +7,12 @@
 //   sundayPotentialEstimateSweep.js  søndagskørslen
 //   potentialEstimateTeamChangeSweep.js  holdskifte
 //
-// Ryttere uden talent_ceiling springes over: det sande loft findes først efter
-// omregningen (byggetrin 12), og uden det er der intet at skønne over.
+// Det sande tal, skønnet skrives over:
+//   XP-modellen slukket  talent_ceiling. Ryttere uden det springes over: det sande
+//                        loft findes først efter omregningen (byggetrin 12).
+//   XP-modellen tændt    rytterens forventede topniveau (developmentXpExpectedTop.ts,
+//                        spec 2026-11-06 §6), når development_xp_model er on for
+//                        datoen og XP-params er gyldige. Uden loft findes loftet ikke.
 //
 // Intet her må forlade serveren: tabellen er server-only, og logs tæller kun
 // rækker. Tal og ord når først spilleren via publicEstimateView.
@@ -20,6 +24,14 @@ import { learningSpeed } from "./academyProspectKnowledge.ts";
 import { loadTrainingStaffContext } from "./trainingStaffContext.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { captureException } from "./sentry.js";
+import {
+  DEVELOPMENT_XP_FLAG_KEY, DEVELOPMENT_XP_PARAMS_KEY,
+  isDevelopmentXpEnabled, readDevelopmentXpFromDate, readDevelopmentXpParams,
+} from "./developmentXpFlag.ts";
+import { expectedTopRating } from "./developmentXpExpectedTop.ts";
+import { copenhagenDateString } from "./copenhagenTime.js";
+import { ageForSeason } from "./riderSeasonAge.js";
+import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 
 export const POTENTIAL_ESTIMATES_TABLE = "rider_potential_estimates";
 export const POTENTIAL_ESTIMATE_PARAMS_KEY = "potential_estimate_params";
@@ -37,16 +49,88 @@ function parseScoutKey(key) {
 }
 
 /**
+ * XP-params, når XP-modellen gælder for datoen: kontakten er on, datoen er på eller
+ * efter startdatoen, og params er gyldige. Ellers null, og skønnet bygger på
+ * talent_ceiling som i dag. Samme valg pr. dato som motoren (developmentXpFlag.ts),
+ * så skønnet og træningen aldrig regner med to modeller på samme dato. Kaster aldrig
+ * og logger aldrig tallene.
+ */
+export async function loadEstimateDevelopmentXp(supabase, { now = new Date(), log = console } = {}) {
+  try {
+    if (!(await isDevelopmentXpEnabled(supabase))) return null;
+    const fromDate = await readDevelopmentXpFromDate(supabase, { log });
+    if (!fromDate || copenhagenDateString(now) < fromDate) return null;
+    const params = await readDevelopmentXpParams({ supabase, log });
+    if (!params) {
+      log?.warn?.(`[potential-estimate] ${DEVELOPMENT_XP_FLAG_KEY} is on, but ${DEVELOPMENT_XP_PARAMS_KEY} is missing or invalid - estimates keep talent_ceiling`);
+    }
+    return params;
+  } catch (err) {
+    log?.warn?.(`[potential-estimate] ${DEVELOPMENT_XP_FLAG_KEY} read failed - estimates keep talent_ceiling: ${err?.message ?? err}`);
+    return null;
+  }
+}
+
+/**
  * Flag + kalibrering. { enabled: false, reason } eller { enabled: true, params,
  * paramsVersion }. Versionen er en hash af kalibreringen, så en ny kalibrering kan
  * spores uden at tallene står i tabellen. Selve værdien sættes af ejeren (hard
  * rule 17); indtil da skrives intet, heller ikke med flaget tændt.
+ *
+ * Gælder XP-modellen for datoen, får konfigurationen også `developmentXp` (params),
+ * og det sande tal bliver det forventede topniveau. Ellers er svaret som før.
  */
-export async function loadEstimateWriteConfig(supabase) {
+export async function loadEstimateWriteConfig(supabase, { now = new Date() } = {}) {
   if (!(await isPotentialEstimateWritesEnabled(supabase))) return { enabled: false, reason: "flag_off" };
   const params = await readPrivateConfig(supabase, POTENTIAL_ESTIMATE_PARAMS_KEY);
   if (!params) return { enabled: false, reason: "params_missing" };
-  return { enabled: true, params, paramsVersion: privateConfigHash(params) };
+  const developmentXp = await loadEstimateDevelopmentXp(supabase, { now });
+  const config = { enabled: true, params, paramsVersion: privateConfigHash(params) };
+  return developmentXp ? { ...config, developmentXp } : config;
+}
+
+// ── Krogpunkter: viden om nye og tidligere ryttere (ejervalg 12/11, #6110) ────────
+//
+// Ejeren har valgt, at
+//   - alle NYE ryttere starter fra holdets scoutede viden (det gør knowledgeLevel
+//     allerede: et kig følger rytteren ind på holdet);
+//   - en KØBT rytter har et ok retvisende bud fra dag 1 og læres hurtigere end et
+//     akademitalent;
+//   - viden om en TIDLIGERE rytter bevares resten af sæsonen og falder derefter ét
+//     trin pr. sæson.
+// Størrelserne er spillervendte tal og sættes af ejeren i potential_estimate_params
+// under `origin` (privat). Uden `origin` er krogen neutral: samme viden, samme objekt.
+//
+//   origin.bought.firstLooks      købt rytters bud fra dag 1, udtrykt som antal kig
+//   origin.bought.learnSpeed      faktor (>= 1) på egne afregnede datoer for købte
+//   origin.former                 til stede = tidligere ryttere mister ét trin pr.
+//                                 hel sæson efter afgangen
+//
+// Kendte huller før krogene kan tændes: rytterens oprindelse og afgangs-sæson læses
+// ikke endnu (writeTeamEstimates sender intet originByRider), og monotoni-værnet i
+// potentialEstimate.js holder det gemte vidensniveau, så faldet for en tidligere
+// rytter kræver en bevidst undtagelse dér (H3). Begge er ejerens næste skridt.
+const posNum = (v) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null);
+
+/** Købt egen rytter: et bud fra dag 1 og hurtigere læring. Andre: uændret (samme objekt). */
+export function knowledgeForOrigin(knowledge, { origin = null } = {}, hooks = null) {
+  if (!hooks?.bought || !knowledge?.own || origin !== "bought") return knowledge;
+  const firstLooks = posNum(hooks.bought.firstLooks);
+  const learnSpeed = Math.max(1, posNum(hooks.bought.learnSpeed) ?? 1);
+  return {
+    ...knowledge,
+    looks: Math.max(Number(knowledge.looks) || 0, firstLooks ? Math.round(firstLooks) : 0),
+    trainingDates: (Number(knowledge.trainingDates) || 0) * learnSpeed,
+  };
+}
+
+/**
+ * Hvor mange vidensniveauer holdet har mistet om en tidligere rytter: 0 resten af
+ * afgangssæsonen, derefter ét pr. hel sæson. 0 uden krogen.
+ */
+export function formerRiderKnowledgeSteps({ seasonsSinceLeft = 0 } = {}, hooks = null) {
+  if (!hooks?.former) return 0;
+  return Math.max(0, Math.floor(Number(seasonsSinceLeft) || 0));
 }
 
 /**
@@ -79,15 +163,21 @@ export function scoutKnowledgeForWrite({ stored = null, looks = 0, scoutTier = n
  *
  * Søndagskørslen skriver også par, der har et kig men ingen række. Det er ikke
  * søndagens opdatering men en indhentning, så grunden gemmes som "backfill".
+ *
+ * `truthByRider` (kun når XP-modellen gælder) er det sande tal pr. rytter: det
+ * forventede topniveau. Uden den er det sande tal talent_ceiling som før. En rytter
+ * uden sandt tal springes over og tælles i noCeiling. `originByRider` er krogen for
+ * ejervalget 12/11 (knowledgeForOrigin) og er kun aktiv med `params.origin`.
  */
 export function planTeamEstimates({
   teamId, riders, storedByRider, looksByRider, datesByRider, staffSpeed = 0, scoutTier = null,
-  trigger, params, paramsVersion, now,
+  trigger, params, paramsVersion, now, truthByRider = null, originByRider = null,
 }) {
   const rows = [];
   const counts = { written: 0, changed: 0, kept: 0, noKnowledge: 0, noCeiling: 0 };
   for (const rider of riders) {
-    if (rider.talent_ceiling == null) { counts.noCeiling += 1; continue; }
+    const truePot = truthByRider ? (truthByRider.get(rider.id) ?? null) : rider.talent_ceiling;
+    if (truePot == null) { counts.noCeiling += 1; continue; }
     const stored = storedByRider.get(rider.id) ?? null;
     const own = rider.team_id === teamId;
     const scout = scoutKnowledgeForWrite({
@@ -97,12 +187,15 @@ export function planTeamEstimates({
       freshLook: trigger === "new_knowledge",
       maxLooks: params.scout.maxLooks,
     });
+    const knowledge = { own, trainingDates: datesByRider.get(rider.id) ?? 0, staffSpeed, ...scout };
     const plan = planEstimateWrite({
       stored,
-      truePot: rider.talent_ceiling,
+      truePot,
       riderId: rider.id,
       teamId,
-      knowledge: { own, trainingDates: datesByRider.get(rider.id) ?? 0, staffSpeed, ...scout },
+      knowledge: originByRider && params.origin
+        ? knowledgeForOrigin(knowledge, originByRider.get(rider.id) ?? {}, params.origin)
+        : knowledge,
       trigger: trigger === "sunday" && !stored && !own ? "backfill" : trigger,
       paramsVersion,
       now,
@@ -202,6 +295,46 @@ async function loadStaffSpeed(supabase, teamId) {
   return Math.max(0, learningSpeed(await loadTrainingStaffContext(supabase, teamId)) - 1);
 }
 
+// Kun de viste evner: ability_caps og hidden_potential på samme række skal ikke læses her.
+const XP_ABILITY_COLUMNS = `rider_id, ${REGISTRY_ABILITY_KEYS.join(", ")}`;
+
+/**
+ * Det sande tal pr. rytter under XP: forventet topniveau (spec 2026-11-06 §6).
+ * Kun når XP-modellen gælder for datoen. En rytter uden evner, alder eller aktiv
+ * sæson får null og springes over: hellere intet skøn end et gættet.
+ * Tallet bliver på serveren: det skrives kun som ceiling_at_write i den server-only
+ * tabel og vises aldrig, kun skønnet over det.
+ */
+export async function loadExpectedTops(supabase, riderIds, developmentXp) {
+  const ids = [...new Set((riderIds ?? []).filter(Boolean))];
+  const truth = new Map(ids.map((id) => [id, null]));
+  if (!ids.length) return truth;
+  const [riderRows, abilityRows, season] = await Promise.all([
+    fetchAllRowsChunkedIn(ids, (chunk) => supabase
+      .from("riders").select("id, potentiale, birthdate, primary_type, secondary_type").in("id", chunk).order("id")),
+    fetchAllRowsChunkedIn(ids, (chunk) => supabase
+      .from("rider_derived_abilities").select(XP_ABILITY_COLUMNS).in("rider_id", chunk).order("rider_id")),
+    supabase.from("seasons").select("number").eq("status", "active").maybeSingle(),
+  ]);
+  if (season.error) throw new Error(`seasons: ${season.error.message}`);
+  const seasonNumber = Number(season.data?.number);
+  if (!Number.isFinite(seasonNumber)) return truth;
+  const abilities = new Map(abilityRows.map((row) => [row.rider_id, row]));
+  for (const rider of riderRows) {
+    const top = expectedTopRating({
+      id: rider.id,
+      abilities: abilities.get(rider.id) ?? null,
+      age: ageForSeason(rider.birthdate, seasonNumber),
+      potentiale: rider.potentiale,
+      primaryType: rider.primary_type,
+      secondaryType: rider.secondary_type,
+    }, developmentXp);
+    // planEstimateWrite kræver 1-99; en rating på 0 er ikke et tal at skønne over.
+    truth.set(rider.id, top != null && top >= 1 ? top : null);
+  }
+  return truth;
+}
+
 // Betinget skrivning: et kig og søndagskørslen kan planlægge samme par samtidig, og
 // en blind upsert ville lade den sidste overskrive en stærkere viden og historikken,
 // uden om monotoni-værnet. Nye rækker må derfor kun oprettes, og gemte rækker kun
@@ -250,16 +383,18 @@ export async function writeTeamEstimates({ supabase, teamId, riders, trigger, co
   if (!candidates.length) return { written: 0, changed: 0, kept: 0, noKnowledge: 0, noCeiling: 0 };
   const riderIds = candidates.map((rider) => rider.id);
   const ownIds = candidates.filter((rider) => rider.team_id === teamId).map((rider) => rider.id);
-  const [storedByRider, looksByRider, datesByRider, scoutTier, staffSpeed] = await Promise.all([
+  const [storedByRider, looksByRider, datesByRider, scoutTier, staffSpeed, truthByRider] = await Promise.all([
     loadStoredEstimates(supabase, teamId, riderIds),
     loadLooks(supabase, teamId, riderIds),
     ownIds.length ? loadTrainingDates(supabase, teamId, ownIds) : new Map(),
     loadScoutTier(supabase, teamId),
     ownIds.length ? loadStaffSpeed(supabase, teamId) : 0,
+    // XP slukket: ingen ekstra opslag, og det sande tal er talent_ceiling som før.
+    config.developmentXp ? loadExpectedTops(supabase, riderIds, config.developmentXp) : null,
   ]);
   const { rows, counts } = planTeamEstimates({
     teamId, riders: candidates, storedByRider, looksByRider, datesByRider, staffSpeed, scoutTier,
-    trigger, params: config.params, paramsVersion: config.paramsVersion, now: now.toISOString(),
+    trigger, params: config.params, paramsVersion: config.paramsVersion, now: now.toISOString(), truthByRider,
   });
   const lost = await persistRows(supabase, rows, storedByRider);
   if (!lost.size) return counts;
@@ -284,7 +419,7 @@ export async function loadEstimateTeamIds(supabase) {
  */
 export async function recordScoutLooks({ supabase, teamId, riderIds, now = new Date() }) {
   try {
-    const config = await loadEstimateWriteConfig(supabase);
+    const config = await loadEstimateWriteConfig(supabase, { now });
     if (!config.enabled) return { skipped: config.reason };
     const ids = [...new Set((riderIds ?? []).filter(Boolean))];
     // schema-columns-ok: talent_ceiling kommer fra 2026-11-04-6110-potential-estimates.sql, snapshottet er ældre

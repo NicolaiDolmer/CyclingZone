@@ -7,9 +7,15 @@ import { readFileSync } from "node:fs";
 import { knowledgeLevel, planEstimateWrite } from "./potentialEstimate.js";
 import { PRIVATE_CONFIG_KEYS, privateConfigHash, validatePrivateConfigValue } from "./privateConfig.ts";
 import {
-  POTENTIAL_ESTIMATE_PARAMS_KEY, POTENTIAL_ESTIMATES_TABLE, loadEstimateTeamIds, loadEstimateWriteConfig,
+  POTENTIAL_ESTIMATE_PARAMS_KEY, POTENTIAL_ESTIMATES_TABLE, formerRiderKnowledgeSteps, knowledgeForOrigin,
+  loadEstimateDevelopmentXp, loadEstimateTeamIds, loadEstimateWriteConfig,
   planTeamEstimates, recordScoutLooks, scoutKnowledgeForWrite, writeTeamEstimates,
 } from "./potentialEstimateWriter.js";
+import { validateDevelopmentXpParams } from "./developmentXp.ts";
+import { expectedTopRating } from "./developmentXpExpectedTop.ts";
+import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { bestRoleForAbilities } from "./riderBestRoleCache.js";
+import { ageForSeason } from "./riderSeasonAge.js";
 import { completeTargetAssignment, lazyCompleteDueTargetAssignments } from "./scoutTargetMaturation.js";
 import { completeDueMissionAssignments } from "./scoutMissionMaturation.js";
 import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
@@ -413,6 +419,182 @@ test("mission: hele shortlisten får et skøn", async () => {
   const shortlisted = sb.state.scout_actions.map((a) => a.rider_id).sort();
   assert.ok(shortlisted.length > 0, "testen skal ramme en shortlist");
   assert.deepEqual(sb.state[POTENTIAL_ESTIMATES_TABLE].map((r) => r.rider_id).sort(), shortlisted);
+});
+
+// ── XP-modellen: det sande tal er forventet topniveau (#7684) ─────────────
+// Syntetiske XP-tal, ikke kalibreringen (privat, hard rule 17).
+
+const XP_RAW = Object.freeze({
+  price: { base: 10, exponent: 2 },
+  potentialXp: [{ at: 1, value: 10 }, { at: 3, value: 30 }, { at: 6, value: 90 }],
+  ageShare: {
+    physical: [{ at: 28, value: 1 }, { at: 32, value: 0.5 }, { at: 36, value: 0.1 }],
+    mental: [{ at: 32, value: 1 }, { at: 36, value: 0.5 }, { at: 40, value: 0.2 }],
+  },
+  offFocusShare: 0.1,
+  raceOffFocusShare: 0.2,
+  typeShare: { signatur: 1, sekundaer: 0.8, haandvaerk: 0.5, andenRolle: 0.3, svaghed: 0.1 },
+});
+const XP = validateDevelopmentXpParams(XP_RAW);
+const TODAY = "2026-11-08"; // NOW i dansk tid
+const XP_ABILITIES = Object.fromEntries(VISIBLE_ABILITIES.map((a) => [a, 45]));
+const XP_RIDER = { id: "r1", team_id: "t2", talent_ceiling: null, is_retired: false, potentiale: 5, birthdate: "2006-03-01", primary_type: "climber", secondary_type: "puncheur" };
+const XP_SEASON = 1; // sæson-alder 20 for XP_RIDER
+const xpTruth = () => expectedTopRating({
+  id: "r1", abilities: XP_ABILITIES, age: ageForSeason(XP_RIDER.birthdate, XP_SEASON),
+  potentiale: XP_RIDER.potentiale, primaryType: XP_RIDER.primary_type, secondaryType: XP_RIDER.secondary_type,
+}, XP);
+
+const xpClient = ({ xpFlag = "on", fromDate = TODAY, xpParams = XP_RAW, seasons = [{ id: "s1", number: XP_SEASON, status: "active" }], ...rest } = {}) => client({
+  app_config: [
+    { key: "potential_estimate_writes", value: "on" },
+    ...(xpFlag == null ? [] : [{ key: "development_xp_model", value: xpFlag }]),
+    ...(fromDate == null ? [] : [{ key: "development_xp_from_date", value: fromDate }]),
+  ],
+  private_config: [
+    { key: POTENTIAL_ESTIMATE_PARAMS_KEY, value: PARAMS },
+    ...(xpParams == null ? [] : [{ key: "development_xp_params", value: xpParams }]),
+  ],
+  riders: [XP_RIDER],
+  rider_derived_abilities: [{ rider_id: "r1", ...XP_ABILITIES }],
+  seasons,
+  scout_actions: [{ id: "a1", team_id: "t1", rider_id: "r1" }],
+  team_staff: [{ team_id: "t1", role: "scouting", status: "active", tier: 4 }],
+  ...rest,
+});
+
+const quiet = async (fn) => {
+  const warned = [];
+  const original = console.warn;
+  console.warn = (msg) => warned.push(String(msg));
+  try { return { result: await fn(), warned }; } finally { console.warn = original; }
+};
+
+test("XP: syntetiske params er gyldige, og det sande tal ligger over nuværende rating", () => {
+  assert.ok(XP);
+  const now = bestRoleForAbilities(XP_ABILITIES, { primaryType: "climber", secondaryType: "puncheur" }).best_role_rating;
+  assert.ok(xpTruth() > now);
+});
+
+test("XP: kun on, på eller efter startdatoen og med gyldige params gælder for datoen", async () => {
+  const at = { now: new Date(NOW) };
+  assert.ok(await loadEstimateDevelopmentXp(xpClient(), at));
+  for (const [label, sb] of [
+    ["slukket", xpClient({ xpFlag: "off" })],
+    ["beta", xpClient({ xpFlag: "beta" })],
+    ["ingen kontakt", xpClient({ xpFlag: null })],
+    ["ingen startdato", xpClient({ fromDate: null })],
+    ["startdato i morgen", xpClient({ fromDate: "2026-11-09" })],
+    ["ingen params", xpClient({ xpParams: null })],
+    ["ugyldige params", xpClient({ xpParams: { ...XP_RAW, offFocusShare: 2 } })],
+  ]) {
+    const { result, warned } = await quiet(() => loadEstimateDevelopmentXp(sb, at));
+    assert.equal(result, null, label);
+    assert.equal(warned.some((msg) => msg.includes("0.1") || msg.includes("90")), false, `${label}: advarslen må ikke indeholde tal`);
+  }
+});
+
+test("XP slukket: konfigurationen er præcis som før", async () => {
+  const { result } = await quiet(() => loadEstimateWriteConfig(xpClient({ xpFlag: "off" }), { now: new Date(NOW) }));
+  assert.deepEqual(result, { enabled: true, params: PARAMS, paramsVersion: privateConfigHash(PARAMS) });
+});
+
+test("XP tændt: konfigurationen bærer XP-params", async () => {
+  const config = await loadEstimateWriteConfig(xpClient(), { now: new Date(NOW) });
+  assert.equal(config.enabled, true);
+  assert.deepEqual(config.developmentXp, XP);
+});
+
+test("plan: det sande tal pr. rytter afløser talent_ceiling, og uden tal springes rytteren over", () => {
+  const base = { teamId: "t1", storedByRider: new Map(), looksByRider: new Map([["r1", 1]]), datesByRider: new Map(), scoutTier: 3, trigger: "new_knowledge", params: PARAMS, paramsVersion: "v1", now: NOW };
+  const withTruth = planTeamEstimates({ ...base, riders: [{ ...foreign, talent_ceiling: null }], truthByRider: new Map([["r1", 74]]) });
+  assert.equal(withTruth.rows[0].ceiling_at_write, 74);
+  const ignoresCeiling = planTeamEstimates({ ...base, riders: [foreign], truthByRider: new Map([["r1", 74]]) });
+  assert.equal(ignoresCeiling.rows[0].ceiling_at_write, 74);
+  const noTruth = planTeamEstimates({ ...base, riders: [foreign], truthByRider: new Map([["r1", null]]) });
+  assert.deepEqual(noTruth.rows, []);
+  assert.equal(noTruth.counts.noCeiling, 1);
+});
+
+test("XP tændt: et kig skriver skønnet over forventet topniveau, også uden talent_ceiling", async () => {
+  const sb = xpClient();
+  await recordScoutLooks({ supabase: sb, teamId: "t1", riderIds: ["r1"], now: new Date(NOW) });
+  const [{ id: _fakeId, ...row }] = sb.state[POTENTIAL_ESTIMATES_TABLE];
+  assert.equal(row.ceiling_at_write, xpTruth());
+  const plan = planEstimateWrite({
+    stored: null, truePot: xpTruth(), riderId: "r1", teamId: "t1",
+    knowledge: { own: false, trainingDates: 0, staffSpeed: 0, looks: 1, bestScoutTier: 4 },
+    trigger: "new_knowledge", paramsVersion: privateConfigHash(PARAMS), now: NOW,
+  }, PARAMS);
+  assert.deepEqual(row, plan.row);
+});
+
+test("XP tændt uden aktiv sæson eller evner: intet gættet skøn", async () => {
+  const noSeason = xpClient({ seasons: [] });
+  await recordScoutLooks({ supabase: noSeason, teamId: "t1", riderIds: ["r1"], now: new Date(NOW) });
+  assert.equal(noSeason.state[POTENTIAL_ESTIMATES_TABLE].length, 0);
+  const noAbilities = xpClient({ rider_derived_abilities: [] });
+  await recordScoutLooks({ supabase: noAbilities, teamId: "t1", riderIds: ["r1"], now: new Date(NOW) });
+  assert.equal(noAbilities.state[POTENTIAL_ESTIMATES_TABLE].length, 0);
+});
+
+test("XP slukket: ingen evner, sæsoner eller XP-params læses, og rytter uden talent_ceiling skrives ikke", async () => {
+  const sb = xpClient({ xpFlag: "off" });
+  const tables = [];
+  const from = sb.from;
+  sb.from = (table) => { tables.push(table); return from(table); };
+  await recordScoutLooks({ supabase: sb, teamId: "t1", riderIds: ["r1"], now: new Date(NOW) });
+  assert.equal(sb.state[POTENTIAL_ESTIMATES_TABLE].length, 0);
+  assert.equal(tables.includes("rider_derived_abilities"), false);
+  assert.equal(tables.includes("seasons"), false);
+});
+
+// ── Krogpunkter for ejervalget 12/11 ───────────────────────────────────────
+
+test("krog: uden origin i kalibreringen er viden uændret (samme objekt)", () => {
+  const k = { own: true, trainingDates: 3, staffSpeed: 0, looks: 0, bestScoutTier: null };
+  assert.equal(knowledgeForOrigin(k, { origin: "bought" }, null), k);
+  assert.equal(knowledgeForOrigin(k, { origin: "bought" }, {}), k);
+  assert.equal(knowledgeForOrigin(k, { origin: "academy" }, { bought: { firstLooks: 2, learnSpeed: 2 } }), k);
+  assert.equal(knowledgeForOrigin({ ...k, own: false }, { origin: "bought" }, { bought: { firstLooks: 2 } }).looks, 0);
+  assert.equal(formerRiderKnowledgeSteps({ seasonsSinceLeft: 3 }, null), 0);
+});
+
+test("krog: købt rytter har et bud fra dag 1 og læres hurtigere end et akademitalent", () => {
+  const hooks = { bought: { firstLooks: 2, learnSpeed: 2 } };
+  const k = { own: true, trainingDates: 3, staffSpeed: 0, looks: 0, bestScoutTier: null };
+  const bought = knowledgeForOrigin(k, { origin: "bought" }, hooks);
+  assert.equal(bought.looks, 2);
+  assert.equal(bought.trainingDates, 6);
+  assert.ok(knowledgeLevel(bought, PARAMS), "købt rytter har et skøn fra dag 1");
+  assert.equal(knowledgeLevel(knowledgeForOrigin(k, { origin: "academy" }, hooks), PARAMS), null, "akademitalentet lærer stadig");
+  assert.equal(knowledgeForOrigin({ ...k, looks: 3 }, { origin: "bought" }, hooks).looks, 3, "aldrig færre kig end holdet har");
+  assert.equal(knowledgeForOrigin(k, { origin: "bought" }, { bought: { learnSpeed: 0.5 } }).trainingDates, 3, "aldrig langsommere");
+});
+
+test("krog: viden om en tidligere rytter står resten af sæsonen og falder ét trin pr. sæson", () => {
+  const hooks = { former: {} };
+  assert.equal(formerRiderKnowledgeSteps({ seasonsSinceLeft: 0 }, hooks), 0);
+  assert.equal(formerRiderKnowledgeSteps({ seasonsSinceLeft: 1 }, hooks), 1);
+  assert.equal(formerRiderKnowledgeSteps({ seasonsSinceLeft: 3 }, hooks), 3);
+  assert.equal(formerRiderKnowledgeSteps({ seasonsSinceLeft: -2 }, hooks), 0);
+});
+
+test("krog: originByRider uden origin i kalibreringen ændrer intet i planen", () => {
+  const args = { rider: own, dates: 3, trigger: "sunday" };
+  const plain = planOne(args);
+  const hooked = planTeamEstimates({
+    teamId: "t1", riders: [own], storedByRider: new Map(), looksByRider: new Map([["r1", 0]]), datesByRider: new Map([["r1", 3]]),
+    staffSpeed: 0, scoutTier: null, trigger: "sunday", params: PARAMS, paramsVersion: "v1", now: NOW,
+    originByRider: new Map([["r1", { origin: "bought" }]]),
+  });
+  assert.deepEqual(hooked, plain);
+  const withHooks = planTeamEstimates({
+    teamId: "t1", riders: [own], storedByRider: new Map(), looksByRider: new Map([["r1", 0]]), datesByRider: new Map([["r1", 3]]),
+    staffSpeed: 0, scoutTier: null, trigger: "sunday", params: { ...PARAMS, origin: { bought: { firstLooks: 1 } } }, paramsVersion: "v1", now: NOW,
+    originByRider: new Map([["r1", { origin: "bought" }]]),
+  });
+  assert.equal(withHooks.rows.length, 1, "med krogen har den købte rytter et skøn fra dag 1");
 });
 
 test("slots-ruten skriver skønnet efter indsættelsen", () => {
