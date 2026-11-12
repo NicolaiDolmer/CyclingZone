@@ -38,11 +38,28 @@ test("donutSegments: nul, negative og ugyldige værdier giver tomt stykke", () =
   assert.ok(empty.every((s) => s.path === "" && s.pct === 0));
 });
 
-test("ringSegmentPath: en hel cirkel bliver en gyldig bue, ikke en tom path", () => {
-  const p = ringSegmentPath(0, 0, 10, 20, 0, Math.PI * 2);
-  assert.ok(p.includes("A20 20 0 1 1"));
+test("ringSegmentPath: en hel ring bevarer baade ydre og indre kant og er ikke tom", () => {
+  const p = ringSegmentPath(100, 100, 50, 80, 0, Math.PI * 2);
+  // To halvbuer pr. kant, og den indre kant lander paa to forskellige punkter.
+  assert.equal((p.match(/A80 80/g) || []).length, 2);
+  assert.equal((p.match(/A50 50/g) || []).length, 2);
+  assert.ok(p.includes("A50 50 0 1 0 100 150"));
   assert.ok(p.endsWith("Z"));
   assert.equal(ringSegmentPath(0, 0, 10, 20, 1, 1), "");
+});
+
+test("donutSegments: ét stykke paa 100 pct med produktionsradier giver en hel ring med hul", () => {
+  const [seg] = donutSegments([100], 100, 100, 50, 80, 2);
+  assert.ok(seg.path.includes("A50 50"));
+  assert.ok(Math.abs(seg.endAngle - seg.startAngle - Math.PI * 2) < 1e-9);
+});
+
+test("donutSegments: en meget lille kategori forsvinder ikke af mellemrummet", () => {
+  const segs = donutSegments([999, 1], 100, 100, 50, 80, 2);
+  assert.ok(segs[1].path.startsWith("M"));
+  assert.ok(segs[1].endAngle > segs[1].startAngle);
+  assert.ok(segs[1].startAngle >= segs[0].endAngle);
+  assert.ok(segs[1].endAngle <= Math.PI * 2 + 1e-9);
 });
 
 test("ringSegmentPath: kvart omgang starter kl. 12 og slutter kl. 3 på ydre radius", () => {

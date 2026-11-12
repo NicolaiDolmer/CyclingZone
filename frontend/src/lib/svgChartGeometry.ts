@@ -14,9 +14,6 @@ export interface DonutSegment {
 }
 
 const TAU = Math.PI * 2;
-// En fuld cirkel kan ikke tegnes som én SVG-bue (start = slut), så ét stykke på
-// 100 % bliver en anelse kortere end hele vejen rundt.
-const FULL_TURN_EPSILON = 0.0001;
 
 function polar(cx: number, cy: number, r: number, angle: number): [number, number] {
   // 0 rad = kl. 12, med uret.
@@ -36,13 +33,29 @@ export function ringSegmentPath(
   startAngle: number,
   endAngle: number,
 ): string {
-  const sweep = Math.min(endAngle - startAngle, TAU - FULL_TURN_EPSILON);
+  const sweep = endAngle - startAngle;
   if (!(sweep > 0)) return "";
-  const end = startAngle + sweep;
+  if (sweep >= TAU - 1e-9) {
+    // En fuld ring kan ikke tegnes som én bue (start = slut), så hver kant
+    // består af to halvbuer. Indre kant løber modsat, så midten forbliver hul.
+    const [ox, oy] = polar(cx, cy, outerR, startAngle);
+    const [oxm, oym] = polar(cx, cy, outerR, startAngle + Math.PI);
+    const [ix, iy] = polar(cx, cy, innerR, startAngle);
+    const [ixm, iym] = polar(cx, cy, innerR, startAngle + Math.PI);
+    return [
+      `M${f(ox)} ${f(oy)}`,
+      `A${f(outerR)} ${f(outerR)} 0 1 1 ${f(oxm)} ${f(oym)}`,
+      `A${f(outerR)} ${f(outerR)} 0 1 1 ${f(ox)} ${f(oy)}`,
+      `L${f(ix)} ${f(iy)}`,
+      `A${f(innerR)} ${f(innerR)} 0 1 0 ${f(ixm)} ${f(iym)}`,
+      `A${f(innerR)} ${f(innerR)} 0 1 0 ${f(ix)} ${f(iy)}`,
+      "Z",
+    ].join(" ");
+  }
   const large = sweep > Math.PI ? 1 : 0;
   const [ox1, oy1] = polar(cx, cy, outerR, startAngle);
-  const [ox2, oy2] = polar(cx, cy, outerR, end);
-  const [ix2, iy2] = polar(cx, cy, innerR, end);
+  const [ox2, oy2] = polar(cx, cy, outerR, endAngle);
+  const [ix2, iy2] = polar(cx, cy, innerR, endAngle);
   const [ix1, iy1] = polar(cx, cy, innerR, startAngle);
   return [
     `M${f(ox1)} ${f(oy1)}`,
@@ -69,17 +82,19 @@ export function donutSegments(
   const clean = values.map((v) => (Number.isFinite(v) && v > 0 ? v : 0));
   const total = clean.reduce((s, v) => s + v, 0);
   const visible = clean.filter((v) => v > 0).length;
-  const pad = visible > 1 ? (paddingDeg * Math.PI) / 180 : 0;
+  // Mellemrummene fordeles FØR stykkerne, så selv en meget lille kategori
+  // beholder en synlig vinkel i stedet for at blive spist af mellemrummet.
+  const pad = visible > 1 ? Math.min((paddingDeg * Math.PI) / 180, (TAU * 0.5) / visible) : 0;
+  const usable = TAU - pad * (visible > 1 ? visible : 0);
   let cursor = 0;
   return clean.map((value, index) => {
     if (total <= 0 || value <= 0) {
       return { index, value, pct: 0, startAngle: cursor, endAngle: cursor, path: "" };
     }
-    const share = (value / total) * TAU;
+    const share = (value / total) * usable;
     const startAngle = cursor + pad / 2;
-    // Et meget tyndt stykke må ikke blive negativt af mellemrummet.
-    const endAngle = Math.max(startAngle, cursor + share - pad / 2);
-    cursor += share;
+    const endAngle = startAngle + share;
+    cursor += share + pad;
     return {
       index,
       value,

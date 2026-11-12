@@ -89,8 +89,10 @@ export default function TrendLineChart({ data, lines, xKey = "snapshot_date", he
   const onPointerMove = (e) => {
     if (!n) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const scale = rect.width > 0 ? width / rect.width : 1;
-    setActive(nearestIndex(xs, (e.clientX - rect.left) * scale));
+    // Rektanglen dækker kun plot-området, så positionen skaleres med plotW og
+    // lægges oven i venstre margin for at lande i SVG'ens koordinater.
+    const scale = rect.width > 0 ? plotW / rect.width : 1;
+    setActive(nearestIndex(xs, MARGIN.left + (e.clientX - rect.left) * scale));
   };
 
   const onKeyDown = (e) => {
