@@ -2,12 +2,12 @@
   "stagePlanReady": {
     "gc": {
       "name": "Correr para la general",
-      "description": "Todos corren para tu líder de la general y lo mantienen lejos de problemas.",
+      "description": "Los gregarios corren para tu líder de la general. El jefe de filas compartido sigue el mismo plan y el rol libre hace su propia carrera.",
       "named": "Correr para la general con {name}"
     },
     "stage": {
       "name": "Victoria de etapa",
-      "description": "El equipo trabaja para el corredor al que mejor le va la ruta de hoy.",
+      "description": "Los gregarios trabajan para el corredor al que mejor le va la ruta de hoy.",
       "named": "Victoria de etapa para {name}"
     },
     "sprint": {
@@ -21,7 +21,7 @@
     },
     "save": {
       "name": "Guardar las piernas",
-      "description": "Todos llegan tranquilos a meta. La menor fatiga esta noche."
+      "description": "Todos llegan tranquilos a meta. El más suave de los cinco planes."
     },
     "price": {
       "easy": "Suave",
