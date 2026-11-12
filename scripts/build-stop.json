@@ -582,6 +582,46 @@
   ],
   "brandList": [
     {
+      "issue": 7962,
+      "reason": "Forkert info: TWK/LDR vises som streg på Transferlisten, selv om tallene findes. Ejer 12/11, storsession v3 punkt 4b (rettes uden go). https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6818122648",
+      "since": "2026-11-12"
+    },
+    {
+      "issue": 7963,
+      "reason": "Forkert info: bestyrelsens økonomimål viser 31 % på dashboard og 28 % i Boardroom. Ejer 12/11, storsession v3 punkt 4b. https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6818122648",
+      "since": "2026-11-12"
+    },
+    {
+      "issue": 7964,
+      "reason": "Forkert info: sponsor-milepælen i visionen kan ikke nås, fordi sammenligningsåret mangler tal. Ejer 12/11, storsession v3 punkt 4b. https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6818122648",
+      "since": "2026-11-12"
+    },
+    {
+      "issue": 7965,
+      "reason": "Forkert info: angrebet på sidste stigning vises på målstregen i løbsfilmen. Ejer 12/11, storsession v3 punkt 4b. https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6818122648",
+      "since": "2026-11-12"
+    },
+    {
+      "issue": 8024,
+      "reason": "Forkert info: købt U23-rytter vises fuldt scoutet. Ejer 12/11, storsession v3 punkt 4b. https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6818122648",
+      "since": "2026-11-12"
+    },
+    {
+      "issue": 8025,
+      "reason": "Træning: modstridende statustekster efter Træn nu (spillerfeedback 10-12/11). Ejer 12/11, storsession v3 punkt 4a. https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6818122648",
+      "since": "2026-11-12"
+    },
+    {
+      "issue": 8026,
+      "reason": "Træning: programmet overstyrer dagens valg uden besked (spillerfeedback 10-12/11). Ejer 12/11, storsession v3 punkt 4a. https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6818122648",
+      "since": "2026-11-12"
+    },
+    {
+      "issue": 7987,
+      "reason": "Træning: filteret Needs a day læses som hviledag (spillerfeedback 10-12/11). Ejer 12/11, storsession v3 punkt 4a. https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6818122648",
+      "since": "2026-11-12"
+    },
+    {
       "issue": 7439,
       "reason": "Træning: nye træningstyper forsvinder ved faneskift (egomadsen 1/11), ejer-go 1/11",
       "since": "2026-11-01"
