@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 // af kilde-tekst-guards (samme mønster som TeamDevelopmentTab.test.js).
 
 const here = dirname(fileURLToPath(import.meta.url));
-const read = (rel) => readFileSync(join(here, rel), "utf8");
+const read = (rel: string) => readFileSync(join(here, rel), "utf8");
 const locales = join(here, "..", "..", "..", "public", "locales");
 
 const scoutable = read("ScoutablePotentiale.jsx");
