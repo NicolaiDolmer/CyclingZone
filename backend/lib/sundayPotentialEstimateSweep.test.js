@@ -8,6 +8,10 @@ import { runSundayPotentialEstimateSweep, runSundayPotentialEstimateTick } from 
 import { POTENTIAL_ESTIMATE_SUNDAY_WALL_CLOCK } from "./cronMonitorRegistry.js";
 import { SUNDAY_VALUE_FROM_HOUR } from "./economyConstants.js";
 import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
+import { validateDevelopmentXpParams } from "./developmentXp.ts";
+import { expectedTopRating } from "./developmentXpExpectedTop.ts";
+import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { ageForSeason } from "./riderSeasonAge.js";
 
 const PARAMS = Object.freeze({
   salt: "test",
@@ -240,4 +244,60 @@ test("tick: tændt flag uden kalibrering er en alarm, slukket flag er ikke", asy
   await runSundayPotentialEstimateTick({ supabase: client({ params: null }), now: new Date("2026-11-22T13:30:00.000Z"), capture });
   assert.equal(captured.length, 1);
   assert.match(captured[0], /calibration/);
+});
+
+// ── #7684: XP-modellen, det sande tal er forventet topniveau ───────────────
+// Syntetiske XP-tal, ikke kalibreringen (privat, hard rule 17).
+
+const XP_RAW = Object.freeze({
+  price: { base: 10, exponent: 2 },
+  potentialXp: [{ at: 1, value: 10 }, { at: 3, value: 30 }, { at: 6, value: 90 }],
+  ageShare: {
+    physical: [{ at: 28, value: 1 }, { at: 32, value: 0.5 }, { at: 36, value: 0.1 }],
+    mental: [{ at: 32, value: 1 }, { at: 36, value: 0.5 }, { at: 40, value: 0.2 }],
+  },
+  offFocusShare: 0.1,
+  raceOffFocusShare: 0.2,
+  typeShare: { signatur: 1, sekundaer: 0.8, haandvaerk: 0.5, andenRolle: 0.3, svaghed: 0.1 },
+});
+const XP_ABILITIES = Object.fromEntries(VISIBLE_ABILITIES.map((a) => [a, 45]));
+const xpRider = (id, teamId) => ({
+  id, team_id: teamId, talent_ceiling: null, is_retired: false,
+  potentiale: 4, birthdate: "2005-06-01", primary_type: "climber", secondary_type: "puncheur",
+});
+const xpClient = ({ fromDate = "2026-11-08", ...tables } = {}) => client({
+  app_config: [
+    { key: "potential_estimate_writes", value: "on" },
+    { key: "development_xp_model", value: "on" },
+    { key: "development_xp_from_date", value: fromDate },
+  ],
+  private_config: [
+    { key: POTENTIAL_ESTIMATE_PARAMS_KEY, value: PARAMS },
+    { key: "development_xp_params", value: XP_RAW },
+  ],
+  seasons: [{ id: "s1", number: 1, status: "active" }],
+  riders: [xpRider("r1", "t1"), xpRider("r2", "t2")],
+  rider_derived_abilities: [{ rider_id: "r1", ...XP_ABILITIES }, { rider_id: "r2", ...XP_ABILITIES }],
+  training_rider_ticks: ticks("r1", "t1", 6),
+  scout_actions: [{ id: "a1", team_id: "t1", rider_id: "r2" }],
+  ...tables,
+});
+const xpTruth = (id) => expectedTopRating({
+  id, abilities: XP_ABILITIES, age: ageForSeason("2005-06-01", 1), potentiale: 4, primaryType: "climber", secondaryType: "puncheur",
+}, validateDevelopmentXpParams(XP_RAW));
+
+test("XP: søndag skriver egne og scoutede ryttere uden talent_ceiling over forventet topniveau", async () => {
+  const sb = xpClient();
+  const result = await run(sb);
+  assert.equal(result.written, 2);
+  const byRider = Object.fromEntries(estimates(sb).map((row) => [row.rider_id, row]));
+  assert.equal(byRider.r1.ceiling_at_write, xpTruth("r1"));
+  assert.equal(byRider.r2.ceiling_at_write, xpTruth("r2"));
+});
+
+test("XP: kørslens egen dato vælger model, ikke vægurets", async () => {
+  // Startdatoen ligger dagen efter søndagen: kørslen for søndagen er stadig dagens model.
+  const sb = xpClient({ fromDate: "2026-11-09" });
+  assert.equal((await run(sb)).written, 0);
+  assert.equal(estimates(sb).length, 0);
 });
