@@ -48,6 +48,10 @@ function formatDate(iso) {
 // #6165: egen SVG-donut i stedet for recharts. Samme ring (indre 50, ydre 80 i et
 // 200 x 200 koordinatsystem) og samme farver. Hover og tastaturfokus viser
 // label, beløb og procent; hvert stykke har en aria-label.
+function formatPct(p) {
+  return `${formatNumber(p, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+}
+
 const DONUT_SIZE = 200;
 const DONUT_C = DONUT_SIZE / 2;
 
@@ -81,7 +85,7 @@ function DonutChart({ data, total, title }) {
         {segments.map((seg, i) => {
           if (!seg.path) return null;
           const d = data[i];
-          const pct = seg.pct.toFixed(1);
+          const pct = formatPct(seg.pct);
           return (
             <path
               key={d.reason_code ?? i}
@@ -114,7 +118,7 @@ function DonutChart({ data, total, title }) {
         >
           <p className="text-cz-1 text-sm font-bold">{activeItem.label}</p>
           <p className="text-cz-2 text-xs font-mono tabular-nums">
-            {formatCZ(activeItem.value)} · {active.pct.toFixed(1)}%
+            {formatCZ(activeItem.value)} · {formatPct(active.pct)}
           </p>
         </div>
       )}
