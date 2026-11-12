@@ -7,7 +7,7 @@
 import { runWithRetry } from "./dbChunk.js";
 import { autopickTeamSelection, selectionSizeForRace, routeFitScorer, SELECTION_SIZE, MIN_RACE_ENTRIES } from "./raceAutopick.js";
 import { ROUTE_MATCH_STAGE_COLUMNS } from "./routeMatch.js"; // #6207
-import { OVERLAP_MIN_START } from "./raceFieldIntegrity.js";
+import { OVERLAP_MIN_START, overlapStartsShort } from "./raceFieldIntegrity.js";
 import { peakConcurrentNeed } from "./raceDayFloorPlan.js";
 import { isAiTeamRetireEnabled } from './aiTeamRetireFlag.js';
 import {
@@ -45,12 +45,53 @@ export function raceEntryFloor(race) {
   return Math.max(0, Math.min(MIN_RACE_ENTRIES, Number.isFinite(max) ? max : MIN_RACE_ENTRIES));
 }
 
+const isStageRace = (race) => Array.isArray(race?.stages) && race.stages.length > 1;
+
 // #6739 regel A: et etapeløb kan starte med OVERLAP_MIN_START ryttere når resten kører
-// et andet løb samme løbsdag. Et etapeløb med så mange ryttere tømmes derfor ikke.
+// et andet løb samme løbsdag. Managerens egne knapper (dropBelowFloor=false) bruger
+// stadig denne ubetingede lempelse; sweepen bruger canFieldRace nedenfor.
 function viableMinimum(race) {
   const floor = raceEntryFloor(race);
-  if (!(Array.isArray(race?.stages) && race.stages.length > 1)) return floor;
+  if (!isStageRace(race)) return floor;
   return Math.max(0, floor - (MIN_RACE_ENTRIES - OVERLAP_MIN_START));
+}
+
+const windowCoversDay = (w, day) => (Array.isArray(w?.days) ? w.days.includes(day) : w?.start <= day && day <= w?.end);
+
+/**
+ * #7339 (12/11): hvor mange af holdets ryttere er optaget af et ANDET løb på løbets
+ * startdag? Det er overlappet, som regel A ved start tæller (raceFieldIntegrity
+ * overlapStartsShort). Kun startdagen tæller, ikke senere dage i løbets vindue.
+ * Løbets egne manuelle ryttere (race.manualRiderIds, låst i løbets eget vindue) og
+ * ryttere løbet ikke kan bruge (race.excludedRiderIds) tæller ikke som overlap.
+ */
+function startDayOverlapCount(race, riders, busy) {
+  const day = race?.window?.start;
+  if (!Number.isFinite(day)) return 0;
+  const own = race.manualRiderIds ? new Set(race.manualRiderIds) : null;
+  let n = 0;
+  for (const r of riders) {
+    if (race.excludedRiderIds?.has(r.rider_id) || own?.has(r.rider_id)) continue;
+    if ((busy.get(r.rider_id) || []).some((w) => windowCoversDay(w, day))) n += 1;
+  }
+  return n;
+}
+
+/**
+ * #7339 (12/11): må sweepen stille `race` op med `count` auto-ryttere? Ja når gulvet
+ * nås, og for et etapeløb også under gulvet, når #6739 regel A faktisk lader holdet
+ * starte: ryttere optaget af et andet løb på startdagen, og count + de optagne når
+ * gulvet. Samme regel som ved start (overlapStartsShort), med manuelle ryttere talt
+ * med via raceEntryFloor.
+ */
+function canFieldRace(race, count, startDayOverlap) {
+  const floor = raceEntryFloor(race);
+  if (count >= floor) return true;
+  if (!isStageRace(race)) return false;
+  return overlapStartsShort({
+    starters: count, overlap: startDayOverlap, injured: 0, minEntries: floor,
+    overlapMin: Math.max(0, floor - (MIN_RACE_ENTRIES - OVERLAP_MIN_START)),
+  });
 }
 
 const scorableRiders = (list) => list.filter((r) => r?.rider_id && r.abilities);
@@ -63,7 +104,7 @@ const scorableRiders = (list) => list.filter((r) => r?.rider_id && r.abilities);
  * 0 = løbet kan ikke stilles op (eller kun ved at tage ryttere fra et højere rangeret
  * løb) og står tomt. Når alle løb kan fyldes helt, er cap = max (uændret adfærd).
  */
-function floorAwareCap({ race, available, later, availableFor, strategy }) {
+function floorAwareCap({ race, available, later, availableFor, strategy, startDayBusy = null }) {
   const max = Number.isFinite(race.sizeRule?.max) ? race.sizeRule.max : SELECTION_SIZE.default.max;
   const supply = scorableRiders(available).length;
   const ownIds = new Set(available.map((r) => r.rider_id));
@@ -95,10 +136,25 @@ function floorAwareCap({ race, available, later, availableFor, strategy }) {
     else kept.push(item);
   }
   const room = supply - peakConcurrentNeed(kept);
-  const viable = viableMinimum(race);
-  const cap = selfKept
-    ? Math.max(0, Math.min(max, room))
-    : (viable > 0 && room >= viable ? Math.min(max, room) : 0);
+  // #7339 (12/11): de medtagne senere løb, der kører på dette løbs startdag, binder
+  // mindst deres gulv den dag. Sammen med de allerede optagne er det overlappet, som
+  // regel A ved start tæller.
+  const plannedOnStart = kept
+    .filter((it) => windowCoversDay(it.window, race.window?.start))
+    .reduce((sum, it) => sum + raceEntryFloor(it.race), 0);
+  const startDayOverlap = startDayBusy === null ? null : startDayBusy + plannedOnStart;
+  let cap;
+  if (selfKept) cap = Math.max(0, Math.min(max, room));
+  else if (startDayOverlap === null) {
+    // Managerens egne knapper (dropBelowFloor=false): uændret.
+    const viable = viableMinimum(race);
+    cap = viable > 0 && room >= viable ? Math.min(max, room) : 0;
+  } else {
+    // Sweepen: et etapeløb under gulvet holdes kun, når regel A lader holdet starte.
+    const floor = raceEntryFloor(race);
+    const fieldable = floor > 0 && (room >= floor || canFieldRace(race, Math.min(max, room), startDayOverlap));
+    cap = fieldable ? Math.min(max, room) : 0;
+  }
   // Kan et medtaget senere løb kun bruge NOGLE af dette løbs ryttere (fx en Train now-lås),
   // reserveres ryttere til det. Dette løb kan i værste fald tage `cap` af de fælles: er der
   // stadig `need` tilbage, reserveres intet (udtagelsen er som før #7339, review 1/11);
@@ -131,10 +187,10 @@ function floorAwareCap({ race, available, later, availableFor, strategy }) {
         const dropped = reservations.pop();
         dropped.ids.forEach((id) => reserved.delete(id));
       }
-      if (supply - reserved.size < self.need) return { cap: 0, reserved };
+      if (supply - reserved.size < self.need) return { cap: 0, reserved, plannedOnStart };
     }
   }
-  return { cap, reserved };
+  return { cap, reserved, plannedOnStart };
 }
 
 /**
@@ -151,6 +207,9 @@ function floorAwareCap({ race, available, later, availableFor, strategy }) {
  *
  * `dropBelowFloor` (#7339 B, valgfri): et løb der ikke kan nå sit gulv får 0 picks i
  * stedet for 1-5. Sweepen (runRaceEntryGenerator) sætter den; default = uændret adfærd.
+ * Et etapeløb under gulvet beholdes kun ved overlap på startdagen (#6739 regel A);
+ * `race.manualRiderIds` (valgfri) er løbets egne manuelle ryttere, som ikke tæller
+ * som overlap.
  */
 export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows = [], strategy = null, dropBelowFloor = false }) {
   // Kronologisk, stabil rækkefølge: tidligste vindue først, så race_id.
@@ -212,10 +271,14 @@ export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows =
     // ryttere fra et løb der kan; det står tomt i stedet for at binde 1-5 ryttere.
     let sizeRule = race.sizeRule;
     let pool = available;
+    // #7339 (12/11): kun sweepen (dropBelowFloor) kender overlappet på startdagen.
+    const startDayBusy = dropBelowFloor ? startDayOverlapCount(race, riders, busy) : null;
+    let plannedOnStart = 0;
     if (hasCompetitor[i]) {
-      const { cap, reserved } = floorAwareCap({ race, available, later: laterCompetitors[i], availableFor, strategy });
-      sizeRule = { ...(race.sizeRule || SELECTION_SIZE.default), max: cap };
-      if (reserved.size) pool = available.filter((r) => !reserved.has(r.rider_id));
+      const fac = floorAwareCap({ race, available, later: laterCompetitors[i], availableFor, strategy, startDayBusy });
+      sizeRule = { ...(race.sizeRule || SELECTION_SIZE.default), max: fac.cap };
+      if (fac.reserved.size) pool = available.filter((r) => !fac.reserved.has(r.rider_id));
+      plannedOnStart = fac.plannedOnStart;
     }
     let picks = sizeRule?.max === 0
       ? []
@@ -224,9 +287,12 @@ export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows =
     // løbet ikke kan nå gulvet (fx fordi et igangværende etapeløb binder resten af truppen):
     // de ville alligevel blive taget ud ved start. Samme adfærd som redningen ved start
     // (raceRunner.fillMissingTeamEntries), og rytterne står frie til et andet løb. Gulvet er
-    // raceEntryFloor (manuelle ryttere tæller med); et etapeløb følger #6739 regel A via
-    // viableMinimum. Managerens egne knapper (Race Hub, indbakken) er uændrede.
-    if (dropBelowFloor && picks.length && picks.length < viableMinimum(race)) picks = [];
+    // raceEntryFloor (manuelle ryttere tæller med). #7339 (12/11): et etapeløb må kun stå
+    // under gulvet, når #6739 regel A faktisk lader holdet starte (ryttere optaget af et
+    // andet løb på startdagen); uden det overlap blev holdet taget ud ved start, efter
+    // at assistenten havde meldt "udtaget". Managerens egne knapper (Race Hub,
+    // indbakken) er uændrede.
+    if (dropBelowFloor && picks.length && !canFieldRace(race, picks.length, startDayBusy + plannedOnStart)) picks = [];
     out[race.race_id] = picks;
     for (const p of picks) {
       if (!busy.has(p.rider_id)) busy.set(p.rider_id, []);
@@ -944,6 +1010,7 @@ export async function runRaceEntryGenerator({
           stages: stagesByRace.get(race.id) || [],
           sizeRule: { min: Math.max(0, sizeRule.min - manualRiders.length), max: sizeRule.max - manualRiders.length },
           floor: Math.max(0, MIN_RACE_ENTRIES - manualRiders.length), // #7339: manuelle ryttere tæller mod gulvet
+          manualRiderIds: manualRiders, // #7339 (12/11): løbets egne manuelle ryttere er ikke overlap
           excludedRiderIds: trainNowLockedByRace.get(race.id), // #6139
         });
       }
@@ -1269,6 +1336,7 @@ export async function runRaceEntryGenerator({
     const teamRaces = [{
       race_id: raceId, window, stages: stagesByRace.get(raceId) || [], sizeRule: adjSizeRule,
       floor: Math.max(0, MIN_RACE_ENTRIES - manualRiders.length), // #7339 B: manuelle ryttere tæller mod gulvet
+      manualRiderIds: manualRiders, // #7339 (12/11): løbets egne manuelle ryttere er ikke overlap
       excludedRiderIds: trainNowLockedByRace.get(raceId), // #6139
     }];
     const assignment = assignTeamAcrossRaces({
