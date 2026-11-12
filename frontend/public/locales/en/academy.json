@@ -1,6 +1,6 @@
 {
   "title": "Academy",
-  "subtitle": "Sign young talent, develop it, and decide when to promote or sell.",
+  "subtitle": "Sign young talent for your U23 and junior teams, and follow what your youth work earns.",
   "slotsU23": "U23 {used}/{max}",
   "slotsJunior": "Junior {used}/{max}",
   "balance": "Balance: {amount} CZ$",
@@ -9,12 +9,18 @@
   "disabledAction": "See the roadmap",
   "graduationHeading": "Graduating riders",
   "intakeHeading": "Intake candidates",
-  "rosterHeading": "Academy roster",
   "emptyIntake": "No intake candidates right now. New candidates arrive every Sunday.",
   "emptyAction": "Go to auctions",
   "emptyIntakeTitle": "Find a young rider in the auctions",
-  "emptyRoster": "Young riders come up in the live auctions too, and signed candidates land here.",
-  "emptyRosterTitle": "Sign your first academy rider",
+  "squadLinks": {
+    "title": "Your youth teams",
+    "description": "Every talent you sign joins your U23 team or your junior team. You see and manage them there.",
+    "u23": "U23 team",
+    "junior": "Junior team",
+    "count": "{used}/{max}",
+    "full": "Full"
+  },
+  "landsOnU23": "Your junior team is full, so he joins your U23 team.",
   "youthSquads": {
     "title": "Youth squads",
     "roadmap": "Roadmap",
@@ -34,14 +40,12 @@
   "ageLabel": "{age} y/o",
   "signBtn": "Sign",
   "rejectBtn": "Reject",
-  "promoteBtn": "Promote",
   "sellBtn": "Sell",
   "youthSell": {
     "sell": "Sell",
     "edit": "Edit sale",
     "title": "Opens the rider page, where you set the price."
   },
-  "releaseBtn": "Release",
   "graduationDeadline": "{days}d to decide",
   "graduationOverdue": "Overdue",
   "signingFee": "Signing fee",
@@ -56,7 +60,7 @@
     "pulling": "Bringing them in...",
     "provisionalValue": "Provisional value",
     "wageOneSeason": "Wage (1 season)",
-    "valuationNote": "Market value updated on Sunday. The potential forecast is learned through training and racing.",
+    "valuationNote": "Market value updated on Sunday. Potential is learned through training and racing.",
     "abilitiesNow": "Abilities now",
     "emptyAfterPull": "No candidates left to review. Next week's intake opens Sunday.",
     "errorFailed": "Could not bring in this week's intake. Please try again."
@@ -130,19 +134,12 @@
   "fullTooltipJunior": "Your junior team is full ({max}/{max}). Free a place first.",
   "fullNoteU23": "He joins your U23 team, and it is full. Sign once a place opens.",
   "fullNoteJunior": "He joins your junior team, and it is full. Sign once a place opens.",
-  "contractUntil": "Until season {season}",
-  "colNation": "Nation",
-  "colRider": "Rider",
-  "colType": "Type",
-  "colAge": "Age",
+  "fullTooltipBoth": "Your junior team and your U23 team are both full. Free a place first.",
+  "fullNoteBoth": "He fits on your junior team or your U23 team, and both are full. Sign once a place opens.",
   "colValue": "Value",
-  "colSalary": "Salary",
-  "colContract": "Contract",
-  "colAction": "Action",
-  "promoteSeniorFullTooltip": "Your senior squad is full. Free a senior place first.",
   "transferModal": {
     "promoteTitle": "Promote to senior squad",
-    "promoteQuestion": "Promote this academy rider to your senior squad:",
+    "promoteQuestion": "Promote this rider to your senior squad:",
     "promoteConfirm": "Promote",
     "promoteNote": "They take a senior place and a senior contract. Their youth wage is replaced by the senior wage shown above.",
     "promoteNoteKeepsContract": "They take a senior place. Their current contract and wage carry over unchanged.",
@@ -194,23 +191,19 @@
     }
   },
   "error": {
-    "academyFull": "Academy is full. Cannot sign another rider.",
+    "academyFull": "There is no free place on the team he would join. Free a place first.",
     "notOffered": "This rider has not been offered a place.",
     "insufficientBalance": "You cannot afford the signing fee.",
     "insufficientAvailableBalance": "Not enough available money: part of your balance is locked in auction bids.",
-    "alreadyAssigned": "This rider has already joined an academy.",
+    "alreadyAssigned": "This rider has already joined a team.",
     "riderOwned": "This rider is currently on another team, so the offer cannot be completed right now. I'm working on it, and your offer stays open.",
-    "squadFull": "Senior squad is full. Free a spot to promote, or sell or release instead.",
-    "riderOnAuction": "This rider is on an active auction and can't be released until it ends.",
-    "cannotAffordRelease": "You can't afford the buyout fee for this rider.",
-    "riderStateChanged": "This rider is no longer in your academy.",
     "generic": "Something went wrong. Please try again.",
     "loadTitle": "Could not load your academy",
     "loadBody": "The academy data did not come through. Reload the page, and let me know if it keeps happening."
   },
   "releaseModal": {
-    "title": "Release academy rider",
-    "question": "End this academy rider's contract:",
+    "title": "Release youth rider",
+    "question": "End this rider's contract:",
     "feeLabel": "Buyout fee",
     "balanceLabel": "Your balance",
     "feeHint": "The buyout fee is half the salary left on the contract, same as for senior riders.",
@@ -220,7 +213,7 @@
   },
   "pnl": {
     "heading": "Academy accounts",
-    "subtitle": "Only realized sales count. Riders still in your academy show no value here until sold.",
+    "subtitle": "Only realized sales count. Your U23 and junior riders show no value here until they are sold.",
     "loadingNote": "Loading academy accounts...",
     "cumulativeHeading": "All-time cash flow",
     "driftPaid": "Upkeep paid",
@@ -229,17 +222,17 @@
     "valueCreation": "Sale premium",
     "netCashFlow": "Net cash flow",
     "premiumCaption": "Sale premium is the amount received above each rider's market value at the moment they were listed for sale.",
-    "currentHeading": "Current squad",
+    "currentHeading": "U23 and junior teams now",
     "slotsLabel": "Places used",
     "payrollLabel": "Current payroll (per season)",
-    "currentCaption": "A snapshot of today's academy, not part of the cash flow totals on the left.",
-    "salesHeading": "Recent academy sales",
-    "emptySales": "No academy graduates sold yet.",
+    "currentCaption": "A snapshot of your U23 and junior teams today, not part of the cash flow totals on the left.",
+    "salesHeading": "Recent youth sales",
+    "emptySales": "No youth riders sold yet.",
     "colRider": "Rider",
     "colDate": "Date",
     "colPrice": "Sale price",
     "colPremium": "Premium",
-    "unknownRider": "Former academy rider"
+    "unknownRider": "Former youth rider"
   },
   "graduationBanner": {
     "title": "{count, plural, one {1 rider has outgrown his squad} other {# riders have outgrown their squad}}",
@@ -272,7 +265,7 @@
       "junior": "Junior team",
       "u23": "U23 team",
       "senior": "Senior team",
-      "unknown": "Academy"
+      "unknown": "Youth team"
     },
     "transition": {
       "junior_u23": "From Junior team to U23 team",
@@ -298,14 +291,14 @@
     "rowError": {
       "not_pending": "His window has already closed. Reload the page.",
       "squad_cap_violation": "No room in the squad he was moving to.",
-      "rider_not_found": "This rider is no longer in your academy.",
+      "rider_not_found": "This rider is no longer on your youth teams.",
       "failed": "That did not go through. Try again."
     }
   },
   "boardGift": {
     "heading": "A thank-you from the board",
     "meta": "{count} open",
-    "context": "The board has put these prospects in your academy as a thank-you. Signing is free, normal youth wages apply, and squad limits still count. The offers run for 14 days, and the ones you do not pick leave quietly.",
+    "context": "The board has found these prospects for you as a thank-you. Signing is free, normal youth wages apply, and squad limits still count. The offers run for 14 days, and the ones you do not pick leave quietly.",
     "free": "Free"
   }
 }
