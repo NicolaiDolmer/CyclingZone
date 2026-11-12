@@ -43,6 +43,17 @@
 //   xp_bonus<N>  som xp, men halvdelen af managerholdene trykker Træn nu hver dato og
 //             får N % ekstra XP på træningsdage (#7801). Viser hvor stor fordelen er.
 //   Private varianter (andre tal) kan lægges i XP_PRIVATE.variants.
+//   Led i navnet kan kombineres (#7757), fx xp_bonus15_gulv_nocap eller xp_cal_nocap:
+//     _nocap   intet dagsloft (#7739): kun prisen bremser, så #7739 kan måles.
+//     _gulv    en løbsdag giver mindst en hård træningsdag med rytterens træner (ejer 7/11).
+//   Dagsvariationen har hukommelse, når den private fil sætter den (sim.variationMemory).
+//   Gulvet og hukommelsen kører gennem XP_ENGINE_HOOKS, indtil motoren har dem selv.
+//
+// KOHORTEN (--cohort, #7757, ejer 7/11): kun NYE ryttere fra generatoren, fulgt fra 16
+// til 40 år på billedets hold, ved siden af målingen af den nuværende verden. De to
+// faste krav måles mod kurve B i samme kørsel: ekstra købte evnepoint i kravets sæson
+// (verdenen) og antal kohorte-ryttere under egen kurve B-karrieretop. Grænserne læses
+// fra den private fil (sim.requirements), aldrig fra koden. X7 står i sin egen fil.
 //
 // GATES (--xp-gates): X1-X10 pr. XP-variant står på det private XP-kort, med kurve B
 // som sammenligning. H1, H2, H3, H6 og H6b køres mod det nye sande tal, rytterens
@@ -61,11 +72,15 @@
 //       --out-dir <mappe> (default <repo>/balance-internals/6110/s25) --limit-teams N
 //       --xp-gates (gates uden for sæsonløkken: X4, X5, X8, X9 og H, efter varianterne)
 //       --gate-variant <navn> (gates med en anden xp-variants tal; default xp)
+//       --cohort (kohorten ved siden af verdenen) · --cohort-only · --cohort-per-team N
+//       --out-dir skal ligge under balance-internals/6110 (scriptet nægter alt andet)
 //
 // Output (gitignoreret, må aldrig committes):
 //   <out-dir>/ten-season-sim-<dato>.md    ÉT privat kort med alle tal
 //   <out-dir>/ten-season-sim-<dato>.json  rå tal
 //   <out-dir>/xp-gates-<dato>.md          XP-gates X1-X10 og H (kun med xp-varianter)
+//   <out-dir>/xp-motorpakke-<dato>.md     de to faste krav, intet dagsloft, kohorten, X6
+//   <out-dir>/x7-mentale-<dato>.md        X7 særskilt
 //   <out-dir>/snapshot-<dato>.json        øjebliksbilledet (kun ved prod-kørsel)
 
 import { createHash } from "node:crypto";
@@ -123,6 +138,12 @@ export const SIM_DEFAULTS = Object.freeze({
   // XP: dagsvariationens bredde. Default = dagens bredde; den endelige sættes mod H6b.
   xpVariationSpan: DAILY_TRAINING_CONFIG.noiseSpan,
   inflowAgeBand: Object.freeze({ min: 17, max: 19 }),
+  // #7757: kohorten af nye ryttere (ejer 7/11). Strukturelle valg, ingen balance-tal.
+  cohortPerTeam: 2,
+  cohortStartAge: 16,
+  cohortEndAge: 40,
+  // Dagsvariationens hukommelse: 0 er dagens variation uden hukommelse. Den rigtige er privat.
+  xpVariationMemory: 0,
   // #3564: den rigtige kurve B (kurveB) erstatter B-proxyen som standard; "B" kan stadig vælges.
   variants: Object.freeze(["nu", "nu_maks1", "kurveB"]),
 });
@@ -132,6 +153,9 @@ export const RACE_PROFILES = Object.freeze(Object.keys(RACE_PROFILE_ABILITY_MAP)
 
 // #6110: XP-modellens private tal (hard rule 17, gitignoreret). Uden filen kaster en xp-variant.
 export const PRIVATE_XP_PATH = ["balance-internals", "6110", "xp-params.mjs"];
+
+// #7757: kohortens kørsler gemmes ved siden af verdenens i runs-<dato>/ med dette præfiks.
+export const COHORT_PREFIX = "kohorte-";
 
 const MENTAL_ABILITIES = new Set(VISIBLE_ABILITIES.filter((a) => abilityMeta(a)?.category === "mental"));
 
@@ -952,6 +976,175 @@ export function runVariant(snapshot, variant, opts = SIM_DEFAULTS) {
   return result;
 }
 
+// ── Kohorten (#7757, ejer 7/11): kun NYE ryttere, fulgt fra 16 til 40 år ─────────
+// Startbilledets ryttere bærer den gamle models historik; en kohorte født i kørslen gør
+// ikke. Hold, trænere og faciliteter er billedets, rytterne er produktionens generator.
+
+/** Kohortens ryttere: `perTeam` nye 16-årige på hvert aktivt hold, seedet pr. hold. */
+export function cohortRiders(world, seasonNumber, { perTeam = SIM_DEFAULTS.cohortPerTeam, startAge = SIM_DEFAULTS.cohortStartAge } = {}) {
+  const riders = [];
+  for (const team of world.teams.values()) {
+    if (!team.active) continue;
+    const rng = makeRng(Math.floor(seededUnitMixed(`cohort:${team.id}`) * 2 ** 31));
+    const kuld = generateAcademyCandidates({
+      rng, referenceYear: LAUNCH_REFERENCE_YEAR + seasonNumber - 1, existingNames: new Set(),
+      countOverride: perTeam, ageBand: { min: startAge, max: startAge },
+    });
+    kuld.forEach((c, i) => {
+      const abilities = {};
+      for (const k of VISIBLE_ABILITIES) if (c.birthAbilities?.[k] != null) abilities[k] = Number(c.birthAbilities[k]);
+      riders.push({
+        id: `coh-${team.id}-${i}`, birthdate: birthdateForAge(startAge, seasonNumber),
+        potentiale: Number(c.rider.potentiale), primary_type: c.archetypeDraw.primary,
+        secondary_type: c.archetypeDraw.secondary ?? null, teamId: team.id, division: team.division,
+        abilities, progress: {}, raceShare: null, frozenRow: {},
+        inflow: true, cohort: true, retired: false, trajectory: [], seasonRaceDays: 0,
+      });
+    });
+  }
+  return riders;
+}
+
+/** Uden en privat løbsandel efter alder bruges billedets målte medianer (ung / ældre). */
+function cohortRaceTable(snapshot, opts) {
+  if (opts.raceShareByAge) return opts.raceShareByAge;
+  const world = buildWorld(snapshot);
+  const { youngMedian, oldMedian } = fillMissingRaceShares(world.riders, world.startSeason, null);
+  return [{ maxAge: 21, share: youngMedian }, { maxAge: 999, share: oldMedian }];
+}
+
+/**
+ * Kohorte-kørslen: samme sæsonløkke, samme aldring og pension som verdenen, men kun
+ * kohortens ryttere og ingen erstatninger. Rytterne følges til `endAge` eller pension.
+ */
+export function runCohort(snapshot, variant, opts = SIM_DEFAULTS) {
+  const world = buildWorld(snapshot);
+  const s0 = world.startSeason;
+  const startAge = opts.cohortStartAge ?? SIM_DEFAULTS.cohortStartAge;
+  const endAge = opts.cohortEndAge ?? SIM_DEFAULTS.cohortEndAge;
+  world.riders = cohortRiders(world, s0 + 1, { perTeam: opts.cohortPerTeam ?? SIM_DEFAULTS.cohortPerTeam, startAge });
+  const runOpts = { ...opts, raceShareByAge: cohortRaceTable(snapshot, opts) };
+  world.bNorm = variant.kind === "B" ? requireBNormalizer(opts)(world.riders.map(() => startAge), opts.bReferenceAge) : null;
+  world.dateCap = { over: 0, clipped: 0 };
+  world.abilityPoints = {};
+  world.firstSeasonByDate = [];
+  world.capViolations = 0;
+  world.seasonPoints = 0;
+  world.dateGains = emptyDateGains();
+  const physical = VISIBLE_ABILITIES.filter((a) => abilityMeta(a)?.category === "physical");
+  const mental = [...MENTAL_ABILITIES];
+  const meanOf = (r, list) => list.reduce((s, a) => s + Number(r.abilities[a] ?? 0), 0) / (list.length || 1);
+  const ages = {};
+  const retiredAt = {};
+  for (let i = 1; startAge + i - 1 <= endAge; i++) {
+    const season = s0 + i;
+    const alive = world.riders.filter((r) => !r.retired);
+    if (!alive.length) break;
+    for (const r of alive) { r.seasonPointsBought = 0; r.seasonMentalPoints = 0; }
+    simulateSeason(world, season, variant, runOpts);
+    recordTrajectories(world, season);
+    const age = startAge + i - 1;
+    const rated = alive.map((r) => ({ r, rating: bestRating(r.abilities) })).filter((x) => x.rating != null);
+    const ratings = rated.map((x) => x.rating).sort((a, b) => a - b);
+    const avg = (list) => (list.length ? round(list.reduce((s, x) => s + x, 0) / list.length, 2) : null);
+    ages[age] = {
+      n: alive.length,
+      rating: { mean: avg(ratings), p50: round(quantile(ratings, 0.5)), p90: round(quantile(ratings, 0.9)), max: ratings.at(-1) ?? null },
+      pointsMean: avg(alive.map((r) => r.seasonPointsBought ?? 0)),
+      mentalPointsMean: avg(alive.map((r) => r.seasonMentalPoints ?? 0)),
+      raceDaysMean: avg(alive.map((r) => r.seasonRaceDays ?? 0)),
+      // X7: mentale mod fysiske evner pr. alder; taktik står for sig selv (spec §8).
+      mentalMean: avg(alive.map((r) => meanOf(r, mental))),
+      physicalMean: avg(alive.map((r) => meanOf(r, physical))),
+      tacticsMean: avg(alive.map((r) => Number(r.abilities.tactics ?? 0))),
+      mentalBest: alive.filter((r) => Math.max(...mental.map((a) => Number(r.abilities[a] ?? 0))) > Math.max(...physical.map((a) => Number(r.abilities[a] ?? 0)))).length,
+    };
+    const t = transition(world, season, runOpts, { inflow: false });
+    if (t.retired) retiredAt[age] = t.retired;
+  }
+  const riderPeaks = {};
+  for (const r of world.riders) {
+    if (r.trajectory.length) riderPeaks[r.id] = Math.max(...r.trajectory.map((x) => x.rating));
+  }
+  return {
+    variant: variant.name, mode: "cohort", cohortSize: world.riders.length, startAge, endAge, startSeason: s0 + 1,
+    byAge: ages, retiredAt, milestones: milestoneStats(world.riders), peakByPotential: potentialPeakStats(world.riders),
+    riderPeaks, dateGains: world.dateGains, abilityPoints: world.abilityPoints,
+    params: { xp: variant.kind === "xp" ? variant.xpParams : null, xpRun: variant.kind === "xp" ? xpRunInputs(variant, opts) : null,
+      curveB: variant.kind === "curveB" ? opts.curveB ?? null : null, curveBRun: variant.kind === "curveB" ? curveBRunInputs(opts) : null },
+    fingerprint: cohortFingerprint(snapshot, opts),
+  };
+}
+
+/** Kohortens identitet: billedet, sæsonens længde og kohortens form. */
+export function cohortFingerprint(snapshot, opts) {
+  return [runFingerprint(snapshot, opts), "kohorte", opts.cohortPerTeam ?? SIM_DEFAULTS.cohortPerTeam,
+    opts.cohortStartAge ?? SIM_DEFAULTS.cohortStartAge, opts.cohortEndAge ?? SIM_DEFAULTS.cohortEndAge].join("|");
+}
+
+// ── De to faste krav (#7757): grænserne er private, målingen er her ─────────────
+
+/**
+ * Validerer de private krav. Inflation: højst en procentdel ekstra købte evnepoint i en
+ * given sæson mod kurve B. Top-tab: højst et antal (eller en andel) af kohortens ryttere
+ * under deres egen kurve B-karrieretop. Returnerer null uden krav; kaster ved ugyldige.
+ */
+export function validateRequirements(raw) {
+  if (raw == null) return null;
+  const inflation = raw.inflation;
+  const topLoss = raw.topLoss;
+  const pos = (x) => Number.isFinite(x) && x >= 0;
+  if (!inflation || !Number.isInteger(inflation.season) || inflation.season < 1 || !pos(inflation.maxExtraPct)) {
+    throw new Error("Private krav: inflation kræver en sæson og en største ekstra procent");
+  }
+  if (!topLoss || (!pos(topLoss.maxBelow) && !pos(topLoss.maxBelowPct))) {
+    throw new Error("Private krav: top-tab kræver et største antal eller en største andel");
+  }
+  return Object.freeze({
+    inflation: Object.freeze({ season: inflation.season, maxExtraPct: inflation.maxExtraPct }),
+    topLoss: Object.freeze({ maxBelow: pos(topLoss.maxBelow) ? topLoss.maxBelow : null, maxBelowPct: pos(topLoss.maxBelowPct) ? topLoss.maxBelowPct : null }),
+  });
+}
+
+/** Inflationen: købte evnepoint i kravets sæson mod kurve B i samme verden. */
+export function inflationCheck(xpResult, curveBResult, requirements) {
+  const season = requirements?.inflation?.season ?? null;
+  const pts = (r) => r?.gates?.pointsPerSeason ?? [];
+  const perSeason = pts(xpResult).map((p, i) => {
+    const b = pts(curveBResult)[i];
+    return b > 0 ? round((100 * (p - b)) / b, 2) : null;
+  });
+  if (season == null) return { season: null, perSeason, verdict: null, reason: "krav mangler (privat)" };
+  const xp = pts(xpResult)[season - 1];
+  const b = pts(curveBResult)[season - 1];
+  if (xp == null || b == null) return { season, perSeason, verdict: null, reason: `kørslen når ikke sæson ${season}` };
+  const extraPct = b > 0 ? round((100 * (xp - b)) / b, 2) : null;
+  const limit = requirements.inflation.maxExtraPct;
+  return { season, xp, curveB: b, extraPct, limit, perSeason, verdict: extraPct != null && extraPct <= limit };
+}
+
+/** Top-tabet: kohortens ryttere, hvis XP-karrieretop ligger under deres egen kurve B-top. */
+export function topLossCheck(xpCohort, curveBCohort, requirements) {
+  const xpPeaks = xpCohort?.riderPeaks ?? {};
+  const bPeaks = curveBCohort?.riderPeaks ?? {};
+  const losses = [];
+  let n = 0;
+  for (const [id, bPeak] of Object.entries(bPeaks)) {
+    const xpPeak = xpPeaks[id];
+    if (xpPeak == null) continue;
+    n += 1;
+    if (xpPeak < bPeak) losses.push(bPeak - xpPeak);
+  }
+  const below = losses.length;
+  const belowPct = n ? round((100 * below) / n, 2) : null;
+  const loss = statsOf(losses);
+  const limit = requirements?.topLoss ?? null;
+  if (!limit) return { n, below, belowPct, loss, verdict: null, reason: "krav mangler (privat)" };
+  const okCount = limit.maxBelow == null || below <= limit.maxBelow;
+  const okPct = limit.maxBelowPct == null || (belowPct ?? 0) <= limit.maxBelowPct;
+  return { n, below, belowPct, loss, limit, verdict: n > 0 && okCount && okPct };
+}
+
 export function variantList(opts = SIM_DEFAULTS) {
   const list = [];
   for (const v of opts.variants) {
@@ -1769,6 +1962,157 @@ export function renderXpGates(snapshot, results, gates, opts, date) {
   return L.join("\n") + "\n";
 }
 
+const verdictText = (c) => (c.verdict === true ? "holder" : c.verdict === false ? "holder IKKE" : c.reason ?? "-");
+const histText = (h) => (h ? ["1", "2", "3+"].map((b) => `${b}: ${h[b] ?? 0}`).join(" · ") : "-");
+
+/**
+ * Kortet for kørslen på motorens pakke (#7757): de to faste krav, intet dagsloft,
+ * kohorten af nye ryttere og X6's første uge. PRIVAT, alle tal står her og kun her.
+ */
+export function renderMotorpakke(snapshot, results, cohorts, opts, date) {
+  const L = [];
+  const curveB = results.find((r) => r.variant === "kurveB") ?? null;
+  const cohortB = cohorts.find((r) => r.variant === "kurveB") ?? null;
+  const xpNames = [...new Set([...results, ...cohorts].map((r) => r.variant).filter((v) => v.startsWith("xp")))].sort();
+  const req = opts.requirements ?? null;
+  L.push(`# #6110/#7757 Kørslen på motorens pakke (${date}) · PRIVAT (hard rule 17)`);
+  L.push("");
+  L.push(`Billede: sæson ${snapshot.season.number}, ${snapshot.takenAt}. Verden: ${opts.seasons} sæsoner. Kohorte: ${opts.cohortPerTeam ?? SIM_DEFAULTS.cohortPerTeam} nye ryttere pr. aktivt hold fra ${opts.cohortStartAge ?? SIM_DEFAULTS.cohortStartAge} til ${opts.cohortEndAge ?? SIM_DEFAULTS.cohortEndAge} år, ingen erstatninger.`);
+  L.push(`Motorens funktioner: ${engineHooks(opts).source}. Dagsvariation ±${opts.xpVariationSpan}, hukommelse ${opts.xpVariationMemory ?? 0}.`);
+  L.push("");
+  L.push("## De to faste krav");
+  L.push("");
+  L.push(req
+    ? `Inflation: højst ${req.inflation.maxExtraPct} % ekstra købte evnepoint i sæson ${req.inflation.season} mod kurve B. Top-tab: højst ${req.topLoss.maxBelow ?? "-"} ryttere${req.topLoss.maxBelowPct != null ? ` / ${req.topLoss.maxBelowPct} %` : ""} af kohorten under egen kurve B-karrieretop.`
+    : "Grænserne mangler i den private fil (sim.requirements). Målingerne står, dommen gør ikke.");
+  L.push("");
+  L.push("| Variant | Inflation: XP / kurve B (ekstra %) | Inflation | Top-tab: under / n (%) | Tab p50 / p90 / max | Top-tab |");
+  L.push("|---|---|---|---|---|---|");
+  for (const name of xpNames) {
+    const world = results.find((r) => r.variant === name);
+    const coh = cohorts.find((r) => r.variant === name);
+    const inf = world && curveB ? inflationCheck(world, curveB, req) : null;
+    const top = coh && cohortB ? topLossCheck(coh, cohortB, req) : null;
+    const infText = inf?.xp != null ? `${inf.xp} / ${inf.curveB} (${inf.extraPct})` : "-";
+    const topText = top ? `${top.below} / ${top.n} (${top.belowPct})` : "-";
+    L.push(`| ${name} | ${infText} | ${inf ? verdictText(inf) : "kurve B mangler i verdenen"} | ${topText} | ${top ? fmtStats(top.loss) : "-"} | ${top ? verdictText(top) : "kurve B mangler i kohorten"} |`);
+  }
+  L.push("");
+  if (curveB) {
+    L.push("### Ekstra købte evnepoint mod kurve B pr. sæson (%)");
+    L.push("");
+    for (const name of xpNames) {
+      const world = results.find((r) => r.variant === name);
+      if (world) L.push(`- ${name}: ${inflationCheck(world, curveB, req).perSeason.join(" · ")}`);
+    }
+    L.push("");
+  }
+  L.push("## Intet dagsloft (#7739): stigning pr. evne pr. dato (ejervalg 12/11: normalt 1, sjældent 2, aldrig 3+)");
+  L.push("");
+  L.push("| Variant | Kilde | Alle | Første uge | Løbsdato | Træningsdato | Største |");
+  L.push("|---|---|---|---|---|---|---|");
+  const histRows = [...results.map((r) => ["verden", r]), ...cohorts.map((r) => ["kohorte", r])].filter(([, r]) => r.dateGains);
+  for (const [src, r] of histRows) {
+    const h = r.dateGains;
+    L.push(`| ${r.variant} | ${src} | ${histText(h.all)} | ${histText(h.firstWeek)} | ${histText(h.raceDate)} | ${histText(h.trainingDate)} | ${h.max} |`);
+  }
+  L.push("");
+  L.push("| Variant | Kilde | Alder | 1 / 2 / 3+ |");
+  L.push("|---|---|---|---|");
+  for (const [src, r] of histRows) for (const [band, h] of Object.entries(r.dateGains.byAge).sort()) L.push(`| ${r.variant} | ${src} | ${band} | ${histText(h)} |`);
+  L.push("");
+  L.push("| Variant | Kilde | Potentiale | 1 / 2 / 3+ |");
+  L.push("|---|---|---|---|");
+  for (const [src, r] of histRows) for (const [pot, h] of Object.entries(r.dateGains.byPotential).sort()) L.push(`| ${r.variant} | ${src} | ${pot} | ${histText(h)} |`);
+  L.push("");
+  L.push("## X6 første uge i verdenen (point pr. rytter, p50 / p90 / max (n))");
+  L.push("");
+  L.push("| Variant | Uge 1 | Uge 2 | Brud på dagsloftet |");
+  L.push("|---|---|---|---|");
+  for (const r of results.filter((x) => x.gates)) L.push(`| ${r.variant} | ${fmtStats(r.gates.firstSeason.week1)} | ${fmtStats(r.gates.firstSeason.week2)} | ${r.gates.capViolations} |`);
+  L.push("");
+  if (cohorts.length) {
+    L.push("## Kohorten: X1 milepæle (mål ca. 60 % ved 22, ca. 85 % ved 25, top 27-28)");
+    L.push("");
+    L.push("| Variant | Gruppe | N | % ved 22 | % ved 25 | Topalder | Top 27-28 (%) | Top ≤ 24 (%) | Top-rating |");
+    L.push("|---|---|---|---|---|---|---|---|---|");
+    for (const r of cohorts) for (const [g, m] of Object.entries(r.milestones).sort()) L.push(`| ${r.variant} | ${g} | ${m.n} | ${m.pct22} | ${m.pct25} | ${m.peakAgeMedian} | ${m.peakAt27to28} | ${m.peakAtOrBefore24} | ${m.peakMedian} |`);
+    L.push("");
+    L.push("## Kohorten: karrieretop efter potentiale (p50 / p90 / max (n))");
+    L.push("");
+    const pots = [1, 2, 3, 4, 5, 6];
+    L.push(`| Variant | ${pots.map((p) => `Pot ${p}`).join(" | ")} |`);
+    L.push(`|---|${pots.map(() => "---").join("|")}|`);
+    for (const r of cohorts) L.push(`| ${r.variant} | ${pots.map((p) => fmtStats(r.peakByPotential[p])).join(" | ")} |`);
+    L.push("");
+    L.push("## Kohorten pr. alder (hoppet ved 19 til 20 år skal ses)");
+    L.push("");
+    L.push("| Variant | Alder | N | Rating snit | P50 | P90 | Max | Købte point | Løbsdage | Pensioneret efter sæsonen |");
+    L.push("|---|---|---|---|---|---|---|---|---|---|");
+    for (const r of cohorts) {
+      for (const [age, a] of Object.entries(r.byAge).sort(([x], [y]) => Number(x) - Number(y))) {
+        L.push(`| ${r.variant} | ${age} | ${a.n} | ${a.rating.mean} | ${a.rating.p50} | ${a.rating.p90} | ${a.rating.max} | ${a.pointsMean} | ${a.raceDaysMean} | ${r.retiredAt[age] ?? 0} |`);
+      }
+    }
+    L.push("");
+  }
+  L.push("## Hvad dette IKKE dækker");
+  L.push("- Ingen løbsmotor, form, skader, transfers eller akademi. Rollerne på løbsdagen er en antagelse.");
+  L.push("- Kohorten er produktionens generator på billedets hold; den møder ingen konkurrence om pladser og bliver ikke solgt.");
+  L.push(`- Motorens funktioner: ${engineHooks(opts).source}. Er kilden lokal, er tallene en gengivelse, ikke motorens egen kode.`);
+  L.push("- Kurve B er sammenligningen i begge krav; varianter uden kurve B i samme kørsel får ingen dom.");
+  return L.join("\n") + "\n";
+}
+
+/** X7 særskilt (spec §8): mentale evner mod fysiske i verdenen og i kohorten. Taktik for sig. */
+export function renderX7(snapshot, results, cohorts, opts, date) {
+  const L = [];
+  const mental = [...MENTAL_ABILITIES];
+  const physical = VISIBLE_ABILITIES.filter((a) => abilityMeta(a)?.category === "physical");
+  L.push(`# #6110 X7 Mentale evner (${date}) · PRIVAT (hard rule 17)`);
+  L.push("");
+  L.push(`Billede: sæson ${snapshot.season.number}, ${snapshot.takenAt}. Krav: mentale evner vokser længere end de fysiske, men ingen mental evne løber fra dem. Taktik vurderes særskilt.`);
+  L.push("");
+  L.push("## Verdenen ved slut: ryttere 30+ (p50 / p90 / max (n))");
+  L.push("");
+  L.push(`| Variant | ${[...mental, ...physical].join(" | ")} | Mental bedst af 30+ |`);
+  L.push(`|---|${[...mental, ...physical].map(() => "---").join("|")}|---|`);
+  for (const r of results.filter((x) => x.gates)) {
+    const e = r.gates.abilityEnd.senior30;
+    L.push(`| ${r.variant} | ${[...mental, ...physical].map((a) => fmtStats(e[a])).join(" | ")} | ${r.gates.mentalOverPhysical.mentalBest} / ${r.gates.mentalOverPhysical.seniors} |`);
+  }
+  L.push("");
+  L.push("## Verdenen: købte point pr. evne over hele kørslen");
+  L.push("");
+  L.push(`| Variant | ${[...mental, ...physical].join(" | ")} |`);
+  L.push(`|---|${[...mental, ...physical].map(() => "---").join("|")}|`);
+  for (const r of results.filter((x) => x.gates)) L.push(`| ${r.variant} | ${[...mental, ...physical].map((a) => r.gates.abilityPoints[a] ?? 0).join(" | ")} |`);
+  L.push("");
+  if (cohorts.length) {
+    L.push("## Kohorten pr. alder: snit af mentale og fysiske evner, taktik for sig");
+    L.push("");
+    L.push("| Variant | Alder | N | Mentale (snit) | Fysiske (snit) | Taktik | Mentale point | Alle point | Mental bedst |");
+    L.push("|---|---|---|---|---|---|---|---|---|");
+    for (const r of cohorts) {
+      for (const [age, a] of Object.entries(r.byAge).sort(([x], [y]) => Number(x) - Number(y))) {
+        L.push(`| ${r.variant} | ${age} | ${a.n} | ${a.mentalMean} | ${a.physicalMean} | ${a.tacticsMean} | ${a.mentalPointsMean} | ${a.pointsMean} | ${a.mentalBest} |`);
+      }
+    }
+    L.push("");
+  }
+  return L.join("\n") + "\n";
+}
+
+/** Output må kun lande i den private mappe (balance-internals/6110, gitignoreret). */
+export function assertPrivateOutDir(dir) {
+  const parts = resolve(dir).split(/[\\/]+/).map((p) => p.toLowerCase());
+  const i = parts.indexOf("balance-internals");
+  if (i < 0 || parts[i + 1] !== "6110") {
+    throw new Error(`--out-dir skal ligge under balance-internals/6110 (privat, hard rule 17): ${dir}`);
+  }
+  return resolve(dir);
+}
+
 function parseArgs(argv) {
   const opts = { ...SIM_DEFAULTS };
   const get = (name) => {
@@ -1782,7 +2126,12 @@ function parseArgs(argv) {
   if (get("--b-noise")) opts.bNoiseSpan = Number(get("--b-noise"));
   if (get("--b-ref-age")) opts.bReferenceAge = Number(get("--b-ref-age"));
   if (get("--gate-variant")) opts.xpGateVariant = get("--gate-variant");
-  return { opts, snapshotPath: get("--snapshot"), outDir: get("--out-dir"), limitTeams: Number(get("--limit-teams")) || null };
+  if (get("--cohort-per-team")) opts.cohortPerTeam = Number(get("--cohort-per-team"));
+  const cohortOnly = argv.includes("--cohort-only");
+  return {
+    opts, snapshotPath: get("--snapshot"), outDir: get("--out-dir"), limitTeams: Number(get("--limit-teams")) || null,
+    cohort: cohortOnly || argv.includes("--cohort"), world: !cohortOnly,
+  };
 }
 
 /** Til hurtige prøvekørsler: kun de første N aktive hold (og deres ryttere). */
@@ -1794,9 +2143,9 @@ export function limitSnapshotTeams(snapshot, n) {
 }
 
 async function main() {
-  const { opts, snapshotPath, outDir: outArg, limitTeams } = parseArgs(process.argv.slice(2));
+  const { opts, snapshotPath, outDir: outArg, limitTeams, cohort, world: runWorld } = parseArgs(process.argv.slice(2));
   const date = new Date().toISOString().slice(0, 10);
-  const outDir = outArg ? resolve(outArg) : join(REPO, "balance-internals", "6110", "s25");
+  const outDir = assertPrivateOutDir(outArg ? resolve(outArg) : join(REPO, "balance-internals", "6110", "s25"));
   mkdirSync(outDir, { recursive: true });
   let snapshot;
   if (snapshotPath) {
@@ -1827,14 +2176,24 @@ async function main() {
   const runsDir = join(outDir, `runs-${date}${suffix}`);
   mkdirSync(runsDir, { recursive: true });
   for (const variant of process.argv.includes("--render-only") ? [] : variantList(opts)) {
-    const t0 = Date.now();
-    const result = runVariant(snapshot, variant, opts);
-    writeFileSync(join(runsDir, `${variant.name}.json`), JSON.stringify(result, null, 2) + "\n");
-    console.log(`[s25] ${variant.name} færdig (${Math.round((Date.now() - t0) / 1000)} s)`);
+    if (runWorld) {
+      const t0 = Date.now();
+      const result = runVariant(snapshot, variant, opts);
+      writeFileSync(join(runsDir, `${variant.name}.json`), JSON.stringify(result, null, 2) + "\n");
+      console.log(`[s25] ${variant.name} færdig (${Math.round((Date.now() - t0) / 1000)} s)`);
+    }
+    // #7757: kohorten af nye ryttere ved siden af verdenen.
+    if (cohort) {
+      const t0 = Date.now();
+      writeFileSync(join(runsDir, `${COHORT_PREFIX}${variant.name}.json`), JSON.stringify(runCohort(snapshot, variant, opts), null, 2) + "\n");
+      console.log(`[s25] kohorte ${variant.name} færdig (${Math.round((Date.now() - t0) / 1000)} s)`);
+    }
   }
   // Kun kørsler på samme billede og samme sæson-parametre kommer på samme kort.
   const fingerprint = runFingerprint(snapshot, opts);
-  const all = readdirSync(runsDir).filter((f) => f.endsWith(".json")).map((f) => JSON.parse(readFileSync(join(runsDir, f), "utf8")));
+  const files = readdirSync(runsDir).filter((f) => f.endsWith(".json"));
+  const all = files.filter((f) => !f.startsWith(COHORT_PREFIX)).map((f) => JSON.parse(readFileSync(join(runsDir, f), "utf8")));
+  const cohortFiles = files.filter((f) => f.startsWith(COHORT_PREFIX)).map((f) => JSON.parse(readFileSync(join(runsDir, f), "utf8")));
   // Samme regel for XP: en kørsel med gamle tal kommer aldrig på kortet sammen med nye.
   const sameXp = (r) => {
     if (!r.variant.startsWith("xp")) return true;
@@ -1849,6 +2208,14 @@ async function main() {
   writeFileSync(join(outDir, `ten-season-sim-${date}${suffix}.md`), renderCard(snapshot, results, opts, date));
   writeFileSync(join(outDir, `ten-season-sim-${date}${suffix}.json`), JSON.stringify({ date, opts, results }, null, 2) + "\n");
   console.log(`[s25] privat kort (${results.length} varianter): ${join(outDir, `ten-season-sim-${date}${suffix}.md`)}`);
+  // #7757: de to faste krav, intet dagsloft, kohorten og X7 særskilt. Kun samme kohorte og samme tal.
+  const cohortPrint = cohortFingerprint(snapshot, opts);
+  const cohorts = orderResults(cohortFiles.filter((r) => r.fingerprint === cohortPrint && sameCurveBRun(r, opts) && sameXp(r)));
+  if (cohorts.length || opts.requirements) {
+    writeFileSync(join(outDir, `xp-motorpakke-${date}${suffix}.md`), renderMotorpakke(snapshot, results, cohorts, opts, date));
+    writeFileSync(join(outDir, `x7-mentale-${date}${suffix}.md`), renderX7(snapshot, results, cohorts, opts, date));
+    console.log(`[s25] privat motorpakke-kort og X7: ${join(outDir, `xp-motorpakke-${date}${suffix}.md`)}`);
+  }
   if (wantsXp) {
     const gateTag = opts.xpGateVariant ? `-${opts.xpGateVariant}` : "";
     const gatesFile = join(outDir, `xp-gates-${date}${suffix}${gateTag}.json`);
@@ -1875,6 +2242,11 @@ export function applyPrivateXp(opts, priv) {
   opts.xp = priv.xp;
   opts.xpVariants = priv.variants ?? {};
   opts.xpVariationSpan = priv.sim?.variationSpan ?? opts.xpVariationSpan;
+  const memory = priv.sim?.variationMemory ?? opts.xpVariationMemory ?? 0;
+  if (!(memory >= 0 && memory < 1)) throw new Error("Private params: hukommelsen i dagsvariationen skal ligge i [0, 1)");
+  opts.xpVariationMemory = memory;
+  // #7757: de to faste krav. Grænserne står kun i den private fil.
+  opts.requirements = validateRequirements(priv.sim?.requirements ?? null);
   opts.xpAttackSpans = priv.sim?.attackSpans ?? null;
   opts.xpAttackMemories = priv.sim?.attackMemories ?? null;
   opts.raceShareByAge = priv.sim?.raceShareByAge ?? null;
