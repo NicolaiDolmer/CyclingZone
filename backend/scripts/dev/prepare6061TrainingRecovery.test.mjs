@@ -94,6 +94,70 @@ test('legacy report is found when the earliest source was a race load (first_run
  assert.equal(byRider['load-first'],'missing_state_with_history_review');
  assert.equal(byRider['report-first'],'missing_state_with_history_review');
 });
+// #7832: synthetic stand-in for one approved case (Hold A, one date, twelve
+// riders, five slots) next to an already paid earlier row for the same team and
+// unapproved rows for other teams/dates. Ids are synthetic, never prod ids.
+const sid=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
+const TEAM_A=sid(1),TEAM_B=sid(2),SEASON=sid(9);
+const caseRiders=Array.from({length:12},(_,i)=>sid(100+i));
+const otherRiders=Array.from({length:3},(_,i)=>sid(200+i));
+const caseTables=()=>({
+ training_date_work:[
+  {team_id:TEAM_A,season_id:SEASON,tick_date:'2026-10-20',game_days:[5,6,7,8,9],quarantined_rider_ids:caseRiders.slice(0,4),opening_conditions:{}},
+  {team_id:TEAM_A,season_id:SEASON,tick_date:'2026-11-05',game_days:[40,41,42,43,44],quarantined_rider_ids:caseRiders,opening_conditions:{}},
+  {team_id:TEAM_A,season_id:SEASON,tick_date:'2026-11-06',game_days:[45,46,47,48,49],quarantined_rider_ids:[],opening_conditions:{}},
+  {team_id:TEAM_B,season_id:SEASON,tick_date:'2026-11-01',game_days:[20,21,22,23,24],quarantined_rider_ids:otherRiders,opening_conditions:{}},
+  {team_id:TEAM_B,season_id:SEASON,tick_date:'2026-11-05',game_days:[40,41,42,43,44],quarantined_rider_ids:otherRiders.slice(0,1),opening_conditions:{}},
+ ],
+ riders:[...caseRiders.map(id=>({id,team_id:TEAM_A,is_retired:false})),...otherRiders.map(id=>({id,team_id:TEAM_B,is_retired:false}))],
+ // The earlier row was paid in full: every slot has a receipt.
+ training_rider_ticks:caseRiders.slice(0,4).flatMap(rider_id=>[5,6,7,8,9].map(game_day=>({rider_id,season_id:SEASON,game_day,tick_date:'2026-10-20',team_id:TEAM_A}))),
+});
+const OPTS={through:'2026-11-11',asOf:'2026-11-12T09:00:00Z'};
+test('#7832 team-date filter keeps only the one case: 12 riders, 60 slots, one team',async()=>{
+ const {loadRecoveryInputs}=await import('./prepare6061TrainingRecovery.mjs');
+ const supabase=fakeSupabase(caseTables());
+ const state=await loadRecoveryInputs(supabase,{...OPTS,team:TEAM_A,tickDate:'2026-11-05'});
+ assert.deepEqual(state.work.map(w=>[w.team_id,w.tick_date]),[[TEAM_A,'2026-11-05']]);
+ // The rider list is built after the filter: no other team's rider is read.
+ const riderRead=supabase.calls.find(c=>c.table==='riders');
+ assert.deepEqual([...riderRead.in[1]].sort(),[...caseRiders].sort());
+ assert.deepEqual(supabase.calls.find(c=>c.table==='training_date_work').eq,[['tick_date','2026-11-05']]);
+ const manifest=buildRecoveryManifest(state);
+ assert.equal(manifest.summary.riders,12);assert.equal(manifest.summary.teams,1);assert.equal(manifest.summary.rider_days,60);
+ assert.deepEqual(manifest.summary.by_date,[{date:'2026-11-05',rider_days:60}]);
+ assert.ok(manifest.candidates.every(c=>c.team_id===TEAM_A&&c.tick_date==='2026-11-05'&&c.missing_game_days.join()==='40,41,42,43,44'));
+});
+test('#7832 without a filter the loader reads every quarantined row as before',async()=>{
+ const {loadRecoveryInputs}=await import('./prepare6061TrainingRecovery.mjs');
+ const tables=caseTables();tables.training_date_work.splice(4,1); // no same-date ambiguity in the baseline
+ const supabase=fakeSupabase(tables);
+ const state=await loadRecoveryInputs(supabase,OPTS);
+ assert.equal(supabase.calls.find(c=>c.table==='training_date_work').eq,undefined);
+ assert.deepEqual(state.work.map(w=>w.tick_date),['2026-10-20','2026-11-05','2026-11-01']);
+ assert.deepEqual(Object.keys(state),['through','asOf','work','riders','conditions','ticks','settlements','loads','plans','weekPlans','legacyReports']);
+ const manifest=buildRecoveryManifest(state);
+ assert.equal(manifest.summary.riders,15);assert.equal(manifest.summary.teams,2);assert.equal(manifest.summary.rider_days,75);
+});
+test('#7832 a filtered run never hides a same-date owner conflict or an empty match',async()=>{
+ const {loadRecoveryInputs}=await import('./prepare6061TrainingRecovery.mjs');
+ const tables=caseTables();tables.training_date_work[4].quarantined_rider_ids=[caseRiders[0]];
+ await assert.rejects(loadRecoveryInputs(fakeSupabase(tables),{...OPTS,team:TEAM_A,tickDate:'2026-11-05'}),/Another team/);
+ await assert.rejects(loadRecoveryInputs(fakeSupabase(caseTables()),{...OPTS,team:TEAM_A,tickDate:'2026-11-06'}),/No quarantined work row/);
+ await assert.rejects(loadRecoveryInputs(fakeSupabase(caseTables()),{...OPTS,team:TEAM_B,tickDate:'2026-10-20'}),/No quarantined work row/);
+});
+test('#7832 filter arguments are validated together before any network',async()=>{
+ const {outputDirectory}=await import('./prepare6061TrainingRecovery.mjs');
+ assert.deepEqual(parseArgs(['--through=2026-11-11','--as-of=2026-11-12T09:00:00Z']),{through:'2026-11-11',asOf:'2026-11-12T09:00:00Z'});
+ const upper=TEAM_A.toUpperCase().replace('4000','4ABC');
+ assert.deepEqual(parseArgs(['--through=2026-11-11','--as-of=x',`--team=${upper}`,'--tick-date=2026-11-05','--case=7832-hold-a']),{through:'2026-11-11',asOf:'x',team:upper.toLowerCase(),tickDate:'2026-11-05',caseId:'7832-hold-a'});
+ const bad=[['--team='+TEAM_A],['--tick-date=2026-11-05'],['--team=not-a-uuid','--tick-date=2026-11-05'],['--team='+TEAM_A,'--tick-date=2026-11-31'],['--team='+TEAM_A,'--tick-date=2026-11-12'],['--team='+TEAM_A,'--tick-date=2026-11-05','--case=../x'],['--case=x']];
+ for(const extra of bad)assert.throws(()=>parseArgs(['--through=2026-11-11','--as-of=x',...extra]),undefined,extra.join(' '));
+ const root='/repo';
+ assert.equal(outputDirectory(root,{}).replaceAll('\\','/').replace(/^[A-Z]:/,''),'/repo/balance-internals/6061');
+ assert.equal(outputDirectory(root,{team:TEAM_A,tickDate:'2026-11-05'}).replaceAll('\\','/').replace(/^[A-Z]:/,''),'/repo/balance-internals/6061/2026-11-05-00000000');
+ assert.equal(outputDirectory(root,{team:TEAM_A,tickDate:'2026-11-05',caseId:'7832-hold-a'}).replaceAll('\\','/').replace(/^[A-Z]:/,''),'/repo/balance-internals/6061/7832-hold-a');
+});
 test('non-array report riders never throw in the history check',()=>{
  const state={...base(),legacyReports:[{id:'junk',report:{riders:{rider_id:'rider'}}}]};
  assert.equal(buildRecoveryManifest(state).candidates[0].category,'first_use_recovery_candidate');
