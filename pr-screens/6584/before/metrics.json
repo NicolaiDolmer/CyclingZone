@@ -26,11 +26,15 @@
     },
     {
       "profile": "mobile",
-      "route": "/auctions",
-      "performance": 64,
-      "CLS": 0.12540195975090393,
-      "LCPms": 14713.463800000005,
-      "INPms": 16
+      "route": "/auctions?tab=all",
+      "performance": 96,
+      "CLS": 0.07148282737589685,
+      "LCPms": 1506.7588,
+      "INPms": 16,
+      "LCPRangeMs": [
+        1506.748,
+        1506.9105
+      ]
     },
     {
       "profile": "desktop",
@@ -50,11 +54,15 @@
     },
     {
       "profile": "desktop",
-      "route": "/auctions",
-      "performance": 82,
-      "CLS": 0.0215246697068705,
-      "LCPms": 3027.5495000000014,
-      "INPms": 16
+      "route": "/auctions?tab=all",
+      "performance": 84,
+      "CLS": 0.021192691504710006,
+      "LCPms": 2697.800500000001,
+      "INPms": 16,
+      "LCPRangeMs": [
+        2674.4845000000014,
+        2998.3600499999984
+      ]
     }
   ],
   "pwa": [
@@ -94,5 +102,6 @@
         }
       ]
     }
-  ]
+  ],
+  "method": "Synthetic local navigation LAB; webdriver skips SW registration. Active SW installability/offline/auth measured separately. Native INP uses click/filter with650ms fixture delay; no field-speedup claim. Auction navigation uses canonical ?tab=all in a matched bounded rerun; original redirected probes retained privately. No causal speedup claim."
 }
