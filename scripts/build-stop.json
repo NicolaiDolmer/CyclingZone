@@ -58,6 +58,16 @@
   },
   "finishList": [
     {
+      "issue": 7739,
+      "area": "udvikling-2",
+      "why": "Ejer 7/11 på #6110 (intet +1-loft pr. dato under XP) og ejer 12/11: #6110 bygges færdig hurtigst muligt. https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6819749354"
+    },
+    {
+      "issue": 7757,
+      "area": "udvikling-2",
+      "why": "Ejer 7/11 på #6110 (næste prøvekørsel på motorens pakke) og ejer 12/11: #6110 bygges færdig hurtigst muligt. https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6819749354"
+    },
+    {
       "issue": 6494,
       "area": "web-experience",
       "why": "Ejer-go 12/11 i PC1-storsessionen (AskUserQuestion: Ja, sæt den på): fælles datalag er første skridt i Web 5x, masterplanen 11/11. Bundle-loftet hæves ikke (valg A). https://github.com/NicolaiDolmer/CyclingZone/pull/8020#issuecomment-6819489721"
@@ -591,6 +601,31 @@
     }
   ],
   "brandList": [
+    {
+      "issue": 8034,
+      "reason": "Trupgrænser 30/30/30, højst 60 i alt, vist som midlertidige. Ejer 9/11 og bekræftet 12/11 (valg A). https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6819749354",
+      "since": "2026-11-12"
+    },
+    {
+      "issue": 8035,
+      "reason": "Flervalg og højreklik-flyt mellem trupper. Ejer 9/11 (Discord, #7932) og 12/11. https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6819749354",
+      "since": "2026-11-12"
+    },
+    {
+      "issue": 6155,
+      "reason": "Akademiflowet: der findes intet akademihold, rytterlisten ud og talent direkte til trup med plads. Ejer 4/10, 9/11 (Discord, #7932) og 12/11 (planlægges ind). https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6819749354",
+      "since": "2026-11-12"
+    },
+    {
+      "issue": 7932,
+      "reason": "Akademiflowet: rytterlofter vises ikke, Scout-knap, ordet Potentiale overalt, trupper 30/30/30 maks 60. Ejer 9/11 og 12/11. https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6819749354",
+      "since": "2026-11-12"
+    },
+    {
+      "issue": 7455,
+      "reason": "Scouting-viden bevares efter salg og falder pr. sæson. Ejer 12/11 (valg A). https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6819749354",
+      "since": "2026-11-12"
+    },
     {
       "issue": 7962,
       "reason": "Forkert info: TWK/LDR vises som streg på Transferlisten, selv om tallene findes. Ejer 12/11, storsession v3 punkt 4b (rettes uden go). https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6818122648",
