@@ -53,6 +53,26 @@ export function extractHashedAssetPath(html) {
   return m[1];
 }
 
+// #6584: Digital Asset Links for Google Play (TWA). Fuld skærm uden adresselinje kræver at
+// /.well-known/assetlinks.json svarer 200 som JSON og ikke bliver omskrevet til appens HTML.
+// Ren funktion (ingen netværk) så den kan testes; returnerer en fejltekst eller null.
+export function assetLinksProblem({ status, ct, body }) {
+  if (status !== 200) return `svarede ${status}`;
+  if (/text\/html/.test(ct)) return "returnerede HTML (SPA-fallback eller 404-side)";
+  if (!/application\/json/.test(ct)) return `har content-type "${ct}", forventede application/json`;
+  let parsed;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return "er ikke gyldig JSON";
+  }
+  const ok =
+    Array.isArray(parsed) &&
+    parsed.length > 0 &&
+    parsed.every((s) => Array.isArray(s?.relation) && s?.target?.namespace === "android_app" && s?.target?.package_name);
+  return ok ? null : "mangler android_app-udsagn med package_name";
+}
+
 async function head(path, extraHeaders = {}) {
   const res = await fetch(`${ORIGIN}${path}`, { method: "GET", redirect: "follow", headers: extraHeaders });
   return {
@@ -163,6 +183,22 @@ async function main() {
     }
     const headResult = await head(path, appShellHeaders());
     evaluateRuleResult(rule, path, headResult, failures, lines);
+  }
+
+  // #6584: assetlinks.json skal serveres som JSON, ikke som app-skallen.
+  {
+    const res = await fetch(`${ORIGIN}/.well-known/assetlinks.json`, { redirect: "follow", headers: appShellHeaders() });
+    const problem = assetLinksProblem({
+      status: res.status,
+      ct: res.headers.get("content-type") || "",
+      body: await res.text(),
+    });
+    if (problem) {
+      failures.push(`assetlinks.json (/.well-known/assetlinks.json): ${problem}`);
+      lines.push(`  ✗ ${"assetlinks.json".padEnd(20)} ${problem}`);
+    } else {
+      lines.push(`  ✓ ${"assetlinks.json".padEnd(20)} application/json`);
+    }
   }
 
   // App HTML must revalidate; anonymous marketing is checked separately below.

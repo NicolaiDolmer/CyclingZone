@@ -4,7 +4,7 @@
 // invokation, så import her trigger ikke prod-kald; fetch/wait er injicerbare.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { checkHashedAssetWithRetry, extractHashedAssetPath } from "./check-cdn-cache-headers.mjs";
+import { assetLinksProblem, checkHashedAssetWithRetry, extractHashedAssetPath } from "./check-cdn-cache-headers.mjs";
 
 test("finder et hashet /assets/*.js|css i SPA-HTML", () => {
   const html = `<!doctype html><html><head>
@@ -86,4 +86,27 @@ test("#5253: succes paa foerste forsoeg venter slet ikke", async () => {
   });
   assert.equal(result.attempts, 1);
   assert.deepEqual(waits, []);
+});
+
+// #6584: assetlinks.json for Google Play (TWA).
+const goodLinks = JSON.stringify([
+  {
+    relation: ["delegate_permission/common.handle_all_urls"],
+    target: { namespace: "android_app", package_name: "org.cyclingzone.app", sha256_cert_fingerprints: ["X"] },
+  },
+]);
+
+test("#6584: gyldig assetlinks.json som JSON er groen", () => {
+  assert.equal(assetLinksProblem({ status: 200, ct: "application/json", body: goodLinks }), null);
+});
+
+test("#6584: assetlinks.json der er omskrevet til app-skallen eller 404 fejler", () => {
+  assert.match(assetLinksProblem({ status: 200, ct: "text/html; charset=utf-8", body: "<!doctype html>" }), /HTML/);
+  assert.match(assetLinksProblem({ status: 404, ct: "text/html", body: "" }), /404/);
+});
+
+test("#6584: assetlinks.json med forkert content-type eller indhold fejler", () => {
+  assert.match(assetLinksProblem({ status: 200, ct: "text/plain", body: goodLinks }), /content-type/);
+  assert.match(assetLinksProblem({ status: 200, ct: "application/json", body: "{nope" }), /JSON/);
+  assert.match(assetLinksProblem({ status: 200, ct: "application/json", body: "[]" }), /android_app/);
 });
