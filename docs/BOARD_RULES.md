@@ -261,6 +261,21 @@ med tal, eller ingen måling af indeværende sæson), får en forfalden `sponsor
 afgørelse i `evaluateDueMilestones` (`boardMandateEngine.js`): ingen status, intet tillidsslag. Den
 står som `pending`. "Kan ikke måles" er ikke "fejlet". Andre måltyper er uændrede.
 
+**Ingen indtægt i målesæsonen = ingen måling (#7964 a):** har holdet 0 i sponsorindtægt i den
+indeværende sæson (typisk parkeret eller uden kørte løb), er `sponsorGrowthCurrentIncome` null,
+ikke 0. Målet står `awaiting_data` (neutral), og en forfalden milepæl får ingen afgørelse. Et 0 er
+aldrig et fald på 100 %.
+
+**Overgangsregel (#7964 b):** er grundlaget flyttet af rettelsen (`sponsorGrowthBaselineShifted`:
+den valgte sæson er ikke planens første snapshot-sæson, som var den gamle regels grundlag og
+her havde 0, så den gamle regel gav `awaiting_data`), holdes et `behind`-udfald i
+`evaluateGoalProgress` på præcis det neutrale udfald fra før (`awaiting_data`, score 0.6,
+`actual` null). `on_track` og `ahead` tæller som målt. Rettelsen kan derfor aldrig sænke
+tilfredsheden, sponsor-modifieren eller udløse tvungen salgsliste for de hold, den flytter.
+Milepælens dom ved forfald er uændret (en målbar milepæl under målet er misset, som den også
+var før rettelsen). Halv-sæsonens tjek (`boardMidSeason.js`) får ingen sponsortal i sin kontekst
+og står derfor uændret som `awaiting_data` for målet.
+
 ---
 
 ## 4. De seks konsekvens-lag

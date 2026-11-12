@@ -261,3 +261,96 @@ test("#3494 · no-punishment: `met` kan kun blive true efter fixet, aldrig regre
   });
   assert.equal(enoughGrowth, true, "kun opnåeligt EFTER fixet — legacy kunne aldrig blive true");
 });
+
+// ─── #7964 (a) · 0 i målesæsonen er "ingen måling", aldrig et fald på 100 % ───
+
+const PLAN_S1_TO_S4 = [1, 2, 3, 4].map((n) => ({
+  board_id: "b1", season_id: `s${n}`, season_within_plan: n, season_number: n, u25_stat_sum: null, u25_count: null,
+}));
+
+test("#7964 (a) · hold uden sponsorindtægt i målesæsonen (parkeret) står neutralt, ikke -100 %", async () => {
+  const supabase = createFakeSupabase({
+    board_plan_snapshots: PLAN_S1_TO_S4,
+    finance_transactions: [
+      { team_id: "t1", season_id: "s2", reason_code: "season_start_sponsor", amount: 400_000 },
+      // s5 (indeværende): intet, holdet er parkeret.
+    ],
+    race_results: [],
+  });
+  const context = await loadGoalContextForBoard({
+    supabase, teamId: "t1", boardId: "b1", currentSeasonId: "s5", planStartSeasonNumber: 1,
+  });
+  assert.equal(context.sponsorGrowthCurrentIncome, null, "0 er ingen måling, ikke et tal at regne på");
+  const progress = evaluateGoalProgress({ ...GOAL, target: 20 }, null, TEAM_WITH_DEAD_FIELD, { ...context, isFinalSeason: true });
+  assert.equal(progress.status, "awaiting_data");
+  assert.equal(progress.score, 0.6);
+  assert.equal(evaluateGoal({ ...GOAL, target: 20 }, null, TEAM_WITH_DEAD_FIELD, { ...context, isFinalSeason: true }), null);
+});
+
+// ─── #7964 (b) · overgangsregel: et grundlag flyttet af rettelsen giver aldrig under neutral ───
+
+async function shiftedContext(currentAmount, { s1Amount = 0 } = {}) {
+  const txs = [
+    { team_id: "t1", season_id: "s2", reason_code: "season_start_sponsor", amount: 400_000 },
+    { team_id: "t1", season_id: "s5", reason_code: "season_start_sponsor", amount: currentAmount },
+  ];
+  if (s1Amount > 0) txs.push({ team_id: "t1", season_id: "s1", reason_code: "season_start_sponsor", amount: s1Amount });
+  const supabase = createFakeSupabase({ board_plan_snapshots: PLAN_S1_TO_S4, finance_transactions: txs, race_results: [] });
+  return loadGoalContextForBoard({ supabase, teamId: "t1", boardId: "b1", currentSeasonId: "s5", planStartSeasonNumber: 1 });
+}
+
+test("#7964 (b) · grundlaget er flyttet (s1 uden tal, s2 bruges): markeret som flyttet", async () => {
+  const shifted = await shiftedContext(300_000);
+  assert.equal(shifted.sponsorGrowthBaselineShifted, true);
+  assert.equal(shifted.sponsorGrowthBaselineIncome, 400_000);
+  const unshifted = await shiftedContext(300_000, { s1Amount: 350_000 });
+  assert.equal(unshifted.sponsorGrowthBaselineShifted, false, "s1 havde tal: samme grundlag som før rettelsen");
+  assert.equal(unshifted.sponsorGrowthBaselineIncome, 350_000);
+});
+
+test("#7964 (b) · flyttet grundlag + fald (behind) holdes på præcis det neutrale udfald fra før rettelsen", async () => {
+  const context = await shiftedContext(300_000); // -25 % mod s2
+  const goal = { ...GOAL, target: 20 };
+  const progress = evaluateGoalProgress(goal, null, TEAM_WITH_DEAD_FIELD, { ...context, isFinalSeason: true });
+  const before = evaluateGoalProgress(goal, null, TEAM_WITH_DEAD_FIELD, {
+    ...context, sponsorGrowthBaselineIncome: 0, sponsorGrowthBaselineShifted: false, isFinalSeason: true,
+  });
+  assert.equal(before.status, "awaiting_data", "den gamle regel (grundlag 0) gav neutral");
+  assert.deepEqual(progress, before, "identisk med før rettelsen: ingen lavere tilfredshed");
+});
+
+test("#7964 (b) · uden flyttet grundlag er et fald stadig et ægte 'behind'", async () => {
+  const context = await shiftedContext(300_000, { s1Amount: 400_000 });
+  const progress = evaluateGoalProgress({ ...GOAL, target: 20 }, null, TEAM_WITH_DEAD_FIELD, { ...context, isFinalSeason: true });
+  assert.equal(progress.status, "behind");
+  assert.ok(progress.score < 0.6);
+});
+
+test("#7964 (b) · flyttet grundlag: nået mål og 'on_track' tæller som målt (rettelsen må gerne hjælpe)", async () => {
+  const goal = { ...GOAL, target: 20 };
+  const ahead = evaluateGoalProgress(goal, null, TEAM_WITH_DEAD_FIELD, { ...(await shiftedContext(500_000)), isFinalSeason: true });
+  assert.equal(ahead.status, "ahead");
+  assert.equal(ahead.met, true);
+  const onTrack = evaluateGoalProgress(goal, null, TEAM_WITH_DEAD_FIELD, { ...(await shiftedContext(460_000)), isFinalSeason: true });
+  assert.equal(onTrack.status, "on_track", "+15 % mod 20 %: tæt på, over neutral");
+  assert.ok(onTrack.score > 0.6);
+});
+
+// ─── #7964 (c) · spillerteksten passer med den nye måling, alle fem sprog ───
+
+test("#7964 (c) · goalHelp/goalReceipt for sponsor_growth nævner holdets første sæson med sponsorindtægt, ikke planens første sæson", async () => {
+  const { readFileSync } = await import("node:fs");
+  const stale = {
+    en: "the plan's first season", da: "planens første sæson", es: "la primera temporada del plan,",
+    fr: "la première saison du plan.", nl: "het eerste seizoen van het plan.",
+  };
+  const fresh = { en: "sponsor income", da: "sponsorindtægt", es: "ingresos de patrocinio", fr: "revenus de sponsor", nl: "sponsorinkomsten" };
+  for (const lang of Object.keys(stale)) {
+    const board = JSON.parse(readFileSync(new URL(`../../frontend/public/locales/${lang}/board.json`, import.meta.url), "utf8"));
+    for (const text of [board.goalHelp.sponsor_growth, board.goalReceipt.counted.sponsor_growth]) {
+      assert.ok(!text.includes(stale[lang]), `${lang}: forældet formulering i "${text}"`);
+      assert.ok(text.includes(fresh[lang]), `${lang}: nævner ikke sponsorindtægt i "${text}"`);
+      assert.ok(!text.includes("—"), `${lang}: em-dash`);
+    }
+  }
+});

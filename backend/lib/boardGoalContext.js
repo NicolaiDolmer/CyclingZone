@@ -487,6 +487,7 @@ export async function loadGoalContextForBoard({
   let sponsorGrowthCurrentIncome = null;
   /** @type {number|null} */
   let sponsorGrowthBaselineIncome = null;
+  let sponsorGrowthBaselineShifted = false;
 
   if (planSeasonIds.length > 0) {
     // #2444 · de fem queries herunder er uafhængige af hinanden (samme input:
@@ -618,14 +619,25 @@ export async function loadGoalContextForBoard({
         const key = row.season_id;
         sponsorBySeasonId.set(key, (sponsorBySeasonId.get(key) || 0) + Number(row.amount || 0));
       }
-      sponsorGrowthCurrentIncome = sponsorBySeasonId.get(currentSeasonId) ?? 0;
+      // #7964 (a) · 0 i målesæsonen (typisk et parkeret hold eller et hold uden
+      // kørte løb) er "ingen måling", aldrig et fald på 100 %: null → awaiting_data
+      // (neutral), og en forfalden milepæl får ingen afgørelse.
+      const currentIncome = Number(sponsorBySeasonId.get(currentSeasonId) ?? 0);
+      sponsorGrowthCurrentIncome = currentIncome > 0 ? currentIncome : null;
       // #7964 · baseline = holdets FØRSTE afsluttede plan-sæson MED sponsortal,
       // ikke blindt planens første snapshot (se pickSponsorGrowthBaseline).
-      sponsorGrowthBaselineIncome = pickSponsorGrowthBaseline({
+      const baseline = pickSponsorGrowthBaseline({
         sponsorBySeasonId,
         planSeasonIds: (prevSnapshots || []).map((s) => s.season_id),
         currentSeasonId,
-      }).income;
+      });
+      sponsorGrowthBaselineIncome = baseline.income;
+      // #7964 (b) · grundlaget er flyttet af rettelsen (den gamle regel brugte
+      // planens første snapshot-sæson, som her ingen sponsortal havde, og gav
+      // derfor neutral). Overgangsreglen i evaluateGoalProgress holder et
+      // "behind"-udfald på neutral for netop disse hold.
+      sponsorGrowthBaselineShifted = baseline.seasonId != null
+        && baseline.seasonId !== (firstSnapshot?.season_id ?? null);
     }
     if (!monErr) {
       const podiumRows = classicResults || [];
@@ -712,5 +724,6 @@ export async function loadGoalContextForBoard({
     divisionTeamCount,
     sponsorGrowthCurrentIncome,
     sponsorGrowthBaselineIncome,
+    sponsorGrowthBaselineShifted,
   };
 }

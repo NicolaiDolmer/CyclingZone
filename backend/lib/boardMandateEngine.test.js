@@ -1646,3 +1646,15 @@ test("#6773 advanceMandateAtSeasonEnd: næste sæson mangler → heller ikke gam
   await advanceMandateAtSeasonEnd(supabase, { teamId: "t1", seasonId: "s4", currentSeasonNumber: 4, now: ROLLOVER_NOW });
   assert.ok(supabase._state.mandates.every((m) => m.status === "active"));
 });
+
+test("#7964 (a) · forfalden sponsor-milepæl for et hold uden indtægt i målesæsonen får ingen afgørelse", () => {
+  // Loaderen giver current = null når målesæsonen har 0 (boardGoalContext.js).
+  const outcomes = evaluateDueMilestones({
+    milestones: [sponsorMilestone()],
+    seasonNumber: 5,
+    standing: {},
+    team: teamWithRiders,
+    context: { sponsorGrowthBaselineIncome: 400000, sponsorGrowthCurrentIncome: null, sponsorGrowthBaselineShifted: true },
+  });
+  assert.deepEqual(outcomes, []);
+});
