@@ -31,7 +31,7 @@ import { createComebackRouter } from "./routes/comeback.js"; // #5643
 import { createBoardVerdictRouter } from "./routes/boardVerdict.js"; // #5753
 import { createPublicStageRouteRouter } from "./routes/publicStageRoute.js"; // #6574
 import { startCron, awaitCronsIdle, getCronInFlight, stopCronScheduling } from "./cron.js";
-import { createActionTimingMiddleware } from "./lib/actionTimingMonitor8101.js"; // #8101
+import { createActionTimingMiddleware, flushActionTimingOnShutdown } from "./lib/actionTimingMonitor8101.js"; // #8101
 
 const app = express();
 // Express 5 default; laast eksplicit 11/9 (#4565): ingen nestede/array-query-noegler
@@ -158,6 +158,7 @@ async function gracefulShutdown(signal) {
   } else {
     console.log("[shutdown] alle cron-ticks afsluttet");
   }
+  await flushActionTimingOnShutdown(); // #8101: gem det igangværende kvarters svartider
   process.exit(0);
 }
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));

@@ -360,29 +360,70 @@ export async function runActionTimingFlush({
   }
 
   const alerted = [];
-  if (breaches.length && supabase) {
+  const url = breaches.length && supabase && getOpsWebhookFn ? await getOpsWebhookFn() : null;
+  // Uden en kanal at sende til claimes vinduet ikke: ellers ville en midlertidigt
+  // manglende webhook bruge vinduet op, og bruddet ville aldrig blive meldt.
+  if (url && sendWebhookFn) {
     const signature = buildAlertSignature([alertWindowStart(now).toISOString()]);
-    const url = getOpsWebhookFn ? await getOpsWebhookFn() : null;
     for (const b of breaches) {
       // Én besked pr. handling pr. alarmvindue: signaturen er vinduets start, så
       // første brud i et nyt vindue er "ændret", og resten af vinduet er stille.
       // Fail-safe-stille ved læsefejl: en svartids-alarm hvert kvarter er værre
       // end én tabt besked (cronHeartbeat.js gør samme valg).
-      const { alert } = await shouldAlertOnChange({
+      const dedupe = {
         supabase,
         alertKey: `${ALERT_KEY_PREFIX}:${b.key}`,
         signature,
         now,
         captureExceptionFn,
         alertOnReadError: false,
-      });
+      };
+      // Spørg først uden at claime, send, og claim derefter (emailHealthReport-
+      // mønsteret): et fejlende send må ikke bruge vinduet op. sendWebhook lægger
+      // selv en fejlet levering i outbox'en.
+      const { alert } = await shouldAlertOnChange({ ...dedupe, claim: false });
       if (!alert) continue;
+      await sendWebhookFn(url, buildBreachEmbed({ ...b, windowStart, windowEnd }));
+      await shouldAlertOnChange(dedupe);
       alerted.push(b.key);
-      if (url && sendWebhookFn) {
-        await sendWebhookFn(url, buildBreachEmbed({ ...b, windowStart, windowEnd }));
-      }
     }
   }
 
   return { rows, breaches, alerted, persisted };
+}
+
+let configuredFlush = null;
+
+/**
+ * Binder flushens afhængigheder én gang (fra cron.js) og returnerer tick-funktionen.
+ * Samme binding bruges af `flushActionTimingOnShutdown`, så server.js ikke skal
+ * kende supabase-klienten eller webhook-hjælperne.
+ */
+export function configureActionTimingFlush(deps) {
+  configuredFlush = () => runActionTimingFlush(deps);
+  return configuredFlush;
+}
+
+/**
+ * Sidste flush ved SIGTERM: uden den taber hver deploy det igangværende kvarter,
+ * og en proces der lever under et kvarter ville aldrig gemme noget. Kaster aldrig.
+ * No-op når cron ikke er startet (fx lokalt uden cron).
+ */
+export async function flushActionTimingOnShutdown({ captureExceptionFn, timeoutMs = 10_000 } = {}) {
+  if (!configuredFlush) return null;
+  let timer;
+  try {
+    // Loftet holder nedlukningen inden for Railways drain-vindue, også hvis
+    // databasen hænger: hellere et tabt kvarter end en SIGKILL midt i et løb.
+    const timeout = new Promise((resolve) => {
+      timer = setTimeout(() => resolve(null), timeoutMs);
+    });
+    return await Promise.race([configuredFlush(), timeout]);
+  } catch (err) {
+    captureExceptionFn?.(err, { tags: { cron: "action-timing-flush", phase: "shutdown" } });
+    console.error("action-timing (#8101): flush ved nedlukning fejlede:", err?.message);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }

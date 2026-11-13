@@ -19,6 +19,8 @@ import {
   createActionTimingMiddleware,
   runActionTimingFlush,
   buildBreachEmbed,
+  configureActionTimingFlush,
+  flushActionTimingOnShutdown,
 } from "./actionTimingMonitor8101.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -324,6 +326,80 @@ test("manglende tabel (før migrationen) vælter intet, og alarmen virker stadig
   const r = await flushWith({ supabase, rec, now: new Date("2026-11-14T06:15:00Z"), sent });
   assert.equal(r.persisted, false);
   assert.equal(sent.length, 1);
+});
+
+test("uden webhook bruges vinduet ikke op: alarmen sendes, når kanalen er tilbage", async () => {
+  const supabase = fakeSupabase();
+  const { rec } = warmRecorder();
+  const sent = [];
+  let url = null;
+  const flush = (at) =>
+    runActionTimingFlush({
+      supabase,
+      recorder: rec,
+      now: new Date(at),
+      procId: "test:1",
+      getOpsWebhookFn: async () => url,
+      sendWebhookFn: async (_u, payload) => sent.push(payload),
+    });
+  rec.record("train_now", 12_000);
+  const r1 = await flush("2026-11-14T06:15:00Z");
+  assert.deepEqual(r1.alerted, []);
+  assert.equal(supabase.state.size, 0, "intet claim uden kanal");
+  url = "https://discord.example/ops";
+  rec.record("train_now", 12_000);
+  await flush("2026-11-14T06:30:00Z");
+  assert.equal(sent.length, 1);
+});
+
+test("et fejlende send claimer ikke vinduet", async () => {
+  const supabase = fakeSupabase();
+  const { rec } = warmRecorder();
+  rec.record("train_now", 12_000);
+  await assert.rejects(
+    runActionTimingFlush({
+      supabase,
+      recorder: rec,
+      now: new Date("2026-11-14T06:15:00Z"),
+      procId: "test:1",
+      getOpsWebhookFn: async () => "https://discord.example/ops",
+      sendWebhookFn: async () => {
+        throw new Error("discord nede");
+      },
+    })
+  );
+  assert.equal(supabase.state.size, 0);
+});
+
+test("flush ved nedlukning: no-op uden cron, ellers gemmes det igangværende kvarter", async () => {
+  assert.equal(await flushActionTimingOnShutdown(), null, "ikke konfigureret endnu");
+  const supabase = fakeSupabase();
+  const { rec } = warmRecorder();
+  configureActionTimingFlush({ supabase, recorder: rec, procId: "test:1" });
+  rec.record("training_open", 700);
+  const r = await flushActionTimingOnShutdown();
+  assert.equal(r.persisted, true);
+  assert.equal(supabase.inserted.length, 1);
+});
+
+test("flush ved nedlukning kaster aldrig og har et tidsloft", async () => {
+  configureActionTimingFlush({
+    supabase: { from() { throw new Error("db nede"); } },
+    recorder: { drain: () => ({ windowStart: new Date(), windowEnd: new Date(), perAction: new Map([["train_now", [5000]]]) }) },
+    procId: "test:1",
+  });
+  const captured = [];
+  assert.equal(await flushActionTimingOnShutdown({ captureExceptionFn: (e) => captured.push(e) }), null);
+  assert.equal(captured.length, 1);
+
+  configureActionTimingFlush({
+    supabase: { from: () => ({ insert: () => new Promise(() => {}) }) },
+    recorder: { drain: () => ({ windowStart: new Date(), windowEnd: new Date(), perAction: new Map([["train_now", [5000]]]) }) },
+    procId: "test:1",
+  });
+  const t0 = Date.now();
+  assert.equal(await flushActionTimingOnShutdown({ timeoutMs: 50 }), null);
+  assert.ok(Date.now() - t0 < 2000);
 });
 
 test("tomt vindue: ingen skrivning, ingen alarm", async () => {

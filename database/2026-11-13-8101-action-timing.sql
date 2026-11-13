@@ -21,6 +21,7 @@
 --
 -- IDEMPOTENT: IF NOT EXISTS / CREATE OR REPLACE / DROP POLICY IF EXISTS overalt.
 
+-- data-api-access: {"table":"public.action_timing_windows","roles":{"anon":[],"authenticated":[],"service_role":["SELECT","INSERT","DELETE"]},"sequences":{"public.action_timing_windows_id_seq":{"anon":[],"authenticated":[],"service_role":["USAGE"]}},"reason":"Backend-only drifts-maaling: backenden indsaetter kvarters-raekker og rydder gamle; lederen laeser via action_timing_summary som service_role"}
 CREATE TABLE IF NOT EXISTS public.action_timing_windows (
   id            bigserial PRIMARY KEY,
   window_start  timestamptz NOT NULL,
@@ -48,6 +49,10 @@ COMMENT ON TABLE public.action_timing_windows IS
 -- service_role (bypasser RLS). Deny-all for anon/authenticated, samme mønster som
 -- cron_checkins og ops_alert_state.
 ALTER TABLE public.action_timing_windows ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.action_timing_windows FROM PUBLIC, anon, authenticated, service_role;
+GRANT SELECT, INSERT, DELETE ON TABLE public.action_timing_windows TO service_role;
+REVOKE ALL ON SEQUENCE public.action_timing_windows_id_seq FROM PUBLIC, anon, authenticated, service_role;
+GRANT USAGE ON SEQUENCE public.action_timing_windows_id_seq TO service_role;
 
 DROP POLICY IF EXISTS "action_timing_windows_no_client_access" ON public.action_timing_windows;
 CREATE POLICY "action_timing_windows_no_client_access" ON public.action_timing_windows
