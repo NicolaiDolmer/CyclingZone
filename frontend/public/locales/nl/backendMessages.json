@@ -806,7 +806,8 @@
       "transferRejected": "Je aanbieding voor {rider} is afgewezen.",
       "watchlistRiderAuction": "Een renner van je volglijst staat in veiling: {rider}.",
       "testTitle": "Discord-DM werkt",
-      "testDescription": "Je ontvangt nu DM's van Cycling Zone over veilingen, transfers en updates van het bestuur."
+      "testDescription": "Je ontvangt nu DM's van Cycling Zone over veilingen, transfers en updates van het bestuur.",
+      "testPaused": "Ik heb Discord-berichten voorlopig uitgezet, dus er is geen testbericht verstuurd."
     }
   },
   "push": {

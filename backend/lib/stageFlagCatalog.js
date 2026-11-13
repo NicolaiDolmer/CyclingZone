@@ -86,8 +86,10 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_day_development_enabled", area: "race-day", label: "Udvikling på løbsdage" },
   // #5124: kun visning (frontend). Beta foerst, ejer 1/10.
   { key: "season_matrix_mobile", area: "season", label: "Sæsonmatrix på mobil — ny visning" },
-  // #6590: web push, seedet off. Kræver VAPID_* på backend. Flip er ejer-only.
+  // #6590: web push, on for alle siden 24/10 (#7153, målt i prod 13/11). Kræver VAPID_* på backend. Flip er ejer-only.
   { key: "push_enabled", area: "notifications", label: "Push-notifikationer" },
+  // #8149: bottens private beskeder til spillere, seedet on. off kun på ejerens kør; beta = on (ingen viewer).
+  { key: "discord_player_dm", area: "notifications", label: "Discord: bottens private beskeder til spillere" },
   // #6570: etapeside 2.0 er nu den eneste etapeside; ingen kode laeser noeglen. Den staar kun
   // tilbage fordi tre beta-noter i patch notes peger paa den (maerket "Now for everyone", se
   // PLAYER_VISIBLE_FLAG_KEYS). Fjernes noeglen eller raekken i app_config, falder de noter
