@@ -9,7 +9,7 @@
 - **Drift:** plan v3 på #7659 (skridt 1 sat 8/11). Bestyrelsen (én gang pr. løbstid, fire krav) tændes ved rigtige skyggetal + ejer-go. Salgsannoncer #7922 (9/11). Databasefejl #7917.
 - **Forretning:** Pro 2.0 (tre pakker med billeder, pris uændret, aldrig styrke). Fornyelser og udløbne kort (design 9/11). Første dage for nye er højeste prioritet under fastholdelse. Forside #6665. "Hvor hørte du om os" #3796. Google-sider uge 47, deling efter sæsonstart, inviter en ven efter Pro 2.0.
 - **Spillet:** intet loft på motorarbejdet. Løbssiden må deles op, men alt i denne sæson. U23 og junior senest i S6, inden S7.
-- **Roadmappen** gennemgået 10/11 (#7971). Afklares: interne værktøjer. #7029: ikke nu.
+- Afklares: interne værktøjer. #7029: ikke nu.
 
 **Reglen:** Færdig = bygget, merget, tændt, synligt, gammelt væk, Hjælp + patch note (8 Til dørs-krav). **Loftet afløser byggestoppet (ejer 4/11):** alt inden for de tre loft-områder plus brand og forkert info må bygges uden liste; alt andet kræver ejerens go. Nyt prøves bag slukket kontakt før tænding.
 
@@ -17,14 +17,14 @@
 
 ## Rækkefølge (ejer 9/11, perioder 10/11 #7971)
 
-1. **Træning, denne uge:** Træn nu i beta (løbsfeltet giver først træthed efter løbet, #7970), så bonus 15 % #7741 på eget kort. XP + potentiale #6110 med #7739 (flere point samme dag), #3924 og #7627. Trøjemål #5573. Auto-accept + pengelås #2176/#6181 (merget off 11/11; tændes for beta efter #7978 og tænd-kort). Træn nu-svartid 25-29 s #7982. #7801, #7715. Næste uge: #7947 (med #4342, #6176), #5950, #6490.
-2. **Taktik, denne uge (Codex):** holdplan og pris i træthed #7864/#7980 (P1-rettelser først), tidlige angreb #7884 (ejer 11/11: ægte langt angreb, alle ryttere, valg via stigningens navn; design + baseline før byg), #7638, #7373, genbrug #7880, planlægningsside/Standarder #7535; Hard/Normal/Easy #7738 efter måling.
-3. **Løbssiden, denne uge #7778:** med #7861, #7868, #6365, #6513. Indsatskortet #5101 (+#7754) og bjergudbrud #6912 næste uge.
-4. **Weboplevelse 5x (ejer 11/11, milestone Web 5x, Modern Web Guidance 1.0.0+ er krav):** #6494 cache → #8012 React Compiler → #8008 ét dashboard-kald (+#8005) → #8009 prefetch → #7993 kvalitetssystem → #7999 bundle-diet → #7995/#7997/#7996/#7998 → Google Play #6584. Løbende #7990, #6916.
+1. **Træning, denne uge:** Træn nu i beta (løbsfeltet giver først træthed efter løbet, #7970), så bonus 15 % #7741 på eget kort. XP + potentiale #6110 med #7739 (flere point samme dag), #3924 og #7627. Trøjemål #5573. Pengelås #2176/#6181: købernes del on for alle siden 12/11, sælgers del (sale_escrow_enabled) slukket til ejerens eget tænd-kort. Træn nu-svartid #7982: trin 1, 1b, 2 merget. XP #8041, trøjejagt #8052 merget slukket. #7801, #7715. Næste uge: #7947 (med #4342, #6176), #5950, #6490.
+2. **Taktik, denne uge (Codex):** holdplan og pris i træthed #7864/#7980 (i beta), tidlige angreb #7884 (ejer 11/11: ægte langt angreb, alle ryttere, valg via stigningens navn; design + baseline før byg), #7638, #7373, genbrug #7880, planlægningsside/Standarder #7535; Hard/Normal/Easy #7738 efter måling.
+3. **Løbssiden, denne uge #7778 (trin 1 af 5, slukket):** med #7861, #7868, #6365, #6513. Indsatskortet #5101 (+#7754) og bjergudbrud #6912 næste uge.
+4. **Weboplevelse 5x (ejer 11/11, milestone Web 5x, Modern Web Guidance 1.0.0+ er krav):** #6494 cache (#8102 grundlag merget, kun Global Rank) → #8012 React Compiler → #8008 ét dashboard-kald (+#8005) → #8009 prefetch → #7993 kvalitetssystem → #7999 bundle-diet → #7995/#7997/#7996/#7998 → Google Play #6584. Løbende #7990, #6916.
 5. **Så:** første dage for nye (efter taktik), forsiden #7626, #7932 (trupper, alder).
 - **Ranglisten, uge 47 (milestone):** #7664 → #8003 → #7139 (målt 11/11: ~13 min ventetid + ~5 min beregning).
 - **Før 28/11:** skiftet afprøves på en kopi #7325, graduering/salg #7323.
-- **Motor:** måling onsdag 11/11 afgør rækkefølgen af #6912, #7899, #7645, #7902.
+- **Motor:** #6912, #7899, #7645, #7902.
 - **Senere:** S6: #4620/#4621, #7471, TTT #3463, #1177, #1140, #961. Q1 2027: #934, #5106, #5113, #5063.
 
 ## Tidsplan (ejer 4/11 aften)
@@ -33,7 +33,7 @@
 
 ## 0. Merge og til dørs først (ejer 4/11, skarpt)
 
-Klare PR'er merges samme dag; Til dørs-bevis inden for 24 t.
+Klare PR'er merges samme dag; Til dørs-bevis inden 24 t.
 
 ## Brand (løbende, uden for loftet)
 
@@ -60,7 +60,7 @@ Indstillinger #3984 (dato-løfte #6947); resten står i Rækkefølge og roadmapp
 
 ## Faste rutiner
 
-Rapport → issue + svarudkast; ejeren poster. Hver tænding: patch note, EN/DA Hjælp ved mekanik, registry/status. NOW/close-out: Claude.
+Rapport → issue + svarudkast; ejeren poster. Hver tænding: patch note, EN/DA Hjælp ved mekanik, registry/status.
 
 ## Doktrin
 
