@@ -3456,8 +3456,8 @@ export async function simulateStageByIndex({
   // hvilket ER kill-switchen: slukkes flaget midt i et etapeløb, kører næste
   // etape v3, og klassementet akkumuleres uændret fra race_results.
   checkV4Enabled = isRaceEngineV4Enabled,
-  // #6912 B: injectable, default den ægte resolveRaceEngineV4. Udbrudsprognosen
-  // (breakawayOutlook.js) pakker motoren ind i dryRun for at fange etapens input.
+  // #6912 B: injectable, default den ægte resolveRaceEngineV4. Udbrudsbuddet, der
+  // brugte den, er fjernet 13/11; sømmen står, da den ikke ændrer motorens kørsel.
   resolveV4Engine = resolveRaceEngineV4,
   // #5955: injectable, default binder/læser races.engine_rules_revision (kun under v4).
   bindRulesRevision = bindRaceRulesRevision,
