@@ -15,7 +15,7 @@ import { isTeamSquadTrainOnly, TRAIN_ONLY_SELECTION_ERROR } from "./youthRaceOpt
 import { loadRidersAlreadyRacedInSpan } from "./raceDayRiddenGuard.js";
 import { isRiderDayInvariantViolation, teamInRacePool, teamInRaceSquadPool, findRiderBindingConflicts, windowsOverlap } from "./raceBinding.js";
 import { isS5ProfilesV3OrLater, surfaceRulesRevision } from "./raceEngineRulesRevision.ts";
-import { fatigueByRiderNow, firstStageNumber, loadStageStartAt } from "./riderFatigueNow.js"; // #7801
+import { firstStageNumber, raceFatigueNowForSurface } from "./riderFatigueNow.js"; // #7801
 import { isFatigueNow7801Enabled } from "./riderFatigueNowFlag.js"; // #7801
 
 // ── #7801: trætheden lige nu på Udtagelsen og Holdfanen ─────────────────────────────
@@ -45,19 +45,11 @@ export function nextStageForFatigue7801({ race, stages }) {
 export async function surfaceFatigueNow7801({ supabase, race, stages, conditions, teamId, abilityByRider = null, now = new Date() }) {
   if (!(conditions ?? []).length) return null;
   if (!await isFatigueNow7801Enabled(supabase)) return null;
-  try {
-    const stageNumber = nextStageForFatigue7801({ race, stages });
-    const start = stageNumber == null ? null : await loadStageStartAt({ supabase, raceId: race.id, stageNumber });
-    const today = start && copenhagenDateString(start.now) === copenhagenDateString(now);
-    // onError "throw": en fejlet læsning når catch'en nedenfor i stedet for at blive til åbningen.
-    return await fatigueByRiderNow({
-      supabase, conditions, abilityByRider, teamId, now, atStage: today ? { raceId: race.id, stageNumber } : null, onError: "throw",
-    });
-  } catch (err) {
-    // best-effort: visningen må aldrig vælte Udtagelsen/Holdfanen; tom map = "—", ikke morgenens tal.
-    console.warn(`[fatigue-now-7801] surface fatigue omitted: ${err?.message ?? err}`);
-    return new Map();
-  }
+  // #7801 rest-byg: kontakten er læst; resten læses samtidig (raceFatigueNowForSurface fanger selv fejl).
+  const [live] = await raceFatigueNowForSurface({
+    supabase, teamId, now, columns: [{ race, stageNumber: nextStageForFatigue7801({ race, stages }), conditions, abilityByRider }],
+  });
+  return live;
 }
 
 /** Kondition-rækkerne med trætheden lige nu; uden `live` uændret (samme Map). */
@@ -548,6 +540,45 @@ export function buildRiderRows({ riders, stages, abilityByRider, conditionByRide
 // #7801: `fatigueNow: false` springer visningens træthed lige nu over (gem-stien viser intet).
 // `now` er injicérbart (AGENTS.md regel 16): skadesdatoen og trætheden lige nu regnes mod det.
 export async function getSelectionContext({ supabase, race, teamId, fatigueNow = true, now = new Date() }) {
+  const parts = await loadSelectionParts({ supabase, race, teamId, now });
+  // #7801: samme tal som Træningssiden og assistenten (null = slukket, rider_condition som før).
+  // Maerket for tidsgraensen regner selv datoens etaper oveni og bruger derfor stadig aabningen.
+  const liveFatigue = fatigueNow
+    ? await surfaceFatigueNow7801({ supabase, race, stages: parts.stages, conditions: parts.conditions, teamId, abilityByRider: parts.fatigueAbilityByRider, now })
+    : null;
+  return finishSelectionContext(parts, liveFatigue);
+}
+
+/**
+ * #7801 rest-byg: Race Hubs kolonner i én visning. Én kontekst pr. løb, i samme rækkefølge,
+ * hver præcis som getSelectionContext for løbet. Kolonnerne læses efter hinanden som før, med
+ * kontakten læst pr. kolonne på samme sted; slukket er kaldene derfor præcis som i dag. Tændt
+ * regnes trætheden for alle kolonner bagefter i ét samlet opslag, ikke én række pr. kolonne.
+ */
+export async function getSelectionContextsForRaces({ supabase, races, teamId, now = new Date() }) {
+  const columns = [];
+  for (const race of races ?? []) {
+    const parts = await loadSelectionParts({ supabase, race, teamId, now });
+    // Samme betingelse og samme sted som surfaceFatigueNow7801 læser kontakten.
+    const on = parts.conditions.length > 0 && await isFatigueNow7801Enabled(supabase);
+    columns.push({ race, parts, on });
+  }
+  const live = columns.filter((col) => col.on);
+  const liveByRace = new Map();
+  if (live.length) {
+    const maps = await raceFatigueNowForSurface({
+      supabase, teamId, now,
+      columns: live.map(({ race, parts }) => ({
+        race, stageNumber: nextStageForFatigue7801({ race, stages: parts.stages }), conditions: parts.conditions, abilityByRider: parts.fatigueAbilityByRider,
+      })),
+    });
+    live.forEach((col, i) => liveByRace.set(col, maps[i]));
+  }
+  return columns.map((col) => finishSelectionContext(col.parts, col.on ? liveByRace.get(col) : null));
+}
+
+// Udtagelsens opslag (alt undtagen trætheden lige nu), delt af getSelectionContext og Race Hub.
+async function loadSelectionParts({ supabase, race, teamId, now }) {
   // #5645 (Y4): truppen der må udtages til løbet. Senior = uændret select + filter.
   const raceSquad = raceSquadOf(race);
   const riderColumns = "id, firstname, lastname, primary_type, secondary_type, pending_team_id, birthdate";
@@ -604,13 +635,17 @@ export async function getSelectionContext({ supabase, race, teamId, fatigueNow =
     timeLimitRisk = timeLimitRiskByRider7715({ riders: riskRiders, stages, race, fatigueAtStage });
   }
   const stageNumbers = stages.map((s) => s.stage_number).sort((a, b) => (a ?? 0) - (b ?? 0));
+  return {
+    race, raceSquad, riders, stages, entriesRes, abilityByRider, conditionByRider, trainNowLock, seasonNumber, todayStr, timeLimitRisk, stageNumbers,
+    conditions: conditionRes.data || [],
+    // #7801 rest-byg: kunne evnerne ikke læses, læser trætheden dem selv (som Hold-fanen),
+    // frem for at regne med standard-restitution for alle.
+    fatigueAbilityByRider: abilitiesRes.error ? null : abilityByRider,
+  };
+}
 
-  // #7801: samme tal som Træningssiden og assistenten (null = slukket, rider_condition som før).
-  // Maerket ovenfor regner selv datoens etaper oveni og bruger derfor stadig aabningen.
-  const liveFatigue = fatigueNow
-    ? await surfaceFatigueNow7801({ supabase, race, stages, conditions: conditionRes.data || [], teamId, abilityByRider, now })
-    : null;
-
+function finishSelectionContext(parts, liveFatigue) {
+  const { race, raceSquad, riders, stages, entriesRes, abilityByRider, conditionByRider, trainNowLock, seasonNumber, todayStr, timeLimitRisk, stageNumbers } = parts;
   const riderRows = buildRiderRows({ riders, stages, abilityByRider, conditionByRider: conditionsWithLiveFatigue(conditionByRider, liveFatigue), todayStr, race })
     .map((row) => (timeLimitRisk[row.id] ? { ...row, stageTimeLimitRisk: stageNumbers.map((n) => timeLimitRisk[row.id][n] === true) } : row))
     // #6139: panelet graaner en laast rytter op-front (han kan hverken ind eller ud).

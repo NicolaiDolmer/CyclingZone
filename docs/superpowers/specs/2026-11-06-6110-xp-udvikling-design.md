@@ -60,7 +60,7 @@ Ejeren svarede 6/11 på Å1, Å2, Å3, Å6 og Å7 og 7/11 på Å4 og Å5 (efter 
 | # | Valg | Hvor |
 |---|---|---|
 | E1 | Tempo: grundtabellen er XP kalibreret mod kurve B; næste kørsel følger kun nye ryttere fra 16 til 40 år plus en særskilt måling af, at spillet ikke løber løbsk | §8, privat kort |
-| E2 | Løbsdag: en løbsdag giver altid mindst det samme som en hård træningsdag med rytterens træner og facilitet, og mere i det, etapen kræver. Gate X8 skal være grøn før tænding | §4.9 |
+| E2 | Løbsdag: en løbsdag giver altid mindst det samme som en hård træningsdag med rytterens træner og facilitet, og mere i det, etapen kræver. Gate X8 skal være grøn før tænding. 13/11 (R15b): når etapen passer rytterens primære type, giver løbsdagen i alle roller mindst hans bedste hårde træningspas i alt, uden Træn nu og ikke når han kører roligt | §4.9 |
 | E3 | Træn nu-bonus: valgt blandt de tre målte niveauer, tændes sammen med XP (#7737) | §4.2 |
 | E4 | Intet loft på +1 point pr. evne pr. dato under XP. Kun prisen bremser. Kræver ny måling (X6, X1, inflation) før tænding | §4.3, #7739 |
 
@@ -104,8 +104,9 @@ XP på en evne er et produkt af led. Enheden er én hård dato. Motorens tick f�
 | Dagsvariation | Deterministisk pr. (rytter, dato) med en hemmelig nøgle på serveren, bred og uden hukommelse (ejer 12/11; valget 7/11 om hukommelse er afløst), neutral over en sæson. Gælder hele dagen, også løbsdage. Bredde, hukommelse og nøgle ligger i XP-params; uden dem er der ingen variation | B8, Å5, §5.2 |
 | Intention på løbsdage | Uændret multiplikator (#6641), men aldrig under løbsdags-gulvet | live, E2 |
 | Løbsdags-gulv | På en løbsdag er XP i hver evne mindst en hård træningsdag i løbsdagens evner med rytterens træner og facilitet. Rolletillægget lægges oven i | E2, §4.9 |
+| Løbsdag, der passer (R15b) | Passer etapen rytterens primære type, er dagens XP i alt mindst hans bedste hårde træningspas samme dato (holdets træner, facilitet og katalog, uden Træn nu). Et gulv: dagen løftes præcis op til passet, med samme procent i etapens evner. Intet løft, når han kører roligt. Før dagsvariationen | E2, §4.9 |
 
-I koden: `developmentXp.ts` (`developmentXpAbilityDelta` med gulvet) og `developmentXpVariation.ts` (variationen). `applyDailyTick` ganger variationen og Træn nu-bonussen på hele dagen.
+I koden: `developmentXp.ts` (`developmentXpAbilityDelta` med gulvet), `developmentXpRaceFit.ts` (R15b og tabellen over hjemmebaner) og `developmentXpVariation.ts` (variationen). `applyDailyTick` lægger R15b på løbsdagen og ganger derefter variationen og Træn nu-bonussen på hele dagen.
 
 Form og træthed er ikke led i XP (S29). Træthed koster gennem form og skadesrisiko. Belastningsevnen (D1) er neutral i de gældende params og føres ikke med over. Viser kørslen, at de helt unge går for hurtigt, er det et nyt ejer-kort.
 
@@ -154,7 +155,21 @@ Samme prisliste, uden `MENTAL_ABILITY_TAG_CEILING` i XP-stien. De vokser længer
 
 ### 4.9 Løbsdage
 
-Reglerne står, oversat til XP: en løbsdag er en hård dag plus et tillæg i etapens evner, vægtet efter rolle (D-059, D3). Træner og facilitet tæller ikke i selve løbsdagen (S13), men **gulvet** gør (ejervalg E2, 7/11, bekræftet 12/11): i hver evne giver en løbsdag mindst det, en hård træningsdag i løbsdagens evner med rytterens træner og facilitet ville give, også når dagens intention er lav. Gulvet løfter kun selve dagen; rolletillægget lægges oven i, så "mere i det, etapen kræver" er det samme for alle roller. Gulvet regnes i tick'ets enhed, så en dato med flere løbsdage deler det som resten af XP'en (#6711). Udgået rytter får basis (S16), fri rolle er halvt af hver (S17). Løb skal fortsat slå træning i etapens evner (D2, G1). Fordi potentialet giver XP, afhænger løbsdagens udbytte af potentialet. Det skal ses sammen med catch-up, når #6950 besluttes.
+Reglerne står, oversat til XP: en løbsdag er en hård dag plus et tillæg i etapens evner, vægtet efter rolle (D-059, D3). Træner og facilitet tæller ikke i selve løbsdagen (S13), men **gulvet** gør (ejervalg E2, 7/11, bekræftet 12/11): i hver evne giver en løbsdag mindst det, en hård træningsdag i løbsdagens evner med rytterens træner og facilitet ville give, også når dagens intention er lav. Gulvet løfter kun selve dagen; rolletillægget lægges oven i, så "mere i det, etapen kræver" er det samme for alle roller. Gulvet regnes i tick'ets enhed, så en dato med flere løbsdage deler det som resten af XP'en (#6711).
+
+**R15b, når løbet passer til rytteren (ejer 13/11, dommerens regel og prøve `dommer6110.loebsdag-passer.test.js`):** på en etape, der passer rytterens **primære** type, giver løbsdagen i **alle roller** mindst lige så meget XP i alt som hans bedste hårde træningspas samme dato. Passet er det af holdets hårde pas (holdets katalog), der giver netop ham mest, regnet med holdets træner og facilitet, uden Træn nu og uden intention. Mangler der noget, løftes dagen præcis op til passet (et gulv på dagens samlede XP, ikke et tillæg), og løftet lægges i de evner, etapen træner, med samme procent i hver. Intet løft, når rytteren er sat til at køre roligt (intention under normal). Den sekundære type tæller ikke. Løftet lægges på før dagsvariationen, så hele dagen har ét udsving. Træn nu-bonussen gælder stadig kun træningspas. Alle andre løbsdage er uændrede.
+
+| Primær type | Etaper, der passer |
+|---|---|
+| Klatrer | Bjerg, højbjerg |
+| Sprinter | Flad |
+| Puncheur | Kuperet, classic |
+| Enkeltstartsrytter | Enkeltstart, bakket enkeltstart |
+| Brostensrytter | Brosten |
+
+Tabellen er data i `developmentXpRaceFit.ts`. Åbne spørgsmål til ejeren: hjemmebane til klassementsrytter, udbryder og rouleur (S12), grænse-etaperne småkuperet, grus og holdtidskørsel (S13) og fordelingen samme procent mod samme XP (S15). Svarene bliver nye rækker eller et ord i dommerens prøve, ikke ny kode. Den nye prøvekørsel (#7757) skal lære R15b, før den måler.
+
+Udgået rytter får basis (S16), fri rolle er halvt af hver (S17). Løb skal fortsat slå træning i etapens evner (D2, G1). Fordi potentialet giver XP, afhænger løbsdagens udbytte af potentialet. Det skal ses sammen med catch-up, når #6950 besluttes.
 
 ### 4.10 Uændret
 
@@ -330,6 +345,7 @@ Trin 1-3 er merget (#7819, #7843, #7887). Byg-go 12/11: resten bygges hurtigst m
 | 2 | Kontakt, params, startdato, grenen i `dailyAbilityDelta` og `applyDailyTick`, frossen golden for off. **Merget** | 1 |
 | 2b | Motorens rest efter ejervalgene 7/11: dagsvariation med hemmelig nøgle (`developmentXpVariation.ts`, felter i XP-params; motoren kan begge former, ejeren valgte 12/11 uden hukommelse) og løbsdags-gulvet (E2). **Bygget** | 2 |
 | 2c | Intet dagsloft under XP (E4, #7739). 13/11 (#8041): heller ikke løbsdagens gamle regel pr. tick eller standardkarrieren har et loft, og overgangsvinduet er fjernet (gemt fremgang på én nat). **Bygget** | 2 |
+| 2d | R15b (ejer 13/11): løbsdagen, når løbet passer til rytteren, mindst hans bedste hårde pas i alt, i alle roller (`developmentXpRaceFit.ts`). Bygget mod dommerens prøve. Prøvekørslen lærer reglen under #7757 | 2b |
 | 3 | XP-variant i `tenSeasonSim6110.mjs`, gates X og H, Træn nu ved 10, 15 og 25 %, privat kort. **Merget** | 1 |
 | 4 | XP i tick-rapporten, API-felter for egen manager, H4-test | 2 |
 | 5 | Visning, tekster, Hjælp en+da, gated på kontakten, preview til ejeren | 4 |
