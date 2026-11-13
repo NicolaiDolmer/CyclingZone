@@ -26,6 +26,7 @@ function route(method: string, path: string, extra: Record<string, unknown> = {}
     fetchAllRowsChunkedIn: async (_ids: any, query: any) => (await query([])).data,
     isAcademyKnowledgeEnabled: async () => true,
     isPotentialEstimateOn: async () => false,
+    loadEstimateDevelopmentXp: async () => null, // #6110 F1: XP-modellen slukket
     loadAcademyPrognoses: async () => new Map([[rider.id, prognosis]]),
     academyEstimate: (p: unknown) => ({ academyPrognosis: p }),
     buildScoutEstimate() { throw new Error("full scout estimate must not be computed"); },

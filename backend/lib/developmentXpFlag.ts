@@ -29,13 +29,9 @@
 //    Samme regel: der kastes, så de to aldrig kører sammen.
 //  - Dato-loftet (ability_cap_per_date_enabled, #6210): gælder kun kurve B og dagens
 //    model. Under XP er der intet +1-loft pr. evne pr. dato; kun prisen bremser (#7739).
-//    Eneste undtagelse er overgangsvinduet nedenfor, som er slukket som standard.
-//
-// ═══ OVERGANGSVINDUET (#7739, krogpunkt) ═════════════════════════════════════
-// `development_xp_transition_cap_dates` i app_config: antal datoer fra startdatoen,
-// hvor XP stadig udbetaler højst +1 pr. evne pr. dato, så gammel gemt bjælke-fremgang
-// ikke udbetales på én gang. Mangler den, eller er den 0, er der intet loft (standard).
-// Ejeren vælger værdien; den sættes i app_config uden motorændring.
+//  - Gemt bjælke-fremgang udbetales helt på tændingsnatten (ejer 12/11, #6110 R10).
+//    Der findes ingen dryp-regel: overgangsvinduet (development_xp_transition_cap_dates)
+//    er fjernet, og en sådan nøgle i app_config læses ikke.
 //
 // Kalderen (dailyTrainingEngine.js) sender resultatet som `developmentXp` ind i
 // applyDailyTick. null = dagens model, bit-identisk (frossen golden i
@@ -51,9 +47,6 @@ import { type DevelopmentXpParams } from "./developmentXp.ts";
 export const DEVELOPMENT_XP_FLAG_KEY = "development_xp_model";
 export const DEVELOPMENT_XP_FROM_DATE_KEY = "development_xp_from_date";
 export const DEVELOPMENT_XP_PARAMS_KEY = "development_xp_params";
-export const DEVELOPMENT_XP_TRANSITION_CAP_DATES_KEY = "development_xp_transition_cap_dates";
-/** Loftet i overgangsvinduet: samme +1 pr. evne pr. dato som dato-loftet (#6210). */
-export const DEVELOPMENT_XP_TRANSITION_CAP = 1;
 
 const LOG_TAG = "[development-xp]";
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -151,68 +144,6 @@ export async function loadDevelopmentXp({
     throw new Error(`${LOG_TAG} ${DEVELOPMENT_XP_FLAG_KEY} and race_day_catchup_enabled are both on - catch-up is not expressed in XP yet, refusing to tick`);
   }
   return params;
-}
-
-/** Antal datoer i overgangsvinduet: et helt tal >= 0, ellers null (ugyldig). Strenge accepteres som "7". */
-export function developmentXpTransitionDatesValue(value: unknown): number | null {
-  const n = typeof value === "string" && /^\d+$/.test(value.trim()) ? Number(value.trim()) : value;
-  return typeof n === "number" && Number.isInteger(n) && n >= 0 ? n : null;
-}
-
-/**
- * PURE: loftet pr. evne pr. dato under XP for `tickDate`. null = intet loft (standard).
- * Kun inden for de første `transitionDates` datoer fra og med startdatoen er loftet
- * DEVELOPMENT_XP_TRANSITION_CAP; 0, null eller en dato uden for vinduet giver null.
- */
-export function developmentXpDateCap({
-  tickDate, fromDate, transitionDates,
-}: {
-  tickDate: string | null | undefined;
-  fromDate: string | null | undefined;
-  transitionDates: number | null | undefined;
-}): number | null {
-  if (!(typeof transitionDates === "number" && Number.isInteger(transitionDates) && transitionDates > 0)) return null;
-  const from = developmentXpFromDateValue(fromDate);
-  const tick = developmentXpFromDateValue(tickDate);
-  if (!from || !tick || tick < from) return null;
-  const days = Math.round((Date.parse(`${tick}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86_400_000);
-  return days < transitionDates ? DEVELOPMENT_XP_TRANSITION_CAP : null;
-}
-
-/**
- * Overgangsvinduets loft for `tickDate` under XP (#7739). Kaldes kun, når XP er aktiv
- * på datoen. Mangler nøglen = null (intet loft, ingen advarsel). Ugyldig værdi = null
- * plus en advarsel. Strict: en fejlet læsning kaster, så datoen prøves igen.
- */
-export async function loadDevelopmentXpDateCap({
-  supabase, tickDate, log = console, strict = false,
-}: {
-  supabase: DbClient;
-  tickDate: string | null | undefined;
-  log?: Log;
-  strict?: boolean;
-}): Promise<number | null> {
-  let raw: unknown = null;
-  try {
-    const { data, error } = await supabase.from("app_config").select("value")
-      .eq("key", DEVELOPMENT_XP_TRANSITION_CAP_DATES_KEY).maybeSingle();
-    if (error) throw new Error(error.message ?? String(error));
-    raw = data?.value ?? null;
-  } catch (error) {
-    const message = `${LOG_TAG} ${DEVELOPMENT_XP_TRANSITION_CAP_DATES_KEY} read failed: ${(error as Error)?.message ?? error}`;
-    if (strict) throw new Error(message);
-    log?.warn?.(message);
-    return null;
-  }
-  if (raw == null) return null;
-  const transitionDates = developmentXpTransitionDatesValue(raw);
-  if (transitionDates == null) {
-    log?.warn?.(`${LOG_TAG} ${DEVELOPMENT_XP_TRANSITION_CAP_DATES_KEY} is invalid - no transition cap`);
-    return null;
-  }
-  if (transitionDates === 0) return null;
-  const fromDate = await readDevelopmentXpFromDate(supabase, { strict, log });
-  return developmentXpDateCap({ tickDate, fromDate, transitionDates });
 }
 
 /**

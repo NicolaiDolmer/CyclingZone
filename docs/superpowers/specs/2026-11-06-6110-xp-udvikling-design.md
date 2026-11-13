@@ -1,6 +1,6 @@
 # Udvikling med XP: fælles prisliste, potentiale giver XP
 
-**Status:** design 6/11 2026. Trin 1 og 3 er bygget (modulet og kørslen, §11). Modulet har ingen kaldere, ingen kontakt er tændt, og intet i spillet er ændret. Ejeren har svaret på Å1, Å2, Å3, Å6 og Å7 (§2). Å4 og Å5 afgøres efter kørslen.
+**Status:** design 6/11 2026, ejervalg 7/11, byg-go 12/11. Trin 1-3 er merget (#7819, #7843, #7887), og motorens rest (dagsvariation og løbsdags-gulv) er bygget bag den slukkede kontakt (§11). 13/11 (PR #8041, bygget mod den uafhængige dommers prøver, AGENTS regel 40): intet loft i XP-grenen og standardkarrieren, gemt fremgang på én nat uden dryp-regel, type-prognosen regner på XP-modellen på alle flader, og en manglende evne er manglende i prognosen. Ingen kontakt er tændt, og intet i spillet er ændret. Alle syv spørgsmål er besvaret (§2).
 **Epic:** [#6110](https://github.com/NicolaiDolmer/CyclingZone/issues/6110), ejerens kommentarer 6/11.
 **Bygger på:** [samlet design 23/10](2026-10-23-6110-potentiale-et-tal-samlet-design.md) · [del 2 catch-up](2026-10-23-6110-del2-catchup-design.md) · [spec 3/10](2026-10-03-udvikling-2-design.md) · [katalog v3](2026-10-29-training-catalog-v3-design.md). Hvor de er i modstrid med denne spec, gælder §10.
 **Tal:** privat i `balance-internals/6110/xp-model-grundlag-2026-11-06.md` (hard rule 17). Dette dokument er kvalitativt. Det private grundlags afsnit 7 er modellens startpunkt. Kørslens tal ligger i samme mappe.
@@ -43,19 +43,28 @@ Det åbner #2472's form og K3b og erstatter #7757-forklaringen. PR #7769 holdes 
 
 ## 2. Spørgsmålene
 
-Ejeren svarede 6/11 på Å1, Å2, Å3, Å6 og Å7. Svarene står i issuet, og resten af denne spec er rettet til dem.
+Ejeren svarede 6/11 på Å1, Å2, Å3, Å6 og Å7 og 7/11 på Å4 og Å5 (efter spilleranalysen, seks træningsvalg). Svarene står i issuet, og resten af denne spec er rettet til dem.
 
 | # | Spørgsmål | Status | Svar eller næste skridt |
 |---|---|---|---|
 | Å1 | Giver en session kun XP i sine egne evner? | **Afgjort: C** | Mest i fokus og lidt i resten (forum 9-4-1). Andelen er ét privat tal, off-fokus i XP-params (§4.6) |
 | Å2 | Bliver XP-tallet og Udviklingsscoren ét tal? | **Afgjort: ét tal** | XP, vist for i dag og de sidste 30 dage. Scorens 1-99-skala og navneskiftet udgår (§5.3) |
 | Å3 | Står potentialet fast, og skal omregningen og det levende talent bygges? | **Afgjort** | Potentialet er fast og styrer XP pr. dag. Det levende talent udgår. Omregningen 1-6 til 1-99 bygges stadig, efter at potentialet er ude af prisen (§6) |
-| Å4 | Hvor meget er "lidt mindre" for evner uden for typen? | Åben, afgøres efter kørslen | Typens andel (§4.7), kort med tal fra gate X4 |
-| Å5 | Dagsvariationens form: kun dag for dag, eller med gode og dårlige perioder? | Åben, afgøres efter kørslen | H6b, reglen fra 5/11 om at alt har en ægte årsag (§5.2), kort med tal fra gate X9 |
+| Å4 | Hvor meget er "lidt mindre" for evner uden for typen? | **Afgjort 7/11: Midt B** | Typen tæller mest af mellemvejene, men er ikke længere en skjult bremse. Andelene er private i XP-params; vises tydeligt på rytterprofilen (§4.7) |
+| Å5 | Dagsvariationens form: kun dag for dag, eller med gode og dårlige perioder? | **Afgjort 7/11: bred, med hukommelse. Afløst 12/11: bred, uden hukommelse** | XP må være synligt og svinger meget fra dag til dag, uden hukommelse (ejer 12/11, kort 2). Bredden sættes efter ejerens ord og måles i næste kørsel (§5.2, gate X9) |
 | Å6 | Skal rytterens type følge med, når han er trænet om? | **Afgjort: nej** | Typen er anlæg. Bedste rolle følger evnerne som i dag (§4.7) |
 | Å7 | Falder XP også for mentale evner efter ca. 29 år? | **Afgjort** | Mentale evner vokser længere end fysiske. Hvor længe måles i kørslen (§4.5, gate X7) |
 
-De to åbne spørgsmål får hver sit kort med tal, ét ad gangen.
+**Ejervalg 7/11 (træning 1-6 af 6), ud over Å4 og Å5:**
+
+| # | Valg | Hvor |
+|---|---|---|
+| E1 | Tempo: grundtabellen er XP kalibreret mod kurve B; næste kørsel følger kun nye ryttere fra 16 til 40 år plus en særskilt måling af, at spillet ikke løber løbsk | §8, privat kort |
+| E2 | Løbsdag: en løbsdag giver altid mindst det samme som en hård træningsdag med rytterens træner og facilitet, og mere i det, etapen kræver. Gate X8 skal være grøn før tænding | §4.9 |
+| E3 | Træn nu-bonus: valgt blandt de tre målte niveauer, tændes sammen med XP (#7737) | §4.2 |
+| E4 | Intet loft på +1 point pr. evne pr. dato under XP. Kun prisen bremser. Kræver ny måling (X6, X1, inflation) før tænding | §4.3, #7739 |
+
+**Byg-go 12/11:** #6110 bygges færdigt hurtigst muligt bag den slukkede kontakt. 14/11 er kun gulvet for selve tændingen (første XP-dato tidligst 15/11), ikke for byggeriet. Løbsdags-kravet E2 er nok; en sammenligning med den gamle model er ikke et krav. Ordet er Potentiale overalt.
 
 ## 3. Hvad der er sandt i dag
 
@@ -87,13 +96,16 @@ XP på en evne er et produkt af led. Enheden er én hård dato. Motorens tick f�
 | Potentiale | XP pr. dag fra en privat tabel over potentialet, lineært mellem punkterne. Spændet er større end dagens fartspænd, fordi det skal erstatte det bløde loft. Tabellens punkter kan flyttes til skalaen 1-99 uden ny kode | B2, B12 |
 | Alder | Fuldt til og med 28, derefter tydeligt faldende. Mentale evner har deres egen, længere kurve | B5, B14, §4.5 |
 | Session | Intensitet og evnens vægt i sessionen, uændret fra katalog v3 og `abilityMult`. Evner uden for sessionen får off-fokus-andelen, som følger intensiteten | S12, B10, §4.6 |
-| Type | Andel efter rolleklasse | B7, §4.7 |
+| Type | Andel efter rolleklasse, Midt B (Å4) | B7, §4.7 |
 | Færdighedsdag | Uændret: en færdighedsdag træner højst til håndværks-raten (#3762) | 14/8 |
-| Træner og facilitet | Kun på træningsdage | S13 |
-| Træn nu | Bonus på træningsdage, når manageren selv trykker. Størrelsen er ikke valgt | B16 |
+| Træner og facilitet | På træningsdage. På løbsdage kun gennem løbsdags-gulvet | S13, E2 |
+| Træn nu | Bonus på træningsdage, når manageren selv trykker. Størrelsen er valgt 7/11 (#7737) | B16, E3 |
 | Træningsdisciplin | Løfter dagens udbytte, hvis trin 19 bygges (§9) | S11 |
-| Dagsvariation | Deterministisk pr. (rytter, dato) med en hemmelig nøgle på serveren, neutral over en sæson | B8, §5.2 |
-| Intention på løbsdage | Uændret multiplikator (#6641) | live |
+| Dagsvariation | Deterministisk pr. (rytter, dato) med en hemmelig nøgle på serveren, bred og uden hukommelse (ejer 12/11; valget 7/11 om hukommelse er afløst), neutral over en sæson. Gælder hele dagen, også løbsdage. Bredde, hukommelse og nøgle ligger i XP-params; uden dem er der ingen variation | B8, Å5, §5.2 |
+| Intention på løbsdage | Uændret multiplikator (#6641), men aldrig under løbsdags-gulvet | live, E2 |
+| Løbsdags-gulv | På en løbsdag er XP i hver evne mindst en hård træningsdag i løbsdagens evner med rytterens træner og facilitet. Rolletillægget lægges oven i | E2, §4.9 |
+
+I koden: `developmentXp.ts` (`developmentXpAbilityDelta` med gulvet) og `developmentXpVariation.ts` (variationen). `applyDailyTick` ganger variationen og Træn nu-bonussen på hele dagen.
 
 Form og træthed er ikke led i XP (S29). Træthed koster gennem form og skadesrisiko. Belastningsevnen (D1) er neutral i de gældende params og føres ikke med over. Viser kørslen, at de helt unge går for hurtigt, er det et nyt ejer-kort.
 
@@ -101,7 +113,7 @@ Form og træthed er ikke led i XP (S29). Træthed koster gennem form og skadesri
 
 - Bjælken gemmes **fortsat som en andel** i `ability_progress`. Vist XP = andel gange prisen for næste point.
 - Når et point købes, regnes overskuddet om til den nye pris, så ingen XP går tabt eller opstår. Dagens `bar -= 1` kan ikke genbruges, fordi prisen skifter mellem to point.
-- **Intet +1-loft pr. evne pr. dato under XP** (ejer 7/11, #7739): kun prisen bremser. `ability_cap_per_date_enabled` gælder fortsat kurve B og dagens model. Løbsdagens eget loft pr. tick står. Undtagelse: overgangsvinduet i §7.3.
+- **Intet +1-loft pr. evne pr. dato under XP** (ejer 7/11, #7739): kun prisen bremser. `ability_cap_per_date_enabled` gælder fortsat kurve B og dagens model. Ejer 12/11 (#6110 R9): heller ikke løbsdagens gamle regel pr. tick (`hardDailyCap`) bremser XP-købet; den gælder kun dagens model. Standardkarrieren bag skøn og prognose køber også uden loft pr. dato, så skøn, prognose og motor siger det samme. Der er ingen undtagelser (§7.3).
 - Fremdrift gemmes altid (S8). Falder en evne ved sæsonskiftet, står andelen uændret.
 - XP-tallet skrives i tick-rapporten (`training_rider_ticks.report`), som også kan bære løbsdage. Ny tabel er ikke nødvendig.
 
@@ -142,7 +154,7 @@ Samme prisliste, uden `MENTAL_ABILITY_TAG_CEILING` i XP-stien. De vokser længer
 
 ### 4.9 Løbsdage
 
-Reglerne står, oversat til XP: en løbsdag er en hård dag plus et tillæg i etapens evner, vægtet efter rolle (D-059, D3). Træner og facilitet tæller ikke (S13). Udgået rytter får basis (S16), fri rolle er halvt af hver (S17). Løb skal fortsat slå træning i etapens evner (D2, G1). Fordi potentialet giver XP, afhænger løbsdagens udbytte af potentialet. Det skal ses sammen med catch-up, når #6950 besluttes.
+Reglerne står, oversat til XP: en løbsdag er en hård dag plus et tillæg i etapens evner, vægtet efter rolle (D-059, D3). Træner og facilitet tæller ikke i selve løbsdagen (S13), men **gulvet** gør (ejervalg E2, 7/11, bekræftet 12/11): i hver evne giver en løbsdag mindst det, en hård træningsdag i løbsdagens evner med rytterens træner og facilitet ville give, også når dagens intention er lav. Gulvet løfter kun selve dagen; rolletillægget lægges oven i, så "mere i det, etapen kræver" er det samme for alle roller. Gulvet regnes i tick'ets enhed, så en dato med flere løbsdage deler det som resten af XP'en (#6711). Udgået rytter får basis (S16), fri rolle er halvt af hver (S17). Løb skal fortsat slå træning i etapens evner (D2, G1). Fordi potentialet giver XP, afhænger løbsdagens udbytte af potentialet. Det skal ses sammen med catch-up, når #6950 besluttes.
 
 ### 4.10 Uændret
 
@@ -166,7 +178,8 @@ Dette er modellens sværeste punkt. Spændet i XP er stort, og XP er nu selve po
 - Krav: gate H6b gælder fortsat, nu på XP-historikken. Talent udledt af XP må ikke være mere præcist end holdets eget skøn efter samme antal afregnede datoer.
 - Variationen skal hæves til det niveau, H6b kræver, og må ikke flytte sæsonens samlede udbytte.
 - **Variationen skal bruge en hemmelig nøgle.** Repoet er offentligt, og `seededUnitMixed` er en åben hash. Seeded alene på rytter og dato kan en spiller regne variationen efter og trække den fra, uanset hvor stor den er. Nøglen ligger i `private_config` sammen med XP-params og sendes aldrig til klienten. Samme rytter og dato giver stadig samme tal ved en gen-kørsel. Gate X9 måles mod en spiller, der kender den offentlige kode og alle input undtagen nøglen.
-- Variation dag for dag midles hurtigt væk. Variation med hukommelse (gode og dårlige perioder) skjuler talentet længere ved samme daglige udsving. Begge måles (Å5).
+- Variation dag for dag midles hurtigt væk. Variation med hukommelse (gode og dårlige perioder) skjuler talentet længere ved samme daglige udsving. Afgjort 7/11 (Å5): bred variation med hukommelse. **Afløst 12/11 (ejerens kort 2, #6110 R11): XP svinger bredt fra dag til dag uden hukommelse; ingen rytter har en hel sæson eller måned, hvor han træner elendigt.** Hukommelsen sættes derfor til nul i tænd-parametrene; bredden sættes efter ejerens ord og måles i næste prøvekørsel (H6b, gate X9).
+- Bygget i `developmentXpVariation.ts`: hvert træk er en HMAC med nøglen; med hukommelse regnes tilstanden for en dato fra de foregående datoers træk, så intet skal gemmes, og en dato kan regnes om alene. Uden hukommelse (valget 12/11) er hver dato sit eget træk. Formen er den samme som kørslens. Nøglen ligger ikke på params-objektet, så params kan logges eller hashes uden at afsløre den.
 - Reglen fra 5/11 er, at alt har en ægte årsag. Ren dagslotteri kolliderer med den, og S10 forbyder en faktorforklaring. Kortet til ejeren skal tage stilling til det.
 
 ### 5.3 Udviklingsscoren
@@ -215,7 +228,7 @@ Tændes **kun mellem to datoer**. En dato må aldrig afregnes med to modeller, h
 
 - **Ingen evne ændres, og ingen rating falder ved tænding.** Der køres ingen massemutation og ingen omregning.
 - Bjælken bevarer sin andel. Ingen data skal migreres.
-- Evner, der står fast ved det gamle hårde tag eller i klippet lige under et point, begynder at købe point igen. Baren over 1 betales som standard ud straks, til prisen. Overgangsvinduet (#7739): `development_xp_transition_cap_dates` i app_config giver højst +1 pr. evne pr. dato i de første datoer fra startdatoen; mangler nøglen, er der intet loft. Det kræver, at `ability_cap_per_date_enabled` er on. Ejeren vælger værdien før tænding. Gate X6 måler den første uge, så det ikke bliver et spring, spillerne oplever som en fejl.
+- Evner, der står fast ved det gamle hårde tag eller i klippet lige under et point, begynder at købe point igen. Baren over 1 betales helt ud på tændingsnatten, til prisen, også på en hviledag (ejer 12/11, kort 1, #6110 R10). Der findes ingen dryp-regel: overgangsvinduet fra #7739 (`development_xp_transition_cap_dates`) er fjernet fra koden, og nøglen læses ikke. Forklaringen i træningsrapporten, når gemt fremgang udbetales, venter på billedet af XP-visningen (Å4). Gate X6 måler den første uge.
 - **Ingen ny glidende overgang og intet nyt øjebliksbillede.** #7382 og D5 fandtes, fordi evner over et loft ellers ville bremse brat. Uden loft findes gruppen ikke. Tabellen fra #7382 røres ikke.
 - Ryttere med lavt potentiale og lave evner får lidt mindre pr. dag, og ryttere over det gamle bløde loft får mere. Kørslen viser hvor meget. Er ændringen synlig for en gruppe, får ejeren et kort før tænding.
 
@@ -240,7 +253,7 @@ Kørslen er `backend/scripts/dev/tenSeasonSim6110.mjs` (read-only, kopi af prod,
 | X3 Veteraner | Etablerede ryttere over ca. 29 år stiger ikke bredt |
 | X4 Type | En ren sprinter bliver ikke topklatrer på en hel karriere. En bjergrytter kan blive bakkerytter |
 | X5 Aldrig nul | En hel træningsdag giver altid synligt XP (#7757) |
-| X6 Tændingen | 0 ratingfald, ingen unormal første uge (med eller uden overgangsvinduet, #7739) |
+| X6 Tændingen | 0 ratingfald, ingen unormal første uge, hele den gemte fremgang udbetalt på én nat (ejer 12/11) |
 | X7 Mentale evner | Mentale evner vokser længere end de fysiske, men ingen mental evne løber fra dem. Taktik vurderes særskilt |
 | X8 Løb | G1, G2, G6 og G8 fra del 2 holder i XP |
 | X9 Talentet | H6b holder på XP-historikken, også mod en spiller, der kender koden (§5.2) |
@@ -309,16 +322,18 @@ GDD, `PROGRESSION_RULES` §0, §1, §3, §4, §11 og `TRAINING_RULES` §2.1b ret
 
 ## 11. Byggeplan (små PR'er, alt bag den slukkede kontakt)
 
-Trin 1 og 3 er bygget (PR #7819). Resten bygges efter ejerens godkendelse af denne spec og af kortet fra kørslen.
+Trin 1-3 er merget (#7819, #7843, #7887). Byg-go 12/11: resten bygges hurtigst muligt bag den slukkede kontakt; tændingen kræver stadig §7.2.
 
 | # | PR | Afhænger af |
 |---|---|---|
-| 1 | Rent modul `developmentXp.ts`: pris, XP pr. dag, køb af point, params-validering, tests, ingen kaldere | - |
-| 2 | Kontakt, params, startdato, grenen i `dailyAbilityDelta` og `applyDailyTick`, frossen golden for off | 1 |
-| 3 | XP-variant i `tenSeasonSim6110.mjs`, gates X og H, Træn nu ved 10, 15 og 25 %, privat kort | 1 |
+| 1 | Rent modul `developmentXp.ts`: pris, XP pr. dag, køb af point, params-validering, tests, ingen kaldere. **Merget** | - |
+| 2 | Kontakt, params, startdato, grenen i `dailyAbilityDelta` og `applyDailyTick`, frossen golden for off. **Merget** | 1 |
+| 2b | Motorens rest efter ejervalgene 7/11: dagsvariation med hemmelig nøgle (`developmentXpVariation.ts`, felter i XP-params; motoren kan begge former, ejeren valgte 12/11 uden hukommelse) og løbsdags-gulvet (E2). **Bygget** | 2 |
+| 2c | Intet dagsloft under XP (E4, #7739). 13/11 (#8041): heller ikke løbsdagens gamle regel pr. tick eller standardkarrieren har et loft, og overgangsvinduet er fjernet (gemt fremgang på én nat). **Bygget** | 2 |
+| 3 | XP-variant i `tenSeasonSim6110.mjs`, gates X og H, Træn nu ved 10, 15 og 25 %, privat kort. **Merget** | 1 |
 | 4 | XP i tick-rapporten, API-felter for egen manager, H4-test | 2 |
 | 5 | Visning, tekster, Hjælp en+da, gated på kontakten, preview til ejeren | 4 |
-| 6 | Prognose og skøn på nyt sandt tal (trin 3-5) | 2 |
+| 6 | Prognose og skøn på nyt sandt tal (trin 3-5). Skøn og prognose er merget (#8044); 13/11 (#8041): type-prognosen får XP-params på alle flader (profil, scouting, akademi), og en manglende evne giver ingen prognose. **Bygget** | 2 |
 | 7 | Potentialet ud af værdien, træningshastigheden ind (#2798) | 4 |
 | 8 | Omregningen 1-6 til 1-99 | 7 |
 | 9 | Tænd-kort: gates, billeder, startdato, ejerens "kør". Hvordan XP, værdien og omregningen tændes sammen, afgøres her | Alle |
