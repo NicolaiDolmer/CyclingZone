@@ -14258,7 +14258,7 @@ router.get("/finance/loans", requireAuth, async (req, res) => {
 });
 
 // GET /api/me/locked-sales — #6181: saelgers laaste salgspenge for eget hold (menu, dashboard, Oekonomi)
-router.get("/me/locked-sales", requireAuth, async (req, res) => {
+router.get("/me/locked-sales", requireAuth, presencePulseLimiter, async (req, res) => {
   try {
     if (!req.team) return res.json({ total: 0, sales: [] });
     res.json(await loadLockedSalesForTeam(supabase, req.team.id));

@@ -203,7 +203,7 @@ test("countHeldSaleEscrowsForForce: taeller holdte; manglende tabel = 0; laesefe
 const api = read("../routes/api.js");
 
 test("GET /api/me/locked-sales: requireAuth og kun eget hold", () => {
-  const m = api.match(/router\.get\("\/me\/locked-sales", requireAuth,[\s\S]*?\n\}\);/);
+  const m = api.match(/router\.get\("\/me\/locked-sales", requireAuth, presencePulseLimiter,[\s\S]*?\n\}\);/);
   assert.ok(m, "ruten mangler");
   assert.match(m[0], /loadLockedSalesForTeam\(supabase, req\.team\.id\)/);
   assert.doesNotMatch(m[0], /req\.(query|params|body)/, "holdet maa aldrig komme fra klienten");

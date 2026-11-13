@@ -87,11 +87,19 @@ async function activeStageRaceByRider(supabase, riderIds) {
   if (!races?.length) return result;
 
   const raceIds = races.map((r) => r.id);
-  const [{ data: entries, error: eErr }, { data: stages, error: sErr }] = await Promise.all([
-    supabase.from("race_entries").select("race_id, rider_id").in("race_id", raceIds).in("rider_id", riderIds),
-    supabase.from("race_stage_schedule").select("race_id, scheduled_at").in("race_id", raceIds),
-  ]);
+  const { data: entries, error: eErr } = await supabase
+    .from("race_entries") // pagination-safe: kun holdets faa solgte ryttere (hoejst 2 pr. laast salg, MAX_ROWS salg) i de aktive etapeloeb.
+    .select("race_id, rider_id")
+    .in("race_id", raceIds)
+    .in("rider_id", riderIds);
   if (eErr) throw new Error(`loadLockedSalesForTeam: entries lookup failed: ${eErr.message}`);
+  if (!entries?.length) return result;
+
+  const entryRaceIds = [...new Set(entries.map((e) => e.race_id))];
+  const { data: stages, error: sErr } = await supabase
+    .from("race_stage_schedule") // pagination-safe: kun de faa loeb, de solgte ryttere koerer (et etapeloeb har faa etaper).
+    .select("race_id, scheduled_at")
+    .in("race_id", entryRaceIds);
   if (sErr) throw new Error(`loadLockedSalesForTeam: stage schedule lookup failed: ${sErr.message}`);
 
   /** @type {Map<string, string>} */
@@ -143,7 +151,7 @@ export async function loadLockedSalesForTeam(supabase, teamId, { now = new Date(
   const sold = rows.map((e) => soldRiderIds(e));
   const allRiderIds = [...new Set(sold.flat())];
   const [{ data: riders, error: riderErr }, raceByRider] = await Promise.all([
-    supabase.from("riders").select("id, firstname, lastname").in("id", allRiderIds),
+    supabase.from("riders").select("id, firstname, lastname").in("id", allRiderIds), // pagination-safe: unikke rider-id'er, hoejst 2 pr. laast salg og MAX_ROWS salg.
     activeStageRaceByRider(supabase, allRiderIds),
   ]);
   if (riderErr) throw new Error(`loadLockedSalesForTeam: riders lookup failed: ${riderErr.message}`);
@@ -262,7 +270,7 @@ export async function notifySellerSaleEscrowReleased(supabase, escrow, { notifyT
   try {
     if (!escrow?.id || !escrow.payee_team_id) return false;
     const ids = soldRiderIds(escrow);
-    const { data: riders, error } = await supabase.from("riders").select("id, firstname, lastname").in("id", ids);
+    const { data: riders, error } = await supabase.from("riders").select("id, firstname, lastname").in("id", ids); // pagination-safe: een handels 1-2 ryttere.
     if (error) throw new Error(error.message);
     const byId = new Map((riders || []).map((r) => [r.id, r]));
     const names = ids.map((id) => riderName(byId.get(id))).filter(Boolean).join(", ");
