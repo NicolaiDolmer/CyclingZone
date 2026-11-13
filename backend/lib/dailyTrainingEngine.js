@@ -70,6 +70,7 @@ import {
 // headeren paa injuryRaceDays.js.
 import {
   injuryEndGameDay, injuryRaceDaysLeft, isInjuredOnRaceDay, resolveInjuryEndDates,
+  loadTeamDivisionId,
 } from "./injuryRaceDays.js";
 import { notifyTrainingInjuries } from "./raceAvailabilityNotifications.js"; // #7086
 import { loadDevelopmentCurveB } from "./developmentCurveBFlag.ts"; // #3564 kurve B
@@ -644,12 +645,18 @@ async function readRaceDayFacts({ supabase, teamId, seasonId, raceDay, riderIds,
  * kalenderdagens fallback staaende paa `injured_until`. Skaden bliver altid skrevet;
  * loebsdags-felterne baerer stadig den praecise sandhed, og motorens egen
  * raskmelding laeser dem — kun gatens dato er saa et skoen.
+ *
+ * #7982 trin 4a: only a train-now press with its memory (`pressPath`) asks with the race-day
+ * lookup's two queries (loadInjuryCalendarRaces), so the press answers them from what it
+ * already read. Every other path (the evening run, ordinary training) asks exactly as before.
  */
-async function resolveConditionInjuryDates({ supabase, teamId, seasonId, useRaceDayKey, conditionUpserts }) {
+async function resolveConditionInjuryDates({ supabase, teamId, seasonId, useRaceDayKey, conditionUpserts, pressPath = false }) {
   if (!useRaceDayKey) return;
   const needDates = conditionUpserts.filter((row) => row.injury_end_game_day != null);
   if (!needDates.length) return;
-  const { divisionId, raceIds } = await loadInjuryCalendarRaces({ supabase, teamId, seasonId });
+  const { divisionId, raceIds } = pressPath
+    ? await loadInjuryCalendarRaces({ supabase, teamId, seasonId })
+    : { divisionId: await loadTeamDivisionId({ supabase, teamId }), raceIds: null };
   const dateByGameDay = await resolveInjuryEndDates({
     supabase,
     seasonId,
@@ -831,7 +838,7 @@ async function runPressDayFromMemory({
   pressTimer?.lap("load");
   const tick = computeTrainingDayTick(input);
   pressTimer?.lap("compute");
-  await resolveConditionInjuryDates({ supabase, teamId, seasonId, useRaceDayKey: true, conditionUpserts: tick.conditionUpserts });
+  await resolveConditionInjuryDates({ supabase, teamId, seasonId, useRaceDayKey: true, conditionUpserts: tick.conditionUpserts, pressPath: true });
   const saved = await commitTrainingDateTick({
     supabase, teamId, seasonId, squadKey, raceDay, tickDate, dateDays, executedBy, bonus: input.bonus,
     lastSlotSettles: input.lastSlotSettles, deadlineReached, now, instantRiderIds: input.instantRiderIds,
@@ -1482,7 +1489,7 @@ export async function runTeamTrainingDay({
   pressTimer?.lap("compute");
 
   // #5462: `injured_until` from the injury's last race day (resolveConditionInjuryDates).
-  await resolveConditionInjuryDates({ supabase, teamId, seasonId, useRaceDayKey, conditionUpserts });
+  await resolveConditionInjuryDates({ supabase, teamId, seasonId, useRaceDayKey, conditionUpserts, pressPath: Boolean(pressMemory) });
 
   // #6759: sidste skridt foer writes paa den gamle sti — reservationen skifter til
   // "writing" og kan derefter aldrig overtages som forældet. Token-filteret beviser
