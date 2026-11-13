@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-146 poster: live 112 · beta 1 · dormant 8 · building 16 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+146 poster: live 113 · beta 3 · dormant 8 · building 13 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -13,9 +13,9 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## race-engine
 
-**live:** Luxury helper (`luxury-helper-role`) 2026-11-02 · All out on the decisive climb (`race-all-out-7280`) 2026-11-02 · Day form with causes (`race-day-form-6649`) 2026-10-30 · Day form in words after the stage (`race-day-words-7725`) 2026-11-08 · Descent attacks respect the rider's task (`race-descent-task-7380`) 2026-11-01 · Profile hills in the race engine (`race-engine-profile-hills`) 2026-10-28 · Stage plan 10 km switch (`race-final-km-boundary-7383`) 2026-10-31 · Stage intention choice (`race-intention-choice`) 2026-11-02 · Time trials without the extra day roll (`race-itt-no-day-roll-7726`) 2026-11-06 · Saving effort in individual time trials (`race-itt-save-7332`) 2026-11-01 · Time trial terrain weight (`race-itt-terrain-6595`) 2026-10-31 · The chase is decided by the teams chasing (`race-team-chase-7730`) 2026-11-06
+**live:** Luxury helper (`luxury-helper-role`) 2026-11-02 · All out on the decisive climb (`race-all-out-7280`) 2026-11-02 · Day form with causes (`race-day-form-6649`) 2026-10-30 · Day form in words after the stage (`race-day-words-7725`) 2026-11-08 · Descent attacks respect the rider's task (`race-descent-task-7380`) 2026-11-01 · Stage plan 10 km switch (`race-final-km-boundary-7383`) 2026-10-31 · Stage intention choice (`race-intention-choice`) 2026-11-02 · Time trials without the extra day roll (`race-itt-no-day-roll-7726`) 2026-11-06 · Saving effort in individual time trials (`race-itt-save-7332`) 2026-11-01 · Time trial terrain weight (`race-itt-terrain-6595`) 2026-10-31 · The chase is decided by the teams chasing (`race-team-chase-7730`) 2026-11-06
 
-**arkiv:** `form-and-fatigue` · `race-engine-s5-profiles` · `race-engine-v3` · `race-engine-v3-scoring` · `race-engine-v4` · `race-finalize-resumable` · `race-form-peaks` · `race-notify-outbox` · `team-selection-and-roles`
+**arkiv:** `form-and-fatigue` · `race-engine-profile-hills` · `race-engine-s5-profiles` · `race-engine-v3` · `race-engine-v3-scoring` · `race-engine-v4` · `race-finalize-resumable` · `race-form-peaks` · `race-notify-outbox` · `team-selection-and-roles`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
@@ -32,17 +32,18 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
+|Team plans (`tactics-ready`)|beta|`tactics_ready_7864`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7864|2026-11-12|Beta siden 12/11 kl. 19:02 (ejerens kør). Første gem set 12/11: 8 ordrer og 14 roller, alle med markør.|
 |Engine breakaway forecast (`race-breakaway-outlook`)|building|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#6912|2026-10-29|Ingen app_config-række (fravær = off). Ejer-go til tænding.|
-|Team plans (`tactics-ready`)|building|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7864|2026-11-11|Ingen seed/aktivering; fler-etape kræver atomisk DB-kapabilitet.|
 
 ## market
+
+**live:** Bid commitment gate (`market-commitment`) 2026-11-12
 
 **arkiv:** `auctions` · `direct-transfers` · `rider-swaps` · `rider-valuation-v5`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
-|Auto-accept price (`market-auto-accept`)|building|`auto_accept_enabled`|[TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md)|#2176|2026-11-07|-|
-|Bid commitment gate (`market-commitment`)|building|-|[TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md)|#6181|2026-11-09|Kontakt market_commitment_6181, off post; ikke flag-bundet her (prod-raekke ikke verificeret), jf. #7923.|
+|Auto-accept price (`market-auto-accept`)|beta|`auto_accept_enabled`|[TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md)|#2176|2026-11-12|-|
 |Sale escrow (`sale-escrow`)|building|-|[TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md)|#6181|2026-11-07|Kontakt sale_escrow_enabled.|
 |AI and unsolicited bids (`ai-unsolicited-bids`)|idea|-|[TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md)|#1310|2026-09-06|Findes ikke i kode.|
 |Market value blend sweep (`market-value-blend`)|retired|-|[ECONOMY_RULES](ECONOMY_RULES.md)|#3448|2026-10-15|Afløst af v6 (#4449).|

@@ -1,5 +1,248 @@
 export const PATCHES = [
 {
+  "version": "7.438",
+  "date": "2026-11-12",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "topic": "Tactics",
+      "flag": "tactics_ready_7864",
+      "en": {
+        "title": "Team plans (beta)",
+        "body": "On the Tactics tab, pick Ride for GC, Stage win, Sprint, Go for the break or Save the legs, adjust it, then save. Every task shows a price word (Easy, Medium, Hard or Very hard) that matches what it costs the legs, and a plan can be copied to the coming stages of the same type. Help explains it all."
+      },
+      "da": {
+        "title": "Holdplaner (beta)",
+        "body": "På Taktik-fanen kan du vælge Kør for klassementet, Etapesejr, Spurt, Gå i udbrud eller Spar benene, rette til og gemme. Hver opgave viser et prisord (Let, Middel, Hård eller Meget hård), der passer til det, den koster i benene, og en plan kan kopieres til de kommende etaper af samme type. Hjælp forklarer det hele."
+      },
+      "refs": [
+        7864,
+        8027
+      ]
+    }
+  ]
+},
+{
+  "version": "7.437",
+  "date": "2026-11-12",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Board",
+      "en": {
+        "title": "The board's sponsor growth target can now be reached",
+        "body": "It is measured from your team's first season in the plan with sponsor income, so seasons without payouts no longer block it. A season without sponsor income is not measured."
+      },
+      "da": {
+        "title": "Bestyrelsens mål om sponsorvækst kan nu nås",
+        "body": "Det måles fra holdets første sæson i planen med sponsorindtægt, så sæsoner uden udbetalinger ikke længere blokerer det. En sæson uden sponsorindtægt bliver ikke målt."
+      },
+      "refs": [
+        7964
+      ]
+    }
+  ]
+},
+{
+  "version": "7.436",
+  "date": "2026-11-12",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "en": {
+        "title": "The offline page tries the real login check",
+        "body": "If loading the app fails, the offline page now tries the real login check. The logo shows offline, and the Try again button is bigger on mobile."
+      },
+      "da": {
+        "title": "Offline-siden prøver det rigtige login-tjek",
+        "body": "Hvis appen ikke kan hentes, prøver offline-siden nu det rigtige login-tjek. Logoet vises offline, og Prøv igen-knappen er større på mobil."
+      },
+      "refs": [
+        8021,
+        6584
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "en": {
+        "title": "A real error message when the database is down",
+        "body": "When the database is down, you now get a real error message instead of \"No team found\"."
+      },
+      "da": {
+        "title": "En rigtig fejlbesked, når databasen er nede",
+        "body": "Når databasen er nede, får du nu en rigtig fejlbesked i stedet for \"No team found\"."
+      },
+      "refs": [
+        7935
+      ]
+    },
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "en": {
+        "title": "A new front page",
+        "body": "cyclingzone.org has a new front page with real screenshots of the game."
+      },
+      "da": {
+        "title": "En ny forside",
+        "body": "cyclingzone.org har fået en ny forside med rigtige billeder fra spillet."
+      },
+      "refs": [
+        6665,
+        1369
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Board",
+      "en": {
+        "title": "Board mandates follow the season",
+        "body": "Board mandates now follow the season for parked and frozen teams, and a team that returns gets a mandate."
+      },
+      "da": {
+        "title": "Bestyrelsens mandater følger sæsonen",
+        "body": "Bestyrelsens mandater følger nu sæsonen for parkerede og frosne hold, og et hold, der vender tilbage, får et mandat."
+      },
+      "refs": [
+        7494,
+        6773
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Notifications",
+      "en": {
+        "title": "Cleaner contract warnings",
+        "body": "Contract warnings no longer show a raw team code, and their line breaks are right."
+      },
+      "da": {
+        "title": "Rene kontraktvarsler",
+        "body": "Kontraktvarsler viser ikke længere en rå holdkode, og linjeskiftene er rigtige."
+      },
+      "refs": [
+        7549,
+        7337
+      ]
+    }
+  ]
+},
+{
+  "version": "7.435",
+  "date": "2026-11-12",
+  "changes": [
+
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "beta_to_live",
+      "topic": "Transfers",
+      "en": {
+        "title": "Bid money is now locked for every team",
+        "body": "Money you have bid is now locked for every team, so no one can bid more than they have. It has run in beta since 11 November. Auto-accept is still in beta."
+      },
+      "da": {
+        "title": "Budt beløb er nu låst for alle hold",
+        "body": "Penge, I har budt, er nu låst for alle hold, så ingen kan byde for mere, end de har. Den har kørt i beta siden 11. november. Auto-accept er stadig i beta."
+      },
+      "refs": [
+        6181,
+        2176
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Races",
+      "en": {
+        "title": "The assistant no longer enters a team that cannot start",
+        "body": "In stage races, the assistant no longer puts a small team into a race it cannot start. Before, you could get the message that the assistant picked your squad and then see the team taken out again at the start."
+      },
+      "da": {
+        "title": "Assistenten sætter ikke længere et hold, der ikke kan starte",
+        "body": "I etapeløb sætter assistenten ikke længere et lille hold på et løb, det ikke kan starte. Før kunne du få beskeden om, at assistenten udtog dit hold, og så se holdet blive taget ud igen ved starten."
+      },
+      "refs": [
+        8029,
+        7339
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Transfers",
+      "en": {
+        "title": "TWK and LDR show on the Transfer list",
+        "body": "The Transfer list showed dashes for Teamwork (TWK) and Leadership (LDR). It now shows the real values, also under offers, swaps and auctions."
+      },
+      "da": {
+        "title": "TWK og LDR vises på Transferlisten",
+        "body": "Transferlisten viste streger for Holdarbejde (TWK) og Lederskab (LDR). Den viser nu de rigtige værdier, også under tilbud, bytter og auktioner."
+      },
+      "refs": [
+        8028,
+        7962
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "beta",
+      "topic": "Training",
+      "flag": "training_train_now_instant",
+      "en": {
+        "title": "Train now receipt agrees with itself (beta)",
+        "body": "After Train now, the receipt says training is applied and form and fatigue are updated, and that the final change shows after the evening settlement."
+      },
+      "da": {
+        "title": "Træn nu-kvitteringen modsiger ikke sig selv (beta)",
+        "body": "Efter Træn nu siger kvitteringen, at træningen er gennemført, og at form og træthed er opdateret. Den siger også, at den endelige ændring vises efter aftenens afregning."
+      },
+      "refs": [
+        8031,
+        8025,
+        7987
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "en": {
+        "title": "Filter renamed to No plan today",
+        "body": "The Training filter Needs a day is now called No plan today. It shows riders without a plan today, not riders who rest."
+      },
+      "da": {
+        "title": "Filteret hedder Mangler plan i dag",
+        "body": "Filteret på Træning hedder nu Mangler plan i dag. Det viser ryttere uden plan i dag, ikke ryttere der hviler."
+      },
+      "refs": [
+        8031,
+        8025,
+        7987
+      ]
+    }
+  ]
+},
+{
   "version": "7.434",
   "date": "2026-11-12",
   "changes": [
@@ -35,6 +278,7 @@ export const PATCHES = [
       },
       "refs": [
         8015,
+        8017,
         2176
       ]
     }
@@ -94,11 +338,11 @@ export const PATCHES = [
       "topic": "Interface",
       "en": {
         "title": "Straight to your dashboard",
-        "body": "What changed: When you are logged in, opening Cycling Zone takes you straight to your dashboard without briefly showing the public front page.\n\nWhat it means for you: While your login is checked, you see quiet grey placeholders."
+        "body": "When you are logged in, Cycling Zone opens straight on your dashboard. The public front page no longer flashes first."
       },
       "da": {
         "title": "Direkte til dit dashboard",
-        "body": "Hvad er ændret: Når du er logget ind, åbner Cycling Zone direkte på dit dashboard uden kort at vise den offentlige forside.\n\nHvad betyder det for dig: Mens dit login bliver tjekket, ser du stille grå pladsholdere."
+        "body": "Når du er logget ind, åbner Cycling Zone direkte på dit dashboard. Den offentlige forside blinker ikke længere forbi først."
       },
       "refs": [
         5250
@@ -586,12 +830,12 @@ export const PATCHES = [
         "rollout": "live",
         "topic": "Calendar",
         "en": {
-          "title": "Missing instead of Grand Tour",
-          "body": "A race without enough riders picked now says Missing in the calendar table and on the race card, also when your team is riding a Grand Tour at the same time. The Grand Tour status is gone."
+          "title": "Calendar says Missing when riders are missing",
+          "body": "A race without enough riders picked now says Missing, also when your team rides a Grand Tour at the same time."
         },
         "da": {
-          "title": "Mangler i stedet for Grand Tour",
-          "body": "Et løb uden nok udtagne ryttere viser nu Mangler i kalendertabellen og på løbskortet, også når dit hold samtidig kører en Grand Tour. Grand Tour-status er fjernet."
+          "title": "Kalenderen siger Mangler, når ryttere mangler",
+          "body": "Et løb uden nok udtagne ryttere viser nu Mangler, også når dit hold samtidig kører en Grand Tour."
         },
         "refs": [
           7568
@@ -638,11 +882,11 @@ export const PATCHES = [
         "topic": "Help",
         "en": {
           "title": "Help corrected after a check",
-          "body": "Help now says rider values update once right after the season change and then every Sunday. It also explains that a worn-out helper can climb off a stage race, the uphill sprint and the wall finish, the exception that lets a stage race start with at least 4 free riders, and that expiring contracts run out before youth riders move up. The wrong line saying races do not use form peaks is gone."
+          "body": "Help now matches the game: rider values update once after the season change and then every Sunday, and expiring contracts run out before youth riders move up."
         },
         "da": {
           "title": "Hjælp rettet efter et eftersyn",
-          "body": "Hjælp siger nu, at rytterværdier opdateres én gang lige efter sæsonskiftet og derefter hver søndag. Den forklarer også, at en udkørt hjælper kan stige af et etapeløb, den stigende spurt og murfinalen, undtagelsen der lader et etapeløb starte med mindst 4 frie ryttere, og at udløbende kontrakter udløber, før ungdomsryttere rykker op. Den forkerte linje om, at løb ikke bruger formtoppe, er væk."
+          "body": "Hjælp passer nu til spillet: rytterværdier opdateres én gang efter sæsonskiftet og derefter hver søndag, og udløbende kontrakter udløber, før ungdomsryttere rykker op."
         },
         "refs": [
           7476,
@@ -732,12 +976,12 @@ export const PATCHES = [
         "rollout": "live",
         "topic": "Races",
         "en": {
-          "title": "The race story says Attack",
-          "body": "Riders with a stage plan now attack in the film, the report and the order lines. All out is only used in time trials. \"Ride to the finish\" is now \"Ride in easy\"."
+          "title": "Attack orders read right",
+          "body": "Riders with a stage plan now attack in the film, the report and the order lines. All out is only used in time trials, and \"Ride to the finish\" is now \"Ride in easy\"."
         },
         "da": {
-          "title": "Løbshistorien siger Angrib",
-          "body": "Ryttere med etapeplan angriber nu i filmen, referatet og ordre-linjerne. Alt ud bruges kun på enkeltstart. \"Kør i mål\" hedder nu \"Kør roligt i mål\"."
+          "title": "Angrebs-ordrer læses rigtigt",
+          "body": "Ryttere med etapeplan angriber nu i filmen, referatet og ordrelinjerne. Alt ud bruges kun på enkeltstart, og \"Kør i mål\" hedder nu \"Kør roligt i mål\"."
         },
         "refs": [
           7707
@@ -1173,11 +1417,11 @@ export const PATCHES = [
         "topic": "Races",
         "en": {
           "title": "The race film shows where riders were really dropped",
-          "body": "I fixed How the race played out: it now shows where riders were really dropped, instead of at the next checkpoint. This also fixes stages already raced."
+          "body": "In the race film, riders are now shown as dropped where it really happened, not at the next checkpoint. Stages already raced are fixed too."
         },
         "da": {
           "title": "Løbsfilmen viser, hvor rytterne reelt blev sat",
-          "body": "Jeg har rettet Sådan blev løbet kørt: den viser nu, hvor rytterne reelt blev sat, i stedet for ved næste tjekpunkt. Det retter også etaper, der allerede er kørt."
+          "body": "I løbsfilmen står ryttere nu som sat der, hvor det skete, ikke ved næste tjekpunkt. Allerede kørte etaper er også rettet."
         },
         "refs": [
           6350
@@ -2134,11 +2378,11 @@ export const PATCHES = [
         "topic": "Races",
         "en": {
           "title": "Smaller fixes",
-          "body": "What changed: After a stage, the stage plan shows your orders as you planned them. The Work and Follow attacks orders now describe what each role does. A sprint captain can lead the team without a captain. The Team tab shows the same stage profiles as the Stages tab. The Long time trials session trains time trial properly. Reputation shows the same number on My team and the rider profile. The academy text is clearer about when the first full evaluation comes. A rider who retires no longer looks like he races one more season during the season change. A rider's first-win title shows correctly in French, Spanish and Dutch. Fixed a rare duplicate academy message.\n\nWhat it means for you: What you plan is what you see, and the numbers and texts around your riders match."
+          "body": "After a stage, the stage plan shows your orders as you planned them. A sprint captain can lead the team without a captain. The Team tab shows the same stage profiles as the Stages tab. Reputation shows the same number on My team and the rider profile. A rider who retires no longer looks like he races one more season during the season change."
         },
         "da": {
           "title": "Små rettelser",
-          "body": "Hvad er ændret: Efter en etape viser etapeplanen dine ordrer, som du planlagde dem. Ordrerne Arbejd og Følg angrebene beskriver nu, hvad hver rolle gør. En spurtkaptajn kan lede holdet uden en kaptajn. Hold-fanen viser de samme etapeprofiler som Etaper-fanen. Sessionen Lange enkeltstarter træner enkeltstart ordentligt. Omdømme viser det samme tal på Mit hold og rytterprofilen. Akademiteksten er tydeligere om, hvornår den første fulde vurdering kommer. En rytter, der stopper, ser ikke længere ud til at køre en sæson mere under sæsonskiftet. Rytterens første-sejr-titel vises nu korrekt på fransk, spansk og hollandsk. Rettet en sjælden dobbeltbesked om akademiryttere.\n\nHvad betyder det for dig: Det, du planlægger, er det, du ser, og tal og tekster om dine ryttere passer sammen."
+          "body": "Efter en etape viser etapeplanen dine ordrer, som du planlagde dem. En spurtkaptajn kan lede holdet uden en kaptajn. Hold-fanen viser de samme etapeprofiler som Etaper-fanen. Omdømme viser det samme tal på Mit hold og rytterprofilen. En rytter, der stopper, ser ikke længere ud til at køre en sæson mere under sæsonskiftet."
         },
         "refs": [
           7333,
@@ -2568,11 +2812,11 @@ export const PATCHES = [
         "topic": "Training",
         "en": {
           "title": "Two hard sessions for every rider type",
-          "body": "What changed: There are five new hard sessions: Long climbs, Lead-out, Short time trials, Long time trials and Cobbled classic. Time trial now has its own sessions, so Threshold trains tempo and endurance. Time trial and GC riders on Threshold, and time trial riders without a plan, now train Long time trials.\n\nWhat it means for you: Check the plan for your time trial and GC riders. One who followed a training group with other rider types now has his own plan."
+          "body": "Five new hard sessions: Long climbs, Lead-out, Short time trials, Long time trials and Cobbled classic. Time trial riders now have their own sessions, so check the plan for your time trial and GC riders."
         },
         "da": {
           "title": "To hårde sessioner til hver ryttertype",
-          "body": "Hvad er ændret: Der er fem nye hårde sessioner: Lange stigninger, Lead-out, Korte enkeltstarter, Lange enkeltstarter og Brostensklassiker. Enkeltstart har nu sine egne sessioner, så Tærskel træner tempo og udholdenhed. Enkeltstarts- og klassementsryttere på Tærskel og enkeltstartsryttere uden plan træner nu Lange enkeltstarter.\n\nHvad betyder det for dig: Tjek planen for dine enkeltstarts- og klassementsryttere. En af dem, der fulgte en træningsgruppe med andre ryttertyper, har nu sin egen plan."
+          "body": "Fem nye hårde sessioner: Lange stigninger, Lead-out, Korte enkeltstarter, Lange enkeltstarter og Brostensklassiker. Enkeltstartsryttere har nu deres egne sessioner, så tjek planen for dine enkeltstarts- og klassementsryttere."
         },
         "refs": [
           5319,
@@ -2611,11 +2855,11 @@ export const PATCHES = [
         "topic": "Training",
         "en": {
           "title": "Lost main ability progress is back",
-          "body": "What changed: From the start of season 5, riders got no progress in the ability their program is built for, while their other abilities grew. I fixed the cause on 29 October, and on 30 October I added the lost progress back for 438 riders.\n\nWhat it means for you: Some riders went up a point in their main ability, the rest got it on their progress bar. If a rider still looks wrong, send me the rider and the ability."
+          "body": "From the start of season 5, riders got no progress in the ability their program trains. I fixed it on 29 October and gave back the lost progress on 30 October. If a rider still looks wrong, send me the rider and the ability."
         },
         "da": {
           "title": "Den tabte fremgang i hovedevnen er tilbage",
-          "body": "Hvad er ændret: Fra start af sæson 5 fik rytterne ingen fremgang i den evne, programmet er bygget til, mens deres andre evner steg. Jeg rettede årsagen 29. oktober, og 30. oktober lagde jeg den tabte fremgang tilbage for 438 ryttere.\n\nHvad betyder det for dig: Nogle ryttere steg et point i hovedevnen, resten fik det på fremdriftsbaren. Ser en rytter stadig forkert ud, så send mig rytteren og evnen."
+          "body": "Fra start af sæson 5 fik ryttere ingen fremgang i den evne, deres program træner. Jeg rettede det 29. oktober og lagde den tabte fremgang tilbage 30. oktober. Ser en rytter stadig forkert ud, så send mig rytteren og evnen."
         },
         "refs": [
           7316,
@@ -3110,11 +3354,11 @@ export const PATCHES = [
         "topic": "Race engine",
         "en": {
           "title": "Races closer to real cycling",
-          "body": "From the first stage of season 5: the mountains jersey goes to riders who hunt it, and a summit finish gives normal mountain points. Sprinters win the points jersey more often, and GC captains no longer sprint in bunch finishes. In stage races the peloton lets the breakaway go until the gap gets too big, then the teams with an interest chase, and GC teams keep a dangerous breakaway on a leash instead of catching it early. On mountain stages the favourites let a breakaway with no GC danger go, and some teams send a rider in the breakaway on hilly stages to take the intermediate sprint. After the last climb on a mountain stage, groups come back together on the descent. Riders abandon now and then from crashes or fatigue, mostly helpers."
+          "body": "From season 5 the peloton lets a harmless breakaway go and chases a dangerous one. Mountain and points jerseys go to riders who hunt them, and riders now abandon now and then after crashes or fatigue, mostly helpers."
         },
         "da": {
           "title": "Løbene ligner rigtig cykelsport mere",
-          "body": "Fra første etape i sæson 5: bjergtrøjen går til ryttere, der jagter den, og et topmål giver almindelige bjergpoint. Sprinterne vinder oftere pointtrøjen, og klassementskaptajner spurter ikke længere i massespurter. I etapeløb lader feltet udbruddet gå, til hullet bliver for stort, og så jagter de hold, der har interesse, og klassementsholdene holder et farligt udbrud på snor i stedet for at hente det tidligt. På bjergetaper lader favoritterne et udbrud uden klassementsfare gå, og på kuperede etaper sender nogle hold en rytter i udbruddet for at tage den indlagte spurt. Efter sidste stigning på en bjergetape samler grupperne sig på nedkørslen. Ryttere udgår nu og da efter styrt eller træthed, mest hjælpere."
+          "body": "Fra sæson 5 lader feltet et ufarligt udbrud gå og jager et farligt. Bjerg- og pointtrøjer går til ryttere, der jager dem, og ryttere udgår nu og da efter styrt eller træthed, mest hjælpere."
         },
         "refs": [
           6804,

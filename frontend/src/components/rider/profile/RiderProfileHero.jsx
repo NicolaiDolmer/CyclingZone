@@ -438,7 +438,7 @@ export default function RiderProfileHero({
             label: potentialEyebrow,
             value: scouting ? (
               <span className="inline-block max-w-56 whitespace-normal text-[15px] font-semibold">
-                <ScoutablePotentiale rider={rider} scouting={scouting} showScout={viewer === "scouting"} labelAsTitle hideLevel hideNotScouted estimateSize="hero" showLooks={viewer === "scouting"} />
+                <ScoutablePotentiale rider={rider} scouting={scouting} showScout={viewer === "scouting"} labelAsTitle hideLevel estimateSize="hero" showLooks={viewer === "scouting"} />
               </span>
             ) : "—",
           },

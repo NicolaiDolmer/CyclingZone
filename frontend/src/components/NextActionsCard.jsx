@@ -31,6 +31,8 @@ export default function NextActionsCard({
   squadSelectionMissingRace = null, notTrainedToday = false, boardPlanMissing = false,
 }) {
   const { t, i18n } = useTranslation("dashboard");
+  const [hasLoaded, setHasLoaded] = useState(!loading);
+  useEffect(() => { if (!loading) setHasLoaded(true); }, [loading]);
   const counts = pending?.counts || { transfer_offers: 0, swap_offers: 0, total: 0 };
 
   // #7153 (ejer 25/10): et aktivt sæsonskifte-banner (ops_notices) står også her,
@@ -89,7 +91,7 @@ export default function NextActionsCard({
         )}
       </div>
 
-      <ReservedBody name="nextActions" loading={loading} rows={6} rowHeight={52}>
+      <ReservedBody name="nextActions" loading={loading && !hasLoaded} rows={6} rowHeight={52}>
       {items.length === 0 ? (
         <p className="text-cz-3 text-sm flex items-center gap-2">
           <CheckIcon size={14} className="text-cz-success" />

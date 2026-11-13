@@ -2,12 +2,12 @@
   "stagePlanReady": {
     "gc": {
       "name": "Rouler pour le général",
-      "description": "Tout le monde roule pour ton leader au général et le tient à l'abri des ennuis.",
+      "description": "Les équipiers roulent pour ton leader au général. Le co-leader suit le même plan, le rôle libre fait sa propre course.",
       "named": "Rouler pour le général avec {name}"
     },
     "stage": {
       "name": "Victoire d'étape",
-      "description": "L'équipe travaille pour le coureur à qui le parcours du jour convient le mieux.",
+      "description": "Les équipiers travaillent pour le coureur à qui le parcours du jour convient le mieux.",
       "named": "Victoire d'étape pour {name}"
     },
     "sprint": {
@@ -21,7 +21,7 @@
     },
     "save": {
       "name": "Économiser les jambes",
-      "description": "Tout le monde rentre tranquillement. La fatigue la plus faible ce soir."
+      "description": "Tout le monde rentre tranquillement. Le plus léger des cinq plans."
     },
     "price": {
       "easy": "Facile",
@@ -1741,6 +1741,10 @@
         "all_out_cracked": "{rider} se donne à fond et se vide dans la dernière ascension.",
         "attack_gain": "{rider} attaque dans la dernière ascension et gagne du temps.",
         "attack_cracked": "{rider} attaque et se vide dans la dernière ascension.",
+        "climb_attack_start": "{rider} attaque au pied de la dernière ascension.",
+        "climb_attack_start_named": "{rider} attaque au pied de {climb}.",
+        "climb_attack_held": "{rider} tient son attaque jusqu'au sommet et a gagné du temps dans l'ascension.",
+        "climb_attack_cracked": "{rider} s'est vidé après son attaque et est lâché.",
         "bad_day_fatigue": "{rider} a connu un jour sans. Les jours difficiles précédents ont laissé des traces.",
         "bad_day_form": "{rider} a connu un jour sans. Il manquait de forme.",
         "bad_day_illness": "{rider} a connu un jour sans. Il était malade.",

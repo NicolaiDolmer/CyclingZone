@@ -83,6 +83,11 @@
       "why": "Ejerens eksplicitte natmandat 12/11: installerbar PWA trin 1, offline/netvaerksrettelser som draft uden merge eller prod. https://github.com/NicolaiDolmer/CyclingZone/issues/6584#issuecomment-6810434974"
     },
     {
+      "issue": 8019,
+      "area": "web-experience",
+      "why": "Ejerens direkte nat-build-go 12/11: Dashboard og transfermarked/auktioner, stabil indlaesning og CLS under 0,05 ved 375px og desktop. https://github.com/NicolaiDolmer/CyclingZone/issues/8019#issuecomment-6811577431"
+    },
+    {
       "issue": 8015,
       "area": "transfer-market",
       "why": "Ejerens eksplicitte build-go 11/11: auto-pris for alle egne ryttere og fri trupafgang til nul. https://github.com/NicolaiDolmer/CyclingZone/issues/8015#issuecomment-6806314390"
@@ -601,6 +606,26 @@
     }
   ],
   "brandList": [
+    {
+      "issue": 8050,
+      "reason": "Patch notes 12/11: dagens noter, fire manglende og ni omskrivninger. Ejer 12/11: 'Ja, læg dem ind' og 'Ja, skriv de 9 om'. https://github.com/NicolaiDolmer/CyclingZone/issues/8050",
+      "since": "2026-11-12"
+    },
+    {
+      "issue": 8051,
+      "reason": "Roadmappet skal passe til spillet (forkert info): sammenlægninger, status og fire nye punkter. Ejer 12/11: 'Ja som foreslået, dog ikke denne'. https://github.com/NicolaiDolmer/CyclingZone/issues/8051",
+      "since": "2026-11-12"
+    },
+    {
+      "issue": 8049,
+      "reason": "Ny patch notes-side efter område og uge, arkiv pr. måned, 'set' husket på brugeren. Ejer 12/11: 'Ja det vil jeg gerne have bygget'. https://github.com/NicolaiDolmer/CyclingZone/issues/8049",
+      "since": "2026-11-12"
+    },
+    {
+      "issue": 7535,
+      "reason": "Én planlægningsside, trin 1 bag beta-flag. Ejer 12/11: 'Dette skal stadig laves denne uge' (afløser 2/11-forbeholdet). https://github.com/NicolaiDolmer/CyclingZone/issues/8051",
+      "since": "2026-11-12"
+    },
     {
       "issue": 8034,
       "reason": "Trupgrænser 30/30/30, højst 60 i alt, vist som midlertidige. Ejer 9/11 og bekræftet 12/11 (valg A). https://github.com/NicolaiDolmer/CyclingZone/issues/7911#issuecomment-6819749354",
