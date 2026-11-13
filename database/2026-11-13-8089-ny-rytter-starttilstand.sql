@@ -8,7 +8,8 @@
 --
 -- LØSNING (ejer 13/11: "fast lav træthed", form som i dag, ens for alle veje; ingen
 -- bagudrettelse): de tre funktioner, der giver en ny rytter sin første tilstand,
--- skriver nu den fælles starttilstand (form 50, træthed 20) i stedet for (50, 0).
+-- skriver nu den fælles starttilstand (form som før, fast lav træthed) i stedet
+-- for træthed 0.
 -- Samme tal som NEW_RIDER_START_CONDITION i backend/lib/riderCondition.js.
 --   1. initialize_first_use_rider_condition(): triggeren på riders. Det ene sted,
 --      der giver en ny rytter sin første tilstand (alle veje sætter team_id).
