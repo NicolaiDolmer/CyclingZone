@@ -1123,9 +1123,7 @@ Review-opfølgning 1/10: alle mål beregner jagtbevægelse fra samme segment-sta
 
 ## Motorens udbrudsprognose før start (#6912, design S7 B)
 
-Jægerboksens prognose er afledt information om løbets næste etape og det aktuelle felt, aldrig en fast profil-tabel eller løbets faktiske udfald. Den bruger samme inputbygger som raceRunner i dryRun uden skrivninger, uafhængige prognose-seeds og ingen private team_orders eller legacy-indsatser fra race_stage_roles.effort. Rolleinputs bevares; motorens eksisterende indsats-default og AI-ordresti anvendes. Kun v4 med understøttet regel-revision, en etape med morgenudbrud og kendte udfald kan give en prognose. ITT, kuperet ITT og TTT giver ingen udbrudsprognose; den valgte etapes TT-kontekst bevares også i frontend. Ukendt udfald, utilgængeligt svar eller optaget arbejdskø giver ingen prognoselinje, mens den eksisterende neutrale kontekst står tilbage.
-
-Beregninger genbruges via cache og single-flight pr. løb/næste etape; en begrænset arbejdskø deler kapaciteten mellem løb. API'et kræver autentifikation og læsebegrænsning. Status og aktiveringsbeslutning følger FEATURE_REGISTRY, id race-breakaway-outlook, flag race_breakaway_outlook; regnekraft/aktivering kræver ejerens go. Kode: backend/lib/breakawayOutlook.js, backend/routes/breakawayOutlook.js, raceRunner.simulateStageByIndex (injicerbar resolver med uændret default), frontend/src/lib/breakawayOutlook.ts og HunterExplainer.jsx. Godkendt design: docs/superpowers/specs/2026-10-26-6912-engine-breakaway-odds-design.md.
+Fjernet fra koden 13/11 efter ejerens valg; prognosen blev aldrig tændt. Jægerboksen viser kun den neutrale linje (linjeløb) eller TT-linjen. Koden kan hentes fra #7277 og #7343; designet står i docs/superpowers/specs/2026-10-26-6912-engine-breakaway-odds-design.md. Registret: id race-breakaway-outlook (retired).
 
 ## Rollevalg på Taktik (#7977)
 

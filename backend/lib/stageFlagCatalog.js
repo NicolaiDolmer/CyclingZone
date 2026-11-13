@@ -100,8 +100,6 @@ export const STAGE_FLAGS = Object.freeze([
   // #7003: etapeplan langs ruten (taktik), seedet off. Virker kun i løb på s5_profiles_v3.
   { key: "stage_plan_v1", area: "race-day", label: "Taktik — etapeplan langs ruten" },
   { key: "tactics_ready_7864", area: "race-day", label: "Taktik gjort klar del 1: holdplaner og ordre-pris" },
-  // #6912 B: motorens udbrudsbud i jægerboksen (kort prognose i dryRun). Ikke seedet = off; beta først.
-  { key: "race_breakaway_outlook", area: "race-day", label: "Jægerboks — motorens udbrudsbud" },
   // #7717: Hvorfor?-knappen i "Your day". Kun visning, seedet off.
   { key: "rider_why_button", area: "race-day", label: "Hvorfor?-knappen ved rytterne (Your day)" },
   // #7778: løbssiden v6 trin 1 (Resultater for en kørt etape). Kun visning, seedet off; beta først.
