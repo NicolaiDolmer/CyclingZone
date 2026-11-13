@@ -39,6 +39,48 @@ export function asStoredJsonb(value) {
   return sorted(JSON.parse(JSON.stringify(value)));
 }
 
+/**
+ * A database client that notes whether any call answered with an error or threw. Several reads
+ * of a day field tolerate a failure (staff, profiles, intentions: a warning and a neutral
+ * answer). Such a day field still trains as before, but the press must not remember its fetch:
+ * the next day field would carry the neutral answer on, where reading again gets the real one.
+ * Calls, their order and their answers are untouched.
+ * @param {any} client
+ */
+export function watchReads(client) {
+  const watch = { failed: false, client: null };
+  const note = () => { watch.failed = true; };
+  const observed = (target) => new Proxy(target, {
+    get(obj, prop) {
+      if (prop === "then" && typeof obj.then === "function") {
+        return (resolve, reject) => obj.then((result) => {
+          if (result?.error) note();
+          return resolve ? resolve(result) : result;
+        }, (err) => {
+          note();
+          if (reject) return reject(err);
+          throw err;
+        });
+      }
+      const value = Reflect.get(obj, prop, obj);
+      if (typeof value !== "function" || typeof prop === "symbol") return value;
+      return (...args) => {
+        const next = value.apply(obj, args);
+        return next !== null && (typeof next === "object" || typeof next === "function") && typeof next.then === "function" ? observed(next) : next;
+      };
+    },
+  });
+  watch.client = new Proxy(client, {
+    get(target, prop) {
+      if (prop === "from") return (table) => observed(target.from(table));
+      if (prop === "rpc" && typeof target.rpc === "function") return (...args) => observed(target.rpc(...args));
+      const value = Reflect.get(target, prop, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+  return watch;
+}
+
 const sameIds = (a, b) => {
   if (a.length !== b.length) return false;
   const left = new Set(a);
@@ -90,6 +132,10 @@ export function createTrainNowPressMemory() {
       for (const [day, facts] of raceFacts ?? []) memory.raceFacts.set(day, facts);
       memory.dirtyRiderIds = new Set();
       memory.ready = true;
+    },
+    /** Step aside: later day fields read everything again. */
+    forget() {
+      memory.ready = false;
     },
     /** A fresh copy of the remembered fetch for one day field, with the abilities as saved since. */
     dayInput() {

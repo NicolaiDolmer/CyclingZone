@@ -83,6 +83,7 @@ import { loadRaceCatchUp } from "./raceCatchUpWiring.js"; // #6950 catch-up via 
 import { assessIllness } from "./conditionIllness.js"; // #6938 sygdom af langvarig ekstrem traethed
 import { CURRENT_RACE_RULES_REVISION, isS5ProfilesV3OrLater } from "./raceEngineRulesRevision.ts";
 import { loadTrainNowInstantRiderIds } from "./trainNowLock.js"; // #7737
+import { watchReads } from "./trainNowPressMemory.js"; // #7982 trin 4a
 
 // #4847: standard-truppen paa training_day_runs.squad. Kolonnen har DEFAULT 'senior'
 // i skemaet (database/2026-09-15-4847-training-day-close-trigger.sql); konstanten her
@@ -915,6 +916,9 @@ export async function runTeamTrainingDay({
     });
     if (fromMemory) return fromMemory;
   }
+  // #7982 trin 4a: a press only remembers a fetch in which every read answered (watchReads).
+  const readWatch = pressMemory ? watchReads(supabase) : null;
+  if (readWatch) supabase = readWatch.client;
 
   // ── 0) #4846: hvilken noegle er mutexen i dag? ───────────────────────────────
   // Flaget SKAL laeses FOER reservationen, fordi noeglen ER laasen. `engineWrite`
@@ -1470,7 +1474,9 @@ export async function runTeamTrainingDay({
     // Not read by computeTrainingDayTick; the press checks a later day field is the same call.
     executedBy,
   };
-  if (capturePress) pressMemory.capture({ input: dayInput, selection: { rosterRows, dateWork, eligibleIds, waitingIds, riderIds, instantRiderIds, trainNowBonusRiderIds, dateReceipts }, raceFacts: prefetchedRaceFacts });
+  if (capturePress && !readWatch.failed) {
+    pressMemory.capture({ input: dayInput, selection: { rosterRows, dateWork, eligibleIds, waitingIds, riderIds, instantRiderIds, trainNowBonusRiderIds, dateReceipts }, raceFacts: prefetchedRaceFacts });
+  } else pressMemory?.forget();
   pressTimer?.lap("load");
   ({ abilityUpdates, conditionUpserts, reportRiders, historyRows, raceDayHistoryRows, scoreRows, settlingRiderIds } = computeTrainingDayTick(dayInput));
   pressTimer?.lap("compute");
