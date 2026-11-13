@@ -312,6 +312,7 @@ et parkeret hold, så ingen anden kalder kan give det en konsekvens eller en tva
 Halvsæson-tjekket (`boardMidSeason.js`, #8099) bruger samme filter: et parkeret hold får hverken
 "Mid-season check"-beskeden eller oplåsning af den ekstraordinære forespørgsel, og mangler
 `parked_at` i opslaget, stopper kørslen uden at sende noget (fail-closed).
+Årsmandat-kørslen (`boardMandateAutoAccept.js`), plan-auto-accepten (`boardAutoAccept.js`) og advarslen om negativ saldo (`cron.js`) bruger samme filter og samme fail-closed (#8110): ingen påmindelse, ingen underskrift på holdets vegne, ingen advarsel.
 Frosset betyder urørt, ikke nulstillet: aktive rækker fra før parkeringen står, som de stod. Når
 holdet vender tilbage (comeback nulstiller `parked_at`), dømmes det igen fra næste kørsel som
 alle andre: lag 2-3 udløber ved den næste evaluering, hvis tilfredsheden er over tærsklen, lag
