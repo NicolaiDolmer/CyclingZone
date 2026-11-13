@@ -127,9 +127,9 @@ test("loadLockedSalesForTeam: intet laast = tomt svar, og intet slaas op udover 
 
 test("loadLockedSalesForTeam: manglende tabel = intet laast; anden fejl kaster", async () => {
   const missing = fakeSupabase({}, { errors: { sale_escrows: { code: "PGRST205", message: "missing" } } });
-  assert.deepEqual(await loadLockedSalesForTeam(missing, SELLER), { total: 0, sales: [] });
+  assert.deepEqual(await loadLockedSalesForTeam(missing, SELLER, { now: NOW }), { total: 0, sales: [] });
   const broken = fakeSupabase({}, { errors: { sale_escrows: { code: "XX000", message: "boom" } } });
-  await assert.rejects(() => loadLockedSalesForTeam(broken, SELLER), /boom/);
+  await assert.rejects(() => loadLockedSalesForTeam(broken, SELLER, { now: NOW }), /boom/);
 });
 
 test("loadLockedSalesForTeam: uden aktivt loeb vises salget uden loeb og dage", async () => {
@@ -263,8 +263,12 @@ test("saelgerens besked ved handlen skifter kun, naar handlen faktisk er laast",
   assert.match(auction, /: \{ rider: `\$\{auction\.rider\.firstname\} \$\{auction\.rider\.lastname\}`, price \},/);
 });
 
-test("udbetalings-beskeden sendes ved hver 'released' i flush og reconcile", () => {
+test("penge-modulet henter ikke beskedtjenesten statisk (frontend-proever importerer det uden backendens pakker)", () => {
   const flow = read("./saleEscrowFlow6181.js");
-  assert.match(flow, /if \(data\?\.status !== "released"\) return null;\s*await notifySellerSaleEscrowReleased\(supabase, escrow\);/);
-  assert.match(flow, /result\.released \+= 1;\s*await notifySellerSaleEscrowReleased\(supabase, escrow\);/);
+  const staticImports = flow.match(/^import [\s\S]*? from "[^"]+";$/gm) || [];
+  for (const line of staticImports) {
+    assert.doesNotMatch(line, /saleEscrowView6181|notificationService|sentry/, `statisk import: ${line}`);
+  }
+  assert.match(flow, /await import\("\.\/saleEscrowView6181\.js"\)/, "beskeden hentes foerst ved udbetalingen");
+  // Adfaerden (een besked efter 'released', ingen ved refusion/fejl) proeves i saleEscrowFlow6181.pglite.test.js.
 });
