@@ -3,6 +3,7 @@ import { Link, useSearchParams, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { formatNumber } from "../lib/intl";
+import LockedSaleEscrows, { LockedSalesLine } from "../components/finance/LockedSaleEscrows.tsx"; // #6181
 import { renderBackendMessage } from "../lib/backendMessage";
 import { resolveLegacyFinanceMessage } from "../lib/legacyFinanceMessage";
 import FinanceFirstVisitHint from "../components/FinanceFirstVisitHint";
@@ -582,6 +583,8 @@ export default function FinancePage() {
               <p className={`font-mono font-bold text-2xl ${(team?.balance || 0) >= 0 ? "text-cz-accent-t" : "text-cz-danger"}`}>
                 {formatNumber(team?.balance || 0)} CZ$
               </p>
+              {/* #6181 (udgave A): saldoen er det holdet kan bruge; laaste salgspenge staar under den. */}
+              <LockedSalesLine refreshKey={team?.balance} className="text-cz-2 text-xs mt-1" />
               <p className="text-cz-3 text-xs mt-1">{t("balance.division", { division: team?.division })}</p>
               {reservedBalance > 0 && (
                 <p className="text-cz-3 text-xs mt-2 leading-snug">
@@ -626,6 +629,9 @@ export default function FinancePage() {
               <p className="text-cz-3 text-xs mt-1">{t("prize.allSeasons", { amount: formatNumber(prizeSummary.allTimeTotal) })}</p>
             </Card>
           </div>
+
+          {/* #6181: een linje pr. laast salg; intet laast = intet vist. */}
+          <LockedSaleEscrows refreshKey={team?.balance} />
 
           {/* #986: én-linjes lån-resumé — fuld lån-administration på Lån-fanen */}
           <Card className="p-4 mb-4 flex items-center justify-between gap-3">
