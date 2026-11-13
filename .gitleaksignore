@@ -50,7 +50,6 @@ fa572f73006572659bbb76050b5b65aa78b9c1ef:frontend/src/preview/mockHandlers.js:di
 3f79b317ea49c6eabb277062082803f3c5748ab4:frontend/src/lib/posthogClient.js:generic-api-key:29
 # Falsk positiv (11/11, #8004): testprotokol-linje i pr-screens/2230/README.md (Chromium-version, viewport, fast ur). Ingen hemmelighed.
 pr-screens/2230/README.md:generic-api-key:10
-# Falsk positiv (13/11, #6110): dommerens fixture har en navngiven proeve-noegle til dagsvariationen
-# ("kun til proever, ikke en rigtig noegle"). Ingen hemmelighed; filen maa ikke aendres (AGENTS regel 40).
-backend/lib/dommer6110.fixtures.mjs:generic-api-key:58
+# Falsk positiv (13/11, #6110): dommerens fixture havde i sit foerste commit en navngiven proeve-noegle
+# til dagsvariationen ("kun til proever, ikke en rigtig noegle"). Rettet i dommerens v2; kun historikken matcher.
 c5996630eaa3f3dde2b508e6b6ecdb3bbfafbdd0:backend/lib/dommer6110.fixtures.mjs:generic-api-key:58

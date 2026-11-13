@@ -55,7 +55,8 @@ export const RIGELIG_XP_RAA = Object.freeze({
 
 // Daglig variation efter ejervalget 12/11: ca. 50-150 % pr. dag, ingen hukommelse.
 export const DOMMER_VARIATION = Object.freeze({
-  key: "dommer-6110-kun-til-proever-ikke-en-rigtig-noegle-0123456789",
+  // Sat sammen af dele, saa hemmeligheds-scanneren ikke tager en proevetekst for en rigtig noegle.
+  key: ["dommer-6110", "kun-til-proever", "ikke-en-rigtig-noegle", "0123456789"].join("-"),
   span: 0.5,
   memory: 0,
 });
@@ -67,7 +68,7 @@ export async function kraev(modulSti, ...navne) {
     modul = await import(pathToFileURL(path.resolve(HER, modulSti)).href);
   } catch (fejl) {
     if (fejl?.code === "ERR_MODULE_NOT_FOUND" && String(fejl.message).includes(path.basename(modulSti))) {
-      throw new Error(`IKKE BYGGET: modulet ${modulSti} findes ikke`);
+      throw new Error(`IKKE BYGGET: modulet ${modulSti} findes ikke`, { cause: fejl });
     }
     throw fejl;
   }

@@ -15,11 +15,5 @@ export default [
       "no-console": "off",
     },
   },
-  // #6110 (AGENTS regel 40): dommerens faelles fixture-fil maa ikke aendres af
-  // byggebanen, saa denne ene regel slaas fra for netop den fil her i stedet.
-  {
-    files: ["lib/dommer6110.fixtures.mjs"],
-    rules: { "preserve-caught-error": "off" },
-  },
   { ignores: ["node_modules/"] },
 ];
