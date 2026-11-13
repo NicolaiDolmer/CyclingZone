@@ -127,10 +127,20 @@ test("kontakten: husketid højst et minut, og nøglen er ikke tvunget frisk pr. 
       return b;
     },
   };
-  await isDiscordPlayerDmEnabled(client);
-  await isDiscordPlayerDmEnabled(client);
-  await readFlagStage(client, DISCORD_PLAYER_DM_KEY);
+  // Fast ur (AGENTS regel 16): husketiden prøves uden at læse computerens ur.
+  let clock = Date.UTC(2026, 10, 13, 12, 0, 0);
+  const now = () => clock;
+  const read = (c, key) => readFlagStage(c, key, { now });
+  await isDiscordPlayerDmEnabled(client, { read });
+  await isDiscordPlayerDmEnabled(client, { read });
+  await readFlagStage(client, DISCORD_PLAYER_DM_KEY, { now });
   assert.equal(reads, 1, "tre opslag inden for husketiden = ét databasekald");
+  clock += FLAG_CACHE_TTL_MS - 1;
+  await isDiscordPlayerDmEnabled(client, { read });
+  assert.equal(reads, 1, "lige før husketiden udløber bruges det huskede svar stadig");
+  clock += 2;
+  await isDiscordPlayerDmEnabled(client, { read });
+  assert.equal(reads, 2, "efter husketiden læses kontakten igen, så en slukning slår igennem");
 });
 
 test("kontakten står i admin-kataloget under notifikationer", () => {
