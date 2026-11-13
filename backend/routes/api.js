@@ -41,6 +41,7 @@ import {
 import { fetchSeasonTransitionBoundary } from "../lib/seasonTransitionBoundary.js";
 import { applyNameSearch } from "../lib/riderNameSearch.js";
 import { splitGcWinsSafe } from "../lib/dashboardRiderRankingGcSplit.js";
+import { createRankingFreshnessRouter, createRankingReadClient, rankingReadMiddleware, readDashboardTopRiders7664 } from "../lib/rankingRead7664.js"; // #7664
 import { handleAluntaWebhook } from "../lib/aluntaWebhook.js";
 import { handleEmailUnsubscribe } from "../lib/emailUnsubRoute.js";
 import { handleResendWebhook } from "../lib/resendWebhook.js";
@@ -1001,8 +1002,9 @@ async function requireAuth(req, res, next) {
   next();
 }
 
-router.use("/rankings", createRankingsRouter({
-  supabase, requireAuth, reportError: captureException,
+router.use("/rankings", createRankingFreshnessRouter({ supabase, requireAuth, reportError: captureException })); // #7664
+router.use("/rankings", rankingReadMiddleware(supabase, { captureExceptionFn: captureException }), createRankingsRouter({ // #7664: kontakt slukket = samme tabeller
+  supabase: createRankingReadClient(supabase), requireAuth, reportError: captureException,
   viewerClient: (authorization) => createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
     global: { headers: { Authorization: authorization }, fetch: createSupabaseFetchWithRetry() }, // #7917
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
@@ -13848,6 +13850,9 @@ router.get("/dashboard/rider-ranking", requireAuth, cached({
       .from("seasons").select("id").eq("status", "active").maybeSingle();
     if (seasonError) throw seasonError;
     if (!season) return res.json({ riders: [] });
+    // #7664: kontakten taendt -> samme tabel og omfang som "Fuld rangliste"; slukket -> null, dagens RPC.
+    const shadowRiders = await readDashboardTopRiders7664(supabase, { seasonId: season.id, leagueDivisionId: req.team.league_division_id ?? null, captureExceptionFn: captureException });
+    if (shadowRiders) return res.json({ riders: shadowRiders });
 
     // Aggregeringen kører nu i Postgres via dashboard_rider_ranking-RPC'en
     // (database/2026-07-19-dashboard-rider-ranking-rpc.sql). Før hentede vi ALLE
