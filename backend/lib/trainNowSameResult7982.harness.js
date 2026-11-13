@@ -2,6 +2,12 @@
 // (AGENTS.md regel 40). Filen ejes af dommeren: byggeren aendrer den ikke. Skal den udvides
 // (fx en ny databasefunktion i et senere trin), goer dommeren det og fryser facit igen.
 //
+// Udgave til trin 3 (13/11): udvidet FOER trin 3's foerste kodelinje med (a) hvilke laesninger der
+// ligger mellem hvilke skrivninger ("hver laesning ser samme database som foer"), (b) fejl i hver
+// laesning og en database der falder ud, (c) forrang mellem afvisninger, (d) to hold og to tryk paa
+// samme tid, og (e) en cache der ikke maa leve videre til naeste tryk. De 15 oprindelige scenarier
+// er uaendrede og giver praecis samme fingeraftryk som i trin 2's facit.
+//
 // Hvad den goer: koerer et fast saet scenarier gennem de TO offentlige indgange
 //   runTrainNow (trykket, kaldt som ruten kalder det) og runTeamTrainingDay (aftenkoerslen)
 // mod en database-stedfortraeder, der (a) svarer ud fra en tilstand i hukommelsen, (b) optager
@@ -229,7 +235,16 @@ const UNIQUE_KEYS = {
   app_config: ["key"],
 };
 
-export function createFake(state, { failRpc = null } = {}) {
+// Tabeller et tryk aldrig selv skriver i (dommerens gennemgang i trin 2: trykkets databasefunktioner
+// og triggere roerer dem ikke). En laesning i dem maa flytte sig inden for trykket. Alle ANDRE
+// laesninger skal blive mellem de samme to skrivninger som foer (se readIntervals).
+export const NEVER_WRITTEN_BY_PRESS = Object.freeze(new Set([
+  "app_config", "private_config", "teams", "team_facilities", "team_staff",
+  "team_training_rules", "training_groups", "training_plans", "training_week_plans", "races",
+]));
+class InjectedFailure extends Error {}
+
+export function createFake(state, { failRpc = null, fail = null } = {}) {
   const log = []; // hvert kald i raekkefoelge
   const unsupported = []; // noget stedfortraederen ikke kender: saa er proeven ugyldig
   // "Runder": kald, der sendes af sted samtidig (fx i én Promise.all), faar svar i samme runde.
@@ -240,7 +255,19 @@ export function createFake(state, { failRpc = null } = {}) {
     if (!waiting.length) setImmediate(() => { const batch = waiting; waiting = []; round += 1; for (const done of batch) done(); });
     waiting.push(() => resolve(result));
   });
-  const record = (entry) => { entry.round = round; log.push(entry); return entry; };
+  // `after` = antal skrivninger og funktionskald FOER dette kald (for en laesning: hvilket mellemrum den ligger i).
+  let nonReads = 0;
+  const record = (entry) => { entry.round = round; entry.after = nonReads; if (entry.kind !== "read") nonReads += 1; log.push(entry); return entry; };
+  // Dommerens fejl-indsproejtning: `fail({ entry, index, state })` svarer "error" (databasen svarer med
+  // en fejl), "throw" (kaldet kaster, fx et netvaerk der falder ud) eller intet. Kaldet er allerede
+  // optaget, saa det taeller med; det udfoeres ikke.
+  const injected = (entry) => {
+    const mode = fail?.({ entry, index: log.length - 1, state }) ?? null;
+    if (mode === "throw") throw new InjectedFailure(`dommer-fejl (kast): ${entry.target}`);
+    return mode === "error" ? { data: null, count: null, error: { code: "XX000", message: `dommer-fejl: ${entry.target}` } } : null;
+  };
+  // Et kast fra fejl-indsproejtningen leveres som et afvist loefte i samme runde som de andre kald.
+  const settled = (fn) => { try { return deliver(fn()); } catch (err) { if (err instanceof InjectedFailure) return deliver(null).then(() => { throw err; }); throw err; } };
 
   function builder(table) {
     const filters = []; const spec = [];
@@ -250,14 +277,16 @@ export function createFake(state, { failRpc = null } = {}) {
     const run = () => {
       state[table] ??= [];
       if (!write) {
-        record({ kind: "read", target: table, filters: spec });
+        const failed = injected(record({ kind: "read", target: table, filters: spec }));
+        if (failed) return failed;
         let out = matching();
         for (const [col, asc] of [...orders].reverse()) out = [...out].sort((a, b) => { const x = pathGet(a, col), y = pathGet(b, col); return (x == null ? 1 : y == null ? -1 : x < y ? -1 : x > y ? 1 : 0) * (asc ? 1 : -1); });
         const count = out.length;
         if (limit != null) out = out.slice(0, limit);
         return countOnly ? { data: null, count, error: null } : { data: structuredClone(out), count, error: null };
       }
-      record({ kind: "write", target: table, op: write.kind, filters: spec, payload: canon(write.payload), options: canon(write.options ?? null) });
+      const failed = injected(record({ kind: "write", target: table, op: write.kind, filters: spec, payload: canon(write.payload), options: canon(write.options ?? null) }));
+      if (failed) return failed;
       let touched = [];
       if (write.kind === "update") { touched = matching(); for (const row of touched) Object.assign(row, structuredClone(write.payload)); }
       if (write.kind === "delete") { touched = matching(); state[table] = state[table].filter((row) => !touched.includes(row)); }
@@ -293,16 +322,16 @@ export function createFake(state, { failRpc = null } = {}) {
       overlaps(col, val) { add("overlaps", col, val, (row) => (pathGet(row, col) ?? []).some((x) => val.includes(x))); return q; },
       order(col, options) { orders.push([col, options?.ascending !== false]); return q; },
       limit(n) { limit = n; return q; },
-      range(from, to) { const r = run(); return deliver({ ...r, data: (r.data ?? []).slice(from, to + 1) }); },
-      maybeSingle() { const r = run(); return deliver({ data: r.data?.[0] ?? null, error: r.error }); },
-      single() { const r = run(); return deliver(r.data?.length === 1 ? { data: r.data[0], error: null } : { data: null, error: r.error ?? { code: "PGRST116", message: "no single row" } }); },
+      range(from, to) { return settled(() => { const r = run(); return { ...r, data: (r.data ?? []).slice(from, to + 1) }; }); },
+      maybeSingle() { return settled(() => { const r = run(); return { data: r.data?.[0] ?? null, error: r.error }; }); },
+      single() { return settled(() => { const r = run(); return r.data?.length === 1 ? { data: r.data[0], error: null } : { data: null, error: r.error ?? { code: "PGRST116", message: "no single row" } }; }); },
       insert(payload, options) { write = { kind: "insert", payload, options }; return q; },
       update(payload, options) { write = { kind: "update", payload, options }; return q; },
       upsert(payload, options) { write = { kind: "upsert", payload, options }; return q; },
       delete() { write = { kind: "delete", payload: null }; return q; },
       abortSignal() { return q; }, throwOnError() { return q; }, returns() { return q; },
       then(resolve, reject) {
-        try { return deliver(run()).then(resolve, reject); } catch (err) {
+        try { return settled(run).then(resolve, reject); } catch (err) {
           // swallow-ok: fejlen sluges ikke. Et kast inde i stedfortraederen gives videre til kalderen
           // som et afvist loefte, praecis som en rigtig databaseklient ville goere.
           return Promise.reject(err).then(resolve, reject);
@@ -462,8 +491,11 @@ export function createFake(state, { failRpc = null } = {}) {
   async function rpc(name, args) {
     rpcCalls += 1;
     const base = name.replace(/^try_/, "");
-    record({ kind: READ_ONLY_RPCS.has(base) ? "read" : "rpc", target: name, payload: canon(args) });
+    const entry = record({ kind: READ_ONLY_RPCS.has(base) ? "read" : "rpc", target: name, payload: canon(args) });
     if (failRpc?.({ name, base, args, n: rpcCalls, state })) { await deliver(null); throw new Error(`dommer-fejlinjektion: ${name}`); }
+    let failed;
+    try { failed = injected(entry); } catch (err) { await deliver(null); throw err; }
+    if (failed) return deliver(failed);
     const impl = RPCS[base];
     if (!impl) { unsupported.push(`rpc:${name}`); return deliver({ data: null, error: { code: "PGRST202", message: `Could not find the function public.${name} in the schema cache` } }); }
     return deliver(impl(structuredClone(args)));
@@ -513,11 +545,11 @@ export async function sweep(state, fake, { now = EVENING_AT, tickDate = DATE1, d
 
 // ── Scenarierne ───────────────────────────────────────────────────────────────────────────────
 const BIG = { count: 48, entered: [3, 7, 11, 19, 23, 31, 40], injured: [5, 23], tired: [2, 14, 29, 44], noPlan: [4, 16, 33], boughtLate: [47], academy: [46], weekPlan: true, fatigueRules: true, staff: true };
-const step = async (out, label, fn) => {
-  try { out.push({ label, response: canon(await fn()) }); } catch (err) {
+const step = async (out, label, fn, fake = null) => {
+  try { out.push({ label, response: canon(await fn()), fake }); } catch (err) {
     // swallow-ok: et kast ER trinnets svar i optagelsen (fx et tryk, der afbrydes med vilje). Det
     // gemmes som svaret og sammenlignes med facit; det forsvinder ikke.
-    out.push({ label, response: { thrown: String(err.message) } });
+    out.push({ label, response: { thrown: String(err.message) }, fake });
   }
 };
 
@@ -579,7 +611,7 @@ export const SCENARIOS = {
   } },
   // Afvisninger. Hvert trin starter fra frisk tilstand; intet maa blive skrevet.
   afvisninger: { seed: { count: 8, entered: [1] }, async run(_s, _f, out, fresh) {
-    const tryIt = async (label, seedPatch, opts = {}, mutate = () => {}) => { const { state, fake } = fresh(seedPatch); mutate(state); await step(out, label, async () => ({ ...(await press(state, fake, opts(state))), writes: fake.log.filter((e) => e.kind !== "read").length })); };
+    const tryIt = async (label, seedPatch, opts = {}, mutate = () => {}) => { const { state, fake } = fresh(seedPatch); mutate(state); await step(out, label, async () => ({ ...(await press(state, fake, opts(state))), writes: fake.log.filter((e) => e.kind !== "read").length }), fake); };
     const none = () => ({});
     await tryIt("kontakt slukket", { flags: { training_train_now: "off" } }, none);
     await tryIt("kontakt beta, ikke beta-spiller", { flags: { training_train_now: "beta" } }, () => ({ isBetaTester: false }));
@@ -598,15 +630,186 @@ export const SCENARIOS = {
   } },
 };
 
+// ── Trin 3: hjaelpere til de nye scenarier ────────────────────────────────────────────────────
+const tablesOf = (state) => { const { __failed: _f, __commits: _c, __held: _h, ...tables } = state; return Object.fromEntries(Object.keys(tables).sort().map((table) => [table, canon(tables[table])])); };
+/** Fingeraftryk af hele tilstanden (alle tabeller). */
+export const stateDigest = (state) => digest(tablesOf(state));
+/** Fingeraftryk af alle skrivninger og funktionskald i en stedfortraeders log, i raekkefoelge. */
+export const writesDigest = (log) => digest(log.filter((entry) => entry.kind !== "read").map(({ round: _round, after: _after, ...entry }) => entry));
+const doubleDayFields = (state) => state.training_rider_ticks.length - new Set(state.training_rider_ticks.map((row) => `${row.rider_id}|${row.game_day}`)).size;
+// Svaret paa et tryk som ét ord: statuskode (og fejlnavn), eller "kast". Fejlteksten er ikke med:
+// hvilken laesning der naar at fejle foerst, maa aendre sig, naar laesninger sendes samtidig.
+const answerOf = (promise) => promise.then(
+  (result) => (result.status === 200 ? "200" : `${result.status} ${result.body?.error ?? ""}`.trim()),
+  () => "kast",
+);
+// Hvilken laesning er det? En laesning i en tabel, trykket aldrig skriver i, kendes paa tabel og
+// spoergsmaal. Alle andre kendes ogsaa paa, hvilke to skrivninger de ligger imellem.
+const readSlotKey = (entry, counts) => {
+  const fixed = NEVER_WRITTEN_BY_PRESS.has(entry.target);
+  const base = `${fixed ? "fast" : `efter ${entry.after}`} | ${entry.target} | ${digest(entry.filters ?? entry.payload ?? null)}`;
+  const n = counts.get(base) ?? 0; counts.set(base, n + 1);
+  return { key: `${base} | nr. ${n + 1}`, fixed };
+};
+// Holdet til fejl-proeverne: lille nok til at koere mange gange, men med loebsryttere (beta-tryk),
+// en skadet, en traet, ugeplan, traethedsregler, traener og facilitet, saa alle laesninger er med.
+const FAULT = { count: 9, entered: [1, 4], injured: [5], tired: [2], weekPlan: true, fatigueRules: true, staff: true };
+const SMALL_RESET = { count: 6, entered: [], injured: [], tired: [], noPlan: [], boughtLate: [], academy: [], weekPlan: false, fatigueRules: false, staff: false };
+
+Object.assign(SCENARIOS, {
+  // En cache maa ikke leve videre til naeste tryk: et tryk afbrydes, en anden aendrer noget i de
+  // tabeller et tryk kun laeser én gang (plan, ugeplan, traethedsregel, stab, facilitet, en kontakt),
+  // og det nye tryk skal regne resten af datoen paa det NYE, praecis som paa main.
+  cache_lever_ikke_videre: { seed: { count: 14, entered: [2, 5], weekPlan: true, fatigueRules: true, staff: true },
+    fail: ({ base, state }) => base === "commit_training_date_tick" && !state.__failed && (state.__commits = (state.__commits ?? 0) + 1) === 3 && (state.__failed = true),
+    async run(s, f, out, fresh) {
+      await step(out, "tryk der afbrydes", () => press(s, f));
+      s.training_plans.forEach((plan, i) => { if (i % 3 === 0) plan.intensity = plan.intensity === "hard" ? "easy" : "hard"; });
+      s.training_week_plans[0].days = Object.fromEntries(WEEKDAYS.map((d) => [d, { intensity: "hard" }]));
+      s.team_training_rules[0].fatigue_threshold = 25;
+      s.team_staff[0].tier = 3; s.team_facilities[0].tier = 3;
+      s.app_config.find((row) => row.key === "training_fatigue_rules").value = "off";
+      await step(out, "nyt tryk efter aendringerne", () => press(s, f, { now: new Date("2026-11-09T06:02:00Z") }));
+      finishRace(s); await step(out, "aftenkoersel", () => sweep(s, f));
+      // Kontrol: samme forloeb UDEN aendringerne skal ende et andet sted, ellers viser scenariet intet.
+      await step(out, "kontrol uden aendringer ender et andet sted", async () => {
+        const control = fresh();
+        await answerOf(press(control.state, control.fake)); await answerOf(press(control.state, control.fake, { now: new Date("2026-11-09T06:02:00Z") }));
+        finishRace(control.state); await sweep(control.state, control.fake);
+        return { andetSlutresultat: stateDigest(control.state) !== stateDigest(s) };
+      });
+    } },
+  // Forrang mellem afvisninger: gaelder to grunde paa én gang, vinder den, der tjekkes foerst i dag.
+  // Hvert trin starter fra frisk tilstand; intet maa blive skrevet.
+  afvisninger_forrang: { seed: { count: 8, entered: [1] }, async run(_s, _f, out, fresh) {
+    const tryIt = async (label, seedPatch, opts = () => ({}), mutate = () => {}) => { const { state, fake } = fresh(seedPatch); mutate(state); await step(out, label, async () => ({ ...(await press(state, fake, opts(state))), writes: fake.log.filter((e) => e.kind !== "read").length }), fake); };
+    const settled = (state) => { state.training_date_work.push({ team_id: TEAM, season_id: SEASON.id, tick_date: DATE1, status: "complete", game_days: DAYS1, expected_rider_ids: [], quarantined_rider_ids: [], opening_conditions: {} }); };
+    const earlierOpen = (state) => { state.training_date_work.push({ team_id: TEAM, season_id: SEASON.id, tick_date: "2026-11-08", status: "partial", game_days: [36, 37, 38, 39, 40], expected_rider_ids: [], quarantined_rider_ids: [], opening_conditions: {} }); };
+    const noStageToday = (state) => { state.race_stage_schedule = state.race_stage_schedule.filter((row) => !row.scheduled_at.startsWith(DATE1)); };
+    await tryIt("intet hold + kontakt slukket", { flags: { training_train_now: "off" } }, () => ({ team: null }));
+    await tryIt("kontakt slukket + dato-afregning slukket", { flags: { training_train_now: "off", training_condition_per_date: "off" } });
+    await tryIt("dato-afregning slukket + ingen saeson", { flags: { training_condition_per_date: "off" } }, () => ({ season: null }));
+    await tryIt("ingen saeson + parkeret hold", { teamPatch: { parked_at: "2026-11-01T00:00:00Z" } }, () => ({ season: null }));
+    await tryIt("parkeret hold + hold uden pulje", { teamPatch: { parked_at: "2026-11-01T00:00:00Z", league_division_id: null } });
+    await tryIt("hold uden pulje + dato allerede lukket", { teamPatch: { league_division_id: null } }, undefined, settled);
+    await tryIt("dato allerede lukket + tidligere dato aaben", {}, undefined, (state) => { settled(state); earlierOpen(state); });
+    await tryIt("dato allerede lukket + korte loeb ikke bekraeftet", {}, () => ({ confirm: false }), settled);
+    await tryIt("tidligere dato aaben + korte loeb ikke bekraeftet", {}, () => ({ confirm: false }), earlierOpen);
+    await tryIt("korte loeb ikke bekraeftet + aftenkoerslen holder datoen", {}, () => ({ confirm: false }), (state) => { state.__held = true; });
+    await tryIt("ingen loebsdag i dag + ingen ryttere", { count: 0 }, undefined, noStageToday);
+    await tryIt("ingen ryttere + aftenkoerslen holder datoen", { count: 0 }, undefined, (state) => { state.__held = true; });
+  } },
+  // To hold trykker i samme oejeblik (hver sin database-stedfortraeder, samme proces). Hvert hold skal
+  // ende praecis som naar det trykker alene: intet maa deles mellem to tryk.
+  to_hold_samtidig: { seed: BIG, async run(s, f, out, fresh) {
+    const other = fresh(SMALL_RESET);
+    await step(out, "stort og lille hold samtidig", async () => {
+      const [big, small] = await Promise.all([press(s, f), press(other.state, other.fake)]);
+      return { stort: big, lille: small, lilleSkrivninger: writesDigest(other.fake.log), lilleSlut: stateDigest(other.state) };
+    });
+  } },
+  // To tryk i samme oejeblik paa SAMME hold. Stedfortraederen har ikke databasens laas, saa det er
+  // ikke et bevis for samtidighed i databasen (det doemmes paa rigtig PostgreSQL). Det er en vagt for
+  // koden: ingen rytter faar et dag-felt to gange, og efter et nyt tryk og aftenkoerslen er
+  // slutresultatet det samme som efter ét tryk. Kun de ting fryses, ikke hvem der kom foerst.
+  to_tryk_i_samme_oejeblik: { seed: FAULT, concurrent: true, async run(_s, _f, out, fresh) {
+    for (const isBetaTester of [true, false]) {
+      await step(out, isBetaTester ? "beta-tryk" : "almindeligt tryk", async () => {
+        const finish = async ({ state, fake }) => { await answerOf(press(state, fake, { isBetaTester })); await answerOf(press(state, fake, { isBetaTester })); finishRace(state); await sweep(state, fake); return stateDigest(state); };
+        const twice = fresh();
+        const answers = await Promise.all([answerOf(press(twice.state, twice.fake, { isBetaTester })), answerOf(press(twice.state, twice.fake, { isBetaTester }))]);
+        const dobbelteDagFelter = doubleDayFields(twice.state);
+        const once = fresh();
+        await answerOf(press(once.state, once.fake, { isBetaTester }));
+        return { mindstEtTrykGikIgennem: answers.includes("200"), dobbelteDagFelter, slutSomEfterEtTryk: await finish(twice) === await finish(once) };
+      });
+    }
+  } },
+  // Fejl i HVER laesning, én ad gangen, baade som fejlsvar og som kast. For hver: hvad svarede
+  // trykket, hvad stod der i databasen bagefter, og hvor ender et nyt tryk (samme klokkeslaet)?
+  // En laesning, der sendes samtidig med andre, skal stadig stoppe trykket, foer noget nyt skrives.
+  fejl_i_hver_laesning: { seed: FAULT, async run(_s, _f, out, fresh) {
+    const clean = fresh();
+    await answerOf(press(clean.state, clean.fake));
+    const counts = new Map();
+    const slots = clean.fake.log.filter((entry) => entry.kind === "read").map((entry) => readSlotKey(entry, counts));
+    for (const mode of ["error", "throw"]) {
+      await step(out, mode === "error" ? "databasen svarer med en fejl" : "kaldet kaster", async () => {
+        const result = {};
+        for (const slot of slots) {
+          const seen = new Map(); let fired = false;
+          const { state, fake } = fresh({}, { fail: ({ entry }) => { if (fired || entry.kind !== "read") return null; if (readSlotKey(entry, seen).key !== slot.key) return null; fired = true; return mode; } });
+          const svar = await answerOf(press(state, fake));
+          const efterFejl = stateDigest(state);
+          const nytTryk = await answerOf(press(state, fake));
+          result[slot.key] = { ramt: fired, svar, ...(slot.fixed ? {} : { efterFejl }), nytTryk, efterNytTryk: stateDigest(state) };
+        }
+        return result;
+      });
+    }
+  } },
+  // Databasen falder ud midt i trykket: efter skrivning nr. j fejler ALT (laesninger og skrivninger).
+  // Intet nyt maa blive skrevet, intet loefte maa staa uden ejer, og et nyt tryk goer dagen faerdig.
+  database_falder_ud: { seed: FAULT, async run(_s, _f, out, fresh) {
+    const clean = fresh();
+    await answerOf(press(clean.state, clean.fake));
+    const points = clean.fake.log.filter((entry) => entry.kind !== "read").length;
+    // Tredje udgave: kontakterne svarer stadig, saa trykket naar forbi de foerste tjek, foer alt andet kaster.
+    for (const [label, mode, spared] of [["alt svarer med fejl", "error", null], ["alt kaster", "throw", null], ["alt undtagen kontakterne kaster", "throw", "app_config"]]) {
+      await step(out, label, async () => {
+        const result = {};
+        for (let j = 0; j <= points; j += 1) {
+          let down = true;
+          const { state, fake } = fresh({}, { fail: ({ entry }) => (down && entry.after >= j && entry.target !== spared ? mode : null) });
+          const svar = await answerOf(press(state, fake));
+          const efterFejl = stateDigest(state); const skrevet = fake.log.filter((entry) => entry.kind !== "read" && entry.after < j).length;
+          down = false;
+          const nytTryk = await answerOf(press(state, fake));
+          result[`efter skrivning nr. ${String(j).padStart(2, "0")}`] = { gikIgennem: svar === "200", skrevetFoerFejlen: skrevet, efterFejl, nytTryk, efterNytTryk: stateDigest(state) };
+        }
+        return result;
+      });
+    }
+  } },
+});
+
 const HELD = ({ base, state }) => state.__held === true && base === "register_training_date_work";
+
+// ── Trin 3: hver laesning ser samme database som foer ─────────────────────────────────────────
+// Mellem to skrivninger (eller funktionskald) ligger et mellemrum. Laesninger maa bytte plads og
+// sendes samtidig INDEN FOR et mellemrum, men ingen laesning maa flytte til et andet mellemrum:
+// saa ville den se en anden database end foer. Laesninger i tabeller, trykket aldrig skriver i,
+// er ikke med (de maa flytte). Pr. mellemrum: hvilke tabeller, hvor mange forskellige spoergsmaal,
+// og et fingeraftryk af spoergsmaalene.
+export function readIntervals(entries) {
+  const out = []; let current = new Map();
+  const close = (before) => { out.push({ foer: before, tabeller: [...new Set(current.values())].sort(), spoergsmaal: current.size, hash: digest([...current.keys()].sort()) }); current = new Map(); };
+  for (const entry of entries) {
+    if (entry.kind !== "read") { close(`${entry.kind === "write" ? `${entry.op} ` : ""}${entry.target}`); continue; }
+    if (!NEVER_WRITTEN_BY_PRESS.has(entry.target)) current.set(`${entry.target}|${digest(entry.filters ?? entry.payload ?? null)}`, entry.target);
+  }
+  close("(trinnet slutter)");
+  return out;
+}
+// En skrivning eller et funktionskald skal vaere alene i sin runde: sendes det samtidig med noget
+// andet, afgoer tilfaeldet, hvem der kommer foerst i den rigtige database.
+export function sharedWriteRounds(log) {
+  const byRound = new Map();
+  for (const entry of log) { if (!entry.round) continue; byRound.set(entry.round, [...(byRound.get(entry.round) ?? []), entry]); }
+  return [...byRound.values()].filter((group) => group.length > 1 && group.some((entry) => entry.kind !== "read"))
+    .map((group) => group.map((entry) => `${entry.kind}:${entry.target}`).join(" + "));
+}
+// Et loefte, der afvises uden at nogen venter paa det, vaelter serveren. Alle saadanne samles her.
+export const UNHANDLED_REJECTIONS = [];
+process.on("unhandledRejection", (reason) => { UNHANDLED_REJECTIONS.push(String(reason?.message ?? reason).slice(0, 200)); });
 
 /** Koer ét scenarie og returnér alt, der blev optaget. */
 export async function runScenario(name) {
   const scenario = SCENARIOS[name];
   const fakes = [];
-  const fresh = (seedPatch = {}) => {
+  const fresh = (seedPatch = {}, { fail = null } = {}) => {
     const state = seedState({ ...scenario.seed, ...seedPatch });
-    const fake = createFake(state, { failRpc: (ctx) => scenario.fail?.(ctx) === true });
+    const fake = createFake(state, { failRpc: (ctx) => scenario.fail?.(ctx) === true, fail });
     // "Aftenkoerslen holder datoen": databasens proev-laas svarer optaget.
     const realRpc = fake.supabase.rpc;
     fake.supabase.rpc = async (rpcName, args) => (HELD({ base: rpcName.replace(/^try_/, ""), state }) && rpcName.startsWith("try_")
@@ -619,18 +822,22 @@ export async function runScenario(name) {
   const marks = [];
   const mark = () => marks.push(fakes.reduce((sum, x) => sum + x.fake.log.length, 0));
   // Kald pr. trin: loggens laengde foer og efter hvert trin (kun hovedtilstanden taeller pr. trin).
-  const counting = new Proxy(steps, { get(target, prop) { if (prop === "push") return (item) => { item.calls = countCalls(main.fake.log.slice(main.lastLen ?? 0)); main.lastLen = main.fake.log.length; mark(); return target.push(item); }; return target[prop]; } });
+  const counting = new Proxy(steps, { get(target, prop) { if (prop === "push") return (item) => { const own = item.fake ? item.fake.log : main.fake.log.slice(main.lastLen ?? 0); item.calls = countCalls(own); item.reads = readIntervals(own); main.lastLen = main.fake.log.length; mark(); return target.push(item); }; return target[prop]; } });
   // Motoren skriver advarsler direkte til konsollen (fx manglende private parametre). De er ikke en
   // del af resultatet; de samles her, saa en testkoersel ikke drukner i dem.
   const notes = new Set();
   const saved = { warn: console.warn, error: console.error, log: console.log, info: console.info };
   for (const key of Object.keys(saved)) console[key] = (...parts) => { notes.add(String(parts[0]).slice(0, 160)); };
   try { await scenario.run(main.state, main.fake, counting, fresh); } finally { Object.assign(console, saved); }
+  // Giv et loefte uden ejer tid til at melde sig, foer scenariet goeres op.
+  await new Promise((resolve) => { setImmediate(resolve); });
   const log = fakes.flatMap((x) => x.fake.log);
   const { __failed: _f, __commits: _c, __held: _h, ...tables } = main.state;
   return {
     steps: steps.map(({ label, response }) => ({ label, response })),
-    writes: main.fake.log.filter((entry) => entry.kind !== "read").map(({ round: _round, ...entry }) => entry),
+    writes: main.fake.log.filter((entry) => entry.kind !== "read").map(({ round: _round, after: _after, ...entry }) => entry),
+    reads: steps.map(({ label, reads, response }) => ({ label, mellemrum: response?.status >= 400 ? "afvist tryk: laesningernes plads fryses ikke (det maa laese mere end foer, aldrig skrive)" : reads })),
+    sharedWriteRounds: scenario.concurrent ? [] : fakes.flatMap((x) => sharedWriteRounds(x.fake.log)),
     finalState: Object.fromEntries(Object.keys(tables).sort().map((table) => [table, canon(tables[table])])),
     calls: { perStep: steps.map(({ label, calls }) => ({ label, ...calls })), total: countCalls(log) },
     unsupported: [...new Set(fakes.flatMap((x) => x.fake.unsupported))],
@@ -669,6 +876,7 @@ export function fingerprint(run) {
 function fullFingerprint(run) {
   return {
     steps: run.steps,
+    reads: run.reads,
     writes: run.writes.map((entry) => {
       const base = { kind: entry.kind, target: entry.target, ...(entry.op ? { op: entry.op } : {}), ...(entry.filters ? { filters: entry.filters } : {}), ...(entry.options ? { options: entry.options } : {}) };
       if (entry.kind === "rpc") {
