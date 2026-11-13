@@ -1,5 +1,29 @@
 export const PATCHES = [
 {
+  "version": "7.443",
+  "date": "2026-11-13",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "en": {
+        "title": "New riders' form",
+        "body": "A new rider now joins your team with a little fatigue instead of none, so his form holds on normal training instead of dropping in his first days. This applies to riders you buy from the pool, academy talents and the starting squad for new managers. Riders you already have are not changed."
+      },
+      "da": {
+        "title": "Nye rytteres form",
+        "body": "En ny rytter kommer nu til dit hold med lidt træthed i stedet for ingen, så formen holder sig på normal træning i stedet for at falde de første dage. Det gælder ryttere, du køber fra puljen, talenter fra akademiet og starttruppen til nye managere. Ryttere, du allerede har, er ikke ændret."
+      },
+      "refs": [
+        8089,
+        8131
+      ]
+    }
+  ]
+},
+{
   "version": "7.442",
   "date": "2026-11-13",
   "changes": [
