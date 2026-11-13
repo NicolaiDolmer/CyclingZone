@@ -122,13 +122,11 @@ features:
     area: race-day
     title_en: Engine breakaway forecast
     title_da: Motorens udbrudsbud
-    state: building
+    state: retired
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6912
-    verified: 2026-10-29
-    decision: ejer-beslutning
-    decide_by: 2026-11-08
-    note: Ingen app_config-række (fravær = off). Ejer-go til tænding.
+    verified: 2026-11-13
+    note: Fjernet 13/11 (ejer); kode i #7277/#7343.
 
   - id: race-day-form-6649
     area: race-engine
