@@ -11,7 +11,15 @@
 //   S2  Taendt: hvert svar paa hver flade er praecis som paa main.
 //   S3  Loebsmotorens indgang er urort: samme svar og samme kald, uanset kontakten.
 //   S4  Taendt koster aldrig flere kald eller ventetider end paa main.
-//   S5  Race Hub som i dag (kolonnerne efter hinanden) giver facit; soemmen i krav-filen maales mod det.
+//   S5  Race Hub som i dag (kolonnerne efter hinanden): samme svar som paa main. Slukket: praecis samme kald.
+//       Taendt: aldrig dyrere end paa main, og praecis summen af kolonnerne hver for sig (intet huskes
+//       fra én visning til den naeste). Soemmen i krav-filen maales mod samme facit.
+//
+// Version 2 (13/11, dommerens afgoerelse om S5; se s5-afgoerelse.md). Kun S5 er aendret. Version 1 froes
+// ogsaa ANTALLET af kald og ventetider med kontakten taendt for fem kald til udtagelsen efter hinanden
+// (mains 110 kald / 85 ventetider for hold A). Krav K1 kraever, at hvert af de fem kald bliver billigere
+// taendt, saa version 1 af S5 og K1 kunne ikke vaere groenne samtidig. Svarene, slukket-delen og alle
+// andre proever er uaendrede. Facit-filen er uaendret og er IKKE genskabt.
 //   S6  Veje, der ikke er en skaerm, opfoerer sig som paa main, naar laegeopslaget fejler.
 //   S7  Vagter: samme tal paa alle flader og i motoren; scenarierne rammer det, de skal.
 
@@ -20,8 +28,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import {
-  OFF_FLAGS, SCENARIO_NAMES, SURFACE_KEYS, TEAM_IDS, boardAsOnMain, enginePathsUnderMedicalFailure,
-  fatigueNumbers, flagName, runAll, runBoard, runSurface,
+  OFF_FLAGS, RACEHUB_RACES, SCENARIO_NAMES, SURFACE_KEYS, TEAM_IDS, boardAsOnMain, countCalls,
+  enginePathsUnderMedicalFailure, fatigueNumbers, flagName, runAll, runBoard, runSurface,
 } from "./dommer7801RestByg.harness.mjs";
 
 const FACIT = JSON.parse(readFileSync(new URL("./__fixtures__/dommer7801RestBygFacit.json", import.meta.url), "utf8"));
@@ -67,10 +75,34 @@ test("S4 taendt koster aldrig flere kald eller ventetider end paa main", () => {
   assert.deepEqual(diff("on", ["kald", "runder"], { atMost: true }), []);
 });
 
-test("S5 Race Hub som i dag (kolonnerne efter hinanden) giver facit", async () => {
-  for (const name of SCENARIO_NAMES) for (const team of TEAM_IDS) for (const flag of [undefined, "on"]) {
-    const { svar, kald, runder, form } = await runBoard(name, flag, team, boardAsOnMain);
-    assert.deepEqual({ svar, kald, runder, form }, FACIT.racehub[name][team][flagName(flag)], `${name} / ${team} / ${flagName(flag)}`);
+test("S5 Race Hub som i dag (kolonnerne efter hinanden): samme svar; slukket praecis som paa main; taendt aldrig dyrere og intet husket mellem kolonnerne", async () => {
+  // Hver kolonne alene paa en frisk databaseklient: det, én visning af udtagelsen koster.
+  const alone = async (name, flag, team) => {
+    const sum = { kald: 0, runder: 0 };
+    for (const race of RACEHUB_RACES) {
+      const calls = countCalls((await runSurface(name, flag, `udtagelse|${race}|${team}`)).log);
+      sum.kald += calls.kald; sum.runder += calls.runder;
+    }
+    return sum;
+  };
+  for (const name of SCENARIO_NAMES) for (const team of TEAM_IDS) {
+    const main = FACIT.racehub[name][team];
+    const where = `${name} / ${team}`;
+    // Slukket (R1): svar, kald, ventetider og kaldenes form praecis som paa main. Uaendret fra version 1.
+    const off = await runBoard(name, undefined, team, boardAsOnMain);
+    assert.deepEqual({ svar: off.svar, kald: off.kald, runder: off.runder, form: off.form }, main.mangler, `${where} / mangler`);
+    // Taendt (R2): hver kolonnes svar praecis som paa main. Uaendret fra version 1.
+    const on = await runBoard(name, "on", team, boardAsOnMain);
+    assert.deepEqual(on.svar, main.on.svar, `${where} / on: hver kolonne har praecis samme svar som paa main`);
+    // Taendt (R6): aldrig flere kald eller ventetider end paa main (version 1 kraevede praecis mains antal).
+    assert.ok(on.kald <= main.on.kald, `${where} / on: ${on.kald} kald mod ${main.on.kald} paa main`);
+    assert.ok(on.runder <= main.on.runder, `${where} / on: ${on.runder} ventetider mod ${main.on.runder} paa main`);
+    // Intet huskes fra én visning til den naeste, og intet paa databaseklienten: kolonnerne efter hinanden
+    // paa samme klient koster praecis summen af hver kolonne alene. Dermed gaelder K1's loft pr. visning
+    // (hoejst 9 kald og 3 ventetider mere end slukket) ogsaa for hele raekken, uden at et antal fryses her.
+    for (const [flag, board] of [[undefined, off], ["on", on]]) {
+      assert.deepEqual({ kald: board.kald, runder: board.runder }, await alone(name, flag, team), `${where} / ${flagName(flag)}: kolonnerne efter hinanden skal koste summen af hver kolonne alene`);
+    }
   }
 });
 
