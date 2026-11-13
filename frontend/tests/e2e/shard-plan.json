@@ -51,6 +51,6 @@
   "projects": [
     { "project": "desktop-chromium", "browser": "chromium", "shards": 3 },
     { "project": "mobile-chromium", "browser": "chromium", "shards": 3 },
-    { "project": "mobile-webkit", "browser": "webkit", "shards": 4 }
+    { "project": "mobile-webkit", "browser": "webkit", "shards": 5 }
   ]
 }
