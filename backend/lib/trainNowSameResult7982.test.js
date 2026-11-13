@@ -21,19 +21,23 @@
 // forrang mellem afvisninger, to hold og to tryk paa samme tid, en cache der ikke maa leve videre,
 // ingen skrivning sendt samtidig med andet, intet loefte uden ejer, og aftenkoerslen praecis uroert.
 //
+// Udgave til trin 4a (13/11), frosset igen fra main EFTER trin 3 og FOER trin 4a's foerste kodelinje.
+// Nyt: seks scenarier mere, reglerne for hvilke laesninger der maa forsvinde, naar serveren regner
+// datoens fem dag-felter fra én indlaesning (compareToFacit i harnesset), og to nye vagter: svarene
+// maa komme i omvendt raekkefoelge, og med noeglerne i databasens raekkefoelge, uden at noget aendres.
+//
 //   Frys facit (kun dommeren, paa main):  SAME_RESULT_7982_WRITE=1 node --test --import ./test-setup.js lib/trainNowSameResult7982.test.js
 //   Fuld optagelse med tal (privat):      SAME_RESULT_7982_DUMP=<fil.json> node --test ...
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
-import { SCENARIOS, runScenario, fingerprint, firstDifference, digest, stableNumber, SIGNIFICANT_DIGITS, UNHANDLED_REJECTIONS } from "./trainNowSameResult7982.harness.js";
+import { SCENARIOS, runScenario, fingerprint, firstDifference, compareToFacit, digest, stableNumber, SIGNIFICANT_DIGITS, UNHANDLED_REJECTIONS, seedState, createFake, press, sweep } from "./trainNowSameResult7982.harness.js";
 
 const FACIT_URL = new URL("./trainNowSameResult7982.facit.json", import.meta.url);
 const WRITE = process.env.SAME_RESULT_7982_WRITE === "1";
 const DUMP = process.env.SAME_RESULT_7982_DUMP ?? null;
 const FULL = process.env.SAME_RESULT_7982_FULL ?? null;
-const PARTS = ["steps", "writes", "finalState", "reads"];
 
 const runs = {};
 for (const name of Object.keys(SCENARIOS)) runs[name] = await runScenario(name);
@@ -48,7 +52,7 @@ if (WRITE) {
   let sha = "ukendt";
   try { sha = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(); } catch { /* best-effort: SHA'en er kun en maerkat i facit-filen */ }
   const facit = {
-    note: "Frosset facit for #7982 trin 2-5 (samme resultat som foer), udgave til trin 3. Fingeraftryk, ingen motortal. Genereres kun af dommeren.",
+    note: "Frosset facit for #7982 trin 2-5 (samme resultat som foer), udgave til trin 4a. Fingeraftryk, ingen motortal. Genereres kun af dommeren.",
     frozen_from_sha: sha,
     scenarios: Object.fromEntries(Object.entries(runs).map(([name, run]) => [name, fingerprint(run)])),
     calls: Object.fromEntries(Object.entries(runs).map(([name, run]) => [name, run.calls])),
@@ -91,28 +95,94 @@ test("stedfortraederen kendte alt, koden bad om (ellers er proeven ugyldig og do
 });
 
 const READS_HINT = [
-  "  En laesning ligger nu mellem to ANDRE skrivninger end foer (eller er kommet til eller forsvundet).",
-  "  Laesninger maa sendes samtidig og bytte plads inden for et mellemrum, men ikke flytte hen over en",
-  "  skrivning eller et funktionskald: saa ser de en anden database end foer. (Laesninger i tabeller,",
-  "  trykket aldrig skriver i, er ikke med her.) Skal en laesning vaek eller flyttes, afgoer dommeren det.",
+  "  Laesningernes plads er aendret paa en maade, trin 4a ikke tillader. Reglen (compareToFacit i harnesset):",
+  "  FOER trykkets foerste gemme-kald laeses praecis det samme som foer, mellem de samme to skrivninger.",
+  "  EFTER foerste gemme-kald maa laesninger forsvinde, men ingen maa komme til eller skifte mellemrum.",
+  "  En laesning fra senere i trykket maa flytte hen foran foerste gemme-kald, hvis den er i en tabel,",
+  "  trykket ikke selv skriver i. En aftenkoersel laeser praecis som foer. (Laesninger i tabeller, trykket",
+  "  aldrig skriver i, er ikke med her.) Skal reglen aendres, afgoer dommeren det og fryser igen.",
 ].join("\n");
 
 for (const name of Object.keys(SCENARIOS)) {
   test(`samme resultat som foer: ${name}`, () => {
-    const actual = fingerprint(runs[name]);
-    const expected = facit.scenarios[name];
-    for (const part of PARTS) {
-      const diff = firstDifference(expected[part], actual[part], part);
-      if (!diff) continue;
-      let hint = part === "reads" ? READS_HINT : "  (Facit er fingeraftryk. Koer med SAME_RESULT_7982_FULL=<fuld optagelse fra main> for at se tallene.)";
-      if (part !== "reads" && full?.[name]) {
-        const valueDiff = firstDifference(full[name][part], { steps: runs[name].steps, writes: runs[name].writes, finalState: runs[name].finalState }[part], part);
-        if (valueDiff) hint = `  Med vaerdier: ${name} > ${valueDiff.path}\n    forventet: ${show(valueDiff.expected)}\n    fik:       ${show(valueDiff.actual)}`;
-      }
-      assert.fail(explain(name, diff, hint));
+    const diff = compareToFacit(facit.scenarios[name], fingerprint(runs[name]), name);
+    if (!diff) return;
+    const { part } = diff;
+    let hint = part === "reads" ? READS_HINT : "  (Facit er fingeraftryk. Koer med SAME_RESULT_7982_FULL=<fuld optagelse fra main> for at se tallene.)";
+    if (part !== "reads" && full?.[name]) {
+      const valueDiff = firstDifference(full[name][part], { steps: runs[name].steps, writes: runs[name].writes, finalState: runs[name].finalState }[part], part);
+      if (valueDiff) hint = `  Med vaerdier: ${name} > ${valueDiff.path}\n    forventet: ${show(valueDiff.expected)}\n    fik:       ${show(valueDiff.actual)}`;
     }
+    assert.fail(explain(name, diff, hint));
   });
 }
+
+// De to fejl-scenarier koerer de samme tryk flere hundrede gange; de er ikke med i de to naeste proever.
+const HEAVY = ["fejl_i_hver_laesning", "database_falder_ud"];
+
+// Et rigtigt netvaerk lover ingen raekkefoelge paa svarene. Sendes laesninger samtidig, og behoever
+// én af dem svaret fra en anden uden at vente paa det, aendrer resultatet sig, naar svarene vender.
+test("svarenes raekkefoelge er ligegyldig: sidst sendte svar foerst giver samme resultat", async () => {
+  for (const name of Object.keys(SCENARIOS).filter((x) => !HEAVY.includes(x))) {
+    const diff = compareToFacit(facit.scenarios[name], fingerprint(await runScenario(name, { omvendt: true })), name);
+    if (diff) assert.fail(explain(`${name} (omvendt svar-raekkefoelge)`, diff, "  Et svar bruges, foer det er kommet: en laesning i en gruppe venter ikke paa den, den behoever."));
+  }
+});
+
+// Databasen gemmer jsonb med noeglerne i sin egen raekkefoelge (kortest foerst). Det, motoren laeser
+// tilbage, har derfor en anden noegleraekkefoelge end det, serveren selv har i hukommelsen. Resultatet
+// maa ikke afhaenge af den: ellers regner et tryk, der husker sine egne tal, anderledes end et, der
+// laeser dem tilbage.
+test("noeglernes raekkefoelge er ligegyldig: svar i databasens (jsonb) raekkefoelge giver samme resultat", async () => {
+  for (const name of Object.keys(SCENARIOS).filter((x) => !HEAVY.includes(x))) {
+    const diff = compareToFacit(facit.scenarios[name], fingerprint(await runScenario(name, { jsonbOrden: true })), name);
+    if (diff) assert.fail(explain(`${name} (noegler i databasens raekkefoelge)`, diff, "  Resultatet afhaenger af, hvilken raekkefoelge noeglerne i et gemt felt kommer tilbage i."));
+  }
+});
+
+// Kort snor mellem de to veje gennem motoren. Aftenkoerslen laeser alt forfra for hvert dag-felt;
+// trykket regner (fra trin 4a) de fem dag-felter fra én indlaesning. For samme hold og samme dato
+// skal de to veje give praecis samme evner, form, traethed og traeningsscore. Proeven bruger ikke
+// facit: den holder trykket op mod aftenkoerslen, som trin 4a ikke maa roere.
+test("kort snor: trykket og aftenkoerslen regner praecis ens for samme hold og samme dato", async () => {
+  const byRider = (rows, extra = () => "") => [...rows].sort((a, b) => (`${a.rider_id}${extra(a)}` < `${b.rider_id}${extra(b)}` ? -1 : 1));
+  const numbers = (state) => ({
+    evner: digest(byRider(state.rider_derived_abilities)),
+    formOgTraethed: digest(byRider(state.rider_condition).map(({ updated_at: _stamp, ...row }) => row)),
+    score: digest(byRider(state.rider_training_scores, (row) => String(row.game_day).padStart(4, "0"))),
+    kvitteringer: state.training_rider_ticks.length, afregninger: state.training_condition_settlements.length,
+    status: state.training_date_work.map((row) => row.status).join(","),
+  });
+  const big = SCENARIOS.stort_hold_beta_tryk.seed;
+  const afterStage = { now: new Date("2026-11-09T17:30:00Z") };
+  const saved = { warn: console.warn, error: console.error, info: console.info };
+  for (const [label, seed, options] of [
+    ["lille hold uden loeb", SCENARIOS.lille_hold_uden_loeb.seed, {}],
+    // Uden rytteren, der er koebt efter datoens slutning: ham tager trykket ikke med i datoens trup,
+    // og saettets aftenkoersel regner truppen paa sin egen maade. Her skal de to veje have samme trup.
+    ["stort hold uden loebsryttere", { ...big, entered: [], boughtLate: [] }, {}],
+    ["stort hold med loebsryttere, etapen koert", { ...SCENARIOS.stort_hold_etape_koert.seed, boughtLate: [] }, afterStage],
+  ]) {
+    console.warn = () => {}; console.error = () => {}; console.info = () => {};
+    let evening, results;
+    try {
+      const sweepState = seedState(seed); await sweep(sweepState, createFake(sweepState));
+      evening = numbers(sweepState);
+      results = [];
+      for (const isBetaTester of [true, false]) {
+        const pressState = seedState(seed);
+        const answer = await press(pressState, createFake(pressState), { ...options, isBetaTester });
+        results.push([isBetaTester ? "beta-tryk" : "almindeligt tryk", answer.status, numbers(pressState)]);
+      }
+    } finally { Object.assign(console, saved); }
+    assert.equal(evening.status, "complete", `${label}: aftenkoerslen lukker datoen`);
+    assert.ok(evening.kvitteringer > 0 && evening.afregninger > 0, `${label}: aftenkoerslen traenede`);
+    for (const [kind, status, pressed] of results) {
+      assert.equal(status, 200, `${label}, ${kind}: trykket gik igennem`);
+      assert.deepEqual(pressed, evening, `${label}, ${kind}: trykket og aftenkoerslen giver ikke samme tal`);
+    }
+  }
+});
 
 test("scenarierne er ikke tomme: traening sker, loebsryttere venter, og afvisninger skriver intet", () => {
   const big = runs.stort_hold_beta_tryk;
@@ -180,7 +250,7 @@ test("to hold, der trykker i samme oejeblik, ender hver isaer praecis som alene"
   assert.deepEqual(lille, runs.lille_hold_uden_loeb.steps[0].response, "det lille holds svar er som alene");
   assert.equal(firstDifference(runs.stort_hold_beta_tryk.writes, both.writes, "writes"), null, "det store holds skrivninger er som alene");
   assert.equal(firstDifference(runs.stort_hold_beta_tryk.finalState, both.finalState, "finalState"), null, "det store holds sluttilstand er som alene");
-  assert.equal(lilleSkrivninger, digest(runs.lille_hold_uden_loeb.writes), "det lille holds skrivninger er som alene");
+  assert.equal(lilleSkrivninger, digest(runs.lille_hold_uden_loeb.writes.filter((entry) => !entry.gen)), "det lille holds skrivninger er som alene");
   assert.equal(lilleSlut, digest(runs.lille_hold_uden_loeb.finalState), "det lille holds sluttilstand er som alene");
 });
 
@@ -249,17 +319,17 @@ test("databasekald pr. tryk: tabel, og de maa ikke stige i forhold til facit", (
       const refused = facit.scenarios[name]?.steps?.[i]?.response?.status >= 400;
       const senAfvisning = refused && Object.keys(before?.byTarget ?? {}).some((key) => key !== "read:app_config");
       rows.push({ scenarie: name, trin: stepCalls.label, kald: stepCalls.total, "kald main": before?.total ?? null, runder: stepCalls.rounds, "runder main": before?.rounds ?? null,
-        laesninger: stepCalls.reads, skrivninger: stepCalls.writes, funktionskald: stepCalls.rpc, "skriv main": before ? before.writes + before.rpc : null, senAfvisning });
+        laesninger: stepCalls.reads, skrivninger: stepCalls.writes, funktionskald: stepCalls.rpc, gen: stepCalls.gen ?? 0, "skriv main": before ? before.writes + before.rpc - (before.gen ?? 0) : null, senAfvisning });
     });
   }
   // "kald" = hvert kald til databasen. "runder" = hvor mange gange koden venter paa databasen efter
   // hinanden (kald sendt samtidig taeller som én runde). Trin 2 og 4 saenker kald; trin 3 saenker runder.
   console.log("\n#7982 databasekald pr. trin (stedfortraeder, kold kontakt-cache). \"main\" = frosset facit.");
-  console.table(rows.filter((r) => r.kald > 0 && !["afvisninger", "afvisninger_forrang"].includes(r.scenarie)).map(({ "skriv main": _w, senAfvisning: _s, ...row }) => row));
+  console.table(rows.filter((r) => r.kald > 0 && !["afvisninger", "afvisninger_forrang"].includes(r.scenarie)).map(({ "skriv main": _w, senAfvisning: _s, gen: _g, ...row }) => row));
   for (const row of rows) {
     if (row["kald main"] == null) continue;
     assert.ok(row.runder <= row["runder main"], `${row.scenarie} / ${row.trin}: ${row.runder} runder, main havde ${row["runder main"]}. Runder pr. tryk maa ikke stige.`);
-    assert.equal(row.skrivninger + row.funktionskald, row["skriv main"], `${row.scenarie} / ${row.trin}: antal skrivninger og funktionskald er aendret.`);
+    assert.equal(row.skrivninger + row.funktionskald - row.gen, row["skriv main"], `${row.scenarie} / ${row.trin}: antal skrivninger og funktionskald er aendret (genregistreringer taeller ikke med).`);
     // Et tryk, der afvises EFTER de foerste tjek (kontakt, saeson, hold), maa laese mere end foer: de
     // laesninger, et godkendt tryk alligevel laver, maa sendes samtidig med det tjek, der afviser.
     // Alle andre trin, ogsaa et tryk der afvises paa kontakten eller holdet, maa ikke koste flere kald.
