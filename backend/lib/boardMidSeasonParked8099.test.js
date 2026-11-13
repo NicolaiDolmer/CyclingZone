@@ -201,6 +201,7 @@ test("#8099: fejler hold-opslaget, fejler kørslen synligt og sender intet", asy
   await assert.rejects(
     processMidSeasonReviewCron({
       supabase: fake,
+      now: new Date("2026-11-13T12:00:00Z"),
       notifyUser: async (args) => { notifications.push(args); return { delivered: true }; },
       deps: {
         unlockExtraordinaryRequestForTeam: async (_sb, args) => { unlockCalls.push(args); return { unlocked: true }; },
