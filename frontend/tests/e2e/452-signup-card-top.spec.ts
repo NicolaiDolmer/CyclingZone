@@ -87,7 +87,7 @@ async function mockRaces(page: Page, rows: (typeof SCHEDULED_RACE)[]) {
 
 async function openDashboard(
   page: Page,
-  { width, height, status, withRace = true }: { width: number; height: number; status: SignupStatus; withRace?: boolean },
+  { width, height, status, withRace = true, stableSelection = false }: { width: number; height: number; status: SignupStatus; withRace?: boolean; stableSelection?: boolean },
 ) {
   await mockSignupStatus(page, status);
   await mockRaces(page, withRace ? [SCHEDULED_RACE] : []);
@@ -97,19 +97,47 @@ async function openDashboard(
   // navigation, så sproget flyttes EFTER login (samme greb som #5485).
   await page.addInitScript(() => window.localStorage.setItem("cz_lang", "en"));
   await page.setViewportSize({ width, height });
-  await gotoDashboard(page);
+  await gotoDashboard(page, stableSelection);
   if (withRace) await expect(page.getByTestId("team-selection-cta")).toBeVisible();
 }
 
 // Venter på at signup-status faktisk er besvaret (ellers er "intet kort" sandt
 // bare fordi kaldet ikke er landet endnu) og på stabil geometri, så en
 // y-måling ikke rammer midt i indlæsningen af kortene ovenover.
-async function gotoDashboard(page: Page) {
-  const statusAnswered = page.waitForResponse((res) => res.url().includes("/api/season/signup-status"));
-  await page.goto("/dashboard");
-  await statusAnswered;
-  await expect(page.getByRole("heading", { name: "E2E Racing" })).toBeVisible();
-  await waitForStableSnapshotTarget(page);
+async function gotoDashboard(page: Page, stableSelection = false) {
+  let releaseSelection = () => {};
+  let selectionRoute: ((route: Route) => Promise<void>) | undefined;
+  let selectionHeld = false;
+  const selectionPattern = "**/api/races/*/selection";
+  if (stableSelection) {
+    const gate = new Promise<void>(resolve => { releaseSelection = resolve; });
+    selectionRoute = async route => {
+      if (route.request().method() !== "GET") return route.fallback();
+      selectionHeld = true;
+      await gate;
+      await route.fallback();
+    };
+    await page.route(selectionPattern, selectionRoute);
+  }
+  try {
+    const statusAnswered = page.waitForResponse((res) => res.url().includes("/api/season/signup-status"));
+    await page.goto("/dashboard");
+    await statusAnswered;
+    await expect(page.getByRole("heading", { name: "E2E Racing" })).toBeVisible();
+    if (stableSelection) {
+      // Compare identical loading histories: ReservedBody retains its capacity
+      // only when a placeholder was visible. Four stable frames cannot undo it.
+      const actions = page.locator('[data-loading-region="nextActions"]');
+      await expect.poll(() => selectionHeld).toBe(true);
+      await expect(actions).toHaveAttribute("aria-busy", "true");
+      releaseSelection();
+      await expect(actions).toHaveAttribute("aria-busy", "false");
+    }
+    await waitForStableSnapshotTarget(page);
+  } finally {
+    releaseSelection();
+    if (selectionRoute) await page.unroute(selectionPattern, selectionRoute);
+  }
 }
 
 // Første skærm = viewporten minus den faste bundnavigation på telefonen
@@ -165,13 +193,13 @@ for (const size of SIZES) {
 
   test(`${size.label}: aktiv manager ser intet kort, og holdudtagelsen står hvor den plejer`, async ({ page }) => {
     // Referencen: flaget slukket.
-    await openDashboard(page, { width: size.width, height: size.height, status: FLAG_OFF });
+    await openDashboard(page, { width: size.width, height: size.height, status: FLAG_OFF, stableSelection: true });
     await expect(page.getByTestId("season-signup-card")).toHaveCount(0);
     const reference = await page.getByTestId("team-selection-cta").boundingBox();
 
     // Flaget on, men holdet er aktivt (ikke kandidat): intet ændrer sig.
     await mockSignupStatus(page, ACTIVE);
-    await gotoDashboard(page);
+    await gotoDashboard(page, true);
     const squad = page.getByTestId("team-selection-cta");
     await expect(squad).toBeVisible();
     await expect(page.getByTestId("season-signup-card")).toHaveCount(0);

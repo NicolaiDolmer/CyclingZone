@@ -88,6 +88,11 @@ export function buildTeamPlan(kind: TeamPlanKind, { riders, route, order, locked
           : suggested ?? save();
       } else if (supports.has(role)) {
         plan = suggestStagePlan({role:'helper',route,teamHasSprintCaptain:false,luxuryHelper:desiredRoles[rider.rider_id]==='luxury_helper'}) ?? [{task:'shelter_leader'}];
+      } else {
+        // Same rule as the suggestion engine: a co-captain rides the captain's suggested
+        // plan, and a free role rides his own role suggestion. Nobody outside the helpers
+        // is quietly told to ride in (#7864).
+        plan = suggestStagePlan({role,route,teamHasSprintCaptain:false}) ?? save();
       }
     }
     if (validateStagePlanLegs(plan,role,route) !== null) return null;

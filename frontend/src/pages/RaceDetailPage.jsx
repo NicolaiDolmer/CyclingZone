@@ -2070,7 +2070,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
             riderNameById={riderNameById} teamNameById={teamNameById} timelineEvents={timeline?.events}
             profileType={profile?.profile_type ?? null} startlist={stageStartlist} ownAbandons={ownAbandons} ownTeamId={myOwnTeamId} t={t}
           />
-          <StageSplitTimes events={timeline?.events} ownRiderIds={ownRiderIds} effortByRider={effortByRider} riderNameById={riderNameById} teamNameById={teamNameById} t={t} />
+          <StageSplitTimes events={timeline?.events} ownRiderIds={ownRiderIds} effortByRider={effortByRider} riderNameById={riderNameById} teamNameById={teamNameById} climbs={profile?.climbs} t={t} />
           {isV4Timeline && <StageOrdersRecap raceId={raceId} stageNumber={stage} riderIds={ownRiderIds} nameOf={(id) => riderNameById?.get?.(id) ?? null} profileType={profile?.profile_type ?? null} stageRoles={stageRoles} ranAt={timeline?.created_at ?? null} teamOrders={teamOrders} />}
           <WhyPanel moments={moments} stageNumber={stage} mode="full" riderNameById={riderNameById} t={t} />
           <DnfSection incidents={incidents} scopeType="stage" stageNumber={stage} t={t} />

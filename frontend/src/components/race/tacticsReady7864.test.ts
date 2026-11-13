@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildTeamPlan, teamPlanTarget, taskCostKey, applyTeamPlanRoles, TASK_COST_EXCEPTIONS, type TeamPlanRider, type TeamPlanKind } from './tacticsReady7864.ts';
 import { STAGE_PLAN_TASKS as BACKEND_TASKS, TASK_EFFORT as BACKEND_TASK_EFFORT } from '../../../../backend/lib/stagePlan.ts';
-import { validateStagePlanLegs, type StagePlanRoute, type StagePlanRole } from './StagePlanModel.ts';
+import { suggestStagePlan, validateStagePlanLegs, type StagePlanRoute, type StagePlanRole } from './StagePlanModel.ts';
 import { buildGroupTeamContexts } from '../../../../backend/lib/engine/v4/mechanics/teamPlay.ts';
 import type { Entrant, RaceGroup, RiderState } from '../../../../backend/lib/engine/v4/types.ts';
 
@@ -104,6 +104,10 @@ test('team plan texts are translated in es/fr/nl and every language has the plur
   const en=flat(read('en').stagePlanReady);
   assert.ok(Object.keys(en).length>0);
   assert.match(en['sprint.description'],/10 km/,'the train runs the final 10 km');
+  // #7864: card texts only promise what the plans do.
+  assert.doesNotMatch(en['gc.description'],/^Everyone/,'a shared captain and a free role do not ride for the GC leader');
+  assert.doesNotMatch(en['save.description'],/tonight/i,'lowest fatigue is only true among the five plans');
+  assert.match(read('da').intention.copyToStages,/etaperne/,'Danish plural on the copy button');
   for(const lng of ['en','da','es','fr','nl']){
     const data=read(lng);
     assert.deepEqual(Object.keys(flat(data.stagePlanReady)).sort(),Object.keys(en).sort(),lng);
@@ -123,6 +127,51 @@ test('GC and Stage win protect their named target even with a sprint captain on 
     const group={id:'field',kind:'peloton',rider_ids:riders.map(r=>r.rider_id),gap_seconds:0} as RaceGroup;
     assert.equal(buildGroupTeamContexts(group,entrants,states,'flat',true)[0].leaderId,plan.target.rider_id,kind);
   }
+});
+const coRiders: TeamPlanRider[] = [
+  {rider_id:'cap',name:'Captain',role:'captain',routeMatch:90},
+  {rider_id:'co',name:'Co-captain',role:'co_captain',routeMatch:80},
+  {rider_id:'free',name:'Free',role:'free_role',routeMatch:70},
+  {rider_id:'h1',name:'Helper',role:'helper',routeMatch:60},
+  {rider_id:'h2',name:'Hunter',role:'hunter',routeMatch:50},
+];
+const coOrder = {breakaway_stance:'neutral',riders:coRiders.map(r=>({rider_id:r.rider_id,plan:null}))};
+const coRoutes: Record<string,StagePlanRoute> = {
+  flat: {distance_km:180,profile_type:'flat',summit_finish:false,climbs:[]},
+  hilly: {distance_km:170,profile_type:'hilly',summit_finish:false,climbs:[{index:0,km:80,name:'A',category:'3'},{index:1,km:140,name:'B',category:'2'},{index:2,km:158,name:'C',category:'3'}]},
+  mountain: {distance_km:160,profile_type:'high_mountain',summit_finish:true,climbs:[{index:0,km:70,name:'A',category:'1'},{index:1,km:125,name:'B',category:'HC'},{index:2,km:160,name:'C',category:'1'}]},
+};
+const planOf = (result: NonNullable<ReturnType<typeof buildTeamPlan>>, id: string) => result.order.riders.find(r=>r.rider_id===id)?.plan;
+const quietRideIn = (plan: unknown) => JSON.stringify(plan) === JSON.stringify([{task:'stay_sheltered'},{task:'ride_in',from:{at:'final_km'}}]);
+for (const [name, r] of Object.entries(coRoutes)) {
+  test(`${name}: a co-captain rides the captain's plan and a free role his own suggestion in GC and Stage win`,()=>{
+    for (const kind of ['gc','stage'] as const) {
+      const result = buildTeamPlan(kind,{riders:coRiders,route:r,order:coOrder}); assert.ok(result,kind);
+      assert.equal(result.target?.rider_id,'cap',kind);
+      assert.equal(result.roles.co,'co_captain',kind);assert.equal(result.roles.free,'free_role',kind);
+      const captainSuggestion = suggestStagePlan({role:'captain',route:r,teamHasSprintCaptain:false});
+      assert.deepEqual(planOf(result,'co'),captainSuggestion,`${kind}: co-captain gets the captain's suggested plan`);
+      if (kind === 'gc') assert.deepEqual(planOf(result,'co'),planOf(result,'cap'),'GC: same plan as the GC leader');
+      assert.deepEqual(planOf(result,'free'),suggestStagePlan({role:'free_role',route:r,teamHasSprintCaptain:false}),`${kind}: free role suggestion`);
+      assert.ok(!quietRideIn(planOf(result,'co')),`${kind}: co-captain is not told to ride in`);
+      assert.ok(!quietRideIn(planOf(result,'free')),`${kind}: free role is not told to ride in`);
+      assert.ok(!planOf(result,'co')?.some(l=>l.task==='attack'),`${kind}: the assistant never suggests an attack to the co-captain`);
+    }
+  });
+  test(`${name}: all five plans for a team with captain, co-captain and free role validate against the role rules`,()=>{
+    for (const kind of ['gc','stage','sprint','break','save'] as TeamPlanKind[]) {
+      const withSprinter = kind === 'sprint' ? coRiders.map(x=>x.rider_id==='h1'?{...x,role:'sprint_captain'}:x) : coRiders;
+      const result = buildTeamPlan(kind,{riders:withSprinter,route:r,order:coOrder}); assert.ok(result,kind);
+      for (const row of result.order.riders) assert.equal(validateStagePlanLegs(row.plan,result.roles[row.rider_id] as StagePlanRole,r),null,`${kind}:${row.rider_id}`);
+    }
+  });
+}
+test('a co-captain who is the best fit for the stage becomes its captain; the old captain helps',()=>{
+  const swapped = coRiders.map(x=>x.rider_id==='co'?{...x,routeMatch:99}:x);
+  const result = buildTeamPlan('stage',{riders:swapped,route:coRoutes.hilly,order:coOrder}); assert.ok(result);
+  assert.equal(result.target?.rider_id,'co');assert.equal(result.roles.co,'captain');assert.equal(result.roles.cap,'helper');
+  assert.ok(planOf(result,'co')?.some(l=>l.task==='attack'));
+  assert.equal(planOf(result,'cap')?.[0]?.task,'shelter_leader');
 });
 test('switching presets can restore the nominated sprinter after GC temporarily changes his role',()=>{
   const sourceRoles=Object.fromEntries(riders.map(r=>[r.rider_id,r.role]));

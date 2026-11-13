@@ -379,6 +379,33 @@ export function academyPlacementSquad(birthdate, seasonNumber) {
   return academySquadForSeasonAge(ageForSeason(birthdate, seasonNumber)) ?? ACADEMY_SQUAD_WHEN_AGE_UNKNOWN;
 }
 
+/**
+ * Trupperne et HENTET talent (intake-signering, også bestyrelsens gave-kuld) kan
+ * placeres i, i prøverækkefølge (#6155, ejer 9/11).
+ *
+ * Først aldersplaceringen (academyPlacementSquad). Lander han i junior-truppen,
+ * er U23 hans anden mulighed, når hans sæsonalder passer under U23's aldersloft
+ * (fitsSquadAge): så spærrer en fuld juniortrup ikke et talent, der lovligt kan
+ * stå på U23, og manageren skal ikke først flytte en anden rytter.
+ *
+ * Ukendt fødselsdato giver kun junior. Alderen kan da ikke vise, at han passer
+ * på U23, og et gæt opad er samme fejl som et gæt nedad.
+ *
+ * Funktionen kender ingen pladstal: kalderen prøver trupperne i rækkefølge mod
+ * RPC'en, som tæller under holdets lås (finalize_academy_acquisition).
+ *
+ * @param {string|null|undefined} birthdate  "YYYY-MM-DD"
+ * @param {number} seasonNumber
+ * @returns {Array<"junior"|"u23">}  aldrig tom
+ * @throws {Error} 'season_required' (samme kaldefejl som academyPlacementSquad)
+ */
+export function academyIntakePlacementSquads(birthdate, seasonNumber) {
+  const primary = academyPlacementSquad(birthdate, seasonNumber);
+  if (primary !== "junior") return [primary];
+  const seasonAge = ageForSeason(birthdate, seasonNumber);
+  return fitsSquadAge({ squad: "u23", seasonAge }) ? ["junior", "u23"] : ["junior"];
+}
+
 // ── Graduering: de TO overgange (YOUTH_RULES §2.1 + §2.2) ────────────────────
 //
 // Tidligere fandtes ÉN overgang: akademi → senior ved sæsonalder 22

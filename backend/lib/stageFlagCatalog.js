@@ -314,6 +314,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "day_words_7725",
   // #7801: Hjaelp viser traethed lige nu og regel-teksten paa dette flag (binaert, som motoren).
   "fatigue_now_7801",
+  // #8031: beta-noten om Træn nu-kvitteringen skifter til "Now for everyone", naar kontakten er on for alle.
+  "training_train_now_instant",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,

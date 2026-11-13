@@ -54,6 +54,8 @@ async function flagDeps(): Promise<{ auth: AuthClient; fetchFlags: () => Promise
 }
 
 let enabledSnapshot = false;
+const FATIGUE_NOW_FLAG_KEY = "fatigue_now_7801";
+let fatigueNowSnapshot = false;
 let started = false;
 let generation = 0;
 const listeners = new Set<() => void>();
@@ -72,7 +74,7 @@ async function refreshFlag() {
     deps = await flagDeps();
   } catch {
     // catch-ok: uden klient er kontakten slukket (fail-safe som serverens flag).
-    if (gen === generation) setEnabled(false);
+    if (gen === generation) { fatigueNowSnapshot = false; setEnabled(false); }
     return;
   }
   if (!authSubscribed) {
@@ -88,9 +90,17 @@ async function refreshFlag() {
     userId = null;
   }
   // Kontakten er en beta-kontakt: uden login er den altid slukket.
-  if (!userId) { if (gen === generation) setEnabled(false); return; }
+  if (!userId) { if (gen === generation) { fatigueNowSnapshot = false; setEnabled(false); } return; }
   const flags = await deps.fetchFlags().catch(() => ({} as Record<string, boolean>));
-  if (gen === generation) setEnabled(flags?.[RIDER_HOVER_CARD_FLAG_KEY] === true);
+  if (gen !== generation) return;
+  // #7801: samme svar giver kortet kontakten for traethed lige nu (intet ekstra kald).
+  fatigueNowSnapshot = flags?.[FATIGUE_NOW_FLAG_KEY] === true;
+  setEnabled(flags?.[RIDER_HOVER_CARD_FLAG_KEY] === true);
+}
+
+/** #7801: viser kortet traethed lige nu for egne ryttere? Laeses fra ikonets flag-svar. */
+export function riderCardFatigueNowEnabled(): boolean {
+  return fatigueNowSnapshot;
 }
 
 function subscribe(cb: () => void) {
