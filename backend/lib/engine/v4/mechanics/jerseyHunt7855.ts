@@ -45,9 +45,12 @@ export const JERSEY_HUNT_TASK_BY_KIND_7855: Readonly<Record<"sprint" | "kom", St
  * som traethedens andel i front, raceFatigue.stageWorkExposure). Spurt og bjergtop har hver sin
  * stoerrelse. Laegges oveni leddets egen indsats (stagePlanEngine.stagePlanLoadEfforts).
  * Kalibrering og maaling: balance-internals/7855/2026-11-12/.
+ * Ejer 13/11 valg 2 ("Mindre pr. spurt"): stykket pr. spurt er sat ned, saa en hel dags jagt i
+ * spurterne stadig ligger taet paa Haard (ejerens designtal; foer/efter ligger privat).
+ * Bjergtoppens stykke er uaendret (dommerens S4 er et aabent ejer-valg).
  */
 export const JERSEY_HUNT_WORK_7855: Readonly<Record<"sprint" | "kom", number>> = Object.freeze({
-  sprint: 0.4,
+  sprint: 0.1,
   kom: 0.13,
 });
 

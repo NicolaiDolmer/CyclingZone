@@ -213,9 +213,11 @@ test("#7855 taendt: jaegeren kaemper om passagen paa sin straekning, og kun dér
   assert.deepEqual(ridersOf(on[1].get("sprint0")), ridersOf(off[1].get("sprint0")));
   assert.equal(on[1].get("sprint0").hunt_work_7855, undefined);
   assert.equal(on[1].get("kom0").hunters, undefined, "topankomsten afgoeres af maalordenen, ingen jagt");
-  // Etape 3: r002 jager bjergpoint EFTER Col B (ikke paa den); r013 jager point frem til Col C.
+  // Etape 3: r002's gemte bjergjagt EFTER Col B er et selvstaendigt "Hent bjergpoint"-led, som ejerens
+  // valg 1 (13/11, "Kun sammen med udbrud") fjerner: han koerer planen uden jagt og jager ingen top.
+  // r013 jager point frem til Col C.
   assert.ok(!(on[2].get("kom0").hunters ?? []).includes("r002"), "ikke foer sit skift-punkt");
-  assert.ok(on[2].get("kom1").hunters.includes("r002"));
+  assert.ok(!(on[2].get("kom1").hunters ?? []).includes("r002"), "valg 1: ingen bjergjagt fra feltet");
   assert.ok(on[2].get("sprint0").hunters.includes("r013"));
   assert.ok(!(on[2].get("kom1").hunters ?? []).includes("r013"), "jagten paa point er ikke bjergpoint");
   // Kun passagens art: en bjergpoint-jaeger er aldrig jaeger i en spurt.

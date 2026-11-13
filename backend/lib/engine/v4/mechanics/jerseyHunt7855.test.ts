@@ -88,7 +88,12 @@ test("#7855 C: kun dem opgaven fik til at koere med betaler; passagens felter", 
     { kind: "kom", hunt_work_7855: ["b"] },
     { kind: "kom" },
   ]);
-  assert.ok(work.get("a")! > work.get("b")!, "en spurt koster mere end en bjergtop (en typisk dag har en spurt, men flere toppe)");
+  // #7855 valg 2 (ejer 13/11, "Mindre pr. spurt"): stykket pr. spurt er sat ned, saa en spurt ikke
+  // laengere koster mere end en bjergtop (dommerens S4 er et aabent ejer-valg). Hver passage koster stadig.
+  const oneSprint = jerseyHuntFrontWork7855([{ kind: "sprint", hunt_work_7855: ["a"] }]).get("a")!;
+  const oneTop = jerseyHuntFrontWork7855([{ kind: "kom", hunt_work_7855: ["b"] }]).get("b")!;
+  assert.ok(oneSprint > 0 && oneTop > 0, "en spurt og en bjergtop koster hver sit stykke");
+  assert.ok(work.get("a")! > oneSprint && work.get("b")! > oneTop, "hver ekstra passage koster oveni");
   assert.equal(jerseyHuntFrontWork7855([{ kind: "kom" }]).size, 0);
   assert.equal(jerseyHuntFrontWork7855(undefined).size, 0);
 });
@@ -194,8 +199,10 @@ test("#7855 C i motoren: jagt oven paa et tempo-led er aldrig gratis", () => {
   const late = { at: "kom", kom_index: tops[1].i } as const;
   let paid = 0;
   for (const seed of SEEDS) {
-    const hunt = runStage(row, seed, { t1r2: [{ task: "hunt_kom" }, { task: "tempo", from: late }] });
-    const tempo = runStage(row, seed, { t1r2: [{ task: "tempo" }] });
+    // #7855 valg 1 (ejer 13/11): bjergjagten ligger paa udbrudsleddet, ikke som eget led; sammenlignes
+    // med samme plan uden jagten (rent udbrud, derefter tempo).
+    const hunt = runStage(row, seed, { t1r2: [{ task: "breakaway", hunt: "hunt_kom" }, { task: "tempo", from: late }] });
+    const tempo = runStage(row, seed, { t1r2: [{ task: "breakaway" }, { task: "tempo", from: late }] });
     assert.deepEqual(timesOf(hunt), timesOf(tempo), "samme indsats i loebet");
     assert.equal(hunt.output.stage_plan_load_efforts?.["t1r2"], "protect", "dagens haardeste led er tempo");
     const worked = passagesOf(hunt, "kom").some((p) => p.hunt_work_7855?.includes("t1r2"));
@@ -227,18 +234,19 @@ const huntWorked = (run: Run, id: string) => [...passagesOf(run, "sprint"), ...p
 
 test("#7855 frikort (dom 2): fri rolle og sprinterkaptajn betaler aldrig mindre med jagt end for samme loeb uden opgaven", () => {
   // De kaemper om passagerne i forvejen, saa opgaven giver dem samme loeb som foelg med (samme indsats).
-  const cases: Array<{ id: string; role: string; task: "hunt_points" | "hunt_kom"; profiles: string[] }> = [
-    { id: "t0r1", role: "sprint_captain", task: "hunt_points", profiles: ["flat", "hilly", "mountain"] },
-    { id: "t0r4", role: "free_role", task: "hunt_points", profiles: ["flat", "hilly", "mountain"] },
-    { id: "t0r4", role: "free_role", task: "hunt_kom", profiles: ["hilly", "mountain"] },
+  // #7855 valg 1 (ejer 13/11): bjergjagten findes kun paa udbrudsleddet, saa den sammenlignes med rent udbrud.
+  const cases: Array<{ id: string; role: string; task: "hunt_points" | "hunt_kom"; profiles: string[]; plan: StagePlanLeg[]; base: StagePlanLeg[] }> = [
+    { id: "t0r1", role: "sprint_captain", task: "hunt_points", profiles: ["flat", "hilly", "mountain"], plan: [{ task: "hunt_points" }], base: [{ task: "follow_moves" }] },
+    { id: "t0r4", role: "free_role", task: "hunt_points", profiles: ["flat", "hilly", "mountain"], plan: [{ task: "hunt_points" }], base: [{ task: "follow_moves" }] },
+    { id: "t0r4", role: "free_role", task: "hunt_kom", profiles: ["hilly", "mountain"], plan: [{ task: "breakaway", hunt: "hunt_kom" }], base: [{ task: "breakaway" }] },
   ];
   for (const c of cases) {
     assert.equal(frozenField().find((r) => r.rider_id === c.id)!.role, c.role);
     for (const profile of c.profiles) {
       for (const seed of SEEDS.slice(0, 3)) {
         const label = `${c.role} ${c.task} ${profile} ${seed}`;
-        const hunt = runStage(stageRow(profile), seed, { [c.id]: [{ task: c.task }] });
-        const follow = runStage(stageRow(profile), seed, { [c.id]: [{ task: "follow_moves" }] });
+        const hunt = runStage(stageRow(profile), seed, { [c.id]: c.plan });
+        const follow = runStage(stageRow(profile), seed, { [c.id]: c.base });
         assert.ok(hunt.output.stage_plan_load_efforts?.[c.id], `${label}: planen er gyldig`);
         assert.ok([...passagesOf(hunt, "sprint"), ...passagesOf(hunt, "kom")].some((p) => p.hunters?.includes(c.id)), `${label}: han jager`);
         assert.deepEqual(timesOf(hunt), timesOf(follow), `${label}: samme loeb som foelg med`);
@@ -249,16 +257,17 @@ test("#7855 frikort (dom 2): fri rolle og sprinterkaptajn betaler aldrig mindre 
 });
 
 test("#7855 valg 3: hver passage opgaven faar en hjaelper til at koere med om, koster oveni samme indsats uden opgaven", () => {
-  const cases: Array<{ id: string; task: "hunt_points" | "hunt_kom"; rows: Array<() => Record<string, unknown>> }> = [
-    { id: "t0r2", task: "hunt_points", rows: [() => stageRow("flat"), flatTwoSprints, () => stageRow("hilly"), () => stageRow("mountain")] },
-    { id: "t1r2", task: "hunt_kom", rows: [() => stageRow("hilly"), () => stageRow("mountain")] },
+  // #7855 valg 1 (ejer 13/11): bjergjagten findes kun paa udbrudsleddet, saa den sammenlignes med rent udbrud.
+  const cases: Array<{ id: string; task: "hunt_points" | "hunt_kom"; rows: Array<() => Record<string, unknown>>; plan: StagePlanLeg[]; base: StagePlanLeg[] }> = [
+    { id: "t0r2", task: "hunt_points", rows: [() => stageRow("flat"), flatTwoSprints, () => stageRow("hilly"), () => stageRow("mountain")], plan: [{ task: "hunt_points" }], base: [{ task: "tempo" }] },
+    { id: "t1r2", task: "hunt_kom", rows: [() => stageRow("hilly"), () => stageRow("mountain")], plan: [{ task: "breakaway", hunt: "hunt_kom" }], base: [{ task: "breakaway" }] },
   ];
   let paid = 0;
   for (const c of cases) {
     for (const row of c.rows) {
       for (const seed of SEEDS.slice(0, 3)) {
-        const hunt = runStage(row(), seed, { [c.id]: [{ task: c.task }] });
-        const tempo = runStage(row(), seed, { [c.id]: [{ task: "tempo" }] });
+        const hunt = runStage(row(), seed, { [c.id]: c.plan });
+        const tempo = runStage(row(), seed, { [c.id]: c.base });
         assert.deepEqual(timesOf(hunt), timesOf(tempo), "samme indsats i loebet: samme loeb");
         const label = `${c.task} ${hunt.profile} ${seed}`;
         if (huntWorked(hunt, c.id) > 0) {

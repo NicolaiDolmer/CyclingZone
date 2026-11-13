@@ -107,6 +107,7 @@ export const TASK_ROLES: Readonly<Record<StagePlanTask, readonly StagePlanRole[]
   ride_in: ALL_ROLES,
   // #7855: klassementsfolkene koerer for klassementet, ikke for troejerne (#2757 G18, #6937).
   hunt_points: ["sprint_captain", "helper", "hunter", "free_role"],
+  // #7855 valg 1 (13/11): kun som jagten paa udbrudsleddet (`hunt`), aldrig som eget led.
   hunt_kom: ["helper", "hunter", "free_role"],
 });
 
@@ -340,6 +341,11 @@ export function validateStagePlanLegs(legs: unknown, role: StagePlanRole, route:
     const toKm = typeof next === "number" ? next : route.distance_km;
     if (!stretchHasHuntPassage(route, kind, legKms[i] as number, toKm)) return kind === "kom" ? "stage_plan_hunt_no_climb" : "stage_plan_hunt_no_sprint";
   }
+  // #7855 (ejer 13/11 valg 1, "Kun sammen med udbrud"): bjergjagt findes kun paa udbrudsleddet
+  // (`hunt`). Et selvstaendigt "Hent bjergpoint"-led er ikke en opgave, heller ikke efter et
+  // udbrudsled (kommer han ikke med, ville det vaere bjergjagt fra feltet). Sidst, saa alle andre
+  // planer faar praecis samme svar som foer.
+  if (legs.some((leg) => (leg as StagePlanLeg).task === "hunt_kom")) return "stage_plan_unknown_task";
   return null;
 }
 
