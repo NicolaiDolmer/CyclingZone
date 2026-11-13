@@ -80,7 +80,7 @@
     {
       "issue": 6584,
       "area": "web-experience",
-      "why": "Ejerens eksplicitte natmandat 12/11: installerbar PWA trin 1, offline/netvaerksrettelser som draft uden merge eller prod. https://github.com/NicolaiDolmer/CyclingZone/issues/6584#issuecomment-6810434974"
+      "why": "Ejerens eksplicitte natmandat 12/11: installerbar PWA trin 1, offline/netvaerksrettelser som draft uden merge eller prod. https://github.com/NicolaiDolmer/CyclingZone/issues/6584#issuecomment-6810434974 . Ejer 13/11 i Claude-session om Google Play (PR #8059) paa kortet luk/goer klar/lad staa: '2 - på en fremragende og verdensklasse måde.e langsigtet og professionelt' (mulighed 2 = 'Ja, gør den klar'); kontotype, kontosletning, betalingsmodel og merge er ejerens egne kort, ingen udgift uden ejerens ja."
     },
     {
       "issue": 8019,
@@ -627,10 +627,6 @@
     {
       "issue": 7535,
       "why": "Planlaegningssiden trin 1 (PR #8056, bag slukket kontakt) foeres videre; ejer 13/11 i Claude-session paa kort: 'Jeg vil gerne gå videre med den side. Den måde ikke være dårligere end wireframet nogle steder og den må ikke være dårligere end nuværende formsider, formål anlægning, holdudtaglesesider mv. de'. Merge og taending er ejerens egne kort."
-    },
-    {
-      "issue": 6584,
-      "why": "Google Play (PR #8059) goeres klar; ejer 13/11 i Claude-session paa kortet luk/goer klar/lad staa: '2 - på en fremragende og verdensklasse måde.e langsigtet og professionelt' (mulighed 2 = 'Ja, gør den klar'). Kontotype, kontosletning, betalingsmodel og merge er ejerens egne kort; ingen udgift uden ejerens ja."
     }
   ],
   "brandList": [
