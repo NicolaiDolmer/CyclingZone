@@ -78,8 +78,7 @@ import { ensureCurveBIgnition, curveBTransitionForDate, loadCurveBTransitionRost
 import { loadRaceDayEffortByRider, raceDayIntentionYieldMultiplier } from "./raceDayIntentionYield.js"; // #6641 variant B
 import { loadRaceDayRoleYield, loadRaceDayRoleByRider } from "./raceDayRoleYield5950.js"; // #5950 haard dag + rolle (kaldes via withRaceDayRoleYieldXp)
 import { loadDevelopmentScoreB, developmentTickArgs } from "./developmentScoreWiring.js"; // #6950 Udviklingsscore B
-import { loadDevelopmentXp, loadDevelopmentXpDateCap, withRaceDayRoleYieldXp } from "./developmentXpFlag.ts"; // #6110 XP-modellen (slukket)
-import { capXpTickGainsPerDate } from "./developmentXp.ts"; // #7739: kun i overgangsvinduet (slukket som standard)
+import { loadDevelopmentXp, withRaceDayRoleYieldXp } from "./developmentXpFlag.ts"; // #6110 XP-modellen (slukket)
 import { loadTrainNowBonusRiderIds } from './trainNowBonus7737.ts';
 import { loadRaceCatchUp } from "./raceCatchUpWiring.js"; // #6950 catch-up via loeb
 import { assessIllness } from "./conditionIllness.js"; // #6938 sygdom af langvarig ekstrem traethed
@@ -817,11 +816,6 @@ export async function runTeamTrainingDay({
   const raceRoleYield = await loadRaceDayRoleYield({ supabase, strict: conditionPerDate });
   // #6110: XP-modellen for tick-datoen. null = dagens model, bit-identisk; kaster sammen med Score B/catch-up.
   const developmentXp = await loadDevelopmentXp({ supabase, tickDate, strict: conditionPerDate, developmentScoreB, raceCatchUp, now: () => +now });
-  // #7739: under XP intet +1-loft pr. dato. Krogpunkt: overgangsvinduet (null = intet loft).
-  // Det bruger datoens tidligere gevinster, som kun laeses med dato-loft-kontakten on.
-  const xpDateCap = developmentXp && capPerDateOn
-    ? await loadDevelopmentXpDateCap({ supabase, tickDate, strict: conditionPerDate })
-    : null;
 
   // #6500: holdets raekke hentes ÉN gang, og kun naar flaget er taendt. Regel-gate,
   // ikke berigelse: et gaet ville enten give et AI-hold udvikling eller tage den
@@ -1363,12 +1357,8 @@ export async function runTeamTrainingDay({
         tickResult = { ...tickResult, abilities: { ...abilities }, gains: {}, progress: preProgress };
       } else if (developmentXp) {
         // #7739 (ejer 7/11): under XP er der intet +1-loft pr. evne pr. dato; kun prisen
-        // bremser, og intet dato-loft betyder ingen kvittering for det. Undtagelse:
-        // overgangsvinduet (xpDateCap, slukket som standard), der koeber tick'et om fra
-        // tilstanden foer tick'et, saa ingen XP gaar tabt.
-        if (xpDateCap != null) {
-          tickResult = capXpTickGainsPerDate({ tickResult, abilities, progress: preProgress, usedGains: dateUsedGains(), cap: xpDateCap }, developmentXp);
-        }
+        // bremser, og intet dato-loft betyder ingen kvittering for det. Gemt fremgang
+        // udbetales helt paa én nat; der findes ingen dryp-regel (#6110 R10, ejer 12/11).
       } else if (!capPerDateOn) {
         // #6210-flaget slukket: ingen dato-loft (bit-identisk med foer #7075).
       } else {

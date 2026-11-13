@@ -20,7 +20,7 @@ import { withRaceDayRoleYield } from "./raceDayRoleYield5950.js";
 import { FRESH_FLAG_KEYS } from "./featureStage.js";
 import { STAGE_FLAGS } from "./stageFlagCatalog.js";
 import {
-  XP_RACE_DAY_FOCUS, buyPoints, capXpTickGainsPerDate, developmentXpAbilityDelta, validateDevelopmentXpParams,
+  XP_RACE_DAY_FOCUS, buyPoints, developmentXpAbilityDelta, validateDevelopmentXpParams,
   xpPriceForNextPoint,
 } from "./developmentXp.ts";
 import {
@@ -353,25 +353,19 @@ test("#6110 variation: uden variationsfelter er tick'et uaendret, og noeglen kom
   assert.ok(!JSON.stringify(varied).includes(VAR_RAW.variation.key));
 });
 
-// ── Maks +1 pr. dato i XP ─────────────────────────────────────────────────────
+// ── Intet loft pr. dato i XP (#6110 R9/R10) ────────────────────────────────────
 
-test("#6110 dato-loft: klippet tick koebes om fra tilstanden foer tick'et, ingen XP tabt", () => {
+test("#6110 intet loft: et tick koeber alle point, XP'en raekker til, uanset dagsloftet", () => {
   const abilities = abilitiesAt(5);
   const progress = { climbing: 0.5 };
   const tick = applyDailyTick(tickArgs({ abilities, caps: abilities, progress }));
   assert.ok(tick.gains.climbing >= 2, "scenariet koeber flere point");
-  const capped = capXpTickGainsPerDate({ tickResult: tick, abilities, progress, usedGains: {} }, XP);
-  assert.equal(capped.gains.climbing, 1);
-  const again = buyPoints({ level: 5, bar: 0.5, xp: tick.xp.climbing, maxPoints: 1 }, XP);
-  assert.equal(capped.abilities.climbing, again.level);
-  assert.equal(capped.progress.climbing, again.bar);
-  assert.equal(capped.capped_by_date.climbing, tick.gains.climbing - 1);
-  const used = capXpTickGainsPerDate({ tickResult: tick, abilities, progress, usedGains: { climbing: 1 } }, XP);
-  assert.equal(used.gains.climbing, undefined);
-  assert.equal(used.abilities.climbing, 5);
-  // Uden klip: samme objekt.
-  const small = { gains: { climbing: 1 }, abilities, progress };
-  assert.equal(capXpTickGainsPerDate({ tickResult: small, abilities, progress }, XP), small);
+  const facit = buyPoints({ level: 5, bar: 0.5, xp: tick.xp.climbing }, XP);
+  assert.equal(tick.abilities.climbing, facit.level);
+  assert.equal(tick.progress.climbing, facit.bar);
+  for (const hardDailyCap of [1, 2]) {
+    assert.deepEqual(applyDailyTick(tickArgs({ abilities, caps: abilities, progress, hardDailyCap })), tick, `hardDailyCap=${hardDailyCap}`);
+  }
 });
 
 // ── Loebsdagens rolletillaeg ──────────────────────────────────────────────────
