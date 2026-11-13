@@ -697,6 +697,8 @@ export async function notifyDiscordDM({ teamId = null, userId = null, type, titl
     console.info("[discord-dm:no-recipient]", { teamId, userId, type });
     // #2571: aggregeret rate-guard — no-op medmindre kalderen er en cron-tick
     // (cronRun:true). Se discordDmRateGuard.js for hvorfor/hvordan.
+    // #8149: med slukket hovedafbryder tælles intet (se nedenfor), heller ikke her.
+    if (cronRun && !(await playerDmEnabled())) return;
     recordDmAttempt({ type, skipped: true, cronRun });
     return;
   }
@@ -716,7 +718,7 @@ export async function notifyDiscordDM({ teamId = null, userId = null, type, titl
   // #8149: en slukket hovedafbryder er et bevidst valg ligesom muted, ikke et
   // fejlet leveringsforsøg. Tælles den, ville rate-guarden fyre en falsk
   // "alle DM'er skippet"-alarm efter tre cron-kørsler. Læsningen er husket.
-  if (!delivered && !(await playerDmEnabled())) return;
+  if (!delivered && cronRun && !(await playerDmEnabled())) return;
   recordDmAttempt({ type, skipped: !delivered, cronRun });
 }
 

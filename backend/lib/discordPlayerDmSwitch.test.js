@@ -266,7 +266,11 @@ async function runThreeCronTicks() {
   __resetDmRunGuardForTests();
   const captured = [];
   const captureExceptionFn = (error, context) => captured.push({ error, context });
-  const users = Object.fromEntries([1, 2, 3, 4, 5].map((i) => [`u${i}`, { discord_id: `d${i}`, discord_dm_enabled: true, discord_dm_prefs: {} }]));
+  // Blandet population: 5 koblede og 5 uden discord_id (no-recipient-grenen).
+  const users = Object.fromEntries([
+    ...[1, 2, 3, 4, 5].map((i) => [`u${i}`, { discord_id: `d${i}`, discord_dm_enabled: true, discord_dm_prefs: {} }]),
+    ...[6, 7, 8, 9, 10].map((i) => [`u${i}`, { discord_id: null, discord_dm_enabled: true, discord_dm_prefs: {} }]),
+  ]);
   const client = fakeUsersClient(users);
   for (let tick = 0; tick < 3; tick++) {
     for (const userId of Object.keys(users)) {
@@ -279,8 +283,8 @@ async function runThreeCronTicks() {
 
 test("notifyDiscordDM off: ingen falsk 'alle DM'er skippet'-alarm fra rate-guarden", async () => {
   reset({ value: "off" });
-  const captured = await runThreeCronTicks();
-  assert.equal(captured.length, 0);
+  const { result: captured } = await withConsoleCapture(() => runThreeCronTicks());
+  assert.equal(captured.length, 0, "hverken koblede eller ukoblede modtagere tæller, når kontakten er slukket");
   assert.equal(discordCalls().length, 0);
 });
 
@@ -292,6 +296,7 @@ test("notifyDiscordDM on: rate-guarden alarmerer stadig, når leveringen reelt f
     const { result: captured } = await withConsoleCapture(() => runThreeCronTicks());
     assert.equal(captured.length, 1);
     assert.deepEqual(captured[0].context.fingerprint, ["discord-dm-all-skipped", "board_update"]);
+    assert.equal(captured[0].context.extra.attempted, 10, "koblede og ukoblede tæller som i dag");
   } finally {
     process.env.DISCORD_BOT_TOKEN = savedToken;
   }
