@@ -615,6 +615,22 @@
     {
       "issue": 8101,
       "why": "Svartids-alarm for de ti vigtigste handlinger (internt maalevaerktoej, intet synligt), ejer-go 13/11 i Claude-session paa to kort: 'Ja, den liste' og 'Ja, byg den'"
+    },
+    {
+      "issue": 6912,
+      "why": "Kun fjernelse af det slukkede udbrudsbud (race_breakaway_outlook, aldrig taendt) fra koden; ejer 13/11 i Claude-session paa kort om den udloebne frist: 'Fjern buddet'. Bjergrettelsen er ikke omfattet."
+    },
+    {
+      "issue": 8143,
+      "why": "Fundament: direkte linje til databasen, foerst en ren maaleproeve uden virkning for spillerne; ejer 13/11 i Claude-session paa kort: 'A: direkte linje, mål først (Recommended)'. Hver senere flytning af en tung handling kraever dommer og eget ejer-kort."
+    },
+    {
+      "issue": 7535,
+      "why": "Planlaegningssiden trin 1 (PR #8056, bag slukket kontakt) foeres videre; ejer 13/11 i Claude-session paa kort: 'Jeg vil gerne gå videre med den side. Den måde ikke være dårligere end wireframet nogle steder og den må ikke være dårligere end nuværende formsider, formål anlægning, holdudtaglesesider mv. de'. Merge og taending er ejerens egne kort."
+    },
+    {
+      "issue": 6584,
+      "why": "Google Play (PR #8059) goeres klar; ejer 13/11 i Claude-session paa kortet luk/goer klar/lad staa: '2 - på en fremragende og verdensklasse måde.e langsigtet og professionelt' (mulighed 2 = 'Ja, gør den klar'). Kontotype, kontosletning, betalingsmodel og merge er ejerens egne kort; ingen udgift uden ejerens ja."
     }
   ],
   "brandList": [
