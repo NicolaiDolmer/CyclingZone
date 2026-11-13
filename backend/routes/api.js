@@ -153,6 +153,7 @@ import { withdrawCounterOffer, claimCounterForAccept, buildCounterOfferWithdrawn
 import { getParkedRiderReleaseIssue, getParkedRiderTradeIssue } from "../lib/parkedRiderGuard6181.js"; // #6181
 import { countSellerAuctionOutgoing, checkAutoAcceptMutation, isAutoAcceptEnabled, getListingPriceUpdateErrorResponse, getOfferAutoAcceptIssue, registerAutoAcceptRoutes, releaseRiderUnderTeamLock } from "../lib/autoAccept2176.js"; // #2176
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
+import { readUiPrefs, sanitizeUiPrefsPatch, writeUiPrefs } from "../lib/userUiPrefs.js"; // #7778
 import {
   notifyNewAuction,
   notifyOutbid,
@@ -11056,6 +11057,33 @@ router.patch("/me/discord-dm-prefs", requireAuth, marketWriteLimiter, async (req
     .eq("id", req.user.id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ ok: true, dm_prefs: merged });
+});
+
+// #7778 · Visningsvalg gemt paa brugeren (fx "Skjul rute" paa loebssiden), saa
+// valget foelger spilleren paa tvaers af etaper, sider og enheder. Kun noegler paa
+// allowlisten i lib/userUiPrefs.js. `available: false` = tabellen er ikke
+// migreret endnu; klienten bruger saa sin lokale kopi.
+router.get("/me/ui-prefs", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    const out = await readUiPrefs(supabase, req.user.id);
+    res.json(out);
+  } catch (err) {
+    captureException(err, { tags: { route: "me_ui_prefs_get" } });
+    res.status(500).json({ error: "Could not read display choices", errorCode: "ui_prefs_read_failed" });
+  }
+});
+
+router.put("/me/ui-prefs", requireAuth, marketWriteLimiter, async (req, res) => {
+  const checked = sanitizeUiPrefsPatch(req.body);
+  if (!checked.ok) return res.status(400).json({ error: checked.error, errorCode: checked.errorCode });
+  try {
+    const out = await writeUiPrefs(supabase, req.user.id, checked.patch);
+    if (!out.available) return res.status(503).json({ error: "Display choices are not available yet", errorCode: "ui_prefs_unavailable" });
+    res.json({ ok: true, ...out });
+  } catch (err) {
+    captureException(err, { tags: { route: "me_ui_prefs_put" } });
+    res.status(500).json({ error: "Could not save display choices", errorCode: "ui_prefs_write_failed" });
+  }
 });
 
 // PUT /api/me/username — skift brugernavn for den aktuelle bruger (#1746).

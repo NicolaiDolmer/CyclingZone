@@ -1,4 +1,39 @@
 {
+  "racePageV6": {
+    "tab": {
+      "results": "Resultados",
+      "stage": "Etapa",
+      "story": "Historia",
+      "standings": "Clasificaciones",
+      "tactics": "Táctica",
+      "team": "Equipo"
+    },
+    "hero": {
+      "stageLocks": "La etapa {number} se cierra a las {time} · {countdown}",
+      "locks": "Se cierra a las {time} · {countdown}",
+      "notScheduled": "La etapa {number} aún no tiene hora de salida"
+    },
+    "route": {
+      "aria": "Recorrido de la etapa",
+      "km": "{km} km",
+      "gain": "{gain} m de desnivel",
+      "climbs": "{count, plural, one {# subida} other {# subidas}}",
+      "hide": "Ocultar recorrido",
+      "show": "Mostrar recorrido",
+      "saved": "Guardado",
+      "savedHere": "Guardado en este dispositivo",
+      "notSaved": "No guardado",
+      "profileTitle": "El recorrido"
+    },
+    "yourDay": {
+      "title": "Tu día"
+    },
+    "results": {
+      "notRiddenTitle": "Prepárate para la etapa {number}",
+      "notRiddenHint": "Los resultados aparecen aquí cuando se haya corrido la etapa.",
+      "openStage": "Ver la etapa"
+    }
+  },
   "stagePlanReady": {
     "gc": {
       "name": "Correr para la general",

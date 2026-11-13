@@ -1,4 +1,39 @@
 {
+  "racePageV6": {
+    "tab": {
+      "results": "Uitslagen",
+      "stage": "Etappe",
+      "story": "Verhaal",
+      "standings": "Klassementen",
+      "tactics": "Tactiek",
+      "team": "Ploeg"
+    },
+    "hero": {
+      "stageLocks": "Etappe {number} sluit om {time} · {countdown}",
+      "locks": "Sluit om {time} · {countdown}",
+      "notScheduled": "Etappe {number} heeft nog geen starttijd"
+    },
+    "route": {
+      "aria": "Parcours van de etappe",
+      "km": "{km} km",
+      "gain": "{gain} m klimmen",
+      "climbs": "{count, plural, one {# klim} other {# klimmen}}",
+      "hide": "Parcours verbergen",
+      "show": "Parcours tonen",
+      "saved": "Opgeslagen",
+      "savedHere": "Opgeslagen op dit apparaat",
+      "notSaved": "Niet opgeslagen",
+      "profileTitle": "Het parcours"
+    },
+    "yourDay": {
+      "title": "Jouw dag"
+    },
+    "results": {
+      "notRiddenTitle": "Maak je klaar voor etappe {number}",
+      "notRiddenHint": "De uitslag staat hier zodra de etappe is gereden.",
+      "openStage": "Bekijk de etappe"
+    }
+  },
   "stagePlanReady": {
     "gc": {
       "name": "Rijden voor het klassement",

@@ -489,6 +489,18 @@ features:
     verified: 2026-11-07
     note: "#7879: seedes off, kun visning. Ejeren flytter kontakten til beta; roadmap-tekst følger med."
 
+  - id: race-page-v6
+    area: race-day
+    title_en: Race page v6, step 1 (results for a ridden stage)
+    title_da: Løbssiden v6, trin 1 (resultater for en kørt etape)
+    state: building
+    decision: ejer-beslutning
+    decide_by: 2026-11-26
+    epic: 7778
+    ssot: docs/RACE_ENGINE_RULES.md
+    verified: 2026-11-12
+    note: "#7778: kontakt race_page_v6 seedes off (migration 2026-11-12), kun visning; flag-feltet sættes når rækken findes i prod."
+
   - id: rider-hover-card
     area: squad
     title_en: Rider card

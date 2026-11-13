@@ -1,4 +1,39 @@
 {
+  "racePageV6": {
+    "tab": {
+      "results": "Résultats",
+      "stage": "Étape",
+      "story": "Récit",
+      "standings": "Classements",
+      "tactics": "Tactique",
+      "team": "Équipe"
+    },
+    "hero": {
+      "stageLocks": "L'étape {number} se verrouille à {time} · {countdown}",
+      "locks": "Se verrouille à {time} · {countdown}",
+      "notScheduled": "L'étape {number} n'a pas encore d'heure de départ"
+    },
+    "route": {
+      "aria": "Parcours de l'étape",
+      "km": "{km} km",
+      "gain": "{gain} m de dénivelé",
+      "climbs": "{count, plural, one {# montée} other {# montées}}",
+      "hide": "Masquer le parcours",
+      "show": "Afficher le parcours",
+      "saved": "Enregistré",
+      "savedHere": "Enregistré sur cet appareil",
+      "notSaved": "Non enregistré",
+      "profileTitle": "Le parcours"
+    },
+    "yourDay": {
+      "title": "Ta journée"
+    },
+    "results": {
+      "notRiddenTitle": "Prépare l'étape {number}",
+      "notRiddenHint": "Les résultats s'affichent ici une fois l'étape courue.",
+      "openStage": "Voir l'étape"
+    }
+  },
   "stagePlanReady": {
     "gc": {
       "name": "Rouler pour le général",

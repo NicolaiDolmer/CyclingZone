@@ -303,6 +303,12 @@
     "contract_batch_salary_cap": "Estas ampliaciones llevarían tu salario total por encima del tope de la directiva de {cap} CZ$. No se ha cambiado nada",
     "contract_batch_write_failed": "Algo salió mal al guardar un contrato. No se ha cambiado nada",
     "contract_batch_partial": "Algunos contratos cambiaron durante la ampliación y no todo se pudo deshacer. Revisa los ciclistas de abajo",
-    "team_lookup_failed": "El servidor devolvió un error. Inténtalo de nuevo en breve"
+    "team_lookup_failed": "El servidor devolvió un error. Inténtalo de nuevo en breve",
+    "ui_prefs_invalid_payload": "No se pudo guardar esa opción. Recarga la página e inténtalo de nuevo.",
+    "ui_prefs_unknown_keys": "No se pudo guardar esa opción. Recarga la página e inténtalo de nuevo.",
+    "ui_prefs_invalid_value": "No se pudo guardar esa opción. Recarga la página e inténtalo de nuevo.",
+    "ui_prefs_read_failed": "No se pudieron cargar tus opciones de vista. La página usa las opciones por defecto.",
+    "ui_prefs_unavailable": "Por ahora tu opción de vista se guarda solo en este dispositivo.",
+    "ui_prefs_write_failed": "No se pudo guardar tu opción de vista. Inténtalo de nuevo en un momento."
   }
 }

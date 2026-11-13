@@ -84,6 +84,8 @@ import { fetchTeamOrders } from "../lib/tacticsOrdersAdapter.js"; // #6080: v4-o
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import { defaultStage, resolveV2Tab, todaysStages } from "../components/race/stagePageV2/stagePageV2Model.ts"; // #6570
 import { fetchStageProfiles } from "../components/race/stagePageV2/stageProfilesQuery.ts"; // #6570
+import { useRacePageV6Enabled } from "../components/race/v6/racePageV6Flag.ts"; // #7778
+import { resolveV6Tab, tacticsCta } from "../components/race/v6/racePageV6Model.ts"; // #7778
 
 // #3914: FinalKilometrePlayback vises nu bag en stille knap (StoryOfTheStage-
 // Section, "The Final Kilometre") i stedet for altid-øverst — lazy-loadet
@@ -95,6 +97,8 @@ import { fetchStageProfiles } from "../components/race/stagePageV2/stageProfiles
 const FinalKilometrePlayback = lazyWithRetry(() => import("../components/race/FinalKilometrePlayback.jsx"));
 // #6570: etapeside 2.0 i eget chunk (kun modellen, som RaceDetailPage selv bruger, er statisk).
 const StagePageV2 = lazyWithRetry(() => import("../components/race/stagePageV2/StagePageV2.tsx"));
+// #7778: løbssiden v6 trin 1 bag kontakten race_page_v6 (eget chunk; slukket = uændret side).
+const RacePageV6 = lazyWithRetry(() => import("../components/race/v6/RacePageV6.tsx"));
 
 // #959 Etape-resultater V1 — detaljeret pr.-etape-visning.
 //
@@ -310,7 +314,7 @@ function byRank(a, b) {
 
 // #2081 Discord-ønske: holdfilter (alle / mit hold / vælg hold) — delt af Samlet-
 // og etape-fanerne, så filteret følger med når man skifter etape.
-function TeamFilterSelect({ value, onChange, teamOptions, hasMyTeam, t }) {
+function TeamFilterSelect({ value, onChange, teamOptions, hasMyTeam, t, className = "" }) {
   return (
     <select
       value={value}
@@ -318,7 +322,7 @@ function TeamFilterSelect({ value, onChange, teamOptions, hasMyTeam, t }) {
       aria-label={t("detail.teamFilter.label")}
       className={`px-3 py-2 rounded-cz text-sm font-medium transition-all border max-w-56 cursor-pointer
         focus:outline-hidden focus:ring-1 focus:ring-cz-accent
-        ${value !== "all" ? "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t" : "bg-cz-card border-cz-border text-cz-2"}`}>
+        ${value !== "all" ? "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t" : "bg-cz-card border-cz-border text-cz-2"}${className ? ` ${className}` : ""}`}>
       <option value="all">{t("detail.teamFilter.all")}</option>
       {hasMyTeam && <option value="mine">{t("detail.teamFilter.mine")}</option>}
       {teamOptions.map(team => (
@@ -445,6 +449,8 @@ export default function RaceDetailPage() {
   // stage-roles-svar. Hentes ÉN gang her og sendes ned, i stedet for ét kald pr.
   // fane-skift. Hooken svarer null (henter) / false (fejlede) / objekt.
   const { data: stageRoles, reload: reloadStageRoles } = useStageRoles(raceId);
+  // #7778: v6-rammen (bred side, Resultater først for en kørt etape). Slukket = siden som i dag.
+  const v6 = useRacePageV6Enabled();
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -1304,44 +1310,76 @@ export default function RaceDetailPage() {
   };
   // #7330: valgte etapes udgaaede, saa egne ikke forsvinder fra "Your riders".
   const v2DnfRows = dnfRowsForStage(incidents, v2SelectedStage, teamIdByRiderFromRows(stagePointsRows));
-  const stagePageV2El = (
-    <StagePageV2
-      isStageRace={v2IsStageRace}
-      totalStages={totalStages}
-      stagesCompleted={ridden}
-      raceFinished={phase === "after"}
-      selectedStage={v2SelectedStage}
-      todayStage={v2TodayStage}
-      onSelectStage={changeStage}
-      activeTab={resolveV2Tab(searchParams.get("tab"))}
-      onChangeTab={changeV2Tab}
-      onOpenTactics={openV2Tactics}
-      profileByStage={profileByStage}
-      schedule={schedule}
-      timeLabelFor={(d) => formatStageTime(d, locale)}
-      results={results}
-      stagePointRows={stagePointsRows}
-      stageLoaded={loadedStages.has(v2SelectedStage)}
-      stageErrorSlot={stageFetchState(v2SelectedStage, { loaded: loadedStages, failed: failedStages }) === "failed" ? stageLoadErrorFor(v2SelectedStage) : null}
-      myTeamId={myTeamId}
-      stageRoles={stageRoles}
-      careerEvents={careerEvents}
-      dnfRows={v2DnfRows}
-      standingsSlot={renderTabContent("results")}
-      teamSlot={renderTabContent("team")}
-      tacticsSlot={renderTabContent("tactics", { tacticsStage: v2TacticsStage })}
-      nowMs={nowMs}
-      raceId={raceId}
-      emptyStageSlot={
-        <EmptyState
-          icon={<FlagIcon size={26} aria-hidden="true" />}
-          title={t("racePage.stages.emptyTitle")}
-          description={t("racePage.stages.emptyHint")}
-          action={<Button size="sm" variant="secondary" onClick={() => changeV2Tab("team")}>{t("stagePageV2.tab.team")}</Button>}
-        />
-      }
-    />
+  // #7778: samme props til etapeside 2.0 og v6-rammen (v6 genbruger fanernes indhold uændret).
+  const stagePageProps = {
+    isStageRace: v2IsStageRace,
+    totalStages,
+    stagesCompleted: ridden,
+    raceFinished: phase === "after",
+    selectedStage: v2SelectedStage,
+    todayStage: v2TodayStage,
+    onSelectStage: changeStage,
+    onChangeTab: changeV2Tab,
+    onOpenTactics: openV2Tactics,
+    profileByStage,
+    schedule,
+    timeLabelFor: (d) => formatStageTime(d, locale),
+    results,
+    stagePointRows: stagePointsRows,
+    stageLoaded: loadedStages.has(v2SelectedStage),
+    stageErrorSlot: stageFetchState(v2SelectedStage, { loaded: loadedStages, failed: failedStages }) === "failed" ? stageLoadErrorFor(v2SelectedStage) : null,
+    myTeamId,
+    stageRoles,
+    careerEvents,
+    dnfRows: v2DnfRows,
+    standingsSlot: renderTabContent("results"),
+    teamSlot: renderTabContent("team"),
+    tacticsSlot: renderTabContent("tactics", { tacticsStage: v2TacticsStage }),
+    nowMs,
+    raceId,
+    emptyStageSlot: (
+      <EmptyState
+        icon={<FlagIcon size={26} aria-hidden="true" />}
+        title={t("racePage.stages.emptyTitle")}
+        description={t("racePage.stages.emptyHint")}
+        action={<Button size="sm" variant="secondary" onClick={() => changeV2Tab("team")}>{t("stagePageV2.tab.team")}</Button>}
+      />
+    ),
+  };
+  const stagePageV2El = <StagePageV2 {...stagePageProps} activeTab={resolveV2Tab(searchParams.get("tab"))} />;
+
+  // #7778: v6-rammen. En kørt etape åbner på Resultater (valg 5); ?tab= vinder, når den er gyldig.
+  const v6Tab = resolveV6Tab(searchParams.get("tab"), { ridden: v2SelectedStage <= ridden, isStageRace: v2IsStageRace });
+  // Hovedets ene guld-knap og låse-fristen (valg 8): samme regel som etapeside 2.0's knap.
+  // stageRoles er null (henter), false (fejlede) eller svaret; kun svaret har ryttere.
+  const v6Roles = /** @type {{ riders?: any[], overrides?: any[] } | null | false} */ (stageRoles);
+  const v6Cta = v6 ? tacticsCta({
+    selectedStage: v2SelectedStage,
+    stagesCompleted: ridden,
+    totalStages,
+    raceFinished: phase === "after",
+    schedule,
+    riders: v6Roles ? (v6Roles.riders ?? []) : [],
+    overrides: v6Roles ? (v6Roles.overrides ?? []) : [],
+    nowMs,
+  }) : null;
+  // Resultatlisten for en kørt etape: den eksisterende tabel (StageTab) i v6-layoutet.
+  const renderV6Results = (n, { profileSlot, sideSlot }) => (
+    stageFetchState(n, { loaded: loadedStages, failed: failedStages }) === "failed"
+      ? stageLoadErrorFor(n)
+      : <StageTab key={n} stage={n} results={results} stagePointsRows={stagePointsRows} profile={profileByStage[n]} profileByStage={profileByStage}
+          filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} incidents={incidents}
+          moments={moments} riderNameById={riderNameById} teamNameById={teamNameById}
+          raceId={race.id} raceName={race.name} raceSquad={race.squad} passages={passages} stageRoles={stageRoles} rulesRevision={rulesRevision} t={t}
+          v6Layout={{
+            profileSlot,
+            sideSlot,
+            loaded: loadedStages.has(n),
+            teamFilter: <TeamFilterSelect value={teamFilter} onChange={setTeamFilter} teamOptions={teamOptions} hasMyTeam={myTeamId != null} t={t}
+              className="[@media(max-width:640px),(pointer:coarse)]:min-h-11" />,
+          }} />
   );
+  const pageWidth = v6 ? "max-w-[1600px]" : "max-w-5xl"; // valg 3: bred side, loft 1600 px
 
   return (
     // #2253: translate="no" — race-resultat-listerne opdaterer live under løb;
@@ -1355,7 +1393,7 @@ export default function RaceDetailPage() {
           pages without portraits omit the slot). Navn FØRST, tags/meta UNDER (samme
           princip som RiderProfileHero: navnet er sidens vigtigste ord, tags er
           metadata). */}
-      <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
+      <div className={`${pageWidth} mx-auto pt-4 md:pt-6 px-4 md:px-8`}>
         <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">
           <ChevronLeftIcon size={13} aria-hidden="true" />
           {backLabel}
@@ -1382,7 +1420,8 @@ export default function RaceDetailPage() {
                 så "Hop til resultater"/"Gennemgå taktik" var to knapper der
                 pegede på noget der nu er ét klik væk. Chippen er ren visning —
                 sidens ENE guld-primær bor i den aktive fane. */}
-            <span
+            {/* #7778: med v6's handlingsrække står fristen dér; chippen ville gentage den. */}
+            {!v6Cta && <span
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-data text-2xs font-semibold uppercase tracking-[.08em] whitespace-nowrap flex-none ${
                 statusChip.live
                   ? "border-cz-danger/30 bg-cz-danger/10 text-cz-danger"
@@ -1391,20 +1430,45 @@ export default function RaceDetailPage() {
             >
               {statusChip.live && <span className="inline-block w-1.5 h-1.5 rounded-full bg-cz-danger" aria-hidden="true" />}
               {statusChip.text}
-            </span>
+            </span>}
           </div>
-          <div className="flex mt-5 pt-4 border-t border-cz-border overflow-x-auto">
-            {statBlocks.map((b, i) => (
-              <HeroStatBlock key={b.label} label={b.label} value={b.value} sub={b.sub} last={i === statBlocks.length - 1} />
-            ))}
-          </div>
+          {/* #7778 (valg 8, wireframe v6 B): ingen bannere. Med v6 og en åben taktik er
+              hovedets bund handlingsrækken (låse-frist + sidens ene guld-knap) i stedet
+              for tal-rækken; fristen ville ellers stå to gange. Ellers tal-rækken som i dag. */}
+          {!v6Cta && (
+            <div className="flex mt-5 pt-4 border-t border-cz-border overflow-x-auto">
+              {statBlocks.map((b, i) => (
+                <HeroStatBlock key={b.label} label={b.label} value={b.value} sub={b.sub} last={i === statBlocks.length - 1} />
+              ))}
+            </div>
+          )}
+          {v6Cta && (
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 mt-5 pt-4 border-t border-cz-border">
+              <p className="m-0 font-data text-sm tabular-nums text-cz-2">
+                {v6Cta.locksAt
+                  ? t(race.race_type === "stage_race" ? "racePageV6.hero.stageLocks" : "racePageV6.hero.locks", {
+                    number: v6Cta.stage, time: formatStageTime(v6Cta.locksAt, locale), countdown: countdownText(v6Cta.locksAt, nowMs, t),
+                  })
+                  : t("racePageV6.hero.notScheduled", { number: v6Cta.stage })}
+              </p>
+              <Button variant="primary" size="md" className="w-full sm:w-auto" onClick={() => openV2Tactics(v6Cta.stage)}>
+                {race.race_type === "stage_race"
+                  ? t("stagePageV2.cta.setTactics", { number: v6Cta.stage, done: v6Cta.done, total: v6Cta.total })
+                  : t("stagePageV2.cta.setTacticsOneDay", { done: v6Cta.done, total: v6Cta.total })}
+              </Button>
+            </div>
+          )}
         </section>
       </div>
 
-      <div className="max-w-5xl mx-auto pt-5 px-4 md:px-8 pb-24 md:pb-16">
+      <div className={`${pageWidth} mx-auto pt-5 px-4 md:px-8 pb-24 md:pb-16`}>
         <div className="flex flex-col gap-[14px]">
 
-          <Suspense fallback={null}>{stagePageV2El}</Suspense>
+          <Suspense fallback={null}>
+            {v6
+              ? <RacePageV6 {...stagePageProps} activeTab={v6Tab} renderResults={renderV6Results} />
+              : stagePageV2El}
+          </Suspense>
         </div>
       </div>
     </div>
@@ -1899,7 +1963,11 @@ function LiveOverallTab({ byType, stage, filterRows, myTeamId, myOwnTeamId, mome
   );
 }
 
-function StageTab({ stage, results, stagePointsRows, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, raceSquad = /** @type {string | undefined} */ (undefined), passages, stageRoles = null, rulesRevision = /** @type {string | null} */ (null), t }) {
+/**
+ * #7778: v6-layoutet (layout B) for Resultater på en kørt etape. null = etapefanen som i dag.
+ * @typedef {{ profileSlot: any, sideSlot: any, loaded: boolean, teamFilter: any }} StageTabV6Layout
+ */
+function StageTab({ stage, results, stagePointsRows, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, raceSquad = /** @type {string | undefined} */ (undefined), passages, stageRoles = null, rulesRevision = /** @type {string | null} */ (null), t, v6Layout = /** @type {StageTabV6Layout | null} */ (null) }) {
   // #7031: U23-/juniorløb har ingen Ungdom-fane.
   const classTabs = raceHasYouthClassification(raceSquad) ? STAGE_CLASS_TABS : STAGE_CLASS_TABS.filter((k) => k !== "young");
   const [classTab, setClassTab] = useState("stage");
@@ -2012,6 +2080,35 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
     ? t("detail.stageFinishOrder", { number: stage })
     : `${t(`detail.classTab.${classTab}`)} — ${t("detail.liveStandings.title", { number: stage })}`;
   const stageLabel = t("detail.tabStage", { number: stage });
+
+  // #7778 (layout B): listen til venstre; profil (fast højde) og "Din dag" til højre.
+  // Mobil først (valg 19): én kolonne i DOM-rækkefølge profil, liste, "Din dag", så
+  // profilen står over listen. Fra containerens 56rem står profilen og "Din dag" i
+  // højre kolonne og listen spænder over begge rækker. Container query, ikke viewport:
+  // layoutet følger den plads siden faktisk har ved siden af app-sidebaren.
+  if (v6Layout) {
+    return (
+      <div className="@container">
+        <div className={`grid grid-cols-1 gap-[14px] items-start @4xl:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] ${v6Layout.profileSlot ? "@4xl:grid-rows-[auto_1fr]" : ""}`}>
+          {v6Layout.profileSlot && <div className="min-w-0 @4xl:col-start-2 @4xl:row-start-1">{v6Layout.profileSlot}</div>}
+          <div className={`min-w-0 flex flex-col gap-[14px] @4xl:col-start-1 @4xl:row-start-1 ${v6Layout.profileSlot ? "@4xl:row-span-2" : ""}`}>
+            <Tabs value={classTab} onChange={setClassTab}>
+              <TabList label={t("detail.classTab.ariaLabel")}>
+                {classTabs.map(key => (
+                  <Tab key={key} value={key}>{t(`detail.classTab.${key}`)}</Tab>
+                ))}
+              </TabList>
+            </Tabs>
+            {v6Layout.loaded
+              ? <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} myOwnTeamId={myOwnTeamId} moments={moments} stageNumber={stage} pointsTotalByRider={pointsTotalMapForKey(stagePointsTotals, classTab)} raceId={raceId} participationHistory={participationHistory} dnfRows={dnfRows} defaultLimit={25} headerControl={v6Layout.teamFilter} />
+              : <Section><SkeletonLines lines={10} /></Section>}
+            {v6Layout.loaded && passageGroups.length > 0 && <PassageList groups={passageGroups} t={t} />}
+          </div>
+          <div className={`min-w-0 @4xl:col-start-2 ${v6Layout.profileSlot ? "@4xl:row-start-2" : "@4xl:row-start-1"}`}>{v6Layout.sideSlot}</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-[14px]">
@@ -2229,9 +2326,10 @@ function ResultEntityCell({ row, highlightWinner, isMine, t, moments, stageNumbe
  *   pointsTotalByRider?: any, raceId?: string,
  *   participationHistory?: import("../lib/raceParticipationMarkers.ts").StageParticipationHistory | null,
  *   dnfRows?: any[],
+ *   headerControl?: any,
  * }} props
  */
-function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, myOwnTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined, raceId = undefined, participationHistory = null, dnfRows = [] }) {
+function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, myOwnTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined, raceId = undefined, participationHistory = null, dnfRows = [], headerControl = null }) {
   const { t } = useTranslation("races");
   const [expanded, setExpanded] = useState(false);
   // #3913: points_earned er PRÆMIEpoint for at ramme podiet i DENNE klassement
@@ -2265,19 +2363,24 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
   const showDnfRows = dnfCount > 0 && !collapsed;
   const trailingCols = (showTime ? 1 : 0) + (showPointsTotal ? 1 : 0) + (showPoints ? 1 : 0);
   const leadCols = 2 + (showTeamCol ? 1 : 0);
+  const showAllButton = collapsible && (
+    <button type="button" onClick={() => setExpanded(e => !e)}
+      aria-pressed={expanded}
+      // #7778: i v6 (headerControl) får knappen samme 44 px-trykflade på touch som holdfilteret.
+      className={`inline-flex items-center gap-0.5 text-xs font-medium text-cz-accent-t hover:underline shrink-0${headerControl ? " [@media(max-width:640px),(pointer:coarse)]:min-h-11" : ""}`}>
+      {expanded ? t("detail.showLess") : t("detail.showAll", { count: totalCount })}
+      <ChevronDownIcon size={13} aria-hidden="true"
+        className={`transition-transform duration-150 ${expanded ? "rotate-180" : ""}`} />
+    </button>
+  );
   return (
     <Section>
       <SectionHeader
         title={title}
-        action={collapsible && (
-          <button type="button" onClick={() => setExpanded(e => !e)}
-            aria-pressed={expanded}
-            className="inline-flex items-center gap-0.5 text-xs font-medium text-cz-accent-t hover:underline shrink-0">
-            {expanded ? t("detail.showLess") : t("detail.showAll", { count: totalCount })}
-            <ChevronDownIcon size={13} aria-hidden="true"
-              className={`transition-transform duration-150 ${expanded ? "rotate-180" : ""}`} />
-          </button>
-        )}
+        // #7778: v6 sætter holdfilteret i tabellens hoved (ingen løsreven række over listen).
+        action={headerControl
+          ? <span className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">{headerControl}{showAllButton}</span>
+          : showAllButton}
       />
       {totalCount === 0 ? (
         <p className="text-center text-cz-3 text-sm py-6">{t("detail.noResults")}</p>
