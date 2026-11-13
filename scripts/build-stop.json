@@ -611,6 +611,10 @@
     {
       "issue": 8129,
       "why": "Roadmap-pakke 13/11 (forkert info paa den offentlige roadmap, ingen tekst aendres), ejer-go 13/11 i Claude-session paa fire kort: 'Ja, behold den med stemmerne', 'Planlagt og flyt til naeste uge', 'I gang, koblet til kontakten', 'Ja, kobl alle fire'"
+    },
+    {
+      "issue": 8101,
+      "why": "Svartids-alarm for de ti vigtigste handlinger (internt maalevaerktoej, intet synligt), ejer-go 13/11 i Claude-session paa to kort: 'Ja, den liste' og 'Ja, byg den'"
     }
   ],
   "brandList": [
