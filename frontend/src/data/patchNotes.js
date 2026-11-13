@@ -1,5 +1,31 @@
 export const PATCHES = [
 {
+  "version": "7.442",
+  "date": "2026-11-13",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Board",
+      "en": {
+        "title": "Parked teams",
+        "body": "Parked teams no longer get messages from the board: no mid-season check, no annual mandate reminders and no negative balance warning. The board no longer signs the mandate on the team's behalf either."
+      },
+      "da": {
+        "title": "Parkerede hold",
+        "body": "Parkerede hold får ikke længere beskeder fra bestyrelsen: ingen halvsæson-besked, ingen påmindelser om årsmandatet og ingen advarsel om negativ saldo. Bestyrelsen skriver heller ikke længere under på holdets vegne."
+      },
+      "refs": [
+        8099,
+        8103,
+        8110,
+        8128
+      ]
+    }
+  ]
+},
+{
   "version": "7.441",
   "date": "2026-11-13",
   "changes": [
