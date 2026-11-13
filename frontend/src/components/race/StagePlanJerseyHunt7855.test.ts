@@ -55,7 +55,8 @@ test("#7855 valg: slukket findes opgaverne ikke; taendt kun hvor straekningen ha
   const off = taskOptions([{ task: "stay_sheltered" }], 0, "helper", OFF);
   assert.ok(!off.includes("hunt_points") && !off.includes("hunt_kom"));
   const on = taskOptions([{ task: "stay_sheltered" }], 0, "helper", ON);
-  assert.ok(on.includes("hunt_points") && on.includes("hunt_kom"));
+  // #7855 valg 1 (ejer 13/11, "Kun sammen med udbrud"): "Hent bjergpoint" tilbydes ikke som eget led.
+  assert.ok(on.includes("hunt_points") && !on.includes("hunt_kom"));
   // Efter Col C er spurten passeret og der er ingen stigning tilbage.
   const late = taskOptions([{ task: "stay_sheltered" }, { task: "tempo", from: { at: "kom", kom_index: 1 } }], 1, "helper", ON);
   assert.ok(!late.includes("hunt_points") && !late.includes("hunt_kom"));

@@ -286,10 +286,6 @@ export function validateStagePlanLegs(legs: unknown, role: StagePlanRole, route:
     const task = leg["task"];
     if (!isStagePlanTask(task)) return "stage_plan_unknown_task";
     if (JERSEY_HUNT_TASKS[task] && route.jersey_hunt_7855 !== true) return "stage_plan_unknown_task"; // #7855 (slukket)
-    // #7855 (ejer 13/11 valg 1, "Kun sammen med udbrud"): bjergjagt findes kun paa udbrudsleddet
-    // (`hunt`). Et selvstaendigt "Hent bjergpoint"-led er ikke en opgave, heller ikke efter et
-    // udbrudsled (kommer han ikke med, ville det vaere bjergjagt fra feltet).
-    if (task === "hunt_kom") return "stage_plan_unknown_task";
     if (!TASK_ROLES[task].includes(role)) return "stage_plan_task_not_for_role";
     // #7855 (ejer 12/11 valg A): jagten paa udbrudsleddet. Slukket findes den ikke (som opgaverne).
     if ("hunt" in leg) {
@@ -345,6 +341,11 @@ export function validateStagePlanLegs(legs: unknown, role: StagePlanRole, route:
     const toKm = typeof next === "number" ? next : route.distance_km;
     if (!stretchHasHuntPassage(route, kind, legKms[i] as number, toKm)) return kind === "kom" ? "stage_plan_hunt_no_climb" : "stage_plan_hunt_no_sprint";
   }
+  // #7855 (ejer 13/11 valg 1, "Kun sammen med udbrud"): bjergjagt findes kun paa udbrudsleddet
+  // (`hunt`). Et selvstaendigt "Hent bjergpoint"-led er ikke en opgave, heller ikke efter et
+  // udbrudsled (kommer han ikke med, ville det vaere bjergjagt fra feltet). Sidst, saa alle andre
+  // planer faar praecis samme svar som foer.
+  if (legs.some((leg) => (leg as StagePlanLeg).task === "hunt_kom")) return "stage_plan_unknown_task";
   return null;
 }
 

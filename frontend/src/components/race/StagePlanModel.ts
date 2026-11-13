@@ -211,8 +211,6 @@ export function validateStagePlanLegs(legs: unknown, role: StagePlanRole, route:
     const task = leg.task;
     if (!isStagePlanTask(task)) return "stage_plan_unknown_task";
     if (JERSEY_HUNT_TASKS[task] && route.jersey_hunt_7855 !== true) return "stage_plan_unknown_task"; // #7855 (slukket)
-    // #7855 valg 1 (ejer 13/11): bjergjagt kun paa udbrudsleddet, aldrig som eget led (som serveren).
-    if (task === "hunt_kom") return "stage_plan_unknown_task";
     if (!TASK_ROLES[task].includes(role)) return "stage_plan_task_not_for_role";
     // #7855 (ejer 12/11 valg A): jagten paa udbrudsleddet (som serveren).
     if ("hunt" in leg) {
@@ -266,6 +264,8 @@ export function validateStagePlanLegs(legs: unknown, role: StagePlanRole, route:
     const toKm = typeof next === "number" ? next : route.distance_km;
     if (!stretchHasHuntPassage(route, kind, legKms[i] as number, toKm)) return kind === "kom" ? "stage_plan_hunt_no_climb" : "stage_plan_hunt_no_sprint";
   }
+  // #7855 valg 1 (ejer 13/11): bjergjagt kun paa udbrudsleddet, aldrig som eget led (som serveren).
+  if (legs.some((leg) => (leg as StagePlanLeg).task === "hunt_kom")) return "stage_plan_unknown_task";
   return null;
 }
 
