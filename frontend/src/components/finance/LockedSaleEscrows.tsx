@@ -15,21 +15,21 @@ import { useTranslation } from "react-i18next";
 import Card from "../ui/Card.jsx";
 import RiderLink from "../RiderLink.jsx";
 import RaceLink from "../RaceLink.jsx";
-import { authHeaders } from "../../lib/supabase";
+import { authHeaders, supabase } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import { formatNumber } from "../../lib/intl.js";
 import { NO_LOCKED_SALES, endsInKey, lockedSalesFromResponse, type LockedSales } from "./lockedSalesModel.ts";
 
 const API = import.meta.env.VITE_API_URL;
 
-// Menuen og siden spoerger samtidig; eet kald pr. saldo-vaerdi deles. En ny saldo
-// (fx efter en udbetaling) henter igen.
-let shared: { key: unknown; promise: Promise<LockedSales> } | null = null;
+// Menuen og siden spoerger samtidig; kun kald, der starter inden for et kort
+// vindue, deles (aldrig en gammel liste). Noeglen er brugeren + saldoen, saa et
+// brugerskift aldrig ser et andet holds salg.
+const SHARE_WINDOW_MS = 5000;
+let shared: { key: string; at: number; promise: Promise<LockedSales> } | null = null;
 
-async function fetchLockedSales(): Promise<LockedSales> {
+async function fetchLockedSales(headers: Record<string, string>): Promise<LockedSales> {
   try {
-    const headers = await authHeaders({ json: false });
-    if (!headers) return NO_LOCKED_SALES;
     const res = await apiFetch(`${API}/api/me/locked-sales`, { headers });
     return res.ok ? lockedSalesFromResponse(res.data) : NO_LOCKED_SALES;
   } catch {
@@ -38,27 +38,39 @@ async function fetchLockedSales(): Promise<LockedSales> {
   }
 }
 
-function loadLockedSales(key: unknown): Promise<LockedSales> {
-  if (shared && shared.key === key) return shared.promise;
-  const promise = fetchLockedSales().then((result) => {
-    // Et tomt svar efter en fejl maa ikke sidde fast i den delte cache.
-    if (result === NO_LOCKED_SALES && shared?.promise === promise) shared = null;
-    return result;
-  });
-  shared = { key, promise };
+async function loadLockedSales(refreshKey: unknown): Promise<LockedSales> {
+  const [{ data }, headers] = await Promise.all([supabase.auth.getSession(), authHeaders({ json: false })]);
+  const userId = data.session?.user?.id;
+  if (!userId || !headers) return NO_LOCKED_SALES;
+  const key = `${userId}:${String(refreshKey)}`;
+  const now = Date.now();
+  if (shared && shared.key === key && now - shared.at < SHARE_WINDOW_MS) return shared.promise;
+  const promise = fetchLockedSales(headers);
+  shared = { key, at: now, promise };
   return promise;
 }
 
-/** @param refreshKey  saldoen (eller andet), der skal udloese et nyt opslag naar den aendrer sig */
+/**
+ * @param refreshKey  saldoen; en ny saldo (fx efter en udbetaling) henter igen. Et nyt
+ *   laast salg aendrer ikke saldoen, saa listen hentes ogsaa ved hver visning og naar
+ *   fanen faar fokus igen.
+ */
 export function useLockedSales(refreshKey: unknown): LockedSales {
   const [state, setState] = useState<LockedSales>(NO_LOCKED_SALES);
   useEffect(() => {
     if (refreshKey == null) return undefined;
     let cancelled = false;
-    void loadLockedSales(refreshKey).then((result) => {
-      if (!cancelled) setState(result);
-    });
-    return () => { cancelled = true; };
+    const refresh = () => {
+      void loadLockedSales(refreshKey).then((result) => {
+        if (!cancelled) setState(result);
+      });
+    };
+    refresh();
+    window.addEventListener("focus", refresh);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", refresh);
+    };
   }, [refreshKey]);
   return state;
 }

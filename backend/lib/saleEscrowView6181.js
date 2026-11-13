@@ -21,6 +21,7 @@
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { buildKeyedNotification } from "./notificationKeys.js";
 import { notifyTeamOwner as notifyTeamOwnerDefault } from "./notificationService.js";
+import { loadWithdrawnPairs, withdrawalKey } from "./raceWithdrawal.js";
 
 // Postgres 42P01 / PostgREST PGRST205: tabellen findes ikke (M1 ikke applied).
 const MISSING_TABLE_CODES = new Set(["42P01", "PGRST205"]);
@@ -69,6 +70,8 @@ export function daysUntil(endsAt, now) {
  * Det aktive etapeloeb pr. rytter (samme graense som stageRaceTransferDefer:
  * stage_race, ikke completed, stages_completed > 0) og hvornaar dets sidste etape koerer.
  * Koerer en rytter flere, gaelder det, der slutter sidst (flushen venter paa det).
+ * Et afmeldt holds entries bliver staaende (#5636), saa de taeller ikke, ligesom
+ * i getRidersInActiveStageRace.
  *
  * @param {any} supabase
  * @param {string[]} riderIds
@@ -89,13 +92,16 @@ async function activeStageRaceByRider(supabase, riderIds) {
   const raceIds = races.map((r) => r.id);
   const { data: entries, error: eErr } = await supabase
     .from("race_entries") // pagination-safe: kun holdets faa solgte ryttere (hoejst 2 pr. laast salg, MAX_ROWS salg) i de aktive etapeloeb.
-    .select("race_id, rider_id")
+    .select("race_id, rider_id, team_id")
     .in("race_id", raceIds)
     .in("rider_id", riderIds);
   if (eErr) throw new Error(`loadLockedSalesForTeam: entries lookup failed: ${eErr.message}`);
   if (!entries?.length) return result;
+  const withdrawn = await loadWithdrawnPairs({ supabase, raceIds: [...new Set(entries.map((e) => e.race_id))] });
+  const racing = entries.filter((e) => !withdrawn.has(withdrawalKey(e.race_id, e.team_id)));
+  if (racing.length === 0) return result;
 
-  const entryRaceIds = [...new Set(entries.map((e) => e.race_id))];
+  const entryRaceIds = [...new Set(racing.map((e) => e.race_id))];
   const { data: stages, error: sErr } = await supabase
     .from("race_stage_schedule") // pagination-safe: kun de faa loeb, de solgte ryttere koerer (et etapeloeb har faa etaper).
     .select("race_id, scheduled_at")
@@ -110,7 +116,7 @@ async function activeStageRaceByRider(supabase, riderIds) {
     if (!prev || new Date(s.scheduled_at) > new Date(prev)) lastStage.set(s.race_id, s.scheduled_at);
   }
   const raceById = new Map(races.map((r) => [r.id, r]));
-  for (const e of entries || []) {
+  for (const e of racing) {
     const race = raceById.get(e.race_id);
     if (!race) continue;
     const candidate = { id: race.id, name: race.name ?? "", endsAt: lastStage.get(race.id) ?? null };
@@ -136,7 +142,7 @@ export async function loadLockedSalesForTeam(supabase, teamId, { now = new Date(
   if (!teamId) return empty;
   const { data, error } = await supabase
     .from("sale_escrows")
-    .select("id, deal_type, payer_team_id, amount, rider_ids, target_team_ids, created_at")
+    .select("id, deal_type, payer_team_id, amount, rider_ids, target_team_ids, delivered_rider_ids, created_at")
     .eq("payee_team_id", teamId)
     .eq("status", "held")
     .order("created_at", { ascending: true })
@@ -149,19 +155,27 @@ export async function loadLockedSalesForTeam(supabase, teamId, { now = new Date(
   if (rows.length === 0) return empty;
 
   const sold = rows.map((e) => soldRiderIds(e));
+  // Udbetalingen venter paa ALLE endnu ikke leverede ryttere i handlen (et bytte
+  // frigives foerst, naar begge er flyttet), saa loebet regnes ud fra dem; vist
+  // navn er kun saelgerens afgivne rytter.
+  const pending = rows.map((e) => {
+    const delivered = new Set(e.delivered_rider_ids || []);
+    const ids = e.rider_ids.filter((id) => !delivered.has(id));
+    return ids.length > 0 ? ids : [...e.rider_ids];
+  });
   const allRiderIds = [...new Set(sold.flat())];
   const [{ data: riders, error: riderErr }, raceByRider] = await Promise.all([
     supabase.from("riders").select("id, firstname, lastname").in("id", allRiderIds), // pagination-safe: unikke rider-id'er, hoejst 2 pr. laast salg og MAX_ROWS salg.
-    activeStageRaceByRider(supabase, allRiderIds),
+    activeStageRaceByRider(supabase, [...new Set(pending.flat())]),
   ]);
   if (riderErr) throw new Error(`loadLockedSalesForTeam: riders lookup failed: ${riderErr.message}`);
   const riderById = new Map((riders || []).map((r) => [r.id, r]));
 
   const sales = rows.map((e, i) => {
-    // Et bytte kan have flere solgte ryttere; det loeb, der slutter sidst, afgoer udbetalingen.
+    // Det loeb, der slutter sidst blandt de ventende ryttere, afgoer udbetalingen.
     /** @type {{ id: string, name: string, endsAt: string|null } | null} */
     let race = null;
-    for (const id of sold[i]) {
+    for (const id of pending[i]) {
       const r = raceByRider.get(id);
       if (r && (!race || (r.endsAt && (!race.endsAt || new Date(r.endsAt) > new Date(race.endsAt))))) race = r;
     }

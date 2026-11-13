@@ -45,10 +45,11 @@ function fakeSupabase(tables, { errors = {} } = {}) {
         in(col, vals) { filters.push((r) => vals.includes(r[col])); return q; },
         order() { return q; },
         limit(n) { limit = n; return q; },
+        range(from, to) { filters.push((_r, i) => i >= from && i <= to); return q; },
         then(resolve, reject) {
           calls.push(table);
           if (errors[table]) return Promise.resolve({ data: null, count: null, error: errors[table] }).then(resolve, reject);
-          let rows = (tables[table] || []).filter((r) => filters.every((f) => f(r)));
+          let rows = (tables[table] || []).filter((r, i) => filters.every((f) => f(r, i)));
           if (limit != null) rows = rows.slice(0, limit);
           return Promise.resolve(head ? { count: rows.length, error: null } : { data: rows, error: null }).then(resolve, reject);
         },
@@ -137,6 +138,29 @@ test("loadLockedSalesForTeam: uden aktivt loeb vises salget uden loeb og dage", 
   const result = await loadLockedSalesForTeam(fakeSupabase(w), SELLER, { now: NOW });
   assert.equal(result.sales[0].race, null);
   assert.equal(result.sales[0].daysLeft, null);
+});
+
+test("loadLockedSalesForTeam: et afmeldt holds staaende entry taeller ikke som loebet", async () => {
+  const w = world();
+  w.race_entries = [
+    { race_id: "race-1", rider_id: "r1", team_id: SELLER },
+    { race_id: "race-2", rider_id: "r1", team_id: SELLER }, // afmeldt, men entry bevaret (#5636)
+  ];
+  w.race_stage_schedule.push({ race_id: "race-2", scheduled_at: "2026-11-20T19:00:00Z" });
+  w.race_withdrawals = [{ race_id: "race-2", team_id: SELLER }];
+  const [sale] = (await loadLockedSalesForTeam(fakeSupabase(w), SELLER, { now: NOW })).sales;
+  assert.deepEqual(sale.race, { id: "race-1", name: "Loeb Et" });
+  assert.equal(sale.daysLeft, 2);
+});
+
+test("loadLockedSalesForTeam: et bytte venter paa den rytter, der endnu ikke er leveret", async () => {
+  const w = world();
+  // Hold A afgiver r1 (leveret allerede) og faar r5 + kontanter; r5 koerer loeb 2.
+  w.sale_escrows = [{ id: "s1", deal_type: "swap", payer_team_id: BUYER, payee_team_id: SELLER, amount: 300000, rider_ids: ["r1", "r5"], target_team_ids: [BUYER, SELLER], delivered_rider_ids: ["r1"], status: "held", created_at: "2026-11-12T10:00:00Z" }];
+  w.race_entries = [{ race_id: "race-2", rider_id: "r5", team_id: BUYER }];
+  const [sale] = (await loadLockedSalesForTeam(fakeSupabase(w), SELLER, { now: NOW })).sales;
+  assert.deepEqual(sale.riders.map((r) => r.id), ["r1"], "vist navn er saelgerens afgivne rytter");
+  assert.deepEqual(sale.race, { id: "race-2", name: "Loeb To" });
 });
 
 test("isSaleLockedForDeal: kun en parkeret handel med en holdt escrow er laast", async () => {
