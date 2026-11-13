@@ -209,13 +209,14 @@ test("#7855 C i motoren: jagt oven paa et tempo-led er aldrig gratis", () => {
   assert.ok(paid > 0, "scenariet skal ramme mindst en betalt top");
 });
 
-test("#7855 C kalibrering: en hel dags jagt alene svarer til prisordet Haard", () => {
+test("#7855 C kalibrering: en hel dags jagt alene ligger ved prisordet Haard, aldrig under", () => {
   const flat = stageRow("flat");
   for (const seed of SEEDS.slice(0, 3)) {
     const hunt = runStage(flat, seed, { t0r2: [{ task: "hunt_points" }] });
     const tempo = runStage(flat, seed, { t0r2: [{ task: "tempo" }] });
     const middel = runStage(flat, seed, { t0r2: [{ task: "shelter_leader" }] });
     const h = fatigueOf(hunt, "t0r2");
+    assert.ok(h >= fatigueOf(tempo, "t0r2"), `${seed}: aldrig under Haard`);
     assert.ok(Math.abs(h - fatigueOf(tempo, "t0r2")) < Math.abs(h - fatigueOf(middel, "t0r2")), `${seed}: naermere Haard end Middel`);
   }
 });

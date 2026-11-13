@@ -89,12 +89,6 @@ type ResolvedLeg = {
   effort: EffortLevel;
   /** #7855: den jagt-opgave leddet koerer (et jagt-led, eller et udbrudsled med jagt, valg A), ellers null. */
   hunt: StagePlanTask | null;
-  /**
-   * #7855 valg C: leddets indsats i etapens belastning (traethed). Lig `effort`, undtagen et
-   * jagt-led: det taeller som Middel, fordi prisen ligger paa passagerne han koerte med om
-   * (mechanics/jerseyHunt7855.ts, jerseyHuntFrontWork7855). Indsatsen i loebet er stadig `effort`.
-   */
-  loadEffort: EffortLevel;
   /** Rutepunktets km, eller null for foerste led og sat-leddet. */
   fromKm: number | null;
   fromDropped: boolean;
@@ -169,9 +163,7 @@ function resolveLegs(legs: readonly StagePlanLeg[], route: StagePlanRoute): Reso
       fromKm = route.climbs.find((c) => c.index === from.kom_index)?.km ?? null;
       routeReason = "kom";
     }
-    const effort = TASK_EFFORT[leg.task] as EffortLevel;
-    const loadEffort: EffortLevel = JERSEY_HUNT_TASKS[leg.task] !== undefined ? "normal" : effort; // #7855 valg C
-    return { task: leg.task, effort, hunt: legHuntTask(leg), loadEffort, fromKm, fromDropped: from?.at === "dropped", routeReason };
+    return { task: leg.task, effort: TASK_EFFORT[leg.task] as EffortLevel, hunt: legHuntTask(leg), fromKm, fromDropped: from?.at === "dropped", routeReason };
   });
 }
 
@@ -556,14 +548,16 @@ const EFFORT_RANK: Readonly<Record<EffortLevel, number>> = { grupetto: 0, save: 
  * Etapens belastning (traethed bagefter, model C) kender kun EN indsats pr. rytter.
  * Med en plan er det den haardeste indsats han faktisk har koert: et sent angreb
  * kan aldrig koeres paa et tidligt leds billige traethed (intet smuthul).
+ * #7855: et jagt-led taeller med den indsats, det koeres med i loebet, som ethvert andet led, saa
+ * jagten aldrig er en billigere vej til samme loeb (dom 2, "frikortet"). Passagerne opgaven fik
+ * ham til at koere med om, koster oveni (valg C, raceFatigue.stageWorkExposure).
  */
 export function stagePlanLoadEfforts(rt: StagePlanRuntime): Record<string, EffortLevel> {
   const out: Record<string, EffortLevel> = {};
   for (const riderId of rt.riderIds) {
     const legs = rt.legs.get(riderId)!;
-    // #7855 valg C: et jagt-leds pris er passagerne, ikke leddet (loadEffort; lig effort for alt andet).
-    let best: EffortLevel = legs[0].loadEffort;
-    for (const idx of rt.ridden.get(riderId) ?? []) if (EFFORT_RANK[legs[idx].loadEffort] > EFFORT_RANK[best]) best = legs[idx].loadEffort;
+    let best: EffortLevel = legs[0].effort;
+    for (const idx of rt.ridden.get(riderId) ?? []) if (EFFORT_RANK[legs[idx].effort] > EFFORT_RANK[best]) best = legs[idx].effort;
     out[riderId] = best;
   }
   return out;

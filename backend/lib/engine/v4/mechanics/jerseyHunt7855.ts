@@ -18,9 +18,10 @@
 //      ogsaa i feltet. Gruppen afgoer stadig foerst: et udbrud foran tager pointene foran ham.
 //      Ingen ny terning.
 //   2. Prisen: i loebet er det opgavens indsats (TASK_EFFORT). I traetheden bagefter taeller et
-//      jagt-led som Middel, og hver passage han koerte med om, fordi opgaven bad ham, laegges oveni
-//      som arbejde i front (raceFatigue.stageWorkExposure). Passager han ville have kaempet om
-//      alligevel (udbruddet, en lille gruppe, en rolle der kaemper) koster intet ekstra.
+//      jagt-led med samme indsats (som tempo og foelg med), saa opgaven aldrig er en billigere vej
+//      til samme loeb (dom 2, "frikortet"). Hver passage han koerte med om, fordi opgaven bad ham,
+//      laegges oveni som arbejde i front (raceFatigue.stageWorkExposure). Passager han ville have
+//      kaempet om alligevel (udbruddet, en lille gruppe, en rolle der kaemper) koster intet ekstra.
 //   3. Filmen: passagen faar `hunters` (jaegerne der koerte om netop den), saa loebsfilmen og
 //      etapeplanens opsummering kan sige det samme som motoren gjorde. `hunt_work_7855` er dem,
 //      opgaven fik til at koere med (traethedens kilde).
@@ -42,7 +43,7 @@ export const JERSEY_HUNT_TASK_BY_KIND_7855: Readonly<Record<"sprint" | "kom", St
 /**
  * #7855 valg C: arbejdet i front pr. passage opgaven fik rytteren til at koere med om (samme enhed
  * som traethedens andel i front, raceFatigue.stageWorkExposure). Spurt og bjergtop har hver sin
- * stoerrelse, saa en hel dags jagt alene paa en typisk etape svarer til prisordet Haard.
+ * stoerrelse. Laegges oveni leddets egen indsats (stagePlanEngine.stagePlanLoadEfforts).
  * Kalibrering og maaling: balance-internals/7855/2026-11-12/.
  */
 export const JERSEY_HUNT_WORK_7855: Readonly<Record<"sprint" | "kom", number>> = Object.freeze({

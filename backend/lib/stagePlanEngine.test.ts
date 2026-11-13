@@ -407,10 +407,10 @@ test("#7855 valg A: ikke med i udbruddet = jager fra sin gruppe; et sat-led efte
   assert.deepEqual(stagePlanHuntTasks7855(inBreak), { h1: "hunt_kom" });
 });
 
-test("#7855 valg C: et jagt-led taeller som Middel i dagens haardeste indsats; tempo bagefter taeller stadig", () => {
+test("#7855 valg C: et jagt-led taeller med sin egen indsats i dagens haardeste indsats; tempo bagefter taeller stadig", () => {
   const huntOnly = createStagePlanRuntime(huntOrder7855([{ task: "hunt_kom" }]), HUNT_ROUTE_7855, ENTRANTS, { jerseyHunt7855: true })!;
-  assert.deepEqual(stagePlanLoadEfforts(huntOnly), { h1: "normal" });
-  assert.equal(stagePlanEntrants(huntOnly, ENTRANTS)["h1"].effort, "protect", "i loebet koerer han stadig opgavens indsats");
+  assert.deepEqual(stagePlanLoadEfforts(huntOnly), { h1: "protect" }, "passagerne koster oveni, aldrig i stedet for");
+  assert.equal(stagePlanEntrants(huntOnly, ENTRANTS)["h1"].effort, "protect", "i loebet koerer han opgavens indsats");
   const thenTempo = createStagePlanRuntime(huntOrder7855([{ task: "hunt_kom" }, { task: "tempo", from: { at: "kom", kom_index: 1 } }]), HUNT_ROUTE_7855, ENTRANTS, { jerseyHunt7855: true })!;
   advanceStagePlan(thenTempo, { state: groups7855(false), segment: seg7855(0, 30), segmentIndex: 0, entrants: ENTRANTS });
   advanceStagePlan(thenTempo, { state: groups7855(false), segment: seg7855(30, 90), segmentIndex: 1, entrants: ENTRANTS });
