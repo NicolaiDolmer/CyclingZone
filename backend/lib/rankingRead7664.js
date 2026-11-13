@@ -156,7 +156,16 @@ export function createRankingFreshnessRouter({ supabase, requireAuth, reportErro
 }
 
 const n = (value) => Number(value) || 0;
-const byPointsThenId = (a, b) => n(b.points) - n(a.points) || (a.rider_id < b.rider_id ? -1 : a.rider_id > b.rider_id ? 1 : 0);
+// Samme orden som databasen faar besked paa (points DESC NULLS LAST, rider_id):
+// en raekke uden point staar efter alle med point, ogsaa efter 0. Lige point
+// afgoeres af rytter-id, som paa rytterranglisten (dagens RPC bruger i stedet
+// det laveste resultat-id; se PR-teksten for #7664).
+const sortPoints = (value) => (value === null || value === undefined || value === "" ? -Infinity : n(value));
+const byPointsThenId = (a, b) => {
+  const pa = sortPoints(a.points), pb = sortPoints(b.points);
+  if (pa !== pb) return pb > pa ? 1 : -1;
+  return a.rider_id < b.rider_id ? -1 : a.rider_id > b.rider_id ? 1 : 0;
+};
 
 /**
  * Ren funktion: forsidens top 5 ud fra rytterranglistens raekker, i samme
@@ -166,7 +175,9 @@ const byPointsThenId = (a, b) => n(b.points) - n(a.points) || (a.rider_id < b.ri
  */
 export function pickDashboardTopRiders(stats, displayById, limit = 5) {
   const rows = [];
-  for (const stat of stats) {
+  // Sorteres paa de raa point (NULL efter 0), foer de vises som tal.
+  for (const stat of [...stats].sort(byPointsThenId)) {
+    if (rows.length === limit) break;
     const display = displayById.get(stat.rider_id);
     if (!display) continue;
     rows.push({
@@ -182,29 +193,45 @@ export function pickDashboardTopRiders(stats, displayById, limit = 5) {
       classic_wins: n(stat.classic_wins),
     });
   }
-  rows.sort(byPointsThenId);
-  return rows.slice(0, limit);
+  return rows;
 }
 
 const DISPLAY_COLUMNS = "id,firstname,lastname,nationality_code,team:team_id(name,is_ai,league_division_id)";
 const TOP_STAT_COLUMNS = "rider_id,points,stage_wins,gc_wins,classic_wins";
 const DASHBOARD_TOP_LIMIT = 5;
+const POINTS_ORDER = Object.freeze({ ascending: false, nullsFirst: false });
+// Samlet tidsgraense for forsidens nye vej (kildevalg + alle laesninger).
+// Forsiden skal svare under 3 s; vejen tager normalt 5 korte trin. Hænger en
+// laesning, opgives vejen efter 1,5 s, saa dagens RPC har den anden halvdel.
+export const DASHBOARD_SHADOW_TIMEOUT_MS = 1500;
 
 /**
  * Forsidens top 5 fra rytterranglistens skyggetabel. Returnerer null, naar
  * kilden er matviews: saa koerer forsiden praecis som i dag.
  *
- * Nødvej: fejler en laesning i den nye vej, rapporteres fejlen, og der
- * returneres null, saa forsiden bruger dagens RPC i stedet for at svare 500
- * (samme sikkerhedsnet som kildevalget).
+ * Nødvej: fejler eller haenger en laesning i den nye vej (samlet graense
+ * DASHBOARD_SHADOW_TIMEOUT_MS), rapporteres det een gang, og der returneres
+ * null, saa forsiden bruger dagens RPC i stedet for at svare 500 eller vente.
  * @param {any} supabase
- * @param {{ seasonId: string, leagueDivisionId: number|null, source?: RankingReadSource, captureExceptionFn?: CaptureFn, now?: () => number }} options
+ * @param {{ seasonId: string, leagueDivisionId: number|null, source?: RankingReadSource, captureExceptionFn?: CaptureFn, now?: () => number, timeoutMs?: number }} options
  */
-export async function readDashboardTopRiders7664(supabase, { seasonId, leagueDivisionId, source, captureExceptionFn, now = Date.now }) {
-  const chosen = source ?? await resolveRankingReadSource(supabase, { captureExceptionFn, now });
-  if (chosen.source !== "shadow") return null;
+export async function readDashboardTopRiders7664(supabase, { seasonId, leagueDivisionId, source, captureExceptionFn, now = Date.now, timeoutMs = DASHBOARD_SHADOW_TIMEOUT_MS }) {
+  const controller = new AbortController();
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error(`dashboard top riders: shadow path exceeded ${timeoutMs} ms`));
+    }, timeoutMs);
+  });
+  const work = (async () => {
+    const chosen = source ?? await resolveRankingReadSource(supabase, { captureExceptionFn, now });
+    if (chosen.source !== "shadow") return null;
+    return readShadowTopRiders(supabase, { seasonId, leagueDivisionId, signal: controller.signal });
+  })();
   try {
-    return await readShadowTopRiders(supabase, { seasonId, leagueDivisionId });
+    return await Promise.race([work, timeout]);
   } catch (error) {
     // best-effort: forsiden falder tilbage til dagens RPC (api.js).
     // Supabase-fejl er ofte et objekt med `message`, ikke en Error.
@@ -213,10 +240,14 @@ export async function readDashboardTopRiders7664(supabase, { seasonId, leagueDiv
       tags: { lib: "rankingRead7664", path: "dashboard-top" },
     });
     return null;
+  } finally {
+    clearTimeout(timer);
+    // Den tabte vej maa ikke give en ubehandlet afvisning efter afbrydelsen.
+    work.catch(() => {});
   }
 }
 
-async function readShadowTopRiders(supabase, { seasonId, leagueDivisionId }) {
+async function readShadowTopRiders(supabase, { seasonId, leagueDivisionId, signal }) {
   const table = SHADOW_READ_TABLES.rider_rankings_mv;
   if (leagueDivisionId == null) {
     // Ingen pulje: hele ranglisten, som rytterfanens standard. Bladrer i
@@ -225,13 +256,14 @@ async function readShadowTopRiders(supabase, { seasonId, leagueDivisionId }) {
     const stats = [], displayById = new Map();
     for (let from = 0; ; from += PAGE) {
       const { data: page, error } = await supabase.from(table).select(TOP_STAT_COLUMNS)
-        .eq("season_id", seasonId).order("points", { ascending: false }).order("rider_id").range(from, from + PAGE - 1);
+        .eq("season_id", seasonId).order("points", POINTS_ORDER).order("rider_id")
+        .range(from, from + PAGE - 1).abortSignal(signal);
       if (error) throw error;
       const ids = (page || []).map((row) => row.rider_id);
       if (ids.length) {
         // pagination-safe: bounded by the PAGE-sized id list above.
         const { data: display, error: displayError } = await supabase.from("riders").select(DISPLAY_COLUMNS)
-          .in("id", ids).eq("is_retired", false);
+          .in("id", ids).eq("is_retired", false).abortSignal(signal);
         if (displayError) throw displayError;
         for (const row of display || []) displayById.set(row.id, row);
         stats.push(...page);
@@ -243,13 +275,13 @@ async function readShadowTopRiders(supabase, { seasonId, leagueDivisionId }) {
   // Puljens ryttere (nuvaerende hold), samme filter som rytterfanen efter
   // forsidens "Fuld rangliste"-link (team.league_division_id).
   const { data: teams, error: teamsError } = await supabase.from("teams").select("id")
-    .eq("league_division_id", leagueDivisionId);
+    .eq("league_division_id", leagueDivisionId).abortSignal(signal);
   if (teamsError) throw teamsError;
   const teamIds = (teams || []).map((row) => row.id);
   if (!teamIds.length) return [];
   // Kun id'er (ca. 600-1.100 pr. pulje i prod 13/11, een til to sider).
   const poolRiders = await fetchAllRows(() => supabase.from("riders").select("id")
-    .in("team_id", teamIds).eq("is_retired", false).order("id"));
+    .in("team_id", teamIds).eq("is_retired", false).order("id").abortSignal(signal));
   const ids = poolRiders.map((row) => row.id);
   if (!ids.length) return [];
   // Top 5 pr. bid af puljens ryttere, filtreret og sorteret i databasen (unik
@@ -262,7 +294,7 @@ async function readShadowTopRiders(supabase, { seasonId, leagueDivisionId }) {
     // pagination-safe: limit(5) per chunk of at most SUPABASE_IN_CHUNK_SIZE ids.
     const { data, error } = await supabase.from(table).select(TOP_STAT_COLUMNS)
       .eq("season_id", seasonId).in("rider_id", chunk)
-      .order("points", { ascending: false, nullsFirst: false }).order("rider_id").limit(DASHBOARD_TOP_LIMIT);
+      .order("points", POINTS_ORDER).order("rider_id").limit(DASHBOARD_TOP_LIMIT).abortSignal(signal);
     if (error) throw error;
     return data || [];
   }));
@@ -270,7 +302,7 @@ async function readShadowTopRiders(supabase, { seasonId, leagueDivisionId }) {
   if (!top.length) return [];
   // pagination-safe: at most DASHBOARD_TOP_LIMIT ids.
   const { data: display, error: displayError } = await supabase.from("riders").select(DISPLAY_COLUMNS)
-    .in("id", top.map((row) => row.rider_id)).eq("is_retired", false);
+    .in("id", top.map((row) => row.rider_id)).eq("is_retired", false).abortSignal(signal);
   if (displayError) throw displayError;
   const displayById = new Map((display || []).map((row) => [row.id, row]));
   return pickDashboardTopRiders(top, displayById);

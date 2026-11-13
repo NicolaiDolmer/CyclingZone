@@ -261,8 +261,12 @@ Rangliste-ruterne og forsidens top 5 læser skyggetabellerne
 og skyggekøens ældste post højst er 30 minutter gammel. Ellers, og ved enhver fejl
 i kildevalget, læses matviews som før. `global_rank_mv` har ingen skygge og læses
 altid som før. Kildevalget huskes 10 sekunder pr. backend-klient.
-Nødvej: fejler forsidens læsning i skyggen, rapporteres fejlen til Sentry, og
-forsiden bruger dagens `dashboard_rider_ranking`-RPC (intet 500-svar).
+Nødvej: fejler forsidens læsning i skyggen, eller tager hele den nye vej
+(kildevalg + læsninger) over 1,5 sekunder, afbrydes den, fejlen rapporteres én
+gang til Sentry, og forsiden bruger dagens `dashboard_rider_ranking`-RPC (intet
+500-svar). Rækkefølge: point faldende, rækker uden point (NULL) efter 0, lige
+point afgøres af rytter-id som på rytterranglisten (dagens RPC: laveste
+resultat-id).
 Holdevindue: mens kilden er skyggen, kører cron/vækkeur ikke den fulde
 matview-genberegning, før den ældste ventende ændring er 15 minutter gammel;
 træningens udskydelsesloft forlænges med samme 15 minutter. Tvungne
@@ -270,7 +274,10 @@ genberegninger (Safe) holdes ikke. Watchdoggens matview-grænse (5 minutter) få
 samme 15 minutter lagt til, kun mens kilden er skyggen. Med kontakten slukket er
 holdevinduet 0, og alle grænser er som ovenfor. `/api/rankings/freshness`
 returnerer `current_as_of` (nu ved tom kø, ellers den ældste ventende ændrings
-tidspunkt) kun når kilden er skyggen; frontendens "Opdateret kl." vises kun da.
+tidspunkt) kun når kilden er skyggen; frontendens "Opdateret kl." vises kun da,
+kun på rytterranglisten (holdranglistens point kommer fra `season_standings`, som
+tidspunktet ikke beskriver), i Europe/Copenhagen-tid, og kun når opslaget,
+der startes før tallene læses, har svaret, inden tallene er hentet.
 
 **Concurrent RPC-overloads (#5692, separat SQL-forberedelse):**
 `database/2026-10-05-5692-ranking-refresh.sql` tilfoejer de fem refresh-funktioners

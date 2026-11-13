@@ -738,3 +738,42 @@ test("#6184/#6102: seneste imported_at bevares med kandidatopsummering uden resu
   // Kandidatoplysninger kommer fra SQL-summary; det globale LIMIT 1 læses separat.
   assert.equal(calls.filter((t) => t === "race_results").length, 0);
 });
+
+// #7664: vagtens holdevindue for ranglisten foelger kontakten. Slukket = som i
+// dag (5 min); taendt og sund koe = 5 min + de 15 min, den fulde genberegning
+// samler aendringer i, mens ranglisterne laeser skyggetabellerne.
+test("fetchWatchdogState: ranglistens holdevindue gaelder kun, naar kontakten er taendt (#7664)", async () => {
+  const { __resetRankingReadCacheForTests, LEGACY_HOLD_MS_7664 } = await import("./rankingRead7664.js");
+  const { clearFlagStageCache } = await import("./featureStage.js");
+  const on = { ranking_shadow_decoupled_6765: "on", ranking_shadow_enabled: "on" };
+  const cases = [
+    // [kontakter, ventende alder i min, forventet hold, forventet alarm]
+    [{}, 10, 0, true],
+    [{ ranking_shadow_decoupled_6765: "on", ranking_shadow_enabled: "off" }, 10, 0, true],
+    [on, 10, LEGACY_HOLD_MS_7664, false],
+    [on, 21, LEGACY_HOLD_MS_7664, true],
+  ];
+  for (const [flags, pendingMin, hold, alarm] of cases) {
+    __resetRankingReadCacheForTests();
+    clearFlagStageCache();
+    const supabase = makeWatchdogSupabase();
+    const from = supabase.from.bind(supabase);
+    supabase.from = (table) => {
+      if (table !== "app_config") return from(table);
+      let key = null;
+      const query = { select: () => query, eq: (_c, value) => { key = value; return query; },
+        maybeSingle: async () => ({ data: key in flags ? { value: flags[key] } : null, error: null }) };
+      return query;
+    };
+    const rpc = supabase.rpc.bind(supabase);
+    supabase.rpc = async (name, args = {}) => {
+      if (name === "get_ranking_refresh_work_state") return { data: { pending: true, pending_age_ms: pendingMin * 60_000, last_completed_at: hoursAgo(1) }, error: null };
+      if (name === "get_ranking_shadow_metrics") return { data: { queue_length: 0, oldest_age_s: null }, error: null };
+      return rpc(name, args);
+    };
+    const state = await fetchWatchdogState({ supabase, now: NOW });
+    assert.equal(state.rankingHoldMs, hold, JSON.stringify(flags));
+    const findings = evaluateStallFindings({ now: NOW, ...state }).filter((f) => f.type === "matview");
+    assert.equal(findings.length > 0, alarm, `${JSON.stringify(flags)} ${pendingMin} min`);
+  }
+});

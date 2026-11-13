@@ -29,6 +29,9 @@ function harness(name: string, apiRows: unknown[], fail = false) {
     useCallback: (fn: unknown) => fn, useEffect: () => {}, supabase, pickResultsSeason,
     fetchAllRows: (build: () => { table: string }) => Promise.resolve(tables[build().table]),
     fetchGlobalRanks: fetchRows, fetchRiderRankings: fetchRows,
+    // #7664: the freshness probe is started before the numbers and read after them.
+    startFreshnessProbe: () => ({ settled: () => "2026-11-13T13:07:00.000Z" }),
+    authHeaders: async () => null, apiFetch: async () => ({ ok: false, data: null }),
   });
   return { hook: hook(), states };
 }
@@ -43,6 +46,7 @@ test("rider hook preserves numeric stats, names and wins from API data", async (
   assert.equal(rows[0].points, 80);
   assert.equal(rows[0].total_wins, 3);
   assert.equal(f.states[2], false);
+  assert.equal(f.states[4], "2026-11-13T13:07:00.000Z", "#7664: the time follows every load of the numbers");
 });
 
 for (const name of ["useRiderRankings"]) {
@@ -50,7 +54,8 @@ for (const name of ["useRiderRankings"]) {
     const f = harness(name, [], true);
     await f.hook.reload();
     assert.equal((f.states[0] as unknown[]).length, 0);
-    assert.match((f.states.at(-1) as Error).message, /endpoint unavailable/);
-    assert.equal(f.states.at(-2), false);
+    assert.match((f.states[3] as Error).message, /endpoint unavailable/);
+    assert.equal(f.states[2], false);
+    assert.equal(f.states[4], null, "#7664: no time without numbers");
   });
 }
