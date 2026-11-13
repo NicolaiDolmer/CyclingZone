@@ -1,0 +1,556 @@
+{
+ "beskrivelse": "Dommerens frosne facit for #7855 (ejerens tre valg 13/11). Frosset FOER byggeriet. Maa ikke genskabes med ny kode.",
+ "kilde": "8a02593dda3bf23de73e4de3e2a8a51b306a7869",
+ "afrunding": "alle decimaltal afrundet til 6 decimaler foer hash (#8113)",
+ "validering": {
+  "antal": 64400,
+  "hash": "478734209188bf436af85aed061f98a9919335e88431b011c5187d74eced9499"
+ },
+ "slukket": {
+  "flad20:foerste@facit-a:uden-jagt": {
+   "loeb": "d75770d94c1a617c3e0b0a246b7d49c5c2b2aad484728c52a9eef5869d04b3ba",
+   "pris": "9b2f7b7e22bee09a6a65ce0277f8cac79763f6c50f15de78960b6b3c776b3ade"
+  },
+  "flad20:foerste@facit-a:med-gemt-jagt": {
+   "loeb": "2a334215448d5c0c33d082f0aaf47bfc5f229f8ba67d3c71325fe7263e576ca1",
+   "pris": "e698b907b91393cd58420976947b354a202e9ada1174bfe460f30c2d2829af6a"
+  },
+  "flad20:foerste@facit-a:ingen-planer": {
+   "loeb": "14bf94098d75e4bcd0358d06b00e58c942a6b55ded08535f6881411c317f2b4b",
+   "pris": "c86733c714adfb8633eeb6c715d9444319c80c85dc6f046ddb787776eb65b386"
+  },
+  "flad20:foerste@facit-b:uden-jagt": {
+   "loeb": "98eb1ad987956bf3e8680a589f9c07b8a9bc359214becce9300b006e48e164eb",
+   "pris": "6f460d01c5a6127d74831805bf2b7df4e579cfc2ccca199915f4daba22b0e0d4"
+  },
+  "flad20:foerste@facit-b:med-gemt-jagt": {
+   "loeb": "5e2fd44b320394c78249be9265e570f97bfc66444bc6ed92146b515633674559",
+   "pris": "e41575ed9a2eb277bfb57bfd04ee0237c3577b6c668ba27c9fb3cf3fd34eac36"
+  },
+  "flad20:foerste@facit-b:ingen-planer": {
+   "loeb": "f1a6dccc51e49e646f34134f05537585046e3bf5deb54646da8eea37cbe14f10",
+   "pris": "ff0b541bbe970233dc264b5cbd7edea540d303dda196f19c544a50b3889499a4"
+  },
+  "flad20:midt@facit-a:uden-jagt": {
+   "loeb": "db9821c403383fbc6673a0919ad9cef6a1045b7cc0632276184a599aeb0ad651",
+   "pris": "47ce58f345823c99a1dbdc42592819841d595e2baf92175d4584fceab337dcd6"
+  },
+  "flad20:midt@facit-a:med-gemt-jagt": {
+   "loeb": "a52cda81b0d539b7125961d38087e11a5516c5efe2b410e99fa7bf9b6abc748e",
+   "pris": "398c3335c74a14132cde95ad30a092b6897c463756b6bc7658a634061d0e6cf7"
+  },
+  "flad20:midt@facit-b:uden-jagt": {
+   "loeb": "3dfa7666321e7e862588b15c2fc6a683acb3aa03748dbc234fb296d750c1fd86",
+   "pris": "a68429ef637dd9f4dc2c6676cbcfa821307335d7dfc8697bc19fa7b3e32f336e"
+  },
+  "flad20:midt@facit-b:med-gemt-jagt": {
+   "loeb": "5552307b905083a563ae964cbecc54e1571fe60a1f49d47a0f1d4d005c429b3f",
+   "pris": "29a18e61abe9b8b5ae6066613971a90c61a176cec9c0d7217896d71b14629e23"
+  },
+  "flad20:endags@facit-a:uden-jagt": {
+   "loeb": "1a35562bbecd7e91fc214f4409492f6ccabae0bf5abc52933138169c553966e2",
+   "pris": "52bf30240eacdd8a6fc932de8cdd52ce74cef1d2d8a64686acd66c1c85ba1c9b"
+  },
+  "flad20:endags@facit-a:med-gemt-jagt": {
+   "loeb": "8d987545b85b0653a32f17dd7af45792bfb9ef69039066a5c2d7da5c9b50d68e",
+   "pris": "65aba03d98416755813e29ed79f1c8d141b6b68e6399ed1eddfe485c954949a2"
+  },
+  "flad20:endags@facit-b:uden-jagt": {
+   "loeb": "a90952b5ba9150952911e8d5414095e8289c44e9ddd7b9f12a0eab6edb2b2372",
+   "pris": "b2b0c6667b7bc9c25112d4369f864eb74caa285993eda5f5b4ea4c52899da8b3"
+  },
+  "flad20:endags@facit-b:med-gemt-jagt": {
+   "loeb": "951a0f8f2016a688306c5f05dff37b770db3fcf4323667efae243b9894265711",
+   "pris": "49495e6b36cfe07d378ada263f6d52233683df84c9caa9b97efbe59eaf0a1256"
+  },
+  "flad3spurter:foerste@facit-a:uden-jagt": {
+   "loeb": "2de7d290df570a9397b265a7a9a75bdb7ca5586036a940e3d93fb4f92078694f",
+   "pris": "9b2f7b7e22bee09a6a65ce0277f8cac79763f6c50f15de78960b6b3c776b3ade"
+  },
+  "flad3spurter:foerste@facit-a:med-gemt-jagt": {
+   "loeb": "204c7e51151670eecfe722545d8885c04a080277b1ab42bca5c13fef45d81705",
+   "pris": "e698b907b91393cd58420976947b354a202e9ada1174bfe460f30c2d2829af6a"
+  },
+  "flad3spurter:foerste@facit-a:ingen-planer": {
+   "loeb": "3267fc70322ac574be5d68e84807a5556b44dde0ca39736351b6d6a8d3050ef7",
+   "pris": "c86733c714adfb8633eeb6c715d9444319c80c85dc6f046ddb787776eb65b386"
+  },
+  "flad3spurter:foerste@facit-b:uden-jagt": {
+   "loeb": "2ac47afa6d64f48fb9574f5e50c2b51e0433daaf42a5de3c79130dd4914b3d80",
+   "pris": "6f460d01c5a6127d74831805bf2b7df4e579cfc2ccca199915f4daba22b0e0d4"
+  },
+  "flad3spurter:foerste@facit-b:med-gemt-jagt": {
+   "loeb": "af8f4487cdda8a65d11b1c09d8df586bde774d24a9975e34b6905e36645659bc",
+   "pris": "e41575ed9a2eb277bfb57bfd04ee0237c3577b6c668ba27c9fb3cf3fd34eac36"
+  },
+  "flad3spurter:foerste@facit-b:ingen-planer": {
+   "loeb": "e8cab1a724e7df5bd7bb1cff0b0fecfff0694dbcfd1edfed543abe5ab2799b75",
+   "pris": "ff0b541bbe970233dc264b5cbd7edea540d303dda196f19c544a50b3889499a4"
+  },
+  "flad3spurter:midt@facit-a:uden-jagt": {
+   "loeb": "033e55003b3cd9a1a4e6c5701c1e5d9fc5d82447165e5ac653083b6117a1c09f",
+   "pris": "47ce58f345823c99a1dbdc42592819841d595e2baf92175d4584fceab337dcd6"
+  },
+  "flad3spurter:midt@facit-a:med-gemt-jagt": {
+   "loeb": "85e31be012f885a0fd291de8aef0a53cbff35b4e1c91c9012dbd82f3e6c0821e",
+   "pris": "398c3335c74a14132cde95ad30a092b6897c463756b6bc7658a634061d0e6cf7"
+  },
+  "flad3spurter:midt@facit-b:uden-jagt": {
+   "loeb": "4fa1097867d512f00c051f76c3b88dd04f9b11006aefd5fc2980c9f5e770f28c",
+   "pris": "a68429ef637dd9f4dc2c6676cbcfa821307335d7dfc8697bc19fa7b3e32f336e"
+  },
+  "flad3spurter:midt@facit-b:med-gemt-jagt": {
+   "loeb": "05e7d5eb4dce9fc976735275111bf5e020152754415e64f9f4e17ad97a2101d7",
+   "pris": "29a18e61abe9b8b5ae6066613971a90c61a176cec9c0d7217896d71b14629e23"
+  },
+  "flad3spurter:endags@facit-a:uden-jagt": {
+   "loeb": "4880be2f581adb4a24d4aaa10f6908f0fdfe374caa0c71d00884fbdae2fc7022",
+   "pris": "52bf30240eacdd8a6fc932de8cdd52ce74cef1d2d8a64686acd66c1c85ba1c9b"
+  },
+  "flad3spurter:endags@facit-a:med-gemt-jagt": {
+   "loeb": "af0ef7f933441cb4d9b16b32f8b9d28df27c31bf14f9f7a2a0ecf36f1a67f268",
+   "pris": "65aba03d98416755813e29ed79f1c8d141b6b68e6399ed1eddfe485c954949a2"
+  },
+  "flad3spurter:endags@facit-b:uden-jagt": {
+   "loeb": "f8a1bbc8e3fb373f5646b8e58c0dfe6185cfda9d9ec639303b595a362b07160d",
+   "pris": "b2b0c6667b7bc9c25112d4369f864eb74caa285993eda5f5b4ea4c52899da8b3"
+  },
+  "flad3spurter:endags@facit-b:med-gemt-jagt": {
+   "loeb": "b28595fb84a61134acbd3ae98b4866b3476308e9ddc1b22ca1406c58a5f74cda",
+   "pris": "49495e6b36cfe07d378ada263f6d52233683df84c9caa9b97efbe59eaf0a1256"
+  },
+  "rullende37:foerste@facit-a:uden-jagt": {
+   "loeb": "afb149879c2a74a99c87cf892f0659d6d17442a0f8dc56650e5b34c105233cc0",
+   "pris": "0b98fca3ce1734e2993d45ea9a7b4e771ae1a390495c991e6f226ebc7625d895"
+  },
+  "rullende37:foerste@facit-a:med-gemt-jagt": {
+   "loeb": "7f75ad401b58be6209f2b43135c4f910d33f890696a4272a5373c6c0011cef62",
+   "pris": "71ed478b6d90278991e1abd2c55e025e88a43b1314aec14bacd81620dbac757d"
+  },
+  "rullende37:foerste@facit-a:ingen-planer": {
+   "loeb": "144c083050053cc5a481a729ae2a5de54281f2bafe511746acc3ac2cb5fc99b3",
+   "pris": "8d1214c06893d47404ca80b9cadba66ee0123598ca2a38cca0c5ba936fee9c69"
+  },
+  "rullende37:foerste@facit-b:uden-jagt": {
+   "loeb": "d1df11fbcaffb0ff0838a01c10744fa828b7c9d323e3b2a230ece1b6eae4b5e3",
+   "pris": "1e2220bf2d1315fdaa091a8f60ebbba9df586f416c73be96e8dc173d96953be6"
+  },
+  "rullende37:foerste@facit-b:med-gemt-jagt": {
+   "loeb": "493cb9c72a892690d311a2baef5fd65d4d6135a9a5470cac0c916b98e051e3b3",
+   "pris": "6869953c95aa4ada7093568db75a64032a00c02cc7f83896f21615e5cccbb8e1"
+  },
+  "rullende37:foerste@facit-b:ingen-planer": {
+   "loeb": "12ba36db98de4bd5fc2ed744df7171f21846fe54aa4b61d5994e6892d647168a",
+   "pris": "23f169e02320514d10e1f8d1c3a09ddfea94e1c1b98813d3b2807bbd1fb00eb2"
+  },
+  "rullende37:midt@facit-a:uden-jagt": {
+   "loeb": "3cd454f69ee4739b37213571e87d3e35324d3f480d6f879da2ec76b327d733bb",
+   "pris": "054ebcd7fa8e4c50bc87b19e50f8c56ade0288a2756d537f46f669b2cf7d1656"
+  },
+  "rullende37:midt@facit-a:med-gemt-jagt": {
+   "loeb": "1659c9d50a2b1dc8c63dd6ed1655fdbb81861a34db41c5b98c3fa453f5a83853",
+   "pris": "bf58e4c6823502a431b7cf0f05c1070c083fcf981f2366bc07485235a2b8c6ba"
+  },
+  "rullende37:midt@facit-b:uden-jagt": {
+   "loeb": "0d44012fe0f9f807e3d6d0a8b2312bf9bbae5bac6f2a15774ca9c1d4cb09faea",
+   "pris": "18c9138b94afa7811ae81cf6e07daecb749a264ec42b6adf4c0d90fc676d2030"
+  },
+  "rullende37:midt@facit-b:med-gemt-jagt": {
+   "loeb": "37045a6268cb861cd0f4e491ee73a7fa43bdf6d66acac82756d4064ee740dcee",
+   "pris": "4ae7604d368ccabb59e02b9fbe850d4eb43b8b480b7ef108bf104bbbf54236a1"
+  },
+  "rullende37:endags@facit-a:uden-jagt": {
+   "loeb": "850dabb462ffa943cc14b83fc674c40b920dd9d891a2fd65102597efe6792927",
+   "pris": "58c144087bd72fdb960595fc167ff01bbc80c91d62c13518a7b92ad6c82fa126"
+  },
+  "rullende37:endags@facit-a:med-gemt-jagt": {
+   "loeb": "f6fa530c2f4a55eca074dd473318e10e907946c5de2bb90f5ca7a6cd3ce167e9",
+   "pris": "021a05dbef5c652114a7b7902ae06ea7628ad9046eae2286d69b094974a4a02d"
+  },
+  "rullende37:endags@facit-b:uden-jagt": {
+   "loeb": "ad3f5ef320ef8a129848a40c596fd43ae64cfcc8a970e6b5612993bc4ce33e44",
+   "pris": "30a89a0990c2825b748dab492403601c9a4b22b57e433ec88b3a51ccfb3c9674"
+  },
+  "rullende37:endags@facit-b:med-gemt-jagt": {
+   "loeb": "651b0edbbd20461d31d36e4977654788b3c2e88a0d96831818fa7d1e9b5e75a3",
+   "pris": "f35a35d401d00d50080c2bdb74896ea14bf1de5c2660646e809839706e9092e5"
+  },
+  "kuperet5:foerste@facit-a:uden-jagt": {
+   "loeb": "39473db72161c8ec5db7634fe28b672912600cf39b6dc95b6bd9d4b404cce602",
+   "pris": "b997f61ba2f69174b994f64872d10fdcdcec1a6af1999feda1a844ea9c1bf011"
+  },
+  "kuperet5:foerste@facit-a:med-gemt-jagt": {
+   "loeb": "e5dee8980d067f67b89fa010c2e49b69583e37c4915f6ecde82d2c822e736281",
+   "pris": "46f964760121e4574d1bf76198cd2573d4af1d8ae1b10f78effa6e6dcdf2b3f1"
+  },
+  "kuperet5:foerste@facit-a:ingen-planer": {
+   "loeb": "fca3d840f2cc0234f8177dce3b01de81810040e325e7792b150350f399a5b4dd",
+   "pris": "3c4614db8908f0020430881a28f0544474bcc6fc35b920c6bcb45227fc525045"
+  },
+  "kuperet5:foerste@facit-b:uden-jagt": {
+   "loeb": "efd213e38be7869cc49a99bebabe75995ec2bf52817015dd92cef967941b4331",
+   "pris": "46e4f89fe0e9ef95c522a17c212f6e930ad5ff188dd86275343b287e6cf0b933"
+  },
+  "kuperet5:foerste@facit-b:med-gemt-jagt": {
+   "loeb": "241e90bd5bfa96e0bc75d2b9b241840c69e6b4163536efa2279f7a5aef16c1b0",
+   "pris": "78de9dc5cc251723778344035f0d4a6af4101a458a133d0a8c6bb8e2fcba982a"
+  },
+  "kuperet5:foerste@facit-b:ingen-planer": {
+   "loeb": "83d96280ddfed2c1fd4619f45e245f99513efa5dc39f458a924c1d1f69d215e5",
+   "pris": "767e23c2d9f4cdd2116a11745d25351d9ec2c4baa944288e5a4359fb90462f57"
+  },
+  "kuperet5:midt@facit-a:uden-jagt": {
+   "loeb": "9b237541e4e7f0ac7ef0072c171c044675d7b9643f2c170f416cf4df28cec109",
+   "pris": "76a07b1249b2ff68ca2062e98cacae5d8af1e484f83e433895ad9213c0f3ce76"
+  },
+  "kuperet5:midt@facit-a:med-gemt-jagt": {
+   "loeb": "f363df3095822f5406ac464462328fe2fb5b6170ab56cde7bcb3552edb67bd08",
+   "pris": "a25842f2591feae853ab3c6538227438dc522d058339b7bc8ca5d4fbeb7a8b57"
+  },
+  "kuperet5:midt@facit-b:uden-jagt": {
+   "loeb": "4cf9ab0a4ce503d41d0036383510eb8a807c7a3afa204b7fbf5fc019e89c4f58",
+   "pris": "f048f769c52c3be1933ca829e11c3e180e41b0318dae9022f838648513e93dcd"
+  },
+  "kuperet5:midt@facit-b:med-gemt-jagt": {
+   "loeb": "d4cda8c9f588a501611762c576a07db7e3262728302381dae4edf1fe7d298d8b",
+   "pris": "b98e7228c35ff2eb069b15a4348a4fdfeb1d45838d4e73c72e7000c41871a82b"
+  },
+  "kuperet5:endags@facit-a:uden-jagt": {
+   "loeb": "6b60621686c521adc6a9c1c633b1da209339dd1740a4e2804a7e978ac0029b96",
+   "pris": "5fd60805e2e2fefeedc46b82ec2768c9587205a76d61a78b000b64b4a8f4b56b"
+  },
+  "kuperet5:endags@facit-a:med-gemt-jagt": {
+   "loeb": "874d64d319fdc6606922977fd6d73cf5585faf132ab500bc54285b3db5c1070f",
+   "pris": "a7380140149617c0c3a50ca8f20b1f13e0d697df8363568fd77d0720ab2a5f3b"
+  },
+  "kuperet5:endags@facit-b:uden-jagt": {
+   "loeb": "5f64a28ea2208aa7378e7d679244c7d36cdcd6b49155a88414ddb29133963539",
+   "pris": "d13364131ad76ca7814f1a02a4de27480b99dd1d0810446d301957716e326af3"
+  },
+  "kuperet5:endags@facit-b:med-gemt-jagt": {
+   "loeb": "d2a46dee3c9cce54a67a7842838585168cf45b3506d2b07eebcac236bcf53d50",
+   "pris": "66aee479f23a7979cc9a1cb45aedb8a3e143c7ffc22029f7911e9ae665431bb8"
+  },
+  "bjerg13:foerste@facit-a:uden-jagt": {
+   "loeb": "ea582324b29bf8c94548e767219d5f0c46db8fbd81a20519ebb6ca864298e2c6",
+   "pris": "4f712c9b3141353babfc1c7e86c450fa0300d5937fd2b518e855bb24cfd0de36"
+  },
+  "bjerg13:foerste@facit-a:med-gemt-jagt": {
+   "loeb": "841da035f8ef5ac12ef3861718ad42bad9990c0a14acd5d1e382304d8b08fe34",
+   "pris": "82faebf22750fa641c7e178c81ee765fa82092012ddbab0e47fe7631ae644f74"
+  },
+  "bjerg13:foerste@facit-a:ingen-planer": {
+   "loeb": "d2ffe3f2c194957b002df00d0f10f55c962941ad9aacb9f08408826150d8dfcd",
+   "pris": "0fe21b2a8890e86215bfc01949b3e2c6e00eb4378b1af6c449033fd5bd47cc53"
+  },
+  "bjerg13:foerste@facit-b:uden-jagt": {
+   "loeb": "85bf72f94695a850065a2b31d6e630cb5af55be3c74fedf979edfbd892cc0df6",
+   "pris": "01a1228a5c51aae609537892ca4cfd615dde2de0f443c3a402336e34e9ef52f0"
+  },
+  "bjerg13:foerste@facit-b:med-gemt-jagt": {
+   "loeb": "49bc78405bff8eb0d3d46b6339ff929383c226c6b16a47bc4384964a4c81fc5d",
+   "pris": "2a1c56281605df643b1ca83cf20aac5719a1c5e5ec858f4107e6ce49becc8628"
+  },
+  "bjerg13:foerste@facit-b:ingen-planer": {
+   "loeb": "bce0d69221e642711d412acb4668fedb5830db1279cbeb5b2763de17333fe227",
+   "pris": "7a06d5f3d0aa38d3fa10113b91304183330f83767d10e5d005be6d32a8508052"
+  },
+  "bjerg13:midt@facit-a:uden-jagt": {
+   "loeb": "297f92fbc01dfa1ed8d3d5a4a005554a5055ac481df3c4a5991702fd129c510d",
+   "pris": "bb0db0178d287d9de023a213a3ebdfefd1d52b995641ee60bc75c774939b4942"
+  },
+  "bjerg13:midt@facit-a:med-gemt-jagt": {
+   "loeb": "e6527445963408905b498bf0a9ff3a29be4580c01e4854ed668603663e90a273",
+   "pris": "e044f015c7df4e99bc5efe41d9522f26e95ce95fae12da5ee87e831e7a86e294"
+  },
+  "bjerg13:midt@facit-b:uden-jagt": {
+   "loeb": "8ea80c753461cbcacfbb41f569bc3daf2e17150f51294c734583bd7b33ef8e77",
+   "pris": "64b19728a7c4de2fbeb2927505155cca4a0261fddb84df8cf4f3a6d973d526ec"
+  },
+  "bjerg13:midt@facit-b:med-gemt-jagt": {
+   "loeb": "4d992d8b649346783b11f6f9aeab33ae07c63342756b06387691108ade7cc41a",
+   "pris": "d2fe4e9f86f7e2d36a673c8e8efae12f8f9205be0d0bc06625bbeea1b625b01d"
+  },
+  "bjerg13:endags@facit-a:uden-jagt": {
+   "loeb": "198f2bea62858b5f7cf8e36d93cb7eb2f677570595022f9ace184fb94c6f9699",
+   "pris": "690fb9309f5d742c7e901a2185a5b90c03a3749044fe4db38528a6c20a88a98f"
+  },
+  "bjerg13:endags@facit-a:med-gemt-jagt": {
+   "loeb": "105d02ed783b940717be6eba45746aaa3f00a8b7cdb565a6da72ae261370ea3e",
+   "pris": "c0d32f1fbbdc25399dbe88f25754e1667b4ebb5198f3d81ed0a581f4c3d933fe"
+  },
+  "bjerg13:endags@facit-b:uden-jagt": {
+   "loeb": "6c1f03ca0b77194f00076bd8f15d1b1ea321ce03d03a2a196e559393c871e586",
+   "pris": "e03d8165d8c9fd7e2a5dcfb8a8a59590aa2d4713d5c87c2f821ca0f08c1617ba"
+  },
+  "bjerg13:endags@facit-b:med-gemt-jagt": {
+   "loeb": "4d46edce702c9650424803915c81e84eebf20be7e21ad6b9554343113708a938",
+   "pris": "c094a5d0996a6c37c3b67bd9881e2274d37cbe25bf4968e40a99750144a1435e"
+  },
+  "hoejfjeld14:foerste@facit-a:uden-jagt": {
+   "loeb": "2b4f83548b390772fb9ed3527802b86f2440489d5decb42ae00b8d88e1aa58f2",
+   "pris": "09f8d1aff7e7b03fee82f810aa051a4957123b511cd670268ad66fc3722c701d"
+  },
+  "hoejfjeld14:foerste@facit-a:med-gemt-jagt": {
+   "loeb": "c7b92679f80c818e416e4f27d1ab3f6e9a3e54ee8b76397b7b9880dde6591411",
+   "pris": "c66debb2686fb79993435875880135b26989107cc64ed1eaa2f121a28263d4ab"
+  },
+  "hoejfjeld14:foerste@facit-a:ingen-planer": {
+   "loeb": "d9dd8266d498a37dc96a9ad02ff13b2ad7086ce784922181a65dcdaf18c41141",
+   "pris": "c638e99ed9f5e8850fe10df4144702adb1ca6b0188952e29dbe8d5f2dd57c94c"
+  },
+  "hoejfjeld14:foerste@facit-b:uden-jagt": {
+   "loeb": "ac81a7a74065a5cab077e86480c21480631bb12fcaaf538233b00fbe22e8350a",
+   "pris": "e1cc1ee8e4c6b3c93171f8bafee8585ca480edaabd13d41354ce4440803d9b68"
+  },
+  "hoejfjeld14:foerste@facit-b:med-gemt-jagt": {
+   "loeb": "e0b305438d63f598a6b184a90cd68be29696a69a830b9aabecc95e9cbc6bfb37",
+   "pris": "86352da628efd40ae50f534095e4deac029d06d1f5de54a101e68920509e95fe"
+  },
+  "hoejfjeld14:foerste@facit-b:ingen-planer": {
+   "loeb": "b144411040bca28db06a4299fccbfd10db85666d2396bbb375fe31004152bfbb",
+   "pris": "79978c8446c100211fd4f278bec0dcfd725cacb5a5adc24934a3ae02e9a7edf1"
+  },
+  "hoejfjeld14:midt@facit-a:uden-jagt": {
+   "loeb": "35825633b3e467eafeca7824a652c5b0bc22bea6ed37f45071895243d0b78448",
+   "pris": "6db69b2cb26a585bc680c510ea8a9a55642e66c87461b0d764451f405d30d86c"
+  },
+  "hoejfjeld14:midt@facit-a:med-gemt-jagt": {
+   "loeb": "4391e5f27a1181d715782db38fa0279ec73d9403e4e0b676e5e34583d2fca4dc",
+   "pris": "fd2b29f77fb5b954f33ca96a44f92bcf5b4b91058e35641697e34c7df88eebe0"
+  },
+  "hoejfjeld14:midt@facit-b:uden-jagt": {
+   "loeb": "dd0a1adff8c060c0fadcf1f8ce76f5d4beaf2c8d3c3b0ed6e1eeacae583acbf4",
+   "pris": "ddb981da65a35c21bc5709af8998b5b84d677d1e434cb810d42f7e4cbf517940"
+  },
+  "hoejfjeld14:midt@facit-b:med-gemt-jagt": {
+   "loeb": "2d4ccd55b1f75073bb3167a7178533ff12a17cc0c88d0399b030db1fbec39acf",
+   "pris": "5f1402dc5bba35a2bdc1646f52b6afcecef172b0421efd73c0e26199d0a5edf3"
+  },
+  "hoejfjeld14:endags@facit-a:uden-jagt": {
+   "loeb": "b32a8527034fe769424d0aae00d313e12c340f092d9b210c220cee1408c9dec1",
+   "pris": "6c708d9797fbbb5f6f69d2568bd036ba959d8d577ed76f12ae2c17eed0807949"
+  },
+  "hoejfjeld14:endags@facit-a:med-gemt-jagt": {
+   "loeb": "58422599b66a6a1bbb4ba82d062e2d436e774fc63eec7e1c8bdf1bffe5dda5aa",
+   "pris": "ec19d8126c6b9f9d6a8431f12599674868bc78628ffa26e0bd191b2758f2328f"
+  },
+  "hoejfjeld14:endags@facit-b:uden-jagt": {
+   "loeb": "73124137edc632f0df799d7f9080872e0f562ff4768c0b518cfce9893ddfbe15",
+   "pris": "8715d922716aae791faa6d1a0d73554b9d85a8c6ac8a88548d082a9b60b28e53"
+  },
+  "hoejfjeld14:endags@facit-b:med-gemt-jagt": {
+   "loeb": "8dfaa4a085a0b4c6ec9e3e0ee917aaa76870d53d0bdbacb25afe7261ca04aa03",
+   "pris": "44f0554151fa07ee322b1c084c6b6905c223af7fd0d8b0f33f785f58b92af313"
+  }
+ },
+ "taendtUdenJagt": {
+  "flad20:foerste@facit-a:uden-jagt": {
+   "loeb": "d75770d94c1a617c3e0b0a246b7d49c5c2b2aad484728c52a9eef5869d04b3ba",
+   "pris": "9b2f7b7e22bee09a6a65ce0277f8cac79763f6c50f15de78960b6b3c776b3ade"
+  },
+  "flad20:foerste@facit-a:ingen-planer": {
+   "loeb": "14bf94098d75e4bcd0358d06b00e58c942a6b55ded08535f6881411c317f2b4b",
+   "pris": "c86733c714adfb8633eeb6c715d9444319c80c85dc6f046ddb787776eb65b386"
+  },
+  "flad20:foerste@facit-b:uden-jagt": {
+   "loeb": "98eb1ad987956bf3e8680a589f9c07b8a9bc359214becce9300b006e48e164eb",
+   "pris": "6f460d01c5a6127d74831805bf2b7df4e579cfc2ccca199915f4daba22b0e0d4"
+  },
+  "flad20:foerste@facit-b:ingen-planer": {
+   "loeb": "f1a6dccc51e49e646f34134f05537585046e3bf5deb54646da8eea37cbe14f10",
+   "pris": "ff0b541bbe970233dc264b5cbd7edea540d303dda196f19c544a50b3889499a4"
+  },
+  "flad20:midt@facit-a:uden-jagt": {
+   "loeb": "db9821c403383fbc6673a0919ad9cef6a1045b7cc0632276184a599aeb0ad651",
+   "pris": "47ce58f345823c99a1dbdc42592819841d595e2baf92175d4584fceab337dcd6"
+  },
+  "flad20:midt@facit-b:uden-jagt": {
+   "loeb": "3dfa7666321e7e862588b15c2fc6a683acb3aa03748dbc234fb296d750c1fd86",
+   "pris": "a68429ef637dd9f4dc2c6676cbcfa821307335d7dfc8697bc19fa7b3e32f336e"
+  },
+  "flad20:endags@facit-a:uden-jagt": {
+   "loeb": "1a35562bbecd7e91fc214f4409492f6ccabae0bf5abc52933138169c553966e2",
+   "pris": "52bf30240eacdd8a6fc932de8cdd52ce74cef1d2d8a64686acd66c1c85ba1c9b"
+  },
+  "flad20:endags@facit-b:uden-jagt": {
+   "loeb": "a90952b5ba9150952911e8d5414095e8289c44e9ddd7b9f12a0eab6edb2b2372",
+   "pris": "b2b0c6667b7bc9c25112d4369f864eb74caa285993eda5f5b4ea4c52899da8b3"
+  },
+  "flad3spurter:foerste@facit-a:uden-jagt": {
+   "loeb": "2de7d290df570a9397b265a7a9a75bdb7ca5586036a940e3d93fb4f92078694f",
+   "pris": "9b2f7b7e22bee09a6a65ce0277f8cac79763f6c50f15de78960b6b3c776b3ade"
+  },
+  "flad3spurter:foerste@facit-a:ingen-planer": {
+   "loeb": "3267fc70322ac574be5d68e84807a5556b44dde0ca39736351b6d6a8d3050ef7",
+   "pris": "c86733c714adfb8633eeb6c715d9444319c80c85dc6f046ddb787776eb65b386"
+  },
+  "flad3spurter:foerste@facit-b:uden-jagt": {
+   "loeb": "2ac47afa6d64f48fb9574f5e50c2b51e0433daaf42a5de3c79130dd4914b3d80",
+   "pris": "6f460d01c5a6127d74831805bf2b7df4e579cfc2ccca199915f4daba22b0e0d4"
+  },
+  "flad3spurter:foerste@facit-b:ingen-planer": {
+   "loeb": "e8cab1a724e7df5bd7bb1cff0b0fecfff0694dbcfd1edfed543abe5ab2799b75",
+   "pris": "ff0b541bbe970233dc264b5cbd7edea540d303dda196f19c544a50b3889499a4"
+  },
+  "flad3spurter:midt@facit-a:uden-jagt": {
+   "loeb": "033e55003b3cd9a1a4e6c5701c1e5d9fc5d82447165e5ac653083b6117a1c09f",
+   "pris": "47ce58f345823c99a1dbdc42592819841d595e2baf92175d4584fceab337dcd6"
+  },
+  "flad3spurter:midt@facit-b:uden-jagt": {
+   "loeb": "4fa1097867d512f00c051f76c3b88dd04f9b11006aefd5fc2980c9f5e770f28c",
+   "pris": "a68429ef637dd9f4dc2c6676cbcfa821307335d7dfc8697bc19fa7b3e32f336e"
+  },
+  "flad3spurter:endags@facit-a:uden-jagt": {
+   "loeb": "4880be2f581adb4a24d4aaa10f6908f0fdfe374caa0c71d00884fbdae2fc7022",
+   "pris": "52bf30240eacdd8a6fc932de8cdd52ce74cef1d2d8a64686acd66c1c85ba1c9b"
+  },
+  "flad3spurter:endags@facit-b:uden-jagt": {
+   "loeb": "f8a1bbc8e3fb373f5646b8e58c0dfe6185cfda9d9ec639303b595a362b07160d",
+   "pris": "b2b0c6667b7bc9c25112d4369f864eb74caa285993eda5f5b4ea4c52899da8b3"
+  },
+  "rullende37:foerste@facit-a:uden-jagt": {
+   "loeb": "afb149879c2a74a99c87cf892f0659d6d17442a0f8dc56650e5b34c105233cc0",
+   "pris": "0b98fca3ce1734e2993d45ea9a7b4e771ae1a390495c991e6f226ebc7625d895"
+  },
+  "rullende37:foerste@facit-a:ingen-planer": {
+   "loeb": "144c083050053cc5a481a729ae2a5de54281f2bafe511746acc3ac2cb5fc99b3",
+   "pris": "8d1214c06893d47404ca80b9cadba66ee0123598ca2a38cca0c5ba936fee9c69"
+  },
+  "rullende37:foerste@facit-b:uden-jagt": {
+   "loeb": "d1df11fbcaffb0ff0838a01c10744fa828b7c9d323e3b2a230ece1b6eae4b5e3",
+   "pris": "1e2220bf2d1315fdaa091a8f60ebbba9df586f416c73be96e8dc173d96953be6"
+  },
+  "rullende37:foerste@facit-b:ingen-planer": {
+   "loeb": "12ba36db98de4bd5fc2ed744df7171f21846fe54aa4b61d5994e6892d647168a",
+   "pris": "23f169e02320514d10e1f8d1c3a09ddfea94e1c1b98813d3b2807bbd1fb00eb2"
+  },
+  "rullende37:midt@facit-a:uden-jagt": {
+   "loeb": "3cd454f69ee4739b37213571e87d3e35324d3f480d6f879da2ec76b327d733bb",
+   "pris": "054ebcd7fa8e4c50bc87b19e50f8c56ade0288a2756d537f46f669b2cf7d1656"
+  },
+  "rullende37:midt@facit-b:uden-jagt": {
+   "loeb": "0d44012fe0f9f807e3d6d0a8b2312bf9bbae5bac6f2a15774ca9c1d4cb09faea",
+   "pris": "18c9138b94afa7811ae81cf6e07daecb749a264ec42b6adf4c0d90fc676d2030"
+  },
+  "rullende37:endags@facit-a:uden-jagt": {
+   "loeb": "850dabb462ffa943cc14b83fc674c40b920dd9d891a2fd65102597efe6792927",
+   "pris": "58c144087bd72fdb960595fc167ff01bbc80c91d62c13518a7b92ad6c82fa126"
+  },
+  "rullende37:endags@facit-b:uden-jagt": {
+   "loeb": "ad3f5ef320ef8a129848a40c596fd43ae64cfcc8a970e6b5612993bc4ce33e44",
+   "pris": "30a89a0990c2825b748dab492403601c9a4b22b57e433ec88b3a51ccfb3c9674"
+  },
+  "kuperet5:foerste@facit-a:uden-jagt": {
+   "loeb": "39473db72161c8ec5db7634fe28b672912600cf39b6dc95b6bd9d4b404cce602",
+   "pris": "b997f61ba2f69174b994f64872d10fdcdcec1a6af1999feda1a844ea9c1bf011"
+  },
+  "kuperet5:foerste@facit-a:ingen-planer": {
+   "loeb": "fca3d840f2cc0234f8177dce3b01de81810040e325e7792b150350f399a5b4dd",
+   "pris": "3c4614db8908f0020430881a28f0544474bcc6fc35b920c6bcb45227fc525045"
+  },
+  "kuperet5:foerste@facit-b:uden-jagt": {
+   "loeb": "efd213e38be7869cc49a99bebabe75995ec2bf52817015dd92cef967941b4331",
+   "pris": "46e4f89fe0e9ef95c522a17c212f6e930ad5ff188dd86275343b287e6cf0b933"
+  },
+  "kuperet5:foerste@facit-b:ingen-planer": {
+   "loeb": "83d96280ddfed2c1fd4619f45e245f99513efa5dc39f458a924c1d1f69d215e5",
+   "pris": "767e23c2d9f4cdd2116a11745d25351d9ec2c4baa944288e5a4359fb90462f57"
+  },
+  "kuperet5:midt@facit-a:uden-jagt": {
+   "loeb": "9b237541e4e7f0ac7ef0072c171c044675d7b9643f2c170f416cf4df28cec109",
+   "pris": "76a07b1249b2ff68ca2062e98cacae5d8af1e484f83e433895ad9213c0f3ce76"
+  },
+  "kuperet5:midt@facit-b:uden-jagt": {
+   "loeb": "4cf9ab0a4ce503d41d0036383510eb8a807c7a3afa204b7fbf5fc019e89c4f58",
+   "pris": "f048f769c52c3be1933ca829e11c3e180e41b0318dae9022f838648513e93dcd"
+  },
+  "kuperet5:endags@facit-a:uden-jagt": {
+   "loeb": "6b60621686c521adc6a9c1c633b1da209339dd1740a4e2804a7e978ac0029b96",
+   "pris": "5fd60805e2e2fefeedc46b82ec2768c9587205a76d61a78b000b64b4a8f4b56b"
+  },
+  "kuperet5:endags@facit-b:uden-jagt": {
+   "loeb": "5f64a28ea2208aa7378e7d679244c7d36cdcd6b49155a88414ddb29133963539",
+   "pris": "d13364131ad76ca7814f1a02a4de27480b99dd1d0810446d301957716e326af3"
+  },
+  "bjerg13:foerste@facit-a:uden-jagt": {
+   "loeb": "ea582324b29bf8c94548e767219d5f0c46db8fbd81a20519ebb6ca864298e2c6",
+   "pris": "4f712c9b3141353babfc1c7e86c450fa0300d5937fd2b518e855bb24cfd0de36"
+  },
+  "bjerg13:foerste@facit-a:ingen-planer": {
+   "loeb": "d2ffe3f2c194957b002df00d0f10f55c962941ad9aacb9f08408826150d8dfcd",
+   "pris": "0fe21b2a8890e86215bfc01949b3e2c6e00eb4378b1af6c449033fd5bd47cc53"
+  },
+  "bjerg13:foerste@facit-b:uden-jagt": {
+   "loeb": "85bf72f94695a850065a2b31d6e630cb5af55be3c74fedf979edfbd892cc0df6",
+   "pris": "01a1228a5c51aae609537892ca4cfd615dde2de0f443c3a402336e34e9ef52f0"
+  },
+  "bjerg13:foerste@facit-b:ingen-planer": {
+   "loeb": "bce0d69221e642711d412acb4668fedb5830db1279cbeb5b2763de17333fe227",
+   "pris": "7a06d5f3d0aa38d3fa10113b91304183330f83767d10e5d005be6d32a8508052"
+  },
+  "bjerg13:midt@facit-a:uden-jagt": {
+   "loeb": "297f92fbc01dfa1ed8d3d5a4a005554a5055ac481df3c4a5991702fd129c510d",
+   "pris": "bb0db0178d287d9de023a213a3ebdfefd1d52b995641ee60bc75c774939b4942"
+  },
+  "bjerg13:midt@facit-b:uden-jagt": {
+   "loeb": "8ea80c753461cbcacfbb41f569bc3daf2e17150f51294c734583bd7b33ef8e77",
+   "pris": "64b19728a7c4de2fbeb2927505155cca4a0261fddb84df8cf4f3a6d973d526ec"
+  },
+  "bjerg13:endags@facit-a:uden-jagt": {
+   "loeb": "198f2bea62858b5f7cf8e36d93cb7eb2f677570595022f9ace184fb94c6f9699",
+   "pris": "690fb9309f5d742c7e901a2185a5b90c03a3749044fe4db38528a6c20a88a98f"
+  },
+  "bjerg13:endags@facit-b:uden-jagt": {
+   "loeb": "6c1f03ca0b77194f00076bd8f15d1b1ea321ce03d03a2a196e559393c871e586",
+   "pris": "e03d8165d8c9fd7e2a5dcfb8a8a59590aa2d4713d5c87c2f821ca0f08c1617ba"
+  },
+  "hoejfjeld14:foerste@facit-a:uden-jagt": {
+   "loeb": "2b4f83548b390772fb9ed3527802b86f2440489d5decb42ae00b8d88e1aa58f2",
+   "pris": "09f8d1aff7e7b03fee82f810aa051a4957123b511cd670268ad66fc3722c701d"
+  },
+  "hoejfjeld14:foerste@facit-a:ingen-planer": {
+   "loeb": "d9dd8266d498a37dc96a9ad02ff13b2ad7086ce784922181a65dcdaf18c41141",
+   "pris": "c638e99ed9f5e8850fe10df4144702adb1ca6b0188952e29dbe8d5f2dd57c94c"
+  },
+  "hoejfjeld14:foerste@facit-b:uden-jagt": {
+   "loeb": "ac81a7a74065a5cab077e86480c21480631bb12fcaaf538233b00fbe22e8350a",
+   "pris": "e1cc1ee8e4c6b3c93171f8bafee8585ca480edaabd13d41354ce4440803d9b68"
+  },
+  "hoejfjeld14:foerste@facit-b:ingen-planer": {
+   "loeb": "b144411040bca28db06a4299fccbfd10db85666d2396bbb375fe31004152bfbb",
+   "pris": "79978c8446c100211fd4f278bec0dcfd725cacb5a5adc24934a3ae02e9a7edf1"
+  },
+  "hoejfjeld14:midt@facit-a:uden-jagt": {
+   "loeb": "35825633b3e467eafeca7824a652c5b0bc22bea6ed37f45071895243d0b78448",
+   "pris": "6db69b2cb26a585bc680c510ea8a9a55642e66c87461b0d764451f405d30d86c"
+  },
+  "hoejfjeld14:midt@facit-b:uden-jagt": {
+   "loeb": "dd0a1adff8c060c0fadcf1f8ce76f5d4beaf2c8d3c3b0ed6e1eeacae583acbf4",
+   "pris": "ddb981da65a35c21bc5709af8998b5b84d677d1e434cb810d42f7e4cbf517940"
+  },
+  "hoejfjeld14:endags@facit-a:uden-jagt": {
+   "loeb": "b32a8527034fe769424d0aae00d313e12c340f092d9b210c220cee1408c9dec1",
+   "pris": "6c708d9797fbbb5f6f69d2568bd036ba959d8d577ed76f12ae2c17eed0807949"
+  },
+  "hoejfjeld14:endags@facit-b:uden-jagt": {
+   "loeb": "73124137edc632f0df799d7f9080872e0f562ff4768c0b518cfce9893ddfbe15",
+   "pris": "8715d922716aae791faa6d1a0d73554b9d85a8c6ac8a88548d082a9b60b28e53"
+  }
+ },
+ "hentPoint": {
+  "flad20@facit-a": "85923865acc809d21c33be3efc1acbb96c760b45fe64955926e789d54bf112e3",
+  "flad20@facit-b": "b4696a99c7267ddbd50a67d5980d7768a748ed0249907ded52afb6f7243f6738",
+  "flad3spurter@facit-a": "962b4c5ffaaf0ee278584b16b92a912ffc2f52d90096b377625902f295318ef2",
+  "flad3spurter@facit-b": "39cb63e5d654622d94db01ecd10884004c688712688bfb5f80980bfa90f4aa12",
+  "rullende37@facit-a": "1a9ab9ec7b7a7ecc6f64d6530e36c0613499d2d2f9a287c693f89207afbc8ceb",
+  "rullende37@facit-b": "65ef255bfcec7f7bb48a2f9585c718cabc7e3560c0b77e25f746d82884688ace",
+  "kuperet5@facit-a": "f96a196e1f14e65ebe4c527812fdbe3c830f2ede2142b3e76ad3f8119fa1e16f",
+  "kuperet5@facit-b": "9d91ce9f52cc859c394d391ed46c68018b0f2ef84a7e2a33e6feb398bf9a4e26",
+  "bjerg13@facit-a": "965540141dd9c301ec5707bf085beee9bf57a11cb2dfa87b64b8206f483c78b4",
+  "bjerg13@facit-b": "296ef4790ca4befa52ee131a347a814c410be9110f54a3f23a6e7e7175781632",
+  "hoejfjeld14@facit-a": "a1526f96b056cefc546cff4ed552586a0ced0bced2363282748ffb08d9327bdb",
+  "hoejfjeld14@facit-b": "2020d8875ad7b6a044a64a492022e9e2b105161975222b97205b5af64b41d8be"
+ },
+ "hentPointJagedePassager": 16
+}

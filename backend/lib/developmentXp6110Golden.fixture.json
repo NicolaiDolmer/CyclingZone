@@ -1,0 +1,17 @@
+{
+  "kilde": "merge-base b1afa36bd6adec7988b157a456d5e354d3ecdab7 (origin/main, 13/11), genereret i en separat read-only checkout; tal afrundet til 12 betydende cifre foer hash",
+  "tick": {
+    "antal": 480,
+    "hash": "68fd400952bf8b03979a0b694d8eca762d9842848bd8580c2ddc62e3d8087398"
+  },
+  "prognose": {
+    "evne": "8ec0a0a5acb535ef6a2317f14e699f7751765e552c8a6eb9af08a5e4c48a9250",
+    "baand": "1aaf3f5afabd2833ea466c5068b6b7631c3cd2392e3f5b85437c5feb73103d37",
+    "typer": "813b3660b4a8dda2f9b6dfe74a6e6380ea51d055ba83b14332e9797f0cc86388",
+    "antal": 200
+  },
+  "roster": {
+    "antal": 80,
+    "hash": "4ef869e118ec92cc77c2259efdbabb652798e4747b089fc95aa1502c71b26395"
+  }
+}

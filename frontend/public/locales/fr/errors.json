@@ -303,6 +303,12 @@
     "contract_batch_salary_cap": "Ces prolongations feraient passer ton salaire total au-dessus du plafond du conseil de {cap} CZ$. Rien n'a été modifié",
     "contract_batch_write_failed": "Un problème est survenu en enregistrant un contrat. Rien n'a été modifié",
     "contract_batch_partial": "Certains contrats ont changé pendant la prolongation et tout n'a pas pu être annulé. Vérifie les coureurs ci-dessous",
-    "team_lookup_failed": "Le serveur a renvoyé une erreur. Réessaie dans un instant"
+    "team_lookup_failed": "Le serveur a renvoyé une erreur. Réessaie dans un instant",
+    "ui_prefs_invalid_payload": "Ce choix n'a pas pu être enregistré. Recharge la page et réessaie.",
+    "ui_prefs_unknown_keys": "Ce choix n'a pas pu être enregistré. Recharge la page et réessaie.",
+    "ui_prefs_invalid_value": "Ce choix n'a pas pu être enregistré. Recharge la page et réessaie.",
+    "ui_prefs_read_failed": "Tes choix d'affichage n'ont pas pu être chargés. La page utilise ses réglages par défaut.",
+    "ui_prefs_unavailable": "Pour l'instant, ton choix d'affichage est gardé sur cet appareil seulement.",
+    "ui_prefs_write_failed": "Ton choix d'affichage n'a pas pu être enregistré. Réessaie dans un instant."
   }
 }

@@ -25,7 +25,7 @@
 
 import { loadInstantConditions } from "./trainNowInstantCondition7737.js";
 import { settleTrainingDateCondition } from "./trainingDateCondition.js";
-import { CONDITION_CONFIG, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
+import { CONDITION_CONFIG, RACE_DAY_ENGINE_RECOVERY_CONFIG, NEW_RIDER_START_CONDITION } from "./riderCondition.js";
 import { raceConditionLoads } from "./raceFatigue.js";
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "./trainingPrograms.js";
 import { resolveProgram } from "./dailyTraining.js";
@@ -92,7 +92,7 @@ export function forecastRiderFatigue({ riderId, dateStr, opening, slots, recover
   try {
     const settled = settleTrainingDateCondition({
       riderId, dateStr,
-      condition: { fatigue: Number(opening?.fatigue ?? 0), form: Number(opening?.form ?? 50) },
+      condition: { fatigue: Number(opening?.fatigue ?? NEW_RIDER_START_CONDITION.fatigue), form: Number(opening?.form ?? NEW_RIDER_START_CONDITION.form) },
       intensities: slots.map((slot) => slot.intensity),
       raceLoads: slots.map((slot) => (slot.intensity === "race" ? Number(slot.raceLoad ?? 0) : 0)),
       recoveryAbility,
@@ -127,7 +127,8 @@ export function buildTeamFatigueForecast({
   const recoveryConfig = raceDayEngineOn ? RACE_DAY_ENGINE_RECOVERY_CONFIG : {};
   const out = {};
   for (const rider of riders ?? []) {
-    const cond = conditionByRider.get(rider.id) ?? { form: 50, fatigue: 0 };
+    // #8089: rytter uden tilstand regnes fra samme start, som databasen giver ham.
+    const cond = conditionByRider.get(rider.id) ?? NEW_RIDER_START_CONDITION;
     const opening = openingByRider.get(rider.id) ?? cond;
     const plan = planByRider.get(rider.id) ?? null;
     const program = resolveProgram(plan, rider.primary_type);

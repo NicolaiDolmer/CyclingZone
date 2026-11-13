@@ -63,6 +63,7 @@ import {
   JERSEY_HUNT_TASKS,
   STAGE_PLAN_FINAL_KM,
   TASK_EFFORT,
+  legHuntTask,
   stretchHasHuntPassage,
   validateStagePlanLegs,
   type StagePlanLeg,
@@ -86,6 +87,8 @@ export type StagePlanSwitchReason = "kom" | "final_km" | "dropped" | "caught" | 
 type ResolvedLeg = {
   task: StagePlanTask;
   effort: EffortLevel;
+  /** #7855: den jagt-opgave leddet koerer (et jagt-led, eller et udbrudsled med jagt, valg A), ellers null. */
+  hunt: StagePlanTask | null;
   /** Rutepunktets km, eller null for foerste led og sat-leddet. */
   fromKm: number | null;
   fromDropped: boolean;
@@ -106,6 +109,12 @@ export type StagePlanRuntime = {
   huntRoute7855?: StagePlanRoute;
   /** #7855: ryttere der koerer planen uden jagt (se createStagePlanRuntime). Udeladt = ingen. */
   huntFallback7855?: string[];
+  /**
+   * #7855 valg 3 (ejer 13/11, "Samme pris", KUN kontakten): hjaelpere med "Gaa i udbrud + Hent point"
+   * (`eligible`), og dem af dem, der ikke kom med i udbruddet og derfor jagede fra feltet (`fromField`).
+   * Udeladt = ingen saadan rytter (bit-identisk).
+   */
+  missedBreakHunt7855?: { eligible: ReadonlySet<string>; fromField: Set<string> };
 };
 
 /**
@@ -160,7 +169,7 @@ function resolveLegs(legs: readonly StagePlanLeg[], route: StagePlanRoute): Reso
       fromKm = route.climbs.find((c) => c.index === from.kom_index)?.km ?? null;
       routeReason = "kom";
     }
-    return { task: leg.task, effort: TASK_EFFORT[leg.task] as EffortLevel, fromKm, fromDropped: from?.at === "dropped", routeReason };
+    return { task: leg.task, effort: TASK_EFFORT[leg.task] as EffortLevel, hunt: legHuntTask(leg), fromKm, fromDropped: from?.at === "dropped", routeReason };
   });
 }
 
@@ -215,6 +224,12 @@ export function createStagePlanRuntime(
   if (opts.droppedFront7635 === true) rt.front7635 = { prevGroupOf: null, seen: new Set(), attackGroups: new Set(), streak: new Map() };
   if (opts.jerseyHunt7855 === true) rt.huntRoute7855 = planRoute; // #7855
   if (huntFallback.length > 0) rt.huntFallback7855 = huntFallback.sort(); // #7855
+  // #7855 valg 3 (ejer 13/11): den forsigtige laesning (dommerens S5, S6, S7 er aabne ejer-valg):
+  // kun hjaelperen og kun "Hent point" paa udbrudsleddet; kun traetheden efter etapen aendres.
+  if (opts.jerseyHunt7855 === true) {
+    const eligible = riderIds.filter((id) => entrants[id]?.role === "helper" && legs.get(id)![0].task === "breakaway" && legs.get(id)![0].hunt === "hunt_points");
+    if (eligible.length > 0) rt.missedBreakHunt7855 = { eligible: new Set(eligible), fromField: new Set() };
+  }
   return rt;
 }
 
@@ -398,7 +413,7 @@ export function advanceStagePlan(
   // passage han kaemper om, afgoer stadig straekningen (stagePlanHuntWindows7855).
   const huntRoute = rt.huntRoute7855;
   const huntHasPassageHere = (leg: ResolvedLeg, fromKm: number, toKm: number) => {
-    const kind = JERSEY_HUNT_TASKS[leg.task];
+    const kind = leg.hunt ? JERSEY_HUNT_TASKS[leg.hunt] : undefined; // #7855: ogsaa udbrudsleddets jagt (valg A)
     return huntRoute !== undefined && kind !== undefined && stretchHasHuntPassage(huntRoute, kind, Math.max(fromKm, segment.from_km), Math.min(toKm, segment.to_km));
   };
   const switchesNow = (next: ResolvedLeg) => {
@@ -434,6 +449,13 @@ export function advanceStagePlan(
         next += 1;
         reason = legs[next].routeReason;
       }
+    }
+    // #7855 valg 3: koerer han segmentet paa udbrudsleddet med jagt uden nogensinde at have vaeret i
+    // udbruddet, jager han fra feltet. Kun noteret; loebet er uaendret (se stagePlanLoadEfforts).
+    const missed = rt.missedBreakHunt7855;
+    if (missed && !atStart && missed.eligible.has(riderId) && !inEscape && !rt.everInEscape.has(riderId)) {
+      const legNow = legs[next !== cur && reason !== null ? next : cur];
+      if (legNow.task === "breakaway" && legNow.hunt !== null) missed.fromField.add(riderId);
     }
     if (next === cur || reason === null) continue;
     rt.current.set(riderId, next);
@@ -514,9 +536,27 @@ export function stagePlanHuntWindows7855(rt: StagePlanRuntime): Record<string, {
   for (const riderId of rt.riderIds) {
     const legs = rt.legs.get(riderId)!;
     const cur = rt.current.get(riderId) ?? 0;
-    if (!JERSEY_HUNT_TASKS[legs[cur].task]) continue;
+    if (!legs[cur].hunt) continue;
     out ??= {};
     out[riderId] = { fromKm: legs[cur].fromKm ?? 0, toKm: legs[cur + 1]?.fromKm ?? Infinity };
+  }
+  return out;
+}
+
+/**
+ * #7855: den jagt-opgave hver rytter koerer segmentet med (et jagt-led, eller udbrudsleddets jagt,
+ * valg A). Passagerne laeser den i stedet for selve opgaven, saa en udbrudsrytter med jagt bade
+ * proever udbruddet (opgaven er stadig "breakaway") og koerer om pointene. undefined uden
+ * kontakten eller uden jaegere (samme betingelse som stagePlanHuntWindows7855).
+ */
+export function stagePlanHuntTasks7855(rt: StagePlanRuntime): Record<string, StagePlanTask> | undefined {
+  if (!rt.huntRoute7855) return undefined;
+  let out: Record<string, StagePlanTask> | undefined;
+  for (const riderId of rt.riderIds) {
+    const hunt = rt.legs.get(riderId)![rt.current.get(riderId) ?? 0].hunt;
+    if (!hunt) continue;
+    out ??= {};
+    out[riderId] = hunt;
   }
   return out;
 }
@@ -527,6 +567,9 @@ const EFFORT_RANK: Readonly<Record<EffortLevel, number>> = { grupetto: 0, save: 
  * Etapens belastning (traethed bagefter, model C) kender kun EN indsats pr. rytter.
  * Med en plan er det den haardeste indsats han faktisk har koert: et sent angreb
  * kan aldrig koeres paa et tidligt leds billige traethed (intet smuthul).
+ * #7855: et jagt-led taeller med den indsats, det koeres med i loebet, som ethvert andet led, saa
+ * jagten aldrig er en billigere vej til samme loeb (dom 2, "frikortet"). Passagerne opgaven fik
+ * ham til at koere med om, koster oveni (valg C, raceFatigue.stageWorkExposure).
  */
 export function stagePlanLoadEfforts(rt: StagePlanRuntime): Record<string, EffortLevel> {
   const out: Record<string, EffortLevel> = {};
@@ -534,6 +577,12 @@ export function stagePlanLoadEfforts(rt: StagePlanRuntime): Record<string, Effor
     const legs = rt.legs.get(riderId)!;
     let best: EffortLevel = legs[0].effort;
     for (const idx of rt.ridden.get(riderId) ?? []) if (EFFORT_RANK[legs[idx].effort] > EFFORT_RANK[best]) best = legs[idx].effort;
+    // #7855 valg 3 (ejer 13/11, "Samme pris"): jagten fra feltet efter et misset udbrud koster det
+    // samme som "Hent point" alene, saa den taeller med jagt-opgavens indsats.
+    if (rt.missedBreakHunt7855?.fromField.has(riderId)) {
+      const huntEffort = TASK_EFFORT[legs[0].hunt as StagePlanTask] as EffortLevel;
+      if (EFFORT_RANK[huntEffort] > EFFORT_RANK[best]) best = huntEffort;
+    }
     out[riderId] = best;
   }
   return out;

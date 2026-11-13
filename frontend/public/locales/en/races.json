@@ -1,4 +1,39 @@
 {
+  "racePageV6": {
+    "tab": {
+      "results": "Results",
+      "stage": "Stage",
+      "story": "Story",
+      "standings": "Standings",
+      "tactics": "Tactics",
+      "team": "Team"
+    },
+    "hero": {
+      "stageLocks": "Stage {number} locks at {time} · {countdown}",
+      "locks": "Locks at {time} · {countdown}",
+      "notScheduled": "Stage {number} has no start time yet"
+    },
+    "route": {
+      "aria": "Stage route",
+      "km": "{km} km",
+      "gain": "{gain} m climbing",
+      "climbs": "{count, plural, one {# climb} other {# climbs}}",
+      "hide": "Hide route",
+      "show": "Show route",
+      "saved": "Saved",
+      "savedHere": "Saved on this device",
+      "notSaved": "Not saved",
+      "profileTitle": "The route"
+    },
+    "yourDay": {
+      "title": "Your day"
+    },
+    "results": {
+      "notRiddenTitle": "Get ready for stage {number}",
+      "notRiddenHint": "Results show here once the stage has been ridden.",
+      "openStage": "See the stage"
+    }
+  },
   "stagePlanReady": {
     "gc": {
       "name": "Ride for GC",
@@ -698,17 +733,6 @@
     },
     "hunterExplainer": {
       "dayLine": "Your hunter tries to get into the morning breakaway. Whether it stays away is decided by the peloton on the day.",
-      "outlook": {
-        "about": "Engine forecast: the breakaway stays away about {k} in {n} times.",
-        "under": "Engine forecast: the breakaway stays away less than {k} in {n} times.",
-        "over": "Engine forecast: the breakaway stays away more than {k} in {n} times.",
-        "stage": "Stage {stage}",
-        "reason": {
-          "nobodyChases": "Few teams have a reason to chase it.",
-          "fewChase": "One or two teams usually have a reason to chase it.",
-          "manyChase": "Several teams usually have a reason to chase it."
-        }
-      },
       "candidatesHint": "Ranked by aggression: the urge to attack and commit to a move.",
       "noCandidates": "Pick riders for this race to see your best hunters.",
       "aggression": "Aggression",

@@ -1,5 +1,270 @@
 export const PATCHES = [
 {
+  "version": "7.444",
+  "date": "2026-11-13",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Tactics",
+      "flag": "tactics_ready_7864",
+      "en": {
+        "title": "Team plans",
+        "body": "On the Tactics tab you can now pick a ready plan: Ride for GC, Stage win, Sprint, Go for the break or Save the legs. Adjust it and save. Every task shows a price word (Easy, Medium, Hard or Very hard) for what it costs the legs, and a plan can be copied to the coming stages of the same type. Help explains it all."
+      },
+      "da": {
+        "title": "Holdplaner",
+        "body": "På Taktik-fanen kan du nu vælge en færdig plan: Kør for klassementet, Etapesejr, Spurt, Gå i udbrud eller Spar benene. Ret den til og gem. Hver opgave viser et prisord (Let, Middel, Hård eller Meget hård) for det, den koster i benene, og en plan kan kopieres til de kommende etaper af samme type. Hjælp forklarer det hele."
+      },
+      "refs": [
+        7864
+      ]
+    }
+  ]
+},
+{
+  "version": "7.443",
+  "date": "2026-11-13",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "en": {
+        "title": "New riders' form",
+        "body": "A new rider now joins your team with a little fatigue instead of none, so his form holds on normal training instead of dropping in his first days. This applies to riders you buy from the pool, academy talents and the starting squad for new managers. Riders you already have are not changed."
+      },
+      "da": {
+        "title": "Nye rytteres form",
+        "body": "En ny rytter kommer nu til dit hold med lidt træthed i stedet for ingen, så formen holder sig på normal træning i stedet for at falde de første dage. Det gælder ryttere, du køber fra puljen, talenter fra akademiet og starttruppen til nye managere. Ryttere, du allerede har, er ikke ændret."
+      },
+      "refs": [
+        8089,
+        8131
+      ]
+    }
+  ]
+},
+{
+  "version": "7.442",
+  "date": "2026-11-13",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Board",
+      "en": {
+        "title": "Parked teams",
+        "body": "Parked teams no longer get messages from the board: no mid-season check, no annual mandate reminders and no negative balance warning. The board no longer signs the mandate on the team's behalf either."
+      },
+      "da": {
+        "title": "Parkerede hold",
+        "body": "Parkerede hold får ikke længere beskeder fra bestyrelsen: ingen halvsæson-besked, ingen påmindelser om årsmandatet og ingen advarsel om negativ saldo. Bestyrelsen skriver heller ikke længere under på holdets vegne."
+      },
+      "refs": [
+        8099,
+        8103,
+        8110,
+        8128
+      ]
+    }
+  ]
+},
+{
+  "version": "7.441",
+  "date": "2026-11-13",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Help",
+      "en": {
+        "title": "Help",
+        "body": "Help no longer claims that a role's ceiling is shown next to a rider's potential."
+      },
+      "da": {
+        "title": "Hjælp",
+        "body": "Hjælp påstår ikke længere, at rollens loft vises ved en rytters potentiale."
+      },
+      "refs": [
+        8108,
+        8109
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Dashboard",
+      "en": {
+        "title": "Today's stages",
+        "body": "Today's stages no longer says the overall position is not settled when the information is just missing."
+      },
+      "da": {
+        "title": "Dagens etaper",
+        "body": "Dagens etaper skriver ikke længere, at den samlede stilling ikke er afgjort, når det bare er oplysningerne, der mangler."
+      },
+      "refs": [
+        8097,
+        8104
+      ]
+    }
+  ]
+},
+{
+  "version": "7.440",
+  "date": "2026-11-13",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Riders",
+      "en": {
+        "title": "Ceilings are gone",
+        "body": "Riders no longer show a ceiling next to their potential, and the Development tab has no Ceiling column. A rider you have not scouted shows only the Scout button."
+      },
+      "da": {
+        "title": "Loftet er væk",
+        "body": "Ryttere viser ikke længere et loft ved potentialet, og Udvikling-fanen har ikke længere kolonnen Loft. En rytter, du ikke har scoutet, viser kun Scout-knappen."
+      },
+      "refs": [
+        7932,
+        8048
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Academy",
+      "en": {
+        "title": "No more academy team",
+        "body": "The Academy page no longer lists an academy team. It links to your U23 and junior teams, where you see and manage your young riders. A talent you sign joins your U23 team when your junior team is full, and the card tells you before you click."
+      },
+      "da": {
+        "title": "Intet akademihold længere",
+        "body": "Akademisiden viser ikke længere et akademihold. Den linker til dit U23-hold og dit juniorhold, hvor du ser og styrer dine unge ryttere. Et talent, du henter, kommer på U23-holdet, når juniortruppen er fuld, og kortet siger det, før du klikker."
+      },
+      "refs": [
+        6155,
+        8047
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Races",
+      "en": {
+        "title": "Attacks on the last climb show where they happen",
+        "body": "An attack on the final climb now shows as two lines in the race film: the attack at the foot of the climb, then how it ended, where it ended. Before, it stood on the finish line."
+      },
+      "da": {
+        "title": "Angreb på sidste stigning vises, hvor de sker",
+        "body": "Et angreb på den sidste stigning står nu som to linjer i løbsfilmen: angrebet ved foden af stigningen, og så hvordan det endte, dér hvor det endte. Før stod det på målstregen."
+      },
+      "refs": [
+        7965,
+        8033
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "en": {
+        "title": "A lighter chart",
+        "body": "The chart in the season finance report is now drawn by the game itself, so the app has less to download. The numbers are the same."
+      },
+      "da": {
+        "title": "En lettere graf",
+        "body": "Grafen i sæsonens økonomirapport tegnes nu af spillet selv, så appen har mindre at hente. Tallene er de samme."
+      },
+      "refs": [
+        6165,
+        8040
+      ]
+    }
+  ]
+},
+{
+  "version": "7.439",
+  "date": "2026-11-12",
+  "changes": [
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Dashboard",
+      "en": {
+        "title": "Dashboard and auctions load more smoothly",
+        "body": "The dashboard and auctions show content sooner and jump around less while loading."
+      },
+      "da": {
+        "title": "Dashboard og auktioner loader roligere",
+        "body": "Dashboard og auktioner viser indhold hurtigere og hopper mindre under indlæsning."
+      },
+      "refs": [
+        8019
+      ]
+    }
+  ]
+},
+{
+  "version": "7.438",
+  "date": "2026-11-12",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "topic": "Tactics",
+      "flag": "tactics_ready_7864",
+      "en": {
+        "title": "Team plans (beta)",
+        "body": "On the Tactics tab, pick Ride for GC, Stage win, Sprint, Go for the break or Save the legs, adjust it, then save. Every task shows a price word (Easy, Medium, Hard or Very hard) that matches what it costs the legs, and a plan can be copied to the coming stages of the same type. Help explains it all."
+      },
+      "da": {
+        "title": "Holdplaner (beta)",
+        "body": "På Taktik-fanen kan du vælge Kør for klassementet, Etapesejr, Spurt, Gå i udbrud eller Spar benene, rette til og gemme. Hver opgave viser et prisord (Let, Middel, Hård eller Meget hård), der passer til det, den koster i benene, og en plan kan kopieres til de kommende etaper af samme type. Hjælp forklarer det hele."
+      },
+      "refs": [
+        7864,
+        8027
+      ]
+    }
+  ]
+},
+{
+  "version": "7.437",
+  "date": "2026-11-12",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Board",
+      "en": {
+        "title": "The board's sponsor growth target can now be reached",
+        "body": "It is measured from your team's first season in the plan with sponsor income, so seasons without payouts no longer block it. A season without sponsor income is not measured."
+      },
+      "da": {
+        "title": "Bestyrelsens mål om sponsorvækst kan nu nås",
+        "body": "Det måles fra holdets første sæson i planen med sponsorindtægt, så sæsoner uden udbetalinger ikke længere blokerer det. En sæson uden sponsorindtægt bliver ikke målt."
+      },
+      "refs": [
+        7964
+      ]
+    }
+  ]
+},
+{
   "version": "7.436",
   "date": "2026-11-12",
   "changes": [

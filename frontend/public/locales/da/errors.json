@@ -303,6 +303,12 @@
     "contract_batch_salary_cap": "Forlængelserne ville tage holdets samlede løn over bestyrelsens loft på {cap} CZ$. Intet er ændret",
     "contract_batch_write_failed": "Noget gik galt, da en kontrakt skulle gemmes. Intet er ændret",
     "contract_batch_partial": "Nogle kontrakter ændrede sig undervejs, og ikke alt kunne rulles tilbage. Tjek rytterne nedenfor",
-    "team_lookup_failed": "Serveren returnerede en fejl. Prøv igen om lidt"
+    "team_lookup_failed": "Serveren returnerede en fejl. Prøv igen om lidt",
+    "ui_prefs_invalid_payload": "Valget kunne ikke gemmes. Genindlæs siden, og prøv igen.",
+    "ui_prefs_unknown_keys": "Valget kunne ikke gemmes. Genindlæs siden, og prøv igen.",
+    "ui_prefs_invalid_value": "Valget kunne ikke gemmes. Genindlæs siden, og prøv igen.",
+    "ui_prefs_read_failed": "Dine visningsvalg kunne ikke hentes. Siden bruger sine standardvalg.",
+    "ui_prefs_unavailable": "Dit visningsvalg gemmes indtil videre kun på denne enhed.",
+    "ui_prefs_write_failed": "Dit visningsvalg kunne ikke gemmes. Prøv igen om lidt."
   }
 }

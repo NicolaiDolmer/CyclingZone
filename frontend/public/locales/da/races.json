@@ -1,4 +1,39 @@
 {
+  "racePageV6": {
+    "tab": {
+      "results": "Resultater",
+      "stage": "Etape",
+      "story": "Historie",
+      "standings": "Stillinger",
+      "tactics": "Taktik",
+      "team": "Hold"
+    },
+    "hero": {
+      "stageLocks": "Etape {number} låses kl. {time} · {countdown}",
+      "locks": "Låses kl. {time} · {countdown}",
+      "notScheduled": "Etape {number} har ingen starttid endnu"
+    },
+    "route": {
+      "aria": "Etapens rute",
+      "km": "{km} km",
+      "gain": "{gain} m stigning",
+      "climbs": "{count, plural, one {# stigning} other {# stigninger}}",
+      "hide": "Skjul rute",
+      "show": "Vis rute",
+      "saved": "Gemt",
+      "savedHere": "Gemt på denne enhed",
+      "notSaved": "Ikke gemt",
+      "profileTitle": "Ruten"
+    },
+    "yourDay": {
+      "title": "Din dag"
+    },
+    "results": {
+      "notRiddenTitle": "Gør klar til etape {number}",
+      "notRiddenHint": "Resultaterne står her, når etapen er kørt.",
+      "openStage": "Se etapen"
+    }
+  },
   "stagePlanReady": {
     "gc": {
       "name": "Kør for klassementet",
@@ -698,17 +733,6 @@
     },
     "hunterExplainer": {
       "dayLine": "Jægeren prøver at komme med i morgenudbruddet. Om det holder hjem, afgøres af feltet på dagen.",
-      "outlook": {
-        "about": "Motorens bud: udbruddet holder hjem cirka {k} af {n} gange.",
-        "under": "Motorens bud: udbruddet holder hjem under {k} af {n} gange.",
-        "over": "Motorens bud: udbruddet holder hjem over {k} af {n} gange.",
-        "stage": "Etape {stage}",
-        "reason": {
-          "nobodyChases": "Få hold har grund til at jage det.",
-          "fewChase": "Et eller to hold har som regel grund til at jage det.",
-          "manyChase": "Flere hold har som regel grund til at jage det."
-        }
-      },
       "candidatesHint": "Rangeret efter aggression: lysten til at angribe og satse på et ryk.",
       "noCandidates": "Vælg ryttere til løbet for at se dine bedste jægere.",
       "aggression": "Aggression",

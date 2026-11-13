@@ -180,9 +180,10 @@ export function roleCeilRating({ age, primaryType, secondaryType }) {
 
 export function buildTypePrognosisBands({
   nowAbilities, age, primaryType, secondaryType, potentiale, level, riderId, teamId, scout = DEFAULT_SCOUT,
+  developmentXp = null, // #6110 F1: XP-params naar development_xp_model gaelder; null = som foer
 }) {
   const { potLo, potHi } = potentialeIntervalFor({ potentiale, level, riderId, teamId, scout });
-  const bands = prognoseAbilityBands({ nowAbilities, age, primaryType, secondaryType, potLo, potHi });
+  const bands = prognoseAbilityBands({ nowAbilities, age, primaryType, secondaryType, potLo, potHi, riderId, developmentXp });
   const loAb = {}, hiAb = {};
   for (const [ability, b] of Object.entries(bands)) { loAb[ability] = b.lo; hiAb[ability] = b.hi; }
   // Overgangs-designet (ejer 18/8): rollens loft leveres SAMMEN MED prognosen

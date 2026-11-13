@@ -57,7 +57,7 @@ test("#3508 header-saldoen renderer computeAvailableBalance(team?.balance, reser
 test("#3508 det bundne beløb er synligt i headeren når reservedBalance > 0", () => {
   assert.match(
     source,
-    /\{reservedBalance > 0 && \(/,
+    /\{!loading && reservedBalance > 0 && \(/,
     "skal gate en synlig 'bundet i bud'-linje på reservedBalance > 0 (samme mønster som FinancePage's reservedBalance-gate)",
   );
   assert.match(

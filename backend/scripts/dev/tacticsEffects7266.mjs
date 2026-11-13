@@ -26,6 +26,9 @@
 //     cocaptain delt kaptajn paa et hold med 7-8 ryttere: naestbedste klassementsrytter som delt
 //               kaptajn mod som hjaelper. Etapeloeb koeres hele loebet (klassement), endagsloeb
 //               som én dag.
+//   longattack  #7884 trin 0 (B1, kun naar den bedes om): angreb fra toppen af sidste, naestsidste
+//               og foerste stigning mod en tvilling uden, paa ALLE etapetyper; flad etape og
+//               tidskoersel er negativ kontrol. Maaler motoren i dag; aendrer intet.
 //   API: spaerrede modsaetninger (spec 2026-10-25-taktik-roller-design.md par. 3 + 11) sendt
 //   gennem validateTeamOrder (klassisk) og validateRiderPlans (etapeplan).
 //
@@ -52,6 +55,7 @@ import { raceConditionLoads, stageConditionWork } from "../../lib/raceFatigue.js
 import { validateTeamOrder } from "../../lib/raceTeamOrdersApi.js";
 import { validateRiderPlans } from "../../lib/stagePlanApi.js";
 import { legacyOrderFromPlan, stagePlanRouteFromRaw } from "../../lib/stagePlan.ts";
+import { forwardSplitRiders } from "./longAttackBaseline7884.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(here, "..", "..", "..");
@@ -60,6 +64,18 @@ export const REVISION = "s5_profiles_v3";
 export const GROUPS = Object.freeze(["one_day", "short_stage", "gt", "monument", "youth"]);
 export const DEFAULT_GROUP_CAPS = Object.freeze({ one_day: 20, short_stage: 10, gt: 3, monument: 5, youth: 12 });
 export const EXPERIMENTS = Object.freeze(["effort", "break", "plan", "train", "chase", "cocaptain", "api"]);
+/**
+ * #7884 trin 0 (B1): maale-arme der kun koeres naar de bedes om (--experiments=longattack),
+ * aldrig i default-listen, saa #7266-koerslerne er uaendrede.
+ */
+export const BASELINE_EXPERIMENTS = Object.freeze(["longattack"]);
+/** B1-armene: angreb fra toppen af sidste, naestsidste og foerste stigning paa planens liste. */
+export const LONG_ATTACK_ARMS = Object.freeze(["last", "prev", "early"]);
+/** B1-maalingerne og deres forventede fortegn (kun til retning/stoej, ikke en gate). */
+export const LONG_ATTACK_METRICS = Object.freeze({ time: -1, time_sign: -1, rank: -1, switch_fired: 1, front_split: 1 });
+/** Etapeklasserne B1 opdeles i; flad og tidskoersel er den negative kontrol. */
+export const LONG_ATTACK_CLASSES = Object.freeze(["flat", "hilly", "mountain", "tt"]);
+export const LONG_ATTACK_CONTROL_CLASSES = Object.freeze(["flat", "tt"]);
 export const EFFORTS = Object.freeze(["grupetto", "save", "normal", "protect", "all_out"]);
 export const LEVELS = Object.freeze({ mid: 0.5, strong: 0.9, top: 0.99 });
 /** "Kan maerkes": ordre-forskellen slaar kontrollens med mindst saa mange standardfejl. */
@@ -364,6 +380,129 @@ function runOrdersDay(ctx) {
   }
 }
 
+/**
+ * #7884 B1: stigningen hver arm angriber fra (ren). Listen er etapeplanens (stagePlanRouteFromRaw):
+ * kun kategoriserede toppe foer maal, saa en topankomst er ikke med. "prev" kraever mindst to
+ * stigninger og "early" mindst tre, saa de tre arme aldrig maaler samme top.
+ */
+export function longAttackClimbs(route) {
+  const cs = Array.isArray(route?.climbs) ? route.climbs : [];
+  const n = cs.length;
+  return { last: n >= 1 ? cs[n - 1] : null, prev: n >= 2 ? cs[n - 2] : null, early: n >= 3 ? cs[0] : null };
+}
+
+/** #7884 B1: angrebsplanen fra toppen af en stigning mod tvillingens plan uden angreb (ren). */
+export function longAttackPlans(climb) {
+  return {
+    on: [{ task: "stay_sheltered" }, { task: "attack", from: { at: "kom", kom_index: climb.index } }],
+    off: [{ task: "stay_sheltered" }],
+  };
+}
+
+/**
+ * #7884 trin 0 (B1): angreb fra en stigningstop mod en tvilling uden, paa ALLE etapetyper.
+ * Flad etape og tidskoersel er den negative kontrol: angrebet skal ikke kunne vinde tid dér.
+ * Enkeltryttere (fri rolle) i én koersel, tre niveauer, som plan-armen. Ingen motor-aendring.
+ */
+function runLongAttackDay(ctx) {
+  const { v4, data, stages, profile, field, templates, seed, revision, rec } = ctx;
+  const route = stagePlanRouteFromRaw(profile);
+  const climbs = longAttackClimbs(route);
+  const arms = LONG_ATTACK_ARMS.filter((a) => climbs[a]);
+  if (!arms.length) {
+    rec({ exp: "longattack", arm: "none", level: "stage", metric: "no_climb", value: 1, ptype: profile.profile_type });
+    return;
+  }
+  const entrants = [...field];
+  const rows = [...(data.orders ?? []).filter((o) => o.stage_number === profile.stage_number)];
+  const planRider = (legs) => ({ ...legacyOrderFromPlan(legs), plan: legs });
+  const add = (id, legs, tpl) => {
+    const team = `team-${id}`;
+    const rider = planRider(legs);
+    const { rider_id: _r, ...ab } = clone(tpl, id);
+    entrants.push(twinEntrant(id, team, "free_role", rider.effort, ab));
+    rows.push(twinRow(team, profile.stage_number, [{ rider_id: id, try_break: false, leadout: false, ...rider }]));
+  };
+  const levels = Object.entries(templates);
+  for (const [level, tpl] of levels) {
+    for (const arm of arms) {
+      const p = longAttackPlans(climbs[arm]);
+      add(`t7884-la-${arm}-${level}-on`, p.on, tpl);
+      add(`t7884-la-${arm}-${level}-off`, p.off, tpl);
+      add(`t7884-la-${arm}-${level}-ctrl`, p.off, tpl);
+    }
+  }
+  const res = simulate(v4, data, stages, profile, entrants, rows, `la7884-${seed}`, revision);
+  const o = outcome(res);
+  // Frem-split hvor som helst paa etapen (motoren giver det kun paa den afgoerende stigning).
+  const front = forwardSplitRiders(o.out?.timeline?.events ?? [], { foot: -Infinity, crest: Infinity });
+  const bit = (b) => (b ? 1 : 0);
+  const last = entrants.length + 1;
+  for (const [level] of levels) {
+    for (const arm of arms) {
+      const on = `t7884-la-${arm}-${level}-on`, off = `t7884-la-${arm}-${level}-off`, ctrl = `t7884-la-${arm}-${level}-ctrl`;
+      const dt = (id) => (o.fin.has(id) && o.fin.has(off) ? o.fin.get(id) - o.fin.get(off) : null);
+      const dr = (id) => (o.rank.get(id) ?? last) - (o.rank.get(off) ?? last);
+      const fired = (id) => bit(o.legEvents.some((e) => e.params?.rider_id === id && e.params?.reason === "kom"));
+      const base = { exp: "longattack", arm, level, ptype: profile.profile_type };
+      rec({ ...base, metric: "time", dOn: dt(on), dCtrl: dt(ctrl) });
+      rec({ ...base, metric: "time_sign", dOn: sgn(dt(on)), dCtrl: sgn(dt(ctrl)) });
+      rec({ ...base, metric: "rank", dOn: dr(on), dCtrl: dr(ctrl) });
+      rec({ ...base, metric: "switch_fired", dOn: fired(on) - fired(off), dCtrl: fired(ctrl) - fired(off) });
+      rec({ ...base, metric: "front_split", dOn: bit(front.has(on)) - bit(front.has(off)), dCtrl: bit(front.has(ctrl)) - bit(front.has(off)) });
+    }
+  }
+}
+
+/**
+ * #7884 B1: opsummering pr. arm og maaling, pr. loebsgruppe, etapeklasse, etapetype, niveau og
+ * gruppe x klasse (ren). Retning/stoej som de andre ordrer (effectStats); det er en baseline,
+ * ingen gate. noClimb taeller etaper uden en stigning at angribe fra (pr. klasse og gruppe).
+ */
+export function summarizeLongAttack(records) {
+  const xs = records.filter((r) => r.exp === "longattack");
+  if (!xs.length) return null;
+  const arms = [];
+  for (const arm of LONG_ATTACK_ARMS) {
+    for (const [metric, sign] of Object.entries(LONG_ATTACK_METRICS)) {
+      const rows = xs.filter((r) => r.arm === arm && r.metric === metric);
+      if (!rows.length) continue;
+      const stat = (rs) => effectStats(rs.map((r) => r.dOn), rs.map((r) => r.dCtrl), sign);
+      const by = (key, values) => {
+        const out = {};
+        for (const v of values) {
+          const rs = rows.filter((r) => key(r) === v);
+          if (rs.length) out[v] = stat(rs);
+        }
+        return out;
+      };
+      const ptypes = [...new Set(rows.map((r) => r.ptype).filter(Boolean))].sort();
+      const groupClass = {};
+      for (const g of GROUPS) {
+        const cell = by((r) => (r.group === g ? r.cls : null), LONG_ATTACK_CLASSES);
+        if (Object.keys(cell).length) groupClass[g] = cell;
+      }
+      arms.push({
+        arm, metric, sign,
+        all: stat(rows),
+        control: stat(rows.filter((r) => LONG_ATTACK_CONTROL_CLASSES.includes(r.cls))),
+        road: stat(rows.filter((r) => !LONG_ATTACK_CONTROL_CLASSES.includes(r.cls))),
+        byGroup: by((r) => r.group, GROUPS),
+        byClass: by((r) => r.cls, LONG_ATTACK_CLASSES),
+        byPtype: by((r) => r.ptype, ptypes),
+        byLevel: by((r) => r.level, Object.keys(LEVELS)),
+        byGroupClass: groupClass,
+      });
+    }
+  }
+  const noClimb = { byClass: {}, byGroup: {} };
+  for (const r of xs.filter((x) => x.metric === "no_climb")) {
+    noClimb.byClass[r.cls] = (noClimb.byClass[r.cls] ?? 0) + 1;
+    noClimb.byGroup[r.group] = (noClimb.byGroup[r.group] ?? 0) + 1;
+  }
+  return { arms, noClimb };
+}
+
 /** Et menneskehold af kloner (nye id'er) med givne roller. */
 function cloneTeam(members, prefix) {
   return members.map((m, i) => ({ ...m, rider_id: `${prefix}-${i}`, team_id: `team-${prefix}`, team_is_ai: false }));
@@ -618,6 +757,7 @@ export async function runTacticsEffects({ fromDir, caps = DEFAULT_GROUP_CAPS, se
           if (simExps.includes("break") || simExps.includes("plan")) runOrdersDay(ctx);
           if (simExps.includes("train")) runTrainDay(ctx);
           if (simExps.includes("chase")) runChaseDay(ctx);
+          if (simExps.includes("longattack")) runLongAttackDay(ctx);
         }
         if (simExps.includes("cocaptain")) {
           const rec = (r) => records.push({ ...r, group: pr.group, race: pr.id, stage: null, seed });
@@ -630,7 +770,13 @@ export async function runTacticsEffects({ fromDir, caps = DEFAULT_GROUP_CAPS, se
   }
   const summary = summarize(records);
   const inv = invariants(records);
-  return { config: { revision, seeds, seedStart, caps, experiments, noiseZ: NOISE_Z, minField: MIN_FIELD }, races: meta, summary, invariants: inv, api, findings: findings(summary, inv, api), records };
+  return { config: { revision, seeds, seedStart, caps, experiments, noiseZ: NOISE_Z, minField: MIN_FIELD }, races: meta, summary, invariants: inv, api, findings: findings(summary, inv, api), ...longAttackPart(records), records };
+}
+
+/** #7884 B1: kun med naar armen er koert, saa #7266-resultaterne har samme form som foer. */
+function longAttackPart(records) {
+  const la = summarizeLongAttack(records);
+  return la ? { longAttack: la } : {};
 }
 
 /** Flere koerslers resultater (fx én pr. gruppe) samlet til ét (ren). */
@@ -642,10 +788,30 @@ export function mergeResults(results) {
   const config = { ...(results[0]?.config ?? {}), caps: Object.assign({}, ...results.map((r) => r.config?.caps ?? {})) };
   // Samme loeb i flere koersler (fx en dybere sprinttog-koersel) taeller én gang i oversigten.
   const races = [...new Map(results.flatMap((r) => r.races ?? []).map((x) => [x.race, x])).values()];
-  return { config, races, summary, invariants: inv, api, findings: findings(summary, inv, api), records };
+  return { config, races, summary, invariants: inv, api, findings: findings(summary, inv, api), ...longAttackPart(records), records };
 }
 
 const fmt = (st) => (st && st.n ? `${st.directionOk ? "ja" : "NEJ"} / ${st.beatsNoise ? "ja" : "nej"} (n ${st.n}, ${st.meanOn} mod ${st.meanCtrl}, z ${st.z})` : "-");
+
+/** #7884 B1: privat afsnit (tal) med angreb fra en stigningstop mod tvillingen uden. */
+export function renderLongAttackMarkdown(la) {
+  const L = ["", "## #7884 B1: angreb fra en stigningstop mod tvilling uden (baseline, ingen gate)", ""];
+  L.push("Arme: last = sidste stigning paa planens liste, prev = naestsidste, early = foerste (kun med mindst tre). Flad og tidskoersel er negativ kontrol.", "");
+  L.push("| arm | maaling | alle | vej (kuperet+bjerg) | kontrol (flad+tt) |", "|---|---|---|---|---|");
+  for (const a of la.arms) L.push(`| ${a.arm} | ${a.metric} | ${fmt(a.all)} | ${fmt(a.road)} | ${fmt(a.control)} |`);
+  L.push("", "### Pr. loebsgruppe", "", `| arm | maaling | ${GROUPS.join(" | ")} |`, `|---|---|${GROUPS.map(() => "---").join("|")}|`);
+  for (const a of la.arms) L.push(`| ${a.arm} | ${a.metric} | ${GROUPS.map((g) => fmt(a.byGroup[g])).join(" | ")} |`);
+  L.push("", "### Pr. etapeklasse", "", `| arm | maaling | ${LONG_ATTACK_CLASSES.join(" | ")} |`, `|---|---|${LONG_ATTACK_CLASSES.map(() => "---").join("|")}|`);
+  for (const a of la.arms) L.push(`| ${a.arm} | ${a.metric} | ${LONG_ATTACK_CLASSES.map((c) => fmt(a.byClass[c])).join(" | ")} |`);
+  L.push("", "### Pr. etapetype (tid)", "", "| arm | etapetype | tid |", "|---|---|---|");
+  for (const a of la.arms.filter((x) => x.metric === "time")) for (const [pt, st] of Object.entries(a.byPtype)) L.push(`| ${a.arm} | ${pt} | ${fmt(st)} |`);
+  L.push("", "### Loebsgruppe x etapeklasse (tid)", "", `| arm | gruppe | ${LONG_ATTACK_CLASSES.join(" | ")} |`, `|---|---|${LONG_ATTACK_CLASSES.map(() => "---").join("|")}|`);
+  for (const a of la.arms.filter((x) => x.metric === "time")) for (const [g, cell] of Object.entries(a.byGroupClass)) L.push(`| ${a.arm} | ${g} | ${LONG_ATTACK_CLASSES.map((c) => fmt(cell[c])).join(" | ")} |`);
+  L.push("", "### Pr. rytterniveau (tid)", "", "| arm | midt | staerk | top |", "|---|---|---|---|");
+  for (const a of la.arms.filter((x) => x.metric === "time")) L.push(`| ${a.arm} | ${Object.keys(LEVELS).map((lv) => fmt(a.byLevel[lv])).join(" | ")} |`);
+  L.push("", `Etaper uden stigning at angribe fra: ${Object.entries(la.noClimb.byClass).map(([c, n]) => `${c} ${n}`).join(", ") || "ingen"}.`);
+  return L;
+}
 
 /** Privat markdown (tal). */
 export function renderMarkdown(res, label) {
@@ -668,6 +834,7 @@ export function renderMarkdown(res, label) {
     L.push("", "## API: spaerrede modsaetninger", "", "| kombination | sti | forventet | resultat | fejlkode |", "|---|---|---|---|---|");
     for (const a of res.api) L.push(`| ${a.id} | ${a.path} | ${a.expectReject ? "afvis" : "tillad"} | ${a.rejected ? "afvist" : "TILLADT"} | ${a.error ?? ""} |`);
   }
+  if (res.longAttack) L.push(...renderLongAttackMarkdown(res.longAttack));
   L.push("", "## Fund", "");
   if (!res.findings.length) L.push("Ingen.");
   for (const f of res.findings) L.push(`- ${f.kind}: ${f.id ?? `${f.exp}/${f.arm} ${f.metric}`}${f.group ? ` (${f.group})` : ""}${f.what ? ` - ${f.what}` : ""}${f.path ? ` [${f.path}]` : ""}`);

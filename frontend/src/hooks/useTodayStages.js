@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { timeoutSignal } from "../lib/timeoutSignal.ts";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { buildRaceCentreCards, copenhagenDayRange } from "../lib/raceCentre.js";
 import {
@@ -6,14 +7,15 @@ import {
   entryCountFor,
   mergeStandingRowsByRace,
   todayStageWinner,
+  carryKnownProfiles,
 } from "../lib/dashboardTodayStages.js";
 import { planRaceResultQueries } from "../lib/raceWinnerResultType.ts";
 
 const TODAY_PROFILE_BASE_COLUMNS = "race_id, stage_number, profile_type, distance_km, elevation_gain_m, climbs, sectors";
 // pagination-safe: filtreret paa MINE dagens race_id'er, hoejst en raekke pr. etape.
 // elevation_profile staar endnu ikke i de genererede typer, derfor any-cast.
-const readTodayProfiles = (cols, raceIds) => /** @type {any} */ (supabase)
-  .from("race_stage_profiles").select(cols).in("race_id", raceIds);
+const readTodayProfiles = (cols, raceIds, signal) => /** @type {any} */ (supabase)
+  .from("race_stage_profiles").select(cols).in("race_id", raceIds).abortSignal(signal);
 const TODAY_PROFILE_COLUMNS = `${TODAY_PROFILE_BASE_COLUMNS}, elevation_profile`;
 
 // #3915 — "Today's stages" dashboard strip: data-hentning for DIT holds
@@ -36,14 +38,27 @@ const TODAY_PROFILE_COLUMNS = `${TODAY_PROFILE_BASE_COLUMNS}, elevation_profile`
 // dokumenterer sin egen grænse nedenfor. Samme forsigtighed som
 // RaceCentrePage.jsx.
 export default function useTodayStages(teamId) {
-  const [state, setState] = useState({ loading: true, cards: [] });
+  const [state, commitState] = useState(/** @type {{loading: boolean, cards: Array<{raceId: string, stageNumber: number, profile: object | null, profileType: string | null, enriching?: boolean, detailsUnavailable?: boolean}>}} */ ({ loading: true, cards: [] }));
 
+  const activeRequest = useRef(/** @type {ReturnType<typeof timeoutSignal> | null} */ (null));
+  const generation = useRef(0);
   const load = useCallback(async () => {
-    if (!teamId) { setState({ loading: false, cards: [] }); return; }
+    const currentGeneration = ++generation.current;
+    activeRequest.current?.abort();
+    let request;
+    const setState = (next) => {
+      if (generation.current === currentGeneration) commitState(next);
+    };
+    // No identity is not evidence of an empty day. Dashboard owns confirmed
+    // no-team visibility; keep presence pending across the identity handoff.
+    if (!teamId) { setState({ loading: true, cards: [] }); return; }
     // #6569: stale-while-revalidate — skelettet vises kun foer foerste kort er
     // hentet; minut-tick og realtime-refetch beholder de eksisterende kort.
     setState((s) => (s.cards.length ? s : { ...s, loading: true }));
     try {
+      request = timeoutSignal(8000);
+      activeRequest.current = request;
+      const { signal } = request;
       const now = Date.now();
       const range = copenhagenDayRange(now);
       if (!range) { setState({ loading: false, cards: [] }); return; }
@@ -57,7 +72,7 @@ export default function useTodayStages(teamId) {
         .select("race_id, stage_number, scheduled_at")
         .gte("scheduled_at", new Date(range.startMs).toISOString())
         .lt("scheduled_at", new Date(range.endMs).toISOString())
-        .order("scheduled_at");
+        .order("scheduled_at").abortSignal(signal);
       if (slotError) throw slotError;
 
       const allRaceIds = [...new Set((slotRows || []).map((r) => r.race_id))];
@@ -67,47 +82,31 @@ export default function useTodayStages(teamId) {
       // ét hold (RLS-scoped team_id) OG kun dagens race_id'er (to cifre).
       const { data: entryRows, error: entryError } = await supabase
         .from("race_entries").select("race_id")
-        .eq("team_id", teamId).in("race_id", allRaceIds);
+        .eq("team_id", teamId).in("race_id", allRaceIds).abortSignal(signal);
       if (entryError) throw entryError;
       const enteredRaceIds = new Set((entryRows || []).map((e) => e.race_id));
       const ownRaceIds = allRaceIds.filter((id) => enteredRaceIds.has(id));
       if (!ownRaceIds.length) { setState({ loading: false, cards: [] }); return; }
       const ownSlotRows = (slotRows || []).filter((r) => enteredRaceIds.has(r.race_id));
 
-      const [racesRes, firstProfilesRes] = await Promise.all([
-        // "races" er ikke deny-listet (ikke i scripts/lint-pagination-guard.mjs).
-        supabase.from("races")
-          .select("id, name, race_type, stages, stages_completed, status")
-          .in("id", ownRaceIds),
-        // pagination-safe: MINE dagens race_id'er (højst 3 pr. hold, 23/9).
-        // #3958 (ejer-mistanke bekræftet 23/8): tidligere hentede denne query KUN
-        // profile_type → miniaturen var et generisk 6-vejrs kategori-piktogram
-        // (silhuet-piktogram), IKKE etapens ægte rutedata. Nu hentes de samme felter
-        // StageProfileGraph/buildProfileSeries bruger overalt ellers, så dashboardets
-        // "dagens etaper" viser SAMME rigtige rute som løbssiden (#4107/#4108).
-        readTodayProfiles(TODAY_PROFILE_COLUMNS, ownRaceIds),
-      ]);
-      // #7289: elevation_profile med, saa dashboardets miniature tegner samme serie som loebssiden.
-      // Kolonnen ikke migreret endnu (42703): laes uden serien, som stageProfilesQuery.ts.
-      let profilesRes = firstProfilesRes;
-      if (profilesRes.error?.code === "42703") {
-        profilesRes = await readTodayProfiles(TODAY_PROFILE_BASE_COLUMNS, ownRaceIds);
-      }
+      // Profiles and result enrichment cannot delay the presence decision.
+      const profilesPromise = (async () => {
+        const first = await readTodayProfiles(TODAY_PROFILE_COLUMNS, ownRaceIds, signal);
+        return first.error?.code === "42703"
+          ? readTodayProfiles(TODAY_PROFILE_BASE_COLUMNS, ownRaceIds, signal) : first;
+      })().catch(error => ({ data: null, error }));
+      const racesRes = await supabase.from("races")
+        .select("id, name, race_type, stages, stages_completed, status")
+        .in("id", ownRaceIds).abortSignal(signal);
       if (racesRes.error) throw racesRes.error;
-      if (profilesRes.error) throw profilesRes.error;
 
       const raceById = new Map((racesRes.data || []).map((r) => [r.id, r]));
-      const profileByKey = new Map(
-        (profilesRes.data || []).map((p) => [`${p.race_id}:${p.stage_number}`, p])
-      );
-
       // #2230: decide whether a strip exists before fetching optional result
       // enrichment. An empty strip must not wait for winner/standing queries.
       const slots = ownSlotRows
         .map((row) => {
           const race = raceById.get(row.race_id);
           if (!race) return null;
-          const profile = profileByKey.get(`${race.id}:${row.stage_number}`) || null;
           return {
             raceId: race.id,
             raceName: race.name,
@@ -117,10 +116,10 @@ export default function useTodayStages(teamId) {
             totalStages: race.stages ?? 1,
             stagesCompleted: race.stages_completed ?? 0,
             scheduledMs: Date.parse(row.scheduled_at),
-            profileType: profile?.profile_type || null,
+            profileType: null,
             // #3958: den FULDE profil-række, så miniaturen kan tegne StageProfileGraph
             // (ægte rutedata) i stedet for kun at kende profile_type.
-            profile,
+            profile: null,
           };
         })
         .filter(Boolean);
@@ -129,6 +128,12 @@ export default function useTodayStages(teamId) {
       // stedet for en parallel afledning — se lib/raceCentre.js.
       const built = buildRaceCentreCards(slots, { nowMs: now });
       if (!built.length) { setState({ loading: false, cards: [] }); return; }
+      setState(previous => ({ loading: false, cards: built.map(card => {
+        const known = previous.cards.find(c => c.raceId === card.raceId && c.stageNumber === card.stageNumber);
+        const enriching = !known || known.state !== card.state || known.stagesCompleted !== card.stagesCompleted;
+        return { ...known, ...card, profile: known?.profile ?? null, profileType: known?.profileType ?? null,
+          standing: enriching ? null : known.standing, winnerName: enriching ? null : known.winnerName, enriching };
+      }) }));
 
       // 2a) Vinderen af hver af MINE etaper i dag (#5589/#5601). Etapeløb
       // står under result_type 'stage' på etapens nummer, endagsløb under
@@ -159,7 +164,7 @@ export default function useTodayStages(teamId) {
             .in("race_id", group.raceIds)
             .in("stage_number", group.stageNumbers)
             .eq("result_type", group.resultType)
-            .eq("rank", 1)
+            .eq("rank", 1).abortSignal(signal)
         )
       );
 
@@ -175,7 +180,8 @@ export default function useTodayStages(teamId) {
       );
       // Vinder- og placerings-forespørgslerne afventes samlet, så vinder-
       // opslaget ikke lægger en ekstra runde oven i hentningen.
-      const [winnerResults, standingResults] = await Promise.all([
+      const [profilesRes, winnerResults, standingResults] = await Promise.all([
+        profilesPromise,
         winnerPromise,
         Promise.all(
           standingRaces.map((race) =>
@@ -186,10 +192,11 @@ export default function useTodayStages(teamId) {
               .select("race_id, stage_number, result_type, rank, team_id, finish_time")
               .eq("race_id", race.id)
               .eq("stage_number", race.stages_completed)
-              .in("result_type", ["leader", "team_day", "team"])
+              .in("result_type", ["leader", "team_day", "team"]).abortSignal(signal)
           )
         ),
       ]);
+      const profileByKey = new Map((profilesRes.data || []).map((p) => [`${p.race_id}:${p.stage_number}`, p]));
       for (const res of winnerResults) if (res.error) throw res.error;
       for (const res of standingResults) if (res.error) throw res.error;
       const winnerRows = winnerResults.flatMap((res) => res.data || []);
@@ -201,7 +208,7 @@ export default function useTodayStages(teamId) {
       let entryRowsAll = [];
       if (oneDayRaceIds.length) {
         const { data, error } = await supabase.from("race_entries")
-          .select("race_id").in("race_id", oneDayRaceIds);
+          .select("race_id").in("race_id", oneDayRaceIds).abortSignal(signal);
         if (error) throw error;
         entryRowsAll = data || [];
       }
@@ -210,6 +217,8 @@ export default function useTodayStages(teamId) {
         const standingRows = standingRowsByRace.get(c.raceId) || [];
         return {
           ...c,
+          profile: profileByKey.get(`${c.raceId}:${c.stageNumber}`) || null,
+          profileType: profileByKey.get(`${c.raceId}:${c.stageNumber}`)?.profile_type || null,
           standing: c.isStageRace ? computeStageRaceStanding(standingRows, teamId) : null,
           entryCount: c.isStageRace ? null : entryCountFor(entryRowsAll, c.raceId),
           winnerName: c.state === "finished"
@@ -218,7 +227,8 @@ export default function useTodayStages(teamId) {
         };
       });
 
-      setState({ loading: false, cards });
+      // #8097: fejlede profil-kaldet, beholdes den kendte profil fra forrige hentning.
+      setState((previous) => ({ loading: false, cards: carryKnownProfiles(cards, previous.cards, Boolean(profilesRes.error)) }));
     } catch (e) {
       // Kortet fejler bevidst stille på UI'en (samme idiom som
       // useForumHighlights/useHeroAgonyMoment). console.warn, ikke
@@ -227,11 +237,17 @@ export default function useTodayStages(teamId) {
       // netværksfejl her gjorde en flaky mobile-webkit-fejl til en falsk
       // rød suite. Refs #4309/#4305.
       console.warn("useTodayStages failed:", e?.message || e);
-      setState({ loading: false, cards: [] });
+      setState((s) => ({ loading: false, cards: s.cards.map(card => ({ ...card, detailsUnavailable: card.enriching || card.detailsUnavailable, enriching: false })) }));
+    } finally {
+      request?.abort();
+      if (activeRequest.current === request) activeRequest.current = null;
     }
   }, [teamId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    return () => { generation.current += 1; activeRequest.current?.abort(); };
+  }, [load]);
   // Minut-tick: samme idiom som RaceCentrePage/DashboardPage — holder
   // scheduled → live → finished-overgangen frisk uden en hård reload.
   useEffect(() => {

@@ -303,6 +303,12 @@
     "contract_batch_salary_cap": "These extensions would take your total salary over the board's cap of {cap} CZ$. Nothing was changed",
     "contract_batch_write_failed": "Something went wrong saving a contract. Nothing was changed",
     "contract_batch_partial": "Some contracts changed while extending, and not every change could be undone. Check the riders below",
-    "team_lookup_failed": "The server returned an error. Try again shortly"
+    "team_lookup_failed": "The server returned an error. Try again shortly",
+    "ui_prefs_invalid_payload": "That choice could not be saved. Reload the page and try again.",
+    "ui_prefs_unknown_keys": "That choice could not be saved. Reload the page and try again.",
+    "ui_prefs_invalid_value": "That choice could not be saved. Reload the page and try again.",
+    "ui_prefs_read_failed": "Your display choices could not be loaded. The page uses its defaults.",
+    "ui_prefs_unavailable": "Your display choice is kept on this device for now.",
+    "ui_prefs_write_failed": "Your display choice could not be saved. Try again in a moment."
   }
 }

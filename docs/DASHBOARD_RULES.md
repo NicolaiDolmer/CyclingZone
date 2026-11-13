@@ -51,6 +51,8 @@
 - Design i øvrigt: `docs/design/PAGE_TEMPLATES.md`. Hairline-borders, 5px radius, tabular figures, stroke-ikoner, ingen emoji, farver kun via cz-tokens.
 - **Indlæsning (ejer 11/11, #2230, valg A):** hvert fast kort viser indhold, når det er klart; resten beholder stille grå pladsholdere. Den fælles `ReservedBody` reserverer kortets listekapacitet gennem loading/content/empty. Ramme og overskrift bliver stående. Refresh beholder de kendte data. Betingede kort skal stadig følge synlighedsreglerne ovenfor; en midlertidig stribe må ikke skubbe resten af siden, når den viser sig at være tom.
 
+**#8019 / #8022 initial layout:** resolve conditional presence before the first content layout only within a single 1500 ms budget starting at component mount (including core/team requests). After that budget, reveal the page frame and every ready fixed card; unresolved roster, balance and standings keep honest skeletons rather than numeric or empty defaults. The stage strip reserves its existing card footprint while its presence or initial team/season identity is unknown. Failed dependent-entry responses retain known registrations. A confirmed empty strip still disappears; a valid late conditional module still appears. This can cause a late presence shift and must be reported alongside CLS and time to actual useful content, never hidden by extending the full-page loader. Optional modules and dependent entry rows do not extend the global wait. Dependent entry rows and the whole selection candidate loop each have an 8 s background request budget. Stage profiles, winners and standings enrich real fixed-height cards independently; enrichment failure keeps the base card and hides the secondary standing line and winner line (#8097: unavailable data is never presented as a pending standing); the pending-standing text shows only when standings were fetched and genuinely are not settled yet. Derive the result badge from server state on its first render; retain known lists and action links during refresh.
+
 ---
 
 ## 4. Modulrækkefølgen (efter omlægningen 25/8, PR [#4249](https://github.com/NicolaiDolmer/CyclingZone/pull/4249))
@@ -73,3 +75,7 @@ Bestyrelsen mistede sin `lg:col-span-2` i omlægningen: /board har 959 sessions 
 4. Forsvinder det stille, hvis dets datakald fejler?
 5. Tager det viewets guld-knap eller nudge-slot? Det må det ikke.
 6. Er dashboard-snapshottet opdateret i alle tre Playwright-projekter?
+
+### #8022 review geometry follow-up
+
+The unknown header identity uses compact, capped skeleton widths so it does not force the action cluster onto an extra mobile row. While balance is pending, its existing optional locked-balance line holds a local skeleton; confirmed zero still removes that line. Undefined latest-result data renders the existing Card/header and quiet pending body matching the measured synthetic fixture anatomy (355px desktop / 394px mobile; other histories and first-race variants can differ): five 58px rows, plus two mobile wrapping lines. Null/error and confirmed-empty behavior remain unchanged. This reserves genuine pending data only; late conditional content and a confirmed-empty stage strip still follow their established visibility rules, and their remaining CLS must be reported separately.
