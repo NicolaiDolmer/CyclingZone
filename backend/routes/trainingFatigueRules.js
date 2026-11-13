@@ -18,7 +18,7 @@ import {
   isTrainingFatigueRulesEnabled, isFatigueFallback, isValidThreshold, isMissingRulesTable, loadFatigueRuleRows,
 } from "../lib/trainingFatigueRules.ts";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
-import { fatigueByRiderNow } from "../lib/riderFatigueNow.js"; // #7801
+import { teamFatigueNowForSurface } from "../lib/riderFatigueNow.js"; // #7801
 import { isFatigueNow7801Enabled } from "../lib/riderFatigueNowFlag.js";
 
 const PASS = (_req, _res, next) => next();
@@ -105,8 +105,12 @@ export function createTrainingFatigueRulesRouter({
       if (condError) throw new Error(condError.message);
       // #7801: med fatigue_now_7801 er tallet trætheden lige nu, som reglen også vurderer.
       const fatigueNowOn = await isFatigueNow7801Enabled(supabase);
-      const live = fatigueNowOn ? await fatigueByRiderNow({ supabase, conditions, teamId, now: now() }) : new Map();
-      const fatigueBy = new Map((conditions ?? []).map((c) => [c.rider_id, Number(live.get(c.rider_id) ?? c.fatigue ?? 0)]));
+      // Rest-byg: kan tallet lige nu ikke regnes, er det null ("—" i tælleren), ikke morgenens tal.
+      const { fatigue: live, unavailable } = fatigueNowOn
+        ? await teamFatigueNowForSurface({ supabase, conditions: conditions ?? [], teamId, now: now() })
+        : { fatigue: new Map(), unavailable: new Set() };
+      const fatigueBy = new Map((conditions ?? []).map((c) => [c.rider_id,
+        unavailable.has(c.rider_id) ? null : Number(live.get(c.rider_id) ?? c.fatigue ?? 0)]));
 
       const today = copenhagenDateString(now());
       const since = dateMinusDays(today, RECENT_DAYS - 1);
@@ -129,7 +133,7 @@ export function createTrainingFatigueRulesRouter({
         team: ruleView(team),
         riders: riderRules,
         roster: (riders ?? []).map((r) => ({
-          id: r.id, name: `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim(), fatigue: fatigueBy.get(r.id) ?? 0,
+          id: r.id, name: `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim(), fatigue: fatigueBy.has(r.id) ? fatigueBy.get(r.id) : 0,
         })),
         recent: (ticks ?? []).filter((t) => t.fatigue_rule && typeof t.fatigue_rule === "object").map((t) => ({
           date: t.tick_date,

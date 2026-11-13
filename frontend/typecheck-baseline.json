@@ -2786,7 +2786,7 @@
   },
   "src/preview/installPreviewMock.js": {
     "TS2339": 5,
-    "TS2345": 11
+    "TS2345": 1
   },
   "src/preview/mockHandlers.test.js": {
     "TS18047": 2,

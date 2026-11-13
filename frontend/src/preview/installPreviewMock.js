@@ -16,6 +16,7 @@ import { betaAccessMockRoute } from "./betaAccessMock.js"; // #5259
 import { trainingProgramsMockRoute, previewSingleRaceDay, PREVIEW_TRAINING_PROGRAMS } from "./trainingProgramsMock.js"; // #4629
 import { trainingGroupsMockRoute } from "../components/training/groups/trainingGroupsPreviewMock.ts"; // #6000
 import { trainingFatigueRulesMockRoute } from "./trainingFatigueRulesMock.js"; // #4854
+import { withFatigueNowPreview } from "./fatigueNow7801PreviewMock.ts"; // #7801
 import { trainingReceiptMock } from "./trainingReceiptMock.ts";
 import { trainNowPreviewRoute, trainNowSelectionPreview, trainNowBoardPreview, trainNowSeasonPreview } from "../components/training/TrainNowPreviewMock.ts"; // #4847/#6139/#6383
 import { raceStartBoardPreview, raceStartPreviewNotifications } from "./raceStartPreviewMock.ts"; // #6740
@@ -161,7 +162,7 @@ export function installPreviewMock() {
   applyNoActiveSeasonParam();
   const realFetch = window.fetch.bind(window);
 
-  window.fetch = async (input, init = {}) => {
+  const mockFetch = async (input, init = {}) => {
     const url = typeof input === "string" ? input : (input && input.url) || "";
     const method = (
       (init && init.method) ||
@@ -585,6 +586,12 @@ export function installPreviewMock() {
 
     // Alt andet (Vite-assets, HMR, WebSocket-upgrades) → ægte fetch.
     return realFetch(input, init);
+  };
+  // #7801 rest-byg: ?fatigueNow=on|unknown viser fladerne med kontakten taendt (uden param: uaendret).
+  window.fetch = async (input, init = {}) => {
+    const url = typeof input === "string" ? input : (input && input.url) || "";
+    const method = ((init && init.method) || (typeof input !== "string" && input && input.method) || "GET").toUpperCase();
+    return withFatigueNowPreview(url, method, await mockFetch(input, init));
   };
 
   console.info("[preview-mock] aktiv — seed-data serveres lokalt, prod røres ikke.");
