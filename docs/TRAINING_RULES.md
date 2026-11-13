@@ -241,6 +241,17 @@ Ny kode må ikke bruge containment (`@>`) på `report->'riders'`: læs fra
 `rider_training_seen`. Gendannelse: `database/manual/2026-10-15-6490-recreate-
 training-report-riders-gin.sql`.
 
+Ny rytters starttilstand (#8089, ejer 13/11): førstegangstilstanden er én fast
+starttilstand, `NEW_RIDER_START_CONDITION` i `backend/lib/riderCondition.js`:
+form som før og en fast lav træthed (ikke nul), så en ny rytter ikke taber form
+de første dage på normal træning. Den er ens for køb fra puljen, fri agent og
+akademi-optag, og fordi alle veje går gennem samme trigger, også for starttrupper
+og nye AI-hold. De tre databasefunktioner (triggeren, datoens registrering og
+kompensationen) og kodens reserver for en rytter uden tilstand bruger samme tal
+(`database/2026-11-13-8089-ny-rytter-starttilstand.sql`). Ryttere, der allerede
+har en tilstand, røres ikke; ingen bagudrettelse. Sæsonstartens træthed
+(`SEASON_FATIGUE_RESET`) er en separat konstant.
+
 Driftalarmen skelner via sit gemte bevis mellem utilgængelige ryttere/starttilstande
 og manglende løbsaktivitet. Et begrænset udsnit serialiseres, så årsagen kan læses
 i Sentry. Leveringens varige genforsøg består. Ingen balancerater ændres.

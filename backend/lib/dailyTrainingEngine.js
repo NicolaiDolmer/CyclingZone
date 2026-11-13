@@ -44,7 +44,7 @@ import { applyTrainingCatalog, isTrainingCatalogV3EnabledForTeam, v3SmartDefault
 import {
   loadTeamFatigueRules, loadRiderIdsWithStageOnDate, previousDateString, applyFatigueRules,
 } from "./trainingFatigueRules.ts"; // #4854/#5620
-import { nextFatigue, nextForm, conditionMultiplier, injuryRisk, rollInjury, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
+import { nextFatigue, nextForm, conditionMultiplier, injuryRisk, rollInjury, RACE_DAY_ENGINE_RECOVERY_CONFIG, NEW_RIDER_START_CONDITION } from "./riderCondition.js";
 import { buildCapsForRider, sameCaps } from "./riderProgression.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
@@ -1086,10 +1086,10 @@ export async function runTeamTrainingDay({
     }
 
     const age = ageForSeason(rider.birthdate, seasonNumber);
-    const cond = condByRider.get(rider.id) ?? { form: 50, fatigue: 0, injured_until: null, injury_cause: null };
+    const cond = condByRider.get(rider.id) ?? { ...NEW_RIDER_START_CONDITION, injured_until: null, injury_cause: null };
     const conditionBeforeDate = conditionPerDate
       ? dateWork.opening_conditions[rider.id]
-      : { ...cond, form: Number(cond.form ?? 50), fatigue: Number(cond.fatigue ?? 0) };
+      : { ...cond, form: Number(cond.form ?? NEW_RIDER_START_CONDITION.form), fatigue: Number(cond.fatigue ?? NEW_RIDER_START_CONDITION.fatigue) };
     if (conditionPerDate && !conditionBeforeDate) throw new Error('Daily condition roster changed during settlement');
     const plan = planByRider.get(rider.id) ?? null;
     const program = resolveProgram(plan, rider.primary_type);
