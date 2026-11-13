@@ -203,7 +203,13 @@ export function mainGroupId(groups: ReadonlyArray<Pick<FrameGroup, "group_id" | 
 /** Referatets hul-linje: "feltet" kun om hovedgruppen ved tjekpunktet, ellers "jagten". */
 function gapLineGroup(story: RaceStory, m: StoryMoment): "rest" | "chase" {
   const km = m.recorded_km ?? m.km;
-  const snapshot = story.snapshots.find((s) => Math.abs(s.km - km) < 0.01);
+  // Det NAERMESTE snapshot, ikke det foerste: ved stregen ligger der ogsaa et lige foer (#7900),
+  // og margenen alene kan ikke skelne dem (flydende tal). Ved uafgjort vinder det senere.
+  let snapshot: RaceStory["snapshots"][number] | undefined;
+  for (const s of story.snapshots) {
+    const d = Math.abs(s.km - km);
+    if (d < 0.01 && (!snapshot || d <= Math.abs(snapshot.km - km))) snapshot = s;
+  }
   const isMain = snapshot ? mainGroupId(snapshot.groups) === m.data.group_id : m.data.includes_rest === true;
   return isMain ? "rest" : "chase";
 }

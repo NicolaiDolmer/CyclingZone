@@ -428,6 +428,29 @@ test("#7704: hul-linjen siger kun feltet om hovedgruppen", () => {
   assert.equal(groupAt(beforeSplit.km, "peloton-0"), "rest", "foer splittet er den feltet");
 });
 
+test("#8124: hul-linjen ved stregen bruger snapshottet PAA stregen, ikke det lige foer", () => {
+  const s = story(shatteredTimeline());
+  const m = s.moments.find((x) => x.key === "story.gap_grew" && x.data.group_id === "peloton-0" && x.importance === "key");
+  assert.ok(m, "et hul-moment for startgruppen");
+  // 50 km: her ligger snapshottet 0,01 km foer stregen inden for den gamle margin (flydende tal).
+  assert.ok(Math.abs(50 - Math.round((50 - 0.01) * 100) / 100) < 0.01, "forudsaetning: begge snapshots er inden for 0,01 km");
+  m.km = 50;
+  delete (m as { recorded_km?: number }).recorded_km;
+  const base = s.snapshots[s.snapshots.length - 1];
+  const g = (group_id: string, size: number, gap_s: number, includes_rest = false) => ({ ...base.groups[0], group_id, size, gap_s, includes_rest });
+  s.snapshots = [
+    { ...base, km: 49.99, groups: [g("peloton-0", 16, 0, true), g("gruppetto-1", 40, 60)] },
+    { ...base, km: 50, groups: [g("peloton-0", 40, 0, true)] },
+  ];
+  const line = curateMoments(s, cast(), 50).find((l) => l.kind === "gap" && l.km === 50);
+  assert.ok(line, "hul-linjen ved stregen");
+  assert.equal(line.data.group, "rest", "ved stregen er startgruppen feltet; snapshottet lige foer maa ikke vinde");
+  // Et moment lige foer stregen bruger stadig snapshottet lige foer.
+  m.km = 49.99;
+  const before = curateMoments(s, cast(), 50).find((l) => l.kind === "gap" && l.km === 49.99);
+  assert.equal(before?.data.group, "chase", "snapshottet lige foer bruges til et moment lige foer");
+});
+
 test("buildReport: din rytter vandt naevnes kun een gang (Codex P2)", () => {
   const s = story();
   const results = RESULTS.map((r) => (r.rider_id === "m1" ? { ...r, rank: 1 } : r.rider_id === "w" ? { ...r, rank: 5 } : r));
