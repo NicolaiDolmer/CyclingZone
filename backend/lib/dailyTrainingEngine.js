@@ -70,7 +70,6 @@ import {
 // headeren paa injuryRaceDays.js.
 import {
   injuryEndGameDay, injuryRaceDaysLeft, isInjuredOnRaceDay, resolveInjuryEndDates,
-  loadTeamDivisionId,
 } from "./injuryRaceDays.js";
 import { notifyTrainingInjuries } from "./raceAvailabilityNotifications.js"; // #7086
 import { loadDevelopmentCurveB } from "./developmentCurveBFlag.ts"; // #3564 kurve B
@@ -649,16 +648,54 @@ async function resolveConditionInjuryDates({ supabase, teamId, seasonId, useRace
   if (!useRaceDayKey) return;
   const needDates = conditionUpserts.filter((row) => row.injury_end_game_day != null);
   if (!needDates.length) return;
-  const divisionId = await loadTeamDivisionId({ supabase, teamId });
+  const { divisionId, raceIds } = await loadInjuryCalendarRaces({ supabase, teamId, seasonId });
   const dateByGameDay = await resolveInjuryEndDates({
     supabase,
     seasonId,
     divisionId,
     endGameDays: needDates.map((row) => row.injury_end_game_day),
+    raceIds,
   });
   for (const row of needDates) {
     const dateStr = dateByGameDay.get(row.injury_end_game_day) ?? null;
     if (dateStr) row.injured_until = dateStr;
+  }
+}
+
+/**
+ * #5462 + #7982 trin 4a: the team's division and that division's races for the injury calendar.
+ * Asked with the same two queries as the race-day lookup (raceDayStageLookup.js, team row and
+ * season races), so a press answers them from what it already read; the answer is the same as
+ * loadTeamDivisionId plus the division's races. A team with youth divisions gets `raceIds: null`
+ * (the race-day query also holds their races), and resolveInjuryEndDates reads them as before.
+ * Fail-safe as before: without an answer the injury keeps its calendar-day date.
+ */
+async function loadInjuryCalendarRaces({ supabase, teamId, seasonId }) {
+  let team = null;
+  try {
+    const { data, error } = await supabase
+      .from("teams")
+      .select("league_division_id, u23_league_division_id, junior_league_division_id")
+      .eq("id", teamId).maybeSingle();
+    if (!error) team = data ?? null;
+  } catch {
+    // best-effort: as loadTeamDivisionId, the division only serves the injury's approximate
+    // date; without it the injury is still written with its calendar-day date.
+    team = null;
+  }
+  const divisionId = team?.league_division_id ?? null;
+  if (divisionId == null || team.u23_league_division_id != null || team.junior_league_division_id != null) {
+    return { divisionId, raceIds: null };
+  }
+  try {
+    const { data: races, error } = await supabase
+      .from("races").select("id, race_type").eq("season_id", seasonId).in("league_division_id", [divisionId]);
+    // As resolveInjuryEndDates: a failed races read means no calendar dates (empty list).
+    return { divisionId, raceIds: error ? [] : (races ?? []).map((race) => race.id).filter(Boolean) };
+  } catch (err) {
+    // best-effort: same fallback as resolveInjuryEndDates when its own races read throws.
+    console.warn(`  ⚠️ injury race-day calendar lookup threw (#5462, season ${seasonId}): ${err?.message ?? err} - injured_until falls back to calendar days`);
+    return { divisionId, raceIds: [] };
   }
 }
 

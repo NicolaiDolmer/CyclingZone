@@ -172,19 +172,24 @@ export function isInjuredOnRaceDay({ condition, seasonId = null, gameDay = null,
  *   endGameDays?: number[]}} args
  * @returns {Promise<Map<number, string|null>>} loebsdag → "YYYY-MM-DD" (dansk dato)
  */
-export async function resolveInjuryEndDates({ supabase, seasonId, divisionId, endGameDays = [] } = {}) {
+export async function resolveInjuryEndDates({ supabase, seasonId, divisionId, endGameDays = [], raceIds: divisionRaceIds = null } = {}) {
   const wanted = [...new Set((endGameDays ?? []).map(Number).filter((n) => Number.isInteger(n) && n >= 0))];
   const out = new Map(wanted.map((gd) => [gd, null]));
   if (!out.size || !supabase?.from || !seasonId || divisionId == null) return out;
 
   try {
-    const { data: races, error: racesError } = await supabase
-      .from("races")
-      .select("id")
-      .eq("season_id", seasonId)
-      .eq("league_division_id", divisionId);
-    if (racesError) return out;
-    const raceIds = (races ?? []).map((r) => r.id).filter(Boolean);
+    // #7982 trin 4a: a caller that already has the division's races for the season passes
+    // them (`raceIds`); otherwise they are read here, as before.
+    let raceIds = Array.isArray(divisionRaceIds) ? divisionRaceIds.filter(Boolean) : null;
+    if (!raceIds) {
+      const { data: races, error: racesError } = await supabase
+        .from("races")
+        .select("id")
+        .eq("season_id", seasonId)
+        .eq("league_division_id", divisionId);
+      if (racesError) return out;
+      raceIds = (races ?? []).map((r) => r.id).filter(Boolean);
+    }
     if (!raceIds.length) return out;
 
     const lowest = Math.min(...wanted);
