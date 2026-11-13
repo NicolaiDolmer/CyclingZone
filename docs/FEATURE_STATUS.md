@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-147 poster: live 113 · beta 3 · dormant 8 · building 14 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+147 poster: live 113 · beta 3 · dormant 10 · building 12 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -20,7 +20,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
 |Long descent chase cap (`race-descent-regroup-cap-7644`)|dormant|`descent_regroup_cap_7644`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7644|2026-11-04|Slukket; tændes af ejeren.|
-|Jersey hunt in the stage plan (`race-jersey-hunt-7855`)|building|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7855|2026-11-09|-|
+|Jersey hunt in the stage plan (`race-jersey-hunt-7855`)|dormant|`jersey_hunt_7855`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7855|2026-11-13|#8052 merget 13/11, kontakt jersey_hunt_7855 off i prod; tændes kun af ejeren efter dommer.|
 |Tired riders can miss the time limit, with a warning (`race-time-limit-fatigue-7715`)|building|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7715|2026-11-07|Nøgle time_limit_fatigue_7715 uden række (off).|
 |Official time persistence revision (`race-official-times-v1`)|retired|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#6284|2026-10-16|Frosset prototype.|
 
@@ -34,7 +34,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 |-|-|-|-|-|-|-|
 |Team plans (`tactics-ready`)|beta|`tactics_ready_7864`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7864|2026-11-12|Beta siden 12/11 kl. 19:02 (ejerens kør). Første gem set 12/11: 8 ordrer og 14 roller, alle med markør.|
 |Engine breakaway forecast (`race-breakaway-outlook`)|building|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#6912|2026-10-29|Ingen app_config-række (fravær = off). Ejer-go til tænding.|
-|Race page v6, step 1 (results for a ridden stage) (`race-page-v6`)|building|-|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7778|2026-11-12|#7778: kontakt race_page_v6 seedes off (migration 2026-11-12), kun visning; flag-feltet sættes når rækken findes i prod.|
+|Race page v6, step 1 (results for a ridden stage) (`race-page-v6`)|building|`race_page_v6`|[RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)|#7778|2026-11-13|#7778/#8062: kun trin 1 af 5 er bygget (kun visning); kontakt race_page_v6 off i prod 13/11.|
 
 ## market
 
@@ -45,7 +45,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
 |Auto-accept price (`market-auto-accept`)|beta|`auto_accept_enabled`|[TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md)|#2176|2026-11-12|-|
-|Sale escrow (`sale-escrow`)|building|-|[TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md)|#6181|2026-11-07|Kontakt sale_escrow_enabled.|
+|Sale escrow (`sale-escrow`)|building|-|[TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md)|#6181|2026-11-13|Kontakt sale_escrow_enabled findes ikke i prod app_config (13/11) = slukket; købernes del er market-commitment (on). Ejer 13/11: sælgers penge låses til holdskiftet; tænding er ejerens eget kort.|
 |AI and unsolicited bids (`ai-unsolicited-bids`)|idea|-|[TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md)|#1310|2026-09-06|Findes ikke i kode.|
 |Market value blend sweep (`market-value-blend`)|retired|-|[ECONOMY_RULES](ECONOMY_RULES.md)|#3448|2026-10-15|Afløst af v6 (#4449).|
 |Rider loans (`rider-loans`)|retired|-|[TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md)|#1994|2026-09-06|Afviklet; kun lån findes.|
@@ -63,21 +63,21 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## training
 
-**live:** Race date as full training day (`condition-v2-race-date-training-day`) 2026-11-04 · Development curve B (`development-curve-b`) 2026-10-30 · Same potential band everywhere (`potential-single-number`) 2026-11-04 · Race day as a hard training day (`race-day-role-yield`) 2026-11-01 · Train now B (`train-now-whole-day`) 2026-11-02 · Bulk training day (`training-bulk-day`) 2026-11-02 · Training catalog v3 (`training-catalog-v3`) 2026-10-30
+**live:** Race date as full training day (`condition-v2-race-date-training-day`) 2026-11-04 · Development curve B (`development-curve-b`) 2026-10-30 · Same potential band everywhere (`potential-single-number`) 2026-11-04 · Race day as a hard training day (`race-day-role-yield`) 2026-11-01 · Train now B (`train-now-whole-day`) 2026-11-02 · Bulk training day (`training-bulk-day`) 2026-11-02 · Training catalog v3 (`training-catalog-v3`) 2026-10-30 · Train now (no bonus) (`training-train-now`) 2026-11-13
 
-**arkiv:** `ability-cap-per-date` · `condition-model-v2` · `daily-training` · `peak-planner` · `season-fatigue-reset` · `training-condition-per-date` · `training-daily-receipt` · `training-decision-card` · `training-fatigue-rules` · `training-groups` · `training-hard-sessions-cobbles-echelon-attack` · `training-mobile-table` · `training-program-cells` · `training-programs` · `training-score` · `training-tick-per-race-day` · `training-tick-system` · `training-train-now`
+**arkiv:** `ability-cap-per-date` · `condition-model-v2` · `daily-training` · `peak-planner` · `season-fatigue-reset` · `training-condition-per-date` · `training-daily-receipt` · `training-decision-card` · `training-fatigue-rules` · `training-groups` · `training-hard-sessions-cobbles-echelon-attack` · `training-mobile-table` · `training-program-cells` · `training-programs` · `training-score` · `training-tick-per-race-day` · `training-tick-system`
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
 |Train now straight away (`train-now-instant`)|beta|`training_train_now_instant`|[TRAINING_RULES](TRAINING_RULES.md)|#7737|2026-11-10|Beta i prod 10/11; on for alle efter beta-feedback (ejer-go).|
 |Development Score B in the engine (`development-score-b-engine`)|dormant|`development_score_v2`|[TRAINING_RULES](TRAINING_RULES.md)|#6110|2026-11-04|Ejer 31/10 (#6110): parkeret til grundtalentet er bygget. Før tænding: #7584.|
+|Development XP (`development-xp-model`)|dormant|`development_xp_model`|[TRAINING_RULES](TRAINING_RULES.md)|#6110|2026-11-13|#8041 merget; development_xp_model off i prod 13/11; tændes kun af ejeren efter dommer (+ development_xp_from_date).|
 |One potential source (`potential-estimate-display`)|dormant|`potential_estimate_display`|[6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md)|#6110|2026-11-05|Byggetrin 4 (#7684): fladerne læser potentialEstimateRead.js, når flaget er tændt.|
 |Catch-up via racing (`race-day-catchup`)|dormant|`race_day_catchup_enabled`|[TRAINING_RULES](TRAINING_RULES.md)|#6950|2026-10-25|Ejer, med Udvikling 2.0.|
 |Race day role base day (`race-day-role-base-day`)|dormant|`race_day_role_base_day_enabled`|[TRAINING_RULES](TRAINING_RULES.md)|#6110|2026-11-03|#5950 løsning A (ejer-valg 3/11), underkontakt til race-day-role-yield. Off.|
-|Development XP (`development-xp-model`)|building|-|[TRAINING_RULES](TRAINING_RULES.md)|#6110|2026-11-07|Kontakter development_xp_model + development_xp_from_date; tændes efter kalibrering.|
 |Stored potential estimates (`potential-estimate-writes`)|building|-|[6110-potentiale-et-tal-samlet-design](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md)|#6110|2026-11-05|Trin 5 (#7685): søndagsjob, holdskifte og nye kig; flaget seedes off.|
 |Train now bonus (`train-now-bonus`)|building|`training_train_now_bonus`|[TRAINING_RULES](TRAINING_RULES.md)|#7737|2026-11-10|OFF seed; owner 10/11: own activation card after Train now is proven alone.|
-|Fatigue now counts today's earlier stages (`training-fatigue-now-7801`)|building|-|[TRAINING_RULES](TRAINING_RULES.md)|#7801|2026-11-07|Kontakt fatigue_now_7801 (ikke seedet = slukket); ejer tænder.|
+|Fatigue now counts today's earlier stages (`training-fatigue-now-7801`)|building|-|[TRAINING_RULES](TRAINING_RULES.md)|#7801|2026-11-13|Kontakt fatigue_now_7801 findes ikke i prod app_config (13/11) = slukket; ejer tænder.|
 
 ## academy
 
@@ -115,7 +115,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 ## board
 
-**arkiv:** `board-mandate-model`
+**live:** Board mandate model (`board-mandate-model`) 2026-11-13
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
@@ -133,7 +133,7 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 
 |Feature|State|Flag|SSOT|Epic|Verified|Note|
 |-|-|-|-|-|-|-|
-|Independent ranking shadow pass (`ranking-shadow-decoupled`)|building|`ranking_shadow_decoupled_6765`|[GAME_INVARIANTS](GAME_INVARIANTS.md)|#6765|2026-11-10|OFF seed.|
+|Independent ranking shadow pass (`ranking-shadow-decoupled`)|building|`ranking_shadow_decoupled_6765`|[GAME_INVARIANTS](GAME_INVARIANTS.md)|#6765|2026-11-13|OFF seed; ranking_shadow_decoupled_6765 off i prod 13/11.|
 |Hall of Fame (`hall-of-fame`)|retired|-|-|#2359|2026-09-06|Redirecter til /standings.|
 
 ## onboarding
