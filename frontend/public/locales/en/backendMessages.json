@@ -806,7 +806,8 @@
       "transferRejected": "Your offer on {rider} was rejected.",
       "watchlistRiderAuction": "A rider on your watchlist is up for auction: {rider}.",
       "testTitle": "Discord DM works",
-      "testDescription": "You will now receive DMs from Cycling Zone for auctions, transfers and board updates."
+      "testDescription": "You will now receive DMs from Cycling Zone for auctions, transfers and board updates.",
+      "testPaused": "I've switched off Discord messages for now, so no test message was sent."
     }
   },
   "push": {

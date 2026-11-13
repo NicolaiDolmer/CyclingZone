@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-147 poster: live 114 · beta 2 · dormant 10 · building 12 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+148 poster: live 115 · beta 2 · dormant 10 · building 12 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -148,6 +148,8 @@ Arkiv = live verificeret over 14 dage foer registrets nyeste dato: kun id (#5319
 **arkiv:** `alunta-reconcile` · `cz-pro`
 
 ## ops
+
+**live:** Discord bot DM switch (`discord-player-dm-switch`) 2026-11-13
 
 **arkiv:** `ranking-shadow` · `rider-reputation`
 
