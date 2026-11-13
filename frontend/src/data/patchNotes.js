@@ -1,5 +1,47 @@
 export const PATCHES = [
 {
+  "version": "7.441",
+  "date": "2026-11-13",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Help",
+      "en": {
+        "title": "Help",
+        "body": "Help no longer claims that a role's ceiling is shown next to a rider's potential."
+      },
+      "da": {
+        "title": "Hjælp",
+        "body": "Hjælp påstår ikke længere, at rollens loft vises ved en rytters potentiale."
+      },
+      "refs": [
+        8108,
+        8109
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Dashboard",
+      "en": {
+        "title": "Today's stages",
+        "body": "Today's stages no longer says the overall position is not settled when the information is just missing."
+      },
+      "da": {
+        "title": "Dagens etaper",
+        "body": "Dagens etaper skriver ikke længere, at den samlede stilling ikke er afgjort, når det bare er oplysningerne, der mangler."
+      },
+      "refs": [
+        8097,
+        8104
+      ]
+    }
+  ]
+},
+{
   "version": "7.440",
   "date": "2026-11-13",
   "changes": [
