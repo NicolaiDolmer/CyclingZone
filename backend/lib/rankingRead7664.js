@@ -242,8 +242,9 @@ export async function readDashboardTopRiders7664(supabase, { seasonId, leagueDiv
     return null;
   } finally {
     clearTimeout(timer);
-    // Den tabte vej maa ikke give en ubehandlet afvisning efter afbrydelsen.
-    work.catch(() => {});
+    // best-effort: den tabte vej maa ikke give en ubehandlet afvisning efter
+    // afbrydelsen; dens fejl er allerede rapporteret een gang ovenfor.
+    work.catch(() => { /* best-effort: allerede rapporteret */ });
   }
 }
 

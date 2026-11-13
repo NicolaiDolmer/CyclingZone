@@ -36,7 +36,7 @@ export function useRiderRankings() {
   const [season, setSeason] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [updatedAt, setUpdatedAt] = useState(null);
+  const [updatedAt, setUpdatedAt] = useState(/** @type {string | null} */ (null));
 
   const load = useCallback(async () => {
     setLoading(true);
