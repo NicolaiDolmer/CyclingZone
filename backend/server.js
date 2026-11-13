@@ -31,6 +31,7 @@ import { createComebackRouter } from "./routes/comeback.js"; // #5643
 import { createBoardVerdictRouter } from "./routes/boardVerdict.js"; // #5753
 import { createPublicStageRouteRouter } from "./routes/publicStageRoute.js"; // #6574
 import { startCron, awaitCronsIdle, getCronInFlight, stopCronScheduling } from "./cron.js";
+import { createActionTimingMiddleware } from "./lib/actionTimingMonitor8101.js"; // #8101
 
 const app = express();
 // Express 5 default; laast eksplicit 11/9 (#4565): ingen nestede/array-query-noegler
@@ -41,6 +42,8 @@ const PORT = process.env.PORT || 3001;
 // Railway/Vercel terminate TLS upstream; trust the first proxy hop so req.ip
 // reflects the real client (X-Forwarded-For) for rate-limit key fallback.
 app.set("trust proxy", 1);
+// #8101: svartid for de ti vigtigste handlinger. Først, så hele serverens tid tæller.
+app.use(createActionTimingMiddleware());
 
 // Security-hardening (2026-06-20): eksplicit HSTS bag Railway/Vercel-TLS. Defense-in-depth
 // — instruerer browsere til at tvinge HTTPS i 1 år (inkl. subdomæner) selv hvis et

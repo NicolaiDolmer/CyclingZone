@@ -267,6 +267,7 @@ export const ALL_CRON_MONITORS = [
   // selv (dør hele cron-processen, fyrer ingen tick — samme blinde vinkel som
   // stall-watchdog'en har for sin egen død).
   ["cron-heartbeat-sweep", CRON_MONITOR_5MIN],
+  ["action-timing-flush", CRON_MONITOR_15MIN], // #8101 svartids-loft
   // #4419: søndagens værdi-pipeline (værdi-refresh; markedsblendet fjernet i #6642).
   // #6858: præcis søndag kl. 14:00 dansk tid (SUNDAY_VALUE_FROM_HOUR, ejer 18/10),
   // crontab-monitor "0 14 * * 0" i Europe/Copenhagen med 15 min margin: udebliver
