@@ -9,13 +9,19 @@
 // Stemplede datoer bruger PR1's frosne åbning og receipts gennem instant-readeren.
 
 import { enteringFatigueV2, settleDateFatigueV2 } from "./conditionModelV2.js";
-import { isConditionModelV2Enabled } from "./conditionModelV2Flag.js";
+import { CONDITION_MODEL_V2_FLAG_KEY, isConditionModelV2Enabled } from "./conditionModelV2Flag.js";
 import { copenhagenDateString, copenhagenWallTimeToUTC } from "./copenhagenTime.js";
-import { loadMedicalBonusByTeam } from "./medicalEffects.js";
+import { loadMedicalBonusByTeam, medicalBonus } from "./medicalEffects.js";
 import { isFatigueNow7801Enabled } from "./riderFatigueNowFlag.js";
+import { captureException } from "./sentry.js";
+import { normalizeLevelBands } from "./staffAbilityConstants.js";
+import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
 import { fetchAllRows, SUPABASE_IN_CHUNK_SIZE } from "./supabasePagination.js";
+import { readConditionWriterFlag, TRAINING_CONDITION_PER_DATE_FLAG_KEY } from "./trainingDateConditionFlag.js";
+import { TRAINING_TICK_PER_RACE_DAY_FLAG_KEY } from "./trainingTickRaceDayFlag.js";
 import { dropBindingsAfterRaceExit, loadRaceExitGameDays } from "./trainingRaceDayTick.js";
 import { loadInstantConditions, InstantConditionEvidenceError } from "./trainNowInstantCondition7737.js";
+import { loadTrainNowInstantRiderIds } from "./trainNowLock.js";
 
 /**
  * Træthed lige nu: åbningen plus datoens etaper, der er kørt og endnu ikke afregnet.
@@ -280,6 +286,296 @@ export async function fatigueByRiderForRaces({ supabase, conditions, abilityByRi
   return { fatById: base, byRace };
 }
 
+// ── #7801 rest-byg: én visnings opslag, samlet og sendt samtidig ─────────────────────
+// Kun med kontakten læst som tændt. Samme tal som liveFatigueMap ovenfor (motorens kerne),
+// men opslag, der ikke afhænger af hinanden, sendes samtidig, og intet læses to gange i samme
+// visning. Intet huskes fra én visning til den næste: alt lever i ét kald.
+
+/** Lægeopslaget fejlede på en flade: tallet vises som "—", aldrig uden bonus. */
+class MedicalLookupUnavailableError extends FatigueNowUnavailableError {}
+
+const engineFlag = (supabase, key) => readConditionWriterFlag(supabase, key, { engineWrite: true });
+
+/**
+ * De to kontakter, Form og træthed 2.0 kræver (isConditionModelV2Enabled), læst samtidig efter
+ * condition_model_v2 selv. Samme regler: en fejl eller en manglende forudsætning kaster.
+ */
+async function assertConditionModelV2Prerequisites(supabase) {
+  const [perDate, tick] = await Promise.allSettled([
+    engineFlag(supabase, TRAINING_CONDITION_PER_DATE_FLAG_KEY), engineFlag(supabase, TRAINING_TICK_PER_RACE_DAY_FLAG_KEY),
+  ]);
+  if (perDate.status === "rejected") throw perDate.reason;
+  if (!perDate.value) throw new Error("condition_model_v2 requires training_condition_per_date");
+  if (tick.status === "rejected") throw tick.reason;
+  if (!tick.value) throw new Error("training_condition_per_date requires training_tick_per_race_day");
+}
+
+const chunksOf = (ids) => {
+  const out = [];
+  for (let i = 0; i < ids.length; i += SUPABASE_IN_CHUNK_SIZE) out.push(ids.slice(i, i + SUPABASE_IN_CHUNK_SIZE));
+  return out;
+};
+
+/**
+ * Hvem har et Træn nu-stempel på datoen. Samme opslag og samme fejlregel som stempel-læseren
+ * med failOpenWhenOff (loadInstantConditions): en fejl kaster, medmindre Træn nu er slukket.
+ */
+async function stampedRiderIdsForView({ supabase, tickDate, riderIds }) {
+  try {
+    const parts = await Promise.all(chunksOf(riderIds).map(async (ids) => {
+      try {
+        return [...await loadTrainNowInstantRiderIds({ supabase, tickDate, riderIds: ids })];
+      } catch (lookupError) {
+        const { data, error } = await supabase.from("app_config")
+          .select("value").eq("key", "training_train_now_instant").maybeSingle();
+        if (!error && data?.value !== "on" && data?.value !== "beta") return [];
+        throw lookupError;
+      }
+    }));
+    return new Set(parts.flat());
+  } catch (error) {
+    throw new InstantConditionEvidenceError(`instant condition evidence: ${error.message}`, { cause: error });
+  }
+}
+
+function noInstantConditions() {
+  const out = new Map();
+  out.openingByRider = new Map();
+  out.incompleteRiderIds = new Set();
+  out.settledRiderIds = new Set();
+  return out;
+}
+
+async function recoveryForView(supabase, riderIds) {
+  const out = new Map();
+  const parts = await Promise.all(chunksOf(riderIds).map((ids) => supabase.from("rider_derived_abilities")
+    // pagination-safe: én række pr. rytter, ≤100 pr. kald.
+    .select("rider_id, recovery").in("rider_id", ids)));
+  for (const { data, error } of parts) {
+    if (error) throw new Error(`rider_derived_abilities (fatigue now): ${error.message}`);
+    for (const row of data ?? []) out.set(row.rider_id, row.recovery);
+  }
+  return out;
+}
+
+/**
+ * Holdets lægebonus som loadTeamMedicalBonus regner den, kun med Form og træthed 2.0 tændt.
+ * `speculative` (skærmene): afdeling og læge spørges samtidig med kontakterne, så lægens evner
+ * kan følge i næste ventetid; med 2.0 slukket læses intet mere. Ellers spørges der først, når
+ * kontakterne er læst. `strict` (skærmene): en fejl kaster, så tallet vises som "—". Ellers
+ * som i dag: holdet regnes uden bonus.
+ */
+async function medicalBonusForView({ supabase, teamId, modelV2, strict, speculative }) {
+  const ask = () => Promise.all([
+    supabase.from("team_facilities").select("track, tier").eq("team_id", teamId).eq("track", "medical"),
+    supabase.from("team_staff").select("id, name, role, tier, status").eq("team_id", teamId).eq("role", "medical").eq("status", "active"),
+  ]).then((res) => ({ res }), (error) => ({ error }));
+  const early = speculative ? ask() : null;
+  if (!await modelV2) return 0;
+  try {
+    const { res, error } = await (early ?? ask());
+    if (error) throw error;
+    const [facRes, staffRes] = res;
+    if (facRes.error) throw new Error(`team_facilities load: ${facRes.error.message}`);
+    if (staffRes.error) throw new Error(`team_staff load: ${staffRes.error.message}`);
+    const facilityTier = facRes.data?.[0]?.tier ?? 0;
+    const staffRows = staffRes.data ?? [];
+    if (facilityTier <= 0 && staffRows.length === 0) return medicalBonus(0, null);
+    let staff = null;
+    if (staffRows.length > 0) {
+      const abilityRes = await supabase.from("staff_derived_abilities")
+        .select("staff_id, overall, dimensions, levels").in("staff_id", staffRows.map((r) => r.id));
+      if (abilityRes.error) throw new Error(`staff_derived_abilities load: ${abilityRes.error.message}`);
+      const abilityByStaffId = new Map((abilityRes.data ?? []).map((a) => [a.staff_id, a]));
+      // Samme valg som loadTrainingStaffContext: den stærkeste læge, afledt hvis evnerne mangler.
+      const profiles = staffRows.map((row) => abilityByStaffId.get(row.id)
+        ?? deriveStaffAbilities({ role: row.role, tier: row.tier, name: row.name }));
+      const ab = profiles.reduce((best, p) => ((p.overall ?? 0) > (best.overall ?? 0) ? p : best));
+      staff = { overall: ab.overall, dimensions: ab.dimensions ?? {}, levels: normalizeLevelBands(ab.levels ?? {}) };
+    }
+    return medicalBonus(facilityTier, staff);
+  } catch (err) {
+    if (strict) throw new MedicalLookupUnavailableError(`medical lookup (fatigue now): ${err?.message ?? err}`, { cause: err });
+    // Som loadTrainingStaffContext uden retryOnTransient: holdet regnes uden bonus, men ikke tavst.
+    console.warn(`[fatigue-now-7801] medical lookup failed for team ${teamId}, continuing without bonus: ${err?.message ?? err}`);
+    captureException(err, { tags: { lib: "riderFatigueNow" }, extra: { teamId } });
+    return 0;
+  }
+}
+
+/**
+ * Datoens uafregnede belastninger (kun originaler), samme filtre som loadUnsettledDateLoads.
+ * `lessThan` = løbsdagen, alle visningens etaper ligger før; hver etapes egen grænse lægges på lokalt.
+ */
+async function unsettledDateLoadRowsForView({ supabase, riderIds, tickDate, lessThan = null }) {
+  const parts = await Promise.all(chunksOf(riderIds).map((ids) => {
+    // pagination-safe: ≤100 ryttere × højst én datos løbsdage.
+    let query = supabase.from("training_race_loads")
+      .select("rider_id, game_day, load")
+      .in("rider_id", ids)
+      .eq("tick_date", tickDate);
+    if (lessThan != null) query = query.lt("game_day", lessThan);
+    return query.is("consumed_at", null).is("duplicate_of_race_id", null).order("game_day");
+  }));
+  const rows = [];
+  for (const { data, error } of parts) {
+    if (error) throw new Error(`training_race_loads (same-date fatigue): ${error.message}`);
+    rows.push(...(data ?? []));
+  }
+  return rows;
+}
+
+/** Som loadUnsettledDateLoads' efterbehandling, for løbsdagene før `beforeGameDay` (null = alle). */
+function loadsByRiderBefore(rows, beforeGameDay) {
+  const kept = beforeGameDay == null ? rows : rows.filter((row) => Number(row.game_day) < Number(beforeGameDay));
+  const loadsByRider = new Map();
+  for (const row of kept.slice().sort((a, b) => Number(a.game_day) - Number(b.game_day))) {
+    const key = String(row.rider_id);
+    if (!loadsByRider.has(key)) loadsByRider.set(key, []);
+    loadsByRider.get(key).push(Number(row.load) || 0);
+  }
+  return loadsByRider;
+}
+
+/**
+ * Én visnings opslag til trætheden lige nu på datoen `tickDate`. Først evner, kontakterne for
+ * Form og træthed 2.0 og Træn nu-stempler samtidig; derefter datoens belastninger og lægeopslaget
+ * (med `speculative` er afdeling og læge allerede spurgt, så kun lægens evner mangler).
+ * `at(beforeGameDay)` giver så { fatigue, instant } for en etape
+ * (null = tallet nu) uden nye opslag, undtagen for ryttere med Træn nu-stempel, hvis stempel
+ * læses med stempel-læseren som i dag. Tallene er præcis liveFatigueMap's.
+ */
+async function prepareFatigueNowView({ supabase, conditions, abilityByRider = null, teamIdByRider = null, teamId = null, tickDate, befores = [null], strict = false, speculative = false }) {
+  const ids = [...sameMap(conditions).keys()];
+  const teamOf = (id) => teamIdByRider?.get(id) ?? teamId;
+  const teams = [...new Set((conditions ?? []).map((c) => teamOf(c.rider_id)).filter(Boolean))];
+  const recoveryP = abilityByRider ? Promise.resolve(abilityByRider) : recoveryForView(supabase, ids);
+  const modelV2P = engineFlag(supabase, CONDITION_MODEL_V2_FLAG_KEY);
+  const stampedP = stampedRiderIdsForView({ supabase, tickDate, riderIds: ids });
+  // allSettled ejer lægeløfterne fra start, så et tidligt kast nedenfor aldrig efterlader et uafhentet løfte.
+  const medicalAll = Promise.allSettled(teams.map((t) => medicalBonusForView({ supabase, teamId: t, modelV2: modelV2P, strict, speculative })));
+  const first = await Promise.allSettled([recoveryP, modelV2P, stampedP, befores]);
+  const failed = first.find((r) => r.status === "rejected");
+  if (failed) throw failed.reason;
+  const [recovery, modelV2, stamped, beforeList] = first.map((r) => r.value);
+
+  const recoveryOf = (id) => {
+    const value = recovery.get(id);
+    return Number(typeof value === "object" && value != null ? value.recovery : value ?? 50);
+  };
+  const riders = (conditions ?? []).map((c) => ({
+    rider_id: c.rider_id, team_id: teamOf(c.rider_id), fatigue: c.fatigue, form: c.form,
+    abilities: { recovery: Number.isFinite(recoveryOf(c.rider_id)) ? recoveryOf(c.rider_id) : 50 },
+  }));
+  // Uden stempel: rytterne, motoren lægger datoens etaper oveni (withCondition, som ridersWithFatigueNow).
+  const known = withCondition(riders).filter((r) => !stamped.has(r.rider_id));
+  // Etape-grænsen som i loadUnsettledDateLoads; med flere etaper i visningen den seneste (resten lokalt).
+  const limits = (beforeList ?? []).filter((b) => b !== undefined);
+  const lessThan = limits.length && limits.every((b) => b != null) ? Math.max(...limits.map(Number)) : null;
+  const prerequisitesP = modelV2 ? assertConditionModelV2Prerequisites(supabase) : Promise.resolve();
+  const loadsP = modelV2 && known.length
+    ? unsettledDateLoadRowsForView({ supabase, riderIds: known.map((r) => r.rider_id), tickDate, lessThan })
+    : Promise.resolve([]);
+  const [prerequisitesR, medicalR, loadsR] = await Promise.allSettled([prerequisitesP, medicalAll, loadsP]);
+  if (prerequisitesR.status === "rejected") throw prerequisitesR.reason;
+  const medicalFailed = medicalR.value.find((r) => r.status === "rejected");
+  if (medicalFailed) throw medicalFailed.reason;
+  if (loadsR.status === "rejected") throw loadsR.reason;
+  const medicalBonusByTeam = modelV2 ? new Map(teams.map((t, i) => [t, medicalR.value[i].value])) : new Map();
+  const loadRows = loadsR.value;
+
+  const instantByBefore = new Map();
+  const instantAt = (beforeGameDay) => {
+    if (!stamped.size) return noInstantConditions();
+    if (!instantByBefore.has(beforeGameDay)) {
+      instantByBefore.set(beforeGameDay, loadInstantConditions({ supabase, riderIds: riders.map((r) => r.rider_id), tickDate, beforeGameDay, failOpenWhenOff: true }));
+    }
+    return instantByBefore.get(beforeGameDay);
+  };
+  return {
+    async at(beforeGameDay = null) {
+      const instant = await instantAt(beforeGameDay);
+      const copies = riders.map((r) => ({ ...r }));
+      for (const rider of copies) if (instant.has(rider.rider_id)) Object.assign(rider, instant.get(rider.rider_id));
+      const live = withCondition(copies).filter((r) => !instant.has(r.rider_id));
+      if (live.length && modelV2) applyDateLoads(live, loadsByRiderBefore(loadRows, beforeGameDay), medicalBonusByTeam);
+      return { fatigue: new Map(copies.map((r) => [r.rider_id, r.fatigue])), instant };
+    },
+  };
+}
+
+/**
+ * Fladernes tal for ét hold lige nu (Træning, regelpanelet, rytterkortet), når kontakten
+ * allerede er læst som tændt: { fatigue, instant, unavailable }. Kan tallet ikke regnes, er
+ * rytteren i `unavailable` og hans tal null ("—"), aldrig morgenens tal. Et Træn nu-stempel
+ * uden bevis kaster stadig (InstantConditionEvidenceError), som i dag. Fejler noget andet,
+ * vises stemplede ryttere som i dag, undtagen ved fejlet lægeopslag, hvor deres tal heller
+ * ikke kan stoles på.
+ */
+export async function teamFatigueNowForSurface({ supabase, conditions, abilityByRider = null, teamId = null, now = new Date() }) {
+  if (!(conditions ?? []).length) return { fatigue: new Map(), instant: noInstantConditions(), unavailable: new Set() };
+  const tickDate = copenhagenDateString(now);
+  try {
+    const view = await prepareFatigueNowView({ supabase, conditions, abilityByRider, teamId, tickDate, strict: true, speculative: true });
+    return { ...await view.at(null), unavailable: new Set() };
+  } catch (err) {
+    if (err instanceof InstantConditionEvidenceError) throw err;
+    console.warn(`[fatigue-now-7801] surface fatigue omitted: ${err?.message ?? err}`);
+    const ids = conditions.map((c) => c.rider_id);
+    const instant = err instanceof MedicalLookupUnavailableError
+      ? noInstantConditions()
+      : await loadInstantConditions({ supabase, riderIds: ids, tickDate, failOpenWhenOff: true });
+    const fatigue = new Map(ids.map((id) => [id, null]));
+    for (const [id, condition] of instant) fatigue.set(id, condition.fatigue);
+    return { fatigue, instant, unavailable: new Set(ids.filter((id) => !instant.has(id))) };
+  }
+}
+
+/**
+ * Udtagelsen og Hold-fanen for et eller flere af holdets løb i én visning, når kontakten allerede
+ * er læst som tændt. `columns` = [{ race, stageNumber, conditions, abilityByRider }]. Hvert løb
+ * får tallet ved sin næste etapes start, hvis den ligger i dag, ellers tallet nu (som
+ * fatigueByRiderNow med atStage). Opslagene deles af alle løbene. Et løb, hvis tal ikke kan
+ * regnes, får et tomt map ("—"), ikke morgenens tal.
+ * @returns {Promise<Array<Map<string, number|null>>>}
+ */
+export async function raceFatigueNowForSurface({ supabase, columns, teamId, now = new Date() }) {
+  const today = copenhagenDateString(now);
+  const conditions = [];
+  const seen = new Set();
+  for (const { conditions: rows } of columns) for (const c of rows ?? []) if (!seen.has(c.rider_id)) { seen.add(c.rider_id); conditions.push(c); }
+  // Evnerne fra løbenes egne opslag; mangler de for et løb, læses de her.
+  const abilityByRider = columns.every((col) => col.abilityByRider)
+    ? new Map(columns.flatMap((col) => [...col.abilityByRider]))
+    : null;
+  const starts = Promise.allSettled(columns.map(({ race, stageNumber }) => (stageNumber == null ? null
+    : loadStageStartAt({ supabase, raceId: race.id, stageNumber }))));
+  // Næste etape i dag: tallet ved dens start. Ellers tallet nu. Et løb uden læst plan: undefined ("—").
+  const beforeOf = (r) => {
+    if (r.status === "rejected") return undefined;
+    return r.value && copenhagenDateString(r.value.now) === today ? r.value.gameDay : null;
+  };
+  const [viewR] = await Promise.allSettled([prepareFatigueNowView({
+    supabase, conditions, abilityByRider, teamId, tickDate: today, strict: true, speculative: true,
+    befores: starts.then((rs) => rs.map(beforeOf)),
+  })]);
+  const startR = await starts;
+  const out = [];
+  for (const [i, col] of columns.entries()) {
+    try {
+      if (viewR.status === "rejected") throw viewR.reason;
+      if (startR[i].status === "rejected") throw startR[i].reason;
+      const { fatigue } = await viewR.value.at(beforeOf(startR[i]));
+      out.push(new Map((col.conditions ?? []).map((c) => [c.rider_id, fatigue.get(c.rider_id)])));
+    } catch (err) {
+      // best-effort: visningen må aldrig vælte Udtagelsen/Holdfanen; tom map = "—", ikke morgenens tal.
+      console.warn(`[fatigue-now-7801] surface fatigue omitted: ${err?.message ?? err}`);
+      out.push(new Map());
+    }
+  }
+  return out;
+}
+
 /**
  * Træthed pr. rytter til fladerne og assistentens udtagelse. `conditions` = rider_condition-
  * rækker ({ rider_id, fatigue }). Slukket uden instant-stempel: dagens map uændret.
@@ -307,15 +603,16 @@ export async function fatigueByRiderNow({ supabase, conditions, abilityByRider =
     return base;
   }
   try {
-    let at = now;
+    let tickDate = copenhagenDateString(now);
     let beforeGameDay = null;
     if (atStage) {
       const start = await loadStageStartAt({ supabase, raceId: atStage.raceId, stageNumber: atStage.stageNumber });
       if (!start) return base;
-      at = start.now;
+      tickDate = copenhagenDateString(start.now);
       beforeGameDay = start.gameDay;
     }
-    return await liveFatigueMap({ supabase, conditions, base, abilityByRider, teamIdByRider, teamId, at, beforeGameDay });
+    const view = await prepareFatigueNowView({ supabase, conditions, abilityByRider, teamIdByRider, teamId, tickDate, befores: [beforeGameDay], strict: onError === "throw" });
+    return (await view.at(beforeGameDay)).fatigue;
   } catch (err) {
     if (err instanceof InstantConditionEvidenceError) throw err;
     const instant = await loadInstantConditions({ supabase, riderIds: [...base.keys()], tickDate: copenhagenDateString(now), failOpenWhenOff: true });
@@ -412,24 +709,32 @@ export async function loadNextStageByRider({ supabase, riderIds, seasonId, now =
 export async function fatigueOutlookForTeam({ supabase, team, seasonId, conditions, abilityByRider = null, now = new Date() }) {
   if (!(conditions ?? []).length) return null;
   const enabled = await isFatigueNow7801Enabled(supabase);
-  const instant = await loadInstantConditions({ supabase, riderIds: conditions.map(c => c.rider_id), tickDate: copenhagenDateString(now), failOpenWhenOff: true });
-  if (!enabled && !instant.size) return null;
-  const legacy = conditions.filter(c => !instant.has(c.rider_id));
-  let fatigueNow = new Map();
+  let instant;
+  let fatigueNow;
+  let nextP = null;
   if (enabled) {
-    try {
-      fatigueNow = await fatigueByRiderNow({ supabase, conditions: legacy, abilityByRider, teamId: team?.id ?? null, now, onError: "throw" });
-    } catch (err) {
-      if (!(err instanceof FatigueNowUnavailableError)) throw err;
-      // Tallet kunne ikke regnes: fladen viser "—" (null), ikke morgenens tal.
-      console.warn(`[fatigue-now-7801] training fatigue omitted: ${err.message}`);
-      fatigueNow = new Map(legacy.map((c) => [c.rider_id, null]));
-    }
+    // #7801 rest-byg: rytternes næste etape afhænger ikke af tallet og hentes samtidig med det.
+    // Tallet kommer fra samme visnings-opslag som de andre flader; kan det ikke regnes, er det
+    // null ("—"), ikke morgenens tal.
+    nextP = loadNextStageByRider({ supabase, riderIds: [...new Set(conditions.map((c) => c.rider_id))], seasonId, now })
+      .then((value) => ({ value }), (error) => ({ error }));
+    ({ fatigue: fatigueNow, instant } = await teamFatigueNowForSurface({ supabase, conditions, abilityByRider, teamId: team?.id ?? null, now }));
+  } else {
+    instant = await loadInstantConditions({ supabase, riderIds: conditions.map(c => c.rider_id), tickDate: copenhagenDateString(now), failOpenWhenOff: true });
+    if (!instant.size) return null;
+    fatigueNow = new Map();
+    for (const [id, condition] of instant) fatigueNow.set(id, condition.fatigue);
   }
-  for (const [id, condition] of instant) fatigueNow.set(id, condition.fatigue);
   const out = new Map([...fatigueNow].map(([id, fatigue]) => [id, { fatigue, ...instant.get(id), fatigueAtStart: null }]));
   try {
-    const next = await loadNextStageByRider({ supabase, riderIds: [...out.keys()], seasonId, now });
+    let next;
+    if (nextP) {
+      const settled = await nextP;
+      if (settled.error) throw settled.error;
+      next = settled.value;
+    } else {
+      next = await loadNextStageByRider({ supabase, riderIds: [...out.keys()], seasonId, now });
+    }
     const today = copenhagenDateString(now);
     let tonight = null;
     if ([...next.values()].some((n) => n.tickDate !== today)) {
