@@ -207,9 +207,14 @@ export async function readPrivateConfig<T = unknown>(
   return (await readPrivateConfigEntry<T>(supabase, key, options)).value;
 }
 
+// #7982: a short-lived read wrapper around a client (the Train now press) names the client it
+// wraps here, so the cache stays the wrapped client's own, exactly as without the wrapper.
+export const CACHE_OWNER_CLIENT = Symbol.for("cyclingzone.cacheOwnerClient");
+
 function cacheFor(client: object): Map<string, CacheEntry> {
-  let map = cacheByClient.get(client);
-  if (!map) { map = new Map(); cacheByClient.set(client, map); }
+  const owner = ((client as Record<symbol, unknown>)[CACHE_OWNER_CLIENT] as object | undefined) ?? client;
+  let map = cacheByClient.get(owner);
+  if (!map) { map = new Map(); cacheByClient.set(owner, map); }
   return map;
 }
 
