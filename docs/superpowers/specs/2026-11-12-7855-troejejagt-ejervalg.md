@@ -40,14 +40,16 @@ Reglen "udbrud kan kun være første opgave" består. Jagten bliver en **tilføj
 ### C. Hver spurt koster
 
 - Hver passage, hvor opgaven fik rytteren til at køre med (han ville ellers ikke have kæmpet om den i sin gruppe), lægger et lille stykke arbejde i front oveni etapens belastning. Det gælder uanset dagens øvrige led, så jagt aldrig er gratis oven på tempo eller et angreb.
-- Et jagt-led tæller selv som Middel i "dagens hårdeste indsats"; passagerne bærer prisen. Kalibreret, så en hel dags jagt alene på en typisk etape svarer til prisordet Hård som i dag (spurt og bjergtop har hver sin størrelse, fordi en typisk dag har én spurt, men flere toppe).
+- Et jagt-led tæller selv med den indsats, det køres med i løbet (Hård, som tempo og følg med), i "dagens hårdeste indsats"; passagerne lægges oveni (spurt og bjergtop har hver sin størrelse, fordi en typisk dag har én spurt, men flere toppe). Rettet efter dom 2: en første version lod leddet tælle som Middel, så en rolle, der kæmper i forvejen, fik samme løb som "Følg med" billigere (frikortet). Jagten må aldrig være en billigere vej til samme løb.
 - Passager, han ville have kæmpet om alligevel (i udbruddet, i en lille gruppe, eller fordi rollen kæmper), koster intet ekstra: opgaven ændrede intet dér.
 - Indsatsen i løbet er uændret (`TASK_EFFORT.hunt_* = protect`; prisordet Hård står).
 - Kanalen: passagen bærer `hunt_work_7855` (ryttere opgaven fik til at køre med). Trætheden lægger det oveni som arbejde i front (`raceFatigue.stageWorkExposure` → `hunt7855`), holdt uden for loftet på andelen i front og arbejdsfaktoren, så en passage aldrig bliver gratis for en rytter, der allerede har kørt meget i front (Codex-review). Uden feltet er belastningen bit-identisk.
 
 ## Kendt konsekvens (til ejeren)
 
-Med B giver opgaven kun en plads foran andre, når rytteren ellers ikke ville køre med: i praksis hjælpere i feltet. En sprinterkaptajn med "Hent point", en fri rolle eller udbrudsjæger med jagt i feltet, og alle med jagt i udbruddet kører med alligevel, så opgaven giver dem ingen bedre plads. Med C koster passagerne dem intet ekstra, men indsatsen i løbet er Hård. Det er en lille fælde for de roller. Forslag til næste trin (kræver frontend-kontrakten, som et andet spor ejer): tilbyd kun jagt til roller, hvor den ændrer noget, eller lad leddet køre på rollens egen indsats for dem.
+Med B giver opgaven kun en plads foran andre, når rytteren ellers ikke ville køre med: i praksis hjælpere i feltet. En sprinterkaptajn med "Hent point", en fri rolle eller udbrudsjæger med jagt i feltet, og alle med jagt i udbruddet kører med alligevel, så opgaven giver dem ingen bedre plads. For dem er jagten samme løb som "Følg med" til samme pris (Hård); passagerne koster dem intet ekstra, fordi opgaven intet ændrede. Opgaven er altså overflødig for de roller, men aldrig billigere. Forslag til næste trin (kræver frontend-kontrakten, som et andet spor ejer): tilbyd kun jagt til roller, hvor den ændrer noget.
+
+Åbent ejervalg: "Hent bjergpoint" fra feltet giver sjældent bjergpoint, fordi et udbrud foran tager pladserne først, og koster stadig. Ejeren har ikke valgt, om det skal blive sådan.
 
 ## Bevisplan
 
