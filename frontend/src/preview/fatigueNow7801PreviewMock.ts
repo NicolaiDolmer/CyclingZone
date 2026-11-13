@@ -4,8 +4,11 @@
 //                       en anden en let etape (tallet falder). Traening faar skoennet ved start.
 //   ?fatigueNow=unknown som "on", men tallet kunne ikke regnes for nogle ryttere (serveren sender
 //                       null, skaermen viser "—"); regelpanelet i trainingFatigueRulesMock.js.
+//                       rider-1 er med, saa stregen ogsaa ses paa Traening (holdet har kun ham).
 //   udeladt / off       som i dag (Playwright-fixtures og snapshots er urort).
-// Tallene er preview-fiktion oven paa seed-dataene, ikke regnet af serveren.
+// Tallene er preview-fiktion oven paa seed-dataene, ikke regnet af serveren. Taendt tager hver
+// rytter udgangspunkt i SAMME morgental paa alle sider (Traenings seed, ellers sidens eget), saa
+// samme rytter har samme tal lige nu paa Traening, udtagelsen, Hold-fanen, kortet og profilen.
 import { previewFatigueNowMode } from "./trainingFatigueRulesMock.js";
 import { SEED_SELECTION, SEED_STAGE_ROLES_BY_RACE, SEED_TRAINING } from "./seedData.js";
 
@@ -14,10 +17,12 @@ type Row = Record<string, unknown> & { fatigue?: number | null };
 type Body = Record<string, unknown> & { flags?: Record<string, boolean>; condition?: Record<string, Row>; riders?: Row[] } | null;
 
 const DELTA_TODAY: Record<string, number> = { "rider-1": 9, "rider-2": -2, "rider-97": 6, "rider-95": -1 };
-const UNKNOWN_NOW = new Set(["rider-2", "rider-96"]);
+const UNKNOWN_NOW = new Set(["rider-1", "rider-2", "rider-96"]);
 
-function liveFatigue(id: string, opening: unknown, mode: Mode): number | null {
+function liveFatigue(id: string, surfaceOpening: unknown, mode: Mode): number | null {
   if (mode === "unknown" && UNKNOWN_NOW.has(id)) return null;
+  const shared = (SEED_TRAINING.condition as Record<string, Row> | undefined)?.[id]?.fatigue;
+  const opening = shared ?? surfaceOpening;
   if (opening == null) return null;
   return Math.max(0, Math.min(100, Number(opening) + (DELTA_TODAY[id] ?? 0)));
 }
