@@ -696,15 +696,15 @@ test("processMidSeasonReviewCron: relative_rank taeller pulje-baseret (league_di
     teams: [
       {
         id: "team-1", user_id: "user-1", is_ai: false, is_bank: false,
-        is_frozen: false, is_test_account: false, division: 3, name: "Pool A #2",
+        is_frozen: false, is_test_account: false, division: 3, name: "Pool A #2", parked_at: null,
       },
       {
         id: "team-2", user_id: "user-2", is_ai: false, is_bank: false,
-        is_frozen: false, is_test_account: false, division: 3, name: "Pool A #1",
+        is_frozen: false, is_test_account: false, division: 3, name: "Pool A #1", parked_at: null,
       },
       {
         id: "team-3", user_id: "user-3", is_ai: false, is_bank: false,
-        is_frozen: false, is_test_account: false, division: 3, name: "Pool B #1",
+        is_frozen: false, is_test_account: false, division: 3, name: "Pool B #1", parked_at: null,
       },
     ],
     riders: [],
@@ -786,6 +786,7 @@ function makeMidSeasonState({
       division: 3,
       name: "Test Hold",
       season_1_identity_basis: null,
+      parked_at: null,
     }],
     riders: [{ team_id: "team-1", is_u25: true, popularity: 50 }],
     seasons: [{

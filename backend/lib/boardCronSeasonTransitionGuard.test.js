@@ -138,7 +138,7 @@ test("#3502 forward-guard: mid-season-cronen virker stadig efter et sæsonskifte
   const state = {
     teams: [{
       id: "team-1", user_id: "user-1", name: "Team Forward Guard MS",
-      is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
+      is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, parked_at: null,
       division: 3, season_1_identity_basis: null,
     }],
     riders: [{ team_id: "team-1", is_u25: true, popularity: 50 }],

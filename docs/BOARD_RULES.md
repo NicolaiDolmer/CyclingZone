@@ -309,6 +309,9 @@ ugentlige kørsel efter et løb (tilfredshed, budget-modifier, løbs-events, man
 mid-season-checkpointets lag 2-6 og beskeder) eller ved sæson-slut. Sandheden er
 `managerParking.isParkedTeam` i begge stier; `evaluateAndApplyConsequences` afviser desuden selv
 et parkeret hold, så ingen anden kalder kan give det en konsekvens eller en tvangssalgsliste.
+Halvsæson-tjekket (`boardMidSeason.js`, #8099) bruger samme filter: et parkeret hold får hverken
+"Mid-season check"-beskeden eller oplåsning af den ekstraordinære forespørgsel, og mangler
+`parked_at` i opslaget, stopper kørslen uden at sende noget (fail-closed).
 Frosset betyder urørt, ikke nulstillet: aktive rækker fra før parkeringen står, som de stod. Når
 holdet vender tilbage (comeback nulstiller `parked_at`), dømmes det igen fra næste kørsel som
 alle andre: lag 2-3 udløber ved den næste evaluering, hvis tilfredsheden er over tærsklen, lag
@@ -317,7 +320,7 @@ for alle hold, og lag 6 udløber med sin sæson. Rækker, der blev skabt ved en 
 var parkeret, ryddes af ejeren som dataoprydning, ikke af koden.
 **Forbehold (uafhængig dom 12/11):** "dømmes igen som alle andre" beskriver koden i dag, ikke en
 ejer-regel. Ejerens regel 24/9 (#4592, punkt 3) er ingen bestyrelsesdom i comeback-sæsonen; den er
-ikke bygget (#8100). Halvsæson-cronen (`boardMidSeason.js`) filtrerer endnu ikke parkerede hold (#8099).
+ikke bygget (#8100).
 
 **Rytteromdømme (#4956/#5828):** Ved `rider_reputation_enabled=on` viser
 rytterfladerne mindst den gamle popularitet: `max(popularity, reputation)`.
