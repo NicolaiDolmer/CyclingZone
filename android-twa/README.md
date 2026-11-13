@@ -22,7 +22,9 @@ Det genererede Android-projekt, `.aab`-filer og nøgler committes aldrig. Kun `t
 - **`enableNotifications: false`**: push-beskeder er ikke med i første udgave (#6590). Slå først til, når push er bygget.
 - **`minSdkVersion: 21`** er Bubblewraps standard.
 - **Ingen offline-tilstand i appen.** Offline-siden fra PWA-sporet (#6585/#8021) er alt, der findes, og den ejes af web-appen.
-- **Signering: Play App Signing.** Google opbevarer app-nøglen. Du har kun en upload-nøgle, og den ligger aldrig i repoet.
+- **Signering: Play App Signing.** Google opbevarer app-nøglerne. Du har kun en upload-nøgle, og den ligger aldrig i repoet.
+- **Upload-nøglen gemmes ét sted:** keystore-filen (base64) og begge kodeord i **Infisical**, plus en krypteret kopi offline (fx en USB-nøgle i en skuffe). Aldrig i repoet, aldrig i en chat. Det er samme regel som designet (`docs/superpowers/specs/2026-10-13-6584-push-og-twa-design.md` §6.2).
+- **`signingKey.path` peger uden for repoet** (`../../cz-play-keys/upload-key.jks`, en mappe ved siden af repo-mappen). Giv altid stien eksplicit med `--signingKeyPath` ved `bubblewrap build`. Testen `frontend/src/pwa/twaPackage.test.ts` fejler, hvis stien peger ind i repoet.
 
 ## Krav (målt mod officielle kilder 12/11/2026)
 
@@ -51,13 +53,13 @@ bubblewrap updateConfig --jdkPath="C:\sti\til\jdk-17" --androidSdkPath="C:\sti\t
 
 ### 1. Opret upload-nøglen (én gang, uden for repoet)
 
-Brug en mappe der IKKE er i repoet, fx `C:\Users\<dig>\cz-play-keys\`. Nøglen er det eneste, der kan genudgive appen, så tag backup af filen og kodeordet i adgangskodemanageren.
+Brug en mappe der IKKE er i repoet, fx `C:\Users\<dig>\cz-play-keys\`. Læg straks filen (base64) og kodeordene i Infisical, og tag en krypteret kopi offline. Ved senere byg hentes filen fra Infisical til samme mappe uden for repoet.
 
 ```
 keytool -genkeypair -v -keystore C:\Users\<dig>\cz-play-keys\upload-key.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000
 ```
 
-Mister du upload-nøglen, kan den nulstilles via Play Console. App-nøglen ligger hos Google og kan ikke mistes.
+Mister du upload-nøglen, kan den nulstilles via Play Console ("Request upload key reset"), men det tager tid. App-nøglerne ligger hos Google og kan ikke mistes ([answer/9842756](https://support.google.com/googleplay/android-developer/answer/9842756), læst 14/11/2026).
 
 ### 2. Byg
 
@@ -80,20 +82,21 @@ Tjek efter bygget, at target-API er rigtigt: `app/build.gradle` skal indeholde `
 bubblewrap install
 ```
 
-Appen åbner med adresselinje, indtil `assetlinks.json` på sitet har det rigtige fingeraftryk. Det er forventet for en APK signeret med upload-nøglen. For at se den fulde-skærm-udgave lokalt kan upload-nøglens fingeraftryk også tilføjes (se næste afsnit), men det er ikke nødvendigt for Play.
+Appen åbner med adresselinje, indtil `assetlinks.json` på sitet har de rigtige fingeraftryk. Det er forventet for en APK signeret med upload-nøglen. For at se den fulde-skærm-udgave lokalt kan upload-nøglens fingeraftryk også tilføjes (se næste afsnit), men det er ikke nødvendigt for Play.
 
-## Fingeraftrykket i `assetlinks.json` (efter første upload til Play)
+## Fingeraftrykkene i `assetlinks.json` (efter første upload til Play)
 
-Fuld skærm uden adresselinje kræver, at `https://cyclingzone.org/.well-known/assetlinks.json` indeholder SHA-256-fingeraftrykket af **den nøgle, Google signerer appen med**. Med Play App Signing er det app-signeringsnøglen, ikke upload-nøglen.
+Fuld skærm uden adresselinje kræver, at `https://cyclingzone.org/.well-known/assetlinks.json` indeholder fingeraftrykkene af **de nøgler, Google signerer appen med**. Nye apps får "quantum-ready hybrid signing" (en klassisk RSA 4096-nøgle og en post-kvante ML-DSA-65-nøgle), og Google skriver, at man skal kopiere fingeraftrykkene for **tre** nøgler og opdatere `assetlinks.json` med dem ([answer/9842756](https://support.google.com/googleplay/android-developer/answer/9842756), læst 14/11/2026).
 
 1. Upload `.aab` til Play Console (se `docs/app/GOOGLE_PLAY.md`).
-2. Play Console: åbn appen og find siden "App signing" (under app-integritet i menuen; menunavnene ændrer sig af og til, så søg efter "App signing"). Kopiér **SHA-256 certificate fingerprint** under "App signing key certificate". Det er ikke det samme som "Upload key certificate" på samme side.
-3. Sæt det ind i `frontend/public/.well-known/assetlinks.json` i stedet for pladsholderen `REPLACE_WITH_SHA256_OF_PLAY_APP_SIGNING_KEY`. Format: store hex-par med kolon, fx `AA:BB:CC:...` (32 par).
-4. Skriv gerne upload-nøglens fingeraftryk ind som nummer to i samme liste, hvis du vil se fuld skærm på en lokalt installeret APK. Hent det med `keytool -list -v -keystore <sti>\upload-key.jks -alias upload`.
-5. Commit, merge og lad Vercel deploye. Tjek derefter: `https://cyclingzone.org/.well-known/assetlinks.json` skal svare 200 med `application/json`, og `node scripts/check-cdn-cache-headers.mjs` skal være grøn.
-6. Test på en telefon med appen installeret fra Play (lukket test): ingen adresselinje = verificeret.
+2. Play Console, i appen: **Protected with Play > Play Store protection > Manage Play app signing**. Rul til afsnittet **App signing key**, og kopiér SHA-256 for hver nøgle der (op til tre). Ikke "Upload key". Menunavne ændrer sig; står stien ikke der, så søg efter "app signing".
+3. Sæt dem ind i `frontend/public/.well-known/assetlinks.json` i stedet for pladsholderne `REPLACE_WITH_SHA256_OF_PLAY_APP_SIGNING_KEY_1` til `_3`. Format: store hex-par med kolon, fx `AA:BB:CC:...` (32 par). Er der færre end tre, så slet de overskydende pladsholdere. Bland aldrig pladsholdere og ægte aftryk.
+4. Hvilket aftryk Chrome bruger til at godkende fuld skærm, siger Google ikke: **ikke efterprøvet**. Derfor skrives alle ind.
+5. Skriv gerne upload-nøglens fingeraftryk ind i samme liste, hvis du vil se fuld skærm på en lokalt installeret APK. Hent det med `keytool -list -v -keystore <sti>\upload-key.jks -alias upload`.
+6. Commit, merge og lad Vercel deploye. Tjek derefter: `https://cyclingzone.org/.well-known/assetlinks.json` skal svare 200 med `application/json`, og `node scripts/check-cdn-cache-headers.mjs` skal være grøn uden advarslen `ASSETLINKS_PLACEHOLDER`. Sæt derefter `ASSETLINKS_REQUIRE_FINGERPRINT=1` på trinnet i `deploy-verify.yml`, så en pladsholder fremover er rød.
+7. Test på en telefon med appen installeret fra Play (lukket test): ingen adresselinje = verificeret.
 
-Filen er en liste, så den kan have flere fingeraftryk. Er pladsholderen stadig i filen, vil appen vise adresselinje (Custom Tab), men virke.
+Så længe pladsholderne står i filen, viser appen adresselinje (Custom Tab), men virker. Tjekket efter deploy melder det som den navngivne advarsel `ASSETLINKS_PLACEHOLDER` (ikke rødt, så main ikke er rød, før Play-kontoen findes); en halvt rettet fil eller et ugyldigt aftryk er rødt.
 
 ## Når noget ændrer sig
 
