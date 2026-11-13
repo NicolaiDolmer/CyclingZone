@@ -509,6 +509,34 @@ test("sendWebhook — 429 overlever alle forsøg → lagt i outbox (#3545), inge
   assert.equal(captureExceptionFn.calls.length, 0, "beskeden er ikke tabt endnu — outbox'en har den");
 });
 
+// #8101: svaret skelner en afleveret (eller outbox-parkeret) besked fra en tabt,
+// så svartids-alarmen kun bruger sit vindue, når beskeden faktisk er nået frem.
+test("sendWebhook svarer true ved levering eller outbox, false når beskeden er tabt (#8101)", async () => {
+  const quiet = { sleepFn: noSleep, captureExceptionFn: makeCaptureSpy() };
+  const okFetch = makeFetchSequence([{ status: 204 }]).fetchFn;
+  assert.equal(await sendWebhook(RESULT_WEBHOOK, { embeds: [] }, { ...quiet, fetchFn: okFetch }), true);
+
+  const failing = () => makeFetchSequence([{ status: 503 }]).fetchFn;
+  assert.equal(
+    await sendWebhook(RESULT_WEBHOOK, { embeds: [] }, { ...quiet, fetchFn: failing(), enqueueWebhookFn: async () => ({ enqueued: true }) }),
+    true,
+    "lagt i outbox = afleveret senere"
+  );
+  assert.equal(
+    await sendWebhook(RESULT_WEBHOOK, { embeds: [] }, { ...quiet, fetchFn: failing(), enqueueWebhookFn: async () => ({ enqueued: false }) }),
+    false,
+    "outbox'en kunne ikke tage den"
+  );
+  assert.equal(
+    await sendWebhook(RESULT_WEBHOOK, { embeds: [] }, { ...quiet, fetchFn: failing(), enqueueOnFailure: false }),
+    false
+  );
+  const deadFetch = makeFetchSequence([{ status: 404 }]).fetchFn;
+  assert.equal(await sendWebhook(RESULT_WEBHOOK, { embeds: [] }, { ...quiet, fetchFn: deadFetch }), false, "permanent fejl");
+  assert.equal(await sendWebhook("https://example.com/not-discord", { embeds: [] }, { ...quiet, fetchFn: okFetch }), false, "ugyldig URL");
+  assert.equal(await sendWebhook(null, { embeds: [] }, quiet), false, "ingen URL");
+});
+
 // Hændelsen 7/8 22:21-22:23 i ren form: Discord svarer 503 i hele inline-vinduet
 // og 8 auktions-annonceringer blev droppet permanent. Nu skal payloaden overleve.
 test("sendWebhook — Discord-5xx-udfald (#3545-hændelsen) tabes ikke længere, men gemmes til genforsøg", async () => {

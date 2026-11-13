@@ -7,7 +7,8 @@
  * Tre dele, alle i denne fil:
  *   1. MÅLING (pr. request, i hukommelsen): `createActionTimingMiddleware`
  *      matcher metode + sti mod de ti handlingers ruter og noterer varigheden
- *      når svaret er sendt (`res.on("finish")`). Intet databasekald, intet
+ *      når svaret er sendt (`finish`), eller når kaldet blev afbrudt (`close`;
+ *      varigheden er da tiden indtil afbruddet). Intet databasekald, intet
  *      ekstra arbejde for ruter uden for listen, og ingen ændring i svaret.
  *      Måleren må aldrig kunne vælte et kald: alt er pakket i try/catch.
  *   2. OPGØRELSE (hvert kvarter, fra cron.js): `runActionTimingFlush` tømmer
@@ -63,7 +64,8 @@ export const RETENTION_DAYS = 35;
 export const BUCKET_BOUNDS_MS = [
   250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2500, 3000, 4000, 5000, 7500, 10000, 15000, 20000, 30000, 60000,
 ];
-const MAX_SAMPLES_PER_WINDOW = 20_000;
+// Loftet holder hukommelsen begrænset, også hvis en handling bliver kaldt i en byge.
+export const MAX_SAMPLES_PER_WINDOW = 20_000;
 const ALERT_KEY_PREFIX = "action-timing-8101";
 
 const UUID = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
@@ -356,7 +358,13 @@ export function createActionTimingMiddleware({
       const key = matchAction(req.method, req.originalUrl || req.url);
       if (key) {
         const started = clock();
-        res.once("finish", () => {
+        // Et afbrudt kald (spilleren lukker siden, forbindelsen dør) giver kun
+        // "close", aldrig "finish"; netop de værste kald ville ellers mangle. Et
+        // normalt kald giver begge, så `done` sikrer, at hvert kald tælles én gang.
+        let done = false;
+        const measure = () => {
+          if (done) return;
+          done = true;
           try {
             const marked = res.locals?.actionTimingKey;
             const finalKey = marked && marked === ACTION_BY_KEY.get(key)?.promotesTo ? marked : key;
@@ -365,7 +373,9 @@ export function createActionTimingMiddleware({
             // best-effort: måleren må aldrig kunne vælte et svar (#8101); en
             // tabt måling er harmløs, og et kast her ville ramme Node's event-emitter.
           }
-        });
+        };
+        res.once("finish", measure);
+        res.once("close", measure);
       }
     } catch {
       // best-effort: samme begrundelse som ovenfor; kaldet fortsætter altid.
@@ -462,7 +472,8 @@ let missingTableLogged = false;
 /**
  * Cron-tick (hvert kvarter): opgør, gem og alarmér.
  * @param {{ supabase: object, recorder?: ReturnType<typeof createActionTimingRecorder>,
- *           now?: Date, sendWebhookFn?: Function, getOpsWebhookFn?: Function,
+ *           now?: Date, sendWebhookFn?: (url: string, payload: object) => Promise<boolean>,
+ *           getOpsWebhookFn?: Function,
  *           captureExceptionFn?: Function, procId?: string }} args
  * @returns {Promise<{ rows: object[], breaches: object[], alerted: string[],
  *                     reminded: string[], persisted: boolean }>}
@@ -545,12 +556,14 @@ export async function runActionTimingFlush({
         captureExceptionFn,
         alertOnReadError: false,
       };
-      // Spørg først uden at claime, send, og claim derefter (emailHealthReport-
-      // mønsteret): et fejlende send må ikke bruge vinduet op. sendWebhook lægger
-      // selv en fejlet levering i outbox'en.
+      // Spørg først uden at claime, send, og claim KUN når beskeden er afleveret
+      // eller lagt i outbox'en (sendWebhook svarer true). Webhooken kaster aldrig,
+      // så kun svaret kan skelne en tabt besked fra en afleveret; en tabt besked
+      // må ikke bruge vinduet op, og bruddet meldes igen næste kvarter.
       const { alert } = await shouldAlertOnChange({ ...dedupe, claim: false });
       if (!alert) continue;
-      await sendWebhookFn(url, buildBreachEmbed({ ...b, windowStart, windowEnd }));
+      const delivered = await sendWebhookFn(url, buildBreachEmbed({ ...b, windowStart, windowEnd }));
+      if (delivered !== true) continue;
       await shouldAlertOnChange(dedupe);
       alerted.push(b.key);
     }
@@ -569,9 +582,11 @@ export async function runActionTimingFlush({
       };
       const { alert } = await shouldAlertOnChange({ ...dedupe, claim: false });
       if (alert) {
-        await sendWebhookFn(url, buildKnownBreachEmbed({ breaches: knownHits, knownBreaches, now }));
-        await shouldAlertOnChange(dedupe);
-        reminded.push(...knownHits.map((b) => b.key));
+        const delivered = await sendWebhookFn(url, buildKnownBreachEmbed({ breaches: knownHits, knownBreaches, now }));
+        if (delivered === true) {
+          await shouldAlertOnChange(dedupe);
+          reminded.push(...knownHits.map((b) => b.key));
+        }
       }
     }
   }
@@ -587,7 +602,9 @@ let configuredFlush = null;
  * kende supabase-klienten eller webhook-hjælperne.
  */
 export function configureActionTimingFlush(deps) {
-  configuredFlush = () => runActionTimingFlush(deps);
+  // `overrides` bruges kun ved nedlukningen (fx et fast `now` i tests); cron
+  // kalder tick-funktionen uden argumenter.
+  configuredFlush = (overrides = {}) => runActionTimingFlush({ ...deps, ...overrides });
   return configuredFlush;
 }
 
@@ -595,22 +612,30 @@ export function configureActionTimingFlush(deps) {
  * Sidste flush ved SIGTERM: uden den taber hver deploy det igangværende kvarter,
  * og en proces der lever under et kvarter ville aldrig gemme noget. Kaster aldrig.
  * No-op når cron ikke er startet (fx lokalt uden cron).
+ * `now`, `setTimeoutFn` og `clearTimeoutFn` kan injiceres, så tidsloftet kan
+ * prøves uden vægur.
  */
-export async function flushActionTimingOnShutdown({ captureExceptionFn, timeoutMs = 10_000 } = {}) {
+export async function flushActionTimingOnShutdown({
+  captureExceptionFn,
+  timeoutMs = 10_000,
+  now,
+  setTimeoutFn = setTimeout,
+  clearTimeoutFn = clearTimeout,
+} = {}) {
   if (!configuredFlush) return null;
   let timer;
   try {
     // Loftet holder nedlukningen inden for Railways drain-vindue, også hvis
     // databasen hænger: hellere et tabt kvarter end en SIGKILL midt i et løb.
     const timeout = new Promise((resolve) => {
-      timer = setTimeout(() => resolve(null), timeoutMs);
+      timer = setTimeoutFn(() => resolve(null), timeoutMs);
     });
-    return await Promise.race([configuredFlush(), timeout]);
+    return await Promise.race([configuredFlush(now ? { now } : {}), timeout]);
   } catch (err) {
     captureExceptionFn?.(err, { tags: { cron: "action-timing-flush", phase: "shutdown" } });
     console.error("action-timing (#8101): flush ved nedlukning fejlede:", err?.message);
     return null;
   } finally {
-    clearTimeout(timer);
+    clearTimeoutFn(timer);
   }
 }

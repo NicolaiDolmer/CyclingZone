@@ -14,6 +14,10 @@ import {
   KNOWN_BREACHES,
   SECONDARY_ACTIONS,
   HOUR_WINDOW_MS,
+  RETENTION_DAYS,
+  MAX_SAMPLES_PER_WINDOW,
+  MIN_SLOW_CALLS,
+  MAX_SLOW_SHARE,
   createHourHistory,
   markActionTiming,
   buildKnownBreachEmbed,
@@ -164,9 +168,48 @@ test("middleware rører ikke kald uden for listen, og en fejlende måler vælter
   let nextCalls = 0;
   mw({ method: "GET", originalUrl: "/api/riders/1" }, res, () => nextCalls++);
   assert.equal(res.listenerCount("finish"), 0);
+  assert.equal(res.listenerCount("close"), 0);
   mw({ method: "POST", originalUrl: "/api/training/train-now" }, res, () => nextCalls++);
   assert.doesNotThrow(() => res.emit("finish"));
+  assert.doesNotThrow(() => res.emit("close"));
   assert.equal(nextCalls, 2);
+});
+
+// Gennemgangens F3: et afbrudt kald giver kun "close". Uden den lytter ville
+// netop de værste kald (spilleren giver op) aldrig blive talt.
+test("middleware måler et afbrudt kald (kun close) med tiden indtil afbruddet", () => {
+  const { rec } = warmRecorder();
+  let clockMs = 0;
+  const mw = createActionTimingMiddleware({ recorder: rec, clock: () => clockMs });
+  const res = Object.assign(new EventEmitter(), { statusCode: 200 });
+  mw({ method: "POST", originalUrl: "/api/training/train-now" }, res, () => {});
+  clockMs += 12_000;
+  res.emit("close");
+  assert.deepEqual(rec.drain().perAction.get("train_now"), [12_000]);
+});
+
+test("et normalt kald (finish og derefter close) tælles præcis én gang", () => {
+  const { rec } = warmRecorder();
+  let clockMs = 0;
+  const mw = createActionTimingMiddleware({ recorder: rec, clock: () => clockMs });
+  const res = Object.assign(new EventEmitter(), { statusCode: 200 });
+  mw({ method: "GET", originalUrl: "/api/training/me" }, res, () => {});
+  clockMs += 900;
+  res.emit("finish");
+  clockMs += 5000;
+  res.emit("close");
+  assert.deepEqual(rec.drain().perAction.get("training_open"), [900], "close efter finish tæller ikke igen");
+});
+
+// Gennemgangens F4 (M14): loftet holder hukommelsen begrænset.
+test("recorder har et loft på antal målinger pr. handling pr. vindue", () => {
+  const { rec } = warmRecorder();
+  for (let i = 0; i < MAX_SAMPLES_PER_WINDOW; i++) assert.equal(rec.record("training_open", 100), true);
+  assert.equal(rec.record("training_open", 100), false, "over loftet tælles ikke");
+  assert.equal(rec.pendingCount(), MAX_SAMPLES_PER_WINDOW);
+  assert.equal(rec.record("dashboard_open", 100), true, "loftet gælder pr. handling");
+  rec.drain();
+  assert.equal(rec.record("training_open", 100), true, "nyt vindue, nyt loft");
 });
 
 test("recorder springer kold start og 5xx over", () => {
@@ -243,6 +286,19 @@ test("hyppig handling: mange langsomme kald giver alarm", () => {
   assert.equal(v.slowCalls, 4);
 });
 
+// Gennemgangens F4 (M15): grænsen selv. Præcis på andels-grænsen (med minimum af
+// langsomme kald) er et brud; ét hurtigt kald mere gør det ikke.
+test("hyppig handling: præcis på andels-grænsen giver alarm, lige under gør ikke", () => {
+  const slow = MIN_SLOW_CALLS;
+  const total = Math.round(slow / MAX_SLOW_SHARE);
+  assert.equal(slow / total, MAX_SLOW_SHARE, "prøven skal ramme grænsen præcist");
+  const at = evaluateBreach({ key: "training_open", summary: windowOf({ fast: total - slow, slow }) });
+  assert.equal(at.breach, true);
+  assert.equal(at.rule, "quarter");
+  const under = evaluateBreach({ key: "training_open", summary: windowOf({ fast: total - slow + 1, slow }) });
+  assert.equal(under.breach, false);
+});
+
 test("hængende kald udløser ikke 3-sekunders-alarmen", () => {
   assert.equal(evaluateBreach({ key: "train_now", summary: windowOf({ hung: 2 }) }).breach, false);
   assert.equal(evaluateBreach({ key: "training_open", summary: windowOf({ hung: 5 }) }).breach, false);
@@ -269,7 +325,11 @@ async function flushWith({ supabase, rec, now, sent, hourHistory = createHourHis
     now,
     procId: "test:1",
     getOpsWebhookFn: async () => "https://discord.example/ops",
-    sendWebhookFn: async (url, payload) => sent.push({ url, payload }),
+    // Som den rigtige sendWebhook: true = afleveret eller lagt i outbox'en.
+    sendWebhookFn: async (url, payload) => {
+      sent.push({ url, payload });
+      return true;
+    },
     captureExceptionFn: (e) => {
       throw e;
     },
@@ -349,7 +409,10 @@ test("uden webhook bruges vinduet ikke op: alarmen sendes, når kanalen er tilba
       now: new Date(at),
       procId: "test:1",
       getOpsWebhookFn: async () => url,
-      sendWebhookFn: async (_u, payload) => sent.push(payload),
+      sendWebhookFn: async (_u, payload) => {
+        sent.push(payload);
+        return true;
+      },
     });
   rec.record("train_now", 12_000);
   const r1 = await flush("2026-11-14T06:15:00Z");
@@ -380,35 +443,167 @@ test("et fejlende send claimer ikke vinduet", async () => {
   assert.equal(supabase.state.size, 0);
 });
 
+// Den rigtige sendWebhook kaster aldrig; den svarer false, når beskeden er tabt
+// (permanent fejl, eller outbox'en kunne ikke tage den). Det er dét svar, der
+// skal holde vinduet åbent (Codex P2 på PR #8141).
+test("en tabt besked (sendWebhook svarer false) claimer ikke vinduet; næste kvarter sender igen", async () => {
+  const supabase = fakeSupabase();
+  const { rec } = warmRecorder();
+  const attempts = [];
+  let delivered = false;
+  const flush = (at) =>
+    runActionTimingFlush({
+      supabase,
+      recorder: rec,
+      knownBreaches: [],
+      now: new Date(at),
+      procId: "test:1",
+      getOpsWebhookFn: async () => "https://discord.example/ops",
+      sendWebhookFn: async (_u, payload) => {
+        attempts.push(payload);
+        return delivered;
+      },
+    });
+  rec.record("train_now", 12_000);
+  const r1 = await flush("2026-11-14T06:15:00Z");
+  assert.deepEqual(r1.alerted, [], "intet meldt som sendt");
+  assert.equal(supabase.state.size, 0, "intet claim, når beskeden er tabt");
+  assert.equal(attempts.length, 1);
+
+  delivered = true;
+  rec.record("train_now", 12_000);
+  const r2 = await flush("2026-11-14T06:30:00Z");
+  assert.deepEqual(r2.alerted, ["train_now"]);
+  assert.equal(attempts.length, 2, "samme vindue, men første forsøg gik tabt, så der sendes igen");
+
+  rec.record("train_now", 12_000);
+  await flush("2026-11-14T06:45:00Z");
+  assert.equal(attempts.length, 2, "nu er vinduet brugt: stille resten af vinduet");
+});
+
+test("en sender uden svar (undefined) regnes ikke som afleveret", async () => {
+  const supabase = fakeSupabase();
+  const { rec } = warmRecorder();
+  rec.record("train_now", 12_000);
+  const r = await runActionTimingFlush({
+    supabase,
+    recorder: rec,
+    knownBreaches: [],
+    now: new Date("2026-11-14T06:15:00Z"),
+    procId: "test:1",
+    getOpsWebhookFn: async () => "https://discord.example/ops",
+    sendWebhookFn: async () => undefined,
+  });
+  assert.deepEqual(r.alerted, []);
+  assert.equal(supabase.state.size, 0);
+});
+
+test("påmindelsen om kendte brud claimer heller ikke døgnet, når beskeden er tabt", async () => {
+  const supabase = fakeSupabase();
+  const { rec } = warmRecorder();
+  const attempts = [];
+  let delivered = false;
+  const flush = (at) =>
+    runActionTimingFlush({
+      supabase,
+      recorder: rec,
+      now: new Date(at),
+      procId: "test:1",
+      getOpsWebhookFn: async () => "https://discord.example/ops",
+      sendWebhookFn: async (_u, payload) => {
+        attempts.push(payload);
+        return delivered;
+      },
+    });
+  rec.record("train_now", 15_000);
+  const r1 = await flush("2026-11-14T06:15:00Z");
+  assert.deepEqual(r1.reminded, []);
+  assert.equal(supabase.state.size, 0);
+  delivered = true;
+  rec.record("train_now", 15_000);
+  const r2 = await flush("2026-11-14T06:30:00Z");
+  assert.deepEqual(r2.reminded, ["train_now"]);
+  assert.equal(attempts.length, 2);
+});
+
+// Fast ur og injiceret timer (AGENTS regel 16): ingen vægur i nedlukningsprøverne.
+const SHUTDOWN_NOW = new Date("2026-11-14T06:20:00Z");
+const fixedDrain = () => ({
+  windowStart: new Date("2026-11-14T06:15:00Z"),
+  windowEnd: new Date("2026-11-14T06:20:00Z"),
+  perAction: new Map([["train_now", [5000]]]),
+});
+
+/** Timer-fake: noterer loftet og lader prøven selv "lade tiden gå". */
+function fakeTimers() {
+  const armed = [];
+  const cleared = [];
+  return {
+    armed,
+    cleared,
+    setTimeoutFn: (fn, ms) => {
+      const handle = { fn, ms };
+      armed.push(handle);
+      return handle;
+    },
+    clearTimeoutFn: (handle) => cleared.push(handle),
+    fire: () => armed.forEach((h) => h.fn()),
+  };
+}
+
 test("flush ved nedlukning: no-op uden cron, ellers gemmes det igangværende kvarter", async () => {
-  assert.equal(await flushActionTimingOnShutdown(), null, "ikke konfigureret endnu");
+  const timers = fakeTimers();
+  const timerOpts = { setTimeoutFn: timers.setTimeoutFn, clearTimeoutFn: timers.clearTimeoutFn };
+  assert.equal(await flushActionTimingOnShutdown({ now: SHUTDOWN_NOW, ...timerOpts }), null, "ikke konfigureret endnu");
   const supabase = fakeSupabase();
   const { rec } = warmRecorder();
   configureActionTimingFlush({ supabase, recorder: rec, procId: "test:1" });
   rec.record("training_open", 700);
-  const r = await flushActionTimingOnShutdown();
+  const r = await flushActionTimingOnShutdown({ now: SHUTDOWN_NOW, ...timerOpts });
   assert.equal(r.persisted, true);
   assert.equal(supabase.inserted.length, 1);
+  // `now` når igennem den konfigurerede flush: oprydningens skæringsdato regnes fra det.
+  const expectedCutoff = new Date(SHUTDOWN_NOW.getTime() - RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  assert.deepEqual(supabase.deletes, [["window_start", expectedCutoff]]);
+  assert.equal(timers.cleared.length, 1, "loftets timer ryddes efter en færdig flush");
 });
 
-test("flush ved nedlukning kaster aldrig og har et tidsloft", async () => {
+test("flush ved nedlukning kaster aldrig", async () => {
+  const timers = fakeTimers();
   configureActionTimingFlush({
     supabase: { from() { throw new Error("db nede"); } },
-    recorder: { drain: () => ({ windowStart: new Date(), windowEnd: new Date(), perAction: new Map([["train_now", [5000]]]) }) },
+    recorder: { drain: fixedDrain },
     procId: "test:1",
   });
   const captured = [];
-  assert.equal(await flushActionTimingOnShutdown({ captureExceptionFn: (e) => captured.push(e) }), null);
+  const r = await flushActionTimingOnShutdown({
+    now: SHUTDOWN_NOW,
+    captureExceptionFn: (e) => captured.push(e),
+    setTimeoutFn: timers.setTimeoutFn,
+    clearTimeoutFn: timers.clearTimeoutFn,
+  });
+  assert.equal(r, null);
   assert.equal(captured.length, 1);
+  assert.equal(timers.cleared.length, 1);
+});
 
+test("flush ved nedlukning har et tidsloft: en hængende database giver null, når loftet nås", async () => {
+  const timers = fakeTimers();
   configureActionTimingFlush({
     supabase: { from: () => ({ insert: () => new Promise(() => {}) }) },
-    recorder: { drain: () => ({ windowStart: new Date(), windowEnd: new Date(), perAction: new Map([["train_now", [5000]]]) }) },
+    recorder: { drain: fixedDrain },
     procId: "test:1",
   });
-  const t0 = Date.now();
-  assert.equal(await flushActionTimingOnShutdown({ timeoutMs: 50 }), null);
-  assert.ok(Date.now() - t0 < 2000);
+  const pending = flushActionTimingOnShutdown({
+    now: SHUTDOWN_NOW,
+    timeoutMs: 50,
+    setTimeoutFn: timers.setTimeoutFn,
+    clearTimeoutFn: timers.clearTimeoutFn,
+  });
+  assert.deepEqual(timers.armed.map((h) => h.ms), [50], "loftet armeres med den givne tid");
+  timers.fire(); // tiden løber ud; databasen svarer aldrig
+  assert.equal(await pending, null);
+  assert.deepEqual(timers.cleared, timers.armed, "samme timer ryddes");
 });
 
 test("tomt vindue: ingen skrivning, ingen alarm", async () => {
@@ -471,6 +666,26 @@ test("en markering kan ikke flytte andre ruters kald over i Opret hold", () => {
   const { perAction } = rec.drain();
   assert.deepEqual(perAction.get("training_open"), [500]);
   assert.equal(perAction.has("team_create"), false);
+});
+
+// Gennemgangens F4 (M11): ruten er for tung at starte i en prøve (hele api.js med
+// supabase), så koblingen prøves i kilden: PUT /teams/my skal markere en rigtig
+// oprettelse inde i `if (result.created)`-grenen. Fjernes linjen, fejler prøven.
+test("PUT /teams/my markerer en rigtig oprettelse som Opret hold (rute-til-måler-koblingen)", () => {
+  const src = readFileSync(join(HERE, "..", "routes", "api.js"), "utf8");
+  assert.match(src, /^import \{ markActionTiming \} from "\.\.\/lib\/actionTimingMonitor8101\.js";/m);
+  const start = src.indexOf('router.put("/teams/my"');
+  assert.ok(start !== -1, "ruten PUT /teams/my findes ikke længere");
+  const end = src.indexOf("\nrouter.", start + 1);
+  const handler = src
+    .slice(start, end === -1 ? undefined : end)
+    .replace(/^\s*\/\/.*$/gm, ""); // udkommenteret kode tæller ikke
+  assert.match(
+    handler,
+    /if \(result\.created\) \{[^}]*?markActionTiming\(res, "team_create"\);/,
+    "markActionTiming(res, \"team_create\") skal ligge i if (result.created)-grenen"
+  );
+  assert.equal((handler.match(/markActionTiming\(/g) ?? []).length, 1, "kun én markering i ruten");
 });
 
 test("markActionTiming kaster aldrig og ignorerer ukendte nøgler", () => {
