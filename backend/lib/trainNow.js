@@ -376,26 +376,39 @@ const plainArg = (value) => value == null || ["string", "number", "boolean"].inc
  * database as before. A failed read is never reused. A write to a cached table, or a
  * database function the press does not normally call, empties the cache.
  * The cache dies with the press, so a switch read for one press never reaches the next.
+ * #7982 step 3, now that a press sends reads at once: a write empties the cache again when
+ * it is done (a read sent while it was on its way may hold the old value); a query keeps
+ * the values it was asked with, as the client does; and, as on the client, a query has no
+ * `catch` or `finally` (they never count as a write).
  */
 export function createPressReadCache(supabase) {
   const answers = new Map();
+  const clearWhenDone = (pending) => Promise.resolve(pending).then((result) => {
+    answers.clear();
+    return result;
+  }, (err) => {
+    answers.clear();
+    throw err;
+  });
   const cachedFrom = (table) => {
     const ops = [];
     const replay = () => ops.reduce((query, [name, args]) => query[name](...args), supabase.from(table));
     const run = () => {
       const isRead = ops.every(([name, args]) => PRESS_READ_METHODS.has(name) && args.every(plainArg));
       if (!isRead) {
-        if (ops.some(([name]) => !PRESS_READ_METHODS.has(name))) answers.clear();
-        return Promise.resolve(replay());
+        if (!ops.some(([name]) => !PRESS_READ_METHODS.has(name))) return Promise.resolve(replay());
+        answers.clear();
+        return clearWhenDone(replay());
       }
       const key = JSON.stringify([table, ops]);
       let answer = answers.get(key);
       if (!answer) {
+        const forget = () => { if (answers.get(key) === answer) answers.delete(key); };
         answer = Promise.resolve(replay()).then((result) => {
-          if (result?.error) answers.delete(key);
+          if (result?.error) forget();
           return result;
         }, (err) => {
-          answers.delete(key);
+          forget();
           throw err;
         });
         answers.set(key, answer);
@@ -405,11 +418,24 @@ export function createPressReadCache(supabase) {
     const query = new Proxy({}, {
       get(_target, prop) {
         if (prop === "then") return (resolve, reject) => run().then(resolve, reject);
-        if (typeof prop === "symbol") return undefined;
-        return (...args) => { ops.push([prop, args]); return query; };
+        if (typeof prop === "symbol" || prop === "catch" || prop === "finally") return undefined;
+        return (...args) => { ops.push([prop, args.every(plainArg) ? structuredClone(args) : args]); return query; };
       },
     });
     return query;
+  };
+  // A database function the press does not normally call: empty the cache when it is sent and when it is done.
+  const clearAroundCall = (call) => {
+    if (call === null || (typeof call !== "object" && typeof call !== "function")) return clearWhenDone(call);
+    const wrapped = new Proxy(call, {
+      get(target, prop) {
+        if (prop === "then") return (resolve, reject) => clearWhenDone(target).then(resolve, reject);
+        const value = Reflect.get(target, prop, target);
+        if (typeof value !== "function") return value;
+        return (...args) => { const next = value.apply(target, args); return next === target ? wrapped : next; };
+      },
+    });
+    return wrapped;
   };
   return new Proxy(supabase, {
     get(target, prop) {
@@ -418,8 +444,9 @@ export function createPressReadCache(supabase) {
       if (prop === "from") return (table) => (PRESS_CACHED_TABLES.has(table) ? cachedFrom(table) : target.from(table));
       if (prop === "rpc" && typeof target.rpc === "function") {
         return (name, ...rest) => {
-          if (!PRESS_FUNCTIONS_WITHOUT_CACHED_WRITES.has(String(name).replace(/^try_/, ""))) answers.clear();
-          return target.rpc(name, ...rest);
+          if (PRESS_FUNCTIONS_WITHOUT_CACHED_WRITES.has(String(name).replace(/^try_/, ""))) return target.rpc(name, ...rest);
+          answers.clear();
+          return clearAroundCall(target.rpc(name, ...rest));
         };
       }
       const value = Reflect.get(target, prop, target);

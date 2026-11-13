@@ -1097,7 +1097,10 @@ export async function runTeamTrainingDay({
     ? await loadRiderIdsWithStageOnDate(supabase, { riderIds, previousDate: previousDateString(tickDate) })
     : new Set();
   },
-  async () => {
+  async (earlier) => {
+  // The staff and facility reads tolerate a lasting failure (warning + Sentry). They start
+  // only when every read before them has answered, so they run exactly when they ran before.
+  await Promise.all([0, 1, 2, 3, 4, 5, 6].map(earlier));
   // ── 3b) Plan B (#1441): trænings-facilitet + chef (én load pr. hold pr. dag) ──
   // Data-drevet: hold uden faciliteter/chef → { 0, null } → multiplikator præcis 1.0
   // (nul regression). Vedvarende fejl: neutral i loaderen. #6596: forbigaaende fejl
@@ -1105,7 +1108,8 @@ export async function runTeamTrainingDay({
   ({ facilityTier: trainingFacilityTier, staff: trainingStaff } =
     await loadTrainingStaffContext(supabase, teamId, { retryOnTransient: true }));
   },
-  async () => {
+  async (earlier) => {
+  await earlier(7); // same reader as the staff context, so it also waits for it
   // #6984 M1-M3: medicinsk afdeling, kun under condition_model_v2 (ellers ingen read).
   teamMedicalBonus = conditionModelV2On ? await loadTeamMedicalBonus(supabase, teamId, { retryOnTransient: true }) : 0;
   },
