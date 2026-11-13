@@ -51,7 +51,19 @@ function ryttere(antal, seed) {
   return ud;
 }
 
-const sha = (v) => createHash("sha256").update(JSON.stringify(v)).digest("hex");
+// Afrund til 12 betydende cifre foer hash (samme som dommerens fixtures): de sidste
+// decimaler i Math-funktionerne kan falde forskelligt paa Windows og Linux, men en
+// rigtig aendring i motoren flytter langt mere end det. Noeglerne sorteres, saa
+// raekkefoelgen i et objekt ikke er en del af fingeraftrykket.
+const rund = (x) => (typeof x === "number" && Number.isFinite(x) ? Number(x.toPrecision(12)) : x);
+function rundAlt(o) {
+  if (o === null || typeof o !== "object") return rund(o);
+  if (Array.isArray(o)) return o.map(rundAlt);
+  const ud = {};
+  for (const k of Object.keys(o).sort()) ud[k] = rundAlt(o[k]);
+  return ud;
+}
+const sha = (v) => createHash("sha256").update(JSON.stringify(rundAlt(v))).digest("hex");
 
 /** Dags-tick'et i den gamle model: traening, loebsdags-aksen, dagsloft, traener og facilitet. */
 export function tickAftryk({ applyDailyTick }) {

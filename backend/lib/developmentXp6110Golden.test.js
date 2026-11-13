@@ -1,6 +1,7 @@
 // #6110 frossen golden (#7587): med kontakten slukket (ingen developmentXp) er
-// dags-tick'et, prognosen og akademiets roster-prognose bit-identiske med
-// merge-base-koden. Fixturen er genereret af en separat checkout af basen (SHA i
+// dags-tick'et, prognosen og akademiets roster-prognose identiske med
+// merge-base-koden (alle tal afrundet til 12 betydende cifre, saa Windows og Linux
+// giver samme fingeraftryk; en aendring paa en milliardtedel fanges stadig). Fixturen er genereret af en separat checkout af basen (SHA i
 // fixturen) og maa ALDRIG genereres igen med den nye kode for at faa testen groen.
 
 import test from "node:test";
@@ -15,18 +16,18 @@ import { tickAftryk, prognoseAftryk, rosterAftryk } from "./developmentXp6110Gol
 
 const FROSSEN = JSON.parse(readFileSync(new URL("./developmentXp6110Golden.fixture.json", import.meta.url), "utf8"));
 
-test("#6110 golden: dags-tick'et uden XP er bit-identisk med merge-base", () => {
+test("#6110 golden: dags-tick'et uden XP er identisk med merge-base (12 betydende cifre)", () => {
   assert.deepEqual(tickAftryk({ applyDailyTick }), FROSSEN.tick);
 });
 
-test("#6110 golden: prognosen uden XP (evne, baand, type) er bit-identisk med merge-base", () => {
+test("#6110 golden: prognosen uden XP (evne, baand, type) er identisk med merge-base (12 betydende cifre)", () => {
   assert.deepEqual(
     prognoseAftryk({ prognoseAbilities, prognoseAbilityBands, PROGNOSIS_ENVELOPES, buildTypePrognosisBands }),
     FROSSEN.prognose,
   );
 });
 
-test("#6110 golden: akademiets roster-prognose uden XP er bit-identisk med merge-base", () => {
+test("#6110 golden: akademiets roster-prognose uden XP er identisk med merge-base (12 betydende cifre)", () => {
   assert.deepEqual(rosterAftryk({ rosterPrognosis }), FROSSEN.roster);
 });
 
