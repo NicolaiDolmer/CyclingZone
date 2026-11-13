@@ -49,6 +49,7 @@ import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
 import { settleWholeDayPress } from "./trainNowWholeDay.js"; // #6461 B
 import { TRAIN_NOW_BONUS_FLAG_KEY } from './trainNowBonus7737.ts';
 import { loadTrainNowDateContext } from "./trainNowDateContext.js"; // #7982
+import { CACHE_OWNER_CLIENT } from "./privateConfig.ts"; // #7982 step 2
 import { randomUUID } from "node:crypto";
 
 export const TRAIN_NOW_FLAG_KEY = "training_train_now";
@@ -341,6 +342,92 @@ export function createTrainNowTiming({ clock = () => performance.now(), requestI
 // A no-op stand-in so the settle step can time itself without knowing whether it is timed.
 export const NO_TRAIN_NOW_TIMING = Object.freeze({ step: (_name, fn) => fn(), note: () => {}, line: () => "" });
 
+// #7982 step 2: the tables one press never writes, neither itself nor through the database
+// functions it calls. Switches, private parameters, the team, its facilities, staff and
+// training rules, the plans (locked by the press itself, createTrainNowPlanLock) and the
+// season's race list (the only races query a press repeats; a stage that runs reaches the
+// press through results and the date context, never through this list).
+// Everything a day field writes (abilities, condition, receipts, runs, the date, the race
+// loads, the locks), the race bindings and results, and the riders (a release during the
+// press must still show) are read fresh every time, exactly as before.
+export const PRESS_CACHED_TABLES = Object.freeze(new Set([
+  "app_config", "private_config", "teams", "team_facilities", "team_staff",
+  "team_training_rules", "training_groups", "training_plans", "training_week_plans", "races",
+]));
+// The database functions a press calls. None of them writes a cached table (checked
+// against their SQL); any other function call empties the cache, to be safe.
+const PRESS_FUNCTIONS_WITHOUT_CACHED_WRITES = new Set([
+  "train_now_date_context", "find_spent_race_days", "register_training_date_work",
+  "quarantine_training_date_riders", "depart_training_date_riders", "freeze_train_now_date_entries",
+  "publish_train_now_bonus_press", "commit_training_date_tick",
+]);
+const PRESS_READ_METHODS = new Set([
+  "select", "eq", "neq", "is", "in", "gt", "gte", "lt", "lte", "not", "or", "contains", "overlaps",
+  "match", "filter", "like", "ilike", "order", "limit", "range", "maybeSingle", "single",
+]);
+const plainArg = (value) => value == null || ["string", "number", "boolean"].includes(typeof value)
+  || (Array.isArray(value) ? value.every(plainArg)
+    : typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype && Object.values(value).every(plainArg));
+
+/**
+ * #7982 step 2: one read cache per press. A query on a cached table is sent once per
+ * press; the five day fields and the checks before them get a copy of that answer.
+ * Every other table, every write and every database function goes straight to the
+ * database as before. A failed read is never reused. A write to a cached table, or a
+ * database function the press does not normally call, empties the cache.
+ * The cache dies with the press, so a switch read for one press never reaches the next.
+ */
+export function createPressReadCache(supabase) {
+  const answers = new Map();
+  const cachedFrom = (table) => {
+    const ops = [];
+    const replay = () => ops.reduce((query, [name, args]) => query[name](...args), supabase.from(table));
+    const run = () => {
+      const isRead = ops.every(([name, args]) => PRESS_READ_METHODS.has(name) && args.every(plainArg));
+      if (!isRead) {
+        if (ops.some(([name]) => !PRESS_READ_METHODS.has(name))) answers.clear();
+        return Promise.resolve(replay());
+      }
+      const key = JSON.stringify([table, ops]);
+      let answer = answers.get(key);
+      if (!answer) {
+        answer = Promise.resolve(replay()).then((result) => {
+          if (result?.error) answers.delete(key);
+          return result;
+        }, (err) => {
+          answers.delete(key);
+          throw err;
+        });
+        answers.set(key, answer);
+      }
+      return answer.then((result) => (result?.error ? result : structuredClone(result)));
+    };
+    const query = new Proxy({}, {
+      get(_target, prop) {
+        if (prop === "then") return (resolve, reject) => run().then(resolve, reject);
+        if (typeof prop === "symbol") return undefined;
+        return (...args) => { ops.push([prop, args]); return query; };
+      },
+    });
+    return query;
+  };
+  return new Proxy(supabase, {
+    get(target, prop) {
+      // The server's own private-parameter cache stays on the real client (privateConfig.ts).
+      if (prop === CACHE_OWNER_CLIENT) return target;
+      if (prop === "from") return (table) => (PRESS_CACHED_TABLES.has(table) ? cachedFrom(table) : target.from(table));
+      if (prop === "rpc" && typeof target.rpc === "function") {
+        return (name, ...rest) => {
+          if (!PRESS_FUNCTIONS_WITHOUT_CACHED_WRITES.has(String(name).replace(/^try_/, ""))) answers.clear();
+          return target.rpc(name, ...rest);
+        };
+      }
+      const value = Reflect.get(target, prop, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+}
+
 /**
  * The press. Returns { status, body } so the route stays a thin adapter.
  * DI hooks keep it testable without Postgres; defaults are the sweep's own functions,
@@ -359,7 +446,7 @@ export async function runTrainNow({ timing = createTrainNowTiming(), logger = co
 }
 
 async function runTrainNowSteps({
-  supabase, team, season, now = new Date(), isBetaTester = false,
+  supabase: client, team, season, now = new Date(), isBetaTester = false,
   runDay = runTeamTrainingDay,
   loadContext = loadTrainNowDateContext,
   registerWork = registerTrainingDateWork,
@@ -372,8 +459,11 @@ async function runTrainNowSteps({
   timing,
 }) {
   if (!team?.id) return { status: 400, body: { error: "no_team" } };
+  // #7982 step 2: from here every read and write of the press goes through its own read
+  // cache. The stage gate alone keeps the server's short flag cache on the real client.
+  const supabase = createPressReadCache(client);
   const gate = await timing.step("gates", async () => {
-    if (!await isTrainNowEnabled(supabase, { isBetaTester })) return { status: 404, body: { error: "not_found" } };
+    if (!await isTrainNowEnabled(client, { isBetaTester })) return { status: 404, body: { error: "not_found" } };
     if (!await isTrainingConditionPerDateEnabled(supabase)) return { status: 409, body: { error: "train_now_requires_date_settlement" } };
     return null;
   });
