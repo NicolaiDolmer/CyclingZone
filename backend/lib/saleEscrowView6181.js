@@ -196,7 +196,7 @@ export async function countHeldSaleEscrowsForForce(supabase) {
     }
     return Number(count) || 0;
   } catch (err) {
-    // fail-closed: hellere et afvist force end loen foer saelgers udbetaling.
+    // best-effort-laesning, fail-closed: hellere et afvist force end loen foer saelgers udbetaling.
     console.error(`[saleEscrow] force-spaerren fejlede, afviser force: ${errorMessage(err)}`);
     return 1;
   }
