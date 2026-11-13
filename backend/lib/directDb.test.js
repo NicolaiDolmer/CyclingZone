@@ -266,6 +266,64 @@ test("#8143: puljen har sin egen fejlmodtager: en tabt ledig forbindelse vælter
   assert.equal(logger.lines.length, 1);
 });
 
+test("#8143: logningens minut-loft følger modulets ur (injiceret)", async () => {
+  let clock = 1_000;
+  const logger = silentLogger();
+  const pool = fakePool();
+  const db = createDirectDb({ env: ENV, logger, now: () => clock, createPool: () => pool });
+  await db.query("SELECT 1");
+  pool.emit("error", new Error("a"));
+  clock += 59_999;
+  pool.emit("error", new Error("b"));
+  assert.equal(logger.lines.length, 1);
+  clock += 1;
+  pool.emit("error", new Error("c"));
+  assert.equal(logger.lines.length, 2);
+  assert.equal(db.stats().poolErrors, 3);
+});
+
+test("#8143: fanger kalderen en fejl i handlen, afvises handlen alligevel (intet er gemt)", async () => {
+  const pool = fakePool({
+    queryImpl: (text) => {
+      if (text.startsWith("INSERT")) throw Object.assign(new Error("duplicate key value"), { code: "23505" });
+      return { rows: [], rowCount: 0 };
+    },
+  });
+  const { db } = setup({ pool });
+  await assert.rejects(db.transaction(async (tx) => {
+    try {
+      await tx.query("INSERT INTO t VALUES (1)");
+    } catch {
+      // kalderen sluger fejlen med vilje i denne prøve
+    }
+    return "ok";
+  }), (err) => err instanceof DirectDbError && /intet er gemt/.test(err.message));
+  const texts = pool.clients[0].queries.map((q) => q.text);
+  assert.equal(texts.at(-1), "ROLLBACK");
+  assert.ok(!texts.includes("COMMIT"));
+});
+
+test("#8143: svarer databasen ROLLBACK på COMMIT, afvises handlen", async () => {
+  const pool = fakePool({
+    queryImpl: (text) => (text === "COMMIT" ? { command: "ROLLBACK", rows: [], rowCount: null } : { rows: [], rowCount: 0 }),
+  });
+  const { db } = setup({ pool });
+  await assert.rejects(db.transaction(async () => "ok"), (err) => err instanceof DirectDbError && /rullet tilbage/.test(err.message));
+  assert.deepEqual(pool.clients[0].released, [true], "forbindelsen genbruges ikke efter en uventet COMMIT");
+});
+
+test("#8143: fejler handlens tidsgrænser, lukkes forbindelsen i stedet for at blive genbrugt", async () => {
+  const pool = fakePool({
+    queryImpl: (text) => {
+      if (text.startsWith("BEGIN")) throw Object.assign(new Error("unrecognized configuration parameter"), { code: "42704" });
+      return { rows: [], rowCount: 0 };
+    },
+  });
+  const { db } = setup({ pool });
+  await assert.rejects(db.transaction(async () => "ok"), (err) => err.sqlState === "42704");
+  assert.deepEqual(pool.clients[0].released, [true]);
+});
+
 test("#8143: en udlånt forbindelse, der falder midt i et spørgsmål, tælles og lukkes", async () => {
   const pool = fakePool({
     queryImpl: (_text, _params, client) => {

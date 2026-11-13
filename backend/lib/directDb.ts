@@ -339,6 +339,12 @@ function toResult(raw: unknown): DirectDbQueryResult {
   };
 }
 
+function commandOf(raw: unknown): string | null {
+  const last = Array.isArray(raw) ? raw[raw.length - 1] : raw;
+  const command = (last as { command?: unknown } | null | undefined)?.command;
+  return typeof command === "string" ? command.toUpperCase() : null;
+}
+
 export function createDirectDb(options: DirectDbOptions = {}): DirectDb {
   const env = options.env ?? process.env;
   const createPool: CreatePool = options.createPool ?? defaultCreatePool;
@@ -354,7 +360,7 @@ export function createDirectDb(options: DirectDbOptions = {}): DirectDb {
 
   function logOnce(message: string): void {
     // Højst én linje i minuttet, så en faldet forbindelse ikke fylder loggen.
-    const at = Date.now();
+    const at = now();
     if (at - lastLogAt < 60_000) return;
     lastLogAt = at;
     logger.warn(`[direct-db] ${redactConnectionDetails(message, secrets)}`);
@@ -442,12 +448,16 @@ export function createDirectDb(options: DirectDbOptions = {}): DirectDb {
         const { client } = await acquire();
         held = client;
         await client.query(TRANSACTION_PREAMBLE);
+        // Et fejlet spørgsmål efterlader handlen afbrudt i databasen; også selv om
+        // kalderen fanger fejlen, kan intet derefter gemmes.
+        let txFailed = false;
         const tx: DirectDbTransactionClient = {
           async query(text, params = []) {
-            assertTransactionScoped(text);
             try {
+              assertTransactionScoped(text);
               return toResult(await client.query(text, params));
             } catch (err) {
+              txFailed = true;
               throw sanitizeDbError(err, secrets);
             }
           },
@@ -455,6 +465,9 @@ export function createDirectDb(options: DirectDbOptions = {}): DirectDb {
         let result: Awaited<ReturnType<typeof work>>;
         try {
           result = await work(tx);
+          if (txFailed) {
+            throw new DirectDbError("query", "Et spørgsmål i handlen fejlede (fanget af kalderen); intet er gemt");
+          }
         } catch (err) {
           try {
             await client.query("ROLLBACK");
@@ -465,11 +478,18 @@ export function createDirectDb(options: DirectDbOptions = {}): DirectDb {
           workError = err;
           throw err;
         }
-        await client.query("COMMIT");
+        const committed = await client.query("COMMIT");
+        // Databasen svarer "ROLLBACK" på COMMIT, hvis handlen var afbrudt: så er intet gemt.
+        if (commandOf(committed) === "ROLLBACK") {
+          throw new DirectDbError("query", "Handlen blev rullet tilbage af databasen; intet er gemt");
+        }
         return result;
       } catch (err) {
         stats.failures += 1;
         if (!broken && isBrokenConnection(err)) broken = err;
+        // Fejl uden for kalderens arbejde (tidsgrænserne eller COMMIT) kan efterlade en
+        // åben eller afbrudt handel på forbindelsen: luk den i stedet for at genbruge den.
+        if (!broken && held && err !== workError) broken = err;
         // Kalderens egen fejl (fx en regel i spillet) sendes uændret videre efter
         // ROLLBACK; fejl fra databasen er allerede renset i tx.query.
         if (err === workError && !(err instanceof DirectDbError)) throw err;

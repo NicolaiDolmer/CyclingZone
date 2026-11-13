@@ -16,8 +16,17 @@ const NOW = Date.parse("2026-11-13T18:00:00.000Z");
 
 // Lille supabase-attrap: app_config-læsninger, indsættelser og sletninger logges.
 function fakeSupabase({ flag = "on", flagError = null, webError = null, webThrows = null, insertError = null, insertThrows = null } = {}) {
-  const calls = { reads: [], inserts: [], deletes: [], signals: 0 };
+  const calls = { reads: [], inserts: [], deletes: [], signals: [] };
   let appConfigReads = 0;
+  // Hvert kald skal have sin egen tidsgrænse, så et hængende web-kald aldrig
+  // låser prøven: abortSignal() er det eneste, der afslutter insert/delete.
+  const bounded = (label, run) => ({
+    abortSignal(signal) {
+      assert.ok(signal instanceof AbortSignal);
+      calls.signals.push(label);
+      return run();
+    },
+  });
   const supabase = {
     calls,
     from(table) {
@@ -25,9 +34,11 @@ function fakeSupabase({ flag = "on", flagError = null, webError = null, webThrow
       const builder = {
         select(cols) { state.cols = cols; return builder; },
         eq(col, value) { state.filters.push([col, value]); return builder; },
-        abortSignal(signal) { assert.ok(signal instanceof AbortSignal); calls.signals += 1; return builder; },
+        abortSignal(signal) { assert.ok(signal instanceof AbortSignal); state.signal = signal; return builder; },
         async maybeSingle() {
           assert.equal(table, "app_config");
+          assert.ok(state.signal, "app_config-læsningen skal have en tidsgrænse");
+          calls.signals.push(state.cols === "value" ? "flag" : "web");
           appConfigReads += 1;
           calls.reads.push({ cols: state.cols, filters: state.filters });
           if (state.cols === "value") {
@@ -37,16 +48,18 @@ function fakeSupabase({ flag = "on", flagError = null, webError = null, webThrow
           if (webThrows) throw webThrows;
           return webError ? { data: null, error: webError } : { data: { key: DIRECT_DB_PROBE_FLAG_KEY }, error: null };
         },
-        async insert(rows) {
+        insert(rows) {
           calls.inserts.push({ table, rows });
-          if (insertThrows) throw insertThrows;
-          return { error: insertError };
+          return bounded("insert", async () => {
+            if (insertThrows) throw insertThrows;
+            return { error: insertError };
+          });
         },
         delete() {
           return {
-            lt: async (col, value) => {
+            lt: (col, value) => {
               calls.deletes.push({ table, col, value });
-              return { error: null };
+              return bounded("delete", async () => ({ error: null }));
             },
           };
         },
@@ -124,7 +137,8 @@ test("#8143: tændt: ét spørgsmål ad hver vej, målt og gemt som to rækker",
   const result = await probe.tick();
   assert.equal(result.status, "measured");
   assert.deepEqual(directDb.calls, ["SELECT 1 AS ok"]);
-  assert.equal(supabase.calls.signals, 1, "web-spørgsmålet har sin egen tidsgrænse");
+  assert.deepEqual(supabase.calls.signals, ["flag", "web", "insert", "delete"],
+    "hvert web-kald (kontakt, måling, gemning, udløb) har sin egen tidsgrænse");
   assert.equal(supabase.calls.inserts.length, 1);
   const { table, rows } = supabase.calls.inserts[0];
   assert.equal(table, DIRECT_DB_PROBE_TABLE);

@@ -130,6 +130,7 @@ export async function isDirectDbProbeOn(supabase: SupabaseLike): Promise<boolean
       .from("app_config")
       .select("value")
       .eq("key", DIRECT_DB_PROBE_FLAG_KEY)
+      .abortSignal(AbortSignal.timeout(WEB_TIMEOUT_MS))
       .maybeSingle();
     if (error || !data) return false;
     return data.value === "on" || data.value === true;
@@ -209,7 +210,10 @@ export function createDirectDbProbe(options: DirectDbProbeOptions) {
 
   async function store(samples: ProbeSample[]): Promise<void> {
     try {
-      const { error } = await supabase.from(DIRECT_DB_PROBE_TABLE).insert(samples);
+      const { error } = await supabase
+        .from(DIRECT_DB_PROBE_TABLE)
+        .insert(samples)
+        .abortSignal(AbortSignal.timeout(WEB_TIMEOUT_MS));
       if (error) stats.errors.store += 1;
     } catch {
       // best-effort: en fejlet gemning tælles; næste runde prøver igen.
@@ -223,7 +227,11 @@ export function createDirectDbProbe(options: DirectDbProbeOptions) {
     lastExpireAt = at;
     const cutoff = new Date(at - DIRECT_DB_PROBE_RETENTION_DAYS * 24 * 60 * 60_000).toISOString();
     try {
-      const { error } = await supabase.from(DIRECT_DB_PROBE_TABLE).delete().lt("sampled_at", cutoff);
+      const { error } = await supabase
+        .from(DIRECT_DB_PROBE_TABLE)
+        .delete()
+        .lt("sampled_at", cutoff)
+        .abortSignal(AbortSignal.timeout(WEB_TIMEOUT_MS));
       if (error) stats.errors.expire += 1;
     } catch {
       // best-effort: udløbet tages igen ved næste time.

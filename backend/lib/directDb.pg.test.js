@@ -83,6 +83,22 @@ test("#8143 pg: databasens fejl midt i handlen ruller alt tilbage og renses", as
   assert.deepEqual((await db.query("SELECT id FROM ledger ORDER BY id")).rows, [{ id: 9 }]);
 });
 
+test("#8143 pg: fanger kalderen databasens fejl, afvises handlen, og intet er gemt", async (t) => {
+  const { db, direct } = await fixture(t);
+  await db.exec("INSERT INTO ledger VALUES (9, 'findes')");
+  await assert.rejects(direct.transaction(async (tx) => {
+    await tx.query("INSERT INTO ledger (id, note) VALUES ($1, $2)", [1, "a"]);
+    try {
+      await tx.query("INSERT INTO ledger (id, note) VALUES ($1, $2)", [9, "dublet"]);
+    } catch {
+      // kalderen sluger fejlen med vilje; databasen har allerede afbrudt handlen
+    }
+    return "ser ud til at lykkes";
+  }), (err) => err instanceof DirectDbError && /intet er gemt/.test(err.message));
+  assert.deepEqual((await db.query("SELECT id FROM ledger ORDER BY id")).rows, [{ id: 9 }]);
+  assert.equal((await db.query("SELECT 1 AS ok")).rows[0].ok, 1, "forbindelsen er ren bagefter");
+});
+
 test("#8143 pg: handlens tidsgrænser gælder kun inde i handlen", async (t) => {
   const { db, direct } = await fixture(t);
   const before = (await db.query("SELECT current_setting('lock_timeout') AS v")).rows[0].v;
