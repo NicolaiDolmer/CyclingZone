@@ -1,9 +1,11 @@
 // #6584 · Telefon-skærmbilleder til Google Play fra den rigtige app.
 //
-// Play kræver (support.google.com/googleplay/android-developer/answer/9866151, læst 12/11/2026):
-// mindst 2 telefon-skærmbilleder, JPEG eller 24-bit PNG uden alfa, hver side 320 til 3840 px,
-// og den længste side højst 2 gange den korteste. Derfor 412 x 824 CSS-px ved skala 2,62
-// = 1080 x 2160 (præcis 2:1). Et 412 x 915-vindue giver 2,22:1 og afvises af Play.
+// Play kræver (support.google.com/googleplay/android-developer/answer/9866151, læst 14/11/2026):
+// mindst 2 skærmbilleder, JPEG eller 24-bit PNG uden alfa, hver side 320 til 3840 px, og den
+// længste side højst 2 gange den korteste. For SPIL skal der desuden være mindst tre stående
+// billeder i 9:16 på mindst 1080 x 1920, før spillet kan komme med i Googles anbefalinger.
+// Derfor 360 x 640 CSS-px ved skala 3 = præcis 1080 x 1920 (9:16). 360 CSS-px er en almindelig
+// Android-bredde, så mobillayoutet er det samme, som spillerne ser.
 //
 // To tilstande:
 //   fixtures  Mod en lokal build med projektets egne test-fixtures (ingen login, ingen prod, ingen
@@ -27,9 +29,9 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "../../../..");
 const require = createRequire(resolve(repo, "frontend/package.json"));
 
-export const VIEWPORT = Object.freeze({ width: 412, height: 824 });
-export const SCALE = 1080 / 412;
-export const TARGET = Object.freeze({ width: 1080, height: 2160 });
+export const VIEWPORT = Object.freeze({ width: 360, height: 640 });
+export const SCALE = 3;
+export const TARGET = Object.freeze({ width: 1080, height: 1920 });
 
 /** Skærmene og rækkefølgen i butikken. Første billede er det Play viser først. */
 export const SCREENS = Object.freeze([
@@ -70,7 +72,10 @@ function defaultOut(mode, lang) {
   return join(root, "CyclingZone", "play-listing-shots", mode === "live" ? "live" : `${mode}-${lang}`);
 }
 
-/** Afviser alt Play ville afvise: forkerte mål, mere end 2:1, eller alfa-kanal. */
+/**
+ * Afviser alt Play ville afvise (forkerte mål, mere end 2:1, alfa-kanal) og alt, der ikke tæller
+ * med til spil-anbefalingerne (ikke stående 9:16, eller under 1080 x 1920).
+ */
 export function validateShot({ width, height, hasAlpha }) {
   const problems = [];
   const short = Math.min(width, height);
@@ -78,6 +83,8 @@ export function validateShot({ width, height, hasAlpha }) {
   if (short < 320 || long > 3840) problems.push(`mål ${width}x${height} uden for 320 til 3840`);
   if (long > short * 2) problems.push(`format ${(long / short).toFixed(2)}:1 er over 2:1`);
   if (hasAlpha) problems.push("har alfa-kanal (Play kræver 24-bit uden alfa)");
+  if (width * 16 !== height * 9) problems.push(`${width}x${height} er ikke stående 9:16 (spil-anbefaling)`);
+  else if (width < 1080) problems.push(`${width}x${height} er under 1080x1920 (spil-anbefaling)`);
   return problems;
 }
 

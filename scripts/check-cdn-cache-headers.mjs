@@ -73,6 +73,41 @@ export function assetLinksProblem({ status, ct, body }) {
   return ok ? null : "mangler android_app-udsagn med package_name";
 }
 
+// #6584 (dom 13/11 paa #8059): skabelonen ligger live med pladsholdere, indtil ejeren har
+// fingeraftrykkene fra Play Console. Uden denne vagt ville tjekket ovenfor vaere groent med en
+// glemt pladsholder, og appen ville stille og roligt vise adresselinje i aarevis.
+//
+// Valg: en pladsholder giver en NAVNGIVEN ADVARSEL (ASSETLINKS_PLACEHOLDER), ikke roedt. Tjekket
+// koerer efter hver deploy til prod; var pladsholderen roed, ville main vaere roed i hele
+// perioden, indtil ejeren har oprettet Play-kontoen, og en permanent roed deploy-verify skjuler
+// de aegte regressioner, den skal fange. Roedt bliver det, naar filen er halvt rettet (aegte
+// fingeraftryk blandet med pladsholdere) eller har et ugyldigt aftryk, og naar
+// ASSETLINKS_REQUIRE_FINGERPRINT=1 er sat (saettes, naar appen er i Play; se docs/app/GOOGLE_PLAY.md).
+export const ASSETLINKS_PLACEHOLDER_PREFIX = "REPLACE_WITH_";
+const SHA256_COLON_HEX = /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/;
+
+export function assetLinksFingerprintStatus(body, { requireReal = false } = {}) {
+  let parsed;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return { failure: "er ikke gyldig JSON", warning: null };
+  }
+  const fps = (Array.isArray(parsed) ? parsed : []).flatMap((s) =>
+    Array.isArray(s?.target?.sha256_cert_fingerprints) ? s.target.sha256_cert_fingerprints : [],
+  );
+  if (fps.length === 0) return { failure: "har ingen sha256_cert_fingerprints", warning: null };
+  const placeholders = fps.filter((fp) => typeof fp === "string" && fp.startsWith(ASSETLINKS_PLACEHOLDER_PREFIX));
+  const invalid = fps.filter((fp) => !placeholders.includes(fp) && !SHA256_COLON_HEX.test(String(fp)));
+  if (invalid.length) return { failure: `har ugyldigt fingeraftryk: ${invalid.join(", ")}`, warning: null };
+  if (placeholders.length === 0) return { failure: null, warning: null };
+  if (placeholders.length < fps.length) {
+    return { failure: `halvt rettet: ${placeholders.length} pladsholder(e) staar stadig ved siden af aegte fingeraftryk`, warning: null };
+  }
+  const text = `ASSETLINKS_PLACEHOLDER: kun pladsholdere (${fps.length}), ingen aegte fingeraftryk fra Play Console endnu. Play-appen vil vise adresselinje.`;
+  return requireReal ? { failure: text, warning: null } : { failure: null, warning: text };
+}
+
 async function head(path, extraHeaders = {}) {
   const res = await fetch(`${ORIGIN}${path}`, { method: "GET", redirect: "follow", headers: extraHeaders });
   return {
@@ -188,16 +223,25 @@ async function main() {
   // #6584: assetlinks.json skal serveres som JSON, ikke som app-skallen.
   {
     const res = await fetch(`${ORIGIN}/.well-known/assetlinks.json`, { redirect: "follow", headers: appShellHeaders() });
+    const body = await res.text();
     const problem = assetLinksProblem({
       status: res.status,
       ct: res.headers.get("content-type") || "",
-      body: await res.text(),
+      body,
     });
-    if (problem) {
-      failures.push(`assetlinks.json (/.well-known/assetlinks.json): ${problem}`);
-      lines.push(`  ✗ ${"assetlinks.json".padEnd(20)} ${problem}`);
+    const fp = problem ? { failure: null, warning: null } : assetLinksFingerprintStatus(body, {
+      requireReal: process.env.ASSETLINKS_REQUIRE_FINGERPRINT === "1",
+    });
+    if (problem || fp.failure) {
+      const msg = problem || fp.failure;
+      failures.push(`assetlinks.json (/.well-known/assetlinks.json): ${msg}`);
+      lines.push(`  ✗ ${"assetlinks.json".padEnd(20)} ${msg}`);
+    } else if (fp.warning) {
+      lines.push(`  ⚠ ${"assetlinks.json".padEnd(20)} ${fp.warning}`);
+      // Synlig som annotation paa koerslen i GitHub Actions, ikke kun i loggen.
+      if (process.env.GITHUB_ACTIONS === "true") console.log(`::warning title=ASSETLINKS_PLACEHOLDER::${fp.warning}`);
     } else {
-      lines.push(`  ✓ ${"assetlinks.json".padEnd(20)} application/json`);
+      lines.push(`  ✓ ${"assetlinks.json".padEnd(20)} application/json, aegte fingeraftryk`);
     }
   }
 

@@ -8,7 +8,7 @@ What you do
 - Race the season. Follow your team through stage races and one-day races, then build for the next season and climb the divisions.
 
 Fair by design
-The game must be fair for everyone. You cannot pay for better riders, faster training or better results. CZ Pro is an optional premium tier with extra tools, and it never gives strength.
+The game must be fair for everyone. You cannot pay for better riders, faster training or better results.
 
 Built in the open
 Cycling Zone is in open beta. I make it on my own, season by season, and your feedback decides what gets built next. Come to the Discord and tell me what you think.

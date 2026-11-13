@@ -29,9 +29,15 @@ for (const lang of ["en", "da"] as const) {
     assert.ok(!/free forever|gratis for altid|altid gratis|for evigt gratis/i.test(all), "aldrig 'free forever'");
     assert.ok(!/\b(we|our|us)\b/i.test(all) || lang === "da", "jeg-stemme, ikke 'we'");
     assert.ok(!/\bvi\b/i.test(all) || lang === "en", "jeg-stemme, ikke 'vi'");
-    assert.ok(!/premium tier|pro analyst|patron|freemium/i.test(all.replace(/optional premium tier/i, "")), "ingen døde produktnavne");
-    assert.match(all, /CZ Pro/, "ærlig om at Pro findes");
-    assert.match(all, lang === "en" ? /never gives strength/ : /aldrig styrke/, "Pro giver aldrig styrke");
+    assert.ok(!/premium tier|pro analyst|patron|freemium/i.test(all), "ingen døde produktnavne");
+    assert.match(all, lang === "en" ? /cannot pay for better riders/ : /kan ikke betale dig til bedre ryttere/, "fair-løftet står der");
+  });
+
+  // Ejer 13/11 (#6584): model A, Pro skjules i Play-appen. Så må butiksteksten heller ikke nævne
+  // Pro, premium eller køb; ellers lover butikken noget, appen ikke kan sælge.
+  test(`${lang} listing does not mention Pro or purchases (payment model A)`, () => {
+    const all = (Object.keys(LIMITS) as (keyof typeof LIMITS)[]).map((n) => read(lang, n)).join("\n");
+    assert.ok(!/\bCZ Pro\b|\bPro\b|premium|subscription|abonnement|in-app purchase|køb i appen/i.test(all), "ingen Pro- eller købstekst");
   });
 }
 
@@ -53,4 +59,17 @@ test("screenshot tool creates the language folder before the first shot", async 
     rmdirSync(dir);
   }
   rmdirSync(out);
+});
+
+// Googles anbefaling for spil (answer/9866151, læst 14/11/2026): stående 9:16 på mindst 1080x1920.
+test("screenshot tool targets portrait 9:16 at 1080x1920 and rejects other shapes", async () => {
+  const { TARGET, VIEWPORT, SCALE, validateShot } = await import("../../../docs/app/play-listing/tools/take-screenshots.mjs");
+  assert.deepEqual(TARGET, { width: 1080, height: 1920 });
+  assert.equal(VIEWPORT.width * SCALE, TARGET.width);
+  assert.equal(VIEWPORT.height * SCALE, TARGET.height);
+  assert.deepEqual(validateShot({ width: 1080, height: 1920, hasAlpha: false }), []);
+  assert.deepEqual(validateShot({ width: 1440, height: 2560, hasAlpha: false }), []);
+  assert.match(validateShot({ width: 1080, height: 2160, hasAlpha: false }).join(), /9:16/);
+  assert.match(validateShot({ width: 720, height: 1280, hasAlpha: false }).join(), /1080x1920/);
+  assert.match(validateShot({ width: 1080, height: 1920, hasAlpha: true }).join(), /alfa/);
 });

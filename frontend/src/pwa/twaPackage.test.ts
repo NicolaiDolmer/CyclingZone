@@ -5,6 +5,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { isAbsolute, relative as relativePath, resolve as resolvePath } from "node:path";
+import { fileURLToPath } from "node:url";
 
 interface WebIcon { sizes: string; purpose: string; type: string }
 interface WebShortcut { url: string }
@@ -56,7 +58,9 @@ const assetLinks = readJson<AssetLinkStatement[]>("../../public/.well-known/asse
 const twa = readJson<TwaManifest>("../../../android-twa/twa-manifest.json");
 const vercel = readJson<VercelConfig>("../../vercel.json");
 
-const PLACEHOLDER = "REPLACE_WITH_SHA256_OF_PLAY_APP_SIGNING_KEY";
+// Pladsholderne hedder REPLACE_WITH_..._1/_2/_3: Googles side om Play App Signing (answer/9842756,
+// laest 14/11/2026) siger, at nye apps faar tre noegler og tre fingeraftryk. Se GOOGLE_PLAY.md trin 5.
+const PLACEHOLDER = /^REPLACE_WITH_SHA256_OF_PLAY_APP_SIGNING_KEY_\d$/;
 const SHA256_COLON_HEX = /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/;
 
 test("web manifest has what a Trusted Web Activity needs", () => {
@@ -81,12 +85,17 @@ test("assetlinks.json is a valid Digital Asset Links statement list for the TWA 
     assert.equal(statement.target.namespace, "android_app");
     assert.equal(statement.target.package_name, twa.packageId);
     assert.ok(Array.isArray(statement.target.sha256_cert_fingerprints));
-    assert.ok(statement.target.sha256_cert_fingerprints.length >= 1);
-    for (const fp of statement.target.sha256_cert_fingerprints) {
-      // Skabelonen maa indeholde pladsholderen indtil ejeren har Play App Signing-noeglen;
-      // alt andet skal vaere et aegte SHA-256-fingeraftryk (store hex-par med kolon).
-      assert.ok(fp === PLACEHOLDER || SHA256_COLON_HEX.test(fp), `ugyldigt fingeraftryk: ${fp}`);
+    const fps = statement.target.sha256_cert_fingerprints;
+    assert.ok(fps.length >= 1);
+    assert.equal(new Set(fps).size, fps.length, "samme fingeraftryk to gange");
+    for (const fp of fps) {
+      // Skabelonen maa indeholde pladsholderne, indtil ejeren har fingeraftrykkene fra Play
+      // Console; alt andet skal vaere et aegte SHA-256-fingeraftryk (store hex-par med kolon).
+      assert.ok(PLACEHOLDER.test(fp) || SHA256_COLON_HEX.test(fp), `ugyldigt fingeraftryk: ${fp}`);
     }
+    // Enten kun pladsholdere eller kun aegte aftryk: en halvt rettet fil er en glemt pladsholder.
+    const placeholders = fps.filter((fp) => PLACEHOLDER.test(fp)).length;
+    assert.ok(placeholders === 0 || placeholders === fps.length, "pladsholdere blandet med aegte fingeraftryk");
   }
 });
 
@@ -129,8 +138,13 @@ test("no signing material can end up in the repo from android-twa/", () => {
     (f) => /\.(jks|keystore|p12|pfx|pem|key)$/i.test(f) || f === "keystore.properties",
   );
   assert.deepEqual(leaked, [], "en signeringsnoegle ligger i android-twa/");
-  // Signeringsstien i konfigurationen maa gerne pege paa en lokal fil, men aldrig indeholde kodeord.
+  // Signeringsstien maa aldrig indeholde kodeord og aldrig pege ind i repo-mappen (dom 13/11 paa
+  // #8059): standardstien ligger ved siden af repoet, og README siger altid --signingKeyPath.
   assert.ok(!("storePassword" in twa.signingKey) && !("keyPassword" in twa.signingKey));
+  const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
+  const keyPath = resolvePath(fileURLToPath(dir), twa.signingKey.path);
+  const rel = relativePath(repoRoot, keyPath);
+  assert.ok(rel.startsWith("..") || isAbsolute(rel), `signingKey.path peger ind i repoet: ${twa.signingKey.path}`);
 });
 
 test("vercel serves assetlinks.json as JSON, short-lived, and never through the app fallback", () => {
@@ -148,4 +162,21 @@ test("vercel serves assetlinks.json as JSON, short-lived, and never through the 
     !new RegExp(`^${spa.source}$`).test("/.well-known/assetlinks.json"),
     "assetlinks.json maa ikke omskrives til app.html",
   );
+});
+
+// #8059 (bevis til ejerens merge-kort): header-reglen for assetlinks.json rammer KUN den ene
+// adresse. Vercel-kilder er path-to-regexp-moenstre; uden ':', '(', '*', '+', '?' er kilden en
+// bogstavelig sti og kan ikke matche andre adresser.
+test("the assetlinks header rule is a literal path and matches no other address", () => {
+  const rules = vercel.headers.filter((h) => h.source.includes("well-known") || h.source.includes("assetlinks"));
+  assert.equal(rules.length, 1, "praecis een regel naevner .well-known/assetlinks");
+  const [rule] = rules;
+  assert.equal(rule.source, "/.well-known/assetlinks.json");
+  assert.ok(!/[:()*+?]/.test(rule.source), "kilden maa ikke indeholde moenster-tegn");
+  for (const other of ["/", "/dashboard", "/version.json", "/manifest.webmanifest", "/.well-known/foo", "/.well-known/assetlinks.json.bak"]) {
+    assert.notEqual(other, rule.source, `${other} maa ikke ramme assetlinks-reglen`);
+  }
+  // Content-Type saettes kun her: ingen anden header-regel tvinger en content-type paa andre filer.
+  const contentTypeRules = vercel.headers.filter((h) => h.headers.some((x) => x.key.toLowerCase() === "content-type"));
+  assert.deepEqual(contentTypeRules.map((h) => h.source), ["/.well-known/assetlinks.json"]);
 });
