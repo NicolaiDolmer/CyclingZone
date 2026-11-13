@@ -26,13 +26,18 @@
 // datoens fem dag-felter fra én indlaesning (compareToFacit i harnesset), og to nye vagter: svarene
 // maa komme i omvendt raekkefoelge, og med noeglerne i databasens raekkefoelge, uden at noget aendres.
 //
+// Udgave 2 (13/11, efter dommerens afgoerelse om PR #8148): gulvet paa 100 laesninger i fejl-proeven er
+// erstattet af kravet om, at hver laesning foer foerste gemme-kald stadig findes og proeves; et afbrudt tryk
+// maa hente alle loebsdages loebs-opslag foer foerste gemme-kald; og en rytter, der frigives midt i trykket,
+// har faaet et scenarie og en proeve.
+//
 //   Frys facit (kun dommeren, paa main):  SAME_RESULT_7982_WRITE=1 node --test --import ./test-setup.js lib/trainNowSameResult7982.test.js
 //   Fuld optagelse med tal (privat):      SAME_RESULT_7982_DUMP=<fil.json> node --test ...
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
-import { SCENARIOS, runScenario, fingerprint, firstDifference, compareToFacit, digest, stableNumber, SIGNIFICANT_DIGITS, UNHANDLED_REJECTIONS, seedState, createFake, press, sweep } from "./trainNowSameResult7982.harness.js";
+import { SCENARIOS, runScenario, fingerprint, firstDifference, compareToFacit, digest, stableNumber, SIGNIFICANT_DIGITS, UNHANDLED_REJECTIONS, seedState, createFake, press, sweep, finishRace, RELEASED, DAYS1 } from "./trainNowSameResult7982.harness.js";
 
 const FACIT_URL = new URL("./trainNowSameResult7982.facit.json", import.meta.url);
 const WRITE = process.env.SAME_RESULT_7982_WRITE === "1";
@@ -270,7 +275,14 @@ test("en cache lever ikke videre til naeste tryk: scenariet bider (aendringerne 
 test("fejl i hver laesning: hver laesning blev ramt, og trykket stopper eller fortsaetter som paa main", () => {
   const [asError, asThrow] = runs.fejl_i_hver_laesning.steps.map((s) => s.response);
   const slots = Object.keys(asError);
-  assert.ok(slots.length >= 100, `kun ${slots.length} laesninger fundet i trykket`);
+  // Hvor mange laesninger trykket har, er ikke et krav (trin 4a fjerner dem efter foerste gemme-kald).
+  // Kravet er: hver laesning, main har FOER foerste gemme-kald, findes stadig og er proevet med fejl,
+  // og hver laesning, trykket i det hele taget laver, er proevet (linjerne nedenfor).
+  const mustStay = Object.entries(facit.scenarios.fejl_i_hver_laesning.steps[0].response).filter(([, r]) => r.foerFoersteGemmeKald === true).map(([slot]) => slot);
+  assert.ok(mustStay.length >= 40, `facit har kun ${mustStay.length} laesninger foer foerste gemme-kald (det er facit, der er for tyndt)`);
+  for (const slot of mustStay) assert.ok(slot in asError, `laesningen "${slot}" ligger foer foerste gemme-kald og skal stadig findes og proeves med fejl`);
+  const early = slots.filter((slot) => asError[slot].foerFoersteGemmeKald === true);
+  assert.ok(early.length >= mustStay.length, `kun ${early.length} laesninger foer foerste gemme-kald er proevet; facit har ${mustStay.length}`);
   assert.deepEqual(Object.keys(asThrow).sort(), [...slots].sort());
   for (const [mode, result] of [["fejlsvar", asError], ["kast", asThrow]]) {
     for (const [slot, r] of Object.entries(result)) assert.equal(r.ramt, true, `${mode}: laesningen "${slot}" blev aldrig sendt i fejl-koerslen`);
@@ -352,4 +364,48 @@ test("aftenkoerslen er praecis uroert: samme antal kald og samme antal runder so
     });
   }
   assert.ok(checked >= 10, `kun ${checked} aftenkoersels-trin fundet`);
+});
+
+// En rytter frigives fra holdet lige EFTER trykkets foerste gemme-kald. Det er det ene sted, trin 4a ikke
+// er helt som foer (regler-4a.md): det gamle tryk laeser rytterne igen foer naeste dag-felt og tager ham
+// stille ud (afgang); det nye tryk har regnet alle fem dag-felter og opdager det foerst, naar databasens
+// gemme-funktion saetter ham i karantaene. Begge dele er databasens og motorens egne, eksisterende veje
+// (frigives han lige FOER et gemme-kald, ender ogsaa det gamle tryk i karantaenen: scenariet
+// rytter_frigives_foer_andet_gemme_kald). Proeven laaser det, der ALDRIG maa vaere forskelligt:
+// han faar intet dag-felt efter frigivelsen, alle andre ryttere ender praecis som i et uforstyrret tryk,
+// ingen faar et dag-felt to gange, og datoen lukkes.
+test("en rytter frigives lige efter foerste gemme-kald: han faar intet mere, de andre det samme, datoen lukkes", async () => {
+  const seed = SCENARIOS.rytter_frigives_foer_andet_gemme_kald.seed;
+  const perRider = (state) => Object.fromEntries(state.riders.map((r) => [r.id, digest({
+    evner: state.rider_derived_abilities.find((row) => row.rider_id === r.id) ?? null,
+    tilstand: (({ updated_at: _stamp, ...row }) => row)(state.rider_condition.find((row) => row.rider_id === r.id) ?? {}),
+    dagfelter: state.training_rider_ticks.filter((row) => row.rider_id === r.id).map((row) => row.game_day).sort((a, b) => a - b),
+    score: state.rider_training_scores.filter((row) => row.rider_id === r.id).sort((a, b) => a.game_day - b.game_day),
+  })]));
+  const saved = { warn: console.warn, error: console.error, info: console.info };
+  console.warn = () => {}; console.error = () => {}; console.info = () => {};
+  let calm, state, answer;
+  try {
+    calm = seedState(seed); const calmFake = createFake(calm);
+    await press(calm, calmFake); finishRace(calm); await sweep(calm, calmFake);
+    state = seedState(seed); let commits = 0, released = false;
+    const release = () => { released = true; state.riders.find((row) => row.id === RELEASED).team_id = null; };
+    // Frigivelsen sker ved det foerste funktionskald efter gemme-kald nr. 1: det gamle tryks genregistrering
+    // (foer det laeser rytterne igen), eller det nye tryks gemme-kald nr. 2.
+    const fake = createFake(state, { failRpc: ({ base }) => { if (base === "commit_training_date_tick") commits += 1; if (!released && commits >= 1 && !(base === "commit_training_date_tick" && commits === 1)) release(); return false; } });
+    answer = await press(state, fake); finishRace(state); await sweep(state, fake);
+  } finally { Object.assign(console, saved); }
+  assert.equal(answer.status, 200, "trykket gaar igennem");
+  const days = state.training_rider_ticks.filter((row) => row.rider_id === RELEASED).map((row) => row.game_day);
+  assert.deepEqual(days, [DAYS1[0]], "den frigivne rytter har kun det dag-felt, der var gemt foer frigivelsen");
+  assert.equal(state.training_condition_settlements.filter((row) => row.rider_id === RELEASED).length, 0, "den frigivne rytter faar ingen afregning");
+  const before = perRider(calm), after = perRider(state);
+  for (const r of state.riders.filter((row) => row.id !== RELEASED)) assert.equal(after[r.id], before[r.id], `rytteren ${r.lastname} ender ikke som i et uforstyrret tryk`);
+  const ticks = state.training_rider_ticks.map((row) => `${row.rider_id}|${row.game_day}`);
+  assert.equal(new Set(ticks).size, ticks.length, "ingen rytter har et dag-felt to gange");
+  const [work] = state.training_date_work;
+  assert.ok(work.quarantined_rider_ids.includes(RELEASED), "han er taget ud af datoens afregning");
+  const departed = (work.departure_evidence ?? []).some((e) => e.rider_id === RELEASED), quarantined = (work.quarantine_evidence ?? []).some((e) => e.rider_id === RELEASED);
+  assert.ok(departed !== quarantined, "han staar enten som afgaaet eller som i karantaene, ikke begge og ikke ingen af delene");
+  assert.equal(work.status, departed ? "complete" : "needs_reconciliation", "datoen er lukket: faerdig ved afgang, til afstemning ved karantaene");
 });

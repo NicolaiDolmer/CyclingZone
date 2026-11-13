@@ -101,6 +101,9 @@ const INPUT = {
   training_race_loads: ["rider_id", "race_id", "stage_number"],
 };
 
+// De af de laeste tabeller, funktionerne ogsaa selv skriver i (frysningen paa laasen, afregningen paa belastningen).
+const WRITTEN_BY_FUNCTIONS = ["training_train_now_locks", "training_race_loads"];
+
 // Kendte forskelle uden betydning for motoren. Hver linje er "tabel.kolonne": grund.
 const KENDTE = {
   // Ingen. Koert paa main 13/11 efter trin 3: efter tre rettelser af stedfortraederen (frysningens
@@ -185,9 +188,12 @@ test("databasens funktioner er dem, der koerer i prod (md5 af kildeteksten)", as
 });
 
 // De tryk, der afspilles. Scenariet koeres praecis som i saettet (samme frø, samme forloeb).
-const CASES = ["lille_hold_uden_loeb", "stort_hold_beta_tryk", "stort_hold_almindeligt_tryk", "stort_hold_etape_koert", "to_tryk_samme_dato", "tryk_saa_aftenkoersel", "bundet_etape_koert", "etape_paa_datoens_foerste_loebsdag", "to_datoer"];
+// Udgave 2: de tre afbrudte forloeb (et gemme-kald fejler, et nyt tryk og aftenkoerslen goer datoen faerdig)
+// og forloebet, hvor en rytter frigives lige foer et gemme-kald (databasens karantaene), er med.
+const CASES = ["lille_hold_uden_loeb", "stort_hold_beta_tryk", "stort_hold_almindeligt_tryk", "stort_hold_etape_koert", "to_tryk_samme_dato", "tryk_saa_aftenkoersel", "bundet_etape_koert", "etape_paa_datoens_foerste_loebsdag", "to_datoer",
+  "afbrudt_og_genoptaget", "afbrudt_rytter_forlader_holdet", "cache_lever_ikke_videre", "rytter_frigives_foer_andet_gemme_kald"];
 
-export async function replayScenario(name, { log = null } = {}) {
+export async function replayScenario(name, { log = null, stopBefore = null } = {}) {
   const scenario = SCENARIOS[name];
   const state = seedState(scenario.seed);
   const fake = createFake(state, { failRpc: (ctx) => scenario.fail?.(ctx) === true });
@@ -205,6 +211,9 @@ export async function replayScenario(name, { log = null } = {}) {
     if (!REPLAYED.has(base)) return real(rpcName, args);
     const before = snapshot(Object.keys(INPUT));
     const pending = real(rpcName, args);
+    // En haendelse, scenariet laegger ind i selve kaldet (fx at en rytter frigives lige foer et gemme-kald),
+    // skal ogsaa ske i databasen foer kaldet: de tabeller, funktionerne kun laeser, tages derfor nu.
+    Object.assign(before, snapshot(Object.keys(INPUT).filter((table) => !WRITTEN_BY_FUNCTIONS.includes(table))));
     const afterCall = snapshot(Object.keys(COMPARED));
     const entry = { base, args: structuredClone(args), before, after: afterCall, result: null };
     calls.push(entry);
@@ -226,6 +235,8 @@ export async function replayScenario(name, { log = null } = {}) {
     // En fejl, dommeren har sproejtet ind i stedfortraederen, er ikke databasens svar: kaldet springes over.
     if (entry.result?.thrown) continue;
     for (const [table, keys] of Object.entries(INPUT)) await sync(db, table, entry.before[table], columns[table], keys, seen);
+    // Til proever, der selv vil forstyrre databasen foer et bestemt kald: stop her og giv databasen og kaldet tilbage.
+    if (stopBefore?.(entry, n, calls)) return { db, entry, state, differences };
     const answer = await call(db, entry.base, entry.args);
     const fakeError = entry.result?.error?.message ?? null;
     if ((answer.error ?? null) !== fakeError && !(answer.error && fakeError && answer.error.includes(fakeError))) differences.push(`${where}: fejl. stedfortraeder ${JSON.stringify(fakeError)} | database ${JSON.stringify(answer.error)}`);
@@ -278,4 +289,41 @@ test("en genregistrering af en registreret dato aendrer intet i databasen", asyn
   assert.equal(await dump(), afterChange, "genregistreringen skrev intet");
   assert.notEqual(before, afterChange, "kontrol: aendringen imellem kunne ses");
   assert.equal(JSON.stringify(tidy(again.data)), JSON.stringify(tidy(first.data)), "genregistreringen svarer med den registrering, der staar");
+});
+
+// Databasens vaern mod forældede tal (regel R11). Trin 4a regner alle fem dag-felter, foer det foerste gemmes.
+// Aendrer noget sig imens, maa databasen ikke tage imod de gamle tal. Her afspilles et rigtigt tryks gemme-kald,
+// og lige foer det sidste (det, der afregner datoen) faar en af rytterne en ny loebsbelastning, som om en etape
+// blev faerdig i mellemtiden. Databasen skal afvise gemme-kaldet og lade alt staa, som det stod.
+test("databasen afviser en afregning, naar loebsbelastningen er aendret, siden serveren regnede", async () => {
+  const isCommit = (entry) => entry.base === "commit_training_date_tick";
+  const { db, entry, state } = await replayScenario("stort_hold_almindeligt_tryk", { stopBefore: (e, n, calls) => isCommit(e) && calls.slice(n + 1).every((later) => !isCommit(later)) });
+  assert.ok(entry && isCommit(entry) && entry.args.p_conditions.length > 0, "det sidste gemme-kald afregner datoen");
+  const riderId = entry.args.p_conditions[0].rider_id;
+  const race = state.races[0].id;
+  const dump = async () => JSON.stringify(tidy(Object.fromEntries(await Promise.all(["rider_condition", "rider_derived_abilities", "training_rider_ticks", "training_condition_settlements", "training_day_runs", "training_date_work"].map(async (table) => [table, await rowsOf(db, table)])))));
+  await db.query("INSERT INTO public.training_race_loads(rider_id, race_id, stage_number, season_id, game_day, tick_date, load) VALUES ($1, $2, 9, $3, $4, $5, 5)", [riderId, race, entry.args.p_season_id, entry.args.p_game_day, entry.args.p_tick_date]);
+  const before = await dump();
+  const answer = await call(db, entry.base, entry.args);
+  assert.match(String(answer.error), /Race load snapshot changed/, "databasen afviser gemme-kaldet");
+  assert.equal(await dump(), before, "intet er gemt af det afviste gemme-kald");
+});
+
+// Samme vaern for en rytter, der frigives, mens et dag-felt er undervejs: databasen saetter ham i karantaene
+// og gemmer resten. (Stedfortraederen goer det samme; forloebet rytter_frigives_foer_andet_gemme_kald ovenfor
+// holder de to op mod hinanden felt for felt.) Her tjekkes det direkte, uden stedfortraederen.
+test("databasen saetter en frigivet rytter i karantaene og gemmer dag-feltet for resten", async () => {
+  const isCommit = (entry) => entry.base === "commit_training_date_tick";
+  let seen = 0;
+  const { db, entry } = await replayScenario("lille_hold_uden_loeb", { stopBefore: (e) => isCommit(e) && (seen += 1) === 3 });
+  const riderId = entry.args.p_report.riders[0].rider_id;
+  await db.query("UPDATE public.riders SET team_id = NULL WHERE id = $1", [riderId]);
+  const answer = await call(db, entry.base, entry.args);
+  assert.equal(answer.error, null, "gemme-kaldet gaar igennem for de andre");
+  assert.ok(!answer.data.applied_rider_ids.includes(riderId), "den frigivne rytter er ikke med i det gemte");
+  assert.equal(answer.data.applied_rider_ids.length, entry.args.p_report.riders.length - 1, "alle andre er gemt");
+  const { rows: [work] } = await db.query("SELECT quarantined_rider_ids, status FROM public.training_date_work WHERE team_id = $1 AND tick_date = $2", [entry.args.p_team_id, entry.args.p_tick_date]);
+  assert.ok(work.quarantined_rider_ids.includes(riderId), "han staar i karantaene");
+  const { rows: [{ n }] } = await db.query("SELECT count(*)::int AS n FROM public.training_rider_ticks WHERE rider_id = $1 AND game_day = $2", [riderId, entry.args.p_game_day]);
+  assert.equal(n, 0, "han har ingen kvittering for dag-feltet");
 });
