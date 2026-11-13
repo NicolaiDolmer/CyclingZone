@@ -454,10 +454,27 @@ test("#6110 R15b tabel: hjemmebanerne er data, kun den primaere type, og en uken
     assert.ok(Object.isFrozen(stages), type);
     for (const stage of stages) assert.equal(xpRaceFitsRider(type, stage), true, `${type} ${stage}`);
   }
-  assert.deepEqual(Object.keys(XP_RACE_FIT_HOME_STAGES).sort(), ["brostensrytter", "climber", "puncheur", "sprinter", "tt"]);
-  for (const [type, stage] of [["gc", "mountain"], ["rouleur", "flat"], ["baroudeur", "hilly"], ["puncheur", "rolling"],
-    ["brostensrytter", "gravel"], ["tt", "ttt"], ["climber", "flat"], [null, "mountain"], ["climber", null], ["constructor", "mountain"]]) {
+  // Ejerens otte raekker (13/11), praecis: en raekke for meget eller for lidt er rod.
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(XP_RACE_FIT_HOME_STAGES).map(([t, s]) => [t, [...s].sort()]).sort(([a], [b]) => a.localeCompare(b))),
+    {
+      baroudeur: ["hilly", "rolling"],
+      brostensrytter: ["cobbles", "gravel"],
+      climber: ["high_mountain", "mountain"],
+      gc: ["high_mountain", "itt", "itt_hilly", "mountain"],
+      puncheur: ["classic", "hilly", "rolling"],
+      rouleur: ["flat"],
+      sprinter: ["flat"],
+      tt: ["itt", "itt_hilly", "ttt"],
+    });
+  // Ejeren: rouleuren "Kun flad"; udbryderen paa klassiker (S17) og mellembjerg (S16) er aabne.
+  for (const [type, stage] of [["rouleur", "ttt"], ["rouleur", "rolling"], ["rouleur", "cobbles"], ["baroudeur", "classic"],
+    ["climber", "medium_mountain"], ["gc", "medium_mountain"], ["gc", "ttt"], ["sprinter", "rolling"],
+    ["climber", "flat"], [null, "mountain"], ["climber", null], ["constructor", "mountain"]]) {
     assert.equal(xpRaceFitsRider(type, stage), false, `${type} ${stage}`);
+  }
+  for (const type of Object.keys(XP_RACE_FIT_HOME_STAGES)) {
+    assert.equal(xpRaceFitsRider(type, "medium_mountain"), false, `${type} medium_mountain (S16)`);
   }
 });
 
@@ -518,7 +535,9 @@ test("#6110 R15b: uden rolletillaeg (mellem-passet) loeftes en etape, der passer
 });
 
 test("#6110 R15b: en etape, der ikke passer, eller kun passer den sekundaere type, er uroert", () => {
-  for (const profileType of ["mountain", "flat", "hilly", "classic", "cobbles", "ttt", "rolling", null]) {
+  // Enkeltstartsrytter med puncheur som sekundaer type: holdtidskoersel passer nu (ejer 13/11),
+  // saa grus og mellembjerg tager dens plads som etaper, der ikke passer.
+  for (const profileType of ["mountain", "flat", "hilly", "classic", "cobbles", "gravel", "medium_mountain", "rolling", null]) {
     const args = raceArgs({ profileType });
     assert.deepEqual(applyDailyTick(args), applyDailyTick({ ...args, xpRaceDayFit: null }), String(profileType));
   }
