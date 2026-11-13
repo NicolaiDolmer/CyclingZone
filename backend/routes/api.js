@@ -13850,7 +13850,8 @@ router.get("/dashboard/rider-ranking", requireAuth, cached({
       .from("seasons").select("id").eq("status", "active").maybeSingle();
     if (seasonError) throw seasonError;
     if (!season) return res.json({ riders: [] });
-    // #7664: kontakten taendt -> samme tabel og omfang som "Fuld rangliste"; slukket -> null, dagens RPC.
+    // #7664: kontakten taendt -> samme tabel og omfang som "Fuld rangliste"; slukket eller fejl i
+    // den nye vej -> null (fejlen rapporteres til Sentry), og dagens RPC nedenfor bruges.
     const shadowRiders = await readDashboardTopRiders7664(supabase, { seasonId: season.id, leagueDivisionId: req.team.league_division_id ?? null, captureExceptionFn: captureException });
     if (shadowRiders) return res.json({ riders: shadowRiders });
 

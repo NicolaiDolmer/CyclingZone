@@ -155,7 +155,8 @@ i separate transaktioner, så dette lover ikke én atomisk fem-view-publicering.
 
 Cron checker work hvert minut og kører ingen full refresh på clean state.
 Finalization-hooken planlægger en samlet baggrundswakeup og returnerer straks.
-Træningsprioritet må udskyde indtil to minutter fra den holdbare ældste ændring;
+Træningsprioritet må udskyde indtil to minutter fra den holdbare ældste ændring
+(plus #7664-holdevinduet nedenfor, når læserne bruger skyggen);
 ventetid/genstart nulstiller ikke alderen. Safe er en eksplicit forced repair og
 kvitterer ikke busy som færdig. Watchdog bruger pending work, ikke alene import-
 timestamp; et clean snapshot får ikke en ny beregningstid på uændrede ticks.
@@ -172,7 +173,8 @@ viser samme snapshots og læsning under concurrent writer-lock; begge forsøg
 rulles tilbage. Det er ikke en fuld løbsdagsmåling.
 
 **Inkrementel M1-skygge (#6765, design PR #6849, build-mandat 19/10):**
-De eksisterende matviews serverer fortsat; dette er ingen M2-aktivering.
+De eksisterende matviews serverer læserne, medmindre #7664's betingede
+læsekilde nedenfor er tændt; selve skyggen er ingen M2-aktivering.
 Den særskilte `ranking_shadow_decoupled_6765` seedes off. Off, manglende
 konfiguration eller opslagsfejl bevarer den hidtidige rækkefølge. On forsøger
 skyggepasset efter legacy-publicering og coordinatorens finish, også efter
@@ -250,6 +252,25 @@ Sentry (queue-stall).
 Supabase-branch-bevis: audits/2026-10-19-6765-operational-readiness.md.
 M2 kræver stadig
 staging T7 og designets særskilte observations-/ejerporte.
+
+**Betinget læsekilde (#7664, ejer-valg 13/11, `backend/lib/rankingRead7664.js`):**
+Rangliste-ruterne og forsidens top 5 læser skyggetabellerne
+(`ranking_rider_season`, `ranking_youth_rider_season`, `ranking_team_season_ext`,
+`ranking_team_race_points`) i stedet for de fire matviews KUN når både
+`ranking_shadow_decoupled_6765` og `ranking_shadow_enabled` tillader engineWrite,
+og skyggekøens ældste post højst er 30 minutter gammel. Ellers, og ved enhver fejl
+i kildevalget, læses matviews som før. `global_rank_mv` har ingen skygge og læses
+altid som før. Kildevalget huskes 10 sekunder pr. backend-klient.
+Nødvej: fejler forsidens læsning i skyggen, rapporteres fejlen til Sentry, og
+forsiden bruger dagens `dashboard_rider_ranking`-RPC (intet 500-svar).
+Holdevindue: mens kilden er skyggen, kører cron/vækkeur ikke den fulde
+matview-genberegning, før den ældste ventende ændring er 15 minutter gammel;
+træningens udskydelsesloft forlænges med samme 15 minutter. Tvungne
+genberegninger (Safe) holdes ikke. Watchdoggens matview-grænse (5 minutter) får
+samme 15 minutter lagt til, kun mens kilden er skyggen. Med kontakten slukket er
+holdevinduet 0, og alle grænser er som ovenfor. `/api/rankings/freshness`
+returnerer `current_as_of` (nu ved tom kø, ellers den ældste ventende ændrings
+tidspunkt) kun når kilden er skyggen; frontendens "Opdateret kl." vises kun da.
 
 **Concurrent RPC-overloads (#5692, separat SQL-forberedelse):**
 `database/2026-10-05-5692-ranking-refresh.sql` tilfoejer de fem refresh-funktioners

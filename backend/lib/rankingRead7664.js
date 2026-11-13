@@ -19,7 +19,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { Router } from "express";
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
-import { fetchAllRows } from "./supabasePagination.js";
+import { fetchAllRows, SUPABASE_IN_CHUNK_SIZE } from "./supabasePagination.js";
 
 export const RANKING_READ_FLAG_7664 = "ranking_shadow_decoupled_6765";
 export const RANKING_SHADOW_WRITE_FLAG = "ranking_shadow_enabled";
@@ -156,6 +156,7 @@ export function createRankingFreshnessRouter({ supabase, requireAuth, reportErro
 }
 
 const n = (value) => Number(value) || 0;
+const byPointsThenId = (a, b) => n(b.points) - n(a.points) || (a.rider_id < b.rider_id ? -1 : a.rider_id > b.rider_id ? 1 : 0);
 
 /**
  * Ren funktion: forsidens top 5 ud fra rytterranglistens raekker, i samme
@@ -181,22 +182,41 @@ export function pickDashboardTopRiders(stats, displayById, limit = 5) {
       classic_wins: n(stat.classic_wins),
     });
   }
-  rows.sort((a, b) => b.points - a.points || (a.rider_id < b.rider_id ? -1 : a.rider_id > b.rider_id ? 1 : 0));
+  rows.sort(byPointsThenId);
   return rows.slice(0, limit);
 }
 
 const DISPLAY_COLUMNS = "id,firstname,lastname,nationality_code,team:team_id(name,is_ai,league_division_id)";
 const TOP_STAT_COLUMNS = "rider_id,points,stage_wins,gc_wins,classic_wins";
+const DASHBOARD_TOP_LIMIT = 5;
 
 /**
  * Forsidens top 5 fra rytterranglistens skyggetabel. Returnerer null, naar
  * kilden er matviews: saa koerer forsiden praecis som i dag.
+ *
+ * Nødvej: fejler en laesning i den nye vej, rapporteres fejlen, og der
+ * returneres null, saa forsiden bruger dagens RPC i stedet for at svare 500
+ * (samme sikkerhedsnet som kildevalget).
  * @param {any} supabase
- * @param {{ seasonId: string, leagueDivisionId: number|null, source?: RankingReadSource, captureExceptionFn?: CaptureFn }} options
+ * @param {{ seasonId: string, leagueDivisionId: number|null, source?: RankingReadSource, captureExceptionFn?: CaptureFn, now?: () => number }} options
  */
-export async function readDashboardTopRiders7664(supabase, { seasonId, leagueDivisionId, source, captureExceptionFn }) {
-  const chosen = source ?? await resolveRankingReadSource(supabase, { captureExceptionFn });
+export async function readDashboardTopRiders7664(supabase, { seasonId, leagueDivisionId, source, captureExceptionFn, now = Date.now }) {
+  const chosen = source ?? await resolveRankingReadSource(supabase, { captureExceptionFn, now });
   if (chosen.source !== "shadow") return null;
+  try {
+    return await readShadowTopRiders(supabase, { seasonId, leagueDivisionId });
+  } catch (error) {
+    // best-effort: forsiden falder tilbage til dagens RPC (api.js).
+    // Supabase-fejl er ofte et objekt med `message`, ikke en Error.
+    const message = error instanceof Error ? error.message : String(/** @type {{ message?: unknown }} */ (error)?.message ?? error);
+    captureExceptionFn?.(error instanceof Error ? error : new Error(message), {
+      tags: { lib: "rankingRead7664", path: "dashboard-top" },
+    });
+    return null;
+  }
+}
+
+async function readShadowTopRiders(supabase, { seasonId, leagueDivisionId }) {
   const table = SHADOW_READ_TABLES.rider_rankings_mv;
   if (leagueDivisionId == null) {
     // Ingen pulje: hele ranglisten, som rytterfanens standard. Bladrer i
@@ -227,10 +247,31 @@ export async function readDashboardTopRiders7664(supabase, { seasonId, leagueDiv
   if (teamsError) throw teamsError;
   const teamIds = (teams || []).map((row) => row.id);
   if (!teamIds.length) return [];
-  const display = await fetchAllRows(() => supabase.from("riders").select(DISPLAY_COLUMNS)
+  // Kun id'er (ca. 600-1.100 pr. pulje i prod 13/11, een til to sider).
+  const poolRiders = await fetchAllRows(() => supabase.from("riders").select("id")
     .in("team_id", teamIds).eq("is_retired", false).order("id"));
-  const displayById = new Map(display.map((row) => [row.id, row]));
-  const stats = await fetchAllRows(() => supabase.from(table).select(TOP_STAT_COLUMNS)
-    .eq("season_id", seasonId).order("rider_id"));
-  return pickDashboardTopRiders(stats.filter((row) => displayById.has(row.rider_id)), displayById);
+  const ids = poolRiders.map((row) => row.id);
+  if (!ids.length) return [];
+  // Top 5 pr. bid af puljens ryttere, filtreret og sorteret i databasen (unik
+  // noegle season_id + rider_id). Den samlede top 5 ligger altid i foreningen
+  // af hver bids top 5, saa hver laesning er hoejst fem raekker. Bidderne
+  // koeres samtidig. Foer hentede denne vej hele saesonens tabel side for side.
+  const chunks = [];
+  for (let i = 0; i < ids.length; i += SUPABASE_IN_CHUNK_SIZE) chunks.push(ids.slice(i, i + SUPABASE_IN_CHUNK_SIZE));
+  const perChunk = await Promise.all(chunks.map(async (chunk) => {
+    // pagination-safe: limit(5) per chunk of at most SUPABASE_IN_CHUNK_SIZE ids.
+    const { data, error } = await supabase.from(table).select(TOP_STAT_COLUMNS)
+      .eq("season_id", seasonId).in("rider_id", chunk)
+      .order("points", { ascending: false, nullsFirst: false }).order("rider_id").limit(DASHBOARD_TOP_LIMIT);
+    if (error) throw error;
+    return data || [];
+  }));
+  const top = perChunk.flat().sort(byPointsThenId).slice(0, DASHBOARD_TOP_LIMIT);
+  if (!top.length) return [];
+  // pagination-safe: at most DASHBOARD_TOP_LIMIT ids.
+  const { data: display, error: displayError } = await supabase.from("riders").select(DISPLAY_COLUMNS)
+    .in("id", top.map((row) => row.rider_id)).eq("is_retired", false);
+  if (displayError) throw displayError;
+  const displayById = new Map((display || []).map((row) => [row.id, row]));
+  return pickDashboardTopRiders(top, displayById);
 }

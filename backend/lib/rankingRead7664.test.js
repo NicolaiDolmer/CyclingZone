@@ -171,7 +171,7 @@ test("#7664 off = the exact tables of today, route by route; on = shadow tables,
 test("#7664 dashboard: legacy returns null without a query; ranking order is points, then rider id", async () => {
   reset();
   const client = recordingClient();
-  assert.equal(await readDashboardTopRiders7664(client, { seasonId: SEASON, leagueDivisionId: 4 }), null);
+  assert.equal(await readDashboardTopRiders7664(client, { seasonId: SEASON, leagueDivisionId: 4, now: () => NOW }), null);
   assert.deepEqual(client.tables, []);
 
   const display = new Map([
@@ -214,6 +214,90 @@ test("#7664 dashboard without a pool pages past retired leaders until five rider
   };
   const top = await readDashboardTopRiders7664(client, { seasonId: SEASON, leagueDivisionId: null, source: { source: "shadow", currentAsOf: null } });
   assert.deepEqual(top.map((row) => row.rider_id), ["r060", "r061", "r062", "r063", "r064"]);
+});
+
+// A pool fake: 24 teams, `poolSize` riders in the pool, every rider of the season
+// in the shadow table. Records every read so the test can count them.
+function poolClient({ poolSize, seasonRows, retired = new Set(), failOn = null }) {
+  const reads = [];
+  const poolIds = Array.from({ length: poolSize }, (_, i) => `p${String(i).padStart(4, "0")}`);
+  const stats = [
+    ...poolIds.map((id, i) => ({ rider_id: id, points: (i * 37) % 501, stage_wins: 0, gc_wins: 0, classic_wins: 0 })),
+    ...Array.from({ length: seasonRows - poolSize }, (_, i) => ({ rider_id: `x${i}`, points: 10_000 + i })),
+  ];
+  const query = (table) => {
+    const q = { table, filters: {}, limit: null, range: null, select: null };
+    const b = {
+      select: (columns) => { q.select = columns; return b; },
+      eq: (column, value) => { q.filters[column] = value; return b; },
+      in: (column, values) => { q.filters[column] = values; return b; },
+      order: () => b,
+      limit: (count) => { q.limit = count; return b; },
+      range: (lo, hi) => { q.range = [lo, hi]; return b; },
+      then: (resolve, reject) => Promise.resolve().then(() => {
+        reads.push(q);
+        if (failOn === table) return { data: null, error: { message: `${table} down` } };
+        let rows = [];
+        if (table === "teams") rows = Array.from({ length: 24 }, (_, i) => ({ id: `t${i}` }));
+        if (table === "riders" && q.filters.team_id) rows = poolIds.filter((id) => !retired.has(id)).map((id) => ({ id }));
+        if (table === "riders" && q.filters.id) rows = q.filters.id.filter((id) => !retired.has(id)).map((id) => ({ id, firstname: id, team: null }));
+        if (table === "ranking_rider_season") {
+          const wanted = new Set(q.filters.rider_id);
+          rows = stats.filter((row) => wanted.has(row.rider_id))
+            .sort((a, b) => b.points - a.points || (a.rider_id < b.rider_id ? -1 : 1));
+          if (q.limit != null) rows = rows.slice(0, q.limit);
+        }
+        if (q.range) rows = rows.slice(q.range[0], q.range[1] + 1);
+        return { data: rows, error: null };
+      }).then(resolve, reject),
+    };
+    return b;
+  };
+  return { reads, poolIds, stats, from: query, rpc: async () => ({ data: null, error: null }) };
+}
+const SHADOW = { source: "shadow", currentAsOf: null };
+
+test("#7664 dashboard with a pool: few small reads filtered in the database, same top 5 as the full scan", async () => {
+  reset();
+  // Prod 13/11: largest pool 1,072 riders, 4,878 rows in the active season.
+  const retired = new Set(["p0013", "p0257"]);
+  const client = poolClient({ poolSize: 1072, seasonRows: 4878, retired });
+  const top = await readDashboardTopRiders7664(client, { seasonId: SEASON, leagueDivisionId: 1, source: SHADOW });
+
+  // Reference: the full pool scan the reviewer flagged (every row, filter in Node).
+  const visible = new Map(client.poolIds.filter((id) => !retired.has(id)).map((id) => [id, { id, firstname: id, team: null }]));
+  const expected = pickDashboardTopRiders(client.stats.filter((row) => visible.has(row.rider_id)), visible);
+  assert.deepEqual(top, expected);
+  assert.equal(top.length, 5);
+
+  const shadowReads = client.reads.filter((q) => q.table === "ranking_rider_season");
+  assert.equal(shadowReads.length, Math.ceil(1070 / 100), "one read per 100 pool riders");
+  for (const q of shadowReads) {
+    assert.equal(q.limit, 5);
+    assert.equal(q.filters.season_id, SEASON);
+    assert.ok(q.filters.rider_id.length <= 100);
+  }
+  // Never an unfiltered read of the whole season.
+  assert.equal(shadowReads.filter((q) => !q.filters.rider_id).length, 0);
+  const riderReads = client.reads.filter((q) => q.table === "riders");
+  assert.equal(riderReads.filter((q) => q.filters.team_id).every((q) => q.select === "id"), true);
+  assert.deepEqual(riderReads.filter((q) => q.filters.id).map((q) => q.filters.id.length), [5]);
+});
+
+test("#7664 dashboard safety net: a failing shadow read is reported and returns null (today's RPC)", async () => {
+  for (const [failOn, leagueDivisionId] of [["ranking_rider_season", 1], ["riders", 1], ["teams", 1], ["ranking_rider_season", null]]) {
+    reset();
+    const client = poolClient({ poolSize: 50, seasonRows: 80, failOn });
+    const captured = [];
+    const top = await readDashboardTopRiders7664(client, {
+      seasonId: SEASON, leagueDivisionId, source: SHADOW,
+      captureExceptionFn: (error, context) => captured.push({ error, context }),
+    });
+    assert.equal(top, null, `${failOn} / ${leagueDivisionId}`);
+    assert.equal(captured.length, 1);
+    assert.match(captured[0].error.message, /down/);
+    assert.deepEqual(captured[0].context.tags, { lib: "rankingRead7664", path: "dashboard-top" });
+  }
 });
 
 // A coordinator fake for the gated path: pending work of a given age.

@@ -12,6 +12,7 @@ import { ABILITY_SELECT, ABILITY_SHORT, flattenAbilities } from "../lib/abilitie
 import { mergeStandings } from "../lib/standingsMerge";
 import { fetchAllRows } from "../lib/supabasePagination";
 import { fetchTeamStandings, fetchTeamRacePoints } from "../lib/rankingsApi.ts";
+import UpdatedAtLine from "../components/rankings/UpdatedAtLine.tsx"; // #7664
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import useFlipRows from "../hooks/useFlipRows";
 import {
@@ -754,6 +755,7 @@ export default function StandingsPage() {
           for tre faner og kan ikke bære den. */}
       <p className="mb-3 text-[13px] text-cz-2">
         {season ? t("season", { n: season.number }) : t("noActiveSeason")}
+        {season && <UpdatedAtLine />}{/* #7664: kun naar de nye tabeller laeses */}
       </p>
 
       {/* Filter-bar (T2-recept): op til 3 Selects + search Input, compare-handling
