@@ -163,6 +163,19 @@ _Flyttet hertil fra `AGENTS.md` regel 9 den 2026-09-17 per [#5331](https://githu
 
 ---
 
+## Direkte databaselinje og måleprøven ([#8143](https://github.com/NicolaiDolmer/CyclingZone/issues/8143))
+
+Serverens anden vej til databasen (`backend/lib/directDb.ts`), ved siden af web-adgangen. Trin 1: kun måleprøven bruger den. Design: [`superpowers/specs/2026-11-13-8143-direkte-databaselinje-design.md`](superpowers/specs/2026-11-13-8143-direkte-databaselinje-design.md).
+
+- **Hemmeligheden:** `DIRECT_DB_URL` (forbindelsen for rollen `cz_direct` gennem databasens fælles fordeler, den tilstand der er til servere, som kører hele tiden). Bor KUN i Infisical (prod) og hos serverens udbyder (Railway). Aldrig i repo, chat, issues eller logs; vis aldrig værdien (ingen `railway variables`, ingen `infisical secrets`). Mangler den, er linjen slukket. Valgfri, ikke hemmelig: `DIRECT_DB_CA_PEM` (udbyderens offentlige rod-certifikat), hvis tjekket af modpartens bevis ellers fejler.
+- **Første gang (ejer):** sæt adgangskoden med `\password cz_direct` i psql som `postgres`, byg adressen, gem den i Infisical og hos Railway som `DIRECT_DB_URL`, og udrul. Rollen oprettes uden adgangskode af `database/2026-11-13-8143-direct-db-role.sql` og kan ikke logge ind før dette.
+- **Udskiftning:** ny adgangskode med `\password cz_direct`, opdatér værdien begge steder, udrul. Den gamle virker ikke længere i det øjeblik, `\password` er kørt, så gør det i ét stræk; prøven tæller fejl imens, spillerne mærker intet.
+- **Tænd prøven (ejerens "kør"):** `UPDATE public.app_config SET value = '"on"' WHERE key = 'direct_db_probe_8143';` Prøven læser kontakten hvert minut; uden `DIRECT_DB_URL` starter den slet ikke.
+- **Læs:** `DIRECT_DB_PROBE_READOUT_SQL` i `backend/lib/directDbProbe.ts` (én SELECT: midterværdi, 95 % og fejl pr. vej pr. time fra `public.direct_db_probe_samples`). Kriterium: den direkte linje mindst tre gange hurtigere pr. spørgsmål (`median_ms`) og stabil i syv dage; ellers vej B.
+- **Sluk:** `UPDATE public.app_config SET value = '"off"' WHERE key = 'direct_db_probe_8143';` Rækker ældre end 14 dage slettes af prøven selv. Linjen helt fra: fjern `DIRECT_DB_URL` hos Railway og udrul.
+
+---
+
 ## Masterplan artifact sync
 
 _Flyttet hertil fra `AGENTS.md` regel 34 den 2026-09-17 per [#5331](https://github.com/NicolaiDolmer/CyclingZone/issues/5331) (token-trim). Reglen er uændret — AGENTS.md holder kun perioden og peger herhen._

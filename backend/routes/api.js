@@ -274,7 +274,6 @@ import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js"
 import { TRAINING_SCORE_VISIBLE_FLAG_KEY, TRAINING_DAILY_RECEIPT_FLAG_KEY } from "../lib/trainingScoreFlag.js";
 import { trainingRunResponse } from "../lib/trainingRunResponse.ts";
 import { createFirstRaceCardRouter } from "./firstRaceCard.js"; // #1140
-import { createBreakawayOutlookRouter } from "./breakawayOutlook.js"; // #6912 B
 import { createRaceLibraryV2Router } from "../lib/raceLibraryV2Flag.js"; // #6514
 import { createPushRouter } from "./pushRoutes.ts"; // #6590
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
@@ -287,7 +286,7 @@ import { buildYouthSquadsPayload, YOUTH_SQUAD_ROSTER_COLUMNS } from "../lib/yout
 import { buildTrainingScoreView, TRAINING_SCORE_VIEW } from "../lib/trainingScore.js";
 import { loadRacingTodayByRider } from "../lib/racingTodayLookup.js";
 import { computeRiderValueTrend } from "../lib/riderValueTrend.js";
-import { saveSelection, getSelectionContext, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts, roleFor as selectionRoleFor, raceAllowsCoCaptain, ridersAtOpeningFatigue } from "../lib/raceSelection.js";
+import { saveSelection, getSelectionContext, getSelectionContextsForRaces, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts, roleFor as selectionRoleFor, raceAllowsCoCaptain, ridersAtOpeningFatigue } from "../lib/raceSelection.js";
 import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
@@ -1010,7 +1009,6 @@ router.use("/rankings", createRankingsRouter({
 }));
 router.use("/feature-flags", createFeatureFlagsRouter({ supabase, requireAuth, isViewerBetaTester, reportError: captureException })); // #4948
 router.use(createFirstRaceCardRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #1140
-router.use(createBreakawayOutlookRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #6912 B
 router.use(createRaceLibraryV2Router({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #6514
 router.use("/push", createPushRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, writeLimiter: marketWriteLimiter, reportError: captureException })); // #6590
 // #4629: traeningsprogrammer (beta). Monteret HER, foer `/training/:riderId`, saa
@@ -3267,7 +3265,8 @@ router.get("/training/me", requireAuth, async (req, res) => {
     // næste etape. Slukket = null og felterne præcis som i dag.
     const fatigueOutlook = await fatigueOutlookForTeam({
       supabase, team: req.team, seasonId: activeSeasonId, conditions: conditionResult.data,
-      abilityByRider: new Map((progressResult.data ?? []).map((r) => [r.rider_id, r])),
+      // #7801: fejlede evneopslaget, læser trætheden selv evnerne frem for standard-restitution.
+      abilityByRider: progressResult.error ? null : new Map((progressResult.data ?? []).map((r) => [r.rider_id, r])),
     });
     for (const row of conditionResult.data ?? []) {
       const plan = state.plans[row.rider_id] ?? null;
@@ -5621,8 +5620,10 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
     }
 
     const columns = [];
-    for (const race of cols) {
-      const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
+    // #7801: alle kolonner i ét kald, saa trætheden lige nu ikke koster en række opslag pr. kolonne.
+    const ctxByCol = await getSelectionContextsForRaces({ supabase, races: cols, teamId: req.team.id });
+    for (const [colIndex, race] of cols.entries()) {
+      const ctx = ctxByCol[colIndex];
       const profTypes = profTypesByRace.get(race.id) || [];
       // Frys (#1825): et igangværende etapeløb (stages_completed>0) har låst trup —
       // board'et viser "Lineup locked" og deaktiverer redigering. bindingWindow bruges

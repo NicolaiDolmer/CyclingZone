@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { resolveDmTargetFromInput } from "./discordDmTarget.js";
-import { notifyBoardUpdateDM, notifyAuctionWon, notifyDiscordDM, notifyPlayerFeedback, sendWebhook, isLiveDiscordAllowed, getBotToken, __buildEmbedForTests } from "./discordNotifier.js";
+import { notifyBoardUpdateDM, notifyAuctionWon, notifyDiscordDM, notifyPlayerFeedback, sendWebhook, isLiveDiscordAllowed, getBotToken, __buildEmbedForTests, __setPlayerDmSwitchForTests } from "./discordNotifier.js";
 import { DISCORD_EMBED_LIMITS } from "./discordEmbedLimits.js";
 import { flushDmRunGuard, __resetDmRunGuardForTests } from "./discordDmRateGuard.js";
 import { __resetWebhookQueueForTests } from "./discordWebhookQueue.js";
@@ -12,6 +12,11 @@ import { __resetWebhookQueueForTests } from "./discordWebhookQueue.js";
 // ville aldrig nå deres injicerede fetchFn. Guard-adfærden selv testes eksplicit
 // i "live-guard"-blokken nederst (som fjerner denne env-var igen midlertidigt).
 process.env.DISCORD_LIVE_MESSAGING = "allow";
+
+// #8149: hovedafbryderen står på on som i prod. Uden denne linje ville sendDM
+// læse app_config gennem modulets egen supabase-klient (netværk). Kontakten
+// selv testes i discordPlayerDmSwitch.test.js.
+__setPlayerDmSwitchForTests(async () => true);
 
 function makeCaptureSpy() {
   const calls = [];

@@ -1971,7 +1971,7 @@ export function computeTrainingDayTick(input) {
           hardDailyCap: TRAINING_RACE_DAY_CONFIG.abilityGainCapPerRaceDay,
           academyRateMult: raceDayIntentionYieldMultiplier(raceDayEffortByRider.get(rider.id)),
           ...withRaceDayRoleYieldXp(developmentXp, developmentTickArgs({ developmentScoreB, raceCatchUp, dayKey: seedScope, tickArgs: sharedTickArgs, racedToday: true, profileType: racedRiderProfileByRider.get(rider.id) }), // #6950
-            { params: raceRoleYield, profileType: racedRiderProfileByRider.get(rider.id), role: raceDayRoleByRiderMap.get(rider.id) }), // #5950
+            { params: raceRoleYield, profileType: racedRiderProfileByRider.get(rider.id), role: raceDayRoleByRiderMap.get(rider.id), catalogV3: catalogV3On }), // #5950, #6110 R15b: holdets katalog
         });
       } else {
         tickResult = applyDailyTick({ ...sharedTickArgs, ...developmentTickArgs({ developmentScoreB, raceCatchUp, dayKey: seedScope, tickArgs: sharedTickArgs }),

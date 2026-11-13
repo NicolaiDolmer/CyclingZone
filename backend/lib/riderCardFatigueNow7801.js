@@ -2,10 +2,10 @@
 //
 // Kortet læste rider_condition direkte fra klienten og viste derfor morgenens tal, også når
 // Træningssiden viser trætheden lige nu. Med kontakten fatigue_now_7801 henter kortet tallet
-// her, fra samme kerne som Træningssiden (fatigueByRiderNow, uden etape: tallet nu).
+// her, fra samme kerne som Træningssiden (teamFatigueNowForSurface: tallet nu).
 // Slukket: { enabled: false }, intet ud over kontakten læses, og kortet viser som før.
 
-import { fatigueByRiderNow, FatigueNowUnavailableError } from "./riderFatigueNow.js";
+import { teamFatigueNowForSurface } from "./riderFatigueNow.js";
 import { isFatigueNow7801Enabled } from "./riderFatigueNowFlag.js";
 
 /**
@@ -24,15 +24,10 @@ export async function riderCardFatigueNow7801({ supabase, riderId, teamId, now =
     .select("rider_id, form, fatigue").eq("rider_id", riderId).maybeSingle();
   if (condErr) throw new Error(`rider_condition (card fatigue now): ${condErr.message}`);
   if (!cond) return { enabled: true, own: true, fatigue: null };
-  let live;
-  try {
-    live = await fatigueByRiderNow({ supabase, conditions: [cond], teamId, now, onError: "throw" });
-  } catch (err) {
-    if (!(err instanceof FatigueNowUnavailableError)) throw err;
-    // Tallet kunne ikke regnes: kortet viser "—", ikke morgenens tal.
-    console.warn(`[fatigue-now-7801] card fatigue omitted: ${err.message}`);
-    return { enabled: true, own: true, fatigue: null };
-  }
+  // #7801 rest-byg: kontakten er læst; resten læses samtidig. Kunne tallet ikke regnes,
+  // viser kortet "—", ikke morgenens tal (teamFatigueNowForSurface melder det selv).
+  const { fatigue: live, unavailable } = await teamFatigueNowForSurface({ supabase, conditions: [cond], teamId, now });
+  if (unavailable.has(cond.rider_id)) return { enabled: true, own: true, fatigue: null };
   const fatigue = live.get(cond.rider_id);
   return { enabled: true, own: true, fatigue: Number.isFinite(Number(fatigue)) && fatigue !== null ? Number(fatigue) : null };
 }

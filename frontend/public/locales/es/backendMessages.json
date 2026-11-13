@@ -806,7 +806,8 @@
       "transferRejected": "Tu oferta por {rider} ha sido rechazada.",
       "watchlistRiderAuction": "Un ciclista de tu lista de seguimiento está en subasta: {rider}.",
       "testTitle": "Los MD de Discord funcionan",
-      "testDescription": "A partir de ahora recibirás MD de Cycling Zone sobre subastas, fichajes y novedades de la directiva."
+      "testDescription": "A partir de ahora recibirás MD de Cycling Zone sobre subastas, fichajes y novedades de la directiva.",
+      "testPaused": "He desactivado los mensajes de Discord por ahora, así que no se ha enviado ningún mensaje de prueba."
     }
   },
   "push": {
