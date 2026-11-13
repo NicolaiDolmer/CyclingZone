@@ -87,6 +87,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "potential_estimate_display", // #7684 (flader + Hjaelp i byggetrin 6)
   "champion_jerseys_7824", // #7824
   "rider_why_button", // #7717
+  "race_page_v6", // #7778 (off; ?racePageV6=on paa preview)
   "talent_marks_7879", // #7879
   "tactics_ready_7864", // Missing stage keeps this preview feature off.
   "rider_hover_card", // #2009
@@ -98,6 +99,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "stage_plan_dropped_front_7635", // #7636 etapeplanens resume
   "day_words_7725", // #7725 Hjaelp
   "fatigue_now_7801", // #7801 Hjaelp
+  "training_train_now_instant", // #8031 (kun patch-noten om Traen nu-kvitteringen)
 ];
 
 // Spejler PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden: "beta" er off.
@@ -132,8 +134,26 @@ function previewChampionJerseysEnabled() {
 // Læses ved indlæsning, så parameteren virker, før en side omskriver URL'en.
 previewChampionJerseysEnabled();
 
+// #7778: løbssiden v6 er OFF på preview (som i prod), men ?racePageV6=on viser
+// den nye ramme; ?racePageV6=off slukker igen. Huskes i localStorage.
+function previewRacePageV6Enabled() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("racePageV6");
+    if (param === "on") localStorage.setItem("cz_mock_race_page_v6", "1");
+    if (param === "off") localStorage.setItem("cz_mock_race_page_v6", "0");
+    return localStorage.getItem("cz_mock_race_page_v6") === "1";
+  } catch {
+    return false;
+  }
+}
+previewRacePageV6Enabled();
+
+// #7778: visningsvalg på brugeren (GET/PUT /api/me/ui-prefs), i hukommelsen.
+let uiPrefs = {};
+
 function playerFlags() {
   return Object.fromEntries(PLAYER_VISIBLE_FLAG_KEYS.map((key) => {
+    if (key === "race_page_v6") return [key, previewRacePageV6Enabled()];
     if (key === "training_catalog_v3") return [key, previewCatalogV3Enabled()];
     if (key === "champion_jerseys_7824") return [key, previewChampionJerseysEnabled()];
     if (key === "potential_estimate_display") return [key, previewPotentialEstimateEnabled()];
@@ -147,6 +167,16 @@ export function betaAccessMockRoute(url, method, init) {
   if (/\/api\/me\/beta-access$/.test(url) && method === "GET") return json(playerState);
 
   if (/\/api\/feature-flags(\?.*)?$/.test(url) && method === "GET") return json({ flags: playerFlags() });
+
+  if (/\/api\/me\/ui-prefs$/.test(url) && method === "GET") return json({ prefs: uiPrefs, available: true });
+  if (/\/api\/me\/ui-prefs$/.test(url) && method === "PUT") {
+    const prefs = readBody(init).prefs;
+    if (!prefs || typeof prefs !== "object" || typeof prefs.race_route_hidden !== "boolean") {
+      return json({ error: "Invalid value for: race_route_hidden", errorCode: "ui_prefs_invalid_value" }, 400);
+    }
+    uiPrefs = { ...uiPrefs, race_route_hidden: prefs.race_route_hidden };
+    return json({ ok: true, prefs: uiPrefs, available: true });
+  }
 
   if (/\/api\/me\/beta-access\/request$/.test(url) && method === "POST") {
     playerState = {

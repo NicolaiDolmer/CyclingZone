@@ -122,13 +122,11 @@ features:
     area: race-day
     title_en: Engine breakaway forecast
     title_da: Motorens udbrudsbud
-    state: building
+    state: retired
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6912
-    verified: 2026-10-29
-    decision: ejer-beslutning
-    decide_by: 2026-11-08
-    note: Ingen app_config-række (fravær = off). Ejer-go til tænding.
+    verified: 2026-11-13
+    note: Fjernet 13/11 (ejer); kode i #7277/#7343.
 
   - id: race-day-form-6649
     area: race-engine
@@ -155,10 +153,12 @@ features:
     area: race-engine
     title_en: Jersey hunt in the stage plan
     title_da: Trøjejagt i etapeplanen
-    state: building
+    state: dormant
+    flag: jersey_hunt_7855
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 7855
-    verified: 2026-11-09
+    verified: 2026-11-13
+    note: '#8052 merget 13/11, kontakt jersey_hunt_7855 off i prod; tændes kun af ejeren efter dommer.'
     decision: ejer-beslutning
     decide_by: 2026-11-21
   - id: race-itt-no-day-roll-7726
@@ -347,10 +347,10 @@ features:
     state: building
     ssot: docs/TRAINING_RULES.md
     epic: 7801
-    verified: 2026-11-07
+    verified: 2026-11-13
     decision: taend
     decide_by: 2026-11-21
-    note: Kontakt fatigue_now_7801 (ikke seedet = slukket); ejer tænder.
+    note: Kontakt fatigue_now_7801 findes ikke i prod app_config (13/11) = slukket; ejer tænder.
 
   - id: luxury-helper-role
     area: race-engine
@@ -449,13 +449,16 @@ features:
     area: race-day
     title_en: Team plans
     title_da: Taktik gjort klar del 1
-    state: building
+    state: live
+    flag: tactics_ready_7864
     epic: 7864
     ssot: docs/RACE_ENGINE_RULES.md
-    verified: 2026-11-11
-    decision: goer-faerdigt
-    decide_by: 2026-11-12
-    note: "Ingen seed/aktivering; fler-etape kræver atomisk DB-kapabilitet."
+    verified: 2026-11-13
+    decision: taend
+    decide_by: 2026-11-26
+    roadmap_en: "Tactics made clear: every race order in one place, with its cost in plain words"
+    roadmap_da: "Taktik gjort klar: alle løbsordrer ét sted, med prisen i klare ord"
+    note: "On for alle 13/11 kl. 17:18 (ejerens tænd), læst tilbage i prod. 86 af 86 opgaveskift stemte i beta."
 
   - id: rider-why-button
     area: race-day
@@ -485,6 +488,19 @@ features:
     epic: 7824
     verified: 2026-11-07
     note: "#7879: seedes off, kun visning. Ejeren flytter kontakten til beta; roadmap-tekst følger med."
+
+  - id: race-page-v6
+    area: race-day
+    title_en: Race page v6, step 1 (results for a ridden stage)
+    title_da: Løbssiden v6, trin 1 (resultater for en kørt etape)
+    state: building
+    flag: race_page_v6
+    decision: ejer-beslutning
+    decide_by: 2026-11-26
+    epic: 7778
+    ssot: docs/RACE_ENGINE_RULES.md
+    verified: 2026-11-13
+    note: "#7778/#8062: kun trin 1 af 5 er bygget (kun visning); kontakt race_page_v6 off i prod 13/11."
 
   - id: rider-hover-card
     area: squad
@@ -555,23 +571,22 @@ features:
     state: building
     ssot: docs/TRANSFER_MARKET_RULES.md
     epic: 6181
-    verified: 2026-11-07
+    verified: 2026-11-13
     decision: goer-faerdigt
     decide_by: 2026-11-08
-    note: Kontakt sale_escrow_enabled.
+    note: Kontakt sale_escrow_enabled findes ikke i prod app_config (13/11) = slukket; købernes del er market-commitment (on). Ejer 13/11: sælgers penge låses til holdskiftet; tænding er ejerens eget kort.
 
   - id: market-commitment
     # #2176: beta scope follows owner A, 10/11; no activation or new prod verification here.
     area: market
     title_en: Bid commitment gate
     title_da: Bud-forpligtelsesgate
-    state: building
+    state: live
+    flag: market_commitment_6181
     ssot: docs/TRANSFER_MARKET_RULES.md
     epic: 6181
-    verified: 2026-11-09
-    decision: goer-faerdigt
-    decide_by: 2026-11-30
-    note: Kontakt market_commitment_6181, off post; ikke flag-bundet her (prod-raekke ikke verificeret), jf. #7923.
+    verified: 2026-11-12
+    note: "Beta 11/11 kl. 20:56; on for alle 12/11 (læst i prod 12/11). Patch note 7.435."
 
   - id: rider-loans
     area: market
@@ -598,13 +613,15 @@ features:
     area: market
     title_en: Auto-accept price
     title_da: Auto-accept-pris
-    state: building
+    state: beta
     flag: auto_accept_enabled
     ssot: docs/TRANSFER_MARKET_RULES.md
     epic: 2176
-    verified: 2026-11-07
+    verified: 2026-11-12
     decision: taend
     decide_by: 2026-11-28
+    roadmap_en: "Set an auto-accept price on a listed rider: when someone hits it, a short public auction starts at once."
+    roadmap_da: "Sæt en auto-accept-pris på en listet rytter: rammer nogen den, starter en kort offentlig auktion med det samme."
 
   - id: market-value-blend
     area: market
@@ -844,8 +861,8 @@ features:
     flag: training_train_now
     ssot: docs/TRAINING_RULES.md
     epic: 4847
-    verified: 2026-10-14
-    note: 'On for alle 9/10 (læst i prod 14/10); kræver training_condition_per_date.'
+    verified: 2026-11-13
+    note: 'On for alle (læst i prod 13/11); kræver training_condition_per_date. Svartid trin 1, 1b, 2 (#8066/#8106/#8105) merget, ingen ny kontakt.'
 
   - id: training-catalog-v3
     area: training
@@ -989,10 +1006,10 @@ features:
     title_da: Auto-genereret sæsonkalender ved forever-skifter
     state: building
     ssot: docs/CALENDAR_RULES.md
-    verified: 2026-10-26
-    note: Ingen række i prod (= off).
+    verified: 2026-11-13
+    note: "Ingen række i prod (= off). Ejer 13/11: spørg igen mandag 16/11."
     decision: ejer-beslutning
-    decide_by: 2026-11-08
+    decide_by: 2026-11-16
 
   - id: season-transition
     area: season
@@ -1199,20 +1216,21 @@ features:
     flag: development_score_v2
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: 'Ejer 31/10 (#6110): parkeret til grundtalentet er bygget. Før tænding: #7584.'
-    verified: 2026-11-04
+    note: "Parkeret (ejer 31/10). Ejer 13/11: besluttes ved opsamlingen på Udvikling 2.0. Kan ikke være tændt samtidig med XP. Før tænding: #7584."
+    verified: 2026-11-13
     decision: ejer-beslutning
-    decide_by: 2026-11-08
+    decide_by: 2026-11-21
 
   - id: development-xp-model
     area: training
     title_en: Development XP
     title_da: Udviklings-XP
-    state: building
+    state: dormant
+    flag: development_xp_model
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: 'Kontakter development_xp_model + development_xp_from_date; tændes efter kalibrering.'
-    verified: 2026-11-07
+    note: '#8041 merget; development_xp_model off i prod 13/11; tændes kun af ejeren efter dommer (+ development_xp_from_date).'
+    verified: 2026-11-13
     decision: taend
     decide_by: 2026-11-21
 
@@ -1350,8 +1368,8 @@ features:
     flag: board_mandate_model_enabled
     ssot: docs/BOARD_RULES.md
     epic: 3514
-    verified: 2026-09-28
-    note: On målt read-only i prod 28/9; mandat, vision, tillid, bonus og DNA.
+    verified: 2026-11-13
+    note: On i prod (læst 13/11); mandat, vision, tillid, bonus og DNA. Halvsæson-tjek (#8103) og årsmandat plus to andre veje (#8128) springer parkerede hold over.
 
   - id: board-firing-and-review
     area: board
@@ -1523,6 +1541,15 @@ features:
     roadmap_en: "Push notifications on your phone: outbid in the last minute, one race summary per race day, and offers waiting for you. Never between 22:00 and 08:00, at most 6 a day."
     roadmap_da: "Push-notifikationer på telefonen: overbudt i sidste minut, ét løbsresumé pr. løbsdag og tilbud, der venter på dig. Aldrig mellem 22 og 08, højst 6 om dagen."
 
+  - id: discord-player-dm-switch
+    area: ops
+    title_en: Discord bot DM switch
+    title_da: Hovedafbryder for bottens private Discord-beskeder
+    state: live
+    epic: 8149
+    verified: 2026-11-13
+    note: "Intern kontakt discord_player_dm, seedes on af migration (flag-felt efter apply); off kun på ejerens kør."
+
   # --- billing -------------------------------------------------------------
   - id: cz-pro
     area: billing
@@ -1569,10 +1596,10 @@ features:
     flag: ranking_shadow_decoupled_6765
     ssot: docs/GAME_INVARIANTS.md
     epic: 6765
-    verified: 2026-11-10
+    verified: 2026-11-13
     decision: goer-faerdigt
     decide_by: 2026-11-16
-    note: 'OFF seed.'
+    note: 'OFF seed; ranking_shadow_decoupled_6765 off i prod 13/11.'
 
   - id: train-now-bonus
     area: training

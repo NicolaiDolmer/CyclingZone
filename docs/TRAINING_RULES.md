@@ -241,6 +241,17 @@ Ny kode må ikke bruge containment (`@>`) på `report->'riders'`: læs fra
 `rider_training_seen`. Gendannelse: `database/manual/2026-10-15-6490-recreate-
 training-report-riders-gin.sql`.
 
+Ny rytters starttilstand (#8089, ejer 13/11): førstegangstilstanden er én fast
+starttilstand, `NEW_RIDER_START_CONDITION` i `backend/lib/riderCondition.js`:
+form som før og en fast lav træthed (ikke nul), så en ny rytter ikke taber form
+de første dage på normal træning. Den er ens for køb fra puljen, fri agent og
+akademi-optag, og fordi alle veje går gennem samme trigger, også for starttrupper
+og nye AI-hold. De tre databasefunktioner (triggeren, datoens registrering og
+kompensationen) og kodens reserver for en rytter uden tilstand bruger samme tal
+(`database/2026-11-13-8089-ny-rytter-starttilstand.sql`). Ryttere, der allerede
+har en tilstand, røres ikke; ingen bagudrettelse. Sæsonstartens træthed
+(`SEASON_FATIGUE_RESET`) er en separat konstant.
+
 Driftalarmen skelner via sit gemte bevis mellem utilgængelige ryttere/starttilstande
 og manglende løbsaktivitet. Et begrænset udsnit serialiseres, så årsagen kan læses
 i Sentry. Leveringens varige genforsøg består. Ingen balancerater ændres.
@@ -261,7 +272,7 @@ Forudsætning: `training_tick_per_race_day` skal være aktivt for motoren, før 
 
 **#7801 (ejer 6/11, bag `fatigue_now_7801`, ikke seedet = slukket, kun "on" tænder; kræver `condition_model_v2`):** træthedsgrænsen (auto-hvile/let/restitution) vurderes på trætheden lige nu før feltet, altså åbningen plus datoens kørte etaper på tidligere løbsdage, i stedet for datoens starttilstand. Skadesrullet sker stadig én gang ved afregningen, men risikoen regnes pr. felt på trætheden lige nu før feltet. Prognosen ("Træthed i aften") bruger samme tal (I5). Slukket = reglen ovenfor uændret, bevist mod en frossen digest fra merge-basen. Dagens træningspas tæller først med ved afregningen, både i fladernes tal og i motoren.
 
-Flader og assistent under `fatigue_now_7801`: Træningssiden viser trætheden lige nu (åbningen plus datoens kørte etaper, hver med sin belastning og sin restitution), og for en rytter med en næste etape i dag eller i morgen en ekstra linje med skønnet ved den etapes start. Skønnet rækker aldrig længere frem end næste etape (ejerens punkt 4), og til en etape i morgen er det samme tal som "Træthed i aften". Assistentens udtagelse (Race Hubs Auto-udfyld og forhåndsvisning, løbsstart) regner trætheden fra starten af løbets første etape, aldrig efter uret på det tidspunkt, knappen trykkes: kun etaper på samme dato som den start, og kun løbsdage før den, tæller med, så udtagelsen er den samme, uanset hvornår den køres. Kan det levende tal ikke læses, falder flader og udtagelse tilbage på åbningen. Hjælp (`dailytraining.fatigueNow` og tvillingen `fatigueLimitNow` til `fatigueLimit`) følger kontakten og kæden til `condition_model_v2` via `GET /api/feature-flags`; slukket viser Hjælp den gamle tekst om datoens start.
+Flader og assistent under `fatigue_now_7801`: Træningssiden viser trætheden lige nu (åbningen plus datoens kørte etaper, hver med sin belastning og sin restitution), og for en rytter med en næste etape i dag eller i morgen en ekstra linje med skønnet ved den etapes start. Skønnet rækker aldrig længere frem end næste etape (ejerens punkt 4), og til en etape i morgen er det samme tal som "Træthed i aften". Assistentens udtagelse (Race Hubs Auto-udfyld og forhåndsvisning, løbsstart) regner trætheden fra starten af løbets første etape, aldrig efter uret på det tidspunkt, knappen trykkes: kun etaper på samme dato som den start, og kun løbsdage før den, tæller med, så udtagelsen er den samme, uanset hvornår den køres. Kan det levende tal ikke læses, viser fladerne (Træningssiden, Udtagelsen, løbets Hold-fane og rytterkortet) en streg i stedet for et tal, og træningssidens skøn ved start og skadesrisiko udelades også; assistentens udtagelse og motoren bruger åbningen. Hjælp (`dailytraining.fatigueNow` og tvillingen `fatigueLimitNow` til `fatigueLimit`) følger kontakten og kæden til `condition_model_v2` via `GET /api/feature-flags`; slukket viser Hjælp den gamle tekst om datoens start.
 
 **#5928 (ejer 15/10, kun `s5_profiles_v1`):** etapens belastning i datoens slot vokser med etapens plads i etapeløbet og med rytterens reelle arbejde (se [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)). Afregningen, restitutionen pr. dato og managerens valg af træning på GT-datoerne er uændrede; hård træning oven på en trættende GT koster som altid (træthed, form, skaderisiko over grænsen).
 

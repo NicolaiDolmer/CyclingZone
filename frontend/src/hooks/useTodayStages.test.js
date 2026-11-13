@@ -124,5 +124,5 @@ test("#6569 DashboardPage kalder useTodayStages paa topniveau (foer early-return
   const hookIdx = page.indexOf("useTodayStages(team?.id)");
   assert.ok(hookIdx > 0, "hook-kaldet mangler");
   assert.ok(hookIdx < page.indexOf("return <AuthLoading"), "hook skal staa foer loading-early-return");
-  assert.match(page, /<TodayStagesStrip stages=\{todayStages\} \/>/);
+  assert.match(page, /\{\(loading \|\| team\) && <TodayStagesStrip stages=\{todayStages\} \/>\}/);
 });

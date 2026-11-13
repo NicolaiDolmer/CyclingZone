@@ -121,8 +121,10 @@ export function prognoseAbilities({ nowAbilities, age, primaryType, secondaryTyp
   const potRate = youthRateForPotential(potentiale);
   const out = {};
   for (const ability of VISIBLE_ABILITIES) {
-    const current = Number(nowAbilities?.[ability]);
-    if (!Number.isFinite(current)) continue;
+    // #6110 F2: NULL er en manglende evne (displayRecipes.abilityValue), ikke et nul,
+    // ogsaa i den gamle model og for en rytter forbi sin top.
+    const current = abilityValue(nowAbilities?.[ability]);
+    if (current === null) continue;
     if (age > peakAge) {
       // Efter peak vokser ingen evne i prognosen — den står på sit nu.
       // (Sæson-declinen vises af udviklings-projektionen, ikke af endpoint-

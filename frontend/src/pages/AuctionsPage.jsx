@@ -963,7 +963,10 @@ export default function AuctionsPage() {
   // med de faktiske auktioner. Ref'en sikrer at vi kun gør det én gang (og aldrig
   // kæmper mod et bevidst fane-valg manageren selv tager bagefter).
   const didDefaultFilterRef = useRef(false);
+  const [filterPicked, setFilterPicked] = useState(false);
+  const [resolvedDefaultFilter, setResolvedDefaultFilter] = useState(/** @type {string | null} */ (null));
   function pickFilter(key) {
+    setFilterPicked(true);
     didDefaultFilterRef.current = true; // manuelt valg → stop auto-default
     setFilter(key);
   }
@@ -1044,7 +1047,8 @@ export default function AuctionsPage() {
       if (a.myHighestBid && leaderId !== null && leaderId !== myTeamId) return true; // overbudt
       return false;
     });
-    didDefaultFilterRef.current = true; // kør kun denne auto-default én gang
+    setResolvedDefaultFilter(!mySituation && filter === "my-situation" ? "all" : filter);
+    didDefaultFilterRef.current = true; // Auto-default only once; manual choices win.
     if (!mySituation && filter === "my-situation") setFilter("all");
   }, [loading, auctions, myTeamId, filter, tabParam]); // eslint-disable-line react-hooks/exhaustive-deps -- setFilter er en lokal funktion, ikke en useState-setter; effekten er én-skuds via didDefaultFilterRef
   // Stats toggle (persisted i localStorage) — #2464: nøgle-evner synlige som
@@ -1623,6 +1627,10 @@ export default function AuctionsPage() {
     ...mySellingAuctions.map(a => a.id),
   ]);
   const mySituationCount = mySituationIds.size;
+  // The existing no-involvement default must be visible in the first content
+  // frame, including while its URL update is still pending. Manual/deep links win.
+  const displayFilter = !loading && !tabParam && !filterPicked && filter === "my-situation"
+    ? resolvedDefaultFilter ?? (mySituationCount === 0 ? "all" : "my-situation") : filter;
   const otherManagerCount = auctions.filter(a => a.rider?.team_id && a.rider.team_id !== myTeamId).length;
 
   function passesAuctionPriceFilter(a) {
@@ -1655,8 +1663,8 @@ export default function AuctionsPage() {
       if (a.rider && !filteredRiderOrder.has(a.rider.id)) return false;
       if (!passesAuctionPriceFilter(a)) return false;
       if (!passesWishlistFilter(a)) return false;
-      if (filter === "my-situation") return mySituationIds.has(a.id);
-      if (filter === "other")        return a.rider?.team_id && a.rider.team_id !== myTeamId;
+      if (displayFilter === "my-situation") return mySituationIds.has(a.id);
+      if (displayFilter === "other")        return a.rider?.team_id && a.rider.team_id !== myTeamId;
       return true;
     })
   );
@@ -1728,9 +1736,10 @@ export default function AuctionsPage() {
           Ingen guld-tint paa knapperne: guld er rationeret til leder-markoerer
           og den aktive fanes underline. */}
       <PageHeader
+        mobileActionsBelow
         title={t("auctions:page.title")}
         subtitle={
-          <span className="font-data tabular-nums text-cz-2">
+          <span className="block font-data tabular-nums text-cz-2">
             {!loading && myTeamId && (
               <>
                 {t("auctions:stats.balance")} {formatNumber(myBalance)} CZ$
@@ -1782,10 +1791,10 @@ export default function AuctionsPage() {
           (PAGE_TEMPLATES: "Tabs are underline-tabs, never buttons"), ikke seks
           guld-tintede knapper i en loesreven raekke. Guld staar kun paa den
           aktive fanes 2 px underline. */}
-      <Tabs value={filter} onChange={pickFilter} className="mb-3">
+      <Tabs value={displayFilter} onChange={pickFilter} className="mb-3">
         <TabList label={t("auctions:page.title")}>
           {FILTER_TABS.map(tab => (
-            <Tab key={tab.key} value={tab.key}>{tab.label}</Tab>
+            <Tab key={tab.key} value={tab.key} className="tabular-nums">{tab.label}</Tab>
           ))}
         </TabList>
       </Tabs>
@@ -1846,7 +1855,7 @@ export default function AuctionsPage() {
         </Section>
       ) : (
         <AuctionsContent
-          filter={filter}
+          filter={displayFilter}
           filtered={filtered}
           totalCount={auctions.length}
           scouting={scouting}

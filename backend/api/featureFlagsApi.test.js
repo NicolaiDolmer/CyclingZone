@@ -155,10 +155,13 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     stage_plan_dropped_front_7635: false,
     tactics_ready_7864: false,
     rider_why_button: false,
+    race_page_v6: false,
     talent_marks_7879: false,
     rider_hover_card: false,
     day_words_7725: false,
     fatigue_now_7801: false,
+
+    training_train_now_instant: false,
   });
   assert.equal(f.betaLookups(), 0, "en anonym forespoergsel maa ikke slaa en bruger op");
 });
@@ -225,10 +228,13 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     stage_plan_dropped_front_7635: false,
     tactics_ready_7864: false,
     rider_why_button: false,
+    race_page_v6: false,
     talent_marks_7879: false,
     rider_hover_card: false,
     day_words_7725: false,
     fatigue_now_7801: false,
+
+    training_train_now_instant: false,
   });
 });
 
@@ -303,10 +309,13 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     stage_plan_dropped_front_7635: false,
     tactics_ready_7864: false,
     rider_why_button: false,
+    race_page_v6: false,
     talent_marks_7879: false,
     rider_hover_card: false,
     day_words_7725: false,
     fatigue_now_7801: false,
+
+    training_train_now_instant: false,
   });
   assert.deepEqual(await readPlayerFeatureFlags(supabase, { isBetaTester: true }), {
     auto_accept_enabled: false,
@@ -342,10 +351,13 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     stage_plan_dropped_front_7635: false,
     tactics_ready_7864: false,
     rider_why_button: false,
+    race_page_v6: false,
     talent_marks_7879: false,
     rider_hover_card: false,
     day_words_7725: false,
     fatigue_now_7801: false,
+
+    training_train_now_instant: false,
   });
 });
 

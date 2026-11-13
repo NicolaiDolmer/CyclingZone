@@ -4,18 +4,18 @@
 
 ## Aktiv styring
 
-> **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11.
+> **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11 · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8078/8080/8099_20261113_*` ~27/11.
 >
-> **🎯 Next action (12/11 eftermiddag):** **PC1 storsession v3** (#7911). **Tændt:** pengelås for alle 12:52 (#6181, første bud mangler). **Merget i dag:** 9 PR (sidst #8038); #8033 venter på #8052/#8053 (delte filer). **Kø (ejer 12/11, løbsdagen først):** holdplaner beta efter 19:05 (#8053, #8050, ejerens kør) → Træn nu for alle → trøjejagt (tre ejervalg, #8052) → træthed lige nu (#8054) → tidsgrænse-design #7715 → løbssiden v6 (#7778) og planlægningssiden (#7535) denne uge. **Op:** første dage for nye, assistenten, Pro 2.0-design, akademi-design. **Dommer FØR merge** (motor, træning, penge). Roadmap #8051, patch notes #8049, motor-måling 13/11.
-> **Åbent:** `backup_7153_wander_*` må ikke slettes; #7277 (off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
+> **🎯 Next action (nat 13-14/11, PC1):** natbølge efter `private-handoffs/2026-11-13-nat-pc1/PLAN.md` (ejer-go 14/11 kl. 00:08): #8141, #8138, #8148, XP-rækker, #8056, #8059, #8152, #7855 + gentjek #8140; ingen merge, ingen tænding. **14/11 kl. 08:30:** `MORGENKORT.md` (samme mappe), #8153-valget, dom over Træn nu trin 3. **Merget 13/11:** Træn nu 1-3, #8139 (slukket), #8144, #8146 (slukket; ejerens adgangskode-skridt mangler), #8151 (on), #8147, 7.441-7.444. **Tændt:** holdplaner (#7864). **Mandag 16/11:** auto-kalender, private grene, Discord-valg (#8149). **#8071:** `private-handoffs/2026-11-13-trup-tabel-design/LAES-FOERST.md`.
+> **Åbent:** `backup_7153_wander_*` må ikke slettes; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Claude Fable 5.2 på PC1, storsession v3 (12/11); ejer merge-kø og tænding. Dolmer PC: Codex retter #8022 (review 2), derefter Claude Code på træning og XP (ejer 12/11).
+> **🤖 Working agent:** PC1 natbølge 13-14/11 i ny session (ejer-go 14/11). Dolmer PC startes IKKE i nat (#7911).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
 > **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; `ratingGolden.5321.json` KUN m. ejer-go.
 
-> **🔴 Åbne fund:** #7832 sent hold mister træningsdato (efterbetales) · #6490 aftenspids · #7139 ranglisten halter · #6504 frigivelse. **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`.
+> **🔴 Åbne fund:** #7832 sent hold mister træningsdato (ingen efterbetaling, ejer 12/11) · #6490 aftenspids · #7139 ranglisten halter · #6504 frigivelse. **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`.
 
 ## Standing context (forever-relaunch)
 

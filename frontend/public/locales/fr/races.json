@@ -1,4 +1,39 @@
 {
+  "racePageV6": {
+    "tab": {
+      "results": "Résultats",
+      "stage": "Étape",
+      "story": "Récit",
+      "standings": "Classements",
+      "tactics": "Tactique",
+      "team": "Équipe"
+    },
+    "hero": {
+      "stageLocks": "L'étape {number} se verrouille à {time} · {countdown}",
+      "locks": "Se verrouille à {time} · {countdown}",
+      "notScheduled": "L'étape {number} n'a pas encore d'heure de départ"
+    },
+    "route": {
+      "aria": "Parcours de l'étape",
+      "km": "{km} km",
+      "gain": "{gain} m de dénivelé",
+      "climbs": "{count, plural, one {# montée} other {# montées}}",
+      "hide": "Masquer le parcours",
+      "show": "Afficher le parcours",
+      "saved": "Enregistré",
+      "savedHere": "Enregistré sur cet appareil",
+      "notSaved": "Non enregistré",
+      "profileTitle": "Le parcours"
+    },
+    "yourDay": {
+      "title": "Ta journée"
+    },
+    "results": {
+      "notRiddenTitle": "Prépare l'étape {number}",
+      "notRiddenHint": "Les résultats s'affichent ici une fois l'étape courue.",
+      "openStage": "Voir l'étape"
+    }
+  },
   "stagePlanReady": {
     "gc": {
       "name": "Rouler pour le général",
@@ -714,17 +749,6 @@
     },
     "hunterExplainer": {
       "dayLine": "Ton chasseur tente de prendre l'échappée matinale. C'est le peloton qui décide, le jour même, si elle va au bout.",
-      "outlook": {
-        "about": "Prévision du moteur : l'échappée va au bout environ {k} fois sur {n}.",
-        "under": "Prévision du moteur : l'échappée va au bout moins de {k} fois sur {n}.",
-        "over": "Prévision du moteur : l'échappée va au bout plus de {k} fois sur {n}.",
-        "stage": "Étape {stage}",
-        "reason": {
-          "nobodyChases": "Peu d'équipes ont une raison de la chasser.",
-          "fewChase": "Une ou deux équipes ont en général une raison de la chasser.",
-          "manyChase": "Plusieurs équipes ont en général une raison de la chasser."
-        }
-      },
       "candidatesHint": "Classés par agressivité : l'envie d'attaquer et de s'engager dans une action.",
       "noCandidates": "Choisis des coureurs pour cette course pour voir tes meilleurs chasseurs.",
       "aggression": "Agressivité",
@@ -1741,6 +1765,10 @@
         "all_out_cracked": "{rider} se donne à fond et se vide dans la dernière ascension.",
         "attack_gain": "{rider} attaque dans la dernière ascension et gagne du temps.",
         "attack_cracked": "{rider} attaque et se vide dans la dernière ascension.",
+        "climb_attack_start": "{rider} attaque au pied de la dernière ascension.",
+        "climb_attack_start_named": "{rider} attaque au pied de {climb}.",
+        "climb_attack_held": "{rider} tient son attaque jusqu'au sommet et a gagné du temps dans l'ascension.",
+        "climb_attack_cracked": "{rider} s'est vidé après son attaque et est lâché.",
         "bad_day_fatigue": "{rider} a connu un jour sans. Les jours difficiles précédents ont laissé des traces.",
         "bad_day_form": "{rider} a connu un jour sans. Il manquait de forme.",
         "bad_day_illness": "{rider} a connu un jour sans. Il était malade.",

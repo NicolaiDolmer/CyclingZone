@@ -16,6 +16,9 @@
 //     sted: motoren springer direkte dertil, uanset hvor langt kaeden er naaet).
 //   - Udbrud kan kun vaere foerste opgave (morgenudbruddet koeres paa etapens
 //     foerste segment; et "senere udbrud" ville vaere et smuthul uden motor bag).
+//     #7855 (ejer 12/11 valg A, kun med kontakten): udbrudsleddet kan baere en
+//     troejejagt (`hunt`), saa rytteren proever udbruddet og koerer om pointene fra
+//     start, i udbruddet eller i den gruppe han ender i. Det er ikke et nyt led.
 //   - Grupetto, kør i mål og sprinttog er slut-opgaver: kun sidste led. Derfor kan
 //     grupetto aldrig komme foer arbejdet.
 //   - Sprinttog kan ikke starte "naar han er sat" (en sat rytter trækker ikke spurten).
@@ -104,6 +107,7 @@ export const TASK_ROLES: Readonly<Record<StagePlanTask, readonly StagePlanRole[]
   ride_in: ALL_ROLES,
   // #7855: klassementsfolkene koerer for klassementet, ikke for troejerne (#2757 G18, #6937).
   hunt_points: ["sprint_captain", "helper", "hunter", "free_role"],
+  // #7855 valg 1 (13/11): kun som jagten paa udbrudsleddet (`hunt`), aldrig som eget led.
   hunt_kom: ["helper", "hunter", "free_role"],
 });
 
@@ -115,7 +119,14 @@ export type StagePlanTrigger =
   | { at: "final_km" }
   | { at: "dropped" };
 
-export type StagePlanLeg = { task: StagePlanTask; from?: StagePlanTrigger };
+/** #7855: opgaverne der jager en passage (point i spurterne / bjergpoint). */
+export type JerseyHuntTask = "hunt_points" | "hunt_kom";
+
+/**
+ * Et led i kaeden. `hunt` (#7855, ejer 12/11 valg A, kun med kontakten): troejejagten paa
+ * udbrudsleddet ("Gaa i udbrud" + "Hent bjergpoint"/"Hent point"). Kun paa et udbrudsled.
+ */
+export type StagePlanLeg = { task: StagePlanTask; from?: StagePlanTrigger; hunt?: JerseyHuntTask };
 
 /** En kategoriseret stigning paa ruten (rutens raa `climbs`-index, samme som waypoints). */
 export type StagePlanClimb = { index: number; km: number; name: string | null; category: string };
@@ -216,14 +227,24 @@ export function stretchHasHuntPassage(route: StagePlanRoute, kind: "sprint" | "k
   return kms.some((km) => km > fromKm && km <= toKm);
 }
 
+/**
+ * #7855: den jagt-opgave leddet koerer, eller null. Et jagt-led jager sin egen art; et udbrudsled
+ * med `hunt` jager den art (ejer 12/11 valg A). Forudsaetter en valideret kaede.
+ */
+export function legHuntTask(leg: StagePlanLeg): JerseyHuntTask | null {
+  if (JERSEY_HUNT_TASKS[leg.task] !== undefined) return leg.task as JerseyHuntTask;
+  return leg.hunt !== undefined && JERSEY_HUNT_TASKS[leg.hunt] !== undefined ? leg.hunt : null;
+}
+
 export function planHasJerseyHunt(legs: readonly StagePlanLeg[]): boolean {
-  return legs.some((leg) => JERSEY_HUNT_TASKS[leg.task] !== undefined);
+  return legs.some((leg) => legHuntTask(leg) !== null);
 }
 
 /**
  * #7855 (reviewfund): planen uden troejejagt, til naar loebet alligevel ikke koerer med opgaverne
  * (kontakten slukket foer foerste etape, eller noedstop midt i loebet). Jagt-leddet bliver til
- * "koer i laeet" paa samme rutepunkt, resten af planen staar, og to ens led i traek bliver til ét.
+ * "koer i laeet" paa samme rutepunkt, et udbrudsled med jagt bliver et rent udbrudsled (#7855 valg A),
+ * resten af planen staar, og to ens led i traek bliver til ét.
  * Altid en gyldig kaede, naar den oprindelige var det (testet).
  */
 export function planWithoutJerseyHunt(legs: readonly StagePlanLeg[]): StagePlanLeg[] {
@@ -261,11 +282,19 @@ export function validateStagePlanLegs(legs: unknown, role: StagePlanRole, route:
   for (let i = 0; i < legs.length; i++) {
     const leg = legs[i] as Record<string, unknown> | null;
     if (!leg || typeof leg !== "object" || Array.isArray(leg)) return "stage_plan_invalid_leg";
-    if (Object.keys(leg).some((k) => k !== "task" && k !== "from")) return "stage_plan_invalid_leg";
+    if (Object.keys(leg).some((k) => k !== "task" && k !== "from" && k !== "hunt")) return "stage_plan_invalid_leg";
     const task = leg["task"];
     if (!isStagePlanTask(task)) return "stage_plan_unknown_task";
     if (JERSEY_HUNT_TASKS[task] && route.jersey_hunt_7855 !== true) return "stage_plan_unknown_task"; // #7855 (slukket)
     if (!TASK_ROLES[task].includes(role)) return "stage_plan_task_not_for_role";
+    // #7855 (ejer 12/11 valg A): jagten paa udbrudsleddet. Slukket findes den ikke (som opgaverne).
+    if ("hunt" in leg) {
+      const hunt = leg["hunt"];
+      if (!isStagePlanTask(hunt) || !JERSEY_HUNT_TASKS[hunt]) return "stage_plan_invalid_leg";
+      if (route.jersey_hunt_7855 !== true) return "stage_plan_unknown_task";
+      if (task !== "breakaway") return "stage_plan_hunt_needs_breakaway";
+      if (!TASK_ROLES[hunt].includes(role)) return "stage_plan_task_not_for_role";
+    }
     if (task === "breakaway" && i > 0) return "stage_plan_breakaway_not_first";
     if (TERMINAL_TASKS.has(task) && i < legs.length - 1) return "stage_plan_terminal_not_last";
     if (task === "sprint_train" && i > 0 && (legs[0] as Record<string, unknown>)["task"] === "breakaway") return "stage_plan_train_after_breakaway"; // #7003 fund 3
@@ -303,24 +332,32 @@ export function validateStagePlanLegs(legs: unknown, role: StagePlanRole, route:
   }
   // #7855: en jagt-opgave skal have mindst én passage af sin art paa sin straekning: fra leddets
   // rutepunkt til naeste leds rutepunkt (eller maal, naar der ikke kommer et rutepunkt efter).
+  // Samme regel for jagten paa udbrudsleddet (valg A): dens straekning er udbrudsleddets.
   for (let i = 0; i < legs.length; i++) {
-    const kind = JERSEY_HUNT_TASKS[(legs[i] as StagePlanLeg).task];
+    const hunt = legHuntTask(legs[i] as StagePlanLeg);
+    const kind = hunt ? JERSEY_HUNT_TASKS[hunt] : undefined;
     if (!kind) continue;
     const next = legKms[i + 1];
     const toKm = typeof next === "number" ? next : route.distance_km;
     if (!stretchHasHuntPassage(route, kind, legKms[i] as number, toKm)) return kind === "kom" ? "stage_plan_hunt_no_climb" : "stage_plan_hunt_no_sprint";
   }
+  // #7855 (ejer 13/11 valg 1, "Kun sammen med udbrud"): bjergjagt findes kun paa udbrudsleddet
+  // (`hunt`). Et selvstaendigt "Hent bjergpoint"-led er ikke en opgave, heller ikke efter et
+  // udbrudsled (kommer han ikke med, ville det vaere bjergjagt fra feltet). Sidst, saa alle andre
+  // planer faar praecis samme svar som foer.
+  if (legs.some((leg) => (leg as StagePlanLeg).task === "hunt_kom")) return "stage_plan_unknown_task";
   return null;
 }
 
 /** Kanonisk form (kun kendte noegler), til lagring. Forudsaetter en valideret kaede. */
 export function normalizeStagePlanLegs(legs: readonly StagePlanLeg[]): StagePlanLeg[] {
   return legs.map((leg, i) => {
-    if (i === 0 || !leg.from) return { task: leg.task };
+    const hunt = leg.hunt !== undefined ? { hunt: leg.hunt } : {}; // #7855 valg A (kun udbrudsleddet)
+    if (i === 0 || !leg.from) return { task: leg.task, ...hunt };
     const from: StagePlanTrigger = leg.from.at === "kom"
       ? { at: "kom", kom_index: leg.from.kom_index }
       : { at: leg.from.at };
-    return { task: leg.task, from };
+    return { task: leg.task, from, ...hunt };
   });
 }
 

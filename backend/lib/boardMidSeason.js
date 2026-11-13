@@ -13,6 +13,7 @@
 // Skip-betingelser:
 //   - completed < midpoint
 //   - is_ai/is_bank/is_frozen team
+//   - parkeret hold (teams.parked_at sat, #8099): ingen besked, ingen oplåsning
 //   - 1yr-board mangler eller er pending (ikke completed)
 //
 // #3502 · Der er BEVIDST ingen global transfer_windows.board_negotiation_state-
@@ -35,6 +36,7 @@ import { parseBoardGoals, evaluateGoalProgress } from "./boardGoals.js";
 import { sumRiderSalaries } from "./boardUtils.js";
 import { unlockExtraordinaryRequestForTeam as unlockExtraordinaryRequestForTeamShared } from "./boardMandateEngine.js";
 import { fetchAllRows } from "./supabasePagination.js";
+import { isParkedTeam } from "./managerParking.js";
 
 export const MID_SEASON_TITLE_PREFIX = "Mid-season check";
 
@@ -45,7 +47,7 @@ export const MID_SEASON_TITLE_PREFIX = "Mid-season check";
  * @param {object} args.supabase             — Supabase client
  * @param {Function} args.notifyUser         — fra notificationService.js
  * @param {Date} [args.now]                  — for tests
- * @returns {Promise<{ teams_checked: number, banners_sent: number, errors: number }>}
+ * @returns {Promise<{ teams_checked: number, banners_sent: number, errors: number, parked_teams_skipped: number }>}
  */
 export async function processMidSeasonReviewCron({
   supabase,
@@ -57,7 +59,8 @@ export async function processMidSeasonReviewCron({
   if (!supabase?.from) throw new Error("Supabase client is required");
   if (typeof notifyUser !== "function") throw new Error("notifyUser is required");
 
-  const summary = { teams_checked: 0, banners_sent: 0, errors: 0 };
+  // #8099 · parked_teams_skipped: parkerede hold der er sprunget helt over.
+  const summary = { teams_checked: 0, banners_sent: 0, errors: 0, parked_teams_skipped: 0 };
 
   const { data: activeSeason, error: seasonError } = await supabase
     .from("seasons")
@@ -75,15 +78,34 @@ export async function processMidSeasonReviewCron({
   // 2. Human teams
   // #1237 · balance tilføjet: nettostilling-input til no_outstanding_debt
   // (scoreFinanceHealthGoal, boardUtils.js) — bruges af evaluateMidSeasonTrigger.
+  // #8099 · `parked_at` SKAL med: isParkedTeam læser et manglende felt som
+  // "ikke parkeret", så uden kolonnen ville filteret nedenfor åbne igen.
   const { data: humanTeams, error: teamsError } = await supabase
     .from("teams")
-    .select("id, user_id, name, division, season_1_identity_basis, balance")
+    .select("id, user_id, name, division, season_1_identity_basis, balance, parked_at")
     .eq("is_ai", false)
     .eq("is_bank", false)
     .eq("is_frozen", false)
     .eq("is_test_account", false);
   if (teamsError) throw teamsError;
   if (!humanTeams?.length) return summary;
+
+  // #8099 · Parkerede hold (#4592) er HELT ude af halvsæson-tjekket: ingen
+  // besked og ingen oplåsning af den ekstraordinære forespørgsel. Ejer-regel
+  // 23/9 (#4592) + ejer-beslutning 4/10 (#5902, A): bestyrelsen fryses, mens
+  // holdet er parkeret. Samme sandhed og samme filter som den ugentlige kørsel
+  // (#8068, boardWeekendFinalization.js): managerParking.isParkedTeam på det
+  // aktuelle teams.parked_at, som i en aktiv sæson er præcis "parkeret lige nu".
+  //
+  // Fail-closed: kan parkeringen ikke aflæses (feltet mangler i en række),
+  // fejler hele kørslen synligt FØR noget sendes eller låses op. cron.js
+  // fanger fejlen og sender den til Sentry.
+  if (humanTeams.some((team) => team?.parked_at === undefined)) {
+    throw new Error("mid-season check: teams.parked_at mangler i hold-opslaget, intet sendt (#8099 fail-closed)");
+  }
+  const teams = humanTeams.filter((/** @type {{ parked_at?: string|null }} */ team) => !isParkedTeam(team));
+  summary.parked_teams_skipped = humanTeams.length - teams.length;
+  if (!teams.length) return summary;
 
   // #1237 · aktiv gæld pr. hold (batch), samme mønster som boardWeekendFinalization.js.
   // fetchAllRows: PostgREST's 1000-rækker-loft kan ellers stille miste lån på
@@ -92,7 +114,7 @@ export async function processMidSeasonReviewCron({
     .from("loans")
     .select("id, team_id, amount_remaining")
     .eq("status", "active")
-    .in("team_id", humanTeams.map((t) => t.id))
+    .in("team_id", teams.map((t) => t.id))
     .order("id", { ascending: true }));
   const debtByTeam = new Map();
   const loanCountByTeam = new Map();
@@ -125,6 +147,10 @@ export async function processMidSeasonReviewCron({
   // mål-status). Samme fallback-semantik som loadGoalContextForBoard
   // (boardGoalContext.js): rows uden league_division_id (pre-pulje-data) tælles
   // stadig tier-bredt, prefixet så pulje- og tier-nøgler aldrig kolliderer.
+  // #8099 · Tællingen bruger BEVIDST stadig hele den humane population
+  // (humanTeams, inkl. parkerede), så et aktivt holds relative_rank-mål og
+  // dermed dets besked er præcis som før rettelsen. Kun hvem der tjekkes er
+  // ændret, ikke hvad et aktivt hold måles imod.
   const humanTeamIds = new Set(humanTeams.map((t) => t.id));
   function poolKey(standing) {
     return standing.league_division_id != null
@@ -138,7 +164,7 @@ export async function processMidSeasonReviewCron({
     divisionManagerCounts.set(key, (divisionManagerCounts.get(key) || 0) + 1);
   }
 
-  for (const team of humanTeams) {
+  for (const team of teams) {
     summary.teams_checked += 1;
     try {
       const standing = standingsByTeam.get(team.id) || null;

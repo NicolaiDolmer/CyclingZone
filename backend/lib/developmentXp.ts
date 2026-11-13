@@ -27,8 +27,9 @@
 // Alle tal er PRIVATE (hard rule 17, balance-internals/6110/) og gives som `params`.
 // Der er bevidst ingen standardværdier: uden gyldige params findes modellen ikke.
 //
-// Ren funktion: ingen DB, ingen Date, ingen Math.random. Dagsvariationen beregnes
-// af kalderen, fordi den bruger en hemmelig nøgle på serveren (spec §5.2).
+// Ren funktion: ingen DB, ingen Date, ingen Math.random. Dagsvariationen med den
+// hemmelige nøgle (spec §5.2) ligger i developmentXpVariation.ts; dens felter
+// valideres her, og kalderen (applyDailyTick) ganger den på dagens XP.
 
 import { TRAINING_CONFIG, TRAINING_FOCUSES, programAbilityWeight } from "./training.js";
 import { dayTypeForProgram, RECOVERY_INTENSITY } from "./trainingDayTypes.js";
@@ -37,6 +38,7 @@ import { abilityMeta } from "./abilityRegistry.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { staffTrainingBonus, facilityTrainingMultiplier } from "./staffTrainingBonus.js";
 import { TRAINING_RACE_DAY_CONFIG } from "./trainingRaceDayTick.js";
+import { validateXpVariation, type XpVariation } from "./developmentXpVariation.ts";
 
 // Skalaens top. Evner går til 99; prisen regner mod 100, så 99 aldrig koster uendeligt.
 const SCALE_TOP = 100;
@@ -65,6 +67,9 @@ export interface DevelopmentXpParams {
   offFocusShare: number;
   raceOffFocusShare: number;
   typeShare: Readonly<Record<XpRoleClass, number>>;
+  // Dagsvariationen (§5.2). Udeladt = ingen variation. Nøglen ligger ikke på objektet
+  // (developmentXpVariation.ts), så params kan skrives ud uden at afsløre den.
+  variation?: XpVariation;
 }
 
 const isNum = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x);
@@ -152,6 +157,10 @@ export function validateDevelopmentXpParams(raw: unknown): DevelopmentXpParams |
   // Enheden er en signatur-fokusevne, så signaturen er hele XP'en.
   if (typeShare.signatur !== 1) return null;
 
+  // Sat, men ugyldig variation gør hele params ugyldige: XP må ikke køre uden den.
+  const variation = validateXpVariation(p.variation);
+  if (variation === null) return null;
+
   return Object.freeze({
     price: Object.freeze({ base: price.base, exponent: price.exponent }),
     potentialXp: freezeCurve(potentialXp),
@@ -159,6 +168,8 @@ export function validateDevelopmentXpParams(raw: unknown): DevelopmentXpParams |
     offFocusShare: p.offFocusShare,
     raceOffFocusShare: p.raceOffFocusShare,
     typeShare: Object.freeze(typeShare),
+    // Kun med, når den er sat, så params uden variation har samme form som før.
+    ...(variation ? { variation } : {}),
   });
 }
 
@@ -269,8 +280,10 @@ export function xpBarView(
 // Samme fordeling som 10-sæsoners-kørslen (scripts/dev/tenSeasonSim6110.mjs), så
 // det, kørslen måler, er det, motoren kører. Form og træthed er ikke led (S29), og
 // alder er aldrig en turbo: ungdomsfaktoren og alderstabellen er ikke med.
-// Endnu ikke med: dagsvariationen med hemmelig nøgle (§5.2) og Træn nu-bonussen
-// (B16). Begge er krav før tænding, ikke en del af dette trin.
+// Dagsvariationen (§5.2) og Træn nu-bonussen (B16) ganges på i applyDailyTick, fordi
+// de gælder hele rytterens dag, ikke én evne. Løbsdags-gulvet (ejer 7/11, gate X8)
+// står her: en løbsdag giver i hver evne mindst det, en hård træningsdag med
+// rytterens træner og facilitet ville give.
 
 // Løbsdagens program (raceDayYield.js RACE_DAY_FOCUS). Gentaget her, fordi
 // raceDayYield.js importerer dailyTraining.js; en test låser, at de er ens.
@@ -303,25 +316,34 @@ export interface XpAbilityDeltaInput {
   trainingCfg?: { focusGrowthMult?: Record<string, number> };
   /** Sat = løbsdags-aksen (#4846): en dato har flere ticks, som deler datoens XP. */
   budgetDivisor?: number | null;
+  /**
+   * Løbsdagens tillæg for evnen (rolletillægget, #5950, som multiplikator på dagen).
+   * Tillægget lægges oven på løbsdags-gulvet, så det er det samme, uanset om gulvet
+   * løfter dagen. 1 = intet tillæg.
+   */
+  yieldMult?: number | null;
 }
 
+// Intensiteten, løbsdags-gulvet sammenlignes med.
+const RACE_DAY_FLOOR_INTENSITY = "hard";
+
 /**
- * XP på én evne for ét tick. Erstatter dailyAbilityDelta's andel af et point, når
- * kontakten er tændt. Kender intet loft (B4): kun prisen bremser.
+ * XP på én evne for ét tick med programmet læst som en løbsdag (`raceDay`) eller en
+ * træningsdag. Delt af selve dagen og af løbsdags-gulvet, så de to regnes ens.
  */
-export function developmentXpAbilityDelta(
+function programAbilityXp(
   {
-    ability, age, potentiale, program, primaryType = null, secondaryType = null,
-    staff = null, facilityTier = null, riderLevel = null, academyRateMult = 1,
-    trainingCfg = TRAINING_CONFIG, budgetDivisor = null,
-  }: XpAbilityDeltaInput,
+    ability, age, potentiale, program, primaryType, secondaryType,
+    staff, facilityTier, riderLevel, intention, trainingCfg, budgetDivisor,
+  }: Required<Omit<XpAbilityDeltaInput, "program" | "academyRateMult" | "trainingCfg" | "yieldMult">> & {
+    program: XpTickProgram; intention: number; trainingCfg: XpAbilityDeltaInput["trainingCfg"];
+  },
+  raceDay: boolean,
   params: DevelopmentXpParams,
 ): number {
-  if (!program || program.intensity === "rest") return 0;
   const grow = trainingCfg?.focusGrowthMult ?? {};
   const intensityShare = (grow[program.intensity as string] ?? 1) / grow.hard;
   const focusAbilities = program.focusAbilities ?? (TRAINING_FOCUSES as Record<string, readonly string[]>)[program.focus as string] ?? [];
-  const raceDay = program.focus === XP_RACE_DAY_FOCUS;
   // En restitutionsdag giver kun XP i sessionens egen evne (#3762).
   const noOffFocus = program.intensity === RECOVERY_INTENSITY || program.offFocus === false;
   const offFocusShare = noOffFocus ? 0 : (raceDay ? params.raceOffFocusShare : params.offFocusShare);
@@ -335,7 +357,6 @@ export function developmentXpAbilityDelta(
   // Træner og facilitet tæller kun på træningsdage (S13).
   const coach = raceDay ? 1 : facilityTrainingMultiplier({ facilityTier, staff })
     * staffTrainingBonus({ facilityTier, staff: (staff ?? null) as object | null, ability, riderLevel: riderLevel as string });
-  const intention = isNum(academyRateMult) && academyRateMult >= 0 ? academyRateMult : 1;
   const raceDayAxis = isNum(budgetDivisor) && budgetDivisor > 0;
   return abilityXpForTick({
     riderXp: xpPerDate({ potentiale, age, mental: MENTAL_ABILITIES.has(ability) }, params),
@@ -345,6 +366,40 @@ export function developmentXpAbilityDelta(
     // #6711: enheden er én dato; på løbsdags-aksen deler datoens løbsdage den.
     ticksPerDate: raceDayAxis ? TRAINING_RACE_DAY_CONFIG.raceDaysPerDate : 1,
   });
+}
+
+/**
+ * XP på én evne for ét tick. Erstatter dailyAbilityDelta's andel af et point, når
+ * kontakten er tændt. Kender intet loft (B4): kun prisen bremser.
+ *
+ * Løbsdags-gulvet (ejer 7/11, bekræftet 12/11, gate X8): på en løbsdag er XP i hver
+ * evne mindst det, en hård træningsdag i etapens evner med rytterens træner og
+ * facilitet ville give. Løbsdagen selv regnes uden træner (S13); gulvet er det, der
+ * sikrer, at et hold med en god træner aldrig taber på at stille op. Gulvet regnes
+ * i samme enhed som tick'et (også på løbsdags-aksen) og uden dagens intention, for
+ * en træningsdag har ingen intention. Gulvet løfter kun selve dagen; løbsdagens
+ * tillæg (`yieldMult`) regnes af dagen og lægges oven i, så "mere i det, etapen
+ * kræver" er det samme for alle roller, uanset om gulvet binder (D3 variant A).
+ */
+export function developmentXpAbilityDelta(
+  {
+    ability, age, potentiale, program, primaryType = null, secondaryType = null,
+    staff = null, facilityTier = null, riderLevel = null, academyRateMult = 1,
+    trainingCfg = TRAINING_CONFIG, budgetDivisor = null, yieldMult = 1,
+  }: XpAbilityDeltaInput,
+  params: DevelopmentXpParams,
+): number {
+  if (!program || program.intensity === "rest") return 0;
+  const raceDay = program.focus === XP_RACE_DAY_FOCUS;
+  const intention = isNum(academyRateMult) && academyRateMult >= 0 ? academyRateMult : 1;
+  const mult = isNum(yieldMult) && yieldMult > 0 ? yieldMult : 1;
+  const base = {
+    ability, age, potentiale, primaryType, secondaryType, staff, facilityTier, riderLevel, trainingCfg, budgetDivisor,
+  };
+  const day = programAbilityXp({ ...base, program, intention }, raceDay, params);
+  if (!raceDay) return day * mult;
+  const floor = programAbilityXp({ ...base, program: { ...program, intensity: RACE_DAY_FLOOR_INTENSITY }, intention: 1 }, false, params);
+  return Math.max(floor, day * mult + Math.max(0, floor - day));
 }
 
 export interface XpTickResult {
@@ -396,48 +451,4 @@ export function developmentXpTick(
     }
   }
   return { abilities: nextAbilities, progress: nextProgress, gains, xp, score: Math.round(score * 100) / 100 };
-}
-
-/**
- * Maks +1 pr. evne pr. dato (#6210) i XP. Dagens capTickGainsPerDate lægger klippede
- * point tilbage som +1 på bjælken; det holder ikke, når prisen skifter mellem to
- * point. Her købes tick'et om fra rytterens tilstand før tick'et med datoens rest,
- * så ingen XP går tabt eller opstår. Uden klip returneres samme objekt.
- */
-export function capXpTickGainsPerDate(
-  { tickResult, abilities, progress, usedGains = {}, cap = 1 }: {
-    tickResult: (Partial<XpTickResult> & Record<string, unknown>) | null | undefined;
-    abilities: Record<string, unknown>;
-    progress?: Record<string, unknown> | null;
-    usedGains?: Record<string, unknown>;
-    cap?: number;
-  },
-  params: DevelopmentXpParams,
-): typeof tickResult {
-  if (!tickResult?.gains) return tickResult;
-  let next: (Partial<XpTickResult> & Record<string, unknown> & { capped_by_date: Record<string, number> }) | null = null;
-  for (const [ability, n] of Object.entries(tickResult.gains)) {
-    const gained = Number(n) || 0;
-    const allowance = Math.max(0, cap - (Number(usedGains[ability]) || 0));
-    if (gained <= allowance) continue;
-    next ??= {
-      ...tickResult,
-      abilities: { ...tickResult.abilities },
-      progress: { ...tickResult.progress },
-      gains: { ...tickResult.gains },
-      capped_by_date: {},
-    };
-    const out = buyPoints({
-      level: Number(abilities?.[ability] ?? 0),
-      bar: Number(progress?.[ability] ?? 0),
-      xp: Number(tickResult.xp?.[ability] ?? 0),
-      maxPoints: allowance,
-    }, params);
-    next.abilities![ability] = out.level;
-    next.progress![ability] = out.bar;
-    if (out.points > 0) next.gains![ability] = out.points;
-    else delete next.gains![ability];
-    next.capped_by_date[ability] = gained - out.points;
-  }
-  return next ?? tickResult;
 }

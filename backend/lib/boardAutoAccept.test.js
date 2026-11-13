@@ -129,6 +129,7 @@ function baseState({ teamCreatedAt, boardUpdatedAt, negotiationStatus = "pending
         is_bank: false,
         is_frozen: false,
         is_test_account: false,
+        parked_at: null, // #8110 · Postgres leverer altid feltet
       },
     ],
     board_profiles: [
@@ -348,7 +349,7 @@ test("manglende 3yr-række: anker = 5yr-rækkens created_at (da forrige plan ble
         balance: 500000, sponsor_income: 240000, division: 3,
         season_1_identity_basis: null, team_dna_key: "sprint_kommerciel",
         created_at: teamCreatedAt,
-        is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
+        is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, parked_at: null,
       },
     ],
     board_profiles: [
@@ -423,7 +424,7 @@ function makeRenewalState({ satisfaction = 82, budgetModifier = 1.2, tradeoffPay
         balance: 1230000, sponsor_income: 240000, division: 3,
         season_1_identity_basis: null, team_dna_key: "sprint_kommerciel",
         created_at: daysAgo(300),
-        is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
+        is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, parked_at: null,
       },
     ],
     board_profiles: [
@@ -827,4 +828,72 @@ test("#5946 buildMandateMirrorForOneYear: kun 1yr + underskrevet mandat med mål
   // Rå mål ordret — ingen metadata-berigelse persisteres.
   const mirrored = buildMandateMirrorForOneYear({ planType: "1yr", signedMandate: signed });
   assert.deepEqual(Object.keys(mirrored.goals[1]).sort(), ["category", "target", "type"]);
+});
+
+// =====================================================================
+// #8110 · Bestyrelsen er frosset for parkerede hold (#5902, A)
+// =====================================================================
+// Samme filter som den ugentlige kørsel (#8068) og halvsæson-tjekket (#8103):
+// managerParking.isParkedTeam på teams.parked_at. Et parkeret hold får ingen
+// plan-påmindelse, ingen auto-accept og ingen board-skrivning.
+
+const PARKED_AT_8110 = "2026-10-25T03:00:00Z";
+
+function parkedState(daysOpen) {
+  const state = baseState({ teamCreatedAt: new Date(NOW.getTime() - daysOpen * DAY_MS).toISOString() });
+  state.teams[0].parked_at = PARKED_AT_8110;
+  return state;
+}
+
+test("#8110: parkeret hold, dag 2 → ingen T-3-påmindelse", async () => {
+  const { summary, notifications } = await runCron(parkedState(2), NOW);
+  assert.equal(notifications.length, 0);
+  assert.equal(summary.reminders_sent, 0);
+  assert.equal(summary.teams_checked, 0, "et parkeret hold tjekkes slet ikke");
+  assert.equal(summary.parked_teams_skipped, 1);
+});
+
+test("#8110: parkeret hold, dag 5 → ingen auto-accept, ingen besked, planen står urørt", async () => {
+  const state = parkedState(5);
+  const { summary, notifications } = await runCron(state, NOW);
+  assert.equal(summary.auto_accepted, 0);
+  assert.equal(notifications.length, 0);
+  assert.equal(state.board_profiles.find((b) => b.plan_type === "5yr").negotiation_status, "pending");
+});
+
+test("#8110: et aktivt hold i samme kørsel får sin påmindelse som før", async () => {
+  const state = twoTeamState(new Date(NOW.getTime() - 2 * DAY_MS));
+  state.teams[1].parked_at = PARKED_AT_8110;
+  const { summary, notifications } = await runCron(state, NOW);
+  assert.deepEqual(notifications.map((n) => n.userId), ["user-1"]);
+  assert.equal(summary.reminders_sent, 1);
+  assert.equal(summary.parked_teams_skipped, 1);
+});
+
+test("#8110: kan parkeringen ikke aflæses (parked_at mangler i opslaget), fejler kørslen og sender intet", async () => {
+  const state = baseState({ teamCreatedAt: new Date(NOW.getTime() - 5 * DAY_MS).toISOString() });
+  const fake = createFakeSupabase(state);
+  const realFrom = fake.from.bind(fake);
+  // Simulerer et opslag, hvor parked_at ikke kom med (fx en select uden kolonnen).
+  fake.from = (table) => {
+    const builder = realFrom(table);
+    if (table !== "teams") return builder;
+    const realSelect = builder.select.bind(builder);
+    builder.select = (columns) => realSelect(
+      String(columns).split(",").map((c) => c.trim()).filter((c) => c !== "parked_at").join(", ")
+    );
+    return builder;
+  };
+  const notifications = [];
+  await assert.rejects(
+    processBoardAutoAcceptCron({
+      supabase: fake,
+      notifyUser: async (args) => { notifications.push(args); return { delivered: true }; },
+      now: NOW,
+      rolloutFloor: DISABLE_ROLLOUT_FLOOR,
+    }),
+    /parked_at/
+  );
+  assert.equal(notifications.length, 0);
+  assert.equal(state.board_profiles[0].negotiation_status, "pending", "intet auto-accepteret");
 });

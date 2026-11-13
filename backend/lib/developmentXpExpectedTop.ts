@@ -168,8 +168,8 @@ export function expectedCareer(
         const level = state[ability];
         if (!isNum(level)) continue;
         const riderXp = MENTAL_ABILITIES.has(ability) ? mental : physical;
-        // Maks +1 pr. evne pr. dato, som motoren (spec §4.3); resten bliver på bjælken.
-        const out = buyPoints({ level, bar: bars[ability] ?? 0, xp: riderXp * share, maxPoints: 1 }, params);
+        // Intet loft pr. dato, som motoren (#6110 R9): kun prisen bremser.
+        const out = buyPoints({ level, bar: bars[ability] ?? 0, xp: riderXp * share }, params);
         bars[ability] = out.bar;
         state[ability] = out.level;
       }

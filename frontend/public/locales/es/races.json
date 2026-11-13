@@ -1,4 +1,39 @@
 {
+  "racePageV6": {
+    "tab": {
+      "results": "Resultados",
+      "stage": "Etapa",
+      "story": "Historia",
+      "standings": "Clasificaciones",
+      "tactics": "Táctica",
+      "team": "Equipo"
+    },
+    "hero": {
+      "stageLocks": "La etapa {number} se cierra a las {time} · {countdown}",
+      "locks": "Se cierra a las {time} · {countdown}",
+      "notScheduled": "La etapa {number} aún no tiene hora de salida"
+    },
+    "route": {
+      "aria": "Recorrido de la etapa",
+      "km": "{km} km",
+      "gain": "{gain} m de desnivel",
+      "climbs": "{count, plural, one {# subida} other {# subidas}}",
+      "hide": "Ocultar recorrido",
+      "show": "Mostrar recorrido",
+      "saved": "Guardado",
+      "savedHere": "Guardado en este dispositivo",
+      "notSaved": "No guardado",
+      "profileTitle": "El recorrido"
+    },
+    "yourDay": {
+      "title": "Tu día"
+    },
+    "results": {
+      "notRiddenTitle": "Prepárate para la etapa {number}",
+      "notRiddenHint": "Los resultados aparecen aquí cuando se haya corrido la etapa.",
+      "openStage": "Ver la etapa"
+    }
+  },
   "stagePlanReady": {
     "gc": {
       "name": "Correr para la general",
@@ -714,17 +749,6 @@
     },
     "hunterExplainer": {
       "dayLine": "Tu cazador intenta meterse en la escapada de la mañana. Si llega o no, lo decide el pelotón el día de la carrera.",
-      "outlook": {
-        "about": "Previsión del motor: la escapada llega unas {k} de cada {n} veces.",
-        "under": "Previsión del motor: la escapada llega menos de {k} de cada {n} veces.",
-        "over": "Previsión del motor: la escapada llega más de {k} de cada {n} veces.",
-        "stage": "Etapa {stage}",
-        "reason": {
-          "nobodyChases": "Pocos equipos tienen motivos para perseguirla.",
-          "fewChase": "Uno o dos equipos suelen tener motivos para perseguirla.",
-          "manyChase": "Varios equipos suelen tener motivos para perseguirla."
-        }
-      },
       "candidatesHint": "Ordenados por agresividad: las ganas de atacar y de comprometerse con un movimiento.",
       "noCandidates": "Elige ciclistas para esta carrera para ver a tus mejores cazadores.",
       "aggression": "Agresividad",
@@ -1741,6 +1765,10 @@
         "all_out_cracked": "{rider} lo da todo y se queda vacío en la última subida.",
         "attack_gain": "{rider} ataca en la última subida y gana tiempo.",
         "attack_cracked": "{rider} ataca y se queda vacío en la última subida.",
+        "climb_attack_start": "{rider} ataca al pie de la última subida.",
+        "climb_attack_start_named": "{rider} ataca al pie de {climb}.",
+        "climb_attack_held": "{rider} mantiene el ataque hasta la cima y ha ganado tiempo en la subida.",
+        "climb_attack_cracked": "{rider} se ha quedado vacío tras el ataque y se descuelga.",
         "bad_day_fatigue": "{rider} tuvo un mal día. Los días duros anteriores le pasaron factura.",
         "bad_day_form": "{rider} tuvo un mal día. Le faltaba forma.",
         "bad_day_illness": "{rider} tuvo un mal día. No se encontraba bien de salud.",

@@ -2,10 +2,10 @@
 // Erstatter de 9 håndrullede header-varianter fra design-audit'en.
 // Action-cluster-kontrakt: maks én Select (sm) + én primær Button (sm) — intet andet.
 // På mobil wrapper clusteret under titel-blokken (flex-wrap).
-export default function PageHeader({ title, subtitle, actions = null, className = "", ...rest }) {
+export default function PageHeader({ title, subtitle, actions = null, className = "", mobileActionsBelow = false, ...rest }) {
   return (
     <header
-      className={`mb-6 flex flex-wrap items-center justify-between gap-4 ${className}`}
+      className={`mb-6 flex flex-wrap items-center justify-between gap-4 ${mobileActionsBelow ? "max-sm:flex-col max-sm:items-start" : ""} ${className}`}
       {...rest}
     >
       <div className="min-w-0">

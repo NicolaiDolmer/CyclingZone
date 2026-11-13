@@ -5,6 +5,8 @@
 //   · loaderen: kontakt, startdato (tick-datoen afgoer), params, strict og de ugyldige par
 //   · grenen: intet loft, prisen bremser, maks +1 pr. dato uden XP-tab, kurve B taber
 //   · loebsdagens rolletillaeg laegger det samme oven i, uanset off-fokus-andelen
+//   · loebsdags-gulvet: mindst en haard traeningsdag med traener, for alle roller (ejer 7/11)
+//   · dagsvariationen ganges paa hele dagen pr. (rytter, dato), og noeglen slipper aldrig ud
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -18,13 +20,17 @@ import { withRaceDayRoleYield } from "./raceDayRoleYield5950.js";
 import { FRESH_FLAG_KEYS } from "./featureStage.js";
 import { STAGE_FLAGS } from "./stageFlagCatalog.js";
 import {
-  XP_RACE_DAY_FOCUS, buyPoints, capXpTickGainsPerDate, developmentXpAbilityDelta, validateDevelopmentXpParams,
+  XP_RACE_DAY_FOCUS, buyPoints, developmentXpAbilityDelta, validateDevelopmentXpParams,
   xpPriceForNextPoint,
 } from "./developmentXp.ts";
 import {
   DEVELOPMENT_XP_FLAG_KEY, DEVELOPMENT_XP_FROM_DATE_KEY, DEVELOPMENT_XP_PARAMS_KEY,
   developmentXpFromDateValue, loadDevelopmentXp, withRaceDayRoleYieldXp,
 } from "./developmentXpFlag.ts";
+import { developmentXpDayVariation } from "./developmentXpVariation.ts";
+import { XP_RACE_FIT_HOME_STAGES, xpRaceFitsRider } from "./developmentXpRaceFit.ts";
+import { sessionsByLevelFor } from "./trainingDayTypes.js";
+import { applyTrainingCatalog } from "./trainingCatalogV3.js";
 import {
   XP_TEST_PARAMS, ENGINE_SCENARIOS, allOffDigests, engineSeed, gameState, runEngine,
 } from "./__fixtures__/developmentXpOffScenarios.js";
@@ -226,38 +232,143 @@ test("#6110 gren: dailyAbilityDelta under XP er XP pr. tick, og en dato paa loeb
   assert.equal(dailyAbilityDelta({ ...base, developmentXp: null }), 0, "dagens model: paa taget = 0");
 });
 
-test("#6110 gren: traener og facilitet kun paa traeningsdage (S13)", () => {
+test("#6110 gren: traener og facilitet paa traeningsdage (S13); paa loebsdage kun gennem gulvet (ejer 7/11)", () => {
   const staff = { training_staff: [{ dimension: "physical", level: 5 }] };
+  const coached = { staff, facilityTier: 3, riderLevel: "senior" };
   const args = { ability: "climbing", age: 24, potentiale: 4, primaryType: "climber" };
   const train = { focus: "vo2max_climb", intensity: "hard" };
   const race = { ...raceDayProgram("mountain"), intensity: "hard" };
   const t0 = developmentXpAbilityDelta({ ...args, program: train }, XP);
-  const t1 = developmentXpAbilityDelta({ ...args, program: train, staff, facilityTier: 3, riderLevel: "senior" }, XP);
+  const t1 = developmentXpAbilityDelta({ ...args, program: train, ...coached }, XP);
   const r0 = developmentXpAbilityDelta({ ...args, program: race }, XP);
-  const r1 = developmentXpAbilityDelta({ ...args, program: race, staff, facilityTier: 3, riderLevel: "senior" }, XP);
-  assert.ok(t1 >= t0);
-  assert.equal(r1, r0);
+  const r1 = developmentXpAbilityDelta({ ...args, program: race, ...coached }, XP);
+  assert.ok(t1 > t0, "traeneren loefter en traeningsdag");
+  // Hard loebsdag uden traener er praecis en haard dag; med traener loefter gulvet den til traeningsdagen.
+  const hardTrain = (extra) => developmentXpAbilityDelta({ ...args, program: { ...race, focus: "x_floor_probe" }, ...extra }, XP);
+  assert.equal(r0, hardTrain({}));
+  assert.equal(r1, hardTrain(coached));
+  assert.ok(r1 > r0);
 });
 
-// ── Maks +1 pr. dato i XP ─────────────────────────────────────────────────────
+// ── Loebsdags-gulvet (ejer 7/11, bekraeftet 12/11, gate X8) ──────────────────
 
-test("#6110 dato-loft: klippet tick koebes om fra tilstanden foer tick'et, ingen XP tabt", () => {
+const PROFILES = ["flat", "hilly", "mountain", "cobbles", "itt", "ttt"];
+const RIDERS = [
+  { age: 19, potentiale: 1.5, primaryType: "sprinter", secondaryType: "rouleur" },
+  { age: 24, potentiale: 4, primaryType: "climber", secondaryType: "puncheur" },
+  { age: 33, potentiale: 6, primaryType: "rouleur", secondaryType: null },
+];
+const STAFFS = [
+  {},
+  { staff: { training_staff: [{ dimension: "physical", level: 5 }, { dimension: "mental", level: 3 }] }, facilityTier: 3, riderLevel: "senior" },
+  { staff: { training_staff: [{ dimension: "physical", level: 2 }] }, facilityTier: 1, riderLevel: "u23" },
+];
+
+// Den haarde traeningsdag i loebsdagens evner, med rytterens traener og facilitet.
+const hardTrainingDayXp = (ability, program, rider, staffArgs, budgetDivisor = null) => developmentXpAbilityDelta({
+  ability, ...rider, ...staffArgs, budgetDivisor,
+  program: { ...program, focus: "x_floor_probe", intensity: "hard" },
+}, XP);
+
+test("#6110 gulv: en loebsdag giver i hver evne mindst en haard traeningsdag med traener, for alle roller", () => {
+  let checks = 0;
+  let lifted = 0;
+  for (const roleParams of [ROLE_PARAMS, { ...ROLE_PARAMS, roleDrivesBaseDay: true }]) {
+    for (const role of [...VALID_RACE_ROLES, null]) {
+      for (const profile of PROFILES) {
+        const day = withRaceDayRoleYieldXp(XP, {}, { params: roleParams, profileType: profile, role });
+        for (const rider of RIDERS) {
+          for (const staffArgs of STAFFS) {
+            // Intentionen kan saenke dagen (grupetto); gulvet holder alligevel.
+            for (const academyRateMult of [0.5, 1, 1.25]) {
+              for (const budgetDivisor of [null, 126]) {
+                for (const ability of VISIBLE_ABILITIES) {
+                  const yieldMult = day.abilityYieldMult?.[ability] ?? 1;
+                  const race = developmentXpAbilityDelta({ ability, ...rider, ...staffArgs, academyRateMult, budgetDivisor, program: day.program, yieldMult }, XP);
+                  const floor = hardTrainingDayXp(ability, day.program, rider, staffArgs, budgetDivisor);
+                  assert.ok(race >= floor - 1e-12, `${role} ${profile} ${ability}: ${race} < ${floor}`);
+                  const raw = developmentXpAbilityDelta({ ability, ...rider, academyRateMult, budgetDivisor, program: day.program }, XP);
+                  if (floor > raw) lifted += 1;
+                  checks += 1;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  assert.ok(checks > 1000 && lifted > 0, "gulvet bliver faktisk sat paa prove");
+});
+
+test("#6110 gulv: ogsaa loebsdagen uden rolletillaeg (mellem-passet) faar mindst en haard dag", () => {
+  for (const profile of PROFILES) {
+    const program = raceDayProgram(profile);
+    for (const ability of VISIBLE_ABILITIES) {
+      const race = developmentXpAbilityDelta({ ability, ...RIDERS[1], ...STAFFS[1], program }, XP);
+      assert.ok(race >= hardTrainingDayXp(ability, program, RIDERS[1], STAFFS[1]) - 1e-12, `${profile} ${ability}`);
+    }
+  }
+});
+
+test("#6110 gulv: tillaegget laegges oven paa gulvet, og traeningsdage er uroert", () => {
+  const program = withRaceDayRoleYieldXp(XP, {}, { params: ROLE_PARAMS, profileType: "mountain", role: "captain" }).program;
+  const args = { ability: "climbing", ...RIDERS[1], ...STAFFS[1], program };
+  const floored = developmentXpAbilityDelta(args, XP);
+  const unfloored = developmentXpAbilityDelta({ ...args, staff: null, facilityTier: null }, XP);
+  assert.ok(floored > unfloored, "scenariet: gulvet binder");
+  // Tillaegget er det samme i XP, uanset om gulvet loefter dagen.
+  const bonus = (a) => developmentXpAbilityDelta({ ...a, yieldMult: 1.5 }, XP) - developmentXpAbilityDelta(a, XP);
+  assert.ok(Math.abs(bonus(args) - bonus({ ...args, staff: null, facilityTier: null })) < 1e-9);
+  // Paa en traeningsdag er yieldMult en ren multiplikator, og 1 er bit-identisk.
+  const train = { ...args, program: { focus: "vo2max_climb", intensity: "hard" } };
+  assert.equal(developmentXpAbilityDelta({ ...train, yieldMult: 1 }, XP), developmentXpAbilityDelta(train, XP));
+  assert.equal(developmentXpAbilityDelta({ ...train, yieldMult: 2 }, XP), developmentXpAbilityDelta(train, XP) * 2);
+});
+
+// ── Dagsvariationen i tick'et (§5.2, ejer 7/11) ───────────────────────────────
+
+const VAR_RAW = Object.freeze({ ...XP_TEST_PARAMS, variation: { key: "synthetic-test-key-not-a-secret-0123456789", span: 0.4, memory: 0.6 } });
+const XP_VAR = validateDevelopmentXpParams(VAR_RAW);
+
+test("#6110 variation: ganges paa hele dagens XP, pr. (rytter, dato) og ens for alle ticks paa datoen", () => {
+  assert.ok(XP_VAR?.variation);
+  const plain = applyDailyTick(tickArgs());
+  const varied = applyDailyTick(tickArgs({ developmentXp: XP_VAR }));
+  const factor = developmentXpDayVariation({ riderId: "r1", dateStr: "2026-11-15" }, XP_VAR.variation);
+  assert.notEqual(factor, 1);
+  assert.deepEqual(Object.keys(varied.xp).sort(), Object.keys(plain.xp).sort());
+  for (const [a, xp] of Object.entries(plain.xp)) assert.ok(Math.abs(varied.xp[a] - xp * factor) < 1e-9, a);
+  // Samme dato, anden tick-noegle (loebsdags-aksen): samme faktor.
+  const otherTick = applyDailyTick(tickArgs({ developmentXp: XP_VAR, tickSeedKey: "s1#gd7" }));
+  assert.deepEqual(otherTick.xp, varied.xp);
+  // Anden dato eller rytter: en anden faktor, og samme input giver samme tal igen.
+  const nextDay = applyDailyTick(tickArgs({ developmentXp: XP_VAR, dateStr: "2026-11-16" }));
+  assert.notEqual(nextDay.xp.climbing, varied.xp.climbing);
+  assert.deepEqual(applyDailyTick(tickArgs({ developmentXp: XP_VAR })), varied);
+});
+
+test("#6110 variation: uden variationsfelter er tick'et uaendret, og noeglen kommer aldrig med i resultatet", () => {
+  const plain = applyDailyTick(tickArgs());
+  assert.equal(XP.variation, undefined);
+  assert.deepEqual(applyDailyTick(tickArgs({ developmentXp: XP })), plain);
+  const varied = applyDailyTick(tickArgs({ developmentXp: XP_VAR }));
+  assert.ok(!JSON.stringify(varied).includes(VAR_RAW.variation.key));
+});
+
+// ── Intet loft pr. dato i XP (#6110 R9/R10) ────────────────────────────────────
+
+test("#6110 intet loft: et tick koeber alle point, XP'en raekker til, uanset dagsloftet", () => {
   const abilities = abilitiesAt(5);
   const progress = { climbing: 0.5 };
   const tick = applyDailyTick(tickArgs({ abilities, caps: abilities, progress }));
   assert.ok(tick.gains.climbing >= 2, "scenariet koeber flere point");
-  const capped = capXpTickGainsPerDate({ tickResult: tick, abilities, progress, usedGains: {} }, XP);
-  assert.equal(capped.gains.climbing, 1);
-  const again = buyPoints({ level: 5, bar: 0.5, xp: tick.xp.climbing, maxPoints: 1 }, XP);
-  assert.equal(capped.abilities.climbing, again.level);
-  assert.equal(capped.progress.climbing, again.bar);
-  assert.equal(capped.capped_by_date.climbing, tick.gains.climbing - 1);
-  const used = capXpTickGainsPerDate({ tickResult: tick, abilities, progress, usedGains: { climbing: 1 } }, XP);
-  assert.equal(used.gains.climbing, undefined);
-  assert.equal(used.abilities.climbing, 5);
-  // Uden klip: samme objekt.
-  const small = { gains: { climbing: 1 }, abilities, progress };
-  assert.equal(capXpTickGainsPerDate({ tickResult: small, abilities, progress }, XP), small);
+  const facit = buyPoints({ level: 5, bar: 0.5, xp: tick.xp.climbing }, XP);
+  assert.equal(tick.abilities.climbing, facit.level);
+  assert.equal(tick.progress.climbing, facit.bar);
+  for (const hardDailyCap of [1, 2]) {
+    assert.deepEqual(applyDailyTick(tickArgs({ abilities, caps: abilities, progress, hardDailyCap })), tick, `hardDailyCap=${hardDailyCap}`);
+  }
 });
 
 // ── Loebsdagens rolletillaeg ──────────────────────────────────────────────────
@@ -283,8 +394,9 @@ test("#6110 rolletillaeg: tillaegget er det samme, uanset loebsdagens off-fokus-
       const b = withRaceDayRoleYieldXp(other, {}, { params, profileType: "mountain", role });
       assert.equal(a.program.focus, RACE_DAY_FOCUS);
       for (const ability of VISIBLE_ABILITIES) {
-        const xpOf = (xp, args) => developmentXpAbilityDelta({ ability, age: 24, potentiale: 4, primaryType: "climber", program: args.program }, xp)
-          * (args.abilityYieldMult?.[ability] ?? 1);
+        const xpOf = (xp, args) => developmentXpAbilityDelta({
+          ability, age: 24, potentiale: 4, primaryType: "climber", program: args.program, yieldMult: args.abilityYieldMult?.[ability] ?? 1,
+        }, xp);
         const inFocus = a.program.focusAbilities.includes(ability);
         if (!inFocus && (a.abilityYieldMult[ability] ?? 1) !== 1 && !params.roleDrivesBaseDay) {
           // Off-fokus: XP = basis(andel) + tillaeg. Forskellen mellem to andele er kun basis-forskellen.
@@ -295,7 +407,126 @@ test("#6110 rolletillaeg: tillaegget er det samme, uanset loebsdagens off-fokus-
       }
     }
   }
-  assert.deepEqual(withRaceDayRoleYieldXp(XP, { x: 1 }, { params: null, profileType: "mountain" }), { x: 1 }, "uden rolletillaeg: loebsdagen som i dag");
+  // Uden rolletillaeg: programmet og tillaegget som i dag; kun R15b's etape og katalog baeres med.
+  assert.deepEqual(withRaceDayRoleYieldXp(XP, { x: 1 }, { params: null, profileType: "mountain" }),
+    { x: 1, xpRaceDayFit: { profileType: "mountain", catalogV3: false } }, "uden rolletillaeg: loebsdagen som i dag");
+});
+
+// ── R15b: loebsdagen, naar loebet passer til rytteren (ejer 13/11) ────────────
+// Dommerens prove (dommer6110.loebsdag-passer.test.js) doemmer regnestykket. Her: kaldet i
+// natkoerslen, tabellen som data og kanterne omkring kontakten.
+
+// Testtal med lille andel til resten paa loebsdage og stor paa traeningsdage, saa en
+// enkeltstartsrytter paa en enkeltstart ligger under sit bedste pas, og gulvet binder.
+const XP_R15B = validateDevelopmentXpParams({ ...XP_TEST_PARAMS, offFocusShare: 0.35, raceOffFocusShare: 0.05 });
+const R15B_RIDER = { riderId: "r15b", age: 24, potentiale: 4, primaryType: "tt", secondaryType: "puncheur", developmentXp: XP_R15B };
+const R15B_STAFF = STAFFS[1];
+const R15B_STAGE = "itt";
+const raceArgs = ({ catalogV3 = true, params = ROLE_PARAMS, role = "captain", profileType = R15B_STAGE } = {}) => ({
+  ...tickArgs({ ...R15B_RIDER, ...R15B_STAFF }),
+  ...withRaceDayRoleYieldXp(XP_R15B, {}, { params, profileType, role, catalogV3 }),
+});
+const xpSum = (r) => Object.values(r.xp).reduce((a, b) => a + b, 0);
+function bestHardPass({ catalogV3 = true } = {}) {
+  let best = { total: 0, focus: null };
+  for (const focus of sessionsByLevelFor({ catalogV3 }).hard) {
+    const program = applyTrainingCatalog({ focus, intensity: "hard" }, { v3: catalogV3 });
+    const total = xpSum(applyDailyTick(tickArgs({ ...R15B_RIDER, ...R15B_STAFF, program })));
+    if (total > best.total) best = { total, focus };
+  }
+  return best;
+}
+const atBest = (total, best) => total >= best && total - best <= best * 1e-9;
+
+test("#6110 R15b motor: loebsdagens kald i natkoerslen sender holdets katalog med", () => {
+  const src = readFileSync(new URL("./dailyTrainingEngine.js", import.meta.url), "utf8");
+  const starts = [...src.matchAll(/withRaceDayRoleYieldXp\(developmentXp,/g)].map((m) => m.index);
+  assert.equal(starts.length, 1, "natkoerslen har ét loebsdagskald");
+  // Kaldets sidste argument (rolle-objektet) staar paa linjen med #5950-kommentaren.
+  const call = src.slice(starts[0], src.indexOf("// #5950", starts[0]));
+  assert.match(call, /role: raceDayRoleByRiderMap\.get\(rider\.id\), catalogV3: catalogV3On \}/, "samme katalog som traeningsdagen");
+  assert.match(src, /applyTrainingCatalog\(program, \{ v3: catalogV3On \}\)/, "traeningsdagen bruger samme vaerdi");
+});
+
+test("#6110 R15b tabel: hjemmebanerne er data, kun den primaere type, og en ukendt type passer aldrig", () => {
+  assert.ok(Object.isFrozen(XP_RACE_FIT_HOME_STAGES));
+  for (const [type, stages] of Object.entries(XP_RACE_FIT_HOME_STAGES)) {
+    assert.ok(Object.isFrozen(stages), type);
+    for (const stage of stages) assert.equal(xpRaceFitsRider(type, stage), true, `${type} ${stage}`);
+  }
+  assert.deepEqual(Object.keys(XP_RACE_FIT_HOME_STAGES).sort(), ["brostensrytter", "climber", "puncheur", "sprinter", "tt"]);
+  for (const [type, stage] of [["gc", "mountain"], ["rouleur", "flat"], ["baroudeur", "hilly"], ["puncheur", "rolling"],
+    ["brostensrytter", "gravel"], ["tt", "ttt"], ["climber", "flat"], [null, "mountain"], ["climber", null], ["constructor", "mountain"]]) {
+    assert.equal(xpRaceFitsRider(type, stage), false, `${type} ${stage}`);
+  }
+});
+
+test("#6110 R15b slukket: tick'et ignorerer feltet, og kaldet giver intet nyt felt", () => {
+  for (const params of [ROLE_PARAMS, null]) {
+    const off = { ...tickArgs({ ...R15B_RIDER, developmentXp: null }),
+      ...withRaceDayRoleYieldXp(null, {}, { params, profileType: R15B_STAGE, role: "captain", catalogV3: true }) };
+    assert.equal("xpRaceDayFit" in off, false);
+    assert.deepEqual(applyDailyTick({ ...off, xpRaceDayFit: { profileType: R15B_STAGE, catalogV3: true } }), applyDailyTick(off));
+  }
+});
+
+test("#6110 R15b: en loebsdag, der passer, loeftes praecis op til det bedste haarde pas, i alle roller", () => {
+  const best = bestHardPass().total;
+  for (const role of [...VALID_RACE_ROLES, null]) {
+    const args = raceArgs({ role });
+    const before = applyDailyTick({ ...args, xpRaceDayFit: null });
+    const after = applyDailyTick(args);
+    assert.ok(xpSum(before) < best, `${role}: scenariet skal ligge under passet foer loeftet`);
+    assert.ok(atBest(xpSum(after), best), `${role}: ${xpSum(after)} skal vaere ${best}`);
+    // Loeftet lander kun i etapens evner, med samme procent i hver.
+    const stage = args.program.focusAbilities;
+    const ratio = stage.map((a) => after.xp[a] / before.xp[a]);
+    for (const a of Object.keys(before.xp)) if (!stage.includes(a)) assert.equal(after.xp[a], before.xp[a], `${role} ${a}`);
+    assert.ok(ratio.every((r) => r > 1 && Math.abs(r - ratio[0]) < 1e-12), `${role}: samme procent`);
+  }
+});
+
+test("#6110 R15b: holdets katalog er det, passet laeses i", () => {
+  const v3 = bestHardPass({ catalogV3: true });
+  const old = bestHardPass({ catalogV3: false });
+  assert.notEqual(v3.total, old.total, "scenariet: katalogerne giver forskellige bedste pas");
+  assert.ok(atBest(xpSum(applyDailyTick(raceArgs({ catalogV3: true }))), v3.total));
+  assert.ok(atBest(xpSum(applyDailyTick(raceArgs({ catalogV3: false }))), old.total));
+});
+
+test("#6110 R15b: intet loeft ved koer roligt; en ugyldig intention laeses som normal", () => {
+  const args = raceArgs();
+  for (const academyRateMult of [0.7, 0.85, 0.999]) {
+    assert.deepEqual(applyDailyTick({ ...args, academyRateMult }), applyDailyTick({ ...args, academyRateMult, xpRaceDayFit: null }), `intention ${academyRateMult}`);
+  }
+  for (const academyRateMult of [1, 1.1, Number.NaN, -1]) {
+    assert.ok(atBest(xpSum(applyDailyTick({ ...args, academyRateMult })), bestHardPass().total), `intention ${academyRateMult} = normal eller hoejere`);
+  }
+});
+
+test("#6110 R15b: Traen nu loefter hverken loebsdagen eller passet, den sammenlignes med", () => {
+  const args = raceArgs();
+  assert.deepEqual(applyDailyTick({ ...args, trainNowBonus: true }), applyDailyTick(args));
+});
+
+test("#6110 R15b: uden rolletillaeg (mellem-passet) loeftes en etape, der passer, ogsaa", () => {
+  const args = { ...tickArgs({ ...R15B_RIDER, ...R15B_STAFF }), program: raceDayProgram(R15B_STAGE),
+    ...withRaceDayRoleYieldXp(XP_R15B, {}, { params: null, profileType: R15B_STAGE, catalogV3: true }) };
+  assert.equal(args.program.focus, RACE_DAY_FOCUS);
+  assert.ok(xpSum(applyDailyTick({ ...args, xpRaceDayFit: null })) < bestHardPass().total, "scenariet: under passet");
+  assert.ok(atBest(xpSum(applyDailyTick(args)), bestHardPass().total));
+});
+
+test("#6110 R15b: en etape, der ikke passer, eller kun passer den sekundaere type, er uroert", () => {
+  for (const profileType of ["mountain", "flat", "hilly", "classic", "cobbles", "ttt", "rolling", null]) {
+    const args = raceArgs({ profileType });
+    assert.deepEqual(applyDailyTick(args), applyDailyTick({ ...args, xpRaceDayFit: null }), String(profileType));
+  }
+});
+
+test("#6110 R15b: traeningsdage roeres ikke, selv hvis feltet skulle sidde paa tick'et", () => {
+  const train = tickArgs({ ...R15B_RIDER, ...R15B_STAFF });
+  assert.deepEqual(applyDailyTick({ ...train, xpRaceDayFit: { profileType: R15B_STAGE, catalogV3: true } }), applyDailyTick(train));
 });
 
 // ── Motoren med kontakten taendt ──────────────────────────────────────────────

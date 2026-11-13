@@ -1,9 +1,15 @@
+import { Suspense } from "react";
+import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { PageHeader, Tabs, TabList, Tab } from "../components/ui";
+import { PageHeader, Tabs, TabList, Tab, SkeletonLines } from "../components/ui";
+import { WRAP } from "../components/ui/dataTableStyles.js";
 import StandingsPage from "./StandingsPage.jsx";
 import RiderRankingsPage from "./RiderRankingsPage.jsx";
-import GlobalRankPage from "./GlobalRankPage.jsx";
+
+// #6494: Global Rank læser via det fælles datalag (TanStack Query). Fanen hentes først ved
+// brug, så Liga-fanen (den mest besøgte) ikke henter Query. Fallback = fanens eget skelet.
+const GlobalRankPage = lazyWithRetry(() => import("./GlobalRankPage.jsx"));
 
 // #3104 etape C — Ranglister-hubben: Liga & rangliste (2.233 sessions/30 dage),
 // Rytterrangliste (478) og Global Rank (<245) samlet under ét nav-punkt med
@@ -45,7 +51,11 @@ export default function RankingsHubPage() {
 
       {tab === "league" && <StandingsPage />}
       {tab === "riders" && <RiderRankingsPage />}
-      {tab === "global" && <GlobalRankPage />}
+      {tab === "global" && (
+        <Suspense fallback={<div className={`${WRAP} p-5`}><SkeletonLines lines={6} /></div>}>
+          <GlobalRankPage />
+        </Suspense>
+      )}
     </div>
   );
 }

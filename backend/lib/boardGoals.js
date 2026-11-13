@@ -1376,6 +1376,7 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
       // for 11.9996 < 12 — en selvmodsigelse mellem kortets status og den
       // "kilde til sandhed" isBoardGoalAchieved bruger. `actual` afrundes KUN
       // til visning, aldrig til beregning.
+      const goalTarget = target; // #7964 (b): målets eget target, til det neutrale udfald
       const rawActual = ((currentIncome - baseline) / baseline) * 100;
       actual = roundNumber(rawActual);
       target = isFinalSeason
@@ -1383,6 +1384,18 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
         : Math.max(1, enrichedGoal.target * (seasonsCompleted / planDuration));
       score = scoreHigherBetter(rawActual, target);
       status = rawActual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
+      // #7964 (b) · overgangsregel: er grundlaget flyttet af rettelsen
+      // (sponsorGrowthBaselineShifted, boardGoalContext.js), gav den gamle regel
+      // her awaiting_data. Et "behind" holdes da på præcis det neutrale udfald,
+      // så rettelsen aldrig sænker tilfredsheden (og dermed sponsor-modifier
+      // eller tvungen salgsliste). "on_track" og "ahead" tæller som målt.
+      if (status === "behind" && context.sponsorGrowthBaselineShifted === true) {
+        actual = null;
+        target = goalTarget;
+        missingData = true;
+        score = 0.6;
+        status = "awaiting_data";
+      }
       break;
     }
     // S-02d · 7 nye mål-typer

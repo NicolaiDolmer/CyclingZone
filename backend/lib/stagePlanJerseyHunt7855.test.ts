@@ -28,18 +28,21 @@ test("#7855 slukket: opgaverne er ukendte, og ruten uden spurter har samme form 
 
 test("#7855 taendt: valgbar kun paa en straekning med en spurt hhv. en kategoriseret stigning", () => {
   assert.equal(backend.validateStagePlanLegs([{ task: "hunt_points" }], "helper", ON), null);
-  assert.equal(backend.validateStagePlanLegs([{ task: "hunt_kom" }], "helper", ON), null);
+  // #7855 valg 1 (ejer 13/11, "Kun sammen med udbrud"): bjergjagt vaelges paa udbrudsleddet, ikke som eget led.
+  assert.equal(backend.validateStagePlanLegs([{ task: "breakaway", hunt: "hunt_kom" }], "helper", ON), null);
+  assert.equal(backend.validateStagePlanLegs([{ task: "hunt_kom" }], "helper", ON), "stage_plan_unknown_task");
   // Point efter Col C: spurten (85) er passeret.
   assert.equal(backend.validateStagePlanLegs([{ task: "stay_sheltered" }, { task: "hunt_points", from: { at: "kom", kom_index: 1 } }], "helper", ON), "stage_plan_hunt_no_sprint");
   // Bjergpoint efter Col C: kun topankomsten er tilbage (den afgoeres af maalordenen).
   assert.equal(backend.validateStagePlanLegs([{ task: "stay_sheltered" }, { task: "hunt_kom", from: { at: "kom", kom_index: 1 } }], "helper", ON), "stage_plan_hunt_no_climb");
-  // Bjergpoint efter Col B: Col C ligger paa straekningen.
-  assert.equal(backend.validateStagePlanLegs([{ task: "stay_sheltered" }, { task: "hunt_kom", from: { at: "kom", kom_index: 0 } }], "helper", ON), null);
+  // Bjergpoint efter Col B: Col C ligger paa straekningen, men et eget bjergjagt-led efter en top kan
+  // ikke vaelges efter valg 1 (dommerens S1 er et aabent ejer-valg).
+  assert.equal(backend.validateStagePlanLegs([{ task: "stay_sheltered" }, { task: "hunt_kom", from: { at: "kom", kom_index: 0 } }], "helper", ON), "stage_plan_unknown_task");
   // Straekningen slutter ved naeste leds rutepunkt: point frem til Col B (60) har ingen spurt.
   assert.equal(backend.validateStagePlanLegs([{ task: "hunt_points" }, { task: "tempo", from: { at: "kom", kom_index: 0 } }], "helper", ON), "stage_plan_hunt_no_sprint");
   assert.equal(backend.validateStagePlanLegs([{ task: "hunt_points" }, { task: "tempo", from: { at: "kom", kom_index: 1 } }], "helper", ON), null);
   // "Sat" er ikke et rutepunkt: straekningen gaar til maal.
-  assert.equal(backend.validateStagePlanLegs([{ task: "hunt_kom" }, { task: "ride_in", from: { at: "dropped" } }], "helper", ON), null);
+  assert.equal(backend.validateStagePlanLegs([{ task: "breakaway", hunt: "hunt_kom" }, { task: "ride_in", from: { at: "dropped" } }], "helper", ON), null); // valg 1: paa udbrudsleddet
   assert.equal(backend.validateStagePlanLegs([{ task: "stay_sheltered" }, { task: "hunt_kom", from: { at: "dropped" } }], "helper", ON), "stage_plan_hunt_after_dropped");
 });
 
