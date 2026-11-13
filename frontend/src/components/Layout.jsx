@@ -6,7 +6,7 @@ import { startPresenceHeartbeat, readOnlineCountFromPresence } from "../lib/pres
 import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej (afløser den lokale expireSessionIfRejected, se #5233 fund 2)
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { formatNumber } from "../lib/intl";
-import { LockedSalesLine } from "./finance/LockedSaleEscrows.tsx"; // #6181
+import { LockedSalesLine, LOCKED_SALES_REFRESH_EVENT } from "./finance/LockedSaleEscrows.tsx"; // #6181
 import { ACTIVE_SURVEY_SLUG } from "../lib/survey.js"; // #4943
 import SetupWizardModal from "./SetupWizardModal";
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
@@ -762,6 +762,7 @@ export default function Layout() {
     return subscribeAuthedChannel("layout-notifs-v2", channel =>
       channel.on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${session.user.id}` },
         async () => {
+          window.dispatchEvent(new Event(LOCKED_SALES_REFRESH_EVENT)); // #6181: et laast salg eller en refusion giver en besked, ikke en ny saldo
           setUnread(await fetchUnreadCount(session.user.id));
           const { data: t } = await supabase.from("teams").select("balance").eq("user_id", session.user.id).maybeSingle();
           if (t) setBalance(t.balance);

@@ -28,6 +28,31 @@ export function lockedSalesFromResponse(data: unknown): LockedSales {
   return { total: sales.reduce((sum, s) => sum + Number(s.amount), 0), sales };
 }
 
+/**
+ * Noeglen, som samtidige kald deler svar paa: brugeren + saldoen. Brugeren skal med,
+ * saa et brugerskift med samme saldo aldrig ser forrige holds laaste salg (Codex P1).
+ */
+export function lockedSalesShareKey(userId: string, refreshKey: unknown): string {
+  return `${userId}:${String(refreshKey)}`;
+}
+
+export interface LockedSalesSnapshot {
+  userId: string;
+  data: LockedSales;
+}
+
+/**
+ * Det, skaermen viser efter et kald. fetched = null betyder, at svaret ikke kom
+ * (fejl, 429, netvaerk): saa beholdes det sidst kendte svar for samme bruger, og
+ * linjen forsvinder ikke. Kun et gyldigt svar, ogsaa et tomt, aendrer visningen.
+ * En ny bruger starter altid fra "intet laast".
+ */
+export function nextLockedSales(prev: LockedSalesSnapshot | null, userId: string, fetched: LockedSales | null): LockedSalesSnapshot {
+  if (fetched) return { userId, data: fetched };
+  if (prev && prev.userId === userId) return prev;
+  return { userId, data: NO_LOCKED_SALES };
+}
+
 /** Noeglen til "slutter om N dage" / "slutter i dag"; null = intet loeb at vise. */
 export function endsInKey(daysLeft: number | null): { key: string; count?: number } | null {
   if (daysLeft == null || !Number.isFinite(daysLeft)) return null;

@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { NO_LOCKED_SALES, endsInKey, lockedSalesFromResponse } from "./lockedSalesModel.ts";
+import { NO_LOCKED_SALES, endsInKey, lockedSalesFromResponse, lockedSalesShareKey, nextLockedSales } from "./lockedSalesModel.ts";
 import { isHelpBlockVisible } from "../../pages/helpFlagGates.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -32,6 +32,34 @@ test("endsInKey: dage tilbage, i dag, eller intet loeb", () => {
   assert.deepEqual(endsInKey(3), { key: "lockedSalesBox.endsIn", count: 3 });
   assert.deepEqual(endsInKey(0), { key: "lockedSalesBox.endsToday" });
   assert.equal(endsInKey(null), null);
+});
+
+test("lockedSalesShareKey (Codex P1): to brugere med samme saldo deler aldrig svar", () => {
+  assert.notEqual(lockedSalesShareKey("bruger-a", 500000), lockedSalesShareKey("bruger-b", 500000));
+  assert.equal(lockedSalesShareKey("bruger-a", 500000), lockedSalesShareKey("bruger-a", 500000), "samme bruger og saldo deler");
+  assert.notEqual(lockedSalesShareKey("bruger-a", 500000), lockedSalesShareKey("bruger-a", 600000), "ny saldo henter igen");
+  const component = src("./LockedSaleEscrows.tsx");
+  assert.match(component, /const key = lockedSalesShareKey\(userId, refreshKey\);/, "komponenten bruger den proevede noegle");
+});
+
+test("nextLockedSales: en fejl beholder det sidst kendte svar; kun et gyldigt svar aendrer visningen", () => {
+  const locked = lockedSalesFromResponse({ sales: [SALE] });
+  const first = nextLockedSales(null, "bruger-a", locked);
+  assert.deepEqual(first, { userId: "bruger-a", data: locked });
+  assert.equal(nextLockedSales(first, "bruger-a", null), first, "429/500/netvaerk: linjen bliver staaende");
+  assert.deepEqual(nextLockedSales(first, "bruger-a", NO_LOCKED_SALES), { userId: "bruger-a", data: NO_LOCKED_SALES }, "gyldigt tomt svar fjerner linjen");
+  assert.deepEqual(nextLockedSales(first, "bruger-b", null), { userId: "bruger-b", data: NO_LOCKED_SALES }, "ny bruger arver aldrig forriges salg");
+});
+
+test("menuen opdaterer sig selv: ved sideskift, fokus og ny besked, og alle steder faar samme svar", () => {
+  const component = src("./LockedSaleEscrows.tsx");
+  assert.match(component, /\}, \[refreshKey, pathname\]\);/, "sideskift henter igen");
+  assert.match(component, /window\.addEventListener\("focus", refresh\);/);
+  assert.match(component, /window\.addEventListener\(LOCKED_SALES_REFRESH_EVENT, refresh\);/);
+  assert.match(component, /for \(const listener of listeners\) listener\(latest\.data\);/, "hvert svar gaar til alle steder paa skaermen");
+  assert.match(component, /return res\.ok \? lockedSalesFromResponse\(res\.data\) : null;/, "en fejl er ikke 'intet laast'");
+  const layout = src("../Layout.jsx").replace(/\r\n/g, "\n");
+  assert.match(layout, /channel\.on\("postgres_changes", \{ event: "\*", schema: "public", table: "notifications"[^\n]*\n\s*async \(\) => \{\n\s*window\.dispatchEvent\(new Event\(LOCKED_SALES_REFRESH_EVENT\)\);/, "en ny besked henter de laaste salg igen");
 });
 
 test("kontakten slukket: Hjaelp viser dagens tekst, aldrig tvillingen; taendt: omvendt", () => {

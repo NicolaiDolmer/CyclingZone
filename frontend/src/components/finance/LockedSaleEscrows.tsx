@@ -11,6 +11,7 @@
 //
 // TASTE: hairline-Card, ingen guld, tabulaere tal, rytter- og loebsnavne er links (P12).
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import Card from "../ui/Card.jsx";
 import RiderLink from "../RiderLink.jsx";
@@ -18,60 +19,71 @@ import RaceLink from "../RaceLink.jsx";
 import { authHeaders, supabase } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import { formatNumber } from "../../lib/intl.js";
-import { NO_LOCKED_SALES, endsInKey, lockedSalesFromResponse, type LockedSales } from "./lockedSalesModel.ts";
+import {
+  NO_LOCKED_SALES, endsInKey, lockedSalesFromResponse, lockedSalesShareKey, nextLockedSales,
+  type LockedSales, type LockedSalesSnapshot,
+} from "./lockedSalesModel.ts";
 
 const API = import.meta.env.VITE_API_URL;
 
-// Menuen og siden spoerger samtidig; kun kald, der starter inden for et kort
-// vindue, deles (aldrig en gammel liste). Noeglen er brugeren + saldoen, saa et
-// brugerskift aldrig ser et andet holds salg.
+// Menuen, dashboardet og Oekonomi viser altid samme svar: hvert svar gaar til alle
+// steder paa skaermen. Kald, der starter inden for et kort vindue, deles (aldrig en
+// gammel liste). Noeglen er brugeren + saldoen, saa et brugerskift aldrig ser et
+// andet holds salg.
 const SHARE_WINDOW_MS = 5000;
-let shared: { key: string; at: number; promise: Promise<LockedSales> } | null = null;
+/** Sendes, naar et salg kan vaere laast eller afregnet uden at saldoen aendrer sig (fx en ny besked). */
+export const LOCKED_SALES_REFRESH_EVENT = "cz:locked-sales-refresh";
+let shared: { key: string; at: number; promise: Promise<LockedSales | null> } | null = null;
+let latest: LockedSalesSnapshot | null = null;
+const listeners = new Set<(data: LockedSales) => void>();
 
-async function fetchLockedSales(headers: Record<string, string>): Promise<LockedSales> {
+/** null = intet gyldigt svar (fejl, 429, netvaerk); saa beholdes det sidst kendte. */
+async function fetchLockedSales(headers: Record<string, string>): Promise<LockedSales | null> {
   try {
     const res = await apiFetch(`${API}/api/me/locked-sales`, { headers });
-    return res.ok ? lockedSalesFromResponse(res.data) : NO_LOCKED_SALES;
+    return res.ok ? lockedSalesFromResponse(res.data) : null;
   } catch {
-    // non-critical: uden svar vises intet ekstra, og saldoen staar som foer.
-    return NO_LOCKED_SALES;
+    // non-critical: uden svar staar det sidst kendte, og saldoen staar som foer.
+    return null;
   }
 }
 
-async function loadLockedSales(refreshKey: unknown): Promise<LockedSales> {
+async function loadLockedSales(refreshKey: unknown): Promise<void> {
   const [{ data }, headers] = await Promise.all([supabase.auth.getSession(), authHeaders({ json: false })]);
   const userId = data.session?.user?.id;
-  if (!userId || !headers) return NO_LOCKED_SALES;
-  const key = `${userId}:${String(refreshKey)}`;
+  if (!userId || !headers) return;
+  const key = lockedSalesShareKey(userId, refreshKey);
   const now = Date.now();
-  if (shared && shared.key === key && now - shared.at < SHARE_WINDOW_MS) return shared.promise;
-  const promise = fetchLockedSales(headers);
-  shared = { key, at: now, promise };
-  return promise;
+  if (!shared || shared.key !== key || now - shared.at >= SHARE_WINDOW_MS) {
+    shared = { key, at: now, promise: fetchLockedSales(headers) };
+  }
+  latest = nextLockedSales(latest, userId, await shared.promise);
+  for (const listener of listeners) listener(latest.data);
 }
 
 /**
  * @param refreshKey  saldoen; en ny saldo (fx efter en udbetaling) henter igen. Et nyt
- *   laast salg aendrer ikke saldoen, saa listen hentes ogsaa ved hver visning og naar
- *   fanen faar fokus igen.
+ *   laast salg eller en refusion aendrer ikke saelgerens saldo, saa listen hentes ogsaa
+ *   ved hvert sideskift, naar fanen faar fokus, og naar en ny besked ankommer.
  */
 export function useLockedSales(refreshKey: unknown): LockedSales {
   const [state, setState] = useState<LockedSales>(NO_LOCKED_SALES);
+  const { pathname } = useLocation();
+  useEffect(() => {
+    listeners.add(setState);
+    return () => { listeners.delete(setState); };
+  }, []);
   useEffect(() => {
     if (refreshKey == null) return undefined;
-    let cancelled = false;
-    const refresh = () => {
-      void loadLockedSales(refreshKey).then((result) => {
-        if (!cancelled) setState(result);
-      });
-    };
+    const refresh = () => { void loadLockedSales(refreshKey); };
     refresh();
     window.addEventListener("focus", refresh);
+    window.addEventListener(LOCKED_SALES_REFRESH_EVENT, refresh);
     return () => {
-      cancelled = true;
       window.removeEventListener("focus", refresh);
+      window.removeEventListener(LOCKED_SALES_REFRESH_EVENT, refresh);
     };
-  }, [refreshKey]);
+  }, [refreshKey, pathname]);
   return state;
 }
 
