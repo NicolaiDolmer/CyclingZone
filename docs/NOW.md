@@ -4,9 +4,9 @@
 
 ## Aktiv styring
 
-> **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11 · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8080_20261113_*` + `backup_8099_20261113_*` ~27/11.
+> **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11 · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8078/8080/8099_20261113_*` ~27/11.
 >
-> **🎯 Next action (13/11 aften):** merge-blok kl. 21 (#7911); Dolmer PC kører nat (#8141, #8138, #7855, #6110-rækker). **Tændt 13/11:** holdplaner til alle (#7864). **Merget 13/11:** Træn nu trin 1-3 (dom 14/11), #8103, #8128, #8130-#8135, #8147, 7.441-7.444. **PC1-bølge:** #7801 (rettelse), #7664 (runde 2), #6110 (merge venter på fil), #8143 måleprøve, #7982 trin 4a, #6584 Play-PR, #7535, #8149. **Spørg ejeren:** #8078; mandag 16/11: auto-kalender, to grene med private tal, Discord-valg. **#8071 tabel-design:** `private-handoffs/2026-11-13-trup-tabel-design/LAES-FOERST.md`.
+> **🎯 Next action (13/11 aften):** merge-blok kl. 21 (#7911); Dolmer PC kører nat (#8141, #8138, #7855, #6110-rækker). **Tændt 13/11:** holdplaner til alle (#7864). **Merget 13/11:** Træn nu trin 1-3 (dom 14/11), #8103, #8128, #8130-#8135, #8147, 7.441-7.444. **PC1-bølge:** #7801 (rettelse), #7664 (runde 2), #6110 (merge venter på fil), #8143 måleprøve, #7982 trin 4a, #6584 Play-PR, #7535, #8149. **Mandag 16/11:** auto-kalender, to grene med private tal, Discord-valg. **#8071 tabel-design:** `private-handoffs/2026-11-13-trup-tabel-design/LAES-FOERST.md`.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; #7277 (off) uafklaret; kurve "6 kombineret" (#3564) i samlet måling.
 >
 > **🤖 Working agent:** Claude på PC1, dagsession med ejeren 13/11 (fortsat fra natten, kort og efterprøvning).
