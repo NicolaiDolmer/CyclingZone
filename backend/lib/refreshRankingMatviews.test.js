@@ -71,7 +71,8 @@ test('#6765 cooldown and both deferred paths attempt shadow without borrowing a 
       if (mode === 'cooldown' && name === 'claim_ranking_refresh_work') return { data: { status: 'cooldown' }, error: null };
       return control(name, args);
     };
-    const options = { now: evening, testNowFn: () => evening, heartbeatNowFn: () => evening, clock: () => 0, logger: { log() {}, info() {} } };
+    // #7664: the shadow-read hold is covered in rankingRead7664.test.js.
+    const options = { now: evening, testNowFn: () => evening, heartbeatNowFn: () => evening, clock: () => 0, logger: { log() {}, info() {} }, legacyHoldMs: 0 };
     const result = mode === 'training-deferred'
       ? await refreshRankingsAfterTrainingSettlement({ supabase: client, ...options })
       : await refreshRankingMatviewsGated(client, options);
@@ -100,7 +101,7 @@ test('#6765 publication completes before a blocked shadow batch for every entry 
       }
       return control(name, args);
     };
-    const options = { ...T6765, clock: () => 0, logger: { info() {} } };
+    const options = { ...T6765, clock: () => 0, logger: { info() {} }, legacyHoldMs: 0 }; // #7664: hold tested separately
     const running = entry === 'safe' ? refreshRankingMatviewsSafe(client, options)
       : entry === 'gated' ? refreshRankingMatviewsGated(client, options)
       : refreshRankingsAfterTrainingSettlement({ supabase: client, ...options });

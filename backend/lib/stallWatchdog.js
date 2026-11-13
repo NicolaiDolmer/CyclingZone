@@ -42,6 +42,7 @@
 import { fetchAllRows } from "./supabasePagination.js";
 import { fetchWatchdogResultSummaries, WATCHDOG_RESULT_MIGRATION } from "./stallWatchdogAggregates.ts";
 import { getRankingRefreshWorkState } from "./rankingRefreshWork.ts";
+import { LEGACY_HOLD_MS_7664, resolveRankingReadSource } from "./rankingRead7664.js";
 
 export const STALL_WATCHDOG_DEFAULT_THRESHOLDS = {
   finalizeHours: 2,
@@ -228,7 +229,7 @@ export function evaluateStallFindings({
   // FØR migrationen ikke false-alarmerer. Kan derfor kun give en ægte positiv —
   // et reelt heartbeat der er faldet bag race_results (refresh-sti død).
   if (rankingWork) {
-    if (rankingWork.pending && rankingWork.pendingAgeMs > 5 * 60 * 1000) {
+    if (rankingWork.pending && rankingWork.pendingAgeMs > 5 * 60 * 1000 + (rankingWork.holdMs ?? 0)) { // #7664
       findings.push({ type: 'matview', ageHours: round1(rankingWork.pendingAgeMs / HOUR_MS),
         detail: 'Pending ranking changes exceed the normal five-minute freshness target; last completed snapshot retained' });
     }
@@ -428,7 +429,11 @@ export async function fetchWatchdogState({ supabase, now = new Date(), threshold
 
   let rankingWork = null;
   if (typeof supabase.rpc === 'function') {
-    try { rankingWork = await getRankingRefreshWorkState(supabase, now); }
+    try {
+      rankingWork = await getRankingRefreshWorkState(supabase, now);
+      // #7664: while readers use the shadow tables, the full pass waits for its hold window.
+      if ((await resolveRankingReadSource(supabase)).source === "shadow") rankingWork = { ...rankingWork, holdMs: LEGACY_HOLD_MS_7664 };
+    }
     catch (error) {
       // During SQL-before-Node rollout the legacy lag probe stays available.
       if (!['PGRST202', '42883', '42P01'].includes(error.code)) throw error;
