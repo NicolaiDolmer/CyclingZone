@@ -603,6 +603,10 @@
     {
       "issue": 7984,
       "why": "Merge-koe: beskyt stablede PR'er foer base-branch slettes (#7972), ejer-go 10/11 i Claude-session (cleanupList i samme PR)"
+    },
+    {
+      "issue": 8126,
+      "why": "Funktionsregistret, statustavlen og masterplanens statuslinjer rettes til prod (kun docs, ingen spillertekst), ejer-go 13/11 i Claude-session paa kortet 'Maa den bygges?': 'Ja, ret dem'"
     }
   ],
   "brandList": [
