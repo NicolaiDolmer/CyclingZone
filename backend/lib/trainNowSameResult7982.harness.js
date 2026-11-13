@@ -277,7 +277,13 @@ export function createFake(state, { failRpc = null } = {}) {
       upsert(payload, options) { write = { kind: "upsert", payload, options }; return q; },
       delete() { write = { kind: "delete", payload: null }; return q; },
       abortSignal() { return q; }, throwOnError() { return q; }, returns() { return q; },
-      then(resolve, reject) { try { return deliver(run()).then(resolve, reject); } catch (err) { return Promise.reject(err).then(resolve, reject); } },
+      then(resolve, reject) {
+        try { return deliver(run()).then(resolve, reject); } catch (err) {
+          // swallow-ok: fejlen sluges ikke. Et kast inde i stedfortraederen gives videre til kalderen
+          // som et afvist loefte, praecis som en rigtig databaseklient ville goere.
+          return Promise.reject(err).then(resolve, reject);
+        }
+      },
     };
     return new Proxy(q, { get(target, prop) { if (prop in target || typeof prop === "symbol") return target[prop]; unsupported.push(`${table}.${String(prop)}`); return () => target; } });
   }
@@ -483,7 +489,13 @@ export async function sweep(state, fake, { now = EVENING_AT, tickDate = DATE1, d
 
 // ── Scenarierne ───────────────────────────────────────────────────────────────────────────────
 const BIG = { count: 48, entered: [3, 7, 11, 19, 23, 31, 40], injured: [5, 23], tired: [2, 14, 29, 44], noPlan: [4, 16, 33], boughtLate: [47], academy: [46], weekPlan: true, fatigueRules: true };
-const step = async (out, label, fn) => { try { out.push({ label, response: canon(await fn()) }); } catch (err) { out.push({ label, response: { thrown: String(err.message) } }); } };
+const step = async (out, label, fn) => {
+  try { out.push({ label, response: canon(await fn()) }); } catch (err) {
+    // swallow-ok: et kast ER trinnets svar i optagelsen (fx et tryk, der afbrydes med vilje). Det
+    // gemmes som svaret og sammenlignes med facit; det forsvinder ikke.
+    out.push({ label, response: { thrown: String(err.message) } });
+  }
+};
 
 export const SCENARIOS = {
   // Lille hold uden loeb: alle faar hele datoen.
