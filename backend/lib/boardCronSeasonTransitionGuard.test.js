@@ -58,7 +58,7 @@ test("#3502 forward-guard: sæson-1-slut → sæsonskifte → auto-accept-cron v
       balance: 500000, sponsor_income: 240000, division: 3,
       season_1_identity_basis: null, team_dna_key: "sprint_kommerciel",
       created_at: teamCreatedAt,
-      is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
+      is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, parked_at: null,
     }],
     riders: [
       { team_id: "team-1", is_u25: true, ...RIDER_STAT_FIELDS },
@@ -204,7 +204,7 @@ function makeBackloggedTeamState({ teamCreatedAt }) {
       balance: 500000, sponsor_income: 240000, division: 3,
       season_1_identity_basis: { rider_count: 1 }, team_dna_key: "sprint_kommerciel",
       created_at: teamCreatedAt,
-      is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
+      is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, parked_at: null,
     }],
     riders: [],
     seasons: [{ id: "season-2", number: 2, status: "active", race_days_completed: 300, race_days_total: 60 }],

@@ -48,6 +48,7 @@ import { runSeniorStartReminderSweep } from "./lib/seniorStartReminder.js"; // #
 import { createEmergencyLoan } from "./lib/loanEngine.js";
 import { processBoardAutoAcceptCron } from "./lib/boardAutoAccept.js";
 import { processMandateAutoAcceptCron } from "./lib/boardMandateAutoAccept.js";
+import { isParkedTeam } from "./lib/managerParking.js"; // #8110
 import { countStaleActiveMandates } from "./lib/boardMandateEngine.js"; // #6773
 import { processMidSeasonReviewCron } from "./lib/boardMidSeason.js";
 import { processDailySeasonCountCheck } from "./lib/dailySeasonCountCheck.js";
@@ -224,17 +225,25 @@ export async function checkDebtWarnings({
   notifyUserFn = notifyUserShared,
   captureExceptionFn = sentryCapture,
 } = {}) {
-  const { data: teams } = await supabaseClient
+  const { data: fetchedTeams, error: teamsError } = await supabaseClient
     .from("teams")
-    .select("id, name, balance, user_id")
+    .select("id, name, balance, user_id, parked_at")
     .eq("is_ai", false)
     .eq("is_bank", false)
     .eq("is_frozen", false)
     .lt("balance", 0);
+  if (teamsError) throw teamsError;
+  // #8110 · Bestyrelsen er frosset for parkerede hold (#5902, A): samme filter
+  // som #8068/#8103, og fail-closed hvis parked_at mangler i opslaget.
+  if ((fetchedTeams || []).some((team) => team?.parked_at === undefined)) {
+    throw new Error("debt warnings: teams.parked_at mangler i hold-opslaget, intet sendt (#8110 fail-closed)");
+  }
+  const teams = (fetchedTeams || []).filter((team) => !isParkedTeam(team));
+  const parkedSkipped = (fetchedTeams || []).length - teams.length;
 
   let sent = 0;
   let errors = 0;
-  for (const team of teams || []) {
+  for (const team of teams) {
     try {
       const result = await notifyUserFn({
         supabase: supabaseClient,
@@ -266,6 +275,7 @@ export async function checkDebtWarnings({
   }
 
   if (sent) console.log(`  ⚠️  Debt warnings sent to ${sent} teams`);
+  if (parkedSkipped) console.log(`  ⏸️  Debt warnings: ${parkedSkipped} parkerede hold sprunget over (#8110)`);
   if (errors) console.error(`  ❌ Debt warnings: ${errors} fejl (per-team try/catch isolerede)`);
 }
 
@@ -369,6 +379,7 @@ async function runBoardAutoAcceptCron() {
       // vinkel som #3502). Billig linje pr. 30. minut, matcher mid-season-mønstret.
       console.log(`🪑 Board auto-accept: ${result.teams_checked} hold tjekket — intet at gøre`);
     }
+    if (result.parked_teams_skipped) console.log(`🪑 Board auto-accept: ${result.parked_teams_skipped} parkerede hold sprunget over (#8110)`);
   } catch (err) {
     // #2389 A2: den ydre catch sluger top-level-fejl (window/season/teams-queries)
     // som processBoardAutoAcceptCron's interne per-team-catch aldrig ser — capture,
@@ -399,6 +410,7 @@ async function runBoardMandateAutoAcceptCron() {
     } else {
       console.log(`📋 Mandate auto-accept: ${result.mandates_checked} mandater tjekket — intet at gøre`);
     }
+    if (result.parked_teams_skipped) console.log(`📋 Mandate auto-accept: ${result.parked_teams_skipped} parkerede hold sprunget over (#8110)`);
     // #6773 · Vagt: aktive mandater fra en afsluttet sæson skal altid være 0.
     const watch = await countStaleActiveMandates(supabase);
     if (watch.stale > 0) {
@@ -434,6 +446,7 @@ async function runMidSeasonReviewCron() {
         `📣 Mid-season review: ${result.teams_checked} hold tjekket — ${result.banners_sent} banner(e) sendt, ${result.errors} fejl`
       );
     }
+    if (result.parked_teams_skipped) console.log(`📣 Mid-season review: ${result.parked_teams_skipped} parkerede hold sprunget over (#8099/#8110)`);
   } catch (err) {
     // #2389 A2: mirror board auto-accept — top-level-fejl skal captures her.
     console.error("Cron error (mid-season review):", err.message);

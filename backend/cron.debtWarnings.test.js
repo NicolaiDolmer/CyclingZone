@@ -13,7 +13,7 @@ import { checkDebtWarnings } from "./cron.js";
  * Efter fix: message er statisk → notifyUser-dedup virker per-user-per-24h.
  */
 
-function createSupabaseStub({ teams }) {
+function createSupabaseStub({ teams, omitParkedAt = false, queryError = null }) {
   return {
     from(table) {
       if (table === "teams") {
@@ -23,7 +23,13 @@ function createSupabaseStub({ teams }) {
           eq(column, value) { filters[column] = value; return builder; },
           lt(column, value) { filters[`__lt_${column}`] = value; return builder; },
           then(resolve) {
-            const data = teams.filter((row) => {
+            if (queryError) return resolve({ data: null, error: queryError });
+            // #8110 · Postgres leverer altid parked_at; et fixture uden feltet får null.
+            // omitParkedAt simulerer et opslag, hvor kolonnen ikke kom med.
+            const rows = omitParkedAt
+              ? teams.map(({ parked_at: _omit, ...rest }) => rest)
+              : teams.map((row) => ({ parked_at: null, ...row }));
+            const data = rows.filter((row) => {
               if (filters.is_ai !== undefined && row.is_ai !== filters.is_ai) return false;
               if (filters.is_bank !== undefined && row.is_bank !== filters.is_bank) return false;
               if (filters.is_frozen !== undefined && row.is_frozen !== filters.is_frozen) return false;
@@ -302,4 +308,62 @@ test("checkDebtWarnings — per-team try/catch isolerer fejl så øvrige teams s
     errorLogs.some((line) => line.includes("team-3") && line.includes("simulated transient failure")),
     "console.error skal logge team-id og fejl-besked for den fejlende team"
   );
+});
+
+// #8110 · Bestyrelsen er frosset for parkerede hold (#5902, A): samme filter
+// som #8068/#8103 (managerParking.isParkedTeam på teams.parked_at).
+test("checkDebtWarnings — et parkeret hold med negativ saldo får ingen advarsel (#8110)", async () => {
+  const calls = [];
+  const supabaseClient = createSupabaseStub({
+    teams: [
+      { id: "team-1", name: "Aktiv", balance: -120, user_id: "user-1", is_ai: false, is_bank: false, is_frozen: false, parked_at: null },
+      { id: "team-2", name: "Parkeret", balance: -300, user_id: "user-2", is_ai: false, is_bank: false, is_frozen: false, parked_at: "2026-10-25T03:00:00Z" },
+    ],
+  });
+
+  const originalLog = console.log;
+  const logs = [];
+  console.log = (...args) => { logs.push(args.join(" ")); };
+  try {
+    await checkDebtWarnings({
+      supabaseClient,
+      now: new Date("2026-11-13T08:00:00Z"),
+      notifyUserFn: async (args) => { calls.push(args); return { delivered: true, deduped: false }; },
+    });
+  } finally {
+    console.log = originalLog;
+  }
+
+  assert.deepEqual(calls.map((c) => c.userId), ["user-1"], "kun det aktive hold advares");
+  assert.ok(logs.some((line) => line.includes("1 parkerede hold sprunget over")), "antallet af sprunget-over parkerede hold logges");
+});
+
+test("checkDebtWarnings — kan parkeringen ikke aflæses (parked_at mangler), fejler kørslen og sender intet (#8110)", async () => {
+  const calls = [];
+  const supabaseClient = createSupabaseStub({
+    omitParkedAt: true,
+    teams: [{ id: "team-1", name: "X", balance: -100, user_id: "user-1", is_ai: false, is_bank: false, is_frozen: false }],
+  });
+  await assert.rejects(
+    checkDebtWarnings({
+      supabaseClient,
+      now: new Date("2026-11-13T08:00:00Z"),
+      notifyUserFn: async (args) => { calls.push(args); return { delivered: true, deduped: false }; },
+    }),
+    /parked_at/
+  );
+  assert.equal(calls.length, 0);
+});
+
+test("checkDebtWarnings — fejler hold-opslaget, fejler kørslen synligt og sender intet (#8110)", async () => {
+  const calls = [];
+  const supabaseClient = createSupabaseStub({ teams: [], queryError: { message: "teams nede" } });
+  await assert.rejects(
+    checkDebtWarnings({
+      supabaseClient,
+      now: new Date("2026-11-13T08:00:00Z"),
+      notifyUserFn: async (args) => { calls.push(args); return { delivered: true, deduped: false }; },
+    }),
+  );
+  assert.equal(calls.length, 0);
 });
