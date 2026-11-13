@@ -15,6 +15,10 @@ import {
   createStagePlanRuntime,
   stagePlanEntrants,
   stagePlanFinalEfforts,
+  stagePlanHuntTasks7855,
+  stagePlanHuntWindows7855,
+  stagePlanLoadEfforts,
+  stagePlanCurrentTasks,
   observeGroups7635,
   isRiderBehindFront7635,
   type Front7635State,
@@ -350,4 +354,75 @@ test("#7635 observeGroups7635: en rigtig opdeling er aldrig et angreb; et spring
   // Splittes en angriber ud af et angreb, er han stadig et angreb.
   observeGroups7635(f, [g7635("solo-3900", ["x"], 0, { kind: "solo" }), g7635("peloton-0", ["cap", "h1", "y", "z"], GAP)]);
   assert.deepEqual([...f.attackGroups], ["solo-3900"]);
+});
+
+// #7855 (ejer 12/11 valg A og C): udbrudsleddet med jagt i motorens runtime.
+const HUNT_ROUTE_7855 = {
+  distance_km: 120, profile_type: "mountain",
+  waypoints: [
+    { kind: "kom", index: 0, name: "Col A", km: 30, category: "2", summit_finish: false },
+    { kind: "kom", index: 1, name: "Col B", km: 90, category: "1", summit_finish: false },
+    { kind: "finish", index: 0, name: "Finish", km: 120 },
+  ],
+} as unknown as RouteV2;
+const huntOrder7855 = (legs: unknown) => [{ team_id: "A", kind: STAGE_PLAN_ORDER_KIND, params: { riders: [{ rider_id: "h1", legs }] } }] as unknown as TeamOrder[];
+const seg7855 = (from_km: number, to_km: number) => ({ from_km, to_km, kind: "climb" }) as unknown as Segment;
+const groups7855 = (inBreak: boolean): EngineState => {
+  const groups: RaceGroup[] = inBreak
+    ? [{ id: "b", kind: "breakaway", origin: "breakaway", rider_ids: ["h1"], gap_seconds: 0, cohesion: 1 } as RaceGroup, { id: "p0", kind: "peloton", rider_ids: ["cap", "x"], gap_seconds: 200, cohesion: 1 }]
+    : [{ id: "p0", kind: "peloton", rider_ids: ["cap", "h1", "x"], gap_seconds: 0, cohesion: 1 }];
+  const riders: EngineState["riders"] = {};
+  for (const id of ["cap", "h1", "x"]) riders[id] = { rider_id: id, status: "racing" } as EngineState["riders"][string];
+  return { km: 0, groups, riders, virtual_gc: {} } as unknown as EngineState;
+};
+
+test("#7855 valg A: udbrudsleddet med jagt proever udbruddet og jager fra start; slukket findes jagten ikke", () => {
+  const legs = [{ task: "breakaway", hunt: "hunt_kom" }];
+  const on = createStagePlanRuntime(huntOrder7855(legs), HUNT_ROUTE_7855, ENTRANTS, { jerseyHunt7855: true })!;
+  assert.equal(stagePlanCurrentTasks(on)["h1"], "breakaway", "opgaven er stadig udbruddet");
+  assert.deepEqual(stagePlanHuntTasks7855(on), { h1: "hunt_kom" }, "jagten gaelder fra start");
+  assert.deepEqual(stagePlanHuntWindows7855(on), { h1: { fromKm: 0, toKm: Infinity } });
+  assert.deepEqual(stagePlanLoadEfforts(on), { h1: "normal" }, "udbrudsleddets indsats; prisen er passagerne");
+  // Slukket: planen er ugyldig og ignoreres (uden gemt tilbagefald), som i merge-basen.
+  assert.equal(createStagePlanRuntime(huntOrder7855(legs), HUNT_ROUTE_7855, ENTRANTS), null);
+  // Uden jagt i planen: ingen jaegere, saa passagerne er uroerte.
+  const plain = createStagePlanRuntime(huntOrder7855([{ task: "breakaway" }]), HUNT_ROUTE_7855, ENTRANTS, { jerseyHunt7855: true })!;
+  assert.equal(stagePlanHuntTasks7855(plain), undefined);
+});
+
+test("#7855 valg A: ikke med i udbruddet = jager fra sin gruppe; et sat-led efter udbruddet slutter jagten", () => {
+  const alone = createStagePlanRuntime(huntOrder7855([{ task: "breakaway", hunt: "hunt_kom" }]), HUNT_ROUTE_7855, ENTRANTS, { jerseyHunt7855: true })!;
+  advanceStagePlan(alone, { state: groups7855(false), segment: seg7855(0, 30), segmentIndex: 0, entrants: ENTRANTS });
+  advanceStagePlan(alone, { state: groups7855(false), segment: seg7855(30, 90), segmentIndex: 1, entrants: ENTRANTS });
+  assert.deepEqual(stagePlanHuntTasks7855(alone), { h1: "hunt_kom" }, "uden sat-led jager han hele strækningen fra feltet");
+  const withDropped = createStagePlanRuntime(huntOrder7855([{ task: "breakaway", hunt: "hunt_kom" }, { task: "ride_in", from: { at: "dropped" } }]), HUNT_ROUTE_7855, ENTRANTS, { jerseyHunt7855: true })!;
+  advanceStagePlan(withDropped, { state: groups7855(false), segment: seg7855(0, 30), segmentIndex: 0, entrants: ENTRANTS });
+  const events = advanceStagePlan(withDropped, { state: groups7855(false), segment: seg7855(30, 90), segmentIndex: 1, entrants: ENTRANTS });
+  assert.deepEqual(events.map((e) => e.params), [{ rider_id: "h1", leg: 1, task: "ride_in", reason: "missed_break" }]);
+  assert.equal(stagePlanHuntTasks7855(withDropped), undefined);
+  // Med i udbruddet bliver han paa udbrudsleddet og jager videre.
+  const inBreak = createStagePlanRuntime(huntOrder7855([{ task: "breakaway", hunt: "hunt_kom" }, { task: "ride_in", from: { at: "dropped" } }]), HUNT_ROUTE_7855, ENTRANTS, { jerseyHunt7855: true })!;
+  advanceStagePlan(inBreak, { state: groups7855(true), segment: seg7855(0, 30), segmentIndex: 0, entrants: ENTRANTS });
+  assert.deepEqual(advanceStagePlan(inBreak, { state: groups7855(true), segment: seg7855(30, 90), segmentIndex: 1, entrants: ENTRANTS }), []);
+  assert.deepEqual(stagePlanHuntTasks7855(inBreak), { h1: "hunt_kom" });
+});
+
+test("#7855 valg C: et jagt-led taeller med sin egen indsats i dagens haardeste indsats; tempo bagefter taeller stadig", () => {
+  const huntOnly = createStagePlanRuntime(huntOrder7855([{ task: "hunt_kom" }]), HUNT_ROUTE_7855, ENTRANTS, { jerseyHunt7855: true })!;
+  assert.deepEqual(stagePlanLoadEfforts(huntOnly), { h1: "protect" }, "passagerne koster oveni, aldrig i stedet for");
+  assert.equal(stagePlanEntrants(huntOnly, ENTRANTS)["h1"].effort, "protect", "i loebet koerer han opgavens indsats");
+  const thenTempo = createStagePlanRuntime(huntOrder7855([{ task: "hunt_kom" }, { task: "tempo", from: { at: "kom", kom_index: 1 } }]), HUNT_ROUTE_7855, ENTRANTS, { jerseyHunt7855: true })!;
+  advanceStagePlan(thenTempo, { state: groups7855(false), segment: seg7855(0, 30), segmentIndex: 0, entrants: ENTRANTS });
+  advanceStagePlan(thenTempo, { state: groups7855(false), segment: seg7855(30, 90), segmentIndex: 1, entrants: ENTRANTS });
+  advanceStagePlan(thenTempo, { state: groups7855(false), segment: seg7855(90, 120), segmentIndex: 2, entrants: ENTRANTS });
+  assert.deepEqual(stagePlanLoadEfforts(thenTempo), { h1: "protect" });
+});
+
+test("#7855 frikort (dom 2): et jagt-led taeller aldrig lettere i traetheden end den indsats, det koeres med i loebet", () => {
+  // Jagten koeres i loebet paa samme indsats som foelg med og tempo. Talte leddet lettere bagefter, var
+  // opgaven en billigere vej til samme loeb for en rytter, der kaemper om passagerne i forvejen.
+  const huntOnly = createStagePlanRuntime(huntOrder7855([{ task: "hunt_kom" }]), HUNT_ROUTE_7855, ENTRANTS, { jerseyHunt7855: true })!;
+  const tempoOnly = createStagePlanRuntime(huntOrder7855([{ task: "tempo" }]), HUNT_ROUTE_7855, ENTRANTS, { jerseyHunt7855: true })!;
+  assert.equal(stagePlanEntrants(huntOnly, ENTRANTS)["h1"].effort, stagePlanEntrants(tempoOnly, ENTRANTS)["h1"].effort, "samme indsats i loebet");
+  assert.deepEqual(stagePlanLoadEfforts(huntOnly), stagePlanLoadEfforts(tempoOnly), "og aldrig lettere i traetheden");
 });
