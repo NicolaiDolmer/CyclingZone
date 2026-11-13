@@ -33,7 +33,7 @@ function reset() {
 }
 
 // A recording Supabase fake: every builder resolves to an empty page.
-function recordingClient({ flags = {}, metrics = { queue_length: 0, oldest_age_s: null }, metricsError = null } = {}) {
+function recordingClient({ flags = {}, metrics = { queue_length: 0, oldest_age_s: null }, metricsError = null, ready = { ready: true }, readyError = null } = {}) {
   const tables = [], rpcs = [];
   const builder = (table) => {
     const b = {
@@ -51,6 +51,7 @@ function recordingClient({ flags = {}, metrics = { queue_length: 0, oldest_age_s
     from(table) { if (table !== "app_config") tables.push(table); return builder(table); },
     async rpc(name) {
       rpcs.push(name);
+      if (name === "get_ranking_shadow_read_ready") return readyError ? { data: null, error: { message: readyError } } : { data: ready, error: null };
       if (name === "get_ranking_shadow_metrics") return metricsError ? { data: null, error: { message: metricsError } } : { data: metrics, error: null };
       return { data: null, error: null };
     },
@@ -102,10 +103,10 @@ test("#7664 source: one lookup per client within the cache window", async () => 
   await resolveRankingReadSource(client, { now: () => t });
   t += SOURCE_CACHE_TTL_MS - 1;
   await resolveRankingReadSource(client, { now: () => t });
-  assert.equal(client.rpcs.length, 1);
+  assert.deepEqual(client.rpcs, Array(1).fill(["get_ranking_shadow_read_ready", "get_ranking_shadow_metrics"]).flat());
   t += 2;
   await resolveRankingReadSource(client, { now: () => t });
-  assert.equal(client.rpcs.length, 2);
+  assert.deepEqual(client.rpcs, Array(2).fill(["get_ranking_shadow_read_ready", "get_ranking_shadow_metrics"]).flat());
 });
 
 test("#7664 read client: outside a request and when legacy, every table name is passed through unchanged", async () => {
@@ -119,9 +120,9 @@ test("#7664 read client: outside a request and when legacy, every table name is 
 });
 
 // The real rankings router behind the real middleware, as api.js mounts it.
-async function routeTables(flags) {
+async function routeTables(flags, options = {}) {
   reset();
-  const client = recordingClient({ flags });
+  const client = recordingClient({ flags, ...options });
   const app = express();
   const requireAuth = (req, res, next) => { req.user = { id: "u" }; next(); };
   app.use("/rankings", createRankingFreshnessRouter({ supabase: client, requireAuth, reportError: () => {}, now: () => NOW }));
@@ -370,15 +371,20 @@ test("#7664 dashboard time limit: a hanging read gives up, aborts its reads and 
     const hanging = client.reads.filter((q) => q.table === hangOn);
     assert.ok(hanging.length > 0 && hanging.every((q) => q.signal?.aborted), "every hanging read is aborted");
   }
-  // A hanging source lookup (flags/queue) is inside the same limit.
-  reset();
-  const client = recordingClient({ flags: BOTH_ON });
-  client.rpc = () => new Promise(() => {});
-  const captured = [];
-  const top = await readDashboardTopRiders7664(client, { seasonId: SEASON, leagueDivisionId: 1, timeoutMs: 40, now: () => NOW,
-    captureExceptionFn: (error) => captured.push(error) });
-  assert.equal(top, null);
-  assert.equal(captured.length, 1);
+  // A hanging source lookup (queue RPC with the switch on, or the flag lookup
+  // itself, also with the switch off) is inside the same limit. The answer is
+  // right anyway (today's RPC), so it is not reported as a shadow failure.
+  for (const hang of ["rpc", "flags"]) {
+    reset();
+    const client = recordingClient({ flags: hang === "rpc" ? BOTH_ON : {} });
+    if (hang === "rpc") client.rpc = () => new Promise(() => {});
+    else client.from = () => { const b = { select: () => b, eq: () => b, maybeSingle: () => new Promise(() => {}) }; return b; };
+    const captured = [];
+    const top = await readDashboardTopRiders7664(client, { seasonId: SEASON, leagueDivisionId: 1, timeoutMs: 40, now: () => NOW,
+      captureExceptionFn: (error) => captured.push(error) });
+    assert.equal(top, null, hang);
+    assert.equal(captured.length, 0, hang);
+  }
 });
 
 // A coordinator fake for the gated path: pending work of a given age.
@@ -397,6 +403,7 @@ function coordinatorClient({ flags, pendingAgeMs }) {
       if (name === "get_ranking_refresh_work_state") return { data: { pending: true, pending_age_ms: pendingAgeMs, last_completed_at: null }, error: null };
       if (name === "claim_ranking_refresh_work") return { data: { status: "claimed", token: args.p_token, target_version: "2" }, error: null };
       if (name === "renew_ranking_refresh_work" || name === "finish_ranking_refresh_work") return { data: true, error: null };
+      if (name === "get_ranking_shadow_read_ready") return { data: { ready: true }, error: null };
       if (name === "get_ranking_shadow_metrics") return { data: { queue_length: 0 }, error: null };
       if (name === "apply_ranking_deltas") return { data: { pending: false }, error: null };
       if (name === "check_ranking_shadow_parity") return { data: { status: "equal" }, error: null };
@@ -439,7 +446,8 @@ const views = ["rider_rankings_mv", "youth_rider_rankings_mv", "team_standings_e
 const definitions = views.map((name) => (name.startsWith("youth") ? read("2026-09-25-4620-youth-rider-rankings-mv.sql") : read("2026-09-25-5535-senior-only-result-aggregates.sql"))
   .match(new RegExp("CREATE MATERIALIZED VIEW (?:IF NOT EXISTS )?public\\." + name + " AS\\s*([\\s\\S]*?);"))[1]);
 
-test("#7664 same numbers: shadow tables equal the legacy definitions across race-day scenarios", async (t) => {
+// The real shadow migrations (and the #7664 readiness migration) on PGlite.
+async function shadowDb(t) {
   const db = await PGlite.create(); t.after(() => db.close());
   await db.exec([
     "CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;",
@@ -461,6 +469,12 @@ test("#7664 same numbers: shadow tables equal the legacy definitions across race
   await db.exec(read("2026-10-19-6765-incremental-rankings-shadow.sql"));
   await db.exec(read("2026-10-23-6765-ranking-shadow-contrib-transfers.sql"));
   await db.exec(read("2026-10-31-6765-ranking-shadow-codex-p1-p2.sql"));
+  await db.exec(read("2026-11-13-7664-ranking-shadow-read-ready.sql"));
+  return db;
+}
+
+test("#7664 same numbers: shadow tables equal the legacy definitions across race-day scenarios", async (t) => {
+  const db = await shadowDb(t);
   await db.exec("UPDATE app_config SET value='\"on\"'::jsonb WHERE key='ranking_shadow_enabled';");
   const drain = async () => {
     for (let i = 0; i < 200; i++) {
@@ -520,5 +534,107 @@ test("#7664 same numbers: shadow tables equal the legacy definitions across race
     await db.exec("UPDATE race_results SET points_earned=points_earned+7 WHERE race_id=fid(1002) AND rank<=3; DELETE FROM races WHERE id=fid(1003);");
     await drain();
     await parity("correction");
+  });
+});
+
+// ── Genopbygning: læserne skifter først, når den er helt færdig (Codex P1) ──
+test("#7664 rebuild: the switch waits for the database's own 'rebuild finished'; anything else stays on matviews", async () => {
+  const cases = [
+    // [svar fra get_ranking_shadow_read_ready, fejl, forventet kilde, rapporter]
+    [{ ready: false, stage: "queued" }, null, "legacy", 0],
+    [{ ready: false, stage: "rebuilding", watermark_id: "812" }, null, "legacy", 0],
+    [{ ready: "true" }, null, "legacy", 0],
+    [null, null, "legacy", 0],
+    [null, "function get_ranking_shadow_read_ready() does not exist", "legacy", 1],
+    [{ ready: true, ready_at: "2026-11-13T09:59:00Z" }, null, "shadow", 0],
+  ];
+  for (const [ready, readyError, expected, reports] of cases) {
+    reset();
+    const client = recordingClient({ flags: BOTH_ON, ready, readyError });
+    const captured = [];
+    const value = await resolveRankingReadSource(client, { now: () => NOW, captureExceptionFn: (e) => captured.push(e) });
+    assert.equal(value.source, expected, JSON.stringify({ ready, readyError }));
+    assert.equal(captured.length, reports);
+    if (expected === "legacy") {
+      assert.equal(value.currentAsOf, null, "no 'updated at' for the old numbers");
+      assert.ok(!client.rpcs.includes("get_ranking_shadow_metrics"), "a young queue cannot override an unfinished rebuild");
+      // The dashboard uses today's RPC: no shadow read at all.
+      client.tables.length = 0;
+      assert.equal(await readDashboardTopRiders7664(client, { seasonId: SEASON, leagueDivisionId: 1, now: () => NOW }), null);
+      assert.deepEqual(client.tables, []);
+    }
+  }
+  // Freshness and every rankings route stay on today's tables during a rebuild.
+  const during = await routeTables(BOTH_ON, { ready: { ready: false, stage: "rebuilding" } });
+  assert.deepEqual(during.freshness, { source: "legacy", current_as_of: null });
+  for (const tables of Object.values(during.perRoute)) {
+    for (const name of tables) assert.ok(!Object.values(SHADOW_READ_TABLES).includes(name), name);
+  }
+  // The full matview pass is not held while readers are still on matviews.
+  reset();
+  const coordinator = coordinatorClient({ flags: BOTH_ON, pendingAgeMs: 1000 });
+  const rpc = coordinator.rpc.bind(coordinator);
+  coordinator.rpc = (name, args) => (name === "get_ranking_shadow_read_ready" ? { data: { ready: false }, error: null } : rpc(name, args));
+  assert.equal(await gated(coordinator), true);
+  assert.equal(legacyPasses(coordinator.calls), 1);
+});
+
+test("#7664 rebuild in the database: first enable, half-built, finished, re-enable after an off period", async (t) => {
+  const db = await shadowDb(t);
+  const ready = async () => (await db.query("SELECT get_ranking_shadow_read_ready() v")).rows[0].v;
+  const metrics = async () => (await db.query("SELECT get_ranking_shadow_metrics() v")).rows[0].v;
+  const step = async () => (await db.query("SELECT apply_ranking_deltas(1) v")).rows[0].v;
+  const drain = async () => { for (let i = 0; i < 500; i++) if (!(await db.query("SELECT apply_ranking_deltas(200) v")).rows[0].v.pending) return; assert.fail("queue did not drain"); };
+  const shadowRows = async () => (await db.query("SELECT count(*)::int n FROM ranking_rider_season")).rows[0].n;
+  const legacyRows = async () => {
+    await db.exec("REFRESH MATERIALIZED VIEW rider_rankings_mv;");
+    return (await db.query("SELECT count(*)::int n FROM rider_rankings_mv")).rows[0].n;
+  };
+  const results = (race, base) => `INSERT INTO race_results(race_id,rider_id,team_id,points_earned,prize_money,rank,result_type)
+    SELECT fid(${race}),fid(i),fid(100+i%2),${base}-i,1000,i,'stage' FROM generate_series(1,12) i;`;
+
+  // Results exist while the shadow is off (nothing queued): the shadow is empty.
+  await db.exec(results(1002, 50) + results(1003, 40) + results(1001, 30));
+  assert.equal(await shadowRows(), 0);
+  assert.equal((await ready()).ready, false, "fresh install is not confirmed");
+
+  await t.test("first enable with empty shadow tables: not ready while the marker waits", async () => {
+    await db.exec("UPDATE app_config SET value='\"on\"'::jsonb WHERE key='ranking_shadow_enabled';");
+    const m = await metrics();
+    assert.equal(Number(m.queue_length), 1);
+    assert.ok(Number(m.oldest_age_s ?? 0) < 5, "the queue looks perfectly fresh");
+    assert.deepEqual([(await ready()).ready, (await ready()).stage], [false, "queued"]);
+  });
+  await t.test("half rebuilt: the marker is expanded, some races done, others not", async () => {
+    await step(); // claims the marker and expands it into one item per race
+    assert.equal((await ready()).ready, false);
+    await step(); // one race processed
+    assert.ok(await shadowRows() > 0, "some numbers are in the shadow");
+    assert.ok(await shadowRows() < await legacyRows() || (await metrics()).queue_length > 0);
+    const r = await ready();
+    assert.deepEqual([r.ready, r.stage], [false, "rebuilding"]);
+  });
+  await t.test("rebuild finished: now the readers may switch, and it stays so for normal work", async () => {
+    await drain();
+    const r = await ready();
+    assert.equal(r.ready, true);
+    assert.equal(await shadowRows(), await legacyRows());
+    await db.exec("UPDATE race_results SET points_earned=points_earned+1 WHERE race_id=fid(1002) AND rank=1;");
+    assert.ok(Number((await metrics()).queue_length) > 0);
+    assert.equal((await ready()).ready, true, "ordinary changes do not reopen a finished rebuild");
+    await drain();
+  });
+  await t.test("re-enable after an off period with stale numbers: back to not ready until rebuilt", async () => {
+    await db.exec("UPDATE app_config SET value='\"off\"'::jsonb WHERE key='ranking_shadow_enabled';");
+    await db.exec(results(1004, 90)); // skipped while off: the shadow is now stale
+    await db.exec("UPDATE app_config SET value='\"on\"'::jsonb WHERE key='ranking_shadow_enabled';");
+    assert.ok(await shadowRows() > 0, "old numbers are still in the shadow");
+    assert.equal((await ready()).ready, false);
+    await step();
+    await step();
+    assert.equal((await ready()).ready, false, "half rebuilt again");
+    await drain();
+    assert.equal((await ready()).ready, true);
+    assert.equal(await shadowRows(), await legacyRows());
   });
 });

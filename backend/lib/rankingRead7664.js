@@ -10,7 +10,8 @@
 //
 // Sikkerhedsnet: skyggen bruges kun, naar BEGGE kontakter er taendt
 // (ranking_shadow_enabled skriver skyggen, ranking_shadow_decoupled_6765
-// afkobler den), og naar dens koe ikke er gaaet i staa. Ellers falder alle
+// afkobler den), naar databasen har bekraeftet, at seneste genopbygning er
+// helt faerdig, og naar dens koe ikke er gaaet i staa. Ellers falder alle
 // laesninger tilbage til matviews, saa en fejl i skyggen aldrig giver tomme
 // eller gamle tal.
 //
@@ -64,6 +65,20 @@ export async function rankingReadSwitchOn(supabase, { now = Date.now } = {}) {
     && evaluateFlagStage(writes, { engineWrite: true });
 }
 
+/**
+ * Er skyggens seneste genopbygning helt faerdig? Et kontaktskift (eller
+ * TRUNCATE) laegger en 'rebuild'-markoer, som udfoldes og behandles i mange
+ * omgange med ny koe-alder, saa koe-alderen alene siger intet. Databasen
+ * bekraefter faerdig, naar markoeren og alt det, den blev foldet ud til, er
+ * behandlet (database/2026-11-13-7664-ranking-shadow-read-ready.sql). Kun et
+ * eksplicit `ready: true` taeller; en fejl kastes og giver matviews.
+ */
+async function shadowRebuildFinished(supabase) {
+  const { data, error } = await supabase.rpc("get_ranking_shadow_read_ready", {});
+  if (error) throw new Error(error.message);
+  return data?.ready === true;
+}
+
 /** @typedef {{ source: "legacy"|"shadow", currentAsOf: string|null }} RankingReadSource */
 /** @typedef {(error: Error, context: { tags: Record<string, string> }) => void} CaptureFn */
 
@@ -82,7 +97,7 @@ export async function resolveRankingReadSource(supabase, { now = Date.now, captu
   /** @type {RankingReadSource} */
   let value = LEGACY;
   try {
-    if (await rankingReadSwitchOn(supabase, { now })) {
+    if (await rankingReadSwitchOn(supabase, { now }) && await shadowRebuildFinished(supabase)) {
       const { data, error } = await supabase.rpc("get_ranking_shadow_metrics", {});
       if (error) throw new Error(error.message);
       const age = data?.oldest_age_s;
@@ -225,15 +240,21 @@ export async function readDashboardTopRiders7664(supabase, { seasonId, leagueDiv
       reject(new Error(`dashboard top riders: shadow path exceeded ${timeoutMs} ms`));
     }, timeoutMs);
   });
+  // Kun den nye vej rapporteres. Haenger selve kildevalget (fx flag-opslaget,
+  // ogsaa med kontakten slukket), er svaret alligevel rigtigt (dagens RPC), og
+  // kildevalget rapporterer selv sine fejl.
+  let shadowStarted = false;
   const work = (async () => {
     const chosen = source ?? await resolveRankingReadSource(supabase, { captureExceptionFn, now });
     if (chosen.source !== "shadow") return null;
+    shadowStarted = true;
     return readShadowTopRiders(supabase, { seasonId, leagueDivisionId, signal: controller.signal });
   })();
   try {
     return await Promise.race([work, timeout]);
   } catch (error) {
     // best-effort: forsiden falder tilbage til dagens RPC (api.js).
+    if (!shadowStarted) return null;
     // Supabase-fejl er ofte et objekt med `message`, ikke en Error.
     const message = error instanceof Error ? error.message : String(/** @type {{ message?: unknown }} */ (error)?.message ?? error);
     captureExceptionFn?.(error instanceof Error ? error : new Error(message), {

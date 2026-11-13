@@ -258,12 +258,19 @@ Rangliste-ruterne og forsidens top 5 læser skyggetabellerne
 (`ranking_rider_season`, `ranking_youth_rider_season`, `ranking_team_season_ext`,
 `ranking_team_race_points`) i stedet for de fire matviews KUN når både
 `ranking_shadow_decoupled_6765` og `ranking_shadow_enabled` tillader engineWrite,
-og skyggekøens ældste post højst er 30 minutter gammel. Ellers, og ved enhver fejl
+databasen har bekræftet, at seneste genopbygning er helt færdig
+(`get_ranking_shadow_read_ready()`, database/2026-11-13-7664-ranking-shadow-read-ready.sql:
+en `rebuild`-post nulstiller; færdig først når posten er foldet ud og alle poster
+til og med vandmærket = køens max(id) i det øjeblik er behandlet), og skyggekøens
+ældste post højst er 30 minutter gammel. Køens alder alene er intet bevis: de
+udfoldede poster får nye tidsstempler. Under en genopbygning læses matviews, der
+vises ingen "Opdateret kl.", forsiden bruger dagens RPC, og holdevinduet er 0. Ellers, og ved enhver fejl
 i kildevalget, læses matviews som før. `global_rank_mv` har ingen skygge og læses
 altid som før. Kildevalget huskes 10 sekunder pr. backend-klient.
 Nødvej: fejler forsidens læsning i skyggen, eller tager hele den nye vej
 (kildevalg + læsninger) over 1,5 sekunder, afbrydes den, fejlen rapporteres én
-gang til Sentry, og forsiden bruger dagens `dashboard_rider_ranking`-RPC (intet
+gang til Sentry (kun når skyggevejen var valgt; et hængende kildevalg giver
+dagens RPC uden rapport), og forsiden bruger dagens `dashboard_rider_ranking`-RPC (intet
 500-svar). Rækkefølge: point faldende, rækker uden point (NULL) efter 0, lige
 point afgøres af rytter-id som på rytterranglisten (dagens RPC: laveste
 resultat-id).

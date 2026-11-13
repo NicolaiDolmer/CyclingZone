@@ -752,8 +752,11 @@ test("fetchWatchdogState: ranglistens holdevindue gaelder kun, naar kontakten er
     [{ ranking_shadow_decoupled_6765: "on", ranking_shadow_enabled: "off" }, 10, 0, true],
     [on, 10, LEGACY_HOLD_MS_7664, false],
     [on, 21, LEGACY_HOLD_MS_7664, true],
+    // Genopbygning ikke faerdig: laeserne er paa matviews, ingen hold, normal 5-min-graense.
+    [on, 10, 0, true, false],
+    [on, 4, 0, false, false],
   ];
-  for (const [flags, pendingMin, hold, alarm] of cases) {
+  for (const [flags, pendingMin, hold, alarm, rebuildDone = true] of cases) {
     __resetRankingReadCacheForTests();
     clearFlagStageCache();
     const supabase = makeWatchdogSupabase();
@@ -768,6 +771,7 @@ test("fetchWatchdogState: ranglistens holdevindue gaelder kun, naar kontakten er
     const rpc = supabase.rpc.bind(supabase);
     supabase.rpc = async (name, args = {}) => {
       if (name === "get_ranking_refresh_work_state") return { data: { pending: true, pending_age_ms: pendingMin * 60_000, last_completed_at: hoursAgo(1) }, error: null };
+      if (name === "get_ranking_shadow_read_ready") return { data: { ready: rebuildDone }, error: null };
       if (name === "get_ranking_shadow_metrics") return { data: { queue_length: 0, oldest_age_s: null }, error: null };
       return rpc(name, args);
     };
