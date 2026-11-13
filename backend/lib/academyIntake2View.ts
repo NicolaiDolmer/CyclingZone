@@ -116,7 +116,8 @@ export function rosterPrognosis({ rider, abilities, potRow, daysOnTeam, speed, s
     // scoutingReport.js er utypet JS: parametertypen er udledt af dens default
     // (DEFAULT_SCOUT). loadScout-rækken har samme form, så den gives videre uændret.
     scout: scout as Parameters<typeof buildTypePrognosisBands>[0]["scout"],
-    developmentXp,
+    // Samme grund: defaulten null giver parametertypen null; params gives videre uaendret.
+    developmentXp: developmentXp as Parameters<typeof buildTypePrognosisBands>[0]["developmentXp"],
   });
   // #6853: samme rolle-regel som alle andre flader (potentialDisplayBand.js).
   const band = displayPotentialBand(bands, potRow.primary_type) as
