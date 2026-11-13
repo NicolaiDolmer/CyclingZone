@@ -7,6 +7,10 @@
 //   "Nej" til loeft, naar rytteren er sat til at koere roligt.
 //   "Et gulv paa dagens samlede XP", fordelt paa de evner, etapen traener, kun naar loebet passer.
 //   "Uden bonus": sammenligningen er uden Traen nu-bonussen.
+// Ejer 13/11 ca. kl. 17:40-17:50 (kommentaren paa #6110 kl. 16:49 UTC), hvilke etaper der passer:
+//   Klassementsrytter "Bjerg og enkeltstart". Udbryder "Kuperet og smaakuperet". Rouleur "Kun flad".
+//   "Ja, grus til brostensrytteren". Smaakuperet: "Ja, ogsaa til puncheuren".
+//   Holdtidskoersel: "Ja, til enkeltstartsrytteren". Fordelingen: "A: samme procent".
 // R15 (ejer 7/11) staar ved magt og doemmes stadig i dommer6110.loebsdag.test.js.
 //
 // Skrevet FOER koden. Maa ikke aendres af byggebanen. Tallene er dommerens EGNE proevetal, ikke
@@ -24,11 +28,13 @@
 //                der giver rytteren mest XP i alt samme dato, med holdets traener og facilitet,
 //                samme dagsudsving og UDEN Traen nu.
 //   Gulvet       er loebsdagen under det bedste pas, loeftes den PRAECIS op til det, og loeftet
-//                lander kun i de evner, etapen traener (loebsdagens `program.focusAbilities`).
-//                Fordelingen mellem dem: se FORDELING. Er loebsdagen ikke under, aendres intet.
+//                lander kun i de evner, etapen traener (loebsdagens `program.focusAbilities`),
+//                med samme procent i hver (ejer 13/11: "A: samme procent"). Er loebsdagen
+//                ikke under, aendres intet.
+//   Uden for raekken  en etapetype, der ikke staar i typens raekke, giver aldrig loeft. Det gaelder
+//                ogsaa mellembjerg (`medium_mountain`) og udbryderen paa "classic": ejeren er ikke
+//                spurgt om de to (S16 og S17 i regel-R15b.md), saa de staar uden for.
 //   Decimaltal afrundes foer sammenligning (#8113).
-// Aabne spoergsmaal til ejeren (springes over nederst, til ejeren har svaret): S12
-// klassementsrytter, udbryder og rouleur; S13 grus, smaakuperet og holdtidskoersel.
 //
 // ── Det proeven kraever af motoren ───────────────────────────────────────────────────────────
 // Loebsdagens ene kald faar holdets katalog med: withRaceDayRoleYieldXp(xp, ekstra,
@@ -55,23 +61,22 @@ const { applyTrainingCatalog } = await kraev("./trainingCatalogV3.js", "applyTra
 const { sessionsByLevelFor } = await kraev("./trainingDayTypes.js", "sessionsByLevelFor");
 const { xpPriceForNextPoint } = await kraev("./developmentXp.ts", "xpPriceForNextPoint");
 
-// ── Ejerens svar paa dommerens aabne spoergsmaal (regel-R15b.md) ─────────────────────────────
-// null = ikke afgjort (proeven springes over), true = ejeren har sagt ja (proeven doemmer),
-// false = ejeren har sagt nej. Kun lederen retter her, og kun efter ejerens ord.
-const EJERSVAR = Object.freeze({ S12: null, S13: null });
-// Ejer 13/11: loeftet "fordelt paa de evner, etapen traener". Dommerens laesning: samme procent
-// i hver af etapens evner (som kortet "ligeligt, +7,4 % i hver", nu kun i etapens evner).
-// Den anden laesning er samme antal XP til hver ("samme-xp"). Kun lederen retter her (S15).
-const FORDELING = "samme-procent";
-
-// ── Dommerens laesning ───────────────────────────────────────────────────────────────────────
+// ── Hvilke etaper passer hvilken primaer type (ejer 13/11, den samlede tabel paa #6110) ──────
 const HJEMMEBANE = Object.freeze({
-  climber: ["mountain", "high_mountain"], // klatrer: bjerg og hoejbjerg
+  climber: ["mountain", "high_mountain"], // klatrer: bjerg, hoejbjerg
   sprinter: ["flat"], // sprinter: flad
-  puncheur: ["hilly", "classic"], // puncheur: kuperet (classic vises som kuperet)
-  tt: ["itt", "itt_hilly"], // enkeltstartsrytter: enkeltstart
-  brostensrytter: ["cobbles"], // brostensrytter: brosten
+  puncheur: ["hilly", "classic", "rolling"], // puncheur: kuperet, klassiker, smaakuperet
+  tt: ["itt", "itt_hilly", "ttt"], // enkeltstartsrytter: enkeltstart, bakket enkeltstart, holdtidskoersel
+  brostensrytter: ["cobbles", "gravel"], // brostensrytter: brosten, grus
+  gc: ["mountain", "high_mountain", "itt", "itt_hilly"], // klassementsrytter: bjerg, hoejbjerg, enkeltstart, bakket enkeltstart
+  baroudeur: ["hilly", "rolling"], // udbryder: kuperet, smaakuperet
+  rouleur: ["flat"], // rouleur: kun flad
 });
+// Alle spillets etapetyper (databasens check paa race_stage_profiles.profile_type, #6369).
+const ETAPETYPER = Object.freeze([
+  "flat", "rolling", "hilly", "classic", "cobbles", "gravel", "medium_mountain", "mountain", "high_mountain", "itt", "itt_hilly", "ttt",
+]);
+const TYPER = Object.freeze(Object.keys(HJEMMEBANE));
 // Alle roller (ejer 13/11). null = rollen kunne ikke slaas op; motoren regner den som fri rolle.
 const ROLLER = Object.freeze(["captain", "co_captain", "sprint_captain", "hunter", "free_role", "helper", "luxury_helper", null]);
 const KAPTAJNER = Object.freeze(["captain", "co_captain", "sprint_captain"]);
@@ -106,10 +111,7 @@ const ren = (type) => Object.freeze({
   riderId: `dommer-ren-${type}`, age: 24, potentiale: 3, primaryType: type, secondaryType: null,
   abilities: evner(55), riderLevel: "senior",
 });
-const KERNE_RYTTERE = [
-  KLATRER, SPURTER, PUNCHEUR, GAMMEL_PUNCHEUR,
-  ren("climber"), ren("sprinter"), ren("puncheur"), ren("tt"), ren("brostensrytter"),
-];
+const KERNE_RYTTERE = [KLATRER, SPURTER, PUNCHEUR, GAMMEL_PUNCHEUR, ...TYPER.map(ren)];
 const KERNE = KERNE_RYTTERE.flatMap((rytter) => HJEMMEBANE[rytter.primaryType]
   .flatMap((profil) => ROLLER.map((rolle) => ({ rytter, profil, rolle }))));
 
@@ -215,7 +217,8 @@ test("R15b: scenariet maaler noget (rytterens bedste haarde pas er mere end en h
 });
 
 test("R15b: paa en etape, der passer rytterens primaere type, giver loebsdagen i ALLE roller mindst hans bedste haarde pas", () => {
-  assert.equal(KERNE.length, 15 * ROLLER.length, "alle fem typer med hjemmebane, alle roller");
+  // 4 af dommerens ryttere (2 + 1 + 3 + 3 etaper) og de 8 rene typer (18 etaper i tabellen), alle roller.
+  assert.equal(KERNE.length, (9 + 18) * ROLLER.length, "alle otte typer, hver etape i typens raekke, alle roller");
   const brud = brudPaaR15b(KERNE);
   assert.equal(brud.length, 0, vis(brud));
 });
@@ -242,8 +245,13 @@ test("R15b: reglen gaelder ogsaa, naar rytteren koerer haardere end normalt (dag
 // ── Gulvet: praecis op til det bedste pas, og kun i etapens evner ────────────────────────────
 // XP pr. evne paa loebsdagen FOER loeftet, maalt af dommeren paa origin/main d5d2511ac (13/11)
 // med dommerens proevetal, staerk traener, bedste facilitet og katalog v3. Fire decimaler.
-// I alle syv tilfaelde ligger loebsdagen under det bedste haarde pas, saa gulvet skal loefte.
+// I alle elleve tilfaelde ligger loebsdagen under det bedste haarde pas, saa gulvet skal loefte.
 const GULV_TILFAELDE = [
+  // Raekkerne fra ejerens svar 13/11 kl. 17:40-17:50.
+  { noegle: "ren-gc|itt|captain", rytter: ren("gc"), profil: "itt", rolle: "captain" },
+  { noegle: "ren-baroudeur|hilly|hunter", rytter: ren("baroudeur"), profil: "hilly", rolle: "hunter" },
+  { noegle: "ren-rouleur|flat|helper", rytter: ren("rouleur"), profil: "flat", rolle: "helper" },
+  { noegle: "ren-brostensrytter|gravel|captain", rytter: ren("brostensrytter"), profil: "gravel", rolle: "captain" },
   { noegle: "klatrer|mountain|captain", rytter: KLATRER, profil: "mountain", rolle: "captain" },
   { noegle: "klatrer|mountain|helper", rytter: KLATRER, profil: "mountain", rolle: "helper" },
   { noegle: "ren-tt|itt|free_role", rytter: ren("tt"), profil: "itt", rolle: "free_role" },
@@ -254,6 +262,10 @@ const GULV_TILFAELDE = [
   { noegle: "ren-tt|itt|helper|rolleStyrerBasis", rytter: ren("tt"), profil: "itt", rolle: "helper", valg: { rolletal: ROLLETAL.rolleStyrerBasis } },
 ];
 const FOER_LOEFT = Object.freeze({
+  "ren-gc|itt|captain": {"climbing": 14.2776, "time_trial": 81.788, "flat": 5.711, "tempo": 76.588, "sprint": 4.2833, "acceleration": 5.711, "punch": 5.711, "endurance": 14.2776, "recovery": 14.2776, "durability": 14.2776, "descending": 5.2695, "cobblestone": 5.2695, "positioning": 7.9042, "aggression": 5.2695, "tactics": 7.9042, "teamwork": 7.9042, "leadership": 18.3737},
+  "ren-baroudeur|hilly|hunter": {"climbing": 30.6352, "time_trial": 4.2833, "flat": 14.2776, "tempo": 30.6352, "sprint": 5.711, "acceleration": 5.711, "punch": 86.988, "endurance": 14.2776, "recovery": 14.2776, "durability": 5.711, "descending": 13.1737, "cobblestone": 5.2695, "positioning": 7.9042, "aggression": 18.3737, "tactics": 7.9042, "teamwork": 7.9042, "leadership": 7.9042},
+  "ren-rouleur|flat|helper": {"climbing": 4.2833, "time_trial": 5.711, "flat": 76.588, "tempo": 7.791, "sprint": 23.7564, "acceleration": 31.6752, "punch": 5.711, "endurance": 14.2776, "recovery": 5.711, "durability": 5.711, "descending": 5.2695, "cobblestone": 5.2695, "positioning": 13.1737, "aggression": 5.2695, "tactics": 7.9042, "teamwork": 18.3737, "leadership": 7.9042},
+  "ren-brostensrytter|gravel|captain": {"climbing": 4.2833, "time_trial": 5.711, "flat": 14.2776, "tempo": 5.711, "sprint": 5.711, "acceleration": 5.711, "punch": 14.2776, "endurance": 76.588, "recovery": 5.711, "durability": 30.6352, "descending": 5.2695, "cobblestone": 81.4683, "positioning": 13.1737, "aggression": 5.2695, "tactics": 7.9042, "teamwork": 7.9042, "leadership": 11.0242},
   "klatrer|mountain|captain": {"climbing": 180.6675, "time_trial": 8.896, "flat": 11.8614, "tempo": 29.6535, "sprint": 8.896, "acceleration": 11.8614, "punch": 29.6535, "endurance": 159.0675, "recovery": 11.8614, "durability": 63.627, "descending": 10.9443, "cobblestone": 10.9443, "positioning": 21.8886, "aggression": 10.9443, "tactics": 16.4164, "teamwork": 27.3607, "leadership": 22.8964},
   "klatrer|mountain|helper": {"climbing": 164.4675, "time_trial": 8.896, "flat": 11.8614, "tempo": 40.4535, "sprint": 8.896, "acceleration": 11.8614, "punch": 29.6535, "endurance": 159.0675, "recovery": 11.8614, "durability": 65.787, "descending": 10.9443, "cobblestone": 10.9443, "positioning": 21.8886, "aggression": 10.9443, "tactics": 16.4164, "teamwork": 38.1607, "leadership": 16.4164},
   "ren-tt|itt|free_role": {"climbing": 4.2833, "time_trial": 81.788, "flat": 5.711, "tempo": 30.2885, "sprint": 4.2833, "acceleration": 5.711, "punch": 4.2833, "endurance": 6.4044, "recovery": 5.711, "durability": 5.711, "descending": 5.2695, "cobblestone": 5.2695, "positioning": 7.9042, "aggression": 5.2695, "tactics": 7.9042, "teamwork": 8.9442, "leadership": 9.4642},
@@ -287,9 +299,10 @@ test("R15b gulvet: loebsdagen loeftes praecis op til det bedste haarde pas, og l
         assert.ok(Math.abs(er - var_) <= 0.001, `${noegle} ${evne}: loeftet maa kun lande i etapens evner (${etapensEvner.join(", ")}); ${evne} gik fra ${var_} til ${er.toFixed(4)}`);
         continue;
       }
-      const ventet = FORDELING === "samme-xp" ? var_ + mangler / etapensEvner.length : var_ * (1 + mangler / iEtapen);
+      // Ejer 13/11: "A: samme procent" i hver af etapens evner.
+      const ventet = var_ * (1 + mangler / iEtapen);
       assert.ok(er > var_, `${noegle} ${evne}: hver af etapens evner skal have del i loeftet`);
-      assert.ok(Math.abs(er - ventet) <= 0.005, `${noegle} ${evne}: ventede ${ventet.toFixed(3)} (${FORDELING}), fik ${er.toFixed(3)} (foer loeftet ${var_})`);
+      assert.ok(Math.abs(er - ventet) <= 0.005, `${noegle} ${evne}: ventede ${ventet.toFixed(3)} (samme procent i etapens evner), fik ${er.toFixed(3)} (foer loeftet ${var_})`);
     }
   }
 });
@@ -379,8 +392,8 @@ test("R15b + R9: gulvet er ikke et loft, og den gamle regel om +1 pr. loebsdag k
 // ── R1: slukket kontakt er uaendret ──────────────────────────────────────────────────────────
 // Fingeraftrykket er taget af dommeren paa origin/main d5d2511ac (13/11), FOER R15b blev bygget.
 // Afrundet til 9 betydende cifre foer hash (#8113). Maa ikke rettes til.
-const SLUKKET_FOER_R15B = "d5e0d470ecd784f600888333e130d6899fc5a810a964197b376aa3d978c06d3e";
-const SLUKKET_ANTAL = 360;
+const SLUKKET_FOER_R15B = "c6aaf302dc4a7bc5c2f8fad92b7c5ea812e768cb787afe8ed708e763192f2ea1";
+const SLUKKET_ANTAL = 648;
 
 function slukketScenarier() {
   const ud = [];
@@ -457,11 +470,103 @@ const UAENDRET = Object.freeze({
   "passer ikke|dommer-veteran|itt|helper": 77.442,
   "passer ikke|dommer-veteran|cobbles|captain": 75.707,
   "passer ikke|dommer-veteran|cobbles|helper": 77.291,
+  "uden for raekken|climber|flat|captain": 217.425,
+  "uden for raekken|climber|rolling|captain": 343.095,
+  "uden for raekken|climber|hilly|captain": 343.095,
+  "uden for raekken|climber|classic|captain": 278.135,
+  "uden for raekken|climber|cobbles|captain": 222.93,
+  "uden for raekken|climber|gravel|captain": 260.316,
+  "uden for raekken|climber|medium_mountain|captain": 343.095,
+  "uden for raekken|climber|itt|captain": 235.078,
+  "uden for raekken|climber|itt_hilly|captain": 299.469,
+  "uden for raekken|climber|ttt|captain": 244.321,
+  "uden for raekken|sprinter|rolling|captain": 224.387,
+  "uden for raekken|sprinter|hilly|captain": 224.387,
+  "uden for raekken|sprinter|classic|captain": 300.975,
+  "uden for raekken|sprinter|cobbles|captain": 303.624,
+  "uden for raekken|sprinter|gravel|captain": 260.007,
+  "uden for raekken|sprinter|medium_mountain|captain": 224.387,
+  "uden for raekken|sprinter|mountain|captain": 254.502,
+  "uden for raekken|sprinter|high_mountain|captain": 280.986,
+  "uden for raekken|sprinter|itt|captain": 203.614,
+  "uden for raekken|sprinter|itt_hilly|captain": 224.387,
+  "uden for raekken|sprinter|ttt|captain": 273.401,
+  "uden for raekken|puncheur|flat|captain": 207.431,
+  "uden for raekken|puncheur|cobbles|captain": 212.936,
+  "uden for raekken|puncheur|gravel|captain": 250.322,
+  "uden for raekken|puncheur|medium_mountain|captain": 333.101,
+  "uden for raekken|puncheur|mountain|captain": 252.088,
+  "uden for raekken|puncheur|high_mountain|captain": 279.092,
+  "uden for raekken|puncheur|itt|captain": 218.333,
+  "uden for raekken|puncheur|itt_hilly|captain": 244.817,
+  "uden for raekken|puncheur|ttt|captain": 250.214,
+  "uden for raekken|tt|flat|captain": 183.6,
+  "uden for raekken|tt|rolling|captain": 183.6,
+  "uden for raekken|tt|hilly|captain": 177.369,
+  "uden for raekken|tt|classic|captain": 193.413,
+  "uden for raekken|tt|cobbles|captain": 189.105,
+  "uden for raekken|tt|gravel|captain": 189.105,
+  "uden for raekken|tt|medium_mountain|captain": 183.6,
+  "uden for raekken|tt|mountain|captain": 183.6,
+  "uden for raekken|tt|high_mountain|captain": 210.085,
+  "uden for raekken|brostensrytter|flat|captain": 261.42,
+  "uden for raekken|brostensrytter|rolling|captain": 305.046,
+  "uden for raekken|brostensrytter|hilly|captain": 261.429,
+  "uden for raekken|brostensrytter|classic|captain": 300.631,
+  "uden for raekken|brostensrytter|medium_mountain|captain": 305.046,
+  "uden for raekken|brostensrytter|mountain|captain": 254.149,
+  "uden for raekken|brostensrytter|high_mountain|captain": 280.633,
+  "uden for raekken|brostensrytter|itt|captain": 197.03,
+  "uden for raekken|brostensrytter|itt_hilly|captain": 217.803,
+  "uden for raekken|brostensrytter|ttt|captain": 266.817,
+  "uden for raekken|gc|flat|captain": 236.638,
+  "uden for raekken|gc|rolling|captain": 318.682,
+  "uden for raekken|gc|hilly|captain": 318.682,
+  "uden for raekken|gc|classic|captain": 291.108,
+  "uden for raekken|gc|cobbles|captain": 279.529,
+  "uden for raekken|gc|gravel|captain": 316.915,
+  "uden for raekken|gc|medium_mountain|captain": 318.682,
+  "uden for raekken|gc|ttt|captain": 307.161,
+  "uden for raekken|baroudeur|flat|captain": 272.621,
+  "uden for raekken|baroudeur|classic|captain": 288.674,
+  "uden for raekken|baroudeur|cobbles|captain": 270.855,
+  "uden for raekken|baroudeur|gravel|captain": 270.855,
+  "uden for raekken|baroudeur|medium_mountain|captain": 316.248,
+  "uden for raekken|baroudeur|mountain|captain": 272.621,
+  "uden for raekken|baroudeur|high_mountain|captain": 337.012,
+  "uden for raekken|baroudeur|itt|captain": 201.48,
+  "uden for raekken|baroudeur|itt_hilly|captain": 227.964,
+  "uden for raekken|baroudeur|ttt|captain": 247.589,
+  "uden for raekken|rouleur|rolling|captain": 248.791,
+  "uden for raekken|rouleur|hilly|captain": 205.174,
+  "uden for raekken|rouleur|classic|captain": 244.375,
+  "uden for raekken|rouleur|cobbles|captain": 247.025,
+  "uden for raekken|rouleur|gravel|captain": 247.025,
+  "uden for raekken|rouleur|medium_mountain|captain": 248.791,
+  "uden for raekken|rouleur|mountain|captain": 241.52,
+  "uden for raekken|rouleur|high_mountain|captain": 268.004,
+  "uden for raekken|rouleur|itt|captain": 184.401,
+  "uden for raekken|rouleur|itt_hilly|captain": 205.174,
+  "uden for raekken|rouleur|ttt|captain": 254.188,
+  "uden for raekken|rouleur|ttt|helper": 258.348,
+  "uden for raekken|rouleur|ttt|luxury_helper": 258.348,
+  "uden for raekken|rouleur|ttt|free_role": 256.268,
+  "uden for raekken|rouleur|ttt|hunter": 253.148,
+  "uden for raekken|rouleur|rolling|helper": 250.871,
+  "uden for raekken|rouleur|rolling|luxury_helper": 250.871,
+  "uden for raekken|rouleur|rolling|free_role": 249.831,
+  "uden for raekken|rouleur|rolling|hunter": 247.751,
+  "uden for raekken|rouleur|cobbles|helper": 253.785,
+  "uden for raekken|rouleur|cobbles|luxury_helper": 253.785,
+  "uden for raekken|rouleur|cobbles|free_role": 250.405,
+  "uden for raekken|rouleur|cobbles|hunter": 245.985,
   "kun sekundaer type|dommer-veteran|mountain|captain": 94.603,
   "kun sekundaer type|dommer-veteran|mountain|helper": 95.323,
   "kun sekundaer type|dommer-veteran|high_mountain|free_role": 103.353,
   "kun sekundaer type|dommer-ung-klatrer|classic|captain": 604.22,
   "kun sekundaer type|dommer-ung-klatrer|classic|hunter": 602.06,
+  "kun sekundaer type|dommer-ung-klatrer|rolling|captain": 715.089,
+  "kun sekundaer type|dommer-ung-klatrer|hilly|helper": 719.409,
   "koerer roligt 0.85|dommer-ung-klatrer|mountain|captain": 629.34,
   "koerer roligt 0.85|dommer-ung-klatrer|mountain|helper": 630.258,
   "koerer roligt 0.85|dommer-ren-tt|itt|free_role": 201.886,
@@ -474,6 +579,12 @@ const UAENDRET = Object.freeze({
   "holder allerede|dommer-veteran|hilly|luxury_helper": 106.108,
   "holder allerede|dommer-ren-climber|high_mountain|captain": 335.833,
   "holder allerede|dommer-ren-climber|high_mountain|hunter": 334.793,
+  "holder allerede|dommer-ren-gc|mountain|captain": 362.308,
+  "holder allerede|dommer-ren-gc|high_mountain|helper": 427.045,
+  "holder allerede|dommer-ren-gc|itt_hilly|captain": 362.308,
+  "holder allerede|dommer-ren-puncheur|rolling|captain": 333.101,
+  "holder allerede|dommer-ren-tt|ttt|captain": 254.123,
+  "holder allerede|dommer-ren-baroudeur|rolling|hunter": 318.328,
 });
 
 function uaendretNu() {
@@ -487,10 +598,21 @@ function uaendretNu() {
       for (const rolle of ["captain", "helper"]) ud[`passer ikke|${rytter.riderId}|${profil}|${rolle}`] = iAlt(rytter, profil, rolle);
     }
   }
+  // Ingen type loeftes uden for sin raekke: hver ren type paa hver etapetype, der ikke staar i
+  // typens raekke (ogsaa mellembjerg, og udbryderen paa classic), som kaptajn.
+  for (const type of TYPER) {
+    for (const profil of ETAPETYPER.filter((p) => !HJEMMEBANE[type].includes(p))) {
+      ud[`uden for raekken|${type}|${profil}|captain`] = iAlt(ren(type), profil, "captain");
+    }
+  }
+  // Rouleuren er "kun flad" (ejer 13/11): ikke holdtidskoersel, smaakuperet eller brosten, i nogen rolle.
+  for (const profil of ["ttt", "rolling", "cobbles"]) {
+    for (const rolle of ["helper", "luxury_helper", "free_role", "hunter"]) ud[`uden for raekken|rouleur|${profil}|${rolle}`] = iAlt(ren("rouleur"), profil, rolle);
+  }
   // Etapen passer kun den sekundaere type (ejer 13/11: taeller ikke).
   for (const [rytter, profil, rolle] of [
     [PUNCHEUR, "mountain", "captain"], [PUNCHEUR, "mountain", "helper"], [PUNCHEUR, "high_mountain", "free_role"],
-    [KLATRER, "classic", "captain"], [KLATRER, "classic", "hunter"],
+    [KLATRER, "classic", "captain"], [KLATRER, "classic", "hunter"], [KLATRER, "rolling", "captain"], [KLATRER, "hilly", "helper"],
   ]) ud[`kun sekundaer type|${rytter.riderId}|${profil}|${rolle}`] = iAlt(rytter, profil, rolle);
   // Etapen passer, men rytteren er sat til at koere roligt (ejer 13/11: intet loeft).
   for (const intention of KOER_ROLIGT) {
@@ -502,17 +624,57 @@ function uaendretNu() {
   for (const [rytter, profil, rolle] of [
     [SPURTER, "flat", "captain"], [SPURTER, "flat", "helper"], [PUNCHEUR, "hilly", "captain"], [PUNCHEUR, "hilly", "luxury_helper"],
     [ren("climber"), "high_mountain", "captain"], [ren("climber"), "high_mountain", "hunter"],
+    // De nye raekker, hvor loebsdagen allerede ligger over det bedste pas med dommerens proevetal.
+    [ren("gc"), "mountain", "captain"], [ren("gc"), "high_mountain", "helper"], [ren("gc"), "itt_hilly", "captain"],
+    [ren("puncheur"), "rolling", "captain"], [ren("tt"), "ttt", "captain"], [ren("baroudeur"), "rolling", "hunter"],
   ]) ud[`holder allerede|${rytter.riderId}|${profil}|${rolle}`] = iAlt(rytter, profil, rolle);
   return ud;
 }
 
-test("R15b: loebsdagen er uaendret, naar etapen ikke passer den primaere type, naar rytteren koerer roligt, og naar reglen allerede holder", () => {
+test("R15b: loebsdagen er uaendret uden for typens raekke, for den sekundaere type, naar rytteren koerer roligt, og naar reglen allerede holder", () => {
   const nu = uaendretNu();
   assert.deepEqual(Object.keys(nu).sort(), Object.keys(UAENDRET).sort());
+  // "Holder allerede" skal vaere sandt for facit: loebsdagen ligger paa eller over det bedste haarde pas.
+  for (const k of Object.keys(UAENDRET).filter((n) => n.startsWith("holder allerede|"))) {
+    const rytter = KERNE_RYTTERE.find((r) => r.riderId === k.split("|")[1]);
+    assert.ok(UAENDRET[k] >= bedsteHaardePas(rytter).iAlt, `${k}: facit skal ligge paa eller over det bedste haarde pas`);
+  }
   const flyttet = Object.keys(nu)
     .filter((k) => Math.abs(nu[k] - UAENDRET[k]) > 0.001) // facit staar med tre decimaler
     .map((k) => `${k}: ${UAENDRET[k]} -> ${nu[k].toFixed(3)}`);
   assert.equal(flyttet.length, 0, `R15b har flyttet tal, den ikke skal flytte:\n  ${flyttet.join("\n  ")}`);
+});
+
+// De frosne tal ovenfor fanger kun et forkert loeft, naar loebsdagen ligger under det bedste pas
+// med dommerens proevetal. Denne proeve bruger ingen frosne tal: gulvet taender ved normal
+// indsats (intention 1) og er slukket lige under. Uden loeft er loebsdagen derfor naesten ens
+// ved 1 og ved 0,999999; med loeft springer den. Koert med alle dommerens tal, saa en forkert
+// raekke ogsaa ses, naar den foerst binder med andre tal end proevetallene.
+const LIGE_UNDER_NORMAL = 0.999999;
+const springVedNormal = (rytter, profil, rolle, valg) => {
+  const normal = sum(loebsdag(rytter, profil, rolle, valg, { academyRateMult: 1 }).xp);
+  const ligeUnder = sum(loebsdag(rytter, profil, rolle, valg, { academyRateMult: LIGE_UNDER_NORMAL }).xp);
+  return normal / ligeUnder - 1;
+};
+
+test("R15b: ingen type loeftes uden for sin raekke, heller ikke med andre tal end proevetallene", () => {
+  const valgListe = ALLE_VALG.filter((v) => !v.akse);
+  const brud = [];
+  for (const type of TYPER) {
+    for (const profil of ETAPETYPER.filter((p) => !HJEMMEBANE[type].includes(p))) {
+      for (const rolle of ["captain", "helper"]) {
+        for (const valg of valgListe) {
+          const spring = springVedNormal(ren(type), profil, rolle, valg);
+          if (Math.abs(spring) > 1e-4) brud.push(`${type} ${profil} ${rolle} [${valg.navn}]: loebsdagen springer ${(spring * 100).toFixed(1)} % ved normal indsats, saa den loeftes`);
+        }
+      }
+    }
+  }
+  assert.equal(brud.length, 0, vis(brud));
+  // Modproeve: inden for raekken springer loebsdagen, naar gulvet binder (ellers maaler proeven intet).
+  for (const [type, profil] of [["tt", "itt"], ["gc", "itt"], ["rouleur", "flat"], ["baroudeur", "hilly"], ["brostensrytter", "gravel"]]) {
+    assert.ok(springVedNormal(ren(type), profil, "captain", {}) > 0.01, `${type} ${profil}: inden for raekken skal loeftet kunne ses`);
+  }
 });
 
 test("R15b: scenariet for 'koerer roligt' maaler noget (samme rytter loeftes ved normal indsats)", () => {
@@ -553,27 +715,3 @@ test("R15b private parametre: reglen holder ogsaa med de tal, der skal taendes m
     const brud = brudPaaR15b(KERNE, valgListe, { skjulTal: true });
     assert.equal(brud.length, 0, vis(brud));
   });
-
-// ═══ AABNE SPOERGSMAAL TIL EJEREN (S12, S13): springes over, til ejeren har svaret ══════════
-const paaTvaersAfRoller = (rytter, profiler) => profiler.flatMap((profil) => ["captain", "hunter", "helper"].map((rolle) => ({ rytter, profil, rolle })));
-const UDVIDELSER = [
-  { svar: "S12", navn: "klassementsrytter i bjerg og paa enkeltstart, udbryder paa kuperet og smaakuperet, rouleur paa flad og holdtidskoersel", tilfaelde: [
-    ...paaTvaersAfRoller(ren("gc"), ["mountain", "high_mountain", "itt", "itt_hilly"]),
-    ...paaTvaersAfRoller(ren("baroudeur"), ["hilly", "classic", "rolling"]),
-    ...paaTvaersAfRoller(ren("rouleur"), ["flat", "ttt"]),
-  ] },
-  { svar: "S13", navn: "graense-etaper: smaakuperet for puncheur, grus for brostensrytter, holdtidskoersel for enkeltstartsrytter", tilfaelde: [
-    ...paaTvaersAfRoller(ren("puncheur"), ["rolling"]),
-    ...paaTvaersAfRoller(ren("brostensrytter"), ["gravel"]),
-    ...paaTvaersAfRoller(ren("tt"), ["ttt"]),
-  ] },
-];
-
-for (const { svar, navn, tilfaelde } of UDVIDELSER) {
-  const spring = EJERSVAR[svar] === true ? false
-    : EJERSVAR[svar] === false ? `ejeren har sagt nej (${svar})` : `afventer ejerens svar (${svar})`;
-  test(`R15b ${svar}: ${navn}`, { skip: spring }, () => {
-    const brud = brudPaaR15b(tilfaelde);
-    assert.equal(brud.length, 0, vis(brud));
-  });
-}
