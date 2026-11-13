@@ -22,6 +22,9 @@
 -- IDEMPOTENT: IF NOT EXISTS / CREATE OR REPLACE / DROP POLICY IF EXISTS overalt.
 
 -- data-api-access: {"table":"public.action_timing_windows","roles":{"anon":[],"authenticated":[],"service_role":["SELECT","INSERT","DELETE"]},"sequences":{"public.action_timing_windows_id_seq":{"anon":[],"authenticated":[],"service_role":["USAGE"]}},"reason":"Backend-only drifts-maaling: backenden indsaetter kvarters-raekker og rydder gamle; lederen laeser via action_timing_summary som service_role"}
+-- Én transaktion: REVOKE og GRANT skal ske atomisk (lint-migration-locks, #6342).
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS public.action_timing_windows (
   id            bigserial PRIMARY KEY,
   window_start  timestamptz NOT NULL,
@@ -143,6 +146,8 @@ COMMENT ON FUNCTION public.action_timing_summary(integer) IS
 REVOKE ALL ON FUNCTION public.action_timing_summary(integer) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.action_timing_summary(integer) FROM anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.action_timing_summary(integer) TO service_role;
+
+COMMIT;
 
 NOTIFY pgrst, 'reload schema';
 
