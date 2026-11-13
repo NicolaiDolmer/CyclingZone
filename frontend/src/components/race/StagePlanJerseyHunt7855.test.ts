@@ -4,11 +4,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   orderWithoutJerseyHunt,
+  setLegTask,
   setRiderPlan,
   stagePlanOutcomes,
   stagePlanRecap,
   stagePlanRouteFromRaw,
   taskOptions,
+  validateStagePlanLegs,
   withJerseyHunt7855,
   type StagePlanLeg,
 } from "./StagePlanModel.ts";
@@ -62,6 +64,18 @@ test("#7855 valg: slukket findes opgaverne ikke; taendt kun hvor straekningen ha
   assert.ok(!late.includes("hunt_points") && !late.includes("hunt_kom"));
   // Kaptajnen koerer for klassementet.
   assert.ok(!taskOptions([{ task: "stay_sheltered" }], 0, "captain", ON).some((t) => t === "hunt_points" || t === "hunt_kom"));
+});
+
+test("#7855 Codex-review: skiftes udbrudsleddet med jagt til en anden opgave, foelger jagten ikke med", () => {
+  const saved: StagePlanLeg[] = [{ task: "breakaway", hunt: "hunt_points" }];
+  assert.equal(validateStagePlanLegs(saved, "helper", ON), null);
+  const offered = taskOptions(saved, 0, "helper", ON);
+  assert.ok(offered.includes("tempo"));
+  const next = setLegTask(saved, 0, "tempo", "helper", ON);
+  assert.deepEqual(next, [{ task: "tempo" }]);
+  assert.equal(validateStagePlanLegs(next, "helper", ON), null);
+  // Tilbage til udbrud: jagten er vaek (spilleren vaelger den selv igen).
+  assert.deepEqual(setLegTask(next, 0, "breakaway", "helper", ON), [{ task: "breakaway" }]);
 });
 
 const legs: StagePlanLeg[] = [{ task: "hunt_kom" }, { task: "ride_in", from: { at: "kom", kom_index: 1 } }];

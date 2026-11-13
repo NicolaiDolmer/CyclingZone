@@ -423,7 +423,13 @@ export function triggerOptions(legs: StagePlanLeg[], i: number, role: StagePlanR
 }
 
 export function setLegTask(legs: StagePlanLeg[], i: number, task: StagePlanTask, role: StagePlanRole, route: StagePlanRoute): StagePlanLeg[] {
-  return repairLegs(legs.map((l, j) => (j === i ? { ...l, task } : l)), role, route);
+  // #7855 (Codex-review): jagten (`hunt`) hoerer kun til udbrudsleddet; skiftes opgaven vaek fra udbrud, foelger den ikke med.
+  const withTask = (l: StagePlanLeg): StagePlanLeg => {
+    if (task === "breakaway" || l.hunt === undefined) return { ...l, task };
+    const { hunt: _hunt, ...rest } = l;
+    return { ...rest, task };
+  };
+  return repairLegs(legs.map((l, j) => (j === i ? withTask(l) : l)), role, route);
 }
 
 export function setLegTrigger(legs: StagePlanLeg[], i: number, from: StagePlanTrigger, role: StagePlanRole, route: StagePlanRoute): StagePlanLeg[] {
