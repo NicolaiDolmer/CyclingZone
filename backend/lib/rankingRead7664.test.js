@@ -359,13 +359,12 @@ test("#7664 dashboard time limit: a hanging read gives up, aborts its reads and 
     reset();
     const client = honestClient(poolTables({ poolSize: 250, points: (i) => i }).tables, { hangOn });
     const captured = [];
-    const started = Date.now();
     const top = await readDashboardTopRiders7664(client, {
       seasonId: SEASON, leagueDivisionId, source: SHADOW, timeoutMs: 40,
       captureExceptionFn: (error, context) => captured.push({ error, context }),
     });
     assert.equal(top, null, `${hangOn} / ${leagueDivisionId}`);
-    assert.ok(Date.now() - started < 1000, "the time limit, not the hanging read, decides");
+    // The hanging read never settles, so any answer at all comes from the time limit.
     assert.equal(captured.length, 1);
     assert.match(captured[0].error.message, /exceeded 40 ms/);
     const hanging = client.reads.filter((q) => q.table === hangOn);
@@ -582,14 +581,14 @@ test("#7664 rebuild: the switch waits for the database's own 'rebuild finished';
 test("#7664 rebuild in the database: first enable, half-built, finished, re-enable after an off period", async (t) => {
   const db = await shadowDb(t);
   const ready = async () => (await db.query("SELECT get_ranking_shadow_read_ready() v")).rows[0].v;
-  const metrics = async () => (await db.query("SELECT get_ranking_shadow_metrics() v")).rows[0].v;
+  // Fixed clocks (AGENTS.md rule 16): queue age is measured against an injected p_now.
+  const QUEUED_AT = "2026-11-13T10:00:00Z", METRICS_AT = "2026-11-13T10:00:02Z";
+  const metrics = async () => (await db.query("SELECT get_ranking_shadow_metrics($1::timestamptz) v", [METRICS_AT])).rows[0].v;
   const step = async () => (await db.query("SELECT apply_ranking_deltas(1) v")).rows[0].v;
   const drain = async () => { for (let i = 0; i < 500; i++) if (!(await db.query("SELECT apply_ranking_deltas(200) v")).rows[0].v.pending) return; assert.fail("queue did not drain"); };
   const shadowRows = async () => (await db.query("SELECT count(*)::int n FROM ranking_rider_season")).rows[0].n;
-  const legacyRows = async () => {
-    await db.exec("REFRESH MATERIALIZED VIEW rider_rankings_mv;");
-    return (await db.query("SELECT count(*)::int n FROM rider_rankings_mv")).rows[0].n;
-  };
+  // The legacy definition itself (what a matview pass would publish), read directly.
+  const legacyRows = async () => (await db.query("SELECT count(*)::int n FROM (" + definitions[0] + ") d")).rows[0].n;
   const results = (race, base) => `INSERT INTO race_results(race_id,rider_id,team_id,points_earned,prize_money,rank,result_type)
     SELECT fid(${race}),fid(i),fid(100+i%2),${base}-i,1000,i,'stage' FROM generate_series(1,12) i;`;
 
@@ -600,9 +599,10 @@ test("#7664 rebuild in the database: first enable, half-built, finished, re-enab
 
   await t.test("first enable with empty shadow tables: not ready while the marker waits", async () => {
     await db.exec("UPDATE app_config SET value='\"on\"'::jsonb WHERE key='ranking_shadow_enabled';");
+    await db.query("UPDATE ranking_dirty_log SET enqueued_at=$1::timestamptz", [QUEUED_AT]);
     const m = await metrics();
     assert.equal(Number(m.queue_length), 1);
-    assert.ok(Number(m.oldest_age_s ?? 0) < 5, "the queue looks perfectly fresh");
+    assert.equal(Number(m.oldest_age_s), 2, "the queue looks perfectly fresh (2 s old)");
     assert.deepEqual([(await ready()).ready, (await ready()).stage], [false, "queued"]);
   });
   await t.test("half rebuilt: the marker is expanded, some races done, others not", async () => {

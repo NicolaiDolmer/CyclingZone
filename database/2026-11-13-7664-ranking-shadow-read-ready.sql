@@ -45,7 +45,7 @@
 -- Refs #7664
 -- data-api-access: {"table":"public.ranking_shadow_rebuild_state","roles":{"anon":[],"authenticated":[],"service_role":["SELECT","INSERT","UPDATE","DELETE"]},"reason":"Internal ranking shadow processor: rebuild completion for the read switch"}
 BEGIN;
-SET LOCAL lock_timeout = '5s';
+SET LOCAL lock_timeout = '3s';
 SET LOCAL statement_timeout = '30s';
 
 CREATE TABLE IF NOT EXISTS public.ranking_shadow_rebuild_state (
