@@ -109,6 +109,12 @@ export type StagePlanRuntime = {
   huntRoute7855?: StagePlanRoute;
   /** #7855: ryttere der koerer planen uden jagt (se createStagePlanRuntime). Udeladt = ingen. */
   huntFallback7855?: string[];
+  /**
+   * #7855 valg 3 (ejer 13/11, "Samme pris", KUN kontakten): hjaelpere med "Gaa i udbrud + Hent point"
+   * (`eligible`), og dem af dem, der ikke kom med i udbruddet og derfor jagede fra feltet (`fromField`).
+   * Udeladt = ingen saadan rytter (bit-identisk).
+   */
+  missedBreakHunt7855?: { eligible: ReadonlySet<string>; fromField: Set<string> };
 };
 
 /**
@@ -218,6 +224,12 @@ export function createStagePlanRuntime(
   if (opts.droppedFront7635 === true) rt.front7635 = { prevGroupOf: null, seen: new Set(), attackGroups: new Set(), streak: new Map() };
   if (opts.jerseyHunt7855 === true) rt.huntRoute7855 = planRoute; // #7855
   if (huntFallback.length > 0) rt.huntFallback7855 = huntFallback.sort(); // #7855
+  // #7855 valg 3 (ejer 13/11): den forsigtige laesning (dommerens S5, S6, S7 er aabne ejer-valg):
+  // kun hjaelperen og kun "Hent point" paa udbrudsleddet; kun traetheden efter etapen aendres.
+  if (opts.jerseyHunt7855 === true) {
+    const eligible = riderIds.filter((id) => entrants[id]?.role === "helper" && legs.get(id)![0].task === "breakaway" && legs.get(id)![0].hunt === "hunt_points");
+    if (eligible.length > 0) rt.missedBreakHunt7855 = { eligible: new Set(eligible), fromField: new Set() };
+  }
   return rt;
 }
 
@@ -438,6 +450,13 @@ export function advanceStagePlan(
         reason = legs[next].routeReason;
       }
     }
+    // #7855 valg 3: koerer han segmentet paa udbrudsleddet med jagt uden nogensinde at have vaeret i
+    // udbruddet, jager han fra feltet. Kun noteret; loebet er uaendret (se stagePlanLoadEfforts).
+    const missed = rt.missedBreakHunt7855;
+    if (missed && !atStart && missed.eligible.has(riderId) && !inEscape && !rt.everInEscape.has(riderId)) {
+      const legNow = legs[next !== cur && reason !== null ? next : cur];
+      if (legNow.task === "breakaway" && legNow.hunt !== null) missed.fromField.add(riderId);
+    }
     if (next === cur || reason === null) continue;
     rt.current.set(riderId, next);
     rt.ridden.get(riderId)?.add(next);
@@ -558,6 +577,12 @@ export function stagePlanLoadEfforts(rt: StagePlanRuntime): Record<string, Effor
     const legs = rt.legs.get(riderId)!;
     let best: EffortLevel = legs[0].effort;
     for (const idx of rt.ridden.get(riderId) ?? []) if (EFFORT_RANK[legs[idx].effort] > EFFORT_RANK[best]) best = legs[idx].effort;
+    // #7855 valg 3 (ejer 13/11, "Samme pris"): jagten fra feltet efter et misset udbrud koster det
+    // samme som "Hent point" alene, saa den taeller med jagt-opgavens indsats.
+    if (rt.missedBreakHunt7855?.fromField.has(riderId)) {
+      const huntEffort = TASK_EFFORT[legs[0].hunt as StagePlanTask] as EffortLevel;
+      if (EFFORT_RANK[huntEffort] > EFFORT_RANK[best]) best = huntEffort;
+    }
     out[riderId] = best;
   }
   return out;

@@ -38,7 +38,10 @@ export const JERSEY_HUNT_TASKS: Readonly<Partial<Record<StagePlanTask, "sprint" 
 export type StagePlanRole = "captain" | "co_captain" | "sprint_captain" | "helper" | "hunter" | "free_role";
 export type StagePlanEffort = "grupetto" | "save" | "normal" | "protect" | "all_out";
 export type StagePlanTrigger = { at: "kom"; kom_index: number } | { at: "final_km" } | { at: "dropped" };
-export type StagePlanLeg = { task: StagePlanTask; from?: StagePlanTrigger };
+/** #7855: opgaverne der jager en passage (point i spurterne / bjergpoint). */
+export type JerseyHuntTask = "hunt_points" | "hunt_kom";
+/** `hunt` (#7855, ejer 12/11 valg A, kun med kontakten): troejejagten paa udbrudsleddet, som serveren. */
+export type StagePlanLeg = { task: StagePlanTask; from?: StagePlanTrigger; hunt?: JerseyHuntTask };
 export type StagePlanClimb = { index: number; km: number; name: string | null; category: string };
 export type StagePlanRoute = {
   distance_km: number;
@@ -164,9 +167,15 @@ export function stretchHasHuntPassage(route: StagePlanRoute, kind: "sprint" | "k
   return kms.some((km) => km > fromKm && km <= toKm);
 }
 
+/** #7855: den jagt-opgave leddet koerer (et jagt-led, eller udbrudsleddets `hunt`), ellers null. Som serveren. */
+export function legHuntTask(leg: StagePlanLeg): JerseyHuntTask | null {
+  if (JERSEY_HUNT_TASKS[leg.task] !== undefined) return leg.task as JerseyHuntTask;
+  return leg.hunt !== undefined && JERSEY_HUNT_TASKS[leg.hunt] !== undefined ? leg.hunt : null;
+}
+
 /** #7855 (reviewfund): samme regel som serveren (stagePlan.ts), holdt ens af paritetstesten. */
 export function planHasJerseyHunt(legs: readonly StagePlanLeg[]): boolean {
-  return legs.some((leg) => JERSEY_HUNT_TASKS[leg.task] !== undefined);
+  return legs.some((leg) => legHuntTask(leg) !== null);
 }
 
 export function planWithoutJerseyHunt(legs: readonly StagePlanLeg[]): StagePlanLeg[] {
@@ -198,11 +207,21 @@ export function validateStagePlanLegs(legs: unknown, role: StagePlanRole, route:
   for (let i = 0; i < legs.length; i++) {
     const leg = legs[i] as Rec | null;
     if (!leg || typeof leg !== "object" || Array.isArray(leg)) return "stage_plan_invalid_leg";
-    if (Object.keys(leg).some((k) => k !== "task" && k !== "from")) return "stage_plan_invalid_leg";
+    if (Object.keys(leg).some((k) => k !== "task" && k !== "from" && k !== "hunt")) return "stage_plan_invalid_leg";
     const task = leg.task;
     if (!isStagePlanTask(task)) return "stage_plan_unknown_task";
     if (JERSEY_HUNT_TASKS[task] && route.jersey_hunt_7855 !== true) return "stage_plan_unknown_task"; // #7855 (slukket)
+    // #7855 valg 1 (ejer 13/11): bjergjagt kun paa udbrudsleddet, aldrig som eget led (som serveren).
+    if (task === "hunt_kom") return "stage_plan_unknown_task";
     if (!TASK_ROLES[task].includes(role)) return "stage_plan_task_not_for_role";
+    // #7855 (ejer 12/11 valg A): jagten paa udbrudsleddet (som serveren).
+    if ("hunt" in leg) {
+      const hunt = leg.hunt;
+      if (!isStagePlanTask(hunt) || !JERSEY_HUNT_TASKS[hunt]) return "stage_plan_invalid_leg";
+      if (route.jersey_hunt_7855 !== true) return "stage_plan_unknown_task";
+      if (task !== "breakaway") return "stage_plan_hunt_needs_breakaway";
+      if (!TASK_ROLES[hunt].includes(role)) return "stage_plan_task_not_for_role";
+    }
     if (task === "breakaway" && i > 0) return "stage_plan_breakaway_not_first";
     if (TERMINAL_TASKS.has(task) && i < legs.length - 1) return "stage_plan_terminal_not_last";
     if (task === "sprint_train" && i > 0 && (legs[0] as Rec).task === "breakaway") return "stage_plan_train_after_breakaway"; // #7003 fund 3
@@ -240,7 +259,8 @@ export function validateStagePlanLegs(legs: unknown, role: StagePlanRole, route:
   }
   // #7855: en jagt-opgave skal have mindst én passage af sin art paa sin straekning.
   for (let i = 0; i < legs.length; i++) {
-    const kind = JERSEY_HUNT_TASKS[(legs[i] as StagePlanLeg).task];
+    const hunt = legHuntTask(legs[i] as StagePlanLeg);
+    const kind = hunt ? JERSEY_HUNT_TASKS[hunt] : undefined;
     if (!kind) continue;
     const next = legKms[i + 1];
     const toKm = typeof next === "number" ? next : route.distance_km;
