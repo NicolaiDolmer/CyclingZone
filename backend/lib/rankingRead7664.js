@@ -205,6 +205,7 @@ export async function readDashboardTopRiders7664(supabase, { seasonId, leagueDiv
     if (error) throw error;
     const ids = (stats || []).map((row) => row.rider_id);
     if (!ids.length) return [];
+    // pagination-safe: bounded by the limit(50) id list above.
     const { data: display, error: displayError } = await supabase.from("riders").select(DISPLAY_COLUMNS)
       .in("id", ids).eq("is_retired", false);
     if (displayError) throw displayError;

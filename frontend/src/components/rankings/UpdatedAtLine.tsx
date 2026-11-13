@@ -1,6 +1,6 @@
 // #7664: lille, daempet "Opdateret kl."-tekst paa ranglisten. Vises KUN naar
 // backenden laeser de nye tabeller (kontakten ranking_shadow_decoupled_6765
-// taendt). Slukket svarer /api/rankings/freshness med source "legacy", og
+// taendt). Slukket svarer /api/rankings/freshness uden tidspunkt, og
 // linjen tegner intet, saa siden er praecis som i dag. En fejl giver ogsaa
 // ingen linje: tidspunktet er en hjaelp, ikke en forudsaetning.
 import { useEffect, useState } from "react";
@@ -8,11 +8,14 @@ import { useTranslation } from "react-i18next";
 import { authHeaders } from "../../lib/supabase";
 import { formatLocalTime } from "../../lib/intl";
 
-type Freshness = { source?: unknown; current_as_of?: unknown } | null;
+type Freshness = { current_as_of?: unknown } | null;
 
-/** Tidsstemplet linjen skal vise, eller null naar der ingen linje skal vaere. */
+/**
+ * Tidsstemplet linjen skal vise, eller null naar der ingen linje skal vaere.
+ * Backenden saetter kun current_as_of, naar de nye tabeller laeses.
+ */
 export function updatedAtFromFreshness(body: Freshness): string | null {
-  if (!body || body.source !== "shadow" || typeof body.current_as_of !== "string") return null;
+  if (!body || typeof body.current_as_of !== "string") return null;
   return Number.isNaN(Date.parse(body.current_as_of)) ? null : body.current_as_of;
 }
 
