@@ -6,10 +6,10 @@
 
 > **⏰ Påmind ejeren:** fakturaer (Supabase, Railway inkl. pleasing-spontaneity, Vercel, Alunta 61,25 kr., Stripe, AI) · moms/revisor · slet Railway-var `RACE_DAY_ROLE_YIELD_PARAMS` · sikkerhed #691/#720/#748 · Peeters frigives efter Hexagone 13/11 (#7927) · slet `backup_7401_20261101_riders` ~15/11 · slet `backup_7488_20261102_riders` + `backup_7508_20261102_notif_ids` ~16/11 · slet `backup_5902_20261112_*` ~26/11 · slet `backup_8078/8080/8099_20261113_*` ~27/11.
 >
-> **🎯 Next action (14/11 morgen, PC1):** først #8152 (forsiden venter 7 s ved fejlet profil-opslag); så #8059 Play-PR og #8056 planlægning (kræver `allowExistingPr`); dom over Træn nu trin 3 + #8148 runde 2; #8140 gentjek + markør; oprydning af arbejdsmapper. **Merget 13/11:** Træn nu 1-3, #8139 (slukket), #8144, #8146 (slukket; ejerens adgangskode-skridt mangler), #8151 (on), #8147, 7.441-7.444. **Tændt:** holdplaner (#7864). **Dolmer PC nat:** #8141, #8138, #7855, XP-rækker. **Mandag 16/11:** auto-kalender, private grene, Discord-valg (#8149). **#8071:** `private-handoffs/2026-11-13-trup-tabel-design/LAES-FOERST.md`.
+> **🎯 Next action (nat 13-14/11, PC1):** natbølge efter `private-handoffs/2026-11-13-nat-pc1/PLAN.md` (ejer-go 14/11 kl. 00:08): #8141, #8138, #8148, XP-rækker, #8056, #8059, #8152, #7855 + gentjek #8140; ingen merge, ingen tænding. **14/11 kl. 08:30:** `MORGENKORT.md` (samme mappe), #8153-valget, dom over Træn nu trin 3. **Merget 13/11:** Træn nu 1-3, #8139 (slukket), #8144, #8146 (slukket; ejerens adgangskode-skridt mangler), #8151 (on), #8147, 7.441-7.444. **Tændt:** holdplaner (#7864). **Mandag 16/11:** auto-kalender, private grene, Discord-valg (#8149). **#8071:** `private-handoffs/2026-11-13-trup-tabel-design/LAES-FOERST.md`.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; kurve "6 kombineret" (#3564) i samlet måling.
 >
-> **🤖 Working agent:** Ingen aktiv session på PC1 (stoppet 13/11 aften). Dolmer PC kører natbølge 13-14/11 (#7911).
+> **🤖 Working agent:** PC1 natbølge 13-14/11 i ny session (ejer-go 14/11). Dolmer PC startes IKKE i nat (#7911).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
