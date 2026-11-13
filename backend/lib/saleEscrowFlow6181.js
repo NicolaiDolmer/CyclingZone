@@ -29,6 +29,7 @@
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { FINANCE_ACTOR_TYPE } from "./economyConstants.js";
+import { notifySellerSaleEscrowReleased } from "./saleEscrowView6181.js";
 
 export const SALE_ESCROW_FLAG_KEY = "sale_escrow_enabled";
 
@@ -440,6 +441,7 @@ export async function releaseSaleEscrowForFlush(supabase, rider, { flushedAt }) 
   });
   if (rpcError) return { data: null, error: rpcError };
   if (data?.status !== "released") return null;
+  await notifySellerSaleEscrowReleased(supabase, escrow);
   const moved = Array.isArray(data.moved_rider_ids) && data.moved_rider_ids.includes(rider.id);
   return { data: moved ? [{ id: rider.id }] : [], error: null };
 }
@@ -514,7 +516,10 @@ export async function reconcileHeldSaleEscrows({ supabase, now = new Date(), sou
     if (action === "stuck") { result.stuck += 1; continue; }
     try {
       const settled = await settle(supabase, escrow.id, action, { at, sourcePath });
-      if (settled?.status === "released") result.released += 1;
+      if (settled?.status === "released") {
+        result.released += 1;
+        await notifySellerSaleEscrowReleased(supabase, escrow);
+      }
       else if (settled?.status === "refunded") result.refunded += 1;
     } catch (err) {
       // best-effort: een escrow maa ikke stoppe resten; taelles i failed/errors (Sentry via cron-wrapperen).
