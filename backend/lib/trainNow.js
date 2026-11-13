@@ -81,6 +81,21 @@ async function checked(query, label) {
   return data;
 }
 
+/**
+ * #7982 step 3: a group of the press's reads that do not depend on each other. All are
+ * sent at once and the group waits for every one of them, so no promise is left without
+ * an owner. Each answer comes back as a getter that throws that read's failure where the
+ * press uses it, so the checks keep their order and a failed read stops the press before
+ * its next write.
+ */
+async function settleTogether(reads) {
+  const settled = await Promise.allSettled(reads.map((read) => (async () => read())()));
+  return settled.map((result) => () => {
+    if (result.status === "rejected") throw result.reason;
+    return result.value;
+  });
+}
+
 
 async function loadTeamDateWork({ supabase, teamId, seasonId, tickDate }) {
   const rows = await checked(supabase.from("training_date_work")
@@ -127,26 +142,33 @@ async function hasOpenEarlierDate({ supabase, teamId, seasonId, tickDate }) {
 
 // #7505: drop the races the team cannot be in. Throws on a read error (the caller
 // decides between best-effort and fail closed).
-async function filterRacesTeamCanJoin({ supabase, team, races }) {
+async function filterRacesTeamCanJoin({ supabase, team, races, together = false }) {
   if (!races.length) return [];
   const started = races.filter((race) => (Number(race.stages_completed) || 0) > 0);
   const enteredStartedIds = new Set();
-  if (started.length) {
+  const readStartedEntries = async () => {
+    if (!started.length) return;
     // pagination-safe: one team's entries in today's started races (a few squads of <= 9).
     const entries = await checked(supabase.from("race_entries").select("race_id")
       .eq("team_id", team.id).in("race_id", started.map((race) => race.id)), "today's started race entries");
     for (const row of entries ?? []) enteredStartedIds.add(row.race_id);
-  }
-  // One existence read per squad that still matters (no roster scan).
+  };
+  // One existence read per squad that still matters (no roster scan). A started race is
+  // never asked about, so these reads do not depend on the entries read above.
+  const squads = [...new Set(races.filter((race) => !started.includes(race)).map(raceSquadOf))];
   const squadHasRiders = new Map();
-  for (const race of races) {
-    if (enteredStartedIds.has(race.id) || started.includes(race)) continue;
-    const squad = raceSquadOf(race);
-    if (squadHasRiders.has(squad)) continue;
+  const readSquad = async (squad) => {
     const riders = await checked(applyRosterVisibilityFilter(
       supabase.from("riders").select("id").eq("team_id", team.id), { squad },
     ).limit(1), "squad riders");
     squadHasRiders.set(squad, (riders ?? []).length > 0);
+  };
+  // #7982 step 3: the press (`together`) sends them at once; the status reads them one by one, as before.
+  if (together) {
+    await Promise.all([readStartedEntries(), ...squads.map(readSquad)]);
+  } else {
+    await readStartedEntries();
+    for (const squad of squads) await readSquad(squad);
   }
   return races.filter((race) => {
     if (started.includes(race)) return enteredStartedIds.has(race.id);
@@ -164,7 +186,7 @@ async function filterRacesTeamCanJoin({ supabase, team, races }) {
  * team is entered in, or can still enter, is always kept (the short-race warning
  * below depends on that).
  */
-export async function loadTodayRacesForTeam({ supabase, team, tickDate, strict = false }) {
+export async function loadTodayRacesForTeam({ supabase, team, tickDate, strict = false, together = false }) {
   try {
     const { start, end } = trainingDateBounds(tickDate);
     const stages = await checked(supabase.from("race_stage_schedule").select("race_id, stage_number")
@@ -180,7 +202,7 @@ export async function loadTodayRacesForTeam({ supabase, team, tickDate, strict =
       .in("id", raceIds), "today's races");
     const inPool = (races ?? []).filter((race) => race.league_division_id != null
       && race.league_division_id === teamPoolIdForSquad(team, race.squad ?? "senior"));
-    const reachable = await filterRacesTeamCanJoin({ supabase, team, races: inPool });
+    const reachable = await filterRacesTeamCanJoin({ supabase, team, races: inPool, together });
     return reachable
       .map((race) => ({
         id: race.id, name: race.name ?? null,
@@ -280,7 +302,7 @@ export async function loadTrainNowShortRaces({ supabase, team, todayRaces, tickD
  * and the route answers 500 train_now_failed (logged). Never fail open here (review #6742).
  */
 async function defaultLoadShortRaces({ supabase, team, tickDate }) {
-  const todayRaces = await loadTodayRacesForTeam({ supabase, team, tickDate, strict: true });
+  const todayRaces = await loadTodayRacesForTeam({ supabase, team, tickDate, strict: true, together: true });
   return loadTrainNowShortRaces({ supabase, team, todayRaces, tickDate, strict: true });
 }
 
@@ -502,26 +524,6 @@ async function runTrainNowSteps({
   if (typeof loadDaySpans !== "function") throw new Error("loadDaySpans required");
 
   const tickDate = copenhagenDateString(now);
-  const existingWork = await timing.step("date_work", () => loadTeamDateWork({ supabase, teamId: team.id, seasonId: season.id, tickDate }));
-  if (SETTLED_STATUSES.has(existingWork?.status)) {
-    return { status: 409, body: { error: "date_settled", tickDate } };
-  }
-  if (await timing.step("earlier_date", () => hasOpenEarlierDate({ supabase, teamId: team.id, seasonId: season.id, tickDate }))) {
-    return { status: 409, body: { error: "previous_date_open", tickDate } };
-  }
-
-  // #6740: a first press with a race below the floor needs the explicit yes for exactly
-  // the races below the floor NOW. A repeated press (locks already written) decides
-  // nothing new and is never asked again.
-  const existingLocks = await timing.step("locks_read", () => loadTeamTrainNowLocks({ supabase, teamId: team.id, tickDate }));
-  if (!existingLocks.length) {
-    const shortRaces = await timing.step("short_races", () => loadShortRaces({ supabase, team, tickDate }));
-    const confirmed = new Set(Array.isArray(confirmedShortRaceIds) ? confirmedShortRaceIds : []);
-    if (shortRaces.some((race) => !confirmed.has(race.id))) {
-      return { status: 409, body: { error: "short_races_confirm", tickDate, shortRaces } };
-    }
-  }
-
   // #7982: the three fresh reads stay three reads, each timed; the reader says which one answered.
   let reads = 0;
   const readContext = () => {
@@ -531,13 +533,50 @@ async function runTrainNowSteps({
       onReader: (reader) => timing.note(`reader_${n}`, reader),
     }));
   };
-  const context = await readContext();
+  // #7982 step 3: the reads every press past the first checks makes are sent at once
+  // (settleTogether) and decided below in the same order as before.
+  const [workOf, earlierOf, locksOf, contextOf, instantOf] = await settleTogether([
+    () => timing.step("date_work", () => loadTeamDateWork({ supabase, teamId: team.id, seasonId: season.id, tickDate })),
+    () => timing.step("earlier_date", () => hasOpenEarlierDate({ supabase, teamId: team.id, seasonId: season.id, tickDate })),
+    () => timing.step("locks_read", () => loadTeamTrainNowLocks({ supabase, teamId: team.id, tickDate })),
+    () => readContext(),
+    () => timing.step("instant_flags", () => isTrainNowInstantEnabled(supabase, { isBetaTester })),
+  ]);
+  const existingWork = workOf();
+  if (SETTLED_STATUSES.has(existingWork?.status)) {
+    return { status: 409, body: { error: "date_settled", tickDate } };
+  }
+  if (earlierOf()) {
+    return { status: 409, body: { error: "previous_date_open", tickDate } };
+  }
+  const existingLocks = locksOf();
+  const instant = instantOf();
+  // Second group: the short-race warning (a first press only), the bridge dates (a date
+  // not registered yet) and the bonus switch (only with instant training on).
+  const [shortRacesOf, bridgeOf, bonusOf] = await settleTogether([
+    () => (existingLocks.length ? [] : timing.step("short_races", () => loadShortRaces({ supabase, team, tickDate }))),
+    () => (existingWork ? false : timing.step("bridge_check", () => hasUnregisteredEarlierBridgeDate({ supabase, team, season, tickDate, context: contextOf() }))),
+    () => (instant ? timing.step("bonus_flag", () => isTrainNowBonusEnabled(supabase)) : false),
+  ]);
+
+  // #6740: a first press with a race below the floor needs the explicit yes for exactly
+  // the races below the floor NOW. A repeated press (locks already written) decides
+  // nothing new and is never asked again.
+  if (!existingLocks.length) {
+    const shortRaces = shortRacesOf();
+    const confirmed = new Set(Array.isArray(confirmedShortRaceIds) ? confirmedShortRaceIds : []);
+    if (shortRaces.some((race) => !confirmed.has(race.id))) {
+      return { status: 409, body: { error: "short_races_confirm", tickDate, shortRaces } };
+    }
+  }
+
+  const context = contextOf();
   const days = existingWork?.game_days ?? context.gameDaysByDivision.get(team.league_division_id);
   if (!days?.length) return { status: 409, body: { error: "no_race_day_today", tickDate } };
   // #7282: an earlier bridge date without registered work is still to be caught up by
   // the sweep. Registering any later date first (a bridge date or a race date) would stop
   // it keeping that date's opening snapshot.
-  if (!existingWork && await timing.step("bridge_check", () => hasUnregisteredEarlierBridgeDate({ supabase, team, season, tickDate, context }))) {
+  if (!existingWork && bridgeOf()) {
     return { status: 409, body: { error: "previous_date_open", tickDate } };
   }
 
@@ -565,10 +604,7 @@ async function runTrainNowSteps({
   //    are frozen (#6139: per rider). Idempotent per rider + date (I2); a repeated
   //    press keeps the first time. A failure after this point keeps the lock; a retry resumes.
   const pressedAt = now.toISOString();
-  const { instant, bonusChoice } = await timing.step("instant_flags", async () => {
-    const on = await isTrainNowInstantEnabled(supabase, { isBetaTester });
-    return { instant: on, bonusChoice: on && await isTrainNowBonusEnabled(supabase) };
-  });
+  const bonusChoice = instant && bonusOf();
   await timing.step("lock_write", () => writePressLocks({ supabase, team, season, tickDate, work, currentIds, pressedAt, bonusChoice, existingLocks }));
 
   // 3) Who can settle now? Read the entries AGAIN after the lock, so a selection
