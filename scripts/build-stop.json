@@ -619,6 +619,10 @@
     {
       "issue": 8143,
       "why": "Fundament: direkte linje til databasen, foerst en ren maaleproeve uden virkning for spillerne; ejer 13/11 i Claude-session paa kort: 'A: direkte linje, mål først (Recommended)'. Hver senere flytning af en tung handling kraever dommer og eget ejer-kort."
+    },
+    {
+      "issue": 8149,
+      "why": "Stop Discord-beskeder til spillerne, flyt til browser-notifikationer. Ejer 13/11 i Claude-session: 'Jeg vil ikke have flere beskeder til spillerne via discord. Vi skal bruge browser notifikationer i stedet - og senere fra app. Discord botten skal stoppes med at bruges' og paa kortet om raekkefoelgen: 'Flyt spillerne først, stop så (Recommended)' (hovedafbryder, opfordring i spillet, daekning; selve slukningen er ejerens koer, og alt synligt kraever ejerens billede-go)."
     }
   ],
   "brandList": [
