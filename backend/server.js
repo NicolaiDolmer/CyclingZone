@@ -31,6 +31,7 @@ import { createComebackRouter } from "./routes/comeback.js"; // #5643
 import { createBoardVerdictRouter } from "./routes/boardVerdict.js"; // #5753
 import { createPublicStageRouteRouter } from "./routes/publicStageRoute.js"; // #6574
 import { startCron, awaitCronsIdle, getCronInFlight, stopCronScheduling } from "./cron.js";
+import { startDirectDbProbe, stopDirectDbProbe, closeDirectDbLine } from "./lib/directDbProbe.ts"; // #8143
 
 const app = express();
 // Express 5 default; laast eksplicit 11/9 (#4565): ingen nestede/array-query-noegler
@@ -120,7 +121,12 @@ app.use(createHealthRouter({ supabase: healthSupabase }));
 setupSentryExpressErrorHandler(app, { shouldHandleError: shouldReportToSentry });
 app.use(errorMiddleware);
 
-const server = app.listen(PORT, () => { console.log(`🚴 Cycling Zone Manager API — port ${PORT}`); startCron(); });
+const server = app.listen(PORT, () => {
+  console.log(`🚴 Cycling Zone Manager API — port ${PORT}`);
+  startCron();
+  // #8143: måleprøven for den direkte linje. Uden DIRECT_DB_URL sker der intet.
+  startDirectDbProbe({ supabase: healthSupabase });
+});
 
 // Graceful shutdown — Railway sender SIGTERM før dyno-kill ved deploy. Uden
 // denne handler kunne en cron-tick midt i en sæson-transition afbrydes (cron.js
@@ -145,6 +151,7 @@ async function gracefulShutdown(signal) {
   // nye proces kører side om side i hele drain-vinduet, og uden dette ville
   // den gamle blive ved med at fyre ticks parallelt med den nye i op til 150s.
   stopCronScheduling();
+  stopDirectDbProbe(); // #8143
   const inFlight = getCronInFlight();
   if (inFlight > 0) {
     console.log(`[shutdown] venter på ${inFlight} cron-tick(s) (timeout ${SHUTDOWN_TIMEOUT_MS}ms)`);
@@ -155,6 +162,8 @@ async function gracefulShutdown(signal) {
   } else {
     console.log("[shutdown] alle cron-ticks afsluttet");
   }
+  // #8143: den direkte linjes pulje lukkes pænt, efter baggrundsjobbene.
+  await closeDirectDbLine();
   process.exit(0);
 }
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
