@@ -205,3 +205,39 @@ jeppek:
 - Ingen favorit til den etape, der skal køres; vejr, afslutning og terræn mangler på de kommende etaper; tidspunkt på dagens øvrige etaper.
 
 Relaterede issues oprettet 7/11 aften: #7880 (taktik for mange etaper), #7884 (angrib efter tidligere stigning), #7885 (taktik-assistenten), #7886 (tabeller på telefonen).
+
+## Wireframe v3 og byggeplan 12/11 (leveret som v6)
+
+Rettelse 12/11 på #7778: den udgivne wireframe er v5 (9/11), så leverancen hedder v6 (`pr-screens/7778/wireframe-v6.html`). v3-v5 (udledt af v5-filen): v3 tog v2-feedbacken ind (rigtige flag, klikbare navne, profil med vejr/stigninger/spurter, hele holdet, U25, flad standardplan); v4 tilføjede holdplan, indsats, lås-bjælke, sæsonstandarder og "Dagens taktik"; v5 tilføjede rytterkort, startliste med rygnumre og favoritter for løbet.
+
+### Hvad v6 ændrer mod v5
+v6 er v5-filen redigeret på stedet: samme løb (Giro delle Alpi Orientali, set som Guaracha Guerreros), samme data, layout, farver og komponenter. Kun disse seks steder er ændret, og hvert er mærket "improved" eller "new" i wireframet og listet i infoboksen øverst:
+
+a. **Hold-fanen følger etapen** (testerfejl 8/11, "låst på etape 2"). I v5 fulgte overskrift, ruteprofil og rutematch allerede etapen, men Rolle-kolonnen læste rytterens grundrolle. Nu viser fanen holdplanen for den valgte etape, og rollerne følger den (etape 3, Stage win: Delgado kaptajn, Yamada hjælper). Bevist med Playwright.
+b. **Taktik på en kørt etape: din plan mod det der skete** (ejerafstemning 11/11, F5/S4 valg A). Kun egne ryttere, pr. kørt etape, i v5's tabelstil. Planen er assistentens (holdet gemte intet, vist som eksempel); "det der skete" er kun fakta fra etapens optegnelse (udfald fra feltet, mellemspurt, bjergpassage, mål). Resultater beholder plads, tid og én linje; Historie beholder den ene afspiller og referatet.
+c. **Kopiér holdplanen til navngivne etaper** (ejerafstemning 11/11, #7864 valg A): knappen siger "Copy to stages 5, 7"; en etape med en håndgemt plan (eksempel: etape 6) springes over og vises som undtagelse; kopierede etaper står som "Not saved" til der gemmes.
+d. **Holdplanerne som bygget** (#7980, #8027): kortenes tekster som på main ("... train in the last 10 km"), prisordene Easy/Medium/Hard/Very hard med samme pris pr. opgave som main (Follow the moves = Hard, Sprint train = Medium), og gem-status "Not saved / You have unsaved changes / Save stage N".
+e. **Favoritter** (#6513 valg A): resultatlinjen under favoritten stod allerede i v5. Ny diskret note: stjernerne er eksempler, ingen beregningsmodel er godkendt.
+f. **Angreb på sidste stigning som to linjer** (#8033, ejer 12/11): først "attacks at the foot of Salita di Bondone" ved foden (km 143,2) uden resultat, derefter udfaldet dér, hvor motoren stemplede det (holdt til toppen, km 155). Erstatter v5's ene linje "attacks ... and goes alone" på km 145,2.
+
+### Byggeplan (alle bag beta-flag `race_page_v6`, stadie beta)
+| PR | Filer (cirka) | Spilleren ser | Kan tændes alene for beta | Codex-filer? | #8033/#8045-filer? |
+|---|---|---|---|---|---|
+| 1 Resultater: én ren liste | `RaceResults*`/`ResultTable`, ny `RaceResultsV6.jsx`, flag-registry | Klassementsskift, søgning, Mit hold, hele listen scrollbar, "Dine ryttere", spurter og stigninger samlet | Ja, inden for et døgn på preview | Nej | Nej |
+| 2 Fanerne + Hold følger etapen | `RaceDetailPage` faner, Hold-fane | Etape/Startliste/Taktik/Hold; Hold viser den valgte etapes holdplan og roller | Ja | Nej | Nej |
+| 3 Startliste + favoritter | ny `StartListTab.jsx`, favorit-selector | Hold med rygnumre, favoritter med resultatlinje (stjerner kun hvis ejeren godkender en model) | Ja | Nej | Nej |
+| 4 Historie: én afspiller med kapitler + skjold | `RaceStoryCard`, `TimelineFilmPlayer`, spoiler-skjold | Én film, ruten som tidslinje, referat fulgt af filmen | Ja | Nej | Ja: deler filmens angrebslinjer; bygges efter #8033 er merget og rebaser på #8045 |
+| 5 Taktik: plan mod virkelighed + undtagelser | `StageOrdersRecap`, `RaceTacticsTab` (multi-etape-rækken) | Plan mod det der skete pr. kørt etape for egne ryttere; håndgemte etaper vist som undtagelser ved kopiering | Ja | Nej | Delvist (læser #8045's hændelser) |
+
+Holdplan-kortene, prisordene, gem-status og "Copy to stages X, Y" er allerede bygget (#7980, #8027, kontakt `tactics_ready_7864`) og bygges ikke igen; PR 5 tilføjer kun visningen af undtagelserne.
+
+Ingen PR rører Codex-filerne (DashboardPage.jsx, AuctionsPage.jsx, TransfersPage.jsx, TodayStagesStrip.jsx, auctionData.ts, marketData.ts, queryRuntime.ts). Filnavne skal bekræftes mod koden før PR 1.
+
+### Valg til ejeren før byg
+v5 besvarer allerede rygnumre (ja, pr. hold), favoritter med resultatlinje og et klikbart "How tactics work"; de er ikke længere valg. Tilbage:
+1. Åbner en kørt etape i Resultater eller Historie med skjoldet slået fra? Anbefaling: Resultater (som v5 gør, Q3 7/11). FM/PCS åbner resultatet direkte.
+2. Ordet på resten af siden: lås-bjælken og "Your riders" siger stadig "confirmed", mens Taktik nu siger "saved" som det byggede. Anbefaling: "saved" overalt, så én handling har ét ord.
+3. Beta-flag før alle: én samlet udrulning eller PR for PR? Anbefaling: PR for PR til beta. Andre managerspil kører betaer pr. funktion.
+4. Rækkefølge efter PR 1: Historie (PR 4) eller Taktik (PR 5) først? Anbefaling: Taktik, fordi Historie venter på #8033. PCM opdaterer taktikskærmen før løbsvisningen.
+
+Refs #7778.
