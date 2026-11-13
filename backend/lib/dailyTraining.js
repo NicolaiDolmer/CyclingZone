@@ -16,6 +16,7 @@ import { curveBBase, curveBCapSoftness, curveBSoftCeiling } from "./developmentC
 import { blendCurveBTransition } from "./developmentCurveBTransition7382.ts"; // #7382 blød overgang
 import { developmentXpAbilityDelta, developmentXpTick, XP_RACE_DAY_FOCUS } from "./developmentXp.ts"; // #6110 XP, kun med `developmentXp`
 import { developmentXpDayVariation } from "./developmentXpVariation.ts"; // #6110 dagsvariation, kun i XP-grenen
+import { developmentXpRaceFitFloor } from "./developmentXpRaceFit.ts"; // #6110 R15b, kun i XP-grenen
 import { TRAIN_NOW_BONUS_FACTOR } from './trainNowBonus7737.ts';
 
 export const DAILY_TRAINING_CONFIG = Object.freeze({
@@ -282,6 +283,8 @@ export function applyDailyTick({
   developmentScore = null, abilityYieldMult = null,
   developmentXp = null, // #6110: XP-modellen erstatter evne-loopet. Udeladt/null = bit-identisk.
   trainNowBonus = false,
+  // #6110 R15b: { profileType, catalogV3 } fra withRaceDayRoleYieldXp, kun under XP. Laeses kun i XP-grenen.
+  xpRaceDayFit = null,
 }) {
   const cfg = DAILY_TRAINING_CONFIG;
   const trainNowBonusFactor = trainNowBonus === true && program?.intensity !== 'rest'
@@ -331,9 +334,17 @@ export function applyDailyTick({
     const xpVariation = developmentXpDayVariation({ riderId, dateStr }, developmentXp.variation);
     // #6110 R9 (ejer 7/11 + 12/11): under XP bremser kun prisen. Den gamle regel om
     // +1 pr. loebsdag (hardDailyCap) gaelder kun dagens model og klipper ikke XP-koebet.
+    const dayXpFor = (ability) => dailyAbilityDelta({ ability, age, program, potentiale, staff, facilityTier, riderLevel, academyRateMult, primaryType, secondaryType, trainingCfg, budgetDivisor, developmentXp,
+      xpYieldMult: abilityYieldMult?.[ability] > 0 ? abilityYieldMult[ability] : 1 });
+    // #6110 R15b (ejer 13/11): paa en etape, der passer rytterens primaere type, loeftes
+    // loebsdagen op til hans bedste haarde pas. Foer udsvinget, saa loeftet faar dagens udsving.
+    const raceFitDay = xpRaceDayFit ? developmentXpRaceFitFloor({
+      day: Object.fromEntries(VISIBLE_ABILITIES.filter((a) => Number.isFinite(Number(abilities?.[a] ?? 0))).map((a) => [a, dayXpFor(a)])),
+      program, fit: xpRaceDayFit, academyRateMult,
+      rider: { age, potentiale, primaryType, secondaryType, staff, facilityTier, riderLevel, trainingCfg, budgetDivisor },
+    }, developmentXp) : null;
     return { ...developmentXpTick({ abilities, progress,
-      xpFor: (ability) => dailyAbilityDelta({ ability, age, program, potentiale, staff, facilityTier, riderLevel, academyRateMult, primaryType, secondaryType, trainingCfg, budgetDivisor, developmentXp,
-        xpYieldMult: abilityYieldMult?.[ability] > 0 ? abilityYieldMult[ability] : 1 })
+      xpFor: (ability) => (raceFitDay ? raceFitDay[ability] ?? 0 : dayXpFor(ability))
         * trainNowBonusFactor * xpVariation }, developmentXp),
     trainingScore, noise, status: noise > 1.05 ? "over" : noise < 0.95 ? "under" : "normal" };
   }
