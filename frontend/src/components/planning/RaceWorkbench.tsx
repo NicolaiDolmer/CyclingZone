@@ -23,11 +23,13 @@ import {
 import RouteProfile from "./RouteProfile.tsx";
 import SquadTable from "./SquadTable.tsx";
 import { ReadinessMark } from "./planningUi.tsx";
-import { loadRaceSelection, saveRaceSelection, loadStageProfiles, type StageProfileRow } from "../../lib/planningWorkbenchData.ts";
+import { loadRaceSelection, saveRaceSelection, setRaceWithdrawal, loadStageProfiles, type StageProfileRow } from "../../lib/planningWorkbenchData.ts";
+import { deadlineCountdown } from "../../lib/selectionReminder.ts";
 import {
   DEFAULT_SQUAD_SORT,
   EMPTY_SELECTION,
   buildSquadRows,
+  clearSquad,
   copySquadFrom,
   entriesFromSelection,
   nextSort,
@@ -62,6 +64,14 @@ function formatStart(iso: string | null | undefined, language: string): string |
   }
 }
 
+/** Timer til start (null naar tidspunktet mangler eller er passeret). Samme enheder som paamindelsen paa /planning. */
+function hoursUntil(iso: string | null | undefined, nowMs: number): number | null {
+  if (!iso) return null;
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms) || ms <= nowMs) return null;
+  return (ms - nowMs) / 3_600_000;
+}
+
 export interface RaceWorkbenchHandle {
   save: () => Promise<boolean>;
   discard: () => void;
@@ -76,6 +86,7 @@ interface RaceWorkbenchProps {
   onToggleProfileHidden: () => void;
   onDirtyChange?: (dirty: boolean) => void;
   onSaved?: (raceId: string, entries: SeasonEntry[]) => void;
+  onWithdrawnChange?: (raceId: string, withdrawn: boolean) => void;
 }
 
 interface SaveError {
@@ -87,7 +98,7 @@ interface SaveError {
 type SelectionResponse = any;
 
 const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(function RaceWorkbench(
-  { race, allRaces, entries, withdrawn, profileHidden, onToggleProfileHidden, onDirtyChange, onSaved },
+  { race, allRaces, entries, withdrawn, profileHidden, onToggleProfileHidden, onDirtyChange, onSaved, onWithdrawnChange },
   ref,
 ) {
   const { t, i18n } = useTranslation("planning");
@@ -103,6 +114,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
   const [copyOpen, setCopyOpen] = useState(false);
   const [profiles, setProfiles] = useState<StageProfileRow[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(true);
+  const [withdrawBusy, setWithdrawBusy] = useState(false);
   const generation = useRef(0);
   const latest = useRef<{ sel: Selection; saved: Selection; readOnly: boolean; clientErrors: string[]; sprintLeaderAllowed: boolean; size: { min: number; max: number } } | null>(null);
 
@@ -273,12 +285,48 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
   latest.current = { sel, saved, readOnly, clientErrors, sprintLeaderAllowed, size };
   useImperativeHandle(ref, () => ({ save, discard }), [save, discard]);
 
+  // Afmeld / deltag igen: samme endpoint, samme guards og samme tekster som loebstavlen paa /planning.
+  // En afmelding smider en ugemt kladde (som tavlen), og fladen genindlaeses fra serveren bagefter.
+  const toggleWithdrawal = async (withdraw: boolean) => {
+    setWithdrawBusy(true);
+    setSaveError(null);
+    try {
+      const res = await setRaceWithdrawal(race.id, withdraw);
+      if (!res.ok) {
+        setSaveState("error");
+        setSaveError({ code: res.data?.error || "generic", params: { min: size.min, max: size.max } });
+        return;
+      }
+      if (withdraw) forgetSelectionDraft(race.id);
+      onWithdrawnChange?.(race.id, withdraw);
+      await load();
+    } catch {
+      setSaveState("error");
+      setSaveError({ code: "generic", params: {} });
+    } finally {
+      setWithdrawBusy(false);
+    }
+  };
+
+  const clearSelection = () => {
+    // Kun en kladde: intet gemmes foer spilleren selv trykker Gem (laaste Train now-ryttere bliver staaende).
+    edit(clearSquad(sel, rows.filter((r) => r.trainNowLocked).map((r) => r.id)));
+  };
+
   const overlaps = overlappingRaces(race, allRaces, withdrawn);
   const copySources = allRaces
     .filter((r) => r.id !== race.id && !withdrawn.has(r.id))
     .map((r) => ({ race: r, riders: entries.filter((e) => e.raceId === r.id) }))
     .filter((s) => s.riders.length > 0);
   const start = formatStart(data?.race?.scheduled_for, i18n.language);
+  // Nedtaelling til start ("om 12 t"), som paamindelsen og loebssiden viser den. Kun for et aabent loeb.
+  const hoursLeft = data?.race?.status === "scheduled" && !data?.lineup_locked ? hoursUntil(data?.race?.scheduled_for, Date.now()) : null;
+  const countdown = hoursLeft != null ? (() => {
+    const { unit, value } = deadlineCountdown(hoursLeft);
+    return unit === "past" ? null : tr(`selectionReminder.in.${unit}`, { count: value });
+  })() : null;
+  const isWithdrawn = data?.withdrawn === true && !data?.lineup_locked && !data?.did_not_start;
+  const canWithdraw = state === "ready" && !readOnly && !isWithdrawn && data?.eligible !== false;
   const cls = tr(`classOption.${race.raceClass}`, { defaultValue: String(race.raceClass ?? "") });
 
   const suggest = () => {
@@ -355,6 +403,8 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
           </div>
         ) : (
           <>
+            {/* Én linje kontekst om tallene, samme tekst som loebstavlen paa /planning (P9). */}
+            <p className="border-t border-cz-border px-4 py-2 text-2xs leading-snug text-cz-3">{tr("racehub.column.numbersExplanation")}</p>
             <SquadTable
               rows={sortedRows}
               selection={sel}
@@ -367,9 +417,31 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
               onToggle={toggle}
               onRole={setRole}
             />
-            <p className="border-t border-cz-border px-4 py-2.5 font-data text-xs tabular-nums text-cz-3">
-              {t("squad.count", { shown: rows.length, selected: sel.riderIds.length, max: size.max })}
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-cz-border px-4 py-1.5">
+              <p className="py-1 font-data text-xs tabular-nums text-cz-3">
+                {t("squad.count", { shown: rows.length, selected: sel.riderIds.length, max: size.max })}
+              </p>
+              {/* Samme to handlinger som loebstavlens fod paa /planning: ryd udtagelsen og afmeld holdet. */}
+              {(canWithdraw || (isWithdrawn && !readOnly)) && (
+                <div className="flex flex-wrap items-center gap-1">
+                  {canWithdraw && sel.riderIds.length > 0 && (
+                    <Button variant="ghost" size="sm" onClick={clearSelection} disabled={saveState === "saving" || withdrawBusy}>
+                      {tr("racehub.column.clearSelection")}
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleWithdrawal(!isWithdrawn)}
+                    loading={withdrawBusy}
+                    disabled={saveState === "saving" || withdrawBusy}
+                    data-testid="planning-withdraw"
+                  >
+                    {isWithdrawn ? tr("racehub.column.reenter") : tr("racehub.column.withdraw")}
+                  </Button>
+                </div>
+              )}
+            </div>
           </>
         )}
       </>
@@ -396,6 +468,7 @@ const RaceWorkbench = forwardRef<RaceWorkbenchHandle, RaceWorkbenchProps>(functi
           <p className="mt-0.5 font-data text-2xs uppercase tracking-wide text-cz-3">
             {[
               start ? t("race.starts", { when: start }) : null,
+              countdown,
               cls || null,
               race.stages > 1 ? t("raceList.stages", { count: race.stages }) : t("raceList.oneDay"),
               state === "ready" ? t("race.picked", { picked: sel.riderIds.length, max: size.max }) : null,

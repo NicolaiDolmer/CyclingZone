@@ -36,6 +36,11 @@ export async function saveRaceSelection(raceId: string, body: unknown) {
   return authed(`/api/races/${encodeURIComponent(raceId)}/selection`, { method: "PUT", body: JSON.stringify(body) });
 }
 
+/** Afmeld (withdraw = true) eller deltag igen: samme endpoint og samme guards som loebstavlens knap. */
+export async function setRaceWithdrawal(raceId: string, withdraw: boolean) {
+  return authed(`/api/races/${encodeURIComponent(raceId)}/withdrawal`, { method: withdraw ? "POST" : "DELETE" });
+}
+
 // Etapeprofilerne aendrer sig ikke mens siden er aaben; ét opslag pr. loeb er nok.
 const profileCache = new Map<string, Promise<StageProfileRow[]>>();
 

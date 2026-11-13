@@ -317,6 +317,20 @@ export function setRiderRole(sel: Selection, riderId: string, role: RoleKey): Se
   return next;
 }
 
+/**
+ * "Ryd udtagelse" som kladde: alle ryttere ud, undtagen dem der ikke maa flyttes (Train now-laast),
+ * som beholder baade plads og rolle. Intet gemmes, foer spilleren selv trykker Gem.
+ */
+export function clearSquad(sel: Selection, keepIds: Iterable<string> = []): Selection {
+  const keep = new Set(keepIds);
+  let next: Selection = sel;
+  for (const id of sel.riderIds) {
+    if (!keep.has(id)) next = setRiderRole(next, id, "rider");
+  }
+  const riderIds = sel.riderIds.filter((id) => keep.has(id));
+  return { ...next, riderIds, freeRoleIds: next.freeRoleIds.filter((id) => keep.has(id)) };
+}
+
 /** Serverens udtagelse (GET /selection) som lokal tilstand. */
 export function selectionFromServer(server: {
   rider_ids?: string[];

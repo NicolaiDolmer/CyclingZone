@@ -32,7 +32,11 @@ function StatusCell({ row }: { row: SquadRow }) {
       {row.overAge && <span className={`${CHIP} ${NEUTRAL}`}>{t("status.overAge")}</span>}
       {row.trainNowLocked && <span className={`${CHIP} ${NEUTRAL}`}>{t("status.trainNow")}</span>}
       {row.busyIn && (
-        <span className={`${CHIP} ${NEUTRAL} max-w-[8rem] truncate normal-case`} title={t("status.busyTitle", { race: row.busyIn })}>
+        // Hele "I <loeb>" i almindelig skrift; kun et meget langt navn afkortes (titlen har resten).
+        <span
+          className="inline-block max-w-[11rem] truncate rounded border border-cz-border bg-cz-subtle px-1.5 py-0.5 text-2xs leading-none text-cz-2"
+          title={t("status.busyTitle", { race: row.busyIn })}
+        >
           {t("status.busy", { race: row.busyIn })}
         </span>
       )}
@@ -161,7 +165,8 @@ export default function SquadTable({
                       />
                     </label>
                     <div className="min-w-0 pt-2.5 sm:pt-0">
-                      <RiderNameCell id={row.id} name={row.name} wrap className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t" />
+                      {/* Navnet brydes kun paa mobil; paa pc staar det paa én linje som paa de nuvaerende sider. */}
+                      <RiderNameCell id={row.id} name={row.name} wrap className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t sm:whitespace-nowrap" />
                       <div className="mt-1 sm:hidden">
                         <StatusCell row={row} />
                       </div>

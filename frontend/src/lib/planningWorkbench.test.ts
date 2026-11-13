@@ -15,6 +15,7 @@ import {
   layoutWeek,
   roleOf,
   setRiderRole,
+  clearSquad,
   selectionFromServer,
   selectionDirty,
   toPutBody,
@@ -382,4 +383,15 @@ test("kopiér trup: optagne og skadede ryttere springes over, roller foelger med
   assert.equal(selection.coCaptainId, null, "delt kaptajn kopieres ikke ind i et loeb der ikke kender den");
   assert.equal(selection.hunterId, null);
   assert.equal(skipped, 2);
+});
+
+test("clearSquad: alle ud, men en laast rytter beholder plads og rolle", () => {
+  const start = sel({ riderIds: ["a", "b", "c"], captainId: "a", hunterId: "b", freeRoleIds: ["c"] });
+  const cleared = clearSquad(start, ["b"]);
+  assert.deepEqual(cleared.riderIds, ["b"]);
+  assert.equal(cleared.captainId, null);
+  assert.equal(cleared.hunterId, "b");
+  assert.deepEqual(cleared.freeRoleIds, []);
+  assert.deepEqual(clearSquad(start).riderIds, []);
+  assert.deepEqual(start.riderIds, ["a", "b", "c"], "kladden aendres ikke i stedet");
 });

@@ -17,6 +17,8 @@ import WeekBoard from "../components/planning/WeekBoard.tsx";
 import RaceList from "../components/planning/RaceList.tsx";
 import RaceWorkbench, { type RaceWorkbenchHandle } from "../components/planning/RaceWorkbench.tsx";
 import UnsavedBar from "../components/planning/UnsavedBar.tsx";
+import SelectionDeadlineReminder from "../components/planning/SelectionDeadlineReminder.tsx";
+import { useSelectionReminder, refreshSelectionReminder } from "../hooks/useSelectionReminder.ts";
 import { usePlanningWorkbenchFlag } from "../lib/usePlanningWorkbenchFlag.ts";
 import { loadSeasonOverview, loadRaceTerrain } from "../lib/planningWorkbenchData.ts";
 import {
@@ -68,6 +70,12 @@ function writePref(key: string, value: unknown) {
 function Toggle({ pressed, onClick, children }: { pressed: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <Button variant="secondary" size="sm" aria-pressed={pressed} onClick={onClick} className={pressed ? "border-cz-3 bg-cz-subtle" : ""}>
+      {/* Til/fra ses paa knappen selv (wireframets kontakt): udfyldt firkant = vist, tom = skjult. */}
+      <span
+        aria-hidden="true"
+        data-testid="planning-toggle-mark"
+        className={`inline-block h-2.5 w-2.5 shrink-0 rounded-[2px] border ${pressed ? "border-cz-1 bg-cz-1" : "border-cz-3 bg-transparent"}`}
+      />
       {children}
     </Button>
   );
@@ -88,7 +96,8 @@ function Workbench() {
   const [load, setLoad] = useState<{ state: "loading" | "error" | "ready"; payload: SeasonResponse | null }>({ state: "loading", payload: null });
   const [entries, setEntries] = useState<SeasonEntry[]>([]);
   const [terrain, setTerrain] = useState<Map<string, string[]>>(() => new Map());
-  const [showWeek, setShowWeek] = useState(() => readPref("week", false));
+  // Ugeoversigten staar fremme som i wireframet (#7535); spillerens eget valg huskes derefter.
+  const [showWeek, setShowWeek] = useState(() => readPref("week", true));
   const [showList, setShowList] = useState(() => readPref("list", true));
   const [profileHidden, setProfileHidden] = useState(() => readPref("profileHidden", false));
   const [scope, setScope] = useState<RaceScope>("next7");
@@ -125,9 +134,11 @@ function Workbench() {
   const dates = useMemo(() => dateIndex(payload?.dayDates ?? []), [payload]);
   // Et loeb holdet er meldt til igen ved at gemme en trup, staar ikke laengere som afmeldt.
   const [rejoined, setRejoined] = useState<Set<string>>(() => new Set());
+  // Loeb holdet har meldt fra til her paa siden (knappen "Afmeld"), indtil sæsonoversigten hentes igen.
+  const [withdrawnHere, setWithdrawnHere] = useState<Set<string>>(() => new Set());
   const withdrawn = useMemo(
-    () => new Set<string>((payload?.withdrawnRaceIds ?? []).filter((id) => !rejoined.has(id))),
-    [payload, rejoined],
+    () => new Set<string>([...(payload?.withdrawnRaceIds ?? []), ...withdrawnHere].filter((id) => !rejoined.has(id))),
+    [payload, rejoined, withdrawnHere],
   );
   const counts = useMemo(() => pickedCounts(entries), [entries]);
 
@@ -249,7 +260,25 @@ function Workbench() {
   const onSaved = useCallback((raceId: string, next: SeasonEntry[]) => {
     setEntries((cur) => replaceRaceEntries(cur, raceId, next));
     setRejoined((cur) => new Set(cur).add(raceId));
+    refreshSelectionReminder();
   }, []);
+  const onWithdrawnChange = useCallback((raceId: string, isOut: boolean) => {
+    setWithdrawnHere((cur) => {
+      const next = new Set(cur);
+      if (isOut) next.add(raceId);
+      else next.delete(raceId);
+      return next;
+    });
+    setRejoined((cur) => {
+      const next = new Set(cur);
+      if (isOut) next.delete(raceId);
+      else next.add(raceId);
+      return next;
+    });
+    refreshSelectionReminder();
+  }, []);
+  // Samme fristboks som /planning: hvilke trupper mangler, og hvor lang tid er der til start.
+  const { reminder } = useSelectionReminder();
   const toggleWeek = () => {
     setShowWeek(!showWeek);
     writePref("week", !showWeek);
@@ -395,6 +424,7 @@ function Workbench() {
                 onToggleProfileHidden={toggleProfile}
                 onDirtyChange={setDirty}
                 onSaved={onSaved}
+                onWithdrawnChange={onWithdrawnChange}
               />
             ) : (
               <EmptyState
@@ -417,6 +447,7 @@ function Workbench() {
   return (
     <div className="mx-auto max-w-[1600px]" data-testid="planning-workbench-page">
       <PageHeader title={t("title")} subtitle={subtitle} actions={actions} />
+      <SelectionDeadlineReminder reminder={reminder} />
       {content}
     </div>
   );
