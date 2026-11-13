@@ -1305,7 +1305,7 @@ export default function DashboardPage() {
                   {loading ? <Skeleton className="h-7 w-28" /> : <>{formatNumber(computeAvailableBalance(team?.balance, reservedBalance))} CZ$</>}
                 </p>
                 <p className="text-cz-3 text-xs">{t("common:sidebar.balance")}</p>
-                {!loading && <LockedSalesLine refreshKey={team?.balance} className="text-cz-2 text-xs" />}
+                {!loading && <LockedSalesLine refreshKey={/** @type {any} */ (team)?.balance} className="text-cz-2 text-xs" />}
                 {loading && <Skeleton className="h-4 w-28" />}
                 {!loading && reservedBalance > 0 && (
                   <p className="text-cz-2 text-xs">

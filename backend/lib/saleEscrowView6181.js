@@ -150,8 +150,13 @@ export async function loadLockedSalesForTeam(supabase, teamId, { now = new Date(
   const riderById = new Map((riders || []).map((r) => [r.id, r]));
 
   const sales = rows.map((e, i) => {
-    const races = sold[i].map((id) => raceByRider.get(id)).filter(Boolean);
-    const race = races.reduce((best, r) => (!best || (r.endsAt && (!best.endsAt || new Date(r.endsAt) > new Date(best.endsAt))) ? r : best), null);
+    // Et bytte kan have flere solgte ryttere; det loeb, der slutter sidst, afgoer udbetalingen.
+    /** @type {{ id: string, name: string, endsAt: string|null } | null} */
+    let race = null;
+    for (const id of sold[i]) {
+      const r = raceByRider.get(id);
+      if (r && (!race || (r.endsAt && (!race.endsAt || new Date(r.endsAt) > new Date(race.endsAt))))) race = r;
+    }
     return {
       id: e.id,
       dealType: e.deal_type,

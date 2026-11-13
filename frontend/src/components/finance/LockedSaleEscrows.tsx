@@ -110,7 +110,7 @@ export function LockedSaleEscrowsList({ data }: { data: LockedSales }) {
                 </span>
                 {(sale.race || ends) && (
                   <span className="block sm:inline text-cz-3 text-xs">
-                    {sale.race ? <RaceLink id={sale.race.id} className="hover:text-cz-accent-t">{sale.race.name}</RaceLink> : null}
+                    {sale.race ? <RaceLink id={sale.race.id} stage={undefined} state={undefined} className="hover:text-cz-accent-t">{sale.race.name}</RaceLink> : null}
                     {sale.race && ends ? " · " : null}
                     {ends}
                   </span>

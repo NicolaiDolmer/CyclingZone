@@ -584,7 +584,7 @@ export default function FinancePage() {
                 {formatNumber(team?.balance || 0)} CZ$
               </p>
               {/* #6181 (udgave A): saldoen er det holdet kan bruge; laaste salgspenge staar under den. */}
-              <LockedSalesLine refreshKey={team?.balance} className="text-cz-2 text-xs mt-1" />
+              <LockedSalesLine refreshKey={/** @type {any} */ (team)?.balance} className="text-cz-2 text-xs mt-1" />
               <p className="text-cz-3 text-xs mt-1">{t("balance.division", { division: team?.division })}</p>
               {reservedBalance > 0 && (
                 <p className="text-cz-3 text-xs mt-2 leading-snug">
@@ -631,7 +631,7 @@ export default function FinancePage() {
           </div>
 
           {/* #6181: een linje pr. laast salg; intet laast = intet vist. */}
-          <LockedSaleEscrows refreshKey={team?.balance} />
+          <LockedSaleEscrows refreshKey={/** @type {any} */ (team)?.balance} />
 
           {/* #986: én-linjes lån-resumé — fuld lån-administration på Lån-fanen */}
           <Card className="p-4 mb-4 flex items-center justify-between gap-3">
