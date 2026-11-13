@@ -244,13 +244,7 @@ test("POST /admin/season-transition: force afvises med 409, mens der staar laast
   assert.match(block, /status\(409\)\.json\(\{ error: SALE_ESCROW_FORCE_BLOCKED_ERROR, code: "held_sale_escrows"/);
 });
 
-test("executeSeasonTransition-scriptet stopper ogsaa ved laaste salg", () => {
-  const src = read("../scripts/executeSeasonTransition.js");
-  const guard = src.indexOf("countHeldSaleEscrowsForForce(supabase)");
-  const run = src.indexOf("await transitionToNextSeason(");
-  assert.ok(guard > 0 && guard < run);
-  assert.match(src, /process\.exit\(1\)/);
-});
+// Spaerrens adfaerd proeves i saleEscrow6181.saesonskifte.test.js.
 
 test("saelgerens besked ved handlen skifter kun, naar handlen faktisk er laast", () => {
   const transfer = read("./transferExecution.js");

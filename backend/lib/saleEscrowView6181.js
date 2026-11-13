@@ -225,6 +225,21 @@ export async function countHeldSaleEscrowsForForce(supabase) {
 }
 
 /**
+ * Spaerren i scriptet executeSeasonTransition.js (samme faste regel som force-spaerren):
+ * et skifte koeres ikke, mens der staar laaste salg. Fail-closed: en laesefejl stopper.
+ * En proevekoersel uden --execute skriver intet og laeser derfor heller ikke.
+ *
+ * @param {any} supabase
+ * @param {{ execute: boolean }} opts
+ * @returns {Promise<{ blocked: boolean, held: number }>}
+ */
+export async function saleEscrowTransitionGuard(supabase, { execute }) {
+  if (!execute) return { blocked: false, held: 0 };
+  const held = await countHeldSaleEscrowsForForce(supabase);
+  return { blocked: held > 0, held };
+}
+
+/**
  * Er saelgers penge for denne handel laast lige nu? Laeses efter betalingen, saa
  * den daekker baade JS-stien og RPC-stien (auto-accept betaler i selve RPC'en).
  * Kun en parkeret handel kan vaere laast; ellers spoerges der ikke. Fejl = false:
