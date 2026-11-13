@@ -5,6 +5,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
+import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -385,13 +386,25 @@ const ALLOWED_IMPORTERS = new Set([
   "backend/lib/directDbProbe.ts",
   "backend/lib/directDb.test.js",
   "backend/lib/directDb.pg.test.js",
+  "backend/lib/directDbProbe.test.js",
 ]);
 const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", "coverage"]);
 const CODE_FILE = /\.(c|m)?(j|t)sx?$/;
 const IMPORT_RE = /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+)["'`]([^"'`]*?(?:^|\/)directDb(?:\.ts|\.js)?)["'`]/g;
 
+// Andre tests i samme kørsel opretter og sletter midlertidige filer under
+// backend/; en fil, der forsvinder midt i skanningen, springes over.
+function readIfPresent(read) {
+  try {
+    return read();
+  } catch (err) {
+    if (err?.code === "ENOENT" || err?.code === "ENOTDIR") return null;
+    throw err;
+  }
+}
+
 function codeFiles(dir, out = []) {
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+  for (const entry of readIfPresent(() => readdirSync(dir, { withFileTypes: true })) ?? []) {
     if (entry.isDirectory()) {
       if (!SKIP_DIRS.has(entry.name)) codeFiles(path.join(dir, entry.name), out);
     } else if (CODE_FILE.test(entry.name)) {
@@ -401,15 +414,28 @@ function codeFiles(dir, out = []) {
   return out;
 }
 
+// Kun filer i git: midlertidige filer fra andre tests i samme kørsel tæller ikke.
+// Uden git (fx en udpakket kopi) skannes mapperne i stedet.
+function trackedCodeFiles(roots) {
+  try {
+    const rels = roots.map((root) => path.relative(REPO_ROOT, root));
+    const out = execFileSync("git", ["ls-files", "-z", "--", ...rels], { cwd: REPO_ROOT, encoding: "utf8" });
+    const files = out.split("\0").filter((rel) => rel && CODE_FILE.test(rel)
+      && !rel.split("/").some((part) => SKIP_DIRS.has(part)));
+    if (files.length > 0) return files.map((rel) => path.join(REPO_ROOT, rel));
+  } catch {
+    // best-effort: ingen git, så falder vi tilbage til at skanne mapperne.
+  }
+  return roots.flatMap((root) => codeFiles(root));
+}
+
 function findDirectDbImporters(roots) {
   const found = [];
-  for (const root of roots) {
-    for (const file of codeFiles(root)) {
-      const source = readFileSync(file, "utf8");
-      if (!source.includes("directDb")) continue;
-      for (const m of source.matchAll(IMPORT_RE)) {
-        found.push({ file: path.relative(REPO_ROOT, file).split(path.sep).join("/"), specifier: m[1] });
-      }
+  for (const file of trackedCodeFiles(roots)) {
+    const source = readIfPresent(() => readFileSync(file, "utf8"));
+    if (source === null || !source.includes("directDb")) continue;
+    for (const m of source.matchAll(IMPORT_RE)) {
+      found.push({ file: path.relative(REPO_ROOT, file).split(path.sep).join("/"), specifier: m[1] });
     }
   }
   return found;
