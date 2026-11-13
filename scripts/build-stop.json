@@ -80,7 +80,7 @@
     {
       "issue": 6584,
       "area": "web-experience",
-      "why": "Ejerens eksplicitte natmandat 12/11: installerbar PWA trin 1, offline/netvaerksrettelser som draft uden merge eller prod. https://github.com/NicolaiDolmer/CyclingZone/issues/6584#issuecomment-6810434974"
+      "why": "Ejerens eksplicitte natmandat 12/11: installerbar PWA trin 1, offline/netvaerksrettelser som draft uden merge eller prod. https://github.com/NicolaiDolmer/CyclingZone/issues/6584#issuecomment-6810434974 . Ejer 13/11 i Claude-session om Google Play (PR #8059) paa kortet luk/goer klar/lad staa: '2 - på en fremragende og verdensklasse måde.e langsigtet og professionelt' (mulighed 2 = 'Ja, gør den klar'); kontotype, kontosletning, betalingsmodel og merge er ejerens egne kort, ingen udgift uden ejerens ja."
     },
     {
       "issue": 8019,
@@ -611,6 +611,18 @@
     {
       "issue": 8129,
       "why": "Roadmap-pakke 13/11 (forkert info paa den offentlige roadmap, ingen tekst aendres), ejer-go 13/11 i Claude-session paa fire kort: 'Ja, behold den med stemmerne', 'Planlagt og flyt til naeste uge', 'I gang, koblet til kontakten', 'Ja, kobl alle fire'"
+    },
+    {
+      "issue": 8101,
+      "why": "Svartids-alarm for de ti vigtigste handlinger (internt maalevaerktoej, intet synligt), ejer-go 13/11 i Claude-session paa to kort: 'Ja, den liste' og 'Ja, byg den'"
+    },
+    {
+      "issue": 8143,
+      "why": "Fundament: direkte linje til databasen, foerst en ren maaleproeve uden virkning for spillerne; ejer 13/11 i Claude-session paa kort: 'A: direkte linje, mål først (Recommended)'. Hver senere flytning af en tung handling kraever dommer og eget ejer-kort."
+    },
+    {
+      "issue": 8149,
+      "why": "Stop Discord-beskeder til spillerne, flyt til browser-notifikationer. Ejer 13/11 i Claude-session: 'Jeg vil ikke have flere beskeder til spillerne via discord. Vi skal bruge browser notifikationer i stedet - og senere fra app. Discord botten skal stoppes med at bruges' og paa kortet om raekkefoelgen: 'Flyt spillerne først, stop så (Recommended)' (hovedafbryder, opfordring i spillet, daekning; selve slukningen er ejerens koer, og alt synligt kraever ejerens billede-go)."
     }
   ],
   "brandList": [
@@ -631,7 +643,7 @@
     },
     {
       "issue": 7535,
-      "reason": "Én planlægningsside, trin 1 bag beta-flag. Ejer 12/11: 'Dette skal stadig laves denne uge' (afløser 2/11-forbeholdet). https://github.com/NicolaiDolmer/CyclingZone/issues/8051",
+      "reason": "Én planlægningsside, trin 1 bag beta-flag. Ejer 12/11: 'Dette skal stadig laves denne uge' (afløser 2/11-forbeholdet). https://github.com/NicolaiDolmer/CyclingZone/issues/8051 . Ejer 13/11 om PR #8056: 'Jeg vil gerne gå videre med den side. Den måde ikke være dårligere end wireframet nogle steder og den må ikke være dårligere end nuværende formsider, formål anlægning, holdudtaglesesider mv. de'. Merge og tænding er ejerens egne kort.",
       "since": "2026-11-12"
     },
     {
@@ -746,7 +758,7 @@
     },
     {
       "issue": 6912,
-      "reason": "Motor: udbrud får op til 15 min, og jagten lukker dem ikke",
+      "reason": "Motor: udbrud får op til 15 min, og jagten lukker dem ikke. Ejer 13/11 om det slukkede udbrudsbud (race_breakaway_outlook): 'Fjern buddet' (kun buddet fjernes; bjergrettelsen er ikke omfattet).",
       "since": "2026-10-29"
     },
     {

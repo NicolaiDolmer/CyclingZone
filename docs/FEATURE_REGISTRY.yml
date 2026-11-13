@@ -451,16 +451,16 @@ features:
     area: race-day
     title_en: Team plans
     title_da: Taktik gjort klar del 1
-    state: beta
+    state: live
     flag: tactics_ready_7864
     epic: 7864
     ssot: docs/RACE_ENGINE_RULES.md
-    verified: 2026-11-12
+    verified: 2026-11-13
     decision: taend
     decide_by: 2026-11-26
     roadmap_en: "Tactics made clear: every race order in one place, with its cost in plain words"
     roadmap_da: "Taktik gjort klar: alle løbsordrer ét sted, med prisen i klare ord"
-    note: "Beta siden 12/11 kl. 19:02 (ejerens kør). Første gem set 12/11: 8 ordrer og 14 roller, alle med markør."
+    note: "On for alle 13/11 kl. 17:18 (ejerens tænd), læst tilbage i prod. 86 af 86 opgaveskift stemte i beta."
 
   - id: rider-why-button
     area: race-day
@@ -1008,10 +1008,10 @@ features:
     title_da: Auto-genereret sæsonkalender ved forever-skifter
     state: building
     ssot: docs/CALENDAR_RULES.md
-    verified: 2026-10-26
-    note: Ingen række i prod (= off).
+    verified: 2026-11-13
+    note: "Ingen række i prod (= off). Ejer 13/11: spørg igen mandag 16/11."
     decision: ejer-beslutning
-    decide_by: 2026-11-08
+    decide_by: 2026-11-16
 
   - id: season-transition
     area: season
@@ -1218,10 +1218,10 @@ features:
     flag: development_score_v2
     ssot: docs/TRAINING_RULES.md
     epic: 6110
-    note: 'Ejer 31/10 (#6110): parkeret til grundtalentet er bygget. Før tænding: #7584.'
-    verified: 2026-11-04
+    note: "Parkeret (ejer 31/10). Ejer 13/11: besluttes ved opsamlingen på Udvikling 2.0. Kan ikke være tændt samtidig med XP. Før tænding: #7584."
+    verified: 2026-11-13
     decision: ejer-beslutning
-    decide_by: 2026-11-08
+    decide_by: 2026-11-21
 
   - id: development-xp-model
     area: training

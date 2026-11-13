@@ -1,5 +1,53 @@
 export const PATCHES = [
 {
+  "version": "7.444",
+  "date": "2026-11-13",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Tactics",
+      "flag": "tactics_ready_7864",
+      "en": {
+        "title": "Team plans",
+        "body": "On the Tactics tab you can now pick a ready plan: Ride for GC, Stage win, Sprint, Go for the break or Save the legs. Adjust it and save. Every task shows a price word (Easy, Medium, Hard or Very hard) for what it costs the legs, and a plan can be copied to the coming stages of the same type. Help explains it all."
+      },
+      "da": {
+        "title": "Holdplaner",
+        "body": "På Taktik-fanen kan du nu vælge en færdig plan: Kør for klassementet, Etapesejr, Spurt, Gå i udbrud eller Spar benene. Ret den til og gem. Hver opgave viser et prisord (Let, Middel, Hård eller Meget hård) for det, den koster i benene, og en plan kan kopieres til de kommende etaper af samme type. Hjælp forklarer det hele."
+      },
+      "refs": [
+        7864
+      ]
+    }
+  ]
+},
+{
+  "version": "7.443",
+  "date": "2026-11-13",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "en": {
+        "title": "New riders' form",
+        "body": "A new rider now joins your team with a little fatigue instead of none, so his form holds on normal training instead of dropping in his first days. This applies to riders you buy from the pool, academy talents and the starting squad for new managers. Riders you already have are not changed."
+      },
+      "da": {
+        "title": "Nye rytteres form",
+        "body": "En ny rytter kommer nu til dit hold med lidt træthed i stedet for ingen, så formen holder sig på normal træning i stedet for at falde de første dage. Det gælder ryttere, du køber fra puljen, talenter fra akademiet og starttruppen til nye managere. Ryttere, du allerede har, er ikke ændret."
+      },
+      "refs": [
+        8089,
+        8131
+      ]
+    }
+  ]
+},
+{
   "version": "7.442",
   "date": "2026-11-13",
   "changes": [

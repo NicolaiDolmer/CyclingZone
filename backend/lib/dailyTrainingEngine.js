@@ -271,6 +271,33 @@ export function isManagerTeamForDevelopment(team) {
   return team.user_id != null && team.is_ai !== true && team.is_bank !== true && team.is_test_account !== true;
 }
 
+/**
+ * #7982 trin 3: a group of reads that do not depend on each other. With `together`
+ * (only the train-now press) every read is sent at once, the group waits for all of
+ * them, and the first failed read in list order is thrown: nothing after the group
+ * (no write) runs, and no promise is left without an owner. Without it (the evening
+ * run and plain training) the reads run one by one in list order, exactly as before.
+ * A read that needs an earlier one in the same group awaits `earlier(i)`.
+ * @template T
+ * @param {boolean} together
+ * @param {Array<(earlier: (i: number) => Promise<any>) => (T | Promise<T>)>} reads
+ * @returns {Promise<T[]>}
+ */
+export async function readTogether(together, reads) {
+  /** @type {Promise<any>[]} */
+  const started = [];
+  const earlier = (/** @type {number} */ i) => started[i];
+  if (!together) {
+    for (const read of reads) started.push(Promise.resolve(await read(earlier)));
+    return Promise.all(started);
+  }
+  for (const read of reads) started.push((async () => read(earlier))());
+  const settled = await Promise.allSettled(started);
+  const failed = settled.find((result) => result.status === "rejected");
+  if (failed) throw failed.reason;
+  return settled.map((result) => /** @type {PromiseFulfilledResult<any>} */ (result).value);
+}
+
 // Batched async-runner (samme hjælper som riderProgressionEngine.js).
 async function runBatched(items, concurrency, fn) {
   for (let i = 0; i < items.length; i += concurrency) {
@@ -477,6 +504,8 @@ export async function runTeamTrainingDay({
   deadlineAt = null, deadlineReached = false,
   // #7737: this call is a press with training_train_now_instant on (provisional condition).
   instantPress = false,
+  // #7982 trin 3: only the train-now press sends its independent reads at once (readTogether).
+  pressReads = false,
 }) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!teamId) throw new Error("teamId required");
@@ -523,17 +552,20 @@ export async function runTeamTrainingDay({
   }
   const useRaceDayKey = raceDayTickOn && Number.isFinite(raceDay);
   const conditionPerDate = useRaceDayKey && conditionDateFlagOn;
-  // #6984: v2 laeses kun naar dato-modellen ejer tilstanden (ellers ingen ekstra read).
-  const conditionModelV2On = conditionPerDate ? await isConditionModelV2Enabled(supabase) : false;
-  const raceDateTrainingDayOn = conditionModelV2On ? await isRaceDateTrainingDayEnabled(supabase) : false; // #7536
-  // #7801: reglerne og skaderisikoen på trætheden lige nu. Kun under v2 (ellers ingen read).
-  const fatigueNowOn = conditionModelV2On ? await isFatigueNow7801Enabled(supabase) : false;
-  if(conditionPerDate && eligibleRiderIds==null) throw new Error('Normalized training requires an explicit ready-rider list');
   let dateReceipts = [];
   let dateWork = null;
   let dateDays = [];
+  if (conditionPerDate) dateDays = [...new Set(dateGameDays ?? [])].sort((a, b) => a - b);
+  // #7982 trin 3: one group (readTogether); the evening run reads them one by one in this order.
+  const [conditionModelV2On, raceDateTrainingDayOn, fatigueNowOn] = await readTogether(pressReads, [
+  // #6984: v2 laeses kun naar dato-modellen ejer tilstanden (ellers ingen ekstra read).
+  () => (conditionPerDate ? isConditionModelV2Enabled(supabase) : false),
+  async (earlier) => ((await earlier(0)) ? isRaceDateTrainingDayEnabled(supabase) : false), // #7536
+  // #7801: reglerne og skaderisikoen på trætheden lige nu. Kun under v2 (ellers ingen read).
+  async (earlier) => ((await earlier(0)) ? isFatigueNow7801Enabled(supabase) : false),
+  async () => {
+  if(conditionPerDate && eligibleRiderIds==null) throw new Error('Normalized training requires an explicit ready-rider list');
   if (conditionPerDate) {
-    dateDays = [...new Set(dateGameDays ?? [])].sort((a, b) => a - b);
     if (dateDays.length !== 5 || !dateDays.every(Number.isInteger) || !dateDays.includes(raceDay)) {
       throw new Error('Daily condition requires the complete five-game-day date');
     }
@@ -542,6 +574,10 @@ export async function runTeamTrainingDay({
       .eq('squad', squadKey).in('game_day', dateDays);
     if (error) throw new Error(`daily condition reports: ${error.message}`);
     if((dateRuns??[]).some(row=>row.report?.condition_per_date!==true)) throw new Error('Cannot switch condition cadence during a partially executed date');
+  }
+  },
+  async () => {
+  if (conditionPerDate) {
     // Full (team_id,season_id,tick_date) primary key: at most one row. Read as a
     // capped list so a second row can never be silently ignored.
     const {data:workRows,error:workError}=await supabase.from('training_date_work').select('*')
@@ -550,6 +586,8 @@ export async function runTeamTrainingDay({
     if((workRows??[]).length>1) throw new Error('training date work: duplicate primary key rows');
     dateWork=workRows?.[0] ?? null;
   }
+  },
+  ]);
   const lastSlotSettles = conditionPerDate && raceDay === dateDays.at(-1);
   // ── #4847 (ejer-beslutning 15/9, §13.3 beslutning 3): INGEN BONUS paa loebsdags-
   // stien. Den frivillige knap "Koer dagens traening nu" giver kun utaalmodighed, ikke
@@ -697,8 +735,10 @@ export async function runTeamTrainingDay({
     }
     const eligible=new Set(eligibleRiderIds??dateWork.expected_rider_ids);
     riders=riders.filter(rider=>eligible.has(rider.id)&&dateWork.expected_rider_ids.includes(rider.id)&&!(dateWork.quarantined_rider_ids??[]).includes(rider.id));
-    instantRiderIds = await loadTrainNowInstantRiderIds({ supabase, tickDate, riderIds: riders.map(rider=>rider.id) });
-    trainNowBonusRiderIds = await loadTrainNowBonusRiderIds({ supabase, teamId, seasonId, tickDate, riderIds: riders.map(rider => rider.id) });
+    [instantRiderIds, trainNowBonusRiderIds] = await readTogether(pressReads, [
+      () => loadTrainNowInstantRiderIds({ supabase, tickDate, riderIds: riders.map(rider=>rider.id) }),
+      () => loadTrainNowBonusRiderIds({ supabase, teamId, seasonId, tickDate, riderIds: riders.map(rider => rider.id) }),
+    ]);
     if ([...trainNowBonusRiderIds].some(id => !instantRiderIds.has(id))) {
       throw new Error('Train-now bonus publication incomplete; retry the original press');
     }
@@ -753,9 +793,12 @@ export async function runTeamTrainingDay({
   // for dyr, Codex P1 paa #7075). Et holdskifte samme dato daekkes paa live-stien af
   // dato-kvitteringerne (training_rider_ticks, rytter-noeglet, laest paa tvaers af hold).
   // Kalenderdags-stien (useRaceDayKey=false: rollback eller fallback) laeser ogsaa.
-  const capPerDateOn = await isAbilityCapPerDateEnabled(supabase, { strict: conditionPerDate });
   let sameDateRunReports = [];
-  if (capPerDateOn) {
+  // #7982 trin 3: one group (readTogether); the evening run reads them one by one in this order.
+  const [capPerDateOn, , , [raceDayEngineOn, raceDayDevelopmentOn, developmentV2On, curveB]] = await readTogether(pressReads, [
+  () => isAbilityCapPerDateEnabled(supabase, { strict: conditionPerDate }),
+  async (earlier) => {
+  if (await earlier(0)) {
     let query = supabase.from("training_day_runs").select("game_day, season_id, squad, report")
       .eq("team_id", teamId).eq("tick_date", tickDate);
     // Med dato-kvitteringer kommer loebsdagene derfra; kun kalenderdags-raekker her.
@@ -769,6 +812,8 @@ export async function runTeamTrainingDay({
       || (!conditionPerDate && row.season_id === seasonId)))
       .flatMap((row) => row.report?.riders ?? []);
   }
+  },
+  async () => {
   if (conditionPerDate) {
     const { data, error } = await supabase.from('training_race_loads')
       // Full ledger records keep this reader compatible before the recovery
@@ -782,7 +827,7 @@ export async function runTeamTrainingDay({
       throw new Error('Race condition ledger does not match unsettled date');
     }
   }
-
+  },
   // #3459 D1 / #4277: flagene afgør om løbsdags-lookuppet overhovedet skal køre —
   // læst FØR batch-Promise.all'et så den betingede query kan indgå i samme batch
   // (kodemap-kravet: "i samme Promise.all som øvrige hold-inputs") uden at spilde
@@ -794,11 +839,12 @@ export async function runTeamTrainingDay({
   // uafhængige app_config-opslag uden indbyrdes rækkefølge.
   // #3564: kurve B (development_curve_b + private params fra miljoeet). null =
   // dagens model, bit-identisk; ogsaa naar flaget er on men params mangler.
-  const [raceDayEngineOn, raceDayDevelopmentOn, developmentV2On, curveB] = await Promise.all([
+  () => Promise.all([
     conditionPerDate ? readConditionWriterFlag(supabase, 'race_day_engine_enabled') : isRaceDayEngineEnabled(supabase),
     conditionPerDate ? readConditionWriterFlag(supabase, 'race_day_development_enabled') : isRaceDayDevelopmentEnabled(supabase),
     isDevelopmentV2AgingEnabled(supabase, { strict: conditionPerDate }),
     loadDevelopmentCurveB({ supabase, strict: conditionPerDate }),
+  ]),
   ]);
   // #7382: de første dage kurve B koerer, glider evner over det bloede loft ind i kurven.
   // Foerste gang kurven er aktiv: eet oejebliksbillede af alle managerhold + stempel (dagens dato); flag off = intet opslag.
@@ -807,22 +853,49 @@ export async function runTeamTrainingDay({
     : null;
   // Hvem der er med, staar i oejebliksbilledet (en raekke pr. rytter); kun inde i vinduet.
   const curveBRoster = curveBTransition ? await loadCurveBTransitionRoster(supabase, { transition: curveBTransition, riderIds, strict: conditionPerDate }) : null;
+  // #7982 trin 3: one group (readTogether) from here to the illness history. A read that
+  // needs an earlier one awaits it; the evening run reads them one by one in this order.
+  let developmentScoreB, raceCatchUp, raceRoleYield, developmentXp;
+  let developmentAllowed = true;
+  let abilityRows, planRows, conditionRows, weekPlanRow, raceDayResult;
+  let boundRiderIds = new Set();
+  let racedRiderIds = new Set();
+  // #3459 D2: rider_id → profil-type for dagens løb (RACE_PROFILE_ABILITY_MAP-nøgle).
+  // Fallback pr. rytter = 'rolling' (samme ukendt-profil-fallback som raceFatigueLoad)
+  // — sat eksplicit nedenfor, IKKE først inde i applyRaceDevelopmentTick, så en
+  // manglende race_stage_profiles-række aldrig kan give en udefineret evneliste.
+  const racedRiderProfileByRider = new Map();
+  let raceDayEffortByRider = new Map(); // #6641 variant B: rider_id -> managerens intention paa dagens etape
+  let raceDayRoleByRiderMap = new Map(); // #5950: rider_id -> rolle paa dagens etape (tom = fri rolle)
+  let programsOn = false, catalogV3On = false, stageOnDateRiderIds = new Set();
+  let fatigueRules = null, stageYesterdayRiderIds = new Set();
+  let trainingFacilityTier, trainingStaff, teamMedicalBonus = 0, illnessHistoryByRider = new Map();
+  const programSlot = useRaceDayKey ? programSlotForRaceDay(raceDay, dateGameDays) : 0;
+  // #6938: sygdom af langvarig ekstrem traethed. Kun under condition_model_v2 OG naar
+  // loebsmotoren koerer s5_profiles_v3 (taendes med v3). Ellers ingen read (bit-identisk).
+  const illnessOn = conditionModelV2On && isS5ProfilesV3OrLater(CURRENT_RACE_RULES_REVISION);
+  await readTogether(pressReads, [
+  async () => {
   // #6950: Udviklingsscore B + catch-up via loeb. null = dagens model; kraever #7075's dato-loft.
-  const [developmentScoreB, raceCatchUp] = await Promise.all([
+  [developmentScoreB, raceCatchUp] = await Promise.all([
     loadDevelopmentScoreB({ supabase, strict: conditionPerDate, capPerDateOn }),
     loadRaceCatchUp({ supabase, strict: conditionPerDate, capPerDateOn }),
   ]);
+  },
+  async () => {
   // #5950: loebsdag = haard dag + rolle-vaegtet tillaeg. null = dagens loebsdag, bit-identisk.
-  const raceRoleYield = await loadRaceDayRoleYield({ supabase, strict: conditionPerDate });
+  raceRoleYield = await loadRaceDayRoleYield({ supabase, strict: conditionPerDate });
+  },
+  async (earlier) => {
+  await earlier(0);
   // #6110: XP-modellen for tick-datoen. null = dagens model, bit-identisk; kaster sammen med Score B/catch-up.
-  const developmentXp = await loadDevelopmentXp({ supabase, tickDate, strict: conditionPerDate, developmentScoreB, raceCatchUp, now: () => +now });
+  developmentXp = await loadDevelopmentXp({ supabase, tickDate, strict: conditionPerDate, developmentScoreB, raceCatchUp, now: () => +now });
 
   // #6500: holdets raekke hentes ÉN gang, og kun naar flaget er taendt. Regel-gate,
   // ikke berigelse: et gaet ville enten give et AI-hold udvikling eller tage den
   // fra en manager. Derfor kastes der (reservationen slettes i catch'en nedenfor),
   // og naeste sweep proever igen. ASCII-only besked (intern ops-fejl).
   // #6950: D6 gaelder ogsaa naar Udviklingsscore B eller catch-up er taendt. #6110: og under XP.
-  let developmentAllowed = true;
   if (developmentV2On || developmentScoreB || raceCatchUp || developmentXp) {
     const { data: teamRow, error: teamError } = await supabase
       .from("teams")
@@ -833,9 +906,11 @@ export async function runTeamTrainingDay({
     if (!teamRow) throw new Error(`team load (team ${teamId}): team row not found - refusing to tick`);
     developmentAllowed = isManagerTeamForDevelopment(teamRow);
   }
-
+  },
+  async (earlier) => {
   // ── 3) Load abilities, training plans + condition i parallell ─────────────────
-  const [
+  let abilityError, planError, conditionError, weekPlanError, boundRidersResult;
+  [
     { data: abilityRows, error: abilityError },
     { data: planRows, error: planError },
     { data: conditionRows, error: conditionError },
@@ -885,6 +960,7 @@ export async function runTeamTrainingDay({
         ? loadBoundRiderIdsForRaceDay({ supabase, riderIds, seasonId, gameDay: raceDay, releaseDns: conditionPerDate })
       : Promise.resolve({ data: null, error: null }),
   ]);
+  await earlier(1); // the role read below needs raceRoleYield
 
   if (abilityError) throw new Error(`abilities load: ${abilityError.message}`);
   if (planError) throw new Error(`plans load: ${planError.message}`);
@@ -904,20 +980,12 @@ export async function runTeamTrainingDay({
     );
   }
   // Tom mængde paa den gamle sti — ingen loebsdag, ingen binding.
-  const boundRiderIds = boundRidersResult.data ?? new Set();
+  boundRiderIds = boundRidersResult.data ?? new Set();
 
 
   // #3459 D1 fail-safe: query-fejl → tom mængde (INGEN løbsdag antaget), log warning.
   // Kaster ALDRIG — en fejlet best-effort-berigelse må ikke vælte hele holdets
   // trænings-dag (samme filosofi som Plan B's facilitets-load, #1441).
-  let racedRiderIds = new Set();
-  // #3459 D2: rider_id → profil-type for dagens løb (RACE_PROFILE_ABILITY_MAP-nøgle).
-  // Fallback pr. rytter = 'rolling' (samme ukendt-profil-fallback som raceFatigueLoad)
-  // — sat eksplicit nedenfor, IKKE først inde i applyRaceDevelopmentTick, så en
-  // manglende race_stage_profiles-række aldrig kan give en udefineret evneliste.
-  const racedRiderProfileByRider = new Map();
-  let raceDayEffortByRider = new Map(); // #6641 variant B: rider_id -> managerens intention paa dagens etape
-  let raceDayRoleByRiderMap = new Map(); // #5950: rider_id -> rolle paa dagens etape (tom = fri rolle)
   if (useRaceDayKey) {
     // #4850 C2: etape-opslaget er en REGEL-GATE paa loebsdags-aksen (samme kontrakt
     // som bindingen ovenfor): svaret afgoer om rytteren maa traene i dag. Et gaet
@@ -986,26 +1054,19 @@ export async function runTeamTrainingDay({
       }
     }
   }
-
-  const abilityByRider = new Map((abilityRows ?? []).map((a) => [a.rider_id, a]));
-  const planByRider = new Map((planRows ?? []).map((p) => [p.rider_id, p]));
-  const condByRider = new Map((conditionRows ?? []).map((c) => [c.rider_id, c]));
-  const weekPlanRows = Array.isArray(weekPlanRow) ? weekPlanRow : [];
-  const teamWeekDays = weekPlanRows.find((r) => r.rider_id == null)?.days ?? null;
-  // #1895 PR 2: rytter-override-rows → Map(rider_id → days). Rider-override vinder
-  // over holdrytmen i resolveDayIntensity (se training.js).
-  const riderOverrideByRider = new Map(
-    weekPlanRows.filter((r) => r.rider_id != null).map((r) => [r.rider_id, r.days]),
-  );
-  const weekday = copenhagenWeekdayKey(tickDate);
   // #4629: programcellerne laeses KUN naar holdet har programdata OG flaget er
   // on for holdet (beta: holdets ejer er beta-tester). Uden programdata er der
   // intet ekstra opslag, og stien er bit-identisk med foer.
-  const programsOn = weekPlanRows.some((r) => weekDaysHaveSessions(r.days))
+  programsOn = (Array.isArray(weekPlanRow) ? weekPlanRow : []).some((r) => weekDaysHaveSessions(r.days))
     ? await isTrainingCellsEnabledForTeam(supabase, teamId)
     : false;
+  },
+  async () => {
   // #5319: traeningskatalog v3 (beta: holdets ejer er beta-tester). Off = programmet uroert.
-  const catalogV3On = await isTrainingCatalogV3EnabledForTeam(supabase, teamId);
+  catalogV3On = await isTrainingCatalogV3EnabledForTeam(supabase, teamId);
+  },
+  async (earlier) => {
+  await earlier(3);
   // Loebsdagens plads blandt holdets loebsdage paa datoen (0-4), samme liste som
   // gitterets kolonner. Kalenderdags-ticket = slot 0 ("I dag").
   // #5267 A (ejer-valg 28/9): hvem koerte en etape paa EN AF datoens loebsdage?
@@ -1014,7 +1075,6 @@ export async function runTeamTrainingDay({
   // (dateGameDays null) forbliver bindingen hvile, som foer. Opslaget koeres kun
   // naar mindst én rytter er bundet uden at have koert paa loebsdagen, saa
   // aftensweepens kapacitet (G6) ikke betaler for hold uden etapeloeb.
-  let stageOnDateRiderIds = new Set();
   const boundNotRidden = [...boundRiderIds].filter((id) => !racedRiderIds.has(id));
   if (useRaceDayKey && boundNotRidden.length && Array.isArray(dateGameDays) && dateGameDays.length) {
     const stageOnDateResult = await loadRiderIdsWithStageOnGameDays({
@@ -1028,27 +1088,47 @@ export async function runTeamTrainingDay({
     }
     stageOnDateRiderIds = stageOnDateResult.data ?? new Set();
   }
-
-  const programSlot = useRaceDayKey ? programSlotForRaceDay(raceDay, dateGameDays) : 0;
+  },
+  async () => {
   // #4854/#5620: spillerens EGNE regler (traethedsgraense + dagen efter en etape).
   // Al logik bor i trainingFatigueRules.ts; hold uden regler = null = uaendret sti.
-  const fatigueRules = await loadTeamFatigueRules(supabase, teamId);
-  const stageYesterdayRiderIds = fatigueRules && programSlot === 0 && fatigueRules.anyAfterStage(riderIds)
+  fatigueRules = await loadTeamFatigueRules(supabase, teamId);
+  stageYesterdayRiderIds = fatigueRules && programSlot === 0 && fatigueRules.anyAfterStage(riderIds)
     ? await loadRiderIdsWithStageOnDate(supabase, { riderIds, previousDate: previousDateString(tickDate) })
     : new Set();
-
+  },
+  async (earlier) => {
+  // The staff and facility reads tolerate a lasting failure (warning + Sentry). They start
+  // only when every read before them has answered, so they run exactly when they ran before.
+  await Promise.all([0, 1, 2, 3, 4, 5, 6].map(earlier));
   // ── 3b) Plan B (#1441): trænings-facilitet + chef (én load pr. hold pr. dag) ──
   // Data-drevet: hold uden faciliteter/chef → { 0, null } → multiplikator præcis 1.0
   // (nul regression). Vedvarende fejl: neutral i loaderen. #6596: forbigaaende fejl
   // KASTER, saa catch'en nedenfor sletter reservationen og naeste sweep proever igen.
-  const { facilityTier: trainingFacilityTier, staff: trainingStaff } =
-    await loadTrainingStaffContext(supabase, teamId, { retryOnTransient: true });
+  ({ facilityTier: trainingFacilityTier, staff: trainingStaff } =
+    await loadTrainingStaffContext(supabase, teamId, { retryOnTransient: true }));
+  },
+  async (earlier) => {
+  await earlier(7); // same reader as the staff context, so it also waits for it
   // #6984 M1-M3: medicinsk afdeling, kun under condition_model_v2 (ellers ingen read).
-  const teamMedicalBonus = conditionModelV2On ? await loadTeamMedicalBonus(supabase, teamId, { retryOnTransient: true }) : 0;
-  // #6938: sygdom af langvarig ekstrem traethed. Kun under condition_model_v2 OG naar
-  // loebsmotoren koerer s5_profiles_v3 (taendes med v3). Ellers ingen read (bit-identisk).
-  const illnessOn = conditionModelV2On && isS5ProfilesV3OrLater(CURRENT_RACE_RULES_REVISION);
-  const illnessHistoryByRider = illnessOn ? await loadIllnessFatigueHistory(supabase, riders.map((r) => r.id), tickDate) : new Map();
+  teamMedicalBonus = conditionModelV2On ? await loadTeamMedicalBonus(supabase, teamId, { retryOnTransient: true }) : 0;
+  },
+  async () => {
+  illnessHistoryByRider = illnessOn ? await loadIllnessFatigueHistory(supabase, riders.map((r) => r.id), tickDate) : new Map();
+  },
+  ]);
+
+  const abilityByRider = new Map((abilityRows ?? []).map((a) => [a.rider_id, a]));
+  const planByRider = new Map((planRows ?? []).map((p) => [p.rider_id, p]));
+  const condByRider = new Map((conditionRows ?? []).map((c) => [c.rider_id, c]));
+  const weekPlanRows = Array.isArray(weekPlanRow) ? weekPlanRow : [];
+  const teamWeekDays = weekPlanRows.find((r) => r.rider_id == null)?.days ?? null;
+  // #1895 PR 2: rytter-override-rows → Map(rider_id → days). Rider-override vinder
+  // over holdrytmen i resolveDayIntensity (se training.js).
+  const riderOverrideByRider = new Map(
+    weekPlanRows.filter((r) => r.rider_id != null).map((r) => [r.rider_id, r.days]),
+  );
+  const weekday = copenhagenWeekdayKey(tickDate);
 
   // ── 4) Tick pr. rytter ────────────────────────────────────────────────────────
   abilityUpdates = []; // { riderId, patch }

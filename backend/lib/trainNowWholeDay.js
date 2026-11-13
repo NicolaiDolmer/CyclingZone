@@ -160,6 +160,8 @@ export async function settleWholeDayPress({
         now, tickDateOverride: tickDate, gameDay, dateGameDays: work.game_days, executedBy: "manager",
         eligibleRiderIds: riderIds, unresolvedSlotsByRider,
         deadlineAt: readiness.deadlineAt.toISOString(), deadlineReached: false,
+        // #7982 trin 3: the engine sends its independent reads at once for the press only.
+        pressReads: true,
         ...(instant ? { instantPress: true } : {}),
       }));
     } catch (err) {
