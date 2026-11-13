@@ -433,7 +433,7 @@ export async function fetchWatchdogState({ supabase, now = new Date(), threshold
     try {
       rankingWork = await getRankingRefreshWorkState(supabase, now);
       // #7664: while readers use the shadow tables, the full pass waits for its hold window.
-      if ((await resolveRankingReadSource(supabase)).source === "shadow") rankingHoldMs = LEGACY_HOLD_MS_7664;
+      if ((await resolveRankingReadSource(supabase, { now: () => now.getTime() })).source === "shadow") rankingHoldMs = LEGACY_HOLD_MS_7664;
     }
     catch (error) {
       // During SQL-before-Node rollout the legacy lag probe stays available.

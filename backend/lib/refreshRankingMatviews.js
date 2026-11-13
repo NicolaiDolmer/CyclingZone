@@ -221,7 +221,7 @@ async function refreshRankingMatviewsGatedLegacy(
   const requestedAt = clock();
   void heartbeatNowFn; // Completion time is authoritative in SQL; retain option compatibility.
   // #7664: hold only while the readers actually use the shadow tables.
-  const legacyHold = legacyHoldMs !== undefined ? async () => legacyHoldMs : independentShadow ? async () => ((await resolveRankingReadSource(supabase, { captureExceptionFn })).source === "shadow" ? LEGACY_HOLD_MS_7664 : 0) : null;
+  const legacyHold = legacyHoldMs !== undefined ? async () => legacyHoldMs : independentShadow ? async () => ((await resolveRankingReadSource(supabase, { captureExceptionFn, now: () => now.getTime() + Math.max(0, clock() - requestedAt) })).source === "shadow" ? LEGACY_HOLD_MS_7664 : 0) : null;
   const gateOptions = { now, clock, maxDeferMs, logger, legacyHold };
   const gateState = await rankingRefreshGateState(supabase, gateOptions);
   if (gateState === 'unavailable') return false;

@@ -123,8 +123,8 @@ async function routeTables(flags) {
   const client = recordingClient({ flags });
   const app = express();
   const requireAuth = (req, res, next) => { req.user = { id: "u" }; next(); };
-  app.use("/rankings", createRankingFreshnessRouter({ supabase: client, requireAuth, reportError: () => {} }));
-  app.use("/rankings", rankingReadMiddleware(client), createRankingsRouter({
+  app.use("/rankings", createRankingFreshnessRouter({ supabase: client, requireAuth, reportError: () => {}, now: () => NOW }));
+  app.use("/rankings", rankingReadMiddleware(client, { now: () => NOW }), createRankingsRouter({
     supabase: createRankingReadClient(client), requireAuth, reportError: (e) => { throw e; },
     viewerClient: () => client, isViewerBetaTester: async () => false,
   }));
@@ -165,8 +165,7 @@ test("#7664 off = the exact tables of today, route by route; on = shadow tables,
   const mapped = Object.fromEntries(Object.entries(today).map(([path, tables]) =>
     [path, tables.map((name) => SHADOW_READ_TABLES[name] ?? name)]));
   assert.deepEqual(on.perRoute, mapped);
-  assert.equal(on.freshness.source, "shadow");
-  assert.ok(on.freshness.current_as_of);
+  assert.deepEqual(on.freshness, { source: "shadow", current_as_of: new Date(NOW).toISOString() });
 });
 
 test("#7664 dashboard: legacy returns null without a query; ranking order is points, then rider id", async () => {
@@ -191,6 +190,30 @@ test("#7664 dashboard: legacy returns null without a query; ranking order is poi
   assert.deepEqual(top[1], { rider_id: "a", firstname: "A", lastname: null, nationality_code: null, team_name: "Hold B", is_ai: true,
     points: 40, stage_wins: 0, gc_wins: 1, classic_wins: 0 });
   assert.deepEqual(pickDashboardTopRiders(stats, display).map((row) => row.rider_id), ["c", "a", "b"]);
+});
+
+test("#7664 dashboard without a pool pages past retired leaders until five riders are found", async () => {
+  reset();
+  const ranked = Array.from({ length: 120 }, (_, i) => ({ rider_id: `r${String(i).padStart(3, "0")}`, points: 1000 - i }));
+  const retired = new Set(ranked.slice(0, 60).map((row) => row.rider_id));
+  const client = recordingClient({ flags: BOTH_ON });
+  const from = client.from.bind(client);
+  client.from = (table) => {
+    if (table === "ranking_rider_season") {
+      const b = { select: () => b, eq: () => b, order: () => b,
+        range: async (lo, hi) => ({ data: ranked.slice(lo, hi + 1), error: null }) };
+      return b;
+    }
+    if (table === "riders") {
+      let ids = [];
+      const b = { select: () => b, in: (_c, v) => { ids = v; return b; },
+        eq: async () => ({ data: ids.filter((id) => !retired.has(id)).map((id) => ({ id, firstname: id, team: null })), error: null }) };
+      return b;
+    }
+    return from(table);
+  };
+  const top = await readDashboardTopRiders7664(client, { seasonId: SEASON, leagueDivisionId: null, source: { source: "shadow", currentAsOf: null } });
+  assert.deepEqual(top.map((row) => row.rider_id), ["r060", "r061", "r062", "r063", "r064"]);
 });
 
 // A coordinator fake for the gated path: pending work of a given age.

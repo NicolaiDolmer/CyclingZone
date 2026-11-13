@@ -55,10 +55,10 @@ export function __resetRankingReadCacheForTests() {
  * Er laeseskiftet taendt? Samme evaluering som skyggepasset (engineWrite),
  * saa afkoblingen og laeseskiftet altid foelges ad.
  */
-export async function rankingReadSwitchOn(supabase) {
+export async function rankingReadSwitchOn(supabase, { now = Date.now } = {}) {
   const [decoupled, writes] = await Promise.all([
-    readFlagStage(supabase, RANKING_READ_FLAG_7664),
-    readFlagStage(supabase, RANKING_SHADOW_WRITE_FLAG),
+    readFlagStage(supabase, RANKING_READ_FLAG_7664, { now }),
+    readFlagStage(supabase, RANKING_SHADOW_WRITE_FLAG, { now }),
   ]);
   return evaluateFlagStage(decoupled, { engineWrite: true })
     && evaluateFlagStage(writes, { engineWrite: true });
@@ -82,7 +82,7 @@ export async function resolveRankingReadSource(supabase, { now = Date.now, captu
   /** @type {RankingReadSource} */
   let value = LEGACY;
   try {
-    if (await rankingReadSwitchOn(supabase)) {
+    if (await rankingReadSwitchOn(supabase, { now })) {
       const { data, error } = await supabase.rpc("get_ranking_shadow_metrics", {});
       if (error) throw new Error(error.message);
       const age = data?.oldest_age_s;
@@ -146,10 +146,10 @@ export function createRankingReadClient(supabase) {
  * GET /freshness -> { source, current_as_of }. Frontenden viser kun
  * "opdateret kl." naar source er "shadow".
  */
-export function createRankingFreshnessRouter({ supabase, requireAuth, reportError }) {
+export function createRankingFreshnessRouter({ supabase, requireAuth, reportError, now = Date.now }) {
   const router = Router();
   router.get("/freshness", requireAuth, async (req, res) => {
-    const value = await resolveRankingReadSource(supabase, { captureExceptionFn: reportError });
+    const value = await resolveRankingReadSource(supabase, { captureExceptionFn: reportError, now });
     res.set("Cache-Control", "private, no-store").json({ source: value.source, current_as_of: value.currentAsOf });
   });
   return router;
@@ -199,17 +199,26 @@ export async function readDashboardTopRiders7664(supabase, { seasonId, leagueDiv
   if (chosen.source !== "shadow") return null;
   const table = SHADOW_READ_TABLES.rider_rankings_mv;
   if (leagueDivisionId == null) {
-    // Ingen pulje: hele ranglisten, som rytterfanens standard.
-    const { data: stats, error } = await supabase.from(table).select(TOP_STAT_COLUMNS)
-      .eq("season_id", seasonId).order("points", { ascending: false }).order("rider_id").limit(50);
-    if (error) throw error;
-    const ids = (stats || []).map((row) => row.rider_id);
-    if (!ids.length) return [];
-    // pagination-safe: bounded by the limit(50) id list above.
-    const { data: display, error: displayError } = await supabase.from("riders").select(DISPLAY_COLUMNS)
-      .in("id", ids).eq("is_retired", false);
-    if (displayError) throw displayError;
-    return pickDashboardTopRiders(stats, new Map((display || []).map((row) => [row.id, row])));
+    // Ingen pulje: hele ranglisten, som rytterfanens standard. Bladrer i
+    // pointorden, indtil fem synlige (ikke-pensionerede) ryttere er fundet.
+    const PAGE = 50;
+    const stats = [], displayById = new Map();
+    for (let from = 0; ; from += PAGE) {
+      const { data: page, error } = await supabase.from(table).select(TOP_STAT_COLUMNS)
+        .eq("season_id", seasonId).order("points", { ascending: false }).order("rider_id").range(from, from + PAGE - 1);
+      if (error) throw error;
+      const ids = (page || []).map((row) => row.rider_id);
+      if (ids.length) {
+        // pagination-safe: bounded by the PAGE-sized id list above.
+        const { data: display, error: displayError } = await supabase.from("riders").select(DISPLAY_COLUMNS)
+          .in("id", ids).eq("is_retired", false);
+        if (displayError) throw displayError;
+        for (const row of display || []) displayById.set(row.id, row);
+        stats.push(...page);
+      }
+      if (ids.length < PAGE || stats.filter((row) => displayById.has(row.rider_id)).length >= 5) break;
+    }
+    return pickDashboardTopRiders(stats, displayById);
   }
   // Puljens ryttere (nuvaerende hold), samme filter som rytterfanen efter
   // forsidens "Fuld rangliste"-link (team.league_division_id).
