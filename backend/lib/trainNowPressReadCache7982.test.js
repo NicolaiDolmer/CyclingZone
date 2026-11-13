@@ -119,8 +119,10 @@ test("the server's private-parameter cache stays on the real client", async () =
   const press = createPressReadCache(client);
   assert.equal(press[CACHE_OWNER_CLIENT], client);
   const schema = (value) => value;
-  await readPrivateConfigEntry(press, "k", { schema });
-  await readPrivateConfigEntry(client, "k", { schema });
+  // A fixed clock, so the test measures cache ownership and not elapsed time.
+  const now = () => 1_000_000;
+  await readPrivateConfigEntry(press, "k", { schema, now });
+  await readPrivateConfigEntry(client, "k", { schema, now });
   assert.equal(client.calls.length, 1, "the read through the press warmed the real client's cache");
   clearPrivateConfigCache();
 });
