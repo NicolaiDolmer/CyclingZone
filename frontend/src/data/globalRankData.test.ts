@@ -75,7 +75,9 @@ test("the ranking key is per viewer, and stable while the team bootstrap resolve
   runtime.client.clear();
 });
 
-test("concurrent observers and a remount within the fresh window read once", async () => {
+test("concurrent observers and a remount within the fresh window read once", async (t) => {
+  // Freshness is judged from Date.now(); a frozen clock keeps the test deterministic.
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: 1_000 });
   const runtime = createDataRuntime();
   runtime.setViewer("viewer-a");
   const { sources, pending } = controlledSources();
@@ -97,6 +99,14 @@ test("concurrent observers and a remount within the fresh window read once", asy
   assert.equal(pending.length, 1);
   assert.equal(again.getCurrentResult().data?.teams.length, 1);
   stopAgain();
+  // After the fresh window a remount reads again (once), showing the cached answer meanwhile.
+  t.mock.timers.tick(30_001);
+  const later = new QueryObserver(runtime.client, { ...options, staleTime: 30_000 });
+  const stopLater = later.subscribe(() => {});
+  await flush();
+  assert.equal(pending.length, 2);
+  assert.equal(later.getCurrentResult().data?.teams.length, 1);
+  stopLater();
   runtime.client.clear();
 });
 
