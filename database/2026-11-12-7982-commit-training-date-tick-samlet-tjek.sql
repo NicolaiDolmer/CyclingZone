@@ -252,6 +252,11 @@ BEGIN
   END IF;
 END $$;
 
+-- The concurrent build waits for older transactions anywhere in the database before it can
+-- finish. It blocks no writes while it waits, so give it a longer wait than the 3s above:
+-- otherwise one slow query elsewhere fails the build and leaves the file unregistered.
+SET lock_timeout = '30s';
+
 CREATE INDEX CONCURRENTLY IF NOT EXISTS training_date_work_expected_rider_ids_gin
   ON public.training_date_work USING gin (expected_rider_ids);
 

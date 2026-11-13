@@ -43,10 +43,13 @@ async function applyMigration(db) {
   const commit = sql.indexOf("\nCOMMIT;\n") + "\nCOMMIT;\n".length;
   const heal = sql.indexOf("END $$;", commit) + "END $$;".length;
   assert.ok(commit > 9 && heal > commit, "migration parts found");
-  const index = sql.slice(heal).replace(/^\s*--.*$/gm, "").trim();
-  assert.match(index, /^CREATE INDEX CONCURRENTLY IF NOT EXISTS [^;]+;$/);
+  const tail = sql.slice(heal).replace(/^\s*--.*$/gm, "").trim();
+  // The tail is exactly two statements: a longer lock wait for the concurrent build, then the build.
+  const [, wait, index] = tail.match(/^(SET lock_timeout = '\d+s';)\s*(CREATE INDEX CONCURRENTLY IF NOT EXISTS [^;]+;)$/) ?? [];
+  assert.ok(wait && index, "tail is one SET lock_timeout followed by one CREATE INDEX CONCURRENTLY");
   await db.exec(sql.slice(0, commit));
   await db.exec(sql.slice(commit, heal));
+  await db.exec(wait);
   await db.exec(index);
 }
 
