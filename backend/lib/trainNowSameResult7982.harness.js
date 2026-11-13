@@ -64,12 +64,13 @@ const WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
  *  - `count` ryttere paa holdet
  *  - `entered`: rytternumre tilmeldt holdets loeb (etapen paa loebsdag 43)
  *  - `injured`, `tired`, `noAbilities`, `noPlan`, `boughtLate`, `academy`: rytternumre med undtagelser
+ *  - `weekPlan`, `fatigueRules`, `staff`: ugeplan, spillerens traethedsregler, traeningsstab og facilitet
  *  - `stageRun`: etapen er koert (resultat + belastning for de tilmeldte)
  *  - `secondDate`: kalender ogsaa for naeste dato
  */
 export function seedState({
   count = 6, entered = [], injured = [], tired = [], noAbilities = [], noPlan = [], boughtLate = [], academy = [],
-  flags = {}, stageRun = false, secondDate = false, teamPatch = {}, weekPlan = false, fatigueRules = false,
+  flags = {}, stageRun = false, secondDate = false, teamPatch = {}, weekPlan = false, fatigueRules = false, staff = false,
 } = {}) {
   const nums = Array.from({ length: count }, (_, i) => i);
   const state = {
@@ -110,7 +111,16 @@ export function seedState({
       { team_id: TEAM, rider_id: null, days: Object.fromEntries(WEEKDAYS.map((d, i) => [d, { intensity: INTENSITY[i % INTENSITY.length] }])) },
       { team_id: TEAM, rider_id: rider(1), days: Object.fromEntries(WEEKDAYS.map((d) => [d, { intensity: "easy" }])) },
     ] : [],
-    training_fatigue_rules: fatigueRules ? [{ team_id: TEAM, rider_id: null, threshold: 70, action: "rest", after_stage: "easy", enabled: true }] : [],
+    // Spillerens egne traethedsregler: en holdregel og to undtagelser (egen graense, og "ingen graense").
+    team_training_rules: fatigueRules ? [
+      { team_id: TEAM, rider_id: null, fatigue_threshold: 45, fallback: "light", recovery_after_stage: true },
+      { team_id: TEAM, rider_id: rider(2), fatigue_threshold: 30, fallback: "rest", recovery_after_stage: null },
+      { team_id: TEAM, rider_id: rider(14), fatigue_threshold: null, fallback: "off", recovery_after_stage: false },
+    ] : [],
+    // Traeningsstab og traeningsfacilitet (holdets dagsbonus). Tomt = intet tillaeg.
+    team_staff: staff ? [{ id: id(9001), team_id: TEAM, name: "Traener Et", role: "training", tier: 2, status: "active" }] : [],
+    team_facilities: staff ? [{ team_id: TEAM, track: "training", tier: 2 }] : [],
+    training_groups: [], training_group_members: [],
     races: [
       { id: RACE, season_id: SEASON.id, league_division_id: DIVISION, race_type: "single", squad: "senior", name: "Holdets loeb", status: stageRun ? "completed" : "scheduled", stages_completed: stageRun ? 1 : 0, finalize_state: null },
       { id: FILLER, season_id: SEASON.id, league_division_id: DIVISION, race_type: "stage_race", squad: "senior", name: "Andet loeb", status: "scheduled", stages_completed: 1, finalize_state: null },
@@ -146,10 +156,24 @@ export function finishRace(state) {
 }
 
 // ── Kanonisk form og fingeraftryk ─────────────────────────────────────────────────────────────
+// Decimaltal afrundes, foer de sammenlignes eller hashes. Motoren regner med potenser, og de sidste
+// cifre i saadan et tal afhaenger af maskinens regnebibliotek (Windows og Linux giver ikke altid
+// samme sidste ciffer). Facit frosset paa én maskine skal kunne proeves paa en anden. Afrundingen
+// er til SIGNIFICANT_DIGITS betydende cifre; tal taettere paa nul end TINY er regnestoej og bliver
+// nul. Heltal (evnepoint, form, traethed, dage) roeres aldrig. En aendring paa mere end cirka én
+// milliardtedel af tallet fanges stadig (maalt af dommeren, se dom).
+export const SIGNIFICANT_DIGITS = 9;
+const TINY = 1e-9;
+export const stableNumber = (value) => {
+  if (!Number.isFinite(value) || Number.isInteger(value)) return value;
+  const rounded = Number(value.toPrecision(SIGNIFICANT_DIGITS));
+  return Math.abs(rounded) < TINY ? 0 : rounded;
+};
 export const canon = (value) => {
   if (Array.isArray(value)) return value.map(canon);
   if (value instanceof Date) return value.toISOString();
   if (value && typeof value === "object") return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canon(value[key])]));
+  if (typeof value === "number") return stableNumber(value);
   return value === undefined ? null : value;
 };
 export const digest = (value) => createHash("sha256").update(JSON.stringify(canon(value))).digest("hex").slice(0, 20);
@@ -488,7 +512,7 @@ export async function sweep(state, fake, { now = EVENING_AT, tickDate = DATE1, d
 }
 
 // ── Scenarierne ───────────────────────────────────────────────────────────────────────────────
-const BIG = { count: 48, entered: [3, 7, 11, 19, 23, 31, 40], injured: [5, 23], tired: [2, 14, 29, 44], noPlan: [4, 16, 33], boughtLate: [47], academy: [46], weekPlan: true, fatigueRules: true };
+const BIG = { count: 48, entered: [3, 7, 11, 19, 23, 31, 40], injured: [5, 23], tired: [2, 14, 29, 44], noPlan: [4, 16, 33], boughtLate: [47], academy: [46], weekPlan: true, fatigueRules: true, staff: true };
 const step = async (out, label, fn) => {
   try { out.push({ label, response: canon(await fn()) }); } catch (err) {
     // swallow-ok: et kast ER trinnets svar i optagelsen (fx et tryk, der afbrydes med vilje). Det

@@ -21,7 +21,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
-import { SCENARIOS, runScenario, fingerprint, firstDifference } from "./trainNowSameResult7982.harness.js";
+import { SCENARIOS, runScenario, fingerprint, firstDifference, digest, stableNumber, SIGNIFICANT_DIGITS } from "./trainNowSameResult7982.harness.js";
 
 const FACIT_URL = new URL("./trainNowSameResult7982.facit.json", import.meta.url);
 const WRITE = process.env.SAME_RESULT_7982_WRITE === "1";
@@ -59,6 +59,25 @@ test("facit daekker praecis de faste scenarier og siger hvilken commit det er fr
   assert.deepEqual(Object.keys(facit.scenarios).sort(), Object.keys(SCENARIOS).sort());
 });
 
+// Fingeraftrykket maa ikke afhaenge af maskinens sidste decimal (Windows og Linux regner potenser
+// en anelse forskelligt), men skal stadig fange en rigtig aendring.
+test("fingeraftrykket taaler regnestoej i sidste decimal, men fanger en aendring paa en milliontedel", () => {
+  assert.equal(SIGNIFICANT_DIGITS, 9);
+  const samples = [0.1 + 0.2, 0.4000000000000001, 12.345678901234567, 0.000123456789012345, 87.00000000000001, 1 / 3, 2.5e-7];
+  for (const x of samples) {
+    const up = x * (1 + 4 * Number.EPSILON), down = x * (1 - 4 * Number.EPSILON);
+    assert.equal(digest({ v: up }), digest({ v: x }), `${x}: fire sidste-ciffer-trin op giver samme fingeraftryk`);
+    assert.equal(digest({ v: down }), digest({ v: x }), `${x}: fire sidste-ciffer-trin ned giver samme fingeraftryk`);
+    assert.notEqual(digest({ v: x * (1 + 1e-6) }), digest({ v: x }), `${x}: en milliontedel fanges`);
+  }
+  // Regnestoej omkring nul er nul; heltal roeres aldrig.
+  assert.equal(digest({ v: 1.1102230246251565e-16 }), digest({ v: 0 }));
+  assert.equal(digest({ v: -2.2e-17 }), digest({ v: 0 }));
+  for (const n of [0, 1, 47, 100, 1731456000000, -3]) assert.equal(stableNumber(n), n);
+  assert.notEqual(digest({ v: 47 }), digest({ v: 48 }));
+  assert.notEqual(digest({ v: 47 }), digest({ v: 47.000001 }));
+});
+
 test("stedfortraederen kendte alt, koden bad om (ellers er proeven ugyldig og dommeren skal udvide den)", () => {
   for (const [name, run] of Object.entries(runs)) assert.deepEqual(run.unsupported, [], `${name}: ukendte kald ${JSON.stringify(run.unsupported)}`);
 });
@@ -87,6 +106,10 @@ test("scenarierne er ikke tomme: traening sker, loebsryttere venter, og afvisnin
   assert.equal(commits.length, 5, "fem gemme-kald for fem dag-felter");
   assert.ok(commits.every((c) => c.payload.p_report.riders.length >= 35), "de fleste af de 48 ryttere traenes i hvert felt");
   assert.ok(commits.some((c) => c.payload.p_abilities.length > 0), "nogen udvikler sig");
+  assert.ok(commits.some((c) => c.payload.p_report.riders.some((r) => r.fatigue_rule)), "spillerens traethedsregel slaar til for mindst én rytter");
+  assert.ok(commits.every((c) => c.payload.p_report.riders.every((r) => "fatigue_rule" in r)), "holdet HAR traethedsregler (feltet findes paa hver rytter)");
+  const reads = (target) => runs.stort_hold_beta_tryk.calls.total.byTarget[`read:${target}`] ?? 0;
+  for (const table of ["team_training_rules", "team_staff", "team_facilities", "training_plans", "training_week_plans"]) assert.ok(reads(table) >= 1, `${table} laeses af trykket`);
   assert.ok(commits.at(-1).payload.p_conditions.filter((c) => c.provisional !== true).length >= 35, "tilstanden lukkes paa sidste felt");
   assert.ok(commits.at(-1).payload.p_conditions.some((c) => c.provisional === true), "loebsryttere faar foreloebig tilstand");
   assert.ok(big.steps[0].response.body.afterRaceRiderIds.length >= 5 && big.steps[0].response.body.instantRiderIds.length >= 5);
