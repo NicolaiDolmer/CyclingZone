@@ -744,8 +744,8 @@ krediteres først når rytteren faktisk skifter hold. Ved øjeblikkeligt skifte 
 Nuværende parkeringer får ingen tilbagevirkning: sælgeren af en handel fra før kontakten blev
 tændt, er allerede krediteret. Visning, beskeder og hjælp står i tabellen ovenfor.
 
-Målt 30/8: **0 ryttere står parkeret** (`select count(*) from riders where pending_team_id
-is not null`). Heal-sweepen tjekkede sidst ind 20:46:20 UTC med forventet kadence 300 sek.
+Målt 13/11: **1 rytter står parkeret** (`select count(*) from riders where pending_team_id
+is not null`; 30/8 var det 0). Heal-sweepen tjekkede sidst ind 20:46:20 UTC med forventet kadence 300 sek.
 
 Sweepen findes fordi flushen kun kaldes fra ét sted: Vasco Fernandes stod parkeret
 22/6→4/8 (over 40 dage) med en betalt, aldrig-leveret handel, og spilleren rapporterede det
