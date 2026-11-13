@@ -131,7 +131,7 @@ async function supabaseLike(t) {
     CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
     CREATE SCHEMA IF NOT EXISTS extensions; CREATE SCHEMA IF NOT EXISTS auth;
     CREATE TABLE public.app_config (key text PRIMARY KEY, value jsonb, description text,
-      updated_at timestamptz DEFAULT now(), updated_by uuid);
+      updated_at timestamptz DEFAULT '2026-11-13 10:00:00+00', updated_by uuid);
     CREATE TABLE public.riders (id int PRIMARY KEY);
   `);
   return db;
@@ -208,5 +208,5 @@ test("#8143 pg: prøvens migration kan køres to gange; kontakten står på off;
 
   // To rækker pr. runde: samme tidspunkt, én pr. vej. En dublet afvises.
   await assert.rejects(db.exec("INSERT INTO public.direct_db_probe_samples (sampled_at, path, ok) VALUES ('2026-11-13 10:00:00+00', 'web', true)"), /duplicate key/);
-  await assert.rejects(db.exec("INSERT INTO public.direct_db_probe_samples (sampled_at, path, ok) VALUES (now(), 'andet', true)"), /check constraint/);
+  await assert.rejects(db.exec("INSERT INTO public.direct_db_probe_samples (sampled_at, path, ok) VALUES ('2026-11-13 12:00:00+00', 'andet', true)"), /check constraint/);
 });
