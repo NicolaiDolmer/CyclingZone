@@ -37,6 +37,22 @@ export const DIRECT_DB_PROBE_FLAG_KEY = "direct_db_probe_8143";
 export const DIRECT_DB_PROBE_TABLE = "direct_db_probe_samples";
 export const DIRECT_DB_PROBE_INTERVAL_MS = 60_000;
 export const DIRECT_DB_PROBE_RETENTION_DAYS = 14;
+/**
+ * Opgørelsen pr. vej pr. time: én SELECT. Samme tekst står i
+ * docs/AI_OPS_REFERENCE.md; directDb.pg.test.js kører den mod en rigtig Postgres.
+ * query_ms er prisen pr. spørgsmål; acquire_ms er tiden for at få en forbindelse.
+ */
+export const DIRECT_DB_PROBE_READOUT_SQL = `SELECT date_trunc('hour', sampled_at) AS hour, path,
+  count(*) FILTER (WHERE ok) AS answers,
+  count(*) FILTER (WHERE NOT ok) AS errors,
+  round((percentile_cont(0.5) WITHIN GROUP (ORDER BY query_ms) FILTER (WHERE ok))::numeric, 1) AS median_ms,
+  round((percentile_cont(0.95) WITHIN GROUP (ORDER BY query_ms) FILTER (WHERE ok))::numeric, 1) AS p95_ms,
+  round((percentile_cont(0.5) WITHIN GROUP (ORDER BY acquire_ms) FILTER (WHERE ok))::numeric, 1) AS median_acquire_ms,
+  count(*) FILTER (WHERE new_connection) AS new_connections
+FROM public.direct_db_probe_samples
+GROUP BY 1, 2
+ORDER BY 1 DESC, 2`;
+
 const WEB_TIMEOUT_MS = 15_000;
 const EXPIRE_EVERY_MS = 60 * 60_000;
 const STOP_WAIT_MS = 5_000;
