@@ -811,7 +811,8 @@
       "transferRejected": "Ton offre sur {rider} a été refusée.",
       "watchlistRiderAuction": "Un coureur de ta liste de suivi est aux enchères : {rider}.",
       "testTitle": "Les MP Discord fonctionnent",
-      "testDescription": "Tu recevras maintenant des MP de Cycling Zone pour les enchères, les transferts et les nouvelles de la direction."
+      "testDescription": "Tu recevras maintenant des MP de Cycling Zone pour les enchères, les transferts et les nouvelles de la direction.",
+      "testPaused": "J'ai désactivé les messages Discord pour le moment, donc aucun message de test n'a été envoyé."
     }
   },
   "push": {

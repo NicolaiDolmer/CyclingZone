@@ -33,6 +33,7 @@ import { copenhagenHour, copenhagenDateString, copenhagenMidnightUTC } from "./c
 import { notifyRaceResultDigestDM } from "./discordNotifier.js";
 import { buildRaceResultNarrative, buildStageResultNarrative, buildPersonalResultText, capitalize } from "./raceNarrativeNotification.js";
 import { captureException } from "./sentry.js";
+import { isDiscordPlayerDmEnabled } from "./discordPlayerDmSwitch.js"; // #8149
 
 export const DISCORD_DIGEST_HOUR_COPENHAGEN = 20; // separate hour from the 19:00 email digest — independent channels
 
@@ -132,6 +133,8 @@ export async function runDiscordRaceDigestSweep({
   fetchStageNarrative = buildStageResultNarrative,
   sendDigestDM = notifyRaceResultDigestDM,
   captureExceptionFn = captureException,
+  // #8149: hovedafbryderen for bottens private beskeder (injicérbar for test).
+  isPlayerDmEnabled = isDiscordPlayerDmEnabled,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
@@ -143,6 +146,13 @@ export async function runDiscordRaceDigestSweep({
   // giver samme én-gang-pr.-dag-garanti uden afhængighed af tick-timing.
   if (copenhagenHour(now) < DISCORD_DIGEST_HOUR_COPENHAGEN) {
     return { candidates: 0, sent: 0, skipped: 0, failed: 0, skippedReason: "outside_hour_window" };
+  }
+
+  // #8149: slukket kontakt = hele sweepen springes over, før noget læses. sendDM
+  // ville også stoppe hver besked, men så ville der stå logrækker i
+  // discord_race_digest_log for resuméer, der aldrig blev sendt.
+  if (!(await isPlayerDmEnabled(supabase))) {
+    return { candidates: 0, sent: 0, skipped: 0, failed: 0, skippedReason: "discord_player_dm_off" };
   }
 
   const sinceIso = copenhagenMidnightUTC(now).toISOString();

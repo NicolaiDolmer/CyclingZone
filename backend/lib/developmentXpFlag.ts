@@ -43,6 +43,7 @@ import { readPrivateConfigEntry, PRIVATE_CONFIG_KEYS } from "./privateConfig.ts"
 import { TRAINING_CONFIG } from "./training.js";
 import { raceDayRoleBaseProgram, raceDayRoleYieldMultipliers, withRaceDayRoleYield } from "./raceDayRoleYield5950.js";
 import { type DevelopmentXpParams } from "./developmentXp.ts";
+import { type XpRaceDayFit } from "./developmentXpRaceFit.ts";
 
 export const DEVELOPMENT_XP_FLAG_KEY = "development_xp_model";
 export const DEVELOPMENT_XP_FROM_DATE_KEY = "development_xp_from_date";
@@ -152,21 +153,30 @@ export async function loadDevelopmentXp({
  * er bit-identisk med i dag. Tændt = som 10-sæsoners-kørslen: hård basisdag og
  * tillægget regnet med løbsdagens off-fokus-andel fra XP-params, så tillægget
  * lægger det samme oven i, uanset hvor stor off-fokus-andelen er.
+ *
+ * #6110 R15b (ejer 13/11): tændt bærer kaldet også etapen og holdets katalog
+ * (`catalogV3`) med til tick'et som `xpRaceDayFit`, så applyDailyTick kan løfte en
+ * løbsdag, der passer rytteren, op til hans bedste hårde pas (developmentXpRaceFit.ts).
+ * Slukket læses `catalogV3` ikke, og intet nyt felt siver ind i den gamle model.
  */
 export function withRaceDayRoleYieldXp(
   developmentXp: DevelopmentXpParams | null | undefined,
   extraTickArgs: Record<string, unknown>,
-  { params = null, profileType = null, role = null }: { params?: any; profileType?: string | null; role?: string | null } = {},
+  { params = null, profileType = null, role = null, catalogV3 = false }: {
+    params?: any; profileType?: string | null; role?: string | null; catalogV3?: boolean;
+  } = {},
 ): Record<string, unknown> {
   // JS-hjaelperne udleder typer af deres null-standardvaerdier; cast holder kaldet
   // uaendret i runtime (typecheck-fejl paa main efter #7843).
   if (!developmentXp) return withRaceDayRoleYield(extraTickArgs, { params, profileType, role } as any);
-  if (!params) return extraTickArgs;
+  const xpRaceDayFit: XpRaceDayFit = { profileType: profileType ?? null, catalogV3: catalogV3 === true };
+  // Uden rolletillaeg er programmet og tillaegget som i dag; R15b gaelder stadig (alle roller).
+  if (!params) return { ...extraTickArgs, xpRaceDayFit };
   const trainingCfg = {
     ...TRAINING_CONFIG,
     offFocusMult: developmentXp.raceOffFocusShare * TRAINING_CONFIG.focusGrowthMult.hard,
   };
   const program = raceDayRoleBaseProgram(profileType as any, { role, roleDrivesBaseDay: params.roleDrivesBaseDay === true, trainingCfg } as any);
   const abilityYieldMult = raceDayRoleYieldMultipliers({ params, profileType, role, program, trainingCfg } as any);
-  return { ...extraTickArgs, program, abilityYieldMult };
+  return { ...extraTickArgs, program, abilityYieldMult, xpRaceDayFit };
 }

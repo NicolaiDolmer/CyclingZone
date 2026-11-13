@@ -811,7 +811,8 @@
       "transferRejected": "Dit tilbud på {rider} blev afvist.",
       "watchlistRiderAuction": "En rytter fra din ønskeliste er på auktion: {rider}.",
       "testTitle": "Discord-DM virker",
-      "testDescription": "Du modtager nu DM'er fra Cycling Zone om auktioner, transfers og bestyrelsen."
+      "testDescription": "Du modtager nu DM'er fra Cycling Zone om auktioner, transfers og bestyrelsen.",
+      "testPaused": "Jeg har slået Discord-beskeder fra indtil videre, så der blev ikke sendt en testbesked."
     }
   },
   "push": {
