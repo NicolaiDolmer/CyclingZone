@@ -1,5 +1,83 @@
 export const PATCHES = [
 {
+  "version": "7.440",
+  "date": "2026-11-13",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Riders",
+      "en": {
+        "title": "Ceilings are gone",
+        "body": "Riders no longer show a ceiling next to their potential, and the Development tab has no Ceiling column. A rider you have not scouted shows only the Scout button."
+      },
+      "da": {
+        "title": "Loftet er væk",
+        "body": "Ryttere viser ikke længere et loft ved potentialet, og Udvikling-fanen har ikke længere kolonnen Loft. En rytter, du ikke har scoutet, viser kun Scout-knappen."
+      },
+      "refs": [
+        7932,
+        8048
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Academy",
+      "en": {
+        "title": "No more academy team",
+        "body": "The Academy page no longer lists an academy team. It links to your U23 and junior teams, where you see and manage your young riders. A talent you sign joins your U23 team when your junior team is full, and the card tells you before you click."
+      },
+      "da": {
+        "title": "Intet akademihold længere",
+        "body": "Akademisiden viser ikke længere et akademihold. Den linker til dit U23-hold og dit juniorhold, hvor du ser og styrer dine unge ryttere. Et talent, du henter, kommer på U23-holdet, når juniortruppen er fuld, og kortet siger det, før du klikker."
+      },
+      "refs": [
+        6155,
+        8047
+      ]
+    },
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Races",
+      "en": {
+        "title": "Attacks on the last climb show where they happen",
+        "body": "An attack on the final climb now shows as two lines in the race film: the attack at the foot of the climb, then how it ended, where it ended. Before, it stood on the finish line."
+      },
+      "da": {
+        "title": "Angreb på sidste stigning vises, hvor de sker",
+        "body": "Et angreb på den sidste stigning står nu som to linjer i løbsfilmen: angrebet ved foden af stigningen, og så hvordan det endte, dér hvor det endte. Før stod det på målstregen."
+      },
+      "refs": [
+        7965,
+        8033
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Interface",
+      "en": {
+        "title": "A lighter chart",
+        "body": "The chart in the season finance report is now drawn by the game itself, so the app has less to download. The numbers are the same."
+      },
+      "da": {
+        "title": "En lettere graf",
+        "body": "Grafen i sæsonens økonomirapport tegnes nu af spillet selv, så appen har mindre at hente. Tallene er de samme."
+      },
+      "refs": [
+        6165,
+        8040
+      ]
+    }
+  ]
+},
+{
   "version": "7.439",
   "date": "2026-11-12",
   "changes": [
