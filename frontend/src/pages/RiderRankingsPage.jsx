@@ -12,6 +12,7 @@ import { formatNumber } from "../lib/intl";
 import { riderNameMatches } from "../lib/riderNameSearch";
 import { compareNationality, getCountryCode3 } from "../lib/countryUtils";
 import { useRiderRankings } from "../hooks/useRiderRankings";
+import UpdatedAtLine from "../components/rankings/UpdatedAtLine.tsx"; // #7664
 import { filterByDivisionPool, ALL_POOLS_VALUE } from "../lib/resultsFilter";
 import { resolveDivisionSelectionFromParams, ALL_DIVISIONS_VALUE } from "../lib/riderRankingDivisionLink";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
@@ -396,6 +397,7 @@ export default function RiderRankingsPage() {
         {isStale && (
           <span className="ms-2 text-cz-3">{t("rankings.completedSeasonNote")}</span>
         )}
+        {!isStale && <UpdatedAtLine />}{/* #7664: kun naar de nye tabeller laeses */}
         {/* #3507 — tydelig filter-indikator når man er landet her via
             dashboardets division-scopede "Fuld rangliste →"-link (eller har
             valgt en division manuelt), så det er soleklart at listen IKKE er

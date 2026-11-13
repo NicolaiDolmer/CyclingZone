@@ -77,6 +77,7 @@
     "season": "Seizoen {n}",
     "noActiveSeason": "Geen actief seizoen",
     "completedSeasonNote": "· Afgerond seizoen. Het nieuwe seizoen is nog niet begonnen.",
+    "updatedAt": "Bijgewerkt om {time}",
     "ridersCount": "{count} renners",
     "filterIndicator": "Divisie {division} getoond",
     "divisionFilterLabel": "Filteren op divisie",
