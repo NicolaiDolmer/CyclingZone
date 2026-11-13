@@ -118,6 +118,7 @@ export function evaluateStallFindings({
   standings = { maxStandingsUpdated: null, maxResultsImported: null },
   matviewHeartbeat = null, // ISO | null — sidste succesfulde refresh_ranking_matviews()
   rankingWork = null,
+  rankingHoldMs = 0,       // #7664: hold window while readers use the shadow tables
 } = {}) {
   const t = { ...STALL_WATCHDOG_DEFAULT_THRESHOLDS, ...thresholds };
   const findings = [];
@@ -229,7 +230,7 @@ export function evaluateStallFindings({
   // FØR migrationen ikke false-alarmerer. Kan derfor kun give en ægte positiv —
   // et reelt heartbeat der er faldet bag race_results (refresh-sti død).
   if (rankingWork) {
-    if (rankingWork.pending && rankingWork.pendingAgeMs > 5 * 60 * 1000 + (rankingWork.holdMs ?? 0)) { // #7664
+    if (rankingWork.pending && rankingWork.pendingAgeMs > 5 * 60 * 1000 + rankingHoldMs) { // #7664
       findings.push({ type: 'matview', ageHours: round1(rankingWork.pendingAgeMs / HOUR_MS),
         detail: 'Pending ranking changes exceed the normal five-minute freshness target; last completed snapshot retained' });
     }
@@ -427,12 +428,12 @@ export async function fetchWatchdogState({ supabase, now = new Date(), threshold
     matviewHeartbeat = hbRow?.refreshed_at ?? null;
   }
 
-  let rankingWork = null;
+  let rankingWork = null, rankingHoldMs = 0;
   if (typeof supabase.rpc === 'function') {
     try {
       rankingWork = await getRankingRefreshWorkState(supabase, now);
       // #7664: while readers use the shadow tables, the full pass waits for its hold window.
-      if ((await resolveRankingReadSource(supabase)).source === "shadow") rankingWork = { ...rankingWork, holdMs: LEGACY_HOLD_MS_7664 };
+      if ((await resolveRankingReadSource(supabase)).source === "shadow") rankingHoldMs = LEGACY_HOLD_MS_7664;
     }
     catch (error) {
       // During SQL-before-Node rollout the legacy lag probe stays available.
@@ -451,6 +452,7 @@ export async function fetchWatchdogState({ supabase, now = new Date(), threshold
     },
     matviewHeartbeat,
     rankingWork,
+    rankingHoldMs,
   };
 }
 

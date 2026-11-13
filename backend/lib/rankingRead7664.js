@@ -43,6 +43,7 @@ export const SOURCE_CACHE_TTL_MS = 10_000;
 // aendringerne i dette vindue foer den koerer (se refreshRankingMatviews.js).
 export const LEGACY_HOLD_MS_7664 = 15 * 60 * 1000;
 
+/** @type {Readonly<RankingReadSource>} */
 const LEGACY = Object.freeze({ source: "legacy", currentAsOf: null });
 let sourceCache = new WeakMap();
 
@@ -63,16 +64,22 @@ export async function rankingReadSwitchOn(supabase) {
     && evaluateFlagStage(writes, { engineWrite: true });
 }
 
+/** @typedef {{ source: "legacy"|"shadow", currentAsOf: string|null }} RankingReadSource */
+/** @typedef {(error: Error, context: { tags: Record<string, string> }) => void} CaptureFn */
+
 /**
  * Hvilken kilde rangliste-ruterne skal laese nu.
- * @returns {Promise<{ source: "legacy"|"shadow", currentAsOf: string|null }>}
- *   currentAsOf: tidspunktet hvor skyggen senest indeholdt alle kendte
- *   aendringer (nu, naar koeen er tom; ellers foer den aeldste ventende post).
+ * currentAsOf: tidspunktet hvor skyggen senest indeholdt alle kendte
+ * aendringer (nu, naar koeen er tom; ellers foer den aeldste ventende post).
+ * @param {any} supabase
+ * @param {{ now?: () => number, captureExceptionFn?: CaptureFn }} [options]
+ * @returns {Promise<RankingReadSource>}
  */
 export async function resolveRankingReadSource(supabase, { now = Date.now, captureExceptionFn } = {}) {
   if (!supabase?.from || !supabase?.rpc) return LEGACY;
   const hit = sourceCache.get(supabase);
   if (hit && hit.expiresAt > now()) return hit.value;
+  /** @type {RankingReadSource} */
   let value = LEGACY;
   try {
     if (await rankingReadSwitchOn(supabase)) {
@@ -184,9 +191,10 @@ const TOP_STAT_COLUMNS = "rider_id,points,stage_wins,gc_wins,classic_wins";
 /**
  * Forsidens top 5 fra rytterranglistens skyggetabel. Returnerer null, naar
  * kilden er matviews: saa koerer forsiden praecis som i dag.
- * @param {{ seasonId: string, leagueDivisionId: number|null, source?: {source: string} }} args
+ * @param {any} supabase
+ * @param {{ seasonId: string, leagueDivisionId: number|null, source?: RankingReadSource, captureExceptionFn?: CaptureFn }} options
  */
-export async function readDashboardTopRiders7664(supabase, { seasonId, leagueDivisionId, source, captureExceptionFn } = {}) {
+export async function readDashboardTopRiders7664(supabase, { seasonId, leagueDivisionId, source, captureExceptionFn }) {
   const chosen = source ?? await resolveRankingReadSource(supabase, { captureExceptionFn });
   if (chosen.source !== "shadow") return null;
   const table = SHADOW_READ_TABLES.rider_rankings_mv;
