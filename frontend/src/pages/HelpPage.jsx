@@ -150,6 +150,7 @@ const SECTION_DEFS = [
       { id: "receiveAndReply", kind: "text" },
       { id: "finalConfirmation", kind: "text" },
       { id: "midRaceTransfers", kind: "text" },
+      { id: "midRaceTransfersEscrow", kind: "text" }, // #6181: tvillingen, se HELP_BLOCK_FLAGS
       { id: "negotiation", kind: "text" },
       { id: "privacy", kind: "text" },
       { id: "archiveCompleted", kind: "text" },

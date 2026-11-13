@@ -284,6 +284,10 @@
         "title": "Operaciones durante una carrera por etapas en curso",
         "text": "Si un ciclista se traspasa (fichaje, intercambio o subasta) mientras está a mitad de una carrera por etapas activa, el trato y el pago se completan de inmediato, pero él termina la carrera para su equipo vendedor y se une a su nuevo equipo justo después de la meta. Su perfil muestra mientras tanto el equipo futuro, y no se le puede volver a traspasar hasta que se complete el cambio. Las carreras que aún no han empezado no se ven afectadas: el ciclista se mueve al instante. Un día de carrera ya usado para el equipo anterior sigue ocupado después del cambio. Puede inscribirse en carreras de días de carrera posteriores."
       },
+      "midRaceTransfersEscrow": {
+        "title": "Operaciones durante una carrera por etapas en curso",
+        "text": "Si un ciclista se traspasa (fichaje, intercambio o subasta) mientras está a mitad de una carrera por etapas activa, el comprador paga de inmediato, pero el dinero del vendedor queda bloqueado hasta que el ciclista cambie de equipo. Termina la carrera para su equipo vendedor y se une a su nuevo equipo justo después de la meta, y en ese momento el dinero se paga al vendedor. Hasta entonces el importe aparece como bloqueado bajo el saldo y en Finanzas, en Bloqueado hasta el cambio de equipo. Su perfil muestra mientras tanto el equipo futuro, y no se le puede volver a traspasar hasta que se complete el cambio. Si se le libera antes de cambiar de equipo, el comprador recupera el dinero. Las carreras que aún no han empezado no se ven afectadas: el ciclista se mueve y el vendedor cobra al instante. Un día de carrera ya usado para el equipo anterior sigue ocupado después del cambio. Puede inscribirse en carreras de días de carrera posteriores."
+      },
       "negotiation": {
         "title": "Negociación de ida y vuelta",
         "text": "La negociación puede continuar indefinidamente. El vendedor envía una contraoferta; el comprador puede aceptarla, enviar una oferta nueva o retirarse. El contador de rondas muestra lo avanzada que va la negociación."

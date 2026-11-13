@@ -84,6 +84,11 @@
       "sellerTitle": "Handlen er annulleret",
       "sellerMessage": "{riders} skiftede ikke hold, så de {amount} CZ$ fra handlen gik tilbage til det andet hold."
     },
+    "saleEscrow": {
+      "lockedMessage": "{riderName} er solgt for {price} CZ$. Pengene er låst og udbetales, når han skifter hold efter sit etapeløb.",
+      "releasedTitle": "Salget er udbetalt",
+      "releasedMessage": "{riderName} har skiftet hold. {amount} CZ$ er nu på din saldo."
+    },
     "admin": {
       "feedbackReply": {
         "title": "Svar på din besked"

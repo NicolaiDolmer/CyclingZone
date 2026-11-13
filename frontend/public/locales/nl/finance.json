@@ -45,7 +45,14 @@
     "label": "Saldo",
     "division": "Divisie {division}",
     "available": "{value} CZ$ beschikbaar",
-    "lockedInBids": "{value} CZ$ vast in biedingen"
+    "lockedInBids": "{value} CZ$ vast in biedingen",
+    "lockedSales": "+{value} CZ$ vast"
+  },
+  "lockedSalesBox": {
+    "heading": "Vast tot de ploegwissel",
+    "payout": "Uitbetaald zodra de renner van ploeg wisselt",
+    "endsIn": "{count, plural, one {eindigt over # dag} other {eindigt over # dagen}}",
+    "endsToday": "eindigt vandaag"
   },
   "debt": {
     "label": "Totale schuld",

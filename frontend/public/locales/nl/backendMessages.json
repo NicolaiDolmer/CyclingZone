@@ -84,6 +84,11 @@
       "sellerTitle": "Deal geannuleerd",
       "sellerMessage": "{riders} is niet van ploeg gewisseld, dus de {amount} CZ$ van de deal zijn terug naar de andere ploeg."
     },
+    "saleEscrow": {
+      "lockedMessage": "{riderName} is verkocht voor {price} CZ$. Het geld staat vast en wordt uitbetaald zodra hij na zijn etappekoers van ploeg wisselt.",
+      "releasedTitle": "Verkoop uitbetaald",
+      "releasedMessage": "{riderName} is van ploeg gewisseld. {amount} CZ$ staat nu op je saldo."
+    },
     "admin": {
       "feedbackReply": {
         "title": "Antwoord op je bericht"

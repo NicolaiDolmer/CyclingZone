@@ -284,6 +284,10 @@
         "title": "Transferts pendant une course par étapes en cours",
         "text": "Si un coureur est transféré (transfert, échange ou enchère) alors qu'il est en pleine course par étapes, l'accord et le paiement se concluent immédiatement, mais il termine la course pour son équipe vendeuse et rejoint sa nouvelle équipe juste après l'arrivée. Son profil montre entre-temps l'équipe à venir, et il ne peut pas être transféré à nouveau tant que le changement n'est pas terminé. Les courses qui n'ont pas encore commencé ne sont pas touchées : le coureur change tout de suite. Un jour de course déjà utilisé pour l'équipe précédente reste occupé après le changement. Il peut s'engager dans les courses des jours de course suivants."
       },
+      "midRaceTransfersEscrow": {
+        "title": "Transferts pendant une course par étapes en cours",
+        "text": "Si un coureur est transféré (transfert, échange ou enchère) alors qu'il est en pleine course par étapes, l'acheteur paie tout de suite, mais l'argent du vendeur est bloqué jusqu'à ce que le coureur change d'équipe. Il termine la course pour son équipe vendeuse et rejoint sa nouvelle équipe juste après l'arrivée, et à ce moment l'argent est versé au vendeur. D'ici là, le montant apparaît comme bloqué sous le solde et dans Finances, sous Bloqué jusqu'au changement d'équipe. Son profil montre entre-temps l'équipe à venir, et il ne peut pas être transféré à nouveau tant que le changement n'est pas terminé. S'il est libéré avant de changer d'équipe, l'acheteur récupère l'argent. Les courses qui n'ont pas encore commencé ne sont pas touchées : le coureur change tout de suite et le vendeur est payé immédiatement. Un jour de course déjà utilisé pour l'équipe précédente reste occupé après le changement. Il peut s'engager dans les courses des jours de course suivants."
+      },
       "negotiation": {
         "title": "Négociation d'aller-retour",
         "text": "La négociation peut continuer indéfiniment. Le vendeur envoie une contre-offre, l'acheteur peut accepter la contre-offre, envoyer une nouvelle offre ou se retirer. Le compteur de tours montre où en est la négociation."

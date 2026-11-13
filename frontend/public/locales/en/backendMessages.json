@@ -84,6 +84,11 @@
       "sellerTitle": "Deal cancelled",
       "sellerMessage": "{riders} did not change teams, so the {amount} CZ$ from the deal went back to the other team."
     },
+    "saleEscrow": {
+      "lockedMessage": "{riderName} was sold for {price} CZ$. The money is locked and paid out when he changes teams after his stage race.",
+      "releasedTitle": "Sale paid out",
+      "releasedMessage": "{riderName} has changed teams. {amount} CZ$ is now in your balance."
+    },
     "admin": {
       "feedbackReply": {
         "title": "Reply to your message"

@@ -84,6 +84,11 @@
       "sellerTitle": "Operación cancelada",
       "sellerMessage": "{riders} no cambió de equipo, así que los {amount} CZ$ de la operación volvieron al otro equipo."
     },
+    "saleEscrow": {
+      "lockedMessage": "{riderName} se ha vendido por {price} CZ$. El dinero está bloqueado y se paga cuando cambie de equipo tras su carrera por etapas.",
+      "releasedTitle": "Venta pagada",
+      "releasedMessage": "{riderName} ha cambiado de equipo. {amount} CZ$ ya están en tu saldo."
+    },
     "admin": {
       "feedbackReply": {
         "title": "Respuesta a tu mensaje"

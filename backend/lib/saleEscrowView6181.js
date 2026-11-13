@@ -166,6 +166,37 @@ export async function loadLockedSalesForTeam(supabase, teamId, { now = new Date(
   return { total: sales.reduce((sum, s) => sum + s.amount, 0), sales };
 }
 
+export const SALE_ESCROW_FORCE_BLOCKED_ERROR =
+  "Et sæsonskifte kan ikke tvinges igennem, mens der står låste salg (sale_escrows). Lad heal-sweepet afregne dem, og afgør fastlåste bytter via GET /api/admin/sale-escrows.";
+
+/**
+ * Ejer 13/11 (fast regel): et saesonskifte tvinges aldrig igennem, mens der staar
+ * laaste salg. Ellers koerer loennen, foer saelgeren har faaet sine penge.
+ * Antal holdte escrows til transition-rutens force-gren. Fail-closed: kan tabellen
+ * ikke laeses, svares 1, saa force afvises. Manglende tabel = 0 (ingen laas findes).
+ *
+ * @param {any} supabase
+ * @returns {Promise<number>}
+ */
+export async function countHeldSaleEscrowsForForce(supabase) {
+  try {
+    const { count, error } = await supabase
+      .from("sale_escrows")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "held");
+    if (error) {
+      if (MISSING_TABLE_CODES.has(error.code)) return 0;
+      console.error(`[saleEscrow] force-spaerren kunne ikke laese sale_escrows, afviser force: ${error.message}`);
+      return 1;
+    }
+    return Number(count) || 0;
+  } catch (err) {
+    // fail-closed: hellere et afvist force end loen foer saelgers udbetaling.
+    console.error(`[saleEscrow] force-spaerren fejlede, afviser force: ${errorMessage(err)}`);
+    return 1;
+  }
+}
+
 /**
  * Er saelgers penge for denne handel laast lige nu? Laeses efter betalingen, saa
  * den daekker baade JS-stien og RPC-stien (auto-accept betaler i selve RPC'en).

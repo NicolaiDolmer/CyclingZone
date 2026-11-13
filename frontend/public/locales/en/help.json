@@ -284,6 +284,10 @@
         "title": "Trades during an active stage race",
         "text": "If a rider is traded (transfer, swap or auction) while he is mid-way through an active stage race, the deal and payment complete immediately, but he finishes the race for his selling team and joins his new team right after the finish. His profile shows the upcoming team in the meantime, and he cannot be traded again until the move completes. Races that have not started yet are unaffected: the rider moves instantly. A race day already used for the previous team stays occupied after the move. He can enter races on later race days."
       },
+      "midRaceTransfersEscrow": {
+        "title": "Trades during an active stage race",
+        "text": "If a rider is traded (transfer, swap or auction) while he is mid-way through an active stage race, the buyer pays immediately, but the seller's money is locked until the rider changes teams. He finishes the race for his selling team and joins his new team right after the finish, and at that moment the money is paid out to the seller. Until then the amount shows as locked under the balance and on Finance under Locked until transfer. His profile shows the upcoming team in the meantime, and he cannot be traded again until the move completes. If he is released before he changes teams, the buyer gets the money back. Races that have not started yet are unaffected: the rider moves and the seller is paid instantly. A race day already used for the previous team stays occupied after the move. He can enter races on later race days."
+      },
       "negotiation": {
         "title": "Back-and-forth negotiation",
         "text": "Negotiation can continue indefinitely. The seller sends a counter, the buyer can accept the counter, send a new offer or withdraw. The round counter shows how far along you are in the negotiation."
