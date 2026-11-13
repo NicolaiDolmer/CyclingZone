@@ -1,5 +1,29 @@
 export const PATCHES = [
 {
+  "version": "7.444",
+  "date": "2026-11-13",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Tactics",
+      "flag": "tactics_ready_7864",
+      "en": {
+        "title": "Team plans",
+        "body": "On the Tactics tab you can now pick a ready plan: Ride for GC, Stage win, Sprint, Go for the break or Save the legs. Adjust it and save. Every task shows a price word (Easy, Medium, Hard or Very hard) for what it costs the legs, and a plan can be copied to the coming stages of the same type. Help explains it all."
+      },
+      "da": {
+        "title": "Holdplaner",
+        "body": "På Taktik-fanen kan du nu vælge en færdig plan: Kør for klassementet, Etapesejr, Spurt, Gå i udbrud eller Spar benene. Ret den til og gem. Hver opgave viser et prisord (Let, Middel, Hård eller Meget hård) for det, den koster i benene, og en plan kan kopieres til de kommende etaper af samme type. Hjælp forklarer det hele."
+      },
+      "refs": [
+        7864
+      ]
+    }
+  ]
+},
+{
   "version": "7.443",
   "date": "2026-11-13",
   "changes": [
