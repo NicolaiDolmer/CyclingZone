@@ -57,6 +57,22 @@ export function previewFatigueRulesEnabled() {
   }
 }
 
+// #7801 rest-byg: ?fatigueNow=on viser panelet som med kontakten fatigue_now_7801 taendt
+// (tallet lige nu); ?fatigueNow=unknown som naar tallet ikke kunne regnes for to ryttere
+// (serveren sender fatigue: null, taelleren viser en streg). Udeladt/off = som i dag.
+export function previewFatigueNowMode() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("fatigueNow");
+    if (param) localStorage.setItem("cz_mock_fatigue_now", param);
+    const mode = localStorage.getItem("cz_mock_fatigue_now");
+    return mode === "on" || mode === "unknown" ? mode : "off";
+  } catch {
+    return "off";
+  }
+}
+
+const UNKNOWN_NOW = new Set(["rider-2", "pv-fr-4"]);
+
 export function trainingFatigueRulesMockRoute(method, pathname, body) {
   if (!/^\/api\/training\/fatigue-rules(\/|$)/.test(pathname)) return null;
   if (!previewFatigueRulesEnabled()) {
@@ -64,9 +80,14 @@ export function trainingFatigueRulesMockRoute(method, pathname, body) {
   }
   if (method === "GET") {
     const days = daysBack(DAYS);
+    const mode = previewFatigueNowMode();
+    const roster = mode === "unknown" ? ROSTER.map((r) => (UNKNOWN_NOW.has(r.id) ? { ...r, fatigue: null } : r)) : ROSTER;
     return {
       status: 200,
-      body: { enabled: true, today: days.at(-1), days, team: state.team, riders: state.riders, roster: ROSTER, recent: recent(days) },
+      body: {
+        enabled: true, ...(mode === "off" ? {} : { fatigueNow: true }), today: days.at(-1), days,
+        team: state.team, riders: state.riders, roster, recent: recent(days),
+      },
     };
   }
   if (method === "PUT" && pathname.endsWith("/team")) {
