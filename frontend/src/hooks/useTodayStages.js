@@ -7,6 +7,7 @@ import {
   entryCountFor,
   mergeStandingRowsByRace,
   todayStageWinner,
+  carryKnownProfiles,
 } from "../lib/dashboardTodayStages.js";
 import { planRaceResultQueries } from "../lib/raceWinnerResultType.ts";
 
@@ -226,7 +227,8 @@ export default function useTodayStages(teamId) {
         };
       });
 
-      setState({ loading: false, cards });
+      // #8097: fejlede profil-kaldet, beholdes den kendte profil fra forrige hentning.
+      setState((previous) => ({ loading: false, cards: carryKnownProfiles(cards, previous.cards, Boolean(profilesRes.error)) }));
     } catch (e) {
       // Kortet fejler bevidst stille på UI'en (samme idiom som
       // useForumHighlights/useHeroAgonyMoment). console.warn, ikke
