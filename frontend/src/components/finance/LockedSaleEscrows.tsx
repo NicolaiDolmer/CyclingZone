@@ -18,36 +18,9 @@ import RaceLink from "../RaceLink.jsx";
 import { authHeaders } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import { formatNumber } from "../../lib/intl.js";
+import { NO_LOCKED_SALES, endsInKey, lockedSalesFromResponse, type LockedSales } from "./lockedSalesModel.ts";
 
 const API = import.meta.env.VITE_API_URL;
-
-export interface LockedSale {
-  id: string;
-  dealType: string;
-  riders: Array<{ id: string; name: string }>;
-  race: { id: string; name: string } | null;
-  endsAt: string | null;
-  daysLeft: number | null;
-  amount: number;
-}
-
-export interface LockedSales {
-  total: number;
-  sales: LockedSale[];
-}
-
-export const NO_LOCKED_SALES: LockedSales = Object.freeze({ total: 0, sales: [] }) as LockedSales;
-
-/** Svaret fra serveren, renset: alt uventet bliver "intet laast". */
-export function lockedSalesFromResponse(data: unknown): LockedSales {
-  if (!data || typeof data !== "object") return NO_LOCKED_SALES;
-  const raw = (data as { sales?: unknown }).sales;
-  const sales = Array.isArray(raw)
-    ? (raw as LockedSale[]).filter((s) => s && typeof s.id === "string" && Number(s.amount) > 0)
-    : [];
-  if (sales.length === 0) return NO_LOCKED_SALES;
-  return { total: sales.reduce((sum, s) => sum + Number(s.amount), 0), sales };
-}
 
 // Menuen og siden spoerger samtidig; eet kald pr. saldo-vaerdi deles. En ny saldo
 // (fx efter en udbetaling) henter igen.
@@ -103,8 +76,9 @@ export function LockedSalesLine({ refreshKey, className = "" }: { refreshKey: un
 }
 
 function endsText(t: (key: string, opts?: Record<string, unknown>) => string, daysLeft: number | null): string | null {
-  if (daysLeft == null) return null;
-  return daysLeft <= 0 ? t("lockedSalesBox.endsToday") : t("lockedSalesBox.endsIn", { count: daysLeft });
+  const ends = endsInKey(daysLeft);
+  if (!ends) return null;
+  return ends.count == null ? t(ends.key) : t(ends.key, { count: ends.count });
 }
 
 /** Oekonomis boks: een linje pr. laast salg. */
