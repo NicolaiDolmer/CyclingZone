@@ -329,7 +329,9 @@ export function applyDailyTick({
   // ticks paa en dato deler den, ogsaa paa loebsdags-aksen. Uden variationsfelter er den 1.
   if (developmentXp) {
     const xpVariation = developmentXpDayVariation({ riderId, dateStr }, developmentXp.variation);
-    return { ...developmentXpTick({ abilities, progress, maxPointsPerTick: Number.isFinite(hardDailyCap) ? hardDailyCap : Infinity,
+    // #6110 R9 (ejer 7/11 + 12/11): under XP bremser kun prisen. Den gamle regel om
+    // +1 pr. loebsdag (hardDailyCap) gaelder kun dagens model og klipper ikke XP-koebet.
+    return { ...developmentXpTick({ abilities, progress,
       xpFor: (ability) => dailyAbilityDelta({ ability, age, program, potentiale, staff, facilityTier, riderLevel, academyRateMult, primaryType, secondaryType, trainingCfg, budgetDivisor, developmentXp,
         xpYieldMult: abilityYieldMult?.[ability] > 0 ? abilityYieldMult[ability] : 1 })
         * trainNowBonusFactor * xpVariation }, developmentXp),
